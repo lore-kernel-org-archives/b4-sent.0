@@ -1,11 +1,11 @@
 From: Cody Kang <codykang.hk@gmail.com>
-Date: Sat, 25 Jul 2026 00:51:10 -0400
-Subject: [PATCH RESEND 01/17] dt-bindings: display: spacemit: add K3 Saturn
- DPU controller
+Date: Sat, 25 Jul 2026 00:51:11 -0400
+Subject: [PATCH RESEND 02/17] dt-bindings: phy: add SpacemiT K3 Innosilicon
+ DP PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260725-k3-display-v1-1-6de34d80e86c@gmail.com>
+Message-Id: <20260725-k3-display-v1-2-6de34d80e86c@gmail.com>
 References: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 In-Reply-To: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -24,163 +24,87 @@ Cc: dri-devel@lists.freedesktop.org, linux-riscv@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
  linux-clk@vger.kernel.org, Cody Kang <codykang.hk@gmail.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=4589;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=2331;
  i=codykang.hk@gmail.com; s=codykang; h=from:subject:message-id;
- bh=e2HtZIpFAeEzBhd8fEr6izzVbI4e6Mu4fEJXjQ+ijhI=;
- b=rDUDbppXFmGClymlOT79/iLKq4dlI8ONoh59JNFCmSbYfCmyd/VzYv2n7+ISDGTkglGvV6fhM
- f8lXW8T3YG/BrE4hGAuRKiGRSwxpmZJiUTKIoN36OOlI5/JAljOykfa
+ bh=xr0oQcfFPCJzaAeEJhH42CRWzbYWKnP3e2i7y0AjEKQ=;
+ b=5SvNVVr58XiRYnVJORW96i5uRgcBnJtyJxdzAgLmdpTlgOoI4aHgXlZ/gGLz1ej06AA6XrI4E
+ Rhnuba+0KFGD2QOWi+v4UrsLzPVvHeTHKjWsn/RZ8PasuwLQLQFcrIm
 X-Developer-Key: i=codykang.hk@gmail.com; a=ed25519;
  pk=Osn6/cs9Su/mHHw4P19cmVc3v2FMQfiWahjsN0vEkuk=
 X-Endpoint-Received: by B4 Relay for codykang.hk@gmail.com/codykang with auth_id=895
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Saturn display processing unit found on the SpacemiT K3 SoC.
-The K3 instantiates two of them, one per display path. They share a
-compatible: an instance differs only in which register window, interrupt,
-clock and reset lines it takes.
+The SpacemiT K3 DisplayPort controller drives its four transmit lanes
+through an integrated Innosilicon DP PHY, one PHY per controller. Add a
+binding so the controller can reference its transmit PHY and the pixel
+clock the PHY's PLL sources.
+
+The PHY's registers are interleaved with its parent controller's inside
+one MMIO window, so it owns neither a reg nor a reset and is modelled as
+a child of the controller.
+
+It exposes its PLL-generated pixel clock through #clock-cells, so the
+APMU pixel-clock mux can select it as a parent through the clock
+framework.
 
 Signed-off-by: Cody Kang <codykang.hk@gmail.com>
 ---
- .../display/spacemit/spacemit,k3-saturn-dpu.yaml   | 132 +++++++++++++++++++++
- 1 file changed, 132 insertions(+)
+ .../bindings/phy/spacemit,k3-inno-dp-phy.yaml      | 48 ++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-saturn-dpu.yaml b/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-saturn-dpu.yaml
+diff --git a/Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml b/Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml
 new file mode 100644
-index 000000000000..97ea9da4b68e
+index 000000000000..f8f1ef372951
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-saturn-dpu.yaml
-@@ -0,0 +1,132 @@
++++ b/Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml
+@@ -0,0 +1,48 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/display/spacemit/spacemit,k3-saturn-dpu.yaml#
++$id: http://devicetree.org/schemas/phy/spacemit,k3-inno-dp-phy.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: SpacemiT K3 Saturn Display Processing Unit
++title: SpacemiT K3 Innosilicon DisplayPort PHY
 +
 +maintainers:
 +  - Cody Kang <codykang.hk@gmail.com>
 +
 +description:
-+  The Saturn DPU is the display processing unit of the SpacemiT K3 SoC. It
-+  composes the display planes and drives the timing for one display path. Its
-+  output goes to a DisplayPort or embedded DisplayPort controller. The K3 has
-+  two instances.
++  Innosilicon four-lane DisplayPort transmit PHY integrated in the SpacemiT
++  K3 SoC, one per DisplayPort controller. Its registers are interleaved with
++  the controller's own inside a single register window, so it is described as
++  a child of the controller and owns neither a reg nor a reset.
++
++  The PHY provides the pixel clock its PLL generates, which the APMU
++  pixel-clock mux takes as one of its inputs.
 +
 +properties:
 +  compatible:
-+    const: spacemit,k3-saturn-dpu
++    const: spacemit,k3-inno-dp-phy
 +
-+  reg:
++  "#phy-cells":
++    const: 0
++
++  "#clock-cells":
++    const: 0
++
++  clock-output-names:
 +    maxItems: 1
-+
-+  interrupts:
-+    items:
-+      - description: Online (live display) compose path.
-+      - description: Offline (writeback) compose path.
-+
-+  interrupt-names:
-+    items:
-+      - const: online
-+      - const: offline
-+
-+  clocks:
-+    items:
-+      - description: Pixel clock.
-+      - description: Memory clock for the compose pipeline.
-+      - description: AXI bus clock.
-+      - description: DSI escape clock.
-+      - description: DSC clock.
-+
-+  clock-names:
-+    items:
-+      - const: pxclk
-+      - const: mclk
-+      - const: aclk
-+      - const: escclk
-+      - const: dscclk
-+
-+  resets:
-+    items:
-+      - description: Memory clock domain.
-+      - description: LCD domain, shared with the downstream controller.
-+      - description: DSI escape clock domain.
-+      - description: AXI clock domain.
-+      - description: DSC domain.
-+
-+  reset-names:
-+    items:
-+      - const: mclk
-+      - const: lcd
-+      - const: esc
-+      - const: aclk
-+      - const: dsc
-+
-+  ports:
-+    $ref: /schemas/graph.yaml#/properties/ports
-+
-+    properties:
-+      port@0:
-+        $ref: /schemas/graph.yaml#/properties/port
-+        description: Video output to the DisplayPort or eDP controller.
-+
-+    required:
-+      - port@0
 +
 +required:
 +  - compatible
-+  - reg
-+  - interrupts
-+  - interrupt-names
-+  - clocks
-+  - clock-names
-+  - resets
-+  - reset-names
-+  - ports
++  - "#phy-cells"
++  - "#clock-cells"
 +
 +additionalProperties: false
 +
 +examples:
 +  - |
-+    #include <dt-bindings/clock/spacemit,k3-clocks.h>
-+    #include <dt-bindings/reset/spacemit,k3-resets.h>
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
-+    soc {
-+        #address-cells = <2>;
-+        #size-cells = <2>;
-+
-+        dpu@c0340000 {
-+            compatible = "spacemit,k3-saturn-dpu";
-+            reg = <0x0 0xc0340000 0x0 0x54000>;
-+            interrupts = <90 IRQ_TYPE_LEVEL_HIGH>,
-+                         <89 IRQ_TYPE_LEVEL_HIGH>;
-+            interrupt-names = "online", "offline";
-+            clocks = <&syscon_apmu CLK_APMU_LCD_PXCLK>,
-+                     <&syscon_apmu CLK_APMU_LCD_MCLK>,
-+                     <&syscon_apmu CLK_APMU_DPU_ACLK>,
-+                     <&syscon_apmu CLK_APMU_DSI_ESC>,
-+                     <&syscon_apmu CLK_APMU_LCD_DSC>;
-+            clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
-+            resets = <&syscon_apmu RESET_APMU_LCD_MCLK>,
-+                     <&syscon_apmu RESET_APMU_LCD>,
-+                     <&syscon_apmu RESET_APMU_DSI_ESC>,
-+                     <&syscon_apmu RESET_APMU_DPU_ACLK>,
-+                     <&syscon_apmu RESET_APMU_LCD_DSCCLK>;
-+            reset-names = "mclk", "lcd", "esc", "aclk", "dsc";
-+
-+            ports {
-+                #address-cells = <1>;
-+                #size-cells = <0>;
-+
-+                port@0 {
-+                    reg = <0>;
-+                    endpoint {
-+                        remote-endpoint = <&edp0_in>;
-+                    };
-+                };
-+            };
-+        };
++    phy {
++        compatible = "spacemit,k3-inno-dp-phy";
++        #phy-cells = <0>;
++        #clock-cells = <0>;
++        clock-output-names = "edp0_pll_pxclk";
 +    };
 
 -- 
