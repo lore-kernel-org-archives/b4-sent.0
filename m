@@ -1,116 +1,141 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Mon, 27 Jul 2026 10:10:18 +0800
-Subject: [PATCH BlueZ bluez v2] bap: Start BIG sync after receiving BIGInfo
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Sun, 26 Jul 2026 21:14:04 -0500
+Subject: [PATCH net] net/smc: drain the rx tasklet before detaching the
+ ghost sndbuf
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260727-big_sync-v2-1-053fd3bcc3be@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAAm+ZmoC/2WNyw7CIBREf6W5azG8qtGV/2EaQ/FKb9KCASXWh
- n+XsHV5ZiZnNkgYCROcuw0iZkoUfAW568BOxjtkdK8MkssDP0rNRnK3tHrLdG+lRstPQgqo82f
- EB32a6grj/MYvDDWeKL1CXNtBFq38d2XBBONG9VwoVHw0F7PMwZHd27DAUEr5Ad+DCSepAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785118218; l=2963;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=8K/J9AtTMnR/lHprg7bq6f69/gczMTTI4wUhzPwxCDc=;
- b=/bsmj5TwlBDveUOO28rrpCDl4yhwfXtLOA4l5gxhlTGsdgXfBPwr8mEQQEyKrsgmtt0rbt/sV
- aW0aXvhPK5/Br9YouXDQm+w6HhJEAUTC/DXp8ucnlVf0mAH+jr7b7rj
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Message-Id: <20260726-b4-disp-a135b4e5-v1-1-705aaec79986@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5EMBCA4VeROe8kVS1rX0UcVAfjYKWDSMS7K
+ 47f4f8PEApMAr/kgEAbC/+niPSTQDs0U0/IPhq00rkqdI7OoGeZsUkz6wxZLI21hXFeldkXYjY
+ H6nh/llX9WlY3UrvcHzjPC8SRSId0AAAA
+X-Change-ID: 20260726-b4-disp-a135b4e5-945574bd0938
+To: Dust Li <dust.li@linux.alibaba.com>, 
+ Wenjia Zhang <wenjia@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Sidraya Jayagond <sidraya@linux.ibm.com>
+Cc: Mahanta Jambigi <mjambigi@linux.ibm.com>, netdev@vger.kernel.org, 
+ linux-s390@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Tony Lu <tonylu@linux.alibaba.com>, Paolo Abeni <pabeni@redhat.com>, 
+ Wen Gu <guwen@linux.alibaba.com>, linux-rdma@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785118443; l=4217;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=wYjklXpHMVg2rxAnVlYLWc6qQreV8jc7yrCCSeUtrwM=;
+ b=1GEGA8s3WVGo60Q4bcloSNg1Gju64r30GQhhMxdGRBVQOQGm5bUWZLlmQF5+7v/EwNEdFwmyY
+ 3MQ0zZej/HwDEyRt3LXmJTVZTCeaahQGJu4AWQ4SoAroZrHNEg2RKd0
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current implementation starts BIG sync before receiving a BIGInfo
-report. According to the Bluetooth Core Specification, BIG sync should
-only be initiated after BIGInfo has been received.
+On the SMC-D DMB-nocopy path smcd_buf_detach() frees conn->sndbuf_desc
+while the receive tasklet can still be running: both teardown sites free
+first and drain afterwards. A tasklet already past the conn->killed check
+then dereferences the freed buffer in smc_cdc_msg_recv_action(), which
+reaches the same field again through smc_tx_prepared_sends().
 
-Starting BIG sync too early may cause unexpected controller behavior.
+Drain the tasklet before the detach at both sites, mirroring rmb_desc,
+which smc_buf_unuse() only releases after the drain.
 
-Trigger BIG sync from the BIGInfo callback, following the same approach
-used by the short PA flow.
-
-Fixes: https://github.com/bluez/bluez/issues/2345
-
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Fixes: ae2be35cbed2 ("net/smc: {at|de}tach sndbuf to peer DMB if supported")
+Cc: stable@kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Changes in v2:
-- Fixed build error.
-- Link to v1: https://patch.msgid.link/20260724-big_sync-v1-1-0a35013e30ba@amlogic.com
----
- profiles/audio/bap.c | 24 ++++++++++++++++++++----
- 1 file changed, 20 insertions(+), 4 deletions(-)
+Found with KASAN on an SMC-D loopback rig (CONFIG_SMC_LO, x86_64).
 
-diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
-index dd4b3c8ff..42b7bb04c 100644
---- a/profiles/audio/bap.c
-+++ b/profiles/audio/bap.c
-@@ -3650,7 +3650,7 @@ static void setup_refresh_qos(void *data, void *user_data)
- 	setup->qos = *bt_bap_stream_get_qos(stream);
- }
- 
--static void iso_do_big_sync(GIOChannel *io, void *user_data)
-+static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond, void *user_data)
- {
- 	GError *err = NULL;
- 	struct bap_setup *setup = user_data;
-@@ -3659,7 +3659,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
- 	struct bt_iso_qos qos;
- 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
- 
--	DBG("PA Sync done");
-+	DBG("BIG info received, do BIG sync");
- 
- 	g_io_channel_unref(data->listen_io);
- 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
-@@ -3682,6 +3682,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
- 			BT_IO_OPT_INVALID)) {
- 		error("bt_io_set: %s", err->message);
- 		g_error_free(err);
-+		return FALSE;
+The teardown is driven through smc_conn_kill() by arming abort_work from a debug
+module parameter: on SMC-D nothing in the receive path queues that work, while on
+SMC-R smc_cdc_msg_validate() queues it for an out-of-range peer seqno. Everything
+after the abort is the unmodified path. A second parameter holds the receive tasklet
+just past the conn->killed check, so the free lands mid-run.
+
+  arm         ordering           abort armed   result
+  vulnerable  detach then drain  yes           KASAN slab-use-after-free
+  control     detach then drain  no            clean
+  patched     drain then detach  yes           clean
+
+Same module, same boot, same trigger, same delay; only the ordering differs.
+
+  BUG: KASAN: slab-use-after-free in smc_cdc_msg_recv_action+0x1ed9/0x1f20 [smc]
+  Read of size 4 at addr ffff88810f6c9720 by task kworker/3:1/147
+  Workqueue: smc_close_wq smc_conn_abort_work [smc]
+   <IRQ>
+    smc_cdc_msg_recv_action+0x1ed9/0x1f20 [smc]
+    smcd_cdc_rx_tsklet+0x1f2/0x2f0 [smc]
+    tasklet_action_common+0x2fd/0x850
+    handle_softirqs+0x18c/0x4f0
+    do_softirq+0x3a/0x60
+   </IRQ>
+   <TASK>
+    __local_bh_enable_ip+0x5d/0x60
+    smc_cdc_get_slot_and_msg_send+0x253/0x680 [smc]
+    smc_conn_kill+0xa8/0x4d0 [smc]
+    smc_conn_abort_work+0x34/0x90 [smc]
+   </TASK>
+
+  Allocated by task 70:
+    smcd_buf_attach+0xbd/0x2a0 [smc]
+    smc_listen_work+0x2499/0x49a0 [smc]
+
+  Freed by task 44:
+    kfree+0x135/0x390
+    smc_conn_kill+0x3ab/0x4d0 [smc]
+    smc_conn_abort_work+0x34/0x90 [smc]
+
+  The buggy address belongs to the object at ffff88810f6c9700
+   which belongs to the cache kmalloc-128 of size 128
+  The buggy address is located 32 bytes inside of
+   freed 128-byte region [ffff88810f6c9700, ffff88810f6c9780)
+
+The read is conn->sndbuf_desc->len.
+
+A plain close() does not get there: smc_close_active() always moves the socket to
+SMC_PEERCLOSEWAIT1, so the free happens in smc_close_passive_work() after the peer's
+close CDC -- the same event that stops feeding the tasklet. About 18000 such teardowns
+produced nothing. The ordering is wrong either way, and smc_conn_kill() has no such
+coupling.
+
+Logs on request.
+---
+ net/smc/smc_core.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
+index cf6b620fef05..da64e7a6bd73 100644
+--- a/net/smc/smc_core.c
++++ b/net/smc/smc_core.c
+@@ -1270,9 +1270,9 @@ void smc_conn_free(struct smc_connection *conn)
+ 	if (lgr->is_smcd) {
+ 		if (!list_empty(&lgr->list))
+ 			smc_ism_unset_conn(conn);
++		tasklet_kill(&conn->rx_tsklet);
+ 		if (smc_ism_support_dmb_nocopy(lgr->smcd))
+ 			smcd_buf_detach(conn);
+-		tasklet_kill(&conn->rx_tsklet);
+ 	} else {
+ 		smc_cdc_wait_pend_tx_wr(conn);
+ 		if (current_work() != &conn->abort_work)
+@@ -1525,12 +1525,12 @@ static void smc_conn_kill(struct smc_connection *conn, bool soft)
+ 	smc_sk_wake_ups(smc);
+ 	if (conn->lgr->is_smcd) {
+ 		smc_ism_unset_conn(conn);
+-		if (smc_ism_support_dmb_nocopy(conn->lgr->smcd))
+-			smcd_buf_detach(conn);
+ 		if (soft)
+ 			tasklet_kill(&conn->rx_tsklet);
+ 		else
+ 			tasklet_unlock_wait(&conn->rx_tsklet);
++		if (smc_ism_support_dmb_nocopy(conn->lgr->smcd))
++			smcd_buf_detach(conn);
+ 	} else {
+ 		smc_cdc_wait_pend_tx_wr(conn);
  	}
- 
- 	if (!bt_io_bcast_accept(io,
-@@ -3692,16 +3693,31 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
- 			iso_bc_addr.bc_bis, BT_IO_OPT_INVALID)) {
- 		error("bt_io_bcast_accept: %s", err->message);
- 		g_error_free(err);
-+		return FALSE;
- 	}
-+
-+	return TRUE;
-+}
-+
-+static void long_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
-+{
-+	struct bap_setup *setup = user_data;
-+	struct bap_data *data = setup->data;
-+
-+	DBG("Long PA Sync done");
-+
-+	/* store io and add watch that will call iso_do_big_sync */
-+	data->io_id = g_io_add_watch(io, G_IO_OUT, iso_do_big_sync,
-+							setup);
- }
- 
- static void pa_and_big_sync(struct bap_setup *setup)
- {
- 	GError *err = NULL;
- 	struct bap_data *bap_data = setup->data;
--
- 	DBG("Create PA sync with this source");
--	bap_data->listen_io = bt_io_listen(NULL, iso_do_big_sync, setup,
-+
-+	bap_data->listen_io = bt_io_listen(NULL, long_pa_sync_confirm_cb, setup,
- 			NULL, &err,
- 			BT_IO_OPT_SOURCE_BDADDR,
- 			btd_adapter_get_address(bap_data->adapter),
 
 ---
-base-commit: 89d477bb5494eef0b24e5667be62f854da250a97
-change-id: 20260724-big_sync-45c24ec09121
+base-commit: 4235cb24ec1e8e96843f3671ba4da2a6ccca2c7b
+change-id: 20260726-b4-disp-a135b4e5-945574bd0938
 
 Best regards,
--- 
-Yang Li <yang.li@amlogic.com>
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
