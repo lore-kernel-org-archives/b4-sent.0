@@ -1,145 +1,116 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sun, 26 Jul 2026 18:29:11 -0500
-Subject: [PATCH] ntfs: bound the free-cluster bitmap scan to the volume
+From: Yang Li <yang.li@amlogic.com>
+Date: Mon, 27 Jul 2026 10:10:18 +0800
+Subject: [PATCH BlueZ bluez v2] bap: Start BIG sync after receiving BIGInfo
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260726-b4-disp-9cd2a8a2-v1-1-8d66c6dceac4@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxA0auQrm1Si2HAqxgXQ6dAWSCZqiEh3
- N1Rl2/x/w6u2dThWu2Q9W1uj6XgfKpApriMipaKgYkbCtxgf8FkvmIniWMbGYmC1LELJG2Akq1
- ZB9t+y9v9b3/1s8rz+4Hj+ABpWIhddAAAAA==
-X-Change-ID: 20260726-b4-disp-9cd2a8a2-007c3a970c87
-To: Hyunchul Lee <hyc.lee@gmail.com>, Namjae Jeon <linkinjeon@kernel.org>
-Cc: linux-kernel@vger.kernel.org, ntfs@lists.linux.dev, 
- linux-fsdevel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785108550; l=5276;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=akZR/VIonRIQ3VM50tM3Lj+DRslt6FDmCufqoCFdNnE=;
- b=mb+EJlER+r0cIciA7O/tFLKu+2XUNCT8fER4YKOqaUTcC/O4PAvqt9xRW57fTbm5Ik/M6s49O
- XDnpOxMFXXLDYJiYELvXQoAyocKc/767gLmbWK7dLC+sOQdO1uLE0Jx
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+Message-Id: <20260727-big_sync-v2-1-053fd3bcc3be@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAAm+ZmoC/2WNyw7CIBREf6W5azG8qtGV/2EaQ/FKb9KCASXWh
+ n+XsHV5ZiZnNkgYCROcuw0iZkoUfAW568BOxjtkdK8MkssDP0rNRnK3tHrLdG+lRstPQgqo82f
+ EB32a6grj/MYvDDWeKL1CXNtBFq38d2XBBONG9VwoVHw0F7PMwZHd27DAUEr5Ad+DCSepAAAA
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785118218; l=2963;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=8K/J9AtTMnR/lHprg7bq6f69/gczMTTI4wUhzPwxCDc=;
+ b=/bsmj5TwlBDveUOO28rrpCDl4yhwfXtLOA4l5gxhlTGsdgXfBPwr8mEQQEyKrsgmtt0rbt/sV
+ aW0aXvhPK5/Br9YouXDQm+w6HhJEAUTC/DXp8ucnlVf0mAH+jr7b7rj
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vol->lcn_empty_bits_per_page is sized from vol->nr_clusters at mount, but
-ntfs_cluster_alloc() bounds its scan of that array by the size of $Bitmap.
-Those are independent on-disk quantities and the mount-time check only
-rejects a $Bitmap that is too small, so an image whose $Bitmap covers more
-clusters than the volume has lets the scan index past the array.  A run
-whose LCN lies in that gap takes the allocator straight there, since the
-caller passes the file's own last LCN as its locality hint.  KASAN reports
-a slab out-of-bounds read when a file on such a volume is extended.
+The current implementation starts BIG sync before receiving a BIGInfo
+report. According to the Bluetooth Core Specification, BIG sync should
+only be initiated after BIGInfo has been received.
 
-Clamp the scan to what that array covers, mirroring the max_index
-calculation the mount-time scan already uses, and reject a decoded LCN
-at or beyond nr_clusters in the mapping pairs decoder.  Conforming
-volumes are unaffected.
+Starting BIG sync too early may cause unexpected controller behavior.
 
-Fixes: 11ccc9107dc4 ("ntfs: update runlist handling and cluster allocator")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Trigger BIG sync from the BIGInfo callback, following the same approach
+used by the short PA flow.
+
+Fixes: https://github.com/bluez/bluez/issues/2345
+
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
-Either hunk alone stops the access; they close it at different levels.  The
-clamp bounds the index whatever the caller passes as a hint.  The decoder
-check stops a run pointing outside the volume from being accepted at all,
-which also covers ntfs_cluster_free_from_rl(), where the only test today is
-lcn < 0.  Happy to drop either one if you'd rather keep it minimal.
-
-Reproducer.  A volume whose $Bitmap covers more pages than nr_clusters
-requires, with one file's data run placed in the resulting gap:
-
-  truncate -s 13G img && mkntfs -F -f img
-  mount -i -t ntfs -o rw img /mnt && dd if=/dev/urandom of=/mnt/v.bin \
-      bs=4096 count=16 && umount /mnt
-
-  # $Boot total_sectors (0x28) -> 1703936*8, i.e. nr_clusters = 1703936,
-  # just above mftmirr_lcn.  lcn_empty_bits_per_page then covers 52 pages
-  # while $Bitmap still spans 104, leaving indices 52..103 unbacked.
-  # v.bin's single data run (3-byte LCN delta) -> LCN 3000000, index 91.
-
-  mount -i -t ntfs -o rw img /mnt
-  dd if=/dev/zero bs=4096 count=8 >> /mnt/v.bin
-
-mount -i matters: without it the ntfs-3g helper takes the volume and this
-code never runs.
-
-A/B on v7.2-rc1 with KASAN, one arm per boot:
-
-  unpatched, crafted image:
-    BUG: KASAN: slab-out-of-bounds in ntfs_cluster_alloc+0x249e/0x2db0 [ntfs]
-    Read of size 4 at addr ffff8881029dad6c by task kworker/u32:6/96
-    Workqueue: writeback wb_workfn (flush-7:0)
-     ntfs_cluster_alloc+0x249e/0x2db0 [ntfs]
-     ntfs_attr_map_cluster+0x444/0xf50 [ntfs]
-     __ntfs_write_iomap_begin+0x8b7/0x22c0 [ntfs]
-     ntfs_writeback_range+0xd3/0x130 [ntfs]
-    Allocated by task 2255:
-     __kvmalloc_node_noprof+0x1cc/0x5d0
-     ntfs_fill_super+0x16c0/0x6fd0 [ntfs]
-    The buggy address is located 156 bytes to the right of
-     allocated 208-byte region [ffff8881029dac00, ffff8881029dacd0)
-
-  52 pages * sizeof(unsigned int) is 208 bytes, and index 91 is offset 364.
-
-  clamp only:    clean; the volume mounts and the append completes
-  decoder only:  clean; the run is refused
-  both:          clean; the append returns EIO and the decoder logs
-                 "LCN >= nr_clusters in mapping pairs array"
-  pristine mkntfs volume, unpatched, same operations: clean
-
-The write side takes the same LCN.  A kprobe caught
-__ntfs_bitmap_set_bits_in_run() with start_bit=3000000 count=16, which lands
-on the same array through ntfs_set_lcn_empty_bits(); KASAN reports once per
-boot, so only the read above splatted.
+Changes in v2:
+- Fixed build error.
+- Link to v1: https://patch.msgid.link/20260724-big_sync-v1-1-0a35013e30ba@amlogic.com
 ---
- fs/ntfs/lcnalloc.c | 7 ++++++-
- fs/ntfs/runlist.c  | 7 +++++++
- 2 files changed, 13 insertions(+), 1 deletion(-)
+ profiles/audio/bap.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ntfs/lcnalloc.c b/fs/ntfs/lcnalloc.c
-index 835a041023a2..aa2e017a4384 100644
---- a/fs/ntfs/lcnalloc.c
-+++ b/fs/ntfs/lcnalloc.c
-@@ -298,7 +298,12 @@ struct runlist_element *ntfs_cluster_alloc(struct ntfs_volume *vol, const s64 st
- 	clusters = count;
- 	rlpos = rlsize = 0;
- 	mapping = lcnbmp_vi->i_mapping;
--	i_size = i_size_read(lcnbmp_vi);
-+	/*
-+	 * lcn_empty_bits_per_page is sized from nr_clusters, but $Bitmap can
-+	 * cover more clusters than that; bound the scan by the array.
-+	 */
-+	i_size = min_t(s64, i_size_read(lcnbmp_vi),
-+		       ((s64)vol->nr_clusters + 7) >> 3);
- 	while (1) {
- 		ntfs_debug("Start of outer while loop: done_zones 0x%x, search_zone %i, pass %i, zone_start 0x%llx, zone_end 0x%llx, bmp_initial_pos 0x%llx, bmp_pos 0x%llx, rlpos %i, rlsize %i.",
- 				done_zones, search_zone, pass,
-diff --git a/fs/ntfs/runlist.c b/fs/ntfs/runlist.c
-index cbb6576cf725..74f94b4b6c5b 100644
---- a/fs/ntfs/runlist.c
-+++ b/fs/ntfs/runlist.c
-@@ -880,6 +880,13 @@ struct runlist_element *ntfs_mapping_pairs_decompress(const struct ntfs_volume *
- 					ntfs_error(vol->sb, "lcn == -1");
- 			}
- #endif
-+			/* Check lcn is within the volume. */
-+			if (unlikely(lcn >= (s64)vol->nr_clusters)) {
-+				ntfs_error(vol->sb,
-+						"LCN >= nr_clusters in mapping pairs array.");
-+				goto err_out;
-+			}
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index dd4b3c8ff..42b7bb04c 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -3650,7 +3650,7 @@ static void setup_refresh_qos(void *data, void *user_data)
+ 	setup->qos = *bt_bap_stream_get_qos(stream);
+ }
+ 
+-static void iso_do_big_sync(GIOChannel *io, void *user_data)
++static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond, void *user_data)
+ {
+ 	GError *err = NULL;
+ 	struct bap_setup *setup = user_data;
+@@ -3659,7 +3659,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
+ 	struct bt_iso_qos qos;
+ 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
+ 
+-	DBG("PA Sync done");
++	DBG("BIG info received, do BIG sync");
+ 
+ 	g_io_channel_unref(data->listen_io);
+ 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
+@@ -3682,6 +3682,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
+ 			BT_IO_OPT_INVALID)) {
+ 		error("bt_io_set: %s", err->message);
+ 		g_error_free(err);
++		return FALSE;
+ 	}
+ 
+ 	if (!bt_io_bcast_accept(io,
+@@ -3692,16 +3693,31 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
+ 			iso_bc_addr.bc_bis, BT_IO_OPT_INVALID)) {
+ 		error("bt_io_bcast_accept: %s", err->message);
+ 		g_error_free(err);
++		return FALSE;
+ 	}
 +
- 			/* Check lcn is not below -1. */
- 			if (unlikely(lcn < -1)) {
- 				ntfs_error(vol->sb, "Invalid s64 < -1 in mapping pairs array.");
++	return TRUE;
++}
++
++static void long_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
++{
++	struct bap_setup *setup = user_data;
++	struct bap_data *data = setup->data;
++
++	DBG("Long PA Sync done");
++
++	/* store io and add watch that will call iso_do_big_sync */
++	data->io_id = g_io_add_watch(io, G_IO_OUT, iso_do_big_sync,
++							setup);
+ }
+ 
+ static void pa_and_big_sync(struct bap_setup *setup)
+ {
+ 	GError *err = NULL;
+ 	struct bap_data *bap_data = setup->data;
+-
+ 	DBG("Create PA sync with this source");
+-	bap_data->listen_io = bt_io_listen(NULL, iso_do_big_sync, setup,
++
++	bap_data->listen_io = bt_io_listen(NULL, long_pa_sync_confirm_cb, setup,
+ 			NULL, &err,
+ 			BT_IO_OPT_SOURCE_BDADDR,
+ 			btd_adapter_get_address(bap_data->adapter),
 
 ---
-base-commit: 4235cb24ec1e8e96843f3671ba4da2a6ccca2c7b
-change-id: 20260726-b4-disp-9cd2a8a2-007c3a970c87
+base-commit: 89d477bb5494eef0b24e5667be62f854da250a97
+change-id: 20260724-big_sync-45c24ec09121
 
 Best regards,
---  
-Bryam Vargas <hexlabsecurity@proton.me>
+-- 
+Yang Li <yang.li@amlogic.com>
 
