@@ -1,56 +1,61 @@
 From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Tue, 28 Jul 2026 14:00:28 +0200
-Subject: [PATCH v5 01/12] dt-bindings: arm: rockchip: add FriendlyElec
- NanoPi M6
+Date: Tue, 28 Jul 2026 14:00:29 +0200
+Subject: [PATCH v5 02/12] arm64: dts: rockchip: rk3588s-nanopi-r6: fix
+ missing sdmmc cd pinctrl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-nanopi-m6-v5-1-cbc1eb0d8d56@gmail.com>
+Message-Id: <20260728-nanopi-m6-v5-2-cbc1eb0d8d56@gmail.com>
 References: <20260728-nanopi-m6-v5-0-cbc1eb0d8d56@gmail.com>
 In-Reply-To: <20260728-nanopi-m6-v5-0-cbc1eb0d8d56@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, diederik@cknow-tech.com, 
- jonas@kwiboo.se, Joachim Eastwood <joachim.eastwood@gmail.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ jonas@kwiboo.se, Joachim Eastwood <joachim.eastwood@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785240146; l=1140;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785240146; l=1141;
  i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=0ONGW218GQPBB3ga5TfqmUyan3oaycKJh9VLj31bcMQ=;
- b=vQZ2xFhYndEoKEKKWNutUT0jtussWQOD1+dV968YL948R3nhniXRfi5SoKKlKzA/UY7t8lG4B
- wl2GGsMV52MDuMh0SJzmYjcgkeO+FgsVXdcxj8fSlrTk0GEbdhvydOP
+ bh=kI3ZjJonY+6nqEWc8m+ryhZH4GnBusVZIougapTsu48=;
+ b=mZTwnP0ApdptokhifkjpEi4DCtTRju3VOwM9fuEKZAOdHqvMaEwP4NoeeC6rrr+HY2Uv3eMTG
+ rypRnfaoD5KDm9rT1eZASu7Ptyxlo6SZlEhUenE3AiMd+VhCmISNpXD
 X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
  pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
 X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree binding documentation for FriendlyElec NanoPi M6,
-a single-board computer based on the Rockchip RK3588S SoC. Very
-similar to NanoPi R6C and R6S.
+The cd (card detect) pin is used, but not reserved through pinctrl.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Fixes: 95147bb42bc1 ("arm64: dts: rockchip: Fix the SD card detection on NanoPi R6C/R6S")
 Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
- Documentation/devicetree/bindings/arm/rockchip.yaml | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/rockchip.yaml b/Documentation/devicetree/bindings/arm/rockchip.yaml
-index 1a9dde18626d..6ba512964c25 100644
---- a/Documentation/devicetree/bindings/arm/rockchip.yaml
-+++ b/Documentation/devicetree/bindings/arm/rockchip.yaml
-@@ -344,9 +344,10 @@ properties:
-               - friendlyarm,nanopi-r5s
-           - const: rockchip,rk3568
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi
+index 91b6eefd7abf..3ee6853b8752 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi
+@@ -421,6 +421,10 @@ rtc_int: rtc-int {
+ 	};
  
--      - description: FriendlyElec NanoPi R6 series boards
-+      - description: FriendlyElec NanoPi6 series boards
-         items:
-           - enum:
-+              - friendlyarm,nanopi-m6
-               - friendlyarm,nanopi-r6c
-               - friendlyarm,nanopi-r6s
-           - const: rockchip,rk3588s
+ 	sdmmc {
++		sdmmc_det_pin: sdmmc-det-pin {
++			rockchip,pins = <0 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;
++		};
++
+ 		sd_s0_pwr: sd-s0-pwr {
+ 			rockchip,pins = <4 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>;
+ 		};
+@@ -496,6 +500,8 @@ &sdmmc {
+ 	no-mmc;
+ 	no-sdio;
+ 	sd-uhs-sdr104;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdmmc_bus4 &sdmmc_clk &sdmmc_cmd &sdmmc_det_pin>;
+ 	vmmc-supply = <&vcc_3v3_sd_s0>;
+ 	vqmmc-supply = <&vccio_sd_s0>;
+ 	status = "okay";
 
 -- 
 2.55.0
