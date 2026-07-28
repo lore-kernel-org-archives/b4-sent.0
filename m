@@ -1,72 +1,57 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 27 Jul 2026 20:30:59 -0500
-Subject: [PATCH v2 2/2] selinux: reject a class permission count below its
- inherited common
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 0/2] soc/tegra: fuse: Support Tegra210B01 Speedos
+Date: Mon, 27 Jul 2026 20:57:34 -0500
+Message-Id: <20260727-t210b01-speedo-v2-0-4f287a3dab72@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260727-b4-disp-eed1276a-v2-2-82d58cf5f882@proton.me>
-References: <20260727-b4-disp-eed1276a-v2-0-82d58cf5f882@proton.me>
-In-Reply-To: <20260727-b4-disp-eed1276a-v2-0-82d58cf5f882@proton.me>
-To: Paul Moore <paul@paul-moore.com>, 
- Stephen Smalley <stephen.smalley.work@gmail.com>
-Cc: Kees Cook <kees@kernel.org>, Ondrej Mosnacek <omosnace@redhat.com>, 
- =?utf-8?q?Christian_G=C3=B6ttsche?= <cgzones@googlemail.com>, 
- selinux@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785202257; l=1793;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=axntQSnIG2WGrQfpV5GsiSNroNNW1F4YZJy6q4kqSWo=;
- b=arKPlgG7oPTYXLAfp1enS/EjTgKbG3UmWih2wc5fSmK2n/OQqcKFed7RlYri0uXTHDL6xPznl
- rZMlFod9ug4DBb0XY+xqoZHRE8au8msOaMaZ5WC2/uAKX3rVcclkrMv
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MQQqDMBCF4avIrJsyiaHRrrxHcRGTUQeqkUSkR
+ bx7U6GbLv8H79shUWRKcC92iLRx4jDnUJcC3GjngQT73KBQ3dBILVYlsUMp0kLkg0DTV86XXWl
+ tCfm0ROr5dYKPNvfIaQ3xffqb/K4/yvxTmxQoetS26rz2dW2aYbL8vLowQXscxwdzp6wNrAAAA
+ A==
+X-Change-ID: 20260714-t210b01-speedo-07f8cd3b3aa3
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>, Alex Frid <afrid@nvidia.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785203864; l=1069;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=sucxWG+FGkB/UcRT5g1uTsrL3dbtoJG+IwUqs67kd08=;
+ b=of7N7+BLErWv73vCutehIo2yjVamM/b6LM1yjUWCe/euC+UMFWdsEJm8ykUYcFVQy4UcfLKnP
+ oIWH5CmZsZICf7SAvBgEWgYywQ4ljxxIGDpIfbjfO2GJ9rgdBWydsRV
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-security_get_permissions() maps an inherited common's permissions into
-an array sized by the class's own permissions.nprim, but class_read()
-takes that nprim verbatim from the policy image and never checks that it
-covers the common.  A class that inherits a common of N permissions while
-declaring a smaller nprim is accepted, and on load the common's
-permissions are written past the class-sized array -- an out-of-bounds
-heap write.
+This series adds support for the b01 fuse revision, then adds speedo
+support for known Tegra210B01 sku's.
 
-Reject a class whose permission count is below its inherited common's.
-Well-formed policies, where the class count already includes the
-inherited permissions, are unaffected.
-
-Fixes: 55fcf09b3fe4 ("selinux: add support for querying object classes and permissions from the running policy")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- security/selinux/ss/policydb.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+Changes in v2:
+- Update patch 1 commit messag to be more descriptive
+- Update patch 1 to set unknown revision in the major revision B code
+  path if minor revision is not 1.
+- Add based-on tags to patch 2
+- Link to v1: https://lore.kernel.org/r/20260717-t210b01-speedo-v1-0-f04a8bd4d997@gmail.com
 
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 6973b68d9782..c6f55f0b4cb5 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -1422,6 +1422,18 @@ static int class_read(struct policydb *p, struct symtab *s, struct policy_file *
- 			       cladatum->comkey);
- 			goto bad;
- 		}
-+
-+		/*
-+		 * security_get_permissions() maps the common's permissions
-+		 * into an array sized by this class's nprim, so a class must
-+		 * declare at least as many as the common it inherits.
-+		 */
-+		if (cladatum->permissions.nprim <
-+		    cladatum->comdatum->permissions.nprim) {
-+			pr_err("SELinux:  class %s has fewer permissions than common %s\n",
-+			       key, cladatum->comkey);
-+			goto bad;
-+		}
- 	}
- 	for (i = 0; i < nel; i++) {
- 		rc = perm_read(p, &cladatum->permissions, fp);
+---
+Aaron Kling (2):
+      soc/tegra: fuse: Support revision B01
+      soc/tegra: fuse: speedo-tegra210: Support revision B01
 
+ drivers/soc/tegra/fuse/fuse-tegra.c      |  1 +
+ drivers/soc/tegra/fuse/speedo-tegra210.c | 22 ++++++++++++--
+ drivers/soc/tegra/fuse/tegra-apbmisc.c   | 51 +++++++++++++++++++-------------
+ include/soc/tegra/fuse.h                 |  1 +
+ 4 files changed, 53 insertions(+), 22 deletions(-)
+---
+base-commit: 1a1757b76427f6201bfe0bf1bea9f7574f332a93
+change-id: 20260714-t210b01-speedo-07f8cd3b3aa3
+
+Best regards,
 -- 
-2.55.0
+Aaron Kling <webgeek1234@gmail.com>
 
