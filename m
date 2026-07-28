@@ -1,91 +1,139 @@
-From: Josef Ippisch <josef.ippisch.dev@mailbox.org>
-Date: Tue, 28 Jul 2026 19:31:20 +0200
-Subject: [PATCH v2 2/2] rust: debugfs: remove unsafe blocks from traits
- impl for Vec
+From: Luca Lauro <famlauro93l@gmail.com>
+Subject: [PATCH v2 00/10] ARM: mvebu: add Netgear RN102/RN104 support and
+ related drivers
+Date: Tue, 28 Jul 2026 19:43:12 +0200
+Message-Id: <20260728-rn102-rn104-series-v2-0-ae31f55b7bc8@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-2-0a4ec1d3ead4@mailbox.org>
-References: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
-In-Reply-To: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
- Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Joshua Liebow-Feeser <joshlf@google.com>, 
- Miguel Ojeda <ojeda@kernel.org>, 
- Josef Ippisch <josef.ippisch.dev@mailbox.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADDqaGoC/32NQQ6CMBREr0L+2pq2agFX3sOwAPoL30hrWiQaw
+ t1ty97NJC+ZN7NCQE8Y4Fqs4HGhQM5GkIcC+rG1AzLSkUFyqXgpT8xbwWXOM9tdppWqsOO15sZ
+ AFF8eDX3y6L3ZOby7B/ZzWkqNkcLs/De/LiL1/h4sgnFWqrrS8qJNpdRtmFp6Hns3QbNt2w9o7
+ A1BxgAAAA==
+X-Change-ID: 20260723-rn102-rn104-series-d668eb09d0ff
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ "open list:BAREBOX" <barebox@lists.infradead.org>
+Cc: Luca Lauro <famlauro93l@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785259881; l=1990;
- i=josef.ippisch.dev@mailbox.org; s=20260719; h=from:subject:message-id;
- bh=bcAB+rSJxo9ZroXVfXApmlpdpJQVs1F1L0YRpjVbQJo=;
- b=cIaBDwtw9P9BlrpZZMIhZPxeVrxUAQrsh3v/wXuylsp42yoimMv9UCHwzftLYgybgje1LCjp8
- InD76OyzfrMCU4XDG3FVgCHeP/35GRzdMIcxhADEikC5S45vChJQtTi
-X-Developer-Key: i=josef.ippisch.dev@mailbox.org; a=ed25519;
- pk=M4DnWHhz9yT9BkhXKzsmw6wTVrK2U1WBK0QiEjHoo1U=
-X-Endpoint-Received: by B4 Relay for josef.ippisch.dev@mailbox.org/20260719 with auth_id=884
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785260594; l=5094;
+ i=famlauro93l@gmail.com; s=20260723; h=from:subject:message-id;
+ bh=H00v4HUVKl9uzNkmyI0LrvhRsTZAVpRTj0v61hqhmGE=;
+ b=q/LCC4wvwWp5E3trRttpK7jA44NzAgvj2cX7aD8G6Hxr2MiUkLvVyJxflpJzg51qYqW1wStO8
+ f6PyKiUQZA1DJDZ/KUNixbFXVsqj23Syj4WnBq0kTyxrE4PVOc7siOn
+X-Developer-Key: i=famlauro93l@gmail.com; a=ed25519;
+ pk=OAJlcD69ugQCl99Vy6w+Aeu+ZUb1IVGcz1Ijxo6Ch78=
+X-Endpoint-Received: by B4 Relay for famlauro93l@gmail.com/20260723 with auth_id=892
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The previous implementation used an `unsafe` block to manually cast Vec's
-slice to a &[u8] using `core::slice::from_raw_parts`.  Instead, the
-implementation can be implemented in safe rust using zerocopy's trait
-functions `as_bytes()` and `as_mut_bytes()`, respectively, and making use
-of deref coercion to implicitly cast Vec to &[T] as `FromBytes` and
-`IntoBytes` automatically are implemented on [T] when they are implemented
-on T.
+This series adds full barebox support for the Netgear RN102 and RN104
+NAS platforms based on the Marvell Armada 370 SoC. Both devices share
+the same hardware architecture, with differences mainly in the number
+of drive bays and the associated board-level integration.
 
-Signed-off-by: Josef Ippisch <josef.ippisch.dev@mailbox.org>
+The series introduces:
+ - lowlevel initialization code for RN102 and RN104
+ - board support files and environment integration
+ - barebox-specific device trees for both platforms
+ - image generation support and defconfig updates
+ - fan controller framework and G76x driver
+ - fan control command and Kconfig/Makefile integration
+ - Marvell-specific EHCI host controller driver
+ - AHCI/SATA fixes improving compatibility with Armada 370
+ - USB/AHCI integration updates
+
+The goal is to provide complete bootloader support for these NAS
+devices, enabling reliable initialization of storage, USB, fan control,
+and board-specific peripherals. The patches have been tested on
+RN102 only.
+
+Signed-off-by: Luca Lauro <famlauro93l@gmail.com>
+
 ---
- rust/kernel/debugfs/traits.rs | 21 ++-------------------
- 1 file changed, 2 insertions(+), 19 deletions(-)
+Changes in v2:
 
-diff --git a/rust/kernel/debugfs/traits.rs b/rust/kernel/debugfs/traits.rs
-index b794f7dd7e14..b295f8420abd 100644
---- a/rust/kernel/debugfs/traits.rs
-+++ b/rust/kernel/debugfs/traits.rs
-@@ -153,14 +153,7 @@ fn write_to_slice(
-         writer: &mut UserSliceWriter,
-         offset: &mut file::Offset,
-     ) -> Result<usize> {
--        let slice = self.as_slice();
--
--        // SAFETY: `T: Immutable + IntoBytes` allows us to treat `&[T]` as `&[u8]`.
--        let buffer = unsafe {
--            core::slice::from_raw_parts(slice.as_ptr().cast(), core::mem::size_of_val(slice))
--        };
--
--        writer.write_slice_file(buffer, offset)
-+        writer.write_slice_file(self.as_bytes(), offset)
-     }
- }
- 
-@@ -261,17 +254,7 @@ fn read_from_slice_mut(
-         reader: &mut UserSliceReader,
-         offset: &mut file::Offset,
-     ) -> Result<usize> {
--        let slice = self.as_mut_slice();
--
--        // SAFETY: `T: FromBytes + IntoBytes` allow us to treat `&mut [T]` as `&mut [u8]`.
--        let buffer = unsafe {
--            core::slice::from_raw_parts_mut(
--                slice.as_mut_ptr().cast(),
--                core::mem::size_of_val(slice),
--            )
--        };
--
--        reader.read_slice_file(buffer, offset)
-+        reader.read_slice_file(self.as_mut_bytes(), offset)
-     }
- }
- 
+Hi Sascha,
 
--- 
-2.53.0
+thanks for the review of the v1 series.
+
+This v2 reorganizes the series to make it clearer and easier to review.
+Platform‑specific patches have been grouped into thematic commits, noisy
+changes should have been removed, and commit messages have been rewritten 
+to better describe the functional modifications.
+
+The AHCI patch has been cleaned up and clarified, the EHCI patches now
+contain only functional changes, and the fan framework integration has
+been consolidated. The previous “USB/AHCI integration” patch has been
+squashed into the relevant commits.
+
+No functional changes have been introduced beyond what was already
+present in v1.
+
+Thanks again for your feedback,
+Luca Lauro
+
+Link to v1:
+https://patch.msgid.link/20260723-rn102-rn104-series-v1-0-7698d25df866@gmail.com
+
+To: Sascha Hauer <s.hauer@pengutronix.de>
+To: "open list:BAREBOX" <barebox@lists.infradead.org>
+
+---
+Luca Lauro (10):
+      ARM: mvebu: add Netgear RN102 support
+      ARM: mvebu: enable RN102 in mvebu_defconfig
+      ARM: mvebu: add Netgear RN104 support
+      ARM: mvebu: rename PUTC_LL to MVEBU_PUTC_LL
+      drivers: fan: add fan framework and API
+      commands: add fan control command
+      commands: integrate fan command into Kconfig and Makefile
+      usb: ehci: add Marvell EHCI host controller driver
+      usb: ehci: minor fixes for Marvell compatibility
+      ata: ahci: add PCI AHCI support and Marvell-specific fixes
+
+ arch/arm/boards/Makefile                         |    1 +
+ arch/arm/boards/netgear-rn102/Makefile           |    4 +
+ arch/arm/boards/netgear-rn102/board.c            |  243 +++++
+ arch/arm/boards/netgear-rn102/lowlevel.c         |   58 ++
+ arch/arm/boards/netgear-rn104/board.c            |  182 ++++
+ arch/arm/boards/netgear-rn104/lowlevel.c         |   43 +-
+ arch/arm/configs/mvebu_defconfig                 |    1 +
+ arch/arm/dts/Makefile                            |    1 +
+ arch/arm/dts/armada-370-rn102-bb.dts             |   80 ++
+ arch/arm/dts/armada-370-rn104-bb.dts             |   75 +-
+ arch/arm/mach-mvebu/Kconfig                      |    4 +
+ commands/Kconfig                                 |    7 +
+ commands/Makefile                                |    2 +
+ commands/fan.c                                   |  286 ++++++
+ drivers/Kconfig                                  |    1 +
+ drivers/Makefile                                 |    1 +
+ drivers/ata/ahci.c                               |  656 ++++++------
+ drivers/ata/ahci.h                               |    1 +
+ drivers/fan/Kconfig                              |   35 +
+ drivers/fan/Makefile                             |    8 +
+ drivers/fan/fan.c                                |  180 ++++
+ drivers/fan/i2c_fan_controllers/Kconfig          |    6 +
+ drivers/fan/i2c_fan_controllers/Makefile         |    5 +
+ drivers/fan/i2c_fan_controllers/g76x.c           | 1184 ++++++++++++++++++++++
+ drivers/fan/other_fan_controllers/Kconfig        |    7 +
+ drivers/fan/other_fan_controllers/Makefile       |    3 +
+ drivers/fan/spi_fan_controllers/Kconfig          |    1 +
+ drivers/fan/spi_fan_controllers/Makefile         |    3 +
+ drivers/usb/host/Kconfig                         |    7 +
+ drivers/usb/host/Makefile                        |   13 +-
+ drivers/usb/host/ehci-hcd.c                      |   23 +-
+ drivers/usb/host/ehci-marvell.c                  |  228 +++++
+ dts/src/arm/marvell/armada-370-netgear-rn102.dts |  114 ++-
+ dts/src/arm/marvell/armada-370-netgear-rn104.dts |  173 ++--
+ images/Makefile.mvebu                            |   13 +-
+ include/fan/fan.h                                |   94 ++
+ include/fan/i2c_fan_controllers/g76x.h           |   37 +
+ include/mach/mvebu/debug_ll.h                    |    2 +-
+ 38 files changed, 3354 insertions(+), 428 deletions(-)
+---
+base-commit: f9cc366e5b67680473e4ab7837eeb27bf1b5a567
+change-id: 20260723-rn102-rn104-series-d668eb09d0ff
+
+Best regards,
+--  
+Luca Lauro <famlauro93l@gmail.com>
 
