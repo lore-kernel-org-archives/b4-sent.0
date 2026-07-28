@@ -1,122 +1,79 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Tue, 28 Jul 2026 14:26:42 +0800
-Subject: [PATCH BlueZ bluez v3] bap: Start BIG sync after receiving BIGInfo
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH 0/3] MediaTek mt6572 GCE support
+Date: Tue, 28 Jul 2026 12:42:45 +0300
+Message-Id: <20260728-6572-gce-v1-0-750bba32689e@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-big_sync-v3-1-c2da19f3c00b@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAKFLaGoC/2WNyw6CMBBFf4V0bU0fINGV/2GMaYcBJgFqWm1Ew
- r9bu8K4vHPnnLuwgJ4wsFOxMI+RArkpBb0rGPRm6pBTkzJTQh1ErUpuqbuFeQJeVqBKBHGUSrL
- 0fvfY0iurLswOT3yzazr3FB7Oz3kgylz+u6LkkgujKyE1amHN2YyD6wj24MasiWqL1htUfdFKt
- 422ANriL7qu6wf3Hays5AAAAA==
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785220002; l=3109;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=5EgeiC5D9YMy9T7q0OAiM45TunnWa5Fy8xH/jWQT53U=;
- b=UJTsfVlY6cZcJYmzkY0eThOqH0i20eHfvd35JPwmvOUGzHSv8OsfWfySXvEhkWOcMw2xnveKv
- 70LBSeCz4mGDDiHfI9N5l9f5CyCdOVy312/trjsKR4mqfamyua6OeGx
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqAIBCF4avErBNMSqmrRAuz0aaFhVYE0t2zW
+ n7wv5cgYiCM0BUJAp4UafUZVVmAmbV3yGjKBsGF5EooJhslmDPIpG5UhbbWlreQ8y2gpeu76of
+ f8RgXNPu7h/t+AOT7Go1sAAAA
+X-Change-ID: 20260727-6572-gce-6a571ef4af09
+To: Jassi Brar <jassisinghbrar@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Houlong Wei <houlong.wei@mediatek.com>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ Roman Vivchar <rva333@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785231864; l=2056;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=h69R4j/rmpdgP8o8m1yEq9Zr1i/pxjtXgCv5NE7eh7U=;
+ b=EldVTVr9AKUbsyuW29i/MN4bIvptSWUJkcBtHqg7ZlMHiIH+s6/QhfjjYsy6XeKaPBX6K4Q9T
+ rUbTbLADPCXCGEsPTENo+EubLfTd3etsTrGIVtb+UwCjFwOyi8JmHdV
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current implementation starts BIG sync before receiving a BIGInfo
-report. According to the Bluetooth Core Specification, BIG sync should
-only be initiated after BIGInfo has been received.
+Yes I know this one is very different from basics like previous pwrap
+and efuse...
 
-Starting BIG sync too early may cause unexpected controller behavior.
+This patch series adds support for the Global Command Engine found in
+the mt6572 SoC.
 
-Trigger BIG sync from the BIGInfo callback, following the same approach
-used by the short PA flow.
+Notably, the patch 2 introduces legacy ISA format, which is used on
+mt6572, 6582 and 6592 SoCs. mt6577 doesn't have the GCE at all, mt6589
+seems to have new-ish ISA, and mt6595 is much more close to 6795/8173.
+Patch 3 adds mt6572 platform data and legacy_isa forwarding to the
+instruction JIT.
 
-Fixes: https://github.com/bluez/bluez/issues/2345
+This format was reverse engineered from the Android HAL and uses 22-bit
+offset with 2-bit subsystem ID, unlike the newer 16-bit offset and 8-bit
+subsystem ID.
+The mt6572 HAL includes workarounds for WFE and EOC instructions, emitting
+another WFE as barrier at WFE, and JUMP +8 at EOC.
+mt6582 and 6592 HAL dropped WFE barrier, but still have JUMP +8.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+This sounds very much like some kind of software mitigations for hardware
+bugs, but during testing on 6572 nothing bad happened so far. These
+additional instructions are not included in the patches.
+
+Note that while GCE can be used for e.g. mt6592 UFOE (which is at
+0x14013000, so outside of the u16 range), currently the driver still uses
+u16 for the offset, because I don't have any 6592 device.
+
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
-Changes in v3:
-- Fixed coding style warning.
-- Link to v2: https://patch.msgid.link/20260727-big_sync-v2-1-053fd3bcc3be@amlogic.com
+Roman Vivchar (3):
+      dt-bindings: mailbox: mediatek,gce-mailbox: add mt6572
+      soc: mediatek: cmdq-helper: add legacy GCE ISA support
+      mailbox: mtk-cmdq: add mt6572 support
 
-Changes in v2:
-- Fixed build error.
-- Link to v1: https://patch.msgid.link/20260724-big_sync-v1-1-0a35013e30ba@amlogic.com
+ .../bindings/mailbox/mediatek,gce-mailbox.yaml     |  1 +
+ drivers/mailbox/mtk-cmdq-mailbox.c                 | 11 +++++
+ drivers/soc/mediatek/mtk-cmdq-helper.c             | 55 +++++++++++++++-------
+ include/dt-bindings/gce/mediatek,mt6572-gce.h      | 52 ++++++++++++++++++++
+ include/linux/mailbox/mtk-cmdq-mailbox.h           |  1 +
+ 5 files changed, 103 insertions(+), 17 deletions(-)
 ---
- profiles/audio/bap.c | 25 +++++++++++++++++++++----
- 1 file changed, 21 insertions(+), 4 deletions(-)
-
-diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
-index dd4b3c8ff..473e4cfc2 100644
---- a/profiles/audio/bap.c
-+++ b/profiles/audio/bap.c
-@@ -3650,7 +3650,8 @@ static void setup_refresh_qos(void *data, void *user_data)
- 	setup->qos = *bt_bap_stream_get_qos(stream);
- }
- 
--static void iso_do_big_sync(GIOChannel *io, void *user_data)
-+static gboolean iso_do_big_sync(GIOChannel *io, GIOCondition cond,
-+						void *user_data)
- {
- 	GError *err = NULL;
- 	struct bap_setup *setup = user_data;
-@@ -3659,7 +3660,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
- 	struct bt_iso_qos qos;
- 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
- 
--	DBG("PA Sync done");
-+	DBG("BIG info received, do BIG sync");
- 
- 	g_io_channel_unref(data->listen_io);
- 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
-@@ -3682,6 +3683,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
- 			BT_IO_OPT_INVALID)) {
- 		error("bt_io_set: %s", err->message);
- 		g_error_free(err);
-+		return FALSE;
- 	}
- 
- 	if (!bt_io_bcast_accept(io,
-@@ -3692,16 +3694,31 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
- 			iso_bc_addr.bc_bis, BT_IO_OPT_INVALID)) {
- 		error("bt_io_bcast_accept: %s", err->message);
- 		g_error_free(err);
-+		return FALSE;
- 	}
-+
-+	return TRUE;
-+}
-+
-+static void long_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
-+{
-+	struct bap_setup *setup = user_data;
-+	struct bap_data *data = setup->data;
-+
-+	DBG("Long PA Sync done");
-+
-+	/* store io and add watch that will call iso_do_big_sync */
-+	data->io_id = g_io_add_watch(io, G_IO_OUT, iso_do_big_sync,
-+							setup);
- }
- 
- static void pa_and_big_sync(struct bap_setup *setup)
- {
- 	GError *err = NULL;
- 	struct bap_data *bap_data = setup->data;
--
- 	DBG("Create PA sync with this source");
--	bap_data->listen_io = bt_io_listen(NULL, iso_do_big_sync, setup,
-+
-+	bap_data->listen_io = bt_io_listen(NULL, long_pa_sync_confirm_cb, setup,
- 			NULL, &err,
- 			BT_IO_OPT_SOURCE_BDADDR,
- 			btd_adapter_get_address(bap_data->adapter),
-
----
-base-commit: 89d477bb5494eef0b24e5667be62f854da250a97
-change-id: 20260724-big_sync-45c24ec09121
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260727-6572-gce-6a571ef4af09
 
 Best regards,
--- 
-Yang Li <yang.li@amlogic.com>
+--  
+Roman Vivchar <rva333@protonmail.com>
 
