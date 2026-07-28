@@ -1,150 +1,143 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 27 Jul 2026 19:07:19 -0500
-Subject: [PATCH] dm array: validate array block headers on read
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v9 0/6] arm64: dts: qcom: Support AYN QCS8550 Devices
+Date: Mon, 27 Jul 2026 19:20:08 -0500
+Message-Id: <20260727-ayn-qcs8550-v9-0-e3db456e10e5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260727-b4-disp-0d625fe8-v1-1-be31f8611720@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxA0auQrmlSGwTiVQiL6UzRukAyBWJCu
- LujLt/i/wNcs6nDrTog625ur7ngUlcQH2G+K1oqBiZuqeMOpcFkviCllq+T9kh9JG5EKEqAki1
- ZJ3v/lsP4t2/y1Lh+P3CeHw5yt1t0AAAA
-X-Change-ID: 20260727-b4-disp-0d625fe8-08c024bb0cba
-To: Mike Snitzer <snitzer@kernel.org>, 
- Mikulas Patocka <mpatocka@redhat.com>
-Cc: linux-kernel@vger.kernel.org, Joe Thornber <ejt@redhat.com>, 
- Alasdair Kergon <agk@redhat.com>, Ming-Hung Tsai <mtsai@redhat.com>, 
- Benjamin Marzinski <bmarzins@redhat.com>, dm-devel@lists.linux.dev
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785197238; l=5869;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=cupIkXaOfmmZcfnSmxZVIgmIPgt7jYhcjoeV+LtA/gk=;
- b=ubGfyAkJVWCzYNzuMNuMHcYggYfF8Aehdtl8bChkEPbXmhuhCwTupyI9MCS2KiUTphHBZH7xA
- fYeJnTafP/PBMgxUQpY3BuLpcti20tgeC8aFVUNKTzfQUjV66V4sJfM
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33Py27CMBAF0F9BXtfV2ONXuup/VF1MnDFYKgQSG
+ hWh/HsNLPJAYnlHOndmrqLnLnMvPjZX0fGQ+9weSqjeNiLu6LBlmZuShQbtQCsv6XKQp9gHa0E
+ qF8HXDhvWThRx7Djlv3vb1/cjd3z6LaXnabjL/bntLveNg7pNH+Wo1KJ8UBJk4lDrRNQops/tn
+ vLPe2z34tYz6BdWF8vOVcExJIj12uLMar20WKyhRKGKGkIIa2vmFpfWFItIgSI2FtPTzXayBsL
+ S2mJjBVRz7UlZvbZuZhGW1hULjjz72hqip73+hfXF2kpR5TzaRLi2YbIWVv+GYhuPmCxbb4yb2
+ 3Ec/wHuG6umXwIAAA==
+X-Change-ID: 20260217-ayn-qcs8550-16c07b63de26
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Teguh Sobirin <teguh@sobir.in>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785198012; l=4384;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=wfyDTMZsh3mVx0GSk6DrAqznk5sGqgRtPNh7Xz1fR3o=;
+ b=Ivf/TE6XAbUmV5RlPsxyAmFuTO0UcVpfrzlqfd00nXIWQiEIOBbmBGZwVmGaGrtfkSTdO6yUG
+ Soi+KllHpcYBsHxTt1ycV7Sg8MZayiEi1XCczw+EsynjOI/eZvA9j3Y
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-array_block_check() validates an array block's blocknr and checksum and
-nothing else, so the on-disk nr_entries reaches its users unchecked.
-dm_array_cursor_next() takes its loop bound from that field and
-element_at() is unguarded pointer arithmetic, so a value larger than the
-block holds walks off the end of the dm-bufio buffer, reachable from
-dm_cache_load_mappings() when a cache is activated on crafted metadata.
+This specifically includes:
+* Odin 2 Mini
+* Odin 2 Portal
+* Thor
 
-Validate the header as node_check() has always validated btree nodes:
-reject a block whose entries cannot fit, and one whose nr_entries exceeds
-max_entries.  Metadata that dm-array wrote itself sits exactly at that
-limit and still passes.
+The original Odin 2 dts is not currently included as it has not yet
+been verified.
 
-Fixes: 6513c29f44f2 ("dm persistent data: add transactional array")
-Cc: stable@kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+The initial port was done by Teguh Sobirin for ROCKNIX and was made
+available on the AYN github [0].
+
+Support has been removed for things not yet supported by the upstream
+kernel, these will be added later when the related drivers are submitted
+and picked up. Such includes:
+
+* The Odin 2 Mini panel, backlight, and touch
+* All rgb leds
+* The built-in uart gamepad
+
+[0] https://github.com/AYNTechnologies/linux/commits/sm8550/v6.17.5/
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Found by reading array_block_check() next to node_check(), its opposite number for btree
-nodes in the same directory.  node_check() already bounded max_entries and nr_entries when
-dm-array was added in 2013; the array validator never picked it up.
+Changes in v9:
+- Add mi2s clock control in patch 2 as driver support for such was
+  recently picked up
+- Drop unnecessary address and size cells from patches 4 and 5
+- Track renamed pcie port label from current linux-next
+- Add panels to patches 4 and 5 as driver support has been picked up
+- Add patch to document chipwealth vendor as used by patch 5
+- Delete ipa node in patch 2 as it now depends on the mem node already
+  being deleted
+- Link to v8: https://lore.kernel.org/r/20260503-ayn-qcs8550-v8-0-d733f5e57446@gmail.com
 
-Reproducer.  Create a cache on a zeroed metadata device so dm-cache formats it, tear that
-down, then set nr_entries in the first mapping array block to 0xFFFFFFFF and recompute the
-block checksum.  dm_bm_checksum() is crc32c(~0, data, len) ^ CSUM_XOR, so the checksum costs
-nothing to forge -- it is a corruption check, not a tag.  The crafted image differs from the
-one the kernel itself wrote by four bytes plus that checksum.
+Changes in v8:
+- Properly order and format amplifier properties
+- Set amplifiers name prefix to Amplifier L/R
+- Link to v7: https://lore.kernel.org/r/20260430-ayn-qcs8550-v7-0-591a96735fa3@gmail.com
 
-A 4096-byte block with a 24-byte header and 8-byte values holds 509 entries, so index 509 is
-the first one outside it.
+Changes in v7:
+- Add back pinmuxes dropped last revision, but without output-low
+- Link to v6: https://lore.kernel.org/r/20260430-ayn-qcs8550-v6-0-06a7e7b54aaa@gmail.com
 
-A/B on v7.2-rc4-610 with KASAN and kasan.fault=report, this patch built as posted:
+Changes in v6:
+- Fix comment style in patch 3
+- Drop a pair of unnecessary pinmuxes in patch 3
+- Lower usb sbu pins drive strength in patch 3
+- Link to v5: https://lore.kernel.org/r/20260408-ayn-qcs8550-v5-0-c90abeb7a152@gmail.com
 
-  pristine image, unpatched:  activates, walks all 2048 cache blocks, dmesg empty
-  crafted image,  unpatched:  reads past the block, below
-  crafted image,  patched:    "array_block_check failed: too many entries", -EILSEQ
-  pristine image, patched:    activates, dmesg empty
+Changes in v5:
+- Fix some style reviews in patch 6 which required matching labels in
+  patch 3
+- Drop hdmi support in patch 4, since it doesn't work
+- Link to v4: https://lore.kernel.org/r/20260323-ayn-qcs8550-v4-0-33a8ac3d53fa@gmail.com
 
-    BUG: KASAN: slab-use-after-free in dm_cache_load_mappings+0x9b1/0xb40 [dm_cache]
-    Read of size 8 at addr ffff888107fc8000 by task dmsetup/1667
-     dm_cache_load_mappings+0x9b1/0xb40 [dm_cache]
-     cache_preresume+0x4cd/0xd70 [dm_cache]
-     dm_table_resume_targets+0xcd/0x2e0 [dm_mod]
-     ctl_ioctl+0x512/0xa90 [dm_mod]
-     __x64_sys_ioctl+0x134/0x1c0
-    The buggy address is located 0 bytes inside of
-     freed 32-byte region [ffff888107fc8000, ffff888107fc8020)
+Changes in v4:
+- Fold vendor description patch into the series
+- Link to v3: https://lore.kernel.org/r/20260322-ayn-qcs8550-v3-0-4afa89c20888@gmail.com
 
-The block base was ffff888107fc7000, so that address is base + 0x1000: byte 4096, index 509,
-the first entry outside.
+Changes in v3:
+- Drop unused backlight regulator in patch 3
+- Move zap shader firmware to standalone reference
+- Move i2c controller enables from common to devices
+- Add ABL dtbo workarounds to patch 2 as per:
+  https://lore.kernel.org/linux-arm-msm/dczz4uvcq4hc6p3zb6xnrsgmfeomwliagwhf36tewdz4z6mndp@afbxzhjziiwv/
+- Fix multiple property alphabetical order issues in patch 2
+- Use interrupts-extended for pwm-fan in patch 2
+- Ensure blank line before status in patches 2-5
+- Rename spk_amp_l/r to amplifier in patch 2
+- Remove a few properties that are already in the soc dtsi in patch 2
+- Order tlmm nodes by pin index in patch 2
+- Drop qcom,dll-config from sdhc node in patch 2
+- Drop dtbo support, convert common to dtsi, and include it directly in
+  device specific dts'
+- Link to v2: https://lore.kernel.org/r/20260311-ayn-qcs8550-v2-0-e66986e0f0cb@gmail.com
 
-Worth flagging about that KASAN line: it corroborates, it does not reproduce on demand.  Two
-earlier runs of the same arm produced no report at all, even though the overread happened
-both times and dm-cache said so by refusing a nonsense mapping at cache block 509.  dm-bufio
-serves this buffer from __get_free_pages(), the page allocator has no redzones, and byte 4096
-is the first byte of the next page, so KASAN can only speak when that page happens to be
-poisoned.  The first line is the deterministic one.
-
-The check is not conservative.  calc_max_entries() gives 509 for 8-byte values and 1018 for
-4-byte ones, and 24 + 8*509 and 24 + 4*1018 are both exactly 4096, so metadata dm-array wrote
-sits right at the limit and still passes.
-
-There is a second hole I am not fixing here, since it wants its own reproducer and this one is
-headed for stable.  A validator can only check a header against itself, so a block with
-value_size 4 and max_entries 1018 is internally consistent and gets through, but element_at()
-indexes with the caller's value size rather than the stored one -- and dm-cache keeps arrays of
-both, mappings at 8 and hints at 4.  Read an array block of one through the other and the walk
-runs to byte 8160 of a 4096-byte block.  Closing that means comparing value_size against
-info->value_type.size in get_ablock() and in __shadow_ablock(), the two places that hold both
-the block and the caller.
-
-dm-era reaches the same accessor directly and dm-clone reaches it through dm-bitset, which is
-an array underneath; dm-cache is only the shortest path from a crafted image to an observable
-read.  All of them need CAP_SYS_ADMIN to load the table, which is why I'm sending this as
-hardening rather than as a security report.
-
-The value_size patch follows once I have a reproducer for it.
----
- drivers/md/persistent-data/dm-array.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
-
-diff --git a/drivers/md/persistent-data/dm-array.c b/drivers/md/persistent-data/dm-array.c
-index 8f8792e55806..03d4ffdb3521 100644
---- a/drivers/md/persistent-data/dm-array.c
-+++ b/drivers/md/persistent-data/dm-array.c
-@@ -55,6 +55,7 @@ static int array_block_check(const struct dm_block_validator *v,
- 			     size_t size_of_block)
- {
- 	struct array_block *bh_le = dm_block_data(b);
-+	uint32_t nr_entries, max_entries, value_size;
- 	__le32 csum_disk;
- 
- 	if (dm_block_location(b) != le64_to_cpu(bh_le->blocknr)) {
-@@ -74,6 +75,22 @@ static int array_block_check(const struct dm_block_validator *v,
- 		return -EILSEQ;
- 	}
- 
-+	nr_entries = le32_to_cpu(bh_le->nr_entries);
-+	max_entries = le32_to_cpu(bh_le->max_entries);
-+	value_size = le32_to_cpu(bh_le->value_size);
-+
-+	if (!value_size ||
-+	    sizeof(struct array_block) +
-+	    (uint64_t) value_size * max_entries > size_of_block) {
-+		DMERR_LIMIT("%s failed: max_entries too large", __func__);
-+		return -EILSEQ;
-+	}
-+
-+	if (nr_entries > max_entries) {
-+		DMERR_LIMIT("%s failed: too many entries", __func__);
-+		return -EILSEQ;
-+	}
-+
- 	return 0;
- }
- 
+Changes in v2:
+- Drop awinic bindings dep as a duplicated patch already exists
+- Change Co-authored-by tags to Co-developed-by
+- Drop alias to currently unused uart15 in patch 2
+- Link to v1: https://lore.kernel.org/r/20260311-ayn-qcs8550-v1-0-fe8b2faad1ea@gmail.com
 
 ---
-base-commit: 4235cb24ec1e8e96843f3671ba4da2a6ccca2c7b
-change-id: 20260727-b4-disp-0d625fe8-08c024bb0cba
+Aaron Kling (2):
+      dt-bindings: vendor-prefixes: Add Chip Wealth Technology
+      dt-bindings: arm: qcom: Add AYN QCS8550 Devices
+
+Teguh Sobirin (4):
+      arm64: dts: qcom: Add AYN QCS8550 Common
+      arm64: dts: qcom: Add AYN Odin 2 Mini
+      arm64: dts: qcom: Add AYN Odin 2 Portal
+      arm64: dts: qcom: Add AYN Thor
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    9 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |    2 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    3 +
+ .../arm64/boot/dts/qcom/qcs8550-ayntec-common.dtsi | 1819 ++++++++++++++++++++
+ .../boot/dts/qcom/qcs8550-ayntec-odin2mini.dts     |   44 +
+ .../boot/dts/qcom/qcs8550-ayntec-odin2portal.dts   |   99 ++
+ arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts   |  250 +++
+ 7 files changed, 2226 insertions(+)
+---
+base-commit: 0d33d21e47d9dc66f91e44da3fc9220c74d93df7
+change-id: 20260217-ayn-qcs8550-16c07b63de26
 
 Best regards,
---  
-Bryam Vargas <hexlabsecurity@proton.me>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
