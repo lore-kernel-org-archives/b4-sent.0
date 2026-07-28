@@ -1,15 +1,14 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 27 Jul 2026 19:44:25 -0500
-Subject: [PATCH] drm/panel: chipwealth-ch13726a: Fix washed out colors on
- 120hz mode
+Date: Mon, 27 Jul 2026 20:02:06 -0500
+Subject: [PATCH] drm/panel: chipone-icna35xx: Fix picture parameter set
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260727-ch13726a-washout-v1-1-bf869ddfc5cf@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avIrBPSSqOrRAurMWejof2BdPek5
- bd4L0PCSJhgYBkiXpQo+AJRMVic8RtyWotB1lLVWmq+ONFoqQy/TXLhPHjXou2tUd2MCkq2R7T
- 0/Mtxet8PXhZZYGIAAAA=
-X-Change-ID: 20260727-ch13726a-washout-54ef8fa65be6
+Message-Id: <20260727-icna35xx-pps-v1-1-691d79d13ee4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBP8wZSuEi1Mp5qNiUII4t2Tl
+ t/ivQYFM2GBdWqQ8aVCTxwQ8wT+dvFCRmEYJJcLN9Iw8tEpXStLqbAjBKUVCmu9h5GkjCfVf7f
+ tvX+4sLAyXgAAAA==
+X-Change-ID: 20260727-icna35xx-pps-bdd353e188cc
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -18,70 +17,86 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
 Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785199475; l=2151;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785200530; l=2932;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=g/5SbkmC5RAHR0XS4bGD1LzSsL/iHrUXQcUx6GYaBS4=;
- b=zqizgOxduvcvgbyRXHN36jqHklor2L3TpekQi18GYWn2Cs5sPkdQlY5+wC/MaGFyK63E0/GNv
- oq9kehJydQ/BlL1dnaDEPQMWRHjCzTMkhz9oWzb1ROz95akgdX7MSow
+ bh=QTBXMwTaFmupIS6l/7ZwehPI+YvXmXkeYvJXQHLZdi0=;
+ b=dtPx0sO/kojcGDbRNd9IK9D2b/Io1rnHH0Lm40mGpNetKyfuGJJtrQizGqFRde4i0wObMMxny
+ Q7uJ2/ngGFzDZRKP6dc2YwRVsKRIFlTr+M96x0YXo+nojiyEq42ArQl
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The issue was determined to be two-fold:
+These ddic's do not handle the standard mipi dsi command for pps.
+Instead, there are per chip vendor commands to write the packed struct
+directly to manufacturer registers.
 
-1. The non-continuous clock dropping into LPM during blanks causes
-   voltage drift at 120hz enough to affect the gamma curve.
-
-2. The agressive horizontal blanking width did not allow enough settle
-   time, further compounding the voltage drift.
-
-In addition to switching to continuous clock, burst mode is also enabled
-to further stabilize the blank intervals.
-
-Assisted-by: Gemini:2.5-Pro
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-For the initial submission, the washed out colors were expected to need
-to be fixed by a color profile. However, further investigation showed
-there was a problem with the timings.
+This patch results in no change at runtime because the ddic defaults to
+the config being set by the existing mode. The issue was found while
+doing testing running the panel in a 10-bit mode. But since it is a real
+problem, better to fix it early.
 ---
- drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ drivers/gpu/drm/panel/panel-chipone-icna35xx.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c b/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c
-index 562dc573528dd..92f0c4f1587cb 100644
---- a/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c
-+++ b/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c
-@@ -128,11 +128,11 @@ static int ch13726a_unprepare(struct drm_panel *panel)
- static const struct drm_display_mode thor_bottom_modes[] = {
- 	{
- 		/* 120Hz */
--		.clock = (1080 + 28 + 4 + 36) * (1240 + 16 + 4 + 8) * 120 / 1000,
-+		.clock = (1080 + 60 + 8 + 60) * (1240 + 16 + 4 + 8) * 120 / 1000,
- 		.hdisplay = 1080,
--		.hsync_start = 1080 + 28,
--		.hsync_end = 1080 + 28 + 4,
--		.htotal = 1080 + 28 + 4 + 36,
-+		.hsync_start = 1080 + 60,
-+		.hsync_end = 1080 + 28 + 8,
-+		.htotal = 1080 + 28 + 4 + 60,
- 		.vdisplay = 1240,
- 		.vsync_start = 1240 + 16,
- 		.vsync_end = 1240 + 16 + 4,
-@@ -281,7 +281,7 @@ static int ch13726a_probe(struct mipi_dsi_device *dsi)
- 	dsi->lanes = 4;
- 	dsi->format = MIPI_DSI_FMT_RGB888;
- 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO |
--			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
-+			  MIPI_DSI_MODE_VIDEO_BURST;
+diff --git a/drivers/gpu/drm/panel/panel-chipone-icna35xx.c b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
+index 2cc16494a4cef..b2422ffc1d1c5 100644
+--- a/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
++++ b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
+@@ -69,6 +69,7 @@ static int icna3512_init_sequence(struct panel_info *pinfo)
+ {
+ 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
+ 	struct drm_dsc_picture_parameter_set pps;
++	u8 *pps_ptr = (u8 *)&pps;
  
- 	ctx->panel.prepare_prev_first = true;
+ 	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+ 
+@@ -91,7 +92,14 @@ static int icna3512_init_sequence(struct panel_info *pinfo)
+ 	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x20);
+ 
+ 	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
+-	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
++	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
++	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xC6, 0x11, 0x88);
++
++	mipi_dsi_dcs_write(dsi_ctx.dsi, 0xC7, pps_ptr, 32);
++	mipi_dsi_dcs_write(dsi_ctx.dsi, 0xC8, pps_ptr + 32, 32);
++	mipi_dsi_dcs_write(dsi_ctx.dsi, 0xC9, pps_ptr + 64, 24);
++
++	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0xA5, 0xA5);
+ 
+ 	mipi_dsi_msleep(&dsi_ctx, 20);
+ 
+@@ -104,6 +112,7 @@ static int icna3520_init_sequence(struct panel_info *pinfo)
+ {
+ 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
+ 	struct drm_dsc_picture_parameter_set pps;
++	u8 *pps_ptr = (u8 *)&pps;
+ 
+ 	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
+ 
+@@ -133,7 +142,14 @@ static int icna3520_init_sequence(struct panel_info *pinfo)
+ 	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x24);
+ 
+ 	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
+-	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
++	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
++	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xC0, 0x1A, 0x71);
++
++	mipi_dsi_dcs_write(dsi_ctx.dsi, 0xC1, pps_ptr, 32);
++	mipi_dsi_dcs_write(dsi_ctx.dsi, 0xC2, pps_ptr + 32, 32);
++	mipi_dsi_dcs_write(dsi_ctx.dsi, 0xC3, pps_ptr + 64, 24);
++
++	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0xA5, 0xA5);
+ 
+ 	mipi_dsi_msleep(&dsi_ctx, 20);
  
 
 ---
 base-commit: 0d33d21e47d9dc66f91e44da3fc9220c74d93df7
-change-id: 20260727-ch13726a-washout-54ef8fa65be6
+change-id: 20260727-icna35xx-pps-bdd353e188cc
 
 Best regards,
 -- 
