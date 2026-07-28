@@ -1,16 +1,13 @@
 From: Josef Ippisch <josef.ippisch.dev@mailbox.org>
-Subject: [PATCH v2 0/2] rust: debugfs: migrate debugfs traits requirements
+Date: Tue, 28 Jul 2026 19:31:19 +0200
+Subject: [PATCH v2 1/2] rust: debugfs: migrate debugfs traits requirements
  to zerocopy
-Date: Tue, 28 Jul 2026 19:31:18 +0200
-Message-Id: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/52Oyw6CMBBFf8V07Zh2lIeu/A/josCAY5SSaUWR8
- O8CbnSpy5PcnHN75UmYvNoteiXUsmdXj4DLhcpPtq4IuBhZocZYJ2YLV67EBoKMayvdXTiQQHD
- wJHG5azrgOrisC+TBUFpuqNyubazVKGyESn7MscPxzf6WnSkPU2FanNgHJ938pjXT7q9wa0ADJ
- lSsdWSQkmh/tXzJ3GPlpFJTusUPOUY/yXGUUxqhLdK4KE3yLR+G4QVc3HFvVQEAAA==
-X-Change-ID: 20260719-migrate-binarywriter-to-zerocopy-intobytes-1e8f4ef93a60
+Message-Id: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-1-0a4ec1d3ead4@mailbox.org>
+References: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
+In-Reply-To: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
  Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
@@ -26,11 +23,11 @@ Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org,
  Miguel Ojeda <ojeda@kernel.org>, 
  Josef Ippisch <josef.ippisch.dev@mailbox.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785259881; l=2544;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785259881; l=3770;
  i=josef.ippisch.dev@mailbox.org; s=20260719; h=from:subject:message-id;
- bh=pVoLdUiYaCoewq3P1L24bf598pl03VPwHjg0JPQe1so=;
- b=rvyOi85ebZ1AZVTJ2p5GAH/yDrtUfYVs1PVPi43lRceIk0YaBtm8PeHbmtNZG5BiiA+2Sa5y8
- OxNWPMDl0MyBHXceV/1NDVun0v7ymi1vgE27dkH1oILbTExuXv3hS6V
+ bh=b0rPo5lephIkpP3OY5hEVhiK4Wy3dfjH0joonztLXsg=;
+ b=O+4wwtSdsv+Zg5qykk0A+jrxPa4WM/mZmy2BaVx5IboCrP5TOgD8MHSarlYY+nVV+12YKdURW
+ SNgw0QZ3tDCA1jF9J+TX+Hl0AE07lw3MJCTRyhGfBbwxNfVP4hg1t4t
 X-Developer-Key: i=josef.ippisch.dev@mailbox.org; a=ed25519;
  pk=M4DnWHhz9yT9BkhXKzsmw6wTVrK2U1WBK0QiEjHoo1U=
 X-Endpoint-Received: by B4 Relay for josef.ippisch.dev@mailbox.org/20260719 with auth_id=884
@@ -39,29 +36,10 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 Migrate `BinaryWriter` and `BinaryReaderMut`'s default implementation's
 requirements on T from `kernel::transmute` traits to `zerocopy` traits.
 
-This is part of a bigger migration from rust/kernel/transmute.rs to the
-zerocopy crate, see also [1] and [2]
-
-[1] https://github.com/Rust-for-Linux/linux/issues/975
-[2] https://github.com/Rust-for-Linux/linux/issues/1241
-
-The crate zerocopy was introduced with
-
-c37398010a05 rust: zerocopy: import crate
-
-This introduced among other things the `FromBytes` and `IntoBytes` traits
-that, when derived, do better checks on the actual requirements of the
-types they are implemented on than the existing
-`kernel::transmute::FromBytes` and `kernel::transmute::AsBytes` traits,
-respectively.
-
-This is my first kernel patch so please let me know if I do anything wrong
-process wise or regarding some other aspect!
-
-I noticed that we could probably get rid of the `BinaryWriter` and
-`BinaryReaderMut` implementations for `Vec` altogether if we implemented
-`FromBytes`, `Immutable` and `IntoBytes` for `Vec`.  These are already
-implemented for [T] after all. What do you think?
+The additional `zerocopy::Immutable` requirement on `BinaryWriter` does not
+further restrict the types in practice but is rather a more explicit
+requirement (that the type does not have interior mutability) and is
+required by zerocopy for the `as_bytes()` function.
 
 Suggested-by: Joshua Liebow-Feeser <joshlf@google.com>
 Suggested-by: Miguel Ojeda <ojeda@kernel.org>
@@ -69,29 +47,99 @@ Link: https://github.com/Rust-for-Linux/linux/issues/975
 Link: https://github.com/Rust-for-Linux/linux/issues/1241
 Signed-off-by: Josef Ippisch <josef.ippisch.dev@mailbox.org>
 ---
-Changes in v2:
-- Addresses Sashiko AI review's comment about also migrating
-  `BinaryReaderMut` to zerocopy to not bifurcate the API requirements of
-  debugfs/traits.rs.
-- Do not `use zerocopy::{FromBytes, IntoBytes}` as they are part of
-  `use kernel::prelude::*`.
-- For some reason sending v2 via SMTP server did not reach the mailing
-  list.  I apologize if some of you receive this twice now.  I did not
-  mark this RESEND because of the email never reaching the mailing list.
-- Link to v1: https://patch.msgid.link/20260719-migrate-binarywriter-to-zerocopy-intobytes-v1-0-27ed30512e75@mailbox.org
+ rust/kernel/debugfs/traits.rs | 24 +++++++++++-------------
+ 1 file changed, 11 insertions(+), 13 deletions(-)
 
----
-Josef Ippisch (2):
-      rust: debugfs: migrate debugfs traits requirements to zerocopy
-      rust: debugfs: remove unsafe blocks from traits impl for Vec
+diff --git a/rust/kernel/debugfs/traits.rs b/rust/kernel/debugfs/traits.rs
+index 8c39524b6a99..b794f7dd7e14 100644
+--- a/rust/kernel/debugfs/traits.rs
++++ b/rust/kernel/debugfs/traits.rs
+@@ -18,10 +18,6 @@
+         Arc,
+         Mutex, //
+     },
+-    transmute::{
+-        AsBytes,
+-        FromBytes, //
+-    },
+     uaccess::{
+         UserSliceReader,
+         UserSliceWriter, //
+@@ -36,6 +32,8 @@
+     str::FromStr,
+ };
+ 
++use zerocopy::Immutable;
++
+ /// A trait for types that can be written into a string.
+ ///
+ /// This works very similarly to `Debug`, and is automatically implemented if `Debug` is
+@@ -76,8 +74,8 @@ fn write_to_slice(
+     ) -> Result<usize>;
+ }
+ 
+-// Base implementation for any `T: AsBytes`.
+-impl<T: AsBytes> BinaryWriter for T {
++// Base implementation for any `T: Immutable + IntoBytes`.
++impl<T: Immutable + IntoBytes> BinaryWriter for T {
+     fn write_to_slice(
+         &self,
+         writer: &mut UserSliceWriter,
+@@ -147,7 +145,7 @@ fn write_to_slice(
+ // Delegate for `Vec<T, A>`.
+ impl<T, A> BinaryWriter for Vec<T, A>
+ where
+-    T: AsBytes,
++    T: Immutable + IntoBytes,
+     A: Allocator,
+ {
+     fn write_to_slice(
+@@ -157,7 +155,7 @@ fn write_to_slice(
+     ) -> Result<usize> {
+         let slice = self.as_slice();
+ 
+-        // SAFETY: `T: AsBytes` allows us to treat `&[T]` as `&[u8]`.
++        // SAFETY: `T: Immutable + IntoBytes` allows us to treat `&[T]` as `&[u8]`.
+         let buffer = unsafe {
+             core::slice::from_raw_parts(slice.as_ptr().cast(), core::mem::size_of_val(slice))
+         };
+@@ -230,14 +228,14 @@ fn read_from_slice_mut(
+     ) -> Result<usize>;
+ }
+ 
+-// Base implementation for any `T: AsBytes + FromBytes`.
+-impl<T: AsBytes + FromBytes> BinaryReaderMut for T {
++// Base implementation for any `T: FromBytes + IntoBytes`.
++impl<T: FromBytes + IntoBytes> BinaryReaderMut for T {
+     fn read_from_slice_mut(
+         &mut self,
+         reader: &mut UserSliceReader,
+         offset: &mut file::Offset,
+     ) -> Result<usize> {
+-        reader.read_slice_file(self.as_bytes_mut(), offset)
++        reader.read_slice_file(self.as_mut_bytes(), offset)
+     }
+ }
+ 
+@@ -255,7 +253,7 @@ fn read_from_slice_mut(
+ // Delegate for `Vec<T, A>`: Support a `Vec<T, A>` with an outer lock.
+ impl<T, A> BinaryReaderMut for Vec<T, A>
+ where
+-    T: AsBytes + FromBytes,
++    T: FromBytes + IntoBytes,
+     A: Allocator,
+ {
+     fn read_from_slice_mut(
+@@ -265,7 +263,7 @@ fn read_from_slice_mut(
+     ) -> Result<usize> {
+         let slice = self.as_mut_slice();
+ 
+-        // SAFETY: `T: AsBytes + FromBytes` allows us to treat `&mut [T]` as `&mut [u8]`.
++        // SAFETY: `T: FromBytes + IntoBytes` allow us to treat `&mut [T]` as `&mut [u8]`.
+         let buffer = unsafe {
+             core::slice::from_raw_parts_mut(
+                 slice.as_mut_ptr().cast(),
 
- rust/kernel/debugfs/traits.rs | 41 +++++++++++------------------------------
- 1 file changed, 11 insertions(+), 30 deletions(-)
----
-base-commit: 7059bdf4f04a3e14f4fafb3ac35fdca913e3e21a
-change-id: 20260719-migrate-binarywriter-to-zerocopy-intobytes-1e8f4ef93a60
-
-Best regards,
---  
-Josef Ippisch <josef.ippisch.dev@mailbox.org>
+-- 
+2.53.0
 
