@@ -1,78 +1,73 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 27 Jul 2026 20:57:36 -0500
-Subject: [PATCH v2 2/2] soc/tegra: fuse: speedo-tegra210: Support revision
- B01
+Subject: [PATCH v4 0/2] soc/tegra: pmc: Add Tegra210B01 support
+Date: Mon, 27 Jul 2026 21:00:09 -0500
+Message-Id: <20260727-t210b01-pmc-v4-0-af68a21cd746@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260727-t210b01-speedo-v2-2-4f287a3dab72@gmail.com>
-References: <20260727-t210b01-speedo-v2-0-4f287a3dab72@gmail.com>
-In-Reply-To: <20260727-t210b01-speedo-v2-0-4f287a3dab72@gmail.com>
-To: Thierry Reding <thierry.reding@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MSwrDIBSF4a0Ux7VcNck1HXUfpQO1mgjNAw3SE
+ rL3mkAh6fAc+P6ZRBu8jeR6mkmwyUc/9HkU5xMxreobS/0zb8KBV4BM0Ikz0MDo2BnKlHBS1yC
+ hKEgWY7DOv7fa/ZF36+M0hM8WT2x9fx08dBKjQLVDrLSVWii8NZ3yr4sZOrJ2Et9ZDkfLszWqF
+ AydLAH1vxV7y49WZMtMqWsElNLxvV2W5QslZc9KHgEAAA==
+X-Change-ID: 20260713-t210b01-pmc-1a3f8b908044
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
  Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>, Alex Frid <afrid@nvidia.com>
+Cc: Thierry Reding <thierry.reding@gmail.com>, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>, 
+ Alexandre Hamamdjian <azkali.limited@gmail.com>, 
+ Thomas Makin <halorocker89@gmail.com>, 
+ Mikko Perttunen <mperttunen@nvidia.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785203864; l=1864;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785204012; l=1353;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=VxU37xckYtNrvl4zdEjsAkIv4u2CSVJlt2LBjQhhA24=;
- b=sLwzwZ4QNo66hkggLWXOCvvxdiLfwB1fawvYs7ok8l5XgveewMOSL4b+xKAzMz9tX7t0n3Qiy
- TwSxsXkDlEaCbdNdkhz1dD2EPlR3SEq8QhYpkbCFr+Itp+fNSuPESk5
+ bh=tXSaf6D+4oT/tivF4Swhyqm9z9vxCocGJRBBgGLQTGY=;
+ b=AH/OGdp3UY0CYqiLuqD6MN6kK/40jUp7poCfRHz0xzfIcsKLLPjuE1iujCHpMsJLMi+LuIQOV
+ AgVrQrEvr/sDmoed7WZE4BnJOxpjmWBwaHlzmoI8y5UXcHJnY+67Yny
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Tegra210B01 has a separate set of skus and speedo tables
+This series adds support for the Tegra210B01 SoC to the Tegra PMC driver
+and documents the new compatible.
 
-Based-on: https://gitlab.com/nvidia/nv-tegra/linux-5.10/-/commit/8555ef4988d3b39d91791794825c354b3c9377ba
-Based-on-patch-by: Alex Frid <afrid@nvidia.com>
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/soc/tegra/fuse/speedo-tegra210.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+Changes in v4:
+- Add venc to powergate list in patch 2
+- Link to v3: https://lore.kernel.org/r/20260722-t210b01-pmc-v3-0-1c5b970788f2@gmail.com
 
-diff --git a/drivers/soc/tegra/fuse/speedo-tegra210.c b/drivers/soc/tegra/fuse/speedo-tegra210.c
-index 06c2bcbee5734..699751f4bd0c0 100644
---- a/drivers/soc/tegra/fuse/speedo-tegra210.c
-+++ b/drivers/soc/tegra/fuse/speedo-tegra210.c
-@@ -65,7 +65,25 @@ static void __init rev_sku_to_speedo_ids(struct tegra_sku_info *sku_info,
- 	sku_info->gpu_speedo_id = 0;
- 	*threshold = THRESHOLD_INDEX_0;
- 
--	if (sku_info->revision >= TEGRA_REVISION_A02) {
-+	if (sku_info->revision >= TEGRA_REVISION_B01) {
-+		sku_info->gpu_speedo_id = 1;
-+
-+		switch (sku) {
-+		case 0x00: /* Engineering SKU */
-+		case 0x01: /* Engineering SKU */
-+		case 0x83:
-+			break;
-+
-+		case 0x87:
-+			sku_info->cpu_speedo_id = 3;
-+			break;
-+
-+		default:
-+			pr_err("Tegra210B01: unknown SKU %#04x\n", sku);
-+			/* Using the default for the error case */
-+			break;
-+		}
-+	} else if (sku_info->revision >= TEGRA_REVISION_A02) {
- 		switch (sku) {
- 		case 0x00: /* Engineering SKU */
- 		case 0x01: /* Engineering SKU */
-@@ -154,7 +172,7 @@ void __init tegra210_init_speedo_data(struct tegra_sku_info *sku_info)
- 	speedo_revision = get_speedo_revision();
- 	pr_info("Speedo Revision %u\n", speedo_revision);
- 
--	if (speedo_revision >= 3) {
-+	if (sku_info->revision == TEGRA_REVISION_B01 || speedo_revision >= 3) {
- 		sku_info->cpu_speedo_value = cpu_speedo[0];
- 		sku_info->gpu_speedo_value = cpu_speedo[2];
- 		sku_info->soc_speedo_value = soc_speedo[0];
+Changes in v3:
+- Update patch 2 commit author and sign-off tag as requested off list by
+  author
+- Update patch 2 commit message to describe the powergate differences
+  compared to t210
+- Drop sata powergate in patch 2
+- Fix has_io_pad_wren value in patch 2
+- Link to v2: https://lore.kernel.org/r/20260720-t210b01-pmc-v2-0-ca5317f8507b@gmail.com
 
+Changes in v2:
+- Address sashiko report and drop duplicated structs
+- Link to v1: https://lore.kernel.org/r/20260717-t210b01-pmc-v1-0-bf776be8b3a7@gmail.com
+
+---
+Aaron Kling (1):
+      dt-bindings: soc: tegra: pmc: Document Tegra210B01
+
+Alexandre Hamamdjian (1):
+      soc/tegra: pmc: Add Tegra210B01 support
+
+ .../bindings/soc/tegra/nvidia,tegra20-pmc.yaml     |  5 +-
+ drivers/soc/tegra/pmc.c                            | 62 ++++++++++++++++++++++
+ 2 files changed, 66 insertions(+), 1 deletion(-)
+---
+base-commit: 1a1757b76427f6201bfe0bf1bea9f7574f332a93
+change-id: 20260713-t210b01-pmc-1a3f8b908044
+
+Best regards,
 -- 
-2.54.0
+Aaron Kling <webgeek1234@gmail.com>
 
