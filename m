@@ -1,11 +1,11 @@
 From: Josef Ippisch <josef.ippisch.dev@mailbox.org>
-Date: Tue, 28 Jul 2026 19:31:19 +0200
-Subject: [PATCH v2 1/2] rust: debugfs: migrate debugfs traits requirements
- to zerocopy
+Date: Tue, 28 Jul 2026 19:31:20 +0200
+Subject: [PATCH v2 2/2] rust: debugfs: remove unsafe blocks from traits
+ impl for Vec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-1-0a4ec1d3ead4@mailbox.org>
+Message-Id: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-2-0a4ec1d3ead4@mailbox.org>
 References: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
 In-Reply-To: <20260728-migrate-binarywriter-to-zerocopy-intobytes-v2-0-0a4ec1d3ead4@mailbox.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -23,122 +23,68 @@ Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org,
  Miguel Ojeda <ojeda@kernel.org>, 
  Josef Ippisch <josef.ippisch.dev@mailbox.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785259881; l=3770;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785259881; l=1990;
  i=josef.ippisch.dev@mailbox.org; s=20260719; h=from:subject:message-id;
- bh=b0rPo5lephIkpP3OY5hEVhiK4Wy3dfjH0joonztLXsg=;
- b=O+4wwtSdsv+Zg5qykk0A+jrxPa4WM/mZmy2BaVx5IboCrP5TOgD8MHSarlYY+nVV+12YKdURW
- SNgw0QZ3tDCA1jF9J+TX+Hl0AE07lw3MJCTRyhGfBbwxNfVP4hg1t4t
+ bh=bcAB+rSJxo9ZroXVfXApmlpdpJQVs1F1L0YRpjVbQJo=;
+ b=cIaBDwtw9P9BlrpZZMIhZPxeVrxUAQrsh3v/wXuylsp42yoimMv9UCHwzftLYgybgje1LCjp8
+ InD76OyzfrMCU4XDG3FVgCHeP/35GRzdMIcxhADEikC5S45vChJQtTi
 X-Developer-Key: i=josef.ippisch.dev@mailbox.org; a=ed25519;
  pk=M4DnWHhz9yT9BkhXKzsmw6wTVrK2U1WBK0QiEjHoo1U=
 X-Endpoint-Received: by B4 Relay for josef.ippisch.dev@mailbox.org/20260719 with auth_id=884
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Migrate `BinaryWriter` and `BinaryReaderMut`'s default implementation's
-requirements on T from `kernel::transmute` traits to `zerocopy` traits.
+The previous implementation used an `unsafe` block to manually cast Vec's
+slice to a &[u8] using `core::slice::from_raw_parts`.  Instead, the
+implementation can be implemented in safe rust using zerocopy's trait
+functions `as_bytes()` and `as_mut_bytes()`, respectively, and making use
+of deref coercion to implicitly cast Vec to &[T] as `FromBytes` and
+`IntoBytes` automatically are implemented on [T] when they are implemented
+on T.
 
-The additional `zerocopy::Immutable` requirement on `BinaryWriter` does not
-further restrict the types in practice but is rather a more explicit
-requirement (that the type does not have interior mutability) and is
-required by zerocopy for the `as_bytes()` function.
-
-Suggested-by: Joshua Liebow-Feeser <joshlf@google.com>
-Suggested-by: Miguel Ojeda <ojeda@kernel.org>
-Link: https://github.com/Rust-for-Linux/linux/issues/975
-Link: https://github.com/Rust-for-Linux/linux/issues/1241
 Signed-off-by: Josef Ippisch <josef.ippisch.dev@mailbox.org>
 ---
- rust/kernel/debugfs/traits.rs | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
+ rust/kernel/debugfs/traits.rs | 21 ++-------------------
+ 1 file changed, 2 insertions(+), 19 deletions(-)
 
 diff --git a/rust/kernel/debugfs/traits.rs b/rust/kernel/debugfs/traits.rs
-index 8c39524b6a99..b794f7dd7e14 100644
+index b794f7dd7e14..b295f8420abd 100644
 --- a/rust/kernel/debugfs/traits.rs
 +++ b/rust/kernel/debugfs/traits.rs
-@@ -18,10 +18,6 @@
-         Arc,
-         Mutex, //
-     },
--    transmute::{
--        AsBytes,
--        FromBytes, //
--    },
-     uaccess::{
-         UserSliceReader,
-         UserSliceWriter, //
-@@ -36,6 +32,8 @@
-     str::FromStr,
- };
- 
-+use zerocopy::Immutable;
-+
- /// A trait for types that can be written into a string.
- ///
- /// This works very similarly to `Debug`, and is automatically implemented if `Debug` is
-@@ -76,8 +74,8 @@ fn write_to_slice(
-     ) -> Result<usize>;
- }
- 
--// Base implementation for any `T: AsBytes`.
--impl<T: AsBytes> BinaryWriter for T {
-+// Base implementation for any `T: Immutable + IntoBytes`.
-+impl<T: Immutable + IntoBytes> BinaryWriter for T {
-     fn write_to_slice(
-         &self,
+@@ -153,14 +153,7 @@ fn write_to_slice(
          writer: &mut UserSliceWriter,
-@@ -147,7 +145,7 @@ fn write_to_slice(
- // Delegate for `Vec<T, A>`.
- impl<T, A> BinaryWriter for Vec<T, A>
- where
--    T: AsBytes,
-+    T: Immutable + IntoBytes,
-     A: Allocator,
- {
-     fn write_to_slice(
-@@ -157,7 +155,7 @@ fn write_to_slice(
+         offset: &mut file::Offset,
      ) -> Result<usize> {
-         let slice = self.as_slice();
- 
--        // SAFETY: `T: AsBytes` allows us to treat `&[T]` as `&[u8]`.
-+        // SAFETY: `T: Immutable + IntoBytes` allows us to treat `&[T]` as `&[u8]`.
-         let buffer = unsafe {
-             core::slice::from_raw_parts(slice.as_ptr().cast(), core::mem::size_of_val(slice))
-         };
-@@ -230,14 +228,14 @@ fn read_from_slice_mut(
-     ) -> Result<usize>;
+-        let slice = self.as_slice();
+-
+-        // SAFETY: `T: Immutable + IntoBytes` allows us to treat `&[T]` as `&[u8]`.
+-        let buffer = unsafe {
+-            core::slice::from_raw_parts(slice.as_ptr().cast(), core::mem::size_of_val(slice))
+-        };
+-
+-        writer.write_slice_file(buffer, offset)
++        writer.write_slice_file(self.as_bytes(), offset)
+     }
  }
  
--// Base implementation for any `T: AsBytes + FromBytes`.
--impl<T: AsBytes + FromBytes> BinaryReaderMut for T {
-+// Base implementation for any `T: FromBytes + IntoBytes`.
-+impl<T: FromBytes + IntoBytes> BinaryReaderMut for T {
-     fn read_from_slice_mut(
-         &mut self,
+@@ -261,17 +254,7 @@ fn read_from_slice_mut(
          reader: &mut UserSliceReader,
          offset: &mut file::Offset,
      ) -> Result<usize> {
--        reader.read_slice_file(self.as_bytes_mut(), offset)
+-        let slice = self.as_mut_slice();
+-
+-        // SAFETY: `T: FromBytes + IntoBytes` allow us to treat `&mut [T]` as `&mut [u8]`.
+-        let buffer = unsafe {
+-            core::slice::from_raw_parts_mut(
+-                slice.as_mut_ptr().cast(),
+-                core::mem::size_of_val(slice),
+-            )
+-        };
+-
+-        reader.read_slice_file(buffer, offset)
 +        reader.read_slice_file(self.as_mut_bytes(), offset)
      }
  }
  
-@@ -255,7 +253,7 @@ fn read_from_slice_mut(
- // Delegate for `Vec<T, A>`: Support a `Vec<T, A>` with an outer lock.
- impl<T, A> BinaryReaderMut for Vec<T, A>
- where
--    T: AsBytes + FromBytes,
-+    T: FromBytes + IntoBytes,
-     A: Allocator,
- {
-     fn read_from_slice_mut(
-@@ -265,7 +263,7 @@ fn read_from_slice_mut(
-     ) -> Result<usize> {
-         let slice = self.as_mut_slice();
- 
--        // SAFETY: `T: AsBytes + FromBytes` allows us to treat `&mut [T]` as `&mut [u8]`.
-+        // SAFETY: `T: FromBytes + IntoBytes` allow us to treat `&mut [T]` as `&mut [u8]`.
-         let buffer = unsafe {
-             core::slice::from_raw_parts_mut(
-                 slice.as_mut_ptr().cast(),
 
 -- 
 2.53.0
