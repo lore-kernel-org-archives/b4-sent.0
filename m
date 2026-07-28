@@ -1,22 +1,22 @@
 From: Yang Li <yang.li@amlogic.com>
-Date: Tue, 28 Jul 2026 14:24:45 +0800
+Date: Tue, 28 Jul 2026 14:26:42 +0800
 Subject: [PATCH BlueZ bluez v3] bap: Start BIG sync after receiving BIGInfo
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-big_sync-v3-1-6751ba0802ce@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIACxLaGoC/2WNyw6CMBBFf4V0bU0fINGV/2GMaYcBJgFqWm1Ew
+Message-Id: <20260728-big_sync-v3-1-c2da19f3c00b@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAKFLaGoC/2WNyw6CMBBFf4V0bU0fINGV/2GMaYcBJgFqWm1Ew
  r9bu8K4vHPnnLuwgJ4wsFOxMI+RArkpBb0rGPRm6pBTkzJTQh1ErUpuqbuFeQJeVqBKBHGUSrL
  0fvfY0iurLswOT3yzazr3FB7Oz3kgylz+u6LkkgujKyE1amHN2YyD6wj24MasiWqL1htUfdFKt
  422ANriL7qu6wf3Hays5AAAAA==
 To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
 Cc: Yang Li <yang.li@amlogic.com>
 X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785219886; l=3109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785220002; l=3109;
  i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
  bh=5EgeiC5D9YMy9T7q0OAiM45TunnWa5Fy8xH/jWQT53U=;
- b=m4G0f/D3/jAaYufOpj4N7Z1KcwGUUwLTeN5a6x5mlsz9Xxnr04RMlc5ERhsNIb/OpBoF9vLSd
- NqaTTBK84TcCgk/wQBn6zL0ow0rAGjLJKvMgVRUkOJSEjNGeHrFtok6
+ b=UJTsfVlY6cZcJYmzkY0eThOqH0i20eHfvd35JPwmvOUGzHSv8OsfWfySXvEhkWOcMw2xnveKv
+ 70LBSeCz4mGDDiHfI9N5l9f5CyCdOVy312/trjsKR4mqfamyua6OeGx
 X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
  pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
 X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
