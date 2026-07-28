@@ -1,268 +1,79 @@
-From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Tue, 28 Jul 2026 14:00:39 +0200
-Subject: [PATCH v5 12/12] arm64: dts: rockchip: add support for NanoPi M6
- board
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH 0/5] hwmon: (pmbus) Add support for MAX20826 and similar
+ devices
+Date: Tue, 28 Jul 2026 17:03:47 +0100
+Message-Id: <20260728-hwmon-max20826-support-v1-0-224766e0acd1@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-nanopi-m6-v5-12-cbc1eb0d8d56@gmail.com>
-References: <20260728-nanopi-m6-v5-0-cbc1eb0d8d56@gmail.com>
-In-Reply-To: <20260728-nanopi-m6-v5-0-cbc1eb0d8d56@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, diederik@cknow-tech.com, 
- jonas@kwiboo.se, Joachim Eastwood <joachim.eastwood@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQDDQNXqV0YdOxTsEkZNQK4
+ t2N7fIt/t9AuQgrtM0GhRdRSbHCXhoIQxffjPKqBjLkzI08Dt8xRRy7lYwnhzrnnMqEwROzu1r
+ rOUCNc+Fe1t/4/vhb5+eHw3TeYN8PERV35noAAAA=
+X-Change-ID: 20260728-hwmon-max20826-support-c82ee65118ec
+To: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-doc@vger.kernel.org
+Cc: Mark Brown <broonie@kernel.org>, 
+ Alan Tull <atull@opensource.altera.com>, Guenter Roeck <linux@roeck-us.net>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Alexis Czezar Torreno <alexisczezar.torreno@analog.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785240146; l=6264;
- i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=J2NeRbVgli1g/p560y0BTFZZgoBAuNJ+5IL7Z4IgRdY=;
- b=Y54XjlN2AQqR53+yZmRNaMK+Z94BRAyn/BlB+BHM+V+3jO4l0s40A7oY4BKt42wVnS5N87DMu
- QDkLpf17FB2Cgwo7ZdUZ4ujyWqq1K6h1+teqtSagpBEBSER4JIiKfeV
-X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
- pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
-X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785254629; l=2138;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=R1iqUtqOuhShL/Z71oQFUiw3Kxe9IhmPJ4+ezwSgN4I=;
+ b=b9HV+Hqjh563A6qYvO9D3ge9OpibJJYjVWyF3ncH08ZgXg0IFycHU/q/kwsK5fdYC5wDhvxyW
+ TIozHxBZjW9D3hp2p2LafB0I3e/Y6/SF1/qVShwpKZFmgv1WThs5AsS
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The NanoPi M6 (V1) board shares most of the features of the R6 boards.
+Add support for Analog Devices MAX20826, MAX20855B, MAX20908,
+MAX20912 and MAX20916 dual-output multiphase PMBus voltage regulator
+controllers.
 
-Main differences:
-* M.2 M-key slot with PCIe (Also present on R6C)
-* M.2 E-key slot with PCIe and USB (from hub)
-* 1 additional USB 2.0 port from an on-board USB hub
-* RT5616 audio CODEC
+This follows up on the earlier MAX20912/MAX20916 submission and the
+review discussion around it [1]. Compared to that minimal driver, this
+series covers the full MAX20826 family and implements the device-specific
+pieces discussed there: optional EN GPIO handling, non-standard phase
+reporting, direct address mode, and regulator support.
 
-Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
+The first patches prepare/fix PMBus core support needed by the driver:
+fix regulator enable/disable return handling, allow up to 16 phases, and
+add a device-specific block-read hook. The remaining patches add the DT
+binding and the MAX20826-family driver/documentation.
+
+Guenter,
+
+We are still checking the possibility of getting you docs for at least
+one of the parts supported byu this series.
+
+[1]: https://lore.kernel.org/linux-hwmon/20260707122701.751878-3-fredchen.openbmc@gmail.com/
+
 ---
- arch/arm64/boot/dts/rockchip/Makefile              |   1 +
- .../arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi | 142 +++++++++++++++++++++
- .../boot/dts/rockchip/rk3588s-nanopi-m6v1.dts      |  57 +++++++++
- 3 files changed, 200 insertions(+)
+Nuno Sá (5):
+      hwmon: (pmbus/core) fix regulator enable/disable
+      hwmon: (pmbus/core) increase number of phases and add new mask
+      hwmon: (pmbus/core) Add mapping function to pmbus_read_block_data()
+      dt-bindings: hwmon/pmbus: Document MAX20826 and similar devices
+      hwmon: (pmbus) add support for MAX20826 and similar devices
 
-diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
-index 761d82b4f4f2..55a1ec8309df 100644
---- a/arch/arm64/boot/dts/rockchip/Makefile
-+++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -218,6 +218,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-evb1-v10.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-gameforce-ace.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-indiedroid-nova.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-khadas-edge2.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-m6v1.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-r6s.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-r6c.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-odroid-m2.dtb
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi
-new file mode 100644
-index 000000000000..6644d3b72c9c
---- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi
-@@ -0,0 +1,142 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+
-+#include "rk3588s-nanopi.dtsi"
-+
-+/ {
-+	adc-keys-1 {
-+		compatible = "adc-keys";
-+		io-channels = <&saradc 1>;
-+		io-channel-names = "buttons";
-+		keyup-threshold-microvolt = <1800000>;
-+		poll-interval = <100>;
-+
-+		button-maskrom {
-+			label = "Recovery";
-+			linux,code = <KEY_VENDOR>;
-+			press-threshold-microvolt = <1800>;
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		sys_led: led-0 {
-+			label = "sys_led";
-+			gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>;
-+			linux,default-trigger = "heartbeat";
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&sys_led_pin>;
-+		};
-+
-+		user_led: led-1 {
-+			label = "user_led";
-+			gpios = <&gpio1 RK_PA6 GPIO_ACTIVE_HIGH>;
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&user_led_pin>;
-+		};
-+	};
-+
-+	vcc_3v3_pcie: regulator-vcc-3v3-pcie {
-+		compatible = "regulator-fixed";
-+		enable-active-high;
-+		gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pcie2_2_pwren>;
-+		regulator-name = "vcc_3v3_pcie";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+
-+	vcc5v0_usb_otg0: regulator-vcc5v0-usb-otg0 {
-+		compatible = "regulator-fixed";
-+		enable-active-high;
-+		gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&typec5v_pwren>;
-+		regulator-name = "vcc5v0_usb_otg0";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+
-+	vdd_mpcie_3v3: regulator-vdd-mpcie-3v3 {
-+		compatible = "regulator-fixed";
-+		/* Controlled by EXT_EN on RK806 */
-+		regulator-name = "vdd_mpcie_3v3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+};
-+
-+&i2c7 {
-+	clock-frequency = <200000>;
-+	status = "okay";
-+};
-+
-+&i2s0_8ch {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2s0_lrck
-+		     &i2s0_mclk
-+		     &i2s0_sclk
-+		     &i2s0_sdi0
-+		     &i2s0_sdo0>;
-+	status = "okay";
-+};
-+
-+&pcie2x1l1 { /* M.2 E-key 2230 */
-+	vpcie3v3-supply = <&vdd_mpcie_3v3>;
-+};
-+
-+&pcie2x1l2 { /* M.2 M-key 2280 */
-+	pinctrl-0 = <&pcie20x1_2_perstn_m0>, <&pcie20x1m0_clkreqn>, <&pcie20x1m0_waken>;
-+	vpcie3v3-supply = <&vcc_3v3_pcie>;
-+};
-+
-+&pinctrl {
-+	gpio-leds {
-+		sys_led_pin: sys-led-pin {
-+			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+
-+		user_led_pin: user-led-pin {
-+			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	headphone {
-+		hp_det: hp-det {
-+			rockchip,pins = <1 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	pcie {
-+		pcie2_2_pwren: pcie2-2-pwren {
-+			rockchip,pins = <3 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	usb {
-+		typec5v_pwren: typec5v-pwren {
-+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+};
-+
-+&u2phy3 {
-+	status = "okay";
-+};
-+
-+&u2phy3_host {
-+	phy-supply = <&vcc5v0_host_20>;
-+	status = "okay";
-+};
-+
-+&usb_host1_ehci {
-+	status = "okay";
-+};
-+
-+&usb_host1_ohci {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6v1.dts b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6v1.dts
-new file mode 100644
-index 000000000000..2a22435f46c8
---- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6v1.dts
-@@ -0,0 +1,57 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+
-+/dts-v1/;
-+
-+#include "rk3588s-nanopi-m6.dtsi"
-+
-+/ {
-+	model = "FriendlyElec NanoPi M6";
-+	compatible = "friendlyarm,nanopi-m6", "rockchip,rk3588s";
-+
-+	analog-sound {
-+		compatible = "audio-graph-card";
-+		label = "rk3588s-rt5616";
-+
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&hp_det>;
-+		hp-det-gpios = <&gpio1 RK_PC4 GPIO_ACTIVE_LOW>;
-+
-+		dais = <&i2s0_8ch_p0>;
-+		routing =
-+			"Headphones", "HPOL",
-+			"Headphones", "HPOR",
-+			"MIC1", "Microphone Jack",
-+			"Microphone Jack", "micbias1";
-+		widgets =
-+			"Headphone", "Headphones",
-+			"Microphone", "Microphone Jack";
-+	};
-+};
-+
-+&i2c7 {
-+	audio-codec@1b {
-+		compatible = "realtek,rt5616";
-+		reg = <0x1b>;
-+		assigned-clocks = <&cru I2S0_8CH_MCLKOUT_TO_IO>;
-+		assigned-clock-rates = <12288000>;
-+		clocks = <&cru I2S0_8CH_MCLKOUT_TO_IO>;
-+		clock-names = "mclk";
-+		#sound-dai-cells = <0>;
-+
-+		port {
-+			rt5616_p0: endpoint {
-+				remote-endpoint = <&i2s0_8ch_p0_0>;
-+			};
-+		};
-+	};
-+};
-+
-+&i2s0_8ch {
-+	i2s0_8ch_p0: port {
-+		i2s0_8ch_p0_0: endpoint {
-+			dai-format = "i2s";
-+			mclk-fs = <256>;
-+			remote-endpoint = <&rt5616_p0>;
-+		};
-+	};
-+};
+ .../bindings/hwmon/pmbus/adi,max20826.yaml         |   56 ++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/max20826.rst                   |  124 +++
+ MAINTAINERS                                        |    9 +
+ drivers/hwmon/pmbus/Kconfig                        |   19 +
+ drivers/hwmon/pmbus/Makefile                       |    1 +
+ drivers/hwmon/pmbus/max20826.c                     | 1037 ++++++++++++++++++++
+ drivers/hwmon/pmbus/pmbus.h                        |    6 +-
+ drivers/hwmon/pmbus/pmbus_core.c                   |   39 +-
+ 9 files changed, 1286 insertions(+), 6 deletions(-)
+---
+base-commit: 92413f439d1ec5e55b73ede8d66a7b971cbd1ced
+change-id: 20260728-hwmon-max20826-support-c82ee65118ec
+--
 
--- 
-2.55.0
+Thanks!
+- Nuno Sá
 
