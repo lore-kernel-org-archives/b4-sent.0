@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Jul 2026 17:35:17 -0700
-Subject: [PATCH v9 18/41] KVM: TDX: Make source page optional for
- KVM_TDX_INIT_MEM_REGION
+Date: Tue, 28 Jul 2026 17:35:18 -0700
+Subject: [PATCH v9 19/41] KVM: Move KVM_VM_MEMORY_ATTRIBUTES config
+ definition to x86
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-gmem-inplace-conversion-v9-18-35f9aec2aed2@google.com>
+Message-Id: <20260728-gmem-inplace-conversion-v9-19-35f9aec2aed2@google.com>
 References: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 In-Reply-To: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,78 +38,74 @@ To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com,
 Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
- linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
+ linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
+ Xiaoyao Li <xiaoyao.li@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2732;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=1945;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=u/tBFqV24Co3+T+1PQk77gbYdRZ2mN/NwHMVCuvTZes=;
- b=kYU9jorsj7ilMhDtf6dVa9SShPLBh3fLjuBuW3zW6XSEpNrLdYBWIry/G/7lWIatGxZ1Yorl0
- iDbhWofLj1nCWk1/f08pNwGlvPexDgipuzGdgcW3s4A/CdGkjkwbrJq
+ bh=FJHG2a7vP7ngGINkS6BImiEDqifMvq5NVujuwFw/Bnc=;
+ b=KiPvZAtHxx0L2xA3GgSZJl593QXMBoK10D9xBYODtqsEnwY9XY67wKNeQmL01EcqVctGzlHqE
+ z3jl+hMYHPgD87QxZC1t8zx67zPaay6SYer4QVmCGvwTsBDSbLpf+/P
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update tdx_gmem_post_populate() to handle cases where userspace requests
-"no source page". To handle "no source page", populate (perform
-TDH.MEM.PAGE.ADD) using memory in-place at the target PFN.
+From: Sean Christopherson <seanjc@google.com>
+
+Bury KVM_VM_MEMORY_ATTRIBUTES in x86 to discourage other architectures
+from adding support for per-VM memory attributes, because tracking private
+vs. shared memory on a per-VM basis is now deprecated in favor of tracking
+on a per-guest_memfd basis, and while RWX memory attributes are on the
+horizon, they too are expected to be x86-only.
+
+This will also allow modifying KVM_VM_MEMORY_ATTRIBUTES to be
+user-selectable (in x86) without creating weirdness in KVM's Kconfigs.
+Now that guest_memfd supports in-place conversions, it's entirely possible
+to run x86 CoCo VMs without support for KVM_VM_MEMORY_ATTRIBUTES.
+
+Leave the code itself in common KVM so that it's trivial to undo this
+change if new per-VM attributes do come along.
 
 Signed-off-by: Sean Christopherson <seanjc@google.com>
+Reviewed-by: Fuad Tabba <tabba@google.com>
+Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
 Tested-by: Shivank Garg <shivankg@amd.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/x86/intel-tdx.rst | 4 ++++
- arch/x86/kvm/vmx/tdx.c                   | 8 +++++---
- 2 files changed, 9 insertions(+), 3 deletions(-)
+ arch/x86/kvm/Kconfig | 3 +++
+ virt/kvm/Kconfig     | 3 ---
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/virt/kvm/x86/intel-tdx.rst b/Documentation/virt/kvm/x86/intel-tdx.rst
-index 6a222e9d09541..d8d9409120e61 100644
---- a/Documentation/virt/kvm/x86/intel-tdx.rst
-+++ b/Documentation/virt/kvm/x86/intel-tdx.rst
-@@ -158,6 +158,10 @@ KVM_TDX_INIT_MEM_REGION
- Initialize @nr_pages TDX guest private memory starting from @gpa with userspace
- provided data from @source_addr. @source_addr must be PAGE_SIZE-aligned.
+diff --git a/arch/x86/kvm/Kconfig b/arch/x86/kvm/Kconfig
+index 2f8e1b5a8a72c..abb108886733a 100644
+--- a/arch/x86/kvm/Kconfig
++++ b/arch/x86/kvm/Kconfig
+@@ -80,6 +80,9 @@ config KVM_WERROR
  
-+If guest_memfd in-place conversion is enabled, pass 0 for @source_addr
-+to represent "no source page". A source page is required if in-place
-+conversion is not enabled or not supported.
+ 	  If in doubt, say "N".
+ 
++config KVM_VM_MEMORY_ATTRIBUTES
++	bool
 +
- Note, before calling this sub command, memory attribute of the range
- [gpa, gpa + nr_pages] needs to be private.  Userspace can use
- KVM_SET_MEMORY_ATTRIBUTES to set the attribute.
-diff --git a/arch/x86/kvm/vmx/tdx.c b/arch/x86/kvm/vmx/tdx.c
-index d1af0a752e97e..e890da5f18aed 100644
---- a/arch/x86/kvm/vmx/tdx.c
-+++ b/arch/x86/kvm/vmx/tdx.c
-@@ -3192,7 +3192,7 @@ static int tdx_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
- 	if (KVM_BUG_ON(kvm_tdx->page_add_src, kvm))
- 		return -EIO;
+ config KVM_SW_PROTECTED_VM
+ 	bool "Enable support for KVM software-protected VMs"
+ 	depends on EXPERT
+diff --git a/virt/kvm/Kconfig b/virt/kvm/Kconfig
+index df575449d97b5..a0678ef8ee3f5 100644
+--- a/virt/kvm/Kconfig
++++ b/virt/kvm/Kconfig
+@@ -100,9 +100,6 @@ config KVM_ELIDE_TLB_FLUSH_IF_YOUNG
+ config KVM_MMU_LOCKLESS_AGING
+        bool
  
--	kvm_tdx->page_add_src = src_page;
-+	kvm_tdx->page_add_src = src_page ?: pfn_to_page(pfn);
- 	ret = kvm_tdp_mmu_map_private_pfn(arg->vcpu, gfn, pfn);
- 	kvm_tdx->page_add_src = NULL;
- 
-@@ -3238,7 +3238,8 @@ static int tdx_vcpu_init_mem_region(struct kvm_vcpu *vcpu, struct kvm_tdx_cmd *c
- 	if (copy_from_user(&region, u64_to_user_ptr(cmd->data), sizeof(region)))
- 		return -EFAULT;
- 
--	if (!PAGE_ALIGNED(region.source_addr) || !region.source_addr ||
-+	if (!PAGE_ALIGNED(region.source_addr) ||
-+	    (!gmem_in_place_conversion && !region.source_addr) ||
- 	    !PAGE_ALIGNED(region.gpa) || !region.nr_pages ||
- 	    region.gpa + (region.nr_pages << PAGE_SHIFT) <= region.gpa ||
- 	    !vt_is_tdx_private_gpa(kvm, region.gpa) ||
-@@ -3269,7 +3270,8 @@ static int tdx_vcpu_init_mem_region(struct kvm_vcpu *vcpu, struct kvm_tdx_cmd *c
- 			break;
- 		}
- 
--		region.source_addr += PAGE_SIZE;
-+		if (region.source_addr)
-+			region.source_addr += PAGE_SIZE;
- 		region.gpa += PAGE_SIZE;
- 		region.nr_pages--;
- 
+-config KVM_VM_MEMORY_ATTRIBUTES
+-       bool
+-
+ config KVM_GUEST_MEMFD
+        select XARRAY_MULTI
+        bool
 
 -- 
 2.55.0.508.g3f0d502094-goog
