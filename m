@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Jul 2026 17:35:20 -0700
-Subject: [PATCH v9 21/41] KVM: guest_memfd: Enable INIT_SHARED on
- guest_memfd for x86 Coco VMs
+Date: Tue, 28 Jul 2026 17:35:21 -0700
+Subject: [PATCH v9 22/41] KVM: selftests: Create gmem fd before "regular"
+ fd when adding memslot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-gmem-inplace-conversion-v9-21-35f9aec2aed2@google.com>
+Message-Id: <20260728-gmem-inplace-conversion-v9-22-35f9aec2aed2@google.com>
 References: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 In-Reply-To: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,14 +38,13 @@ To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com,
 Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
- linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
- Xiaoyao Li <xiaoyao.li@intel.com>
+ linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=1641;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2911;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=xqYH05bSCEd1Bk1hXIslSXCmEIZh87KnzlPOeglC0VM=;
- b=bL9eALDZa5rrVw3e+oDoxAYk2lxBzN9/H13NtfJOfT/y/F4v9X0ogrXYkcZ82AmmYuS5rPP89
- NZtt7tORv17DBB8S6dcZfZB7MvYLXrBe7t6xg7XcoiTHiOvXZz1Okf1
+ bh=6y05+ITrnBeClNJYAyMDsMqjEvyElgnG7ndfbM+LDTU=;
+ b=FvO6M+SkBwo02hmHDBV4TBNLQyGe07vF5ARK8agucKjTgT6+y+h0/kI/w8hsLgP1cI/hHVShz
+ l7w1e0BDmovBQf9BJIvKnNYBminD0wN/y/ARAQPyR/PTNThxkF3wh5L
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -53,47 +52,82 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Sean Christopherson <seanjc@google.com>
 
-Now that guest_memfd supports tracking private vs. shared within gmem
-itself, allow userspace to specify INIT_SHARED on a guest_memfd instance
-for x86 Confidential Computing (CoCo) VMs, so long as in-place conversion
-is enabled, i.e. when it's actually possible for a guest_memfd instance to
-contain shared memory.
+When adding a memslot associated a guest_memfd instance, create/dup the
+guest_memfd before creating the "normal" backing file.  This will allow
+dup'ing the gmem fd as the normal fd when guest_memfd supports mmap(),
+i.e. to make guest_memfd the _only_ backing source for the memslot.
 
 Signed-off-by: Sean Christopherson <seanjc@google.com>
 Reviewed-by: Fuad Tabba <tabba@google.com>
-Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
 Tested-by: Shivank Garg <shivankg@amd.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- arch/x86/kvm/x86.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ tools/testing/selftests/kvm/lib/kvm_util.c | 45 +++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 22 deletions(-)
 
-diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index 52de3ec7c7f73..79538dedfad68 100644
---- a/arch/x86/kvm/x86.c
-+++ b/arch/x86/kvm/x86.c
-@@ -10623,14 +10623,15 @@ bool kvm_arch_no_poll(struct kvm_vcpu *vcpu)
- }
+diff --git a/tools/testing/selftests/kvm/lib/kvm_util.c b/tools/testing/selftests/kvm/lib/kvm_util.c
+index 3794575d2ca0c..8522511c99558 100644
+--- a/tools/testing/selftests/kvm/lib/kvm_util.c
++++ b/tools/testing/selftests/kvm/lib/kvm_util.c
+@@ -1079,6 +1079,29 @@ void vm_mem_add(struct kvm_vm *vm, enum vm_mem_backing_src_type src_type,
+ 	if (alignment > 1)
+ 		region->mmap_size += alignment;
  
- #ifdef CONFIG_KVM_GUEST_MEMFD
--/*
-- * KVM doesn't yet support initializing guest_memfd memory as shared for VMs
-- * with private memory (the private vs. shared tracking needs to be moved into
-- * guest_memfd).
-- */
- bool kvm_arch_supports_gmem_init_shared(struct kvm *kvm)
- {
--	return !kvm_arch_has_private_mem(kvm);
-+	/*
-+	 * INIT_SHARED is supported if in-place conversion is enabled, or if
-+	 * the VM doesn't support private memory.  If the VM has private memory
-+	 * and in-place conversion is disabled, then guest_memfd can _only_ be
-+	 * used for private memory.
-+	 */
-+	return gmem_in_place_conversion || !kvm_arch_has_private_mem(kvm);
- }
++	if (flags & KVM_MEM_GUEST_MEMFD) {
++		if (guest_memfd < 0) {
++			u32 guest_memfd_flags = 0;
++
++			TEST_ASSERT(!guest_memfd_offset,
++				    "Offset must be zero when creating new guest_memfd");
++			guest_memfd = vm_create_guest_memfd(vm, mem_size, guest_memfd_flags);
++		} else {
++			/*
++			 * Install a unique fd for each memslot so that the fd
++			 * can be closed when the region is deleted without
++			 * needing to track if the fd is owned by the framework
++			 * or by the caller.
++			 */
++			guest_memfd = kvm_dup(guest_memfd);
++		}
++
++		region->region.guest_memfd = guest_memfd;
++		region->region.guest_memfd_offset = guest_memfd_offset;
++	} else {
++		region->region.guest_memfd = -1;
++	}
++
+ 	region->fd = -1;
+ 	if (backing_src_is_shared(src_type))
+ 		region->fd = kvm_memfd_alloc(region->mmap_size,
+@@ -1108,28 +1131,6 @@ void vm_mem_add(struct kvm_vm *vm, enum vm_mem_backing_src_type src_type,
  
- #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
+ 	region->backing_src_type = src_type;
+ 
+-	if (flags & KVM_MEM_GUEST_MEMFD) {
+-		if (guest_memfd < 0) {
+-			u32 guest_memfd_flags = 0;
+-			TEST_ASSERT(!guest_memfd_offset,
+-				    "Offset must be zero when creating new guest_memfd");
+-			guest_memfd = vm_create_guest_memfd(vm, mem_size, guest_memfd_flags);
+-		} else {
+-			/*
+-			 * Install a unique fd for each memslot so that the fd
+-			 * can be closed when the region is deleted without
+-			 * needing to track if the fd is owned by the framework
+-			 * or by the caller.
+-			 */
+-			guest_memfd = kvm_dup(guest_memfd);
+-		}
+-
+-		region->region.guest_memfd = guest_memfd;
+-		region->region.guest_memfd_offset = guest_memfd_offset;
+-	} else {
+-		region->region.guest_memfd = -1;
+-	}
+-
+ 	region->unused_phy_pages = sparsebit_alloc();
+ 	if (vm_arch_has_protected_memory(vm))
+ 		region->protected_phy_pages = sparsebit_alloc();
 
 -- 
 2.55.0.508.g3f0d502094-goog
