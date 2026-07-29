@@ -1,10 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Jul 2026 17:35:13 -0700
-Subject: [PATCH v9 14/41] mm: swap: Introduce lru_add_drain_progressive()
+Date: Tue, 28 Jul 2026 17:35:14 -0700
+Subject: [PATCH v9 15/41] KVM: guest_memfd: Handle lru_add fbatch refcounts
+ during conversion safety check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-gmem-inplace-conversion-v9-14-35f9aec2aed2@google.com>
+Message-Id: <20260728-gmem-inplace-conversion-v9-15-35f9aec2aed2@google.com>
 References: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 In-Reply-To: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,114 +40,94 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2983;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2739;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=z1k7bYULkqVrzF37fMOsSzxA45ibiL0mHnNKZDzJmd4=;
- b=TM3b/13YyGrFO85K9kaTUS8mgpgnU4Y/aXT5M33Ug87O/Lo9F++1+AEIN2PUps1BAHuyg7UuP
- 9q+hhwykKs8C0S2KklFGsxHRwALYYGPR3CNE+OCsczlAkk2peNgz2fe
+ bh=yzGmlEDFy/cjLSw+iMJeM2ur0Qa630sqxH0mSnKpbLc=;
+ b=bHbpb3CAou9uPxE9qLS+0Ete0qwRLtl5oyfQAGGSUyU/rOr+nAFuNfXSrcqFW31J95vZyoagb
+ J95vuSBHVIqDOJiMFt4O3/MaVCuQAloHhhFBIU/6XCZMXUwmIiUmtAk
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extract the progressive LRU drain retry logic from
-collect_longterm_unpinnable_folios() into a reusable helper,
-lru_add_drain_progressive().
+When checking if a guest_memfd folio is safe for conversion, its refcount
+is examined. A folio may be present in a per-CPU lru_add fbatch, which
+temporarily increases its refcount. This can lead to a false positive,
+incorrectly indicating that the folio is in use and preventing the
+conversion, even if it is otherwise safe.
 
-When attempting to isolate folios that may still reside in per-CPU folio
-batches, draining is escalated progressively:
+The conversion process might not be on the same CPU that holds the folio in
+its fbatch. Hence, use lru_add_drain_progressive() to progressively drain
+lru_add fbatches.
 
-1. State 0: Call lru_add_drain() to flush local CPU batches.
-2. State 1: Call lru_add_drain_all() to flush all CPU batches.
-3. State >= 2: Return false to stop retrying.
-
-Refactor collect_longterm_unpinnable_folios() to use this new helper.
-
-The helper will be used by KVM's guest_memfd in a later patch.
+guest_memfd folios are unevictable, so they can only reside in the lru_add
+fbatch. If the folio's refcount is still unsafe after draining, then the
+conversion is truly unsafe and has to be aborted.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/swap.h |  2 ++
- mm/gup.c             | 19 ++++++-------------
- mm/swap.c            | 15 +++++++++++++++
- 3 files changed, 23 insertions(+), 13 deletions(-)
+ mm/swap.c              |  2 ++
+ virt/kvm/guest_memfd.c | 12 ++++++++++--
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 8f0f68e245baa..cd54f73f34f39 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -344,6 +344,8 @@ extern void lru_add_drain(void);
- extern void lru_add_drain_cpu(int cpu);
- extern void lru_add_drain_cpu_zone(struct zone *zone);
- extern void lru_add_drain_all(void);
-+bool lru_add_drain_progressive(int *drain_state);
-+
- void folio_deactivate(struct folio *folio);
- void folio_mark_lazyfree(struct folio *folio);
- extern void swap_setup(void);
-diff --git a/mm/gup.c b/mm/gup.c
-index 0692119b79043..5f00435e2c635 100644
---- a/mm/gup.c
-+++ b/mm/gup.c
-@@ -2268,7 +2268,7 @@ static unsigned long collect_longterm_unpinnable_folios(
- {
- 	unsigned long collected = 0;
- 	struct folio *folio;
--	int drained = 0;
-+	int drain_state = 0;
- 	long i = 0;
- 
- 	for (folio = pofs_get_folio(pofs, i); folio;
-@@ -2287,18 +2287,11 @@ static unsigned long collect_longterm_unpinnable_folios(
- 			continue;
- 		}
- 
--		if (drained == 0 && folio_may_be_lru_cached(folio) &&
--				folio_ref_count(folio) !=
--				folio_expected_ref_count(folio) + 1) {
--			lru_add_drain();
--			drained = 1;
--		}
--		if (drained == 1 && folio_may_be_lru_cached(folio) &&
--				folio_ref_count(folio) !=
--				folio_expected_ref_count(folio) + 1) {
--			lru_add_drain_all();
--			drained = 2;
--		}
-+		while (folio_may_be_lru_cached(folio) &&
-+		       folio_ref_count(folio) !=
-+		       folio_expected_ref_count(folio) + 1 &&
-+		       lru_add_drain_progressive(&drain_state))
-+			;
- 
- 		if (!folio_isolate_lru(folio))
- 			continue;
 diff --git a/mm/swap.c b/mm/swap.c
-index 588f50d8f1a8c..0f9465d31fe52 100644
+index 0f9465d31fe52..4427d76c88d6d 100644
 --- a/mm/swap.c
 +++ b/mm/swap.c
-@@ -950,6 +950,21 @@ void lru_add_drain_all(void)
- }
- #endif /* CONFIG_SMP */
+@@ -37,6 +37,7 @@
+ #include <linux/page_idle.h>
+ #include <linux/local_lock.h>
+ #include <linux/buffer_head.h>
++#include <linux/kvm_types.h>
  
-+bool lru_add_drain_progressive(int *drain_state)
-+{
-+	if (*drain_state == 0) {
-+		lru_add_drain();
-+		*drain_state = 1;
-+		return true;
-+	}
-+	if (*drain_state == 1) {
-+		lru_add_drain_all();
-+		*drain_state = 2;
-+		return true;
-+	}
-+	return false;
-+}
-+
+ #include "internal.h"
+ 
+@@ -964,6 +965,7 @@ bool lru_add_drain_progressive(int *drain_state)
+ 	}
+ 	return false;
+ }
++EXPORT_SYMBOL_FOR_KVM(lru_add_drain_progressive);
+ 
  atomic_t lru_disable_count = ATOMIC_INIT(0);
  
- /*
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index 928fc7f4a01e4..505bb6747620b 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -8,6 +8,7 @@
+ #include <linux/mempolicy.h>
+ #include <linux/pseudo_fs.h>
+ #include <linux/pagemap.h>
++#include <linux/swap.h>
+ 
+ #include "kvm_mm.h"
+ 
+@@ -554,6 +555,7 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 	const int filemap_get_folios_refcount = 1;
+ 	pgoff_t last = start + nr_pages - 1;
+ 	struct folio_batch fbatch;
++	int drain_state = 0;
+ 	bool safe = true;
+ 	pgoff_t next;
+ 	int i;
+@@ -565,9 +567,15 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 
+ 		for (i = 0; i < folio_batch_count(&fbatch); ++i) {
+ 			struct folio *folio = fbatch.folios[i];
++			int expected_refcount = folio_nr_pages(folio) +
++						filemap_get_folios_refcount;
+ 
+-			if (folio_ref_count(folio) !=
+-			    folio_nr_pages(folio) + filemap_get_folios_refcount) {
++			while (folio_may_be_lru_cached(folio) &&
++			       folio_ref_count(folio) != expected_refcount &&
++			       lru_add_drain_progressive(&drain_state))
++				;
++
++			if (folio_ref_count(folio) != expected_refcount) {
+ 				safe = false;
+ 				*err_index = max(start, folio->index);
+ 				break;
 
 -- 
 2.55.0.508.g3f0d502094-goog
