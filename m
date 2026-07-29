@@ -1,14 +1,13 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Subject: [PATCH 0/2] Support for pmic-glink in SM8475
-Date: Wed, 29 Jul 2026 15:48:23 -0400
-Message-Id: <20260729-sm8475-pmic-glink-v1-0-c2e1967c04de@proton.me>
+Date: Wed, 29 Jul 2026 15:48:24 -0400
+Subject: [PATCH 1/2] dt-bindings: soc: qcom: qcom,pmic-glink: Add
+ compatible string for SM8475
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5DQBCA4VeROXcSXV1LX0UcWIMpluzQNBHv3
- sXxO/z/DkKeSeAd7eDpy8KzC3g+IrB95TpCboJBxSqNjcpRpuxlNC4TW+xGdgNqQzpt86xRdQK
- hWzy1/LueRXlbtvpDdj1HcBx/Vr/GmHUAAAA=
-X-Change-ID: 20260729-sm8475-pmic-glink-57e56f98d2b3
+Message-Id: <20260729-sm8475-pmic-glink-v1-1-c2e1967c04de@proton.me>
+References: <20260729-sm8475-pmic-glink-v1-0-c2e1967c04de@proton.me>
+In-Reply-To: <20260729-sm8475-pmic-glink-v1-0-c2e1967c04de@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,37 +18,36 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
  phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785354535; l=877;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785354535; l=839;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=SWisuBb4nkusEArnjWhT2oFMW033z9vtu3jY510Jhno=;
- b=sFRd8CMMnhQdQrtQrgSDCqW6VvcJtydCsQOzOuZgpBbUzIgLay6BbaHKVmU+ZQYXrhi+6DIhb
- fzAcjWx7yamC85Bfra7+So3MdluKO1UczF8zErZRbL/wFFZ5vnjFPM+
+ bh=0RkYfT7rea1utUnMdAEKOGzdpJNp1iGdKhG5L3zAaz0=;
+ b=nG9XgR+swDbx10GNYeE0rqt6DsG1HzIXuQw3qvkJLB/hoDC23FkoZxQHaoZ4W5jtDj376FVBf
+ rxsybq70HEVDtf/9G4aq4bSuu6G+CuFTsVhUj5q+z3LgJPTMPTLm5bk
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds a compatible string for SM8475 for supporting
-pmic-glink.
-This way, confusion is avoided, because SM8475 takes most
-(CPU/GPU/reserved-memory/etc.) things from SM8450 and some (PHY/eUSB)
-from SM8550.
-Instead of using one or the other, add a different compatible string.
+Add compatible string for pmic-glink.
 
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
-Esteban Urrutia (2):
-      dt-bindings: soc: qcom: qcom,pmic-glink: Add compatible string for SM8475
-      usb: typec: ucsi: ucsi_glink: Add compatible string for SM8475
-
  Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml | 1 +
- drivers/usb/typec/ucsi/ucsi_glink.c                             | 1 +
- 2 files changed, 2 insertions(+)
----
-base-commit: 78bc8af4affb9a732504eb22eeac7d1e50883853
-change-id: 20260729-sm8475-pmic-glink-57e56f98d2b3
+ 1 file changed, 1 insertion(+)
 
-Best regards,
---  
-Esteban Urrutia <esteuwu@proton.me>
+diff --git a/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml b/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml
+index 16ad4f5698fc..c80c72411381 100644
+--- a/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml
++++ b/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml
+@@ -30,6 +30,7 @@ properties:
+               - qcom,sc8280xp-pmic-glink
+               - qcom,sm8350-pmic-glink
+               - qcom,sm8450-pmic-glink
++              - qcom,sm8475-pmic-glink
+               - qcom,sm8550-pmic-glink
+           - const: qcom,pmic-glink
+       - items:
+
+-- 
+2.55.0
 
