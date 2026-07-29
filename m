@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 29 Jul 2026 22:19:56 +0200
-Subject: [PATCH RESEND v9 1/9] media: qcom: camss: csiphy-3ph: Fix lane
- mask calculation
+Date: Wed, 29 Jul 2026 22:19:57 +0200
+Subject: [PATCH RESEND v9 2/9] media: qcom: camss: csiphy: Introduce PHY
+ configuration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260729-qcom-cphy-v9-1-1f8d9fdab037@ixit.cz>
+Message-Id: <20260729-qcom-cphy-v9-2-1f8d9fdab037@ixit.cz>
 References: <20260729-qcom-cphy-v9-0-1f8d9fdab037@ixit.cz>
 In-Reply-To: <20260729-qcom-cphy-v9-0-1f8d9fdab037@ixit.cz>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -25,57 +25,97 @@ Cc: Frank Li <Frank.Li@nxp.com>,
  linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1187; i=david@ixit.cz;
- h=from:subject:message-id; bh=4gZLnNPEAXXeOriBAOpQ0RLijJCSPBaruO2JK2La25Y=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqamB0D/WEwBLCTjLj8KeBnVkmz70gKtjM+vX5r
- RH9WRRTRUSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCampgdAAKCRBgAj/E00kg
- ctcuEADJTLBzW99W5nyfBGx+t44Y8VhURBxCKlTzKZkxgbLt5NkzPvIi6k+LQCiQtbR4KE1BRH6
- +uTClKFxsyUslZKgBaJi3qVPY8AYPgS3MHlW8d42aUJPTh96LVCqeGrbomLOXiDelfrT9dEaPUQ
- +DM04Bv3QQ0YfbFsXuDxOWSqSelGbCtwBtF3jBkTzoe5TNdkyrJMvKEznMMK7IB5CmA2zzHb3Q3
- ksADiLAg6cmC1wi8qK5mbEZPcRz4kKY0OEEeFxvDyGoPfoel4xcH0/WxI/UK6HW16hQG6die2KG
- mdStvJ3Lz8DArQFDi5UyiDByIhIT0h01TUEuICOgOUnmPWSNd4d20HfThUqu7tiNgfx5rbFMJhB
- AEXSOr7d29BlGY9bFt8AYCim5rsTTxbUjWV4JQ47+8rJlPm9VqOpFWRAX2oUNKu9cj+3v9aSqUA
- 2CuMLDbNJ40KomJalvlLhnyKgoVnxt1Ybatq1kznQ+dHCU/m6l+jrZQAYf/RxnPdXCgsP01q7Qs
- uNBnSJUlS/Rz9TBRvchvYqwb4j8MHu6Faq0DWPr8xSoBsr414WbIGCPX6HJFEqLdM6eAqM5ESfG
- p2usBT8qhMLnMroY8EW10nkCdY/QUfaT8dIPfJupi0HlNTbWhhYFtcX6M6FHW0kYZB//0s7ABHn
- Dx25ZG6RMV703Yw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2428; i=david@ixit.cz;
+ h=from:subject:message-id; bh=X7AOYJ4niyGHoBf3ode1cySyXfbTbBCjzlnLn/fppe8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqamB0UTUyMu3zr4PkZsyo96BQ9t0E6rPnBZ2iG
+ tzI5GI3aH2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCampgdAAKCRBgAj/E00kg
+ cpWbD/0TzgJlNU/61yRJEakc3/O83Qkv7OVrSvJqKOA0h+HDGZsZ85HEyxwhCjnuYM5+hHz2AMW
+ axHQRkkb7tYwzTPR23u1nH0S5Z5+e6c7f/F4mW/zDG2qA1vOlVKXmyuD8am9AgK8zfwxuVxZf5f
+ ELuzEytKyJ+8ugSJECccwbmR7NKqQ3fpKgZhDPemI1EcBevyzLFxGjkNLbZB/B0CM+ncYsahWkz
+ Ub+v5DN794ZBujTHffkoGzu5jij43YP6M3E+59CQKxoKj7wHkxWLtzNtL6c73He+ovr2Hn1SuBT
+ h/lKAA5Kkz8iX65ocC6g6UDlUvlq1CaxD4Rttod/sdAZPSPC4XcCXpTDO0b7ZZNPOiGF0PCEwLG
+ ez3Pnx72n/pVH0teM2BER2K9wIctnue/0mElGt8FuNosVeWUnJ3EgPE8cuxh2nkcHnDJSmh0Syg
+ LhN+ThmEQwSr1CpoV4u1SKt1vDQieGDnyLU5i0aH5OI788eZi7tPpDeVjnfTbAlnDXLe7K6Kt7B
+ L0pNSgS8R1R7UycC3OF9CWiECAXYwrvNtX7qfoI+4Th3WrOARVIhU1nJKTe3aurod3P3pch3LbT
+ v4324rqvac8B9GJMb/Z+rPiXvv+gUm8js3GqvMAn1UUOEuikyRRak9bL2Mx/QPn7JICN+1Drybe
+ cDgqy1VfelqH6eg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lane mask must be multiplied by 2, but this was accidentally omitted.
+Read PHY configuration from the device-tree bus-type and save it into
+the csiphy structure for later use.
 
-Reviewed-by: Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>
-Suggested-by: Nihal Kumar Gupta <nihal.gupta@oss.qualcomm.com>
+For C-PHY, skip clock line configuration, as there is none.
+
+Acked-by: Cory Keitz <ckeitz@amazon.com>
+Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
+Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/media/platform/qcom/camss/camss-csiphy.h | 2 ++
+ drivers/media/platform/qcom/camss/camss.c        | 8 ++++++--
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-index dac8d2ecf7995..7c8c0e41bc62f 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-@@ -1114,17 +1114,17 @@ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
- static u8 csiphy_get_lane_mask(struct csiphy_lanes_cfg *lane_cfg)
- {
- 	u8 lane_mask;
- 	int i;
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.h b/drivers/media/platform/qcom/camss/camss-csiphy.h
+index 9d9657b82f748..2ebb307be18ba 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy.h
++++ b/drivers/media/platform/qcom/camss/camss-csiphy.h
+@@ -25,21 +25,23 @@
  
- 	lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
+ struct csiphy_lane {
+ 	u8 pos;
+ 	u8 pol;
+ };
  
- 	for (i = 0; i < lane_cfg->num_data; i++)
--		lane_mask |= 1 << lane_cfg->data[i].pos;
-+		lane_mask |= BIT(lane_cfg->data[i].pos * 2);
+ /**
+  * struct csiphy_lanes_cfg - CSIPHY lanes configuration
++ * @phy_cfg:  interface selection (C-PHY or D-PHY)
+  * @num_data: number of data lanes
+  * @data:     data lanes configuration
+  * @clk:      clock lane configuration (only for D-PHY)
+  */
+ struct csiphy_lanes_cfg {
++	enum v4l2_mbus_type phy_cfg;
+ 	int num_data;
+ 	struct csiphy_lane *data;
+ 	struct csiphy_lane clk;
+ };
  
- 	return lane_mask;
- }
+ struct csiphy_csi2_cfg {
+ 	struct csiphy_lanes_cfg lane_cfg;
+ };
+diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
+index 2123f6388e3d7..072c428e25166 100644
+--- a/drivers/media/platform/qcom/camss/camss.c
++++ b/drivers/media/platform/qcom/camss/camss.c
+@@ -4761,19 +4761,23 @@ static int camss_parse_endpoint_node(struct device *dev,
+ 	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
+ 		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
+ 		return -EINVAL;
+ 	}
  
- static bool csiphy_is_gen2(u32 version)
- {
- 	bool ret = false;
+ 	csd->interface.csiphy_id = vep.base.port;
  
+ 	mipi_csi2 = &vep.bus.mipi_csi2;
+-	lncfg->clk.pos = mipi_csi2->clock_lane;
+-	lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+ 	lncfg->num_data = mipi_csi2->num_data_lanes;
++	lncfg->phy_cfg = vep.bus_type;
++
++	if (lncfg->phy_cfg != V4L2_MBUS_CSI2_CPHY) {
++		lncfg->clk.pos = mipi_csi2->clock_lane;
++		lncfg->clk.pol = mipi_csi2->lane_polarities[0];
++	}
+ 
+ 	lncfg->data = devm_kcalloc(dev,
+ 				   lncfg->num_data, sizeof(*lncfg->data),
+ 				   GFP_KERNEL);
+ 	if (!lncfg->data)
+ 		return -ENOMEM;
+ 
+ 	for (i = 0; i < lncfg->num_data; i++) {
 
 -- 
 2.53.0
