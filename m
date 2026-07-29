@@ -1,11 +1,10 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Jul 2026 17:35:12 -0700
-Subject: [PATCH v9 13/41] KVM: guest_memfd: Return early if range already
- has requested attributes
+Date: Tue, 28 Jul 2026 17:35:13 -0700
+Subject: [PATCH v9 14/41] mm: swap: Introduce lru_add_drain_progressive()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-gmem-inplace-conversion-v9-13-35f9aec2aed2@google.com>
+Message-Id: <20260728-gmem-inplace-conversion-v9-14-35f9aec2aed2@google.com>
 References: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 In-Reply-To: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -40,100 +39,114 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2782;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2983;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=VCw8XceJPrjTLah5c+6aK9kQo6IEla8VXHadDNB1FcI=;
- b=dcBMZOr0ZBpW+kNZxueejs5pg+E2UIMJT+1ewBhICvI6Vm083tE0K24FdLuoGexaDLE8ccRD+
- CED+onKhmkZCsGNLk6P9uXKblDRgo65C2kzAuAT5L5xLYT5Ht370hxA
+ bh=z1k7bYULkqVrzF37fMOsSzxA45ibiL0mHnNKZDzJmd4=;
+ b=TM3b/13YyGrFO85K9kaTUS8mgpgnU4Y/aXT5M33Ug87O/Lo9F++1+AEIN2PUps1BAHuyg7UuP
+ 9q+hhwykKs8C0S2KklFGsxHRwALYYGPR3CNE+OCsczlAkk2peNgz2fe
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extract a helper out of kvm_gmem_range_is_private() that checks that a
-range has given attributes.
+Extract the progressive LRU drain retry logic from
+collect_longterm_unpinnable_folios() into a reusable helper,
+lru_add_drain_progressive().
 
-Optimize setting memory attributes by returning early if all pages in the
-requested range already has the requested attributes.
+When attempting to isolate folios that may still reside in per-CPU folio
+batches, draining is escalated progressively:
 
-Reviewed-by: Fuad Tabba <tabba@google.com>
-Tested-by: Shivank Garg <shivankg@amd.com>
+1. State 0: Call lru_add_drain() to flush local CPU batches.
+2. State 1: Call lru_add_drain_all() to flush all CPU batches.
+3. State >= 2: Return false to stop retrying.
+
+Refactor collect_longterm_unpinnable_folios() to use this new helper.
+
+The helper will be used by KVM's guest_memfd in a later patch.
+
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 35 ++++++++++++++++++++++++-----------
- 1 file changed, 24 insertions(+), 11 deletions(-)
+ include/linux/swap.h |  2 ++
+ mm/gup.c             | 19 ++++++-------------
+ mm/swap.c            | 15 +++++++++++++++
+ 3 files changed, 23 insertions(+), 13 deletions(-)
 
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 612fcde4ae8ea..928fc7f4a01e4 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -94,6 +94,24 @@ static bool kvm_gmem_is_shared_mem(struct inode *inode, pgoff_t index)
- 	return !kvm_gmem_is_private_mem(inode, index);
- }
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 8f0f68e245baa..cd54f73f34f39 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -344,6 +344,8 @@ extern void lru_add_drain(void);
+ extern void lru_add_drain_cpu(int cpu);
+ extern void lru_add_drain_cpu_zone(struct zone *zone);
+ extern void lru_add_drain_all(void);
++bool lru_add_drain_progressive(int *drain_state);
++
+ void folio_deactivate(struct folio *folio);
+ void folio_mark_lazyfree(struct folio *folio);
+ extern void swap_setup(void);
+diff --git a/mm/gup.c b/mm/gup.c
+index 0692119b79043..5f00435e2c635 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -2268,7 +2268,7 @@ static unsigned long collect_longterm_unpinnable_folios(
+ {
+ 	unsigned long collected = 0;
+ 	struct folio *folio;
+-	int drained = 0;
++	int drain_state = 0;
+ 	long i = 0;
  
-+static bool kvm_gmem_range_has_attributes(struct inode *inode,
-+					  pgoff_t index, size_t nr_pages,
-+					  u64 attributes)
+ 	for (folio = pofs_get_folio(pofs, i); folio;
+@@ -2287,18 +2287,11 @@ static unsigned long collect_longterm_unpinnable_folios(
+ 			continue;
+ 		}
+ 
+-		if (drained == 0 && folio_may_be_lru_cached(folio) &&
+-				folio_ref_count(folio) !=
+-				folio_expected_ref_count(folio) + 1) {
+-			lru_add_drain();
+-			drained = 1;
+-		}
+-		if (drained == 1 && folio_may_be_lru_cached(folio) &&
+-				folio_ref_count(folio) !=
+-				folio_expected_ref_count(folio) + 1) {
+-			lru_add_drain_all();
+-			drained = 2;
+-		}
++		while (folio_may_be_lru_cached(folio) &&
++		       folio_ref_count(folio) !=
++		       folio_expected_ref_count(folio) + 1 &&
++		       lru_add_drain_progressive(&drain_state))
++			;
+ 
+ 		if (!folio_isolate_lru(folio))
+ 			continue;
+diff --git a/mm/swap.c b/mm/swap.c
+index 588f50d8f1a8c..0f9465d31fe52 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -950,6 +950,21 @@ void lru_add_drain_all(void)
+ }
+ #endif /* CONFIG_SMP */
+ 
++bool lru_add_drain_progressive(int *drain_state)
 +{
-+	struct maple_tree *mt = &GMEM_I(inode)->attributes;
-+	pgoff_t end = index + nr_pages - 1;
-+	void *entry;
-+
-+	lockdep_assert(mt_lock_is_held(mt));
-+
-+	mt_for_each(mt, entry, index, end) {
-+		if (kvm_gmem_interpret_entry(inode, entry) != attributes)
-+			return false;
++	if (*drain_state == 0) {
++		lru_add_drain();
++		*drain_state = 1;
++		return true;
 +	}
-+
-+	return true;
++	if (*drain_state == 1) {
++		lru_add_drain_all();
++		*drain_state = 2;
++		return true;
++	}
++	return false;
 +}
 +
+ atomic_t lru_disable_count = ATOMIC_INIT(0);
+ 
  /*
-  * Returns a locked folio on success.  The caller is responsible for
-  * setting the up-to-date flag before the memory is mapped into the guest.
-@@ -611,12 +629,15 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
- 	pgoff_t end = start + nr_pages;
- 	struct maple_tree *mt;
- 	struct ma_state mas;
--	int r;
-+	int r = 0;
- 
- 	mt = &gi->attributes;
- 
- 	filemap_invalidate_lock(mapping);
- 
-+	if (kvm_gmem_range_has_attributes(inode, start, nr_pages, attrs))
-+		goto out;
-+
- 	mas_init(&mas, mt, start);
- 	r = kvm_gmem_mas_preallocate(&mas, attrs, start, nr_pages);
- 	if (r) {
-@@ -1107,22 +1128,14 @@ static bool kvm_range_is_private(struct file *file, pgoff_t index,
- 				 size_t nr_pages, struct kvm *kvm, gfn_t gfn)
- {
- 	struct inode *inode = file_inode(file);
--	pgoff_t last = index + nr_pages - 1;
--	struct maple_tree *mt;
--	void *entry;
- 
- 	if (!gmem_in_place_conversion)
- 		return kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + nr_pages,
- 							  KVM_MEMORY_ATTRIBUTE_PRIVATE,
- 							  KVM_MEMORY_ATTRIBUTE_PRIVATE);
- 
--	mt = &GMEM_I(inode)->attributes;
--	mt_for_each(mt, entry, index, last) {
--		if (kvm_gmem_interpret_entry(inode, entry) !=
--		    KVM_MEMORY_ATTRIBUTE_PRIVATE)
--			return false;
--	}
--	return true;
-+	return kvm_gmem_range_has_attributes(inode, index, nr_pages,
-+					     KVM_MEMORY_ATTRIBUTE_PRIVATE);
- }
- 
- static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
 
 -- 
 2.55.0.508.g3f0d502094-goog
