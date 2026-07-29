@@ -1,65 +1,61 @@
-From: Esteban Urrutia <esteuwu@proton.me>
-Date: Wed, 29 Jul 2026 15:31:55 -0400
-Subject: [PATCH 2/2] ASoC: qcom: sc8280xp: Add support for SM8475
+From: =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
+Subject: [PATCH 0/2] ASoC: codecs: lpass-{tx,wsa}-macro: fix enum kcontrol
+ accesses
+Date: Wed, 29 Jul 2026 21:38:11 +0200
+Message-Id: <20260729-worktree-lpass-tx-macro-enum-fix-v1-0-0cf02c681332@dawidwrobel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260729-sm8475-asoc-v1-2-3edad8aa7628@proton.me>
-References: <20260729-sm8475-asoc-v1-0-3edad8aa7628@proton.me>
-In-Reply-To: <20260729-sm8475-asoc-v1-0-3edad8aa7628@proton.me>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2NwQqDMBAFf0X27IINqNhfKR5i+tIu1kR2bSuI/
+ 97Q48xh5iCDCoyu1UGKj5jkVOBSVxSePj3Aci9MrnFd07uBv1nnTQF+rd6Mt50XHzQz0nvhKDu
+ HNk4+Ivbt1FHJrIqi/4vbeJ4/K1E/ynIAAAA=
+X-Change-ID: 20260729-worktree-lpass-tx-macro-enum-fix-c5fbafef75b6
 To: Srinivas Kandagatla <srini@kernel.org>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-sound@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785353516; l=1427;
- i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=LPNPk32JR+3Yfc6bcAUf5H0iSCn6KrddoUkqE6S79To=;
- b=kqdC7AoaptT1gMKNhyV6c/egWFeHnpURHaXskErHKYgEFEinbXaTeA0+rTKVP8VooK+vVx2wZ
- f44wenZn1N3B1LnzcCNy7ET5vhfCTAVKBJDWcWNgyWReVHZokn3CCzA
-X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
- pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
-X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1083; i=me@dawidwrobel.com;
+ h=from:subject:message-id; bh=jsMXZT4gccjDa/7ErbHIlfifUX0YqbHsZ0/8RwqBSAE=;
+ b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRlha1nS6p4uetNRXn3lj2mLXef7f3AlXv6pFaZpWH8M
+ mmhZZKNHaUsDGJcDLJiiix6aUF7rIJffn/34nc4zBxWJpAhDFycAjCRXRsZGbrKl8v6bXn1av25
+ /67Xrkit/Fsp9C+L9/GluJhjezyfxLxjZLi09bby5c8yP+ZtUpE+OmX7tdsfV61ZmMf868V9RQ+
+ Vn7XsAA==
+X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
+ fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
+X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With this, SM8475 topologies can have their own firmware folder.
+Both drivers access enumerated controls through value.integer.value[0]
+instead of value.enumerated.item[0]. The same bug was fixed in rx-macro
+and va-macro in 2022 (bcfe5f76cc40, 0ea5eff7c606); tx-macro and
+wsa-macro were missed.
 
-Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
+On 64-bit kernels with CONFIG_SND_CTL_DEBUG this trips the elem value
+sanity check, and every read of the affected controls fails with
+-EINVAL.
+
+Reproduced and fixed on a Xiaomi Mi Pad 5 Pro (SM8250) for tx-macro.
+wsa-macro is compile-tested only — that codec is not instantiated on
+this hardware.
+
+Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
 ---
- sound/soc/qcom/sc8280xp.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Dawid Wróbel (2):
+      ASoC: codecs: lpass-tx-macro: Fix enum kcontrol accesses
+      ASoC: codecs: lpass-wsa-macro: Fix enum kcontrol accesses
 
-diff --git a/sound/soc/qcom/sc8280xp.c b/sound/soc/qcom/sc8280xp.c
-index a9304784d41e..f0f3cd8fca38 100644
---- a/sound/soc/qcom/sc8280xp.c
-+++ b/sound/soc/qcom/sc8280xp.c
-@@ -362,6 +362,13 @@ static const struct snd_soc_common sm8450_priv_data = {
- 	.wcd_jack = true,
- };
- 
-+static const struct snd_soc_common sm8475_priv_data = {
-+	.driver_name = "sm8475",
-+	.dapm_widgets = sc8280xp_dapm_widgets,
-+	.num_dapm_widgets = ARRAY_SIZE(sc8280xp_dapm_widgets),
-+	.wcd_jack = true,
-+};
-+
- static const struct snd_soc_common sm8550_priv_data = {
- 	.driver_name = "sm8550",
- 	.dapm_widgets = sc8280xp_dapm_widgets,
-@@ -395,6 +402,7 @@ static const struct of_device_id snd_sc8280xp_dt_match[] = {
- 	{ .compatible = "qcom,qcs9100-sndcard", .data = &qcs9100_priv_data },
- 	{ .compatible = "qcom,sc8280xp-sndcard", .data = &sc8280xp_priv_data },
- 	{ .compatible = "qcom,sm8450-sndcard", .data = &sm8450_priv_data },
-+	{ .compatible = "qcom,sm8475-sndcard", .data = &sm8475_priv_data },
- 	{ .compatible = "qcom,sm8550-sndcard", .data = &sm8550_priv_data },
- 	{ .compatible = "qcom,sm8650-sndcard", .data = &sm8650_priv_data },
- 	{ .compatible = "qcom,sm8750-sndcard", .data = &sm8750_priv_data },
+ sound/soc/codecs/lpass-tx-macro.c  | 4 ++--
+ sound/soc/codecs/lpass-wsa-macro.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+---
+base-commit: 57b8e2d666a31fa201432d58f5fe3469a0dd83ba
+change-id: 20260729-worktree-lpass-tx-macro-enum-fix-c5fbafef75b6
 
+Best regards,
 -- 
-2.55.0
+Dawid Wróbel <me@dawidwrobel.com>
 
