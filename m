@@ -1,14 +1,12 @@
 From: Yiyang Chen <chenyy23@mails.tsinghua.edu.cn>
-Subject: [PATCH bpf v4 0/4] bpf: Preserve pointer state for commuted
- arithmetic
-Date: Wed, 29 Jul 2026 15:18:26 +0000
-Message-Id: <20260729-c3-035-public-bpf-v4-v4-0-8ee297e2346b@mails.tsinghua.edu.cn>
+Date: Wed, 29 Jul 2026 15:18:27 +0000
+Subject: [PATCH bpf v4 1/4] bpf: simplify sanitize_err() signature
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMIZamoC/x2MSQqAMAwAvyI5G4i1rl8RD7amGhAtLYog/t3ic
- WBmHogchCP02QOBL4ly7Al0noFdp31hlDkxKFI1NapDWyKVFfrTbGLReIeXRjKqnTQTF+wgpT6
- wk/vfDpAcGN/3A0Corz5rAAAA
+Message-Id: <20260729-c3-035-public-bpf-v4-v4-1-8ee297e2346b@mails.tsinghua.edu.cn>
+References: <20260729-c3-035-public-bpf-v4-v4-0-8ee297e2346b@mails.tsinghua.edu.cn>
+In-Reply-To: <20260729-c3-035-public-bpf-v4-v4-0-8ee297e2346b@mails.tsinghua.edu.cn>
 To: Alexei Starovoitov <ast@kernel.org>, 
  Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
  Eduard Zingerman <eddyz87@gmail.com>, 
@@ -22,82 +20,94 @@ Cc: John Fastabend <john.fastabend@gmail.com>,
  bpf@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Yiyang Chen <chenyy23@mails.tsinghua.edu.cn>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785338329; l=3434;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785338329; l=2912;
  i=chenyy23@mails.tsinghua.edu.cn; s=kernel; h=from:subject:message-id;
- bh=kvzOz+pD3rr/TmfPHw9vR90Y3iMUBOxN+9qGwOovYBY=;
- b=jFMjmF8sYmrK3IVJNkS9/UMTjigMq1lhiAAkr9vrzQfjS7R8a0A+NQ+uaxo9GtAE4tnJ4ka6s
- 8w/BTSllS8nBaO4E2pOmr1RItt9fdlU7wrvIWtKPO+joSs4gcRC7or3
+ bh=GVQU8AnKSNW9owP8OxZQ3/UbDFKuSBhgGQANm+vY8V8=;
+ b=S7JpiM+T54LdGYo0bXqvB5yR6ZU7IPIwWWjaqVy3nUBaysIxF93v/lV2pkm3U881VicJrYfsY
+ miMuoOq3h9CDoHWU31m7iWZ1O42d3JMkqh9C7aYR7dnSC2XPQiloH+T
 X-Developer-Key: i=chenyy23@mails.tsinghua.edu.cn; a=ed25519;
  pk=+Q11PEDVzoU+87KHlIeNWKwv/GiutzE5094ej7opM+s=
 X-Endpoint-Received: by B4 Relay for chenyy23@mails.tsinghua.edu.cn/kernel with auth_id=900
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series fixes pointer-state propagation for commuted scalar += pointer
-arithmetic in the verifier.
+From: Eduard Zingerman <eddyz87@gmail.com>
 
-Patch 1 simplifies sanitize_err() before the pointer-state change. Patch 2
-keeps the full pointer register state when the pointer operand is the source
-of the add, preserving fields such as the stack frame number and parent id.
-Patch 3 moves the untrusted PTR_TO_MEM early return after state propagation,
-so scalar += untrusted_pointer remains usable through the probe-read path.
-Patch 4 adds verifier selftests for stack frame number preservation,
-readonly-untrusted memory access, and dynptr data-slice invalidation.
+The sanitize_err() function is called when:
+- ptr += scalar
+- scalar += ptr
+- scalar += scalar
+ALU operations are processed.
 
-Changes in v4:
-- Target the bpf fixes tree because the affected behavior is present in
-  released kernels.
-- Add Eduard's sanitize_err() cleanup and revised pointer-state patch, reusing
-  the caller's temporary offset register instead of verifier-env scratch
-  storage.
-- Correct the stack-frame Fixes tag to the BPF-to-BPF call verification
-  commit identified by Shung-Hsi.
-- Fix the dynptr test comment style and retain the source-register clear so
-  the test isolates parent-id propagation.
-- Carry Daniel Wade's Tested-by and Eduard's selftest Acked-by from the v3
-  thread.
-- Rebase to bpf base 0ce37745d4bf.
+This commit drops offset and pointer registers parameters from its
+signature to simplify the follow-up changes for 'scalar += ptr' case.
+regs[src].type is safe to access, as it is not mutated by the callers.
 
-Changes in v3:
-- Preserve the complete pointer register state with verifier-env scratch
-  storage, addressing Eduard's comment that copying selected fields is
-  fragile and avoiding a temporary bpf_reg_state on the verifier stack.
-- Keep the existing RUN(verifier_basic_stack) dispatch unchanged and add the
-  stack regression directly to the existing verifier_basic_stack program.
-- Keep the original operand direction inside adjust_ptr_min_max_vals() by
-  saving the scalar operand in env->fake_reg[0].
-- Move untrusted PTR_TO_MEM handling after the unified pointer-state copy so
-  the commuted form remains PTR_TO_MEM before the early return.
-- Add readonly-untrusted and dynptr selftest coverage, responding to the
-  bpf-ci/static review finding that the untrusted pointer case needs a
-  regression test.
-- Clear the original dynptr data-slice register after deriving the commuted
-  alias so the regression test isolates parent-id propagation.
-- Make the readonly-untrusted return value endian-neutral by loading an int.
-- Rebase to bpf-next base a23a71823352.
-
-v3: https://lore.kernel.org/bpf/cover.1784696371.git.chenyy23@mails.tsinghua.edu.cn/
-v2: https://lore.kernel.org/bpf/cover.1784563950.git.chenyy23@mails.tsinghua.edu.cn/
-v1: https://lore.kernel.org/bpf/cover.1784563939.git.chenyy23@mails.tsinghua.edu.cn/
-
+Signed-off-by: Eduard Zingerman <eddyz87@gmail.com>
+Signed-off-by: Yiyang Chen <chenyy23@mails.tsinghua.edu.cn>
 ---
-Eduard Zingerman (1):
-      bpf: simplify sanitize_err() signature
+ kernel/bpf/verifier.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-Yiyang Chen (3):
-      bpf: Preserve pointer state for commuted arithmetic
-      bpf: Propagate untrusted pointer state in commuted arithmetic
-      selftests/bpf: Cover commuted pointer state propagation
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index 7aa47342dc659..9792d6622ffd6 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -13557,23 +13557,21 @@ static void sanitize_mark_insn_seen(struct bpf_verifier_env *env)
+ 		env->insn_aux_data[env->insn_idx].seen = env->pass_cnt;
+ }
+ 
+-static int sanitize_err(struct bpf_verifier_env *env,
+-			const struct bpf_insn *insn, int reason,
+-			const struct bpf_reg_state *off_reg,
+-			const struct bpf_reg_state *dst_reg)
++static int sanitize_err(struct bpf_verifier_env *env, const struct bpf_insn *insn, int reason)
+ {
+ 	static const char *err = "pointer arithmetic with it prohibited for !root";
+ 	const char *op = BPF_OP(insn->code) == BPF_ADD ? "add" : "sub";
+ 	u32 dst = insn->dst_reg, src = insn->src_reg;
++	struct bpf_reg_state *regs = cur_regs(env);
+ 
+ 	switch (reason) {
+ 	case REASON_BOUNDS:
+ 		verbose(env, "R%d has unknown scalar with mixed signed bounds, %s\n",
+-			off_reg == dst_reg ? dst : src, err);
++			regs[src].type == SCALAR_VALUE ? src : dst, err);
+ 		break;
+ 	case REASON_TYPE:
+ 		verbose(env, "R%d has pointer with unsupported alu operation, %s\n",
+-			off_reg == dst_reg ? src : dst, err);
++			regs[src].type == SCALAR_VALUE ? dst : src, err);
+ 		break;
+ 	case REASON_PATHS:
+ 		verbose(env, "R%d tried to %s from different maps, paths or scalars, %s\n",
+@@ -13762,7 +13760,7 @@ static int adjust_ptr_min_max_vals(struct bpf_verifier_env *env,
+ 		ret = sanitize_ptr_alu(env, insn, ptr_reg, off_reg, dst_reg,
+ 				       &info, false);
+ 		if (ret < 0)
+-			return sanitize_err(env, insn, ret, off_reg, dst_reg);
++			return sanitize_err(env, insn, ret);
+ 	}
+ 
+ 	switch (opcode) {
+@@ -13855,7 +13853,7 @@ static int adjust_ptr_min_max_vals(struct bpf_verifier_env *env,
+ 			return -EFAULT;
+ 		}
+ 		if (ret < 0)
+-			return sanitize_err(env, insn, ret, off_reg, dst_reg);
++			return sanitize_err(env, insn, ret);
+ 	}
+ 
+ 	return 0;
+@@ -14607,7 +14605,7 @@ static int adjust_scalar_min_max_vals(struct bpf_verifier_env *env,
+ 	if (sanitize_needed(opcode)) {
+ 		ret = sanitize_val_alu(env, insn);
+ 		if (ret < 0)
+-			return sanitize_err(env, insn, ret, NULL, NULL);
++			return sanitize_err(env, insn, ret);
+ 	}
+ 
+ 	/* Calculate sign/unsigned bounds and tnum for alu32 and alu64 bit ops.
 
- kernel/bpf/verifier.c                              | 45 +++++++++++-----------
- tools/testing/selftests/bpf/progs/dynptr_fail.c    | 30 +++++++++++++++
- .../selftests/bpf/progs/mem_rdonly_untrusted.c     | 17 ++++++++
- .../selftests/bpf/progs/verifier_basic_stack.c     | 41 ++++++++++++++++++++
- 4 files changed, 110 insertions(+), 23 deletions(-)
----
-base-commit: 0ce37745d4bfbc493f718169c3974898ffec8ee7
-change-id: 20260729-c3-035-public-bpf-v4-0b28a4e0e1ef
-
-Best regards,
 -- 
-Yiyang Chen <chenyy23@mails.tsinghua.edu.cn>
+2.43.0
 
