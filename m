@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Jul 2026 17:35:10 -0700
-Subject: [PATCH v9 11/41] KVM: guest_memfd: Ensure pages are not in use
- before conversion
+Date: Tue, 28 Jul 2026 17:35:11 -0700
+Subject: [PATCH v9 12/41] KVM: guest_memfd: Call arch make_shared callback
+ for to-shared conversion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-gmem-inplace-conversion-v9-11-35f9aec2aed2@google.com>
+Message-Id: <20260728-gmem-inplace-conversion-v9-12-35f9aec2aed2@google.com>
 References: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 In-Reply-To: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -40,221 +40,168 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=7235;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=6046;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Bm3dCP0RZV+AH4I30jHVb8m6ilmyXuIUbLnn+589vrw=;
- b=7s4abQgDPUSNMcRlf7F6NBPTwDL9wlLCXDSSZXXrtsmlfk4FPzBiYQHrpTypT1HA7AZ/R6S2e
- zP09RyZML0JBzxs9MW0I4NrTzJVN9RPMhsCPGRihiuTHrS21WyDO1cU
+ bh=nUCtHuvQOgEID2sEaBVtGBbYYOXxHtY/vHu5+U+7flU=;
+ b=JVHWisPEvyT64j9UDw/dyi+yBCLt8UvXH140ei1qHoEV+UPYzhmNUwNF+kbphIE4RySE9IaUa
+ pfu730RXiYBABHPhLbMD1LsZ4avlupD6hxe/0rDfL3c6Nm/B7YrSgxo
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When converting memory to private in guest_memfd, it is necessary to ensure
-that the pages are not currently being accessed by any other part of the
-kernel or userspace to avoid any current user writing to guest private
-memory.
+When memory in guest_memfd is converted from private to shared, the
+platform-specific state associated with the guest-private pages must be
+invalidated or cleaned up.
 
-guest_memfd checks for unexpected refcounts to determine whether a page is
-still in use. The only expected refcounts after unmapping the range
-requested for conversion are those that are held by guest_memfd itself.
+Iterate over the folios in the affected range and call the
+kvm_arch_gmem_invalidate() hook for each PFN range. This allows
+architectures to perform necessary teardown, such as updating hardware
+metadata or encryption states, before the pages are transitioned to the
+shared state.
 
-Update the kvm_memory_attributes2 structure to include an error_offset
-field. This allows KVM to report the exact offset where a conversion
-failed to userspace. If the safety check fails, return -EAGAIN and copy
-the error_offset back to userspace so that it can potentially retry the
-operation or handle the failure gracefully.
+Invoke this helper after indicating to KVM's mmu code that an invalidation
+is in progress to stop in-flight page faults from succeeding.
 
-Update documentation to document the error_offset field and the possible
--EAGAIN error.
+Omit support for calling the arch hook to make private, since SNP, the only
+implementer of the arch make-private hook today, would actually prefer
+making private only just before faulting memory into the NPTs.
 
-Suggested-by: David Hildenbrand <david@kernel.org>
-Co-developed-by: Vishal Annapurve <vannapurve@google.com>
-Signed-off-by: Vishal Annapurve <vannapurve@google.com>
-Reviewed-by: Fuad Tabba <tabba@google.com>
-Tested-by: Shivank Garg <shivankg@amd.com>
+Calling the make-private arch hook would require iterating both bindings
+and the filemap to find the intersection of bindings and allocated
+folios. On top of that, SNP would need to figure out whether to actually
+make private based on whether the memory is about the be faulted, or
+whether it is a conversion.
+
+This does leak SNP-specific details into guest_memfd (as in, why only
+make-shared during conversions but not make-private?), but the additional
+complexity is not worth taking on until guest_memfd has a user actually
+requiring an arch make-private call.
+
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/api.rst | 19 ++++++++++--
- include/uapi/linux/kvm.h       |  3 +-
- virt/kvm/guest_memfd.c         | 67 ++++++++++++++++++++++++++++++++++++++----
- 3 files changed, 81 insertions(+), 8 deletions(-)
+ arch/x86/include/asm/kvm-x86-ops.h |  2 +-
+ arch/x86/include/asm/kvm_host.h    |  2 +-
+ arch/x86/kvm/x86.c                 |  5 +++++
+ include/linux/kvm_host.h           |  1 +
+ virt/kvm/guest_memfd.c             | 42 ++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 50 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/virt/kvm/api.rst b/Documentation/virt/kvm/api.rst
-index de8ab3db8796a..1de6fd5fc88c4 100644
---- a/Documentation/virt/kvm/api.rst
-+++ b/Documentation/virt/kvm/api.rst
-@@ -6574,7 +6574,7 @@ KVM_S390_KEYOP_SSKE
- :Capability: KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES
- :Architectures: all
- :Type: guest_memfd ioctl
--:Parameters: struct kvm_memory_attributes2 (in)
-+:Parameters: struct kvm_memory_attributes2 (in/out)
- :Returns: 0 on success, <0 on error
- 
- Errors:
-@@ -6583,6 +6583,8 @@ Errors:
-   EINVAL     The specified `offset` or `size` was invalid (e.g. not
-              page aligned, causes an overflow, or size is zero).
-   EFAULT     The parameter address was invalid.
-+  EAGAIN     Some page within requested range had unexpected refcounts. The
-+             offset of the page will be returned in `error_offset`.
-   ENOMEM     Ran out of memory trying to track private/shared state
-   ========== ===============================================================
- 
-@@ -6596,6 +6598,7 @@ Attribute values are shared with KVM_SET_MEMORY_ATTRIBUTES.
- ::
- 
-   struct kvm_memory_attributes2 {
-+	/* in */
- 	union {
- 		__u64 address;
- 		__u64 offset;
-@@ -6603,7 +6606,9 @@ Attribute values are shared with KVM_SET_MEMORY_ATTRIBUTES.
- 	__u64 size;
- 	__u64 attributes;
- 	__u64 flags;
--	__u64 reserved[12];
-+	/* out */
-+	__u64 error_offset;
-+	__u64 reserved[11];
-   };
- 
-   #define KVM_MEMORY_ATTRIBUTE_PRIVATE           (1ULL << 3)
-@@ -6625,6 +6630,16 @@ which includes operations such as unmapping pages from the host or
- stage-2 page tables, may result in side effects on memory contents
- that vary across different trusted firmware implementations.
- 
-+If this ioctl returns -EAGAIN, the offset of the page with unexpected
-+refcounts will be returned in `error_offset`. This can occur if there
-+are transient refcounts on the pages, taken by other parts of the
-+kernel.
+diff --git a/arch/x86/include/asm/kvm-x86-ops.h b/arch/x86/include/asm/kvm-x86-ops.h
+index 5cb132eca3c35..8e0d6970c43b5 100644
+--- a/arch/x86/include/asm/kvm-x86-ops.h
++++ b/arch/x86/include/asm/kvm-x86-ops.h
+@@ -149,7 +149,7 @@ KVM_X86_OP_OPTIONAL(alloc_apic_backing_page)
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
+ KVM_X86_OP_OPTIONAL_RET0(gmem_make_private)
+ #endif
+-#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM
++#if defined(CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT) || defined(CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM)
+ KVM_X86_OP_OPTIONAL(gmem_make_shared)
+ #endif
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_INVALIDATE
+diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
+index 9fdf13b071097..ceb2abf43b76f 100644
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -1730,7 +1730,7 @@ struct kvm_x86_ops {
+ 	int (*gmem_make_private)(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ 				 kvm_pfn_t nr_pages);
+ #endif
+-#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM
++#if defined(CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT) || defined(CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM)
+ 	void (*gmem_make_shared)(kvm_pfn_t pfn, kvm_pfn_t nr_pages);
+ #endif
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_INVALIDATE
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 3308d58342955..52de3ec7c7f73 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -10639,6 +10639,11 @@ int kvm_arch_gmem_make_private(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ {
+ 	return kvm_x86_call(gmem_make_private)(kvm, gfn, pfn, nr_pages);
+ }
 +
-+Userspace is expected to figure out how to remove all known refcounts
-+on the shared pages, such as refcounts taken by get_user_pages(), and
-+try the ioctl again. A possible source of these long term refcounts is
-+if the guest_memfd memory was pinned in IOMMU page tables.
-+
- See also: :ref: `KVM_SET_MEMORY_ATTRIBUTES`.
++void kvm_arch_gmem_make_shared(kvm_pfn_t pfn, kvm_pfn_t nr_pages)
++{
++	kvm_x86_call(gmem_make_shared)(pfn, nr_pages);
++}
+ #endif
  
- .. _kvm_run:
-diff --git a/include/uapi/linux/kvm.h b/include/uapi/linux/kvm.h
-index 80985e28e3b21..129d6f6303251 100644
---- a/include/uapi/linux/kvm.h
-+++ b/include/uapi/linux/kvm.h
-@@ -1661,7 +1661,8 @@ struct kvm_memory_attributes2 {
- 	__u64 size;
- 	__u64 attributes;
- 	__u64 flags;
--	__u64 reserved[12];
-+	__u64 error_offset;
-+	__u64 reserved[11];
- };
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM
+diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
+index f408746d315f7..47f633cddffe0 100644
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -2612,6 +2612,7 @@ static inline int kvm_gmem_get_pfn(struct kvm *kvm,
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
+ int kvm_arch_gmem_make_private(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ 			       kvm_pfn_t nr_pages);
++void kvm_arch_gmem_make_shared(kvm_pfn_t pfn, kvm_pfn_t nr_pages);
+ #endif
  
- #define KVM_MEMORY_ATTRIBUTE_PRIVATE           (1ULL << 3)
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_POPULATE
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index c9b5151f010e9..d3c813dcbf96d 100644
+index d3c813dcbf96d..612fcde4ae8ea 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -529,8 +529,43 @@ static int kvm_gmem_mas_preallocate(struct ma_state *mas, u64 attributes,
- 	return mas_preallocate(mas, xa_mk_value(attributes), GFP_KERNEL);
+@@ -563,6 +563,43 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 	return safe;
  }
  
-+static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
-+					    size_t nr_pages, pgoff_t *err_index)
++#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
++static void kvm_gmem_make_shared(struct inode *inode, pgoff_t start, pgoff_t end)
 +{
-+	struct address_space *mapping = inode->i_mapping;
-+	const int filemap_get_folios_refcount = 1;
-+	pgoff_t last = start + nr_pages - 1;
 +	struct folio_batch fbatch;
-+	bool safe = true;
-+	pgoff_t next;
++	pgoff_t next = start;
 +	int i;
 +
 +	folio_batch_init(&fbatch);
-+
-+	next = start;
-+	while (safe && filemap_get_folios(mapping, &next, last, &fbatch)) {
-+
++	while (filemap_get_folios(inode->i_mapping, &next, end - 1, &fbatch)) {
 +		for (i = 0; i < folio_batch_count(&fbatch); ++i) {
 +			struct folio *folio = fbatch.folios[i];
++			pgoff_t start_index, end_index;
++			kvm_pfn_t start_pfn;
++			kvm_pfn_t nr_pages;
 +
-+			if (folio_ref_count(folio) !=
-+			    folio_nr_pages(folio) + filemap_get_folios_refcount) {
-+				safe = false;
-+				*err_index = max(start, folio->index);
-+				break;
-+			}
++			start_index = max(start, folio->index);
++			end_index = min(end, folio_next_index(folio));
++			/*
++			 * end_index is either in folio or points to
++			 * the first page of the next folio. Hence,
++			 * all pages in range [start_index, end_index)
++			 * are contiguous.
++			 */
++			start_pfn = folio_file_pfn(folio, start_index);
++			nr_pages = end_index - start_index;
++
++			kvm_arch_gmem_make_shared(start_pfn, nr_pages);
 +		}
 +
 +		folio_batch_release(&fbatch);
 +		cond_resched();
 +	}
-+
-+	return safe;
 +}
++#else
++static void kvm_gmem_make_shared(struct inode *inode, pgoff_t start, pgoff_t end) {}
++#endif
 +
  static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
--				     size_t nr_pages, uint64_t attrs)
-+				     size_t nr_pages, uint64_t attrs,
-+				     pgoff_t *err_index)
- {
- 	bool to_private = attrs & KVM_MEMORY_ATTRIBUTE_PRIVATE;
- 	struct address_space *mapping = inode->i_mapping;
-@@ -547,8 +582,21 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
+ 				     size_t nr_pages, uint64_t attrs,
+ 				     pgoff_t *err_index)
+@@ -605,7 +642,12 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
  
- 	mas_init(&mas, mt, start);
- 	r = kvm_gmem_mas_preallocate(&mas, attrs, start, nr_pages);
--	if (r)
-+	if (r) {
-+		*err_index = start;
- 		goto out;
-+	}
+ 	filter = to_private ? KVM_FILTER_SHARED : KVM_FILTER_PRIVATE;
+ 	kvm_gmem_invalidate_start(inode, start, end, filter);
 +
-+	if (to_private) {
-+		unmap_mapping_pages(mapping, start, nr_pages, false);
++	if (!to_private)
++		kvm_gmem_make_shared(inode, start, end);
 +
-+		if (!kvm_gmem_is_safe_for_conversion(inode, start, nr_pages,
-+						     err_index)) {
-+			mas_destroy(&mas);
-+			r = -EAGAIN;
-+			goto out;
-+		}
-+	}
- 
- 	/*
- 	 * From this point on guest_memfd has performed necessary
-@@ -569,9 +617,10 @@ static long kvm_gmem_set_attributes(struct file *file, void __user *argp)
- 	struct gmem_file *f = file->private_data;
- 	struct inode *inode = file_inode(file);
- 	struct kvm_memory_attributes2 attrs;
-+	pgoff_t err_index;
- 	size_t nr_pages;
- 	pgoff_t index;
--	int i;
-+	int i, r;
- 
- 	if (copy_from_user(&attrs, argp, sizeof(attrs)))
- 		return -EFAULT;
-@@ -597,8 +646,16 @@ static long kvm_gmem_set_attributes(struct file *file, void __user *argp)
- 
- 	nr_pages = attrs.size >> PAGE_SHIFT;
- 	index = attrs.offset >> PAGE_SHIFT;
--	return __kvm_gmem_set_attributes(inode, index, nr_pages,
--					 attrs.attributes);
-+	r = __kvm_gmem_set_attributes(inode, index, nr_pages, attrs.attributes,
-+				      &err_index);
-+	if (r) {
-+		attrs.error_offset = ((uint64_t)err_index) << PAGE_SHIFT;
+ 	mas_store_prealloc(&mas, xa_mk_value(attrs));
 +
-+		if (copy_to_user(argp, &attrs, sizeof(attrs)))
-+			return -EFAULT;
-+	}
-+
-+	return r;
- }
- 
- static long kvm_gmem_ioctl(struct file *file, unsigned int ioctl,
+ 	kvm_gmem_invalidate_end(inode, start, end);
+ out:
+ 	filemap_invalidate_unlock(mapping);
 
 -- 
 2.55.0.508.g3f0d502094-goog
