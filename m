@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Jul 2026 17:35:16 -0700
-Subject: [PATCH v9 17/41] KVM: SEV: Make 'uaddr' parameter optional for
- KVM_SEV_SNP_LAUNCH_UPDATE
+Date: Tue, 28 Jul 2026 17:35:17 -0700
+Subject: [PATCH v9 18/41] KVM: TDX: Make source page optional for
+ KVM_TDX_INIT_MEM_REGION
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260728-gmem-inplace-conversion-v9-17-35f9aec2aed2@google.com>
+Message-Id: <20260728-gmem-inplace-conversion-v9-18-35f9aec2aed2@google.com>
 References: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 In-Reply-To: <20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -40,129 +40,76 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=5596;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785285305; l=2732;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=no+ubBrm59/MCoDwBuiCml6nOA/Nqpdk8zlCUSYBJ+Y=;
- b=xNxDQ2aTcyaHrdGjFdmwODsJqaVNDBfQSgBeJghNIIcKNILv+GJC9TeNQ0uyHjfEIrU13f0Th
- U2ME/S1f9xNDbgY4l7JXXK4gySpZxloNWjfpIY+lcXHt4cNu08GiHa2
+ bh=u/tBFqV24Co3+T+1PQk77gbYdRZ2mN/NwHMVCuvTZes=;
+ b=kYU9jorsj7ilMhDtf6dVa9SShPLBh3fLjuBuW3zW6XSEpNrLdYBWIry/G/7lWIatGxZ1Yorl0
+ iDbhWofLj1nCWk1/f08pNwGlvPexDgipuzGdgcW3s4A/CdGkjkwbrJq
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Michael Roth <michael.roth@amd.com>
+Update tdx_gmem_post_populate() to handle cases where userspace requests
+"no source page". To handle "no source page", populate (perform
+TDH.MEM.PAGE.ADD) using memory in-place at the target PFN.
 
-Make the source page for populating an SNP guest_memfd instance optional
-if in-place conversion/population is enabled.  If KVM can convert the page
-in-place, then it's possible for guest memory to be initialized directly
-from userspace by mmap()'ing the guest_memfd and writing to it while the
-corresponding GPA ranges are in a 'shared' state, before converting them
-to the 'private' state expected by KVM_SEV_SNP_LAUNCH_UPDATE.
-
-Update the handling/documentation for KVM_SEV_SNP_LAUNCH_UPDATE to allow
-for 'uaddr' to be set to NULL when in-place conversion is enabled, which
-SNP_LAUNCH_UPDATE will then use to determine when it should/shouldn't
-copy in data from a separate memory location. Continue to enforce
-non-NULL when PRIVATE is tracked per-VM, not per-guest_memfd.
-
-Signed-off-by: Michael Roth <michael.roth@amd.com>
-[Moved condition to snp_launch_update]
 Signed-off-by: Sean Christopherson <seanjc@google.com>
 Tested-by: Shivank Garg <shivankg@amd.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/x86/amd-memory-encryption.rst | 14 ++++++++++----
- arch/x86/kvm/svm/sev.c                               | 11 ++++++-----
- virt/kvm/kvm_main.c                                  |  1 +
- 3 files changed, 17 insertions(+), 9 deletions(-)
+ Documentation/virt/kvm/x86/intel-tdx.rst | 4 ++++
+ arch/x86/kvm/vmx/tdx.c                   | 8 +++++---
+ 2 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/virt/kvm/x86/amd-memory-encryption.rst b/Documentation/virt/kvm/x86/amd-memory-encryption.rst
-index bd04a908a8dbd..5977fbe33b98c 100644
---- a/Documentation/virt/kvm/x86/amd-memory-encryption.rst
-+++ b/Documentation/virt/kvm/x86/amd-memory-encryption.rst
-@@ -503,7 +503,8 @@ secrets.
+diff --git a/Documentation/virt/kvm/x86/intel-tdx.rst b/Documentation/virt/kvm/x86/intel-tdx.rst
+index 6a222e9d09541..d8d9409120e61 100644
+--- a/Documentation/virt/kvm/x86/intel-tdx.rst
++++ b/Documentation/virt/kvm/x86/intel-tdx.rst
+@@ -158,6 +158,10 @@ KVM_TDX_INIT_MEM_REGION
+ Initialize @nr_pages TDX guest private memory starting from @gpa with userspace
+ provided data from @source_addr. @source_addr must be PAGE_SIZE-aligned.
  
- It is required that the GPA ranges initialized by this command have had the
- KVM_MEMORY_ATTRIBUTE_PRIVATE attribute set in advance. See the documentation
--for KVM_SET_MEMORY_ATTRIBUTES for more details on this aspect.
-+for KVM_SET_MEMORY_ATTRIBUTES/KVM_SET_MEMORY_ATTRIBUTES2 for more details on
-+this aspect.
- 
- Upon success, this command is not guaranteed to have processed the entire
- range requested. Instead, the ``gfn_start``, ``uaddr``, and ``len`` fields of
-@@ -511,9 +512,14 @@ range requested. Instead, the ``gfn_start``, ``uaddr``, and ``len`` fields of
- remaining range that has yet to be processed. The caller should continue
- calling this command until those fields indicate the entire range has been
- processed, e.g. ``len`` is 0, ``gfn_start`` is equal to the last GFN in the
--range plus 1, and ``uaddr`` is the last byte of the userspace-provided source
--buffer address plus 1. In the case where ``type`` is KVM_SEV_SNP_PAGE_TYPE_ZERO,
--``uaddr`` will be ignored completely.
-+range plus 1, and ``uaddr`` (if specified) is the last byte of the
-+userspace-provided source buffer address plus 1.
++If guest_memfd in-place conversion is enabled, pass 0 for @source_addr
++to represent "no source page". A source page is required if in-place
++conversion is not enabled or not supported.
 +
-+In the case where ``type`` is KVM_SEV_SNP_PAGE_TYPE_ZERO, ``uaddr`` will be
-+ignored completely. For all other page types, ``uaddr`` is optional if in-place
-+conversion is enabled (i.e. when the data had been written directly to
-+guest_memfd while the page was in the shared state) and is required if in-place
-+conversion is disabled.
+ Note, before calling this sub command, memory attribute of the range
+ [gpa, gpa + nr_pages] needs to be private.  Userspace can use
+ KVM_SET_MEMORY_ATTRIBUTES to set the attribute.
+diff --git a/arch/x86/kvm/vmx/tdx.c b/arch/x86/kvm/vmx/tdx.c
+index d1af0a752e97e..e890da5f18aed 100644
+--- a/arch/x86/kvm/vmx/tdx.c
++++ b/arch/x86/kvm/vmx/tdx.c
+@@ -3192,7 +3192,7 @@ static int tdx_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ 	if (KVM_BUG_ON(kvm_tdx->page_add_src, kvm))
+ 		return -EIO;
  
- Parameters (in): struct  kvm_sev_snp_launch_update
+-	kvm_tdx->page_add_src = src_page;
++	kvm_tdx->page_add_src = src_page ?: pfn_to_page(pfn);
+ 	ret = kvm_tdp_mmu_map_private_pfn(arg->vcpu, gfn, pfn);
+ 	kvm_tdx->page_add_src = NULL;
  
-diff --git a/arch/x86/kvm/svm/sev.c b/arch/x86/kvm/svm/sev.c
-index 90a08d36d843d..0f6fec21c1355 100644
---- a/arch/x86/kvm/svm/sev.c
-+++ b/arch/x86/kvm/svm/sev.c
-@@ -2395,7 +2395,7 @@ static int sev_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
- 	 */
- 	if (ret && !snp_page_reclaim(kvm, pfn) &&
- 	    sev_populate_args->type == KVM_SEV_SNP_PAGE_TYPE_CPUID &&
--	    sev_populate_args->fw_error == SEV_RET_INVALID_PARAM) {
-+	    sev_populate_args->fw_error == SEV_RET_INVALID_PARAM && src_page) {
- 		void *src_vaddr = kmap_local_page(src_page);
- 		void *dst_vaddr = kmap_local_pfn(pfn);
- 
-@@ -2428,8 +2428,8 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
- 	if (copy_from_user(&params, u64_to_user_ptr(argp->data), sizeof(params)))
+@@ -3238,7 +3238,8 @@ static int tdx_vcpu_init_mem_region(struct kvm_vcpu *vcpu, struct kvm_tdx_cmd *c
+ 	if (copy_from_user(&region, u64_to_user_ptr(cmd->data), sizeof(region)))
  		return -EFAULT;
  
--	pr_debug("%s: GFN start 0x%llx length 0x%llx type %d flags %d\n", __func__,
--		 params.gfn_start, params.len, params.type, params.flags);
-+	pr_debug("%s: GFN start 0x%llx length 0x%llx type %d flags %d src %llx\n", __func__,
-+		 params.gfn_start, params.len, params.type, params.flags, params.uaddr);
+-	if (!PAGE_ALIGNED(region.source_addr) || !region.source_addr ||
++	if (!PAGE_ALIGNED(region.source_addr) ||
++	    (!gmem_in_place_conversion && !region.source_addr) ||
+ 	    !PAGE_ALIGNED(region.gpa) || !region.nr_pages ||
+ 	    region.gpa + (region.nr_pages << PAGE_SHIFT) <= region.gpa ||
+ 	    !vt_is_tdx_private_gpa(kvm, region.gpa) ||
+@@ -3269,7 +3270,8 @@ static int tdx_vcpu_init_mem_region(struct kvm_vcpu *vcpu, struct kvm_tdx_cmd *c
+ 			break;
+ 		}
  
- 	if (!params.len || !PAGE_ALIGNED(params.len) || params.flags ||
- 	    (params.type != KVM_SEV_SNP_PAGE_TYPE_NORMAL &&
-@@ -2441,7 +2441,8 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
+-		region.source_addr += PAGE_SIZE;
++		if (region.source_addr)
++			region.source_addr += PAGE_SIZE;
+ 		region.gpa += PAGE_SIZE;
+ 		region.nr_pages--;
  
- 	if (params.type == KVM_SEV_SNP_PAGE_TYPE_ZERO)
- 		src = NULL;
--	else if (!params.uaddr || !PAGE_ALIGNED(params.uaddr))
-+	else if ((!gmem_in_place_conversion && !params.uaddr) ||
-+		 !PAGE_ALIGNED(params.uaddr))
- 		return -EINVAL;
- 	else
- 		src = u64_to_user_ptr(params.uaddr);
-@@ -2488,7 +2489,7 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
- 
- 	params.gfn_start += count;
- 	params.len -= count * PAGE_SIZE;
--	if (params.type != KVM_SEV_SNP_PAGE_TYPE_ZERO)
-+	if (src && params.type != KVM_SEV_SNP_PAGE_TYPE_ZERO)
- 		params.uaddr += count * PAGE_SIZE;
- 
- 	if (copy_to_user(u64_to_user_ptr(argp->data), &params, sizeof(params)))
-diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index f0f802eaca16b..e961cc297ba2a 100644
---- a/virt/kvm/kvm_main.c
-+++ b/virt/kvm/kvm_main.c
-@@ -103,6 +103,7 @@ module_param(allow_unsafe_mappings, bool, 0444);
- 
- #ifdef kvm_arch_has_private_mem
- bool __ro_after_init gmem_in_place_conversion = false;
-+EXPORT_SYMBOL_FOR_KVM_INTERNAL(gmem_in_place_conversion);
- #endif
- 
- /*
 
 -- 
 2.55.0.508.g3f0d502094-goog
