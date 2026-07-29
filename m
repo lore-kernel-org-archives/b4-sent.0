@@ -1,77 +1,55 @@
-From: =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
-Date: Wed, 29 Jul 2026 21:38:13 +0200
-Subject: [PATCH 2/2] ASoC: codecs: lpass-wsa-macro: Fix enum kcontrol
- accesses
+From: Esteban Urrutia <esteuwu@proton.me>
+Subject: [PATCH 0/2] Support for pmic-glink in SM8475
+Date: Wed, 29 Jul 2026 15:48:23 -0400
+Message-Id: <20260729-sm8475-pmic-glink-v1-0-c2e1967c04de@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260729-worktree-lpass-tx-macro-enum-fix-v1-2-0cf02c681332@dawidwrobel.com>
-References: <20260729-worktree-lpass-tx-macro-enum-fix-v1-0-0cf02c681332@dawidwrobel.com>
-In-Reply-To: <20260729-worktree-lpass-tx-macro-enum-fix-v1-0-0cf02c681332@dawidwrobel.com>
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1974; i=me@dawidwrobel.com;
- h=from:subject:message-id; bh=8Yk0u1wDnW2l7FgMe28BRHKq1O/VXudd7zwK2CDuI+E=;
- b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRlha1f8+9Y1M9bkx3iBSck8DQovol7mz5hv23w/2qxq
- em3BDJCOkpZGMS4GGTFFFn00oL2WAW//P7uxe9wmDmsTCBDGLg4BWAiyVkMfwV5mTOE9l9+7bBN
- 5ahhzttP823awi6b5Phri+w626K2vouRYXfQhK2ecyqq/Y9O3r2r98X8b8ZCnO1imekbLp/sdng
- 0hxkA
-X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
- fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
-X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5DQBCA4VeROXcSXV1LX0UcWIMpluzQNBHv3
+ sXxO/z/DkKeSeAd7eDpy8KzC3g+IrB95TpCboJBxSqNjcpRpuxlNC4TW+xGdgNqQzpt86xRdQK
+ hWzy1/LueRXlbtvpDdj1HcBx/Vr/GmHUAAAA=
+X-Change-ID: 20260729-sm8475-pmic-glink-57e56f98d2b3
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785354535; l=877;
+ i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
+ bh=SWisuBb4nkusEArnjWhT2oFMW033z9vtu3jY510Jhno=;
+ b=sFRd8CMMnhQdQrtQrgSDCqW6VvcJtydCsQOzOuZgpBbUzIgLay6BbaHKVmU+ZQYXrhi+6DIhb
+ fzAcjWx7yamC85Bfra7+So3MdluKO1UczF8zErZRbL/wFFZ5vnjFPM+
+X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
+ pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
+X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The "EAR SPKR PA Gain" control is enumerated, but
-wsa_macro_ear_spkr_pa_gain_get() and _put() access its value
-through ucontrol->value.integer.value[0] (a long) instead of
-ucontrol->value.enumerated.item[0] (an unsigned int).
+This series adds a compatible string for SM8475 for supporting
+pmic-glink.
+This way, confusion is avoided, because SM8475 takes most
+(CPU/GPU/reserved-memory/etc.) things from SM8450 and some (PHY/eUSB)
+from SM8550.
+Instead of using one or the other, add a different compatible string.
 
-This same pattern was fixed in the sibling drivers by
-commit bcfe5f76cc40 ("ASoC: codecs: rx-macro: fix accessing array
-out of bounds for enum type") and
-commit 0ea5eff7c606 ("ASoC: codecs: va-macro: fix accessing array
-out of bounds for enum type"), but wsa-macro was missed.
-
-On 64-bit kernels built with CONFIG_SND_CTL_DEBUG, the elem value
-sanity check catches the 4 bytes written past the enumerated item
-and every read of this control fails with -EINVAL (access overflow).
-
-Fixes: 809bcbcecebf ("ASoC: codecs: lpass-wsa-macro: Add support to WSA Macro")
-Assisted-by: Claude:claude-fable-5
-Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
+Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- sound/soc/codecs/lpass-wsa-macro.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Esteban Urrutia (2):
+      dt-bindings: soc: qcom: qcom,pmic-glink: Add compatible string for SM8475
+      usb: typec: ucsi: ucsi_glink: Add compatible string for SM8475
 
-diff --git a/sound/soc/codecs/lpass-wsa-macro.c b/sound/soc/codecs/lpass-wsa-macro.c
-index 5ad0448af649..c88d13c0770b 100644
---- a/sound/soc/codecs/lpass-wsa-macro.c
-+++ b/sound/soc/codecs/lpass-wsa-macro.c
-@@ -2064,7 +2064,7 @@ static int wsa_macro_ear_spkr_pa_gain_get(struct snd_kcontrol *kcontrol,
- 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
- 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
- 
--	ucontrol->value.integer.value[0] = wsa->ear_spkr_gain;
-+	ucontrol->value.enumerated.item[0] = wsa->ear_spkr_gain;
- 
- 	return 0;
- }
-@@ -2075,7 +2075,7 @@ static int wsa_macro_ear_spkr_pa_gain_put(struct snd_kcontrol *kcontrol,
- 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
- 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
- 
--	wsa->ear_spkr_gain =  ucontrol->value.integer.value[0];
-+	wsa->ear_spkr_gain =  ucontrol->value.enumerated.item[0];
- 
- 	return 0;
- }
+ Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml | 1 +
+ drivers/usb/typec/ucsi/ucsi_glink.c                             | 1 +
+ 2 files changed, 2 insertions(+)
+---
+base-commit: 78bc8af4affb9a732504eb22eeac7d1e50883853
+change-id: 20260729-sm8475-pmic-glink-57e56f98d2b3
 
--- 
-2.55.0
+Best regards,
+--  
+Esteban Urrutia <esteuwu@proton.me>
 
