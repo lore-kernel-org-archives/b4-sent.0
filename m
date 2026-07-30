@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 30 Jul 2026 13:55:50 +0200
-Subject: [PATCH 09/22] arm64: dts: qcom: sm8450: Fix the PCIe iommu-map
+Date: Thu, 30 Jul 2026 13:55:51 +0200
+Subject: [PATCH 10/22] arm64: dts: qcom: sm8550: Fix the PCIe iommu-map
  entries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-iommu-map-fix-v1-9-83405d37ba41@oss.qualcomm.com>
+Message-Id: <20260730-iommu-map-fix-v1-10-83405d37ba41@oss.qualcomm.com>
 References: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 In-Reply-To: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,16 +17,16 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1663;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1756;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=XJ2fAfEP1qv4oz89JwchOvEF0TiyKfoBSeXCteD+foY=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvYMAQIDyhKjXyB07u7HxOXNVNkhf1BEjfiz
- bIrLh07Z5WJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams72AAKCRBVnxHm/pHO
- 9eJECACZTJ4oND+LYPIUqFNIpKfMLTLx89TYfdATqVJL3r+10fUXCrBRfVeyZUUuvvitL9aksip
- m39sF4cPDVJfyFM8O9TVeVvIwbKOwICrDC3X2unpsPvnSkA5lnsPFdw+K1hmmAvXtSHsJlB0eAe
- +zvQtbb+Z2MwoofYaJmtqozrErt3wZtz1oaq2mne/3Lok1L9At4XmcsjKp6wHM/kTD/+lSa4LdD
- iCHxpPNX2Y93EdbH74s2rwkxD0PDeqao+mSPSqZgQPA6uk3dkQjT3gyI9PES2SS6A6VNd7wf5Nc
- uDlzuOcyq9N8+r36HuAKqh8BmA4T8yirvSbmbYY+3i/1qBGp
+ bh=9ObHrmTgy9auFRif7hmm/21tCC3Yej1+FVeyNLCSdIY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvYOuSFHpNxpoZ07rvC89A5aFvFol/zLf4Tk
+ f+DsZih+7iJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams72AAKCRBVnxHm/pHO
+ 9dDLCACmT0SNwuIedSqwmmn9dCKchBmWyCf2KS+CboupXUfpOHP7Ww6irpKnfg3+pEs9AA+k9z4
+ 1AHBBR7rylyX8zBUOHu40amxWP4nAPkBXIFrWNtU22ZdY80jDZCAYw9Y9fbXfa0NGWZyRf4qhsw
+ yVpyTtbieEgUzwsO/lO1XHf52ebQ3wdsNqW54p8iY2KPMf/1tUgc0ZS3M4XUvo/8tkmL4hCEDBX
+ crarNFDLkuAu/pjoBwLwvcFwE4ndh0p+MPtqX/egxY5g9dHcRCk3ZRpXHu3yUFLOvTase9QaMmp
+ TGmRnuQfXIMMIor74eOW+unSd+tEkNILdP2UAhK1HPXpKSJO
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,38 +41,38 @@ ccb2fd725d41 ("of: Respect #{iommu,msi}-cells in maps"):
 
 So fix the entries to match the provider's '#iommu-cells' property.
 
-Fixes: 7b09b1b47335 ("arm64: dts: qcom: sm8450: add PCIe0 RC device")
+Fixes: 7d1158c984d3 ("arm64: dts: qcom: sm8550: Add PCIe PHYs and controllers nodes")
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/sm8450.dtsi | 8 ++++----
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 8 ++++----
  1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8450.dtsi b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-index 56cb6e959e4e..18ab94de4ac9 100644
---- a/arch/arm64/boot/dts/qcom/sm8450.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-@@ -2023,8 +2023,8 @@ &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
- 				      "aggre0",
- 				      "aggre1";
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index 396201905ef2..69babd26c678 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -2382,8 +2382,8 @@ &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
  
--			iommu-map = <0x0   &apps_smmu 0x1c00 0x1>,
--				    <0x100 &apps_smmu 0x1c01 0x1>;
-+			iommu-map = <0x0   &apps_smmu 0x1c00 0x0 0x1>,
-+				    <0x100 &apps_smmu 0x1c01 0x0 0x1>;
+ 			msi-map = <0x0 &gic_its 0x1400 0x1>,
+ 				  <0x100 &gic_its 0x1401 0x1>;
+-			iommu-map = <0x0   &apps_smmu 0x1400 0x1>,
+-				    <0x100 &apps_smmu 0x1401 0x1>;
++			iommu-map = <0x0   &apps_smmu 0x1400 0x0 0x1>,
++				    <0x100 &apps_smmu 0x1401 0x0 0x1>;
  
  			resets = <&gcc GCC_PCIE_0_BCR>;
  			reset-names = "pci";
-@@ -2188,8 +2188,8 @@ &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
- 				      "ddrss_sf_tbu",
- 				      "aggre1";
+@@ -2561,8 +2561,8 @@ &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
  
--			iommu-map = <0x0   &apps_smmu 0x1c80 0x1>,
--				    <0x100 &apps_smmu 0x1c81 0x1>;
-+			iommu-map = <0x0   &apps_smmu 0x1c80 0x0 0x1>,
-+				    <0x100 &apps_smmu 0x1c81 0x0 0x1>;
+ 			msi-map = <0x0 &gic_its 0x1480 0x1>,
+ 				  <0x100 &gic_its 0x1481 0x1>;
+-			iommu-map = <0x0   &apps_smmu 0x1480 0x1>,
+-				    <0x100 &apps_smmu 0x1481 0x1>;
++			iommu-map = <0x0   &apps_smmu 0x1480 0x0 0x1>,
++				    <0x100 &apps_smmu 0x1481 0x0 0x1>;
  
- 			resets = <&gcc GCC_PCIE_1_BCR>;
- 			reset-names = "pci";
+ 			resets = <&gcc GCC_PCIE_1_BCR>,
+ 				<&gcc GCC_PCIE_1_LINK_DOWN_BCR>;
 
 -- 
 2.43.0
