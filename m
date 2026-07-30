@@ -1,15 +1,12 @@
 From: Mayank Rungta <mrungta@google.com>
-Subject: [PATCH 0/2] watchdog: pretimeout: Allow building dump governor as
- module
-Date: Thu, 30 Jul 2026 15:00:20 -0700
-Message-Id: <20260730-export-cpu-backtrace-apis-v1-0-bace8e1cb817@google.com>
+Date: Thu, 30 Jul 2026 15:00:21 -0700
+Subject: [PATCH 1/2] nmi: Export CPU backtrace APIs for loadable modules
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHTJa2oC/x3MQQqAIBBA0avErBtIhayuEi3MphqCkrEikO6et
- HyL/xNEEqYIXZFA6ObIx56hygL86vaFkKds0JWuK6sbpCcccqIPF47Ob6c4T+gCR1SmnszYqNZ
- YC7kPQjM//7sf3vcDGP4jOWsAAAA=
-X-Change-ID: 20260728-export-cpu-backtrace-apis-136d3b819377
+Message-Id: <20260730-export-cpu-backtrace-apis-v1-1-bace8e1cb817@google.com>
+References: <20260730-export-cpu-backtrace-apis-v1-0-bace8e1cb817@google.com>
+In-Reply-To: <20260730-export-cpu-backtrace-apis-v1-0-bace8e1cb817@google.com>
 To: Andrew Morton <akpm@linux-foundation.org>, 
  Wim Van Sebroeck <wim@linux-watchdog.org>, 
  Guenter Roeck <linux@roeck-us.net>
@@ -17,41 +14,94 @@ Cc: Tzung-Bi Shih <tzungbi@kernel.org>,
  Douglas Anderson <dianders@chromium.org>, linux-kernel@vger.kernel.org, 
  linux-watchdog@vger.kernel.org, Mayank Rungta <mrungta@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785448826; l=1089;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785448826; l=2490;
  i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=Wp0mqUPZWVkNcFglphCfVSwxnMXCbJkeE9ADnjkmes4=;
- b=/E/jAWOT7pmfUrBwiAzubVyp2fiDuSunmTZ/EOaZr5j5GFbLW0DexzdLukhaFeT4LArg80Gmx
- 1G+T7Mx2MFFBy5sqoEhDO2z0B1pxBsGSBSFVHEsMhkKOYtVCUbcgqOw
+ bh=yO7dla8OdRAGDJOgeFRh56pLyD/tLBa0X3xKf/FbK2c=;
+ b=fZnl8zJuugvMxagsjQCujYIWixxEfkl6fQWt/pxRw9TN04PYzeGTyfG8d0j+mSI25RG/3t5sQ
+ A3EFOaEBhxcCMilu55Q9tGaIlQYfPkH423SByvIA7ReoKNK+82UXf4m
 X-Developer-Key: i=mrungta@google.com; a=ed25519;
  pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
 X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All other watchdog pretimeout governors (noop, panic) can be built as
-loadable modules. However the "dump" pretimeout governor is restricted
-to built-in code because it calls trigger_all_cpu_backtrace(), which
-relies on arch_trigger_cpumask_backtrace(), an arch specific helper that
-is not exported to loadable modules.
+Currently, CPU backtrace functions cannot be called from loadable
+modules because the underlying helper arch_trigger_cpumask_backtrace()
+is not exported.
 
-This 2-patch series allows building the dump governor as a module (=m):
-1) Export cpumask_backtrace() in lib/nmi_backtrace.c.
-2) Convert CONFIG_WATCHDOG_PRETIMEOUT_GOV_DUMP from bool to tristate.
+Instead of exporting arch_trigger_cpumask_backtrace() individually
+across every supported architecture, introduce and export a common
+helper, cpumask_backtrace(), in lib/nmi_backtrace.c. Update the four
+inline CPU backtrace macros in include/linux/nmi.h to route through this
+centralized helper.
 
 Signed-off-by: Mayank Rungta <mrungta@google.com>
 ---
-Mayank Rungta (2):
-      nmi: Export CPU backtrace APIs for loadable modules
-      watchdog: pretimeout: Convert dump pretimeout governor to tristate
+ include/linux/nmi.h | 10 ++++++----
+ lib/nmi_backtrace.c |  7 +++++++
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
- drivers/watchdog/Kconfig |  4 ++--
- include/linux/nmi.h      | 10 ++++++----
- lib/nmi_backtrace.c      |  7 +++++++
- 3 files changed, 15 insertions(+), 6 deletions(-)
----
-base-commit: 3fe08b9796f36ef437ab9328e7dd1e5ff2d66603
-change-id: 20260728-export-cpu-backtrace-apis-136d3b819377
+diff --git a/include/linux/nmi.h b/include/linux/nmi.h
+index 89c5465e2524..af69712df5f4 100644
+--- a/include/linux/nmi.h
++++ b/include/linux/nmi.h
+@@ -157,27 +157,29 @@ static inline void touch_nmi_watchdog(void)
+  * to allow calling code to fall back to some other mechanism:
+  */
+ #ifdef arch_trigger_cpumask_backtrace
++void cpumask_backtrace(const cpumask_t *mask, int exclude_cpu);
++
+ static inline bool trigger_all_cpu_backtrace(void)
+ {
+-	arch_trigger_cpumask_backtrace(cpu_online_mask, -1);
++	cpumask_backtrace(cpu_online_mask, -1);
+ 	return true;
+ }
+ 
+ static inline bool trigger_allbutcpu_cpu_backtrace(int exclude_cpu)
+ {
+-	arch_trigger_cpumask_backtrace(cpu_online_mask, exclude_cpu);
++	cpumask_backtrace(cpu_online_mask, exclude_cpu);
+ 	return true;
+ }
+ 
+ static inline bool trigger_cpumask_backtrace(struct cpumask *mask)
+ {
+-	arch_trigger_cpumask_backtrace(mask, -1);
++	cpumask_backtrace(mask, -1);
+ 	return true;
+ }
+ 
+ static inline bool trigger_single_cpu_backtrace(int cpu)
+ {
+-	arch_trigger_cpumask_backtrace(cpumask_of(cpu), -1);
++	cpumask_backtrace(cpumask_of(cpu), -1);
+ 	return true;
+ }
+ 
+diff --git a/lib/nmi_backtrace.c b/lib/nmi_backtrace.c
+index a3bfa9360b23..f39c9eca8888 100644
+--- a/lib/nmi_backtrace.c
++++ b/lib/nmi_backtrace.c
+@@ -19,6 +19,7 @@
+ #include <linux/stringify.h>
+ #include <linux/nmi.h>
+ #include <linux/cpu.h>
++#include <linux/export.h>
+ #include <linux/sched/debug.h>
+ 
+ #ifdef arch_trigger_cpumask_backtrace
+@@ -129,4 +130,10 @@ bool nmi_cpu_backtrace(struct pt_regs *regs)
+ 	return false;
+ }
+ NOKPROBE_SYMBOL(nmi_cpu_backtrace);
++
++void cpumask_backtrace(const cpumask_t *mask, int exclude_cpu)
++{
++	arch_trigger_cpumask_backtrace(mask, exclude_cpu);
++}
++EXPORT_SYMBOL_GPL(cpumask_backtrace);
+ #endif
 
-Best regards,
 -- 
-Mayank Rungta <mrungta@google.com>
+2.55.0.508.g3f0d502094-goog
 
