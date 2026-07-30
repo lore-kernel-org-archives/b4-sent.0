@@ -1,285 +1,116 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Fri, 31 Jul 2026 01:03:28 +0800
-Subject: [PATCH RFC v4 7/7] mfd: ls2kbmc: Capture the reset event of BMC
- through GPIO
+From: Alvin Sun <alvin.sun@linux.dev>
+Subject: [PATCH v2 0/9] drm/tyr: add debugfs support
+Date: Fri, 31 Jul 2026 01:05:38 +0800
+Message-Id: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-ls2kbmc-mod-v4-7-d201502ba239@gmail.com>
-References: <20260731-ls2kbmc-mod-v4-0-d201502ba239@gmail.com>
-In-Reply-To: <20260731-ls2kbmc-mod-v4-0-d201502ba239@gmail.com>
-To: Binbin Zhou <zhoubinbin@loongson.cn>, 
- Chong Qiao <qiaochong@loongson.cn>, Lee Jones <lee@kernel.org>, 
- Huacai Chen <chenhuacai@kernel.org>, Corey Minyard <corey@minyard.net>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>, 
- Yinbo Zhu <zhuyinbo@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
- mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8716;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=QfkEvKpccAhXMfcU20Tm8bG3GeIFkW2sEnGcMzWjRlY=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqa4PkmD51mUNBJJWhRL4wywQjQpGCoG+1l5sI6
- 8omfSQw1piJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCamuD5AAKCRCwMePKe/7Z
- bjsqD/0QUw+M4X7bZ+LGPbNFLMdsA4G+eyq9aJdxf7vTZP1/daW5dW1Utpp19v8Ncl2fqeU0awS
- DlvbNMHuFSY4qhc1B9VTIaStuqecoYXqXjWanVVGLtM9d20DSwUXccQUC/yabuJJIpGXS2/MTws
- TA1fLpV+VdK4xdtSYqrcwdEKr4oj2Npv7QqyRhEYj+xlJx7VLPusJ+LnZ0U+3xB7EN5PvVfI3rJ
- 0KVzlNhfLkRpQXJ5TthsFziDjHb2qzwuS2NwKx8aI1kj6M7h2cO+RwqgjYHdizcURQDxm+1zqjY
- 0dXM10T88Itc4tEnPFWTbQT/nh37xyjHhmRQ8DtXOS2ts3kaQ+1jQQaLvIfoOq1l20/bNAuAp8C
- dFYrXzmnx0stRCc13IR6Umj+a3vBhe65NOBAT1aHjxCgZeXPQvzd+ZsZeCxDOwvW15FyJ+ZuQgq
- hNvOY0FSxtW7gNvpr+q8guV4YyhR4JlV0KlO8+Ppw6wlBou4OxecyDbDfMd8a593ZHfXgK9mp11
- 5vSa5R/S/sdCZnTfKrFYN5vbSDBBA6yKEZ81Vxki0wzB+zSjALKHZhFXGV7tZq188pHSgRNLrfj
- uvKH27HYV4nls7A2tPGZIfjYFRS+bgamKSzRo90WnR3wGW6jWuC65x5Dxgph2jDlR3MyNVKw+dp
- KzMl6JGcJfYiGgQ==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+X-B4-Tracking: v=1; b=H4sIAGKEa2oC/1XMQQqDMBCF4avIrDsliZLYrnqP4sKYiQ4ULYkGR
+ bx7U7vq8n/wvh0iBaYI92KHQIkjT2MOdSmgG9qxJ2SXG5RQWphS4LwFdGSX3kdMCrWoO/LGOE0
+ 3yKd3IM/rCT6b3APHeQrb6Sf5XX9UqTTa6l+TKFCYyrbOydpI/XjxuKxXRwma4zg+qlmAN6wAA
+ AA=
+X-Change-ID: 20260730-tyr-debugfs-v2-608cef77d6e9
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Matthew Brost <matthew.brost@intel.com>, 
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ =?utf-8?q?Ma=C3=ADra_Canal?= <mcanal@igalia.com>, 
+ Melissa Wen <mwen@igalia.com>, Wambui Karuga <wambui.karugax@gmail.com>, 
+ Eric Anholt <eric@anholt.net>, Ben Gamari <bgamari@gmail.com>, 
+ rust-for-linux@vger.kernel.org, driver-core@lists.linux.dev, 
+ dri-devel@lists.freedesktop.org, Alvin Sun <alvin.sun@linux.dev>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785431148; l=2996;
+ i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
+ bh=WJNElWu592lk+DfJprCvpZbrcam1TYEaJCYoPn+lj7Q=;
+ b=5uoDnSU8u5kq7EhDMiaBRuQHiGpZrD11Ztv+I5OqhiaghHW9Wpa0JFufAsAC3Mz0phtpateqv
+ 0WljLYcj1fAB/As9nX153I0hY4FuXbUXJcxYSbLv6+Np1EliuGd08Wz
+X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The reset event of BMC is captured through GPIO. However, this driver
-bypasses the GPIO framework and directly accesses the GPIO controller
-through the fixed address. When the same GPIO controller is also
-exposed through ACPI and probed by the corresponding GPIO driver,
-there would be a conflict between the two drivers.
+Add debugfs support for the Tyr DRM driver.
 
-This patch will try to find the GPIO through declared GPIO pin in the
-_CRS resources of the ACPI node. If no such delaration is found, the
-driver will fall back to search for the correct GPIO controller and pin
-according to the fixed address and pin number. A possible DSDT
-declaration for the GPIO pin might be as follows:
+The series adds a SeqShow trait for seq_file-backed debugfs files with
+lifecycle hooks, a DrmSeqShow adapter with DRM device lifecycle
+management, and a gpuvas debugfs file in Tyr exposing GPU VA space
+information.
 
-    Device (BMC0) {
-        Name (_ADR, ...) // Match the PCI address of the BMC device
-        // \_SB.GPO1 is the ACPI path of the GPIO controller
-        Name (_CRS, ResourceTemplate () {
-            GpioInt (Edge, ActiveLow, Exclusive, PullNone, 0,
-                     "\\_SB.GPO1", 0) {
-                14 // 14 is the GPIO pin number
-            }
-    }
+Additionally, fix a use-after-free in the DRM debugfs open/release
+paths where a device could be unregistered while a debugfs file remains
+open.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+This is based on drm-rust-next and depends on:
+
+[PATCH v10 0/7] drm/tyr: firmware loading and MCU boot support
+  https://lore.kernel.org/r/20260728-fw-boot-b4-v10-0-9187aefa3f2f@collabora.com
+
+See the full dependency and commit history at [1].
+
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/issues/11
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/merge_requests/59 [1]
+Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- drivers/mfd/ls2k-bmc-core.c | 163 +++++++++++++++++++++++++++++++-------------
- 1 file changed, 116 insertions(+), 47 deletions(-)
+Changes in v2:
+- Reworked the debugfs implementation per feedback from Danilo on v1:
+  dropped the hazptr/revocable-based approach in favor of the DRM
+  debugfs_init callback and generic seq_file abstractions.
+- Fixed a UAF in drm_debugfs where a device could be unregistered while
+  a debugfs file remains open (drm_dev_get/put across file lifetime).
+- Link to v1: https://lore.kernel.org/r/20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev
 
-diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
-index 1466b314fc4e577fe5e31404444648b5b0447ebb..48ce7197c77445df9228aaacbc025d59a2788977 100644
---- a/drivers/mfd/ls2k-bmc-core.c
-+++ b/drivers/mfd/ls2k-bmc-core.c
-@@ -26,6 +26,10 @@
- #include <linux/stop_machine.h>
- #include <linux/vt_kern.h>
- #include <linux/console.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/gpio/property.h>
-+#include <linux/gpio/machine.h>
- 
- /* LS2K BMC resources */
- #define LS2K_DISPLAY_RES_START		(SZ_16M + SZ_2M)
-@@ -81,18 +85,6 @@
- 
- #define PCI_REG_STRIDE			0x4
- 
--#define LS2K_BMC_RESET_GPIO		14
--#define LOONGSON_GPIO_REG_BASE		0x1FE00500
--#define LOONGSON_GPIO_REG_SIZE		0x18
--#define LOONGSON_GPIO_OEN		0x0
--#define LOONGSON_GPIO_FUNC		0x4
--#define LOONGSON_GPIO_INTPOL		0x10
--#define LOONGSON_GPIO_INTEN		0x14
--
--#define LOONGSON_IO_INT_BASE		16
--#define LS2K_BMC_RESET_GPIO_INT_VEC	(LS2K_BMC_RESET_GPIO % 8)
--#define LS2K_BMC_RESET_GPIO_GSI		(LOONGSON_IO_INT_BASE + LS2K_BMC_RESET_GPIO_INT_VEC)
--
- enum {
- 	LS2K_BMC_DISPLAY,
- 	LS2K_BMC_IPMI0,
-@@ -186,6 +178,7 @@ struct ls2k_bmc_ddata {
- 	struct work_struct bmc_reset_work;
- 	struct ls2k_bmc_pci_data bmc_pci_data;
- 	struct ls2k_bmc_bridge_pci_data bridge_pci_data;
-+	struct gpio_desc *reset_gpio;
- };
- 
- static bool ls2k_bmc_bar0_addr_is_set(struct pci_dev *pdev)
-@@ -375,6 +368,91 @@ static void ls2k_bmc_save_pci_data(struct pci_dev *pdev, struct ls2k_bmc_ddata *
- 	pci_read_config_dword(pdev, PCI_INTERRUPT_LINE, &ddata->bmc_pci_data.interrupt_line);
- }
- 
-+static struct fwnode_handle *gpio_dev_get_fwnode(struct gpio_device *gdev)
-+{
-+	struct device *gdev_dev;
-+
-+	gdev_dev = gpio_device_to_device(gdev);
-+	return dev_fwnode(gdev_dev);
-+}
-+
-+static int ls2k_bmc_gpiochip_find(struct gpio_chip *gc, const void *data)
-+{
-+	struct acpi_device *adev;
-+	struct list_head resource_list;
-+	struct resource_entry *rentry;
-+	struct fwnode_handle *fwnode = gpio_dev_get_fwnode(gc->gpiodev);
-+	phys_addr_t start_addr = (phys_addr_t) data;
-+	int ret, found = 0;
-+
-+	if (!is_acpi_node(fwnode))
-+		goto out;
-+
-+	adev = to_acpi_device_node(fwnode);
-+	if (!adev)
-+		goto out;
-+
-+	INIT_LIST_HEAD(&resource_list);
-+
-+	ret = acpi_dev_get_memory_resources(adev, &resource_list);
-+	if (ret < 0)
-+		goto out;
-+	/*
-+	 * ACPI memory resources are ordered and only the first one is
-+	 * considered by the driver of the expected GPIO controller. So
-+	 * here we also only check the first one to see if it matches the
-+	 * expected address.
-+	 */
-+	rentry = list_first_entry_or_null(&resource_list, struct resource_entry, node);
-+	if (!rentry)
-+		goto free_resource_list;
-+	if (rentry->res->start == start_addr)
-+		found = 1;
-+
-+free_resource_list:
-+	acpi_dev_free_resource_list(&resource_list);
-+out:
-+	return found;
-+}
-+
-+static struct gpio_desc *ls2k_bmc_find_gpio(struct ls2k_bmc_ddata *ddata)
-+{
-+	/*
-+	 * In conventional way, the GPIO should be obtained through ACPI or
-+	 * device tree. However, when the information is not available,
-+	 * we should find the GPIO according to the convention of the server
-+	 * boards with LS2K BMC, the gpio signal reflecting the reset event
-+	 * of the BMC should be connected to pin 14 of the GPIO input of
-+	 * the first CPU node. The address of that GPIO controller is fixed.
-+	 */
-+	static const phys_addr_t LOONGSON_GPIO_REG_BASE = 0x1FE00500;
-+	static const unsigned int LS2K_BMC_RESET_GPIO = 14;
-+	int ret;
-+	struct gpio_device *gdev __free(gpio_device_put) = NULL;
-+	struct property_entry ls2k_bmc_swnode_properties[2] = { 0 };
-+
-+	dev_dbg(ddata->dev, "Searching for GPIO chip at address %pa\n", &LOONGSON_GPIO_REG_BASE);
-+
-+	gdev = gpio_device_find((void *)LOONGSON_GPIO_REG_BASE, ls2k_bmc_gpiochip_find);
-+
-+	if (!gdev) {
-+		dev_dbg(ddata->dev, "cannot find GPIO chip at address %pa, deferring\n",
-+			&LOONGSON_GPIO_REG_BASE);
-+		return ERR_PTR(-EPROBE_DEFER);
-+	}
-+
-+	ls2k_bmc_swnode_properties[0] = PROPERTY_ENTRY_GPIO("gpio",
-+		gpio_dev_get_fwnode(gdev), LS2K_BMC_RESET_GPIO, GPIO_ACTIVE_HIGH);
-+
-+	ret = device_create_managed_software_node(ddata->dev, ls2k_bmc_swnode_properties, NULL);
-+	if (ret) {
-+		dev_err(ddata->dev, "Failed to create software node for GPIO reset: %d\n", ret);
-+		return ERR_PTR(ret);
-+	}
-+
-+	return devm_gpiod_get_index(ddata->dev, NULL, 0, GPIOD_IN);
-+}
-+
- static void ls2k_bmc_cancel_wq(void *data)
- {
- 	struct ls2k_bmc_ddata *ddata = data;
-@@ -384,8 +462,7 @@ static void ls2k_bmc_cancel_wq(void *data)
- static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- {
- 	struct pci_dev *pdev = to_pci_dev(ddata->dev);
--	void __iomem *gpio_base;
--	int gpio_irq, ret, val;
-+	int gpio_irq, ret;
- 
- 	ls2k_bmc_save_pci_data(pdev, ddata);
- 
-@@ -402,44 +479,36 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- 		return ret;
- 	}
- 
--	gpio_base = ioremap(LOONGSON_GPIO_REG_BASE, LOONGSON_GPIO_REG_SIZE);
--	if (!gpio_base)
--		return -ENOMEM;
--
--	/* Disable GPIO output */
--	val = readl(gpio_base + LOONGSON_GPIO_OEN);
--	writel(val | BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_OEN);
--
--	/* Enable GPIO functionality */
--	val = readl(gpio_base + LOONGSON_GPIO_FUNC);
--	writel(val & ~BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_FUNC);
--
--	/* Set GPIO interrupts to low-level active */
--	val = readl(gpio_base + LOONGSON_GPIO_INTPOL);
--	writel(val & ~BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_INTPOL);
--
--	/* Enable GPIO interrupts */
--	val = readl(gpio_base + LOONGSON_GPIO_INTEN);
--	writel(val | BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_INTEN);
-+	ddata->reset_gpio = devm_gpiod_get_index_optional(&pdev->dev, NULL, 0, GPIOD_IN);
-+	if (IS_ERR(ddata->reset_gpio)) {
-+		ret = PTR_ERR(ddata->reset_gpio);
-+		ddata->reset_gpio = NULL;
-+		return dev_err_probe(ddata->dev, ret, "Failed to get GPIO pin for reset signal\n");
-+	}
-+	if (ddata->reset_gpio == NULL) {
-+		ddata->reset_gpio = ls2k_bmc_find_gpio(ddata);
-+		if (IS_ERR(ddata->reset_gpio)) {
-+			ret = PTR_ERR(ddata->reset_gpio);
-+			ddata->reset_gpio = NULL;
-+			return dev_err_probe(ddata->dev, ret,
-+					     "Failed to find GPIO pin for reset signal\n");
-+		}
-+	}
- 
--	iounmap(gpio_base);
-+	gpio_irq = gpiod_to_irq(ddata->reset_gpio);
- 
--	/*
--	 * Since gpio_chip->to_irq is not implemented in the Loongson-3 GPIO driver,
--	 * acpi_register_gsi() is used to obtain the GPIO IRQ. The GPIO interrupt is a
--	 * watchdog interrupt that is triggered when the BMC resets.
--	 */
--	gpio_irq = acpi_register_gsi(NULL, LS2K_BMC_RESET_GPIO_GSI, ACPI_EDGE_SENSITIVE,
--				     ACPI_ACTIVE_LOW);
- 	if (gpio_irq < 0)
--		return gpio_irq;
-+		return dev_err_probe(ddata->dev, gpio_irq,
-+				     "Failed to get IRQ for GPIO reset signal input\n");
- 
--	ret = devm_request_irq(ddata->dev, gpio_irq, ls2k_bmc_interrupt,
--			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc gpio", ddata);
--	if (ret)
--		dev_err(ddata->dev, "Failed to request LS2KBMC GPIO IRQ %d.\n", gpio_irq);
-+	ret = devm_request_irq(&pdev->dev, gpio_irq, ls2k_bmc_interrupt,
-+			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc reset", ddata);
-+
-+	if (ret != 0)
-+		return dev_err_probe(ddata->dev, ret,
-+				     "Failed to request IRQ %d for GPIO reset signal input.\n",
-+				     gpio_irq);
- 
--	acpi_unregister_gsi(LS2K_BMC_RESET_GPIO_GSI);
- 	return ret;
- }
- 
+---
+Alvin Sun (9):
+      rust: seq_file: add as_raw() method
+      rust: debugfs: add SeqShow trait and seq_file file operations
+      rust: debugfs: add Entry::from_raw and ScopedDir::from_dentry
+      drm: move debugfs_init after dev->registered is set
+      rust: drm: add debugfs_init callback to Driver trait
+      rust: drm: add DrmSeqShow seq_file adapter
+      rust: drm: gpuvm: add dump_gpuva_info to UniqueRefGpuVm
+      drm/tyr: add gpuvas debugfs file
+      drm/debugfs: hold device reference for the lifetime of open files
 
+ drivers/gpu/drm/drm_debugfs.c   | 45 ++++++++++++++++---
+ drivers/gpu/drm/drm_drv.c       |  5 +++
+ drivers/gpu/drm/tyr/debugfs.rs  | 65 +++++++++++++++++++++++++++
+ drivers/gpu/drm/tyr/driver.rs   | 16 +++++++
+ drivers/gpu/drm/tyr/fw.rs       |  8 ++++
+ drivers/gpu/drm/tyr/tyr.rs      |  1 +
+ drivers/gpu/drm/tyr/vm.rs       |  5 +++
+ rust/bindings/bindings_helper.h |  1 +
+ rust/kernel/debugfs.rs          | 35 ++++++++++++++-
+ rust/kernel/debugfs/entry.rs    | 15 ++++++-
+ rust/kernel/debugfs/file_ops.rs | 97 +++++++++++++++++++++++++++++++++++++++++
+ rust/kernel/debugfs/traits.rs   | 30 ++++++++++++-
+ rust/kernel/drm/debugfs.rs      | 49 +++++++++++++++++++++
+ rust/kernel/drm/device.rs       | 36 ++++++++++++++-
+ rust/kernel/drm/driver.rs       | 11 +++++
+ rust/kernel/drm/gpuvm/mod.rs    |  8 ++++
+ rust/kernel/drm/mod.rs          |  1 +
+ rust/kernel/seq_file.rs         |  6 +++
+ 18 files changed, 422 insertions(+), 12 deletions(-)
+---
+base-commit: 0ffc014cb2abfc79d161662b125e085b3e7107e7
+change-id: 20260730-tyr-debugfs-v2-608cef77d6e9
+
+Best regards,
 -- 
-2.49.0
+Alvin Sun <alvin.sun@linux.dev>
 
