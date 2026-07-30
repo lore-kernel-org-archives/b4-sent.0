@@ -1,121 +1,79 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 30 Jul 2026 13:56:03 +0200
-Subject: [PATCH 22/22] arm64: dts: qcom:
- qcs6490-rb3gen2-industrial-mezzanine: Fix the PCIe iommu-map entries
+From: =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
+Date: Thu, 30 Jul 2026 15:44:07 +0200
+Subject: [PATCH] arm64: dts: qcom: sm8250-xiaomi-elish: correct the board
+ ID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-iommu-map-fix-v1-22-83405d37ba41@oss.qualcomm.com>
-References: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
-In-Reply-To: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260730-elish-board-id-v1-1-92f99e9722ec@dawidwrobel.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvxJ7TjCltL4SHUy3XAgNhQjEvycdh
+ 2GmQMZEmGHpCiR8KFMMDYa+A+tNOJGRawyCi4kryRlelD3bo0muKaatdbPRo5JaQIvuhAe9/3D
+ dav0AcqmXi2AAAAA=
+X-Change-ID: 20260730-elish-board-id-8ccd9a857382
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jianhua Lu <lujianhua000@gmail.com>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
- Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>, 
- Krzysztof Kozlowski <krzk@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3442;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=yyugXvaIDoOF39T2alzVy57BkmdKy2KLxfP4F34+35I=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvc9oeRxc6EHNug6KybI3uvprlcwu5WMrESI
- 3NwxLEwEA2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams73AAKCRBVnxHm/pHO
- 9bk9B/40Z/wq27mw062+nDWjMiyzSpkU7+lvZp9ayYj6qQKZNHu8C9jtoAdqVzXUCM8KAfs7191
- hpLMgEl7N6ipl5925ANEIrKDCzpvOYCQWQlOfhoOCm4gtpkN6XDLeqB1P4tXM6bvUq1cXg1s5Ik
- 1qJAB9EYS5L4HYKvoU1QTgmUYnNbVuYxy42pELAXPzsqaHF2GNQ2l3TfHys8SKbEyJNckiZLTb0
- O+b+VGz5hjZWuM+pfIvnUCPtZz2qfJLw3lt+Obd+7C4PKI9vrMwp29V6CF5cCY54k7ws5VNf9F7
- Zxiq8DBZMtoN19eaHRn3S39sfaU2iOGlAWdYNUUdibC7Prrk
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+ =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1968; i=me@dawidwrobel.com;
+ h=from:subject:message-id; bh=g2fcCipVqt2i1yfS91bVrhhCHQ1qcOIxuxiWk6CgcA8=;
+ b=kA0DAAoWynV8R6nV7u0ByyZiAGprVS7IpwJaoOcWCNIk/6xxU2PlpnqNRIfQW/7aagx5XWc5T
+ Yh1BAAWCgAdFiEELmZSvDpT6ffu6PtXynV8R6nV7u0FAmprVS4ACgkQynV8R6nV7u0SNwEAkN19
+ VoNGLym2TUlAVfOUATPIQKKQt4u0HEVgo6pAwhYBAJ69dfHOjwk/NhcCL3SOv2gvvkxBkaTibZB
+ 3SQye/SkH
+X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
+ fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
+X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The IOMMU provider apps_smmu uses '#iommu-cells = <2>', but the PCIe
-iommu-map entries specify only one cell for the SID, omitting the SID
-mask. This went unnoticed until the OF core started warning with commit
-ccb2fd725d41 ("of: Respect #{iommu,msi}-cells in maps"):
+elish declares the same qcom,msm-id and qcom,board-id pair as
+sm8250-sony-xperia-edo.dtsi, so a bootloader choosing between appended
+device trees cannot tell the two boards apart.
 
-  iommu-map has 1-cell entries targeting 2-cell #iommu-cells, treating as 1-cell output
+0x10008 is Sony's value. The downstream device tree for this board,
+elish-sm8250-overlay.dts, uses qcom,board-id = <47 0>, i.e. platform
+type 0x2f.
 
-So fix the entries to match the provider's '#iommu-cells' property.
-
-Fixes: 4559b435f741 ("arm64: dts: qcom: qcs6490-rb3gen2-industrial-mezzanine: Add TC9563 PCIe switch node for PCIe0")
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Fixes: a41b617530bf ("arm64: dts: qcom: sm8250: Add device tree for Xiaomi Mi Pad 5 Pro")
+Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
 ---
- .../qcom/qcs6490-rb3gen2-industrial-mezzanine.dtso | 50 +++++++++++-----------
- 1 file changed, 25 insertions(+), 25 deletions(-)
+Not tested on elish hardware: the corrected value comes from the
+downstream device tree:
+https://github.com/LineageOS/android_kernel_xiaomi_sm8250/blob/a04dba03999b36cc8f472c014063395b41fb1022/arch/arm64/boot/dts/vendor/qcom/elish-sm8250-overlay.dts#L14
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2-industrial-mezzanine.dtso b/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2-industrial-mezzanine.dtso
-index 83908db335af..14c64439ae1e 100644
---- a/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2-industrial-mezzanine.dtso
-+++ b/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2-industrial-mezzanine.dtso
-@@ -54,15 +54,15 @@ &pcie0 {
- 	pinctrl-0 = <&pcie0_reset_n>, <&pcie0_wake_n>, <&pcie0_clkreq_n>;
- 	pinctrl-names = "default";
- 
--	iommu-map = <0x0 &apps_smmu 0x1c00 0x1>,
--		    <0x100 &apps_smmu 0x1c01 0x1>,
--		    <0x208 &apps_smmu 0x1c04 0x1>,
--		    <0x210 &apps_smmu 0x1c05 0x1>,
--		    <0x218 &apps_smmu 0x1c06 0x1>,
--		    <0x300 &apps_smmu 0x1c07 0x1>,
--		    <0x400 &apps_smmu 0x1c08 0x1>,
--		    <0x500 &apps_smmu 0x1c09 0x1>,
--		    <0x501 &apps_smmu 0x1c10 0x1>;
-+	iommu-map = <0x0 &apps_smmu 0x1c00 0x0 0x1>,
-+		    <0x100 &apps_smmu 0x1c01 0x0 0x1>,
-+		    <0x208 &apps_smmu 0x1c04 0x0 0x1>,
-+		    <0x210 &apps_smmu 0x1c05 0x0 0x1>,
-+		    <0x218 &apps_smmu 0x1c06 0x0 0x1>,
-+		    <0x300 &apps_smmu 0x1c07 0x0 0x1>,
-+		    <0x400 &apps_smmu 0x1c08 0x0 0x1>,
-+		    <0x500 &apps_smmu 0x1c09 0x0 0x1>,
-+		    <0x501 &apps_smmu 0x1c10 0x0 0x1>;
- 
- 	status = "okay";
- };
-@@ -151,22 +151,22 @@ pci@0,1 {
- };
- 
- &pcie1 {
--	iommu-map = <0x0 &apps_smmu 0x1c80 0x1>,
--		    <0x100 &apps_smmu 0x1c81 0x1>,
--		    <0x208 &apps_smmu 0x1c84 0x1>,
--		    <0x210 &apps_smmu 0x1c85 0x1>,
--		    <0x218 &apps_smmu 0x1c86 0x1>,
--		    <0x300 &apps_smmu 0x1c87 0x1>,
--		    <0x408 &apps_smmu 0x1c90 0x1>,
--		    <0x410 &apps_smmu 0x1c91 0x1>,
--		    <0x418 &apps_smmu 0x1c92 0x1>,
--		    <0x500 &apps_smmu 0x1c93 0x1>,
--		    <0x600 &apps_smmu 0x1c94 0x1>,
--		    <0x700 &apps_smmu 0x1c95 0x1>,
--		    <0x701 &apps_smmu 0x1c96 0x1>,
--		    <0x800 &apps_smmu 0x1c97 0x1>,
--		    <0x900 &apps_smmu 0x1c98 0x1>,
--		    <0x901 &apps_smmu 0x1c99 0x1>;
-+	iommu-map = <0x0 &apps_smmu 0x1c80 0x0 0x1>,
-+		    <0x100 &apps_smmu 0x1c81 0x0 0x1>,
-+		    <0x208 &apps_smmu 0x1c84 0x0 0x1>,
-+		    <0x210 &apps_smmu 0x1c85 0x0 0x1>,
-+		    <0x218 &apps_smmu 0x1c86 0x0 0x1>,
-+		    <0x300 &apps_smmu 0x1c87 0x0 0x1>,
-+		    <0x408 &apps_smmu 0x1c90 0x0 0x1>,
-+		    <0x410 &apps_smmu 0x1c91 0x0 0x1>,
-+		    <0x418 &apps_smmu 0x1c92 0x0 0x1>,
-+		    <0x500 &apps_smmu 0x1c93 0x0 0x1>,
-+		    <0x600 &apps_smmu 0x1c94 0x0 0x1>,
-+		    <0x700 &apps_smmu 0x1c95 0x0 0x1>,
-+		    <0x701 &apps_smmu 0x1c96 0x0 0x1>,
-+		    <0x800 &apps_smmu 0x1c97 0x0 0x1>,
-+		    <0x900 &apps_smmu 0x1c98 0x0 0x1>,
-+		    <0x901 &apps_smmu 0x1c99 0x0 0x1>;
- };
- 
- &pcie1_switch0_dsp1 {
+That import commit (bf5acbcaca99) credits Xiaomi's munch-s-oss and
+dagu-s-oss releases; Xiaomi's published kernel repo doesn't contain
+the device trees, so LineageOS seems to be the only public source.
 
+No user-visible impact: nothing in the kernel reads qcom,board-id, and it
+is only consulted when a bootloader selects between several appended
+device trees. Not needed for stable.
+---
+ arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
+index 19aff83ecf7b..945127dacc82 100644
+--- a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
+@@ -29,7 +29,7 @@ / {
+ 
+ 	/* required for bootloader to select correct board */
+ 	qcom,msm-id = <QCOM_ID_SM8250 0x20001>; /* SM8250 v2.1 */
+-	qcom,board-id = <0x10008 0>;
++	qcom,board-id = <0x2f 0>;
+ 
+ 	aliases {
+ 		serial0 = &uart6;
+
+---
+base-commit: 7f102800164990609e2b272396d45b197a55bd04
+change-id: 20260730-elish-board-id-8ccd9a857382
+
+Best regards,
 -- 
-2.43.0
+Dawid Wróbel <me@dawidwrobel.com>
 
