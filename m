@@ -1,10 +1,11 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Thu, 30 Jul 2026 19:35:35 +0200
-Subject: [PATCH v2 1/2] dt-bindings: dpll: zl3073x: ZL30643 is compatible
+Date: Thu, 30 Jul 2026 19:35:36 +0200
+Subject: [PATCH v2 2/2] dpll: zl3073x: recognize the ZL30643 chip ID
+ (0x0E3B)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-for-upstream-zl30643-v2-1-0ea0bbd03755@free.fr>
+Message-Id: <20260730-for-upstream-zl30643-v2-2-0ea0bbd03755@free.fr>
 References: <20260730-for-upstream-zl30643-v2-0-0ea0bbd03755@free.fr>
 In-Reply-To: <20260730-for-upstream-zl30643-v2-0-0ea0bbd03755@free.fr>
 To: Ivan Vecera <ivecera@redhat.com>, 
@@ -17,62 +18,59 @@ To: Ivan Vecera <ivecera@redhat.com>,
 Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785432952; l=1773;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785432952; l=1616;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=hxP/Qko0hV2ofmO+jMLSUDHekBmOPqUro1uZGRZYS10=;
- b=cSXPD8AtHdb07rV/UrvxgRHHUHmhna8lo8Fxj+WoyhYSh0ALue5YJCWRAwAko26/llCjzej6G
- 29/SCzGVPxFDP3J/QWjfERr23+gTvb6GlqWK5D5MD9bIKrwPSUQUhUf
+ bh=xCtgr91zlWngDn75MfH0IGNmQxTVmxN95ksqxlV4CZE=;
+ b=4h6DL7S6qrP4GJOZyW8qqbH524nC+R7/WwWwROIaF8HJWOaxbNB8ozPUXHFw+dUqML9YoFEaE
+ qWdaaYDEyZ+CUbwUFtzU9kcilGiRl9mb08V0ea8a334+iljF3wOR/ma
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Microchip ZL30643 (chip ID 0x0E3B) is a member of the ZL3064x
-line card timing family. It is register compatible with the 3-channel
-ZL30733 (chip ID 0x0E95) of the ZL3073x family: both datasheets
-describe the same register map and use the same chip-ID encoding.
+The Microchip ZL30643 is a 3-channel ZL3064x line-card part that is
+register compatible with the ZL30733. Only the runtime chip-ID table
+needs the 0x0E3B entry so the probe resolves the channel count (3)
+and flags.
 
-Describe it with a fallback to microchip,zl30733 rather than a new
-standalone compatible.
+The ZL3073X_FLAG_REF_PHASE_COMP_32 flag applies unchanged: the
+ref_phase path
+  dpll_meas_ctrl::en -> ref_phase_0P/0N
+  -> ref_phase_offset_compensation -> ref_phase_err_read_rqst
+is identical between ZL3064x and ZL3073x. No new device flag is needed.
+
+Test: once register, for instance, we get:
+
+  devlink dev param set spi/spi0.0 name clock_id value 3733 cmode driverinit
+  devlink dev reload spi/spi0.0
+  devlink dev param set spi/spi2.1 name clock_id value 3643 cmode driverinit
+  devlink dev reload spi/spi2.1
+
+  dpll device show | grep clock-id
+    clock-id: 3733
+    clock-id: 3733
+    clock-id: 3733
+    clock-id: 3643
+    clock-id: 3643
+    clock-id: 3643
 
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- .../devicetree/bindings/dpll/microchip,zl30731.yaml   | 19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
+ drivers/dpll/zl3073x/core.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/dpll/microchip,zl30731.yaml b/Documentation/devicetree/bindings/dpll/microchip,zl30731.yaml
-index fa5a8f8e390c..17983e6c3597 100644
---- a/Documentation/devicetree/bindings/dpll/microchip,zl30731.yaml
-+++ b/Documentation/devicetree/bindings/dpll/microchip,zl30731.yaml
-@@ -14,15 +14,22 @@ description:
-   provides up to 5 independent DPLL channels, up to 10 differential or
-   single-ended inputs and 10 differential or 20 single-ended outputs.
-   These devices support both I2C and SPI interfaces.
-+  The ZL3064x line card timing ICs  share the ZL3073x register map
-+  and are described with a fallback to the register equivalent ZL3073x
-+  part.
+diff --git a/drivers/dpll/zl3073x/core.c b/drivers/dpll/zl3073x/core.c
+index 8e6416a4741d..4d07f69efb44 100644
+--- a/drivers/dpll/zl3073x/core.c
++++ b/drivers/dpll/zl3073x/core.c
+@@ -25,6 +25,7 @@
  
- properties:
-   compatible:
--    enum:
--      - microchip,zl30731
--      - microchip,zl30732
--      - microchip,zl30733
--      - microchip,zl30734
--      - microchip,zl30735
-+    oneOf:
-+      - enum:
-+          - microchip,zl30731
-+          - microchip,zl30732
-+          - microchip,zl30733
-+          - microchip,zl30734
-+          - microchip,zl30735
-+      - items:
-+          - const: microchip,zl30643
-+          - const: microchip,zl30733
- 
-   reg:
-     maxItems: 1
+ static const struct zl3073x_chip_info zl3073x_chip_ids[] = {
+ 	ZL_CHIP_INFO(0x0E30, 2, ZL3073X_FLAG_REF_PHASE_COMP_32),
++	ZL_CHIP_INFO(0x0E3B, 3, ZL3073X_FLAG_REF_PHASE_COMP_32),
+ 	ZL_CHIP_INFO(0x0E93, 1, ZL3073X_FLAG_REF_PHASE_COMP_32),
+ 	ZL_CHIP_INFO(0x0E94, 2, ZL3073X_FLAG_REF_PHASE_COMP_32),
+ 	ZL_CHIP_INFO(0x0E95, 3, ZL3073X_FLAG_REF_PHASE_COMP_32),
 
 -- 
 2.43.0
