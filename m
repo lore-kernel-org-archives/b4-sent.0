@@ -1,11 +1,11 @@
 From: =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
-Date: Thu, 30 Jul 2026 12:58:12 +0200
-Subject: [PATCH v2 1/2] ASoC: codecs: lpass-tx-macro: Fix enum kcontrol
+Date: Thu, 30 Jul 2026 12:58:13 +0200
+Subject: [PATCH v2 2/2] ASoC: codecs: lpass-wsa-macro: Fix enum kcontrol
  accesses
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260730-worktree-lpass-tx-macro-enum-fix-v2-1-6d091c736116@dawidwrobel.com>
+Message-Id: <20260730-worktree-lpass-tx-macro-enum-fix-v2-2-6d091c736116@dawidwrobel.com>
 References: <20260730-worktree-lpass-tx-macro-enum-fix-v2-0-6d091c736116@dawidwrobel.com>
 In-Reply-To: <20260730-worktree-lpass-tx-macro-enum-fix-v2-0-6d091c736116@dawidwrobel.com>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -16,64 +16,80 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2105; i=me@dawidwrobel.com;
- h=from:subject:message-id; bh=n2x7Js4vs9WYUIakIr6jIXsI33SztntSYQRmpHUNyak=;
- b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRl64VWHfzT8rPTr+lNvK2v17+ak2d3x//hf/9JOdRmx
- +w3a/WjOkpZGMS4GGTFFFn00oL2WAW//P7uxe9wmDmsTCBDGLg4BWAi3+4y/A8v3941p05q9iae
- Lt16zja5yyF33Iv29OgsOLAoe6/grEuMDAvOXvbple8O91ZarKvp9aBNf/o/0SjOF3GZblq+3Oc
- Y+QE=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2792; i=me@dawidwrobel.com;
+ h=from:subject:message-id; bh=8YiX6eyJpS5QlREPI4VEoPgAt7wgKMetE6Ezxh6uvYg=;
+ b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRl64WaP134tO167QqxVecjCxak3XeeZv5S2mXBMYZfq
+ 69etNAq7ChlYRDjYpAVU2TRSwvaYxX88vu7F7/DYeawMoEMYeDiFICJXL7G8L/u4MXLHN8X39uy
+ Y/6yDZFS+5mbtCKdE8q+CMmsX9y4rUWIkeEix5Sfb5Ycnn7J9vC0SdM1D+q23XQ5LhM57c1tpmf
+ l8p2cAA==
 X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
  fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
 X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The "DEC0 MODE" to "DEC7 MODE" controls are enumerated, but
-tx_macro_dec_mode_get() and tx_macro_dec_mode_put() access their
-value through ucontrol->value.integer.value[0] (a long) instead of
+EAR SPKR PA Gain" and the four "WSA RX* Mux" controls are enumerated,
+but their get and put callbacks access the value through
+ucontrol->value.integer.value[0] (a long) instead of
 ucontrol->value.enumerated.item[0] (an unsigned int).
 
 This same pattern was fixed in the sibling drivers by
 commit bcfe5f76cc40 ("ASoC: codecs: rx-macro: fix accessing array
 out of bounds for enum type") and
 commit 0ea5eff7c606 ("ASoC: codecs: va-macro: fix accessing array
-out of bounds for enum type"), but tx-macro was missed.
+out of bounds for enum type"), but wsa-macro was missed.
 
-On 64-bit kernels built with CONFIG_SND_CTL_DEBUG, the elem value
-sanity check catches the 4 bytes written past the enumerated item
-and every read of these controls fails with -EINVAL:
+On 64-bit kernels with CONFIG_SND_CTL_DEBUG this trips the elem value
+sanity check and every read of these controls fails with -EINVAL.
 
-  snd-sm8250 sound: control 2:0:0:DEC0 MODE:0: access overflow
-
-Fixes: c39667ddcfc5 ("ASoC: codecs: lpass-tx-macro: add support for lpass tx macro")
+Fixes: 809bcbcecebf ("ASoC: codecs: lpass-wsa-macro: Add support to WSA Macro")
+Fixes: 2c4066e5d428 ("ASoC: codecs: lpass-wsa-macro: add dapm widgets and route")
 Assisted-by: Claude:claude-fable-5
 Cc: stable@vger.kernel.org
 Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
 ---
- sound/soc/codecs/lpass-tx-macro.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ sound/soc/codecs/lpass-wsa-macro.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/sound/soc/codecs/lpass-tx-macro.c b/sound/soc/codecs/lpass-tx-macro.c
-index f7d168f557dd..0cbf50647ff5 100644
---- a/sound/soc/codecs/lpass-tx-macro.c
-+++ b/sound/soc/codecs/lpass-tx-macro.c
-@@ -1075,7 +1075,7 @@ static int tx_macro_dec_mode_get(struct snd_kcontrol *kcontrol,
- 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
- 	int path = e->shift_l;
+diff --git a/sound/soc/codecs/lpass-wsa-macro.c b/sound/soc/codecs/lpass-wsa-macro.c
+index 5ad0448af649..af521e0988db 100644
+--- a/sound/soc/codecs/lpass-wsa-macro.c
++++ b/sound/soc/codecs/lpass-wsa-macro.c
+@@ -2064,7 +2064,7 @@ static int wsa_macro_ear_spkr_pa_gain_get(struct snd_kcontrol *kcontrol,
+ 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+ 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
  
--	ucontrol->value.integer.value[0] = tx->dec_mode[path];
-+	ucontrol->value.enumerated.item[0] = tx->dec_mode[path];
+-	ucontrol->value.integer.value[0] = wsa->ear_spkr_gain;
++	ucontrol->value.enumerated.item[0] = wsa->ear_spkr_gain;
  
  	return 0;
  }
-@@ -1084,7 +1084,7 @@ static int tx_macro_dec_mode_put(struct snd_kcontrol *kcontrol,
- 				 struct snd_ctl_elem_value *ucontrol)
- {
+@@ -2075,7 +2075,7 @@ static int wsa_macro_ear_spkr_pa_gain_put(struct snd_kcontrol *kcontrol,
  	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
--	int value = ucontrol->value.integer.value[0];
-+	int value = ucontrol->value.enumerated.item[0];
+ 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
+ 
+-	wsa->ear_spkr_gain =  ucontrol->value.integer.value[0];
++	wsa->ear_spkr_gain =  ucontrol->value.enumerated.item[0];
+ 
+ 	return 0;
+ }
+@@ -2088,7 +2088,7 @@ static int wsa_macro_rx_mux_get(struct snd_kcontrol *kcontrol,
+ 				snd_soc_dapm_to_component(widget->dapm);
+ 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
+ 
+-	ucontrol->value.integer.value[0] =
++	ucontrol->value.enumerated.item[0] =
+ 			wsa->rx_port_value[widget->shift];
+ 	return 0;
+ }
+@@ -2101,7 +2101,7 @@ static int wsa_macro_rx_mux_put(struct snd_kcontrol *kcontrol,
+ 				snd_soc_dapm_to_component(widget->dapm);
  	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
- 	int path = e->shift_l;
- 	struct tx_macro *tx = snd_soc_component_get_drvdata(component);
+ 	struct snd_soc_dapm_update *update = NULL;
+-	u32 rx_port_value = ucontrol->value.integer.value[0];
++	u32 rx_port_value = ucontrol->value.enumerated.item[0];
+ 	u32 bit_input;
+ 	u32 aif_rst;
+ 	unsigned int dai_id;
 
 -- 
 2.55.0
