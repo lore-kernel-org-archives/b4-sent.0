@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 30 Jul 2026 13:55:58 +0200
-Subject: [PATCH 17/22] arm64: dts: qcom: monaco-evk-ifp-mezzanine: Fix the
+Date: Thu, 30 Jul 2026 13:55:59 +0200
+Subject: [PATCH 18/22] arm64: dts: qcom: lemans-evk-ifp-mezzanine: Fix the
  PCIe iommu-map entries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-iommu-map-fix-v1-17-83405d37ba41@oss.qualcomm.com>
+Message-Id: <20260730-iommu-map-fix-v1-18-83405d37ba41@oss.qualcomm.com>
 References: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 In-Reply-To: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,14 +19,14 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
 X-Mailer: b4 0.15.2
 X-Developer-Signature: v=1; a=openpgp-sha256; l=1808;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=bXZTkKi7zwWq0QWJBxEzmu2JmvZ55hJcAwdomZ5R758=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvbdblSury3LLaJyFq6A/FSzBNGPyjzDXEs7
- 2bVnHOYoyiJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams72wAKCRBVnxHm/pHO
- 9UMFCACF7IKb+Go7nfQCB6DfeKBAl6BPl1t5m0OzHrtDO2ioTFgK6LAUXev+VluQJOxEEYAus0D
- IDIT8VQsShogdjjW4QONSNNCmuZNEvDQIlzshamGy+D3gaRNI633ba5p/D666+dhlChaNR24rpJ
- XrPDMbLKEnci/6Bs9ySZ2k6QpDD7KlpHDfDR/mkKeEMyEUDUMU9zbOlEs8IzQJ5qcIjwz1ZHRu1
- zkTkAozic2VnmQfYyBOrlIakRYXV9rKYDwoehSZmIRsctnSI0K6vzB3QM/YarSd0akOF42pW0nS
- sSoNVTWOttpI/cAPJ/QESgQchOUi4ILdOBWvSA6oleS9+TDs
+ bh=6/fejk3AUzlk1STcYkZQ4EwteAhTMlV5L1LTi7u62zo=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvbxsNv6wZ428gGrnwtbVCX7aa9MTOu8MEka
+ l9wqZTxVymJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams72wAKCRBVnxHm/pHO
+ 9RZECACOa9itTFox0FsxKXOkZ92rTwi8LjeqqnwdnFCVbypRUyjI/bCZcP1yEULa/rFL0Pkf/75
+ SA2GOWHY2cZGgWBFGwPJcQJAv3fZJ6Y713yX+vllbu1j/fpl+qp9LJwlqbjBSi23sBl/I5mPqQ8
+ OZofoL+vn2h6MKSBSljTgEhysPWNUSAicR2VAj8RMlkUfWWVV+QmKYEyT4a8370Lsx2zB83qEJw
+ y6sRfh0GAuLqOrBxLEjnrbD+27bAptsMojH+okaUi/WVWXu5v4UvUFq8ftuZSygZZGSEeN3plRE
+ K8SFe8mdbWG1CflNI9zbOETM2IRrB4jAAmDRDyKbwHARxhQZ
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,21 +41,21 @@ ccb2fd725d41 ("of: Respect #{iommu,msi}-cells in maps"):
 
 So fix the entries to match the provider's '#iommu-cells' property.
 
-Fixes: 5a67924d2fc5 ("arm64: dts: qcom: monaco-evk: Add IFP Mezzanine")
+Fixes: b64abb26a291 ("arm64: dts: qcom: lemans-evk: Add IFP Mezzanine")
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/monaco-evk-ifp-mezzanine.dtso | 18 +++++++++---------
+ arch/arm64/boot/dts/qcom/lemans-evk-ifp-mezzanine.dtso | 18 +++++++++---------
  1 file changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/monaco-evk-ifp-mezzanine.dtso b/arch/arm64/boot/dts/qcom/monaco-evk-ifp-mezzanine.dtso
-index e6beb4393430..a6e57ec8a1e1 100644
---- a/arch/arm64/boot/dts/qcom/monaco-evk-ifp-mezzanine.dtso
-+++ b/arch/arm64/boot/dts/qcom/monaco-evk-ifp-mezzanine.dtso
-@@ -50,15 +50,15 @@ nvmem-layout {
+diff --git a/arch/arm64/boot/dts/qcom/lemans-evk-ifp-mezzanine.dtso b/arch/arm64/boot/dts/qcom/lemans-evk-ifp-mezzanine.dtso
+index 44bd9b1a1765..22c975628ed7 100644
+--- a/arch/arm64/boot/dts/qcom/lemans-evk-ifp-mezzanine.dtso
++++ b/arch/arm64/boot/dts/qcom/lemans-evk-ifp-mezzanine.dtso
+@@ -204,15 +204,15 @@ &mdss1_dp1_phy {
  };
  
  &pcie0 {
--	iommu-map = <0x0   &pcie_smmu 0x0 0x1>,
+-	iommu-map = <0x0 &pcie_smmu 0x0 0x1>,
 -		    <0x100 &pcie_smmu 0x1 0x1>,
 -		    <0x208 &pcie_smmu 0x2 0x1>,
 -		    <0x210 &pcie_smmu 0x3 0x1>,
@@ -64,7 +64,7 @@ index e6beb4393430..a6e57ec8a1e1 100644
 -		    <0x400 &pcie_smmu 0x6 0x1>,
 -		    <0x500 &pcie_smmu 0x7 0x1>,
 -		    <0x501 &pcie_smmu 0x8 0x1>;
-+	iommu-map = <0x0   &pcie_smmu 0x0 0x0 0x1>,
++	iommu-map = <0x0 &pcie_smmu 0x0 0x0 0x1>,
 +		    <0x100 &pcie_smmu 0x1 0x0 0x1>,
 +		    <0x208 &pcie_smmu 0x2 0x0 0x1>,
 +		    <0x210 &pcie_smmu 0x3 0x0 0x1>,
