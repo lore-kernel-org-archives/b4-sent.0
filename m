@@ -1,96 +1,57 @@
-From: =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
-Date: Thu, 30 Jul 2026 23:52:03 +0200
-Subject: [PATCH 4/4] arm64: dts: qcom: sm8250: add device tree for the
- Xiaomi Mi Pad 5 Pro 5G
+From: Mayank Rungta <mrungta@google.com>
+Subject: [PATCH 0/2] watchdog: pretimeout: Allow building dump governor as
+ module
+Date: Thu, 30 Jul 2026 15:00:20 -0700
+Message-Id: <20260730-export-cpu-backtrace-apis-v1-0-bace8e1cb817@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260730-sm8250-xiaomi-enuma-v1-4-ed6d8fb99668@dawidwrobel.com>
-References: <20260730-sm8250-xiaomi-enuma-v1-0-ed6d8fb99668@dawidwrobel.com>
-In-Reply-To: <20260730-sm8250-xiaomi-enuma-v1-0-ed6d8fb99668@dawidwrobel.com>
-To: Jianhua Lu <lujianhua000@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAHTJa2oC/x3MQQqAIBBA0avErBtIhayuEi3MphqCkrEikO6et
+ HyL/xNEEqYIXZFA6ObIx56hygL86vaFkKds0JWuK6sbpCcccqIPF47Ob6c4T+gCR1SmnszYqNZ
+ YC7kPQjM//7sf3vcDGP4jOWsAAAA=
+X-Change-ID: 20260728-export-cpu-backtrace-apis-136d3b819377
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: Tzung-Bi Shih <tzungbi@kernel.org>, 
+ Douglas Anderson <dianders@chromium.org>, linux-kernel@vger.kernel.org, 
+ linux-watchdog@vger.kernel.org, Mayank Rungta <mrungta@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2171; i=me@dawidwrobel.com;
- h=from:subject:message-id; bh=hi9FyJr3l3tmFrwy+xRGM7nOfpqAmtQXqm/PedUBYog=;
- b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRlH+8vLYqMaV9n9Epyx7p7BWlBrTta1+WentByMbKTe
- dOXk4H+HaUsDGJcDLJiiix6aUF7rIJffn/34nc4zBxWJpAhDFycAjARkZ2MDNc/CWh7Wev/9VAt
- +SZqu37a67/Zzh8Y0sIKzZ6tevv1RC3DP63EI9/Orpz9+Yp0Ugxn6+sUp2jxCdX3Vl259UR2/tL
- b1bwA
-X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
- fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
-X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785448826; l=1089;
+ i=mrungta@google.com; s=20260212; h=from:subject:message-id;
+ bh=Wp0mqUPZWVkNcFglphCfVSwxnMXCbJkeE9ADnjkmes4=;
+ b=/E/jAWOT7pmfUrBwiAzubVyp2fiDuSunmTZ/EOaZr5j5GFbLW0DexzdLukhaFeT4LArg80Gmx
+ 1G+T7Mx2MFFBy5sqoEhDO2z0B1pxBsGSBSFVHEsMhkKOYtVCUbcgqOw
+X-Developer-Key: i=mrungta@google.com; a=ed25519;
+ pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
+X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Mi Pad 5 Pro 5G (enuma, 2021) is the modem-equipped variant of the
-Mi Pad 5 Pro. The board is otherwise the elish design, so describe it as
-the common device tree plus its own board ID, panel compatible and WiFi
-board data variant.
+All other watchdog pretimeout governors (noop, panic) can be built as
+loadable modules. However the "dump" pretimeout governor is restricted
+to built-in code because it calls trigger_all_cpu_backtrace(), which
+relies on arch_trigger_cpumask_backtrace(), an arch specific helper that
+is not exported to loadable modules.
 
-Unlike elish, this model shipped with a single display variant, so there
-is one device tree rather than a per-panel pair.
+This 2-patch series allows building the dump governor as a module (=m):
+1) Export cpumask_backtrace() in lib/nmi_backtrace.c.
+2) Convert CONFIG_WATCHDOG_PRETIMEOUT_GOV_DUMP from bool to tristate.
 
-Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
+Signed-off-by: Mayank Rungta <mrungta@google.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                |  1 +
- arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts | 26 ++++++++++++++++++++++++
- 2 files changed, 27 insertions(+)
+Mayank Rungta (2):
+      nmi: Export CPU backtrace APIs for loadable modules
+      watchdog: pretimeout: Convert dump pretimeout governor to tristate
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index e05414290d8e..529e29ffb25a 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -369,6 +369,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-sony-xperia-edo-pdx203.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-sony-xperia-edo-pdx206.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-elish-boe.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-elish-csot.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-enuma.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-pipa.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8350-hdk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8350-microsoft-surface-duo2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts
-new file mode 100644
-index 000000000000..7cc9ed7d12b2
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts
-@@ -0,0 +1,26 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025 Dawid Wróbel <me@dawidwrobel.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "sm8250-xiaomi-elish-common.dtsi"
-+
-+/ {
-+	model = "Xiaomi Mi Pad 5 Pro 5G";
-+	compatible = "xiaomi,enuma", "xiaomi,elish", "qcom,sm8250";
-+
-+	/* Platform type differs from elish; msm-id is inherited unchanged. */
-+	qcom,board-id = <0x2e 0>;
-+};
-+
-+&display_panel {
-+	compatible = "xiaomi,enuma-csot-nt36523", "xiaomi,elish-csot-nt36523",
-+		     "novatek,nt36523";
-+	status = "okay";
-+};
-+
-+&wifi_0 {
-+	qcom,calibration-variant = "Xiaomi_Pad_5Pro_5G";
-+};
+ drivers/watchdog/Kconfig |  4 ++--
+ include/linux/nmi.h      | 10 ++++++----
+ lib/nmi_backtrace.c      |  7 +++++++
+ 3 files changed, 15 insertions(+), 6 deletions(-)
+---
+base-commit: 3fe08b9796f36ef437ab9328e7dd1e5ff2d66603
+change-id: 20260728-export-cpu-backtrace-apis-136d3b819377
 
+Best regards,
 -- 
-2.55.0
+Mayank Rungta <mrungta@google.com>
 
