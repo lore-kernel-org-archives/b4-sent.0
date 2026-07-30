@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Wed, 29 Jul 2026 18:35:17 -0700
-Subject: [PATCH net v5 3/4] net: ethernet: oa_tc6: Disable tx queues on
- fatal error
+Date: Wed, 29 Jul 2026 18:35:18 -0700
+Subject: [PATCH net v5 4/4] net: ethernet: oa_tc6: Fix for the wrong data
+ type
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260729-fix-race-condition-and-crash-v5-3-3906bc485daf@onsemi.com>
+Message-Id: <20260729-fix-race-condition-and-crash-v5-4-3906bc485daf@onsemi.com>
 References: <20260729-fix-race-condition-and-crash-v5-0-3906bc485daf@onsemi.com>
 In-Reply-To: <20260729-fix-race-condition-and-crash-v5-0-3906bc485daf@onsemi.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -18,53 +18,43 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785375315; l=1429;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785375315; l=994;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=sCF8vvxErMf2hHtBkFe8CtJck2QFBgMa9qyNAHiHLSY=;
- b=OMqW9xqrChJ96jjx5yEczWGH58L0E0zO4BUS+4R3lT1QAWIHRNYLp9r4Ks9RWs0J+D9xn4qct
- FMQSOIh9cQRDAE4Ayzlq4Og0aaX+wHz0z/pxQ7e3z56MDmUOwFm+7B0
+ bh=II9qua5tG/YhwMidD/wuhD+qp9nEPTfFdgjEsW4zGtg=;
+ b=e0fkoRlnIEamhx375OqnjnNF9sZPfUAdssX5sDo3FmhNnYYSyHlLzGD/hemGr0UV4v5WVvHJ9
+ PojGA8COVxqBUs6QvVfu1uxus5YlHglexYWI9SqoNOFNodGBFi1YRvX
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Previously, TX queue interface was stopped when
-disable_traffic flag was set, which would indicate fatal
-error. It is more appropriate to disable the queue as,
-unless driver is unloaded and reloaded, there is no recovery
-after disable_traffic is set.
+Inadvertently bool data type is used where int is supposed to
+be used. This might turn a negative error code into true or
+false and sign of the return code would be lost.
 
-Fixes: b542d13fab0f ("net: ethernet: oa_tc6: Interrupt is active low, level triggered.")
+Fixes: 8f9bf857e43b ("net: ethernet: oa_tc6: implement internal PHY initialization")
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v5
-  - Changed the commit message to accurately reflect the
-    changes
-changes in v4
-  - Reverted the change that turned carrier off on disable_traffic,
-    as it may have side effects
-changes in v3
-  - New patch. Carrier marked off once disable_traffic is set
+  - New patch. Fixed the wrong data type used.
 ---
- drivers/net/ethernet/oa_tc6.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/net/ethernet/oa_tc6.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index 421f72e6f71e..bb644509c32b 100644
+index bb644509c32b..2ec22ba3ccba 100644
 --- a/drivers/net/ethernet/oa_tc6.c
 +++ b/drivers/net/ethernet/oa_tc6.c
-@@ -730,6 +730,10 @@ static void oa_tc6_disable_traffic(struct oa_tc6 *tc6)
- 	skb = oa_tc6_detach_waiting_tx_skb(tc6);
- 	spin_unlock_bh(&tc6->tx_skb_lock);
+@@ -423,7 +423,7 @@ static int oa_tc6_mdiobus_read(struct mii_bus *bus, int addr, int regnum)
+ {
+ 	struct oa_tc6 *tc6 = bus->priv;
+ 	u32 regval;
+-	bool ret;
++	int ret;
  
-+	/* disable_traffic, when set, is a point of no return to working
-+	 * state. TX queues are disabled.
-+	 */
-+	netif_tx_disable(tc6->netdev);
- 	oa_tc6_drop_tx_skb(tc6, skb);
- 	oa_tc6_free_ongoing_skbs(tc6);
- 	oa_tc6_write_register(tc6, OA_TC6_REG_INT_MASK0, regval);
+ 	ret = oa_tc6_read_register(tc6, OA_TC6_PHY_STD_REG_ADDR_BASE |
+ 				   (regnum & OA_TC6_PHY_STD_REG_ADDR_MASK),
 
 -- 
 2.43.0
