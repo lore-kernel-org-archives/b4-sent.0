@@ -1,11 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Fri, 31 Jul 2026 01:05:43 +0800
-Subject: [PATCH v2 5/9] rust: drm: add debugfs_init callback to Driver
- trait
+Date: Fri, 31 Jul 2026 01:05:44 +0800
+Subject: [PATCH v2 6/9] rust: drm: add DrmSeqShow seq_file adapter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-tyr-debugfs-v2-v2-5-aea19eccb996@linux.dev>
+Message-Id: <20260731-tyr-debugfs-v2-v2-6-aea19eccb996@linux.dev>
 References: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
 In-Reply-To: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -33,137 +32,94 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
  rust-for-linux@vger.kernel.org, driver-core@lists.linux.dev, 
  dri-devel@lists.freedesktop.org, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785431148; l=4261;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785431148; l=2686;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=Mu/THEs4NT5nNw4z7NqjGMWVALSaA8dgypD02/JDRXs=;
- b=Vv+KfURg6kwiS2V3pkSEKb24JmkZRi0mkucL3WPHVnRo6orv2pNtzyrdWBlpd9MdSl2XLFoEQ
- faMxHsP+XSCCZhDPDUwU633m6r4bYMpHblmSoeScV4tqQqJjnmvF8px
+ bh=GVCT8D7jTZC4iF9oYU9jLIUK2NmIVV1AdrU5/oeX5O4=;
+ b=+RGmMqtdp1gntYEKgcNqJHPleGq4GDbAxXoW3f3/rP3zzWKCFsIYNIsb7VKgS9WriBEl0+zsW
+ laOIBDRYn20AOsbawtafVMeOLtdUeUSBA3Gzgq0bXg1yx6yKnrGd86T
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add debugfs_init method to the Driver trait, enabling Rust DRM
-drivers to populate debugfs entries during device registration.
-The C callback converts from raw C minor/dentry types to Rust Device
-and ScopedDir references.
+Add DrmSeqShow trait and its SeqShow blanket impl for Device<T, Normal>,
+enabling Rust DRM drivers to expose device state via debugfs seq_file
+entries. Device registration data is kept alive for the duration of
+each seq_file read.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/bindings/bindings_helper.h |  1 +
- rust/kernel/drm/device.rs       | 36 ++++++++++++++++++++++++++++++++++--
- rust/kernel/drm/driver.rs       | 11 +++++++++++
- 3 files changed, 46 insertions(+), 2 deletions(-)
+ rust/kernel/drm/debugfs.rs | 49 ++++++++++++++++++++++++++++++++++++++++++++++
+ rust/kernel/drm/mod.rs     |  1 +
+ 2 files changed, 50 insertions(+)
 
-diff --git a/rust/bindings/bindings_helper.h b/rust/bindings/bindings_helper.h
-index 1124785e210b3..c3b2a86528934 100644
---- a/rust/bindings/bindings_helper.h
-+++ b/rust/bindings/bindings_helper.h
-@@ -30,6 +30,7 @@
- 
- #include <linux/acpi.h>
- #include <linux/gpu_buddy.h>
-+#include <drm/drm_debugfs.h>
- #include <drm/drm_device.h>
- #include <drm/drm_drv.h>
- #include <drm/drm_file.h>
-diff --git a/rust/kernel/drm/device.rs b/rust/kernel/drm/device.rs
-index 7a3a0e21e9557..c9aa5d2374444 100644
---- a/rust/kernel/drm/device.rs
-+++ b/rust/kernel/drm/device.rs
-@@ -7,6 +7,7 @@
- use crate::{
-     alloc::allocator::Kmalloc,
-     bindings,
-+    debugfs::ScopedDir,
-     device,
-     drm::{
-         self,
-@@ -39,7 +40,7 @@
-     ptr::{
-         self,
-         NonNull, //
--    },
-+    }, //
- };
- 
- #[cfg(CONFIG_DRM_LEGACY)]
-@@ -170,7 +171,7 @@ const fn compute_features() -> u32 {
-         release: Some(Device::<T>::release),
-         master_set: None,
-         master_drop: None,
--        debugfs_init: None,
-+        debugfs_init: Some(Device::<T, Normal>::debugfs_init_callback),
- 
-         gem_create_object: T::Object::ALLOC_OPS.gem_create_object,
-         prime_handle_to_fd: T::Object::ALLOC_OPS.prime_handle_to_fd,
-@@ -353,6 +354,37 @@ extern "C" fn release(ptr: *mut bindings::drm_device) {
-         unsafe { core::ptr::drop_in_place(this) };
-     }
- 
-+    /// C callback for `drm_driver.debugfs_init`.
-+    ///
-+    /// # Safety
-+    ///
-+    /// The DRM core guarantees that `minor` is valid and non-null when calling
-+    /// this callback, and that `minor->dev` is a valid `drm_device` embedded
-+    /// in a `Device<T>`.
-+    unsafe extern "C" fn debugfs_init_callback(minor: *mut bindings::drm_minor) {
-+        // SAFETY: `minor` is valid and non-null per the function's safety
-+        // precondition.
-+        let dev_ptr = unsafe { (*minor).dev };
-+        // SAFETY: `minor` is valid per the function's safety precondition.
-+        let debugfs_root = unsafe { (*minor).debugfs_root };
+diff --git a/rust/kernel/drm/debugfs.rs b/rust/kernel/drm/debugfs.rs
+new file mode 100644
+index 0000000000000..26f3b400e24ac
+--- /dev/null
++++ b/rust/kernel/drm/debugfs.rs
+@@ -0,0 +1,49 @@
++// SPDX-License-Identifier: GPL-2.0 OR MIT
 +
-+        // Debugfs may be disabled.
-+        if debugfs_root.is_null() {
-+            return;
-+        }
++//! DRM-specific debugfs seq_file helpers.
 +
-+        // SAFETY: `dev_ptr` points to a valid `drm_device` embedded in
-+        // `Device<T, Normal>`. `debugfs_init` runs during registration, so
-+        // the `Normal` context is correct.
-+        let device = unsafe { Device::<T, Normal>::from_raw(dev_ptr) };
++use crate::{
++    debugfs,
++    drm,
++    prelude::*,
++    seq_file,
++    sync::aref::AlwaysRefCounted, //
++};
++use core::ptr::NonNull;
 +
-+        // SAFETY: `debugfs_root` is a valid dentry that remains alive as long as the
-+        // DRM device is registered, which outlives this `ScopedDir`.
-+        let dir = unsafe { ScopedDir::from_dentry(debugfs_root) };
++/// Renders DRM device state into a seq_file under SRCU protection.
++///
++/// Pass an implementing type to
++/// [`debugfs::ScopedDir::seq_file`]. The `show`
++/// method receives a [`drm::RegistrationGuard`] that keeps DRM device data alive
++/// for its duration.
++pub trait DrmSeqShow<T: drm::Driver> {
++    /// Writes debugfs output for the file.
++    fn show(guard: &drm::RegistrationGuard<'_, T>, m: &seq_file::SeqFile) -> Result;
++}
 +
-+        T::debugfs_init(device, &dir);
++impl<S: DrmSeqShow<T>, T: drm::Driver> debugfs::SeqShow<drm::Device<T, drm::Normal>> for S {
++    fn show(dev: &drm::Device<T, drm::Normal>, m: &seq_file::SeqFile) -> Result {
++        // SAFETY: `debugfs_init` runs after `dev->registered = true` is set,
++        // so the `Ioctl` invariant is satisfied. `Normal` and `Ioctl` share
++        // an identical layout.
++        let dev = unsafe { dev.assume_ctx::<drm::Ioctl>() };
++
++        let Some(guard) = dev.registration_guard() else {
++            return Err(ENODEV);
++        };
++        S::show(&guard, m)
 +    }
 +
-     /// Change the [`DeviceContext`] for a [`Device`].
-     ///
-     /// # Safety
-diff --git a/rust/kernel/drm/driver.rs b/rust/kernel/drm/driver.rs
-index 08b2a318cf02a..7f3a6eaeddc5e 100644
---- a/rust/kernel/drm/driver.rs
-+++ b/rust/kernel/drm/driver.rs
-@@ -6,6 +6,7 @@
- 
- use crate::{
-     bindings,
-+    debugfs::ScopedDir,
-     device,
-     drm,
-     error::to_result,
-@@ -138,6 +139,16 @@ pub trait Driver {
-     /// usable from the render node (i.e. marked DRM_RENDER_ALLOW), whereas
-     /// userspace processes using the master node can invoke any ioctl.
-     const FEAT_RENDER: bool = false;
-+
-+    /// Populates debugfs for this DRM device.
-+    ///
-+    /// Called by the DRM core during registration, once per minor (callback
-+    /// runs after `dev->registered`).
-+    fn debugfs_init<'a>(_dev: &'a drm::Device<Self, drm::Normal>, _dir: &ScopedDir<'a, 'static>)
-+    where
-+        Self: Sized,
-+    {
++    fn open(dev: &drm::Device<T, drm::Normal>) -> Result {
++        // Hold a device reference so the device is not freed while the file is open.
++        dev.inc_ref();
++        Ok(())
 +    }
- }
++
++    unsafe fn release(dev: NonNull<drm::Device<T, drm::Normal>>) {
++        // Drop the reference taken in `open`.
++        // SAFETY: `dev` is valid per this function's safety contract.
++        unsafe { drm::Device::<T>::dec_ref(dev) };
++    }
++}
+diff --git a/rust/kernel/drm/mod.rs b/rust/kernel/drm/mod.rs
+index fd6ed35bc35a9..5ed2e6bb764eb 100644
+--- a/rust/kernel/drm/mod.rs
++++ b/rust/kernel/drm/mod.rs
+@@ -2,6 +2,7 @@
  
- /// The registration type of a `drm::Device`.
+ //! DRM subsystem abstractions.
+ 
++pub mod debugfs;
+ pub mod device;
+ pub mod driver;
+ pub mod file;
 
 -- 
 2.43.0
