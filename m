@@ -1,11 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Fri, 31 Jul 2026 01:05:41 +0800
-Subject: [PATCH v2 3/9] rust: debugfs: add Entry::from_raw and
- ScopedDir::from_dentry
+Date: Fri, 31 Jul 2026 01:05:42 +0800
+Subject: [PATCH v2 4/9] drm: move debugfs_init after dev->registered is set
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-tyr-debugfs-v2-v2-3-aea19eccb996@linux.dev>
+Message-Id: <20260731-tyr-debugfs-v2-v2-4-aea19eccb996@linux.dev>
 References: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
 In-Reply-To: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -33,87 +32,56 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
  rust-for-linux@vger.kernel.org, driver-core@lists.linux.dev, 
  dri-devel@lists.freedesktop.org, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785431148; l=2419;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785431148; l=1502;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=FTFUONPZ59+GJBuoVyzqKeWjyXfvQxVwyjwhiLzc75o=;
- b=oDB9AgTRksigyDa32LKWaz2haxDqxaPU9ZNoKyWk2lZQksK+lhTkT3ANydQK7o5sAwThohcZm
- tN6hxLfrA6bBsIAG2AFfPthvNKam079pN6pEZHxRiv9W9CHM1n3f42I
+ bh=WZR8Y42ND9E/OAlX111HbpPcKsxTChsq0oOfQ3+9UZM=;
+ b=Nu6+7BcxiJjyRPpf2u+1b0iaiSQBOJe051oW2rzfFeF1mot84+/iQEuu/d+7bnherhoaUo22G
+ PErAWGVIR6SCpdLLCp+QzHtk1b2X3Lol0rBTsYH8E7OtNJA4IEi52sW
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add methods to construct debugfs abstractions from raw C dentry
-pointers. Needed by DRM debugfs_init callback to create ScopedDir
-from the root dentry provided by C core.
+The debugfs_init callback was invoked by drm_debugfs_register before
+dev->registered is set to true. Moving it to drm_dev_register after
+dev->registered = true fixes the Ioctl type invariant violation.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/debugfs.rs       | 19 +++++++++++++++++++
- rust/kernel/debugfs/entry.rs | 15 ++++++++++++++-
- 2 files changed, 33 insertions(+), 1 deletion(-)
+ drivers/gpu/drm/drm_debugfs.c | 3 ---
+ drivers/gpu/drm/drm_drv.c     | 5 +++++
+ 2 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/rust/kernel/debugfs.rs b/rust/kernel/debugfs.rs
-index dea0e2c953039..0f521762352ad 100644
---- a/rust/kernel/debugfs.rs
-+++ b/rust/kernel/debugfs.rs
-@@ -735,4 +735,23 @@ fn new(name: &CStr) -> ScopedDir<'data, 'static> {
-             _phantom: PhantomData,
-         }
-     }
-+
-+    /// Creates a [`ScopedDir`] wrapping an existing debugfs dentry.
-+    ///
-+    /// Files created under this directory are not automatically removed on drop;
-+    /// their lifetime is tied to the dentry owner.
-+    ///
-+    /// # Safety
-+    ///
-+    /// The caller must ensure the dentry remains valid for the lifetime of the
-+    /// returned `ScopedDir`.
-+    pub unsafe fn from_dentry(dentry: *mut bindings::dentry) -> Self {
-+        let _ = dentry;
-+        ScopedDir {
-+            #[cfg(CONFIG_DEBUG_FS)]
-+            // SAFETY: The caller guarantees the dentry is valid and outlives this `ScopedDir`.
-+            entry: ManuallyDrop::new(unsafe { Entry::from_raw(dentry) }),
-+            _phantom: PhantomData,
-+        }
-+    }
- }
-diff --git a/rust/kernel/debugfs/entry.rs b/rust/kernel/debugfs/entry.rs
-index 46aad64896ecb..7643ff0fa6093 100644
---- a/rust/kernel/debugfs/entry.rs
-+++ b/rust/kernel/debugfs/entry.rs
-@@ -8,7 +8,7 @@
-         CStr,
-         CStrExt as _, //
-     },
--    sync::Arc,
-+    sync::Arc, //
- };
+diff --git a/drivers/gpu/drm/drm_debugfs.c b/drivers/gpu/drm/drm_debugfs.c
+index ae1c6126c2c59..38cf6ce387cc8 100644
+--- a/drivers/gpu/drm/drm_debugfs.c
++++ b/drivers/gpu/drm/drm_debugfs.c
+@@ -442,9 +442,6 @@ int drm_debugfs_register(struct drm_minor *minor, int minor_id)
+ 	/* TODO: Only for compatibility with drivers */
+ 	minor->debugfs_root = dev->debugfs_root;
  
- use core::marker::PhantomData;
-@@ -87,6 +87,19 @@ pub(crate) unsafe fn dynamic_file<T>(
+-	if (dev->driver->debugfs_init && dev->render != minor)
+-		dev->driver->debugfs_init(minor);
+-
+ 	return 0;
  }
  
- impl<'a> Entry<'a> {
-+    /// Wraps a raw dentry pointer.
-+    ///
-+    /// # Safety
-+    ///
-+    /// The caller must ensure the dentry is valid and outlives this `Entry`.
-+    pub(crate) unsafe fn from_raw(entry: *mut bindings::dentry) -> Self {
-+        Self {
-+            entry,
-+            _parent: None,
-+            _phantom: PhantomData,
-+        }
-+    }
+diff --git a/drivers/gpu/drm/drm_drv.c b/drivers/gpu/drm/drm_drv.c
+index e890052061f30..15669764fe625 100644
+--- a/drivers/gpu/drm/drm_drv.c
++++ b/drivers/gpu/drm/drm_drv.c
+@@ -1101,6 +1101,11 @@ int drm_dev_register(struct drm_device *dev, unsigned long flags)
+ 	dev->registered = true;
+ 	dev->unplugged = false;
+ 
++	/* Call debugfs_init after the device is fully registered. */
++	if (dev->driver->debugfs_init && dev->primary &&
++	    dev->render != dev->primary)
++		dev->driver->debugfs_init(dev->primary);
 +
-     pub(crate) fn dir(name: &CStr, parent: Option<&'a Entry<'_>>) -> Self {
-         let parent_ptr = match &parent {
-             Some(entry) => entry.as_ptr(),
+ 	if (driver->load) {
+ 		ret = driver->load(dev, flags);
+ 		if (ret)
 
 -- 
 2.43.0
