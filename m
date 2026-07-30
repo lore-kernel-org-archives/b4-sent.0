@@ -1,144 +1,69 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Fri, 31 Jul 2026 01:05:47 +0800
-Subject: [PATCH v2 9/9] drm/debugfs: hold device reference for the lifetime
- of open files
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH v2 0/2] dpll: zl3073x: add Microchip ZL30643 support
+Date: Thu, 30 Jul 2026 19:35:34 +0200
+Message-Id: <20260730-for-upstream-zl30643-v2-0-0ea0bbd03755@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-tyr-debugfs-v2-v2-9-aea19eccb996@linux.dev>
-References: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
-In-Reply-To: <20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Matthew Brost <matthew.brost@intel.com>, 
- =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
- =?utf-8?q?Ma=C3=ADra_Canal?= <mcanal@igalia.com>, 
- Melissa Wen <mwen@igalia.com>, Wambui Karuga <wambui.karugax@gmail.com>, 
- Eric Anholt <eric@anholt.net>, Ben Gamari <bgamari@gmail.com>, 
- rust-for-linux@vger.kernel.org, driver-core@lists.linux.dev, 
- dri-devel@lists.freedesktop.org, Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785431148; l=3132;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=skA4KVHM8LMz73TA56MQb3n/Ixh2G2cs8JHXFUZaNIU=;
- b=byirK3xd7xbmRD0KNzAAenKpeldvUER6QjL52yREv13nnnfpFq5CGiZ65r+lwQ7WTBzZbuVjH
- 2PRTkN6XUtDB1MhPnoqzBmw/q8DJSTtfx8+g8cJQ91uO8Obgrcp4MCI
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+X-B4-Tracking: v=1; b=H4sIAGaLa2oC/4WNQQ6CMBBFr0Jm7ZjS1gKuvIdh0cJUmiiQKTYq4
+ e5WLuDyveS/v0IkDhThXKzAlEIM05hBHgroBjveCEOfGaSQRlRSo58Yn3NcmOwDP3cljFZYO6m
+ kqVxTaQ95OjP58Nqz1zbzEOIy8Xt/SeXP/gmmEgWSbZSzuq9PXX3xTHT0DO22bV/OVpG0tgAAA
+ A==
+To: Ivan Vecera <ivecera@redhat.com>, 
+ Prathosh Satish <Prathosh.Satish@microchip.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Vadim Fedorenko <vadim.fedorenko@linux.dev>, 
+ Arkadiusz Kubalewski <arkadiusz.kubalewski@intel.com>, 
+ Jiri Pirko <jiri@resnulli.us>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785432952; l=1540;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=6AKWLtGif7r+vr72wU4kwdqfkXx5/kNLwiBtRyPgSQk=;
+ b=KPaiveD14ie456lg8mc4KK4inmbmJuzjR6fdxEdOvHIMUzTg/Y02mK50rNLH8MFnblKbfvoAM
+ p/3eNgF2IPNAp91X77FGA0RhkkJLLM6bLOqCCu1YojWzp0ZniWl4E25
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hold a device reference (via drm_dev_get/put) across the lifetime of open
-debugfs files. Prevents use-after-free when a device is unregistered while
-a debugfs file remains open. Both drm_debugfs_open (legacy info_list)
-and drm_debugfs_entry_open (drm_debugfs_add_file) paths are covered.
+The Microchip ZL30643 (chip ID 0x0E3B) is a 3 DPLL channel member of
+the ZL3064x timing family, register compatible with the
+ZL30733 of the ZL3073x family.
 
-Fixes: 1c9cacbea8805 ("drm/debugfs: create device-centered debugfs functions")
-Fixes: 28a62277e06f9 ("drm: Convert proc files to seq_file and introduce debugfs")
+Patch 1 describes it in the binding as a fallback to the register-
+        equivalent microchip,zl30733.
+Patch 2 adds the 0x0E3B runtime chip-ID table entry; no new match
+        strings, the fallback binds via the existing microchip,zl30733
+        entry.
 
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/gpu/drm/drm_debugfs.c | 42 ++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 38 insertions(+), 4 deletions(-)
+Changes in v2:
+- bindings: describe ZL30643 as a fallback to the ZL30733 instead of a
+  standalone compatible (based on Conor's questions).
+- driver: drop the SPI/I2C/of_match additions: the fallback binds via
+  microchip,zl30733; keep only the 0x0E3B chip-ID table entry needed
+  for the runtime channel-count lookup.
+- commit messages: comments on the datasheets and identity backing
+  the REF_PHASE_COMP_32 flag reuse (Ivan's questions).
+- Link to v1: https://lore.kernel.org/r/20260724-for-upstream-zl30643-v1-0-ea93ba4d85c8@free.fr
 
-diff --git a/drivers/gpu/drm/drm_debugfs.c b/drivers/gpu/drm/drm_debugfs.c
-index 38cf6ce387cc8..5262a708f1602 100644
---- a/drivers/gpu/drm/drm_debugfs.c
-+++ b/drivers/gpu/drm/drm_debugfs.c
-@@ -159,11 +159,28 @@ static const struct drm_debugfs_info drm_debugfs_list[] = {
- static int drm_debugfs_open(struct inode *inode, struct file *file)
- {
- 	struct drm_info_node *node = inode->i_private;
-+	struct drm_device *dev = node->minor->dev;
-+	int ret;
- 
- 	if (!device_is_registered(node->minor->kdev))
- 		return -ENODEV;
- 
--	return single_open(file, node->info_ent->show, node);
-+	drm_dev_get(dev);
-+
-+	ret = single_open(file, node->info_ent->show, node);
-+	if (ret)
-+		drm_dev_put(dev);
-+
-+	return ret;
-+}
-+
-+static int drm_debugfs_release(struct inode *inode, struct file *file)
-+{
-+	struct drm_info_node *node =
-+		((struct seq_file *)file->private_data)->private;
-+
-+	drm_dev_put(node->minor->dev);
-+	return single_release(inode, file);
- }
- 
- static int drm_debugfs_entry_open(struct inode *inode, struct file *file)
-@@ -171,11 +188,28 @@ static int drm_debugfs_entry_open(struct inode *inode, struct file *file)
- 	struct drm_debugfs_entry *entry = inode->i_private;
- 	struct drm_debugfs_info *node = &entry->file;
- 	struct drm_minor *minor = entry->dev->primary ?: entry->dev->accel;
-+	struct drm_device *dev = entry->dev;
-+	int ret;
- 
- 	if (!device_is_registered(minor->kdev))
- 		return -ENODEV;
- 
--	return single_open(file, node->show, entry);
-+	drm_dev_get(dev);
-+
-+	ret = single_open(file, node->show, entry);
-+	if (ret)
-+		drm_dev_put(dev);
-+
-+	return ret;
-+}
-+
-+static int drm_debugfs_entry_release(struct inode *inode, struct file *file)
-+{
-+	struct drm_debugfs_entry *entry =
-+		((struct seq_file *)file->private_data)->private;
-+
-+	drm_dev_put(entry->dev);
-+	return single_release(inode, file);
- }
- 
- static const struct file_operations drm_debugfs_entry_fops = {
-@@ -183,7 +217,7 @@ static const struct file_operations drm_debugfs_entry_fops = {
- 	.open = drm_debugfs_entry_open,
- 	.read = seq_read,
- 	.llseek = seq_lseek,
--	.release = single_release,
-+	.release = drm_debugfs_entry_release,
- };
- 
- static const struct file_operations drm_debugfs_fops = {
-@@ -191,7 +225,7 @@ static const struct file_operations drm_debugfs_fops = {
- 	.open = drm_debugfs_open,
- 	.read = seq_read,
- 	.llseek = seq_lseek,
--	.release = single_release,
-+	.release = drm_debugfs_release,
- };
- 
- /**
+---
+Vincent Jardin (2):
+      dt-bindings: dpll: zl3073x: ZL30643 is compatible
+      dpll: zl3073x: recognize the ZL30643 chip ID (0x0E3B)
 
+ .../devicetree/bindings/dpll/microchip,zl30731.yaml   | 19 +++++++++++++------
+ drivers/dpll/zl3073x/core.c                           |  1 +
+ 2 files changed, 14 insertions(+), 6 deletions(-)
+---
+base-commit: 248951ddc14de84de3910f9b13f51491a8cd91df
+change-id: 20260724-for-upstream-zl30643-8b23267b974f
+
+Best regards,
 -- 
-2.43.0
+Vincent Jardin <vjardin@free.fr>
 
