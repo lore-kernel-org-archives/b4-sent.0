@@ -1,96 +1,104 @@
-From: =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>
-Date: Thu, 30 Jul 2026 12:58:13 +0200
-Subject: [PATCH v2 2/2] ASoC: codecs: lpass-wsa-macro: Fix enum kcontrol
- accesses
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH 00/22] arm64: dts: qcom: Fix the PCIe iommu-map entries
+Date: Thu, 30 Jul 2026 13:55:41 +0200
+Message-Id: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260730-worktree-lpass-tx-macro-enum-fix-v2-2-6d091c736116@dawidwrobel.com>
-References: <20260730-worktree-lpass-tx-macro-enum-fix-v2-0-6d091c736116@dawidwrobel.com>
-In-Reply-To: <20260730-worktree-lpass-tx-macro-enum-fix-v2-0-6d091c736116@dawidwrobel.com>
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAL07a2oC/yXM0QpAQBCF4VfRXJtaK8SryMUag1GLdpGSd7e4/
+ E6d/wLPTthDFV3g+BAvyxyQxBHQaOaBUbpg0ErnqkgVymLtjtas2MuJRidMZU+KygzCZ3Uc5q9
+ XN7/93k5M2xuB+34ANdJEQHEAAAA=
+X-Change-ID: 20260730-iommu-map-fix-a21ec9fc0c95
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
- =?utf-8?q?Dawid_Wro=CC=81bel?= <me@dawidwrobel.com>, stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2792; i=me@dawidwrobel.com;
- h=from:subject:message-id; bh=8YiX6eyJpS5QlREPI4VEoPgAt7wgKMetE6Ezxh6uvYg=;
- b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRl64WaP134tO167QqxVecjCxak3XeeZv5S2mXBMYZfq
- 69etNAq7ChlYRDjYpAVU2TRSwvaYxX88vu7F7/DYeawMoEMYeDiFICJXL7G8L/u4MXLHN8X39uy
- Y/6yDZFS+5mbtCKdE8q+CMmsX9y4rUWIkeEix5Sfb5Ycnn7J9vC0SdM1D+q23XQ5LhM57c1tpmf
- l8p2cAA==
-X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
- fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
-X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
+ Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3950;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=Jv+Y+B7vW5zw3dtOTvZ7DUoUVDoPl9faWBEpmq7vOFg=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvU6wfi+7nPSDv4gG0rmYtE7MjBcxIEFvjXY
+ N/Pf0xQ1KuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams71AAKCRBVnxHm/pHO
+ 9TSBB/0QSpb1PekwaQMaBy/Alfc+h2gKqXTo2opNHcnG8tv9qRZDEcEUtSqqExYdproF92ggfgY
+ Y49+flXXBoYqgjBhS//ZiHeaieGaMjSbqD0dJHmBNAULDd6vwQ1ZYh2biMJllMyx3gmIfe9uqWP
+ qgmmzVvS8EC4hpV0wTfTWXQSV6a/7KutwQohW4AaRg77DoCZ0M/It3pqfzEIWxpDL6MgoxDg0jh
+ qlO0drKdWa38tPtxbSXul7IoKr8x7o9MckeKakp0FFB4sOxCeg4jPBAqSySVG/0+xqfbG9GP2iX
+ KqilFfPIs84HAhuBIcX0oSbLTKy5PQTUiAvD6kKxZyZeeVrD
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-EAR SPKR PA Gain" and the four "WSA RX* Mux" controls are enumerated,
-but their get and put callbacks access the value through
-ucontrol->value.integer.value[0] (a long) instead of
-ucontrol->value.enumerated.item[0] (an unsigned int).
+Several Qualcomm SoCs declare their IOMMU providers like apps_smmu and
+pcie_smmu, with '#iommu-cells = <2>', where the two cells are the SID
+and the SID mask. But the PCIe iommu-map entries on these SoCs specify
+only one output cell for the SID and omit the mask. This went unnoticed
+until the OF core started warning with commit
+ccb2fd725d41 ("of: Respect #{iommu,msi}-cells in maps"):
 
-This same pattern was fixed in the sibling drivers by
-commit bcfe5f76cc40 ("ASoC: codecs: rx-macro: fix accessing array
-out of bounds for enum type") and
-commit 0ea5eff7c606 ("ASoC: codecs: va-macro: fix accessing array
-out of bounds for enum type"), but wsa-macro was missed.
+  iommu-map has 1-cell entries targeting 2-cell #iommu-cells, treating as 1-cell output
 
-On 64-bit kernels with CONFIG_SND_CTL_DEBUG this trips the elem value
-sanity check and every read of these controls fails with -EINVAL.
+So this series fixes the iommu-map entries across the affected SoC, SoM, board
+and overlay files to match the provider's '#iommu-cells' property.
 
-Fixes: 809bcbcecebf ("ASoC: codecs: lpass-wsa-macro: Add support to WSA Macro")
-Fixes: 2c4066e5d428 ("ASoC: codecs: lpass-wsa-macro: add dapm widgets and route")
-Assisted-by: Claude:claude-fable-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- sound/soc/codecs/lpass-wsa-macro.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Manivannan Sadhasivam (22):
+      arm64: dts: qcom: kaanapali: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: kodiak: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sar2130p: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sc8180x: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sdm845: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8150: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8250: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8350: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8450: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8550: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8650: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: sm8750: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: talos: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: lemans: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: monaco: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: monaco-monza-som: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: monaco-evk-ifp-mezzanine: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: lemans-evk-ifp-mezzanine: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: qcs6490-radxa-dragon-q6a: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: qcs6490-thundercomm-minipc-g1iot: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: qcs6490-rb3gen2: Fix the PCIe iommu-map entries
+      arm64: dts: qcom: qcs6490-rb3gen2-industrial-mezzanine: Fix the PCIe iommu-map entries
 
-diff --git a/sound/soc/codecs/lpass-wsa-macro.c b/sound/soc/codecs/lpass-wsa-macro.c
-index 5ad0448af649..af521e0988db 100644
---- a/sound/soc/codecs/lpass-wsa-macro.c
-+++ b/sound/soc/codecs/lpass-wsa-macro.c
-@@ -2064,7 +2064,7 @@ static int wsa_macro_ear_spkr_pa_gain_get(struct snd_kcontrol *kcontrol,
- 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
- 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
- 
--	ucontrol->value.integer.value[0] = wsa->ear_spkr_gain;
-+	ucontrol->value.enumerated.item[0] = wsa->ear_spkr_gain;
- 
- 	return 0;
- }
-@@ -2075,7 +2075,7 @@ static int wsa_macro_ear_spkr_pa_gain_put(struct snd_kcontrol *kcontrol,
- 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
- 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
- 
--	wsa->ear_spkr_gain =  ucontrol->value.integer.value[0];
-+	wsa->ear_spkr_gain =  ucontrol->value.enumerated.item[0];
- 
- 	return 0;
- }
-@@ -2088,7 +2088,7 @@ static int wsa_macro_rx_mux_get(struct snd_kcontrol *kcontrol,
- 				snd_soc_dapm_to_component(widget->dapm);
- 	struct wsa_macro *wsa = snd_soc_component_get_drvdata(component);
- 
--	ucontrol->value.integer.value[0] =
-+	ucontrol->value.enumerated.item[0] =
- 			wsa->rx_port_value[widget->shift];
- 	return 0;
- }
-@@ -2101,7 +2101,7 @@ static int wsa_macro_rx_mux_put(struct snd_kcontrol *kcontrol,
- 				snd_soc_dapm_to_component(widget->dapm);
- 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
- 	struct snd_soc_dapm_update *update = NULL;
--	u32 rx_port_value = ucontrol->value.integer.value[0];
-+	u32 rx_port_value = ucontrol->value.enumerated.item[0];
- 	u32 bit_input;
- 	u32 aif_rst;
- 	unsigned int dai_id;
+ arch/arm64/boot/dts/qcom/kaanapali.dtsi            |  4 +-
+ arch/arm64/boot/dts/qcom/kodiak.dtsi               |  8 +--
+ .../boot/dts/qcom/lemans-evk-ifp-mezzanine.dtso    | 18 +++---
+ arch/arm64/boot/dts/qcom/lemans.dtsi               |  8 +--
+ .../boot/dts/qcom/monaco-evk-ifp-mezzanine.dtso    | 18 +++---
+ arch/arm64/boot/dts/qcom/monaco-monza-som.dtsi     | 16 +++---
+ arch/arm64/boot/dts/qcom/monaco.dtsi               |  8 +--
+ .../boot/dts/qcom/qcs6490-radxa-dragon-q6a.dts     | 18 +++---
+ .../qcom/qcs6490-rb3gen2-industrial-mezzanine.dtso | 50 ++++++++---------
+ arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts       | 18 +++---
+ .../dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts  | 18 +++---
+ arch/arm64/boot/dts/qcom/sar2130p.dtsi             |  8 +--
+ arch/arm64/boot/dts/qcom/sc8180x.dtsi              | 16 +++---
+ arch/arm64/boot/dts/qcom/sdm845.dtsi               | 64 +++++++++++-----------
+ arch/arm64/boot/dts/qcom/sm8150.dtsi               |  8 +--
+ arch/arm64/boot/dts/qcom/sm8250.dtsi               | 12 ++--
+ arch/arm64/boot/dts/qcom/sm8350.dtsi               |  8 +--
+ arch/arm64/boot/dts/qcom/sm8450.dtsi               |  8 +--
+ arch/arm64/boot/dts/qcom/sm8550.dtsi               |  8 +--
+ arch/arm64/boot/dts/qcom/sm8650.dtsi               |  8 +--
+ arch/arm64/boot/dts/qcom/sm8750.dtsi               |  4 +-
+ arch/arm64/boot/dts/qcom/talos.dtsi                |  4 +-
+ 22 files changed, 166 insertions(+), 166 deletions(-)
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260730-iommu-map-fix-a21ec9fc0c95
 
--- 
-2.55.0
+Best regards,
+--  
+மணிவண்ணன் சதாசிவம்
 
