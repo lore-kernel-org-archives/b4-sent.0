@@ -1,52 +1,50 @@
 From: Andy Chung <Andy.Chung@amd.com>
-Subject: [PATCH linux dev-6.18 0/4] hwmon: (kb9002) backport Kandou KB9002
- retimer support
-Date: Thu, 30 Jul 2026 17:07:55 +0800
-Message-Id: <20260730-kb9002-backport-v1-0-41f472e52215@amd.com>
+Date: Thu, 30 Jul 2026 17:07:56 +0800
+Subject: [PATCH linux dev-6.18 1/4] dt-bindings: Add vendor prefix for
+ Kandou
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGsUa2oC/yWMywqDMBAAfyXsuSmbBEztrxQPeax2a4mSqAjiv
- zdtj8Mwc0ChzFTgLg7ItHHhKVVQFwHh6dJAkmNl0KgbtAbl6FtELb0L4zzlRRo0rSKnrIoWajV
- n6nn/HR/w5rTuItImm6u6Qff3ZfUvCst3C+f5AbHBdHeDAAAA
-X-Change-ID: 20260730-kb9002-backport-30391ea171d7
+Message-Id: <20260730-kb9002-backport-v1-1-41f472e52215@amd.com>
+References: <20260730-kb9002-backport-v1-0-41f472e52215@amd.com>
+In-Reply-To: <20260730-kb9002-backport-v1-0-41f472e52215@amd.com>
 To: openbmc@lists.ozlabs.org, joel@jms.id.au, andrew@codeconstruct.com.au
 Cc: Andy Chung <Andy.Chung@amd.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785402478; l=1054;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785402478; l=955;
  i=Andy.Chung@amd.com; s=20260327; h=from:subject:message-id;
- bh=AETcoSpMJMkjMqd07nfckU1ICPSkADFXdUOJKb6ueBg=;
- b=RCEkeKZUxKOlK2MQm/FOBnwIDwpTBfwiJJpadeUyRqZ0qSZks9ejjcslyJuYv74Pjix6sM8L2
- bwB5fqwm25IClK4Am46qTAVY5SwI+nJ71aTcvljhMPqqnwSqLPSlzCK
+ bh=Vip+y4zyOOeo3fWhSWkyV8pwofoZryEMIXrs0tGBVZg=;
+ b=x4Gtydnffs9wctOQ8ycmZzPolmLhKwVH0hvPH04jA1UuM8nSyvMkd6KihqevVToFf04wCwHyQ
+ uAzPcybyHwLAs0YWz5EqdllQ44aPeQD7DaDv4FkYrSxM5UtfLHrLOOv
 X-Developer-Key: i=Andy.Chung@amd.com; a=ed25519;
  pk=X2gaHRnhU2q5hvMjkC6xmIcC03vKNvHY9CQRdsj9ecM=
 X-Endpoint-Received: by B4 Relay for Andy.Chung@amd.com/20260327 with auth_id=696
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The upstream series was applied to hwmon-next on 2026-07-27.
+Kandou AI is the vendor of the KB9002 PCIe retimer.
 
 Signed-off-by: Andy Chung <Andy.Chung@amd.com>
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Link: https://lore.kernel.org/r/20260724-kb9002-upstream-v5-1-9523c3ffe83a@amd.com
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
 ---
-Andy Chung (4):
-      dt-bindings: Add vendor prefix for Kandou
-      dt-bindings: trivial-devices: Add Kandou KB9002
-      hwmon: (kb9002) Add driver for Kandou KB9002 retimer
-      hwmon: (kb9002) Add documentation
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
- .../devicetree/bindings/trivial-devices.yaml       |   2 +
- .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
- Documentation/hwmon/index.rst                      |   1 +
- Documentation/hwmon/kb9002.rst                     |  64 +++
- MAINTAINERS                                        |   7 +
- drivers/hwmon/Kconfig                              |  11 +
- drivers/hwmon/Makefile                             |   1 +
- drivers/hwmon/kb9002.c                             | 459 +++++++++++++++++++++
- 8 files changed, 547 insertions(+)
----
-base-commit: c2b9fc3f7091157518a3ac2282a0a8bc797c227a
-change-id: 20260730-kb9002-backport-30391ea171d7
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index a9cf85fd6fbe..4e1fa0104f5d 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -839,6 +839,8 @@ patternProperties:
+     description: JTY
+   "^kam,.*":
+     description: Kamstrup A/S
++  "^kandou,.*":
++    description: Kandou AI
+   "^karo,.*":
+     description: Ka-Ro electronics GmbH
+   "^keithkoep,.*":
 
-Best regards,
---  
-Andy Chung <Andy.Chung@amd.com>
+-- 
+2.34.1
 
