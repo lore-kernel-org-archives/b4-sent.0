@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 30 Jul 2026 13:56:00 +0200
-Subject: [PATCH 19/22] arm64: dts: qcom: qcs6490-radxa-dragon-q6a: Fix the
- PCIe iommu-map entries
+Date: Thu, 30 Jul 2026 13:56:01 +0200
+Subject: [PATCH 20/22] arm64: dts: qcom: qcs6490-thundercomm-minipc-g1iot:
+ Fix the PCIe iommu-map entries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-iommu-map-fix-v1-19-83405d37ba41@oss.qualcomm.com>
+Message-Id: <20260730-iommu-map-fix-v1-20-83405d37ba41@oss.qualcomm.com>
 References: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 In-Reply-To: <20260730-iommu-map-fix-v1-0-83405d37ba41@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,16 +17,16 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1914;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1939;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=yQ3EczfmlH5tclHAyLdwGVhLjIjwDxyncav3jqLDXM4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvbTQqUxYxoHuisGCWMUxPnIor7OIBv9xX1u
- +AN7UtXGaGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams72wAKCRBVnxHm/pHO
- 9bQfB/9EmoO4EFz+tCO83RtMcEaHt8f7QFKRkLVnOFe3boYOXC1wyjGLn6MIxFXWnXljxHojb4B
- hwnu9LR8+RZZyN0yTmCQlCMgAeWELU97DqFlJ+ezvYbDr+q9JYrljG/fZt/IRuEviOZX0Lmk2T/
- 3RNXWbtBwIzXxicM43BeFWqZPrXsjKjUzoEx5y5akLfC2Gv82wXLIXJUZb5W941l5ldvJZmYw8F
- Z2WoxT4ylY/SCkp+L+i+ldo3jQw+XvhYFAxIyTFuoWkpzV7LgYITtCkXrocUu5u0G6LPU5jbyGU
- 3zBWNXkJ4lhM5yUpFys3mvCozPok/o/SAj/zpoc0Bt35Sw0v
+ bh=pfcWZx6IcFkcSOE5S8mYrgwKp4U4QnIt/UuG8C2Oa0g=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqazvcBm/e4prH1Ag/wJZ42uJyYr20eR1rd/82G
+ 0HCQ6vz/m6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCams73AAKCRBVnxHm/pHO
+ 9RZOCACZtzfnFb/NzSnlQ81OLUXvXgIDjHObW4dzCAkQvgRwlrr+gPjqGkiZ9vNvu1dOOSl3gs0
+ bYeJC3G5yjhgSyHygI2h8xKYTK9o4a8iFiaGal1IjnyhzQ1o0zfxQXha/Cx4I2hQgXFEwzz+hMK
+ soZeVHbScy5Y+krAh2RJTyVr0ySInzm2UjEbSyQg9v2bmpylGjnM7S5XlVh1ylC6wBEsUltG3do
+ 1UvXm9WozTBs9JholrSI4FUXP5ngQCOFq5MovlL72FlKcXhOCmU2v7Oa+AdYKqfs0HL+5ha6v0c
+ rFHJXqGf4vtrYglJt+fqY8HXqUkhZgNtEIfgdD+14weStIYI
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,20 +41,20 @@ ccb2fd725d41 ("of: Respect #{iommu,msi}-cells in maps"):
 
 So fix the entries to match the provider's '#iommu-cells' property.
 
-Fixes: ef254b12ec60 ("arm64: dts: qcom: qcs6490: Introduce Radxa Dragon Q6A")
+Fixes: 1cde54c54b83 ("arm64: dts: qcom: qcs6490: Add Thundercomm AI Mini PC G1 IoT")
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/qcs6490-radxa-dragon-q6a.dts | 18 +++++++++---------
+ .../boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts | 18 +++++++++---------
  1 file changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs6490-radxa-dragon-q6a.dts b/arch/arm64/boot/dts/qcom/qcs6490-radxa-dragon-q6a.dts
-index bb5a42b038f1..696fef50f577 100644
---- a/arch/arm64/boot/dts/qcom/qcs6490-radxa-dragon-q6a.dts
-+++ b/arch/arm64/boot/dts/qcom/qcs6490-radxa-dragon-q6a.dts
-@@ -546,15 +546,15 @@ &pcie1 {
+diff --git a/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts b/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts
+index a5ad796cb65d..2fc8987204e9 100644
+--- a/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts
++++ b/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts
+@@ -711,15 +711,15 @@ &pcie1 {
+ 		    <&pcie1_wake_n>;
  	pinctrl-names = "default";
  
- 	/* Support for QPS615 PCIe switch */
 -	iommu-map = <0x0 &apps_smmu 0x1c80 0x1>,
 -		    <0x100 &apps_smmu 0x1c81 0x1>,
 -		    <0x208 &apps_smmu 0x1c84 0x1>,
