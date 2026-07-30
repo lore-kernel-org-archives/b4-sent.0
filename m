@@ -1,170 +1,88 @@
-From: Mayank Rungta <mrungta@google.com>
-Date: Thu, 30 Jul 2026 14:32:49 -0700
-Subject: [PATCH 3/3] watchdog: qcom: Register pretimeout interrupt as NMI
+From: =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
+Subject: [PATCH 0/4] arm64: dts: qcom: add the Xiaomi Mi Pad 5 Pro 5G
+Date: Thu, 30 Jul 2026 23:51:59 +0200
+Message-Id: <20260730-sm8250-xiaomi-enuma-v1-0-ed6d8fb99668@dawidwrobel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-qcom-wdt-nmi-series-v1-3-3aa86d162914@google.com>
-References: <20260730-qcom-wdt-nmi-series-v1-0-3aa86d162914@google.com>
-In-Reply-To: <20260730-qcom-wdt-nmi-series-v1-0-3aa86d162914@google.com>
-To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Thomas Gleixner <tglx@kernel.org>
-Cc: linux-watchdog@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, "Kirill A. Shutemov" <kas@kernel.org>, 
- Douglas Anderson <dianders@chromium.org>, 
- Mayank Rungta <mrungta@google.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBuYtB/pKtFCaqxZaKEUQnT3p
+ OW3eO+BxFE4wVg9EPmWJEcoaOoKlt2GjVHWYlCkeho0YfJGdYRZ7OEFOVzeIpvBOLWQaRsNpTw
+ jO8n/dZrf9wOJQMBCZQAAAA==
+X-Change-ID: 20260730-sm8250-xiaomi-enuma-e878f2c08413
+To: Jianhua Lu <lujianhua000@gmail.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785447181; l=4433;
- i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=8nEYT2TKwUSRpXG+qjzVIpCk/TBIokJuhVt154QVce0=;
- b=+Y7kOBwCqMcBFbFx1gkqaiMxNA6UH74UIohXvN01vimtuhgjTuFeGElt3HEeg1kasVEDnMFwu
- mAn8nUMHFQ0CmSp9RTdMz7upsDYL6cHfdGNWB0o6n6AjmcVPwgvHsmS
-X-Developer-Key: i=mrungta@google.com; a=ed25519;
- pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
-X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2440; i=me@dawidwrobel.com;
+ h=from:subject:message-id; bh=ylL4HaLJUGIisHKBhr3vt+N6GH9GmauZVEy1Ot7Z0Ig=;
+ b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWRlH+9P7G1rjtLsvSJ4eUUYe6SO+7qkTeGM81er78o1u
+ i42eapMRykLgxgXg6yYIoteWtAeq+CX39+9+B0OM4eVCWQIAxenAExEaR4jw/oWRTu5B70Mghpp
+ 0cdPLgxn/vxo2Sc3s2u/IrcJvf7SmcPw3+3MR6nX+78k1Yu9akhqOzRBMWJNyG/JDbuz2A9s4Xi
+ 5lxsA
+X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
+ fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
+X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a system is completely unresponsive due to an interrupt storm or
-deadlocked CPU cores with standard interrupts disabled, a standard watchdog
-pretimeout bark interrupt will fail to execute, preventing the pretimeout
-governor from capturing CPU backtraces before the hardware reset bite.
+The Mi Pad 5 Pro 5G (enuma, 2021) is the modem-equipped variant of the
+Mi Pad 5 Pro (elish). The two boards share a design, so this describes
+enuma as sm8250-xiaomi-elish-common.dtsi plus the three things that
+differ: the board ID the bootloader matches on, the panel compatible and
+the WiFi board data variant.
 
-Attempt to register the pretimeout interrupt as an NMI (or pseudo-NMI)
-using request_nmi(). If NMI registration fails due to lack of platform
-GIC pseudo-NMI support, fall back to devm_request_irq().
+Unlike elish, enuma shipped with a single display variant, so there is
+one device tree rather than a per-panel pair. The vendor device trees key
+the touch configuration to a display maker, and enuma declares a single
+entry against elish's three:
 
-Explicitly arm and disarm the NMI during watchdog start and stop operations
-using enable_nmi() and disable_nmi_nosync().
+  https://github.com/MiCode/kernel_devicetree/blob/elish-r-oss/qcom/enuma-sm8250.dtsi#L309
+  https://github.com/MiCode/kernel_devicetree/blob/elish-r-oss/qcom/elish-sm8250.dtsi#L294
 
-NMI Execution Call Trace (lkdtm HARDLOCKUP freeze break):
- Kernel panic - not syncing: watchdog pretimeout event
- CPU: 0 UID: 0 PID: 5419 Comm: bash Not tainted 6.19.0-rc5-00022
- Hardware name: Google CoachZ (rev3+) (DT)
- Call trace:
-  show_stack+0x24/0x34 (C)
-  dump_stack_lvl+0x84/0xac
-  dump_stack+0x1c/0x34
-  vpanic+0xfc/0x2d0
-  panic+0x6c/0x74
-  watchdog_notify_pretimeout+0x34/0x48
-  qcom_wdt_isr+0x20/0x34
-  handle_fasteoi_nmi+0x50/0x88
-  handle_irq_desc+0x4c/0x68
-  generic_handle_domain_nmi+0x38/0x48
-  __gic_handle_nmi.isra.0+0x40/0x90
-  gic_handle_irq+0x64/0x234
-  call_on_irq_stack+0x48/0x88
-  do_interrupt_handler+0x74/0xc4
-  el1_interrupt+0x5c/0xb0
-  lkdtm_HARDLOCKUP+0x18/0x28 (P)
+The panel itself is the same part elish uses: both trees pull in the
+same dsi-panel-k81-42-02-0a-video.dtsi, so the new
+xiaomi,enuma-csot-nt36523 compatible falls back to
+xiaomi,elish-csot-nt36523, leaving room to handle any difference that
+turns up later without requiring a device tree change.
 
-Signed-off-by: Mayank Rungta <mrungta@google.com>
+The WiFi board data is already upstream in ath11k-firmware as
+bus=pci,qmi-chip-id=0,qmi-board-id=255,variant=Xiaomi_Pad_5Pro_5G
+(QCA6390 hw2.0 board-2.bin, commit 235d09a5e111).
+
+Tested on the device: the panel and WiFi come up and perform as expected
+under postmarketOS.
+
+The fingerprint sensor, PCIe2/modem and touchscreen this board also
+provides are left out here; they depend on bindings that are not upstream
+yet and will follow separately.
+
+Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
 ---
- drivers/watchdog/qcom-wdt.c | 55 +++++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 51 insertions(+), 4 deletions(-)
+Dawid Wróbel (4):
+      dt-bindings: display: panel: novatek,nt36523: add the Mi Pad 5 Pro 5G panel
+      dt-bindings: arm: qcom: add the Xiaomi Mi Pad 5 Pro 5G
+      arm64: dts: qcom: sm8250-xiaomi-elish: label the WiFi node
+      arm64: dts: qcom: sm8250: add device tree for the Xiaomi Mi Pad 5 Pro 5G
 
-diff --git a/drivers/watchdog/qcom-wdt.c b/drivers/watchdog/qcom-wdt.c
-index 49bd04841f0c..19d8e91cff40 100644
---- a/drivers/watchdog/qcom-wdt.c
-+++ b/drivers/watchdog/qcom-wdt.c
-@@ -51,6 +51,9 @@ struct qcom_wdt {
- 	unsigned long		rate;
- 	void __iomem		*base;
- 	const u32		*layout;
-+	int			irq;
-+	bool			is_nmi;
-+	bool			irq_enabled;
- };
- 
- static void __iomem *wdt_addr(struct qcom_wdt *wdt, enum wdt_reg reg)
-@@ -73,6 +76,30 @@ static irqreturn_t qcom_wdt_isr(int irq, void *arg)
- 	return IRQ_HANDLED;
- }
- 
-+static void qcom_wdt_enable_irq(struct qcom_wdt *wdt)
-+{
-+	if (wdt->is_nmi && wdt->irq > 0 && !wdt->irq_enabled) {
-+		enable_nmi(wdt->irq);
-+		wdt->irq_enabled = true;
-+	}
-+}
-+
-+static void qcom_wdt_disable_irq(struct qcom_wdt *wdt)
-+{
-+	if (wdt->is_nmi && wdt->irq > 0 && wdt->irq_enabled) {
-+		disable_nmi_nosync(wdt->irq);
-+		wdt->irq_enabled = false;
-+	}
-+}
-+
-+static void qcom_wdt_free_nmi(void *arg)
-+{
-+	struct qcom_wdt *wdt = arg;
-+
-+	qcom_wdt_disable_irq(wdt);
-+	free_nmi(wdt->irq, &wdt->wdd);
-+}
-+
- static int qcom_wdt_start(struct watchdog_device *wdd)
- {
- 	struct qcom_wdt *wdt = to_qcom_wdt(wdd);
-@@ -83,6 +110,8 @@ static int qcom_wdt_start(struct watchdog_device *wdd)
- 	writel(bark * wdt->rate, wdt_addr(wdt, WDT_BARK_TIME));
- 	writel(wdd->timeout * wdt->rate, wdt_addr(wdt, WDT_BITE_TIME));
- 	writel(QCOM_WDT_ENABLE, wdt_addr(wdt, WDT_EN));
-+
-+	qcom_wdt_enable_irq(wdt);
- 	return 0;
- }
- 
-@@ -90,6 +119,8 @@ static int qcom_wdt_stop(struct watchdog_device *wdd)
- {
- 	struct qcom_wdt *wdt = to_qcom_wdt(wdd);
- 
-+	qcom_wdt_disable_irq(wdt);
-+
- 	writel(0, wdt_addr(wdt, WDT_EN));
- 	return 0;
- }
-@@ -240,6 +271,7 @@ static int qcom_wdt_probe(struct platform_device *pdev)
- 	u32 percpu_offset;
- 	int irq, ret;
- 	struct clk *clk;
-+	unsigned long irq_flags;
- 
- 	data = of_device_get_match_data(dev);
- 	if (!data) {
-@@ -290,10 +322,25 @@ static int qcom_wdt_probe(struct platform_device *pdev)
- 	/* check if there is pretimeout support */
- 	irq = platform_get_irq_optional(pdev, 0);
- 	if (data->pretimeout && irq > 0) {
--		ret = devm_request_irq(dev, irq, qcom_wdt_isr, 0,
--				       "wdt_bark", &wdt->wdd);
--		if (ret)
--			return ret;
-+		wdt->irq = irq;
-+		irq_flags = IRQF_PERCPU | IRQF_NOBALANCING |
-+			    IRQF_NO_AUTOEN | IRQF_NO_THREAD;
-+
-+		ret = request_nmi(irq, qcom_wdt_isr, irq_flags,
-+				  "wdt_bark", &wdt->wdd);
-+		if (ret) {
-+			/* Fallback to normal interrupt if NMI not supported */
-+			ret = devm_request_irq(dev, irq, qcom_wdt_isr, 0,
-+					       "wdt_bark", &wdt->wdd);
-+			if (ret)
-+				return ret;
-+		} else {
-+			wdt->is_nmi = true;
-+			ret = devm_add_action_or_reset(dev, qcom_wdt_free_nmi,
-+						       wdt);
-+			if (ret)
-+				return ret;
-+		}
- 
- 		wdt->wdd.info = &qcom_wdt_pt_info;
- 		wdt->wdd.pretimeout = 1;
+ Documentation/devicetree/bindings/arm/qcom.yaml    |  5 +++++
+ .../bindings/display/panel/novatek,nt36523.yaml    |  4 ++++
+ arch/arm64/boot/dts/qcom/Makefile                  |  1 +
+ .../boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi  |  2 +-
+ arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts   | 26 ++++++++++++++++++++++
+ 5 files changed, 37 insertions(+), 1 deletion(-)
+---
+base-commit: bd94276d96726a82700d85ad3b32892f45809d3a
+change-id: 20260730-sm8250-xiaomi-enuma-e878f2c08413
 
+Best regards,
 -- 
-2.55.0.508.g3f0d502094-goog
+Dawid Wróbel <me@dawidwrobel.com>
 
