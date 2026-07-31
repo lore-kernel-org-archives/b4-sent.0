@@ -1,61 +1,113 @@
-From: Mayank Rungta <mrungta@google.com>
-Date: Thu, 30 Jul 2026 15:00:22 -0700
-Subject: [PATCH 2/2] watchdog: pretimeout: Convert dump pretimeout governor
- to tristate
+From: Jia Wang <wangjia@ultrarisc.com>
+Subject: [PATCH v4 0/3] PCI: ultrarisc: Add DP1000 PCIe clock support
+Date: Fri, 31 Jul 2026 09:14:27 +0800
+Message-Id: <20260731-ultrarisc-pci-clk-v4-0-d738b491e49a@ultrarisc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-export-cpu-backtrace-apis-v1-2-bace8e1cb817@google.com>
-References: <20260730-export-cpu-backtrace-apis-v1-0-bace8e1cb817@google.com>
-In-Reply-To: <20260730-export-cpu-backtrace-apis-v1-0-bace8e1cb817@google.com>
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: Tzung-Bi Shih <tzungbi@kernel.org>, 
- Douglas Anderson <dianders@chromium.org>, linux-kernel@vger.kernel.org, 
- linux-watchdog@vger.kernel.org, Mayank Rungta <mrungta@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785448826; l=1193;
- i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=f5W+Lr+D6y/aPDppSlY4If7YQ/lnBLFc82lZnHrC3p8=;
- b=Hf4P9bSr81uHIQQkvhAXzHtv5u6EsLHuPCyFHF87+AgJlZxnV2Im4CKn8mSyruug2su1FpHEp
- 56Xv8Y21o6KBAE2X0DCKFqfbZZCLGUxHUf6aOYrJO3wz4BxKCnDqU8q
-X-Developer-Key: i=mrungta@google.com; a=ed25519;
- pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
-X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPP2a2oC/23NSw6CMBgE4KuQrq3pA1tx5T2Mi7b8lfoA0kKjI
+ dzdgkaNYTnJzDcDCuAdBLTLBuQhuuCaOoV8lSFTqfoE2JUpI0aYIIJK3F87r7wLBrfGYXO9YGV
+ oQXKpLAWF0q71YN19Ng/HVw69PoPpJmhqVC50jX/Mp5FOvbfPigU/UkzwBhTnZGtLpfn+01mb5
+ oamj8i+iiRiSWFJYZZbLaxWQuglhf8oNF9SeFJAMsm4NQQs/VfGcXwCdUTFIVQBAAA=
+X-Change-ID: 20260617-ultrarisc-pci-clk-ac19047af1ea
+To: Xincheng Zhang <zhangxincheng@ultrarisc.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785460469; l=3428;
+ i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
+ bh=JSvec7HDFJGfnMuZsEtQRNBEJPE1AGTc5uAlGb3p9os=;
+ b=WeB0W6G3Koit7CUdQJ97HTBUOglCOydSGKTvyVl2+b6d52cYzGoeLXgc/05Vo2okJhp+Y+0Uj
+ uHrM/GrKtlcDgLfLOfUT48grhSs1jdKo6wF6g8XYIIls5g+eLzTeNgZ
+X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
+ pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
+X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 645ad41da8b2 ("watchdog: pretimeout: Add "dump" pretimeout
-governor") added the "dump" watchdog pretimeout governor, but restricted
-it to built-in code because trigger_all_cpu_backtrace() was not exported
-to loadable modules.
+Add clock handling for the UltraRISC DP1000 DesignWare PCIe host
+controller.
 
-Now that CPU backtrace APIs are supported for loadable kernel modules
-via cpumask_backtrace(), convert WATCHDOG_PRETIMEOUT_GOV_DUMP to
-tristate. This allows kernels to deliver the pretimeout governor as a
-loadable kernel module.
+The DP1000 PCIe controller depends on three input clocks: core, dbi, and
+aux. The driver accesses DBI registers during host initialization, so the
+clocks must be enabled before the controller registers are touched.
 
-Signed-off-by: Mayank Rungta <mrungta@google.com>
+This series documents the required clocks in the device tree binding,
+enables the core, dbi, and aux clocks before DesignWare host
+initialization, and keeps them managed across probe failure, detach, and
+system suspend/resume. It also switches the driver to
+module_platform_driver() so the existing tristate Kconfig option builds
+correctly as a module.
+
+Testing:
+- Build and module build tested with ARCH=riscv.
+- Boot tested on UltraRISC DP1000.
+- Validated the PCIe binding with dt_binding_check and dtbs_check.
+
+Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
- drivers/watchdog/Kconfig | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v4:
+- Use devm_clk_bulk_get_all() instead of hardcoding clock names in the driver.
+- Drop clks_enabled and simplify the clock enable/disable helpers.
+- Keep the suspend guard for the failed-resume case without disabling the
+  clocks again when the guard is hit.
+- Keep module_platform_driver(), but drop the .remove callback.
+- Link to v3: https://patch.msgid.link/20260714-ultrarisc-pci-clk-v3-0-e72723fc0ef1@ultrarisc.com
 
-diff --git a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
-index 9f013d774897..922741dd837c 100644
---- a/drivers/watchdog/Kconfig
-+++ b/drivers/watchdog/Kconfig
-@@ -99,8 +99,8 @@ config WATCHDOG_PRETIMEOUT_GOV_SEL
- if WATCHDOG_PRETIMEOUT_GOV
- 
- config WATCHDOG_PRETIMEOUT_GOV_DUMP
--	bool "Dump watchdog pretimeout governor"
--	depends on WATCHDOG_CORE=y
-+	tristate "Dump watchdog pretimeout governor"
-+	depends on WATCHDOG_CORE
- 	default WATCHDOG_CORE
- 	help
- 	  Dump watchdog pretimeout governor, all cpu backtrace is
+Changes in v3:
+- Track whether the PCIe clocks are enabled and make clock enable/disable
+  helpers idempotent.
+- Skip dw_pcie_suspend_noirq() when the controller is already suspended to
+  avoid register access with clocks disabled after a failed resume.
+- Disable clocks again if dw_pcie_resume_noirq() fails after clocks were
+  re-enabled.
+- Add a remove callback to deinitialize the DesignWare host when the module
+  build support is added.
+- Link to v2: https://patch.msgid.link/20260706-ultrarisc-pci-clk-v2-0-2f3fb6fba66b@ultrarisc.com
 
--- 
-2.55.0.508.g3f0d502094-goog
+Changes in v2:
+- Add Fixes and Acked-by tags to the binding patch.
+- Add a Fixes tag to the driver clock handling patch.
+- Fix the suspend/resume clock handling so clocks are disabled only after a
+  successful suspend and kept enabled on resume failure.
+- Add a module build fix by switching to module_platform_driver().
+- Link to v1: https://patch.msgid.link/20260629-ultrarisc-pci-clk-v1-0-5ea3308fdab3@ultrarisc.com
+
+To: Xincheng Zhang <zhangxincheng@ultrarisc.com>
+To: Jia Wang <wangjia@ultrarisc.com>
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>
+To: Krzysztof Wilczyński <kwilczynski@kernel.org>
+To: Manivannan Sadhasivam <mani@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Bjorn Helgaas <bhelgaas@google.com>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Cc: linux-pci@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Jia Wang (3):
+      dt-bindings: pci: ultrarisc: add required DP1000 PCIe clocks
+      PCI: ultrarisc: get and enable DP1000 PCIe clocks
+      PCI: ultrarisc: use module_platform_driver()
+
+ .../bindings/pci/ultrarisc,dp1000-pcie.yaml        | 16 ++++
+ drivers/pci/controller/dwc/pcie-ultrarisc.c        | 87 ++++++++++++++++++++--
+ 2 files changed, 95 insertions(+), 8 deletions(-)
+---
+base-commit: a13c140cc289c0b7b3770bce5b3ad42ab35074aa
+change-id: 20260617-ultrarisc-pci-clk-ac19047af1ea
+
+Best regards,
+--  
+Jia Wang <wangjia@ultrarisc.com>
 
