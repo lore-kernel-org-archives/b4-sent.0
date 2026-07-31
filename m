@@ -1,307 +1,129 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 31 Jul 2026 22:34:16 +0200
-Subject: [PATCH v9 5/5] Input: synaptics-rmi4 - support fallback values for
- PDT descriptor bytes
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH v2 0/2] dm array: validate array block headers, and against
+ the caller
+Date: Fri, 31 Jul 2026 17:54:53 -0500
+Message-Id: <20260731-b4-disp-4fd3bed9-v2-0-7b1835e4e7f6@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-synaptics-rmi4-v9-5-f088c47af6c5@ixit.cz>
-References: <20260731-synaptics-rmi4-v9-0-f088c47af6c5@ixit.cz>
-In-Reply-To: <20260731-synaptics-rmi4-v9-0-f088c47af6c5@ixit.cz>
-To: Kaustabh Chakraborty <kauschluss@disroot.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, "Jason A. Donenfeld" <Jason@zx2c4.com>, 
- Matthias Schiffer <matthias.schiffer@ew.tq-group.com>, 
- Vincent Huang <vincent.huang@tw.synaptics.com>, 
- Marcus Ramberg <marcus@means.no>, 
- Casey Connolly <casey.connolly@linaro.org>
-Cc: David Heidelberg <david@ixit.cz>, linux-input@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDc2ND3SQT3ZTM4gJdk7QU46TUFEtdYwvzZOO0VCBpYqQE1FZQlJqWWQE
+ 2MjoWwi8uTcpKTS4BmaNUWwsA9nuJUnQAAAA=
+X-Change-ID: 20260731-b4-disp-4fd3bed9-387c3fe87c42
+To: Mike Snitzer <snitzer@kernel.org>, 
+ Mikulas Patocka <mpatocka@redhat.com>
+Cc: Ming-Hung Tsai <mtsai@redhat.com>, 
+ Benjamin Marzinski <bmarzins@redhat.com>, dm-devel@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Alasdair Kergon <agk@redhat.com>, 
+ Joe Thornber <ejt@redhat.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8394; i=david@ixit.cz;
- h=from:subject:message-id; bh=VT8TqHstCB13MOIEZKScbmgMfHxX/aBtoMoj8AVgz1U=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqbQbLYCH85x470qignNeRtHqHSpeLX1zBIYo36
- HtaEIOvm1yJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCam0GywAKCRBgAj/E00kg
- chbiEACi51t1O1LIBouUqUYMob8colomKQr/xm30fx4f/7e5otQT2Y3oBMv0CTJTWNzuEtDmzbc
- DWC3Bba9q44387xMuUrOCv/IQj+Yzb3ltVGvkQzLCuyGKSCphw88n3C8fq65utK5kiLAE5+pYqd
- h6L6EbTxmkDARYXjnW7/dp/lryGa0BY9tb/+YPykQPlIW0YDND9j+4pkHTnhh/1mAqKE9XFjloW
- 3OWG4SgrZ8QXZM14n+qwI5G2b5QOisLqeio8CpPPkjRIIyr+P2e5lfAzPxOkNVhq7juwhOdNhYF
- 8Uiy8hqtxmEGsYjcUyFH99lYudIXYcRp24mJ0b9To23O/Ie34dXrLfycsr/zdgVyTpvhPeYsMBX
- 7pVwYLg0ucg55shSCQF1QAs+9fTXygBAtELStH9ofOx/gnAXp3pcvSUJ0pvPLhyTSaIJZlDnj+0
- kJj/j9cEvr+ytKBejGCI3OhiEaUjE28F9TYaLjCOyqKMTQEqHrZCana6ypJStqP21IEPadMw6gt
- rGmPiJRqdzdiSHv1cZ7A9PAFdF0OHBwtXyZwwf+cbflfSb3+tyiD2zlEuXDNesn0dNC1e/oaBmw
- rz07wSTQBleaAnQQffhWmBVL9IPIVqXUxLjEq9yDcLl0yQ6WKOIwjrIS9OFXXlzScsycmP4ABxc
- mQNnBCFHf2hs8kA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785538493; l=5489;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=3szjRRUOnQWAmqw62BCFpRphKGY+rm6LLuIDNM7/6Pg=;
+ b=qYgRhwTPKzpkpDwvwFv73L/Ak43L6PePAY9nxbV8z+FLKXYScp8QHERA18yOT79H7rwq6ySj4
+ d+emCVLxZh/B7Mh5PDONNOTLSqkpYWcHt17OT4ya/BylXmQQ+CaKW0F
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Kaustabh Chakraborty <kauschluss@disroot.org>
+v1 fixed one of these and mentioned the other; this is both, and the second one
+is here because Ming-Hung Tsai said how to reproduce it.
 
-Some replacement displays include third-party touch ICs which do not
-expose the function number and the interrupt status in its PDT entries.
+An array block header can be wrong in two independent ways, and a validator can
+only catch the first. 1/2 makes the header consistent with itself: value_size
+non-zero, max_entries exactly calc_max_entries() for that value_size and block
+size, nr_entries within it. 2/2 catches the header that is perfectly consistent
+with itself and still wrong for the array reading it.
 
-OnePlus 6 (original touch IC)
-  rmi4_i2c 12-0020: read 6 bytes at 0x00e3: 0 (2b 22 0d 06 01 01)
+The review of v1 [1] asked for three changes to the first, all taken: compare
+max_entries for equality rather than bounding it from above, since a count
+BELOW the real capacity reaches BUG_ON(new_nr > ab->max_entries) in
+fill_ablock() and trim_ablock(); split the !value_size test out with its own
+message; and print
+the counts rather than a bare "max_entries too large". calc_max_entries() moved
+above the validators so it is in scope there -- it is unchanged, and
+open-coding the formula was what I wanted to avoid, since max_entries is what
+dm_array_get_value() addresses with.
 
-OnePlus 6 (aftermarket touch IC)
-  rmi4_i2c 12-0020: read 6 bytes at 0x00e3: 0 (2c 23 0d 06 00 00)
+2/2 is the hole v1 described and did not fix. dm-cache keeps two arrays,
+mappings at 8 bytes and hints at 4, and both roots sit in the superblock. A
+hint block stores value_size 4 and max_entries 1018, and 24 + 4*1018 is exactly
+4096, so it is internally consistent and 1/2 passes it -- the validator sees the
+block, never the caller. Swap the two roots and __load_mappings() walks the hint
+array through an info whose value size is 8. get_ablock() and __shadow_ablock()
+are the two readers that hold the block and the caller at once, which is why the
+check has to be in both; covering only one is why this was not in v1.
 
-Signed-off-by: Kaustabh Chakraborty <kauschluss@disroot.org>
-[codeflow adjustments, checkpatch fixes, wording]
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
-Co-developed-by: David Heidelberg <david@ixit.cz>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+A/B on v7.2-rc1 with KASAN; dm-array.c, dm-bufio.c and dm-cache-metadata.c are
+identical between that and the base of this series. dm-persistent-data is a
+module here, so an arm is the .ko that is loaded and the tested code carries no
+scaffolding. Every image is derived from metadata dm-cache itself wrote:
+
+  pristine,                  unpatched:  activates, loads its mappings
+  nr_entries 0xFFFFFFFF,     unpatched:  reads past the block, below
+  max_entries 100,           unpatched:  ACTIVATES CLEAN -- accepted today
+  roots swapped,             unpatched:  reads past the block, below
+  nr_entries 0xFFFFFFFF,     patched:    "too many entries", -EILSEQ
+  max_entries 100,           patched:    "max_entries 100 != wanted 509 for value_size 8"
+  roots swapped,             patched:    "get_ablock failed: value_size 4 != wanted 8"
+  pristine,                  patched:    activates, dmesg empty
+
+Three crafted images, three different rejections, and the real image still
+loads. The two overread arms, with the consequence dm-cache reports on its own:
+
+    device-mapper: cache: 252:0: unable to shrink origin; cache block 509 is dirty
+    device-mapper: cache metadata: policy couldn't load cache block 509     (nr_entries)
+
+    device-mapper: cache: 252:0: unable to shrink origin; cache block 911 is dirty
+    device-mapper: cache metadata: policy couldn't load cache block 911     (roots swapped)
+
+509 is exactly the first index an 8-byte-value block cannot hold. 911 is only
+where the swapped-root walk first decodes a mapping dm-cache refuses; it depends
+on the data, not on a boundary.
+
+Those two lines are the oracle. KASAN adds little here. One run of the
+nr_entries arm reported
+
+    BUG: KASAN: slab-use-after-free in dm_cache_load_mappings+0x9b1/0xb40 [dm_cache]
+
+but that build carried an extra warning I had put at the read site to locate it,
+and no run since has reported anything. dm-bufio serves these buffers from
+__get_free_pages(), the page allocator has no redzones, and the first byte past
+the block is the first byte of the next page, so KASAN only speaks when that
+page happens to be poisoned.
+
+Scope of the max_entries arm, since it is weaker than the other two: it shows
+the header is accepted today and rejected with 1/2, which is what the equality
+is for. It does not show the BUG_ON firing -- reads bound themselves by
+nr_entries, so a too-small max_entries only bites on a later resize, and I did
+not drive one. By inspection from fill_ablock() and trim_ablock().
+
+Forging any of this costs nothing: dm_bm_checksum() is crc32c(~0, data, len) ^
+xor, a corruption check rather than a tag. Each crafted image differs from the
+one the kernel wrote by four or sixteen bytes plus a checksum.
+
+All of it needs CAP_SYS_ADMIN to load the table, which is why this is hardening
+rather than a security report. dm-era reaches the same accessor directly and
+dm-clone reaches it through dm-bitset; dm-cache is only the shortest path from a
+crafted image to an observable read. dm-thin uses neither. cache_check and
+era_check have caught the value_size case offline since v1.0; this is the online
+half.
+
+[1] https://lore.kernel.org/all/CALjSBEt-PGxY7y6tQYx6iCmFRXqVcwr633FoFsE+L13A=gre4Q@mail.gmail.com/
+
 ---
- drivers/input/rmi4/rmi_driver.c | 64 +++++++++++++++++++++++++++++++++++------
- drivers/input/rmi4/rmi_driver.h |  3 ++
- include/linux/rmi.h             |  3 ++
- 3 files changed, 62 insertions(+), 8 deletions(-)
+Bryam Vargas (2):
+      dm array: validate array block headers on read
+      dm array: reject an array block whose value size is not the caller's
 
-diff --git a/drivers/input/rmi4/rmi_driver.c b/drivers/input/rmi4/rmi_driver.c
-index 5e7766363aa23..dac26458f0937 100644
---- a/drivers/input/rmi4/rmi_driver.c
-+++ b/drivers/input/rmi4/rmi_driver.c
-@@ -461,29 +461,45 @@ static int rmi_driver_reset_handler(struct rmi_device *rmi_dev)
- 
- 	error = rmi_driver_process_config_requests(rmi_dev);
- 	if (error < 0)
- 		return error;
- 
- 	return 0;
- }
- 
--static int rmi_read_pdt_entry(struct rmi_device *rmi_dev,
--			      struct pdt_entry *entry, u16 pdt_address)
-+static int rmi_read_pdt_entry(struct rmi_device *rmi_dev, struct pdt_entry *entry,
-+			      struct pdt_scan_state *state, u16 pdt_address)
- {
-+	const struct rmi_device_platform_data *pdata = rmi_get_platform_data(rmi_dev);
- 	u8 buf[RMI_PDT_ENTRY_SIZE];
- 	int error;
- 
- 	error = rmi_read_block(rmi_dev, pdt_address, buf, RMI_PDT_ENTRY_SIZE);
- 	if (error) {
- 		dev_err(&rmi_dev->dev, "Read PDT entry at %#06x failed, code: %d.\n",
- 				pdt_address, error);
- 		return error;
- 	}
- 
-+	if (pdata->pdt_fallback_size > state->pdt_count * RMI_OF_PDT_DESC_CELLS + 1) {
-+		/* Use the description bytes from the driver */
-+		buf[5] = pdata->pdt_fallback_desc[state->pdt_count * RMI_OF_PDT_DESC_CELLS];
-+		buf[4] = pdata->pdt_fallback_desc[state->pdt_count * RMI_OF_PDT_DESC_CELLS + 1];
-+
-+		error = rmi_read_block(rmi_dev, pdt_address, buf,
-+				RMI_PDT_ENTRY_SIZE - 2);
-+		if (error) {
-+			dev_err(&rmi_dev->dev,
-+					"Read PDT entry at %#06x failed, code: %d.\n",
-+					pdt_address, error);
-+			return error;
-+		}
-+	}
-+
- 	entry->page_start = pdt_address & RMI4_PAGE_MASK;
- 	entry->query_base_addr = buf[0];
- 	entry->command_base_addr = buf[1];
- 	entry->control_base_addr = buf[2];
- 	entry->data_base_addr = buf[3];
- 	entry->interrupt_source_count = buf[4] & RMI_PDT_INT_SOURCE_COUNT_MASK;
- 	entry->function_version = (buf[4] & RMI_PDT_FUNCTION_VERSION_MASK) >> 5;
- 	entry->function_number = buf[5];
-@@ -521,16 +537,17 @@ static bool rmi_pdt_entry_is_valid(struct rmi_device *rmi_dev,
- 		break;
- 	default:
- 		rmi_dbg(RMI_DEBUG_CORE, &rmi_dev->dev,
- 			"PDT has unknown function number %#02x\n", fn);
- 		return false;
- 	}
- 
- 	state->pdts[fn] = true;
-+	state->pdt_count++;
- 	return true;
- }
- 
- #define RMI_SCAN_CONTINUE	0
- #define RMI_SCAN_DONE		1
- 
- static int rmi_scan_pdt_page(struct rmi_device *rmi_dev,
- 			     int page,
-@@ -545,17 +562,17 @@ static int rmi_scan_pdt_page(struct rmi_device *rmi_dev,
- 	u16 page_start = RMI4_PAGE_SIZE * page;
- 	u16 pdt_start = page_start + PDT_START_SCAN_LOCATION;
- 	u16 pdt_end = page_start + PDT_END_SCAN_LOCATION;
- 	u16 addr;
- 	int error;
- 	int retval;
- 
- 	for (addr = pdt_start; addr >= pdt_end; addr -= RMI_PDT_ENTRY_SIZE) {
--		error = rmi_read_pdt_entry(rmi_dev, &pdt_entry, addr);
-+		error = rmi_read_pdt_entry(rmi_dev, &pdt_entry, state, addr);
- 		if (error)
- 			return error;
- 
- 		if (RMI4_END_OF_PDT(pdt_entry.function_number))
- 			break;
- 
- 		if (!rmi_pdt_entry_is_valid(rmi_dev, state, pdt_entry.function_number))
- 			continue;
-@@ -1062,31 +1079,62 @@ static int rmi_driver_remove(struct device *dev)
- 
- 	irq_domain_remove(data->irqdomain);
- 	data->irqdomain = NULL;
- 
- 	return 0;
- }
- 
- #ifdef CONFIG_OF
--static int rmi_driver_of_probe(struct device *dev,
--				struct rmi_device_platform_data *pdata)
-+static const u8 rmi_s3706_fallback_pdt[] = {0x34, 0x41, 0x01,
-+					    0x01, 0x12, 0x01};
-+
-+static int rmi_driver_of_probe(struct rmi_device *rmi_dev,
-+			       struct rmi_device_platform_data *pdata)
- {
-+	struct device *dev = rmi_dev->xport->dev;
-+	u8 buf[RMI_PDT_ENTRY_SIZE];
- 	int retval;
- 
- 	retval = rmi_of_property_read_u32(dev, &pdata->reset_delay_ms,
- 					"syna,reset-delay-ms", 1);
- 	if (retval)
- 		return retval;
- 
-+	/*
-+	 * In some aftermerket touch ICs, the first PDT entry is empty and
-+	 * the function number register is 0. If so, the driver
-+	 * may have provide backup PDT entries.
-+	 */
-+
-+	retval = rmi_read_block(rmi_dev, PDT_START_SCAN_LOCATION,
-+			buf, RMI_PDT_ENTRY_SIZE);
-+	if (retval) {
-+		dev_err(dev, "Read PDT entry at %#06x failed, code: %d.\n",
-+			PDT_START_SCAN_LOCATION, retval);
-+		return retval;
-+	}
-+
-+	if (!RMI4_END_OF_PDT(buf[5]))
-+		return 0;
-+
-+	/* List of known PDT entries per compatible. */
-+	if (of_device_is_compatible(dev->of_node, "syna,rmi4-s3706b")) {
-+		pdata->pdt_fallback_desc = rmi_s3706_fallback_pdt;
-+		pdata->pdt_fallback_size = ARRAY_SIZE(rmi_s3706_fallback_pdt);
-+	} else {
-+		dev_err(dev, "First PDT entry is empty and no backup values provided.\n");
-+		return -EINVAL;
-+	}
-+
- 	return 0;
- }
- #else
--static inline int rmi_driver_of_probe(struct device *dev,
--					struct rmi_device_platform_data *pdata)
-+static inline int rmi_driver_of_probe(struct rmi_device *rmi_dev,
-+				      struct rmi_device_platform_data *pdata)
- {
- 	return -ENODEV;
- }
- #endif
- 
- int rmi_probe_interrupts(struct rmi_driver_data *data)
- {
- 	struct rmi_device *rmi_dev = data->rmi_dev;
-@@ -1197,17 +1245,17 @@ static int rmi_driver_probe(struct device *dev)
- 
- 	rmi_dev = to_rmi_device(dev);
- 	rmi_driver = to_rmi_driver(dev->driver);
- 	rmi_dev->driver = rmi_driver;
- 
- 	pdata = rmi_get_platform_data(rmi_dev);
- 
- 	if (rmi_dev->xport->dev->of_node) {
--		retval = rmi_driver_of_probe(rmi_dev->xport->dev, pdata);
-+		retval = rmi_driver_of_probe(rmi_dev, pdata);
- 		if (retval)
- 			return retval;
- 	}
- 
- 	data = devm_kzalloc(dev, sizeof(struct rmi_driver_data), GFP_KERNEL);
- 	if (!data)
- 		return -ENOMEM;
- 
-diff --git a/drivers/input/rmi4/rmi_driver.h b/drivers/input/rmi4/rmi_driver.h
-index 6de8faed08917..f69337510c333 100644
---- a/drivers/input/rmi4/rmi_driver.h
-+++ b/drivers/input/rmi4/rmi_driver.h
-@@ -26,16 +26,18 @@
- #define RMI_PDT_PROPS_HAS_BSR 0x02
- 
- #define NAME_BUFFER_SIZE 256
- 
- #define RMI_PDT_ENTRY_SIZE 6
- #define RMI_PDT_FUNCTION_VERSION_MASK   0x60
- #define RMI_PDT_INT_SOURCE_COUNT_MASK   0x07
- 
-+#define RMI_OF_PDT_DESC_CELLS 2
-+
- #define PDT_START_SCAN_LOCATION 0x00e9
- #define PDT_END_SCAN_LOCATION	0x0005
- #define RMI4_END_OF_PDT(id) ((id) == 0x00 || (id) == 0xff)
- 
- struct pdt_entry {
- 	u16 page_start;
- 	u8 query_base_addr;
- 	u8 command_base_addr;
-@@ -48,16 +50,17 @@ struct pdt_entry {
- 
- #define RMI_REG_DESC_PRESENCE_BITS	(32 * BITS_PER_BYTE)
- #define RMI_REG_DESC_PRESENCE_REGS_MAX	(3 + RMI_REG_DESC_PRESENCE_BITS / 8)
- #define RMI_REG_DESC_SUBPACKET_BITS	(37 * BITS_PER_BYTE)
- #define RMI_PDT_MAX 0x55
- 
- struct pdt_scan_state {
- 	u8 empty_pages;
-+	u8 pdt_count;
- 	bool pdts[RMI_PDT_MAX + 1];
- };
- 
- 
- /* describes a single packet register */
- struct rmi_register_desc_item {
- 	u32 reg_size;
- 	u16 reg;
-diff --git a/include/linux/rmi.h b/include/linux/rmi.h
-index ab7eea01ab427..4ba2cefac8558 100644
---- a/include/linux/rmi.h
-+++ b/include/linux/rmi.h
-@@ -209,16 +209,19 @@ struct rmi_device_platform_data_spi {
-  * driver waits a few milliseconds to give the firmware a chance to
-  * re-initialize.  You can override the default wait period here.
-  * @irq: irq associated with the attn gpio line, or negative
-  */
- struct rmi_device_platform_data {
- 	int reset_delay_ms;
- 	int irq;
- 
-+	unsigned int pdt_fallback_size;
-+	const u8 *pdt_fallback_desc;
-+
- 	struct rmi_device_platform_data_spi spi_data;
- 
- 	/* function handler pdata */
- 	struct rmi_2d_sensor_platform_data sensor_pdata;
- 	struct rmi_f01_power_management power_management;
- 	struct rmi_gpio_data gpio_data;
- };
- 
+ drivers/md/persistent-data/dm-array.c | 54 +++++++++++++++++++++++++++++------
+ 1 file changed, 46 insertions(+), 8 deletions(-)
+---
+base-commit: 8ba098e6b6ff0db8edf28528d1552be261af30d4
+change-id: 20260731-b4-disp-4fd3bed9-387c3fe87c42
 
--- 
-2.53.0
+Best regards,
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
