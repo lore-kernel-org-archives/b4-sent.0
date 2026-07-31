@@ -1,15 +1,13 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v3 0/4] spi: add support for Amlogic A9
-Date: Fri, 31 Jul 2026 09:08:24 +0000
-Message-Id: <20260731-a9-spisg-v3-0-a15da3f70029@amlogic.com>
+Date: Fri, 31 Jul 2026 09:08:25 +0000
+Subject: [PATCH v3 1/4] spi: dt-bindings: amlogic: spisg: Document
+ A9-specific properties
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAhmbGoC/1WMwQrCMBAFf6XkbGST2IZ48j/EQxo37YJtSiJBK
- f1304JYj/N4MzNLGAkTO1czi5gpURgLqEPFXG/HDjndCzMJsgEtam4NTxOljnthHMIJlK2Blfs
- U0dNrS11vhXtKzxDfWzmLdf1G9C+SBQcuEdFq3aIw/mKHR+jIHV0Y2JrJcqdKtVNlUY13yghoW
- o3yX12W5QOVxzoh3QAAAA==
-X-Change-ID: 20260715-a9-spisg-f19ce0403a50
+Message-Id: <20260731-a9-spisg-v3-1-a15da3f70029@amlogic.com>
+References: <20260731-a9-spisg-v3-0-a15da3f70029@amlogic.com>
+In-Reply-To: <20260731-a9-spisg-v3-0-a15da3f70029@amlogic.com>
 To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
@@ -18,50 +16,87 @@ Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org,
  Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785488907; l=1506;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785488907; l=1955;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=bvV/rM0nI+620wZ/+v/nwmaJtEmXb5qVlKP3MmQr9lY=;
- b=SdQy3BS98tF3sFP+q+xnLU/GSSdFyQs9HgENdgmZKFHmierrxjzMQG3KiuhF7b9VSJjSn5r+V
- BrYZZ8CRcO/A/v5412XiLu9mRtVN7bIZIPTwft0onk1U7zrLxL6zaod
+ bh=QmBAAmHCz75ak/gTg3Z9nJO6Jq52E/H1aEusSVZgdR4=;
+ b=6bqBPyY+DBxWpopJLpgnlBtH3rVrZ5+pz5Wlt8IJ1ilczXy3WgZjCdg9Gjx4dtyQzwq4Fyv+6
+ yK3E5ed6SLFBwOJq2eLWHDSc2TherqH/VVAuog4cO1XYJs5L8vxb1U8
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for A9 with some features, and driver for A9 base on A4.
+Document the Amlogic A9 SPISG controller and its additional Device Tree
+properties.
 
-Fix the incorrect keep_ss of the last descriptor.
+Add the "amlogic,a9-spisg" compatible string and define the A9-specific
+"amlogic,mo-idle-output" property, which configure the MOSI idle output
+level.
 
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v3:
-- Re-wrap binding commit msg and drop "amlogic,word-gap" property.
-- Handle the hardware word gap through the existing word_delay mechanism in the transfer path instead.
-- Link to v2: https://lore.kernel.org/r/20260723-a9-spisg-v2-0-9fc39106b7e2@amlogic.com
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  | 30 +++++++++++++++++++---
+ 1 file changed, 26 insertions(+), 4 deletions(-)
 
-Changes in v2:
-- Move the added properties defined to top-level and then reestrict them  in bindings.
-- Fix some pre-exiting bug reported by Sashiko AI review that as a separate submission.
-- Limit the value that will be writed to CFG_CS_HOLD.
-- Link to v1: https://lore.kernel.org/r/20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com
+diff --git a/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml b/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
+index 9bfb8089f7ea..427d8883009c 100644
+--- a/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
++++ b/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
+@@ -11,12 +11,11 @@ maintainers:
+   - Xianwei Zhao <xianwei.zhao@amlogic.com>
+   - Sunny Luo <sunny.luo@amlogic.com>
+ 
+-allOf:
+-  - $ref: spi-controller.yaml#
+-
+ properties:
+   compatible:
+-    const: amlogic,a4-spisg
++    enum:
++      - amlogic,a4-spisg
++      - amlogic,a9-spisg
+ 
+   reg:
+     maxItems: 1
+@@ -35,6 +34,16 @@ properties:
+   resets:
+     maxItems: 1
+ 
++  amlogic,mo-idle-output:
++    description: |
++      Controls the MOSI output level when the controller is idle.
++      0 - Drive MOSI low
++      1 - Drive MOSI high
++      2 - Follow the last transmitted bit
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [0, 1, 2]
++    default: 0
++
+ required:
+   - compatible
+   - reg
+@@ -42,6 +51,19 @@ required:
+   - clocks
+   - clock-names
+ 
++allOf:
++  - $ref: spi-controller.yaml#
++  - if:
++      not:
++        properties:
++          compatible:
++            contains:
++              enum:
++                - amlogic,a9-spisg
++    then:
++      properties:
++        amlogic,mo-idle-output: false
++
+ unevaluatedProperties: false
+ 
+ examples:
 
----
-Sunny Luo (1):
-      spi: amlogic: spisg: Fix the incorrect keep_ss of the last descriptor
-
-Xianwei Zhao (3):
-      spi: dt-bindings: amlogic: spisg: Document A9-specific properties
-      spi: amlogic: spisg: Fix transfer size limit and timeout handling
-      spi: amlogic: spisg: Add support for A9 controller features
-
- .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  | 30 ++++++-
- drivers/spi/spi-amlogic-spisg.c                    | 99 +++++++++++++++++++---
- 2 files changed, 111 insertions(+), 18 deletions(-)
----
-base-commit: d0b5dd16226814e5c73ba8daf88d3d91c990a38f
-change-id: 20260715-a9-spisg-f19ce0403a50
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.52.0
 
