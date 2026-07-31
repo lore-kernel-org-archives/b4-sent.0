@@ -1,77 +1,67 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Fri, 31 Jul 2026 10:17:09 +0200
-Subject: [PATCH] platform: raspberrypi: Fix typos in Kconfig files
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/4] spi: add support for Amlogic A9
+Date: Fri, 31 Jul 2026 09:08:24 +0000
+Message-Id: <20260731-a9-spisg-v3-0-a15da3f70029@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260731-brcm-typos-v1-1-740551aba0fe@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAARabGoC/yXMyw5AMBBA0V+RWWvS8Uz8ilhQg5F4pFNCxL8rl
- mdx7wVClkmgCC6wtLPwMntgGIAZ6rknxa03RDrKdB6jaqyZlDvXRVTeYpyYVGOKGfhgtdTx8c3
- K6rdszUjGvQe47wfsZBvQbgAAAA==
-X-Change-ID: 20260731-brcm-typos-7d134c501516
-To: Florian Fainelli <florian.fainelli@broadcom.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
-Cc: linux-rpi-kernel@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Matous Hybl <hyblmatous@gmail.com>, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785485841; l=1817;
- i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=YKRM9m7pQ12Ss81G6YQHueSF8cBMFRNn9Gd+XSDd5BQ=;
- b=9H6aGW6hIZe9IFy/4f6RU5NoAvrII1mU7qYcMssL9dDWBboNZzamc0u4Ns27Mg4TOoSMq5WKU
- Pf4yTT3fZjeC8A/8Ak9RCz8JXIGZF/9MErHgDmn5K59gc4K5h2iQjmz
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAhmbGoC/1WMwQrCMBAFf6XkbGST2IZ48j/EQxo37YJtSiJBK
+ f1304JYj/N4MzNLGAkTO1czi5gpURgLqEPFXG/HDjndCzMJsgEtam4NTxOljnthHMIJlK2Blfs
+ U0dNrS11vhXtKzxDfWzmLdf1G9C+SBQcuEdFq3aIw/mKHR+jIHV0Y2JrJcqdKtVNlUY13yghoW
+ o3yX12W5QOVxzoh3QAAAA==
+X-Change-ID: 20260715-a9-spisg-f19ce0403a50
+To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785488907; l=1506;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=bvV/rM0nI+620wZ/+v/nwmaJtEmXb5qVlKP3MmQr9lY=;
+ b=SdQy3BS98tF3sFP+q+xnLU/GSSdFyQs9HgENdgmZKFHmierrxjzMQG3KiuhF7b9VSJjSn5r+V
+ BrYZZ8CRcO/A/v5412XiLu9mRtVN7bIZIPTwft0onk1U7zrLxL6zaod
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Correct minor typographical errors in Kconfig help texts.
+Add bindings for A9 with some features, and driver for A9 base on A4.
 
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+Fix the incorrect keep_ss of the last descriptor.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/platform/raspberrypi/Kconfig            | 4 ++--
- drivers/platform/raspberrypi/vchiq-mmal/Kconfig | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+Changes in v3:
+- Re-wrap binding commit msg and drop "amlogic,word-gap" property.
+- Handle the hardware word gap through the existing word_delay mechanism in the transfer path instead.
+- Link to v2: https://lore.kernel.org/r/20260723-a9-spisg-v2-0-9fc39106b7e2@amlogic.com
 
-diff --git a/drivers/platform/raspberrypi/Kconfig b/drivers/platform/raspberrypi/Kconfig
-index 2c928440a47c..cdf98509cd1b 100644
---- a/drivers/platform/raspberrypi/Kconfig
-+++ b/drivers/platform/raspberrypi/Kconfig
-@@ -8,7 +8,7 @@ menuconfig BCM_VIDEOCORE
- 	help
- 		Support for Broadcom VideoCore services including
- 		the BCM2835 family of products which is used
--		by the Raspberry PI.
-+		by the Raspberry Pi.
- 
- if BCM_VIDEOCORE
- 
-@@ -26,7 +26,7 @@ config BCM2835_VCHIQ
- 		API, which is in turn used by several multimedia services on the
- 		BCM2835 family of SoCs.
- 
--		Defaults to Y when the Broadcom Videocore services are included
-+		Defaults to Y when the Broadcom VideoCore services are included
- 		in the build, N otherwise.
- 
- if BCM2835_VCHIQ
-diff --git a/drivers/platform/raspberrypi/vchiq-mmal/Kconfig b/drivers/platform/raspberrypi/vchiq-mmal/Kconfig
-index c99525a0bb45..827e73a97afb 100644
---- a/drivers/platform/raspberrypi/vchiq-mmal/Kconfig
-+++ b/drivers/platform/raspberrypi/vchiq-mmal/Kconfig
-@@ -4,4 +4,4 @@ config BCM2835_VCHIQ_MMAL
- 	help
- 	  Enables the MMAL API over VCHIQ interface as used for the
- 	  majority of the multimedia services on VideoCore.
--	  Defaults to Y when the Broadcomd BCM2835 camera host is selected.
-+	  Defaults to Y when the Broadcom BCM2835 camera host is selected.
+Changes in v2:
+- Move the added properties defined to top-level and then reestrict them  in bindings.
+- Fix some pre-exiting bug reported by Sashiko AI review that as a separate submission.
+- Limit the value that will be writed to CFG_CS_HOLD.
+- Link to v1: https://lore.kernel.org/r/20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com
 
 ---
-base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
-change-id: 20260731-brcm-typos-7d134c501516
+Sunny Luo (1):
+      spi: amlogic: spisg: Fix the incorrect keep_ss of the last descriptor
+
+Xianwei Zhao (3):
+      spi: dt-bindings: amlogic: spisg: Document A9-specific properties
+      spi: amlogic: spisg: Fix transfer size limit and timeout handling
+      spi: amlogic: spisg: Add support for A9 controller features
+
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  | 30 ++++++-
+ drivers/spi/spi-amlogic-spisg.c                    | 99 +++++++++++++++++++---
+ 2 files changed, 111 insertions(+), 18 deletions(-)
+---
+base-commit: d0b5dd16226814e5c73ba8daf88d3d91c990a38f
+change-id: 20260715-a9-spisg-f19ce0403a50
 
 Best regards,
---  
-Kryštof Černý <cleverline1mc@gmail.com>
+-- 
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
