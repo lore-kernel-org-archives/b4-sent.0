@@ -1,118 +1,77 @@
-From: Takahiro Kuwano <takahiro.kuwano@infineon.com>
-Date: Fri, 31 Jul 2026 16:57:19 +0900
-Subject: [PATCH v3] mtd: spi-nor: remove unused NO_OP_CHIP_ERASE flag
+From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Date: Fri, 31 Jul 2026 10:17:09 +0200
+Subject: [PATCH] platform: raspberrypi: Fix typos in Kconfig files
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-no_op_chip_erase-v3-1-41f101d9968b@infineon.com>
-X-B4-Tracking: v=1; b=H4sIAF9VbGoC/yXMQQ6CMBBG4auQWdukQhD1KsY0bf2BcdE2HSQkh
- LtTZPkt3ltJkBlCz2qljJmFYyhoLhX50YYBij/FVOv6prvmqkI0MRk/cjLIVqBarb272846PKh
- kKaPn5b98vU/Lz33hp+ND27YD+1Y/dHQAAAA=
-X-Change-ID: 20260731-no_op_chip_erase-500cb8a7abe9
-To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Takahiro Kuwano <Takahiro.Kuwano@infineon.com>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260731-brcm-typos-v1-1-740551aba0fe@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAARabGoC/yXMyw5AMBBA0V+RWWvS8Uz8ilhQg5F4pFNCxL8rl
+ mdx7wVClkmgCC6wtLPwMntgGIAZ6rknxa03RDrKdB6jaqyZlDvXRVTeYpyYVGOKGfhgtdTx8c3
+ K6rdszUjGvQe47wfsZBvQbgAAAA==
+X-Change-ID: 20260731-brcm-typos-7d134c501516
+To: Florian Fainelli <florian.fainelli@broadcom.com>, 
+ Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>
+Cc: linux-rpi-kernel@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Matous Hybl <hyblmatous@gmail.com>, 
+ =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785484650; l=3127;
- i=takahiro.kuwano@infineon.com; s=20250227; h=from:subject:message-id;
- bh=jprftuHIU60xPd5Dstni2VUPc6HizHvPQXOhr2GB5c8=;
- b=EMtwEyxS9gBoBD2Qg+w33I764ypoFIdvNiYEtgWNG8lvesztgM1LFxjZo/o2GQ5UjTMNXmEgj
- f/fTHr0j5aXDzxTJ7PqBgNLMUayHjAPKf74R93jS5EdRZCkzqJ8I+Ph
-X-Developer-Key: i=takahiro.kuwano@infineon.com; a=ed25519;
- pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
-X-Endpoint-Received: by B4 Relay for takahiro.kuwano@infineon.com/20250227 with auth_id=566
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785485841; l=1817;
+ i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
+ bh=YKRM9m7pQ12Ss81G6YQHueSF8cBMFRNn9Gd+XSDd5BQ=;
+ b=9H6aGW6hIZe9IFy/4f6RU5NoAvrII1mU7qYcMssL9dDWBboNZzamc0u4Ns27Mg4TOoSMq5WKU
+ Pf4yTT3fZjeC8A/8Ak9RCz8JXIGZF/9MErHgDmn5K59gc4K5h2iQjmz
+X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
+ pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
+X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
+Correct minor typographical errors in Kconfig help texts.
 
-NO_OP_CHIP_ERASE flag is no longer used.
-Remove definition and references of the flag in core and debugfs.
-
-Reviewed-by: Tudor Ambarus <tudor.ambarus@linaro.org>
-Signed-off-by: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
-Reviewed-by: Miquel Raynal <miquel.raynal@bootlin.com>
-Reviewed-by: Michael Walle <mwalle@kernel.org>
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
-Changes in v3:
-- Rebase on top of v7.5-rc5
-- Collect trailers
-Changes in v2:
-- Collect R-b from Tudor
-- Just drop NO_OP_CHIP_ERASE and leave the rest of bit assignment as is
-- Copy to <linux-kernel@vger.kernel.org>
----
- drivers/mtd/spi-nor/core.c    | 3 +--
- drivers/mtd/spi-nor/core.h    | 6 ++++--
- drivers/mtd/spi-nor/debugfs.c | 7 ++-----
- 3 files changed, 7 insertions(+), 9 deletions(-)
+ drivers/platform/raspberrypi/Kconfig            | 4 ++--
+ drivers/platform/raspberrypi/vchiq-mmal/Kconfig | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/mtd/spi-nor/core.c b/drivers/mtd/spi-nor/core.c
-index ccf4396cdcd0..4d868afca2c1 100644
---- a/drivers/mtd/spi-nor/core.c
-+++ b/drivers/mtd/spi-nor/core.c
-@@ -1852,8 +1852,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
- 		return ret;
+diff --git a/drivers/platform/raspberrypi/Kconfig b/drivers/platform/raspberrypi/Kconfig
+index 2c928440a47c..cdf98509cd1b 100644
+--- a/drivers/platform/raspberrypi/Kconfig
++++ b/drivers/platform/raspberrypi/Kconfig
+@@ -8,7 +8,7 @@ menuconfig BCM_VIDEOCORE
+ 	help
+ 		Support for Broadcom VideoCore services including
+ 		the BCM2835 family of products which is used
+-		by the Raspberry PI.
++		by the Raspberry Pi.
  
- 	/* chip (die) erase? */
--	if ((len == mtd->size && !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) ||
--	    multi_die_erase) {
-+	if (len == mtd->size || multi_die_erase) {
- 		ret = spi_nor_erase_dice(nor, addr, len, die_size);
- 		if (ret)
- 			goto erase_err;
-diff --git a/drivers/mtd/spi-nor/core.h b/drivers/mtd/spi-nor/core.h
-index ba2d1a862c9d..765a8542af54 100644
---- a/drivers/mtd/spi-nor/core.h
-+++ b/drivers/mtd/spi-nor/core.h
-@@ -121,10 +121,12 @@
- 		   SPI_MEM_OP_NO_ADDR,					\
- 		   SPI_MEM_OP_NO_DATA)
+ if BCM_VIDEOCORE
  
--/* Keep these in sync with the list in debugfs.c */
-+/*
-+ * This could contain holes, if adding a new flag use the first free spot.
-+ * Keep the flags in sync with the list in debugfs.c
-+ */
- enum spi_nor_option_flags {
- 	SNOR_F_HAS_SR_TB	= BIT(0),
--	SNOR_F_NO_OP_CHIP_ERASE	= BIT(1),
- 	SNOR_F_BROKEN_RESET	= BIT(2),
- 	SNOR_F_4B_OPCODES	= BIT(3),
- 	SNOR_F_HAS_4BAIT	= BIT(4),
-diff --git a/drivers/mtd/spi-nor/debugfs.c b/drivers/mtd/spi-nor/debugfs.c
-index 288e2866daed..2ba8cbca04c9 100644
---- a/drivers/mtd/spi-nor/debugfs.c
-+++ b/drivers/mtd/spi-nor/debugfs.c
-@@ -14,7 +14,6 @@
- #define SNOR_F_NAME(name) [ilog2(SNOR_F_##name)] = #name
- static const char *const snor_f_names[] = {
- 	SNOR_F_NAME(HAS_SR_TB),
--	SNOR_F_NAME(NO_OP_CHIP_ERASE),
- 	SNOR_F_NAME(BROKEN_RESET),
- 	SNOR_F_NAME(4B_OPCODES),
- 	SNOR_F_NAME(HAS_4BAIT),
-@@ -144,10 +143,8 @@ static int spi_nor_params_show(struct seq_file *s, void *data)
- 		}
- 	}
+@@ -26,7 +26,7 @@ config BCM2835_VCHIQ
+ 		API, which is in turn used by several multimedia services on the
+ 		BCM2835 family of SoCs.
  
--	if (!(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
--		string_get_size(params->size, 1, STRING_UNITS_2, buf, sizeof(buf));
--		seq_printf(s, " %02x (%s)\n", params->die_erase_opcode, buf);
--	}
-+	string_get_size(params->size, 1, STRING_UNITS_2, buf, sizeof(buf));
-+	seq_printf(s, " %02x (%s)\n", params->die_erase_opcode, buf);
+-		Defaults to Y when the Broadcom Videocore services are included
++		Defaults to Y when the Broadcom VideoCore services are included
+ 		in the build, N otherwise.
  
- 	seq_puts(s, "\nsector map\n");
- 	seq_puts(s, " region (in hex)   | erase mask | overlaid\n");
+ if BCM2835_VCHIQ
+diff --git a/drivers/platform/raspberrypi/vchiq-mmal/Kconfig b/drivers/platform/raspberrypi/vchiq-mmal/Kconfig
+index c99525a0bb45..827e73a97afb 100644
+--- a/drivers/platform/raspberrypi/vchiq-mmal/Kconfig
++++ b/drivers/platform/raspberrypi/vchiq-mmal/Kconfig
+@@ -4,4 +4,4 @@ config BCM2835_VCHIQ_MMAL
+ 	help
+ 	  Enables the MMAL API over VCHIQ interface as used for the
+ 	  majority of the multimedia services on VideoCore.
+-	  Defaults to Y when the Broadcomd BCM2835 camera host is selected.
++	  Defaults to Y when the Broadcom BCM2835 camera host is selected.
 
 ---
-base-commit: 598149737c4965eb8e0b160faed32827a2d9eb77
-change-id: 20260731-no_op_chip_erase-500cb8a7abe9
+base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
+change-id: 20260731-brcm-typos-7d134c501516
 
 Best regards,
 --  
-Takahiro Kuwano <takahiro.kuwano@infineon.com>
+Kryštof Černý <cleverline1mc@gmail.com>
 
