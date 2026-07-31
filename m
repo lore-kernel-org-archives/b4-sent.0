@@ -1,151 +1,213 @@
-From: Chen Linxuan <me@black-desk.cn>
-Date: Fri, 31 Jul 2026 22:50:08 +0800
-Subject: [PATCH] pidfd: hold exec_update_lock around namespace ioctl
+From: Liz Fong-Jones <lizf@honeycomb.io>
+Date: Fri, 31 Jul 2026 10:34:59 -0700
+Subject: [PATCH v3] PCI: Fix BAR resize for devices on a root bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-pidfd-exec-update-lock-v1-1-b388f2f3a8b0@black-desk.cn>
-X-B4-Tracking: v=1; b=H4sIAB+2bGoC/yXMQQ6CMBBG4auQWTtJi4jiVYwLmPnRUQNNC4aEc
- HerLr/FeyslREOic7FSxNuSjUOG3xUk93a4gU2zqXRl7Y57z8G0V8YC4TloO4FfozxZcULTOH+
- opKYch4jelt/4cv07zd0DMn1vtG0f9JoJ6noAAAA=
-X-Change-ID: 20260731-pidfd-exec-update-lock-de8e990154c6
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Jeff Layton <jlayton@kernel.org>, 
- Alexander Mikhalitsyn <alexander@mihalicyn.com>, 
- Josef Bacik <josef@toxicpanda.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Chen Linxuan <me@black-desk.cn>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260731-pci-rebar-root-bus-v3-1-6732e233fc99@honeycomb.io>
+X-B4-Tracking: v=1; b=H4sIAMLcbGoC/22NywrCMBQFf6VkbSRJra2u/A9xkceNvYJNSdpgK
+ f13k4og0uXAOTMzCeARAjkXM/EQMaDrEpS7guhWdnegaBITwcSR1exAe43Ug5KeeucGqsZAbcl
+ FaYEzq2uSjr0Hi69Ver19OIzqAXrIprxoMQzOT2s18rz7BqqtQOSU06oytmZaGdM0l9Z1MGn3V
+ Ht0JDei+LFwsWkRySK5OnFWy0YY/WdZluUNzJa3zQ8BAAA=
+X-Change-ID: 20260704-pci-rebar-root-bus-f3123fe10fc7
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ regressions@lists.linux.dev, amd-gfx@lists.freedesktop.org, 
+ Jon Nettleton <jon@solid-run.com>, Jon Nettleton <jon.nettleton@gmail.com>, 
+ Jacob Martin <jacob.martin@canonical.com>, stable@vger.kernel.org, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Liz Fong-Jones <lizf@honeycomb.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4028; i=me@black-desk.cn;
- h=from:subject:message-id; bh=gJxDMscKxr+JjJaFB0L7y8rHfQS5zqJmYPjkNSkCdPk=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqbLYliStba0h1+Y17GT/dFfejdT4NtXg2y4Ky6
- 7nOBdpaHeCJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCamy2JQAKCRB2HuYUOZmu
- i1BfD/97E4VqK4qYN+bNztpB54PT/i6A3EGR08ituKTKkiE7H3F06Ayp1OPnVdofRPM7RWgJh00
- gHQAdxvuk2Kyz4L7SDaU0abuwzf5DWvpuIOOCQ4kAVHdtGrWq8KXpDvOCf70fxPtiPjP5kbXoxB
- sE8qW+CmYRU1Uyc3Qo34UDhSnsWOrhewOZnt30CwyN9BUdMBULtIsNchewo8zajEnhMDI1Z+YFa
- 602ATEzLbFZnoH2kJPYsYM85KuEZPggVx9dLaHXbGvpZVkdwvD4/jTzyTjdmK9Z9Qg1dqSfHh3u
- 63yNfiWyrkr6dpiSvzYxw2D7yvC/32ELsoBLjz5Ia0BhEcLbpge99ak/EfQyv+8YhaFDijy8Bjq
- aR8j6JSZG6NKQSprXDJ2jXbEhahlCXlMTsZ2f2W5sVkc5M8TylaXXNWFkqPbhS5C+HtoCnZF2P6
- xReilp459fv7WWIzGBXZLlZ9BJffnB7UOuFT5z4m+ro9UXoFIott/0PeB+hVWvJ8XOhFK9u6mvg
- w2EJVZEZspYiuDEw7E5Rw5mSg2qmcn5SB0zWcnRHMZuz5anSxH8ec3tq2gnUOybxwxXzTBKZsO2
- W1EUcQ79z4+kHuEaTZwjSZzRSjY3O4arcY6nq096ejY4E2KBo0TzLq17xMAnPKtJpyjyUzG80HG
- cpjandZGlLUmIXQ==
-X-Developer-Key: i=me@black-desk.cn; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7820; i=lizf@honeycomb.io;
+ s=gpg; h=from:subject:message-id;
+ bh=tiZwX1JmLLUsHZJG3LbO1qum0siFMUGL+nup0ZLj+Xw=;
+ b=owEBbQGS/pANAwAKAaXO1OOXra/CAcsmYgBqbNzDr8ep/jGlcuUqZtPyGYoV8lNXGhJJ6o6p5
+ bJDuK58YKCJATMEAAEKAB0WIQSfW1LPQ0gyJmoTHwelztTjl62vwgUCamzcwwAKCRClztTjl62v
+ wm2fCACzplb0URlP9O9SZoCrIJkNf+9dSN1UVWBNLkWHJhJiPfy+RhKryzBpkUnrnk+eGGVy/6v
+ SJpSGdPtUUaZkf8OlGv6Upb5GItiyRwctbn6mPjyd/kmB+YaxXMAxBGttiELGn7g2BkJM7cTSYv
+ QXvKemb1VVqrkV+wm8ZAshy8lM8URpPLTw77PlJKmU7H0woyQsW8TpzJOcl4Fu0kiZAnHrs8JDW
+ evEFcyFrPbyMF7UhgcueWYhecqwm1c6WKxHtPorw5MfJDo2xM98cdF5RmdcoCuzk/i7DOo6Xw4R
+ oVKeg0a7T+kxTBFRa8b3vTEk6b+xBa0W/D4pI2C9E2/Kn/9m
+X-Developer-Key: i=lizf@honeycomb.io; a=openpgp;
+ fpr=1F7714D7EC3441D2CECC24606A3F8B00FBDDD2A4
+X-Endpoint-Received: by B4 Relay for lizf@honeycomb.io/gpg with auth_id=854
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PIDFD_GET_*_NAMESPACE ioctls in pidfd_ioctl() perform a filesystem
-credentials ptrace access check before handing out a namespace file
-descriptor.  The accompanying comment states that the code "mirrors nsfs
-behavior", but, unlike the corresponding procfs paths, it does so without
-holding the target task's exec_update_lock.
+pci_do_resource_release_and_resize() releases the device BARs that
+share a bridge window with the BAR being resized, but when the device
+sits directly on a root bus (pdev->bus->self == NULL) it then skips
+resource assignment entirely and returns success, leaving the BARs it
+just released unassigned (IORESOURCE_UNSET).
 
-proc_ns_get_link() and proc_ns_readlink() both take exec_update_lock for
-reading around the ptrace check and the namespace lookup, so that the
-credentials used for the access decision match those of the task when its
-namespace is read.  Without it, a caller can pass the check against the
-target's old credentials and then read the namespace after the target has
-execve()'d a setuid binary and committed new credentials -- accessing
-namespace information it should have been denied.
+Skipping pbus_reassign_bridge_resources() is correct in that case --
+there is no bridge window to adjust -- but the device BARs still have
+to be reassigned. Before the BAR release was consolidated into the PCI
+core, this case worked for amdgpu because the driver released the BARs
+itself and then called pci_assign_unassigned_bus_resources()
+unconditionally after the resize, which assigns unassigned device BARs
+also on a root bus. Commit db92e3fef53e ("drm/amdgpu: Remove driver
+side BAR release before resize") removed that call, so nothing assigns
+the released BARs anymore.
 
-Hold exec_update_lock for reading around the ptrace check and the
-namespace lookup so that pidfd truly mirrors nsfs behavior, as the comment
-already claims.  open_namespace() itself runs outside the lock: once a
-namespace reference is obtained it carries its own refcount and is opened
-with the caller's own credentials, so a concurrent execve() on the target
-can no longer affect the outcome.
+This breaks amdgpu completely on the SolidRun HoneyComb LX2K (NXP
+LX2160A, arm64, ACPI), where the GPU endpoint is enumerated directly
+on the root bus of its segment (there is no root port device, so
+pdev->bus->self is NULL):
 
-Fixes: 5b08bd408534 ("pidfs: allow retrieval of namespace file descriptors")
+  amdgpu 0004:01:00.0: BAR 0 [mem 0xa400000000-0xa40fffffff 64bit pref]: releasing
+  amdgpu 0004:01:00.0: BAR 2 [mem 0xa410000000-0xa4101fffff 64bit pref]: releasing
+  amdgpu 0004:01:00.0: sw_init of IP block <gmc_v8_0> failed -19
+  amdgpu 0004:01:00.0: amdgpu_device_ip_init failed
+  amdgpu 0004:01:00.0: Fatal error during GPU init
+
+No error is logged because the resize path reports success; amdgpu
+then finds BAR0 IORESOURCE_UNSET and bails out with -ENODEV.
+
+Assign the released BARs directly from the root bus windows when there
+is no upstream bridge. On failure, roll back through the existing
+restore path exactly as in the bridged case.
+
+The root bus path also had a locking bug that any fix here necessarily
+touches: the old "goto out" jumped to up_read(&pci_bus_sem) without a
+matching down_read() (as does the "goto restore" taken when
+pci_dev_res_add_to_list() fails in the release loop). Take pci_bus_sem
+before the BAR release loop so every path through the function holds
+it exactly once.
+
+Use pci_upstream_bridge() rather than testing pdev->bus->self
+directly to decide whether the device has an upstream bridge. The two
+are usually equivalent, but pci_is_root_bus() -- which
+pci_upstream_bridge() uses internally -- documents that "virtual"
+buses added for SR-IOV via virtfn_add_bus() also have bus->self ==
+NULL without being root buses. pci_do_resource_release_and_resize()
+is reachable for VF BAR resizes (see the pci_resource_is_iov() checks
+elsewhere in this file and in rebar.c), so testing bus->self directly
+could misroute a VF resize into the root-bus assignment path added
+above. Nothing about the bug being fixed here involves a VF; this is
+purely for correctness on that path.
+
+Fixes: 337b1b566db0 ("PCI: Fix restoring BARs on BAR resize rollback path")
 Cc: stable@vger.kernel.org
-Assisted-by: Codex:glm-5.2
-Signed-off-by: Chen Linxuan <me@black-desk.cn>
+Link: https://bugs.launchpad.net/ubuntu/+source/linux-hwe-7.0/+bug/2159596
+Assisted-by: Claude:claude-fable-5 checkpatch
+Assisted-by: Claude:claude-sonnet-5
+Reviewed-by: Krzysztof Wilczyński <kwilczynski@kernel.org>
+Signed-off-by: Liz Fong-Jones <lizf@honeycomb.io>
 ---
- fs/pidfs.c | 43 +++++++++++++++++++++++++++++++------------
- 1 file changed, 31 insertions(+), 12 deletions(-)
+#regzbot introduced: 337b1b566db0
 
-diff --git a/fs/pidfs.c b/fs/pidfs.c
-index b57ecc96e967..a6a643f15d08 100644
---- a/fs/pidfs.c
-+++ b/fs/pidfs.c
-@@ -532,6 +532,7 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	struct task_struct *task __free(put_task) = NULL;
- 	struct nsproxy *nsp __free(put_nsproxy) = NULL;
- 	struct ns_common *ns_common = NULL;
-+	int error;
+Observed at runtime on Ubuntu's linux-hwe-7.0 (7.0.0-14, broken) vs
+linux-hwe-6.17 (working), but nothing here is distro-specific: Ubuntu
+carries this code unmodified, and the affected function is identical
+to current mainline. By source inspection the regression window is
+v6.18 (old code paths) to v6.19 (consolidation). Workaround for
+affected users: amdgpu.rebar=0.
+
+On the topology question raised in review: this is physical hardware,
+not a virtualized guest, running the UEFI/ACPI firmware variant of
+this board (SolidRun also ships a U-Boot/devicetree variant of the
+same hardware). Deferring to Jon Nettleton (CC'd, SolidRun) on the
+exact root complex wiring; see the hardware manual's block diagram:
+https://dev.solid-run.com/nxp/lx2160a/com-som/lx2160a-com-hardware-user-manual#block-diagram
+---
+Changes in v3:
+- Add Reviewed-by from Krzysztof Wilczyński, received on v2.
+- Use pci_upstream_bridge() instead of testing pdev->bus->self
+  directly, per Bjorn Helgaas's review: bus->self == NULL doesn't
+  necessarily mean a root bus (SR-IOV virtfn_add_bus() buses are the
+  same), and this function is reachable for VF BAR resizes elsewhere
+  in this file. Doesn't affect the bug being fixed here (not a VF)
+  but is more correct in general. Reviewed-by kept from v2 -- this is
+  a narrow, mechanical change to a path this device doesn't exercise,
+  not a substantive rework of what was reviewed.
+- Rebase onto current mainline.
+- Add Jacob Martin to Cc: he independently triaged and accepted the
+  corresponding Ubuntu report (LP: #2159596) on the Canonical kernel
+  team, so he has direct interest in this landing.
+- Move Ilpo Järvinen to To: for final review, per Bjorn.
+- Link to v2: https://patch.msgid.link/20260712-pci-rebar-root-bus-v2-1-a1b9107a82dc@honeycomb.io
+
+Changes in v2:
+- Add Assisted-by tags (missing from v1; required per
+  Documentation/process/coding-assistants.rst)
+- Add Link: to the corresponding Ubuntu bug report
+- Drop the "# v6.19+" annotation on Cc: stable; unnecessary noise
+  given the Fixes: tag already lets the stable team derive applicable
+  versions (per stable-kernel-rules.rst)
+- Link to v1: https://patch.msgid.link/20260705-pci-rebar-root-bus-v1-1-55df70cbdd88@honeycomb.io
+
+To: Bjorn Helgaas <bhelgaas@google.com>
+To: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Cc: linux-pci@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: regressions@lists.linux.dev
+Cc: amd-gfx@lists.freedesktop.org
+Cc: Jon Nettleton <jon@solid-run.com>
+Cc: Jon Nettleton <jon.nettleton@gmail.com>
+Cc: Jacob Martin <jacob.martin@canonical.com>
+---
+ drivers/pci/setup-bus.c | 26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
+index c0a949f2c9956..d50f3d57a7791 100644
+--- a/drivers/pci/setup-bus.c
++++ b/drivers/pci/setup-bus.c
+@@ -2380,6 +2380,7 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
+ 	struct resource *res = pci_resource_n(pdev, resno);
+ 	struct pci_dev_resource *dev_res;
+ 	struct pci_bus *bus = pdev->bus;
++	struct pci_dev *bridge = pci_upstream_bridge(pdev);
+ 	struct resource *b_win, *r;
+ 	LIST_HEAD(saved);
+ 	unsigned int i;
+@@ -2397,6 +2398,8 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
+ 	if (ret)
+ 		return ret;
  
- 	if (!pidfs_ioctl_valid(cmd))
- 		return -ENOIOCTLCMD;
-@@ -555,20 +556,33 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	if (arg)
- 		return -EINVAL;
- 
-+	/*
-+	 * We're trying to open a file descriptor to the namespace so perform a
-+	 * filesystem cred ptrace check. Hold @task's exec_update_lock for the
-+	 * duration of the ptrace check and the namespace lookup so that the
-+	 * credentials used for the access decision match those of @task at the
-+	 * time its namespace is read, preventing a concurrent execve() from
-+	 * swapping the task's credentials in between the check and the use. We
-+	 * mirror nsfs behavior.
-+	 */
-+	error = down_read_killable(&task->signal->exec_update_lock);
-+	if (error)
-+		return error;
++	down_read(&pci_bus_sem);
 +
-+	if (!ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS)) {
-+		error = -EACCES;
-+		goto out_unlock;
+ 	pci_dev_for_each_resource(pdev, r, i) {
+ 		if (i >= PCI_BRIDGE_RESOURCES)
+ 			break;
+@@ -2415,13 +2418,24 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
+ 
+ 	pci_resize_resource_set_size(pdev, resno, size);
+ 
+-	if (!bus->self)
+-		goto out;
++	if (bridge) {
++		ret = pbus_reassign_bridge_resources(bus, res, &saved);
++		if (ret)
++			goto restore;
++	} else {
++		/*
++		 * A device on a root bus has no bridge windows to adjust.
++		 * Assign the BARs released above directly from the root bus
++		 * windows.
++		 */
++		list_for_each_entry(dev_res, &saved, list) {
++			i = pci_resource_num(pdev, dev_res->res);
+ 
+-	down_read(&pci_bus_sem);
+-	ret = pbus_reassign_bridge_resources(bus, res, &saved);
+-	if (ret)
+-		goto restore;
++			ret = pci_assign_resource(pdev, i);
++			if (ret)
++				goto restore;
++		}
 +	}
-+
- 	scoped_guard(task_lock, task) {
- 		nsp = task->nsproxy;
- 		if (nsp)
- 			get_nsproxy(nsp);
- 	}
--	if (!nsp)
--		return -ESRCH; /* just pretend it didn't exist */
--
--	/*
--	 * We're trying to open a file descriptor to the namespace so perform a
--	 * filesystem cred ptrace check. Also, we mirror nsfs behavior.
--	 */
--	if (!ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS))
--		return -EACCES;
-+	if (!nsp) {
-+		error = -ESRCH; /* just pretend it didn't exist */
-+		goto out_unlock;
-+	}
  
- 	switch (cmd) {
- 	/* Namespaces that hang of nsproxy. */
-@@ -650,11 +664,16 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- #endif
- 		break;
- 	default:
--		return -ENOIOCTLCMD;
-+		error = -ENOIOCTLCMD;
- 	}
- 
--	if (!ns_common)
--		return -EOPNOTSUPP;
-+	if (!error && !ns_common)
-+		error = -EOPNOTSUPP;
-+
-+out_unlock:
-+	up_read(&task->signal->exec_update_lock);
-+	if (error)
-+		return error;
- 
- 	/* open_namespace() unconditionally consumes the reference */
- 	return open_namespace(ns_common);
+ out:
+ 	up_read(&pci_bus_sem);
 
 ---
 base-commit: 8ba098e6b6ff0db8edf28528d1552be261af30d4
-change-id: 20260731-pidfd-exec-update-lock-de8e990154c6
+change-id: 20260704-pci-rebar-root-bus-f3123fe10fc7
 
 Best regards,
 --  
-Chen Linxuan <me@black-desk.cn>
+Liz Fong-Jones <lizf@honeycomb.io>
 
