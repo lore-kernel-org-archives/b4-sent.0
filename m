@@ -1,10 +1,11 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Fri, 31 Jul 2026 22:08:21 +0200
-Subject: [PATCH v10 2/4] arm64: dts: qcom: msm8939: Add venus node
+Date: Fri, 31 Jul 2026 22:08:22 +0200
+Subject: [PATCH v10 3/4] arm64: dts: qcom: msm8939-longcheer-l9100: Enable
+ venus node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260731-msm8939-venus-rfc-v10-2-9ac503250fc7@apitzsch.eu>
+Message-Id: <20260731-msm8939-venus-rfc-v10-3-9ac503250fc7@apitzsch.eu>
 References: <20260731-msm8939-venus-rfc-v10-0-9ac503250fc7@apitzsch.eu>
 In-Reply-To: <20260731-msm8939-venus-rfc-v10-0-9ac503250fc7@apitzsch.eu>
 To: Bryan O'Donoghue <bod@kernel.org>, 
@@ -20,65 +21,49 @@ Cc: Erikas Bitovtas <xerikasxx@gmail.com>,
  linux-arm-msm@vger.kernel.org, linux-media@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-clk@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- phone-devel@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ phone-devel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785528647; l=1576;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785528647; l=876;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=PCuxrbY6KVfFfwQ1BsgMQlG7wrXIyJzKLju6sp2a0/4=;
- b=aykDoAMs0jzMss4IY9k/Qwqh+GGGgWERUY145QhtVVcU1vxXQHD/bbg8bjuFIVV4JUicXUlme
- jycHoC2azrcB6QaYYxNEd7uiP419uReMCW/yyeKDjtD0MJWpWKr47+L
+ bh=jdo0UmXOjZ49uP0I9O1zOQL628e2e+vfr7rCnYF/0LY=;
+ b=sKA1M/ju9GHGw3gJT/CXEl1fjobE6gRHc14/hO1xGuCyj93Q9thMGQAJhyjwYBfVD1UtoZdmh
+ 6qw4Gjva6WgBiRyQggdCIy7uSGmUPSNmv0H+69EuLQa2N5EPKa1aWBh
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DT entries for the msm8939 venus encoder/decoder.
+Enable the venus node so that the video encoder/decoder will start
+working.
 
-Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
-Signed-off-by: Erikas Bitovtas <xerikasxx@gmail.com>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Default paths for firmware work on BQ Aquaris M5, which means
+firmware-name property can be left out.
+
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
 ---
- arch/arm64/boot/dts/qcom/msm8939.dtsi | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8939.dtsi b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-index d4d7b0c9206c..013e6a87f44b 100644
---- a/arch/arm64/boot/dts/qcom/msm8939.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-@@ -1627,6 +1627,32 @@ opp-19200000 {
- 			};
- 		};
+diff --git a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
+index 13422a19c26a..48514c3df718 100644
+--- a/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
++++ b/arch/arm64/boot/dts/qcom/msm8939-longcheer-l9100.dts
+@@ -314,6 +314,14 @@ &usb_hs_phy {
+ 	extcon = <&usb_id>;
+ };
  
-+		venus: video-codec@1d00000 {
-+			compatible = "qcom,msm8939-venus";
-+			reg = <0x01d00000 0xff000>;
-+			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
-+			clocks = <&gcc GCC_VENUS0_VCODEC0_CLK>,
-+				 <&gcc GCC_VENUS0_AHB_CLK>,
-+				 <&gcc GCC_VENUS0_AXI_CLK>,
-+				 <&gcc GCC_VENUS0_CORE0_VCODEC0_CLK>,
-+				 <&gcc GCC_VENUS0_CORE1_VCODEC0_CLK>;
-+			clock-names = "core",
-+				      "iface",
-+				      "bus",
-+				      "vcodec0_core",
-+				      "vcodec1_core";
-+			power-domains = <&gcc VENUS_GDSC>,
-+					<&gcc VENUS_CORE0_GDSC>,
-+					<&gcc VENUS_CORE1_GDSC>;
-+			power-domain-names = "venus",
-+					     "vcodec0",
-+					     "vcodec1";
-+			iommus = <&apps_iommu 5>;
-+			memory-region = <&venus_mem>;
++&venus {
++	status = "okay";
++};
 +
-+			status = "disabled";
-+		};
++&venus_mem {
++	status = "okay";
++};
 +
- 		apps_iommu: iommu@1ef0000 {
- 			compatible = "qcom,msm8916-iommu", "qcom,msm-iommu-v1";
- 			reg = <0x01ef0000 0x3000>;
+ &wcnss {
+ 	status = "okay";
+ };
 
 -- 
 2.55.0
