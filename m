@@ -1,11 +1,10 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Fri, 31 Jul 2026 22:08:20 +0200
-Subject: [PATCH v10 1/4] clk: qcom: gcc-msm8939: mark Venus core GDSCs as
- hardware controlled
+Date: Fri, 31 Jul 2026 22:08:21 +0200
+Subject: [PATCH v10 2/4] arm64: dts: qcom: msm8939: Add venus node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260731-msm8939-venus-rfc-v10-1-9ac503250fc7@apitzsch.eu>
+Message-Id: <20260731-msm8939-venus-rfc-v10-2-9ac503250fc7@apitzsch.eu>
 References: <20260731-msm8939-venus-rfc-v10-0-9ac503250fc7@apitzsch.eu>
 In-Reply-To: <20260731-msm8939-venus-rfc-v10-0-9ac503250fc7@apitzsch.eu>
 To: Bryan O'Donoghue <bod@kernel.org>, 
@@ -21,70 +20,65 @@ Cc: Erikas Bitovtas <xerikasxx@gmail.com>,
  linux-arm-msm@vger.kernel.org, linux-media@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-clk@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
- phone-devel@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>
+ phone-devel@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785528647; l=1606;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785528647; l=1576;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=Zcl6BS6NSRBxGBTBPqhiSvFlL/mbr0G2alrt9SBdJ5A=;
- b=rzIaEPt57WcdIZPW/V7tFMVty/ab0yGQppF0pJQBFCgUbg0XTEJLE23TySOmDqtOtTOGeUrKN
- fqM0Q/SpiB6DNaV+pjibLKrv78wwQDVk+UWM2X0WCHZ9bQnCNtv3f0c
+ bh=PCuxrbY6KVfFfwQ1BsgMQlG7wrXIyJzKLju6sp2a0/4=;
+ b=aykDoAMs0jzMss4IY9k/Qwqh+GGGgWERUY145QhtVVcU1vxXQHD/bbg8bjuFIVV4JUicXUlme
+ jycHoC2azrcB6QaYYxNEd7uiP419uReMCW/yyeKDjtD0MJWpWKr47+L
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Erikas Bitovtas <xerikasxx@gmail.com>
+Add DT entries for the msm8939 venus encoder/decoder.
 
-Allow Venus core GDSCs to have their control passed to hardware, so they
-can be powered on by Venus firmware and explicitly state that the vcodec
-clocks' halt bit should be checked.
-
+Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
 Signed-off-by: Erikas Bitovtas <xerikasxx@gmail.com>
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-[André: Update commit message]
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- drivers/clk/qcom/gcc-msm8939.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ arch/arm64/boot/dts/qcom/msm8939.dtsi | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
 
-diff --git a/drivers/clk/qcom/gcc-msm8939.c b/drivers/clk/qcom/gcc-msm8939.c
-index ffd7f14fcbaf..3900a06189ff 100644
---- a/drivers/clk/qcom/gcc-msm8939.c
-+++ b/drivers/clk/qcom/gcc-msm8939.c
-@@ -3665,6 +3665,7 @@ static struct clk_branch gcc_venus0_vcodec0_clk = {
+diff --git a/arch/arm64/boot/dts/qcom/msm8939.dtsi b/arch/arm64/boot/dts/qcom/msm8939.dtsi
+index d4d7b0c9206c..013e6a87f44b 100644
+--- a/arch/arm64/boot/dts/qcom/msm8939.dtsi
++++ b/arch/arm64/boot/dts/qcom/msm8939.dtsi
+@@ -1627,6 +1627,32 @@ opp-19200000 {
+ 			};
+ 		};
  
- static struct clk_branch gcc_venus0_core0_vcodec0_clk = {
- 	.halt_reg = 0x4c02c,
-+	.halt_check = BRANCH_HALT,
- 	.clkr = {
- 		.enable_reg = 0x4c02c,
- 		.enable_mask = BIT(0),
-@@ -3682,6 +3683,7 @@ static struct clk_branch gcc_venus0_core0_vcodec0_clk = {
- 
- static struct clk_branch gcc_venus0_core1_vcodec0_clk = {
- 	.halt_reg = 0x4c034,
-+	.halt_check = BRANCH_HALT,
- 	.clkr = {
- 		.enable_reg = 0x4c034,
- 		.enable_mask = BIT(0),
-@@ -3754,6 +3756,7 @@ static struct gdsc venus_core0_gdsc = {
- 	.pd = {
- 		.name = "venus_core0",
- 	},
-+	.flags = HW_CTRL_TRIGGER,
- 	.pwrsts = PWRSTS_OFF_ON,
- };
- 
-@@ -3762,6 +3765,7 @@ static struct gdsc venus_core1_gdsc = {
- 	.pd = {
- 		.name = "venus_core1",
- 	},
-+	.flags = HW_CTRL_TRIGGER,
- 	.pwrsts = PWRSTS_OFF_ON,
- };
- 
++		venus: video-codec@1d00000 {
++			compatible = "qcom,msm8939-venus";
++			reg = <0x01d00000 0xff000>;
++			interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&gcc GCC_VENUS0_VCODEC0_CLK>,
++				 <&gcc GCC_VENUS0_AHB_CLK>,
++				 <&gcc GCC_VENUS0_AXI_CLK>,
++				 <&gcc GCC_VENUS0_CORE0_VCODEC0_CLK>,
++				 <&gcc GCC_VENUS0_CORE1_VCODEC0_CLK>;
++			clock-names = "core",
++				      "iface",
++				      "bus",
++				      "vcodec0_core",
++				      "vcodec1_core";
++			power-domains = <&gcc VENUS_GDSC>,
++					<&gcc VENUS_CORE0_GDSC>,
++					<&gcc VENUS_CORE1_GDSC>;
++			power-domain-names = "venus",
++					     "vcodec0",
++					     "vcodec1";
++			iommus = <&apps_iommu 5>;
++			memory-region = <&venus_mem>;
++
++			status = "disabled";
++		};
++
+ 		apps_iommu: iommu@1ef0000 {
+ 			compatible = "qcom,msm8916-iommu", "qcom,msm-iommu-v1";
+ 			reg = <0x01ef0000 0x3000>;
 
 -- 
 2.55.0
