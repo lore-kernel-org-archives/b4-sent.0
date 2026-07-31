@@ -1,232 +1,151 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 31 Jul 2026 09:08:28 +0000
-Subject: [PATCH v3 4/4] spi: amlogic: spisg: Add support for A9 controller
- features
+From: Chen Linxuan <me@black-desk.cn>
+Date: Fri, 31 Jul 2026 22:50:08 +0800
+Subject: [PATCH] pidfd: hold exec_update_lock around namespace ioctl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-a9-spisg-v3-4-a15da3f70029@amlogic.com>
-References: <20260731-a9-spisg-v3-0-a15da3f70029@amlogic.com>
-In-Reply-To: <20260731-a9-spisg-v3-0-a15da3f70029@amlogic.com>
-To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785488907; l=7031;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=naaiRceJgDJi2Bphth/AR2jIlvyI33awGvGfG8kRUgs=;
- b=5hNxJ5MEQhF4w3hxebJRQ/Oy1w3FHoud+O+aQl5gSa2zIMjmE5rRlCnVfRTBTBlW0Y6budADx
- qEGy3Q5BlRmDB6V68ylFxLJ55ZI6QspRUmx6zu3SEvgMtmhp4CLrjPU
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Message-Id: <20260731-pidfd-exec-update-lock-v1-1-b388f2f3a8b0@black-desk.cn>
+X-B4-Tracking: v=1; b=H4sIAB+2bGoC/yXMQQ6CMBBG4auQWTtJi4jiVYwLmPnRUQNNC4aEc
+ HerLr/FeyslREOic7FSxNuSjUOG3xUk93a4gU2zqXRl7Y57z8G0V8YC4TloO4FfozxZcULTOH+
+ opKYch4jelt/4cv07zd0DMn1vtG0f9JoJ6noAAAA=
+X-Change-ID: 20260731-pidfd-exec-update-lock-de8e990154c6
+To: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Jeff Layton <jlayton@kernel.org>, 
+ Alexander Mikhalitsyn <alexander@mihalicyn.com>, 
+ Josef Bacik <josef@toxicpanda.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Chen Linxuan <me@black-desk.cn>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4028; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=gJxDMscKxr+JjJaFB0L7y8rHfQS5zqJmYPjkNSkCdPk=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqbLYliStba0h1+Y17GT/dFfejdT4NtXg2y4Ky6
+ 7nOBdpaHeCJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCamy2JQAKCRB2HuYUOZmu
+ i1BfD/97E4VqK4qYN+bNztpB54PT/i6A3EGR08ituKTKkiE7H3F06Ayp1OPnVdofRPM7RWgJh00
+ gHQAdxvuk2Kyz4L7SDaU0abuwzf5DWvpuIOOCQ4kAVHdtGrWq8KXpDvOCf70fxPtiPjP5kbXoxB
+ sE8qW+CmYRU1Uyc3Qo34UDhSnsWOrhewOZnt30CwyN9BUdMBULtIsNchewo8zajEnhMDI1Z+YFa
+ 602ATEzLbFZnoH2kJPYsYM85KuEZPggVx9dLaHXbGvpZVkdwvD4/jTzyTjdmK9Z9Qg1dqSfHh3u
+ 63yNfiWyrkr6dpiSvzYxw2D7yvC/32ELsoBLjz5Ia0BhEcLbpge99ak/EfQyv+8YhaFDijy8Bjq
+ aR8j6JSZG6NKQSprXDJ2jXbEhahlCXlMTsZ2f2W5sVkc5M8TylaXXNWFkqPbhS5C+HtoCnZF2P6
+ xReilp459fv7WWIzGBXZLlZ9BJffnB7UOuFT5z4m+ro9UXoFIott/0PeB+hVWvJ8XOhFK9u6mvg
+ w2EJVZEZspYiuDEw7E5Rw5mSg2qmcn5SB0zWcnRHMZuz5anSxH8ec3tq2gnUOybxwxXzTBKZsO2
+ W1EUcQ79z4+kHuEaTZwjSZzRSjY3O4arcY6nq096ejY4E2KBo0TzLq17xMAnPKtJpyjyUzG80HG
+ cpjandZGlLUmIXQ==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Amlogic A9 SPISG controller extends the A4 controller with additional
-configuration options, including:
+The PIDFD_GET_*_NAMESPACE ioctls in pidfd_ioctl() perform a filesystem
+credentials ptrace access check before handing out a namespace file
+descriptor.  The accompanying comment states that the code "mirrors nsfs
+behavior", but, unlike the corresponding procfs paths, it does so without
+holding the target task's exec_update_lock.
 
-- Extended CS setup timing
-- Hardware-controlled CS hold timing
-- MOSI idle output configuration
-- Configurable word delay
+proc_ns_get_link() and proc_ns_readlink() both take exec_update_lock for
+reading around the ptrace check and the namespace lookup, so that the
+credentials used for the access decision match those of the task when its
+namespace is read.  Without it, a caller can pass the check against the
+target's old credentials and then read the namespace after the target has
+execve()'d a setuid binary and committed new credentials -- accessing
+namespace information it should have been denied.
 
-Add SoC-specific capability data and configure these features when they
-are supported by the underlying hardware while keeping compatibility with
-existing A4 controllers.
+Hold exec_update_lock for reading around the ptrace check and the
+namespace lookup so that pidfd truly mirrors nsfs behavior, as the comment
+already claims.  open_namespace() itself runs outside the lock: once a
+namespace reference is obtained it carries its own refcount and is opened
+with the caller's own credentials, so a concurrent execve() on the target
+can no longer affect the outcome.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Fixes: 5b08bd408534 ("pidfs: allow retrieval of namespace file descriptors")
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:glm-5.2
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- drivers/spi/spi-amlogic-spisg.c | 75 +++++++++++++++++++++++++++++++++++++----
- 1 file changed, 68 insertions(+), 7 deletions(-)
+ fs/pidfs.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/spi/spi-amlogic-spisg.c b/drivers/spi/spi-amlogic-spisg.c
-index 2d66f00dccd4..729da11bc539 100644
---- a/drivers/spi/spi-amlogic-spisg.c
-+++ b/drivers/spi/spi-amlogic-spisg.c
-@@ -37,6 +37,12 @@
- #define CFG_HW_POS			BIT(6)
- /* start on vsync falling */
- #define CFG_HW_NEG			BIT(7)
-+#define CFG_WORD_GAP			GENMASK(9, 8)
-+#define CFG_MO_IDLE_OUTPUT		GENMASK(11, 10)
-+/* cs hold time in pclk */
-+#define CFG_CS_HOLD			GENMASK(26, 12)
-+/* high 4 bits of cs setup time in sclk */
-+#define CFG_CS_SETUP_EXTEND		GENMASK(30, 27)
+diff --git a/fs/pidfs.c b/fs/pidfs.c
+index b57ecc96e967..a6a643f15d08 100644
+--- a/fs/pidfs.c
++++ b/fs/pidfs.c
+@@ -532,6 +532,7 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	struct task_struct *task __free(put_task) = NULL;
+ 	struct nsproxy *nsp __free(put_nsproxy) = NULL;
+ 	struct ns_common *ns_common = NULL;
++	int error;
  
- #define SPISG_REG_CFG_START		0x08
- #define CFG_BLOCK_NUM			GENMASK(19, 0)
-@@ -143,6 +149,13 @@ struct spisg_descriptor_extra {
- 	int				rx_ccsg_len;
- };
+ 	if (!pidfs_ioctl_valid(cmd))
+ 		return -ENOIOCTLCMD;
+@@ -555,20 +556,33 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	if (arg)
+ 		return -EINVAL;
  
-+struct aml_spisg_data {
-+	bool				mo_idle_output_ctrl;
-+	bool				word_gap_ctrl;
-+	bool				cs_hold_ctrl;
-+	bool				cs_setup_extend_ctrl;
-+};
++	/*
++	 * We're trying to open a file descriptor to the namespace so perform a
++	 * filesystem cred ptrace check. Hold @task's exec_update_lock for the
++	 * duration of the ptrace check and the namespace lookup so that the
++	 * credentials used for the access decision match those of @task at the
++	 * time its namespace is read, preventing a concurrent execve() from
++	 * swapping the task's credentials in between the check and the use. We
++	 * mirror nsfs behavior.
++	 */
++	error = down_read_killable(&task->signal->exec_update_lock);
++	if (error)
++		return error;
 +
- struct spisg_device {
- 	struct spi_controller		*controller;
- 	struct platform_device		*pdev;
-@@ -152,6 +165,7 @@ struct spisg_device {
- 	struct clk			*sclk;
- 	struct clk_div_table		*tbl;
- 	struct completion		completion;
-+	const struct aml_spisg_data	*data;
- 	u32				status;
- 	u32				speed_hz;
- 	u32				effective_speed_hz;
-@@ -424,7 +438,8 @@ static void aml_spisg_setup_null_desc(struct spisg_device *spisg,
- static void aml_spisg_pending(struct spisg_device *spisg,
- 			      dma_addr_t desc_paddr,
- 			      bool trig,
--			      bool irq_en)
-+			      bool irq_en,
-+			      u32 delay)
- {
- 	u32 desc_l, desc_h, cfg_spi, irq_enable;
++	if (!ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS)) {
++		error = -EACCES;
++		goto out_unlock;
++	}
++
+ 	scoped_guard(task_lock, task) {
+ 		nsp = task->nsproxy;
+ 		if (nsp)
+ 			get_nsproxy(nsp);
+ 	}
+-	if (!nsp)
+-		return -ESRCH; /* just pretend it didn't exist */
+-
+-	/*
+-	 * We're trying to open a file descriptor to the namespace so perform a
+-	 * filesystem cred ptrace check. Also, we mirror nsfs behavior.
+-	 */
+-	if (!ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS))
+-		return -EACCES;
++	if (!nsp) {
++		error = -ESRCH; /* just pretend it didn't exist */
++		goto out_unlock;
++	}
  
-@@ -437,6 +452,13 @@ static void aml_spisg_pending(struct spisg_device *spisg,
+ 	switch (cmd) {
+ 	/* Namespaces that hang of nsproxy. */
+@@ -650,11 +664,16 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
  #endif
- 
- 	cfg_spi = spisg->cfg_spi;
-+
-+	if (spisg->data && spisg->data->word_gap_ctrl) {
-+		if (delay > 3)
-+			delay = 3;
-+		cfg_spi |=  FIELD_PREP(CFG_WORD_GAP, delay);
-+	}
-+
- 	if (trig)
- 		cfg_spi |= CFG_HW_POS;
- 	else
-@@ -483,6 +505,7 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- {
- 	struct spisg_device *spisg = spi_controller_get_devdata(ctlr);
- 	struct device *dev = &spisg->pdev->dev;
-+	const struct aml_spisg_data *data = spisg->data;
- 	unsigned long long ms = 0;
- 	struct spi_transfer *xfer;
- 	struct spisg_descriptor *descs, *desc;
-@@ -491,6 +514,7 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 	int desc_num = 1, descs_len;
- 	bool last_xfer_keep_ss = false;
- 	u32 cs_hold_in_sclk = 0;
-+	u32 val, delay = 0;
- 	int ret = -EIO;
- 
- 	if (!aml_spisg_sem_down_read(spisg)) {
-@@ -524,10 +548,20 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 			goto end;
- 		}
- 
--		/* calculate cs-setup delay with the first xfer speed */
--		if (list_is_first(&xfer->transfer_list, &msg->transfers))
--			desc->cfg_bus |= FIELD_PREP(CFG_CS_SETUP,
--				spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->cs_setup));
-+		/* calculate cs-setup delay with the first xfer speed  and word dealy*/
-+		if (list_is_first(&xfer->transfer_list, &msg->transfers)) {
-+			val = spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->cs_setup);
-+			if (data && data->cs_setup_extend_ctrl) {
-+				val = min_t(u32, 0xFF, val);
-+				desc->cfg_bus |= FIELD_PREP(CFG_CS_SETUP, val & 0xF);
-+				FIELD_MODIFY(CFG_CS_SETUP_EXTEND, &spisg->cfg_spi, val >> 4);
-+			} else {
-+				val = min_t(u32, 0xF, val);
-+				desc->cfg_bus |= FIELD_PREP(CFG_CS_SETUP, val);
-+			}
-+
-+			delay = spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->word_delay);
-+		}
- 
- 		/* calculate cs-hold delay with the last xfer speed */
- 		if (list_is_last(&xfer->transfer_list, &msg->transfers)) {
-@@ -542,7 +576,13 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 				       xfer->effective_speed_hz);
+ 		break;
+ 	default:
+-		return -ENOIOCTLCMD;
++		error = -ENOIOCTLCMD;
  	}
  
--	if (cs_hold_in_sclk) {
-+	if (data && data->cs_hold_ctrl) {
-+		cs_hold_in_sclk = cs_hold_in_sclk ? : 1;
-+		val = cs_hold_in_sclk * (FIELD_GET(CFG_CLK_DIV, spisg->cfg_bus) + 1);
-+		val = min_t(u32, 0x7FFF, val);
-+		FIELD_MODIFY(CFG_CS_HOLD, &spisg->cfg_spi, val);
-+		desc--;
-+	} else if (cs_hold_in_sclk) {
- 		/* additional null-descriptor to achieve the cs-hold delay */
- 		aml_spisg_setup_null_desc(spisg, desc, cs_hold_in_sclk);
- 		desc--;
-@@ -569,7 +609,7 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 	}
- 
- 	reinit_completion(&spisg->completion);
--	aml_spisg_pending(spisg, descs_paddr, false, true);
-+	aml_spisg_pending(spisg, descs_paddr, false, true, delay);
- 	if (wait_for_completion_timeout(&spisg->completion,
- 					spi_controller_is_target(spisg->controller) ?
- 					MAX_SCHEDULE_TIMEOUT : msecs_to_jiffies(ms))) {
-@@ -725,6 +765,7 @@ static int aml_spisg_probe(struct platform_device *pdev)
- 	struct spisg_device *spisg;
- 	struct device *dev = &pdev->dev;
- 	void __iomem *base;
-+	u32 val = 0;
- 	int ret, irq;
- 
- 	const struct regmap_config aml_regmap_config = {
-@@ -743,6 +784,7 @@ static int aml_spisg_probe(struct platform_device *pdev)
- 
- 	spisg = spi_controller_get_devdata(ctlr);
- 	spisg->controller = ctlr;
-+	spisg->data = (struct aml_spisg_data *)of_device_get_match_data(dev);
- 
- 	spisg->pdev = pdev;
- 	platform_set_drvdata(pdev, spisg);
-@@ -773,6 +815,14 @@ static int aml_spisg_probe(struct platform_device *pdev)
- 
- 	spisg->cfg_spi = FIELD_PREP(CFG_SFLASH_WP, 1) |
- 			 FIELD_PREP(CFG_SFLASH_HD, 1);
+-	if (!ns_common)
+-		return -EOPNOTSUPP;
++	if (!error && !ns_common)
++		error = -EOPNOTSUPP;
 +
-+	if (spisg->data && spisg->data->mo_idle_output_ctrl) {
-+		if (!of_property_read_u32(dev->of_node, "amlogic,mo-idle-output", &val))
-+			spisg->cfg_spi |=  FIELD_PREP(CFG_MO_IDLE_OUTPUT, val);
-+		else
-+			spisg->cfg_spi |=  FIELD_PREP(CFG_MO_IDLE_OUTPUT, 0);
-+	}
-+
- 	if (spi_controller_is_target(ctlr)) {
- 		spisg->cfg_spi |= FIELD_PREP(CFG_SLAVE_EN, 1);
- 		spisg->cfg_bus = FIELD_PREP(CFG_TX_TUNING, 0xf);
-@@ -859,6 +909,13 @@ static int spisg_resume_runtime(struct device *dev)
- 	return 0;
- }
++out_unlock:
++	up_read(&task->signal->exec_update_lock);
++	if (error)
++		return error;
  
-+static const struct aml_spisg_data a9_spisg_data = {
-+	.mo_idle_output_ctrl = true,
-+	.word_gap_ctrl = true,
-+	.cs_hold_ctrl = true,
-+	.cs_setup_extend_ctrl = true,
-+};
-+
- static const struct dev_pm_ops amlogic_spisg_pm_ops = {
- 	.runtime_suspend	= spisg_suspend_runtime,
- 	.runtime_resume		= spisg_resume_runtime,
-@@ -868,6 +925,10 @@ static const struct of_device_id amlogic_spisg_of_match[] = {
- 	{
- 		.compatible = "amlogic,a4-spisg",
- 	},
-+	{
-+		.compatible = "amlogic,a9-spisg",
-+		.data = &a9_spisg_data,
-+	},
- 
- 	{ /* sentinel */ }
- };
+ 	/* open_namespace() unconditionally consumes the reference */
+ 	return open_namespace(ns_common);
 
--- 
-2.52.0
+---
+base-commit: 8ba098e6b6ff0db8edf28528d1552be261af30d4
+change-id: 20260731-pidfd-exec-update-lock-de8e990154c6
+
+Best regards,
+--  
+Chen Linxuan <me@black-desk.cn>
 
