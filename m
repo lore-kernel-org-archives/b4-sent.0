@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 01 Aug 2026 02:35:20 +0200
-Subject: [PATCH 1/4] media: dt-bindings: dongwoon,dw9714: Example shouldn't
- imply 1.8 V
+Date: Sat, 01 Aug 2026 02:35:21 +0200
+Subject: [PATCH 2/4] arm64: dts: rockchip: rk3399-pinephone-pro: DW9714
+ coil requires higher voltage
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260801-pp-pro-camera-v1-1-7b4d90788f9f@ixit.cz>
+Message-Id: <20260801-pp-pro-camera-v1-2-7b4d90788f9f@ixit.cz>
 References: <20260801-pp-pro-camera-v1-0-7b4d90788f9f@ixit.cz>
 In-Reply-To: <20260801-pp-pro-camera-v1-0-7b4d90788f9f@ixit.cz>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -25,71 +25,60 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-media@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  phone-devel@vger.kernel.org, imx@lists.linux.dev, 
- David Heidelberg <david@ixit.cz>
+ David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1376; i=david@ixit.cz;
- h=from:subject:message-id; bh=sfBlyUIhGugdsRnaSHNhShuFZ0DGsHeOeRXQgKfVu9M=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqbT9RqSJZNqhResdsqnz0RhYvhHWQ77DYnIRl/
- Ps/2ru4VpSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCam0/UQAKCRBgAj/E00kg
- ckZpD/9/AsNbDL0qEmqEHmCublG5Nru0i0jH1IltGtLg1JiBS9qXYwT7VJsp1bHvCfebRKXTBMs
- Yz6hsPICqGmpcKwVqisMWQLLFvtc9oKJuPqHCfP0IsPB2TErPXDME7fR/uSu4V5wLvoclp9lJ/0
- leDx5sEc/BY4/RCCbR/gA/7fWXzrwstH1JAGz0jFRMpmLEfue5IW0SPSZE9TjtG670UxPQw4zXV
- FWlwR+rB6YjMBa2Mqv0jh/rogANRjSma258zkZ0M4AMMHxxp4kAeJcPqUIU9iadNiK+diiTIutd
- Ctul8mqc22FokHc4nUDpSSU6j0DMRFZmlFXdp/oki06idrCCofiYc+iHmKknX3o7ZLGZGidwome
- 9lkjst6xJb5s90IUb7JzcB+gJ5t9G2+pUeCBh5l14626KLEEwm5SpGQFuEDunj5p1m97D2M1i6O
- Lvoeha998AcBR9o7pzOm93bwJrBFfDMY/o3H6nA9jZpDRHrd47+EjHBNVm5/1DHdkzEABELKVKo
- 3WnHDWivnImwpnKqD6ZO7U/krf1/ak7C2/fu/My9wOJUVrt2MwU2aHhQ5FLyEVOiqYhVLJqSCQR
- kIG+KJ3flbfU97rmGk/iSqpg5Tm6shakMS9JR2SbHdnIDx+cVW8k76Inyr2p3h+w1jkl9c0cOXF
- 0VAbWtXBsOQ7C0A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1252; i=david@ixit.cz;
+ h=from:subject:message-id; bh=CtmW0a2W86bMEcZ0dtSszyADwP8LgbVPYzdrAT7lUhE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqbT9REkGT6wYkrnw7vVFzBUUDFM/Z1kzdvuRLM
+ Svh7a0sPZ2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCam0/UQAKCRBgAj/E00kg
+ cij8D/9+k7eLtMvAoLHwLgwTcoON+ku4R3r/iZgjbChEXxwwoyY50stWKatXXAP8hQLuLiX/lYh
+ YpcbJe1OHhF20GPHkuHDl/ro/Z+/l3/Gr0/25KnGGubWHyiCIyv6YAYx0TkkG71LdPUfzRYNo+r
+ mPnyPaw2xjxvwTt+uAp68JurQ0zHeXB+8XeC2boI5uamRdrpBdV0qw3xN8YN7py/kpjh4t4q67E
+ M+vkL8Qf8a7W7xT0drcE5qjtPcXQaeSzhw1MwSuxvmy/4t+ZcLiwQsxGwMJiHFmGU7Rt9tmtfGM
+ 8/OpXLXqE7IMyY0FBMCpbBj0ZASTDfburmVhABNc6Xi4rdVIoNAGttEbEUsF9usaVgQJ4Axazfo
+ vzAGopGLCCxwD4wN45a/KLvJAsYg3SdAogiyCTVMJFxc1yKD8bjD9/ihDdCTRgncr/BdB8obpIj
+ tigr6xti3ytptoQHrPhQ+nJcdKcL8t8chOvER/cz1717ggmmKHtEVm2ikwA4BQvKxfo1wlphAhc
+ SBEDW+L+tqUK1j5dV0xO9uzG+HB+AXAJr9yIOh1H2ibnVB1+OEeZpF/yIiFEW3/p6oQESyxTfhk
+ NEu3IE4dfgSg5P4rqERNdiTH2SPPJ2sEI5YJSQRHPkvzP8TbUkCostDgjkE31+AkUY7IIQNn/Lj
+ +uteGSYwVzO3MJg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The datasheet says VDD should be between 2.3 to 4.3V, usually around
-2.8V. Correct to prevent confusion and extend description.
+By datasheet the VDD (in-kernel named vcc) range is between 2.3 to 4.3 V.
+Usually it's around 2.8 V. Here it matches the avdd2v8_dvp.
 
-Fixes: 2a96b40f366a ("media: dt-bindings: dongwoon,dw9714: convert to dtschema")
+Fixes: 9336eb829a18 ("arm64: dts: rockchip: describe I2c Bus 1 and IMX258 world camera on PinePhone Pro")
+Cc: stable@vger.kernel.org
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
-index 66229a3dc05d6..7f5aa098351dc 100644
---- a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
-+++ b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
-@@ -20,28 +20,28 @@ properties:
-   reg:
-     maxItems: 1
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
+index d46cdfe3f7849..bde35d9b2263e 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
+@@ -473,17 +473,17 @@ wcam_out: endpoint {
+ 			};
+ 		};
+ 	};
  
-   powerdown-gpios:
-     description:
-       XSD pin for shutdown (active low)
+ 	wcam_lens: camera-lens@c {
+ 		compatible = "dongwoon,dw9714";
+ 		reg = <0x0c>;
+ 		/* Same I2c bus as both cameras, depends on vcca1v8_codec for power. */
+-		vcc-supply = <&vcc1v8_dvp>;
++		vcc-supply = <&avdd2v8_dvp>;
+ 	};
  
-   vcc-supply:
--    description: VDD power supply
-+    description: VDD power supply (2.3 to 4.3V)
- 
- required:
-   - compatible
-   - reg
- 
- additionalProperties: false
- 
- examples:
-   - |
-     i2c {
-         #address-cells = <1>;
-         #size-cells = <0>;
- 
-         camera-lens@c {
-             compatible = "dongwoon,dw9714";
-             reg = <0x0c>;
--            vcc-supply = <&reg_csi_1v8>;
-+            vcc-supply = <&reg_vcm_2v8>;
-         };
-     };
+ 	ucam: camera@36 {
+ 		compatible = "ovti,ov8858";
+ 		reg = <0x36>;
+ 		clocks = <&cru SCLK_CIF_OUT>; /* MIPI_MCLK1, derived from CIF_CLK0 */
+ 		clock-names = "xvclk";
+ 		dovdd-supply = <&vcc1v8_dvp>;
 
 -- 
 2.53.0
