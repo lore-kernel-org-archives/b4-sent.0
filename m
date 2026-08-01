@@ -1,184 +1,82 @@
-From: quanyeyang <quanyemostima@gmail.com>
-Date: Sat, 01 Aug 2026 18:13:27 +0800
-Subject: [PATCH] rhashtable: use per-init-site lockdep classes for bucket
- locks
+From: lurenjia534 <lurenjia534@outlook.com>
+Date: Sun, 02 Aug 2026 04:19:34 +0800
+Subject: [PATCH] usb: gadget: f_hid: reject zero report length
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260801-fix-rhashtable-bucket-lockdep-v1-1-15a0f8ae094c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBG4auUWTuQBirqVcRFJv01Y0tbMqkIp
- Xc36vJbvLeRISuMLs1GGS81naeK9tBQTGF6gLWvJu/80Z1cy3d9c07BUgkygmWNAwqPcxx6LHz
- u4LsgECBQfSwZNfj9r7e/bZUnYvlOad8/HEMS6oEAAAA=
-X-Change-ID: 20260801-fix-rhashtable-bucket-lockdep-95e25abebeea
-To: Thomas Graf <tgraf@suug.ch>, Herbert Xu <herbert@gondor.apana.org.au>, 
- Andrew Morton <akpm@linux-foundation.org>, NeilBrown <neilb@suse.com>, 
- "David S. Miller" <davem@davemloft.net>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+ef8d17bae14efb960935@syzkaller.appspotmail.com, 
- quanyeyang <quanyemostima@gmail.com>
+Message-Id: <20260802-hid-report-length-usb-testing-v1-1-0499f99136d2@outlook.com>
+X-B4-Tracking: v=1; b=H4sIANVUbmoC/03MwQrCMAzG8VcZORuo3Sjqq4iHtkvbiHSj6YYw9
+ u6uevH4Tz5+GwgVJoFbt0GhlYWnfMT51IFPNkdCHo8GrbRRF6Ux8YiF5qlUfFGONeEiDitJ5Rw
+ xXAcTemuGfrRwGHOhwO+vf3/8Whb3JF8b2hbOCqErNvvUTv9Ye8G+fwDAN3G3pAAAAA==
+X-Change-ID: 20260802-hid-report-length-usb-testing-f946f3a643da
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+7b70c4a6021fd49c4151@syzkaller.appspotmail.com, 
+ Felipe Balbi <balbi@ti.com>, Andrzej Pietrasiewicz <andrzej.p@samsung.com>, 
+ lurenjia534 <lurenjia534@outlook.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785579217; l=5881;
- i=quanyemostima@gmail.com; s=20260801; h=from:subject:message-id;
- bh=0N4OOkfbxgTWIlbrzMgCyEmTGY5MHduBeX6XyueQ9Ow=;
- b=5FW6wSL57G2tayTV0jw3QcforpkXT48l0JX2ga8p+vaewOc3qrA+2IBZW11fClCH8IY/JcQE/
- suzz/d2hzz6CiYFrOm/a/tF8xHAUNW/m3LDm8Ku3pPK/TIGHWfY69Zd
-X-Developer-Key: i=quanyemostima@gmail.com; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyemostima@gmail.com/20260801 with auth_id=905
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785615577; l=2219;
+ i=lurenjia534@outlook.com; s=20260801; h=from:subject:message-id;
+ bh=iNhr1oVERThburQ7HiMLwACK+h6L6PLXeAOagepD/hQ=;
+ b=SFtiOQdsjcQ/amIdJ1XFYxqjyf2dEDHjAoYI81mToMrDN+4Rmg3ySrfh7qRsPX+VfkZi5j1bn
+ 4Ll2LgqxnEtCSJwckgkbaGA7zp9swFQaojUgLpI7wfM/ewHl+qG3k1J
+X-Developer-Key: i=lurenjia534@outlook.com; a=ed25519;
+ pk=nMa0OcUJYxnaGbhs5f95IwVQ7sPrWI7It3LMsh0BJX4=
+X-Endpoint-Received: by B4 Relay for lurenjia534@outlook.com/20260801 with auth_id=906
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All bucket tables currently share a single lockdep class. This makes
-lockdep conflate bucket locks from unrelated rhashtable instances.
+New configfs HID function instances leave report_length at zero until
+userspace sets the attribute.  hidg_alloc() currently accepts that value
+and copies it into the function state.  hidg_bind() then uses it as the
+maximum packet size of the interrupt endpoint descriptors.
 
-A BPF program attached to lock_release can expose this when pidfs
-inserts a pid. The tracepoint runs before lockdep removes the pidfs
-bucket lock from the task's held-lock stack. Deleting an element from
-a BPF RHASH map then acquires a bucket lock belonging to a different
-rhashtable. Since both tables use the same class, lockdep reports
-possible recursive locking.
+If userspace links the unconfigured function and enables the gadget,
+hidg_set_alt() reaches usb_ep_enable() with a zero maximum packet size,
+which triggers a warning.
 
-Declare a separate bucket lock class key at each rhashtable_init() and
-rhltable_init() call site, alongside the mutex class key. Store the
-bucket key in struct rhashtable so tables created during resize keep
-using the same class.
+Reject the function from hidg_alloc() when report_length is zero.  This
+makes the configfs link fail before invalid endpoint descriptors can be
+added while leaving configured HID functions unchanged.
 
-A targeted reproducer triggers the warning reliably before this change.
-After the change, the nested BPF RHASH deletion still executes, but
-lockdep no longer reports recursive locking.
-
-Fixes: 149212f07856 ("rhashtable: add lockdep tracking to bucket bit-spin-locks.")
-Reported-by: syzbot+ef8d17bae14efb960935@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=ef8d17bae14efb960935
-Assisted-by: Cursor:GPT-5.6 Sol
-Signed-off-by: quanyeyang <quanyemostima@gmail.com>
+Fixes: 21a9476a7ba8 ("usb: gadget: hid: add configfs support")
+Reported-by: syzbot+7b70c4a6021fd49c4151@syzkaller.appspotmail.com
+Closes: https://lore.kernel.org/all/6a6cd7bd.1aa927e4.17d4bf.0004.GAE@google.com/
+Assisted-by: Codex:GPT-5.6 MAX
+Signed-off-by: lurenjia534 <lurenjia534@outlook.com>
 ---
- include/linux/rhashtable-types.h | 20 ++++++++++++++------
- lib/rhashtable.c                 | 19 +++++++++++++------
- 2 files changed, 27 insertions(+), 12 deletions(-)
+Testing:
+- syzbot reproducer: warning and panic in 2/2 runs before the fix;
+  no warning in 2/2 30-second runs after the fix
+- configfs/dummy_hcd regression: FAIL before the fix and PASS after it
+- current usb-testing: reproducer and regression test PASS, taint 0
+- GCC built-in and module builds, sparse, and x86-64/arm64 target
+  builds with both supported toolchains: PASS
+---
+ drivers/usb/gadget/function/f_hid.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/include/linux/rhashtable-types.h b/include/linux/rhashtable-types.h
-index 57c11ec9dc64..4dea91a49ec8 100644
---- a/include/linux/rhashtable-types.h
-+++ b/include/linux/rhashtable-types.h
-@@ -82,6 +82,7 @@ struct rhashtable_params {
-  * @mutex: Mutex to protect current/future table swapping
-  * @lock: Spin lock to protect walker list
-  * @nelems: Number of elements in table
-+ * @bucket_lock_key: Per-init-site lockdep class for bucket bit-locks
-  */
- struct rhashtable {
- 	struct bucket_table __rcu	*tbl;
-@@ -94,6 +95,7 @@ struct rhashtable {
- 	struct mutex                    mutex;
- 	spinlock_t			lock;
- 	atomic_t			nelems;
-+	struct lock_class_key		*bucket_lock_key;
- #ifdef CONFIG_MEM_ALLOC_PROFILING
- 	struct alloc_tag		*alloc_tag;
- #endif
-@@ -138,23 +140,29 @@ struct rhashtable_iter {
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index 3c6b43d06a..74a78cfd37 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -1605,6 +1605,11 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
+ 	opts = container_of(fi, struct f_hid_opts, func_inst);
  
- int __rhashtable_init_noprof(struct rhashtable *ht,
- 		    const struct rhashtable_params *params,
--		    struct lock_class_key *key);
-+		    struct lock_class_key *mutex_key,
-+		    struct lock_class_key *bucket_key);
- #define rhashtable_init_noprof(ht, params)				\
- ({									\
--	static struct lock_class_key __key;				\
-+	static struct lock_class_key __mutex_key;			\
-+	static struct lock_class_key __bucket_key;			\
- 									\
--	__rhashtable_init_noprof(ht, params, &__key);			\
-+	__rhashtable_init_noprof(ht, params, &__mutex_key,		\
-+				 &__bucket_key);			\
- })
- #define rhashtable_init(...)	alloc_hooks(rhashtable_init_noprof(__VA_ARGS__))
+ 	mutex_lock(&opts->lock);
++	if (!opts->report_length) {
++		mutex_unlock(&opts->lock);
++		kfree(hidg);
++		return ERR_PTR(-EINVAL);
++	}
  
- int __rhltable_init_noprof(struct rhltable *hlt,
- 		  const struct rhashtable_params *params,
--		  struct lock_class_key *key);
-+		  struct lock_class_key *mutex_key,
-+		  struct lock_class_key *bucket_key);
- #define rhltable_init_noprof(hlt, params)				\
- ({									\
--	static struct lock_class_key __key;				\
-+	static struct lock_class_key __mutex_key;			\
-+	static struct lock_class_key __bucket_key;			\
- 									\
--	__rhltable_init_noprof(hlt, params, &__key);			\
-+	__rhltable_init_noprof(hlt, params, &__mutex_key,		\
-+			       &__bucket_key);				\
- })
- #define rhltable_init(...)	alloc_hooks(rhltable_init_noprof(__VA_ARGS__))
- 
-diff --git a/lib/rhashtable.c b/lib/rhashtable.c
-index d459bef245f4..e047ad912f0e 100644
---- a/lib/rhashtable.c
-+++ b/lib/rhashtable.c
-@@ -189,7 +189,6 @@ static struct bucket_table *bucket_table_alloc(struct rhashtable *ht,
- 	struct bucket_table *tbl = NULL;
- 	size_t size;
- 	int i;
--	static struct lock_class_key __key;
- 
- 	tbl = alloc_hooks_tag(ht->alloc_tag,
- 			kvmalloc_node_align_noprof(struct_size(tbl, buckets, nbuckets),
-@@ -205,7 +204,12 @@ static struct bucket_table *bucket_table_alloc(struct rhashtable *ht,
- 	if (tbl == NULL)
- 		return NULL;
- 
--	lockdep_init_map(&tbl->dep_map, "rhashtable_bucket", &__key, 0);
-+	/*
-+	 * Keep all bucket tables belonging to the same rhashtable in the
-+	 * per-init-site lock class, including tables created during resize.
-+	 */
-+	lockdep_init_map(&tbl->dep_map, "rhashtable_bucket",
-+			 ht->bucket_lock_key, 0);
- 
- 	tbl->size = size;
- 
-@@ -1162,7 +1166,8 @@ static u32 rhashtable_jhash2(const void *key, u32 length, u32 seed)
-  */
- int __rhashtable_init_noprof(struct rhashtable *ht,
- 		    const struct rhashtable_params *params,
--		    struct lock_class_key *key)
-+		    struct lock_class_key *mutex_key,
-+		    struct lock_class_key *bucket_key)
- {
- 	struct bucket_table *tbl;
- 	size_t size;
-@@ -1172,7 +1177,8 @@ int __rhashtable_init_noprof(struct rhashtable *ht,
- 		return -EINVAL;
- 
- 	memset(ht, 0, sizeof(*ht));
--	mutex_init_with_key(&ht->mutex, key);
-+	mutex_init_with_key(&ht->mutex, mutex_key);
-+	ht->bucket_lock_key = bucket_key;
- 	spin_lock_init(&ht->lock);
- 	memcpy(&ht->p, params, sizeof(*params));
- 
-@@ -1237,11 +1243,12 @@ EXPORT_SYMBOL_GPL(__rhashtable_init_noprof);
-  */
- int __rhltable_init_noprof(struct rhltable *hlt,
- 			   const struct rhashtable_params *params,
--			   struct lock_class_key *key)
-+			   struct lock_class_key *mutex_key,
-+			   struct lock_class_key *bucket_key)
- {
- 	int err;
- 
--	err = __rhashtable_init_noprof(&hlt->ht, params, key);
-+	err = __rhashtable_init_noprof(&hlt->ht, params, mutex_key, bucket_key);
- 	hlt->ht.rhlist = true;
- 	return err;
- }
+ 	spin_lock_init(&hidg->write_spinlock);
+ 	spin_lock_init(&hidg->read_spinlock);
 
 ---
-base-commit: 0131b508c0e2489eac6e121135988f6eeb716f19
-change-id: 20260801-fix-rhashtable-bucket-lockdep-95e25abebeea
+base-commit: 5d5fd841c34649f1b09220fe58e59dffd61c447d
+change-id: 20260802-hid-report-length-usb-testing-f946f3a643da
 
 Best regards,
 --  
-quanyeyang <quanyemostima@gmail.com>
+lurenjia534 <lurenjia534@outlook.com>
 
