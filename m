@@ -1,86 +1,78 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 31 Jul 2026 17:54:55 -0500
-Subject: [PATCH v2 2/2] dm array: reject an array block whose value size is
- not the caller's
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/4] Dongwoon DW9714 - correct vcc/vdd supply voltage
+Date: Sat, 01 Aug 2026 02:35:19 +0200
+Message-Id: <20260801-pp-pro-camera-v1-0-7b4d90788f9f@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260731-b4-disp-4fd3bed9-v2-2-7b1835e4e7f6@proton.me>
-References: <20260731-b4-disp-4fd3bed9-v2-0-7b1835e4e7f6@proton.me>
-In-Reply-To: <20260731-b4-disp-4fd3bed9-v2-0-7b1835e4e7f6@proton.me>
-To: Mike Snitzer <snitzer@kernel.org>, 
- Mikulas Patocka <mpatocka@redhat.com>
-Cc: Ming-Hung Tsai <mtsai@redhat.com>, 
- Benjamin Marzinski <bmarzins@redhat.com>, dm-devel@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Alasdair Kergon <agk@redhat.com>, 
- Joe Thornber <ejt@redhat.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqEMAxA0atI1gZaFZG5yuAitlEjqCVVEcS7T
+ 0eXb/H/BZFVOMInu0D5kCjrkmDzDNxIy8AoPhkKU9SmMRZDwKArOppZCclW3lJfNaXzkJqg3Mv
+ 5/L7t67h3E7vtP4H7/gHafm74cQAAAA==
+X-Change-ID: 20260801-pp-pro-camera-a14d1af483cd
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Ondrej Jirman <megi@xff.cz>, 
+ Olivier Benjamin <olivier.benjamin@bootlin.com>, 
+ Manuel Traut <manut@mecka.net>, 
+ Alexander Warnecke <awarnecke002@hotmail.com>, Frank Li <Frank.Li@nxp.com>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, 
+ Martin Kepplinger <martin.kepplinger@puri.sm>, 
+ Shawn Guo <shawnguo@kernel.org>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-media@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ phone-devel@vger.kernel.org, imx@lists.linux.dev, 
+ David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785538493; l=2167;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=Ul/YVEYx7ppMlrNbWtiuuf0bp6yCLk0T8hcMri+dvhc=;
- b=GMc3NdEdnxOY3TEwBmNrK1iW6ewemD37170O+LL6VpAiWbYeJ9RhKJKj58jcHkgVi5fx1k/Ng
- KlC8sRhAwB+BYUHmpw5iuKLdBFl5Tbuu3TXdtEdT2PPNSLVon8bGHxg
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1312; i=david@ixit.cz;
+ h=from:subject:message-id; bh=kFNPUf3nnfqfZfQU98wSE0rwkKlsgeL32eAvFj3Eywc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqbT9RB78Gi5Ef6RsTjwbROwWR0JA3cAkM3fw24
+ 7XS9hPcL9+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCam0/UQAKCRBgAj/E00kg
+ crkRD/9UmsyBi/RwaU1Vjh8viYNgJJWAcIj+wICF7ZXkmcfaWQDJppVmp1ssckklT5/WM1j3DHN
+ mTDmszRzZ+jz0kYiF9kyc5mnk9+fQKcLKp+m3o9z70bpShyY7kqN5VxmuyK9n2XqOMKGN+jVNFc
+ GuZ8EmzC0ebIYPzmfD2woBO3I5o9xobiljACx5iWwmlRsGGX0vPD8OvrFOYPooy39at8p/tJalV
+ cwPOgvz7VN3oSIbRfMS2eJ2d6kKBRUq9ssjieIAR+AOI/fOyYpWafxUOpIt92EBozLE546tS5O/
+ movPjfaWv4oE3jj8ETBQSzPekesMgb3b6x3lSVJm8brFyx/a3cpQw4STJ0/KkMVTzMMpfQ7mZ/J
+ bCPG9Av/0lzUssfmFG5PoPoZH5L71skTRft/XZZheeDgv1QkxsnhFu5e6scKJsKy1gbajcSGuV8
+ a3833Jn8j7e8UPsnCJ4raXKgNSYY2uO/u8SVqv1kJafYVLVU/G47No9MpBH6YP3hTdU6pwfo5d3
+ nsQGpF9PzEdcEySihLXoVkvpAyMwoCC7uOUiYldqUZn33kGial16lPxVrWMf3jxJxg2ypEhYlJa
+ 0dmMESW99y+cHGyU+6nmpKc3LwZZAtcGE0sHo3QBz3/f3gSHGnnltifwyok79NHoWZlcNSW2Xux
+ YoDzD8cdfv6beMw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-array_block_check() can only compare the header against itself, so a block
-with value_size 4 and max_entries 1018 is internally consistent and passes.
-dm-cache keeps two arrays -- mappings at 8 bytes and hints at 4 -- and the
-roots for both live in the superblock. Point the mappings root at a hint
-block and __load_mappings() walks it through an info whose value size is 8,
-so element_at() strides 8 bytes over 4-byte entries and reaches offset 8160
-of a 4096-byte block.
+So much mess, as people defines 1.8V i2c level shifters instead of VDD.
 
-get_ablock() and __shadow_ablock() are the two places that hold the block
-and the caller at once. Reject there when the two value sizes disagree.
-Arrays only ever read their own blocks, so this fires on crafted metadata
-only.
+I don't pocess any of these devices, so please test carefully,
+you may need to in addition to this change put regulator-always-on to
+the 1.8V which was previously abused instead of VDD. Careful about
+combination when camera which pulls in 1.8V (usually iovdd) as a byproduct
+takes care of i2c supply for the coil.
 
-Fixes: 6513c29f44f2 ("dm persistent data: add transactional array")
-Suggested-by: Ming-Hung Tsai <mtsai@redhat.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/md/persistent-data/dm-array.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+David Heidelberg (4):
+      media: dt-bindings: dongwoon,dw9714: Example shouldn't imply 1.8 V
+      arm64: dts: rockchip: rk3399-pinephone-pro: DW9714 coil requires higher voltage
+      arm64: dts: rockchip: rk3566-pinetab2: DW9714 coil requires higher voltage
+      arm64: dts: imx8mq-librem5: Dongwoon DW9714 coil requires higher voltage
 
-diff --git a/drivers/md/persistent-data/dm-array.c b/drivers/md/persistent-data/dm-array.c
-index 5949fb0e16c6..6de1c0467ec9 100644
---- a/drivers/md/persistent-data/dm-array.c
-+++ b/drivers/md/persistent-data/dm-array.c
-@@ -247,6 +247,14 @@ static int get_ablock(struct dm_array_info *info, dm_block_t b,
- 		return r;
- 
- 	*ab = dm_block_data(*block);
-+	if (le32_to_cpu((*ab)->value_size) != info->value_type.size) {
-+		DMERR_LIMIT("%s failed: value_size %u != wanted %u", __func__,
-+			    le32_to_cpu((*ab)->value_size),
-+			    info->value_type.size);
-+		dm_tm_unlock(info->btree_info.tm, *block);
-+		return -EILSEQ;
-+	}
-+
- 	return 0;
- }
- 
-@@ -309,6 +317,14 @@ static int __shadow_ablock(struct dm_array_info *info, dm_block_t b,
- 		return r;
- 
- 	*ab = dm_block_data(*block);
-+	if (le32_to_cpu((*ab)->value_size) != info->value_type.size) {
-+		DMERR_LIMIT("%s failed: value_size %u != wanted %u", __func__,
-+			    le32_to_cpu((*ab)->value_size),
-+			    info->value_type.size);
-+		dm_tm_unlock(info->btree_info.tm, *block);
-+		return -EILSEQ;
-+	}
-+
- 	if (inc)
- 		inc_ablock_entries(info, *ab);
- 
+ Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml | 4 ++--
+ arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi                | 2 +-
+ arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts            | 2 +-
+ arch/arm64/boot/dts/rockchip/rk3566-pinetab2.dtsi                | 2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+---
+base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
+change-id: 20260801-pp-pro-camera-a14d1af483cd
 
--- 
-2.55.0
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
