@@ -1,94 +1,83 @@
-From: lurenjia534 <lurenjia534@outlook.com>
-Date: Sun, 02 Aug 2026 20:12:54 +0800
-Subject: [PATCH] wifi: mac80211_hwsim: drop frames with invalid channel
- width
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH RFC 0/3] Initial TFA2 family driver for tfa98xx
+Date: Sun, 02 Aug 2026 14:42:39 +0200
+Message-Id: <20260802-tfa98xx-upstream-v1-0-4dd55cdd658a@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-mac80211-hwsim-invalid-width-v1-1-94d9bba2ae60@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAEU0b2oC/yWMQQ6CMBBFr0Jm7UTaBVSvYlxMy2jHQDUdBBPC3
- W119fN+Xt4GyllY4dxskHkRlWcqYA4NhEjpzihDYbCt7VrXWpwolDEG46oyoaSFRhlwlWGOeOp
- 7Z3zH1HcOSuKV+SafX/5y/bO+/YPDXJvV8KSMPlMKsV6rZB5Z9TiRJNj3Lz8k8gGgAAAA
-X-Change-ID: 20260802-mac80211-hwsim-invalid-width-97781b6ea768
-To: Johannes Berg <johannes@sipsolutions.net>
-Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+435fdb053cf98bfa5778@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, lurenjia534 <lurenjia534@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDCwMj3ZK0REuLigrd0oLikqLUxFzdtEQLy+RUc/Mk87QkJaC2gqLUtMw
+ KsJHRSkFuzkqxEMHi0qSs1OQSkGFKtbUAEn59dnkAAAA=
+X-Change-ID: 20260802-tfa98xx-upstream-fa89ce77b7fb
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785672786; l=2911;
- i=lurenjia534@outlook.com; s=20260801; h=from:subject:message-id;
- bh=/iY0dNxP0zkE1SAHnpQcq1gmr+HYoaV6xhQaYs/s9EQ=;
- b=DKMeWXh6UssVYnAqq0vsaXgnuNYEkVb3aQrBjTUK+Ujiq65tB29Nk01utpN5/qzZ5JsvqSm45
- og9bgY1+E4VCnN2H0C0xW6P9NBK78klLBwkOIJc5FaZzH+DLmEfqRpk
-X-Developer-Key: i=lurenjia534@outlook.com; a=ed25519;
- pk=nMa0OcUJYxnaGbhs5f95IwVQ7sPrWI7It3LMsh0BJX4=
-X-Endpoint-Received: by B4 Relay for lurenjia534@outlook.com/20260801 with auth_id=906
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1676; i=david@ixit.cz;
+ h=from:subject:message-id; bh=LHd8IQtiCglZomN+UtHu/lSZZpaQjVgW1xEwT9BNfWk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqbztEiZnS/iGr8vwcCTN7CWCBBcZcmD7+5eZR7
+ Yet0CTQCqWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCam87RAAKCRBgAj/E00kg
+ crFoD/43ZKjDyEsSBo7mc7a1yNkmdve6aqH1j4TkTcw5/MjdCAcsQyQOfMULb0K8+YtMFUFExCD
+ RpDSUYzLrT8cZQmWBGWAwVL52s2YATl9nCvZCw+5+cBOSHcWNvDhoiimHaF79JaRJwsaX2GQmmt
+ RPoLSZ+0466S7IMKC7BgNABxBbs6eX9HQ79gHTXTIubean9D/1YKnvtTEwNYd24OVJxbCCoIF/w
+ Ts5W9IISU5YVcDF2xAF7l5m7Vze2W18Ue2vuMMwkc5V4FYQsghu/wD0rQ2FHfJEKLFtdKmUt0hS
+ d7UTx0TKebC7iM6t6IquKVPgT/UAEqaQ8fIZ7G2HlMXhx2w/oxucWFEN1r12UxQPnswuuS2EtmS
+ g5TjjqlLivGTYA/4CFOx733JIWkh0Izl3/kkfZMmeiKt5GSGG7ZXtKg8AjUP7550nxTUR9G6FgO
+ XVizOuzif2V1VRYSSXHyemveLlc+XDly2/qRW91o3cpcE4ovj32sdusqmX1k75qwG/nTkmSKJZB
+ TfO8dfw9gmyBKhB7LjitIDzz9V8WLWYBKny3aOMAvCnTvbXcwtf/N6fycnfGOmRjyvYUs/dywmh
+ qF0LOoLWJSeh2mhdzRc19rDTaqdaxviC1Nxk0Zzy9uy+2+QuawA5hz32hLe1OVls/LmzMy42XRD
+ QdS+9x3XauPPalQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A frame injected through a monitor interface can request a VHT transmit
-rate wider than the channel configured on the simulated radio.  The rate
-comes from userspace-provided radiotap metadata, so it can be invalid.
+Introduce basic speaker support for the OnePlus 6T, using the tfa98xx
+driver.
 
-mac80211_hwsim_tx() currently warns and returns when the requested rate is
-wider than the channel.  A warning is inappropriate for invalid userspace
-input.  Moreover, hwsim owns the skb after its ->tx() callback is invoked,
-so returning without reporting status or freeing the skb leaks it.
+I've tested this driver only with speaker on OnePlus 6T. Please be
+careful with volume levels, as the speaker protection are available only
+with CoolFlux DSP enabled.
 
-Drop frames with an invalid channel width and release their SKBs with
-ieee80211_free_txskb().  Frames with valid rates continue through the
-existing transmit path.
+The downstream driver requires the firmware to bring up CoolFlux DSP,
+but this driver completly avoids the DSP and thus operates without the
+firmware.
 
-The reproducer triggered the warning in 20 of 20 unmodified-kernel boots.
-With this change, 100 iterations completed without a warning on both the
-report baseline and wireless/main.  An E2E control also confirmed that a
-valid 20 MHz frame was forwarded while a 160 MHz request on the same
-channel was dropped.
+This driver is different enough to not share the TFA1 codebase (tfa989x).
 
-Fixes: 585625c955b1 ("mac80211_hwsim: check TX and STA bandwidth")
-Reported-by: syzbot+435fdb053cf98bfa5778@syzkaller.appspotmail.com
-Closes: https://lore.kernel.org/all/6a441a03.b42ede87.8e801.0009.GAE@google.com/
-Tested-by: syzbot+435fdb053cf98bfa5778@syzkaller.appspotmail.com
-Cc: stable@vger.kernel.org
-Assisted-by: Codex:GPT-5.6 MAX
-Signed-off-by: lurenjia534 <lurenjia534@outlook.com>
+In the future, should be possible to extend this driver with other
+tfa98xx TFA2 family based chips.
+
+This RFC version mainly exist for early adopters (e.g. other phones
+using tfa98xx amplifiers).
+
+You can find the code at:
+  https://codeberg.org/sdm845/linux/commits/branch/b4/tfa98xx-upstream
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Testing:
-- syzbot #syz test on wireless/main: pass
-- original syzbot C reproducer: 20/20 report-baseline boots warned;
-  unmodified wireless/main warned in 3/3 independent boots
-- patched original reproducer: 100/100 iterations clean on both the report
-  baseline and wireless/main
-- monitor-injection E2E: valid 20 MHz frame forwarded; invalid 160 MHz
-  frame dropped
-- CONFIG_MAC80211_HWSIM=y/m runtime tests: clean, taint 0
-- GCC x86-64 full y/m builds, GCC W=1, sparse, and Clang x86-64/arm64
-  target builds: pass
----
- drivers/net/wireless/virtual/mac80211_hwsim_main.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+David Heidelberg (3):
+      dt-bindings: sound: Add NXP TFA98XX TFA2 amplifier binding
+      ASoC: codecs: tfa98xx: add driver for TFA2 amplifiers
+      arm64: dts: qcom: sdm845-oneplus-fajita: Enable speaker codec
 
-diff --git a/drivers/net/wireless/virtual/mac80211_hwsim_main.c b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
-index 75caa97bec..2d4bc3cd9a 100644
---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
-@@ -2256,8 +2256,10 @@ static void mac80211_hwsim_tx(struct ieee80211_hw *hw,
- 		else if (rflags & IEEE80211_TX_RC_160_MHZ_WIDTH)
- 			bw = NL80211_CHAN_WIDTH_160;
- 
--		if (WARN_ON(hwsim_get_chanwidth(bw) > hwsim_get_chanwidth(confbw)))
-+		if (hwsim_get_chanwidth(bw) > hwsim_get_chanwidth(confbw)) {
-+			ieee80211_free_txskb(hw, skb);
- 			return;
-+		}
- 	}
- 
- 	/* wmediumd mode check */
-
+ .../devicetree/bindings/sound/nxp,tfa98xx.yaml     |  54 +++
+ MAINTAINERS                                        |   7 +
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts |  22 +-
+ sound/soc/codecs/Kconfig                           |  11 +
+ sound/soc/codecs/Makefile                          |   2 +
+ sound/soc/codecs/tfa98xx.c                         | 421 +++++++++++++++++++++
+ 6 files changed, 510 insertions(+), 7 deletions(-)
 ---
-base-commit: 2812e64e1575e05500a35c405aaa6e99b7d7930b
-change-id: 20260802-mac80211-hwsim-invalid-width-97781b6ea768
+base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
+change-id: 20260802-tfa98xx-upstream-fa89ce77b7fb
 
 Best regards,
 --  
-lurenjia534 <lurenjia534@outlook.com>
+David Heidelberg <david@ixit.cz>
 
