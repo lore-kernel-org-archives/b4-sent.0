@@ -1,191 +1,143 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sun, 02 Aug 2026 23:51:44 +0800
-Subject: [PATCH 6/6] powerpc/spufs: don't hold state_mutex during user
- access
+From: Anuj Bolewar <bolewara@gmail.com>
+Date: Sun, 02 Aug 2026 22:05:17 +0530
+Subject: [PATCH v2] drm/virtio: reclaim pending vbufs before tearing down
+ vqs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-fixes-v1-6-7368423440f4@outlook.com>
-References: <20260802-fixes-v1-0-7368423440f4@outlook.com>
-In-Reply-To: <20260802-fixes-v1-0-7368423440f4@outlook.com>
-To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
- Paul Mackerras <paulus@ozlabs.org>, Arnd Bergmann <arnd@arndb.de>, 
- Al Viro <viro@zeniv.linux.org.uk>
-Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4070;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=NzneP8KvCjHXivWs94zRxQBae+0khgOio5T2NiN1ITc=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrPz0GVPY35VtNGF5GLi7mJXjXtr053r18pZCaac/T
- AqX95VZ8aujlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJmJ/nJHhVtznD0tjUoRM
- 7BfG7bgsvTrR/0rEgo7AhCnbt3w13GSpzcjQPmVuqmqexcbzslnXIhUdl+pfXfjKU3txDWOSztI
- FLB7MANWBR3s=
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+Message-Id: <20260802-virtio-gpu-reclaim-vbufs-v2-1-5767fb860691@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NQQ6CMBBFr0K6dkzbIBZX3sOwaOsUxgAlbWk0h
+ LsLeAGXL3n//YVFDISR3YqFBcwUyY8byFPBbKfHFoGeGzPJZcUVl5ApJPLQTjMEtL2mAbKZXYR
+ SicpapS/G1WybTwEdvY/0o/lxnM0Lbdp7u9FRTD58ju8sdu+PmyxAQF2XVyeUkRzlvR009WfrB
+ 9as6/oFiy4+ldIAAAA=
+X-Change-ID: 20260802-virtio-gpu-reclaim-vbufs-4816cc8a5bf9
+To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
+ Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
+ Gurchetan Singh <gurchetansingh@chromium.org>, 
+ Chia-I Wu <olvaffe@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, 
+ syzbot+06f9b2a53ba4a5a47644@syzkaller.appspotmail.com, 
+ Anuj Bolewar <bolewara@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785688516; l=4832;
+ i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
+ bh=ip9758ecvu5Lc+AGn+NJtR1MumyMs6TZADIy4kALth8=;
+ b=gueT/54Hp0J8eQ2wmW1BmksUne+9bduUi5wu1Rl2EqJkTwAsbMMASolkPJ1godpqMFGsH9RbA
+ x9WXXQxaMt5BBfNnS4RKf3cxHp/iZAOI7GPyoGlTnWPEximQE3zK2so
+X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
+ pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
+X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-spufs_mbox_read(), spufs_ibox_read() and spufs_wbox_write() take the
-context state_mutex with spu_acquire() and only drop it once their
-transfer loop has finished, so every put_user()/get_user() in those
-loops runs with the mutex held. The faulting address comes from
-userspace, so the fault can be made to take arbitrarily long via
-userfaultfd region or a FUSE-backed mapping.
+virtio_gpu_free_vbufs() destroys the vbufs kmem_cache after the virtqueues
+have already been released. Commands that were queued but never completed
+by the device leave their vbuffers stranded in the virtqueue, so the cache
+still holds live objects when virtio_gpu_deinit() tears everything down.
+This triggers a WARNING in virtio_gpu_free_vbufs:
 
-Drop the mutex around the user accesses: acquire it per mailbox element,
-just long enough for the ctx->ops mailbox operation, and release it
-before touching the user buffer.
+    BUG virtio-gpu-vbufs (Not tainted): Objects remaining in cache
+    on __kmem_cache_shutdown()
 
-spufs_switch_log_read() has the same problem but its loop needs the lock
-for more than just the copy.
+Drain any buffers still sitting in the control and cursor virtqueues in
+virtio_gpu_deinit() after the device has been reset and before the
+virtqueues are deleted, following the same pattern used by virtio_console's
+remove_vqs(). Each reclaimed buffer is released with free_vbuf(), dropping
+the reference on any GEM objects it holds. Pending RESOURCE_UNREF
+commands are handled as well: their resp_cb_data still references a GEM
+object, so it is cleaned up with virtio_gpu_cleanup_object() to avoid
+leaking it on teardown.
 
-Fixes: cdcc89bb1c6e ("[POWERPC] spufs: make mailbox functions handle multiple elements")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Reported-by: syzbot+06f9b2a53ba4a5a47644@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=06f9b2a53ba4a5a47644
+Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
 ---
- arch/powerpc/platforms/cell/spufs/file.c | 52 ++++++++++++++++++--------------
- 1 file changed, 29 insertions(+), 23 deletions(-)
+This series fixes a syzbot-triggered WARNING in virtio_gpu_free_vbufs
+(cache object: virtio-gpu-vbufs) seen on device removal. Commands that
+are queued but never complete leave vbuffers stranded in the control and
+cursor virtqueues. virtio_gpu_deinit() reset the device and deleted the
+virtqueues without draining them, so a later kmem_cache_destroy() in
+virtio_gpu_release() ran with live objects still allocated.
 
-diff --git a/arch/powerpc/platforms/cell/spufs/file.c b/arch/powerpc/platforms/cell/spufs/file.c
-index de7494748fec..c8c3b6e8affb 100644
---- a/arch/powerpc/platforms/cell/spufs/file.c
-+++ b/arch/powerpc/platforms/cell/spufs/file.c
-@@ -602,13 +602,17 @@ static ssize_t spufs_mbox_read(struct file *file, char __user *buf,
- 	if (len < 4)
- 		return -EINVAL;
- 
--	count = spu_acquire(ctx);
--	if (count)
--		return count;
--
- 	for (count = 0; (count + 4) <= len; count += 4, udata++) {
- 		int ret;
-+
-+		ret = spu_acquire(ctx);
-+		if (ret) {
-+			if (!count)
-+				count = ret;
-+			break;
-+		}
- 		ret = ctx->ops->mbox_read(ctx, &mbox_data);
-+		spu_release(ctx);
- 		if (ret == 0)
- 			break;
- 
-@@ -624,7 +628,6 @@ static ssize_t spufs_mbox_read(struct file *file, char __user *buf,
- 			break;
- 		}
- 	}
--	spu_release(ctx);
- 
- 	if (!count)
- 		count = -EAGAIN;
-@@ -705,29 +708,34 @@ static ssize_t spufs_ibox_read(struct file *file, char __user *buf,
- 
- 	count = spu_acquire(ctx);
- 	if (count)
--		goto out;
-+		return count;
- 
- 	/* wait only for the first element */
--	count = 0;
- 	if (file->f_flags & O_NONBLOCK) {
- 		if (!spu_ibox_read(ctx, &ibox_data)) {
--			count = -EAGAIN;
--			goto out_unlock;
-+			spu_release(ctx);
-+			return -EAGAIN;
- 		}
- 	} else {
- 		count = spufs_wait(ctx->ibox_wq, spu_ibox_read(ctx, &ibox_data));
- 		if (count)
--			goto out;
-+			return count;
- 	}
-+	spu_release(ctx);
- 
- 	/* if we can't write at all, return -EFAULT */
- 	count = put_user(ibox_data, udata);
- 	if (count)
--		goto out_unlock;
-+		return count;
- 
- 	for (count = 4, udata++; (count + 4) <= len; count += 4, udata++) {
- 		int ret;
-+
-+		ret = spu_acquire(ctx);
-+		if (ret)
-+			break;
- 		ret = ctx->ops->ibox_read(ctx, &ibox_data);
-+		spu_release(ctx);
- 		if (ret == 0)
- 			break;
- 		/*
-@@ -740,9 +748,6 @@ static ssize_t spufs_ibox_read(struct file *file, char __user *buf,
- 			break;
- 	}
- 
--out_unlock:
--	spu_release(ctx);
--out:
- 	return count;
+Patch 1 drains the queues in virtio_gpu_deinit(): after the device reset
+and before del_vqs(), virtio_gpu_reclaim_vbufs() detaches every unused
+buffer from both virtqueues, releases their object arrays, and runs the
+pending resource-unref cleanup so the referenced GEM objects are freed
+rather than leaked. This mirrors the drain pattern used by
+virtio_console's remove_vqs().
+
+Link: https://syzkaller.appspot.com/bug?extid=06f9b2a53ba4a5a47644
+---
+Changes in v2:
+- Also release the GEM object referenced by vbuf->resp_cb_data when
+  reclaiming stranded buffers, so pending RESOURCE_UNREF commands do not
+  leak their underlying objects on teardown.
+- Link to v1: https://patch.msgid.link/20260802-virtio-gpu-reclaim-vbufs-v1-1-9947f18b20e2@gmail.com
+---
+ drivers/gpu/drm/virtio/virtgpu_drv.h |  1 +
+ drivers/gpu/drm/virtio/virtgpu_kms.c |  1 +
+ drivers/gpu/drm/virtio/virtgpu_vq.c  | 15 +++++++++++++++
+ 3 files changed, 17 insertions(+)
+
+diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
+index 7449907754a..3e491c80873 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_drv.h
++++ b/drivers/gpu/drm/virtio/virtgpu_drv.h
+@@ -332,6 +332,7 @@ void virtio_gpu_array_put_free_work(struct work_struct *work);
+ /* virtgpu_vq.c */
+ int virtio_gpu_alloc_vbufs(struct virtio_gpu_device *vgdev);
+ void virtio_gpu_free_vbufs(struct virtio_gpu_device *vgdev);
++void virtio_gpu_reclaim_vbufs(struct virtio_gpu_device *vgdev);
+ void virtio_gpu_cmd_create_resource(struct virtio_gpu_device *vgdev,
+ 				    struct virtio_gpu_object *bo,
+ 				    struct virtio_gpu_object_params *params,
+diff --git a/drivers/gpu/drm/virtio/virtgpu_kms.c b/drivers/gpu/drm/virtio/virtgpu_kms.c
+index b4329f28e97..e5a6ae679f3 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_kms.c
++++ b/drivers/gpu/drm/virtio/virtgpu_kms.c
+@@ -298,6 +298,7 @@ void virtio_gpu_deinit(struct drm_device *dev)
+ 	flush_work(&vgdev->cursorq.dequeue_work);
+ 	flush_work(&vgdev->config_changed_work);
+ 	virtio_reset_device(vgdev->vdev);
++	virtio_gpu_reclaim_vbufs(vgdev);
+ 	vgdev->vdev->config->del_vqs(vgdev->vdev);
  }
  
-@@ -839,40 +844,41 @@ static ssize_t spufs_wbox_write(struct file *file, const char __user *buf,
- 
- 	count = spu_acquire(ctx);
- 	if (count)
--		goto out;
-+		return count;
- 
- 	/*
- 	 * make sure we can at least write one element, by waiting
- 	 * in case of !O_NONBLOCK
- 	 */
--	count = 0;
- 	if (file->f_flags & O_NONBLOCK) {
- 		if (!spu_wbox_write(ctx, wbox_data)) {
--			count = -EAGAIN;
--			goto out_unlock;
-+			spu_release(ctx);
-+			return -EAGAIN;
- 		}
- 	} else {
- 		count = spufs_wait(ctx->wbox_wq, spu_wbox_write(ctx, wbox_data));
- 		if (count)
--			goto out;
-+			return count;
- 	}
--
-+	spu_release(ctx);
- 
- 	/* write as much as possible */
- 	for (count = 4, udata++; (count + 4) <= len; count += 4, udata++) {
- 		int ret;
-+
- 		ret = get_user(wbox_data, udata);
- 		if (ret)
- 			break;
- 
-+		ret = spu_acquire(ctx);
-+		if (ret)
-+			break;
- 		ret = spu_wbox_write(ctx, wbox_data);
-+		spu_release(ctx);
- 		if (ret == 0)
- 			break;
- 	}
- 
--out_unlock:
--	spu_release(ctx);
--out:
- 	return count;
+diff --git a/drivers/gpu/drm/virtio/virtgpu_vq.c b/drivers/gpu/drm/virtio/virtgpu_vq.c
+index e5e1af8b8e8..ab6106f4bdf 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_vq.c
++++ b/drivers/gpu/drm/virtio/virtgpu_vq.c
+@@ -208,6 +208,21 @@ static void free_vbuf(struct virtio_gpu_device *vgdev,
+ 	kmem_cache_free(vgdev->vbufs, vbuf);
  }
  
++void virtio_gpu_reclaim_vbufs(struct virtio_gpu_device *vgdev)
++{
++	struct virtio_gpu_vbuffer *vbuf;
++
++	while ((vbuf = virtqueue_detach_unused_buf(vgdev->ctrlq.vq))) {
++		if (vbuf->objs)
++			virtio_gpu_array_put_free(vbuf->objs);
++		if (vbuf->resp_cb_data)
++			virtio_gpu_cleanup_object(vbuf->resp_cb_data);
++		free_vbuf(vgdev, vbuf);
++	}
++	while ((vbuf = virtqueue_detach_unused_buf(vgdev->cursorq.vq)))
++		free_vbuf(vgdev, vbuf);
++}
++
+ static void reclaim_vbufs(struct virtqueue *vq, struct list_head *reclaim_list)
+ {
+ 	struct virtio_gpu_vbuffer *vbuf;
 
--- 
-2.51.2
+---
+base-commit: 2d2338c93da79b3bfe4b6099a931d9468d539952
+change-id: 20260802-virtio-gpu-reclaim-vbufs-4816cc8a5bf9
+
+Best regards,
+--  
+Anuj Bolewar <bolewara@gmail.com>
 
