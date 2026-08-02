@@ -1,82 +1,76 @@
-From: lurenjia534 <lurenjia534@outlook.com>
-Date: Sun, 02 Aug 2026 04:19:34 +0800
-Subject: [PATCH] usb: gadget: f_hid: reject zero report length
+From: Esteban Urrutia <esteuwu@proton.me>
+Date: Sun, 02 Aug 2026 02:39:55 -0400
+Subject: [PATCH v3] dt-bindings: soc: qcom: qcom,pmic-glink: Add compatible
+ string for SM8475
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-hid-report-length-usb-testing-v1-1-0499f99136d2@outlook.com>
-X-B4-Tracking: v=1; b=H4sIANVUbmoC/03MwQrCMAzG8VcZORuo3Sjqq4iHtkvbiHSj6YYw9
- u6uevH4Tz5+GwgVJoFbt0GhlYWnfMT51IFPNkdCHo8GrbRRF6Ux8YiF5qlUfFGONeEiDitJ5Rw
- xXAcTemuGfrRwGHOhwO+vf3/8Whb3JF8b2hbOCqErNvvUTv9Ye8G+fwDAN3G3pAAAAA==
-X-Change-ID: 20260802-hid-report-length-usb-testing-f946f3a643da
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+7b70c4a6021fd49c4151@syzkaller.appspotmail.com, 
- Felipe Balbi <balbi@ti.com>, Andrzej Pietrasiewicz <andrzej.p@samsung.com>, 
- lurenjia534 <lurenjia534@outlook.com>
+Message-Id: <20260802-sm8475-pmic-glink-v3-1-45216e6ec572@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NTQ7CIBQE4KsY1mLg9QfqynsYF5a+tqiFBirRN
+ L27UDddGJeTzHwzE49OoyfH3UwcBu21NTFk+x1R/dV0SHUTMwEGJRNQUT/IXBR0HLSi3UObOy0
+ EFmVbyQbqjMTd6LDVr9U8X77ZP+sbqilBqdFrP1n3Xk8DT71/fuCUUQXIq1Ioljd4Gp2drDkMS
+ JIfYCNk/JcAUQAZxxVIbAG2wrIsH7TT1U8GAQAA
+X-Change-ID: 20260729-sm8475-pmic-glink-57e56f98d2b3
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785615577; l=2219;
- i=lurenjia534@outlook.com; s=20260801; h=from:subject:message-id;
- bh=iNhr1oVERThburQ7HiMLwACK+h6L6PLXeAOagepD/hQ=;
- b=SFtiOQdsjcQ/amIdJ1XFYxqjyf2dEDHjAoYI81mToMrDN+4Rmg3ySrfh7qRsPX+VfkZi5j1bn
- 4Ll2LgqxnEtCSJwckgkbaGA7zp9swFQaojUgLpI7wfM/ewHl+qG3k1J
-X-Developer-Key: i=lurenjia534@outlook.com; a=ed25519;
- pk=nMa0OcUJYxnaGbhs5f95IwVQ7sPrWI7It3LMsh0BJX4=
-X-Endpoint-Received: by B4 Relay for lurenjia534@outlook.com/20260801 with auth_id=906
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785652809; l=1696;
+ i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
+ bh=tn2xH0fzQ/e6xT6kAD58wd7odc28IuNeh1bh7VNPiEQ=;
+ b=e08RXdumGEVucO+Vc+5VdB5GOkbF64uTxGj6Kjc5KWzP2O2qAnY/d2BqgZVdaGIR2/0AN95oE
+ pHTp6y+OnwKB1QmhPab8ixfMFDrvd5Yn6HgoNxLbXRGqHvA59zLZrpv
+X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
+ pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
+X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-New configfs HID function instances leave report_length at zero until
-userspace sets the attribute.  hidg_alloc() currently accepts that value
-and copies it into the function state.  hidg_bind() then uses it as the
-maximum packet size of the interrupt endpoint descriptors.
+SM8475 is compatible with SM8450 with respect to pmic-glink support.
+Add a compatible string for SM8475 using SM8450 as a fallback.
 
-If userspace links the unconfigured function and enables the gadget,
-hidg_set_alt() reaches usb_ep_enable() with a zero maximum packet size,
-which triggers a warning.
-
-Reject the function from hidg_alloc() when report_length is zero.  This
-makes the configfs link fail before invalid endpoint descriptors can be
-added while leaving configured HID functions unchanged.
-
-Fixes: 21a9476a7ba8 ("usb: gadget: hid: add configfs support")
-Reported-by: syzbot+7b70c4a6021fd49c4151@syzkaller.appspotmail.com
-Closes: https://lore.kernel.org/all/6a6cd7bd.1aa927e4.17d4bf.0004.GAE@google.com/
-Assisted-by: Codex:GPT-5.6 MAX
-Signed-off-by: lurenjia534 <lurenjia534@outlook.com>
+Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
-Testing:
-- syzbot reproducer: warning and panic in 2/2 runs before the fix;
-  no warning in 2/2 30-second runs after the fix
-- configfs/dummy_hcd regression: FAIL before the fix and PASS after it
-- current usb-testing: reproducer and regression test PASS, taint 0
-- GCC built-in and module builds, sparse, and x86-64/arm64 target
-  builds with both supported toolchains: PASS
+This series adds a compatible string for pmic-glink in SM8475 in
+dt-bindings using SM8450 as a fallback to provide support for it.
 ---
- drivers/usb/gadget/function/f_hid.c | 5 +++++
+Changes in v3:
+- Drop patch modifying ucsi_glink (redundant)
+  - Use SM8450 compatible as a fallback instead
+- Link to v2: https://patch.msgid.link/20260731-sm8475-pmic-glink-v2-0-28c04928ef22@proton.me
+
+Changes in v2:
+- Apply suggestions from Krzysztof
+- Link to v1: https://patch.msgid.link/20260729-sm8475-pmic-glink-v1-0-c2e1967c04de@proton.me
+---
+ Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml | 5 +++++
  1 file changed, 5 insertions(+)
 
-diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
-index 3c6b43d06a..74a78cfd37 100644
---- a/drivers/usb/gadget/function/f_hid.c
-+++ b/drivers/usb/gadget/function/f_hid.c
-@@ -1605,6 +1605,11 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
- 	opts = container_of(fi, struct f_hid_opts, func_inst);
- 
- 	mutex_lock(&opts->lock);
-+	if (!opts->report_length) {
-+		mutex_unlock(&opts->lock);
-+		kfree(hidg);
-+		return ERR_PTR(-EINVAL);
-+	}
- 
- 	spin_lock_init(&hidg->write_spinlock);
- 	spin_lock_init(&hidg->read_spinlock);
+diff --git a/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml b/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml
+index 16ad4f5698fc..d4478d9b3212 100644
+--- a/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml
++++ b/Documentation/devicetree/bindings/soc/qcom/qcom,pmic-glink.yaml
+@@ -43,6 +43,11 @@ properties:
+               - qcom,sm7325-pmic-glink
+           - const: qcom,qcm6490-pmic-glink
+           - const: qcom,pmic-glink
++      - items:
++          - enum:
++              - qcom,sm8475-pmic-glink
++          - const: qcom,sm8450-pmic-glink
++          - const: qcom,pmic-glink
+       - items:
+           - enum:
+               - qcom,eliza-pmic-glink
 
 ---
-base-commit: 5d5fd841c34649f1b09220fe58e59dffd61c447d
-change-id: 20260802-hid-report-length-usb-testing-f946f3a643da
+base-commit: 415606a7be939835db9b0d6b711887586646346d
+change-id: 20260729-sm8475-pmic-glink-57e56f98d2b3
 
 Best regards,
 --  
-lurenjia534 <lurenjia534@outlook.com>
+Esteban Urrutia <esteuwu@proton.me>
 
