@@ -1,143 +1,89 @@
-From: Anuj Bolewar <bolewara@gmail.com>
-Date: Sun, 02 Aug 2026 22:05:17 +0530
-Subject: [PATCH v2] drm/virtio: reclaim pending vbufs before tearing down
- vqs
+From: Jiaheng Zhang <lurenjia534@outlook.com>
+Date: Mon, 03 Aug 2026 02:12:59 +0800
+Subject: [PATCH v2] usb: gadget: f_hid: reject zero report length
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-virtio-gpu-reclaim-vbufs-v2-1-5767fb860691@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NQQ6CMBBFr0K6dkzbIBZX3sOwaOsUxgAlbWk0h
- LsLeAGXL3n//YVFDISR3YqFBcwUyY8byFPBbKfHFoGeGzPJZcUVl5ApJPLQTjMEtL2mAbKZXYR
- SicpapS/G1WybTwEdvY/0o/lxnM0Lbdp7u9FRTD58ju8sdu+PmyxAQF2XVyeUkRzlvR009WfrB
- 9as6/oFiy4+ldIAAAA=
-X-Change-ID: 20260802-virtio-gpu-reclaim-vbufs-4816cc8a5bf9
-To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
- Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
- Gurchetan Singh <gurchetansingh@chromium.org>, 
- Chia-I Wu <olvaffe@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, 
- syzbot+06f9b2a53ba4a5a47644@syzkaller.appspotmail.com, 
- Anuj Bolewar <bolewara@gmail.com>
+Message-Id: <20260803-hid-report-length-usb-testing-v2-1-49144e0d11ae@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAKqIb2oC/42OQQ7CIBREr2JY+w2lDRFX3sN0QeFT0AoN0EbT9
+ O6WunHp8s1MXmYhCaPDRC6HhUScXXLBb8COB6Ks9D2C0xsTRhmnZ8rAOg0RxxAzDOj7bGFKHWR
+ M2fkejGi4qSVvai3J5hgjGvfa/bf2y2nq7qhykZZFJxNCF6VXtkS/slKViXUph/jeP85VUf17Z
+ 66gAtoIYYSoaq7ZNUx5COFxUuFJ2nVdP3bL18QBAQAA
+X-Change-ID: 20260802-hid-report-length-usb-testing-f946f3a643da
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+7b70c4a6021fd49c4151@syzkaller.appspotmail.com, 
+ Felipe Balbi <balbi@ti.com>, Andrzej Pietrasiewicz <andrzej.p@samsung.com>, 
+ Jiaheng Zhang <lurenjia534@outlook.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785688516; l=4832;
- i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=ip9758ecvu5Lc+AGn+NJtR1MumyMs6TZADIy4kALth8=;
- b=gueT/54Hp0J8eQ2wmW1BmksUne+9bduUi5wu1Rl2EqJkTwAsbMMASolkPJ1godpqMFGsH9RbA
- x9WXXQxaMt5BBfNnS4RKf3cxHp/iZAOI7GPyoGlTnWPEximQE3zK2so
-X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
- pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
-X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785694383; l=2465;
+ i=lurenjia534@outlook.com; s=20260801; h=from:subject:message-id;
+ bh=O2BdkvFQJmn8WM8m861gjCJrv/A+Rv0+aSvZQnkLtyY=;
+ b=LRa3ZEUBkieSiDH0kyo5QbqaOeXnx2Ntre5qJt6NoErr07dCJt3c6qvApcOc4hxSwge2Ox1uj
+ WK/oV23xv6wAaBFX/7s5JyFSjQ18Wf+yjrOkB8T8Y5JTDL8eXPmYDbE
+X-Developer-Key: i=lurenjia534@outlook.com; a=ed25519;
+ pk=nMa0OcUJYxnaGbhs5f95IwVQ7sPrWI7It3LMsh0BJX4=
+X-Endpoint-Received: by B4 Relay for lurenjia534@outlook.com/20260801 with auth_id=906
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-virtio_gpu_free_vbufs() destroys the vbufs kmem_cache after the virtqueues
-have already been released. Commands that were queued but never completed
-by the device leave their vbuffers stranded in the virtqueue, so the cache
-still holds live objects when virtio_gpu_deinit() tears everything down.
-This triggers a WARNING in virtio_gpu_free_vbufs:
+New configfs HID function instances leave report_length at zero until
+userspace sets the attribute.  hidg_alloc() currently accepts that value
+and copies it into the function state.  hidg_bind() then uses it as the
+maximum packet size of the interrupt endpoint descriptors.
 
-    BUG virtio-gpu-vbufs (Not tainted): Objects remaining in cache
-    on __kmem_cache_shutdown()
+If userspace links the unconfigured function and enables the gadget,
+hidg_set_alt() reaches usb_ep_enable() with a zero maximum packet size,
+which triggers a warning.
 
-Drain any buffers still sitting in the control and cursor virtqueues in
-virtio_gpu_deinit() after the device has been reset and before the
-virtqueues are deleted, following the same pattern used by virtio_console's
-remove_vqs(). Each reclaimed buffer is released with free_vbuf(), dropping
-the reference on any GEM objects it holds. Pending RESOURCE_UNREF
-commands are handled as well: their resp_cb_data still references a GEM
-object, so it is cleaned up with virtio_gpu_cleanup_object() to avoid
-leaking it on teardown.
+Reject the function from hidg_alloc() when report_length is zero.  This
+makes the configfs link fail before invalid endpoint descriptors can be
+added while leaving configured HID functions unchanged.
 
-Reported-by: syzbot+06f9b2a53ba4a5a47644@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=06f9b2a53ba4a5a47644
-Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
+Fixes: 21a9476a7ba8 ("usb: gadget: hid: add configfs support")
+Reported-by: syzbot+7b70c4a6021fd49c4151@syzkaller.appspotmail.com
+Closes: https://lore.kernel.org/all/6a6cd7bd.1aa927e4.17d4bf.0004.GAE@google.com/
+Assisted-by: Codex:GPT-5.6 MAX
+Signed-off-by: Jiaheng Zhang <lurenjia534@outlook.com>
 ---
-This series fixes a syzbot-triggered WARNING in virtio_gpu_free_vbufs
-(cache object: virtio-gpu-vbufs) seen on device removal. Commands that
-are queued but never complete leave vbuffers stranded in the control and
-cursor virtqueues. virtio_gpu_deinit() reset the device and deleted the
-virtqueues without draining them, so a later kmem_cache_destroy() in
-virtio_gpu_release() ran with live objects still allocated.
-
-Patch 1 drains the queues in virtio_gpu_deinit(): after the device reset
-and before del_vqs(), virtio_gpu_reclaim_vbufs() detaches every unused
-buffer from both virtqueues, releases their object arrays, and runs the
-pending resource-unref cleanup so the referenced GEM objects are freed
-rather than leaked. This mirrors the drain pattern used by
-virtio_console's remove_vqs().
-
-Link: https://syzkaller.appspot.com/bug?extid=06f9b2a53ba4a5a47644
+Testing:
+- syzbot reproducer: warning and panic in 2/2 runs before the fix;
+  no warning in 2/2 30-second runs after the fix
+- configfs/dummy_hcd regression: FAIL before the fix and PASS after it
+- current usb-testing: reproducer and regression test PASS, taint 0
+- GCC built-in and module builds, sparse, and x86-64/arm64 target
+  builds with both supported toolchains: PASS
 ---
 Changes in v2:
-- Also release the GEM object referenced by vbuf->resp_cb_data when
-  reclaiming stranded buffers, so pending RESOURCE_UNREF commands do not
-  leak their underlying objects on teardown.
-- Link to v1: https://patch.msgid.link/20260802-virtio-gpu-reclaim-vbufs-v1-1-9947f18b20e2@gmail.com
+- Use the real name Jiaheng Zhang in the author and Signed-off-by fields,
+  as requested.
+- No code changes.
+- Link to v1: https://patch.msgid.link/20260802-hid-report-length-usb-testing-v1-1-0499f99136d2@outlook.com
 ---
- drivers/gpu/drm/virtio/virtgpu_drv.h |  1 +
- drivers/gpu/drm/virtio/virtgpu_kms.c |  1 +
- drivers/gpu/drm/virtio/virtgpu_vq.c  | 15 +++++++++++++++
- 3 files changed, 17 insertions(+)
+ drivers/usb/gadget/function/f_hid.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
-index 7449907754a..3e491c80873 100644
---- a/drivers/gpu/drm/virtio/virtgpu_drv.h
-+++ b/drivers/gpu/drm/virtio/virtgpu_drv.h
-@@ -332,6 +332,7 @@ void virtio_gpu_array_put_free_work(struct work_struct *work);
- /* virtgpu_vq.c */
- int virtio_gpu_alloc_vbufs(struct virtio_gpu_device *vgdev);
- void virtio_gpu_free_vbufs(struct virtio_gpu_device *vgdev);
-+void virtio_gpu_reclaim_vbufs(struct virtio_gpu_device *vgdev);
- void virtio_gpu_cmd_create_resource(struct virtio_gpu_device *vgdev,
- 				    struct virtio_gpu_object *bo,
- 				    struct virtio_gpu_object_params *params,
-diff --git a/drivers/gpu/drm/virtio/virtgpu_kms.c b/drivers/gpu/drm/virtio/virtgpu_kms.c
-index b4329f28e97..e5a6ae679f3 100644
---- a/drivers/gpu/drm/virtio/virtgpu_kms.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_kms.c
-@@ -298,6 +298,7 @@ void virtio_gpu_deinit(struct drm_device *dev)
- 	flush_work(&vgdev->cursorq.dequeue_work);
- 	flush_work(&vgdev->config_changed_work);
- 	virtio_reset_device(vgdev->vdev);
-+	virtio_gpu_reclaim_vbufs(vgdev);
- 	vgdev->vdev->config->del_vqs(vgdev->vdev);
- }
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index 3c6b43d06a..74a78cfd37 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -1605,6 +1605,11 @@ static struct usb_function *hidg_alloc(struct usb_function_instance *fi)
+ 	opts = container_of(fi, struct f_hid_opts, func_inst);
  
-diff --git a/drivers/gpu/drm/virtio/virtgpu_vq.c b/drivers/gpu/drm/virtio/virtgpu_vq.c
-index e5e1af8b8e8..ab6106f4bdf 100644
---- a/drivers/gpu/drm/virtio/virtgpu_vq.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_vq.c
-@@ -208,6 +208,21 @@ static void free_vbuf(struct virtio_gpu_device *vgdev,
- 	kmem_cache_free(vgdev->vbufs, vbuf);
- }
- 
-+void virtio_gpu_reclaim_vbufs(struct virtio_gpu_device *vgdev)
-+{
-+	struct virtio_gpu_vbuffer *vbuf;
-+
-+	while ((vbuf = virtqueue_detach_unused_buf(vgdev->ctrlq.vq))) {
-+		if (vbuf->objs)
-+			virtio_gpu_array_put_free(vbuf->objs);
-+		if (vbuf->resp_cb_data)
-+			virtio_gpu_cleanup_object(vbuf->resp_cb_data);
-+		free_vbuf(vgdev, vbuf);
+ 	mutex_lock(&opts->lock);
++	if (!opts->report_length) {
++		mutex_unlock(&opts->lock);
++		kfree(hidg);
++		return ERR_PTR(-EINVAL);
 +	}
-+	while ((vbuf = virtqueue_detach_unused_buf(vgdev->cursorq.vq)))
-+		free_vbuf(vgdev, vbuf);
-+}
-+
- static void reclaim_vbufs(struct virtqueue *vq, struct list_head *reclaim_list)
- {
- 	struct virtio_gpu_vbuffer *vbuf;
+ 
+ 	spin_lock_init(&hidg->write_spinlock);
+ 	spin_lock_init(&hidg->read_spinlock);
 
 ---
-base-commit: 2d2338c93da79b3bfe4b6099a931d9468d539952
-change-id: 20260802-virtio-gpu-reclaim-vbufs-4816cc8a5bf9
+base-commit: 5d5fd841c34649f1b09220fe58e59dffd61c447d
+change-id: 20260802-hid-report-length-usb-testing-f946f3a643da
 
 Best regards,
 --  
-Anuj Bolewar <bolewara@gmail.com>
+Jiaheng Zhang <lurenjia534@outlook.com>
 
