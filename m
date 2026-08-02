@@ -1,10 +1,10 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sun, 02 Aug 2026 23:51:39 +0800
-Subject: [PATCH 1/6] powerpc/spufs: fix spu_context leak in coredump
+Date: Sun, 02 Aug 2026 23:51:40 +0800
+Subject: [PATCH 2/6] powerpc/spufs: don't leak kernel stack via spu_run
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-fixes-v1-1-7368423440f4@outlook.com>
+Message-Id: <20260802-fixes-v1-2-7368423440f4@outlook.com>
 References: <20260802-fixes-v1-0-7368423440f4@outlook.com>
 In-Reply-To: <20260802-fixes-v1-0-7368423440f4@outlook.com>
 To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
@@ -16,66 +16,60 @@ Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1723;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1557;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=4NyNHOiKkA4MH4J7oCGRtB6kCVTq8tsAtxRO2bfYk0g=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrPz0aQ/f7o50yDxiLOf7RMF8+oaGq+FhITvXLakqa
- 71w6LqkQXtHKQuDGBeDrJgiy/GCS98sfLfobvHZkgwzh5UJZAgDF6cATGTeEUaGj6cyeValXTCt
- FQgxjG+NvjRv1+qIe0sdvrpwhDsuOve0gZFh4tb5rZyLDGb4ub3v2xMi7n3OzdKlwUjA08iycoJ
- F23dOAPdZSaI=
+ bh=JbhPcONN9PAPqWDS7IAW9bNoVq7Tog3058VmeC72cKQ=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrPz06RI7tzly3IkWCtuj8vPhkaZmvtV/ug8FBss8e
+ HNfaFNiXWVHKQuDGBeDrJgiy/GCS98sfLfobvHZkgwzh5UJZAgDF6cATOTyLob/QRPi7m7dHi72
+ 8PEzY7EU9eWi4novRY2vZ71cqXig1bj0EcN/f/XvderGXuX/vnytr1yyYlbW5zsPbLaw9t5d5K7
+ 5e20hOwBtQk9E
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-coredump_next_context() returns a spu_context with a reference taken by
-get_spu_context(), which the caller must drop.
-spufs_coredump_extra_notes_size() does so on all of its exits, but
-spufs_coredump_extra_notes_write() never calls put_spu_context(), so
-every context dumped through elf_coredump_extra_notes_write() leaks a
-reference, including on the success path.
+do_spu_run() hands the address of an uninitialized local to
+spufs_run_spu() and then copies it out unconditionally:
 
-Fix by dropping the reference on each of the three exits of the loop,
-mirroring ..._size().
+	u32 npc, status;
+	...
+	ret = spufs_run_spu(i->i_ctx, &npc, &status);
+	...
+	if (ustatus && put_user(status, ustatus))
+		ret = -EFAULT;
 
-Fixes: 38b407be172d ("powerpc/spufs: Rework fcheck() usage")
+spufs_run_spu() writes through that pointer at exactly one place, the
+"out:" label, and two of its exits never reach it: the interruptible
+acquisition of ctx->run_mutex returns -ERESTARTSYS directly, and a
+failed spu_acquire() jumps to "out_unlock", which sits just after the
+assignment.
+
+Initialize status to 0, which is what userspace would have observed had
+the assignment been reached anyway: spufs_run_spu() resets
+ctx->event_return to 0 on entry, and 0 is the "no events pending" value
+for this word.
+
+Fixes: 67207b9664a8 ("[PATCH] spufs: The SPU file system, base")
 Reported-by: Yuhao Jiang <danisjiang@gmail.com>
 Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- arch/powerpc/platforms/cell/spufs/coredump.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ arch/powerpc/platforms/cell/spufs/syscalls.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/powerpc/platforms/cell/spufs/coredump.c b/arch/powerpc/platforms/cell/spufs/coredump.c
-index 301ee7d8b7df..f5964c9ebb3e 100644
---- a/arch/powerpc/platforms/cell/spufs/coredump.c
-+++ b/arch/powerpc/platforms/cell/spufs/coredump.c
-@@ -162,13 +162,16 @@ int spufs_coredump_extra_notes_write(struct coredump_params *cprm)
- 	fd = 0;
- 	while ((ctx = coredump_next_context(&fd)) != NULL) {
- 		rc = spu_acquire_saved(ctx);
--		if (rc)
-+		if (rc) {
-+			put_spu_context(ctx);
- 			return rc;
-+		}
+diff --git a/arch/powerpc/platforms/cell/spufs/syscalls.c b/arch/powerpc/platforms/cell/spufs/syscalls.c
+index ea4ba1b6ce6a..549fcfbbc140 100644
+--- a/arch/powerpc/platforms/cell/spufs/syscalls.c
++++ b/arch/powerpc/platforms/cell/spufs/syscalls.c
+@@ -37,7 +37,7 @@ static long do_spu_run(struct file *filp,
+ {
+ 	long ret;
+ 	struct spufs_inode_info *i;
+-	u32 npc, status;
++	u32 npc, status = 0;
  
- 		for (j = 0; spufs_coredump_read[j].name != NULL; j++) {
- 			rc = spufs_arch_write_note(ctx, j, cprm, fd);
- 			if (rc) {
- 				spu_release_saved(ctx);
-+				put_spu_context(ctx);
- 				return rc;
- 			}
- 		}
-@@ -177,6 +180,7 @@ int spufs_coredump_extra_notes_write(struct coredump_params *cprm)
- 
- 		/* start searching the next fd next time */
- 		fd++;
-+		put_spu_context(ctx);
- 	}
- 
- 	return 0;
+ 	ret = -EFAULT;
+ 	if (get_user(npc, unpc))
 
 -- 
 2.51.2
