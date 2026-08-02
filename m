@@ -1,21 +1,22 @@
 From: Luca Lauro <famlauro93l@gmail.com>
-Date: Sun, 02 Aug 2026 15:16:22 +0200
-Subject: [PATCH v3 06/15] commands: add fan control command
+Date: Sun, 02 Aug 2026 15:16:23 +0200
+Subject: [PATCH v3 07/15] usb: ehci: add Marvell EHCI host controller
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-rn102-rn104-series-v3-6-f7685a279fb5@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260802-rn102-rn104-series-v3-7-f7685a279fb5@gmail.com>
 References: <20260802-rn102-rn104-series-v3-0-f7685a279fb5@gmail.com>
 In-Reply-To: <20260802-rn102-rn104-series-v3-0-f7685a279fb5@gmail.com>
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  "open list:BAREBOX" <barebox@lists.infradead.org>
 Cc: Luca Lauro <famlauro93l@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785676613; l=12962;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785676613; l=8439;
  i=famlauro93l@gmail.com; s=20260723; h=from:subject:message-id;
- bh=Vx+EBxJNOF0R9x/bZxWmoZX0N9e3iS2sDuPQD/S/D/U=;
- b=L7agvC2v7i9EvrGQaIQ7iaVG84emtv3ntXCkWoA1JqPVJHaFZL3eQGLdNdtizL3/Cb9/v4QGW
- NHVlYjSht9/C9gtaW4TTpVYa5DmWZ4m2oKSqk4SSsjMax5NgLzSvVkn
+ bh=PMKtRXfaGcd7T+RC96fzTds8pTTje8r1sML8k7YwexA=;
+ b=fhLY2zxlwMUPUlSFadMKv+YEuWKdT6Zje/su3GuGtaTHKPIRifRs1LeTDtASdTPXWlxy2L+8X
+ +0+nuejyVrwBp92b+59EEzKlKJRZV+USdAf58nGEaAD2xunx2qtYueT
 X-Developer-Key: i=famlauro93l@gmail.com; a=ed25519;
  pk=OAJlcD69ugQCl99Vy6w+Aeu+ZUb1IVGcz1Ijxo6Ch78=
 X-Endpoint-Received: by B4 Relay for famlauro93l@gmail.com/20260723 with auth_id=892
@@ -23,333 +24,283 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Signed-off-by: Luca Lauro <famlauro93l@gmail.com>
 ---
- commands/Kconfig  |   7 ++
- commands/Makefile |   2 +
- commands/fan.c    | 286 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 295 insertions(+)
+ drivers/usb/host/Kconfig        |   7 ++
+ drivers/usb/host/Makefile       |  13 +--
+ drivers/usb/host/ehci-marvell.c | 228 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 242 insertions(+), 6 deletions(-)
 
-diff --git a/commands/Kconfig b/commands/Kconfig
-index 297c89b4b5..d661f0eaab 100644
---- a/commands/Kconfig
-+++ b/commands/Kconfig
-@@ -2337,6 +2337,13 @@ config CMD_RKSECURE
- 	  The rksecure command allows to retrieve information about and enable
- 	  secure boot for Rockchip rk3588 SoCs.
+diff --git a/drivers/usb/host/Kconfig b/drivers/usb/host/Kconfig
+index 58f276cdb4..8e46eca8a3 100644
+--- a/drivers/usb/host/Kconfig
++++ b/drivers/usb/host/Kconfig
+@@ -22,6 +22,13 @@ config USB_EHCI_ZYNQ
+ 	help
+ 	  Enable support for Zynq on-chip EHCI USB controller
  
-+config CMD_FAN
-+	bool
-+	depends on FAN
-+	prompt "fan command"
++config USB_EHCI_MARVELL
++	bool "Marvell USB EHCI driver"
++	depends on ARCH_MVEBU
++	depends on USB_EHCI
 +	help
-+	  Control and monitor target fans.
++	  Enable support for Marvell USB EHCI controller
 +
- # end Hardware manipulation commands
- endmenu
- 
-diff --git a/commands/Makefile b/commands/Makefile
-index 2563efb12f..227c40b3f5 100644
---- a/commands/Makefile
-+++ b/commands/Makefile
-@@ -173,4 +173,6 @@ obj-$(CONFIG_CMD_DMSETUP)	+= dmsetup.o
- obj-$(CONFIG_CMD_VERITYSETUP)	+= veritysetup.o
- obj-$(CONFIG_CMD_SCONFIG)	+= sconfig.o
- obj-$(CONFIG_CMD_RKSECURE)	+= rksecure.o
-+obj-$(CONFIG_CMD_FAN)		+= fan.o
-+
- UBSAN_SANITIZE_ubsan.o := y
-diff --git a/commands/fan.c b/commands/fan.c
+ config USB_OHCI
+ 	bool "OHCI driver"
+ 	depends on !MMU && HAS_DMA
+diff --git a/drivers/usb/host/Makefile b/drivers/usb/host/Makefile
+index cbddfbe923..5442d44e60 100644
+--- a/drivers/usb/host/Makefile
++++ b/drivers/usb/host/Makefile
+@@ -1,8 +1,9 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+-obj-$(CONFIG_USB_EHCI)		+= ehci-hcd.o
+-obj-$(CONFIG_USB_EHCI_OMAP)	+= ehci-omap.o
++obj-$(CONFIG_USB_EHCI)			+= ehci-hcd.o
++obj-$(CONFIG_USB_EHCI_OMAP)		+= ehci-omap.o
+ obj-$(CONFIG_USB_EHCI_ATMEL)	+= ehci-atmel.o
+-obj-$(CONFIG_USB_EHCI_ZYNQ)	+= ehci-zynq.o
+-obj-$(CONFIG_USB_OHCI)		+= ohci-hcd.o
+-obj-$(CONFIG_USB_OHCI_AT91)	+= ohci-at91.o
+-obj-$(CONFIG_USB_XHCI)		+= xhci.o xhci-mem.o xhci-ring.o
++obj-$(CONFIG_USB_EHCI_ZYNQ)		+= ehci-zynq.o
++obj-$(CONFIG_USB_EHCI_MARVELL)	+= ehci-marvell.o
++obj-$(CONFIG_USB_OHCI)			+= ohci-hcd.o
++obj-$(CONFIG_USB_OHCI_AT91)		+= ohci-at91.o
++obj-$(CONFIG_USB_XHCI)			+= xhci.o xhci-mem.o xhci-ring.o
+diff --git a/drivers/usb/host/ehci-marvell.c b/drivers/usb/host/ehci-marvell.c
 new file mode 100644
-index 0000000000..613b4ac101
+index 0000000000..97123558d1
 --- /dev/null
-+++ b/commands/fan.c
-@@ -0,0 +1,286 @@
++++ b/drivers/usb/host/ehci-marvell.c
+@@ -0,0 +1,228 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Marvell Orion / Kirkwood / Armada EHCI host controller for barebox
++ *
++ * Ported from the modern U-Boot ehci-marvell.c implementation and
++ * adapted to the barebox ehci_register() model.
++ */
++
++/*#define DEBUG*/
++
 +#include <common.h>
-+#include <command.h>
-+#include <complete.h>
-+#include <errno.h>
-+#include <fan/fan.h>
++#include <driver.h>
++#include <init.h>
++#include <io.h>
++#include <of.h>
++#include <linux/usb/usb.h>
++#include <linux/usb/ehci.h>
++#include <linux/mbus.h>
 +
-+static int do_fan(int argc, char *argv[])
++#include "ehci.h"
++
++#define USB_WINDOW_CTRL(i)			(0x320 + ((i) << 4))
++#define USB_WINDOW_BASE(i)			(0x324 + ((i) << 4))
++#define USB_TARGET_DRAM				0x0
++
++#define USB2_SBUSCFG_OFF			0x90
++
++#define USB_SBUSCFG_BAWR_OFF		0x6
++#define USB_SBUSCFG_BARD_OFF		0x3
++#define USB_SBUSCFG_AHBBRST_OFF		0x0
++
++#define USB_SBUSCFG_BAWR_ALIGN_64B	0x4
++#define USB_SBUSCFG_BARD_ALIGN_64B	0x4
++#define USB_SBUSCFG_AHBBRST_INCR16	0x7
++
++/* AC5 special window mapping (taken from U-Boot) */
++#define USB_TO_DRAM_TARGET_ID		0x2
++#define USB_TO_DRAM_ATTR_ID			0x0
++#define USB_DRAM_BASE				0x00000000
++#define USB_DRAM_SIZE				0xfff	/* do not exceed the source address space */
++
++/*
++ * Private state for this Marvell EHCI instance.
++ * The driver only needs the pointer to struct ehci_host.
++ */
++struct marvell_ehci {
++	struct ehci_host *ehci;
++	void __iomem *base;
++	struct device *dev;
++	u32 dram_bus_base;
++};
++
++static void marvell_ehci_sbuscfg_fixup(void __iomem *base)
 +{
-+	struct fan_device *fan;
-+	char buf[32];
-+	unsigned long val;
-+	int ret = 0;
-+
-+
-+	if (argc < 3) {
-+		return COMMAND_ERROR_USAGE;
-+	}
-+
-+	fan = fan_device_find(argv[2]);
-+	if (IS_ERR(fan)) {
-+		printf("Device not found: %s\n", argv[2]);
-+		return PTR_ERR(fan);
-+	}
-+	if (!fan->ops) {
-+		printf("Fan driver ops not initialized\n");
-+		return -ENODEV;
-+	}
-+
-+	if (!strcmp(argv[1], "get")) {
-+		if (argc == 4) {
-+			if (!strcmp(argv[3], "startv") && fan->ops->get_fan_startv) {
-+				ret = fan->ops->get_fan_startv(fan->dev, buf);
-+				printf("Fan startup voltage mode: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "gearmult") && fan->ops->get_gear_multiplier) {
-+				ret = fan->ops->get_gear_multiplier(fan->dev, buf);
-+				printf("Gear multiplier: %s\n", ret >= 0 ? buf : "N/A");
-+}
-+			else if (!strcmp(argv[3], "outmode") && fan->ops->get_output_mode) {
-+				ret = fan->ops->get_output_mode(fan->dev, buf);
-+				printf("Output mode: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "ppr") && fan->ops->get_fan_ppr) {
-+				ret = fan->ops->get_fan_ppr(fan->dev, buf);
-+				printf("Pulses per revolution: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "pwmpol") && fan->ops->get_pwm_polarity) {
-+				ret = fan->ops->get_pwm_polarity(fan->dev, buf);
-+				printf("PWM polarity: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "clkfreq") && fan->ops->get_clk_freq) {
-+				ret = fan->ops->get_clk_freq(fan->dev, buf);
-+				printf("Clock frequency: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "clkdiv") && fan->ops->get_clk_div) {
-+				ret = fan->ops->get_clk_div(fan->dev, buf);
-+				printf("Clock divider: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "ctrlmode") && fan->ops->get_control_mode) {
-+				ret = fan->ops->get_control_mode(fan->dev, buf);
-+				printf("Control mode: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "outmode") && fan->ops->get_output_mode) {
-+				ret = fan->ops->get_output_mode(fan->dev, buf);
-+				printf("Output mode: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "oocdet") && fan->ops->get_ooc_detection) {
-+				ret = fan->ops->get_ooc_detection(fan->dev, buf);
-+				printf("Out of control detection: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "faultdet") && fan->ops->get_failure_detection) {
-+				ret = fan->ops->get_failure_detection(fan->dev, buf);
-+				printf("Failure detection: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "oocstate") && fan->ops->get_ooc_state) {
-+				ret = fan->ops->get_ooc_state(fan->dev, buf);
-+				printf("Fan out of control state: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "faultstate") && fan->ops->get_failure_state) {
-+				ret = fan->ops->get_failure_state(fan->dev, buf);
-+				printf("Fan failure state: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "speed") && fan->ops->get_fan_speed) {
-+				ret = fan->ops->get_fan_speed(fan->dev, buf);
-+				printf("Fan speed: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "rpm") && fan->ops->get_fan_rpm) {
-+				ret = fan->ops->get_fan_rpm(fan->dev, buf);
-+				printf("Fan rpm: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "level") && fan->ops->get_fan_level) {
-+				ret = fan->ops->get_fan_level(fan->dev, buf);
-+				printf("Fan level: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "all")) {
-+				if (fan->ops->get_fan_startv) {
-+					ret = fan->ops->get_fan_startv(fan->dev, buf);
-+					printf("Fan startup voltage mode: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_gear_multiplier) {
-+					ret = fan->ops->get_gear_multiplier(fan->dev, buf);
-+					printf("Gear multiplier: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_fan_ppr) {
-+					ret = fan->ops->get_fan_ppr(fan->dev, buf);
-+					printf("Pulses per revolution: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_pwm_polarity) {
-+					ret = fan->ops->get_pwm_polarity(fan->dev, buf);
-+					printf("PWM polarity: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_clk_freq) {
-+					ret = fan->ops->get_clk_freq(fan->dev, buf);
-+					printf("Clock frequency: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_clk_div) {
-+					ret = fan->ops->get_clk_div(fan->dev, buf);
-+					printf("Clock divider: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_control_mode) {
-+					ret = fan->ops->get_control_mode(fan->dev, buf);
-+					printf("Control mode: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_output_mode) {
-+					ret = fan->ops->get_output_mode(fan->dev, buf);
-+					printf("Output mode: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_ooc_detection) {
-+					ret = fan->ops->get_ooc_detection(fan->dev, buf);
-+					printf("Out of control detection: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_failure_detection) {
-+					ret = fan->ops->get_failure_detection(fan->dev, buf);
-+					printf("Failure detection: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_failure_state) {
-+					ret = fan->ops->get_failure_state(fan->dev, buf);
-+					printf("Fan failure state: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_ooc_state) {
-+					ret = fan->ops->get_ooc_state(fan->dev, buf);
-+					printf("Fan out of control state: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_fan_speed) {
-+					ret = fan->ops->get_fan_speed(fan->dev, buf);
-+					printf("Fan speed: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_fan_rpm) {
-+					ret = fan->ops->get_fan_rpm(fan->dev, buf);
-+					printf("Fan rpm: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+				if (fan->ops->get_fan_level) {
-+					ret = fan->ops->get_fan_level(fan->dev, buf);
-+					printf("Fan level: %s\n", ret >= 0 ? buf : "N/A");
-+				}
-+			}
-+			else {
-+				printf("Invalid parameter: %s\n", argv[3]);
-+				return COMMAND_ERROR_USAGE;
-+			}
-+		}
-+		else {
-+			printf("Invalid number of arguments for %s cmd\n", argv[1]);
-+			return COMMAND_ERROR_USAGE;
-+		}
-+	}
-+	else if (!strcmp(argv[1], "set")) {
-+		if (argc == 5) {
-+			val = simple_strtoul(argv[4], NULL, 10);
-+			snprintf(buf, sizeof(buf), "%lu", val);
-+
-+			if (!strcmp(argv[3], "startv") && fan->ops->set_fan_startv) {
-+				ret = fan->ops->set_fan_startv(fan->dev, val);
-+				printf("Fan startup voltage set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "gearmult") && fan->ops->set_gear_multiplier) {
-+				ret = fan->ops->set_gear_multiplier(fan->dev, val);
-+				printf("Gear multiplier set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "ppr") && fan->ops->set_fan_ppr) {
-+				ret = fan->ops->set_fan_ppr(fan->dev, val);
-+				printf("Pulses per revolution set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "pwmpol") && fan->ops->set_pwm_polarity) {
-+				ret = fan->ops->set_pwm_polarity(fan->dev, val);
-+				printf("PWM polarity set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "clkfreq") && fan->ops->set_clk_freq) {
-+				ret = fan->ops->set_clk_freq(fan->dev, val);
-+				printf("Clock frequency set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "clkdiv") && fan->ops->set_clk_div) {
-+				ret = fan->ops->set_clk_div(fan->dev, val);
-+				printf("Clock divider set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "ctrlmode") && fan->ops->set_control_mode) {
-+				ret = fan->ops->set_control_mode(fan->dev, val);
-+				printf("Control mode set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "outmode") && fan->ops->set_output_mode) {
-+				ret = fan->ops->set_output_mode(fan->dev, val);
-+				printf("Output mode set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "ooc") && fan->ops->set_ooc_detection) {
-+				ret = fan->ops->set_ooc_detection(fan->dev, val);
-+				printf("Out of control detection set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "fault") && fan->ops->set_failure_detection) {
-+				ret = fan->ops->set_failure_detection(fan->dev, val);
-+				printf("Failure detection set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "speed") && fan->ops->set_fan_speed) {
-+				ret = fan->ops->set_fan_speed(fan->dev, val);
-+				printf("Fan speed set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "rpm") && fan->ops->set_fan_rpm) {
-+				ret = fan->ops->set_fan_rpm(fan->dev, val);
-+				printf("Fan rpm set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else if (!strcmp(argv[3], "level") && fan->ops->set_fan_level) {
-+				ret = fan->ops->set_fan_level(fan->dev, val);
-+				printf("Fan level set to: %s\n", ret >= 0 ? buf : "N/A");
-+			}
-+			else {
-+				printf("Invalid parameter: %s\n", argv[3]);
-+				return COMMAND_ERROR_USAGE;
-+			}
-+		}
-+		else {
-+			printf("Invalid number of arguments for %s cmd\n", argv[1]);
-+			return COMMAND_ERROR_USAGE;
-+		}
-+	}
-+	else if (!strcmp(argv[1], "init")) {
-+		if (argc == 3) {
-+			if (fan->ops->fan_init) {
-+				ret = fan->ops->fan_init(fan->dev);
-+				printf("Fan initialization: %s\n", ret >= 0 ? "successful" : "N/A");
-+			}
-+		}
-+		else {
-+			printf("Invalid number of arguments for %s cmd\n", argv[1]);
-+			return COMMAND_ERROR_USAGE;
-+		}
-+	}
-+	else {
-+			printf("Invalid cmd: %s\n", argv[1]);
-+			return COMMAND_ERROR_USAGE;
-+	}
-+
-+	return ret;
++	/*
++	 * SBUSCFG: Control for the AMBA system bus interface:
++	 * BAWR = BARD = 4 : Align rd/wr bursts packets larger than 64 bytes
++	 * AHBBRST = 7	 : Align AHB burst for packets larger than 64 bytes
++	 */
++	writel((USB_SBUSCFG_BAWR_ALIGN_64B << USB_SBUSCFG_BAWR_OFF) |
++			(USB_SBUSCFG_BARD_ALIGN_64B << USB_SBUSCFG_BARD_OFF) |
++			(USB_SBUSCFG_AHBBRST_INCR16 << USB_SBUSCFG_AHBBRST_OFF),
++			base + USB2_SBUSCFG_OFF);
 +}
 +
-+BAREBOX_CMD_HELP_START(fan)
-+BAREBOX_CMD_HELP_TEXT("cmd options:\n")
-+BAREBOX_CMD_HELP_OPT("get", "get fan parameter")
-+BAREBOX_CMD_HELP_OPT("set", "set fan parameter")
-+BAREBOX_CMD_HELP_OPT("init", "initialize fan")
++/*
++ * Program the USB → DRAM decoding windows using MBUS information.
++ * For AC5, replicate the special 0x0..USB_DRAM_SIZE mapping.
++ */
++static void marvell_usb_brg_adrdec_setup(struct marvell_ehci *priv)
++{
++	const struct mbus_dram_target_info *dram;
++	void __iomem *base = priv->base;
++	int i;
 +
-+BAREBOX_CMD_HELP_TEXT("\nparameter options:\n")
-+BAREBOX_CMD_HELP_OPT("outmode", "fan controller ouptut mode [0 (adc)|1 (pwm)]")
-+BAREBOX_CMD_HELP_OPT("clkdiv", "fan controller prescaler value [1|2|4|8]")
-+BAREBOX_CMD_HELP_OPT("clkfreq", "input clock frequency (Hz)")
-+BAREBOX_CMD_HELP_OPT("ppr", "fan tachometer pulses per revolution [2|4]")
-+BAREBOX_CMD_HELP_OPT("ctrlmode", "fan control mode [0 (open-loop)|1 (closed-loop)]")
-+BAREBOX_CMD_HELP_OPT("speed", "fan speed register value [0:255]")
-+BAREBOX_CMD_HELP_OPT("rpm", "fan rpm [0:(max fan rpm)]")
-+BAREBOX_CMD_HELP_OPT("level", "fan speed percentage [0:100]")
-+BAREBOX_CMD_HELP_OPT("startv", "fan startup voltage [0|1|2|3]")
-+BAREBOX_CMD_HELP_OPT("gearmult", "gear multiplier [0|1|2]")
-+BAREBOX_CMD_HELP_OPT("pwmpol", "PWM polarity [0 (positive)|1 (negative)]")
-+BAREBOX_CMD_HELP_OPT("faultdet", "enable/disable failure detection [0|1]")
-+BAREBOX_CMD_HELP_OPT("oocdet", "enable/disable out-of-control detection [0|1]")
-+BAREBOX_CMD_HELP_OPT("fault", "fan failure flag [0 (ok)|1 (fault)]")
-+BAREBOX_CMD_HELP_OPT("ooc", "fan out of control flag [1 (ok):0 (ooc)]")
-+BAREBOX_CMD_HELP_OPT("all", "print all fan parameters")
-+BAREBOX_CMD_HELP_TEXT("\n")
-+BAREBOX_CMD_HELP_END
++	dev_info(priv->dev, "USB adrdec setup: ENTER\n");
 +
-+BAREBOX_CMD_START(fan)
-+	.cmd		= do_fan,
-+	BAREBOX_CMD_DESC("fan management")
-+	BAREBOX_CMD_OPTS("<cmd> <devpath> <parameter> [value]")
-+	BAREBOX_CMD_GROUP(CMD_GRP_HWMANIP)
-+	BAREBOX_CMD_HELP(cmd_fan_help)
-+BAREBOX_CMD_END
-\ No newline at end of file
++	dram = mvebu_mbus_dram_info();
++	if (!dram) {
++		dev_err(priv->dev, "no MBUS DRAM info\n");
++		return;
++	}
++
++	for (i = 0; i < 4; i++) {
++		writel(0, base + USB_WINDOW_CTRL(i));
++		writel(0, base + USB_WINDOW_BASE(i));
++	}
++
++	if (priv->dev->of_node &&
++		of_device_is_compatible(priv->dev->of_node, "marvell,ac5-ehci")) {
++		/* map DRAM as seen by USB at address 0x0 (as done in U-Boot) */
++		writel((USB_DRAM_SIZE << 16) |
++				(USB_TO_DRAM_ATTR_ID << 8) |
++				(USB_TO_DRAM_TARGET_ID << 4) | 1,
++				base + USB_WINDOW_CTRL(0));
++		writel(USB_DRAM_BASE, base + USB_WINDOW_BASE(0));
++
++		dev_dbg(priv->dev,
++			"AC5 decoding windows: ctrl=0x%08x base=0x%08x\n",
++			readl(base + USB_WINDOW_CTRL(0)),
++			readl(base + USB_WINDOW_BASE(0)));
++	} else {
++		/* generic mvebu case: one window per each DRAM chip-select */
++
++		for (i = 0; i < dram->num_cs; i++) {
++			const struct mbus_dram_window *cs = dram->cs + i;
++
++			/* Write size, attributes and target id to control register */
++			writel(((cs->size - 1) & 0xffff0000) |
++					(cs->mbus_attr << 8) |
++					(dram->mbus_dram_target_id << 4) | 1,
++					base + USB_WINDOW_CTRL(i));
++
++			/* Write base address to base register */
++			writel(cs->base, base + USB_WINDOW_BASE(i));
++		}
++	}
++
++	for (i = 0; i < 4; i++) {
++		u32 ctrl = readl(base + USB_WINDOW_CTRL(i));
++		u32 winb = readl(base + USB_WINDOW_BASE(i));
++		dev_info(priv->dev, "WIN%d: CTRL=0x%08x BASE=0x%08x\n", i, ctrl, winb);
++	}
++}
++
++/*
++ * Initialization hook called by ehci-hcd.c before starting the host.
++ * Only the bridge address decoding is performed here.
++ */
++static int marvell_ehci_init(void *drvdata)
++{
++	struct marvell_ehci *priv = drvdata;
++
++	marvell_usb_brg_adrdec_setup(priv);
++
++	writel((USB_SBUSCFG_BAWR_ALIGN_64B << USB_SBUSCFG_BAWR_OFF) |
++		(USB_SBUSCFG_BARD_ALIGN_64B << USB_SBUSCFG_BARD_OFF) |
++		(USB_SBUSCFG_AHBBRST_INCR16 << USB_SBUSCFG_AHBBRST_OFF),
++		priv->base + 0x100 + 0x90);
++	mdelay(50);
++
++	/*
++	* The SBUSCFG programming (BAWR/BARD/AHBBRST) in U-Boot is only
++	* required for SoCs without hlock (e.g. Armada3700).
++	* It is currently omitted; if needed in the future, a dedicated
++	* post_init or EHCI core hook can be added.
++	*/
++
++	dev_dbg(priv->dev, "marvell_ehci_init done\n");
++
++	return 0;
++}
++
++static int marvell_ehci_probe(struct device *dev)
++{
++	struct marvell_ehci *priv;
++	struct resource *iores;
++	struct ehci_data data = {};
++	void __iomem *base;
++	struct ehci_host *ehci;
++
++	priv = xzalloc(sizeof(*priv));
++	priv->dev = dev;
++	dev->priv = priv;
++
++	iores = dev_request_mem_resource(dev, 0);
++	if (IS_ERR(iores))
++		return PTR_ERR(iores);
++
++	base = IOMEM(iores->start);
++	priv->base = base;
++
++	/*
++	* On Marvell controllers the EHCI block starts at offset 0x100
++	* from the USB base address.
++	*/
++	data.hccr = base + 0x100;
++
++	u32 capbase = readl(data.hccr);			/* HC_CAPBASE */
++	u8 caplength = capbase & 0xff;			/* CAPLENGTH */
++
++	data.hcor = (void __iomem *)((u8 *)data.hccr + caplength);
++
++	dev_info(dev, "EHCI probe: base=%p hccr=%p hcor=%p\n",
++			base, data.hccr, data.hcor);
++
++	dev_info(dev, "EHCI CAPBASE=0x%08x CAPLENGTH=0x%02x\n",
++			capbase, caplength);
++
++	data.init = marvell_ehci_init;
++	data.drvdata = priv;
++
++	if (of_device_is_compatible(dev->of_node, "marvell,armada-3700-ehci"))
++		marvell_ehci_sbuscfg_fixup(base);
++
++	dev_dbg(dev, "marvell_ehci_probe: done\n");
++
++	ehci = ehci_register(dev, &data);
++	if (IS_ERR(ehci))
++		return PTR_ERR(ehci);
++
++	priv->ehci = ehci;
++
++	return 0;
++}
++
++static void marvell_ehci_remove(struct device *dev)
++{
++	struct marvell_ehci *priv = dev->priv;
++
++	if (priv && priv->ehci)
++		ehci_unregister(priv->ehci);
++}
++
++static const struct of_device_id marvell_ehci_dt_ids[] = {
++	{ .compatible = "marvell,orion-ehci" },
++	{ .compatible = "marvell,armada-3700-ehci" },
++	{ .compatible = "marvell,ac5-ehci" },
++	{ /* sentinel */ }
++};
++
++static struct driver marvell_ehci_driver = {
++	.name			= "marvell-ehci",
++	.probe			= marvell_ehci_probe,
++	.remove			= marvell_ehci_remove,
++	.of_compatible	= DRV_OF_COMPAT(marvell_ehci_dt_ids),
++};
++device_platform_driver(marvell_ehci_driver);
 
 -- 
 2.47.3
