@@ -1,114 +1,94 @@
-From: Anuj Bolewar <bolewara@gmail.com>
-Date: Sun, 02 Aug 2026 20:45:39 +0530
-Subject: [PATCH] drm/virtio: reclaim pending vbufs before tearing down vqs
+From: Junrui Luo <moonafterrain@outlook.com>
+Subject: [PATCH 0/6] powerpc/spufs: assorted fixes
+Date: Sun, 02 Aug 2026 23:51:38 +0800
+Message-Id: <20260802-fixes-v1-0-7368423440f4@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260802-virtio-gpu-reclaim-vbufs-v1-1-9947f18b20e2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTtJaYBUr2JctMMUxyiQKW1MC
- He36vIt/t8hsQonuDQ7KBdJsswV7akBuvt5YpSxGqyxg3HGYhHdZMFpzahMTy8vLCHHhJ1rByL
- n+xDPUPNVOcr7t77e/k45PJi27w+O4wOifY00fAAAAA==
-X-Change-ID: 20260802-virtio-gpu-reclaim-vbufs-4816cc8a5bf9
-To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
- Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
- Gurchetan Singh <gurchetansingh@chromium.org>, 
- Chia-I Wu <olvaffe@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, 
- syzbot+06f9b2a53ba4a5a47644@syzkaller.appspotmail.com, 
- Anuj Bolewar <bolewara@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785683738; l=3365;
- i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=Izg2s1bAooCdMR8KgRv32DrBTVJEQzFdlvpjw9zx8Pk=;
- b=h9UpYnkRd1lshg3i4knVzp2mmcS70EAs631fM2L1vfWoXejfRLFr5wdjYjmmFIl2x2aHrub6k
- ZYLD+9wWZkXAaA0hTCemICJrlbtBADgeCiAmowELimV6O9h/YVTVTof
-X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
- pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
-X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
+X-B4-Tracking: v=1; b=H4sIAIpnb2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDCwMj3bTMitRi3TRjY2Mzw2TDJKPEVCWg2oKiVLAEUGl0bG0tABNQmaV
+ XAAAA
+X-Change-ID: 20260802-fixes-f33361c1b2ae
+To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Paul Mackerras <paulus@ozlabs.org>, Arnd Bergmann <arnd@arndb.de>, 
+ Al Viro <viro@zeniv.linux.org.uk>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2818;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=D3ZdLkxeKQ+GTih21pSwwkDXOkOvUZicqpK0qWxiBCY=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrPz0aWk8f0qquGarOzbMrX/o+01iK+91zkc2ndpez
+ HErJv65tLCjlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJiLEyfA/TGeRYOUegUNz
+ fpgLbjgR/WxWfG6LgGWTS62dxFRPBbsMhv+5q+ydUxz/LE8/Znav8sDslIxt274FHZo19YvO6qX
+ XhabyAADeT0oh
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-virtio_gpu_free_vbufs() destroys the vbufs kmem_cache after the virtqueues
-have already been released. Commands that were queued but never completed
-by the device leave their vbuffers stranded in the virtqueue, so the cache
-still holds live objects when virtio_gpu_deinit() tears everything down.
-This triggers a WARNING in virtio_gpu_free_vbufs:
+Six independent fixes for spufs. There is no dependency between them,
+so they can be applied or dropped individually.
 
-    BUG virtio-gpu-vbufs (Not tainted): Objects remaining in cache
-    on __kmem_cache_shutdown()
+  1/6  spufs_coredump_extra_notes_write() never drops the reference taken
+       by coredump_next_context(), so every SPE context written into a
+       core dump leaks a spu_context. The matching ..._size() path gets
+       this right.
 
-Drain any buffers still sitting in the control and cursor virtqueues in
-virtio_gpu_deinit() after the device has been reset and before the
-virtqueues are deleted, following the same pattern used by virtio_console's
-remove_vqs(). Each reclaimed buffer is released with free_vbuf(), dropping
-the reference on any GEM objects it holds.
+  2/6  do_spu_run() copies out an uninitialized 'status' on the paths
+       where spufs_run_spu() returns before assigning it, leaking four
+       bytes of kernel stack to userspace.
 
-Reported-by: syzbot+06f9b2a53ba4a5a47644@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=06f9b2a53ba4a5a47644
-Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
+  3/6  spu_process_callback() only aligns the NPC value, never bounds it,
+       before using it as an offset into the local store. The register is
+       userspace-controlled, so the following in_be32() can be driven far
+       past the 256K mapping.
+
+  4/6  spufs_setattr() calls setattr_copy() without setattr_prepare().
+       notify_change() leaves that check to the filesystem, so mode and
+       ownership of a context's files can be changed without the usual
+       authorization.
+
+  5/6  spufs_create_gang() calls unuse_gang() with the parent directory's
+       i_rwsem held for write, and the resulting simple_recursive_removal()
+       takes it again as I_MUTEX_CHILD. The task deadlocks against itself
+       and leaves the spufs directory write-locked.
+
+  6/6  The mailbox read/write handlers hold ctx->state_mutex across
+       put_user()/get_user(), so a userfaultfd region or FUSE-backed user
+       buffer can stall the context lock for an arbitrary time.
+
+Patches 1-5 are tagged for stable. 6/6 is deliberately not: it changes the
+atomicity of multi-element mailbox transfers rather than just adding a
+check, so it seems better to let it soak in mainline first.
+
+Build-tested only. I have no Cell or PS3 hardware, so none of this has
+been exercised at runtime.
+
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- drivers/gpu/drm/virtio/virtgpu_drv.h |  1 +
- drivers/gpu/drm/virtio/virtgpu_kms.c |  1 +
- drivers/gpu/drm/virtio/virtgpu_vq.c  | 13 +++++++++++++
- 3 files changed, 15 insertions(+)
+Junrui Luo (6):
+      powerpc/spufs: fix spu_context leak in coredump
+      powerpc/spufs: don't leak kernel stack via spu_run
+      powerpc/spufs: bound NPC against local store size
+      powerpc/spufs: check permissions in spufs_setattr()
+      powerpc/spufs: fix deadlock on gang creation failure
+      powerpc/spufs: don't hold state_mutex during user access
 
-diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
-index 7449907754a..3e491c80873 100644
---- a/drivers/gpu/drm/virtio/virtgpu_drv.h
-+++ b/drivers/gpu/drm/virtio/virtgpu_drv.h
-@@ -332,6 +332,7 @@ void virtio_gpu_array_put_free_work(struct work_struct *work);
- /* virtgpu_vq.c */
- int virtio_gpu_alloc_vbufs(struct virtio_gpu_device *vgdev);
- void virtio_gpu_free_vbufs(struct virtio_gpu_device *vgdev);
-+void virtio_gpu_reclaim_vbufs(struct virtio_gpu_device *vgdev);
- void virtio_gpu_cmd_create_resource(struct virtio_gpu_device *vgdev,
- 				    struct virtio_gpu_object *bo,
- 				    struct virtio_gpu_object_params *params,
-diff --git a/drivers/gpu/drm/virtio/virtgpu_kms.c b/drivers/gpu/drm/virtio/virtgpu_kms.c
-index b4329f28e97..e5a6ae679f3 100644
---- a/drivers/gpu/drm/virtio/virtgpu_kms.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_kms.c
-@@ -298,6 +298,7 @@ void virtio_gpu_deinit(struct drm_device *dev)
- 	flush_work(&vgdev->cursorq.dequeue_work);
- 	flush_work(&vgdev->config_changed_work);
- 	virtio_reset_device(vgdev->vdev);
-+	virtio_gpu_reclaim_vbufs(vgdev);
- 	vgdev->vdev->config->del_vqs(vgdev->vdev);
- }
- 
-diff --git a/drivers/gpu/drm/virtio/virtgpu_vq.c b/drivers/gpu/drm/virtio/virtgpu_vq.c
-index e5e1af8b8e8..95d7a9ef0d9 100644
---- a/drivers/gpu/drm/virtio/virtgpu_vq.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_vq.c
-@@ -208,6 +208,19 @@ static void free_vbuf(struct virtio_gpu_device *vgdev,
- 	kmem_cache_free(vgdev->vbufs, vbuf);
- }
- 
-+void virtio_gpu_reclaim_vbufs(struct virtio_gpu_device *vgdev)
-+{
-+	struct virtio_gpu_vbuffer *vbuf;
-+
-+	while ((vbuf = virtqueue_detach_unused_buf(vgdev->ctrlq.vq))) {
-+		if (vbuf->objs)
-+			virtio_gpu_array_put_free(vbuf->objs);
-+		free_vbuf(vgdev, vbuf);
-+	}
-+	while ((vbuf = virtqueue_detach_unused_buf(vgdev->cursorq.vq)))
-+		free_vbuf(vgdev, vbuf);
-+}
-+
- static void reclaim_vbufs(struct virtqueue *vq, struct list_head *reclaim_list)
- {
- 	struct virtio_gpu_vbuffer *vbuf;
-
+ arch/powerpc/platforms/cell/spufs/coredump.c |  6 +++-
+ arch/powerpc/platforms/cell/spufs/file.c     | 52 ++++++++++++++++------------
+ arch/powerpc/platforms/cell/spufs/inode.c    | 21 +++++++----
+ arch/powerpc/platforms/cell/spufs/run.c      |  2 ++
+ arch/powerpc/platforms/cell/spufs/syscalls.c |  2 +-
+ 5 files changed, 52 insertions(+), 31 deletions(-)
 ---
-base-commit: 2d2338c93da79b3bfe4b6099a931d9468d539952
-change-id: 20260802-virtio-gpu-reclaim-vbufs-4816cc8a5bf9
+base-commit: 02dc699f83d04069fdabc996fc22d47cda47a4a9
+change-id: 20260802-fixes-f33361c1b2ae
 
 Best regards,
---  
-Anuj Bolewar <bolewara@gmail.com>
+-- 
+Junrui Luo <moonafterrain@outlook.com>
 
