@@ -1,275 +1,224 @@
-From: Anuj Bolewar <bolewara@gmail.com>
-Date: Mon, 03 Aug 2026 22:50:47 +0530
-Subject: [PATCH] media: ttusb-dec: bound result copy in
- ttusb_dec_send_command
+From: Kairui Song <kasong@tencent.com>
+Subject: [PATCH RFC 00/15] mm/mglru: frequency guided promotion (MGLRU-FG)
+ and flag cleanup
+Date: Tue, 04 Aug 2026 03:46:56 +0800
+Message-Id: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-fix-ttusb-dec-cmd-result-overflow-v1-1-4a3695a981f7@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNSw7CMAwFr1J5jaUQykdcBbEgjgNBpUF2UpCq3
- h0DeqtZvJkZlCWzwrGbQXjKmstosF51QLfLeGXM0Ri88zt3cBtM+Y21Ng0YmZAeEYW1DRXLxJK
- G8sJ9sPlA29T3YJ6nsJ1+jdP5z9rCnal+xbAsHyir0NGFAAAA
-X-Change-ID: 20260803-fix-ttusb-dec-cmd-result-overflow-7b7b72bc5f44
-To: Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzkaller-bugs@googlegroups.com, 
- syzbot+ac9880be0b0b1a5f54d6@syzkaller.appspotmail.com, 
- Anuj Bolewar <bolewara@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcyMj3dz0nKJS3bR0XeNEo2QLU3MTcyPTJCWg8oKi1LTMCrBR0UpBbs5
+ KsRDB4tKkrNTkEpAhSrW1AGpFfCRxAAAA
+X-Change-ID: 20260722-mglru-fg-3a2c8574725b
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Muchun Song <muchun.song@linux.dev>, 
+ Qi Zheng <qi.zheng@linux.dev>, Ying Huang <ying.huang@linux.alibaba.com>, 
+ Chris Li <chrisl@kernel.org>, Baoquan He <baoquan.he@linux.dev>, 
+ Nico Pache <nico.pache@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
+ Michal Hocko <mhocko@kernel.org>, Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, David Hildenbrand <david@kernel.org>, 
+ Lorenzo Stoakes <ljs@kernel.org>, Barry Song <baohua@kernel.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Vlastimil Babka <vbabka@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, 
+ Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Youngjun Park <youngjun.park@lge.com>, Zi Yan <ziy@nvidia.com>, 
+ Gregory Price <gourry@gourry.net>, 
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
+ Lance Yang <lance.yang@linux.dev>, Hugh Dickins <hughd@google.com>, 
+ SeongJae Park <sj@kernel.org>, David Rientjes <rientjes@google.com>, 
+ Yu Zhao <yuzhao@google.com>, Vernon Yang <vernon2gm@gmail.com>, 
+ Zicheng Wang <wangzicheng@honor.com>, Chen Ridong <chenridong@xiaomi.com>, 
+ Tal Zussman <tz2294@columbia.edu>, Kairui Song <ryncsn@gmail.com>, 
+ linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
+ Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785777646; l=9353;
- i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=dnofLJoU8gMJ7/injRh1rxquFHIdxkMMsLjNYYG+bpg=;
- b=qinybXIZjMcses9IJuVllbkFFWyprDcvtM5l5McJjL0EJiD23NBb1dwYYEZ6lDLPJ6yF/rQZm
- PIWl2ezTKhFALqTQnsMVrzOAqGTKrPkOaI/z4YkPEf5qrFmp2oAQvSE
-X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
- pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
-X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=8628;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=Sdrv3XemOx1Vo85/fr08UdLOt06D3fX3iVkJqHAzPqk=;
+ b=Kyl0bfXZNTA7MNrQdLsqI9g7PxvrQNUUQ7t9uTfxl8vivX1Fo7HBfZ03Nf7DkDWHJKCbEVVo0
+ DciY22taQ1XDsHYkl8uyRcG5NFk3V028B9MMHSM6oISljClHa740cGc
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The result length byte in the response packet is controlled by the
-device and may not match the number of bytes actually received, nor the
-size of the caller's buffer. A malicious device can therefore make
-memcpy() read past the end of the response buffer (which is
-COMMAND_PACKET_SIZE + 4 bytes, leaving only 60 bytes of payload after
-the header) and write past the end of cmd_result, which is only 4 bytes
-for the FE read_status path.
+This is the updated RFC following the idea proposed at LSF/MM/BPF [1] this
+year. It's very usable, stable, and performing well, but I'll keep it RFC
+for V1 as some tests are still ongoing and results can be more accurate
+with further auditing.
 
-Cap the copy to both the received payload length and the caller's
-buffer size, and report the capped length to the caller.
+With this series, I'm seeing an obvious performance gain across all kinds
+of tests, and it reduces MGLRU's flag usage by one. It also fixes several
+long-standing issues including under-accounted PSI and poor workingset
+tracking (especially for page cache).
 
-Reported-by: syzbot+ac9880be0b0b1a5f54d6@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=ac9880be0b0b1a5f54d6
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
+Some test results (CLRU means classical LRU):
+
+Build kernel test, running make -j48 in a 3G memcg, using disk swap and
+holding the kernel and build output on the same NVMe drive, 16 runs using
+different swappiness configurations [2]; the patched version is better than
+mainline at almost every swappiness value, measuring the total average:
+
+        real     sys  pgpgin  pswpin  pswpout  refault_file  refault_anon
+CLRU   6m06s  31m01s   50.3M   3.20M    13.8M         10.3M         3.35M
+Before 2m56s  11m06s   10.6M   1.59M    5.40M          414k         1.03M
+After  2m49s  10m39s    9.0M   1.36M    4.82M          280k          861k
+delta    -7s    -27s    -15%    -14%     -11%          -32%          -16%
+
+MongoDB YCSB workloadb (recordcount:20000000 operationcount:6000000,
+threads:48, in a 16G memcg), 3 runs [3]:
+CLRU:          98389.94 ops/s
+MGLRU Before:  86421.44 ops/s
+MGLRU After:   95378.50 ops/s (+10.3%)
+
+Chromium & Node.js test, using ZRAM as swap, on a 48c96t machine with
+128G memory, 64 workers, run for 1 hour [4]:
+                 Total requests:
+CLRU:                     63822
+MGLRU Before:            153029
+MGLRU After:             225664 (+47.4%)
+
+(NOTE: It seems some recent change broken MGLRU's fainress guarteen and
+also made this test dramatically faster than a few months ago, which isn't
+related to this series and reading are even better now, but I'll take a
+deeper look later.)
+
+FIO, zipf 0.9 distribution on an NVMe disk, in a 16G cgroup, total file
+size 40G; this measures the LRU's theoretical ability to distinguish the
+hotter portion:
+
+fio --name=fg --numjobs=16 --nrfiles=1 \
+    --filename_format="$testdir/rnvmedk.\$jobnum.img" \
+    --size=${FILE_MIB}M \
+    --buffered=1 --ioengine=sync --rw=randread \
+    --random_distribution=zipf:$ZIPF --bs=$BS --time_based \
+    --ramp_time=45s --runtime=600s \
+    --group_reporting
+
+CLRU:   Avg: 2454.37 MB/s
+Before: Avg: 2350.40 MB/s
+After:  Avg: 2611.37 MB/s (+11.1%)
+
+I also retested the LevelDB benchmark from the cache_ext paper [5].
+Interestingly, mainline MGLRU already beats CLRU on this one after a
+recent change in lru_gen_folio_seq that bumps new folios with refs == 1
+to the second-oldest generation. That change accidentally gave random
+reads a higher hotness level while making sequential reads much colder:
+sequential reads involve many readahead hits, and readahead folios start
+with refs == 0, so they're already in the oldest generation, and
+folio_mark_accessed() on a readahead hit has almost no effect on generations
+in mainline MGLRU. Meanwhile, all direct-hit (random read) folios start
+with refs == 1 in the second-oldest generation. As a result, the scan-get
+test natively protects the "get" part and sacrifices the "scan" part.
+That's not the best solution though. It's unreliable because it depends
+on LRU drain timing, and it hurts workloads where the sequential part is
+actually hotter (any workload involving a hotter large file and many
+small cold files will be affected).
+
+This series improves on that base: it covers ordinary workloads without
+hurting the scan-get workload and without relying on that initial bump.
+
+LevelDB Scan / Get, Throughput Total:
+CLRU:         4668.8 ops/s
+MGLRU:        5026.9 ops/s (faster than CLRU, but hurts other workloads)
+MGLRU After:  5029.7 ops/s (fastest in all cases, and no regression)
+
+The hot-sequential and cold-random workload can be easily reproduced with
+SQLite and grep. SQLite continuously scans and looks up a small hot
+portion of a DB file, while grep iterates over a set of small files much
+larger than RAM [6]:
+
+         SQLite scan & lookup time:       Grep iterate time:
+CLRU:                       14.51ms               13281.37ms
+MGLRU mainline:            567.05ms               13694.47ms
+MGLRU After this series:    10.58ms               12930.43ms
+
+The grep cold portion is larger than RAM and accessed only once per
+iteration, so there's no promotion of any of it. CLRU handles
+this reasonably; mainline MGLRU has a clear regression; MGLRU-FG now
+not only recovers but is able to catch some hot parts from the cold grep
+workload. This test is somewhat subjective, but the signal is clear.
+
+Additionally, PSI, smaps, and readahead all benefit from better accuracy
+since this series unifies the flag usage between classical LRU and MGLRU.
+
+Other tests such as MySQL are looking fine, with no regressions.
+
+Refault distance is not included yet, so MGLRU may respond more slowly to
+workingset shifts. That can be added later, as previously demonstrated
+[7], [8].
+
+Extra note about future development: this series is highly compatible with
+ideas like workingset reporting [9]. The "gen climbing folio" design may
+appear to conflict with workingset reporting's idea of using generations
+as access-gap identifiers, but it doesn't — the solution is
+straightforward: once we can extend the generation number to a larger
+value (e.g. 64 or 128), the refs-driven promotion can stop at a lower
+gen (e.g. oldest_gen + 16), leaving the remaining newer generations as
+perfectly time-gap-separated bins.
+
+The tier count is not fixed either; we'll need to find a way to tune it
+if tiers go beyond 4, but that shouldn't be hard.
+
+More details are in the individual commit messages.
+
+Link: https://lore.kernel.org/linux-mm/CAMgjq7BoekNjg-Ra3C8M7=8=75su38w=HD782T5E_cxyeCeH_g@mail.gmail.com/ [1]
+Link: https://lore.kernel.org/linux-mm/CAGsJ_4xre-x0e+qNVm=KLFnO1dbPkPX5RuecqwvTZu-vS+o8yQ@mail.gmail.com/ [2]
+Link: https://github.com/brianfrankcooper/YCSB/blob/master/workloads/workloadb [3]
+Link: https://lore.kernel.org/all/20221220214923.1229538-1-yuzhao@google.com/ [4]
+Link: https://dl.acm.org/doi/10.1145/3731569.3764820 [5]
+Link: https://github.com/ryncsn/emm-test-project/tree/master/sqlite-grep [6]
+Link: https://lwn.net/Articles/945266/ [7]
+Link: https://lore.kernel.org/linux-mm/20260502-mglru-fg-v1-0-913619b014d9@tencent.com/ [8]
+Link: https://lwn.net/Articles/976985/ [9]
+
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-syzbot reports a WARNING in ttusb_dec_send_command: a malformed USB
-device returns a reply whose length byte is larger than the data
-actually received, so ttusb_dec_send_command() over-reads its response
-buffer and can also over-write the caller's result buffer (the FE
-read_status path passes only 4 bytes).
+Kairui Song (15):
+      mm/memcontrol: make lru_zone_size atomic and simplify sanity check
+      mm/memcontrol: allow update of LRU statistic without holding LRU lock
+      mm/mglru: introduce and always use helpers for manipulating page flags
+      mm/mglru: make generation page counters atomic
+      mm/mglru: move max_seq read into walk_update_folio
+      mm/mglru: use explicit tier range in read_ctrl_pos()
+      mm/mglru: move refault workingset activation into lru_gen_refault
+      mm/memcg: add folio-based lruvec live helper
+      mm/mglru: frequency guided workingset promotion (MGLRU-FG)
+      mm/mglru: make folio lru referenced times count a generic API
+      mm/mglru: replace folio workinset check and update with new helper
+      mm/smap: report workingset folios as referenced
+      mm/huge_memory: mark file folio as accessed more accurately on split
+      mm/khugepaged: consider workingset folios as referenced
+      mm/madvise: convert to new lru refs API and better support for MGLRU
 
-This series bounds the memcpy() by both the received payload length and
-the caller's buffer size, and reports the capped length back to the
-caller.
-
-Link: https://syzkaller.appspot.com/bug?extid=ac9880be0b0b1a5f54d6
+ fs/btrfs/compression.c     |   3 +-
+ fs/proc/task_mmu.c         |  22 ++-
+ include/linux/memcontrol.h |  47 +++++-
+ include/linux/mm_inline.h  | 256 ++++++++++++++++++++++++++------
+ include/linux/mmzone.h     | 137 ++++++++++++-----
+ kernel/bounds.c            |   2 +-
+ mm/filemap.c               |   8 +-
+ mm/folio.c                 |  49 +-----
+ mm/huge_memory.c           |   8 +-
+ mm/khugepaged.c            |   6 +-
+ mm/madvise.c               |  37 +++--
+ mm/memcontrol.c            |  22 +--
+ mm/migrate.c               |   4 -
+ mm/page_io.c               |   3 +-
+ mm/readahead.c             |   8 +-
+ mm/vmscan.c                | 360 ++++++++++++++++++++++++++++-----------------
+ mm/workingset.c            |  66 ++++++---
+ 17 files changed, 689 insertions(+), 349 deletions(-)
 ---
- drivers/media/usb/ttusb-dec/ttusb_dec.c  | 53 ++++++++++++++++++++++----------
- drivers/media/usb/ttusb-dec/ttusbdecfe.c |  9 +++---
- drivers/media/usb/ttusb-dec/ttusbdecfe.h |  3 +-
- 3 files changed, 43 insertions(+), 22 deletions(-)
-
-diff --git a/drivers/media/usb/ttusb-dec/ttusb_dec.c b/drivers/media/usb/ttusb-dec/ttusb_dec.c
-index 825a3875989..0a4750c2d12 100644
---- a/drivers/media/usb/ttusb-dec/ttusb_dec.c
-+++ b/drivers/media/usb/ttusb-dec/ttusb_dec.c
-@@ -314,7 +314,8 @@ static u16 crc16(u16 crc, const u8 *buf, size_t len)
- 
- static int ttusb_dec_send_command(struct ttusb_dec *dec, const u8 command,
- 				  int param_length, const u8 params[],
--				  int *result_length, u8 cmd_result[])
-+				  int *result_length, u8 cmd_result[],
-+				  int cmd_result_size)
- {
- 	int result, actual_len;
- 	u8 *b;
-@@ -366,10 +367,24 @@ static int ttusb_dec_send_command(struct ttusb_dec *dec, const u8 command,
- 			       __func__, actual_len, b);
- 		}
- 
--		if (result_length)
--			*result_length = b[3];
--		if (cmd_result && b[3] > 0)
--			memcpy(cmd_result, &b[4], b[3]);
-+		if (result_length) {
-+			int copy_len = b[3];
-+
-+			/* The reply length byte is controlled by the device
-+			 * and may not match the data actually received, so
-+			 * bound the copy to the received payload as well as
-+			 * to the caller's buffer.
-+			 */
-+			if (actual_len > 4)
-+				copy_len = min(copy_len, actual_len - 4);
-+			else
-+				copy_len = 0;
-+			if (cmd_result)
-+				copy_len = min(copy_len, cmd_result_size);
-+			*result_length = copy_len;
-+			if (cmd_result && copy_len > 0)
-+				memcpy(cmd_result, &b[4], copy_len);
-+		}
- 	}
- 
- err_mutex_unlock:
-@@ -389,7 +404,8 @@ static int ttusb_dec_get_stb_state (struct ttusb_dec *dec, unsigned int *mode,
- 
- 	dprintk("%s\n", __func__);
- 
--	result = ttusb_dec_send_command(dec, 0x08, 0, NULL, &c_length, c);
-+	result = ttusb_dec_send_command(dec, 0x08, 0, NULL, &c_length, c,
-+					sizeof(c));
- 	if (result)
- 		return result;
- 
-@@ -448,7 +464,7 @@ static void ttusb_dec_set_pids(struct ttusb_dec *dec)
- 	memcpy(&b[2], &audio, 2);
- 	memcpy(&b[4], &video, 2);
- 
--	ttusb_dec_send_command(dec, 0x50, sizeof(b), b, NULL, NULL);
-+	ttusb_dec_send_command(dec, 0x50, sizeof(b), b, NULL, NULL, 0);
- 
- 	dvb_filter_pes2ts_init(&dec->a_pes2ts, dec->pid[DMX_PES_AUDIO],
- 			       ttusb_dec_audio_pes2ts_cb, dec);
-@@ -902,7 +918,7 @@ static int ttusb_dec_set_interface(struct ttusb_dec *dec,
- 			break;
- 		case TTUSB_DEC_INTERFACE_IN:
- 			result = ttusb_dec_send_command(dec, 0x80, sizeof(b),
--							b, NULL, NULL);
-+							b, NULL, NULL, 0);
- 			if (result)
- 				return result;
- 			result = usb_set_interface(dec->udev, 0, 8);
-@@ -1021,7 +1037,7 @@ static int ttusb_dec_start_ts_feed(struct dvb_demux_feed *dvbdmxfeed)
- 
- 	}
- 
--	result = ttusb_dec_send_command(dec, 0x80, sizeof(b0), b0, NULL, NULL);
-+	result = ttusb_dec_send_command(dec, 0x80, sizeof(b0), b0, NULL, NULL, 0);
- 	if (result)
- 		return result;
- 
-@@ -1056,7 +1072,7 @@ static int ttusb_dec_start_sec_feed(struct dvb_demux_feed *dvbdmxfeed)
- 	memcpy(&b0[5], &dvbdmxfeed->filter->filter.filter_value[0], 1);
- 
- 	result = ttusb_dec_send_command(dec, 0x60, sizeof(b0), b0,
--					&c_length, c);
-+					&c_length, c, sizeof(c));
- 
- 	if (!result) {
- 		if (c_length == 2) {
-@@ -1114,7 +1130,7 @@ static int ttusb_dec_stop_ts_feed(struct dvb_demux_feed *dvbdmxfeed)
- 	struct ttusb_dec *dec = dvbdmxfeed->demux->priv;
- 	u8 b0[] = { 0x00 };
- 
--	ttusb_dec_send_command(dec, 0x81, sizeof(b0), b0, NULL, NULL);
-+	ttusb_dec_send_command(dec, 0x81, sizeof(b0), b0, NULL, NULL, 0);
- 
- 	dec->pva_stream_count--;
- 
-@@ -1135,7 +1151,7 @@ static int ttusb_dec_stop_sec_feed(struct dvb_demux_feed *dvbdmxfeed)
- 	list_del(&finfo->filter_info_list);
- 	spin_unlock_irqrestore(&dec->filter_info_list_lock, flags);
- 	kfree(finfo);
--	ttusb_dec_send_command(dec, 0x62, sizeof(b0), b0, NULL, NULL);
-+	ttusb_dec_send_command(dec, 0x62, sizeof(b0), b0, NULL, NULL, 0);
- 
- 	dec->filter_stream_count--;
- 
-@@ -1238,7 +1254,7 @@ static int ttusb_init_rc( struct ttusb_dec *dec)
- 	if (usb_submit_urb(dec->irq_urb, GFP_KERNEL))
- 		printk("%s: usb_submit_urb failed\n",__func__);
- 	/* enable irq pipe */
--	ttusb_dec_send_command(dec,0xb0,sizeof(b),b,NULL,NULL);
-+	ttusb_dec_send_command(dec, 0xb0, sizeof(b), b, NULL, NULL, 0);
- 
- 	return 0;
- }
-@@ -1354,7 +1370,7 @@ static int ttusb_dec_boot_dsp(struct ttusb_dec *dec)
- 	firmware_csum_ns = htons(firmware_csum);
- 	memcpy(&b0[6], &firmware_csum_ns, 2);
- 
--	result = ttusb_dec_send_command(dec, 0x41, sizeof(b0), b0, NULL, NULL);
-+	result = ttusb_dec_send_command(dec, 0x41, sizeof(b0), b0, NULL, NULL, 0);
- 
- 	if (result) {
- 		release_firmware(fw_entry);
-@@ -1395,7 +1411,7 @@ static int ttusb_dec_boot_dsp(struct ttusb_dec *dec)
- 		}
- 	}
- 
--	result = ttusb_dec_send_command(dec, 0x43, sizeof(b1), b1, NULL, NULL);
-+	result = ttusb_dec_send_command(dec, 0x43, sizeof(b1), b1, NULL, NULL, 0);
- 
- 	release_firmware(fw_entry);
- 	kfree(b);
-@@ -1621,10 +1637,13 @@ static void ttusb_dec_exit_filters(struct ttusb_dec *dec)
- 
- static int fe_send_command(struct dvb_frontend* fe, const u8 command,
- 			   int param_length, const u8 params[],
--			   int *result_length, u8 cmd_result[])
-+			   int *result_length, u8 cmd_result[],
-+			   int cmd_result_size)
- {
- 	struct ttusb_dec* dec = fe->dvb->priv;
--	return ttusb_dec_send_command(dec, command, param_length, params, result_length, cmd_result);
-+	return ttusb_dec_send_command(dec, command, param_length, params,
-+				      result_length, cmd_result,
-+				      cmd_result_size);
- }
- 
- static const struct ttusbdecfe_config fe_config = {
-diff --git a/drivers/media/usb/ttusb-dec/ttusbdecfe.c b/drivers/media/usb/ttusb-dec/ttusbdecfe.c
-index 215221370c1..b013d6dfcbe 100644
---- a/drivers/media/usb/ttusb-dec/ttusbdecfe.c
-+++ b/drivers/media/usb/ttusb-dec/ttusbdecfe.c
-@@ -44,7 +44,8 @@ static int ttusbdecfe_dvbt_read_status(struct dvb_frontend *fe,
- 
- 	*status=0;
- 
--	ret=state->config->send_command(fe, 0x73, sizeof(b), b, &len, result);
-+	ret = state->config->send_command(fe, 0x73, sizeof(b), b, &len, result,
-+					  sizeof(result));
- 	if(ret)
- 		return ret;
- 
-@@ -85,7 +86,7 @@ static int ttusbdecfe_dvbt_set_frontend(struct dvb_frontend *fe)
- 
- 	__be32 freq = htonl(p->frequency / 1000);
- 	memcpy(&b[4], &freq, sizeof (u32));
--	state->config->send_command(fe, 0x71, sizeof(b), b, NULL, NULL);
-+	state->config->send_command(fe, 0x71, sizeof(b), b, NULL, NULL, 0);
- 
- 	return 0;
- }
-@@ -130,7 +131,7 @@ static int ttusbdecfe_dvbs_set_frontend(struct dvb_frontend *fe)
- 	lnb_voltage = htonl(state->voltage);
- 	memcpy(&b[28], &lnb_voltage, sizeof(u32));
- 
--	state->config->send_command(fe, 0x71, sizeof(b), b, NULL, NULL);
-+	state->config->send_command(fe, 0x71, sizeof(b), b, NULL, NULL, 0);
- 
- 	return 0;
- }
-@@ -149,7 +150,7 @@ static int ttusbdecfe_dvbs_diseqc_send_master_cmd(struct dvb_frontend* fe, struc
- 
- 	state->config->send_command(fe, 0x72,
- 				    sizeof(b) - (6 - cmd->msg_len), b,
--				    NULL, NULL);
-+				    NULL, NULL, 0);
- 
- 	return 0;
- }
-diff --git a/drivers/media/usb/ttusb-dec/ttusbdecfe.h b/drivers/media/usb/ttusb-dec/ttusbdecfe.h
-index 73828bb2258..3ccb42977d8 100644
---- a/drivers/media/usb/ttusb-dec/ttusbdecfe.h
-+++ b/drivers/media/usb/ttusb-dec/ttusbdecfe.h
-@@ -14,7 +14,8 @@ struct ttusbdecfe_config
- {
- 	int (*send_command)(struct dvb_frontend* fe, const u8 command,
- 			    int param_length, const u8 params[],
--			    int *result_length, u8 cmd_result[]);
-+			    int *result_length, u8 cmd_result[],
-+			    int cmd_result_size);
- };
- 
- extern struct dvb_frontend* ttusbdecfe_dvbs_attach(const struct ttusbdecfe_config* config);
-
----
-base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260803-fix-ttusb-dec-cmd-result-overflow-7b7b72bc5f44
+base-commit: 94f9b3980dd446b56acf1dfed649e9b32a9f3813
+change-id: 20260722-mglru-fg-3a2c8574725b
 
 Best regards,
 --  
-Anuj Bolewar <bolewara@gmail.com>
+Kairui Song <kasong@tencent.com>
 
