@@ -1,189 +1,254 @@
-From: quanyeyang <quanyemostima@gmail.com>
-Date: Mon, 03 Aug 2026 18:37:45 +0800
-Subject: [PATCH] bpf: disable lockdep while running BPF on lock_release
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 03 Aug 2026 14:39:04 +0200
+Subject: [PATCH RFC v3] wifi: ath10k: make in-order rx amsdu buffers
+ persistent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-fix-lock-tracepoint-bpf-lockdep-v1-1-91fb7afb526a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNwQoCIRRFf2V46x6YhlS/Ei0c51qvQkWdCIb59
- 2xangP33IUqiqDSeVio4C1VUuyw3w3k7y7ewDJ1Jq20VUdlOMiHX8k/uRXnkZPExmMOm5uQOZw
- MjIaz5mCpV3JBn2wPl+uf6zw+4NsvS+v6BcS55mGDAAAA
-X-Change-ID: 20260803-fix-lock-tracepoint-bpf-lockdep-f93e32ea6346
-To: Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Song Liu <song@kernel.org>, Jiri Olsa <jolsa@kernel.org>, 
- KP Singh <kpsingh@kernel.org>, Matt Bobrowski <mattbobrowski@google.com>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, 
- Yonghong Song <yonghong.song@linux.dev>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- "David S. Miller" <davem@davemloft.net>, NeilBrown <neilb@suse.com>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- bpf@vger.kernel.org, syzbot+ef8d17bae14efb960935@syzkaller.appspotmail.com, 
- quanyeyang <quanyemostima@gmail.com>
+Message-Id: <20260803-ath10k-a-msdu-v3-1-af2af21c2f19@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNywrCMBREf6XctVfyKJa4EgQ/wK10kTSpuYitJ
+ LFUS/7dkL3LM8Oc2SC6QC7CsdkguIUizVMBuWtg8Hq6OyRbGAQTB9ZxhTp5zh6o8RntG4dWSdk
+ 6wxS3UDav4EZaq+8G18sZ+hJ6imkOn/qxiFr90S0COY5tp4xRlgvenWiltB++0Oecfy5Du3CtA
+ AAA
+X-Change-ID: 20260719-ath10k-a-msdu-c49334eb091d
+To: Jeff Johnson <jjohnson@kernel.org>, 
+ Johannes Berg <johannes.berg@intel.com>, 
+ Kalle Valo <kvalo@qca.qualcomm.com>, 
+ Michal Kazior <michal.kazior@tieto.com>
+Cc: linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785753465; l=5960;
- i=quanyemostima@gmail.com; s=20260801; h=from:subject:message-id;
- bh=59e0ifW+sGTGcEX8QsHM79W5EIbcnLojZwFB3NuD+hg=;
- b=H9JQ1DDWqpCHrNNQMhoW+/N5WzRz6e6FP3sScJiWpy0LAEM9f5Ioq1Se3uJxwZhG13o01Azns
- YK5WTody7VxB5JQU06Fk5XygJOAY0N4RjbgwN3JjQroXRaLTxKeu3FQ
-X-Developer-Key: i=quanyemostima@gmail.com; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyemostima@gmail.com/20260801 with auth_id=905
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8241; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Vyca6Kdkl5mnaYlJ5S6qCSV/AGIPFC949AIwyje/jKU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqcIvpvtDhFNQO9qNBdEqaIRvyG6dSIJKpj9twV
+ 7orHrL99pyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCanCL6QAKCRBgAj/E00kg
+ cnc6D/wMhnWAd46FAWl7v5+K2ANUuv6gsyzd1wAw4ysLDmhmm8fVL8uD1bvw+p+m+rPdcIQmXNb
+ YoW5wrZ2AB/o/o06gXNRPE5n0QB/y7Xr0ccGtwlY2YxCBByZIhpqviN6GIkhhj3TrE/xM/o07X7
+ ItIwqLP5MCWCNsEKXhvqhkd90mnqL4gPqXBZpbEg6XFyF30ZC69m/fCWcawokveQM8Ah8bz0pwn
+ hNTsISX7Lw/wlrnbkWliy/z34OTkzeXCbv4LtVp21Ffan0HojakIwihr83dRf/vsmt+TVMZQZen
+ 4HA1K1d52pzRsHZvBiombCoxlQQinngRGsB/Efitj7hR/f7Uq3uWD5fKmOkWI//RI33rlbD3YZ5
+ AVWOxZ3RZrM3fxPpTGjHFS3SXpIGNmLmQ3KdZ8JfOOh10n+QEbdCMTAQRi+FMOeRxgOuXoCOGMT
+ oixFJqsJmdlpR1SxU9xiLrgJABEdvpLdLlkrERAzdtYEtxpoKh0EhgWQXWzGFV7MF1pjW1i/OER
+ y+hN5kRAu20cIgy2sTHeB0aN0Qh39LO3qafpWfRAuA264CWIIGI6vyU+Dd+/MSmFTMksXccZCcc
+ Y0bdtp1FiVwO/RNDFABCiD8UpA/BDloSeO3ZfOQEskq6mpNT92i78YZ6YHsDle5sMzXDLN3h+4z
+ foSzx9P4LM5DRzQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-trace_lock_release() runs before __lock_release(), so the lock is
-still on the held stack when attached BPF programs execute.  If those
-programs take another lock of the same class, lockdep reports a false
-recursive locking warning.
+The WCN3990 might split MSDUs among multiple "in-order" indications.
+The driver needs information from previous indications to handle MPDUs
+that are not started by the same indications that complete them. Stash
+the MSDUs of an incomplete MPDU in the driver state, together with the
+peer id, tid and frag flag identifying it, and prepend them to the MSDU
+list of the next indication so the MPDU can be completed instead of
+being dropped and confusing the driver.
 
-Mark lock_release with TRACE_EVENT_FL_BPF_NO_LOCKDEP and temporarily
-disable lockdep around bpf_prog_run_array() for that event.
+Keeping the actual buffers around is required, not just metadata: the
+stashed MSDUs are the payload of the incomplete MPDU, which can only be
+processed and delivered once the buffer flagged as the last MSDU
+arrives. If the next indication does not continue the pending MPDU
+(different peer id, tid or frag flag, or an offload indication), bail
+out to recovery as before, since no firmware is known to do this. Cap
+the stash at the rx ring size and bail out the same way if the last MSDU
+never arrives, so a firmware that stops mid MPDU cannot grow it without
+bound.
 
-Fixes: 149212f07856 ("rhashtable: add lockdep tracking to bucket bit-spin-locks.")
-Reported-by: syzbot+ef8d17bae14efb960935@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=ef8d17bae14efb960935
-Assisted-by: Cursor:GPT-5.6 Sol
-Signed-off-by: quanyeyang <quanyemostima@gmail.com>
+Based on effort of Richard Acayan.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Hi,
+The WCN3990 firmware may split an A-MSDU across multiple HTT "in-order"
+indications. Mainline drops these ("failed to extract amsdu: -11",
+rx_confused, recovery), collapsing throughput under load on affected
+devices. Stash the MSDUs of an incomplete MPDU in the driver state so
+it can be completed by the next indication instead of being dropped.
 
-Small RFC to align on the approach before widening scope. This is the
-alternative to the rhashtable per-init-site lock-class patch [1], taking
-the direction NeilBrown floated in that thread [2].
+Similar patch has been carried out-of-tree (sdm845 mainline, Comma.AI
+vamOS) for a long time.
 
-The problem: trace_lock_release() runs before __lock_release(), so the
-lock is still on lockdep's held stack when an attached BPF program runs.
-If that program takes another lock whose class collides with a held
-lock, lockdep reports a false "possible recursive locking".
+Changes in v3:
+- Rework: keep the per-indication MSDU list on the stack and stash only
+  the MSDUs of an incomplete MPDU between indications; processing and
+  error paths are otherwise unchanged from mainline (Johannes)
+- Track the frag flag of the pending MPDU and bail out to recovery if
+  the continuing indication disagrees (Jeff's review agent)
+- Drop the unused msdu/rxd assignments before the extract loop, a stale
+  pre-v1 leftover (Richard)
+- Return 0 when stashing an incomplete MPDU, waiting for the
+  continuation is not an error
+- Explain in the commit message why the buffers themselves must be
+  kept, not just metadata (Johannes)
+- Link to v2: https://lore.kernel.org/r/20260719-ath10k-a-msdu-v2-1-f479bb9d1217@ixit.cz
 
-syzbot hits this via pidfs + a BPF hash map, because all rhashtable
-bucket locks share one lock_class:
-
-  copy_process -> alloc_pid -> pidfs_add_pid   [pidfs bucket bitlock held]
-    lock_release tracepoint
-      trace_call_bpf -> bpf_prog_run_array
-        rhtab_map_delete_elem -> rhashtable_remove_fast -> rht_lock
-          [same "rhashtable_bucket" class -> false recursion]
-
-Why I pivoted from the per-class rhashtable fix: NeilBrown argued (a)
-sharing one lock_class across instances is common practice (d_lock,
-bd_holder_lock, kobject list_lock), and (b) BPF on lock_release() can
-perturb lockdep for *any* lock the program takes, not only rhashtable
-[2]. Disabling lockdep around the BPF handler addresses that broader
-surface, not just rhashtable.
-
-On the concern that this hides real lock-order bugs: BPF programs are
-user-supplied, sandboxed code; their internal lock ordering is not part
-of the kernel's lock contract, and lockdep cannot validate it
-meaningfully -- here it only produces a false positive.
-
-Scope of this patch (deliberately minimal):
-  - only lock_release is tagged;
-  - only the perf-event attach path (trace_call_bpf) is covered.
-
-Open questions I'd like to align on before doing more:
-  - lock_acquire can produce a (different, ABBA-shaped) false positive
-    by the same mechanism -- tag it too?
-  - raw_tracepoint attaches go through __bpf_trace_run and are not
-    covered -- extend there too?
-  - flag vs always-off: should trace_call_bpf disable lockdep for all
-    BPF programs? The flag keeps blast radius small, but the rationale
-    applies generally.
-
-This fixes the reported syzbot path (perf-event attach to lock_release).
-
-[1]  https://lore.kernel.org/all/20260801-fix-rhashtable-bucket-lockdep-v1-1-15a0f8ae094c@gmail.com/
-[2]  https://lore.kernel.org/r/178572243204.3252194.4367547703856027885@noble.neil.brown.name
+Changes in v2:
+- checkpatch & style. (Jeff)
+- Improve comments.
+- Link to v1: https://lore.kernel.org/linux-wireless/20260210021249.12132-2-mailingradian@gmail.com/
 ---
- include/linux/trace_events.h | 3 +++
- include/trace/events/lock.h  | 2 ++
- kernel/trace/bpf_trace.c     | 6 ++++++
- 3 files changed, 11 insertions(+)
+ drivers/net/wireless/ath/ath10k/htt.h    | 10 +++++++
+ drivers/net/wireless/ath/ath10k/htt_rx.c | 48 +++++++++++++++++++++++++++++++-
+ 2 files changed, 57 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/trace_events.h b/include/linux/trace_events.h
-index 308c76b57d13..6f67b5e9e38d 100644
---- a/include/linux/trace_events.h
-+++ b/include/linux/trace_events.h
-@@ -330,6 +330,7 @@ enum {
- 	TRACE_EVENT_FL_FPROBE_BIT,
- 	TRACE_EVENT_FL_CUSTOM_BIT,
- 	TRACE_EVENT_FL_TEST_STR_BIT,
-+	TRACE_EVENT_FL_BPF_NO_LOCKDEP_BIT,
- };
+diff --git a/drivers/net/wireless/ath/ath10k/htt.h b/drivers/net/wireless/ath/ath10k/htt.h
+index 25c6b2e2f81c8..0a3998bdc34fd 100644
+--- a/drivers/net/wireless/ath/ath10k/htt.h
++++ b/drivers/net/wireless/ath/ath10k/htt.h
+@@ -1924,16 +1924,26 @@ struct ath10k_htt {
  
- /*
-@@ -347,6 +348,7 @@ enum {
-  *                   This is set when the custom event has not been attached
-  *                   to a tracepoint yet, then it is cleared when it is.
-  *  TEST_STR      - The event has a "%s" that points to a string outside the event
-+ *  BPF_NO_LOCKDEP - Disable lockdep while running attached BPF programs
-  */
- enum {
- 	TRACE_EVENT_FL_CAP_ANY		= (1 << TRACE_EVENT_FL_CAP_ANY_BIT),
-@@ -360,6 +362,7 @@ enum {
- 	TRACE_EVENT_FL_FPROBE		= (1 << TRACE_EVENT_FL_FPROBE_BIT),
- 	TRACE_EVENT_FL_CUSTOM		= (1 << TRACE_EVENT_FL_CUSTOM_BIT),
- 	TRACE_EVENT_FL_TEST_STR		= (1 << TRACE_EVENT_FL_TEST_STR_BIT),
-+	TRACE_EVENT_FL_BPF_NO_LOCKDEP	= (1 << TRACE_EVENT_FL_BPF_NO_LOCKDEP_BIT),
- };
- 
- #define TRACE_EVENT_FL_UKPROBE (TRACE_EVENT_FL_KPROBE | TRACE_EVENT_FL_UPROBE)
-diff --git a/include/trace/events/lock.h b/include/trace/events/lock.h
-index 1ded869cd619..5ccf5c54e3d2 100644
---- a/include/trace/events/lock.h
-+++ b/include/trace/events/lock.h
-@@ -72,6 +72,8 @@ DEFINE_EVENT(lock, lock_release,
- 	TP_ARGS(lock, ip)
- );
- 
-+TRACE_EVENT_FLAGS(lock_release, TRACE_EVENT_FL_BPF_NO_LOCKDEP);
+ 	bool tx_mem_allocated;
+ 	const struct ath10k_htt_tx_ops *tx_ops;
+ 	const struct ath10k_htt_rx_ops *rx_ops;
+ 	bool disable_tx_comp;
+ 	bool bundle_tx;
+ 	struct sk_buff_head tx_req_head;
+ 	struct sk_buff_head tx_complete_head;
 +
- #ifdef CONFIG_LOCK_STAT
++	/* MSDUs of an MPDU left incomplete by an in-order indication, waiting
++	 * for the next indication to continue it
++	 */
++	struct {
++		u8 tid;
++		u16 peer_id;
++		bool frag;
++		struct sk_buff_head msdus;
++	} rx_in_ord_split;
+ };
  
- DEFINE_EVENT(lock, lock_contended,
-diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c
-index 75495a5c3507..f2460f3c860e 100644
---- a/kernel/trace/bpf_trace.c
-+++ b/kernel/trace/bpf_trace.c
-@@ -24,6 +24,7 @@
- #include <linux/key.h>
- #include <linux/namei.h>
- #include <linux/file.h>
-+#include <linux/lockdep.h>
+ struct ath10k_htt_tx_ops {
+ 	int (*htt_send_rx_ring_cfg)(struct ath10k_htt *htt);
+ 	int (*htt_send_frag_desc_bank_cfg)(struct ath10k_htt *htt);
+ 	int (*htt_alloc_frag_desc)(struct ath10k_htt *htt);
+ 	void (*htt_free_frag_desc)(struct ath10k_htt *htt);
+ 	int (*htt_tx)(struct ath10k_htt *htt, enum ath10k_hw_txrx_mode txmode,
+diff --git a/drivers/net/wireless/ath/ath10k/htt_rx.c b/drivers/net/wireless/ath/ath10k/htt_rx.c
+index ab2d373b4750d..40fdde280a6f1 100644
+--- a/drivers/net/wireless/ath/ath10k/htt_rx.c
++++ b/drivers/net/wireless/ath/ath10k/htt_rx.c
+@@ -291,16 +291,18 @@ void ath10k_htt_rx_free(struct ath10k_htt *htt)
+ 		return;
  
- #include <net/bpf_sk_storage.h>
+ 	timer_delete_sync(&htt->rx_ring.refill_retry_timer);
  
-@@ -110,6 +111,7 @@ static u64 bpf_uprobe_multi_entry_ip(struct bpf_run_ctx *ctx);
-  */
- unsigned int trace_call_bpf(struct trace_event_call *call, void *ctx)
- {
-+	bool no_lockdep = call->flags & TRACE_EVENT_FL_BPF_NO_LOCKDEP;
- 	unsigned int ret;
+ 	skb_queue_purge(&htt->rx_msdus_q);
+ 	skb_queue_purge(&htt->rx_in_ord_compl_q);
+ 	skb_queue_purge(&htt->tx_fetch_ind_q);
  
- 	cant_sleep();
-@@ -144,8 +146,12 @@ unsigned int trace_call_bpf(struct trace_event_call *call, void *ctx)
- 	 * rcu_dereference() which is accepted risk.
++	skb_queue_purge(&htt->rx_in_ord_split.msdus);
++
+ 	spin_lock_bh(&htt->rx_ring.lock);
+ 	ath10k_htt_rx_ring_free(htt);
+ 	spin_unlock_bh(&htt->rx_ring.lock);
+ 
+ 	dma_free_coherent(htt->ar->dev,
+ 			  ath10k_htt_get_rx_ring_size(htt),
+ 			  ath10k_htt_get_vaddr_ring(htt),
+ 			  htt->rx_ring.base_paddr);
+@@ -841,16 +843,18 @@ int ath10k_htt_rx_alloc(struct ath10k_htt *htt)
+ 	htt->rx_ring.sw_rd_idx.msdu_payld = 0;
+ 	hash_init(htt->rx_ring.skb_table);
+ 
+ 	skb_queue_head_init(&htt->rx_msdus_q);
+ 	skb_queue_head_init(&htt->rx_in_ord_compl_q);
+ 	skb_queue_head_init(&htt->tx_fetch_ind_q);
+ 	atomic_set(&htt->num_mpdus_ready, 0);
+ 
++	skb_queue_head_init(&htt->rx_in_ord_split.msdus);
++
+ 	ath10k_dbg(ar, ATH10K_DBG_BOOT, "htt rx ring size %d fill_level %d\n",
+ 		   htt->rx_ring.size, htt->rx_ring.fill_level);
+ 	return 0;
+ 
+ err_dma_idx:
+ 	dma_free_coherent(htt->ar->dev,
+ 			  ath10k_htt_get_rx_ring_size(htt),
+ 			  vaddr_ring,
+@@ -3296,16 +3300,38 @@ static int ath10k_htt_rx_in_ord_ind(struct ath10k *ar, struct sk_buff *skb)
+ 		ath10k_warn(ar, "dropping invalid in order rx indication\n");
+ 		return -EINVAL;
+ 	}
+ 
+ 	/* The event can deliver more than 1 A-MSDU. Each A-MSDU is later
+ 	 * extracted and processed.
  	 */
- 	rcu_read_lock();
-+	if (no_lockdep)
-+		lockdep_off();
- 	ret = bpf_prog_run_array(rcu_dereference(call->prog_array),
- 				 ctx, bpf_prog_run);
-+	if (no_lockdep)
-+		lockdep_on();
- 	rcu_read_unlock();
+ 	__skb_queue_head_init(&list);
++
++	if (!skb_queue_empty(&htt->rx_in_ord_split.msdus)) {
++		/* An MPDU left incomplete by a previous indication is
++		 * pending. It might still be possible to handle indications
++		 * that do not continue it if there is only one peer that
++		 * splits at each given moment. We are bailing out because we
++		 * should have a test case for this before trying to fix it.
++		 */
++		if (tid != htt->rx_in_ord_split.tid ||
++		    peer_id != htt->rx_in_ord_split.peer_id ||
++		    frag != htt->rx_in_ord_split.frag ||
++		    offload) {
++			ath10k_warn(ar, "split amsdu did not resume immediately\n");
++			htt->rx_confused = true;
++			__skb_queue_purge(&htt->rx_in_ord_split.msdus);
++			ath10k_core_start_recovery(ar);
++			return -EIO;
++		}
++
++		skb_queue_splice_init(&htt->rx_in_ord_split.msdus, &list);
++	}
++
+ 	if (ar->hw_params.target_64bit)
+ 		ret = ath10k_htt_rx_pop_paddr64_list(htt, &resp->rx_in_ord_ind,
+ 						     &list);
+ 	else
+ 		ret = ath10k_htt_rx_pop_paddr32_list(htt, &resp->rx_in_ord_ind,
+ 						     &list);
  
-  out:
+ 	if (ret < 0) {
+@@ -3334,17 +3360,37 @@ static int ath10k_htt_rx_in_ord_ind(struct ath10k *ar, struct sk_buff *skb)
+ 			 */
+ 			ath10k_htt_rx_h_ppdu(ar, &amsdu, status, vdev_id);
+ 			ath10k_htt_rx_h_filter(ar, &amsdu, status, NULL);
+ 			ath10k_htt_rx_h_mpdu(ar, &amsdu, status, false, NULL,
+ 					     NULL, peer_id, frag);
+ 			ath10k_htt_rx_h_enqueue(ar, &amsdu, status);
+ 			break;
+ 		case -EAGAIN:
+-			fallthrough;
++			/* The MPDU is incomplete. Stash the remaining MSDUs
++			 * and wait for the next indication to continue it.
++			 * A last MSDU that never arrives would otherwise keep
++			 * growing the stash on every indication, so give up
++			 * once it cannot plausibly be an A-MSDU any more.
++			 */
++			if (skb_queue_len(&list) > HTT_RX_RING_SIZE) {
++				ath10k_warn(ar, "split amsdu exceeds %d msdus\n",
++					    HTT_RX_RING_SIZE);
++				htt->rx_confused = true;
++				__skb_queue_purge(&list);
++				ath10k_core_start_recovery(ar);
++				return -EIO;
++			}
++
++			htt->rx_in_ord_split.tid = tid;
++			htt->rx_in_ord_split.peer_id = peer_id;
++			htt->rx_in_ord_split.frag = frag;
++			skb_queue_splice_init(&list,
++					      &htt->rx_in_ord_split.msdus);
++			return 0;
+ 		default:
+ 			/* Should not happen. */
+ 			ath10k_warn(ar, "failed to extract amsdu: %d\n", ret);
+ 			htt->rx_confused = true;
+ 			__skb_queue_purge(&list);
+ 			ath10k_core_start_recovery(ar);
+ 			return -EIO;
+ 		}
 
 ---
-base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260803-fix-lock-tracepoint-bpf-lockdep-f93e32ea6346
+base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
+change-id: 20260719-ath10k-a-msdu-c49334eb091d
 
 Best regards,
 --  
-quanyeyang <quanyemostima@gmail.com>
+David Heidelberg <david@ixit.cz>
 
