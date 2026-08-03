@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 04 Aug 2026 03:47:06 +0800
-Subject: [PATCH RFC 10/15] mm/mglru: make folio lru referenced times count
- a generic API
+Date: Tue, 04 Aug 2026 03:47:07 +0800
+Subject: [PATCH RFC 11/15] mm/mglru: replace folio workinset check and
+ update with new helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-mglru-fg-v1-10-4d8dad39dad6@tencent.com>
+Message-Id: <20260804-mglru-fg-v1-11-4d8dad39dad6@tencent.com>
 References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
@@ -35,306 +35,228 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=9394;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=7823;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=pavYdhuAU5OwgfCxwjbABkIxiu5hT6fbcrjm/x7ACsw=;
- b=d3wg6Yy52t36UmlNDlDQoCaeid1WRHhSSSH1k9fIA07ImY/PrYXUV4Ynfyh44gvYQPVityi4D
- GpazfrxHVV0APh8Tm1fpf0blBikgvUg/l5TmvuUwYEJSj4j9ENJVudp
+ bh=ps3GPccJmNKKFg75e7bKrntkjE3H1Gau9WECQyN6J8c=;
+ b=SsYlfhIoI9qTSRrpCosoUsyZvOU0ul0m78d3Qr/DFKMMXzkq44g4dt3l0QbyqaioklkvikIIo
+ XQr9zDOideJDFLJAUTIr+IvQonmZ1XL5DQ4gdvvRSPbhot5/9ELDycb
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To prepare for unifying the API for checking folio referenced status,
-expose the referenced times counting as a generic API. For MGLRU this
-helps to adapt other subsystem based on the referenced times counting,
-for non-MGLRU this is still bitwise compatible and there won't be
-major behavior change.
+With the new folio LRU refs tracking API, when MGLRU enabled, a folio
+is considered a workingset folio if its referenced count > 1. This is
+compatible with classical LRU and reasonable in many ways:
+
+The PG_referenced and PG_workingset are used as the lower bits of the
+LRU refs counter, and MGLRU will make use of extra bits as higher bits.
+
+So when MGLRU is disabled, all higher bits are always 0, making the
+check bit-wise equal to the old behavior. Active/inactive LRU sets
+PG_workingset explicitly for folios moved from active list to inactive
+list, and that makes the LRU refs tracking API (folio_is_workingset)
+report a referenced number > 1. Clearing PG_workingset will always
+return a value <= 1.
+
+When MGLRU is enabled, a folio referenced twice is considered a
+workingset folio, which is basically the same as how active/inactive LRU
+used to promote a file page to the active list. Note for
+active/inactive, the folio has to be marked inactive and PG_workingset
+before eviction, but MGLRU doesn't have a demotion process, so this
+simplified check ensures we have a stable definition and accurate
+readings in PSI and readaheads just like before.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 233 ++++++++++++++++++++++++++++++----------------
- mm/migrate.c              |   2 -
- 2 files changed, 155 insertions(+), 80 deletions(-)
+ fs/btrfs/compression.c | 3 ++-
+ mm/filemap.c           | 8 ++++----
+ mm/madvise.c           | 4 ++--
+ mm/page_io.c           | 3 ++-
+ mm/readahead.c         | 8 ++++----
+ mm/vmscan.c            | 2 +-
+ mm/workingset.c        | 4 ++--
+ 7 files changed, 17 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 944baa91bf18..a13b7d3c033a 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -94,6 +94,161 @@ static __always_inline enum lru_list folio_lru_list(const struct folio *folio)
- 	return lru;
- }
+diff --git a/fs/btrfs/compression.c b/fs/btrfs/compression.c
+index ffb6b52863a7..e756403e8bd5 100644
+--- a/fs/btrfs/compression.c
++++ b/fs/btrfs/compression.c
+@@ -21,6 +21,7 @@
+ #include <linux/sched/mm.h>
+ #include <linux/log2.h>
+ #include <linux/shrinker.h>
++#include <linux/mm_inline.h>
+ #include "misc.h"
+ #include "ctree.h"
+ #include "fs.h"
+@@ -448,7 +449,7 @@ static noinline int add_ra_bio_folios(struct inode *inode, u64 compressed_end,
+ 			continue;
+ 		}
  
-+/**
-+ * lru_refs_from_flags - Return LRU referenced / access count from folio flags.
-+ * @flags: folio flags
-+ */
-+static inline int lru_refs_from_flags(unsigned long flags)
-+{
-+	int refs;
-+
-+	/*
-+	 * Return the total number of accesses. Also see the comment on
-+	 * LRU_REFS_FLAGS.
-+	 */
-+	refs = (flags & BIT(PG_referenced)) ? BIT(0) : 0;
-+	refs += (flags & BIT(PG_workingset)) ? BIT(1) : 0;
-+	refs += ((flags & LRU_REFS_MASK) >> LRU_REFS_PGOFF) << 2;
-+	return refs;
-+}
-+
-+/**
-+ * lru_refs_set_flags - Set the LRU referenced / access count to specified folio flags.
-+ * @flags: pointer to the folio flags
-+ * @refs: referenced / access count number, between 0 and LRU_REFS_MAX, inclusive.
-+ */
-+static inline void lru_refs_set_flags(unsigned long *flags, unsigned int refs)
-+{
-+	VM_WARN_ON_ONCE(refs > LRU_REFS_MAX);
-+	BUILD_BUG_ON((LRU_REFS_MAX >> 2) > (BIT(LRU_REFS_WIDTH) - 1));
-+	*flags &= ~LRU_REFS_FLAGS;
-+	if (refs & BIT(0))
-+		*flags |= BIT(PG_referenced);
-+	if (refs & BIT(1))
-+		*flags |= BIT(PG_workingset);
-+	*flags |= (((unsigned long)refs) >> 2) << LRU_REFS_PGOFF;
-+}
-+
-+static inline int folio_lru_refs(const struct folio *folio)
-+{
-+	return lru_refs_from_flags(READ_ONCE(*const_folio_flags(folio, 0)));
-+}
-+
-+static inline void folio_set_lru_refs(struct folio *folio, unsigned int refs)
-+{
-+	unsigned long new_flags, old_flags = READ_ONCE(*folio_flags(folio, 0));
-+
-+	do {
-+		new_flags = old_flags;
-+		lru_refs_set_flags(&new_flags, refs);
-+	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
-+}
-+
-+int folio_inc_lru_refs(struct folio *folio, bool is_fault, bool is_exec);
-+
-+/**
-+ * folio_is_referenced - Tell if a folio was accessed before.
-+ * @folio: the folio.
-+ *
-+ * This helper currently only works as intended for MGLRU, as it checks
-+ * all LRU_REFS_FLAGS. It might be fine for non-MGLRU to replace
-+ * folio_test_referenced in some cases but the user should be careful.
-+ *
-+ * Returns: true if the folio's LRU referenced / accessed count > 0.
-+ */
-+static inline bool folio_is_referenced(const struct folio *folio)
-+{
-+	return folio_lru_refs(folio) >= LRU_REFS_REFERENCED;
-+}
-+
-+/**
-+ * folio_mark_referenced - Mark a folio as referenced.
-+ * @folio: the folio.
-+ *
-+ * Ensures the folio's LRU referenced count is at least
-+ * LRU_REFS_REFERENCED. Won't do anything if the count is already larger
-+ * than that. This helper currently only works as intended for MGLRU.
-+ * Not a drop-in replacement, but should be fine for non-MGLRU to replace
-+ * folio_set_referenced with this after audit.
-+ */
-+static inline void folio_mark_referenced(struct folio *folio)
-+{
-+	unsigned long new_flags, old_flags = READ_ONCE(*folio_flags(folio, 0));
-+
-+	do {
-+		new_flags = old_flags;
-+		if (lru_refs_from_flags(new_flags) >= LRU_REFS_REFERENCED)
-+			return;
-+		lru_refs_set_flags(&new_flags, LRU_REFS_REFERENCED);
-+	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
-+}
-+
-+/**
-+ * folio_mark_referenced_by_bit - Mark a folio as referenced by bit.
-+ * @folio: the folio.
-+ *
-+ * non-MGLRU may want to make use of the lowest LRU referenced count bit
-+ * explicitly as a referenced mark.
-+ */
-+static inline void folio_mark_referenced_by_bit(struct folio *folio)
-+{
-+	set_bit(PG_referenced, folio_flags(folio, 0));
-+}
-+
-+/**
-+ * folio_clear_referenced_by_bit - Clear the referenced bit of a folio.
-+ * @folio: the folio.
-+ */
-+static inline void folio_clear_referenced_by_bit(struct folio *folio)
-+{
-+	clear_bit(PG_referenced, folio_flags(folio, 0));
-+}
-+
-+/**
-+ * folio_test_clear_referenced_by_bit - Test and clear the referenced bit
-+ * @folio: the folio.
-+ */
-+static inline bool folio_test_clear_referenced_by_bit(struct folio *folio)
-+{
-+	return test_and_clear_bit(PG_referenced, folio_flags(folio, 0));
-+}
-+
-+/**
-+ * folio_is_referenced_by_bit - Test if the referenced bit of a folio is set.
-+ * @folio: the folio.
-+ */
-+static inline bool folio_is_referenced_by_bit(const struct folio *folio)
-+{
-+	return test_bit(PG_referenced, const_folio_flags(folio, 0));
-+}
-+
-+/**
-+ * folio_is_workingset - Tell if a folio is part of the workingset.
-+ * @folio: the folio.
-+ *
-+ * Can be used to replace folio_test_workingset safely. For MGLRU the LRU
-+ * referenced count tells if a folio is a workingset as intended. For non-MGLRU,
-+ * the check below only holds true if the PG_workingset bit is set.
-+ */
-+static inline bool folio_is_workingset(const struct folio *folio)
-+{
-+	return folio_lru_refs(folio) >= LRU_REFS_WORKINGSET;
-+}
-+
-+/**
-+ * folio_mark_workingset_by_bit - Set the workingset bit of a folio.
-+ * @folio: the folio.
-+ */
-+static inline void folio_mark_workingset_by_bit(struct folio *folio)
-+{
-+	set_bit(PG_workingset, folio_flags(folio, 0));
-+}
-+
-+static inline void folio_migrate_refs(struct folio *new, const struct folio *old)
-+{
-+	folio_set_lru_refs(new, folio_lru_refs(old));
-+}
-+
- #ifdef CONFIG_LRU_GEN
+-		if (!*memstall && folio_test_workingset(folio)) {
++		if (!*memstall && folio_is_workingset(folio)) {
+ 			psi_memstall_enter(pflags);
+ 			*memstall = 1;
+ 		}
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 6afec636881f..a88a6140ed09 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1259,7 +1259,7 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
+ 	bool in_thrashing;
  
- static inline bool lru_gen_switching(void)
-@@ -171,58 +326,6 @@ static inline void lru_gen_set_flags(unsigned long *flags, int gen)
- 	*flags |= (gen + 1UL) << LRU_GEN_PGOFF;
- }
+ 	if (bit_nr == PG_locked &&
+-	    !folio_test_uptodate(folio) && folio_test_workingset(folio)) {
++	    !folio_test_uptodate(folio) && folio_is_workingset(folio)) {
+ 		delayacct_thrashing_start(&in_thrashing);
+ 		psi_memstall_enter(&pflags);
+ 		thrashing = true;
+@@ -1414,7 +1414,7 @@ void softleaf_entry_wait_on_locked(softleaf_t entry, spinlock_t *ptl)
+ 	struct folio *folio = softleaf_to_folio(entry);
  
--/**
-- * lru_refs_from_flags - Return LRU referenced / access count from folio flags.
-- * @flags: folio flags
-- */
--static inline int lru_refs_from_flags(unsigned long flags)
--{
--	int refs;
--
--	/*
--	 * Return the total number of accesses. Also see the comment on
--	 * LRU_REFS_FLAGS.
--	 */
--	refs = (flags & BIT(PG_referenced)) ? BIT(0) : 0;
--	refs += (flags & BIT(PG_workingset)) ? BIT(1) : 0;
--	refs += ((flags & LRU_REFS_MASK) >> LRU_REFS_PGOFF) << 2;
--	return refs;
--}
--
--/**
-- * lru_refs_set_flags - Set the LRU referenced / access count to specified folio flags.
-- * @flags: pointer to the folio flags
-- * @refs: referenced / access count number, between 0 and LRU_REFS_MAX, inclusive.
-- */
--static inline void lru_refs_set_flags(unsigned long *flags, unsigned int refs)
--{
--	VM_WARN_ON_ONCE(refs > LRU_REFS_MAX);
--	BUILD_BUG_ON((LRU_REFS_MAX >> 2) > (BIT(LRU_REFS_WIDTH) - 1));
--	*flags &= ~LRU_REFS_FLAGS;
--	if (refs & BIT(0))
--		*flags |= BIT(PG_referenced);
--	if (refs & BIT(1))
--		*flags |= BIT(PG_workingset);
--	*flags |= (((unsigned long)refs) >> 2) << LRU_REFS_PGOFF;
--}
--
--static inline int folio_lru_refs(const struct folio *folio)
--{
--	return lru_refs_from_flags(READ_ONCE(*const_folio_flags(folio, 0)));
--}
--
--static inline void folio_set_lru_refs(struct folio *folio, unsigned int refs)
--{
--	unsigned long new_flags, old_flags = READ_ONCE(*folio_flags(folio, 0));
--
--	do {
--		new_flags = old_flags;
--		lru_refs_set_flags(&new_flags, refs);
--	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
--}
--
--int folio_inc_lru_refs(struct folio *folio, bool is_fault, bool is_exec);
--
- static inline int folio_lru_gen(const struct folio *folio)
+ 	q = folio_waitqueue(folio);
+-	if (!folio_test_uptodate(folio) && folio_test_workingset(folio)) {
++	if (!folio_test_uptodate(folio) && folio_is_workingset(folio)) {
+ 		delayacct_thrashing_start(&in_thrashing);
+ 		psi_memstall_enter(&pflags);
+ 		thrashing = true;
+@@ -2510,7 +2510,7 @@ static void filemap_get_read_batch(struct address_space *mapping,
+ static int filemap_read_folio(struct file *file, filler_t filler,
+ 		struct folio *folio)
  {
- 	return lru_gen_from_flags(READ_ONCE(*const_folio_flags(folio, 0)));
-@@ -369,11 +472,6 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	return true;
+-	bool workingset = folio_test_workingset(folio);
++	bool workingset = folio_is_workingset(folio);
+ 	unsigned long pflags;
+ 	int error;
+ 
+@@ -3981,7 +3981,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
+ 		 */
+ 		if ((map_ret & VM_FAULT_NOPAGE) &&
+ 		    !(vmf->flags & FAULT_FLAG_TRIED) &&
+-		    !folio_test_workingset(folio) &&
++		    !folio_is_workingset(folio) &&
+ 		    !(vma->vm_flags & (VM_SEQ_READ | VM_EXEC))) {
+ 			unsigned short mmap_miss;
+ 
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 07a21ca31bad..abb17760b8b5 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -427,7 +427,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 		folio_clear_referenced(folio);
+ 		folio_test_clear_young(folio);
+ 		if (folio_test_active(folio))
+-			folio_set_workingset(folio);
++			folio_mark_workingset_by_bit(folio);
+ 		if (pageout) {
+ 			if (folio_isolate_lru(folio)) {
+ 				if (folio_test_unevictable(folio))
+@@ -542,7 +542,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 		folio_clear_referenced(folio);
+ 		folio_test_clear_young(folio);
+ 		if (folio_test_active(folio))
+-			folio_set_workingset(folio);
++			folio_mark_workingset_by_bit(folio);
+ 		if (pageout) {
+ 			if (folio_isolate_lru(folio)) {
+ 				if (folio_test_unevictable(folio))
+diff --git a/mm/page_io.c b/mm/page_io.c
+index e4fa7ffffe8b..e7efc5bff668 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -25,6 +25,7 @@
+ #include <linux/sched/task.h>
+ #include <linux/delayacct.h>
+ #include <linux/zswap.h>
++#include <linux/mm_inline.h>
+ #include "swap.h"
+ #include "swap_table.h"
+ 
+@@ -452,7 +453,7 @@ void swap_read_folio(struct swap_io_ctx *ctx, struct folio *folio)
+ {
+ 	struct swap_info_struct *sis = __swap_entry_to_info(folio->swap);
+ 	bool synchronous = sis->flags & SWP_SYNCHRONOUS_IO;
+-	bool workingset = folio_test_workingset(folio);
++	bool workingset = folio_is_workingset(folio);
+ 	unsigned long pflags;
+ 	bool in_thrashing;
+ 
+diff --git a/mm/readahead.c b/mm/readahead.c
+index 558c92957518..3ab796af6490 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -302,7 +302,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
+ 		}
+ 		if (i == mark)
+ 			folio_set_readahead(folio);
+-		ractl->_workingset |= folio_test_workingset(folio);
++		ractl->_workingset |= folio_is_workingset(folio);
+ 		ractl->_nr_pages += min_nrpages;
+ 		i += min_nrpages;
+ 	}
+@@ -474,7 +474,7 @@ static inline int ra_alloc_folio(struct readahead_control *ractl, pgoff_t index,
+ 	}
+ 
+ 	ractl->_nr_pages += 1UL << order;
+-	ractl->_workingset |= folio_test_workingset(folio);
++	ractl->_workingset |= folio_is_workingset(folio);
+ 	return 0;
  }
  
--static inline void folio_migrate_refs(struct folio *new, const struct folio *old)
--{
--	folio_set_lru_refs(new, folio_lru_refs(old));
--}
--
- #else /* !CONFIG_LRU_GEN */
+@@ -817,7 +817,7 @@ void readahead_expand(struct readahead_control *ractl,
+ 			folio_put(folio);
+ 			return;
+ 		}
+-		if (unlikely(folio_test_workingset(folio)) &&
++		if (unlikely(folio_is_workingset(folio)) &&
+ 				!ractl->_workingset) {
+ 			ractl->_workingset = true;
+ 			psi_memstall_enter(&ractl->_pflags);
+@@ -846,7 +846,7 @@ void readahead_expand(struct readahead_control *ractl,
+ 			folio_put(folio);
+ 			return;
+ 		}
+-		if (unlikely(folio_test_workingset(folio)) &&
++		if (unlikely(folio_is_workingset(folio)) &&
+ 				!ractl->_workingset) {
+ 			ractl->_workingset = true;
+ 			psi_memstall_enter(&ractl->_pflags);
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 9c8d9e3af375..913e69eae534 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -2268,7 +2268,7 @@ static void shrink_active_list(unsigned long nr_to_scan,
+ 		}
  
- static inline bool lru_gen_enabled(void)
-@@ -401,27 +499,6 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	return false;
+ 		folio_clear_active(folio);	/* we are de-activating */
+-		folio_set_workingset(folio);
++		folio_mark_workingset_by_bit(folio);
+ 		list_add(&folio->lru, &l_inactive);
+ 	}
+ 
+diff --git a/mm/workingset.c b/mm/workingset.c
+index 452fe8554990..568a3e44cd5e 100644
+--- a/mm/workingset.c
++++ b/mm/workingset.c
+@@ -438,7 +438,7 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
+ 	eviction >>= bucket_order[file];
+ 	workingset_age_nonresident(lruvec, folio_nr_pages(folio));
+ 	return pack_shadow(memcgid, pgdat, eviction,
+-			   folio_test_workingset(folio), file);
++			   folio_is_workingset(folio), file);
  }
  
--static inline int folio_lru_refs(const struct folio *folio)
--{
--	return 0;
--}
--
--static inline void folio_set_lru_refs(struct folio *folio, unsigned int refs)
--{
--}
--
--static inline int folio_inc_lru_refs(struct folio *folio, bool promote, bool is_exec)
--{
--	return 0;
--}
--
--static inline void folio_migrate_refs(struct folio *new, const struct folio *old)
--{
--	if (folio_test_referenced(old))
--		folio_set_referenced(new);
--	if (folio_test_workingset(old))
--		folio_set_workingset(new);
--}
- #endif /* CONFIG_LRU_GEN */
+ /**
+@@ -609,7 +609,7 @@ void workingset_refault(struct folio *folio, void *shadow)
  
- static __always_inline
-diff --git a/mm/migrate.c b/mm/migrate.c
-index c737d0682fa4..806f1e913a38 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -786,8 +786,6 @@ void folio_migrate_flags(struct folio *newfolio, struct folio *folio)
- 		folio_set_active(newfolio);
- 	} else if (folio_test_clear_unevictable(folio))
- 		folio_set_unevictable(newfolio);
--	if (folio_test_workingset(folio))
--		folio_set_workingset(newfolio);
- 	if (folio_test_checked(folio))
- 		folio_set_checked(newfolio);
- 	/*
+ 	/* Folio was active prior to eviction */
+ 	if (workingset) {
+-		folio_set_workingset(folio);
++		folio_mark_workingset_by_bit(folio);
+ 		mod_lruvec_state(lruvec, WORKINGSET_RESTORE_BASE + file, nr);
+ 	}
+ out:
 
 -- 
 2.55.0
