@@ -1,176 +1,113 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 03 Aug 2026 11:50:26 +0200
-Subject: [PATCH v3 2/2] arm64: dts: qcom: sdm845-shift-axolotl: Add
- actuator for main rear camera
+From: Markuss Broks <markuss.broks@gmail.com>
+Date: Mon, 03 Aug 2026 13:17:41 +0300
+Subject: [PATCH] brcmfmac: Add support for BCM4361 PCIe chipset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-dw9714v-v3-2-8e10278dcd0d@ixit.cz>
-References: <20260803-dw9714v-v3-0-8e10278dcd0d@ixit.cz>
-In-Reply-To: <20260803-dw9714v-v3-0-8e10278dcd0d@ixit.cz>
-To: Alexander Martinz <amartinz@shiftphones.com>, 
- Bjorn Andersson <andersson@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-media@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20260803-broadcom-staging-v1-1-f6f77e55b72e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ7CIBBA4as0s5YEaVHxKo0LfgYcE8Ew2DRpe
+ ndRl9/ivQ0YKyHDddig4kJMJXccDwP4u80JBYVuUFKd5EWOwtVigy9Pwc0mykloY8/BRK2Nm6B
+ nr4qR1t9yvv3Nb/dA374f2PcPStFnTHQAAAA=
+X-Change-ID: 20260803-broadcom-staging-59a7d9f559b4
+To: Arend van Spriel <arend.vanspriel@broadcom.com>
+Cc: linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev, 
+ brcm80211-dev-list.pdl@broadcom.com, linux-kernel@vger.kernel.org, 
+ Markuss Broks <markuss.broks@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3383; i=david@ixit.cz;
- h=from:subject:message-id; bh=GdbUfwJ10fR0lW+Kb3dZndvP8ed4Y2Pebi8vBrKB8vI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqcGRi+byvi1KOnXzLHdi6nBj57QwdrGOGk38TI
- O9opNaHpaSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCanBkYgAKCRBgAj/E00kg
- cqX8D/9Z3QqZcZZeysix/ECfwWDAXO6gliMGZ5we15gYTZiodb/WYqG3ychau/5VWMnwzbB8DsX
- iW25iaenEST9kDQD3jqLsRlzxmLtaIhq04wfzGERxGgJYkkW1QKDXmT4mygqqcneWXbhMxixNtn
- SuO/LfeuaUfi9EFvC6vsTa7N/jqzh/IdDWNxU0KphZTQ+Fv6IUQdyvsin/yXcMS0r4xQGRBpQfI
- 89SSdmOGqhm07Uqv2qNEj91cCvTlfMG8I3TNogxT950DnMYT6AP/j05c3d5u5SmOSyd/SD6QVfE
- urMu4pgX2I6cOu3onE7bPsSBJ0dEpzbbqiJlByVL1HV+859FP4Yfah49kvUCIzZ88ameiy8/vmn
- 3lGLZinpeXsWyT+A+KgdfOqayGR8lpRqOf30gh7bC6Y2fc6ho0Wb/gKyesF1rcHnF55ABVzTWxH
- RY5UmrW9jcY1yXbnntsRpeUWqvhpIjfUbykTQC56FDMNi82AEFCLGyn3L6I2bpjaEyTFfJjcKJs
- nUT1Gg8LVJ86ZB5eGi/sMjzFnbtVmiSvqUdVUGG1IiO6JbjLA+mUdyeW7WRkKJlIDBR7Y8aZEPS
- Hdglb50g0nqZgXUNCSkkxtk6Izj5+O1rGJxbxviBfK3w5Fds+2mXlwQBrf/TEeAY7y8hmyAgj/3
- Y3xIWHTHcJ1a7tw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785752260; l=4130;
+ i=markuss.broks@gmail.com; s=20260803; h=from:subject:message-id;
+ bh=wojphpqxOjYA3sK/i1dqEbMhbU33wHBn+bfOlTOLYLE=;
+ b=3WKR18P/KHGM4Qxj2KwWl1MU0Y1S7/U7XRacy8VELpCWIo7m9S4DtANAPr8kBtUupzpYFpC86
+ FN53afGJxtwA+OFfM2gs1pLo8hoUD4RfcgAwFVkORaow9HUxTq6pqsn
+X-Developer-Key: i=markuss.broks@gmail.com; a=ed25519;
+ pk=oKzGUTm30BCDqinRMpiHQqByOx1mp2mwmhg80Mv7Zg4=
+X-Endpoint-Received: by B4 Relay for markuss.broks@gmail.com/20260803 with auth_id=911
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Main rear camera uses Dongwoon DW9714V actuator. Add regulator and
-actuator node.
+Those are the required changes for the BCM4361 PCIe chipset support.
 
-Since the actuator sits on the CCI I2C bus, whose 1.8V side is fed by
-vreg_lvs1a_1p8 and there is no place to describe that, keep it always-on
-for now, until bus-supply exists.
-
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Markuss Broks <markuss.broks@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 48 +++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c       | 3 +++
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c       | 3 +++
+ drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h | 2 ++
+ 3 files changed, 8 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index e31c784eff3de..358ce1930d4e1 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -81,16 +81,34 @@ ramoops: ramoops@b0000000 {
- 	battery: battery {
- 		compatible = "simple-battery";
- 
- 		charge-full-design-microamp-hours = <3850000>;
- 		voltage-min-design-microvolt = <3600000>;
- 		voltage-max-design-microvolt = <4400000>;
- 	};
- 
-+	/* SGM2036-2.8YUDH4G/TR */
-+	cam_main_af_2p8: regulator-cam-main-af-2p8 {
-+		compatible = "regulator-fixed";
-+
-+		regulator-name = "cam_main_af_2p8";
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+		regulator-enable-ramp-delay = <100>;
-+
-+		gpio = <&tlmm 8 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+
-+		pinctrl-0 = <&cam_main_af_default_state>;
-+		pinctrl-names = "default";
-+
-+		vin-supply = <&vreg_bob>;
-+	};
-+
- 	vph_pwr: vph-pwr-regulator {
- 		compatible = "regulator-fixed";
- 		regulator-name = "vph_pwr";
- 		regulator-min-microvolt = <3700000>;
- 		regulator-max-microvolt = <3700000>;
- 	};
- 
- 	vreg_s4a_1p8: pm8998-smps4 {
-@@ -403,16 +421,23 @@ vreg_l28a_3p0: ldo28 {
- 			regulator-min-microvolt = <2856000>;
- 			regulator-max-microvolt = <3008000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
- 
- 		vreg_lvs1a_1p8: lvs1 {
- 			regulator-min-microvolt = <1800000>;
- 			regulator-max-microvolt = <1800000>;
-+
-+			/*
-+			 * Supplies the 1.8V side of the CCI I2C level
-+			 * shifter; keep enabled until a generic
-+			 * bus-supply property exists.
-+			 */
-+			regulator-always-on;
- 		};
- 
- 		vreg_lvs2a_1p8: lvs2 {
- 			regulator-min-microvolt = <1800000>;
- 			regulator-max-microvolt = <1800000>;
- 		};
- 	};
- 
-@@ -441,16 +466,32 @@ regulators-2 {
- 
- 		vreg_s3c_0p6: smps3 {
- 			regulator-min-microvolt = <600000>;
- 			regulator-max-microvolt = <600000>;
- 		};
- 	};
- };
- 
-+&cci {
-+	status = "okay";
-+};
-+
-+&cci_i2c0 {
-+	/* main camera actuator */
-+	camera-lens@c {
-+		compatible = "dongwoon,dw9714v",
-+			     "dongwoon,dw9714a",
-+			     "dongwoon,dw9714";
-+		reg = <0x0c>;
-+
-+		vcc-supply = <&cam_main_af_2p8>;
-+	};
-+};
-+
- &cdsp_pas {
- 	firmware-name = "qcom/sdm845/SHIFT/axolotl/cdsp.mbn";
- 
- 	status = "okay";
- };
- 
- &gcc {
- 	protected-clocks = <GCC_QSPI_CORE_CLK>,
-@@ -699,16 +740,23 @@ &slpi_pas {
- 	firmware-name = "qcom/sdm845/SHIFT/axolotl/slpi.mbn";
- 
- 	status = "okay";
- };
- 
- &tlmm {
- 	gpio-reserved-ranges = <0 4>, <81 4>;
- 
-+	cam_main_af_default_state: cam-main-af-default-state {
-+		pins = "gpio8";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
- 	sdc2_default_state: sdc2-default-state {
- 		clk-pins {
- 			pins = "sdc2_clk";
- 			drive-strength = <16>;
- 			bias-disable;
- 		};
- 
- 		cmd-pins {
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
+index 4adc0d0e4251..97120a659f8b 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
+@@ -735,6 +735,8 @@ static u32 brcmf_chip_tcm_rambase(struct brcmf_chip_priv *ci)
+ 	case BRCM_CC_4355_CHIP_ID:
+ 	case BRCM_CC_4359_CHIP_ID:
+ 		return (ci->pub.chiprev < 9) ? 0x180000 : 0x160000;
++	case BRCM_CC_4361_CHIP_ID:
++		return 0x170000;
+ 	case BRCM_CC_4364_CHIP_ID:
+ 	case CY_CC_4373_CHIP_ID:
+ 		return 0x160000;
+@@ -1466,6 +1468,7 @@ bool brcmf_chip_sr_capable(struct brcmf_chip *pub)
+ 		reg = chip->ops->read32(chip->ctx, addr);
+ 		return (reg & CC_SR_CTL0_ENABLE_MASK) != 0;
+ 	case BRCM_CC_4359_CHIP_ID:
++	case BRCM_CC_4361_CHIP_ID:
+ 	case BRCM_CC_43751_CHIP_ID:
+ 	case BRCM_CC_43752_CHIP_ID:
+ 	case CY_CC_43012_CHIP_ID:
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+index 55f4d7b970f2..914ae72a7b74 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -59,6 +59,7 @@ BRCMF_FW_CLM_DEF(43570, "brcmfmac43570-pcie");
+ BRCMF_FW_DEF(4358, "brcmfmac4358-pcie");
+ BRCMF_FW_DEF(4359, "brcmfmac4359-pcie");
+ BRCMF_FW_DEF(4359C, "brcmfmac4359c-pcie");
++BRCMF_FW_CLM_DEF(4361, "brcmfmac4361-pcie");
+ BRCMF_FW_CLM_DEF(4364B2, "brcmfmac4364b2-pcie");
+ BRCMF_FW_CLM_DEF(4364B3, "brcmfmac4364b3-pcie");
+ BRCMF_FW_DEF(4365B, "brcmfmac4365b-pcie");
+@@ -98,6 +99,7 @@ static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {
+ 	BRCMF_FW_ENTRY(BRCM_CC_4358_CHIP_ID, 0xFFFFFFFF, 4358),
+ 	BRCMF_FW_ENTRY(BRCM_CC_4359_CHIP_ID, 0x000001FF, 4359),
+ 	BRCMF_FW_ENTRY(BRCM_CC_4359_CHIP_ID, 0xFFFFFE00, 4359C),
++	BRCMF_FW_ENTRY(BRCM_CC_4361_CHIP_ID, 0xFFFFFFFF, 4361),
+ 	BRCMF_FW_ENTRY(BRCM_CC_4364_CHIP_ID, 0x0000000F, 4364B2), /* 3 */
+ 	BRCMF_FW_ENTRY(BRCM_CC_4364_CHIP_ID, 0xFFFFFFF0, 4364B3), /* 4 */
+ 	BRCMF_FW_ENTRY(BRCM_CC_4365_CHIP_ID, 0x0000000F, 4365B),
+@@ -2747,6 +2749,7 @@ static const struct pci_device_id brcmf_pcie_devid_table[] = {
+ 	BRCMF_PCIE_DEVICE(BRCM_PCIE_43602_2G_DEVICE_ID, WCC),
+ 	BRCMF_PCIE_DEVICE(BRCM_PCIE_43602_5G_DEVICE_ID, WCC),
+ 	BRCMF_PCIE_DEVICE(BRCM_PCIE_43602_RAW_DEVICE_ID, WCC),
++	BRCMF_PCIE_DEVICE(BRCM_PCIE_4361_DEVICE_ID, WCC),
+ 	BRCMF_PCIE_DEVICE(BRCM_PCIE_4364_DEVICE_ID, WCC_SEED),
+ 	BRCMF_PCIE_DEVICE(BRCM_PCIE_4365_DEVICE_ID, BCA),
+ 	BRCMF_PCIE_DEVICE(BRCM_PCIE_4365_2G_DEVICE_ID, BCA),
+diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h b/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
+index df3b67ba4db2..b800cbfdece1 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
++++ b/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
+@@ -46,6 +46,7 @@
+ #define BRCM_CC_4358_CHIP_ID		0x4358
+ #define BRCM_CC_4359_CHIP_ID		0x4359
+ #define BRCM_CC_43602_CHIP_ID		43602
++#define BRCM_CC_4361_CHIP_ID		0x4361
+ #define BRCM_CC_4364_CHIP_ID		0x4364
+ #define BRCM_CC_4365_CHIP_ID		0x4365
+ #define BRCM_CC_4366_CHIP_ID		0x4366
+@@ -86,6 +87,7 @@
+ #define BRCM_PCIE_43602_2G_DEVICE_ID	0x43bb
+ #define BRCM_PCIE_43602_5G_DEVICE_ID	0x43bc
+ #define BRCM_PCIE_43602_RAW_DEVICE_ID	43602
++#define BRCM_PCIE_4361_DEVICE_ID	0x441f
+ #define BRCM_PCIE_4364_DEVICE_ID	0x4464
+ #define BRCM_PCIE_4365_DEVICE_ID	0x43ca
+ #define BRCM_PCIE_4365_2G_DEVICE_ID	0x43cb
 
--- 
-2.55.0
+---
+base-commit: 415606a7be939835db9b0d6b711887586646346d
+change-id: 20260803-broadcom-staging-59a7d9f559b4
+
+Best regards,
+--  
+Markuss Broks <markuss.broks@gmail.com>
 
