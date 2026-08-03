@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 04 Aug 2026 03:47:07 +0800
-Subject: [PATCH RFC 11/15] mm/mglru: replace folio workinset check and
- update with new helper
+Date: Tue, 04 Aug 2026 03:47:08 +0800
+Subject: [PATCH RFC 12/15] mm/smap: report workingset folios as referenced
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-mglru-fg-v1-11-4d8dad39dad6@tencent.com>
+Message-Id: <20260804-mglru-fg-v1-12-4d8dad39dad6@tencent.com>
 References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
@@ -35,228 +34,85 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=7823;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=2528;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=ps3GPccJmNKKFg75e7bKrntkjE3H1Gau9WECQyN6J8c=;
- b=SsYlfhIoI9qTSRrpCosoUsyZvOU0ul0m78d3Qr/DFKMMXzkq44g4dt3l0QbyqaioklkvikIIo
- XQr9zDOideJDFLJAUTIr+IvQonmZ1XL5DQ4gdvvRSPbhot5/9ELDycb
+ bh=w6RlPQJYy1xwfLtM1LXlBT4HMO6wCueMStGvS21qkQ8=;
+ b=cic1gW3I0SoP78woxinTEezcXi3rjJJlFplB1hZ3sbyv9AiX0gCSAui2nXMP3uCgUxCTP1R2d
+ 5cvp+hpla5+BDyG2oQdBDsnw2Dj9Zc4FvGYKcB/svhLvwI4iYWV+la3
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With the new folio LRU refs tracking API, when MGLRU enabled, a folio
-is considered a workingset folio if its referenced count > 1. This is
-compatible with classical LRU and reasonable in many ways:
+For MGLRU, switch smap to use the folio refs count API so smap will
+report all folio with referenced count >= 1 as "Referenced". Current
+smap checking PG_referenced is causing folios to flick between
+referenced and not-reference status, because for both MGLRU and
+active/inactive LRU, PG_referenced may got cleared on second access.
+(Increase of LRU referenced times count for MGLRU, and movig to active
+list active/inactive all clears that bit).
 
-The PG_referenced and PG_workingset are used as the lower bits of the
-LRU refs counter, and MGLRU will make use of extra bits as higher bits.
-
-So when MGLRU is disabled, all higher bits are always 0, making the
-check bit-wise equal to the old behavior. Active/inactive LRU sets
-PG_workingset explicitly for folios moved from active list to inactive
-list, and that makes the LRU refs tracking API (folio_is_workingset)
-report a referenced number > 1. Clearing PG_workingset will always
-return a value <= 1.
-
-When MGLRU is enabled, a folio referenced twice is considered a
-workingset folio, which is basically the same as how active/inactive LRU
-used to promote a file page to the active list. Note for
-active/inactive, the folio has to be marked inactive and PG_workingset
-before eviction, but MGLRU doesn't have a demotion process, so this
-simplified check ensures we have a stable definition and accurate
-readings in PSI and readaheads just like before.
+After this, we will have a more reliable and useful reading for MGLRU.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- fs/btrfs/compression.c | 3 ++-
- mm/filemap.c           | 8 ++++----
- mm/madvise.c           | 4 ++--
- mm/page_io.c           | 3 ++-
- mm/readahead.c         | 8 ++++----
- mm/vmscan.c            | 2 +-
- mm/workingset.c        | 4 ++--
- 7 files changed, 17 insertions(+), 15 deletions(-)
+ fs/proc/task_mmu.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
 
-diff --git a/fs/btrfs/compression.c b/fs/btrfs/compression.c
-index ffb6b52863a7..e756403e8bd5 100644
---- a/fs/btrfs/compression.c
-+++ b/fs/btrfs/compression.c
-@@ -21,6 +21,7 @@
- #include <linux/sched/mm.h>
- #include <linux/log2.h>
- #include <linux/shrinker.h>
-+#include <linux/mm_inline.h>
- #include "misc.h"
- #include "ctree.h"
- #include "fs.h"
-@@ -448,7 +449,7 @@ static noinline int add_ra_bio_folios(struct inode *inode, u64 compressed_end,
- 			continue;
- 		}
- 
--		if (!*memstall && folio_test_workingset(folio)) {
-+		if (!*memstall && folio_is_workingset(folio)) {
- 			psi_memstall_enter(pflags);
- 			*memstall = 1;
- 		}
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 6afec636881f..a88a6140ed09 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1259,7 +1259,7 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 	bool in_thrashing;
- 
- 	if (bit_nr == PG_locked &&
--	    !folio_test_uptodate(folio) && folio_test_workingset(folio)) {
-+	    !folio_test_uptodate(folio) && folio_is_workingset(folio)) {
- 		delayacct_thrashing_start(&in_thrashing);
- 		psi_memstall_enter(&pflags);
- 		thrashing = true;
-@@ -1414,7 +1414,7 @@ void softleaf_entry_wait_on_locked(softleaf_t entry, spinlock_t *ptl)
- 	struct folio *folio = softleaf_to_folio(entry);
- 
- 	q = folio_waitqueue(folio);
--	if (!folio_test_uptodate(folio) && folio_test_workingset(folio)) {
-+	if (!folio_test_uptodate(folio) && folio_is_workingset(folio)) {
- 		delayacct_thrashing_start(&in_thrashing);
- 		psi_memstall_enter(&pflags);
- 		thrashing = true;
-@@ -2510,7 +2510,7 @@ static void filemap_get_read_batch(struct address_space *mapping,
- static int filemap_read_folio(struct file *file, filler_t filler,
- 		struct folio *folio)
- {
--	bool workingset = folio_test_workingset(folio);
-+	bool workingset = folio_is_workingset(folio);
- 	unsigned long pflags;
- 	int error;
- 
-@@ -3981,7 +3981,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
- 		 */
- 		if ((map_ret & VM_FAULT_NOPAGE) &&
- 		    !(vmf->flags & FAULT_FLAG_TRIED) &&
--		    !folio_test_workingset(folio) &&
-+		    !folio_is_workingset(folio) &&
- 		    !(vma->vm_flags & (VM_SEQ_READ | VM_EXEC))) {
- 			unsigned short mmap_miss;
- 
-diff --git a/mm/madvise.c b/mm/madvise.c
-index 07a21ca31bad..abb17760b8b5 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -427,7 +427,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 		folio_clear_referenced(folio);
- 		folio_test_clear_young(folio);
- 		if (folio_test_active(folio))
--			folio_set_workingset(folio);
-+			folio_mark_workingset_by_bit(folio);
- 		if (pageout) {
- 			if (folio_isolate_lru(folio)) {
- 				if (folio_test_unevictable(folio))
-@@ -542,7 +542,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 		folio_clear_referenced(folio);
- 		folio_test_clear_young(folio);
- 		if (folio_test_active(folio))
--			folio_set_workingset(folio);
-+			folio_mark_workingset_by_bit(folio);
- 		if (pageout) {
- 			if (folio_isolate_lru(folio)) {
- 				if (folio_test_unevictable(folio))
-diff --git a/mm/page_io.c b/mm/page_io.c
-index e4fa7ffffe8b..e7efc5bff668 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -25,6 +25,7 @@
- #include <linux/sched/task.h>
- #include <linux/delayacct.h>
- #include <linux/zswap.h>
-+#include <linux/mm_inline.h>
- #include "swap.h"
- #include "swap_table.h"
- 
-@@ -452,7 +453,7 @@ void swap_read_folio(struct swap_io_ctx *ctx, struct folio *folio)
- {
- 	struct swap_info_struct *sis = __swap_entry_to_info(folio->swap);
- 	bool synchronous = sis->flags & SWP_SYNCHRONOUS_IO;
--	bool workingset = folio_test_workingset(folio);
-+	bool workingset = folio_is_workingset(folio);
- 	unsigned long pflags;
- 	bool in_thrashing;
- 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index 558c92957518..3ab796af6490 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -302,7 +302,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
- 		}
- 		if (i == mark)
- 			folio_set_readahead(folio);
--		ractl->_workingset |= folio_test_workingset(folio);
-+		ractl->_workingset |= folio_is_workingset(folio);
- 		ractl->_nr_pages += min_nrpages;
- 		i += min_nrpages;
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 817e3e0f9194..c5c96c523291 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -944,6 +944,22 @@ static void smaps_page_accumulate(struct mem_size_stats *mss,
  	}
-@@ -474,7 +474,7 @@ static inline int ra_alloc_folio(struct readahead_control *ractl, pgoff_t index,
- 	}
- 
- 	ractl->_nr_pages += 1UL << order;
--	ractl->_workingset |= folio_test_workingset(folio);
-+	ractl->_workingset |= folio_is_workingset(folio);
- 	return 0;
  }
  
-@@ -817,7 +817,7 @@ void readahead_expand(struct readahead_control *ractl,
- 			folio_put(folio);
- 			return;
- 		}
--		if (unlikely(folio_test_workingset(folio)) &&
-+		if (unlikely(folio_is_workingset(folio)) &&
- 				!ractl->_workingset) {
- 			ractl->_workingset = true;
- 			psi_memstall_enter(&ractl->_pflags);
-@@ -846,7 +846,7 @@ void readahead_expand(struct readahead_control *ractl,
- 			folio_put(folio);
- 			return;
- 		}
--		if (unlikely(folio_test_workingset(folio)) &&
-+		if (unlikely(folio_is_workingset(folio)) &&
- 				!ractl->_workingset) {
- 			ractl->_workingset = true;
- 			psi_memstall_enter(&ractl->_pflags);
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 9c8d9e3af375..913e69eae534 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -2268,7 +2268,7 @@ static void shrink_active_list(unsigned long nr_to_scan,
- 		}
++static bool smap_check_folio_referenced(struct folio *folio)
++{
++	if (lru_gen_enabled())
++		return folio_is_referenced(folio);
++	else
++		return folio_is_referenced_by_bit(folio);
++}
++
++static void smap_clear_folio_referenced(struct folio *folio)
++{
++	if (lru_gen_enabled())
++		folio_set_lru_refs(folio, 0);
++	else
++		folio_clear_referenced_by_bit(folio);
++}
++
+ static void smaps_account(struct mem_size_stats *mss, struct page *page,
+ 		bool compound, bool young, bool dirty, bool locked,
+ 		bool present)
+@@ -970,7 +986,7 @@ static void smaps_account(struct mem_size_stats *mss, struct page *page,
  
- 		folio_clear_active(folio);	/* we are de-activating */
--		folio_set_workingset(folio);
-+		folio_mark_workingset_by_bit(folio);
- 		list_add(&folio->lru, &l_inactive);
- 	}
+ 	mss->resident += size;
+ 	/* Accumulate the size in pages that have been accessed. */
+-	if (young || folio_test_young(folio) || folio_test_referenced(folio))
++	if (young || folio_test_young(folio) || smap_check_folio_referenced(folio))
+ 		mss->referenced += size;
  
-diff --git a/mm/workingset.c b/mm/workingset.c
-index 452fe8554990..568a3e44cd5e 100644
---- a/mm/workingset.c
-+++ b/mm/workingset.c
-@@ -438,7 +438,7 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
- 	eviction >>= bucket_order[file];
- 	workingset_age_nonresident(lruvec, folio_nr_pages(folio));
- 	return pack_shadow(memcgid, pgdat, eviction,
--			   folio_test_workingset(folio), file);
-+			   folio_is_workingset(folio), file);
- }
- 
- /**
-@@ -609,7 +609,7 @@ void workingset_refault(struct folio *folio, void *shadow)
- 
- 	/* Folio was active prior to eviction */
- 	if (workingset) {
--		folio_set_workingset(folio);
-+		folio_mark_workingset_by_bit(folio);
- 		mod_lruvec_state(lruvec, WORKINGSET_RESTORE_BASE + file, nr);
- 	}
+ 	/*
+@@ -1791,7 +1807,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
+ 		/* Clear accessed and referenced bits. */
+ 		pmdp_test_and_clear_young(vma, addr, pmd);
+ 		folio_test_clear_young(folio);
+-		folio_clear_referenced(folio);
++		smap_clear_folio_referenced(folio);
  out:
+ 		spin_unlock(ptl);
+ 		return 0;
+@@ -1820,7 +1836,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
+ 		/* Clear accessed and referenced bits. */
+ 		ptep_test_and_clear_young(vma, addr, pte);
+ 		folio_test_clear_young(folio);
+-		folio_clear_referenced(folio);
++		smap_clear_folio_referenced(folio);
+ 	}
+ 	pte_unmap_unlock(pte - 1, ptl);
+ 	cond_resched();
 
 -- 
 2.55.0
