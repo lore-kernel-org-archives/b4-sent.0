@@ -1,102 +1,178 @@
-From: Michalis Niarchos <michael.niarchos@gmail.com>
-Date: Mon, 03 Aug 2026 15:51:54 +0200
-Subject: [PATCH v3 3/3] perf tools: Fix memory leak in cmd_kvm()
+From: Fan XinRan <shinjiangjiang@gmail.com>
+Date: Mon, 03 Aug 2026 14:38:50 +0000
+Subject: [PATCH net v2] net: thunderbolt: Tear down DMA paths before
+ stopping the rings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-perf-kvm-fixes-v3-3-e06268ec06fa@gmail.com>
-References: <20260803-perf-kvm-fixes-v3-0-e06268ec06fa@gmail.com>
-In-Reply-To: <20260803-perf-kvm-fixes-v3-0-e06268ec06fa@gmail.com>
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Michalis Niarchos <michael.niarchos@gmail.com>
+Message-Id: <20260803-b4-tbnet-teardown-v2-1-27de6a13ca2d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPmncGoC/yWMQQrCMBBFr1L+2oEhnYp4FXHRJFMdF6kksQqld
+ zfa5fv891YUzaYF525F1sWKzamBO3QI9zHdlCw2hmN35BP35IWqT1qp6pjj/E40ycC9CAcfBc1
+ 7Zp3s829e0J647mN5+YeG+qth276z7DSFegAAAA==
+X-Change-ID: 20260803-b4-tbnet-teardown-f4503440cbd4
+To: netdev@vger.kernel.org
+Cc: pabeni@redhat.com, andrew+netdev@lunn.ch, edumazet@google.com, 
+ kuba@kernel.org, linux-kernel@vger.kernel.org, 
+ mika.westerberg@linux.intel.com, davem@davemloft.net, YehezkelShB@gmail.com, 
+ westeri@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785765118; l=2577;
- i=michael.niarchos@gmail.com; s=20260731; h=from:subject:message-id;
- bh=B7Sv0QwuZKxlNQr0I80Lih/KewWi/BiAYs14XtbWNDU=;
- b=cFuraravjFmqBCMXVT84PwL5QT8273nbZCySTuEdsjJMW0LBZyoIfW+j3L/qqXkQcF3FtbCFn
- TQTFSENnlZ2Bjndc8DJDxNA9pzmaxFxRxBVvD6AoXNe0cYRCV7UiF7t
-X-Developer-Key: i=michael.niarchos@gmail.com; a=ed25519;
- pk=/LBZRQzfuxTnSaZhgZE8EP7mHr0poyqlKeFssNqkzFE=
-X-Endpoint-Received: by B4 Relay for michael.niarchos@gmail.com/20260731 with auth_id=912
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785767930; l=6902;
+ i=shinjiangjiang@gmail.com; s=tbnet2; h=from:subject:message-id;
+ bh=2VEx2vZrGgzuxegRvN8HTWMc/FlSK3Z7MurSRiJTFQE=;
+ b=7hdtWsP7DHmZW/4LuPw3ncxiuNPd8G5/P5QBd48M6wIJZe2QtA6Q5+WDn92eOeKQvo7eM71jt
+ y2j1gUDp/2MBHfsovhTHYhOmbUQxQR8zXuJ0nhTUqu+IyRJS2Ul0lET
+X-Developer-Key: i=shinjiangjiang@gmail.com; a=ed25519;
+ pk=S5b5AWBlS1MzhQto3bSxuygfVWGoX1K7saZNT5wGWeY=
+X-Endpoint-Received: by B4 Relay for shinjiangjiang@gmail.com/tbnet2 with auth_id=915
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The usage string is allocated by parse_options_subcommand() and freed
-only on one return path. Using a single return point guarantees it is
-freed on all occasions.
+tbnet_tear_down() stops both rings and frees their frame buffers before
+calling tb_xdomain_disable_paths().  tb_ring_stop() zeroes the ring's
+descriptor base and tbnet_free_buffers() unmaps and frees the pages the
+frames sit in, so by the time __tb_path_deactivate_hop() polls the hop's
+'pending' bit, anything still in flight has nowhere to drain to.
 
-Signed-off-by: Michalis Niarchos <michael.niarchos@gmail.com>
+The teardown sequence has been in this order since the driver was added.
+The setup path has not: commit ff7cd07f3064 ("net: thunderbolt: Enable
+DMA paths only after rings are enabled") moved the path enable to the end
+of tbnet_connected_work() and documented why:
+
+	/* Both logins successful so enable the rings, high-speed DMA
+	 * paths and start the network device queue.
+	 *
+	 * Note we enable the DMA paths last to make sure we have primed
+	 * the Rx ring before any incoming packets are allowed to
+	 * arrive.
+	 */
+
+Teardown was never updated to match, so the rings and the paths now come
+down in the same order they go up instead of in reverse.
+
+On an ASMedia ASM4242 host router the 'pending' bit then never clears:
+every teardown burns the full 500 ms timeout and
+__tb_path_deactivate_hop() returns -ETIMEDOUT.  Raising the timeout to
+5 s does not help, so the hop is not slow to drain, it never drains
+at all.
+
+The failure is invisible above the thunderbolt core.
+__tb_path_deactivate_hops() is void and only calls tb_port_warn();
+tb_path_deactivate(), tb_tunnel_deactivate() and
+__tb_disconnect_xdomain_paths() are void as well, and
+tb_disconnect_xdomain_paths() ends in an unconditional "return 0".  So
+tb_xdomain_disable_paths() reports success and the netdev_warn() below
+it never fires.  Repeated teardowns eventually take the XDomain control
+channel down, after which the peer node is gone and only a power cycle
+brings the controller back.
+
+Deactivating the paths first fixes it.  Measured with kretprobes on a
+stock v6.17 tree with no other patches applied, on a link that was up
+and had just carried traffic:
+
+  before: __tb_path_deactivate_hop() returns 0 for the first hop, then
+          -ETIMEDOUT for the second 500335 us later
+  after:  0 for both, 525 us apart
+
+Alternating the two orderings ABBA over three load levels, four
+teardowns per arm: every teardown failed before the change (21 of 21
+that ran), none failed after (0 of 24).  The before arms ran short
+because the link died partway through.  The same split shows up when
+the interface is enslaved to a bond instead of just brought down, which
+is how I ran into this in the first place.  Throughput and latency after
+the change are unchanged.
+
+Hosts whose routers drain the hop despite the stale descriptor base see
+no functional difference, since the paths end up deactivated either way.
+
+Fixes: e69b6c02b4c3 ("net: Add support for networking over Thunderbolt cable")
+Signed-off-by: Fan XinRan <shinjiangjiang@gmail.com>
+Acked-by: Mika Westerberg <mika.westerberg@linux.intel.com>
 ---
- tools/perf/builtin-kvm.c | 36 +++++++++++++++++++++++-------------
- 1 file changed, 23 insertions(+), 13 deletions(-)
+Mika, thank you for running this on Intel hosts.  Not having one to test
+a regression against was the one gap I could not close myself, and I am
+grateful you closed it for me.
 
-diff --git a/tools/perf/builtin-kvm.c b/tools/perf/builtin-kvm.c
-index 8e14d037d7d9..04cf9bd5b595 100644
---- a/tools/perf/builtin-kvm.c
-+++ b/tools/perf/builtin-kvm.c
-@@ -2132,6 +2132,7 @@ int cmd_kvm(int argc, const char **argv)
- 	const char *const kvm_subcommands[] = { "top", "record", "report", "diff",
- 						"buildid-list", "stat", NULL };
- 	const char *kvm_usage[] = { NULL, NULL };
-+	int ret = 0;
- 
- 	exclude_GH_default = true;
- 	perf_host  = 0;
-@@ -2148,25 +2149,34 @@ int cmd_kvm(int argc, const char **argv)
- 	if (!file_name)
- 		file_name = get_filename_for_perf_kvm();
- 
--	if (strlen(argv[0]) > 2 && strstarts("record", argv[0]))
--		return __cmd_record(file_name, argc, argv);
--	else if (strlen(argv[0]) > 2 && strstarts("report", argv[0]))
--		return __cmd_report(file_name, argc, argv);
--	else if (strlen(argv[0]) > 2 && strstarts("diff", argv[0]))
--		return cmd_diff(argc, argv);
--	else if (!strcmp(argv[0], "top"))
--		return __cmd_top(argc, argv);
--	else if (strlen(argv[0]) > 2 && strstarts("buildid-list", argv[0]))
--		return __cmd_buildid_list(file_name, argc, argv);
-+	if (strlen(argv[0]) > 2 && strstarts("record", argv[0])) {
-+		ret = __cmd_record(file_name, argc, argv);
-+		goto exit;
-+	} else if (strlen(argv[0]) > 2 && strstarts("report", argv[0])) {
-+		ret = __cmd_report(file_name, argc, argv);
-+		goto exit;
-+	} else if (strlen(argv[0]) > 2 && strstarts("diff", argv[0])) {
-+		ret = cmd_diff(argc, argv);
-+		goto exit;
-+	} else if (!strcmp(argv[0], "top")) {
-+		ret = __cmd_top(argc, argv);
-+		goto exit;
-+	} else if (strlen(argv[0]) > 2 && strstarts("buildid-list", argv[0])) {
-+		ret = __cmd_buildid_list(file_name, argc, argv);
-+		goto exit;
-+	}
- #if defined(HAVE_LIBTRACEEVENT)
--	else if (strlen(argv[0]) > 2 && strstarts("stat", argv[0]))
--		return kvm_cmd_stat(file_name, argc, argv);
-+	else if (strlen(argv[0]) > 2 && strstarts("stat", argv[0])) {
-+		ret = kvm_cmd_stat(file_name, argc, argv);
-+		goto exit;
-+	}
- #endif
- 	else
- 		usage_with_options(kvm_usage, kvm_options);
- 
-+exit:
- 	/* free usage string allocated by parse_options_subcommand */
- 	free((void *)kvm_usage[0]);
- 
--	return 0;
-+	return ret;
- }
+Sorry about the wrong Fixes tag in v1.  That was careless of me - I
+should have checked the tag against the driver's own history before
+sending rather than making you catch it.
 
--- 
-2.55.0
+v2:
+- Fix the Fixes: tag.  v1 pointed at 4944269305df ("thunderbolt: Properly
+  disable path").  That one lives in drivers/thunderbolt/path.c, is
+  correct in itself and is not what this patch changes; it is only what
+  makes the failure visible, being what added the 'pending' poll and its
+  500 ms timeout.
+
+  I went with the driver-add commit rather than ff7cd07f3064 ("net:
+  thunderbolt: Enable DMA paths only after rings are enabled", v6.1),
+  which is what actually introduced the asymmetry with the setup path.
+  tbnet_tear_down() has stopped the rings and freed the buffers before
+  deactivating the paths ever since e69b6c02b4c3, unchanged, and that is
+  the sequence the hardware objects to; how the paths were brought up
+  does not change the state the hop is in by the time teardown runs.
+  Tagging ff7cd07f3064 would limit this to v6.1+ when the same teardown
+  code is in every tree from v4.15 on.  Happy to switch if you read it
+  the other way.
+
+  Two things that bear on the backport range whichever tag is used.
+  Nothing before v5.2 can show the -ETIMEDOUT, since that is when
+  4944269305df actually landed - its author date is 2017 but its commit
+  date is 2019-04-18.  And 4.19.y, 5.4.y and 5.10.y never took
+  ff7cd07f3064, so on those trees this change makes teardown stop
+  mirroring setup rather than start mirroring it; it still closes the
+  stopped-ring window, but you may want to trim the range there.
+- Rework the second paragraph accordingly.  v1 implied teardown had
+  always been the mirror of setup, which only became true in v6.1.
+- Pick up Mika's Acked-by.  No code change from v1.
+
+v1: https://lore.kernel.org/netdev/20260731170442.45530-1-shinjiangjiang@gmail.com/
+---
+ drivers/net/thunderbolt/main.c | 20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/thunderbolt/main.c b/drivers/net/thunderbolt/main.c
+index 02a916505..a04c0901c 100644
+--- a/drivers/net/thunderbolt/main.c
++++ b/drivers/net/thunderbolt/main.c
+@@ -386,11 +386,16 @@ static void tbnet_tear_down(struct tbnet *net, bool send_logout)
+ 				break;
+ 		}
+ 
+-		tb_ring_stop(net->rx_ring.ring);
+-		tb_ring_stop(net->tx_ring.ring);
+-		tbnet_free_buffers(&net->rx_ring);
+-		tbnet_free_buffers(&net->tx_ring);
+-
++		/* Tear the paths down before stopping the rings.  This mirrors
++		 * tbnet_connected_work(), which enables the paths last so the
++		 * Rx ring is primed before packets can arrive.  Stopping a
++		 * ring zeroes its descriptor base and tbnet_free_buffers()
++		 * unmaps and frees the frame buffers, leaving anything still
++		 * in flight with nowhere to drain to;
++		 * __tb_path_deactivate_hop() then waits for the hop's
++		 * 'pending' bit, which on some host routers never clears in
++		 * that state.
++		 */
+ 		ret = tb_xdomain_disable_paths(net->xd,
+ 					       net->local_transmit_path,
+ 					       net->tx_ring.ring->hop,
+@@ -399,6 +404,11 @@ static void tbnet_tear_down(struct tbnet *net, bool send_logout)
+ 		if (ret)
+ 			netdev_warn(net->dev, "failed to disable DMA paths\n");
+ 
++		tb_ring_stop(net->rx_ring.ring);
++		tb_ring_stop(net->tx_ring.ring);
++		tbnet_free_buffers(&net->rx_ring);
++		tbnet_free_buffers(&net->tx_ring);
++
+ 		tb_xdomain_release_in_hopid(net->xd, net->remote_transmit_path);
+ 		net->remote_transmit_path = 0;
+ 	}
+
+---
+base-commit: 4539944e515183668109bdf4d0c3d7d228383d88
+change-id: 20260803-b4-tbnet-teardown-f4503440cbd4
+
+Best regards,
+--  
+Fan XinRan <shinjiangjiang@gmail.com>
 
