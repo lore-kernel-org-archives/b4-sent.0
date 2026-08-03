@@ -1,15 +1,13 @@
 From: Kairui Song <kasong@tencent.com>
-Subject: [PATCH RFC 00/15] mm/mglru: frequency guided promotion (MGLRU-FG)
- and flag cleanup
-Date: Tue, 04 Aug 2026 03:46:56 +0800
-Message-Id: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
+Date: Tue, 04 Aug 2026 03:46:57 +0800
+Subject: [PATCH RFC 01/15] mm/memcontrol: make lru_zone_size atomic and
+ simplify sanity check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcyMj3dz0nKJS3bR0XeNEo2QLU3MTcyPTJCWg8oKi1LTMCrBR0UpBbs5
- KsRDB4tKkrNTkEpAhSrW1AGpFfCRxAAAA
-X-Change-ID: 20260722-mglru-fg-3a2c8574725b
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260804-mglru-fg-v1-1-4d8dad39dad6@tencent.com>
+References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
+In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
 Cc: Andrew Morton <akpm@linux-foundation.org>, 
  Johannes Weiner <hannes@cmpxchg.org>, Muchun Song <muchun.song@linux.dev>, 
@@ -37,188 +35,143 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=8628;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=4666;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=Sdrv3XemOx1Vo85/fr08UdLOt06D3fX3iVkJqHAzPqk=;
- b=Kyl0bfXZNTA7MNrQdLsqI9g7PxvrQNUUQ7t9uTfxl8vivX1Fo7HBfZ03Nf7DkDWHJKCbEVVo0
- DciY22taQ1XDsHYkl8uyRcG5NFk3V028B9MMHSM6oISljClHa740cGc
+ bh=VmGMj3oQ5WlKjZNi9BvygZeEmYIa6a/WBZg5ksVdh2w=;
+ b=a0JTNWuPi48o3Fm1tmk0HF76NfE1tnogbipupV7MsafExoMnGyTXKGtgtIoml53Gk31D5uRJs
+ EGfJ/FlOQdeCuvTUuafmuiYvO38wQEj4NOhVPlp6aOqx5ZKeCI4/sef
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is the updated RFC following the idea proposed at LSF/MM/BPF [1] this
-year. It's very usable, stable, and performing well, but I'll keep it RFC
-for V1 as some tests are still ongoing and results can be more accurate
-with further auditing.
+commit ca707239e8a7 ("mm: update_lru_size warn and reset bad lru_size")
+introduced a sanity check to catch memcg counter underflow, which is
+more like a workaround for another bug: lru_zone_size is unsigned, so
+underflow will wrap it around and return an enormously large number,
+then the memcg shrinker will loop almost forever as the calculated
+number of folios to shrink is huge. That commit also checks if a zero
+value matches the empty LRU list, so we have to hold the LRU lock, and
+do the counter adding differently depending on whether the nr_pages is
+negative.
 
-With this series, I'm seeing an obvious performance gain across all kinds
-of tests, and it reduces MGLRU's flag usage by one. It also fixes several
-long-standing issues including under-accounted PSI and poor workingset
-tracking (especially for page cache).
+But later commit b4536f0c829c ("mm, memcg: fix the active list aging for
+lowmem requests when memcg is enabled") already removed the LRU
+emptiness check, doing the adding differently is meaningless now. And if
+we just turn it into an atomic long, underflow isn't a big issue either,
+and can be checked at the reader side. The reader size is much less
+frequently called than the updater.
 
-Some test results (CLRU means classical LRU):
+So let's turn the counter into an atomic long and check at the
+reader side instead, which has a smaller overhead. Use atomic to avoid
+potential locking issue. The underflow correction is removed, which
+should be fine as if there is a mass leaking of the LRU size counter,
+something else may also have gone very wrong, and one should fix that
+leaking site instead. Besides, doing the sanity check in updater is
+unlikely to catch the leaking site, e.g. a folio was removed minutes ago
+without updating the counter, while there are still other folios on the
+LRU, the WARN won't be triggered until other folios are removed from a
+likely correct callsite.
 
-Build kernel test, running make -j48 in a 3G memcg, using disk swap and
-holding the kernel and build output on the same NVMe drive, 16 runs using
-different swappiness configurations [2]; the patched version is better than
-mainline at almost every swappiness value, measuring the total average:
-
-        real     sys  pgpgin  pswpin  pswpout  refault_file  refault_anon
-CLRU   6m06s  31m01s   50.3M   3.20M    13.8M         10.3M         3.35M
-Before 2m56s  11m06s   10.6M   1.59M    5.40M          414k         1.03M
-After  2m49s  10m39s    9.0M   1.36M    4.82M          280k          861k
-delta    -7s    -27s    -15%    -14%     -11%          -32%          -16%
-
-MongoDB YCSB workloadb (recordcount:20000000 operationcount:6000000,
-threads:48, in a 16G memcg), 3 runs [3]:
-CLRU:          98389.94 ops/s
-MGLRU Before:  86421.44 ops/s
-MGLRU After:   95378.50 ops/s (+10.3%)
-
-Chromium & Node.js test, using ZRAM as swap, on a 48c96t machine with
-128G memory, 64 workers, run for 1 hour [4]:
-                 Total requests:
-CLRU:                     63822
-MGLRU Before:            153029
-MGLRU After:             225664 (+47.4%)
-
-(NOTE: It seems some recent change broken MGLRU's fainress guarteen and
-also made this test dramatically faster than a few months ago, which isn't
-related to this series and reading are even better now, but I'll take a
-deeper look later.)
-
-FIO, zipf 0.9 distribution on an NVMe disk, in a 16G cgroup, total file
-size 40G; this measures the LRU's theoretical ability to distinguish the
-hotter portion:
-
-fio --name=fg --numjobs=16 --nrfiles=1 \
-    --filename_format="$testdir/rnvmedk.\$jobnum.img" \
-    --size=${FILE_MIB}M \
-    --buffered=1 --ioengine=sync --rw=randread \
-    --random_distribution=zipf:$ZIPF --bs=$BS --time_based \
-    --ramp_time=45s --runtime=600s \
-    --group_reporting
-
-CLRU:   Avg: 2454.37 MB/s
-Before: Avg: 2350.40 MB/s
-After:  Avg: 2611.37 MB/s (+11.1%)
-
-I also retested the LevelDB benchmark from the cache_ext paper [5].
-Interestingly, mainline MGLRU already beats CLRU on this one after a
-recent change in lru_gen_folio_seq that bumps new folios with refs == 1
-to the second-oldest generation. That change accidentally gave random
-reads a higher hotness level while making sequential reads much colder:
-sequential reads involve many readahead hits, and readahead folios start
-with refs == 0, so they're already in the oldest generation, and
-folio_mark_accessed() on a readahead hit has almost no effect on generations
-in mainline MGLRU. Meanwhile, all direct-hit (random read) folios start
-with refs == 1 in the second-oldest generation. As a result, the scan-get
-test natively protects the "get" part and sacrifices the "scan" part.
-That's not the best solution though. It's unreliable because it depends
-on LRU drain timing, and it hurts workloads where the sequential part is
-actually hotter (any workload involving a hotter large file and many
-small cold files will be affected).
-
-This series improves on that base: it covers ordinary workloads without
-hurting the scan-get workload and without relying on that initial bump.
-
-LevelDB Scan / Get, Throughput Total:
-CLRU:         4668.8 ops/s
-MGLRU:        5026.9 ops/s (faster than CLRU, but hurts other workloads)
-MGLRU After:  5029.7 ops/s (fastest in all cases, and no regression)
-
-The hot-sequential and cold-random workload can be easily reproduced with
-SQLite and grep. SQLite continuously scans and looks up a small hot
-portion of a DB file, while grep iterates over a set of small files much
-larger than RAM [6]:
-
-         SQLite scan & lookup time:       Grep iterate time:
-CLRU:                       14.51ms               13281.37ms
-MGLRU mainline:            567.05ms               13694.47ms
-MGLRU After this series:    10.58ms               12930.43ms
-
-The grep cold portion is larger than RAM and accessed only once per
-iteration, so there's no promotion of any of it. CLRU handles
-this reasonably; mainline MGLRU has a clear regression; MGLRU-FG now
-not only recovers but is able to catch some hot parts from the cold grep
-workload. This test is somewhat subjective, but the signal is clear.
-
-Additionally, PSI, smaps, and readahead all benefit from better accuracy
-since this series unifies the flag usage between classical LRU and MGLRU.
-
-Other tests such as MySQL are looking fine, with no regressions.
-
-Refault distance is not included yet, so MGLRU may respond more slowly to
-workingset shifts. That can be added later, as previously demonstrated
-[7], [8].
-
-Extra note about future development: this series is highly compatible with
-ideas like workingset reporting [9]. The "gen climbing folio" design may
-appear to conflict with workingset reporting's idea of using generations
-as access-gap identifiers, but it doesn't — the solution is
-straightforward: once we can extend the generation number to a larger
-value (e.g. 64 or 128), the refs-driven promotion can stop at a lower
-gen (e.g. oldest_gen + 16), leaving the remaining newer generations as
-perfectly time-gap-separated bins.
-
-The tier count is not fixed either; we'll need to find a way to tune it
-if tiers go beyond 4, but that shouldn't be hard.
-
-More details are in the individual commit messages.
-
-Link: https://lore.kernel.org/linux-mm/CAMgjq7BoekNjg-Ra3C8M7=8=75su38w=HD782T5E_cxyeCeH_g@mail.gmail.com/ [1]
-Link: https://lore.kernel.org/linux-mm/CAGsJ_4xre-x0e+qNVm=KLFnO1dbPkPX5RuecqwvTZu-vS+o8yQ@mail.gmail.com/ [2]
-Link: https://github.com/brianfrankcooper/YCSB/blob/master/workloads/workloadb [3]
-Link: https://lore.kernel.org/all/20221220214923.1229538-1-yuzhao@google.com/ [4]
-Link: https://dl.acm.org/doi/10.1145/3731569.3764820 [5]
-Link: https://github.com/ryncsn/emm-test-project/tree/master/sqlite-grep [6]
-Link: https://lwn.net/Articles/945266/ [7]
-Link: https://lore.kernel.org/linux-mm/20260502-mglru-fg-v1-0-913619b014d9@tencent.com/ [8]
-Link: https://lwn.net/Articles/976985/ [9]
+For now still keep the LRU lock context, in theory that can be removed
+too since the update is atomic, if we can tolerate a temporary
+inaccurate reading, but currently there is no benefit doing so yet.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Kairui Song (15):
-      mm/memcontrol: make lru_zone_size atomic and simplify sanity check
-      mm/memcontrol: allow update of LRU statistic without holding LRU lock
-      mm/mglru: introduce and always use helpers for manipulating page flags
-      mm/mglru: make generation page counters atomic
-      mm/mglru: move max_seq read into walk_update_folio
-      mm/mglru: use explicit tier range in read_ctrl_pos()
-      mm/mglru: move refault workingset activation into lru_gen_refault
-      mm/memcg: add folio-based lruvec live helper
-      mm/mglru: frequency guided workingset promotion (MGLRU-FG)
-      mm/mglru: make folio lru referenced times count a generic API
-      mm/mglru: replace folio workinset check and update with new helper
-      mm/smap: report workingset folios as referenced
-      mm/huge_memory: mark file folio as accessed more accurately on split
-      mm/khugepaged: consider workingset folios as referenced
-      mm/madvise: convert to new lru refs API and better support for MGLRU
+ include/linux/memcontrol.h |  9 +++++++--
+ mm/memcontrol.c            | 18 +-----------------
+ mm/vmscan.c                |  5 -----
+ 3 files changed, 8 insertions(+), 24 deletions(-)
 
- fs/btrfs/compression.c     |   3 +-
- fs/proc/task_mmu.c         |  22 ++-
- include/linux/memcontrol.h |  47 +++++-
- include/linux/mm_inline.h  | 256 ++++++++++++++++++++++++++------
- include/linux/mmzone.h     | 137 ++++++++++++-----
- kernel/bounds.c            |   2 +-
- mm/filemap.c               |   8 +-
- mm/folio.c                 |  49 +-----
- mm/huge_memory.c           |   8 +-
- mm/khugepaged.c            |   6 +-
- mm/madvise.c               |  37 +++--
- mm/memcontrol.c            |  22 +--
- mm/migrate.c               |   4 -
- mm/page_io.c               |   3 +-
- mm/readahead.c             |   8 +-
- mm/vmscan.c                | 360 ++++++++++++++++++++++++++++-----------------
- mm/workingset.c            |  66 ++++++---
- 17 files changed, 689 insertions(+), 349 deletions(-)
----
-base-commit: 94f9b3980dd446b56acf1dfed649e9b32a9f3813
-change-id: 20260722-mglru-fg-3a2c8574725b
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index e78bc98ab229..b13e3f056319 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -113,7 +113,7 @@ struct mem_cgroup_per_node {
+ 	/* Fields which get updated often at the end. */
+ 	struct lruvec		lruvec;
+ 	CACHELINE_PADDING(_pad2_);
+-	unsigned long		lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
++	atomic_long_t		lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
+ 	struct mem_cgroup_reclaim_iter	iter;
+ 
+ 	/*
+@@ -897,10 +897,15 @@ static inline
+ unsigned long mem_cgroup_get_zone_lru_size(struct lruvec *lruvec,
+ 		enum lru_list lru, int zone_idx)
+ {
++	long val;
+ 	struct mem_cgroup_per_node *mz;
+ 
+ 	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+-	return READ_ONCE(mz->lru_zone_size[zone_idx][lru]);
++	val = atomic_long_read(&mz->lru_zone_size[zone_idx][lru]);
++	if (WARN_ON_ONCE(val < 0))
++		return 0;
++
++	return val;
+ }
+ 
+ void __mem_cgroup_handle_over_high(gfp_t gfp_mask);
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 1bde9d5af88a..7511773b3491 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -1529,28 +1529,12 @@ void mem_cgroup_update_lru_size(struct lruvec *lruvec, enum lru_list lru,
+ 				int zid, long nr_pages)
+ {
+ 	struct mem_cgroup_per_node *mz;
+-	unsigned long *lru_size;
+-	long size;
+ 
+ 	if (mem_cgroup_disabled())
+ 		return;
+ 
+ 	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+-	lru_size = &mz->lru_zone_size[zid][lru];
+-
+-	if (nr_pages < 0)
+-		*lru_size += nr_pages;
+-
+-	size = *lru_size;
+-	if (WARN_ONCE(size < 0,
+-		"%s(%p, %d, %ld): lru_size %ld\n",
+-		__func__, lruvec, lru, nr_pages, size)) {
+-		VM_BUG_ON(1);
+-		*lru_size = 0;
+-	}
+-
+-	if (nr_pages > 0)
+-		*lru_size += nr_pages;
++	atomic_long_add(nr_pages, &mz->lru_zone_size[zid][lru]);
+ }
+ 
+ /**
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 17d2b793cbfc..fe7cf5d42e0c 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -1636,10 +1636,6 @@ unsigned int reclaim_clean_pages_from_list(struct zone *zone,
+ 	return nr_reclaimed;
+ }
+ 
+-/*
+- * Update LRU sizes after isolating pages. The LRU size updates must
+- * be complete before mem_cgroup_update_lru_size due to a sanity check.
+- */
+ static __always_inline void update_lru_sizes(struct lruvec *lruvec,
+ 			enum lru_list lru, unsigned long *nr_zone_taken)
+ {
+@@ -1651,7 +1647,6 @@ static __always_inline void update_lru_sizes(struct lruvec *lruvec,
+ 
+ 		update_lru_size(lruvec, lru, zid, -nr_zone_taken[zid]);
+ 	}
+-
+ }
+ 
+ /*
 
-Best regards,
---  
-Kairui Song <kasong@tencent.com>
+-- 
+2.55.0
 
