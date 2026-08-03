@@ -1,186 +1,86 @@
-From: Michalis Niarchos <michael.niarchos@gmail.com>
-Date: Mon, 03 Aug 2026 15:05:43 +0200
-Subject: [PATCH v2 4/4] perf tools: Fix double frees and memory leaks in
- cmd_kvm()
+From: Ackerley Tng <ackerleytng@google.com>
+Subject: [PATCH v5 0/3] Consolidate memory policy interpretation in
+ alloc_hugetlb_folio()
+Date: Mon, 03 Aug 2026 06:37:57 -0700
+Message-Id: <20260803-hugetlb-mpol-interpretation-v5-0-af2b7089f8a9@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-perf-kvm-fixes-v2-4-1b337189fffc@gmail.com>
-References: <20260803-perf-kvm-fixes-v2-0-1b337189fffc@gmail.com>
-In-Reply-To: <20260803-perf-kvm-fixes-v2-0-1b337189fffc@gmail.com>
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Michalis Niarchos <michael.niarchos@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785762361; l=4794;
- i=michael.niarchos@gmail.com; s=20260731; h=from:subject:message-id;
- bh=z6X3oSKhsyfdnOLkccB8N4HoUfze0laWnW5PzY5GJoA=;
- b=ymrMWY4X2sAw10OkaJmxwti/3Zhw+en9SfBnDjAtgfYlnUgANPBild2Zu6TnkbyqewrvpnwZn
- XS2I72ygwhDCNfMU91h2Aai4aSZHLfmMcsz0CYE5kfa3+a41x7YMPkG
-X-Developer-Key: i=michael.niarchos@gmail.com; a=ed25519;
- pk=/LBZRQzfuxTnSaZhgZE8EP7mHr0poyqlKeFssNqkzFE=
-X-Endpoint-Received: by B4 Relay for michael.niarchos@gmail.com/20260731 with auth_id=912
+X-B4-Tracking: v=1; b=H4sIALaZcGoC/x2MSQqAMAwAvyI5G4jWDb8iHlyiBrRKW0UQ/27wO
+ AwzD3h2wh7q6AHHl3jZrUIeRzAsnZ0ZZVSGlNKCKjK4nDOHtcft2FcUG9gdjkMXtMNkKBImQ6X
+ pM9CDmknu/9607/sBe6OuEm0AAAA=
+X-Change-ID: 20260803-hugetlb-mpol-interpretation-1c61e03073b4
+To: Alistair Popple <apopple@nvidia.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Byungchul Park <byungchul@sk.com>, David Hildenbrand <david@kernel.org>, 
+ Gregory Price <gourry@gourry.net>, Joshua Hahn <joshua.hahnjy@gmail.com>, 
+ Matthew Brost <matthew.brost@intel.com>, 
+ Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
+ Rakie Kim <rakie.kim@sk.com>, Ying Huang <ying.huang@linux.alibaba.com>, 
+ Zi Yan <ziy@nvidia.com>, erdemaktas@google.com, fvdl@google.com, 
+ jiaqiyan@google.com, jthoughton@google.com, mhocko@kernel.org, 
+ michael.roth@amd.com, pasha.tatashin@soleen.com, pbonzini@redhat.com, 
+ peterx@redhat.com, pratyush@kernel.org, rick.p.edgecombe@intel.com, 
+ rientjes@google.com, roman.gushchin@linux.dev, seanjc@google.com, 
+ shakeel.butt@linux.dev, shivankg@amd.com, vannapurve@google.com, 
+ yan.y.zhao@intel.com, Jason Gunthorpe <jgg@ziepe.ca>
+Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
+ Ackerley Tng <ackerleytng@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785764284; l=2055;
+ i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
+ bh=F8YOycuO3n9pyOBJlzGLYA0VTNzGJrpqDpl6r2YRxhs=;
+ b=/81mVPLrmqdt8S3FtL95+RIaQasW+MEisG4xehIhpdk2HXO5eFPXLPMjy5Uwdv433hzfM/vc/
+ 892yhYS4rbuDoLrWjmm5vw+7DS7oD3htmhFX7j4Oo4nPApGYQQ8G4U5
+X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
+ pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
+X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The involved functions follow the same pattern as kvm_events_record().
+This patch series is the first 3 patches, split out from "Open HugeTLB
+allocation routine for more generic use" [1].
 
-Signed-off-by: Michalis Niarchos <michael.niarchos@gmail.com>
+I'm splitting these 3 patches into this separate series, and continuing as
+v5 from [1] to avoid being blocked on addressing pre-existing
+bugs. (Sashiko's reviews on [1] revealed quite a few pre-existing bugs,
+which is separately being addressed in [2].)
+
+These 3 patches have been reviewed and can be merged first. (Thank you
+Andrew!) The other 3 patches in [1] will probably build on [2], so I'd like
+to leave those to later.
+
+In this v5, the only change is to the first patch - I improved the wording
+of the comment just above the call to dequeue_hugetlb_folio_vma() in
+alloc_hugetlb_folio().
+
+[1] https://lore.kernel.org/all/20260702-hugetlb-open-up-v4-0-d53cefcccf34@google.com/T/
+[2] https://lore.kernel.org/all/20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com/T/
+
+Testing:
+
++ libhugetlbfs tests pass
++ tools/testing/selftests/mm/ksft_hugetlb.sh passes
+
+RFC v1: https://lore.kernel.org/all/bb35a69a-5be9-45f5-a557-1902487a1bc2@linux.dev/
+v2: https://lore.kernel.org/r/20260506-hugetlb-open-up-v2-0-826a0c5f28fc@google.com
+v3: https://lore.kernel.org/r/20260518-hugetlb-open-up-v3-0-e14b302477f8@google.com
+v4: https://lore.kernel.org/r/20260702-hugetlb-open-up-v4-0-d53cefcccf34@google.com
+
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/perf/builtin-kvm.c                         | 36 +++++++++---------------
- tools/perf/util/kvm-stat-arch/kvm-stat-powerpc.c |  4 +--
- tools/perf/util/kvm-stat-arch/kvm-stat-x86.c     | 10 ++-----
- 3 files changed, 18 insertions(+), 32 deletions(-)
+Ackerley Tng (3):
+      mm: hugetlb: Consolidate interpretation of gbl_chg within alloc_hugetlb_folio()
+      mm: hugetlb: Move mpol interpretation out of alloc_buddy_hugetlb_folio_with_mpol()
+      mm: hugetlb: Move mpol interpretation out of dequeue_hugetlb_folio_vma()
 
-diff --git a/tools/perf/builtin-kvm.c b/tools/perf/builtin-kvm.c
-index 9504c83e2074..04cf9bd5b595 100644
---- a/tools/perf/builtin-kvm.c
-+++ b/tools/perf/builtin-kvm.c
-@@ -2003,11 +2003,11 @@ static int __cmd_record(const char *file_name, int argc, const char **argv)
- 	if (!rec_argv)
- 		return -ENOMEM;
- 
--	rec_argv[i++] = STRDUP_FAIL_EXIT("record");
--	rec_argv[i++] = STRDUP_FAIL_EXIT("-o");
--	rec_argv[i++] = STRDUP_FAIL_EXIT(file_name);
-+	rec_argv[i++] = "record";
-+	rec_argv[i++] = "-o";
-+	rec_argv[i++] = file_name;
- 	for (j = 1; j < argc; j++, i++)
--		rec_argv[i] = STRDUP_FAIL_EXIT(argv[j]);
-+		rec_argv[i] = argv[j];
- 
- 	BUG_ON(i + 2 != rec_argc);
- 
-@@ -2018,8 +2018,6 @@ static int __cmd_record(const char *file_name, int argc, const char **argv)
- 	ret = cmd_record(i, rec_argv);
- 
- EXIT:
--	for (i = 0; i < rec_argc; i++)
--		free((void *)rec_argv[i]);
- 	free(rec_argv);
- 	return ret;
- }
-@@ -2034,19 +2032,16 @@ static int __cmd_report(const char *file_name, int argc, const char **argv)
- 	if (!rec_argv)
- 		return -ENOMEM;
- 
--	rec_argv[i++] = STRDUP_FAIL_EXIT("report");
--	rec_argv[i++] = STRDUP_FAIL_EXIT("-i");
--	rec_argv[i++] = STRDUP_FAIL_EXIT(file_name);
-+	rec_argv[i++] = "report";
-+	rec_argv[i++] = "-i";
-+	rec_argv[i++] = file_name;
- 	for (j = 1; j < argc; j++, i++)
--		rec_argv[i] = STRDUP_FAIL_EXIT(argv[j]);
-+		rec_argv[i] = argv[j];
- 
- 	BUG_ON(i != rec_argc);
- 
- 	ret = cmd_report(i, rec_argv);
- 
--EXIT:
--	for (i = 0; i < rec_argc; i++)
--		free((void *)rec_argv[i]);
- 	free(rec_argv);
- 	return ret;
- }
-@@ -2062,19 +2057,16 @@ __cmd_buildid_list(const char *file_name, int argc, const char **argv)
- 	if (!rec_argv)
- 		return -ENOMEM;
- 
--	rec_argv[i++] = STRDUP_FAIL_EXIT("buildid-list");
--	rec_argv[i++] = STRDUP_FAIL_EXIT("-i");
--	rec_argv[i++] = STRDUP_FAIL_EXIT(file_name);
-+	rec_argv[i++] = "buildid-list";
-+	rec_argv[i++] = "-i";
-+	rec_argv[i++] = file_name;
- 	for (j = 1; j < argc; j++, i++)
--		rec_argv[i] = STRDUP_FAIL_EXIT(argv[j]);
-+		rec_argv[i] = argv[j];
- 
- 	BUG_ON(i != rec_argc);
- 
- 	ret = cmd_buildid_list(i, rec_argv);
- 
--EXIT:
--	for (i = 0; i < rec_argc; i++)
--		free((void *)rec_argv[i]);
- 	free(rec_argv);
- 	return ret;
- }
-@@ -2094,7 +2086,7 @@ static int __cmd_top(int argc, const char **argv)
- 		return -ENOMEM;
- 
- 	for (i = 0; i < argc; i++)
--		rec_argv[i] = STRDUP_FAIL_EXIT(argv[i]);
-+		rec_argv[i] = argv[i];
- 
- 	BUG_ON(i != argc);
- 
-@@ -2105,8 +2097,6 @@ static int __cmd_top(int argc, const char **argv)
- 	ret = cmd_top(i, rec_argv);
- 
- EXIT:
--	for (i = 0; i < rec_argc; i++)
--		free((void *)rec_argv[i]);
- 	free(rec_argv);
- 	return ret;
- }
-diff --git a/tools/perf/util/kvm-stat-arch/kvm-stat-powerpc.c b/tools/perf/util/kvm-stat-arch/kvm-stat-powerpc.c
-index 96d9c4ae0209..37f36c6bf895 100644
---- a/tools/perf/util/kvm-stat-arch/kvm-stat-powerpc.c
-+++ b/tools/perf/util/kvm-stat-arch/kvm-stat-powerpc.c
-@@ -196,8 +196,8 @@ int __kvm_add_default_arch_event_powerpc(int *argc, const char **argv)
- 	parse_options(j, tmp, event_options, NULL, PARSE_OPT_KEEP_UNKNOWN);
- 	if (!event) {
- 		if (perf_pmus__have_event("trace_imc", "trace_cycles")) {
--			argv[j++] = strdup("-e");
--			argv[j++] = strdup("trace_imc/trace_cycles/");
-+			argv[j++] = "-e";
-+			argv[j++] = "trace_imc/trace_cycles/";
- 			*argc += 2;
- 		} else {
- 			free(tmp);
-diff --git a/tools/perf/util/kvm-stat-arch/kvm-stat-x86.c b/tools/perf/util/kvm-stat-arch/kvm-stat-x86.c
-index 788d216f0852..67babdd3daf1 100644
---- a/tools/perf/util/kvm-stat-arch/kvm-stat-x86.c
-+++ b/tools/perf/util/kvm-stat-arch/kvm-stat-x86.c
-@@ -213,7 +213,7 @@ int __kvm_add_default_arch_event_x86(int *argc, const char **argv)
- {
- 	const char **tmp;
- 	bool event = false;
--	int ret = 0, i, j = *argc;
-+	int i, j = *argc;
- 
- 	const struct option event_options[] = {
- 		OPT_BOOLEAN('e', "event", &event, NULL),
-@@ -233,17 +233,13 @@ int __kvm_add_default_arch_event_x86(int *argc, const char **argv)
- 
- 	parse_options(j, tmp, event_options, NULL, PARSE_OPT_KEEP_UNKNOWN);
- 	if (!event) {
--		argv[j++] = STRDUP_FAIL_EXIT("-e");
--		argv[j++] = STRDUP_FAIL_EXIT("cycles");
-+		argv[j++] = "-e";
-+		argv[j++] = "cycles";
- 		*argc += 2;
- 	}
- 
- 	free(tmp);
- 	return 0;
--
--EXIT:
--	free(tmp);
--	return ret;
- }
- 
- const char * const *__kvm_events_tp_x86(void)
+ include/uapi/linux/mempolicy.h |   2 +-
+ mm/hugetlb.c                   | 110 +++++++++++++++++++++++------------------
+ 2 files changed, 62 insertions(+), 50 deletions(-)
+---
+base-commit: 075b74841bd0065a3bda3440873c747938e69b68
+change-id: 20260803-hugetlb-mpol-interpretation-1c61e03073b4
 
--- 
-2.55.0
+Best regards,
+--
+Ackerley Tng <ackerleytng@google.com>
 
