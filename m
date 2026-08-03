@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 03 Aug 2026 08:34:03 +0200
-Subject: [PATCH 05/28] arm64: dts: qcom: sdm850: Fix swapped USB QMP PHY
+Date: Mon, 03 Aug 2026 08:34:04 +0200
+Subject: [PATCH 06/28] arm64: dts: qcom: sm8150: Fix swapped USB QMP PHY
  vdda-phy/vdda-pll supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-phy-supply-fix-v1-5-5880630cde3e@oss.qualcomm.com>
+Message-Id: <20260803-phy-supply-fix-v1-6-5880630cde3e@oss.qualcomm.com>
 References: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 In-Reply-To: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,16 +19,16 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  Manivannan Sadhasivam <mani@kernel.org>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3412;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3477;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=nismIA24fRKl8EPFbT1HEX6ReLKE9mLrsjmrxiEtSfQ=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZi1TZBoMZDsJBX3iArhjdoWrIAqlrYYrRtb
- u0S0K6WK8+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2YgAKCRBVnxHm/pHO
- 9X7aCACqSotDK+2F91lYPnIMELqETBqdHCoGBSyate4CVR5GZF9ta0QZRWFc2V0OoBkyRlHQATh
- VK7sTmTMIygUuNmMFBPq/rm93OVDe+WIh9cS8lC5XxYmTttqKA8ELnJVFBcHLcZPq15yUBkxHw1
- M8Ir8cGXJcgbIo5EJ98R06zoBraESNypmKvc6JmHX+WRgurGknjlJU1cCCnNEa/cwZAylhz6pCj
- QHBk98VPxBk3wg6MCGvzD5m1B4YzzRsU5si3Zaop9ik/sV+YSPqV7+6XwKkNnq1JFOtENTXlT4R
- agq98Ltwr9JS1dI40JQq0/oLdaATx68ECvRHpiyGLN16g/Rm
+ bh=R9gWgGPsJc/ReITNmuw8OdtfAfHDTeozmBiKZBujo5w=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYsgqMEveIpdlUGaUEvVx0cl9RyIqlHumtsRUefT2sq3p+
+ H/dLYS/k9GYhYGRi0FWTJElfamzVqPH6RtLItSnwwxiZQKZwsDFKQATyYti/+/W5Tu559g902/H
+ HrtGSqSImITzZ7esbGdL+2H4Six8ktcspuf3/5+Q92vP7FvjUseVcvVVR975s7y6PG3R8cWL+gq
+ DYj99al3rOWWvs+eF+zfkpYVF7pnLybxLybZawzS/tSju1gWT6n0pK4+VW2X/aMz60dGS/ajxV4
+ BXS++xCX4qdod85HhrzYot3nz2zYjyCT5Qea5y/zXpwhuHlqTc1a8o+v49UM+ZreDizMTKAx8XO
+ 8+NPTxBq/mskvmBAx255emrOj6GXf/SvISpd4XQ1r6k0i+T/RbcPlOw5Pc35U1v5STPv483sihT
+ qT+9Z2HMRZ/NpbY+Zy1OHG0SnxhR7aVUfrDi9KcfGRmrAQ==
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,96 +41,89 @@ vdda-pll.
 
 Fix it by swapping the two supplies back.
 
-Fixes: aab69794b55d ("arm64: dts: qcom: Add support for Huawei MateBook E 2019")
-Fixes: 44acee207844 ("arm64: dts: qcom: Add Lenovo Yoga C630")
-Fixes: d4b341269efb ("arm64: dts: qcom: Add support for Samsung Galaxy Book2")
+Fixes: 0ab1b2d10afe ("arm64: dts: qcom: add sm8150 hdk dts")
+Fixes: b33d2868e8d3 ("arm64: dts: qcom: sm8150: Add USB and PHY device nodes")
+Fixes: d1f781db47a8 ("arm64: dts: qcom: add initial device-tree for Microsoft Surface Duo")
+Fixes: d0a6ce59ea4e ("arm64: dts: qcom: sm8150: Add support for SONY Xperia 1 / 5 (Kumano platform)")
 Reported-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Assisted-by: Claude:opus-4-8
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/sdm850-huawei-matebook-e-2019.dts | 8 ++++----
- arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts       | 8 ++++----
- arch/arm64/boot/dts/qcom/sdm850-samsung-w737.dts           | 8 ++++----
- 3 files changed, 12 insertions(+), 12 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8150-hdk.dts                   | 8 ++++----
+ arch/arm64/boot/dts/qcom/sm8150-microsoft-surface-duo.dts | 4 ++--
+ arch/arm64/boot/dts/qcom/sm8150-mtp.dts                   | 4 ++--
+ arch/arm64/boot/dts/qcom/sm8150-sony-xperia-kumano.dtsi   | 4 ++--
+ 4 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm850-huawei-matebook-e-2019.dts b/arch/arm64/boot/dts/qcom/sdm850-huawei-matebook-e-2019.dts
-index f04865381870..a4339b562b60 100644
---- a/arch/arm64/boot/dts/qcom/sdm850-huawei-matebook-e-2019.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm850-huawei-matebook-e-2019.dts
-@@ -872,8 +872,8 @@ &usb_1_hsphy {
- };
+diff --git a/arch/arm64/boot/dts/qcom/sm8150-hdk.dts b/arch/arm64/boot/dts/qcom/sm8150-hdk.dts
+index 8fb04ce72f91..cdced5c848d3 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150-hdk.dts
++++ b/arch/arm64/boot/dts/qcom/sm8150-hdk.dts
+@@ -801,8 +801,8 @@ &usb_2_hsphy {
  
  &usb_1_qmpphy {
--	vdda-phy-supply = <&vdda_usb1_ss_1p2>;
--	vdda-pll-supply = <&vdda_usb1_ss_core>;
-+	vdda-phy-supply = <&vdda_usb1_ss_core>;
-+	vdda-pll-supply = <&vdda_usb1_ss_1p2>;
- 
  	status = "okay";
+-	vdda-phy-supply = <&vreg_l3c_1p2>;
+-	vdda-pll-supply = <&vreg_l18a_0p8>;
++	vdda-phy-supply = <&vreg_l18a_0p8>;
++	vdda-pll-supply = <&vreg_l3c_1p2>;
+ 	orientation-switch;
  };
-@@ -898,8 +898,8 @@ &usb_2_hsphy {
- };
+ 
+@@ -812,8 +812,8 @@ &usb_1_qmpphy_out {
  
  &usb_2_qmpphy {
--	vdda-phy-supply = <&vdda_usb2_ss_1p2>;
--	vdda-pll-supply = <&vdda_usb2_ss_core>;
-+	vdda-phy-supply = <&vdda_usb2_ss_core>;
-+	vdda-pll-supply = <&vdda_usb2_ss_1p2>;
- 
  	status = "okay";
+-	vdda-phy-supply = <&vreg_l3c_1p2>;
+-	vdda-pll-supply = <&vreg_l5a_0p875>;
++	vdda-phy-supply = <&vreg_l5a_0p875>;
++	vdda-pll-supply = <&vreg_l3c_1p2>;
  };
-diff --git a/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts b/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts
-index e41200839dbe..d8cb3e5d8d07 100644
---- a/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm850-lenovo-yoga-c630.dts
-@@ -860,8 +860,8 @@ &usb_1_hsphy {
+ 
+ &usb_1 {
+diff --git a/arch/arm64/boot/dts/qcom/sm8150-microsoft-surface-duo.dts b/arch/arm64/boot/dts/qcom/sm8150-microsoft-surface-duo.dts
+index 835ef929ff2d..f37e11bde067 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150-microsoft-surface-duo.dts
++++ b/arch/arm64/boot/dts/qcom/sm8150-microsoft-surface-duo.dts
+@@ -520,8 +520,8 @@ &usb_1_hsphy {
+ 
  &usb_1_qmpphy {
  	status = "okay";
- 
--	vdda-phy-supply = <&vdda_usb1_ss_1p2>;
--	vdda-pll-supply = <&vdda_usb1_ss_core>;
-+	vdda-phy-supply = <&vdda_usb1_ss_core>;
-+	vdda-pll-supply = <&vdda_usb1_ss_1p2>;
+-	vdda-phy-supply = <&vreg_l3c_1p2>;
+-	vdda-pll-supply = <&vdda_usb_ss_dp_core_1>;
++	vdda-phy-supply = <&vdda_usb_ss_dp_core_1>;
++	vdda-pll-supply = <&vreg_l3c_1p2>;
  };
  
- &usb_1_qmpphy_out {
-@@ -953,8 +953,8 @@ &usb_2_hsphy {
- &usb_2_qmpphy {
- 	status = "okay";
+ &usb_1 {
+diff --git a/arch/arm64/boot/dts/qcom/sm8150-mtp.dts b/arch/arm64/boot/dts/qcom/sm8150-mtp.dts
+index 0f2d511624a8..6a6564d8d7f7 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150-mtp.dts
++++ b/arch/arm64/boot/dts/qcom/sm8150-mtp.dts
+@@ -438,8 +438,8 @@ &usb_1_hsphy {
  
--	vdda-phy-supply = <&vdda_usb2_ss_1p2>;
--	vdda-pll-supply = <&vdda_usb2_ss_core>;
-+	vdda-phy-supply = <&vdda_usb2_ss_core>;
-+	vdda-pll-supply = <&vdda_usb2_ss_1p2>;
- };
- 
- &venus {
-diff --git a/arch/arm64/boot/dts/qcom/sdm850-samsung-w737.dts b/arch/arm64/boot/dts/qcom/sdm850-samsung-w737.dts
-index a676d3ea01b9..b7a1e2317fc2 100644
---- a/arch/arm64/boot/dts/qcom/sdm850-samsung-w737.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm850-samsung-w737.dts
-@@ -609,8 +609,8 @@ &usb_1_hsphy {
  &usb_1_qmpphy {
  	status = "okay";
- 
--	vdda-phy-supply = <&vdda_usb1_ss_1p2>;
--	vdda-pll-supply = <&vdda_usb1_ss_core>;
-+	vdda-phy-supply = <&vdda_usb1_ss_core>;
-+	vdda-pll-supply = <&vdda_usb1_ss_1p2>;
+-	vdda-phy-supply = <&vreg_l3c_1p2>;
+-	vdda-pll-supply = <&vdda_usb_ss_dp_core_1>;
++	vdda-phy-supply = <&vdda_usb_ss_dp_core_1>;
++	vdda-pll-supply = <&vreg_l3c_1p2>;
  };
  
- &usb_2 {
-@@ -635,8 +635,8 @@ &usb_2_hsphy {
- &usb_2_qmpphy {
+ &usb_1 {
+diff --git a/arch/arm64/boot/dts/qcom/sm8150-sony-xperia-kumano.dtsi b/arch/arm64/boot/dts/qcom/sm8150-sony-xperia-kumano.dtsi
+index 70fd6455518b..6c2e2bf869d0 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150-sony-xperia-kumano.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8150-sony-xperia-kumano.dtsi
+@@ -869,6 +869,6 @@ &usb_1_hsphy {
+ 
+ &usb_1_qmpphy {
  	status = "okay";
- 
--	vdda-phy-supply = <&vdda_usb2_ss_1p2>;
--	vdda-pll-supply = <&vdda_usb2_ss_core>;
-+	vdda-phy-supply = <&vdda_usb2_ss_core>;
-+	vdda-pll-supply = <&vdda_usb2_ss_1p2>;
+-	vdda-phy-supply = <&vreg_l3c_1p2>;
+-	vdda-pll-supply = <&vreg_l18a_0p8>;
++	vdda-phy-supply = <&vreg_l18a_0p8>;
++	vdda-pll-supply = <&vreg_l3c_1p2>;
  };
- 
- &venus {
 
 -- 
 2.43.0
