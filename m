@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 03 Aug 2026 08:34:16 +0200
-Subject: [PATCH 18/28] arm64: dts: qcom: hamoa: Fix swapped USB QMP PHY
+Date: Mon, 03 Aug 2026 08:34:17 +0200
+Subject: [PATCH 19/28] arm64: dts: qcom: purwa: Fix swapped USB QMP PHY
  vdda-phy/vdda-pll supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-phy-supply-fix-v1-18-5880630cde3e@oss.qualcomm.com>
+Message-Id: <20260803-phy-supply-fix-v1-19-5880630cde3e@oss.qualcomm.com>
 References: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 In-Reply-To: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,16 +19,16 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  Manivannan Sadhasivam <mani@kernel.org>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=22884;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3882;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=ucE4QvnEIrQloiC6a7D6nX1gkwefll8Or5TiNAFmdiA=;
- b=owGbwMvMwMUYOl/w2b+J574ynlZLYsgqMEtnOF/lE+Co3lscuv7dM5YbplpM2WV1whWi3A45h
- XLrP2R1MhqzMDByMciKKbKkL3XWavQ4fWNJhPp0mEGsTGBTuDgFYCJ++ux/+G8WqfhnyBW9ZDST
- KleZlK++479CotNn3cnLP/j52MoesG8TzFRzMGL9y3je6aCC3+/pTrVc7ltrtnJychQnrPGe5fN
- SL5yHk3Xm0Q1Mi7WvKURsPCP6qfOrm/TLzc6Re40bUnt+mkhszinT5H3opRWcXSneybvV9nbWBd
- 1vd/LKkuue9/w1Puu5jOU1796avT8SFi1nVN6VuYz3x/HYuK3uO7m2tbHnMpwL/nY7ef85Obe7W
- /ZO31zO+clW8o/roVt3vSNVBf75bAkSb518f6228drrSXkS6bYb1pqfnf7vml3XYbOFr7yYdx4z
- um2/4a8k6+Xzma8aBT0yn4vGvtjQGv8nbi33h7qb7mIA
+ bh=JlD3N9GG/gNdoud/SFzh/MUc3Qdkcw5l2rQKOsDDRt8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZneSTF0Ms9WZcQGfMrqpZuUGKIrOXJJgIPH
+ xkY8opmjS+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2ZwAKCRBVnxHm/pHO
+ 9XSxB/9GyzU5Sv9cfZP5zpmipWzwg0LRcHnj73DU8PPZhyTlffseB2hUAJU1kZ7x/lZkDXaUMv7
+ FjLGkMIYL6Hn0SIpp5Pgbl6jcoqErQk/LqEpMx4xqe9qdBjDyhcrORo44k+1GvGv53xfCdsqcOo
+ bOY8JyT8Y3jctXEcMtxTt864YyLWj5qFG2Yl1OkzVVL1q7kVGINk1NNCRmKR74XVFXs7HK8W//q
+ 1QA2bxpsFjwBbrFSxKecJS4WjCoRvOGf82IxWVG945MNxKPiAAHqt9lR9mwZxzrE1K20BExUV5L
+ SxetPUqkC9LzjWrOILiCik1ksCQsFuVKRCf2f08uylxoo9VD
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,47 +41,21 @@ vdda-pll.
 
 Fix it by swapping the two supplies back.
 
-Fixes: 5098ae93ce44 ("arm64: dts: qcom: Add HAMOA-IOT-SOM platform")
-Fixes: af241225893a ("arm64: dts: qcom: Add the Lenovo IdeaCentre Mini X")
-Fixes: ae5cee8e7349 ("arm64: dts: qcom: x1e80100-crd: Fix USB PHYs regulators")
-Fixes: 20676f7819d7 ("arm64: dts: qcom: x1e80100-qcp: Fix USB PHYs regulators")
-Fixes: d0e2f8f62dff ("arm64: dts: qcom: Add device tree for ASUS Vivobook S 15")
-Fixes: 6516961352a1 ("arm64: dts: qcom: Add support for X1-based Asus Zenbook A14")
-Fixes: 45247fe17db2 ("arm64: dts: qcom: x1e80100: add Lenovo Thinkpad Yoga slim 7x devicetree")
-Fixes: 6f18b8d4142c ("arm64: dts: qcom: x1e80100-hp-x14: dt for HP Omnibook X Laptop 14")
-Fixes: 0d72ccaa1e84 ("arm64: dts: qcom: Add support for X1-based Surface Pro 11")
-Fixes: 09d77be56093 ("arm64: dts: qcom: Add support for X1-based Surface Laptop 7 devices")
-Fixes: 8cf65490cdb0 ("arm64: dts: qcom: Add dts for Medion SPRCHRGD 14 S1")
-Fixes: f5b788d0e8cd ("arm64: dts: qcom: Add support for X1-based Dell XPS 13 9345")
-Fixes: 7b8a31e82b87 ("arm64: dts: qcom: Add X1E001DE Snapdragon Devkit for Windows")
-Fixes: 7d1cbe2f4985 ("arm64: dts: qcom: Add X1E78100 ThinkPad T14s Gen 6")
-Fixes: e7733b42111c ("arm64: dts: qcom: Add support for Dell Inspiron 7441 / Latitude 7455")
+Fixes: 64a0277c9876 ("arm64: dts: qcom: Add PURWA-IOT-SOM platform")
+Fixes: d3f600dc452d ("arm64: dts: qcom: Add Lenovo ThinkBook 16 G7 QOY device tree")
 Reported-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Assisted-by: Claude:opus-4-8
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/hamoa-iot-som.dtsi          | 20 ++++++++++----------
- .../qcom/hamoa-lenovo-ideacentre-mini-01q8x10.dts    | 20 ++++++++++----------
- arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi   | 20 ++++++++++----------
- arch/arm64/boot/dts/qcom/x1-asus-zenbook-a14.dtsi    | 20 ++++++++++----------
- arch/arm64/boot/dts/qcom/x1-crd.dtsi                 | 20 ++++++++++----------
- arch/arm64/boot/dts/qcom/x1-dell-thena.dtsi          | 16 ++++++++--------
- arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi     | 12 ++++++------
- arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi    |  8 ++++----
- arch/arm64/boot/dts/qcom/x1e001de-devkit.dts         | 20 ++++++++++----------
- .../boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi | 20 ++++++++++----------
- .../arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts | 16 ++++++++--------
- .../boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts    | 12 ++++++------
- .../boot/dts/qcom/x1e80100-medion-sprchrgd-14-s1.dts | 16 ++++++++--------
- .../boot/dts/qcom/x1e80100-microsoft-romulus.dtsi    | 16 ++++++++--------
- arch/arm64/boot/dts/qcom/x1e80100-qcp.dts            | 20 ++++++++++----------
- 15 files changed, 128 insertions(+), 128 deletions(-)
+ arch/arm64/boot/dts/qcom/purwa-iot-som.dtsi          | 20 ++++++++++----------
+ .../boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts   | 20 ++++++++++----------
+ 2 files changed, 20 insertions(+), 20 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/hamoa-iot-som.dtsi b/arch/arm64/boot/dts/qcom/hamoa-iot-som.dtsi
-index 9c5e77df0054..bc70fe5db96f 100644
---- a/arch/arm64/boot/dts/qcom/hamoa-iot-som.dtsi
-+++ b/arch/arm64/boot/dts/qcom/hamoa-iot-som.dtsi
-@@ -590,8 +590,8 @@ &usb_1_ss0_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/purwa-iot-som.dtsi b/arch/arm64/boot/dts/qcom/purwa-iot-som.dtsi
+index 394e65518ac5..50ea8a148ada 100644
+--- a/arch/arm64/boot/dts/qcom/purwa-iot-som.dtsi
++++ b/arch/arm64/boot/dts/qcom/purwa-iot-som.dtsi
+@@ -583,8 +583,8 @@ &usb_1_ss0_hsphy {
  };
  
  &usb_1_ss0_qmpphy {
@@ -92,7 +66,7 @@ index 9c5e77df0054..bc70fe5db96f 100644
  
  	status = "okay";
  };
-@@ -611,8 +611,8 @@ &usb_1_ss1_hsphy {
+@@ -604,8 +604,8 @@ &usb_1_ss1_hsphy {
  };
  
  &usb_1_ss1_qmpphy {
@@ -103,7 +77,7 @@ index 9c5e77df0054..bc70fe5db96f 100644
  
  	status = "okay";
  };
-@@ -632,8 +632,8 @@ &usb_1_ss2_hsphy {
+@@ -625,8 +625,8 @@ &usb_1_ss2_hsphy {
  };
  
  &usb_1_ss2_qmpphy {
@@ -114,7 +88,7 @@ index 9c5e77df0054..bc70fe5db96f 100644
  
  	status = "okay";
  };
-@@ -670,15 +670,15 @@ &usb_mp_hsphy1 {
+@@ -663,15 +663,15 @@ &usb_mp_hsphy1 {
  };
  
  &usb_mp_qmpphy0 {
@@ -134,68 +108,11 @@ index 9c5e77df0054..bc70fe5db96f 100644
  
  	status = "okay";
  };
-diff --git a/arch/arm64/boot/dts/qcom/hamoa-lenovo-ideacentre-mini-01q8x10.dts b/arch/arm64/boot/dts/qcom/hamoa-lenovo-ideacentre-mini-01q8x10.dts
-index bfb7cea56df9..284825008389 100644
---- a/arch/arm64/boot/dts/qcom/hamoa-lenovo-ideacentre-mini-01q8x10.dts
-+++ b/arch/arm64/boot/dts/qcom/hamoa-lenovo-ideacentre-mini-01q8x10.dts
-@@ -1101,8 +1101,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j>;
--	vdda-pll-supply = <&vreg_l1j>;
-+	vdda-phy-supply = <&vreg_l1j>;
-+	vdda-pll-supply = <&vreg_l2j>;
- 
- 	status = "okay";
- };
-@@ -1112,8 +1112,8 @@ &usb_1_ss0_qmpphy_out {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j>;
--	vdda-pll-supply = <&vreg_l2d>;
-+	vdda-phy-supply = <&vreg_l2d>;
-+	vdda-pll-supply = <&vreg_l2j>;
- 
- 	/delete-property/ mode-switch;
- 	/delete-property/ orientation-switch;
-@@ -1138,8 +1138,8 @@ usb_1_ss1_qmpphy_out_dp: endpoint@0 {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j>;
--	vdda-pll-supply = <&vreg_l2d>;
-+	vdda-phy-supply = <&vreg_l2d>;
-+	vdda-pll-supply = <&vreg_l2j>;
- 
- 	/delete-property/ mode-switch;
- 	/delete-property/ orientation-switch;
-@@ -1186,15 +1186,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e>;
--	vdda-pll-supply = <&vreg_l3c>;
-+	vdda-phy-supply = <&vreg_l3c>;
-+	vdda-pll-supply = <&vreg_l3e>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e>;
--	vdda-pll-supply = <&vreg_l3c>;
-+	vdda-phy-supply = <&vreg_l3c>;
-+	vdda-pll-supply = <&vreg_l3e>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi b/arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi
-index 48c4ad648354..0dc7c1b5a14a 100644
---- a/arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi
-@@ -1226,8 +1226,8 @@ &usb_1_ss0_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts b/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts
+index 500809772097..913645bc3595 100644
+--- a/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts
++++ b/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts
+@@ -1561,8 +1561,8 @@ &usb_1_ss0_hsphy {
  };
  
  &usb_1_ss0_qmpphy {
@@ -206,7 +123,7 @@ index 48c4ad648354..0dc7c1b5a14a 100644
  
  	status = "okay";
  };
-@@ -1256,8 +1256,8 @@ &usb_1_ss1_hsphy {
+@@ -1591,8 +1591,8 @@ &usb_1_ss1_hsphy {
  };
  
  &usb_1_ss1_qmpphy {
@@ -217,7 +134,7 @@ index 48c4ad648354..0dc7c1b5a14a 100644
  
  	status = "okay";
  };
-@@ -1277,8 +1277,8 @@ &usb_1_ss1_qmpphy_out {
+@@ -1631,8 +1631,8 @@ &usb_1_ss2_hsphy {
  };
  
  &usb_1_ss2_qmpphy {
@@ -228,7 +145,7 @@ index 48c4ad648354..0dc7c1b5a14a 100644
  
  	/delete-property/ mode-switch;
  	/delete-property/ orientation-switch;
-@@ -1342,15 +1342,15 @@ &usb_mp_hsphy1 {
+@@ -1685,8 +1685,8 @@ &usb_mp_hsphy0 {
  };
  
  &usb_mp_qmpphy0 {
@@ -239,577 +156,7 @@ index 48c4ad648354..0dc7c1b5a14a 100644
  
  	status = "okay";
  };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1-asus-zenbook-a14.dtsi b/arch/arm64/boot/dts/qcom/x1-asus-zenbook-a14.dtsi
-index 66d566808f58..59cbbfbce490 100644
---- a/arch/arm64/boot/dts/qcom/x1-asus-zenbook-a14.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-asus-zenbook-a14.dtsi
-@@ -1454,8 +1454,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p9>;
-+	vdda-phy-supply = <&vreg_l1j_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1484,8 +1484,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1505,8 +1505,8 @@ &usb_1_ss1_qmpphy_out {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	/delete-property/ mode-switch;
- 	/delete-property/ orientation-switch;
-@@ -1551,15 +1551,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p9>;
-+	vdda-phy-supply = <&vreg_l3c_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p9>;
-+	vdda-phy-supply = <&vreg_l3c_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1-crd.dtsi b/arch/arm64/boot/dts/qcom/x1-crd.dtsi
-index a9c5c523575e..107fe2867e73 100644
---- a/arch/arm64/boot/dts/qcom/x1-crd.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-crd.dtsi
-@@ -1734,8 +1734,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1764,8 +1764,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1794,8 +1794,8 @@ &usb_1_ss2_hsphy {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1836,15 +1836,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1-dell-thena.dtsi b/arch/arm64/boot/dts/qcom/x1-dell-thena.dtsi
-index db291730130c..c7c793338699 100644
---- a/arch/arm64/boot/dts/qcom/x1-dell-thena.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-dell-thena.dtsi
-@@ -1568,8 +1568,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1598,8 +1598,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1637,8 +1637,8 @@ &usb_mp_hsphy0 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-@@ -1651,8 +1651,8 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi b/arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi
-index 02708f23a865..dba8cee43e29 100644
---- a/arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-hp-omnibook-x14.dtsi
-@@ -1466,8 +1466,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-@@ -1496,8 +1496,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-@@ -1533,8 +1533,8 @@ &usb_mp_hsphy0 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi b/arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi
-index 7559557610ed..ce7d958ca687 100644
---- a/arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi
-@@ -1268,8 +1268,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1298,8 +1298,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts b/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts
-index 2e38402e2c14..be1a8ac8c699 100644
---- a/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e001de-devkit.dts
-@@ -1382,8 +1382,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1413,8 +1413,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1443,8 +1443,8 @@ &usb_1_ss2_hsphy {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1486,15 +1486,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi b/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi
-index 5d49df41be02..0bee2a3d6e7a 100644
---- a/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1e78100-lenovo-thinkpad-t14s.dtsi
-@@ -1601,8 +1601,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1631,8 +1631,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1652,8 +1652,8 @@ &usb_1_ss1_qmpphy_out {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	/delete-property/ mode-switch;
- 	/delete-property/ orientation-switch;
-@@ -1717,15 +1717,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts b/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts
-index ce7b10ea89b6..2be5a37c00cc 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-dell-xps13-9345.dts
-@@ -1286,8 +1286,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p9>;
-+	vdda-phy-supply = <&vreg_l1j_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1316,8 +1316,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1357,15 +1357,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p9>;
-+	vdda-phy-supply = <&vreg_l3c_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p9>;
-+	vdda-phy-supply = <&vreg_l3c_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-index beb1475d7fa0..9eb2dfd99f20 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-lenovo-yoga-slim7x.dts
-@@ -1564,8 +1564,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1594,8 +1594,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1624,8 +1624,8 @@ &usb_1_ss2_hsphy {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-medion-sprchrgd-14-s1.dts b/arch/arm64/boot/dts/qcom/x1e80100-medion-sprchrgd-14-s1.dts
-index f95b1f9f439d..e4a0b86847cd 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-medion-sprchrgd-14-s1.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-medion-sprchrgd-14-s1.dts
-@@ -1407,8 +1407,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p9>;
-+	vdda-phy-supply = <&vreg_l1j_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1428,8 +1428,8 @@ &usb_1_ss0_qmpphy_out {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	/delete-property/ mode-switch;
- 	/delete-property/ orientation-switch;
-@@ -1497,16 +1497,16 @@ &usb_mp_hsphy1 {
- 
- /* Right side USB-A (USB-SS 3) */
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p9>;
-+	vdda-phy-supply = <&vreg_l3c_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
- 
- /* Left side USB-A (USB-SS 4) */
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p9>;
-+	vdda-phy-supply = <&vreg_l3c_0p9>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi b/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi
-index 28342cb84ded..13d0f09e0c2a 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-microsoft-romulus.dtsi
-@@ -1491,8 +1491,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j>;
--	vdda-pll-supply = <&vreg_l1j>;
-+	vdda-phy-supply = <&vreg_l1j>;
-+	vdda-pll-supply = <&vreg_l2j>;
- 
- 	status = "okay";
- };
-@@ -1521,8 +1521,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j>;
--	vdda-pll-supply = <&vreg_l2d>;
-+	vdda-phy-supply = <&vreg_l2d>;
-+	vdda-pll-supply = <&vreg_l2j>;
- 
- 	status = "okay";
- };
-@@ -1565,15 +1565,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e>;
--	vdda-pll-supply = <&vreg_l3c>;
-+	vdda-phy-supply = <&vreg_l3c>;
-+	vdda-pll-supply = <&vreg_l3e>;
- 
- 	status = "okay";
- };
- 
- &usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3e>;
--	vdda-pll-supply = <&vreg_l3c>;
-+	vdda-phy-supply = <&vreg_l3c>;
-+	vdda-pll-supply = <&vreg_l3e>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts b/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts
-index 8afbac349cc9..78380fec8839 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts
-@@ -1416,8 +1416,8 @@ &usb_1_ss0_hsphy {
- };
- 
- &usb_1_ss0_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l1j_0p8>;
-+	vdda-phy-supply = <&vreg_l1j_0p8>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1446,8 +1446,8 @@ &usb_1_ss1_hsphy {
- };
- 
- &usb_1_ss1_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1476,8 +1476,8 @@ &usb_1_ss2_hsphy {
- };
- 
- &usb_1_ss2_qmpphy {
--	vdda-phy-supply = <&vreg_l2j_1p2>;
--	vdda-pll-supply = <&vreg_l2d_0p9>;
-+	vdda-phy-supply = <&vreg_l2d_0p9>;
-+	vdda-pll-supply = <&vreg_l2j_1p2>;
- 
- 	status = "okay";
- };
-@@ -1519,15 +1519,15 @@ &usb_mp_hsphy1 {
- };
- 
- &usb_mp_qmpphy0 {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3c_0p8>;
-+	vdda-phy-supply = <&vreg_l3c_0p8>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
+@@ -1701,8 +1701,8 @@ &usb_mp_hsphy1 {
  };
  
  &usb_mp_qmpphy1 {
