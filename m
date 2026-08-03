@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 03 Aug 2026 08:34:10 +0200
-Subject: [PATCH 12/28] arm64: dts: qcom: qcm6490: Fix swapped USB QMP PHY
+Date: Mon, 03 Aug 2026 08:34:11 +0200
+Subject: [PATCH 13/28] arm64: dts: qcom: qcs6490: Fix swapped USB QMP PHY
  vdda-phy/vdda-pll supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-phy-supply-fix-v1-12-5880630cde3e@oss.qualcomm.com>
+Message-Id: <20260803-phy-supply-fix-v1-13-5880630cde3e@oss.qualcomm.com>
 References: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 In-Reply-To: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,16 +19,16 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  Manivannan Sadhasivam <mani@kernel.org>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3090;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2584;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=RhG3XH0/Ea2Rv232KNpCp7WdKXwu1fia53eO8pGiLeo=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZlC6do8v58lflssdfHGlL7RQX0Jpdxkg0hs
- 5ObJgA74PSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2ZQAKCRBVnxHm/pHO
- 9burB/4qTPpKz+M9XO9lpNrkOeep+ylX8WN9ElcvmVZZsh4HpEh/61tFzYkrDtgNSCRrF50beGC
- tPt8RkvIKveMUYV0NpAYq/HLcSjm+vL5q/Gonw49Jo7M+FINXGldb3u1PMPG4Jn3iJGfZSmUNsu
- OcndszXNI+lry+SD3+z3m/kAaeXsjWVAPt54dcsRPA8sbht+WiJ90x+kRlkWKW0TFoQn8Pm+Fpq
- 8oO1x2f5r2MquM7sIX+f2mM+HtRdKPazX2M+RlfgLFsE9G6rnbzUASeQdYimv3sziD2u8evxYAd
- 60eexD1CAhhXPE6FalQzWbPaNtEIWR8LZO4wcj/3wdxMJppl
+ bh=R6CtZoRHEQqaE+BxpC08C35TWHS9qRmr1Xft9+BSqs8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZldmiHj6ZDWnGO9YEvYOCd4QIwjfpTMB6Tc
+ vGdXDI322CJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2ZQAKCRBVnxHm/pHO
+ 9ZCbCACENmg4NZ8NBcE8NrJHnfJow/rvXW6DNIcfgCJiTfR+CuneIOm2PX2tzNu7xb4x0nf3R4k
+ A1XGdsj04oeQ6kzIXjpmm5tSv43NChtTG8ZP4Br1kaNZo8s+m+akf40wzB01eA6RhwRISvDKJq7
+ 9Ycqu0cjqwJ3ntlIlm2tJyOWQfIj5/u0n286oTzU8IOvqO4u9tb58iIbPb9TxidqtyI+i9ZtJ2c
+ wvE7AyobHjBwI/RRsPjUniixqDdIM8b91dggkbPX/BopupOLTUKW9XzbMxPriI1D6KQuAqyhws2
+ IRLrGxMPGQzD+atTK0SseLWKMSU+EEukemAnD2X03nJqvoQM
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,40 +41,38 @@ vdda-pll.
 
 Fix it by swapping the two supplies back.
 
-Fixes: 9af6a9f32ad0 ("arm64: dts: qcom: Add base qcm6490 idp board dts")
-Fixes: a319cf4a4b09 ("arm64: dts: qcom: qcm6490: Introduce the Particle Tachyon")
-Fixes: eee9602ad649 ("arm64: dts: qcom: qcm6490: Add device-tree for Fairphone 5")
-Fixes: 249666e34c24 ("arm64: dts: qcom: add QCM6490 SHIFTphone 8")
+Fixes: 04cf333afc75 ("arm64: dts: qcom: Add base qcs6490-rb3gen2 board dts")
+Fixes: 1cde54c54b83 ("arm64: dts: qcom: qcs6490: Add Thundercomm AI Mini PC G1 IoT")
+Fixes: f055a39f6874 ("arm64: dts: qcom: Add qcs6490-rubikpi3 board dts")
 Reported-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Assisted-by: Claude:opus-4-8
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/qcm6490-fairphone-fp5.dts    | 4 ++--
- arch/arm64/boot/dts/qcom/qcm6490-idp.dts              | 4 ++--
- arch/arm64/boot/dts/qcom/qcm6490-particle-tachyon.dts | 4 ++--
- arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts      | 4 ++--
- 4 files changed, 8 insertions(+), 8 deletions(-)
+ arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts                  | 4 ++--
+ arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts | 4 ++--
+ arch/arm64/boot/dts/qcom/qcs6490-thundercomm-rubikpi3.dts     | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-fairphone-fp5.dts b/arch/arm64/boot/dts/qcom/qcm6490-fairphone-fp5.dts
-index 04cb9230d29f..92a7d80b7fee 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-fairphone-fp5.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-fairphone-fp5.dts
-@@ -1502,8 +1502,8 @@ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts b/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts
+index 37a3b51323ce..8e200ba3711a 100644
+--- a/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts
++++ b/arch/arm64/boot/dts/qcom/qcs6490-rb3gen2.dts
+@@ -1419,8 +1419,8 @@ &usb_1_hsphy {
  };
  
  &usb_1_qmpphy {
--	vdda-phy-supply = <&vreg_l6b>;
--	vdda-pll-supply = <&vreg_l1b>;
-+	vdda-phy-supply = <&vreg_l1b>;
-+	vdda-pll-supply = <&vreg_l6b>;
+-	vdda-phy-supply = <&vreg_l6b_1p2>;
+-	vdda-pll-supply = <&vreg_l1b_0p912>;
++	vdda-phy-supply = <&vreg_l1b_0p912>;
++	vdda-pll-supply = <&vreg_l6b_1p2>;
  
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-index bdc02260f902..58cce89a0c1c 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-idp.dts
-@@ -1141,8 +1141,8 @@ &usb_1_hsphy {
+ 	orientation-switch;
+ 
+diff --git a/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts b/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts
+index a5ad796cb65d..ae2cc2c2e701 100644
+--- a/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts
++++ b/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-minipc-g1iot.dts
+@@ -1059,8 +1059,8 @@ &usb_1_hsphy {
  };
  
  &usb_1_qmpphy {
@@ -85,11 +83,11 @@ index bdc02260f902..58cce89a0c1c 100644
  
  	status = "okay";
  };
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-particle-tachyon.dts b/arch/arm64/boot/dts/qcom/qcm6490-particle-tachyon.dts
-index bf18c4852081..17804de03e17 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-particle-tachyon.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-particle-tachyon.dts
-@@ -839,8 +839,8 @@ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-rubikpi3.dts b/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-rubikpi3.dts
+index f47efca42d48..7336118ae7e3 100644
+--- a/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-rubikpi3.dts
++++ b/arch/arm64/boot/dts/qcom/qcs6490-thundercomm-rubikpi3.dts
+@@ -1103,8 +1103,8 @@ &usb_1_hsphy {
  };
  
  &usb_1_qmpphy {
@@ -97,21 +95,6 @@ index bf18c4852081..17804de03e17 100644
 -	vdda-pll-supply = <&vreg_l1b_0p912>;
 +	vdda-phy-supply = <&vreg_l1b_0p912>;
 +	vdda-pll-supply = <&vreg_l6b_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts b/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts
-index 797f37596bf1..cdaacc09f56c 100644
---- a/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts
-+++ b/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts
-@@ -976,8 +976,8 @@ &usb_1_hsphy {
- };
- 
- &usb_1_qmpphy {
--	vdda-phy-supply = <&vreg_l6b>;
--	vdda-pll-supply = <&vreg_l1b>;
-+	vdda-phy-supply = <&vreg_l1b>;
-+	vdda-pll-supply = <&vreg_l6b>;
  
  	status = "okay";
  };
