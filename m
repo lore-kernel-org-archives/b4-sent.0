@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 04 Aug 2026 03:47:02 +0800
-Subject: [PATCH RFC 06/15] mm/mglru: use explicit tier range in
- read_ctrl_pos()
+Date: Tue, 04 Aug 2026 03:47:03 +0800
+Subject: [PATCH RFC 07/15] mm/mglru: move refault workingset activation
+ into lru_gen_refault
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-mglru-fg-v1-6-4d8dad39dad6@tencent.com>
+Message-Id: <20260804-mglru-fg-v1-7-4d8dad39dad6@tencent.com>
 References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
@@ -35,83 +35,71 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=2788;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=2070;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=sdC9n1WO6u/L2tFXmmCkir7R9Dni9ihu1pJnxCifFTc=;
- b=xv52kVfAPZlxWefP3f8wGwS9plTRIu50H/DgY4be7zffsSSa+ZutP0PLQZylfBQsByG3RFGPe
- vxKVGP4iz+OCGKU2vFXYDZzUJzjoXQqLB4c3nywiA7e41WfE2Dqkv4H
+ bh=1vC+xi9jNiCocZFLKmWvRW3U2STkCUDTFpNlV8n9RbA=;
+ b=52vn6IfvHhVTl+P2eITAdJpvk846TJfwLfY88yxmTc88qbpfSMc32svILrESnyC2fHKo7ZD0j
+ ZaK57q/2igSCfTqDJ7iXTgDStAVyQJT+CccWDakvux35J5eCy4eOMqP
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-read_ctrl_pos() encodes the tier range in a single "tier" parameter
-via "tier % MAX_NR_TIERS" as the start and "min(tier, MAX_NR_TIERS-1)"
-as the end.  This is hard to follow or maintain or extend. Tier
-values 0..3 select a single tier, while tier == MAX_NR_TIERS selects
-the full range.
+Move the folio_set_active() for refaulted workingset folios from
+folio_add_lru() into lru_gen_refault(), where the refault detection
+already happens.  No functional change: the ordering and logic are
+preserved in all cases, and no other paths reach the removed branch.
 
-Replace it with explicit (tier_min, tier_max) parameters using a
-half-open [tier_min, tier_max) interval, which is the conventional C
-idiom.  The call sites become self-documenting:
-
-  - get_tier_idx:   (0, 1) for tier 0, (tier, tier+1) for each tier
-  - get_type_to_scan: (0, MAX_NR_TIERS) for the full range
-
-No functional change.
-
-Signed-off-by: Kairui Song <kasong@tencent.com>
+This is a preparatory cleanup for MGLRU-FG.
 ---
- mm/vmscan.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ mm/folio.c      | 6 +-----
+ mm/workingset.c | 9 ++++-----
+ 2 files changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index c2ea92c2b69e..a359d5a1ff41 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -3192,8 +3192,8 @@ struct ctrl_pos {
- 	int gain;
- };
+diff --git a/mm/folio.c b/mm/folio.c
+index f90b7f86dbe3..fab00cb02970 100644
+--- a/mm/folio.c
++++ b/mm/folio.c
+@@ -474,17 +474,13 @@ void folio_add_lru(struct folio *folio)
+ 	VM_BUG_ON_FOLIO(folio_test_lru(folio), folio);
  
--static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier, int gain,
--			  struct ctrl_pos *pos)
-+static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier_min,
-+			  int tier_max, int gain, struct ctrl_pos *pos)
- {
- 	int i;
- 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
-@@ -3202,7 +3202,7 @@ static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier, int gain,
- 	pos->gain = gain;
- 	pos->refaulted = pos->total = 0;
- 
--	for (i = tier % MAX_NR_TIERS; i <= min(tier, MAX_NR_TIERS - 1); i++) {
-+	for (i = tier_min; i < tier_max; i++) {
- 		pos->refaulted += lrugen->avg_refaulted[type][i] +
- 				  atomic_long_read(&lrugen->refaulted[hist][type][i]);
- 		pos->total += lrugen->avg_total[type][i] +
-@@ -4805,9 +4805,9 @@ static int get_tier_idx(struct lruvec *lruvec, int type)
- 	 * This value is chosen because any other tier would have at least twice
- 	 * as many refaults as the first tier.
+ 	/*
+-	 * For refaulted workingset folios, set PG_active so they
+-	 * can be added to active generations.
+ 	 * For prefaulted file folios, folio_mark_accessed() sets
+ 	 * PG_referenced so lru_gen_folio_seq() places them into
+ 	 * the second oldest generation.
  	 */
--	read_ctrl_pos(lruvec, type, 0, 2, &sp);
-+	read_ctrl_pos(lruvec, type, 0, 1, 2, &sp);
- 	for (tier = 1; tier < MAX_NR_TIERS; tier++) {
--		read_ctrl_pos(lruvec, type, tier, 3, &pv);
-+		read_ctrl_pos(lruvec, type, tier, tier + 1, 3, &pv);
- 		if (!positive_ctrl_err(&sp, &pv))
- 			break;
+ 	if (lru_gen_enabled() && !folio_test_unevictable(folio) &&
+ 	    lru_gen_in_fault() && !(current->flags & PF_MEMALLOC)) {
+-		if (folio_test_workingset(folio))
+-			folio_set_active(folio);
+-		else if (!folio_test_referenced(folio))
++		if (!folio_test_referenced(folio) && !folio_test_workingset(folio))
+ 			folio_mark_accessed(folio);
  	}
-@@ -4828,8 +4828,8 @@ static int get_type_to_scan(struct lruvec *lruvec, int swappiness)
- 	 * Compare the sum of all tiers of anon with that of file to determine
- 	 * which type to scan.
- 	 */
--	read_ctrl_pos(lruvec, LRU_GEN_ANON, MAX_NR_TIERS, swappiness, &sp);
--	read_ctrl_pos(lruvec, LRU_GEN_FILE, MAX_NR_TIERS, MAX_SWAPPINESS - swappiness, &pv);
-+	read_ctrl_pos(lruvec, LRU_GEN_ANON, 0, MAX_NR_TIERS, swappiness, &sp);
-+	read_ctrl_pos(lruvec, LRU_GEN_FILE, 0, MAX_NR_TIERS, MAX_SWAPPINESS - swappiness, &pv);
  
- 	return positive_ctrl_err(&sp, &pv);
- }
+diff --git a/mm/workingset.c b/mm/workingset.c
+index 7ac2b88c80ae..5438e9390011 100644
+--- a/mm/workingset.c
++++ b/mm/workingset.c
+@@ -320,12 +320,11 @@ static void lru_gen_refault(struct folio *folio, void *shadow)
+ 	atomic_long_add(delta, &lrugen->refaulted[hist][type][tier]);
+ 
+ 	if (workingset) {
+-		/*
+-		 * see folio_add_lru(), where folio_set_active() is
+-		 * called for workingset folios
+-		 */
+-		if (lru_gen_in_fault())
++		/* Send refaulted workingset folios to active generations. */
++		if (lru_gen_in_fault()) {
++			folio_set_active(folio);
+ 			mod_lruvec_state(lruvec, WORKINGSET_ACTIVATE_BASE + type, delta);
++		}
+ 		folio_set_workingset(folio);
+ 		mod_lruvec_state(lruvec, WORKINGSET_RESTORE_BASE + type, delta);
+ 	} else
 
 -- 
 2.55.0
