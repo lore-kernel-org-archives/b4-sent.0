@@ -1,10 +1,11 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 04 Aug 2026 00:55:52 +0800
-Subject: [PATCH RFC v5 4/7] mfd: ls2kbmc: Cancel the work queue on removal
+Date: Tue, 04 Aug 2026 00:55:53 +0800
+Subject: [PATCH RFC v5 5/7] ipmi: ls2k: Relax the dependency to its mfd
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-ls2kbmc-mod-v5-4-e6bc5cdd9a93@gmail.com>
+Message-Id: <20260804-ls2kbmc-mod-v5-5-e6bc5cdd9a93@gmail.com>
 References: <20260804-ls2kbmc-mod-v5-0-e6bc5cdd9a93@gmail.com>
 In-Reply-To: <20260804-ls2kbmc-mod-v5-0-e6bc5cdd9a93@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
@@ -17,63 +18,56 @@ Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>,
  linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1480;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1366;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=JfJpObrd5YhUsg0KmTA+Fgw5Trzi5JwERZB1GRhNqG0=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqcMhKuM+IF3Na2gINNmXwdAd99/qiKJDFzpe81
- fBBn4lrj/SJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanDISgAKCRCwMePKe/7Z
- bkCMD/0d9TDXHqudXnVDofETx3w2WKdtK4V5hw6PTRf5VCAhGd9fl5txALHVjZWr0loSsNbYCPJ
- 0Smgh7HSul9o+2nAQum4J/36M1UfBgKoWy8soL7cyMFRJo/YNCpYXpI5jqLPQKsgAXihyACzEfi
- NSw8KssTl1CdWgmotQrY5MI/b6W3JVRSFCqvbfGg6pNPv2EG406wnrkncsxwUSsKtEuxAs050ds
- 9GLsHJ2CPTgVH1tEFmPCS3S6NQhfM6kUctroJeCQ3w1dJqunAWVRcYtOcUwE6sydTj5xuUFfRvO
- fxhFl2eG8Yw4nq+bIrQGh31zdfVP5g4PMdhOKTxjJC8g1QEx0akXY/9DxcCWeoaZnL7Hk/urp+O
- QDig1UomR27DjBIGS1N1oQmEwOaOaPdneAllfEBwC/bOxtvJWAoiuCNaFlROYvkPrgZxKCjPs99
- 0y0VBKuwG0Bx4X3HsdATKhjQr7k4cLttZ2tP4AENMBzGuPIoThI+XB+WYCnV60e+FgAfHzRdLLG
- hUqMkO00OsqFbR5j4o1fvmZyvandW+e046DeB9/kswHzHwPlWptvYlL+m7+YZNdhrAT3b/y6tzz
- xh3dtFuJBiAuAqXSivkPfXa5uRWHPhwBdkYGTL2ms21rSLGC2JuzV1F+eKRCI1zQadnfob0/cLR
- ETSKrLnoi1nb+/w==
+ bh=gWOO98z6lpPREnTgNizoggde9a0/OsZs516s8lw5YNI=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqcMhKLjA7Pw71S5bqO8V/3cOJ+RNzMUIsZ1+R4
+ faly8Er4oCJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanDISgAKCRCwMePKe/7Z
+ bjU3D/9zO9GKSVabQGWvriUD7pAikHYnLgNvakZ0ZsA22rBP+B9nuItLx/F0gZuM4/GtWsRbObj
+ dEdZgNjAcK8uJeyOIu69C71A/iVcRDGuzPpB7pICy/gSYn5I2ZA/+9McNDnsTE7femZikHHjt1X
+ wJmg0EdzCSWz2MwVv+9KhwCxSbToMv+6X6Ae3I1B9WkU8gqwSsi2z5y10LsKCcpnzYtmvx1IPK9
+ Vqm7ofvXaGOC3FXZAGQN2B73VAoa2905VJ/FNntOQy6WVx1j/Lp7Rlz5BImSJpqbDYix4lJLwcp
+ KVUBkRIYDFPExT72Gf1MeqOrqXv46xwnjwN13Dk/APApNqHLrlRGbwSjsRFcW3DVSzOh21c6LFC
+ mVrQE9D6WhZqQjathlGvtwuiXsQO4tqoiYVGwkMehYelsgD444oCJ9hOBI0Z6GOWvQhnJIYgbqI
+ FhVsG/RVh7EdDk+StY74HJIi+j/0y/Yl8cIbrjtM8pP0AZfiEND8+9ge/LKvOMJddJsPQ/wjciC
+ cK3UWyUtGMFMVdfXXZUN7Hdf8c9mYmxXuD9lJckVSPxZxlFlFF4SM2xWom0kM236KcZAF0uBg/l
+ m+ZYoyvIf2L5ZWDDbbo+UnLt5c1sCTrLBcZPKX5qYdhyUu5/4ZcVhKlH3IEIOJj0FX4pvzyvhbD
+ GJIutlcIHZ7hh5w==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the device is being removeed, the work queue should be canceled to
-avoid any pending work to be executed after the device is removed.
+There is no strong dependency between the IPMI driver and its mfd
+driver. Although the IPMI driver will not work without the mfd driver,
+it is not a hard dependency. The IPMI driver can actually be compiled
+without the mfd driver, and it will just fail to probe. When the mfd
+driver is loaded, the IPMI driver will probe successfully. Therefore,
+the dependency of the IPMI driver on its mfd driver should be relaxed
+to "imply" from "select". This will allow the mfd driver to be compiled
+as a module and the IPMI driver to be compiled as a part of the ipmi_si
+module. The adjustment to Kconfig for the mfd driver will be introduced
+in the later patch in this series.
 
-Fixes: d952bba3fbb5 ("mfd: ls2kbmc: Add Loongson-2K BMC reset function support")
+Fixes: d46651d4e3c0 ("ipmi: Add Loongson-2K BMC support")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- drivers/mfd/ls2k-bmc-core.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/char/ipmi/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
-index e12f2ca2fbef360ceda14ee6fc64f500e4944120..e7bebfe696ac4554eb6283279811a27ed865ab73 100644
---- a/drivers/mfd/ls2k-bmc-core.c
-+++ b/drivers/mfd/ls2k-bmc-core.c
-@@ -375,6 +375,12 @@ static void ls2k_bmc_save_pci_data(struct pci_dev *pdev, struct ls2k_bmc_ddata *
- 	pci_read_config_dword(pdev, PCI_INTERRUPT_LINE, &ddata->bmc_pci_data.interrupt_line);
- }
+diff --git a/drivers/char/ipmi/Kconfig b/drivers/char/ipmi/Kconfig
+index 669f7600019747bcd2b37563477cf336f19a0407..f456e3e89416932f0d21bb742153a503aeb24267 100644
+--- a/drivers/char/ipmi/Kconfig
++++ b/drivers/char/ipmi/Kconfig
+@@ -87,7 +87,7 @@ config IPMI_IPMB
+ config IPMI_LS2K
+ 	bool 'Loongson-2K IPMI interface'
+ 	depends on LOONGARCH
+-	select MFD_LS2K_BMC_CORE
++	imply MFD_LS2K_BMC_CORE
+ 	help
+ 	  Provides a driver for Loongson-2K IPMI interfaces.
  
-+static void ls2k_bmc_cancel_wq(void *data)
-+{
-+	struct ls2k_bmc_ddata *ddata = data;
-+	(void) cancel_work_sync(&ddata->bmc_reset_work);
-+}
-+
- static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- {
- 	struct pci_dev *pdev = to_pci_dev(ddata->dev);
-@@ -385,6 +391,10 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- 
- 	INIT_WORK(&ddata->bmc_reset_work, ls2k_bmc_events_fn);
- 
-+	ret = devm_add_action_or_reset(ddata->dev, ls2k_bmc_cancel_wq, ddata);
-+	if (ret)
-+		return ret;
-+
- 	ret = devm_request_irq(&pdev->dev, pdev->irq, ls2k_bmc_interrupt,
- 			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc pcie", ddata);
- 	if (ret) {
 
 -- 
 2.49.0
