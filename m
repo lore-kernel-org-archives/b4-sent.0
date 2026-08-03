@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 03 Aug 2026 08:34:08 +0200
-Subject: [PATCH 10/28] arm64: dts: qcom: sm8550: Fix swapped USB QMP PHY
- vdda-phy/vdda-pll supplies
+Date: Mon, 03 Aug 2026 08:34:09 +0200
+Subject: [PATCH 11/28] arm64: dts: qcom: qcs8550-aim300: Fix swapped USB
+ QMP PHY vdda-phy/vdda-pll supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-phy-supply-fix-v1-10-5880630cde3e@oss.qualcomm.com>
+Message-Id: <20260803-phy-supply-fix-v1-11-5880630cde3e@oss.qualcomm.com>
 References: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 In-Reply-To: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,16 +19,16 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  Manivannan Sadhasivam <mani@kernel.org>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3081;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1116;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=G/hUR4dLz4PZKJ0swTECUN+gPEa0RpM7PDHW0T+4Ez8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZk6yKeeW3F/RGUvaGLzFI6FzRaREuWHsWUF
- QtuTwl26PeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2ZAAKCRBVnxHm/pHO
- 9QMhCACfLtj3EJO5dGdsOhuoN0INIbeymhTBmZTMi8YzDDGapu9kFAURSotJNRNbzWRll/B3nmM
- jtAJk7BTs3zqyLVu/j2+spKPUD77KLRMl6rJthRCoJnb1Zt1ib37D7mH2iUZCa6yIR1jgenG9V4
- 2cxzgrIlzcdsIgifPcSfohK/9W206gts55CHviFwlQQ/nfnJUUtfiHtOlT7X7/gHxQZFywQrlL9
- PnL1oEDqu0O9kLN1YYhPK853BdnXyRJm3sDk/rst9dDQWeav4YsxqfD29C0KkPYX6Ual3gJz/co
- sSQ2n4aCVuuRpfyOtAhNNKn5fJiITiXRvAb2+hTBdsQo7ojs
+ bh=sVIw/XA4Bl5xC2ztfAnRuiSiLBDt6b5+q7ceIieDwBs=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYsgqMEuZXvuoIf7qm4IjLz+1n9eX/KGi4xen9exKy5ZF+
+ RUtYhLSnYzGLAyMXAyyYoos6UudtRo9Tt9YEqE+HWYQKxPIFAYuTgGYCJ8gB8PCjH7Df/x5jhd0
+ pr7Oiwj8d+G61r4NGzJqtXlDsgL5++Icz0msryq41RG+wEhUOGGxkNRclbdze2aXb2y4+9RuUkH
+ /i8NVxRcO6+/LnKVjsyhUZxrv7/DwQLFHHa8/3K37yJ8mHt96JExBr6pcIcPDQf5xWuiTLSc6m1
+ pCHuxfamTq93nSV74CHc5dwRuVhVa8yYot1034PuOJfz7rjQ2Roq0bt9W07EvcuGuzkuhx9ZDVv
+ Nsr3/SmHJjx9ghHUWu4zdkjmt5f+Cpf/3KNeMgfKjXH2uCJr+1cb9as5WGOxw6Lrapq/yF28kBp
+ 7rdgr8alvB38DEU9X46Gdc7171YKW/3tqr74zRRLu9/LAA==
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -36,30 +36,24 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 The QMP PHY expects the vdda-phy supply to be around 0.88V and the
 vdda-pll supply to be 1.2V. But these two supplies are swapped for the
-USB QMP PHYs on these boards, feeding 1.2V to vdda-phy and 0.88V to
+USB QMP PHY on this board, feeding 1.2V to vdda-phy and 0.88V to
 vdda-pll.
 
 Fix it by swapping the two supplies back.
 
-Fixes: b5e25ded2721 ("arm64: dts: qcom: sm8550: add support for the SM8550-HDK board")
-Fixes: 772e6bc4a0a9 ("arm64: dts: qcom: sm8550-mtp: Add USB PHYs and HC nodes")
-Fixes: d228efe88469 ("arm64: dts: qcom: sm8550-qrd: add QRD8550")
-Fixes: 39c596304e44 ("arm64: dts: qcom: Add SM8550 Xperia 1 V")
+Fixes: 0b12da4e28d8 ("arm64: dts: qcom: add base AIM300 dtsi")
 Reported-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Assisted-by: Claude:opus-4-8
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/sm8550-hdk.dts                     | 4 ++--
- arch/arm64/boot/dts/qcom/sm8550-mtp.dts                     | 4 ++--
- arch/arm64/boot/dts/qcom/sm8550-qrd.dts                     | 4 ++--
- arch/arm64/boot/dts/qcom/sm8550-sony-xperia-yodo-pdx234.dts | 4 ++--
- 4 files changed, 8 insertions(+), 8 deletions(-)
+ arch/arm64/boot/dts/qcom/qcs8550-aim300.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-hdk.dts b/arch/arm64/boot/dts/qcom/sm8550-hdk.dts
-index ee13e6136a82..25ff5e39dd34 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-hdk.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-hdk.dts
-@@ -1374,8 +1374,8 @@ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/qcs8550-aim300.dtsi b/arch/arm64/boot/dts/qcom/qcs8550-aim300.dtsi
+index e6ebb643203b..ae301d78e071 100644
+--- a/arch/arm64/boot/dts/qcom/qcs8550-aim300.dtsi
++++ b/arch/arm64/boot/dts/qcom/qcs8550-aim300.dtsi
+@@ -412,8 +412,8 @@ &usb_1_hsphy {
  };
  
  &usb_dp_qmpphy {
@@ -67,54 +61,9 @@ index ee13e6136a82..25ff5e39dd34 100644
 -	vdda-pll-supply = <&vreg_l3f_0p88>;
 +	vdda-phy-supply = <&vreg_l3f_0p88>;
 +	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-mtp.dts b/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
-index 5769be83cfbd..7c634572c6b7 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-mtp.dts
-@@ -971,8 +971,8 @@ &usb_1_hsphy {
  };
  
- &usb_dp_qmpphy {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3f_0p91>;
-+	vdda-phy-supply = <&vreg_l3f_0p91>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-index 2fb2e0be5e4c..ceb5cd3c5bf3 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-@@ -1274,8 +1274,8 @@ &usb_1_hsphy {
- };
- 
- &usb_dp_qmpphy {
--	vdda-phy-supply = <&vreg_l3e_1p2>;
--	vdda-pll-supply = <&vreg_l3f_0p88>;
-+	vdda-phy-supply = <&vreg_l3f_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-sony-xperia-yodo-pdx234.dts b/arch/arm64/boot/dts/qcom/sm8550-sony-xperia-yodo-pdx234.dts
-index 0e6ed6fce614..367f6eae5e65 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-sony-xperia-yodo-pdx234.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-sony-xperia-yodo-pdx234.dts
-@@ -766,8 +766,8 @@ &usb_1_hsphy {
- };
- 
- &usb_dp_qmpphy {
--	vdda-phy-supply = <&pm8550vs_2_l3>;
--	vdda-pll-supply = <&pm8550ve_l3>;
-+	vdda-phy-supply = <&pm8550ve_l3>;
-+	vdda-pll-supply = <&pm8550vs_2_l3>;
- 
- 	status = "okay";
- };
+ &xo_board {
 
 -- 
 2.43.0
