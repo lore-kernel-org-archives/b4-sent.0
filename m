@@ -1,15 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v3 0/2] Enable DW9714V camera focus coil on SHIFT 6MQ
-Date: Mon, 03 Aug 2026 11:50:24 +0200
-Message-Id: <20260803-dw9714v-v3-0-8e10278dcd0d@ixit.cz>
+Date: Mon, 03 Aug 2026 11:50:25 +0200
+Subject: [PATCH v3 1/2] dt-bindings: media: i2c: dongwoon,dw9714: Document
+ DW9714A and V variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02Myw6CMBQFf4V0bU1ftNaV/2Fc0PYidwOmJRUl/
- LsFE3E5J2dmJgkiQiLnaiYRMiYc+gLyUBHfNf0dKIbCRDChmeKahqc1XGWqaq2VrsGBCaS8HxF
- anLbS9Va4wzQO8bWFM1/Xb8MI+2tkThmVXhnrpG9Pnl1wwvHo32QtZPFnSbZbolihDg23oL1mb
- reWZfkA0prp+NIAAAA=
-X-Change-ID: 20260416-dw9714v-4566465ebe7d
+Message-Id: <20260803-dw9714v-v3-1-8e10278dcd0d@ixit.cz>
+References: <20260803-dw9714v-v3-0-8e10278dcd0d@ixit.cz>
+In-Reply-To: <20260803-dw9714v-v3-0-8e10278dcd0d@ixit.cz>
 To: Alexander Martinz <amartinz@shiftphones.com>, 
  Bjorn Andersson <andersson@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, 
@@ -22,88 +20,79 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org,
  David Heidelberg <david@ixit.cz>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2805; i=david@ixit.cz;
- h=from:subject:message-id; bh=cVzOXoqHWElvHxAsyTqe++YltZpP6gxzcvGwKwDVAO8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqcGRh6tl1Gk+pFiuCo5FeWsAI4Ka1hJ5TnYL0j
- 8+soCx4pRSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCanBkYQAKCRBgAj/E00kg
- cgsQEACJxN+IMjwWvkp4req9uh2S2MOWV+8vR9o85eTzMZI5agjk7l3J4y30rpoEm95erfA/Kv+
- 0mzZGycenajJ+Hv+sfprIh/9DNzWi1mis//pjsh3TsnN6jk1N0Aw1AdyReUPzfqDyVTxHTuKsAW
- cG0AwdkiDzgvZdU3a3l9kwaxW61nOYAvkYGzGVqkJDlcZWxLBAlRlQwLuGYf3KmJqI6FG/ZbbE+
- qkF2gEUb0Rciav1lGH3bTASmeNpRwLzZZnQN5T4/Z1CZW+XSCk95W9YDRqo8Tg9jRm7RQ+U9Vta
- Um1grW+ciCjvOSkf09qmrQEg82rC7ATmtafGrqYJ9o/GricFGd50oLxQm3LXPyfRKO41v1Rat2t
- +2dZwC/l/Ae+xTdkz1+MnrFSNqtn1Swgv8mApaMy+4CVkx0wahPytbrnoajBN5109TYVWGo39t6
- iTaIo8Nmcrq+YNViEbUxU9Sw1u0fCkHrJR65iD7CKkSIFMu/l81V0afkiqYGeoD2CM2YNvcFnoI
- mUZnm+u55jAO+7caXFdlmY+HptSXqqGU91IvFerHH25LNAzrhIaObNjx+lkoMFstNw2aI46nwdd
- sQkiIjr+vl8El6hZ786CZTAzwmUD//1eka032n+XgcnU/xxge2Z8DaQ3uZjr2D8lUdKo/g/rMGi
- ykUvmQ524rLLu7A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1991; i=david@ixit.cz;
+ h=from:subject:message-id; bh=oVcaXqpDOcmHSgqIwupuG6hdi0uMYFAB5Ml2YkH3+nk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqcGRi5amBf5BMjN/Bz5MCOgoq1ms+Zcv0dvuYv
+ WAc9xxBqLeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCanBkYgAKCRBgAj/E00kg
+ ckH6D/0avCTu0ct8uzwpG+Ml0gfJMd/EzQDGcMcGTLVJFl6GIFzYokXj3rFpbkdJM+X9k14UTwu
+ zbAKLKjXOCs3P9chD/3kFFUp+QZfUxfTspIU+hC6k9pkMCI9o7A3ZwRaZM7hbOedE7KBeqdjzsa
+ Ormw4tX5IJ48EM4kELWM1rmIb7jvRlXGv/EuX22y9OwfJQHpPmnqbsxQTsjj6xBviF3kyu1KohN
+ SQGI4RmL42mpG/7ysa5DJM1yeNSq/e5Nx4Grzsp3kF+8RKA0Jxj/sotkAY7H0FKAPrn3ZgzOwxM
+ mAS0/lpa9HRQavcsC7P81VgVPyEnuX3ClL4eXVFtL+MpRR2XHjJjVKiKdYCMMGF/RXH2PCCWSM8
+ 3DxFosTFDMgy/+0ox4XxT1ke6fwFphbTRms7BqFS2cFQmJfJVMU3Vxz72SDfK+or+QWWluozn8f
+ aVFIQ2qXfqKBABQscU6zV9YKDovEJEG1FompWDlDI5ZnzOZAF2YmbJ8FeRFh21PqoHGMGIahOzC
+ pi4mz7BXUk7p/r0AbQhvoLbmjVBXAa6+Thv1USnGPvInNznNLHc+7nJrjTFil+Qiw+gV5aGYTTl
+ 8fwI2WnCi4On7F4ETHu/wNAVbJfqLOnMSrv9RnSeB5I04uEyrwHe3Jhn/qbB6CWPLByQe+XIOJq
+ 7pNFfZoR0ZucxVQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implements wiring for:
- - SGM2036 linear regulator used to turn on the focus coil [1]
- - Dongwoon 9714V focus coil used by IMX519 camera sensor [2]
+DW9714A is successor of DW9714 and DW9714V is successor of the DW9714A.
 
-[1] https://www.sg-micro.com/rect/assets/efa85993-263c-41aa-9274-b488f59f85d5/SGM2036.pdf
-[2] https://datasheet4u.com/pdf/1247146/DW9714V.pdf
+All actuators are backward compatible, but they do introduce new features,
+such as Smart Actuator Control (SAC) mode which can minimize the
+mechanical vibration and achieve very fast mechanical settling time.
+Support for SAC can be implemented in the future.
 
-Open question for future work: modeling the I2C bus supply.
+Nit: fix typo in description by removing duplicate information.
 
-Like many similar chips, the DW9714 has a single VDD supply, but its I2C
-lines go through a level shifter to a 1.8V rail, and there is currently no
-place in DT to describe that rail so it gets enabled during I2C access to
-the device. As a stopgap, this series models it as an always-on, see the
-comment in the vreg_lvs1a_1p8 node).
-
-Direction agreed with Rob Herring and Mark Brown on IRC:
-
- - Modeling the level shifter itself is overkill as long as it is just a
-   supply; modeling the connector would come first if needed.
- - Since each side of the shifter has its own supply, the proper solution
-   is a generic 'bus-supply' property valid in both the I2C controller and
-   device nodes.
- - Defining it per-device-schema would ideally use an I2C equivalent of
-   spi-peripheral-props.yaml, which does not exist yet. The pragmatic
-   interim is to define bus-supply in i2c-controller.yaml for both places
-   and add 'bus-supply: true' to schemas that need it now (dw9714),
-   deferring the peripheral-props question until more shared device
-   properties accumulate.
-
-Once bus-supply exists, the regulator-always-on workaround in this DTS can
-be dropped.
-
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v3:
-- Multiline compatible. (Konrad)
-- Dropped output-low from avdd_cam pinctrl. (Konrad)
-- Then dropped whole sleep pinctrl state, as it's same as default.
-- Reworded the TODO. (Konrad)
-- Dropped camss node. (claude)
-- Moved before cdsp_pas (sort)
-- Dropped unused regulator label.
-- Switched the i2c bus shifter with the regulator VDD, as previously it
-  was incorrectly wired and keep always-on on the i2c bus shifter.
-- Link to v2: https://patch.msgid.link/20260730-dw9714v-v2-0-d5da19e6c60b@ixit.cz
+ .../devicetree/bindings/media/i2c/dongwoon,dw9714.yaml     | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
-Changes in v2:
-- Address Sashiko findings.
-- Link to v1: https://patch.msgid.link/20260729-dw9714v-v1-0-3c479b3cf8c0@ixit.cz
+diff --git a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
+index 66229a3dc05d6..7c2769e6c4880 100644
+--- a/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
++++ b/Documentation/devicetree/bindings/media/i2c/dongwoon,dw9714.yaml
+@@ -5,22 +5,30 @@ $id: http://devicetree.org/schemas/media/i2c/dongwoon,dw9714.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+ title: Dongwoon Anatech DW9714 camera voice coil lens driver
+ 
+ maintainers:
+   - Krzysztof Kozlowski <krzk@kernel.org>
+ 
+ description:
+-  DW9174 is a 10-bit DAC with current sink capability. It is intended for
+-  driving voice coil lenses in camera modules.
++  10-bit DAC with current sink capability. It is intended for driving
++  voice coil lenses in camera modules.
+ 
+ properties:
+   compatible:
+-    const: dongwoon,dw9714
++    oneOf:
++      - items:
++          - const: dongwoon,dw9714v
++          - const: dongwoon,dw9714a
++          - const: dongwoon,dw9714
++      - items:
++          - const: dongwoon,dw9714a
++          - const: dongwoon,dw9714
++      - const: dongwoon,dw9714
+ 
+   reg:
+     maxItems: 1
+ 
+   powerdown-gpios:
+     description:
+       XSD pin for shutdown (active low)
+ 
 
----
-David Heidelberg (2):
-      dt-bindings: media: i2c: dongwoon,dw9714: Document DW9714A and V variant
-      arm64: dts: qcom: sdm845-shift-axolotl: Add actuator for main rear camera
-
- .../bindings/media/i2c/dongwoon,dw9714.yaml        | 14 +++++--
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts  | 48 ++++++++++++++++++++++
- 2 files changed, 59 insertions(+), 3 deletions(-)
----
-base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
-change-id: 20260416-dw9714v-4566465ebe7d
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
