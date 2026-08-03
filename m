@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 03 Aug 2026 08:34:18 +0200
-Subject: [PATCH 20/28] arm64: dts: qcom: sm8650: Fix swapped USB QMP PHY
+Date: Mon, 03 Aug 2026 08:34:19 +0200
+Subject: [PATCH 21/28] arm64: dts: qcom: sm8750: Fix swapped USB QMP PHY
  vdda-phy/vdda-pll supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-phy-supply-fix-v1-20-5880630cde3e@oss.qualcomm.com>
+Message-Id: <20260803-phy-supply-fix-v1-21-5880630cde3e@oss.qualcomm.com>
 References: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 In-Reply-To: <20260803-phy-supply-fix-v1-0-5880630cde3e@oss.qualcomm.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,16 +19,16 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  Manivannan Sadhasivam <mani@kernel.org>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3072;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1734;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=IbUJedzPlW/vWIkxNFCFt03WHMn1ZU5kOcNspFJ3Nn4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZopNL+gVyCEU2bGyTqUZqAXY3g4apr2zSCe
- zJVbQmlAKiJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2aAAKCRBVnxHm/pHO
- 9eSAB/9CqdzdzugIBRbkEo6XqMZ7sh05kgDDry7px794tvOVaSBcelqvmWjXVtN4BoJA1PwT0aU
- R5Lkdzq1pBSk1EvDRYiapjKw7ZvTXe692ZEU1kq9rw65waFYJ53VORc8bFf7AtMor9O2yjrDEBe
- KUq40uMJ7PDffhhgHwne+5rfzszs0QHPI9fis017tE29EHw+Ejx1iQ/pawyg0vQbxZ0fCW96tGO
- XKdEY0CR2UVJfs+GzdeKNxomveegeYXZlJuuMJ8zOSvGzdb9O4Gde42Yt5EkuX/6k9g2Beb6tfH
- cqXyra0Wp7vht60Puz/iaV7Howdq8C3G84rm0DxD4R3HSXry
+ bh=Hvrjmn+BHOaL81Hl9ocL7I8WQhouCubTnWtvMsEB+cg=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqcDZogIROlkY2DpYxDpFpRT/e5SNCvMrAc1aSx
+ mDH7/S6RY+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCanA2aAAKCRBVnxHm/pHO
+ 9c/VB/sHsHGcfKENAiilCEN3nYvYAYJHFnViRxGlrcRO7nuM3KKEdh4ZbwMDKjEFlzmh5r0sUS3
+ +tQiTiVPJw/R7uBACi6WG024oIuQbU1yTsY9JplUq4YlaDrwoi4f7hbTnpg9U0g+/9n11L9At0R
+ WRXysIfuSqRWEMxmEUXbqkDdnHTP/7Czge8QWp7UWkLe6t1I3IFzhfclEJ98drNV+7Ues475ofP
+ 8Mwbgk/l/xefINwFDO2sXAzY4KWn9mBmWwVN79aBjP1gceZtlLW5CD0o/n1gKSbTISEvXgqYE4N
+ LsHz6ovCzcV9OQk5h6cjYDMjtZhB8RUyNKJLs2Kg+/DE38VB
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -41,77 +41,43 @@ vdda-pll.
 
 Fix it by swapping the two supplies back.
 
-Fixes: 6fbdb3c1fac7 ("arm64: dts: qcom: sm8650: add initial SM8650 MTP dts")
-Fixes: a834911d50c1 ("arm64: dts: qcom: sm8650: add initial SM8650 QRD dts")
-Fixes: 01061441029e ("arm64: dts: qcom: sm8650: add support for the SM8650-HDK board")
-Fixes: df260487f33c ("arm64: dts: qcom: add basic devicetree for Ayaneo Pocket S2 gaming console")
+Fixes: 2340f29e2b06 ("arm64: dts: qcom: sm8750: Add USB support for SM8750 MTP platform")
+Fixes: 530f824a4e18 ("arm64: dts: qcom: sm8750: Add USB support for SM8750 QRD platform")
 Reported-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Assisted-by: Claude:opus-4-8
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- arch/arm64/boot/dts/qcom/sm8650-ayaneo-pocket-s2.dts | 4 ++--
- arch/arm64/boot/dts/qcom/sm8650-hdk.dts              | 4 ++--
- arch/arm64/boot/dts/qcom/sm8650-mtp.dts              | 4 ++--
- arch/arm64/boot/dts/qcom/sm8650-qrd.dts              | 4 ++--
- 4 files changed, 8 insertions(+), 8 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8750-mtp.dts | 4 ++--
+ arch/arm64/boot/dts/qcom/sm8750-qrd.dts | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8650-ayaneo-pocket-s2.dts b/arch/arm64/boot/dts/qcom/sm8650-ayaneo-pocket-s2.dts
-index 0dc994f4e48d..6ddf30ecabfe 100644
---- a/arch/arm64/boot/dts/qcom/sm8650-ayaneo-pocket-s2.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8650-ayaneo-pocket-s2.dts
-@@ -1536,8 +1536,8 @@ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-mtp.dts b/arch/arm64/boot/dts/qcom/sm8750-mtp.dts
+index 3837f6785320..9b5fbc004df4 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-mtp.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-mtp.dts
+@@ -1404,8 +1404,8 @@ &usb {
  };
  
  &usb_dp_qmpphy {
--	vdda-phy-supply = <&vreg_l3i_1p2>;
--	vdda-pll-supply = <&vreg_l3g_0p91>;
-+	vdda-phy-supply = <&vreg_l3g_0p91>;
-+	vdda-pll-supply = <&vreg_l3i_1p2>;
+-	vdda-phy-supply = <&vreg_l3g_1p2>;
+-	vdda-pll-supply = <&vreg_l2d_0p88>;
++	vdda-phy-supply = <&vreg_l2d_0p88>;
++	vdda-pll-supply = <&vreg_l3g_1p2>;
  
  	status = "okay";
  };
-diff --git a/arch/arm64/boot/dts/qcom/sm8650-hdk.dts b/arch/arm64/boot/dts/qcom/sm8650-hdk.dts
-index eabc828c05b4..865ee15be9e2 100644
---- a/arch/arm64/boot/dts/qcom/sm8650-hdk.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8650-hdk.dts
-@@ -1338,8 +1338,8 @@ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-qrd.dts b/arch/arm64/boot/dts/qcom/sm8750-qrd.dts
+index 801c46d55602..b56317cfa9fc 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-qrd.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-qrd.dts
+@@ -1132,8 +1132,8 @@ &usb {
  };
  
  &usb_dp_qmpphy {
--	vdda-phy-supply = <&vreg_l3i_1p2>;
--	vdda-pll-supply = <&vreg_l3g_0p91>;
-+	vdda-phy-supply = <&vreg_l3g_0p91>;
-+	vdda-pll-supply = <&vreg_l3i_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8650-mtp.dts b/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-index dd6e33d2dc5d..26045430d34a 100644
---- a/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8650-mtp.dts
-@@ -886,8 +886,8 @@ &usb_1_hsphy {
- };
- 
- &usb_dp_qmpphy {
--	vdda-phy-supply = <&vreg_l3i_1p2>;
--	vdda-pll-supply = <&vreg_l3g_0p91>;
-+	vdda-phy-supply = <&vreg_l3g_0p91>;
-+	vdda-pll-supply = <&vreg_l3i_1p2>;
- 
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8650-qrd.dts b/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
-index a3982ae22929..c00e3ae208cd 100644
---- a/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8650-qrd.dts
-@@ -1357,8 +1357,8 @@ &usb_1_hsphy {
- };
- 
- &usb_dp_qmpphy {
--	vdda-phy-supply = <&vreg_l3i_1p2>;
--	vdda-pll-supply = <&vreg_l3g_0p91>;
-+	vdda-phy-supply = <&vreg_l3g_0p91>;
-+	vdda-pll-supply = <&vreg_l3i_1p2>;
+-	vdda-phy-supply = <&vreg_l3g_1p2>;
+-	vdda-pll-supply = <&vreg_l2d_0p88>;
++	vdda-phy-supply = <&vreg_l2d_0p88>;
++	vdda-pll-supply = <&vreg_l3g_1p2>;
  
  	status = "okay";
  };
