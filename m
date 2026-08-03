@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 04 Aug 2026 03:47:03 +0800
-Subject: [PATCH RFC 07/15] mm/mglru: move refault workingset activation
- into lru_gen_refault
+Date: Tue, 04 Aug 2026 03:47:04 +0800
+Subject: [PATCH RFC 08/15] mm/memcg: add folio-based lruvec live helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-mglru-fg-v1-7-4d8dad39dad6@tencent.com>
+Message-Id: <20260804-mglru-fg-v1-8-4d8dad39dad6@tencent.com>
 References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
@@ -35,71 +34,80 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=2070;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=1942;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=1vC+xi9jNiCocZFLKmWvRW3U2STkCUDTFpNlV8n9RbA=;
- b=52vn6IfvHhVTl+P2eITAdJpvk846TJfwLfY88yxmTc88qbpfSMc32svILrESnyC2fHKo7ZD0j
- ZaK57q/2igSCfTqDJ7iXTgDStAVyQJT+CccWDakvux35J5eCy4eOMqP
+ bh=CYaQx+ZxB9rM3tJj/qRBO+O5Fxa1QWpmGb5iZwXshX8=;
+ b=++Am5L1YzqiSnxDr9o1VMbCVEwEukS5UN1/zmmuMnpfuljIk/qOzAXVOhUiwyoRYhYQDYt45R
+ xgE/vtt5N5wAukyhcBnL6BpQE79+Z9dNxi2hwZQC227lqiolRkVLMAv
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the folio_set_active() for refaulted workingset folios from
-folio_add_lru() into lru_gen_refault(), where the refault detection
-already happens.  No functional change: the ordering and logic are
-preserved in all cases, and no other paths reach the removed branch.
+Add a helper that resolves a stable lruvec for a folio under RCU
+without taking the lruvec lock.  It takes a folio directly so the
+lruvec lookup happens inside the RCU read-side critical section,
+which a lruvec-based interface cannot guarantee.
 
-This is a preparatory cleanup for MGLRU-FG.
+The lock-taking variant now inlines the ancestor walk instead of
+calling a separate helper.
+
+No functional change.
+
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/folio.c      | 6 +-----
- mm/workingset.c | 9 ++++-----
- 2 files changed, 5 insertions(+), 10 deletions(-)
+ include/linux/memcontrol.h | 38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
-diff --git a/mm/folio.c b/mm/folio.c
-index f90b7f86dbe3..fab00cb02970 100644
---- a/mm/folio.c
-+++ b/mm/folio.c
-@@ -474,17 +474,13 @@ void folio_add_lru(struct folio *folio)
- 	VM_BUG_ON_FOLIO(folio_test_lru(folio), folio);
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index 68f363000d7f..ea0111392b9b 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -1506,6 +1506,44 @@ static inline void lruvec_lock_irq(struct lruvec *lruvec)
+ 	spin_lock_irq(&lruvec->lru_lock);
+ }
  
- 	/*
--	 * For refaulted workingset folios, set PG_active so they
--	 * can be added to active generations.
- 	 * For prefaulted file folios, folio_mark_accessed() sets
- 	 * PG_referenced so lru_gen_folio_seq() places them into
- 	 * the second oldest generation.
- 	 */
- 	if (lru_gen_enabled() && !folio_test_unevictable(folio) &&
- 	    lru_gen_in_fault() && !(current->flags & PF_MEMALLOC)) {
--		if (folio_test_workingset(folio))
--			folio_set_active(folio);
--		else if (!folio_test_referenced(folio))
-+		if (!folio_test_referenced(folio) && !folio_test_workingset(folio))
- 			folio_mark_accessed(folio);
- 	}
- 
-diff --git a/mm/workingset.c b/mm/workingset.c
-index 7ac2b88c80ae..5438e9390011 100644
---- a/mm/workingset.c
-+++ b/mm/workingset.c
-@@ -320,12 +320,11 @@ static void lru_gen_refault(struct folio *folio, void *shadow)
- 	atomic_long_add(delta, &lrugen->refaulted[hist][type][tier]);
- 
- 	if (workingset) {
--		/*
--		 * see folio_add_lru(), where folio_set_active() is
--		 * called for workingset folios
--		 */
--		if (lru_gen_in_fault())
-+		/* Send refaulted workingset folios to active generations. */
-+		if (lru_gen_in_fault()) {
-+			folio_set_active(folio);
- 			mod_lruvec_state(lruvec, WORKINGSET_ACTIVATE_BASE + type, delta);
-+		}
- 		folio_set_workingset(folio);
- 		mod_lruvec_state(lruvec, WORKINGSET_RESTORE_BASE + type, delta);
- 	} else
++/**
++ * folio_lruvec_live_get - get a live lruvec for a folio under RCU
++ * @folio: the folio
++ *
++ * Computes @folio's lruvec and walks up to the nearest live ancestor
++ * if the folio's memcg is dying.  Must be paired with
++ * folio_lruvec_live_put().
++ *
++ * Return: the live lruvec, with rcu_read_lock held.
++ */
++static inline struct lruvec *folio_lruvec_live_get(struct folio *folio)
++{
++#ifdef CONFIG_MEMCG
++	struct lruvec *lruvec;
++	struct pglist_data *pgdat;
++	struct mem_cgroup *memcg;
++
++	rcu_read_lock();
++	lruvec = folio_lruvec(folio);
++	pgdat = lruvec_pgdat(lruvec);
++	memcg = lruvec_memcg(lruvec);
++	while (unlikely(memcg && css_is_dying(&memcg->css))) {
++		memcg = parent_mem_cgroup(memcg);
++		lruvec = mem_cgroup_lruvec(memcg, pgdat);
++	}
++	return lruvec;
++#else
++	return folio_lruvec(folio);
++#endif
++}
++
++static inline void folio_lruvec_live_put(struct lruvec *lruvec)
++{
++#ifdef CONFIG_MEMCG
++	rcu_read_unlock();
++#endif
++}
++
+ static inline struct lruvec *lruvec_live_lock_irq(struct lruvec *lruvec)
+ {
+ #ifdef CONFIG_MEMCG
 
 -- 
 2.55.0
