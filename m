@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 04 Aug 2026 03:47:10 +0800
-Subject: [PATCH RFC 14/15] mm/khugepaged: consider workingset folios as
- referenced
+Date: Tue, 04 Aug 2026 03:47:11 +0800
+Subject: [PATCH RFC 15/15] mm/madvise: convert to new lru refs API and
+ better support for MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-mglru-fg-v1-14-4d8dad39dad6@tencent.com>
+Message-Id: <20260804-mglru-fg-v1-15-4d8dad39dad6@tencent.com>
 References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
@@ -35,65 +35,89 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=1957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=2598;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=HMlEqaXAqytxjGsOSQ1y0vS58P8dpXTZRRV+ITOk0K8=;
- b=hnHXcfL7XYuZF3ifhfyr250b99EXPZETH4Gh62F4nWF3Hz6MzoB9rwDrPS18A+Ns4mOMfBCXI
- K4dGqE5c7HxA0+8DZ2H8QLMV297MA/7uO9Suo8aKeXAAYU/OtiXsZ+E
+ bh=IZ9piP3HZQ3l6Pb7dyuhGVIV9UajVhIyv5fRhBDYZ6o=;
+ b=Ilfa9kf1jZoKpnpzjRcdb54/uo49AYoBym1Mxkn0Z4Zm9OWDSdCMbgnMvIATbnuQPI2/EEr0d
+ PVsDj5Gc3FuCRO92Q5+ThtGtYa277T/0VLQwzHhJJM+3TojEEjijN16
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The folio_test_referenced check here is clearly trying to test if the
-folio was ever referenced. It was first introduced by commit
-8ee53820edfd ("thp: mmu_notifier_test_young") as an supplement of the
-young bit check.
+For active/inactive LRU, madvise wants evicted folios from active LRU to
+be considered for PSI too, so some special handling are added. But MGLRU
+doesn't really need this, as it has a different activation logic.
 
-Folios are marked as PG_referenced on first access, but following access
-will clear their PG_referenced on second access. So checking only the
-referenced flag is not accurate enough.
-
-Switch to use the new helper, so we can cover the secondary and following
-access from MGLRU side. For non-MGLRU, this will make it return positve
-for workingset folios too though, which should be OK.
+Switch to new helpers and improve the support for MGLRU here.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/khugepaged.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ mm/madvise.c | 37 +++++++++++++++++++++++--------------
+ 1 file changed, 23 insertions(+), 14 deletions(-)
 
-diff --git a/mm/khugepaged.c b/mm/khugepaged.c
-index b237f6e7662a..86c9b07dece6 100644
---- a/mm/khugepaged.c
-+++ b/mm/khugepaged.c
-@@ -809,7 +809,7 @@ static enum scan_result __collapse_huge_page_isolate(struct vm_area_struct *vma,
- 		 */
- 		if (cc->is_khugepaged &&
- 		    (pte_young(pteval) || folio_test_young(folio) ||
--		     folio_test_referenced(folio) ||
-+		     folio_is_referenced(folio) ||
- 		     mmu_notifier_test_young(vma->vm_mm, addr)))
- 			referenced++;
- 	}
-@@ -1767,7 +1767,7 @@ static enum scan_result collapse_scan_pmd(struct mm_struct *mm,
- 		 */
- 		if (cc->is_khugepaged &&
- 		    (pte_young(pteval) || folio_test_young(folio) ||
--		     folio_test_referenced(folio) ||
-+		     folio_is_referenced(folio) ||
- 		     mmu_notifier_test_young(vma->vm_mm, addr)))
- 			referenced++;
- 	}
-@@ -2752,7 +2752,7 @@ static enum scan_result collapse_scan_file(struct mm_struct *mm,
- 		/*
- 		 * We probably should check if the folio is referenced
- 		 * here, but nobody would transfer pte_young() to
--		 * folio_test_referenced() for us.  And rmap walk here
-+		 * folio_is_referenced() for us.  And rmap walk here
- 		 * is just too costly...
- 		 */
+diff --git a/mm/madvise.c b/mm/madvise.c
+index abb17760b8b5..f132dd7418f5 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -350,6 +350,27 @@ static inline int madvise_folio_pte_batch(unsigned long addr, unsigned long end,
+ 				     FPB_MERGE_YOUNG_DIRTY);
+ }
  
++/*
++ * We are deactivating a folio for accelerating reclaiming.
++ * VM couldn't reclaim the folio unless we clear PG_young.
++ * As a side effect, it makes confuse idle-page tracking
++ * because they will miss recent referenced history.
++ */
++static void madvise_cold_or_pageout_prep_folio(struct folio *folio)
++{
++	folio_test_clear_young(folio);
++
++	/*
++	 * MGLRU clears all reference flags in folio_deactivate,
++	 * no need to touch it here.
++	 */
++	if (!lru_gen_enabled()) {
++		folio_clear_referenced_by_bit(folio);
++		if (folio_test_active(folio))
++			folio_mark_workingset_by_bit(folio);
++	}
++}
++
+ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 				unsigned long addr, unsigned long end,
+ 				struct mm_walk *walk)
+@@ -424,10 +445,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 			tlb_remove_pmd_tlb_entry(tlb, pmd, addr);
+ 		}
+ 
+-		folio_clear_referenced(folio);
+-		folio_test_clear_young(folio);
+-		if (folio_test_active(folio))
+-			folio_mark_workingset_by_bit(folio);
++		madvise_cold_or_pageout_prep_folio(folio);
+ 		if (pageout) {
+ 			if (folio_isolate_lru(folio)) {
+ 				if (folio_test_unevictable(folio))
+@@ -533,16 +551,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 			tlb_remove_tlb_entries(tlb, pte, nr, addr);
+ 		}
+ 
+-		/*
+-		 * We are deactivating a folio for accelerating reclaiming.
+-		 * VM couldn't reclaim the folio unless we clear PG_young.
+-		 * As a side effect, it makes confuse idle-page tracking
+-		 * because they will miss recent referenced history.
+-		 */
+-		folio_clear_referenced(folio);
+-		folio_test_clear_young(folio);
+-		if (folio_test_active(folio))
+-			folio_mark_workingset_by_bit(folio);
++		madvise_cold_or_pageout_prep_folio(folio);
+ 		if (pageout) {
+ 			if (folio_isolate_lru(folio)) {
+ 				if (folio_test_unevictable(folio))
 
 -- 
 2.55.0
