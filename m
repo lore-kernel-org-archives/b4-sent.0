@@ -1,11 +1,11 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 04 Aug 2026 00:55:49 +0800
-Subject: [PATCH RFC v5 1/7] mfd: ls2kbmc: Make a copy when parsing mode
- string
+Date: Tue, 04 Aug 2026 00:55:50 +0800
+Subject: [PATCH RFC v5 2/7] mfd: ls2kbmc: Sanity check for the connected
+ pci port
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-ls2kbmc-mod-v5-1-e6bc5cdd9a93@gmail.com>
+Message-Id: <20260804-ls2kbmc-mod-v5-2-e6bc5cdd9a93@gmail.com>
 References: <20260804-ls2kbmc-mod-v5-0-e6bc5cdd9a93@gmail.com>
 In-Reply-To: <20260804-ls2kbmc-mod-v5-0-e6bc5cdd9a93@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
@@ -18,103 +18,94 @@ Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>,
  linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2609;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2625;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=U6cr9tgtHDx0WKodEY4FvK4JRMLlLLDCHMpw0TehXDs=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqcMhKI8yWfAOidTLPqzOGA8PA9CkgvMDA2n2Rl
- 1cfvBzkERGJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanDISgAKCRCwMePKe/7Z
- bt9mEAC7giJ3sZf0D0yS6L8QLrl7uWy1J7eCaPg92jdlM22hi7UfbXJYQxa8EK1fzHypR1piiOo
- fH5KIjmEhIJJ4bPdXt894GfCFWWygal9PlH9Yn89V1utIX9c8GLlYXpq1I5Ih3846w63yfbx9nB
- vuWN1HEs97eWQbwAc8qXjr+xvbNz/dVcKo+CuW1AKbYh+VCA6A1ZC5oI23Y96rlCdyYLiADDzp/
- 4a3Z44GJvBkfhXy2eMw7Azq006rs+KuI2DcuoEV7449s7WIbBkm+CV8E+IkwBziyO9MszjcoM46
- vxwAApZvLx/gTxI5+r9hZHck8rqFRABJb2wzH/mCdGbaW42eF03J7rcktAQHfQ8B3V7B4sUSxDF
- 8fDoc9l1Vsb9BHu0C7QXiFl4a29bx2XYy7JgzdQp8AxzfhBR3cjfPIla3ZbJiwTyY4OnBp8/nuy
- RxYVvGipb3RamdX30kIMxgxFCDU8iyYKvkycMSZHa0ycNktwzIUKIwfpVQcvFNOIedEtpsG5GZq
- L5YsFs/F4D68cuOKuOsI57zawn/x+QV6/WYyKocykK/glxiec4/ViiJVWwNtnAgCNFhuoEwWWkV
- wKYzeJjycWCuFdA4FRMb0MwIwAkoLHVsNYi9qxX/QbiQ1ywRxYaeMpRfGlWNYHoHGR8RcBzOI9d
- Xw2GRhJp/x5LMNw==
+ bh=oufFMpAEKeHSvtXxvdMyphQB5j62aoxVcKbqW/18KeU=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqcMhK3mEKJMSNy6ygC/cKXxOk0Ld4Yfs5KObut
+ tpA0Ml72FyJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanDISgAKCRCwMePKe/7Z
+ bnEKD/9d0zx+gsQ6lkhnLW5Ck2EefOX7a7ytscd1t7azzRxo0lOx+BF+FRsF6lROQiYzMY+cYWt
+ 1flfx1+x07ULr6+36n6k2zeEJVBMLgsAMiiKHZRov4PTYZpoMd0nYGoD5C0yWJvFKRYnItr1jLJ
+ pgIOhe5JcaX1cYHDMiUwXMPD4htTt1j/vX3OfcX6EVStKwSeSaozcCpkapVximnU9ATHHwONlwA
+ zg6+HDhpXFX0VjHX3NQlPHlAm957In16t/1Ze6Ni9doX4XVmB4X6Eu4mF7R+LllhtyyRUFwOFC6
+ 827p+yCbYd3CxDGXE+mHIo8OFOfeuXqQ1QZIPLy+VL3DrWs9uFN2cPkXaS5TSJmzMYQO7+jEgtE
+ T0ysSfQ0UzkM7xFSXiRoRkXam+4VZptuT1XsH3EgLFcN/NpEiIjbUsNabfNgkHlTKSXD6sI52tD
+ 0moVWRZYWZBy1yAIOlHwlEPRk+jpKPNTPKAbZB2ZsLJXQmNA7lpZS4882wFd1XVLDS0aB0dxUXU
+ rtuRd3hr8hkBEmqCulOF/ZRdzzJgHq/NfsEViSqkDh16pcmLB8X3U0AV3s9RKoBUOvPXeeYBaUr
+ /iGPdax3fGejV1sSSSlTQVQnN6dHZs36yZ5l4FcfT3hdMzWOEseeF4qr+KhvQby1T/yR6GbjCeN
+ TQnanMTErxJJMPg==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When parsing the mode string from BMC, the string is manipulated
-in-place with strsep(), preventing from parsing it again. Make a copy of
-the original string and manipulate the copy instead to fix this.
+When the bmc resets, the recovery procedure require to reconfigure the
+parent device. The driver assumes that the parent device should be LS7A.
+Add a sanity check on initialization to ensure this and prevent from
+accidentally operating on non-LS7A ports.
 
-Fixes: 0d64f6d1ffe9 ("mfd: ls2kbmc: Introduce Loongson-2K BMC core driver")
+Fixes: d952bba3fbb5 ("mfd: ls2kbmc: Add Loongson-2K BMC reset function support")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- drivers/mfd/ls2k-bmc-core.c | 36 ++++++++++++++++++++++++++++--------
- 1 file changed, 28 insertions(+), 8 deletions(-)
+ drivers/mfd/ls2k-bmc-core.c | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
 diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
-index 408056bfb2fe757a5bde43775a483a48352e706d..fc9695eedd3662ac92ff116811bb07bff1c994ea 100644
+index fc9695eedd3662ac92ff116811bb07bff1c994ea..a9a30611dde9e31cd86ff67b1d6e02bf67b34755 100644
 --- a/drivers/mfd/ls2k-bmc-core.c
 +++ b/drivers/mfd/ls2k-bmc-core.c
-@@ -427,34 +427,54 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
-  */
- static int ls2k_bmc_parse_mode(struct pci_dev *pdev, struct simplefb_platform_data *pd)
- {
--	char *mode;
-+	/* Assume 64 bytes is enough for the resolution string */
-+	char mode_buf[64], mode_buf_orig[64];
-+	char *mode = mode_buf;
-+	const void __iomem *mode_base;
- 	int depth, ret;
+@@ -35,6 +35,15 @@
+ #define LS2K_IPMI3_RES_START		(LS2K_IPMI2_RES_START + LS2K_IPMI_RES_SIZE)
+ #define LS2K_IPMI4_RES_START		(LS2K_IPMI3_RES_START + LS2K_IPMI_RES_SIZE)
  
- 	/* The last 16M of PCI BAR0 is used to store the resolution string. */
--	mode = devm_ioremap(&pdev->dev, pci_resource_start(pdev, 0) + SZ_16M, SZ_16M);
--	if (!mode)
-+	mode_base = ioremap(pci_resource_start(pdev, 0) + SZ_16M,
-+			    sizeof(mode_buf));
-+	if (!mode_base)
- 		return -ENOMEM;
-+	memcpy_fromio(mode_buf, mode_base, sizeof(mode_buf) - 1);
-+	mode_buf[sizeof(mode_buf) - 1] = '\0';
-+	iounmap((void __iomem *)mode_base);
-+	memcpy(mode_buf_orig, mode_buf, sizeof(mode_buf_orig));
- 
- 	/* The resolution field starts with the flag "video=". */
- 	if (!strncmp(mode, "video=", 6))
- 		mode = mode + 6;
- 
--	ret = kstrtoint(strsep(&mode, "x"), 10, &pd->width);
-+	ret = kstrtouint(strsep(&mode, "x"), 10, &pd->width);
- 	if (ret)
--		return ret;
-+		goto invalid_mode;
- 
--	ret = kstrtoint(strsep(&mode, "-"), 10, &pd->height);
-+	if (mode == NULL) {
-+		ret = -EINVAL;
-+		goto invalid_mode;
-+	}
-+	ret = kstrtouint(strsep(&mode, "-"), 10, &pd->height);
- 	if (ret)
--		return ret;
-+		goto invalid_mode;
- 
-+	if (mode == NULL) {
-+		ret = -EINVAL;
-+		goto invalid_mode;
-+	}
- 	ret = kstrtoint(strsep(&mode, "@"), 10, &depth);
- 	if (ret)
--		return ret;
-+		goto invalid_mode;
- 
- 	pd->stride = pd->width * depth / 8;
- 	pd->format = depth == 32 ? "a8r8g8b8" : "r5g6b5";
- 
- 	return 0;
++/* LS7A port Device IDs */
++#define DEV_LS7A1K_PCIE_PORT0	0x7a09
++#define DEV_LS7A1K_PCIE_PORT1	0x7a19
++#define DEV_LS7A1K_PCIE_PORT2	0x7a29
++#define DEV_LS7A2K_PCIE_PORT0	0x7a39
++#define DEV_LS7A2K_PCIE_PORT1	0x7a49
++#define DEV_LS7A2K_PCIE_PORT2	0x7a59
++#define DEV_LS7A2K_PCIE_PORT3	0x7a69
 +
-+invalid_mode:
-+	dev_err(&pdev->dev, "Invalid resolution string: %s\n", mode_buf_orig);
-+	return ret;
+ #define LS7A_PCI_CFG_SIZE		0x100
+ 
+ /* LS7A bridge registers */
+@@ -477,6 +486,24 @@ static int ls2k_bmc_parse_mode(struct pci_dev *pdev, struct simplefb_platform_da
+ 	return ret;
  }
  
++static const struct pci_device_id ls7a_ports[] = {
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A1K_PCIE_PORT0) },
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A1K_PCIE_PORT1) },
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A1K_PCIE_PORT2) },
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A2K_PCIE_PORT0) },
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A2K_PCIE_PORT1) },
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A2K_PCIE_PORT2) },
++	{ PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, DEV_LS7A2K_PCIE_PORT3) },
++	{ }
++};
++
++static bool ls2k_check_parent(struct pci_dev *dev)
++{
++	struct pci_dev *parent = dev->bus->self;
++
++	return parent && pci_match_id(ls7a_ports, parent) != NULL;
++}
++
  static int ls2k_bmc_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ {
+ 	struct simplefb_platform_data pd;
+@@ -488,6 +515,11 @@ static int ls2k_bmc_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 	if (ret)
+ 		return ret;
+ 
++	if (!ls2k_check_parent(dev)) {
++		dev_err(&dev->dev, "Expected to be connected to LS7A PCI-E port\n");
++		return -ENODEV;
++	}
++
+ 	ddata = devm_kzalloc(&dev->dev, sizeof(*ddata), GFP_KERNEL);
+ 	if (!ddata)
+ 		return -ENOMEM;
 
 -- 
 2.49.0
