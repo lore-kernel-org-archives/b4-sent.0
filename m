@@ -1,11 +1,10 @@
 From: Michalis Niarchos <michael.niarchos@gmail.com>
-Date: Mon, 03 Aug 2026 15:05:41 +0200
-Subject: [PATCH v2 2/4] perf tools: Fix double free and memory leak in
- kvm_events_record()
+Date: Mon, 03 Aug 2026 15:05:42 +0200
+Subject: [PATCH v2 3/4] perf tools: Fix memory leak in cmd_kvm()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260803-perf-kvm-fixes-v2-2-1b337189fffc@gmail.com>
+Message-Id: <20260803-perf-kvm-fixes-v2-3-1b337189fffc@gmail.com>
 References: <20260803-perf-kvm-fixes-v2-0-1b337189fffc@gmail.com>
 In-Reply-To: <20260803-perf-kvm-fixes-v2-0-1b337189fffc@gmail.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -18,70 +17,93 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Michalis Niarchos <michael.niarchos@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785762361; l=2074;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785762361; l=2755;
  i=michael.niarchos@gmail.com; s=20260731; h=from:subject:message-id;
- bh=O4wX5Z9XY/f99VY/L+7vtzDWIkAT23LI4gDz7eAJLVw=;
- b=AGVv+jzerEN8qKo06dvufUIJ+fTvE/22TkhBdPTa0G/RDASZSKG8MeBmjIcFKttgr1s72JDVU
- REleaOY68BmDwHxULGkwN3JCkCBZWEh1tySaV75zcaCZ9Kz7XqibSMu
+ bh=HkNw5v8BoZZtsCQmPPshnIYOOv6PLxL6oX956SB8+Qk=;
+ b=U7o4nEEy2TcRMK0E3t/qCT4uaSg9nA8hMKaUSgQGOtytMrRKFcv+4kb30hM4eGKB92QGestwF
+ YwU7UEvJ61pDrzPP8q79Iptbk+oCNCKJVULlkq50tk42oWh3QIQP9y9
 X-Developer-Key: i=michael.niarchos@gmail.com; a=ed25519;
  pk=/LBZRQzfuxTnSaZhgZE8EP7mHr0poyqlKeFssNqkzFE=
 X-Endpoint-Received: by B4 Relay for michael.niarchos@gmail.com/20260731 with auth_id=912
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cmd_record() reorders the contents of the rec_argv pointer array, so
-its entry order no longer matches the order in which the caller
-originally allocated them. Freeing the contents of rec_argv by
-iterating the reordered array results in some pointers being freed
-twice and others never freed.
-
-All the entries of rec_argv come from literals or pointers that are
-valid for the lifetime of this call. Reference them directly instead
-of duplicating to remove the need to individually track and free each
-entry.
+The usage string is allocated by parse_options_subcommand() and freed
+only on one return path. Using a single return point guarantees it is
+freed on all occasions.
 
 Signed-off-by: Michalis Niarchos <michael.niarchos@gmail.com>
 ---
- tools/perf/builtin-kvm.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ tools/perf/builtin-kvm.c | 42 +++++++++++++++++++++++-------------------
+ 1 file changed, 23 insertions(+), 19 deletions(-)
 
 diff --git a/tools/perf/builtin-kvm.c b/tools/perf/builtin-kvm.c
-index 44c6998f2ee5..45c92ab74fdd 100644
+index 45c92ab74fdd..9504c83e2074 100644
 --- a/tools/perf/builtin-kvm.c
 +++ b/tools/perf/builtin-kvm.c
-@@ -1681,18 +1681,18 @@ kvm_events_record(struct perf_kvm_stat *kvm, int argc, const char **argv)
- 		return -ENOMEM;
+@@ -2142,6 +2142,7 @@ int cmd_kvm(int argc, const char **argv)
+ 	const char *const kvm_subcommands[] = { "top", "record", "report", "diff",
+ 						"buildid-list", "stat", NULL };
+ 	const char *kvm_usage[] = { NULL, NULL };
++	int ret = 0;
  
- 	for (i = 0; i < ARRAY_SIZE(record_args); i++)
--		rec_argv[i] = STRDUP_FAIL_EXIT(record_args[i]);
-+		rec_argv[i] = record_args[i];
+ 	exclude_GH_default = true;
+ 	perf_host  = 0;
+@@ -2155,34 +2156,37 @@ int cmd_kvm(int argc, const char **argv)
+ 	if (!perf_host)
+ 		perf_guest = 1;
  
- 	for (j = 0; j < events_tp_size; j++) {
--		rec_argv[i++] = STRDUP_FAIL_EXIT("-e");
--		rec_argv[i++] = STRDUP_FAIL_EXIT(kvm_events_tp(e_machine)[j]);
-+		rec_argv[i++] = "-e";
-+		rec_argv[i++] = kvm_events_tp(e_machine)[j];
+-	if (!file_name) {
++	if (!file_name)
+ 		file_name = get_filename_for_perf_kvm();
+ 
+-		if (!file_name) {
+-			pr_err("Failed to allocate memory for filename\n");
+-			return -ENOMEM;
+-		}
++	if (strlen(argv[0]) > 2 && strstarts("record", argv[0])) {
++		ret = __cmd_record(file_name, argc, argv);
++		goto exit;
++	} else if (strlen(argv[0]) > 2 && strstarts("report", argv[0])) {
++		ret = __cmd_report(file_name, argc, argv);
++		goto exit;
++	} else if (strlen(argv[0]) > 2 && strstarts("diff", argv[0])) {
++		ret = cmd_diff(argc, argv);
++		goto exit;
++	} else if (!strcmp(argv[0], "top")) {
++		ret = __cmd_top(argc, argv);
++		goto exit;
++	} else if (strlen(argv[0]) > 2 && strstarts("buildid-list", argv[0])) {
++		ret = __cmd_buildid_list(file_name, argc, argv);
++		goto exit;
  	}
+-
+-	if (strlen(argv[0]) > 2 && strstarts("record", argv[0]))
+-		return __cmd_record(file_name, argc, argv);
+-	else if (strlen(argv[0]) > 2 && strstarts("report", argv[0]))
+-		return __cmd_report(file_name, argc, argv);
+-	else if (strlen(argv[0]) > 2 && strstarts("diff", argv[0]))
+-		return cmd_diff(argc, argv);
+-	else if (!strcmp(argv[0], "top"))
+-		return __cmd_top(argc, argv);
+-	else if (strlen(argv[0]) > 2 && strstarts("buildid-list", argv[0]))
+-		return __cmd_buildid_list(file_name, argc, argv);
+ #if defined(HAVE_LIBTRACEEVENT)
+-	else if (strlen(argv[0]) > 2 && strstarts("stat", argv[0]))
+-		return kvm_cmd_stat(file_name, argc, argv);
++	else if (strlen(argv[0]) > 2 && strstarts("stat", argv[0])) {
++		ret = kvm_cmd_stat(file_name, argc, argv);
++		goto exit;
++	}
+ #endif
+ 	else
+ 		usage_with_options(kvm_usage, kvm_options);
  
--	rec_argv[i++] = STRDUP_FAIL_EXIT("-o");
--	rec_argv[i++] = STRDUP_FAIL_EXIT(kvm->file_name);
-+	rec_argv[i++] = "-o";
-+	rec_argv[i++] = kvm->file_name;
++exit:
+ 	/* free usage string allocated by parse_options_subcommand */
+ 	free((void *)kvm_usage[0]);
  
- 	for (j = 1; j < (unsigned int)argc; j++, i++)
--		rec_argv[i] = STRDUP_FAIL_EXIT(argv[j]);
-+		rec_argv[i] = argv[j];
- 
- 	set_option_flag(record_options, 'e', "event", PARSE_OPT_HIDDEN);
- 	set_option_flag(record_options, 0, "filter", PARSE_OPT_HIDDEN);
-@@ -1717,9 +1717,6 @@ kvm_events_record(struct perf_kvm_stat *kvm, int argc, const char **argv)
- 	record_usage = kvm_stat_record_usage;
- 	ret = cmd_record(i, rec_argv);
- 
--EXIT:
--	for (i = 0; i < rec_argc; i++)
--		free((void *)rec_argv[i]);
- 	free(rec_argv);
- 	return ret;
+-	return 0;
++	return ret;
  }
 
 -- 
