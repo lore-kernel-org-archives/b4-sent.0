@@ -1,10 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 04 Aug 2026 03:47:08 +0800
-Subject: [PATCH RFC 12/15] mm/smap: report workingset folios as referenced
+Date: Tue, 04 Aug 2026 03:47:09 +0800
+Subject: [PATCH RFC 13/15] mm/huge_memory: mark file folio as accessed more
+ accurately on split
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-mglru-fg-v1-12-4d8dad39dad6@tencent.com>
+Message-Id: <20260804-mglru-fg-v1-13-4d8dad39dad6@tencent.com>
 References: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 In-Reply-To: <20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com>
 To: linux-mm@kvack.org
@@ -34,85 +35,58 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <kasong@tencent.com>, Baoquan He <baoquan.he@linux.dev>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=2528;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785786439; l=1826;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=w6RlPQJYy1xwfLtM1LXlBT4HMO6wCueMStGvS21qkQ8=;
- b=cic1gW3I0SoP78woxinTEezcXi3rjJJlFplB1hZ3sbyv9AiX0gCSAui2nXMP3uCgUxCTP1R2d
- 5cvp+hpla5+BDyG2oQdBDsnw2Dj9Zc4FvGYKcB/svhLvwI4iYWV+la3
+ bh=CJ94TqcOoIUBLTvAe1Ubz/gZmv43vqcSsxqrYElZJYw=;
+ b=VAOrM0iKC69AZ7qWggVe+gnW+wnbWJ/uxpCHJjI4Gjx+GlW4HXfap1IE5/CsinA+y3hXAUa+7
+ vT7U8ic/6W3CGO/AEQt2ELX54Q2EI94FR/sfhb7iinRxP5+wthKZiST
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For MGLRU, switch smap to use the folio refs count API so smap will
-report all folio with referenced count >= 1 as "Referenced". Current
-smap checking PG_referenced is causing folios to flick between
-referenced and not-reference status, because for both MGLRU and
-active/inactive LRU, PG_referenced may got cleared on second access.
-(Increase of LRU referenced times count for MGLRU, and movig to active
-list active/inactive all clears that bit).
+The behavior of updating the folio's access info isn't consistent for
+huge mapping splitting or ordinary unmapping. The page table's young
+flag has to be translated into folio's access info.
 
-After this, we will have a more reliable and useful reading for MGLRU.
+Right now it only check and set folio's referenced flag, which isn't
+enough since folio flags update on access have its rules. Ordinary
+unmapping (zapping) calls folio_mark_accessed(), and it also checks
+if the VMA has recency to avoid false updates.
+
+So first just use the right helper here to be more consistent.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- fs/proc/task_mmu.c | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
+ mm/huge_memory.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index 817e3e0f9194..c5c96c523291 100644
---- a/fs/proc/task_mmu.c
-+++ b/fs/proc/task_mmu.c
-@@ -944,6 +944,22 @@ static void smaps_page_accumulate(struct mem_size_stats *mss,
- 	}
- }
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 21c92ee48e46..043c9ac963b4 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -3058,8 +3058,8 @@ static void __split_huge_pud_locked(struct vm_area_struct *vma, pud_t *pud,
  
-+static bool smap_check_folio_referenced(struct folio *folio)
-+{
-+	if (lru_gen_enabled())
-+		return folio_is_referenced(folio);
-+	else
-+		return folio_is_referenced_by_bit(folio);
-+}
-+
-+static void smap_clear_folio_referenced(struct folio *folio)
-+{
-+	if (lru_gen_enabled())
-+		folio_set_lru_refs(folio, 0);
-+	else
-+		folio_clear_referenced_by_bit(folio);
-+}
-+
- static void smaps_account(struct mem_size_stats *mss, struct page *page,
- 		bool compound, bool young, bool dirty, bool locked,
- 		bool present)
-@@ -970,7 +986,7 @@ static void smaps_account(struct mem_size_stats *mss, struct page *page,
- 
- 	mss->resident += size;
- 	/* Accumulate the size in pages that have been accessed. */
--	if (young || folio_test_young(folio) || folio_test_referenced(folio))
-+	if (young || folio_test_young(folio) || smap_check_folio_referenced(folio))
- 		mss->referenced += size;
- 
- 	/*
-@@ -1791,7 +1807,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
- 		/* Clear accessed and referenced bits. */
- 		pmdp_test_and_clear_young(vma, addr, pmd);
- 		folio_test_clear_young(folio);
--		folio_clear_referenced(folio);
-+		smap_clear_folio_referenced(folio);
- out:
- 		spin_unlock(ptl);
- 		return 0;
-@@ -1820,7 +1836,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
- 		/* Clear accessed and referenced bits. */
- 		ptep_test_and_clear_young(vma, addr, pte);
- 		folio_test_clear_young(folio);
--		folio_clear_referenced(folio);
-+		smap_clear_folio_referenced(folio);
- 	}
- 	pte_unmap_unlock(pte - 1, ptl);
- 	cond_resched();
+ 	if (!folio_test_dirty(folio) && pud_dirty(old_pud))
+ 		folio_mark_dirty(folio);
+-	if (!folio_test_referenced(folio) && pud_young(old_pud))
+-		folio_set_referenced(folio);
++	if (pud_young(old_pud) && vma_has_recency(vma))
++		folio_mark_accessed(folio);
+ 	folio_remove_rmap_pud(folio, page, vma);
+ 	add_mm_counter(vma->vm_mm, mm_counter_file(folio),
+ 		-HPAGE_PUD_NR);
+@@ -3181,8 +3181,8 @@ static void __split_huge_pmd_locked(struct vm_area_struct *vma, pmd_t *pmd,
+ 			folio = page_folio(page);
+ 			if (!folio_test_dirty(folio) && pmd_dirty(old_pmd))
+ 				folio_mark_dirty(folio);
+-			if (!folio_test_referenced(folio) && pmd_young(old_pmd))
+-				folio_set_referenced(folio);
++			if (pmd_young(old_pmd) && vma_has_recency(vma))
++				folio_mark_accessed(folio);
+ 			folio_remove_rmap_pmd(folio, page, vma);
+ 			add_mm_counter(mm, mm_counter_file(folio), -HPAGE_PMD_NR);
+ 			folio_put(folio);
 
 -- 
 2.55.0
