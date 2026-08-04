@@ -1,167 +1,94 @@
-From: Stefan Hansson <newbyte@postmarketos.org>
-Date: Tue, 04 Aug 2026 10:55:41 +0200
-Subject: [PATCH v2] wifi: rsi: Fix types to appease CFI
+From: =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
+Subject: [PATCH v2 0/3] arm64: dts: qcom: add the Xiaomi Mi Pad 5 Pro 5G
+Date: Tue, 04 Aug 2026 10:55:54 +0200
+Message-Id: <20260804-sm8250-xiaomi-enuma-v2-0-9dd0486f1155@dawidwrobel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-rsi-cfi-fix-v2-1-59679a520240@postmarketos.org>
-X-B4-Tracking: v=1; b=H4sIAAypcWoC/22NwQ6CMBBEf8Xs2Zp2FYKe/A/DAcoCq5GS3Uo0h
- H+34NXjm8y8mUFJmBQuuxmEJlYOQwLc78D31dCR4SYxoMXcFhaNKBvfsmn5bdDaIqvz87FBhLQ
- YhVK82W7lj/VV38nHVbE2etYY5LPdTW7t/TdPzjiTFega9HV2IrqOQeOzkgfFoIcgHZTLsnwB+
- PzwML8AAAA=
-X-Change-ID: 20260802-rsi-cfi-fix-20085b693d22
-To: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht
-Cc: Stefan Hansson <newbyte@postmarketos.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785833758; l=5665;
- i=newbyte@postmarketos.org; s=20260802; h=from:subject:message-id;
- bh=BB2op5+p7icC+54RZOKKgba+7WNOZz8dHsaqqYyKAvc=;
- b=ThwlqJJN1yoe+CcfBWuSg1qewHU3rshzTmTRG6YrHMTCThXu+4doDF1T6xeiW1wFudVbbaMYN
- 1nVorWYRGjjC5veppy7VSJwhAXsDo9LYvi+BC4+lu1phkid1DpFJ4oL
-X-Developer-Key: i=newbyte@postmarketos.org; a=ed25519;
- pk=CMd9mCPy2ujgZ4/0VRH1OVotAimnFmPg2/JMEEgsOUk=
-X-Endpoint-Received: by B4 Relay for newbyte@postmarketos.org/20260802 with auth_id=910
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7ZhStBRX3sOwKHSQSSw1rQKG9
+ O5WDuDyveS/v0GkwBThUmwQaObIfsogDwX0o5nuhGwzgxRSiboSGJ2WZ4ErG+8YaXo7g6RrPch
+ e6FNZQV4+Aw287tVbm3nk+PLhs5/M5c/+780lCiSrrB66plFKX61Z2C7Bd/Q49t5Bm1L6ArLfJ
+ ES8AAAA
+X-Change-ID: 20260730-sm8250-xiaomi-enuma-e878f2c08413
+To: Jianhua Lu <lujianhua000@gmail.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2597; i=me@dawidwrobel.com;
+ h=from:subject:message-id; bh=goWIcnvl16p6Hy5rNc9ISB637rHTfcV7JGaLd5HxRQE=;
+ b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWQVrlRK8An+9WPKqTO8p//N0vg1o+y0QIHvHNe3oS/va
+ FwSE58f1FHKwiDGxSArpsiilxa0xyr45fd3L36Hw8xhZQIZwsDFKQAT+fGa4Z+17YmDdhXbFV5c
+ vLF/hpndMf9u2bSTufzXd0pHVVq8SE9lZDg3e4HTkfqW/I9h/lwNB1+EZcfcbCk8+0HD7zh3lda
+ 3RewA
+X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
+ fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
+X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Avoids errors like:
+The Mi Pad 5 Pro 5G (enuma, 2021) is the modem-equipped variant of the
+Mi Pad 5 Pro (elish). The two boards share a design, so this describes
+enuma as sm8250-xiaomi-elish-common.dtsi plus the three things that
+differ: the board ID the bootloader matches on, the panel compatible and
+the WiFi board data variant.
 
-    CFI failure at kthread+0x124/0x1cc (target: rsi_coex_scheduler_thread+0x0/0x1b4 [redpine_91x]; expected type: 0x89fb613d)
+Unlike elish, enuma shipped with a single display variant, so there is
+one device tree rather than a per-panel pair. The vendor device trees key
+the touch configuration to a display maker, and enuma declares a single
+entry against elish's three:
 
-As seen in the aforementioned error this was tested using the downstream
-redpine_91x driver found in the Librem 5's downstream source tree.
-However, it appears that this driver is a modified version of the rsi
-driver found in mainline Linux and as such I decided to port the changes
-here too.
+  https://github.com/MiCode/kernel_devicetree/blob/elish-r-oss/qcom/enuma-sm8250.dtsi#L309
+  https://github.com/MiCode/kernel_devicetree/blob/elish-r-oss/qcom/elish-sm8250.dtsi#L294
 
-Signed-off-by: Stefan Hansson <newbyte@postmarketos.org>
+The panel itself is the same part elish uses: both trees pull in the
+same dsi-panel-k81-42-02-0a-video.dtsi, so the new
+xiaomi,enuma-csot-nt36523 compatible falls back to
+xiaomi,elish-csot-nt36523, leaving room to handle any difference that
+turns up later without requiring a device tree change.
+
+The WiFi board data is already upstream in ath11k-firmware as
+bus=pci,qmi-chip-id=0,qmi-board-id=255,variant=Xiaomi_Pad_5Pro_5G
+(QCA6390 hw2.0 board-2.bin, commit 235d09a5e111).
+
+Tested on the device: the panel and WiFi come up and perform as expected
+under postmarketOS.
+
+The fingerprint sensor, PCIe2/modem and touchscreen this board also
+provides are left out here; they depend on bindings that are not upstream
+yet and will follow separately.
+
+Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
 ---
 Changes in v2:
-- Fix kernel-doc warnings.
-- Link to v1: https://patch.msgid.link/20260802-rsi-cfi-fix-v1-1-5821d2cb54ee@postmarketos.org
----
- drivers/net/wireless/rsi/rsi_91x_coex.c     | 3 ++-
- drivers/net/wireless/rsi/rsi_91x_main.c     | 7 ++++---
- drivers/net/wireless/rsi/rsi_91x_sdio_ops.c | 3 ++-
- drivers/net/wireless/rsi/rsi_91x_usb_ops.c  | 7 ++++---
- drivers/net/wireless/rsi/rsi_common.h       | 2 +-
- drivers/net/wireless/rsi/rsi_sdio.h         | 2 +-
- drivers/net/wireless/rsi/rsi_usb.h          | 2 +-
- 7 files changed, 15 insertions(+), 11 deletions(-)
-
-diff --git a/drivers/net/wireless/rsi/rsi_91x_coex.c b/drivers/net/wireless/rsi/rsi_91x_coex.c
-index ee603a5173fb..023c539fc384 100644
---- a/drivers/net/wireless/rsi/rsi_91x_coex.c
-+++ b/drivers/net/wireless/rsi/rsi_91x_coex.c
-@@ -50,8 +50,9 @@ static void rsi_coex_sched_tx_pkts(struct rsi_coex_ctrl_block *coex_cb)
- 	} while (coex_q != RSI_COEX_Q_INVALID);
- }
- 
--static void rsi_coex_scheduler_thread(struct rsi_common *common)
-+static int rsi_coex_scheduler_thread(void *data)
- {
-+	struct rsi_common *common = data;
- 	struct rsi_coex_ctrl_block *coex_cb = common->coex_cb;
- 	u32 timeout = EVENT_WAIT_FOREVER;
- 
-diff --git a/drivers/net/wireless/rsi/rsi_91x_main.c b/drivers/net/wireless/rsi/rsi_91x_main.c
-index 662e42d1e5e8..2ce514766620 100644
---- a/drivers/net/wireless/rsi/rsi_91x_main.c
-+++ b/drivers/net/wireless/rsi/rsi_91x_main.c
-@@ -246,12 +246,13 @@ EXPORT_SYMBOL_GPL(rsi_read_pkt);
- /**
-  * rsi_tx_scheduler_thread() - This function is a kernel thread to send the
-  *			       packets to the device.
-- * @common: Pointer to the driver private structure.
-+ * @data: Pointer to the driver private structure.
-  *
-- * Return: None.
-+ * Return: 0.
-  */
--static void rsi_tx_scheduler_thread(struct rsi_common *common)
-+static int rsi_tx_scheduler_thread(void *data)
- {
-+	struct rsi_common *common = data;
- 	struct rsi_hw *adapter = common->priv;
- 	u32 timeout = EVENT_WAIT_FOREVER;
- 
-diff --git a/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c b/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c
-index 597b238e2294..18a28aa97446 100644
---- a/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c
-+++ b/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c
-@@ -62,8 +62,9 @@ int rsi_sdio_master_access_msword(struct rsi_hw *adapter, u16 ms_word)
- 
- static void rsi_rx_handler(struct rsi_hw *adapter);
- 
--void rsi_sdio_rx_thread(struct rsi_common *common)
-+int rsi_sdio_rx_thread(void *data)
- {
-+	struct rsi_common *common = data;
- 	struct rsi_hw *adapter = common->priv;
- 	struct rsi_91x_sdiodev *sdev = adapter->rsi_dev;
- 
-diff --git a/drivers/net/wireless/rsi/rsi_91x_usb_ops.c b/drivers/net/wireless/rsi/rsi_91x_usb_ops.c
-index 25c2b232394a..e899631b9aed 100644
---- a/drivers/net/wireless/rsi/rsi_91x_usb_ops.c
-+++ b/drivers/net/wireless/rsi/rsi_91x_usb_ops.c
-@@ -21,12 +21,13 @@
- /**
-  * rsi_usb_rx_thread() - This is a kernel thread to receive the packets from
-  *			 the USB device.
-- * @common: Pointer to the driver private structure.
-+ * @data: Pointer to the driver private structure.
-  *
-- * Return: None.
-+ * Return: 0.
-  */
--void rsi_usb_rx_thread(struct rsi_common *common)
-+int rsi_usb_rx_thread(void *data)
- {
-+	struct rsi_common *common = data;
- 	struct rsi_hw *adapter = common->priv;
- 	struct rsi_91x_usbdev *dev = adapter->rsi_dev;
- 	int status;
-diff --git a/drivers/net/wireless/rsi/rsi_common.h b/drivers/net/wireless/rsi/rsi_common.h
-index 3cdf9ded876d..2a33a81f71a3 100644
---- a/drivers/net/wireless/rsi/rsi_common.h
-+++ b/drivers/net/wireless/rsi/rsi_common.h
-@@ -58,7 +58,7 @@ static inline void rsi_reset_event(struct rsi_event *event)
- 
- static inline int rsi_create_kthread(struct rsi_common *common,
- 				     struct rsi_thread *thread,
--				     void *func_ptr,
-+				     int (*func_ptr)(void *data),
- 				     u8 *name)
- {
- 	init_completion(&thread->completion);
-diff --git a/drivers/net/wireless/rsi/rsi_sdio.h b/drivers/net/wireless/rsi/rsi_sdio.h
-index 7c91b126b350..eb2b7f36a7e4 100644
---- a/drivers/net/wireless/rsi/rsi_sdio.h
-+++ b/drivers/net/wireless/rsi/rsi_sdio.h
-@@ -134,5 +134,5 @@ int rsi_sdio_master_access_msword(struct rsi_hw *adapter, u16 ms_word);
- void rsi_sdio_ack_intr(struct rsi_hw *adapter, u8 int_bit);
- int rsi_sdio_determine_event_timeout(struct rsi_hw *adapter);
- int rsi_sdio_check_buffer_status(struct rsi_hw *adapter, u8 q_num);
--void rsi_sdio_rx_thread(struct rsi_common *common);
-+int rsi_sdio_rx_thread(void *data);
- #endif
-diff --git a/drivers/net/wireless/rsi/rsi_usb.h b/drivers/net/wireless/rsi/rsi_usb.h
-index 961851748bc4..78067eaffe8b 100644
---- a/drivers/net/wireless/rsi/rsi_usb.h
-+++ b/drivers/net/wireless/rsi/rsi_usb.h
-@@ -81,5 +81,5 @@ static inline int rsi_usb_event_timeout(struct rsi_hw *adapter)
- 	return EVENT_WAIT_FOREVER;
- }
- 
--void rsi_usb_rx_thread(struct rsi_common *common);
-+int rsi_usb_rx_thread(void *data);
- #endif
+- Dropped the "label the WiFi node" patch, folded into device tree patch (Krzysztof Kozlowski)
+- Link to v1: https://lore.kernel.org/r/20260730-sm8250-xiaomi-enuma-v1-0-ed6d8fb99668@dawidwrobel.com
 
 ---
-base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
-change-id: 20260802-rsi-cfi-fix-20085b693d22
+Dawid Wróbel (3):
+      dt-bindings: display: panel: novatek,nt36523: add the Mi Pad 5 Pro 5G panel
+      dt-bindings: arm: qcom: add the Xiaomi Mi Pad 5 Pro 5G
+      arm64: dts: qcom: sm8250: add device tree for the Xiaomi Mi Pad 5 Pro 5G
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |  5 +++++
+ .../bindings/display/panel/novatek,nt36523.yaml    |  4 ++++
+ arch/arm64/boot/dts/qcom/Makefile                  |  1 +
+ .../boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi  |  2 +-
+ arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts   | 26 ++++++++++++++++++++++
+ 5 files changed, 37 insertions(+), 1 deletion(-)
+---
+base-commit: bd94276d96726a82700d85ad3b32892f45809d3a
+change-id: 20260730-sm8250-xiaomi-enuma-e878f2c08413
 
 Best regards,
---  
-Stefan Hansson <newbyte@postmarketos.org>
+-- 
+Dawid Wróbel <me@dawidwrobel.com>
 
