@@ -1,77 +1,69 @@
-From: Anuj Bolewar <bolewara@gmail.com>
-Date: Tue, 04 Aug 2026 23:13:24 +0530
-Subject: [PATCH 2/2] usb: gadget: f_uac1: fix invalid-free in srate
- configfs store
+From: Esteban Urrutia <esteuwu@proton.me>
+Subject: [PATCH RESEND v3 0/2] Initial QMP USB PHY support for SM8475
+Date: Tue, 04 Aug 2026 14:06:18 -0400
+Message-Id: <20260804-sm8475-bup-usbss-v3-0-9a5b9ebf62de@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-f-uac-srate-invalid-free-v1-2-2c980378cdf5@gmail.com>
-References: <20260804-f-uac-srate-invalid-free-v1-0-2c980378cdf5@gmail.com>
-In-Reply-To: <20260804-f-uac-srate-invalid-free-v1-0-2c980378cdf5@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Anuj Bolewar <bolewara@gmail.com>, 
- syzbot+2532c7901f590afd0c3a@syzkaller.appspotmail.com
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785865402; l=2017;
- i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=usMCQequLk+4yrdjg1stFDJGlIssLlABJud84TcvNlE=;
- b=fbwM61x+ajgIkSNjGJdsGMSfnuR/DqGZkIbPZ+8UMpNE0JoLPYYdO5kYOR+P+pSz+hLOOj9YU
- dpS4Owd1HTDB8dziPStP7k/pJ3+wWKkNgHjtGOiczdk1efjk+fxc2z0
-X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
- pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
-X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785866807; l=1598;
+ i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
+ bh=UYYeoFYGn74wN3HBRtWiUwkieFmQvRE83tQm10aXEO8=;
+ b=L72rDqhmOb52xnhpROj5aEtCiw6jb355ELkkORugIfTAJB/wS+qrYr4lrPMQFOPUreOcjir0n
+ SfnUusl8AnKBK41/OEh97Yolcmm5lQxu+NANskHoyOBfHXxirN90Ylo
+X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
+ pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
+X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Same bug as f_uac2: the store path for the p_srate/c_srate
-attributes frees split_page after strsep() has advanced it into the
-middle of the kstrdup()'d buffer. A non-numeric first token makes
-kstrtou32() fail and kfree() is called on a pointer into the slab
-object, triggering a KASAN invalid-free.
+Based on the following patch:
+[1] https://lore.kernel.org/all/20260711-sm8450-qol-qmp-v2-2-d14353bd6ff4@proton.me/
 
-Keep the original pointer returned by kstrdup() and free that
-instead.
+This series adds support for the QMP USB PHY found in the SM8475 SoC.
+The initialization sequence varies noticeably when compared to the one
+used in the SM8450 SoC, hence the need to add support for this PHY.
 
-Reported-by: syzbot+2532c7901f590afd0c3a@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=2532c7901f590afd0c3a
-Fixes: 695d39ffc2b5 ("usb: gadget: f_uac1: Support multiple sampling rates")
-Assisted-by: deepseek:v4-pro
-Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
+Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- drivers/usb/gadget/function/f_uac1.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Changes in v3:
+- Apply suggestions from Dmitry
+- Drop PLL version patch
+  - Explain the situation instead of renaming the structs
+- Link to v2: https://patch.msgid.link/20260715-sm8475-bup-usbss-v2-0-2d8def39b190@proton.me
 
-diff --git a/drivers/usb/gadget/function/f_uac1.c b/drivers/usb/gadget/function/f_uac1.c
-index 85c502e98f5..94c716d72c6 100644
---- a/drivers/usb/gadget/function/f_uac1.c
-+++ b/drivers/usb/gadget/function/f_uac1.c
-@@ -1595,6 +1595,7 @@ static ssize_t f_uac1_opts_##name##_store(struct config_item *item,	\
- {									\
- 	struct f_uac1_opts *opts = to_f_uac1_opts(item);		\
- 	char *split_page = NULL;					\
-+	char *split_page_orig = NULL;					\
- 	int ret = -EINVAL;						\
- 	char *token;							\
- 	u32 num;							\
-@@ -1608,7 +1609,7 @@ static ssize_t f_uac1_opts_##name##_store(struct config_item *item,	\
- 									\
- 	i = 0;								\
- 	memset(opts->name##s, 0x00, sizeof(opts->name##s));		\
--	split_page = kstrdup(page, GFP_KERNEL);				\
-+	split_page_orig = split_page = kstrdup(page, GFP_KERNEL);      \
- 	while ((token = strsep(&split_page, ",")) != NULL) {		\
- 		ret = kstrtou32(token, 0, &num);			\
- 		if (ret)						\
-@@ -1619,7 +1620,7 @@ static ssize_t f_uac1_opts_##name##_store(struct config_item *item,	\
- 	};								\
- 									\
- end:									\
--	kfree(split_page);						\
-+	kfree(split_page_orig);						\
- 	mutex_unlock(&opts->lock);					\
- 	return ret;							\
- }									\
+Changes in v2:
+- Split series in subseries (pcie, usbss)
+  - Sorry, it should have been like this from the start!
+- Add notice about base commit
+  - Reason why calibrate_dp_phy is not present
+- Modify referenced swing and pre-emphasis tables
+- Move v1 PLL tables to SM8475 support patch
+  - Warnings are generated at build time otherwise
+- Link to v1: https://patch.msgid.link/20260714-sm8475-bup-v1-0-b2871be2b4ec@proton.me
 
+---
+Esteban Urrutia (2):
+      dt-bindings: phy: qcom,sc8280xp-qmp-usb43dp-phy: Add SM8475 QMP PHY
+      phy: qcom: qmp-combo: Add SM8475 support
+
+ .../phy/qcom,sc8280xp-qmp-usb43dp-phy.yaml         |   1 +
+ drivers/phy/qualcomm/phy-qcom-qmp-combo.c          | 169 +++++++++++++++++++++
+ 2 files changed, 170 insertions(+)
+---
+base-commit: 30b4a96d99ce8447f4589af6f7da35d4b43e0af6
+change-id: 20260714-sm8475-bup-usbss-e68349473f6e
+
+Best regards,
+--
+Esteban Urrutia <esteuwu@proton.me>
 -- 
-2.53.0
+Esteban Urrutia <esteuwu@proton.me>
 
