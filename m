@@ -1,121 +1,116 @@
-From: Markuss Broks <markuss.broks@gmail.com>
-Date: Tue, 04 Aug 2026 17:07:36 +0300
-Subject: [PATCH wireless-next v2] wifi: brcmfmac: Add support for BCM4361
- PCIe chipset
+From: Anuj Bolewar <bolewara@gmail.com>
+Date: Tue, 04 Aug 2026 20:32:50 +0530
+Subject: [PATCH v3] usb: raw_gadget: fix use-after-free when UDC is removed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-broadcom-staging-v2-1-cebdc69e938c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOQQ6CMBREr0L+2hqoloor72FYFPgt30Br2ooYw
- t0tuHY5mXkzs0BATxjgmi3gcaJAzibBDxm0vbIGGXVJA895mV/yE2u8U13rRhaiMmQNE5WSXaW
- FqJozJOzpUdO8V97hTR4HDIFZnCPUPzu8mge2cavdgJ5CdP6zX5iKHfu/NhWsYLrUUqIQjeR4M
- 6Oi4ZgyUK/r+gXnZdwM0QAAAA==
-X-Change-ID: 20260803-broadcom-staging-59a7d9f559b4
-To: Arend van Spriel <arend.vanspriel@broadcom.com>
-Cc: Johannes Berg <johannes@sipsolutions.net>, 
- linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev, 
- brcm80211-dev-list.pdl@broadcom.com, linux-kernel@vger.kernel.org, 
- Markuss Broks <markuss.broks@gmail.com>
+Message-Id: <20260804-raw-gadget-ep0-uaf-v3-1-bb7cf1d892af@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNzQ7CIBAGX6XhLAZoaRtPvofxsMC2xdifQIuap
+ u8u1IsnzZ4m+XZmJR6dRU9O2UocBuvtOETIDxnRHQwtUmsiE8FEyWpWUAcP2oJpcaY4MbpAQzm
+ DWihjQCpN4uPksLHPXXq5ftgv6oZ6Tqa06KyfR/faq4Gn3c9A4JRTVtXxqtwAl+e2B3s/6rEnK
+ RDEf4WIihykQVOUoCT7Vmzb9gZFmA9aCQEAAA==
+X-Change-ID: 20260804-raw-gadget-ep0-uaf-10a82bdda5bc
+To: Andrey Konovalov <andreyknvl@gmail.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+9aacea11bc70c3ddaff2@syzkaller.appspotmail.com, 
+ Anuj Bolewar <bolewara@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785852458; l=4354;
- i=markuss.broks@gmail.com; s=20260803; h=from:subject:message-id;
- bh=IeJ5nZGexb07ijsmha6qS/VWZMPHaA56jHGq2Up+DBY=;
- b=tPUr1fpDRHUjdenMgEQQsIAqLS/1Q6Du3k25oW+1lscIvw7nTHKHqoIa1qCo5xyT+xjpl4RjI
- OIFIx29nrxYANCxKbZfqy6Fa4EbFtRHZasyCmWf2lQi/wzCxinAPnx5
-X-Developer-Key: i=markuss.broks@gmail.com; a=ed25519;
- pk=oKzGUTm30BCDqinRMpiHQqByOx1mp2mwmhg80Mv7Zg4=
-X-Endpoint-Received: by B4 Relay for markuss.broks@gmail.com/20260803 with auth_id=911
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785855769; l=3861;
+ i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
+ bh=9HHZvo2aa/FJzquprkweq3XaHjJz/PlTTjlhPeXxzqM=;
+ b=cOBn1KgZttb+i0l/66Xwb+JEhAn5RmQ7zZ20MavfckkHIcf2dBDiKiRHOU/9TSvRVZlgLDKpY
+ YoxU5H83r07DfBJGM64/OwtX7jTV0yZq0y+qYv+T/ELk8dVnglseIma
+X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
+ pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
+X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Those are the required changes for the BCM4361 PCIe chipset support.
+When the UDC is removed (e.g. dummy_hcd unbind via sysfs) while the raw
+gadget fd is still open, usb_del_gadget() destroys the gadget device
+and its name. raw_gadget keeps a dangling pointer in dev->gadget, and
+ioctls dereference it after releasing dev->lock, leading to a
+use-after-free in dev_err() when usb_ep_queue() fails.
 
-Signed-off-by: Markuss Broks <markuss.broks@gmail.com>
+Take a gadget reference in gadget_bind() and drop it in dev_free() so
+the gadget device and its name stay alive for as long as the fd is open
+and an ioctl may still dereference dev->gadget. gadget_unbind() only
+marks the device as failed under dev->lock; the reference is dropped in
+dev_free(), which runs only after the fd is closed and no ioctl can be
+in flight.
+
+Reported-by: syzbot+9aacea11bc70c3ddaff2@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=9aacea11bc70c3ddaff2
+Fixes: f2c2e717642c ("usb: gadget: add raw-gadget interface")
+Assisted-by: deepseek:v4-pro
+Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
 ---
+The gadget device embedded in the UDC is destroyed when the UDC is
+removed while the raw gadget fd is still open (e.g. unbinding dummy_hcd
+via sysfs). raw_gadget keeps a dangling pointer in dev->gadget and
+ioctls dereference it after dropping dev->lock, which KASAN reports as a
+slab use-after-free in raw_process_ep0_io() (dev_err with a freed device
+name).
+
+Fix it by holding a gadget reference for the raw device lifetime:
+gadget_bind() takes it, gadget_unbind() only marks the device as failed
+under dev->lock, and the reference is dropped in dev_free() once the fd
+is closed and no ioctl can still be in flight.
+---
+Changes in v3:
+- Use scoped_guard() for the spinlock in gadget_unbind() per review.
+- Add Assisted-by trailer per Documentation/process/coding-assistants.rst.
+- Link to v2: https://patch.msgid.link/20260804-raw-gadget-ep0-uaf-v2-1-3a5ded46ab50@gmail.com
+
 Changes in v2:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://patch.msgid.link/20260803-broadcom-staging-v1-1-f6f77e55b72e@gmail.com
+- Reworked per review: the gadget reference is now held for the raw
+  device lifetime (bind until dev_free()) instead of the bind/unbind
+  window, since ioctls dereference dev->gadget after releasing dev->lock
+  and the UDC core owns the gadget's lifetime during bind/unbind.
+- gadget_unbind() now only marks the device as failed under dev->lock;
+  the reference is dropped in dev_free() after the fd is closed.
+- Dropped the now-unneeded comment and switched the spinlock to guard().
+- Link to v1: https://patch.msgid.link/20260804-raw-gadget-ep0-uaf-v1-1-07878773da15@gmail.com
 ---
- drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c       | 3 +++
- drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c       | 3 +++
- drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h | 2 ++
- 3 files changed, 8 insertions(+)
+ drivers/usb/gadget/legacy/raw_gadget.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
-index 4adc0d0e4251..97120a659f8b 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/chip.c
-@@ -735,6 +735,8 @@ static u32 brcmf_chip_tcm_rambase(struct brcmf_chip_priv *ci)
- 	case BRCM_CC_4355_CHIP_ID:
- 	case BRCM_CC_4359_CHIP_ID:
- 		return (ci->pub.chiprev < 9) ? 0x180000 : 0x160000;
-+	case BRCM_CC_4361_CHIP_ID:
-+		return 0x170000;
- 	case BRCM_CC_4364_CHIP_ID:
- 	case CY_CC_4373_CHIP_ID:
- 		return 0x160000;
-@@ -1466,6 +1468,7 @@ bool brcmf_chip_sr_capable(struct brcmf_chip *pub)
- 		reg = chip->ops->read32(chip->ctx, addr);
- 		return (reg & CC_SR_CTL0_ENABLE_MASK) != 0;
- 	case BRCM_CC_4359_CHIP_ID:
-+	case BRCM_CC_4361_CHIP_ID:
- 	case BRCM_CC_43751_CHIP_ID:
- 	case BRCM_CC_43752_CHIP_ID:
- 	case CY_CC_43012_CHIP_ID:
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-index 55f4d7b970f2..914ae72a7b74 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-@@ -59,6 +59,7 @@ BRCMF_FW_CLM_DEF(43570, "brcmfmac43570-pcie");
- BRCMF_FW_DEF(4358, "brcmfmac4358-pcie");
- BRCMF_FW_DEF(4359, "brcmfmac4359-pcie");
- BRCMF_FW_DEF(4359C, "brcmfmac4359c-pcie");
-+BRCMF_FW_CLM_DEF(4361, "brcmfmac4361-pcie");
- BRCMF_FW_CLM_DEF(4364B2, "brcmfmac4364b2-pcie");
- BRCMF_FW_CLM_DEF(4364B3, "brcmfmac4364b3-pcie");
- BRCMF_FW_DEF(4365B, "brcmfmac4365b-pcie");
-@@ -98,6 +99,7 @@ static const struct brcmf_firmware_mapping brcmf_pcie_fwnames[] = {
- 	BRCMF_FW_ENTRY(BRCM_CC_4358_CHIP_ID, 0xFFFFFFFF, 4358),
- 	BRCMF_FW_ENTRY(BRCM_CC_4359_CHIP_ID, 0x000001FF, 4359),
- 	BRCMF_FW_ENTRY(BRCM_CC_4359_CHIP_ID, 0xFFFFFE00, 4359C),
-+	BRCMF_FW_ENTRY(BRCM_CC_4361_CHIP_ID, 0xFFFFFFFF, 4361),
- 	BRCMF_FW_ENTRY(BRCM_CC_4364_CHIP_ID, 0x0000000F, 4364B2), /* 3 */
- 	BRCMF_FW_ENTRY(BRCM_CC_4364_CHIP_ID, 0xFFFFFFF0, 4364B3), /* 4 */
- 	BRCMF_FW_ENTRY(BRCM_CC_4365_CHIP_ID, 0x0000000F, 4365B),
-@@ -2747,6 +2749,7 @@ static const struct pci_device_id brcmf_pcie_devid_table[] = {
- 	BRCMF_PCIE_DEVICE(BRCM_PCIE_43602_2G_DEVICE_ID, WCC),
- 	BRCMF_PCIE_DEVICE(BRCM_PCIE_43602_5G_DEVICE_ID, WCC),
- 	BRCMF_PCIE_DEVICE(BRCM_PCIE_43602_RAW_DEVICE_ID, WCC),
-+	BRCMF_PCIE_DEVICE(BRCM_PCIE_4361_DEVICE_ID, WCC),
- 	BRCMF_PCIE_DEVICE(BRCM_PCIE_4364_DEVICE_ID, WCC_SEED),
- 	BRCMF_PCIE_DEVICE(BRCM_PCIE_4365_DEVICE_ID, BCA),
- 	BRCMF_PCIE_DEVICE(BRCM_PCIE_4365_2G_DEVICE_ID, BCA),
-diff --git a/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h b/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
-index df3b67ba4db2..b800cbfdece1 100644
---- a/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
-+++ b/drivers/net/wireless/broadcom/brcm80211/include/brcm_hw_ids.h
-@@ -46,6 +46,7 @@
- #define BRCM_CC_4358_CHIP_ID		0x4358
- #define BRCM_CC_4359_CHIP_ID		0x4359
- #define BRCM_CC_43602_CHIP_ID		43602
-+#define BRCM_CC_4361_CHIP_ID		0x4361
- #define BRCM_CC_4364_CHIP_ID		0x4364
- #define BRCM_CC_4365_CHIP_ID		0x4365
- #define BRCM_CC_4366_CHIP_ID		0x4366
-@@ -86,6 +87,7 @@
- #define BRCM_PCIE_43602_2G_DEVICE_ID	0x43bb
- #define BRCM_PCIE_43602_5G_DEVICE_ID	0x43bc
- #define BRCM_PCIE_43602_RAW_DEVICE_ID	43602
-+#define BRCM_PCIE_4361_DEVICE_ID	0x441f
- #define BRCM_PCIE_4364_DEVICE_ID	0x4464
- #define BRCM_PCIE_4365_DEVICE_ID	0x43ca
- #define BRCM_PCIE_4365_2G_DEVICE_ID	0x43cb
+diff --git a/drivers/usb/gadget/legacy/raw_gadget.c b/drivers/usb/gadget/legacy/raw_gadget.c
+index 4febf8dac7c..fb15ab6fc73 100644
+--- a/drivers/usb/gadget/legacy/raw_gadget.c
++++ b/drivers/usb/gadget/legacy/raw_gadget.c
+@@ -226,6 +226,7 @@ static void dev_free(struct kref *kref)
+ 		kfree(dev->eps[i].ep->desc);
+ 		dev->eps[i].state = STATE_EP_DISABLED;
+ 	}
++	usb_put_gadget(dev->gadget);
+ 	kfree(dev);
+ }
+ 
+@@ -302,7 +303,7 @@ static int gadget_bind(struct usb_gadget *gadget,
+ 	dev->req = req;
+ 	dev->req->context = dev;
+ 	dev->req->complete = gadget_ep0_complete;
+-	dev->gadget = gadget;
++	dev->gadget = usb_get_gadget(gadget);
+ 	gadget_for_each_ep(ep, dev->gadget) {
+ 		dev->eps[i].ep = ep;
+ 		dev->eps[i].addr = get_ep_addr(ep->name);
+@@ -329,6 +330,8 @@ static void gadget_unbind(struct usb_gadget *gadget)
+ {
+ 	struct raw_dev *dev = get_gadget_data(gadget);
+ 
++	scoped_guard(spinlock_irqsave, &dev->lock)
++		dev->state = STATE_DEV_FAILED;
+ 	set_gadget_data(gadget, NULL);
+ 	/* Matches kref_get() in gadget_bind(). */
+ 	kref_put(&dev->count, dev_free);
 
 ---
-base-commit: 6c5fc504d0d6934132637aa3db4b9b58148eaa78
-change-id: 20260803-broadcom-staging-59a7d9f559b4
+base-commit: 075b74841bd0065a3bda3440873c747938e69b68
+change-id: 20260804-raw-gadget-ep0-uaf-10a82bdda5bc
 
 Best regards,
 --  
-Markuss Broks <markuss.broks@gmail.com>
+Anuj Bolewar <bolewara@gmail.com>
 
