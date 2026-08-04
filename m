@@ -1,107 +1,95 @@
 From: Anuj Bolewar <bolewara@gmail.com>
-Date: Tue, 04 Aug 2026 09:55:29 +0530
-Subject: [PATCH] usb: raw_gadget: fix use-after-free when UDC is removed
+Date: Tue, 04 Aug 2026 10:18:21 +0530
+Subject: [PATCH] media: hackrf: fix use-after-free in hackrf_alloc_urbs()
+ error path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-raw-gadget-ep0-uaf-v1-1-07878773da15@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAxA0asgz7VkIkCIq1QdnMQEM1CUAK2Eu
- DsBxjf8v0OSqJKgK3aIsmnS75RRvgpwA09BUH02GDINtVRh5B8G9kEWlJlw5R5L4tZY77m2DnI
- 4R+n1f0/fn8dptaO45TrBcZzkdz6QdgAAAA==
-X-Change-ID: 20260804-raw-gadget-ep0-uaf-10a82bdda5bc
-To: Andrey Konovalov <andreyknvl@gmail.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+9aacea11bc70c3ddaff2@syzkaller.appspotmail.com, 
+Message-Id: <20260804-hackrf-alloc-urbs-double-free-v1-1-a2abe8e515a6@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAwA0F8ZORvoNnXqr4iHJktdtaySWBHG/
+ t2qx3d5C5hoFINTs4DKK1rMc0W7aYAnP18F41gNnev27uC2OHm+a0CfUmYsSoZjLpQEg4ogMw1
+ tvzsO3BPU46ES4vv3ny9/W6Gb8PObwrp+AGoZBSyBAAAA
+X-Change-ID: 20260804-hackrf-alloc-urbs-double-free-ccb713597c3b
+To: Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+832ce9fa3face1b7d44d@syzkaller.appspotmail.com, 
  Anuj Bolewar <bolewara@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785817528; l=3419;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785818900; l=2781;
  i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=qhiaYn09tLH9YWJZgXmuebtXULUgOs9TL6YTq4LuyUk=;
- b=awzMXsShbudvZ3SZ/9Omcmt6c/NHoRE5MBKLz0YotbE/PufH3c0jZ/NJU7hh5pjYiinHI8226
- IugLCdU07A/AgDNomOLpqCfWvpqIRJetqH6nLuNm7NXKB+pbutad9Nx
+ bh=JT0InAxsUZIh/vmY+n+CTvUVrKVu7SQ4wLCM7VeGKo4=;
+ b=XiY+d/wENrzLn92spP5BswBntPYL2VQzW3SVgLkRMo8FkyT63swTQxoE58ModoJkXyoDqNoxw
+ y1nTm0zTwKcDnV3krVSUaN4NcuWbBSP9vOcCKnUEfJAIipokhBIXDW4
 X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
  pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
 X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the UDC is removed (e.g. dummy_hcd unbind via sysfs) while the raw
-gadget fd is still open, usb_del_gadget() destroys the gadget device and
-its name. raw_gadget keeps a dangling pointer in dev->gadget, and ioctls
-dereference it after releasing dev->lock, leading to a use-after-free in
-dev_err() when usb_ep_queue() fails.
+hackrf_alloc_urbs() frees the URBs it allocated so far when one
+allocation fails, but leaves the entries in dev->urb_list[] and
+dev->urbs_initialized untouched. The caller, hackrf_start_streaming(),
+then calls hackrf_free_urbs() on the error path, which walks
+dev->urbs_initialized entries and calls usb_free_urb() a second time on
+the already-freed URBs, causing a use-after-free (slab-use-after-free
+Write in usb_free_urb()).
 
-Hold a gadget reference from bind until unbind and clear dev->gadget
-under dev->lock, so ioctls either observe the gadget as unbound or keep
-the device alive through the reference.
+Drop the redundant cleanup loop inside hackrf_alloc_urbs() and let
+hackrf_free_urbs(), which the caller already invokes on error, own the
+cleanup of the successfully allocated URBs.
 
-Reported-by: syzbot+9aacea11bc70c3ddaff2@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=9aacea11bc70c3ddaff2
-Fixes: f2c2e717642c ("usb: gadget: add raw-gadget interface")
+Reported-by: syzbot+832ce9fa3face1b7d44d@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=832ce9fa3face1b7d44d
+Fixes: 969ec1f6bd92 ("[media] hackrf: HackRF SDR driver")
 Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
 ---
-The gadget device embedded in the UDC is destroyed when the UDC is
-removed while the raw gadget fd is still open (e.g. unbinding dummy_hcd
-via sysfs). raw_gadget keeps a dangling pointer in dev->gadget and
-ioctls dereference it after dropping dev->lock, which KASAN reports as a
-slab use-after-free in raw_process_ep0_io() (dev_err with a freed device
-name).
+syzbot reports a slab-use-after-free Write in usb_free_urb(), triggered
+by an allocation failure (failslab) while opening the streaming queue of
+the HackRF SDR driver.
 
-Fix it by taking a gadget reference while dev->gadget is set and clearing
-dev->gadget under dev->lock on unbind, so ioctls either observe the
-gadget as unbound or keep the device alive through the reference.
+hackrf_alloc_urbs() frees the URBs it allocated so far when one
+allocation fails, but leaves the entries in dev->urb_list[] and
+dev->urbs_initialized untouched. The caller, hackrf_start_streaming(),
+then calls hackrf_free_urbs() on the error path, which walks
+dev->urbs_initialized entries and calls usb_free_urb() a second time on
+the already-freed URBs, causing a use-after-free.
+
+Drop the redundant cleanup loop inside hackrf_alloc_urbs() and let
+hackrf_free_urbs(), which the caller already invokes on error, own the
+cleanup of the successfully allocated URBs.
 ---
- drivers/usb/gadget/legacy/raw_gadget.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ drivers/media/usb/hackrf/hackrf.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/usb/gadget/legacy/raw_gadget.c b/drivers/usb/gadget/legacy/raw_gadget.c
-index 4febf8dac7c..acc6e4799ee 100644
---- a/drivers/usb/gadget/legacy/raw_gadget.c
-+++ b/drivers/usb/gadget/legacy/raw_gadget.c
-@@ -303,6 +303,8 @@ static int gadget_bind(struct usb_gadget *gadget,
- 	dev->req->context = dev;
- 	dev->req->complete = gadget_ep0_complete;
- 	dev->gadget = gadget;
-+	/* Keep the gadget alive while the device holds a reference to it. */
-+	usb_get_gadget(gadget);
- 	gadget_for_each_ep(ep, dev->gadget) {
- 		dev->eps[i].ep = ep;
- 		dev->eps[i].addr = get_ep_addr(ep->name);
-@@ -316,6 +318,10 @@ static int gadget_bind(struct usb_gadget *gadget,
- 	ret = raw_queue_event(dev, USB_RAW_EVENT_CONNECT, 0, NULL);
- 	if (ret < 0) {
- 		dev_err(&gadget->dev, "failed to queue connect event\n");
-+		spin_lock_irqsave(&dev->lock, flags);
-+		dev->gadget = NULL;
-+		spin_unlock_irqrestore(&dev->lock, flags);
-+		usb_put_gadget(gadget);
- 		set_gadget_data(gadget, NULL);
- 		return ret;
- 	}
-@@ -328,7 +334,19 @@ static int gadget_bind(struct usb_gadget *gadget,
- static void gadget_unbind(struct usb_gadget *gadget)
- {
- 	struct raw_dev *dev = get_gadget_data(gadget);
-+	unsigned long flags;
+diff --git a/drivers/media/usb/hackrf/hackrf.c b/drivers/media/usb/hackrf/hackrf.c
+index a15829a60e8..70fd95f3e97 100644
+--- a/drivers/media/usb/hackrf/hackrf.c
++++ b/drivers/media/usb/hackrf/hackrf.c
+@@ -665,7 +665,7 @@ static int hackrf_free_urbs(struct hackrf_dev *dev)
  
-+	/*
-+	 * The gadget is going away (e.g. the UDC is being removed), so stop
-+	 * using it. Hold the lock to synchronize with ioctls that check
-+	 * dev->gadget and may dereference it after dropping the lock.
-+	 */
-+	spin_lock_irqsave(&dev->lock, flags);
-+	dev->state = STATE_DEV_FAILED;
-+	dev->gadget = NULL;
-+	spin_unlock_irqrestore(&dev->lock, flags);
-+	/* Matches usb_get_gadget() in gadget_bind(). */
-+	usb_put_gadget(gadget);
- 	set_gadget_data(gadget, NULL);
- 	/* Matches kref_get() in gadget_bind(). */
- 	kref_put(&dev->count, dev_free);
+ static int hackrf_alloc_urbs(struct hackrf_dev *dev, bool rcv)
+ {
+-	int i, j;
++	int i;
+ 	unsigned int pipe;
+ 	usb_complete_t complete;
+ 
+@@ -681,11 +681,8 @@ static int hackrf_alloc_urbs(struct hackrf_dev *dev, bool rcv)
+ 	for (i = 0; i < MAX_BULK_BUFS; i++) {
+ 		dev_dbg(dev->dev, "alloc urb=%d\n", i);
+ 		dev->urb_list[i] = usb_alloc_urb(0, GFP_KERNEL);
+-		if (!dev->urb_list[i]) {
+-			for (j = 0; j < i; j++)
+-				usb_free_urb(dev->urb_list[j]);
++		if (!dev->urb_list[i])
+ 			return -ENOMEM;
+-		}
+ 		usb_fill_bulk_urb(dev->urb_list[i],
+ 				dev->udev,
+ 				pipe,
 
 ---
 base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260804-raw-gadget-ep0-uaf-10a82bdda5bc
+change-id: 20260804-hackrf-alloc-urbs-double-free-ccb713597c3b
 
 Best regards,
 --  
