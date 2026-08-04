@@ -1,10 +1,10 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Wed, 05 Aug 2026 03:14:22 +0800
-Subject: [PATCH RFC v6 4/7] mfd: ls2kbmc: Cancel the work queue on removal
+Date: Wed, 05 Aug 2026 03:14:23 +0800
+Subject: [PATCH RFC v6 5/7] ipmi: ls2k: adjust dependency to its mfd driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-ls2kbmc-mod-v6-4-16ccde412d86@gmail.com>
+Message-Id: <20260805-ls2kbmc-mod-v6-5-16ccde412d86@gmail.com>
 References: <20260805-ls2kbmc-mod-v6-0-16ccde412d86@gmail.com>
 In-Reply-To: <20260805-ls2kbmc-mod-v6-0-16ccde412d86@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
@@ -17,63 +17,64 @@ Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>,
  linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1480;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1710;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=JfJpObrd5YhUsg0KmTA+Fgw5Trzi5JwERZB1GRhNqG0=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqcjoX4PGr3fi2gyACC1u+oTkUNeYJpXcHqn55+
- svT259NZLOJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanI6FwAKCRCwMePKe/7Z
- bnmgD/91eSK0ImtZVckcCKjN0w7Ib2AYx6+aqsrumocsjTwSGjSA6WXRn6o2Mvm1fCFo96mV//F
- g7ravbOvXqlbld0IAw7rthwCPU+UwGBB8XuW73dUxFGDJ7X6ofNK6EjEh8ruG7AdqZBkxhnDAmt
- 1dw5+WBFar21oHwpfwLVu3HOaCu1qFGrXqF5sRVUKrW1C+m+vBPtC09P9yUz74a/q92J58seWiH
- kjthTkX4+wF5ho7TKrMGMsvstfRf2tovpvh9eNTmuo1LvHpozlV3RNG57CY7I+cTJJWCjLlXl6c
- zuKwKCsZz8i6PbVZOQMbirwEUd+/Hb9TPGZU3xt5UDz68gRPAMK7SON+tjWQd1eZTL/GrMV7IBb
- Qjo8GHdlbmSCEUnIy0cT6h18GfpwAq32owcwWw6Xhzsqs0HMKx4vv6u8pRPHKpqR+P3JWVWltCi
- ABplnkhgyfXUgh8AyEj2AcXgVAEuHbrEtwZVK/C15ZrsEm7/8pnnyrxa9pQDjT4XZRs/9YikgOw
- LIdtwrkiVayrU66/Y9MIyxDtnGF6aOoiVzouuAWzC/ShyJIk+znA4jwXiiwc9cFtjU6v3EPqduM
- yQpcQVZc7xpoKt7bDmd9fY6DFKwc8INujqe+7BKl9QeL6oHFIs3f7tHhHrjYhQOyPIBrpctk4Yt
- 15UOdUkfUnrAK0A==
+ bh=fpiTDlsJul0/E2sbRt8CcUmthxoiG2abu6bbCUuF/C8=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqcjoX2yPyf6ZbALvv192CCQyy3/z+CEEqZfCKm
+ 5Zp0IRGOUaJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanI6FwAKCRCwMePKe/7Z
+ biu5EACpbxNgd9sAvkg/GzaEPsa9a9fh167AxBEYBKD6xmWYr0DyPLhTXCAwwEvYCLSIqvmQkm3
+ 9sYQIukasRGtEo1ysLM640QrtlVgYBGqOJuIS6Z4keFdXAM2Q2yRBLLOJqR7/dDBD3q/0hNvtPQ
+ RR8w8XwNairhTiZNjuxityIFXZGjgwsRvEjuMvPkAxCANngacnQ10owkH7C4niBMaYXvEDcn6MX
+ o6wNxUUYTFsqMs+SaPXp7xWH7xQfvCrTwepCpYln3pTKjKZBK0EB3KGYufGqnLEKWL42Qq2hKQa
+ X9aMxefe6chaa/YVvoVdyw8z/BBCzTK0VJS+POikvTpOzckk35MW2D37nGeT2XYfe1Al9vdtdnO
+ 40CsCDvIJvo1HY9pif9XM54vqjf+nNDynA2yWJUttp7/hfDtbhU9xwh12C5d4ZK2eY3DUtPAsH6
+ YarwYVT0MaOQMWUfzgXgWDqLXyU9rgxTGMngExmAL9R5+ZlhiqpwpdzWJ7Dyh1+9HtBlrZf907c
+ 5uBpkR+yLUJlY/ZLovJblcejB4/P7EI6dvuGxG/LmY0+PxJvmvLnQs3JZUntSX0OtH1sdMj4MtK
+ wOetI2g9P5C+bejiBV48QzO5bAjVcPvt4cJvaySSMCSSbk3QaGBdz9lpWwsdOWEurCujBBQtL9o
+ yy3KcOTDMbAhhng==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the device is being removeed, the work queue should be canceled to
-avoid any pending work to be executed after the device is removed.
+There is functional dependency between the IPMI driver and its mfd
+driver. Previously, the dependency was set to "select" from
+IPMI_LS2K to MFD_LS2K_BMC_CORE. However, the ipmi driver is actually
+compiled as a part of the ipmi_si module, and IPMI_LS2K is a bool
+option. Therefore, the dependency "select" will force the mfd driver
+to be compiled built-in when the ipmi driver is built as a module. This
+is not desirable. This patch fixes this by declaring a conditional
+dependency from IPMI_SI to MFD_LS2K_BMC_CORE if IPMI_LS2K is selected.
+This will allow the mfd driver to be compiled as a module if the ipmi
+driver is built as a module. The adjustment to Kconfig for the mfd
+driver will be introduced in the later patch in this series.
 
-Fixes: d952bba3fbb5 ("mfd: ls2kbmc: Add Loongson-2K BMC reset function support")
+Fixes: d46651d4e3c0 ("ipmi: Add Loongson-2K BMC support")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- drivers/mfd/ls2k-bmc-core.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/char/ipmi/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
-index e12f2ca2fbef360ceda14ee6fc64f500e4944120..e7bebfe696ac4554eb6283279811a27ed865ab73 100644
---- a/drivers/mfd/ls2k-bmc-core.c
-+++ b/drivers/mfd/ls2k-bmc-core.c
-@@ -375,6 +375,12 @@ static void ls2k_bmc_save_pci_data(struct pci_dev *pdev, struct ls2k_bmc_ddata *
- 	pci_read_config_dword(pdev, PCI_INTERRUPT_LINE, &ddata->bmc_pci_data.interrupt_line);
- }
+diff --git a/drivers/char/ipmi/Kconfig b/drivers/char/ipmi/Kconfig
+index 669f7600019747bcd2b37563477cf336f19a0407..07f3308c71616215871a730b87f1991d2b502e63 100644
+--- a/drivers/char/ipmi/Kconfig
++++ b/drivers/char/ipmi/Kconfig
+@@ -62,6 +62,7 @@ config IPMI_DEVICE_INTERFACE
+ config IPMI_SI
+ 	tristate 'IPMI System Interface handler'
+ 	select IPMI_PLAT_DATA
++	select MFD_LS2K_BMC_CORE if IPMI_LS2K
+ 	help
+ 	  Provides a driver for System Interfaces (KCS, SMIC, BT).
+ 	  Currently, only KCS and SMIC are supported.  If
+@@ -87,7 +88,6 @@ config IPMI_IPMB
+ config IPMI_LS2K
+ 	bool 'Loongson-2K IPMI interface'
+ 	depends on LOONGARCH
+-	select MFD_LS2K_BMC_CORE
+ 	help
+ 	  Provides a driver for Loongson-2K IPMI interfaces.
  
-+static void ls2k_bmc_cancel_wq(void *data)
-+{
-+	struct ls2k_bmc_ddata *ddata = data;
-+	(void) cancel_work_sync(&ddata->bmc_reset_work);
-+}
-+
- static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- {
- 	struct pci_dev *pdev = to_pci_dev(ddata->dev);
-@@ -385,6 +391,10 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- 
- 	INIT_WORK(&ddata->bmc_reset_work, ls2k_bmc_events_fn);
- 
-+	ret = devm_add_action_or_reset(ddata->dev, ls2k_bmc_cancel_wq, ddata);
-+	if (ret)
-+		return ret;
-+
- 	ret = devm_request_irq(&pdev->dev, pdev->irq, ls2k_bmc_interrupt,
- 			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc pcie", ddata);
- 	if (ret) {
 
 -- 
 2.49.0
