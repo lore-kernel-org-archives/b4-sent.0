@@ -1,113 +1,154 @@
-From: =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
-Date: Tue, 04 Aug 2026 10:55:57 +0200
-Subject: [PATCH v2 3/3] arm64: dts: qcom: sm8250: add device tree for the
- Xiaomi Mi Pad 5 Pro 5G
+From: "Pawel Zalewski (The Capable Hub)" <pzalewski@thegoodpenguin.co.uk>
+Date: Tue, 04 Aug 2026 10:44:26 +0100
+Subject: [PATCH v2] ata: use named initializers for acpi_device_id
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260804-sm8250-xiaomi-enuma-v2-3-9dd0486f1155@dawidwrobel.com>
-References: <20260804-sm8250-xiaomi-enuma-v2-0-9dd0486f1155@dawidwrobel.com>
-In-Reply-To: <20260804-sm8250-xiaomi-enuma-v2-0-9dd0486f1155@dawidwrobel.com>
-To: Jianhua Lu <lujianhua000@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2821; i=me@dawidwrobel.com;
- h=from:subject:message-id; bh=oVibt9XLi5yzNzpL8nEWfpQgnxXZbpMLD2cfIN6wrPE=;
- b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWQVrlTK3PjsjNHF51E3tnBuuMCwZILt0QsmV3Zc8kuXn
- +KzI7n6a0cpC4MYF4OsmCKLXlrQHqvgl9/fvfgdDjOHlQlkCAMXpwBMZNVshv91cos0AoxYDT2P
- sghM0Nt3ccGyhf+2/nh09VOmzX9Ljrweht9s9x25S00f9mUtuyl1WExiwdoZNTfk230+f/to9E+
- q4DoTAA==
-X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
- fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
-X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260804-ata-acpi-v2-1-8825e646b80d@thegoodpenguin.co.uk>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MQQqDMBCF4avIrBuZxFakq95DXEzjRIdCIkmUF
+ vHuTV13+T8e3w6Jo3CCe7VD5E2SBF/CXCqwM/mJlYylwaBpscNGUSZFdhGlO3fFGz+xIQPlvkR
+ 28j6pfig9S8ohfk5507/1D7Jphcq12JIjsjTqR555CmFc2E+r+NqGen3BcBzHF8YrggWrAAAA
+X-Change-ID: 20260803-ata-acpi-18f405eb03a2
+To: Hans de Goede <hansg@kernel.org>, Damien Le Moal <dlemoal@kernel.org>, 
+ Niklas Cassel <cassel@kernel.org>
+Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ "Pawel Zalewski (The Capable Hub)" <pzalewski@thegoodpenguin.co.uk>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785836672; l=4772;
+ i=pzalewski@thegoodpenguin.co.uk; s=20260803; h=from:subject:message-id;
+ bh=eKY3VkSWVSP8ItVSbKau1mFqa+Js85o/WvNDSrLmjlE=;
+ b=1x8Ydb5MdJPX/VJ1QDlTieKz0yDxf6cJ4fV6T96U9UJ87IA4hDAMYPfGI4FdjlNPm2w0eVU9Y
+ GcR7oq99JTjAULNrlmhIicqs6Qh9TFzX4xiv+2NmYNyqQamwmRY6YAt
+X-Developer-Key: i=pzalewski@thegoodpenguin.co.uk; a=ed25519;
+ pk=W3zk1cb/wRnj6pNGbl3/2Zf3GmPA6IBpNHpDPyJ05k8=
+X-Endpoint-Received: by B4 Relay for pzalewski@thegoodpenguin.co.uk/20260803 with auth_id=913
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Mi Pad 5 Pro 5G (enuma, 2021) is the modem-equipped variant of the
-Mi Pad 5 Pro. The board is otherwise the elish design, so describe it as
-the common device tree plus its own board ID, panel compatible and WiFi
-board data variant.
+Use a named initializer for the acpi_device_id fields which
+makes the code more readable and consistent with how lists
+are initialized in the rest of the kernel code base. Also
+drop explicitly setting fields to 0 where it is redundant.
 
-Unlike elish, this model shipped with a single display variant, so there
-is one device tree rather than a per-panel pair.
+While we are at it - unify the list terminator to have
+a single space between the brackets and no trailing
+comma.
 
-The WiFi node in the common device tree gains a label, so this board can
-override its calibration variant.
-
-Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
+Signed-off-by: Pawel Zalewski (The Capable Hub) <pzalewski@thegoodpenguin.co.uk>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  1 +
- .../boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi  |  2 +-
- arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts   | 26 ++++++++++++++++++++++
- 3 files changed, 28 insertions(+), 1 deletion(-)
+This series is converting lists that contain the acpi_device_id
+struct, which is defined in the include/linux/device-id/acpi.h
+to makes use of named initializers (which they do not use currently).
+This work is part of the on going effort in the kernel associated
+with device-ids [1]
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index e05414290d8e..529e29ffb25a 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -369,6 +369,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-sony-xperia-edo-pdx203.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-sony-xperia-edo-pdx206.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-elish-boe.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-elish-csot.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-enuma.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-pipa.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8350-hdk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8350-microsoft-surface-duo2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
-index 19aff83ecf7b..12a2ba48340f 100644
---- a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
-@@ -817,7 +817,7 @@ &pcie0_phy {
+The plan is to convert acpi_device_id::driver_data to have an anonymous
+union, similarly to what was introduced for PCI and I2C device ID tables.
+The goal is to increase type-safety (as most of the existing casts are gone),
+to improve readability and to make use intent a bit more clear:
+
+```
+union {
+	kernel_ulong_t driver_data;
+	const void *driver_data_ptr;
+}
+```
+
+But for that to work all lists containing the structs need to use named
+initializers first. I already have patches that implement this and touching
+a lot of kernel subsystmes that use the acpi_device_id struct and that list
+keeps on growing. Therefore, I have decided to split the series per every
+subsystem into:
+- pre-clean-ups that convert the lists to use named initializers (this series)
+- actual implementations that make some of the modules use the new driver_data_ptr
+
+That way the task can be fragmented into manageable and independent
+chunks of work and makes this effort easier to review.
+
+Tested builds on x86-64 in Yocto using 7.2-rc6
+---
+Changes in v2:
+- Fixed up into a single patch
+- Link to v1: https://lore.kernel.org/r/20260803-ata-acpi-v1-0-f606afaacad1@thegoodpenguin.co.uk
+
+To: Hans de Goede <hansg@kernel.org>
+To: Damien Le Moal <dlemoal@kernel.org>
+To: Niklas Cassel <cassel@kernel.org>
+Cc: linux-ide@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/ata/ahci_platform.c | 4 ++--
+ drivers/ata/ahci_qoriq.c    | 2 +-
+ drivers/ata/ahci_seattle.c  | 4 ++--
+ drivers/ata/ahci_xgene.c    | 6 +++---
+ 4 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/ata/ahci_platform.c b/drivers/ata/ahci_platform.c
+index c18054333f7c..d97f0ad3b4cd 100644
+--- a/drivers/ata/ahci_platform.c
++++ b/drivers/ata/ahci_platform.c
+@@ -88,9 +88,9 @@ static const struct of_device_id ahci_of_match[] = {
+ MODULE_DEVICE_TABLE(of, ahci_of_match);
+ 
+ static const struct acpi_device_id ahci_acpi_match[] = {
+-	{ "APMC0D33", (unsigned long)&ahci_port_info_nolpm },
++	{ .id = "APMC0D33", .driver_data = (unsigned long)&ahci_port_info_nolpm },
+ 	{ ACPI_DEVICE_CLASS(PCI_CLASS_STORAGE_SATA_AHCI, 0xffffff) },
+-	{},
++	{ }
  };
+ MODULE_DEVICE_TABLE(acpi, ahci_acpi_match);
  
- &pcieport0 {
--	wifi@0 {
-+	wifi_0: wifi@0 {
- 		compatible = "pci17cb,1101";
- 		reg = <0x10000 0x0 0x0 0x0 0x0>;
+diff --git a/drivers/ata/ahci_qoriq.c b/drivers/ata/ahci_qoriq.c
+index 0dec1a17e5b1..96492159fa7c 100644
+--- a/drivers/ata/ahci_qoriq.c
++++ b/drivers/ata/ahci_qoriq.c
+@@ -80,7 +80,7 @@ static const struct of_device_id ahci_qoriq_of_match[] = {
+ MODULE_DEVICE_TABLE(of, ahci_qoriq_of_match);
  
-diff --git a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts
-new file mode 100644
-index 000000000000..7cc9ed7d12b2
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts
-@@ -0,0 +1,26 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025 Dawid Wróbel <me@dawidwrobel.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "sm8250-xiaomi-elish-common.dtsi"
-+
-+/ {
-+	model = "Xiaomi Mi Pad 5 Pro 5G";
-+	compatible = "xiaomi,enuma", "xiaomi,elish", "qcom,sm8250";
-+
-+	/* Platform type differs from elish; msm-id is inherited unchanged. */
-+	qcom,board-id = <0x2e 0>;
-+};
-+
-+&display_panel {
-+	compatible = "xiaomi,enuma-csot-nt36523", "xiaomi,elish-csot-nt36523",
-+		     "novatek,nt36523";
-+	status = "okay";
-+};
-+
-+&wifi_0 {
-+	qcom,calibration-variant = "Xiaomi_Pad_5Pro_5G";
-+};
+ static const struct acpi_device_id ahci_qoriq_acpi_match[] = {
+-	{"NXP0004", .driver_data = (kernel_ulong_t)AHCI_LX2160A},
++	{ .id = "NXP0004", .driver_data = (kernel_ulong_t)AHCI_LX2160A },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, ahci_qoriq_acpi_match);
+diff --git a/drivers/ata/ahci_seattle.c b/drivers/ata/ahci_seattle.c
+index 3f16c1678402..9758fa0260ac 100644
+--- a/drivers/ata/ahci_seattle.c
++++ b/drivers/ata/ahci_seattle.c
+@@ -178,8 +178,8 @@ static SIMPLE_DEV_PM_OPS(ahci_pm_ops, ahci_platform_suspend,
+ 			 ahci_platform_resume);
+ 
+ static const struct acpi_device_id ahci_acpi_match[] = {
+-	{ "AMDI0600", 0 },
+-	{}
++	{ .id = "AMDI0600" },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, ahci_acpi_match);
+ 
+diff --git a/drivers/ata/ahci_xgene.c b/drivers/ata/ahci_xgene.c
+index 98c99b5a8242..2ebfe86e429b 100644
+--- a/drivers/ata/ahci_xgene.c
++++ b/drivers/ata/ahci_xgene.c
+@@ -710,9 +710,9 @@ static const struct scsi_host_template ahci_platform_sht = {
+ 
+ #ifdef CONFIG_ACPI
+ static const struct acpi_device_id xgene_ahci_acpi_match[] = {
+-	{ "APMC0D0D", XGENE_AHCI_V1},
+-	{ "APMC0D32", XGENE_AHCI_V2},
+-	{},
++	{ .id = "APMC0D0D", .driver_data = XGENE_AHCI_V1 },
++	{ .id = "APMC0D32", .driver_data = XGENE_AHCI_V2 },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, xgene_ahci_acpi_match);
+ #endif
 
--- 
-2.55.0
+---
+base-commit: 9ecfb2f7287a967b418ba69f10d45ead0d360593
+change-id: 20260803-ata-acpi-18f405eb03a2
+
+Best regards,
+--  
+Pawel Zalewski (The Capable Hub) <pzalewski@thegoodpenguin.co.uk>
 
