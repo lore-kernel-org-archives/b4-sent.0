@@ -1,91 +1,54 @@
 From: Anuj Bolewar <bolewara@gmail.com>
-Date: Tue, 04 Aug 2026 22:50:54 +0530
-Subject: [PATCH] usb: gadget: uvc: fix use-after-free in
- uvcg_extension_drop
+Subject: [PATCH 0/2] usb: gadget: f_uac1/f_uac2: fix invalid-free in srate
+ configfs store
+Date: Tue, 04 Aug 2026 23:13:22 +0530
+Message-Id: <20260804-f-uac-srate-invalid-free-v1-0-2c980378cdf5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-uvc-extension-drop-uaf-v1-1-4a5db42150af@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqDMBSE4VeRs+6BJBQRX0W6yGXSHhdREiOC+
- O6N7fKDmf+kgiwoNHYnZexSZEkN+tGR/9j0BktoJqNMrwb15Lp7xrEh3UsOeVm52simdxFWO2+
- CpnZeM6Icv/D0+rtUN8Nvd42u6wtluT0LegAAAA==
-X-Change-ID: 20260804-uvc-extension-drop-uaf-26bfea1bc2d1
-To: linux-usb@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, 
- syzbot+f093afc4e90b1908abdc@syzkaller.appspotmail.com, 
- Anuj Bolewar <bolewara@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrDsQo9TQq0gXMU7aKSXKjIog3
+ t2oy4/H+zdQEiaFV7GB0MLKQ8ooHwWEr08fQu6zwRr7NM7UGHH2AVX8lKe0+D/3GIUInW1CdK4
+ 2ZdVAvo9Ckdcr3b5v69z9KExnD/b9AA0zg6B8AAAA
+X-Change-ID: 20260804-f-uac-srate-invalid-free-827cf8840137
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Anuj Bolewar <bolewara@gmail.com>, 
+ syzbot+38bab69d2760cc99cfbe@syzkaller.appspotmail.com, 
+ syzbot+a4f65284f1451010b0a8@syzkaller.appspotmail.com, 
+ syzbot+2532c7901f590afd0c3a@syzkaller.appspotmail.com
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785864053; l=2708;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785865402; l=1062;
  i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=W838bVUurWYZNY+1DKGGhm3wxWgzNATfRFLxHYdrL2Q=;
- b=npVcnkwvwoGZCllYtfiIdi9cdpbYyXEu2OMuXY5R/E7Dl623esTnw85rUBuHEEfgfx2RjL3nG
- kjYcx01yznDBmJ0clppXjdwtzOGwJqN6/YbE9jX3vOQufs6MweBcml2
+ bh=yQbPabwNlDcu0lA8Xh/FOL5pkzjzn/Be+O3KXo+0Hlc=;
+ b=/ZNmtEoK+b7WB0vx2PZ4AmfHEiUmj9vFlY1Y5u+KuFKUTbGD0bZWS1+vEOcaFG7AZFUUrWVzm
+ N7R4aQayQ8NBL14WhTLJZ5Bcmk5RZty22zDJzDvGknAVllHTNcu00M1
 X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
  pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
 X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-uvcg_extension_drop() releases the configfs item reference with
-config_item_put() and then removes the extension unit from the list and
-frees its dynamic descriptor fields. When the put is the last reference,
-config_item_cleanup() runs uvcg_extension_release(), which kfree()s the
-struct uvcg_extension, so the subsequent list_del() and kfree() calls
-dereference freed memory.
+The p_srate/c_srate configfs store helpers in f_uac1 and f_uac2 free
+the strsep()-advanced split_page pointer instead of the buffer returned
+by kstrdup(). When a non-numeric token appears in the first position,
+kstrtou32() fails and kfree() releases a pointer into the middle of the
+slab object, which KASAN reports as invalid-free.
 
-The configfs mkdir error path calls drop_item() on an item whose only
-reference is the one held by the configfs hierarchy, so the put inside
-drop_item() frees the unit synchronously and list_del() reads freed
-memory (KASAN: slab-use-after-free Read in uvcg_extension_drop).
+Keep the original kstrdup() pointer and free that instead. This fixes
+the syzbot reports for f_uac2_opts_p_srate_store,
+f_uac2_opts_c_srate_store and f_uac1_opts_c_srate_store.
 
-Do all the list and field cleanup while the item is still alive, and
-release the reference as the last step.
-
-Reported-by: syzbot+f093afc4e90b1908abdc@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=f093afc4e90b1908abdc
-Fixes: 0525210c9840 ("usb: gadget: uvc: Allow definition of XUs in configfs")
-Assisted-by: deepseek:v4-pro
 Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
 ---
-uvcg_extension_drop() releases the configfs item reference with
-config_item_put() and then removes the extension unit from the list and
-frees its dynamic descriptor fields. When that put is the last
-reference, config_item_cleanup() runs uvcg_extension_release(), which
-kfree()s the struct uvcg_extension, so the subsequent list_del()
-dereferences freed memory.
+Anuj Bolewar (2):
+      usb: gadget: f_uac2: fix invalid-free in srate configfs store
+      usb: gadget: f_uac1: fix invalid-free in srate configfs store
 
-The configfs mkdir error path calls drop_item() on an item whose only
-reference is the one held by the configfs hierarchy, so the put inside
-drop_item() frees the unit synchronously and list_del() then reads freed
-memory (KASAN: slab-use-after-free Read in uvcg_extension_drop).
-
-Fix it by doing all the list and field cleanup while the item is still
-alive, and releasing the reference as the last step.
+ drivers/usb/gadget/function/f_uac1.c | 5 +++--
+ drivers/usb/gadget/function/f_uac2.c | 5 +++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
 ---
- drivers/usb/gadget/function/uvc_configfs.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/usb/gadget/function/uvc_configfs.c b/drivers/usb/gadget/function/uvc_configfs.c
-index 70a1415ea40..65bad40ec6e 100644
---- a/drivers/usb/gadget/function/uvc_configfs.c
-+++ b/drivers/usb/gadget/function/uvc_configfs.c
-@@ -1256,11 +1256,12 @@ static void uvcg_extension_drop(struct config_group *group, struct config_item *
- 
- 	mutex_lock(&opts->lock);
- 
--	config_item_put(item);
- 	list_del(&xu->list);
- 	kfree(xu->desc.baSourceID);
- 	kfree(xu->desc.bmControls);
- 
-+	config_item_put(item);
-+
- 	mutex_unlock(&opts->lock);
- }
- 
-
----
-base-commit: 848acc8ffe1b7cd5f1bf427b93069becfebc2c9d
-change-id: 20260804-uvc-extension-drop-uaf-26bfea1bc2d1
+base-commit: 2d2338c93da79b3bfe4b6099a931d9468d539952
+change-id: 20260804-f-uac-srate-invalid-free-827cf8840137
 
 Best regards,
 --  
