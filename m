@@ -1,192 +1,167 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Tue, 04 Aug 2026 16:50:42 +0800
-Subject: [PATCH v2 5/5] powerpc/spufs: don't hold state_mutex during user
- access
+From: Stefan Hansson <newbyte@postmarketos.org>
+Date: Tue, 04 Aug 2026 10:55:41 +0200
+Subject: [PATCH v2] wifi: rsi: Fix types to appease CFI
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-fixes-v2-5-5bfd827297f9@outlook.com>
-References: <20260804-fixes-v2-0-5bfd827297f9@outlook.com>
-In-Reply-To: <20260804-fixes-v2-0-5bfd827297f9@outlook.com>
-To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
- Arnd Bergmann <arnd@arndb.de>, Paul Mackerras <paulus@ozlabs.org>, 
- Al Viro <viro@zeniv.linux.org.uk>
-Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- Yuhao Jiang <danisjiang@gmail.com>, Junrui Luo <moonafterrain@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4105;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=KVNqgEF0+C48K+PWMOxfS0uXgoSuZZMWuvz93e4utzw=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMLlb6bXFGww1mD9ovLjdb0VZ+ON3WvjZ53b3SEpX
- W/vPO166beOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmMipRkaGk8dilnY+3yn6
- k3OurXqRd4RVwOqfksvaF2j82SdzU6CqlpFh7beF5s5RSafO/lj8pNOgNu+csZmB0eJv37WtD95
- PO2PGBgB+bE2s
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+Message-Id: <20260804-rsi-cfi-fix-v2-1-59679a520240@postmarketos.org>
+X-B4-Tracking: v=1; b=H4sIAAypcWoC/22NwQ6CMBBEf8Xs2Zp2FYKe/A/DAcoCq5GS3Uo0h
+ H+34NXjm8y8mUFJmBQuuxmEJlYOQwLc78D31dCR4SYxoMXcFhaNKBvfsmn5bdDaIqvz87FBhLQ
+ YhVK82W7lj/VV38nHVbE2etYY5LPdTW7t/TdPzjiTFega9HV2IrqOQeOzkgfFoIcgHZTLsnwB+
+ PzwML8AAAA=
+X-Change-ID: 20260802-rsi-cfi-fix-20085b693d22
+To: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht
+Cc: Stefan Hansson <newbyte@postmarketos.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785833758; l=5665;
+ i=newbyte@postmarketos.org; s=20260802; h=from:subject:message-id;
+ bh=BB2op5+p7icC+54RZOKKgba+7WNOZz8dHsaqqYyKAvc=;
+ b=ThwlqJJN1yoe+CcfBWuSg1qewHU3rshzTmTRG6YrHMTCThXu+4doDF1T6xeiW1wFudVbbaMYN
+ 1nVorWYRGjjC5veppy7VSJwhAXsDo9LYvi+BC4+lu1phkid1DpFJ4oL
+X-Developer-Key: i=newbyte@postmarketos.org; a=ed25519;
+ pk=CMd9mCPy2ujgZ4/0VRH1OVotAimnFmPg2/JMEEgsOUk=
+X-Endpoint-Received: by B4 Relay for newbyte@postmarketos.org/20260802 with auth_id=910
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-spufs_mbox_read(), spufs_ibox_read() and spufs_wbox_write() take the
-context state_mutex with spu_acquire() and only drop it once their
-transfer loop has finished, so every put_user()/get_user() in those
-loops runs with the mutex held. The faulting address comes from
-userspace, so the fault can be made to take arbitrarily long via
-userfaultfd region or a FUSE-backed mapping.
+Avoids errors like:
 
-Drop the mutex around the user accesses: acquire it per mailbox element,
-just long enough for the ctx->ops mailbox operation, and release it
-before touching the user buffer.
+    CFI failure at kthread+0x124/0x1cc (target: rsi_coex_scheduler_thread+0x0/0x1b4 [redpine_91x]; expected type: 0x89fb613d)
 
-spufs_switch_log_read() has the same problem but its loop needs the lock
-for more than just the copy.
+As seen in the aforementioned error this was tested using the downstream
+redpine_91x driver found in the Librem 5's downstream source tree.
+However, it appears that this driver is a modified version of the rsi
+driver found in mainline Linux and as such I decided to port the changes
+here too.
 
-Fixes: cdcc89bb1c6e ("[POWERPC] spufs: make mailbox functions handle multiple elements")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Signed-off-by: Stefan Hansson <newbyte@postmarketos.org>
 ---
- arch/powerpc/platforms/cell/spufs/file.c | 52 ++++++++++++++++++--------------
- 1 file changed, 29 insertions(+), 23 deletions(-)
+Changes in v2:
+- Fix kernel-doc warnings.
+- Link to v1: https://patch.msgid.link/20260802-rsi-cfi-fix-v1-1-5821d2cb54ee@postmarketos.org
+---
+ drivers/net/wireless/rsi/rsi_91x_coex.c     | 3 ++-
+ drivers/net/wireless/rsi/rsi_91x_main.c     | 7 ++++---
+ drivers/net/wireless/rsi/rsi_91x_sdio_ops.c | 3 ++-
+ drivers/net/wireless/rsi/rsi_91x_usb_ops.c  | 7 ++++---
+ drivers/net/wireless/rsi/rsi_common.h       | 2 +-
+ drivers/net/wireless/rsi/rsi_sdio.h         | 2 +-
+ drivers/net/wireless/rsi/rsi_usb.h          | 2 +-
+ 7 files changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/arch/powerpc/platforms/cell/spufs/file.c b/arch/powerpc/platforms/cell/spufs/file.c
-index de7494748fec..c8c3b6e8affb 100644
---- a/arch/powerpc/platforms/cell/spufs/file.c
-+++ b/arch/powerpc/platforms/cell/spufs/file.c
-@@ -602,13 +602,17 @@ static ssize_t spufs_mbox_read(struct file *file, char __user *buf,
- 	if (len < 4)
- 		return -EINVAL;
- 
--	count = spu_acquire(ctx);
--	if (count)
--		return count;
--
- 	for (count = 0; (count + 4) <= len; count += 4, udata++) {
- 		int ret;
-+
-+		ret = spu_acquire(ctx);
-+		if (ret) {
-+			if (!count)
-+				count = ret;
-+			break;
-+		}
- 		ret = ctx->ops->mbox_read(ctx, &mbox_data);
-+		spu_release(ctx);
- 		if (ret == 0)
- 			break;
- 
-@@ -624,7 +628,6 @@ static ssize_t spufs_mbox_read(struct file *file, char __user *buf,
- 			break;
- 		}
- 	}
--	spu_release(ctx);
- 
- 	if (!count)
- 		count = -EAGAIN;
-@@ -705,29 +708,34 @@ static ssize_t spufs_ibox_read(struct file *file, char __user *buf,
- 
- 	count = spu_acquire(ctx);
- 	if (count)
--		goto out;
-+		return count;
- 
- 	/* wait only for the first element */
--	count = 0;
- 	if (file->f_flags & O_NONBLOCK) {
- 		if (!spu_ibox_read(ctx, &ibox_data)) {
--			count = -EAGAIN;
--			goto out_unlock;
-+			spu_release(ctx);
-+			return -EAGAIN;
- 		}
- 	} else {
- 		count = spufs_wait(ctx->ibox_wq, spu_ibox_read(ctx, &ibox_data));
- 		if (count)
--			goto out;
-+			return count;
- 	}
-+	spu_release(ctx);
- 
- 	/* if we can't write at all, return -EFAULT */
- 	count = put_user(ibox_data, udata);
- 	if (count)
--		goto out_unlock;
-+		return count;
- 
- 	for (count = 4, udata++; (count + 4) <= len; count += 4, udata++) {
- 		int ret;
-+
-+		ret = spu_acquire(ctx);
-+		if (ret)
-+			break;
- 		ret = ctx->ops->ibox_read(ctx, &ibox_data);
-+		spu_release(ctx);
- 		if (ret == 0)
- 			break;
- 		/*
-@@ -740,9 +748,6 @@ static ssize_t spufs_ibox_read(struct file *file, char __user *buf,
- 			break;
- 	}
- 
--out_unlock:
--	spu_release(ctx);
--out:
- 	return count;
+diff --git a/drivers/net/wireless/rsi/rsi_91x_coex.c b/drivers/net/wireless/rsi/rsi_91x_coex.c
+index ee603a5173fb..023c539fc384 100644
+--- a/drivers/net/wireless/rsi/rsi_91x_coex.c
++++ b/drivers/net/wireless/rsi/rsi_91x_coex.c
+@@ -50,8 +50,9 @@ static void rsi_coex_sched_tx_pkts(struct rsi_coex_ctrl_block *coex_cb)
+ 	} while (coex_q != RSI_COEX_Q_INVALID);
  }
  
-@@ -839,40 +844,41 @@ static ssize_t spufs_wbox_write(struct file *file, const char __user *buf,
+-static void rsi_coex_scheduler_thread(struct rsi_common *common)
++static int rsi_coex_scheduler_thread(void *data)
+ {
++	struct rsi_common *common = data;
+ 	struct rsi_coex_ctrl_block *coex_cb = common->coex_cb;
+ 	u32 timeout = EVENT_WAIT_FOREVER;
  
- 	count = spu_acquire(ctx);
- 	if (count)
--		goto out;
-+		return count;
+diff --git a/drivers/net/wireless/rsi/rsi_91x_main.c b/drivers/net/wireless/rsi/rsi_91x_main.c
+index 662e42d1e5e8..2ce514766620 100644
+--- a/drivers/net/wireless/rsi/rsi_91x_main.c
++++ b/drivers/net/wireless/rsi/rsi_91x_main.c
+@@ -246,12 +246,13 @@ EXPORT_SYMBOL_GPL(rsi_read_pkt);
+ /**
+  * rsi_tx_scheduler_thread() - This function is a kernel thread to send the
+  *			       packets to the device.
+- * @common: Pointer to the driver private structure.
++ * @data: Pointer to the driver private structure.
+  *
+- * Return: None.
++ * Return: 0.
+  */
+-static void rsi_tx_scheduler_thread(struct rsi_common *common)
++static int rsi_tx_scheduler_thread(void *data)
+ {
++	struct rsi_common *common = data;
+ 	struct rsi_hw *adapter = common->priv;
+ 	u32 timeout = EVENT_WAIT_FOREVER;
  
- 	/*
- 	 * make sure we can at least write one element, by waiting
- 	 * in case of !O_NONBLOCK
- 	 */
--	count = 0;
- 	if (file->f_flags & O_NONBLOCK) {
- 		if (!spu_wbox_write(ctx, wbox_data)) {
--			count = -EAGAIN;
--			goto out_unlock;
-+			spu_release(ctx);
-+			return -EAGAIN;
- 		}
- 	} else {
- 		count = spufs_wait(ctx->wbox_wq, spu_wbox_write(ctx, wbox_data));
- 		if (count)
--			goto out;
-+			return count;
- 	}
--
-+	spu_release(ctx);
+diff --git a/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c b/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c
+index 597b238e2294..18a28aa97446 100644
+--- a/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c
++++ b/drivers/net/wireless/rsi/rsi_91x_sdio_ops.c
+@@ -62,8 +62,9 @@ int rsi_sdio_master_access_msword(struct rsi_hw *adapter, u16 ms_word)
  
- 	/* write as much as possible */
- 	for (count = 4, udata++; (count + 4) <= len; count += 4, udata++) {
- 		int ret;
-+
- 		ret = get_user(wbox_data, udata);
- 		if (ret)
- 			break;
+ static void rsi_rx_handler(struct rsi_hw *adapter);
  
-+		ret = spu_acquire(ctx);
-+		if (ret)
-+			break;
- 		ret = spu_wbox_write(ctx, wbox_data);
-+		spu_release(ctx);
- 		if (ret == 0)
- 			break;
- 	}
+-void rsi_sdio_rx_thread(struct rsi_common *common)
++int rsi_sdio_rx_thread(void *data)
+ {
++	struct rsi_common *common = data;
+ 	struct rsi_hw *adapter = common->priv;
+ 	struct rsi_91x_sdiodev *sdev = adapter->rsi_dev;
  
--out_unlock:
--	spu_release(ctx);
--out:
- 	return count;
+diff --git a/drivers/net/wireless/rsi/rsi_91x_usb_ops.c b/drivers/net/wireless/rsi/rsi_91x_usb_ops.c
+index 25c2b232394a..e899631b9aed 100644
+--- a/drivers/net/wireless/rsi/rsi_91x_usb_ops.c
++++ b/drivers/net/wireless/rsi/rsi_91x_usb_ops.c
+@@ -21,12 +21,13 @@
+ /**
+  * rsi_usb_rx_thread() - This is a kernel thread to receive the packets from
+  *			 the USB device.
+- * @common: Pointer to the driver private structure.
++ * @data: Pointer to the driver private structure.
+  *
+- * Return: None.
++ * Return: 0.
+  */
+-void rsi_usb_rx_thread(struct rsi_common *common)
++int rsi_usb_rx_thread(void *data)
+ {
++	struct rsi_common *common = data;
+ 	struct rsi_hw *adapter = common->priv;
+ 	struct rsi_91x_usbdev *dev = adapter->rsi_dev;
+ 	int status;
+diff --git a/drivers/net/wireless/rsi/rsi_common.h b/drivers/net/wireless/rsi/rsi_common.h
+index 3cdf9ded876d..2a33a81f71a3 100644
+--- a/drivers/net/wireless/rsi/rsi_common.h
++++ b/drivers/net/wireless/rsi/rsi_common.h
+@@ -58,7 +58,7 @@ static inline void rsi_reset_event(struct rsi_event *event)
+ 
+ static inline int rsi_create_kthread(struct rsi_common *common,
+ 				     struct rsi_thread *thread,
+-				     void *func_ptr,
++				     int (*func_ptr)(void *data),
+ 				     u8 *name)
+ {
+ 	init_completion(&thread->completion);
+diff --git a/drivers/net/wireless/rsi/rsi_sdio.h b/drivers/net/wireless/rsi/rsi_sdio.h
+index 7c91b126b350..eb2b7f36a7e4 100644
+--- a/drivers/net/wireless/rsi/rsi_sdio.h
++++ b/drivers/net/wireless/rsi/rsi_sdio.h
+@@ -134,5 +134,5 @@ int rsi_sdio_master_access_msword(struct rsi_hw *adapter, u16 ms_word);
+ void rsi_sdio_ack_intr(struct rsi_hw *adapter, u8 int_bit);
+ int rsi_sdio_determine_event_timeout(struct rsi_hw *adapter);
+ int rsi_sdio_check_buffer_status(struct rsi_hw *adapter, u8 q_num);
+-void rsi_sdio_rx_thread(struct rsi_common *common);
++int rsi_sdio_rx_thread(void *data);
+ #endif
+diff --git a/drivers/net/wireless/rsi/rsi_usb.h b/drivers/net/wireless/rsi/rsi_usb.h
+index 961851748bc4..78067eaffe8b 100644
+--- a/drivers/net/wireless/rsi/rsi_usb.h
++++ b/drivers/net/wireless/rsi/rsi_usb.h
+@@ -81,5 +81,5 @@ static inline int rsi_usb_event_timeout(struct rsi_hw *adapter)
+ 	return EVENT_WAIT_FOREVER;
  }
  
+-void rsi_usb_rx_thread(struct rsi_common *common);
++int rsi_usb_rx_thread(void *data);
+ #endif
 
--- 
-2.51.2
+---
+base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
+change-id: 20260802-rsi-cfi-fix-20085b693d22
+
+Best regards,
+--  
+Stefan Hansson <newbyte@postmarketos.org>
 
