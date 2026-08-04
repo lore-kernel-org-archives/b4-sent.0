@@ -1,114 +1,79 @@
 From: Anuj Bolewar <bolewara@gmail.com>
-Date: Tue, 04 Aug 2026 20:32:50 +0530
-Subject: [PATCH v3] usb: raw_gadget: fix use-after-free when UDC is removed
+Date: Tue, 04 Aug 2026 22:28:36 +0530
+Subject: [PATCH] usb: atm: cxacru: stop polling on device shutdown
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260804-raw-gadget-ep0-uaf-v3-1-bb7cf1d892af@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNzQ7CIBAGX6XhLAZoaRtPvofxsMC2xdifQIuap
- u8u1IsnzZ4m+XZmJR6dRU9O2UocBuvtOETIDxnRHQwtUmsiE8FEyWpWUAcP2oJpcaY4MbpAQzm
- DWihjQCpN4uPksLHPXXq5ftgv6oZ6Tqa06KyfR/faq4Gn3c9A4JRTVtXxqtwAl+e2B3s/6rEnK
- RDEf4WIihykQVOUoCT7Vmzb9gZFmA9aCQEAAA==
-X-Change-ID: 20260804-raw-gadget-ep0-uaf-10a82bdda5bc
-To: Andrey Konovalov <andreyknvl@gmail.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+9aacea11bc70c3ddaff2@syzkaller.appspotmail.com, 
+Message-Id: <20260804-usb-atm-cxacru-stop-polling-on-device-shutdown-v1-1-d7fd757cee31@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNQQ6CMBBA0auQWTsJNATUqxgXZRhgDLZNp1USw
+ t2tunyb/3dQjsIK12qHyC9R8a6gOVVAi3Uzo4zFYGrT1ee6xawD2vRE2izFjJp8wODXVdyM3uF
+ YGsSoS06jfzsc6ELd1PdNZ1oo0RB5ku03vN3/1jw8mNL3AsfxAURam6WSAAAA
+X-Change-ID: 20260804-usb-atm-cxacru-stop-polling-on-device-shutdown-bc9c6f771624
+To: Chas Williams <3chas3@gmail.com>
+Cc: accessrunner-general@lists.sourceforge.net, 
+ linux-atm-general@lists.sourceforge.net, netdev@vger.kernel.org, 
+ linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+e4b1171e7c5ae2556f9e@syzkaller.appspotmail.com, 
  Anuj Bolewar <bolewara@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785855769; l=3861;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785862715; l=2251;
  i=bolewara@gmail.com; s=20260802; h=from:subject:message-id;
- bh=9HHZvo2aa/FJzquprkweq3XaHjJz/PlTTjlhPeXxzqM=;
- b=cOBn1KgZttb+i0l/66Xwb+JEhAn5RmQ7zZ20MavfckkHIcf2dBDiKiRHOU/9TSvRVZlgLDKpY
- YoxU5H83r07DfBJGM64/OwtX7jTV0yZq0y+qYv+T/ELk8dVnglseIma
+ bh=8QcyJ5CtzZlRqOs+qCqjWR1tFjois3OdIejw7ulYCm8=;
+ b=3l02SODI7MN+59jCpk6x2TdO9IUA1H/5XGGUINn8KHxAjoTChTzCNXCL7zsTibbpz5zVn9UVJ
+ 0I7BgtWIoQxDXBZC5spgAbkk1qKvU5TFizaRR3ly+JXc3AIWK1WyvuC
 X-Developer-Key: i=bolewara@gmail.com; a=ed25519;
  pk=XxcXxqFWk9xQziyNEfhS6NRJQR1shqHRRYzkbaYamm0=
 X-Endpoint-Received: by B4 Relay for bolewara@gmail.com/20260802 with auth_id=907
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the UDC is removed (e.g. dummy_hcd unbind via sysfs) while the raw
-gadget fd is still open, usb_del_gadget() destroys the gadget device
-and its name. raw_gadget keeps a dangling pointer in dev->gadget, and
-ioctls dereference it after releasing dev->lock, leading to a
-use-after-free in dev_err() when usb_ep_queue() fails.
+cxacru_unbind() sets poll_state to CXPOLL_SHUTDOWN under
+poll_state_serialize and then calls cancel_delayed_work_sync(). If
+cxacru_poll_status() is already running it only stops rescheduling when
+it observes CXPOLL_STOPPED; CXPOLL_SHUTDOWN is ignored, so a running
+worker re-queues itself. cancel_delayed_work_sync() then returns while a
+delayed work is still pending, and the work fires after cxacru_unbind()
+has freed the instance, causing a use-after-free.
 
-Take a gadget reference in gadget_bind() and drop it in dev_free() so
-the gadget device and its name stay alive for as long as the fd is open
-and an ioctl may still dereference dev->gadget. gadget_unbind() only
-marks the device as failed under dev->lock; the reference is dropped in
-dev_free(), which runs only after the fd is closed and no ioctl can be
-in flight.
+Treat CXPOLL_SHUTDOWN like CXPOLL_STOPPED in the reschedule decision so
+a worker that sees the shutdown state stops polling and cannot re-queue
+itself after unbind.
 
-Reported-by: syzbot+9aacea11bc70c3ddaff2@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=9aacea11bc70c3ddaff2
-Fixes: f2c2e717642c ("usb: gadget: add raw-gadget interface")
+Reported-by: syzbot+e4b1171e7c5ae2556f9e@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=e4b1171e7c5ae2556f9e
 Assisted-by: deepseek:v4-pro
 Signed-off-by: Anuj Bolewar <bolewara@gmail.com>
 ---
-The gadget device embedded in the UDC is destroyed when the UDC is
-removed while the raw gadget fd is still open (e.g. unbinding dummy_hcd
-via sysfs). raw_gadget keeps a dangling pointer in dev->gadget and
-ioctls dereference it after dropping dev->lock, which KASAN reports as a
-slab use-after-free in raw_process_ep0_io() (dev_err with a freed device
-name).
+cxacru_poll_status() reschedules itself with schedule_delayed_work()
+unless poll_state is CXPOLL_STOPPED. cxacru_unbind() sets poll_state
+to CXPOLL_SHUTDOWN and relies on cancel_delayed_work_sync() to stop
+the worker, but a worker that is already running when unbind starts
+never observes CXPOLL_STOPPED and re-queues itself, so the delayed
+work still fires after the instance has been freed.
 
-Fix it by holding a gadget reference for the raw device lifetime:
-gadget_bind() takes it, gadget_unbind() only marks the device as failed
-under dev->lock, and the reference is dropped in dev_free() once the fd
-is closed and no ioctl can still be in flight.
+Treat CXPOLL_SHUTDOWN like CXPOLL_STOPPED when deciding whether to
+reschedule, so a running worker cannot re-queue itself during unbind.
 ---
-Changes in v3:
-- Use scoped_guard() for the spinlock in gadget_unbind() per review.
-- Add Assisted-by trailer per Documentation/process/coding-assistants.rst.
-- Link to v2: https://patch.msgid.link/20260804-raw-gadget-ep0-uaf-v2-1-3a5ded46ab50@gmail.com
+ drivers/usb/atm/cxacru.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Changes in v2:
-- Reworked per review: the gadget reference is now held for the raw
-  device lifetime (bind until dev_free()) instead of the bind/unbind
-  window, since ioctls dereference dev->gadget after releasing dev->lock
-  and the UDC core owns the gadget's lifetime during bind/unbind.
-- gadget_unbind() now only marks the device as failed under dev->lock;
-  the reference is dropped in dev_free() after the fd is closed.
-- Dropped the now-unneeded comment and switched the spinlock to guard().
-- Link to v1: https://patch.msgid.link/20260804-raw-gadget-ep0-uaf-v1-1-07878773da15@gmail.com
----
- drivers/usb/gadget/legacy/raw_gadget.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/usb/gadget/legacy/raw_gadget.c b/drivers/usb/gadget/legacy/raw_gadget.c
-index 4febf8dac7c..fb15ab6fc73 100644
---- a/drivers/usb/gadget/legacy/raw_gadget.c
-+++ b/drivers/usb/gadget/legacy/raw_gadget.c
-@@ -226,6 +226,7 @@ static void dev_free(struct kref *kref)
- 		kfree(dev->eps[i].ep->desc);
- 		dev->eps[i].state = STATE_EP_DISABLED;
- 	}
-+	usb_put_gadget(dev->gadget);
- 	kfree(dev);
- }
+diff --git a/drivers/usb/atm/cxacru.c b/drivers/usb/atm/cxacru.c
+index f1900c567ba..a9902973914 100644
+--- a/drivers/usb/atm/cxacru.c
++++ b/drivers/usb/atm/cxacru.c
+@@ -923,7 +923,8 @@ static void cxacru_poll_status(struct work_struct *work)
+ 				instance->line_status == 0) /* down */
+ 		instance->poll_state = CXPOLL_STOPPED;
  
-@@ -302,7 +303,7 @@ static int gadget_bind(struct usb_gadget *gadget,
- 	dev->req = req;
- 	dev->req->context = dev;
- 	dev->req->complete = gadget_ep0_complete;
--	dev->gadget = gadget;
-+	dev->gadget = usb_get_gadget(gadget);
- 	gadget_for_each_ep(ep, dev->gadget) {
- 		dev->eps[i].ep = ep;
- 		dev->eps[i].addr = get_ep_addr(ep->name);
-@@ -329,6 +330,8 @@ static void gadget_unbind(struct usb_gadget *gadget)
- {
- 	struct raw_dev *dev = get_gadget_data(gadget);
+-	if (instance->poll_state == CXPOLL_STOPPED)
++	if (instance->poll_state == CXPOLL_STOPPED ||
++	    instance->poll_state == CXPOLL_SHUTDOWN)
+ 		keep_polling = 0;
+ 	mutex_unlock(&instance->poll_state_serialize);
  
-+	scoped_guard(spinlock_irqsave, &dev->lock)
-+		dev->state = STATE_DEV_FAILED;
- 	set_gadget_data(gadget, NULL);
- 	/* Matches kref_get() in gadget_bind(). */
- 	kref_put(&dev->count, dev_free);
 
 ---
-base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260804-raw-gadget-ep0-uaf-10a82bdda5bc
+base-commit: 848acc8ffe1b7cd5f1bf427b93069becfebc2c9d
+change-id: 20260804-usb-atm-cxacru-stop-polling-on-device-shutdown-bc9c6f771624
 
 Best regards,
 --  
