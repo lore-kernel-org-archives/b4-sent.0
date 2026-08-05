@@ -1,111 +1,238 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Wed, 05 Aug 2026 21:29:37 +0800
-Subject: [PATCH net 2/2] ovpn: don't re-hash a removed peer on float
+From: Markus Probst <markus.probst@posteo.de>
+Subject: [PATCH RESEND v23 0/3] rust: leds: add led classdev abstractions
+Date: Wed, 05 Aug 2026 21:34:09 +0200
+Message-Id: <20260805-rust_leds-v23-0-b2fea4290ee6@posteo.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-ovpn-fixes-v1-2-763f8c237fb9@outlook.com>
-References: <20260805-ovpn-fixes-v1-0-763f8c237fb9@outlook.com>
-In-Reply-To: <20260805-ovpn-fixes-v1-0-763f8c237fb9@outlook.com>
-To: Antonio Quartulli <antonio@openvpn.net>, 
- Sabrina Dubroca <sd@queasysnail.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3264;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=TNob32RUD1q+jLQJNBoNmFv017reaFPJPazB8n2U7SU=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrGKrq47RCv6zixunbJ1qGlVSt9/va9jCY3kPQiRCn
- rJ1bev4s6KjlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJtLox/CbbYfdB+fambaO
- /9vCY9Lvfuz3YF+h8KN/V8T2w3031Do2MDJsvfWkd89Pm+z0ud0PJ+/czBKv8eHR0/mX2P9m7Kz
- rvT2THwBJNFBQ
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+Content-Transfer-Encoding: 8bit
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Dave Ertman <david.m.ertman@intel.com>, Leon Romanovsky <leon@kernel.org>, 
+ Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Ira Weiny <iweiny@kernel.org>, Boqun Feng <boqun@kernel.org>
+Cc: rust-for-linux@vger.kernel.org, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ Markus Probst <markus.probst@posteo.de>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6897;
+ i=markus.probst@posteo.de; h=from:subject:message-id;
+ bh=zGS+pHmcvZFLDW8eeNijg5dlAWoeDvQik7KumTC5XcA=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBqc5A3BzcF00KzieQe/gRq1VmdHNS/oRlZS/X05
+ uxIIa8y12OJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCanOQNxsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9Kw9xAAjl0Ah5Z27NwBqESI2vpiavRDP0QKBN+
+ uAvT0UgWS+EaEZtf0J8gq7zp0ielbgmuPeodG9/unnqc+oZ/dSPvHv3xa37Vp/vc7tsKvGzK8hK
+ 5EAPM7XZNj1upYR/+F1OMG0TTykGi54MY6PCD7XkFOgBC/LcgsMw2WJDlOR5NStVsTPDqpyiLa6
+ vdzaKFFDfQ8NZDgKU5spAxAxcKfYyJqewGW9RvJMLvAsSjDqmvxhiPDW7CdtSSzoJU41KS1HkPV
+ CJibeRatJgo3DoRuI4xX6HixXsFG5E7vMFJkcsipf3+IlXxqe6f6LMW5lRNNFBNl5QyVQ1/4o7B
+ SaX9BDM34v85op84/d7V+CdtUt3P8PUivZWLjLoGbaeDkPumcYPQ1kiHck5LIKzMF2PYH2AghmK
+ gWqwjsC4SgYc3iWeJCU5aaB4v+M9c4CVs/pQWQadQEMrsF9SR2tD64GGMpCHnIno8meRj2k0LE1
+ e3y74sfLyFDCjOcOCJW9ffRnY7p6UsR12EZqJaRzJdxrNvQ/lqU9aTFhLlbqnLBruF7lyq9xhMj
+ qF/ZR12L6jcJwjGdUFtgkMJOLRcFaBtAyXJYiTILKyP1MFZsr4nBDWvwRRFACKv/bOLnIpgvKu1
+ luuKT4DfN0gZWzLY552DO5sirXIOj3EZlg7HXQyY7u7S9GRZs3r0=
+X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
+ fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
+X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ovpn_peer_endpoints_update() releases peer->lock before sending the
-float notification, then re-acquires ovpn->lock and peer->lock to move
-the peer to its new bucket in the by_transp_addr table. The only
-re-check in that second critical section is for a NULL bind, which
-cannot detect removal: bind is cleared by ovpn_peer_release() only
-after the refcount drops to zero, and the RX path holds a reference
-across the whole float.
+This patch series has previously been contained in
+https://lore.kernel.org/rust-for-linux/20251008181027.662616-1-markus.probst@posteo.de/T/#t
+which added a rust written led driver for a microcontroller via i2c.
 
-Both paths take ovpn->lock, but that only serialises them - it does
-not order them:
+As the reading and writing to the i2c client via the register!
+macro has not been implemented yet [1], the patch series will only
+contain the additional abstractions required.
 
-  CPU0 (RX softirq)              CPU1
-  ovpn_peer_endpoints_update()
-    spin_unlock_bh(&peer->lock)
-    ovpn_nl_peer_float_notify()
-                                 ovpn_nl_peer_del_doit()
-                                   ovpn_peer_remove()  <- unlinks peer
-                                   unlock_ovpn()       <- drops last ref
-    spin_lock_bh(&ovpn->lock)
-    hlist_nulls_add_head_rcu()   <- removed peer re-linked
+This series depends on [1].
 
-ovpn_peer_release_rcu() then frees the peer without unlinking it again,
-leaving a dangling node in by_transp_addr that every later datagram
-walks in ovpn_peer_get_by_transp_addr():
+[1] https://lore.kernel.org/rust-for-linux/20260525202921.124698-1-dakr@kernel.org/
 
-  BUG: KASAN: slab-use-after-free in ovpn_peer_endpoints_update+0xa5a/0x1010
-  Write of size 8 at addr ffff888008576858 by task trigger/78
+The following changes were made:
+* add basic led classdev abstractions to register and unregister leds
 
-  Call Trace:
-   ovpn_peer_endpoints_update+0xa5a/0x1010
-   ovpn_decrypt_post+0x212/0x1040
-   ovpn_recv+0x2b6/0x540
-   ovpn_udp_encap_recv+0x21c/0x420
-   udp_queue_rcv_one_skb+0x1060/0x11a0
-   process_backlog+0x451/0x600
+* add basic led classdev abstractions to register and unregister
+  multicolor leds
 
-  Freed by task 0:
-   kfree+0x11a/0x390
-   rcu_core+0x7aa/0x1570
+Changes since v22:
+* readded CStrExt import, because it is imported with `as _` in prelude.
+  A `# CONFIG_RUST is not set` sneaked into my .config while
+  development, so the compile error was unnoticed.
 
-  Last potentially related work creation:
-   call_rcu+0x82/0x720
-   ovpn_peer_release_kref+0x5c/0xd0
-   ovpn_nl_peer_del_doit+0x355/0x550
+Changes since v21:
+* use 'init for lifetime that is only alive during initialization
+* remove unnecessary CStrExt import
 
-Fix it by extending the existing early return to also bail out when the
-peer is no longer hashed by ID. hash_entry_id is unhashed with
-hlist_del_init_rcu() by ovpn_peer_remove() under ovpn->lock, which the
-float path holds across both the check and the rehash, so a peer that
-passes the test cannot be removed before it is re-linked.
+Changes since v20:
+* resolve Sashiko regressions:
+  * fix typo
+  * fix fwnode refcount decremented too early
 
-Fixes: f0281c1d3732 ("ovpn: add support for updating local or remote UDP endpoint")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Changes since v19:
+* rebase on v7.2-rc1:
+  * Add `max_intensity` to `MultiColorSubLed`
+* use safer `KBox::pin_slice` instead of `KVec`
+  (len might not equal capacity)
+* explicitly call `FwNode::dec_ref` instead of dropping a reconstructed
+  `ARef<FwNode>`.
+* remove direct access to `intensity` and `brightness` fields,
+  which may get mutated concurrently by the C side
+* fix safety comments pointing to functions from previous revisions
+
+Changes since v18:
+* add inlines
+* fix invalid documentation
+* improve led color duplicate checking
+
+Changes since v17:
+* use lifetimes instead of Devres
+
+Changes since v16:
+* use for loops for duplicate checking
+
+Changes since v15:
+* fix issues reported by Sashiko bot:
+  * fix returning error not possible on `brightness_get` callback
+
+Changes since v14:
+* fix issues reported by Sashiko bot:
+  * add missing inlines
+  * add missing Sync trait bound
+  * fix vertical import layout for public export of private types
+  * fix potential memory leak, if a multicolor led device with over
+    `u32::MAX` subleds is registered
+* remove default_trigger option
+* fix missing CAST doc
+
+Changes since v13:
+* rebased onto v7.1-rc1
+
+Changes since v12:
+* add `led::DeviceBuilder::name()` and `DeviceBuilderState'
+* add `led::Color::as_c_str`
+
+Changes since v11:
+* use `led::DeviceBuilder` instead of `led::InitData`
+* use static_assert instead of const { assert!(...) }
+* restructured patches to avoid moving `led::Device` from
+  rust/kernel/led.rs to rust/kernel/led/normal.rs in the 2. patch
+
+Changes since v10:
+* allow in-place initialization of `LedOps`
+* run rustfmt for code inside `try_pin_init!`
+
+Changes since v9:
+* add missing periods in documentation
+* duplicate `led::Device` and `led::Adapter` instead of using a complex
+  trait
+* fix imports not using prelude
+* adapt to CStr change
+* documented `led::Color::Multi` and `led::Color::Rgb`
+
+Changes since v8:
+* accept `Option<ARef<Fwnode>>` in `led::InitData::fwnode()`
+* make functions in `MultiColorSubLed` const
+* drop the "rust: Add trait to convert a device reference to a bus
+  device reference" patch, as it has been picked into driver-core
+
+Changes since v7:
+* adjusted import style
+* added classdev parameter to callback functions in `LedOps`
+* implement `led::Color`
+* extend `led::InitData` with
+  - initial_brightness
+  - default_trigger
+  - default_color
+* split generic and normal led classdev abstractions up (see patch 3/4)
+* add multicolor led class device abstractions (see patch 4/4)
+* added MAINTAINERS entry
+
+Changes since v6:
+* fixed typos
+* improved documentation
+
+Changes since v5:
+* rename `IntoBusDevice` trait into `AsBusDevice`
+* fix documentation about `LedOps::BLOCKING`
+* removed dependency on i2c bindings
+* added `AsBusDevice` implementation for `platform::Device`
+* removed `device::Device` fallback implementation
+* document that `AsBusDevice` must not be used by drivers and is
+  intended for bus and class device abstractions only.
+
+Changes since v4:
+* add abstraction to convert a device reference to a bus device
+  reference
+* require the bus device as parent device and provide it in class device
+  callbacks
+* remove Pin<Vec<_>> abstraction (as not relevant for the led
+  abstractions)
+* fixed formatting in `led::Device::new`
+* fixed `LedOps::BLOCKING` did the inverse effect
+
+Changes since v3:
+* fixed kunit tests failing because of example in documentation
+
+Changes since v2:
+* return `Devres` on `led::Device` creation
+* replace KBox<T> with T in struct definition
+* increment and decrement reference-count of fwnode
+* make a device parent mandatory for led classdev creation
+* rename `led::Handler` to `led::LedOps`
+* add optional `brightness_get` function to `led::LedOps`
+* use `#[vtable]` instead of `const BLINK: bool`
+* use `Opaque::cast_from` instead of casting a pointer
+* improve documentation
+* improve support for older rust versions
+* use `&Device<Bound>` for parent
+
+Changes since v1:
+* fixed typos noticed by Onur Özkan
+
+Signed-off-by: Markus Probst <markus.probst@posteo.de>
 ---
- drivers/net/ovpn/peer.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Markus Probst (3):
+      rust: leds: add basic led classdev abstractions
+      rust: leds: add Mode trait
+      rust: leds: add multicolor classdev abstractions
 
-diff --git a/drivers/net/ovpn/peer.c b/drivers/net/ovpn/peer.c
-index a21d02ac715e..03886c46ec85 100644
---- a/drivers/net/ovpn/peer.c
-+++ b/drivers/net/ovpn/peer.c
-@@ -302,7 +302,12 @@ void ovpn_peer_endpoints_update(struct ovpn_peer *peer, struct sk_buff *skb)
- 		spin_lock_bh(&peer->lock);
- 		bind = rcu_dereference_protected(peer->bind,
- 						 lockdep_is_held(&peer->lock));
--		if (unlikely(!bind)) {
-+		/* peer->lock was released above, therefore the peer may have
-+		 * been removed in the meantime: ovpn_peer_remove() unhashes
-+		 * hash_entry_id under ovpn->lock. Re-linking a removed peer
-+		 * would leave it reachable after it has been freed.
-+		 */
-+		if (unlikely(!bind || hlist_unhashed(&peer->hash_entry_id))) {
- 			spin_unlock_bh(&peer->lock);
- 			spin_unlock_bh(&peer->ovpn->lock);
- 			return;
+ MAINTAINERS                     |   8 +
+ rust/bindings/bindings_helper.h |   1 +
+ rust/kernel/led.rs              | 339 +++++++++++++++++++++++++++++
+ rust/kernel/led/multicolor.rs   | 460 ++++++++++++++++++++++++++++++++++++++++
+ rust/kernel/led/normal.rs       | 238 +++++++++++++++++++++
+ rust/kernel/lib.rs              |   1 +
+ 6 files changed, 1047 insertions(+)
+---
+base-commit: 1137d8b5df06137fb49513cc923b3b24d94cb809
+change-id: 20251114-rust_leds-a959f7c2f7f9
+-----BEGIN PGP SIGNATURE-----
 
+iQJPBAABCAA5FiEEgnQYxPSsWOdyMMRzNHYf+OetQ9IFAmpZGhcbFIAAAAAABAAO
+bWFudTIsMi41KzEuMTIsMiwyAAoJEDR2H/jnrUPSIFkQAIJHfAe6S+v8u4v29fke
+uLDop7Ga9Ujz38DD9iMIdnRhgDeh3eN7boFgMab3XM2JhFEuseCkDwIGdybF+zPx
+EEoXxpXZp8KcTR26ryN4RuFax/q4nwZaXnZt133COFMPSiHswyn0ZjjlZQb5pK4L
+ikKXcCCTWouQkdVD/WB0bTW1Bo065QpCvMP5NTWWQ109EnFTGOofbWv9FV+YzOy0
+/baQI/20IRW8CU4s3FG8/LKc5F7yHCYkX89hmUtK9+xiuoNgZgCyt1kuXASRB1ol
+jVP1TGauphC0WC/DqL0U4OQcJfMF4vSFblAaLiEnp+YkTj/A/e3T+Y8sLGWI876T
+9juYGeGbX8Lupsa3OzFe2csfYJwrMZzL7iOkugJQlVLWxsrTFAZsdStwZDx6mV7k
+g1oeux9d9P+lM3gG6HT2jobC7Y+7hD3Z9qFnxQ4vP2tSpcQb0s9emO26JE7hvh9x
+oK9C3XUa7Yan3umqeqU9Iz3fJ0w2ZFDNTK5P8LtBJnlagqlRWDCDVu+nx9rsaxXf
+S3wh5LktdUB8Xi+qigybTwqjV1SMocfBciVmYJrP4xjhkz8z32WCZdLHY8rpFZ1h
+kcVy33DBzv8wPK+fCntQVm9rDC5qmrVpfNOYrg1ZYDCG3Yd/ilL/7VxnR0boQ/5W
+qvNRlYVg/i4TsPhwgFacMPzv
+=wKUV
+-----END PGP SIGNATURE-----
 -- 
-2.51.2
+Markus Probst <markus.probst@posteo.de>
 
