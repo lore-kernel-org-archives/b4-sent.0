@@ -1,11 +1,11 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Wed, 05 Aug 2026 16:48:24 +0530
-Subject: [PATCH 1/3] mm/huge_memory: allow splitting mappingless swapcache
+Date: Wed, 05 Aug 2026 16:48:25 +0530
+Subject: [PATCH 2/3] mm: add KUnit coverage for mappingless swapcache
  folios
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-b4-mappingless-swapcache-v1-1-b1d78ba257ca@zohomail.in>
+Message-Id: <20260805-b4-mappingless-swapcache-v1-2-b1d78ba257ca@zohomail.in>
 References: <20260805-b4-mappingless-swapcache-v1-0-b1d78ba257ca@zohomail.in>
 In-Reply-To: <20260805-b4-mappingless-swapcache-v1-0-b1d78ba257ca@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -20,86 +20,124 @@ To: Andrew Morton <akpm@linux-foundation.org>,
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785928706; l=2824;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785928706; l=3587;
  i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
- bh=8FMzJVK2ktfmBA3br5AL94P4EAWSWFZ1bi19CraqMDc=;
- b=vFVVaOmpFpx2FC4WlxGKq8HT1cGRL2x/naOSV50p6GJ3D5FhoW2agZET2hqyQ2/wsIkR5HfUk
- holeEC7s6tKAc9aKP5Ewd/xKNVTkdHwvi2HoPABOU3FeEYcq5KCwa8d
+ bh=3IHZ3BPfu/ApButT5xoLEv/VnC/YC3Wow9MhmnAZMzc=;
+ b=kwJo2F0rrfAhLwyUMaWx9mR8UMYCkW+NJtcJ+vkgWEVRteK7dzLUswl4dzXKcjsjnKaY7gy+o
+ aZ7xqewrI1jABqzhx/4AhTC7/o5MsARKWLGAI5QWdu0WThzRY5Qn8TP
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A shmem folio is removed from its page cache when it is written to swap.
-While it remains in the swap cache, it has no address_space mapping, so
-folio_check_splittable() mistakes it for a truncated folio and rejects the
-split with -EBUSY.
+Add focused coverage for the folio_check_splittable() eligibility checks.
+Verify that an ordinary mappingless folio is rejected, a mappingless
+swapcache folio is accepted, and unsupported target orders and split types
+remain rejected.
 
-Allow a mappingless folio when it is in the swap cache. Initialize the
-XArray state without an address-space mapping, then assign the XArray only
-for mapped file folios. The split path already replaces each split folio
-in the swap cache while holding the swap-cluster lock.
+Build the test only when KUnit is built in because
+folio_check_splittable() is intentionally not exported.
 
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- mm/huge_memory.c | 18 +++++++-----------
- 1 file changed, 7 insertions(+), 11 deletions(-)
+ mm/Kconfig                   | 14 ++++++++++++
+ mm/Makefile                  |  1 +
+ mm/tests/folio_split_kunit.c | 52 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 67 insertions(+)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 804b8f6aa557..ecfe40b1400b 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -3882,12 +3882,10 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	VM_WARN_ON_FOLIO(!folio_test_locked(folio), folio);
- 	/*
- 	 * Folios that just got truncated cannot get split. Signal to the
--	 * caller that there was a race.
--	 *
--	 * TODO: this will also currently refuse folios without a mapping in the
--	 * swapcache (shmem or to-be-anon folios).
-+	 * caller that there was a race. A mappingless swapcache folio can be
-+	 * either shmem or not yet associated with an anon_vma, and is valid.
- 	 */
--	if (!folio->mapping && !folio_test_anon(folio))
-+	if (!folio->mapping && !folio_test_swapcache(folio))
- 		return -EBUSY;
+diff --git a/mm/Kconfig b/mm/Kconfig
+index 331daf7fcfab..164dc1438900 100644
+--- a/mm/Kconfig
++++ b/mm/Kconfig
+@@ -1503,6 +1503,20 @@ config LAZY_MMU_MODE_KUNIT_TEST
  
- 	/* order-1 is not supported for anonymous THP. */
-@@ -4022,10 +4020,7 @@ static int __folio_freeze_and_split_unmapped(struct folio *folio, unsigned int n
- 			if (do_lru)
- 				lru_add_split_folio(folio, new_folio, lruvec, list);
+ 	  If unsure, say N.
  
--			/*
--			 * Anonymous folio with swap cache.
--			 * NOTE: shmem in swap cache is not supported yet.
--			 */
-+			/* Folio in the swap cache. */
- 			if (ci) {
- 				__swap_cache_replace_folio(ci, folio, new_folio);
- 				continue;
-@@ -4103,7 +4098,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		struct page *split_at, struct page *lock_at,
- 		struct list_head *list, enum split_type split_type)
- {
--	XA_STATE(xas, &folio->mapping->i_pages, folio->index);
-+	XA_STATE(xas, NULL, folio->index);
- 	struct folio *end_folio = folio_next(folio);
- 	bool is_anon = folio_test_anon(folio);
- 	struct mem_cgroup *memcg, *old_memcg;
-@@ -4158,11 +4153,12 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		}
- 		anon_vma_lock_write(anon_vma);
- 		mapping = NULL;
--	} else {
-+	} else if (folio->mapping) {
- 		unsigned int min_order;
- 		gfp_t gfp;
++config FOLIO_SPLIT_KUNIT_TEST
++	bool "KUnit tests for folio splitting" if !KUNIT_ALL_TESTS
++	depends on KUNIT=y
++	depends on TRANSPARENT_HUGEPAGE
++	depends on SWAP
++	default KUNIT_ALL_TESTS
++	help
++	  Enable this option to test folio split eligibility checks. The tests
++	  verify support for mappingless folios in the swap cache and ensure
++	  that unsupported target orders and split types are still rejected.
++	  The tests are built into the kernel and run during KUnit execution.
++
++	  If unsure, say N.
++
+ source "mm/damon/Kconfig"
  
- 		mapping = folio->mapping;
-+		xas.xa = &mapping->i_pages;
- 		min_order = mapping_min_folio_order(mapping);
- 		if (new_order < min_order) {
- 			ret = -EINVAL;
+ endmenu
+diff --git a/mm/Makefile b/mm/Makefile
+index ab37ef428d98..f09057b40e1a 100644
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -146,4 +146,5 @@ obj-$(CONFIG_SHRINKER_DEBUG) += shrinker_debug.o
+ obj-$(CONFIG_EXECMEM) += execmem.o
+ obj-$(CONFIG_TMPFS_QUOTA) += shmem_quota.o
+ obj-$(CONFIG_LAZY_MMU_MODE_KUNIT_TEST) += tests/lazy_mmu_mode_kunit.o
++obj-$(CONFIG_FOLIO_SPLIT_KUNIT_TEST) += tests/folio_split_kunit.o
+ obj-$(CONFIG_MEM_ALLOC_PROFILING) += alloc_tag.o
+diff --git a/mm/tests/folio_split_kunit.c b/mm/tests/folio_split_kunit.c
+new file mode 100644
+index 000000000000..f91c1a320bbf
+--- /dev/null
++++ b/mm/tests/folio_split_kunit.c
+@@ -0,0 +1,52 @@
++// SPDX-License-Identifier: GPL-2.0-only
++#include <kunit/test.h>
++#include <linux/errno.h>
++#include <linux/mm.h>
++#include <linux/huge_mm.h>
++#include <linux/module.h>
++#include <linux/pagemap.h>
++
++static void folio_check_splittable_mappingless_swapcache(struct kunit *test)
++{
++	struct folio *folio;
++	int ret;
++
++	folio = folio_alloc(GFP_KERNEL, 2);
++	KUNIT_ASSERT_NOT_NULL(test, folio);
++	folio_lock(folio);
++
++	KUNIT_EXPECT_PTR_EQ(test, folio->mapping, NULL);
++	ret = folio_check_splittable(folio, 0, SPLIT_TYPE_UNIFORM);
++	KUNIT_EXPECT_EQ(test, ret, -EBUSY);
++
++	/* Only the eligibility check is exercised here. */
++	folio_set_swapbacked(folio);
++	folio_set_swapcache(folio);
++
++	ret = folio_check_splittable(folio, 0, SPLIT_TYPE_UNIFORM);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	ret = folio_check_splittable(folio, 1, SPLIT_TYPE_UNIFORM);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	ret = folio_check_splittable(folio, 0, SPLIT_TYPE_NON_UNIFORM);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	folio_clear_swapcache(folio);
++	folio_clear_swapbacked(folio);
++	folio_unlock(folio);
++	folio_put(folio);
++}
++
++static struct kunit_case folio_split_test_cases[] = {
++	KUNIT_CASE(folio_check_splittable_mappingless_swapcache),
++	{}
++};
++
++static struct kunit_suite folio_split_test_suite = {
++	.name = "folio_split",
++	.test_cases = folio_split_test_cases,
++};
++
++kunit_test_suite(folio_split_test_suite);
++
++MODULE_DESCRIPTION("Tests for folio splitting");
++MODULE_LICENSE("GPL");
 
 -- 
 2.43.0
