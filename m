@@ -1,86 +1,191 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Wed, 05 Aug 2026 12:52:10 +0800
-Subject: [PATCH net] macsec: check offload ops before inserting TX tag
+From: Bochao Cao <bochaolucky@gmail.com>
+Date: Wed, 05 Aug 2026 15:29:42 +0800
+Subject: [PATCH bpf-next] selftests/bpf: Track test_xdp_features DUT
+ processes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-macsec-fixes-v1-1-634d7679a030@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAHrBcmoC/x3LQQqAIBBA0avIrBMmwZKuEi3MxppFFk5EIN09a
- fn4/AJCmUlgUAUy3Sx8pIq2URA2n1bSvFSDQdOhQ6t3H4SCjvyQ6MU4nH3s0VoDdTkz/aEeIyS
- 6YHrfDzru88FjAAAA
-X-Change-ID: 20260805-macsec-fixes-d280baf70552
-To: Sabrina Dubroca <sd@queasysnail.net>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- "Radu Pirea (NXP OSS)" <radu-nicolae.pirea@oss.nxp.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org, 
- Junrui Luo <moonafterrain@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1852;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=dnNbOmnffeebhe2aAVXh9WY4hPJFAjjHfVNB3XhEz6E=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrKKDhz9P9Nb8uSoy8fejEx82N5/VnuG76tj+9vcmP
- 2ue5tQIPHPrKGVhEONikBVTZDlecOmbhe8W3S0+W5Jh5rAygQxh4OIUgIk8E2ZkuHC/sCd2a9mB
- A1f8JkjPuH7xAqNb2ExXlqK+/KTLtZcLPRn+52+4v8jswKfbecrl+5tkHvgeFGVbYlPu5lp7R/I
- j9yxRVgBiRVBS
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+Message-Id: <20260805-xdp-dut-process-lifecycle-gmail-v1-1-45984df8d295@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNQQrCMBAAv1L27EJaMBS/Ih7a3U1diWlIUomU/
+ t2ox2FgZocsSSXDpdshyUuzrqFBf+qA7lNYBJUbw2AGa0ZzxsoReSsY00qSM3p1Qm/ygstzUo+
+ WrZndyMSuh1aJSZzW3+EKc3QYpBa4/U3e5odQ+Q7gOD6htoNVjQAAAA==
+X-Change-ID: 20260805-xdp-dut-process-lifecycle-gmail-6d60bf8dcdf1
+To: Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>
+Cc: Ihor Solodrai <ihor.solodrai@linux.dev>, 
+ Lorenzo Bianconi <lorenzo@kernel.org>, bpf@vger.kernel.org, 
+ netdev@vger.kernel.org, Bochao Cao <bochaolucky@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785914999; l=4986;
+ i=bochaolucky@gmail.com; s=20260805; h=from:subject:message-id;
+ bh=2PX0a8BnWsRv3IzbYZsE6aRgPFWWou64hmODJGIhqFk=;
+ b=G+ama6iOK6PZpitgtc3PszYOiC+EWiymrju6cQy/uyhX0yJ87JwgGGwizfCUE/hjAD0Rq9mIm
+ jEaicJZFRvKBya927CRm6Cs4PF7/TdUYZFjFwIU6lETjqkGK0H7pPiU
+X-Developer-Key: i=bochaolucky@gmail.com; a=ed25519;
+ pk=ZYp7O2eXSIrJ9YmKrl0iHDoulPYSG+1lzICsicAvld0=
+X-Endpoint-Received: by B4 Relay for bochaolucky@gmail.com/20260805 with auth_id=920
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-macsec_insert_tx_tag() takes the ops pointer returned by
-macsec_get_ops() and dereferences it straight away:
+test_xdp_features.sh waits for any xdp_features listener to appear and
+uses pidof during cleanup. A concurrent test can therefore make another
+test proceed before its own DUT is ready, and cleanup kills every
+xdp_features process on the host. The readiness loop also has no timeout,
+so a DUT that exits before listening leaves the test hung indefinitely.
 
-	ops = macsec_get_ops(macsec, &ctx);
-	skb_final_len = skb->len - ETH_HLEN + ops->needed_headroom +
-		ops->needed_tailroom;
+Record each DUT PID when it is spawned, wait for ss to report that exact
+PID with a bounded retry loop, and only terminate and reap recorded
+children. Install an EXIT trap and signal handlers so failure paths also
+remove child processes and network setup.
 
-macsec_get_ops() returns NULL whenever the offload is no longer live:
-for MACSEC_OFFLOAD_PHY, macsec_check_offload() requires
-real_dev->phydev to still be attached.
+This also removes the runtime dependency on pidof.
 
-phy_detach() clears real_dev->phydev, e.g. when the lower device is
-brought down and its driver calls phy_disconnect() from ndo_stop(),
-when the PHY driver is unbound, or when an SFP module is removed under
-phylink. A frame sent after that point reaches macsec_insert_tx_tag()
-with ops == NULL and oopses.
-
-Check the pointer, as every other macsec_get_ops() caller already
-does, and drop the frame through the existing cleanup path.
-
-Fixes: a73d8779d61a ("net: macsec: introduce mdo_insert_tx_tag")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Fixes: 4dba3e7852b7 ("selftests/bpf: introduce XDP compliance test tool")
+Closes: https://bugs.debian.org/1136522
+Signed-off-by: Bochao Cao <bochaolucky@gmail.com>
 ---
- drivers/net/macsec.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Tests:
+- bash -n tools/testing/selftests/bpf/test_xdp_features.sh
+- make -C tools/testing/selftests/bpf xdp_features
+- sudo tools/testing/selftests/bpf/test_xdp_features.sh
+- verified cleanup leaves an unrelated xdp_features process running
+---
+ tools/testing/selftests/bpf/test_xdp_features.sh | 60 ++++++++++++++++--------
+ 1 file changed, 40 insertions(+), 20 deletions(-)
 
-diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
-index ee0e2eb7dbc6..86c8009dcfa9 100644
---- a/drivers/net/macsec.c
-+++ b/drivers/net/macsec.c
-@@ -3436,6 +3436,11 @@ static struct sk_buff *macsec_insert_tx_tag(struct sk_buff *skb,
- 	int err;
+diff --git a/tools/testing/selftests/bpf/test_xdp_features.sh b/tools/testing/selftests/bpf/test_xdp_features.sh
+index 0aa71c4..f3aa4d1 100755
+--- a/tools/testing/selftests/bpf/test_xdp_features.sh
++++ b/tools/testing/selftests/bpf/test_xdp_features.sh
+@@ -8,6 +8,7 @@ readonly V0_IP6=2001:db8::11
+ readonly V1_IP6=2001:db8::1
  
- 	ops = macsec_get_ops(macsec, &ctx);
-+	if (unlikely(!ops)) {
-+		err = -EOPNOTSUPP;
-+		goto cleanup;
-+	}
+ ret=1
++dut_pids=()
+ 
+ setup() {
+ 	{
+@@ -31,32 +32,53 @@ setup() {
+ }
+ 
+ cleanup() {
+-	ip link del v1 2> /dev/null
+-	ip netns del ${NS} 2> /dev/null
+-	[ "$(pidof xdp_features)" = "" ] || kill $(pidof xdp_features) 2> /dev/null
++	for pid in "${dut_pids[@]}"; do
++		kill "$pid" 2> /dev/null || true
++		wait "$pid" 2> /dev/null || true
++	done
++	ip link del v1 2> /dev/null || true
++	ip netns del "${NS}" 2> /dev/null || true
+ }
+ 
+ wait_for_dut_server() {
+-	while sleep 1; do
+-		ss -tlp | grep -q xdp_features
+-		[ $? -eq 0 ] && break
++	local pid=$1
++	local i
 +
- 	skb_final_len = skb->len - ETH_HLEN + ops->needed_headroom +
- 		ops->needed_tailroom;
- 	if (unlikely(skb_final_len > macsec->real_dev->mtu)) {
++	for ((i = 0; i < 10; i++)); do
++		if ! kill -0 "$pid" 2> /dev/null; then
++			echo "xdp_features server $pid exited before accepting connections" >&2
++			return 1
++		fi
++
++		if ss -tlp 2> /dev/null | grep -q "pid=$pid,"; then
++			return 0
++		fi
++
++		sleep 1
+ 	done
++
++	echo "Timed out waiting for xdp_features server $pid" >&2
++	return 1
++}
++
++start_dut_server() {
++	./xdp_features "$@" &
++	dut_pids+=("$!")
++	wait_for_dut_server "$!"
+ }
+ 
+ test_xdp_features() {
+ 	setup
+ 
+ 	## XDP_PASS
+-	./xdp_features -f XDP_PASS -D $V1_IP6 -T $V0_IP6 v1 &
+-	wait_for_dut_server
++	start_dut_server -f XDP_PASS -D $V1_IP6 -T $V0_IP6 v1
+ 	ip netns exec ${NS} ./xdp_features -t -f XDP_PASS \
+ 					   -D $V1_IP6 -C $V1_IP6 \
+ 					   -T $V0_IP6 v0
+ 	[ $? -ne 0 ] && exit
+ 
+ 	## XDP_DROP
+-	./xdp_features -f XDP_DROP -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1 &
+-	wait_for_dut_server
++	start_dut_server -f XDP_DROP -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1
+ 	ip netns exec ${NS} ./xdp_features -t -f XDP_DROP \
+ 					   -D ::ffff:$V1_IP4 \
+ 					   -C ::ffff:$V1_IP4 \
+@@ -64,16 +86,14 @@ test_xdp_features() {
+ 	[ $? -ne 0 ] && exit
+ 
+ 	## XDP_ABORTED
+-	./xdp_features -f XDP_ABORTED -D $V1_IP6 -T $V0_IP6 v1 &
+-	wait_for_dut_server
++	start_dut_server -f XDP_ABORTED -D $V1_IP6 -T $V0_IP6 v1
+ 	ip netns exec ${NS} ./xdp_features -t -f XDP_ABORTED \
+ 					   -D $V1_IP6 -C $V1_IP6 \
+ 					   -T $V0_IP6 v0
+ 	[ $? -ne 0 ] && exit
+ 
+ 	## XDP_TX
+-	./xdp_features -f XDP_TX -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1 &
+-	wait_for_dut_server
++	start_dut_server -f XDP_TX -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1
+ 	ip netns exec ${NS} ./xdp_features -t -f XDP_TX \
+ 					   -D ::ffff:$V1_IP4 \
+ 					   -C ::ffff:$V1_IP4 \
+@@ -81,26 +101,26 @@ test_xdp_features() {
+ 	[ $? -ne 0 ] && exit
+ 
+ 	## XDP_REDIRECT
+-	./xdp_features -f XDP_REDIRECT -D $V1_IP6 -T $V0_IP6 v1 &
+-	wait_for_dut_server
++	start_dut_server -f XDP_REDIRECT -D $V1_IP6 -T $V0_IP6 v1
+ 	ip netns exec ${NS} ./xdp_features -t -f XDP_REDIRECT \
+ 					   -D $V1_IP6 -C $V1_IP6 \
+ 					   -T $V0_IP6 v0
+ 	[ $? -ne 0 ] && exit
+ 
+ 	## XDP_NDO_XMIT
+-	./xdp_features -f XDP_NDO_XMIT -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1 &
+-	wait_for_dut_server
++	start_dut_server -f XDP_NDO_XMIT -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1
+ 	ip netns exec ${NS} ./xdp_features -t -f XDP_NDO_XMIT \
+ 					   -D ::ffff:$V1_IP4 \
+ 					   -C ::ffff:$V1_IP4 \
+ 					   -T ::ffff:$V0_IP4 v0
+ 	ret=$?
+-	cleanup
+ }
+ 
+ set -e
+-trap cleanup 2 3 6 9
++trap cleanup EXIT
++trap 'exit 129' HUP
++trap 'exit 130' INT
++trap 'exit 143' TERM
+ 
+ test_xdp_features
+ 
 
 ---
-base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260805-macsec-fixes-d280baf70552
+base-commit: 6655c409707ec8ce9ce0850ffe4fe02331fd4d9c
+change-id: 20260805-xdp-dut-process-lifecycle-gmail-6d60bf8dcdf1
 
 Best regards,
--- 
-Junrui Luo <moonafterrain@outlook.com>
+--  
+Bochao Cao <bochaolucky@gmail.com>
 
