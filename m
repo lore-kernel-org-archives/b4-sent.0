@@ -1,69 +1,73 @@
-From: Colin Huang <u8813345@gmail.com>
-Date: Wed, 05 Aug 2026 21:02:40 +0800
-Subject: [PATCH v4 12/12] ARM: dts: aspeed: anacapa: Add SPI flash VCC
- supply
+From: Junrui Luo <moonafterrain@outlook.com>
+Subject: [PATCH net 0/2] ovpn: fix peer float use-after-free and key slot
+ NULL deref
+Date: Wed, 05 Aug 2026 21:29:35 +0800
+Message-Id: <20260805-ovpn-fixes-v1-0-763f8c237fb9@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-anacapa-devlop-phase-devicetree-v4-12-5d67e0efa6c5@gmail.com>
-References: <20260805-anacapa-devlop-phase-devicetree-v4-0-5d67e0efa6c5@gmail.com>
-In-Reply-To: <20260805-anacapa-devlop-phase-devicetree-v4-0-5d67e0efa6c5@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>, 
- Rex Fu <rex.fu.amd@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAL86c2oC/x2LQQqAIBAAvxJ7TlDJsL4SHcS22ouKhgTi31s6D
+ jPToGAmLLAODTJWKhQDgxoH8LcLFwo6mEFLPUsrjYg1BXHSi0UY7dViJ2OddsBDyvgL7jcI+MD
+ e+wcqScLJYQAAAA==
+X-Change-ID: 20260805-ovpn-fixes-52c198458a2a
+To: Antonio Quartulli <antonio@openvpn.net>, 
+ Sabrina Dubroca <sd@queasysnail.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785934963; l=941;
- i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=f6LU0FAv4z223NfwbW5+xtWf2s69Q4QEuw+6jPL4YpI=;
- b=GU4HitdnZN9sIeaoEOIxc65OCZhYrjGp2dE2uozcgTcLXfDoR3GiEE+rtDALj7McAzfnsWjol
- g0HDu9Sad81Bonn1sgWxibVjHcRfneq+glygtwO4gZYOXQaVxuvb6zd
-X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
- pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
-X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1819;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=3ONLOkCCikXZjvVxIR5WZoHWXthWoxkThJGRkJtifWc=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrGKrqz3nznC0rb8yq8Hla3LLstxLLFknOe+VBMmqK
+ q84xubC39lRysIgxsUgK6bIcrzg0jcL3y26W3y2JMPMYWUCGcLAxSkAE3ktzvA/ZJta7NWEVzyf
+ c9atK73w2HvLnaDZ5caapxjLI/gU/MNMGRn2Xdl+dNf0C1vyUxJm7HU4tOzsoe/sHiUXgw9393F
+ 4ZnxjBAC5t0xf
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Rex Fu <rex.fu.amd@gmail.com>
+Two independent fixes for the ovpn driver, both in lifetime handling:
+one for a crypto key slot that can legitimately be empty, one for a peer
+that can be re-linked into a hash table after it has been removed.
 
-Specify the 3.3 V auxiliary rail as the SPI flash VCC supply to
-avoid using the dummy regulator during device initialization.
+Patch 1 fixes a NULL dereference in ovpn_crypto_kill_key(). It locates
+the slot holding a given key ID by reading both cs->slots[] entries and
+comparing ->key_id, without checking either pointer first. An empty slot
+is a normal state: the ordinary rekey sequence - install into the
+secondary slot, swap, delete the retired one - leaves primary_idx at 1
+with slots[0] empty, and key_id sits at offset 0, so the first
+comparison faults on a read of address 0.
 
-Signed-off-by: Rex Fu <rex.fu.amd@gmail.com>
+Patch 2 fixes a use-after-free in the peer float path.
+ovpn_peer_endpoints_update() releases peer->lock to send the float
+notification, then re-acquires ovpn->lock and re-links the peer into
+by_transp_addr unconditionally - even if ovpn_peer_remove() unlinked it
+while the lock was not held. The teardown path never unlinks hash nodes
+again, so the peer ends up freed while still on the chain, and every
+later datagram walks it in ovpn_peer_get_by_transp_addr(). Reproduced
+under KASAN on 7.0-rc3; the splat is included in the patch.
+
+The two patches are independent and touch different files; they can be
+applied in either order.
+
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- .../boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Junrui Luo (2):
+      ovpn: don't deref NULL key slot in ovpn_crypto_kill_key()
+      ovpn: don't re-hash a removed peer on float
 
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-index f913fa3f622d..cb4b815f1803 100644
---- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-@@ -27,6 +27,22 @@ / {
- 	i2c51 = &i2c10mux0ch0;
- };
- 
-+&fmc {
-+	flash@0 {
-+		vcc-supply = <&p3v3_bmc_aux>;
-+	};
-+	flash@1 {
-+		vcc-supply = <&p3v3_bmc_aux>;
-+	};
-+};
-+
-+// BIOS Flash
-+&spi2 {
-+	flash@0 {
-+		vcc-supply = <&p3v3_bmc_aux>;
-+	};
-+};
-+
- // MB - PDB
- &i2c8 {
- 	i2c-mux@72 {
+ drivers/net/ovpn/crypto.c | 6 ++++--
+ drivers/net/ovpn/peer.c   | 7 ++++++-
+ 2 files changed, 10 insertions(+), 3 deletions(-)
+---
+base-commit: 075b74841bd0065a3bda3440873c747938e69b68
+change-id: 20260805-ovpn-fixes-52c198458a2a
 
+Best regards,
 -- 
-2.34.1
+Junrui Luo <moonafterrain@outlook.com>
 
