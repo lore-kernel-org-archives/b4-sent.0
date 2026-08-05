@@ -1,129 +1,101 @@
-From: Daniil Detkov <d4n11l@proton.me>
-Date: Wed, 05 Aug 2026 17:50:56 +0500
-Subject: [PATCH] rust_binder: enforce delivered death process ownership
+From: Colin Huang <u8813345@gmail.com>
+Subject: [PATCH v4 00/12] ARM: dts: aspeed: anacapa: restructure devicetree
+ for development-phase
+Date: Wed, 05 Aug 2026 21:02:28 +0800
+Message-Id: <20260805-anacapa-devlop-phase-devicetree-v4-0-5d67e0efa6c5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-fix-rust-binder-death-ownership-v1-1-a89594c3b5db@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNSw7CMAwFr1J5jUVoBUJcBbFwUqfxxqns8pGq3
- p1QliPNm7eCswk73LoVjF/iUrXB6dBBKqQTo4yNoQ/9JVzDGbN80J6+YBQd2XBkWgrWt7J5kRk
- pZ0pD5jxQhFaZjdtkf7g/Gkdyxmikqfy61WQSPe7Fv7dtX2eaOmCVAAAA
-X-Change-ID: 20260805-fix-rust-binder-death-ownership-affac3fef3ab
-To: Todd Kjos <tkjos@android.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Carlos Llamas <cmllamas@google.com>, Alice Ryhl <aliceryhl@google.com>, 
- =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
- Miguel Ojeda <ojeda@kernel.org>, Christian Brauner <brauner@kernel.org>
-Cc: Daniel Almeida <daniel.almeida@collabora.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- Andreas Hindborg <a.hindborg@kernel.org>, 
- Tamir Duberstein <tamird@kernel.org>, Trevor Gross <tmgross@umich.edu>, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Alexandre Courbot <acourbot@nvidia.com>, 
- rust-for-linux@vger.kernel.org, Danilo Krummrich <dakr@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAGU0c2oC/43NSw7CIBSF4a00jMXwaKE4ch/GAV5uW5K+Ag3Rm
+ O5d6kQTB3X4n8F3niRi8BjJqXiSgMlHP405ykNBoLNji9S73EQwoVjJNLWjBTtb6jD100znzkb
+ cwgMuAZGWnHEnG8kFMJKVOWDj7++HyzV35+Myhcf7MPFt/d9OnDJq9M0oqTRYkOd2sL4/wjSQz
+ U7i2zP7nsieqhspaqW5qn48+fEUE/uezJ4GI6FyTe3M7dtb1/UFz/hTrm4BAAA=
+X-Change-ID: 20260407-anacapa-devlop-phase-devicetree-4101d3f312c0
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>, 
+ Carl Lee <carl.lee@amd.com>, Rex Fu <rex.fu.amd@gmail.com>, 
+ Andy Chung <Andy.Chung@amd.com>, Peter Shen <peter.shen@amd.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1785934267; l=3577;
- i=d4n11l@proton.me; s=20260805; h=from:subject:message-id;
- bh=IWSU6zQf1qTqHaWNUN2CFAVgjNV4N27WuU++TwUxhgc=;
- b=ud4r7edXqNZXOmk2DSHsp9/stTop420f/c4+I0ku20ojT0dVVU8HGsdOwkeW5vczmdwvw3ovE
- jB7AHsxhOeDB30rTkYo+fl44fVEEgRgkDrd9sNwN+V6AV9XjWtNqw4+
-X-Developer-Key: i=d4n11l@proton.me; a=ed25519;
- pk=lhWhUROF4Ygx4xYQrngLRbK6h4QpiHWk++S1vtq/s+A=
-X-Endpoint-Received: by B4 Relay for d4n11l@proton.me/20260805 with auth_id=921
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785934963; l=3300;
+ i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
+ bh=bYDdWSVVTiG5MK6NhiClpB+w+7wlTNEHoSs63MTDrVY=;
+ b=JpW4raBNri6sH3Ja42DQW7J3vx/7RUB0HXn/GLfe3sG52WMvc65kv4VxarMyU30IM4cLoixZE
+ DKEe+jKGXLvBCGXdk62DQ4vm/qPb8gSi0HzHW04zQrhGXZFzG0RA+N/
+X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
+ pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
+X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The delivered_links field of NodeDeath may only be linked into the
-delivered_deaths list owned by NodeDeath::process. The existing safe
-ProcessInner::death_delivered method does not enforce that relationship,
-so safe Rust can violate the invariant relied on by a later unsafe list
-removal.
+This series refactors the Anacapa BMC devicetree layout to better support
+development-phase hardware revisions (EVT1/EVT2/DVT) while keeping a platform
+entrypoint.
 
-Move the insertion boundary to Process and validate both the supplied
-guard and the NodeDeath owner before mutating the list. Keep the existing
-lock order and duplicate-insertion behavior unchanged.
-
-Fixes: eafedbc7c050 ("rust_binder: add Rust Binder driver")
-Closes: https://github.com/Rust-for-Linux/linux/issues/1238
-Assisted-by: Codex:5.6-Sol
-Signed-off-by: Daniil Detkov <d4n11l@proton.me>
+Signed-off-by: Colin Huang <u8813345@gmail.com>
 ---
- drivers/android/binder/node.rs    |  6 +++++-
- drivers/android/binder/process.rs | 23 +++++++++++++++--------
- 2 files changed, 20 insertions(+), 9 deletions(-)
+Changes in v4:
+- Capitalize the first word of the short description.
+- Rework the Anacapa development-phase devicetree hierarchy.
+- Ensure that anacapa-evt1 generates an identical devicetree to the existing aspeed-bmc-facebook-anacapa.dts.
+- Add SPI flash VCC supply.
+- Simplify leakage GPIO line names.
+- Add LPDB fuse monitor GPIO expander.
+- Link to v3: https://lore.kernel.org/r/20260602-anacapa-devlop-phase-devicetree-v3-0-7c93c5df8d9b@gmail.com
 
-diff --git a/drivers/android/binder/node.rs b/drivers/android/binder/node.rs
-index c10148e90..813718486 100644
---- a/drivers/android/binder/node.rs
-+++ b/drivers/android/binder/node.rs
-@@ -978,6 +978,10 @@ pub(crate) fn new(
-         ))
-     }
- 
-+    pub(crate) fn belongs_to_process(&self, process: &Process) -> bool {
-+        core::ptr::eq(&*self.process, process)
-+    }
-+
-     /// Sets the cleared flag to `true`.
-     ///
-     /// It removes `self` from the node's death notification list if needed.
-@@ -1103,7 +1107,7 @@ fn do_work(
-             }
-             // We're still holding the inner lock, so it cannot be aborted while we insert it into
-             // the delivered list.
--            process_inner.death_delivered(self.clone());
-+            process.death_delivered(&mut process_inner, self.clone());
-             BR_DEAD_BINDER
-         };
- 
-diff --git a/drivers/android/binder/process.rs b/drivers/android/binder/process.rs
-index cdd1a9079..5c5ce7c01 100644
---- a/drivers/android/binder/process.rs
-+++ b/drivers/android/binder/process.rs
-@@ -309,14 +309,6 @@ fn pull_delivered_death(&mut self, cookie: u64) -> Option<DArc<NodeDeath>> {
-         None
-     }
- 
--    pub(crate) fn death_delivered(&mut self, death: DArc<NodeDeath>) {
--        if let Some(death) = ListArc::try_from_arc_or_drop(death) {
--            self.delivered_deaths.push_back(death);
--        } else {
--            pr_warn!("Notification added to `delivered_deaths` twice.");
--        }
--    }
--
-     pub(crate) fn add_outstanding_txn(&mut self) {
-         self.outstanding_txns += 1;
-     }
-@@ -920,6 +912,21 @@ pub(crate) fn get_node_from_handle(&self, handle: u32, strong: bool) -> Result<N
-             .clone(strong)
-     }
- 
-+    pub(crate) fn death_delivered(
-+        &self,
-+        inner: &mut Guard<'_, ProcessInner, SpinLockBackend>,
-+        death: DArc<NodeDeath>,
-+    ) {
-+        assert!(core::ptr::eq(&self.inner, inner.lock_ref()));
-+        assert!(death.belongs_to_process(self));
-+
-+        if let Some(death) = ListArc::try_from_arc_or_drop(death) {
-+            inner.delivered_deaths.push_back(death);
-+        } else {
-+            pr_warn!("Notification added to `delivered_deaths` twice.");
-+        }
-+    }
-+
-     pub(crate) fn remove_from_delivered_deaths(&self, death: &DArc<NodeDeath>) {
-         let mut inner = self.inner.lock();
-         // SAFETY: By the invariant on the `delivered_links` field, this is the right linked list.
+Changes in v3:
+- Restructure the EVT2 devicetree to inherit from the EVT1 devicetree, making it incremental rather than standalone.
+- Add the DVT devicetree, inheriting from the EVT2 devicetree.
+- Enable MCTP and FRU support for the NIC.
+- Align PDB fan GPIO numbering.
+- Add an EEPROM device node for the NFC adaptor board.
+- Add an additional EEPROM device node for the SCM.
+- Add shunt resistor values for HSC monitors
+- Link to v2: https://lore.kernel.org/r/20260409-anacapa-devlop-phase-devicetree-v2-0-68f328671653@gmail.com
+
+Changes in v2:
+- Fix dtbs_check fail.
+  Validated by following command:
+    make dt_binding_check DT_SCHEMA_FILES=arm/aspeed/aspeed.yaml
+    make CHECK_DTBS=y DT_SCHEMA_FILES=arm/aspeed/aspeed.yaml aspeed/aspeed-bmc-facebook-anacapa.dtb
+    make CHECK_DTBS=y DT_SCHEMA_FILES=arm/aspeed/aspeed.yaml aspeed/aspeed-bmc-facebook-anacapa-evt1.dtb
+    make CHECK_DTBS=y DT_SCHEMA_FILES=arm/aspeed/aspeed.yaml aspeed/aspeed-bmc-facebook-anacapa-evt2.dtb
+- Link to v1: https://lore.kernel.org/r/20260407-anacapa-devlop-phase-devicetree-v1-0-97b96367cac3@gmail.com
 
 ---
-base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260805-fix-rust-binder-death-ownership-affac3fef3ab
+Andy Chung (1):
+      ARM: dts: aspeed: anacapa: Enable MCTP and FRU for NIC
+
+Carl Lee (1):
+      ARM: dts: aspeed: anacapa: Add eeprom device node for NFC adaptor board
+
+Colin Huang (6):
+      dt-bindings: arm: aspeed: Add Anacapa EVT1 EVT2 DVT board
+      ARM: dts: aspeed: anacapa: Add EVT1 devicetree and point wrapper to it
+      ARM: dts: aspeed: anacapa: Add EVT2 devicetree inheriting EVT1
+      ARM: dts: aspeed: anacapa: Add DVT devicetree inheriting EVT2
+      ARM: dts: aspeed: anacapa: Add additional EEPROM node for SCM
+      ARM: dts: aspeed: anacapa: evt2: Add shunt resistor values for HSC monitors
+
+Rex Fu (4):
+      ARM: dts: aspeed: anacapa: Align PDB fan GPIO numbering
+      ARM: dts: aspeed: anacapa: Add LPDB fuse monitor GPIO expander
+      ARM: dts: aspeed: anacapa: Simplify leakage GPIO line names
+      ARM: dts: aspeed: anacapa: Add SPI flash VCC supply
+
+ .../devicetree/bindings/arm/aspeed/aspeed.yaml     |    3 +
+ .../dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts |  265 +++++
+ .../aspeed/aspeed-bmc-facebook-anacapa-evt1.dts    | 1079 ++++++++++++++++++++
+ .../aspeed/aspeed-bmc-facebook-anacapa-evt2.dts    |  408 ++++++++
+ .../dts/aspeed/aspeed-bmc-facebook-anacapa.dts     | 1077 +------------------
+ 5 files changed, 1756 insertions(+), 1076 deletions(-)
+---
+base-commit: 112264fb0bd0a7982b13da18cd3e289e2ab76eed
+change-id: 20260407-anacapa-devlop-phase-devicetree-4101d3f312c0
 
 Best regards,
 -- 
-Daniil Detkov <d4n11l@proton.me>
+Colin Huang <u8813345@gmail.com>
 
