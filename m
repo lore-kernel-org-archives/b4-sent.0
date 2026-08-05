@@ -1,74 +1,82 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 05 Aug 2026 10:06:07 +0200
-Subject: [PATCH v9 6/6] arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU
- fan node
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v4 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Wed, 05 Aug 2026 16:03:18 +0530
+Message-Id: <20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-add-mcu-fan-khadas-vim4-v9-6-75df78710b9e@aliel.fr>
-References: <20260805-add-mcu-fan-khadas-vim4-v9-0-75df78710b9e@aliel.fr>
-In-Reply-To: <20260805-add-mcu-fan-khadas-vim4-v9-0-75df78710b9e@aliel.fr>
-To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAG4Rc2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyTHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDCwNT3dzE4pLUIl04v7gyL1k3xcLSKM0yxTzRKNVACai1oCg1LbMCbGx
+ 0LIRfXJqUlZpcAjJLqbYWAK/OU3N4AAAA
+X-Change-ID: 20260805-master-20260805-sync-d892f9d7a2e0
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Beniamino Galvani <b.galvani@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
- mfd@lists.linux.dev, Ronald Claveau <linux-kernel-dev@aliel.fr>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1095;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=Z7uWC5BzI9Wq+imS2bvYjb9eymbusN6NdD/vEPC6HdE=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ1bR+5yHyto2astO3/kw1/dqzha+RROvV16YyDx9hWHh3
- UMLM7t/dJSyMIhxMciKKbL0z7U88e7y0TNf96inwMxhZQIZwsDFKQAT2fWKkWFq9/knovZf5xSk
- uPXkth9M3d9wXPcjd7l33M2bB5PbVHkYGRZ0u7/SyPl64DfbhY199kr/jzeWFPX/ypr/eaHrOZv
- GVYwA
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+ Conor Dooley <conor+dt@kernel.org>, 
+ Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com, 
+ Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785926004; l=2273;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=KpUclSqc6f6re3FfItiLbO3O5MGeREx/fi6Z2V3ow+M=;
+ b=YMAW/r8QQ29ZYG/yb1pBb8vdoLuv2Qcdis5Mq6yvn+Q+IYZ4J9C5D9vA9/1mMLQ89GKcAfUVX
+ nD+dzae7tOnBDSsxX9UnwEdbeOHNdZRz2aZFuNvuQRQkicMZ6g3uxfM
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable and configure i2c MCU node to get fan working on Khadas VIM4.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
+
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
+
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
+
+Changes in v4:
+- Renamed the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml.
+- Narrowed the DT example register window to the rate generator
+  registers only, and aligned the node name with the base address:
+  clock-controller@7eed000 with reg <0x0 0x07eed000 0x0 0x14>.
+- Renamed Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE.
+- Added devm_pm_runtime_enable() in lpass-va-csr probe path.
+- Dropped the qcom,lpass-va-macro binding extension patch - no in-tree
+  user yet; will be resubmitted with the hawi DTSI changes.
+- Dropped sound/soc/codecs/Kconfig select wiring from this series to
+  keep it clock-only.
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts      | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-index c41525a34b721..7d95aadcf6a66 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-@@ -167,6 +167,19 @@ xtal: xtal-clk {
- 	};
- };
- 
-+&i2c_m_ao_a {
-+	status = "okay";
-+	pinctrl-0 = <&i2c0_ao_d_pins>;
-+	pinctrl-names = "default";
-+
-+	khadas_mcu: system-controller@18 {
-+		compatible = "khadas,vim4-mcu";
-+		reg = <0x18>;
-+		fan-supply = <&vcc5v>;
-+		#cooling-cells = <2>;
-+	};
-+};
-+
- &pwm_ab {
- 	status = "okay";
- 	pinctrl-0 = <&pwm_a_pins>;
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  51 +++++++
+ drivers/clk/qcom/Kconfig                           |  12 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 148 +++++++++++++++++++++
+ 4 files changed, 212 insertions(+)
+---
+base-commit: 0f6da28aab51b16762ed82e8fdeaa5042da45b08
+change-id: 20260805-master-20260805-sync-d892f9d7a2e0
 
--- 
-2.49.0
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
