@@ -1,11 +1,11 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Thu, 06 Aug 2026 17:55:52 +0530
-Subject: [PATCH v5 06/13] iio: humidity: hid-sensor-humidity: convert probe
- and teardown to devm-managed resources
+Date: Thu, 06 Aug 2026 17:55:53 +0530
+Subject: [PATCH v5 07/13] iio: light: hid-sensor-prox: convert probe and
+ teardown to devm-managed resources
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-6-f1f92c1d830f@gmail.com>
+Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-7-f1f92c1d830f@gmail.com>
 References: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 In-Reply-To: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -17,11 +17,11 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3821;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3466;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=HqyYHVuWmDcuCY2uw/mZntv1xCDdrJhZceeQRiOBrc0=;
- b=faTu/9zW6rjlr2K4q/vw1kw3M8o6o/tfLJKCyhdkJinkRWnWvTxLhdXOMz4Iw9uW+f1H3jDPK
- B87nbgz5sMZAt1VdxrcH9/kINL0/AVDelcOmatPx/cXYrupgPLmzUxE
+ bh=LYf4T3sDm8ysK9zTki2uYUQRgyfp4w+aSKgDHMnP8Yw=;
+ b=tZ7ihwnmYXghwsv1eHM0z1NFRQinJrKR11vATpzlopL/Vch3Lk9VkUI4wPn4SbcpifMOGzcVl
+ 8mjVh8zQc8oCAQyrRgS1XIee0fk01AR4AzE3Mm6Nc4hv3d/snn5cwJg
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
@@ -39,93 +39,84 @@ eliminates the remove callback entirely.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
-changes in v5:
-- Fully convert driver to devm usage, dropped Tested-by tag
-changes in v4:
-- No update in change, added Tested-by tag
-changes in v3:
-- Update commit message based on review comment from Andy
-- Based on discussion using parent device of HID platform driver used
-  with devres framework for this driver
-- v2 link -> https://lore.kernel.org/all/20260429175918.2541914-5-sanjayembedded@gmail.com/
----
- drivers/iio/humidity/hid-sensor-humidity.c | 38 +++++++-----------------------
- 1 file changed, 8 insertions(+), 30 deletions(-)
+ drivers/iio/light/hid-sensor-prox.c | 40 ++++++++-----------------------------
+ 1 file changed, 8 insertions(+), 32 deletions(-)
 
-diff --git a/drivers/iio/humidity/hid-sensor-humidity.c b/drivers/iio/humidity/hid-sensor-humidity.c
-index 89daf9d534d1..12c88efe66be 100644
---- a/drivers/iio/humidity/hid-sensor-humidity.c
-+++ b/drivers/iio/humidity/hid-sensor-humidity.c
-@@ -192,11 +192,12 @@ static struct hid_sensor_hub_callbacks humidity_callbacks = {
+diff --git a/drivers/iio/light/hid-sensor-prox.c b/drivers/iio/light/hid-sensor-prox.c
+index 5e28f9b7f40a..355b7b02868c 100644
+--- a/drivers/iio/light/hid-sensor-prox.c
++++ b/drivers/iio/light/hid-sensor-prox.c
+@@ -260,7 +260,8 @@ static int prox_parse_report(struct platform_device *pdev,
  /* Function to initialize the processing for usage id */
- static int hid_humidity_probe(struct platform_device *pdev)
+ static int hid_prox_probe(struct platform_device *pdev)
  {
+-	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 +	struct device *dev = &pdev->dev;
 +	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
- 	static const char *name = "humidity";
+ 	int ret = 0;
+ 	static const char *name = "prox";
  	struct iio_dev *indio_dev;
- 	struct hid_humidity_state *humid_st;
- 	struct iio_chan_spec *humid_chans;
--	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
- 	int ret;
+@@ -299,8 +300,8 @@ static int hid_prox_probe(struct platform_device *pdev)
  
- 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*humid_st));
-@@ -233,42 +234,20 @@ static int hid_humidity_probe(struct platform_device *pdev)
- 
- 	atomic_set(&humid_st->common_attributes.data_ready, 0);
+ 	atomic_set(&prox_state->common_attributes.data_ready, 0);
  
 -	ret = hid_sensor_setup_trigger(indio_dev, name,
--				       &humid_st->common_attributes);
+-				       &prox_state->common_attributes);
 +	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
-+					    &humid_st->common_attributes);
- 	if (ret)
++					    &prox_state->common_attributes);
+ 	if (ret) {
+ 		dev_err(&pdev->dev, "trigger setup failed\n");
  		return ret;
- 
- 	platform_set_drvdata(pdev, indio_dev);
- 
- 	humidity_callbacks.pdev = pdev;
--	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_HUMIDITY,
--					   &humidity_callbacks);
-+	ret = devm_sensor_hub_register_callback(dev, hsdev, HID_USAGE_SENSOR_HUMIDITY,
-+						&humidity_callbacks);
- 	if (ret)
+@@ -309,38 +310,14 @@ static int hid_prox_probe(struct platform_device *pdev)
+ 	prox_state->callbacks.send_event = prox_proc_event;
+ 	prox_state->callbacks.capture_sample = prox_capture_sample;
+ 	prox_state->callbacks.pdev = pdev;
+-	ret = sensor_hub_register_callback(hsdev, hsdev->usage,
+-					   &prox_state->callbacks);
++	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
++						&prox_state->callbacks);
+ 	if (ret < 0) {
+ 		dev_err(&pdev->dev, "callback reg failed\n");
 -		goto error_remove_trigger;
+-	}
 -
 -	ret = iio_device_register(indio_dev);
--	if (ret)
+-	if (ret) {
+-		dev_err(&pdev->dev, "device register failed\n");
 -		goto error_remove_callback;
--
++		return ret;
+ 	}
+ 
 -	return ret;
 -
 -error_remove_callback:
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_HUMIDITY);
+-	sensor_hub_remove_callback(hsdev, hsdev->usage);
 -error_remove_trigger:
--	hid_sensor_remove_trigger(&humid_st->common_attributes);
+-	hid_sensor_remove_trigger(&prox_state->common_attributes);
 -	return ret;
 -}
 -
 -/* Function to deinitialize the processing for usage id */
--static void hid_humidity_remove(struct platform_device *pdev)
+-static void hid_prox_remove(struct platform_device *pdev)
 -{
 -	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 -	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
--	struct hid_humidity_state *humid_st = iio_priv(indio_dev);
-+		return ret;
- 
+-	struct prox_state *prox_state = iio_priv(indio_dev);
+-
 -	iio_device_unregister(indio_dev);
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_HUMIDITY);
--	hid_sensor_remove_trigger(&humid_st->common_attributes);
+-	sensor_hub_remove_callback(hsdev, hsdev->usage);
+-	hid_sensor_remove_trigger(&prox_state->common_attributes);
 +	return devm_iio_device_register(dev, indio_dev);
  }
  
- static const struct platform_device_id hid_humidity_ids[] = {
-@@ -287,7 +266,6 @@ static struct platform_driver hid_humidity_platform_driver = {
+ static const struct platform_device_id hid_prox_ids[] = {
+@@ -363,7 +340,6 @@ static struct platform_driver hid_prox_platform_driver = {
  		.pm	= &hid_sensor_pm_ops,
  	},
- 	.probe		= hid_humidity_probe,
--	.remove		= hid_humidity_remove,
+ 	.probe		= hid_prox_probe,
+-	.remove		= hid_prox_remove,
  };
- module_platform_driver(hid_humidity_platform_driver);
+ module_platform_driver(hid_prox_platform_driver);
  
 
 -- 
