@@ -1,11 +1,10 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Thu, 06 Aug 2026 17:34:11 +0800
-Subject: [PATCH v2 03/10] dt-bindings: clock: add Ambarella CV75 RCT clock
- controller
+Date: Thu, 06 Aug 2026 17:34:12 +0800
+Subject: [PATCH v2 04/10] dt-bindings: pinctrl: add Ambarella CV75 pinctrl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-longzhao-upstream-cv75-v2-v2-3-6b09707c5fe9@ambarella.com>
+Message-Id: <20260806-longzhao-upstream-cv75-v2-v2-4-6b09707c5fe9@ambarella.com>
 References: <20260806-longzhao-upstream-cv75-v2-v2-0-6b09707c5fe9@ambarella.com>
 In-Reply-To: <20260806-longzhao-upstream-cv75-v2-v2-0-6b09707c5fe9@ambarella.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,119 +21,204 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-gpio@vger.kernel.org, linux-serial@vger.kernel.org, 
  soc@lists.linux.dev, Long Zhao <longzhao@ambarella.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786008863; l=2901;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786008863; l=4816;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=DFTGZ4uvV0RkAC0IaZusCfnS/KQPHA8JTNal3McD4Z4=;
- b=Ah0cJCSIxUfLesXH+5wJqawUNYqeT3CHVWMhVZ3L9xjHidofApA7nryJBlzdK0oeAKN8oDxl6
- 4jX8eBz5WTTAlazq5AfOS+U4V6k8iQeARuAXWgCN2XNKZ8drYBFZ7qA
+ bh=9rdubmZ/+QRo7Rx2fG5nIwgQAldJunotrOeXcg9Kbfo=;
+ b=F8tcpzImpasxLSOpFpa6um1OEviO7AaVDmtd8wslWwtethIiD275bee1POZMWiMBBcB9DdOFD
+ FcfOCqbzGK7AV21UvOdQljOEMAhfsnfobtLOJK/JcoYagHZhqT/ROQs
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the CV75 RCT clock controller binding and clock ID header.
+Add the CV75 pin controller binding.
 
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- .../bindings/clock/ambarella,cv75-rct.yaml         | 66 ++++++++++++++++++++++
- include/dt-bindings/clock/ambarella,cv75-clock.h   | 17 ++++++
- 2 files changed, 83 insertions(+)
+ .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 175 +++++++++++++++++++++
+ 1 file changed, 175 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml b/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
+diff --git a/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
 new file mode 100644
-index 000000000000..aa96533bab9b
+index 000000000000..3fa30b275e51
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-@@ -0,0 +1,66 @@
++++ b/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
+@@ -0,0 +1,175 @@
 +# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/clock/ambarella,cv75-rct.yaml#
++$id: http://devicetree.org/schemas/pinctrl/ambarella,cv75-pinctrl.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Ambarella CV75 RCT Clock Controller
++title: Ambarella CV75 Pin Controller
 +
 +maintainers:
 +  - Long Zhao <longzhao@ambarella.com>
 +
-+description: |
-+  The RCT (Reset and Clock Tree) block on the Ambarella CV75 SoC provides
-+  PLLs, clock muxes and dividers for on-chip peripherals.
++description:
++  The Ambarella CV75 pin controller configures pin multiplexing, bias and
++  drive strength for the main GPIO banks. Pin groups and their mux settings
++  are defined by the pin controller driver and selected by function and group
++  names.
 +
-+  The same register region is also exposed as a syscon for other SoC
-+  blocks (e.g. pin drive-strength), hence the "syscon" compatible.
-+
-+  Clock indices are defined in
-+  include/dt-bindings/clock/ambarella,cv75-clock.h:
-+
-+  - CV75_GCLK_UART0: UART0 mux/div clock
-+  - CV75_GCLK_CORE: Core PLL (gclk_core)
-+  - CV75_GCLK_AHB: AHB bus clock (core / 2)
-+  - CV75_GCLK_APB: APB bus clock (core / 4)
++allOf:
++  - $ref: pinctrl.yaml#
 +
 +properties:
-+  $nodename:
-+    pattern: "^clock-controller@"
-+
 +  compatible:
-+    items:
-+      - const: ambarella,cv75-rct
-+      - const: syscon
++    const: ambarella,cv75-pinctrl
 +
 +  reg:
 +    maxItems: 1
++    description: IOMUX registers
 +
-+  clocks:
-+    description: Reference crystal oscillator (typically 24 MHz)
-+    maxItems: 1
++  ambarella,drive-strength-syscon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description: RCT syscon containing the drive-strength registers.
 +
-+  clock-names:
-+    const: osc
++  ambarella,pull-syscon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description: Secure scratchpad syscon containing the pull registers.
 +
-+  "#clock-cells":
++  "#address-cells":
 +    const: 1
++
++  "#size-cells":
++    const: 1
++
++  ranges: true
++
++patternProperties:
++  "^gpio@[0-9a-f]+$":
++    type: object
++    additionalProperties: false
++
++    properties:
++      reg:
++        maxItems: 1
++
++      interrupts:
++        maxItems: 1
++
++      gpio-controller: true
++
++      "#gpio-cells":
++        const: 2
++
++      gpio-ranges:
++        maxItems: 1
++
++      interrupt-controller: true
++
++      "#interrupt-cells":
++        const: 2
++
++    required:
++      - reg
++      - interrupts
++      - gpio-controller
++      - "#gpio-cells"
++      - gpio-ranges
++      - interrupt-controller
++      - "#interrupt-cells"
++
++  "^[a-z0-9-]+-pins$":
++    type: object
++    allOf:
++      - $ref: pinmux-node.yaml#
++      - $ref: pincfg-node.yaml#
++    additionalProperties: false
++
++    properties:
++      function:
++        const: uart0
++
++      groups:
++        $ref: /schemas/types.yaml#/definitions/string-array
++        items:
++          enum: [uart0tx, uart0rx]
++        minItems: 2
++        maxItems: 2
++        uniqueItems: true
++
++      bias-disable: true
++      bias-pull-down: true
++      bias-pull-up: true
++
++      drive-strength:
++        enum: [3, 4, 5, 6, 7, 8, 9, 12]
++
++    required:
++      - function
++      - groups
 +
 +required:
 +  - compatible
 +  - reg
-+  - clocks
-+  - clock-names
-+  - "#clock-cells"
++  - ambarella,drive-strength-syscon
++  - ambarella,pull-syscon
++  - "#address-cells"
++  - "#size-cells"
++  - ranges
 +
-+additionalProperties: false
++unevaluatedProperties: false
 +
 +examples:
 +  - |
-+    clock-controller@ed080000 {
-+        compatible = "ambarella,cv75-rct", "syscon";
-+        reg = <0xed080000 0x1000>;
-+        clocks = <&osc>;
-+        clock-names = "osc";
-+        #clock-cells = <1>;
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++
++    rct: rct {
 +    };
-diff --git a/include/dt-bindings/clock/ambarella,cv75-clock.h b/include/dt-bindings/clock/ambarella,cv75-clock.h
-new file mode 100644
-index 000000000000..3d3314446e75
---- /dev/null
-+++ b/include/dt-bindings/clock/ambarella,cv75-clock.h
-@@ -0,0 +1,17 @@
-+/* SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause */
-+/*
-+ * Copyright (C) 2026 Ambarella, Inc.
-+ */
 +
-+#ifndef _DT_BINDINGS_CLOCK_AMBARELLA_CV75_CLOCK_H
-+#define _DT_BINDINGS_CLOCK_AMBARELLA_CV75_CLOCK_H
++    scratchpad: scratchpad {
++    };
 +
-+/* Boot / bus clocks */
-+#define CV75_GCLK_UART0		0
-+#define CV75_GCLK_CORE		1
-+#define CV75_GCLK_AHB		2
-+#define CV75_GCLK_APB		3
++    pinctrl: pinctrl@e4010000 {
++        compatible = "ambarella,cv75-pinctrl";
++        #address-cells = <1>;
++        #size-cells = <1>;
++        reg = <0xe4010000 0x1000>;
++        ranges;
++        ambarella,drive-strength-syscon = <&rct>;
++        ambarella,pull-syscon = <&scratchpad>;
 +
-+#define CV75_CLK_NUM		4
++        gpio0: gpio@e4013000 {
++            reg = <0xe4013000 0x1000>;
++            interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
++            gpio-controller;
++            #gpio-cells = <2>;
++            gpio-ranges = <&pinctrl 0 0 32>;
++            interrupt-controller;
++            #interrupt-cells = <2>;
++        };
 +
-+#endif
++        gpio1: gpio@e4014000 {
++            reg = <0xe4014000 0x1000>;
++            interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
++            gpio-controller;
++            #gpio-cells = <2>;
++            gpio-ranges = <&pinctrl 0 32 32>;
++            interrupt-controller;
++            #interrupt-cells = <2>;
++        };
++
++        gpio2: gpio@e4015000 {
++            reg = <0xe4015000 0x1000>;
++            interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
++            gpio-controller;
++            #gpio-cells = <2>;
++            gpio-ranges = <&pinctrl 0 64 32>;
++            interrupt-controller;
++            #interrupt-cells = <2>;
++        };
++
++        uart0-pins {
++            function = "uart0";
++            groups = "uart0tx", "uart0rx";
++            bias-disable;
++            drive-strength = <8>;
++        };
++    };
 
 -- 
 2.34.1
