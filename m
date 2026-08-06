@@ -1,14 +1,12 @@
 From: Sven Peter <sven@kernel.org>
-Subject: [PATCH 0/6] Apple NVMe fixes for macOS 15+ firmware / M4 support
-Date: Thu, 06 Aug 2026 17:27:32 +0200
-Message-Id: <20260806-b4-nvme-fwabi-v1-0-bde19ce8db04@kernel.org>
+Date: Thu, 06 Aug 2026 17:27:33 +0200
+Subject: [PATCH 1/6] nvme-apple: Destroy the admin queue on removal
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQoCIRCA4VeROTcwmoj0KtFBd8eaIAutLRDff
- W33+B3+v0HlIlzhpBoUXqTKMw/og4LpFvKVUeZhMGQceXIYLeblwZi+IQoS0dE7bX00GkbzKpz
- kt/3Ol931E+88vf8T6H0FOg1ZLXEAAAA=
-X-Change-ID: 20260806-b4-nvme-fwabi-000386148b21
+Message-Id: <20260806-b4-nvme-fwabi-v1-1-bde19ce8db04@kernel.org>
+References: <20260806-b4-nvme-fwabi-v1-0-bde19ce8db04@kernel.org>
+In-Reply-To: <20260806-b4-nvme-fwabi-v1-0-bde19ce8db04@kernel.org>
 To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
  Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
  Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
@@ -17,52 +15,143 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1338; i=sven@kernel.org;
- h=from:subject:message-id; bh=97rXyYGAbf+UW53T2G9gDyGIgLk+bK8TQS1U6+lks6c=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1bJCjX5qiO3ThWxxLc1vD5y+Mjzz90rn7IxlvtXiEdw/
- 5KQ1t3RUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZhI43dGhrXse6xOvZooXxUo
- s2rZPyGBhSr2FxoznN6ZiOws3CRzYAUjw+vmOHlN3coX8+KtjMo8Hrjf0lwpkLusl2lJpdqnStl
- qNgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5378; i=sven@kernel.org;
+ h=from:subject:message-id; bh=AuhuSDb8wKQjc4FtIZptQtimvxpq2uj7/79koaO+DOU=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ1bJCvXMxIjA6y8zzr5m9hWLkhSPWbX2ZeDx6y2Lyi1sV
+ wpu817QUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZhITzIjw8/PR3/+2hfyOuLR
+ In2JucL/butoM5V8CFQ4HSe/dtfB/hMMf2W6rYw+rZtVNv/k/V8P82KVNk094xE5LdZh4kRlH9a
+ e/awA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+The admin queue is allocated with blk_mq_alloc_queue() but never
+destroyed. nvme_free_ctrl() only drops the last reference and
+blk_mq_exit_queue() and blk_sync_queue() never run: the hctx is never
+moved to q->unused_hctx_list and the timeout timer and work stay armed on
+a queue that is about to be freed which will eventually oops inside
+blk_mq_timeout_work().
 
-This series fixes a bunch of bugs that were working fine with M1/M2 NVMe
-controllers with older firmware but are now starting to bite us.
-With macOS 15 a new firmware is installed for the controller and both
-XNU and the controller are a bit more strict now. This firmware is
-required once we add M4 support.
+This can only be triggered when the controller fails to come up and is
+then immediately torn down again which is why no one ever ran into this
+before.
 
-The first patch fixes a panic that can happen when the controller fails
-to initialize, which now happens for the first time with the new
-firmware. The other fixes then make it work again.
+Let's just copy what the pcie driver does: unquiesce and destroy the admin
+queue before nvme_uninit_ctrl().
 
-Best,
+With this the following WARN followed by a panic no longer happens:
 
-Sven
+  WARNING: block/blk-mq.c:4390 at blk_mq_release+0x194/0x238, CPU#4: kworker/u34:4/119
+  CPU: 4 UID: 0 PID: 119 Comm: kworker/u34:4 Not tainted 7.2.0-rc1-dirty #248 PREEMPT
+  Hardware name: Apple Mac mini (M1, 2020) (DT)
+  Workqueue: nvme-wq apple_nvme_remove_dead_ctrl_work
+  pstate: 61400005 (nZCv daif +PAN -UAO -TCO +DIT -SSBS BTYPE=--)
+  pc : blk_mq_release+0x194/0x238
+  lr : blk_mq_release+0x58/0x238
+  sp : ffffc000833a3b50
+  x29: ffffc000833a3b50 x28: ffff80001d0450f8 x27: ffff800020c95200
+  x26: 0000000000000088 x25: 0000000000000000 x24: ffff800020f36805
+  x23: 0000000000000000 x22: ffffc00081a86878 x21: ffff800020be9c60
+  x20: 0000000000000000 x19: ffff800022501698 x18: 000000000000000a
+  x17: 7365757165722066 x16: 666f7265776f7020 x15: 0000000000000000
+  x14: 0000000000000028 x13: 0000000000004def x12: 0000000000000003
+  x11: 0000000000000000 x10: 0000000000000000 x9 : ffffc000805b4fc8
+  x8 : ffffc00081915820 x7 : ffffc00081c4f3c8 x6 : 0000000000000001
+  x5 : 0000000000000004 x4 : ffff800022498d80 x3 : ffffc000833a3b14
+  x2 : 0000000000000000 x1 : 0000000000000000 x0 : ffff800022501698
+  Call trace:
+   blk_mq_release+0x194/0x238 (P)
+   blk_put_queue+0x8c/0xf0
+   nvme_free_ctrl+0x4c/0x260
+   device_release+0x44/0x128
+   kobject_put+0xa0/0x120
+   put_device+0x1c/0x40
+   nvme_uninit_ctrl+0x48/0x60
+   apple_nvme_remove+0x54/0xb0
+   platform_remove+0x28/0x40
+   device_remove+0x54/0x98
+   device_release_driver_internal+
+   device_release_driver+0x20/0x38
+   apple_nvme_remove_dead_ctrl_wor
+   process_one_work+0x1f4/0x770
+   worker_thread+0x1b8/0x360
+   kthread+0x140/0x160
+   ret_from_fork+0x10/0x20
+  irq event stamp: 448
+  hardirqs last  enabled at (447):in_unlock_irqrestore+0x74/0x80
+  hardirqs last disabled at (448): [<ffffc000811cf5c0>] el1_brk64+0x20/0x60
+  softirqs last  enabled at (0): [ess+0xb28/0x2698
+  softirqs last disabled at (0): [<0000000000000000>] 0x0
+  ---[ end trace 0000000000000000
+  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
+  Mem abort info:
+    ESR = 0x0000000096000005
+    EC = 0x25: DABT (current EL),
+    SET = 0, FnV = 0
+    EA = 0, S1PTW = 0
+    FSC = 0x05: level 1 translation fault
+  Data abort info:
+    ISV = 0, ISS = 0x00000005, ISS2 = 0x00000000
+    CM = 0, WnR = 0, TnD = 0, TagA
+    GCS = 0, Overlay = 0, DirtyBit = 0, Xs = 0
+  [0000000000000000] user address
+  Internal error: Oops: 0000000096000005 [#1]  SMP
+  CPU: 7 UID: 0 PID: 54 Comm: kwor          7.2.0-rc1-dirty #248PREEMPT
+  Tainted: [W]=WARN
+  Hardware name: Apple Mac mini (M1, 2020) (DT)
+  Workqueue: kblockd blk_mq_timeou
+  pstate: 01400005 (nzcv daif +PAN -UAO -TCO +DIT -SSBS BTYPE=--)
+  pc : percpu_ref_tryget_many.cons
+  lr : percpu_ref_tryget_many.constprop.0+0xc0/0x168
+  sp : ffffc000829cbce0
+  x29: ffffc000829cbce0 x28: ffff800020be9f48 x27: ffff800013e503c0
+  x26: 0000000000000108 x25: 000009c05
+  x23: 0000000000000000 x22: ffffc000819f5000 x21: ffff800020be9f48
+  x20: ffff8001deda4808 x19: ffff8000a
+  x17: 00000000580e1fac x16: ffffc00082bbbb7c x15: 0000000000000000
+  x14: 0000000000000028 x13: 000000001
+  x11: 0000000000000000 x10: 0000000000000000 x9 : ffffc000829cbc20
+  x8 : ffffc00081915820 x7 : ffffc0001
+  x5 : ffff80001ca77d08 x4 : 0000000000000000 x3 : ffff80001ca77cb8
+  x2 : 0000000000000000 x1 : 000000007
+  Call trace:
+   percpu_ref_tryget_many.constpro
+   blk_mq_timeout_work+0x48/0x298
+   process_one_work+0x1f4/0x770
+   worker_thread+0x1b8/0x360
+   kthread+0x140/0x160
+   ret_from_fork+0x10/0x20
+  Code: 91282000 97ed44b2 17ffffd2
+  ---[ end trace 0000000000000000 ]---
 
+Fixes: 5bd2927aceba ("nvme-apple: Add initial Apple SoC NVMe driver")
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
-Sven Peter (6):
-      nvme-apple: Destroy the admin queue on removal
-      nvme-apple: Don't set a DMA direction for commands without a data transfer
-      nvme-apple: Never set the opcode in the NVMMU TCB
-      nvme: Add a quirk for page aligned admin queue buffers
-      nvme-apple: Require page aligned buffers on the admin queue
-      nvme-apple: Drop the PRP null check chicken bit
+ drivers/nvme/host/apple.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
- drivers/nvme/host/apple.c | 32 +++++++++++++++-----------------
- drivers/nvme/host/core.c  |  5 ++++-
- drivers/nvme/host/nvme.h  |  7 +++++++
- 3 files changed, 26 insertions(+), 18 deletions(-)
----
-base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260806-b4-nvme-fwabi-000386148b21
+diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
+index be3b91b43ea5..321502847a2c 100644
+--- a/drivers/nvme/host/apple.c
++++ b/drivers/nvme/host/apple.c
+@@ -1636,6 +1636,15 @@ static void apple_nvme_remove(struct platform_device *pdev)
+ 	nvme_stop_ctrl(&anv->ctrl);
+ 	nvme_remove_namespaces(&anv->ctrl);
+ 	apple_nvme_disable(anv, true);
++	if (anv->ctrl.admin_q && !blk_queue_dying(anv->ctrl.admin_q)) {
++		/*
++		 * If the controller was reset during removal, it's possible
++		 * user requests may be waiting on a stopped queue. Start the
++		 * queue to flush these to completion.
++		 */
++		nvme_unquiesce_admin_queue(&anv->ctrl);
++		blk_mq_destroy_queue(anv->ctrl.admin_q);
++	}
+ 	nvme_uninit_ctrl(&anv->ctrl);
+ 
+ 	if (apple_rtkit_is_running(anv->rtk)) {
 
-Best regards,
---  
-Sven Peter <sven@kernel.org>
+-- 
+2.55.0
 
