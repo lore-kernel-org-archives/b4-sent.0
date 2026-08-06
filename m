@@ -1,79 +1,121 @@
-From: Sven Peter <sven@kernel.org>
-Date: Thu, 06 Aug 2026 17:27:38 +0200
-Subject: [PATCH 6/6] nvme-apple: Drop the PRP null check chicken bit
+From: Alvin Sun <alvin.sun@linux.dev>
+Subject: [PATCH v3 0/8] drm/tyr: add debugfs support
+Date: Fri, 07 Aug 2026 01:07:22 +0800
+Message-Id: <20260807-tyr-debugfs-v2-v3-0-ff5595ac66ae@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-b4-nvme-fwabi-v1-6-bde19ce8db04@kernel.org>
-References: <20260806-b4-nvme-fwabi-v1-0-bde19ce8db04@kernel.org>
-In-Reply-To: <20260806-b4-nvme-fwabi-v1-0-bde19ce8db04@kernel.org>
-To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
- Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Arnd Bergmann <arnd@arndb.de>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Sven Peter <sven@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1941; i=sven@kernel.org;
- h=from:subject:message-id; bh=YxBzcKnSFS/hs7Z6ZB2yAm0XU5wv5qxZmHDbDUlH1so=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1bJCp3+P3XspXXZp+S/LvvxxCa4t3kKT7zkhKjNH0pcx
- Q/WhLF0lLIwiHExyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACYyaQIjw+qi5gKbfSf7NWV+
- fK+33TfR8mlZgl6E6Ksfnx/7HNIxmMnIMD/3TkTyRp0doQ9vxm14oc5lOps3Y0Fd58ZI/ecT9Zg
- iuAA=
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-B4-Tracking: v=1; b=H4sIAEu/dGoC/12OywqDMBBFf0Wy7pQ8JNGu+h+lizxGDRQtiQZF/
+ PdGuygWZnMunMOsJGLwGMmtWEnA5KMf+gziUhDb6b5F8C4z4ZRLqgSFcQng0ExtEyFxkLSy2Cj
+ lJNYkS++AjZ+P4OOZufNxHMJy9BPb129KcAmmPNcYUKCqNNo5Vikm7y/fT/PVYSJ7KvGfrgT7/
+ yQfBY2a1WitqeuTvm3bB0wxIp/rAAAA
+X-Change-ID: 20260730-tyr-debugfs-v2-608cef77d6e9
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Greg Kroah-Hartman <gregkh@kernel.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Matthew Brost <matthew.brost@intel.com>, 
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ rust-for-linux@vger.kernel.org, driver-core@lists.linux.dev, 
+ dri-devel@lists.freedesktop.org, Alvin Sun <alvin.sun@linux.dev>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786036192; l=3511;
+ i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
+ bh=RuhGFQg/miapkcuhF9rScJiktA9Kr0LCS5Epiji8ajo=;
+ b=X5XkghnYmEdXOxcW0VBUwCwj7xAmV82mVDRAHfY3fbEbBTkooxL4P2Hu+pDHRz2Ki3LxhWX84
+ uRg1MouoXGwCgflzX6SsVcIYbQLAGi0vhGy2YS0apDzCXpe6bAlAuIO
+X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that we program the DMA direction correctly the NULL check that used
-to make commands fail passes. Another side effect of this bit was that
-non-align buffers on the admin queue were silently allowed and that's
-been fixed now as well and we this don't need this chicken bit anymore.
-More importantly, starting with the firmware installed with macOS 15,
-which is required for M4 but can also be installed on the previous SoCs,
-the controller no longer exposes this control register and any access
-SErrors instead. Just drop the write entirely.
+Add debugfs support for the Tyr DRM driver.
 
-Fixes: 5bd2927aceba ("nvme-apple: Add initial Apple SoC NVMe driver")
-Signed-off-by: Sven Peter <sven@kernel.org>
+The series adds a SeqShow trait for seq_file-backed debugfs files, a
+debugfs_init callback on the DRM Driver trait, and a gpuvas debugfs
+file in Tyr exposing GPU VA space information.
+
+This is based on drm-rust-next and depends on:
+
+[PATCH v10 0/7] drm/tyr: firmware loading and MCU boot support
+  https://lore.kernel.org/r/20260728-fw-boot-b4-v10-0-9187aefa3f2f@collabora.com
+
+See the full dependency and commit history at [1].
+
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/issues/11
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/merge_requests/59 [1]
+Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- drivers/nvme/host/apple.c | 14 --------------
- 1 file changed, 14 deletions(-)
+Changes in v3:
+- Drop the DrmSeqShow adapter and use SeqShow directly, per Danilo's
+  feedback. Simplify the debugfs_init callback signature accordingly.
+- Redesign VmRegistry per Daniel's and Alice's feedback: move it to
+  vm.rs at the top level of the registration data, use Arc<VmRegistry>
+  for shared ownership, and separate register/unregister from Vm::new
+  and Vm::kill. Registration failure is non-fatal (dev_warn) since the
+  registry is a debugfs convenience.
+- Add VmRegistry::unregister to remove VMs on teardown, addressing
+  Alice's concern about the list going out of sync.
+- Drop the "hold device reference for open files" patch; the debugfs
+  proxy fops already ensure file operations cannot outlive
+  debugfs_remove().
+- Improve SAFETY comments and fix style issues identified during review.
+- Link to v2: https://lore.kernel.org/r/20260731-tyr-debugfs-v2-v2-0-aea19eccb996@linux.dev
 
-diff --git a/drivers/nvme/host/apple.c b/drivers/nvme/host/apple.c
-index 78f89b5679e5..bf1c32c66153 100644
---- a/drivers/nvme/host/apple.c
-+++ b/drivers/nvme/host/apple.c
-@@ -47,9 +47,6 @@
- #define APPLE_ANS_BOOT_STATUS	 0x1300
- #define APPLE_ANS_BOOT_STATUS_OK 0xde71ce55
- 
--#define APPLE_ANS_UNKNOWN_CTRL	 0x24008
--#define APPLE_ANS_PRP_NULL_CHECK BIT(11)
--
- #define APPLE_ANS_LINEAR_SQ_CTRL 0x24908
- #define APPLE_ANS_LINEAR_SQ_EN	 BIT(0)
- 
-@@ -1127,17 +1124,6 @@ static void apple_nvme_reset_work(struct work_struct *work)
- 		/* Setup the NVMMU for the maximum admin and IO queue depth */
- 		writel(anv->hw->max_queue_depth - 1,
- 			anv->mmio_nvme + APPLE_NVMMU_NUM_TCBS);
--
--		/*
--		 * This is probably a chicken bit: without it all commands
--		 * where any PRP is set to zero (including those that don't use
--		 * that field) fail and the co-processor complains about
--		 * "completed with err BAD_CMD-" or a "NULL_PRP_PTR_ERR" in the
--		 * syslog
--		 */
--		writel(readl(anv->mmio_nvme + APPLE_ANS_UNKNOWN_CTRL) &
--			~APPLE_ANS_PRP_NULL_CHECK,
--			anv->mmio_nvme + APPLE_ANS_UNKNOWN_CTRL);
- 	}
- 
- 	/* Setup the admin queue */
+Changes in v2:
+- Reworked the debugfs implementation per feedback from Danilo on v1:
+  dropped the hazptr/revocable-based approach in favor of the DRM
+  debugfs_init callback and generic seq_file abstractions.
+- Fixed a UAF in drm_debugfs where a device could be unregistered while
+  a debugfs file remains open (drm_dev_get/put across file lifetime).
+- Link to v1: https://lore.kernel.org/r/20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev
 
+---
+Alvin Sun (8):
+      rust: seq_file: add as_raw() method
+      rust: debugfs: add seq_file support
+      rust: debugfs: add ScopeRef for existing dentries
+      drm: move debugfs_init after dev->registered is set
+      rust: drm: add debugfs_init callback to Driver trait
+      rust: drm: gpuvm: add dump_gpuva_info to UniqueRefGpuVm
+      drm/tyr: track VMs in a registry
+      drm/tyr: add gpuvas debugfs file
+
+ drivers/gpu/drm/drm_debugfs.c   |  3 --
+ drivers/gpu/drm/drm_drv.c       |  5 +++
+ drivers/gpu/drm/tyr/debugfs.rs  | 20 ++++++++++
+ drivers/gpu/drm/tyr/driver.rs   | 16 +++++++-
+ drivers/gpu/drm/tyr/fw.rs       | 18 +++++++--
+ drivers/gpu/drm/tyr/tyr.rs      |  1 +
+ drivers/gpu/drm/tyr/vm.rs       | 33 ++++++++++++++++
+ rust/bindings/bindings_helper.h |  1 +
+ rust/kernel/debugfs.rs          | 84 ++++++++++++++++++++++++++++++++++++++++-
+ rust/kernel/debugfs/entry.rs    | 15 +++++++-
+ rust/kernel/debugfs/file_ops.rs | 60 +++++++++++++++++++++++++++++
+ rust/kernel/debugfs/traits.rs   | 11 ++++++
+ rust/kernel/drm/device.rs       | 41 +++++++++++++++++++-
+ rust/kernel/drm/driver.rs       | 11 ++++++
+ rust/kernel/drm/gpuvm/mod.rs    |  9 +++++
+ rust/kernel/seq_file.rs         |  6 +++
+ 16 files changed, 323 insertions(+), 11 deletions(-)
+---
+base-commit: 0ffc014cb2abfc79d161662b125e085b3e7107e7
+change-id: 20260730-tyr-debugfs-v2-608cef77d6e9
+
+Best regards,
 -- 
-2.55.0
+Alvin Sun <alvin.sun@linux.dev>
 
