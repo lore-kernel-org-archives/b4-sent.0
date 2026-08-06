@@ -1,73 +1,115 @@
-From: Daan De Meyer <daan@amutable.com>
-Date: Thu, 06 Aug 2026 12:36:58 +0200
-Subject: [PATCH 2/2] nbd: drop stale partitions on NBD_CLEAR_SOCK
+From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+Subject: [PATCH v5 00/13] HID: iio: Introduce devm_ APIs for HID sensors
+Date: Thu, 06 Aug 2026 17:55:46 +0530
+Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-b4-loop-nbd-stale-partitions-v1-2-67bb75a8d7be@amutable.com>
-References: <20260806-b4-loop-nbd-stale-partitions-v1-0-67bb75a8d7be@amutable.com>
-In-Reply-To: <20260806-b4-loop-nbd-stale-partitions-v1-0-67bb75a8d7be@amutable.com>
-To: Jens Axboe <axboe@kernel.dk>, Christian Brauner <brauner@kernel.org>, 
- Daan De Meyer <daan.j.demeyer@gmail.com>, 
- Josef Bacik <josef@toxicpanda.com>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- nbd@other.debian.org, Daan De Meyer <daan@amutable.com>, 
- stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAEt9dGoC/yXNywqDMBSE4VeRs+6BEDXYvkrpIjWjPQVjyEUE8
+ d2btrv5Nv8clBAFiW7NQRGbJFl9RX9paHxZP4PFVZNW2iijWtYD2xBZZOUIV7yzPrONc1lQx9Z
+ zxhK4Q3cF3GBaO1FthYhJ9t/P/fF3Ks83xvyN03l+ADEExK+JAAAA
+X-Change-ID: 20260603-28-apr-iio-redundant-argument-v5-temp-4e49eed863af
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Jiri Kosina <jikos@kernel.org>, 
+ Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
+ Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
+ Zhang Lixu <lixu.zhang@intel.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786012634; l=2049;
- i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=aLcawfodzvP0fJXSj8HpdGNkZURTQ0aqxMLBOWMxTBU=;
- b=FM8lQ6abSH+zQI5Z+faOY250ag+68dCCs2+lZanTrB/pXeFbfrlYyr++1nnOotORedCbB25Wi
- BG8tcLAeyPCDuYpUajgzDzZn5VKM0QQp16W6N0V9jHiLc/A0lWx8wmU
-X-Developer-Key: i=daan@amutable.com; a=ed25519;
- pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
-X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=4907;
+ i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
+ bh=DfjdwMIzg3OAVxzDZ8MAQUpgXBwQf4rJVCbZ/FlrV28=;
+ b=QyDfZ5gaMB5Zz/DpqD2Y/mSYIwZYCJliiu3/io9hmI+hLoOro51V/bBklk33PMPDLEPGCfaZ4
+ oo1XGuqesicCF7PcA6SDaVZlEuLia3r1bGVLmR7IskJQ0a5eRP+dzDN
+X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
+ pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
+X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 267ec4d7223a ("loop: fix partition scan race between udev and
-loop_reread_partitions()") stopped disk_force_media_change() from
-setting GD_NEED_PART_SCAN. Besides requesting a rescan, that bit was what
-removed stale partitions on the next open, as bdev_disk_changed() drops
-all partitions before it consults disk_has_partscan().
+Following feedback from reviewers and Srinivas, v4 series was split
+into two additional sub-series to perform cleanup and preparatory work
+before adding devm support:
+- HID: iio: warning clean up and prefer kernel coding style
+  https://lore.kernel.org/all/20260707-15-jun-hid-iio-alignment-v3-0-8791574ad0fe@gmail.com/
+- HID: iio: basic clean up for usage_id
+  https://lore.kernel.org/all/20260610-6-june-hid-iio-correct-usage-id-v2-0-c3c5f0720493@gmail.com/
 
-nbd_clear_sock_ioctl() relied on that. It zeroes the capacity through
-nbd_bdev_reset(), but nothing removes the partitions of the disconnected
-device anymore. With the default max_part=16 they linger until the next
-connect sets GD_NEED_PART_SCAN again. With max_part=0 nothing ever sets
-it, so they are never removed at all, even though nbd does not set
-GENHD_FL_NO_PART and partitions can therefore still be added with BLKPG.
+Both series have been merged into IIO tree. This series introduces
+device-managed APIs and converts HID IIO sensor drivers to use the new
+devm-managed resources.
 
-Set GD_NEED_PART_SCAN in nbd_clear_sock_ioctl() so the partitions are
-dropped on the next open. Calling bdev_disk_changed() directly is not an
-option as it needs open_mutex, which nbd_open() acquires under
-config_lock.
+changes in v5:
+- With input from Jonathan, convert all HID IIO drivers to use
+  fully devm instead of partial or specific API; this is potential
+  goal and validation on that will reduce multiple validation cycle.
+- Rebase changes on latest iio/testing tree and resolve merge conflict
+- Resolve mail client issue as v4 series was splitted into sub-series
+- v4 series -> https://lore.kernel.org/all/20260524192059.1193716-1-sanjayembedded@gmail.com/
+changes in v4:
+- Extend the series to cover remaining HID IIO drivers with devm API usage
+- Reorder patches to place cleanup and warning fix at beginning and,
+  devm-related changes toward the end based on feedback from David
+- v3 series -> https://lore.kernel.org/all/20260509101040.791404-1-sanjayembedded@gmail.com/
+changes in v3:
+- Added cleanup and prepratory changes before adding devm_ API
+  conversion based on self review: 0002, 0004, 0006, 0007 and 0008
+- Address andy's review comment on commit message and coding style
+- v2 series -> https://lore.kernel.org/all/20260429175918.2541914-1-sanjayembedded@gmail.com/
+changes in v2:
+- Following input from Jonathan and Andy, squash initial patch v1
+  series in single change as individual change should not break anything
+- Add devm API support and two driver using the same
+- v1 series -> https://lore.kernel.org/all/20260428071613.1134053-1-sanjayembedded@gmail.com/
 
-Fixes: 267ec4d7223a ("loop: fix partition scan race between udev and loop_reread_partitions()")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daan De Meyer <daan@amutable.com>
+Testing:
+  - Compiled with W=1 for each patch in series
+  - Build-tested on QEMU x86_64
+
+PS:
+- Sashiko reported an issue in a different driver and noted that it is not
+  introduced by this series. I have taken this feedback into account and
+  will address the actual issue in a separate series focus on that driver.
+
 ---
- drivers/block/nbd.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Sanjay Chitroda (13):
+      iio: hid-sensors: remove unused iio_dev argument
+      iio: hid-sensors: introduce device managed API
+      HID: hid-sensor-hub: introduce device managed API
+      iio: gyro: hid-sensor-gyro-3d: convert probe and teardown to devm-managed resources
+      iio: accel: hid-sensor-accel-3d: convert probe and teardown to devm-managed resources
+      iio: humidity: hid-sensor-humidity: convert probe and teardown to devm-managed resources
+      iio: light: hid-sensor-prox: convert probe and teardown to devm-managed resources
+      iio: light: hid-sensor-als: convert probe and teardown to devm-managed resources
+      iio: magnetometer: hid-sensor-magn-3d: convert probe and teardown to devm-managed resources
+      iio: orientation: hid-sensor-incl-3d: convert probe and teardown to devm-managed resources
+      iio: orientation: hid-sensor-rotation: convert probe and teardown to devm-managed resources
+      iio: position: hid-sensor-custom-intel-hinge: convert probe and teardown to devm-managed resources
+      iio: pressure: hid-sensor-press: convert probe and teardown to devm-managed resources
 
-diff --git a/drivers/block/nbd.c b/drivers/block/nbd.c
-index 8f10762e90ef..cdafe9d39369 100644
---- a/drivers/block/nbd.c
-+++ b/drivers/block/nbd.c
-@@ -1612,6 +1612,13 @@ static void nbd_clear_sock_ioctl(struct nbd_device *nbd)
- 	nbd_clear_sock(nbd);
- 	disk_force_media_change(nbd->disk);
- 	nbd_bdev_reset(nbd);
-+	/*
-+	 * Drop the partitions of the disconnected device on the next open. They
-+	 * can exist even with max_part zero as they may have been added manually
-+	 * with BLKPG. Dropping them here is not possible as that needs
-+	 * open_mutex, which nbd_open() acquires under config_lock.
-+	 */
-+	set_bit(GD_NEED_PART_SCAN, &nbd->disk->state);
- 	if (test_and_clear_bit(NBD_RT_HAS_CONFIG_REF,
- 			       &nbd->config->runtime_flags))
- 		nbd_config_put(nbd);
+ drivers/hid/hid-sensor-hub.c                       | 32 +++++++++++++++++
+ drivers/iio/accel/hid-sensor-accel-3d.c            | 40 +++++----------------
+ .../iio/common/hid-sensors/hid-sensor-trigger.c    | 21 +++++++++--
+ .../iio/common/hid-sensors/hid-sensor-trigger.h    |  5 +--
+ drivers/iio/gyro/hid-sensor-gyro-3d.c              | 41 +++++----------------
+ drivers/iio/humidity/hid-sensor-humidity.c         | 38 +++++---------------
+ drivers/iio/light/hid-sensor-als.c                 | 39 +++++---------------
+ drivers/iio/light/hid-sensor-prox.c                | 40 +++++----------------
+ drivers/iio/magnetometer/hid-sensor-magn-3d.c      | 41 +++++----------------
+ drivers/iio/orientation/hid-sensor-incl-3d.c       | 42 +++++-----------------
+ drivers/iio/orientation/hid-sensor-rotation.c      | 40 +++++----------------
+ .../iio/position/hid-sensor-custom-intel-hinge.c   | 38 ++++----------------
+ drivers/iio/pressure/hid-sensor-press.c            | 41 +++++----------------
+ drivers/iio/temperature/hid-sensor-temperature.c   |  4 +--
+ include/linux/hid-sensor-hub.h                     | 24 +++++++++++++
+ 15 files changed, 163 insertions(+), 323 deletions(-)
+---
+base-commit: 350d1fb9204b13c5f95e511e98b8bcb47574d425
+change-id: 20260603-28-apr-iio-redundant-argument-v5-temp-4e49eed863af
 
--- 
-2.54.0
+Best regards,
+--  
+Sanjay Chitroda <sanjayembeddedse@gmail.com>
 
