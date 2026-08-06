@@ -1,10 +1,10 @@
 From: Daan De Meyer <daan@amutable.com>
-Date: Thu, 06 Aug 2026 12:36:57 +0200
-Subject: [PATCH 1/2] loop: drop stale partitions on LOOP_CHANGE_FD
+Date: Thu, 06 Aug 2026 12:36:58 +0200
+Subject: [PATCH 2/2] nbd: drop stale partitions on NBD_CLEAR_SOCK
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-b4-loop-nbd-stale-partitions-v1-1-67bb75a8d7be@amutable.com>
+Message-Id: <20260806-b4-loop-nbd-stale-partitions-v1-2-67bb75a8d7be@amutable.com>
 References: <20260806-b4-loop-nbd-stale-partitions-v1-0-67bb75a8d7be@amutable.com>
 In-Reply-To: <20260806-b4-loop-nbd-stale-partitions-v1-0-67bb75a8d7be@amutable.com>
 To: Jens Axboe <axboe@kernel.dk>, Christian Brauner <brauner@kernel.org>, 
@@ -14,11 +14,11 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
  nbd@other.debian.org, Daan De Meyer <daan@amutable.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786012634; l=2677;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786012634; l=2049;
  i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=nhYTyeBI8f5wHwWSuPgM7TTwBqQ7seYwKGdg4H84Gys=;
- b=BuzSqhc/LWYbKLMaUbRZex0rks0uRY7YxKDwj/bN1ilWW8oNKAPgQN9SceX6GBbSrS6oBRUfh
- HEfJ20jrHvqAtYdzMUoTlvrdHw5OPPU+BN0p9IaJKlk1beJ6EN2ywyu
+ bh=aLcawfodzvP0fJXSj8HpdGNkZURTQ0aqxMLBOWMxTBU=;
+ b=FM8lQ6abSH+zQI5Z+faOY250ag+68dCCs2+lZanTrB/pXeFbfrlYyr++1nnOotORedCbB25Wi
+ BG8tcLAeyPCDuYpUajgzDzZn5VKM0QQp16W6N0V9jHiLc/A0lWx8wmU
 X-Developer-Key: i=daan@amutable.com; a=ed25519;
  pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
 X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
@@ -26,69 +26,47 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Commit 267ec4d7223a ("loop: fix partition scan race between udev and
 loop_reread_partitions()") stopped disk_force_media_change() from
-setting GD_NEED_PART_SCAN. That bit did more than request a rescan:
-bdev_disk_changed() drops every partition before it consults
-disk_has_partscan(), so the lazy scan on the next open was also what
-removed partitions from a loop device without LO_FLAGS_PARTSCAN.
+setting GD_NEED_PART_SCAN. Besides requesting a rescan, that bit was what
+removed stale partitions on the next open, as bdev_disk_changed() drops
+all partitions before it consults disk_has_partscan().
 
-Such devices are not unusual. bdev_add_partition() only rejects
-GENHD_FL_NO_PART disks, so BLKPG_ADD_PARTITION works while
-GD_SUPPRESS_PART_SCAN is set, and parted, libfdisk and systemd all fall
-back to BLKPG when BLKRRPART fails with -EINVAL, which is what a loop
-device without LO_FLAGS_PARTSCAN returns.
+nbd_clear_sock_ioctl() relied on that. It zeroes the capacity through
+nbd_bdev_reset(), but nothing removes the partitions of the disconnected
+device anymore. With the default max_part=16 they linger until the next
+connect sets GD_NEED_PART_SCAN again. With max_part=0 nothing ever sets
+it, so they are never removed at all, even though nbd does not set
+GENHD_FL_NO_PART and partitions can therefore still be added with BLKPG.
 
-loop_change_fd() only rescans when LO_FLAGS_PARTSCAN is set, so those
-partitions now survive the backing file swap and keep describing the old
-file. The new backing file must have the same size, but its partition
-table can be completely different, leaving the partition devices mapping
-the wrong ranges.
-
-Call loop_reread_partitions() unconditionally. Without LO_FLAGS_PARTSCAN,
-blk_add_partitions() returns early, so this drops the stale partitions
-without scanning the new backing file.
+Set GD_NEED_PART_SCAN in nbd_clear_sock_ioctl() so the partitions are
+dropped on the next open. Calling bdev_disk_changed() directly is not an
+option as it needs open_mutex, which nbd_open() acquires under
+config_lock.
 
 Fixes: 267ec4d7223a ("loop: fix partition scan race between udev and loop_reread_partitions()")
 Cc: stable@vger.kernel.org
 Signed-off-by: Daan De Meyer <daan@amutable.com>
 ---
- drivers/block/loop.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/block/nbd.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 1faecef33009..416a9c651f97 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -538,7 +538,6 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
- 	struct file *old_file;
- 	unsigned int memflags;
- 	int error;
--	bool partscan;
- 	bool is_loop;
- 
- 	if (!file)
-@@ -592,7 +591,6 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
- 	loop_assign_backing_file(lo, file);
- 	loop_update_dio(lo);
- 	blk_mq_unfreeze_queue(lo->lo_queue, memflags);
--	partscan = lo->lo_flags & LO_FLAGS_PARTSCAN;
- 	loop_global_unlock(lo, is_loop);
- 
- 	/*
-@@ -610,8 +608,12 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
- 	 */
- 	fput(old_file);
- 	dev_set_uevent_suppress(disk_to_dev(lo->lo_disk), 0);
--	if (partscan)
--		loop_reread_partitions(lo);
+diff --git a/drivers/block/nbd.c b/drivers/block/nbd.c
+index 8f10762e90ef..cdafe9d39369 100644
+--- a/drivers/block/nbd.c
++++ b/drivers/block/nbd.c
+@@ -1612,6 +1612,13 @@ static void nbd_clear_sock_ioctl(struct nbd_device *nbd)
+ 	nbd_clear_sock(nbd);
+ 	disk_force_media_change(nbd->disk);
+ 	nbd_bdev_reset(nbd);
 +	/*
-+	 * Rescan or, without LO_FLAGS_PARTSCAN, just drop the partitions of the
-+	 * old backing file. They can exist without LO_FLAGS_PARTSCAN as they may
-+	 * have been added manually with BLKPG.
++	 * Drop the partitions of the disconnected device on the next open. They
++	 * can exist even with max_part zero as they may have been added manually
++	 * with BLKPG. Dropping them here is not possible as that needs
++	 * open_mutex, which nbd_open() acquires under config_lock.
 +	 */
-+	loop_reread_partitions(lo);
- 
- 	error = 0;
- done:
++	set_bit(GD_NEED_PART_SCAN, &nbd->disk->state);
+ 	if (test_and_clear_bit(NBD_RT_HAS_CONFIG_REF,
+ 			       &nbd->config->runtime_flags))
+ 		nbd_config_put(nbd);
 
 -- 
 2.54.0
