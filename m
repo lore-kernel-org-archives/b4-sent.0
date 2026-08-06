@@ -1,125 +1,74 @@
-From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Thu, 06 Aug 2026 17:55:59 +0530
-Subject: [PATCH v5 13/13] iio: pressure: hid-sensor-press: convert probe
- and teardown to devm-managed resources
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v5 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Thu, 06 Aug 2026 20:21:35 +0530
+Message-Id: <20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-13-f1f92c1d830f@gmail.com>
-References: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
-In-Reply-To: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Jiri Kosina <jikos@kernel.org>, 
- Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHefdGoC/4WNwQqDMBBEf0X23EgIWrWn/kfxEDebmlKNzapUx
+ H9vtNBrLwMPZuatwBQcMVySFQLNjp3vI+SnBLDV/Z2EM5FBSXWWpcxFp3mkIH7MS4/ClJWylSm
+ 0IglxOgSy7n3c3uov89Q8CMf9a2+0jkcflsM7Z3vvj2LOhBTGNtjYTBWo8OqZ09ekn+i7Lo0B9
+ bZtH6UR4RfRAAAA
+X-Change-ID: 20260805-master-20260805-sync-d892f9d7a2e0
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com, 
+ Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3567;
- i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=7y381boWRDonXbz69DqfU+M5uO8NaOORx2X9lVUSvzQ=;
- b=VbJXO2qfYqwuadYA/xMfWfNI/w8vbPxCxiUlguopP/lJvDSsVzsXyCP/0jU+8Lr0kYKUr7wA1
- PwbpgjMSEIaDd5RE7dMwP6dd4fnZMDH5B5nygzhxcaaYvSXLTyhF/OZ
-X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
- pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
-X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786027907; l=1751;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=uJNdXIFgQgYW7BJ6rwbHA99ZOQQ5DTapOLjFDhH/nB0=;
+ b=e9Q3J9EBXuJaEsyD2GGPwc4HRbRsJcmp+kH8UN6BktBqIyAFV2pS9AbQVhIR9/D6X357G+KA4
+ ogjRD0YJa+bBfSkVH6Ihc+dBIA7UAMIguhbobRZg1ZUtcr90AoiUtlb
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert HID IIO driver resource management to use devm-managed helpers,
-tying the lifetime of all resources to the device.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-HID trigger setup, IIO registration, and sensor hub callback resource
-are now managed using devm APIs. Cleanup logic previously handled
-explicitly in probe error and teardown paths.
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
 
-This simplifies the probe path by removing goto-based error handling,
-eliminates the remove callback entirely.
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
 
-Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries (sashiko-bot).
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- drivers/iio/pressure/hid-sensor-press.c | 41 ++++++++-------------------------
- 1 file changed, 9 insertions(+), 32 deletions(-)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/drivers/iio/pressure/hid-sensor-press.c b/drivers/iio/pressure/hid-sensor-press.c
-index 4e0f42fefd6b..8ebb8f54a0cb 100644
---- a/drivers/iio/pressure/hid-sensor-press.c
-+++ b/drivers/iio/pressure/hid-sensor-press.c
-@@ -230,7 +230,8 @@ static int press_parse_report(struct platform_device *pdev,
- /* Function to initialize the processing for usage id */
- static int hid_press_probe(struct platform_device *pdev)
- {
--	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
-+	struct device *dev = &pdev->dev;
-+	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
- 	int ret = 0;
- 	static const char *name = "press";
- 	struct iio_dev *indio_dev;
-@@ -278,8 +279,8 @@ static int hid_press_probe(struct platform_device *pdev)
- 
- 	atomic_set(&press_state->common_attributes.data_ready, 0);
- 
--	ret = hid_sensor_setup_trigger(indio_dev, name,
--				       &press_state->common_attributes);
-+	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
-+					    &press_state->common_attributes);
- 	if (ret) {
- 		dev_err(&pdev->dev, "trigger setup failed\n");
- 		return ret;
-@@ -288,38 +289,15 @@ static int hid_press_probe(struct platform_device *pdev)
- 	press_state->callbacks.send_event = press_proc_event;
- 	press_state->callbacks.capture_sample = press_capture_sample;
- 	press_state->callbacks.pdev = pdev;
--	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_PRESSURE,
--					   &press_state->callbacks);
-+	ret = devm_sensor_hub_register_callback(dev, hsdev,
-+						HID_USAGE_SENSOR_PRESSURE,
-+						&press_state->callbacks);
- 	if (ret < 0) {
- 		dev_err(&pdev->dev, "callback reg failed\n");
--		goto error_remove_trigger;
--	}
--
--	ret = iio_device_register(indio_dev);
--	if (ret) {
--		dev_err(&pdev->dev, "device register failed\n");
--		goto error_remove_callback;
-+		return ret;
- 	}
- 
--	return ret;
--
--error_remove_callback:
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_PRESSURE);
--error_remove_trigger:
--	hid_sensor_remove_trigger(&press_state->common_attributes);
--	return ret;
--}
--
--/* Function to deinitialize the processing for usage id */
--static void hid_press_remove(struct platform_device *pdev)
--{
--	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
--	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
--	struct press_state *press_state = iio_priv(indio_dev);
--
--	iio_device_unregister(indio_dev);
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_PRESSURE);
--	hid_sensor_remove_trigger(&press_state->common_attributes);
-+	return devm_iio_device_register(dev, indio_dev);
- }
- 
- static const struct platform_device_id hid_press_ids[] = {
-@@ -338,7 +316,6 @@ static struct platform_driver hid_press_platform_driver = {
- 		.pm	= &hid_sensor_pm_ops,
- 	},
- 	.probe		= hid_press_probe,
--	.remove		= hid_press_remove,
- };
- module_platform_driver(hid_press_platform_driver);
- 
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  51 +++++++
+ drivers/clk/qcom/Kconfig                           |  14 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 148 +++++++++++++++++++++
+ 4 files changed, 214 insertions(+)
+---
+base-commit: 1701fda2f58e345c050f4309971bdc07cd6146ba
+change-id: 20260805-master-20260805-sync-d892f9d7a2e0
 
--- 
-2.34.1
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
