@@ -1,11 +1,11 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Thu, 06 Aug 2026 17:55:50 +0530
-Subject: [PATCH v5 04/13] iio: gyro: hid-sensor-gyro-3d: convert probe and
- teardown to devm-managed resources
+Date: Thu, 06 Aug 2026 17:55:51 +0530
+Subject: [PATCH v5 05/13] iio: accel: hid-sensor-accel-3d: convert probe
+ and teardown to devm-managed resources
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-4-f1f92c1d830f@gmail.com>
+Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-5-f1f92c1d830f@gmail.com>
 References: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 In-Reply-To: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -17,11 +17,11 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3576;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3533;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=93lHICIbaqkhzBStetBiddfJA0a+d0oJo1BZpquDDZw=;
- b=nd3GPjtbCy3xPC/pFnqY3PhBohtwqr33T8ott9DtmgItLuVHqIKRtGjDC42zeI5Ctjk8OZlpE
- vzJ9G81aSxPBRy46QoEBR+rDDWTVmuXb/FzV7XH2NV7HNZIpv6sIHRr
+ bh=8MWI/12hlI4M9yhRZDPc0n3MB0pcjTD/Emba1guoIhc=;
+ b=MZal0cvwGDtehKVxt7L/TWs+AfT6QAVJEnhx70adYXeoGXjpnpCSjODYESYM5q1u1LzIqtCdT
+ h+8IhyEJc9qCVMLEF6+IoRoNN9BQjKrD0Od2ZoEe8U0olL+8gueI86S
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
@@ -39,43 +39,42 @@ eliminates the remove callback entirely.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
- drivers/iio/gyro/hid-sensor-gyro-3d.c | 41 ++++++++---------------------------
- 1 file changed, 9 insertions(+), 32 deletions(-)
+ drivers/iio/accel/hid-sensor-accel-3d.c | 40 +++++++--------------------------
+ 1 file changed, 8 insertions(+), 32 deletions(-)
 
-diff --git a/drivers/iio/gyro/hid-sensor-gyro-3d.c b/drivers/iio/gyro/hid-sensor-gyro-3d.c
-index cf049700d415..66778315e86d 100644
---- a/drivers/iio/gyro/hid-sensor-gyro-3d.c
-+++ b/drivers/iio/gyro/hid-sensor-gyro-3d.c
-@@ -264,7 +264,8 @@ static int gyro_3d_parse_report(struct platform_device *pdev,
+diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
+index a7cccbaa82f8..7ba0228f18b4 100644
+--- a/drivers/iio/accel/hid-sensor-accel-3d.c
++++ b/drivers/iio/accel/hid-sensor-accel-3d.c
+@@ -314,7 +314,8 @@ static int accel_3d_parse_report(struct platform_device *pdev,
  /* Function to initialize the processing for usage id */
- static int hid_gyro_3d_probe(struct platform_device *pdev)
+ static int hid_accel_3d_probe(struct platform_device *pdev)
  {
 -	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 +	struct device *dev = &pdev->dev;
 +	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
  	int ret = 0;
- 	static const char *name = "gyro_3d";
+ 	const char *name;
  	struct iio_dev *indio_dev;
-@@ -311,8 +312,8 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
+@@ -374,8 +375,8 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
  
- 	atomic_set(&gyro_state->common_attributes.data_ready, 0);
+ 	atomic_set(&accel_state->common_attributes.data_ready, 0);
  
 -	ret = hid_sensor_setup_trigger(indio_dev, name,
--				       &gyro_state->common_attributes);
+-				       &accel_state->common_attributes);
 +	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
-+					    &gyro_state->common_attributes);
++					    &accel_state->common_attributes);
  	if (ret < 0) {
  		dev_err(&pdev->dev, "trigger setup failed\n");
  		return ret;
-@@ -321,38 +322,15 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
- 	gyro_state->callbacks.send_event = gyro_3d_proc_event;
- 	gyro_state->callbacks.capture_sample = gyro_3d_capture_sample;
- 	gyro_state->callbacks.pdev = pdev;
--	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_GYRO_3D,
--					   &gyro_state->callbacks);
-+	ret = devm_sensor_hub_register_callback(dev, hsdev,
-+						HID_USAGE_SENSOR_GYRO_3D,
-+						&gyro_state->callbacks);
+@@ -384,38 +385,14 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
+ 	accel_state->callbacks.send_event = accel_3d_proc_event;
+ 	accel_state->callbacks.capture_sample = accel_3d_capture_sample;
+ 	accel_state->callbacks.pdev = pdev;
+-	ret = sensor_hub_register_callback(hsdev, hsdev->usage,
+-					   &accel_state->callbacks);
++	ret = devm_sensor_hub_register_callback(dev, hsdev, hsdev->usage,
++						&accel_state->callbacks);
  	if (ret < 0) {
  		dev_err(&pdev->dev, "callback reg failed\n");
 -		goto error_remove_trigger;
@@ -91,33 +90,33 @@ index cf049700d415..66778315e86d 100644
 -	return ret;
 -
 -error_remove_callback:
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_GYRO_3D);
+-	sensor_hub_remove_callback(hsdev, hsdev->usage);
 -error_remove_trigger:
--	hid_sensor_remove_trigger(&gyro_state->common_attributes);
+-	hid_sensor_remove_trigger(&accel_state->common_attributes);
 -	return ret;
 -}
 -
 -/* Function to deinitialize the processing for usage id */
--static void hid_gyro_3d_remove(struct platform_device *pdev)
+-static void hid_accel_3d_remove(struct platform_device *pdev)
 -{
 -	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 -	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
--	struct gyro_3d_state *gyro_state = iio_priv(indio_dev);
+-	struct accel_3d_state *accel_state = iio_priv(indio_dev);
 -
 -	iio_device_unregister(indio_dev);
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_GYRO_3D);
--	hid_sensor_remove_trigger(&gyro_state->common_attributes);
+-	sensor_hub_remove_callback(hsdev, hsdev->usage);
+-	hid_sensor_remove_trigger(&accel_state->common_attributes);
 +	return devm_iio_device_register(dev, indio_dev);
  }
  
- static const struct platform_device_id hid_gyro_3d_ids[] = {
-@@ -371,7 +349,6 @@ static struct platform_driver hid_gyro_3d_platform_driver = {
+ static const struct platform_device_id hid_accel_3d_ids[] = {
+@@ -437,7 +414,6 @@ static struct platform_driver hid_accel_3d_platform_driver = {
  		.pm	= &hid_sensor_pm_ops,
  	},
- 	.probe		= hid_gyro_3d_probe,
--	.remove		= hid_gyro_3d_remove,
+ 	.probe		= hid_accel_3d_probe,
+-	.remove		= hid_accel_3d_remove,
  };
- module_platform_driver(hid_gyro_3d_platform_driver);
+ module_platform_driver(hid_accel_3d_platform_driver);
  
 
 -- 
