@@ -1,10 +1,11 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Thu, 06 Aug 2026 17:55:49 +0530
-Subject: [PATCH v5 03/13] HID: hid-sensor-hub: introduce device managed API
+Date: Thu, 06 Aug 2026 17:55:50 +0530
+Subject: [PATCH v5 04/13] iio: gyro: hid-sensor-gyro-3d: convert probe and
+ teardown to devm-managed resources
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-3-f1f92c1d830f@gmail.com>
+Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-4-f1f92c1d830f@gmail.com>
 References: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 In-Reply-To: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -16,115 +17,107 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3632;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3576;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=E6NeHcHn1od2bjcFdG8WUYv/9lNEM6tJvVUI7ONP3w0=;
- b=JYVSUlbW7/7kXX43nB26KQ64ZWCJUNjHLe8ae/jXHO55V1lUuuI+ab73jw3FQ7IINPfYtSi/e
- TIn2NT4VigxCVb57E9lcYF7Kf85SoLH0LbsrSV8AzueVg1F3vEdmS22
+ bh=93lHICIbaqkhzBStetBiddfJA0a+d0oJo1BZpquDDZw=;
+ b=nd3GPjtbCy3xPC/pFnqY3PhBohtwqr33T8ott9DtmgItLuVHqIKRtGjDC42zeI5Ctjk8OZlpE
+ vzJ9G81aSxPBRy46QoEBR+rDDWTVmuXb/FzV7XH2NV7HNZIpv6sIHRr
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sensor_hub_register_callback() is common API used for the HID IIO drivers,
-prepare devm API devm_sensor_hub_register_callback() to acquire resource
-during setup and release using device managed framework during drivers
-fail, unbind or remove path.
+Convert HID IIO driver resource management to use devm-managed helpers,
+tying the lifetime of all resources to the device.
 
-store the required callback removal context (hsdev and usage_id) in a
-dedicated struct sensor_hub_cb_devres, and register a devres action to
-handle to release resource with devres framework and helper API.
+HID trigger setup, IIO registration, and sensor hub callback resource
+are now managed using devm APIs. Cleanup logic previously handled
+explicitly in probe error and teardown paths.
+
+This simplifies the probe path by removing goto-based error handling,
+eliminates the remove callback entirely.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
- drivers/hid/hid-sensor-hub.c   | 32 ++++++++++++++++++++++++++++++++
- include/linux/hid-sensor-hub.h | 24 ++++++++++++++++++++++++
- 2 files changed, 56 insertions(+)
+ drivers/iio/gyro/hid-sensor-gyro-3d.c | 41 ++++++++---------------------------
+ 1 file changed, 9 insertions(+), 32 deletions(-)
 
-diff --git a/drivers/hid/hid-sensor-hub.c b/drivers/hid/hid-sensor-hub.c
-index 90666ff629de..31dbdce27dc6 100644
---- a/drivers/hid/hid-sensor-hub.c
-+++ b/drivers/hid/hid-sensor-hub.c
-@@ -187,6 +187,38 @@ int sensor_hub_remove_callback(struct hid_sensor_hub_device *hsdev,
- }
- EXPORT_SYMBOL_GPL(sensor_hub_remove_callback);
- 
-+static void sensor_hub_remove_callback_helper(void *ptr)
-+{
-+	struct sensor_hub_cb_devres *res = ptr;
-+
-+	sensor_hub_remove_callback(res->hsdev, res->usage_id);
-+}
-+
-+int devm_sensor_hub_register_callback(struct device *dev,
-+				      struct hid_sensor_hub_device *hsdev,
-+				      u32 usage_id,
-+				      struct hid_sensor_hub_callbacks *usage_callback)
-+{
-+	struct sensor_hub_cb_devres *res;
-+	int ret;
-+
-+	ret = sensor_hub_register_callback(hsdev, usage_id, usage_callback);
-+	if (ret)
-+		return ret;
-+
-+	res = devm_kmalloc(dev, sizeof(*res), GFP_KERNEL);
-+	if (!res) {
-+		sensor_hub_remove_callback(hsdev, usage_id);
-+		return -ENOMEM;
-+	}
-+
-+	res->hsdev = hsdev;
-+	res->usage_id = usage_id;
-+
-+	return devm_add_action_or_reset(dev, sensor_hub_remove_callback_helper, res);
-+}
-+EXPORT_SYMBOL_GPL(devm_sensor_hub_register_callback);
-+
- int sensor_hub_set_feature(struct hid_sensor_hub_device *hsdev, u32 report_id,
- 			   u32 field_index, int buffer_size, void *buffer)
+diff --git a/drivers/iio/gyro/hid-sensor-gyro-3d.c b/drivers/iio/gyro/hid-sensor-gyro-3d.c
+index cf049700d415..66778315e86d 100644
+--- a/drivers/iio/gyro/hid-sensor-gyro-3d.c
++++ b/drivers/iio/gyro/hid-sensor-gyro-3d.c
+@@ -264,7 +264,8 @@ static int gyro_3d_parse_report(struct platform_device *pdev,
+ /* Function to initialize the processing for usage id */
+ static int hid_gyro_3d_probe(struct platform_device *pdev)
  {
-diff --git a/include/linux/hid-sensor-hub.h b/include/linux/hid-sensor-hub.h
-index e71056553108..c00347b15513 100644
---- a/include/linux/hid-sensor-hub.h
-+++ b/include/linux/hid-sensor-hub.h
-@@ -75,6 +75,16 @@ struct hid_sensor_hub_device {
- 	struct sensor_hub_pending pending;
+-	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
++	struct device *dev = &pdev->dev;
++	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
+ 	int ret = 0;
+ 	static const char *name = "gyro_3d";
+ 	struct iio_dev *indio_dev;
+@@ -311,8 +312,8 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
+ 
+ 	atomic_set(&gyro_state->common_attributes.data_ready, 0);
+ 
+-	ret = hid_sensor_setup_trigger(indio_dev, name,
+-				       &gyro_state->common_attributes);
++	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
++					    &gyro_state->common_attributes);
+ 	if (ret < 0) {
+ 		dev_err(&pdev->dev, "trigger setup failed\n");
+ 		return ret;
+@@ -321,38 +322,15 @@ static int hid_gyro_3d_probe(struct platform_device *pdev)
+ 	gyro_state->callbacks.send_event = gyro_3d_proc_event;
+ 	gyro_state->callbacks.capture_sample = gyro_3d_capture_sample;
+ 	gyro_state->callbacks.pdev = pdev;
+-	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_GYRO_3D,
+-					   &gyro_state->callbacks);
++	ret = devm_sensor_hub_register_callback(dev, hsdev,
++						HID_USAGE_SENSOR_GYRO_3D,
++						&gyro_state->callbacks);
+ 	if (ret < 0) {
+ 		dev_err(&pdev->dev, "callback reg failed\n");
+-		goto error_remove_trigger;
+-	}
+-
+-	ret = iio_device_register(indio_dev);
+-	if (ret) {
+-		dev_err(&pdev->dev, "device register failed\n");
+-		goto error_remove_callback;
++		return ret;
+ 	}
+ 
+-	return ret;
+-
+-error_remove_callback:
+-	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_GYRO_3D);
+-error_remove_trigger:
+-	hid_sensor_remove_trigger(&gyro_state->common_attributes);
+-	return ret;
+-}
+-
+-/* Function to deinitialize the processing for usage id */
+-static void hid_gyro_3d_remove(struct platform_device *pdev)
+-{
+-	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
+-	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
+-	struct gyro_3d_state *gyro_state = iio_priv(indio_dev);
+-
+-	iio_device_unregister(indio_dev);
+-	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_GYRO_3D);
+-	hid_sensor_remove_trigger(&gyro_state->common_attributes);
++	return devm_iio_device_register(dev, indio_dev);
+ }
+ 
+ static const struct platform_device_id hid_gyro_3d_ids[] = {
+@@ -371,7 +349,6 @@ static struct platform_driver hid_gyro_3d_platform_driver = {
+ 		.pm	= &hid_sensor_pm_ops,
+ 	},
+ 	.probe		= hid_gyro_3d_probe,
+-	.remove		= hid_gyro_3d_remove,
  };
- 
-+/**
-+ * struct sensor_hub_cb_devres - devres data for sensor hub callbacks
-+ * @hsdev:	Hub device instance.
-+ * @usage_id:	Usage ID associated with registered callback
-+ */
-+struct sensor_hub_cb_devres {
-+	struct hid_sensor_hub_device *hsdev;
-+	u32 usage_id;
-+};
-+
- /**
-  * struct hid_sensor_hub_callbacks - Client callback functions
-  * @pdev:		Platform device instance of the client driver.
-@@ -139,6 +149,20 @@ int sensor_hub_register_callback(struct hid_sensor_hub_device *hsdev,
- int sensor_hub_remove_callback(struct hid_sensor_hub_device *hsdev,
- 			u32 usage_id);
- 
-+/**
-+ * devm_sensor_hub_register_callback() - Managed register client callbacks
-+ * @dev: Device for resource management
-+ * @hsdev: Hub device instance
-+ * @usage_id: Usage id of the client (e.g. 0x200076 for Gyro)
-+ * @usage_callback: Callback function storage
-+ *
-+ * This is the devres (managed) version of sensor_hub_register_callback().
-+ * The callback will be automatically unregistered when the device is detached.
-+ */
-+int devm_sensor_hub_register_callback(struct device *dev,
-+				      struct hid_sensor_hub_device *hsdev,
-+				      u32 usage_id,
-+				      struct hid_sensor_hub_callbacks *usage_callback);
- 
- /* Hid sensor hub core interfaces */
+ module_platform_driver(hid_gyro_3d_platform_driver);
  
 
 -- 
