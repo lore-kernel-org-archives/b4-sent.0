@@ -1,15 +1,13 @@
 From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Subject: [PATCH v5 0/2] Add LPASS VA CSR HeartBeat pulse clock support
-Date: Thu, 06 Aug 2026 20:21:35 +0530
-Message-Id: <20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com>
+Date: Thu, 06 Aug 2026 20:21:36 +0530
+Subject: [PATCH v5 1/2] dt-bindings: clock: qcom: Add LPASS VA CSR
+ HeartBeat pulse clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHefdGoC/4WNwQqDMBBEf0X23EgIWrWn/kfxEDebmlKNzapUx
- H9vtNBrLwMPZuatwBQcMVySFQLNjp3vI+SnBLDV/Z2EM5FBSXWWpcxFp3mkIH7MS4/ClJWylSm
- 0IglxOgSy7n3c3uov89Q8CMf9a2+0jkcflsM7Z3vvj2LOhBTGNtjYTBWo8OqZ09ekn+i7Lo0B9
- bZtH6UR4RfRAAAA
-X-Change-ID: 20260805-master-20260805-sync-d892f9d7a2e0
+Message-Id: <20260806-master-20260805-sync-v5-1-0ff42e9b6431@oss.qualcomm.com>
+References: <20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com>
+In-Reply-To: <20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
@@ -22,53 +20,87 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786027907; l=1751;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786027907; l=2278;
  i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=uJNdXIFgQgYW7BJ6rwbHA99ZOQQ5DTapOLjFDhH/nB0=;
- b=e9Q3J9EBXuJaEsyD2GGPwc4HRbRsJcmp+kH8UN6BktBqIyAFV2pS9AbQVhIR9/D6X357G+KA4
- ogjRD0YJa+bBfSkVH6Ihc+dBIA7UAMIguhbobRZg1ZUtcr90AoiUtlb
+ h=from:subject:message-id; bh=qxVOLK3Yva6vAmZ6Xln4mzA/Miy1La7zeDTze4nIz90=;
+ b=87HM7BtBsxxGw2O5gXizH1O4GgWMqqzSmrvoovkXlvDd5KvAQHQCY9+PNew5ooQAXBH4DvikZ
+ dGQsisWptNVATfEoynSAlarQnXWnfUGvDYKn0FNWKQ3cXJ9Zmo4I3WZ
 X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
  pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
 X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The LPASS VA CSR block contains rate generator hardware that produces
-a HeartBeat Pulse (also known as RateGen Pulse). This pulse
-synchronizes the start of the DMAs and Codec Interfaces for the audio
-usecases and can serve as a periodic wakeup source for the DSP.
+Add a binding for the Qualcomm LPASS VA CSR rate generator node that
+exposes the lpass_heartbeat_pulse clock on hawi.
 
-This series adds the DT binding and driver support to model this
-rate generator as a clock provider.
-
-Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
-clock provider node under Documentation/devicetree/bindings/clock/.
-
-Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
-registers the lpass_heartbeat_pulse clock and enables/disables the
-rate generator via regmap when the clock consumer requests it.
-
-Changes in v5:
-- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
-  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
-  entries (sashiko-bot).
-- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+The HeartBeat Pulse (also known as RateGen Pulse) synchronizes the
+start of the DMAs and Codec Interfaces for the audio usecase and can
+serve as a periodic wakeup source for the DSP.
 
 Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 ---
-Sarath Ganapathiraju (2):
-      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
-      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     | 51 ++++++++++++++++++++++
+ 1 file changed, 51 insertions(+)
 
- .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  51 +++++++
- drivers/clk/qcom/Kconfig                           |  14 ++
- drivers/clk/qcom/Makefile                          |   1 +
- drivers/clk/qcom/lpass-va-csr.c                    | 148 +++++++++++++++++++++
- 4 files changed, 214 insertions(+)
----
-base-commit: 1701fda2f58e345c050f4309971bdc07cd6146ba
-change-id: 20260805-master-20260805-sync-d892f9d7a2e0
+diff --git a/Documentation/devicetree/bindings/clock/qcom,hawi-lpass-va-csr.yaml b/Documentation/devicetree/bindings/clock/qcom,hawi-lpass-va-csr.yaml
+new file mode 100644
+index 000000000000..9935173d8bee
+--- /dev/null
++++ b/Documentation/devicetree/bindings/clock/qcom,hawi-lpass-va-csr.yaml
+@@ -0,0 +1,51 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/clock/qcom,hawi-lpass-va-csr.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Qualcomm LPASS VA CSR heartbeat pulse clock provider
++
++maintainers:
++  - Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>
++  - Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
++
++description:
++  The LPASS (Low Power Audio Subsystem) VA CSR block contains a rate
++  generator that produces a periodic HeartBeat Pulse, also known as
++  the RateGen Pulse. This pulse synchronizes the start of DMAs and
++  Codec Interfaces for audio usecases and can serve as a periodic
++  wakeup source for the DSP.
++
++properties:
++  compatible:
++    enum:
++      - qcom,hawi-lpass-va-csr
++
++  reg:
++    maxItems: 1
++    description: Address and size of the rate generator registers within
++      the VA CSR block.
++
++  "#clock-cells":
++    const: 0
++
++required:
++  - compatible
++  - reg
++  - "#clock-cells"
++
++additionalProperties: false
++
++examples:
++  - |
++    soc {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      clock-controller@7eed000 {
++        compatible = "qcom,hawi-lpass-va-csr";
++        reg = <0x0 0x07eed000 0x0 0x14>;
++        #clock-cells = <0>;
++      };
++    };
 
-Best regards,
---  
-Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+-- 
+2.34.1
 
