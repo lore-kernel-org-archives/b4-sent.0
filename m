@@ -1,11 +1,11 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Thu, 06 Aug 2026 17:55:55 +0530
-Subject: [PATCH v5 09/13] iio: magnetometer: hid-sensor-magn-3d: convert
+Date: Thu, 06 Aug 2026 17:55:56 +0530
+Subject: [PATCH v5 10/13] iio: orientation: hid-sensor-incl-3d: convert
  probe and teardown to devm-managed resources
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-9-f1f92c1d830f@gmail.com>
+Message-Id: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-10-f1f92c1d830f@gmail.com>
 References: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 In-Reply-To: <20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -17,11 +17,11 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3629;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786019201; l=3627;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=psVvPChQvmnDeqq5c0sAzyCmhiEktLAbJoySPLiD/3g=;
- b=JtmCBV4eRexLF3nQbqCZPGXDJ+m0LWy9uJ7HS+T109gjkI2MPjw4XbwnB3NtiCCKh3iPppLI7
- ithdY7N7IYHDiuNlj1utSJUSzElVk4zSPD4mNuT1AgTV1FaQV0o7I7w
+ bh=Db8QZy6XNbEvWiQnvLmsz7HdMBrrBkrM5ikOGII6cRw=;
+ b=u4vtChtzjG31PLfSYHpd7//v35p3JZfN0ANroW2BkOL5UmX7WXi0pjiTdMWZEFdT6Qxp1WkMV
+ RCMBAqnWprzDEvqdqMHUSBUdRx2wm9pL943BHbZAZLI/qM6f+R5QEDC
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
@@ -39,44 +39,45 @@ eliminates the remove callback entirely.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
- drivers/iio/magnetometer/hid-sensor-magn-3d.c | 41 ++++++---------------------
- 1 file changed, 9 insertions(+), 32 deletions(-)
+ drivers/iio/orientation/hid-sensor-incl-3d.c | 42 ++++++----------------------
+ 1 file changed, 9 insertions(+), 33 deletions(-)
 
-diff --git a/drivers/iio/magnetometer/hid-sensor-magn-3d.c b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-index 5402cffa8326..c8b4fa7785c9 100644
---- a/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-+++ b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-@@ -450,7 +450,8 @@ static int magn_3d_parse_report(struct platform_device *pdev,
+diff --git a/drivers/iio/orientation/hid-sensor-incl-3d.c b/drivers/iio/orientation/hid-sensor-incl-3d.c
+index 435e70557721..b5f70732d035 100644
+--- a/drivers/iio/orientation/hid-sensor-incl-3d.c
++++ b/drivers/iio/orientation/hid-sensor-incl-3d.c
+@@ -293,7 +293,8 @@ static int incl_3d_parse_report(struct platform_device *pdev,
  /* Function to initialize the processing for usage id */
- static int hid_magn_3d_probe(struct platform_device *pdev)
+ static int hid_incl_3d_probe(struct platform_device *pdev)
  {
 -	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 +	struct device *dev = &pdev->dev;
 +	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
- 	int ret = 0;
- 	static char *name = "magn_3d";
+ 	int ret;
+ 	static char *name = "incli_3d";
  	struct iio_dev *indio_dev;
-@@ -498,8 +499,8 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
+@@ -343,8 +344,8 @@ static int hid_incl_3d_probe(struct platform_device *pdev)
  
- 	atomic_set(&magn_state->magn_flux_attributes.data_ready, 0);
+ 	atomic_set(&incl_state->common_attributes.data_ready, 0);
  
 -	ret = hid_sensor_setup_trigger(indio_dev, name,
--				       &magn_state->magn_flux_attributes);
+-				       &incl_state->common_attributes);
 +	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
-+					    &magn_state->magn_flux_attributes);
- 	if (ret < 0) {
++					    &incl_state->common_attributes);
+ 	if (ret) {
  		dev_err(&pdev->dev, "trigger setup failed\n");
  		return ret;
-@@ -508,38 +509,15 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
- 	magn_state->callbacks.send_event = magn_3d_proc_event;
- 	magn_state->callbacks.capture_sample = magn_3d_capture_sample;
- 	magn_state->callbacks.pdev = pdev;
--	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_COMPASS_3D,
--					   &magn_state->callbacks);
+@@ -353,39 +354,15 @@ static int hid_incl_3d_probe(struct platform_device *pdev)
+ 	incl_state->callbacks.send_event = incl_3d_proc_event;
+ 	incl_state->callbacks.capture_sample = incl_3d_capture_sample;
+ 	incl_state->callbacks.pdev = pdev;
+-	ret = sensor_hub_register_callback(hsdev,
+-					   HID_USAGE_SENSOR_INCLINOMETER_3D,
+-					   &incl_state->callbacks);
 +	ret = devm_sensor_hub_register_callback(dev, hsdev,
-+						HID_USAGE_SENSOR_COMPASS_3D,
-+						&magn_state->callbacks);
- 	if (ret < 0) {
++						HID_USAGE_SENSOR_INCLINOMETER_3D,
++						&incl_state->callbacks);
+ 	if (ret) {
  		dev_err(&pdev->dev, "callback reg failed\n");
 -		goto error_remove_trigger;
 -	}
@@ -88,36 +89,36 @@ index 5402cffa8326..c8b4fa7785c9 100644
 +		return ret;
  	}
  
--	return ret;
+-	return 0;
 -
 -error_remove_callback:
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_COMPASS_3D);
+-	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_INCLINOMETER_3D);
 -error_remove_trigger:
--	hid_sensor_remove_trigger(&magn_state->magn_flux_attributes);
+-	hid_sensor_remove_trigger(&incl_state->common_attributes);
 -	return ret;
 -}
 -
 -/* Function to deinitialize the processing for usage id */
--static void hid_magn_3d_remove(struct platform_device *pdev)
+-static void hid_incl_3d_remove(struct platform_device *pdev)
 -{
 -	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 -	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
--	struct magn_3d_state *magn_state = iio_priv(indio_dev);
+-	struct incl_3d_state *incl_state = iio_priv(indio_dev);
 -
 -	iio_device_unregister(indio_dev);
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_COMPASS_3D);
--	hid_sensor_remove_trigger(&magn_state->magn_flux_attributes);
+-	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_INCLINOMETER_3D);
+-	hid_sensor_remove_trigger(&incl_state->common_attributes);
 +	return devm_iio_device_register(dev, indio_dev);
  }
  
- static const struct platform_device_id hid_magn_3d_ids[] = {
-@@ -558,7 +536,6 @@ static struct platform_driver hid_magn_3d_platform_driver = {
+ static const struct platform_device_id hid_incl_3d_ids[] = {
+@@ -404,7 +381,6 @@ static struct platform_driver hid_incl_3d_platform_driver = {
  		.pm	= &hid_sensor_pm_ops,
  	},
- 	.probe		= hid_magn_3d_probe,
--	.remove		= hid_magn_3d_remove,
+ 	.probe		= hid_incl_3d_probe,
+-	.remove		= hid_incl_3d_remove,
  };
- module_platform_driver(hid_magn_3d_platform_driver);
+ module_platform_driver(hid_incl_3d_platform_driver);
  
 
 -- 
