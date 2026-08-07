@@ -1,151 +1,194 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Sat, 08 Aug 2026 05:17:14 +0800
-Subject: [PATCH RFC 13/13] mm/huge_memory: count only swap cache refs in
- anon folio split
+From: Ackerley Tng <ackerleytng@google.com>
+Subject: [PATCH v10 00/41] guest_memfd: In-place conversion support
+Date: Fri, 07 Aug 2026 14:52:39 -0700
+Message-Id: <20260807-gmem-inplace-conversion-v10-0-2fc18ee6d3ba@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-swap-thp-cleanup-v1-13-689939a7ccc3@tencent.com>
-References: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
-In-Reply-To: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
-To: linux-mm@kvack.org
-Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- Zi Yan <ziy@nvidia.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- "Liam R. Howlett" <liam@infradead.org>, Nico Pache <nico.pache@linux.dev>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- Chris Li <chrisl@kernel.org>, Kemeng Shi <shikemeng@huaweicloud.com>, 
- Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
- Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=4434;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=6txV4z9147MCY3v3Y112JpwmGarss54hNdYDLN2lhpw=;
- b=XXdvVVkJnsuSqgAphHl1AuGTvhydbgaE1nQ6pBzl6XSvLM9/V7veYYRMKGOANAqlaGxgJnV1b
- LerXbuHpQtTB/9FMV3d50V87DM7K2D5+CgItBEfmSefWnMWMgXfF5CV
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAKhTdmoC/33SzW6DMAwA4Fepcl624JC/nfYe0w4hcSBagS4w1
+ Kni3RfaSXRC9OjI/uxYvpABU8SBvB4uJOEUh9h3OSjY04G4xnY10ujzAwEGkgEIWrfY0tidjtY
+ hdX03YVqKaOWZrzw3SnBLcvUpYYjnK/3+kePKDkirZDvXLN7n1L50eB6X1CYOY59+rkNMfCm4t
+ eMF3203ccqoCK4Aqxg6bd7qvq+P+Oz6liz9pvIOArkPlRnCnBbQCBaC30BihUrQ+5DIkNeSaee
+ CswAbSK6QYGofkhkyha2E1VVhbLmB1B0EsA+pDEFgwWJppOBsA+kVksWDr+llIg9GGC6UFnwDm
+ RVSj3ZkMsRFMBYdWPT/dzTfzibh13c+xPHvdub5F8bP7JKmAgAA
+X-Change-ID: 20260225-gmem-inplace-conversion-bd0dbd39753a
+To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
+ brauner@kernel.org, chao.p.peng@linux.intel.com, david@kernel.org, 
+ jmattson@google.com, jthoughton@google.com, michael.roth@amd.com, 
+ oupton@kernel.org, pankaj.gupta@amd.com, qperret@google.com, 
+ rick.p.edgecombe@intel.com, rientjes@google.com, shivankg@amd.com, 
+ steven.price@arm.com, tabba@google.com, willy@infradead.org, 
+ wyihan@google.com, yan.y.zhao@intel.com, forkloop@google.com, 
+ pratyush@kernel.org, suzuki.poulose@arm.com, aneesh.kumar@kernel.org, 
+ liam@infradead.org, Paolo Bonzini <pbonzini@redhat.com>, 
+ Sean Christopherson <seanjc@google.com>, Thomas Gleixner <tglx@kernel.org>, 
+ Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>, Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Shuah Khan <shuah@kernel.org>, Vishal Annapurve <vannapurve@google.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
+ Kairui Song <kasong@tencent.com>, Kemeng Shi <shikemeng@huaweicloud.com>, 
+ Nhat Pham <nphamcs@gmail.com>, Barry Song <baohua@kernel.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Youngjun Park <youngjun.park@lge.com>, 
+ Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
+ Kiryl Shutsemau <kas@kernel.org>, Baoquan He <baoquan.he@linux.dev>, 
+ Jason Gunthorpe <jgg@ziepe.ca>, John Hubbard <jhubbard@nvidia.com>, 
+ Peter Xu <peterx@redhat.com>, tarunsahu@google.com, 
+ Jason Gunthorpe <jgg@ziepe.ca>, Vlastimil Babka <vbabka@kernel.org>, 
+ Baoquan He <baoquan.he@linux.dev>
+Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
+ linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
+ Xiaoyao Li <xiaoyao.li@intel.com>, Fuad Tabba <fuad.tabba@linux.dev>, 
+ "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786139564; l=7969;
+ i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
+ bh=VRY21HbGe+yrXyu21+xEN17//OmuhC1bDdv0JvaqW4Q=;
+ b=1MMm0tJlW1y4Emo2ScsHjlWOO+GuUKmskR1J2fwzVgT2PGgtiz+v6uJrsvDDPE/XdsXrfLDJw
+ o+0+DbabpMKAo/92iXSHQw01z3E1wx+Iu+a6Vsp3cbzsxoCge5e4wd4
+X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
+ pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
+X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Only __folio_freeze_split_unmap() sees anon folios and swap cache folios
-now. The file split helper only handles page cache folios, which hold
-exactly folio_nr_pages() references.
+This is v10 of guest_memfd in-place conversion support, which addresses
+comments on v9. Please find the motivation for this series from v8 and
+before.
 
-Rename folio_cache_ref_count() to folio_swapcache_ref_count() and drop
-the anon check so the helper counts what its name says. The file split
-helper now uses folio_nr_pages() directly.
+v9 is based on kvm-x86/next, with a cherry-picked version of David's GUP
+fix [1], and a cherry-picked version of David's refactoring patch
+[2].
 
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Here's everything stitched together for your convenience:
+
+https://github.com/googleprodkernel/linux-cc/commits/guest_memfd-inplace-conversion-v10
+
+I tested v10 with CoCo selftests on top of the branch above:
+
+https://github.com/googleprodkernel/linux-cc/commits/guest_memfd-inplace-conversion-coco-selftests-v10
+
+Tested with both CONFIG_KVM_VM_MEMORY_ATTRIBUTES enabled and disabled:
+
++ tools/testing/selftests/kvm/guest_memfd_test.c
++ tools/testing/selftests/kvm/pre_fault_memory_test.c
++ tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
++ tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
++ tools/testing/selftests/kvm/x86/private_mem_kvm_exits_test.c
++ The TDX and SNP conversions selftests in https://github.com/googleprodkernel/linux-cc/commits/guest_memfd-inplace-conversion-coco-selftests-v10
+
+[1] https://lore.kernel.org/all/20260731-check_and_migrate_movable_folios-v1-1-e0002d7b791e@kernel.org/
+("mm/gup: fix always draining LRU caches in collect_longterm_unpinnable_folios()")
+[2] https://lore.kernel.org/all/20260806-lru_cache_drain_for_folio-v1-1-c6287d295e99@kernel.org/
+("mm/gup: factor out LRU cache draining for folio into lru_cache_drain_for_folio()")
+
+Older series:
+
+v9: https://lore.kernel.org/r/20260728-gmem-inplace-conversion-v9-0-35f9aec2aed2@google.com
+v8: https://lore.kernel.org/r/20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com
+v7: https://lore.kernel.org/r/20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com
+v6: https://lore.kernel.org/r/20260507-gmem-inplace-conversion-v6-0-91ab5a8b19a4@google.com
+RFC v5: https://lore.kernel.org/r/20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com
+RFC v4: https://lore.kernel.org/all/20260326-gmem-inplace-conversion-v4-0-e202fe950ffd@google.com/T/
+RFC v3: https://lore.kernel.org/r/20260313-gmem-inplace-conversion-v3-0-5fc12a70ec89@google.com/T/
+RFC v2: https://lore.kernel.org/all/cover.1770071243.git.ackerleytng@google.com/T/
+RFC v1: https://lore.kernel.org/all/cover.1760731772.git.ackerleytng@google.com/T/
+
+Previous versions of this feature, part of other series, are available at:
+
++ https://lore.kernel.org/all/bd163de3118b626d1005aa88e71ef2fb72f0be0f.1726009989.git.ackerleytng@google.com/
++ https://lore.kernel.org/all/20250117163001.2326672-6-tabba@google.com/
++ https://lore.kernel.org/all/b784326e9ccae6a08388f1bf39db70a2204bdc51.1747264138.git.ackerleytng@google.com/
+
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- mm/huge_memory.c | 35 +++++++++++++++--------------------
- 1 file changed, 15 insertions(+), 20 deletions(-)
+Ackerley Tng (21):
+      KVM: guest_memfd: Filter both shared and private when invalidating
+      KVM: guest_memfd: Add base support for KVM_SET_MEMORY_ATTRIBUTES2
+      KVM: guest_memfd: Ensure pages are not in use before conversion
+      KVM: guest_memfd: Call arch make_shared callback for to-shared conversion
+      KVM: guest_memfd: Return early if range already has requested attributes
+      KVM: guest_memfd: Handle lru_add fbatch refcounts during conversion safety check
+      KVM: guest_memfd: Zero page while getting pfn
+      KVM: TDX: Make source page optional for KVM_TDX_INIT_MEM_REGION
+      KVM: Let userspace disable per-VM mem attributes, enable per-gmem attributes
+      KVM: selftests: Test basic single-page conversion flow
+      KVM: selftests: Test conversion flow when INIT_SHARED
+      KVM: selftests: Test conversion precision in guest_memfd
+      KVM: selftests: Test conversion before allocation
+      KVM: selftests: Convert with allocated folios in different layouts
+      KVM: selftests: Test that truncation does not change shared/private status
+      KVM: selftests: Add helpers to pin pages with CONFIG_GUP_TEST
+      KVM: selftests: Test conversion with elevated page refcount
+      KVM: selftests: Reset shared memory after hole-punching
+      KVM: selftests: Provide function to look up guest_memfd details from gpa
+      KVM: selftests: Make TEST_EXPECT_SIGBUS thread-safe
+      KVM: selftests: Update private_mem_conversions_test to mmap() guest_memfd
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index dba53fbb93a8..0d70ee3017c4 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -3915,10 +3915,10 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	return 0;
- }
- 
--/* Number of folio references from the pagecache or the swapcache. */
--static unsigned int folio_cache_ref_count(const struct folio *folio)
-+/* Number of folio references from the swapcache. */
-+static unsigned int folio_swapcache_ref_count(const struct folio *folio)
- {
--	if (folio_test_anon(folio) && !folio_test_swapcache(folio))
-+	if (!folio_test_swapcache(folio))
- 		return 0;
- 	return folio_nr_pages(folio);
- }
-@@ -3984,7 +3984,7 @@ static int __folio_freeze_split_unmap(struct folio *folio, unsigned int new_orde
- 				    folio_nid(folio), &memcg);
- 	}
- 
--	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
-+	if (!folio_ref_freeze(folio, folio_swapcache_ref_count(folio) + 1)) {
- 		if (dequeue_deferred) {
- 			list_lru_unlock(lru);
- 			rcu_read_unlock();
-@@ -4027,7 +4027,7 @@ static int __folio_freeze_split_unmap(struct folio *folio, unsigned int new_orde
- 	     new_folio = folio_next(new_folio)) {
- 		zone_device_private_split_cb(folio, new_folio);
- 		folio_ref_unfreeze(new_folio,
--				   folio_cache_ref_count(new_folio) + 1);
-+				   folio_swapcache_ref_count(new_folio) + 1);
- 		if (do_lru)
- 			lru_add_split_folio(folio, new_folio, lruvec, list);
- 		if (ci)
-@@ -4035,7 +4035,7 @@ static int __folio_freeze_split_unmap(struct folio *folio, unsigned int new_orde
- 	}
- 
- 	zone_device_private_split_cb(folio, NULL);
--	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
-+	folio_ref_unfreeze(folio, folio_swapcache_ref_count(folio) + 1);
- 
- 	if (do_lru)
- 		lruvec_unlock(lruvec);
-@@ -4064,6 +4064,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
- 	struct address_space *mapping = folio->mapping;
- 	XA_STATE(xas, &mapping->i_pages, folio->index);
- 	struct folio *end_folio = folio_next(folio);
-+	long old_nr_pages = folio_nr_pages(folio);
- 	struct mem_cgroup *memcg, *old_memcg;
- 	struct folio *new_folio, *next;
- 	int nr_shmem_dropped = 0;
-@@ -4135,22 +4136,16 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
- 		goto fail;
- 	}
- 
--	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
-+	if (!folio_ref_freeze(folio, old_nr_pages + 1)) {
- 		ret = -EAGAIN;
- 		goto fail;
- 	}
- 
--	if (folio_test_pmd_mappable(folio) &&
--	    new_order < HPAGE_PMD_ORDER) {
--		int nr = folio_nr_pages(folio);
--
--		if (folio_test_swapbacked(folio)) {
--			lruvec_stat_mod_folio(folio,
--					      NR_SHMEM_THPS, -nr);
--		} else {
--			lruvec_stat_mod_folio(folio,
--					      NR_FILE_THPS, -nr);
--		}
-+	if (folio_test_pmd_mappable(folio) && new_order < HPAGE_PMD_ORDER) {
-+		if (folio_test_swapbacked(folio))
-+			lruvec_stat_mod_folio(folio, NR_SHMEM_THPS, -old_nr_pages);
-+		else
-+			lruvec_stat_mod_folio(folio, NR_FILE_THPS, -old_nr_pages);
- 	}
- 
- 	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
-@@ -4175,7 +4170,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
- 		next = folio_next(new_folio);
- 
- 		folio_ref_unfreeze(new_folio,
--				   folio_cache_ref_count(new_folio) + 1);
-+				   folio_nr_pages(new_folio) + 1);
- 
- 		if (do_lru)
- 			lru_add_split_folio(folio, new_folio, lruvec, list);
-@@ -4203,7 +4198,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
- 	 * Otherwise, a parallel folio_try_get() can grab @folio
- 	 * and its caller can see stale page cache entries.
- 	 */
--	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
-+	folio_ref_unfreeze(folio, folio_nr_pages(folio) + 1);
- 
- 	if (do_lru)
- 		lruvec_unlock(lruvec);
+David Hildenbrand (Arm) (1):
+      mm/gup: factor out LRU cache draining for folio into lru_cache_drain_for_folio()
 
--- 
-2.55.0
+Michael Roth (1):
+      KVM: SEV: Make 'uaddr' parameter optional for KVM_SEV_SNP_LAUNCH_UPDATE
+
+Sean Christopherson (18):
+      KVM: guest_memfd: Use kvm_mem_is_private() when populating guest_memfd memory
+      KVM: guest_memfd: Introduce per-gmem attributes, use to guard user mappings
+      KVM: Rename KVM_GENERIC_MEMORY_ATTRIBUTES to KVM_VM_MEMORY_ATTRIBUTES
+      KVM: Enumerate support for PRIVATE memory iff kvm_arch_has_private_mem is defined
+      KVM: Rename memory attribute APIs to prepare for in-place gmem conversion
+      KVM: Provide generic interface for checking memory private/shared status
+      KVM: guest_memfd: Stub in ability to enable in-place shared<=>private conversion
+      KVM: Consolidate private memory and guest_memfd ifdeffery in kvm_host.h
+      KVM: Move KVM_VM_MEMORY_ATTRIBUTES config definition to x86
+      KVM: guest_memfd: Enable INIT_SHARED on guest_memfd for x86 Coco VMs
+      KVM: selftests: Create gmem fd before "regular" fd when adding memslot
+      KVM: selftests: Rename guest_memfd{,_offset} to gmem_{fd,offset}
+      KVM: selftests: Add support for mmap() on guest_memfd in core library
+      KVM: selftests: Add selftests global for guest memory attributes capability
+      KVM: selftests: Add helpers for calling ioctls on guest_memfd
+      KVM: selftests: Test that shared/private status is consistent across processes
+      KVM: selftests: Provide common function to set memory attributes
+      KVM: selftests: Update private memory exits test to work with per-gmem attributes
+
+ Documentation/virt/kvm/api.rst                     |  78 +++-
+ .../virt/kvm/x86/amd-memory-encryption.rst         |  14 +-
+ Documentation/virt/kvm/x86/intel-tdx.rst           |   4 +
+ arch/x86/include/asm/kvm-x86-ops.h                 |   2 +-
+ arch/x86/include/asm/kvm_host.h                    |   6 +-
+ arch/x86/kvm/Kconfig                               |  15 +-
+ arch/x86/kvm/mmu/mmu.c                             |  16 +-
+ arch/x86/kvm/svm/sev.c                             |  11 +-
+ arch/x86/kvm/vmx/tdx.c                             |   8 +-
+ arch/x86/kvm/x86.c                                 |  20 +-
+ include/linux/kvm_host.h                           |  76 +--
+ include/linux/swap.h                               |  11 +-
+ include/trace/events/kvm.h                         |   6 +-
+ include/uapi/linux/kvm.h                           |  16 +
+ mm/gup.c                                           |  15 +-
+ mm/swap.c                                          |  48 ++
+ tools/testing/selftests/kvm/Makefile.kvm           |   1 +
+ tools/testing/selftests/kvm/include/kvm_util.h     | 139 +++++-
+ tools/testing/selftests/kvm/include/test_util.h    |  34 +-
+ tools/testing/selftests/kvm/lib/kvm_util.c         | 164 ++++---
+ tools/testing/selftests/kvm/lib/test_util.c        |   7 -
+ .../kvm/x86/guest_memfd_conversions_test.c         | 512 +++++++++++++++++++++
+ .../kvm/x86/private_mem_conversions_test.c         |  53 ++-
+ .../selftests/kvm/x86/private_mem_kvm_exits_test.c |  36 +-
+ virt/kvm/Kconfig                                   |   3 -
+ virt/kvm/guest_memfd.c                             | 450 ++++++++++++++++--
+ virt/kvm/kvm_main.c                                |  92 ++--
+ 27 files changed, 1574 insertions(+), 263 deletions(-)
+---
+base-commit: 4217d4987bbe33e331764a752721f781123b2e07
+change-id: 20260225-gmem-inplace-conversion-bd0dbd39753a
+
+Best regards,
+--
+Ackerley Tng <ackerleytng@google.com>
 
