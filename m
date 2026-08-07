@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 08 Aug 2026 05:17:08 +0800
-Subject: [PATCH RFC 07/13] mm/huge_memory: move unmap and remap into the
- split helpers
+Date: Sat, 08 Aug 2026 05:17:09 +0800
+Subject: [PATCH RFC 08/13] mm/huge_memory: move anon_vma and filemap
+ management into split helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-swap-thp-cleanup-v1-7-689939a7ccc3@tencent.com>
+Message-Id: <20260808-swap-thp-cleanup-v1-8-689939a7ccc3@tencent.com>
 References: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
 In-Reply-To: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
 To: linux-mm@kvack.org
@@ -22,157 +22,303 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=5093;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=9016;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=XdpcGLla7dWDxeaeoUQbxCu4Vf8PJ1zdPwmIqbBmjvw=;
- b=m8CSiewgW07eR4+Qa5gk6AQA4FGk9moAjQP7hGwJYLKKjrcBJIRoRtpKFRhbyMR95L58hhp4c
- ZxfbxvL3ITQCN2kJFkZqySU9ENT7pO4q4BKg/XlN1LYjBS8fDoFbxLI
+ bh=Tdpu3yM2jJD/dLTIquK8QVzk8LI0pYKr2L3DEgrEOZY=;
+ b=vE5S16rk8H6tQL7nMbKAIEEiUR03ZTW7o4PEm5gfVq7qO35uzHPGQa0PaRtrA3KeCbh9yKL8e
+ qEexL8JeNZ1CjPd10TUfXx4AfXATeKc3jN/GArLUOjRiAlTTylK34wK
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To prepare for further cleanup, move the unmap/remap handling from
-__folio_split() into the split helpers.  Only anon folios need to
-be remapped, so remap_page() is now only called for anon splits and
-the anon check in remap_page() is redundant and can be removed.
+Only anon split needs vma info, and only file split needs the filemap
+handling. Move the related code into separate helpers so they are
+genuinely more self-contained.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 51 ++++++++++++++++++++++++++-------------------------
- 1 file changed, 26 insertions(+), 25 deletions(-)
+ mm/huge_memory.c | 177 +++++++++++++++++++++++++------------------------------
+ 1 file changed, 79 insertions(+), 98 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 72f5d0d24127..c0115841d1a0 100644
+index c0115841d1a0..f0ea6e5f53f7 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3589,9 +3589,6 @@ static void remap_page(struct folio *folio, unsigned long nr, int flags)
- {
- 	int i = 0;
- 
--	/* If unmap_folio() uses try_to_migrate() on file, remove this check */
--	if (!folio_test_anon(folio))
--		return;
- 	for (;;) {
- 		remove_migration_ptes(folio, folio, TTU_RMAP_LOCKED | flags);
- 		i += folio_nr_pages(folio);
-@@ -3934,19 +3931,23 @@ static unsigned int folio_cache_ref_count(const struct folio *folio)
- 	return folio_nr_pages(folio);
- }
- 
--static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int new_order,
--					      struct page *split_at, bool do_lru,
--					      struct list_head *list, enum split_type split_type)
-+static int __folio_freeze_split_unmap_anon(struct folio *folio, unsigned int new_order,
-+					   struct page *split_at, bool do_lru, bool unmap,
-+					   struct list_head *list, enum split_type split_type)
- {
- 	struct folio *end_folio = folio_next(folio);
+@@ -3939,12 +3939,33 @@ static int __folio_freeze_split_unmap_anon(struct folio *folio, unsigned int new
  	struct swap_cluster_info *ci = NULL;
  	struct folio *new_folio;
  	int old_order = folio_order(folio);
-+	enum ttu_flags ttu_flags = 0;
++	struct anon_vma *anon_vma = NULL;
+ 	enum ttu_flags ttu_flags = 0;
  	struct list_lru_one *lru;
  	struct lruvec *lruvec;
  	bool dequeue_deferred;
  	int ret = 0;
  
-+	if (unmap)
-+		unmap_folio(folio);
-+
- 	local_irq_disable();
- 
- 	/*
-@@ -3971,8 +3972,8 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
- 			list_lru_unlock(lru);
- 			rcu_read_unlock();
- 		}
--		local_irq_enable();
--		return -EAGAIN;
-+		ret = -EAGAIN;
-+		goto out_no_split;
- 	}
- 
- 	if (dequeue_deferred) {
-@@ -4023,15 +4024,21 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
- 		lruvec_unlock(lruvec);
- 	if (ci)
- 		swap_cluster_unlock(ci);
-+out_no_split:
- 	local_irq_enable();
++	/*
++	 * Unmap/remap needs the anon_vma. The caller does not necessarily
++	 * hold an mmap_lock that would prevent the anon_vma from
++	 * disappearing, so we first take a reference and lock it. This is
++	 * similar to folio_lock_anon_vma_read() except the write lock is
++	 * taken to serialize against parallel split or collapse.
++	 */
 +	if (unmap) {
-+		if (!ret && !folio_is_device_private(folio))
-+			ttu_flags = TTU_USE_SHARED_ZEROPAGE;
-+		remap_page(folio, 1 << old_order, ttu_flags);
++		anon_vma = folio_get_anon_vma(folio);
++		if (!anon_vma)
++			return -EBUSY;
++		anon_vma_lock_write(anon_vma);
++	}
++
++	/* Racy check if we can split the page, before the optional unmap. */
++	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1) {
++		ret = -EAGAIN;
++		goto out_unlock;
++	}
++
+ 	if (unmap)
+ 		unmap_folio(folio);
+ 
+@@ -4031,21 +4052,58 @@ static int __folio_freeze_split_unmap_anon(struct folio *folio, unsigned int new
+ 			ttu_flags = TTU_USE_SHARED_ZEROPAGE;
+ 		remap_page(folio, 1 << old_order, ttu_flags);
+ 	}
++out_unlock:
++	if (anon_vma) {
++		anon_vma_unlock_write(anon_vma);
++		put_anon_vma(anon_vma);
 +	}
  
  	return ret;
  }
  
--static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int new_order,
--					      struct page *split_at, struct xa_state *xas,
--					      struct address_space *mapping, bool do_lru,
--					      struct list_head *list, enum split_type split_type)
-+static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new_order,
-+					   struct page *split_at, struct xa_state *xas,
-+					   struct address_space *mapping, bool do_lru,
-+					   struct list_head *list, enum split_type split_type)
+ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new_order,
+-					   struct page *split_at, struct xa_state *xas,
+-					   struct address_space *mapping, bool do_lru,
++					   struct page *split_at, bool do_lru,
+ 					   struct list_head *list, enum split_type split_type)
  {
++	struct address_space *mapping = folio->mapping;
++	XA_STATE(xas, &mapping->i_pages, folio->index);
  	struct folio *end_folio = folio_next(folio);
  	struct folio *new_folio, *next;
-@@ -4051,6 +4058,8 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
- 	if (shmem_mapping(mapping))
- 		end = shmem_fallocend(mapping->host, end);
- 
-+	unmap_folio(folio);
+ 	int nr_shmem_dropped = 0;
++	unsigned int min_order;
+ 	struct lruvec *lruvec;
+ 	pgoff_t end = 0;
+-	int ret;
++	gfp_t gfp;
++	int ret = 0;
 +
- 	xas_lock_irq(xas);
++	min_order = mapping_min_folio_order(mapping);
++	if (new_order < min_order)
++		return -EINVAL;
++
++	gfp = current_gfp_context(mapping_gfp_mask(mapping) & GFP_RECLAIM_MASK);
++	if (!filemap_release_folio(folio, gfp))
++		return -EBUSY;
++
++	mapping_set_update(&xas, mapping);
++
++	if (split_type == SPLIT_TYPE_UNIFORM) {
++		int old_order = folio_order(folio);
++
++		xas_set_order(&xas, folio->index, new_order);
++		xas_split_alloc(&xas, folio, old_order, gfp);
++		if (xas_error(&xas)) {
++			ret = xas_error(&xas);
++			goto fail_free;
++		}
++	}
++
++	i_mmap_lock_read(mapping);
++
++	/* Racy check if we can split the page, before unmap_folio() */
++	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1) {
++		ret = -EAGAIN;
++		goto fail_mmap_unlock;
++	}
  
  	/*
-@@ -4175,7 +4184,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 	struct anon_vma *anon_vma = NULL;
- 	int old_order = folio_order(folio);
- 	struct folio *new_folio, *next;
--	enum ttu_flags ttu_flags = 0;
- 	int ret;
+ 	 *__split_unmapped_folio() may need to trim off pages beyond
+@@ -4060,13 +4118,13 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
  
- 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
-@@ -4263,21 +4271,14 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		goto out_unlock;
- 	}
+ 	unmap_folio(folio);
  
--	unmap_folio(folio);
--
- 	if (!is_anon) {
--		ret = __folio_freeze_split_unmapped_file(folio, new_order, split_at, &xas, mapping,
-+		ret = __folio_freeze_split_unmap_file(folio, new_order, split_at, &xas, mapping,
- 							 true, list, split_type);
- 	} else {
--		ret = __folio_freeze_split_unmapped_anon(folio, new_order, split_at, true,
--							 list, split_type);
-+		ret = __folio_freeze_split_unmap_anon(folio, new_order, split_at, true,
-+						      true, list, split_type);
- 	}
+-	xas_lock_irq(xas);
++	xas_lock_irq(&xas);
  
--	if (!ret && is_anon && !folio_is_device_private(folio))
--		ttu_flags = TTU_USE_SHARED_ZEROPAGE;
--
--	remap_page(folio, 1 << old_order, ttu_flags);
--
  	/*
- 	 * Drop the mapping while the inode is still pinned. @folio stays
- 	 * locked and present in the page cache until the loop below, so
-@@ -4360,8 +4361,8 @@ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
- 	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1)
- 		return -EAGAIN;
+ 	 * Check if the folio is present in page cache.
+ 	 * We assume all tail are present too, if folio is there.
+ 	 */
+-	if (xas_load(xas) != folio) {
++	if (xas_load(&xas) != folio) {
+ 		ret = -EAGAIN;
+ 		goto fail;
+ 	}
+@@ -4093,7 +4151,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
+ 	if (do_lru)
+ 		lruvec = folio_lruvec_lock(folio);
  
--	return __folio_freeze_split_unmapped_anon(folio, new_order, &folio->page,
--						  false, NULL, SPLIT_TYPE_UNIFORM);
-+	return __folio_freeze_split_unmap_anon(folio, new_order, &folio->page, false,
-+					       false, NULL, SPLIT_TYPE_UNIFORM);
+-	ret = __split_unmapped_folio(folio, new_order, split_at, xas,
++	ret = __split_unmapped_folio(folio, new_order, split_at, &xas,
+ 				     mapping, split_type);
+ 
+ 	/*
+@@ -4145,9 +4203,19 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
+ 		lruvec_unlock(lruvec);
+ 
+ fail:
+-	xas_unlock_irq(xas);
++	xas_unlock_irq(&xas);
++fail_mmap_unlock:
+ 	if (nr_shmem_dropped)
+ 		shmem_uncharge(mapping->host, nr_shmem_dropped);
++	/*
++	 * Drop the mapping while the inode is still pinned. @folio stays
++	 * locked and present in the page cache, so eviction cannot free
++	 * the inode yet, nothing past this point may touch the inode or
++	 * the mapping.
++	 */
++	i_mmap_unlock_read(mapping);
++fail_free:
++	xas_destroy(&xas);
+ 	return ret;
  }
  
- /*
+@@ -4176,12 +4244,9 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 		struct page *split_at, struct page *lock_at,
+ 		struct list_head *list, enum split_type split_type)
+ {
+-	XA_STATE(xas, &folio->mapping->i_pages, folio->index);
+ 	struct folio *end_folio = folio_next(folio);
+ 	bool is_anon = folio_test_anon(folio);
+ 	struct mem_cgroup *memcg, *old_memcg;
+-	struct address_space *mapping = NULL;
+-	struct anon_vma *anon_vma = NULL;
+ 	int old_order = folio_order(folio);
+ 	struct folio *new_folio, *next;
+ 	int ret;
+@@ -4212,84 +4277,12 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 	memcg = get_mem_cgroup_from_folio(folio);
+ 	old_memcg = set_active_memcg(memcg);
+ 
+-	if (is_anon) {
+-		/*
+-		 * The caller does not necessarily hold an mmap_lock that would
+-		 * prevent the anon_vma disappearing so we first we take a
+-		 * reference to it and then lock the anon_vma for write. This
+-		 * is similar to folio_lock_anon_vma_read except the write lock
+-		 * is taken to serialise against parallel split or collapse
+-		 * operations.
+-		 */
+-		anon_vma = folio_get_anon_vma(folio);
+-		if (!anon_vma) {
+-			ret = -EBUSY;
+-			goto out;
+-		}
+-		anon_vma_lock_write(anon_vma);
+-		mapping = NULL;
+-	} else {
+-		unsigned int min_order;
+-		gfp_t gfp;
+-
+-		mapping = folio->mapping;
+-		min_order = mapping_min_folio_order(mapping);
+-		if (new_order < min_order) {
+-			ret = -EINVAL;
+-			goto out;
+-		}
+-
+-		gfp = current_gfp_context(mapping_gfp_mask(mapping) &
+-							GFP_RECLAIM_MASK);
+-
+-		if (!filemap_release_folio(folio, gfp)) {
+-			ret = -EBUSY;
+-			goto out;
+-		}
+-
+-		mapping_set_update(&xas, mapping);
+-
+-		if (split_type == SPLIT_TYPE_UNIFORM) {
+-			xas_set_order(&xas, folio->index, new_order);
+-			xas_split_alloc(&xas, folio, old_order, gfp);
+-			if (xas_error(&xas)) {
+-				ret = xas_error(&xas);
+-				goto out;
+-			}
+-		}
+-
+-		anon_vma = NULL;
+-		i_mmap_lock_read(mapping);
+-	}
+-
+-	/*
+-	 * Racy check if we can split the page, before unmap_folio() will
+-	 * split PMDs
+-	 */
+-	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1) {
+-		ret = -EAGAIN;
+-		goto out_unlock;
+-	}
+-
+-	if (!is_anon) {
+-		ret = __folio_freeze_split_unmap_file(folio, new_order, split_at, &xas, mapping,
+-							 true, list, split_type);
+-	} else {
++	if (is_anon)
+ 		ret = __folio_freeze_split_unmap_anon(folio, new_order, split_at, true,
+ 						      true, list, split_type);
+-	}
+-
+-	/*
+-	 * Drop the mapping while the inode is still pinned. @folio stays
+-	 * locked and present in the page cache until the loop below, so
+-	 * eviction cannot free the inode yet; @lock_at is not enough, it may
+-	 * be a tail beyond EOF that the split already dropped from the page
+-	 * cache. Nothing past this point may touch the inode or the mapping.
+-	 */
+-	if (mapping) {
+-		i_mmap_unlock_read(mapping);
+-		mapping = NULL;
+-	}
++	else
++		ret = __folio_freeze_split_unmap_file(folio, new_order, split_at,
++						      true, list, split_type);
+ 
+ 	/*
+ 	 * Unlock all after-split folios except the one containing
+@@ -4310,19 +4303,10 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 		free_folio_and_swap_cache(new_folio);
+ 	}
+ 
+-out_unlock:
+-	if (anon_vma) {
+-		anon_vma_unlock_write(anon_vma);
+-		put_anon_vma(anon_vma);
+-	}
+-	if (mapping)
+-		i_mmap_unlock_read(mapping);
+-out:
+ 	/* restore to caller's old_memcg */
+ 	set_active_memcg(old_memcg);
+ 	mem_cgroup_put(memcg);
+ out_no_memcg:
+-	xas_destroy(&xas);
+ 	if (is_pmd_order(old_order))
+ 		count_vm_event(!ret ? THP_SPLIT_PAGE : THP_SPLIT_PAGE_FAILED);
+ 	count_mthp_stat(old_order, !ret ? MTHP_STAT_SPLIT : MTHP_STAT_SPLIT_FAILED);
+@@ -4358,9 +4342,6 @@ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_large(folio), folio);
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_anon(folio), folio);
+ 
+-	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1)
+-		return -EAGAIN;
+-
+ 	return __folio_freeze_split_unmap_anon(folio, new_order, &folio->page, false,
+ 					       false, NULL, SPLIT_TYPE_UNIFORM);
+ }
 
 -- 
 2.55.0
