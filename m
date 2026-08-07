@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 08 Aug 2026 05:17:13 +0800
-Subject: [PATCH RFC 12/13] mm/huge_memory: lift order-0 restriction for
- swapcache split
+Date: Sat, 08 Aug 2026 05:17:14 +0800
+Subject: [PATCH RFC 13/13] mm/huge_memory: count only swap cache refs in
+ anon folio split
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-swap-thp-cleanup-v1-12-689939a7ccc3@tencent.com>
+Message-Id: <20260808-swap-thp-cleanup-v1-13-689939a7ccc3@tencent.com>
 References: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
 In-Reply-To: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
 To: linux-mm@kvack.org
@@ -22,105 +22,129 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=4236;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=4434;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=7SjtfqfZedSJz4xGQv/+c/6mWUxdnqqN70J6iR/8Q6g=;
- b=OM9J+C2BnomsrB8R3lY++FWH2mGqLYGpQGghKyKGjk11dm3+MVvTipZ8Nt/+n8N1vq2htd2d0
- XDBmdKu+FeQAWv/dgW9asdmXhB8LBOKbhdDqSlFssXLP1nG0ZS3AyQI
+ bh=6txV4z9147MCY3v3Y112JpwmGarss54hNdYDLN2lhpw=;
+ b=XXdvVVkJnsuSqgAphHl1AuGTvhydbgaE1nQ6pBzl6XSvLM9/V7veYYRMKGOANAqlaGxgJnV1b
+ LerXbuHpQtTB/9FMV3d50V87DM7K2D5+CgItBEfmSefWnMWMgXfF5CV
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The restriction that swapcache folios can only be uniformly split to
-order 0 dates back to when the swap cache was managed via address_space
-mapping (swap_address_space).  The old split loop only created order-0
-sub-folios with a fixed stride, so non-uniform split and non-zero order
-were rightfully blocked.
+Only __folio_freeze_split_unmap() sees anon folios and swap cache folios
+now. The file split helper only handles page cache folios, which hold
+exactly folio_nr_pages() references.
 
-After the swap cache switched to swap table under a cluster lock,
-__swap_cache_replace_folio already gained the ability to replace any
-number of entries for any sub-folio size in one cluster, and the old
-swap_address_space locking and limit was removed. The restriction
-became obsolete but persisted through multiple refactorings.
-
-Drop it now: swapcache folios can be split to any supported order with
-either uniform or non-uniform split, except order-1 which is not
-supported for anon folios. Mappingless swap cache folios could be either
-anon or shmem, so for now we just simply forbid order-1 for all swapcache.
+Rename folio_cache_ref_count() to folio_swapcache_ref_count() and drop
+the anon check so the helper counts what its name says. The file split
+helper now uses folio_nr_pages() directly.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 32 +++++++++++++-------------------
- 1 file changed, 13 insertions(+), 19 deletions(-)
+ mm/huge_memory.c | 35 +++++++++++++++--------------------
+ 1 file changed, 15 insertions(+), 20 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 39c91c8e5bc8..dba53fbb93a8 100644
+index dba53fbb93a8..0d70ee3017c4 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3797,6 +3797,7 @@ static int __split_unmapped_folio(struct folio *folio, int new_order,
- 		struct address_space *mapping, enum split_type split_type)
+@@ -3915,10 +3915,10 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
+ 	return 0;
+ }
+ 
+-/* Number of folio references from the pagecache or the swapcache. */
+-static unsigned int folio_cache_ref_count(const struct folio *folio)
++/* Number of folio references from the swapcache. */
++static unsigned int folio_swapcache_ref_count(const struct folio *folio)
  {
- 	const bool is_anon = folio_test_anon(folio);
-+	const bool is_swapcache = folio_test_swapcache(folio);
- 	int old_order = folio_order(folio);
- 	int start_order = split_type == SPLIT_TYPE_UNIFORM ? new_order : old_order - 1;
- 	struct folio *old_folio = folio;
-@@ -3811,8 +3812,8 @@ static int __split_unmapped_folio(struct folio *folio, int new_order,
- 	     split_order--) {
- 		int nr_new_folios = 1UL << (old_order - split_order);
+-	if (folio_test_anon(folio) && !folio_test_swapcache(folio))
++	if (!folio_test_swapcache(folio))
+ 		return 0;
+ 	return folio_nr_pages(folio);
+ }
+@@ -3984,7 +3984,7 @@ static int __folio_freeze_split_unmap(struct folio *folio, unsigned int new_orde
+ 				    folio_nid(folio), &memcg);
+ 	}
  
--		/* order-1 anonymous folio is not supported */
--		if (is_anon && split_order == 1)
-+		/* order-1 anonymous or swapcache folio is not supported */
-+		if ((is_anon || is_swapcache) && split_order == 1)
- 			continue;
+-	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
++	if (!folio_ref_freeze(folio, folio_swapcache_ref_count(folio) + 1)) {
+ 		if (dequeue_deferred) {
+ 			list_lru_unlock(lru);
+ 			rcu_read_unlock();
+@@ -4027,7 +4027,7 @@ static int __folio_freeze_split_unmap(struct folio *folio, unsigned int new_orde
+ 	     new_folio = folio_next(new_folio)) {
+ 		zone_device_private_split_cb(folio, new_folio);
+ 		folio_ref_unfreeze(new_folio,
+-				   folio_cache_ref_count(new_folio) + 1);
++				   folio_swapcache_ref_count(new_folio) + 1);
+ 		if (do_lru)
+ 			lru_add_split_folio(folio, new_folio, lruvec, list);
+ 		if (ci)
+@@ -4035,7 +4035,7 @@ static int __folio_freeze_split_unmap(struct folio *folio, unsigned int new_orde
+ 	}
  
- 		if (mapping) {
-@@ -3887,21 +3888,14 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	if (!folio->mapping && !is_swapcache)
- 		return -EBUSY;
+ 	zone_device_private_split_cb(folio, NULL);
+-	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
++	folio_ref_unfreeze(folio, folio_swapcache_ref_count(folio) + 1);
  
--	/* order-1 is not supported for anonymous THP. */
--	if (is_anon && new_order == 1)
--		return -EINVAL;
+ 	if (do_lru)
+ 		lruvec_unlock(lruvec);
+@@ -4064,6 +4064,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
+ 	struct address_space *mapping = folio->mapping;
+ 	XA_STATE(xas, &mapping->i_pages, folio->index);
+ 	struct folio *end_folio = folio_next(folio);
++	long old_nr_pages = folio_nr_pages(folio);
+ 	struct mem_cgroup *memcg, *old_memcg;
+ 	struct folio *new_folio, *next;
+ 	int nr_shmem_dropped = 0;
+@@ -4135,22 +4136,16 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
+ 		goto fail;
+ 	}
+ 
+-	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
++	if (!folio_ref_freeze(folio, old_nr_pages + 1)) {
+ 		ret = -EAGAIN;
+ 		goto fail;
+ 	}
+ 
+-	if (folio_test_pmd_mappable(folio) &&
+-	    new_order < HPAGE_PMD_ORDER) {
+-		int nr = folio_nr_pages(folio);
 -
- 	/*
--	 * swapcache folio could only be split to order 0
--	 *
--	 * non-uniform split creates after-split folios with orders from
--	 * folio_order(folio) - 1 to new_order, making it not suitable for any
--	 * swapcache folio split. Only uniform split to order-0 can be used
--	 * here.
-+	 * Order-1 is unsupported: anon folios need subpage 2 for the
-+	 * deferred split list, hybrid shmem & swap cache folios are not
-+	 * splittable, and a splittable mappingless swap cache folio could
-+	 * be either anon or shmem, which we cannot tell apart.
- 	 */
--	if ((split_type == SPLIT_TYPE_NON_UNIFORM || new_order) && is_swapcache) {
-+	if ((is_anon || is_swapcache) && new_order == 1)
- 		return -EINVAL;
--	}
+-		if (folio_test_swapbacked(folio)) {
+-			lruvec_stat_mod_folio(folio,
+-					      NR_SHMEM_THPS, -nr);
+-		} else {
+-			lruvec_stat_mod_folio(folio,
+-					      NR_FILE_THPS, -nr);
+-		}
++	if (folio_test_pmd_mappable(folio) && new_order < HPAGE_PMD_ORDER) {
++		if (folio_test_swapbacked(folio))
++			lruvec_stat_mod_folio(folio, NR_SHMEM_THPS, -old_nr_pages);
++		else
++			lruvec_stat_mod_folio(folio, NR_FILE_THPS, -old_nr_pages);
+ 	}
  
- 	if (is_huge_zero_folio(folio))
- 		return -EINVAL;
-@@ -4372,11 +4366,11 @@ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
-  *    GUP pins, will result in the folio not getting split; instead, the caller
-  *    will receive an -EAGAIN.
-  *
-- * 4) @new_order > 1, usually. Splitting to order-1 anonymous folios is not
-- *    supported for non-file-backed folios, because folio->_deferred_list, which
-- *    is used by partially mapped folios, is stored in subpage 2, but an order-1
-- *    folio only has subpages 0 and 1. File-backed order-1 folios are supported,
-- *    since they do not use _deferred_list.
-+ * 4) @new_order > 1, usually. Order-1 is not supported for anon or swapcache
-+ *    folios: anon folios need subpage 2 for _deferred_list, which order-1
-+ *    folios lack, and a swapcache folio may become anon once faulted in.
-+ *    File-backed order-1 folios are supported, since they do not use
-+ *    _deferred_list.
-  *
-  * After splitting, the caller's folio reference will be transferred to @page,
-  * resulting in a raised refcount of @page after this call. The other pages may
+ 	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
+@@ -4175,7 +4170,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
+ 		next = folio_next(new_folio);
+ 
+ 		folio_ref_unfreeze(new_folio,
+-				   folio_cache_ref_count(new_folio) + 1);
++				   folio_nr_pages(new_folio) + 1);
+ 
+ 		if (do_lru)
+ 			lru_add_split_folio(folio, new_folio, lruvec, list);
+@@ -4203,7 +4198,7 @@ static int __folio_freeze_split_unmap_file(struct folio *folio, unsigned int new
+ 	 * Otherwise, a parallel folio_try_get() can grab @folio
+ 	 * and its caller can see stale page cache entries.
+ 	 */
+-	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
++	folio_ref_unfreeze(folio, folio_nr_pages(folio) + 1);
+ 
+ 	if (do_lru)
+ 		lruvec_unlock(lruvec);
 
 -- 
 2.55.0
