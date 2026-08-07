@@ -1,10 +1,10 @@
 From: "Pawel Zalewski (The Capable Hub)" <pzalewski@thegoodpenguin.co.uk>
-Date: Fri, 07 Aug 2026 12:26:10 +0100
-Subject: [PATCH 3/4] char: ipmi: use named initializers for acpi_device_id
+Date: Fri, 07 Aug 2026 12:26:11 +0100
+Subject: [PATCH 4/4] char: tpm: use named initializers for acpi_device_id
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260807-acpi-char-v1-3-742c450254dd@thegoodpenguin.co.uk>
+Message-Id: <20260807-acpi-char-v1-4-742c450254dd@thegoodpenguin.co.uk>
 References: <20260807-acpi-char-v1-0-742c450254dd@thegoodpenguin.co.uk>
 In-Reply-To: <20260807-acpi-char-v1-0-742c450254dd@thegoodpenguin.co.uk>
 To: Clemens Ladisch <clemens@ladisch.de>, Arnd Bergmann <arnd@arndb.de>, 
@@ -19,11 +19,11 @@ Cc: linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org,
  linux-integrity@vger.kernel.org, 
  "Pawel Zalewski (The Capable Hub)" <pzalewski@thegoodpenguin.co.uk>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786101977; l=2063;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786101977; l=4406;
  i=pzalewski@thegoodpenguin.co.uk; s=20260803; h=from:subject:message-id;
- bh=KSRiDBr/KlyRDt2jepviaq+isDgvIHWz0zDwNFdjAOU=;
- b=bCJjHt/hyxm30i2BmzMj5Gp85SGiXlRWj3FSLgnvW2M2kAKEaM/kJIXMgIHKiz9Yg6JcxhmDj
- GMofNtEZ1cuBR5rNsqrIDtpnm5s7KCQGSJMAUcw6cnNwkzQ0hTvgOVy
+ bh=/3HqANNdgwc+v+bCM8pvoBxFH0K5Gv93E5IVVo98Axg=;
+ b=tf+58qMPqBQXxvk2WPfC/OQEoHIfmkXD63JrsmKQeLQrAB7+MHX/CG+u3PeHojtQrguurPS92
+ ZI4sHrI8wo+AOM+l+bNQmPulehYsu90b6a0bz8vi4w9YyUXFRQ6bsUD
 X-Developer-Key: i=pzalewski@thegoodpenguin.co.uk; a=ed25519;
  pk=W3zk1cb/wRnj6pNGbl3/2Zf3GmPA6IBpNHpDPyJ05k8=
 X-Endpoint-Received: by B4 Relay for pzalewski@thegoodpenguin.co.uk/20260803 with auth_id=913
@@ -40,55 +40,119 @@ comma.
 
 Signed-off-by: Pawel Zalewski (The Capable Hub) <pzalewski@thegoodpenguin.co.uk>
 ---
- drivers/char/ipmi/ipmb_dev_int.c     | 4 ++--
- drivers/char/ipmi/ipmi_si_platform.c | 4 ++--
- drivers/char/ipmi/ipmi_ssif.c        | 4 ++--
- 3 files changed, 6 insertions(+), 6 deletions(-)
+ drivers/char/tpm/st33zp24/i2c.c      | 4 ++--
+ drivers/char/tpm/st33zp24/spi.c      | 4 ++--
+ drivers/char/tpm/tpm_crb.c           | 4 ++--
+ drivers/char/tpm/tpm_tis.c           | 4 ++--
+ drivers/char/tpm/tpm_tis_i2c_cr50.c  | 4 ++--
+ drivers/char/tpm/tpm_tis_spi_main.c  | 4 ++--
+ drivers/char/tpm/tpm_tis_synquacer.c | 4 ++--
+ 7 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/drivers/char/ipmi/ipmb_dev_int.c b/drivers/char/ipmi/ipmb_dev_int.c
-index 680ff15c30ab..d576a77df927 100644
---- a/drivers/char/ipmi/ipmb_dev_int.c
-+++ b/drivers/char/ipmi/ipmb_dev_int.c
-@@ -360,8 +360,8 @@ MODULE_DEVICE_TABLE(i2c, ipmb_id);
+diff --git a/drivers/char/tpm/st33zp24/i2c.c b/drivers/char/tpm/st33zp24/i2c.c
+index 81348487c125..d2bf9996760d 100644
+--- a/drivers/char/tpm/st33zp24/i2c.c
++++ b/drivers/char/tpm/st33zp24/i2c.c
+@@ -145,8 +145,8 @@ static const struct of_device_id of_st33zp24_i2c_match[] __maybe_unused = {
+ MODULE_DEVICE_TABLE(of, of_st33zp24_i2c_match);
  
- #ifdef CONFIG_ACPI
- static const struct acpi_device_id acpi_ipmb_id[] = {
--	{ "IPMB0001", 0 },
+ static const struct acpi_device_id st33zp24_i2c_acpi_match[] __maybe_unused = {
+-	{"SMO3324"},
+-	{}
++	{ .id = "SMO3324" },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, st33zp24_i2c_acpi_match);
+ 
+diff --git a/drivers/char/tpm/st33zp24/spi.c b/drivers/char/tpm/st33zp24/spi.c
+index 5149231f3de2..6671977c44aa 100644
+--- a/drivers/char/tpm/st33zp24/spi.c
++++ b/drivers/char/tpm/st33zp24/spi.c
+@@ -262,8 +262,8 @@ static const struct of_device_id of_st33zp24_spi_match[] __maybe_unused = {
+ MODULE_DEVICE_TABLE(of, of_st33zp24_spi_match);
+ 
+ static const struct acpi_device_id st33zp24_spi_acpi_match[] __maybe_unused = {
+-	{"SMO3324"},
+-	{}
++	{ .id = "SMO3324" },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, st33zp24_spi_acpi_match);
+ 
+diff --git a/drivers/char/tpm/tpm_crb.c b/drivers/char/tpm/tpm_crb.c
+index ceb4100ba400..671ba480a675 100644
+--- a/drivers/char/tpm/tpm_crb.c
++++ b/drivers/char/tpm/tpm_crb.c
+@@ -917,8 +917,8 @@ static const struct dev_pm_ops crb_pm = {
+ };
+ 
+ static const struct acpi_device_id crb_device_ids[] = {
+-	{"MSFT0101", 0},
+-	{"", 0},
++	{ .id = "MSFT0101" },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, crb_device_ids);
+ 
+diff --git a/drivers/char/tpm/tpm_tis.c b/drivers/char/tpm/tpm_tis.c
+index 9aa230a63616..4bb18fb1df87 100644
+--- a/drivers/char/tpm/tpm_tis.c
++++ b/drivers/char/tpm/tpm_tis.c
+@@ -130,8 +130,8 @@ static inline int is_itpm(struct acpi_device *dev)
+ #define DEVICE_IS_TPM2 1
+ 
+ static const struct acpi_device_id tpm_acpi_tbl[] = {
+-	{"MSFT0101", DEVICE_IS_TPM2},
 -	{},
-+	{ .id = "IPMB0001" },
++	{ .id = "MSFT0101", .driver_data = DEVICE_IS_TPM2 },
 +	{ }
  };
- MODULE_DEVICE_TABLE(acpi, acpi_ipmb_id);
- #endif
-diff --git a/drivers/char/ipmi/ipmi_si_platform.c b/drivers/char/ipmi/ipmi_si_platform.c
-index bdc481ce1302..fa221cbb4b3b 100644
---- a/drivers/char/ipmi/ipmi_si_platform.c
-+++ b/drivers/char/ipmi/ipmi_si_platform.c
-@@ -387,8 +387,8 @@ static int acpi_ipmi_probe(struct platform_device *pdev)
- }
+ MODULE_DEVICE_TABLE(acpi, tpm_acpi_tbl);
  
- static const struct acpi_device_id acpi_ipmi_match[] = {
--	{ "IPI0001", 0 },
--	{ },
-+	{ .id = "IPI0001" },
-+	{ }
- };
- MODULE_DEVICE_TABLE(acpi, acpi_ipmi_match);
- #else
-diff --git a/drivers/char/ipmi/ipmi_ssif.c b/drivers/char/ipmi/ipmi_ssif.c
-index 07f1d2327bb7..2361103c5edc 100644
---- a/drivers/char/ipmi/ipmi_ssif.c
-+++ b/drivers/char/ipmi/ipmi_ssif.c
-@@ -2057,8 +2057,8 @@ static unsigned short *ssif_address_list(void)
+diff --git a/drivers/char/tpm/tpm_tis_i2c_cr50.c b/drivers/char/tpm/tpm_tis_i2c_cr50.c
+index b48cacacc066..dc8a5ec5799b 100644
+--- a/drivers/char/tpm/tpm_tis_i2c_cr50.c
++++ b/drivers/char/tpm/tpm_tis_i2c_cr50.c
+@@ -669,8 +669,8 @@ static const struct tpm_class_ops cr50_i2c = {
  
  #ifdef CONFIG_ACPI
- static const struct acpi_device_id ssif_acpi_match[] = {
--	{ "IPI0001", 0 },
--	{ },
-+	{ .id = "IPI0001" },
+ static const struct acpi_device_id cr50_i2c_acpi_id[] = {
+-	{ "GOOG0005", 0 },
+-	{}
++	{ .id = "GOOG0005" },
 +	{ }
  };
- MODULE_DEVICE_TABLE(acpi, ssif_acpi_match);
+ MODULE_DEVICE_TABLE(acpi, cr50_i2c_acpi_id);
+ #endif
+diff --git a/drivers/char/tpm/tpm_tis_spi_main.c b/drivers/char/tpm/tpm_tis_spi_main.c
+index 61b42c83ced8..d2e37e667dd7 100644
+--- a/drivers/char/tpm/tpm_tis_spi_main.c
++++ b/drivers/char/tpm/tpm_tis_spi_main.c
+@@ -339,8 +339,8 @@ static const struct of_device_id of_tis_spi_match[] __maybe_unused = {
+ MODULE_DEVICE_TABLE(of, of_tis_spi_match);
+ 
+ static const struct acpi_device_id acpi_tis_spi_match[] __maybe_unused = {
+-	{"SMO0768", 0},
+-	{}
++	{ .id = "SMO0768" },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, acpi_tis_spi_match);
+ 
+diff --git a/drivers/char/tpm/tpm_tis_synquacer.c b/drivers/char/tpm/tpm_tis_synquacer.c
+index 4927714d277a..c2d09315aa17 100644
+--- a/drivers/char/tpm/tpm_tis_synquacer.c
++++ b/drivers/char/tpm/tpm_tis_synquacer.c
+@@ -144,8 +144,8 @@ MODULE_DEVICE_TABLE(of, tis_synquacer_of_platform_match);
+ 
+ #ifdef CONFIG_ACPI
+ static const struct acpi_device_id tpm_synquacer_acpi_tbl[] = {
+-	{ "SCX0009" },
+-	{},
++	{ .id = "SCX0009" },
++	{ }
+ };
+ MODULE_DEVICE_TABLE(acpi, tpm_synquacer_acpi_tbl);
  #endif
 
 -- 
