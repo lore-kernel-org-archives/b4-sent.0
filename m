@@ -1,11 +1,11 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Fri, 07 Aug 2026 16:02:41 +0300
-Subject: [PATCH v15 06/22] dt-bindings: media: i2c: max96712: use pattern
- properties for ports
+Date: Fri, 07 Aug 2026 16:02:42 +0300
+Subject: [PATCH v15 07/22] dt-bindings: media: i2c: max96712: add support
+ for I2C ATR
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260807-gmsl2-3_serdes-v15-6-7212e9e5156a@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260807-gmsl2-3_serdes-v15-7-7212e9e5156a@analog.com>
 References: <20260807-gmsl2-3_serdes-v15-0-7212e9e5156a@analog.com>
 In-Reply-To: <20260807-gmsl2-3_serdes-v15-0-7212e9e5156a@analog.com>
 To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
@@ -23,11 +23,11 @@ Cc: mitrutzceclan@gmail.com, linux-media@vger.kernel.org,
  Andrian Suciu <Adrian.Suciu@analog.com>, 
  Cosmin Tanislav <demonsingur@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786107763; l=2057;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786107763; l=1871;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=I52ZK89SDidgv9Kh0KUq2eBXwlYMLSWhPo+aSFUbLXE=;
- b=8sNLZSrJthMMbSjnY0Ww2roJzsEpl+rg67qgqqKr8hK+PaeQ1Jj7BOhjPDqA3x1hfSibNLdWG
- VoH4thPslGyCgJTIeer7c8Z2BXKZOoZHpoCG2VEebY9llG6Ieaud2LS
+ bh=Wtq87WP6HuN2ExCP/a1ucfnQWkLmzlzMjUynofXhUVc=;
+ b=lLRdhb+1XOs8x8QovzvAyvK4hknbkXrCq1D+zHP2I4meYeB7/fpmmchYORz60iswz1ZXFMN6L
+ qUo1AFXw49KBU40VbQq2api5PgclU0cZYuwV6Am0VobQJUdXaQjza0H
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
@@ -35,69 +35,72 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Cosmin Tanislav <demonsingur@gmail.com>
 
-The MAX96712 and MAX96724 support up to 4 separate PHYs, depending on
-the selected PHY configuration. Use patternProperties to document this.
+MAX96712 and MAX96724 have more than one GMSL2 link, and each link is
+capable of connecting to a separate serializer. If these serializers
+have the same CFG pins configuration, they will also have the same I2C
+address, causing conflicts unless the deserializer changes the address
+of the connected serializers.
 
-The input ports are all the same, use patternProperties for them.
+The MAX96712 and MAX96724 support changing the I2C address of the
+connected serializers.
+
+Document this capability.
 
 Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
-Reviewed-by: Niklas Söderlund <niklas.soderlund+renesas@ragnatech.se>
 ---
- .../bindings/media/i2c/maxim,max96712.yaml         | 29 ++++++++--------------
- 1 file changed, 10 insertions(+), 19 deletions(-)
+ .../bindings/media/i2c/maxim,max96712.yaml         | 31 ++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-index 26f85151afbd..583bbd60157c 100644
+index 583bbd60157c..abacc3c874a9 100644
 --- a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
 +++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-@@ -39,27 +39,15 @@ properties:
+@@ -36,6 +36,30 @@ properties:
+ 
+   enable-gpios: true
+ 
++  i2c-alias-pool:
++    maxItems: 4
++
++  i2c-atr:
++    type: object
++    additionalProperties: false
++
++    properties:
++      '#address-cells':
++        const: 1
++
++      '#size-cells':
++        const: 0
++
++    patternProperties:
++      '^i2c@[0-3]$':
++        $ref: /schemas/i2c/i2c-controller.yaml#
++        unevaluatedProperties: false
++        properties:
++          reg:
++            items:
++              minimum: 0
++              maximum: 3
++
    ports:
      $ref: /schemas/graph.yaml#/properties/ports
  
--    properties:
--      port@0:
-+    patternProperties:
-+      '^port@[0-3]$':
-         $ref: /schemas/graph.yaml#/properties/port
--        description: GMSL Input 0
-+        description: GMSL Input ports 0-3
+@@ -78,6 +102,13 @@ required:
  
--      port@1:
--        $ref: /schemas/graph.yaml#/properties/port
--        description: GMSL Input 1
--
--      port@2:
--        $ref: /schemas/graph.yaml#/properties/port
--        description: GMSL Input 2
--
--      port@3:
--        $ref: /schemas/graph.yaml#/properties/port
--        description: GMSL Input 3
--
--      port@4:
-+      '^port@[4-7]$':
-         $ref: /schemas/graph.yaml#/$defs/port-base
-         unevaluatedProperties: false
--        description: CSI-2 Output
-+        description: CSI-2 Output port 0-3
+ additionalProperties: false
  
-         properties:
-           endpoint:
-@@ -77,8 +65,11 @@ properties:
-               - data-lanes
-               - bus-type
- 
--    required:
--      - port@4
-+    anyOf:
-+      - required: [port@4]
-+      - required: [port@5]
-+      - required: [port@6]
-+      - required: [port@7]
- 
- required:
-   - compatible
++allOf:
++  - $ref: /schemas/i2c/i2c-atr.yaml#
++
++dependentRequired:
++  i2c-atr: [i2c-alias-pool]
++  i2c-alias-pool: [i2c-atr]
++
+ examples:
+   - |
+     #include <dt-bindings/gpio/gpio.h>
 
 -- 
 2.53.0
