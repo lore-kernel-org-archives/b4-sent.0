@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 08 Aug 2026 05:17:06 +0800
-Subject: [PATCH RFC 05/13] mm/huge_memory: consolidate irq and locking for
- folio split
+Date: Sat, 08 Aug 2026 05:17:07 +0800
+Subject: [PATCH RFC 06/13] mm/huge_memory: move EOF trimming into the file
+ split helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-swap-thp-cleanup-v1-5-689939a7ccc3@tencent.com>
+Message-Id: <20260808-swap-thp-cleanup-v1-6-689939a7ccc3@tencent.com>
 References: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
 In-Reply-To: <20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com>
 To: linux-mm@kvack.org
@@ -22,145 +22,127 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=3951;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786137467; l=4129;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=yZ53/oBOT/Q/to9ofK8tbkn2yDjvslEEnFYWLgM/+Qk=;
- b=t+/Q4iPxdj5Y5U1lyou6qmjzoFRjzxv2yON8YWRa/nW5Se1WbrQN+JkcG3tuKXkJthj2quc5f
- SN7VLiot+jECC4BI2fikxBSaQEF9iDysr49czZcbLdLvX1sEWJGsXmU
+ bh=ZL+oPmr0JHpxplESJ7EerMTHHdu34aMC9es8n1iXisQ=;
+ b=TUuL3slW4TdvxV30rEc7OV1KPB5pDFSkgui5vPimNk4tOvZccc4VWNgqV0EZxXrHdc9bAkfeW
+ 7m5+33bUPJyDUPCcJYrU+saVmc62A+8kjy3ie6RTbvOMfdDqPsmOo1l
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Let each split helper handle its own locking instead of relying on
-the caller, so both paths follow the same convention and __folio_split()
-can drop its local irq handling and fail label, preparing for further
-cleanup.
+Instead of receiving @end and @nr_shmem_dropped from the caller, the
+file split helper now computes the EOF boundary and trims pages beyond
+it itself, as this is only needed for file split.  This drops the
+redundant parameter passing and sanity check.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 52 ++++++++++++++++++++++++----------------------------
- 1 file changed, 24 insertions(+), 28 deletions(-)
+ mm/huge_memory.c | 42 +++++++++++++++++++-----------------------
+ 1 file changed, 19 insertions(+), 23 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 56a356c30f30..ca9430a6f8d1 100644
+index ca9430a6f8d1..72f5d0d24127 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3947,6 +3947,8 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
- 	bool dequeue_deferred;
- 	int ret = 0;
- 
-+	local_irq_disable();
-+
- 	/*
- 	 * If this folio can be on the deferred split queue, lock out
- 	 * the shrinker before freezing the ref. If the shrinker sees
-@@ -3969,6 +3971,7 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
- 			list_lru_unlock(lru);
- 			rcu_read_unlock();
- 		}
-+		local_irq_enable();
- 		return -EAGAIN;
- 	}
- 
-@@ -4020,6 +4023,7 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
- 		lruvec_unlock(lruvec);
- 	if (ci)
- 		swap_cluster_unlock(ci);
-+	local_irq_enable();
- 
- 	return ret;
- }
-@@ -4035,8 +4039,21 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
+@@ -4031,14 +4031,26 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
+ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int new_order,
+ 					      struct page *split_at, struct xa_state *xas,
+ 					      struct address_space *mapping, bool do_lru,
+-					      struct list_head *list, enum split_type split_type,
+-					      pgoff_t end, int *nr_shmem_dropped)
++					      struct list_head *list, enum split_type split_type)
+ {
+ 	struct folio *end_folio = folio_next(folio);
+ 	struct folio *new_folio, *next;
++	int nr_shmem_dropped = 0;
  	struct lruvec *lruvec;
++	pgoff_t end = 0;
  	int ret;
  
--	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1))
--		return -EAGAIN;
-+	xas_lock_irq(xas);
-+
 +	/*
-+	 * Check if the folio is present in page cache.
-+	 * We assume all tail are present too, if folio is there.
++	 *__split_unmapped_folio() may need to trim off pages beyond
++	 * EOF: but on 32-bit, i_size_read() takes an irq-unsafe
++	 * seqlock, which cannot be nested inside the page tree lock.
++	 * So note end now: i_size itself may be changed at any moment,
++	 * but folio lock is good enough to serialize the trimming.
 +	 */
-+	if (xas_load(xas) != folio) {
-+		ret = -EAGAIN;
-+		goto fail;
-+	}
++	end = DIV_ROUND_UP(i_size_read(mapping->host), PAGE_SIZE);
++	if (shmem_mapping(mapping))
++		end = shmem_fallocend(mapping->host, end);
 +
-+	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
-+		ret = -EAGAIN;
-+		goto fail;
-+	}
+ 	xas_lock_irq(xas);
  
- 	if (folio_test_pmd_mappable(folio) &&
- 	    new_order < HPAGE_PMD_ORDER) {
-@@ -4107,6 +4124,8 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
- 	if (do_lru)
- 		lruvec_unlock(lruvec);
+ 	/*
+@@ -4102,10 +4114,9 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
+ 			continue;
+ 		}
  
-+fail:
-+	xas_unlock_irq(xas);
+-		VM_WARN_ON_ONCE(!nr_shmem_dropped);
+ 		/* Drop folio beyond EOF: ->index >= end */
+-		if (shmem_mapping(mapping) && nr_shmem_dropped)
+-			*nr_shmem_dropped += nr_pages;
++		if (shmem_mapping(mapping))
++			nr_shmem_dropped += nr_pages;
+ 		else if (folio_test_clear_dirty(new_folio))
+ 			folio_account_cleaned(new_folio,
+ 					      inode_to_wb(mapping->host));
+@@ -4126,6 +4137,8 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
+ 
+ fail:
+ 	xas_unlock_irq(xas);
++	if (nr_shmem_dropped)
++		shmem_uncharge(mapping->host, nr_shmem_dropped);
  	return ret;
  }
  
-@@ -4246,19 +4265,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+@@ -4162,9 +4175,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 	struct anon_vma *anon_vma = NULL;
+ 	int old_order = folio_order(folio);
+ 	struct folio *new_folio, *next;
+-	int nr_shmem_dropped = 0;
+ 	enum ttu_flags ttu_flags = 0;
+-	pgoff_t end = 0;
+ 	int ret;
  
- 	unmap_folio(folio);
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
+@@ -4241,17 +4252,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
  
--	/* block interrupt reentry in xa_lock and spinlock */
--	local_irq_disable();
--	if (mapping) {
+ 		anon_vma = NULL;
+ 		i_mmap_lock_read(mapping);
+-
 -		/*
--		 * Check if the folio is present in page cache.
--		 * We assume all tail are present too, if folio is there.
+-		 *__split_unmapped_folio() may need to trim off pages beyond
+-		 * EOF: but on 32-bit, i_size_read() takes an irq-unsafe
+-		 * seqlock, which cannot be nested inside the page tree lock.
+-		 * So note end now: i_size itself may be changed at any moment,
+-		 * but folio lock is good enough to serialize the trimming.
 -		 */
--		xas_lock(&xas);
--		xas_reset(&xas);
--		if (xas_load(&xas) != folio) {
--			ret = -EAGAIN;
--			goto fail;
--		}
-+	if (!is_anon) {
+-		end = DIV_ROUND_UP(i_size_read(mapping->host), PAGE_SIZE);
+-		if (shmem_mapping(mapping))
+-			end = shmem_fallocend(mapping->host, end);
+ 	}
+ 
+ 	/*
+@@ -4267,16 +4267,12 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 
+ 	if (!is_anon) {
  		ret = __folio_freeze_split_unmapped_file(folio, new_order, split_at, &xas, mapping,
- 							 true, list, split_type, end,
- 							 &nr_shmem_dropped);
-@@ -4267,12 +4274,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+-							 true, list, split_type, end,
+-							 &nr_shmem_dropped);
++							 true, list, split_type);
+ 	} else {
+ 		ret = __folio_freeze_split_unmapped_anon(folio, new_order, split_at, true,
  							 list, split_type);
  	}
  
--fail:
--	if (mapping)
--		xas_unlock(&xas);
+-	if (nr_shmem_dropped)
+-		shmem_uncharge(mapping->host, nr_shmem_dropped);
 -
--	local_irq_enable();
--
- 	if (nr_shmem_dropped)
- 		shmem_uncharge(mapping->host, nr_shmem_dropped);
+ 	if (!ret && is_anon && !folio_is_device_private(folio))
+ 		ttu_flags = TTU_USE_SHARED_ZEROPAGE;
  
-@@ -4355,8 +4356,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
-  */
- int folio_split_unmapped(struct folio *folio, unsigned int new_order)
- {
--	int ret = 0;
--
- 	VM_WARN_ON_ONCE_FOLIO(folio_mapped(folio), folio);
- 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
- 	VM_WARN_ON_ONCE_FOLIO(!folio_test_large(folio), folio);
-@@ -4365,11 +4364,8 @@ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
- 	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1)
- 		return -EAGAIN;
- 
--	local_irq_disable();
--	ret = __folio_freeze_split_unmapped_anon(folio, new_order, &folio->page,
--						 false, NULL, SPLIT_TYPE_UNIFORM);
--	local_irq_enable();
--	return ret;
-+	return __folio_freeze_split_unmapped_anon(folio, new_order, &folio->page,
-+						  false, NULL, SPLIT_TYPE_UNIFORM);
- }
- 
- /*
 
 -- 
 2.55.0
