@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 07 Aug 2026 14:52:52 -0700
-Subject: [PATCH v10 13/41] KVM: guest_memfd: Return early if range already
- has requested attributes
+Date: Fri, 07 Aug 2026 14:52:53 -0700
+Subject: [PATCH v10 14/41] mm/gup: factor out LRU cache draining for folio
+ into lru_cache_drain_for_folio()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260807-gmem-inplace-conversion-v10-13-2fc18ee6d3ba@google.com>
+Message-Id: <20260807-gmem-inplace-conversion-v10-14-2fc18ee6d3ba@google.com>
 References: <20260807-gmem-inplace-conversion-v10-0-2fc18ee6d3ba@google.com>
 In-Reply-To: <20260807-gmem-inplace-conversion-v10-0-2fc18ee6d3ba@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -41,74 +41,169 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786139565; l=1860;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786139565; l=5756;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=klJ2px6Wqls0hGacJ6oWy+P1esd5PU6yM+WgWOJIUsI=;
- b=0vcu/MCQmdtGPWXOU8t4S5wJStaSMSvivJsV/Xl5Og7DLO+sy8ItmzZsKMw2S/tvGBDd0R6fn
- kv9xs7ln6iLBrXgNjDz8oyAG22n3GxyCUR0wMu/iTJCQy9zQht3v4sP
+ bh=xV++FlZvFI4NwrLc3veqIQ22RTFlEXFJFbRA5Ehxu/0=;
+ b=9YrnGTHepXwH7Ocuf/jdvkIQyqGXFL+hq1GjIfVIdNlq/Sj/XRMZp5UufgETznFOEOs76yZdZ
+ b8PmUno3coGDK7JcNd2gKLkodQEly/BURV7tihbNuQW+fmMbNrK3aFw
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Provide function to check that a range has given attributes.
+From: "David Hildenbrand (Arm)" <david@kernel.org>
 
-Optimize setting memory attributes by returning early if all pages in the
-requested range already has the requested attributes.
+KVM with guest_memfd wants to remove any folio references due to LRU
+caches, as it really must only allow to convert folios from shared to
+private when there are no unexpected folio references (e.g., from GUP
+references).
 
-Reviewed-by: Fuad Tabba <tabba@google.com>
-Tested-by: Shivank Garg <shivankg@amd.com>
+So, to drive the refcount down, it needs a way to flush the LRU caches.
+Let's factor out what we have in lru_cache_drain_for_folio(). Document
+it, and also mention that concurrent folio (un)mapping might, in theory,
+miss detecting LRU cache references. Keep obtaining the expected refcount
+twice to minimize the possibility. For the current and future user that
+should work, and we don't really have a better alternative: we could
+detect if the mapcount changed, but it would still be racy and add more
+complexity with questionable benefit.
+
+Maybe there is a chance to avoid the draining entirely in the future,
+by avoiding extra references from the LRU cache: Hugh thinks there might
+be a way. But for the time being, this handling is unfortunately
+required.
+
+Make folio_may_be_lru_cached() accept a const pointer so
+lru_cache_drain_for_folio() can accept a const pointer as well.
+
+Signed-off-by: David Hildenbrand (Arm) <david@kernel.org>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 23 ++++++++++++++++++++++-
- 1 file changed, 22 insertions(+), 1 deletion(-)
+ include/linux/swap.h | 11 ++++++++++-
+ mm/gup.c             | 15 ++-------------
+ mm/swap.c            | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 58 insertions(+), 14 deletions(-)
 
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index c9874bd85c5d8..896699afcad9d 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -95,6 +95,24 @@ static bool kvm_gmem_is_shared_mem(struct inode *inode, pgoff_t index)
- 	return !kvm_gmem_is_private_mem(inode, index);
- }
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 8f0f68e245baa..e625d64c9e13d 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -317,7 +317,7 @@ void folio_add_lru_vma(struct folio *, struct vm_area_struct *);
+ void mark_page_accessed(struct page *);
+ void folio_mark_accessed(struct folio *);
  
-+static bool kvm_gmem_range_has_attributes(struct inode *inode,
-+					  pgoff_t index, size_t nr_pages,
-+					  u64 attributes)
+-static inline bool folio_may_be_lru_cached(struct folio *folio)
++static inline bool folio_may_be_lru_cached(const struct folio *folio)
+ {
+ 	/*
+ 	 * Holding PMD-sized folios in per-CPU LRU cache unbalances accounting.
+@@ -344,6 +344,15 @@ extern void lru_add_drain(void);
+ extern void lru_add_drain_cpu(int cpu);
+ extern void lru_add_drain_cpu_zone(struct zone *zone);
+ extern void lru_add_drain_all(void);
++
++enum lru_cache_drained {
++	LRU_CACHE_NOT_DRAINED,
++	LRU_CACHE_DRAINED,
++	LRU_CACHE_DRAINED_ALL,
++};
++void lru_cache_drain_for_folio(const struct folio *folio,
++		unsigned int extra_refs, enum lru_cache_drained *drained);
++
+ void folio_deactivate(struct folio *folio);
+ void folio_mark_lazyfree(struct folio *folio);
+ extern void swap_setup(void);
+diff --git a/mm/gup.c b/mm/gup.c
+index bde05664fe9a9..1bd8915517196 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -2266,9 +2266,9 @@ static unsigned long collect_longterm_unpinnable_folios(
+ 		struct list_head *movable_folio_list,
+ 		struct pages_or_folios *pofs)
+ {
++	enum lru_cache_drained drained = LRU_CACHE_NOT_DRAINED;
+ 	unsigned long collected = 0;
+ 	struct folio *folio;
+-	int drained = 0;
+ 	long i = 0;
+ 
+ 	for (folio = pofs_get_folio(pofs, i); folio;
+@@ -2293,18 +2293,7 @@ static unsigned long collect_longterm_unpinnable_folios(
+ 		 * but also to remove any other folio references from LRU
+ 		 * caches.
+ 		 */
+-		if (drained == 0 && folio_may_be_lru_cached(folio) &&
+-				folio_ref_count(folio) !=
+-				folio_expected_ref_count(folio) + pin_refs) {
+-			lru_add_drain();
+-			drained = 1;
+-		}
+-		if (drained == 1 && folio_may_be_lru_cached(folio) &&
+-				folio_ref_count(folio) !=
+-				folio_expected_ref_count(folio) + pin_refs) {
+-			lru_add_drain_all();
+-			drained = 2;
+-		}
++		lru_cache_drain_for_folio(folio, pin_refs, &drained);
+ 
+ 		if (!folio_isolate_lru(folio))
+ 			continue;
+diff --git a/mm/swap.c b/mm/swap.c
+index 588f50d8f1a8c..8e965c8ce9aa9 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -950,6 +950,52 @@ void lru_add_drain_all(void)
+ }
+ #endif /* CONFIG_SMP */
+ 
++/**
++ * lru_cache_drain_for_folio() - drain LRU caches if the caches might hold
++ *				 folio references
++ * @folio: The folio.
++ * @extra_refs: Extra folio references held by the caller.
++ * @drained: Drain status for batch folio processing.
++ *
++ * Drain LRU caches if the caches might hold folio references. Start
++ * with a local LRU cache drain, to then drain LRU caches on all CPUs if
++ * local draining was insufficient.
++ *
++ * This function detects LRU cache references by comparing the folio refcount
++ * with the sum of the expected folio refcount + extra references held by the
++ * caller. Note that we cannot rely on PG_lru to reliably detect all LRU
++ * cache references, and there are rare scenarios (concurrent folio (un)mapping)
++ * where this function might miss detecting LRU cache references.
++ *
++ * If @drained is not NULL, the function will avoid re-draining LRU caches
++ * when processing multiple folios in a row. In that case, the variable
++ * @drained points at must be initialized to LRU_CACHE_NOT_DRAINED before
++ * the first invocation by the caller.
++ */
++void lru_cache_drain_for_folio(const struct folio *folio,
++		unsigned int extra_refs, enum lru_cache_drained *drained)
 +{
-+	struct maple_tree *mt = &GMEM_I(inode)->attributes;
-+	pgoff_t end = index + nr_pages - 1;
-+	void *entry;
++	if (!folio_may_be_lru_cached(folio))
++		return;
 +
-+	lockdep_assert(mt_lock_is_held(mt));
-+
-+	mt_for_each(mt, entry, index, end) {
-+		if (kvm_gmem_get_attributes(inode, entry) != attributes)
-+			return false;
++	if (!drained || *drained == LRU_CACHE_NOT_DRAINED) {
++		if (folio_ref_count(folio) ==
++		    folio_expected_ref_count(folio) + extra_refs)
++			return;
++		lru_add_drain();
++		if (drained)
++			*drained = LRU_CACHE_DRAINED;
 +	}
-+
-+	return true;
++	if (!drained || *drained == LRU_CACHE_DRAINED) {
++		if (folio_ref_count(folio) ==
++		    folio_expected_ref_count(folio) + extra_refs)
++			return;
++		lru_add_drain_all();
++		if (drained)
++			*drained = LRU_CACHE_DRAINED_ALL;
++	}
 +}
 +
+ atomic_t lru_disable_count = ATOMIC_INIT(0);
+ 
  /*
-  * Returns a locked folio on success.  The caller is responsible for
-  * setting the up-to-date flag before the memory is mapped into the guest.
-@@ -605,12 +623,15 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
- 	pgoff_t end = start + nr_pages;
- 	struct maple_tree *mt;
- 	struct ma_state mas;
--	int r;
-+	int r = 0;
- 
- 	mt = &gi->attributes;
- 
- 	filemap_invalidate_lock(mapping);
- 
-+	if (kvm_gmem_range_has_attributes(inode, start, nr_pages, attrs))
-+		goto out;
-+
- 	mas_init(&mas, mt, start);
- 	r = kvm_gmem_mas_preallocate(&mas, attrs, start, nr_pages);
- 	if (r) {
 
 -- 
 2.55.0.654.g21b8a5bc05-goog
