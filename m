@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 07 Aug 2026 14:52:53 -0700
-Subject: [PATCH v10 14/41] mm/gup: factor out LRU cache draining for folio
- into lru_cache_drain_for_folio()
+Date: Fri, 07 Aug 2026 14:52:54 -0700
+Subject: [PATCH v10 15/41] KVM: guest_memfd: Handle lru_add fbatch
+ refcounts during conversion safety check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260807-gmem-inplace-conversion-v10-14-2fc18ee6d3ba@google.com>
+Message-Id: <20260807-gmem-inplace-conversion-v10-15-2fc18ee6d3ba@google.com>
 References: <20260807-gmem-inplace-conversion-v10-0-2fc18ee6d3ba@google.com>
 In-Reply-To: <20260807-gmem-inplace-conversion-v10-0-2fc18ee6d3ba@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,171 +39,122 @@ To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com,
 Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
- linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
+ linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
+ "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786139565; l=5756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786139565; l=3762;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=xV++FlZvFI4NwrLc3veqIQ22RTFlEXFJFbRA5Ehxu/0=;
- b=9YrnGTHepXwH7Ocuf/jdvkIQyqGXFL+hq1GjIfVIdNlq/Sj/XRMZp5UufgETznFOEOs76yZdZ
- b8PmUno3coGDK7JcNd2gKLkodQEly/BURV7tihbNuQW+fmMbNrK3aFw
+ bh=vRHAPnsy/a831M2QO9lXaFqyTG6Mc0Skqo/1hc4/61s=;
+ b=9TIb+ZXbdQMmrXLDC7072TqBL/mub/d5Ks6MUbovt3WcKeDpnixAU2yGfF0KPtDV9N+i5+ZFg
+ hfk34FX6oJiCGmv+DpvAaRMkwVZbxV9kE6Xqd6nBrhbp7s0dXmGD85o
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: "David Hildenbrand (Arm)" <david@kernel.org>
+A guest_memfd folio is safe for conversion if guest_memfd holds the last
+references on it. Any other references on the folio may indicate another
+user, and guest_memfd cannot convert it to private if there may be an
+existing host user.
 
-KVM with guest_memfd wants to remove any folio references due to LRU
-caches, as it really must only allow to convert folios from shared to
-private when there are no unexpected folio references (e.g., from GUP
-references).
+A folio will have extra refcounts if it is present in a per-CPU lru_add
+fbatch. guest_memfd does not actually participate in LRU, but
+freshly-allocated folios are still added to the lru_add fbatch for batch
+LRU statistics processing.
 
-So, to drive the refcount down, it needs a way to flush the LRU caches.
-Let's factor out what we have in lru_cache_drain_for_folio(). Document
-it, and also mention that concurrent folio (un)mapping might, in theory,
-miss detecting LRU cache references. Keep obtaining the expected refcount
-twice to minimize the possibility. For the current and future user that
-should work, and we don't really have a better alternative: we could
-detect if the mapcount changed, but it would still be racy and add more
-complexity with questionable benefit.
+This one known "usage" of the folio is handled by draining the lru_add
+fbatch. After draining, if the refcount is still elevated, then there's
+truly some other user of this page, and the page is not safe for
+conversion.
 
-Maybe there is a chance to avoid the draining entirely in the future,
-by avoiding extra references from the LRU cache: Hugh thinks there might
-be a way. But for the time being, this handling is unfortunately
-required.
+If the page may be dma pinned, DMA is obviously using it and hence not safe
+for conversions. If the page is still mapped after guest_memfd tried to
+unmap it earlier in the conversion process, it is also obviously not safe
+for conversion. Exit early to avoid unnecessary draining in these 2 cases.
 
-Make folio_may_be_lru_cached() accept a const pointer so
-lru_cache_drain_for_folio() can accept a const pointer as well.
+Provide a drain status to only drain once ever while processing a batch of
+folios.
 
-Signed-off-by: David Hildenbrand (Arm) <david@kernel.org>
+Acked-by: Vlastimil Babka (SUSE) <vbabka@kernel.org>
+Suggested-by: David Hildenbrand <david@kernel.org>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/swap.h | 11 ++++++++++-
- mm/gup.c             | 15 ++-------------
- mm/swap.c            | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 58 insertions(+), 14 deletions(-)
+ mm/swap.c              |  2 ++
+ virt/kvm/guest_memfd.c | 23 +++++++++++++++++++----
+ 2 files changed, 21 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 8f0f68e245baa..e625d64c9e13d 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -317,7 +317,7 @@ void folio_add_lru_vma(struct folio *, struct vm_area_struct *);
- void mark_page_accessed(struct page *);
- void folio_mark_accessed(struct folio *);
- 
--static inline bool folio_may_be_lru_cached(struct folio *folio)
-+static inline bool folio_may_be_lru_cached(const struct folio *folio)
- {
- 	/*
- 	 * Holding PMD-sized folios in per-CPU LRU cache unbalances accounting.
-@@ -344,6 +344,15 @@ extern void lru_add_drain(void);
- extern void lru_add_drain_cpu(int cpu);
- extern void lru_add_drain_cpu_zone(struct zone *zone);
- extern void lru_add_drain_all(void);
-+
-+enum lru_cache_drained {
-+	LRU_CACHE_NOT_DRAINED,
-+	LRU_CACHE_DRAINED,
-+	LRU_CACHE_DRAINED_ALL,
-+};
-+void lru_cache_drain_for_folio(const struct folio *folio,
-+		unsigned int extra_refs, enum lru_cache_drained *drained);
-+
- void folio_deactivate(struct folio *folio);
- void folio_mark_lazyfree(struct folio *folio);
- extern void swap_setup(void);
-diff --git a/mm/gup.c b/mm/gup.c
-index bde05664fe9a9..1bd8915517196 100644
---- a/mm/gup.c
-+++ b/mm/gup.c
-@@ -2266,9 +2266,9 @@ static unsigned long collect_longterm_unpinnable_folios(
- 		struct list_head *movable_folio_list,
- 		struct pages_or_folios *pofs)
- {
-+	enum lru_cache_drained drained = LRU_CACHE_NOT_DRAINED;
- 	unsigned long collected = 0;
- 	struct folio *folio;
--	int drained = 0;
- 	long i = 0;
- 
- 	for (folio = pofs_get_folio(pofs, i); folio;
-@@ -2293,18 +2293,7 @@ static unsigned long collect_longterm_unpinnable_folios(
- 		 * but also to remove any other folio references from LRU
- 		 * caches.
- 		 */
--		if (drained == 0 && folio_may_be_lru_cached(folio) &&
--				folio_ref_count(folio) !=
--				folio_expected_ref_count(folio) + pin_refs) {
--			lru_add_drain();
--			drained = 1;
--		}
--		if (drained == 1 && folio_may_be_lru_cached(folio) &&
--				folio_ref_count(folio) !=
--				folio_expected_ref_count(folio) + pin_refs) {
--			lru_add_drain_all();
--			drained = 2;
--		}
-+		lru_cache_drain_for_folio(folio, pin_refs, &drained);
- 
- 		if (!folio_isolate_lru(folio))
- 			continue;
 diff --git a/mm/swap.c b/mm/swap.c
-index 588f50d8f1a8c..8e965c8ce9aa9 100644
+index 8e965c8ce9aa9..9f511b97ab110 100644
 --- a/mm/swap.c
 +++ b/mm/swap.c
-@@ -950,6 +950,52 @@ void lru_add_drain_all(void)
- }
- #endif /* CONFIG_SMP */
+@@ -37,6 +37,7 @@
+ #include <linux/page_idle.h>
+ #include <linux/local_lock.h>
+ #include <linux/buffer_head.h>
++#include <linux/kvm_types.h>
  
-+/**
-+ * lru_cache_drain_for_folio() - drain LRU caches if the caches might hold
-+ *				 folio references
-+ * @folio: The folio.
-+ * @extra_refs: Extra folio references held by the caller.
-+ * @drained: Drain status for batch folio processing.
-+ *
-+ * Drain LRU caches if the caches might hold folio references. Start
-+ * with a local LRU cache drain, to then drain LRU caches on all CPUs if
-+ * local draining was insufficient.
-+ *
-+ * This function detects LRU cache references by comparing the folio refcount
-+ * with the sum of the expected folio refcount + extra references held by the
-+ * caller. Note that we cannot rely on PG_lru to reliably detect all LRU
-+ * cache references, and there are rare scenarios (concurrent folio (un)mapping)
-+ * where this function might miss detecting LRU cache references.
-+ *
-+ * If @drained is not NULL, the function will avoid re-draining LRU caches
-+ * when processing multiple folios in a row. In that case, the variable
-+ * @drained points at must be initialized to LRU_CACHE_NOT_DRAINED before
-+ * the first invocation by the caller.
-+ */
-+void lru_cache_drain_for_folio(const struct folio *folio,
-+		unsigned int extra_refs, enum lru_cache_drained *drained)
-+{
-+	if (!folio_may_be_lru_cached(folio))
-+		return;
-+
-+	if (!drained || *drained == LRU_CACHE_NOT_DRAINED) {
-+		if (folio_ref_count(folio) ==
-+		    folio_expected_ref_count(folio) + extra_refs)
-+			return;
-+		lru_add_drain();
-+		if (drained)
-+			*drained = LRU_CACHE_DRAINED;
-+	}
-+	if (!drained || *drained == LRU_CACHE_DRAINED) {
-+		if (folio_ref_count(folio) ==
-+		    folio_expected_ref_count(folio) + extra_refs)
-+			return;
-+		lru_add_drain_all();
-+		if (drained)
-+			*drained = LRU_CACHE_DRAINED_ALL;
-+	}
-+}
-+
+ #include "internal.h"
+ 
+@@ -995,6 +996,7 @@ void lru_cache_drain_for_folio(const struct folio *folio,
+ 			*drained = LRU_CACHE_DRAINED_ALL;
+ 	}
+ }
++EXPORT_SYMBOL_FOR_KVM(lru_cache_drain_for_folio);
+ 
  atomic_t lru_disable_count = ATOMIC_INIT(0);
  
- /*
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index 896699afcad9d..030af0855f8b0 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -8,6 +8,7 @@
+ #include <linux/mempolicy.h>
+ #include <linux/pseudo_fs.h>
+ #include <linux/pagemap.h>
++#include <linux/swap.h>
+ 
+ #include "kvm_mm.h"
+ #include "guest_memfd.h"
+@@ -542,11 +543,26 @@ static int kvm_gmem_mas_preallocate(struct ma_state *mas, u64 attributes,
+ 	return mas_preallocate(mas, xa_mk_value(attributes), GFP_KERNEL);
+ }
+ 
++static bool __folio_safe_for_conversion(struct folio *folio,
++					enum lru_cache_drained *drained)
++{
++	const int filemap_get_folios_refcount = 1;
++
++	if (folio_maybe_dma_pinned(folio) || folio_mapped(folio))
++		return false;
++
++	lru_cache_drain_for_folio(folio, filemap_get_folios_refcount,
++				  drained);
++
++	return folio_ref_count(folio) ==
++	       folio_nr_pages(folio) + filemap_get_folios_refcount;
++}
++
+ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 					    size_t nr_pages, pgoff_t *err_index)
+ {
++	enum lru_cache_drained drained = LRU_CACHE_NOT_DRAINED;
+ 	struct address_space *mapping = inode->i_mapping;
+-	const int filemap_get_folios_refcount = 1;
+ 	pgoff_t last = start + nr_pages - 1;
+ 	struct folio_batch fbatch;
+ 	bool safe = true;
+@@ -560,9 +576,8 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 		for (i = 0; i < folio_batch_count(&fbatch); ++i) {
+ 			struct folio *folio = fbatch.folios[i];
+ 
+-			if (folio_ref_count(folio) !=
+-			    folio_nr_pages(folio) + filemap_get_folios_refcount) {
+-				safe = false;
++			safe = __folio_safe_for_conversion(folio, &drained);
++			if (!safe) {
+ 				*err_index = max(start, folio->index);
+ 				break;
+ 			}
 
 -- 
 2.55.0.654.g21b8a5bc05-goog
