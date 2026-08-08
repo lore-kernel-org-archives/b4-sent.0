@@ -1,68 +1,84 @@
-From: Casey Tunturi <casey@samaritansolutions.net>
-Date: Fri, 07 Aug 2026 20:35:13 -0400
-Subject: [PATCH] slimbus: qcom-ngd-ctrl: match downstream DEF_ACT_CHAN
- encoding
+From: Esteban Alba <estebancalba@gmail.com>
+Date: Fri, 07 Aug 2026 21:09:53 -0500
+Subject: [PATCH] net: net6: validate IPv6 payload and UDP length on receive
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260807-slimbus-def-act-chan-v1-1-fd542efb3d30@samaritansolutions.net>
-X-B4-Tracking: v=1; b=H4sIAMB5dmoC/y2NWw6CMBQFt0L6bZNS6AO3YvjovdxqjYC2xZgQ9
- m4RPyeZM2dliWKgxM7VyiK9QwrzVKA+VQxvbroSD0NhJoXUwgrD0yOMsCQ+kOcOM98tDkZQ68E
- 4gJqV6TOSD59f9tIfnBa4E+a99TcivZbylw+NgUvEcR7HkM+VUl6S67y3DaI0ziolNdQtYAeN9
- J12wg6akPXb9gUEzzu6xAAAAA==
-X-Change-ID: 20260807-slimbus-def-act-chan-b70e4fb7abb1
-To: Srinivas Kandagatla <srini@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-sound@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- stable@vger.kernel.org, Casey Tunturi <casey@samaritansolutions.net>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786149357; l=1541;
- i=casey@samaritansolutions.net; s=20260808; h=from:subject:message-id;
- bh=e+Q5bDUByME3v5es1Uq1PGS+sTl936AilMSdVkoqZLc=;
- b=a/xPXsw22g09JQ+s5pQ5aOdlYeYCoHIxbI1RBc18HAnf2Bx0vvVajzqTLPH1wp5w3JUUE+fJA
- 4QJoSeL6h+jBzT2XrKBvJsFTpkiVKJEkXE2HRbVIpMxq0MszPOj2uB3
-X-Developer-Key: i=casey@samaritansolutions.net; a=ed25519;
- pk=oAg9oAsm2ZYWlQFWe7kijWzWnqsQZ/KIY59MAWrTRzk=
-X-Endpoint-Received: by B4 Relay for casey@samaritansolutions.net/20260808 with auth_id=926
+Message-Id: <20260807-net6-len-validation-v1-1-edff271cbf2c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPCPdmoC/yXMwQrDIBCE4VcJe86CyUHbvkrIwejYbgmmqJFCy
+ LvXtscPZv6DMpIg0607KKFKli02DH1H7mHjHSy+mUY1anVRhiOK5hWRq13F29L27LwZEPxVWxO
+ oPV8JQd6/6jT/nfflCVe+KTrPD4FKLfl3AAAA
+X-Change-ID: 20260807-net6-len-validation-cd71efd96a7f
+To: u-boot@lists.u-boot-project.org
+Cc: Ramon Fried <rfried.dev@gmail.com>, 
+ Jerome Forissier <jerome.forissier@arm.com>, Tom Rini <trini@konsulko.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786154992; l=2310;
+ i=estebancalba@gmail.com; s=20260808; h=from:subject:message-id;
+ bh=Noglsh+V1jbRhzRXFIKeYwjx9lELZ2FDIrdfAldKLjk=;
+ b=mltVNCMlvJDST5IxyVGnqclfs/TqZZ03IQYrKdHH21v4nAjlYGxRjJP6exVh9mn8oz64j9gUM
+ NDGwAIBToy8BxvruaKTQC++I9GBphp8OyTA+UvBFdcc6jJcacDnKVC9
+X-Developer-Key: i=estebancalba@gmail.com; a=ed25519;
+ pk=1BEuFs3cavGme7UfOyPkuXqt9/3FstTgVwsFSCXGO5o=
+X-Endpoint-Received: by B4 Relay for estebancalba@gmail.com/20260808 with auth_id=927
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During my investigations, and some rather incessant cross-checking of
-blueline's SLIMbus path, I found that Qualcomm's downstream driver
-packs the first DEF_ACT_CHAN byte differently from mainline. Bits [7:5]
-hold the data format; bits [4:0] hold the five-bit client number.
+net_ip6_handler() checks the received length only against IP6_HDR_SIZE
+and then uses two length fields from the packet without checking them.
+The checksum is computed over payload_len, but the length passed to the
+UDP handler comes from udp_len. A sender can keep payload_len correct so
+the checksum still validates and set udp_len larger than the frame. A
+handler that trusts that length then reads or writes past the receive
+buffer. The DHCPv6 client copies the declared number of bytes and can be
+made to write past the packet buffer from a single link-local ADVERTISE.
 
-I changed ours to match. It made no immediate difference on my own
-hardware: blueline's current values produce 0x0f either way. The
-downstream layout is correct and should help devices that use upper
-logical-address bits or a non-zero data format.
+The IPv4 path already reconciles these lengths in
+net_process_received_packet(). Do the same here: reject a payload_len
+that exceeds the received length and trim len to it, then reject a
+udp_len smaller than the UDP header or larger than the payload before
+calling the handler.
 
-Fixes: 52490169cddf ("slimbus: ngd: add stream support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Casey Tunturi <casey@samaritansolutions.net>
+Fixes: 1feb697830ce ("net: ipv6: Add implementation of main IPv6 functions")
+Signed-off-by: Esteban Alba <estebancalba@gmail.com>
+Cc: Jerome Forissier <jerome.forissier@arm.com>
+Cc: Tom Rini <trini@konsulko.com>
 ---
- drivers/slimbus/qcom-ngd-ctrl.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/net6.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/drivers/slimbus/qcom-ngd-ctrl.c b/drivers/slimbus/qcom-ngd-ctrl.c
-index 3071e46d0..14192380d 100644
---- a/drivers/slimbus/qcom-ngd-ctrl.c
-+++ b/drivers/slimbus/qcom-ngd-ctrl.c
-@@ -1018,7 +1018,8 @@ static int qcom_slim_ngd_enable_stream(struct slim_stream_runtime *rt)
- 		if (txn.msg->num_bytes == 0) {
- 			int exp = 0, coef = 0;
+diff --git a/net/net6.c b/net/net6.c
+index 4cff98df15..af2f484fad 100644
+--- a/net/net6.c
++++ b/net/net6.c
+@@ -392,6 +392,11 @@ int net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
+ 	if (ip6->version != 6)
+ 		return -EINVAL;
  
--			wbuf[txn.msg->num_bytes++] = sdev->laddr;
-+			wbuf[txn.msg->num_bytes++] =
-+				(port->ch.data_fmt << 5) | (sdev->laddr & 0x1f);
- 			wbuf[txn.msg->num_bytes] = rt->bps >> 2 |
- 						   (port->ch.aux_fmt << 6);
++	/* Trim to the length declared in the header, as the IPv4 path does */
++	if (len < IP6_HDR_SIZE + ntohs(ip6->payload_len))
++		return -EINVAL;
++	len = IP6_HDR_SIZE + ntohs(ip6->payload_len);
++
+ 	switch (ip6->nexthdr) {
+ 	case PROT_ICMPV6:
+ 		icmp = (struct icmp6hdr *)(((uchar *)ip6) + IP6_HDR_SIZE);
+@@ -433,6 +438,10 @@ int net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
+ 		if (csum != udp->udp_xsum)
+ 			return -EINVAL;
  
++		if (ntohs(udp->udp_len) < UDP_HDR_SIZE ||
++		    ntohs(udp->udp_len) > len - IP6_HDR_SIZE)
++			return -EINVAL;
++
+ 		/* IP header OK. Pass the packet to the current handler. */
+ 		net_get_udp_handler()((uchar *)ip6 + IP6_HDR_SIZE +
+ 					UDP_HDR_SIZE,
 
 ---
-base-commit: 55f2ea9ff83cc27a85526b14bc9b32f96a08d6ec
-change-id: 20260807-slimbus-def-act-chan-b70e4fb7abb1
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20260807-net6-len-validation-cd71efd96a7f
 
 Best regards,
 --  
-Casey Tunturi <casey@samaritansolutions.net>
+Esteban Alba <estebancalba@gmail.com>
 
