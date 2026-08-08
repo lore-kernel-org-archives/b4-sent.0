@@ -1,91 +1,93 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 08 Aug 2026 02:21:24 -0500
-Subject: [PATCH net v2 2/2] net/smc: do not dereference an unset send
- buffer on the SMC-D teardown path
+From: Junrui Luo <moonafterrain@outlook.com>
+Date: Sat, 08 Aug 2026 18:07:26 +0800
+Subject: [PATCH v2] drm/amdgpu: add the BO-va mapping offset when kmapping
+ an IB
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-b4-disp-22f119e6-v2-2-61647601a6f3@proton.me>
-References: <20260808-b4-disp-22f119e6-v2-0-61647601a6f3@proton.me>
-In-Reply-To: <20260808-b4-disp-22f119e6-v2-0-61647601a6f3@proton.me>
-To: Dust Li <dust.li@linux.alibaba.com>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Wenjia Zhang <wenjia@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
- Eric Dumazet <edumazet@google.com>
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, 
- netdev@vger.kernel.org, Simon Horman <horms@kernel.org>, 
- linux-s390@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786173683; l=2204;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=bUpsk29UNDMOBjMmaIhQLlOEXAr9bmtNl3+Vr8jHznI=;
- b=4P3PCV5pt68fjyRwrLWoWy8f33cvl058xvyvqwgSiauaBBYdbf7tw/NWuAVR8xMCy/+RKpHwS
- c00UpdWGqGwA8V6duNj3y+30tQF2NLnZ+9lI4FvSX5ai1ve3Z+Lxxxs
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260808-amdgpu-fixes-v2-1-36d66398601f@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAN3/dmoC/x3LQQqAIBBA0avIrBNGF2VdJVqIjjaLTJQikO6et
+ Hx8foNKhanCIhoUurnymTr0IMDtNkWS7LtBox7RoJH28DFfMvBDVc7OKgwWJ1IIfcmF/tCPdXv
+ fD5LIg2xeAAAA
+X-Change-ID: 20260808-amdgpu-fixes-9ca10fa07e10
+To: Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Jammy Zhou <Jammy.Zhou@amd.com>, Madhav Chauhan <madhav.chauhan@amd.com>, 
+ Felix Kuehling <Felix.Kuehling@amd.com>
+Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Yuhao Jiang <danisjiang@gmail.com>, 
+ Junrui Luo <moonafterrain@outlook.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2208;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=3FBj59YR9q4hNFYlTzD+oO1vogRrIbKjZwQeOYVwbY4=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrLL/j5LPXtkjmyZdbdzboX/ab4H+s35D75Blv2+7f
+ ZR7uX/PlhcdpSwMYlwMsmKKLMcLLn2z8N2iu8VnSzLMHFYmkCEMXJwCMBGtGIY/fJUxaotOOr/P
+ uPCvbapvhFXwb+Zllak+D1aKfQl58qVlLcN/31milS8V3qhJeh2Yz7DC8dG3f40PLiwU79W5mPx
+ /8sQIJgB7+VFO
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smc_close_stream_wait() calls smc_tx_prepared_sends() from inside its
-sk_wait_event() condition, and sk_wait_event() evaluates that condition
-once with the socket lock released. smcd_buf_detach() clears
-conn->sndbuf_desc from smc_conn_kill() under lock_sock(), so a link group
-terminating while a socket waits there leaves the helper dereferencing
-NULL, faulting out of close(). SIOCOUTQ reads the field by hand, and
-smc_close_cancel_work() drops the lock across two cancel_*_sync() calls.
+amdgpu_cs_patch_ibs() derives the CPU-side view of a UVD/VCE/VCN
+indirect buffer from the BO returned by amdgpu_cs_find_mapping():
 
-Sample the pointer once in the helper, report nothing prepared while it is
-unset, and bound the ioctl the same way. The receive tasklet dereferences
-the field directly in smc_cdc_msg_recv_action(), not through this helper;
-1/2 is what keeps it from running that late.
+    r = amdgpu_bo_kmap(aobj, (void **)&kptr);
+    kptr += va_start - (m->start * AMDGPU_GPU_PAGE_SIZE);
 
-Fixes: ae2be35cbed2 ("net/smc: {at|de}tach sndbuf to peer DMB if supported")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+amdgpu_bo_kmap() returns the start of the BO, so only the displacement
+of va_start inside the mapping is added.  The page tables, however, are
+programmed from mapping->offset (see amdgpu_vm_bo_update()), which
+records the offset_in_bo the client passed to AMDGPU_GEM_VA.  The GPU
+therefore resolves va_start to BO byte
+
+    m->offset + (va_start - m->start * AMDGPU_GPU_PAGE_SIZE)
+
+while the kernel inspects the byte m->offset lower.  Whenever an IB is
+submitted through a mapping created with a non-zero offset_in_bo, the
+two views disagree.
+
+Add the missing term so the kmapped pointer describes the same bytes the
+page tables do.
+
+Every other CPU-side consumer of amdgpu_cs_find_mapping() omits
+mapping->offset in the same way.
+
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Reviewed-by: Christian König <christian.koenig@amd.com>
 ---
- net/smc/af_smc.c | 3 ++-
- net/smc/smc_tx.h | 6 +++++-
- 2 files changed, 7 insertions(+), 2 deletions(-)
+Changes in v2:
+- Drop the Fixes tag.
+- Pick up Christian's Reviewed-by.
+- Resend standalone.
+- Link to v1: https://lore.kernel.org/r/20260806-amdgpu-fixes-v1-3-ce247012d4da@outlook.com
+---
+ drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
-index 00403175b740..cff910cedbfc 100644
---- a/net/smc/af_smc.c
-+++ b/net/smc/af_smc.c
-@@ -3233,7 +3233,8 @@ int smc_ioctl(struct socket *sock, unsigned int cmd,
- 			return -EINVAL;
- 		}
- 		if (smc->sk.sk_state == SMC_INIT ||
--		    smc->sk.sk_state == SMC_CLOSED)
-+		    smc->sk.sk_state == SMC_CLOSED ||
-+		    !READ_ONCE(smc->conn.sndbuf_desc))
- 			answ = 0;
- 		else
- 			answ = smc->conn.sndbuf_desc->len -
-diff --git a/net/smc/smc_tx.h b/net/smc/smc_tx.h
-index a59f370b8b43..610a945aefd6 100644
---- a/net/smc/smc_tx.h
-+++ b/net/smc/smc_tx.h
-@@ -20,11 +20,15 @@
+diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
+index 5445f75741b5..17fe6d56e020 100644
+--- a/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
++++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
+@@ -1043,7 +1043,7 @@ static int amdgpu_cs_patch_ibs(struct amdgpu_cs_parser *p,
+ 		if (r)
+ 			return r;
  
- static inline int smc_tx_prepared_sends(struct smc_connection *conn)
- {
-+	struct smc_buf_desc *sndbuf_desc = READ_ONCE(conn->sndbuf_desc);
- 	union smc_host_cursor sent, prep;
+-		kptr += va_start - (m->start * AMDGPU_GPU_PAGE_SIZE);
++		kptr += m->offset + va_start - (m->start * AMDGPU_GPU_PAGE_SIZE);
  
-+	if (!sndbuf_desc)
-+		return 0;
-+
- 	smc_curs_copy(&sent, &conn->tx_curs_sent, conn);
- 	smc_curs_copy(&prep, &conn->tx_curs_prep, conn);
--	return smc_curs_diff(conn->sndbuf_desc->len, &sent, &prep);
-+	return smc_curs_diff(sndbuf_desc->len, &sent, &prep);
- }
- 
- void smc_tx_pending(struct smc_connection *conn);
+ 		if (ring->funcs->parse_cs) {
+ 			memcpy(ib->ptr, kptr, ib->length_dw * 4);
 
+---
+base-commit: 075b74841bd0065a3bda3440873c747938e69b68
+change-id: 20260808-amdgpu-fixes-9ca10fa07e10
+
+Best regards,
 -- 
-2.55.0
+Junrui Luo <moonafterrain@outlook.com>
 
