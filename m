@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 08 Aug 2026 02:21:23 -0500
-Subject: [PATCH net v2 1/2] net/smc: unregister the connection before
- draining the rx tasklet
+Date: Sat, 08 Aug 2026 02:21:24 -0500
+Subject: [PATCH net v2 2/2] net/smc: do not dereference an unset send
+ buffer on the SMC-D teardown path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-b4-disp-22f119e6-v2-1-61647601a6f3@proton.me>
+Message-Id: <20260808-b4-disp-22f119e6-v2-2-61647601a6f3@proton.me>
 References: <20260808-b4-disp-22f119e6-v2-0-61647601a6f3@proton.me>
 In-Reply-To: <20260808-b4-disp-22f119e6-v2-0-61647601a6f3@proton.me>
 To: Dust Li <dust.li@linux.alibaba.com>, 
@@ -19,88 +19,72 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
  netdev@vger.kernel.org, Simon Horman <horms@kernel.org>, 
  linux-s390@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786173683; l=2661;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786173683; l=2204;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=Nd2Ah3VugjHz7UvVYOJKMppfI+jftDy275brVglOEvs=;
- b=QE3npRELgIChYQZFpoZO00PLr29iOAKSyZlw+h7E+Fj5mJBV1QLOe0hUI+cqO53eoFlWnCfGi
- FTHK6uamdGSDmWku6KTtiG7GUIRBSm9T4wNh2rCQ/Zqxh2kch/rGrjD
+ bh=bUpsk29UNDMOBjMmaIhQLlOEXAr9bmtNl3+Vr8jHznI=;
+ b=4P3PCV5pt68fjyRwrLWoWy8f33cvl058xvyvqwgSiauaBBYdbf7tw/NWuAVR8xMCy/+RKpHwS
+ c00UpdWGqGwA8V6duNj3y+30tQF2NLnZ+9lI4FvSX5ai1ve3Z+Lxxxs
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smc_conn_free() calls smc_ism_unset_conn() only while the link group is
-still on its device list, and never sets conn->killed.
-smc_lgr_terminate_sched() unlinks the group immediately and defers killing
-its connections to a work item, so a connection freed in that window keeps
-its smcd->conn[] slot with both gates in smcd_handle_irq() open, and the
-device can re-arm the receive tasklet after tasklet_kill() has returned. On
-the DMB-nocopy path the ghost send buffer is freed right after that drain,
-so the re-armed tasklet dereferences it.
+smc_close_stream_wait() calls smc_tx_prepared_sends() from inside its
+sk_wait_event() condition, and sk_wait_event() evaluates that condition
+once with the socket lock released. smcd_buf_detach() clears
+conn->sndbuf_desc from smc_conn_kill() under lock_sock(), so a link group
+terminating while a socket waits there leaves the helper dereferencing
+NULL, faulting out of close(). SIOCOUTQ reads the field by hand, and
+smc_close_cancel_work() drops the lock across two cancel_*_sync() calls.
 
-Unregister unconditionally and drain before the detach at both teardown
-sites, mirroring rmb_desc, which smc_buf_unuse() releases after the drain.
-Clear conn->sndbuf_desc before freeing it as well, so a reader that samples
-the pointer cannot get one that is already freed.
+Sample the pointer once in the helper, report nothing prepared while it is
+unset, and bound the ioctl the same way. The receive tasklet dereferences
+the field directly in smc_cdc_msg_recv_action(), not through this helper;
+1/2 is what keeps it from running that late.
 
 Fixes: ae2be35cbed2 ("net/smc: {at|de}tach sndbuf to peer DMB if supported")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- net/smc/smc_core.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ net/smc/af_smc.c | 3 ++-
+ net/smc/smc_tx.h | 6 +++++-
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index b4208cb186c5..181647982490 100644
---- a/net/smc/smc_core.c
-+++ b/net/smc/smc_core.c
-@@ -1209,14 +1209,16 @@ static void smcd_buf_detach(struct smc_connection *conn)
+diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
+index 00403175b740..cff910cedbfc 100644
+--- a/net/smc/af_smc.c
++++ b/net/smc/af_smc.c
+@@ -3233,7 +3233,8 @@ int smc_ioctl(struct socket *sock, unsigned int cmd,
+ 			return -EINVAL;
+ 		}
+ 		if (smc->sk.sk_state == SMC_INIT ||
+-		    smc->sk.sk_state == SMC_CLOSED)
++		    smc->sk.sk_state == SMC_CLOSED ||
++		    !READ_ONCE(smc->conn.sndbuf_desc))
+ 			answ = 0;
+ 		else
+ 			answ = smc->conn.sndbuf_desc->len -
+diff --git a/net/smc/smc_tx.h b/net/smc/smc_tx.h
+index a59f370b8b43..610a945aefd6 100644
+--- a/net/smc/smc_tx.h
++++ b/net/smc/smc_tx.h
+@@ -20,11 +20,15 @@
+ 
+ static inline int smc_tx_prepared_sends(struct smc_connection *conn)
  {
- 	struct smcd_dev *smcd = conn->lgr->smcd;
- 	u64 peer_token = conn->peer_token;
-+	struct smc_buf_desc *buf_desc;
++	struct smc_buf_desc *sndbuf_desc = READ_ONCE(conn->sndbuf_desc);
+ 	union smc_host_cursor sent, prep;
  
- 	if (!conn->sndbuf_desc)
- 		return;
- 
- 	smc_ism_detach_dmb(smcd, peer_token);
- 
--	kfree(conn->sndbuf_desc);
-+	buf_desc = conn->sndbuf_desc;
- 	conn->sndbuf_desc = NULL;
-+	kfree(buf_desc);
++	if (!sndbuf_desc)
++		return 0;
++
+ 	smc_curs_copy(&sent, &conn->tx_curs_sent, conn);
+ 	smc_curs_copy(&prep, &conn->tx_curs_prep, conn);
+-	return smc_curs_diff(conn->sndbuf_desc->len, &sent, &prep);
++	return smc_curs_diff(sndbuf_desc->len, &sent, &prep);
  }
  
- static void smc_buf_unuse(struct smc_connection *conn,
-@@ -1268,11 +1270,10 @@ void smc_conn_free(struct smc_connection *conn)
- 		goto lgr_put;
- 
- 	if (lgr->is_smcd) {
--		if (!list_empty(&lgr->list))
--			smc_ism_unset_conn(conn);
-+		smc_ism_unset_conn(conn);
-+		tasklet_kill(&conn->rx_tsklet);
- 		if (smc_ism_support_dmb_nocopy(lgr->smcd))
- 			smcd_buf_detach(conn);
--		tasklet_kill(&conn->rx_tsklet);
- 	} else {
- 		smc_cdc_wait_pend_tx_wr(conn);
- 		if (current_work() != &conn->abort_work)
-@@ -1525,12 +1526,12 @@ static void smc_conn_kill(struct smc_connection *conn, bool soft)
- 	smc_sk_wake_ups(smc);
- 	if (conn->lgr->is_smcd) {
- 		smc_ism_unset_conn(conn);
--		if (smc_ism_support_dmb_nocopy(conn->lgr->smcd))
--			smcd_buf_detach(conn);
- 		if (soft)
- 			tasklet_kill(&conn->rx_tsklet);
- 		else
- 			tasklet_unlock_wait(&conn->rx_tsklet);
-+		if (smc_ism_support_dmb_nocopy(conn->lgr->smcd))
-+			smcd_buf_detach(conn);
- 	} else {
- 		smc_cdc_wait_pend_tx_wr(conn);
- 	}
+ void smc_tx_pending(struct smc_connection *conn);
 
 -- 
 2.55.0
