@@ -1,91 +1,69 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sat, 08 Aug 2026 18:07:26 +0800
-Subject: [PATCH v2] drm/amdgpu: add the BO-va mapping offset when kmapping
- an IB
+Subject: [PATCH 0/2] drm/nouveau: fix unbounded kernel allocations in the
+ VM_BIND uAPI
+Date: Sat, 08 Aug 2026 19:14:16 +0800
+Message-Id: <20260808-nouveau-fixes-v1-0-c3ebdc17a89c@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260808-amdgpu-fixes-v2-1-36d66398601f@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAN3/dmoC/x3LQQqAIBBA0avIrBNGF2VdJVqIjjaLTJQikO6et
- Hx8foNKhanCIhoUurnymTr0IMDtNkWS7LtBox7RoJH28DFfMvBDVc7OKgwWJ1IIfcmF/tCPdXv
- fD5LIg2xeAAAA
-X-Change-ID: 20260808-amdgpu-fixes-9ca10fa07e10
-To: Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIgPd2oC/x3LQQqAIBBA0avErBOmxJSuEi2kxpqNhqIE4t2Tl
+ o/Pr5AoMiVYhwqRCicOvmMaBzhu6y8SfHbDjPOCBo3wIReyWTh+KQmNVqOTTkmjoD9PpD/0Zdt
+ b+wB+fx5PXwAAAA==
+X-Change-ID: 20260808-nouveau-fixes-70a70f3f5385
+To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Jammy Zhou <Jammy.Zhou@amd.com>, Madhav Chauhan <madhav.chauhan@amd.com>, 
- Felix Kuehling <Felix.Kuehling@amd.com>
-Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Yuhao Jiang <danisjiang@gmail.com>, 
- Junrui Luo <moonafterrain@outlook.com>
+ Dave Airlie <airlied@redhat.com>
+Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>, 
+ Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2208;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1742;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=3FBj59YR9q4hNFYlTzD+oO1vogRrIbKjZwQeOYVwbY4=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrLL/j5LPXtkjmyZdbdzboX/ab4H+s35D75Blv2+7f
- ZR7uX/PlhcdpSwMYlwMsmKKLMcLLn2z8N2iu8VnSzLMHFYmkCEMXJwCMBGtGIY/fJUxaotOOr/P
- uPCvbapvhFXwb+Zllak+D1aKfQl58qVlLcN/31milS8V3qhJeh2Yz7DC8dG3f40PLiwU79W5mPx
- /8sQIJgB7+VFO
+ bh=qBJ2yKuCe+qydBAwBPNKgkU4vVCYc0ywAbFKq6nD8ZM=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrHIBi08MP5l7s2M5cmvP935cMcdbe8FB18a7p2qY4
+ pM25joLhneUsjCIcTHIiimyHC+49M3Cd4vuFp8tyTBzWJlAhjBwcQrARMqaGf4Z2ulnzsx4d9bo
+ 58z72/0/zZwTbj9T+eCtRXNZ9KbJy5g9ZWSYuTR56f3IApbIlssn3+0oj+IVqd5T+CNHMNXYdfX
+ hfnFGAOcWSP0=
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amdgpu_cs_patch_ibs() derives the CPU-side view of a UVD/VCE/VCN
-indirect buffer from the BO returned by amdgpu_cs_find_mapping():
+Two independent fixes to the uAPI added by b88baab82871 ("drm/nouveau:
+implement new VM_BIND uAPI").
 
-    r = amdgpu_bo_kmap(aobj, (void **)&kptr);
-    kptr += va_start - (m->start * AMDGPU_GPU_PAGE_SIZE);
+Patch 1 bounds the sync and operation counts in EXEC and VM_BIND.
+nouveau_exec_ucopy() and nouveau_uvmm_vm_bind_ucopy() hand user-supplied
+u32 counts straight to u_memcpya(), which only rejects multiplication
+overflow -- something a u32 count times a small element size never
+reaches on 64-bit.  A wait_count of 0xffffffff thus becomes a 64 GB
+vmemdup_user() request: above INT_MAX that trips the WARN_ON_ONCE() in
+__kvmalloc_node_noprof(), and below it the kernel attempts a vmalloc of
+up to 2 GB that GFP_USER leaves uncharged to the caller's memcg.
 
-amdgpu_bo_kmap() returns the start of the BO, so only the displacement
-of va_start inside the mapping is added.  The page tables, however, are
-programmed from mapping->offset (see amdgpu_vm_bo_update()), which
-records the offset_in_bo the client passed to AMDGPU_GEM_VA.  The GPU
-therefore resolves va_start to BO byte
+Patch 2 rejects a second VM_INIT.  nouveau_uvmm_ioctl_vm_init() never
+checks whether the client already has a GPU VA space before overwriting
+cli->uvmm.ptr, so a second call orphans the first nouveau_uvmm with no
+remaining reference to it.  The orphan, its drm_gpuvm, that gpuvm's
+reservation object and its region maple tree are never freed, the buffer
+objects mapped in it stay pinned, and its nvif vmm keeps the GPU page
+directories allocated until the file is closed.
 
-    m->offset + (va_start - m->start * AMDGPU_GPU_PAGE_SIZE)
-
-while the kernel inspects the byte m->offset lower.  Whenever an IB is
-submitted through a mapping created with a non-zero offset_in_bo, the
-two views disagree.
-
-Add the missing term so the kmapped pointer describes the same bytes the
-page tables do.
-
-Every other CPU-side consumer of amdgpu_cs_find_mapping() omits
-mapping->offset in the same way.
-
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
-Reviewed-by: Christian König <christian.koenig@amd.com>
 ---
-Changes in v2:
-- Drop the Fixes tag.
-- Pick up Christian's Reviewed-by.
-- Resend standalone.
-- Link to v1: https://lore.kernel.org/r/20260806-amdgpu-fixes-v1-3-ce247012d4da@outlook.com
----
- drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Junrui Luo (2):
+      drm/nouveau: bound sync and op counts in EXEC and VM_BIND
+      drm/nouveau/uvmm: reject a second VM_INIT
 
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
-index 5445f75741b5..17fe6d56e020 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
-@@ -1043,7 +1043,7 @@ static int amdgpu_cs_patch_ibs(struct amdgpu_cs_parser *p,
- 		if (r)
- 			return r;
- 
--		kptr += va_start - (m->start * AMDGPU_GPU_PAGE_SIZE);
-+		kptr += m->offset + va_start - (m->start * AMDGPU_GPU_PAGE_SIZE);
- 
- 		if (ring->funcs->parse_cs) {
- 			memcpy(ib->ptr, kptr, ib->length_dw * 4);
-
+ drivers/gpu/drm/nouveau/nouveau_exec.c | 12 ++++++++++++
+ drivers/gpu/drm/nouveau/nouveau_uvmm.c | 24 ++++++++++++++++++++++++
+ include/uapi/drm/nouveau_drm.h         | 18 ++++++++++++++++++
+ 3 files changed, 54 insertions(+)
 ---
 base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260808-amdgpu-fixes-9ca10fa07e10
+change-id: 20260808-nouveau-fixes-70a70f3f5385
 
 Best regards,
 -- 
