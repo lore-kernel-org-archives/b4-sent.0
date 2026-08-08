@@ -1,84 +1,137 @@
-From: Esteban Alba <estebancalba@gmail.com>
-Date: Fri, 07 Aug 2026 21:09:53 -0500
-Subject: [PATCH] net: net6: validate IPv6 payload and UDP length on receive
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH net v2 0/2] net/smc: close the SMC-D teardown window around
+ the ghost send buffer
+Date: Sat, 08 Aug 2026 02:21:22 -0500
+Message-Id: <20260808-b4-disp-22f119e6-v2-0-61647601a6f3@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260807-net6-len-validation-v1-1-edff271cbf2c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPCPdmoC/yXMwQrDIBCE4VcJe86CyUHbvkrIwejYbgmmqJFCy
- LvXtscPZv6DMpIg0607KKFKli02DH1H7mHjHSy+mUY1anVRhiOK5hWRq13F29L27LwZEPxVWxO
- oPV8JQd6/6jT/nfflCVe+KTrPD4FKLfl3AAAA
-X-Change-ID: 20260807-net6-len-validation-cd71efd96a7f
-To: u-boot@lists.u-boot-project.org
-Cc: Ramon Fried <rfried.dev@gmail.com>, 
- Jerome Forissier <jerome.forissier@arm.com>, Tom Rini <trini@konsulko.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786154992; l=2310;
- i=estebancalba@gmail.com; s=20260808; h=from:subject:message-id;
- bh=Noglsh+V1jbRhzRXFIKeYwjx9lELZ2FDIrdfAldKLjk=;
- b=mltVNCMlvJDST5IxyVGnqclfs/TqZZ03IQYrKdHH21v4nAjlYGxRjJP6exVh9mn8oz64j9gUM
- NDGwAIBToy8BxvruaKTQC++I9GBphp8OyTA+UvBFdcc6jJcacDnKVC9
-X-Developer-Key: i=estebancalba@gmail.com; a=ed25519;
- pk=1BEuFs3cavGme7UfOyPkuXqt9/3FstTgVwsFSCXGO5o=
-X-Endpoint-Received: by B4 Relay for estebancalba@gmail.com/20260808 with auth_id=927
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBAAv0L27CbbpRDwK8YDLYuuh0q6aEwIf
+ 6fCcSaZWcEkqxhcqxWyfNX0nQrwpYL4HNJDUMfCwMQtddRh8Diqzcg8OddLi6Em6ofG+zo6KNm
+ cZdLfsbxBkgXup7RPeElc/jPYth2UAqSgeQAAAA==
+X-Change-ID: 20260808-b4-disp-22f119e6-b3009a5443c1
+To: Dust Li <dust.li@linux.alibaba.com>, 
+ Sidraya Jayagond <sidraya@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Wenjia Zhang <wenjia@linux.ibm.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Mahanta Jambigi <mjambigi@linux.ibm.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ Eric Dumazet <edumazet@google.com>
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ netdev@vger.kernel.org, Simon Horman <horms@kernel.org>, 
+ linux-s390@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786173683; l=5306;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=mCPKlTskOIb8w7OnErnb66jmUGG7UFKFuHYmLZdquTs=;
+ b=o+MK9M7DpMq/hGc2HYvusJGYjs5f0UESIR+rtrAkDErIXmejbuwCZyDyDerRwZaljhmTwMCkl
+ AqkxpfjmgLhDRQ9qwmA+azd5O2JoofOToQ6PGV3aVd+uLc+XurLfOS9
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-net_ip6_handler() checks the received length only against IP6_HDR_SIZE
-and then uses two length fields from the packet without checking them.
-The checksum is computed over payload_len, but the length passed to the
-UDP handler comes from udp_len. A sender can keep payload_len correct so
-the checksum still validates and set udp_len larger than the frame. A
-handler that trusts that length then reads or writes past the receive
-buffer. The DHCPv6 client copies the declared number of bytes and can be
-made to write past the packet buffer from a single link-local ADVERTISE.
+Both patches only matter on the SMC-D DMB-nocopy path, where the ghost send
+buffer exists, and the only in-tree provider of support_mmapped_rdmb is
+dibs_loopback. CONFIG_DIBS_LO is default n and its help calls it a testing aid,
+so on a stock config neither bug is reachable.
 
-The IPv4 path already reconciles these lengths in
-net_process_received_packet(). Do the same here: reject a payload_len
-that exceeds the received length and trim len to it, then reject a
-udp_len smaller than the UDP header or larger than the payload before
-calling the handler.
+v1 moved smcd_buf_detach() after the drain. Dust Li replied that it does not
+fully eliminate the race and asked whether RCU is the better shape. He is right
+about the first part; I built both and measured them.
 
-Fixes: 1feb697830ce ("net: ipv6: Add implementation of main IPv6 functions")
-Signed-off-by: Esteban Alba <estebancalba@gmail.com>
-Cc: Jerome Forissier <jerome.forissier@arm.com>
-Cc: Tom Rini <trini@konsulko.com>
+An SMC-D loopback KASAN rig, one module binary, teardown form selected at
+runtime. "path" counts connections reaching either teardown site with the link
+group already unlinked, "armable" how many of those still had both gates in
+smcd_handle_irq() open when the drain returned, "re-armed" the device arming
+the tasklet again afterwards:
+
+  form                                   path  armable  re-armed
+  upstream                                169       73        29
+  v1 (drain, then detach)                 172       78        33
+  unregister first, then drain             31        0         0
+  v1 + RCU                                 24        9         3
+
+Two caveats on that table. The last two arms ran far shorter than the first two,
+so compare the armable/re-armed ratios rather than the absolute path counts. And
+the third row also forced tasklet_kill() in the !soft path, which 1/2 does not;
+that was inert here because smc_lgr_terminate_work() passes soft=true, so the
+same call ran either way.
+
+The reorder alone leaves the window open, which is what Dust saw. RCU doesn't
+close it either: smcd_buf_detach() both frees the descriptor and clears the
+field, and RCU defers only the free, so a re-armed tasklet still runs and still
+finds conn->sndbuf_desc NULL. The gate has to be shut before the drain, and
+that is 1/2. RCU on the descriptor would still be a reasonable thing to want
+for the free itself; it just doesn't substitute for 1/2, so I didn't fold it
+in. Your call if you want it anyway.
+
+Caveat on 1/2: the two changes the table covers -- unconditional
+smc_ism_unset_conn(), and drain before detach -- were measured together, not
+separately. It also clears conn->sndbuf_desc before freeing it, so a reader
+that samples the pointer cannot get one that is already freed; that part is
+by inspection.
+
+2/2 is a second dereference the same teardown reaches, found while running the
+above. smc_close_stream_wait() calls smc_tx_prepared_sends() from inside
+sk_wait_event(), which evaluates its condition once with the socket lock
+released, and a terminating link group clears conn->sndbuf_desc right there.
+SIOCOUTQ reads the same field by hand, and smc_close_cancel_work() drops the
+socket lock across two cancel_*_sync() calls, so 2/2 bounds that too. Eight
+faults across three boots, the earliest 89 seconds in:
+
+  RIP: smc_close_stream_wait+0x66d [smc]
+   smc_close_active -> __smc_release -> smc_release -> __x64_sys_close
+
+The faulting address is NULL plus offsetof(struct smc_buf_desc, len), nothing
+there is attacker-chosen, and the value read never reaches userspace, so there
+is no memory-safety primitive and no leak oracle -- it is an oops. The task dies
+inside close() holding the socket lock, so I would expect the socket to leak with
+it, but I didn't isolate that from the rig's own effects and I'm not claiming it.
+
+Reaching either bug needs a link-group teardown while a socket is parked in that
+wait. smc_lgr_cleanup_early() off a failed first-contact handshake gets there, as
+does smc_clc_wait_msg() on a peer DECLINE with FIRST_CONTACT -- both by
+inspection. The rig instead drove smc_lgr_terminate_sched() from a debug module
+parameter, so only the initiation is synthetic; the unlink, the deferred worker,
+smc_conn_free() and smcd_handle_irq() are the unmodified path. Logs and the rig
+on request.
+
+I haven't touched tasklet_unlock_wait() in the !soft path of smc_conn_kill().
+It waits out TASKLET_STATE_RUN without clearing TASKLET_STATE_SCHED, but I have
+no measurement showing that reachable here, so it stays as it is.
+
+v2:
+- 1/2: unregister the connection unconditionally rather than only while the
+  link group is still on its device list. That guard, not the ordering, is why
+  the tasklet can be re-armed after tasklet_kill().
+- 2/2: new.
+- v1: https://lore.kernel.org/all/20260726-b4-disp-a135b4e5-v1-1-705aaec79986@proton.me/
+
+Bryam Vargas (2):
+  net/smc: unregister the connection before draining the rx tasklet
+  net/smc: do not dereference an unset send buffer on the SMC-D teardown path
+
+ net/smc/af_smc.c   |  3 ++-
+ net/smc/smc_core.c | 13 +++++++------
+ net/smc/smc_tx.h   |  6 +++++-
+ 3 files changed, 14 insertions(+), 8 deletions(-)
+
+base-commit: 3dbb44d88b1e
 ---
- net/net6.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Bryam Vargas (2):
+      net/smc: unregister the connection before draining the rx tasklet
+      net/smc: do not dereference an unset send buffer on the SMC-D teardown path
 
-diff --git a/net/net6.c b/net/net6.c
-index 4cff98df15..af2f484fad 100644
---- a/net/net6.c
-+++ b/net/net6.c
-@@ -392,6 +392,11 @@ int net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
- 	if (ip6->version != 6)
- 		return -EINVAL;
- 
-+	/* Trim to the length declared in the header, as the IPv4 path does */
-+	if (len < IP6_HDR_SIZE + ntohs(ip6->payload_len))
-+		return -EINVAL;
-+	len = IP6_HDR_SIZE + ntohs(ip6->payload_len);
-+
- 	switch (ip6->nexthdr) {
- 	case PROT_ICMPV6:
- 		icmp = (struct icmp6hdr *)(((uchar *)ip6) + IP6_HDR_SIZE);
-@@ -433,6 +438,10 @@ int net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
- 		if (csum != udp->udp_xsum)
- 			return -EINVAL;
- 
-+		if (ntohs(udp->udp_len) < UDP_HDR_SIZE ||
-+		    ntohs(udp->udp_len) > len - IP6_HDR_SIZE)
-+			return -EINVAL;
-+
- 		/* IP header OK. Pass the packet to the current handler. */
- 		net_get_udp_handler()((uchar *)ip6 + IP6_HDR_SIZE +
- 					UDP_HDR_SIZE,
-
+ net/smc/af_smc.c   |  3 ++-
+ net/smc/smc_core.c | 13 +++++++------
+ net/smc/smc_tx.h   |  6 +++++-
+ 3 files changed, 14 insertions(+), 8 deletions(-)
 ---
-base-commit: ece349ade2973e220f524ce59e59711cc919263f
-change-id: 20260807-net6-len-validation-cd71efd96a7f
+base-commit: 3dbb44d88b1e94dd31fe43588af7437b34b44d56
+change-id: 20260808-b4-disp-22f119e6-b3009a5443c1
 
 Best regards,
 --  
-Esteban Alba <estebancalba@gmail.com>
+Bryam Vargas <hexlabsecurity@proton.me>
 
