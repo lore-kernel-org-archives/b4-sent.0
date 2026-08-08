@@ -1,15 +1,13 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH 0/2] drm/panel: add Ilitek ILI7836A panel driver
-Date: Sat, 08 Aug 2026 14:01:13 -0500
-Message-Id: <20260808-ili7836a-v1-0-07a7becc5636@gmail.com>
+Date: Sat, 08 Aug 2026 14:01:14 -0500
+Subject: [PATCH 1/2] dt-bindings: display: panel: add Ilitek ILI7836A OLED
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22Oy4oCMRBFf6WptYE8upLq/Iq4yKMyE9BWE20U8
- d/tURhmMctzufdyHtC5Ve7ghwc0Xmqvx3kFtRkgfYf5i0XNK4OW2kqSJOq+OjI2CGPLOE5KxVQ
- yrPVT41Jv76vt7sONz9f18fIJIYbOIh0Ph3rxg42UKBRUY3ZmytIYLIhuikjIUscQmYLTDv6a+
- OHtoZUT4T6Lc+qEKIWySbpoTWZt/TL9N/lRb6ffBWGi0VlZbDF+UbB7Pl/IFMIWCwEAAA==
-X-Change-ID: 20260808-ili7836a-36f44911bcfd
+Message-Id: <20260808-ili7836a-v1-1-07a7becc5636@gmail.com>
+References: <20260808-ili7836a-v1-0-07a7becc5636@gmail.com>
+In-Reply-To: <20260808-ili7836a-v1-0-07a7becc5636@gmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
  Simona Vetter <simona@ffwll.ch>, 
@@ -20,58 +18,89 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786215681; l=2202;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786215681; l=1884;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=FDxMDFsLHbpa8Q63KVAJ0yLENCmhUxJqcXcW9Yh0WwY=;
- b=t3aCgpjv5x5gaUL3MNuOUfj69WxndC2uwICW75n4t9ulzTj88k6L/D/qrUE2MTvR/dcXdpirU
- ijrhb85Q2lMBojNB1HHOBpOS14Z7TJ8Mmuuyz0JYZV6wQQd3P+aM+f9
+ bh=KJ4KPDrXqqClHxahfT1s53mfTzh06Z1F2OlsPAlwqI4=;
+ b=uy4MioV3b9R6fNaLlDeTL/o2zz722SgCtBLMsG61+8a/d3AaL7zR5E+sVWtOi/I0sZM/L1Bn9
+ AQNadw9FXqlDtAeqQ8efIVH37hgCexJESW9gHxurHfr6KPiO7wnCI5Q
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Ilitek ILI7836A DDIC.
-
-This depends on the Retroid Pocket dt series [0] for the vendor prefix
-patch. That series depends on the AYN dt series [1] to apply cleanly.
-
-[0] https://lore.kernel.org/linux-arm-msm/20260808-rp-qcs8550-v1-0-a5a365ba3dc5@gmail.com/
-[1] https://lore.kernel.org/linux-arm-msm/20260727-ayn-qcs8550-v9-0-e3db456e10e5@gmail.com/
+The Ilitek ILI7836A OLED driver is a single chip solution for MIPI-DSI.
+This is used for the Retroid Pocket Nova panel.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Aaron Kling (2):
-      dt-bindings: display: panel: add Ilitek ILI7836A OLED driver
-      drm/panel: add Ilitek ILI7836A panel driver
+ .../bindings/display/panel/ilitek,ili7836a.yaml    | 58 ++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
 
- .../bindings/display/panel/ilitek,ili7836a.yaml    |  58 ++++
- drivers/gpu/drm/panel/Kconfig                      |  11 +
- drivers/gpu/drm/panel/Makefile                     |   1 +
- drivers/gpu/drm/panel/panel-ilitek-ili7836a.c      | 297 +++++++++++++++++++++
- 4 files changed, 367 insertions(+)
----
-base-commit: 6b8c8af514d739d0335f5579b585e02babe8a727
-change-id: 20260808-ili7836a-36f44911bcfd
-prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v9
-prerequisite-patch-id: 17ba304f7a8a08cc78f98e198db9c51f4786a22c
-prerequisite-patch-id: 21873631f5dcdb9bbbdb5c20c3f5e9816cc405f9
-prerequisite-patch-id: bf7b5dea0097cbbdf04929a4246d1fc65c607ea8
-prerequisite-patch-id: d7f546eddc96a4f31a1e681abddbc96bd68abb32
-prerequisite-patch-id: d40d784ad8efbb1204c024408be2067725a06cf2
-prerequisite-patch-id: 25bbd55199a8250a912ef542b31f43dd5ccdbc90
-prerequisite-change-id: 20260808-rp-qcs8550-85c84760f6f3:v1
-prerequisite-patch-id: 17ba304f7a8a08cc78f98e198db9c51f4786a22c
-prerequisite-patch-id: 21873631f5dcdb9bbbdb5c20c3f5e9816cc405f9
-prerequisite-patch-id: bf7b5dea0097cbbdf04929a4246d1fc65c607ea8
-prerequisite-patch-id: d7f546eddc96a4f31a1e681abddbc96bd68abb32
-prerequisite-patch-id: d40d784ad8efbb1204c024408be2067725a06cf2
-prerequisite-patch-id: 25bbd55199a8250a912ef542b31f43dd5ccdbc90
-prerequisite-patch-id: c79dacb2a8ca1298387bc9bc4a543de97c670a50
-prerequisite-patch-id: 9c058fb9b13442f5434b8aaa2f1907eff1b43684
-prerequisite-patch-id: c13130099b60aa7c412181e99070718eb2c68ecd
-prerequisite-patch-id: d0dad3c4fa9c4b98e6cc53bbd0874df9113ab5f6
+diff --git a/Documentation/devicetree/bindings/display/panel/ilitek,ili7836a.yaml b/Documentation/devicetree/bindings/display/panel/ilitek,ili7836a.yaml
+new file mode 100644
+index 0000000000000..962cf257ed8d3
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/panel/ilitek,ili7836a.yaml
+@@ -0,0 +1,58 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/panel/ilitek,ili7836a.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Ilitek ILI7836A-based OLED panels
++
++maintainers:
++  - Neil Armstrong <neil.armstrong@linaro.org>
++
++allOf:
++  - $ref: panel-common.yaml#
++
++properties:
++  compatible:
++    items:
++      - const: retroidpocket,nova-panel
++      - const: ilitek,ili7836a
++
++  reg:
++    maxItems: 1
++    description: DSI virtual channel
++
++  vddio-supply: true
++  avdd-supply: true
++
++  backlight: true
++  port: true
++  reset-gpios: true
++  rotation: true
++
++required:
++  - compatible
++  - reg
++  - vddio-supply
++  - avdd-supply
++  - reset-gpios
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    dsi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        panel@0 {
++            compatible = "retroidpocket,nova-panel", "ilitek,ili7836a";
++            reg = <0>;
++            vddio-supply = <&vdd_disp_1v8>;
++            avdd-supply = <&vdd_disp2_2v8>;
++            reset-gpios = <&tlmm 133 GPIO_ACTIVE_HIGH>;
++        };
++    };
++
++...
 
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.54.0
 
