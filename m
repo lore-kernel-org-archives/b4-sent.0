@@ -1,80 +1,89 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sat, 08 Aug 2026 19:14:18 +0800
-Subject: [PATCH 2/2] drm/nouveau/uvmm: reject a second VM_INIT
+From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+Subject: [PATCH v5 0/4] iio: accel: mma8452: use modern coding style and
+ resource cleanup
+Date: Sat, 08 Aug 2026 22:28:12 +0530
+Message-Id: <20260808-15-apr-pm-iio-mma8452-v4-temp-v5-0-d177e93ce3f8@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260808-nouveau-fixes-v1-2-c3ebdc17a89c@outlook.com>
-References: <20260808-nouveau-fixes-v1-0-c3ebdc17a89c@outlook.com>
-In-Reply-To: <20260808-nouveau-fixes-v1-0-c3ebdc17a89c@outlook.com>
-To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Dave Airlie <airlied@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>, 
- Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1979;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=kir+5s3fujjv8rmqeaXun1k1yrvbyiCBLh8cPyNLZQ8=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrHIBi6WxtVx5p//fuOjpXSW9d1dYj9jfeyFGP+1fF
- za9v/MmxaejlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJjJvOyPDI4PGSzyi0SHz
- JSX9i6Xecy3hY9pmn3p22apLf5x7G9RuMjLsrWCZf+hniKnml7y4aLWggInflvz8tULjb3kLn2t
- RgxIDAK7KSdM=
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+X-B4-Tracking: v=1; b=H4sIACRgd2oC/4WOQQ6CMBREr0K69ptSW4KuvIdhUcovfGNp0yLRE
+ O5uwbh2NXnJ5M0sLGEkTOxSLCziTIn8mEEdCmYGPfYI1GVmgouKV7yEUoEOEYIDIg/O6VoqAbO
+ ECV0A5JLL+qxbNCeWHSGipdfuvzVfTs/2jmbapFtjoDT5+N4PzHLr/bbEn62cHETVVZ21tTVKX
+ Xun6XE03rFmXdcPfpp+cNwAAAA=
+X-Change-ID: 20260601-15-apr-pm-iio-mma8452-v4-temp-e040489abec3
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786208304; l=2244;
+ i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
+ bh=Md3IGD9Xm80hkMLNc996V9V5s2coVfbpVTtCctkt6Bs=;
+ b=W0aSnZevebmJb3aO/DDGTZWv8mM5fBSXzKW8C2JqKC8ykHTzFupFga8CDwtkkE3YfmAsDYVkP
+ 2hMJjbGkBh9BsglM0wM6PLd7il8xEpITVjbTeHzayy+vGm9xUUiYZ3z
+X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
+ pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
+X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nouveau_uvmm_ioctl_vm_init() sets up the GPU VA space for a drm_file and
-is reachable from an unprivileged render node client (DRM_RENDER_ALLOW).
-After the cli->uvmm.disabled check it unconditionally allocates a
-nouveau_uvmm, initialises its drm_gpuvm and region maple tree, creates
-the backing nvif vmm and overwrites cli->uvmm.ptr, without testing
-whether one already exists.
+Hi all,
 
-Calling DRM_IOCTL_NOUVEAU_VM_INIT twice therefore drops the previous
-nouveau_uvmm with no remaining reference to it: drm_gpuvm_put() is
-reached only from nouveau_uvmm_fini(), which nouveau_cli_fini() calls
-once on whatever cli->uvmm.ptr holds at close time. The orphaned
-nouveau_uvmm, its drm_gpuvm, that gpuvm's reservation GEM object and its
-region maple tree are never freed, buffer objects mapped in it stay
-pinned by the orphaned uvmas, and its nvif vmm keeps the GPU page
-directories allocated until the file is closed, so repeating the ioctl
-leaks kernel memory without bound.
+This series contains a nuber of small fixes, cleanup and improvements
+for the mma8452 accelerometer driver.
 
-Test cli->uvmm.ptr under cli->mutex before anything is allocated and
-return -EBUSY, mirroring nouveau_svmm_init().
+The changes modernize macro like mutex with guard(), bulk regulator,
+IIO_DEV_ACQUIRE_DIRECT_MODE() and etc.
 
-Fixes: b88baab82871 ("drm/nouveau: implement new VM_BIND uAPI")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Changes in v5:
+- Drop the PM runtime handling patch, as suitable hardware is not
+  available to properly validate the PM state transitions.
+- Apply reviewed tags.
+- Rebase series onto the latest iio/testing branch.
+- Link to v4: https://patch.msgid.link/20260602-15-apr-pm-iio-mma8452-v4-temp-v4-0-26d6dff8fc55@gmail.com
+Changes in v4:
+- Part of the series already merged into the IIO tree; rebase the
+  remaining patches onto the latest iio/testing branch.
+- Link to v3: https://lore.kernel.org/all/20260602-15-apr-pm-iio-mma8452-v4-temp-v4-0-26d6dff8fc55@gmail.com
+Changes in v3:
+- Following input from Andy and Jonathan added new changes as following
+  0001: handle return value to have proper error propagation
+  0002: use non-devm API to maintain resource management LIFO order
+  0006: convert individual regulator using bulk regulator API
+  0009: use IIO cleanup helper for DIRECT_MODE
+- Address kernel coding stype specific review comment
+- Reorder local struct device and dev_err_probe change
+v2 series -> https://lore.kernel.org/all/20260422165643.2148195-1-sanjayembedded@gmail.com/
+Changes in v2:
+- 0005: address review comment from Andy and Geert
+  and use DEFINE_RUNTIME_DEV_PM_OPS macro
+- Added new cleanup channges in mma8452 driver
+
+No functional behavior changes are intended.
+
+Testing:
+  - Compiled with W=1
+  - Build-tested on QEMU x86_64
+
+Feedback and reviews are very welcome.
+
 ---
- drivers/gpu/drm/nouveau/nouveau_uvmm.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Sanjay Chitroda (4):
+      iio: accel: mma8452: convert to bulk regulator usage
+      iio: accel: mma8452: use local struct device
+      iio: accel: mma8452: Use IIO cleanup helpers
+      iio: accel: mma8452: use guard() to release mutexes
 
-diff --git a/drivers/gpu/drm/nouveau/nouveau_uvmm.c b/drivers/gpu/drm/nouveau/nouveau_uvmm.c
-index bced1481674e..26d2a57b5aac 100644
---- a/drivers/gpu/drm/nouveau/nouveau_uvmm.c
-+++ b/drivers/gpu/drm/nouveau/nouveau_uvmm.c
-@@ -1929,6 +1929,12 @@ nouveau_uvmm_ioctl_vm_init(struct drm_device *dev,
- 		goto out_unlock;
- 	}
- 
-+	/* Check that a GPU VA space isn't already set up for the client. */
-+	if (cli->uvmm.ptr) {
-+		ret = -EBUSY;
-+		goto out_unlock;
-+	}
-+
- 	uvmm = kzalloc_obj(*uvmm);
- 	if (!uvmm) {
- 		ret = -ENOMEM;
+ drivers/iio/accel/mma8452.c | 145 +++++++++++++++++---------------------------
+ 1 file changed, 54 insertions(+), 91 deletions(-)
+---
+base-commit: 350d1fb9204b13c5f95e511e98b8bcb47574d425
+change-id: 20260601-15-apr-pm-iio-mma8452-v4-temp-e040489abec3
 
--- 
-2.51.2
+Best regards,
+--  
+Sanjay Chitroda <sanjayembeddedse@gmail.com>
 
