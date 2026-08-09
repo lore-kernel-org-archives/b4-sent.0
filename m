@@ -1,10 +1,10 @@
 From: Cody Kang <codykang.hk@gmail.com>
-Date: Sun, 09 Aug 2026 21:14:22 +0800
-Subject: [PATCH v2 13/17] MAINTAINERS: add SpacemiT K3 display driver entry
+Date: Sun, 09 Aug 2026 21:14:23 +0800
+Subject: [PATCH v2 14/17] riscv: dts: spacemit: k3: add display nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260809-k3-display-v2-13-327d7910bf71@gmail.com>
+Message-Id: <20260809-k3-display-v2-14-327d7910bf71@gmail.com>
 References: <20260809-k3-display-v2-0-327d7910bf71@gmail.com>
 In-Reply-To: <20260809-k3-display-v2-0-327d7910bf71@gmail.com>
 To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -25,49 +25,204 @@ Cc: dri-devel@lists.freedesktop.org, linux-riscv@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
  linux-clk@vger.kernel.org, Cody Kang <codykang.hk@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786281298; l=990;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786281298; l=5308;
  i=codykang.hk@gmail.com; s=codykang; h=from:subject:message-id;
- bh=uE//zxGHdM4vouTm7VJyhpSaodElUoNAgs+MFj3YrE4=;
- b=HsG8S4sGhDTpwnC8X70jlY2o1/CvltfjMRBHZVAdSD/xf4d4GzoxH6Zo2wJZBdGtzkt5d13WA
- ZVva0mj0VbpAvha5Aw5jH0tuaOCPDC5pqcXdOTyh98XsBnX9YRkQoEQ
+ bh=8JORnnuLjnGaA5YwgDBm5qHuXyZpwM3shU45qCGVqEQ=;
+ b=XRK2r4trxRLvPPy2ODO+31gUWDpe7Ne2/WAgj526cV4lv2Cp+rsUO/5Fby5bnWy84vf1AKcAQ
+ AAqMTBEYlxiA/v2zsuom4VMYBH2xzgOD3wvRnZJvWSB7yIrVzMcBlmm
 X-Developer-Key: i=codykang.hk@gmail.com; a=ed25519;
  pk=Osn6/cs9Su/mHHw4P19cmVc3v2FMQfiWahjsN0vEkuk=
 X-Endpoint-Received: by B4 Relay for codykang.hk@gmail.com/codykang with auth_id=895
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cover the Saturn DPU, the Innosilicon DP/eDP controller, the DP PHY and
-their bindings.
+Add the SoC-level display nodes: the two Saturn DPUs, the two DP/eDP
+controllers with their PHY children.
+
+The PHY PLLs are fed back into the APMU as pixel-clock mux parents, so
+updated the &syscon_apmu node in the display dtsi.
 
 Signed-off-by: Cody Kang <codykang.hk@gmail.com>
 
 ---
 v2:
-- no change
+- edp0/dp1: add port@1 with a board-completable endpoint, needed once
+  the binding requires port@1 (Rob Herring, on patch 03)
 ---
- MAINTAINERS | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ arch/riscv/boot/dts/spacemit/k3-display.dtsi | 166 +++++++++++++++++++++++++++
+ 1 file changed, 166 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 6dea93a419624..9f2910a17c387 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25436,6 +25436,16 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/i2c/spacemit,k1-i2c.yaml
- F:	drivers/i2c/busses/i2c-k1.c
- 
-+SPACEMIT K3 DISPLAY DRIVER
-+M:	Cody Kang <codykang.hk@gmail.com>
-+L:	dri-devel@lists.freedesktop.org
-+L:	linux-riscv@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/display/spacemit/
-+F:	Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml
-+F:	drivers/gpu/drm/spacemit/
-+F:	drivers/phy/spacemit/phy-k3-inno-dp.c
+diff --git a/arch/riscv/boot/dts/spacemit/k3-display.dtsi b/arch/riscv/boot/dts/spacemit/k3-display.dtsi
+new file mode 100644
+index 0000000000000..b77b68d68c84c
+--- /dev/null
++++ b/arch/riscv/boot/dts/spacemit/k3-display.dtsi
+@@ -0,0 +1,166 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++/*
++ * SpacemiT K3 display subsystem (DPU0/eDP0 + DPU1/DP1) shared
++ * device-tree definitions for inclusion alongside k3.dtsi.
++ *
++ * Copyright (C) 2026 SpacemiT Co., Ltd.
++ */
 +
- SPANISH DOCUMENTATION
- M:	Carlos Bilbao <carlos.bilbao@kernel.org>
- R:	Avadhut Naik <avadhut.naik@amd.com>
++#include <dt-bindings/clock/spacemit,k3-clocks.h>
++#include <dt-bindings/reset/spacemit,k3-resets.h>
++#include <dt-bindings/interrupt-controller/irq.h>
++
++&soc {
++	dpu0_crtc0: dpu@c0340000 {
++		compatible = "spacemit,k3-saturn-dpu";
++		reg = <0x0 0xc0340000 0x0 0x54000>;
++		interrupts = <90 IRQ_TYPE_LEVEL_HIGH>,
++			     <89 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "online", "offline";
++		clocks = <&syscon_apmu CLK_APMU_LCD_PXCLK>,
++			 <&syscon_apmu CLK_APMU_LCD_MCLK>,
++			 <&syscon_apmu CLK_APMU_DPU_ACLK>,
++			 <&syscon_apmu CLK_APMU_DSI_ESC>,
++			 <&syscon_apmu CLK_APMU_LCD_DSC>;
++		clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
++		resets = <&syscon_apmu RESET_APMU_LCD_MCLK>,
++			 <&syscon_apmu RESET_APMU_LCD>,
++			 <&syscon_apmu RESET_APMU_DSI_ESC>,
++			 <&syscon_apmu RESET_APMU_DPU_ACLK>,
++			 <&syscon_apmu RESET_APMU_LCD_DSCCLK>;
++		reset-names = "mclk", "lcd", "esc",
++			      "aclk", "dsc";
++		status = "disabled";
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				dpu0_out: endpoint {
++					remote-endpoint = <&edp0_in>;
++				};
++			};
++		};
++	};
++
++	edp0: edp@cac84000 {
++		compatible = "spacemit,k3-inno-dp";
++		reg = <0x0 0xcac84000 0x0 0x4000>;
++		interrupts = <132 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&syscon_apmu CLK_APMU_EDP0_PXCLK>, <&edp0_phy>;
++		clock-names = "pxclk", "pll";
++		resets = <&syscon_apmu RESET_APMU_EDP0>;
++		phys = <&edp0_phy>;
++		phy-names = "dp";
++		status = "disabled";
++
++		edp0_phy: phy {
++			compatible = "spacemit,k3-inno-dp-phy";
++			#phy-cells = <0>;
++			#clock-cells = <0>;
++			clock-output-names = "edp0_pll_pxclk";
++		};
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				edp0_in: endpoint {
++					remote-endpoint = <&dpu0_out>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++				edp0_out: endpoint {
++				};
++			};
++		};
++	};
++
++	dpu1_crtc0: dpu@c0440000 {
++		compatible = "spacemit,k3-saturn-dpu";
++		reg = <0x0 0xc0440000 0x0 0x54000>;
++		interrupts = <139 IRQ_TYPE_LEVEL_HIGH>,
++			     <138 IRQ_TYPE_LEVEL_HIGH>;
++		interrupt-names = "online", "offline";
++		clocks = <&syscon_apmu CLK_APMU_DSI4LN2_LCD_PXCLK>,
++			 <&syscon_apmu CLK_APMU_DSI4LN2_LCD_MCLK>,
++			 <&syscon_apmu CLK_APMU_DSI4LN2_DPU_ACLK>,
++			 <&syscon_apmu CLK_APMU_DSI4LN2_DSI_ESC>,
++			 <&syscon_apmu CLK_APMU_DSI4LN2_LCD_DSC>;
++		clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
++		resets = <&syscon_apmu RESET_APMU_DSI4LN2_LCD_MCLK>,
++			 <&syscon_apmu RESET_APMU_DSI4LN2_LCD_SW>,
++			 <&syscon_apmu RESET_APMU_DSI4LN2_ESCCLK>,
++			 <&syscon_apmu RESET_APMU_DSI4LN2_DPU_ACLK>,
++			 <&syscon_apmu RESET_APMU_DSI4LN2_LCD_DSCCLK>;
++		reset-names = "mclk", "lcd", "esc",
++			      "aclk", "dsc";
++		status = "disabled";
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				dpu1_out: endpoint {
++					remote-endpoint = <&dp1_in>;
++				};
++			};
++		};
++	};
++
++	dp1: dp@cac88000 {
++		compatible = "spacemit,k3-inno-dp";
++		reg = <0x0 0xcac88000 0x0 0x4000>;
++		interrupts = <140 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&syscon_apmu CLK_APMU_EDP1_PXCLK>, <&dp1_phy>;
++		clock-names = "pxclk", "pll";
++		resets = <&syscon_apmu RESET_APMU_EDP1>;
++		phys = <&dp1_phy>;
++		phy-names = "dp";
++		status = "disabled";
++
++		dp1_phy: phy {
++			compatible = "spacemit,k3-inno-dp-phy";
++			#phy-cells = <0>;
++			#clock-cells = <0>;
++			clock-output-names = "edp1_pll_pxclk";
++		};
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				dp1_in: endpoint {
++					remote-endpoint = <&dpu1_out>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++				dp1_out: endpoint {
++				};
++			};
++		};
++	};
++};
++
++/*
++ * Feed the PHY PLL pixel clocks back in as the APMU mux parents. This lives
++ * here, not in k3.dtsi: the PHYs only exist where this file is included.
++ */
++&syscon_apmu {
++	clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
++		 <&edp0_phy>, <&dp1_phy>;
++	clock-names = "osc", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
++		      "edp0_pll_pxclk", "edp1_pll_pxclk";
++};
 
 -- 
 2.43.0
