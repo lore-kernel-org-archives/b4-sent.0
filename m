@@ -1,14 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/2] Introduce support for Xiaomi Mi 8
-Date: Sun, 09 Aug 2026 18:48:53 +0200
-Message-Id: <20260809-dipper-v1-0-eb4d501e85df@ixit.cz>
+Date: Sun, 09 Aug 2026 18:48:54 +0200
+Subject: [PATCH 1/2] dt-bindings: arm: qcom: Add Xiaomi Mi 8 family
+ compatibles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcyMD3ZTMgoLUIl2LtBTjNMNUE3PTpGQloOKCotS0zAqwQdGxtbUAUi7
- ux1gAAAA=
-X-Change-ID: 20260720-dipper-8fd3f1e475bc
+Message-Id: <20260809-dipper-v1-1-eb4d501e85df@ixit.cz>
+References: <20260809-dipper-v1-0-eb4d501e85df@ixit.cz>
+In-Reply-To: <20260809-dipper-v1-0-eb4d501e85df@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,53 +18,82 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1201; i=david@ixit.cz;
- h=from:subject:message-id; bh=IqBfubMqX9igKzB3Yyfy5WxzraIPUwUgP7EHhquo92M=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqeK957nUnHJDfqfqIsmG3wBE+pXUx+Siukh4au
- YQ77eDeBhyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaniveQAKCRBgAj/E00kg
- cvqBD/9X9FsVRr8gq9xQXnyBSBTsKXp+iAtKnoDXBaaqF1nPgveeBpFrAuFVEtE41COE+QY7myT
- sPvnSL5cU0+WnZ/oGqOJiTMa5x1WhD7JKI9K6sM29C5XJNiU7HLfeu7A4eyPSOteHuIg1F3VpAl
- NitGVw0Umv+u8VFazdbijG5mXXHsgCaDMIoYdRVvuVmDHoxi4tmJ69lP7HT39BKLGlz/6/EgINB
- P5w6nSubGjIuX93xcDWL3qDzB24PGaoH5DAyU38J1hOoBADhdXmx+nFUTqYGi5tGFlv9imYrNSe
- ou/7wEseXSe+VIm0ydwS1Lox90DdVL1pF7EocK12Nkch1CgZFr5hbc4OCwzYeYRTxqWBZKadmWi
- b12eR0SM8V23ER5PBO+BQkU21MeYYR1HN0APmrERixDTDKlqA66BqK25Q4HUSO/1GUEAG1Mos2G
- iTTMAXYuRTWDX4dhAKdz7vxzIvTesJ1yRw3OpZu7pFea3vZTbET3YFl4IsUEtUI5qoPf60Kk+fG
- Qw7fqdm5avvTler2zCj2sI+7ImJzJ0N9UP9gyWJ7Y0wVXdhmR69nxyq3WqZYa5eNap8ODr6Mi+8
- LVH59/bHWqjY2AWi+Wv4SDh5yHf+30Ypt7NQs6tzHWIZumCOOTkDTX+LGclP1SNRp/4eE3Hdr+N
- c4Rkgg761z85d8A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1821; i=david@ixit.cz;
+ h=from:subject:message-id; bh=/Ll77Db7EYel11IohG9BeTICteMQOe9RQFJs36K0wIc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqeK95dVXr0NeM4PpqgrRa1D0bkG3N3FuxCP1Qj
+ rq43LOwXKGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaniveQAKCRBgAj/E00kg
+ ctXKD/wKNo+UCUc1oocYQcm1iyAy8EPbWC1bzIcUlTXXm30JJawwiyUFimqvZzSZtOthmnTdShj
+ 909X9AFwvRAhzmsJDj8UaG2A6ZIO6Ti223jt49DKPdmBo9yP9jNApYDiomJ+kxMOzsmqFI77R8d
+ MnftaSk+9Y8wuj8X288zf2nxPMnI9M8RR7Bo/FV+08bYe8d4g36EC8LiNYy+sASr4Cgqtth4Mzi
+ xxtAy+fD/aJEibQyMMlt3zzVfM1vKWmDovPubBpxcJvOPzZlbEkSl6+7RCkv2tvMAWLqA+cCrKK
+ jGrc2nCdqsLIphRaCdzFgbmUCiO+K0MufP4+45ESC/f0mXOiTr8RgZu6MdWaxqYt0o9odaDQud+
+ V7J2iwltYhLA2aThAF7hkdFqO9JTmW10xVpNfWRdmfJwVpkv7aJd7H+sQl7E3frxSBWfZunxKbE
+ sBRHrXBdMgKvlqMva1PzkvFySkIXw9vK5ucHwF8KYBm0HMEPXqa52XSvzu0YB4NmKA0Nospt8rI
+ iYmGonGJcIKu6R/yUVB3UMZ+aDfxyYXEZA27dIMLLlI/FYyZ+Wx58YZHU0reRdyl1BGzjzTPZw0
+ lkKENcI7JouLcYhOXGYeyG5abfA9g8Cs9UbBv+4qqtn/C4Vy9EB/wmR9YsAiXzSt14l1pL+f6x4
+ VkebCEm1DBxz4YQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently only Mi 8 itself is supported, but the
-sdm845-xiaomi-dipper-common should ensure, that other family members
-such as Mi 8 Pro, Mi 8 Explorer will be likely supported too without
-much of additional work. These variants should differ only in the small
-details (such as battery size, fingerprint sensor etc.).
-
-Minimal viable support for xiaomi-dipper. Enough to get basic u-boot and
-Linux functional. More improvements will follow.
-
-The display and touchscreen support are work-in-progress, but waiting
-for other bits to land.
+This smartphone codenamed dipper is now supported by this series,
+variants such as ursa and equuleus just documented.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-David Heidelberg (2):
-      dt-bindings: arm: qcom: Add Xiaomi Mi 8 family compatibles
-      arm64: dts: qcom: add Xiaomi Mi 8 (dipper)
+ Documentation/devicetree/bindings/arm/qcom.yaml | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
- Documentation/devicetree/bindings/arm/qcom.yaml    |  10 +
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sdm845-xiaomi-dipper-common.dtsi | 623 +++++++++++++++++++++
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper.dts  |  30 +
- 4 files changed, 664 insertions(+)
----
-base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
-change-id: 20260720-dipper-8fd3f1e475bc
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index c7c9a92796846..5a43d480fd999 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -944,16 +944,25 @@ properties:
+           - const: qcom,sdm670
+ 
+       - items:
+           - enum:
+               - google,bonito-tianma
+           - const: google,bonito
+           - const: qcom,sdm670
+ 
++      - description: Xiaomi Mi 8 family
++        items:
++          - enum:
++              - xiaomi,dipper
++              - xiaomi,equuleus
++              - xiaomi,ursa
++          - const: xiaomi,dipper-common
++          - const: qcom,sdm845
++
+       - description: Xiaomi Poco F1
+         items:
+           - enum:
+               - xiaomi,beryllium-ebbg
+               - xiaomi,beryllium-tianma
+           - const: xiaomi,beryllium
+           - const: qcom,sdm845
+ 
+@@ -970,16 +979,17 @@ properties:
+               - qcom,sdm845-mtp
+               - shift,axolotl
+               - samsung,starqltechn
+               - samsung,w737
+               - sony,akari-row
+               - sony,akatsuki-row
+               - sony,apollo-row
+               - thundercomm,db845c
++              - xiaomi,dipper
+               - xiaomi,polaris
+           - const: qcom,sdm845
+ 
+       - items:
+           - enum:
+               - qcom,shikra-cqm-evk
+           - const: qcom,shikra-cqm-som
+           - const: qcom,shikra
 
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
