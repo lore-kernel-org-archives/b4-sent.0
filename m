@@ -1,69 +1,61 @@
-From: Zhenyu Yang <haruki@seu.edu.cn>
-Date: Tue, 11 Aug 2026 03:32:37 +0800
-Subject: [PATCH] drm/xe: Exclude wopcm region from stolen memory on TGL/DG1
+From: Roman Vivchar <rva333@protonmail.com>
+Date: Mon, 10 Aug 2026 23:16:19 +0300
+Subject: [PATCH] dt-bindings: gpu: arm,mali-utgard: add mt6572
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-fix-xe-ttm-v1-1-8d58b08f02b3@seu.edu.cn>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWZukRRSvIhZVg5G4pC2RiHdXL
- L+cnP8CR5bJQRVdYOlgx+sSIOMIzKiXgZC7YEhEkotCSuz5xJPQ+xkzXSqZdsoYXUI4bJbC+sX
- q5rfb24mMfwtw3w9iBrXybgAAAA==
-X-Change-ID: 20260811-fix-xe-ttm-4a9713d7cca9
-To: intel-xe@lists.freedesktop.org
-Cc: dri-devel@lists.freedesktop.org, 
- Sanjay Yadav <sanjay.kumar.yadav@intel.com>, 
- Lucas De Marchi <demarchi@kernel.org>, Zhenyu Yang <haruki@seu.edu.cn>
+Message-Id: <20260810-6572-dt-mali-v1-1-fb908627bf23@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0MDXTNTcyPdlBLd3MScTF2LJEvjJENTy0SD5FQloJaCotS0zAqwcdG
+ xEH5xaVJWanIJyAyl2loA1qQsdXAAAAA=
+X-Change-ID: 20260810-6572-dt-mali-8b93b159a0ce
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Heiko Stuebner <heiko@sntech.de>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786390365; l=1557;
- i=haruki@seu.edu.cn; s=20260810; h=from:subject:message-id;
- bh=MR427Mkv+jciFjssrVFmackeIc2s7Un5r4gv3vpAeQo=;
- b=ZZ4mSkXpLj1hHTBkIU4V6FHUvr02o/TjpaiNSKWOGknZFsj0qu7+3SkTyaDlh1GF8mZ42zO1M
- h2qnkL26JQ7DNVv6AzduMMwbSe+dw5fzyM7SQZj85NJP8AV/hPVu+/2
-X-Developer-Key: i=haruki@seu.edu.cn; a=ed25519;
- pk=Rh6scJJVrfKi0fDllLpvJXubmo9YB57MLrju0xpHeIk=
-X-Endpoint-Received: by B4 Relay for haruki@seu.edu.cn/20260810 with auth_id=935
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786393594; l=1015;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=w9n8g0GvmLHdo4ZTDe8Qbd8jCW9LIeOjEpTJ03K8T3A=;
+ b=Wl4b7fBK2XQcGb9Kc4Pqrn9gaLffzHfZKwfl+k10TPwS5Q3Y5WE+9SGFjVRrpTZpsY/d731yr
+ uFMh1XUT+M7Bp5ULqe8NWew9WYkdx+wB/eRSn4u3ghdHyY5Eun7sMYb
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Top of DSM contains the WOPCM which shouldn't be accessed. Carve it out
-from the stolen memory on TGL/DG1 as well.  This fixes excessive ATS faults
-on an RPL laptop since v7.2-rc1.
+Add a compatible string for the mt6572 Mali-400 MP1 GPU.
 
-Fixes: 1c76fa517214 ("drm/xe: Convert stolen memory over to ttm_range_manager")
-Signed-off-by: Zhenyu Yang <haruki@seu.edu.cn>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c b/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c
-index 5e9070739e65..75f4d064d711 100644
---- a/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c
-+++ b/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c
-@@ -180,12 +180,22 @@ extern struct resource intel_graphics_stolen_res;
- static u64 detect_stolen(struct xe_device *xe, struct xe_ttm_stolen_mgr *mgr)
- {
- #ifdef CONFIG_X86
-+	u64 stolen_size, wopcm_size;
-+
- 	/* Map into GGTT */
- 	mgr->io_base = pci_resource_start(to_pci_dev(xe->drm.dev), 2);
- 
- 	/* Stolen memory is x86 only */
- 	mgr->stolen_base = intel_graphics_stolen_res.start;
--	return resource_size(&intel_graphics_stolen_res);
-+	stolen_size = resource_size(&intel_graphics_stolen_res);
-+
-+	/* Carve out the top of DSM as it contains the reserved WOPCM region */
-+	wopcm_size = get_wopcm_size(xe);
-+	if (drm_WARN_ON(&xe->drm, !wopcm_size))
-+		return 0;
-+
-+	xe_assert(xe, stolen_size >= wopcm_size);
-+	return stolen_size - wopcm_size;
- #else
- 	return 0;
- #endif
+diff --git a/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml b/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
+index c8d0d9192d92..6bdbab82126c 100644
+--- a/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
++++ b/Documentation/devicetree/bindings/gpu/arm,mali-utgard.yaml
+@@ -27,6 +27,7 @@ properties:
+               - allwinner,sun8i-h3-mali
+               - allwinner,sun8i-r40-mali
+               - allwinner,sun50i-a64-mali
++              - mediatek,mt6572-mali
+               - rockchip,rk3036-mali
+               - rockchip,rk3066-mali
+               - rockchip,rk3128-mali
 
 ---
-base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
-change-id: 20260811-fix-xe-ttm-4a9713d7cca9
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260810-6572-dt-mali-8b93b159a0ce
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
