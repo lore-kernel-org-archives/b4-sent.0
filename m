@@ -1,275 +1,195 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Mon, 10 Aug 2026 20:25:34 +0800
-Subject: [PATCH RFC v7 8/8] mfd: ls2kbmc: Capture the reset event of BMC
- through GPIO
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH v4 0/3] net: sysctl: Const Qualify sysctl ctl_table arrays
+Date: Mon, 10 Aug 2026 15:01:01 +0200
+Message-Id: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-ls2kbmc-mod-v7-8-8aa0fb5a5462@gmail.com>
-References: <20260810-ls2kbmc-mod-v7-0-8aa0fb5a5462@gmail.com>
-In-Reply-To: <20260810-ls2kbmc-mod-v7-0-8aa0fb5a5462@gmail.com>
-To: Binbin Zhou <zhoubinbin@loongson.cn>, 
- Chong Qiao <qiaochong@loongson.cn>, Lee Jones <lee@kernel.org>, 
- Huacai Chen <chenhuacai@kernel.org>, Corey Minyard <corey@minyard.net>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>, 
- Yinbo Zhu <zhuyinbo@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
- mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
- Miao Wang <shankerwangmiao@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAI3LeWoC/4XN3w6CIBTH8VdpXEcD/IN01Xu05ggPSjkoMJdzv
+ nvoTbXmuvz+tvM5IwrgDQS034zIQ2+CcTZGut0g1UhbAzZVbMQIy0nOBL7IGlvoSuVs6Mr7Q7Z
+ GD1inQATPRCUVR/H25kGb5+IeT7EbEzrnh+VNT+f1n9hTTDGAKM6FVikh6nAFb6HdOV+jmezZm
+ +GErzEsMpnMVMZIQkFWP0zywdBkjUkwwZwVQoMACTL/YqZpegGPNhJWSQEAAA==
+X-Change-ID: 20260629-jag-net_const_qualify-f4e09759dac7
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
+ Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ Phil Sutter <phil@nwl.cc>, 
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, 
+ Steffen Klassert <steffen.klassert@secunet.com>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "D. Wythe" <alibuda@linux.alibaba.com>, Dust Li <dust.li@linux.alibaba.com>, 
+ Sidraya Jayagond <sidraya@linux.ibm.com>, 
+ Wenjia Zhang <wenjia@linux.ibm.com>, 
+ Mahanta Jambigi <mjambigi@linux.ibm.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ Kuniyuki Iwashima <kuniyu@google.com>, 
+ Stefano Garzarella <sgarzare@redhat.com>
+Cc: chia-yu.chang@nokia-bell-labs.com, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+ coreteam@netfilter.org, linux-sctp@vger.kernel.org, 
+ linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
+ virtualization@lists.linux.dev, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8496;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=d8mSd9U4xCrG2CuTI+mkc1YS6J0ec5uyza8o9UJA1sA=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqecNKcUNCuLwtZIqDHxL7JKiVAxVPhazoKMzFk
- OgNDVYw2/KJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCannDSgAKCRCwMePKe/7Z
- btBID/4h+5GrGVrKxwlbNMjRHHM/XslMXOO/G5AVx8thtZWkLvizzdvRBKflj39Gx6zmJicNozF
- 5A3ygRbdDt6UHszKUq4+vyfJQV/2sX4/xkLuTJsLkVIuFiX0vtK04Nbs+mThMQxGvdBVGvG3Yw0
- 2y7jFGbsQwm+k/sLRoOCEL914avSQiP9lWhv7CRCC+zH3SiWnqgdywWJkOtt57yDDV5fkJxZqAZ
- ahsQF7sDsSTabf/57TKZQT6xpl+HNIMQCAWm3x+BhBhEQ/7sZSh3/PPZgIGgyd+bVsUd93XKPf/
- KU3R+pY1hIEDhexFgI9MktrKmV7CVkXeHku+jdLaW+j8TyxKNV3+wuRVav1zkfdrVcJ73mBEi5q
- LkDIBQp7cTrfGtMrV8XLhSBrD/EHyxa5lZMloIRVOY3gaDkQ9SXkcTBFjZkHtFE9aMO8608kCFI
- HvlS0qkozBZuXtDwszfJBPbd9qHh7jg6vM1cCl0omiZatFTOpJxHJLYZkcxJmTCzg7PNk+luEA2
- +BY4izr1p0RmJeTn2dYqOWyeGDIViuTOHZCcbGQ0IOwUHt8qB8xjeppwbra3QM/m5frjUgH9LfW
- 0q3lvqTKxX3ohagQIAcToDvPjDiCZsGbCm9F0duiBobXgIfMlcm/IME4F4GxtYtCp0QAXe2xAsN
- 5hW0EkEXq35wu7A==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5898;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=nb1lpZ0/AdZPjWGiF6JucKUqoreag7z50n+DVnB6utQ=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGp5y5twjBp9PkaBkJVArZV0vNU+Y5SyiRu0I
+ gY8qTif8U7UuIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqecubAAoJELqXzVK3
+ lkFPNYoL/2yPuP9Ro5Gv2xl1JABHhoOLEFlO2RFgGzQ9RwzM4oFc+czv9e31UtVyXC2DwVdtTtT
+ otBeXQSxIwV8UaZbcFX6GTMB/x1vRIhDgl6UNP9l+FKduQjZLmO/Gmn8bYxGx3aY/ZkQOL+1H1i
+ Dvo5yvsNn0j4QYgDnYk5x2q9zJz7Eng2JXPqq6RnJZf/q6QobJKrqDJ3qhbvvFmyFRk/dxLvpPJ
+ D2gy9Aw2Jk0Q2IOXvp2V6Yialv72aXGUO4YX8u2IKwtkqLgZmCanWWzWeDcOA6/XaRFMmHqgnhR
+ atl78dncx2r66L5J2ew8TwEc2MtFL/vnLqfPOUgW5rEM7W2G8tOYGFyANhoKwK/kREXV5bmE9Ul
+ iWxxcO1Rbv1onvtzIBgvuE1JMvGTiJRBZ1BslXjCbrc6eLvS6+dX2O1XcThuXo85zv6WHeT6YA3
+ OqSnEzHdueRSfS3pC/fNxEO3UojWnxR8KZ+GHwjn1eCmJbNaoom22pVh6LnF5l9ueMMiaKVynR7
+ T8=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The reset event of BMC is captured through GPIO. However, this driver
-bypasses the GPIO framework and directly accesses the GPIO controller
-through the fixed address. When the same GPIO controller is also
-exposed through ACPI and probed by the corresponding GPIO driver,
-there would be a conflict between the two drivers.
+What?
+=====
+We do two things:
+1. Reject netns-unsafe: Replace warning and file permission change with
+   an error (reject registration) when an "unsafe" net sysctl
+   registration is detected.
+2. Const qualify: Const qualify network templated ctl_table arrays and
+   unconditional kmemdup'ed ctl_table arrays.
 
-This patch will try to find the GPIO through declared GPIO pin in the
-_CRS resources of the ACPI node. If no such delaration is found, the
-driver will fall back to search for the correct GPIO controller and pin
-according to the fixed address and pin number. A possible DSDT
-declaration for the GPIO pin might be as follows:
+Why?
+====
+The main motivation for this is to continue with the const qualification
+of the ctl_table arrays [1]. The permission change inside
+ensure_safe_net_sysctl disallows cons qualifiaction as it basically
+modifies the entries before running the sysctl registration.
 
-    Device (BMC0) {
-        Name (_ADR, ...) // Match the PCI address of the BMC device
-        // \_SB.GPO1 is the ACPI path of the GPIO controller
-        Name (_CRS, ResourceTemplate () {
-            GpioInt (Edge, ActiveLow, Exclusive, PullNone, 0,
-                     "\\_SB.GPO1", 0) {
-                14 // 14 is the GPIO pin number
-            }
-    }
+      ent->mode &= ~0222;
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+On reject netns-unsafe?
+=======================
+* I believe that there is currently now way that the permission change
+  gets executed [2]
+* I found one case where the warning message was posted to lore
+  (vsock_sysctl_register) [3], but it made its to mainline as part of
+  the second case in [2].
+* We should error anyway because writing to the global sysctl value
+  through a child netns is indicative of a bug [4].
+
+On Const qualification?
+=======================
+We can separate the places where network registers sysctl tables into
+three groups:
+1. Static global: The unchanged global static arrays are passed along to
+   sysctl register.
+2. Always kmemdup: The global static arrays are always kmemdup'ed before
+   passing them along to sysctl register.
+3. Dynamic global: The global static array is changed in place before
+   passing it along to sysctl register.
+
+This series handles case 1 and 2. It leaves 3 for a later point as
+const qualifying those global ctl_tables is more involved.
+
+I would be very thankful if you point me to anything that I have missed
+in my analysis that shows that this cannot/shouldn't be done.
+
+Changes in v4:
+- Addressed comments contained in [5]
+- Removed the RFC tag. Get back to me if you want me to restart the
+  patch versions
+- Link to v3: https://lore.kernel.org/r/20260713-jag-net_const_qualify-v3-0-7289fe9eaea6@kernel.org
+
+Changes in v3:
+- Const qualified 2 of the 3 cases within the net directory ctl_table
+  register sites.
+- Link to v2: https://lore.kernel.org/r/20260707-jag-net_const_qualify-v2-1-5a5c52031ead@kernel.org
+
+Changes in v2:
+- Rebased on top of net-next
+- Updated subject to "RFC net-next"
+- Link to v1: https://lore.kernel.org/r/20260629-jag-net_const_qualify-v1-1-ee98b8fc400c@kernel.org
+
+Best
+
+[1]
+  https://git.kernel.org/pub/scm/linux/kernel/git/sysctl/sysctl.git/commit/?h=constfy-sysctl-6.14-rc1&id=1751f872cc97f992ed5c4c72c55588db1f0021e1
+
+[2]
+  I have identified 4 contexts relevant to the ensure_safe_net_sysctl call
+  inside the network sysctl registration.
+
+  1. When the (struct net) == &init_net (like in iw_cm_init): In this case
+     ensure_safe_net_sysctl is not executed and permission modification
+     never happens.
+
+  2. When the ctl_table data (->data) gets "manually" assigned to
+     something other init_net (like in vsock_sysctl_register): In this
+     case ensure_safe_net_sysctl *is* executed but the data that is passed
+     is neither a module address (!is_module_address) nor a kernel core
+     address (!is_kernel_core_data); so the permission modification never
+     happens.
+
+  3. When the permissions are explicitly changed on a kmemdup'ed ctl_table
+     array (like in sysctl_core_net_init): in this case
+     ensure_safe_net_sysctl *is* executed but the permission modification
+     never happens as the mode is not writable.
+
+  4. When ctl have custom proc_handlers (like in nf_lwtunnel_net_init): In
+     this case ->data is NULL so it is not a module address
+     (!is_module_address) nor a kernel core address
+     (!is_kernel_core_data), so permission modification never happens.
+
+  It seems like there is no way of executing the permission change in
+  ensure_safe_net_sysctl. Please correct me if this is inaccurate and help
+  me find the case that I missed.
+
+[3]
+  https://lore.kernel.org/all/20260302194926.90378-1-graf@amazon.com/
+
+[4]
+  The ensure_safe_net_sysctl function was introduced in Commit:
+  31c4d2f160eb7b17cbead24dc6efed06505a3fee ("net: Ensure net namespace
+  isolation of sysctls") which states that it is trying to prevent a
+  leak (indicative of a bug).
+
+[5]
+  https://patchwork.kernel.org/project/netdevbpf/patch/20260713-jag-net_const_qualify-v3-1-7289fe9eaea6@kernel.org/
+
 ---
- drivers/mfd/ls2k-bmc-core.c | 153 ++++++++++++++++++++++++++++++--------------
- 1 file changed, 106 insertions(+), 47 deletions(-)
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 
-diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
-index 5eea53f134215456e0c14345ae4ebc5b66bd433d..fd2142d4991a49e49ddaf604a085113614afac6e 100644
---- a/drivers/mfd/ls2k-bmc-core.c
-+++ b/drivers/mfd/ls2k-bmc-core.c
-@@ -26,6 +26,10 @@
- #include <linux/stop_machine.h>
- #include <linux/vt_kern.h>
- #include <linux/console.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/gpio/property.h>
-+#include <linux/gpio/machine.h>
- 
- /* LS2K BMC resources */
- #define LS2K_DISPLAY_RES_START		(SZ_16M + SZ_2M)
-@@ -81,18 +85,6 @@
- 
- #define PCI_REG_STRIDE			0x4
- 
--#define LS2K_BMC_RESET_GPIO		14
--#define LOONGSON_GPIO_REG_BASE		0x1FE00500
--#define LOONGSON_GPIO_REG_SIZE		0x18
--#define LOONGSON_GPIO_OEN		0x0
--#define LOONGSON_GPIO_FUNC		0x4
--#define LOONGSON_GPIO_INTPOL		0x10
--#define LOONGSON_GPIO_INTEN		0x14
--
--#define LOONGSON_IO_INT_BASE		16
--#define LS2K_BMC_RESET_GPIO_INT_VEC	(LS2K_BMC_RESET_GPIO % 8)
--#define LS2K_BMC_RESET_GPIO_GSI		(LOONGSON_IO_INT_BASE + LS2K_BMC_RESET_GPIO_INT_VEC)
--
- enum {
- 	LS2K_BMC_DISPLAY,
- 	LS2K_BMC_IPMI0,
-@@ -186,6 +178,7 @@ struct ls2k_bmc_ddata {
- 	struct work_struct bmc_reset_work;
- 	struct ls2k_bmc_pci_data bmc_pci_data;
- 	struct ls2k_bmc_bridge_pci_data bridge_pci_data;
-+	struct gpio_desc *reset_gpio;
- };
- 
- static bool ls2k_bmc_bar0_addr_is_set(struct pci_dev *pdev)
-@@ -375,6 +368,82 @@ static void ls2k_bmc_save_pci_data(struct pci_dev *pdev, struct ls2k_bmc_ddata *
- 	pci_read_config_dword(pdev, PCI_INTERRUPT_LINE, &ddata->bmc_pci_data.interrupt_line);
- }
- 
-+static int ls2k_bmc_gpiochip_find(struct gpio_chip *gc, const void *data)
-+{
-+	struct acpi_device *adev;
-+	struct list_head resource_list;
-+	struct resource_entry *rentry;
-+	struct fwnode_handle *fwnode = gpio_device_get_fwnode(gc->gpiodev);
-+	phys_addr_t start_addr = (phys_addr_t) data;
-+	int ret, found = 0;
-+
-+	if (!is_acpi_node(fwnode))
-+		goto out;
-+
-+	adev = to_acpi_device_node(fwnode);
-+	if (!adev)
-+		goto out;
-+
-+	INIT_LIST_HEAD(&resource_list);
-+
-+	ret = acpi_dev_get_memory_resources(adev, &resource_list);
-+	if (ret < 0)
-+		goto out;
-+	/*
-+	 * ACPI memory resources are ordered and only the first one is
-+	 * considered by the driver of the expected GPIO controller. So
-+	 * here we also only check the first one to see if it matches the
-+	 * expected address.
-+	 */
-+	rentry = list_first_entry_or_null(&resource_list, struct resource_entry, node);
-+	if (!rentry)
-+		goto free_resource_list;
-+	if (rentry->res->start == start_addr)
-+		found = 1;
-+
-+free_resource_list:
-+	acpi_dev_free_resource_list(&resource_list);
-+out:
-+	return found;
-+}
-+
-+static struct gpio_desc *ls2k_bmc_find_gpio(struct ls2k_bmc_ddata *ddata)
-+{
-+	/*
-+	 * In conventional way, the GPIO should be obtained through ACPI or
-+	 * device tree. However, when the information is not available,
-+	 * we should find the GPIO according to the convention of the server
-+	 * boards with LS2K BMC, the gpio signal reflecting the reset event
-+	 * of the BMC should be connected to pin 14 of the GPIO input of
-+	 * the first CPU node. The address of that GPIO controller is fixed.
-+	 */
-+	static const phys_addr_t LOONGSON_GPIO_REG_BASE = 0x1FE00500;
-+	static const unsigned int LS2K_BMC_RESET_GPIO = 14;
-+	int ret;
-+	struct property_entry ls2k_bmc_swnode_properties[2] = { };
-+
-+	dev_dbg(ddata->dev, "Searching for GPIO chip at address %pa\n", &LOONGSON_GPIO_REG_BASE);
-+	struct gpio_device *gdev __free(gpio_device_put) =
-+		gpio_device_find((void *)LOONGSON_GPIO_REG_BASE, ls2k_bmc_gpiochip_find);
-+
-+	if (!gdev) {
-+		dev_dbg(ddata->dev, "cannot find GPIO chip at address %pa, deferring\n",
-+			&LOONGSON_GPIO_REG_BASE);
-+		return ERR_PTR(-EPROBE_DEFER);
-+	}
-+
-+	ls2k_bmc_swnode_properties[0] = PROPERTY_ENTRY_GPIO("gpio",
-+		gpio_device_get_fwnode(gdev), LS2K_BMC_RESET_GPIO, GPIO_ACTIVE_HIGH);
-+
-+	ret = device_create_managed_software_node(ddata->dev, ls2k_bmc_swnode_properties, NULL);
-+	if (ret) {
-+		return ERR_PTR(dev_err_probe(ddata->dev, ret,
-+					     "Failed to create software node for GPIO reset\n"));
-+	}
-+
-+	return devm_gpiod_get_index(ddata->dev, NULL, 0, GPIOD_IN);
-+}
-+
- static void ls2k_bmc_cancel_wq(void *data)
- {
- 	struct ls2k_bmc_ddata *ddata = data;
-@@ -384,8 +453,7 @@ static void ls2k_bmc_cancel_wq(void *data)
- static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- {
- 	struct pci_dev *pdev = to_pci_dev(ddata->dev);
--	void __iomem *gpio_base;
--	int gpio_irq, ret, val;
-+	int gpio_irq, ret;
- 
- 	ls2k_bmc_save_pci_data(pdev, ddata);
- 
-@@ -402,44 +470,35 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- 		return ret;
- 	}
- 
--	gpio_base = ioremap(LOONGSON_GPIO_REG_BASE, LOONGSON_GPIO_REG_SIZE);
--	if (!gpio_base)
--		return -ENOMEM;
--
--	/* Disable GPIO output */
--	val = readl(gpio_base + LOONGSON_GPIO_OEN);
--	writel(val | BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_OEN);
--
--	/* Enable GPIO functionality */
--	val = readl(gpio_base + LOONGSON_GPIO_FUNC);
--	writel(val & ~BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_FUNC);
--
--	/* Set GPIO interrupts to low-level active */
--	val = readl(gpio_base + LOONGSON_GPIO_INTPOL);
--	writel(val & ~BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_INTPOL);
--
--	/* Enable GPIO interrupts */
--	val = readl(gpio_base + LOONGSON_GPIO_INTEN);
--	writel(val | BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_INTEN);
-+	ddata->reset_gpio = devm_gpiod_get_index_optional(&pdev->dev, NULL, 0, GPIOD_IN);
-+	if (IS_ERR(ddata->reset_gpio)) {
-+		ddata->reset_gpio = NULL;
-+		return dev_err_probe(ddata->dev, PTR_ERR(ddata->reset_gpio),
-+				     "Failed to get GPIO pin for reset signal\n");
-+	}
-+	if (ddata->reset_gpio == NULL) {
-+		ddata->reset_gpio = ls2k_bmc_find_gpio(ddata);
-+		if (IS_ERR(ddata->reset_gpio)) {
-+			ddata->reset_gpio = NULL;
-+			return dev_err_probe(ddata->dev, PTR_ERR(ddata->reset_gpio),
-+					     "Failed to find GPIO pin for reset signal\n");
-+		}
-+	}
- 
--	iounmap(gpio_base);
-+	gpio_irq = gpiod_to_irq(ddata->reset_gpio);
- 
--	/*
--	 * Since gpio_chip->to_irq is not implemented in the Loongson-3 GPIO driver,
--	 * acpi_register_gsi() is used to obtain the GPIO IRQ. The GPIO interrupt is a
--	 * watchdog interrupt that is triggered when the BMC resets.
--	 */
--	gpio_irq = acpi_register_gsi(NULL, LS2K_BMC_RESET_GPIO_GSI, ACPI_EDGE_SENSITIVE,
--				     ACPI_ACTIVE_LOW);
- 	if (gpio_irq < 0)
--		return gpio_irq;
-+		return dev_err_probe(ddata->dev, gpio_irq,
-+				     "Failed to get IRQ for GPIO reset signal input\n");
- 
--	ret = devm_request_irq(ddata->dev, gpio_irq, ls2k_bmc_interrupt,
--			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc gpio", ddata);
--	if (ret)
--		dev_err(ddata->dev, "Failed to request LS2KBMC GPIO IRQ %d.\n", gpio_irq);
-+	ret = devm_request_irq(&pdev->dev, gpio_irq, ls2k_bmc_interrupt,
-+			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc reset", ddata);
-+
-+	if (ret != 0)
-+		return dev_err_probe(ddata->dev, ret,
-+				     "Failed to request IRQ %d for GPIO reset signal input.\n",
-+				     gpio_irq);
- 
--	acpi_unregister_gsi(LS2K_BMC_RESET_GPIO_GSI);
- 	return ret;
- }
- 
+---
+Joel Granados (3):
+      net: enforce net sysctl registration
+      net: Const qualify ctl_tables that kmemdup unconditionally
+      net: Const qualify network templated ctl_tables Arrays
 
+ include/net/net_namespace.h             |  5 +--
+ net/core/sysctl_net_core.c              | 38 +++++++++++++++--------
+ net/ipv4/devinet.c                      |  2 +-
+ net/ipv4/sysctl_net_ipv4.c              | 54 +++++++++++++++++++--------------
+ net/ipv4/xfrm4_policy.c                 | 22 +++++++++++---
+ net/ipv6/icmp.c                         |  2 +-
+ net/ipv6/route.c                        |  2 +-
+ net/ipv6/sysctl_net_ipv6.c              |  2 +-
+ net/ipv6/xfrm6_policy.c                 | 22 +++++++++++---
+ net/netfilter/nf_conntrack_standalone.c |  2 +-
+ net/netfilter/nf_hooks_lwtunnel.c       |  4 +--
+ net/sctp/sysctl.c                       |  2 +-
+ net/smc/smc_sysctl.c                    | 26 +++++++++++-----
+ net/sysctl_net.c                        | 25 +++++++--------
+ net/unix/sysctl_net_unix.c              | 21 ++++++++++---
+ net/vmw_vsock/af_vsock.c                | 25 ++++++++++-----
+ net/xfrm/xfrm_sysctl.c                  |  2 +-
+ 17 files changed, 169 insertions(+), 87 deletions(-)
+---
+base-commit: 001b5d347d8ba39b2dccaefcc57967b18caec8fe
+change-id: 20260629-jag-net_const_qualify-f4e09759dac7
+
+Best regards,
 -- 
-2.49.0
+Joel Granados <joel.granados@kernel.org>
 
