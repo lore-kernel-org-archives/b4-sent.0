@@ -1,272 +1,156 @@
-From: Chris Ayoub <cayoub@openai.com>
-Date: Mon, 10 Aug 2026 00:19:34 -0400
-Subject: [PATCH v2] rebuild: prevent quadratic snapshot merges on wide
- directories
+From: Fan Ye <fy15309206903@gmail.com>
+Date: Mon, 10 Aug 2026 09:38:30 +0000
+Subject: [PATCH] thunderbolt: Clamp DMA tunnel credits to what a hop
+ register can hold
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-rebuild-wide-directory-index-v2-1-3a977092b7ea@openai.com>
-X-B4-Tracking: v=1; b=H4sIAFVReWoC/42NTQ6CMBBGr2Jm7Rh+DIIr72FYtJ1BxmhLWkEM4
- e62eAGXL3nf+xYI7IUDnHcLeJ4kiLMRiv0OTK/sjVEoMhRZUWV11qBnPcqD8C3ESOLZvJz/oFj
- iGU1nykaXR1XVDDExeO5k3vLX9sdh1Pe4Sc1k9BLSfvuf8uT9eTXlmKMytT5pwyUTXdzAVsnBu
- Ce067p+AYHm9OfbAAAA
-X-Change-ID: 20260809-rebuild-wide-directory-index-cfc39b34a68e
-To: linux-erofs@lists.ozlabs.org
-Cc: Gao Xiang <xiang@kernel.org>, Chris Ayoub <cayoub@openai.com>
+Message-Id: <20260810-tb-dma-credit-clamp-v1-1-69610146d164@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABWceWoC/yXMSwqDMBRG4a3IHfdColhit1I6yONve6VaSaII4
+ t6N7fAbnLNRQhQkulUbRSyS5DsW6EtF/m3HF1hCMdWqviqjFWfHYbDsI4Jk9h87TAzXdI1Ga1t
+ jqJRTxFPW3/X++DvNrofP54r2/QA3H4IGdwAAAA==
+X-Change-ID: 20260810-tb-dma-credit-clamp-eb3931e5a588
+To: Andreas Noever <andreas.noever@gmail.com>, 
+ Mika Westerberg <westeri@kernel.org>, 
+ Yehezkel Bernat <YehezkelShB@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
+ Fan Ye <fy15309206903@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786335581; l=8711;
- i=cayoub@openai.com; s=20260809; h=from:subject:message-id;
- bh=9VXj7OUFa5XFtJt3jzoTSA0n4h2icwNe252RWgLnB30=;
- b=hmxdLSxp/escyHDTwzWQRnAJFlp7okKqa9QE2HC64VWkFEkt9LV3Q7KB5eKwyP6QtNbuBWwc+
- YyoyxxK1TJODvP644Vp4scrfWt6qqMaQ74ojo+IxoC+Ykl1f+zMskGr
-X-Developer-Key: i=cayoub@openai.com; a=ed25519;
- pk=3iLiZIUNdg97frhaiHfDNEIq1uD5UxhezQvebdhCZUo=
-X-Endpoint-Received: by B4 Relay for cayoub@openai.com/20260809 with auth_id=931
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786354709; l=6038;
+ i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
+ bh=sH5s661mYHQVXNWt2E9soxhgbibtEzecbaMoOwZi+Fk=;
+ b=4GxCjJOPsvbZXUft4clBvXYrN5xgdpNnye8LCpCADk8rEYIXBWPL3FO/oDtfoHtXDnZVwrvNK
+ iN49Ods2vxOD7ewAl7l+vcsnqSomzXGyP94ENg6OJs5RxaPZADbvWA2
+X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
+ pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
+X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Directory entry merging currently performs a linear search of the
-destination directory for each source entry. Repeating this operation
-for wide directories makes snapshot rebuilding quadratic.
+struct tb_regs_hop::initial_credits is 7 bits wide, so a hop can be
+programmed with 127 credits at most. tb_tunnel_alloc_dma() picks the
+credit count for a DMA tunnel out of two values that are not bounded by
+that: the dma_credits module parameter, which has no upper limit at all,
+and the host router's baMaxHI, which usb4_switch_credits_init() reads
+out of a 16-bit field and only checks for presence, never for magnitude.
 
-Add a temporary fixed-bucket index keyed by the parent inode and entry
-name. Hash keys with the existing xxHash helper and resolve collisions
-with list_head chains. Use 1,048,576 buckets to keep chains short for
-million-entry rebuilds.
+What comes out is handed to tb_dma_init_rx_path() and
+tb_dma_init_tx_path(), which lower it to what the adapter has room for
+and store the result in struct tb_path_hop::initial_credits. That field
+is an unsigned int, so an oversized number survives until
+tb_path_activate() copies it into the 7-bit register field and keeps
+only the low bits. The path then runs on a credit count that neither
+the driver nor the user chose, while port->dma_credits goes on
+accounting for the number that was asked for. Nothing reports the
+difference.
 
-Use fixed list_head buckets instead of the generic hashmap implementation
-while preserving the existing merge and replacement behavior. Release the
-index when rebuilding finishes.
+The adapter has to have that many buffers for the truncation to be
+reachable, and ADP_CS_4_TOTAL_BUFFERS_MASK leaves room for it: the lane
+adapters of an ASMedia ASM4242 host router report 174. Asking such a
+router for 172 credits leaves 172 & 0x7f == 44 in the hop.
 
-In the original reproducer, merging 129 layers containing approximately
-2.4 million entries did not finish after 1195 seconds. With the index,
-the same merge completed in 1.40 seconds. The widest directories
-contained 65,212 and 83,318 entries.
+Clamp the count where it is chosen. tb_tunnel_alloc_dma() is the only
+entry point for DMA tunnels, the clamp sits ahead of every hop
+assignment and every credit accounting update, and each step below it
+can only lower the value further, so one bound covers the whole tunnel
+and the driver's bookkeeping stays in step with the hardware. Before the
+module parameter existed this line read min_not_zero(TB_DMA_CREDITS,
+nhi->sw->max_dma_credits) and could not yield more than 14.
 
-Suggested-by: Gao Xiang <xiang@kernel.org>
-Assisted-by: Codex:gpt-5
-Signed-off-by: Chris Ayoub <cayoub@openai.com>
+While at it, carry the count in an unsigned int. Both min_not_zero()
+operands and every function it is passed to are unsigned already, so the
+int only added a signed detour in the middle of an otherwise unsigned
+path.
+
+Fixes: 7ee20d0afb69 ("thunderbolt: Allow specifying custom credits for DMA tunnels")
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: Fan Ye <fy15309206903@gmail.com>
 ---
-Snapshot rebuild currently performs a linear directory search for every
-entry being merged.  This becomes prohibitively expensive for container
-images with very wide directories.
+The truncation is not reachable with the defaults. dma_credits is 14 and
+the ASM4242 in front of me reports baMaxHI 32, so 127 is never
+approached; I had to drop the baMaxHI cap with a local debug patch and
+ask for 172 to see it. Reading the hop straight back after
+tb_path_activate() had written it then showed 44 in the register. With
+this patch it shows 127.
 
-The patch adds a temporary rebuild-only index keyed by parent inode and
-entry name.  It uses the existing xxHash helper and fixed list_head buckets
-instead of the generic hashmap implementation, preserving merge and
-replacement behavior.
+That is not an argument for 127 being a good number to run on. On this
+hardware anything above what the router asks for costs packets - the
+receiving adapter starts dropping around 35 credits, and further up the
+control channel stops answering altogether - so the clamp is a statement
+about what the field can hold, not a recommendation.
 
-The original workload merged 129 layers containing approximately 2.4
-million entries.  The unmodified rebuild did not finish after 1195 seconds;
-the indexed version completed in 1.40 seconds.  The widest directories had
-65,212 and 83,318 entries.
+The same 7-bit field is assigned from three other places: USB3
+(sw->max_usb3_credits, with no min() at all), DP AUX
+(sw->min_dp_aux_credits) and PCIe (min(sw->max_pcie_credits,
+available)). usb4_switch_credits_init() only checks that those buffer
+allocation values are present, never how large they are, so nothing in
+the driver stops them from passing 127 either. I left them alone because
+I have no evidence any router advertises that much there - the one I can
+read out reports 64/2/64 for USB3/DP AUX/PCIe, and the bad advertisement
+already handled in tree, quirk_dp_credit_allocation(), is 56. Should
+those get the same treatment, or does the spec bound them in a way that
+makes it unnecessary?
 
-A shape-matched 129-layer replay with 2.4 million total entries and 800,000
-unique live dentries completed in a 2.48-second median with list buckets,
-versus 2.23 seconds with the v1 hashmap.  Their output images were
-byte-identical, and fsck.erofs accepted the list-bucket image.
+One thing I deliberately left alone: tb_available_credits() computes
+spare = min_not_zero(sw->max_dma_credits, dma_credits) without this
+bound, so with dma_credits set above 127 it now reserves more than a DMA
+tunnel can take, at the expense of the DP stream count. Clamping there
+too is one more line, but it changes how many DP streams fit, which is
+more than a truncation fix should do on its own.
 
-Validation against current dev (v1.9.3) on arm64 Ubuntu 24.04:
-
-- Full builds with LZ4, LZMA, FUSE, and Zstd enabled, plus make check
-- Byte-identical base, v1, and v2 output for file replacement, whiteout and
-  opaque-directory handling, and an 8,000-entry directory
-- Byte-identical v1 and v2 output for a 50,000-entry directory
-- Extracted-tree checks for replacement, whiteout, and opaque semantics
-- 50,000-entry local rebuild: 0.11 seconds for v1, 0.12 seconds for v2
-- fsck.erofs validation and ASan coverage, including early-error cleanup
+No Cc: stable, since reaching this needs either dma_credits set by hand
+or a router advertising baMaxHI above 127, and I have not seen the
+latter. Happy to add it if you disagree.
 ---
-Changes in v2:
-- Replace the generic hashmap implementation with fixed list_head buckets,
-  as suggested by Gao Xiang.
-- Hash parent/name keys with the existing xxHash helper.
-- Revalidate output equivalence, wide-directory performance, fsck, and
-  early-error cleanup against current dev.
-- Link to v1: https://patch.msgid.link/20260809-rebuild-wide-directory-index-v1-1-ac8b7bce3edd@openai.com
----
- lib/liberofs_rebuild.h |  3 ++
- lib/rebuild.c          | 91 ++++++++++++++++++++++++++++++++++++++++++++++++++
- mkfs/main.c            |  4 +++
- 3 files changed, 98 insertions(+)
+ drivers/thunderbolt/tunnel.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/lib/liberofs_rebuild.h b/lib/liberofs_rebuild.h
-index 6459dbd..2ab6414 100644
---- a/lib/liberofs_rebuild.h
-+++ b/lib/liberofs_rebuild.h
-@@ -13,6 +13,9 @@ enum erofs_rebuild_datamode {
- struct erofs_dentry *erofs_rebuild_get_dentry(struct erofs_inode *pwd,
- 		char *path, bool aufs, bool *whout, bool *opq, bool to_head);
+diff --git a/drivers/thunderbolt/tunnel.c b/drivers/thunderbolt/tunnel.c
+index b7f32305f14a..b2a8e4950200 100644
+--- a/drivers/thunderbolt/tunnel.c
++++ b/drivers/thunderbolt/tunnel.c
+@@ -48,6 +48,15 @@
+ #define TB_DP_AUX_PRIORITY		2
+ #define TB_DP_AUX_WEIGHT		1
  
-+void erofs_rebuild_dentry_index_init(void);
-+void erofs_rebuild_dentry_index_exit(void);
-+
- int erofs_rebuild_load_tree(struct erofs_inode *root, struct erofs_sb_info *sbi,
- 			    enum erofs_rebuild_datamode mode);
- 
-diff --git a/lib/rebuild.c b/lib/rebuild.c
-index a5308dc..89a7600 100644
---- a/lib/rebuild.c
-+++ b/lib/rebuild.c
-@@ -17,6 +17,7 @@
- #include "erofs/io.h"
- #include "liberofs_rebuild.h"
- #include "liberofs_uuid.h"
-+#include "liberofs_xxhash.h"
- 
- #ifdef HAVE_LINUX_AUFS_TYPE_H
- #include <linux/aufs_type.h>
-@@ -26,6 +27,79 @@
- #define AUFS_WH_DIROPQ		AUFS_WH_PFX AUFS_DIROPQ_NAME
- #endif
- 
-+struct erofs_rebuild_dentry_index_entry {
-+	struct list_head list;
-+	struct erofs_inode *parent;
-+	struct erofs_dentry *dentry;
-+};
-+
 +/*
-+ * Keep chains short for million-entry rebuilds.  The bucket heads occupy
-+ * 16 MiB on 64-bit systems and are initialized only when rebuilding.
++ * struct tb_regs_hop::initial_credits is 7 bits wide, so this is the most a
++ * hop can be programmed with. What feeds it is not bounded by that:
++ * ADP_CS_4_TOTAL_BUFFERS_MASK is 10 bits and the dma_credits module
++ * parameter has no upper limit at all. A larger value is stored with its
++ * top bits cut off, leaving the path on a credit count nobody asked for.
 + */
-+#define EROFS_REBUILD_DENTRY_HASHSIZE	1048576
-+static struct list_head
-+	erofs_rebuild_dentry_index_storage[EROFS_REBUILD_DENTRY_HASHSIZE];
-+static struct list_head *erofs_rebuild_dentry_index;
++#define TB_MAX_HOP_CREDITS		127
 +
-+static unsigned int erofs_rebuild_dentry_hash(struct erofs_inode *parent,
-+					      const char *name)
-+{
-+	u64 parent_addr = (uintptr_t)parent;
-+	u32 parent_seed = parent_addr ^ (parent_addr >> 32);
-+
-+	/* Distinguish identical names belonging to different directories. */
-+	return xxh32(name, strlen(name), parent_seed);
-+}
-+
-+void erofs_rebuild_dentry_index_init(void)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(erofs_rebuild_dentry_index_storage); ++i)
-+		init_list_head(&erofs_rebuild_dentry_index_storage[i]);
-+	erofs_rebuild_dentry_index = erofs_rebuild_dentry_index_storage;
-+}
-+
-+void erofs_rebuild_dentry_index_exit(void)
-+{
-+	struct erofs_rebuild_dentry_index_entry *indexed, *n;
-+	unsigned int i;
-+
-+	if (!erofs_rebuild_dentry_index)
-+		return;
-+
-+	for (i = 0; i < ARRAY_SIZE(erofs_rebuild_dentry_index_storage); ++i) {
-+		list_for_each_entry_safe(indexed, n,
-+					 &erofs_rebuild_dentry_index[i], list) {
-+			list_del(&indexed->list);
-+			free(indexed);
-+		}
-+	}
-+	erofs_rebuild_dentry_index = NULL;
-+}
-+
-+static int erofs_rebuild_dentry_index_add(struct erofs_inode *parent,
-+					 struct erofs_dentry *dentry)
-+{
-+	struct erofs_rebuild_dentry_index_entry *indexed;
-+
-+	if (!erofs_rebuild_dentry_index)
-+		return 0;
-+
-+	indexed = malloc(sizeof(*indexed));
-+	if (!indexed)
-+		return -ENOMEM;
-+
-+	indexed->parent = parent;
-+	indexed->dentry = dentry;
-+	list_add_tail(&indexed->list,
-+		      &erofs_rebuild_dentry_index[
-+			      erofs_rebuild_dentry_hash(parent, dentry->name) &
-+			      (ARRAY_SIZE(erofs_rebuild_dentry_index_storage) - 1)]);
-+	return 0;
-+}
-+
+ /* Minimum number of credits needed for PCIe path */
+ #define TB_MIN_PCIE_CREDITS		6U
  /*
-  * These non-existent parent directories are created with the same permissions
-  * as their parent directories.  It is expected that a call to create these
-@@ -76,6 +150,19 @@ struct erofs_dentry *erofs_d_lookup(struct erofs_inode *dir, const char *name)
- {
- 	struct erofs_dentry *d;
+@@ -1908,7 +1917,7 @@ struct tb_tunnel *tb_tunnel_alloc_dma(struct tb *tb, struct tb_port *nhi,
+ 	struct tb_tunnel *tunnel;
+ 	size_t npaths = 0, i = 0;
+ 	struct tb_path *path;
+-	int credits;
++	unsigned int credits;
  
-+	if (erofs_rebuild_dentry_index) {
-+		struct erofs_rebuild_dentry_index_entry *indexed;
-+		unsigned int hash = erofs_rebuild_dentry_hash(dir, name);
-+		struct list_head *head = &erofs_rebuild_dentry_index[
-+			hash & (ARRAY_SIZE(erofs_rebuild_dentry_index_storage) - 1)];
-+
-+		list_for_each_entry(indexed, head, list)
-+			if (indexed->parent == dir &&
-+			    !strcmp(indexed->dentry->name, name))
-+				return indexed->dentry;
-+		return NULL;
+ 	/* Ring 0 is reserved for control channel */
+ 	if (WARN_ON(!receive_ring || !transmit_ring))
+@@ -1931,6 +1940,11 @@ struct tb_tunnel *tb_tunnel_alloc_dma(struct tb *tb, struct tb_port *nhi,
+ 	tunnel->destroy = tb_dma_destroy;
+ 
+ 	credits = min_not_zero(dma_credits, nhi->sw->max_dma_credits);
++	if (credits > TB_MAX_HOP_CREDITS) {
++		tb_tunnel_dbg(tunnel, "%u credits do not fit a hop, using %u\n",
++			      credits, TB_MAX_HOP_CREDITS);
++		credits = TB_MAX_HOP_CREDITS;
 +	}
-+
- 	list_for_each_entry(d, &dir->i_subdirs, d_child)
- 		if (!strcmp(d->name, name))
- 			return d;
-@@ -134,12 +221,16 @@ struct erofs_dentry *erofs_rebuild_get_dentry(struct erofs_inode *pwd,
- 				d = erofs_rebuild_mkdir(pwd, s);
- 				if (IS_ERR(d))
- 					return d;
-+				if (erofs_rebuild_dentry_index_add(pwd, d))
-+					return ERR_PTR(-ENOMEM);
- 			} else {
- 				d = erofs_d_alloc(pwd, s);
- 				if (IS_ERR(d))
- 					return d;
- 				d->type = EROFS_FT_UNKNOWN;
- 				d->inode = pwd;
-+				if (erofs_rebuild_dentry_index_add(pwd, d))
-+					return ERR_PTR(-ENOMEM);
- 			}
- 			pwd = d->inode;
- 		}
-diff --git a/mkfs/main.c b/mkfs/main.c
-index 929ce7c..7158853 100644
---- a/mkfs/main.c
-+++ b/mkfs/main.c
-@@ -1680,21 +1680,25 @@ static int erofs_mkfs_rebuild_load_trees(struct erofs_inode *root)
- 		return -EINVAL;
- 	}
  
-+	erofs_rebuild_dentry_index_init();
- 	list_for_each_entry(src, &rebuild_src_list, list) {
- 		src->xamgr = g_sbi.xamgr;
- 		ret = erofs_rebuild_load_tree(root, src, datamode);
- 		src->xamgr = NULL;
- 		if (ret) {
- 			erofs_err("failed to load %s", src->devname);
-+			erofs_rebuild_dentry_index_exit();
- 			return ret;
- 		}
- 		if (src->extra_devices > 1) {
- 			erofs_err("%s: unsupported number %u of extra devices",
- 				  src->devname, src->extra_devices);
-+			erofs_rebuild_dentry_index_exit();
- 			return -EOPNOTSUPP;
- 		}
- 		extra_devices += src->extra_devices;
- 	}
-+	erofs_rebuild_dentry_index_exit();
- 
- 	if (datamode == EROFS_REBUILD_DATA_RESVSP)
- 		return 0;
+ 	if (receive_ring > 0) {
+ 		path = tb_path_alloc(tb, dst, receive_path, nhi, receive_ring, 0,
 
 ---
-base-commit: 7db78788b000999e2de88decd2ba90654f26171c
-change-id: 20260809-rebuild-wide-directory-index-cfc39b34a68e
+base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
+change-id: 20260810-tb-dma-credit-clamp-eb3931e5a588
 
 Best regards,
 --  
-Chris Ayoub <cayoub@openai.com>
+Fan Ye <fy15309206903@gmail.com>
 
