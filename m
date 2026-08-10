@@ -1,260 +1,96 @@
-From: Chris Ayoub <cayoub@openai.com>
-Date: Sun, 09 Aug 2026 17:44:08 -0400
-Subject: [PATCH] rebuild: prevent quadratic snapshot merges on wide
- directories
+From: Xie Bo <xb@ultrarisc.com>
+Date: Mon, 10 Aug 2026 09:21:15 +0800
+Subject: [PATCH v2] RISC-V: KVM: Serialize IMSIC attributes with vCPU
+ migration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260809-rebuild-wide-directory-index-v1-1-ac8b7bce3edd@openai.com>
-X-B4-Tracking: v=1; b=H4sIAKj0eGoC/yXMQQ6CMBBG4auQWTtJBULAqxgXtPOjY0wxU1AI4
- e5WXX6L9zZKMEWiU7GR4aVJx5hxPBQUbn28glWyqXRl41rXscHP+hB+q4BFDWEabWWNgoXDEKr
- OV3XftKC8eBoGXX778+XvNPt7br5P2vcPcxcFcoAAAAA=
-X-Change-ID: 20260809-rebuild-wide-directory-index-cfc39b34a68e
-To: linux-erofs@lists.ozlabs.org
-Cc: Chris Ayoub <cayoub@openai.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786311855; l=7696;
- i=cayoub@openai.com; s=20260809; h=from:subject:message-id;
- bh=65h6clNdJx8afXIqr6z/hZcjnoCtwLeXPuzlS5DrzaU=;
- b=qPgwM4xbonj3gBlxiaI3Cf42kln4YKjOmukWfkC9sQPqez9KcJY7uUIPVFtdCIgZeON50IhfR
- 71tFUTdeUHuDoncgh3NTs+Kiv3S7a8EGT78jghJufrsAbLj2OiGWuW4
-X-Developer-Key: i=cayoub@openai.com; a=ed25519;
- pk=3iLiZIUNdg97frhaiHfDNEIq1uD5UxhezQvebdhCZUo=
-X-Endpoint-Received: by B4 Relay for cayoub@openai.com/20260809 with auth_id=931
+Message-Id: <20260810-imsic-attr-race-v2-1-00ed95ad321e@ultrarisc.com>
+X-B4-Tracking: v=1; b=H4sIAIoneWoC/43Oyw6CMBCF4VchXTukLZeqK9/DsKh1kEmEmmklG
+ NJ3t7Bx6/JfnC9nFQGZMIhzsQrGmQL5KYc+FMINdnog0D230FK38qgk0BjIgY2Rga1DkK0x2sq
+ 6biSKvHox9rTs4rXL3bMfIQ6M9ucYraSpWqVLVRndnEDBcru8n5EtU3Cl8+NGDRSi58/+bVYb+
+ P+8Syl9AfhrvaPdAAAA
+In-Reply-To: <20260721073612.137259-1-xb@ultrarisc.com>
+References: <20260721073612.137259-1-xb@ultrarisc.com>
+To: Anup Patel <anup@brainfault.org>
+Cc: Atish Patra <atish.patra@linux.dev>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, kvm@vger.kernel.org, 
+ kvm-riscv@lists.infradead.org, linux-riscv@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Xie Bo <xb@ultrarisc.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786324887; l=2118;
+ i=xb@ultrarisc.com; s=20260810; h=from:subject:message-id;
+ bh=FN+s+dZU8x/9zYsAqO7dZdJ8/YEPF8j1I2LUPLYxSPg=;
+ b=At33xJ3dHR0j9wXFxdIzEYGU5MBM29ywdU+QrQSNgCvRQNCU4eMc6niylLaA2OdmR+6z77Yzu
+ 7ObKeiaeOz/CkmbCVfPYMdMk6cLpWur30kpe8VcTE2Kd5XihS+Wycvq
+X-Developer-Key: i=xb@ultrarisc.com; a=ed25519;
+ pk=Yb4TfiqO0TRwfKy3wvnt0+tbk0/QQQ42+O1jBrVaWq0=
+X-Endpoint-Received: by B4 Relay for xb@ultrarisc.com/20260810 with auth_id=933
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Directory entry merging currently performs a linear search of the
-destination directory for each source entry. Repeating this operation
-for wide directories makes snapshot rebuilding quadratic.
+KVM device ioctls are not serialized against KVM_RUN. As a result,
+kvm_riscv_aia_imsic_rw_attr() can snapshot the physical CPU and HGEI of
+an IMSIC VS-file before a concurrent vCPU migration releases it.
 
-Add a temporary hashmap keyed by the parent inode and entry name during
-rebuild. Use the index to find existing children while preserving the
-existing merge and replacement behavior, and release it when rebuilding
-finishes.
+The HGEI can then be allocated to another vCPU before imsic_vsfile_rw()
+uses the stale tuple. A GET or SET attribute may consequently access the
+new owner's interrupt file.
 
-In the original reproducer, merging 129 layers containing approximately
-2.4 million entries did not finish after 1195 seconds. With the index,
-the same merge completed in 1.40 seconds. The widest directories
-contained 65,212 and 83,318 entries.
+Serialize the entire IMSIC attribute operation with the target vCPU
+mutex. This prevents the VS-file from being migrated and recycled until
+the attribute access completes. Acquire the mutex killably so that the
+device ioctl remains interruptible while waiting for KVM_RUN to finish.
 
-Assisted-by: Codex:gpt-5
-Signed-off-by: Chris Ayoub <cayoub@openai.com>
+Fixes: db8b7e97d613 ("RISC-V: KVM: Add in-kernel virtualization of AIA IMSIC")
+Cc: stable@vger.kernel.org
+Signed-off-by: Xie Bo <xb@ultrarisc.com>
 ---
-Snapshot rebuild currently performs a linear directory search for every
-entry being merged.  This becomes prohibitively expensive for container
-images with very wide directories.
+Changes in v2:
+- Use mutex_lock_killable() and return -EINTR when interrupted.
 
-The patch adds a temporary rebuild-only hashmap keyed by parent inode and
-entry name.  It preserves the existing merge and replacement behavior and
-releases the index after all source trees have been loaded.
-
-The original workload merged 129 layers containing approximately 2.4
-million entries.  The unmodified rebuild did not finish after 1195 seconds;
-with the index, it completed in 1.40 seconds.  The widest directories had
-65,212 and 83,318 entries.
-
-Validation against current dev (v1.9.3) on arm64 Ubuntu 24.04:
-
-- Full build with LZ4, LZMA, FUSE, and Zstd enabled
-- make check
-- Byte-identical output versus unmodified v1.9.3 for file replacement,
-  whiteout and opaque-directory handling, and an 8,000-entry directory
-- Extracted-tree checks for replacement, whiteout, and opaque semantics
-- 8,000-entry local rebuild: 0.23 seconds before, 0.01 seconds after
+Link: https://lore.kernel.org/r/20260721073612.137259-1-xb@ultrarisc.com
 ---
- lib/liberofs_rebuild.h |   3 ++
- lib/rebuild.c          | 100 +++++++++++++++++++++++++++++++++++++++++++++++++
- mkfs/main.c            |   4 ++
- 3 files changed, 107 insertions(+)
+ arch/riscv/kvm/aia_imsic.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/lib/liberofs_rebuild.h b/lib/liberofs_rebuild.h
-index 6459dbd..2ab6414 100644
---- a/lib/liberofs_rebuild.h
-+++ b/lib/liberofs_rebuild.h
-@@ -13,6 +13,9 @@ enum erofs_rebuild_datamode {
- struct erofs_dentry *erofs_rebuild_get_dentry(struct erofs_inode *pwd,
- 		char *path, bool aufs, bool *whout, bool *opq, bool to_head);
+diff --git a/arch/riscv/kvm/aia_imsic.c b/arch/riscv/kvm/aia_imsic.c
+index d38f5de08..74f520e57 100644
+--- a/arch/riscv/kvm/aia_imsic.c
++++ b/arch/riscv/kvm/aia_imsic.c
+@@ -969,9 +969,14 @@ int kvm_riscv_aia_imsic_rw_attr(struct kvm *kvm, unsigned long type,
+ 	if (!vcpu)
+ 		return -ENODEV;
  
-+void erofs_rebuild_dentry_index_init(void);
-+void erofs_rebuild_dentry_index_exit(void);
++	if (mutex_lock_killable(&vcpu->mutex))
++		return -EINTR;
 +
- int erofs_rebuild_load_tree(struct erofs_inode *root, struct erofs_sb_info *sbi,
- 			    enum erofs_rebuild_datamode mode);
- 
-diff --git a/lib/rebuild.c b/lib/rebuild.c
-index a5308dc..f697c40 100644
---- a/lib/rebuild.c
-+++ b/lib/rebuild.c
-@@ -11,6 +11,7 @@
- #include "erofs/print.h"
- #include "erofs/inode.h"
- #include "erofs/dir.h"
-+#include "erofs/hashmap.h"
- #include "erofs/xattr.h"
- #include "erofs/blobchunk.h"
- #include "erofs/internal.h"
-@@ -26,6 +27,85 @@
- #define AUFS_WH_DIROPQ		AUFS_WH_PFX AUFS_DIROPQ_NAME
- #endif
- 
-+struct erofs_rebuild_dentry_index_entry {
-+	struct hashmap_entry entry;
-+	struct erofs_inode *parent;
-+	struct erofs_dentry *dentry;
-+};
-+
-+struct erofs_rebuild_dentry_index_key {
-+	struct erofs_inode *parent;
-+	const char *name;
-+};
-+
-+static struct hashmap erofs_rebuild_dentry_index;
-+
-+static unsigned int erofs_rebuild_dentry_hash(struct erofs_inode *parent,
-+					      const char *name)
-+{
-+	return strhash(name) ^ memhash(&parent, sizeof(parent));
-+}
-+
-+static int erofs_rebuild_dentry_index_cmp(const void *entry,
-+					  const void *other,
-+					  const void *keydata)
-+{
-+	const struct erofs_rebuild_dentry_index_entry *indexed =
-+		container_of((struct hashmap_entry *)entry,
-+			     struct erofs_rebuild_dentry_index_entry, entry);
-+	const struct erofs_rebuild_dentry_index_key *key = keydata;
-+
-+	(void)other;
-+	return indexed->parent != key->parent ||
-+		strcmp(indexed->dentry->name, key->name);
-+}
-+
-+void erofs_rebuild_dentry_index_init(void)
-+{
-+	hashmap_init(&erofs_rebuild_dentry_index,
-+		     erofs_rebuild_dentry_index_cmp, 0);
-+}
-+
-+void erofs_rebuild_dentry_index_exit(void)
-+{
-+	struct hashmap_iter iter;
-+	struct hashmap_entry *entry;
-+
-+	hashmap_disable_shrink(&erofs_rebuild_dentry_index);
-+	entry = hashmap_iter_first(&erofs_rebuild_dentry_index, &iter);
-+	while (entry) {
-+		struct erofs_rebuild_dentry_index_entry *indexed =
-+			container_of(entry,
-+				     struct erofs_rebuild_dentry_index_entry, entry);
-+
-+		DBG_BUGON(hashmap_remove(&erofs_rebuild_dentry_index,
-+					 entry) != entry);
-+		free(indexed);
-+		entry = hashmap_iter_next(&iter);
+ 	imsic = vcpu->arch.aia_context.imsic_state;
+-	if (!imsic)
+-		return -ENODEV;
++	if (!imsic) {
++		rc = -ENODEV;
++		goto out_unlock;
 +	}
-+	DBG_BUGON(hashmap_free(&erofs_rebuild_dentry_index));
-+}
-+
-+static int erofs_rebuild_dentry_index_add(struct erofs_inode *parent,
-+					 struct erofs_dentry *dentry)
-+{
-+	struct erofs_rebuild_dentry_index_entry *indexed;
-+
-+	if (!erofs_rebuild_dentry_index.table)
-+		return 0;
-+
-+	indexed = malloc(sizeof(*indexed));
-+	if (!indexed)
-+		return -ENOMEM;
-+
-+	indexed->parent = parent;
-+	indexed->dentry = dentry;
-+	hashmap_entry_init(&indexed->entry,
-+			   erofs_rebuild_dentry_hash(parent, dentry->name));
-+	hashmap_add(&erofs_rebuild_dentry_index, &indexed->entry);
-+	return 0;
-+}
-+
- /*
-  * These non-existent parent directories are created with the same permissions
-  * as their parent directories.  It is expected that a call to create these
-@@ -76,6 +156,22 @@ struct erofs_dentry *erofs_d_lookup(struct erofs_inode *dir, const char *name)
- {
- 	struct erofs_dentry *d;
+ 	isel = KVM_DEV_RISCV_AIA_IMSIC_GET_ISEL(type);
  
-+	if (erofs_rebuild_dentry_index.table) {
-+		struct erofs_rebuild_dentry_index_key key = {
-+			.parent = dir,
-+			.name = name,
-+		};
-+		struct hashmap_entry *entry = hashmap_get_from_hash(
-+			&erofs_rebuild_dentry_index,
-+			erofs_rebuild_dentry_hash(dir, name), &key);
-+
-+		if (!entry)
-+			return NULL;
-+		return container_of(entry,
-+				    struct erofs_rebuild_dentry_index_entry,
-+				    entry)->dentry;
-+	}
-+
- 	list_for_each_entry(d, &dir->i_subdirs, d_child)
- 		if (!strcmp(d->name, name))
- 			return d;
-@@ -134,12 +230,16 @@ struct erofs_dentry *erofs_rebuild_get_dentry(struct erofs_inode *pwd,
- 				d = erofs_rebuild_mkdir(pwd, s);
- 				if (IS_ERR(d))
- 					return d;
-+				if (erofs_rebuild_dentry_index_add(pwd, d))
-+					return ERR_PTR(-ENOMEM);
- 			} else {
- 				d = erofs_d_alloc(pwd, s);
- 				if (IS_ERR(d))
- 					return d;
- 				d->type = EROFS_FT_UNKNOWN;
- 				d->inode = pwd;
-+				if (erofs_rebuild_dentry_index_add(pwd, d))
-+					return ERR_PTR(-ENOMEM);
- 			}
- 			pwd = d->inode;
- 		}
-diff --git a/mkfs/main.c b/mkfs/main.c
-index 929ce7c..7158853 100644
---- a/mkfs/main.c
-+++ b/mkfs/main.c
-@@ -1680,21 +1680,25 @@ static int erofs_mkfs_rebuild_load_trees(struct erofs_inode *root)
- 		return -EINVAL;
- 	}
+ 	read_lock_irqsave(&imsic->vsfile_lock, flags);
+@@ -995,6 +1000,8 @@ int kvm_riscv_aia_imsic_rw_attr(struct kvm *kvm, unsigned long type,
+ 		rc = imsic_vsfile_rw(vsfile_hgei, vsfile_cpu, imsic->nr_eix,
+ 				     isel, write, val);
  
-+	erofs_rebuild_dentry_index_init();
- 	list_for_each_entry(src, &rebuild_src_list, list) {
- 		src->xamgr = g_sbi.xamgr;
- 		ret = erofs_rebuild_load_tree(root, src, datamode);
- 		src->xamgr = NULL;
- 		if (ret) {
- 			erofs_err("failed to load %s", src->devname);
-+			erofs_rebuild_dentry_index_exit();
- 			return ret;
- 		}
- 		if (src->extra_devices > 1) {
- 			erofs_err("%s: unsupported number %u of extra devices",
- 				  src->devname, src->extra_devices);
-+			erofs_rebuild_dentry_index_exit();
- 			return -EOPNOTSUPP;
- 		}
- 		extra_devices += src->extra_devices;
- 	}
-+	erofs_rebuild_dentry_index_exit();
++out_unlock:
++	mutex_unlock(&vcpu->mutex);
+ 	return rc;
+ }
  
- 	if (datamode == EROFS_REBUILD_DATA_RESVSP)
- 		return 0;
 
 ---
-base-commit: 7db78788b000999e2de88decd2ba90654f26171c
-change-id: 20260809-rebuild-wide-directory-index-cfc39b34a68e
+base-commit: b95f03f04d475aa6719d15a636ddf32222d55657
+change-id: 20260810-imsic-attr-race-06772a04450e
 
 Best regards,
---  
-Chris Ayoub <cayoub@openai.com>
+-- 
+Xie Bo <xb@ultrarisc.com>
 
