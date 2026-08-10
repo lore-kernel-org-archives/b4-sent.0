@@ -1,222 +1,75 @@
-From: Fan Ye <fy15309206903@gmail.com>
-Date: Mon, 10 Aug 2026 09:39:15 +0000
-Subject: [PATCH net v2 2/2] net: thunderbolt: Mark the connection down when
- bringing it up fails
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/2] Pixel 3 display fixes
+Date: Mon, 10 Aug 2026 11:55:36 +0200
+Message-Id: <20260810-fix-blueline-panel-v2-0-9344dfdbc3f9@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-b4-tbnet-hopid-v2-2-0eee557e75df@gmail.com>
-References: <20260810-b4-tbnet-hopid-v2-0-0eee557e75df@gmail.com>
-In-Reply-To: <20260810-b4-tbnet-hopid-v2-0-0eee557e75df@gmail.com>
-To: Jakub Kicinski <kuba@kernel.org>, Eric Dumazet <edumazet@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, Mika Westerberg <westeri@kernel.org>, 
- Yehezkel Bernat <YehezkelShB@gmail.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, stable@vger.kernel.org, 
- Fan Ye <fy15309206903@gmail.com>, 
- Mika Westerberg <mika.westerberg@linux.intel.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7ZhSEyquvIdh0ZapjCGFtEBQw
+ t1tce/yJe+/v0GkwBThVmwQaOHIg08gTwXYTvsnIbeJQQpZiauo0fGKpp+pZ084ak89aieNsnW
+ lnGwhDcdAyTqij+bHcTYvslMuZaPjOA3hfbwuZfb+HiwlCiTlLroyZEqn77zydLYfaPZ9/wLcj
+ S7cxAAAAA==
+X-Change-ID: 20260809-fix-blueline-panel-af2b7c967f2d
+To: Sumit Semwal <sumit.semwal@linaro.org>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Vinod Koul <vkoul@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786354753; l=9541;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=dhyvBFR9X3G+/biTfQy2WpFsnWdPvS1LTFJ2hNrKBig=;
- b=0fiHhAei/jVpxC1BYtni/nH3Tjpwbi7u0aaFon1OdaMl9pPldImatG0XyeZ1ijPYmyUdDM0np
- 6FtdQ9vODv/BoOQ0Ur5VZnCJ0DDLBWZKrSex+xvoF0IA6DufC8rjGiH
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1084; i=david@ixit.cz;
+ h=from:subject:message-id; bh=2WMyjEaVRWK9jzyFpbiOhg17MMA4q2ioAFM/71Fd02w=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqeaAcrio9jDiP0gaEDmcuCh6XUgMthbgEL81Ki
+ 3rJH0m1NtSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCanmgHAAKCRBgAj/E00kg
+ con2D/99ET7GvwS5+RNu56YgtPQ7tQKhvdLgx3uBSYOjlcI4zTJJjBXxUpKfp38icet2FoR4FbV
+ tUjjnR5n/zkpEvnqNghH4VRwmzlgKfvnQPOc2PdPVh01kswsnqgTLGafVnN5FaC/29nL+sD1ctE
+ FmQ8m5aH7P/BglugOiprm/XZcPg+e48mZpgct47ZyNVfyDIvuZJhRuflGAJRf5DLJFmEuZrGqxy
+ Awj4VkfdGW6xtJGFXnN5w8RrYdQFdgj68sKYxZVTJyElIAaZfx59nnCRhITBYWkKo4ZD0Vm04XS
+ IYFQl2yTaTxXa8TmCeNp5jOK9jrJaTT6D9RiSvwy0M1RqUgzMGjlqBUMqzUmO6lyZBWKrhmCUOB
+ Ne42n5/mWQLbiWHxZMkuzDSxcF+HgeJ5ni3PKnxNsi+dvVhHExrhcmJOZPjBXSq64OMVOK0wNK7
+ a/cjMhnnE09oTEDgWHzXP6yiBuyuPytTDYasSKZ6ac8dnJzg+i7Q0y7wfXztXIjhdkFY2/R/wfC
+ iU+J4vf+C23na3J0SF1EFydgGAGua80ju2JkDKX6sb2wuxw95rwTUjd9thdUewqUM309Jt6KkFN
+ 6ZI7zHa3aCV9LdCq+deroLLyzvnZRe8twoI57pBjLJQMFWFquXjgGklJLOV//NwxEZc7nlN9DjD
+ ttNeuuR78/n+hmw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Every failure path in tbnet_connected_work() undoes its own work and
-returns, but none of them clears login_sent/login_received. The
-connection therefore still looks established, and the next
-tbnet_tear_down() takes its main branch and runs the whole teardown a
-second time over work that was already undone:
+Fix panel not recovering after unprepare and backlight intensity.
 
-  thunderbolt-net 0-1.0 thunderbolt0: failed to allocate Rx HopID
-  thunderbolt 0000:78:00.0: RX ring 1 already stopped
-  WARNING: CPU: 0 PID: 235 at drivers/thunderbolt/nhi.c:773 tb_ring_stop
-   tbnet_tear_down -> tbnet_stop -> __dev_close_many
-  thunderbolt 0000:78:00.0: TX ring 1 already stopped
-  WARNING: CPU: 0 PID: 235 at drivers/thunderbolt/nhi.c:773 tb_ring_stop
+I extensively reproduced the vendor bootloader sequence, but after the
+boot isn't possible to do the full initialization of the display (at
+least on Pixel 3, and panel can't be found anywhere else).
 
-(line 773 is the dev_WARN in tb_ring_stop() as of v6.17, which is what
-this was captured on; it is line 760 in current mainline)
+The downstream, due to having attached touchscreen reusing same
+supplies, never turns the panel off. Let's do the same.
 
-It stops rings that were never started, which is what the two warnings
-above are, and on a kernel booted with panic_on_warn those are fatal.
-
-It also releases net->remote_transmit_path. On the HopID mismatch path
-that one was never successfully allocated by this connection - the
-allocator handed out a different id precisely because the wanted one was
-already taken by somebody else - so this hands back an id the connection
-does not own, and it does so silently. The id is then free to be handed
-out again while its owner is still using it.
-
-Mark the connection as no longer established on those paths. Only
-login_sent is cleared, which is enough for tbnet_tear_down() to leave the
-already unwound state alone; login_received records that the peer has
-logged in with us and carries the transmit path it gave us, and nothing
-on this side can make the peer send that again.
-
-Skipping that block skips two things that are not just a repeat of the
-unwind. One is the logout request it would have sent to the peer. The
-other is net->remote_transmit_path = 0 at the end of it; that field is
-only read under the same login_sent && login_received guard and the
-peer's next login request overwrites it, so leaving it stale is
-harmless, but it is a clear that no longer happens. The rest of the
-block is either already undone by the unwind that just ran or was never
-done in the first place - the rings are not started and no buffers are
-allocated when the HopID mismatch is hit, and the paths are not enabled
-on any path that reaches err_stop_rings. The parts outside the block -
-carrier off, queue stopped, login stopped, and the state reset at the
-end - keep running as before.
-
-Clearing login_sent also changes what the peer's next login request
-does: tbnet_handle_packet() re-queues our login work when it sees
-!login_sent, where before it would only have queued connected_work. That
-is the direction I want - it gives the connection a fresh login instead
-of retrying the bring-up on stale state - but it is a behaviour change
-beyond keeping tbnet_tear_down() out of the way.
-
-Measured on a link between two ASMedia ASM4242 hosts by cycling the
-interface down and up 200 times from one of them over 80 minutes, and
-counting what the kernel logs on both.
-The mismatch is reached on its own during that, no fault injection, and
-both runs were started from a cold boot with no module reloads in
-between. Only the thunderbolt-net module differs between the two:
-
-                                        without      with
-    failed to allocate Rx HopID          11 / 12     9 / 13
-    ring already stopped + WARNING       22 / 24     0 / 0
-                                     (host A / host B)
-
-The race still happens as often as before - it is not what this patch
-addresses - but it no longer leaves a warning splat behind, and no longer
-releases a HopID that belongs to someone else.
-
-Fixes: e69b6c02b4c3 ("net: Add support for networking over Thunderbolt cable")
-Cc: <stable@vger.kernel.org> # 5.13+
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Fan Ye <fy15309206903@gmail.com>
-Acked-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
+---
+Changes in v2:
+- Unintended change 255 -> 256 for default brigtness. Drop it.
+- Added R-bs.
+- Link to v1: https://patch.msgid.link/20260809-fix-blueline-panel-v1-0-e7f3a6beb1fa@ixit.cz
 
 ---
-These four came out of one investigation on a pair of ASMedia ASM4242
-hosts wired to each other. Apply them in this order: the second one
-touches lines the first one adds, so it needs that one underneath to
-apply at all, and the last two want the first two under them for the
-reason below.
+David Heidelberg (2):
+      drm/panel: lg-sw43408: do not assert reset across unprepare
+      drm/panel: lg-sw43408: use the full DCS brightness range
 
-  1 net: thunderbolt: Release the Rx HopID that was handed out on mismatch
-  2 net: thunderbolt: Mark the connection down when bringing it up fails
-  3 thunderbolt: Report DMA path teardown failures to the caller
-  4 thunderbolt: Stop waiting on a path pending bit that never clears
-
-This one is number 2 on that list.
-
-1 and 2 fix two separate things that happen to be reached through the
-same branch. Neither depends on the other for correctness - each leaves
-the other's defect in place - but 2 edits the lines 1 adds, so it will
-not apply on its own.
-
-3 and 4 do want 1 and 2 underneath: the warning splat that 2 removes
-fires throughout any prolonged run of link cycling, which is what 3 and 4
-have to be measured across. 3 makes teardown failures visible to the
-caller at all; 4 stops the teardown paying for one that cannot succeed.
-Note what that pair does on this particular router - 4 leaves the first
-failure to be reported and silences the rest, so 3's new signal fires
-once per adapter here rather than on every teardown. 4 is the one I am
-least sure of, for the reasons in its own notes.
-
-Sits on top of "net: thunderbolt: Release the Rx HopID that was handed
-out on mismatch". The two fix different things - that one releases the id
-the allocator actually handed out, this one stops the teardown that
-follows from running a second time - but this one edits the lines that
-one adds, so it will not apply without it.
-
-An earlier version of this also rearmed the login from the failure paths,
-on the assumption that the connection would otherwise stay down. It does
-not: every one of those failures was followed by the XDomain connection
-being torn down and rebuilt, and the interface came back on its own. Of
-the 60 occurrences across three runs, 59 had a tunnel set up again
-afterwards that I could time - 42 of them 19 seconds later, 14 at 20, one
-at 21 and two at 43 - with and without the patch alike. That is the
-re-enumeration, not a login retry; a retry would have shown up as a
-multiple of TBNET_LOGIN_DELAY. The rearm bought nothing and needed a
-retry bound of its own, so it is gone.
-
-What I am not claiming: that this makes the link survive longer. I have
-run the 200 cycles four times, on four different combinations. Two of
-them stopped coming up after 65 and 69 minutes and two ran to the end.
-Both of the ones that finished had this patch, and neither of the ones
-that died had this version of it - one had no part of it at all, the
-other an earlier version. On the face of it that reads the way I would
-like it to, which is exactly why I am not reading it that way: four runs,
-four different combinations, one run each. What I can say is that the
-race this patch is about is not what ends a run - it fired 22 times in
-the run in the table above and the link came back from all 22.
-
-One question I cannot answer from here. Skipping the block also skips the
-logout request that would have gone to the peer. Everything else in it is
-either already undone or was never done, but the logout is a real thing
-the peer no longer hears about. I could not measure a difference - the
-XDomain connection is torn down and rebuilt right afterwards in every
-case I logged - but whether that is good enough, or whether the failure
-paths should send one explicitly before returning, is a call I would
-rather leave to you.
-
-v2:
-- Add the Assisted-by tag Mika asked for.  No code change from v1.
-- Pick up Mika's Acked-by.
-
-v1: https://lore.kernel.org/netdev/20260809-b4-tbnet-hopid-v1-0-9a8c7f5f0ba9@gmail.com/
+ drivers/gpu/drm/panel/panel-lg-sw43408.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 ---
- drivers/net/thunderbolt/main.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+base-commit: 95d6a9ccef99117115e41e9adb271243bd5e985b
+change-id: 20260809-fix-blueline-panel-af2b7c967f2d
 
-diff --git a/drivers/net/thunderbolt/main.c b/drivers/net/thunderbolt/main.c
-index e5199a87ea7a..b6aec215a8e9 100644
---- a/drivers/net/thunderbolt/main.c
-+++ b/drivers/net/thunderbolt/main.c
-@@ -626,6 +626,20 @@ static int tbnet_alloc_tx_buffers(struct tbnet *net)
- 	return 0;
- }
- 
-+static void tbnet_connect_failed(struct tbnet *net)
-+{
-+	/*
-+	 * Mark the connection as no longer established so that
-+	 * tbnet_tear_down() does not run over the unwind we just did.
-+	 * Only login_sent is cleared: login_received records that the peer
-+	 * has logged in with us and carries the transmit path it gave us,
-+	 * and nothing on this side can make the peer send that again.
-+	 */
-+	mutex_lock(&net->connection_lock);
-+	net->login_sent = false;
-+	mutex_unlock(&net->connection_lock);
-+}
-+
- static void tbnet_connected_work(struct work_struct *work)
- {
- 	struct tbnet *net = container_of(work, typeof(*net), connected_work);
-@@ -649,6 +663,7 @@ static void tbnet_connected_work(struct work_struct *work)
- 		netdev_err(net->dev, "failed to allocate Rx HopID\n");
- 		if (ret >= 0)
- 			tb_xdomain_release_in_hopid(net->xd, ret);
-+		tbnet_connect_failed(net);
- 		return;
- 	}
- 
-@@ -693,6 +708,7 @@ static void tbnet_connected_work(struct work_struct *work)
- 	tb_ring_stop(net->rx_ring.ring);
- 	tb_ring_stop(net->tx_ring.ring);
- 	tb_xdomain_release_in_hopid(net->xd, net->remote_transmit_path);
-+	tbnet_connect_failed(net);
- }
- 
- static void tbnet_login_work(struct work_struct *work)
-
--- 
-2.43.0
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
