@@ -1,11 +1,11 @@
 From: Fan Ye <fy15309206903@gmail.com>
-Date: Mon, 10 Aug 2026 09:39:14 +0000
-Subject: [PATCH net v2 1/2] net: thunderbolt: Release the Rx HopID that was
- handed out on mismatch
+Date: Mon, 10 Aug 2026 09:39:15 +0000
+Subject: [PATCH net v2 2/2] net: thunderbolt: Mark the connection down when
+ bringing it up fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-b4-tbnet-hopid-v2-1-0eee557e75df@gmail.com>
+Message-Id: <20260810-b4-tbnet-hopid-v2-2-0eee557e75df@gmail.com>
 References: <20260810-b4-tbnet-hopid-v2-0-0eee557e75df@gmail.com>
 In-Reply-To: <20260810-b4-tbnet-hopid-v2-0-0eee557e75df@gmail.com>
 To: Jakub Kicinski <kuba@kernel.org>, Eric Dumazet <edumazet@google.com>, 
@@ -17,44 +17,86 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Fan Ye <fy15309206903@gmail.com>, 
  Mika Westerberg <mika.westerberg@linux.intel.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786354753; l=5006;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786354753; l=9541;
  i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=dxRG5Rjf5ZiUXF6CKSVFMQZqqMQy7DhVPsZQXdmvpWs=;
- b=selz4AO7BkV93tjkooiBEV99OZiQk+41vknpzxPHoEf7veTy3nLJU+FPNl/ftT7keRKhqcs1Q
- zoLQQPiNoeMD5p341oGVvNFBy4BKKvAPcqR48w5P2BZ9My0p91HdXSt
+ bh=dhyvBFR9X3G+/biTfQy2WpFsnWdPvS1LTFJ2hNrKBig=;
+ b=0fiHhAei/jVpxC1BYtni/nH3Tjpwbi7u0aaFon1OdaMl9pPldImatG0XyeZ1ijPYmyUdDM0np
+ 6FtdQ9vODv/BoOQ0Ur5VZnCJ0DDLBWZKrSex+xvoF0IA6DufC8rjGiH
 X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
  pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
 X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tbnet_connected_work() asks for a specific input HopID and treats getting
-a different one as a failure:
+Every failure path in tbnet_connected_work() undoes its own work and
+returns, but none of them clears login_sent/login_received. The
+connection therefore still looks established, and the next
+tbnet_tear_down() takes its main branch and runs the whole teardown a
+second time over work that was already undone:
 
-	ret = tb_xdomain_alloc_in_hopid(net->xd, net->remote_transmit_path);
-	if (ret != net->remote_transmit_path) {
-		netdev_err(net->dev, "failed to allocate Rx HopID\n");
-		return;
-	}
-
-That call ends in ida_alloc_range(&xd->in_hopids, hopid,
-xd->local_max_hopid, GFP_KERNEL), which allocates the lowest free id at
-or above the one asked for. When the
-wanted HopID is already taken it does not fail - it succeeds with the next
-one - so this path returns with an id allocated and no reference to it
-left anywhere. It stays allocated for the rest of the XDomain connection.
-
-Forcing the branch by occupying the wanted HopID first shows the returned
-id is a live allocation, not an error code:
-
-  LEAKPROBE squat=8 requested=8 local_max_hopid=27
-  LEAKPROBE real alloc ret=9
   thunderbolt-net 0-1.0 thunderbolt0: failed to allocate Rx HopID
+  thunderbolt 0000:78:00.0: RX ring 1 already stopped
+  WARNING: CPU: 0 PID: 235 at drivers/thunderbolt/nhi.c:773 tb_ring_stop
+   tbnet_tear_down -> tbnet_stop -> __dev_close_many
+  thunderbolt 0000:78:00.0: TX ring 1 already stopped
+  WARNING: CPU: 0 PID: 235 at drivers/thunderbolt/nhi.c:773 tb_ring_stop
 
-Release the id when it is not the one we wanted, matching what the error
-unwind at the end of the function already does for the expected id.
+(line 773 is the dev_WARN in tb_ring_stop() as of v6.17, which is what
+this was captured on; it is line 760 in current mainline)
 
-Fixes: 180b0689425c ("thunderbolt: Allow multiple DMA tunnels over a single XDomain connection")
-Cc: stable@vger.kernel.org
+It stops rings that were never started, which is what the two warnings
+above are, and on a kernel booted with panic_on_warn those are fatal.
+
+It also releases net->remote_transmit_path. On the HopID mismatch path
+that one was never successfully allocated by this connection - the
+allocator handed out a different id precisely because the wanted one was
+already taken by somebody else - so this hands back an id the connection
+does not own, and it does so silently. The id is then free to be handed
+out again while its owner is still using it.
+
+Mark the connection as no longer established on those paths. Only
+login_sent is cleared, which is enough for tbnet_tear_down() to leave the
+already unwound state alone; login_received records that the peer has
+logged in with us and carries the transmit path it gave us, and nothing
+on this side can make the peer send that again.
+
+Skipping that block skips two things that are not just a repeat of the
+unwind. One is the logout request it would have sent to the peer. The
+other is net->remote_transmit_path = 0 at the end of it; that field is
+only read under the same login_sent && login_received guard and the
+peer's next login request overwrites it, so leaving it stale is
+harmless, but it is a clear that no longer happens. The rest of the
+block is either already undone by the unwind that just ran or was never
+done in the first place - the rings are not started and no buffers are
+allocated when the HopID mismatch is hit, and the paths are not enabled
+on any path that reaches err_stop_rings. The parts outside the block -
+carrier off, queue stopped, login stopped, and the state reset at the
+end - keep running as before.
+
+Clearing login_sent also changes what the peer's next login request
+does: tbnet_handle_packet() re-queues our login work when it sees
+!login_sent, where before it would only have queued connected_work. That
+is the direction I want - it gives the connection a fresh login instead
+of retrying the bring-up on stale state - but it is a behaviour change
+beyond keeping tbnet_tear_down() out of the way.
+
+Measured on a link between two ASMedia ASM4242 hosts by cycling the
+interface down and up 200 times from one of them over 80 minutes, and
+counting what the kernel logs on both.
+The mismatch is reached on its own during that, no fault injection, and
+both runs were started from a cold boot with no module reloads in
+between. Only the thunderbolt-net module differs between the two:
+
+                                        without      with
+    failed to allocate Rx HopID          11 / 12     9 / 13
+    ring already stopped + WARNING       22 / 24     0 / 0
+                                     (host A / host B)
+
+The race still happens as often as before - it is not what this patch
+addresses - but it no longer leaves a warning splat behind, and no longer
+releases a HopID that belongs to someone else.
+
+Fixes: e69b6c02b4c3 ("net: Add support for networking over Thunderbolt cable")
+Cc: <stable@vger.kernel.org> # 5.13+
 Assisted-by: Claude:claude-opus-5
 Signed-off-by: Fan Ye <fy15309206903@gmail.com>
 Acked-by: Mika Westerberg <mika.westerberg@linux.intel.com>
@@ -71,7 +113,7 @@ reason below.
   3 thunderbolt: Report DMA path teardown failures to the caller
   4 thunderbolt: Stop waiting on a path pending bit that never clears
 
-This one is number 1 on that list.
+This one is number 2 on that list.
 
 1 and 2 fix two separate things that happen to be reached through the
 same branch. Neither depends on the other for correctness - each leaves
@@ -87,29 +129,42 @@ failure to be reported and silences the rest, so 3's new signal fires
 once per adapter here rather than on every teardown. 4 is the one I am
 least sure of, for the reasons in its own notes.
 
-Found on an ASMedia ASM4242 host-to-host link, where the branch is
-reached on its own when the peer drops out while a connection is being
-brought up. Cycling the interface down and up 200 times over 80 minutes
-hits it 23 times across the two hosts, no fault injection involved.
+Sits on top of "net: thunderbolt: Release the Rx HopID that was handed
+out on mismatch". The two fix different things - that one releases the id
+the allocator actually handed out, this one stops the teardown that
+follows from running a second time - but this one edits the lines that
+one adds, so it will not apply without it.
 
-I am not claiming a user-visible symptom for this one. Every one of those
-23 occurrences recovered on its own, 19 to 21 seconds later, because the
-XDomain connection ends and its ida is recreated along with it, which
-also disposes of the leaked id. I could not reach the branch twice within
-one connection, so I cannot show the HopID range being exhausted either.
+An earlier version of this also rearmed the login from the failure paths,
+on the assumption that the connection would otherwise stay down. It does
+not: every one of those failures was followed by the XDomain connection
+being torn down and rebuilt, and the interface came back on its own. Of
+the 60 occurrences across three runs, 59 had a tunnel set up again
+afterwards that I could time - 42 of them 19 seconds later, 14 at 20, one
+at 21 and two at 43 - with and without the patch alike. That is the
+re-enumeration, not a login retry; a retry would have shown up as a
+multiple of TBNET_LOGIN_DELAY. The rearm bought nothing and needed a
+retry bound of its own, so it is gone.
 
-What the patch fixes is the leak itself. The patch that follows has the
-measurable effect, and does not depend on this one - they are separate
-defects reached through the same branch, and with only that one applied
-the id this path obtained is still never released.
+What I am not claiming: that this makes the link survive longer. I have
+run the 200 cycles four times, on four different combinations. Two of
+them stopped coming up after 65 and 69 minutes and two ran to the end.
+Both of the ones that finished had this patch, and neither of the ones
+that died had this version of it - one had no part of it at all, the
+other an earlier version. On the face of it that reads the way I would
+like it to, which is exactly why I am not reading it that way: four runs,
+four different combinations, one run each. What I can say is that the
+race this patch is about is not what ends a run - it fired 22 times in
+the run in the table above and the link came back from all 22.
 
-I could use help with one thing. The only way I found to reach this
-branch is to wait for the peer to drop out at the wrong moment, and the
-XDomain connection ends with it, so the leaked id goes away with the ida.
-If anyone has a setup where the branch can be hit twice within one
-connection - more than one service on the same XDomain, say - that would
-settle whether the range can actually be run down, which I could not
-show either way.
+One question I cannot answer from here. Skipping the block also skips the
+logout request that would have gone to the peer. Everything else in it is
+either already undone or was never done, but the logout is a real thing
+the peer no longer hears about. I could not measure a difference - the
+XDomain connection is torn down and rebuilt right afterwards in every
+case I logged - but whether that is good enough, or whether the failure
+paths should send one explicitly before returning, is a call I would
+rather leave to you.
 
 v2:
 - Add the Assisted-by tag Mika asked for.  No code change from v1.
@@ -117,22 +172,50 @@ v2:
 
 v1: https://lore.kernel.org/netdev/20260809-b4-tbnet-hopid-v1-0-9a8c7f5f0ba9@gmail.com/
 ---
- drivers/net/thunderbolt/main.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/net/thunderbolt/main.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/drivers/net/thunderbolt/main.c b/drivers/net/thunderbolt/main.c
-index 98893732bc6e..e5199a87ea7a 100644
+index e5199a87ea7a..b6aec215a8e9 100644
 --- a/drivers/net/thunderbolt/main.c
 +++ b/drivers/net/thunderbolt/main.c
-@@ -647,6 +647,8 @@ static void tbnet_connected_work(struct work_struct *work)
- 	ret = tb_xdomain_alloc_in_hopid(net->xd, net->remote_transmit_path);
- 	if (ret != net->remote_transmit_path) {
+@@ -626,6 +626,20 @@ static int tbnet_alloc_tx_buffers(struct tbnet *net)
+ 	return 0;
+ }
+ 
++static void tbnet_connect_failed(struct tbnet *net)
++{
++	/*
++	 * Mark the connection as no longer established so that
++	 * tbnet_tear_down() does not run over the unwind we just did.
++	 * Only login_sent is cleared: login_received records that the peer
++	 * has logged in with us and carries the transmit path it gave us,
++	 * and nothing on this side can make the peer send that again.
++	 */
++	mutex_lock(&net->connection_lock);
++	net->login_sent = false;
++	mutex_unlock(&net->connection_lock);
++}
++
+ static void tbnet_connected_work(struct work_struct *work)
+ {
+ 	struct tbnet *net = container_of(work, typeof(*net), connected_work);
+@@ -649,6 +663,7 @@ static void tbnet_connected_work(struct work_struct *work)
  		netdev_err(net->dev, "failed to allocate Rx HopID\n");
-+		if (ret >= 0)
-+			tb_xdomain_release_in_hopid(net->xd, ret);
+ 		if (ret >= 0)
+ 			tb_xdomain_release_in_hopid(net->xd, ret);
++		tbnet_connect_failed(net);
  		return;
  	}
  
+@@ -693,6 +708,7 @@ static void tbnet_connected_work(struct work_struct *work)
+ 	tb_ring_stop(net->rx_ring.ring);
+ 	tb_ring_stop(net->tx_ring.ring);
+ 	tb_xdomain_release_in_hopid(net->xd, net->remote_transmit_path);
++	tbnet_connect_failed(net);
+ }
+ 
+ static void tbnet_login_work(struct work_struct *work)
 
 -- 
 2.43.0
