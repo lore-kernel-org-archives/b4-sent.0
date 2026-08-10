@@ -1,11 +1,11 @@
 From: Jason Yang <jason98166@gmail.com>
-Date: Mon, 10 Aug 2026 20:10:10 +0800
-Subject: [PATCH v3 2/5] dt-bindings: phy: rockchip,rk3588-mipi-dcphy: allow
- DSI and CSI consumers
+Date: Mon, 10 Aug 2026 20:10:11 +0800
+Subject: [PATCH v3 3/5] phy: rockchip-samsung-dcphy: factor MIPI D-PHY
+ power on/off into helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-dcphy-rx-v1-v3-2-a2d25c29adfc@gmail.com>
+Message-Id: <20260810-dcphy-rx-v1-v3-3-a2d25c29adfc@gmail.com>
 References: <20260810-dcphy-rx-v1-v3-0-a2d25c29adfc@gmail.com>
 In-Reply-To: <20260810-dcphy-rx-v1-v3-0-a2d25c29adfc@gmail.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -20,55 +20,102 @@ Cc: Michael Riesch <michael.riesch@collabora.com>,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Jason Yang <jason98166@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786363808; l=1904;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786363808; l=2833;
  i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
- bh=L0YFn/UorcpfoUu13dEjPV7h6qsLNW5q4tce+B7/JmY=;
- b=2pBufMxgPOxO3btd9FczwqemLe23DIEutco22KEz5ID7y3QW4jQ/bxM0oeyYGZqlsKxMMvIKo
- dJ0U+RwUZ62C2KJvvdxYPdF18H7iJdfnViN38Rwc1YIVucNEv2800w5
+ bh=KTWIu7JKaaQ7XBkf3u7iorhkMyVw5yi2Dq6JGKsEO8E=;
+ b=XG6qusYZ28b7SLCI4va8Ob/qRskpAUJSaaJPh1jpmqAmt+ZStqyTC5lbWy1I6AjsbQcV4Ikly
+ RF6x7wVog+2BLmGkqjBfYGiymht9evfs5pP7QpT2oJr+37FZWQizWqH
 X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
  pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
 X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Samsung MIPI D-/C-PHY block on RK3588 drives a MIPI DSI
-transmitter and, on the same PHY, can receive from a MIPI CSI camera.
-Describing both as independent consumers of one PHY requires the
-devicetree to tell them apart.
+To prepare for adding a receiver (CSI) PHY next to the existing
+transmitter (DSI) one, rename the transmitter power-on helper to
+samsung_mipi_dphy_tx_power_on() and gather its teardown into a new
+samsung_mipi_dphy_tx_power_off(), so transmitter and receiver can
+later be powered on and off through symmetric helpers.
 
-Let the existing single cell also take PHY_TYPE_DSI or PHY_TYPE_CSI,
-selecting the PHY by the protocol the consumer speaks. PHY_TYPE_DPHY
-stays accepted and equivalent to PHY_TYPE_DSI so shipped device trees
-remain valid, and PHY_TYPE_CPHY keeps selecting a C-PHY transmitter.
-The receiver support added by this series is D-PHY only.
+With both arms of the type switch reduced to plain returns, turn it
+into an early guard for the not yet supported C-PHY and drop the
+unreachable trailing return.
+
+No functional change intended.
 
 Signed-off-by: Jason Yang <jason98166@gmail.com>
 Assisted-by: Claude:claude-fable-5
 ---
- .../devicetree/bindings/phy/rockchip,rk3588-mipi-dcphy.yaml   | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c | 33 +++++++++++------------
+ 1 file changed, 15 insertions(+), 18 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/phy/rockchip,rk3588-mipi-dcphy.yaml b/Documentation/devicetree/bindings/phy/rockchip,rk3588-mipi-dcphy.yaml
-index c8ff5ba22a86..1f7c2e2ddfc1 100644
---- a/Documentation/devicetree/bindings/phy/rockchip,rk3588-mipi-dcphy.yaml
-+++ b/Documentation/devicetree/bindings/phy/rockchip,rk3588-mipi-dcphy.yaml
-@@ -22,9 +22,14 @@ properties:
-   "#phy-cells":
-     const: 1
-     description: |
--      Argument is mode to operate in. Supported modes are:
--        - PHY_TYPE_DPHY
--        - PHY_TYPE_CPHY
-+      The block contains a MIPI transmitter and a MIPI receiver, which
-+      can be referenced independently. The argument selects one of
-+      them:
-+        - PHY_TYPE_DSI: the transmitter, for a MIPI DSI host
-+        - PHY_TYPE_CSI: the receiver, for a MIPI CSI-2 host
-+        - PHY_TYPE_DPHY: the transmitter in D-PHY mode; equivalent to
-+          PHY_TYPE_DSI and kept for existing device trees
-+        - PHY_TYPE_CPHY: the transmitter in C-PHY mode
-       See include/dt-bindings/phy/phy.h for constants.
+diff --git a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
+index cbd780556da8..99ca0e1cc574 100644
+--- a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
+@@ -1332,7 +1332,7 @@ samsung_mipi_dphy_data_lane_timing_init(struct samsung_mipi_dcphy *samsung)
+ 	regmap_write(samsung->regmap, DPHY_MD3_TIME_CON4, 0x1f4);
+ }
  
-   clocks:
+-static int samsung_mipi_dphy_power_on(struct samsung_mipi_dcphy *samsung)
++static int samsung_mipi_dphy_tx_power_on(struct samsung_mipi_dcphy *samsung)
+ {
+ 	int ret;
+ 
+@@ -1358,6 +1358,14 @@ static int samsung_mipi_dphy_power_on(struct samsung_mipi_dcphy *samsung)
+ 	return 0;
+ }
+ 
++static int samsung_mipi_dphy_tx_power_off(struct samsung_mipi_dcphy *samsung)
++{
++	samsung_mipi_dphy_lane_disable(samsung);
++	samsung_mipi_dcphy_pll_disable(samsung);
++
++	return 0;
++}
++
+ static int samsung_mipi_dcphy_power_on(struct phy *phy)
+ {
+ 	struct samsung_mipi_dcphy *samsung = phy_get_drvdata(phy);
+@@ -1366,33 +1374,22 @@ static int samsung_mipi_dcphy_power_on(struct phy *phy)
+ 	udelay(1);
+ 	reset_control_deassert(samsung->apb_rst);
+ 
+-	switch (samsung->type) {
+-	case PHY_TYPE_DPHY:
+-		return samsung_mipi_dphy_power_on(samsung);
+-	default:
+-		/* CPHY part to be implemented later */
++	/* CPHY part to be implemented later */
++	if (samsung->type != PHY_TYPE_DPHY)
+ 		return -EOPNOTSUPP;
+-	}
+ 
+-	return 0;
++	return samsung_mipi_dphy_tx_power_on(samsung);
+ }
+ 
+ static int samsung_mipi_dcphy_power_off(struct phy *phy)
+ {
+ 	struct samsung_mipi_dcphy *samsung = phy_get_drvdata(phy);
+ 
+-	switch (samsung->type) {
+-	case PHY_TYPE_DPHY:
+-		samsung_mipi_dphy_lane_disable(samsung);
+-		break;
+-	default:
+-		/* CPHY part to be implemented later */
++	/* CPHY part to be implemented later */
++	if (samsung->type != PHY_TYPE_DPHY)
+ 		return -EOPNOTSUPP;
+-	}
+ 
+-	samsung_mipi_dcphy_pll_disable(samsung);
+-
+-	return 0;
++	return samsung_mipi_dphy_tx_power_off(samsung);
+ }
+ 
+ static int
 
 -- 
 2.43.0
