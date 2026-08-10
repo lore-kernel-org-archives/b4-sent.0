@@ -1,126 +1,98 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 10 Aug 2026 17:21:42 +0200
-Subject: [PATCH v5 3/3] arm64: dts: qcom: sdm845-google: Add STM FTS
- touchscreen support
+From: Junrui Luo <moonafterrain@outlook.com>
+Subject: [PATCH 0/5] drm/amdgpu: five independent fixes in the KMS, userq,
+ UVD and CS paths
+Date: Tue, 11 Aug 2026 00:13:09 +0800
+Message-Id: <20260811-amdgpu-fixes-v1-0-4954a417b8ff@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-stmfts5-v5-3-0c737d929976@ixit.cz>
-References: <20260810-stmfts5-v5-0-0c737d929976@ixit.cz>
-In-Reply-To: <20260810-stmfts5-v5-0-0c737d929976@ixit.cz>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2317; i=david@ixit.cz;
- h=from:subject:message-id; bh=d6YK9/d3irC15CmqRTIkg+K9fEKI6TWqUJRSUAdOn6Q=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqeeyNsdiADDYBlWx/cvqY0/5sRpxPIa7fit5dT
- IjmHoCYePmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCannsjQAKCRBgAj/E00kg
- cpWVD/9E+vEBGkXkM8+Icj5A+8/3CIY0oIa5AxZPuPiDkjbj+hHLFMQPNEuE707RuXuftQIMnYJ
- +JzV5rSNWMWkqQMMNXEJHB/EBDLuMc8nOucjFNnU9ejWWAObJhSx25qXeWHeJQLclGEtvun/GOR
- qBB56PLN2lEVluuXHzATSHyIcHpJWpJMCMyLlJdefNZ7PXwA6U38LEBdQ/mkdwqMqn42NK4whmn
- Tq8IksgVenoFfwvq9Z3txKYfKqp3qHFFG7MXFzEZextTw8t/ljL8CBNekk4R92NaEXKqmDuMvXD
- uvstkdstxIWOj/SOlwdTopmiuZSFJuEz3i9vS8NRiiTYrbwEEvKG6RdfesxyrjgNul+kKxRxM4G
- k2ho3VI6mhGPT6V/Yi7YAAU0NXnnsA52ZEhquJeA8C7hIVMTG6rLJ+m4jq04yGElAYUIUo+Zvo2
- 4hjFoicVbeX/5TOHAsSRkeruabsGgG7+lO5ONFDomQmO2vXvTS+TcYGZ3RuhuBPWqct1yfklZo2
- tH35Bl31NoHvUpp7o5Oc+57DfjnZQbOhkUG4XBbFEQF0sYihvagogeIrLCCLIvfjwkjtPxwTkAS
- A0QMJc6zsIknEh3lSuDdTctwdS7uP2wU4GJPUngDtWxIPiQ/TH01P/ocmmLgApjNbzbQUC9HSju
- ZqCPrRV6CM+3BdQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAJX4eWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0MD3cTclPSCUt20zIrUYt0ks8QkQwNTy0QDYxMloJaColSwBFBHdGx
+ tLQCXaaHtXgAAAA==
+X-Change-ID: 20260810-amdgpu-fixes-b6ab1059a034
+To: Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Sumit Semwal <sumit.semwal@linaro.org>, Junwei Zhang <Jerry.Zhang@amd.com>, 
+ =?utf-8?q?Nicolai_H=C3=A4hnle?= <nicolai.haehnle@amd.com>, 
+ Prike Liang <Prike.Liang@amd.com>, Arvind Yadav <arvind.yadav@amd.com>, 
+ Shashank Sharma <shashank.sharma@amd.com>, Leo Liu <leo.liu@amd.com>, 
+ Felix Kuehling <Felix.Kuehling@amd.com>
+Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
+ linaro-mm-sig@lists.linaro.org, Junrui Luo <moonafterrain@outlook.com>, 
+ Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3006;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=JLiEjUV2M/GXqGn0sCPZe30rDApH2W8yKBOjkSz2S8E=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMqfS45nTpH4cCXLbNGHq64yixJZ+uY62L/y3L8oV
+ FVl7dwL8ec6SlkYxLgYZMUUWY4XXPpm4btFd4vPlmSYOaxMIEMYuDgFYCLMBxj+p/c9attUlxr1
+ eOpJLwv1w5u+C66bFhVuxLLgSPZcD85pKQz/q90nLO+eI/jptb/gvPvVR5j6SsPuex5dNOtahYr
+ zmvUTmADHzk6K
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Petr Hodina <petr.hodina@protonmail.com>
+Five independent fixes; no dependency between them, they can be applied
+or dropped individually.
 
-Basic touchscreen connected to second i2c bus.
+Patch 1 frees fpriv->prt_va on the amdgpu_driver_open_kms() error path.
+amdgpu_vm_fini() releases mappings but never a struct amdgpu_bo_va, so a
+failure to map the CSA or the seq64 buffer leaks the bo_va and the
+dma_fence stub reference it holds.  postclose_kms() already gets this
+right; only the open() unwind was missing it.
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Co-developed-by: David Heidelberg <david@ixit.cz>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Patch 2 rejects a mapping without a backing BO in
+amdgpu_userq_input_va_validate().  A PRT mapping is routed through
+fpriv->prt_va, whose base.bo is NULL, yet a queue_va/rptr_va/wptr_va
+inside it passes validation and latches userq_va_mapped.  The next unmap
+of any PRT mapping in that VM then dereferences bo_va->base.bo in
+amdgpu_userq_gem_va_unmap_validate().
+
+Patch 3 bounds the retry loop in amdgpu_userq_ensure_ev_fence().  Every
+failure ahead of amdgpu_evf_mgr_rearm() leaves the restore worker giving
+up with only a drm_file_err(), so the waiting thread reschedules and
+flushes forever in TASK_UNINTERRUPTIBLE - unkillable and out of reach of
+the OOM killer.  The eviction fence sequence number is used as the loop's
+progress condition instead.
+
+Patch 4 applies the decode arm's handle ownership test to the UVD destroy
+arm.  handles[] and filp[] are per-device, and destroy clears every slot
+matching the handle from the command stream without checking the owner,
+so one render node client can tear down another's UVD session and leave a
+stale filp behind.
+
+Patch 5 releases the userptr HMM ranges in amdgpu_cs_parser_fini().
+amdgpu_cs_parser_bos() returns with them live and only two sites free
+them; every error edge in between leaks a struct amdgpu_hmm_range plus a
+kvmalloc_array() of one hmm_pfn per page of the userptr mapping,
+allocated GFP_KERNEL and not charged to the caller's memcg.  An IB
+address with no VM mapping is enough to reach one of those edges, so it
+is repeatable at will from an unprivileged fd.
+
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts | 19 ++++++++++++++++++-
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi  |  2 +-
- 2 files changed, 19 insertions(+), 2 deletions(-)
+Junrui Luo (5):
+      drm/amdgpu: free prt_va on the open_kms error path
+      drm/amdgpu: reject PRT mappings as user queue buffer VAs
+      drm/amdgpu/userq: bound the eviction fence rearm retry loop
+      drm/amdgpu: enforce UVD handle ownership on destroy
+      drm/amdgpu: free userptr HMM ranges on the CS error path
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-index fa89be500fb85..51c835dca43f1 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-@@ -21,17 +21,34 @@ &framebuffer0 {
- 	stride = <(1080 * 4)>;
- };
- 
- &i2c2 {
- 	clock-frequency = <1000000>;
- 
- 	status = "okay";
- 
--	/* ST,FTS @ 49 */
-+	touchscreen@49 {
-+		compatible = "st,stmfts5";
-+		reg = <0x49>;
-+
-+		pinctrl-0 = <&touchscreen_irq_n>, <&touchscreen_reset>;
-+		pinctrl-names = "default";
-+
-+		interrupts-extended = <&tlmm 125 IRQ_TYPE_LEVEL_LOW>;
-+
-+		mode-switch-gpios = <&tlmm 136 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
-+
-+		avdd-supply = <&vreg_l19a_3p3>;
-+		vdd-supply = <&vreg_l14a_1p8>;
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <2160>;
-+	};
- };
- 
- &mdss_dsi0 {
- 	vdda-supply = <&vdda_mipi_dsi0_1p2>;
- 
- 	status = "okay";
- 
- 	panel@0 {
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 9368fd6b87515..bd3b5d7b7396e 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -492,17 +492,17 @@ nfc_enable_default: nfc-enable-default-state {
- 
- 	touchscreen_reset: ts-reset-state {
- 		pins = "gpio99";
- 		function = "gpio";
- 		drive-strength = <8>;
- 		bias-pull-up;
- 	};
- 
--	touchscreen_pins: ts-pins-gpio-state {
-+	touchscreen_irq_n: ts-irq-n-gpio-state {
- 		pins = "gpio125";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
- 	};
- 
- 	touchscreen_i2c_pins: qup-i2c2-gpio-state {
- 		pins = "gpio27", "gpio28";
+ drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c          | 10 +++++++++
+ drivers/gpu/drm/amd/amdgpu/amdgpu_kms.c         |  5 +++++
+ drivers/gpu/drm/amd/amdgpu/amdgpu_userq.c       | 29 +++++++++++++++++++++++--
+ drivers/gpu/drm/amd/amdgpu/amdgpu_userq.h       |  4 ++--
+ drivers/gpu/drm/amd/amdgpu/amdgpu_userq_fence.c | 10 ++++++++-
+ drivers/gpu/drm/amd/amdgpu/amdgpu_uvd.c         | 14 ++++++++++--
+ 6 files changed, 65 insertions(+), 7 deletions(-)
+---
+base-commit: c4f76bf5e107bcda6e496f1c4060c55af091fa79
+change-id: 20260810-amdgpu-fixes-b6ab1059a034
 
+Best regards,
 -- 
-2.55.0
+Junrui Luo <moonafterrain@outlook.com>
 
