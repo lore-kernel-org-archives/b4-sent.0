@@ -1,103 +1,159 @@
-From: Fan Ye <fy15309206903@gmail.com>
-Date: Mon, 10 Aug 2026 12:14:13 +0000
-Subject: [PATCH v2] thunderbolt: Clamp DMA tunnel credits to what a hop
- register can hold
+From: Miao Wang <shankerwangmiao@gmail.com>
+Subject: [PATCH RFC v7 0/8] mfd: ls2kbmc: multiple fixes for this driver
+Date: Mon, 10 Aug 2026 20:25:26 +0800
+Message-Id: <20260810-ls2kbmc-mod-v7-0-8aa0fb5a5462@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-tb-dma-credit-clamp-v2-1-e81af742994d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJTAeWoC/yXMSwqDMBRG4a3IHfdCjFhit1I6yONve6VaSaII4
- t6N7fAbnLNRQhQkulUbRSyS5DsW6EtF/m3HF1hCMWmlr8rUirPjMFj2EUEy+48dJoZruqZGa1t
- jqJRTxFPW3/X++DvNrofP54r2/QDDHSSsdwAAAA==
-X-Change-ID: 20260810-tb-dma-credit-clamp-eb3931e5a588
-To: Andreas Noever <andreas.noever@gmail.com>, 
- Mika Westerberg <westeri@kernel.org>, 
- Yehezkel Bernat <YehezkelShB@gmail.com>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Fan Ye <fy15309206903@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786364052; l=2813;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=KBUQ47DnBp3QLMg8TJHD2p+uE/UzAFnilfTEhi9eTUs=;
- b=aq/DQVlltc9t1J6XnhVF3zVK1D7g3GWhN/YV5BFD5Z5A4zZ34QW1rBSBDI/Fup+ykvBLLbuCQ
- FHRMRNvnq1cDvsZ0xCXRdxj3AQzEbMi2SjJb1Op5Yst9/Q8A7M7xmgZ
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+X-B4-Tracking: v=1; b=H4sIADbDeWoC/33PwUrEMBAG4FdZcjYyM0kmjSdB8AG8ioc0SXfDb
+ rfSSlGWvruxF5sKHmeG7x/+m5jSmNMkHg43MaY5T3m4lsHeHUQ4+esxyRzLLAiIgYnlZaJz2wf
+ ZD1EaAodOAbiWRBHvY+ry55r2Kl6en8RbWZ7y9DGMX+uHGdfTGmahqcJmlCCD0rrtTEydV4/H3
+ ufLfRj6NWemfywVS76LEa1Gy7y3amMRaquKTZ3FhhUn26S91RursLa62EiABqj1pNzeml/bgK6
+ t+fnLbTAhRufdn768taa2XCxyCDFppNhUfZdl+Qag+mZ01wEAAA==
+X-Change-ID: 20260626-ls2kbmc-mod-5209193009b2
+To: Binbin Zhou <zhoubinbin@loongson.cn>, 
+ Chong Qiao <qiaochong@loongson.cn>, Lee Jones <lee@kernel.org>, 
+ Huacai Chen <chenhuacai@kernel.org>, Corey Minyard <corey@minyard.net>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
+Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>, 
+ Yinbo Zhu <zhuyinbo@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
+ Miao Wang <shankerwangmiao@gmail.com>, Corey Minyard <cminyard@mvista.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5596;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=VqOH78WXAQ+kL8c6/URXimgA6Yb9obzRXJkHjuhqnyk=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqecM6fR9BI6w0RYLb3RUHW/M2Fhd5rFe8ufJPg
+ Dm/ydBU3v+JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCannDOgAKCRCwMePKe/7Z
+ buL0EACuphML4A2EaYvzjQagn3gTpo70JkafNCnA0sSauTPTfxfSPgOedao34pWWaQgB25t8GBO
+ Yu3UPmNRbE91huxv71yYLAWkLZwi4/vJFOVDrQ+Yo2NU/fkpoqebpUjQi5MGkyHqSBWRz+3SNnl
+ sVMxMc+l+ldfQAkHq9yG+FGkXRVncG1EJldvm/es3xSPHnjNIEE3CQ7zwgmCvtraVN5OBIzBSXK
+ NG2JCHKaf0mBGAgYpW12ziHuY8YU/7zKEsh9E53Ly1Ra+qXOJOCFBD2+DWo3U3rPokWLJN8iSVN
+ xLtknTbVsvjP5TsG9gDHchkJ3uef+JIlt8Y827EowftibVV6SrWMO/f+US+HaM8Z0ySKSBZOOqN
+ a/28z9tq1LQtHUQkxq791o0PVInlcks3ntxIJFWnsfj6lGeN7iz97HjlB1+uvkB7de7PrwxihiQ
+ TCEMlpeOCPGNSv9A5mPkO9KouG//uMUFPy+3jDiCEMivqsqNbPLf5Bmqf4e1cKYFhTS/LXsqcBn
+ 35w05ZRgUsDAz6bdHJO8UmP3SOAVS7KR5af0Mw0XNYPhvXA7e9VZfnRLBn4efQ1BpFWvHy7cl3O
+ OYmQNeYbCA1BbnB1b7DCw0+NFIs/r6a0jWU285S5BT93N0l27vB1QW2b32pE8Iz8SmW0vOlsaW9
+ 4UAw3yxVtVNCHyg==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-struct tb_regs_hop::initial_credits is 7 bits wide, but neither of the
-values tb_tunnel_alloc_dma() picks from is bounded by that: the
-dma_credits module parameter has no upper limit, and neither does the
-host router's baMaxHI. A larger count survives until tb_path_activate()
-copies it into the register and keeps the low bits, leaving the path on
-a credit count nobody asked for.
+Previously, the driver has been introduced to support the Loongson 2K
+BMC running on the Loongson Servers, which is essential to prevent
+the system from hanging when the BMC is being reset and the default
+efi-framebuffer is being used. However, there are some drawbacks in the
+driver.
 
-Clamp it in tb_tunnel_alloc_dma(), the only entry point for DMA tunnels;
-every step below it can only lower the value further. Carry the count in
-an unsigned int while at it.
+Firstly, the driver tries to read and write to the connected PCI-E host
+controller registers, assuming that the BMC is connected to LS7A PCI-E
+host controller. This assumption should be true for real products, but
+to prevent from accidentally reading and writing to the wrong PCI-E host
+controller, this driver should be modified to check this before
+accessing the registers.
 
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Fan Ye <fy15309206903@gmail.com>
+Secondly, the driver uses non-exported functions to tell the vt
+subsystem to redraw the screen, preventing the driver from being
+compiling as a module. This can be fixed by using the exported
+functions instead.
+
+Thirdly, the driver directly accesses the GPIO controller registers
+using hard-coded addresses, which might conflict with the loaded GPIO
+controller driver for the same GPIO controller. This is fixed in this
+series by using the GPIO subsystem APIs instead. To associate a GPIO pin
+with a certian PCI device, it should be declared in the firmware level,
+i.e. in the ACPI table or the device tree, and thus the firmware
+interface should be discussed and coordinated with Loongson personnels.
+Despite of this, the proposed solution in this series should be the
+minimum necessary change to express such association. Furthermore, the
+conventional GPIO pin number and the controller address are also
+provided, to be used as a fallback when the GPIO pin is not declared.
+
+Finally, there is a minor issue in the driver where it changes the
+mode string describing the screen resolution during probing, which
+prevents the device from being probed again if -EPROBE_DEFER is
+returned by the probe function.
+
+I have tested the changes in this series on a single-socket Loongson
+3C6000 server with a Loongson 2K BMC, and the driver works as expected
+when the corresponding GPIO driver is additionally loaded.
+
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
-Reproduced by dropping the baMaxHI cap with a debug patch and asking an
-ASMedia ASM4242 host router, whose lane adapters report 174 buffers, for
-172 credits: reading the hop back after tb_path_activate() showed 44,
-that is 172 & 0x7f.  With this patch it shows 127.  The defaults do not
-reach it - dma_credits is 14 and this router reports baMaxHI 32.
+Changes in v7:
+- When parsing the mode string, require the mode string to start with
+  "video=", reverting the change in v5. Add a comment to describe the
+  reason for this change to satisfy the AI bot's concern.
+- When printing the invalid mode string, use %*pE to print the string
+  to prevent the string from printing garbage characters, as suggested
+  by the AI bot.
+- When calculating the stride, check that the multiplication of width
+  and depth does not overflow, as suggested by the AI bot.
+- Add gpio_device_get_fwnode() into gpiolib.c as a library function to
+  get the fwnode of a GPIO device, as suggested by Bartosz.
+- Adjust the coding style of the patch as suggested by Bartosz.
+- Link to v6: https://lore.kernel.org/r/20260805-ls2kbmc-mod-v6-0-16ccde412d86@gmail.com
 
-v2:
-- Trim the commit message and these notes.
-- Drop the Fixes: tag.
-- Rename TB_MAX_HOP_CREDITS to TB_MAX_CREDITS and cut the comment above
-  it down to one line.
+Changes in v6:
+- Ajdust the Kconfig entry for IPMI_LS2K, moving the dependency on
+  MFD_LS2K_BMC_CORE to the IPMI_SI Kconfig entry, as discussed with
+  and agreed by Corey.
+- Link to v5: https://lore.kernel.org/r/20260804-ls2kbmc-mod-v5-0-e6bc5cdd9a93@gmail.com
 
-v1: https://lore.kernel.org/r/20260810-tb-dma-credit-clamp-v1-1-69610146d164@gmail.com
----
- drivers/thunderbolt/tunnel.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+Changes in v5:
+- Address issues found by the Sashiko AI review bot
+  - Maintain the compatibility with possible unexpected mode string when
+    parsing, although such mode string is actually not expected, to
+    satisfy the AI bot's concern.
+  - Add a comment to point out that the adjustment of the Kconfig entry
+    for ls2kbmc is in the following patch, to satisfy the AI bot's
+    concern.
+- Link to v4: https://lore.kernel.org/r/20260731-ls2kbmc-mod-v4-0-d201502ba239@gmail.com
 
-diff --git a/drivers/thunderbolt/tunnel.c b/drivers/thunderbolt/tunnel.c
-index b7f32305f14a..da4fa7b1b248 100644
---- a/drivers/thunderbolt/tunnel.c
-+++ b/drivers/thunderbolt/tunnel.c
-@@ -48,6 +48,9 @@
- #define TB_DP_AUX_PRIORITY		2
- #define TB_DP_AUX_WEIGHT		1
- 
-+/* struct tb_regs_hop::initial_credits is 7 bits wide */
-+#define TB_MAX_CREDITS			127
-+
- /* Minimum number of credits needed for PCIe path */
- #define TB_MIN_PCIE_CREDITS		6U
- /*
-@@ -1908,7 +1911,7 @@ struct tb_tunnel *tb_tunnel_alloc_dma(struct tb *tb, struct tb_port *nhi,
- 	struct tb_tunnel *tunnel;
- 	size_t npaths = 0, i = 0;
- 	struct tb_path *path;
--	int credits;
-+	unsigned int credits;
- 
- 	/* Ring 0 is reserved for control channel */
- 	if (WARN_ON(!receive_ring || !transmit_ring))
-@@ -1931,6 +1934,11 @@ struct tb_tunnel *tb_tunnel_alloc_dma(struct tb *tb, struct tb_port *nhi,
- 	tunnel->destroy = tb_dma_destroy;
- 
- 	credits = min_not_zero(dma_credits, nhi->sw->max_dma_credits);
-+	if (credits > TB_MAX_CREDITS) {
-+		tb_tunnel_dbg(tunnel, "%u credits do not fit a hop, using %u\n",
-+			      credits, TB_MAX_CREDITS);
-+		credits = TB_MAX_CREDITS;
-+	}
- 
- 	if (receive_ring > 0) {
- 		path = tb_path_alloc(tb, dst, receive_path, nhi, receive_ring, 0,
+Changes in v4:
+- Use a better way to get the GPIO device fwnode.
+- Add a comment to describe a problem found by AI bot which is actually
+  intended.
+- Link to v3: https://lore.kernel.org/r/20260710-ls2kbmc-mod-v3-0-ef718636e78e@gmail.com
+
+Changes in v3:
+- Check the return value of devm_add_action_or_reset when registering
+  the cleanup hook of the work queue
+- Use swnode to create the link between the device to the GPIO chip,
+  and prevent borrowing the legacy GPIO APIs
+- Link to v2: https://lore.kernel.org/r/20260708-ls2kbmc-mod-v2-0-2afdd1741766@gmail.com
+
+Changes in v2:
+- Several fixes suggested by the Sashiko AI review bot
+- Add a cleanup function for the wq on removal of the device
+- Relax the reverse dependency from CONFIG_IPMI_LS2K to
+  CONFIG_MFD_LS2K_BMC_CORE to allow the driver to be built as a module
+- Link to v1: https://lore.kernel.org/r/20260708-ls2kbmc-mod-v1-0-c344bf5defa3@gmail.com
 
 ---
-base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
-change-id: 20260810-tb-dma-credit-clamp-eb3931e5a588
+Miao Wang (8):
+      mfd: ls2kbmc: Make a copy when parsing mode string
+      mfd: ls2kbmc: Sanity check for the connected pci port
+      mfd: ls2kbmc: Redraw using exported functions
+      mfd: ls2kbmc: Cancel the work queue on removal
+      ipmi: ls2k: adjust dependency to its mfd driver
+      mfd: ls2kbmc: Able to be compiled as a module
+      gpiolib: add gpio_device_get_fwnode() helper
+      mfd: ls2kbmc: Capture the reset event of BMC through GPIO
+
+ drivers/char/ipmi/Kconfig   |   2 +-
+ drivers/gpio/gpiolib.c      |  13 +++
+ drivers/mfd/Kconfig         |   2 +-
+ drivers/mfd/ls2k-bmc-core.c | 251 ++++++++++++++++++++++++++++++++++----------
+ include/linux/gpio/driver.h |   1 +
+ 5 files changed, 210 insertions(+), 59 deletions(-)
+---
+base-commit: 11028ab62899e4191e074ee364c712b77823a9c4
+change-id: 20260626-ls2kbmc-mod-5209193009b2
 
 Best regards,
---  
-Fan Ye <fy15309206903@gmail.com>
+-- 
+Miao Wang <shankerwangmiao@gmail.com>
 
