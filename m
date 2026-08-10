@@ -1,10 +1,11 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 10 Aug 2026 15:01:02 +0200
-Subject: [PATCH v4 1/3] net: enforce net sysctl registration
+Date: Mon, 10 Aug 2026 15:01:03 +0200
+Subject: [PATCH v4 2/3] net: Const qualify ctl_tables that kmemdup
+ unconditionally
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-jag-net_const_qualify-v4-1-77e888237c69@kernel.org>
+Message-Id: <20260810-jag-net_const_qualify-v4-2-77e888237c69@kernel.org>
 References: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
 In-Reply-To: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -30,117 +31,130 @@ Cc: chia-yu.chang@nokia-bell-labs.com, netdev@vger.kernel.org,
  linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
  virtualization@lists.linux.dev, Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3588;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4380;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=fdM8YlvZqAkxic7f4H5puGcsJ5qBOUt62SzUItEjpmc=;
- b=kA0DAAoBupfNUreWQU8ByyZiAGp5y5zIDtqCE0WpbZ/huPU0NcAcyVVhSsTlhDilbHbBijTuP
- 4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqecucAAoJELqXzVK3lkFPhPEL/09O
- X0yi4CZjcZNE0SwKtiTgqPFkkc7omc52D1l40F5KtGaE3mUjQziRXnT9z40zAfEoYLEVPhGKfPc
- 7ghTop4RnK3TXnzPRImsSS2hqZ6SwXjWNansCXsLr2J6rDZ7ShnSTd39nik+dslNxnGHuvC4drF
- 8zh1MndHBRtbMawGyBoDajXKYH/cmLAX99/Z6ekjU9+wMyZ/DHy5D/BU87Bb1gsllcaOIkoQ3qy
- t8/NjkQNQPA9LFcUmMXpd38MU4vNpqDSEiRJP9Tj/ncGz91gTo3jhDIX0dBmLx7EsVCoci0hbsY
- cz2eWaSEzA5iE5W6BXlXewexyDSZF27D7r7CtLIAAcqAUKbZTL0v0ReE8tgHli7mw3z5NRKtPXt
- 2mpQbVsVSMCYl85BqCoJhF4yfr+fqLs04SPnkQvn2o9WZcZi1rEiIY+pImf+HFb/befNMSMIBR/
- F4abhqohhKAlaRw4xDhvAXkM1nuXszGiGA9J+L4ZRKhTYJ54qaJXIYtXdzcw==
+ bh=cmAvZ19cBxKvDIXFYQDyg2kQK+OVtNvKHnf3LRawjkw=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGp5y51liGHWq2D4loETsdzKtPejkgiQOjCxG
+ aB/wwwIKZFLDokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqecudAAoJELqXzVK3
+ lkFPyegMAIj5M8HS2/tVsKpWcof6V5mm7X7hEMc9qsvcL/r2bRiHAQTEHv2Kz49MiEbqcIlIuyS
+ sQqC3BVGxOpjL6kmp9KUIYPNJwxZaIZNSRaJ8WdRfzLIS0wtCMzqzNmirJuGyEhpXHl3yw+6Gd5
+ tSaZb2J67uX+Q0giMWG6VQq7E5vsXFHrknwRkA5hp2jzrjBgLsGuYl2L9lsesuKVGdJIWqqFvyp
+ 6OqANRHjrBx2IZn2wuRNrmz/Z8kzlvFSGSN/D5iQ3Zb2xxJqNleuLKQfK7FI/+FYA7D4kgFRUt/
+ VF4kkqEluH49lpwU+IVBy0bt5NbEwLp1OXCwnONe98BJ3MI+dZPJVwuHK9OQJAmW010uxuwQG5e
+ ZAmRb8fCqo6kGR/Cuvkduo9amnKD2dF/hx440d3OzpoUp+yMKpNG0+OSYv5lfrvzXRRoJxJ2Z4g
+ 12Utv+67BjPZYGbVR8qHh6ZYcDpP9KlP96CBpEDUu3vlKSiW0fv0z9KcK5NsU9eDoUgENupTdj8
+ Ag=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the warning and file permission change with an error when an
-"unsafe" net sysctl registration is detected.
-
-One of the barriers preventing the const qualification of the ctl_tables
-in the net directory is the permission (->mode) change in
-ensure_safe_net_sysctl. This prep commit removes that barrier and
-ensures that the received ctl_table pointer to the net ctl_table
-register function is const.
+Const qualify clt_table arrays in the net directory that always pass a
+memory duplicate to sysctl register. The template would then be in
+.rodata and the kmemdup'ed array would be outside.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- include/net/net_namespace.h |  5 +++--
- net/sysctl_net.c            | 25 +++++++++++++------------
- 2 files changed, 16 insertions(+), 14 deletions(-)
+ net/ipv4/devinet.c                      | 2 +-
+ net/ipv6/icmp.c                         | 2 +-
+ net/ipv6/route.c                        | 2 +-
+ net/ipv6/sysctl_net_ipv6.c              | 2 +-
+ net/netfilter/nf_conntrack_standalone.c | 2 +-
+ net/sctp/sysctl.c                       | 2 +-
+ net/xfrm/xfrm_sysctl.c                  | 2 +-
+ 7 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
-index 501af1999fe8393d7c282a87645d1c4ceabadddc..e5ee673b9fcf846aefcc309d4cca1a8fc870aae2 100644
---- a/include/net/net_namespace.h
-+++ b/include/net/net_namespace.h
-@@ -525,12 +525,13 @@ struct ctl_table;
+diff --git a/net/ipv4/devinet.c b/net/ipv4/devinet.c
+index 47ded0f607d4bd502350f678c91b0054e3856427..a90be57c63be1565b2dff51e8264668fd71b9e58 100644
+--- a/net/ipv4/devinet.c
++++ b/net/ipv4/devinet.c
+@@ -2796,7 +2796,7 @@ static void devinet_sysctl_unregister(struct in_device *idev)
+ 	neigh_sysctl_unregister(idev->arp_parms);
+ }
+ 
+-static struct ctl_table ctl_forward_entry[] = {
++static const struct ctl_table ctl_forward_entry[] = {
+ 	{
+ 		.procname	= "ip_forward",
+ 		.data		= &ipv4_devconf.data[
+diff --git a/net/ipv6/icmp.c b/net/ipv6/icmp.c
+index efb23807a0262e8d68aa1afc8d96ee94eab89d50..a95b0351824f3237815e43bf8448110070955884 100644
+--- a/net/ipv6/icmp.c
++++ b/net/ipv6/icmp.c
+@@ -1374,7 +1374,7 @@ EXPORT_SYMBOL(icmpv6_err_convert);
+ static u32 icmpv6_errors_extension_mask_all =
+ 	GENMASK_U8(ICMP_ERR_EXT_COUNT - 1, 0);
+ 
+-static struct ctl_table ipv6_icmp_table_template[] = {
++static const struct ctl_table ipv6_icmp_table_template[] = {
+ 	{
+ 		.procname	= "ratelimit",
+ 		.data		= &init_net.ipv6.sysctl.icmpv6_time,
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 5968ce5ad15082949ec4551458a1e2115ae803ac..b833a6400c944da6cdbf2b4cfa87a5730ac2e06b 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -6555,7 +6555,7 @@ static int ipv6_sysctl_rtcache_flush(const struct ctl_table *ctl, int write,
+ 	return 0;
+ }
+ 
+-static struct ctl_table ipv6_route_table_template[] = {
++static const struct ctl_table ipv6_route_table_template[] = {
+ 	{
+ 		.procname	=	"max_size",
+ 		.data		=	&init_net.ipv6.sysctl.ip6_rt_max_size,
+diff --git a/net/ipv6/sysctl_net_ipv6.c b/net/ipv6/sysctl_net_ipv6.c
+index d2cd33e2698d5c88df4718c9622dba2d574fa309..1a0a36dcdabc1be961d0ab69e5c93b05c53f46a8 100644
+--- a/net/ipv6/sysctl_net_ipv6.c
++++ b/net/ipv6/sysctl_net_ipv6.c
+@@ -61,7 +61,7 @@ proc_rt6_multipath_hash_fields(const struct ctl_table *table, int write, void *b
+ 	return ret;
+ }
+ 
+-static struct ctl_table ipv6_table_template[] = {
++static const struct ctl_table ipv6_table_template[] = {
+ 	{
+ 		.procname	= "bindv6only",
+ 		.data		= &init_net.ipv6.sysctl.bindv6only,
+diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrack_standalone.c
+index be2953c7d702e92031d4bcf7e707741abed0f49c..f4f2d82192d54ed9831b9677743f1139820e5a2e 100644
+--- a/net/netfilter/nf_conntrack_standalone.c
++++ b/net/netfilter/nf_conntrack_standalone.c
+@@ -639,7 +639,7 @@ enum nf_ct_sysctl_index {
+ 	NF_SYSCTL_CT_LAST_SYSCTL,
+ };
+ 
+-static struct ctl_table nf_ct_sysctl_table[] = {
++static const struct ctl_table nf_ct_sysctl_table[] = {
+ 	[NF_SYSCTL_CT_MAX] = {
+ 		.procname	= "nf_conntrack_max",
+ 		.data		= &nf_conntrack_max,
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index fca840484ebf77853316704fa2ce7cc619524573..2b94c211427de7b2e9aa374033eac26ddd874e14 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -92,7 +92,7 @@ static struct ctl_table sctp_table[] = {
+ #define SCTP_PF_RETRANS_IDX    2
+ #define SCTP_PS_RETRANS_IDX    3
+ 
+-static struct ctl_table sctp_net_table[] = {
++static const struct ctl_table sctp_net_table[] = {
+ 	[SCTP_RTO_MIN_IDX] = {
+ 		.procname	= "rto_min",
+ 		.data		= &init_net.sctp.rto_min,
+diff --git a/net/xfrm/xfrm_sysctl.c b/net/xfrm/xfrm_sysctl.c
+index ca003e8a03760cd8dbb9e9f7cd5a9738eeeb7e71..357152a50faf10e5c33468c034dd1777e0bed079 100644
+--- a/net/xfrm/xfrm_sysctl.c
++++ b/net/xfrm/xfrm_sysctl.c
+@@ -13,7 +13,7 @@ static void __net_init __xfrm_sysctl_init(struct net *net)
+ }
+ 
  #ifdef CONFIG_SYSCTL
- int net_sysctl_init(void);
- struct ctl_table_header *register_net_sysctl_sz(struct net *net, const char *path,
--					     struct ctl_table *table, size_t table_size);
-+						const struct ctl_table *table,
-+						size_t table_size);
- void unregister_net_sysctl_table(struct ctl_table_header *header);
- #else
- static inline int net_sysctl_init(void) { return 0; }
- static inline struct ctl_table_header *register_net_sysctl_sz(struct net *net,
--	const char *path, struct ctl_table *table, size_t table_size)
-+	const char *path, const struct ctl_table *table, size_t table_size)
- {
- 	return NULL;
- }
-diff --git a/net/sysctl_net.c b/net/sysctl_net.c
-index 19e8048241bacb18de853d3b904d0f97fd2fe78a..07f8434d4258c615c231ca7e29274de44b012665 100644
---- a/net/sysctl_net.c
-+++ b/net/sysctl_net.c
-@@ -114,16 +114,17 @@ __init int net_sysctl_init(void)
- 	goto out;
- }
- 
--/* Verify that sysctls for non-init netns are safe by either:
-+/* Return error when sysctls for non-init netns are unsafe by verifying:
-  * 1) being read-only, or
-  * 2) having a data pointer which points outside of the global kernel/module
-  *    data segment, and rather into the heap where a per-net object was
-  *    allocated.
-  */
--static void ensure_safe_net_sysctl(struct net *net, const char *path,
--				   struct ctl_table *table, size_t table_size)
-+static int ensure_safe_net_sysctl(struct net *net, const char *path,
-+				  const struct ctl_table *table,
-+				  size_t table_size)
- {
--	struct ctl_table *ent;
-+	const struct ctl_table *ent;
- 
- 	pr_debug("Registering net sysctl (net %p): %s\n", net, path);
- 	ent = table;
-@@ -149,24 +150,24 @@ static void ensure_safe_net_sysctl(struct net *net, const char *path,
- 		else
- 			continue;
- 
--		/* If it is writable and points to kernel/module global
--		 * data, then it's probably a netns leak.
--		 */
-+		/* Warn on netns leak. */
- 		WARN(1, "sysctl %s/%s: data points to %s global data: %ps\n",
--		     path, ent->procname, where, ent->data);
-+			path, ent->procname, where, ent->data);
- 
--		/* Make it "safe" by dropping writable perms */
--		ent->mode &= ~0222;
-+		return -EACCES;
- 	}
-+
-+	return 0;
- }
- 
- struct ctl_table_header *register_net_sysctl_sz(struct net *net,
- 						const char *path,
--						struct ctl_table *table,
-+						const struct ctl_table *table,
- 						size_t table_size)
- {
- 	if (!net_eq(net, &init_net))
--		ensure_safe_net_sysctl(net, path, table, table_size);
-+		if (ensure_safe_net_sysctl(net, path, table, table_size))
-+			return NULL;
- 
- 	return __register_sysctl_table(&net->sysctls, path, table, table_size);
- }
+-static struct ctl_table xfrm_table[] = {
++static const struct ctl_table xfrm_table[] = {
+ 	{
+ 		.procname	= "xfrm_aevent_etime",
+ 		.maxlen		= sizeof(u32),
 
 -- 
 2.50.1
