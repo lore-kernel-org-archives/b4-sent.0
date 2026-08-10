@@ -1,92 +1,69 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Tue, 11 Aug 2026 00:13:14 +0800
-Subject: [PATCH 5/5] drm/amdgpu: free userptr HMM ranges on the CS error
- path
+From: Zhenyu Yang <haruki@seu.edu.cn>
+Date: Tue, 11 Aug 2026 03:32:37 +0800
+Subject: [PATCH] drm/xe: Exclude wopcm region from stolen memory on TGL/DG1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-amdgpu-fixes-v1-5-4954a417b8ff@outlook.com>
-References: <20260811-amdgpu-fixes-v1-0-4954a417b8ff@outlook.com>
-In-Reply-To: <20260811-amdgpu-fixes-v1-0-4954a417b8ff@outlook.com>
-To: Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Sumit Semwal <sumit.semwal@linaro.org>, Junwei Zhang <Jerry.Zhang@amd.com>, 
- =?utf-8?q?Nicolai_H=C3=A4hnle?= <nicolai.haehnle@amd.com>, 
- Prike Liang <Prike.Liang@amd.com>, Arvind Yadav <arvind.yadav@amd.com>, 
- Shashank Sharma <shashank.sharma@amd.com>, Leo Liu <leo.liu@amd.com>, 
- Felix Kuehling <Felix.Kuehling@amd.com>
-Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
- linaro-mm-sig@lists.linaro.org, Junrui Luo <moonafterrain@outlook.com>, 
- Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2404;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=L6QMfmjG08GEYgq6Lvgjn+rT+rJCq+Q7xLdhBvY9+GU=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMqfy6RfzJuy89+X84usVeOvsxZ2dRd+fvO2Y3GL7
- G0m597euRkdpSwMYlwMsmKKLMcLLn2z8N2iu8VnSzLMHFYmkCEMXJwCMJHHnxkZvjsd3j4/vThq
- p2rz6jjX/GVveLbFf9zL6NGSKFRhWnulg5Fh2dX9fdNlpNndDOxbPjf+kJn0MMVvVnP40Zi8st8
- xCrz8AHwXTaI=
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+Message-Id: <20260811-fix-xe-ttm-v1-1-8d58b08f02b3@seu.edu.cn>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWZukRRSvIhZVg5G4pC2RiHdXL
+ L+cnP8CR5bJQRVdYOlgx+sSIOMIzKiXgZC7YEhEkotCSuz5xJPQ+xkzXSqZdsoYXUI4bJbC+sX
+ q5rfb24mMfwtw3w9iBrXybgAAAA==
+X-Change-ID: 20260811-fix-xe-ttm-4a9713d7cca9
+To: intel-xe@lists.freedesktop.org
+Cc: dri-devel@lists.freedesktop.org, 
+ Sanjay Yadav <sanjay.kumar.yadav@intel.com>, 
+ Lucas De Marchi <demarchi@kernel.org>, Zhenyu Yang <haruki@seu.edu.cn>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786390365; l=1557;
+ i=haruki@seu.edu.cn; s=20260810; h=from:subject:message-id;
+ bh=MR427Mkv+jciFjssrVFmackeIc2s7Un5r4gv3vpAeQo=;
+ b=ZZ4mSkXpLj1hHTBkIU4V6FHUvr02o/TjpaiNSKWOGknZFsj0qu7+3SkTyaDlh1GF8mZ42zO1M
+ h2qnkL26JQ7DNVv6AzduMMwbSe+dw5fzyM7SQZj85NJP8AV/hPVu+/2
+X-Developer-Key: i=haruki@seu.edu.cn; a=ed25519;
+ pk=Rh6scJJVrfKi0fDllLpvJXubmo9YB57MLrju0xpHeIk=
+X-Endpoint-Received: by B4 Relay for haruki@seu.edu.cn/20260810 with auth_id=935
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amdgpu_cs_parser_bos() allocates a struct amdgpu_hmm_range for every
-userptr entry of the BO list and returns with them live. They are only
-released in two places: the out_free_user_pages label in
-amdgpu_cs_parser_bos() itself, and the invalidation check loop in
-amdgpu_cs_submit().
+Top of DSM contains the WOPCM which shouldn't be accessed. Carve it out
+from the stolen memory on TGL/DG1 as well.  This fixes excessive ATS faults
+on an RPL laptop since v7.2-rc1.
 
-Every error edge between those two points leaks. A failure in
-amdgpu_cs_patch_jobs(), amdgpu_cs_vm_handling() or amdgpu_cs_sync_rings(),
-or an early return from amdgpu_cs_submit() before its release loop, jumps
-to error_fini and falls into amdgpu_cs_parser_fini(), which never walks
-the BO list for userptr ranges. An IB address with no VM mapping is enough
-to get there: amdgpu_cs_patch_ibs() returns the -EINVAL that
-amdgpu_cs_find_mapping() hands back, so the leak is repeatable at will
-from an unprivileged render node fd. Each leaked entry costs a struct
-amdgpu_hmm_range plus its hmm_pfns array, a kvmalloc_array() of one entry
-per page of the userptr mapping, allocated with plain GFP_KERNEL and so
-not charged to the caller's memory cgroup.
-
-Release the ranges in amdgpu_cs_parser_fini(), which every path out of
-amdgpu_cs_ioctl() passes through. amdgpu_hmm_range_free() ignores a NULL
-range, so the success path, where amdgpu_cs_submit() has already freed and
-cleared them, is unaffected.
-
-Fixes: fec8fdb54e8f ("drm/amdgpu: fix userptr HMM range handling v2")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Fixes: 1c76fa517214 ("drm/xe: Convert stolen memory over to ttm_range_manager")
+Signed-off-by: Zhenyu Yang <haruki@seu.edu.cn>
 ---
- drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
-index 617f53f135f3..17c4fec21402 100644
---- a/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
-+++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_cs.c
-@@ -1416,6 +1416,16 @@ static void amdgpu_cs_parser_fini(struct amdgpu_cs_parser *parser)
- 				amdgpu_vm_bo_invalidate(bo, false);
- 			}
- 		}
+diff --git a/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c b/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c
+index 5e9070739e65..75f4d064d711 100644
+--- a/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c
++++ b/drivers/gpu/drm/xe/xe_ttm_stolen_mgr.c
+@@ -180,12 +180,22 @@ extern struct resource intel_graphics_stolen_res;
+ static u64 detect_stolen(struct xe_device *xe, struct xe_ttm_stolen_mgr *mgr)
+ {
+ #ifdef CONFIG_X86
++	u64 stolen_size, wopcm_size;
 +
-+		/*
-+		 * Release the ranges still live on the error paths;
-+		 * amdgpu_cs_submit() already freed and cleared them when it
-+		 * got far enough to check them for invalidation.
-+		 */
-+		amdgpu_bo_list_for_each_userptr_entry(e, parser->bo_list) {
-+			amdgpu_hmm_range_free(e->range);
-+			e->range = NULL;
-+		}
- 		amdgpu_bo_list_put(parser->bo_list);
- 	}
+ 	/* Map into GGTT */
+ 	mgr->io_base = pci_resource_start(to_pci_dev(xe->drm.dev), 2);
  
+ 	/* Stolen memory is x86 only */
+ 	mgr->stolen_base = intel_graphics_stolen_res.start;
+-	return resource_size(&intel_graphics_stolen_res);
++	stolen_size = resource_size(&intel_graphics_stolen_res);
++
++	/* Carve out the top of DSM as it contains the reserved WOPCM region */
++	wopcm_size = get_wopcm_size(xe);
++	if (drm_WARN_ON(&xe->drm, !wopcm_size))
++		return 0;
++
++	xe_assert(xe, stolen_size >= wopcm_size);
++	return stolen_size - wopcm_size;
+ #else
+ 	return 0;
+ #endif
 
--- 
-2.51.2
+---
+base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
+change-id: 20260811-fix-xe-ttm-4a9713d7cca9
 
