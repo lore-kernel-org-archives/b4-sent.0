@@ -1,126 +1,83 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Tue, 11 Aug 2026 14:51:36 +0800
-Subject: [PATCH] rust: block: gen_disk: set fops.owner from driver module
- pointer
+From: Vishnu Razdan <vrazdan@openai.com>
+Date: Tue, 11 Aug 2026 00:01:27 -0700
+Subject: [PATCH] io_uring/io-wq: fix worker accounting when canceling
+ creation callbacks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-fix-gendisk-owner-v1-1-c0fe4a449ecb@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAHfGemoC/02OS47CMBBEr2L1eoz8SdKOr4JY2J02WCMSsENmJ
- MTdxwqzYPlKXdXvCZVL5gpePKHwlmte5gb6SwBdwnxmmafGYJQZlNNKpvwrzzxPuX7L5WfmIoP
- rJoWmD9FEaL1b4Xa0bx5Pby58f7Tp9R1CDJUlLddrXr3Y8GBkIdyrYaVL++iF7ZD6YGmYIqfRW
- RMTsev0mMhYHli5GDrEBJ+iXuyavR53zbTc6r8j24AYo0EayG9awen1+gPRm4Dd/AAAAA==
-X-Change-ID: 20260810-fix-gendisk-owner-a84d0725ab2b
-To: Andreas Hindborg <a.hindborg@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Miguel Ojeda <ojeda@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: linux-block@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786431097; l=3831;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=pbm5nJARrive7EbKpkhyo8U1Z4SlieWC4PcXBCGvFvM=;
- b=T2ZchLdFCUfJ9WJciOwxNBzqrG3yMEJJcvWk+STpLw942FWZhVz/5uiYk3Bkx3TefgwMt8OcQ
- S8YbB8njRigC12DooF4toA7GBCkvnR5XylzIjA7XUofshKJlfno4VZ5
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+Message-Id: <20260811-vrazdan-io-wq-b4-submit-v1-1-719ced16c921@openai.com>
+X-B4-Tracking: v=1; b=H4sIAMbIemoC/yWMwQ6CMBBEf4Xs2U1aUhX8FeOhLYusgQItRSLh3
+ 231Nm/yZnYI5JkC3IodPK0ceHQJ5KkA22n3JOQmMZSivIhKCly9/jTaIY/4ntEoDNEMvGBta9W
+ 0Up2vsoK0njy1vP2e748/J/NFdsl32TA6EBqvne1y1bOLGw6aXUqEUzQ9W8wSHMcXW9QkuKgAA
+ AA=
+X-Change-ID: 20260810-vrazdan-io-wq-b4-submit-9c94df145718
+To: axboe@kernel.dk
+Cc: io-uring@vger.kernel.org, vrazdan@openai.com, 
+ linux-kernel@vger.kernel.org, asml.silence@gmail.com
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786431705; l=2133;
+ i=vrazdan@openai.com; s=io-wq-kernel-20260811; h=from:subject:message-id;
+ bh=BudlQE+XkmRRoHQjFbXZv3L3ZO0exGygvlY2UfDjXFs=;
+ b=4lcLmSMBawdC2cbRCMIWnW8jO7Buvnp6m/vN41G4Ry6tz6SLjDiF/C7Y6whPXEawgOZR141vw
+ c8vhYriGRaFAEDOBT2Or9ASBGL71xG3wMEjxUHg1Fyzo8Bl/tGBGFLb
+X-Developer-Key: i=vrazdan@openai.com; a=ed25519;
+ pk=45vHW8D/KId5RtsP3Qx7zMcNpgDwEvCnL5uAw0KzuS0=
+X-Endpoint-Received: by B4 Relay for vrazdan@openai.com/io-wq-kernel-20260811 with auth_id=937
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Set `fops.owner` from the driver module pointer via
-`this_module::<T::OwnerModule>().as_ptr()` instead of defaulting to
-null, so the module cannot be unloaded while a block device is still
-in use.
+create_worker_cb() reserves an io-wq worker slot only after its
+task-work callback runs. If the callback is canceled before then,
+io_worker_cancel_cb() still decrements acct->nr_workers. When an
+existing worker retires with its creation callback pending, that
+worker has already decremented the same account's worker count.
 
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+The resulting undercount permits worker creation beyond the account's
+configured limit. On an AST2600 OpenBMC system, an unchanged sensor
+daemon reached 4,291 threads with the original kernel. With an
+equivalent downstream fix, 25 passive samples under its normal
+workload showed 6-9 threads.
+
+Decrement nr_workers only when the canceled callback is not
+create_worker_cb(). Continuation callbacks still release their reserved
+slot, and both callback types retain the existing running-count,
+reference-count, and create-state cleanup.
+
+Fixes: 1d5f5ea7cb7d ("io-wq: remove worker to owner tw dependency")
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Vishnu Razdan <vrazdan@openai.com>
 ---
-The fops.owner fix series [1] covered DRM, miscdevice, configfs and
-binder, but missed the block layer's `GenDisk` abstraction.
-
-This patch was meant to be sent separately, but I forgot to send it.
-
-[1] https://lore.kernel.org/r/20260723-fix-fops-owner-v9-0-c1c3af7f7bcb@linux.dev/
+Prevent unreserved worker-creation callbacks from decrementing the worker count.
 ---
- rust/kernel/block/mq/gen_disk.rs | 34 ++++++++++------------------------
- 1 file changed, 10 insertions(+), 24 deletions(-)
+ io_uring/io-wq.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/rust/kernel/block/mq/gen_disk.rs b/rust/kernel/block/mq/gen_disk.rs
-index fc97dd8739746..215c407d466df 100644
---- a/rust/kernel/block/mq/gen_disk.rs
-+++ b/rust/kernel/block/mq/gen_disk.rs
-@@ -125,30 +125,9 @@ pub fn build<T: Operations>(
-             )
-         })?;
+diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c
+index 2e14880ee..fa403ed24 100644
+--- a/io_uring/io-wq.c
++++ b/io_uring/io-wq.c
+@@ -211,9 +211,12 @@ static void io_worker_cancel_cb(struct io_worker *worker)
+ 	struct io_wq *wq = worker->wq;
  
--        const TABLE: bindings::block_device_operations = bindings::block_device_operations {
--            submit_bio: None,
--            open: None,
--            release: None,
--            ioctl: None,
--            compat_ioctl: None,
--            check_events: None,
--            unlock_native_capacity: None,
--            getgeo: None,
--            set_read_only: None,
--            swap_slot_free_notify: None,
--            report_zones: None,
--            devnode: None,
--            alternative_gpt_sector: None,
--            get_unique_id: None,
--            // TODO: Set to `THIS_MODULE`.
--            owner: core::ptr::null_mut(),
--            pr_ops: core::ptr::null_mut(),
--            free_disk: None,
--            poll_bio: None,
--        };
--
--        // SAFETY: `gendisk` is a valid pointer as we initialized it above
--        unsafe { (*gendisk).fops = &TABLE };
-+        // SAFETY: `gendisk` is a valid pointer. We have exclusive access,
-+        // since the disk is not added to the VFS yet.
-+        unsafe { (*gendisk).fops = &GenDisk::<T>::VTABLE };
- 
-         let cleanup_failure = ScopeGuard::new_with_data((gendisk, data), |(gendisk, data)| {
-             // SAFETY: `gendisk` came from `__blk_mq_alloc_disk()` above and
-@@ -211,6 +190,13 @@ pub struct GenDisk<T: Operations> {
-     gendisk: *mut bindings::gendisk,
- }
- 
-+impl<T: Operations> GenDisk<T> {
-+    const VTABLE: bindings::block_device_operations = bindings::block_device_operations {
-+        owner: crate::module::this_module::<T::OwnerModule>().as_ptr(),
-+        ..pin_init::zeroed()
-+    };
-+}
-+
- // SAFETY: `GenDisk` is an owned pointer to a `struct gendisk` and an `Arc` to a
- // `TagSet` It is safe to send this to other threads as long as T is Send.
- unsafe impl<T: Operations + Send> Send for GenDisk<T> {}
+ 	atomic_dec(&acct->nr_running);
+-	raw_spin_lock(&acct->workers_lock);
+-	acct->nr_workers--;
+-	raw_spin_unlock(&acct->workers_lock);
++	/* create_worker_cb() has not reserved a worker slot yet. */
++	if (worker->create_work.func != create_worker_cb) {
++		raw_spin_lock(&acct->workers_lock);
++		acct->nr_workers--;
++		raw_spin_unlock(&acct->workers_lock);
++	}
+ 	io_worker_ref_put(wq);
+ 	clear_bit_unlock(0, &worker->create_state);
+ 	io_worker_release(worker);
 
 ---
-base-commit: 2ee859ebf156157609f71060ae472711c8cbc326
-change-id: 20260810-fix-gendisk-owner-a84d0725ab2b
-prerequisite-patch-id: 347c5a3c6dbef9832bfce8419fc23e6e08ba477f
-prerequisite-change-id: 20260519-fix-fops-owner-e3a77bb27c6c:v10
-prerequisite-patch-id: 347c5a3c6dbef9832bfce8419fc23e6e08ba477f
-prerequisite-patch-id: 190cfd53d3430ade053b15db36cac9e372e2566d
-prerequisite-patch-id: fdb2387ea1074c3bf16028b58c3df73e2e1783b1
-prerequisite-patch-id: f38222c64f7d29781036ae8673808cf4e9a9d430
-prerequisite-patch-id: da94d5d3af25778145b976f65f7eac281dc6ae79
-prerequisite-patch-id: e5c034ff639d7eebe730922db0ed02492f401dd0
-prerequisite-patch-id: 502035d4e05da3ed939b8bd65801a6fd8a01d788
-prerequisite-patch-id: 0ccf22bbdee039964cb064f33a8c7a0925dbd57b
-prerequisite-patch-id: e0595d6120868cdf3e87fa335a81e10f0e346c80
-prerequisite-patch-id: f27fc645020b296d289c31fc73dbfef993294464
-prerequisite-patch-id: 159f88cf73892b94117070090a58c7b68e08b8c1
+base-commit: d58772d8520c7ef247c4b95c9bd76d3a25da9ff5
+change-id: 20260810-vrazdan-io-wq-b4-submit-9c94df145718
 
 Best regards,
--- 
-Alvin Sun <alvin.sun@linux.dev>
+--  
+Vishnu Razdan <vrazdan@openai.com>
 
