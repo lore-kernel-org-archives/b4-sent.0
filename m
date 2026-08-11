@@ -1,121 +1,250 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Tue, 11 Aug 2026 17:40:59 +0800
-Subject: [PATCH] mm/mglru: fix and remove redundant unevictable folio
- handling
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v10 0/2] media: i2c: add support for ITE IT6625/IT6626 HDMI
+ to MIPI CSI-2 bridge
+Date: Tue, 11 Aug 2026 18:31:24 +0800
+Message-Id: <20260811-upstream-it6625-it6626-v10-0-9b6bb75262c9@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-mglru-mlock-fix-v1-1-8b2321d0e1d3@tencent.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWZukbYTGq4gF7WDc0yIS8e6K5
- XeS81/gyTF5yKMLHB3seZkDZByB6aq5JWQbDEqoVGgpcWpHt+M0LmbAhk9UwupG20QnWQXhtTo
- K81csyt9+r3sy25uB+34AG5uiK3MAAAA=
-X-Change-ID: 20260811-mglru-mlock-fix-20d8f8d4847a
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, David Hildenbrand <david@kernel.org>, 
- Michal Hocko <mhocko@kernel.org>, Qi Zheng <qi.zheng@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Oleksandr Natalenko <oleksandr@natalenko.name>, 
- Suleiman Souhlal <suleiman@google.com>, 
- "Jan Alexander Steffens (heftig)" <heftig@archlinux.org>, 
- Yu Zhao <yuzhao@google.com>, Steven Barrett <steven@liquorix.net>, 
- Brian Geffon <bgeffon@google.com>, Kairui Song <ryncsn@gmail.com>, 
- linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786441264; l=3658;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=aS+xGS5ivQ4MJAkh8ZjAYFluAUdKiZoNB6Hp2uOPFCA=;
- b=QzDpMiOdqiQmyPPYubWEQCxOqQVgNxoWgUQfC69RFxUpR41Fgir6Rm9fCjFwnrwJG6Xy3ZmuS
- jd7TJKAvYZWAmDOYhA08FgQYA3LEd5Bkud5u8gVcVBeRXKmO1bJ+qH4
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAPz5emoC/43SzWrDMAwA4FcpPi/Fli3J3mnvMXawHXv1oT8kW
+ bZR8u5zux0yTKAnIYE+IaGrGNNQ0iied1cxpLmM5XyqiZJPOxEP/vSeutLXggAJJFlR93EZpyH
+ 5Y1cmIsDfQB1ZNj5Yj1qiqM2XIeXydZdf32p+KON0Hr7vg2Z1q/6RILfIWXWyM4xOQWZj0L2UK
+ e3j+bifPsXNnGHtqE0HqsPRZI1kote2cfTagU1HV8cZTiizVEymccxjjqlOlFoTpIAYfePgYw5
+ WR1tOjNZkiO196DGHqkNKcW96R8jtXrx29KbD1clWMYYgk1fQOHbt8KZjqwNRB5kdgsmxcdzK0
+ dv/46qTmAH7AMFB/ucsy/IDuwXVmv4CAAA=
+X-Change-ID: 20260716-upstream-it6625-it6626-6874ab8a5305
+To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786444285; l=12396;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=kABI02I9UfFmz+A+DQGlsGvO4zT9JmHmAIb0YNRw7qc=;
+ b=HKKHxaP+TH3E1QUCSJQBwjrEhBdymKU/vQO3+xf49e6Oxd6ku//i3NoEXB6qRwCIEDT/4J/QN
+ cttklpVGbcWCUstS4zPUsSPnTsylQQ2WaL2EBT8y34QHJUSLzQ/53WU
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sort_folio() has a shortcut for moving folios that are no longer
-evictable but are still sitting on a generation list.  However, this
-shortcut is buggy.  It does not follow the PG_lru usage convention,
-and it has a more serious issue.
+This series adds support for the ITE IT6625/IT6626 HDMI to MIPI CSI-2
+bridge chips. IT6625 accepts an HDMI 2.0 input and IT6626 an HDMI 2.1
+input, converting it to a D-PHY (or C/D-PHY on IT6626) MIPI CSI-2
+output. The bridge is configured over I2C, exposes an HDMI CEC
+adapter, and supports EDID read/write, DV timings detection and
+configuration, and HPD control via the standard V4L2 subdevice pad
+and video ops.
 
-Unevictable folios are not threaded on lists[LRU_UNEVICTABLE], so that
-folio->lru can be reused to hold folio->mlock_count (see the comment in
-lruvec_init()).  Hence lruvec_add_folio() skips the list_add() for them,
-and every other place that turns a folio unevictable initialises
-mlock_count explicitly: lru_add() sets it to 0, __mlock_folio() and
-__mlock_new_folio() set it to !!folio_test_mlocked(folio).
-sort_folio() sets nothing, and the lru_gen_del_folio() right above it
-may have already poisoned folio->lru via list_del(), so mlock_count
-ends up aliasing LIST_POISON2, which reads as 0x122, i.e. 290.  The
-result is user visible.  On munlock, __munlock_folio() decrements that
-bogus count, finds it still non-zero and bails out before clearing
-PG_mlocked, so the folio remains unevictable and the Mlocked
-accounting stays inflated until the folio is freed.
+Patch 1 documents the devicetree binding for the bridge, including
+its two selectable CSI-2 output graph ports.
 
-The shortcut also touches the LRU flags in the wrong order.  It calls
-lru_gen_del_folio() while PG_lru is still set, so a concurrent
-folio_test_clear_lru() (e.g. compaction, folio_isolate_lru()) can succeed
-on a folio that has already been taken off the generation list, may
-lead to unexpected behavior.  The generic path gets this right:
-isolate_folio() clears PG_lru first, so a racing isolator loses the
-atomic and bails.
+Patch 2 adds the V4L2 subdevice driver itself.
 
-And the shortcut is redundant.  A folio left on the generation list is
-picked up by isolate_folio(), shrink_folio_list() sends it to
-activate_locked on the !folio_evictable() check, and evict_folios()
-then hands it to folio_putback_lru(), which sets PG_unevictable and
-counts UNEVICTABLE_PGCULLED from lru_add(), with mlock_count
-initialised properly.
-
-There is no performance concern either: such a folio goes through this
-once, and then it is off the generation lists for good, since
-lru_gen_add_folio() refuses unevictable folios.
-
-So just remove the shortcut.  This consolidates unevictable handling in
-the generic path, and makes maintenance easier.
-
-Fixes: ac35a4902374 ("mm: multi-gen LRU: minimal implementation")
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- mm/vmscan.c | 11 -----------
- 1 file changed, 11 deletions(-)
+Changes in v10:
+- Patch 1 (dt-bindings): no code change -- the sashiko.dev automated
+  review of v9 re-raised the it6625 bus-type constraint yet again;
+  checked and dismissed again for the same reason (Krzysztof
+  Kozlowski's explicit request). Reviewed-by carried forward unchanged.
+- Patch 2 (driver): fix four issues found by the sashiko.dev automated
+  review of v9, confirmed against the chip's datasheet --
+  CEC_MAX_LOG_ADDRS advertised more simultaneous logical
+  addresses than the hardware can actually hold, adap_log_addr
+  (CEC_LOG_ADDR_INVALID) didn't release a claimed address in hardware,
+  a hardcoded IRQF_TRIGGER_LOW overrode the board's devicetree-configured
+  interrupt polarity, and it6625_s_edid()'s multi-step sequence wasn't
+  atomic against a concurrent call. Also add .init_state so a
+  freshly-opened subdev's TRY format isn't left zero-initialized. One
+  other v9 review finding (a UAF in it6625_remove() vs. an in-flight
+  ioctl) was checked and confirmed real, but is not being acted on this
+  round -- see the patch's own changelog for why no driver-only fix
+  closes it.
+- Patch 2 (driver): fix a set of issues from Hans Verkuil's on-list
+  review of v9 -- CEC logical-address clear didn't actually
+  clear the address, a redundant CEC message dump duplicated the CEC
+  core's own logging, the HPD delay used an unreliable timing
+  constant, SOURCE_CHANGE wasn't raised on signal loss, S_DV_TIMINGS
+  incorrectly disabled stream output, three DV-timings pad-ops
+  wrappers were needlessly split from their bodies, g_edid()/s_edid()
+  assumed a fixed EDID block count and used the wrong CEC
+  physical-address helper, two custom controls (HDMI_INFO/MIPI_CONFIG)
+  had no real use case, and the driver was missing the required
+  InfoFrame debugfs export. Also reserve a proper
+  V4L2_CID_USER_IT6625_BASE and public header for the two remaining
+  custom audio controls, replacing the old locally-defined base that
+  collided with V4L2_CID_USER_NPCM_BASE. See the patch's own
+  changelog for the full list.
+- Link to v9: https://lore.kernel.org/r/20260730-upstream-it6625-it6626-v9-0-e7725db2b92f@ite.com.tw
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 3194da7dcc79..eca5ff64238d 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -4648,7 +4648,6 @@ void lru_gen_reparent_memcg(struct mem_cgroup *memcg, struct mem_cgroup *parent,
- static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_control *sc,
- 		       int tier_idx)
- {
--	bool success;
- 	int gen = folio_lru_gen(folio);
- 	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
-@@ -4660,16 +4659,6 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
- 
- 	VM_WARN_ON_ONCE_FOLIO(gen >= MAX_NR_GENS, folio);
- 
--	/* unevictable */
--	if (!folio_evictable(folio)) {
--		success = lru_gen_del_folio(lruvec, folio, true);
--		VM_WARN_ON_ONCE_FOLIO(!success, folio);
--		folio_set_unevictable(folio);
--		lruvec_add_folio(lruvec, folio);
--		__count_vm_events(UNEVICTABLE_PGCULLED, delta);
--		return true;
--	}
--
- 	/* promoted */
- 	if (gen != lru_gen_from_seq(lrugen->min_seq[type])) {
- 		list_move(&folio->lru, &lrugen->folios[gen][type][zone]);
+Changes in v9:
+- Patch 1 (dt-bindings): no code change -- the sashiko.dev automated
+  review of v8 re-raised the it6625 bus-type constraint dropped in v8
+  at Krzysztof Kozlowski's explicit request; checked and dismissed
+  again for the same reason. Also carrying forward his Reviewed-by
+  from v8's on-list review, since the patch content is unchanged.
+- Patch 2 (driver): fix two correctness issues found by the sashiko.dev
+  automated review of v8 -- the IRQ handler always returned
+  IRQ_HANDLED even when no interrupt source was observed, defeating
+  the kernel's spurious-IRQ storm protection, and
+  it6625_initial_setup() touched REG_HOST_CTRL_INT without holding
+  it6625_lock despite running after cec_register_adapter() already
+  exposed /dev/cecX to userspace. One other v8 review finding
+  (fps_from_bt_timings() 32-bit overflow) was checked and is not being
+  acted on -- see the patch's own changelog for the arithmetic
+  reasoning.
+- Link to v8: https://lore.kernel.org/r/20260727-upstream-it6625-it6626-v8-0-2c3b0f9524fc@ite.com.tw
+
+Changes in v8:
+- Patch 1 (dt-bindings): fix several nits from Krzysztof Kozlowski's
+  on-list review (subject, description style, two redundant bare
+  properties, a missing blank line), drop the it6625 bus-type
+  constraint he questioned as redundant with compatible, and document
+  interrupts and the three power-supply properties -- also answering
+  his "how does this device work without any power supplied?" and
+  closing the same undocumented-ABI gap he flagged for interrupts on
+  patch 2. See the patch's own changelog for the full list.
+- Patch 2 (driver): drop of_match_ptr() (Krzysztof's review), and fix
+  an interlaced-signal pixel clock bug found by the sashiko.dev
+  automated review of v7 and confirmed against the IT6625 spec: the
+  chip already reports the correct pixel clock for interlaced sources,
+  so halving it on top of that was wrong. One other v7 review finding
+  (get_fmt leaking active state into TRY width/height/field) was
+  checked and is not being acted on -- it matches an established
+  pattern in tc358743.c. See the patch's own changelog for both.
+- Replying on-list (not a patch change) to Krzysztof's question about
+  whether the it6625/it6626 compatible strings encode any real
+  difference -- they do (C-PHY is gated on chip_type in
+  it6625_parse_endpoint()).
+- Link to v7: https://lore.kernel.org/r/20260723-upstream-it6625-it6626-v7-0-f8175bb0ea12@ite.com.tw
+
+Changes in v7:
+- Patch 1 (dt-bindings): add back port@2 for the HDMI input port,
+  reversing the v4 decision to drop it -- the v6 automated review
+  re-raised the concern, and adi,adv7604.yaml (an actively-maintained
+  binding for a comparable HDMI-receiver chip) confirms documenting an
+  input port unused by the driver is the established convention, not
+  a defect.
+- Patch 2 (driver): fix three correctness issues found by automated
+  review of v6 -- it6625_parse_endpoint() could read the mipi_csi2
+  union under a bus_type the parser had silently fallen back to
+  parallel/BT656 on; it6625_set_fmt()'s active-format path left
+  format->format.colorspace stale for VIDIOC_SUBDEV_S_FMT callers; and
+  it6625_s_edid() never rejected a non-zero start_block as the
+  VIDIOC_S_EDID spec requires. See the patch's own changelog for the
+  full list.
+- Link to v6: https://lore.kernel.org/r/20260722-upstream-it6625-it6626-v6-0-6117d4d96574@ite.com.tw
+
+Changes in v6:
+- Patch 2 (driver): fix two correctness issues found by automated
+  review of v5 -- an ignored v4l2_phys_addr_validate() return let a
+  malformed CEC physical address reach cec_s_phys_addr() and get
+  broadcast on the CEC bus, and it6625_parse_endpoint() pre-set the
+  fwnode bus_type to D-PHY, which made the parser reject every IT6626
+  C-PHY device tree outright. One other v5 review finding (a
+  concurrent-ioctl-vs-remove() race) was checked and is not being
+  acted on -- see the patch's own changelog for the reasoning.
+- Patch 1 (dt-bindings): unchanged -- the v5 review concern was
+  checked and dismissed; see the patch's own changelog for the
+  reasoning.
+- Link to v5: https://lore.kernel.org/r/20260722-upstream-it6625-it6626-v5-0-387e7584f2c9@ite.com.tw
+
+Changes in v5:
+- Patch 2 (driver): fix further correctness issues found by automated
+  review of v4 -- two debugfs read handlers could leak uninitialized
+  kernel stack memory to userspace on an I2C read failure, TRY-format
+  state could go stale or leak active hardware state into what should
+  be an isolated buffer, a concurrent S_FMT ioctl could interleave
+  with hardware programming because the lock was released too early,
+  S_EDID's blocks==0 case didn't actually disable the EDID per spec
+  and a failed EDID write left HPD disabled permanently, the mipi_reg
+  debugfs write was unlocked, and the HDMI info control returned a
+  hardcoded string instead of real telemetry; also wire up the
+  previously-unused reset-gpios line during probe. See the patch's
+  own changelog for the full list, including three other v4 review
+  findings that were checked (one against the hardware author's own
+  knowledge of the chip) and are not being acted on -- see the
+  patch's own changelog for the reasoning.
+- Patch 1 (dt-bindings): unchanged -- both v4 review concerns for this
+  patch were self-dismissed by the automated review itself with sound
+  reasoning (the endpoint/patternProperties gap matches an established
+  single-endpoint convention already used elsewhere in-tree, and
+  dropping port@2 doesn't weaken validation since graph.yaml's own
+  generic port pattern still covers it).
+- Link to v4: https://lore.kernel.org/r/20260722-upstream-it6625-it6626-v4-0-c03362eb55ca@ite.com.tw
+
+Changes in v4:
+- Patch 2 (driver): fix further correctness issues found by automated
+  review of v3 -- a CEC RX interrupt left unacknowledged on an invalid
+  message length could storm the IRQ line, set_fmt returned -EINVAL
+  for an unrecognized format code instead of falling back to a
+  default, get_fmt's active-path reads of the format state were
+  unlocked against a concurrent set_fmt, g_edid/s_edid didn't follow
+  the VIDIOC_G/S_EDID spec for over-capacity requests, and the two
+  mipi_reg debugfs handlers were missing locking/offset handling; also
+  mark the HDMI info control volatile so it is actually refreshed. See
+  the patch's own changelog for the full list. Separately (not a
+  review finding), drop a redundant FW-start register trigger from
+  probe -- the firmware starts automatically on power-on.
+- Patch 1 (dt-bindings): drop the unused port@2 (HDMI input) graph
+  port entirely rather than the review's suggested fix of adding it to
+  required, and require bus-type on port@0/port@1 endpoints for
+  "ite,it6626" specifically, since only that variant's D-PHY default
+  can silently mismatch actual board wiring. Both found by the
+  automated review of v3, which also flagged one other dt-bindings
+  issue that was checked and is not being acted on -- see the patch's
+  own changelog for the reasoning.
+- Link to v3: https://lore.kernel.org/r/20260722-upstream-it6625-it6626-v3-0-947e50f01764@ite.com.tw
+
+Changes in v3:
+- Patch 2 (driver): fix further correctness issues found by automated
+  review of v2 -- two banked-register reads still missing a lock, a
+  CEC RX length TOCTOU and a dropped CEC TX interrupt on invalid RX
+  length, it6625_s_edid() treating a successful write as a failure,
+  missing V4L2_SUBDEV_FORMAT_TRY support, an unlocked active-format
+  commit, and detected timings lumping the whole blanking interval
+  into hsync/vsync instead of reading the real porch registers. See
+  the patch's own changelog for the full list, including four other
+  v2 review findings that were checked and are not being acted on
+  (with reasoning).
+- Patch 1 (dt-bindings): unchanged.
+- Link to v2: https://lore.kernel.org/r/20260721-upstream-it6625-it6626-v2-0-7c4f3564ca38@ite.com.tw
+
+Changes in v2:
+- Patch 2 (driver): fix several correctness issues found by automated
+  review of v1 -- premature V4L2 async subdev registration/teardown
+  ordering, a missing-lock race on banked register reads, a
+  status-poll interval bug, a dropped CEC interrupt, an unacked CEC
+  transmit, set_fmt mutating active state on TRY, EDID blocks=0
+  handling, and a couple of uninitialized-stack hardening fixes. See
+  the patch's own changelog for the full list.
+- Patch 1 (dt-bindings): restrict port@0/port@1 bus-type to D-PHY (4)
+  only for "ite,it6625", since that chip doesn't support C-PHY (also
+  found by the automated review of v1).
+- Link to v1: https://lore.kernel.org/r/20260720-upstream-it6625-it6626-v1-0-475912f74459@ite.com.tw
 
 ---
-base-commit: 1029098ee3275ea5b78e329ce132262affa2f8cc
-change-id: 20260811-mglru-mlock-fix-20d8f8d4847a
+Hermes Wu (2):
+      dt-bindings: media: add ITE IT6625/IT6626 HDMI bridge
+      media: i2c: add driver for ITE IT6625/IT6626
+
+ .../devicetree/bindings/media/i2c/ite,it6625.yaml  |  175 ++
+ MAINTAINERS                                        |    8 +
+ drivers/media/i2c/Kconfig                          |   18 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/it6625.c                         | 2394 ++++++++++++++++++++
+ include/uapi/linux/it6625.h                        |   25 +
+ include/uapi/linux/v4l2-controls.h                 |    6 +
+ 7 files changed, 2627 insertions(+)
+---
+base-commit: 8a6e017c06fbc1b96af618e82a4d35889d442964
+change-id: 20260716-upstream-it6625-it6626-6874ab8a5305
 
 Best regards,
---  
-Kairui Song <kasong@tencent.com>
+-- 
+Hermes Wu <Hermes.wu@ite.com.tw>
 
