@@ -1,86 +1,73 @@
 From: Robin Snyders <robin@snyders.xyz>
-Date: Tue, 11 Aug 2026 23:39:12 +0200
-Subject: [PATCH v2] arm64: dts: qcom: sm8150: describe download mode
- register
+Subject: [PATCH 0/5] power: supply: qcom_smbx: fix watchdog and battery
+ properties
+Date: Wed, 12 Aug 2026 01:29:57 +0200
+Message-Id: <20260812-qcom-smbx-fixes-v1-0-eb48246be599@snyders.xyz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-submit-sm8150-dload-v2-1-fb688ac4896b@snyders.xyz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQ6CMBCFr0JmbU1bIy2uvIdhUdpBJpGfdLABC
- Xe3cgDzVt9L3vc2YIyEDLdig4iJmMYhgz4V4Ds3PFFQyAxa6lJapQS/m55mwb1VVynCa3RBXKy
- VukE0xleQl1PElpbD+qgzd8TzGNfjJKlf+9+XlMhx1iC2WHpb3XlYA0Y+L+sH6n3fv+Ah53O4A
- AAA
-X-Change-ID: 20260811-submit-sm8150-dload-38802bee77c9
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3LMQqAMAxA0atIZgO2iqhXEQeNUTO01QZEKN7d4
+ vj4/ATKUVhhKBJEvkUl+AxTFkDH7HdGWbPBVratOmPxouBQ3fLgJg8rNmTnxbQ1UU+QrzPyH/I
+ 0Tu/7AamrjhxhAAAA
+X-Change-ID: 20260812-qcom-smbx-fixes-4c2ab163cc9c
+To: Casey Connolly <casey.connolly@linaro.org>, 
+ Sebastian Reichel <sre@kernel.org>
 Cc: Robin Snyders <robin@snyders.xyz>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
+ linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786484351; l=2109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786491008; l=2069;
  i=robin@snyders.xyz; s=default; h=from:subject:message-id;
- bh=/TfmrFMiLTSWdo6283UVZZe99/UGMS7loU8I4UkGqso=;
- b=yOAgwKjWGsx0P0mkCM/aVbZ0qXSxT3LiiIjPwvZ21GGq5Il7ygFlqyNicqKJf3Sf6NuwXzUEQ
- p+hZWAwgc6SDTYDDBglLvfTJBVpq3c8eLcEPrA4NISVHXdAVWlmunNd
+ bh=qv1nbnQj5yoUuqvBAtie8PCjm4uOhcMDB/ozlhiCEnI=;
+ b=GxwMvT7WZEjD0iuci8XI4SkTBX064+9afDqfQqrUj0PKAY84eYnyrbGM/7ekyZ8uDD+h8h2mQ
+ LL/Klww2FVoApy8bGPGhz17PqYWs3Ef0qQlsbISz+i0AVuZBLhhjNET
 X-Developer-Key: i=robin@snyders.xyz; a=ed25519;
  pk=Mdk5dNn+Tkcy7BWexDxBLR/s1BNz8WdqDPnr3qtYBIU=
 X-Endpoint-Received: by B4 Relay for robin@snyders.xyz/default with auth_id=938
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SM8150 SCM node does not describe the TCSR download-mode register.
-Without it, the SCM driver falls back to a firmware call and the
-mode cookie may remain set across a warm reset, causing the next boot to
-enter the Qualcomm crashdump transport.
+Fix five bugs in the existing Qualcomm SMB2 charger driver.
 
-Describe the TCSR window and point qcom,dload-mode at offset 0x13000,
-matching the layout used by SM8250 and other related Qualcomm platforms.
+The watchdog bark handler omits the charger peripheral base and can write
+an unrelated SPMI register. Battery health handling compares the complete
+status register instead of testing its independent fault bits. The
+float-voltage calculation is one selector step too high, and its battery
+target is neither selected nor validated safely. Finally, the
+battery-overvoltage IRQ ignores read errors and only publishes assertion,
+leaving health and status stale after the falling-edge recovery interrupt.
 
-On a OnePlus 7T Pro this changes software reboot from a reproducible
-05c6:900e transition to six consecutive successful boots.
+The float-voltage validation patch prefers the constant-charge target,
+falls back to the design voltage, and preserves the firmware setting when
+both optional properties are absent. It also restores the pre-probe
+charging-enable state if hardware initialization or any later probe step
+fails, preventing probe failure from changing that state.
+
+All five issues were introduced with the driver. The patches carry the
+same Fixes tag and are marked for stable.
+
+This series is also the declared prerequisite for the SMB5 v2 series,
+whose driver refactoring overlaps the health, overvoltage and
+float-voltage code.
+
+The driver builds with LLVM W=1 and passes sparse without driver
+warnings. All five patches pass checkpatch --strict.
+
+Based on linux-next 20260811 (5e6de6a2b522).
 
 Signed-off-by: Robin Snyders <robin@snyders.xyz>
 ---
-Describe the SM8150 TCSR download-mode register so warm reboot clears the
-download cookie through the SCM driver's MMIO path instead of falling back to
-firmware. This was validated on a OnePlus 7T Pro with six consecutive software
-reboots that returned to Linux rather than Qualcomm crashdump mode.
----
-Changes in v2:
-- Place the TCSR syscon node in unit-address order.
-- Link to v1: https://lore.kernel.org/r/20260811-submit-sm8150-dload-v1-1-1a87eefe6c89@snyders.xyz
----
- arch/arm64/boot/dts/qcom/sm8150.dtsi | 6 ++++++
- 1 file changed, 6 insertions(+)
+Robin Snyders (5):
+      power: supply: qcom_smbx: include base when petting watchdog
+      power: supply: qcom_smbx: test battery health status bits
+      power: supply: qcom_smbx: fix float voltage selector
+      power: supply: qcom_smbx: validate battery float voltage
+      power: supply: qcom_smbx: notify battery overvoltage recovery
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-index 94a3b02cb289..46183687a5e3 100644
---- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
-@@ -610,6 +610,7 @@ cpu7_opp20: opp-2841600000 {
- 	firmware {
- 		scm: scm {
- 			compatible = "qcom,scm-sm8150", "qcom,scm";
-+			qcom,dload-mode = <&tcsr 0x13000>;
- 			#reset-cells = <1>;
- 		};
- 	};
-@@ -2181,6 +2182,11 @@ tcsr_regs_1: syscon@1f60000 {
- 			reg = <0x0 0x01f60000 0x0 0x20000>;
- 		};
- 
-+		tcsr: syscon@1fc0000 {
-+			compatible = "qcom,sm8150-tcsr", "syscon";
-+			reg = <0x0 0x01fc0000 0x0 0x30000>;
-+		};
-+
- 		remoteproc_slpi: remoteproc@2400000 {
- 			compatible = "qcom,sm8150-slpi-pas";
- 			reg = <0x0 0x02400000 0x0 0x4040>;
-
+ drivers/power/supply/qcom_smbx.c | 98 ++++++++++++++++++++++++++++++++--------
+ 1 file changed, 78 insertions(+), 20 deletions(-)
 ---
-base-commit: 3d08ff75a47a3e7e2ab45a3bcab6723b4d906422
-change-id: 20260811-submit-sm8150-dload-38802bee77c9
+base-commit: 5e6de6a2b522f659defacb1551d0465ba6ce13cf
+change-id: 20260812-qcom-smbx-fixes-4c2ab163cc9c
 
 Best regards,
 -- 
