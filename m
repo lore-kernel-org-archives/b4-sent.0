@@ -1,258 +1,133 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 11 Aug 2026 08:37:44 +0000
-Subject: [PATCH v2 2/2] thermal: amlogic: Add support for A9 thermal
- controller
+From: Jason Yang <jason98166@gmail.com>
+Date: Tue, 11 Aug 2026 17:17:13 +0800
+Subject: [PATCH v4] media: ov5640: select the MIPI lane mode from the
+ endpoint lane count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260811-a9-thermal-v2-2-7ddc33b11b9a@amlogic.com>
-References: <20260811-a9-thermal-v2-0-7ddc33b11b9a@amlogic.com>
-In-Reply-To: <20260811-a9-thermal-v2-0-7ddc33b11b9a@amlogic.com>
-To: Guillaume La Roque <glaroque@baylibre.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pm@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786437467; l=7397;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=TlJucHpLSg6vIE9wEMlAAS9Pec4othWOHVc/MkMexks=;
- b=5hR4IWo8P5/V1EvklnRHt2dWKpE2SaC80+xqpp/euYcZztNkn+aNdBrN8raR4sD8VO2Flht2c
- 4oXhSfPNOW2C17xS67kdkO1rFOQ/485zuOEAqeYQnetCTBa0nsxzJBC
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260811-ov5640-1lane-v1-v4-1-c4a05d4c1b32@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJjoemoC/4XNTQqDMBAF4KtI1k3Jf7Sr3qN0EeNEA2pKUkKLe
+ PdGV6VQhNm8B9+bBSWIHhK6VAuKkH3yYS5BnCpkBzP3gH1XMmKEKVJTikOWShBMRzMDzhS3xAH
+ XYFrR1aioRwTnX/vi7V7y4NMzxPf+INOt/b9VjmLdqKYRUlug/NpPxo9nGya0bWV24FnxSjIiD
+ dTKQfvr+YHnxRsQWoFxkjDx7dd1/QCz0QtHLgEAAA==
+To: Steve Longerbeam <slongerbeam@gmail.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: Hans Verkuil <hverkuil@kernel.org>, 
+ Jacopo Mondi <jacopo.mondi@ideasonboard.com>, 
+ Kieran Bingham <kieran.bingham@ideasonboard.com>, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Jason Yang <jason98166@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786439833; l=4169;
+ i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
+ bh=PfLhiPr2yUVO8SISKIeOPSSSLsQZ2XmMhRZ2vtARP8M=;
+ b=EblIwyv8nL4KOhfFsYbHzg/6PSpCqoDi2yJ2ZuJsKCDSXmCcpuzLKOwuNW3JrWaleLzU12cF0
+ T4+xnHGgwPLC+8U2cO+ZSshx+0PmBNxL+qNksLw+ceRUF0R9E/nWS0c
+X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
+ pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
+X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Amlogic A9 thermal controller.
+ov5640_set_stream_mipi() always programs IO_MIPI_CTRL00 with 0x45,
+which selects the two data lane mode: the number of data lanes
+described in the devicetree endpoint only feeds the sensor's clock
+tree computations, so a module wired with one data lane starts
+streaming in two lane mode and the receiver never assembles a
+frame.
 
-The A9 thermal controller uses different calibration parameters, requires
-separate core and bus clocks, and supports a hardware over-temperature
-reset mechanism.
+Take the lane mode from the endpoint instead. The field encodes
+the lane count directly - 001 for one lane, 010 for two - per the
+current sensor manual (version 2.33). The 2.03 manual documented
+000/001 for one/two lanes; OmniVision corrected the table in
+version 2.1, which is why the long-standing comment here found 001
+unusable for two lanes and validated 010 instead.
 
-Add support for configuring the hardware reset temperature through the
-'amlogic,hw-reset-temp' Device Tree property. Newer chips can specify the
-hardware reset temperature through Device Tree, while older chips without
-this property continue to use the default value of 110°C for backward
-compatibility.
+The power-up path also programs a two data lane mode, but that
+value is overwritten when streaming starts, so it is left alone.
 
-Also restore the hardware reset configuration after resume.
+Tested with a single data lane module on an i.MX8MP board
+(imx-mipi-csis receiver), where the unpatched value produces no
+frames at all, and on an RK3588 board.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Fixes: 19a81c1426c1 ("[media] add Omnivision OV5640 sensor driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jason Yang <jason98166@gmail.com>
+Assisted-by: Claude:claude-opus-5
 ---
- drivers/thermal/amlogic_thermal.c | 108 ++++++++++++++++++++++++++++++++++++--
- 1 file changed, 105 insertions(+), 3 deletions(-)
+Changes in v4:
+- Keep the lane count programmed also while the interface is
+  disabled, toggling only the enable bits (Hans Verkuil); with one
+  data lane the disable value becomes 0x20 instead of 0x40.
+- Link to v3: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v3-1-ae476eaf5024@gmail.com
 
-diff --git a/drivers/thermal/amlogic_thermal.c b/drivers/thermal/amlogic_thermal.c
-index a0b530624b60..96090c5e6061 100644
---- a/drivers/thermal/amlogic_thermal.c
-+++ b/drivers/thermal/amlogic_thermal.c
-@@ -45,6 +45,18 @@
- 		 TSENSOR_CFG_REG1_DEM_EN |	\
- 		 TSENSOR_CFG_REG1_CH_SEL)
- 
-+#define TSENSOR_CFG_REG2			0x8
-+	#define TSENSOR_CFG_REG2_HITEMP_EN	BIT(31)
-+	#define TSENSOR_CFG_REG2_REBOOT_EN	BIT(30)
-+	#define TSENSOR_CFG_REG2_REBOOT_CODE	GENMASK(15, 4)
-+	#define TSENSOR_CFG_REG2_REBOOT_TIME	GENMASK(23, 16)
-+	#define TSENSOR_CFG_REG2_ENABLE		\
-+		(TSENSOR_CFG_REG2_HITEMP_EN |	\
-+		 TSENSOR_CFG_REG2_REBOOT_EN |	\
-+		 TSENSOR_CFG_REG2_REBOOT_TIME)
-+
-+#define TSENSOR_TEMP_CAL		1
-+
- #define TSENSOR_STAT0			0x40
- 
- #define TSENSOR_STAT9			0x64
-@@ -63,6 +75,7 @@
- 
- #define TSENSOR_CALIB_OFFSET	1
- #define TSENSOR_CALIB_SHIFT	4
-+#define TSENSOR_HW_RESET_DEFAULT_TEMP	110000
- 
- /**
-  * struct amlogic_thermal_soc_calib_data
-@@ -93,6 +106,7 @@ struct amlogic_thermal_data {
- 	const struct amlogic_thermal_soc_calib_data *calibration_parameters;
- 	const struct regmap_config *regmap_config;
- 	bool use_sm;
-+	bool has_sysclk;
- };
- 
- struct amlogic_thermal {
-@@ -101,8 +115,10 @@ struct amlogic_thermal {
- 	struct regmap *regmap;
- 	struct regmap *sec_ao_map;
- 	struct clk *clk;
-+	struct clk *sysclk;
- 	struct thermal_zone_device *tzd;
- 	u32 trim_info;
-+	u32 temp_code;
- 	struct meson_sm_firmware *sm_fw;
- 	u32 tsensor_id;
- };
-@@ -138,6 +154,49 @@ static int amlogic_thermal_code_to_millicelsius(struct amlogic_thermal *pdata,
- 	return temp;
- }
- 
-+/*
-+ * Calculate a temperature code from a temperature value .
-+ * The unit of the temperature is degree milliCelsius.
-+ */
-+static u32 amlogic_thermal_millicelsius_to_code(struct amlogic_thermal *pdata, int millicelsius)
-+{
-+	const struct amlogic_thermal_soc_calib_data *param =
-+					pdata->data->calibration_parameters;
-+	s64 factor, uptat, uefuse;
-+	u32 temp_code;
-+
-+	uefuse = pdata->trim_info & TSENSOR_TRIM_SIGN_MASK ?
-+			     ~(pdata->trim_info & TSENSOR_TRIM_TEMP_MASK) + 1 :
-+			     (pdata->trim_info & TSENSOR_TRIM_TEMP_MASK);
-+
-+	factor = param->B + div_s64(millicelsius, 100);
-+	factor = BIT(16) * factor;
-+	factor = div_s64(factor, param->A);
-+	factor = factor - uefuse;
-+
-+	uptat = param->n * factor;
-+	uptat = div_s64(uptat, BIT(16));
-+	uptat = param->m - uptat;
-+
-+	factor = factor * 100;
-+	if (!uptat)
-+		factor = TSENSOR_TEMP_MASK << 0x4;
-+	else
-+		factor = div_s64(factor, uptat);
-+
-+	temp_code = ((factor >> 0x4) & TSENSOR_TEMP_MASK) + TSENSOR_TEMP_CAL;
-+
-+	return temp_code;
-+}
-+
-+static void amlogic_tsensor_setup_hw_reset(struct amlogic_thermal *data)
-+{
-+	regmap_update_bits(data->regmap, TSENSOR_CFG_REG2, TSENSOR_CFG_REG2_REBOOT_CODE,
-+			   data->temp_code << 0x4);
-+	regmap_update_bits(data->regmap, TSENSOR_CFG_REG2,
-+			   TSENSOR_CFG_REG2_ENABLE, TSENSOR_CFG_REG2_ENABLE);
-+}
-+
- static int amlogic_thermal_enable(struct amlogic_thermal *data)
- {
- 	int ret;
-@@ -254,6 +313,13 @@ static const struct amlogic_thermal_soc_calib_data amlogic_thermal_g12a = {
- 	.n = 324,
- };
- 
-+static const struct amlogic_thermal_soc_calib_data amlogic_thermal_a9 = {
-+	.A = 9164,
-+	.B = 2747,
-+	.m = 370,
-+	.n = 270,
-+};
-+
- static const struct amlogic_thermal_data amlogic_thermal_g12a_cpu_param = {
- 	.u_efuse_off = 0x128,
- 	.calibration_parameters = &amlogic_thermal_g12a,
-@@ -272,6 +338,13 @@ static const struct amlogic_thermal_data amlogic_thermal_a1_cpu_param = {
- 	.regmap_config = &amlogic_thermal_regmap_config_g12a,
- };
- 
-+static const struct amlogic_thermal_data amlogic_thermal_a9_param = {
-+	.use_sm			= true,
-+	.has_sysclk		= true,
-+	.calibration_parameters	= &amlogic_thermal_a9,
-+	.regmap_config		= &amlogic_thermal_regmap_config_g12a,
-+};
-+
- static const struct amlogic_thermal_data amlogic_thermal_t7_param = {
- 	.use_sm			= true,
- 	.calibration_parameters	= &amlogic_thermal_g12a,
-@@ -291,6 +364,10 @@ static const struct of_device_id of_amlogic_thermal_match[] = {
- 		.compatible = "amlogic,a1-cpu-thermal",
- 		.data = &amlogic_thermal_a1_cpu_param,
- 	},
-+	{
-+		.compatible = "amlogic,a9-thermal",
-+		.data = &amlogic_thermal_a9_param,
-+	},
- 	{
- 		.compatible = "amlogic,t7-thermal",
- 		.data = &amlogic_thermal_t7_param,
-@@ -305,6 +382,7 @@ static int amlogic_thermal_probe(struct platform_device *pdev)
- 	struct device *dev = &pdev->dev;
- 	void __iomem *base;
- 	int ret;
-+	u32 reset_temp;
- 
- 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
- 	if (!pdata)
-@@ -323,9 +401,24 @@ static int amlogic_thermal_probe(struct platform_device *pdev)
- 	if (IS_ERR(pdata->regmap))
- 		return PTR_ERR(pdata->regmap);
- 
--	pdata->clk = devm_clk_get(dev, NULL);
--	if (IS_ERR(pdata->clk))
--		return dev_err_probe(dev, PTR_ERR(pdata->clk), "failed to get clock\n");
-+	if (pdata->data->has_sysclk) {
-+		pdata->clk = devm_clk_get(dev, "core");
-+		if (IS_ERR(pdata->clk))
-+			return dev_err_probe(dev, PTR_ERR(pdata->clk), "failed to get core clk\n");
-+		pdata->sysclk = devm_clk_get_enabled(dev, "pclk");
-+		if (IS_ERR(pdata->sysclk))
-+			return dev_err_probe(dev, PTR_ERR(pdata->sysclk), "failed to get pclk\n");
-+	} else {
-+		pdata->clk = devm_clk_get(dev, NULL);
-+		if (IS_ERR(pdata->clk))
-+			return dev_err_probe(dev, PTR_ERR(pdata->clk), "failed to get clock\n");
-+	}
-+
-+	if (of_property_read_u32(pdev->dev.of_node, "amlogic,hw-reset-temp", &reset_temp)) {
-+		dev_dbg(dev, "using default hardware reset temperature\n");
-+		reset_temp = TSENSOR_HW_RESET_DEFAULT_TEMP;
-+	}
-+
- 
- 	if (pdata->data->use_sm)
- 		ret = amlogic_thermal_probe_sm(pdev, pdata);
-@@ -346,6 +439,10 @@ static int amlogic_thermal_probe(struct platform_device *pdev)
- 
- 	devm_thermal_add_hwmon_sysfs(&pdev->dev, pdata->tzd);
- 
-+	pdata->temp_code = amlogic_thermal_millicelsius_to_code(pdata, reset_temp);
-+
-+	amlogic_tsensor_setup_hw_reset(pdata);
-+
- 	ret = amlogic_thermal_enable(pdata);
- 
- 	return ret;
-@@ -363,6 +460,8 @@ static int amlogic_thermal_suspend(struct device *dev)
- 	struct amlogic_thermal *data = dev_get_drvdata(dev);
- 
- 	amlogic_thermal_disable(data);
-+	if (data->data->has_sysclk)
-+		clk_disable_unprepare(data->sysclk);
- 
- 	return 0;
- }
-@@ -371,6 +470,9 @@ static int amlogic_thermal_resume(struct device *dev)
- {
- 	struct amlogic_thermal *data = dev_get_drvdata(dev);
- 
-+	if (data->data->has_sysclk)
-+		clk_prepare_enable(data->sysclk);
-+	amlogic_tsensor_setup_hw_reset(data);
- 	return amlogic_thermal_enable(data);
- }
- 
+Changes in v3:
+- Inline the lane count in the write instead of going through a
+  local variable (Sakari Ailus).
+- Link to v2: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v2-1-65205ae86feb@gmail.com
 
+Changes in v2:
+- Compute the register value from the lane count in the single
+  write instead of branching on it (Sakari Ailus), with the count
+  in a local variable to stay within 80 columns; the programmed
+  values are unchanged, 0x25 for one lane and 0x45 for two.
+- Request a normal stable backport rather than opting out of
+  AUTOSEL (Sakari Ailus).
+- Drop the quotes around the function name in the reference from
+  ov5640_set_power_mipi() (Sakari Ailus).
+- Link to v1: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v1-1-79699457ce13@gmail.com
+---
+ drivers/media/i2c/ov5640.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/media/i2c/ov5640.c b/drivers/media/i2c/ov5640.c
+index 8deb5f5501fa..a99e4edb6a75 100644
+--- a/drivers/media/i2c/ov5640.c
++++ b/drivers/media/i2c/ov5640.c
+@@ -1831,22 +1831,16 @@ static int ov5640_set_stream_mipi(struct ov5640_dev *sensor, bool on)
+ 	/*
+ 	 * Enable/disable the MIPI interface
+ 	 *
+-	 * 0x300e = on ? 0x45 : 0x40
+-	 *
+-	 * FIXME: the sensor manual (version 2.03) reports
+-	 * [7:5] = 000  : 1 data lane mode
+-	 * [7:5] = 001  : 2 data lanes mode
+-	 * But this settings do not work, while the following ones
+-	 * have been validated for 2 data lanes mode.
+-	 *
+-	 * [7:5] = 010	: 2 data lanes mode
++	 * [7:5]	: data lane count, 001 for one lane and 010 for two,
++	 *		  per version 2.33 of the sensor manual
+ 	 * [4] = 0	: Power up MIPI HS Tx
+ 	 * [3] = 0	: Power up MIPI LS Rx
+ 	 * [2] = 1/0	: MIPI interface enable/disable
+ 	 * [1:0] = 01/00: FIXME: 'debug'
+ 	 */
+ 	ret = ov5640_write_reg(sensor, OV5640_REG_IO_MIPI_CTRL00,
+-			       on ? 0x45 : 0x40);
++			       sensor->ep.bus.mipi_csi2.num_data_lanes << 5 |
++			       (on ? 0x05 : 0x0));
+ 	if (ret)
+ 		return ret;
+ 
+@@ -2535,8 +2529,8 @@ static int ov5640_set_power_mipi(struct ov5640_dev *sensor, bool on)
+ 	 * Power up MIPI HS Tx and LS Rx; 2 data lanes mode
+ 	 *
+ 	 * 0x300e = 0x40
+-	 * [7:5] = 010	: 2 data lanes mode (see FIXME note in
+-	 *		  "ov5640_set_stream_mipi()")
++	 * [7:5] = 010	: 2 data lanes mode (see the note in
++	 *		  ov5640_set_stream_mipi())
+ 	 * [4] = 0	: Power up MIPI HS Tx
+ 	 * [3] = 0	: Power up MIPI LS Rx
+ 	 * [2] = 1	: MIPI interface enabled
+
+---
+base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
+change-id: 20260811-ov5640-1lane-v1-b0fe37eab4d8
+
+Best regards,
 -- 
-2.52.0
+Jason Yang <jason98166@gmail.com>
 
