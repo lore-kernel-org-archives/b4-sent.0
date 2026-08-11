@@ -1,83 +1,110 @@
-From: Jason Yang <jason98166@gmail.com>
-Date: Tue, 11 Aug 2026 16:10:22 +0800
-Subject: [PATCH] phy: rockchip-samsung-dcphy: fix out-of-range max_register
+From: Changyu Li <ihaveihaveihavea@gmail.com>
+Date: Tue, 11 Aug 2026 04:12:20 -0400
+Subject: [PATCH] ipc: fix hung task in copy_ipcs()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-dcphy-maxreg-v1-v1-1-aa63f6a63a64@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAO3YemoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDC0ND3ZTkgoxK3dzEiqLUdN0yQ11zk0RLS0sTk+Q0UyMloK6CotS0zAq
- widGxtbUAuNUpvmEAAAA=
-To: Vinod Koul <vkoul@kernel.org>
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Heiko Stuebner <heiko@sntech.de>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- linux-phy@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Jason Yang <jason98166@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786435829; l=2208;
- i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
- bh=qv+04pxhwLXk8iXSSS/x/7Q7kow98bcT2dkV1hHRCgE=;
- b=qPMHHnolquLwGtQkH83g6tkOLMluIQXScxSMyabXwKUys0ySRfFH3x7IazxR8A1svJxuiZgRQ
- 8Yf65P8a2Y0B0W9UXGpqIzVRgnxJ04M/eQKnfOOB5KihTSXT4RDQNIp
-X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
- pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
-X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
+Message-Id: <20260811-work-v1-1-df28655110a0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGPZemoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0ND3fL8omxdU2MjC8tUC8OkFOM0JaDSgqLUtMwKsDHRsRB+cWlSVmp
+ yCUivUm0tANC+r1VoAAAA
+X-Change-ID: 20260811-work-53289e81bd3f
+To: linux-kernel@vger.kernel.org
+Cc: syzbot+97a62389c5611b0477f3@syzkaller.appspotmail.com, 
+ Changyu Li <ihaveihaveihavea@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2847;
+ i=ihaveihaveihavea@gmail.com; h=from:subject:message-id;
+ bh=mmV3V1+8ai5Y8M4gkr3IAIu4s2zOEMfEy4G4kkpygHI=;
+ b=owGbwMvMwCW2u2xN/2eLjV8ZT6slMWRV3Szrf1DxYO4cl5J23q3rpq1rm7w0Iev2oem3zor0H
+ ShwXRJe3lHCwiDGxSArpsiiZ80sta9xivPea9/2w8xhZQIZwsDFKQAT2dXP8L1iyrb1hy5v4ito
+ iPKzkn7SeCTao5L7s2H2QeG+XcJV6xn+hyXn7f+czxx3dO7bApPY54kJ97pfyYRX2kobsghzVex
+ gBAA=
+X-Developer-Key: i=ihaveihaveihavea@gmail.com; a=openpgp;
+ fpr=2E3B031ABE819443BDD6F6BFBB76AC8FF338B1F5
+X-Endpoint-Received: by B4 Relay for ihaveihaveihavea@gmail.com/default with auth_id=936
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PHY register block is 64KB, so with a register stride of 4 the
-last accessible register sits at offset 0xfffc. max_register names
-0x10000, one register past the end of the mapping: dumping the
-registers through the regmap debugfs interface reads beyond the
-ioremapped region and oopses on the unmapped page. The oops fires
-with the regmap lock held, so later PHY operations deadlock.
+When the user_ns's UCOUNT_IPC_NAMESPACES limit is reached,
+copy_ipcs eventually calls flush_work(&free_ipc_work) to wait for
+in-flight work to reduce the number of ipc_namespaces so it can proceed.
+Unfortunately flush_work() enters uninterruptible sleep and if there
+are enough pending items to be freed by free_ipc_work then this would
+trip hung task watchdog.
 
-Fixes: b2a1a2ae7818 ("phy: rockchip: Add Samsung MIPI D-/C-PHY driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jason Yang <jason98166@gmail.com>
-Assisted-by: Claude:claude-opus-5
+INFO: task blocked for more than 143 seconds.
+      Not tainted syzkaller #0
+task:syz-executor845 state:D stack:27496 pid:5856
+Call Trace:
+ <TASK>
+ __flush_work+0x9c2/0xd70 kernel/workqueue.c:4431
+ create_ipc_ns ipc/namespace.c:55 [inline]
+ copy_ipcs+0x19b/0x6c0 ipc/namespace.c:116
+ create_new_namespaces+0x210/0x6b0 kernel/nsproxy.c:112
+ unshare_nsproxy_namespaces+0x149/0x190 kernel/nsproxy.c:234
+ ksys_unshare+0x5a7/0x950 kernel/fork.c:3291
+ </TASK>
+
+Replace the uninterruptible flush_work() with a polling loop that
+checks if there's an in-flight free_ipc_work. If there is then wait
+interruptibly a short interval for forward progress in free_ipc_work
+and retry.
+
+If free_ipc_work is not in-flight nothing will free up quota so bail
+with -ENOSPC as before. Otherwise wait interruptibly to not trip hung
+task watchdog.
+
+Reported-by: syzbot+97a62389c5611b0477f3@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=97a62389c5611b0477f3
+Signed-off-by: Changyu Li <ihaveihaveihavea@gmail.com>
 ---
-Observed on an RK3588 board (v7.2-rc4): reading the debugfs
-registers file for this PHY faults deterministically at offset
-0x10000 (translation fault in regmap_mmio_read32le), and every
-later PHY operation then blocks on the leaked lock. With
-max_register corrected the dump walks 0x0000-0xfffc and completes,
-and the PHY keeps working afterwards.
+ ipc/namespace.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
-Growing the mapping is not an option: the TRM address map lists
-each MIPI CD PHY as a 64KB block and the second PHY starts at the
-next 64KB boundary, so offset 0x10000 of one PHY is register zero
-of the other.
-
-The same mistake was fixed the same way in c7d436a6c1a2
-("dmaengine: xilinx: xdma: Fix regmap max_register").
-
-This is independent of the D-PHY receiver series for the same
-driver and applies in either order.
----
- drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
-index cbd780556da8..18f5f582d1d7 100644
---- a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
-+++ b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
-@@ -1526,7 +1526,7 @@ static const struct regmap_config samsung_mipi_dcphy_regmap_config = {
- 	.reg_bits = 32,
- 	.val_bits = 32,
- 	.reg_stride = 4,
--	.max_register = 0x10000,
-+	.max_register = 0xfffc,
- };
+diff --git a/ipc/namespace.c b/ipc/namespace.c
+index 1e71353bdb..e8ea422d79 100644
+--- a/ipc/namespace.c
++++ b/ipc/namespace.c
+@@ -26,6 +26,8 @@
+ static void free_ipc(struct work_struct *unused);
+ static DECLARE_WORK(free_ipc_work, free_ipc);
  
- static struct phy *samsung_mipi_dcphy_xlate(struct device *dev,
++#define FREE_IPC_WAIT_JIFFIES 5
++
+ static struct ucounts *inc_ipc_namespaces(struct user_namespace *ns)
+ {
+ 	return inc_ucount(ns, current_euid(), UCOUNT_IPC_NAMESPACES);
+@@ -49,12 +51,19 @@ static struct ipc_namespace *create_ipc_ns(struct user_namespace *user_ns,
+ 	if (!ucounts) {
+ 		/*
+ 		 * IPC namespaces are freed asynchronously, by free_ipc_work.
+-		 * If frees were pending, flush_work will wait, and
+-		 * return true. Fail the allocation if no frees are pending.
++		 * If there is in flight free_ipc_work, we'll wait for it to
++		 * make progress otherwise fail immediately.
+ 		 */
+-		if (flush_work(&free_ipc_work))
+-			goto again;
+-		goto fail;
++		if (!work_busy(&free_ipc_work))
++			goto fail;
++
++		schedule_timeout_interruptible(FREE_IPC_WAIT_JIFFIES);
++		if (signal_pending(current)) {
++			err = -ERESTARTSYS;
++			goto fail;
++		}
++
++		goto again;
+ 	}
+ 
+ 	err = -ENOMEM;
 
 ---
-base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
-change-id: 20260811-dcphy-maxreg-v1-74a99944cf52
+base-commit: 3d08ff75a47a3e7e2ab45a3bcab6723b4d906422
+change-id: 20260811-work-53289e81bd3f
 
 Best regards,
--- 
-Jason Yang <jason98166@gmail.com>
+--  
+Changyu Li <ihaveihaveihavea@gmail.com>
 
