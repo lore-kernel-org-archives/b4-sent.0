@@ -1,133 +1,121 @@
-From: Jason Yang <jason98166@gmail.com>
-Date: Tue, 11 Aug 2026 17:17:13 +0800
-Subject: [PATCH v4] media: ov5640: select the MIPI lane mode from the
- endpoint lane count
+From: Kairui Song <kasong@tencent.com>
+Date: Tue, 11 Aug 2026 17:40:59 +0800
+Subject: [PATCH] mm/mglru: fix and remove redundant unevictable folio
+ handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-ov5640-1lane-v1-v4-1-c4a05d4c1b32@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJjoemoC/4XNTQqDMBAF4KtI1k3Jf7Sr3qN0EeNEA2pKUkKLe
- PdGV6VQhNm8B9+bBSWIHhK6VAuKkH3yYS5BnCpkBzP3gH1XMmKEKVJTikOWShBMRzMDzhS3xAH
- XYFrR1aioRwTnX/vi7V7y4NMzxPf+INOt/b9VjmLdqKYRUlug/NpPxo9nGya0bWV24FnxSjIiD
- dTKQfvr+YHnxRsQWoFxkjDx7dd1/QCz0QtHLgEAAA==
-To: Steve Longerbeam <slongerbeam@gmail.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: Hans Verkuil <hverkuil@kernel.org>, 
- Jacopo Mondi <jacopo.mondi@ideasonboard.com>, 
- Kieran Bingham <kieran.bingham@ideasonboard.com>, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Jason Yang <jason98166@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786439833; l=4169;
- i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
- bh=PfLhiPr2yUVO8SISKIeOPSSSLsQZ2XmMhRZ2vtARP8M=;
- b=EblIwyv8nL4KOhfFsYbHzg/6PSpCqoDi2yJ2ZuJsKCDSXmCcpuzLKOwuNW3JrWaleLzU12cF0
- T4+xnHGgwPLC+8U2cO+ZSshx+0PmBNxL+qNksLw+ceRUF0R9E/nWS0c
-X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
- pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
-X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
+Message-Id: <20260811-mglru-mlock-fix-v1-1-8b2321d0e1d3@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWZukbYTGq4gF7WDc0yIS8e6K5
+ XeS81/gyTF5yKMLHB3seZkDZByB6aq5JWQbDEqoVGgpcWpHt+M0LmbAhk9UwupG20QnWQXhtTo
+ K81csyt9+r3sy25uB+34AG5uiK3MAAAA=
+X-Change-ID: 20260811-mglru-mlock-fix-20d8f8d4847a
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Johannes Weiner <hannes@cmpxchg.org>, David Hildenbrand <david@kernel.org>, 
+ Michal Hocko <mhocko@kernel.org>, Qi Zheng <qi.zheng@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
+ Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
+ Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
+ Oleksandr Natalenko <oleksandr@natalenko.name>, 
+ Suleiman Souhlal <suleiman@google.com>, 
+ "Jan Alexander Steffens (heftig)" <heftig@archlinux.org>, 
+ Yu Zhao <yuzhao@google.com>, Steven Barrett <steven@liquorix.net>, 
+ Brian Geffon <bgeffon@google.com>, Kairui Song <ryncsn@gmail.com>, 
+ linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786441264; l=3658;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=aS+xGS5ivQ4MJAkh8ZjAYFluAUdKiZoNB6Hp2uOPFCA=;
+ b=QzDpMiOdqiQmyPPYubWEQCxOqQVgNxoWgUQfC69RFxUpR41Fgir6Rm9fCjFwnrwJG6Xy3ZmuS
+ jd7TJKAvYZWAmDOYhA08FgQYA3LEd5Bkud5u8gVcVBeRXKmO1bJ+qH4
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ov5640_set_stream_mipi() always programs IO_MIPI_CTRL00 with 0x45,
-which selects the two data lane mode: the number of data lanes
-described in the devicetree endpoint only feeds the sensor's clock
-tree computations, so a module wired with one data lane starts
-streaming in two lane mode and the receiver never assembles a
-frame.
+sort_folio() has a shortcut for moving folios that are no longer
+evictable but are still sitting on a generation list.  However, this
+shortcut is buggy.  It does not follow the PG_lru usage convention,
+and it has a more serious issue.
 
-Take the lane mode from the endpoint instead. The field encodes
-the lane count directly - 001 for one lane, 010 for two - per the
-current sensor manual (version 2.33). The 2.03 manual documented
-000/001 for one/two lanes; OmniVision corrected the table in
-version 2.1, which is why the long-standing comment here found 001
-unusable for two lanes and validated 010 instead.
+Unevictable folios are not threaded on lists[LRU_UNEVICTABLE], so that
+folio->lru can be reused to hold folio->mlock_count (see the comment in
+lruvec_init()).  Hence lruvec_add_folio() skips the list_add() for them,
+and every other place that turns a folio unevictable initialises
+mlock_count explicitly: lru_add() sets it to 0, __mlock_folio() and
+__mlock_new_folio() set it to !!folio_test_mlocked(folio).
+sort_folio() sets nothing, and the lru_gen_del_folio() right above it
+may have already poisoned folio->lru via list_del(), so mlock_count
+ends up aliasing LIST_POISON2, which reads as 0x122, i.e. 290.  The
+result is user visible.  On munlock, __munlock_folio() decrements that
+bogus count, finds it still non-zero and bails out before clearing
+PG_mlocked, so the folio remains unevictable and the Mlocked
+accounting stays inflated until the folio is freed.
 
-The power-up path also programs a two data lane mode, but that
-value is overwritten when streaming starts, so it is left alone.
+The shortcut also touches the LRU flags in the wrong order.  It calls
+lru_gen_del_folio() while PG_lru is still set, so a concurrent
+folio_test_clear_lru() (e.g. compaction, folio_isolate_lru()) can succeed
+on a folio that has already been taken off the generation list, may
+lead to unexpected behavior.  The generic path gets this right:
+isolate_folio() clears PG_lru first, so a racing isolator loses the
+atomic and bails.
 
-Tested with a single data lane module on an i.MX8MP board
-(imx-mipi-csis receiver), where the unpatched value produces no
-frames at all, and on an RK3588 board.
+And the shortcut is redundant.  A folio left on the generation list is
+picked up by isolate_folio(), shrink_folio_list() sends it to
+activate_locked on the !folio_evictable() check, and evict_folios()
+then hands it to folio_putback_lru(), which sets PG_unevictable and
+counts UNEVICTABLE_PGCULLED from lru_add(), with mlock_count
+initialised properly.
 
-Fixes: 19a81c1426c1 ("[media] add Omnivision OV5640 sensor driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jason Yang <jason98166@gmail.com>
-Assisted-by: Claude:claude-opus-5
+There is no performance concern either: such a folio goes through this
+once, and then it is off the generation lists for good, since
+lru_gen_add_folio() refuses unevictable folios.
+
+So just remove the shortcut.  This consolidates unevictable handling in
+the generic path, and makes maintenance easier.
+
+Fixes: ac35a4902374 ("mm: multi-gen LRU: minimal implementation")
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Changes in v4:
-- Keep the lane count programmed also while the interface is
-  disabled, toggling only the enable bits (Hans Verkuil); with one
-  data lane the disable value becomes 0x20 instead of 0x40.
-- Link to v3: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v3-1-ae476eaf5024@gmail.com
+ mm/vmscan.c | 11 -----------
+ 1 file changed, 11 deletions(-)
 
-Changes in v3:
-- Inline the lane count in the write instead of going through a
-  local variable (Sakari Ailus).
-- Link to v2: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v2-1-65205ae86feb@gmail.com
-
-Changes in v2:
-- Compute the register value from the lane count in the single
-  write instead of branching on it (Sakari Ailus), with the count
-  in a local variable to stay within 80 columns; the programmed
-  values are unchanged, 0x25 for one lane and 0x45 for two.
-- Request a normal stable backport rather than opting out of
-  AUTOSEL (Sakari Ailus).
-- Drop the quotes around the function name in the reference from
-  ov5640_set_power_mipi() (Sakari Ailus).
-- Link to v1: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v1-1-79699457ce13@gmail.com
----
- drivers/media/i2c/ov5640.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
-
-diff --git a/drivers/media/i2c/ov5640.c b/drivers/media/i2c/ov5640.c
-index 8deb5f5501fa..a99e4edb6a75 100644
---- a/drivers/media/i2c/ov5640.c
-+++ b/drivers/media/i2c/ov5640.c
-@@ -1831,22 +1831,16 @@ static int ov5640_set_stream_mipi(struct ov5640_dev *sensor, bool on)
- 	/*
- 	 * Enable/disable the MIPI interface
- 	 *
--	 * 0x300e = on ? 0x45 : 0x40
--	 *
--	 * FIXME: the sensor manual (version 2.03) reports
--	 * [7:5] = 000  : 1 data lane mode
--	 * [7:5] = 001  : 2 data lanes mode
--	 * But this settings do not work, while the following ones
--	 * have been validated for 2 data lanes mode.
--	 *
--	 * [7:5] = 010	: 2 data lanes mode
-+	 * [7:5]	: data lane count, 001 for one lane and 010 for two,
-+	 *		  per version 2.33 of the sensor manual
- 	 * [4] = 0	: Power up MIPI HS Tx
- 	 * [3] = 0	: Power up MIPI LS Rx
- 	 * [2] = 1/0	: MIPI interface enable/disable
- 	 * [1:0] = 01/00: FIXME: 'debug'
- 	 */
- 	ret = ov5640_write_reg(sensor, OV5640_REG_IO_MIPI_CTRL00,
--			       on ? 0x45 : 0x40);
-+			       sensor->ep.bus.mipi_csi2.num_data_lanes << 5 |
-+			       (on ? 0x05 : 0x0));
- 	if (ret)
- 		return ret;
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 3194da7dcc79..eca5ff64238d 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -4648,7 +4648,6 @@ void lru_gen_reparent_memcg(struct mem_cgroup *memcg, struct mem_cgroup *parent,
+ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_control *sc,
+ 		       int tier_idx)
+ {
+-	bool success;
+ 	int gen = folio_lru_gen(folio);
+ 	int type = folio_is_file_lru(folio);
+ 	int zone = folio_zonenum(folio);
+@@ -4660,16 +4659,6 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
  
-@@ -2535,8 +2529,8 @@ static int ov5640_set_power_mipi(struct ov5640_dev *sensor, bool on)
- 	 * Power up MIPI HS Tx and LS Rx; 2 data lanes mode
- 	 *
- 	 * 0x300e = 0x40
--	 * [7:5] = 010	: 2 data lanes mode (see FIXME note in
--	 *		  "ov5640_set_stream_mipi()")
-+	 * [7:5] = 010	: 2 data lanes mode (see the note in
-+	 *		  ov5640_set_stream_mipi())
- 	 * [4] = 0	: Power up MIPI HS Tx
- 	 * [3] = 0	: Power up MIPI LS Rx
- 	 * [2] = 1	: MIPI interface enabled
+ 	VM_WARN_ON_ONCE_FOLIO(gen >= MAX_NR_GENS, folio);
+ 
+-	/* unevictable */
+-	if (!folio_evictable(folio)) {
+-		success = lru_gen_del_folio(lruvec, folio, true);
+-		VM_WARN_ON_ONCE_FOLIO(!success, folio);
+-		folio_set_unevictable(folio);
+-		lruvec_add_folio(lruvec, folio);
+-		__count_vm_events(UNEVICTABLE_PGCULLED, delta);
+-		return true;
+-	}
+-
+ 	/* promoted */
+ 	if (gen != lru_gen_from_seq(lrugen->min_seq[type])) {
+ 		list_move(&folio->lru, &lrugen->folios[gen][type][zone]);
 
 ---
-base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
-change-id: 20260811-ov5640-1lane-v1-b0fe37eab4d8
+base-commit: 1029098ee3275ea5b78e329ce132262affa2f8cc
+change-id: 20260811-mglru-mlock-fix-20d8f8d4847a
 
 Best regards,
--- 
-Jason Yang <jason98166@gmail.com>
+--  
+Kairui Song <kasong@tencent.com>
 
