@@ -1,14 +1,15 @@
 From: Jason Yang <jason98166@gmail.com>
-Date: Tue, 11 Aug 2026 15:18:12 +0800
-Subject: [PATCH v2] media: ov5640: select the MIPI lane mode from the
+Date: Tue, 11 Aug 2026 15:30:47 +0800
+Subject: [PATCH v3] media: ov5640: select the MIPI lane mode from the
  endpoint lane count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-ov5640-1lane-v1-v2-1-65205ae86feb@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALPMemoC/3WNzQqDMBCEX0X23JSsP4npqe9RPERddUGTkpTQI
- r57U++FuXwD880OkQJThFuxQ6DEkb3LUF4KGBbrZhI8ZoZSlkq2iMKnRtVS4GodiYSilxNVmmx
- fjy3k1TPQxO/T+OgyLxxfPnzOg4S/9r8rB4U2ypi60QNhdZ83y+t18Bt0x3F8AWjCDCOuAAAA
+Message-Id: <20260811-ov5640-1lane-v1-v3-1-ae476eaf5024@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKbPemoC/4WNQQqDMBBFryKzbkommqhd9R6li6ijDqgpSQkt4
+ t0bXXVTCrN5H96bFQJ5pgCXbAVPkQO7JUF+yqAd7TKQ4C4xKKmMrBCFi9oUUuBkFxIRRSN7yku
+ yTdFVkKyHp55fR/F2TzxyeDr/Ph5E3NffrXQoytrUdaHLljC/DrPl6dy6GfZWVH98lXyjldSWK
+ tNT8+1v2/YBCFWAou4AAAA=
 To: Steve Longerbeam <slongerbeam@gmail.com>, 
  Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>
@@ -18,11 +19,11 @@ Cc: Hans Verkuil <hverkuil@kernel.org>,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Jason Yang <jason98166@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786432691; l=3765;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786433447; l=3864;
  i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
- bh=pSPMWEyRSJt0POuL6M01PgsQ18cplbbeS6z+IFWiviA=;
- b=XqSudxIf42JvhucWbRVvcpjfnBOHaGx+EKPPtp2skWVGq5T1P8j7mmG4k2YEtBnYSRtOidM6L
- RJBzBm+MFs0CyFWIE0C1bNokzYxGzQPHdaETTdQ+octeB7qForU7vC5
+ bh=0SA/AIlg/Z0lKWih8DrLRCwQ6Z4t+cGPFTNQJ7jEZVU=;
+ b=/fb6ShcyPccXfubnLXWYPth+Dnj+jIVTkja3O3UThssTjN0qnD4niIKZksM9POWYQ1LmQ00zv
+ MSfJLL4CDwYBjOLssoV8xErfJOcBBJaPSuWZ+ClTcMb++dSFmqUHGtv
 X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
  pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
 X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
@@ -54,6 +55,11 @@ Cc: stable@vger.kernel.org
 Signed-off-by: Jason Yang <jason98166@gmail.com>
 Assisted-by: Claude:claude-opus-5
 ---
+Changes in v3:
+- Inline the lane count in the write instead of going through a
+  local variable (Sakari Ailus).
+- Link to v2: https://lore.kernel.org/r/20260811-ov5640-1lane-v1-v2-1-65205ae86feb@gmail.com
+
 Changes in v2:
 - Compute the register value from the lane count in the single
   write instead of branching on it (Sakari Ailus), with the count
@@ -69,16 +75,10 @@ Changes in v2:
  1 file changed, 6 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/media/i2c/ov5640.c b/drivers/media/i2c/ov5640.c
-index 8deb5f5501fa..e261461cc2f2 100644
+index 8deb5f5501fa..18c3bb5498f8 100644
 --- a/drivers/media/i2c/ov5640.c
 +++ b/drivers/media/i2c/ov5640.c
-@@ -1826,27 +1826,21 @@ static int ov5640_set_stream_dvp(struct ov5640_dev *sensor, bool on)
- 
- static int ov5640_set_stream_mipi(struct ov5640_dev *sensor, bool on)
- {
-+	u32 num_lanes = sensor->ep.bus.mipi_csi2.num_data_lanes;
- 	int ret;
- 
+@@ -1831,22 +1831,16 @@ static int ov5640_set_stream_mipi(struct ov5640_dev *sensor, bool on)
  	/*
  	 * Enable/disable the MIPI interface
  	 *
@@ -100,7 +100,8 @@ index 8deb5f5501fa..e261461cc2f2 100644
  	 */
  	ret = ov5640_write_reg(sensor, OV5640_REG_IO_MIPI_CTRL00,
 -			       on ? 0x45 : 0x40);
-+			       on ? 0x05 | num_lanes << 5 : 0x40);
++			       on ? 0x5 | sensor->ep.bus.mipi_csi2.num_data_lanes << 5 :
++			       0x40);
  	if (ret)
  		return ret;
  
