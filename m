@@ -1,70 +1,88 @@
 From: Robin Snyders <robin@snyders.xyz>
-Date: Tue, 11 Aug 2026 22:35:06 +0200
-Subject: [PATCH 3/3] power: supply: qcom_smbx: program AICL rerun time
+Date: Tue, 11 Aug 2026 23:39:12 +0200
+Subject: [PATCH v2] arm64: dts: qcom: sm8150: describe download mode
+ register
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-submit-qcom-smbx-send-v1-v1-3-feec6cfa123a@snyders.xyz>
-References: <20260811-submit-qcom-smbx-send-v1-v1-0-feec6cfa123a@snyders.xyz>
-In-Reply-To: <20260811-submit-qcom-smbx-send-v1-v1-0-feec6cfa123a@snyders.xyz>
-To: Casey Connolly <casey.connolly@linaro.org>, 
- Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20260811-submit-sm8150-dload-v2-1-fb688ac4896b@snyders.xyz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQ6CMBCFr0JmbU1bIy2uvIdhUdpBJpGfdLABC
+ Xe3cgDzVt9L3vc2YIyEDLdig4iJmMYhgz4V4Ds3PFFQyAxa6lJapQS/m55mwb1VVynCa3RBXKy
+ VukE0xleQl1PElpbD+qgzd8TzGNfjJKlf+9+XlMhx1iC2WHpb3XlYA0Y+L+sH6n3fv+Ah53O4A
+ AAA
+X-Change-ID: 20260811-submit-sm8150-dload-38802bee77c9
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Robin Snyders <robin@snyders.xyz>
+Cc: Robin Snyders <robin@snyders.xyz>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786480511; l=1368;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786484351; l=2109;
  i=robin@snyders.xyz; s=default; h=from:subject:message-id;
- bh=KqL6fkAKus1VfXlFaQFE4bSn/EnAURWbYSu61RmyM78=;
- b=O/bMHtYUWLUrjPRkO7HCQ0p5EH47F5WETJrS8QTvN+SIi3L34vlRH8pxEuNWoTDO+iNNtikJH
- GLuD8HZHzDOAo/OQ6e7nNYpywWBvPpvkeoVoFDmSIBNCIz7rJO3pVt5
+ bh=/TfmrFMiLTSWdo6283UVZZe99/UGMS7loU8I4UkGqso=;
+ b=yOAgwKjWGsx0P0mkCM/aVbZ0qXSxT3LiiIjPwvZ21GGq5Il7ygFlqyNicqKJf3Sf6NuwXzUEQ
+ p+hZWAwgc6SDTYDDBglLvfTJBVpq3c8eLcEPrA4NISVHXdAVWlmunNd
 X-Developer-Key: i=robin@snyders.xyz; a=ed25519;
  pk=Mdk5dNn+Tkcy7BWexDxBLR/s1BNz8WdqDPnr3qtYBIU=
 X-Endpoint-Received: by B4 Relay for robin@snyders.xyz/default with auth_id=938
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Casey Connolly <casey.connolly@linaro.org>
+The SM8150 SCM node does not describe the TCSR download-mode register.
+Without it, the SCM driver falls back to a firmware call and the
+mode cookie may remain set across a warm reset, causing the next boot to
+enter the Qualcomm crashdump transport.
 
-The bootloader-provided automatic input current limit rerun interval is
-not a stable software interface. Program a consistent three-second
-interval during probe. This is required at least on SMB5 hardware.
+Describe the TCSR window and point qcom,dload-mode at offset 0x13000,
+matching the layout used by SM8250 and other related Qualcomm platforms.
 
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+On a OnePlus 7T Pro this changes software reboot from a reproducible
+05c6:900e transition to six consecutive successful boots.
+
 Signed-off-by: Robin Snyders <robin@snyders.xyz>
 ---
- drivers/power/supply/qcom_smbx.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Describe the SM8150 TCSR download-mode register so warm reboot clears the
+download cookie through the SCM driver's MMIO path instead of falling back to
+firmware. This was validated on a OnePlus 7T Pro with six consecutive software
+reboots that returned to Linux rather than Qualcomm crashdump mode.
+---
+Changes in v2:
+- Place the TCSR syscon node in unit-address order.
+- Link to v1: https://lore.kernel.org/r/20260811-submit-sm8150-dload-v1-1-1a87eefe6c89@snyders.xyz
+---
+ arch/arm64/boot/dts/qcom/sm8150.dtsi | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/power/supply/qcom_smbx.c b/drivers/power/supply/qcom_smbx.c
-index 09d9e0f95cb5..9e3e240b6813 100644
---- a/drivers/power/supply/qcom_smbx.c
-+++ b/drivers/power/supply/qcom_smbx.c
-@@ -374,6 +374,7 @@ enum smb_generation {
+diff --git a/arch/arm64/boot/dts/qcom/sm8150.dtsi b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+index 94a3b02cb289..46183687a5e3 100644
+--- a/arch/arm64/boot/dts/qcom/sm8150.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8150.dtsi
+@@ -610,6 +610,7 @@ cpu7_opp20: opp-2841600000 {
+ 	firmware {
+ 		scm: scm {
+ 			compatible = "qcom,scm-sm8150", "qcom,scm";
++			qcom,dload-mode = <&tcsr 0x13000>;
+ 			#reset-cells = <1>;
+ 		};
+ 	};
+@@ -2181,6 +2182,11 @@ tcsr_regs_1: syscon@1f60000 {
+ 			reg = <0x0 0x01f60000 0x0 0x20000>;
+ 		};
  
- #define AICL_RERUN_TIME_CFG				0x661
- #define AICL_RERUN_TIME_MASK				GENMASK(1, 0)
-+#define AICL_RERUN_TIME_3_SECS				0
- 
- #define STAT_CFG					0x690
- #define STAT_SW_OVERRIDE_VALUE_BIT			BIT(7)
-@@ -1384,6 +1385,14 @@ static int smb_probe(struct platform_device *pdev)
- 
- 	platform_set_drvdata(pdev, chip);
- 
-+	rc = regmap_write_bits(chip->regmap,
-+			       chip->base + AICL_RERUN_TIME_CFG,
-+			       AICL_RERUN_TIME_MASK,
-+			       AICL_RERUN_TIME_3_SECS);
-+	if (rc < 0)
-+		return dev_err_probe(chip->dev, rc,
-+				     "could not set AICL rerun time\n");
++		tcsr: syscon@1fc0000 {
++			compatible = "qcom,sm8150-tcsr", "syscon";
++			reg = <0x0 0x01fc0000 0x0 0x30000>;
++		};
 +
- 	if (chip->gen == SMB5) {
- 		rc = regmap_update_bits(chip->regmap,
- 					chip->base + CHARGING_ENABLE_CMD,
+ 		remoteproc_slpi: remoteproc@2400000 {
+ 			compatible = "qcom,sm8150-slpi-pas";
+ 			reg = <0x0 0x02400000 0x0 0x4040>;
 
+---
+base-commit: 3d08ff75a47a3e7e2ab45a3bcab6723b4d906422
+change-id: 20260811-submit-sm8150-dload-38802bee77c9
+
+Best regards,
 -- 
-2.54.0
+Robin Snyders <robin@snyders.xyz>
 
