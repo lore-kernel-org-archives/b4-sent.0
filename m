@@ -1,63 +1,83 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 11 Aug 2026 16:07:32 +0800
-Subject: [PATCH RFC v9 8/8] mfd: ls2kbmc: Able to be compiled as a module
+From: Jason Yang <jason98166@gmail.com>
+Date: Tue, 11 Aug 2026 16:10:22 +0800
+Subject: [PATCH] phy: rockchip-samsung-dcphy: fix out-of-range max_register
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-ls2kbmc-mod-v9-8-4fa9a5584406@gmail.com>
-References: <20260811-ls2kbmc-mod-v9-0-4fa9a5584406@gmail.com>
-In-Reply-To: <20260811-ls2kbmc-mod-v9-0-4fa9a5584406@gmail.com>
-To: Binbin Zhou <zhoubinbin@loongson.cn>, 
- Chong Qiao <qiaochong@loongson.cn>, Lee Jones <lee@kernel.org>, 
- Huacai Chen <chenhuacai@kernel.org>, Corey Minyard <corey@minyard.net>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>, 
- Yinbo Zhu <zhuyinbo@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
- mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=727;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=UkpVPtBCUcqPjbP+E9BhIFiau/5G+QeU7wsp0vFpbTU=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqethMWV2qXS58xFfnyVtc9+wioVm8Kh4sBoBiV
- pryLDceLX6JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCanrYTAAKCRCwMePKe/7Z
- bueaEACGsvnW1rziCnhuVXB+rj60QbepcXFUhcfymHjD9/vP/7IOUOjdxdre9+WYkp243W9fho/
- e5O7tR5FA/4IV087cymr7XZ9CJMUtPE26EmX0eE2qIxWTG4pNkv469yCe2UqEuErPTwHNrZQOoU
- 7pVc2h+HKdgFXDoimOciguf8yC//dqYeEv8optTX8Ky2LR7AzQ+X9jI0hdXiDFHEpKA96Xj0673
- Pc2JCdxIEEzoqeyQSlePezWuqIvtO8IpIiw72iR69fg0zjejqhGjXjbaZcM7j9Juo9GGdqNFfA/
- 08CoKL5wgejhkOafxdXjHxLBtBvT+iCgJk8BfQp5snip0gj/nK0kWjmelr+OAEhde3UgOOt4gft
- YlsIAW9LdX+Yo5IdvnzbSD791Lfh5etds1b+crw2ewCUGDB4B3W49xDxiMVVZpaGsg9SJQ8ZZJY
- PQJX/+Z72kOONVaId18oLbo16RmJDRO2A1KXFzoF+FAcBdJI+gvY4afZrAklmcMdh6A+zsnh/Wc
- DwxijvrggBDD9nOhGKcuayEOBl3gJTH75NVuKjahk3TO5baUw0/uAR97Ztuj8nDTJpdMOgNRRd4
- CuHewcm7WS6ozePJqCvFvb7TjQYvhKRoUd0z7esjK+ffp4PqUyrWcelPGOY3sG1fm4SVmZ5i3Vf
- uEFiKeESkHFNKOQ==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+Message-Id: <20260811-dcphy-maxreg-v1-v1-1-aa63f6a63a64@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAO3YemoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0ND3ZTkgoxK3dzEiqLUdN0yQ11zk0RLS0sTk+Q0UyMloK6CotS0zAq
+ widGxtbUAuNUpvmEAAAA=
+To: Vinod Koul <vkoul@kernel.org>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ linux-phy@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Jason Yang <jason98166@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786435829; l=2208;
+ i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
+ bh=qv+04pxhwLXk8iXSSS/x/7Q7kow98bcT2dkV1hHRCgE=;
+ b=qPMHHnolquLwGtQkH83g6tkOLMluIQXScxSMyabXwKUys0ySRfFH3x7IazxR8A1svJxuiZgRQ
+ 8Yf65P8a2Y0B0W9UXGpqIzVRgnxJ04M/eQKnfOOB5KihTSXT4RDQNIp
+X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
+ pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
+X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make ls2kbmc able to be compiled as a module
+The PHY register block is 64KB, so with a register stride of 4 the
+last accessible register sits at offset 0xfffc. max_register names
+0x10000, one register past the end of the mapping: dumping the
+registers through the regmap debugfs interface reads beyond the
+ioremapped region and oopses on the unmapped page. The oops fires
+with the regmap lock held, so later PHY operations deadlock.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Fixes: b2a1a2ae7818 ("phy: rockchip: Add Samsung MIPI D-/C-PHY driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jason Yang <jason98166@gmail.com>
+Assisted-by: Claude:claude-opus-5
 ---
- drivers/mfd/Kconfig | 2 +-
+Observed on an RK3588 board (v7.2-rc4): reading the debugfs
+registers file for this PHY faults deterministically at offset
+0x10000 (translation fault in regmap_mmio_read32le), and every
+later PHY operation then blocks on the leaked lock. With
+max_register corrected the dump walks 0x0000-0xfffc and completes,
+and the PHY keeps working afterwards.
+
+Growing the mapping is not an option: the TRM address map lists
+each MIPI CD PHY as a 64KB block and the second PHY starts at the
+next 64KB boundary, so offset 0x10000 of one PHY is register zero
+of the other.
+
+The same mistake was fixed the same way in c7d436a6c1a2
+("dmaengine: xilinx: xdma: Fix regmap max_register").
+
+This is independent of the D-PHY receiver series for the same
+driver and applies in either order.
+---
+ drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
-index 763ce6a34782bdd5d2b1a4d840c75b040092d83e..a7a9f97af248c88489dc1203a1ba05f2ce4827df 100644
---- a/drivers/mfd/Kconfig
-+++ b/drivers/mfd/Kconfig
-@@ -2494,7 +2494,7 @@ config MFD_LOONGSON_SE
- 	  which will forward them to the corresponding engine.
+diff --git a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
+index cbd780556da8..18f5f582d1d7 100644
+--- a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
+@@ -1526,7 +1526,7 @@ static const struct regmap_config samsung_mipi_dcphy_regmap_config = {
+ 	.reg_bits = 32,
+ 	.val_bits = 32,
+ 	.reg_stride = 4,
+-	.max_register = 0x10000,
++	.max_register = 0xfffc,
+ };
  
- config MFD_LS2K_BMC_CORE
--	bool "Loongson-2K Board Management Controller Support"
-+	tristate "Loongson-2K Board Management Controller Support"
- 	depends on PCI && ACPI_GENERIC_GSI
- 	select MFD_CORE
- 	help
+ static struct phy *samsung_mipi_dcphy_xlate(struct device *dev,
 
+---
+base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
+change-id: 20260811-dcphy-maxreg-v1-74a99944cf52
+
+Best regards,
 -- 
-2.49.0
+Jason Yang <jason98166@gmail.com>
 
