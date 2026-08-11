@@ -1,16 +1,13 @@
 From: Ben Zong-You Xie <ben717@andestech.com>
-Subject: [PATCH v5 0/4] i2c: add support for Andes platform
-Date: Tue, 11 Aug 2026 14:29:47 +0800
-Message-Id: <20260811-atciic100-v5-0-1d306c21dba3@andestech.com>
+Date: Tue, 11 Aug 2026 14:29:48 +0800
+Subject: [PATCH v5 1/4] dt-bindings: i2c: add support for AE350 I2C
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFvBemoC/22Q3UrEMBBGX2XJtVkmM2nTeuV7iBftZGIj2C5ND
- crSdzdZEYvs5QffOfNzVUnWKEk9nq5qlRxTXOYSmoeT4mmYX0VHX7JCwBYMgh42jpENgPYDCbd
- dcONoVelfVgnx8+Z6fvnJ6WN8E96qoDammLZl/boNy6b2qrcBBAdoeqQz9gbJkTZ6lNkZ9zTMX
- tImPJ15eVdVm/EXrAvhYaGMGrRrmt5Q68FxuEfTke6ONBW6YwAMzFhuukfbP5ro+IxsC+0tdIi
- hJbHyn973/RuQfjhnbQEAAA==
-X-Change-ID: 20260120-atciic100-da3ec68f7bb4
+Message-Id: <20260811-atciic100-v5-1-1d306c21dba3@andestech.com>
+References: <20260811-atciic100-v5-0-1d306c21dba3@andestech.com>
+In-Reply-To: <20260811-atciic100-v5-0-1d306c21dba3@andestech.com>
 To: Andi Shyti <andi.shyti@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
@@ -21,87 +18,88 @@ Cc: linux-i2c@vger.kernel.org, devicetree@vger.kernel.org,
  Ben Zong-You Xie <ben717@andestech.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15-dev-09770
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786429789; l=2993;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786429789; l=2147;
  i=ben717@andestech.com; s=20260120; h=from:subject:message-id;
- bh=F0l8Ut4ZSPuzkllETcP01MYrU4Q5hmpjs05TRDA+HiQ=;
- b=HKTFdPEC6pUA6QPei0OVVHl8dgqgE4cYDe1MsiqCWNO/e6ODJ+BEX8vpehIgjfJCIRHExBDsI
- 3uKnwMHbA1jAjno/ou9kgNMNBdYEunwaYt/pdVd9kIW+oXf2JdWLAkd
+ bh=bq3xzDJ/OIuUwfBkMViZX6pvpmLXUhLZ07QGmtn5ZDY=;
+ b=jLQ0aV2x15w7MTRX/V+ERzbSHB3sC2BMYjnGoGn5kladTHrDAZW/eeYb/kKShILU4286x9sVH
+ CWF2HlU6y4FAD3ercY0Q8wV70E6dKPeNlqeQjQI4vFtub8gJpQgiIcv
 X-Developer-Key: i=ben717@andestech.com; a=ed25519;
  pk=nb8L7zQKGJpYk0yvrYKjViOZ34A36g1ZIsCmCsP518s=
 X-Endpoint-Received: by B4 Relay for ben717@andestech.com/20260120 with auth_id=610
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds I2C support to Andes platform, such as AE350 and
-QiLai SoC.
+Document device tree bindings for the I2C controller on Andes AE350
+platform.
+
+The ATCIIC100 is a dedicated I2C controller IP developed by
+Andes Technology. This IP block is a core component of the Andes
+AE350 platform, which serves as a reference architecture for SoC
+designs. The QiLai SoC also integrates this I2C controller.
+
+The binding introduces the following compatible strings:
+- "andestech,qilai-i2c": For the implementation integrated into the
+  Andes QiLai SoC.
+- "andestech,ae350-i2c": As a fallback compatible string representing
+  the base IP design used across the AE350 platform architecture.
 
 Signed-off-by: Ben Zong-You Xie <ben717@andestech.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
-Changes in v5:
-- Rebased on andi.shyti/i2c/i2c-host-next. No logical changes.
-- Link to v4: https://patch.msgid.link/20260330-atciic100-v4-0-d40822f63e4e@andestech.com
+ .../bindings/i2c/andestech,ae350-i2c.yaml          | 45 ++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
-Changes in v4:
-- Rebased on andi.shyti/i2c/i2c-host-next.
-- (1/4)
-  - Added Conor's acked by tag.
+diff --git a/Documentation/devicetree/bindings/i2c/andestech,ae350-i2c.yaml b/Documentation/devicetree/bindings/i2c/andestech,ae350-i2c.yaml
+new file mode 100644
+index 000000000000..59a521fb249b
+--- /dev/null
++++ b/Documentation/devicetree/bindings/i2c/andestech,ae350-i2c.yaml
+@@ -0,0 +1,45 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/i2c/andestech,ae350-i2c.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Andes I2C controller on AE350 platform
++
++maintainers:
++  - Ben Zong-You Xie <ben717@andestech.com>
++
++allOf:
++  - $ref: /schemas/i2c/i2c-controller.yaml#
++
++properties:
++  compatible:
++    oneOf:
++      - items:
++          - enum:
++              - andestech,qilai-i2c
++          - const: andestech,ae350-i2c
++      - const: andestech,ae350-i2c
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - interrupts
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    i2c@f0a00000 {
++        compatible = "andestech,ae350-i2c";
++        reg = <0xf0a00000 0x100000>;
++        interrupts = <6 IRQ_TYPE_LEVEL_HIGH>;
++    };
 
-- Link to v3: https://patch.msgid.link/20260128-atciic100-v3-0-8c002fcc2bb4@andestech.com
-
-Changes in v3:
-- (1/4)
-  - Rewrote the commit message to provide a detailed hardware
-    description and explain the relationship between the ATCIIC100 IP,
-    the AE350 platform, and the QiLai SoC. (Krzysztof)
-
-- Link to v2: https://patch.msgid.link/20260122-atciic100-v2-0-7559136d07cf@andestech.com
-
-Changes in v2:
-- ATCIIC100 is the hardware name for the Andes I2C controller and was used
-  throughout v1. However, since Device Tree bindings should reflect the hardware
-  identity and driver/config naming typically follows the i2c-<soc/platform>
-  convention, this version replaces occurrences of "atciic100" with more
-  appropriate names, such as "i2c-andes" or "andes_i2c," to align with upstream
-  standards.
-- Updated cover letter title and the description.
-- Rebased on andi.shyti/i2c/i2c-host-next.
-- (1/4)
-  - Updated the title and the description of the patch.
-  - Specified what the hardware is, and modify the title and compatibles. (Krzysztof)
-  - Corrected device register size.
-- (2/4)
-  - Updated the title and the description of the patch.
-  - Replaced the readl/writel operations with regmap APIs.
-  - Replaced all occurrences of atciic100 with proper names.
-  - Used module_platform_driver() to initialize. (Andi)
-  - Moved CONFIG_I2C_ANDES (CONFIG_I2C_ATCIIC100 in v1) to the
-    "Embedded system I2C/SMBus host controller drivers" section.
-  - Made CONFIG_I2C_ANDES depend on ARCH_ANDES
-- (3/4) (new)
-  - Added an entry to the MAINTAINERS file.
-- (4/4) (new)
-  - Added the I2C node to QiLai DTS.
-
-- Link to v1: https://patch.msgid.link/20250207021923.2912373-1-ben717@andestech.com
-
----
-Ben Zong-You Xie (4):
-      dt-bindings: i2c: add support for AE350 I2C controller
-      i2c: add Andes I2C driver support
-      MAINTAINERS: add an entry for Andes I2C driver
-      riscv: dts: andes: qilai: add I2C controller
-
- .../bindings/i2c/andestech,ae350-i2c.yaml          |  45 +++
- MAINTAINERS                                        |   6 +
- arch/riscv/boot/dts/andes/qilai.dtsi               |   7 +
- drivers/i2c/busses/Kconfig                         |  10 +
- drivers/i2c/busses/Makefile                        |   1 +
- drivers/i2c/busses/i2c-andes.c                     | 341 +++++++++++++++++++++
- 6 files changed, 410 insertions(+)
----
-base-commit: 04e9bf1648f846976b543e91c1838a712433772a
-change-id: 20260120-atciic100-da3ec68f7bb4
-
-Best regards,
---  
-Ben Zong-You Xie <ben717@andestech.com>
+-- 
+2.34.1
 
