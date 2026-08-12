@@ -1,62 +1,92 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 12 Aug 2026 13:34:49 +0400
-Subject: [PATCH v2 14/14] arm64: defconfig: Enable qcom USB UNIPHY driver
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Wed, 12 Aug 2026 10:17:44 +0000
+Subject: [PATCH] pinctrl: meson: a4: Add input enable pin configuration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-ipq5018-usb3-v2-14-8f355d7ff0ef@outlook.com>
-References: <20260812-ipq5018-usb3-v2-0-8f355d7ff0ef@outlook.com>
-In-Reply-To: <20260812-ipq5018-usb3-v2-0-8f355d7ff0ef@outlook.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Praveenkumar I <quic_ipkumar@quicinc.com>, 
- Varadarajan Narayanan <quic_varada@quicinc.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Wesley Cheng <quic_wcheng@quicinc.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>, 
- Krzysztof Kozlowski <krzk@kernel.org>
+Message-Id: <20260812-input-enable-v1-1-81e5ca7772aa@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAEdIfGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0Mj3cy8gtIS3dS8xKScVF1TQ0MzsyQTExMzS3MloJaCotS0zAqwcdG
+ xtbUAY0ASUl4AAAA=
+X-Change-ID: 20260812-input-enable-51166b444697
+To: Linus Walleij <linusw@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786527282; l=798;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=zrQ8Wh0YrykyPakfOtquLxPzDH9GvGWTD/vsNafpQc8=;
- b=e9MkbPrNY2YklKgVhYOaKoJ5dXbJojlUCPnLDcEhKBulG4jA8t21WWO1+DnxQQtgv0YiS6qxj
- ZDo7mraPW5aD8eNg1pBlWWiYj75/iR1D+A+LEhMhM5dMQQqD+3aVBv0
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786529877; l=2149;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=9SbIm6+8Ee1Yqah/Xj7ZLaezrMlBamtDl5jNdbzcGzc=;
+ b=D7w+Kf1zPLXNaLWHPsaixnfXbBtvYYqUK5MBvXWe+kNz9Ckdy07+uAigRFK3asjPqxVVkefBm
+ 5oLbnS5j6n3Dfqk58YoCnHFz1xdZi88f7ZaNnuFs2Qg2iOAGA2c/0XX
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Praveenkumar I <quic_ipkumar@quicinc.com>
+Add support for PIN_CONFIG_INPUT_ENABLE in the Amlogic A4 pinctrl
+driver.
 
-Enable USB UNIPHY driver present in Qualcomm IPQ5332.
+Use the existing output enable control to configure the input enable
+state, since the hardware uses the same control with inverse semantics.
 
-Signed-off-by: Praveenkumar I <quic_ipkumar@quicinc.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Also update PIN_CONFIG_OUTPUT_ENABLE handling to return the actual
+output enable state instead of treating any non-zero value as enabled.
+
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 6ec8d3a69c98..301cc21200bb 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -1782,6 +1782,7 @@ CONFIG_PHY_QCOM_QUSB2=m
- CONFIG_PHY_QCOM_EUSB2_REPEATER=m
- CONFIG_PHY_QCOM_M31_USB=m
- CONFIG_PHY_QCOM_M31_EUSB=m
-+CONFIG_PHY_QCOM_UNIPHY_USB_22ULL=m
- CONFIG_PHY_QCOM_USB_HS=m
- CONFIG_PHY_QCOM_USB_SNPS_FEMTO_V2=m
- CONFIG_PHY_QCOM_USB_HS_28NM=m
+diff --git a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+index 420f7915c010..39eb8cc7fc0d 100644
+--- a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
++++ b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+@@ -469,9 +469,15 @@ static int aml_pinconf_get(struct pinctrl_dev *pcdev, unsigned int pin,
+ 		break;
+ 	case PIN_CONFIG_OUTPUT_ENABLE:
+ 		ret = aml_pinconf_get_output(info, pin);
+-		if (ret <= 0)
++		if (ret < 0)
++			return -EINVAL;
++		arg = ret;
++		break;
++	case PIN_CONFIG_INPUT_ENABLE:
++		ret = aml_pinconf_get_output(info, pin);
++		if (ret < 0)
+ 			return -EINVAL;
+-		arg = 1;
++		arg = !ret;
+ 		break;
+ 	case PIN_CONFIG_LEVEL:
+ 		ret = aml_pinconf_get_output(info, pin);
+@@ -619,6 +625,7 @@ static int aml_pinconf_set(struct pinctrl_dev *pcdev, unsigned int pin,
+ 		switch (param) {
+ 		case PIN_CONFIG_DRIVE_STRENGTH_UA:
+ 		case PIN_CONFIG_OUTPUT_ENABLE:
++		case PIN_CONFIG_INPUT_ENABLE:
+ 		case PIN_CONFIG_LEVEL:
+ 			arg = pinconf_to_config_argument(configs[i]);
+ 			break;
+@@ -643,6 +650,9 @@ static int aml_pinconf_set(struct pinctrl_dev *pcdev, unsigned int pin,
+ 		case PIN_CONFIG_OUTPUT_ENABLE:
+ 			ret = aml_pinconf_set_output(info, pin, arg);
+ 			break;
++		case PIN_CONFIG_INPUT_ENABLE:
++			ret = aml_pinconf_set_output(info, pin, !arg);
++			break;
+ 		case PIN_CONFIG_LEVEL:
+ 			ret = aml_pinconf_set_output_drive(info, pin, arg);
+ 			break;
 
+---
+base-commit: 761af93c9f1a100b8d9f71aa744b8f9abbbbbfb2
+change-id: 20260812-input-enable-51166b444697
+
+Best regards,
 -- 
-2.53.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
