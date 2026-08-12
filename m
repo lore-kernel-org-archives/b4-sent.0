@@ -1,81 +1,72 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 12 Aug 2026 10:22:12 +0000
-Subject: [PATCH] pinctrl: meson: sync some modify from A4
+From: Patrick Vogelaar <patrick.vogelaar@belden.com>
+Date: Wed, 12 Aug 2026 12:33:45 +0200
+Subject: [PATCH wrynose] volatile-binds: order systemd-timesyncd after
+ /var/lib
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-sync_a4-v1-1-b7279c26e2bc@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAFNJfGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDC0Mj3eLKvOT4RBNdA0PDxFQjg7Q0Y8NkJaDqgqLUtMwKsEnRsbW1ADs
- 3+W5ZAAAA
-X-Change-ID: 20260812-sync_a4-011ae20ff31c
-To: Linus Walleij <linusw@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-gpio@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786530133; l=1591;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=e/6sQWJ1ygoCKacBsI4pbgOSo29ZSl5fN1COhUhv2b0=;
- b=+npSTpTZcyUHwNQKfVQMSVMkn7ZL/7EmlBUcCciWqI0ADTvpgZxjGNIPFljysn5gww3Skd8T9
- qvIhywPAjIADP8eZEf03v8d3ZxXYnHfIBxR600Yn+YSA1nkayfJfNlj
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Message-Id: <20260812-backport_timesyncd-v1-1-c1fa5bc8e5c9@belden.com>
+X-B4-Tracking: v=1; b=H4sIAAhMfGoC/yWMXQrCMBAGr1L22UAbsESvIiJp8lVXMSm78aeU3
+ t2oj8Mws5BCGEr7ZiHBk5VzqtBtGgoXn84wHCuTbW3fus6awYfblKWcCt+hcwrR+N3Wux5uRAT
+ VcBKM/P5ND/SSOWUFHf9CH8MVoXyXtK4fskh15X8AAAA=
+X-Change-ID: 20260812-backport_timesyncd-a95a86e8fede
+To: openembedded-core@lists.openembedded.org
+Cc: esa.jaaskela@suomi24.fi, 
+ Richard Purdie <richard.purdie@linuxfoundation.org>, 
+ Patrick Vogelaar <patrick.vogelaar@belden.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786530838; l=1917;
+ i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
+ bh=6FOhyJqR2CFPF1BF78T38KQBpWYothYXTgr6AIq1q70=;
+ b=9SdjAIgEFuFmK44nypfC1yD8R4c1v+t5U3O6CQ9wfokB4k7NA3fVNGl4QIFiu4fS0GuQ6r/zn
+ QKTd6jcNX6LBpT+P9OC3TOORY4P8vDEcvvnASYWsgvshAapbu4rAa+1
+X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
+ pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
+X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Set the drive strength before enabling the output to avoid enabling
-the output with an unintended drive strength.
+From: Esa Jaaskela <esa.jaaskela@suomi24.fi>
 
-Also return the actual output enable state from
-PIN_CONFIG_OUTPUT_ENABLE instead of always reporting it as enabled.
+systemd-timesyncd stores its clock file under /var/lib/systemd/timesync,
+so it can fail to save state if it starts before the volatile /var/lib
+is mounted. Add it to the Before= and WantedBy= entries already used for
+systemd-random-seed.service.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+(cherry picked from commit 1b8d8c25e46f1df7079545f4297496426fd9d371)
+
+Signed-off-by: Esa Jaaskela <esa.jaaskela@suomi24.fi>
+Signed-off-by: Richard Purdie <richard.purdie@linuxfoundation.org>
+Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
 ---
-Sync some fixes from  A4.
----
- drivers/pinctrl/meson/pinctrl-meson.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ meta/recipes-core/volatile-binds/volatile-binds.bb | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/pinctrl/meson/pinctrl-meson.c b/drivers/pinctrl/meson/pinctrl-meson.c
-index 4507dc8b5563..1eea3e9d1cb2 100644
---- a/drivers/pinctrl/meson/pinctrl-meson.c
-+++ b/drivers/pinctrl/meson/pinctrl-meson.c
-@@ -252,11 +252,11 @@ static int meson_pinconf_set_output_drive(struct meson_pinctrl *pc,
- {
- 	int ret;
+diff --git a/meta/recipes-core/volatile-binds/volatile-binds.bb b/meta/recipes-core/volatile-binds/volatile-binds.bb
+index 857bcc93ff..613e750c17 100644
+--- a/meta/recipes-core/volatile-binds/volatile-binds.bb
++++ b/meta/recipes-core/volatile-binds/volatile-binds.bb
+@@ -57,10 +57,11 @@ ${@d.getVar('VOLATILE_BINDS').replace("\\n", "\n")}
+ END
  
--	ret = meson_pinconf_set_output(pc, pin, true);
-+	ret = meson_pinconf_set_drive(pc, pin, high);
- 	if (ret)
- 		return ret;
- 
--	return meson_pinconf_set_drive(pc, pin, high);
-+	return meson_pinconf_set_output(pc, pin, true);
+     if [ -e "$var_lib_servicefile" ]; then
+-        # As the seed is stored under /var/lib, ensure that this service runs
+-        # after the volatile /var/lib is mounted.
+-        sed -i -e "/^Before=/s/\$/ systemd-random-seed.service/" \
+-               -e "/^WantedBy=/s/\$/ systemd-random-seed.service/" \
++        # The random seed and the timesyncd clock file are stored under
++        # /var/lib, so ensure that those services run after the volatile
++        # /var/lib is mounted.
++        sed -i -e "/^Before=/s/\$/ systemd-random-seed.service systemd-timesyncd.service/" \
++               -e "/^WantedBy=/s/\$/ systemd-random-seed.service systemd-timesyncd.service/" \
+                "$var_lib_servicefile"
+     fi
  }
- 
- static int meson_pinconf_disable_bias(struct meson_pinctrl *pc,
-@@ -498,9 +498,9 @@ static int meson_pinconf_get(struct pinctrl_dev *pcdev, unsigned int pin,
- 		break;
- 	case PIN_CONFIG_OUTPUT_ENABLE:
- 		ret = meson_pinconf_get_output(pc, pin);
--		if (ret <= 0)
-+		if (ret < 0)
- 			return -EINVAL;
--		arg = 1;
-+		arg = ret;
- 		break;
- 	case PIN_CONFIG_LEVEL:
- 		ret = meson_pinconf_get_output(pc, pin);
 
 ---
-base-commit: 761af93c9f1a100b8d9f71aa744b8f9abbbbbfb2
-change-id: 20260812-sync_a4-011ae20ff31c
+base-commit: f09a0f28aeb54ddd90415dd458338e1565bb5a49
+change-id: 20260812-backport_timesyncd-a95a86e8fede
 
 Best regards,
--- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+--  
+Patrick Vogelaar <patrick.vogelaar@belden.com>
 
