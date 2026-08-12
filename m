@@ -1,134 +1,152 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 12 Aug 2026 20:22:39 +0800
-Subject: [PATCH v2] mm/mglru: fix and remove redundant unevictable folio
- handling
+Subject: [PATCH v2 00/17] mm/huge_memory: clean up folio split and lift
+ swapcache split limits
+Date: Thu, 13 Aug 2026 02:48:40 +0800
+Message-Id: <20260813-swap-thp-cleanup-v2-0-d2ee48c6aa49@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-mglru-mlock-fix-v2-1-a3fec5853c08@tencent.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ6CMBBEf4Xs2TXdQrTx5H8YDtAuUoXWtIVoC
- P9uwbPHN5l5s0DkYDnCpVgg8Gyj9S6DPBSg+8bdGa3JDFLIk1BEON6HMOE4eP3Ezr5RCqM6ZSp
- VnRvIq1fgHO/GW/3jOLUP1mnTbI3exuTDZ7+caev9t8+EhKqVpSQjmEx5Tew0u3TUfoR6Xdcvh
- zMrX8IAAAA=
-X-Change-ID: 20260811-mglru-mlock-fix-20d8f8d4847a
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNQQ6CMBBFr0Jm7ZhSTC2uuIdhUcZBarQ0bUEN4
+ e4CxpXLl7z//gSRg+UIp2yCwKONtncLyF0G1Bl3ZbSXhUEKqYQWB4xP4zF1HunOxg0eFbFsWFF
+ bNBqWmQ/c2teWPNdfjkNzY0prZzU6G1Mf3tvnmK/eL6//82OOApUuy6I0RyIqqsSO2KU99Q+o5
+ 3n+ABime4zEAAAA
+X-Change-ID: 20260804-swap-thp-cleanup-6ce2be6cf3b8
 To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, David Hildenbrand <david@kernel.org>, 
- Michal Hocko <mhocko@kernel.org>, Qi Zheng <qi.zheng@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Oleksandr Natalenko <oleksandr@natalenko.name>, 
- Suleiman Souhlal <suleiman@google.com>, 
- "Jan Alexander Steffens (heftig)" <heftig@archlinux.org>, 
- Yu Zhao <yuzhao@google.com>, Steven Barrett <steven@liquorix.net>, 
- Brian Geffon <bgeffon@google.com>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, Kairui Song <ryncsn@gmail.com>, 
- linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>
+Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ Zi Yan <ziy@nvidia.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ "Liam R. Howlett" <liam@infradead.org>, Nico Pache <nico.pache@linux.dev>, 
+ Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
+ Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
+ Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
+ Chris Li <chrisl@kernel.org>, Kemeng Shi <shikemeng@huaweicloud.com>, 
+ Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
+ Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786537360; l=4125;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786560550; l=5389;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=U29orzKk9D7il/dD5NUP46H8cRaJscTJfBNkl8jXS24=;
- b=glwH4HIia2IpuIdS3x5BsJrnJb+xJ61O2JdxsyE/WYO1gAglTuMnQhrPr7sy7LM1selJb22QA
- PMDF4R6eoApDe9EvRBQIRyjTjJ52/SV8EO0iUoQSgJdMLIxLo6cHncu
+ bh=cS/DRm3T1w8AnhEL+a5sNkHisk1wBvpNnNQjFJ3QUD0=;
+ b=cGb0ihuJjQseJijrhkFcKel7j9wankm8y87HLfO+Egg1Uu5a4fL8JLuIQHqpaq2bZvLLUzeoz
+ bicEUiLx9OPBvo3rx/8Oz5G/duOtIwUhEkn2vRqyodP/qAORhVCk9MH
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sort_folio() has a shortcut for moving folios that are no longer
-evictable but are still sitting on a generation list.  However, this
-shortcut is buggy.  It does not follow the PG_lru usage convention,
-and it has a more serious issue.
+This series clean up the split code, add better swap cache split support
+for mappingless, large order, uniform and non-uniform split.  Generic
+performance is on par or slightly better, and stack usage is reduced.
 
-Unevictable folios are not threaded on lists[LRU_UNEVICTABLE], so that
-folio->lru can be reused to hold folio->mlock_count (see the comment in
-lruvec_init()).  Hence lruvec_add_folio() skips the list_add() for them,
-and every other place that turns a folio unevictable initialises
-mlock_count explicitly: lru_add() sets it to 0, __mlock_folio() and
-__mlock_new_folio() set it to !!folio_test_mlocked(folio).
-sort_folio() sets nothing, and the lru_gen_del_folio() right above it
-may have already poisoned folio->lru via list_del(), so mlock_count
-ends up aliasing LIST_POISON2, which reads as 0x122, i.e. 290.  The
-result is user visible.  On munlock, __munlock_folio() decrements that
-bogus count, finds it still non-zero and bails out before clearing
-PG_mlocked, so the folio remains unevictable and the Mlocked
-accounting stays inflated until the folio is freed.
+The swap cache infrastructure can handle non-uniform or high order folio
+replace, so there is no reason for either restriction from the THP side.
+What stands in the way is the mixed anon/file folio split routine,
+which makes lifting the restrictions hard to follow, and it already
+carries some buggy or redundant checks.
 
-The shortcut also touches the LRU flags in the wrong order.  It calls
-lru_gen_del_folio() while PG_lru is still set, so a concurrent
-folio_test_clear_lru() (e.g. compaction, folio_isolate_lru()) can
-succeed on a folio that has already been taken off the generation list,
-which may lead to unexpected behavior.
+So this series cleans up the split path and separates anon and file
+splitting into two helpers.  The file split path never sees a swap
+cache folio, and that is now enforced up front: a folio that is both
+in the page cache and the swap cache can only be a shmem folio, which
+remains unsupported and is rejected early.  That helps to rule out swap
+cache handling in that part completely.  Only the anon split path
+handles swap cache folios, with an anon mapping or mappingless:
+either way the splitting is similar, and non-uniform split is
+supported as well.
 
-So fix it by isolating them as common folios and letting the generic
-shrink path cull them. This matches the classical LRU behavior, and
-there should be no visible effect on the generic eviction or isolation
-behavior.
+Order-1 is still forbidden for swap cache splitting.  In theory it is
+doable for shmem swap cache folios, but a mappingless swap cache
+folio cannot currently be told apart from a shmem one, so forbid it
+for all swap cache folios for now.
 
-There is no performance concern either, such a folio goes through this
-once, and then it is off the generation lists for good.
+Testing:
 
-Fixes: ac35a4902374 ("mm: multi-gen LRU: minimal implementation")
+The in-tree split_huge_page_test selftest (uniform, non-uniform and
+in-folio-offset splits of anon and pagecache folios) passes 62/62 on
+the patched kernel.
+
+ftrace function_graph tracing filtered on __folio_split() was used to
+compare per-call durations between the base and the patched kernel on
+the same x86-64 box (interleaved runs across alternating reboots;
+mean +- stddev of the per-run averages, 135 split calls per run):
+
+  base:    24 runs, 69.6 +- 0.7 us per __folio_split()
+  patched: 26 runs, 68.8 +- 1.3 us per __folio_split()
+
+The patched kernel is consistently ~1% faster; with this sample
+count the difference is outside run-to-run noise.
+
+On x86-64 with gcc 12 (-fstack-usage), the stack frame of
+__folio_split() shrinks from 240 to 96 bytes, and the worst-case
+split call chain from ~544 to ~384 (anon) or ~464 (file) bytes.
+
+Bloat-o-meter shows a tiny growth of huge_memory.o:
+before=58419 after=58446, chg +0.05% (+27 bytes).
+
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
 Changes in v2:
-- Proactively bypass MGLRU pid protection and lazy promotion to avoid
-  hot unevcitable folios staying on list for a long time.
-- Link to v1: https://patch.msgid.link/20260811-mglru-mlock-fix-v1-1-8b2321d0e1d3@tencent.com
+- Return -EBUSY instead of -EINVAL for swap cache & shmem folio split
+  attempt.
+- Introduce a for_each_folio_safe macro to dedupliate the code and
+  hightlight the reason we need to keep the iterate safe from folio
+  freeing. [ Zi Yan ]
+- Rename __split_unmapped_folio() to __split_frozen_folio [ Zi Yan ]
+- Rename __folio_freeze_split_unmap_anon. [ Zi Yan ]
+- Several comment improments [ Zi Yan ]
+- Drop an unused do_lru argument.
+- Previouse test results are basically unchanged, stack usage reduced,
+  object very slightly larger.
+- Link to v1: https://patch.msgid.link/20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com
+
+To: Andrew Morton <akpm@linux-foundation.org>
+To: Chris Li <chrisl@kernel.org>
+To: Kairui Song <kasong@tencent.com>
+To: Kemeng Shi <shikemeng@huaweicloud.com>
+To: Nhat Pham <nphamcs@gmail.com>
+To: Baoquan He <baoquan.he@linux.dev>
+To: Barry Song <baohua@kernel.org>
+To: Youngjun Park <youngjun.park@lge.com>
+To: David Hildenbrand <david@kernel.org>
+To: Lorenzo Stoakes <ljs@kernel.org>
+To: Zi Yan <ziy@nvidia.com>
+To: Baolin Wang <baolin.wang@linux.alibaba.com>
+To: "Liam R. Howlett" <liam@infradead.org>
+To: Nico Pache <nico.pache@linux.dev>
+To: Ryan Roberts <ryan.roberts@arm.com>
+To: Dev Jain <dev.jain@arm.com>
+To: Lance Yang <lance.yang@linux.dev>
+To: Usama Arif <usama.arif@linux.dev>
+Cc: linux-mm@kvack.org
+Cc: linux-kernel@vger.kernel.org
+
 ---
- mm/vmscan.c | 19 +++++--------------
- 1 file changed, 5 insertions(+), 14 deletions(-)
+Kairui Song (17):
+      mm/swap: fix off-by-one in swap cache replace sanity check
+      mm/huge_memory: fix rejection of swap cache folios with a mapping
+      mm/huge_memory: invert folio_ref_freeze() check to reduce indentation
+      mm/huge_memory: split the routine for splitting anon and file folio
+      mm/huge_memory: rename __split_unmapped_folio() to __split_frozen_folio()
+      mm/huge_memory: consolidate irq and locking for folio split
+      mm/huge_memory: move EOF trimming into the file split helper
+      mm/huge_memory: move unmap and remap into the split helpers
+      mm/huge_memory: move anon_vma and filemap management into split helpers
+      mm/huge_memory: move memcg switch into the file split helper
+      mm/huge_memory: allow splitting mappingless swap cache folios
+      mm/huge_memory: add kerneldoc for the split helpers
+      mm/huge_memory: drop the unused do_lru argument of the file split helper
+      mm/huge_memory: clean up after-split folio freeing in __folio_split
+      mm/huge_memory: lift order-0 restriction for swapcache split
+      mm/huge_memory: clarify supported split orders in comment
+      mm/huge_memory: count only swap cache refs in anon folio split
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 3194da7dcc79..ca2b926520ea 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -4648,7 +4648,6 @@ void lru_gen_reparent_memcg(struct mem_cgroup *memcg, struct mem_cgroup *parent,
- static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_control *sc,
- 		       int tier_idx)
- {
--	bool success;
- 	int gen = folio_lru_gen(folio);
- 	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
-@@ -4660,15 +4659,9 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
- 
- 	VM_WARN_ON_ONCE_FOLIO(gen >= MAX_NR_GENS, folio);
- 
--	/* unevictable */
--	if (!folio_evictable(folio)) {
--		success = lru_gen_del_folio(lruvec, folio, true);
--		VM_WARN_ON_ONCE_FOLIO(!success, folio);
--		folio_set_unevictable(folio);
--		lruvec_add_folio(lruvec, folio);
--		__count_vm_events(UNEVICTABLE_PGCULLED, delta);
--		return true;
--	}
-+	/* unevictable: let it through and the generic path will cull it */
-+	if (!folio_evictable(folio))
-+		return false;
- 
- 	/* promoted */
- 	if (gen != lru_gen_from_seq(lrugen->min_seq[type])) {
-@@ -4921,11 +4914,9 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
- 		DEFINE_MIN_SEQ(lruvec);
- 
--		if (!folio_evictable(folio)) {
--			list_del(&folio->lru);
--			folio_putback_lru(folio);
-+		/* move_folios_to_lru() culls unevictable folios via folio_putback_lru() */
-+		if (!folio_evictable(folio))
- 			continue;
--		}
- 
- 		/* retry folios that may have missed folio_rotate_reclaimable() */
- 		if (!skip_retry && !folio_test_active(folio) && !folio_mapped(folio) &&
-
+ mm/huge_memory.c | 636 ++++++++++++++++++++++++++++++-------------------------
+ mm/swap_state.c  |   3 +-
+ 2 files changed, 344 insertions(+), 295 deletions(-)
 ---
 base-commit: 1029098ee3275ea5b78e329ce132262affa2f8cc
-change-id: 20260811-mglru-mlock-fix-20d8f8d4847a
+change-id: 20260804-swap-thp-cleanup-6ce2be6cf3b8
 
 Best regards,
 --  
