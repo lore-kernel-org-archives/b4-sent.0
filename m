@@ -1,94 +1,162 @@
-From: Trevor Vorhees <vorhees-work@proton.me>
-Date: Tue, 11 Aug 2026 20:44:10 -0400
-Subject: [PATCH] ALSA: usb-audio: Fix sample rates for PreSonus AudioBox
- USB
+From: Fan Ye <fy15309206903@gmail.com>
+Date: Wed, 12 Aug 2026 01:21:52 +0000
+Subject: [PATCH v2] thunderbolt: Stop waiting on a path pending bit that
+ never clears
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-audiobox-usb-fix-v1-1-13c8b7f071ea@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSwqEMBBF0a1IjbsgibS/rTQOEi21HBhJGRHEv
- Rvb4Xnw7glCgUmgyU4ItLOwXxL0J4NusstIyH0yGGUKVWmNNvbsnT8wisOBDzTKDvW3zolMCem
- 2BkrzP/lrX0t0M3Xb04HrugE6d+HYdAAAAA==
-X-Change-ID: 20260811-audiobox-usb-fix-20af9593ee27
-To: Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, Jaroslav Kysela <perex@perex.cz>, 
- Abhinav Mahadevan <abhi220204@gmail.com>, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786495455; l=2050;
- i=vorhees-work@proton.me; s=audiobox; h=from:subject:message-id;
- bh=l8HNN0FiikEfBKzUrr9nL6yHOYFf/Ri6waOiekc5h3E=;
- b=sqW0ZUmJEBAU7wkM6OyXVmUTi81pbBw+VZk352fbWQqspQYOORCA24A0RwobB+ef6P2/rw0fe
- w2oca1x3jrRC2V4AieDyd7tzbEZ8uE/nucwzpXkt/wiLBONWUFmrkPL
-X-Developer-Key: i=vorhees-work@proton.me; a=ed25519;
- pk=TmdvK8GsvZOb51T6DVhj7yKhGOofzmPnu20FNaeLwLg=
-X-Endpoint-Received: by B4 Relay for vorhees-work@proton.me/audiobox with auth_id=940
+Message-Id: <20260812-b4-tb-pending-v2-v2-1-0667ee84c2d4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAK/Ke2oC/yXMMQ6DMAxA0asgz7UULApRr4I61MEJZkhRQhES4
+ u6EMr7h/x2yJJUMr2qHJKtm/cYCelTgxk8MgjoUAxlqja0JucGFcZY4aAy4EnZW2HXMxj8tlGx
+ O4nX7L/v37fzjSdxyfeA4TqBsrKR0AAAA
+X-Change-ID: 20260812-b4-tb-pending-v2-78ebc7bb0f58
+To: Andreas Noever <andreas.noever@gmail.com>, 
+ Mika Westerberg <westeri@kernel.org>, 
+ Yehezkel Bernat <YehezkelShB@gmail.com>
+Cc: linux-usb@vger.kernel.org, Fan Ye <fy15309206903@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786497711; l=5171;
+ i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
+ bh=ZJC23Z8IdZX0lJBPYb5DU7w3VWoK5HvGEn98o9tOYh4=;
+ b=Qvq8J5ODMHaWcbNJZ9OyQreABtIk0im/SiDAZSs3HIt/L8nJ2cVId5ziZmUbh8Ww2Fr8r2qzE
+ aDylT/aZvexDbQY3NTrLMxTJXtpKp1m6sS67p0cJ6akycCCwBh44aZU
+X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
+ pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
+X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The fixed audio formats for the PreSonus AudioBox USB specify a discrete
-rate mask but leave nr_rates at zero and rate_table unset.  find_format()
-therefore rejects every requested rate, preventing the playback and
-capture streams from being opened.
+__tb_path_deactivate_hop() waits up to 500 ms for a hop's pending bit to
+read back clear. On an ASMedia ASM4242 host router the host interface
+adapter latches it once enough frames have gone through the DMA ring and
+never clears it again: the teardown finds it already set, seconds after
+the last frame and with the path still up. USB4 v2 table 8-23 has the
+field read only and zero unless packets belonging to the path are waiting
+to be dequeued, so the wait is right and this adapter is not.
 
-Add the advertised 44100 and 48000 Hz rates to both streams and report
-their 24 significant bits.
+Quirk those routers by hardware id and let a quirked adapter that has
+timed out once answer -ETIMEDOUT immediately from then on. Bringing the
+interface down then took 8 ms across 200 cycles, where unpatched it took
+508 ms in 161 of 162, at an unchanged failure rate of about one per
+cycle.
 
-Fixes: 34fe4a9df247 ("ALSA: usb-audio: Add quirk for PreSonus AudioBox USB")
-Cc: stable@vger.kernel.org
-Signed-off-by: Trevor Vorhees <vorhees-work@proton.me>
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: Fan Ye <fy15309206903@gmail.com>
 ---
-Tested with a PreSonus AudioBox USB (194f:0301) on Linux
-7.1.8-zen1-3-zen. Playback and capture streams opened successfully at
-both 44100 and 48000 Hz after applying the patch.
----
- sound/usb/quirks-table.h | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Measured on two ASM4242 hosts wired to each other, hw_vendor_id 0x174c,
+hw_device_id 0x2428, NVM 200011.250708, on a base that already carries
+68bf02b6b4ad.
 
-diff --git a/sound/usb/quirks-table.h b/sound/usb/quirks-table.h
-index 71444c28..9a28d7c6 100644
---- a/sound/usb/quirks-table.h
-+++ b/sound/usb/quirks-table.h
-@@ -2692,6 +2692,7 @@ YAMAHA_DEVICE(0x7010, "UB99"),
- 			{
- 				QUIRK_DATA_AUDIOFORMAT(2) {
- 					.formats = SNDRV_PCM_FMTBIT_S24_3LE,
-+					.fmt_bits = 24,
- 					.channels = 2,
- 					.iface = 2,
- 					.altsetting = 1,
-@@ -2703,11 +2704,16 @@ YAMAHA_DEVICE(0x7010, "UB99"),
- 						 SNDRV_PCM_RATE_48000,
- 					.rate_min = 44100,
- 					.rate_max = 48000,
-+					.nr_rates = 2,
-+					.rate_table = (unsigned int[]) {
-+						44100, 48000
-+					},
- 				}
- 			},
- 			{
- 				QUIRK_DATA_AUDIOFORMAT(3) {
- 					.formats = SNDRV_PCM_FMTBIT_S24_3LE,
-+					.fmt_bits = 24,
- 					.channels = 2,
- 					.iface = 3,
- 					.altsetting = 1,
-@@ -2719,6 +2725,10 @@ YAMAHA_DEVICE(0x7010, "UB99"),
- 						 SNDRV_PCM_RATE_48000,
- 					.rate_min = 44100,
- 					.rate_max = 48000,
-+					.nr_rates = 2,
-+					.rate_table = (unsigned int[]) {
-+						44100, 48000
-+					},
- 				}
- 			},
- 			QUIRK_COMPOSITE_END
+Read before the teardown writes anything, path still up and the ring idle
+for seconds: at 200 frames it is clear in 5 of 5 rounds and the hop drains
+on the first read, at 260 it is set in 5 of 5 and the wait runs out. So it
+is set before the teardown starts rather than by it, and the clear case is
+why the flag is learned rather than taken from the quirk alone.
+
+5.4.1 has a connection manager wait tTeardown after the router sets the
+bit to 0b before making the path valid again. On an adapter where it
+never reads 0b there is no such point, patched or not.
+
+v2:
+- Add the Assisted-by tag.
+- Answer the spec question from USB4 v2 table 8-23.
+- Return -ETIMEDOUT instead of 0; gate the flag on a 0x174c/0x2428 quirk.
+- Drop the ring-wrap claim.
+- Cut the text down.
+
+v1: https://lore.kernel.org/linux-usb/20260809-b4-tb-teardown-v1-2-c88bbfe5c127@gmail.com/
+---
+ drivers/thunderbolt/path.c   | 8 ++++++++
+ drivers/thunderbolt/quirks.c | 8 ++++++++
+ drivers/thunderbolt/tb.h     | 4 ++++
+ 3 files changed, 20 insertions(+)
+
+diff --git a/drivers/thunderbolt/path.c b/drivers/thunderbolt/path.c
+index b2c322e76b8a..5cf87b8af2b2 100644
+--- a/drivers/thunderbolt/path.c
++++ b/drivers/thunderbolt/path.c
+@@ -397,6 +397,10 @@ static int __tb_path_deactivate_hop(struct tb_port *port, int hop_index,
+ 	if (ret)
+ 		return ret;
+ 
++	/* It never clears on this adapter, so the wait would time out again. */
++	if (port->pending_stuck)
++		return -ETIMEDOUT;
++
+ 	/* Wait until it is drained */
+ 	timeout = ktime_add_ms(ktime_get(), 500);
+ 	do {
+@@ -430,6 +434,10 @@ static int __tb_path_deactivate_hop(struct tb_port *port, int hop_index,
+ 		usleep_range(10, 20);
+ 	} while (ktime_before(ktime_get(), timeout));
+ 
++	/* Remember it only on an adapter known to latch it. */
++	if (tb_port_is_nhi(port) && (port->sw->quirks & QUIRK_STUCK_PENDING))
++		port->pending_stuck = true;
++
+ 	return -ETIMEDOUT;
+ }
+ 
+diff --git a/drivers/thunderbolt/quirks.c b/drivers/thunderbolt/quirks.c
+index 9f7914ac2f48..6ec90a85bbaf 100644
+--- a/drivers/thunderbolt/quirks.c
++++ b/drivers/thunderbolt/quirks.c
+@@ -52,6 +52,12 @@ static void quirk_block_rpm_in_redrive(struct tb_switch *sw)
+ 	tb_sw_dbg(sw, "preventing runtime PM in DP redrive mode\n");
+ }
+ 
++static void quirk_stuck_pending(struct tb_switch *sw)
++{
++	sw->quirks |= QUIRK_STUCK_PENDING;
++	tb_sw_dbg(sw, "host interface adapter pending bit does not clear\n");
++}
++
+ struct tb_quirk {
+ 	u16 hw_vendor_id;
+ 	u16 hw_device_id;
+@@ -114,6 +120,8 @@ static const struct tb_quirk tb_quirks[] = {
+ 	{ 0x0438, 0x0209, 0x0000, 0x0000, quirk_clx_disable },
+ 	{ 0x0438, 0x020a, 0x0000, 0x0000, quirk_clx_disable },
+ 	{ 0x0438, 0x020b, 0x0000, 0x0000, quirk_clx_disable },
++	/* ASM4242 never clears the Pending Packets bit of its NHI adapter */
++	{ 0x174c, 0x2428, 0x0000, 0x0000, quirk_stuck_pending },
+ };
+ 
+ /**
+diff --git a/drivers/thunderbolt/tb.h b/drivers/thunderbolt/tb.h
+index ec9192b61bc0..00eb8d85755a 100644
+--- a/drivers/thunderbolt/tb.h
++++ b/drivers/thunderbolt/tb.h
+@@ -26,6 +26,8 @@
+ #define QUIRK_NO_CLX					BIT(1)
+ /* Need to keep power on while USB4 port is in redrive mode */
+ #define QUIRK_KEEP_POWER_IN_DP_REDRIVE			BIT(2)
++/* Pending Packets bit of the host interface adapter never clears */
++#define QUIRK_STUCK_PENDING				BIT(3)
+ 
+ /**
+  * struct tb_nvm - Structure holding NVM information
+@@ -273,6 +275,7 @@ struct tb_bandwidth_group {
+  * @max_bw: Maximum possible bandwidth through this adapter if set to
+  *	    non-zero.
+  * @redrive: For DP IN, if true the adapter is in redrive mode.
++ * @pending_stuck: Pending bit did not clear, so it is not waited on again
+  *
+  * In USB4 terminology this structure represents an adapter (protocol or
+  * lane adapter).
+@@ -302,6 +305,7 @@ struct tb_port {
+ 	struct list_head group_list;
+ 	unsigned int max_bw;
+ 	bool redrive;
++	bool pending_stuck;
+ };
+ 
+ /**
 
 ---
 base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260811-audiobox-usb-fix-20af9593ee27
+change-id: 20260812-b4-tb-pending-v2-78ebc7bb0f58
 
 Best regards,
 --  
-Trevor Vorhees <vorhees-work@proton.me>
+Fan Ye <fy15309206903@gmail.com>
 
