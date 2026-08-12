@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 12 Aug 2026 13:34:39 +0400
-Subject: [PATCH v2 04/14] arm64: dts: qcom: ipq5332: Flatten usb controller
+Date: Wed, 12 Aug 2026 13:34:40 +0400
+Subject: [PATCH v2 05/14] arm64: dts: qcom: ipq5018: Flatten usb controller
  node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-ipq5018-usb3-v2-4-8f355d7ff0ef@outlook.com>
+Message-Id: <20260812-ipq5018-usb3-v2-5-8f355d7ff0ef@outlook.com>
 References: <20260812-ipq5018-usb3-v2-0-8f355d7ff0ef@outlook.com>
 In-Reply-To: <20260812-ipq5018-usb3-v2-0-8f355d7ff0ef@outlook.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -23,11 +23,11 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-usb@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786527282; l=3080;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786527282; l=2935;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=xMYvxEWuaJgLI2xWvqglKjH2h3PlSr0PrD5R6v8tOEc=;
- b=uv4AZGj2RWq7I0imlu8xno7WjLPQDByBz6jufaXWzZYASpgXh4mH3jvaIJK7cq+7XM+pyjOkG
- gI554vDMcP6BMSytgCyy1BE595+REfBeg1S0FzRfmC+DCnT9D3BHcmQ
+ bh=DNrB8MXu1ukgkKpzqXrnsAbInJtvBhBUAAQ7CYIOpsM=;
+ b=r5nZHx096Af9bUJ84jmeNfz7t1jLMbj/DOeKmtrEy/JKW8HDXnTh8Go3QYy1DJ7cxSFeF32fm
+ DXRsXg9zPXVB8BDtqxleMLapaeIcIwMUMJjR84rFyDnN7UMQhSp+9Np
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
@@ -38,15 +38,15 @@ flattened driver approach.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5332-rdp468.dts |  6 ++--
- arch/arm64/boot/dts/qcom/ipq5332.dtsi       | 51 +++++++++++++----------------
- 2 files changed, 24 insertions(+), 33 deletions(-)
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts |  6 ++--
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi          | 49 +++++++++++---------------
+ 2 files changed, 23 insertions(+), 32 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5332-rdp468.dts b/arch/arm64/boot/dts/qcom/ipq5332-rdp468.dts
-index c224ffc65b08..25a70cd884c0 100644
---- a/arch/arm64/boot/dts/qcom/ipq5332-rdp468.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5332-rdp468.dts
-@@ -90,11 +90,9 @@ spi_0_cs_pins: spi-0-cs-state {
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
+index 33eef92b19b1..8efb2b21ed9e 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
++++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
+@@ -110,11 +110,9 @@ data-pins {
  };
  
  &usb {
@@ -60,61 +60,66 @@ index c224ffc65b08..25a70cd884c0 100644
  };
  
  &usbphy0 {
-diff --git a/arch/arm64/boot/dts/qcom/ipq5332.dtsi b/arch/arm64/boot/dts/qcom/ipq5332.dtsi
-index 74d9de8d7641..83d0377455da 100644
---- a/arch/arm64/boot/dts/qcom/ipq5332.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5332.dtsi
-@@ -493,16 +493,9 @@ qpic_nand: spi@79b0000 {
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index d259a841ad17..965649db36f3 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -597,16 +597,9 @@ qpic_nand: spi@79b0000 {
  			status = "disabled";
  		};
  
 -		usb: usb@8af8800 {
--			compatible = "qcom,ipq5332-dwc3", "qcom,dwc3";
+-			compatible = "qcom,ipq5018-dwc3", "qcom,dwc3";
 -			reg = <0x08af8800 0x400>;
 -
--			interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>,
--				     <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
+-				     <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
+-				     <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
 -			interrupt-names = "pwr_event",
 -					  "dp_hs_phy_irq",
 -					  "dm_hs_phy_irq";
 +		usb: usb@8a00000 {
-+			compatible = "qcom,ipq5332-dwc3", "qcom,snps-dwc3";
++			compatible = "qcom,ipq5018-dwc3", "qcom,snps-dwc3";
 +			reg = <0x08a00000 0xe000>;
  
  			clocks = <&gcc GCC_USB0_MASTER_CLK>,
- 				 <&gcc GCC_USB0_SLEEP_CLK>,
-@@ -513,31 +506,31 @@ usb: usb@8af8800 {
+ 				 <&gcc GCC_SYS_NOC_USB0_AXI_CLK>,
+@@ -617,29 +610,29 @@ usb: usb@8af8800 {
+ 				      "sleep",
+ 				      "mock_utmi";
  
- 			resets = <&gcc GCC_USB_BCR>;
- 
--			qcom,select-utmi-as-pipe-clk;
-+			interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH>;
++			interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
 +			interrupt-names = "dwc_usb3",
 +					  "pwr_event",
 +					  "dp_hs_phy_irq",
 +					  "dm_hs_phy_irq";
++
+ 			resets = <&gcc GCC_USB0_BCR>;
  
++			phys = <&usbphy0>;
++			phy-names = "usb2-phy";
++
+ 			qcom,select-utmi-as-pipe-clk;
 -			#address-cells = <1>;
 -			#size-cells = <1>;
 -			ranges;
- 			interconnects = <&gcc MASTER_SNOC_USB &gcc SLAVE_SNOC_USB>,
- 					<&gcc MASTER_SNOC_USB &gcc SLAVE_SNOC_USB>;
- 			interconnect-names = "usb-ddr", "apps-usb";
  
 -			status = "disabled";
-+			phys = <&usbphy0>;
-+			phy-names = "usb2-phy";
++			tx-fifo-resize;
++			snps,is-utmi-l1-suspend;
++			snps,hird-threshold = /bits/ 8 <0x0>;
++			snps,dis_u2_susphy_quirk;
++			snps,dis_u3_susphy_quirk;
  
 -			usb_dwc: usb@8a00000 {
 -				compatible = "snps,dwc3";
 -				reg = <0x08a00000 0xe000>;
 -				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
 -				clock-names = "ref";
--				interrupts = <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>;
+-				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
 -				phy-names = "usb2-phy";
 -				phys = <&usbphy0>;
 -				tx-fifo-resize;
@@ -123,14 +128,6 @@ index 74d9de8d7641..83d0377455da 100644
 -				snps,dis_u2_susphy_quirk;
 -				snps,dis_u3_susphy_quirk;
 -			};
-+			qcom,select-utmi-as-pipe-clk;
-+
-+			tx-fifo-resize;
-+			snps,is-utmi-l1-suspend;
-+			snps,hird-threshold = /bits/ 8 <0x0>;
-+			snps,dis_u2_susphy_quirk;
-+			snps,dis_u3_susphy_quirk;
-+
 +			status = "disabled";
  		};
  
