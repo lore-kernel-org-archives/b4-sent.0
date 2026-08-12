@@ -1,162 +1,395 @@
-From: Fan Ye <fy15309206903@gmail.com>
-Date: Wed, 12 Aug 2026 01:21:52 +0000
-Subject: [PATCH v2] thunderbolt: Stop waiting on a path pending bit that
- never clears
+From: Zhentao Guo <zhentao.guo@amlogic.com>
+Subject: [PATCH v7 0/6] Add Amlogic stateless H.264 video decoder for S4
+Date: Wed, 12 Aug 2026 10:41:22 +0800
+Message-Id: <20260812-b4-s4-vdec-upstream-v7-0-3fae085861bd@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-b4-tb-pending-v2-v2-1-0667ee84c2d4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAK/Ke2oC/yXMMQ6DMAxA0asgz7UULApRr4I61MEJZkhRQhES4
- u6EMr7h/x2yJJUMr2qHJKtm/cYCelTgxk8MgjoUAxlqja0JucGFcZY4aAy4EnZW2HXMxj8tlGx
- O4nX7L/v37fzjSdxyfeA4TqBsrKR0AAAA
-X-Change-ID: 20260812-b4-tb-pending-v2-78ebc7bb0f58
-To: Andreas Noever <andreas.noever@gmail.com>, 
- Mika Westerberg <westeri@kernel.org>, 
- Yehezkel Bernat <YehezkelShB@gmail.com>
-Cc: linux-usb@vger.kernel.org, Fan Ye <fy15309206903@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786497711; l=5171;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=ZJC23Z8IdZX0lJBPYb5DU7w3VWoK5HvGEn98o9tOYh4=;
- b=Qvq8J5ODMHaWcbNJZ9OyQreABtIk0im/SiDAZSs3HIt/L8nJ2cVId5ziZmUbh8Ww2Fr8r2qzE
- aDylT/aZvexDbQY3NTrLMxTJXtpKp1m6sS67p0cJ6akycCCwBh44aZU
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+X-B4-Tracking: v=1; b=H4sIAFLde2oC/33QzWrDMAwH8FcpPs/DkhU76WnvMXbwh9IalqbYX
+ dgoefc5hRFGsh3/EvpJ6C4K58RFHA93kXlKJY2XGuzTQYSzu5xYplizQIUNKLTSkywkp8hBflz
+ LLbMbpDJKB3AUWnKiTl4z9+nzob6+1XxO5Tbmr8eSCZbq/94EUkmDihS0oH0TX9zwPp5SeA7jI
+ BZxwlUBpH0Fq+Kj94F1D+DMVtE/ilGAsK/oqhB1xnHQ0Xa8VWhVEPS+QlUJtt4alYrG4FZpVqV
+ Bs680VdHahxZs3+metopZFfvXX8zy3dp2ltkStr+VeZ6/AUyuaEMWAgAA
+X-Change-ID: 20251027-b4-s4-vdec-upstream-0603c1a4c84a
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
+ devicetree@vger.kernel.org, Zhentao Guo <zhentao.guo@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786502492; l=16503;
+ i=zhentao.guo@amlogic.com; s=20251024; h=from:subject:message-id;
+ bh=EhrNaaITR8sn/xjYj5lhsVRooKR0MO5DwPGlRhQR/7Q=;
+ b=DVxcsKsiKnzBcz6/xu6lnp7RpQMnoATCgVirgVgLpfpmD7Fops7jnHIfspJzttSh7EHdLXBU5
+ J2dzubbjNxuC4WcEIMjMAB5bDHEPvHN+Giq7/4mNvJlNBt9VJee+Xj8
+X-Developer-Key: i=zhentao.guo@amlogic.com; a=ed25519;
+ pk=5yfDKrjreXwcAoEUsdtWafy6YN500upXp/CgtnXjLVU=
+X-Endpoint-Received: by B4 Relay for zhentao.guo@amlogic.com/20251024 with auth_id=555
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__tb_path_deactivate_hop() waits up to 500 ms for a hop's pending bit to
-read back clear. On an ASMedia ASM4242 host router the host interface
-adapter latches it once enough frames have gone through the DMA ring and
-never clears it again: the teardown finds it already set, seconds after
-the last frame and with the path still up. USB4 v2 table 8-23 has the
-field read only and zero unless packets belonging to the path are waiting
-to be dequeued, so the wait is right and this adapter is not.
+Introduce initial driver support for Amlogic's new video acceleration
+hardware architecture, designed for video stream decoding.
 
-Quirk those routers by hardware id and let a quirked adapter that has
-timed out once answer -ETIMEDOUT immediately from then on. Bringing the
-interface down then took 8 ms across 200 cycles, where unpatched it took
-508 ms in 161 of 162, at an unchanged failure rate of about one per
-cycle.
+Compared to the current Amlogic video decoder hardware architecture,
+this new implementation eliminates the Esparser hardware component,
+enabling direct vb2 buffer input. The driver is designed to support
+the V4L2 M2M stateless decoder API. The initial phase includes support
+for H.264 decoding on Amlogic S805X2 platform.
 
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Fan Ye <fy15309206903@gmail.com>
+The driver needs to work alongside with a signed firmware. The loading process of
+the signed fw is as follow.
+Stage1: Decypt and decompose the full firmware package when the driver is probed.
+  +---------------------+                        +---------------------+
+  |  Decoder Driver     |                        |  TEE Shared Memory  |
+  |  (Kernel Space)     |                        |                     |
+  |  +---------------+  |                        |  +---------------+  |
+  |  | video_ucode   |  |                        |  | firmware      |  |
+  |  |    .bin       |  |  Copy payload to SHM   |  |   payload     |  |
+  |  | (from fs)     |  | ---------------------> |  | (Secure RAM)  |  |
+  |  +---------------+  |                        |  +---------------+  |
+  +---------------------+                        +----------+----------+
+                                                            |
+                                                            | PTA Invocation
+                                                            v
+                                       +-------------------------------+
+                                       |             BL32              |
+                                       |  +-------------------------+  |
+                                       |  | Decrypt Firmware        |  |
+                                       |  +-----------+-------------+  |
+                                       |              |                |
+                                       |              v                |
+                                       |  +-------------------------+  |
+                                       |  | Decompose the full      |  |
+				       |  | firmware pacakge        |  |
+                                       |  +-----------+-------------+  |
+                                       |              |                |
+                                       |              v                |
+                                       |  +-------------------------+  |
+                                       |  | Store decomposed .bin   |  |
+                                       |  | in Secure Memory        |  |
+                                       |  +-------------------------+  |
+                                       +-------------------------------+
+
+Stage2: When a decode job is scheduled, load decrypted fw via secure monitor.
+
+  +---------------------+
+  |  V4L2 M2M Framework |
+  |  +---------------+  |
+  |  |  device_run   |  |
+  |  +------+--------+  |
+  +---------+-----------+
+            |
+            v
+  +---------------------+                  +---------------------+
+  |  Decoder Driver     |                  |  Secure Monitor     |
+  |  (Kernel Space)     |                  |      (bl32)         |
+  |  +---------------+  |     SMC Call     |  +---------------+  |
+  |  | Select Codec  |  | ---------------> |  | Select & Load |  |
+  |  | Specific FW   |  |                  |  | firmware.bin  |  |
+  |  +---------------+  |                  |  | to AMRISC     |  |
+  +---------------------+                  |  +-------+-------+  |
+                                           +----------+----------+
+                                                      |
+                                                      v
+                                           +---------------------+
+                                           |     AMRISC Core     |
+                                           |  +---------------+  |
+                                           |  | Running fw on |  |
+                                           |  | AMRISC        |  |
+                                           |  +---------------+  |
+                                           +---------------------+
+
+The driver is capable of:
+- Supporting stateless H.264 decoding up to a resolution 1920x1088(on the S805X2 platform).
+- Supporting I/P/B frame handling.
+- Supporting vb2 mmap and dma-buf modes.
+- Supporting frame-based decode mode. (Note that some H.264 bitstreams require
+  DPB reordering to generate reference lists, the stateless decoder driver
+  cannot access reordered reference lists in this mode, requiring the driver
+  to perform reference list reordering itself)
+- Supporting NV12/NV21 output.
+- Supporting Annex B start codes.
+
+This driver is tested with Gstreamer.
+Example:
+gst-launch-1.0 filesrc location=/tmp/video_640x360_mp4_hevc_450kbps_no_b.mp4 !
+parsebin ! v4l2slh264dec ! filesink location=/tmp/output.yuv
+
+Retry the compliance test based on kernel 7.1.0:
+v4l2-compliance 1.30.1, 64 bits, 64-bit time_t
+
+Compliance test for aml-vdec-drv device /dev/video0:
+
+Driver Info:
+Driver name : aml-vdec-drv
+Card type : platform:aml-vdec-drv
+Bus info : platform:fe320000.video-codec
+Driver version : 7.1.0
+Capabilities : 0x84204000
+Video Memory-to-Memory Multiplanar
+Streaming
+Extended Pix Format
+Device Capabilities
+Device Caps : 0x04204000
+Video Memory-to-Memory Multiplanar
+Streaming
+Extended Pix Format
+Detected Stateless Decoder
+Media Driver Info:
+Driver name : aml-vdec-drv
+Model : aml-vdec-drv
+Serial :
+Bus info : platform:fe320000.video-codec
+Media version : 7.1.0
+Hardware revision: 0x00000000 (0)
+Driver version : 7.1.0
+Interface Info:
+ID : 0x0300000c
+Type : V4L Video
+Entity Info:
+ID : 0x00000001 (1)
+Name : aml_dev_drv-source
+Function : V4L2 I/O
+Pad 0x01000002 : 0: Source
+Link 0x02000008: to remote pad 0x1000004 of entity 'aml_dev_drv-proc' (Video Decoder): Data, Enabled, Immutable
+
+Required ioctls:
+test MC information (see 'Media Driver Info' above): OK
+test VIDIOC_QUERYCAP: OK
+test invalid ioctls: OK
+
+Allow for multiple opens:
+test second /dev/video0 open: OK
+test VIDIOC_QUERYCAP: OK
+test VIDIOC_G/S_PRIORITY: OK
+test for unlimited opens: OK
+
+Debug ioctls:
+test VIDIOC_DBG_G/S_REGISTER: OK (Not Supported)
+test VIDIOC_LOG_STATUS: OK (Not Supported)
+
+Input ioctls:
+test VIDIOC_G/S_TUNER/ENUM_FREQ_BANDS: OK (Not Supported)
+test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
+test VIDIOC_S_HW_FREQ_SEEK: OK (Not Supported)
+test VIDIOC_ENUMAUDIO: OK (Not Supported)
+test VIDIOC_G/S/ENUMINPUT: OK (Not Supported)
+test VIDIOC_G/S_AUDIO: OK (Not Supported)
+Inputs: 0 Audio Inputs: 0 Tuners: 0
+
+Output ioctls:
+test VIDIOC_G/S_MODULATOR: OK (Not Supported)
+test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
+test VIDIOC_ENUMAUDOUT: OK (Not Supported)
+test VIDIOC_G/S/ENUMOUTPUT: OK (Not Supported)
+test VIDIOC_G/S_AUDOUT: OK (Not Supported)
+Outputs: 0 Audio Outputs: 0 Modulators: 0
+
+Input/Output configuration ioctls:
+test VIDIOC_ENUM/G/S/QUERY_STD: OK (Not Supported)
+test VIDIOC_ENUM/G/S/QUERY_DV_TIMINGS: OK (Not Supported)
+test VIDIOC_DV_TIMINGS_CAP: OK (Not Supported)
+test VIDIOC_G/S_EDID: OK (Not Supported)
+
+Control ioctls:
+test VIDIOC_QUERY_EXT_CTRL/QUERYMENU: OK
+test VIDIOC_QUERYCTRL: OK
+test VIDIOC_G/S_CTRL: OK
+test VIDIOC_G/S/TRY_EXT_CTRLS: OK
+test VIDIOC_(UN)SUBSCRIBE_EVENT/DQEVENT: OK
+test VIDIOC_G/S_JPEGCOMP: OK (Not Supported)
+Standard Controls: 6 Private Controls: 0
+Standard Compound Controls: 4 Private Compound Controls: 0
+
+Format ioctls:
+test VIDIOC_ENUM_FMT/FRAMESIZES/FRAMEINTERVALS: OK
+test VIDIOC_G/S_PARM: OK (Not Supported)
+test VIDIOC_G_FBUF: OK (Not Supported)
+test VIDIOC_G_FMT: OK
+test VIDIOC_TRY_FMT: OK
+test VIDIOC_S_FMT: OK
+test VIDIOC_G_SLICED_VBI_CAP: OK (Not Supported)
+test Cropping: OK (Not Supported)
+test Composing: OK (Not Supported)
+test Scaling: OK (Not Supported)
+
+Codec ioctls:
+test VIDIOC_(TRY_)ENCODER_CMD: OK (Not Supported)
+test VIDIOC_G_ENC_INDEX: OK (Not Supported)
+test VIDIOC_(TRY_)DECODER_CMD: OK
+
+Buffer ioctls:
+test VIDIOC_REQBUFS/CREATE_BUFS/QUERYBUF: OK
+test CREATE_BUFS maximum buffers: OK
+test VIDIOC_REMOVE_BUFS: OK
+test VIDIOC_EXPBUF: OK
+test Requests: OK
+test blocking wait: OK
+
+Total for aml-vdec-drv device /dev/video0: 49, Succeeded: 49, Failed: 0, Warnings: 0
+Fluster test result of JVT-AVC_V1.
+Result:
+Ran 77/135 tests successfully
+
+- 52 test vectors failed due to interlaced or mbaff clips: The Amlogic stateless
+  decoder driver only support bitstreams with frame_mbs_only_flags == 1.
+  Test Vectors:
+        cabac_mot_fld0_full
+        cabac_mot_mbaff0_full
+        cabac_mot_picaff0_full
+        CABREF3_Sand_D
+        CAFI1_SVA_C
+        CAMA1_Sony_C
+        CAMA1_TOSHIBA_B
+        cama1_vtc_c
+        cama2_vtc_b
+        CAMA3_Sand_E
+        cama3_vtc_b
+        CAMACI3_Sony_C
+        CAMANL1_TOSHIBA_B
+        CAMANL2_TOSHIBA_B
+        CAMANL3_Sand_E
+        CAMASL3_Sony_B
+        CAMP_MOT_MBAFF_L30
+        CAMP_MOT_MBAFF_L31
+        CANLMA2_Sony_C
+        CANLMA3_Sony_C
+        CAPA1_TOSHIBA_B
+        CAPAMA3_Sand_F
+        cavlc_mot_fld0_full_B
+        cavlc_mot_mbaff0_full_B
+        cavlc_mot_picaff0_full_B
+        CVCANLMA2_Sony_C
+        CVFI1_Sony_D
+        CVFI1_SVA_C
+        CVFI2_Sony_H
+        CVFI2_SVA_C
+        CVMA1_Sony_D
+        CVMA1_TOSHIBA_B
+        CVMANL1_TOSHIBA_B
+        CVMANL2_TOSHIBA_B
+        CVMAPAQP3_Sony_E
+        CVMAQP2_Sony_G
+        CVMAQP3_Sony_D
+        CVMP_MOT_FLD_L30_B
+        CVNLFI1_Sony_C
+        CVNLFI2_Sony_H
+        CVPA1_TOSHIBA_B
+        FI1_Sony_E
+        MR6_BT_B
+        MR7_BT_B
+        MR8_BT_B
+        MR9_BT_B
+        Sharp_MP_Field_1_B
+        Sharp_MP_Field_2_B
+        Sharp_MP_Field_3_B
+        Sharp_MP_PAFF_1r2
+        Sharp_MP_PAFF_2r
+        CVMP_MOT_FRM_L31_B
+- 3 test vectors failed due to unsupported bitstream.
+  num_slice_group_minus1 greater than zero is not supported by the
+  hardware.
+  Test Vectors:
+        FM1_BT_B
+        FM1_FT_E
+        FM2_SVA_C
+- 2 test vectors failed because SP_SLICE type is not supported by the
+  hardware.
+  Test Vectors:
+        SP1_BT_A
+        sp2_bt_b
+
+One remain failure is CVFC1_Sony_C, which contains crop information. The md5sum of every decoded YUV indicates that original output from the decoder was correct. The YUV was cropped by gstreamer. The correct cropping method for this bitstream should be to crop 30*2 rows of pixels from both the top and bottom of the image, and 13*2 columns of pixels from both the left and right sides.However, gstreamer cropped 13*4 columns of pixels from the right side and 30*4 rows of pixels from the bottom. We are trying to find out the cause of this. Other failuers mentioned in V1 and V2 were resolved.
+
+Changes in v7:
+- Addressed Krzysztof's review comments: fixed DTS coding style, added board info requiring the config to patch 6/6's commit message.
+- Improvements made per sashiko bot review, including:
+    1.Fixed memory out-of-bounds access / buffer overflow issues.
+    2.Fixed concurrency and race conditions related issues.
+    3.Improved the error handling paths to avoid the risk of resource leakage.
+    4.Fixed the improper V4L2 framework usage.
+- Link to v6: https://lore.kernel.org/r/20260724-b4-s4-vdec-upstream-v6-0-6072a7ee7428@amlogic.com
+
+Changes in v6:
+- Rename the HEVC core and the associated power, clock, and interrupt names. 'HEVC' was a development codename of the decoder IP which accelerates h265 vp9 av1 decoding, but it coincidentally matches the acronym for High Efficiency Video Coding. To avoid naming ambiguity, HEVC core is renamed to HVDEC core(H stands for HEVC).
+- Get rid of the unused function and interface.
+- Link to v5: https://lore.kernel.org/r/20260526-b4-s4-vdec-upstream-v5-0-33bc817f93f4@amlogic.com
+
+Changes in v5:
+- Rename the compatible and the clock item accroding to Krzysztof's feedback.
+- Use tee & meson_sm helpers to decrypt load the signed decoder firmware. Add the meson_sm describsion and reference to dt-binding and dts.
+- Link to v4: https://lore.kernel.org/r/20260213-b4-s4-vdec-upstream-v4-0-c7112d00d662@amlogic.com
+
+Changes in v4:
+- Use %pad to print dma_addr_t type instead of using %llx.
+- Add initial values to some local variables.
+- Link to v3: https://lore.kernel.org/r/20260121-b4-s4-vdec-upstream-v3-0-4496aec3d79e@amlogic.com
+
+Changes in v3:
+- Fixed the DT check error:
+  arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dtb: video-codec@fe320000 (amlogic,s4-vcodec-dec): 'amlogic,canvas' does not match any of the regexes: '^pinctrl-[0-9]+$' 
+  from schema $id: http://devicetree.org/schemas/media/amlogic,vcodec-dec.yaml
+- Added DOS reset lines to dtsi and dt-binding.
+- Fixed the issue where some B-frames were not decoded correctly(The fluster failures mentioned in patch V1 and V2 were mostly caused by this).
+- Fixed the issue where canvas_index leaks occurred during the decoding of some bitstreams.
+- Rework the src/dst format storage. Use v4l2_pix_format_mplane to store formats that related to bitstreams into the context. Add the reset format function to reset all the formats to default value. 
+- Store decoding parameters related to chip platforms, such as maximum width/height and alignment requirement, organized by chip platform.
+- Link to v2: https://lore.kernel.org/r/20251124-b4-s4-vdec-upstream-v2-0-bdbbce3f11a6@amlogic.com
+
+Changes in v2:
+- Fixed incorrect generation of the reference lists for some B-frames.
+- Rename or get rid of some properties in DTS and dt-binding.
+- Remove some useless code or helper functions, (eg. clk helper functions, reg I/O macros, and some superfluous print messages) replace these functions with existing ones.
+- Replace all the printk messages with dev_err/dev_info/dev_dbg
+- Use the helper functions from the existing meson-canvas driver.
+- Use clk_bulk_data to map clocks from DTS.
+- Retry the V4L2 Compliance test on 6.18-rc6, fix a newly introduced bug.
+- Link to v1: https://lore.kernel.org/r/20251027-b4-s4-vdec-upstream-v1-0-620401813b5d@amlogic.com
+
+Signed-off-by: Zhentao Guo <zhentao.guo@amlogic.com>
 ---
-Measured on two ASM4242 hosts wired to each other, hw_vendor_id 0x174c,
-hw_device_id 0x2428, NVM 200011.250708, on a base that already carries
-68bf02b6b4ad.
+Zhentao Guo (6):
+      firmware: meson: sm: video firmware loading via secure monitor
+      firmware: meson: sm: Add video firmware loading SMC call
+      media: dt-bindings: Add Amlogic V4L2 video decoder
+      decoder: Add V4L2 stateless H.264 decoder driver
+      arm64: dts: amlogic: Add video decoder driver support for S4 SOCs
+      arm64: defconfig: Enable CONFIG_VIDEO_AMLOGIC_VDEC
 
-Read before the teardown writes anything, path still up and the ring idle
-for seconds: at 200 frames it is clear in 5 of 5 rounds and the hop drains
-on the first read, at 260 it is set in 5 of 5 and the wait runs out. So it
-is set before the teardown starts rather than by it, and the clear case is
-why the flag is learned rather than taken from the quirk alone.
-
-5.4.1 has a connection manager wait tTeardown after the router sets the
-bit to 0b before making the path valid again. On an adapter where it
-never reads 0b there is no such point, patched or not.
-
-v2:
-- Add the Assisted-by tag.
-- Answer the spec question from USB4 v2 table 8-23.
-- Return -ETIMEDOUT instead of 0; gate the flag on a 0x174c/0x2428 quirk.
-- Drop the ring-wrap claim.
-- Cut the text down.
-
-v1: https://lore.kernel.org/linux-usb/20260809-b4-tb-teardown-v1-2-c88bbfe5c127@gmail.com/
+ .../devicetree/bindings/media/amlogic,s4-vdec.yaml |  111 ++
+ MAINTAINERS                                        |    7 +
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          |   35 +
+ arch/arm64/configs/defconfig                       |    1 +
+ drivers/firmware/meson/meson_sm.c                  |    1 +
+ drivers/media/platform/amlogic/Kconfig             |    1 +
+ drivers/media/platform/amlogic/Makefile            |    1 +
+ drivers/media/platform/amlogic/vdec/Kconfig        |   18 +
+ drivers/media/platform/amlogic/vdec/Makefile       |    4 +
+ drivers/media/platform/amlogic/vdec/TODO           |    7 +
+ drivers/media/platform/amlogic/vdec/aml_vdec.c     |  808 ++++++++
+ drivers/media/platform/amlogic/vdec/aml_vdec.h     |   33 +
+ drivers/media/platform/amlogic/vdec/aml_vdec_drv.c |  231 +++
+ drivers/media/platform/amlogic/vdec/aml_vdec_drv.h |  168 ++
+ drivers/media/platform/amlogic/vdec/aml_vdec_hw.c  |  530 +++++
+ drivers/media/platform/amlogic/vdec/aml_vdec_hw.h  |  155 ++
+ .../platform/amlogic/vdec/aml_vdec_platform.c      |   81 +
+ .../platform/amlogic/vdec/aml_vdec_platform.h      |   46 +
+ .../media/platform/amlogic/vdec/aml_vdec_tee_fw.c  |  240 +++
+ .../media/platform/amlogic/vdec/aml_vdec_tee_fw.h  |   27 +
+ drivers/media/platform/amlogic/vdec/h264.c         | 2082 ++++++++++++++++++++
+ drivers/media/platform/amlogic/vdec/h264.h         |  299 +++
+ drivers/media/platform/amlogic/vdec/reg_defines.h  |  177 ++
+ include/linux/firmware/meson/meson_sm.h            |    1 +
+ 24 files changed, 5064 insertions(+)
 ---
- drivers/thunderbolt/path.c   | 8 ++++++++
- drivers/thunderbolt/quirks.c | 8 ++++++++
- drivers/thunderbolt/tb.h     | 4 ++++
- 3 files changed, 20 insertions(+)
-
-diff --git a/drivers/thunderbolt/path.c b/drivers/thunderbolt/path.c
-index b2c322e76b8a..5cf87b8af2b2 100644
---- a/drivers/thunderbolt/path.c
-+++ b/drivers/thunderbolt/path.c
-@@ -397,6 +397,10 @@ static int __tb_path_deactivate_hop(struct tb_port *port, int hop_index,
- 	if (ret)
- 		return ret;
- 
-+	/* It never clears on this adapter, so the wait would time out again. */
-+	if (port->pending_stuck)
-+		return -ETIMEDOUT;
-+
- 	/* Wait until it is drained */
- 	timeout = ktime_add_ms(ktime_get(), 500);
- 	do {
-@@ -430,6 +434,10 @@ static int __tb_path_deactivate_hop(struct tb_port *port, int hop_index,
- 		usleep_range(10, 20);
- 	} while (ktime_before(ktime_get(), timeout));
- 
-+	/* Remember it only on an adapter known to latch it. */
-+	if (tb_port_is_nhi(port) && (port->sw->quirks & QUIRK_STUCK_PENDING))
-+		port->pending_stuck = true;
-+
- 	return -ETIMEDOUT;
- }
- 
-diff --git a/drivers/thunderbolt/quirks.c b/drivers/thunderbolt/quirks.c
-index 9f7914ac2f48..6ec90a85bbaf 100644
---- a/drivers/thunderbolt/quirks.c
-+++ b/drivers/thunderbolt/quirks.c
-@@ -52,6 +52,12 @@ static void quirk_block_rpm_in_redrive(struct tb_switch *sw)
- 	tb_sw_dbg(sw, "preventing runtime PM in DP redrive mode\n");
- }
- 
-+static void quirk_stuck_pending(struct tb_switch *sw)
-+{
-+	sw->quirks |= QUIRK_STUCK_PENDING;
-+	tb_sw_dbg(sw, "host interface adapter pending bit does not clear\n");
-+}
-+
- struct tb_quirk {
- 	u16 hw_vendor_id;
- 	u16 hw_device_id;
-@@ -114,6 +120,8 @@ static const struct tb_quirk tb_quirks[] = {
- 	{ 0x0438, 0x0209, 0x0000, 0x0000, quirk_clx_disable },
- 	{ 0x0438, 0x020a, 0x0000, 0x0000, quirk_clx_disable },
- 	{ 0x0438, 0x020b, 0x0000, 0x0000, quirk_clx_disable },
-+	/* ASM4242 never clears the Pending Packets bit of its NHI adapter */
-+	{ 0x174c, 0x2428, 0x0000, 0x0000, quirk_stuck_pending },
- };
- 
- /**
-diff --git a/drivers/thunderbolt/tb.h b/drivers/thunderbolt/tb.h
-index ec9192b61bc0..00eb8d85755a 100644
---- a/drivers/thunderbolt/tb.h
-+++ b/drivers/thunderbolt/tb.h
-@@ -26,6 +26,8 @@
- #define QUIRK_NO_CLX					BIT(1)
- /* Need to keep power on while USB4 port is in redrive mode */
- #define QUIRK_KEEP_POWER_IN_DP_REDRIVE			BIT(2)
-+/* Pending Packets bit of the host interface adapter never clears */
-+#define QUIRK_STUCK_PENDING				BIT(3)
- 
- /**
-  * struct tb_nvm - Structure holding NVM information
-@@ -273,6 +275,7 @@ struct tb_bandwidth_group {
-  * @max_bw: Maximum possible bandwidth through this adapter if set to
-  *	    non-zero.
-  * @redrive: For DP IN, if true the adapter is in redrive mode.
-+ * @pending_stuck: Pending bit did not clear, so it is not waited on again
-  *
-  * In USB4 terminology this structure represents an adapter (protocol or
-  * lane adapter).
-@@ -302,6 +305,7 @@ struct tb_port {
- 	struct list_head group_list;
- 	unsigned int max_bw;
- 	bool redrive;
-+	bool pending_stuck;
- };
- 
- /**
-
----
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260812-b4-tb-pending-v2-78ebc7bb0f58
+base-commit: 3d08ff75a47a3e7e2ab45a3bcab6723b4d906422
+change-id: 20251027-b4-s4-vdec-upstream-0603c1a4c84a
 
 Best regards,
---  
-Fan Ye <fy15309206903@gmail.com>
+-- 
+Zhentao Guo <zhentao.guo@amlogic.com>
 
