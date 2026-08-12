@@ -1,167 +1,136 @@
-From: Fan Ye <fy15309206903@gmail.com>
-Date: Wed, 12 Aug 2026 11:42:09 +0000
-Subject: [PATCH v3] thunderbolt: Stop waiting on a path pending bit that
- never clears
+From: Kairui Song <kasong@tencent.com>
+Date: Wed, 12 Aug 2026 20:22:39 +0800
+Subject: [PATCH v2] mm/mglru: fix and remove redundant unevictable folio
+ handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-b4-tb-pending-v3-1-3a292e7194c9@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABBcfGoC/yXMTQ5AMBBA4avIrE1S4yfiKmKh7WAsSlpEIu6uW
- H6L9y4I7IUDNMkFng8JsriIPE3ATL0bGcVGAymqVJ0R6gI3jSs7K25Em+WkFA2m4hJis3oe5Px
- +bfc77Hpms70TuO8HsnLJ43EAAAA=
-X-Change-ID: 20260812-b4-tb-pending-d132002fc6e5
-To: Mika Westerberg <westeri@kernel.org>, 
- Yehezkel Bernat <YehezkelShB@gmail.com>, 
- Andreas Noever <andreas.noever@gmail.com>
-Cc: linux-usb@vger.kernel.org, Fan Ye <fy15309206903@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786534928; l=5168;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=L3Lnw1mWZ/p8vS+tXDNiU2TpU0v+O3am4AgNeqUNTmI=;
- b=/XvGN1ezr9fpFXe7pnaxHCyvTv5lC0EQ4Rh1RCpd5lJlZgt6AkEm0TMhPN4MiB+8cCvvXgg6Q
- 4xIfH3A33HkBcpxqV0R8xJwcfSWceKt5+duazqF563VQ16c/Ezf3oeM
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+Message-Id: <20260812-mglru-mlock-fix-v2-1-a3fec5853c08@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ6CMBBEf4Xs2TXdQrTx5H8YDtAuUoXWtIVoC
+ P9uwbPHN5l5s0DkYDnCpVgg8Gyj9S6DPBSg+8bdGa3JDFLIk1BEON6HMOE4eP3Ezr5RCqM6ZSp
+ VnRvIq1fgHO/GW/3jOLUP1mnTbI3exuTDZ7+caev9t8+EhKqVpSQjmEx5Tew0u3TUfoR6Xdcvh
+ zMrX8IAAAA=
+X-Change-ID: 20260811-mglru-mlock-fix-20d8f8d4847a
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Johannes Weiner <hannes@cmpxchg.org>, David Hildenbrand <david@kernel.org>, 
+ Michal Hocko <mhocko@kernel.org>, Qi Zheng <qi.zheng@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
+ Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
+ Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
+ Oleksandr Natalenko <oleksandr@natalenko.name>, 
+ Suleiman Souhlal <suleiman@google.com>, 
+ "Jan Alexander Steffens (heftig)" <heftig@archlinux.org>, 
+ Yu Zhao <yuzhao@google.com>, Steven Barrett <steven@liquorix.net>, 
+ Brian Geffon <bgeffon@google.com>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, Kairui Song <ryncsn@gmail.com>, 
+ linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786537360; l=4125;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=U29orzKk9D7il/dD5NUP46H8cRaJscTJfBNkl8jXS24=;
+ b=glwH4HIia2IpuIdS3x5BsJrnJb+xJ61O2JdxsyE/WYO1gAglTuMnQhrPr7sy7LM1selJb22QA
+ PMDF4R6eoApDe9EvRBQIRyjTjJ52/SV8EO0iUoQSgJdMLIxLo6cHncu
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__tb_path_deactivate_hop() waits up to 500 ms for a hop's pending bit to
-read back clear. On an ASMedia ASM4242 host router the host interface
-adapter latches it once enough frames have gone through the DMA ring and
-never clears it again: the teardown finds it already set, seconds after
-the last frame and with the path still up. USB4 v2 table 8-23 has the
-field read only and zero unless packets belonging to the path are waiting
-to be dequeued, so the wait is right and this adapter is not.
+sort_folio() has a shortcut for moving folios that are no longer
+evictable but are still sitting on a generation list.  However, this
+shortcut is buggy.  It does not follow the PG_lru usage convention,
+and it has a more serious issue.
 
-Make the wait a per-adapter length and quirk those routers to zero, which
-leaves the loop reading the bit exactly once. A hop that does drain still
-says so on that read, and one that does not answers -ETIMEDOUT without
-burning the timeout: bringing the interface down takes 6 ms where it took
-506.
+Unevictable folios are not threaded on lists[LRU_UNEVICTABLE], so that
+folio->lru can be reused to hold folio->mlock_count (see the comment in
+lruvec_init()).  Hence lruvec_add_folio() skips the list_add() for them,
+and every other place that turns a folio unevictable initialises
+mlock_count explicitly: lru_add() sets it to 0, __mlock_folio() and
+__mlock_new_folio() set it to !!folio_test_mlocked(folio).
+sort_folio() sets nothing, and the lru_gen_del_folio() right above it
+may have already poisoned folio->lru via list_del(), so mlock_count
+ends up aliasing LIST_POISON2, which reads as 0x122, i.e. 290.  The
+result is user visible.  On munlock, __munlock_folio() decrements that
+bogus count, finds it still non-zero and bails out before clearing
+PG_mlocked, so the folio remains unevictable and the Mlocked
+accounting stays inflated until the folio is freed.
 
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Fan Ye <fy15309206903@gmail.com>
+The shortcut also touches the LRU flags in the wrong order.  It calls
+lru_gen_del_folio() while PG_lru is still set, so a concurrent
+folio_test_clear_lru() (e.g. compaction, folio_isolate_lru()) can
+succeed on a folio that has already been taken off the generation list,
+which may lead to unexpected behavior.
+
+So fix it by isolating them as common folios and letting the generic
+shrink path cull them. This matches the classical LRU behavior, and
+there should be no visible effect on the generic eviction or isolation
+behavior.
+
+There is no performance concern either, such a folio goes through this
+once, and then it is off the generation lists for good.
+
+Fixes: ac35a4902374 ("mm: multi-gen LRU: minimal implementation")
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Measured on two ASM4242 hosts wired to each other, hw_vendor_id 0x174c,
-hw_device_id 0x2428, NVM 200011.250708.
-
-Both behaviours in one binary selected at runtime, three rounds each: the
-single read reports drained at 200 frames in 3 of 3 and answers -ETIMEDOUT
-at 400 frames in 3 of 3, where skipping the read answers -ETIMEDOUT at 200
-frames as well.
-
-v3:
-- Give the adapter a pp_timeout_msec instead of the learned pending_stuck
-  flag, and let the quirk clear it.
-- Feed it to the existing timeout rather than skipping the wait, so a
-  quirked adapter still reads the bit once.
-
-v2: https://lore.kernel.org/linux-usb/20260812-b4-tb-pending-v2-v2-1-0667ee84c2d4@gmail.com/
+Changes in v2:
+- Proactively bypass MGLRU pid protection and lazy promotion to avoid
+  hot unevcitable folios staying on list for a long time.
+- Link to v1: https://patch.msgid.link/20260811-mglru-mlock-fix-v1-1-8b2321d0e1d3@tencent.com
 ---
- drivers/thunderbolt/path.c   |  2 +-
- drivers/thunderbolt/quirks.c | 18 ++++++++++++++++++
- drivers/thunderbolt/switch.c |  1 +
- drivers/thunderbolt/tb.h     |  6 ++++++
- 4 files changed, 26 insertions(+), 1 deletion(-)
+ mm/vmscan.c | 19 +++++--------------
+ 1 file changed, 5 insertions(+), 14 deletions(-)
 
-diff --git a/drivers/thunderbolt/path.c b/drivers/thunderbolt/path.c
-index b2c322e76b8a..05249eed3f64 100644
---- a/drivers/thunderbolt/path.c
-+++ b/drivers/thunderbolt/path.c
-@@ -398,7 +398,7 @@ static int __tb_path_deactivate_hop(struct tb_port *port, int hop_index,
- 		return ret;
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 3194da7dcc79..ca2b926520ea 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -4648,7 +4648,6 @@ void lru_gen_reparent_memcg(struct mem_cgroup *memcg, struct mem_cgroup *parent,
+ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_control *sc,
+ 		       int tier_idx)
+ {
+-	bool success;
+ 	int gen = folio_lru_gen(folio);
+ 	int type = folio_is_file_lru(folio);
+ 	int zone = folio_zonenum(folio);
+@@ -4660,15 +4659,9 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
  
- 	/* Wait until it is drained */
--	timeout = ktime_add_ms(ktime_get(), 500);
-+	timeout = ktime_add_ms(ktime_get(), port->pp_timeout_msec);
- 	do {
- 		ret = tb_port_read(port, &hop, TB_CFG_HOPS, 2 * hop_index, 2);
- 		if (ret)
-diff --git a/drivers/thunderbolt/quirks.c b/drivers/thunderbolt/quirks.c
-index 9f7914ac2f48..f41c5b7ef114 100644
---- a/drivers/thunderbolt/quirks.c
-+++ b/drivers/thunderbolt/quirks.c
-@@ -52,6 +52,19 @@ static void quirk_block_rpm_in_redrive(struct tb_switch *sw)
- 	tb_sw_dbg(sw, "preventing runtime PM in DP redrive mode\n");
- }
+ 	VM_WARN_ON_ONCE_FOLIO(gen >= MAX_NR_GENS, folio);
  
-+static void quirk_stuck_pending(struct tb_switch *sw)
-+{
-+	struct tb_port *port;
-+
-+	tb_switch_for_each_port(sw, port) {
-+		if (!tb_port_is_nhi(port))
-+			continue;
-+
-+		port->pp_timeout_msec = 0;
-+		tb_port_dbg(port, "pending bit does not clear, reading it once\n");
-+	}
-+}
-+
- struct tb_quirk {
- 	u16 hw_vendor_id;
- 	u16 hw_device_id;
-@@ -114,6 +127,11 @@ static const struct tb_quirk tb_quirks[] = {
- 	{ 0x0438, 0x0209, 0x0000, 0x0000, quirk_clx_disable },
- 	{ 0x0438, 0x020a, 0x0000, 0x0000, quirk_clx_disable },
- 	{ 0x0438, 0x020b, 0x0000, 0x0000, quirk_clx_disable },
-+	/*
-+	 * ASMedia ASM4242 never clears the Pending Packets bit of its host
-+	 * interface adapter.
-+	 */
-+	{ 0x174c, 0x2428, 0x0000, 0x0000, quirk_stuck_pending },
- };
+-	/* unevictable */
+-	if (!folio_evictable(folio)) {
+-		success = lru_gen_del_folio(lruvec, folio, true);
+-		VM_WARN_ON_ONCE_FOLIO(!success, folio);
+-		folio_set_unevictable(folio);
+-		lruvec_add_folio(lruvec, folio);
+-		__count_vm_events(UNEVICTABLE_PGCULLED, delta);
+-		return true;
+-	}
++	/* unevictable: let it through and the generic path will cull it */
++	if (!folio_evictable(folio))
++		return false;
  
- /**
-diff --git a/drivers/thunderbolt/switch.c b/drivers/thunderbolt/switch.c
-index a830c82bb905..fb0fc8def0a9 100644
---- a/drivers/thunderbolt/switch.c
-+++ b/drivers/thunderbolt/switch.c
-@@ -703,6 +703,7 @@ static int tb_init_port(struct tb_port *port)
- 	int cap;
+ 	/* promoted */
+ 	if (gen != lru_gen_from_seq(lrugen->min_seq[type])) {
+@@ -4921,11 +4914,9 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
+ 		DEFINE_MIN_SEQ(lruvec);
  
- 	INIT_LIST_HEAD(&port->list);
-+	port->pp_timeout_msec = TB_PENDING_TIMEOUT;
+-		if (!folio_evictable(folio)) {
+-			list_del(&folio->lru);
+-			folio_putback_lru(folio);
++		/* move_folios_to_lru() culls unevictable folios via folio_putback_lru() */
++		if (!folio_evictable(folio))
+ 			continue;
+-		}
  
- 	/* Control adapter does not have configuration space */
- 	if (!port->port)
-diff --git a/drivers/thunderbolt/tb.h b/drivers/thunderbolt/tb.h
-index ec9192b61bc0..3ddd3cbc2b39 100644
---- a/drivers/thunderbolt/tb.h
-+++ b/drivers/thunderbolt/tb.h
-@@ -27,6 +27,9 @@
- /* Need to keep power on while USB4 port is in redrive mode */
- #define QUIRK_KEEP_POWER_IN_DP_REDRIVE			BIT(2)
- 
-+/* How long a hop is given to drain when a path is deactivated */
-+#define TB_PENDING_TIMEOUT				500 /* ms */
-+
- /**
-  * struct tb_nvm - Structure holding NVM information
-  * @dev: Owner of the NVM
-@@ -273,6 +276,8 @@ struct tb_bandwidth_group {
-  * @max_bw: Maximum possible bandwidth through this adapter if set to
-  *	    non-zero.
-  * @redrive: For DP IN, if true the adapter is in redrive mode.
-+ * @pp_timeout_msec: How long a hop of this adapter is given to drain when a
-+ *		     path is deactivated. %0 means a single read.
-  *
-  * In USB4 terminology this structure represents an adapter (protocol or
-  * lane adapter).
-@@ -302,6 +307,7 @@ struct tb_port {
- 	struct list_head group_list;
- 	unsigned int max_bw;
- 	bool redrive;
-+	unsigned int pp_timeout_msec;
- };
- 
- /**
+ 		/* retry folios that may have missed folio_rotate_reclaimable() */
+ 		if (!skip_retry && !folio_test_active(folio) && !folio_mapped(folio) &&
 
 ---
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260812-b4-tb-pending-d132002fc6e5
+base-commit: 1029098ee3275ea5b78e329ce132262affa2f8cc
+change-id: 20260811-mglru-mlock-fix-20d8f8d4847a
 
 Best regards,
 --  
-Fan Ye <fy15309206903@gmail.com>
+Kairui Song <kasong@tencent.com>
 
