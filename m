@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Thu, 13 Aug 2026 02:48:54 +0800
-Subject: [PATCH v2 14/17] mm/huge_memory: clean up after-split folio
- freeing in __folio_split
+Date: Thu, 13 Aug 2026 02:48:55 +0800
+Subject: [PATCH v2 15/17] mm/huge_memory: lift order-0 restriction for
+ swapcache split
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-swap-thp-cleanup-v2-14-d2ee48c6aa49@tencent.com>
+Message-Id: <20260813-swap-thp-cleanup-v2-15-d2ee48c6aa49@tencent.com>
 References: <20260813-swap-thp-cleanup-v2-0-d2ee48c6aa49@tencent.com>
 In-Reply-To: <20260813-swap-thp-cleanup-v2-0-d2ee48c6aa49@tencent.com>
 To: linux-mm@kvack.org
@@ -22,65 +22,104 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786560551; l=2084;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786560551; l=4239;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=J6ngCmgcSfN+77YLugUfoK2XwvgDSIEPy49r2taKtgU=;
- b=nv/FXOxUi/qyiP/D7zcPbetLgXwHnG2qIx3L69T9uE/2GdbdAXy1CbWexYNXJE6N1pJL77bSO
- RL1eMo/YHX4AVDELhD5AfWNEz84D+MRVpx1jgZy4LuqLstBpFrssr4q
+ bh=7dsbDsudI2n6mDwR1IdM39EPBRK/NxojqOiTK462nZU=;
+ b=c4rzUnqjWf2UO0CXc0WhA8Ig+vZoZxuMwxsTI9vQE01fd/QsHjYctk+jycsH4U3c7Yfgh+u01
+ zMHvm4b5o83AcjwKuTg9ljA5ByH5F6u2MneiiOA9vL348+KgChDbBSA
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace free_folio_and_swap_cache() with an explicit folio_free_swap()
-and folio_put() in the after-split loop.  free_folio_and_swap_cache()
-unlocks the folio, then free_swap_cache() must trylock it again and
-re-check folio_mapped() before freeing the swap cache entries; if the
-trylock loses a race, the entries are left behind even though the folio
-reference is dropped.  The sub folios are still locked and unmapped
-here, so just directly call folio_free_swap() directly under the lock,
-unlock and drop the reference.  This makes the swap cache freeing
-deterministic and the reference drop explicit.
+The restriction that swapcache folios can only be uniformly split to
+order 0 dates back to when the swap cache was managed via address_space
+mapping (swap_address_space).  The old split loop only created order-0
+sub-folios with a fixed stride, so non-uniform split and non-zero order
+were rightfully blocked.
 
-Reviewed-by: Zi Yan <ziy@nvidia.com>
+After the swap cache switched to swap table under a cluster lock,
+__swap_cache_replace_folio already gained the ability to replace any
+number of entries for any sub-folio size in one cluster, and the old
+swap_address_space locking and limit was removed. The restriction
+became obsolete but persisted through multiple refactorings.
+
+Drop it now: swapcache folios can be split to any supported order with
+either uniform or non-uniform split, except order-1 which is not
+supported for anon folios. Mappingless swap cache folios could be either
+anon or shmem, so for now we just simply forbid order-1 for all swapcache.
+
+Acked-by: Zi Yan <ziy@nvidia.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ mm/huge_memory.c | 31 +++++++++++++------------------
+ 1 file changed, 13 insertions(+), 18 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 72e7d24139e6..503e3bd84cad 100644
+index 503e3bd84cad..317e5b63d44b 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -4343,14 +4343,16 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		if (new_folio == page_folio(lock_at))
+@@ -3809,6 +3809,7 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
+ 		struct address_space *mapping, enum split_type split_type)
+ {
+ 	const bool is_anon = folio_test_anon(folio);
++	const bool is_swapcache = folio_test_swapcache(folio);
+ 	int old_order = folio_order(folio);
+ 	int start_order = split_type == SPLIT_TYPE_UNIFORM ? new_order : old_order - 1;
+ 	struct folio *old_folio = folio;
+@@ -3823,8 +3824,8 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
+ 	     split_order--) {
+ 		int nr_new_folios = 1UL << (old_order - split_order);
+ 
+-		/* order-1 anonymous folio is not supported */
+-		if (is_anon && split_order == 1)
++		/* order-1 anonymous or swapcache folio is not supported */
++		if ((is_anon || is_swapcache) && split_order == 1)
  			continue;
  
--		folio_unlock(new_folio);
- 		/*
- 		 * Subpages whose mapping has been zapped may be freed
- 		 * earlier, but freeing them requires taking the
--		 * lru_lock, so we defer put_page() on tail pages until
-+		 * lru_lock, so we defer folio_put() on tail pages until
- 		 * after the split completes.
- 		 */
--		free_folio_and_swap_cache(new_folio);
-+		if (is_swapcache)
-+			folio_free_swap(new_folio);
-+		folio_unlock(new_folio);
-+		folio_put(new_folio);
- 	}
+ 		if (mapping) {
+@@ -3899,19 +3900,13 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
+ 	if (!folio->mapping && !is_swapcache)
+ 		return -EBUSY;
  
- out:
-@@ -4377,7 +4379,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
-  * isolated from LRU (if applicable)
+-	/* order-1 is not supported for anonymous THP. */
+-	if (is_anon && new_order == 1)
+-		return -EINVAL;
+-
+ 	/*
+-	 * swapcache folio could only be split to order 0
+-	 *
+-	 * non-uniform split creates after-split folios with orders from
+-	 * folio_order(folio) - 1 to new_order, making it not suitable for any
+-	 * swapcache folio split. Only uniform split to order-0 can be used
+-	 * here.
++	 * Order-1 is unsupported: anon folios need subpage 2 for the
++	 * deferred split list, hybrid shmem & swap cache folios are not
++	 * splittable, and a splittable mappingless swap cache folio could
++	 * be either anon or shmem, which we cannot tell apart.
+ 	 */
+-	if ((split_type == SPLIT_TYPE_NON_UNIFORM || new_order) && is_swapcache)
++	if ((is_anon || is_swapcache) && new_order == 1)
+ 		return -EINVAL;
+ 
+ 	if (is_huge_zero_folio(folio))
+@@ -4411,11 +4406,11 @@ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
+  *    GUP pins, will result in the folio not getting split; instead, the caller
+  *    will receive an -EAGAIN.
   *
-  * Upon return, the folio is not remapped, split folios are not added to LRU,
-- * free_folio_and_swap_cache() is not called, and new folios remain locked.
-+ * folio_free_swap() is not called, and new folios remain locked.
+- * 4) @new_order > 1, usually. Splitting to order-1 anonymous folios is not
+- *    supported for non-file-backed folios, because folio->_deferred_list, which
+- *    is used by partially mapped folios, is stored in subpage 2, but an order-1
+- *    folio only has subpages 0 and 1. File-backed order-1 folios are supported,
+- *    since they do not use _deferred_list.
++ * 4) @new_order > 1, usually. Order-1 is not supported for anon or swapcache
++ *    folios: anon folios need subpage 2 for _deferred_list, which order-1
++ *    folios lack, and a swapcache folio may become anon once faulted in.
++ *    File-backed order-1 folios are supported, since they do not use
++ *    _deferred_list.
   *
-  * Return: 0 on success, -EAGAIN if the folio cannot be split (e.g., due to
-  *         insufficient reference count or extra pins).
+  * After splitting, the caller's folio reference will be transferred to @page,
+  * resulting in a raised refcount of @page after this call. The other pages may
 
 -- 
 2.55.0
