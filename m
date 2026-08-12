@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Thu, 13 Aug 2026 02:48:53 +0800
-Subject: [PATCH v2 13/17] mm/huge_memory: drop the unused do_lru argument
- of the file split helper
+Date: Thu, 13 Aug 2026 02:48:54 +0800
+Subject: [PATCH v2 14/17] mm/huge_memory: clean up after-split folio
+ freeing in __folio_split
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-swap-thp-cleanup-v2-13-d2ee48c6aa49@tencent.com>
+Message-Id: <20260813-swap-thp-cleanup-v2-14-d2ee48c6aa49@tencent.com>
 References: <20260813-swap-thp-cleanup-v2-0-d2ee48c6aa49@tencent.com>
 In-Reply-To: <20260813-swap-thp-cleanup-v2-0-d2ee48c6aa49@tencent.com>
 To: linux-mm@kvack.org
@@ -22,90 +22,65 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786560551; l=3118;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786560551; l=2084;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=flVoHm9M5zKLwjUGNriGa0pMoxT0o6QzUJyZyEIqxUE=;
- b=7DHyK/rZjLlMvKwFURyay/2aB1cvnHprN4cS2TRJ0VbuKTx3rnETMs6xNKZNVSwG7/cUwtAo+
- nFEEiTDxTajDsVPW9H95QIQFjwo4VnWNJEkdNJQRdrnRAMEo+g1QN38
+ bh=J6ngCmgcSfN+77YLugUfoK2XwvgDSIEPy49r2taKtgU=;
+ b=nv/FXOxUi/qyiP/D7zcPbetLgXwHnG2qIx3L69T9uE/2GdbdAXy1CbWexYNXJE6N1pJL77bSO
+ RL1eMo/YHX4AVDELhD5AfWNEz84D+MRVpx1jgZy4LuqLstBpFrssr4q
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The only caller of __folio_split_unmap_and_freeze_file() always passes
-do_lru as true, so the argument and the branches gated on it are dead
-code.  Drop it.
+Replace free_folio_and_swap_cache() with an explicit folio_free_swap()
+and folio_put() in the after-split loop.  free_folio_and_swap_cache()
+unlocks the folio, then free_swap_cache() must trylock it again and
+re-check folio_mapped() before freeing the swap cache entries; if the
+trylock loses a race, the entries are left behind even though the folio
+reference is dropped.  The sub folios are still locked and unmapped
+here, so just directly call folio_free_swap() directly under the lock,
+unlock and drop the reference.  This makes the swap cache freeing
+deterministic and the reference drop explicit.
 
+Reviewed-by: Zi Yan <ziy@nvidia.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 19 ++++++-------------
- 1 file changed, 6 insertions(+), 13 deletions(-)
+ mm/huge_memory.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index ce02608b37f4..72e7d24139e6 100644
+index 72e7d24139e6..503e3bd84cad 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -4097,8 +4097,6 @@ static int __folio_split_unmap_and_freeze(struct folio *folio, unsigned int new_
-  *             smallest order of the after-split folios (non-uniform split)
-  * @split_at: in non-uniform split, the folio containing @split_at is split
-  *            until its order becomes @new_order
-- * @do_lru: if true, add after-split folios to @list if non NULL, otherwise to
-- *          the LRU list
-  * @list: after-split folios will be put on it if non NULL
-  * @split_type: perform uniform split or not (non-uniform split)
-  *
-@@ -4110,8 +4108,8 @@ static int __folio_split_unmap_and_freeze(struct folio *folio, unsigned int new_
-  * is returned, @folio might be split but not to @new_order)
-  */
- static int __folio_split_unmap_and_freeze_file(struct folio *folio, unsigned int new_order,
--					       struct page *split_at, bool do_lru,
--					       struct list_head *list, enum split_type split_type)
-+					       struct page *split_at, struct list_head *list,
-+					       enum split_type split_type)
- {
- 	struct address_space *mapping = folio->mapping;
- 	XA_STATE(xas, &mapping->i_pages, folio->index);
-@@ -4206,9 +4204,7 @@ static int __folio_split_unmap_and_freeze_file(struct folio *folio, unsigned int
+@@ -4343,14 +4343,16 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 		if (new_folio == page_folio(lock_at))
+ 			continue;
+ 
+-		folio_unlock(new_folio);
+ 		/*
+ 		 * Subpages whose mapping has been zapped may be freed
+ 		 * earlier, but freeing them requires taking the
+-		 * lru_lock, so we defer put_page() on tail pages until
++		 * lru_lock, so we defer folio_put() on tail pages until
+ 		 * after the split completes.
+ 		 */
+-		free_folio_and_swap_cache(new_folio);
++		if (is_swapcache)
++			folio_free_swap(new_folio);
++		folio_unlock(new_folio);
++		folio_put(new_folio);
  	}
  
- 	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
--	if (do_lru)
--		lruvec = folio_lruvec_lock(folio);
--
-+	lruvec = folio_lruvec_lock(folio);
- 	ret = __split_frozen_folio(folio, new_order, split_at, &xas,
- 				   mapping, split_type);
- 
-@@ -4226,8 +4222,7 @@ static int __folio_split_unmap_and_freeze_file(struct folio *folio, unsigned int
- 		folio_ref_unfreeze(new_folio,
- 				   folio_cache_ref_count(new_folio) + 1);
- 
--		if (do_lru)
--			lru_add_split_folio(folio, new_folio, lruvec, list);
-+		lru_add_split_folio(folio, new_folio, lruvec, list);
- 
- 		/* Add the new folio to the page cache. */
- 		if (new_folio->index < end) {
-@@ -4253,9 +4248,7 @@ static int __folio_split_unmap_and_freeze_file(struct folio *folio, unsigned int
- 	 * and its caller can see stale page cache entries.
- 	 */
- 	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
--
--	if (do_lru)
--		lruvec_unlock(lruvec);
-+	lruvec_unlock(lruvec);
- fail:
- 	/*
- 	 * If we want to use try_to_migrate() on file in unmap_folio,
-@@ -4339,7 +4332,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 						     false, list, split_type);
- 	else
- 		ret = __folio_split_unmap_and_freeze_file(folio, new_order, split_at,
--							  true, list, split_type);
-+							  list, split_type);
- 
- 	/*
- 	 * Unlock all after-split folios except the one containing
+ out:
+@@ -4377,7 +4379,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+  * isolated from LRU (if applicable)
+  *
+  * Upon return, the folio is not remapped, split folios are not added to LRU,
+- * free_folio_and_swap_cache() is not called, and new folios remain locked.
++ * folio_free_swap() is not called, and new folios remain locked.
+  *
+  * Return: 0 on success, -EAGAIN if the folio cannot be split (e.g., due to
+  *         insufficient reference count or extra pins).
 
 -- 
 2.55.0
