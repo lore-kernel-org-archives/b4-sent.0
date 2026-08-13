@@ -1,57 +1,107 @@
-From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Thu, 13 Aug 2026 11:05:43 -0700
-Subject: [PATCH] net: pcs: rzn1-miic: Fix config array initialization
+From: Sven Peter <sven@kernel.org>
+Date: Thu, 13 Aug 2026 20:16:15 +0200
+Subject: [PATCH] usb: typec: tipd: Fix Thunderbolt altmode VDOs for cd321x
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-rzn1-miic-fix-array-v1-1-b58cafcc917e@reliablecontrols.com>
-X-B4-Tracking: v=1; b=H4sIAHYHfmoC/x2MywqAIBAAfyX23IJaWfQr0UFsqz1ksUL0wH9PO
- g7DzAuRhClCX7wgdHLkPWTQZQF+dWEh5CkzGGWs6nSF8gSNG7PHmS90Iu5Gso7qujFe6RZyeQh
- l+V+HMaUPc70WemUAAAA=
-To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786644474; l=955;
- i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=BtDQcKBUscYFPfDwz7/zdJWFfzqi9hfRlPaUZT9xiEk=;
- b=A3twDS2mCEsk2z9LmIcqsg6FCVfB4pvoNTgeU/H8vkyZGDqhPHdv3nL8sYUfL3GCp/RNE8qX1
- D0GqCsLOo6zAL1sNOvbmkErvxWZtiIzD7UF/EeFQGWyifNxfmvEvUP4
-X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
- pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
-X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
+Message-Id: <20260813-b4-tipd-vdo-fix-v1-1-70317f2cd554@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBCF4avIrE2CVtO4ili0OhgLpEUk0rsrl
+ t9L3n9DIM8UoMlu8HRy4HVJKPMM+sksIyG7ZKiKShW6FGgl7rw5PN2KA18oJanaSm3ICEivzVO
+ av2Lb/Q6Hnanf3wzE+ADk7CYHcwAAAA==
+X-Change-ID: 20260813-b4-tipd-vdo-fix-44e65b48aea3
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ asahi@lists.linux.dev, stable@vger.kernel.org, Sven Peter <sven@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3562; i=sven@kernel.org;
+ h=from:subject:message-id; bh=mGb6tNHi+V8a2B3yjUlf9eOR715pdSx5lBUYHC2f8P0=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ1Yd5895Ww0T8suTns5RbxHrPvusZkVie1q8ZczaCTaRw
+ ieNWMM7SlkYxLgYZMUUWbbvtzd98vCN4NJNl97DzGFlAhnCwMUpABNZq8/wk7FRq/Rny906drdV
+ 91rCNTziovJuCx69sWyv7r3FW1bGyjIyrL7+W8Px+vsTES1y1VX7HjD26DX+UqufueFCF8PisMN
+ feAA=
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix memset parameters to initialize the entire DT value array
+The Intel VID status register is actually 9 bytes long and doesn't
+contain the raw VDOs but only the upper 16bits for device mode and enter
+mode. Shift those two fields into place and reconstruct the cable
+discover mode VDO from the data status register instead since it's not
+directly accessible. With this fixed now the correct VDOs are forwarded
+to the PHY and the to-be-submitted Thunderbolt/USB4 native host interface
+so that the right mode can be negotiated and the link actually comes up.
 
-Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
+Link: https://www.ti.com/lit/ug/slvubh2b/slvubh2b.pdf
+Fixes: 0b31c978935f ("usb: typec: tipd: Read USB4, Thunderbolt and DisplayPort status for cd321x")
+Fixes: 82432bbfb9e8 ("usb: typec: tipd: Handle mode transitions for CD321x")
+Cc: stable@vger.kernel.org
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/net/pcs/pcs-rzn1-miic.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/usb/typec/tipd/core.c     | 17 +++++++++++++----
+ drivers/usb/typec/tipd/tps6598x.h |  4 ++--
+ 2 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
-index 2b72fa98ddf1..ad4433971e50 100644
---- a/drivers/net/pcs/pcs-rzn1-miic.c
-+++ b/drivers/net/pcs/pcs-rzn1-miic.c
-@@ -683,7 +683,7 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
- 	if (!dt_val)
- 		return -ENOMEM;
+diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
+index d5ee0af9058b..159d1a2f9a1f 100644
+--- a/drivers/usb/typec/tipd/core.c
++++ b/drivers/usb/typec/tipd/core.c
+@@ -114,7 +114,6 @@ struct tps6598x_intel_vid_status_reg {
+ 	__le32 attention_vdo;
+ 	__le16 enter_vdo;
+ 	__le16 device_mode;
+-	__le16 cable_mode;
+ } __packed;
  
--	memset(dt_val, MIIC_MODCTRL_CONF_NONE, sizeof(*dt_val));
-+	memset(dt_val, MIIC_MODCTRL_CONF_NONE, miic->of_data->conf_conv_count);
+ /* Standard Task return codes */
+@@ -700,9 +699,19 @@ static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status
+ 		   cd321x->state.mode == TYPEC_TBT_MODE)
+ 			return;
  
- 	if (of_property_read_u32(np, "renesas,miic-switch-portin", &conf) == 0)
- 		dt_val[0] = conf;
+-		tbt_data.cable_mode = le16_to_cpu(st->intel_vid_status.cable_mode);
+-		tbt_data.device_mode = le16_to_cpu(st->intel_vid_status.device_mode);
+-		tbt_data.enter_vdo = le16_to_cpu(st->intel_vid_status.enter_vdo);
++		tbt_data.cable_mode = TBT_MODE |
++			TBT_SET_CABLE_SPEED(TPS_DATA_STATUS_TBT_CABLE_SPEED(st->data_status)) |
++			TBT_SET_CABLE_ROUNDED(TPS_DATA_STATUS_TBT_CABLE_GEN(st->data_status));
++		if (st->data_status & TPS_DATA_STATUS_OPTICAL_CABLE)
++			tbt_data.cable_mode |= TBT_CABLE_OPTICAL;
++		if (st->data_status & TPS_DATA_STATUS_ACTIVE_LINK_TRAIN)
++			tbt_data.cable_mode |= TBT_CABLE_LINK_TRAINING;
++		if (st->data_status & TPS_DATA_STATUS_ACTIVE_CABLE)
++			tbt_data.cable_mode |= TBT_CABLE_ACTIVE_PASSIVE;
++		tbt_data.device_mode = TBT_MODE |
++			(u32)le16_to_cpu(st->intel_vid_status.device_mode) << 16;
++		tbt_data.enter_vdo =
++			(u32)le16_to_cpu(st->intel_vid_status.enter_vdo) << 16;
+ 		cd321x->state.alt = cd321x->port_altmode_tbt;
+ 		cd321x->state.mode = TYPEC_TBT_MODE;
+ 		cd321x->state.data = &tbt_data;
+diff --git a/drivers/usb/typec/tipd/tps6598x.h b/drivers/usb/typec/tipd/tps6598x.h
+index 03edbb77bbd6..d172c84ada74 100644
+--- a/drivers/usb/typec/tipd/tps6598x.h
++++ b/drivers/usb/typec/tipd/tps6598x.h
+@@ -206,10 +206,10 @@
+ #define TPS_DATA_STATUS_DP_PIN_ASSIGNMENT(x) \
+ 	TPS_FIELD_GET(TPS_DATA_STATUS_DP_PIN_ASSIGNMENT_MASK, (x))
+ #define TPS_DATA_STATUS_TBT_CABLE_SPEED_MASK   GENMASK(27, 25)
+-#define TPS_DATA_STATUS_TBT_CABLE_SPEED \
++#define TPS_DATA_STATUS_TBT_CABLE_SPEED(x) \
+ 	TPS_FIELD_GET(TPS_DATA_STATUS_TBT_CABLE_SPEED_MASK, (x))
+ #define TPS_DATA_STATUS_TBT_CABLE_GEN_MASK     GENMASK(29, 28)
+-#define TPS_DATA_STATUS_TBT_CABLE_GEN \
++#define TPS_DATA_STATUS_TBT_CABLE_GEN(x) \
+ 	TPS_FIELD_GET(TPS_DATA_STATUS_TBT_CABLE_GEN_MASK, (x))
+ 
+ /* Map data status to DP spec assignments */
 
 ---
-base-commit: 9006c116dd111d457bf5d074990210f70a4ad2c8
-change-id: 20260813-rzn1-miic-fix-array-e6ae4452c017
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260813-b4-tipd-vdo-fix-44e65b48aea3
 
 Best regards,
--- 
-Kyle Hendry <khendry@reliablecontrols.com>
+--  
+Sven Peter <sven@kernel.org>
 
