@@ -1,101 +1,149 @@
 From: Luca Lauro <famlauro93l@gmail.com>
-Date: Thu, 13 Aug 2026 17:26:33 +0200
-Subject: [PATCH v4 13/14] ata: ahci: add FLUSH EXT and STANDBY IMMEDIATE
- support during shutdown
+Date: Thu, 13 Aug 2026 17:26:34 +0200
+Subject: [PATCH v4 14/14] ata: ahci: cleanup legacy code and remove unused
+ paths
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-rn102-rn104-series-v4-13-f932ac63efa0@gmail.com>
+Message-Id: <20260813-rn102-rn104-series-v4-14-f932ac63efa0@gmail.com>
 References: <20260813-rn102-rn104-series-v4-0-f932ac63efa0@gmail.com>
 In-Reply-To: <20260813-rn102-rn104-series-v4-0-f932ac63efa0@gmail.com>
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  "open list:BAREBOX" <barebox@lists.infradead.org>
 Cc: Luca Lauro <famlauro93l@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786634824; l=2131;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786634824; l=4281;
  i=famlauro93l@gmail.com; s=20260723; h=from:subject:message-id;
- bh=NB/lGclEWIk7DTAmZIt8R54Cyh8dwOTIdS/Q1rcI78U=;
- b=2aQJfCKEgF34dQuW3LWZyIUpkZQwOhOu4dSxnyeZjexYznFMVPI3CTHkqlc12Y/VFn83yLFRY
- tO9oFZNF1nSC8Kgi6XnWy2QIc1f61/oyInZZ29BUX9IpTl1dlZAUS2G
+ bh=I5vaH5dAJJkDJo2zy8FvixQpCO6viZOE9A9/mdGKAS0=;
+ b=gL2oMCKcrql0khzBjloB8IewfNUohDTBWbS84Wkj+ACidPwMkSsAdvoKKoE4JOoYKl7xIgeGd
+ Zh11h2Fp3ORAdKnlfw+Kz+LES4oK3OxPj5RKVvvHprNYcULbcG4i4tq
 X-Developer-Key: i=famlauro93l@gmail.com; a=ed25519;
  pk=OAJlcD69ugQCl99Vy6w+Aeu+ZUb1IVGcz1Ijxo6Ch78=
 X-Endpoint-Received: by B4 Relay for famlauro93l@gmail.com/20260723 with auth_id=892
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some AHCI controllers require ATA FLUSH EXT and STANDBY IMMEDIATE to be
-issued before poweroff to ensure data integrity and proper device
-shutdown. This patch introduces ahci_port_shutdown(), which sends these
-commands using ahci_ata_nodata().
+Remove obsolete and unused AHCI initialization code inherited from older
+drivers, including disabled flush helpers, legacy HOST_CAP/HOST_PORTS_IMPL
+programming, outdated reset handling, and debug paths. These
+changes do not alter functional behavior, as all required initialization
+and shutdown logic is now implemented in dedicated commits.
 
 Signed-off-by: Luca Lauro <famlauro93l@gmail.com>
 ---
- drivers/ata/ahci.c | 46 +++++-----------------------------------------
- 1 file changed, 5 insertions(+), 41 deletions(-)
+ drivers/ata/ahci.c | 63 ++++++++----------------------------------------------
+ 1 file changed, 9 insertions(+), 54 deletions(-)
 
 diff --git a/drivers/ata/ahci.c b/drivers/ata/ahci.c
-index c78d1953e4..9ac34b15fe 100644
+index 9ac34b15fe..ec152ba492 100644
 --- a/drivers/ata/ahci.c
 +++ b/drivers/ata/ahci.c
-@@ -49,6 +49,11 @@
- #define ahci_debug(ahci, fmt, arg...) \
- 	dev_dbg(ahci->dev, fmt, ##arg)
+@@ -461,43 +461,6 @@ static struct ata_port_operations ahci_ops = {
+ 	.write = ahci_write,
+ };
  
-+#define ATA_CMD_FLUSH_EXT 0xEA
-+#define ATA_CMD_STANDBYNOW1 0xE0
-+
-+static LIST_HEAD(ahci_devices);
-+
- static const struct pci_device_id ahci_pci_tbl[] = {
- 	{ PCI_DEVICE(PCI_VENDOR_ID_MARVELL_EXT, 0x9170) },
- 	{ 0, }
-@@ -691,47 +696,6 @@ static void ahci_port_shutdown(struct ahci_port *port)
- 		ahci_port_info(port, "STANDBY IMMEDIATE failed\n");
- }
- 
--/* Full poweroff sequence */
--static void ahci_poweroff(struct poweroff_handler *handler, unsigned long flags)
+-#if 0
+-/*
+- * In the general case of generic rotating media it makes sense to have a
+- * flush capability. It probably even makes sense in the case of SSDs because
+- * one cannot always know for sure what kind of internal cache/flush mechanism
+- * is embodied therein. At first it was planned to invoke this after the last
+- * write to disk and before rebooting. In practice, knowing, a priori, which
+- * is the last write is difficult. Because writing to the disk in u-boot is
+- * very rare, this flush command will be invoked after every block write.
+- */
+-static int ata_io_flush(u8 port)
 -{
--	struct ahci_device *ahci;
--	int i, n_ports;
+-	u8 fis[20];
+-	struct ahci_ioports *pp = &(probe_ent->port[port]);
+-	volatile u8 *port_mmio = (volatile u8 *)pp->port_mmio;
+-	u32 cmd_fis_len = 5;	/* five dwords */
 -
--	list_for_each_entry(ahci, &ahci_devices, list) {
+-	/* Preset the FIS */
+-	memset(fis, 0, 20);
+-	fis[0] = 0x27;		 /* Host to device FIS. */
+-	fis[1] = 1 << 7;	 /* Command FIS. */
+-	fis[2] = ATA_CMD_FLUSH_EXT;
 -
--		if (!ahci->mmio_base)
--			continue;
+-	memcpy((unsigned char *)pp->cmd_tbl, fis, 20);
+-	ahci_fill_cmd_slot(pp, cmd_fis_len);
+-	mywritel_with_flush(1, port_mmio + PORT_CMD_ISSUE);
 -
--		/* FLUSH + STANDBY on all active ports */
--		n_ports = max_t(int, ahci->n_ports, fls(ahci->port_map));
--
--		for (i = 0; i < n_ports; i++) {
--			struct ahci_port *port = &ahci->ports[i];
--
--			if (!(ahci->port_map & (1 << i)))
--				continue;
--
--			ahci_port_shutdown(port);
--		}
--
--		/* (optional) shutsown controller after commands
--		* ahci_shutdown_host(ahci);
--		*/
+-	if (waiting_for_cmd_completed(port_mmio + PORT_CMD_ISSUE,
+-			WAIT_MS_FLUSH, 0x1)) {
+-		debug("scsi_ahci: flush command timeout on port %d.\n", port);
+-		return -EIO;
 -	}
--}
 -
--static struct poweroff_handler ahci_po_handler = {
--	.poweroff = ahci_poweroff,
--	.priority = 200,   /* higher than gpio-poweroff */
--};
--
--static int ahci_register_poweroff(void)
--{
--	poweroff_handler_register(&ahci_po_handler);
 -	return 0;
 -}
--postcore_initcall(ahci_register_poweroff);
+-#endif
 -
- static __maybe_unused struct of_device_id ahci_dt_ids[] = {
- 	{
- 		.compatible = "calxeda,hb-ahci",
+ void ahci_print_info(struct ahci_device *ahci)
+ {
+ 	u32 vers, cap, cap2, impl, speed;
+@@ -584,7 +547,7 @@ static int ahci_detect(struct device *dev)
+ 
+ int ahci_add_host(struct ahci_device *ahci)
+ {
+-	u32 tmp, cap_save;
++	u32 tmp;
+ 	int n_ports, i, ret;
+ 
+ 	ahci->host_flags = ATA_FLAG_SATA
+@@ -597,35 +560,27 @@ int ahci_add_host(struct ahci_device *ahci)
+ 
+ 	ahci_debug(ahci, "ahci_host_init: start\n");
+ 
+-	cap_save = ahci_ioread(ahci, HOST_CAP);
+-	cap_save &= (HOST_CAP_SMPS | HOST_CAP_SPM);
+-	cap_save |= HOST_CAP_SSS;  /* Staggered Spin-up. Not needed. */
+-
+ 	/* global controller reset */
+ 	tmp = ahci_ioread(ahci, HOST_CTL);
+-	if ((tmp & HOST_RESET) == 0)
+-		ahci_iowrite_f(ahci, HOST_CTL, tmp | HOST_RESET);
++	ahci_iowrite_f(ahci, HOST_CTL, tmp | HOST_RESET);
+ 
+-	/*
+-	 * reset must complete within 1 second, or
+-	 * the hardware should be considered fried.
+-	 */
+ 	ret = wait_on_timeout(SECOND, (ahci_ioread(ahci, HOST_CTL) & HOST_RESET) == 0);
+ 	if (ret) {
+-		ahci_debug(ahci, "controller reset failed (0x%x)\n", tmp);
++		ahci_debug(ahci, "controller reset failed (HOST_CTL=0x%x)\n",
++				ahci_ioread(ahci, HOST_CTL));
+ 		return -ENODEV;
+ 	}
+ 
+-	ahci_iowrite_f(ahci, HOST_CTL, HOST_AHCI_EN);
+-	ahci_iowrite(ahci, HOST_CAP, cap_save);
+-	ahci_iowrite_f(ahci, HOST_PORTS_IMPL, 0xf);
++	tmp = ahci_ioread(ahci, HOST_CTL);
++	tmp |= HOST_AHCI_EN;
++	ahci_iowrite_f(ahci, HOST_CTL, tmp);
+ 
+ 	ahci->cap = ahci_ioread(ahci, HOST_CAP);
+ 	ahci->port_map = ahci_ioread(ahci, HOST_PORTS_IMPL);
+ 	ahci->n_ports = (ahci->cap & HOST_CAP_NP) + 1;
+ 
+ 	ahci_debug(ahci, "cap 0x%x  port_map 0x%x  n_ports %d\n",
+-	      ahci->cap, ahci->port_map, ahci->n_ports);
++			ahci->cap, ahci->port_map, ahci->n_ports);
+ 
+ 	n_ports = max_t(int, ahci->n_ports, fls(ahci->port_map));
+ 
+@@ -644,9 +599,9 @@ int ahci_add_host(struct ahci_device *ahci)
+ 		ata_port_register(&ahci_port->ata);
+ 	}
+ 
++	/* enable HBA level interrupts */
+ 	tmp = ahci_ioread(ahci, HOST_CTL);
+ 	ahci_iowrite(ahci, HOST_CTL, tmp | HOST_IRQ_EN);
+-	tmp = ahci_ioread(ahci, HOST_CTL);
+ 
+ 	ahci->dev->detect = ahci_detect;
+ 	list_add(&ahci->list, &ahci_devices);
 
 -- 
 2.47.3
