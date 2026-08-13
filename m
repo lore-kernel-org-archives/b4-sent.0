@@ -1,52 +1,98 @@
-From: Colin Huang <u8813345@gmail.com>
-Date: Thu, 13 Aug 2026 19:59:45 +0800
-Subject: [PATCH v5 15/15] ARM: dts: aspeed: anacapa: Remove redundant vhub
- pinctrl-names
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 0/4] sysctl: Disallow partial updates of miss-formatted
+ sysctl vectors
+Date: Thu, 13 Aug 2026 14:18:36 +0200
+Message-Id: <20260813-lklm-partial_ctlvec-v1-0-df9e51c13704@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-anacapa-devlop-phase-devicetree-v5-15-c7058f63dc67@gmail.com>
-References: <20260813-anacapa-devlop-phase-devicetree-v5-0-c7058f63dc67@gmail.com>
-In-Reply-To: <20260813-anacapa-devlop-phase-devicetree-v5-0-c7058f63dc67@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786622378; l=708;
- i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=wZdptsf5KZoTZdsrUVb6bffHaz43HHnvSy2YjypcUzQ=;
- b=MNt1Xza2YC6AF1CLGYg5+fmVk3XcUzlYvu95056SM6MqhkXzcaRkrr1IQA22bjZap3PORfade
- w/MHSUsshQbCLMjz2y0SW7ThkUYvZHr+3ilQAmi6wMoioflnFU1XQyj
-X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
- pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
-X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
+X-B4-Tracking: v=1; b=H4sIABy2fWoC/x3MTQqAIBBA4avIrBOsqKSrRIQ/Uw1ZiUYE4d2Tl
+ t/ivRciBsIIPXsh4E2RziOjLBiYVR0LcrLZUImqFbKsudvczr0KFyk3mcvdaLi2Urad7oRtDOT
+ SB5zp+a/DmNIH/EmjWmUAAAA=
+X-Change-ID: 20260813-lklm-partial_ctlvec-bd8867b70d5c
+To: Kees Cook <kees@kernel.org>, Shuah Khan <shuah@kernel.org>, 
+ linux-mm@kvack.org
+Cc: Jianlin Shi <shijianlin11@foxmail.com>, akpm@linux-foundation.org, 
+ vbabka@kernel.org, hannes@cmpxchg.org, surenb@google.com, mhocko@suse.com, 
+ jackmanb@google.com, ziy@nvidia.com, linux-kernel@vger.kernel.org, 
+ linux-fsdevel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2062;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=D5sh1ZrCd0hPEkiCqVMezIB3PdvCVR/dhJ2i/eaqwyo=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGp9tiYkyITKihVvtdZSvziyOBWU4rrAKyjLo
+ 7jVUN8XrP5xcokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqfbYmAAoJELqXzVK3
+ lkFPEKQL/3p1GXmI3YjeYKDHQGH/Ku2m6Y8f5aS/ro+V1BnPyrtE1xVVz7A05MULY+5AzoACOvQ
+ YKkqXp2+tbVETWOVv+DcyYbx0SjSasHEYz5lpVdJgG7dh0sPgt3hDTXU7z96LHdyPyzR+XJ9dZv
+ rAS6Fe4UruLvBC/tPgZDsMesTcBYFYyJYzz5LrhIJ3F1dNvSGzkWFGq5UEelLvzZqY0sCQ5M5fj
+ zv8jbjskCi8TqpkYj9TeVvtI1BiR7e72H5Goo/V51fTYKX7rNIg8Nbo6e4M0Qf0vIV1MMWUG8fy
+ XTDp7QeroSVp5Pommp9R8tFCrae+ZwUqqQ75Elf/x2YH0cv6lcqJd9yvVDCKXGjywuOQuBD4xM4
+ n1YfoQuT5dhRxpFznN5mwB/uwyZeOt7FvJEg7rCULKBWk46AUL1yw2JG6fkbrKlrCdcrCBqecov
+ zMwhEJ5DMzEhF9ANzTyHuU51ahqEenLL1QY84uoHxrQrsqNN5+T+mS9/UCRBHQsCX1WRbjFvkO+
+ OM=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove the pinctrl-names property from the vhub node since it is
-already defined in aspeed-g6.dtsi.
+What?
+=====
 
-Signed-off-by: Colin Huang <u8813345@gmail.com>
+Stage table->data when writing INT & ULONG ctl_tables. Commit staged
+data to kernel variable only when all the conversions have succeeded.
+This is applicable only to variables that represent a vector; paths
+pertaining to scalers are left unchanged. Notice that partial updates
+can still happen if less than the size of the vector are passed and
+correctly formatted.
+
+This is the behavior we are protecting against:
+
+  # echo "4 4 1 7" > /proc/sys/kernel/printk
+  # echo "1 x" > /proc/sys/kernel/printk
+  -bash: echo: write error: Invalid argument
+  # cat /proc/sys/kernel/printk
+  1 4 1 7    <- the write failed, the first element changed anyway
+
+Why?
+====
+Allowing a partial change to a vector after returning from an erroneous
+proc_handler is just plain wrong. This should be handled within sysctl
+to avoid users having to do it for themselves [1]. 
+
+Behavioral Changes
+==================
+1. A failed write will not update the vector
+2. Vector writes can now fail with -ENOMEM
+
+Testing
+=======
+This went through regular sysctl kunit and self test. Also is posted to
+0-day.
+
+I always find it difficult to know who wants to receive this. Please let
+me know if you want to be removed from the Cc/To.
+
+Best
+
+[1] https://lore.kernel.org/all/tencent_A860C873956A52E26AD8D309A308A241BA08@qq.com/
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt1.dts | 2 --
- 1 file changed, 2 deletions(-)
+Joel Granados (4):
+      sysctl: Split data conversion and file position handling
+      sysctl: Reject uint arrays before calling the general proc_vec
+      sysctl: Disallow partial updates for erroneous sysctl vectors
+      sysctl: Add 0013 to test partially updated vectors
 
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt1.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt1.dts
-index d613b5b9d6b0..039b016ae06c 100644
---- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt1.dts
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt1.dts
-@@ -1106,8 +1106,6 @@ &uhci {
- };
- 
- &vhub {
--	pinctrl-names = "default";
--
- 	status = "okay";
- };
- 
+ kernel/sysctl.c                          | 228 ++++++++++++++++++++-----------
+ tools/testing/selftests/sysctl/sysctl.sh |  57 ++++++++
+ 2 files changed, 205 insertions(+), 80 deletions(-)
+---
+base-commit: 4c12287001da60f3c022bb25932aa7a5590fc0b1
+change-id: 20260813-lklm-partial_ctlvec-bd8867b70d5c
 
+Best regards,
 -- 
-2.34.1
+Joel Granados <joel.granados@kernel.org>
 
