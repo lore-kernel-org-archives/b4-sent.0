@@ -1,11 +1,11 @@
 From: Bingfang Guo <bingfangguo@tencent.com>
-Date: Thu, 13 Aug 2026 16:52:04 +0800
-Subject: [PATCH RFC 3/5] memcg: remove retry logic in
- mem_cgroup_private_id_get_online
+Date: Thu, 13 Aug 2026 16:52:05 +0800
+Subject: [PATCH RFC 4/5] memcg: add a helper to get online memcg from
+ memcgid
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-memcgid-objcg-v1-3-83d21c685b77@tencent.com>
+Message-Id: <20260813-memcgid-objcg-v1-4-83d21c685b77@tencent.com>
 References: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
 In-Reply-To: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
 To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
@@ -21,101 +21,86 @@ Cc: cgroups@vger.kernel.org, linux-mm@kvack.org,
  linux-kernel@vger.kernel.org, Bingfang Guo <bfguo@icloud.com>, 
  Bingfang Guo <bingfangguo@tencent.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786611130; l=3214;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786611130; l=2588;
  i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
- bh=5i2b3adAqDemDU/NAVoq8sK/uF2LIbB9NIx+Y5tqrZ8=;
- b=R9G5tW/eOsF1fEjMg6cHo6RdBDAD5yzOljC1iwmE4ddG37Cg5xTgcu5n+bSnG4To3/L8nTiny
- eDLxTl9DEDGAgfNU01C5tFnLzDpgWesTl3zgcaES2tabu+sgDAb5DeH
+ bh=9eOtm2zMK/wYtzZgGx4xX57blghdDku36wwXT3ij+M4=;
+ b=WM11z9bUgck0UICbTCfnt20vuTyNOqdecwoNJvQu5KCqITzAtCi1u5O7CuPml+516VwM/0RIf
+ vroA/tx5h04A0FUcWL3DZ/ltvYeJU8pD2+eJ3eqxKUBOjxHI2+PZ/95
 X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
  pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
 X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With the ID released only in css_released() (patch 1) and every caller
-holding a stable reference obtained from get_mem_cgroup_from_objcg()
-(patch 2), the id refcount is guaranteed to be non-zero whenever the ID
-is taken, so the retry loop that walked up the parent chain can never
-trigger.
+When swapping in, the folio is charged back to the memcg that swapped
+it out, or to one of its ancestors if that memcg is gone.
+mem_cgroup_swapin_charge_folio() currently does the id lookup and the
+css_tryget_online() check by hand under the RCU read lock.
 
-Remove the retry logic, rename the function to
-mem_cgroup_private_id_get() and turn the fallible return value into a
-VM_WARN_ON() that documents the invariant.
+The objcg behind the id is reparented to an online memcg when its own
+memcg is destroyed, so looking the id up and taking a reference
+through the objcg is enough to guarantee an online memcg.  Add
+mem_cgroup_from_private_id_online() for that purpose and use it in
+mem_cgroup_swapin_charge_folio(), dropping the RCU read lock usage.
 
 Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
- mm/memcontrol-v1.c |  2 +-
- mm/memcontrol-v1.h |  3 +--
- mm/memcontrol.c    | 20 +++++---------------
- 3 files changed, 7 insertions(+), 18 deletions(-)
+ include/linux/memcontrol.h |  1 +
+ mm/memcontrol.c            | 22 ++++++++++++++++++----
+ 2 files changed, 19 insertions(+), 4 deletions(-)
 
-diff --git a/mm/memcontrol-v1.c b/mm/memcontrol-v1.c
-index a913d32ad1e17..e5161e061bd11 100644
---- a/mm/memcontrol-v1.c
-+++ b/mm/memcontrol-v1.c
-@@ -648,7 +648,7 @@ void __memcg1_swapout(struct folio *folio, struct swap_cluster_info *ci)
- 	mod_memcg_state(memcg, MEMCG_SWAP, nr_entries);
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index c33ec7efad50b..fef8a1c4191b1 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -827,6 +827,7 @@ static inline unsigned short mem_cgroup_private_id(struct mem_cgroup *memcg)
+ 	return memcg->id;
+ }
+ struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id);
++struct mem_cgroup *mem_cgroup_from_private_id_online(unsigned short id);
  
- 	/* we have a reference to it, so we should get exact memcg itself */
--	mem_cgroup_private_id_get_online(memcg, nr_entries);
-+	mem_cgroup_private_id_get(memcg, nr_entries);
- 
- 	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_entries,
- 			  mem_cgroup_private_id(memcg));
-diff --git a/mm/memcontrol-v1.h b/mm/memcontrol-v1.h
-index 0f703f239c80f..9c74400aa7ddb 100644
---- a/mm/memcontrol-v1.h
-+++ b/mm/memcontrol-v1.h
-@@ -21,8 +21,7 @@ void drain_all_stock(struct mem_cgroup *root_memcg);
- 
- int memory_stat_show(struct seq_file *m, void *v);
- 
--struct mem_cgroup *mem_cgroup_private_id_get_online(struct mem_cgroup *memcg,
--						    unsigned int n);
-+void mem_cgroup_private_id_get(struct mem_cgroup *memcg, unsigned int n);
- 
- /* Cgroup v1-specific declarations */
- #ifdef CONFIG_MEMCG_V1
+ static inline u64 mem_cgroup_id(struct mem_cgroup *memcg)
+ {
 diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index a210fe2501219..12545ca48194d 100644
+index 12545ca48194d..fdf2e0d1f17e5 100644
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -3985,23 +3985,13 @@ static inline void mem_cgroup_private_id_put(struct mem_cgroup *memcg, unsigned
- 	__mem_cgroup_private_id_put(memcg->id_objcg, memcg->id, n);
+@@ -4012,6 +4012,22 @@ struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id)
+ 	return obj_cgroup_memcg(objcg);
  }
  
--struct mem_cgroup *mem_cgroup_private_id_get_online(struct mem_cgroup *memcg, unsigned int n)
-+void mem_cgroup_private_id_get(struct mem_cgroup *memcg, unsigned int n)
++/**
++ * mem_cgroup_from_private_id - look up an online memcg from a memcg id
++ *                              and get a reference.
++ * @id: the memcg id to look up
++ */
++struct mem_cgroup *mem_cgroup_from_private_id_online(unsigned short id)
++{
++	struct obj_cgroup *objcg;
++
++	objcg = xa_load(&mem_cgroup_private_ids, id);
++	if (!objcg)
++		return NULL;
++
++	return get_mem_cgroup_from_objcg(objcg);
++}
++
+ static struct mem_cgroup *mem_cgroup_take_from_private_id(unsigned short id, unsigned int n)
  {
-+	bool success;
- 	struct obj_cgroup *objcg = memcg->id_objcg;
+ 	struct obj_cgroup *objcg;
+@@ -5248,11 +5264,9 @@ int mem_cgroup_swapin_charge_folio(struct folio *folio, unsigned short id,
+ 	if (mem_cgroup_disabled())
+ 		return 0;
  
--	while (!refcount_add_not_zero(n, &objcg->id_ref)) {
--		/*
--		 * The root cgroup cannot be destroyed, so it's refcount must
--		 * always be >= 1.
--		 */
--		if (WARN_ON_ONCE(mem_cgroup_is_root(memcg))) {
--			VM_BUG_ON(1);
--			break;
--		}
--		memcg = parent_mem_cgroup(memcg);
--		objcg = memcg->id_objcg;
--	}
--	return memcg;
-+	success = refcount_add_not_zero(n, &objcg->id_ref);
-+	VM_WARN_ON(!success);
- }
+-	rcu_read_lock();
+-	memcg = mem_cgroup_from_private_id(id);
+-	if (!memcg || !css_tryget_online(&memcg->css))
++	memcg = mem_cgroup_from_private_id_online(id);
++	if (!memcg)
+ 		memcg = get_mem_cgroup_from_mm(mm);
+-	rcu_read_unlock();
  
- /**
-@@ -5673,7 +5663,7 @@ int __mem_cgroup_try_charge_swap(struct folio *folio)
- 	mod_memcg_state(memcg, MEMCG_SWAP, nr_pages);
+ 	ret = charge_memcg(folio, memcg, gfp);
  
- 	/* we have a reference to it, so we should get exact memcg itself */
--	mem_cgroup_private_id_get_online(memcg, nr_pages);
-+	mem_cgroup_private_id_get(memcg, nr_pages);
- 
- 	ci = swap_cluster_get_and_lock(folio);
- 	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_pages,
 
 -- 
 2.43.7
