@@ -1,67 +1,76 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Thu, 13 Aug 2026 17:56:17 +0800
-Subject: [PATCH v3 6/6] MAINTAINERS: add ARM/AMBARELLA SoC support
+Subject: [PATCH v3 0/3] Ambarella CV75: pinctrl and PL061 GPIO
+Date: Thu, 13 Aug 2026 18:19:35 +0800
+Message-Id: <20260813-cv75-v3-b-v3-0-1d82e18da09b@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-cv75-v3-a-v3-6-cfdd20b1b4dd@ambarella.com>
-References: <20260813-cv75-v3-a-v3-0-cfdd20b1b4dd@ambarella.com>
-In-Reply-To: <20260813-cv75-v3-a-v3-0-cfdd20b1b4dd@ambarella.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Catalin Marinas <catalin.marinas@arm.com>, 
- Will Deacon <will@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Linus Walleij <linusw@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
- soc@lists.linux.dev, Long Zhao <longzhao@ambarella.com>
+X-B4-Tracking: v=1; b=H4sIADiafWoC/yXMQQ5AMBBA0avIrE1CJ0pcRSy0BmOBtDQScXfF8
+ iU//wLPTthDnVzgOIiXdYmgNAE7dcvIKH00qEzprMoJbSgLDIQGq0LlWlNHWjHEfnM8yPm9mva
+ 3P8zMdn8HcN8PipT8HG0AAAA=
+X-Change-ID: 20260813-cv75-v3-b-8521663a362e
+To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Long Zhao <longzhao@ambarella.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786615029; l=1193;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786616380; l=1753;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=FMdxZub31R7avQT3Ojw4RWRGTKHK7OVLHXgrDSDBBvo=;
- b=/IQi7jn1+JWAK5SDTA0CYa9LQ8IsAgoKCWXSJ1vjrygfa08jTqnQYQK7RoBkFPXbPUzRStR44
- Tt0+6EgTg3iC0Wg4BUURRCOrjGJpk7Jik3Csir8PaPEUJignncdS9I2
+ bh=SJDE1Y6wyBQ85Y66UA/dDM+xt1Anlk6x3sBOuqBhgZU=;
+ b=7wMvdXyZV5AuuFfYWy35sAWu8p8pkJOi8yy9vOlUwmaSxl+eTcRezkGRSI91D4KoReHb5Hd/s
+ Yk4w3TsxwQnCXpY+avWuyCTi1JdsMGpIFPBU8ryO9QYyUJgNPswJstu
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a maintainer entry covering Ambarella CV75 bindings, DTS and
-related drivers.
+This is part B of a 3-part CV75 v3 split:
+
+  A: bindings + RCT/CCU clocks + SoC/EVK DT + MAINTAINERS
+  B: pinctrl + PL061 GPIO variant  (this series)
+  C: 8250_dw UART quirks
+
+Depends on series A:
+https://lore.kernel.org/r/20260813-cv75-v3-a-v3-0-cfdd20b1b4dd@ambarella.com
+
+Link to v2:
+https://lore.kernel.org/r/20260806-longzhao-upstream-cv75-v2-v2-0-6b09707c5fe9@ambarella.com
+
+Summary:
+- CV75 pinctrl binding and driver
+- Ambarella register-layout variant for gpio-pl061
+
+Changes since v2 (B scope):
+- reuse PL061 with Ambarella register-layout variant (Linus)
+- model each GPIO bank as a separate DT/AMBA primecell node (Linus)
+- complete function/groups enums in the pinctrl binding (Krzysztof)
+
+Verified on CV75 with A+B+C.
 
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
+
 ---
- MAINTAINERS | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Long Zhao (3):
+      dt-bindings: pinctrl: add Ambarella CV75 pinctrl
+      gpio: pl061: add Ambarella CV75 register layout variant
+      pinctrl: ambarella: add CV75 pin controller
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 803b60ad628f..59e5b32d7a02 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2502,6 +2502,20 @@ F:	drivers/clocksource/asm9260_timer.c
- F:	drivers/rtc/rtc-asm9260.c
- F:	drivers/watchdog/asm9260_wdt.c
- 
-+ARM/AMBARELLA SOC SUPPORT
-+M:	Long Zhao <longzhao@ambarella.com>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+L:	devicetree@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/arm/ambarella.yaml
-+F:	Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-+F:	Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
-+F:	arch/arm64/boot/dts/ambarella/
-+F:	drivers/clk/ambarella/
-+F:	drivers/pinctrl/pinctrl-ambarella*
-+F:	include/dt-bindings/clock/ambarella,cv75-rct.h
-+N:	ambarella
-+
- ARM/AMD PENSANDO ARM64 ARCHITECTURE
- M:	Brad Larson <blarson@amd.com>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       |  35 +-
+ .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 240 ++++++
+ drivers/gpio/gpio-pl061.c                          | 280 +++++--
+ drivers/pinctrl/Kconfig                            |  13 +
+ drivers/pinctrl/Makefile                           |   2 +
+ drivers/pinctrl/pinctrl-ambarella-cv75.c           | 561 ++++++++++++++
+ drivers/pinctrl/pinctrl-ambarella.c                | 839 +++++++++++++++++++++
+ drivers/pinctrl/pinctrl-ambarella.h                |  50 ++
+ 8 files changed, 1949 insertions(+), 71 deletions(-)
+---
+base-commit: 18bf29fba8d0bdd0db5a0497ecf06f404bc740d1
+change-id: 20260813-cv75-v3-b-8521663a362e
 
--- 
-2.34.1
+Best regards,
+--  
+Long Zhao <longzhao@ambarella.com>
 
