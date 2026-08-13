@@ -1,11 +1,11 @@
 From: Bingfang Guo <bingfangguo@tencent.com>
-Date: Thu, 13 Aug 2026 16:52:05 +0800
-Subject: [PATCH RFC 4/5] memcg: add a helper to get online memcg from
+Date: Thu, 13 Aug 2026 16:52:06 +0800
+Subject: [PATCH RFC 5/5] memcg: filter out reparented memcgs got using
  memcgid
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-memcgid-objcg-v1-4-83d21c685b77@tencent.com>
+Message-Id: <20260813-memcgid-objcg-v1-5-83d21c685b77@tencent.com>
 References: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
 In-Reply-To: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
 To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
@@ -21,85 +21,98 @@ Cc: cgroups@vger.kernel.org, linux-mm@kvack.org,
  linux-kernel@vger.kernel.org, Bingfang Guo <bfguo@icloud.com>, 
  Bingfang Guo <bingfangguo@tencent.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786611130; l=2588;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786611130; l=2805;
  i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
- bh=9eOtm2zMK/wYtzZgGx4xX57blghdDku36wwXT3ij+M4=;
- b=WM11z9bUgck0UICbTCfnt20vuTyNOqdecwoNJvQu5KCqITzAtCi1u5O7CuPml+516VwM/0RIf
- vroA/tx5h04A0FUcWL3DZ/ltvYeJU8pD2+eJ3eqxKUBOjxHI2+PZ/95
+ bh=zY1JXeipRRE4x+8HShYlKEllHTJG9Rn8M3UwjRUwSJk=;
+ b=CusELUTT7HqgDWh2KGQvd8fGGqtxEXggEBLMydLTG5KzIJxwbuc5HVMPhaTVT/r1MjFsRGMGg
+ Wp/8xlAWmeCC0QRq+pJq/R8DkaLIDm1Gd2BHzegRT2mnbwkdEmg/i4o
 X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
  pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
 X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When swapping in, the folio is charged back to the memcg that swapped
-it out, or to one of its ancestors if that memcg is gone.
-mem_cgroup_swapin_charge_folio() currently does the id lookup and the
-css_tryget_online() check by hand under the RCU read lock.
+mem_cgroup_from_private_id() looks up the objcg that owns the id and
+returns the objcg's current memcg.  After reparenting, that memcg can
+differ from the one the id originally belonged to.
 
-The objcg behind the id is reparented to an online memcg when its own
-memcg is destroyed, so looking the id up and taking a reference
-through the objcg is enough to guarantee an online memcg.  Add
-mem_cgroup_from_private_id_online() for that purpose and use it in
-mem_cgroup_swapin_charge_folio(), dropping the RCU read lock usage.
+Callers such as the list lru and workingset refault code expect to get
+back exactly the memcg referred to by the memcgid, so check that the
+returned memcg still owns the id and return NULL otherwise, letting
+the callers skip the entry.
 
 Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
- include/linux/memcontrol.h |  1 +
- mm/memcontrol.c            | 22 ++++++++++++++++++----
- 2 files changed, 19 insertions(+), 4 deletions(-)
+ mm/list_lru.c   | 2 +-
+ mm/memcontrol.c | 9 ++++++++-
+ mm/workingset.c | 6 +++++-
+ 3 files changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index c33ec7efad50b..fef8a1c4191b1 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -827,6 +827,7 @@ static inline unsigned short mem_cgroup_private_id(struct mem_cgroup *memcg)
- 	return memcg->id;
- }
- struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id);
-+struct mem_cgroup *mem_cgroup_from_private_id_online(unsigned short id);
- 
- static inline u64 mem_cgroup_id(struct mem_cgroup *memcg)
- {
+diff --git a/mm/list_lru.c b/mm/list_lru.c
+index 36662d02ff963..bc956267f6835 100644
+--- a/mm/list_lru.c
++++ b/mm/list_lru.c
+@@ -428,7 +428,7 @@ unsigned long list_lru_walk_node(struct list_lru *lru, int nid,
+ 		xa_for_each(&lru->xa, index, mlru) {
+ 			rcu_read_lock();
+ 			memcg = mem_cgroup_from_private_id(index);
+-			if (!mem_cgroup_tryget(memcg)) {
++			if (!memcg || !mem_cgroup_tryget(memcg)) {
+ 				rcu_read_unlock();
+ 				continue;
+ 			}
 diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index 12545ca48194d..fdf2e0d1f17e5 100644
+index fdf2e0d1f17e5..e7555eca77019 100644
 --- a/mm/memcontrol.c
 +++ b/mm/memcontrol.c
-@@ -4012,6 +4012,22 @@ struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id)
- 	return obj_cgroup_memcg(objcg);
- }
- 
-+/**
-+ * mem_cgroup_from_private_id - look up an online memcg from a memcg id
-+ *                              and get a reference.
-+ * @id: the memcg id to look up
-+ */
-+struct mem_cgroup *mem_cgroup_from_private_id_online(unsigned short id)
-+{
-+	struct obj_cgroup *objcg;
-+
-+	objcg = xa_load(&mem_cgroup_private_ids, id);
-+	if (!objcg)
-+		return NULL;
-+
-+	return get_mem_cgroup_from_objcg(objcg);
-+}
-+
- static struct mem_cgroup *mem_cgroup_take_from_private_id(unsigned short id, unsigned int n)
+@@ -3999,17 +3999,24 @@ void mem_cgroup_private_id_get(struct mem_cgroup *memcg, unsigned int n)
+  * @id: the memcg id to look up
+  *
+  * Caller must hold rcu_read_lock().
++ *
++ * @return: the memcg, or NULL if the memcg is already reparented.
+  */
+ struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id)
  {
  	struct obj_cgroup *objcg;
-@@ -5248,11 +5264,9 @@ int mem_cgroup_swapin_charge_folio(struct folio *folio, unsigned short id,
- 	if (mem_cgroup_disabled())
- 		return 0;
++	struct mem_cgroup *memcg;
+ 	WARN_ON_ONCE(!rcu_read_lock_held());
  
--	rcu_read_lock();
--	memcg = mem_cgroup_from_private_id(id);
--	if (!memcg || !css_tryget_online(&memcg->css))
-+	memcg = mem_cgroup_from_private_id_online(id);
+ 	objcg = xa_load(&mem_cgroup_private_ids, id);
+ 	if (!objcg)
+ 		return NULL;
+ 
+-	return obj_cgroup_memcg(objcg);
++	memcg = obj_cgroup_memcg(objcg);
++	if (mem_cgroup_private_id(memcg) != id)
++		return NULL;
++
++	return memcg;
+ }
+ 
+ /**
+diff --git a/mm/workingset.c b/mm/workingset.c
+index f351798e723ac..b6e22536a5240 100644
+--- a/mm/workingset.c
++++ b/mm/workingset.c
+@@ -283,6 +283,10 @@ static bool lru_gen_test_recent(void *shadow, struct lruvec **lruvec,
+ 	memcg = mem_cgroup_from_private_id(memcg_id);
+ 	*lruvec = mem_cgroup_lruvec(memcg, pgdat);
+ 
++	/* reparented memcg loses its max_seq */
 +	if (!memcg)
- 		memcg = get_mem_cgroup_from_mm(mm);
--	rcu_read_unlock();
++		return false;
++
+ 	max_seq = READ_ONCE((*lruvec)->lrugen.max_seq);
+ 	max_seq &= (file ? EVICTION_MASK : EVICTION_MASK_ANON) >> LRU_REFS_WIDTH;
  
- 	ret = charge_memcg(folio, memcg, gfp);
+@@ -470,7 +474,7 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 	 * configurations instead.
+ 	 */
+ 	eviction_memcg = mem_cgroup_from_private_id(memcgid);
+-	if (!mem_cgroup_tryget(eviction_memcg))
++	if (!eviction_memcg || !mem_cgroup_tryget(eviction_memcg))
+ 		eviction_memcg = NULL;
+ 	rcu_read_unlock();
  
 
 -- 
