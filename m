@@ -1,150 +1,57 @@
-From: Luca Lauro <famlauro93l@gmail.com>
-Date: Thu, 13 Aug 2026 17:26:34 +0200
-Subject: [PATCH v4 14/14] ata: ahci: cleanup legacy code and remove unused
- paths
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Date: Thu, 13 Aug 2026 11:05:43 -0700
+Subject: [PATCH] net: pcs: rzn1-miic: Fix config array initialization
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-rn102-rn104-series-v4-14-f932ac63efa0@gmail.com>
-References: <20260813-rn102-rn104-series-v4-0-f932ac63efa0@gmail.com>
-In-Reply-To: <20260813-rn102-rn104-series-v4-0-f932ac63efa0@gmail.com>
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- "open list:BAREBOX" <barebox@lists.infradead.org>
-Cc: Luca Lauro <famlauro93l@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786634824; l=4281;
- i=famlauro93l@gmail.com; s=20260723; h=from:subject:message-id;
- bh=I5vaH5dAJJkDJo2zy8FvixQpCO6viZOE9A9/mdGKAS0=;
- b=gL2oMCKcrql0khzBjloB8IewfNUohDTBWbS84Wkj+ACidPwMkSsAdvoKKoE4JOoYKl7xIgeGd
- Zh11h2Fp3ORAdKnlfw+Kz+LES4oK3OxPj5RKVvvHprNYcULbcG4i4tq
-X-Developer-Key: i=famlauro93l@gmail.com; a=ed25519;
- pk=OAJlcD69ugQCl99Vy6w+Aeu+ZUb1IVGcz1Ijxo6Ch78=
-X-Endpoint-Received: by B4 Relay for famlauro93l@gmail.com/20260723 with auth_id=892
+Message-Id: <20260813-rzn1-miic-fix-array-v1-1-b58cafcc917e@reliablecontrols.com>
+X-B4-Tracking: v=1; b=H4sIAHYHfmoC/x2MywqAIBAAfyX23IJaWfQr0UFsqz1ksUL0wH9PO
+ g7DzAuRhClCX7wgdHLkPWTQZQF+dWEh5CkzGGWs6nSF8gSNG7PHmS90Iu5Gso7qujFe6RZyeQh
+ l+V+HMaUPc70WemUAAAA=
+To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786644474; l=955;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=BtDQcKBUscYFPfDwz7/zdJWFfzqi9hfRlPaUZT9xiEk=;
+ b=A3twDS2mCEsk2z9LmIcqsg6FCVfB4pvoNTgeU/H8vkyZGDqhPHdv3nL8sYUfL3GCp/RNE8qX1
+ D0GqCsLOo6zAL1sNOvbmkErvxWZtiIzD7UF/EeFQGWyifNxfmvEvUP4
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove obsolete and unused AHCI initialization code inherited from older
-drivers, including disabled flush helpers, legacy HOST_CAP/HOST_PORTS_IMPL
-programming, outdated reset handling, and debug paths. These
-changes do not alter functional behavior, as all required initialization
-and shutdown logic is now implemented in dedicated commits.
+Fix memset parameters to initialize the entire DT value array
 
-Signed-off-by: Luca Lauro <famlauro93l@gmail.com>
+Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
- drivers/ata/ahci.c | 63 ++++++++----------------------------------------------
- 1 file changed, 9 insertions(+), 54 deletions(-)
+ drivers/net/pcs/pcs-rzn1-miic.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/ata/ahci.c b/drivers/ata/ahci.c
-index 9ac34b15fe..ec152ba492 100644
---- a/drivers/ata/ahci.c
-+++ b/drivers/ata/ahci.c
-@@ -461,43 +461,6 @@ static struct ata_port_operations ahci_ops = {
- 	.write = ahci_write,
- };
+diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
+index 2b72fa98ddf1..ad4433971e50 100644
+--- a/drivers/net/pcs/pcs-rzn1-miic.c
++++ b/drivers/net/pcs/pcs-rzn1-miic.c
+@@ -683,7 +683,7 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
+ 	if (!dt_val)
+ 		return -ENOMEM;
  
--#if 0
--/*
-- * In the general case of generic rotating media it makes sense to have a
-- * flush capability. It probably even makes sense in the case of SSDs because
-- * one cannot always know for sure what kind of internal cache/flush mechanism
-- * is embodied therein. At first it was planned to invoke this after the last
-- * write to disk and before rebooting. In practice, knowing, a priori, which
-- * is the last write is difficult. Because writing to the disk in u-boot is
-- * very rare, this flush command will be invoked after every block write.
-- */
--static int ata_io_flush(u8 port)
--{
--	u8 fis[20];
--	struct ahci_ioports *pp = &(probe_ent->port[port]);
--	volatile u8 *port_mmio = (volatile u8 *)pp->port_mmio;
--	u32 cmd_fis_len = 5;	/* five dwords */
--
--	/* Preset the FIS */
--	memset(fis, 0, 20);
--	fis[0] = 0x27;		 /* Host to device FIS. */
--	fis[1] = 1 << 7;	 /* Command FIS. */
--	fis[2] = ATA_CMD_FLUSH_EXT;
--
--	memcpy((unsigned char *)pp->cmd_tbl, fis, 20);
--	ahci_fill_cmd_slot(pp, cmd_fis_len);
--	mywritel_with_flush(1, port_mmio + PORT_CMD_ISSUE);
--
--	if (waiting_for_cmd_completed(port_mmio + PORT_CMD_ISSUE,
--			WAIT_MS_FLUSH, 0x1)) {
--		debug("scsi_ahci: flush command timeout on port %d.\n", port);
--		return -EIO;
--	}
--
--	return 0;
--}
--#endif
--
- void ahci_print_info(struct ahci_device *ahci)
- {
- 	u32 vers, cap, cap2, impl, speed;
-@@ -584,7 +547,7 @@ static int ahci_detect(struct device *dev)
+-	memset(dt_val, MIIC_MODCTRL_CONF_NONE, sizeof(*dt_val));
++	memset(dt_val, MIIC_MODCTRL_CONF_NONE, miic->of_data->conf_conv_count);
  
- int ahci_add_host(struct ahci_device *ahci)
- {
--	u32 tmp, cap_save;
-+	u32 tmp;
- 	int n_ports, i, ret;
- 
- 	ahci->host_flags = ATA_FLAG_SATA
-@@ -597,35 +560,27 @@ int ahci_add_host(struct ahci_device *ahci)
- 
- 	ahci_debug(ahci, "ahci_host_init: start\n");
- 
--	cap_save = ahci_ioread(ahci, HOST_CAP);
--	cap_save &= (HOST_CAP_SMPS | HOST_CAP_SPM);
--	cap_save |= HOST_CAP_SSS;  /* Staggered Spin-up. Not needed. */
--
- 	/* global controller reset */
- 	tmp = ahci_ioread(ahci, HOST_CTL);
--	if ((tmp & HOST_RESET) == 0)
--		ahci_iowrite_f(ahci, HOST_CTL, tmp | HOST_RESET);
-+	ahci_iowrite_f(ahci, HOST_CTL, tmp | HOST_RESET);
- 
--	/*
--	 * reset must complete within 1 second, or
--	 * the hardware should be considered fried.
--	 */
- 	ret = wait_on_timeout(SECOND, (ahci_ioread(ahci, HOST_CTL) & HOST_RESET) == 0);
- 	if (ret) {
--		ahci_debug(ahci, "controller reset failed (0x%x)\n", tmp);
-+		ahci_debug(ahci, "controller reset failed (HOST_CTL=0x%x)\n",
-+				ahci_ioread(ahci, HOST_CTL));
- 		return -ENODEV;
- 	}
- 
--	ahci_iowrite_f(ahci, HOST_CTL, HOST_AHCI_EN);
--	ahci_iowrite(ahci, HOST_CAP, cap_save);
--	ahci_iowrite_f(ahci, HOST_PORTS_IMPL, 0xf);
-+	tmp = ahci_ioread(ahci, HOST_CTL);
-+	tmp |= HOST_AHCI_EN;
-+	ahci_iowrite_f(ahci, HOST_CTL, tmp);
- 
- 	ahci->cap = ahci_ioread(ahci, HOST_CAP);
- 	ahci->port_map = ahci_ioread(ahci, HOST_PORTS_IMPL);
- 	ahci->n_ports = (ahci->cap & HOST_CAP_NP) + 1;
- 
- 	ahci_debug(ahci, "cap 0x%x  port_map 0x%x  n_ports %d\n",
--	      ahci->cap, ahci->port_map, ahci->n_ports);
-+			ahci->cap, ahci->port_map, ahci->n_ports);
- 
- 	n_ports = max_t(int, ahci->n_ports, fls(ahci->port_map));
- 
-@@ -644,9 +599,9 @@ int ahci_add_host(struct ahci_device *ahci)
- 		ata_port_register(&ahci_port->ata);
- 	}
- 
-+	/* enable HBA level interrupts */
- 	tmp = ahci_ioread(ahci, HOST_CTL);
- 	ahci_iowrite(ahci, HOST_CTL, tmp | HOST_IRQ_EN);
--	tmp = ahci_ioread(ahci, HOST_CTL);
- 
- 	ahci->dev->detect = ahci_detect;
- 	list_add(&ahci->list, &ahci_devices);
+ 	if (of_property_read_u32(np, "renesas,miic-switch-portin", &conf) == 0)
+ 		dt_val[0] = conf;
 
+---
+base-commit: 9006c116dd111d457bf5d074990210f70a4ad2c8
+change-id: 20260813-rzn1-miic-fix-array-e6ae4452c017
+
+Best regards,
 -- 
-2.47.3
+Kyle Hendry <khendry@reliablecontrols.com>
 
