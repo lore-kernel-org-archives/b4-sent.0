@@ -1,151 +1,69 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Thu, 13 Aug 2026 14:18:40 +0200
-Subject: [PATCH 4/4] sysctl: Add 0013 to test partially updated vectors
+From: Junrui Luo <moonafterrain@outlook.com>
+Subject: [PATCH 0/2] coresight: etm-perf: fix resume AUX leak and
+ exclude_kernel bypass
+Date: Thu, 13 Aug 2026 20:47:15 +0800
+Message-Id: <20260813-coresight-fixes-v1-0-7411a73cd496@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-lklm-partial_ctlvec-v1-4-df9e51c13704@kernel.org>
-References: <20260813-lklm-partial_ctlvec-v1-0-df9e51c13704@kernel.org>
-In-Reply-To: <20260813-lklm-partial_ctlvec-v1-0-df9e51c13704@kernel.org>
-To: Kees Cook <kees@kernel.org>, Shuah Khan <shuah@kernel.org>, 
- linux-mm@kvack.org
-Cc: Jianlin Shi <shijianlin11@foxmail.com>, akpm@linux-foundation.org, 
- vbabka@kernel.org, hannes@cmpxchg.org, surenb@google.com, mhocko@suse.com, 
- jackmanb@google.com, ziy@nvidia.com, linux-kernel@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3132;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=bx1auWMjtQ6lK77Ub+fPqi3tw5TQNFTmgBgtSoVMeRE=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGp9tigf0HZ/SOSipnWglbugNlaMER9isn8Ln
- HKjGsYXnp8SHIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqfbYoAAoJELqXzVK3
- lkFPa8gL+wVFctfUarU/BECGG+yem97ZpueVfSLV32B2PJJKmFL7c6BeArL3+nFK66TgrYUfEDI
- 794BeoxGMD2zXrMWvkrt+ynKROFyKvwTTEiUXIy/2RLYaYWMfIHBlDpFhIlgxYOk+JRBGtZ9lCT
- jKEGmr8rUvShwgJ79bMF4GiJ2DyCL+FcGIA4ZZVAsYkaYocp3ryyn25z6J1zzanLyqnGBayYCW7
- 4RmOuwTSD6qkmUE5kh9XezhlQhbYW639iHxhLnDmGS4tQ/nIiLrXIVTUdK5L7mVI8ikNwgz+Kz7
- /r4G32tJLbnV0q3aDiA4L7tBUUWlWO9/0vAtXw52FtmR5APUyDHPRntB9K9XN/IV5EZFxiSIhNe
- QhRZ/0aJjRBQf9lgKmyd2kTFs7VHY1gLNnJW0URRuJeCryne0K3vqm+zKpnwFs59ZLD8wPftoYZ
- MaG77XNioStWHAwaTevL7oRdTTv+C+DNryBbdYAxsSZcc0CC+0oew2BnXWGTWrnjwlzthSD8Vs4
- +k=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-B4-Tracking: v=1; b=H4sIANO8fWoC/x3LSwqAMAwA0atI1hZiFX9XERfSxDabKo2IULy7x
+ eVjmAzKSVhhrjIkvkXliAVNXYELW/RshIrBou1xbFrjjsQqPlxml4fVDDQhoe2QaINynYn/UKZ
+ lfd8PGvv9s2EAAAA=
+X-Change-ID: 20260813-coresight-fixes-7d90d0240dda
+To: Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Mike Leach <mike.leach@arm.com>, James Clark <james.clark@linaro.org>, 
+ Leo Yan <leo.yan@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Mathieu Poirier <mathieu.poirier@linaro.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>, 
+ Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1493;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=VpG4nwidpgDqllXzLatya6ZM559BrQia13sMRj/SAJg=;
+ b=kA0DAAoWceg4UIuO8EAByyZiAGp9vNSjHQlEcb9EjdLpv+Fnx2ZHfkz4l9Q3T+XGlV9mSIcAh
+ Yh1BAAWCgAdFiEEx3DS9jhNtC20TLRjceg4UIuO8EAFAmp9vNQACgkQceg4UIuO8EDvZwEAnaw5
+ wS8HmZVvjl7Z/YhUflgIhG8lLALa73Cq983JJgIA/2r6v15+IanMe3rftVpzLwidlGuVhwgCozh
+ ut7ZF6/kO
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add coverage for partially updated sysctl vectors with test 0013. It
-makes sure that the sysctl vector is unchanged when one of the elements
-is not valid.
+Two independent fixes for coresight-etm-perf.c, both tagged for stable.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Patch 1: etm_event_start() shares one error label between the initial
+start and the PERF_EF_RESUME path. Taking it on resume skips
+fail_end_stop, leaving the AUX transaction from the earlier successful
+start outstanding while the event is marked PERF_HES_STOPPED.
+etm_event_stop() then returns early, so the AUX handle, the sink, the
+remaining path elements and the trace ID are all leaked.
+
+Patch 2: etm_event_init() accepts events with both attr.exclude_kernel
+and attr.exclude_user set. Neither config parser ORs the mode bits, so
+ETM_MODE_EXCL_KERN is overwritten by ETM_MODE_EXCL_USER and the tracer
+is programmed to trace the kernel instead. perf_event_open() skips
+perf_allow_kernel() when attr.exclude_kernel is set, so an unprivileged
+caller can reach this.
+
+Build tested for arm64. I have no CoreSight hardware, so neither fix has
+been exercised at runtime.
+
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- tools/testing/selftests/sysctl/sysctl.sh | 57 ++++++++++++++++++++++++++++++++
- 1 file changed, 57 insertions(+)
+Junrui Luo (2):
+      coresight: etm-perf: don't leak the AUX handle on failed resume
+      coresight: etm-perf: reject events that exclude both kernel and user space
 
-diff --git a/tools/testing/selftests/sysctl/sysctl.sh b/tools/testing/selftests/sysctl/sysctl.sh
-index b2d8bd9026a721e96c26be20069f7f87b06a5cf7..fdf3d2fb0a2ad23a525d3205577a06d7d97576b7 100755
---- a/tools/testing/selftests/sysctl/sysctl.sh
-+++ b/tools/testing/selftests/sysctl/sysctl.sh
-@@ -4,6 +4,7 @@
- 
- # This performs a series tests against the proc sysctl interface.
- 
-+# shellcheck disable=SC2317
- # Kselftest framework requirement - SKIP code is 4.
- ksft_skip=4
- 
-@@ -37,6 +38,7 @@ ALL_TESTS="$ALL_TESTS 0009:1:1:unregister_error:0"
- ALL_TESTS="$ALL_TESTS 0010:1:1:mnt/mnt_error:0"
- ALL_TESTS="$ALL_TESTS 0011:1:1:empty_add:0"
- ALL_TESTS="$ALL_TESTS 0012:1:1:u8_valid:0"
-+ALL_TESTS="$ALL_TESTS 0013:1:1:int_0003:1"
- 
- function allow_user_defaults()
- {
-@@ -196,6 +198,18 @@ verify_diff_w()
- 	return $?
- }
- 
-+# Verify that an erroneous ($2) update fails and does not change TARGET
-+verify_no_partial_update()
-+{
-+	TEST_STR="$1"
-+	echo -n "$TEST_STR" > "$TARGET"
-+
-+	if echo -n "$2" > "$TARGET" 2> /dev/null; then
-+		return 1
-+	fi
-+	verify_diff_w "${TARGET}"
-+}
-+
- test_rc()
- {
- 	if [[ $rc != 0 ]]; then
-@@ -501,6 +515,40 @@ run_limit_digit_int_array()
- 	test_rc
- }
- 
-+# You used an int array and one of the elements is not acceptable
-+run_int_array_no_partial_update()
-+{
-+	echo -n "Testing invalid array element does not partially update ... "
-+        # Expect failure because of 3rd element (abc).
-+	if ! verify_no_partial_update "1 2 3 4" "10 20 abc 40"; then
-+		echo "FAIL" >&2
-+		rc=1
-+	else
-+		echo "OK"
-+	fi
-+	test_rc
-+
-+	echo -n "Testing out of range array element does not partially update ... "
-+        # Expect failure because of 3rd element (greater than int)
-+	if ! verify_no_partial_update "1 2 3 4" "10 20 $((INT_MAX + 1)) 40"; then
-+		echo "FAIL" >&2
-+		rc=1
-+	else
-+		echo "OK"
-+	fi
-+	test_rc
-+
-+	echo -n "Testing invalid first array element does not update ... "
-+        # Expect failure of 1st element
-+	if ! verify_no_partial_update "1 2 3 4" "abc 20 30 40"; then
-+		echo "FAIL" >&2
-+		rc=1
-+	else
-+		echo "OK"
-+	fi
-+	test_rc
-+}
-+
- # You are using an unsigned int
- run_limit_digit_uint()
- {
-@@ -880,6 +928,14 @@ sysctl_test_0012()
- 	return 0
- }
- 
-+sysctl_test_0013()
-+{
-+	TARGET="${SYSCTL}/$(get_test_target 0013)"
-+	reset_vals
-+
-+	run_int_array_no_partial_update
-+}
-+
- list_tests()
- {
- 	echo "Test ID list:"
-@@ -900,6 +956,7 @@ list_tests()
- 	echo "0010 x $(get_test_count 0010) - tests sysct mount point"
- 	echo "0011 x $(get_test_count 0011) - tests empty directories"
- 	echo "0012 x $(get_test_count 0012) - tests range check for u8 proc_handler"
-+	echo "0013 x $(get_test_count 0013) - tests partially update vectors on error"
- }
- 
- usage()
+ drivers/hwtracing/coresight/coresight-etm-perf.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+---
+base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
+change-id: 20260813-coresight-fixes-7d90d0240dda
 
+Best regards,
 -- 
-2.50.1
+Junrui Luo <moonafterrain@outlook.com>
 
