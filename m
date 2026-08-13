@@ -1,11 +1,11 @@
 From: Colin Huang <u8813345@gmail.com>
-Date: Thu, 13 Aug 2026 19:59:35 +0800
-Subject: [PATCH v5 05/15] ARM: dts: aspeed: anacapa: Add additional EEPROM
- node for SCM
+Date: Thu, 13 Aug 2026 19:59:36 +0800
+Subject: [PATCH v5 06/15] ARM: dts: aspeed: anacapa: Add eeprom device node
+ for NFC adaptor board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-anacapa-devlop-phase-devicetree-v5-5-c7058f63dc67@gmail.com>
+Message-Id: <20260813-anacapa-devlop-phase-devicetree-v5-6-c7058f63dc67@gmail.com>
 References: <20260813-anacapa-devlop-phase-devicetree-v5-0-c7058f63dc67@gmail.com>
 In-Reply-To: <20260813-anacapa-devlop-phase-devicetree-v5-0-c7058f63dc67@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -13,49 +13,46 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Andrew Jeffery <andrew@codeconstruct.com.au>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>
+ colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>, 
+ Carl Lee <carl.lee@amd.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786622378; l=1250;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786622378; l=854;
  i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=NAF+xcmhfBdWvCk+Ea9KmPCdarcFxDgMq2cQBYIvfaY=;
- b=GHwHvs4ys0MLQH953QcqjpV0BvokVUy7o0nAOQbdm3qoZx99LemxUR3/Xq4QtB8pqC9EY7EDN
- /RpFy7xbMRECJ40iZUiEavkTN83q8+x9aduHyCXZl7TNP1u1n0hKvEO
+ bh=ogPWoxlP9zHHWVbVILynjOOXZGqV6RgIxVGA6kDFSUc=;
+ b=Xzj5DalG+aiFRpcfA+06+fcwnTU8Td1CoS3EF2nJ5pr8VMxHJSPZM4kgMCqrGfQel1OgpTWXY
+ m6bbLJwFz0HB/09rm20/yqzgZ50lBUxpVgIiwp7Djc447ulFCRvaS15
 X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
  pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
 X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SCM FRU EEPROM I2C address differs between SCM revisions:
-- Rev B uses address 0x50
-- Rev C/D/E/F and later use address 0x51
+From: Carl Lee <carl.lee@amd.com>
 
-Add an additional AT24C128 EEPROM node at 0x51 on i2c9 so the same
-device tree can support multiple SCM revisions.
+Add eeprom device node for NFC adaptor board FRU.
 
-Signed-off-by: Colin Huang <u8813345@gmail.com>
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- .../boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts   | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ .../boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts    | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-index 4a6ae7c6cbf8..1901a325c72c 100644
+index 1901a325c72c..c7bffa7c6557 100644
 --- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
 +++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-@@ -8,6 +8,20 @@ / {
- 	compatible = "facebook,anacapa-bmc-evt2", "aspeed,ast2600";
+@@ -22,6 +22,19 @@ eeprom@51 {
+ 	};
  };
  
-+// SCM
-+&i2c9 {
-+
-+	// SCM FRU
-+	// | DC-SCM Rev        | Slave address of eeprom  |
-+	// |-------------------|--------------------------|
-+	// | Rev B             | 0x50                     |
-+	// | Rev C/D/E/F/above | 0x51                     |
-+	eeprom@51 {
-+		compatible = "atmel,24c128";
-+		reg = <0x51>;
++// MB
++&i2c13 {
++	i2c-mux@70 {
++		i2c13mux0ch7: i2c@7 {
++			// NFC adaptor board FRU
++			eeprom@50 {
++				compatible = "atmel,24c128";
++				reg = <0x50>;
++			};
++		};
 +	};
 +};
 +
