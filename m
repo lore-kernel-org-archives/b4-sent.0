@@ -1,11 +1,11 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Date: Thu, 13 Aug 2026 20:47:16 +0800
-Subject: [PATCH 1/2] coresight: etm-perf: don't leak the AUX handle on
- failed resume
+Date: Thu, 13 Aug 2026 20:47:17 +0800
+Subject: [PATCH 2/2] coresight: etm-perf: reject events that exclude both
+ kernel and user space
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-coresight-fixes-v1-1-7411a73cd496@outlook.com>
+Message-Id: <20260813-coresight-fixes-v1-2-7411a73cd496@outlook.com>
 References: <20260813-coresight-fixes-v1-0-7411a73cd496@outlook.com>
 In-Reply-To: <20260813-coresight-fixes-v1-0-7411a73cd496@outlook.com>
 To: Suzuki K Poulose <suzuki.poulose@arm.com>, 
@@ -18,65 +18,71 @@ Cc: coresight@lists.linaro.org, linux-arm-kernel@lists.infradead.org,
  linux-kernel@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>, 
  Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2150;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2362;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=yzAo1y/oAIoZDkd9ZQ7K7NSoBvEh92PgMNscnk7BIUA=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrNo9V+NKtQ37yzf+WmV9qneb7rEYSe/27bWH6rlyn
- yRK6apfN+ooZWEQ42KQFVNkOV5w6ZuF7xbdLT5bkmHmsDKBDGHg4hSAiTAcYmS4MtHziTrfiqXJ
- ly/X6ufezZidyXvyp0Y1V+WLORfWMHlcYvin/6D4RNsBvon8Txn9bvx0Fl9S+nZidJHdL/OudTW
- 8Ic3MAMzmS7I=
+ bh=+tTlNVRe/rbkdxYJBnqH+Npz+BDYLaVAW6dG0DYxOHA=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrNo9V/8qvdfao3WvtOtYdOAkb6uwnkvsZyatrJ4vd
+ rCYbatm74yOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmIhJECPDgc9vbmQpNtmJ
+ XTD+v6jq2sPba0Imm7hN2/zNkvN825NyVoZ/RjNW9jxpMdl84rbL75Dmz9v09B4ufSz9eJNcXlz
+ q3EcmTAC2ok/O
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-etm_event_start() shares one error label between the initial start and
-the PERF_EF_RESUME path. On the initial start, reaching 'fail' means
-perf_aux_output_begin() has not succeeded, so marking the event
-PERF_HES_STOPPED is correct. On resume, an AUX transaction opened by the
-earlier successful start is still outstanding, and 'goto fail' jumps past
-fail_end_stop, which would have ended it.
+etm_event_init() validates only attr.type, so a cs_etm event can be
+opened with both attr.exclude_kernel and attr.exclude_user set. Both
+config parsers assign rather than OR the mode bits, so
+ETM_MODE_EXCL_KERN is discarded and only ETM_MODE_EXCL_USER survives.
+A request to exclude the kernel therefore programs the tracer to
+exclude user space and trace the kernel instead.
 
-The following etm_event_stop() returns early on PERF_HES_STOPPED, ahead
-of perf_aux_output_end(), coresight_disable_source() and
-coresight_disable_path(). This leaks the AUX ring buffer reference and
-leaves the sink, the remaining path elements and the trace ID held, so no
-later session can use them. ctxt->event_data is cleared just above that
-early return, so the leak is silent.
+config->mode has several downstream consumers -- on ETMv4 the TRCVICTLR
+ViewInst filter and the FEAT_TRF controls that exist to backstop it, on
+ETMv3 the address comparator access type -- and they all derive that
+same configuration from it. Since perf_event_open() skips
+perf_allow_kernel() when attr.exclude_kernel is set, this potentially
+lets an unprivileged user collect an instruction trace of kernel
+execution in a per-task event's AUX buffer. The existing guards do not
+catch it: etm4_config_trace_mode() warns on the combination but is
+reachable only from sysfs, and the early return in
+etm_config_trace_mode() can never fire because mode never holds both
+bits.
 
-Make resume infallible as pt_event_start() does: leave hw.state alone so
-the regular stop path still runs the full teardown. etm_event_resume()
-already logs the failure.
+Reject the combination in etm_event_init(), covering both tracer
+generations at the single perf entry point.
 
-Fixes: abffe22e93d7 ("coresight: perf: Support AUX trace pause and resume")
+Fixes: 882d5e112491 ("coresight: etm3x: implementing perf_enable/disable() API")
 Reported-by: Yuhao Jiang <danisjiang@gmail.com>
 Assisted-by: Claude:claude-opus-5
 Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- drivers/hwtracing/coresight/coresight-etm-perf.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ drivers/hwtracing/coresight/coresight-etm-perf.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
 diff --git a/drivers/hwtracing/coresight/coresight-etm-perf.c b/drivers/hwtracing/coresight/coresight-etm-perf.c
-index 09b21a711a87..af0295eab143 100644
+index af0295eab143..9cc93d48e970 100644
 --- a/drivers/hwtracing/coresight/coresight-etm-perf.c
 +++ b/drivers/hwtracing/coresight/coresight-etm-perf.c
-@@ -548,8 +548,13 @@ static void etm_event_start(struct perf_event *event, int flags)
- 
- 	if (flags & PERF_EF_RESUME) {
- 		path = etm_event_get_ctxt_path(ctxt);
--		if (etm_event_resume(path) < 0)
--			goto fail;
-+		/*
-+		 * Don't mark the event stopped on failure: the AUX transaction
-+		 * from the initial start is still live and etm_event_stop()
-+		 * bails out early on PERF_HES_STOPPED, leaking it and the path.
-+		 * etm_event_resume() already reports the error.
-+		 */
-+		etm_event_resume(path);
- 		return;
+@@ -185,6 +185,17 @@ static int etm_event_init(struct perf_event *event)
+ 		goto out;
  	}
  
++	/*
++	 * Excluding both kernel and user space is not a configuration the
++	 * tracers can express: etm_parse_event_config() and
++	 * etm4_parse_event_config() overwrite ETM_MODE_EXCL_KERN with
++	 * ETM_MODE_EXCL_USER, which ends up tracing the kernel instead.
++	 */
++	if (event->attr.exclude_kernel && event->attr.exclude_user) {
++		ret = -EINVAL;
++		goto out;
++	}
++
+ 	ret = etm_addr_filters_alloc(event);
+ 	if (ret)
+ 		goto out;
 
 -- 
 2.51.2
