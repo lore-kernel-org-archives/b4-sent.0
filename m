@@ -1,14 +1,12 @@
 From: Bingfang Guo <bingfangguo@tencent.com>
-Subject: [PATCH RFC 0/5] memcg: fix dying memcg pinned by swapped out shmem
- pages
-Date: Thu, 13 Aug 2026 16:52:01 +0800
-Message-Id: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
+Date: Thu, 13 Aug 2026 16:52:02 +0800
+Subject: [PATCH RFC 1/5] memcg: move memcg private ID refcount to objcg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALGFfWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDC0Mj3dzU3OT0zBTd/KSs5HTdlFTLNFNzi9Q0QyMLJaCegqLUtMwKsHn
- RSkFuzkqxtbUAC7c3uGQAAAA=
+Message-Id: <20260813-memcgid-objcg-v1-1-83d21c685b77@tencent.com>
+References: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
+In-Reply-To: <20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com>
 To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
  Roman Gushchin <roman.gushchin@linux.dev>, 
  Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
@@ -22,273 +20,273 @@ Cc: cgroups@vger.kernel.org, linux-mm@kvack.org,
  linux-kernel@vger.kernel.org, Bingfang Guo <bfguo@icloud.com>, 
  Bingfang Guo <bingfangguo@tencent.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786611130; l=8802;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786611130; l=8568;
  i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
- bh=KF0xDds5w/g3aR4DwwjXLrfgHcalIYAD5qSFXpEkNZo=;
- b=hUrUDZC9vcOK4OhNBfILovwU//i4z7hYvRM++jGf52u9aDMx/T9svF5e/5e6H0/Vo6vuGcDvg
- 617UoZDI/mGCGlGwEbZl9RhW3tXxl9pF2W2iefCg3lfi/SV4y/rTPQ6
+ bh=OoA5ZvY6U2Ek43M1DA077LOuBUDVK9W5rd1MBAq9D6g=;
+ b=NwGka+2hgzQ2Y53VCMURN987ApMGmBKou7N9EagAAGcK2Q2VVI1BH6fu3bLRHKx9tvNOph6Lt
+ eXCDryxHaP5CdWdcA+uqx7j5Po2BLAQ14+bFpf6rPcRc1GuJt1MoIGm
 X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
  pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
 X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently the private ID of a memory cgroup holds a reference to its
-css, so that users such as list_lru and swap entries can look the memcg
-up by ID even after it has gone offline.
+In the previous series by Muchun Song and Qi Zheng, folios are charged
+to the objcg and reparented as the memcg offlines. Same can be done to
+memcg private ID and its main user: swap entries. Make the memcgid
+xarray hold a pointer and a reference to an objcg of the memcg, which is
+used to find the memcg (or its parent) later on. The online state now
+pins the objcg instead of the css, so swapped out pages no longer pin
+the dying memcg.
 
-This has a downside: a memcg that still owns swapped out shmem pages is
-pinned via its private ID and is never released until those pages are
-swapped back in. Workloads that create and destroy many cgroups can
-accumulate a large number of dying memcgs.
+The id reference held by the online state is released in css_released()
+after reparenting instead of in css_offline(). This is the key
+invariant the rest of the series builds on: css_offline() runs while
+other css references may still be held, but css_released() only runs
+once the last reference is gone, so a caller holding a memcg reference
+can always count on the id refcount being alive. To prevent races
+between memcgid put in css offline and memcgid get, the release is put
+off till css_released, which could delay the release of the memcgid and
+the objcg it pins, but overall it should be fine.
 
-This series fixes that by moving the memcg private ID reference count
-from the memcg to its object cgroup. The objcg is cheap to keep alive
-and is reparented to an online ancestor when its memcg goes offline, so
-holding the ID no longer pins the css.
-
-Patch 1 (memcg: move memcg private ID refcount to objcg)
-
-Move the ID refcount from the memcg to its objcg, so swapped out pages
-no longer pin the dying memcg. The online state pins the objcg, and the
-ID is released in css_released() after reparenting; this guarantees the
-id refcount is alive for any caller holding a memcg reference. After
-reparenting, mem_cgroup_from_private_id() returns a live ancestor
-instead of the original memcg; callers that need the exact memcg are
-fixed in patch 5.
-
-Patch 2 (memcg: get stable memcg first before getting memcgid reference)
-
-Both __memcg1_swapout() and __mem_cgroup_try_charge_swap() now take a
-stable memcg reference first via get_mem_cgroup_from_objcg() and pin
-the ID afterwards, dropping the rcu_read_lock() usage and the
-get-error-put handling, and recording exactly the memcg the folio
-belongs to in the swap entry.
-
-Patch 3 (memcg: remove retry logic in mem_cgroup_private_id_get_online)
-
-With the ID released only in css_released() (patch 1) and every caller
-holding a stable reference (patch 2), the retry loop that walked up the
-parent chain can never trigger. Remove it, rename the function to
-mem_cgroup_private_id_get().
-
-Patch 4 (memcg: add a helper to get online memcg from memcgid)
-
-Add mem_cgroup_from_private_id_online(), which looks the ID up and
-takes a reference through the objcg. Since the objcg is always
-reparented to an online memcg, this guarantees an online memcg. Use it
-in mem_cgroup_swapin_charge_folio(), dropping the manual id lookup and
-css_tryget_online() check under the RCU read lock.
-
-Patch 5 (memcg: filter out reparented memcgs got using memcgid)
-
-After reparenting, mem_cgroup_from_private_id() can return a memcg that
-no longer owns the ID. Callers such as list_lru and workingset refault
-expect exactly the memcg the ID refers to, so check that the returned
-memcg still owns the ID and return NULL otherwise, letting the callers
-skip the entry.
-
-The following program reproduces the problem: it repeatedly creates a
-memcg, dirties one shared shmem page, pushes it to swap, and destroys
-the cgroup. Each iteration leaves a dying memcg pinned by the swapped
-out page.
-
-shmem_dying_memcg.c:
-
-```c
-
-static int write_str(const char *path, const char *val) {
-    int fd = open(path, O_WRONLY);
-    if (fd < 0) return -1;
-    int rc = write(fd, val, strlen(val)) < 0 ? -1 : 0;
-    close(fd);
-    return rc;
-}
-
-static long long dying_memcgs(void) {
-    FILE *f = fopen(CG_ROOT "/cgroup.stat", "r");
-    if (!f) return -1;
-    char k[64];
-    long long v = -1;
-    while (fscanf(f, "%63s %lld", k, &v) == 2)
-        if (!strcmp(k, "nr_dying_subsys_memory")) break;
-    fclose(f);
-    return v;
-}
-
-// worker: join the memcg, dirty one shared shmem page, swap it out, exit.
-static void worker(const char *cgdir, const char *shmfile) {
-    char pid[16];
-    snprintf(pid, sizeof pid, "%d", getpid());
-    if (write_str(cgdir, pid) < 0) _exit(1);           // cgroup.procs
-
-    int fd = open(shmfile, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd < 0 || ftruncate(fd, PAGE) < 0) _exit(2);
-    char *p = mmap(NULL, PAGE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (p == MAP_FAILED) _exit(3);
-    close(fd);
-
-    p[0] = 1;                                          // fault in + dirty
-    if (madvise(p, PAGE, MADV_PAGEOUT) < 0) _exit(4);  // push to swap
-    _exit(0);
-}
-
-static void one_iter(long i) {
-    char cgdir[256], procs[300], shmfile[300];
-    snprintf(cgdir,   sizeof cgdir,   "%s/m%ld", CG_BASE, i);
-    snprintf(procs,   sizeof procs,   "%s/cgroup.procs", cgdir);
-    snprintf(shmfile, sizeof shmfile, "%s/f%ld", SHM_DIR, i);
-
-    if (mkdir(cgdir, 0755) < 0 && errno != EEXIST) return;
-
-    pid_t pid = fork();
-    if (pid == 0) worker(procs, shmfile);
-    waitpid(pid, NULL, 0);
-
-    rmdir(cgdir);   // memcg goes dying; swapped page pins its id
-}
-
-static void cleanup(void) {
-    struct dirent *de;
-    char p[512];
-    DIR *d = opendir(CG_BASE);
-    if (d) {
-        while ((de = readdir(d)))
-            if (de->d_name[0] == 'm') {
-                snprintf(p, sizeof p, "%s/%s", CG_BASE, de->d_name);
-                rmdir(p);
-            }
-        closedir(d);
-    }
-    d = opendir(SHM_DIR);
-    if (d) {
-        while ((de = readdir(d)))
-            if (de->d_name[0] != '.') {
-                snprintf(p, sizeof p, "%s/%s", SHM_DIR, de->d_name);
-                unlink(p);
-            }
-        closedir(d);
-    }
-    rmdir(CG_BASE);
-    rmdir(SHM_DIR);
-    printf("cleanup done; nr_dying_subsys_memory = %lld\n", dying_memcgs());
-}
-
-int main(int argc, char **argv) {
-    if (geteuid() != 0) { fprintf(stderr, "run as root\n"); return 1; }
-
-    if (argc > 1 && !strcmp(argv[1], "--cleanup")) { cleanup(); return 0; }
-    long n = argc > 1 ? atol(argv[1]) : 1000;
-
-    mkdir(CG_BASE, 0755);
-    write_str(CG_ROOT "/cgroup.subtree_control", "+memory");
-    if (write_str(CG_BASE "/cgroup.subtree_control", "+memory") < 0) {
-        fprintf(stderr, "enable +memory: %s\n", strerror(errno));
-        return 1;
-    }
-    mkdir(SHM_DIR, 0755);
-
-    printf("before: nr_dying_subsys_memory = %lld\n", dying_memcgs());
-    for (long i = 0; i < n; i++) one_iter(i);
-    printf("after:  nr_dying_subsys_memory = %lld  (created %ld memcgs)\n",
-           dying_memcgs(), n);
-    printf("release with: sudo %s --cleanup\n", argv[0]);
-    return 0;
-}
-```
-
-Run with:
-
-```bash
-echo "=== before ==="
-grep dying /sys/fs/cgroup/cgroup.stat
-
-sudo ./shmem_dying_memcg "$@"
-
-sleep 1
-
-echo
-echo "=== after (root cgroup.stat) ==="
-grep dying /sys/fs/cgroup/cgroup.stat
-```
-
-To release the pinned memcgs:
-$ sudo ./shmem_dying_memcg --cleanup
-
-Results on my machine (20000 iterations):
-
-Before this series, all 20000 destroyed memcgs stay dying:
-```
-=== before ===
-nr_dying_descendants 20002
-nr_dying_subsys_cpuset 0
-nr_dying_subsys_cpu 0
-nr_dying_subsys_io 2
-nr_dying_subsys_memory 20002
-nr_dying_subsys_perf_event 0
-nr_dying_subsys_hugetlb 0
-nr_dying_subsys_pids 0
-before: nr_dying_subsys_memory = 20002
-after:  nr_dying_subsys_memory = 20002  (created 20000 memcgs)
-release with: sudo ./shmem_dying_memcg --cleanup
-
-=== after (root cgroup.stat) ===
-nr_dying_descendants 20002
-nr_dying_subsys_cpuset 0
-nr_dying_subsys_cpu 0
-nr_dying_subsys_io 2
-nr_dying_subsys_memory 20002
-nr_dying_subsys_perf_event 0
-nr_dying_subsys_hugetlb 0
-nr_dying_subsys_pids 0
-```
-
-After this series, dying memcgs no longer accumulate:
-```
-=== before ===
-nr_dying_descendants 0
-nr_dying_subsys_cpuset 0
-nr_dying_subsys_cpu 0
-nr_dying_subsys_io 0
-nr_dying_subsys_memory 0
-nr_dying_subsys_perf_event 0
-nr_dying_subsys_hugetlb 0
-nr_dying_subsys_pids 0
-before: nr_dying_subsys_memory = 0
-after:  nr_dying_subsys_memory = 314  (created 20000 memcgs)
-release with: sudo ./shmem_dying_memcg --cleanup
-
-=== after (root cgroup.stat) ===
-nr_dying_descendants 0
-nr_dying_subsys_cpuset 0
-nr_dying_subsys_cpu 0
-nr_dying_subsys_io 0
-nr_dying_subsys_memory 0
-nr_dying_subsys_perf_event 0
-nr_dying_subsys_hugetlb 0
-nr_dying_subsys_pids 0
-```
+After reparenting, the objcg points to a live ancestor, so
+mem_cgroup_from_private_id() now returns that ancestor instead of the
+memcg the ID originally belonged to. Callers that need the exact memcg
+are fixed in patch 5.
 
 Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
-Bingfang Guo (5):
-      memcg: move memcg private ID refcount to objcg
-      memcg: get stable memcg first before getting memcgid reference
-      memcg: remove retry logic in mem_cgroup_private_id_get_online
-      memcg: add a helper to get online memcg from memcgid
-      memcg: filter out reparented memcgs got using memcgid
+ include/linux/memcontrol.h | 10 +++--
+ mm/memcontrol.c            | 99 ++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 76 insertions(+), 33 deletions(-)
 
- include/linux/memcontrol.h |  11 +++-
- mm/list_lru.c              |   2 +-
- mm/memcontrol-v1.c         |  23 +++----
- mm/memcontrol-v1.h         |   3 +-
- mm/memcontrol.c            | 151 ++++++++++++++++++++++++++++++---------------
- mm/workingset.c            |   6 +-
- 6 files changed, 126 insertions(+), 70 deletions(-)
----
-base-commit: 288058d8db5d35623228d84f48d9bea3707d5c85
-change-id: 20260812-memcgid-objcg-de9f578ef128
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index 8170bb8066a22..c33ec7efad50b 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -191,6 +191,7 @@ struct obj_cgroup {
+ 		struct rcu_head rcu;
+ 	};
+ 	bool is_root;
++	refcount_t id_ref;
+ };
+ 
+ /*
+@@ -202,8 +203,8 @@ struct obj_cgroup {
+ struct mem_cgroup {
+ 	struct cgroup_subsys_state css;
+ 
+-	/* Private memcg ID. Used to ID objects that outlive the cgroup */
+-	struct mem_cgroup_private_id id;
++	/* The objcg holding private memcg ID. */
++	struct obj_cgroup *id_objcg;
+ 
+ 	/* Accounted resources */
+ 	struct page_counter memory;		/* Both v1 & v2 */
+@@ -270,6 +271,9 @@ struct mem_cgroup {
+ #endif
+ 	int kmemcg_id;
+ 
++	/* Private memcg ID. Used to ID objects that outlive the cgroup */
++	int id;
++
+ 	struct memcg_vmstats_percpu __percpu *vmstats_percpu;
+ 
+ #ifdef CONFIG_CGROUP_WRITEBACK
+@@ -820,7 +824,7 @@ static inline unsigned short mem_cgroup_private_id(struct mem_cgroup *memcg)
+ 	if (mem_cgroup_disabled())
+ 		return 0;
+ 
+-	return memcg->id.id;
++	return memcg->id;
+ }
+ struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id);
+ 
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 8319ad8c5c23a..5f30e76ee93d7 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -3697,7 +3697,7 @@ static void memcg_online_kmem(struct mem_cgroup *memcg)
+ 
+ 	static_branch_enable(&memcg_kmem_online_key);
+ 
+-	memcg->kmemcg_id = memcg->id.id;
++	memcg->kmemcg_id = memcg->id;
+ }
+ 
+ static void memcg_offline_kmem(struct mem_cgroup *memcg)
+@@ -3956,25 +3956,40 @@ static DEFINE_XARRAY_ALLOC1(mem_cgroup_private_ids);
+ 
+ static void mem_cgroup_private_id_remove(struct mem_cgroup *memcg)
+ {
+-	if (memcg->id.id > 0) {
+-		xa_erase(&mem_cgroup_private_ids, memcg->id.id);
+-		memcg->id.id = 0;
++	if (memcg->id > 0) {
++		xa_erase(&mem_cgroup_private_ids, memcg->id);
++		memcg->id = 0;
+ 	}
+ }
+ 
+-static inline void mem_cgroup_private_id_put(struct mem_cgroup *memcg, unsigned int n)
++/**
++ * @objcg: the objcg returned by mem_cgroup_private_id_objcg
++ * @id: the corresponding memcg private id
++ */
++static void __mem_cgroup_private_id_put(struct obj_cgroup *objcg,
++		unsigned short id, unsigned int n)
+ {
+-	if (refcount_sub_and_test(n, &memcg->id.ref)) {
+-		mem_cgroup_private_id_remove(memcg);
++	struct obj_cgroup *objcg_free;
+ 
+-		/* Memcg ID pins CSS */
+-		css_put(&memcg->css);
++	if (refcount_sub_and_test(n, &objcg->id_ref)) {
++		objcg_free = xa_erase(&mem_cgroup_private_ids, id);
++		VM_WARN_ON(objcg_free != objcg);
++
++		/* Memcg ID pins the objcg */
++		obj_cgroup_put(objcg);
+ 	}
+ }
+ 
++static inline void mem_cgroup_private_id_put(struct mem_cgroup *memcg, unsigned int n)
++{
++	__mem_cgroup_private_id_put(memcg->id_objcg, memcg->id, n);
++}
++
+ struct mem_cgroup *mem_cgroup_private_id_get_online(struct mem_cgroup *memcg, unsigned int n)
+ {
+-	while (!refcount_add_not_zero(n, &memcg->id.ref)) {
++	struct obj_cgroup *objcg = memcg->id_objcg;
++
++	while (!refcount_add_not_zero(n, &objcg->id_ref)) {
+ 		/*
+ 		 * The root cgroup cannot be destroyed, so it's refcount must
+ 		 * always be >= 1.
+@@ -3984,6 +3999,7 @@ struct mem_cgroup *mem_cgroup_private_id_get_online(struct mem_cgroup *memcg, un
+ 			break;
+ 		}
+ 		memcg = parent_mem_cgroup(memcg);
++		objcg = memcg->id_objcg;
+ 	}
+ 	return memcg;
+ }
+@@ -3996,8 +4012,29 @@ struct mem_cgroup *mem_cgroup_private_id_get_online(struct mem_cgroup *memcg, un
+  */
+ struct mem_cgroup *mem_cgroup_from_private_id(unsigned short id)
+ {
++	struct obj_cgroup *objcg;
+ 	WARN_ON_ONCE(!rcu_read_lock_held());
+-	return xa_load(&mem_cgroup_private_ids, id);
++
++	objcg = xa_load(&mem_cgroup_private_ids, id);
++	if (!objcg)
++		return NULL;
++
++	return obj_cgroup_memcg(objcg);
++}
++
++static struct mem_cgroup *mem_cgroup_take_from_private_id(unsigned short id, unsigned int n)
++{
++	struct obj_cgroup *objcg;
++	struct mem_cgroup *memcg;
++
++	objcg = xa_load(&mem_cgroup_private_ids, id);
++	if (!objcg)
++		return NULL;
++
++	memcg = get_mem_cgroup_from_objcg(objcg);
++
++	__mem_cgroup_private_id_put(objcg, id, n);
++	return memcg;
+ }
+ 
+ struct mem_cgroup *mem_cgroup_get_from_id(u64 id)
+@@ -4098,7 +4135,7 @@ static struct mem_cgroup *mem_cgroup_alloc(struct mem_cgroup *parent)
+ 	if (!memcg)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	error = xa_alloc(&mem_cgroup_private_ids, &memcg->id.id, NULL,
++	error = xa_alloc(&mem_cgroup_private_ids, &memcg->id, NULL,
+ 			 XA_LIMIT(1, MEM_CGROUP_ID_MAX), GFP_KERNEL);
+ 	if (error)
+ 		goto fail;
+@@ -4243,9 +4280,10 @@ static int mem_cgroup_css_online(struct cgroup_subsys_state *css)
+ 				   FLUSH_TIME);
+ 	lru_gen_online_memcg(memcg);
+ 
+-	/* Online state pins memcg ID, memcg ID pins CSS */
+-	refcount_set(&memcg->id.ref, 1);
+-	css_get(css);
++	/* CSS pins memcg ID, memcg ID pins obj cgroup */
++	memcg->id_objcg = memcg->nodeinfo[0]->objcg;
++	refcount_set(&memcg->id_objcg->id_ref, 1);
++	obj_cgroup_get(memcg->id_objcg);
+ 
+ 	/*
+ 	 * Ensure mem_cgroup_from_private_id() works once we're fully online.
+@@ -4257,7 +4295,7 @@ static int mem_cgroup_css_online(struct cgroup_subsys_state *css)
+ 	 * publish it here at the end of onlining. This matches the
+ 	 * regular ID destruction during offlining.
+ 	 */
+-	xa_store(&mem_cgroup_private_ids, memcg->id.id, memcg, GFP_KERNEL);
++	xa_store(&mem_cgroup_private_ids, memcg->id, objcg, GFP_KERNEL);
+ 
+ 	return 0;
+ free_objcg:
+@@ -4308,8 +4346,6 @@ static void mem_cgroup_css_offline(struct cgroup_subsys_state *css)
+ 	lru_gen_offline_memcg(memcg);
+ 
+ 	drain_all_stock(memcg);
+-
+-	mem_cgroup_private_id_put(memcg, 1);
+ }
+ 
+ static void mem_cgroup_css_released(struct cgroup_subsys_state *css)
+@@ -4318,6 +4354,9 @@ static void mem_cgroup_css_released(struct cgroup_subsys_state *css)
+ 
+ 	invalidate_reclaim_iterators(memcg);
+ 	lru_gen_release_memcg(memcg);
++
++	mem_cgroup_private_id_put(memcg, 1);
++	memcg->id_objcg = NULL;
+ }
+ 
+ static void mem_cgroup_css_free(struct cgroup_subsys_state *css)
+@@ -5651,19 +5690,19 @@ void __mem_cgroup_uncharge_swap(unsigned short id, unsigned int nr_pages)
+ {
+ 	struct mem_cgroup *memcg;
+ 
+-	rcu_read_lock();
+-	memcg = mem_cgroup_from_private_id(id);
+-	if (memcg) {
+-		if (!mem_cgroup_is_root(memcg)) {
+-			if (do_memsw_account())
+-				page_counter_uncharge(&memcg->memsw, nr_pages);
+-			else
+-				page_counter_uncharge(&memcg->swap, nr_pages);
+-		}
+-		mod_memcg_state(memcg, MEMCG_SWAP, -nr_pages);
+-		mem_cgroup_private_id_put(memcg, nr_pages);
++	memcg = mem_cgroup_take_from_private_id(id, nr_pages);
++	if (!memcg)
++		return;
++
++	if (!mem_cgroup_is_root(memcg)) {
++		if (do_memsw_account())
++			page_counter_uncharge(&memcg->memsw, nr_pages);
++		else
++			page_counter_uncharge(&memcg->swap, nr_pages);
+ 	}
+-	rcu_read_unlock();
++	mod_memcg_state(memcg, MEMCG_SWAP, -nr_pages);
++
++	mem_cgroup_put(memcg);
+ }
+ 
+ long mem_cgroup_get_nr_swap_pages(struct mem_cgroup *memcg)
 
-Best regards,
 -- 
-Bingfang Guo <bingfangguo@tencent.com>
+2.43.7
 
