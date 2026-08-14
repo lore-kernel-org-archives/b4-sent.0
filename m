@@ -1,160 +1,109 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 14 Aug 2026 12:41:15 +0200
-Subject: [PATCH v2 4/4] sysctl: Add 0013 to test partially updated vectors
+From: Christian Wehba <weebnuts@hotmail.com>
+Date: Fri, 14 Aug 2026 21:29:28 +1000
+Subject: [PATCH] ALSA: hda/realtek: Match Lenovo Yoga Slim 7 14AKP10 by
+ codec SSID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260814-lklm-partial_ctlvec-v2-4-9df50d26e477@kernel.org>
-References: <20260814-lklm-partial_ctlvec-v2-0-9df50d26e477@kernel.org>
-In-Reply-To: <20260814-lklm-partial_ctlvec-v2-0-9df50d26e477@kernel.org>
-To: Kees Cook <kees@kernel.org>, Shuah Khan <shuah@kernel.org>
-Cc: Jianlin Shi <shijianlin11@foxmail.com>, akpm@linux-foundation.org, 
- vbabka@kernel.org, hannes@cmpxchg.org, surenb@google.com, mhocko@suse.com, 
- jackmanb@google.com, ziy@nvidia.com, linux-kernel@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- linux-mm@kvack.org, Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3356;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=YHI3VBORAsd9SqfY5aar0OvGzZqdtGpSqI6smTfSLXY=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGp+8NEZx7DhoWX+VVmoWYcszozrHrTSVyWWi
- NensKkTznzrsIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqfvDRAAoJELqXzVK3
- lkFP5nkL+gOLrefeg7tdLifVFAOWe9dtn+spU/1WLrN/o+x2sYe9+IVhJQKAT8S1ikOZr0D1eNa
- ASVm4Sz9LPGPHEAUuF9EtwF6qqrWg/3ZNGYZ+X05idINQ3jROzIMrcxRglhxOCE+8MYZ5lwAume
- VeSpQStAWQcO4TqMHUs9CiJrvxHSS4AEnddKvwFH+AhN+5nahkgwpXHAvtvN4CXFpYpZlCeUE/Y
- gCRVJQ3ikhBtkDn5YOhXbPoiKRtqTnPiSEfG87ibN8hILuti4JAeuNrY9pzJuH4D3Clicp3hxsg
- LV3YL3CXAYi3oNKW9vq4SI+YGEoSOQUMEwfAI9fEDSI9XNEgNc3ENL7IfDDiWayX9crn7X/HD8C
- ILHDSwaMPOP/+pwf8GUE73GS6ow2R/Z0geldHXgpe/IHZopgMiwlcL3VzouyJm67V1bq7dSwLFf
- +d6DLLGQUDuYHBQk8Ds/ZZjVtQjNL4h8nRc26WCMiblkgBQzLFSAwZHjwBkT7ysaMoM8kGxwi95
- 08=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Message-Id: <20260814-alc287-akp10-v1-1-60b3d619f72d@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0Nj3cScZCMLc93E7AJDA92kZAODZEPTRPPEVAMloJaCotS0zAqwcdG
+ xtbUAR7xwk14AAAA=
+X-Change-ID: 20260813-alc287-akp10-bc00c15a7ae0
+To: linux-sound@vger.kernel.org
+Cc: stable@vger.kernel.org, Christian Wehba <weebnuts@hotmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786706967; l=4514;
+ i=weebnuts@hotmail.com; h=from:subject:message-id;
+ bh=XN40BnZnWOGYHA+7GO2mZkGtsNIWrNdk7lHPf86eDyM=;
+ b=HPrXYTWO2VzjjGrDZRPQMPUjEVwkWHxQrAvdIwKXMyiJ7R8iiH4SDjhiDgMDp78qAk6QtdLIR
+ l7Kgz9njSpqAYYu2Dmw8dZZP5NBx5QQEi3u+Asez6suw/GIHHCafcsI
+X-Developer-Key: i=weebnuts@hotmail.com; a=ed25519;
+ pk=x+EJ28Iu4dCXlGo0o5ZYbAdHluOsP4d5LHGiwTLloZI=
+X-Endpoint-Received: by B4 Relay for weebnuts@hotmail.com/default with auth_id=948
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add coverage for partially updated sysctl vectors with test 0013. It
-makes sure that the sysctl vector is unchanged when one of the elements
-is not valid.
+Commit e6c888202297 ("ALSA: hda/realtek: Add quirk for Lenovo Yoga Slim
+7 14AKP10") added an entry for 17aa:391a using SND_PCI_QUIRK, so it is
+only tested against the PCI SSID. On this machine 0x391a is the codec
+SSID; the PCI SSID is 17aa:38b4, which is shared with the Legion Slim 7
+16IRH8.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+snd_hda_pick_fixup() walks the quirk table in order and returns on the
+first match, so the earlier 17aa:38b4 entry wins and the codec-SSID
+fallback at the end of the function is never reached:
+
+  snd_hda_codec_alc269 hdaudioC1D0: ALC287: picked fixup  for PCI SSID 17aa:38b4
+
+The machine consequently gets ALC287_FIXUP_CS35L41_I2C_2 even though it
+has no CS35L41 amplifiers, and the intended fixup never runs. Its bass
+speakers hang off pin 0x17, which the BIOS reports as unconnected, so
+only the tweeters on pin 0x14 are driven and playback is very quiet.
+
+Convert the entry to HDA_CODEC_QUIRK and move it ahead of the colliding
+17aa:38b4 entry so that it is evaluated first. With
+ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN applied, pin 0x17 is enabled and
+both 0x14 and 0x17 are bound to DAC 0x02, so a single "Speaker Playback
+Volume" drives both speaker pairs:
+
+  autoconfig for ALC287: line_outs=2 (0x14/0x17/0x0/0x0/0x0) type:speaker
+
+Verified on a Yoga Slim 7 14AKP10 by forcing the same fixup with
+model=alc287-yoga9-bass-spk-pin, which restores full volume and keeps
+the volume control effective across its whole range.
+
+Note that the existing 17aa:391c and 17aa:391d entries are likewise
+placed after the 17aa:38b4 entry; should those machines also report PCI
+SSID 17aa:38b4 they would need the same reordering, but that could not
+be confirmed here for lack of the hardware.
+
+Fixes: e6c888202297 ("ALSA: hda/realtek: Add quirk for Lenovo Yoga Slim 7 14AKP10")
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=221298
+Cc: stable@vger.kernel.org
+Signed-off-by: Christian Wehba <weebnuts@hotmail.com>
 ---
- tools/testing/selftests/sysctl/sysctl.sh | 60 ++++++++++++++++++++++++++++++++
- 1 file changed, 60 insertions(+)
+Single patch; the full analysis is in the commit message.
 
-diff --git a/tools/testing/selftests/sysctl/sysctl.sh b/tools/testing/selftests/sysctl/sysctl.sh
-index b2d8bd9026a721e96c26be20069f7f87b06a5cf7..dc8674455284612dfe898944b886d856fb8ab3fe 100755
---- a/tools/testing/selftests/sysctl/sysctl.sh
-+++ b/tools/testing/selftests/sysctl/sysctl.sh
-@@ -4,6 +4,7 @@
- 
- # This performs a series tests against the proc sysctl interface.
- 
-+# shellcheck disable=SC2317
- # Kselftest framework requirement - SKIP code is 4.
- ksft_skip=4
- 
-@@ -12,6 +13,9 @@ TEST_DRIVER="test_${TEST_NAME}"
- TEST_DIR=$(dirname $0)
- TEST_FILE=$(mktemp)
- 
-+# initialize for individual tests
-+rc=0
-+
- # This represents
- #
- # TEST_ID:TEST_COUNT:ENABLED:TARGET:SKIP_NO_TARGET
-@@ -37,6 +41,7 @@ ALL_TESTS="$ALL_TESTS 0009:1:1:unregister_error:0"
- ALL_TESTS="$ALL_TESTS 0010:1:1:mnt/mnt_error:0"
- ALL_TESTS="$ALL_TESTS 0011:1:1:empty_add:0"
- ALL_TESTS="$ALL_TESTS 0012:1:1:u8_valid:0"
-+ALL_TESTS="$ALL_TESTS 0013:1:1:int_0003:1"
- 
- function allow_user_defaults()
- {
-@@ -196,6 +201,18 @@ verify_diff_w()
- 	return $?
- }
- 
-+# Verify that an erroneous ($2) update fails and does not change TARGET
-+verify_no_partial_update()
-+{
-+	TEST_STR="$1"
-+	echo -n "$TEST_STR" > "$TARGET"
-+
-+	if echo -n "$2" > "$TARGET" 2> /dev/null; then
-+		return 1
-+	fi
-+	verify_diff_w "${TARGET}"
-+}
-+
- test_rc()
- {
- 	if [[ $rc != 0 ]]; then
-@@ -501,6 +518,40 @@ run_limit_digit_int_array()
- 	test_rc
- }
- 
-+# You used an int array and one of the elements is not acceptable
-+run_int_array_no_partial_update()
-+{
-+	echo -n "Testing invalid array element does not partially update ... "
-+        # Expect failure because of 3rd element (abc).
-+	if ! verify_no_partial_update "1 2 3 4" "10 20 abc 40"; then
-+		echo "FAIL" >&2
-+		rc=1
-+	else
-+		echo "OK"
-+	fi
-+	test_rc
-+
-+	echo -n "Testing out of range array element does not partially update ... "
-+        # Expect failure because of 3rd element (greater than int)
-+	if ! verify_no_partial_update "1 2 3 4" "10 20 $((INT_MAX + 1)) 40"; then
-+		echo "FAIL" >&2
-+		rc=1
-+	else
-+		echo "OK"
-+	fi
-+	test_rc
-+
-+	echo -n "Testing invalid first array element does not update ... "
-+        # Expect failure of 1st element
-+	if ! verify_no_partial_update "1 2 3 4" "abc 20 30 40"; then
-+		echo "FAIL" >&2
-+		rc=1
-+	else
-+		echo "OK"
-+	fi
-+	test_rc
-+}
-+
- # You are using an unsigned int
- run_limit_digit_uint()
- {
-@@ -880,6 +931,14 @@ sysctl_test_0012()
- 	return 0
- }
- 
-+sysctl_test_0013()
-+{
-+	TARGET="${SYSCTL}/$(get_test_target 0013)"
-+	reset_vals
-+
-+	run_int_array_no_partial_update
-+}
-+
- list_tests()
- {
- 	echo "Test ID list:"
-@@ -900,6 +959,7 @@ list_tests()
- 	echo "0010 x $(get_test_count 0010) - tests sysct mount point"
- 	echo "0011 x $(get_test_count 0011) - tests empty directories"
- 	echo "0012 x $(get_test_count 0012) - tests range check for u8 proc_handler"
-+	echo "0013 x $(get_test_count 0013) - tests partially update vectors on error"
- }
- 
- usage()
+Tested on a Lenovo Yoga Slim 7 14AKP10 (AMD, ALC287) running 7.1.7 on
+Fedora 44. Without the change the machine matches the Legion Slim 7
+16IRH8 entry on PCI SSID 17aa:38b4 and gets ALC287_FIXUP_CS35L41_I2C_2
+despite having no CS35L41 amplifiers; only the tweeters on pin 0x14 are
+driven, so playback is very quiet. With the fixup applied both speaker
+pairs are driven and the volume control stays effective across its whole
+range.
 
+Reported and tracked at:
+https://bugzilla.kernel.org/show_bug.cgi?id=221298
+---
+ sound/hda/codecs/realtek/alc269.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index be7287ea2..488293612 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -8069,6 +8069,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x17aa, 0x38a8, "Y780P AMD VECO dual", ALC287_FIXUP_TAS2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x38a9, "Thinkbook 16P", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
+ 	SND_PCI_QUIRK(0x17aa, 0x38ab, "Thinkbook 16P", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
++	HDA_CODEC_QUIRK(0x17aa, 0x391a, "Lenovo Yoga Slim 7 14AKP10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x38b4, "Legion Slim 7 16IRH8", ALC287_FIXUP_CS35L41_I2C_2),
+ 	HDA_CODEC_QUIRK(0x17aa, 0x391c, "Lenovo Yoga 7 2-in-1 14AKP10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	HDA_CODEC_QUIRK(0x17aa, 0x391d, "Lenovo Yoga 7 2-in-1 16AKP10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+@@ -8117,7 +8118,6 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x17aa, 0x3911, "Lenovo Yoga Pro 7 14IAH10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x3912, "Lenovo Xiaoxin 14 GT", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x3913, "Lenovo 145", ALC236_FIXUP_LENOVO_INV_DMIC),
+-	SND_PCI_QUIRK(0x17aa, 0x391a, "Lenovo Yoga Slim 7 14AKP10", ALC287_FIXUP_YOGA9_14IAP7_BASS_SPK_PIN),
+ 	SND_PCI_QUIRK(0x17aa, 0x391f, "Yoga S990-16 pro Quad YC Quad", ALC287_FIXUP_TXNW2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x3920, "Yoga S990-16 pro Quad VECO Quad", ALC287_FIXUP_TXNW2781_I2C),
+ 	SND_PCI_QUIRK(0x17aa, 0x3929, "Thinkbook 13x Gen 5", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD),
+
+---
+base-commit: f42eb0bd059781dc7f3046c7d37e76f59b874744
+change-id: 20260813-alc287-akp10-bc00c15a7ae0
+
+Best regards,
 -- 
-2.50.1
+Christian Wehba <weebnuts@hotmail.com>
 
