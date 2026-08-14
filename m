@@ -1,14 +1,12 @@
 From: Long Zhao <longzhao@ambarella.com>
-Subject: [PATCH v4 0/4] Ambarella CV75: pinctrl and PL061 GPIO
-Date: Fri, 14 Aug 2026 14:25:40 +0800
-Message-Id: <20260814-cv75-v4-b-v4-0-ef2e83ec0eac@ambarella.com>
+Date: Fri, 14 Aug 2026 14:25:41 +0800
+Subject: [PATCH v4 1/4] dt-bindings: pinctrl: add Ambarella CV75 pinctrl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOS0fmoC/yXMQQ5AMBBA0avIrE1SUjSuIhaMKWOBtDQScXfF8
- iU//wLPTthDnVzgOIiXdYnQaQI0dcvIKEM05Covlck0UqgKDBp7tDxoRYUhU1qI/ebYyvm9mva
- 3P/qZaX8HcN8PrZkruG0AAAA=
-X-Change-ID: 20260814-cv75-v4-b-fed40c58c86f
+Message-Id: <20260814-cv75-v4-b-v4-1-ef2e83ec0eac@ambarella.com>
+References: <20260814-cv75-v4-b-v4-0-ef2e83ec0eac@ambarella.com>
+In-Reply-To: <20260814-cv75-v4-b-v4-0-ef2e83ec0eac@ambarella.com>
 To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
@@ -16,67 +14,271 @@ Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Long Zhao <longzhao@ambarella.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786688763; l=1967;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786688763; l=6392;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=ksEsRtK1EuKSLayoctPBxaWWqqFtM9SYIX6VyZQVJqg=;
- b=lNb4uc4U78G3ALpbbxIU5sLX9QzDdu2+7huKuU4+wK7iDdIDUSBZB97DtGKOe3WYD3EhfRV20
- 4W9sLQBYqj6BJY80ElTpLdj4hIR3K3HEy+BygtSx5JxhOqwNCl+p8gd
+ bh=nKtxPce2re61fXy+1qoLhWBCtRzuGBLrRckpr8oXxx4=;
+ b=a7znp/pnlWhAgzN3TRpcMoERgnBeJ920ph/HZ3tle3KxQfiUaFKl2AmqV2MRDJtnfcFK+/YGm
+ wp4iv38A6uABsR90+2KY7ZgmwIvmDZIXGRtupCgw+X3z5W3aa74riJC
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is part B of a 3-part CV75 split:
-
-  A: bindings + RCT/CCU clocks + SoC/EVK DT + MAINTAINERS
-  B: pinctrl + PL061 GPIO variant  (this series)
-  C: 8250_dw UART quirks
-
-Depends on series A:
-https://lore.kernel.org/r/20260813-cv75-v3-a-v3-0-cfdd20b1b4dd@ambarella.com
-
-Link to v3:
-https://lore.kernel.org/r/20260813-cv75-v3-b-v3-0-1d82e18da09b@ambarella.com
-
-Link to v2:
-https://lore.kernel.org/r/20260806-longzhao-upstream-cv75-v2-v2-0-6b09707c5fe9@ambarella.com
-
-Summary:
-- CV75 pinctrl binding and driver
-- Ambarella register-layout variant for gpio-pl061
-  (DT binding and driver in separate patches) 
-
-Changes since v3:
-- Split pl061 DT binding and driver into separate patches (Bartosz)
-
-Changes since v2 (B scope):
-- reuse PL061 instead of a duplicated GPIO implementation (Linus)
-- complete function/groups enums in the binding (Krzysztof)
-
-Verified on CV75 with A+B+C.
+Document the CV75 pin controller binding using generic function and
+groups properties for pinmux configuration.
 
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
-Long Zhao (4):
-      dt-bindings: pinctrl: add Ambarella CV75 pinctrl
-      dt-bindings: gpio: pl061: add Ambarella CV75 variant
-      gpio: pl061: add Ambarella CV75 register layout variant
-      pinctrl: ambarella: add CV75 pin controller
+ .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 240 +++++++++++++++++++++
+ 1 file changed, 240 insertions(+)
 
- .../devicetree/bindings/gpio/pl061-gpio.yaml       |  35 +-
- .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 240 ++++++
- drivers/gpio/gpio-pl061.c                          | 280 +++++--
- drivers/pinctrl/Kconfig                            |  13 +
- drivers/pinctrl/Makefile                           |   2 +
- drivers/pinctrl/pinctrl-ambarella-cv75.c           | 561 ++++++++++++++
- drivers/pinctrl/pinctrl-ambarella.c                | 839 +++++++++++++++++++++
- drivers/pinctrl/pinctrl-ambarella.h                |  50 ++
- 8 files changed, 1949 insertions(+), 71 deletions(-)
----
-base-commit: 18bf29fba8d0bdd0db5a0497ecf06f404bc740d1
-change-id: 20260814-cv75-v4-b-fed40c58c86f
+diff --git a/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
+new file mode 100644
+index 000000000000..9d65da32d3d2
+--- /dev/null
++++ b/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
+@@ -0,0 +1,240 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/pinctrl/ambarella,cv75-pinctrl.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Ambarella CV75 Pin Controller
++
++maintainers:
++  - Long Zhao <longzhao@ambarella.com>
++
++description:
++  The Ambarella CV75 pin controller configures pin multiplexing, bias and
++  drive strength for the main GPIO banks. Pin groups and their mux settings
++  are defined by the pin controller driver and selected by function and group
++  names.
++
++allOf:
++  - $ref: pinctrl.yaml#
++
++properties:
++  compatible:
++    const: ambarella,cv75-pinctrl
++
++  reg:
++    maxItems: 1
++    description: IOMUX registers
++
++  ambarella,drive-strength-syscon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description: RCT syscon containing the drive-strength registers.
++
++  ambarella,pull-syscon:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description: Secure scratchpad syscon containing the pull registers.
++
++patternProperties:
++  "^[a-z0-9-]+-pins$":
++    type: object
++    allOf:
++      - $ref: pinmux-node.yaml#
++      - $ref: pincfg-node.yaml#
++    additionalProperties: false
++
++    properties:
++      function:
++        enum:
++          - can0
++          - can1
++          - clk_au
++          - dmic0
++          - enet0
++          - hsync0
++          - hsync1
++          - i2c0
++          - i2c1
++          - i2c2
++          - i2c3
++          - i2cs
++          - i2s0
++          - i2s1
++          - ir
++          - pwm0
++          - pwm1
++          - pwm2
++          - pwm3
++          - pwm4
++          - pwm5
++          - pwm6
++          - pwm7
++          - pwm8
++          - pwm9
++          - pwm10
++          - pwm11
++          - sdmmc0
++          - sdmmc1
++          - snand
++          - spi0
++          - spi1
++          - spi2
++          - spi3
++          - spi_slave
++          - spinor
++          - uart0
++          - uart1
++          - uart2
++          - uart3
++          - uart4
++          - vin_master_sync
++          - vsync0
++          - vsync1
++          - vsync2
++          - vsync3
++          - wdt
++
++      groups:
++        $ref: /schemas/types.yaml#/definitions/string-array
++        items:
++          enum:
++            - can0
++            - can1
++            - clk_au
++            - dmic0
++            - enet_2nd_ref_clk_a
++            - enet_2nd_ref_clk_b
++            - enet_ext_osc_clk
++            - enet0_ptp_pps_o
++            - hsync0
++            - hsync1
++            - i2c0_a
++            - i2c0_b
++            - i2c1_a
++            - i2c1_b
++            - i2c2
++            - i2c3_a
++            - i2c3_b
++            - i2c3_c
++            - i2cs_a
++            - i2cs_b
++            - i2cs_c
++            - i2cs_d
++            - i2s0
++            - i2s1
++            - ir
++            - pwm0
++            - pwm1
++            - pwm2
++            - pwm3
++            - pwm4_a
++            - pwm4_b
++            - pwm5_a
++            - pwm5_b
++            - pwm6_a
++            - pwm6_b
++            - pwm7_a
++            - pwm7_b
++            - pwm8_a
++            - pwm8_b
++            - pwm9_a
++            - pwm9_b
++            - pwm10_a
++            - pwm10_b
++            - pwm11_a
++            - pwm11_b
++            - rgmii0
++            - rmii0
++            - sdmmc0_1bit
++            - sdmmc0_4bit
++            - sdmmc0_cd
++            - sdmmc0_hs_sel
++            - sdmmc0_reset
++            - sdmmc0_wp
++            - sdmmc1_1bit
++            - sdmmc1_4bit
++            - sdmmc1_cd
++            - sdmmc1_hs_sel
++            - sdmmc1_reset
++            - sdmmc1_wp
++            - snand
++            - spi0
++            - spi1
++            - spi2
++            - spi3_a
++            - spi3_b
++            - spi3_c
++            - spi_slave_a
++            - spi_slave_b
++            - spi_slave_c
++            - spi_slave_d
++            - spi_slave_e
++            - spinor
++            - uart0
++            - uart1
++            - uart1_flow
++            - uart2_a
++            - uart2_b
++            - uart2_c
++            - uart2_flow_a
++            - uart2_flow_b
++            - uart3_a
++            - uart3_b
++            - uart3_flow_a
++            - uart3_flow_b
++            - uart4_a
++            - uart4_b
++            - uart4_flow_a
++            - uart4_flow_b
++            - vin_master_sync_a
++            - vin_master_sync_b
++            - vin_master_sync_c
++            - vin_master_sync_d
++            - vin_master_sync_e
++            - vsync0
++            - vsync1
++            - vsync2
++            - vsync3
++            - wdt_a
++            - wdt_b
++            - wdt_c
++            - wdt_d
++            - wdt_e
++            - wdt_f
++        minItems: 1
++        maxItems: 6
++        uniqueItems: true
++
++      bias-disable: true
++      bias-pull-down: true
++      bias-pull-up: true
++
++      drive-strength:
++        enum: [3, 4, 5, 6, 7, 8, 9, 12]
++
++    required:
++      - function
++      - groups
++
++required:
++  - compatible
++  - reg
++  - ambarella,drive-strength-syscon
++  - ambarella,pull-syscon
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    pinctrl: pinctrl@e4010000 {
++        compatible = "ambarella,cv75-pinctrl";
++        reg = <0xe4010000 0x1000>;
++        ambarella,drive-strength-syscon = <&rct>;
++        ambarella,pull-syscon = <&scratchpad>;
++
++        uart0-pins {
++            function = "uart0";
++            groups = "uart0";
++            bias-disable;
++            drive-strength = <8>;
++        };
++    };
 
-Best regards,
---  
-Long Zhao <longzhao@ambarella.com>
+-- 
+2.34.1
 
