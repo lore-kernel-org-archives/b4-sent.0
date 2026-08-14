@@ -1,90 +1,81 @@
-From: Oleg Kombarov <ok563595@gmail.com>
-Date: Fri, 14 Aug 2026 20:42:55 +0700
-Subject: [PATCH] pci: pcie_dw_rockchip: add PCIe reset configuration delay
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/4] drm/panel: Support Retroid Pocket 6 panel
+Date: Fri, 14 Aug 2026 13:17:14 -0500
+Message-Id: <20260814-rp6-panel-v1-0-111c1aeccf0f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260814-pci-rockchip-perst-delay-v1-1-dde1904d9b87@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxA0auQrm3CDEbAqxgWQylQNTBpgWgId
- 3fU5Vv8v4OxChtcsx2UNzGZpwR3yoDGMA2M0iWDz/0lr9wZIwnqTA8aJWJktQU7foY31nXliyK
- Urm8dpDwq9/L6rW/N37a2d6bl+4Pj+AACBS1LfAAAAA==
-X-Change-ID: 20260814-pci-rockchip-perst-delay-998233a71fb1
-To: Simon Glass <sjg@chromium.org>, u-boot@lists.u-boot-project.org
-Cc: Quentin Schulz <u-boot@0leil.net>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Yao Zi <me@ziyao.cc>, Peng Fan <peng.fan@nxp.com>, 
- Oleg Kombarov <ok563595@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786714975; l=2135;
- i=ok563595@gmail.com; s=20260814; h=from:subject:message-id;
- bh=74wBb9m2GnuOkRHqU23/NIffQe3sJ6lsA4lNCCBSlvQ=;
- b=X4FxivtvX9HcEVsz7UYEeN44WQ0HFLggRa3fil3mraHUKXjLxs8mZf3oC+ZvbnbWNWk6VysXs
- U7DsQT9+Za4C8tvhTcijYTOG1tNJJxeOdQ0wnT4cFAZAgddXQSrudlz
-X-Developer-Key: i=ok563595@gmail.com; a=ed25519;
- pk=BkA5Dnbry6YAJS4cn/HnsXFv/FmHKxoQUkfowiJxipI=
-X-Endpoint-Received: by B4 Relay for ok563595@gmail.com/20260814 with auth_id=949
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22O0WrDMAxFfyX4eQY5tiXVv1L64CjKZljT1O7CR
+ um/L0uhT3s8Qvdw7qZpLdpM6u6m6lpaucwbuLfOyEee39WWcWPTQ4/gHdu6oF3yrJ+W0XGAGAA
+ dmu1/qTqV7911PD256vVrU96eRzPkplYu53O5pS4EokzsKeRI4hkOg6M+jx5ENA9jDiyBZFe/U
+ lK3h/SObP6Z7VUaxwjWoQAN6EftMa2H/yYMf+2vBUfhQAgTTj6tzpwej1/II9LrDAEAAA==
+X-Change-ID: 20260318-rp6-panel-861840540616
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786731444; l=2531;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=05UlI8U8+ox12Iu078tYqJXr6YhBgqKRLtpJyQ3O4/4=;
+ b=scEWgA4YR3TDfadbQQ+muEYFqhjR7300Z8EJM0Yt/Wm2tOSAFBnusy8gRg+Lhwc1gX1yDtSPl
+ tOsVyttPGi+CUM4pncKOQzleknM/tkIEDX1QiI0Yc2Oj/uzVpIVtWP/
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PCIe r6.0 sec 6.6.1 requires a 100 ms delay before the first
-Configuration Request.
+This panel uses a Visionox VTDR6130 DDIC. There is an existing driver
+for this ddic, however it is currently hardcoded for a panel used on
+several Qualcomm devkits. This series sets up the driver to support
+multiple panels, then adds the RP6 panel. It also adds support for
+rotation as the RP6 panel is mounted sideways.
 
-For ports supporting up to 5.0 GT/s, the delay is measured from
-the end of Conventional Reset. For faster ports, it is measured
-from the end of Link Training.
+This depends on the Retroid Pocket dt series [0] for the vendor prefix
+patch. That series depends on the AYN dt series [1] to apply cleanly.
+    
+[0] https://lore.kernel.org/linux-arm-msm/20260808-rp-qcs8550-v1-0-a5a365ba3dc5@gmail.com/
+[1] https://lore.kernel.org/linux-arm-msm/20260727-ayn-qcs8550-v9-0-e3db456e10e5@gmail.com/
 
-The Rockchip DesignWare PCIe driver currently deasserts PERST# and
-proceeds after Link Training without guaranteeing these delays.
-A fast-training endpoint may therefore receive its first
-Configuration Request too early.
-
-Apply the required delay according to the maximum supported link
-speed.
-
-This fixes PCIe enumeration of a MAXIO MAP1202 NVMe device on an
-Orange Pi 5 (RK3588S), where enumeration was timing-sensitive and
-could hang without the additional delay.
-
-Signed-off-by: Oleg Kombarov <ok563595@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/pci/pcie_dw_rockchip.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Aaron Kling (4):
+      dt-bindings: display: visionox,vtdr6130: Add Retroid Pocket 6 panel
+      drm/panel: visionox-vtdr6130: Add panel orientation support
+      drm/panel: visionox-vtdr6130: Modularize panel config
+      drm/panel: visionox-vtdr6130: Add Retroid Pocket 6 panel
 
-diff --git a/drivers/pci/pcie_dw_rockchip.c b/drivers/pci/pcie_dw_rockchip.c
-index 61117fa95e6..322b0be9771 100644
---- a/drivers/pci/pcie_dw_rockchip.c
-+++ b/drivers/pci/pcie_dw_rockchip.c
-@@ -267,6 +267,14 @@ static int rk_pcie_link_up(struct rk_pcie *priv)
- 	mdelay(100);
- 	if (dm_gpio_is_valid(&priv->rst_gpio))
- 		dm_gpio_set_value(&priv->rst_gpio, 1);
-+	/*
-+	 * PCIe r6.0 sec 6.6.1 requires a 100 ms delay before the first
-+	 * Configuration Request. For ports supporting up to 5.0 GT/s, measure
-+	 * the delay from the end of Conventional Reset. For faster ports,
-+	 * measure it from the end of Link Training.
-+	 */
-+	if (priv->gen <= LINK_SPEED_GEN_2)
-+		mdelay(100);
- 
- 	/* Check if the link is up or not */
- 	for (retries = 0; retries < 10; retries++) {
-@@ -282,6 +290,9 @@ static int rk_pcie_link_up(struct rk_pcie *priv)
- 		return -EIO;
- 	}
- 
-+	if (priv->gen > LINK_SPEED_GEN_2)
-+		mdelay(100);
-+
- 	dev_info(priv->dw.dev, "PCIe Link up, LTSSM is 0x%x\n",
- 		 rk_pcie_readl_apb(priv, PCIE_CLIENT_LTSSM_STATUS));
- 	rk_pcie_debug_dump(priv);
-
+ .../bindings/display/panel/visionox,vtdr6130.yaml  |   8 +-
+ drivers/gpu/drm/panel/panel-visionox-vtdr6130.c    | 225 ++++++++++++++++++---
+ 2 files changed, 201 insertions(+), 32 deletions(-)
 ---
-base-commit: 527115ef6783cec49e5610c523c124b399011361
-change-id: 20260814-pci-rockchip-perst-delay-998233a71fb1
+base-commit: 4477a78374a57c3809b172ad30cceabda48c47c6
+change-id: 20260318-rp6-panel-861840540616
+prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v9
+prerequisite-patch-id: 17ba304f7a8a08cc78f98e198db9c51f4786a22c
+prerequisite-patch-id: 21873631f5dcdb9bbbdb5c20c3f5e9816cc405f9
+prerequisite-patch-id: bf7b5dea0097cbbdf04929a4246d1fc65c607ea8
+prerequisite-patch-id: d7f546eddc96a4f31a1e681abddbc96bd68abb32
+prerequisite-patch-id: d40d784ad8efbb1204c024408be2067725a06cf2
+prerequisite-patch-id: 25bbd55199a8250a912ef542b31f43dd5ccdbc90
+prerequisite-change-id: 20260808-rp-qcs8550-85c84760f6f3:v1
+prerequisite-patch-id: 17ba304f7a8a08cc78f98e198db9c51f4786a22c
+prerequisite-patch-id: 21873631f5dcdb9bbbdb5c20c3f5e9816cc405f9
+prerequisite-patch-id: bf7b5dea0097cbbdf04929a4246d1fc65c607ea8
+prerequisite-patch-id: d7f546eddc96a4f31a1e681abddbc96bd68abb32
+prerequisite-patch-id: d40d784ad8efbb1204c024408be2067725a06cf2
+prerequisite-patch-id: 25bbd55199a8250a912ef542b31f43dd5ccdbc90
+prerequisite-patch-id: c79dacb2a8ca1298387bc9bc4a543de97c670a50
+prerequisite-patch-id: 9c058fb9b13442f5434b8aaa2f1907eff1b43684
+prerequisite-patch-id: c13130099b60aa7c412181e99070718eb2c68ecd
+prerequisite-patch-id: d0dad3c4fa9c4b98e6cc53bbd0874df9113ab5f6
 
 Best regards,
---  
-Oleg Kombarov <ok563595@gmail.com>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
