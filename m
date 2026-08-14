@@ -1,107 +1,112 @@
-From: Sven Peter <sven@kernel.org>
-Date: Thu, 13 Aug 2026 20:16:15 +0200
-Subject: [PATCH] usb: typec: tipd: Fix Thunderbolt altmode VDOs for cd321x
+From: Darren Carreras <carrerasdarren@gmail.com>
+Date: Thu, 13 Aug 2026 20:43:18 -0400
+Subject: [PATCH bpf-next v6] libbpf: avoid overflow in BTF.ext bounds check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-b4-tipd-vdo-fix-v1-1-70317f2cd554@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBCF4avIrE2CVtO4ili0OhgLpEUk0rsrl
- t9L3n9DIM8UoMlu8HRy4HVJKPMM+sksIyG7ZKiKShW6FGgl7rw5PN2KA18oJanaSm3ICEivzVO
- av2Lb/Q6Hnanf3wzE+ADk7CYHcwAAAA==
-X-Change-ID: 20260813-b4-tipd-vdo-fix-44e65b48aea3
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
- linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- asahi@lists.linux.dev, stable@vger.kernel.org, Sven Peter <sven@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3562; i=sven@kernel.org;
- h=from:subject:message-id; bh=mGb6tNHi+V8a2B3yjUlf9eOR715pdSx5lBUYHC2f8P0=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1Yd5895Ww0T8suTns5RbxHrPvusZkVie1q8ZczaCTaRw
- ieNWMM7SlkYxLgYZMUUWbbvtzd98vCN4NJNl97DzGFlAhnCwMUpABNZq8/wk7FRq/Rny906drdV
- 91rCNTziovJuCx69sWyv7r3FW1bGyjIyrL7+W8Px+vsTES1y1VX7HjD26DX+UqufueFCF8PisMN
- feAA=
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+Message-Id: <20260813-b4-libbpf-v6-send-20260813-v6-1-56be61c52758@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/z2M0QqCQBBFf0XmuQFTmbRfiR523WtNxCY7JoL47
+ 60FPR4O56xkSAqjc7FSwqymr5hBDgX1dxdvYA2ZqSorKdtjzb7hp3o/DjwLG2Lgv3Lh1EG6pnb
+ SUh6MCYMu3/mF9iJimej6M/b2D/TT/qZt+wBSILptiAAAAA==
+X-Change-ID: 20260813-b4-libbpf-v6-send-20260813-ad79e6943a68
+To: bpf@vger.kernel.org
+Cc: daniel@iogearbox.net, song@kernel.org, yonghong.song@linux.dev, 
+ linux-kernel@vger.kernel.org, jolsa@kernel.org, andrii.nakryiko@gmail.com, 
+ ast@kernel.org, eddyz87@gmail.com, emil@etsalapatis.com, andrii@kernel.org, 
+ memxor@gmail.com, ihor.solodrai@linux.dev, martin.lau@linux.dev
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786668291; l=3262;
+ i=carrerasdarren@gmail.com; s=libbpf-b4; h=from:subject:message-id;
+ bh=05gmjAYpA6RRbM/SjSaIlc9x2GNDsLxx41K1RESmUG4=;
+ b=nxZUJ38gxCIU7W2EYxDCpkEzwMxLgf8WslbqL1i1mnBOf3X04At2e9oHBC/yFhJMnmqqlYNAZ
+ HMEMY45vkB+DleZ5s28GUG0YB+pNvyjhvPM3XYIVlofdFdzbhXxW68k
+X-Developer-Key: i=carrerasdarren@gmail.com; a=ed25519;
+ pk=B0Vb/xevRsgB+/STwMUkNczAQ7nZs/27IiRcds2ikpM=
+X-Endpoint-Received: by B4 Relay for carrerasdarren@gmail.com/libbpf-b4 with auth_id=947
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Intel VID status register is actually 9 bytes long and doesn't
-contain the raw VDOs but only the upper 16bits for device mode and enter
-mode. Shift those two fields into place and reconstruct the cable
-discover mode VDO from the data status register instead since it's not
-directly accessible. With this fixed now the correct VDOs are forwarded
-to the PHY and the to-be-submitted Thunderbolt/USB4 native host interface
-so that the right mode can be negotiated and the link actually comes up.
+A malformed BTF.ext subsection length in an ELF input can wrap the
+pointer addition used by btf_ext_parse_sec_info() on 32-bit builds. The
+wrapped pointer passes the bounds check and parsing then reads beyond the
+copied BTF.ext data.
 
-Link: https://www.ti.com/lit/ug/slvubh2b/slvubh2b.pdf
-Fixes: 0b31c978935f ("usb: typec: tipd: Read USB4, Thunderbolt and DisplayPort status for cd321x")
-Fixes: 82432bbfb9e8 ("usb: typec: tipd: Handle mode transitions for CD321x")
-Cc: stable@vger.kernel.org
-Signed-off-by: Sven Peter <sven@kernel.org>
+Ensure the header fits in the copied data, then validate the subsection
+offset and length with subtraction before forming its pointer.
+
+Fixes: ae4ab4b4117d ("btf: expose API to work with raw btf_ext data")
+Closes: https://issues.oss-fuzz.com/issues/477315119
+Signed-off-by: Darren Carreras <carrerasdarren@gmail.com>
 ---
- drivers/usb/typec/tipd/core.c     | 17 +++++++++++++----
- drivers/usb/typec/tipd/tps6598x.h |  4 ++--
- 2 files changed, 15 insertions(+), 6 deletions(-)
+Changes in v6:
+- Post the patch inline rather than as an attachment.
+- Guard hdr_len locally before subtracting it from data_size.
+- Clarify that the input is a malformed BTF.ext subsection in an ELF file.
 
-diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index d5ee0af9058b..159d1a2f9a1f 100644
---- a/drivers/usb/typec/tipd/core.c
-+++ b/drivers/usb/typec/tipd/core.c
-@@ -114,7 +114,6 @@ struct tps6598x_intel_vid_status_reg {
- 	__le32 attention_vdo;
- 	__le16 enter_vdo;
- 	__le16 device_mode;
--	__le16 cable_mode;
- } __packed;
+Changes in v5:
+- Resend from a clean compose window because Gmail retained a stale rich-text
+  copy beside the v4 attachment, producing a duplicated malformed patch body.
+
+Changes in v4:
+- Drop the selftest because the malformed length is already rejected by the
+  old check on 64-bit CI; the behavioral divergence is specific to 32-bit.
+- Correct the Fixes tag to the commit that introduced the pointer-based check.
+
+Changes in v3:
+- Remove the nested mbox envelope and mail headers from the Gmail attachment
+  so Patchwork's generated mbox applies with git am.
+
+Changes in v2:
+- Resend as plain text because Gmail mangled the v1 diff and Patchwork
+  reported "Patch is empty."
+- Include the authorized DCO Signed-off-by line.
+---
+ tools/lib/bpf/btf.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/tools/lib/bpf/btf.c b/tools/lib/bpf/btf.c
+index 8417de92d..c78335997 100644
+--- a/tools/lib/bpf/btf.c
++++ b/tools/lib/bpf/btf.c
+@@ -3364,7 +3364,7 @@ static int btf_ext_parse_sec_info(struct btf_ext *btf_ext,
+ {
+ 	const struct btf_ext_info_sec *sinfo;
+ 	struct btf_ext_info *ext_info;
+-	__u32 info_left, record_size;
++	__u32 data_left, info_left, record_size;
+ 	size_t sec_cnt = 0;
+ 	void *info;
  
- /* Standard Task return codes */
-@@ -700,9 +699,19 @@ static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status
- 		   cd321x->state.mode == TYPEC_TBT_MODE)
- 			return;
+@@ -3377,16 +3377,20 @@ static int btf_ext_parse_sec_info(struct btf_ext *btf_ext,
+ 		return -EINVAL;
+ 	}
  
--		tbt_data.cable_mode = le16_to_cpu(st->intel_vid_status.cable_mode);
--		tbt_data.device_mode = le16_to_cpu(st->intel_vid_status.device_mode);
--		tbt_data.enter_vdo = le16_to_cpu(st->intel_vid_status.enter_vdo);
-+		tbt_data.cable_mode = TBT_MODE |
-+			TBT_SET_CABLE_SPEED(TPS_DATA_STATUS_TBT_CABLE_SPEED(st->data_status)) |
-+			TBT_SET_CABLE_ROUNDED(TPS_DATA_STATUS_TBT_CABLE_GEN(st->data_status));
-+		if (st->data_status & TPS_DATA_STATUS_OPTICAL_CABLE)
-+			tbt_data.cable_mode |= TBT_CABLE_OPTICAL;
-+		if (st->data_status & TPS_DATA_STATUS_ACTIVE_LINK_TRAIN)
-+			tbt_data.cable_mode |= TBT_CABLE_LINK_TRAINING;
-+		if (st->data_status & TPS_DATA_STATUS_ACTIVE_CABLE)
-+			tbt_data.cable_mode |= TBT_CABLE_ACTIVE_PASSIVE;
-+		tbt_data.device_mode = TBT_MODE |
-+			(u32)le16_to_cpu(st->intel_vid_status.device_mode) << 16;
-+		tbt_data.enter_vdo =
-+			(u32)le16_to_cpu(st->intel_vid_status.enter_vdo) << 16;
- 		cd321x->state.alt = cd321x->port_altmode_tbt;
- 		cd321x->state.mode = TYPEC_TBT_MODE;
- 		cd321x->state.data = &tbt_data;
-diff --git a/drivers/usb/typec/tipd/tps6598x.h b/drivers/usb/typec/tipd/tps6598x.h
-index 03edbb77bbd6..d172c84ada74 100644
---- a/drivers/usb/typec/tipd/tps6598x.h
-+++ b/drivers/usb/typec/tipd/tps6598x.h
-@@ -206,10 +206,10 @@
- #define TPS_DATA_STATUS_DP_PIN_ASSIGNMENT(x) \
- 	TPS_FIELD_GET(TPS_DATA_STATUS_DP_PIN_ASSIGNMENT_MASK, (x))
- #define TPS_DATA_STATUS_TBT_CABLE_SPEED_MASK   GENMASK(27, 25)
--#define TPS_DATA_STATUS_TBT_CABLE_SPEED \
-+#define TPS_DATA_STATUS_TBT_CABLE_SPEED(x) \
- 	TPS_FIELD_GET(TPS_DATA_STATUS_TBT_CABLE_SPEED_MASK, (x))
- #define TPS_DATA_STATUS_TBT_CABLE_GEN_MASK     GENMASK(29, 28)
--#define TPS_DATA_STATUS_TBT_CABLE_GEN \
-+#define TPS_DATA_STATUS_TBT_CABLE_GEN(x) \
- 	TPS_FIELD_GET(TPS_DATA_STATUS_TBT_CABLE_GEN_MASK, (x))
+-	/* The start of the info sec (including the __u32 record_size). */
+-	info = btf_ext->data + btf_ext->hdr->hdr_len + ext_sec->off;
+-	info_left = ext_sec->len;
++	if (btf_ext->hdr->hdr_len > btf_ext->data_size)
++		return -EINVAL;
  
- /* Map data status to DP spec assignments */
+-	if (btf_ext->data + btf_ext->data_size < info + ext_sec->len) {
++	data_left = btf_ext->data_size - btf_ext->hdr->hdr_len;
++	if (ext_sec->off > data_left || ext_sec->len > data_left - ext_sec->off) {
+ 		pr_debug("%s section (off:%u len:%u) is beyond the end of the ELF section .BTF.ext\n",
+ 			 ext_sec->desc, ext_sec->off, ext_sec->len);
+ 		return -EINVAL;
+ 	}
+ 
++	/* The start of the info sec (including the __u32 record_size). */
++	info = btf_ext->data + btf_ext->hdr->hdr_len + ext_sec->off;
++	info_left = ext_sec->len;
++
+ 	/* At least a record size */
+ 	if (info_left < sizeof(__u32)) {
+ 		pr_debug(".BTF.ext %s record size not found\n", ext_sec->desc);
 
 ---
-base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260813-b4-tipd-vdo-fix-44e65b48aea3
+base-commit: 4d9551b39aeb5d32beb4d795ce2892e7690a3e93
+change-id: 20260813-b4-libbpf-v6-send-20260813-ad79e6943a68
 
 Best regards,
 --  
-Sven Peter <sven@kernel.org>
+Darren Carreras <carrerasdarren@gmail.com>
 
