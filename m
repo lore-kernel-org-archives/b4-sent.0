@@ -1,112 +1,82 @@
-From: Darren Carreras <carrerasdarren@gmail.com>
-Date: Thu, 13 Aug 2026 20:43:18 -0400
-Subject: [PATCH bpf-next v6] libbpf: avoid overflow in BTF.ext bounds check
+From: Long Zhao <longzhao@ambarella.com>
+Subject: [PATCH v4 0/4] Ambarella CV75: pinctrl and PL061 GPIO
+Date: Fri, 14 Aug 2026 14:25:40 +0800
+Message-Id: <20260814-cv75-v4-b-v4-0-ef2e83ec0eac@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-b4-libbpf-v6-send-20260813-v6-1-56be61c52758@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/z2M0QqCQBBFf0XmuQFTmbRfiR523WtNxCY7JoL47
- 60FPR4O56xkSAqjc7FSwqymr5hBDgX1dxdvYA2ZqSorKdtjzb7hp3o/DjwLG2Lgv3Lh1EG6pnb
- SUh6MCYMu3/mF9iJimej6M/b2D/TT/qZt+wBSILptiAAAAA==
-X-Change-ID: 20260813-b4-libbpf-v6-send-20260813-ad79e6943a68
-To: bpf@vger.kernel.org
-Cc: daniel@iogearbox.net, song@kernel.org, yonghong.song@linux.dev, 
- linux-kernel@vger.kernel.org, jolsa@kernel.org, andrii.nakryiko@gmail.com, 
- ast@kernel.org, eddyz87@gmail.com, emil@etsalapatis.com, andrii@kernel.org, 
- memxor@gmail.com, ihor.solodrai@linux.dev, martin.lau@linux.dev
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786668291; l=3262;
- i=carrerasdarren@gmail.com; s=libbpf-b4; h=from:subject:message-id;
- bh=05gmjAYpA6RRbM/SjSaIlc9x2GNDsLxx41K1RESmUG4=;
- b=nxZUJ38gxCIU7W2EYxDCpkEzwMxLgf8WslbqL1i1mnBOf3X04At2e9oHBC/yFhJMnmqqlYNAZ
- HMEMY45vkB+DleZ5s28GUG0YB+pNvyjhvPM3XYIVlofdFdzbhXxW68k
-X-Developer-Key: i=carrerasdarren@gmail.com; a=ed25519;
- pk=B0Vb/xevRsgB+/STwMUkNczAQ7nZs/27IiRcds2ikpM=
-X-Endpoint-Received: by B4 Relay for carrerasdarren@gmail.com/libbpf-b4 with auth_id=947
+X-B4-Tracking: v=1; b=H4sIAOS0fmoC/yXMQQ5AMBBA0avIrE1SUjSuIhaMKWOBtDQScXfF8
+ iU//wLPTthDnVzgOIiXdYnQaQI0dcvIKEM05Covlck0UqgKDBp7tDxoRYUhU1qI/ebYyvm9mva
+ 3P/qZaX8HcN8PrZkruG0AAAA=
+X-Change-ID: 20260814-cv75-v4-b-fed40c58c86f
+To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Long Zhao <longzhao@ambarella.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786688763; l=1967;
+ i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
+ bh=ksEsRtK1EuKSLayoctPBxaWWqqFtM9SYIX6VyZQVJqg=;
+ b=lNb4uc4U78G3ALpbbxIU5sLX9QzDdu2+7huKuU4+wK7iDdIDUSBZB97DtGKOe3WYD3EhfRV20
+ 4W9sLQBYqj6BJY80ElTpLdj4hIR3K3HEy+BygtSx5JxhOqwNCl+p8gd
+X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
+ pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
+X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A malformed BTF.ext subsection length in an ELF input can wrap the
-pointer addition used by btf_ext_parse_sec_info() on 32-bit builds. The
-wrapped pointer passes the bounds check and parsing then reads beyond the
-copied BTF.ext data.
+This is part B of a 3-part CV75 split:
 
-Ensure the header fits in the copied data, then validate the subsection
-offset and length with subtraction before forming its pointer.
+  A: bindings + RCT/CCU clocks + SoC/EVK DT + MAINTAINERS
+  B: pinctrl + PL061 GPIO variant  (this series)
+  C: 8250_dw UART quirks
 
-Fixes: ae4ab4b4117d ("btf: expose API to work with raw btf_ext data")
-Closes: https://issues.oss-fuzz.com/issues/477315119
-Signed-off-by: Darren Carreras <carrerasdarren@gmail.com>
+Depends on series A:
+https://lore.kernel.org/r/20260813-cv75-v3-a-v3-0-cfdd20b1b4dd@ambarella.com
+
+Link to v3:
+https://lore.kernel.org/r/20260813-cv75-v3-b-v3-0-1d82e18da09b@ambarella.com
+
+Link to v2:
+https://lore.kernel.org/r/20260806-longzhao-upstream-cv75-v2-v2-0-6b09707c5fe9@ambarella.com
+
+Summary:
+- CV75 pinctrl binding and driver
+- Ambarella register-layout variant for gpio-pl061
+  (DT binding and driver in separate patches) 
+
+Changes since v3:
+- Split pl061 DT binding and driver into separate patches (Bartosz)
+
+Changes since v2 (B scope):
+- reuse PL061 instead of a duplicated GPIO implementation (Linus)
+- complete function/groups enums in the binding (Krzysztof)
+
+Verified on CV75 with A+B+C.
+
+Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
-Changes in v6:
-- Post the patch inline rather than as an attachment.
-- Guard hdr_len locally before subtracting it from data_size.
-- Clarify that the input is a malformed BTF.ext subsection in an ELF file.
+Long Zhao (4):
+      dt-bindings: pinctrl: add Ambarella CV75 pinctrl
+      dt-bindings: gpio: pl061: add Ambarella CV75 variant
+      gpio: pl061: add Ambarella CV75 register layout variant
+      pinctrl: ambarella: add CV75 pin controller
 
-Changes in v5:
-- Resend from a clean compose window because Gmail retained a stale rich-text
-  copy beside the v4 attachment, producing a duplicated malformed patch body.
-
-Changes in v4:
-- Drop the selftest because the malformed length is already rejected by the
-  old check on 64-bit CI; the behavioral divergence is specific to 32-bit.
-- Correct the Fixes tag to the commit that introduced the pointer-based check.
-
-Changes in v3:
-- Remove the nested mbox envelope and mail headers from the Gmail attachment
-  so Patchwork's generated mbox applies with git am.
-
-Changes in v2:
-- Resend as plain text because Gmail mangled the v1 diff and Patchwork
-  reported "Patch is empty."
-- Include the authorized DCO Signed-off-by line.
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       |  35 +-
+ .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 240 ++++++
+ drivers/gpio/gpio-pl061.c                          | 280 +++++--
+ drivers/pinctrl/Kconfig                            |  13 +
+ drivers/pinctrl/Makefile                           |   2 +
+ drivers/pinctrl/pinctrl-ambarella-cv75.c           | 561 ++++++++++++++
+ drivers/pinctrl/pinctrl-ambarella.c                | 839 +++++++++++++++++++++
+ drivers/pinctrl/pinctrl-ambarella.h                |  50 ++
+ 8 files changed, 1949 insertions(+), 71 deletions(-)
 ---
- tools/lib/bpf/btf.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
-
-diff --git a/tools/lib/bpf/btf.c b/tools/lib/bpf/btf.c
-index 8417de92d..c78335997 100644
---- a/tools/lib/bpf/btf.c
-+++ b/tools/lib/bpf/btf.c
-@@ -3364,7 +3364,7 @@ static int btf_ext_parse_sec_info(struct btf_ext *btf_ext,
- {
- 	const struct btf_ext_info_sec *sinfo;
- 	struct btf_ext_info *ext_info;
--	__u32 info_left, record_size;
-+	__u32 data_left, info_left, record_size;
- 	size_t sec_cnt = 0;
- 	void *info;
- 
-@@ -3377,16 +3377,20 @@ static int btf_ext_parse_sec_info(struct btf_ext *btf_ext,
- 		return -EINVAL;
- 	}
- 
--	/* The start of the info sec (including the __u32 record_size). */
--	info = btf_ext->data + btf_ext->hdr->hdr_len + ext_sec->off;
--	info_left = ext_sec->len;
-+	if (btf_ext->hdr->hdr_len > btf_ext->data_size)
-+		return -EINVAL;
- 
--	if (btf_ext->data + btf_ext->data_size < info + ext_sec->len) {
-+	data_left = btf_ext->data_size - btf_ext->hdr->hdr_len;
-+	if (ext_sec->off > data_left || ext_sec->len > data_left - ext_sec->off) {
- 		pr_debug("%s section (off:%u len:%u) is beyond the end of the ELF section .BTF.ext\n",
- 			 ext_sec->desc, ext_sec->off, ext_sec->len);
- 		return -EINVAL;
- 	}
- 
-+	/* The start of the info sec (including the __u32 record_size). */
-+	info = btf_ext->data + btf_ext->hdr->hdr_len + ext_sec->off;
-+	info_left = ext_sec->len;
-+
- 	/* At least a record size */
- 	if (info_left < sizeof(__u32)) {
- 		pr_debug(".BTF.ext %s record size not found\n", ext_sec->desc);
-
----
-base-commit: 4d9551b39aeb5d32beb4d795ce2892e7690a3e93
-change-id: 20260813-b4-libbpf-v6-send-20260813-ad79e6943a68
+base-commit: 18bf29fba8d0bdd0db5a0497ecf06f404bc740d1
+change-id: 20260814-cv75-v4-b-fed40c58c86f
 
 Best regards,
 --  
-Darren Carreras <carrerasdarren@gmail.com>
+Long Zhao <longzhao@ambarella.com>
 
