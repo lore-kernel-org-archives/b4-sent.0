@@ -1,14 +1,15 @@
 From: Benjamin Leggett <benjamin@edera.io>
-Date: Fri, 14 Aug 2026 17:47:10 -0400
-Subject: [PATCH v3] drm/virtio: sync shmem backing on guest-bound transfers
+Date: Fri, 14 Aug 2026 18:20:11 -0400
+Subject: [PATCH v4] drm/virtio: sync shmem backing on guest-bound transfers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260814-virtgpu-from-host-sync-v3-1-f2538afd7d6e@edera.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OOw7CMBBEr4JcsxA7CQQq7oEo/FknWySO1sECo
- dwdJzR0UGzxpJk3+xIRmTCK8+YlGBNFCkOGcrsRttNDi0Aus1CFOhSNrCART+14B8+hhy7ECeJ
- zsNBIZ5yyx9o2lcjlkdHTYxVfb5mNjgiG9WC7Ree43+eDnqKFTzCHOopT4Of6TJJL9edukiDze
- IWl9qY2RXNBh6x3FMQym9R/FpUtXpcnWVjtS6y/LPM8vwHsinKWJgEAAA==
+Message-Id: <20260814-virtgpu-from-host-sync-v4-1-64dd736b1779@edera.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43OPW7DMAwF4KsEmsvWkuxE6ZR7BBn0Q8UcbAWUK
+ yQwfPfIzlJ0aQYODyC/x1lkZMIsvnezYCyUKY01tB874Xs7XhEo1CxUo/aNkS0U4ul6+4HIaYA
+ +5QnyY/RgZHBB+UPnTSvq8Y0x0n2Dz5eanc0Iju3o+5ULPHzVgYGyh9diXeopT4kf2zNFrqf/9
+ hYJspa3qG10nWvMCQOy/aQk1tqi3lNUVaLVR9l4GzV2fxT9nqJXRXXa2BgOYY+/lGVZnkzyJ2l
+ sAQAA
 X-Change-ID: 20260814-virtgpu-from-host-sync-81dbd2c75c84
 To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
  Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
@@ -21,11 +22,11 @@ Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev,
  linux-kernel@vger.kernel.org, Sashiko AI review <sashiko-bot@kernel.org>, 
  Benjamin Leggett <benjamin@edera.io>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786744034; l=11124;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786746012; l=11381;
  i=benjamin@edera.io; s=20260806; h=from:subject:message-id;
- bh=kvFy1p0SN13S4s4cdym50Df2F9CEEMryhY+qcCzdOC4=;
- b=qj5VuOfh6EvBLAydWyVRmtkWq264Dfij4cN/PVR8rF358jjNobq2F0ISQ4siq1fMZeOoMyvi1
- YOtKkC7OkyfBlIaZ+Ng1JdgdaQ+9IEcQDA5RnRJZ5j/7XsG0hroXShl
+ bh=Mc6pZnflyM6laN3bbdkDmxNi+ASZGo0EDodrb3apIY4=;
+ b=Tvz0pW8v/vCyat7xEIOpLzkmPK1AIxTI6xBTerpl0h4OZj7DV5Y1LnyM++Y26BufNj2thRN5i
+ UKFc/cpzIcCDItm2J1DreT4JGL/eO4Kjoh3GfXhlPxai9DxrrLBeOHI
 X-Developer-Key: i=benjamin@edera.io; a=ed25519;
  pk=prj3m3DtYeYw1akLHnM/sXm8eau0Ar/IO93YoYnOr+I=
 X-Endpoint-Received: by B4 Relay for benjamin@edera.io/20260806 with auth_id=923
@@ -99,7 +100,7 @@ captures the pages as of queueing, so a write landing before completion is
 overwritten by the sync.
 
 - TRANSFER_TO_HOST can also block now, but only while a guest-bound
-transfer on the same resource is outstanding, which the flag confines to
+transfer on the same resource is outstanding, which happens only for
 callers that issue both without waiting.
 
 - Where a batch of completions contains a guest-bound transfer, the sync
@@ -118,6 +119,10 @@ Signed-off-by: Benjamin Leggett <benjamin@edera.io>
 This depends on 6a736d2f9d0c ("drm/virtio: use the DMA API for resource backing on Xen"), currently in
 drm-misc-fixes only, so it needs to go through the same branch.
 ---
+Changes in v4:
+- drm/virtio: use DMA_RESV_USAGE_READ.
+- Link to v3: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v3-1-f2538afd7d6e@edera.io
+
 Changes in v3:
 - drm/virtio: use smp_load_acquire()/smp_store_release().
 - Link to v2: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v2-1-fa3910caf3e5@edera.io
@@ -127,9 +132,9 @@ Changes in v2:
 - Link to v1: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v1-1-814e3afb5b08@edera.io
 ---
  drivers/gpu/drm/virtio/virtgpu_drv.h   |  5 ++++
- drivers/gpu/drm/virtio/virtgpu_ioctl.c | 41 ++++++++++++++++++++++++++++++
+ drivers/gpu/drm/virtio/virtgpu_ioctl.c | 43 +++++++++++++++++++++++++++++++
  drivers/gpu/drm/virtio/virtgpu_vq.c    | 46 ++++++++++++++++++++++++++++++++++
- 3 files changed, 92 insertions(+)
+ 3 files changed, 94 insertions(+)
 
 diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
 index 626aadf680bd..5faff0d1861d 100644
@@ -155,10 +160,10 @@ index 626aadf680bd..5faff0d1861d 100644
  
  struct virtio_gpu_output {
 diff --git a/drivers/gpu/drm/virtio/virtgpu_ioctl.c b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-index 3d8e4ccdb7c1..87dc3765cce9 100644
+index 3d8e4ccdb7c1..1e2f35b89b92 100644
 --- a/drivers/gpu/drm/virtio/virtgpu_ioctl.c
 +++ b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-@@ -261,6 +261,25 @@ static int virtio_gpu_transfer_from_host_ioctl(struct drm_device *dev,
+@@ -261,6 +261,27 @@ static int virtio_gpu_transfer_from_host_ioctl(struct drm_device *dev,
  	if (ret != 0)
  		goto err_put_free;
  
@@ -170,9 +175,11 @@ index 3d8e4ccdb7c1..87dc3765cce9 100644
 +		 * that transfer's fence signalled, and the later sync would
 +		 * discard it. Nothing can add a fence behind our back here,
 +		 * since doing so takes the reservation we already hold.
++		 * This writes the pages, so it waits as a writer does. READ
++		 * usage covers existing readers.
 +		 */
 +		long wait = dma_resv_wait_timeout(objs->objs[0]->resv,
-+						  DMA_RESV_USAGE_WRITE, true,
++						  DMA_RESV_USAGE_READ, true,
 +						  MAX_SCHEDULE_TIMEOUT);
 +
 +		if (wait < 0) {
@@ -184,7 +191,7 @@ index 3d8e4ccdb7c1..87dc3765cce9 100644
  	fence = virtio_gpu_fence_alloc(vgdev, vgdev->fence_drv.context, 0);
  	if (!fence) {
  		ret = -ENOMEM;
-@@ -320,6 +339,28 @@ static int virtio_gpu_transfer_to_host_ioctl(struct drm_device *dev, void *data,
+@@ -320,6 +341,28 @@ static int virtio_gpu_transfer_to_host_ioctl(struct drm_device *dev, void *data,
  		if (ret != 0)
  			goto err_put_free;
  
