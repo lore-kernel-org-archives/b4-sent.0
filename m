@@ -1,148 +1,280 @@
-From: Roland Dreier <rolanddreier@rivian.com>
-Date: Fri, 14 Aug 2026 20:15:34 +0000
-Subject: [PATCH 2/2] firmware: arm_scmi: Don't reuse raw xfers with
- async_done still armed
+From: Benjamin Leggett <benjamin@edera.io>
+Date: Fri, 14 Aug 2026 17:21:55 -0400
+Subject: [PATCH v2] drm/virtio: sync shmem backing on guest-bound transfers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260814-scmi-async-done-race-v1-2-335b163d77ee@rivian.com>
-References: <20260814-scmi-async-done-race-v1-0-335b163d77ee@rivian.com>
-In-Reply-To: <20260814-scmi-async-done-race-v1-0-335b163d77ee@rivian.com>
-To: Sudeep Holla <sudeep.holla@kernel.org>, 
- Cristian Marussi <cristian.marussi@arm.com>
-Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786738610; l=4879;
- i=rolanddreier@rivian.com; s=20260814; h=from:subject:message-id;
- bh=aqIhjaSz9fKkzEo4GuOhvlrH00CQYmUwOQr9QXIf5Jo=;
- b=evzyvugfDaX7dnnkvKbVe3CKGKGcTE6vnyM11pz/nchePPP9ujKpxeu5l4QqKyATZaSwS4jjo
- NK/c7jWsmjzBBAX5JaJYLt0UNaC6J+eRkZOqnLiAQdVULDmiDghK5UV
-X-Developer-Key: i=rolanddreier@rivian.com; a=ed25519;
- pk=C7SBXsDIlarq7BpINqyDL67XV/AGNqNt09NCCpFcExk=
-X-Endpoint-Received: by B4 Relay for rolanddreier@rivian.com/20260814 with auth_id=952
+Message-Id: <20260814-virtgpu-from-host-sync-v2-1-fa3910caf3e5@edera.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOSw6CMBCGr0K6dpQiaOPKexgWfQwwC1oyxUZCu
+ LsFD+DiX3zJ/1pFRCaM4lGsgjFRpOAzVKdC2EH7HoFcZlGV1a1UsoZEPPfTGzoOIwwhzhAXb0F
+ JZ1xl741VtcjhibGjz1H8ajMbHREMa2+Hvc7xeMmCkaKFnzGbBopz4OU4k+Qe/bubJMg8XuNVd
+ 6YxpXqiQ9ZnCqLdtu0LAnTngeAAAAA=
+X-Change-ID: 20260814-virtgpu-from-host-sync-81dbd2c75c84
+To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
+ Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
+ Gurchetan Singh <gurchetansingh@chromium.org>, 
+ Chia-I Wu <olvaffe@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Sashiko AI review <sashiko-bot@kernel.org>, 
+ Benjamin Leggett <benjamin@edera.io>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786742522; l=10431;
+ i=benjamin@edera.io; s=20260806; h=from:subject:message-id;
+ bh=Q48RitstjVkcmNz3grfIAtP0/bAL8w0Cxpw+3k9Fn6c=;
+ b=uleENpmff90A1ssc7GyWl1gtU0zp1W7/ug4AxedIFDGOzapqXg/9y0+ytyy0k8MwolUuD00RF
+ Dc3J5lCLD+YB0hv7GAgrDepGwcRjJbn+d1yqzpB/qnHCpQvlqP7yghF
+X-Developer-Key: i=benjamin@edera.io; a=ed25519;
+ pk=prj3m3DtYeYw1akLHnM/sXm8eau0Ar/IO93YoYnOr+I=
+X-Endpoint-Received: by B4 Relay for benjamin@edera.io/20260806 with auth_id=923
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In SCMI raw mode, scmi_xfer_raw_worker() releases the xfer before
-releasing the waiter that disarms xfer->async_done, and scmi_xfer_get()
-does not clear async_done when it hands out a recycled xfer. A concurrent
-transaction can therefore pick up the xfer while it still points at the
-old waiter's completion, so:
+virtio_gpu_cmd_transfer_to_host_{2d,3d}() sync the shmem backing for the
+device before the transfer, but nothing syncs for the CPU when a transfer
+runs the other way. That breaks two ways. Where the DMA layer bounces, the
+device writes into the bounce buffer while the guest keeps reading the
+original pages. Where DMA is not coherent, the device writes memory while
+the CPU keeps stale cache lines, because nothing reaches
+arch_sync_dma_for_cpu(). Either way DRM_IOCTL_VIRTGPU_TRANSFER_FROM_HOST
+hands back stale data.
 
- - a delayed response arriving for the new transaction can be signalled
-   on the old waiter's completion, which may already be re-armed for yet
-   another unrelated transaction, making that transaction's wait return
-   early; and
+Sashiko originally found this in
+https://lore.kernel.org/dri-devel/20260806231002.27B4D1F000E9@smtp.kernel.org
+but the suggestion there to fix this with dma_sync_sgtable_for_cpu()
+isn't a sufficient fix, for two reasons.
 
- - the old waiter's disarm, which still runs after the xfer has been
-   released, clobbers the arming just installed by the new transaction,
-   so the new waiter times out even if its delayed response arrives.
+- The transfer is asynchronous. virtio_gpu_cmd_transfer_from_host_3d() only
+queues the command, so a sync there would run before the device had written
+anything. It belongs on completion, and ahead of any fence signalling.
+A waiter woken by the fence would otherwise race the sync and read the
+backing pages regardless. It needs its own pass over the reclaim list
+rather than a step inside the existing one, because
+virtio_gpu_fence_event_process() also signals every earlier fence in the
+same context, so any entry in that loop may signal an earlier entry's
+fence.
 
-Release the waiter first, while the worker still holds a reference on
-the xfer, so that an xfer can never reach the free list still
-armed. Track whether a delayed response is expected in the waiter
-itself instead of peeking at xfer->async_done outside xfer->lock, and
-wait on the waiter's own embedded completion. (The new async flag is
-not strictly needed but it makes the logic easier to reason about)
+- The transfer is also partial, carrying an offset, a level and a box.
+Where the mapping bounces, a sync for the CPU copies the whole mapping
+back, so unless the mapping is primed first the regions the device did not
+write come back holding whatever the bounce buffer contained, discarding
+data the guest owned.
 
-Finally, harden scmi_xfer_get() to clear async_done when handing out
-an xfer, so that no future release-ordering change can leak a stale
-arming into a new transaction.
+So the fix: Prime the mapping before queueing, tag the vbuffer, and sync
+for the CPU on completion before the fence is signalled.
 
-Fixes: 3c3d818a9317 ("firmware: arm_scmi: Add core raw transmission support")
-Signed-off-by: Roland Dreier <rolanddreier@rivian.com>
+A second transfer must not snapshot the mapping while an earlier one is
+still in flight, or the snapshot would predate whatever the CPU wrote once
+the earlier fence signalled and the later sync would discard it.
+
+To mitigate this, wait for outstanding fences under the reservation before
+priming.
+
+Neither sync copies anything unless the mapping genuinely bounces:
+swiotlb_sync_single_for_cpu() and its Xen counterpart look the address up
+in the bounce pool and return early when it is absent. On a platform with
+non-coherent DMA they still perform the necessary cache maintenance.
+
+The range cannot be narrowed to the box, since for a non-blob resource
+virtio_gpu_transfer_from_host_ioctl() rejects a caller-supplied stride and
+layer_stride, leaving the layout to the host and the guest with no way to
+work out which bytes the device writes. A host3d guest blob does carry
+both, so its extent could be bounded, but the sync is left whole there too
+rather than special-cased: priming makes the untouched regions round-trip
+unchanged either way.
+
+Behaviour changes worth noting:
+
+- TRANSFER_FROM_HOST can now block, where before it returned as soon as the
+command was queued. Repeated readbacks of one resource serialise, and a
+readback can wait behind an earlier queued command that touched it, since
+virtio_gpu_array_add_fence() tags uploads, execbufs and plane flushes
+alike with DMA_RESV_USAGE_WRITE. -ERESTARTSYS was already possible here
+via dma_resv_lock_interruptible().
+
+- A CPU write racing an in-flight transfer to the same resource is now
+lost, where before it survived and the transfer was lost instead. Priming
+captures the pages as of queueing, so a write landing before completion is
+overwritten by the sync.
+
+- TRANSFER_TO_HOST can also block now, but only while a guest-bound
+transfer on the same resource is outstanding, which the flag confines to
+callers that issue both without waiting.
+
+- Where a batch of completions contains a guest-bound transfer, the sync
+pass delays fence signalling for the whole batch. Only bounced pages are
+copied and the swiotlb pool bounds it. A batch with no such transfer is
+unaffected.
+
+Tested under QEMU on x86 with swiotlb=force and virtio-vga-gl
+iommu_platform=on, which forces both preconditions required to hit the
+original bug.
+
+Reported-by: Sashiko AI review <sashiko-bot@kernel.org>
+Closes: https://lore.kernel.org/dri-devel/20260806231002.27B4D1F000E9@smtp.kernel.org/
+Signed-off-by: Benjamin Leggett <benjamin@edera.io>
 ---
- drivers/firmware/arm_scmi/driver.c   |  1 +
- drivers/firmware/arm_scmi/raw_mode.c | 25 +++++++++++++++++++++----
- 2 files changed, 22 insertions(+), 4 deletions(-)
+This depends on 6a736d2f9d0c ("drm/virtio: use the DMA API for resource backing on Xen"), currently in
+drm-misc-fixes only, so it needs to go through the same branch.
+---
+Changes in v2:
+- drm/virtio: add guard on virtio_gpu_transfer_to_host_ioctl.
+- Link to v1: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v1-1-814e3afb5b08@edera.io
+---
+ drivers/gpu/drm/virtio/virtgpu_drv.h   |  5 +++++
+ drivers/gpu/drm/virtio/virtgpu_ioctl.c | 40 ++++++++++++++++++++++++++++++++++
+ drivers/gpu/drm/virtio/virtgpu_vq.c    | 37 +++++++++++++++++++++++++++++++
+ 3 files changed, 82 insertions(+)
 
-diff --git a/drivers/firmware/arm_scmi/driver.c b/drivers/firmware/arm_scmi/driver.c
-index 5c295bdc15ca..2d8884f0036b 100644
---- a/drivers/firmware/arm_scmi/driver.c
-+++ b/drivers/firmware/arm_scmi/driver.c
-@@ -717,6 +717,7 @@ static struct scmi_xfer *scmi_xfer_get(const struct scmi_handle *handle,
+diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
+index 626aadf680bd..5faff0d1861d 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_drv.h
++++ b/drivers/gpu/drm/virtio/virtgpu_drv.h
+@@ -114,6 +114,8 @@ struct virtio_gpu_object {
+ 	bool dumb;
+ 	bool created;
+ 	bool attached;
++	/* a guest-bound transfer is queued and its mapping not yet synced */
++	bool from_host_pending;
+ 	bool host3d_blob, guest_blob;
+ 	uint32_t blob_mem, blob_flags;
  
- 	refcount_set(&xfer->users, 1);
- 	atomic_set(&xfer->busy, SCMI_XFER_FREE);
-+	xfer->async_done = NULL;
- 	spin_unlock_irqrestore(&minfo->xfer_lock, flags);
+@@ -192,6 +194,9 @@ struct virtio_gpu_vbuffer {
+ 	struct list_head list;
  
- 	return xfer;
-diff --git a/drivers/firmware/arm_scmi/raw_mode.c b/drivers/firmware/arm_scmi/raw_mode.c
-index 8751cff5fa4e..5ee21f6b7001 100644
---- a/drivers/firmware/arm_scmi/raw_mode.c
-+++ b/drivers/firmware/arm_scmi/raw_mode.c
-@@ -198,6 +198,8 @@ struct scmi_raw_mode_info {
-  * @async_response: A completion to be, optionally, used for async waits: it
-  *		    will be setup by @scmi_do_xfer_raw_start, if needed, to be
-  *		    pointed at by xfer->async_done.
-+ * @async: True if @async_response was armed on @xfer, i.e. if a delayed
-+ *	   response has to be waited for.
-  * @node: A list node.
-  */
- struct scmi_xfer_raw_waiter {
-@@ -205,6 +207,7 @@ struct scmi_xfer_raw_waiter {
- 	struct scmi_chan_info *cinfo;
- 	struct scmi_xfer *xfer;
- 	struct completion async_response;
-+	bool async;
- 	struct list_head node;
+ 	uint32_t seqno;
++
++	/* guest-bound transfer whose shmem backing needs a CPU sync */
++	bool sync_for_cpu;
  };
  
-@@ -349,6 +352,7 @@ scmi_xfer_raw_waiter_get(struct scmi_raw_mode_info *raw, struct scmi_xfer *xfer,
- 			scmi_xfer_async_response_arm(xfer, &rw->async_response);
- 		}
+ struct virtio_gpu_output {
+diff --git a/drivers/gpu/drm/virtio/virtgpu_ioctl.c b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
+index 3d8e4ccdb7c1..a041b8e336e9 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_ioctl.c
++++ b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
+@@ -261,6 +261,25 @@ static int virtio_gpu_transfer_from_host_ioctl(struct drm_device *dev,
+ 	if (ret != 0)
+ 		goto err_put_free;
  
-+		rw->async = async;
- 		rw->cinfo = cinfo;
- 		rw->xfer = xfer;
- 	}
-@@ -361,8 +365,16 @@ static void scmi_xfer_raw_waiter_put(struct scmi_raw_mode_info *raw,
- 				     struct scmi_xfer_raw_waiter *rw)
- {
- 	if (rw->xfer) {
++	if (virtio_gpu_is_shmem(bo) && virtio_gpu_use_dma_api(vgdev->vdev)) {
 +		/*
-+		 * Disarm the delayed response before this waiter, and its
-+		 * embedded completion, can be picked up again for a new
-+		 * transaction: a delayed response received late, after the
-+		 * related wait timed out, must not signal a completion which
-+		 * has been in the meantime re-armed on a different xfer.
++		 * The sync on completion restores the whole mapping, so an
++		 * earlier transfer has to be done before this one snapshots it.
++		 * Otherwise the snapshot predates anything the CPU wrote once
++		 * that transfer's fence signalled, and the later sync would
++		 * discard it. Nothing can add a fence behind our back here,
++		 * since doing so takes the reservation we already hold.
 +		 */
- 		scmi_xfer_async_response_disarm(rw->xfer);
- 		rw->xfer = NULL;
-+		rw->async = false;
- 	}
++		long wait = dma_resv_wait_timeout(objs->objs[0]->resv,
++						  DMA_RESV_USAGE_WRITE, true,
++						  MAX_SCHEDULE_TIMEOUT);
++
++		if (wait < 0) {
++			ret = wait;
++			goto err_unlock;
++		}
++	}
++
+ 	fence = virtio_gpu_fence_alloc(vgdev, vgdev->fence_drv.context, 0);
+ 	if (!fence) {
+ 		ret = -ENOMEM;
+@@ -320,6 +339,27 @@ static int virtio_gpu_transfer_to_host_ioctl(struct drm_device *dev, void *data,
+ 		if (ret != 0)
+ 			goto err_put_free;
  
- 	mutex_lock(&raw->free_mtx);
-@@ -479,18 +491,23 @@ static void scmi_xfer_raw_worker(struct work_struct *work)
- 				    ret, scmi_inflight_count(raw->handle));
++		if (READ_ONCE(bo->from_host_pending)) {
++			/*
++			 * A transfer the other way has queued but not yet
++			 * synced its mapping. Pushing the guest pages into it
++			 * now would discard what the device wrote there, so
++			 * wait for that sync: it runs before the fence it
++			 * belongs to is signalled. The flag is only set under
++			 * this reservation, so it cannot appear behind our
++			 * back; a stale read merely waits for nothing.
++			 */
++			long wait = dma_resv_wait_timeout(objs->objs[0]->resv,
++							  DMA_RESV_USAGE_WRITE,
++							  true,
++							  MAX_SCHEDULE_TIMEOUT);
++
++			if (wait < 0) {
++				ret = wait;
++				goto err_unlock;
++			}
++		}
++
+ 		ret = -ENOMEM;
+ 		fence = virtio_gpu_fence_alloc(vgdev, vgdev->fence_drv.context,
+ 					       0);
+diff --git a/drivers/gpu/drm/virtio/virtgpu_vq.c b/drivers/gpu/drm/virtio/virtgpu_vq.c
+index 5e9b7b192db0..0f5317f3da8a 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_vq.c
++++ b/drivers/gpu/drm/virtio/virtgpu_vq.c
+@@ -256,6 +256,24 @@ void virtio_gpu_dequeue_ctrl_func(struct work_struct *work)
+ 	} while (!virtqueue_enable_cb(vgdev->ctrlq.vq));
+ 	spin_unlock(&vgdev->ctrlq.qlock);
  
- 		/* Wait also for an async delayed response if needed */
--		if (!ret && xfer->async_done) {
-+		if (!ret && rw->async) {
- 			unsigned long tmo = msecs_to_jiffies(SCMI_MAX_RESPONSE_TIMEOUT);
++	/*
++	 * Sync guest-bound transfers before signalling anything, so that a
++	 * waiter cannot read the backing pages while what the device wrote is
++	 * still in a bounce buffer. This cannot be folded into the loop below:
++	 * virtio_gpu_fence_event_process() also signals every earlier fence in
++	 * the same context, so any entry there may signal this entry's fence.
++	 */
++	list_for_each_entry(entry, &reclaim_list, list) {
++		if (entry->sync_for_cpu) {
++			struct virtio_gpu_object *bo =
++				gem_to_virtio_gpu_obj(entry->objs->objs[0]);
++
++			dma_sync_sgtable_for_cpu(vgdev->vdev->dev.parent,
++						 bo->base.sgt, DMA_FROM_DEVICE);
++			WRITE_ONCE(bo->from_host_pending, false);
++		}
++	}
++
+ 	list_for_each_entry(entry, &reclaim_list, list) {
+ 		resp = (struct virtio_gpu_ctrl_hdr *)entry->resp_buf;
  
--			if (!wait_for_completion_timeout(xfer->async_done, tmo))
-+			if (!wait_for_completion_timeout(&rw->async_response, tmo))
- 				dev_err(dev,
- 					"timed out in RAW delayed resp - HDR:%08X\n",
- 					pack_scmi_header(&xfer->hdr));
- 		}
+@@ -1238,12 +1256,31 @@ void virtio_gpu_cmd_transfer_from_host_3d(struct virtio_gpu_device *vgdev,
+ 	struct virtio_gpu_object *bo = gem_to_virtio_gpu_obj(objs->objs[0]);
+ 	struct virtio_gpu_transfer_host_3d *cmd_p;
+ 	struct virtio_gpu_vbuffer *vbuf;
++	bool use_dma_api = virtio_gpu_use_dma_api(vgdev->vdev);
  
--		/* Release waiter and xfer */
--		scmi_xfer_raw_put(raw->handle, xfer);
+ 	cmd_p = virtio_gpu_alloc_cmd(vgdev, &vbuf, sizeof(*cmd_p));
+ 	memset(cmd_p, 0, sizeof(*cmd_p));
+ 
+ 	vbuf->objs = objs;
+ 
++	if (virtio_gpu_is_shmem(bo) && use_dma_api) {
 +		/*
-+		 * Release the waiter first: this disarms the delayed response
-+		 * while we still hold a reference on the xfer, so that the xfer
-+		 * cannot be recycled by a new transaction while it still points
-+		 * at this waiter's completion.
++		 * The device writes only the requested box, so prime the
++		 * mapping with the current contents: otherwise the sync on
++		 * completion would hand back whatever a bounce buffer held for
++		 * the regions the device does not touch.
 +		 */
- 		scmi_xfer_raw_waiter_put(raw, rw);
-+		scmi_xfer_raw_put(raw->handle, xfer);
- 	} while (1);
- }
- 
++		dma_sync_sgtable_for_device(vgdev->vdev->dev.parent,
++					    bo->base.sgt, DMA_TO_DEVICE);
++		vbuf->sync_for_cpu = true;
++		/*
++		 * Set under the reservation the caller holds, so a transfer
++		 * the other way cannot miss it and push the guest pages into
++		 * the mapping while the device still owns it.
++		 */
++		WRITE_ONCE(bo->from_host_pending, true);
++	}
++
+ 	cmd_p->hdr.type = cpu_to_le32(VIRTIO_GPU_CMD_TRANSFER_FROM_HOST_3D);
+ 	cmd_p->hdr.ctx_id = cpu_to_le32(ctx_id);
+ 	cmd_p->resource_id = cpu_to_le32(bo->hw_res_handle);
 
+---
+base-commit: 6a736d2f9d0c6e6217fe7532bc4c50ceca71db78
+change-id: 20260814-virtgpu-from-host-sync-81dbd2c75c84
+
+Best regards,
 -- 
-2.54.0
+Benjamin Leggett <benjamin@edera.io>
 
