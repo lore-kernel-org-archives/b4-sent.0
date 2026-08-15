@@ -1,187 +1,84 @@
-From: Ke Sun <sunke@kylinos.cn>
-Date: Sat, 15 Aug 2026 13:00:31 +0800
-Subject: [PATCH rust-next v2] rust: fmt: rework pointer formatting tests
+From: Junrui Luo <moonafterrain@outlook.com>
+Date: Sat, 15 Aug 2026 14:16:29 +0800
+Subject: [PATCH] drm/virtio: fix object leak when drm_gem_handle_create()
+ fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260815-b4-hashedptr-followup-v2-1-6cf592ad1022@kylinos.cn>
-X-B4-Tracking: v=1; b=H4sIAG7yf2oC/3WNyw6CMBREf4XctdfQhxZd+R+GBY9ibyRt0xaEE
- P7dhrh1eTIzZzaIOpCOcC82CHqmSM5m4KcCOtPYl0bqMwMv+bWsmMRWommi0b1PAQc3ju4zeeS
- qkb0SahBKQd76oAdaDu8TwhQTWr0kqHNkKCYX1uNxZkfhJ7/8kc8MGVZCcKlK3sru9nivI1kXz
- 52Fet/3L532JeXGAAAA
-X-Change-ID: 20260814-b4-hashedptr-followup-27a4d737f377
-To: Miguel Ojeda <ojeda@kernel.org>
-Cc: Gary Guo <gary@garyguo.net>, Boqun Feng <boqun@kernel.org>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ke Sun <sunke@kylinos.cn>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260815-virtgpu-gem-create-leak-v1-1-a4e9fb18caa3@outlook.com>
+X-B4-Tracking: v=1; b=H4sIADwEgGoC/x3MywqDMBBG4VeRWXcgiSjBVyldhORvOnipTFQE8
+ d0buvwW51xUoIJCQ3OR4pAi36XCPhqKn7BksKRqcsb1xtuOD9EtrztnzBwVYQNPCCP73pmutTG
+ 1yVOtV8Vbzv/5+brvH6YzuTppAAAA
+X-Change-ID: 20260815-virtgpu-gem-create-leak-8620531cd3d8
+To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
+ Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
+ Gurchetan Singh <gurchetansingh@chromium.org>, 
+ Chia-I Wu <olvaffe@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Simona Vetter <simona@ffwll.ch>, Dave Airlie <airlied@gmail.com>, 
+ "Michael S. Tsirkin" <mst@redhat.com>
+Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Yuhao Jiang <danisjiang@gmail.com>, 
+ Junrui Luo <moonafterrain@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786770129; l=6669;
- i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
- bh=qtnzn0XwheOjLSxI3U7X4nlXPdrx6AGWoWdmY9ulHzs=;
- b=uimAqKU6ONr2K3w/gu+yItFgjOGOseKjcOuKQccHfe0MxfB1w377WBT7+ptRBPnkrvld3Ss/2
- LHtVS8bmRT/Djg6s8g8lSI5DOvhN7xyRerlm1isnhcIlPZXFZBJrmCt
-X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1922;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=+H0YnFkWSIHfk+tlYOEarUiRI6w/1HSszt61Rigu8cs=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrAYW+5uftEubcjyFuTgt3/zke+oxsVxm+uVlDR+Ov
+ ntW9q28+EhHKQuDGBeDrJgiy/GCS98sfLfobvHZkgwzh5UJZAgDF6cATOQpEyPDrUf3jI7cUH64
+ fFbIp5JoqZAteyWnsL588s7K8dfODL1N5gx/+Na1zvoZ8zu24c3ia81MGx8VnU913n714DxV74R
+ lktKVvABoRU6s
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-`test_ptr_formatting` depended on the `no_hash_pointers` setting and
-skipped the remaining checks when the CRNG was not ready. Assert the
-formatted variants against the plain `{:p}` output instead, and cover
-the placeholder path.
+virtio_gpu_gem_create() owns the reference taken by
+virtio_gpu_object_create(). On the drm_gem_handle_create() error path it
+calls drm_gem_object_release() instead of dropping that reference.
 
-Signed-off-by: Ke Sun <sunke@kylinos.cn>
----
-This is a follow-up to the applied v15 series "rust: Add safe pointer
-formatting support" (on rust-next), addressing the review feedback on
-the KUnit tests.
----
-Changes in v2:
-- Fix the KUnit failure when the CRNG is not ready: `%p` emits the
-  placeholder at a fixed length, ignoring width and zero-padding.
-- Link to v1: https://lore.kernel.org/r/20260815-b4-hashedptr-followup-v1-1-83324702b4c9@kylinos.cn
----
- rust/kernel/fmt.rs | 98 ++++++++++++++++++++----------------------------------
- 1 file changed, 36 insertions(+), 62 deletions(-)
+drm_gem_object_release() is the inverse of drm_gem_object_init() and does
+not touch the reference count or call obj->funcs->free(), so it is only
+correct as the last step of a destructor, as in
+virtio_gpu_cleanup_object(). Using it here leaves the bo at refcount 1
+with no remaining reference, so virtio_gpu_free_object() never runs and
+the shmem pages, sg table and virtio_gpu_object are leaked. Since
+virtio_gpu_object_create() has already set bo->created,
+VIRTIO_GPU_CMD_RESOURCE_UNREF is not queued either, leaking the host-side
+resource and the resource id.
 
-diff --git a/rust/kernel/fmt.rs b/rust/kernel/fmt.rs
-index 29582b053ab1f..cbdca7183d54b 100644
---- a/rust/kernel/fmt.rs
-+++ b/rust/kernel/fmt.rs
-@@ -215,83 +215,57 @@ fn fmt(&self, f: &mut Formatter<'_>) -> Result {
- #[macros::kunit_tests(rust_kernel_fmt)]
- mod tests {
-     use crate::{
--        bindings,
-         prelude::fmt,
-         str::CString, //
-     };
+drm_gem_handle_create_tail() drops the handle reference on all of its
+internal error paths, so the caller only has to drop its own. Use
+drm_gem_object_put(), matching the success path below.
+
+Fixes: dc5698e80cf7 ("Add virtio gpu driver.")
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+---
+ drivers/gpu/drm/virtio/virtgpu_gem.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/virtio/virtgpu_gem.c b/drivers/gpu/drm/virtio/virtgpu_gem.c
+index 66c3f6f74e9c..d2f0b8a3f172 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_gem.c
++++ b/drivers/gpu/drm/virtio/virtgpu_gem.c
+@@ -45,7 +45,7 @@ static int virtio_gpu_gem_create(struct drm_file *file,
  
-+    // Placeholder used when the CRNG is not ready.
-     #[cfg(CONFIG_64BIT)]
--    mod expected {
--        pub(super) const PTR_VALUE: usize = 0xffffffffdeadbeef;
--        pub(super) const PTR_VAL_NO_CRNG: &str = "(____ptrval____)";
--        pub(super) const HASHED_PREFIX: &str = "0x00000000";
--        pub(super) const RAW_POINTER: &str = "0xffffffffdeadbeef";
--        pub(super) const PADDED_RIGHT: &str = "      0xffffffffdeadbeef";
--        pub(super) const ZERO_PADDED: &str = "0x000000ffffffffdeadbeef";
--        pub(super) const HASHED_PADDED_RIGHT_PREFIX: &str = "      ";
--        pub(super) const HASHED_ZERO_PADDED_PREFIX: &str = "0x00000000000000";
--        pub(super) const CLAMPED: &str = "0x0000000000000ffffffffdeadbeef";
--    }
-+    const PTR_VAL_NO_CRNG: &str = "(____ptrval____)";
+ 	ret = drm_gem_handle_create(file, &obj->base.base, &handle);
+ 	if (ret) {
+-		drm_gem_object_release(&obj->base.base);
++		drm_gem_object_put(&obj->base.base);
+ 		return ret;
+ 	}
  
-     #[cfg(not(CONFIG_64BIT))]
--    mod expected {
--        pub(super) const PTR_VALUE: usize = 0xdeadbeef;
--        pub(super) const PTR_VAL_NO_CRNG: &str = "(ptrval)";
--        pub(super) const HASHED_PREFIX: &str = "0x";
--        pub(super) const RAW_POINTER: &str = "0xdeadbeef";
--        pub(super) const PADDED_RIGHT: &str = "              0xdeadbeef";
--        pub(super) const ZERO_PADDED: &str = "0x00000000000000deadbeef";
--        pub(super) const HASHED_PADDED_RIGHT_PREFIX: &str = "              ";
--        pub(super) const HASHED_ZERO_PADDED_PREFIX: &str = "0x00000000000000";
--        pub(super) const CLAMPED: &str = "0x0000000000000000000000deadbeef";
--    }
-+    const PTR_VAL_NO_CRNG: &str = "(ptrval)";
-+
-+    #[cfg(CONFIG_64BIT)]
-+    const PTR_VALUE: usize = 0xffffffffdeadbeef;
-+
-+    #[cfg(not(CONFIG_64BIT))]
-+    const PTR_VALUE: usize = 0xdeadbeef;
- 
-     #[test]
-     fn test_ptr_formatting() -> core::result::Result<(), crate::error::Error> {
--        let ptr: *const u8 = core::ptr::without_provenance(expected::PTR_VALUE);
-+        let ptr: *const u8 = core::ptr::without_provenance(PTR_VALUE);
- 
--        // SAFETY: `no_hash_pointers` is a global variable that is never concurrently modified —
--        // KUnit tests may run at boot (before `mark_readonly()`) or manually afterwards (when the
--        // variable is read-only). Reading is always safe.
--        let no_hash = unsafe { bindings::no_hash_pointers };
-+        let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
-+        let formatted = cstr.to_str()?;
- 
--        if no_hash {
--            let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
--            assert_eq!(cstr.to_str()?, expected::RAW_POINTER);
-+        // If the CRNG is not ready yet, `%p` emits the placeholder at a fixed
-+        // length: `f.pad` still applies, zero-padding does not (see `ptr_to_id()`).
-+        let (crng_ready, expected_suffix) = if let Some(suffix) = formatted.strip_prefix("0x") {
-+            (true, suffix)
-+        } else {
-+            (false, formatted)
-+        };
-+        let (zero_padded_len, clamped_len) = if crng_ready {
-+            (24, 31)
-+        } else {
-+            (PTR_VAL_NO_CRNG.len(), PTR_VAL_NO_CRNG.len())
-+        };
- 
--            let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
--            assert_eq!(cstr.to_str()?, expected::PADDED_RIGHT);
-+        let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
-+        let padded = cstr.to_str()?;
-+        assert!(padded.ends_with(expected_suffix));
-+        assert_eq!(padded.len(), 24);
- 
--            let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
--            assert_eq!(cstr.to_str()?, expected::ZERO_PADDED);
-+        let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
-+        let zero_padded = cstr.to_str()?;
-+        assert!(zero_padded.ends_with(expected_suffix));
-+        assert_eq!(zero_padded.len(), zero_padded_len);
- 
--            let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
--            assert_eq!(cstr.to_str()?, expected::CLAMPED);
--        } else {
--            let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
--            let formatted = cstr.to_str()?;
--            // If the RNG is not yet ready, `%p` falls back to a placeholder.
--            if formatted == expected::PTR_VAL_NO_CRNG {
--                return Ok(());
--            }
--            assert!(formatted.starts_with(expected::HASHED_PREFIX));
--            assert_ne!(formatted, expected::RAW_POINTER);
--
--            let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
--            assert!(cstr
--                .to_str()?
--                .starts_with(expected::HASHED_PADDED_RIGHT_PREFIX));
--
--            let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
--            assert!(cstr
--                .to_str()?
--                .starts_with(expected::HASHED_ZERO_PADDED_PREFIX));
--
--            let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
--            let output = cstr.to_str()?;
--            assert!(output.starts_with("0x"));
--            assert!(!output[2..].chars().all(|c| c == '0'));
--        }
-+        let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
-+        let clamped = cstr.to_str()?;
-+        assert!(clamped.ends_with(expected_suffix));
-+        assert_eq!(clamped.len(), clamped_len);
- 
-         Ok(())
-     }
 
 ---
-base-commit: be387b625933ee12ed230b1c2af5e14f946c3040
-change-id: 20260814-b4-hashedptr-followup-27a4d737f377
+base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
+change-id: 20260815-virtgpu-gem-create-leak-8620531cd3d8
 
 Best regards,
 -- 
-Ke Sun <sunke@kylinos.cn>
+Junrui Luo <moonafterrain@outlook.com>
 
