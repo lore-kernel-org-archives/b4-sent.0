@@ -1,95 +1,82 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sat, 15 Aug 2026 22:56:38 +0800
-Subject: [PATCH 4/4] media: vicodec: make encoder CAPTURE dimensions
- read-only
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Sat, 15 Aug 2026 10:43:02 -0500
+Subject: [PATCH net] net/iucv: reconcile the socket state when connect()
+ severs the path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-vicodec-fixes-v1-4-12101572eba7@outlook.com>
-References: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
-In-Reply-To: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
- Dafna Hirschfeld <dafna3@gmail.com>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mauro Carvalho Chehab <mchehab+samsung@kernel.org>, 
- Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2745;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=39hTfONQcomxQ23TBhyVDkf40Z5LuSFAHoiUH91wz3M=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY69f9S97dv0M2N3STy3Zft8LqiJd3Lz3grX9ijw
- hmzknf1sn8dpSwMYlwMsmKKLMcLLn2z8N2iu8VnSzLMHFYmkCEMXJwCMBHDlwz/rO7x5Nace7V/
- 7X/By3KZN7hWZv8MaTzD90bn18z5U1heVTAy7Os44KpTX2Pb+tek3lbsZje7wiLGI8fc9X7/zDw
- udt2ZEwAzA0ya
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+Message-Id: <20260815-b4-disp-e1faf4b7-v1-1-2a8a143a0055@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swtNaKz4K+KhyW50PcSSbUUo/
+ XejHmdgZoNJVTGcuw1VXmr6LA3coUO6T+UmpNwYvvfH/uQCxYFYbSZxecpDHCkLM7swhpQ8WjZ
+ Xyfr+LS8osuD6l7bGh6TlO8O+fwDkNDHQeQAAAA==
+X-Change-ID: 20260815-b4-disp-e1faf4b7-feddd1575cc2
+To: Eric Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Alexandra Winter <wintera@linux.ibm.com>, 
+ Thorsten Winkler <twinkler@linux.ibm.com>
+Cc: Hidayath Khan <hidayath@linux.ibm.com>, Simon Horman <horms@kernel.org>, 
+ linux-kernel@vger.kernel.org, Ursula Braun <ursula.braun@de.ibm.com>, 
+ netdev@vger.kernel.org, linux-s390@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786808581; l=2023;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=xg2T8X/93kYWUwtNOGjFli4SpGp2mm4ZLBCYx1XjSFA=;
+ b=lSuE/MFy/O++A92aXw597sb0wJdNPWpSqh8l9FqDhTq89laeBcMKN1hnOeB55tTvLQH0qQ8HX
+ pfvr1RVy8++Dl0IASIigHHL4T2zSBNbEvJEHvuVuQpl4zYPo5S+rT24
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Setting the encoder's compressed CAPTURE format to a smaller resolution
-than the raw OUTPUT format makes the encoder write past the end of the
-CAPTURE buffer.
+A connack can land between iucv_sock_wait() returning an error and the
+sever at the end of iucv_sock_connect(): iucv_callback_connack() writes
+IUCV_CONNECTED from the iucv tasklet with no socket lock, and lock_sock()
+does not exclude it. The sever clears iucv->path and leaves the state, so
+connect() fails on a socket still claiming a connection it no longer has,
+and a later sendmsg() reaches iucv->path->msglim through the NULL pointer
+inside iucv_below_msglim(). The sever runs on every failed classic
+connect, O_NONBLOCK included.
 
-For a stateful encoder the CAPTURE width and height are not
-client-settable; Documentation/userspace-api/media/v4l/dev-encoder.rst
-specifies them as "ignored (read-only)" on VIDIOC_S_FMT. vicodec only
-implements half of that: vidioc_s_fmt_vid_out() derives the CAPTURE coded
-size and sizeimage from the OUTPUT format, but S_FMT on the CAPTURE queue
-overwrites them. The encoder then takes its geometry from the OUTPUT
-queue alone, and v4l2_fwht_encode() gets no destination length.
+Reconcile only that case, so an ordinary failed connect still returns the
+socket to its pre-connect state. The sever is a barrier against a later
+connack: iucv_path_sever() clears the path from iucv_path_table[] under
+the lock the tasklet holds across dispatch.
 
-Overwrite the requested width and height with the OUTPUT queue's coded
-dimensions in vidioc_try_fmt_vid_cap(), making them read-only as the
-interface requires.
-
-Fixes: efec9c815e5d ("media: vicodec: pass on enc output format to capture side")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
+Fixes: 18becbc5479f ("af_iucv: avoid left over IUCV connections from failing connects")
 Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/media/test-drivers/vicodec/vicodec-core.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ net/iucv/af_iucv.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/media/test-drivers/vicodec/vicodec-core.c b/drivers/media/test-drivers/vicodec/vicodec-core.c
-index 36b92f68ac42..6d20a749635c 100644
---- a/drivers/media/test-drivers/vicodec/vicodec-core.c
-+++ b/drivers/media/test-drivers/vicodec/vicodec-core.c
-@@ -890,6 +890,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
- 				  struct v4l2_format *f)
- {
- 	struct vicodec_ctx *ctx = file2ctx(file);
-+	struct vicodec_q_data *q_data_out =
-+		get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
- 	struct v4l2_pix_format_mplane *pix_mp;
- 	struct v4l2_pix_format *pix;
+diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
+index ea047bab65e7..6fb0041c4c98 100644
+--- a/net/iucv/af_iucv.c
++++ b/net/iucv/af_iucv.c
+@@ -778,8 +778,16 @@ static int iucv_sock_connect(struct socket *sock, struct sockaddr_unsized *addr,
+ 	if (sk->sk_state == IUCV_DISCONN || sk->sk_state == IUCV_CLOSED)
+ 		err = -ECONNREFUSED;
  
-@@ -900,6 +902,10 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
- 		pix = &f->fmt.pix;
- 		pix->pixelformat = ctx->is_enc ? V4L2_PIX_FMT_FWHT :
- 				   find_fmt(f->fmt.pix.pixelformat)->id;
-+		if (ctx->is_enc) {
-+			pix->width = q_data_out->coded_width;
-+			pix->height = q_data_out->coded_height;
+-	if (err && iucv->transport == AF_IUCV_TRANS_IUCV)
++	if (err && iucv->transport == AF_IUCV_TRANS_IUCV) {
+ 		iucv_sever_path(sk, 0);
++		/* A connack may have landed while the wait was unwinding; the
++		 * path is gone, so the socket must not still claim it.
++		 */
++		if (sk->sk_state == IUCV_CONNECTED) {
++			sk->sk_state = IUCV_DISCONN;
++			sk->sk_state_change(sk);
 +		}
- 		pix->colorspace = ctx->state.colorspace;
- 		pix->xfer_func = ctx->state.xfer_func;
- 		pix->ycbcr_enc = ctx->state.ycbcr_enc;
-@@ -911,6 +917,10 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
- 		pix_mp = &f->fmt.pix_mp;
- 		pix_mp->pixelformat = ctx->is_enc ? V4L2_PIX_FMT_FWHT :
- 				      find_fmt(pix_mp->pixelformat)->id;
-+		if (ctx->is_enc) {
-+			pix_mp->width = q_data_out->coded_width;
-+			pix_mp->height = q_data_out->coded_height;
-+		}
- 		pix_mp->colorspace = ctx->state.colorspace;
- 		pix_mp->xfer_func = ctx->state.xfer_func;
- 		pix_mp->ycbcr_enc = ctx->state.ycbcr_enc;
++	}
+ 
+ done:
+ 	release_sock(sk);
 
--- 
-2.51.2
+---
+base-commit: a59f57e2aa127c5354168d2ec4bac920df1be4f4
+change-id: 20260815-b4-disp-e1faf4b7-feddd1575cc2
+
+Best regards,
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
