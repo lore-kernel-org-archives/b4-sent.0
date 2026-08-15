@@ -1,13 +1,14 @@
 From: Ke Sun <sunke@kylinos.cn>
-Date: Sat, 15 Aug 2026 09:57:33 +0800
-Subject: [PATCH rust-next] rust: fmt: rework pointer formatting tests
+Date: Sat, 15 Aug 2026 13:00:31 +0800
+Subject: [PATCH rust-next v2] rust: fmt: rework pointer formatting tests
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260815-b4-hashedptr-followup-v1-1-83324702b4c9@kylinos.cn>
-X-B4-Tracking: v=1; b=H4sIAIzHf2oC/x3MQQrDIBBA0auEWXcgMdIpvUrpwtaxCkFlxqSBk
- LtXunyL/w9QlsQK9+EA4S1pKrljugzwji5/GJPvBjOa63ibLL4sRqeRfW2CoSxL+a4VDTnraaY
- wE0Fvq3BI+//7AFm1Yea9wfM8fxEsFqFyAAAA
+Message-Id: <20260815-b4-hashedptr-followup-v2-1-6cf592ad1022@kylinos.cn>
+X-B4-Tracking: v=1; b=H4sIAG7yf2oC/3WNyw6CMBREf4XctdfQhxZd+R+GBY9ibyRt0xaEE
+ P7dhrh1eTIzZzaIOpCOcC82CHqmSM5m4KcCOtPYl0bqMwMv+bWsmMRWommi0b1PAQc3ju4zeeS
+ qkb0SahBKQd76oAdaDu8TwhQTWr0kqHNkKCYX1uNxZkfhJ7/8kc8MGVZCcKlK3sru9nivI1kXz
+ 52Fet/3L532JeXGAAAA
 X-Change-ID: 20260814-b4-hashedptr-followup-27a4d737f377
 To: Miguel Ojeda <ojeda@kernel.org>
 Cc: Gary Guo <gary@garyguo.net>, Boqun Feng <boqun@kernel.org>, 
@@ -22,19 +23,20 @@ Cc: Gary Guo <gary@garyguo.net>, Boqun Feng <boqun@kernel.org>,
  rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ke Sun <sunke@kylinos.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786759119; l=5711;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786770129; l=6669;
  i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
- bh=eAIhBRH7Q3/sEIY/K0BvhST20Ero40p/ar4U8ESK+t4=;
- b=D2DdMA4Qwa8xYmMUTGuUCAwRex/BTrfuMCZkw6l5YNDY4ru2bBAt6OTxxz5NLLOATdpY/RTgG
- GNaGgv/peAAD1edGIM/jUP0kr9owxXkuHQVvU4dgyZt3d719GlLUet7
+ bh=qtnzn0XwheOjLSxI3U7X4nlXPdrx6AGWoWdmY9ulHzs=;
+ b=uimAqKU6ONr2K3w/gu+yItFgjOGOseKjcOuKQccHfe0MxfB1w377WBT7+ptRBPnkrvld3Ss/2
+ LHtVS8bmRT/Djg6s8g8lSI5DOvhN7xyRerlm1isnhcIlPZXFZBJrmCt
 X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Assert formatted variants against the plain `{:p}` output instead of
-exact prefixes, and verify width, alignment and clamping also apply
-when `%p` falls back to the placeholder.
+`test_ptr_formatting` depended on the `no_hash_pointers` setting and
+skipped the remaining checks when the CRNG was not ready. Assert the
+formatted variants against the plain `{:p}` output instead, and cover
+the placeholder path.
 
 Signed-off-by: Ke Sun <sunke@kylinos.cn>
 ---
@@ -42,14 +44,19 @@ This is a follow-up to the applied v15 series "rust: Add safe pointer
 formatting support" (on rust-next), addressing the review feedback on
 the KUnit tests.
 ---
- rust/kernel/fmt.rs | 81 +++++++++++++-----------------------------------------
- 1 file changed, 19 insertions(+), 62 deletions(-)
+Changes in v2:
+- Fix the KUnit failure when the CRNG is not ready: `%p` emits the
+  placeholder at a fixed length, ignoring width and zero-padding.
+- Link to v1: https://lore.kernel.org/r/20260815-b4-hashedptr-followup-v1-1-83324702b4c9@kylinos.cn
+---
+ rust/kernel/fmt.rs | 98 ++++++++++++++++++++----------------------------------
+ 1 file changed, 36 insertions(+), 62 deletions(-)
 
 diff --git a/rust/kernel/fmt.rs b/rust/kernel/fmt.rs
-index 29582b053ab1f..b3902e02f1c1d 100644
+index 29582b053ab1f..cbdca7183d54b 100644
 --- a/rust/kernel/fmt.rs
 +++ b/rust/kernel/fmt.rs
-@@ -215,83 +215,40 @@ fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+@@ -215,83 +215,57 @@ fn fmt(&self, f: &mut Formatter<'_>) -> Result {
  #[macros::kunit_tests(rust_kernel_fmt)]
  mod tests {
      use crate::{
@@ -58,6 +65,7 @@ index 29582b053ab1f..b3902e02f1c1d 100644
          str::CString, //
      };
  
++    // Placeholder used when the CRNG is not ready.
      #[cfg(CONFIG_64BIT)]
 -    mod expected {
 -        pub(super) const PTR_VALUE: usize = 0xffffffffdeadbeef;
@@ -70,7 +78,7 @@ index 29582b053ab1f..b3902e02f1c1d 100644
 -        pub(super) const HASHED_ZERO_PADDED_PREFIX: &str = "0x00000000000000";
 -        pub(super) const CLAMPED: &str = "0x0000000000000ffffffffdeadbeef";
 -    }
-+    const PTR_VALUE: usize = 0xffffffffdeadbeef;
++    const PTR_VAL_NO_CRNG: &str = "(____ptrval____)";
  
      #[cfg(not(CONFIG_64BIT))]
 -    mod expected {
@@ -84,6 +92,12 @@ index 29582b053ab1f..b3902e02f1c1d 100644
 -        pub(super) const HASHED_ZERO_PADDED_PREFIX: &str = "0x00000000000000";
 -        pub(super) const CLAMPED: &str = "0x0000000000000000000000deadbeef";
 -    }
++    const PTR_VAL_NO_CRNG: &str = "(ptrval)";
++
++    #[cfg(CONFIG_64BIT)]
++    const PTR_VALUE: usize = 0xffffffffdeadbeef;
++
++    #[cfg(not(CONFIG_64BIT))]
 +    const PTR_VALUE: usize = 0xdeadbeef;
  
      #[test]
@@ -101,22 +115,32 @@ index 29582b053ab1f..b3902e02f1c1d 100644
 -        if no_hash {
 -            let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
 -            assert_eq!(cstr.to_str()?, expected::RAW_POINTER);
-+        // If the RNG is not ready yet, `%p` falls back to `"(ptrval)"` / `"(____ptrval____)"`.
-+        let base = formatted.strip_prefix("0x").unwrap_or(formatted);
++        // If the CRNG is not ready yet, `%p` emits the placeholder at a fixed
++        // length: `f.pad` still applies, zero-padding does not (see `ptr_to_id()`).
++        let (crng_ready, expected_suffix) = if let Some(suffix) = formatted.strip_prefix("0x") {
++            (true, suffix)
++        } else {
++            (false, formatted)
++        };
++        let (zero_padded_len, clamped_len) = if crng_ready {
++            (24, 31)
++        } else {
++            (PTR_VAL_NO_CRNG.len(), PTR_VAL_NO_CRNG.len())
++        };
  
 -            let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
 -            assert_eq!(cstr.to_str()?, expected::PADDED_RIGHT);
 +        let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
 +        let padded = cstr.to_str()?;
-+        assert!(padded.ends_with(base));
++        assert!(padded.ends_with(expected_suffix));
 +        assert_eq!(padded.len(), 24);
  
 -            let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
 -            assert_eq!(cstr.to_str()?, expected::ZERO_PADDED);
 +        let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
 +        let zero_padded = cstr.to_str()?;
-+        assert!(zero_padded.ends_with(base));
-+        assert_eq!(zero_padded.len(), 24);
++        assert!(zero_padded.ends_with(expected_suffix));
++        assert_eq!(zero_padded.len(), zero_padded_len);
  
 -            let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
 -            assert_eq!(cstr.to_str()?, expected::CLAMPED);
@@ -147,8 +171,8 @@ index 29582b053ab1f..b3902e02f1c1d 100644
 -        }
 +        let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
 +        let clamped = cstr.to_str()?;
-+        assert!(clamped.ends_with(base));
-+        assert_eq!(clamped.len(), 31);
++        assert!(clamped.ends_with(expected_suffix));
++        assert_eq!(clamped.len(), clamped_len);
  
          Ok(())
      }
