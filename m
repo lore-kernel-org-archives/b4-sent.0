@@ -1,92 +1,73 @@
-From: Fan Ye <fy15309206903@gmail.com>
-Date: Sat, 15 Aug 2026 10:21:52 +0000
-Subject: [PATCH net] net: thunderbolt: Count delivered packets in
- rx_packets and rx_bytes
+From: Junrui Luo <moonafterrain@outlook.com>
+Subject: [PATCH 0/4] media: fix four memory-safety bugs in vicodec and
+ v4l2-mem2mem
+Date: Sat, 15 Aug 2026 22:56:34 +0800
+Message-Id: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-tbnet-rx-stats-v1-1-8da375c2cd09@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAL89gGoC/yWMSw7CMAwFr1K9NZaS0PC7SsUibQ2YRUCxQZWq3
- p3QLufpzcxQLsKKSzOj8FdUXrmC3zUYHinfmWSsjODCwZ18JOszG5WJ1JIp7dt0Hl1sfYhHVOl
- d+CbTGuxQn7huo376Jw/2T2FZfgw9GvF3AAAA
-X-Change-ID: 20260815-tbnet-rx-stats-34a9d0541257
-To: Mika Westerberg <westeri@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, Eric Dumazet <edumazet@google.com>, 
- Yehezkel Bernat <YehezkelShB@gmail.com>
-Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- Fan Ye <fy15309206903@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786789311; l=2398;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=CngaDMizcsyLGQUAKShYaKxlan6ft6mp+j8UUKsqMCU=;
- b=yEKH7ZEau1FUm3tk0qz+Xs0t/095yYSIq1bHYZ4q4zV7c4V1FQypCQqrHU1wZuuYnTaXXjsRN
- /Lr0NNVz/iXALRalNYf1h3/PWQ5QY8o4VxqfVauiMAGH+oht+9JH7Ux
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+X-B4-Tracking: v=1; b=H4sIACJ+gGoC/x3LQQqAIBBA0avErBMcTYmuEi1Ep5qNhoIE4t2Tl
+ o/Pb1AoMxXYpgaZKhdOcQDnCfzt4kWCwzAoqaxc0YjKPgXy4uSXirBSOkSjtV4QxvNk+sNY9qP
+ 3D+WX4RZfAAAA
+X-Change-ID: 20260815-vicodec-fixes-600a11533341
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
+ Dafna Hirschfeld <dafna3@gmail.com>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Mauro Carvalho Chehab <mchehab+samsung@kernel.org>, 
+ Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1728;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=A/OHJ9zYmscv3Q/pEhjmGIVnvixUXEumJLOP0slecFA=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY61XThyTOXaLilxwZN+i+14OYJ/obLm/SWJFz7Y
+ XeZ7YC+yPaOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmMjVp4wMS0MUZ2qe3j35
+ WNjs8wqCnYF+ZaoyP7y0hZt4/dZbR9nzMPzTftZaUn2yInOXkOuC8v7K1ssp5xqnLbzgzmD32aB
+ R8AMTAPGcSDg=
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tbnet_poll() increments rx_packets once per received frame because that is
-the NAPI work unit, and then adds the same number to stats.rx_packets. An
-skb is handed to the stack only when the last frame of a packet arrives,
-so once the MTU exceeds TBNET_MAX_PAYLOAD_SIZE the statistic reports
-frames. tx_packets is bumped once per skb, so the two ends of a link
-disagree: at MTU 65330 the receiver reports 16 times the packets its
-sender sent.
+Four independent fixes found while auditing the vicodec codec paths.
+Each is reachable from unprivileged userspace and was reproduced under
+KASAN in QEMU.
 
-rx_bytes has the matching problem: frames of a packet that is later
-dropped mid-assembly are already accounted, so it does not correspond to
-rx_packets as documented. Account for both where the packet is completed,
-and leave the NAPI work counter alone.
+  1  v4l2-mem2mem: VIDIOC_REMOVE_BUFS is not serialized against job
+     execution and can free a buffer an in-flight decode is still
+     reading -- use-after-free of a stateless decoder's reference frame.
 
-Fixes: e69b6c02b4c3 ("net: Add support for networking over Thunderbolt cable")
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: Fan Ye <fy15309206903@gmail.com>
+  2  vicodec: vic_round_dim() rounds only the chroma plane, so a
+     dimension one past a multiple of 16 yields a coded size one 8x8
+     block short of what the codec walks.
+
+  3  vicodec: S_FMT never clamps the visible dimensions, so shrinking the
+     CAPTURE format leaves visible > coded and the decoder runs off the
+     end of the capture buffer.
+
+  4  vicodec: the encoder's CAPTURE width and height are settable
+     independently of the OUTPUT format, letting the encoder write into a
+     buffer far too small for the frame it produces.
+
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
-Seen at MTU 65330 on an ASM4242 host-to-host link, where a packet is 16
-frames. On the receiver rx_bytes/rx_packets came out at 4083.9, i.e.
-TBNET_MAX_PAYLOAD_SIZE, and rx_packets ran 15.9x the IP layer's InReceives;
-with the patch they are 65308.3 and 0.99. At the default MTU a packet fits
-in one frame and the counters already agree, which is why this went
-unnoticed.
----
- drivers/net/thunderbolt/main.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Junrui Luo (4):
+      media: v4l2-mem2mem: serialize REMOVE_BUFS with job execution
+      media: vicodec: fix out-of-bounds write on under-rounded coded dimensions
+      media: vicodec: clamp visible dimensions on S_FMT to coded bounds
+      media: vicodec: make encoder CAPTURE dimensions read-only
 
-diff --git a/drivers/net/thunderbolt/main.c b/drivers/net/thunderbolt/main.c
-index 98893732bc6e..43ee896f1b17 100644
---- a/drivers/net/thunderbolt/main.c
-+++ b/drivers/net/thunderbolt/main.c
-@@ -892,9 +892,11 @@ static int tbnet_poll(struct napi_struct *napi, int budget)
- 		       le32_to_cpu(net->rx_hdr.frame_count) - 1;
- 
- 		rx_packets++;
--		net->stats.rx_bytes += frame_size;
- 
- 		if (last) {
-+			/* Before eth_type_trans() pulls the Ethernet header. */
-+			net->stats.rx_packets++;
-+			net->stats.rx_bytes += skb->len;
- 			skb->protocol = eth_type_trans(skb, net->dev);
- 			trace_tbnet_rx_skb(skb);
- 			napi_gro_receive(&net->napi, skb);
-@@ -902,8 +904,6 @@ static int tbnet_poll(struct napi_struct *napi, int budget)
- 		}
- 	}
- 
--	net->stats.rx_packets += rx_packets;
--
- 	if (cleaned_count)
- 		tbnet_alloc_rx_buffers(net, cleaned_count);
- 
-
+ drivers/media/test-drivers/vicodec/codec-fwht.h   |  2 +-
+ drivers/media/test-drivers/vicodec/vicodec-core.c | 15 ++++++
+ drivers/media/v4l2-core/v4l2-mem2mem.c            | 60 +++++++++++++++++++++--
+ 3 files changed, 72 insertions(+), 5 deletions(-)
 ---
-base-commit: dac3e89a2c90c2feeb471e1f22a2512ad424b792
-change-id: 20260815-tbnet-rx-stats-34a9d0541257
+base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
+change-id: 20260815-vicodec-fixes-600a11533341
 
 Best regards,
---  
-Fan Ye <fy15309206903@gmail.com>
+-- 
+Junrui Luo <moonafterrain@outlook.com>
 
