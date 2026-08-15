@@ -1,11 +1,11 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sat, 15 Aug 2026 22:56:37 +0800
-Subject: [PATCH 3/4] media: vicodec: clamp visible dimensions on S_FMT to
- coded bounds
+Date: Sat, 15 Aug 2026 22:56:38 +0800
+Subject: [PATCH 4/4] media: vicodec: make encoder CAPTURE dimensions
+ read-only
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-vicodec-fixes-v1-3-12101572eba7@outlook.com>
+Message-Id: <20260815-vicodec-fixes-v1-4-12101572eba7@outlook.com>
 References: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 In-Reply-To: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -17,70 +17,78 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2305;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2745;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=xw+SM0NXC9kyoKDEQVYsDRhjEC52Kz8+luL+uJhz9SQ=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY6tc5t0XfZ2C7auOxbVPr91OOvv2fP+X1y5uyfL
- jy3pHLM17R1lLIwiHExyIopshwvuPTNwneL7hafLckwc1iZQIYwcHEKwETa1jL8T1zPKLn76u4U
- l2tvfv5apnHY/splvr+OzNr+t5p2u3WEpzAy7EjtnTrvrK6c7Fxe6fiyBq9e/fsG3Hp/z1vZLV5
- x+OIZZgAcyk2d
+ bh=39hTfONQcomxQ23TBhyVDkf40Z5LuSFAHoiUH91wz3M=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY69f9S97dv0M2N3STy3Zft8LqiJd3Lz3grX9ijw
+ hmzknf1sn8dpSwMYlwMsmKKLMcLLn2z8N2iu8VnSzLMHFYmkCEMXJwCMBHDlwz/rO7x5Nace7V/
+ 7X/By3KZN7hWZv8MaTzD90bn18z5U1heVTAy7Os44KpTX2Pb+tek3lbsZje7wiLGI8fc9X7/zDw
+ udt2ZEwAzA0ya
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Setting a smaller CAPTURE format on the stateful decoder lets the visible
-dimensions exceed the coded ones, and decode_plane() then writes past the
-end of the capture buffer -- a kernel heap out-of-bounds write
-controllable from unprivileged userspace.
+Setting the encoder's compressed CAPTURE format to a smaller resolution
+than the raw OUTPUT format makes the encoder write past the end of the
+CAPTURE buffer.
 
-vidioc_s_fmt() writes coded_width, coded_height and sizeimage but never
-touches visible_width or visible_height, which vicodec_open() initialised
-to 1280x720, so shrinking the coded pair leaves the visible pair larger.
-job_ready() compares the bitstream header against the stale visible
-dimensions, so no source-change event fires and decode_plane() iterates
-over the visible height at a stride derived from coded_width.
+For a stateful encoder the CAPTURE width and height are not
+client-settable; Documentation/userspace-api/media/v4l/dev-encoder.rst
+specifies them as "ignored (read-only)" on VIDIOC_S_FMT. vicodec only
+implements half of that: vidioc_s_fmt_vid_out() derives the CAPTURE coded
+size and sizeimage from the OUTPUT format, but S_FMT on the CAPTURE queue
+overwrites them. The encoder then takes its geometry from the OUTPUT
+queue alone, and v4l2_fwht_encode() gets no destination length.
 
-On a KASAN-enabled kernel, a 1280x720 I-frame decoded into a 640x368
-CAPTURE buffer triggers:
+Overwrite the requested width and height with the OUTPUT queue's coded
+dimensions in vidioc_try_fmt_vid_cap(), making them read-only as the
+interface requires.
 
-  BUG: KASAN: vmalloc-out-of-bounds in decode_plane+0x1bb8/0x34b0
-  Write of size 1 at addr ffffc900004b8080 by task trigger_bin/69
-
-  Call Trace:
-   decode_plane+0x1bb8/0x34b0
-   fwht_decode_frame+0x173/0x620
-   v4l2_fwht_decode+0x595/0xea0
-
-Clamp visible_width and visible_height to the new coded bounds after
-every S_FMT, maintaining the invariant visible <= coded that
-update_capture_data_from_header() relies on.
-
-Fixes: 3b15f68e19c2 ("media: vicodec: Add support for resolution change event.")
+Fixes: efec9c815e5d ("media: vicodec: pass on enc output format to capture side")
 Reported-by: Yuhao Jiang <danisjiang@gmail.com>
 Assisted-by: Claude:claude-opus-5
 Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- drivers/media/test-drivers/vicodec/vicodec-core.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/media/test-drivers/vicodec/vicodec-core.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/drivers/media/test-drivers/vicodec/vicodec-core.c b/drivers/media/test-drivers/vicodec/vicodec-core.c
-index 318e8330f16a..36b92f68ac42 100644
+index 36b92f68ac42..6d20a749635c 100644
 --- a/drivers/media/test-drivers/vicodec/vicodec-core.c
 +++ b/drivers/media/test-drivers/vicodec/vicodec-core.c
-@@ -1029,6 +1029,11 @@ static int vidioc_s_fmt(struct vicodec_ctx *ctx, struct v4l2_format *f)
- 		return -EINVAL;
- 	}
+@@ -890,6 +890,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+ 				  struct v4l2_format *f)
+ {
+ 	struct vicodec_ctx *ctx = file2ctx(file);
++	struct vicodec_q_data *q_data_out =
++		get_q_data(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT);
+ 	struct v4l2_pix_format_mplane *pix_mp;
+ 	struct v4l2_pix_format *pix;
  
-+	q_data->visible_width = min(q_data->visible_width,
-+				    q_data->coded_width);
-+	q_data->visible_height = min(q_data->visible_height,
-+				     q_data->coded_height);
-+
- 	dprintk(ctx->dev,
- 		"Setting format for type %d, coded wxh: %dx%d, fourcc: 0x%08x\n",
- 		f->type, q_data->coded_width, q_data->coded_height,
+@@ -900,6 +902,10 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+ 		pix = &f->fmt.pix;
+ 		pix->pixelformat = ctx->is_enc ? V4L2_PIX_FMT_FWHT :
+ 				   find_fmt(f->fmt.pix.pixelformat)->id;
++		if (ctx->is_enc) {
++			pix->width = q_data_out->coded_width;
++			pix->height = q_data_out->coded_height;
++		}
+ 		pix->colorspace = ctx->state.colorspace;
+ 		pix->xfer_func = ctx->state.xfer_func;
+ 		pix->ycbcr_enc = ctx->state.ycbcr_enc;
+@@ -911,6 +917,10 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+ 		pix_mp = &f->fmt.pix_mp;
+ 		pix_mp->pixelformat = ctx->is_enc ? V4L2_PIX_FMT_FWHT :
+ 				      find_fmt(pix_mp->pixelformat)->id;
++		if (ctx->is_enc) {
++			pix_mp->width = q_data_out->coded_width;
++			pix_mp->height = q_data_out->coded_height;
++		}
+ 		pix_mp->colorspace = ctx->state.colorspace;
+ 		pix_mp->xfer_func = ctx->state.xfer_func;
+ 		pix_mp->ycbcr_enc = ctx->state.ycbcr_enc;
 
 -- 
 2.51.2
