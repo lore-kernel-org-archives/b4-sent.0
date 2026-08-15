@@ -1,78 +1,166 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 15 Aug 2026 11:07:27 -0500
-Subject: [PATCH net 2/2] net/iucv: take a private, writable frame before
- rewriting it in place
+From: Younes Akhouayri <git@younes.io>
+Date: Sat, 15 Aug 2026 19:42:08 +0200
+Subject: [PATCH v2] rust: num: reject bool conversion to signed one-bit
+ Bounded
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-b4-disp-dc82fde4-v1-2-e83b10b22ce9@proton.me>
-References: <20260815-b4-disp-dc82fde4-v1-0-e83b10b22ce9@proton.me>
-In-Reply-To: <20260815-b4-disp-dc82fde4-v1-0-e83b10b22ce9@proton.me>
-To: Thorsten Winkler <twinkler@linux.ibm.com>, 
- Jakub Kicinski <kuba@kernel.org>, Eric Dumazet <edumazet@google.com>, 
- Paolo Abeni <pabeni@redhat.com>, "David S. Miller" <davem@davemloft.net>, 
- Alexandra Winter <wintera@linux.ibm.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ursula Braun <ursula.braun@de.ibm.com>, Simon Horman <horms@kernel.org>, 
- Hidayath Khan <hidayath@linux.ibm.com>, linux-s390@vger.kernel.org
+Message-Id: <20260815-fix-rust-bounded-from-bool-submit-v2-1-aa35bb2c22d1@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5WOTQ7CIBCFr2JYO1rwj7jyHqYLKIMdo2AG2tSY3
+ l2oJ3D5Tb55731EQiZM4rz6CMaREsVQQK1XoutNuCGQKyxUo46NlgfwNAEPKYONQ3DowHN8Fog
+ PSIN9Uoad8Xp3dNqfpBYl58VYnpaOa/vjYt6xyzW4GtYkBMsmdH09RaYbhe3SEnDKVekp5cjvZ
+ ecoa9Q/k0YJErRWSp2s3zfWXN5FxbShKNp5nr/IM7koBwEAAA==
+X-Change-ID: 20260815-fix-rust-bounded-from-bool-submit-3af836d8f718
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, stable@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786810045; l=1834;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=tsDMGsCItYL7yGu9iox8Y2HomWMGmH4vOL9gyPjm2GY=;
- b=iPwsieAZOfqGqomsQKlBiFLG94t+SwU+dzIZVVfjU8mETwPrjWD9heRwtLzT+FM1Z7vqmL5RQ
- t3ZDazceEsKBPkWggR439tMlOz3W5VUDXwxD3JFrhGFvrOq2H1l8Vky
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786815763; l=4692;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=EorzZYAWNZ6qTy3DdJZpEnX9ZK3T3nuD8zrV476wuSc=;
+ b=CiOjZN5wxPj60ipF25YAxkZ0SKzTMrwsnFViZD6AElysKOUhhE1TMCBvRqnDo0+4DX0Sdbp3b
+ ChxC3zeE9bRBxhgI4fRrd5qkrNxs3GafI2csnw3XZ1TxVSJTPvVH0+6
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-afiucv_hs_rcv() rewrites the frame in place -- EBCASC() converts four name
-fields in the transport header, afiucv_swap_src_dest() swaps them and
-pushes an Ethernet header back on -- without taking a private, writable
-copy. It sits on the global ptype_base[], so a packet socket (tcpdump is
-enough) has packet_rcv() clone every frame first, and net/core/dev.c has
-warned since 1998 that such a handler "is not able to sense, that packet
-is cloned and should be copied-on-write".
+From<bool> turns true into 1. A signed Bounded with N = 1 can hold
+only -1 and 0. From<bool> therefore creates a value that the type does
+not allow. Deref assumes the value is valid and calls
+unreachable_unchecked() when it is not. Safe Rust can therefore reach
+undefined behavior.
 
-Unshare, then cow the head, in that order: skb_cow_head() can reach
-pskb_expand_head(), which has BUG_ON(skb_shared()). Asking for ETH_HLEN
-also covers the unchecked push in afiucv_swap_src_dest() --
-eth_type_trans() has already pulled that much on the ordinary path, so the
-call compares and returns.
+Rust cannot write N >= 2 directly in this From implementation. Add a
+private BoolFits trait. It accepts every valid unsigned width and signed
+widths from 2 through 128. The current Integer types do not use more
+than 128 bits, so this keeps every valid conversion.
 
-Fixes: 3881ac441f64 ("af_iucv: add HiperSockets transport")
-Closes: https://sashiko.dev/#/patchset/20260813-b4-disp-60433a46-v1-1-509e1200533e@proton.me?part=1
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Fixes: 01e345e82ec3 ("rust: num: add Bounded integer wrapping type")
+Closes: https://lore.kernel.org/rust-for-linux/OzuVxu0--J-9@younes.io/
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- net/iucv/af_iucv.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Do not allow From<bool> for signed Bounded values with N = 1.
+Keep it available for signed Bounded values with N >= 2.
+---
+Changes in v2:
+- Use vertical formatting for the nested `num` import.
+- Link to v1: https://lore.kernel.org/rust-for-linux/20260815-fix-rust-bounded-from-bool-submit-v1-1-882227bf40ba@younes.io/
+---
+ rust/kernel/num/bounded.rs | 54 +++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 49 insertions(+), 5 deletions(-)
 
-diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
-index e3ec965d96ca..10cfc5e82f04 100644
---- a/net/iucv/af_iucv.c
-+++ b/net/iucv/af_iucv.c
-@@ -2069,11 +2069,20 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
- 		return NET_RX_SUCCESS;
- 	}
+diff --git a/rust/kernel/num/bounded.rs b/rust/kernel/num/bounded.rs
+index d192610a687d..7306ae541e53 100644
+--- a/rust/kernel/num/bounded.rs
++++ b/rust/kernel/num/bounded.rs
+@@ -13,7 +13,11 @@
+ };
  
-+	skb = skb_share_check(skb, GFP_ATOMIC);
-+	if (!skb)
-+		return NET_RX_SUCCESS;
-+
- 	if (!pskb_may_pull(skb, sizeof(*trans_hdr))) {
- 		kfree_skb(skb);
- 		return NET_RX_SUCCESS;
- 	}
+ use kernel::{
+-    num::Integer,
++    num::{
++        Integer,
++        Signed,
++        Unsigned, //
++    },
+     prelude::*, //
+ };
  
-+	if (skb_cow_head(skb, ETH_HLEN)) {
-+		kfree_skb(skb);
-+		return NET_RX_SUCCESS;
-+	}
+@@ -174,13 +178,26 @@ fn fits_within<T: Integer>(value: T, num_bits: u32) -> bool {
+ /// // `u8` (regardless of the passed value).
+ /// // let _ = Bounded::<u32, 6>::from(10u8);
+ ///
+-/// // Booleans can be converted into single-bit `Bounded`s.
++/// // Booleans can be converted into unsigned single-bit `Bounded`s.
+ ///
+ /// let v = Bounded::<u64, 1>::from(false);
+ /// assert_eq!(v.get(), 0);
+ ///
+ /// let v = Bounded::<u64, 1>::from(true);
+ /// assert_eq!(v.get(), 1);
++///
++/// // Signed integers need at least two bits to represent both `0` and `1`.
++/// let v = Bounded::<i8, 2>::from(true);
++/// assert_eq!(v.get(), 1);
++/// ```
++///
++/// A signed single-bit [`Bounded`] cannot represent `1`, so converting a boolean into one does not
++/// build.
++///
++/// ```compile_fail,E0277
++/// use kernel::num::Bounded;
++///
++/// let _: Bounded<i8, 1> = true.into();
+ /// ```
+ ///
+ /// Infallible conversions from a [`Bounded`] to a primitive integer are also supported, and
+@@ -1109,7 +1126,33 @@ fn from(value: Bounded<T, N>) -> $type {
+     i8 i16 i32 i64 isize
+ );
+ 
+-// Single-bit `Bounded`s can be converted from/to a boolean.
++// Conversions between `Bounded`s and booleans.
 +
- 	trans_hdr = iucv_trans_hdr(skb);
- 	EBCASC(trans_hdr->destAppName, sizeof(trans_hdr->destAppName));
- 	EBCASC(trans_hdr->destUserID, sizeof(trans_hdr->destUserID));
++/// Marker for signedness types for which a valid `N`-bit integer can represent a boolean.
++trait BoolFits<const N: u32> {}
++
++impl<const N: u32> BoolFits<N> for Unsigned {}
++
++macro_rules! impl_signed_bool_fits {
++    ($($num_bits:literal)*) => {
++        $(
++        impl BoolFits<$num_bits> for Signed {}
++        )*
++    };
++}
++
++// `N >= 2` cannot be expressed as a trait bound without `generic_const_exprs`, so enumerate every
++// width supported by the current `Integer` implementations.
++impl_signed_bool_fits!(
++    2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
++    17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
++    33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48
++    49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64
++    65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80
++    81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96
++    97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112
++    113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128
++);
+ 
+ impl<T> From<Bounded<T, 1>> for bool
+ where
+@@ -1123,10 +1166,11 @@ fn from(value: Bounded<T, 1>) -> Self {
+ impl<T, const N: u32> From<bool> for Bounded<T, N>
+ where
+     T: Integer + From<bool>,
++    T::Signedness: BoolFits<N>,
+ {
+     fn from(value: bool) -> Self {
+-        // SAFETY: A boolean can be represented using a single bit, and thus fits within any
+-        // integer type for any `N` > 0.
++        // SAFETY: `__new` enforces that `N` is a valid width, and the `BoolFits` bound guarantees
++        // that the integer representation of `value` fits within any such `N`.
+         unsafe { Self::__new(T::from(value)) }
+     }
+ }
 
--- 
-2.55.0
+---
+base-commit: 47f27155f17498fccb1f222f79089642337498a9
+change-id: 20260815-fix-rust-bounded-from-bool-submit-3af836d8f718
+
+Best regards,
+--  
+Younes Akhouayri <git@younes.io>
 
