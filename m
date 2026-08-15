@@ -1,11 +1,11 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sat, 15 Aug 2026 22:56:35 +0800
-Subject: [PATCH 1/4] media: v4l2-mem2mem: serialize REMOVE_BUFS with job
- execution
+Date: Sat, 15 Aug 2026 22:56:36 +0800
+Subject: [PATCH 2/4] media: vicodec: fix out-of-bounds write on
+ under-rounded coded dimensions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-vicodec-fixes-v1-1-12101572eba7@outlook.com>
+Message-Id: <20260815-vicodec-fixes-v1-2-12101572eba7@outlook.com>
 References: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 In-Reply-To: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -17,155 +17,74 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5309;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2300;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=6krpIkSHmwa+ABnniq+DXrpDxKlpmMs7gAcsjsK/D8g=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY6tVVRuvkbzB4+ivjOJrHObdPfyF1+2tvX3Y1lq
- T5Qp2TVs7ajlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJnJwBcM/rZ1hWpt75+wr
- SvZzuKb7sL5b0W6t21aRN5NTWx+6njV+xfC/8qRIYFB9seOVRd+P70lYcvt3j83ak9ss853yvr+
- VU5FhBwDiDE13
+ bh=/Cgn2Z+/GhQ6lI+TCHOr+FQEmXhNn+WmP8yMOCGBoj0=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY6NbW0R/sbpLbrFcQ7OscatP0RN7MrW7yg+4fLv
+ V3fe3QmG3eUsjCIcTHIiimyHC+49M3Cd4vuFp8tyTBzWJlAhjBwcQrARN5LMPyV/RazkIk94+/x
+ mphdDLE/rlnJCrnMOfBxg/m2m6/YVibdZ/jvfvJiVlzAVbmL+3dv6HOsUjoyc0Lnne5VZi67p83
+ 69/8PCwBrn05+
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-VIDIOC_REMOVE_BUFS can free a buffer that an in-flight job is still
-decoding from, giving a use-after-free of the reference frame.
+A capture format whose width or height is one more than a multiple of 16
+makes the FWHT codec write one 8x8 block row, or column, past the end of
+the capture plane, and read the same block out of the reference frame for
+P-coded frames.
 
-For stateless decoders a reference frame sits in VB2_BUF_STATE_DEQUEUED,
-which is exactly what REMOVE_BUFS frees: userspace dequeues the decoded
-capture buffer and names its timestamp as the reference for the next
-frame. device_run() resolves that timestamp with vb2_find_buffer() and
-keeps the vb2_plane_vaddr() result for the whole decode without holding a
-reference. Nothing serializes the two paths: REMOVE_BUFS runs under
-m2m_ctx->q_lock and q->mmap_lock, while the job path holds neither and
-reaches device_run() from schedule_work() outside any ioctl lock.
+vic_round_dim() is documented to round a frame dimension up so that both
+the luma and the chroma plane end up a multiple of 8, but it only rounds
+the chroma plane:
 
-Hold the instance off the job queue and wait for its in-flight job before
-removing the buffers. The pause is per-instance rather than device-wide
-because the buffers belong to that instance's own queues and the caller
-is inside one of its own ioctls, so the context cannot be released while
-the wait is in progress. A losing race degrades to vb2_find_buffer()
-returning NULL and the job failing with -EINVAL, which is already
-handled.
+	round_up((dim) / (div), 8) * (div)
 
-Reproduced on vicodec under KASAN:
+For div == 2 the result is a multiple of 16 in every case but one: when
+dim % 16 == 1, dim / div is already a multiple of 8 and the macro returns
+dim - 1. encode_plane() and decode_plane() round the same dimension with
+round_up(dim, 8), which yields dim + 7 -- one block more than the coded
+dimension that sized the buffer.
 
-  BUG: KASAN: vmalloc-out-of-bounds in add_deltas+0x450/0xcc0
-  Read of size 1 at addr ffffc90000a77bc0 by task trigger_bin/71
+On a KASAN-enabled kernel, a 641x360 YUYV P-frame triggers:
+
+  BUG: KASAN: slab-out-of-bounds in add_deltas+0x450/0xcc0
+  Read of size 1 at addr ffff888009070800 by task trigger_bin/70
+
   Call Trace:
    add_deltas+0x450/0xcc0
-   decode_plane+0x1799/0x34b0
+   decode_plane+0x1916/0x3390
    fwht_decode_frame+0x173/0x620
-   v4l2_fwht_decode+0x595/0xea0
+   v4l2_fwht_decode+0x751/0x1120
    device_run+0x6bb/0x1850
-   media_request_ioctl+0x2fb/0x450
-   __se_sys_ioctl+0xb1/0x110
-   do_syscall_64+0x12c/0x360
 
-Fixes: 2f2419502f69 ("media: v4l2: Add mem2mem helpers for REMOVE_BUFS ioctl")
+Round the dimension itself up to a multiple of 8 * div. The rounding
+changes only for div == 2 and dim % 16 == 1, and MAX_WIDTH and MAX_HEIGHT
+are both multiples of 16, so the rounded value still fits the advertised
+limits.
+
+Fixes: 3b15f68e19c2 ("media: vicodec: Add support for resolution change event.")
 Reported-by: Yuhao Jiang <danisjiang@gmail.com>
 Assisted-by: Claude:claude-opus-5
 Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- drivers/media/v4l2-core/v4l2-mem2mem.c | 60 +++++++++++++++++++++++++++++++---
- 1 file changed, 56 insertions(+), 4 deletions(-)
+ drivers/media/test-drivers/vicodec/codec-fwht.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/media/v4l2-core/v4l2-mem2mem.c b/drivers/media/v4l2-core/v4l2-mem2mem.c
-index a65cbb124cfe..10a0a74f782c 100644
---- a/drivers/media/v4l2-core/v4l2-mem2mem.c
-+++ b/drivers/media/v4l2-core/v4l2-mem2mem.c
-@@ -41,6 +41,8 @@ module_param(debug, bool, 0644);
- #define TRANS_RUNNING		(1 << 1)
- /* Instance is currently aborting */
- #define TRANS_ABORT		(1 << 2)
-+/* Instance must not be scheduled while its buffers are being removed */
-+#define TRANS_PAUSED		(1 << 3)
+diff --git a/drivers/media/test-drivers/vicodec/codec-fwht.h b/drivers/media/test-drivers/vicodec/codec-fwht.h
+index 0eab24020e9e..4b4d39031089 100644
+--- a/drivers/media/test-drivers/vicodec/codec-fwht.h
++++ b/drivers/media/test-drivers/vicodec/codec-fwht.h
+@@ -61,7 +61,7 @@
+  * both luma and chroma components resolutions are rounded up to
+  * a multiple of 8
+  */
+-#define vic_round_dim(dim, div) (round_up((dim) / (div), 8) * (div))
++#define vic_round_dim(dim, div) round_up(dim, 8 * (div))
  
- 
- /* The job queue is not running new jobs */
-@@ -309,9 +311,9 @@ static void __v4l2_m2m_try_queue(struct v4l2_m2m_dev *m2m_dev,
- 
- 	spin_lock_irqsave(&m2m_dev->job_spinlock, flags_job);
- 
--	/* If the context is aborted then don't schedule it */
--	if (m2m_ctx->job_flags & TRANS_ABORT) {
--		dprintk("Aborted context\n");
-+	/* If the context is aborted or paused then don't schedule it */
-+	if (m2m_ctx->job_flags & (TRANS_ABORT | TRANS_PAUSED)) {
-+		dprintk("Aborted or paused context\n");
- 		goto job_unlock;
- 	}
- 
-@@ -1388,16 +1390,66 @@ int v4l2_m2m_ioctl_create_bufs(struct file *file, void *priv,
- }
- EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_create_bufs);
- 
-+/*
-+ * Keep @m2m_ctx off the job queue and wait for its in-flight job, if any.
-+ *
-+ * Only this instance is held back: the buffers about to be removed belong to
-+ * its own queues, so no other instance can be reading them. Waiting on this
-+ * instance is also what makes the wait safe -- the caller is inside one of its
-+ * ioctls, so v4l2_m2m_ctx_release() cannot free it here.
-+ */
-+static void v4l2_m2m_pause_ctx(struct v4l2_m2m_ctx *m2m_ctx)
-+{
-+	struct v4l2_m2m_dev *m2m_dev = m2m_ctx->m2m_dev;
-+	unsigned long flags;
-+
-+	spin_lock_irqsave(&m2m_dev->job_spinlock, flags);
-+	m2m_ctx->job_flags |= TRANS_PAUSED;
-+	if (m2m_ctx->job_flags & TRANS_RUNNING) {
-+		spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
-+		wait_event(m2m_ctx->finished,
-+			   !(m2m_ctx->job_flags & TRANS_RUNNING));
-+		return;
-+	}
-+	if (m2m_ctx->job_flags & TRANS_QUEUED) {
-+		list_del(&m2m_ctx->queue);
-+		m2m_ctx->job_flags &= ~TRANS_QUEUED;
-+	}
-+	spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
-+}
-+
-+static void v4l2_m2m_resume_ctx(struct v4l2_m2m_ctx *m2m_ctx)
-+{
-+	struct v4l2_m2m_dev *m2m_dev = m2m_ctx->m2m_dev;
-+	unsigned long flags;
-+
-+	spin_lock_irqsave(&m2m_dev->job_spinlock, flags);
-+	m2m_ctx->job_flags &= ~TRANS_PAUSED;
-+	spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
-+
-+	v4l2_m2m_try_schedule(m2m_ctx);
-+}
-+
- int v4l2_m2m_ioctl_remove_bufs(struct file *file, void *priv,
- 			       struct v4l2_remove_buffers *remove)
- {
- 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
- 	struct vb2_queue *q = v4l2_m2m_get_vq(fh->m2m_ctx, remove->type);
-+	int ret;
- 
- 	if (q->type != remove->type)
- 		return -EINVAL;
- 
--	return vb2_core_remove_bufs(q, remove->index, remove->count);
-+	/*
-+	 * Removal is only allowed for DEQUEUED buffers, but that is exactly
-+	 * the state a stateless decoder's reference frame is in while a job
-+	 * resolves it by timestamp and reads its memory.
-+	 */
-+	v4l2_m2m_pause_ctx(fh->m2m_ctx);
-+	ret = vb2_core_remove_bufs(q, remove->index, remove->count);
-+	v4l2_m2m_resume_ctx(fh->m2m_ctx);
-+
-+	return ret;
- }
- EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_remove_bufs);
- 
+ struct fwht_cframe_hdr {
+ 	u32 magic1;
 
 -- 
 2.51.2
