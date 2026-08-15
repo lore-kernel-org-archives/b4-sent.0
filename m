@@ -1,11 +1,11 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sat, 15 Aug 2026 22:56:36 +0800
-Subject: [PATCH 2/4] media: vicodec: fix out-of-bounds write on
- under-rounded coded dimensions
+Date: Sat, 15 Aug 2026 22:56:37 +0800
+Subject: [PATCH 3/4] media: vicodec: clamp visible dimensions on S_FMT to
+ coded bounds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-vicodec-fixes-v1-2-12101572eba7@outlook.com>
+Message-Id: <20260815-vicodec-fixes-v1-3-12101572eba7@outlook.com>
 References: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 In-Reply-To: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -17,51 +17,44 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2300;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2305;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=/Cgn2Z+/GhQ6lI+TCHOr+FQEmXhNn+WmP8yMOCGBoj0=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY6NbW0R/sbpLbrFcQ7OscatP0RN7MrW7yg+4fLv
- V3fe3QmG3eUsjCIcTHIiimyHC+49M3Cd4vuFp8tyTBzWJlAhjBwcQrARN5LMPyV/RazkIk94+/x
- mphdDLE/rlnJCrnMOfBxg/m2m6/YVibdZ/jvfvJiVlzAVbmL+3dv6HOsUjoyc0Lnne5VZi67p83
- 69/8PCwBrn05+
+ bh=xw+SM0NXC9kyoKDEQVYsDRhjEC52Kz8+luL+uJhz9SQ=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY6tc5t0XfZ2C7auOxbVPr91OOvv2fP+X1y5uyfL
+ jy3pHLM17R1lLIwiHExyIopshwvuPTNwneL7hafLckwc1iZQIYwcHEKwETa1jL8T1zPKLn76u4U
+ l2tvfv5apnHY/splvr+OzNr+t5p2u3WEpzAy7EjtnTrvrK6c7Fxe6fiyBq9e/fsG3Hp/z1vZLV5
+ x+OIZZgAcyk2d
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A capture format whose width or height is one more than a multiple of 16
-makes the FWHT codec write one 8x8 block row, or column, past the end of
-the capture plane, and read the same block out of the reference frame for
-P-coded frames.
+Setting a smaller CAPTURE format on the stateful decoder lets the visible
+dimensions exceed the coded ones, and decode_plane() then writes past the
+end of the capture buffer -- a kernel heap out-of-bounds write
+controllable from unprivileged userspace.
 
-vic_round_dim() is documented to round a frame dimension up so that both
-the luma and the chroma plane end up a multiple of 8, but it only rounds
-the chroma plane:
+vidioc_s_fmt() writes coded_width, coded_height and sizeimage but never
+touches visible_width or visible_height, which vicodec_open() initialised
+to 1280x720, so shrinking the coded pair leaves the visible pair larger.
+job_ready() compares the bitstream header against the stale visible
+dimensions, so no source-change event fires and decode_plane() iterates
+over the visible height at a stride derived from coded_width.
 
-	round_up((dim) / (div), 8) * (div)
+On a KASAN-enabled kernel, a 1280x720 I-frame decoded into a 640x368
+CAPTURE buffer triggers:
 
-For div == 2 the result is a multiple of 16 in every case but one: when
-dim % 16 == 1, dim / div is already a multiple of 8 and the macro returns
-dim - 1. encode_plane() and decode_plane() round the same dimension with
-round_up(dim, 8), which yields dim + 7 -- one block more than the coded
-dimension that sized the buffer.
-
-On a KASAN-enabled kernel, a 641x360 YUYV P-frame triggers:
-
-  BUG: KASAN: slab-out-of-bounds in add_deltas+0x450/0xcc0
-  Read of size 1 at addr ffff888009070800 by task trigger_bin/70
+  BUG: KASAN: vmalloc-out-of-bounds in decode_plane+0x1bb8/0x34b0
+  Write of size 1 at addr ffffc900004b8080 by task trigger_bin/69
 
   Call Trace:
-   add_deltas+0x450/0xcc0
-   decode_plane+0x1916/0x3390
+   decode_plane+0x1bb8/0x34b0
    fwht_decode_frame+0x173/0x620
-   v4l2_fwht_decode+0x751/0x1120
-   device_run+0x6bb/0x1850
+   v4l2_fwht_decode+0x595/0xea0
 
-Round the dimension itself up to a multiple of 8 * div. The rounding
-changes only for div == 2 and dim % 16 == 1, and MAX_WIDTH and MAX_HEIGHT
-are both multiples of 16, so the rounded value still fits the advertised
-limits.
+Clamp visible_width and visible_height to the new coded bounds after
+every S_FMT, maintaining the invariant visible <= coded that
+update_capture_data_from_header() relies on.
 
 Fixes: 3b15f68e19c2 ("media: vicodec: Add support for resolution change event.")
 Reported-by: Yuhao Jiang <danisjiang@gmail.com>
@@ -69,22 +62,25 @@ Assisted-by: Claude:claude-opus-5
 Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- drivers/media/test-drivers/vicodec/codec-fwht.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/media/test-drivers/vicodec/vicodec-core.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/media/test-drivers/vicodec/codec-fwht.h b/drivers/media/test-drivers/vicodec/codec-fwht.h
-index 0eab24020e9e..4b4d39031089 100644
---- a/drivers/media/test-drivers/vicodec/codec-fwht.h
-+++ b/drivers/media/test-drivers/vicodec/codec-fwht.h
-@@ -61,7 +61,7 @@
-  * both luma and chroma components resolutions are rounded up to
-  * a multiple of 8
-  */
--#define vic_round_dim(dim, div) (round_up((dim) / (div), 8) * (div))
-+#define vic_round_dim(dim, div) round_up(dim, 8 * (div))
+diff --git a/drivers/media/test-drivers/vicodec/vicodec-core.c b/drivers/media/test-drivers/vicodec/vicodec-core.c
+index 318e8330f16a..36b92f68ac42 100644
+--- a/drivers/media/test-drivers/vicodec/vicodec-core.c
++++ b/drivers/media/test-drivers/vicodec/vicodec-core.c
+@@ -1029,6 +1029,11 @@ static int vidioc_s_fmt(struct vicodec_ctx *ctx, struct v4l2_format *f)
+ 		return -EINVAL;
+ 	}
  
- struct fwht_cframe_hdr {
- 	u32 magic1;
++	q_data->visible_width = min(q_data->visible_width,
++				    q_data->coded_width);
++	q_data->visible_height = min(q_data->visible_height,
++				     q_data->coded_height);
++
+ 	dprintk(ctx->dev,
+ 		"Setting format for type %d, coded wxh: %dx%d, fourcc: 0x%08x\n",
+ 		f->type, q_data->coded_width, q_data->coded_height,
 
 -- 
 2.51.2
