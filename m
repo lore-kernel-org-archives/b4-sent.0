@@ -1,15 +1,13 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH 0/4] media: fix four memory-safety bugs in vicodec and
- v4l2-mem2mem
-Date: Sat, 15 Aug 2026 22:56:34 +0800
-Message-Id: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
+Date: Sat, 15 Aug 2026 22:56:35 +0800
+Subject: [PATCH 1/4] media: v4l2-mem2mem: serialize REMOVE_BUFS with job
+ execution
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACJ+gGoC/x3LQQqAIBBA0avErBMcTYmuEi1Ep5qNhoIE4t2Tl
- o/Pb1AoMxXYpgaZKhdOcQDnCfzt4kWCwzAoqaxc0YjKPgXy4uSXirBSOkSjtV4QxvNk+sNY9qP
- 3D+WX4RZfAAAA
-X-Change-ID: 20260815-vicodec-fixes-600a11533341
+Message-Id: <20260815-vicodec-fixes-v1-1-12101572eba7@outlook.com>
+References: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
+In-Reply-To: <20260815-vicodec-fixes-v1-0-12101572eba7@outlook.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Hans Verkuil <hverkuil@kernel.org>, 
  Benjamin Gaignard <benjamin.gaignard@collabora.com>, 
@@ -19,55 +17,156 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1728;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5309;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=A/OHJ9zYmscv3Q/pEhjmGIVnvixUXEumJLOP0slecFA=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY61XThyTOXaLilxwZN+i+14OYJ/obLm/SWJFz7Y
- XeZ7YC+yPaOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmMjVp4wMS0MUZ2qe3j35
- WNjs8wqCnYF+ZaoyP7y0hZt4/dZbR9nzMPzTftZaUn2yInOXkOuC8v7K1ssp5xqnLbzgzmD32aB
- R8AMTAPGcSDg=
+ bh=6krpIkSHmwa+ABnniq+DXrpDxKlpmMs7gAcsjsK/D8g=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrIY6tVVRuvkbzB4+ivjOJrHObdPfyF1+2tvX3Y1lq
+ T5Qp2TVs7ajlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJnJwBcM/rZ1hWpt75+wr
+ SvZzuKb7sL5b0W6t21aRN5NTWx+6njV+xfC/8qRIYFB9seOVRd+P70lYcvt3j83ak9ss853yvr+
+ VU5FhBwDiDE13
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Four independent fixes found while auditing the vicodec codec paths.
-Each is reachable from unprivileged userspace and was reproduced under
-KASAN in QEMU.
+VIDIOC_REMOVE_BUFS can free a buffer that an in-flight job is still
+decoding from, giving a use-after-free of the reference frame.
 
-  1  v4l2-mem2mem: VIDIOC_REMOVE_BUFS is not serialized against job
-     execution and can free a buffer an in-flight decode is still
-     reading -- use-after-free of a stateless decoder's reference frame.
+For stateless decoders a reference frame sits in VB2_BUF_STATE_DEQUEUED,
+which is exactly what REMOVE_BUFS frees: userspace dequeues the decoded
+capture buffer and names its timestamp as the reference for the next
+frame. device_run() resolves that timestamp with vb2_find_buffer() and
+keeps the vb2_plane_vaddr() result for the whole decode without holding a
+reference. Nothing serializes the two paths: REMOVE_BUFS runs under
+m2m_ctx->q_lock and q->mmap_lock, while the job path holds neither and
+reaches device_run() from schedule_work() outside any ioctl lock.
 
-  2  vicodec: vic_round_dim() rounds only the chroma plane, so a
-     dimension one past a multiple of 16 yields a coded size one 8x8
-     block short of what the codec walks.
+Hold the instance off the job queue and wait for its in-flight job before
+removing the buffers. The pause is per-instance rather than device-wide
+because the buffers belong to that instance's own queues and the caller
+is inside one of its own ioctls, so the context cannot be released while
+the wait is in progress. A losing race degrades to vb2_find_buffer()
+returning NULL and the job failing with -EINVAL, which is already
+handled.
 
-  3  vicodec: S_FMT never clamps the visible dimensions, so shrinking the
-     CAPTURE format leaves visible > coded and the decoder runs off the
-     end of the capture buffer.
+Reproduced on vicodec under KASAN:
 
-  4  vicodec: the encoder's CAPTURE width and height are settable
-     independently of the OUTPUT format, letting the encoder write into a
-     buffer far too small for the frame it produces.
+  BUG: KASAN: vmalloc-out-of-bounds in add_deltas+0x450/0xcc0
+  Read of size 1 at addr ffffc90000a77bc0 by task trigger_bin/71
+  Call Trace:
+   add_deltas+0x450/0xcc0
+   decode_plane+0x1799/0x34b0
+   fwht_decode_frame+0x173/0x620
+   v4l2_fwht_decode+0x595/0xea0
+   device_run+0x6bb/0x1850
+   media_request_ioctl+0x2fb/0x450
+   __se_sys_ioctl+0xb1/0x110
+   do_syscall_64+0x12c/0x360
 
+Fixes: 2f2419502f69 ("media: v4l2: Add mem2mem helpers for REMOVE_BUFS ioctl")
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
-Junrui Luo (4):
-      media: v4l2-mem2mem: serialize REMOVE_BUFS with job execution
-      media: vicodec: fix out-of-bounds write on under-rounded coded dimensions
-      media: vicodec: clamp visible dimensions on S_FMT to coded bounds
-      media: vicodec: make encoder CAPTURE dimensions read-only
+ drivers/media/v4l2-core/v4l2-mem2mem.c | 60 +++++++++++++++++++++++++++++++---
+ 1 file changed, 56 insertions(+), 4 deletions(-)
 
- drivers/media/test-drivers/vicodec/codec-fwht.h   |  2 +-
- drivers/media/test-drivers/vicodec/vicodec-core.c | 15 ++++++
- drivers/media/v4l2-core/v4l2-mem2mem.c            | 60 +++++++++++++++++++++--
- 3 files changed, 72 insertions(+), 5 deletions(-)
----
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260815-vicodec-fixes-600a11533341
+diff --git a/drivers/media/v4l2-core/v4l2-mem2mem.c b/drivers/media/v4l2-core/v4l2-mem2mem.c
+index a65cbb124cfe..10a0a74f782c 100644
+--- a/drivers/media/v4l2-core/v4l2-mem2mem.c
++++ b/drivers/media/v4l2-core/v4l2-mem2mem.c
+@@ -41,6 +41,8 @@ module_param(debug, bool, 0644);
+ #define TRANS_RUNNING		(1 << 1)
+ /* Instance is currently aborting */
+ #define TRANS_ABORT		(1 << 2)
++/* Instance must not be scheduled while its buffers are being removed */
++#define TRANS_PAUSED		(1 << 3)
+ 
+ 
+ /* The job queue is not running new jobs */
+@@ -309,9 +311,9 @@ static void __v4l2_m2m_try_queue(struct v4l2_m2m_dev *m2m_dev,
+ 
+ 	spin_lock_irqsave(&m2m_dev->job_spinlock, flags_job);
+ 
+-	/* If the context is aborted then don't schedule it */
+-	if (m2m_ctx->job_flags & TRANS_ABORT) {
+-		dprintk("Aborted context\n");
++	/* If the context is aborted or paused then don't schedule it */
++	if (m2m_ctx->job_flags & (TRANS_ABORT | TRANS_PAUSED)) {
++		dprintk("Aborted or paused context\n");
+ 		goto job_unlock;
+ 	}
+ 
+@@ -1388,16 +1390,66 @@ int v4l2_m2m_ioctl_create_bufs(struct file *file, void *priv,
+ }
+ EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_create_bufs);
+ 
++/*
++ * Keep @m2m_ctx off the job queue and wait for its in-flight job, if any.
++ *
++ * Only this instance is held back: the buffers about to be removed belong to
++ * its own queues, so no other instance can be reading them. Waiting on this
++ * instance is also what makes the wait safe -- the caller is inside one of its
++ * ioctls, so v4l2_m2m_ctx_release() cannot free it here.
++ */
++static void v4l2_m2m_pause_ctx(struct v4l2_m2m_ctx *m2m_ctx)
++{
++	struct v4l2_m2m_dev *m2m_dev = m2m_ctx->m2m_dev;
++	unsigned long flags;
++
++	spin_lock_irqsave(&m2m_dev->job_spinlock, flags);
++	m2m_ctx->job_flags |= TRANS_PAUSED;
++	if (m2m_ctx->job_flags & TRANS_RUNNING) {
++		spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
++		wait_event(m2m_ctx->finished,
++			   !(m2m_ctx->job_flags & TRANS_RUNNING));
++		return;
++	}
++	if (m2m_ctx->job_flags & TRANS_QUEUED) {
++		list_del(&m2m_ctx->queue);
++		m2m_ctx->job_flags &= ~TRANS_QUEUED;
++	}
++	spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
++}
++
++static void v4l2_m2m_resume_ctx(struct v4l2_m2m_ctx *m2m_ctx)
++{
++	struct v4l2_m2m_dev *m2m_dev = m2m_ctx->m2m_dev;
++	unsigned long flags;
++
++	spin_lock_irqsave(&m2m_dev->job_spinlock, flags);
++	m2m_ctx->job_flags &= ~TRANS_PAUSED;
++	spin_unlock_irqrestore(&m2m_dev->job_spinlock, flags);
++
++	v4l2_m2m_try_schedule(m2m_ctx);
++}
++
+ int v4l2_m2m_ioctl_remove_bufs(struct file *file, void *priv,
+ 			       struct v4l2_remove_buffers *remove)
+ {
+ 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
+ 	struct vb2_queue *q = v4l2_m2m_get_vq(fh->m2m_ctx, remove->type);
++	int ret;
+ 
+ 	if (q->type != remove->type)
+ 		return -EINVAL;
+ 
+-	return vb2_core_remove_bufs(q, remove->index, remove->count);
++	/*
++	 * Removal is only allowed for DEQUEUED buffers, but that is exactly
++	 * the state a stateless decoder's reference frame is in while a job
++	 * resolves it by timestamp and reads its memory.
++	 */
++	v4l2_m2m_pause_ctx(fh->m2m_ctx);
++	ret = vb2_core_remove_bufs(q, remove->index, remove->count);
++	v4l2_m2m_resume_ctx(fh->m2m_ctx);
++
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_remove_bufs);
+ 
 
-Best regards,
 -- 
-Junrui Luo <moonafterrain@outlook.com>
+2.51.2
 
