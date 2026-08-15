@@ -1,301 +1,163 @@
-From: Benjamin Leggett <benjamin@edera.io>
-Date: Fri, 14 Aug 2026 18:20:11 -0400
-Subject: [PATCH v4] drm/virtio: sync shmem backing on guest-bound transfers
+From: Ke Sun <sunke@kylinos.cn>
+Date: Sat, 15 Aug 2026 09:57:33 +0800
+Subject: [PATCH rust-next] rust: fmt: rework pointer formatting tests
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260814-virtgpu-from-host-sync-v4-1-64dd736b1779@edera.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43OPW7DMAwF4KsEmsvWkuxE6ZR7BBn0Q8UcbAWUK
- yQwfPfIzlJ0aQYODyC/x1lkZMIsvnezYCyUKY01tB874Xs7XhEo1CxUo/aNkS0U4ul6+4HIaYA
- +5QnyY/RgZHBB+UPnTSvq8Y0x0n2Dz5eanc0Iju3o+5ULPHzVgYGyh9diXeopT4kf2zNFrqf/9
- hYJspa3qG10nWvMCQOy/aQk1tqi3lNUVaLVR9l4GzV2fxT9nqJXRXXa2BgOYY+/lGVZnkzyJ2l
- sAQAA
-X-Change-ID: 20260814-virtgpu-from-host-sync-81dbd2c75c84
-To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
- Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
- Gurchetan Singh <gurchetansingh@chromium.org>, 
- Chia-I Wu <olvaffe@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Sashiko AI review <sashiko-bot@kernel.org>, 
- Benjamin Leggett <benjamin@edera.io>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260815-b4-hashedptr-followup-v1-1-83324702b4c9@kylinos.cn>
+X-B4-Tracking: v=1; b=H4sIAIzHf2oC/x3MQQrDIBBA0auEWXcgMdIpvUrpwtaxCkFlxqSBk
+ LtXunyL/w9QlsQK9+EA4S1pKrljugzwji5/GJPvBjOa63ibLL4sRqeRfW2CoSxL+a4VDTnraaY
+ wE0Fvq3BI+//7AFm1Yea9wfM8fxEsFqFyAAAA
+X-Change-ID: 20260814-b4-hashedptr-followup-27a4d737f377
+To: Miguel Ojeda <ojeda@kernel.org>
+Cc: Gary Guo <gary@garyguo.net>, Boqun Feng <boqun@kernel.org>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ke Sun <sunke@kylinos.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786746012; l=11381;
- i=benjamin@edera.io; s=20260806; h=from:subject:message-id;
- bh=Mc6pZnflyM6laN3bbdkDmxNi+ASZGo0EDodrb3apIY4=;
- b=Tvz0pW8v/vCyat7xEIOpLzkmPK1AIxTI6xBTerpl0h4OZj7DV5Y1LnyM++Y26BufNj2thRN5i
- UKFc/cpzIcCDItm2J1DreT4JGL/eO4Kjoh3GfXhlPxai9DxrrLBeOHI
-X-Developer-Key: i=benjamin@edera.io; a=ed25519;
- pk=prj3m3DtYeYw1akLHnM/sXm8eau0Ar/IO93YoYnOr+I=
-X-Endpoint-Received: by B4 Relay for benjamin@edera.io/20260806 with auth_id=923
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786759119; l=5711;
+ i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
+ bh=eAIhBRH7Q3/sEIY/K0BvhST20Ero40p/ar4U8ESK+t4=;
+ b=D2DdMA4Qwa8xYmMUTGuUCAwRex/BTrfuMCZkw6l5YNDY4ru2bBAt6OTxxz5NLLOATdpY/RTgG
+ GNaGgv/peAAD1edGIM/jUP0kr9owxXkuHQVvU4dgyZt3d719GlLUet7
+X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-virtio_gpu_cmd_transfer_to_host_{2d,3d}() sync the shmem backing for the
-device before the transfer, but nothing syncs for the CPU when a transfer
-runs the other way. That breaks two ways. Where the DMA layer bounces, the
-device writes into the bounce buffer while the guest keeps reading the
-original pages. Where DMA is not coherent, the device writes memory while
-the CPU keeps stale cache lines, because nothing reaches
-arch_sync_dma_for_cpu(). Either way DRM_IOCTL_VIRTGPU_TRANSFER_FROM_HOST
-hands back stale data.
+Assert formatted variants against the plain `{:p}` output instead of
+exact prefixes, and verify width, alignment and clamping also apply
+when `%p` falls back to the placeholder.
 
-Sashiko originally found this in
-https://lore.kernel.org/dri-devel/20260806231002.27B4D1F000E9@smtp.kernel.org
-but the suggestion there to fix this with dma_sync_sgtable_for_cpu()
-isn't a sufficient fix, for two reasons.
-
-- The transfer is asynchronous. virtio_gpu_cmd_transfer_from_host_3d() only
-queues the command, so a sync there would run before the device had written
-anything. It belongs on completion, and ahead of any fence signalling.
-A waiter woken by the fence would otherwise race the sync and read the
-backing pages regardless. It needs its own pass over the reclaim list
-rather than a step inside the existing one, because
-virtio_gpu_fence_event_process() also signals every earlier fence in the
-same context, so any entry in that loop may signal an earlier entry's
-fence.
-
-- The transfer is also partial, carrying an offset, a level and a box.
-Where the mapping bounces, a sync for the CPU copies the whole mapping
-back, so unless the mapping is primed first the regions the device did not
-write come back holding whatever the bounce buffer contained, discarding
-data the guest owned.
-
-So the fix: Prime the mapping before queueing, tag the vbuffer, and sync
-for the CPU on completion before the fence is signalled.
-
-A second transfer must not snapshot the mapping while an earlier one is
-still in flight, or the snapshot would predate whatever the CPU wrote once
-the earlier fence signalled and the later sync would discard it.
-
-To mitigate this, wait for outstanding fences under the reservation before
-priming.
-
-Neither sync copies anything unless the mapping genuinely bounces:
-swiotlb_sync_single_for_cpu() and its Xen counterpart look the address up
-in the bounce pool and return early when it is absent. On a platform with
-non-coherent DMA they still perform the necessary cache maintenance.
-
-The range cannot be narrowed to the box, since for a non-blob resource
-virtio_gpu_transfer_from_host_ioctl() rejects a caller-supplied stride and
-layer_stride, leaving the layout to the host and the guest with no way to
-work out which bytes the device writes. A host3d guest blob does carry
-both, so its extent could be bounded, but the sync is left whole there too
-rather than special-cased: priming makes the untouched regions round-trip
-unchanged either way.
-
-Behaviour changes worth noting:
-
-- TRANSFER_FROM_HOST can now block, where before it returned as soon as the
-command was queued. Repeated readbacks of one resource serialise, and a
-readback can wait behind an earlier queued command that touched it, since
-virtio_gpu_array_add_fence() tags uploads, execbufs and plane flushes
-alike with DMA_RESV_USAGE_WRITE. -ERESTARTSYS was already possible here
-via dma_resv_lock_interruptible().
-
-- A CPU write racing an in-flight transfer to the same resource is now
-lost, where before it survived and the transfer was lost instead. Priming
-captures the pages as of queueing, so a write landing before completion is
-overwritten by the sync.
-
-- TRANSFER_TO_HOST can also block now, but only while a guest-bound
-transfer on the same resource is outstanding, which happens only for
-callers that issue both without waiting.
-
-- Where a batch of completions contains a guest-bound transfer, the sync
-pass delays fence signalling for the whole batch. Only bounced pages are
-copied and the swiotlb pool bounds it. A batch with no such transfer is
-unaffected.
-
-Tested under QEMU on x86 with swiotlb=force and virtio-vga-gl
-iommu_platform=on, which forces both preconditions required to hit the
-original bug.
-
-Reported-by: Sashiko AI review <sashiko-bot@kernel.org>
-Closes: https://lore.kernel.org/dri-devel/20260806231002.27B4D1F000E9@smtp.kernel.org/
-Signed-off-by: Benjamin Leggett <benjamin@edera.io>
+Signed-off-by: Ke Sun <sunke@kylinos.cn>
 ---
-This depends on 6a736d2f9d0c ("drm/virtio: use the DMA API for resource backing on Xen"), currently in
-drm-misc-fixes only, so it needs to go through the same branch.
+This is a follow-up to the applied v15 series "rust: Add safe pointer
+formatting support" (on rust-next), addressing the review feedback on
+the KUnit tests.
 ---
-Changes in v4:
-- drm/virtio: use DMA_RESV_USAGE_READ.
-- Link to v3: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v3-1-f2538afd7d6e@edera.io
+ rust/kernel/fmt.rs | 81 +++++++++++++-----------------------------------------
+ 1 file changed, 19 insertions(+), 62 deletions(-)
 
-Changes in v3:
-- drm/virtio: use smp_load_acquire()/smp_store_release().
-- Link to v2: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v2-1-fa3910caf3e5@edera.io
-
-Changes in v2:
-- drm/virtio: add guard on virtio_gpu_transfer_to_host_ioctl.
-- Link to v1: https://lore.kernel.org/r/20260814-virtgpu-from-host-sync-v1-1-814e3afb5b08@edera.io
----
- drivers/gpu/drm/virtio/virtgpu_drv.h   |  5 ++++
- drivers/gpu/drm/virtio/virtgpu_ioctl.c | 43 +++++++++++++++++++++++++++++++
- drivers/gpu/drm/virtio/virtgpu_vq.c    | 46 ++++++++++++++++++++++++++++++++++
- 3 files changed, 94 insertions(+)
-
-diff --git a/drivers/gpu/drm/virtio/virtgpu_drv.h b/drivers/gpu/drm/virtio/virtgpu_drv.h
-index 626aadf680bd..5faff0d1861d 100644
---- a/drivers/gpu/drm/virtio/virtgpu_drv.h
-+++ b/drivers/gpu/drm/virtio/virtgpu_drv.h
-@@ -114,6 +114,8 @@ struct virtio_gpu_object {
- 	bool dumb;
- 	bool created;
- 	bool attached;
-+	/* a guest-bound transfer is queued and its mapping not yet synced */
-+	bool from_host_pending;
- 	bool host3d_blob, guest_blob;
- 	uint32_t blob_mem, blob_flags;
+diff --git a/rust/kernel/fmt.rs b/rust/kernel/fmt.rs
+index 29582b053ab1f..b3902e02f1c1d 100644
+--- a/rust/kernel/fmt.rs
++++ b/rust/kernel/fmt.rs
+@@ -215,83 +215,40 @@ fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+ #[macros::kunit_tests(rust_kernel_fmt)]
+ mod tests {
+     use crate::{
+-        bindings,
+         prelude::fmt,
+         str::CString, //
+     };
  
-@@ -192,6 +194,9 @@ struct virtio_gpu_vbuffer {
- 	struct list_head list;
+     #[cfg(CONFIG_64BIT)]
+-    mod expected {
+-        pub(super) const PTR_VALUE: usize = 0xffffffffdeadbeef;
+-        pub(super) const PTR_VAL_NO_CRNG: &str = "(____ptrval____)";
+-        pub(super) const HASHED_PREFIX: &str = "0x00000000";
+-        pub(super) const RAW_POINTER: &str = "0xffffffffdeadbeef";
+-        pub(super) const PADDED_RIGHT: &str = "      0xffffffffdeadbeef";
+-        pub(super) const ZERO_PADDED: &str = "0x000000ffffffffdeadbeef";
+-        pub(super) const HASHED_PADDED_RIGHT_PREFIX: &str = "      ";
+-        pub(super) const HASHED_ZERO_PADDED_PREFIX: &str = "0x00000000000000";
+-        pub(super) const CLAMPED: &str = "0x0000000000000ffffffffdeadbeef";
+-    }
++    const PTR_VALUE: usize = 0xffffffffdeadbeef;
  
- 	uint32_t seqno;
-+
-+	/* guest-bound transfer whose shmem backing needs a CPU sync */
-+	bool sync_for_cpu;
- };
+     #[cfg(not(CONFIG_64BIT))]
+-    mod expected {
+-        pub(super) const PTR_VALUE: usize = 0xdeadbeef;
+-        pub(super) const PTR_VAL_NO_CRNG: &str = "(ptrval)";
+-        pub(super) const HASHED_PREFIX: &str = "0x";
+-        pub(super) const RAW_POINTER: &str = "0xdeadbeef";
+-        pub(super) const PADDED_RIGHT: &str = "              0xdeadbeef";
+-        pub(super) const ZERO_PADDED: &str = "0x00000000000000deadbeef";
+-        pub(super) const HASHED_PADDED_RIGHT_PREFIX: &str = "              ";
+-        pub(super) const HASHED_ZERO_PADDED_PREFIX: &str = "0x00000000000000";
+-        pub(super) const CLAMPED: &str = "0x0000000000000000000000deadbeef";
+-    }
++    const PTR_VALUE: usize = 0xdeadbeef;
  
- struct virtio_gpu_output {
-diff --git a/drivers/gpu/drm/virtio/virtgpu_ioctl.c b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-index 3d8e4ccdb7c1..1e2f35b89b92 100644
---- a/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_ioctl.c
-@@ -261,6 +261,27 @@ static int virtio_gpu_transfer_from_host_ioctl(struct drm_device *dev,
- 	if (ret != 0)
- 		goto err_put_free;
+     #[test]
+     fn test_ptr_formatting() -> core::result::Result<(), crate::error::Error> {
+-        let ptr: *const u8 = core::ptr::without_provenance(expected::PTR_VALUE);
++        let ptr: *const u8 = core::ptr::without_provenance(PTR_VALUE);
  
-+	if (virtio_gpu_is_shmem(bo) && virtio_gpu_use_dma_api(vgdev->vdev)) {
-+		/*
-+		 * The sync on completion restores the whole mapping, so an
-+		 * earlier transfer has to be done before this one snapshots it.
-+		 * Otherwise the snapshot predates anything the CPU wrote once
-+		 * that transfer's fence signalled, and the later sync would
-+		 * discard it. Nothing can add a fence behind our back here,
-+		 * since doing so takes the reservation we already hold.
-+		 * This writes the pages, so it waits as a writer does. READ
-+		 * usage covers existing readers.
-+		 */
-+		long wait = dma_resv_wait_timeout(objs->objs[0]->resv,
-+						  DMA_RESV_USAGE_READ, true,
-+						  MAX_SCHEDULE_TIMEOUT);
-+
-+		if (wait < 0) {
-+			ret = wait;
-+			goto err_unlock;
-+		}
-+	}
-+
- 	fence = virtio_gpu_fence_alloc(vgdev, vgdev->fence_drv.context, 0);
- 	if (!fence) {
- 		ret = -ENOMEM;
-@@ -320,6 +341,28 @@ static int virtio_gpu_transfer_to_host_ioctl(struct drm_device *dev, void *data,
- 		if (ret != 0)
- 			goto err_put_free;
+-        // SAFETY: `no_hash_pointers` is a global variable that is never concurrently modified —
+-        // KUnit tests may run at boot (before `mark_readonly()`) or manually afterwards (when the
+-        // variable is read-only). Reading is always safe.
+-        let no_hash = unsafe { bindings::no_hash_pointers };
++        let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
++        let formatted = cstr.to_str()?;
  
-+		/*
-+		 * A transfer the other way may have queued without yet syncing
-+		 * its mapping. Pushing the guest pages into it now would
-+		 * discard what the device wrote there, so wait for that sync:
-+		 * it runs before the fence it belongs to is signalled. The
-+		 * flag is only set under this reservation, so it cannot appear
-+		 * behind our back, and the acquire pairs with the release in
-+		 * that sync, so finding it clear means the pages it wrote are
-+		 * visible here too.
-+		 */
-+		if (smp_load_acquire(&bo->from_host_pending)) {
-+			long wait = dma_resv_wait_timeout(objs->objs[0]->resv,
-+							  DMA_RESV_USAGE_WRITE,
-+							  true,
-+							  MAX_SCHEDULE_TIMEOUT);
-+
-+			if (wait < 0) {
-+				ret = wait;
-+				goto err_unlock;
-+			}
-+		}
-+
- 		ret = -ENOMEM;
- 		fence = virtio_gpu_fence_alloc(vgdev, vgdev->fence_drv.context,
- 					       0);
-diff --git a/drivers/gpu/drm/virtio/virtgpu_vq.c b/drivers/gpu/drm/virtio/virtgpu_vq.c
-index 5e9b7b192db0..f444e9ce49d8 100644
---- a/drivers/gpu/drm/virtio/virtgpu_vq.c
-+++ b/drivers/gpu/drm/virtio/virtgpu_vq.c
-@@ -256,6 +256,33 @@ void virtio_gpu_dequeue_ctrl_func(struct work_struct *work)
- 	} while (!virtqueue_enable_cb(vgdev->ctrlq.vq));
- 	spin_unlock(&vgdev->ctrlq.qlock);
+-        if no_hash {
+-            let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
+-            assert_eq!(cstr.to_str()?, expected::RAW_POINTER);
++        // If the RNG is not ready yet, `%p` falls back to `"(ptrval)"` / `"(____ptrval____)"`.
++        let base = formatted.strip_prefix("0x").unwrap_or(formatted);
  
-+	/*
-+	 * Sync guest-bound transfers before signalling anything, so that a
-+	 * waiter cannot read the backing pages while what the device wrote is
-+	 * still in a bounce buffer. This cannot be folded into the loop below:
-+	 * virtio_gpu_fence_event_process() also signals every earlier fence in
-+	 * the same context, so any entry there may signal this entry's fence.
-+	 */
-+	list_for_each_entry(entry, &reclaim_list, list) {
-+		if (entry->sync_for_cpu) {
-+			struct virtio_gpu_object *bo =
-+				gem_to_virtio_gpu_obj(entry->objs->objs[0]);
-+
-+			dma_sync_sgtable_for_cpu(vgdev->vdev->dev.parent,
-+						 bo->base.sgt, DMA_FROM_DEVICE);
-+			/*
-+			 * Release, so a transfer the other way that skips its
-+			 * wait on the strength of this cannot go on to read
-+			 * the backing pages before the sync above is visible.
-+			 * Nothing orders the two otherwise: where the mapping
-+			 * bounces on a coherent device the sync is a plain
-+			 * copy, and dma_direct_sync_sg_for_cpu() emits its
-+			 * barrier only for the non-coherent case.
-+			 */
-+			smp_store_release(&bo->from_host_pending, false);
-+		}
-+	}
-+
- 	list_for_each_entry(entry, &reclaim_list, list) {
- 		resp = (struct virtio_gpu_ctrl_hdr *)entry->resp_buf;
+-            let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
+-            assert_eq!(cstr.to_str()?, expected::PADDED_RIGHT);
++        let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
++        let padded = cstr.to_str()?;
++        assert!(padded.ends_with(base));
++        assert_eq!(padded.len(), 24);
  
-@@ -1238,12 +1265,31 @@ void virtio_gpu_cmd_transfer_from_host_3d(struct virtio_gpu_device *vgdev,
- 	struct virtio_gpu_object *bo = gem_to_virtio_gpu_obj(objs->objs[0]);
- 	struct virtio_gpu_transfer_host_3d *cmd_p;
- 	struct virtio_gpu_vbuffer *vbuf;
-+	bool use_dma_api = virtio_gpu_use_dma_api(vgdev->vdev);
+-            let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
+-            assert_eq!(cstr.to_str()?, expected::ZERO_PADDED);
++        let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
++        let zero_padded = cstr.to_str()?;
++        assert!(zero_padded.ends_with(base));
++        assert_eq!(zero_padded.len(), 24);
  
- 	cmd_p = virtio_gpu_alloc_cmd(vgdev, &vbuf, sizeof(*cmd_p));
- 	memset(cmd_p, 0, sizeof(*cmd_p));
+-            let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
+-            assert_eq!(cstr.to_str()?, expected::CLAMPED);
+-        } else {
+-            let cstr = CString::try_from_fmt(fmt!("{:p}", ptr))?;
+-            let formatted = cstr.to_str()?;
+-            // If the RNG is not yet ready, `%p` falls back to a placeholder.
+-            if formatted == expected::PTR_VAL_NO_CRNG {
+-                return Ok(());
+-            }
+-            assert!(formatted.starts_with(expected::HASHED_PREFIX));
+-            assert_ne!(formatted, expected::RAW_POINTER);
+-
+-            let cstr = CString::try_from_fmt(fmt!("{:>24p}", ptr))?;
+-            assert!(cstr
+-                .to_str()?
+-                .starts_with(expected::HASHED_PADDED_RIGHT_PREFIX));
+-
+-            let cstr = CString::try_from_fmt(fmt!("{:024p}", ptr))?;
+-            assert!(cstr
+-                .to_str()?
+-                .starts_with(expected::HASHED_ZERO_PADDED_PREFIX));
+-
+-            let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
+-            let output = cstr.to_str()?;
+-            assert!(output.starts_with("0x"));
+-            assert!(!output[2..].chars().all(|c| c == '0'));
+-        }
++        let cstr = CString::try_from_fmt(fmt!("{:0100p}", ptr))?;
++        let clamped = cstr.to_str()?;
++        assert!(clamped.ends_with(base));
++        assert_eq!(clamped.len(), 31);
  
- 	vbuf->objs = objs;
- 
-+	if (virtio_gpu_is_shmem(bo) && use_dma_api) {
-+		/*
-+		 * The device writes only the requested box, so prime the
-+		 * mapping with the current contents: otherwise the sync on
-+		 * completion would hand back whatever a bounce buffer held for
-+		 * the regions the device does not touch.
-+		 */
-+		dma_sync_sgtable_for_device(vgdev->vdev->dev.parent,
-+					    bo->base.sgt, DMA_TO_DEVICE);
-+		vbuf->sync_for_cpu = true;
-+		/*
-+		 * Set under the reservation the caller holds, so a transfer
-+		 * the other way cannot miss it and push the guest pages into
-+		 * the mapping while the device still owns it.
-+		 */
-+		WRITE_ONCE(bo->from_host_pending, true);
-+	}
-+
- 	cmd_p->hdr.type = cpu_to_le32(VIRTIO_GPU_CMD_TRANSFER_FROM_HOST_3D);
- 	cmd_p->hdr.ctx_id = cpu_to_le32(ctx_id);
- 	cmd_p->resource_id = cpu_to_le32(bo->hw_res_handle);
+         Ok(())
+     }
 
 ---
-base-commit: 6a736d2f9d0c6e6217fe7532bc4c50ceca71db78
-change-id: 20260814-virtgpu-from-host-sync-81dbd2c75c84
+base-commit: be387b625933ee12ed230b1c2af5e14f946c3040
+change-id: 20260814-b4-hashedptr-followup-27a4d737f377
 
 Best regards,
 -- 
-Benjamin Leggett <benjamin@edera.io>
+Ke Sun <sunke@kylinos.cn>
 
