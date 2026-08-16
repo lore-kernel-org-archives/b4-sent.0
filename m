@@ -1,15 +1,12 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH 0/3] NFSv4/pnfs: LAYOUTSTATS overflow, DS cache aliasing,
- lseg leak
-Date: Sun, 16 Aug 2026 16:01:26 +0800
-Message-Id: <20260816-nfs4-fixes-v1-0-a810f21729ab@outlook.com>
+Date: Sun, 16 Aug 2026 16:01:27 +0800
+Subject: [PATCH 1/3] NFSv4.2: fix LAYOUTSTATS send buffer exhaustion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFdugWoC/x2LQQqAIBAAvyJ7TlApsb4SHazW2ouFCxGIf2/pO
- MxMBcZCyDCpCgUfYrqygO0UbGfMB2rahcEZ502wXufEvU70ImtM0YTVej+MFmS4C/5C+nlp7QO
- UOy8KXAAAAA==
-X-Change-ID: 20260816-nfs4-fixes-efa08b166591
+Message-Id: <20260816-nfs4-fixes-v1-1-a810f21729ab@outlook.com>
+References: <20260816-nfs4-fixes-v1-0-a810f21729ab@outlook.com>
+In-Reply-To: <20260816-nfs4-fixes-v1-0-a810f21729ab@outlook.com>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
  Peng Tao <tao.peng@primarydata.com>, 
  Jeff Layton <jeff.layton@primarydata.com>, 
@@ -22,64 +19,64 @@ Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2261;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1940;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=ugIdjCPx7Q44lWqGntaI4myy9Ts7PbfRvgOhT5lVeFU=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMa8KBV1LqFvtlsyOHozLz+tNuQ69vRB/TyTGVxne
- RqeiwUxm3eUsjCIcTHIiimyHC+49M3Cd4vuFp8tyTBzWJlAhjBwcQrARJ5qMvxT/rB1u2b8krdr
- 1zAoCjt8asnZt75JL2BiK+vNDK1dM4UTGRm2mCxzTEpWZhFk72x4PmF5a9C1V7MW7gr4YSwxfeK
- +E5xsAEHIR34=
+ bh=4WLBba8p7bwGAneqhTqmcyaXp3xOnrgg5APLE5Akwfw=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMa8aObCHElOMalOsUVr5u+QsLd4nMyhIbP2U+Py5
+ HpGx23vvnWUsjCIcTHIiimyHC+49M3Cd4vuFp8tyTBzWJlAhjBwcQrAROrOMDI8jQl5MC0yeea8
+ nCvKP36oM3qn7Z0fX7guZU/wJdFC63nmjAx/mjvautqNKhb8WXr/t8L+1y0TlslUcy6aYTlVuGF
+ +qSofACusSMo=
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Three independent pNFS client fixes, all in paths that consume data the
-server gets to choose. They touch different files and can be applied in
-any order.
+encode_layoutstats_maxsz budgets XDR_QUADLEN(PNFS_LAYOUTSTATS_MAXSIZE),
+i.e. 256 bytes, for the layoutupdate4 body written by the layout driver.
+The flexfiles record can exceed that.
 
-Patch 1 raises PNFS_LAYOUTSTATS_MAXSIZE. encode_layoutstats_maxsz
-reserves 256 bytes for the layoutupdate4 body, but a flexfiles record
-whose data server filehandle approaches NFS_MAXFHSIZE already exceeds
-that before the netaddr4 is encoded at all. The encoder then walks past
-the end of the send buffer while dss_info->mirror->lock is held, and
-that lock is never released.
+ff_layout_encode_ff_layoutupdate() emits, per data server, a netaddr4,
+an nfs_fh4, two ff_io_latency4, an nfstime4 and a bool.  A data server
+whose filehandle is NFS_MAXFHSIZE bytes long already accounts for 132 of
+those bytes, and the two ff_io_latency4 at 64 bytes each, the nfstime4
+and the bool add a further 144, so the body passes 256 bytes before the
+netaddr4 is encoded at all.  encode_layoutstats() additionally writes
+the deviceid4 and the layoutupdate4 lou_type word, neither of which the
+macro accounts for.
 
-Patch 2 adds the NFS version to the per-net data server cache key.
-nfs4_pnfs_ds_add() matches on the multipath address set alone, which is
-enough for the files layout driver because it always connects with
-version 4, but flexfiles takes its version tuple from GETDEVICEINFO per
-device. One address serving both NFSv3 and NFSv4 - a legitimate
-configuration - collapses into a single nfs4_pnfs_ds, and whichever
-mirror connects first pins ds_clp to its own version; the other one then
-selects rpc_call_ops for a version the connection does not speak.
+The filehandle and the address are both chosen by the server, through
+LAYOUTGET and GETDEVICEINFO, so it can drive the encoder past the
+end of the send buffer.  xdr_reserve_space() returns NULL once that
+happens, and the two ff_layout_encode_io_latency() calls run with
+dss_info->mirror->lock held, so a NULL return there leaves the lock
+permanently held.
 
-Patch 3 restores the pnfs_free_lseg_list() call on the out_forget path
-of pnfs_layout_process(). The drain was added by 814b84971388, dropped
-by 08bd8dbe8882 when the destination became lo->plh_return_segs (which
-is drained elsewhere), and not restored by fb700ef02676 when the
-destination went back to the on-stack free_me.
+Raise PNFS_LAYOUTSTATS_MAXSIZE to 384 so that the record fits inside the
+reservation.
 
+Fixes: 27c430644369 ("pnfs/flexfiles: encode LAYOUTSTATS flexfiles specific data")
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
-
 ---
-Junrui Luo (3):
-      NFSv4.2: fix LAYOUTSTATS send buffer exhaustion
-      NFSv4/pnfs: key the data server cache on the NFS version
-      NFSv4.1: fix layout segment leak on the pnfs_layout_process() forget path
+ include/linux/nfs_xdr.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- fs/nfs/filelayout/filelayoutdev.c         |  3 ++-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  3 ++-
- fs/nfs/pnfs.c                             |  1 +
- fs/nfs/pnfs.h                             |  3 ++-
- fs/nfs/pnfs_nfs.c                         | 14 +++++++++-----
- include/linux/nfs_xdr.h                   |  2 +-
- 6 files changed, 17 insertions(+), 9 deletions(-)
----
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260816-nfs4-fixes-efa08b166591
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 11c5b31cfc7d..e8144048cd0e 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -354,7 +354,7 @@ struct nfs4_layoutreturn {
+ 	struct nfs4_xdr_opaque_data ld_private;
+ };
+ 
+-#define PNFS_LAYOUTSTATS_MAXSIZE 256
++#define PNFS_LAYOUTSTATS_MAXSIZE 384
+ 
+ struct nfs42_layoutstat_args;
+ struct nfs42_layoutstat_devinfo;
 
-Best regards,
 -- 
-Junrui Luo <moonafterrain@outlook.com>
+2.51.2
 
