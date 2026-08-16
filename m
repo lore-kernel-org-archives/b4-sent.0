@@ -1,79 +1,58 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Sun, 16 Aug 2026 16:01:29 +0800
-Subject: [PATCH 3/3] NFSv4.1: fix layout segment leak on the
- pnfs_layout_process() forget path
+From: Muzaffer Kadir <muzafferkadir@mainlining.org>
+Subject: [PATCH 0/2] Add pinctrl support for MSM8952
+Date: Sun, 16 Aug 2026 16:48:29 +0300
+Message-Id: <20260816-msm8952-pinctrl-v1-0-a7272bcd2187@mainlining.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260816-nfs4-fixes-v1-3-a810f21729ab@outlook.com>
-References: <20260816-nfs4-fixes-v1-0-a810f21729ab@outlook.com>
-In-Reply-To: <20260816-nfs4-fixes-v1-0-a810f21729ab@outlook.com>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Peng Tao <tao.peng@primarydata.com>, 
- Jeff Layton <jeff.layton@primarydata.com>, 
- Tao Peng <bergwolf@primarydata.com>, 
- Weston Andros Adamson <dros@primarydata.com>, 
- Tom Haynes <loghyr@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Trond Myklebust <trond.myklebust@hammerspace.com>, 
- Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
- stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avIrBNyKNGuEi3KphpIE40IorsnL
+ d/i/wcyJaYMnXgg0cWZj1CgKgFuG8NKkudiwBp1bZSWPntjW5SRgzvTLieH09yYxqJWUKqYaOH
+ 7P/bD+34H7QynYQAAAA==
+X-Change-ID: 20260816-msm8952-pinctrl-bc2bd4849261
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1716;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=D7n3g4lGtcu9wd31yKYC70rrbF3Z2OQe2hWQ9E6cyoE=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMa8aCsPPc09OY/XHnCMW8+2K/SJ5kWFCefeN3Dfe
- GT7r/uC2NSOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmMidbIb/CQrbXQ4lT5Jm
- 3/R91rknK8vSd72ZvWHFlX0zPC9v2SF0fjcjw6Wt1x9c9agWLMj8Vbr8AM+kaWn5LOwFl+TdNq/
- suLCPgxEApqFPaA==
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786888114; l=1113;
+ i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
+ bh=hax40JvGfGceqZVis9K771ku6lFmRrEHVKGcqZpvT1A=;
+ b=pJT5qLFodtWLVsO4kFHp1fpYn+TFtUyNvVdZjf+mnvMIgbHe3aEZvmw8E5TS3+5cdocOkTSwj
+ g5eeSJAHj4ADjVlZOCDlmPp/KAUkjJCr5kRv7OQy6QmjzlpMFsfyN3l
+X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
+ pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
+X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the server returns a new layout stateid while a valid one is still
-held, pnfs_layout_process() calls pnfs_mark_matching_lsegs_return() on
-the on-stack free_me list and jumps to out_forget. Segments whose
-reference count drops to zero are unlinked from lo->plh_segs and moved
-to free_me by mark_lseg_invalid(); for an idle cached segment the layout
-header holds the only reference, so this happens on the first decrement.
+MSM8952 has pinctrl system that is similar to MSM8917 pinctrl, but it
+has some differences in some of the pins and their functions.
+This driver was tested on General Mobile GM 5 Plus
+(shamrock) using my own kernel fork [1].
+I'm holding off on sending the GCC (Global Clock
+Controller) driver and initial device tree until I've resolved some
+outstanding bugs in the GCC driver.
 
-out_forget never drains free_me -- only the success path calls
-pnfs_free_lseg_list().
+[1] https://github.com/kadir1243/linux
 
-Commit 814b84971388 ("pNFS/NFSv4: Fix a layout segment leak in
-pnfs_layout_process()") added the drain; commit 08bd8dbe8882
-("pNFS/NFSv4: Try to return invalid layout in pnfs_layout_process()")
-removed it while switching the destination to lo->plh_return_segs, which
-is drained elsewhere. Commit fb700ef02676 ("NFSv4.1: Simplify layout
-return in pnfs_layout_process()") switched the destination back to
-free_me without restoring the drain.
-
-Restore the pnfs_free_lseg_list() call.
-
-Fixes: fb700ef02676 ("NFSv4.1: Simplify layout return in pnfs_layout_process()")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- fs/nfs/pnfs.c | 1 +
- 1 file changed, 1 insertion(+)
+Muzaffer Kadir (2):
+      dt-bindings: pinctrl: qcom: Add MSM8952 pinctrl
+      pinctrl: qcom: Add MSM8952 tlmm pinctrl driver
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7715e2bd5871..a3d2ffc9daa5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2643,6 +2643,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	spin_unlock(&ino->i_lock);
- 	lseg->pls_layout = lo;
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-+	pnfs_free_lseg_list(&free_me);
- 	return ERR_PTR(-EAGAIN);
- }
- 
+ .../bindings/pinctrl/qcom,msm8952-pinctrl.yaml     |  155 +++
+ drivers/pinctrl/qcom/Kconfig.msm                   |    6 +
+ drivers/pinctrl/qcom/Makefile                      |    1 +
+ drivers/pinctrl/qcom/pinctrl-msm8952.c             | 1248 ++++++++++++++++++++
+ 4 files changed, 1410 insertions(+)
+---
+base-commit: 22eb4b80c0ab1aac513cca427a16de8986f3301e
+change-id: 20260816-msm8952-pinctrl-bc2bd4849261
 
+Best regards,
 -- 
-2.51.2
+Muzaffer Kadir <muzafferkadir@mainlining.org>
 
