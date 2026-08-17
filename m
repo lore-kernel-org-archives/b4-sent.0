@@ -1,15 +1,13 @@
 From: Junrui Luo <moonafterrain@outlook.com>
-Subject: [PATCH 0/2] drm/nouveau: fix out-of-bounds VRAM access and VM_BIND
- page-size mismatch
-Date: Mon, 17 Aug 2026 14:50:39 +0800
-Message-Id: <20260817-nouveau-fixes-v1-0-f518d0c735f3@outlook.com>
+Date: Mon, 17 Aug 2026 14:50:40 +0800
+Subject: [PATCH 1/2] drm/nouveau/dmem: pin VRAM for the whole registered
+ range
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAD+vgmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDC0Nz3bz80rLUxFLdtMyK1GJdI2MLc3MLE9Nk48QkJaCegqJUsARQS3R
- sbS0AIPyWx18AAAA=
-X-Change-ID: 20260817-nouveau-fixes-23877845c3ab
+Message-Id: <20260817-nouveau-fixes-v1-1-f518d0c735f3@outlook.com>
+References: <20260817-nouveau-fixes-v1-0-f518d0c735f3@outlook.com>
+In-Reply-To: <20260817-nouveau-fixes-v1-0-f518d0c735f3@outlook.com>
 To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
@@ -22,48 +20,55 @@ Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org,
  linux-kernel@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>, 
  Yuhao Jiang <danisjiang@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1329;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1569;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=u/VaKggcAOLEcGn3Y0lUjyHfOlHj39Ku/qCdC+XjX+M=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrKb1DskN65l1HvV2Gn0WWd6l+6pxq8KdBMs357hnN
- vsvjuD/u6yjlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJjLvKMN/n93uaXl7lH71
- 1PQdu5PkcFuIQ8bm/rFZF7nfTKpRul9yg5HhSv2bRfWmDg8lLzxYPynz1d1VPnPquyp/v2qXF2n
- qm72bGwBBAE9E
+ bh=JWyT9l1BGNNzUOMeazwU1aUewzuACkAELT3y3ijb100=;
+ b=kA0DAAoWceg4UIuO8EAByyZiAGqCr0Gia1eSm2iWLYigw1j3zlknOQqpGbukRHCvB7tZSeHHK
+ 4h1BAAWCgAdFiEEx3DS9jhNtC20TLRjceg4UIuO8EAFAmqCr0EACgkQceg4UIuO8EBu7wEAvphn
+ +7tRZx/3bKNUMnkzJnovZ17334oxd+Xun10yN7gA+wY0GrtObNtbcC+rhjGswyHDmreHedTP47s
+ SD0tqP8QB
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Two unrelated fixes; they touch different files and can be applied
-independently.
+Commit c32287471077 ("gpu/drm/nouveau: enable THP support for GPU memory
+migration") grew the device-private region that
+nouveau_dmem_chunk_alloc() registers from DMEM_CHUNK_SIZE to
+DMEM_CHUNK_SIZE * NR_CHUNKS, but left the VRAM buffer object backing that
+region at DMEM_CHUNK_SIZE.
 
-Patch 1 sizes the VRAM buffer object backing a device-private region to
-the region it actually backs. The region grew to DMEM_CHUNK_SIZE *
-NR_CHUNKS while the buffer object stayed at DMEM_CHUNK_SIZE, so
-nouveau_dmem_page_addr() resolves every page past the first chunk to VRAM
-outside the object.
+nouveau_dmem_page_addr() returns chunk->bo->offset plus the page's offset
+within the registered region, so every page past the first chunk resolves
+to VRAM outside the buffer object.
 
-Patch 2 rejects a VM_BIND that replaces a mapping with one using a
-different page size. A new mapping takes over the page tables of the
-mappings it replaces, which only holds while they all use the same page
-size. Since select_page_shift() started deriving one per mapping it no
-longer does, and the new mapping ends up mapping at a size its page
-tables were never built for.
+Size the buffer object to the region it backs.
 
+Fixes: c32287471077 ("gpu/drm/nouveau: enable THP support for GPU memory migration")
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
-Junrui Luo (2):
-      drm/nouveau/dmem: pin VRAM for the whole registered range
-      drm/nouveau/uvmm: reject replace across page sizes
+ drivers/gpu/drm/nouveau/nouveau_dmem.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- drivers/gpu/drm/nouveau/nouveau_dmem.c |  4 ++--
- drivers/gpu/drm/nouveau/nouveau_uvmm.c | 33 ++++++++++++++++++++++++++++++++-
- 2 files changed, 34 insertions(+), 3 deletions(-)
----
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260817-nouveau-fixes-23877845c3ab
+diff --git a/drivers/gpu/drm/nouveau/nouveau_dmem.c b/drivers/gpu/drm/nouveau/nouveau_dmem.c
+index 9442ec6e1f6c..356ff8f3c1b8 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_dmem.c
++++ b/drivers/gpu/drm/nouveau/nouveau_dmem.c
+@@ -325,8 +325,8 @@ nouveau_dmem_chunk_alloc(struct nouveau_drm *drm, struct page **ppage,
+ 	chunk->pagemap.ops = &nouveau_dmem_pagemap_ops;
+ 	chunk->pagemap.owner = drm->dev;
+ 
+-	ret = nouveau_bo_new_pin(&drm->client, NOUVEAU_GEM_DOMAIN_VRAM, DMEM_CHUNK_SIZE,
+-				 &chunk->bo);
++	ret = nouveau_bo_new_pin(&drm->client, NOUVEAU_GEM_DOMAIN_VRAM,
++				 DMEM_CHUNK_SIZE * NR_CHUNKS, &chunk->bo);
+ 	if (ret)
+ 		goto out_release;
+ 
 
-Best regards,
 -- 
-Junrui Luo <moonafterrain@outlook.com>
+2.51.2
 
