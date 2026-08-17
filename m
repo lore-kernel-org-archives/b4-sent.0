@@ -1,83 +1,62 @@
-From: Junrui Luo <moonafterrain@outlook.com>
-Date: Mon, 17 Aug 2026 17:13:53 +0800
-Subject: [PATCH] staging: sm750fb: do not program the PLL from an
- uninitialized value
+From: Aiden Isik <aidenisik@member.fsf.org>
+Subject: [PATCH 0/2] Hi there,
+Date: Mon, 17 Aug 2026 11:11:44 +0100
+Message-Id: <20260817-for-next-lucky7-chipid-v1-0-eb2908705c0d@member.fsf.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-sm750-fixes-v1-1-978c617e5a20@outlook.com>
-X-B4-Tracking: v=1; b=H4sIANDQgmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDC0Nz3eJcc1MD3bTMitRiXRMzMwsTy5TEtLTUZCWgjoKiVLAEUEN0bG0
- tAHPAqKhdAAAA
-X-Change-ID: 20260817-sm750-fixes-466849daffec
-To: Sudip Mukherjee <sudipm.mukherjee@gmail.com>, 
- Teddy Wang <teddy.wang@siliconmotion.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-fbdev@vger.kernel.org, linux-staging@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Yuhao Jiang <danisjiang@gmail.com>, 
- stable@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2027;
- i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=HRMgLoAPLRsSpD1hPS4ZSJd8u0h8YfDKEqXGyACQ3KI=;
- b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrKYLF7+ZplxYUJTrlGCg+81odz9f3BKDHbNut7Mu+
- iG7vlOizryjlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJpJ4ipFhrV/XRqlP5zV/
- r9CNe7M75Nnd6e+TVv6Y0lm4Ye6BTg51DUaG21+/N/kUh97OmvvB46iYR4ChVFHRtWVsnJNjd1U
- J3JBnBwBydUz9
-X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
- fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
-X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
+X-B4-Tracking: v=1; b=H4sIAGDegmoC/yXMQQ6CMBBG4auQWTsJEK3gVQwLGH5k1BTSFlPTc
+ HerLr/Fe4k8nMLTpUjk8FKvi82oDgXJ3NsbWMdsqsvalE114mlxbBEDPzd5vM8ss646MkRwbI0
+ 0Zmgpx6vDpPE3vnZ/+224Q8L3Rvv+AXE+4tJ6AAAA
+X-Change-ID: 20260815-for-next-lucky7-chipid-ecce496c86b9
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aiden Isik <aidenisik+git@member.fsf.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=760;
+ i=aidenisik@member.fsf.org; h=from:subject:message-id;
+ bh=HBymSy0e8V1Jdo3HydqtzVX4WJvfuiz0AeM/kPrBAho=;
+ b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqgt5ikqtrRi9zC5WphlCcPFX8+LqrSpK0WCl/O
+ YMXUIuPtquJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoLeYgAKCRBJJwGyxHrX
+ 6/cXEADNUPtRxwYaI87hahphr8JmnU/eihs96reJnyIwHeK4Q81v34q+MMmk3Ztxm29PDT57p0f
+ SRqG8QJHZ5k3TOhhA3qTjbN/tvx6W093AAhA9TnvkZ57TdeP4VUlDCdi0Z/nKsg4sG4xdpwkIxe
+ agUvqoyzLeBFcuym0EhQe75nRGvyRmVCxW7t0+HP6tZoVC9lbdKN6EOCGmBDYNeIS4au58yqU20
+ UEK87Lk0sqWFFtsJmgUx2UFQKwNGu5R7xZaifr+T1k2JfjLOW43/4AP/Mgg6Ex2uaM/oFiRY09x
+ tjxNsClfBB/FboFsvAa40jPyXuWZcUPiDPhEPU+ZRlfQIrqMkE8wMguJDaegIRFZjFZnXnHBNC5
+ skKlydIu87+QXlTEsr7oHLuvQrjYWaxRtNIZyB1E1n5TJt9EcUZ6NeenUDRTHCSwsspkvwsduyg
+ 6bRfxNu3bsxynLUSkDYpB6xGorJo2equ16wofTWyB6fn/vYbdT859ou9nLfNoY8M7XdeB/0/6Ya
+ kV86yXhrkf2/YnmWCMSL4l3FdjtqKIglXwhwg4Guf8GioKYi8s5TsKe+7UplE8RfBG1R62oqWw9
+ a3GePb9GVkkzGSn6Q6Max+Iz8Xfy8Vp0l/QsQdnsrysUFf9PbU8X9cxOAYaGs6aBVzhf8UxH+nV
+ gnuNHLUgrBN7H7Q==
+X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
+ fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
+X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sm750_calc_pll_value() writes pll->M, N, OD and POD only when its search
-loop finds a divider combination with 0 < M < 256, and returns 0 when
-there is none. ddk750_set_mode_timing() discards that return value and
-calls program_mode_registers() regardless, so sm750_format_pll_reg()
-reads the four members uninitialized and pokes them into PANEL_PLL_CTRL
-or CRT_PLL_CTRL. Nothing bounds var->pixclock on the way in, so a mode
-set can ask for a clock the loop cannot represent.
+This patchset adds support for the Exynos5515 SoC's chipid to the
+chipid driver, and documents the samsung,exynos5515-chipid compatible.
 
-Consume the return value and reject the mode; hw_sm750_crtc_set_mode()
-already propagates a non-zero return. Initialize the structure as well:
-sm750_calc_pll_value() returns early for SM750LE without writing the
-members, and returns non-zero on that path.
+Kind regards,
+- Aiden Isik
 
-Fixes: 81dee67e215b ("staging: sm750fb: add sm750 to staging")
-Reported-by: Yuhao Jiang <danisjiang@gmail.com>
-Assisted-by: Claude:claude-opus-5
-Cc: stable@vger.kernel.org
-Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
+Signed-off-by: Aiden Isik <aidenisik+git@member.fsf.org>
 ---
- drivers/staging/sm750fb/ddk750_mode.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Aiden Isik (2):
+      dt-bindings: hwinfo: samsung,exynos-chipid: Add exynos5515 compatible
+      soc: samsung: exynos-chipid: Add exynos5515 SoC support
 
-diff --git a/drivers/staging/sm750fb/ddk750_mode.c b/drivers/staging/sm750fb/ddk750_mode.c
-index 7163232c0701..5ff5226fe77a 100644
---- a/drivers/staging/sm750fb/ddk750_mode.c
-+++ b/drivers/staging/sm750fb/ddk750_mode.c
-@@ -205,12 +205,14 @@ static void program_mode_registers(struct mode_parameter *mode_param,
- 
- int ddk750_set_mode_timing(struct mode_parameter *parm, enum clock_type clock)
- {
--	struct pll_value pll;
-+	struct pll_value pll = {};
- 
- 	pll.input_freq = DEFAULT_INPUT_CLOCK;
- 	pll.clock_type = clock;
- 
--	sm750_calc_pll_value(parm->pixel_clock, &pll);
-+	if (!sm750_calc_pll_value(parm->pixel_clock, &pll))
-+		return -EINVAL;
-+
- 	if (sm750_get_chip_type() == SM750LE) {
- 		/* set graphic mode via IO method */
- 		outb_p(0x88, 0x3d4);
-
+ Documentation/devicetree/bindings/hwinfo/samsung,exynos-chipid.yaml | 1 +
+ drivers/soc/samsung/exynos-chipid.c                                 | 1 +
+ 2 files changed, 2 insertions(+)
 ---
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260817-sm750-fixes-466849daffec
+base-commit: acde40ba506aae78633e080b5704d33cf4bc13c6
+change-id: 20260815-for-next-lucky7-chipid-ecce496c86b9
 
 Best regards,
--- 
-Junrui Luo <moonafterrain@outlook.com>
+--  
+Aiden Isik <aidenisik@member.fsf.org>
 
