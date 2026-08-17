@@ -1,98 +1,312 @@
-From: r-vdp <ramses@well-founded.dev>
-Date: Mon, 17 Aug 2026 12:47:27 +0200
-Subject: [PATCH net] bonding: fix initial last_rx vs ARP-monitor slack
- window
+From: Antonin Malzieu Ridolfi <dev@nanonej.com>
+Date: Mon, 17 Aug 2026 18:51:08 +0200
+Subject: [PATCH v2] gpu: nova-core: Extract PMC registers definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-bonding-last-rx-v1-1-9da6f7fdf812@well-founded.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywqDQAwAf0VybiA+UNtfKT2sblYjJZbNtgjiv
- 3dtjzMws4NxFDa4FTtE/ojJqhnKSwHj7HRiFJ8ZKqpa6ssOh1W96IRPZwnjhlRTHRw1fbh6yNU
- rcpDtd7yDcoLHX9p7WHhM5wuO4wuJB1H8eAAAAA==
-X-Change-ID: 20260817-bonding-last-rx-0303fa048f9d
-To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Jiri Bohac <jbohac@suse.cz>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- r-vdp <ramses@well-founded.dev>
+Message-Id: <20260817-b4-extract-pmc-registers-to-gpu-mod-v2-1-9dd1d599deb4@nanonej.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5WOQQqDMBBFryJZd0qMVqOr3qO4iHGqEUxkEsUi3
+ r3RnqDLB5/3/s48kkHP6mRnhKvxxtkI4pYwPSjbI5guMhNcFFzyHNoccAukdIB50kDYGx+QPAQ
+ H/bzA5DooqwxR8FIqkbFomgnfZrsqr+bHfmlH1OFUn4shShx9rhtreu7+K64ppCALzWX1aAtei
+ qdV1lkc79pNrDmO4wsvNfip6gAAAA==
+X-Change-ID: 20260804-b4-extract-pmc-registers-to-gpu-mod-793ee2078a23
+To: Danilo Krummrich <dakr@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, Alice Ryhl <aliceryhl@google.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-kernel@vger.kernel.org, nova-gpu@lists.linux.dev, 
+ dri-devel@lists.freedesktop.org, Antonin Malzieu Ridolfi <dev@nanonej.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786963656; l=3004;
- i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
- bh=YYy+ypt63v5I7wHvlfNPK/qM1ynNfjL53cV7Ib4dBmw=;
- b=cBGB/R1NCtGI6k5mJpJUEfBKPZoardmv+NkK578YfYTPVjl7QOogfNRwIkQZBnJQpg7MRNtUU
- c/hBbir+GCwA0VTeVTO2xneY1kv6PnSgox+V6RZV5Vt+yyPZh4kTvn9
-X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
- pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
-X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
+X-Developer-Signature: v=1; a=openpgp-sha256; l=9357; i=dev@nanonej.com;
+ h=from:subject:message-id; bh=98NidU/GWke4x9fxgV7rWcy4dd8JhZ32lej/Yml+1VA=;
+ b=owEBbQKS/ZANAwAKAWaH8SMKFRX9AcsmYgBqgzwILpHS3vi1dKPyEv7Lg9SY4u5WOwohGrtME
+ zfZA2H/IXOJAjMEAAEKAB0WIQSDtk+wfJEhL1KFIn1mh/EjChUV/QUCaoM8CAAKCRBmh/EjChUV
+ /f59EACThr7kbKuHCTQvbWnJWHJBfdiL9tj2afMMGA6nVjrQhPgdeP5W80/V7caj0xSNPtNE/Vv
+ rSwF8RBTXFuWp6kSMmnF5ylHXZ+wbYousN/w81L99/nGGkLFOEN0xypTRL0AhIdq0aW+rRZjkoA
+ /nM1nYe3uIUpiaF3vXhAC7PBoaGNsSXMgTSBNjOb4ldakLxn9+g84ctAUgLLM1a3BBGBeBhiGZT
+ nMYaEojFfwnbSPlaj3O6M7Twit+1vbtOk9fIpeovKtJ6C7EvPOyViej7mcqZK3HarKPphf1BXi6
+ ngt66YPV6HUKOgvgvVWBm0cIzvYHSX5CZ1/fdEMeB6CDTcuV+WZMWWB4PVCWCK2W6H0e3LCywVh
+ +vfJ/HYxFeHvPFEnh+wO1dTryvaQ3kvYKsU5/oeoIcd4tdakFqxvpvDFmFeFfeqhdHFvnuxpZFq
+ Za5MFbkIAlQLGrWqT0JNkIsmDBqIsn75LN5a+/rv7ok4Bfq3JF0Tk6BPA1OIjFPAJEA6vSO/UZr
+ kSS21koKsjb/00xzb3HudFO/+li0uNRp7lCRGZtXLMIWkc1K2Ie1Rd7bPnktz0IFySIT4Cd4zNA
+ 4bYnuKOWMEntIErtlvAnVUbJ5mZ6aI1e0hF2cB4LjVEgTTXu1T2utQIuG6SMJedCIx066mVLQkD
+ 6GphSHE6L3QzirQ==
+X-Developer-Key: i=dev@nanonej.com; a=openpgp;
+ fpr=83B64FB07C91212F5285227D6687F1230A1515FD
+X-Endpoint-Received: by B4 Relay for dev@nanonej.com/default with auth_id=825
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit f31c7937c254 ("bonding: start slaves with link down for ARP
-monitor") initialises a freshly enslaved port's last_rx to
-jiffies - (arp_interval + 1) so that it does not "immediately cause
-fake detection of 'up' state". At the time, the comparison was a plain
-<= arp_interval and the value was just stale enough.
+Move PMC register definitions (NV_PMC_BOOT_0, NV_PMC_BOOT_42) and
+their associated implementations from the root regs.rs file into the
+gpu module that own them, in the new gpu/regs.rs file.
 
-Commit da210f559019 ("bonding: add some slack to arp monitoring time
-limits"), four months later, added a +arp_interval/2 slack term to
-every comparison (now bond_time_in_interval()) but did not widen the
-init to match. Since then, bond_time_in_interval(bond, last_rx, 1) is
-true for the first ~arp_interval/2 after enslavement even though no
-packet has been received: the upper bound is last_rx + 1.5*delta and
-last_rx was set to jiffies - delta - 1.
+This follows the same pattern established by previous commits for
+GSP, PDISP, PFB, and PBUS registers: register definitions move to
+the module that owns them, visibility changes to pub(super), and
+cross-module access is provided via pub(crate) helper functions.
 
-If the ARP monitor tick lands in that window, bond_ab_arp_inspect()
-proposes the slave UP. If the slave is the configured primary,
-bond_ab_arp_commit() sets do_failover and the still-armed
-force_primary in bond_choose_primary_or_current() makes it the active
-slave regardless of primary_reselect. ARP validation as the active
-slave then fails (the link has not actually received anything; on
-SFP+ ports the PHY is often still negotiating) and the bond falls back
-to the backup. With primary_reselect=failure, force_primary has now
-been spent and the bond stays on the backup until something else
-triggers a reselect.
+Since falcon.rs (outside the gpu module) also reads NV_PMC_BOOT_0 for
+its raw value, a pub(crate) helper function boot_0_raw() is added in
+gpu.rs to provide that access without exposing the register type
+directly.
 
-Reproducer:
-
-  ip link add bond0 type bond mode active-backup arp_interval 1000 \
-      arp_validate all arp_ip_target 192.0.2.1 \
-      primary eth0 primary_reselect failure
-  # eth0: SFP+ (slow link-up), eth1: RJ45 (fast link-up)
-  ip link set eth0 master bond0
-  ip link set eth1 master bond0
-  ip link set bond0 up
-  # bond0 lands on eth0 via force_primary, ARP-fails it before the
-  # SFP+ has carrier, falls to eth1, and stays there.
-
-Initialise last_rx (and the per-target array, and last_tx) to two full
-intervals in the past so it is outside the slack window from the
-start.
-
-Fixes: da210f559019 ("bonding: add some slack to arp monitoring time limits")
-Signed-off-by: r-vdp <ramses@well-founded.dev>
+Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
+Suggested-by: Danilo Krummrich <dakr@kernel.org>
+Signed-off-by: Antonin Malzieu Ridolfi <dev@nanonej.com>
 ---
- drivers/net/bonding/bond_main.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Move PMC register definitions (NV_PMC_BOOT_0, NV_PMC_BOOT_42) and
+their associated implementations from the root regs.rs file into the
+gpu module that own them, in the new gpu/regs.rs file.
 
-diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
-index 522eab060f9ed..23e1544faf39f 100644
---- a/drivers/net/bonding/bond_main.c
-+++ b/drivers/net/bonding/bond_main.c
-@@ -2123,7 +2123,7 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
- 		new_slave->link = BOND_LINK_DOWN;
+This follows the same pattern established by previous commits for
+GSP, PDISP, PFB, and PBUS registers: register definitions move to
+the module that owns them, visibility changes to pub(super), and
+cross-module access is provided via pub(crate) helper functions.
+
+Since falcon.rs (outside the gpu module) also reads NV_PMC_BOOT_0 for
+its raw value, a pub(crate) helper function boot_0_raw() is added in
+gpu.rs to provide that access without exposing the register type
+directly.
+---
+Changes in v2:
+- Fix unused import warning
+- Add forgotten `Suggested-by` tags to the commit
+- Link to v1: https://patch.msgid.link/20260804-b4-extract-pmc-registers-to-gpu-mod-v1-1-86c0895b6072@nanonej.com
+---
+ drivers/gpu/nova-core/falcon.rs   |  2 +-
+ drivers/gpu/nova-core/gpu.rs      |  7 +++-
+ drivers/gpu/nova-core/gpu/regs.rs | 82 +++++++++++++++++++++++++++++++++++++++
+ drivers/gpu/nova-core/regs.rs     | 76 ------------------------------------
+ 4 files changed, 89 insertions(+), 78 deletions(-)
+
+diff --git a/drivers/gpu/nova-core/falcon.rs b/drivers/gpu/nova-core/falcon.rs
+index 65cb12d26e2b..11c1008b7d1e 100644
+--- a/drivers/gpu/nova-core/falcon.rs
++++ b/drivers/gpu/nova-core/falcon.rs
+@@ -394,7 +394,7 @@ pub(crate) fn reset(&self) -> Result {
  
- 	new_slave->last_rx = jiffies -
--		(msecs_to_jiffies(bond->params.arp_interval) + 1);
-+		(2 * msecs_to_jiffies(bond->params.arp_interval) + 1);
- 	for (i = 0; i < BOND_MAX_ARP_TARGETS; i++)
- 		new_slave->target_last_arp_rx[i] = new_slave->last_rx;
+         self.bar.write(
+             WithBase::of::<E>(),
+-            regs::NV_PFALCON_FALCON_RM::from(self.bar.read(regs::NV_PMC_BOOT_0).into_raw()),
++            regs::NV_PFALCON_FALCON_RM::from(crate::gpu::boot_0_raw(self.bar)),
+         );
  
+         Ok(())
+diff --git a/drivers/gpu/nova-core/gpu.rs b/drivers/gpu/nova-core/gpu.rs
+index 42a4cd7971fa..9e4232645a7e 100644
+--- a/drivers/gpu/nova-core/gpu.rs
++++ b/drivers/gpu/nova-core/gpu.rs
+@@ -29,11 +29,11 @@
+         Gsp,
+         GspBootContext, //
+     },
+-    regs,
+     vgpu::VgpuManager, //
+ };
+ 
+ mod hal;
++mod regs;
+ 
+ macro_rules! define_chipset {
+     ({ $($variant:ident = $value:expr),* $(,)* }) =>
+@@ -414,3 +414,8 @@ pub(crate) fn new(
+         })
+     }
+ }
++
++/// Reads the boot0 register and returns its raw value.
++pub(crate) fn boot_0_raw(bar: Bar0<'_>) -> u32 {
++    bar.read(regs::NV_PMC_BOOT_0).into_raw()
++}
+diff --git a/drivers/gpu/nova-core/gpu/regs.rs b/drivers/gpu/nova-core/gpu/regs.rs
+new file mode 100644
+index 000000000000..1c4db9625250
+--- /dev/null
++++ b/drivers/gpu/nova-core/gpu/regs.rs
+@@ -0,0 +1,82 @@
++// SPDX-License-Identifier: GPL-2.0
++
++use kernel::{
++    io::register,
++    prelude::*, //
++};
++
++use super::{
++    Architecture,
++    Chipset, //
++};
++
++// PMC
++
++register! {
++    /// Basic revision information about the GPU.
++    pub(super) NV_PMC_BOOT_0(u32) @ 0x00000000 {
++        /// Lower bits of the architecture.
++        28:24   architecture_0;
++        /// Implementation version of the architecture.
++        23:20   implementation;
++        /// MSB of the architecture.
++        8:8     architecture_1;
++        /// Major revision of the chip.
++        7:4     major_revision;
++        /// Minor revision of the chip.
++        3:0     minor_revision;
++    }
++
++    /// Extended architecture information.
++    pub(super) NV_PMC_BOOT_42(u32) @ 0x00000a00 {
++        /// Architecture value.
++        29:24   architecture ?=> Architecture;
++        /// Implementation version of the architecture.
++        23:20   implementation;
++        /// Major revision of the chip.
++        19:16   major_revision;
++        /// Minor revision of the chip.
++        15:12   minor_revision;
++    }
++}
++
++impl NV_PMC_BOOT_0 {
++    pub(super) fn is_older_than_fermi(self) -> bool {
++        // From https://github.com/NVIDIA/open-gpu-doc/tree/master/manuals :
++        const NV_PMC_BOOT_0_ARCHITECTURE_GF100: u32 = 0xc;
++
++        // Older chips left arch1 zeroed out. That, combined with an arch0 value that is less than
++        // GF100, means "older than Fermi".
++        self.architecture_1() == 0 && self.architecture_0() < NV_PMC_BOOT_0_ARCHITECTURE_GF100
++    }
++}
++
++impl NV_PMC_BOOT_42 {
++    /// Combines `architecture` and `implementation` to obtain a code unique to the chipset.
++    pub(super) fn chipset(self) -> Result<Chipset> {
++        self.architecture()
++            .map(|arch| {
++                ((arch as u32) << Self::IMPLEMENTATION_RANGE.len())
++                    | u32::from(self.implementation())
++            })
++            .and_then(Chipset::try_from)
++    }
++
++    /// Returns the raw architecture value from the register.
++    fn architecture_raw(self) -> u8 {
++        ((self.into_raw() >> Self::ARCHITECTURE_RANGE.start())
++            & ((1 << Self::ARCHITECTURE_RANGE.len()) - 1)) as u8
++    }
++}
++
++impl kernel::fmt::Display for NV_PMC_BOOT_42 {
++    fn fmt(&self, f: &mut kernel::fmt::Formatter<'_>) -> kernel::fmt::Result {
++        write!(
++            f,
++            "boot42 = 0x{:08x} (architecture 0x{:x}, implementation 0x{:x})",
++            self.inner,
++            self.architecture_raw(),
++            self.implementation()
++        )
++    }
++}
+diff --git a/drivers/gpu/nova-core/regs.rs b/drivers/gpu/nova-core/regs.rs
+index caeef4d85874..3422b49df7a7 100644
+--- a/drivers/gpu/nova-core/regs.rs
++++ b/drivers/gpu/nova-core/regs.rs
+@@ -7,7 +7,6 @@
+         register::WithBase,
+         Io, //
+     },
+-    prelude::*,
+     sizes::SizeConstants,
+     time, //
+ };
+@@ -28,83 +27,8 @@
+         PFalconBase,
+         PeregrineCoreSelect, //
+     },
+-    gpu::{
+-        Architecture,
+-        Chipset, //
+-    },
+ };
+ 
+-// PMC
+-
+-register! {
+-    /// Basic revision information about the GPU.
+-    pub(crate) NV_PMC_BOOT_0(u32) @ 0x00000000 {
+-        /// Lower bits of the architecture.
+-        28:24   architecture_0;
+-        /// Implementation version of the architecture.
+-        23:20   implementation;
+-        /// MSB of the architecture.
+-        8:8     architecture_1;
+-        /// Major revision of the chip.
+-        7:4     major_revision;
+-        /// Minor revision of the chip.
+-        3:0     minor_revision;
+-    }
+-
+-    /// Extended architecture information.
+-    pub(crate) NV_PMC_BOOT_42(u32) @ 0x00000a00 {
+-        /// Architecture value.
+-        29:24   architecture ?=> Architecture;
+-        /// Implementation version of the architecture.
+-        23:20   implementation;
+-        /// Major revision of the chip.
+-        19:16   major_revision;
+-        /// Minor revision of the chip.
+-        15:12   minor_revision;
+-    }
+-}
+-
+-impl NV_PMC_BOOT_0 {
+-    pub(crate) fn is_older_than_fermi(self) -> bool {
+-        // From https://github.com/NVIDIA/open-gpu-doc/tree/master/manuals :
+-        const NV_PMC_BOOT_0_ARCHITECTURE_GF100: u32 = 0xc;
+-
+-        // Older chips left arch1 zeroed out. That, combined with an arch0 value that is less than
+-        // GF100, means "older than Fermi".
+-        self.architecture_1() == 0 && self.architecture_0() < NV_PMC_BOOT_0_ARCHITECTURE_GF100
+-    }
+-}
+-
+-impl NV_PMC_BOOT_42 {
+-    /// Combines `architecture` and `implementation` to obtain a code unique to the chipset.
+-    pub(crate) fn chipset(self) -> Result<Chipset> {
+-        self.architecture()
+-            .map(|arch| {
+-                ((arch as u32) << Self::IMPLEMENTATION_RANGE.len())
+-                    | u32::from(self.implementation())
+-            })
+-            .and_then(Chipset::try_from)
+-    }
+-
+-    /// Returns the raw architecture value from the register.
+-    fn architecture_raw(self) -> u8 {
+-        ((self.into_raw() >> Self::ARCHITECTURE_RANGE.start())
+-            & ((1 << Self::ARCHITECTURE_RANGE.len()) - 1)) as u8
+-    }
+-}
+-
+-impl kernel::fmt::Display for NV_PMC_BOOT_42 {
+-    fn fmt(&self, f: &mut kernel::fmt::Formatter<'_>) -> kernel::fmt::Result {
+-        write!(
+-            f,
+-            "boot42 = 0x{:08x} (architecture 0x{:x}, implementation 0x{:x})",
+-            self.inner,
+-            self.architecture_raw(),
+-            self.implementation()
+-        )
+-    }
+-}
+-
+ // PBUS
+ 
+ register! {
 
 ---
-base-commit: 24ef02f934eeb48830cff6b739abc3c62b1d107b
-change-id: 20260817-bonding-last-rx-0303fa048f9d
+base-commit: 4c9ba407018e8deb06dbc643112bac8f40404f95
+change-id: 20260804-b4-extract-pmc-registers-to-gpu-mod-793ee2078a23
 
 Best regards,
 --  
-r-vdp <ramses@well-founded.dev>
+Antonin Malzieu Ridolfi <dev@nanonej.com>
 
