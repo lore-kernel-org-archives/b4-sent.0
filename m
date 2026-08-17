@@ -1,109 +1,83 @@
-From: "Pankaj Gupta (OSS)" <pankaj.gupta@oss.nxp.com>
-Date: Mon, 17 Aug 2026 19:36:05 +0530
-Subject: [PATCH v36 7/7] arm64: dts: imx8ulp: add reserved memory for
- EdgeLock Enclave
+From: Junrui Luo <moonafterrain@outlook.com>
+Date: Mon, 17 Aug 2026 17:13:53 +0800
+Subject: [PATCH] staging: sm750fb: do not program the PLL from an
+ uninitialized value
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-imx-se-if-v36-7-45c42847bfd8@oss.nxp.com>
-References: <20260817-imx-se-if-v36-0-45c42847bfd8@oss.nxp.com>
-In-Reply-To: <20260817-imx-se-if-v36-0-45c42847bfd8@oss.nxp.com>
-To: Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Pankaj Gupta <pankaj.gupta@nxp.com>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786975564; l=2461;
- i=pankaj.gupta@oss.nxp.com; s=20260817; h=from:subject:message-id;
- bh=8LTJ7dQk+ZmHVQUVQ7z2QFEU98qQ6ZendsUWTwEehrU=;
- b=kNn9ncyZJDpBj1uyCMvvkX807Jvm/cy4I27lgIY1p5LnifaDmHYrm+a5GWXYOUBxA9RM8FmB/
- ymYcIipWCUsDME3VniMYbkoR3MSJUt88zHitpeNQEFI8mEAoLbKHRcp
-X-Developer-Key: i=pankaj.gupta@oss.nxp.com; a=ed25519;
- pk=g4ZgzIWbpXnSxRsoH+l6PWLP78a+Mzpl8e6RQe74d5Y=
-X-Endpoint-Received: by B4 Relay for pankaj.gupta@oss.nxp.com/20260817 with auth_id=955
+Message-Id: <20260817-sm750-fixes-v1-1-978c617e5a20@outlook.com>
+X-B4-Tracking: v=1; b=H4sIANDQgmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0Nz3eJcc1MD3bTMitRiXRMzMwsTy5TEtLTUZCWgjoKiVLAEUEN0bG0
+ tAHPAqKhdAAAA
+X-Change-ID: 20260817-sm750-fixes-466849daffec
+To: Sudip Mukherjee <sudipm.mukherjee@gmail.com>, 
+ Teddy Wang <teddy.wang@siliconmotion.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-fbdev@vger.kernel.org, linux-staging@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Yuhao Jiang <danisjiang@gmail.com>, 
+ stable@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2027;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=HRMgLoAPLRsSpD1hPS4ZSJd8u0h8YfDKEqXGyACQ3KI=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrKYLF7+ZplxYUJTrlGCg+81odz9f3BKDHbNut7Mu+
+ iG7vlOizryjlIVBjItBVkyR5XjBpW8Wvlt0t/hsSYaZw8oEMoSBi1MAJpJ4ipFhrV/XRqlP5zV/
+ r9CNe7M75Nnd6e+TVv6Y0lm4Ye6BTg51DUaG21+/N/kUh97OmvvB46iYR4ChVFHRtWVsnJNjd1U
+ J3JBnBwBydUz9
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Pankaj Gupta <pankaj.gupta@nxp.com>
+sm750_calc_pll_value() writes pll->M, N, OD and POD only when its search
+loop finds a divider combination with 0 < M < 256, and returns 0 when
+there is none. ddk750_set_mode_timing() discards that return value and
+calls program_mode_registers() regardless, so sm750_format_pll_reg()
+reads the four members uninitialized and pokes them into PANEL_PLL_CTRL
+or CRT_PLL_CTRL. Nothing bounds var->pixclock on the way in, so a mode
+set can ask for a clock the loop cannot represent.
 
-Reserve 1MB of DDR for the EdgeLock Enclave. The enclave hardware can only
-access DDR in the 0x80000000 - 0xafffffff window, so constrain the pool to
-that range with alloc-ranges and let the kernel choose the placement rather
-than hardcoding an address.
+Consume the return value and reject the mode; hw_sm750_crtc_set_mode()
+already propagates a non-zero return. Initialize the structure as well:
+sm750_calc_pll_value() returns early for SM750LE without writing the
+members, and returns non-zero on that path.
 
-Provide this as a shared imx8ulp-firmware.dtsi that also enables the hsm0
-node and wires up its memory-region, so every i.MX8ULP board can bring up
-the enclave with a single include instead of duplicating the reserved
-memory node. Include it from imx8ulp-evk.
-
-Signed-off-by: Pankaj Gupta <pankaj.gupta@nxp.com>
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
+Fixes: 81dee67e215b ("staging: sm750fb: add sm750 to staging")
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Cc: stable@vger.kernel.org
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- arch/arm64/boot/dts/freescale/imx8ulp-evk.dts      |  3 ++-
- .../arm64/boot/dts/freescale/imx8ulp-firmware.dtsi | 31 ++++++++++++++++++++++
- 2 files changed, 33 insertions(+), 1 deletion(-)
+ drivers/staging/sm750fb/ddk750_mode.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts b/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts
-index 5dea66c1e7aa..885242fd07ce 100644
---- a/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts
-+++ b/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts
-@@ -1,11 +1,12 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
- /*
-- * Copyright 2021 NXP
-+ * Copyright 2021, 2025 NXP
-  */
+diff --git a/drivers/staging/sm750fb/ddk750_mode.c b/drivers/staging/sm750fb/ddk750_mode.c
+index 7163232c0701..5ff5226fe77a 100644
+--- a/drivers/staging/sm750fb/ddk750_mode.c
++++ b/drivers/staging/sm750fb/ddk750_mode.c
+@@ -205,12 +205,14 @@ static void program_mode_registers(struct mode_parameter *mode_param,
  
- /dts-v1/;
+ int ddk750_set_mode_timing(struct mode_parameter *parm, enum clock_type clock)
+ {
+-	struct pll_value pll;
++	struct pll_value pll = {};
  
- #include "imx8ulp.dtsi"
-+#include "imx8ulp-firmware.dtsi"
+ 	pll.input_freq = DEFAULT_INPUT_CLOCK;
+ 	pll.clock_type = clock;
  
- / {
- 	model = "NXP i.MX8ULP EVK";
-diff --git a/arch/arm64/boot/dts/freescale/imx8ulp-firmware.dtsi b/arch/arm64/boot/dts/freescale/imx8ulp-firmware.dtsi
-new file mode 100644
-index 000000000000..e4bc352f68af
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8ulp-firmware.dtsi
-@@ -0,0 +1,31 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright 2025 NXP
-+ *
-+ * Default reserved memory and EdgeLock Enclave (ELE) enablement shared by
-+ * i.MX8ULP boards. Include this from a board dts to bring up the secure
-+ * enclave without having to duplicate the reserved-memory node. The ELE
-+ * hardware can only access DDR in the 0x80000000 - 0xafffffff window, so the
-+ * pool is constrained to that range with alloc-ranges and the kernel is left
-+ * to place the 1 MiB region.
-+ */
+-	sm750_calc_pll_value(parm->pixel_clock, &pll);
++	if (!sm750_calc_pll_value(parm->pixel_clock, &pll))
++		return -EINVAL;
 +
-+/ {
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		ele_reserved: ele-reserved {
-+			compatible = "shared-dma-pool";
-+			alloc-ranges = <0 0x80000000 0 0x30000000>;
-+			size = <0 0x100000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&hsm0 {
-+	memory-region = <&ele_reserved>;
-+	status = "okay";
-+};
+ 	if (sm750_get_chip_type() == SM750LE) {
+ 		/* set graphic mode via IO method */
+ 		outb_p(0x88, 0x3d4);
 
+---
+base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
+change-id: 20260817-sm750-fixes-466849daffec
+
+Best regards,
 -- 
-2.43.0
+Junrui Luo <moonafterrain@outlook.com>
 
