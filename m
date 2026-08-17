@@ -1,312 +1,240 @@
-From: Antonin Malzieu Ridolfi <dev@nanonej.com>
-Date: Mon, 17 Aug 2026 18:51:08 +0200
-Subject: [PATCH v2] gpu: nova-core: Extract PMC registers definitions
+From: Jim Cromie <jim.cromie@gmail.com>
+Subject: [PATCH 0/9] lib/folio_pool: Direct-Map Large Folio Pool &
+ Scratchpad bump allocators
+Date: Mon, 17 Aug 2026 11:22:14 -0600
+Message-Id: <20260817-folio-pool-v1-v1-0-0c1d230aa3af@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-b4-extract-pmc-registers-to-gpu-mod-v2-1-9dd1d599deb4@nanonej.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5WOQQqDMBBFryJZd0qMVqOr3qO4iHGqEUxkEsUi3
- r3RnqDLB5/3/s48kkHP6mRnhKvxxtkI4pYwPSjbI5guMhNcFFzyHNoccAukdIB50kDYGx+QPAQ
- H/bzA5DooqwxR8FIqkbFomgnfZrsqr+bHfmlH1OFUn4shShx9rhtreu7+K64ppCALzWX1aAtei
- qdV1lkc79pNrDmO4wsvNfip6gAAAA==
-X-Change-ID: 20260804-b4-extract-pmc-registers-to-gpu-mod-793ee2078a23
-To: Danilo Krummrich <dakr@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, Alice Ryhl <aliceryhl@google.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-kernel@vger.kernel.org, nova-gpu@lists.linux.dev, 
- dri-devel@lists.freedesktop.org, Antonin Malzieu Ridolfi <dev@nanonej.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9357; i=dev@nanonej.com;
- h=from:subject:message-id; bh=98NidU/GWke4x9fxgV7rWcy4dd8JhZ32lej/Yml+1VA=;
- b=owEBbQKS/ZANAwAKAWaH8SMKFRX9AcsmYgBqgzwILpHS3vi1dKPyEv7Lg9SY4u5WOwohGrtME
- zfZA2H/IXOJAjMEAAEKAB0WIQSDtk+wfJEhL1KFIn1mh/EjChUV/QUCaoM8CAAKCRBmh/EjChUV
- /f59EACThr7kbKuHCTQvbWnJWHJBfdiL9tj2afMMGA6nVjrQhPgdeP5W80/V7caj0xSNPtNE/Vv
- rSwF8RBTXFuWp6kSMmnF5ylHXZ+wbYousN/w81L99/nGGkLFOEN0xypTRL0AhIdq0aW+rRZjkoA
- /nM1nYe3uIUpiaF3vXhAC7PBoaGNsSXMgTSBNjOb4ldakLxn9+g84ctAUgLLM1a3BBGBeBhiGZT
- nMYaEojFfwnbSPlaj3O6M7Twit+1vbtOk9fIpeovKtJ6C7EvPOyViej7mcqZK3HarKPphf1BXi6
- ngt66YPV6HUKOgvgvVWBm0cIzvYHSX5CZ1/fdEMeB6CDTcuV+WZMWWB4PVCWCK2W6H0e3LCywVh
- +vfJ/HYxFeHvPFEnh+wO1dTryvaQ3kvYKsU5/oeoIcd4tdakFqxvpvDFmFeFfeqhdHFvnuxpZFq
- Za5MFbkIAlQLGrWqT0JNkIsmDBqIsn75LN5a+/rv7ok4Bfq3JF0Tk6BPA1OIjFPAJEA6vSO/UZr
- kSS21koKsjb/00xzb3HudFO/+li0uNRp7lCRGZtXLMIWkc1K2Ie1Rd7bPnktz0IFySIT4Cd4zNA
- 4bYnuKOWMEntIErtlvAnVUbJ5mZ6aI1e0hF2cB4LjVEgTTXu1T2utQIuG6SMJedCIx066mVLQkD
- 6GphSHE6L3QzirQ==
-X-Developer-Key: i=dev@nanonej.com; a=openpgp;
- fpr=83B64FB07C91212F5285227D6687F1230A1515FD
-X-Endpoint-Received: by B4 Relay for dev@nanonej.com/default with auth_id=825
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/w3HQQqAIBAAwK/InltQSa1+U5vVgriR4EX8e85tG
+ pT4cSywqQZfrFxY8oiZFNCz5zsin+NgtfV6MQ4vSSz4iiSsBukIjuwc/GoJev8BleereU8AAAA
+ =
+X-Change-ID: 20260815-folio-pool-v1-cb75c247692c
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, 
+ Phil Sutter <phil@nwl.cc>, Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Matthew Brost <matthew.brost@intel.com>, 
+ Boris Brezillon <boris.brezillon@collabora.com>, 
+ Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Will Deacon <will@kernel.org>, Waiman Long <longman@redhat.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ John Fastabend <john.fastabend@gmail.com>, 
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ Alice Ryhl <aliceryhl@google.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Boqun Feng <boqun@kernel.org>, Boqun Feng <boqun@kernel.org>
+Cc: netfilter-devel@vger.kernel.org, bpf@vger.kernel.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, coreteam@netfilter.org, netdev@vger.kernel.org, 
+ Jim Cromie <jim.cromie@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786987349; l=10279;
+ i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
+ bh=S4TsoAAriM4sI09Qb2bqw2yp5vAZgxjGGyIiOJ7aKR4=;
+ b=6ocnK9kGfINHZu0sFQxosXoa9fjGshgR96/GaN0gRrx/bgz1WzePp0sGTF2pIHDrfTwHsE3pT
+ Xf5QfrlXQLZBqAgieAwPs5KBseEIIPHPpOFwKAhctAZGFVpB/VetMaZ
+X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
+ pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
+X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move PMC register definitions (NV_PMC_BOOT_0, NV_PMC_BOOT_42) and
-their associated implementations from the root regs.rs file into the
-gpu module that own them, in the new gpu/regs.rs file.
+Introduce two light-weight bump allocators backed directly by compound
+folio pages from the buddy allocator (skipping SLUB metadata overhead):
 
-This follows the same pattern established by previous commits for
-GSP, PDISP, PFB, and PBUS registers: register definitions move to
-the module that owns them, visibility changes to pub(super), and
-cross-module access is provided via pub(crate) helper functions.
+1. struct folio_scratchpad - Variable-sized, alignment-aware bump allocator
+   for bursty, append-mostly lifecycles with bulk teardown.
+2. struct folio_pool - Fixed uniform-slot bump allocator for homogeneous
+   descriptors.
 
-Since falcon.rs (outside the gpu module) also reads NV_PMC_BOOT_0 for
-its raw value, a pub(crate) helper function boot_0_raw() is added in
-gpu.rs to provide that access without exposing the register type
-directly.
+These serve 2 kinds of use-cases:
 
-Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
-Suggested-by: Danilo Krummrich <dakr@kernel.org>
-Signed-off-by: Antonin Malzieu Ridolfi <dev@nanonej.com>
+1: Ephemeral Batch/transaction Lifecycles (Netfilter, BPF, DRM GPUVM)
+
+- Transactional subsystems allocate bursts of hundreds or thousands of
+  homogeneous or heterogeneous objects, only to tear them all down
+  simultaneously at batch completion or error abort.
+
+- Under SLUB: Each descriptor incurs freelist traversal, lock
+  contention, and O(N) kfree() loops on teardown.
+
+- Under Folio-Scratchpad: Allocations are straight-line pointer bumps,
+  bulk teardown is O(1) folio_put(), and consecutive Netlink
+  transactions reuse warm L1/L2 cachelines without buddy lock churn
+  via folio_scratchpad_reset().
+
+2: Dynamic Long-Lived Graph Scaling (Lockdep)
+
+- Core subsystems historically avoided SLUB by statically
+  preallocating massive compile-time arrays in .bss
+  (e.g. list_entries[32768], 1.31 MB) to prevent SLUB allocator
+  recursion deadlocks.
+
+- Fixed arrays exhaust their limit and permanently disable validation
+  (BUG: MAX_LOCKDEP_ENTRIES too low!).
+  
+- Under Folio-Pool: Lockdep uses a 4,096-entry __initdata bootstrap
+  buffer for early boot prior to buddy initialization, then seamlessly
+  migrates and compacts all dependency edges into 64 KB direct-map
+  folios at late_initcall.
+  
+- Permanent static .bss allocation for dependency edges is reduced
+  from 1.31 MB to 0 KB (100% reclamation at free_initmem()).
+
+Core Primitives in include/linux/folio_pool.h & lib/folio_pool.c:
+-----------------------------------------------------------------
+0. struct folio_scratchpad (Variable-Sized Elements):
+   - Dynamic alignment-aware bump pointer with zero padding waste.
+   - API: folio_scratchpad_init(), folio_scratchpad_alloc(),
+     folio_scratchpad_reset(), folio_scratchpad_free(),
+     folio_scratchpad_stats().
+   - Typed macros: folio_scratchpad_alloc_obj(),
+     folio_scratchpad_alloc_bytes(), DEFINE_FREE(folio_scratchpad, ...).
+
+1. struct folio_pool (Fixed Uniform Elements):
+   - Thin wrapper embedding struct folio_scratchpad for homogeneous objects.
+   - API: folio_pool_init(), folio_pool_alloc(), folio_pool_free(),
+     folio_pool_stats().
+   - Typed macros: folio_pool_alloc_obj(), folio_pool_alloc_type().
+
+2. Encapsulated Slab Discrimination & Reallocation:
+   - is_folio_pool_ptr(ptr): Direct-map folios are identified via
+     virt_to_folio(ptr) && !folio_test_slab(f), avoiding custom bitflags.
+   - folio_scratchpad_free_elem(ptr): Safe no-op for folio-backed objects;
+     delegates to kvfree() for SLUB/vmalloc fallback objects.
+   - folio_scratchpad_realloc(ptr, old_size, new_size, gfp): Delegates to
+     krealloc() for SLUB objects; allocates a fresh SLUB buffer and copies
+     payload for folio-backed descriptors.
+
+3. Subsystem Autonomy & Runtime Static-Key Control:
+   - DEFINE_FOLIO_POOL_STATIC_KEY_PARAM() allows maintainers of each
+     subsystem (Netfilter, Lockdep, DRM, BPF) to choose their own default
+     enablement policy (DECLARE_STATIC_KEY_TRUE vs FALSE) and independent
+     module/boot parameters (e.g. lockdep.folio_pool, nf_tables.trans_scratchpad).
+   - Enables isolated, zero-overhead A/B benchmarking and production triage
+     without cross-subsystem coupling or kernel recompilation.
+
+Active Proofs & Performance Profiling:
+--------------------------------------
+0. Virtualized Guest Netfilter Benchmark (KVM / virtme-ng ftrace):
+   Controlled A/B benchmark across 10,025 Netlink transaction descriptors
+   and 5 asynchronous commit/abort teardown passes:
+
+   Function: nft_trans_alloc (10,025 descriptor allocations)
+   -----------------------------------------------------------------------------
+   Mode                                 Total Time       Avg / Alloc      Delta
+   -----------------------------------------------------------------------------
+   folio_scratchpad Enabled (Bump)      9,158.02 us          0.914 us    -19.4%
+   SLUB Fallback (kzalloc)             11,366.53 us          1.134 us  Baseline
+   -----------------------------------------------------------------------------
+   Net allocation latency reduction:   -2,208.52 us (-2.21 ms)
+
+   Function: nf_tables_trans_destroy_work (5 asynchronous teardown passes)
+   -----------------------------------------------------------------------------
+   Mode                                 Total Time       Avg / Pass       Delta
+   -----------------------------------------------------------------------------
+   folio_scratchpad Enabled (Bulk)     36,065.65 us          7.21 ms      -8.6%
+   SLUB Fallback (O(N) kfree)          39,449.65 us          7.89 ms   Baseline
+   -----------------------------------------------------------------------------
+   Net teardown latency reduction:     -3,384.00 us (-3.38 ms)
+
+   Combined In-Kernel Netlink Transaction Lifecycle Savings: -5.59 ms (-13.3%)
+
+1. Bare-Metal Host Netfilter Profile (AMD Zen 3 Hardware PMU & ftrace):
+   - Asynchronous Teardown: 53.77 ms vs 56.03 ms (-2.26 ms / -4.0%).
+   - Instruction Retirement: 281.29M -> 282.46M (-1,174,062 instructions).
+   - Branch Instructions:     62.94M ->  63.20M (-265,961 branches).
+
+2. Bare-Metal Host Lockdep Telemetry (Physical Host frodo, AMD Zen SMP):
+   - Pre-Buddy Watermark: 928/4096 bootstrap entries consumed during boot.
+   - Graph Compaction: Migrated and compacted bootstrap dependency edges
+     into folio_pool at late_initcall; bootstrap array reclaimed by
+     free_initmem() (0 KB permanent .bss cost).
+   - Live procfs Telemetry (/proc/lockdep_stats):
+     lock-classes:                          996 [max: 8192]
+     direct dependencies:                  2324 [dynamic: 7 x 64 kB, tail: 17 kB/64 kB]
+     indirect dependencies:               24612
+     all direct dependencies:             81884
+     zapped classes:                          2
+     zapped lock chains:                    173
+   - Active Invariant Validation: Live module unloads exercised modernized
+     zap_class() direct list unlinking across dynamic folios with zero
+     global bitmap scans and zero assertions.
+
+What's Unchanged:
+-----------------
+- All consumer object structures, alignment rules, and lifecycle boundaries
+  remain strictly identical.
+- Memory safety invariants are preserved: individual deallocation is a safe
+  no-op for arena-backed objects while SLUB objects continue to use kfree().
+
+Subsystem Adoptions in this Series:
+-----------------------------------
+0. lib/folio_pool: Core direct-map large-folio pool and scratchpad allocators.
+1. netfilter/nf_tables: Pack netlink transaction descriptors into per-net
+   trans_scratchpad with bulk reclaim & warm chunk reset.
+2. bpf/verifier: Route verifier stack state node allocations to folio_pool.
+3. drm/gpuvm: Route gpuva_op allocations to folio_scratchpad.
+4. bpf/syscall: Route generic_map_update_batch key/value allocations to
+   folio_scratchpad.
+5. locking/lockdep: Fallback to folio_pool in alloc_list_entry when static
+   pool is full and expose dynamic folio telemetry in /proc/lockdep_stats.
+6. locking/lockdep: Traverse adjacency lists directly in zap_class().
+7. locking/lockdep: Shrink static list_entries array to early bootstrap buffer.
+8. locking/lockdep: Migrate and compact boot-time dependency graph from __initdata.
+
+Patches in this series:
+-----------------------
+[PATCH 1/9] lib/folio_pool: Introduce Direct-Map Large Folio Pool & Scratchpad bump allocators
+[PATCH 2/9] netfilter/nf_tables: Add folio_scratchpad collector to struct nftables_pernet
+[PATCH 3/9] bpf/verifier: Route verifier stack state node allocations to folio_pool
+[PATCH 4/9] drm/gpuvm: Route gpuva_op allocations to folio_scratchpad
+[PATCH 5/9] bpf/syscall: Route generic_map_update_batch key/value allocations to folio_scratchpad
+[PATCH 6/9] locking/lockdep: Fallback to folio_pool in alloc_list_entry when static pool is full
+[PATCH 7/9] locking/lockdep: Traverse adjacency lists directly in zap_class()
+[PATCH 8/9] locking/lockdep: Shrink static list_entries array to early bootstrap buffer
+[PATCH 9/9] locking/lockdep: Migrate and compact boot-time dependency graph from __initdata
+
+Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-Move PMC register definitions (NV_PMC_BOOT_0, NV_PMC_BOOT_42) and
-their associated implementations from the root regs.rs file into the
-gpu module that own them, in the new gpu/regs.rs file.
+Jim Cromie (9):
+      lib/folio_pool: Introduce Direct-Map Large Folio Pool & Scratchpad bump allocators
+      netfilter/nf_tables: Add folio_scratchpad collector to struct nftables_pernet
+      bpf/verifier: Route verifier stack state node allocations to folio_pool
+      drm/gpuvm: Route gpuva_op allocations to folio_scratchpad
+      bpf/syscall: Route generic_map_update_batch key/value allocations to folio_scratchpad
+      locking/lockdep: Fallback to folio_pool in alloc_list_entry when static pool is full
+      locking/lockdep: Traverse adjacency lists directly in zap_class()
+      locking/lockdep: Shrink static list_entries array to early bootstrap buffer
+      locking/lockdep: Migrate and compact boot-time dependency graph from __initdata
 
-This follows the same pattern established by previous commits for
-GSP, PDISP, PFB, and PBUS registers: register definitions move to
-the module that owns them, visibility changes to pub(super), and
-cross-module access is provided via pub(crate) helper functions.
-
-Since falcon.rs (outside the gpu module) also reads NV_PMC_BOOT_0 for
-its raw value, a pub(crate) helper function boot_0_raw() is added in
-gpu.rs to provide that access without exposing the register type
-directly.
+ drivers/gpu/drm/drm_gpuvm.c        |  11 +-
+ include/drm/drm_gpuvm.h            |   6 +
+ include/linux/bpf_verifier.h       |   3 +
+ include/linux/folio_pool.h         | 279 +++++++++++++++++++++++++++++++++++++
+ include/net/netfilter/nf_tables.h  |   3 +
+ kernel/bpf/syscall.c               |  17 ++-
+ kernel/bpf/verifier.c              |  16 ++-
+ kernel/locking/lockdep.c           | 278 +++++++++++++++++++++++++++++-------
+ kernel/locking/lockdep_internals.h |   2 +
+ kernel/locking/lockdep_proc.c      |  16 ++-
+ lib/Makefile                       |   2 +-
+ lib/folio_pool.c                   | 230 ++++++++++++++++++++++++++++++
+ net/netfilter/nf_tables_api.c      |  51 +++++--
+ 13 files changed, 837 insertions(+), 77 deletions(-)
 ---
-Changes in v2:
-- Fix unused import warning
-- Add forgotten `Suggested-by` tags to the commit
-- Link to v1: https://patch.msgid.link/20260804-b4-extract-pmc-registers-to-gpu-mod-v1-1-86c0895b6072@nanonej.com
----
- drivers/gpu/nova-core/falcon.rs   |  2 +-
- drivers/gpu/nova-core/gpu.rs      |  7 +++-
- drivers/gpu/nova-core/gpu/regs.rs | 82 +++++++++++++++++++++++++++++++++++++++
- drivers/gpu/nova-core/regs.rs     | 76 ------------------------------------
- 4 files changed, 89 insertions(+), 78 deletions(-)
-
-diff --git a/drivers/gpu/nova-core/falcon.rs b/drivers/gpu/nova-core/falcon.rs
-index 65cb12d26e2b..11c1008b7d1e 100644
---- a/drivers/gpu/nova-core/falcon.rs
-+++ b/drivers/gpu/nova-core/falcon.rs
-@@ -394,7 +394,7 @@ pub(crate) fn reset(&self) -> Result {
- 
-         self.bar.write(
-             WithBase::of::<E>(),
--            regs::NV_PFALCON_FALCON_RM::from(self.bar.read(regs::NV_PMC_BOOT_0).into_raw()),
-+            regs::NV_PFALCON_FALCON_RM::from(crate::gpu::boot_0_raw(self.bar)),
-         );
- 
-         Ok(())
-diff --git a/drivers/gpu/nova-core/gpu.rs b/drivers/gpu/nova-core/gpu.rs
-index 42a4cd7971fa..9e4232645a7e 100644
---- a/drivers/gpu/nova-core/gpu.rs
-+++ b/drivers/gpu/nova-core/gpu.rs
-@@ -29,11 +29,11 @@
-         Gsp,
-         GspBootContext, //
-     },
--    regs,
-     vgpu::VgpuManager, //
- };
- 
- mod hal;
-+mod regs;
- 
- macro_rules! define_chipset {
-     ({ $($variant:ident = $value:expr),* $(,)* }) =>
-@@ -414,3 +414,8 @@ pub(crate) fn new(
-         })
-     }
- }
-+
-+/// Reads the boot0 register and returns its raw value.
-+pub(crate) fn boot_0_raw(bar: Bar0<'_>) -> u32 {
-+    bar.read(regs::NV_PMC_BOOT_0).into_raw()
-+}
-diff --git a/drivers/gpu/nova-core/gpu/regs.rs b/drivers/gpu/nova-core/gpu/regs.rs
-new file mode 100644
-index 000000000000..1c4db9625250
---- /dev/null
-+++ b/drivers/gpu/nova-core/gpu/regs.rs
-@@ -0,0 +1,82 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+use kernel::{
-+    io::register,
-+    prelude::*, //
-+};
-+
-+use super::{
-+    Architecture,
-+    Chipset, //
-+};
-+
-+// PMC
-+
-+register! {
-+    /// Basic revision information about the GPU.
-+    pub(super) NV_PMC_BOOT_0(u32) @ 0x00000000 {
-+        /// Lower bits of the architecture.
-+        28:24   architecture_0;
-+        /// Implementation version of the architecture.
-+        23:20   implementation;
-+        /// MSB of the architecture.
-+        8:8     architecture_1;
-+        /// Major revision of the chip.
-+        7:4     major_revision;
-+        /// Minor revision of the chip.
-+        3:0     minor_revision;
-+    }
-+
-+    /// Extended architecture information.
-+    pub(super) NV_PMC_BOOT_42(u32) @ 0x00000a00 {
-+        /// Architecture value.
-+        29:24   architecture ?=> Architecture;
-+        /// Implementation version of the architecture.
-+        23:20   implementation;
-+        /// Major revision of the chip.
-+        19:16   major_revision;
-+        /// Minor revision of the chip.
-+        15:12   minor_revision;
-+    }
-+}
-+
-+impl NV_PMC_BOOT_0 {
-+    pub(super) fn is_older_than_fermi(self) -> bool {
-+        // From https://github.com/NVIDIA/open-gpu-doc/tree/master/manuals :
-+        const NV_PMC_BOOT_0_ARCHITECTURE_GF100: u32 = 0xc;
-+
-+        // Older chips left arch1 zeroed out. That, combined with an arch0 value that is less than
-+        // GF100, means "older than Fermi".
-+        self.architecture_1() == 0 && self.architecture_0() < NV_PMC_BOOT_0_ARCHITECTURE_GF100
-+    }
-+}
-+
-+impl NV_PMC_BOOT_42 {
-+    /// Combines `architecture` and `implementation` to obtain a code unique to the chipset.
-+    pub(super) fn chipset(self) -> Result<Chipset> {
-+        self.architecture()
-+            .map(|arch| {
-+                ((arch as u32) << Self::IMPLEMENTATION_RANGE.len())
-+                    | u32::from(self.implementation())
-+            })
-+            .and_then(Chipset::try_from)
-+    }
-+
-+    /// Returns the raw architecture value from the register.
-+    fn architecture_raw(self) -> u8 {
-+        ((self.into_raw() >> Self::ARCHITECTURE_RANGE.start())
-+            & ((1 << Self::ARCHITECTURE_RANGE.len()) - 1)) as u8
-+    }
-+}
-+
-+impl kernel::fmt::Display for NV_PMC_BOOT_42 {
-+    fn fmt(&self, f: &mut kernel::fmt::Formatter<'_>) -> kernel::fmt::Result {
-+        write!(
-+            f,
-+            "boot42 = 0x{:08x} (architecture 0x{:x}, implementation 0x{:x})",
-+            self.inner,
-+            self.architecture_raw(),
-+            self.implementation()
-+        )
-+    }
-+}
-diff --git a/drivers/gpu/nova-core/regs.rs b/drivers/gpu/nova-core/regs.rs
-index caeef4d85874..3422b49df7a7 100644
---- a/drivers/gpu/nova-core/regs.rs
-+++ b/drivers/gpu/nova-core/regs.rs
-@@ -7,7 +7,6 @@
-         register::WithBase,
-         Io, //
-     },
--    prelude::*,
-     sizes::SizeConstants,
-     time, //
- };
-@@ -28,83 +27,8 @@
-         PFalconBase,
-         PeregrineCoreSelect, //
-     },
--    gpu::{
--        Architecture,
--        Chipset, //
--    },
- };
- 
--// PMC
--
--register! {
--    /// Basic revision information about the GPU.
--    pub(crate) NV_PMC_BOOT_0(u32) @ 0x00000000 {
--        /// Lower bits of the architecture.
--        28:24   architecture_0;
--        /// Implementation version of the architecture.
--        23:20   implementation;
--        /// MSB of the architecture.
--        8:8     architecture_1;
--        /// Major revision of the chip.
--        7:4     major_revision;
--        /// Minor revision of the chip.
--        3:0     minor_revision;
--    }
--
--    /// Extended architecture information.
--    pub(crate) NV_PMC_BOOT_42(u32) @ 0x00000a00 {
--        /// Architecture value.
--        29:24   architecture ?=> Architecture;
--        /// Implementation version of the architecture.
--        23:20   implementation;
--        /// Major revision of the chip.
--        19:16   major_revision;
--        /// Minor revision of the chip.
--        15:12   minor_revision;
--    }
--}
--
--impl NV_PMC_BOOT_0 {
--    pub(crate) fn is_older_than_fermi(self) -> bool {
--        // From https://github.com/NVIDIA/open-gpu-doc/tree/master/manuals :
--        const NV_PMC_BOOT_0_ARCHITECTURE_GF100: u32 = 0xc;
--
--        // Older chips left arch1 zeroed out. That, combined with an arch0 value that is less than
--        // GF100, means "older than Fermi".
--        self.architecture_1() == 0 && self.architecture_0() < NV_PMC_BOOT_0_ARCHITECTURE_GF100
--    }
--}
--
--impl NV_PMC_BOOT_42 {
--    /// Combines `architecture` and `implementation` to obtain a code unique to the chipset.
--    pub(crate) fn chipset(self) -> Result<Chipset> {
--        self.architecture()
--            .map(|arch| {
--                ((arch as u32) << Self::IMPLEMENTATION_RANGE.len())
--                    | u32::from(self.implementation())
--            })
--            .and_then(Chipset::try_from)
--    }
--
--    /// Returns the raw architecture value from the register.
--    fn architecture_raw(self) -> u8 {
--        ((self.into_raw() >> Self::ARCHITECTURE_RANGE.start())
--            & ((1 << Self::ARCHITECTURE_RANGE.len()) - 1)) as u8
--    }
--}
--
--impl kernel::fmt::Display for NV_PMC_BOOT_42 {
--    fn fmt(&self, f: &mut kernel::fmt::Formatter<'_>) -> kernel::fmt::Result {
--        write!(
--            f,
--            "boot42 = 0x{:08x} (architecture 0x{:x}, implementation 0x{:x})",
--            self.inner,
--            self.architecture_raw(),
--            self.implementation()
--        )
--    }
--}
--
- // PBUS
- 
- register! {
-
----
-base-commit: 4c9ba407018e8deb06dbc643112bac8f40404f95
-change-id: 20260804-b4-extract-pmc-registers-to-gpu-mod-793ee2078a23
+base-commit: 1a7ac48cd3e62f281ce62f8ed89dc2cc8866eaa4
+change-id: 20260815-folio-pool-v1-cb75c247692c
 
 Best regards,
---  
-Antonin Malzieu Ridolfi <dev@nanonej.com>
+-- 
+Jim Cromie <jim.cromie@gmail.com>
 
