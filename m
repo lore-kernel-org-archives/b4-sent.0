@@ -1,11 +1,11 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Mon, 17 Aug 2026 11:22:17 -0600
-Subject: [PATCH 3/9] bpf/verifier: Route verifier stack state node
- allocations to folio_pool
+Date: Mon, 17 Aug 2026 11:22:18 -0600
+Subject: [PATCH 4/9] drm/gpuvm: Route gpuva_op allocations to
+ folio_scratchpad
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-folio-pool-v1-v1-3-0c1d230aa3af@gmail.com>
+Message-Id: <20260817-folio-pool-v1-v1-4-0c1d230aa3af@gmail.com>
 References: <20260817-folio-pool-v1-v1-0-0c1d230aa3af@gmail.com>
 In-Reply-To: <20260817-folio-pool-v1-v1-0-0c1d230aa3af@gmail.com>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -35,111 +35,101 @@ Cc: netfilter-devel@vger.kernel.org, bpf@vger.kernel.org,
  linux-mm@kvack.org, coreteam@netfilter.org, netdev@vger.kernel.org, 
  Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786987349; l=3668;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786987349; l=2727;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=wd43RzukeW/QIRUOsguKGysZSVWNap+EkJQwmYjEf9A=;
- b=RF7O0cJ6UhuZWtoBFwIEZu/Uet9+m63ZwGntlkc7HifWVQ9cB6lvVPZZZ7oAkyvhDWt0UEWjL
- GN7mnVJCnK5CEvsqbKbNn1jrRMc23jiFMLCZ23LsNR5YNbIQiBnNZdV
+ bh=hfnn2JXUUX2MnAJuI+XocbzOzt9nFPPM4gsyoKFfaV8=;
+ b=tOf7FwZgeFhwjRf2P61V+1ciBVYTcBIRJ4/DWzCwZDYpfrvSen9nBPACUBxDKUMeVVJ8v4CaP
+ mkzXUqlmIs3DYZ8/WvkgAQUjjUavZdG8d4TJsDC7vinDqpN8OckRK7E
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Embed a struct folio_pool inside struct bpf_verifier_env to allocate
-transient bpf_verifier_stack_elem frames using direct-map large folios,
-releasing all frames in bulk at the end of bpf_check().
-
-Use folio_pool_alloc_obj() to preserve strict type specificity at callsites.
+Embed a struct folio_scratchpad inside struct drm_gpuvm and route
+default gpuva_op allocations in gpuva_op_alloc() to
+folio_scratchpad_alloc_obj(), with O(1) bulk teardown in
+drm_gpuvm_fini().
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
- include/linux/bpf_verifier.h |  3 +++
- kernel/bpf/verifier.c        | 16 +++++++++++++---
- 2 files changed, 16 insertions(+), 3 deletions(-)
+ drivers/gpu/drm/drm_gpuvm.c | 11 +++++++++--
+ include/drm/drm_gpuvm.h     |  6 ++++++
+ 2 files changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/bpf_verifier.h b/include/linux/bpf_verifier.h
-index 39a851e690ec..43f5f0eaffac 100644
---- a/include/linux/bpf_verifier.h
-+++ b/include/linux/bpf_verifier.h
-@@ -898,6 +898,8 @@ struct bpf_scc_info {
+diff --git a/drivers/gpu/drm/drm_gpuvm.c b/drivers/gpu/drm/drm_gpuvm.c
+index c422c5af1f4b..6bb82ac9e2d6 100644
+--- a/drivers/gpu/drm/drm_gpuvm.c
++++ b/drivers/gpu/drm/drm_gpuvm.c
+@@ -1109,6 +1109,8 @@ drm_gpuvm_init(struct drm_gpuvm *gpuvm, const char *name,
+ 	spin_lock_init(&gpuvm->evict.lock);
  
- struct bpf_liveness;
+ 	init_llist_head(&gpuvm->bo_defer);
++	folio_scratchpad_init_key(&gpuvm->va_scratchpad, get_order(SZ_64K),
++				  &gpuvm_scratchpad_key);
  
-+#include <linux/folio_pool.h>
-+
- /* single container for all structs
-  * one verifier_env per bpf_check() call
-  */
-@@ -907,6 +909,7 @@ struct bpf_verifier_env {
- 	struct bpf_prog *prog;		/* eBPF program being verified */
- 	const struct bpf_verifier_ops *ops;
- 	struct module *attach_btf_mod;	/* The owner module of prog->aux->attach_btf */
-+	struct folio_pool state_pool;	/* pool for transient state nodes */
- 	struct bpf_verifier_stack_elem *head; /* stack of verifier states to be processed */
- 	int stack_size;			/* number of states to be processed */
- 	bool strict_alignment;		/* perform strict pointer alignment checks */
-diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
-index fdc5fbb1f78c..8a9e66ce4dc8 100644
---- a/kernel/bpf/verifier.c
-+++ b/kernel/bpf/verifier.c
-@@ -1725,7 +1725,7 @@ static int pop_stack(struct bpf_verifier_env *env, int *prev_insn_idx,
- 		*prev_insn_idx = head->prev_insn_idx;
- 	elem = head->next;
- 	bpf_free_verifier_state(&head->st, false);
--	kfree(head);
-+	folio_pool_free_elem(head);
- 	env->head = elem;
- 	env->stack_size--;
- 	return 0;
-@@ -1743,6 +1743,8 @@ static bool error_recoverable_with_nospec(int err)
- 	return err == -EPERM || err == -EACCES || err == -EINVAL;
+ 	kref_init(&gpuvm->kref);
+ 
+@@ -1155,6 +1157,7 @@ drm_gpuvm_fini(struct drm_gpuvm *gpuvm)
+ 	drm_WARN(gpuvm->drm, !llist_empty(&gpuvm->bo_defer),
+ 		 "VM BO cleanup list should be empty.\n");
+ 
++	folio_scratchpad_free(&gpuvm->va_scratchpad);
+ 	drm_gem_object_put(gpuvm->r_obj);
  }
  
-+DEFINE_STATIC_KEY_TRUE(bpf_state_pool_key);
+@@ -2849,6 +2852,9 @@ drm_gpuvm_sm_unmap_exec_lock(struct drm_gpuvm *gpuvm, struct drm_exec *exec,
+ }
+ EXPORT_SYMBOL_GPL(drm_gpuvm_sm_unmap_exec_lock);
+ 
++DEFINE_FOLIO_POOL_STATIC_KEY_PARAM(gpuvm_scratchpad_key, va_scratchpad,
++				   "Toggle DRM GPUVM range folio scratchpad allocator");
 +
- static struct bpf_verifier_state *push_stack(struct bpf_verifier_env *env,
- 					     int insn_idx, int prev_insn_idx,
- 					     bool speculative)
-@@ -1751,7 +1753,9 @@ static struct bpf_verifier_state *push_stack(struct bpf_verifier_env *env,
- 	struct bpf_verifier_stack_elem *elem;
- 	int err;
+ static struct drm_gpuva_op *
+ gpuva_op_alloc(struct drm_gpuvm *gpuvm)
+ {
+@@ -2858,7 +2864,8 @@ gpuva_op_alloc(struct drm_gpuvm *gpuvm)
+ 	if (fn && fn->op_alloc)
+ 		op = fn->op_alloc();
+ 	else
+-		op = kzalloc_obj(*op);
++		op = folio_scratchpad_alloc_obj(gpuvm, va_scratchpad,
++						struct drm_gpuva_op, GFP_KERNEL);
  
--	elem = kzalloc_obj(struct bpf_verifier_stack_elem, GFP_KERNEL_ACCOUNT);
-+	elem = folio_pool_alloc_obj(env, state_pool,
-+				    struct bpf_verifier_stack_elem,
-+				    GFP_KERNEL_ACCOUNT);
- 	if (!elem)
- 		return ERR_PTR(-ENOMEM);
+ 	if (unlikely(!op))
+ 		return NULL;
+@@ -2875,7 +2882,7 @@ gpuva_op_free(struct drm_gpuvm *gpuvm,
+ 	if (fn && fn->op_free)
+ 		fn->op_free(op);
+ 	else
+-		kfree(op);
++		folio_scratchpad_free_elem(op);
+ }
  
-@@ -2275,7 +2279,9 @@ static struct bpf_verifier_state *push_async_cb(struct bpf_verifier_env *env,
- 	struct bpf_verifier_stack_elem *elem;
- 	struct bpf_func_state *frame;
+ static int
+diff --git a/include/drm/drm_gpuvm.h b/include/drm/drm_gpuvm.h
+index 655bd9104ffb..362b1d88d30d 100644
+--- a/include/drm/drm_gpuvm.h
++++ b/include/drm/drm_gpuvm.h
+@@ -30,6 +30,7 @@
+ #include <linux/llist.h>
+ #include <linux/rbtree.h>
+ #include <linux/types.h>
++#include <linux/folio_pool.h>
  
--	elem = kzalloc_obj(struct bpf_verifier_stack_elem, GFP_KERNEL_ACCOUNT);
-+	elem = folio_pool_alloc_obj(env, state_pool,
-+				    struct bpf_verifier_stack_elem,
-+				    GFP_KERNEL_ACCOUNT);
- 	if (!elem)
- 		return ERR_PTR(-ENOMEM);
- 
-@@ -19789,6 +19795,9 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr,
- 	if (!env)
- 		return -ENOMEM;
- 
-+	folio_pool_init_key(&env->state_pool, sizeof(struct bpf_verifier_stack_elem),
-+			    get_order(SZ_64K), &bpf_state_pool_key);
+ #include <drm/drm_device.h>
+ #include <drm/drm_gem.h>
+@@ -338,6 +339,11 @@ struct drm_gpuvm {
+ 	 * @bo_defer: structure holding vm_bos that need to be destroyed
+ 	 */
+ 	struct llist_head bo_defer;
 +
- 	env->bt.env = env;
++	/**
++	 * @va_scratchpad: folio scratchpad for transient GPU VA range allocations
++	 */
++	struct folio_scratchpad va_scratchpad;
+ };
  
- 	len = (*prog)->len;
-@@ -20055,6 +20064,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr, bpfptr_t uattr,
- 	bpf_clear_insn_aux_data(env, 0, env->prog->len);
- err_free_env:
- 	bpf_stack_liveness_free(env);
-+	folio_pool_free(&env->state_pool);
- 	kvfree(env->cfg.insn_postorder);
- 	kvfree(env->scc_info);
- 	kvfree(env->succ);
+ void drm_gpuvm_init(struct drm_gpuvm *gpuvm, const char *name,
 
 -- 
 2.55.0
