@@ -1,237 +1,130 @@
-From: Antonin Malzieu Ridolfi <dev@nanonej.com>
-Date: Mon, 17 Aug 2026 22:04:47 +0200
-Subject: [PATCH] gpu: nova-core: Extract FUSE registers definitions
+From: Dave Marquardt <davemarq@linux.ibm.com>
+Subject: [PATCH v6 0/8] scsi: ibmvfc: make ibmvfc support FPIN messages
+Date: Mon, 17 Aug 2026 15:27:53 -0500
+Message-Id: <20260817-ibmvfc-fpin-support-v6-0-62a2d525e70d@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-b4-extract-fuse-registers-to-gpu-mod-v1-1-c4924070bbb0@nanonej.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23NSwqDMBSF4a1Ixr2QhzTqVoqDmFxtCj56kxRB3
- HvTWmgHHf5wON/GApLHwJpiY4QPH/w85RCngtmrmQYE73IzyeWZV0JDVwKukYyN0KeAQDj4EJE
- CxBmGJcE4OxBOcSf62ijNWb5aCHu/vplLe3RI3Q1tfH1/FoT3lP14zL58Uxw4L3/xZbT/bV0rR
- Ml1ZaRi7b4/AaB8s4vjAAAA
-X-Change-ID: 20260817-b4-extract-fuse-registers-to-gpu-mod-1d30d1f9a370
-To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Alexandre Courbot <acourbot@nvidia.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>
-Cc: nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Antonin Malzieu Ridolfi <dev@nanonej.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6957; i=dev@nanonej.com;
- h=from:subject:message-id; bh=TEU3cGdfr+0GsbAb4FDIovW/u3AWeIqXEMHGfNEojoU=;
- b=owEBbQKS/ZANAwAKAWaH8SMKFRX9AcsmYgBqg2lf1ctcM1fOoXqnXns/xyOEyIi9J+nyLlPLR
- Cn+mqLhPKOJAjMEAAEKAB0WIQSDtk+wfJEhL1KFIn1mh/EjChUV/QUCaoNpXwAKCRBmh/EjChUV
- /eE2D/0eLW6yf5bwty+dotJUzHYlwaA7/HPEFsBGLyEhw08Tn0WSAnaUAgGYirdItO25j5Ihowg
- tOfe9zBnHXLNQMQERfBsO+PuSCFOyFoXO6N4TqOnmz9SV4wxH4OqiZpNwszQmdj0rhtB5Xo4vtc
- oZi5B25PhDItCqlPPLbW98bcdAJzYTi5WIWhNF5N3zg9TJ6WkIMWPcROZvtUrdhwqiynU+T9N6U
- PD1lVxiJ0QYAJMLxcpIN4X3rzFzBSzyrSPyt7GFJZGXOWjp+gxmk4kQfK1Hx40le/diaR8wHG53
- PXBXKobDFp93UFecq5pGJ5//7mpUajPKS2s1lRG4AmL4p/yAw9m1EhkcqVibPzZ6jpaa4klrwH5
- 5fFzpgZP7lodtnxDld3Bo2oBdegLK7OUIUmRE94tmRqEkKv0sPxHWv6Z22KOtD0Ntspt9GToveh
- rvcsQIero237HsT5w5bctHf157QY+9MLY/dscCf3DWOuSPKtY1EYnqAPwddjqM7ROezg1PaaIvi
- nnQtIc8YoVSx01FfMAJ1kLz5pDmO2qj1lw9HHohMBaONtXdnUcZAUwj/NkekBG/4RUT1ES98vHG
- PvB9YwPKk/w/azFWnlgXYVA0+Z1K3q5h5M0Lv+845ljb4E0zaTx1fzYqXx4LtQxUnzGkGsy4WD/
- kFqM+BXxR24ejPg==
-X-Developer-Key: i=dev@nanonej.com; a=openpgp;
- fpr=83B64FB07C91212F5285227D6687F1230A1515FD
-X-Endpoint-Received: by B4 Relay for dev@nanonej.com/default with auth_id=825
+X-B4-Tracking: v=1; b=H4sIAMlug2oC/3XNS2rDMBgE4KsEravw62k5q96jZKFno9LYRrJFQ
+ vDdK6cUl6IuB2a+eaDsU/QZnQ4PlHyJOY5DDfLlgOxFD+8eR1czokAlcOhwNNcSLA5THHBepml
+ MMza9EZ2wjjpNUF1OyYd4e6pv5++cF/Ph7bxRW+MS8zym+/O2kK3386CaD4VgwIIakJZL7oG9f
+ sZhuR1r92jHK9peCt0d+Z9Dq+M4CYJDMFrYlsN2pwPadtjm9ML0gnc2KNVy+C+HQNvh1fEBGNG
+ W9IJCyxG7o0C2HVEdwoKTQWkVlPnrrOv6BV8pdaDsAQAA
+X-Change-ID: 20260407-ibmvfc-fpin-support-b9b575cd2da1
+To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Tyrel Datwyler <tyreld@linux.ibm.com>
+Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, Brian King <brking@linux.ibm.com>, 
+ Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
+ Dave Marquardt <davemarq@linux.ibm.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786998478; l=4486;
+ i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
+ bh=NBFG5u7pJHuTnDg+QYaDFahe8sDuzyqLxxcC0knzU5I=;
+ b=T4tXrwcYyh46C4r5VXhVqaycsMkEpj3TTCvrBaXQw8GvELGc84zzoocKoI16kwOA2wGE5R9dR
+ vslUVkZDNqpAObYxY3fKgUbJYzKBb0Z9sq13KqrPHkkkLNQFmqvpggJ
+X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
+ pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
+X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move FUSE register definitions from the root regs.rs file into the
-gpu module that own them, in the existing gpu/regs.rs file.
+This patch series adds FPIN (fabric performance impact notification)
+support to the ibmvfc (IBM Virtual Fibre Channel) driver. This comes
+in three flavors:
 
-This follows the same pattern established by previous commits for
-GSP, PDISP, PFB, PBUS and PMC registers: register definitions move to
-the module that owns them, visibility changes to pub(super), and
-cross-module access is provided via pub(crate) helper functions.
+- basic, to recognize existing FPIN messages from the virtual I/O
+  server (VIOS) (patch 1)
+- full, supporting additional FPIN information and using its own
+  asynchronous sub-queue and interrupt (patches 3-7)
+- extended, supporting FC-LS-5 (patch 8)
 
-Since gal102.rs (outside the gpu module) also reads fuse registers to
-infer fuse version, a pub(crate) helper function fuse_ucode_version()
-is added in gpu.rs to provide that information without exposing the
-register type directly.
+Full and extended FPIN support requires a new asynchronous sub-queue
+with its own interrupt. The asynchronous sub-queue support requires
+ibmvfc to also support a new IBMVFC_NOOP command, which the driver
+recognizes and ignores (patch 2).
 
-Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
-Suggested-by: Danilo Krummrich <dakr@kernel.org>
-Signed-off-by: Antonin Malzieu Ridolfi <dev@nanonej.com>
+The asynchronous sub-queue work is split across three patches: patch 3
+defines the necessary data structures, patch 5 adds the interrupt and
+drain routines for the queue, and patch 6 refactors channel
+registration and deregistration to accommodate the new queue. Patch 7
+wires everything together, registering the async sub-queue during
+channel initialization and advertising support to VIOS during NPIV
+login.
+
+All three modes convert an incoming FPIN message from VIOS to an FC
+extended link service message, in some cases using default values for
+information not provided by the VIOS FPIN message but expected in the
+FC ELS message. This FC ELS message is passed to fc_host_rcv_fpin for
+updating statistics and sending the information upstream by netlink
+multicast, where it may be read by listeners including the DM
+multipath daemon "multipathd."
+
+Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
-I got several doubts regarding this patch:
-- I didn't touch the comment in falcon/hal/ga102.rs:71 cause I didn't
-  know if this information should stay there
-- I'm not sure if the re-export of NV_FUSE_OPT_FPF_SIZE in gpu.rs is the
-  right way to keep the read in gal102.rs or if I should also make an
-helper to get its value
-- Then, as I'm not quite sure to understand the exact purpose of the
-code I'm not sure of the `fuse_ucode_version` naming and the comment
-explaining what it do
----
- drivers/gpu/nova-core/falcon/hal/ga102.rs | 17 ++++-------------
- drivers/gpu/nova-core/gpu.rs              | 31 ++++++++++++++++++++++++++++++-
- drivers/gpu/nova-core/gpu/regs.rs         | 18 ++++++++++++++++++
- drivers/gpu/nova-core/regs.rs             | 18 ------------------
- 4 files changed, 52 insertions(+), 32 deletions(-)
+Changes in v6:
+- Use alloc_workqueue rather than devm_alloc_workqueue, and add
+  explicit destroy_workqueue calls
+- Moved ibmvfc_find_target into patch 1
+- Link to v5: https://patch.msgid.link/20260806-ibmvfc-fpin-support-v5-0-13fd6f8a8f8b@linux.ibm.com
 
-diff --git a/drivers/gpu/nova-core/falcon/hal/ga102.rs b/drivers/gpu/nova-core/falcon/hal/ga102.rs
-index 7600ee07ca2e..590e30218527 100644
---- a/drivers/gpu/nova-core/falcon/hal/ga102.rs
-+++ b/drivers/gpu/nova-core/falcon/hal/ga102.rs
-@@ -7,7 +7,6 @@
-     io::{
-         poll::read_poll_timeout,
-         register::{
--            Array,
-             WithBase, //
-         },
-         Io, //
-@@ -26,7 +25,8 @@
-         FalconModSelAlgo,
-         PeregrineCoreSelect, //
-     },
--    regs,
-+    gpu,
-+    regs, //
- };
- 
- use super::FalconHal;
-@@ -59,7 +59,7 @@ fn signature_reg_fuse_version_ga102(
- ) -> Result<u32> {
-     // Each engine has 16 ucode version registers numbered from 1 to 16.
-     let ucode_idx = match usize::from(ucode_id) {
--        ucode_id @ 1..=regs::NV_FUSE_OPT_FPF_SIZE => ucode_id - 1,
-+        ucode_id @ 1..=gpu::NV_FUSE_OPT_FPF_SIZE => ucode_id - 1,
-         _ => {
-             dev_err!(dev, "invalid ucode id {:#x}\n", ucode_id);
-             return Err(EINVAL);
-@@ -68,16 +68,7 @@ fn signature_reg_fuse_version_ga102(
- 
-     // `ucode_idx` is guaranteed to be in the range [0..15], making the `read` calls provable valid
-     // at build-time.
--    let reg_fuse_version: u16 = if engine_id_mask & 0x0001 != 0 {
--        bar.read(regs::NV_FUSE_OPT_FPF_SEC2_UCODE1_VERSION::at(ucode_idx))
--            .data()
--    } else if engine_id_mask & 0x0004 != 0 {
--        bar.read(regs::NV_FUSE_OPT_FPF_NVDEC_UCODE1_VERSION::at(ucode_idx))
--            .data()
--    } else if engine_id_mask & 0x0400 != 0 {
--        bar.read(regs::NV_FUSE_OPT_FPF_GSP_UCODE1_VERSION::at(ucode_idx))
--            .data()
--    } else {
-+    let Some(reg_fuse_version) = gpu::fuse_ucode_version(bar, engine_id_mask, ucode_idx) else {
-         dev_err!(dev, "unexpected engine_id_mask {:#x}\n", engine_id_mask);
-         return Err(EINVAL);
-     };
-diff --git a/drivers/gpu/nova-core/gpu.rs b/drivers/gpu/nova-core/gpu.rs
-index 9e4232645a7e..746a7dec8906 100644
---- a/drivers/gpu/nova-core/gpu.rs
-+++ b/drivers/gpu/nova-core/gpu.rs
-@@ -6,7 +6,10 @@
-     device,
-     dma::Device,
-     fmt,
--    io::Io,
-+    io::{
-+        register::Array,
-+        Io, //
-+    },
-     num::Bounded,
-     pci,
-     prelude::*,
-@@ -35,6 +38,8 @@
- mod hal;
- mod regs;
- 
-+pub(crate) use regs::NV_FUSE_OPT_FPF_SIZE;
-+
- macro_rules! define_chipset {
-     ({ $($variant:ident = $value:expr),* $(,)* }) =>
-     {
-@@ -419,3 +424,27 @@ pub(crate) fn new(
- pub(crate) fn boot_0_raw(bar: Bar0<'_>) -> u32 {
-     bar.read(regs::NV_PMC_BOOT_0).into_raw()
- }
-+
-+/// Returns the fuse version matching `engine_id_mask`,
-+/// at the given `ucode_idx`.
-+/// Returns `None` if no engine matches `engine_id_mask`.
-+pub(crate) fn fuse_ucode_version(
-+    bar: Bar0<'_>,
-+    engine_id_mask: u16,
-+    ucode_idx: usize,
-+) -> Option<u16> {
-+    let version = if engine_id_mask & 0x0001 != 0 {
-+        bar.read(regs::NV_FUSE_OPT_FPF_SEC2_UCODE1_VERSION::at(ucode_idx))
-+            .data()
-+    } else if engine_id_mask & 0x0004 != 0 {
-+        bar.read(regs::NV_FUSE_OPT_FPF_NVDEC_UCODE1_VERSION::at(ucode_idx))
-+            .data()
-+    } else if engine_id_mask & 0x0400 != 0 {
-+        bar.read(regs::NV_FUSE_OPT_FPF_GSP_UCODE1_VERSION::at(ucode_idx))
-+            .data()
-+    } else {
-+        return None;
-+    };
-+
-+    Some(version)
-+}
-diff --git a/drivers/gpu/nova-core/gpu/regs.rs b/drivers/gpu/nova-core/gpu/regs.rs
-index 1c4db9625250..a6ce4ff44cd1 100644
---- a/drivers/gpu/nova-core/gpu/regs.rs
-+++ b/drivers/gpu/nova-core/gpu/regs.rs
-@@ -80,3 +80,21 @@ fn fmt(&self, f: &mut kernel::fmt::Formatter<'_>) -> kernel::fmt::Result {
-         )
-     }
- }
-+
-+// FUSE
-+
-+pub(crate) const NV_FUSE_OPT_FPF_SIZE: usize = 16;
-+
-+register! {
-+    pub(super) NV_FUSE_OPT_FPF_NVDEC_UCODE1_VERSION(u32)[NV_FUSE_OPT_FPF_SIZE] @ 0x00824100 {
-+        15:0    data => u16;
-+    }
-+
-+    pub(super) NV_FUSE_OPT_FPF_SEC2_UCODE1_VERSION(u32)[NV_FUSE_OPT_FPF_SIZE] @ 0x00824140 {
-+        15:0    data => u16;
-+    }
-+
-+    pub(super) NV_FUSE_OPT_FPF_GSP_UCODE1_VERSION(u32)[NV_FUSE_OPT_FPF_SIZE] @ 0x008241c0 {
-+        15:0    data => u16;
-+    }
-+}
-diff --git a/drivers/gpu/nova-core/regs.rs b/drivers/gpu/nova-core/regs.rs
-index 3422b49df7a7..562499ff6e08 100644
---- a/drivers/gpu/nova-core/regs.rs
-+++ b/drivers/gpu/nova-core/regs.rs
-@@ -94,24 +94,6 @@ pub(crate) fn usable_fb_size(self) -> u64 {
-     }
- }
- 
--// FUSE
--
--pub(crate) const NV_FUSE_OPT_FPF_SIZE: usize = 16;
--
--register! {
--    pub(crate) NV_FUSE_OPT_FPF_NVDEC_UCODE1_VERSION(u32)[NV_FUSE_OPT_FPF_SIZE] @ 0x00824100 {
--        15:0    data => u16;
--    }
--
--    pub(crate) NV_FUSE_OPT_FPF_SEC2_UCODE1_VERSION(u32)[NV_FUSE_OPT_FPF_SIZE] @ 0x00824140 {
--        15:0    data => u16;
--    }
--
--    pub(crate) NV_FUSE_OPT_FPF_GSP_UCODE1_VERSION(u32)[NV_FUSE_OPT_FPF_SIZE] @ 0x008241c0 {
--        15:0    data => u16;
--    }
--}
--
- // PFALCON
- 
- register! {
+Changes in v5:
+- Incorporate changes for NVME-over-FC.
+- Removed now redundant fabric login patch.
+- Link to v4: https://patch.msgid.link/20260710-ibmvfc-fpin-support-v4-0-ef031ac19520@linux.ibm.com
+
+Changes in v4:
+- Refactored channel registration
+- Check whether async work queue is allocated before using or freeing
+- Fixed work queue allocation/destruction
+- Skip basic KUnit test when there are no ibmvfc devices available
+- Fix target not found condition in ibmvfc_process_async_work
+- Link to v3: https://patch.msgid.link/20260702-ibmvfc-fpin-support-v3-0-d95b9747cf88@linux.ibm.com
+
+Changes in v3:
+- Fixed latent bug, exposed by VFC_NOOP, related to dataless CRQs and events
+- Fixed FPIN TLV descriptor length calculations
+- Use safe list walker to walk targets in ibmvfc_process_async_work
+- Added write memory barriers after clearing CRQ valid field
+- Use per-vhost work queue for FPIN work
+- Link to v2: https://patch.msgid.link/20260608-ibmvfc-fpin-support-v2-0-d41f540fba5c@linux.ibm.com
+
+Highlights of changes in v2:
+- Refactored mostly common FPIN conversion routines and async event
+  processing into single routines with wrappers for differences.
+- Moved FPIN processing to a work queue to avoid conflicts with
+  fc_host_fpin_rcv and memory allocation
+- Set descriptor sizes correctly
+- Use target WWPN for basic FPIN descriptor
+- Split patch 4 into 3 patches, for definition, allocation, and use of
+  the asynchronous sub-queue for events
+- Link to v1: https://patch.msgid.link/20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com
 
 ---
-base-commit: 60b5976d1367cd50314e867bc1169e759ab309b9
-change-id: 20260817-b4-extract-fuse-registers-to-gpu-mod-1d30d1f9a370
-prerequisite-change-id: 20260804-b4-extract-pmc-registers-to-gpu-mod-793ee2078a23
+Dave Marquardt (8):
+      scsi: ibmvfc: add basic FPIN support
+      scsi: ibmvfc: Add NOOP command support
+      scsi: ibmvfc: define asynchronous sub-queue
+      scsi: ibmvfc: extend async event handlers to handle async sub queue events
+      scsi: ibmvfc: add interrupt routine for asynchronous sub CRQ
+      scsi: ibmvfc: extend channel registration and deregistration for async subq
+      scsi: ibmvfc: register and use asynchronous sub CRQ for events
+      scsi: ibmvfc: handle extended FPIN events
+
+ drivers/scsi/Kconfig                 |  10 +
+ drivers/scsi/ibmvscsi/Makefile       |   1 +
+ drivers/scsi/ibmvscsi/ibmvfc-core.c  | 644 ++++++++++++++++++++++++++++++++---
+ drivers/scsi/ibmvscsi/ibmvfc.h       |  52 +++
+ drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 352 +++++++++++++++++++
+ 5 files changed, 1011 insertions(+), 48 deletions(-)
+---
+base-commit: 9c632ff7d7fcec167659cd7060e4491412c747da
+change-id: 20260407-ibmvfc-fpin-support-b9b575cd2da1
 
 Best regards,
 --  
-Antonin Malzieu Ridolfi <dev@nanonej.com>
+Dave Marquardt <davemarq@linux.ibm.com>
 
