@@ -1,11 +1,11 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Mon, 17 Aug 2026 11:22:20 -0600
-Subject: [PATCH 6/9] locking/lockdep: Fallback to folio_pool in
- alloc_list_entry when static pool is full
+Date: Mon, 17 Aug 2026 11:22:21 -0600
+Subject: [PATCH 7/9] locking/lockdep: Traverse adjacency lists directly in
+ zap_class()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-folio-pool-v1-v1-6-0c1d230aa3af@gmail.com>
+Message-Id: <20260817-folio-pool-v1-v1-7-0c1d230aa3af@gmail.com>
 References: <20260817-folio-pool-v1-v1-0-0c1d230aa3af@gmail.com>
 In-Reply-To: <20260817-folio-pool-v1-v1-0-0c1d230aa3af@gmail.com>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -35,130 +35,92 @@ Cc: netfilter-devel@vger.kernel.org, bpf@vger.kernel.org,
  linux-mm@kvack.org, coreteam@netfilter.org, netdev@vger.kernel.org, 
  Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786987349; l=4052;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1786987349; l=2976;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=Hw9H0XS3lRz/8Cusmj0TdRoN7GOnkgdGE/QpF+OTKZE=;
- b=7ApQuwEsLmNusDVgP3wGCUer5jWN1Mvb2G7RmfE1VdvcfA0Sc3zPBxPrhepGf2Qoooi58cGiI
- /JMtsQaQwZxAKM58qj6awvp+EWf0JxWRjrcSmYqhuYL91ZsT2xJmsy6
+ bh=hMKyeAzj/0W3e7KdVMK4R3bJ4a3wyr0GUNnn4brlNlA=;
+ b=cVjWa7I7YRjvCbMAMfBdBJT9zR8GIbatJK/6HvfTX7JD0l04eiM+7EquE8bXjJ92ce34JZutn
+ a7J6heYfMsLD2cIK/pUbgoI3R654HF7l7BScqyxe7goKAXWygZzkVHY
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use struct folio_pool to dynamically expand lock dependency storage when
-the static list_entries pool is exhausted, avoiding premature lockdep
-disabling.
+By definition, every dependency involving a lock class resides in either
+its locks_after (forward) or locks_before (backward) list.
+
+During module unload (rmmod) cleanup, zap_class() historically took a
+shortcut: it scanned the global list_entries_in_use allocator bitmap,
+testing every allocated dependency across the entire kernel against a
+fixed static array.
+
+That shortcut worked only because all dependencies were confined to a
+single compile-time array. It conflates graph topology with allocator
+storage layout, and breaks down the moment lockdep needs to scale beyond
+static allocations.
+
+Rework zap_class() to traverse class->locks_after and class->locks_before
+directly, unlinking each edge and its matching counterpart on the
+connected lock class via RCU while clearing the respective allocation
+slot bits.
+
+This restores the canonical graph deletion flow, touches only the edges
+connected to the zapped class, and allows lockdep to safely support
+dynamic allocators.
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
- kernel/locking/lockdep.c           | 35 ++++++++++++++++++++++++++++++++++-
- kernel/locking/lockdep_internals.h |  2 ++
- kernel/locking/lockdep_proc.c      | 16 ++++++++++++++--
- 3 files changed, 50 insertions(+), 3 deletions(-)
+ kernel/locking/lockdep.c | 31 ++++++++++++++++++++++++-------
+ 1 file changed, 24 insertions(+), 7 deletions(-)
 
 diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-index 2d4c5bab5af8..f0f58db090ff 100644
+index f0f58db090ff..c8975c9282bb 100644
 --- a/kernel/locking/lockdep.c
 +++ b/kernel/locking/lockdep.c
-@@ -58,12 +58,37 @@
- #include <linux/context_tracking.h>
- #include <linux/console.h>
- #include <linux/kasan.h>
-+#include <linux/folio_pool.h>
-+
-+DEFINE_STATIC_KEY_TRUE(lockdep_pool_key);
-+static struct folio_pool lockdep_pool =
-+	FOLIO_POOL_INIT_KEY(lockdep_pool, sizeof(struct lock_list),
-+			    FOLIO_POOL_64K_ORDER, &lockdep_pool_key);
-+
-+static int __init setup_lockdep_folio_pool(char *str)
-+{
-+	bool enable;
-+
-+	if (!kstrtobool(str, &enable)) {
-+		if (enable)
-+			static_branch_enable(&lockdep_pool_key);
-+		else
-+			static_branch_disable(&lockdep_pool_key);
-+	}
-+	return 1;
-+}
-+__setup("lockdep.folio_pool=", setup_lockdep_folio_pool);
+@@ -6276,8 +6276,7 @@ static void remove_class_from_lock_chains(struct pending_free *pf,
+  */
+ static void zap_class(struct pending_free *pf, struct lock_class *class)
+ {
+-	struct lock_list *entry;
+-	int i;
++	struct lock_list *entry, *tmp, *other, *other_tmp;
  
- #include <asm/sections.h>
+ 	WARN_ON_ONCE(!class->key);
  
- #include "lockdep_internals.h"
- #include "lock_events.h"
- 
-+void lockdep_pool_stats(unsigned int *nr_chunks, size_t *chunk_size, size_t *tail_used)
-+{
-+	folio_pool_stats(&lockdep_pool, nr_chunks, chunk_size, tail_used);
-+}
-+
- #include <trace/events/lock.h>
- 
- #ifdef CONFIG_PROVE_LOCKING
-@@ -1404,11 +1429,19 @@ static struct lock_list *alloc_list_entry(void)
- 				      ARRAY_SIZE(list_entries));
- 
- 	if (idx >= ARRAY_SIZE(list_entries)) {
-+		struct lock_list *p;
-+
-+		p = folio_pool_alloc_type(&lockdep_pool, struct lock_list,
-+					  GFP_ATOMIC);
-+		if (p) {
-+			nr_list_entries++;
-+			return p;
+@@ -6285,11 +6284,29 @@ static void zap_class(struct pending_free *pf, struct lock_class *class)
+ 	 * Remove all dependencies this lock is
+ 	 * involved in:
+ 	 */
+-	for_each_set_bit(i, list_entries_in_use, ARRAY_SIZE(list_entries)) {
+-		entry = list_entries + i;
+-		if (entry->class != class && entry->links_to != class)
+-			continue;
+-		__clear_bit(i, list_entries_in_use);
++	list_for_each_entry_safe(entry, tmp, &class->locks_after, entry) {
++		list_for_each_entry_safe(other, other_tmp, &entry->links_to->locks_before, entry) {
++			if (other->links_to == class) {
++				__clear_bit(other - list_entries, list_entries_in_use);
++				nr_list_entries--;
++				list_del_rcu(&other->entry);
++				break;
++			}
 +		}
- 		if (!debug_locks_off_graph_unlock())
- 			return NULL;
- 
- 		nbcon_cpu_emergency_enter();
--		print_lockdep_off("BUG: MAX_LOCKDEP_ENTRIES too low!");
-+		print_lockdep_off("BUG: MAX_LOCKDEP_ENTRIES too low and folio_pool exhausted!");
- 		dump_stack();
- 		nbcon_cpu_emergency_exit();
- 		return NULL;
-diff --git a/kernel/locking/lockdep_internals.h b/kernel/locking/lockdep_internals.h
-index 0e5e6ffe91a3..f802160c0dd5 100644
---- a/kernel/locking/lockdep_internals.h
-+++ b/kernel/locking/lockdep_internals.h
-@@ -159,6 +159,8 @@ extern unsigned long max_lock_class_idx;
- extern struct lock_class lock_classes[MAX_LOCKDEP_KEYS];
- extern unsigned long lock_classes_in_use[];
- 
-+void lockdep_pool_stats(unsigned int *nr_chunks, size_t *chunk_size, size_t *tail_used);
-+
- #ifdef CONFIG_PROVE_LOCKING
- extern unsigned long lockdep_count_forward_deps(struct lock_class *);
- extern unsigned long lockdep_count_backward_deps(struct lock_class *);
-diff --git a/kernel/locking/lockdep_proc.c b/kernel/locking/lockdep_proc.c
-index 1916db9aa46b..3e6f24ae9b34 100644
---- a/kernel/locking/lockdep_proc.c
-+++ b/kernel/locking/lockdep_proc.c
-@@ -288,8 +288,20 @@ static int lockdep_stats_show(struct seq_file *m, void *v)
- 			nr_lock_classes, MAX_LOCKDEP_KEYS);
- 	seq_printf(m, " dynamic-keys:                  %11lu\n",
- 			nr_dynamic_keys);
--	seq_printf(m, " direct dependencies:           %11lu [max: %lu]\n",
--			nr_list_entries, MAX_LOCKDEP_ENTRIES);
-+	{
-+		unsigned int fp_chunks = 0;
-+		size_t fp_chunk_sz = 0, fp_tail_used = 0;
-+
-+		lockdep_pool_stats(&fp_chunks, &fp_chunk_sz, &fp_tail_used);
-+		if (fp_chunks) {
-+			seq_printf(m, " direct dependencies:           %11lu [dynamic: %u x %zu kB, tail: %zu kB/%zu kB]\n",
-+				   nr_list_entries, fp_chunks, fp_chunk_sz / 1024,
-+				   fp_tail_used / 1024, fp_chunk_sz / 1024);
-+		} else {
-+			seq_printf(m, " direct dependencies:           %11lu [max: %lu]\n",
-+				   nr_list_entries, MAX_LOCKDEP_ENTRIES);
-+		}
++		__clear_bit(entry - list_entries, list_entries_in_use);
++		nr_list_entries--;
++		list_del_rcu(&entry->entry);
 +	}
- 	seq_printf(m, " indirect dependencies:         %11lu\n",
- 			sum_forward_deps);
- 
++	list_for_each_entry_safe(entry, tmp, &class->locks_before, entry) {
++		list_for_each_entry_safe(other, other_tmp, &entry->links_to->locks_after, entry) {
++			if (other->links_to == class) {
++				__clear_bit(other - list_entries, list_entries_in_use);
++				nr_list_entries--;
++				list_del_rcu(&other->entry);
++				break;
++			}
++		}
++		__clear_bit(entry - list_entries, list_entries_in_use);
+ 		nr_list_entries--;
+ 		list_del_rcu(&entry->entry);
+ 	}
 
 -- 
 2.55.0
