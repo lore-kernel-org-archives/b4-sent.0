@@ -1,88 +1,107 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Tue, 18 Aug 2026 13:38:09 +0800
-Subject: [PATCH 7/7] mm/mglru: improve code readability and harden
- folio_inc_gen
+From: Younes Akhouayri <git@younes.io>
+Date: Tue, 18 Aug 2026 10:11:17 +0200
+Subject: [PATCH] rust: configfs: skip unregister after failed registration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-mglru-flags-cleanup-v1-7-8dbbdac0d28c@tencent.com>
-References: <20260818-mglru-flags-cleanup-v1-0-8dbbdac0d28c@tencent.com>
-In-Reply-To: <20260818-mglru-flags-cleanup-v1-0-8dbbdac0d28c@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Baoquan He <baoquan.he@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
- Roman Gushchin <roman.gushchin@linux.dev>, 
- Muchun Song <muchun.song@linux.dev>, Chris Li <chrisl@kernel.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Yu Zhao <yuzhao@google.com>, Zi Yan <ziy@nvidia.com>, 
- Qi Zheng <qi.zheng@linux.dev>, cgroups@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Kairui Song <ryncsn@gmail.com>, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787031501; l=1891;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=VAAQ2yiZ5J1ZoI2nmEdgdm+eoSsfABEBNy6fHJoC/Ao=;
- b=vfv8/0vJNXjl4xfANa0zvplr3gsB8l5c6I3ZE3bYCfgQRy1JPhuV/RfkOve+UzP3ZSo3ThysQ
- 4bzJd3exJcxDOzcNw7VQ6D4JMMsKi6+5BvFKSfMgZ+wrxOLJtBX/l/a
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Message-Id: <20260818-fix-rust-configfs-registration-state-v1-v1-1-c929990bc8ef@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNQQ6DMAwEv4J8rlUgErT9StVDSJ3gHkJlG4SE+
+ HsDPc5qZ3cDJWFSeFQbCC2sPOUCzaWCMPqcCPldGNq67epb02PkFWVWwzDlyCkqCiVWE29FRTV
+ vhEuD0TsXQ+juXe+grH2Fino+PV9/1nn4ULBj/mgMXgkH8TmMRzQJJ87X8yvTarDvP9+ThG2uA
+ AAA
+X-Change-ID: 20260817-fix-rust-configfs-registration-state-v1-fa33fcc69673
+To: Andreas Hindborg <a.hindborg@kernel.org>, 
+ Breno Leitao <leitao@debian.org>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787040714; l=2784;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=fq9IhNazzdfraRSzrziDpi6hbbRXKdNjCvoUNURPKos=;
+ b=GI0DFAXw+vFW5/eeEye07BF7E519j/ErwhdwR2Ban8NVu3mUZartkupJXHtpZeDlh088lHXYw
+ JizTNA0Nm2dAOqqxelUAR8qGSrwhy0LcpNZxGhpOkkYiiBMLEGpmZPF
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The helper should never be called for an off-list folio, and it always
-expects the folio to be in the oldest generation before doing any
-cmpxchg. Add a sanity check for the off-list case: if it is ever
-violated, bail out and keep the folio flags untouched to minimize the
-damage, instead of silently treating the folio as if it were in the
-oldest generation and promoting it updating the flags to an unexpected
-status.
+Subsystem::new() calls configfs_register_subsystem() from a fallible
+pin_chain callback. If registration fails, ChainPinInit drops the
+already initialized Subsystem. Its PinnedDrop currently calls
+configfs_unregister_subsystem() unconditionally.
 
-Also rename the variables to clearly distinguish the folio's current
-gen from the oldest gen.
+configfs_unregister_subsystem() requires registration to have completed
+and immediately dereferences the subsystem dentry. Registering a
+duplicate subsystem name returns -EEXIST before installing that dentry,
+so the cleanup path dereferences NULL and panics the kernel.
 
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Track successful registration explicitly and only unregister in that
+state. Keep mutex destruction unconditional because it is initialized
+before registration.
+
+Fixes: 446cafc295bf ("rust: configfs: introduce rust support for configfs")
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- mm/vmscan.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ rust/kernel/configfs.rs | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 7169cac60869..7e3ae0c6cba3 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -3308,18 +3308,22 @@ static int folio_inc_gen(struct lruvec *lruvec, struct folio *folio)
- {
- 	int type = folio_is_file_lru(folio);
- 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
--	int new_gen, old_gen = lru_gen_from_seq(lrugen->min_seq[type]);
-+	int new_gen, old_gen, min_gen = lru_gen_from_seq(lrugen->min_seq[type]);
- 	unsigned long new_flags, old_flags = READ_ONCE(*folio_flags(folio, 0));
+diff --git a/rust/kernel/configfs.rs b/rust/kernel/configfs.rs
+index cd082b83e9e7..f358e227ce09 100644
+--- a/rust/kernel/configfs.rs
++++ b/rust/kernel/configfs.rs
+@@ -130,6 +130,7 @@ pub struct Subsystem<Data> {
+     subsystem: Opaque<bindings::configfs_subsystem>,
+     #[pin]
+     data: Data,
++    registered: bool,
+ }
  
- 	do {
--		new_gen = lru_gen_from_flags(old_flags);
-+		old_gen = lru_gen_from_flags(old_flags);
-+		/* This helper should never be called for off-list folios */
-+		VM_WARN_ON_ONCE(old_gen < 0);
-+		if (old_gen < 0)
-+			return min_gen;
- 
- 		/* folio_update_gen() has promoted this page? */
--		if (new_gen >= 0 && new_gen != old_gen)
--			return new_gen;
-+		if (old_gen != min_gen)
-+			return old_gen;
- 
- 		new_flags = old_flags;
--		new_gen = (old_gen + 1) % MAX_NR_GENS;
-+		new_gen = (min_gen + 1) % MAX_NR_GENS;
- 		lru_gen_set_flags(&new_flags, new_gen);
- 		lru_refs_set_flags(&new_flags, 0);
- 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
+ // SAFETY: We do not provide any operations on `Subsystem`.
+@@ -173,12 +174,15 @@ pub fn new(
+                 }
+             ),
+             data <- data,
++            registered: false,
+         })
+-        .pin_chain(|this| {
++        .pin_chain(|mut this| {
+             crate::error::to_result(
+                 // SAFETY: We initialized `this.subsystem` according to C API contract above.
+                 unsafe { bindings::configfs_register_subsystem(this.subsystem.get()) },
+-            )
++            )?;
++            *this.as_mut().project().registered = true;
++            Ok(())
+         })
+     }
+ }
+@@ -186,8 +190,10 @@ pub fn new(
+ #[pinned_drop]
+ impl<Data> PinnedDrop for Subsystem<Data> {
+     fn drop(self: Pin<&mut Self>) {
+-        // SAFETY: We registered `self.subsystem` in the initializer returned by `Self::new`.
+-        unsafe { bindings::configfs_unregister_subsystem(self.subsystem.get()) };
++        if self.registered {
++            // SAFETY: `registered` is only set after `self.subsystem` was registered.
++            unsafe { bindings::configfs_unregister_subsystem(self.subsystem.get()) };
++        }
+         // SAFETY: We initialized the mutex in `Subsystem::new`.
+         unsafe { bindings::mutex_destroy(&raw mut (*self.subsystem.get()).su_mutex) };
+     }
 
--- 
-2.55.0
+---
+base-commit: 47f27155f17498fccb1f222f79089642337498a9
+change-id: 20260817-fix-rust-configfs-registration-state-v1-fa33fcc69673
+
+Best regards,
+--  
+Younes Akhouayri <git@younes.io>
 
