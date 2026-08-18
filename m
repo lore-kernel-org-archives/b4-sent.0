@@ -1,330 +1,375 @@
-From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Mon, 17 Aug 2026 15:28:01 -0500
-Subject: [PATCH v6 8/8] scsi: ibmvfc: handle extended FPIN events
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Mon, 17 Aug 2026 18:47:50 -0700
+Subject: [PATCH v2] ceph: parallelize object copy in ceph_do_objects_copy()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260817-ibmvfc-fpin-support-v6-8-62a2d525e70d@linux.ibm.com>
-References: <20260817-ibmvfc-fpin-support-v6-0-62a2d525e70d@linux.ibm.com>
-In-Reply-To: <20260817-ibmvfc-fpin-support-v6-0-62a2d525e70d@linux.ibm.com>
-To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
- Tyrel Datwyler <tyreld@linux.ibm.com>
-Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org, Brian King <brking@linux.ibm.com>, 
- Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
- Dave Marquardt <davemarq@linux.ibm.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1786998478; l=11267;
- i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=wtV6dTnhWVvMmvGiELngpnyuuTDST/nEYZo8U676ADI=;
- b=qCLma0aWa0xnXBV46Nc5J63YruNDz2hnIGavBEGx3rmFD/VIeQ2u00EFAkKPFfhonYWXDw/2z
- AYQdyEjN/fQB915i2/hEeXE0D8GUZrH/ZkSFuqpeVQq/kLP490Jgg2O
-X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
- pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
-X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260817-b4-ceph-copyfrom-v2-1-08029d1ad42a@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7Zh2Qiq48h6GBQyD1AglLRIJ4
+ e62uHf5kvff3yCItxLgmm3gZbHBujECnTLgvh4fgraNDKTIqAspbHJkmXpkN62ddwNyYQrVUGu
+ MNhBnk5fOfo7kvfpxeDdP4Tl1ktHbMDu/Hp+LTt6f/KJRY1nnTFS2nRG68WsN7sxugGrf9y9So
+ rBhwgAAAA==
+X-Change-ID: 20260720-b4-ceph-copyfrom-c8680b2d6616
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787017679; l=13458;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=rFUPV8NCUSzokOzRVuPki87FaVnpiju92Y3nq/X5fy8=;
+ b=sXWQyXGEgV7bhuHi83Qp7dcVx3BHr+c8U2dfFmvjLgV9VZAr9V/yxg1fU5HxmDnBNrnNmXEPf
+ JXsJfFT4l0WAqoUHFjQCpx8ydDutEEhE1gtvXwYZ8FmFC5x3XXC4c4Z
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement support for extended FPIN messages received via the
-asynchronous sub-queue, completing full FPIN functionality.
+The current ceph_do_objects_copy() submits COPY_FROM2 requests serially
+(submit-wait-submit-wait), which means the total latency scales linearly
+with the number of objects being copied.
 
-Extended FPIN messages provide more detailed information about fabric
-events compared to basic FPIN messages, including specific event types,
-modifiers, thresholds, and event counts.
+Convert to a sliding-window parallel model: submit up to
+copyfrom_max_inflight (16) requests concurrently, then wait for them
+in FIFO order.  Because all in-flight requests make progress while we
+wait for the oldest one, the total wait time is MAX(latency_i) rather
+than SUM(latency_i).
 
-Add ibmvfc_extended_fpin_to_desc() to convert extended FPIN messages from
-async sub-queue format to fc_els_fpin structures with complete descriptor
-information. Update ibmvfc_process_async_work() to handle extended FPIN
-events from the async sub-queue.
+Error handling uses a 'truncate at first failure' strategy: results are
+scanned in offset order and the copy is truncated at the first failing
+object.  Parallel requests may have already written destination objects
+past the failure point before the failure is detected; that is only
+harmless when the copy starts at or beyond the destination EOF, where
+the excess objects end up beyond the new (truncated) EOF and are
+unreachable through reads.  Copies into the middle of an existing file
+are therefore submitted serially, so they can never modify destination
+data past the position implied by the result.
 
-Set IBMVFC_CAN_HANDLE_FPIN capability during login to inform VIOS that
-the client can process extended FPIN messages.
+The window size is snapshotted per call so a concurrent sysfs write to
+copyfrom_max_inflight cannot shift the window bounds mid-copy, and an
+allocation failure is reported only if no earlier in-flight request
+failed with a real I/O error.
 
-Add comprehensive KUnit tests to validate extended FPIN event handling
-and verify proper statistics updates for all FPIN event types.
-
-Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/scsi/ibmvscsi/ibmvfc-core.c  |  53 ++++++++++++++++-
- drivers/scsi/ibmvscsi/ibmvfc.h       |  30 ++++++++++
- drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 110 +++++++++++++++++++++++++++++++++++
- 3 files changed, 191 insertions(+), 2 deletions(-)
+Changes in v2:
+- Address review comments from Alex Markuze:
+- Fix a use-after-free in the drain loop: clear the ring-buffer slot
+  after putting the request, and stop draining once all in-flight
+  requests have been waited on.
+- Snapshot copyfrom_max_inflight once per call (clamped to >= 1) and
+  use it for all window bookkeeping, so a concurrent sysfs write can
+  no longer shift the window bounds mid-copy.
+- Track request-allocation failures separately so they never mask a
+  real I/O error from an earlier in-flight request.
+- Only parallelize copies that start at or beyond the destination EOF.
+  Copies into the middle of an existing file are submitted serially
+  (window of 1), so a failed copy can never leave destination objects
+  written past the failure point inside the file.  This assumes the
+  destination size is stable during the copy: CephFS does not serialize
+  concurrent size updates (FILE_WR caps are shared among clients and no
+  inode/MDS lock is held across the copies), and concurrent
+  modification is outside copy_file_range()'s guarantees.
+- Widen the object indices to u64 to avoid overflow for very large
+  copies with small object sizes.
+- Link to v1: https://patch.msgid.link/20260720-b4-ceph-copyfrom-v1-1-9a4c229df6e2@clyso.com
 
-diff --git a/drivers/scsi/ibmvscsi/ibmvfc-core.c b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-index 686142761863..5c711447ac6d 100644
---- a/drivers/scsi/ibmvscsi/ibmvfc-core.c
-+++ b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-@@ -1571,6 +1571,7 @@ static void ibmvfc_set_login_info(struct ibmvfc_host *vhost)
- 		login_info->capabilities |= cpu_to_be64(IBMVFC_USE_ASYNC_SUBQ);
- 		login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_HANDLE_FPIN);
- 		login_info->capabilities |= cpu_to_be64(IBMVFC_YES_SCSI);
-+		login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_HANDLE_FPIN_EXT);
- 		if (vhost->nvme_enabled) {
- 			login_info->capabilities |= cpu_to_be64(IBMVFC_YES_NVMEOF);
- 			login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_USE_WWPN_ALL);
-@@ -3447,6 +3448,41 @@ ibmvfc_full_fpin_to_desc(struct ibmvfc_async_sub_crq *ibmvfc_fpin)
- 					  cpu_to_be32(1));
+To: Ilya Dryomov <idryomov@gmail.com>
+To: Alex Markuze <amarkuze@redhat.com>
+To: Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ fs/ceph/file.c | 242 +++++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 201 insertions(+), 41 deletions(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 9d89d7fc1095..d6dfa0473e52 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -2965,6 +2965,22 @@ ceph_alloc_copyfrom_request(struct ceph_osd_client *osdc,
+ 	return ERR_PTR(ret);
  }
  
-+/**
-+ * ibmvfc_ext_fpin_to_desc(): allocate and populate a struct fc_els_fpin struct
-+ * containing a descriptor.
-+ * @ibmvfc_fpin: Pointer to async subq FPIN data
++/*
++ * Default maximum number of in-flight COPY_FROM2 requests.  Can be
++ * overridden at module load time or at runtime via sysfs through the
++ * copyfrom_max_inflight parameter.  The value is snapshotted per
++ * copy_file_range call, so a runtime change only affects new copies.
 + *
-+ * Allocate a struct fc_els_fpin containing a descriptor and populate
-+ * based on data from *ibmvfc_fpin.
-+ *
-+ * Return:
-+ * NULL     - unable to allocate structure
-+ * non-NULL - pointer to populated struct fc_els_fpin
++ * Higher values improve throughput over high-latency links, but too many
++ * concurrent requests can saturate OSD disk queues, especially in small
++ * clusters.  Tune this to match the number of OSDs and their concurrency
++ * capability.  For most clusters 16--64 is a reasonable range.
 + */
-+static struct fc_els_fpin *
-+ibmvfc_ext_fpin_to_desc(struct ibmvfc_async_subq_fpin *ibmvfc_fpin)
-+{
-+	u8 flags = ibmvfc_fpin->fpin_data.flags;
-+	__be32 threshold = cpu_to_be32(IBMVFC_FPIN_DEFAULT_EVENT_THRESHOLD);
-+	__be16 modifier = 0;
-+	__be32 count = cpu_to_be32(1);
-+	__be16 type = 0;
++static unsigned int copyfrom_max_inflight = 16;
++module_param(copyfrom_max_inflight, uint, 0644);
++MODULE_PARM_DESC(copyfrom_max_inflight,
++		 "Maximum in-flight COPY_FROM2 requests per copy_file_range call");
 +
-+	if (flags & IBMVFC_FPIN_EVENT_TYPE_VALID)
-+		type = ibmvfc_fpin->fpin_data.event_type;
-+	if (flags & IBMVFC_FPIN_MODIFIER_VALID)
-+		modifier = ibmvfc_fpin->fpin_data.event_type_modifier;
-+	if (flags & IBMVFC_FPIN_THRESHOLD_VALID)
-+		threshold = ibmvfc_fpin->fpin_data.event_threshold;
-+	if (flags & IBMVFC_FPIN_EVENT_COUNT_VALID)
-+		count = ibmvfc_fpin->fpin_data.event_data.event_count;
-+
-+	return ibmvfc_common_fpin_to_desc(ibmvfc_fpin->fpin_status,
-+					  ibmvfc_fpin->wwpn, type,
-+					  modifier, threshold, count);
-+}
-+
- /**
-  * ibmvfc_find_target - Search for a target in a target list
-  * @target_list: list head of targets to search
-@@ -3485,6 +3521,7 @@ static struct ibmvfc_target *ibmvfc_find_target(struct list_head *target_list,
- static void ibmvfc_process_async_work(struct work_struct *work)
- {
- 	struct ibmvfc_async_sub_crq *subq = NULL;
-+	struct ibmvfc_async_subq_fpin *sqfpin;
- 	struct ibmvfc_async_work *aw;
- 	struct ibmvfc_async_crq *crq = NULL;
- 	struct ibmvfc_target *tgt;
-@@ -3532,8 +3569,20 @@ static void ibmvfc_process_async_work(struct work_struct *work)
+ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off,
+ 				    struct ceph_inode_info *dst_ci, u64 *dst_off,
+ 				    struct ceph_fs_client *fsc,
+@@ -2973,13 +2989,21 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
+ 	struct ceph_object_locator src_oloc, dst_oloc;
+ 	struct ceph_object_id src_oid, dst_oid;
+ 	struct ceph_osd_client *osdc;
++	struct ceph_osd_request **reqs = NULL;
+ 	struct ceph_osd_request *req;
+ 	ssize_t bytes = 0;
+ 	u64 src_objnum, src_objoff, dst_objnum, dst_objoff;
+ 	u32 src_objlen, dst_objlen;
+ 	u32 object_size = src_ci->i_layout.object_size;
+ 	struct ceph_client *cl = fsc->client;
+-	int ret;
++	u64 orig_src_off = *src_off;
++	u64 orig_dst_off = *dst_off;
++	u64 num_objects, head = 0, tail = 0;
++	u64 first_fail_obj = U64_MAX, alloc_fail_obj = U64_MAX;
++	unsigned int max_inflight;
++	int first_fail_err = 0, alloc_fail_err = 0, inflight = 0;
++	int slot, ret;
++	bool have_eopnotsupp = false;
  
- 	if (crq)
- 		fpin = ibmvfc_basic_fpin_to_desc(crq, tgt->wwpn);
--	else
--		fpin = ibmvfc_full_fpin_to_desc(subq);
-+	else {
-+		sqfpin = (struct ibmvfc_async_subq_fpin *)subq;
-+		if ((subq->flags & IBMVFC_ASYNC_IS_FPIN_EXT) == 0) {
-+			fpin = ibmvfc_full_fpin_to_desc(subq);
-+		} else if (!(sqfpin->fpin_data.flags & IBMVFC_FPIN_EVENT_TYPE_VALID)) {
-+			dev_err_ratelimited(vhost->dev,
-+					    "Invalid extended FPIN event received\n");
-+		} else if (!ibmvfc_check_caps(vhost, IBMVFC_SUPPORT_FPIN_EXT)) {
-+			dev_err_ratelimited(vhost->dev,
-+					    "Unexpected extended FPIN event received\n");
-+		} else {
-+			fpin = ibmvfc_ext_fpin_to_desc(sqfpin);
-+		}
+ 	src_oloc.pool = src_ci->i_layout.pool_id;
+ 	src_oloc.pool_ns = ceph_try_get_string(src_ci->i_layout.pool_ns);
+@@ -2987,54 +3011,190 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
+ 	dst_oloc.pool_ns = ceph_try_get_string(dst_ci->i_layout.pool_ns);
+ 	osdc = &fsc->client->osdc;
+ 
+-	while (len >= object_size) {
+-		ceph_calc_file_object_mapping(&src_ci->i_layout, *src_off,
+-					      object_size, &src_objnum,
+-					      &src_objoff, &src_objlen);
+-		ceph_calc_file_object_mapping(&dst_ci->i_layout, *dst_off,
+-					      object_size, &dst_objnum,
+-					      &dst_objoff, &dst_objlen);
+-		ceph_oid_init(&src_oid);
+-		ceph_oid_printf(&src_oid, "%llx.%08llx",
+-				src_ci->i_vino.ino, src_objnum);
+-		ceph_oid_init(&dst_oid);
+-		ceph_oid_printf(&dst_oid, "%llx.%08llx",
+-				dst_ci->i_vino.ino, dst_objnum);
+-		/* Do an object remote copy */
+-		req = ceph_alloc_copyfrom_request(osdc, src_ci->i_vino.snap,
+-						  &src_oid, &src_oloc,
+-						  &dst_oid, &dst_oloc,
+-						  dst_ci->i_truncate_seq,
+-						  dst_ci->i_truncate_size);
+-		if (IS_ERR(req))
+-			ret = PTR_ERR(req);
+-		else {
++	num_objects = len / object_size;
++	if (!num_objects)
++		goto out;
++
++	/*
++	 * Snapshot the window size once.  A concurrent sysfs write to
++	 * copyfrom_max_inflight must not be able to shift the window bounds
++	 * mid-copy: that would corrupt the ring-buffer bookkeeping and could
++	 * index past reqs[].
++	 *
++	 * Parallel requests can write destination objects beyond the first
++	 * failure before the failure is detected.  That is only harmless
++	 * when the copy starts at or beyond the destination EOF: the excess
++	 * objects end up beyond the new (truncated) EOF and are unreachable
++	 * through reads.  When copying into the middle of an existing file,
++	 * the excess objects would clobber live data on failure, so such
++	 * copies are submitted serially (window of 1).
++	 *
++	 * This assumes the destination size is stable for the duration of
++	 * the copy.  CephFS does not serialize concurrent size updates --
++	 * FILE_WR caps are shared among clients and no inode/MDS lock is
++	 * held across the copies -- but concurrent modification is outside
++	 * copy_file_range()'s guarantees, and the pre-existing serial
++	 * implementation was equally racy in that case.
++	 */
++	max_inflight = copyfrom_max_inflight;
++	if (!max_inflight)
++		max_inflight = 1;
++	if (orig_dst_off < i_size_read(&dst_ci->netfs.inode))
++		max_inflight = 1;
++
++	reqs = kvmalloc_array(max_inflight, sizeof(*reqs), GFP_KERNEL);
++	if (!reqs) {
++		bytes = -ENOMEM;
++		goto out;
 +	}
- 
- 	if (fpin) {
- 		fc_host_fpin_rcv(tgt->vhost->host,
-diff --git a/drivers/scsi/ibmvscsi/ibmvfc.h b/drivers/scsi/ibmvscsi/ibmvfc.h
-index 26a2be9354e9..e1b9884ea27e 100644
---- a/drivers/scsi/ibmvscsi/ibmvfc.h
-+++ b/drivers/scsi/ibmvscsi/ibmvfc.h
-@@ -210,6 +210,7 @@ struct ibmvfc_npiv_login {
- #define IBMVFC_CAN_USE_WWPN_ALL		0x080
- #define IBMVFC_USE_ASYNC_SUBQ		0x100
- #define IBMVFC_CAN_USE_NOOP_CMD		0x200
-+#define IBMVFC_CAN_HANDLE_FPIN_EXT	0x800
- 	__be64 node_name;
- 	struct srp_direct_buf async;
- 	u8 partition_name[IBMVFC_MAX_NAME];
-@@ -261,6 +262,7 @@ struct ibmvfc_npiv_login_resp {
- #define IBMVFC_SUPPORT_WWPN_ALL		0x0400
- #define IBMVFC_ASYNC_SUBQ		0x0800
- #define IBMVFC_SUPPORT_NOOP_CMD		0x1000
-+#define IBMVFC_SUPPORT_FPIN_EXT		0x2000
- 	__be32 max_cmds;
- 	__be32 scsi_id_sz;
- 	__be64 max_dma_len;
-@@ -786,6 +788,34 @@ struct ibmvfc_async_sub_crq {
- 	} id;
- } __packed __aligned(8);
- 
-+struct ibmvfc_fpin_data {
-+#define IBMVFC_FPIN_EVENT_TYPE_VALID	0x01
-+#define IBMVFC_FPIN_MODIFIER_VALID	0x02
-+#define IBMVFC_FPIN_THRESHOLD_VALID	0x04
-+#define IBMVFC_FPIN_SEVERITY_VALID	0x08
-+#define IBMVFC_FPIN_EVENT_COUNT_VALID	0x10
-+	u8 flags;
-+	u8 reserved[3];
-+	__be16 event_type;
-+	__be16 event_type_modifier;
-+	__be32 event_threshold;
-+	union {
-+		u8 severity;
-+		__be32 event_count;
-+	} event_data;
-+} __packed __aligned(8);
 +
-+struct ibmvfc_async_subq_fpin {
-+	volatile u8 valid;
-+	u8 flags;
-+	u8 link_state;
-+	u8 fpin_status;
-+	__be16 event;
-+	__be16 pad;
-+	volatile __be64 wwpn;
-+	struct ibmvfc_fpin_data fpin_data;
-+} __packed __aligned(8);
++	/*
++	 * Sliding window: submit requests up to max_inflight, then wait for
++	 * the oldest in-flight request to complete before submitting more.
++	 * The reqs[] ring buffer is indexed by (slot % max_inflight), so
++	 * memory is bounded to max_inflight regardless of num_objects.
++	 * First-failure and EOPNOTSUPP detection happen inline — no post-scan
++	 * needed.
++	 */
++	/*
++	 * Drain only the valid window: stop once all in-flight requests are
++	 * waited on (head == tail) and no new submission can follow, instead
++	 * of walking head past the tail over freed/never-filled slots.
++	 */
++	while (head < tail ||
++	       (tail < num_objects &&
++		first_fail_obj == U64_MAX && alloc_fail_obj == U64_MAX)) {
++		/* Submit new requests while the window has room */
++		while (tail < num_objects &&
++		       first_fail_obj == U64_MAX && alloc_fail_obj == U64_MAX &&
++		       inflight < max_inflight) {
++			u64 object_src_off = orig_src_off +
++					     (u64)tail * object_size;
++			u64 object_dst_off = orig_dst_off +
++					     (u64)tail * object_size;
 +
- struct ibmvfc_async_work {
- 	struct ibmvfc_host *vhost;
- 	bool is_subq;
-diff --git a/drivers/scsi/ibmvscsi/ibmvfc_kunit.c b/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-index 444e6e6e1c39..ce938b93ecb4 100644
---- a/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-+++ b/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-@@ -3,6 +3,7 @@
- #include <kunit/visibility.h>
- #include <scsi/scsi_device.h>
- #include <scsi/scsi_transport_fc.h>
-+#include <scsi/fc/fc_els.h>
- #include <linux/list.h>
- #include <linux/delay.h>
- #include "ibmvfc.h"
-@@ -225,9 +226,118 @@ static void ibmvfc_full_fpin_test(struct kunit *test)
- 			post[IBMVFC_AE_FPIN_CONGESTION_CLEARED]);
- }
- 
-+#define IBMVFC_TEST_FPIN_EXT(fs, ev, stat, crq) {		\
-+	crq.valid = 0x80;					\
-+	crq.flags = IBMVFC_ASYNC_IS_FPIN_EXT;			\
-+	crq.link_state = IBMVFC_AE_LS_LINK_UP;			\
-+	crq.fpin_status = (fs);					\
-+	crq.event = cpu_to_be16(IBMVFC_AE_FPIN);		\
-+	crq.wwpn = cpu_to_be64(tgt->wwpn);			\
-+	crq.fpin_data.flags = IBMVFC_FPIN_EVENT_TYPE_VALID;	\
-+	crq.fpin_data.event_type = cpu_to_be16((ev));		\
-+	pre = READ_ONCE(tgt->rport->fpin_stats.stat);		\
-+	ibmvfc_handle_async((struct ibmvfc_crq *)&crq, vhost, true);	\
-+	msleep(1U);							\
-+	post = READ_ONCE(tgt->rport->fpin_stats.stat);		\
-+}
++			ceph_calc_file_object_mapping(&src_ci->i_layout,
++						      object_src_off,
++						      object_size,
++						      &src_objnum,
++						      &src_objoff,
++						      &src_objlen);
++			ceph_calc_file_object_mapping(&dst_ci->i_layout,
++						      object_dst_off,
++						      object_size,
++						      &dst_objnum,
++						      &dst_objoff,
++						      &dst_objlen);
++			ceph_oid_init(&src_oid);
++			ceph_oid_printf(&src_oid, "%llx.%08llx",
++					src_ci->i_vino.ino, src_objnum);
++			ceph_oid_init(&dst_oid);
++			ceph_oid_printf(&dst_oid, "%llx.%08llx",
++					dst_ci->i_vino.ino, dst_objnum);
 +
-+/**
-+ * ibmvfc_extended_fpin_test - unit test for extended FPIN events
-+ * @test: pointer to kunit structure
-+ *
-+ * Tests
-+ *
-+ * Return: void
-+ */
-+static void ibmvfc_extended_fpin_test(struct kunit *test)
-+{
-+	enum ibmvfc_ae_fpin_status fs;
-+	struct ibmvfc_async_subq_fpin crq[IBMVFC_AE_FPIN_CONGESTION_CLEARED+1] = {};
-+	struct ibmvfc_async_subq_fpin
-+		crqcn[IBMVFC_AE_FPIN_PORT_CONGESTED][FPIN_CONGN_DEVICE_SPEC+1] = {};
-+	struct ibmvfc_async_subq_fpin crqportdg[FPIN_LI_DEVICE_SPEC+1] = {};
-+	struct ibmvfc_target *tgt;
-+	struct ibmvfc_host *vhost;
-+	struct list_head *headp;
-+	LIST_HEAD(evt_doneq);
-+	u64 pre, post;
-+
-+	headp = ibmvfc_get_headp();
-+	KUNIT_ASSERT_FALSE_MSG(test, list_empty(headp), "No ibmvfc devices available\n");
-+	vhost = list_first_entry(headp, struct ibmvfc_host, queue);
-+	KUNIT_ASSERT_GE_MSG(test, vhost->scsi_scrqs.num_targets, 1, "No targets");
-+
-+	tgt = list_first_entry(&vhost->scsi_scrqs.targets, struct ibmvfc_target, queue);
-+	KUNIT_ASSERT_NOT_NULL(test, tgt->rport);
-+
-+	for (fs = IBMVFC_AE_FPIN_LINK_CONGESTED; fs <= IBMVFC_AE_FPIN_CONGESTION_CLEARED; fs++) {
-+		switch (fs) {
-+		case IBMVFC_AE_FPIN_PORT_CLEARED:
-+		case IBMVFC_AE_FPIN_CONGESTION_CLEARED:
-+			crq[fs].valid = 0x80;
-+			crq[fs].flags = IBMVFC_ASYNC_IS_FPIN_EXT;
-+			crq[fs].link_state = IBMVFC_AE_LS_LINK_UP;
-+			crq[fs].fpin_status = fs;
-+			crq[fs].event = cpu_to_be16(IBMVFC_AE_FPIN);
-+			crq[fs].wwpn = cpu_to_be64(tgt->wwpn);
-+			crq[fs].fpin_data.flags = IBMVFC_FPIN_EVENT_TYPE_VALID;
-+			crq[fs].fpin_data.event_type = cpu_to_be16(FPIN_CONGN_CLEAR);
-+			pre = READ_ONCE(tgt->rport->fpin_stats.cn_clear);
-+			ibmvfc_handle_async((struct ibmvfc_crq *)&crq[fs], vhost, true);
-+			msleep(1U);
-+			post = READ_ONCE(tgt->rport->fpin_stats.cn_clear);
-+			break;
-+		case IBMVFC_AE_FPIN_LINK_CONGESTED:
-+		case IBMVFC_AE_FPIN_PORT_CONGESTED:
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_CONGN_CLEAR, cn_clear,
-+					     crqcn[fs-1][FPIN_CONGN_CLEAR]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_CONGN_LOST_CREDIT,
-+					     cn_lost_credit,
-+					     crqcn[fs-1][FPIN_CONGN_LOST_CREDIT]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_CONGN_CREDIT_STALL,
-+					     cn_credit_stall,
-+					     crqcn[fs-1][FPIN_CONGN_CREDIT_STALL]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_CONGN_OVERSUBSCRIPTION,
-+					     cn_oversubscription,
-+					     crqcn[fs-1][FPIN_CONGN_OVERSUBSCRIPTION]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_CONGN_DEVICE_SPEC,
-+					     cn_device_specific,
-+					     crqcn[fs-1][FPIN_CONGN_DEVICE_SPEC]);
-+			break;
-+		case IBMVFC_AE_FPIN_PORT_DEGRADED:
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_UNKNOWN,
-+					     li_failure_unknown,
-+					     crqportdg[FPIN_LI_UNKNOWN]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_LINK_FAILURE,
-+					     li_link_failure_count,
-+					     crqportdg[FPIN_LI_LINK_FAILURE]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_LOSS_OF_SYNC,
-+					     li_loss_of_sync_count,
-+					     crqportdg[FPIN_LI_LOSS_OF_SYNC]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_LOSS_OF_SIG,
-+					     li_loss_of_signals_count,
-+					     crqportdg[FPIN_LI_LOSS_OF_SIG]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_PRIM_SEQ_ERR,
-+					     li_prim_seq_err_count,
-+					     crqportdg[FPIN_LI_PRIM_SEQ_ERR]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_INVALID_TX_WD,
-+					     li_invalid_tx_word_count,
-+					     crqportdg[FPIN_LI_INVALID_TX_WD]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_INVALID_CRC,
-+					     li_invalid_crc_count,
-+					     crqportdg[FPIN_LI_INVALID_CRC]);
-+			IBMVFC_TEST_FPIN_EXT(fs, FPIN_LI_DEVICE_SPEC,
-+					     li_device_specific,
-+					     crqportdg[FPIN_LI_DEVICE_SPEC]);
-+			break;
++			/* Do an object remote copy */
++			slot = tail % max_inflight;
++			req = ceph_alloc_copyfrom_request(osdc,
++						src_ci->i_vino.snap,
++						&src_oid, &src_oloc,
++						&dst_oid, &dst_oloc,
++						dst_ci->i_truncate_seq,
++						dst_ci->i_truncate_size);
++			if (IS_ERR(req)) {
++				/*
++				 * Remember the allocation failure and stop
++				 * submitting.  In-flight requests may still
++				 * carry a real I/O error for an earlier
++				 * object; the drain loop records it and it
++				 * takes precedence over this failure when the
++				 * result is reported.
++				 */
++				alloc_fail_obj = tail;
++				alloc_fail_err = PTR_ERR(req);
++				reqs[slot] = NULL;
++				tail++;
++				continue;
++			}
+ 			ceph_osdc_start_request(osdc, req);
+-			ret = ceph_osdc_wait_request(osdc, req);
++			reqs[slot] = req;
++			tail++;
++			inflight++;
 +		}
-+	}
-+}
 +
- static struct kunit_case ibmvfc_fpin_test_cases[] = {
- 	KUNIT_CASE(ibmvfc_async_fpin_test),
- 	KUNIT_CASE(ibmvfc_full_fpin_test),
-+	KUNIT_CASE(ibmvfc_extended_fpin_test),
- 	{},
- };
++		/*
++		 * Wait for the oldest in-flight request (FIFO order).
++		 * This is required for correctness: we must determine the
++		 * first failure in object-offset order to know how many
++		 * bytes were successfully copied.  It does not hurt
++		 * performance because all requests in the window are
++		 * submitted concurrently -- later requests complete in
++		 * the background while we wait, so the wall-clock time
++		 * is dominated by the slowest request, not the sum.
++		 */
++		slot = head % max_inflight;
++		if (reqs[slot]) {
++			ret = ceph_osdc_wait_request(osdc, reqs[slot]);
+ 			ceph_update_copyfrom_metrics(&fsc->mdsc->metric,
+-						     req->r_start_latency,
+-						     req->r_end_latency,
++						     reqs[slot]->r_start_latency,
++						     reqs[slot]->r_end_latency,
+ 						     object_size, ret);
+-			ceph_osdc_put_request(req);
+-		}
+-		if (ret) {
+-			if (ret == -EOPNOTSUPP) {
+-				fsc->have_copy_from2 = false;
+-				pr_notice_client(cl,
+-					"OSDs don't support copy-from2; disabling copy offload\n");
++			ceph_osdc_put_request(reqs[slot]);
++			reqs[slot] = NULL;
++			inflight--;
++
++			if (ret == -EOPNOTSUPP)
++				have_eopnotsupp = true;
++
++			if (ret < 0 && first_fail_obj == U64_MAX) {
++				first_fail_obj = head;
++				first_fail_err = ret;
+ 			}
+-			doutc(cl, "returned %d\n", ret);
+-			if (bytes <= 0)
+-				bytes = ret;
+-			goto out;
++			if (ret)
++				doutc(cl, "object %llu returned %d\n", head, ret);
+ 		}
+-		len -= object_size;
+-		bytes += object_size;
+-		*src_off += object_size;
+-		*dst_off += object_size;
++		/*
++		 * A NULL slot means the object was never submitted (its
++		 * allocation failed, or submission stopped after a failure)
++		 * or was already drained -- just skip past it.
++		 */
++		head++;
++	}
++
++	/*
++	 * Determine bytes copied: all objects before the first failure
++	 * succeeded.  An allocation failure is only reported if no earlier
++	 * in-flight request failed, so a real I/O error is never masked by
++	 * -ENOMEM.
++	 */
++	if (first_fail_obj == U64_MAX && alloc_fail_obj != U64_MAX) {
++		first_fail_obj = alloc_fail_obj;
++		first_fail_err = alloc_fail_err;
++	}
++	if (first_fail_obj == U64_MAX)
++		bytes = (ssize_t)num_objects * object_size;
++	else if (first_fail_obj == 0)
++		bytes = first_fail_err;
++	else
++		bytes = (ssize_t)first_fail_obj * object_size;
++
++	/*
++	 * Deferred until after the drain loop, but safe: any request
++	 * failure stops new submissions, so no COPY_FROM2 requests are
++	 * sent after EOPNOTSUPP was seen, and the flag is cleared before
++	 * this function returns.
++	 */
++	if (have_eopnotsupp) {
++		fsc->have_copy_from2 = false;
++		pr_notice_client(cl,
++			"OSDs don't support copy-from2; disabling copy offload\n");
+ 	}
  
++	if (bytes > 0) {
++		*src_off = orig_src_off + bytes;
++		*dst_off = orig_dst_off + bytes;
++	}
+ out:
++	kvfree(reqs);
+ 	ceph_oloc_destroy(&src_oloc);
+ 	ceph_oloc_destroy(&dst_oloc);
+ 	return bytes;
 
--- 
-2.55.0
+---
+base-commit: fc67edb66b3c9924c4e0bb366a92b32ea13c526a
+change-id: 20260720-b4-ceph-copyfrom-c8680b2d6616
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
