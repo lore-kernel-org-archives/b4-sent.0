@@ -1,10 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 18 Aug 2026 13:38:06 +0800
-Subject: [PATCH 4/7] mm/mglru: move max_seq read into walk_update_folio
+Date: Tue, 18 Aug 2026 13:38:07 +0800
+Subject: [PATCH 5/7] mm/mglru: use explicit tier range in read_ctrl_pos()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-mglru-flags-cleanup-v1-4-8dbbdac0d28c@tencent.com>
+Message-Id: <20260818-mglru-flags-cleanup-v1-5-8dbbdac0d28c@tencent.com>
 References: <20260818-mglru-flags-cleanup-v1-0-8dbbdac0d28c@tencent.com>
 In-Reply-To: <20260818-mglru-flags-cleanup-v1-0-8dbbdac0d28c@tencent.com>
 To: linux-mm@kvack.org
@@ -23,152 +23,102 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, Kairui Song <ryncsn@gmail.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787031500; l=5056;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787031500; l=3448;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=xJliWtARqDMjztdZd0y51LBdqAE6bS5BXiS6nqiKTh0=;
- b=kE0rlnG7UORkiVh+WKvTvRn6/woWdPxys4/uv7e6m4BR0rOIriUl/7Jmyu83XFDkyjHEt/8J9
- jJA7X49biR3Byh4lQigV51i9AyJdJFqg1Wh0jt7fQA0jhva1/yKtx9D
+ bh=GYBGb1xTYAtwF8ULj9QKeuy7M/IFOhc3aBT9Nkjj2Us=;
+ b=hZsipqcQnctqC9gaBUbfHO2y8v0AyYm5uSBYOqOLuZZpuIPS1tItIjOSQv7M5GcDMTYwSIrAD
+ Vygm8AIFzatCFz7bA7FXXGfPRfwCpMJd9W58MsRsA4lbht1gCaM74wm
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-walk_pte_range(), walk_pmd_range_locked(), and lru_gen_look_around()
-each read lrugen->max_seq to compute the target generation used by
-walk_update_folio(), then pass it as a parameter. Move the read into
-walk_update_folio() itself so the callers no longer need to compute
-or pass the value.
+read_ctrl_pos() encodes the tier range in a single "tier" parameter
+via "tier % MAX_NR_TIERS" as the start and "min(tier, MAX_NR_TIERS-1)"
+as the end. This is hard to follow, maintain, or extend. Tier values
+0..3 select a single tier, while tier == MAX_NR_TIERS selects the
+full range.
 
-The max_seq read now happens once per folio update rather than once
-per walk range, so folios always get promoted to the current youngest
-generation.
+Replace it with explicit (tier_min, tier_max) parameters using a
+closed [tier_min, tier_max] interval, and add LRU_TIER_MIN and
+LRU_TIER_MAX for the tier bounds. The call sites now become
+self-documenting:
+
+  - get_tier_idx:   (LRU_TIER_MIN, LRU_TIER_MIN) for the first tier,
+                    (tier, tier) for each subsequent tier
+  - get_type_to_scan: (LRU_TIER_MIN, LRU_TIER_MAX) for the full range
+
+No functional change.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
-Reviewed-by: Baoquan He <baoquan.he@linux.dev>
 ---
- mm/vmscan.c | 29 ++++++++++++-----------------
- 1 file changed, 12 insertions(+), 17 deletions(-)
+ include/linux/mmzone.h |  2 ++
+ mm/vmscan.c            | 18 ++++++++++--------
+ 2 files changed, 12 insertions(+), 8 deletions(-)
 
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index 32d9354a754f..d0b5c6217d25 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -492,6 +492,8 @@ enum lruvec_flags {
+  * folio->flags, masked by LRU_REFS_MASK.
+  */
+ #define MAX_NR_TIERS		4U
++#define LRU_TIER_MIN		0U
++#define LRU_TIER_MAX		(MAX_NR_TIERS - 1)
+ 
+ #ifndef __GENERATING_BOUNDS_H
+ 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 080132997d87..a819be6b7ae9 100644
+index a819be6b7ae9..a613bb8d7271 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -3517,13 +3517,15 @@ static bool suitable_to_scan(int total, int young)
- }
+@@ -3198,8 +3198,8 @@ struct ctrl_pos {
+ 	int gain;
+ };
  
- static void walk_update_folio(struct lru_gen_mm_walk *walk, struct vm_area_struct *vma,
--		struct folio *folio, int new_gen, bool dirty)
-+			      struct lruvec *lruvec, struct folio *folio, bool dirty)
+-static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier, int gain,
+-			  struct ctrl_pos *pos)
++static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier_min,
++			  int tier_max, int gain, struct ctrl_pos *pos)
  {
--	int old_gen;
-+	int new_gen, old_gen;
+ 	int i;
+ 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
+@@ -3208,7 +3208,7 @@ static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier, int gain,
+ 	pos->gain = gain;
+ 	pos->refaulted = pos->total = 0;
  
- 	if (!folio)
- 		return;
- 
-+	new_gen = lru_gen_from_seq(READ_ONCE(lruvec->lrugen.max_seq));
-+
- 	if (dirty && !folio_test_dirty(folio) &&
- 	    !(folio_test_anon(folio) && folio_test_swapbacked(folio) &&
- 	      !folio_test_swapcache(folio)))
-@@ -3554,8 +3556,6 @@ static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
- 	struct lru_gen_mm_walk *walk = args->private;
- 	struct mem_cgroup *memcg = lruvec_memcg(walk->lruvec);
- 	struct pglist_data *pgdat = lruvec_pgdat(walk->lruvec);
--	DEFINE_MAX_SEQ(walk->lruvec);
--	int gen = lru_gen_from_seq(max_seq);
- 	unsigned int nr;
- 	pmd_t pmdval;
- 
-@@ -3606,7 +3606,7 @@ static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
- 			continue;
- 
- 		if (last != folio) {
--			walk_update_folio(walk, args->vma, last, gen, dirty);
-+			walk_update_folio(walk, args->vma, walk->lruvec, last, dirty);
- 
- 			last = folio;
- 			dirty = false;
-@@ -3619,7 +3619,7 @@ static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
- 		walk->mm_stats[MM_LEAF_YOUNG] += nr;
+-	for (i = tier % MAX_NR_TIERS; i <= min(tier, MAX_NR_TIERS - 1); i++) {
++	for (i = tier_min; i <= tier_max; i++) {
+ 		pos->refaulted += lrugen->avg_refaulted[type][i] +
+ 				  atomic_long_read(&lrugen->refaulted[hist][type][i]);
+ 		pos->total += lrugen->avg_total[type][i] +
+@@ -4804,9 +4804,9 @@ static int get_tier_idx(struct lruvec *lruvec, int type)
+ 	 * This value is chosen because any other tier would have at least twice
+ 	 * as many refaults as the first tier.
+ 	 */
+-	read_ctrl_pos(lruvec, type, 0, 2, &sp);
+-	for (tier = 1; tier < MAX_NR_TIERS; tier++) {
+-		read_ctrl_pos(lruvec, type, tier, 3, &pv);
++	read_ctrl_pos(lruvec, type, LRU_TIER_MIN, LRU_TIER_MIN, 2, &sp);
++	for (tier = LRU_TIER_MIN + 1; tier <= LRU_TIER_MAX; tier++) {
++		read_ctrl_pos(lruvec, type, tier, tier, 3, &pv);
+ 		if (!positive_ctrl_err(&sp, &pv))
+ 			break;
  	}
+@@ -4827,8 +4827,10 @@ static int get_type_to_scan(struct lruvec *lruvec, int swappiness)
+ 	 * Compare the sum of all tiers of anon with that of file to determine
+ 	 * which type to scan.
+ 	 */
+-	read_ctrl_pos(lruvec, LRU_GEN_ANON, MAX_NR_TIERS, swappiness, &sp);
+-	read_ctrl_pos(lruvec, LRU_GEN_FILE, MAX_NR_TIERS, MAX_SWAPPINESS - swappiness, &pv);
++	read_ctrl_pos(lruvec, LRU_GEN_ANON, LRU_TIER_MIN, LRU_TIER_MAX,
++		      swappiness, &sp);
++	read_ctrl_pos(lruvec, LRU_GEN_FILE, LRU_TIER_MIN, LRU_TIER_MAX,
++		      MAX_SWAPPINESS - swappiness, &pv);
  
--	walk_update_folio(walk, args->vma, last, gen, dirty);
-+	walk_update_folio(walk, args->vma, walk->lruvec, last, dirty);
- 	last = NULL;
- 
- 	if (i < PTRS_PER_PTE && get_next_vma(PMD_MASK, PAGE_SIZE, args, &start, &end))
-@@ -3642,8 +3642,6 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
- 	struct lru_gen_mm_walk *walk = args->private;
- 	struct mem_cgroup *memcg = lruvec_memcg(walk->lruvec);
- 	struct pglist_data *pgdat = lruvec_pgdat(walk->lruvec);
--	DEFINE_MAX_SEQ(walk->lruvec);
--	int gen = lru_gen_from_seq(max_seq);
- 
- 	VM_WARN_ON_ONCE(pud_leaf(*pud));
- 
-@@ -3697,7 +3695,7 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
- 			goto next;
- 
- 		if (last != folio) {
--			walk_update_folio(walk, vma, last, gen, dirty);
-+			walk_update_folio(walk, vma, walk->lruvec, last, dirty);
- 
- 			last = folio;
- 			dirty = false;
-@@ -3711,7 +3709,7 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
- 		i = i > MIN_LRU_BATCH ? 0 : find_next_bit(bitmap, MIN_LRU_BATCH, i) + 1;
- 	} while (i <= MIN_LRU_BATCH);
- 
--	walk_update_folio(walk, vma, last, gen, dirty);
-+	walk_update_folio(walk, vma, walk->lruvec, last, dirty);
- 
- 	lazy_mmu_mode_disable();
- 	spin_unlock(ptl);
-@@ -4275,8 +4273,6 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
- 	struct pglist_data *pgdat = folio_pgdat(folio);
- 	struct lruvec *lruvec;
- 	struct lru_gen_mm_state *mm_state;
--	unsigned long max_seq;
--	int gen;
- 
- 	lockdep_assert_held(pvmw->ptl);
- 	VM_WARN_ON_ONCE_FOLIO(folio_test_lru(folio), folio);
-@@ -4313,8 +4309,6 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
- 
- 	memcg = get_mem_cgroup_from_folio(folio);
- 	lruvec = mem_cgroup_lruvec(memcg, pgdat);
--	max_seq = READ_ONCE((lruvec)->lrugen.max_seq);
--	gen = lru_gen_from_seq(max_seq);
- 	mm_state = get_mm_state(lruvec);
- 
- 	lazy_mmu_mode_enable();
-@@ -4346,7 +4340,7 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
- 			continue;
- 
- 		if (last != folio) {
--			walk_update_folio(walk, vma, last, gen, dirty);
-+			walk_update_folio(walk, vma, lruvec, last, dirty);
- 
- 			last = folio;
- 			dirty = false;
-@@ -4358,13 +4352,14 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
- 		young += nr;
- 	}
- 
--	walk_update_folio(walk, vma, last, gen, dirty);
-+	walk_update_folio(walk, vma, lruvec, last, dirty);
- 
- 	lazy_mmu_mode_disable();
- 
- 	/* feedback from rmap walkers to page table walkers */
- 	if (mm_state && suitable_to_scan(i, young))
--		update_bloom_filter(mm_state, max_seq, pvmw->pmd);
-+		update_bloom_filter(mm_state, READ_ONCE(lruvec->lrugen.max_seq),
-+				    pvmw->pmd);
- 
- 	mem_cgroup_put(memcg);
- 
+ 	return positive_ctrl_err(&sp, &pv);
+ }
 
 -- 
 2.55.0
