@@ -1,10 +1,11 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Tue, 18 Aug 2026 18:31:24 +0800
-Subject: [PATCH v5 10/12] serial: 8250: add Ambarella UART driver
+Date: Tue, 18 Aug 2026 18:31:25 +0800
+Subject: [PATCH v5 11/12] arm64: ambarella: add ARCH_AMBARELLA and CV75 EVK
+ DT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-cv75-v5-v5-10-7bbb12f0360f@ambarella.com>
+Message-Id: <20260818-cv75-v5-v5-11-7bbb12f0360f@ambarella.com>
 References: <20260818-cv75-v5-v5-0-7bbb12f0360f@ambarella.com>
 In-Reply-To: <20260818-cv75-v5-v5-0-7bbb12f0360f@ambarella.com>
 To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
@@ -25,376 +26,307 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Lee Jones <lee@kernel.org>, mfd@lists.linux.dev, 
  Long Zhao <zl020895@163.com>, Long Zhao <longzhao@ambarella.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787049131; l=10410;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787049131; l=8330;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=EOzZgfZ/lCbDgs1qmo/SpdoPp8b/Dsi10/sjSRwB0l0=;
- b=Pvl7qAMl+Y0rFBUMsE7GO1ptJ+7qw4/XeUZLnJawQLDeHW2XKJyKZ7n4Yw1E/5evSJJNkF32Z
- 4U+EWeqPmnzCzC7sqI3POCqNvmZhbf+aYMJ553emjMQnzmk0KlGvm4G
+ bh=IpNrjrrLhNL6j9beNqn3g0g/0+e1YQ5b0+ZAZpgVVg4=;
+ b=E6xncZh3d3ihAc1k6GLnYxEVrI56nkcf430XoEdkWisRIUbRsKMs8ow4ecJllXPgfHTdTQUak
+ 15feqe7gCC2C9uQ0cdOHuNkQkh0xCGeD03SM1HN5M0m+qAMS9IdA9ux
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an 8250 platform driver for Ambarella CV75 instead of claiming
-snps,dw-apb-uart compatibility.
+Enable ARCH_AMBARELLA and add a minimal CV75 SoC / EVK device tree for
+console bring-up with the RCT clocks, UART, pinctrl and GPIO banks.
 
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- drivers/tty/serial/8250/8250_ambarella.c | 312 +++++++++++++++++++++++++++++++
- drivers/tty/serial/8250/Kconfig          |   9 +
- drivers/tty/serial/8250/Makefile         |   1 +
- 3 files changed, 322 insertions(+)
+ arch/arm64/Kconfig.platforms               |   8 ++
+ arch/arm64/boot/dts/Makefile               |   1 +
+ arch/arm64/boot/dts/ambarella/Makefile     |   3 +
+ arch/arm64/boot/dts/ambarella/cv75-evk.dts |  30 +++++
+ arch/arm64/boot/dts/ambarella/cv75.dtsi    | 176 +++++++++++++++++++++++++++++
+ arch/arm64/configs/defconfig               |   2 +
+ 6 files changed, 220 insertions(+)
 
-diff --git a/drivers/tty/serial/8250/8250_ambarella.c b/drivers/tty/serial/8250/8250_ambarella.c
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+index d2acfac73003..cb05eff267a8 100644
+--- a/arch/arm64/Kconfig.platforms
++++ b/arch/arm64/Kconfig.platforms
+@@ -26,6 +26,14 @@ config ARCH_SUNXI
+ 	help
+ 	  This enables support for Allwinner sunxi based SoCs like the A64.
+ 
++config ARCH_AMBARELLA
++	bool "Ambarella SoC family"
++	select ARM_PSCI
++	select HAVE_ARM_ARCH_TIMER
++	select PINCTRL
++	help
++	  This enables support for the ARM64 based Ambarella SoCs like CV75.
++
+ config ARCH_ALPINE
+ 	bool "Annapurna Labs Alpine platform"
+ 	select ALPINE_MSI if PCI
+diff --git a/arch/arm64/boot/dts/Makefile b/arch/arm64/boot/dts/Makefile
+index fc726b215f12..f1709eb5d915 100644
+--- a/arch/arm64/boot/dts/Makefile
++++ b/arch/arm64/boot/dts/Makefile
+@@ -4,6 +4,7 @@ subdir-y += airoha
+ subdir-y += allwinner
+ subdir-y += altera
+ subdir-y += amazon
++subdir-y += ambarella
+ subdir-y += amd
+ subdir-y += amlogic
+ subdir-y += apm
+diff --git a/arch/arm64/boot/dts/ambarella/Makefile b/arch/arm64/boot/dts/ambarella/Makefile
 new file mode 100644
-index 000000000000..951355e19fa2
+index 000000000000..ddca3d7b18cc
 --- /dev/null
-+++ b/drivers/tty/serial/8250/8250_ambarella.c
-@@ -0,0 +1,312 @@
-+// SPDX-License-Identifier: GPL-2.0
++++ b/arch/arm64/boot/dts/ambarella/Makefile
+@@ -0,0 +1,3 @@
++# SPDX-License-Identifier: GPL-2.0
++
++dtb-$(CONFIG_ARCH_AMBARELLA) += cv75-evk.dtb
+diff --git a/arch/arm64/boot/dts/ambarella/cv75-evk.dts b/arch/arm64/boot/dts/ambarella/cv75-evk.dts
+new file mode 100644
+index 000000000000..42a0fe24b83b
+--- /dev/null
++++ b/arch/arm64/boot/dts/ambarella/cv75-evk.dts
+@@ -0,0 +1,30 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
 +/*
-+ * Serial port driver for Ambarella UART
-+ *
-+ * Copyright (C) 2026 Ambarella, Inc.
++ * Ambarella CV75 EVK board
 + */
 +
-+#include <linux/bitfield.h>
-+#include <linux/clk.h>
-+#include <linux/delay.h>
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+#include <linux/serial_8250.h>
-+#include <linux/serial_reg.h>
++/dts-v1/;
 +
-+#include "8250.h"
++#include "cv75.dtsi"
 +
-+#define AMBARELLA_UART_IER_ETOI		BIT(5)
-+#define AMBARELLA_UART_USR		0x1f
-+#define AMBARELLA_UART_USR_BUSY		BIT(0)
-+#define AMBARELLA_UART_IIR_IID		GENMASK(3, 0)
-+#define AMBARELLA_UART_IIR_STATUS	GENMASK(5, 0)
++/ {
++	model = "Ambarella CV75 EVK Board";
++	compatible = "ambarella,cv75-evk", "ambarella,cv75";
 +
-+struct ambarella_uart_soc_data {
-+	unsigned int	fifo_size;
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = &uart0;
++	};
++
++	memory@200000 {
++		device_type = "memory";
++		reg = <0x0 0x00200000 0x0 0x07e00000>;
++	};
 +};
 +
-+struct ambarella_uart {
-+	int					line;
-+	struct clk				*clk;
-+	const struct ambarella_uart_soc_data	*soc_data;
-+	bool					in_idle;
++&uart0 {
++	status = "okay";
 +};
+diff --git a/arch/arm64/boot/dts/ambarella/cv75.dtsi b/arch/arm64/boot/dts/ambarella/cv75.dtsi
+new file mode 100644
+index 000000000000..3b7948954968
+--- /dev/null
++++ b/arch/arm64/boot/dts/ambarella/cv75.dtsi
+@@ -0,0 +1,176 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * Ambarella CV75 SoC
++ *
++ * Boot peripheral: UART0 console.
++ * Clocks: a single ambarella,cv75-rct provider.
++ */
 +
-+static void ambarella_idle_exit(struct uart_port *p)
-+{
-+	struct ambarella_uart *data = p->private_data;
-+	struct uart_8250_port *up = up_to_u8250p(p);
++#include <dt-bindings/clock/ambarella,cv75-rct.h>
++#include <dt-bindings/interrupt-controller/arm-gic.h>
 +
-+	if (up->capabilities & UART_CAP_FIFO)
-+		writel(up->fcr, p->membase + (UART_FCR << p->regshift));
-+	writel(up->mcr, p->membase + (UART_MCR << p->regshift));
-+	writel(up->ier, p->membase + (UART_IER << p->regshift));
++/ {
++	compatible = "ambarella,cv75";
++	interrupt-parent = <&gic>;
++	#address-cells = <2>;
++	#size-cells = <2>;
 +
-+	data->in_idle = false;
-+}
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
 +
-+static int ambarella_idle_enter(struct uart_port *p)
-+{
-+	struct ambarella_uart *data = p->private_data;
-+	struct uart_8250_port *up = up_to_u8250p(p);
-+	unsigned int status;
-+	int retries = 4;
++		cpu@0 {
++			compatible = "arm,cortex-a76";
++			device_type = "cpu";
++			reg = <0x000>;
++			enable-method = "psci";
++		};
 +
-+	lockdep_assert_held_once(&p->lock);
++		cpu@1 {
++			compatible = "arm,cortex-a76";
++			device_type = "cpu";
++			reg = <0x100>;
++			enable-method = "psci";
++		};
++	};
 +
-+	data->in_idle = true;
-+	writel(0, p->membase + (UART_IER << p->regshift));
++	osc: oscillator {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <24000000>;
++		clock-output-names = "osc";
++	};
 +
-+	serial8250_fifo_wait_for_lsr_thre(up, p->fifosize);
-+	ndelay(p->frame_time);
-+	writel(up->mcr | UART_MCR_LOOP,
-+	       p->membase + (UART_MCR << p->regshift));
++	psci {
++		compatible = "arm,psci-0.2";
++		method = "smc";
++	};
 +
-+	do {
-+		serial8250_clear_fifos(up);
-+		if (!(readl(p->membase +
-+			    (AMBARELLA_UART_USR << p->regshift)) &
-+		      AMBARELLA_UART_USR_BUSY))
-+			break;
-+		ndelay(p->frame_time);
-+	} while (--retries);
++	soc {
++		compatible = "simple-bus";
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
 +
-+	status = serial_lsr_in(up);
-+	if (status & UART_LSR_DR) {
-+		readl(p->membase + (UART_RX << p->regshift));
-+		up->lsr_saved_flags = 0;
-+	}
++		ahb@ffe0000000 {
++			compatible = "simple-bus";
++			reg = <0xff 0xe0000000 0x0 0x01000000>;
++			ranges = <0xe0000000 0xff 0xe0000000 0x01000000>;
++			#address-cells = <1>;
++			#size-cells = <1>;
 +
-+	if (readl(p->membase + (AMBARELLA_UART_USR << p->regshift)) &
-+	    AMBARELLA_UART_USR_BUSY) {
-+		ambarella_idle_exit(p);
-+		return -EBUSY;
-+	}
++			s_scratchpad_syscon: scratchpad@e002e000 {
++				compatible = "ambarella,cv75-sec-scratchpad", "syscon";
++				reg = <0xe002e000 0x1000>;
++			};
++		};
 +
-+	return 0;
-+}
++		apb@ffe4000000 {
++			compatible = "simple-bus";
++			reg = <0xff 0xe4000000 0x0 0x01000000>;
++			ranges = <0xe4000000 0xff 0xe4000000 0x01000000>;
++			#address-cells = <1>;
++			#size-cells = <1>;
 +
-+static void ambarella_serial_out(struct uart_port *p, unsigned int offset,
-+				 u32 value)
-+{
-+	struct ambarella_uart *data = p->private_data;
-+	u32 lcr;
++			uart0: serial@e4000000 {
++				compatible = "ambarella,cv75-uart";
++				reg = <0xe4000000 0x1000>;
++				clocks = <&rct CV75_GCLK_UART0>;
++				interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&uart0_pins>;
++				reg-io-width = <4>;
++				reg-shift = <2>;
 +
-+	if (offset != UART_LCR || !data || data->in_idle) {
-+		writel(value, p->membase + (offset << p->regshift));
-+		return;
-+	}
++				status = "disabled";
++			};
 +
-+	lcr = readl(p->membase + (UART_LCR << p->regshift));
-+	if (lcr == value)
-+		return;
++			pinctrl: pinctrl@e4010000 {
++				compatible = "ambarella,cv75-pinctrl";
++				reg = <0xe4010000 0x1000>;
++				ambarella,drive-strength-syscon = <&rct>;
++				ambarella,pull-syscon = <&s_scratchpad_syscon>;
 +
-+	writel(value, p->membase + (UART_LCR << p->regshift));
-+	lcr = readl(p->membase + (UART_LCR << p->regshift));
-+	if ((lcr & ~UART_LCR_SPAR) == (value & ~UART_LCR_SPAR))
-+		return;
++				uart0_pins: uart0-pins {
++					function = "uart0";
++					groups = "uart0";
++				};
++			};
 +
-+	if (ambarella_idle_enter(p))
-+		return;
++			gpio0: gpio@e4013000 {
++				compatible = "ambarella,cv75-gpio", "arm,primecell";
++				reg = <0xe4013000 0x1000>;
++				clocks = <&rct CV75_GCLK_APB>;
++				clock-names = "apb_pclk";
++				interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
++				gpio-controller;
++				#gpio-cells = <2>;
++				gpio-ranges = <&pinctrl 0 0 32>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				arm,primecell-periphid = <0x00000061>;
++			};
 +
-+	writel(value, p->membase + (UART_LCR << p->regshift));
-+	ambarella_idle_exit(p);
-+}
++			gpio1: gpio@e4014000 {
++				compatible = "ambarella,cv75-gpio", "arm,primecell";
++				reg = <0xe4014000 0x1000>;
++				clocks = <&rct CV75_GCLK_APB>;
++				clock-names = "apb_pclk";
++				interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
++				gpio-controller;
++				#gpio-cells = <2>;
++				gpio-ranges = <&pinctrl 0 32 32>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				arm,primecell-periphid = <0x00000061>;
++			};
 +
-+static u32 ambarella_serial_in(struct uart_port *p, unsigned int offset)
-+{
-+	return readl(p->membase + (offset << p->regshift));
-+}
++			gpio2: gpio@e4015000 {
++				compatible = "ambarella,cv75-gpio", "arm,primecell";
++				reg = <0xe4015000 0x1000>;
++				clocks = <&rct CV75_GCLK_APB>;
++				clock-names = "apb_pclk";
++				interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
++				gpio-controller;
++				#gpio-cells = <2>;
++				gpio-ranges = <&pinctrl 0 64 32>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				arm,primecell-periphid = <0x00000061>;
++			};
++		};
 +
-+static int ambarella_handle_irq(struct uart_port *p)
-+{
-+	struct uart_8250_port *up = up_to_u8250p(p);
-+	unsigned int iir = serial_port_in(p, UART_IIR);
-+	bool rx_timeout = (iir & AMBARELLA_UART_IIR_STATUS) ==
-+			  UART_IIR_RX_TIMEOUT;
-+	unsigned int status;
++		rct: clock-controller@ffed080000 {
++			compatible = "ambarella,cv75-rct", "syscon";
++			reg = <0xff 0xed080000 0x0 0x1000>;
++			clocks = <&osc>;
++			clock-names = "osc";
++			#clock-cells = <1>;
++			assigned-clocks = <&rct CV75_GCLK_UART0>;
++			assigned-clock-parents = <&osc>;
++			assigned-clock-rates = <24000000>;
++		};
 +
-+	guard(uart_port_lock_check_sysrq_irqsave)(p);
++		gic: interrupt-controller@fff0101000 {
++			compatible = "arm,gic-400";
++			reg = <0xff 0xf0101000 0x0 0x1000>,
++			      <0xff 0xf0102000 0x0 0x2000>,
++			      <0xff 0xf0104000 0x0 0x2000>,
++			      <0xff 0xf0106000 0x0 0x2000>;
++			interrupt-controller;
++			#interrupt-cells = <3>;
++			#address-cells = <0>;
++			interrupts = <GIC_PPI 9
++				      (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_HIGH)>;
++		};
++	};
 +
-+	switch (FIELD_GET(AMBARELLA_UART_IIR_IID, iir)) {
-+	case UART_IIR_NO_INT:
-+		return 0;
-+	case UART_IIR_BUSY:
-+		serial_port_in(p, AMBARELLA_UART_USR);
-+		return 1;
-+	}
-+
-+	if (rx_timeout) {
-+		status = serial_lsr_in(up);
-+		if (!(status & (UART_LSR_DR | UART_LSR_BI)))
-+			serial_port_in(p, UART_RX);
-+	}
-+
-+	serial8250_handle_irq_locked(p, iir);
-+	return 1;
-+}
-+
-+static void ambarella_set_divisor(struct uart_port *p, unsigned int baud,
-+				  unsigned int quot, unsigned int quot_frac)
-+{
-+	struct uart_8250_port *up = up_to_u8250p(p);
-+
-+	if (ambarella_idle_enter(p))
-+		return;
-+
-+	serial_port_out(p, UART_LCR, up->lcr | UART_LCR_DLAB);
-+	if (serial_port_in(p, UART_LCR) & UART_LCR_DLAB)
-+		serial_dl_write(up, quot);
-+	serial_port_out(p, UART_LCR, up->lcr);
-+
-+	ambarella_idle_exit(p);
-+}
-+
-+static int ambarella_startup(struct uart_port *port)
-+{
-+	struct uart_8250_port *up = up_to_u8250p(port);
-+	int ret;
-+
-+	ret = serial8250_do_startup(port);
-+	if (ret)
-+		return ret;
-+
-+	up->ier |= AMBARELLA_UART_IER_ETOI;
-+	serial_port_out(port, UART_IER, up->ier);
-+
-+	return 0;
-+}
-+
-+static int ambarella_uart_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct ambarella_uart *data;
-+	struct uart_8250_port uart = {};
-+	struct resource *regs;
-+	u32 reg_io_width = 4;
-+	u32 reg_shift = 2;
-+	int irq, ret;
-+
-+	irq = platform_get_irq(pdev, 0);
-+	if (irq < 0)
-+		return irq;
-+
-+	regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-+	if (!regs)
-+		return dev_err_probe(dev, -EINVAL, "missing registers\n");
-+
-+	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
-+	if (!data)
-+		return -ENOMEM;
-+
-+	data->soc_data = device_get_match_data(dev);
-+	if (!data->soc_data)
-+		return -EINVAL;
-+
-+	data->clk = devm_clk_get_enabled(dev, NULL);
-+	if (IS_ERR(data->clk))
-+		return dev_err_probe(dev, PTR_ERR(data->clk),
-+				     "unable to get clock\n");
-+
-+	uart.port.dev = dev;
-+	uart.port.mapbase = regs->start;
-+	uart.port.mapsize = resource_size(regs);
-+	uart.port.membase = devm_ioremap(dev, regs->start,
-+					 resource_size(regs));
-+	if (!uart.port.membase)
-+		return -ENOMEM;
-+
-+	uart.port.irq = irq;
-+	uart.port.type = PORT_16550A;
-+	uart.port.flags = UPF_FIXED_PORT | UPF_FIXED_TYPE | UPF_SKIP_TEST;
-+	uart.port.startup = ambarella_startup;
-+	uart.port.handle_irq = ambarella_handle_irq;
-+	uart.port.set_divisor = ambarella_set_divisor;
-+	uart.port.uartclk = clk_get_rate(data->clk);
-+	if (!uart.port.uartclk)
-+		return dev_err_probe(dev, -EINVAL, "clock rate not defined\n");
-+
-+	uart.port.fifosize = data->soc_data->fifo_size;
-+	uart.port.private_data = data;
-+	uart.capabilities = UART_CAP_FIFO | UART_CAP_NOTEMT | UART_CAP_AFE;
-+
-+	of_property_read_u32(dev->of_node, "reg-shift", &reg_shift);
-+	of_property_read_u32(dev->of_node, "reg-io-width", &reg_io_width);
-+	uart.port.regshift = reg_shift;
-+
-+	switch (reg_io_width) {
-+	case 4:
-+		uart.port.iotype = UPIO_MEM32;
-+		uart.port.serial_in = ambarella_serial_in;
-+		uart.port.serial_out = ambarella_serial_out;
-+		break;
-+	default:
-+		return dev_err_probe(dev, -EINVAL,
-+				     "unsupported reg-io-width %u\n",
-+				     reg_io_width);
-+	}
-+
-+	ret = serial8250_register_8250_port(&uart);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "unable to register 8250 port\n");
-+
-+	data->line = ret;
-+	platform_set_drvdata(pdev, data);
-+	return 0;
-+}
-+
-+static void ambarella_uart_remove(struct platform_device *pdev)
-+{
-+	struct ambarella_uart *data = platform_get_drvdata(pdev);
-+
-+	serial8250_unregister_port(data->line);
-+}
-+
-+static const struct ambarella_uart_soc_data cv75_uart_data = {
-+	.fifo_size = 64,
++	timer {
++		compatible = "arm,armv8-timer";
++		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
++			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
++			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
++			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>,
++			     <GIC_PPI 12 (GIC_CPU_MASK_SIMPLE(2) | IRQ_TYPE_LEVEL_LOW)>;
++	};
 +};
-+
-+static const struct of_device_id ambarella_uart_dt_ids[] = {
-+	{
-+		.compatible = "ambarella,cv75-uart",
-+		.data = &cv75_uart_data,
-+	},
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ambarella_uart_dt_ids);
-+
-+static struct platform_driver ambarella_uart_platform_driver = {
-+	.driver = {
-+		.name		= "8250-ambarella",
-+		.of_match_table	= ambarella_uart_dt_ids,
-+	},
-+	.probe	= ambarella_uart_probe,
-+	.remove	= ambarella_uart_remove,
-+};
-+
-+module_platform_driver(ambarella_uart_platform_driver);
-+
-+static int __init ambarella_early_setup(struct earlycon_device *device,
-+					const char *options)
-+{
-+	struct uart_port *port = &device->port;
-+
-+	if (!port->membase)
-+		return -ENODEV;
-+
-+	port->iotype = UPIO_MEM32;
-+	port->regshift = 2;
-+	port->serial_in = ambarella_serial_in;
-+	port->serial_out = ambarella_serial_out;
-+
-+	return early_serial8250_setup(device, options);
-+}
-+
-+OF_EARLYCON_DECLARE(ambarella, "ambarella,cv75-uart", ambarella_early_setup);
-+
-+MODULE_IMPORT_NS("SERIAL_8250");
-+MODULE_AUTHOR("Long Zhao <longzhao@ambarella.com>");
-+MODULE_DESCRIPTION("Ambarella UART driver");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/tty/serial/8250/Kconfig b/drivers/tty/serial/8250/Kconfig
-index fc3e58d62233..523c55be3227 100644
---- a/drivers/tty/serial/8250/Kconfig
-+++ b/drivers/tty/serial/8250/Kconfig
-@@ -337,6 +337,15 @@ config SERIAL_8250_ACORN
- 	  system, say Y to this option.  The driver can handle 1, 2, or 3 port
- 	  cards.  If unsure, say N.
- 
-+config SERIAL_8250_AMBARELLA
-+	tristate "Ambarella UART support"
-+	depends on SERIAL_8250 && HAVE_CLK
-+	depends on ARCH_AMBARELLA || COMPILE_TEST
-+	default y if ARCH_AMBARELLA
-+	help
-+	  Support for the on-chip UART found on Ambarella SoCs.
-+	  If unsure, say N.
-+
- config SERIAL_8250_BCM2835AUX
- 	tristate "BCM2835 auxiliar mini UART support"
- 	depends on ARCH_BCM2835 || COMPILE_TEST
-diff --git a/drivers/tty/serial/8250/Makefile b/drivers/tty/serial/8250/Makefile
-index 6d21402b4435..601d9e2589fe 100644
---- a/drivers/tty/serial/8250/Makefile
-+++ b/drivers/tty/serial/8250/Makefile
-@@ -20,6 +20,7 @@ obj-$(CONFIG_SERIAL_8250_CONSOLE)	+= 8250_early.o
- 
- obj-$(CONFIG_SERIAL_8250_ACCENT)	+= 8250_accent.o
- obj-$(CONFIG_SERIAL_8250_ACORN)		+= 8250_acorn.o
-+obj-$(CONFIG_SERIAL_8250_AMBARELLA)	+= 8250_ambarella.o
- obj-$(CONFIG_SERIAL_8250_ASPEED_VUART)	+= 8250_aspeed_vuart.o
- obj-$(CONFIG_SERIAL_8250_BCM2835AUX)	+= 8250_bcm2835aux.o
- obj-$(CONFIG_SERIAL_8250_BCM7271)	+= 8250_bcm7271.o
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index ad3bd3d9507b..ae5bcc6c9fc7 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -36,6 +36,7 @@ CONFIG_CRASH_DUMP=y
+ CONFIG_ARCH_ACTIONS=y
+ CONFIG_ARCH_AIROHA=y
+ CONFIG_ARCH_SUNXI=y
++CONFIG_ARCH_AMBARELLA=y
+ CONFIG_ARCH_ALPINE=y
+ CONFIG_ARCH_APPLE=y
+ CONFIG_ARCH_ARTPEC=y
+@@ -560,6 +561,7 @@ CONFIG_SERIAL_8250_CONSOLE=y
+ CONFIG_SERIAL_8250_NR_UARTS=8
+ CONFIG_SERIAL_8250_EXTENDED=y
+ CONFIG_SERIAL_8250_SHARE_IRQ=y
++CONFIG_SERIAL_8250_AMBARELLA=y
+ CONFIG_SERIAL_8250_BCM2835AUX=y
+ CONFIG_SERIAL_8250_DW=y
+ CONFIG_SERIAL_8250_EM=y
 
 -- 
 2.34.1
