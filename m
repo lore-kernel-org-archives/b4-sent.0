@@ -1,82 +1,137 @@
-From: Aiden Isik <aidenisik@member.fsf.org>
-Date: Tue, 18 Aug 2026 16:44:48 +0100
-Subject: [PATCH v2 2/2] watchdog: s3c2410_wdt: Add exynos5515-wdt
- compatible data
+From: Sven Peter <sven@kernel.org>
+Date: Tue, 18 Aug 2026 18:20:03 +0200
+Subject: [PATCH] usb: typec: tbt: Correct swapped TBT adapter type values
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-for-next-lucky7-watchdog-v2-2-6743f479a47f@member.fsf.org>
-References: <20260818-for-next-lucky7-watchdog-v2-0-6743f479a47f@member.fsf.org>
-In-Reply-To: <20260818-for-next-lucky7-watchdog-v2-0-6743f479a47f@member.fsf.org>
-To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-watchdog@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- Aiden Isik <aidenisik@member.fsf.org>
+Message-Id: <20260818-b4-tbt-legacy-fix-v1-1-797831e3df3f@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqEMAyF4atI1gaslCpeRVw0NaMRUWmrOIh3n
+ +osvwfvvyCwFw7QZBd4PiTIuiSoPAM32mVglD4ZyqI0Ra1qJI2RIs48WPfFj5zYG66UdZrIWEi
+ /zXOa32bb/R12mtjFJwT3/QMqeLUodQAAAA==
+X-Change-ID: 20260818-b4-tbt-legacy-fix-d6e71ac4bb6a
+To: Benson Leung <bleung@chromium.org>, 
+ Abhishek Pandit-Subedi <abhishekpandit@chromium.org>, 
+ Jameson Thies <jthies@google.com>, 
+ Andrei Kuchynski <akuchynski@chromium.org>, 
+ Tzung-Bi Shih <tzungbi@kernel.org>, Guenter Roeck <groeck@chromium.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
+ Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1518;
- i=aidenisik@member.fsf.org; h=from:subject:message-id;
- bh=C5r2bV9nYfxOIJNnwxYrMhWREb+Zhh0VM+xx1N3wI6g=;
- b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqhH315BAAGOJEjlp4J5rR3Yo9RyUegV+hrjWJ8
- HG6X6/iKn2JAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoR99QAKCRBJJwGyxHrX
- 6ws6EACwRp3RhFcTaoItfWoc9PNEejm0Hh+aNlLnAZWaYaPV87RYE/yjBb6TPPhP2IMq3Mo8+K+
- 5JU4MnoO4FMDdfxQ4NWug+RgSyoTYNo4qr9uh3Rl1qWv+v6BJN7MdoFYxX9g202Ag08B3NlxfyB
- OJmjTq2mfbZ/HHyc6xv0mGC7grqB+OuFHdC3Qt9uAfNXtXpGrSvBI+HPzjrWAm6Gsp96rhg2LQL
- 28CyaCDNu0WcmEmflQNf53tfSDegt/M5RJ18VdVBh7TzxQnORsQsuoWYA2v94/c3DuUfVpH5lhL
- ASm65HXaKN2mPx/ErOTgv1SehFGxBiBR8oopAR5TK/1Nu952gUW0Jcwqo/jP1IGq3injEAShv6h
- 2cX6iwGGt8SU55hTbo7FASV9wkoV0Tn3rs0yn05Wdq6FVfuheaNoNtDYdvMjdEFOQb5AAgliLvK
- GBxhALdW5frgLwTJYJR7UaAGpoI0jf27oPE6NYpTF0UslijiwF56KPSELTIzw0wuESjDuUlMYgr
- QrAdg4Vz63gm9P4RoEz0rU/LvYfT9WaiWOmp/QpahX0jm3Reyc6kT79k6zFjsnp+9aJ92InPPkl
- lon462/vrn+e8ejxaCBUGbixwaFz1EXDh91I/JBKERGyrvyRNwkAJKaBnd4jBAdi+HeYDW2FxB0
- 3W7qQcego3c2eYQ==
-X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
- fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
-X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4686; i=sven@kernel.org;
+ h=from:subject:message-id; bh=wgcrKMfF8rCWxEaRowBxoSOSXfBYnEzRDnvmztyZ0t8=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZLm/lZV1YvP3vbwttBxVtv3YvLi1nfcyNf+/fJlCMG3
+ NL5kj4dpSwMYlwMsmKKLNv325s+efhGcOmmS+9h5rAygQxh4OIUgInUSzAy/Nmxf8LZuIf7/VqO
+ +X+O1Y/rW66QFzFvzQTt62Jdk+XWVDAyXPGeWFbs/1lxetr0hNe3runP5xM8t7yTi1uQYZqbanM
+ 5HwA=
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add driver data for the Exynos5515 SoC's watchdog timer.
+Table F-10 of the USB Type-C Cable and Connector Specification R2.5 on
+page 412 defines bit 16 of the TBT3 Device Discover Mode VDO as 0 = TBT3
+Adapter and 1 = TBT2 Legacy Adapter. Linux has those two swapped since
+their original introduction in commit ca469c292edc ("usb: typec: Add
+definitions for Thunderbolt 3 Alternate Mode").
 
-Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
+ChromiumOS EC's include/usb_pd_tbt.h has them the correct way around
+and references the USB Type-C ECN "Thunderbolt 3 Compatibility Updates"
+as fixing an error where they were originally swapped which is presumably
+where the wrong order originally came from.
+
+I've also confirmed the correct mapping with an Apple Thunderbolt 3
+to Thunderbolt 2 adapter which does set bit 16 in that VDO.
+
+Swap the two values and update all users. Also rename the old defines
+so that no user accidentally ends up with an inverted value.
+No functional change.
+
+Link: https://usb.org/document-library/usb-type-cr-cable-and-connector-specification-release-25
+Link: https://chromium.googlesource.com/chromiumos/platform/ec/+/db93814b6e73c8545d23714fe0674c10814d901a/include/usb_pd_tbt.h#90
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/watchdog/s3c2410_wdt.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+I ran into this when bringing up thunderbolt for Apple Silicon SoCs and
+was very confused why the condition for "tbt2 adapter" vs "tbt3 adapter"
+seemed to be backwards.
+I think the qcom pmic_glink_altmode.c actually has a bug there that was
+hidden and/or caused by the wrong values: It used to always set
+TBT_ADAPTER_TBT3 which sounds plausible but actually claims to be a
+legacy TBT2 adapter on the wire. I don't have the hardware or know the
+intention there though.
+The other users look correct to me since they just pass the value
+through.
+---
+ drivers/platform/chrome/cros_ec_typec.c | 2 +-
+ drivers/soc/qcom/pmic_glink_altmode.c   | 2 +-
+ drivers/usb/typec/mux/intel_pmc_mux.c   | 2 +-
+ include/linux/usb/typec_tbt.h           | 4 ++--
+ 4 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/watchdog/s3c2410_wdt.c b/drivers/watchdog/s3c2410_wdt.c
-index e31f93db0509..7299dfdb0c09 100644
---- a/drivers/watchdog/s3c2410_wdt.c
-+++ b/drivers/watchdog/s3c2410_wdt.c
-@@ -232,6 +232,16 @@ static const struct s3c2410_wdt_variant drv_data_exynos5420 = {
- 		  QUIRK_HAS_PMU_RST_STAT | QUIRK_HAS_PMU_AUTO_DISABLE,
- };
+diff --git a/drivers/platform/chrome/cros_ec_typec.c b/drivers/platform/chrome/cros_ec_typec.c
+index c0806c562bb9..79968edc16ed 100644
+--- a/drivers/platform/chrome/cros_ec_typec.c
++++ b/drivers/platform/chrome/cros_ec_typec.c
+@@ -586,7 +586,7 @@ static int cros_typec_enable_tbt(struct cros_typec_data *typec,
+ 	data.device_mode = TBT_MODE;
  
-+static const struct s3c2410_wdt_variant drv_data_exynos5515 = {
-+	.mask_reset_reg = EXYNOSAUTOV920_CLUSTER0_NONCPU_INT_EN,
-+	.mask_bit = 2,
-+	.rst_stat_reg = EXYNOS5_RST_STAT_REG_OFFSET,
-+	.rst_stat_bit = 24,
-+	.quirks = QUIRK_HAS_WTCLRINT_REG | QUIRK_HAS_PMU_MASK_RESET | \
-+		  QUIRK_HAS_PMU_RST_STAT | QUIRK_HAS_PMU_AUTO_DISABLE | \
-+		  QUIRK_HAS_DBGACK_BIT,
-+};
-+
- static const struct s3c2410_wdt_variant drv_data_exynos7 = {
- 	.disable_reg = EXYNOS5_WDT_DISABLE_REG_OFFSET,
- 	.mask_reset_reg = EXYNOS5_WDT_MASK_RESET_REG_OFFSET,
-@@ -379,6 +389,8 @@ static const struct of_device_id s3c2410_wdt_match[] = {
- 	  .data = &drv_data_exynos5250 },
- 	{ .compatible = "samsung,exynos5420-wdt",
- 	  .data = &drv_data_exynos5420 },
-+	{ .compatible = "samsung,exynos5515-wdt",
-+	  .data = &drv_data_exynos5515 },
- 	{ .compatible = "samsung,exynos7-wdt",
- 	  .data = &drv_data_exynos7 },
- 	{ .compatible = "samsung,exynos850-wdt",
+ 	if (pd_ctrl->control_flags & USB_PD_CTRL_TBT_LEGACY_ADAPTER)
+-		data.device_mode = TBT_SET_ADAPTER(TBT_ADAPTER_TBT3);
++		data.device_mode = TBT_SET_ADAPTER(TBT_ADAPTER_TYPE_TBT2_LEGACY);
+ 
+ 	/* Cable Discover Mode VDO */
+ 	data.cable_mode = TBT_MODE;
+diff --git a/drivers/soc/qcom/pmic_glink_altmode.c b/drivers/soc/qcom/pmic_glink_altmode.c
+index 619bad2c27ee..8d4f54c160c5 100644
+--- a/drivers/soc/qcom/pmic_glink_altmode.c
++++ b/drivers/soc/qcom/pmic_glink_altmode.c
+@@ -215,7 +215,7 @@ static void pmic_glink_altmode_enable_tbt(struct pmic_glink_altmode *altmode,
+ 
+ 	/* Device Discover Mode VDO */
+ 	tbt_data.device_mode = TBT_MODE;
+-	tbt_data.device_mode |= TBT_SET_ADAPTER(TBT_ADAPTER_TBT3);
++	tbt_data.device_mode |= TBT_SET_ADAPTER(TBT_ADAPTER_TYPE_TBT2_LEGACY);
+ 
+ 	/* Cable Discover Mode VDO */
+ 	tbt_data.cable_mode = TBT_MODE;
+diff --git a/drivers/usb/typec/mux/intel_pmc_mux.c b/drivers/usb/typec/mux/intel_pmc_mux.c
+index 219a32da1348..b63114575a78 100644
+--- a/drivers/usb/typec/mux/intel_pmc_mux.c
++++ b/drivers/usb/typec/mux/intel_pmc_mux.c
+@@ -346,7 +346,7 @@ pmc_usb_mux_tbt(struct pmc_usb_port *port, struct typec_mux_state *state)
+ 	req.mode_data = (port->orientation - 1) << PMC_USB_ALTMODE_ORI_SHIFT;
+ 	req.mode_data |= (port->role - 1) << PMC_USB_ALTMODE_UFP_SHIFT;
+ 
+-	if (TBT_ADAPTER(data->device_mode) == TBT_ADAPTER_TBT3)
++	if (TBT_ADAPTER(data->device_mode) == TBT_ADAPTER_TYPE_TBT2_LEGACY)
+ 		req.mode_data |= PMC_USB_ALTMODE_TBT_TYPE;
+ 
+ 	if (data->cable_mode & TBT_CABLE_OPTICAL)
+diff --git a/include/linux/usb/typec_tbt.h b/include/linux/usb/typec_tbt.h
+index 0b570f1b8bc8..7bdf3795ae50 100644
+--- a/include/linux/usb/typec_tbt.h
++++ b/include/linux/usb/typec_tbt.h
+@@ -27,8 +27,8 @@ struct typec_thunderbolt_data {
+ /* TBT3 Device Discover Mode VDO bits */
+ #define TBT_MODE			BIT(0)
+ #define TBT_ADAPTER(_vdo_)		FIELD_GET(BIT(16), _vdo_)
+-#define   TBT_ADAPTER_LEGACY		0
+-#define   TBT_ADAPTER_TBT3		1
++#define   TBT_ADAPTER_TYPE_TBT3		0
++#define   TBT_ADAPTER_TYPE_TBT2_LEGACY	1
+ #define TBT_INTEL_SPECIFIC_B0		BIT(26)
+ #define TBT_VENDOR_SPECIFIC_B0		BIT(30)
+ #define TBT_VENDOR_SPECIFIC_B1		BIT(31)
 
--- 
-2.54.0
+---
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260818-b4-tbt-legacy-fix-d6e71ac4bb6a
+
+Best regards,
+--  
+Sven Peter <sven@kernel.org>
 
