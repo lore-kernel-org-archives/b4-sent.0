@@ -1,172 +1,115 @@
-From: Younes Akhouayri <git@younes.io>
-Date: Tue, 18 Aug 2026 23:50:33 +0200
-Subject: [PATCH v3] rust: configfs: fix object initialization cleanup
+From: Aiden Isik <aidenisik@member.fsf.org>
+Subject: [PATCH v2 0/3] clk: samsung: Introduce Exynos5515 clock driver
+ support
+Date: Tue, 18 Aug 2026 22:58:34 +0100
+Message-Id: <20260818-for-next-lucky7-clock-v2-0-cda0cc80f158@member.fsf.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260818-fix-rust-configfs-registration-state-v1-v3-1-28b5cbfe0a72@younes.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/52OwWrEMAxEf2XxuWodG5K4p/2P0oPjyIl6sIvkh
- F2W/HvtlEKPpaDLiJk381CCTCjq9fJQjDsJ5VSFfbqosPq0INBctTLa9HrsBoh0A96kQMgp0hI
- FGBeSwr7UKEjxBWHvIHprYwi96werKu2TsUbPprf3by3b9IGhNHxzTF4QJvYprO2VmRZKL2dXw
- ltplrUWZb6fa/euoX6GjX8eVq+D4IxzTk9hxHi95y2hPFNWbdhu/sk1let8wHm2etBx+M09juM
- LsQiOzGsBAAA=
-X-Change-ID: 20260817-fix-rust-configfs-registration-state-v1-fa33fcc69673
-To: Andreas Hindborg <a.hindborg@kernel.org>, 
- Breno Leitao <leitao@debian.org>, Miguel Ojeda <ojeda@kernel.org>, 
- Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Younes Akhouayri <git@younes.io>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIrVhGoC/3WNyw6CMBBFf4V07ZC2IFVW/odhYccpVB41LRAI4
+ d8FjEuXJ7n3nIUF8pYCy6OFeRptsK7bQJ4ihtWjKwnsc2Mmucz4RZzBOA8dTT00A9azAmwc1pD
+ oVCvKtEBK2fZ9ezJ2Orz34sth0C/Cfpfti8qG3vn5CI9i3/0a6k9jFMCBJ5JSLeUVVXZrqdXkY
+ xNM7HzJinVdP6YX1Y7RAAAA
+X-Change-ID: 20260815-for-next-lucky7-clock-3b4b7e6b1ce4
+To: Krzysztof Kozlowski <krzk@kernel.org>, 
+ Sylwester Nawrocki <s.nawrocki@samsung.com>, 
+ Chanwoo Choi <cw00.choi@samsung.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Aiden Isik <aidenisik+git@member.fsf.org>
+Cc: linux-samsung-soc@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org, 
+ Aiden Isik <aidenisik@member.fsf.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787089844; l=5746;
- i=git@younes.io; s=20260712; h=from:subject:message-id;
- bh=5QJkFcGkA+N5L45CLyT0WQfSarA1PWSqeUxnL6ZOWqY=;
- b=qaNLbzbo7A5Rr44+LXvoUG+iKMvpvzHIMBunJfZy9FARZ3TNQ6/gG5oU6El6hy4M1oRUf9xln
- KusGrQCF3llDazytq5sYPZ2AgOiyDjoZ2yN0XKBrJWxk6HBU0XwthJL
-X-Developer-Key: i=git@younes.io; a=ed25519;
- pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
-X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2585;
+ i=aidenisik@member.fsf.org; h=from:subject:message-id;
+ bh=UDNWr97k0IQ0S9m6OO8km8BsOp+W7P/+APdAzwtHDLE=;
+ b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqhNWSjMY1I95L0VqIOxvnyDYXRcaVDhL/tc/xa
+ sCiBeSgrnyJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoTVkgAKCRBJJwGyxHrX
+ 6/afEACenWvCS6HggKqzTvionUili9AXn0eqVLMpoVEvXucgWGrfDygJS+7bs19W75SU5qtwYpV
+ 7W4VfHSYyg1J+eSOlZCDzJThDAz9GW2T0r/gArrcHQ10Wc8xifFqFViWDRL2NkOgck8A5uIruCw
+ Z8m0Rw7PZ2T2L35B/7E/thKYFyoPMTbazdNHfHsQDi/T4dFOs1RZPlUbq8Xlshcr5Ik8npTe9fZ
+ BFbS1h7wp2ZsfbtMtL4aATrD6sHyGe22TXF78aVe3AZpvD1uqSB9BmzvwU0LlBBBfX1YfL0VIUI
+ z5Nk2OEmCmLzyNxdAVIRbTLfHJ8meRk31AOcfsc1jyEIMoTJBtkaqDwyC57m7bVs0RAhVdwr7xz
+ vLB2Sn+b82Z5nbCuR5AbOD+uO9od3FAApCtMSAJZjfQoKmbCJx8n7WUb423LaFsf/0eFvAMwjIk
+ 1RPDObNmfJk0uduDiP0XAUzABN1TnmhT1BgI1PMKZDLDRPnUDZA6HLY4xzfUCkyyg6DO86DDOVc
+ S9GwDwq7PXLx/0cqfbEa1YyiGr3HvbcYVDDEFwj8lzIKoTesBtI5+xYyiYwi5Mkb8oBSAx8TSpx
+ wl9wbzfyeB6s+dlSg+W36ZEX2cYC4Oo6wrWmDt3lal6nt4jz6w4YRUYt8wkuKTahWU66zoem7VS
+ /V9G+An7Xh30gHw==
+X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
+ fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
+X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Subsystem::new() calls configfs_register_subsystem() at the end of its
-pin initializer. If registration returns an error, release the config
-item's initial reference and destroy the initialized mutex before
-returning. Otherwise, long subsystem names allocated by
-config_item_set_name() leak.
+Hi there,
 
-The initial reference also remains after a successful subsystem is
-unregistered. Release it from PinnedDrop before the Rust container is
-destroyed.
+This patchset introduces clock driver support for the Exynos5515 SoC.
 
-Initialize driver data before the C configfs object in Subsystem::new()
-and Group::new(). Then failure while initializing driver data cannot
-leave an initialized config group, and its allocated name, behind.
+Currently, the following CMU blocks are defined:
+- CMU_TOP (handles clocks for all child CMU blocks)
+- CMU_PERI (handles clocks for USI, watchdog timer, etc)
+- CMU_FSYS (handles clocks for MMC, USB, etc)
 
-Keeping registration inside try_pin_init! also means PinnedDrop is
-installed only after registration succeeds. A duplicate name therefore
-returns -EEXIST without attempting to unregister a subsystem whose
-ci_dentry was never set.
+This driver support makes use of HWACG (hardware automatic clock gating),
+so gates do not need to be manually forced on with CLK_IGNORE_UNUSED or
+CLK_IS_CRITICAL. Rather, the hardware handles the clock gating.
 
-Fixes: 446cafc295bf ("rust: configfs: introduce rust support for configfs")
-Signed-off-by: Younes Akhouayri <git@younes.io>
+Support for more blocks to come as support for the hardware requiring
+them is added.
+
+I am getting some checkpatch warnings telling me to check the MAINTAINERS
+file, as new files have been added. I am assuming these can be ignored as
+I am not a maintainer, and the whole clock driver and samsung subsystems
+already have maintainers listed.
+
+Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
-Changes in v3:
-- Initialize driver data before configfs groups.
-- Release the initial group reference after registration failure and unregister.
-- Link to v2: https://patch.msgid.link/20260818-fix-rust-configfs-registration-state-v1-v2-1-9acedd3070f7@younes.io
-
 Changes in v2:
-- Register the subsystem at the end of try_pin_init!.
-- Destroy su_mutex when registration fails.
-- Remove the registered flag.
-- Link to v1: https://patch.msgid.link/20260818-fix-rust-configfs-registration-state-v1-v1-1-c929990bc8ef@younes.io
+- Fixed accidental revert in clk-pll.c
+- Corrected mux parent ordering
+- Corrected Signed-off-by tags
+- Link to v1: https://patch.msgid.link/20260817-for-next-lucky7-clock-v1-0-032e4b229c76@member.fsf.org
 
-To: Andreas Hindborg <a.hindborg@kernel.org>
-To: Breno Leitao <leitao@debian.org>
-To: Miguel Ojeda <ojeda@kernel.org>
-To: Boqun Feng <boqun@kernel.org>
-To: Gary Guo <gary@garyguo.net>
-To: Björn Roy Baron <bjorn3_gh@protonmail.com>
-To: Benno Lossin <lossin@kernel.org>
-To: Alice Ryhl <aliceryhl@google.com>
-To: Trevor Gross <tmgross@umich.edu>
-To: Danilo Krummrich <dakr@kernel.org>
-To: Daniel Almeida <daniel.almeida@collabora.com>
-To: Tamir Duberstein <tamird@kernel.org>
-To: Alexandre Courbot <acourbot@nvidia.com>
-To: Onur Özkan <work@onurozkan.dev>
-Cc: rust-for-linux@vger.kernel.org
+To: Krzysztof Kozlowski <krzk@kernel.org>
+To: Sylwester Nawrocki <s.nawrocki@samsung.com>
+To: Chanwoo Choi <cw00.choi@samsung.com>
+To: Peter Griffin <peter.griffin@linaro.org>
+To: Alim Akhtar <alim.akhtar@samsung.com>
+To: Michael Turquette <mturquette@baylibre.com>
+To: Stephen Boyd <sboyd@kernel.org>
+To: Brian Masney <bmasney@redhat.com>
+To: Rob Herring <robh@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Aiden Isik <aidenisik+git@member.fsf.org>
+Cc: linux-samsung-soc@vger.kernel.org
+Cc: linux-clk@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
 Cc: linux-kernel@vger.kernel.org
----
- rust/kernel/configfs.rs | 35 +++++++++++++++++++++++++----------
- 1 file changed, 25 insertions(+), 10 deletions(-)
-
-diff --git a/rust/kernel/configfs.rs b/rust/kernel/configfs.rs
-index cd082b83e9e7..d28ac9a648f1 100644
---- a/rust/kernel/configfs.rs
-+++ b/rust/kernel/configfs.rs
-@@ -150,6 +150,7 @@ pub fn new(
-         data: impl PinInit<Data, Error>,
-     ) -> impl PinInit<Self, Error> {
-         try_pin_init!(Self {
-+            data <- data,
-             subsystem <- pin_init::init_zeroed().chain(
-                 |place: &mut Opaque<bindings::configfs_subsystem>| {
-                     // SAFETY: We initialized the required fields of `place.group` above.
-@@ -172,13 +173,23 @@ pub fn new(
-                     Ok(())
-                 }
-             ),
--            data <- data,
--        })
--        .pin_chain(|this| {
--            crate::error::to_result(
--                // SAFETY: We initialized `this.subsystem` according to C API contract above.
--                unsafe { bindings::configfs_register_subsystem(this.subsystem.get()) },
--            )
-+            _: {
-+                let result = crate::error::to_result(
-+                    // SAFETY: We initialized `subsystem` according to the C API contract above.
-+                    unsafe { bindings::configfs_register_subsystem(subsystem.get()) },
-+                );
-+                if result.is_err() {
-+                    // SAFETY: The group and mutex were initialized above, and registration
-+                    // failed, so configfs does not hold references to the group.
-+                    unsafe {
-+                        bindings::config_item_put(
-+                            &raw mut (*subsystem.get()).su_group.cg_item,
-+                        );
-+                        bindings::mutex_destroy(&raw mut (*subsystem.get()).su_mutex);
-+                    }
-+                }
-+                result?
-+            }
-         })
-     }
- }
-@@ -188,8 +199,12 @@ impl<Data> PinnedDrop for Subsystem<Data> {
-     fn drop(self: Pin<&mut Self>) {
-         // SAFETY: We registered `self.subsystem` in the initializer returned by `Self::new`.
-         unsafe { bindings::configfs_unregister_subsystem(self.subsystem.get()) };
--        // SAFETY: We initialized the mutex in `Subsystem::new`.
--        unsafe { bindings::mutex_destroy(&raw mut (*self.subsystem.get()).su_mutex) };
-+        // SAFETY: Unregistering drops configfs's references to the group, so it is safe to drop
-+        // the initial group reference and destroy the initialized mutex.
-+        unsafe {
-+            bindings::config_item_put(&raw mut (*self.subsystem.get()).su_group.cg_item);
-+            bindings::mutex_destroy(&raw mut (*self.subsystem.get()).su_mutex);
-+        }
-     }
- }
- 
-@@ -260,6 +275,7 @@ pub fn new(
-         data: impl PinInit<Data, Error>,
-     ) -> impl PinInit<Self, Error> {
-         try_pin_init!(Self {
-+            data <- data,
-             group <- pin_init::init_zeroed().chain(|v: &mut Opaque<bindings::config_group>| {
-                 let place = v.get();
-                 let name = name.to_bytes_with_nul().as_ptr();
-@@ -269,7 +285,6 @@ pub fn new(
-                 };
-                 Ok(())
-             }),
--            data <- data,
-         })
-     }
- }
 
 ---
-base-commit: 47f27155f17498fccb1f222f79089642337498a9
-change-id: 20260817-fix-rust-configfs-registration-state-v1-fa33fcc69673
+Aiden Isik (3):
+      dt-bindings: clock: Add Exynos5515 SoC
+      clk: samsung: clk-pll: Add support for pll_309
+      clk: samsung: Introduce Exynos5515 clock driver
+
+ .../bindings/clock/samsung,exynos5515-cmu.yaml     |  145 ++
+ drivers/clk/samsung/Makefile                       |    1 +
+ drivers/clk/samsung/clk-exynos5515.c               | 1485 ++++++++++++++++++++
+ drivers/clk/samsung/clk-pll.c                      |    1 +
+ drivers/clk/samsung/clk-pll.h                      |    1 +
+ include/dt-bindings/clock/samsung,exynos5515-cmu.h |  191 +++
+ 6 files changed, 1824 insertions(+)
+---
+base-commit: acde40ba506aae78633e080b5704d33cf4bc13c6
+change-id: 20260815-for-next-lucky7-clock-3b4b7e6b1ce4
 
 Best regards,
 --  
-Younes Akhouayri <git@younes.io>
+Aiden Isik <aidenisik@member.fsf.org>
 
