@@ -1,137 +1,100 @@
-From: Sven Peter <sven@kernel.org>
-Date: Tue, 18 Aug 2026 18:20:03 +0200
-Subject: [PATCH] usb: typec: tbt: Correct swapped TBT adapter type values
+From: Younes Akhouayri <git@younes.io>
+Date: Tue, 18 Aug 2026 19:44:03 +0200
+Subject: [PATCH v2] rust: configfs: skip unregister after failed
+ registration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-b4-tbt-legacy-fix-v1-1-797831e3df3f@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqEMAyF4atI1gaslCpeRVw0NaMRUWmrOIh3n
- +osvwfvvyCwFw7QZBd4PiTIuiSoPAM32mVglD4ZyqI0Ra1qJI2RIs48WPfFj5zYG66UdZrIWEi
- /zXOa32bb/R12mtjFJwT3/QMqeLUodQAAAA==
-X-Change-ID: 20260818-b4-tbt-legacy-fix-d6e71ac4bb6a
-To: Benson Leung <bleung@chromium.org>, 
- Abhishek Pandit-Subedi <abhishekpandit@chromium.org>, 
- Jameson Thies <jthies@google.com>, 
- Andrei Kuchynski <akuchynski@chromium.org>, 
- Tzung-Bi Shih <tzungbi@kernel.org>, Guenter Roeck <groeck@chromium.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
- Sven Peter <sven@kernel.org>
+Message-Id: <20260818-fix-rust-configfs-registration-state-v1-v2-1-9acedd3070f7@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OvQ7CMAyEXwVlxtAfqTRMvAfqkAanNUOC7LRqh
+ fruJEXsSF7Ourvv3kqQCUVdD2/FOJNQ8ElUx4Oyo/EDAj2SVlVRNUVbXsDRAjxJBBu8o8EJMA4
+ kkU1MUZBoIsJcgjN17axtdHOpVWp7MaboTrp3Xy1T/0Qbc3129EYQejbejvkVmAby553lcYnZM
+ iZQ4HVfO5e56jes/XtYuhKsrrTWRW9bdLc1TB7lREF127Z9AKj1f7wTAQAA
+X-Change-ID: 20260817-fix-rust-configfs-registration-state-v1-fa33fcc69673
+To: Andreas Hindborg <a.hindborg@kernel.org>, 
+ Breno Leitao <leitao@debian.org>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4686; i=sven@kernel.org;
- h=from:subject:message-id; bh=wgcrKMfF8rCWxEaRowBxoSOSXfBYnEzRDnvmztyZ0t8=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZLm/lZV1YvP3vbwttBxVtv3YvLi1nfcyNf+/fJlCMG3
- NL5kj4dpSwMYlwMsmKKLNv325s+efhGcOmmS+9h5rAygQxh4OIUgInUSzAy/Nmxf8LZuIf7/VqO
- +X+O1Y/rW66QFzFvzQTt62Jdk+XWVDAyXPGeWFbs/1lxetr0hNe3runP5xM8t7yTi1uQYZqbanM
- 5HwA=
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787075052; l=2560;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=XigsFJKQzV5Pl7ZgU85X77cuEEIuQrLc6riQN8BqfPw=;
+ b=x5akoYK46SUGtsHm7ObWCU7My6p3+YJmpPwukjrMVRSzJH9fMgD23KXSkJXEsqBfo3IozKeYI
+ 8FkigleehaFAXGqEFlga9/fGCiZZQNpx2p4cT/+2kbx41WJNCHdZra+
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Table F-10 of the USB Type-C Cable and Connector Specification R2.5 on
-page 412 defines bit 16 of the TBT3 Device Discover Mode VDO as 0 = TBT3
-Adapter and 1 = TBT2 Legacy Adapter. Linux has those two swapped since
-their original introduction in commit ca469c292edc ("usb: typec: Add
-definitions for Thunderbolt 3 Alternate Mode").
+Subsystem::new() calls configfs_register_subsystem() in pin_chain(). If
+registration returns an error, pin_chain() drops the Subsystem. PinnedDrop
+then calls configfs_unregister_subsystem() even though registration failed.
 
-ChromiumOS EC's include/usb_pd_tbt.h has them the correct way around
-and references the USB Type-C ECN "Thunderbolt 3 Compatibility Updates"
-as fixing an error where they were originally swapped which is presumably
-where the wrong order originally came from.
+Registering a duplicate name returns -EEXIST before ci_dentry is set.
+configfs_unregister_subsystem() dereferences ci_dentry, causing a NULL
+pointer dereference and kernel panic.
 
-I've also confirmed the correct mapping with an Apple Thunderbolt 3
-to Thunderbolt 2 adapter which does set bit 16 in that VDO.
+Move configfs_register_subsystem() to the end of try_pin_init!. If
+registration fails, destroy su_mutex and return the error. PinnedDrop is
+not called because initialization did not finish. Successful subsystems
+are still unregistered by PinnedDrop.
 
-Swap the two values and update all users. Also rename the old defines
-so that no user accidentally ends up with an inverted value.
-No functional change.
-
-Link: https://usb.org/document-library/usb-type-cr-cable-and-connector-specification-release-25
-Link: https://chromium.googlesource.com/chromiumos/platform/ec/+/db93814b6e73c8545d23714fe0674c10814d901a/include/usb_pd_tbt.h#90
-Signed-off-by: Sven Peter <sven@kernel.org>
+Fixes: 446cafc295bf ("rust: configfs: introduce rust support for configfs")
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
-I ran into this when bringing up thunderbolt for Apple Silicon SoCs and
-was very confused why the condition for "tbt2 adapter" vs "tbt3 adapter"
-seemed to be backwards.
-I think the qcom pmic_glink_altmode.c actually has a bug there that was
-hidden and/or caused by the wrong values: It used to always set
-TBT_ADAPTER_TBT3 which sounds plausible but actually claims to be a
-legacy TBT2 adapter on the wire. I don't have the hardware or know the
-intention there though.
-The other users look correct to me since they just pass the value
-through.
+Changes in v2:
+- Register the subsystem at the end of try_pin_init!.
+- Destroy su_mutex when registration fails.
+- Remove the registered flag.
+- Link to v1: https://patch.msgid.link/20260818-fix-rust-configfs-registration-state-v1-v1-1-c929990bc8ef@younes.io
 ---
- drivers/platform/chrome/cros_ec_typec.c | 2 +-
- drivers/soc/qcom/pmic_glink_altmode.c   | 2 +-
- drivers/usb/typec/mux/intel_pmc_mux.c   | 2 +-
- include/linux/usb/typec_tbt.h           | 4 ++--
- 4 files changed, 5 insertions(+), 5 deletions(-)
+ rust/kernel/configfs.rs | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/platform/chrome/cros_ec_typec.c b/drivers/platform/chrome/cros_ec_typec.c
-index c0806c562bb9..79968edc16ed 100644
---- a/drivers/platform/chrome/cros_ec_typec.c
-+++ b/drivers/platform/chrome/cros_ec_typec.c
-@@ -586,7 +586,7 @@ static int cros_typec_enable_tbt(struct cros_typec_data *typec,
- 	data.device_mode = TBT_MODE;
- 
- 	if (pd_ctrl->control_flags & USB_PD_CTRL_TBT_LEGACY_ADAPTER)
--		data.device_mode = TBT_SET_ADAPTER(TBT_ADAPTER_TBT3);
-+		data.device_mode = TBT_SET_ADAPTER(TBT_ADAPTER_TYPE_TBT2_LEGACY);
- 
- 	/* Cable Discover Mode VDO */
- 	data.cable_mode = TBT_MODE;
-diff --git a/drivers/soc/qcom/pmic_glink_altmode.c b/drivers/soc/qcom/pmic_glink_altmode.c
-index 619bad2c27ee..8d4f54c160c5 100644
---- a/drivers/soc/qcom/pmic_glink_altmode.c
-+++ b/drivers/soc/qcom/pmic_glink_altmode.c
-@@ -215,7 +215,7 @@ static void pmic_glink_altmode_enable_tbt(struct pmic_glink_altmode *altmode,
- 
- 	/* Device Discover Mode VDO */
- 	tbt_data.device_mode = TBT_MODE;
--	tbt_data.device_mode |= TBT_SET_ADAPTER(TBT_ADAPTER_TBT3);
-+	tbt_data.device_mode |= TBT_SET_ADAPTER(TBT_ADAPTER_TYPE_TBT2_LEGACY);
- 
- 	/* Cable Discover Mode VDO */
- 	tbt_data.cable_mode = TBT_MODE;
-diff --git a/drivers/usb/typec/mux/intel_pmc_mux.c b/drivers/usb/typec/mux/intel_pmc_mux.c
-index 219a32da1348..b63114575a78 100644
---- a/drivers/usb/typec/mux/intel_pmc_mux.c
-+++ b/drivers/usb/typec/mux/intel_pmc_mux.c
-@@ -346,7 +346,7 @@ pmc_usb_mux_tbt(struct pmc_usb_port *port, struct typec_mux_state *state)
- 	req.mode_data = (port->orientation - 1) << PMC_USB_ALTMODE_ORI_SHIFT;
- 	req.mode_data |= (port->role - 1) << PMC_USB_ALTMODE_UFP_SHIFT;
- 
--	if (TBT_ADAPTER(data->device_mode) == TBT_ADAPTER_TBT3)
-+	if (TBT_ADAPTER(data->device_mode) == TBT_ADAPTER_TYPE_TBT2_LEGACY)
- 		req.mode_data |= PMC_USB_ALTMODE_TBT_TYPE;
- 
- 	if (data->cable_mode & TBT_CABLE_OPTICAL)
-diff --git a/include/linux/usb/typec_tbt.h b/include/linux/usb/typec_tbt.h
-index 0b570f1b8bc8..7bdf3795ae50 100644
---- a/include/linux/usb/typec_tbt.h
-+++ b/include/linux/usb/typec_tbt.h
-@@ -27,8 +27,8 @@ struct typec_thunderbolt_data {
- /* TBT3 Device Discover Mode VDO bits */
- #define TBT_MODE			BIT(0)
- #define TBT_ADAPTER(_vdo_)		FIELD_GET(BIT(16), _vdo_)
--#define   TBT_ADAPTER_LEGACY		0
--#define   TBT_ADAPTER_TBT3		1
-+#define   TBT_ADAPTER_TYPE_TBT3		0
-+#define   TBT_ADAPTER_TYPE_TBT2_LEGACY	1
- #define TBT_INTEL_SPECIFIC_B0		BIT(26)
- #define TBT_VENDOR_SPECIFIC_B0		BIT(30)
- #define TBT_VENDOR_SPECIFIC_B1		BIT(31)
+diff --git a/rust/kernel/configfs.rs b/rust/kernel/configfs.rs
+index cd082b83e9e7..770e0a022b42 100644
+--- a/rust/kernel/configfs.rs
++++ b/rust/kernel/configfs.rs
+@@ -173,12 +173,19 @@ pub fn new(
+                 }
+             ),
+             data <- data,
+-        })
+-        .pin_chain(|this| {
+-            crate::error::to_result(
+-                // SAFETY: We initialized `this.subsystem` according to C API contract above.
+-                unsafe { bindings::configfs_register_subsystem(this.subsystem.get()) },
+-            )
++            _: {
++                let result = crate::error::to_result(
++                    // SAFETY: We initialized `subsystem` according to the C API contract above.
++                    unsafe { bindings::configfs_register_subsystem(subsystem.get()) },
++                );
++                if result.is_err() {
++                    // SAFETY: The mutex was initialized above and registration failed.
++                    unsafe {
++                        bindings::mutex_destroy(&raw mut (*subsystem.get()).su_mutex)
++                    };
++                }
++                result?
++            }
+         })
+     }
+ }
 
 ---
-base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
-change-id: 20260818-b4-tbt-legacy-fix-d6e71ac4bb6a
+base-commit: 47f27155f17498fccb1f222f79089642337498a9
+change-id: 20260817-fix-rust-configfs-registration-state-v1-fa33fcc69673
 
 Best regards,
 --  
-Sven Peter <sven@kernel.org>
+Younes Akhouayri <git@younes.io>
 
