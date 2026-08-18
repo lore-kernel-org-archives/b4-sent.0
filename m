@@ -1,15 +1,13 @@
 From: Aiden Isik <aidenisik@member.fsf.org>
-Subject: [PATCH v3 0/2] watchdog: Add Exynos5515 watchdog timer support
-Date: Tue, 18 Aug 2026 19:03:16 +0100
-Message-Id: <20260818-for-next-lucky7-watchdog-v3-0-2912bd122c57@member.fsf.org>
+Date: Tue, 18 Aug 2026 19:03:17 +0100
+Subject: [PATCH v3 1/2] dt-bindings: watchdog: samsung-wdt: Add
+ exynos5515-wdt compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGSehGoC/32N0Q6CIBhGX6VxHQ4QRbvqPVoXgj9KpTRA0znfP
- bW1tbW6PNv3nTMhD86AR4fdhBz0xhvbLhDvd0jVRVsBNuXCiBGWkowmWFuHWxgCvnXqOgr8KIK
- qS1vhmEktE0pzqila7ncH2gyb+nR+se/kBVRYfeuiNj5YN27tnq67d0b8zvQUE1xQHgsCjMicH
- RtoJLhIex1ZV6G11bNPW/bHxhZbKnisucgLLvSXbZ7nJw9BaFMlAQAA
-X-Change-ID: 20260815-for-next-lucky7-watchdog-32bfb51191f1
+Message-Id: <20260818-for-next-lucky7-watchdog-v3-1-2912bd122c57@member.fsf.org>
+References: <20260818-for-next-lucky7-watchdog-v3-0-2912bd122c57@member.fsf.org>
+In-Reply-To: <20260818-for-next-lucky7-watchdog-v3-0-2912bd122c57@member.fsf.org>
 To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
  Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,83 +19,86 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-watchdog@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
  Aiden Isik <aidenisik@member.fsf.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2292;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2313;
  i=aidenisik@member.fsf.org; h=from:subject:message-id;
- bh=8HrdoPzCe8M0K/kkdyBGtCSmfZLfdSCynj06k0MN/yw=;
- b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqhJ5qDXxwECM3vqTnOkqyEwFfgqeEcIY8Lz5Sj
- 56zeQpl9qCJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoSeagAKCRBJJwGyxHrX
- 68wvD/9K1UE+6Xx6yiiz86LOMAbT+nK3nUF/FmuEjTVEGPmFsGz6WBfnSESJynM+wMcaSNXWb+l
- ChR1ItFfgjaQDUvWbfCUOOkW9oa4HWP0fUyavot8vudQKuDLus8VmmBobrEZO+03EWupLL9XYmv
- n+AqpBStCIhoPd5sVk+jux1ygvVr9wc9Va4fHZo/eY/m3Wb0nphLrw2k+zY8AD8vZCC4h8XV3r2
- YLJ5ki91OM+QGc66+XJ7p+oOkIdrxcZbQIwtINxqRB7GNmo6Ln4PDwfPRlOBN4Ds9juSnICJ3oB
- DVdRoY7OGMfQOInzH9SxxRD6SwgF5dwSEXbU6Kp7vi0ojku8wU6JYAtjVd58612lAmuqCv96UKW
- 2nfTbPJFSoip6kjdQLKOaG+2xZlrYJKHNfrzLJ8053QFslU3/GHosv5Oe55m9nrmnafnMvWPHYN
- sLywFDRZS7MaTzTcJIzbFthUI5rqmfr9uuLJLKICA2OujHI1/n22aZ0RezKnfyeaLRfmdrbzEkf
- llMbpgbp/cnwxEOOUwx7kLoI1iGpkVdrO7x4DBi3BsCsC3uNnhPWMU3kwLiHn9/LcT+5VPhKqrf
- ltyG9zTWBdzoknvWDZFud1plPQhCDn8QcsMbZKP6y287LbkNiZQ2embLt7+Z4l/vxTuGbDDmc2E
- 5nY1gdjXB9wKNZA==
+ bh=FomCRWunoZv/FcOKS7xgccqo7tYm7xEPkwn4AZZPbfA=;
+ b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqhJ5q6l1KKMnV2P6Cn1UsoP5ufTSgNjAGWZlvj
+ kdMw6exdGqJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoSeagAKCRBJJwGyxHrX
+ 6z0vD/4siUbFB5yUoK3t5gXuJmAWUELGYDCgBLixa04YZ3IswaQCav8Q+HRyPs+OZgKo0jDWkhn
+ cv2lz1y4w0m5sPwMHoAYEINCli+6HtswcLh0+BrYG313/EiVEG1p0bgxoyAjr8a38/rjqwxoxBn
+ p1zZtKVJdmo65fcyKiNP+Dx3cAccWVAnrGC+dosL+J44yZbCeH4HJEZ/i9jEnHz2Pq6eayKrYcj
+ HShAsP9V5Fscoszpq4UmH4MncD7o08zQzWdVjPHqZYkEPGtDiL7xlJWBDVbST13cyNZIld1JF2i
+ tBviRwVewVTmCV0fXTlxAn2lxqqSCXqHRrP5emJExFgfZzYOWTNPTA2+AMEp40wOZsPQlZH2zqj
+ TcJ1NWL6jLsczyorAA093zt4iNVvo1u6idPASS/9fDXnKbypp+gNlqm35SnebCr8Q35rNWBn/uX
+ 48g6kIT9y5bIvLWKZofF/ClgtITvpLFSTgAwvmTebmGXDRkjG5P/3F/xAXNa2tthr+QIwCFGi7W
+ b3E1RCD/wONwoQG+oe66tDtGfqt1hLRqMOLGwquUldPR54B3P1GrO9YqNJy+gwGFJuzDSR8t1sx
+ obx7dI11j+uuHYk6PXq+gz4TNpp+5DNEGyaLvRA5jELVymtFStiJUNinOtoUjWi4bJS94JM0MiY
+ Evvy7h8v1B46gKA==
 X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
  fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
 X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi there,
+Add a dt-binding compatible for the Exynos5515 watchdog timer.
 
-This patchset adds support for the Exynos5515 SoC's watchdog timer
-to the S3C2410 watchdog timer driver.
-
-There is one checkpatch warning for this patchset:
-
-> -------------------------------------------------------------------------
-> Commit 8f4ec3a9b89b ("watchdog: s3c2410_wdt: Add exynos5515-wdt compatibl
-> -------------------------------------------------------------------------
-> WARNING: Avoid unnecessary line continuations
-> #26: FILE: drivers/watchdog/s3c2410_wdt.c:240:
-> +       .quirks = QUIRK_HAS_WTCLRINT_REG | QUIRK_HAS_PMU_MASK_RESET | \
-
-Which seems to be erroneous: this line continuation is necessary
-(and is done by every other existing entry).
+This watchdog requires a syscon phandle, and the cluster index should
+*not* be specified, as that does not make sense on the Exynos5515 SoC
+(due to it only having a single core cluster).
 
 Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
-Changes in v3:
-- Set reset_mask_inv to true
-- Remove erroneous QUIRK_HAS_PMU_AUTO_DISABLE flag
-- Link to v2: https://patch.msgid.link/20260818-for-next-lucky7-watchdog-v2-0-6743f479a47f@member.fsf.org
-
-Changes in v2:
-- Add samsung,cluster-index: false to documentation
-- Remove SoC comment from documentation
-- Correct signed-off-by tag in commits
-- Link to v1: https://patch.msgid.link/20260817-for-next-lucky7-watchdog-v1-0-a14370e20b92@member.fsf.org
-
-To: Wim Van Sebroeck <wim@linux-watchdog.org>
-To: Guenter Roeck <linux@roeck-us.net>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Peter Griffin <peter.griffin@linaro.org>
-To: Alim Akhtar <alim.akhtar@samsung.com>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: linux-watchdog@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-samsung-soc@vger.kernel.org
-
----
-Aiden Isik (2):
-      dt-bindings: watchdog: samsung-wdt: Add exynos5515-wdt compatible
-      watchdog: s3c2410_wdt: Add exynos5515-wdt compatible data
-
  .../devicetree/bindings/watchdog/samsung-wdt.yaml  | 23 +++++++++++++++++++++-
- drivers/watchdog/s3c2410_wdt.c                     | 12 +++++++++++
- 2 files changed, 34 insertions(+), 1 deletion(-)
----
-base-commit: acde40ba506aae78633e080b5704d33cf4bc13c6
-change-id: 20260815-for-next-lucky7-watchdog-32bfb51191f1
+ 1 file changed, 22 insertions(+), 1 deletion(-)
 
-Best regards,
---  
-Aiden Isik <aidenisik@member.fsf.org>
+diff --git a/Documentation/devicetree/bindings/watchdog/samsung-wdt.yaml b/Documentation/devicetree/bindings/watchdog/samsung-wdt.yaml
+index 41aee1655b0c..a32c47831577 100644
+--- a/Documentation/devicetree/bindings/watchdog/samsung-wdt.yaml
++++ b/Documentation/devicetree/bindings/watchdog/samsung-wdt.yaml
+@@ -22,6 +22,7 @@ properties:
+           - samsung,s3c6410-wdt                   # for S3C6410, S5PV210 and Exynos4
+           - samsung,exynos5250-wdt                # for Exynos5250
+           - samsung,exynos5420-wdt                # for Exynos5420
++          - samsung,exynos5515-wdt
+           - samsung,exynos7-wdt                   # for Exynos7
+           - samsung,exynos850-wdt                 # for Exynos850
+           - samsung,exynos990-wdt                 # for Exynos990
+@@ -57,7 +58,7 @@ properties:
+     $ref: /schemas/types.yaml#/definitions/phandle
+     description:
+       Phandle to the PMU system controller node (in case of Exynos5250,
+-      Exynos5420, Exynos7, Exynos850, Exynos990 and gs101).
++      Exynos5420, Exynos5515, Exynos7, Exynos850, Exynos990 and gs101).
+ 
+ required:
+   - compatible
+@@ -93,6 +94,26 @@ allOf:
+         - samsung,cluster-index
+         - samsung,syscon-phandle
+ 
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - samsung,exynos5515-wdt
++    then:
++      properties:
++        clocks:
++          items:
++            - description: Bus clock, used for register interface
++            - description: Source clock (driving watchdog counter)
++        clock-names:
++          items:
++            - const: watchdog
++            - const: watchdog_src
++        samsung,cluster-index: false
++      required:
++        - samsung,syscon-phandle
++
+   - if:
+       properties:
+         compatible:
+
+-- 
+2.54.0
 
