@@ -1,16 +1,13 @@
 From: Aiden Isik <aidenisik@member.fsf.org>
-Subject: [PATCH v2 0/2] chipid: samsung: exynos-chipid: Add Exynos5515
- ChipID
-Date: Tue, 18 Aug 2026 16:05:41 +0100
-Message-Id: <20260818-for-next-lucky7-chipid-v2-0-28ae49f5c349@member.fsf.org>
+Date: Tue, 18 Aug 2026 16:05:42 +0100
+Subject: [PATCH v2 1/2] dt-bindings: hwinfo: samsung,exynos-chipid: Add
+ Exynos5515 compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMV0hGoC/3WNyw6CMBBFf4V07ZDSyMsV/2FY2GEKo0JJCwRC+
- HcB49LlSe49ZxWeHJMXt2AVjib2bLsd1CUQ2Dy6moCrnYWSKpFZFIOxDjqaB3iP+FpSwIZ7roA
- Q6ZonmCU6F/u5d2R4PsX38st+1E/C4bAdi4b9YN1ylqfo2P0i6b/IFIEE0iqXWSpjlFXRUqvJh
- cab0LpalNu2fQAyn4+L0wAAAA==
-X-Change-ID: 20260815-for-next-lucky7-chipid-ecce496c86b9
+Message-Id: <20260818-for-next-lucky7-chipid-v2-1-28ae49f5c349@member.fsf.org>
+References: <20260818-for-next-lucky7-chipid-v2-0-28ae49f5c349@member.fsf.org>
+In-Reply-To: <20260818-for-next-lucky7-chipid-v2-0-28ae49f5c349@member.fsf.org>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Peter Griffin <peter.griffin@linaro.org>, 
@@ -19,51 +16,47 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Aiden Isik <aidenisik@member.fsf.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=966;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=950;
  i=aidenisik@member.fsf.org; h=from:subject:message-id;
- bh=WvhBurIy8A9u46LETLcI/MhJB6dhjgHJNOfnkpO39yM=;
- b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqhHUYUQuzBprixPTgcy8Al2eiWPDlLC/auEuGJ
- b7rFNdrS7mJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoR1GAAKCRBJJwGyxHrX
- 68O5D/9JadzwC6VB9ScxAL+6S15RFJRmpF8VOn9qdwnh1WYZ/VKTrD9Muug4e+F9O/nVw36zojo
- 6vo5AtQFlGMkvcJgMVQIPmjvdgq0YvbSkAwwDrmdJjW8U6GgGo04uFo/HbXBgCfqR+0F3srM3b8
- vlDvy9MKBTNkapfZqRINJj9oMp1fxL4Oi3YiFNC4s5Vv/Bjlek56JSmnreByfg+I3vZ2Sqw3L4k
- ioG6UdUdqxO1oAOiXZ++aLIsNdLot68PYvGwK8eYmvn5okRrqlJ7V/lalAqt9CuqgHgebX8+iwq
- yhWAjBsYFGklIxSZzNdY+83NKI7adh1eNTHLVXSSL6K3zfxzxCWAKb5IQM9PNcPEDwlFautb2p9
- EGJ4RY3tkQlR4lq89e0XzsXdKVqR/FYFR+Juy7wYc8iIr6EM3s2z78DS/3++RNkzRSSKYpTSbwX
- fKIS92m6rJrkvaKeUfQy4U2GyHpMzlFLJUlgBahOdlIULWtw71lgx2FZXdh60NV5Qil0Tx7aDP9
- dACgSMQ1ua0uVicja8Nn8t0S+2cqh8uB25btvPiKL7vaIhgiBHziDmnr6XiRSUqNJxTFlg0m92n
- 8OonV5m3McfqvKK17kuRw18g0r3IVV52n0BY22TYPW6hZU/G3abqiC3J++y4pkSU1Ne9kJ6GjXI
- 8qviN7VZfUqd1hQ==
+ bh=HkPlddHKQwmqWY1ufNhu6MddjjvEqgdH7uQbcVq9NGo=;
+ b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqhHUY7ydlaLNNK0/u9GgxtdHJziy1rKsqJDZ6e
+ CEaOqscgRGJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaoR1GAAKCRBJJwGyxHrX
+ 6yh2EACcHTH6X8Oxhu2iTKt+S/NSJkPZbr05I7QQwLnen0SomU4mSTbVSPFObCQKD4/J/oEiJ90
+ yGGFaYKEG/ZECSrOIEFSNj6tfA+JuDkxV3Xikbj0HEDnSCQ1cNlk9JZJ3HBO1h/z/NKBUcPeQnc
+ FV8zxiZ/va3xUT0s68afQY9ecQMV2xwzotSM9qS9tUx7AVkJvS6MciB7KC0dvadeB9PjGw4VplX
+ D5SwECOHsZIOsgtJyrCDMgSvTx48fLCZflE1i9dUYKushaZPvMdAU4OU+0Qqz0Vfs+2Qs744zNn
+ NResE0AA6KkEGh9XUhM0AYCoDtQ4rCjNy7hNnpIkMfI3yuG2g3DTkaMNf2Wm4V/1o6hqQOK1m9o
+ MV8glC88kJlEZaVEP4MXGlRs3MbidYNjYlVJuT7BgQ2YfEnhBU6Vajm15kM2XUiXy3uNzVdXCXE
+ vb/21em44JXEb8yl8OCBk0wmq+LyaSgL20BCyLsFakPKU2OFvy3LMLEdbt9xfkCB1cGwEGfZJlg
+ 0A1C5J/g5Hp9Ca4du6sTNkL3JJZvNpb9x0bDJPh1ROc6yyoNL0h5B39Ulw7dTIMhpgj68ppJzIY
+ Y5ACoFYzawEm6mC5DMMF3l7dwpacBMNpBehwfQarzj6DXXpzx9i++C7frjN6lVbR/TVH/1cFFTk
+ pM8PYmwr7jDa2mw==
 X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
  fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
 X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi there,
-
-This patchset adds support for the Exynos5515 SoC's ChipID to the
-ChipID driver, and documents the samsung,exynos5515-chipid compatible.
+Add "samsung,exynos5515-chipid" compatible string to binding document,
+which is fully compatible with "samsung,exynos850-chipid".
 
 Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
-Changes in v2:
-- Correct capitalisation of "Exynos5515" in commit messages
-- Reword documentation commit message
-- Link to v1: https://patch.msgid.link/20260817-for-next-lucky7-chipid-v1-0-eb2908705c0d@member.fsf.org
-
----
-Aiden Isik (2):
-      dt-bindings: hwinfo: samsung,exynos-chipid: Add Exynos5515 compatible
-      soc: samsung: exynos-chipid: Add Exynos5515 SoC support
-
  Documentation/devicetree/bindings/hwinfo/samsung,exynos-chipid.yaml | 1 +
- drivers/soc/samsung/exynos-chipid.c                                 | 1 +
- 2 files changed, 2 insertions(+)
----
-base-commit: acde40ba506aae78633e080b5704d33cf4bc13c6
-change-id: 20260815-for-next-lucky7-chipid-ecce496c86b9
+ 1 file changed, 1 insertion(+)
 
-Best regards,
---  
-Aiden Isik <aidenisik@member.fsf.org>
+diff --git a/Documentation/devicetree/bindings/hwinfo/samsung,exynos-chipid.yaml b/Documentation/devicetree/bindings/hwinfo/samsung,exynos-chipid.yaml
+index b9cdfe52b62f..619faf33214b 100644
+--- a/Documentation/devicetree/bindings/hwinfo/samsung,exynos-chipid.yaml
++++ b/Documentation/devicetree/bindings/hwinfo/samsung,exynos-chipid.yaml
+@@ -25,6 +25,7 @@ properties:
+       - items:
+           - enum:
+               - samsung,exynos2200-chipid
++              - samsung,exynos5515-chipid
+               - samsung,exynos7885-chipid
+               - samsung,exynos8895-chipid
+               - samsung,exynos9610-chipid
+
+-- 
+2.54.0
 
