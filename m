@@ -1,16 +1,13 @@
 From: George Maraveyas <george.0xfff@gmail.com>
-Subject: [PATCH RFC 0/2] USB/Bluetooth: recover MT7925 after warm reboot
-Date: Tue, 18 Aug 2026 04:55:19 +0200
-Message-Id: <20260818-mt7925-rfc-v1-0-284d856ac572@gmail.com>
+Date: Tue, 18 Aug 2026 04:55:20 +0200
+Subject: [PATCH RFC 1/2] USB: core: add helper to queue device
+ re-enumeration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2NQW7DIBBFr2LNuliAoRgriipF6gG6rbIYw9DQx
- rgBJ4oU5e4lbpZ/5v/3blAoRyowNDfIdIklzqkG8dKAO2D6IhZ9zSC5fOW96Nm0GCs1y8Ex8r5
- TFHgnvIU6+M0U4nWFfcLH+w72/8dyHr/JLQ/Ms5bpdK6q5dmdqBRcVUOzWU2GVxsXwrSd0Uprz
- gRDR0dM7Q/Obw7TnKLDY+vmafuAjliI1TDFZWhk77mQFEbVSROsM9pr4kqicVaQRa3qE20P+/v
- 9DzEpGtUCAQAA
-X-Change-ID: 20260818-mt7925-rfc-edd34ef031d9
+Message-Id: <20260818-mt7925-rfc-v1-1-284d856ac572@gmail.com>
+References: <20260818-mt7925-rfc-v1-0-284d856ac572@gmail.com>
+In-Reply-To: <20260818-mt7925-rfc-v1-0-284d856ac572@gmail.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Marcel Holtmann <marcel@holtmann.org>, 
  Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
@@ -21,117 +18,141 @@ Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-mediatek@lists.infradead.org, 
  George Maraveyas <george.0xfff@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787022047; l=5036;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787022047; l=4731;
  i=george.0xfff@gmail.com; s=20260818; h=from:subject:message-id;
- bh=9x4AZrWZcZ63FIkowGQwQQitbL74pCyLw6EgRIg7ru0=;
- b=UNa7XJ9EUgbQOFONkmEpkedo0rlgGQGvYZlI0IxpxOiMEYaus9gkcIqjLusIDEg7wgUkYj8ol
- X1mNgNEEzAyAFcb04Noe+JMvpWkWdxMDAsaQBjy7rSwbL6vTQwTIfXF
+ bh=LhOMiuJkFZB8vjWmzvqH/IlXANYNGRaUBImp9cDEvUE=;
+ b=QuWR3tLnrOCzrGaSnaIZkR2uHdWvmptm5sTiiiAiW3Eep00puYXgmpwDeEBL9c9CKl1b75KBC
+ ehFm4F+ABGyBF/fFA7duWiUvyBMr/772ri2HcsUGsMGoXN3epiLdcpR
 X-Developer-Key: i=george.0xfff@gmail.com; a=ed25519;
  pk=Jz8kMnumjUlo1GJvJ5kdfkF3ZP8DjPbYaYQR5J8IHMI=
 X-Endpoint-Received: by B4 Relay for george.0xfff@gmail.com/20260818 with auth_id=960
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While dual booting Windows 11 and Linux on an ASUS ROG Strix B850-I
-Gaming WiFi, I found that the MediaTek MT7925 Bluetooth controller could
-remain unusable after a warm reboot even though its USB function had
-enumerated successfully.
+USB drivers can use usb_queue_reset_device() when they need USB core to
+reset an already enumerated device asynchronously.
 
-This investigation originally began on Ubuntu 26.04 LTS, where the
-failure was already present on the stock kernel, and remained
-reproducible after the work was moved to linux-next for upstream testing.
+There is currently no driver-facing helper corresponding to
+usb_queue_reset_device() which allows an interface driver to ask USB core
+to remove the current usb_device and enumerate the physical device on the
+port again.
 
-The Bluetooth USB function on this system is 13d3:3602.  The problem was
-reproduced with ASUS motherboard BIOS versions 1644 and 1681.  Updating
-the BIOS did not change the failure.
+The difference between the two is that a device reset continues using the
+existing usb_device and its current enumeration state while
+re-enumeration removes the existing usb_device and returns the port to
+the hub code, which then discovers the device again through the normal
+USB enumeration path.
 
-A typical failure occurs after restarting directly from Windows 11 into
-Linux without removing power.  The MT7925 USB function enumerates, btusb
-begins setting up the controller, and the WMT function-control command
-eventually times out with -ETIMEDOUT (-110).  The existing MediaTek reset
-path then runs, but the subsequent MT7925 subsystem reset also times out
-and resetting the existing usb_device does not recover the controller.
+Add usb_queue_reenumerate_device() to provide this facility.
 
-Powering the machine off and starting again was not a reliable workaround
-in later testing, especially after booting Windows and then Linux.
-Linux-to-Linux warm reboots after a failure were also inconsistent: on
-some boots Bluetooth recovered, while on others the failed controller
-state persisted.
+The helper queues a logical disconnect on the parent hub port.
+hub_port_logical_disconnect() disables the port, records a logical
+connect-change event and queues the hub work.  The hub work later
+disconnects the existing usb_device and, if the physical device remains
+connected, attempts to enumerate it again through the normal hub path.
 
-When that state persisted across a reboot, the MT7925 could fail earlier
-while USB core was reading its descriptors.  USB core then handled the
-failure through its normal enumeration retry path and could eventually
-reach the existing port power-cycle.
+Any retries or port recovery required during the subsequent enumeration
+remain the responsibility of the existing hub code.
 
-The series was tested on top of Chia-Lin Kao's:
+usb_remove_device() cannot provide the same behaviour because it also
+marks the port in removed_bits.  The hub connection path does not
+enumerate a device on a port while that bit remains set.
 
-  [PATCH v2] USB: hub: call ACPI _PRR reset during port power-cycle on
-  enumeration failure
+The helper takes the device lock required by usb_hub_to_struct_hub() and
+holds a runtime-PM reference on the parent hub interface while the
+logical disconnect is queued.
 
-Kao's patch adds the ACPI _PRR reset to that existing mid-retry
-power-cycle.  It is required for the port recovery used on this machine,
-but it does not fix the original warm-reboot failure by itself.  On the
-first Linux boot after Windows, USB enumeration has already succeeded
-before the WMT command times out, so USB core does not enter the
-enumeration retry path where the power-cycle and _PRR reset occur.
+The helper does not decide when re-enumeration is needed.  That decision
+remains with the calling driver.
 
-Patch 1 adds usb_queue_reenumerate_device().  It allows a driver to ask
-USB core to remove the current usb_device and enumerate the
-still-connected physical device again through the normal hub path.  It
-does not itself request a port power-cycle or an ACPI _PRR reset.
-
-Patch 2 changes one part of the existing MT7925 reset path.  After
-btmtk_usb_subsys_reset() returns, an MT7925 -ETIMEDOUT result causes the
-driver to request re-enumeration through the helper from Patch 1.  If
-that request cannot be queued, the existing usb_queue_reset_device()
-path remains as the fallback.  Other MediaTek devices and other reset
-results retain their existing behaviour.
-
-On the test system the re-enumerated MT7925 continued to fail descriptor
-reads.  The normal hub retry logic therefore eventually reached its
-existing port power-cycle, where Kao's prerequisite supplied the ACPI
-_PRR reset.  Enumeration then succeeded and Bluetooth setup completed.
-
-Three controlled Windows 11-to-Linux warm restart tests recovered
-successfully with the series.  The observed average interval from the
-initial WMT timeout to successful Bluetooth setup was about 70.9 seconds.
-
-Bluetooth remained unavailable during most of that interval, so someone
-testing the series should not expect the controller to return
-immediately after re-enumeration is requested.
-
-Since completing those controlled tests, I have continued to use the
-patched kernel as my daily Linux system.  On this machine it has been the
-only reliable way I have found to switch between Windows and Linux
-without repeated reboot or power-cycle attempts to recover Bluetooth.
-
-The test kernel was based on next-20260812 and reported:
-
-  7.2.0-rc7-next-20260812-mt7925-rfc-v1
-
-I am sending this as an RFC because Patch 1 adds a USB-core interface.  I
-would particularly appreciate feedback on whether returning an
-already-enumerated device to the normal hub enumeration path through
-hub_port_logical_disconnect() is the appropriate interface for this
-recovery.
+The following MT7925 Bluetooth patch is the first user of the helper.  It
+requests re-enumeration after the controller has already enumerated
+successfully but later fails during Bluetooth setup and cannot be
+recovered by its existing reset path.
 
 Signed-off-by: George Maraveyas <george.0xfff@gmail.com>
 ---
-George Maraveyas (2):
-      USB: core: add helper to queue device re-enumeration
-      Bluetooth: mt7925: recover subsystem-reset timeout through USB re-enumeration
+ drivers/usb/core/hub.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/usb.h    |  1 +
+ 2 files changed, 55 insertions(+)
 
- drivers/bluetooth/btmtk.c |  4 ++++
- drivers/bluetooth/btusb.c | 16 ++++++++++++++
- drivers/usb/core/hub.c    | 54 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/usb.h       |  1 +
- 4 files changed, 75 insertions(+)
----
-base-commit: 28d012efb4327f9c75d5e042a7c91e9a542efa98
-change-id: 20260818-mt7925-rfc-edd34ef031d9
-prerequisite-message-id: <20260706080117.3754550-1-acelan.kao@canonical.com>
-prerequisite-patch-id: 47a2729fbc473534f8ba52052b00723c54a26c17
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index fcac92bd7..22279d438 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -6503,6 +6503,60 @@ void usb_queue_reset_device(struct usb_interface *iface)
+ }
+ EXPORT_SYMBOL_GPL(usb_queue_reset_device);
+ 
++/**
++ * usb_queue_reenumerate_device - queue logical disconnect and re-enumeration
++ * @iface: USB interface belonging to the device to re-enumerate
++ *
++ * Request that USB core logically disconnect the device and subsequently
++ * re-enumerate its parent hub port.  The actual device teardown and
++ * re-enumeration are handled asynchronously by the hub workqueue.
++ *
++ * This is intended for failures where resetting the existing usb_device is
++ * insufficient and the driver needs USB core to perform a full logical
++ * disconnect/re-enumeration cycle.
++ *
++ * Return: 0 if re-enumeration was queued successfully, or a negative error
++ * code otherwise.
++ */
++int usb_queue_reenumerate_device(struct usb_interface *iface)
++{
++	struct usb_device *udev = interface_to_usbdev(iface);
++	struct usb_interface *hub_intf;
++	struct usb_hub *hub;
++	int ret;
++
++	usb_lock_device(udev);
++
++	if (!udev->parent || udev->state == USB_STATE_NOTATTACHED) {
++		ret = -ENODEV;
++		goto out_unlock;
++	}
++
++	/*
++	 * usb_hub_to_struct_hub() requires either the hub or one of its
++	 * children to be locked.  @udev is locked above.
++	 */
++	hub = usb_hub_to_struct_hub(udev->parent);
++	if (!hub) {
++		ret = -ENODEV;
++		goto out_unlock;
++	}
++
++	hub_intf = to_usb_interface(hub->intfdev);
++	ret = usb_autopm_get_interface(hub_intf);
++	if (ret < 0)
++		goto out_unlock;
++
++	hub_port_logical_disconnect(hub, udev->portnum);
++	usb_autopm_put_interface(hub_intf);
++	ret = 0;
++
++out_unlock:
++	usb_unlock_device(udev);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(usb_queue_reenumerate_device);
++
+ /**
+  * usb_hub_find_child - Get the pointer of child device
+  * attached to the port which is specified by @port1.
+diff --git a/include/linux/usb.h b/include/linux/usb.h
+index 49ab8dbb8..9841029a2 100644
+--- a/include/linux/usb.h
++++ b/include/linux/usb.h
+@@ -789,6 +789,7 @@ extern int usb_lock_device_for_reset(struct usb_device *udev,
+ /* USB port reset for device reinitialization */
+ extern int usb_reset_device(struct usb_device *dev);
+ extern void usb_queue_reset_device(struct usb_interface *dev);
++int usb_queue_reenumerate_device(struct usb_interface *iface);
+ 
+ extern struct device *usb_intf_get_dma_device(struct usb_interface *intf);
+ 
 
-Best regards,
---  
-George Maraveyas <george.0xfff@gmail.com>
+-- 
+2.53.0
 
