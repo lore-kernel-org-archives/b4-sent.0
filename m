@@ -1,24 +1,24 @@
 From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Tue, 18 Aug 2026 19:28:34 +0800
-Subject: [PATCH 6.6.y] f2fs: fix UAF issue in f2fs_merge_page_bio()
+Date: Tue, 18 Aug 2026 19:36:33 +0800
+Subject: [PATCH 6.1.y] f2fs: fix UAF issue in f2fs_merge_page_bio()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260818-origin-linux-6-6-y-v1-1-c110e632c7c4@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAOFBhGoC/x2MQQqAIBAAvxJ7bsUMVuor0cFqs4WwUIoi+nsSc
- 5rDzAOJo3CCtngg8ilJtpClKgsYFxc8o0zZwWhD2poatyheAq4Sjgspc+PQDE1ljSZnHeRwjzz
- L9U87IEXqhv59P0XIk2NrAAAA
-X-Change-ID: 20260723-origin-linux-6-6-y-b9b917206a7a
+Message-Id: <20260818-origin-linux-6-1-y-v1-1-95a5d1026e99@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAMBDhGoC/x3MQQqAIBBA0avErJtwlAy6SrSQnGogLJQiie6et
+ HyL/x9IHIUT9NUDkS9JsocCqiuYVhcWRvHFoJW2qtMG9yiLBNwknDdaJMw46dZT55Q3iqCER+R
+ Z7n86gG2oyTC+7weRWmerawAAAA==
+X-Change-ID: 20260723-origin-linux-6-1-y-c25d17a0d301
 To: stable@vger.kernel.org
 Cc: jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
  JY <JY.Ho@mediatek.com>, Chao Yu <chao@kernel.org>, 
  Jaegeuk Kim <jaegeuk@kernel.org>, Jiucheng Xu <jiucheng.xu@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787052516; l=3675;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787052993; l=3675;
  i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=tHV/sXq3oNteaRPQ0IIbC7iEUf3F0E3LO1C/eGzGNV4=;
- b=K+XCBPvsFforUNkppCi8VLFq1Z4lnQ/NtA+ijqY3OJFNi1C8MdTCFgN0g5XHAKi9PjC867tyQ
- sobqyJnQnGWCw5Sqy0ylGU0Ow5ILCFaa9KDHX2WsVsDXMuOv8mR2a/v
+ bh=c/UhZb9WgmV+UnL/5sRY2Pn4ZIFbnK0Mjnx+q7thcUA=;
+ b=fCmZ55sctZEgqD2YusINLJtpQqYN/blTZaC5D/pbs5kRhn6RzrDXikioe137bqaGBC0K0X4NM
+ iVqEX3urQ33Ac8fE/Wh2eIkvQ7xhoNhJ/Q8nDL+YQ4qXR1LT1RppEWU
 X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
  pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
 X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
@@ -111,10 +111,10 @@ Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index af1438277575d88c55d44dc35f214380fffd48e8..d068111436d799d732c52df0846ea10258e0ad89 100644
+index 73457d7109ca40733aa1edc0074cf9f108d02393..94c46b1b04c5c94ff0fca7a1fdfe891b3f41357a 100644
 --- a/fs/f2fs/data.c
 +++ b/fs/f2fs/data.c
-@@ -948,7 +948,7 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
+@@ -974,7 +974,7 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
  	if (fio->io_wbc)
  		wbc_account_cgroup_owner(fio->io_wbc, fio->page, PAGE_SIZE);
  
@@ -125,8 +125,8 @@ index af1438277575d88c55d44dc35f214380fffd48e8..d068111436d799d732c52df0846ea102
  	*fio->bio = bio;
 
 ---
-base-commit: d27334b2888c10d2b60c954c59b186182d833107
-change-id: 20260723-origin-linux-6-6-y-b9b917206a7a
+base-commit: e4f7d8be268ecf717f94ee2e242afa79ddeacaed
+change-id: 20260723-origin-linux-6-1-y-c25d17a0d301
 
 Best regards,
 -- 
