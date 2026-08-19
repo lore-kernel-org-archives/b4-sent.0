@@ -1,107 +1,64 @@
-From: Pankaj Gupta <pankaj.gupta@nxp.com>
-Date: Wed, 19 Aug 2026 17:12:13 +0530
-Subject: [PATCH v37 7/7] arm64: dts: imx8ulp: add reserved memory for
- EdgeLock Enclave
+From: Jonas Juffinger <jonas.juffinger@liebherr.com>
+Date: Wed, 19 Aug 2026 10:21:37 +0200
+Subject: [PATCH] kernel-fit-image: Don't add hash node when signing is
+ enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260819-imx-se-if-v37-7-5ef5de9ff1dc@nxp.com>
-References: <20260819-imx-se-if-v37-0-5ef5de9ff1dc@nxp.com>
-In-Reply-To: <20260819-imx-se-if-v37-0-5ef5de9ff1dc@nxp.com>
-To: Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Pankaj Gupta <pankaj.gupta@nxp.com>
-Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org
+Message-Id: <20260819-bugfix-dont-add-hash-node-to-signed-fit-images-v1-1-c0ffc1a0fc17@liebherr.com>
+X-B4-Tracking: v=1; b=H4sIAJBnhWoC/x2NsQ7CMAwFf6XyzJOSDED5FcSQxm7igQTFBSFV/
+ XcixhvubieTrmJ0m3bq8lHTVgf400SpxJoFyoMpuHB2Vz9jeedVv+BWN0RmlGgFtbFgazDNVRi
+ rbtBnzGLwIS4uzeHik9CIvroM/T+8P47jB6lowVmAAAAA
+To: openembedded-core@lists.openembedded.org
+Cc: Jonas Juffinger <jonas.juffinger@liebherr.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787139727; l=2461;
- i=pankaj.gupta@nxp.com; s=20260817; h=from:subject:message-id;
- bh=8LTJ7dQk+ZmHVQUVQ7z2QFEU98qQ6ZendsUWTwEehrU=;
- b=ipQIdbFWYlewdLD9nhrW6bYdqLJwb5Yig+8Ripu1oNdNVg6l3Wdms4xE6b5xdSSJq+XiN8xF8
- 3MXK1Xa0QmSBvp256jcb5C1/fVO4VVjkCaneIqThoKQ5jKlQKGkT7iF
-X-Developer-Key: i=pankaj.gupta@nxp.com; a=ed25519;
- pk=g4ZgzIWbpXnSxRsoH+l6PWLP78a+Mzpl8e6RQe74d5Y=
-X-Endpoint-Received: by B4 Relay for pankaj.gupta@nxp.com/20260817 with auth_id=962
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787127703; l=1359;
+ i=jonas.juffinger@liebherr.com; s=20260615; h=from:subject:message-id;
+ bh=dtNhGWXLaF9vg94YLb4ySsWG4N9Rg6SxtwNTftjmrlU=;
+ b=A5p/LCa7sXh/hlb7HsIH3pCpPLkaL8j0mC8eWHaPXzZYxvkuGlsD0/Le6/va6Dx4MxUFCf+xK
+ tgWByAHxK+3AnKb+WAo4ruS7QmHnkryZzLpZIUfLHgRnn9twpPIcMW9
+X-Developer-Key: i=jonas.juffinger@liebherr.com; a=ed25519;
+ pk=57Vzs2aKTP3E7TDrBuZMQibGR+Koattc4oIhiMOs3FI=
+X-Endpoint-Received: by B4 Relay for jonas.juffinger@liebherr.com/20260615 with auth_id=821
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reserve 1MB of DDR for the EdgeLock Enclave. The enclave hardware can only
-access DDR in the 0x80000000 - 0xafffffff window, so constrain the pool to
-that range with alloc-ranges and let the kernel choose the placement rather
-than hardcoding an address.
+When configuration signing is enabled, mkimage does not fill
+the hash node even if it present. This causes the verification
+to fail with a "Bad Data Hash' error because the hash exists
+but it empty.
 
-Provide this as a shared imx8ulp-firmware.dtsi that also enables the hsm0
-node and wires up its memory-region, so every i.MX8ULP board can bring up
-the enclave with a single include instead of duplicating the reserved
-memory node. Include it from imx8ulp-evk.
+This patch adds a check to only add the hash node if signing
+is not enabled.
 
-Signed-off-by: Pankaj Gupta <pankaj.gupta@nxp.com>
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
+The example FIT from the official documentation also shows
+the configuration field with only the signature, without the
+hash field:
+https://docs.u-boot.org/en/latest/usage/fit/signature.html#signed-configurations
+
+Signed-off-by: Jonas Juffinger <jonas.juffinger@liebherr.com>
 ---
- arch/arm64/boot/dts/freescale/imx8ulp-evk.dts      |  3 ++-
- .../arm64/boot/dts/freescale/imx8ulp-firmware.dtsi | 31 ++++++++++++++++++++++
- 2 files changed, 33 insertions(+), 1 deletion(-)
+ meta/lib/oe/fitimage.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts b/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts
-index 5dea66c1e7aa..885242fd07ce 100644
---- a/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts
-+++ b/arch/arm64/boot/dts/freescale/imx8ulp-evk.dts
-@@ -1,11 +1,12 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR MIT)
- /*
-- * Copyright 2021 NXP
-+ * Copyright 2021, 2025 NXP
-  */
- 
- /dts-v1/;
- 
- #include "imx8ulp.dtsi"
-+#include "imx8ulp-firmware.dtsi"
- 
- / {
- 	model = "NXP i.MX8ULP EVK";
-diff --git a/arch/arm64/boot/dts/freescale/imx8ulp-firmware.dtsi b/arch/arm64/boot/dts/freescale/imx8ulp-firmware.dtsi
-new file mode 100644
-index 000000000000..e4bc352f68af
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/imx8ulp-firmware.dtsi
-@@ -0,0 +1,31 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright 2025 NXP
-+ *
-+ * Default reserved memory and EdgeLock Enclave (ELE) enablement shared by
-+ * i.MX8ULP boards. Include this from a board dts to bring up the secure
-+ * enclave without having to duplicate the reserved-memory node. The ELE
-+ * hardware can only access DDR in the 0x80000000 - 0xafffffff window, so the
-+ * pool is constrained to that range with alloc-ranges and the kernel is left
-+ * to place the 1 MiB region.
-+ */
-+
-+/ {
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		ele_reserved: ele-reserved {
-+			compatible = "shared-dma-pool";
-+			alloc-ranges = <0 0x80000000 0 0x30000000>;
-+			size = <0 0x100000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&hsm0 {
-+	memory-region = <&ele_reserved>;
-+	status = "okay";
-+};
+diff --git a/meta/lib/oe/fitimage.py b/meta/lib/oe/fitimage.py
+index d4dacdd508..142a5d60f7 100644
+--- a/meta/lib/oe/fitimage.py
++++ b/meta/lib/oe/fitimage.py
+@@ -485,7 +485,7 @@ class ItsNodeRootKernel(ItsNode):
+             f"{default_flag} {', '.join(conf_desc)}",
+             opt_props=opt_props
+         )
+-        if self._hash_algo:
++        if self._hash_algo and not self._sign_enable:
+             ItsNodeHash(
+                 "hash-1",
+                 conf_node,
 
+---
+base-commit: 6f7a806ece411ab32e4b1c08a0299400bdf3b588
+change-id: 20260819-bugfix-dont-add-hash-node-to-signed-fit-images-12ab0c9271ce
+
+Best regards,
 -- 
-2.43.0
+Jonas Juffinger <jonas.juffinger@liebherr.com>
 
