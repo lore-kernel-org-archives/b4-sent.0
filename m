@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 21 Aug 2026 02:55:15 +0800
-Subject: [PATCH v3 02/18] mm/huge_memory: fix rejection of swap cache
- folios with a mapping
+Date: Fri, 21 Aug 2026 02:55:16 +0800
+Subject: [PATCH v3 03/18] mm/huge_memory: invert folio_ref_freeze() check
+ to reduce indentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-swap-thp-cleanup-v3-2-9b43f5163238@tencent.com>
+Message-Id: <20260821-swap-thp-cleanup-v3-3-9b43f5163238@tencent.com>
 References: <20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com>
 In-Reply-To: <20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com>
 To: linux-mm@kvack.org
@@ -23,111 +23,257 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
  Kairui Song <ryncsn@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252124; l=3656;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252124; l=7863;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=sKRHOoJ3KjkPT6/oC1u2CVtXhFAq341fQZtAgnnTY3A=;
- b=3zwvvtcfXVg5C8pq5HfEixAwFpKfWp0hrW/JYJS4MCzZ1dJ2W08HHgEf7dbSN7ZQmgWIXj+2l
- QpM+O2g0stgC+SMPtNGHt7Gg4qZuyont6+VUtuo3edQXKDC09M/ePV4
+ bh=UY6iMKTpGLPfiYtzBDed5IoafUyCePQg/1v3UphPlKE=;
+ b=l0sPmEqPmT8nBCikfRluoTynOrjtdDJng6/asUYQZF2y+2hhTjyJUEQF30etsd6v5pmNYUflh
+ xbvQ8SDlDgrCKDbmn0g/Sie1J2KEftxrbFKTx9x5DtXt0OtYtOo9P1O
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A folio in the swap cache cannot be split if it has a mapping (shmem).
-The split code does a defensive check for this in
-__folio_freeze_and_split_unmapped, after the folio ref has been frozen
-and the NR_SHMEM_THPS/NR_FILE_THPS counters have been decremented. It
-rejects the split and returns -EINVAL without unfreezing the folio or
-restoring the counters. That error path is buggy: if it is ever taken,
-it leaves the folio frozen and stuck, skews the counters, and fires
-the VM_WARN_ON_ONCE_FOLIO for a state that is actually legitimate.
+Invert the folio_ref_freeze() success check in
+__folio_freeze_and_split_unmapped() to return early on failure, which
+removes one level of indentation from the entire success path.
 
-Check for this case up front in folio_check_splittable and return
--EBUSY before any state is modified, so the split routine always backs
-out cleanly.
+This is a pure refactoring with no functional change.  It prepares the
+function to be split into separate helpers for anonymous and
+file-backed folios in a later patch.
 
-Also fix a bracket style issue that checkpatch.pl keeps complaining
-about.
-
-Fixes: 00527733d0dc ("mm/huge_memory: add two new (not yet used) functions for folio_split()")
-Fixes: 714b056c8321 ("mm/huge_memory: convert VM_BUG* to VM_WARN* in __folio_split")
 Reviewed-by: Zi Yan <ziy@nvidia.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 27 ++++++++++++++++-----------
- 1 file changed, 16 insertions(+), 11 deletions(-)
+ mm/huge_memory.c | 181 +++++++++++++++++++++++++++----------------------------
+ 1 file changed, 90 insertions(+), 91 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index ced400f72d43..a6759a14e057 100644
+index a6759a14e057..7fb603ac500f 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3878,6 +3878,9 @@ static int __split_unmapped_folio(struct folio *folio, int new_order,
- int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 			   enum split_type split_type)
+@@ -3940,9 +3940,11 @@ static int __folio_freeze_and_split_unmapped(struct folio *folio, unsigned int n
+ 					     pgoff_t end, int *nr_shmem_dropped)
  {
-+	bool is_anon = folio_test_anon(folio);
-+	bool is_swapcache = folio_test_swapcache(folio);
-+
- 	VM_WARN_ON_FOLIO(!folio_test_locked(folio), folio);
- 	/*
- 	 * Folios that just got truncated cannot get split. Signal to the
-@@ -3886,11 +3889,11 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	 * TODO: this will also currently refuse folios without a mapping in the
- 	 * swapcache (shmem or to-be-anon folios).
- 	 */
--	if (!folio->mapping && !folio_test_anon(folio))
-+	if (!folio->mapping && !is_anon)
- 		return -EBUSY;
+ 	struct folio *end_folio = folio_next(folio);
++	struct swap_cluster_info *ci = NULL;
+ 	struct folio *new_folio, *next;
+ 	int old_order = folio_order(folio);
+ 	struct list_lru_one *lru;
++	struct lruvec *lruvec;
+ 	bool dequeue_deferred;
+ 	int ret = 0;
  
- 	/* order-1 is not supported for anonymous THP. */
--	if (folio_test_anon(folio) && new_order == 1)
-+	if (is_anon && new_order == 1)
- 		return -EINVAL;
+@@ -3963,122 +3965,119 @@ static int __folio_freeze_and_split_unmapped(struct folio *folio, unsigned int n
+ 		lru = list_lru_lock(&deferred_split_lru,
+ 				    folio_nid(folio), &memcg);
+ 	}
+-	if (folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
+-		struct swap_cluster_info *ci = NULL;
+-		struct lruvec *lruvec;
  
- 	/*
-@@ -3901,9 +3904,8 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	 * swapcache folio split. Only uniform split to order-0 can be used
- 	 * here.
- 	 */
--	if ((split_type == SPLIT_TYPE_NON_UNIFORM || new_order) && folio_test_swapcache(folio)) {
-+	if ((split_type == SPLIT_TYPE_NON_UNIFORM || new_order) && is_swapcache)
- 		return -EINVAL;
--	}
++	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
+ 		if (dequeue_deferred) {
+-			__list_lru_del(&deferred_split_lru, lru,
+-				       &folio->_deferred_list, folio_nid(folio));
+-			if (folio_test_partially_mapped(folio)) {
+-				folio_clear_partially_mapped(folio);
+-				mod_mthp_stat(old_order,
+-					MTHP_STAT_NR_ANON_PARTIALLY_MAPPED, -1);
+-			}
+ 			list_lru_unlock(lru);
+ 			rcu_read_unlock();
+ 		}
++		return -EAGAIN;
++	}
  
- 	if (is_huge_zero_folio(folio))
- 		return -EINVAL;
-@@ -3911,6 +3913,15 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	if (folio_test_writeback(folio))
- 		return -EBUSY;
+-		if (mapping) {
+-			int nr = folio_nr_pages(folio);
+-
+-			if (folio_test_pmd_mappable(folio) &&
+-			    new_order < HPAGE_PMD_ORDER) {
+-				if (folio_test_swapbacked(folio)) {
+-					lruvec_stat_mod_folio(folio,
+-							NR_SHMEM_THPS, -nr);
+-				} else {
+-					lruvec_stat_mod_folio(folio,
+-							NR_FILE_THPS, -nr);
+-				}
+-			}
++	if (dequeue_deferred) {
++		__list_lru_del(&deferred_split_lru, lru,
++			       &folio->_deferred_list, folio_nid(folio));
++		if (folio_test_partially_mapped(folio)) {
++			folio_clear_partially_mapped(folio);
++			mod_mthp_stat(old_order,
++				      MTHP_STAT_NR_ANON_PARTIALLY_MAPPED, -1);
+ 		}
++		list_lru_unlock(lru);
++		rcu_read_unlock();
++	}
  
+-		if (folio_test_swapcache(folio))
+-			ci = swap_cluster_get_and_lock(folio);
+-
+-		/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
+-		if (do_lru)
+-			lruvec = folio_lruvec_lock(folio);
+-
+-		ret = __split_unmapped_folio(folio, new_order, split_at, xas,
+-					     mapping, split_type);
++	if (mapping) {
++		int nr = folio_nr_pages(folio);
+ 
+-		/*
+-		 * Unfreeze after-split folios and put them back to the right
+-		 * list. @folio should be kept frozon until page cache
+-		 * entries are updated with all the other after-split folios
+-		 * to prevent others seeing stale page cache entries.
+-		 * As a result, new_folio starts from the next folio of
+-		 * @folio.
+-		 */
+-		for (new_folio = folio_next(folio); new_folio != end_folio;
+-		     new_folio = next) {
+-			unsigned long nr_pages = folio_nr_pages(new_folio);
++		if (folio_test_pmd_mappable(folio) &&
++		    new_order < HPAGE_PMD_ORDER) {
++			if (folio_test_swapbacked(folio)) {
++				lruvec_stat_mod_folio(folio,
++						      NR_SHMEM_THPS, -nr);
++			} else {
++				lruvec_stat_mod_folio(folio,
++						      NR_FILE_THPS, -nr);
++			}
++		}
++	}
+ 
+-			next = folio_next(new_folio);
++	if (folio_test_swapcache(folio))
++		ci = swap_cluster_get_and_lock(folio);
+ 
+-			zone_device_private_split_cb(folio, new_folio);
++	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
++	if (do_lru)
++		lruvec = folio_lruvec_lock(folio);
+ 
+-			folio_ref_unfreeze(new_folio,
+-					   folio_cache_ref_count(new_folio) + 1);
++	ret = __split_unmapped_folio(folio, new_order, split_at, xas,
++				     mapping, split_type);
+ 
+-			if (do_lru)
+-				lru_add_split_folio(folio, new_folio, lruvec, list);
 +	/*
-+	 * A non-anon swapcache folio that still has a mapping can only be a
-+	 * shmem folio under SWAP IO, it's removed from either swap cache or
-+	 * shmem mapping afterward. There is little benefit in splitting them
-+	 * hence reject it here up front before touching anything.
++	 * Unfreeze after-split folios and put them back to the right
++	 * list. @folio should be kept frozon until page cache
++	 * entries are updated with all the other after-split folios
++	 * to prevent others seeing stale page cache entries.
++	 * As a result, new_folio starts from the next folio of
++	 * @folio.
 +	 */
-+	if (!is_anon && is_swapcache && folio->mapping)
-+		return -EBUSY;
++	for (new_folio = folio_next(folio); new_folio != end_folio;
++	     new_folio = next) {
++		unsigned long nr_pages = folio_nr_pages(new_folio);
+ 
+-			/*
+-			 * Anonymous folio with swap cache.
+-			 * NOTE: shmem in swap cache is not supported yet.
+-			 */
+-			if (ci) {
+-				__swap_cache_replace_folio(ci, folio, new_folio);
+-				continue;
+-			}
++		next = folio_next(new_folio);
+ 
+-			/* Anonymous folio without swap cache */
+-			if (!mapping)
+-				continue;
++		zone_device_private_split_cb(folio, new_folio);
+ 
+-			/* Add the new folio to the page cache. */
+-			if (new_folio->index < end) {
+-				__xa_store(&mapping->i_pages, new_folio->index,
+-					   new_folio, 0);
+-				continue;
+-			}
++		folio_ref_unfreeze(new_folio,
++				   folio_cache_ref_count(new_folio) + 1);
+ 
+-			VM_WARN_ON_ONCE(!nr_shmem_dropped);
+-			/* Drop folio beyond EOF: ->index >= end */
+-			if (shmem_mapping(mapping) && nr_shmem_dropped)
+-				*nr_shmem_dropped += nr_pages;
+-			else if (folio_test_clear_dirty(new_folio))
+-				folio_account_cleaned(
+-					new_folio, inode_to_wb(mapping->host));
+-			__filemap_remove_folio(new_folio, NULL);
+-			folio_put_refs(new_folio, nr_pages);
+-		}
++		if (do_lru)
++			lru_add_split_folio(folio, new_folio, lruvec, list);
+ 
+-		zone_device_private_split_cb(folio, NULL);
+ 		/*
+-		 * Unfreeze @folio only after all page cache entries, which
+-		 * used to point to it, have been updated with new folios.
+-		 * Otherwise, a parallel folio_try_get() can grab @folio
+-		 * and its caller can see stale page cache entries.
++		 * Anonymous folio with swap cache.
++		 * NOTE: shmem in swap cache is not supported yet.
+ 		 */
+-		folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
++		if (ci) {
++			__swap_cache_replace_folio(ci, folio, new_folio);
++			continue;
++		}
+ 
+-		if (do_lru)
+-			lruvec_unlock(lruvec);
++		/* Anonymous folio without swap cache */
++		if (!mapping)
++			continue;
+ 
+-		if (ci)
+-			swap_cluster_unlock(ci);
+-	} else {
+-		if (dequeue_deferred) {
+-			list_lru_unlock(lru);
+-			rcu_read_unlock();
++		/* Add the new folio to the page cache. */
++		if (new_folio->index < end) {
++			__xa_store(&mapping->i_pages, new_folio->index,
++				   new_folio, 0);
++			continue;
+ 		}
+-		return -EAGAIN;
 +
- 	return 0;
++		VM_WARN_ON_ONCE(!nr_shmem_dropped);
++		/* Drop folio beyond EOF: ->index >= end */
++		if (shmem_mapping(mapping) && nr_shmem_dropped)
++			*nr_shmem_dropped += nr_pages;
++		else if (folio_test_clear_dirty(new_folio))
++			folio_account_cleaned(new_folio,
++					      inode_to_wb(mapping->host));
++		__filemap_remove_folio(new_folio, NULL);
++		folio_put_refs(new_folio, nr_pages);
+ 	}
+ 
++	zone_device_private_split_cb(folio, NULL);
++	/*
++	 * Unfreeze @folio only after all page cache entries, which
++	 * used to point to it, have been updated with new folios.
++	 * Otherwise, a parallel folio_try_get() can grab @folio
++	 * and its caller can see stale page cache entries.
++	 */
++	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
++
++	if (do_lru)
++		lruvec_unlock(lruvec);
++	if (ci)
++		swap_cluster_unlock(ci);
++
+ 	return ret;
  }
  
-@@ -3983,14 +3994,8 @@ static int __folio_freeze_and_split_unmapped(struct folio *folio, unsigned int n
- 			}
- 		}
- 
--		if (folio_test_swapcache(folio)) {
--			if (mapping) {
--				VM_WARN_ON_ONCE_FOLIO(mapping, folio);
--				return -EINVAL;
--			}
--
-+		if (folio_test_swapcache(folio))
- 			ci = swap_cluster_get_and_lock(folio);
--		}
- 
- 		/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
- 		if (do_lru)
 
 -- 
 2.55.0
