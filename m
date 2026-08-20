@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 21 Aug 2026 02:55:18 +0800
-Subject: [PATCH v3 05/18] mm/huge_memory: rename __split_unmapped_folio()
- to __split_frozen_folio()
+Date: Fri, 21 Aug 2026 02:55:19 +0800
+Subject: [PATCH v3 06/18] mm/huge_memory: consolidate irq and locking for
+ folio split
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-swap-thp-cleanup-v3-5-9b43f5163238@tencent.com>
+Message-Id: <20260821-swap-thp-cleanup-v3-6-9b43f5163238@tencent.com>
 References: <20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com>
 In-Reply-To: <20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com>
 To: linux-mm@kvack.org
@@ -23,95 +23,162 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
  Kairui Song <ryncsn@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252124; l=3691;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252124; l=4821;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=n6EfNzAc4w/2SwnSy/zj9BR1996opKhXS3Y2Z4MVxpM=;
- b=PDeSmX4GhPuxR46o2+iAjFz0/oFyjGkew1yVAX4RNe/9A6IFfXMVfEN+GSC/O81uKVt9ETwO3
- pzawe+Rwny4DnpunJo84j+vprqwIt1h8eBuAS/PuqSt8AETE38huzdC
+ bh=kg6VQFGolmACY/RqrJ4EQVqIYb6qG4JCJfoecxkhaQ8=;
+ b=0Gg6pZYKuwo87RQUWCu22J/1MzcNTDa0eVW33D/XV5QjuKjak/B0oiR/Yyrb0uXB6rJzXUXod
+ 2M8kJx7HXGcAFl6LWyj3H0he4N+ALtRRlguXeqlVnLZ58r1ar9ndSUu
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The helper splits a folio whose refcount is frozen: the frozen refcount
-is the state it relies on, while unmapping is arranged by the caller
-beforehand. The old name caused confusion and people may try to call the
-helper on non-frozen folios.
+Let each split helper handle its own locking instead of relying on
+the caller, so both helpers manage their own irq and locking state.
+This lets __folio_split() drop its local irq handling and fail label,
+preparing for further cleanup.
 
-Suggested-by: Zi Yan <ziy@nvidia.com>
+The file path now uses xas_lock_irq() instead of local_irq_disable()
+with xas_lock(). The two are equivalent on non-RT, and
+TRANSPARENT_HUGEPAGE cannot be enabled on RT anyway. This conversion
+also buys consistency: every other place in mm/ that freezes a folio
+while it is still reachable through the page cache already takes the
+lock this way. This was actually the last plain xas_lock() on
+mapping->i_pages left in mm. If we are going to support RT, spinning
+on frozen folio refs could be a problem, but it already exists in
+many places and should be fixed generically.
+
+The anon helper keeps a single local_irq_disable() as before, because
+it has to cover several plain spinlocks at once.
+
+The dropped xas_reset() was a no-op as the xa_state is not walked
+before the xas_load() under the lock.
+
 Reviewed-by: Zi Yan <ziy@nvidia.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ mm/huge_memory.c | 52 ++++++++++++++++++++++++----------------------------
+ 1 file changed, 24 insertions(+), 28 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index c3fd6757c14c..427e14d7985a 100644
+index 427e14d7985a..69d3a6889f9e 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3755,8 +3755,8 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
+@@ -3946,6 +3946,8 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
+ 	bool dequeue_deferred;
+ 	int ret = 0;
+ 
++	local_irq_disable();
++
+ 	/*
+ 	 * If this folio can be on the deferred split queue, lock out
+ 	 * the shrinker before freezing the ref. If the shrinker sees
+@@ -3968,6 +3970,7 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
+ 			list_lru_unlock(lru);
+ 			rcu_read_unlock();
+ 		}
++		local_irq_enable();
+ 		return -EAGAIN;
+ 	}
+ 
+@@ -4018,6 +4021,7 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
+ 		lruvec_unlock(lruvec);
+ 	if (ci)
+ 		swap_cluster_unlock(ci);
++	local_irq_enable();
+ 
+ 	return ret;
+ }
+@@ -4033,8 +4037,21 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
+ 	struct lruvec *lruvec;
+ 	int ret;
+ 
+-	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1))
+-		return -EAGAIN;
++	xas_lock_irq(xas);
++
++	/*
++	 * Check if the folio is present in page cache.
++	 * We assume all tail are present too, if folio is there.
++	 */
++	if (xas_load(xas) != folio) {
++		ret = -EAGAIN;
++		goto fail;
++	}
++
++	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
++		ret = -EAGAIN;
++		goto fail;
++	}
+ 
+ 	if (folio_test_pmd_mappable(folio) &&
+ 	    new_order < HPAGE_PMD_ORDER) {
+@@ -4106,6 +4123,8 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
+ 	if (do_lru)
+ 		lruvec_unlock(lruvec);
+ 
++fail:
++	xas_unlock_irq(xas);
+ 	return ret;
  }
  
- /**
-- * __split_unmapped_folio() - splits an unmapped @folio to lower order folios in
-- * two ways: uniform split or non-uniform split.
-+ * __split_frozen_folio() - splits a frozen @folio to lower order folios
-+ * in two ways: uniform split or non-uniform split.
-  * @folio: the to-be-split folio
-  * @new_order: the smallest order of the after split folios (since buddy
-  *             allocator like split generates folios with orders from @folio's
-@@ -3795,7 +3795,7 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
-  * Return: 0 - successful, <0 - failed (if -ENOMEM is returned, @folio might be
-  * split but not to @new_order, the caller needs to check)
+@@ -4245,19 +4264,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 
+ 	unmap_folio(folio);
+ 
+-	/* block interrupt reentry in xa_lock and spinlock */
+-	local_irq_disable();
+-	if (mapping) {
+-		/*
+-		 * Check if the folio is present in page cache.
+-		 * We assume all tail are present too, if folio is there.
+-		 */
+-		xas_lock(&xas);
+-		xas_reset(&xas);
+-		if (xas_load(&xas) != folio) {
+-			ret = -EAGAIN;
+-			goto fail;
+-		}
++	if (!is_anon) {
+ 		ret = __folio_freeze_split_unmapped_file(folio, new_order, split_at, &xas, mapping,
+ 							 true, list, split_type, end,
+ 							 &nr_shmem_dropped);
+@@ -4266,12 +4273,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 							 list, split_type);
+ 	}
+ 
+-fail:
+-	if (mapping)
+-		xas_unlock(&xas);
+-
+-	local_irq_enable();
+-
+ 	if (nr_shmem_dropped)
+ 		shmem_uncharge(mapping->host, nr_shmem_dropped);
+ 
+@@ -4354,8 +4355,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
   */
--static int __split_unmapped_folio(struct folio *folio, int new_order,
-+static int __split_frozen_folio(struct folio *folio, int new_order,
- 		struct page *split_at, struct xa_state *xas,
- 		struct address_space *mapping, enum split_type split_type)
+ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
  {
-@@ -3989,8 +3989,8 @@ static int __folio_freeze_split_unmapped_anon(struct folio *folio, unsigned int
- 	if (do_lru)
- 		lruvec = folio_lruvec_lock(folio);
+-	int ret = 0;
+-
+ 	VM_WARN_ON_ONCE_FOLIO(folio_mapped(folio), folio);
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_large(folio), folio);
+@@ -4364,11 +4363,8 @@ int folio_split_unmapped(struct folio *folio, unsigned int new_order)
+ 	if (folio_expected_ref_count(folio) != folio_ref_count(folio) - 1)
+ 		return -EAGAIN;
  
--	ret = __split_unmapped_folio(folio, new_order, split_at, NULL,
--				     NULL, split_type);
-+	ret = __split_frozen_folio(folio, new_order, split_at, NULL,
-+				   NULL, split_type);
+-	local_irq_disable();
+-	ret = __folio_freeze_split_unmapped_anon(folio, new_order, &folio->page,
+-						 false, NULL, SPLIT_TYPE_UNIFORM);
+-	local_irq_enable();
+-	return ret;
++	return __folio_freeze_split_unmapped_anon(folio, new_order, &folio->page,
++						  false, NULL, SPLIT_TYPE_UNIFORM);
+ }
  
- 	/*
- 	 * Unfreeze the post-split folios and put them back to the right
-@@ -4053,8 +4053,8 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
- 	if (do_lru)
- 		lruvec = folio_lruvec_lock(folio);
- 
--	ret = __split_unmapped_folio(folio, new_order, split_at, xas,
--				     mapping, split_type);
-+	ret = __split_frozen_folio(folio, new_order, split_at, xas,
-+				   mapping, split_type);
- 
- 	/*
- 	 * Unfreeze after-split folios and put them back to the right
-@@ -4118,9 +4118,9 @@ static int __folio_freeze_split_unmapped_file(struct folio *folio, unsigned int
-  * @list: after-split folios will be put on it if non NULL
-  * @split_type: perform uniform split or not (non-uniform split)
-  *
-- * It calls __split_unmapped_folio() to perform uniform and non-uniform split.
-+ * It calls __split_frozen_folio() to perform uniform and non-uniform split.
-  * It is in charge of checking whether the split is supported or not and
-- * preparing @folio for __split_unmapped_folio().
-+ * preparing @folio for __split_frozen_folio().
-  *
-  * After splitting, the after-split folio containing @lock_at remains locked
-  * and others are unlocked:
-@@ -4223,7 +4223,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		i_mmap_lock_read(mapping);
- 
- 		/*
--		 *__split_unmapped_folio() may need to trim off pages beyond
-+		 * __split_frozen_folio() may need to trim off pages beyond
- 		 * EOF: but on 32-bit, i_size_read() takes an irq-unsafe
- 		 * seqlock, which cannot be nested inside the page tree lock.
- 		 * So note end now: i_size itself may be changed at any moment,
+ /*
 
 -- 
 2.55.0
