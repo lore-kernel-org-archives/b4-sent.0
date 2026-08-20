@@ -1,105 +1,155 @@
-From: Markuss Broks <markuss.broks@gmail.com>
-Date: Thu, 20 Aug 2026 22:12:08 +0300
-Subject: [PATCH 4/4] iommu/exynos: decode the v7 fault transaction info
+From: Amit Sunil Dhamne <amitsd@google.com>
+Date: Thu, 20 Aug 2026 21:17:58 +0000
+Subject: [PATCH] usb: typec: tcpm: Support native battery energy properties
+ in battery AMS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-exynos-iommu-fixes-v1-4-6bbcd673bb15@gmail.com>
-References: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
-In-Reply-To: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
-To: Marek Szyprowski <m.szyprowski@samsung.com>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-samsung-soc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Markuss Broks <markuss.broks@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=2986;
- i=markuss.broks@gmail.com; s=20260803; h=from:subject:message-id;
- bh=ds2FwQf93t6aWc7pL7d/0AcQafl2TKcR73r3avK3lF8=;
- b=YUghpcT3gXo+61EMw7hA+qlTiMj8yjh8tzM6VDTi7YPQ3VKz8u0bFvtG0QjbiBNKUcMwHH56R
- lT9X87yn00mAy1WcXOJKoOOwxQsnmgcSMKU4sIwgXItFBMqnTdANjT/
-X-Developer-Key: i=markuss.broks@gmail.com; a=ed25519;
- pk=oKzGUTm30BCDqinRMpiHQqByOx1mp2mwmhg80Mv7Zg4=
-X-Endpoint-Received: by B4 Relay for markuss.broks@gmail.com/20260803 with auth_id=911
+Message-Id: <20260820-tcpm-energy-props-upstream-v1-1-0a0167863848@google.com>
+X-B4-Tracking: v=1; b=H4sIAAVvh2oC/x3MQQqDQAwAwK9Izg2kuyptv1I8LDZqDq4hsUUR/
+ +7S41zmAGcTdnhVBxj/xGXJBfdbBf2U8sgon2IIFFp6BMK11xk5s407qi3q+FVfjdOMqX7G2MS
+ BqKmhBGo8yPbP3915XjqptdtsAAAA
+X-Change-ID: 20260820-tcpm-energy-props-upstream-a493353f0054
+To: Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787260685; l=4796;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=3ujd4nj9Hfogfm+nYqmaVH090hvwF2tQMDh7GmzAo9w=;
+ b=KFARS5HnKsDD8jDni0Aolvgr/9HPD5Rv/uHIRcq1Ptd7jRhmv7JzCgQaYilomlwSgi6WghH1D
+ wzUAFXjvqLMCKgmZvfqocDBCROfMukZII3XilmZNMHUrTXJ2p3XT0BO
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The v7+ fault registers carry a transaction-info word alongside the
-faulting address, but it is only used to derive the read/write
-direction and then thrown away.  Keep it and print it: AxID identifies
-which port inside the master issued the faulting transaction, which is
-the only way to tell apart the several DMA engines a single block can
-contain, and the remaining bits of the raw word are implementation
-defined and worth having in a fault report.
+Some fuel gauges report battery telemetry in energy rather than charge.
+Add support for querying native energy properties for Battery Status and
+Battery Capabilities AMS, falling back to calculating energy from charge
+and average voltage when primary properties are not supported.
 
-Define the known fields of the word instead of open-coding the masks;
-this also names the direction bit the driver was already testing as a
-bare BIT(20).
++---------+--------------------+----------------------------------+
+| Sr. No. | Primary            | Fallback                         |
++---------+--------------------+----------------------------------+
+| 1       | ENERGY_NOW         | CHARGE_NOW + VOLTAGE_AVG         |
+| 2       | ENERGY_FULL_DESIGN | CHARGE_FULL_DESIGN + VOLTAGE_AVG |
+| 3       | ENERGY_FULL        | CHARGE_FULL + VOLTAGE_AVG        |
++---------+--------------------+----------------------------------+
+Note: All properties above are to be prefixed with POWER_SUPPLY_PROP_.
 
-Gate the print on the variant having a fault_info register, so older
-SysMMUs are unaffected.
-
-Signed-off-by: Markuss Broks <markuss.broks@gmail.com>
+Closes: https://lore.kernel.org/all/amVJ1u67qHENBQ5l@venus/
+Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
+Assisted-by: Gemini:gemini-3.1-pro
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
 ---
- drivers/iommu/exynos-iommu.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
+ drivers/usb/typec/tcpm/tcpm.c | 57 +++++++++++++++++++++++++++----------------
+ 1 file changed, 36 insertions(+), 21 deletions(-)
 
-diff --git a/drivers/iommu/exynos-iommu.c b/drivers/iommu/exynos-iommu.c
-index 29b27c7e400a..0bca3662fdc2 100644
---- a/drivers/iommu/exynos-iommu.c
-+++ b/drivers/iommu/exynos-iommu.c
-@@ -8,6 +8,7 @@
- #define DEBUG
- #endif
+diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
+index a8cd1959c426..0d7dc0b51c87 100644
+--- a/drivers/usb/typec/tcpm/tcpm.c
++++ b/drivers/usb/typec/tcpm/tcpm.c
+@@ -410,6 +410,9 @@ struct pd_timings {
+ /* Convert microwatt to watt */
+ #define UW_TO_W(pow)				(div_u64((pow), 1000000))
  
-+#include <linux/bitfield.h>
- #include <linux/clk.h>
- #include <linux/dma-mapping.h>
- #include <linux/err.h>
-@@ -144,6 +145,9 @@ static u32 lv2ent_offset(sysmmu_iova_t iova)
- #define CAPA0_CAPA1_EXIST		BIT(11)
- #define CAPA1_VCR_ENABLED		BIT(14)
- #define CAPA1_NO_BLOCK_MODE		BIT(15)
-+#define FAULT_INFO_AXID			GENMASK(15, 0)
-+#define FAULT_INFO_AXLEN		GENMASK(19, 16)
-+#define FAULT_INFO_WRITE		BIT(20)
++/* Convert micro-Watt-hours to USB PD energy (increments of 0.1Wh) */
++#define UWH_TO_PD_ENERGY(energy)		(UW_TO_W((u64)(energy) * 10))
++
+ /*
+  * As per USB PD Spec Rev 3.18 (Sec. 6.5.13.11), the number of fixed batteries
+  * that a port can be queried is restricted to 4.
+@@ -1580,8 +1583,7 @@ static u16 tcpm_charge_to_energy(int charge, int voltage)
+ {
+ 	u64 energy = div_u64((u64)charge * voltage, 1000000);
  
- /* common registers */
- #define REG_MMU_CTRL		0x000
-@@ -194,6 +198,7 @@ struct sysmmu_fault {
- 	sysmmu_iova_t addr;	/* IOVA address that caused fault */
- 	const char *name;	/* human readable fault name */
- 	unsigned int type;	/* fault type for report_iommu_fault() */
-+	u32 info;		/* raw transaction info (v7+ only) */
- };
- 
- struct sysmmu_v1_fault_info {
-@@ -360,7 +365,8 @@ static int exynos_sysmmu_v7_get_fault_info(struct sysmmu_drvdata *data,
- 
- 	fault->addr = readl(SYSMMU_REG(data, fault_va));
- 	fault->name = sysmmu_v7_fault_names[itype % 4];
--	fault->type = (info & BIT(20)) ? IOMMU_FAULT_WRITE : IOMMU_FAULT_READ;
-+	fault->type = (info & FAULT_INFO_WRITE) ? IOMMU_FAULT_WRITE : IOMMU_FAULT_READ;
-+	fault->info = info;
- 
- 	return 0;
+-	/* Battery telemetry is reported in increments of 0.1Wh */
+-	return (u16)UW_TO_W(energy * 10);
++	return UWH_TO_PD_ENERGY(energy);
  }
-@@ -558,6 +564,12 @@ static void show_fault_information(struct sysmmu_drvdata *data,
- 		dev_name(data->master),
- 		fault->type == IOMMU_FAULT_READ ? "READ" : "WRITE",
- 		fault->name, fault->addr);
-+	/* AxID identifies the issuing port inside the master */
-+	if (data->variant->fault_info)
-+		dev_err(data->sysmmu, "transaction info %#010x: AxID %#lx, AxLEN %lu\n",
-+			fault->info,
-+			FIELD_GET(FAULT_INFO_AXID, fault->info),
-+			FIELD_GET(FAULT_INFO_AXLEN, fault->info));
- 	dev_dbg(data->sysmmu, "Page table base: %pa\n", &data->pgtable);
- 	ent = section_entry(phys_to_virt(data->pgtable), fault->addr);
- 	dev_dbg(data->sysmmu, "\tLv1 entry: %#x\n", *ent);
+ 
+ static int tcpm_pd_send_batt_status(struct tcpm_port *port)
+@@ -1612,16 +1614,17 @@ static int tcpm_pd_send_batt_status(struct tcpm_port *port)
+ 	else
+ 		batt_present = val.intval > 0;
+ 
+-	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW,
+-					&val);
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_ENERGY_NOW, &val);
+ 	if (!ret) {
+-		charge_now = val.intval;
+-		ret = power_supply_get_property(batt,
+-						POWER_SUPPLY_PROP_VOLTAGE_AVG,
+-						&val);
+-		if (!ret)
+-			present_charge = tcpm_charge_to_energy(charge_now,
+-							       val.intval);
++		present_charge = UWH_TO_PD_ENERGY(val.intval);
++	} else {
++		ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW, &val);
++		if (!ret) {
++			charge_now = val.intval;
++			ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_VOLTAGE_AVG, &val);
++			if (!ret)
++				present_charge = tcpm_charge_to_energy(charge_now, val.intval);
++		}
+ 	}
+ 
+ 	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_STATUS, &val);
+@@ -1678,19 +1681,31 @@ static int tcpm_pd_send_batt_cap(struct tcpm_port *port)
+ 
+ 	invalid_ref = false;
+ 	batt = port->fixed_batt[batt_id];
+-	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_VOLTAGE_AVG,
+-					&val);
+-	if (!ret) {
+-		vol = val.intval;
+-		ret = power_supply_get_property(batt,
+-						POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+-						&val);
++
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN, &val);
++	if (!ret)
++		design_cap = UWH_TO_PD_ENERGY(val.intval);
++
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_ENERGY_FULL, &val);
++	if (!ret)
++		charge_cap = UWH_TO_PD_ENERGY(val.intval);
++
++	if (design_cap != BATTERY_PROPERTY_UNKNOWN && charge_cap != BATTERY_PROPERTY_UNKNOWN)
++		goto send_cap;
++
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_VOLTAGE_AVG, &val);
++	if (ret)
++		goto send_cap;
++
++	vol = val.intval;
++	if (design_cap == BATTERY_PROPERTY_UNKNOWN) {
++		ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &val);
+ 		if (!ret)
+ 			design_cap = tcpm_charge_to_energy(val.intval, vol);
++	}
+ 
+-		ret = power_supply_get_property(batt,
+-						POWER_SUPPLY_PROP_CHARGE_FULL,
+-						&val);
++	if (charge_cap == BATTERY_PROPERTY_UNKNOWN) {
++		ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_FULL, &val);
+ 		if (!ret)
+ 			charge_cap = tcpm_charge_to_energy(val.intval, vol);
+ 	}
 
+---
+base-commit: e1e6e541c5c9cf548e9fdc35fc26808c82074440
+change-id: 20260820-tcpm-energy-props-upstream-a493353f0054
+
+Best regards,
 -- 
-2.55.0
+Amit Sunil Dhamne <amitsd@google.com>
 
