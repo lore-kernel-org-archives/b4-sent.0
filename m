@@ -1,11 +1,10 @@
 From: Markuss Broks <markuss.broks@gmail.com>
-Date: Thu, 20 Aug 2026 22:12:07 +0300
-Subject: [PATCH 3/4] iommu/exynos: fix TLB invalidation for no-block
- SysMMUs
+Date: Thu, 20 Aug 2026 22:12:08 +0300
+Subject: [PATCH 4/4] iommu/exynos: decode the v7 fault transaction info
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-exynos-iommu-fixes-v1-3-6bbcd673bb15@gmail.com>
+Message-Id: <20260820-exynos-iommu-fixes-v1-4-6bbcd673bb15@gmail.com>
 References: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
 In-Reply-To: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
 To: Marek Szyprowski <m.szyprowski@samsung.com>, 
@@ -17,62 +16,89 @@ Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-samsung-soc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Markuss Broks <markuss.broks@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=1957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=2986;
  i=markuss.broks@gmail.com; s=20260803; h=from:subject:message-id;
- bh=HrkpBlZCi51pjFv6cW4myb/9v3ctbW7Y5uVSy6+Uxlw=;
- b=4vw4diMfzpg6jMkBwD2QGOLnKc61wkJfWQEuXDwnPSCbO5WU6JnfM39Vifoh4H+FbAxFDD6wV
- p0M+hzavBGOB8tUTLy3V1uIZ8yBWZGf0XlDyHVi71pnU0kqsYoODXCe
+ bh=ds2FwQf93t6aWc7pL7d/0AcQafl2TKcR73r3avK3lF8=;
+ b=YUghpcT3gXo+61EMw7hA+qlTiMj8yjh8tzM6VDTi7YPQ3VKz8u0bFvtG0QjbiBNKUcMwHH56R
+ lT9X87yn00mAy1WcXOJKoOOwxQsnmgcSMKU4sIwgXItFBMqnTdANjT/
 X-Developer-Key: i=markuss.broks@gmail.com; a=ed25519;
  pk=oKzGUTm30BCDqinRMpiHQqByOx1mp2mwmhg80Mv7Zg4=
 X-Endpoint-Received: by B4 Relay for markuss.broks@gmail.com/20260803 with auth_id=911
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sysmmu_block() polls MMU_STATUS for the blocked state, which no-block
-hardware never reports, so on such SysMMUs it always fails, and both
-sysmmu_tlb_invalidate_entry() and sysmmu_tlb_invalidate_flpdcache()
-skip the invalidation entirely when blocking fails.
+The v7+ fault registers carry a transaction-info word alongside the
+faulting address, but it is only used to derive the read/write
+direction and then thrown away.  Keep it and print it: AxID identifies
+which port inside the master issued the faulting transaction, which is
+the only way to tell apart the several DMA engines a single block can
+contain, and the remaining bits of the raw word are implementation
+defined and worth having in a fault report.
 
-On no-block hardware the invalidation registers are written with the
-MMU running; the vendor driver never blocks around invalidation. Do
-the same and write the invalidation directly. In the FLPD cache path
-no-block implies a v7+ SysMMU, hence the unconditional flush-all.
+Define the known fields of the word instead of open-coding the masks;
+this also names the direction bit the driver was already testing as a
+bare BIT(20).
+
+Gate the print on the variant having a fault_info register, so older
+SysMMUs are unaffected.
 
 Signed-off-by: Markuss Broks <markuss.broks@gmail.com>
 ---
- drivers/iommu/exynos-iommu.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+ drivers/iommu/exynos-iommu.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/iommu/exynos-iommu.c b/drivers/iommu/exynos-iommu.c
-index a3a59d8a4cf1..29b27c7e400a 100644
+index 29b27c7e400a..0bca3662fdc2 100644
 --- a/drivers/iommu/exynos-iommu.c
 +++ b/drivers/iommu/exynos-iommu.c
-@@ -685,7 +685,14 @@ static void sysmmu_tlb_invalidate_flpdcache(struct sysmmu_drvdata *data,
- 	spin_lock_irqsave(&data->lock, flags);
- 	if (data->active && data->version >= MAKE_MMU_VER(3, 3)) {
- 		clk_enable(data->clk_master);
--		if (sysmmu_block(data)) {
-+		/*
-+		 * No-block hardware accepts invalidation writes while the
-+		 * MMU is running; it is also v7+, so flush-all covers the
-+		 * FLPD cache.
-+		 */
-+		if (data->no_block) {
-+			__sysmmu_tlb_invalidate(data);
-+		} else if (sysmmu_block(data)) {
- 			if (data->version >= MAKE_MMU_VER(5, 0))
- 				__sysmmu_tlb_invalidate(data);
- 			else
-@@ -721,7 +728,9 @@ static void sysmmu_tlb_invalidate_entry(struct sysmmu_drvdata *data,
- 		if (MMU_MAJ_VER(data->version) == 2)
- 			num_inv = min_t(unsigned int, size / SPAGE_SIZE, 64);
+@@ -8,6 +8,7 @@
+ #define DEBUG
+ #endif
  
--		if (sysmmu_block(data)) {
-+		if (data->no_block) {
-+			__sysmmu_tlb_invalidate_entry(data, iova, num_inv);
-+		} else if (sysmmu_block(data)) {
- 			__sysmmu_tlb_invalidate_entry(data, iova, num_inv);
- 			sysmmu_unblock(data);
- 		}
++#include <linux/bitfield.h>
+ #include <linux/clk.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/err.h>
+@@ -144,6 +145,9 @@ static u32 lv2ent_offset(sysmmu_iova_t iova)
+ #define CAPA0_CAPA1_EXIST		BIT(11)
+ #define CAPA1_VCR_ENABLED		BIT(14)
+ #define CAPA1_NO_BLOCK_MODE		BIT(15)
++#define FAULT_INFO_AXID			GENMASK(15, 0)
++#define FAULT_INFO_AXLEN		GENMASK(19, 16)
++#define FAULT_INFO_WRITE		BIT(20)
+ 
+ /* common registers */
+ #define REG_MMU_CTRL		0x000
+@@ -194,6 +198,7 @@ struct sysmmu_fault {
+ 	sysmmu_iova_t addr;	/* IOVA address that caused fault */
+ 	const char *name;	/* human readable fault name */
+ 	unsigned int type;	/* fault type for report_iommu_fault() */
++	u32 info;		/* raw transaction info (v7+ only) */
+ };
+ 
+ struct sysmmu_v1_fault_info {
+@@ -360,7 +365,8 @@ static int exynos_sysmmu_v7_get_fault_info(struct sysmmu_drvdata *data,
+ 
+ 	fault->addr = readl(SYSMMU_REG(data, fault_va));
+ 	fault->name = sysmmu_v7_fault_names[itype % 4];
+-	fault->type = (info & BIT(20)) ? IOMMU_FAULT_WRITE : IOMMU_FAULT_READ;
++	fault->type = (info & FAULT_INFO_WRITE) ? IOMMU_FAULT_WRITE : IOMMU_FAULT_READ;
++	fault->info = info;
+ 
+ 	return 0;
+ }
+@@ -558,6 +564,12 @@ static void show_fault_information(struct sysmmu_drvdata *data,
+ 		dev_name(data->master),
+ 		fault->type == IOMMU_FAULT_READ ? "READ" : "WRITE",
+ 		fault->name, fault->addr);
++	/* AxID identifies the issuing port inside the master */
++	if (data->variant->fault_info)
++		dev_err(data->sysmmu, "transaction info %#010x: AxID %#lx, AxLEN %lu\n",
++			fault->info,
++			FIELD_GET(FAULT_INFO_AXID, fault->info),
++			FIELD_GET(FAULT_INFO_AXLEN, fault->info));
+ 	dev_dbg(data->sysmmu, "Page table base: %pa\n", &data->pgtable);
+ 	ent = section_entry(phys_to_virt(data->pgtable), fault->addr);
+ 	dev_dbg(data->sysmmu, "\tLv1 entry: %#x\n", *ent);
 
 -- 
 2.55.0
