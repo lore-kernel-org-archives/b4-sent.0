@@ -1,146 +1,66 @@
-From: quanyeyang <quanyeyang@proton.me>
-Date: Thu, 20 Aug 2026 19:11:29 +0800
-Subject: [PATCH v2] bpf: Annotate bpf_obj_memcpy with data_race
+From: Muzaffer Kadir <muzafferkadir@mainlining.org>
+Subject: [PATCH v2 0/2] Add pinctrl support for MSM8952
+Date: Thu, 20 Aug 2026 14:17:16 +0300
+Message-Id: <20260820-msm8952-pinctrl-v2-0-bf2b8b7b379b@mainlining.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-bpf-kcsan-obj-memcpy-v2-1-672517a3145f@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22Nyw6CMBBFf4V07Zh2xPJY+R+GBS2DFEPbtEgkh
- H8X0KXLk9x7zsIiBUORlcnCAk0mGmc3wFPCdFfbB4FpNmbIUfJcFKB8C08dawtO9TDQoP0MMuM
- pKtFqyhq2XX2g1rwP7b36cnypnvS4u/ZFZ+Lownx0J7Hvfgnk/xOTAAGXDPW1SCWizG8+uNHZ8
- 0CsWtf1A1Cm2GfKAAAA
-X-Change-ID: 20260819-bpf-kcsan-obj-memcpy-67042b1fce7d
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>
-Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+44044637ef892e79ca2b@syzkaller.appspotmail.com, 
- quanyeyang <quanyeyang@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787224289; l=4461;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=+I8QIIVUjRXzYFGg37nqcR5V75m/9N/tCkoDJ3IuiOI=;
- b=7KSiU4/cW7o48eVplDAvCeqtg14fkTFcr3P4LZAMxa+9fQRgxWWrtXisWwreoidErfXSvb8nM
- fXeJ6WPTzzwB2CEh5O7VMECIz41vR6I0QJKeWFre1OeOEquxSIExiz2
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6DIBBFf8XMujQysYBd9T8aF/IoTqJowJA2h
+ n8vdd/lOck994DkIrkE9+aA6DIlWkMFvDRgpjF4x8hWBmxRtIoLtqRF9TdkGwWzx5lpg9p2qut
+ RcKirLboXvc/ic6g8UdrX+DkPMv/Z/63MWctGiRK1sciVfCwjhZkCBX9do4ehlPIFlZigaLMAA
+ AA=
+X-Change-ID: 20260816-msm8952-pinctrl-bc2bd4849261
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Muzaffer Kadir <muzafferkadir@mainlining.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787224657; l=1347;
+ i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
+ bh=RSjpaCF9fBktE/a6UFELoM+28IIroymgdClaLF3mN+o=;
+ b=mGo5kBGOZpeO2539Z962drHBw9m2kPBd9Daziv7TutmH1bemMC+UmA42qnTKO/u5i0bzhzKPv
+ gJJGR8V1r/JCa+4IxV8GlaYxgCX6UborLuP3Jr0LlI2spvs9IGcz4qf
+X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
+ pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
+X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-syzbot reported KCSAN write-write races when two tasks concurrently
-update the same map value. Both accesses reach the ordinary memcpy()
-paths in bpf_obj_memcpy() through copy_map_value().
+MSM8952 has pinctrl system that is similar to MSM8917 pinctrl, but it
+has some differences in some of the pins and their functions.
+This driver was tested on General Mobile GM 5 Plus
+(shamrock) using my own kernel fork [1].
+I'm holding off on sending the GCC (Global Clock
+Controller) driver and initial device tree until I've resolved some
+outstanding bugs in the GCC driver.
 
-Unlocked in-place updates of published map values are intentionally not
-serialized and may produce torn values. Callers requiring consistency
-must provide synchronization appropriate for the map type.
-bpf_long_memcpy() already annotates the same behavior for long-aligned
-copies.
+[1] https://github.com/kadir1243/linux
 
-Annotate the ordinary memcpy() sites in bpf_obj_memcpy() with
-data_race(), matching bpf_long_memcpy(). This documents the existing
-concurrency semantics and suppresses KCSAN reports for these intentional
-races without changing synchronization or map update behavior.
-
-Reported-by: syzbot+44044637ef892e79ca2b@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=44044637ef892e79ca2b
-Signed-off-by: quanyeyang <quanyeyang@proton.me>
----
-The annotations remain in the common bpf_obj_memcpy() helper, matching
-bpf_long_memcpy(). This keeps the existing copy helper interfaces
-unchanged. A narrower annotation would require propagating the
-concurrency context through copy_map_value() or introducing separate
-copy helpers.
-
-The following checkpatch warnings are expected:
-
-- DATA_RACE is reported for the three annotations because checkpatch
-  only recognizes an immediately adjacent comment. Their shared
-  rationale is documented above bpf_obj_memcpy().
-- MISSING_FIXES_TAG is reported because the commit references syzkaller.
-  No Fixes tag is included because this documents long-standing
-  intentional lockless semantics rather than a regression introduced
-  by a particular commit.
+Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
 Changes in v2:
-- Drop the BPF_F_LOCK recommendation because it is unavailable for
-  per-CPU maps.
-- Scope the concurrency description to unlocked in-place updates of
-  published map values.
-- Fold the redundant commit message paragraphs.
-- Link to v1:
-  https://patch.msgid.link/20260820-bpf-kcsan-obj-memcpy-v1-1-372c59462268@proton.me
-
-To: Alexei Starovoitov <ast@kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-To: Andrii Nakryiko <andrii@kernel.org>
-To: Eduard Zingerman <eddyz87@gmail.com>
-To: Kumar Kartikeya Dwivedi <memxor@gmail.com>
-To: Martin KaFai Lau <martin.lau@linux.dev>
-To: Song Liu <song@kernel.org>
-To: Yonghong Song <yonghong.song@linux.dev>
-To: Jiri Olsa <jolsa@kernel.org>
-To: Emil Tsalapatis <emil@etsalapatis.com>
-To: John Fastabend <john.fastabend@gmail.com>
-Cc: bpf@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- include/linux/bpf.h | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
-
-diff --git a/include/linux/bpf.h b/include/linux/bpf.h
-index 7719f6528445..10d1186ef3b4 100644
---- a/include/linux/bpf.h
-+++ b/include/linux/bpf.h
-@@ -560,7 +560,14 @@ static inline void bpf_long_memcpy(void *dst, const void *src, u32 size)
- 		data_race(*ldst++ = *lsrc++);
- }
- 
--/* copy everything but bpf_spin_lock, bpf_timer, and kptrs. There could be one of each. */
-+/*
-+ * Copy everything but bpf_spin_lock, bpf_timer, and kptrs. There could
-+ * be one of each.
-+ *
-+ * When this helper performs an unlocked in-place update of a published
-+ * map value, the ordinary byte copies may intentionally race with
-+ * concurrent updates and the resulting value may be torn.
-+ */
- static inline void bpf_obj_memcpy(struct btf_record *rec,
- 				  void *dst, void *src, u32 size,
- 				  bool long_memcpy)
-@@ -572,7 +579,7 @@ static inline void bpf_obj_memcpy(struct btf_record *rec,
- 		if (long_memcpy)
- 			bpf_long_memcpy(dst, src, round_up(size, 8));
- 		else
--			memcpy(dst, src, size);
-+			data_race(memcpy(dst, src, size));
- 		return;
- 	}
- 
-@@ -580,10 +587,10 @@ static inline void bpf_obj_memcpy(struct btf_record *rec,
- 		u32 next_off = rec->fields[i].offset;
- 		u32 sz = next_off - curr_off;
- 
--		memcpy(dst + curr_off, src + curr_off, sz);
-+		data_race(memcpy(dst + curr_off, src + curr_off, sz));
- 		curr_off += rec->fields[i].size + sz;
- 	}
--	memcpy(dst + curr_off, src + curr_off, size - curr_off);
-+	data_race(memcpy(dst + curr_off, src + curr_off, size - curr_off));
- }
- 
- static inline void copy_map_value(struct bpf_map *map, void *dst, void *src)
+- Reworded dt-bindings commit as Krzysztof suggested.
+- Added depends and default to kconfig entry of pinctrl
+- Link to v1: https://lore.kernel.org/r/20260816-msm8952-pinctrl-v1-0-a7272bcd2187@mainlining.org
 
 ---
-base-commit: bd5f485f3f026225b86573e559af0b7254ef4184
-change-id: 20260819-bpf-kcsan-obj-memcpy-67042b1fce7d
+Muzaffer Kadir (2):
+      dt-bindings: pinctrl: qcom: Add MSM8952 pinctrl
+      pinctrl: qcom: Add MSM8952 tlmm pinctrl driver
+
+ .../bindings/pinctrl/qcom,msm8952-pinctrl.yaml     |  155 +++
+ drivers/pinctrl/qcom/Kconfig.msm                   |    8 +
+ drivers/pinctrl/qcom/Makefile                      |    1 +
+ drivers/pinctrl/qcom/pinctrl-msm8952.c             | 1248 ++++++++++++++++++++
+ 4 files changed, 1412 insertions(+)
+---
+base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
+change-id: 20260816-msm8952-pinctrl-bc2bd4849261
 
 Best regards,
---  
-quanyeyang <quanyeyang@proton.me>
+-- 
+Muzaffer Kadir <muzafferkadir@mainlining.org>
 
