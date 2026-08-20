@@ -1,11 +1,11 @@
 From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Thu, 20 Aug 2026 21:02:37 +0200
-Subject: [PATCH 1/4] iio: imu: inv_icm42600: sleep before enabling FIFO
- data
+Date: Thu, 20 Aug 2026 21:02:38 +0200
+Subject: [PATCH 2/4] iio: imu: inv_icm42600: use 2 sensors fixed packet
+ size of 16 bytes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-inv-icm42600-enhacements-v1-1-075a881db557@tdk.com>
+Message-Id: <20260820-inv-icm42600-enhacements-v1-2-075a881db557@tdk.com>
 References: <20260820-inv-icm42600-enhacements-v1-0-075a881db557@tdk.com>
 In-Reply-To: <20260820-inv-icm42600-enhacements-v1-0-075a881db557@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -17,83 +17,108 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
  Jonathan Cameron <jic23@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252562; l=2310;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252562; l=3920;
  i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=+bwsfyS+uWdp/eU+N8iIh3HLaiG1bPAzG41AqLrkjT8=;
- b=zEpsW03HkfJ8KN0pMsxC03QcysYWGYv2K7XFHKKbROlvxXlsVLrNVgpoqzH1JqoIqtdXkXOVE
- lcm06IPv1jBCQm1ngmRqVFbxAjqSdiSMOkUXgLcw//587Tv8vNDc47C
+ bh=EM8dhUPdXrhxOAegwezQFHC3UihVboFJF7OdXrMFA5w=;
+ b=cb3+gFMTyJ9T/aVpre8TyXbP8V33mN8QMyJebry/eQ9/d8DRKSQVFBEeZafxKHiQVPEaLGwOg
+ iuny1DBElSMDlw7ePd5pPuVkaZE5Iz7U0zWpjWMx6ZWk7hHfKApRXv7
 X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
  pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
 X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When turning accel or gyro on, a sleep is required for letting the
-mechanical part stabilize before reporting correct data. Do the sleep
-before enabling FIFO data to prevent push of incorrect data. This is
-required if the FIFO is already on because a sensor is already running.
+Sometimes dynamic switch between 1 sensor frame to 2 sensors frame is
+not working when there are too much frames already in the FIFO. By
+moving accel/gyro on sleep before turning FIFO on, we are storing many
+FIFO frames before updating the frame format hitting the bug everytime.
+
+Fix that by always using the 2 sensors frame of 16 bytes. Also update
+the hwfifo max watermark reported.
 
 Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c | 12 ++++++++----
- drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c  | 12 ++++++++----
- 2 files changed, 16 insertions(+), 8 deletions(-)
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h        |  4 +--
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 31 +++++++---------------
+ 2 files changed, 11 insertions(+), 24 deletions(-)
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-index 4b0e3cd8a506..d889c1dceec1 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-@@ -254,15 +254,19 @@ static int inv_icm42600_accel_update_scan_mode(struct iio_dev *indio_dev,
- 		fifo_en |= INV_ICM42600_SENSOR_ACCEL;
- 	}
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
+index b55d993f0264..f6c7c84c7e45 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
+@@ -356,8 +356,8 @@ struct inv_icm42600_sensor_state {
+ 		cpu_to_le16((_wm) & GENMASK(11, 0))
+ /* FIFO is 2048 bytes, let 12 samples for reading latency */
+ #define INV_ICM42600_FIFO_WATERMARK_MAX			(2048 - 12 * 16)
+-/* INV_ICM42600_FIFO_WATERMARK_MAX / 8 = 232 */
+-#define INV_ICM42600_FIFO_WATERMARK_MAX_SAMPLES		232
++/* INV_ICM42600_FIFO_WATERMARK_MAX / 16 = 116 */
++#define INV_ICM42600_FIFO_WATERMARK_MAX_SAMPLES		116
  
-+	/* sleep maximum required time */
-+	sleep = max(sleep_accel, sleep_temp);
-+	if (sleep) {
-+		mutex_unlock(&st->lock);
-+		msleep(sleep);
-+		mutex_lock(&st->lock);
-+	}
-+
- 	/* update data FIFO write */
- 	ret = inv_icm42600_buffer_set_fifo_en(st, fifo_en | st->fifo.en);
+ #define INV_ICM42600_REG_INT_CONFIG1			0x0064
+ #define INV_ICM42600_INT_CONFIG1_TPULSE_DURATION	BIT(6)
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+index 998d312f7bde..043ae9deee65 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+@@ -131,13 +131,13 @@ int inv_icm42600_buffer_set_fifo_en(struct inv_icm42600_state *st,
+ 		INV_ICM42600_FIFO_CONFIG1_GYRO_EN |
+ 		INV_ICM42600_FIFO_CONFIG1_ACCEL_EN;
  
- out_unlock:
- 	mutex_unlock(&st->lock);
--	/* sleep maximum required time */
--	sleep = max(sleep_accel, sleep_temp);
--	if (sleep)
--		msleep(sleep);
- 	return ret;
+-	val = 0;
+-	if (fifo_en & INV_ICM42600_SENSOR_GYRO)
+-		val |= INV_ICM42600_FIFO_CONFIG1_GYRO_EN;
+-	if (fifo_en & INV_ICM42600_SENSOR_ACCEL)
+-		val |= INV_ICM42600_FIFO_CONFIG1_ACCEL_EN;
+-	if (fifo_en & INV_ICM42600_SENSOR_TEMP)
+-		val |= INV_ICM42600_FIFO_CONFIG1_TEMP_EN;
++	/* always enable/disable all bits for allowing dynamic transitions */
++	if (fifo_en)
++		val = INV_ICM42600_FIFO_CONFIG1_TEMP_EN |
++		      INV_ICM42600_FIFO_CONFIG1_GYRO_EN |
++		      INV_ICM42600_FIFO_CONFIG1_ACCEL_EN;
++	else
++		val = 0;
+ 
+ 	ret = regmap_update_bits(st->map, INV_ICM42600_REG_FIFO_CONFIG1, mask, val);
+ 	if (ret)
+@@ -149,19 +149,6 @@ int inv_icm42600_buffer_set_fifo_en(struct inv_icm42600_state *st,
+ 	return 0;
  }
  
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-index 253bf571439d..34037b9c1f82 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-@@ -126,15 +126,19 @@ static int inv_icm42600_gyro_update_scan_mode(struct iio_dev *indio_dev,
- 		fifo_en |= INV_ICM42600_SENSOR_GYRO;
- 	}
+-static size_t inv_icm42600_get_packet_size(unsigned int fifo_en)
+-{
+-	size_t packet_size;
+-
+-	if ((fifo_en & INV_ICM42600_SENSOR_GYRO) &&
+-	    (fifo_en & INV_ICM42600_SENSOR_ACCEL))
+-		packet_size = INV_ICM42600_FIFO_2SENSORS_PACKET_SIZE;
+-	else
+-		packet_size = INV_ICM42600_FIFO_1SENSOR_PACKET_SIZE;
+-
+-	return packet_size;
+-}
+-
+ static unsigned int inv_icm42600_wm_truncate(unsigned int watermark,
+ 					     size_t packet_size)
+ {
+@@ -209,7 +196,7 @@ int inv_icm42600_buffer_update_watermark(struct inv_icm42600_state *st)
+ 	__le16 raw_wm;
+ 	int ret;
  
-+	/* sleep maximum required time */
-+	sleep = max(sleep_gyro, sleep_temp);
-+	if (sleep) {
-+		mutex_unlock(&st->lock);
-+		msleep(sleep);
-+		mutex_lock(&st->lock);
-+	}
-+
- 	/* update data FIFO write */
- 	ret = inv_icm42600_buffer_set_fifo_en(st, fifo_en | st->fifo.en);
+-	packet_size = inv_icm42600_get_packet_size(st->fifo.en);
++	packet_size = INV_ICM42600_FIFO_2SENSORS_PACKET_SIZE;
  
- out_unlock:
- 	mutex_unlock(&st->lock);
--	/* sleep maximum required time */
--	sleep = max(sleep_gyro, sleep_temp);
--	if (sleep)
--		msleep(sleep);
- 	return ret;
- }
+ 	/* compute sensors latency, depending on sensor watermark and odr */
+ 	wm_gyro = inv_icm42600_wm_truncate(st->fifo.watermark.gyro, packet_size);
+@@ -495,7 +482,7 @@ int inv_icm42600_buffer_fifo_read(struct inv_icm42600_state *st,
+ 	/* compute maximum FIFO read size (watermark for max = 0 interrupt case) */
+ 	if (max == 0)
+ 		max = st->fifo.watermark.value;
+-	max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
++	max_count = max * INV_ICM42600_FIFO_2SENSORS_PACKET_SIZE;
  
+ 	/* read FIFO count value */
+ 	raw_fifo_count = (__be16 *)st->buffer;
 
 -- 
 2.55.0
