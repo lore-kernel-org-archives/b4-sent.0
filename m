@@ -1,74 +1,98 @@
-From: Kim Mankyum <mankyum.kim@samsung.com>
-Date: Thu, 20 Aug 2026 14:42:31 +0900
-Subject: [PATCH] KVM: arm64: Allow smaller FF-A RX/TX buffers
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH RFC 0/3] pidfd: add task path ioctls
+Date: Thu, 20 Aug 2026 13:45:38 +0800
+Message-Id: <20260820-pidfd-get-paths-v1-0-ac3eee4003d5@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-master-v1-1-ea602b6d3860@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAMeThmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDCyMD3dzE4pLUIl1TcyMTQ4tEY1OLxCQloOKCotS0zAqwQdGxEH5xaVJ
- WanIJSLdSbS0AKBR3YWoAAAA=
-X-Change-ID: 20260820-master-572418a358ab
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>, 
- Will Deacon <will@kernel.org>
-Cc: Fuad Tabba <fuad.tabba@linux.dev>, Andrew Walbran <qwandor@google.com>, 
- linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Kim Mankyum <mankyum.kim@samsung.com>
-X-Mailer: b4 0.17-dev-1f2f7
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787204579; l=1770;
- i=mankyum.kim@samsung.com; s=20260820; h=from:subject:message-id;
- bh=U52efmJXTVzb8RMYHZnmIqS8t9rchcBRv6qyuCeV+Vg=;
- b=dDXmHg0ktieaSq7oXc09SObUbo7VHQ21lTUDunWXpSJKaBcfxUJ7WC6oIQiaHrtskS44NfKup
- tFGxEU6qfnFDF5d75K/eI0rdDEMiR7aGY8u05cYXrDNN49hdefDtAnZ
-X-Developer-Key: i=mankyum.kim@samsung.com; a=ed25519;
- pk=HN6chQ/xsDvZkhMY6iO4umFaQcr/drgbOI/tEzVYrSg=
-X-Endpoint-Received: by B4 Relay for mankyum.kim@samsung.com/20260820 with auth_id=964
+X-B4-Tracking: v=1; b=H4sIAIKUhmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC0NL3YLMlLQU3fTUEt2CxJKMYl1TSzMTgxSL5BTD1FQloK6CotS0zAq
+ widFKQW7OSrEQweLSpKzU5BKQWUq1tQACpIQNeAAAAA==
+X-Change-ID: 20260819-pidfd-get-paths-59640d8cd1ee
+To: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, Ingo Molnar <mingo@redhat.com>, 
+ Peter Zijlstra <peterz@infradead.org>, Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ K Prateek Nayak <kprateek.nayak@amd.com>, Kees Cook <kees@kernel.org>, 
+ John Johansen <john.johansen@canonical.com>, 
+ Georgia Garcia <georgia.garcia@canonical.com>, 
+ Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
+ "Serge E. Hallyn" <serge@hallyn.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, apparmor@lists.ubuntu.com, 
+ linux-security-module@vger.kernel.org, Chen Linxuan <me@black-desk.cn>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2014; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=UY6R+FfPzasxj/Dnn81Uka4E7YYktrqvv/sImm7YIxQ=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqhpSDV8lzoXhNWvb6mCjlmhmRXIKL96NlDz9RG
+ uwcg9YQkTGJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaoaUgwAKCRB2HuYUOZmu
+ i5OnD/9Q2SjkQW1h+c/+qLhCrhq/tFbDRt8y4anyttX5n0ozBKY1ROAd5938lTwWrxvE2on7GH2
+ Ed2SCyxk4p/eAUkUx9Pnx8Mt7wF9UxcSrv5gPlJujrDJ0ayEqcfekGWK3ilR+VjLlX52E8W0oE8
+ Nsub6HhzxTJF8hA6iudjclMoQAOLRtYKbSxB9eoHfKqNsaPSSKJfWdIYYr66FmgKDTe1hmFnavD
+ 8m6w4oNr0pVOyIAgF6ETD/xMhFA0L3MrjtjDSDrqZFxxAHK1pPCdLBWXdO0lSRj7zV35KNNaTsd
+ Kk3xNNf9ExLiO6+hvF4iqOq+0HNblbojWt/criDINke66q29D20hZcGReta1XAW4uEKYp56XWMi
+ dVwZncXvkTusEUl9K1UXY4uRAkWNdOyDBv3zAHqzzAXfzPuUhYvgfZfbnJUl2sMdMiZw+cVJZjS
+ uxyELiapFXp/I/yDnsmJ/+jQJcLQPpXhr7U0smvU83Lfcpom3dvOFhVQTgIJrkCHDz0Giv9RgzZ
+ A5xGV4k7XSuM/A24/oZhz/ylcYTFJyxcj5gZSA6DYZbfoT7YsFVhABW5DckRCr9hzF2HA1KIDCs
+ rx4LYqHEWwi84GPdEcVZMoj9GIA1S+b3UYvC8Q2MQkxF/Rga/hXhznAc679HUyG2vzXOgtHSvqS
+ GnM6BZwjacrSeBA==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pKVM currently requires the host to map PAGE_SIZE worth of RX/TX
-buffers, as do_ffa_rxtx_map() requires the FF-A page count to match
-the capacity of the hypervisor RX/TX buffers.
+Obtaining a target task's executable, working directory, or root
+currently requires walking procfs symlinks such as /proc/<pid>/exe,
+/proc/<pid>/cwd, and /proc/<pid>/root.  That makes the operation depend
+on procfs being mounted and visible to the caller, even when it already
+holds a pidfd for the target.
 
-This is unnecessarily restrictive when the kernel page size is larger
-than the minimum RX/TX buffer size advertised by the SPMC. For
-example, with a 16K kernel and an SPMC advertising a minimum RX/TX
-buffer size of 4K, a host request with a page count of one is rejected
-by pKVM.
+This series adds PIDFD_GET_EXE, PIDFD_GET_CWD, and PIDFD_GET_ROOT. Each
+ioctl takes no argument and returns a close-on-exec O_PATH file
+descriptor referencing the corresponding task path.  The new ioctls use
+the same ptrace permission check and nonzero-argument rejection as the
+existing pidfd namespace ioctls.
 
-hyp_ffa_post_init() already allows an SPMC whose minimum RX/TX buffer
-size is smaller than PAGE_SIZE, and the page count supplied by the host
-is forwarded unchanged when mapping the hypervisor buffers into the
-SPMC.
+The target task is sampled while holding its exec_update_lock. This
+keeps the access decision and the task-state read in the same exec
+critical section, preventing a concurrent execve() from changing the
+credentials or target state between the check and the use.
 
-Allow RX/TX buffers smaller than the capacity of the hypervisor buffers
-while continuing to reject requests which exceed it.
+The first patch factors out helpers for acquiring referenced task paths
+and reuses them in procfs and AppArmor.  The second patch introduces
+scoped cleanup for privileged pidfd task access and separates namespace
+lookup from namespace fd creation.  The final patch uses these pieces to
+implement the three new ioctls.
 
-Fixes: 9d0c6a9af9e3 ("KVM: arm64: Handle FFA_RXTX_MAP and FFA_RXTX_UNMAP calls from the host")
-Signed-off-by: Kim Mankyum <mankyum.kim@samsung.com>
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Chen Linxuan (3):
+      fs: Introduce task path helpers
+      pidfd: Use scoped cleanup for task access
+      pidfd: Add task path ioctls
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index a327c2bbb6b6..594d1112b5f9 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -239,7 +239,8 @@ static void do_ffa_rxtx_map(struct arm_smccc_1_2_regs *res,
- 	int ret = 0;
- 	void *rx_virt, *tx_virt;
- 
--	if (npages != (KVM_FFA_MBOX_NR_PAGES * PAGE_SIZE) / FFA_PAGE_SIZE) {
-+	if (!npages ||
-+	    npages > (KVM_FFA_MBOX_NR_PAGES * PAGE_SIZE) / FFA_PAGE_SIZE) {
- 		ret = FFA_RET_INVALID_PARAMETERS;
- 		goto out;
- 	}
-
+ fs/fs_struct.c             |  44 +++++++++++++
+ fs/pidfs.c                 | 161 ++++++++++++++++++++++++++++++++-------------
+ fs/proc/base.c             |  34 +---------
+ include/linux/fs_struct.h  |   3 +
+ include/linux/mm.h         |   1 +
+ include/uapi/linux/pidfd.h |   7 ++
+ kernel/fork.c              |  21 ++++++
+ security/apparmor/task.c   |  12 +---
+ 8 files changed, 196 insertions(+), 87 deletions(-)
 ---
-base-commit: cb8a75eec0877810b50aa1c5a833f929525cd2ee
-change-id: 20260820-master-572418a358ab
+base-commit: a4ff2be345d0abc943da8dd8da98151843b750dc
+change-id: 20260819-pidfd-get-paths-59640d8cd1ee
 
 Best regards,
 --  
-Kim Mankyum <mankyum.kim@samsung.com>
+Chen Linxuan <me@black-desk.cn>
 
