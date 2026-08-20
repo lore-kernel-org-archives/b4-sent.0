@@ -1,10 +1,10 @@
 From: Chen Linxuan <me@black-desk.cn>
-Date: Thu, 20 Aug 2026 13:45:40 +0800
-Subject: [PATCH RFC 2/3] pidfd: Use scoped cleanup for task access
+Date: Thu, 20 Aug 2026 13:45:41 +0800
+Subject: [PATCH RFC 3/3] pidfd: Add task path ioctls
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-pidfd-get-paths-v1-2-ac3eee4003d5@black-desk.cn>
+Message-Id: <20260820-pidfd-get-paths-v1-3-ac3eee4003d5@black-desk.cn>
 References: <20260820-pidfd-get-paths-v1-0-ac3eee4003d5@black-desk.cn>
 In-Reply-To: <20260820-pidfd-get-paths-v1-0-ac3eee4003d5@black-desk.cn>
 To: Alexander Viro <viro@zeniv.linux.org.uk>, 
@@ -28,198 +28,133 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-mm@kvack.org, apparmor@lists.ubuntu.com, 
  linux-security-module@vger.kernel.org, Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5184; i=me@black-desk.cn;
- h=from:subject:message-id; bh=KBo9FLg9vQy1MB4oOYDcDc0kQebzYNbPiSNI8fLNAR0=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqhpSIhKwGZauH3fC6nxip9ANmNISsp+MKbUnCe
- /TrubcJkUmJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaoaUiAAKCRB2HuYUOZmu
- ixmID/41QbF14zMynFNvfg9xr0TvYsQnr5aSI0j2biffLrXEfTAP6BRpHjSCrg/K/mp9z703xWm
- EdtYRqlXwDUSPzZ8NSsaryeHXNlsADwpA2/9lzhbUfHlunyJ1OiboJCDp6AMophJj2WjqYKxwSl
- 7WSKaF1HJS0fttFvQK9Bn6tVW80AvAHRbwOQZyLXGpW1dO59yI1Zcsuo9gXYqZlMI/6JGaV/b1b
- 1hIm9lRiuEBgbJKLZf04LdGEzbS343+JOOqyfTK5BPxqDxNzTUhVPbT+hz2jOcG4KkHFAC9ij0G
- WBJC5NVICg5EAvvuO60Tl0V7AHNoopxdlgO5z/7IK6eHG1e152EmwKHVsouyJWSOepeD0A7Uz2o
- q48TzL3h3HmOJ9GBTignvke9t6TBPDriI6GxUlctkca3hh1hRPQglvXItNlt+DZRlffizuumBlr
- 5vkMGB+9ZCnPh/9LTa4l3jrXlLHw5+ZGLQzsUJ8tRb8THJx3Fnvha4+Eq3GkvuA/w4eGQqRJw+c
- AFG0KKBtIZvGZCkokmw8vnMxiPah60Qg7VKrwqQ1kNiDsgrFr3YLZZFKxc/bgqkj3Kw9LirC7Si
- mYvrooo55v/G9MB5TyyLeW3g9JaO6LBMR4pzS5PMLnhe8LyEEkx9cIlMX9HEojUK3DInni74x8k
- Ze3Wt7ddjFy833A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3688; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=SyCJ8ZXQnkLR08IG8rcsufXrwQOP/Lvf27zOyLS7qI4=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqhpSJDhbniXO7VTnsBnYigbwYSqL0ydwoM9Upl
+ DHXQvTB+v2JAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaoaUiQAKCRB2HuYUOZmu
+ i4uqD/44j22S8gnOub6Zv/RbvFFh+uGAZv+rI+zrZnRo0odFcT7RMRBXrmCjhgzjHaCfSGEh3go
+ mKUGkE2toky5oYmwVGdcLNETa6r8Fkw8ejN2u4djgO+k1WnqZ85vWLv4dw6ztS/tvP3UYr2ZzyW
+ oXz7bbJi2+QWDj5dJibicHISv2mJzbin7aoW81vuYpFbXKQDlQ3UfeweBr6KqOC+z2qAh+BzQy9
+ fLpiupREES4xfVqGiNsx0ZdUNNuBvyopwM/y+MzSw2y06+yNVoALSW0wbLAb1q8ixeyb1Wm4l20
+ Mn65ZwUpyoVIyFZ6eYmiI6QyNFQ0SIjBg0Tjs/1FBWh4+70HRdr6ozRgAd0ebsXnUc1B82Qyb6u
+ c8D+jhn1Q74lzZis9aBVXdVk1HG4dx2qeWS4uRGyHEFQSNaymcwQLVZRHu+jDL+2A8yqmQozWgQ
+ k3LlT8i6AXHTO9pM5L+8Nqt5DrL1jixakTMoy0+thK3k6hGAt6vLgRQ41W0nP3qABxzeR86v0hX
+ daVgR6Jia3Lbl08T0/Y15G3+fYNwOyrt923CwlW+KUEzTUbqaPbdQx7nq+ppTkW71oAyeOBqtOT
+ 7NVEMgwxydtPT1Xwk5+b/ORdVJmf+emeBIERqfcH2Or+zLQr5iT94ebNJjbUITowzwY/iWNFCpV
+ QISSKSU3JhyWBjQ==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Split namespace acquisition from namespace fd creation and represent a
-privileged target task as a scoped class that owns both the task
-reference and exec_update_lock. Use the class for namespace lookups so
-ptrace access checks and task state reads remain tied to the same exec
-critical section, while open_namespace() stays outside the lock.
+Add PIDFD_GET_EXE, PIDFD_GET_CWD, and PIDFD_GET_ROOT to return
+close-on-exec O_PATH file descriptors referencing the target task's
+executable, working directory, and root directory.
+
+The new ioctls use the same PTRACE_MODE_READ_FSCREDS permission check
+and nonzero-argument rejection as the existing namespace ioctls.  The
+target is sampled while holding exec_update_lock so that the access
+check and path read cannot race with execve().
+
+This allows userspace to obtain stable path references from a pidfd
+without requiring procfs.
 
 Assisted-by: codex:glm-5.3
 Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- fs/pidfs.c | 123 ++++++++++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 77 insertions(+), 46 deletions(-)
+ fs/pidfs.c                 | 38 ++++++++++++++++++++++++++++++++++++++
+ include/uapi/linux/pidfd.h |  7 +++++++
+ 2 files changed, 45 insertions(+)
 
 diff --git a/fs/pidfs.c b/fs/pidfs.c
-index a6a643f15d08..39e1e7ad9b2b 100644
+index 39e1e7ad9b2b..95b079d0de0d 100644
 --- a/fs/pidfs.c
 +++ b/fs/pidfs.c
-@@ -527,62 +527,71 @@ static bool pidfs_ioctl_valid(unsigned int cmd)
- 	return false;
+@@ -4,6 +4,7 @@
+ #include <linux/exportfs.h>
+ #include <linux/file.h>
+ #include <linux/fs.h>
++#include <linux/fs_struct.h>
+ #include <linux/cgroup.h>
+ #include <linux/magic.h>
+ #include <linux/mount.h>
+@@ -510,6 +511,9 @@ static bool pidfs_ioctl_valid(unsigned int cmd)
+ 	case PIDFD_GET_UTS_NAMESPACE:
+ 	case PIDFD_GET_USER_NAMESPACE:
+ 	case PIDFD_GET_PID_NAMESPACE:
++	case PIDFD_GET_EXE:
++	case PIDFD_GET_CWD:
++	case PIDFD_GET_ROOT:
+ 		return true;
+ 	}
+ 
+@@ -682,9 +686,31 @@ static struct ns_common *pidfd_get_namespace(struct pid *pid,
+ 	return ns_common;
  }
  
--static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-+static inline void pidfd_put_task_locked(struct task_struct *task)
- {
--	struct task_struct *task __free(put_task) = NULL;
--	struct nsproxy *nsp __free(put_nsproxy) = NULL;
--	struct ns_common *ns_common = NULL;
--	int error;
--
--	if (!pidfs_ioctl_valid(cmd))
--		return -ENOIOCTLCMD;
--
--	if (cmd == FS_IOC_GETVERSION) {
--		if (!arg)
--			return -EINVAL;
--
--		__u32 __user *argp = (__u32 __user *)arg;
--		return put_user(file_inode(file)->i_generation, argp);
-+	if (!IS_ERR_OR_NULL(task)) {
-+		up_read(&task->signal->exec_update_lock);
-+		put_task_struct(task);
- 	}
-+}
- 
--	/* Extensible IOCTL that does not open namespace FDs, take a shortcut */
--	if (_IOC_NR(cmd) == _IOC_NR(PIDFD_GET_INFO))
--		return pidfd_info(file, cmd, arg);
-+/*
-+ * Return @pid's task with @task's exec_update_lock held. The ptrace check
-+ * and the callers' task state lookup must be performed while the lock is held
-+ * so that they cannot race with a concurrent execve().
-+ */
-+static struct task_struct *pidfd_get_task_locked(struct pid *pid,
-+						 unsigned long arg)
++static int pidfd_get_task_path(struct pid *pid, unsigned int cmd,
++			       unsigned long arg, struct path *path)
 +{
-+	struct task_struct *task = get_pid_task(pid, PIDTYPE_PID);
++	CLASS(pidfd_task_locked, task)(pid, arg);
++
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++
++	switch (cmd) {
++	case PIDFD_GET_EXE:
++		return get_task_exe_path(task, path);
++	case PIDFD_GET_CWD:
++		return get_task_pwd(task, path);
++	case PIDFD_GET_ROOT:
++		return get_task_root(task, path);
++	}
++
++	return -EINVAL;
++}
++
+ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ {
+ 	struct ns_common *ns_common = NULL;
++	struct path path __free(path_put) = {};
 +	int error;
  
--	task = get_pid_task(pidfd_pid(file), PIDTYPE_PID);
- 	if (!task)
--		return -ESRCH;
-+		return ERR_PTR(-ESRCH);
+ 	if (!pidfs_ioctl_valid(cmd))
+ 		return -ENOIOCTLCMD;
+@@ -702,6 +728,18 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	if (_IOC_NR(cmd) == _IOC_NR(PIDFD_GET_INFO))
+ 		return pidfd_info(file, cmd, arg);
  
--	if (arg)
--		return -EINVAL;
-+	if (arg) {
-+		put_task_struct(task);
-+		return ERR_PTR(-EINVAL);
-+	}
- 
--	/*
--	 * We're trying to open a file descriptor to the namespace so perform a
--	 * filesystem cred ptrace check. Hold @task's exec_update_lock for the
--	 * duration of the ptrace check and the namespace lookup so that the
--	 * credentials used for the access decision match those of @task at the
--	 * time its namespace is read, preventing a concurrent execve() from
--	 * swapping the task's credentials in between the check and the use. We
--	 * mirror nsfs behavior.
--	 */
- 	error = down_read_killable(&task->signal->exec_update_lock);
--	if (error)
--		return error;
-+	if (error) {
-+		put_task_struct(task);
-+		return ERR_PTR(error);
-+	}
- 
- 	if (!ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS)) {
--		error = -EACCES;
--		goto out_unlock;
-+		up_read(&task->signal->exec_update_lock);
-+		put_task_struct(task);
-+		return ERR_PTR(-EACCES);
- 	}
- 
-+	return task;
-+}
++	switch (cmd) {
++	case PIDFD_GET_EXE:
++	case PIDFD_GET_CWD:
++	case PIDFD_GET_ROOT:
++		error = pidfd_get_task_path(pidfd_pid(file), cmd, arg, &path);
++		if (error)
++			return error;
 +
-+DEFINE_CLASS(pidfd_task_locked, struct task_struct *,
-+	     pidfd_put_task_locked(_T),
-+	     pidfd_get_task_locked(pid, arg),
-+	     struct pid *pid, unsigned long arg)
-+
-+static struct ns_common *pidfd_get_namespace(struct pid *pid,
-+					     unsigned int cmd,
-+					     unsigned long arg)
-+{
-+	struct nsproxy *nsp __free(put_nsproxy) = NULL;
-+	struct ns_common *ns_common = NULL;
-+
-+	CLASS(pidfd_task_locked, task)(pid, arg);
-+	if (IS_ERR(task))
-+		return ERR_CAST(task);
-+
- 	scoped_guard(task_lock, task) {
- 		nsp = task->nsproxy;
- 		if (nsp)
- 			get_nsproxy(nsp);
- 	}
--	if (!nsp) {
--		error = -ESRCH; /* just pretend it didn't exist */
--		goto out_unlock;
--	}
-+	if (!nsp)
-+		return ERR_PTR(-ESRCH); /* just pretend it didn't exist */
- 
- 	switch (cmd) {
- 	/* Namespaces that hang of nsproxy. */
-@@ -664,16 +673,38 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- #endif
- 		break;
- 	default:
--		error = -ENOIOCTLCMD;
-+		return ERR_PTR(-ENOIOCTLCMD);
++		return FD_ADD(O_CLOEXEC,
++			      dentry_open(&path, O_PATH, current_cred()));
 +	}
 +
-+	if (!ns_common)
-+		return ERR_PTR(-EOPNOTSUPP);
-+
-+	return ns_common;
-+}
-+
-+static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-+{
-+	struct ns_common *ns_common = NULL;
-+
-+	if (!pidfs_ioctl_valid(cmd))
-+		return -ENOIOCTLCMD;
-+
-+	if (cmd == FS_IOC_GETVERSION) {
-+		if (!arg)
-+			return -EINVAL;
-+
-+		__u32 __user *argp = (__u32 __user *)arg;
-+
-+		return put_user(file_inode(file)->i_generation, argp);
- 	}
+ 	ns_common = pidfd_get_namespace(pidfd_pid(file), cmd, arg);
+ 	if (IS_ERR(ns_common))
+ 		return PTR_ERR(ns_common);
+diff --git a/include/uapi/linux/pidfd.h b/include/uapi/linux/pidfd.h
+index 0919246a1611..95ce1819f423 100644
+--- a/include/uapi/linux/pidfd.h
++++ b/include/uapi/linux/pidfd.h
+@@ -121,4 +121,11 @@ struct pidfd_info {
+ #define PIDFD_GET_UTS_NAMESPACE               _IO(PIDFS_IOCTL_MAGIC, 10)
+ #define PIDFD_GET_INFO                        _IOWR(PIDFS_IOCTL_MAGIC, 11, struct pidfd_info)
  
--	if (!error && !ns_common)
--		error = -EOPNOTSUPP;
-+	/* Extensible IOCTL that does not open namespace FDs, take a shortcut */
-+	if (_IOC_NR(cmd) == _IOC_NR(PIDFD_GET_INFO))
-+		return pidfd_info(file, cmd, arg);
- 
--out_unlock:
--	up_read(&task->signal->exec_update_lock);
--	if (error)
--		return error;
-+	ns_common = pidfd_get_namespace(pidfd_pid(file), cmd, arg);
-+	if (IS_ERR(ns_common))
-+		return PTR_ERR(ns_common);
- 
- 	/* open_namespace() unconditionally consumes the reference */
- 	return open_namespace(ns_common);
++/* Return an O_PATH file descriptor for the target task's executable. */
++#define PIDFD_GET_EXE                         _IO(PIDFS_IOCTL_MAGIC, 12)
++/* Return an O_PATH file descriptor for the target task's working directory. */
++#define PIDFD_GET_CWD                         _IO(PIDFS_IOCTL_MAGIC, 13)
++/* Return an O_PATH file descriptor for the target task's root directory. */
++#define PIDFD_GET_ROOT                        _IO(PIDFS_IOCTL_MAGIC, 14)
++
+ #endif /* _UAPI_LINUX_PIDFD_H */
 
 -- 
 2.53.0
