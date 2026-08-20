@@ -1,11 +1,11 @@
 From: Markuss Broks <markuss.broks@gmail.com>
-Date: Thu, 20 Aug 2026 22:12:06 +0300
-Subject: [PATCH 2/4] iommu/exynos: fix the enable sequence for no-block
+Date: Thu, 20 Aug 2026 22:12:07 +0300
+Subject: [PATCH 3/4] iommu/exynos: fix TLB invalidation for no-block
  SysMMUs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-exynos-iommu-fixes-v1-2-6bbcd673bb15@gmail.com>
+Message-Id: <20260820-exynos-iommu-fixes-v1-3-6bbcd673bb15@gmail.com>
 References: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
 In-Reply-To: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
 To: Marek Szyprowski <m.szyprowski@samsung.com>, 
@@ -17,52 +17,62 @@ Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-samsung-soc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Markuss Broks <markuss.broks@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=1548;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=1957;
  i=markuss.broks@gmail.com; s=20260803; h=from:subject:message-id;
- bh=K4btCYT7ezjlx6H4fapioD7ShFs/jWpvk5zQdk+w7+8=;
- b=eWfEM667DBzpg9cwP+89xFePRCc5Xqc6CdWKOSqJyauS4P76wUs+9H76z2L5zWlaTjSRxLcuD
- 8bTDvt94nd4AEmQKh38tilyh8prRWFXzKOGzlp4YWDUx7VO7+47Egjo
+ bh=HrkpBlZCi51pjFv6cW4myb/9v3ctbW7Y5uVSy6+Uxlw=;
+ b=4vw4diMfzpg6jMkBwD2QGOLnKc61wkJfWQEuXDwnPSCbO5WU6JnfM39Vifoh4H+FbAxFDD6wV
+ p0M+hzavBGOB8tUTLy3V1uIZ8yBWZGf0XlDyHVi71pnU0kqsYoODXCe
 X-Developer-Key: i=markuss.broks@gmail.com; a=ed25519;
  pk=oKzGUTm30BCDqinRMpiHQqByOx1mp2mwmhg80Mv7Zg4=
 X-Endpoint-Received: by B4 Relay for markuss.broks@gmail.com/20260803 with auth_id=911
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__sysmmu_enable() writes CTRL_BLOCK before programming CFG, the page
-table base and the VM registers. CTRL_BLOCK has the enable bit set,
-so on hardware without BLOCK mode this write immediately starts
-translation with whatever FLPT base the registers hold: reset values
-on the first enable, a stale page table on re-enable. A master that
-is already emitting traffic at that point gets its transactions
-translated through that garbage.
+sysmmu_block() polls MMU_STATUS for the blocked state, which no-block
+hardware never reports, so on such SysMMUs it always fails, and both
+sysmmu_tlb_invalidate_entry() and sysmmu_tlb_invalidate_flpdcache()
+skip the invalidation entirely when blocking fails.
 
-Keep the MMU disabled while it is being programmed on such hardware;
-the final CTRL_ENABLE write then brings it up with a consistent
-configuration in one step, which is also the same as the vendor driver
-sequence.
+On no-block hardware the invalidation registers are written with the
+MMU running; the vendor driver never blocks around invalidation. Do
+the same and write the invalidation directly. In the FLPD cache path
+no-block implies a v7+ SysMMU, hence the unconditional flush-all.
 
 Signed-off-by: Markuss Broks <markuss.broks@gmail.com>
 ---
- drivers/iommu/exynos-iommu.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/iommu/exynos-iommu.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/iommu/exynos-iommu.c b/drivers/iommu/exynos-iommu.c
-index 0319da9fd831..a3a59d8a4cf1 100644
+index a3a59d8a4cf1..29b27c7e400a 100644
 --- a/drivers/iommu/exynos-iommu.c
 +++ b/drivers/iommu/exynos-iommu.c
-@@ -655,7 +655,12 @@ static void __sysmmu_enable(struct sysmmu_drvdata *data)
- 	__sysmmu_enable_clocks(data);
- 
+@@ -685,7 +685,14 @@ static void sysmmu_tlb_invalidate_flpdcache(struct sysmmu_drvdata *data,
  	spin_lock_irqsave(&data->lock, flags);
--	writel(CTRL_BLOCK, data->sfrbase + REG_MMU_CTRL);
-+	/*
-+	 * On no-block hardware CTRL_BLOCK acts as a plain enable; keep the
-+	 * MMU disabled until it is fully programmed.
-+	 */
-+	if (!data->no_block)
-+		writel(CTRL_BLOCK, data->sfrbase + REG_MMU_CTRL);
- 	__sysmmu_init_config(data);
- 	__sysmmu_set_ptbase(data, data->pgtable);
- 	__sysmmu_enable_vid(data);
+ 	if (data->active && data->version >= MAKE_MMU_VER(3, 3)) {
+ 		clk_enable(data->clk_master);
+-		if (sysmmu_block(data)) {
++		/*
++		 * No-block hardware accepts invalidation writes while the
++		 * MMU is running; it is also v7+, so flush-all covers the
++		 * FLPD cache.
++		 */
++		if (data->no_block) {
++			__sysmmu_tlb_invalidate(data);
++		} else if (sysmmu_block(data)) {
+ 			if (data->version >= MAKE_MMU_VER(5, 0))
+ 				__sysmmu_tlb_invalidate(data);
+ 			else
+@@ -721,7 +728,9 @@ static void sysmmu_tlb_invalidate_entry(struct sysmmu_drvdata *data,
+ 		if (MMU_MAJ_VER(data->version) == 2)
+ 			num_inv = min_t(unsigned int, size / SPAGE_SIZE, 64);
+ 
+-		if (sysmmu_block(data)) {
++		if (data->no_block) {
++			__sysmmu_tlb_invalidate_entry(data, iova, num_inv);
++		} else if (sysmmu_block(data)) {
+ 			__sysmmu_tlb_invalidate_entry(data, iova, num_inv);
+ 			sysmmu_unblock(data);
+ 		}
 
 -- 
 2.55.0
