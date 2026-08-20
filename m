@@ -1,14 +1,12 @@
 From: Markuss Broks <markuss.broks@gmail.com>
-Subject: [PATCH 0/4] IOMMU driver improvements for modern Exynos SysMMUs
-Date: Thu, 20 Aug 2026 22:12:04 +0300
-Message-Id: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
+Date: Thu, 20 Aug 2026 22:12:05 +0300
+Subject: [PATCH 1/4] iommu/exynos: detect SysMMUs without BLOCK mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMUQqDMBCE4avIPndhG0TEq5Q+tHHSrmBSslUU8
- e7G9vFj+GcjQ1YYddVGGbOaplhwvVTk34/4AmtfTE5cI60TxrLGZKxpHCcOusAYgrpvgwQvDZX
- wk/EbSne7/23Tc4D/nk+07wdZ0Jc7dgAAAA==
-X-Change-ID: 20260820-exynos-iommu-fixes-e0e4d8f0fc06
+Message-Id: <20260820-exynos-iommu-fixes-v1-1-6bbcd673bb15@gmail.com>
+References: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
+In-Reply-To: <20260820-exynos-iommu-fixes-v1-0-6bbcd673bb15@gmail.com>
 To: Marek Szyprowski <m.szyprowski@samsung.com>, 
  "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
  Robin Murphy <robin.murphy@arm.com>, Krzysztof Kozlowski <krzk@kernel.org>, 
@@ -18,60 +16,56 @@ Cc: iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-samsung-soc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Markuss Broks <markuss.broks@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=2066;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787253126; l=1479;
  i=markuss.broks@gmail.com; s=20260803; h=from:subject:message-id;
- bh=eOP+RA4mnWGtFVmDZnso+934UzTGqKnTNVZ92PuZ8Bc=;
- b=ISPOHNvudmR8znZALCiIIFA6iPpiCNxVuLytNm3IHeDKPyijmVlhi5VGISK+wzWdDUObCBnFt
- bF++bdKHIZQAXUKtRHk49vIbKTWhQjlf4dJI0ha3F3Vt0gwgRVZNcuV
+ bh=mOr89jBc1c/3DemuQ56Wmn7lSeAvv7DoZx+sJdo6D2U=;
+ b=6nEHQ0bpJYt2EXU7sB+pTrh8uM4qqZlYciy0rMZ3uIIw056/blzZCqnEYUw/BlDczramgZk8s
+ D+ueRGcYxxyB9FQi32Q0zQlCTS+8SQDf1EHZSuOANkujC0hVsTMRojF
 X-Developer-Key: i=markuss.broks@gmail.com; a=ed25519;
  pk=oKzGUTm30BCDqinRMpiHQqByOx1mp2mwmhg80Mv7Zg4=
 X-Endpoint-Received: by B4 Relay for markuss.broks@gmail.com/20260803 with auth_id=911
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Newer SysMMU v7+ instances can lack BLOCK mode: CAPA1 bit 15 reports
-that the CTRL_BLOCK function is not implemented, and MMU_STATUS never
-reports a blocked state. The SysMMUs on Exynos 8835 are such
-instances.
-
-The driver currently assumes blocking always works, with two
-consequences on such hardware:
-
-The enable path writes CTRL_BLOCK first, which there acts as a plain 
-enable and starts translation before the page table base is programmed.
-
-Worse, both TLB invalidation paths gate the invalidation writes on
-sysmmu_block() succeeding, which it never does - so every unmap silently
-skips the invalidation. A stale TLB entry is a valid entry pointing
-at a freed page, so nothing ever faults: the device reads back garbage
-and its writebacks corrupt whatever the kernel has since reused those pages for.
- 
-This was tracked down on Exynos 8835 with the MFC, where the
-first decoder session of a boot worked and later sessions produced
-garbage along with random kernel memory corruption.
-Patches 1-3 add detection of the capability bit and adapt the enable
-sequence and the invalidation paths, matching the vendor driver's
-handling of these parts. Patch 4 is an independent debugging
-improvement: decode the v7 fault transaction info word (AxID/AxLEN),
-which identifies the issuing port when a master containing several
-DMA engines faults.
-
-Tested on the Samsung Galaxy Tab S9 FE (Exynos 8835/Exynos 1380).
+Newer SysMMU instances may not implement BLOCK mode: writing CTRL_BLOCK
+does not stop translation, and MMU_STATUS never reports a blocked
+state.  The hardware advertises this in CAPA1 bit 15, which the vendor
+driver reads as MMU_CAPA1_NO_BLOCK_MODE; the SysMMUs on Exynos8835
+are such instances.
 
 Signed-off-by: Markuss Broks <markuss.broks@gmail.com>
 ---
-Markuss Broks (4):
-      iommu/exynos: detect SysMMUs without BLOCK mode
-      iommu/exynos: fix the enable sequence for no-block SysMMUs
-      iommu/exynos: fix TLB invalidation for no-block SysMMUs
-      iommu/exynos: decode the v7 fault transaction info
+ drivers/iommu/exynos-iommu.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
- drivers/iommu/exynos-iommu.c | 37 +++++++++++++++++++++++++++++++++----
- 1 file changed, 33 insertions(+), 4 deletions(-)
----
-base-commit: 415606a7be939835db9b0d6b711887586646346d
-change-id: 20260820-exynos-iommu-fixes-e0e4d8f0fc06
+diff --git a/drivers/iommu/exynos-iommu.c b/drivers/iommu/exynos-iommu.c
+index 874d05f4b396..0319da9fd831 100644
+--- a/drivers/iommu/exynos-iommu.c
++++ b/drivers/iommu/exynos-iommu.c
+@@ -143,6 +143,7 @@ static u32 lv2ent_offset(sysmmu_iova_t iova)
+ #define CTRL_VM_FAULT_MODE_STALL	BIT(3)
+ #define CAPA0_CAPA1_EXIST		BIT(11)
+ #define CAPA1_VCR_ENABLED		BIT(14)
++#define CAPA1_NO_BLOCK_MODE		BIT(15)
+ 
+ /* common registers */
+ #define REG_MMU_CTRL		0x000
+@@ -306,6 +307,7 @@ struct sysmmu_drvdata {
+ 
+ 	/* v7 fields */
+ 	bool has_vcr;			/* virtual machine control register */
++	bool no_block;			/* BLOCK mode not implemented */
+ };
+ 
+ #define SYSMMU_REG(data, reg) ((data)->sfrbase + (data)->variant->reg)
+@@ -511,6 +513,7 @@ static void __sysmmu_get_vcr(struct sysmmu_drvdata *data)
+ 	u32 capa1 = readl(data->sfrbase + REG_V7_CAPA1);
+ 
+ 	data->has_vcr = capa1 & CAPA1_VCR_ENABLED;
++	data->no_block = capa1 & CAPA1_NO_BLOCK_MODE;
+ }
+ 
+ static void __sysmmu_get_version(struct sysmmu_drvdata *data)
 
-Best regards,
---  
-Markuss Broks <markuss.broks@gmail.com>
+-- 
+2.55.0
 
