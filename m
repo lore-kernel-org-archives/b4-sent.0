@@ -1,103 +1,62 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Fri, 21 Aug 2026 02:55:31 +0800
-Subject: [PATCH v3 18/18] mm/huge_memory: drop the redundant mapping
- argument of __split_frozen_folio
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Subject: [PATCH 0/4] inv_icm42600 driver enhancements
+Date: Thu, 20 Aug 2026 21:02:36 +0200
+Message-Id: <20260820-inv-icm42600-enhacements-v1-0-075a881db557@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-swap-thp-cleanup-v3-18-9b43f5163238@tencent.com>
-References: <20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com>
-In-Reply-To: <20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com>
-To: linux-mm@kvack.org
-Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- Zi Yan <ziy@nvidia.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- "Liam R. Howlett" <liam@infradead.org>, Nico Pache <nico.pache@linux.dev>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- Chris Li <chrisl@kernel.org>, Kemeng Shi <shikemeng@huaweicloud.com>, 
- Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
- Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
- Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
- Kairui Song <ryncsn@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252124; l=2730;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=C/KWMIc1TIGmzytCo1JZzeZN1wb37i566yMOyV+S0h4=;
- b=pofJaSAoZPdagM0AwrC0JaDfa+6zRFpa+ZSDQm5WY/uffAKQWRp+Grd+4i7g3llomauI/M5sO
- ei0FFMii7viDibexOhjJv3emPk+9DlA90cruEMHWMOU4KNGEX7o7opn
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAExPh2oC/yXMQQrCQAxG4auUrA1kioyjVxEXdfxrIzTKpC1C6
+ d0ddfkt3lvJURROp2algkVdn1YRdg3lobM7WG/V1Eob5SBHVltY87ivFIYNXcYIm5wDBCEh9ik
+ mqvmroNf3b32+/O3z9YE8fX+0bR+r9bR5fAAAAA==
+X-Change-ID: 20260709-inv-icm42600-enhacements-1e0e18e6f868
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787252562; l=1371;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=lrkb5DHW4nekBm62Ptn6gdrtseZG3P/khBB49osjqIk=;
+ b=z2r01HbY7zKX1LD8h1H8bd6vdUs1Q9v5pDWgsZlihr0aSoKmfN7NY7fMlBq5t2eexTsxiwfn+
+ p1mb8TdnTPIApzKDAPfzDAyjME0nJREF58RrUjpr04xhqIUppZPqd85
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mapping parameter only served as a non-NULL check to detect
-whether page cache entries need updating.  The xa_state pointer
-conveys exactly the same information: the anon split helper passes
-NULL and the file split helper passes &xas, which is non-NULL iff
-the folio is in the page cache.
+This series add enhancements patches to inv_icm42600 driver.
 
-Use the xas pointer instead and drop the parameter, along with its
-kerneldoc entry.
+It includes:
+1. Move of MEMS stabilization sleep before FIFO configuration to avoid
+   pushing incorrect data.
+2. Use a fixed FIFO frame of 16 bits to avoid a bug of dynamic FIFO
+   configuration changed triggered by the sleep move.
+3. Simplify watermark computation using gcd.
+4. Enhance support of high frequency streaming by avoiding read of FIFO
+   count for watermark interrupt.
 
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- mm/huge_memory.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+Jean-Baptiste Maneyrol (4):
+      iio: imu: inv_icm42600: sleep before enabling FIFO data
+      iio: imu: inv_icm42600: use 2 sensors fixed packet size of 16 bytes
+      iio: imu: inv_icm42600: simplify watermark computation by using gcd
+      iio: imu: inv_icm42600: do not read FIFO count for watermark it
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 3e4c0fac7ba6..cc9f7e0d4194 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -3761,7 +3761,6 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
-  * @split_at: in buddy allocator like split, the folio containing @split_at
-  *            will be split until its order becomes @new_order.
-  * @xas: xa_state pointing to folio->mapping->i_pages and locked by caller
-- * @mapping: @folio->mapping
-  * @split_type: if the split is uniform or not (buddy allocator like split)
-  *
-  *
-@@ -3794,7 +3793,7 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
-  */
- static int __split_frozen_folio(struct folio *folio, int new_order,
- 		struct page *split_at, struct xa_state *xas,
--		struct address_space *mapping, enum split_type split_type)
-+		enum split_type split_type)
- {
- 	const bool is_anon = folio_test_anon(folio);
- 	const bool is_swapcache = folio_test_swapcache(folio);
-@@ -3816,7 +3815,7 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
- 		if ((is_anon || is_swapcache) && split_order == 1)
- 			continue;
- 
--		if (mapping) {
-+		if (xas) {
- 			/*
- 			 * uniform split has xas_split_alloc() called before
- 			 * irq is disabled to allocate enough memory, whereas
-@@ -4030,8 +4029,7 @@ static int __folio_split_unmap_and_freeze(struct folio *folio, unsigned int new_
- 	if (do_lru)
- 		lruvec = folio_lruvec_lock(folio);
- 
--	ret = __split_frozen_folio(folio, new_order, split_at, NULL,
--				   NULL, split_type);
-+	ret = __split_frozen_folio(folio, new_order, split_at, NULL, split_type);
- 
- 	/*
- 	 * Unfreeze the post-split folios and put them back to the right
-@@ -4185,8 +4183,7 @@ static int __folio_split_unmap_and_freeze_file(struct folio *folio, unsigned int
- 
- 	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
- 	lruvec = folio_lruvec_lock(folio);
--	ret = __split_frozen_folio(folio, new_order, split_at, &xas,
--				   mapping, split_type);
-+	ret = __split_frozen_folio(folio, new_order, split_at, &xas, split_type);
- 
- 	/*
- 	 * Unfreeze after-split folios and put them back to the right
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h        |   4 +-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c  |  12 ++-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 109 +++++++++------------
+ drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c   |  12 ++-
+ 4 files changed, 62 insertions(+), 75 deletions(-)
+---
+base-commit: 53c022f51fbe540fffee2121ce9ed3e15266c9a4
+change-id: 20260709-inv-icm42600-enhacements-1e0e18e6f868
 
--- 
-2.55.0
+Best regards,
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
