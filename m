@@ -1,86 +1,105 @@
 From: FAN YE <fy15309206903@gmail.com>
-Date: Fri, 21 Aug 2026 16:36:49 +0000
-Subject: [PATCH RFC] pnfs/blocklayout: fix lost wakeup in
- bl_resolve_deviceid()
+Date: Fri, 21 Aug 2026 16:40:41 +0000
+Subject: [PATCH] PCI/VGA: Fix lost wakeup when waiting for a VGA resource
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-rpc-pipefs-blwake-v1-1-3e70ec9b0537@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKB+iGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDCyND3aKCZN2CzILUtGLdpJzyxOxU3SRTczMzy6S0FCOzZCWgvoKi1LT
- MCrCZ0UpBbs5KsRDB4tKkrNTkEpBpSrW1ACUp1mF6AAAA
-X-Change-ID: 20260821-rpc-pipefs-blwake-b57669bfd26c
-To: Anna Schumaker <anna@kernel.org>, Trond Myklebust <trondmy@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787330208; l=2479;
+Message-Id: <20260821-pci-vga-lost-wakeup-v1-1-39dc6a2333c6@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIh/iGoC/yXMSQ6DMAxA0asgr7GUhFG9CmIRUhcMFUQxQyXE3
+ Rva5Vv8f4JQYBJ4JCcE2ll4mSN0moAb7NwT8jMajDKlqo1G7xj33uJ7kRUPO9HmMesqVRZ1bnL
+ SEEsf6MWf37Vp/5atG8mt9wqu6wuBcIaPdwAAAA==
+X-Change-ID: 20260821-pci-vga-lost-wakeup-3b70658424e1
+To: linux-pci@vger.kernel.org, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787330440; l=3519;
  i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=c+z4jifpi2nDQnBqxSM28wkVpN1tmwF5BQ5Cy9b5Al8=;
- b=Lnpzauy2mhybRxGXcwUrYR2F3F+2zhlFwLPs56EQ8jQ/SN42YJaiFZ/pUBnl+ePmuPgN4a1aR
- yMzDp46Vbc8Bi5gGNIKjcu7BDeXusiaqH73MefiU22XNzhxFbNSyj8k
+ bh=Rrv8GAN0TkTavxf0KIGyHuf9553vMGCJ0Prul4fquuY=;
+ b=1v3iU7KRL+w1UPjVQY3sriskWxxUrivf66xlFxS/4VJKeVonSAOMEM6cfTk1prWoeU90MW/qg
+ 8DXrI67x7cCALTVOmYRZpLfStHf90Vi8Ql6yt+yPQnzRj5EgeN26XS5
 X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
  pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
 X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bl_resolve_deviceid() queues itself on nn->bl_wq and calls
-rpc_queue_upcall(), but sets TASK_UNINTERRUPTIBLE only after that call
-returns.  If blkmapd answers on another CPU in between, the wake_up()
-from bl_pipe_downcall() finds the task runnable and the assignment that
-follows overwrites it, so schedule() never returns.  The caller holds
-nn->bl_mutex, so every later blocklayout device resolution blocks behind
-it.
+A task waiting in vga_get() can sleep forever even though the conflicting
+device has already released the resource.  Once __vga_tryget() reports a
+conflict, vga_get() drops vga_lock and only then puts itself on
+vga_wait_queue, while __vga_put() wakes that queue while holding vga_lock.
+A wakeup landing in between finds the queue empty and is discarded, and as
+the conflict is already gone no further wakeup is coming.  Callers passing
+interruptible=0, such as the "lock" command of /dev/vga_arbiter, are then
+unkillable and keep their lock counts forever.
 
-Set the state before queueing the upcall and restore TASK_RUNNING on the
-error path.  Of the four rpc_queue_upcall() callers this is the only
-open-coded waiter; __cld_pipe_upcall() uses wait_for_completion(), which
-cannot lose a wakeup this way.
+Queue up before dropping vga_lock, the way prepare_to_wait() publishes a
+waiter before the condition is re-tested.  The releasing side needs
+vga_lock to reach the wakeup, so it can no longer pass an unqueued waiter.
 
-Fixes: fe0a9b740881 ("pnfsblock: add device operations")
+Fixes: deb2d2ecd43d ("PCI/GPU: implement VGA arbitration on Linux")
+Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-5
 Signed-off-by: FAN YE <fy15309206903@gmail.com>
 ---
-Not seen on a real pNFS mount.  In a VM I reached bl_resolve_deviceid()
-through a debugfs hook with a fake blkmapd and an mdelay() widening the
-window: the caller sticks in D state at schedule(), and the next caller
-then blocks on nn->bl_mutex.  Both go away with this patch.
-
-Two questions:
-- Would you rather have bl_wq converted to a completion, like
-  __cld_pipe_upcall() in fs/nfsd/nfs4recover.c?
-- rpc_queue_upcall() calls dput().  If the pipe were unlinked meanwhile,
-  that could sleep with the task already in TASK_UNINTERRUPTIBLE.  Is that
-  acceptable here?
+Reproduced under QEMU on 818bebeb63dd with two VGA devices, the second one
+behind a bridge that does not forward VGA so that it owns no legacy resources.
+Two /dev/vga_arbiter clients each locking one device wedged the second client
+in vga_get(), D state and unkillable, after 8538 rounds, while the conflicting
+device already read back locks=none(0:0).  40000 rounds with this patch, none.
 ---
- fs/nfs/blocklayout/rpc_pipefs.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ drivers/pci/vgaarb.c | 29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/rpc_pipefs.c b/fs/nfs/blocklayout/rpc_pipefs.c
-index d526f5ba7887..15972ca0daf1 100644
---- a/fs/nfs/blocklayout/rpc_pipefs.c
-+++ b/fs/nfs/blocklayout/rpc_pipefs.c
-@@ -84,14 +84,16 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
+diff --git a/drivers/pci/vgaarb.c b/drivers/pci/vgaarb.c
+index 3de05aee78599..51c7d171c9558 100644
+--- a/drivers/pci/vgaarb.c
++++ b/drivers/pci/vgaarb.c
+@@ -459,6 +459,23 @@ int vga_get(struct pci_dev *pdev, unsigned int rsrc, int interruptible)
+ 			break;
+ 		}
+ 		conflict = __vga_tryget(vgadev, rsrc);
++		/*
++		 * We have a conflict; we wait until somebody kicks the
++		 * work queue. Currently we have one work queue that we
++		 * kick each time some resources are released, but it would
++		 * be fairly easy to have a per-device one so that we only
++		 * need to attach to the conflicting device.
++		 *
++		 * Queue up before dropping vga_lock: __vga_put() wakes the
++		 * queue while holding it, so a wakeup cannot slip past.
++		 */
++		if (!IS_ERR_OR_NULL(conflict)) {
++			init_waitqueue_entry(&wait, current);
++			add_wait_queue(&vga_wait_queue, &wait);
++			set_current_state(interruptible ?
++					  TASK_INTERRUPTIBLE :
++					  TASK_UNINTERRUPTIBLE);
++		}
+ 		spin_unlock_irqrestore(&vga_lock, flags);
+ 		if (IS_ERR(conflict)) {
+ 			rc = PTR_ERR(conflict);
+@@ -467,18 +484,6 @@ int vga_get(struct pci_dev *pdev, unsigned int rsrc, int interruptible)
+ 		if (conflict == NULL)
+ 			break;
  
- 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
- 	add_wait_queue(&nn->bl_wq, &wq);
-+	set_current_state(TASK_UNINTERRUPTIBLE);
- 	rc = rpc_queue_upcall(nn->bl_device_pipe, msg);
- 	if (rc < 0) {
-+		__set_current_state(TASK_RUNNING);
- 		remove_wait_queue(&nn->bl_wq, &wq);
- 		goto out_free_data;
- 	}
- 
--	set_current_state(TASK_UNINTERRUPTIBLE);
- 	schedule();
-+	__set_current_state(TASK_RUNNING);
- 	remove_wait_queue(&nn->bl_wq, &wq);
- 
- 	if (reply->status != BL_DEVICE_REQUEST_PROC) {
+-		/*
+-		 * We have a conflict; we wait until somebody kicks the
+-		 * work queue. Currently we have one work queue that we
+-		 * kick each time some resources are released, but it would
+-		 * be fairly easy to have a per-device one so that we only
+-		 * need to attach to the conflicting device.
+-		 */
+-		init_waitqueue_entry(&wait, current);
+-		add_wait_queue(&vga_wait_queue, &wait);
+-		set_current_state(interruptible ?
+-				  TASK_INTERRUPTIBLE :
+-				  TASK_UNINTERRUPTIBLE);
+ 		if (interruptible && signal_pending(current)) {
+ 			__set_current_state(TASK_RUNNING);
+ 			remove_wait_queue(&vga_wait_queue, &wait);
 
 ---
 base-commit: 818bebeb63dd6bf5f4e07e145f6cdbace520a34c
-change-id: 20260821-rpc-pipefs-blwake-b57669bfd26c
+change-id: 20260821-pci-vga-lost-wakeup-3b70658424e1
 
 Best regards,
 --  
