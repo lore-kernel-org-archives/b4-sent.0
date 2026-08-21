@@ -1,89 +1,81 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 21 Aug 2026 06:17:33 -0500
-Subject: [PATCH net v2 3/3] net/iucv: send the window update outside
- message_q.lock
+From: Jason Yang <jason98166@gmail.com>
+Date: Fri, 21 Aug 2026 19:44:19 +0800
+Subject: [PATCH] phy: rockchip-samsung-dcphy: Enable runtime PM at PHY core
+ level
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-b4-disp-3a6e8695-v2-3-37597ff723a8@proton.me>
-References: <20260821-b4-disp-3a6e8695-v2-0-37597ff723a8@proton.me>
-In-Reply-To: <20260821-b4-disp-3a6e8695-v2-0-37597ff723a8@proton.me>
-To: Eric Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>, 
- Jakub Kicinski <kuba@kernel.org>, Alexandra Winter <wintera@linux.ibm.com>, 
- Thorsten Winkler <twinkler@linux.ibm.com>, 
- "David S. Miller" <davem@davemloft.net>
-Cc: Hidayath Khan <hidayath@linux.ibm.com>, Simon Horman <horms@kernel.org>, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-s390@vger.kernel.org, Ursula Braun <ursula.braun@de.ibm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787311050; l=1987;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=EWiW3Q06PiBKk4QOZ/RVbzwZ2pT/eM2TGSityU6WPw0=;
- b=X9RlmlLOvvGwqBAvQgiE+Xzah8fMZJkCoUV4zOd7BiKwfb1FAPYx0Cv8NLpJpHCUm9vQUIz5C
- eK46Z1Eu3/WBBRLhhNiwGqkWES0Bigm9XjJTKs7Us/2ZuaiSBJITdJW
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+Message-Id: <20260821-dcphy-rpm-v1-v1-1-a7db728b2539@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABI6iGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDCyND3ZTkgoxK3aKCXN0yQ11Dk2QLg5TE1OSkNHMloJaCotS0zAqwcdG
+ xtbUA9ZQPJF4AAAA=
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>
+Cc: Heiko Stuebner <heiko.stuebner@cherry.de>, 
+ linux-phy@lists.infradead.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Jason Yang <jason98166@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787312659; l=2166;
+ i=jason98166@gmail.com; s=20260721; h=from:subject:message-id;
+ bh=rV+NofLh7S6yCChqGRpahjAqRQEXtDM0htO9np1Bxqo=;
+ b=57lr4YbeWUQV/oNo07yMtqo7IjzVndgDcWGOgaLPrTo3CyHIsAirw6wRlUFdK8mWyj0DJbew5
+ /a7QHFJ7gIHBi6hFxN2KWVW9a6aXFhoO7j4aDFXxQy2pX4JkjZHmv/N
+X-Developer-Key: i=jason98166@gmail.com; a=ed25519;
+ pk=xQmD001Q/ooHl39PxyQtusbUQmgbOsSfpFryRVWZ/k4=
+X-Endpoint-Received: by B4 Relay for jason98166@gmail.com/20260721 with auth_id=887
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-iucv_sock_recvmsg() calls iucv_send_ctrl() with message_q.lock held, and
-iucv_send_ctrl() allocates through sock_alloc_send_skb() with
-sk->sk_allocation -- GFP_KERNEL here -- so the allocation may sleep inside
-the spin_lock_bh() section; noblock suppresses only the wait for send
-buffer space, not the allocation flags. CONFIG_DEBUG_ATOMIC_SLEEP reports
-it.
+phy_create() only enables runtime PM on the new PHY device if the parent
+already has it enabled, and this driver enables it afterwards. The PHY
+device therefore never gets runtime PM, and phy_pm_runtime_get_sync()
+returns -ENOTSUPP for every phy_init() and phy_power_on(). The block is
+still resumed today, but only through the supplier link fw_devlink builds
+from the phys phandle, which fw_devlink=off and =permissive do not.
 
-Note that the update is due and send it once the lock is dropped. That
-leaves two recvmsg() able to reach afiucv_hs_send() concurrently, which
-message_q.lock used to prevent; the preceding patch is what makes that
-safe, so do not apply this one without it.
+Move devm_pm_runtime_enable() before devm_phy_create(), as done for the
+sibling HDPTX PHY in commit 10ba8479f460 ("phy:
+phy-rockchip-samsung-hdptx: Enable runtime PM at PHY core level").
 
-Fixes: 3881ac441f64 ("af_iucv: add HiperSockets transport")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Fixes: b2a1a2ae7818 ("phy: rockchip: Add Samsung MIPI D-/C-PHY driver")
+Signed-off-by: Jason Yang <jason98166@gmail.com>
 ---
- net/iucv/af_iucv.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
-index 492a45bb2bba..a7c0f60bb5bf 100644
---- a/net/iucv/af_iucv.c
-+++ b/net/iucv/af_iucv.c
-@@ -1244,6 +1244,7 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 	struct iucv_sock *iucv = iucv_sk(sk);
- 	unsigned int copied, rlen;
- 	struct sk_buff *skb, *rskb, *cskb;
-+	bool send_win = false;
- 	int err = 0;
- 	u32 offset;
+diff --git a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
+index cbd780556da8..11e872cc6611 100644
+--- a/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-samsung-dcphy.c
+@@ -1610,16 +1610,16 @@ static int samsung_mipi_dcphy_probe(struct platform_device *pdev)
+ 		return dev_err_probe(dev, PTR_ERR(samsung->grf_apb_rst),
+ 				     "Failed to get system grf_apb_rst control\n");
  
-@@ -1336,15 +1337,18 @@ static int iucv_sock_recvmsg(struct socket *sock, struct msghdr *msg,
- 				iucv_process_message_q(sk);
- 			if (iucv->transport == AF_IUCV_TRANS_HIPER &&
- 			    atomic_read(&iucv->msg_recv) >=
--							iucv->msglimit / 2) {
--				err = iucv_send_ctrl(sk, AF_IUCV_FLAG_WIN);
--				if (err) {
--					sk->sk_state = IUCV_DISCONN;
--					sk->sk_state_change(sk);
--				}
--			}
-+							iucv->msglimit / 2)
-+				send_win = true;
- 		}
- 		spin_unlock_bh(&iucv->message_q.lock);
++	ret = devm_pm_runtime_enable(dev);
++	if (ret)
++		return dev_err_probe(dev, ret, "Failed to enable runtime PM\n");
 +
-+		if (send_win) {
-+			err = iucv_send_ctrl(sk, AF_IUCV_FLAG_WIN);
-+			if (err) {
-+				sk->sk_state = IUCV_DISCONN;
-+				sk->sk_state_change(sk);
-+			}
-+		}
- 	}
+ 	samsung->phy = devm_phy_create(dev, NULL, &samsung_mipi_dcphy_ops);
+ 	if (IS_ERR(samsung->phy))
+ 		return dev_err_probe(dev, PTR_ERR(samsung->phy), "Failed to create MIPI DC-PHY\n");
  
- done:
+ 	phy_set_drvdata(samsung->phy, samsung);
+ 
+-	ret = devm_pm_runtime_enable(dev);
+-	if (ret)
+-		return dev_err_probe(dev, ret, "Failed to enable runtime PM\n");
+-
+ 	phy_provider = devm_of_phy_provider_register(dev, samsung_mipi_dcphy_xlate);
+ 	if (IS_ERR(phy_provider))
+ 		return dev_err_probe(dev, PTR_ERR(phy_provider),
 
+---
+base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
+change-id: 20260821-dcphy-rpm-v1-14c80daecbf7
+
+Best regards,
 -- 
-2.55.0
+Jason Yang <jason98166@gmail.com>
 
