@@ -1,89 +1,98 @@
-From: Aiden Isik <aidenisik@member.fsf.org>
-Date: Fri, 21 Aug 2026 16:14:50 +0100
-Subject: [PATCH v4 2/2] watchdog: s3c2410_wdt: Add exynos5515-wdt
- compatible data
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH v2 0/3] Apple SoC CIO (USB4/Thunderbolt) reset controller
+Date: Fri, 21 Aug 2026 17:44:53 +0200
+Message-Id: <20260821-b4-cio-reset-v2-0-2d045f80a424@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-for-next-lucky7-watchdog-v4-2-d070cee5009f@member.fsf.org>
-References: <20260821-for-next-lucky7-watchdog-v4-0-d070cee5009f@member.fsf.org>
-In-Reply-To: <20260821-for-next-lucky7-watchdog-v4-0-d070cee5009f@member.fsf.org>
-To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr0Jm7ZhCGxFX3sOwaGGAUUPJFImG9
+ O4WXLt8yfvvrxBImAJcshWEFg7sxwTFIYNmsGNPyG1iKFRxUmdVoTPYsEehQDNaqzunjLNtRZA
+ mk1DH7z13q38cXu5Ozbw1NmPgMHv57H9Lvnl/0kuOCk2ndVmWbeWMuz5IRnoevfRQxxi/58YnK
+ LsAAAA=
+X-Change-ID: 20260809-b4-cio-reset-aa3fb04bad9e
+To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
+ Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-watchdog@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- Aiden Isik <aidenisik@member.fsf.org>
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Joshua Peisach <jpeisach@ubuntu.com>, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1808;
- i=aidenisik@member.fsf.org; h=from:subject:message-id;
- bh=QWYVk8sPa3JpVI2qehkdPPdXsdkAd9IZBVEvEfGjKrA=;
- b=owEBbQKS/ZANAwAIAUknAbLEetfrAcsmYgBqiGt3sDmRORR/fLqcaMqThVjJHZWLnAKsHoQ0V
- b8XQDOS8DWJAjMEAAEIAB0WIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCaohrdwAKCRBJJwGyxHrX
- 62M5EADqq638uNLyQAj0YtUWxeEU5/5rcG4wuWMzIdCJ/lJWPbpH127DRiigccTmvXSvB9a5CEZ
- jlR99X6ccqSHdv3qKIfV+3C1WXagZKmslOCwJrQ1KbQvmPAFtEmUhV3bhz2k/ZjTuxxzINCwlQo
- pD7Y8d/99GcLBtOXF2KQCUXYsKxwI20NHk5T6G014KxcwRiHadHlzCYulNdIRNh1P30Us7ulwhV
- 7roCC6yZrL+Ug0fOhSd6l0h5tFfIKBva0IQfC6Pq8OecUvdcHSFn7WeQswrqDnKG9RdQIzorDhK
- chILIUE6Mc2AxgCyDF1ZQPvYQDO8gZjlCdwlXYB51amcYLorSW2adupeUzTzYMZslVg9FrUYDgG
- d26Dj+wSq+M2IfcokS0U8VFRaV+5+Cu+801EJQHw4eRicXz+0A/MboeJcVE2YK4TkF0jjDrznqW
- ahWGpqBrNtdV2XwldI8khaD6hsi0y+DI07+BP7dEQv1ltuFigkv7h1sPVVYHaIHeD7c0TnTISWD
- +/Dvbq0Lm+Ml4m7i7XX7SsdVh9q3goJ6LEcTWogJIDjweDbzKkE5FQht3+TRHDlAd4G4oj3Nk23
- Ucef8lM1TjBvLPNpobBDVjzlnFXaaPsl7wxqPJ5KLD9LOHHy58gowvXsoq+1S5nJt/JoCcas3tw
- D7iadSYtVPR/UCw==
-X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
- fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
-X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2703; i=sven@kernel.org;
+ h=from:subject:message-id; bh=Co3rtpcICbG7MUsR5ETBefuCQJYk/RF+cMq9PmdIX1c=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZH0eJJ158ufD1h7UJG9u4HT4z0ndbf7vB+Jxz+T03Be
+ 7/KAoF9HaUsDGJcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJvJvOyPDqdOYOpn26Tx6X
+ dPK1v9pUr3Zx+pY9irVsvVZz5fImdR5hZPjqf66mLs3z+1Jx1ZUpdwItFvn7bnw7dVe11yYL/aS
+ 5M9kB
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add driver data for the Exynos5515 SoC's watchdog timer.
+Hi,
 
-Unlike similar SoCs such as GS101 or Exynos990, Exynos5515's PMU does
-not require explicit counter enablement for the watchdog to tick.
+The CIO blocks used for USB4/Thunderbolt on Apple Silicon SoCs have a
+reset inside the power manager that has to be deasserted before their
+co-processor can be booted. On t8103 and t8112 each port comes with a
+dedicated register page while t600x and t602x use a single register
+with one request bit per port shared by all ports of a die in the
+middle of the PMGR MMIO region.
 
-Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
+The first patch adds the dt-binding, the second one the driver and the
+last one the device tree nodes for all SoCs. This will be used by the
+upcoming USB4/Thunderbolt series to start the host routers before
+booting their co-processors.
+
+Best,
+
+Sven
+
 ---
- drivers/watchdog/s3c2410_wdt.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v2:
+- dt-bindings: move the t600x example with the PMGR sub-node over to the
+  PMGR binding itself where it can use the correct number of address
+  cells such that the unit address matches reg again (Conor)
+- bail out of probe when no match data is available (Joshua, sashiko)
+- explain why neither a read-modify-write nor a delay before polling
+  is required for the shared t600x register (sashiko)
+- fix a copy/paste error for the M2 MMIO region in the dts change
+- Link to v1: https://patch.msgid.link/20260809-b4-cio-reset-v1-0-4f33777d9b4b@kernel.org
 
-diff --git a/drivers/watchdog/s3c2410_wdt.c b/drivers/watchdog/s3c2410_wdt.c
-index e31f93db0509..e61439a3f4b2 100644
---- a/drivers/watchdog/s3c2410_wdt.c
-+++ b/drivers/watchdog/s3c2410_wdt.c
-@@ -232,6 +232,20 @@ static const struct s3c2410_wdt_variant drv_data_exynos5420 = {
- 		  QUIRK_HAS_PMU_RST_STAT | QUIRK_HAS_PMU_AUTO_DISABLE,
- };
- 
-+/*
-+ * Unlike similar SoCs like GS101, Exynos5515's PMU does not require
-+ * explicit counter enablement. Hence, QUIRK_HAS_PMU_CNT_EN is not set.
-+ */
-+static const struct s3c2410_wdt_variant drv_data_exynos5515 = {
-+	.mask_reset_reg = EXYNOSAUTOV920_CLUSTER0_NONCPU_INT_EN,
-+	.mask_bit = 2,
-+	.mask_reset_inv = true,
-+	.rst_stat_reg = EXYNOS5_RST_STAT_REG_OFFSET,
-+	.rst_stat_bit = 24,
-+	.quirks = QUIRK_HAS_WTCLRINT_REG | QUIRK_HAS_PMU_MASK_RESET | \
-+		  QUIRK_HAS_PMU_RST_STAT | QUIRK_HAS_DBGACK_BIT,
-+};
-+
- static const struct s3c2410_wdt_variant drv_data_exynos7 = {
- 	.disable_reg = EXYNOS5_WDT_DISABLE_REG_OFFSET,
- 	.mask_reset_reg = EXYNOS5_WDT_MASK_RESET_REG_OFFSET,
-@@ -379,6 +393,8 @@ static const struct of_device_id s3c2410_wdt_match[] = {
- 	  .data = &drv_data_exynos5250 },
- 	{ .compatible = "samsung,exynos5420-wdt",
- 	  .data = &drv_data_exynos5420 },
-+	{ .compatible = "samsung,exynos5515-wdt",
-+	  .data = &drv_data_exynos5515 },
- 	{ .compatible = "samsung,exynos7-wdt",
- 	  .data = &drv_data_exynos7 },
- 	{ .compatible = "samsung,exynos850-wdt",
+To: Sven Peter <sven@kernel.org>
+To: Janne Grunau <j@jannau.net>
+To: Neal Gompa <neal@gompa.dev>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Joshua Peisach <jpeisach@ubuntu.com>
+Cc: asahi@lists.linux.dev
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
--- 
-2.54.0
+---
+Sven Peter (3):
+      dt-bindings: reset: Add Apple SoC CIO reset
+      reset: Add Apple SoC CIO reset driver
+      arm64: dts: apple: Add CIO reset controllers
+
+ .../devicetree/bindings/arm/apple/apple,pmgr.yaml  |  12 ++
+ .../bindings/reset/apple,t8103-cio-reset.yaml      |  61 +++++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t600x-dieX.dtsi          |   8 +-
+ arch/arm64/boot/dts/apple/t602x-dieX.dtsi          |   8 +-
+ arch/arm64/boot/dts/apple/t8103.dtsi               |   6 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |   6 +
+ drivers/reset/Kconfig                              |  10 ++
+ drivers/reset/Makefile                             |   1 +
+ drivers/reset/reset-apple-cio.c                    | 200 +++++++++++++++++++++
+ 10 files changed, 312 insertions(+), 2 deletions(-)
+---
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260809-b4-cio-reset-aa3fb04bad9e
+
+Best regards,
+--  
+Sven Peter <sven@kernel.org>
 
