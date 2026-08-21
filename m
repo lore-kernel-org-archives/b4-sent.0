@@ -1,118 +1,140 @@
-From: Sven Peter <sven@kernel.org>
-Date: Fri, 21 Aug 2026 17:44:56 +0200
-Subject: [PATCH v2 3/3] arm64: dts: apple: Add CIO reset controllers
+From: Bernd Schubert <bernd@bsbernd.com>
+Date: Fri, 21 Aug 2026 18:19:09 +0200
+Subject: [PATCH v2] fuse: Fix the condition to enable over-io-uring
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-b4-cio-reset-v2-3-2d045f80a424@kernel.org>
-References: <20260821-b4-cio-reset-v2-0-2d045f80a424@kernel.org>
-In-Reply-To: <20260821-b4-cio-reset-v2-0-2d045f80a424@kernel.org>
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Joshua Peisach <jpeisach@ubuntu.com>, asahi@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3435; i=sven@kernel.org;
- h=from:subject:message-id; bh=10ZqKWSpLGh0HzriAEqbDWXJva1apqllME3fu+dUFeM=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZH0YqvZ5x3yM7nvbH9yAOjhxUmXx3nrCkSyPyzYo3nQ
- Y4UBXb1jlIWBjEuBlkxRZbt++1Nnzx8I7h006X3MHNYmUCGMHBxCsBEChcw/HfIC13CpbHhUOoH
- l4nunX8anJJTBS3C13ts7Sk5uFHzbBjDXwmeyyJyv7SMv9hWz4stP3CrOYGnYnGV86F/NxZ2fzl
- yiwEA
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+Message-Id: <20260821-fuse-fix-enable-condition-v2-1-35a386d3d443@bsbernd.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NSw6CMBRFt0I69hnaIK2O3Idh0M+r1GhL+oBoC
+ Hu34AYcnuTccxdGmAMSu1QLyzgHCikWEIeK2V7HO0JwhZmoRVsrwcFPhODDGzBq80SwKbowlhU
+ 4r6TWjRUnq1jZDxmLt7dv3Y9pMg+04xbcjD7QmPJnP5/55v3zM3Pg0CjlpTRC4rm9GjKYozva9
+ GLduq5fWBoNnNYAAAA=
+X-Change-ID: 20260821-fuse-fix-enable-condition-df87aa4c25c8
+To: Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>
+Cc: Joanne Koong <joannelkoong@gmail.com>, fuse-devel@lists.linux.dev, 
+ Baokun Li <libaokun@linux.alibaba.com>, 
+ Thomas <thomas.fractalbits@gmail.com>, zhu <zzsheng@gmail.com>, 
+ Stefan Hajnoczi <stefanha@gmail.com>, stable@kernel.org
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4122; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=jUQYqgugAEmYi2fMM2GSsrtAuh84XLRvxWs4GiKHi2A=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLI6qhoO1Z1ccsmkmWXOoc9bq16VBLA7ZP/I0F+cwBHX/
+ twqfIJvRykLgxgHg6yYIkuXxB7bKf/4ZNW+rr8OM4eVCWQIAxenAExEKZCR4fcJ1X6V7ZIH0uQn
+ vTGfLXT20NSwLW+yJ3Qd4XWPFXK/NZOR4dg/2ZfNgRPY6i/PVEi7c/VF63274ohdUqlGfjODv2/
+ y4AUA
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the reset controllers used to start the CIO (USB4/Thunderbolt)
-blocks on t8103 and t600x. On t8103 each port comes with a dedicated
-register page represented as a standalone node. On t600x a single
-register shared by all ports of a die is located in the middle of the
-PMGR MMIO region and represented as a sub-node of its syscon.
+The existing condition in fuse_uring_cmd() is there only to avoid
+disabling io-uring for connections that already run with it, missing
+was a condition to refuse any IORING_OP_URING_CMD if the
+connection/channel didn't get enabled because of missing FUSE_INIT
+reply flag FUSE_OVER_IO_URING. Without the reply flag the barrier in
+fuse_uring_ready() doesn't work and IO could already be going on and
+cause deadlock states (at a minimum one between fch->bg_lock and
+queue->lock).
 
-Signed-off-by: Sven Peter <sven@kernel.org>
+The change itself is trivial, but brings behavior change,
+FUSE_OVER_IO_URING has to be set in the FUSE_INIT_REPLY by fuse servers
+to accept any IORING_OP_URING_CMD. Libfuse does that and the only
+non-libfuse implementation I found (fractal-fuse) also does it.
+Qemu patches for fuse-io-uring are not merged yet, as far as I know.
+
+Moved up is the smp_load_acquire(&fch->initialized) check, as a
+fuse-server implementation might try to setup io-uring before FUSE_INIT
+is processed and might have gotten -EOPNOTSUPP instead of -EAGAIN.
+
+Also fixed is a stale comment that explains the handling of the
+FUSE_OVER_IO_URING flag in early RFC versions.
+
+If there should be a report from any library or application we
+probably need to revert this commit.
+
+Fixes: 3393ff964e0f ("fuse: block request allocation until io-uring init is complete")
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- arch/arm64/boot/dts/apple/t600x-dieX.dtsi | 8 +++++++-
- arch/arm64/boot/dts/apple/t602x-dieX.dtsi | 8 +++++++-
- arch/arm64/boot/dts/apple/t8103.dtsi      | 6 ++++++
- arch/arm64/boot/dts/apple/t8112.dtsi      | 6 ++++++
- 4 files changed, 26 insertions(+), 2 deletions(-)
+Changes in v2:
+- Seperate condition for fch->io_uring, switching from "&&" to "||" would have
+  brought up another regression.
+- Commit message update, fortunately bypassing the module option
+  wasn't possible because of another check in process_init_reply()
+- Link to v1: https://patch.msgid.link/20260821-fuse-fix-enable-condition-v1-1-488f77b27e96@bsbernd.com
+---
+ fs/fuse/dev_uring.c | 31 ++++++++++++++++++-------------
+ fs/fuse/inode.c     |  4 ----
+ 2 files changed, 18 insertions(+), 17 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t600x-dieX.dtsi b/arch/arm64/boot/dts/apple/t600x-dieX.dtsi
-index 9676d5127039..5e163d756a7f 100644
---- a/arch/arm64/boot/dts/apple/t600x-dieX.dtsi
-+++ b/arch/arm64/boot/dts/apple/t600x-dieX.dtsi
-@@ -28,7 +28,13 @@ DIE_NODE(pmgr): power-management@28e080000 {
- 		compatible = "apple,t6000-pmgr", "apple,pmgr", "syscon", "simple-mfd";
- 		#address-cells = <1>;
- 		#size-cells = <1>;
--		reg = <0x2 0x8e080000 0 0x4000>;
-+		reg = <0x2 0x8e080000 0 0x1c000>;
-+
-+		DIE_NODE(cio_reset): reset-controller@1a034 {
-+			compatible = "apple,t6000-cio-reset";
-+			reg = <0x1a034 0x4>;
-+			#reset-cells = <1>;
-+		};
- 	};
+diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
+index e22a48c9a678..c6dd420c4034 100644
+--- a/fs/fuse/dev_uring.c
++++ b/fs/fuse/dev_uring.c
+@@ -1665,25 +1665,30 @@ int fuse_uring_cmd(struct io_uring_cmd *cmd, unsigned int issue_flags)
+ 	}
+ 	fch = fud->chan;
  
- 	DIE_NODE(pmgr_east): power-management@28e580000 {
-diff --git a/arch/arm64/boot/dts/apple/t602x-dieX.dtsi b/arch/arm64/boot/dts/apple/t602x-dieX.dtsi
-index ae3d535c5acb..fd4d572a04e7 100644
---- a/arch/arm64/boot/dts/apple/t602x-dieX.dtsi
-+++ b/arch/arm64/boot/dts/apple/t602x-dieX.dtsi
-@@ -27,7 +27,13 @@ DIE_NODE(pmgr): power-management@28e080000 {
- 		compatible = "apple,t6020-pmgr", "apple,t8103-pmgr", "syscon", "simple-mfd";
- 		#address-cells = <1>;
- 		#size-cells = <1>;
--		reg = <0x2 0x8e080000 0 0x8000>;
-+		reg = <0x2 0x8e080000 0 0xc000>;
-+
-+		DIE_NODE(cio_reset): reset-controller@a02c {
-+			compatible = "apple,t6020-cio-reset", "apple,t6000-cio-reset";
-+			reg = <0xa02c 0x4>;
-+			#reset-cells = <1>;
-+		};
- 	};
+-	/* Once a connection has io-uring enabled on it, it can't be disabled */
+-	if (!enable_uring && !fch->io_uring) {
+-		pr_info_ratelimited("fuse-io-uring is disabled\n");
+-		return -EOPNOTSUPP;
+-	}
++	/*
++	 * The ring is sized from values negotiated by FUSE_INIT
++	 *
++	 * Pairs with smp_store_release() in fuse_chan_set_initialized()
++	 */
++	if (!smp_load_acquire(&fch->initialized))
++		return -EAGAIN;
  
- 	DIE_NODE(pmgr_south): power-management@28e680000 {
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index da774096b667..83f6f1003424 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -730,6 +730,12 @@ pmgr: power-management@23b700000 {
- 			reg = <0x2 0x3b700000 0 0x14000>;
- 		};
+ 	if (fch->abort_with_err)
+ 		return -ECONNABORTED;
+ 	if (!fch->connected)
+ 		return -ENOTCONN;
  
-+		cio_reset: reset-controller@23b784000 {
-+			compatible = "apple,t8103-cio-reset";
-+			reg = <0x2 0x3b784000 0x0 0x8000>;
-+			#reset-cells = <1>;
-+		};
+-	/*
+-	 * fuse_uring_register() needs the ring to be initialized,
+-	 * we need to know the max payload size
+-	 *
+-	 * Pairs with smp_store_release() in fuse_chan_set_initialized()
+-	 */
+-	if (!smp_load_acquire(&fch->initialized))
+-		return -EAGAIN;
++	/* Once a connection has io-uring enabled on it, it can't be disabled */
++	if (!enable_uring && !fch->io_uring) {
++		pr_info_ratelimited("fuse-io-uring is disabled by module parameter\n");
++		return -EOPNOTSUPP;
++	}
 +
- 		pinctrl_ap: pinctrl@23c100000 {
- 			compatible = "apple,t8103-pinctrl", "apple,pinctrl";
- 			reg = <0x2 0x3c100000 0x0 0x100000>;
-diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
-index 85c47422d4e8..963030373a23 100644
---- a/arch/arm64/boot/dts/apple/t8112.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8112.dtsi
-@@ -737,6 +737,12 @@ pmgr: power-management@23b700000 {
- 			/* child nodes are added in t8103-pmgr.dtsi */
- 		};
++	if (!fch->io_uring) {
++		pr_info_ratelimited(
++			"fuse-io-uring not enabled on this connection\n");
++		return -EOPNOTSUPP;
++	}
  
-+		cio_reset: reset-controller@23b790000 {
-+			compatible = "apple,t8112-cio-reset", "apple,t8103-cio-reset";
-+			reg = <0x2 0x3b790000 0x0 0x8000>;
-+			#reset-cells = <1>;
-+		};
-+
- 		pinctrl_ap: pinctrl@23c100000 {
- 			compatible = "apple,t8112-pinctrl", "apple,pinctrl";
- 			reg = <0x2 0x3c100000 0x0 0x100000>;
+ 	switch (cmd_op) {
+ 	case FUSE_IO_URING_CMD_REGISTER:
+diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
+index 1c6ee01c6796..e9552be3637b 100644
+--- a/fs/fuse/inode.c
++++ b/fs/fuse/inode.c
+@@ -1480,10 +1480,6 @@ static struct fuse_init_args *fuse_new_init(struct fuse_mount *fm)
+ 	if (IS_ENABLED(CONFIG_FUSE_PASSTHROUGH))
+ 		flags |= FUSE_PASSTHROUGH;
+ 
+-	/*
+-	 * This is just an information flag for fuse server. No need to check
+-	 * the reply - server is either sending IORING_OP_URING_CMD or not.
+-	 */
+ 	if (fuse_uring_enabled())
+ 		flags |= FUSE_OVER_IO_URING | FUSE_HAS_IO_URING_BUFPOOL;
+ 
 
--- 
-2.55.0
+---
+base-commit: d1dbc59200b54944f00251ca4dfbb2b318beca13
+change-id: 20260821-fuse-fix-enable-condition-df87aa4c25c8
+
+Best regards,
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
