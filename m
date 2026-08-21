@@ -1,155 +1,97 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Thu, 20 Aug 2026 21:17:58 +0000
-Subject: [PATCH] usb: typec: tcpm: Support native battery energy properties
- in battery AMS
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH v2 0/2] smb: client: reject a too-small tree connect byte
+ count
+Date: Thu, 20 Aug 2026 21:25:19 -0500
+Message-Id: <20260820-b4-disp-58f78a28-v2-0-1fb7a6cb1533@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260820-tcpm-energy-props-upstream-v1-1-0a0167863848@google.com>
-X-B4-Tracking: v=1; b=H4sIAAVvh2oC/x3MQQqDQAwAwK9Izg2kuyptv1I8LDZqDq4hsUUR/
- +7S41zmAGcTdnhVBxj/xGXJBfdbBf2U8sgon2IIFFp6BMK11xk5s407qi3q+FVfjdOMqX7G2MS
- BqKmhBGo8yPbP3915XjqptdtsAAAA
-X-Change-ID: 20260820-tcpm-energy-props-upstream-a493353f0054
-To: Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787260685; l=4796;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=3ujd4nj9Hfogfm+nYqmaVH090hvwF2tQMDh7GmzAo9w=;
- b=KFARS5HnKsDD8jDni0Aolvgr/9HPD5Rv/uHIRcq1Ptd7jRhmv7JzCgQaYilomlwSgi6WghH1D
- wzUAFXjvqLMCKgmZvfqocDBCROfMukZII3XilmZNMHUrTXJ2p3XT0BO
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ6DMAxA4asgz1hKrVIirlIx5McpZgAUF4SEu
+ HtDGb/hvQOUs7BCVx2QeROVeSqguoIwuOnDKLEYyNDLWDLonxhFF2xsaq0jiyb61BI19OAAJVs
+ yJ9n/y3d/W1c/cvheHzjPH20tTJ50AAAA
+X-Change-ID: 20260820-b4-disp-58f78a28-0dbf722521ec
+To: Steve French <sfrench@samba.org>
+Cc: Paulo Alcantara <pc@manguebit.org>, Namjae Jeon <linkinjeon@kernel.org>, 
+ Shyam Prasad N <sprasad@microsoft.com>, 
+ Ronnie Sahlberg <ronniesahlberg@gmail.com>, 
+ David Howells <dhowells@redhat.com>, Nathan Chancellor <nathan@kernel.org>, 
+ Tom Talpey <tom@talpey.com>, llvm@lists.linux.dev, 
+ Bharath SM <bharathsm@microsoft.com>, linux-cifs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, samba-technical@lists.samba.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787279119; l=3146;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=uyR5KdriohoILzKQMgiDjFf+ySUexMpA9o8d0cXrK80=;
+ b=lCadI1INMNwMzoFOMmYTqRwGsvzESPiKvK5DKfb6A77i8LAxdm4+w7vhTZTKOgo8Hcf6Y29bT
+ zL8E1g+qzADAlwKC0q1bQWft3D2W1HuucKK388Af4xwi8d3fPOhIoDQ
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some fuel gauges report battery telemetry in energy rather than charge.
-Add support for querying native energy properties for Battery Status and
-Battery Capabilities AMS, falling back to calculating energy from charge
-and average voltage when primary properties are not supported.
+v1 was a single patch. The kernel test robot then reported three
+-Wconstant-conversion diagnostics in the write path, which Namjae asked about;
+they are v1's doing. enum smb_eio_trace is __mode(byte) and its list was
+already at 128 entries, so v1's new entry pushed smb_eio_trace_write_too_far to
+index 128, which the type cannot hold. clang gives the enum a signed underlying
+type and turns that into an error wherever CONFIG_WERROR is set -- x86_64
+defconfig sets it -- so v1 alone does not build there. gcc gives the same enum
+an unsigned underlying type and says nothing, which is why the tree had not run
+into this.
 
-+---------+--------------------+----------------------------------+
-| Sr. No. | Primary            | Fallback                         |
-+---------+--------------------+----------------------------------+
-| 1       | ENERGY_NOW         | CHARGE_NOW + VOLTAGE_AVG         |
-| 2       | ENERGY_FULL_DESIGN | CHARGE_FULL_DESIGN + VOLTAGE_AVG |
-| 3       | ENERGY_FULL        | CHARGE_FULL + VOLTAGE_AVG        |
-+---------+--------------------+----------------------------------+
-Note: All properties above are to be prefixed with POWER_SUPPLY_PROP_.
+1/2 gives the enum room, 2/2 is v1 unchanged. 1/2 has to land first: 2/2 is what
+adds the 129th entry, so on its own it does not build under clang. Stable trees
+older than v6.19 have neither smb_EIO2() nor the trace enum, so the backport
+there is 2/2's guard with a plain rc = -EIO.
 
-Closes: https://lore.kernel.org/all/amVJ1u67qHENBQ5l@venus/
-Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
-Assisted-by: Gemini:gemini-3.1-pro
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
----
- drivers/usb/typec/tcpm/tcpm.c | 57 +++++++++++++++++++++++++++----------------
- 1 file changed, 36 insertions(+), 21 deletions(-)
+Build A/B at v7.2, W=1, CONFIG_CIFS=m, with gcc 14.2 and clang 19.1.7:
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index a8cd1959c426..0d7dc0b51c87 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -410,6 +410,9 @@ struct pd_timings {
- /* Convert microwatt to watt */
- #define UW_TO_W(pow)				(div_u64((pow), 1000000))
- 
-+/* Convert micro-Watt-hours to USB PD energy (increments of 0.1Wh) */
-+#define UWH_TO_PD_ENERGY(energy)		(UW_TO_W((u64)(energy) * 10))
-+
- /*
-  * As per USB PD Spec Rev 3.18 (Sec. 6.5.13.11), the number of fixed batteries
-  * that a port can be queried is restricted to 4.
-@@ -1580,8 +1583,7 @@ static u16 tcpm_charge_to_energy(int charge, int voltage)
- {
- 	u64 energy = div_u64((u64)charge * voltage, 1000000);
- 
--	/* Battery telemetry is reported in increments of 0.1Wh */
--	return (u16)UW_TO_W(energy * 10);
-+	return UWH_TO_PD_ENERGY(energy);
- }
- 
- static int tcpm_pd_send_batt_status(struct tcpm_port *port)
-@@ -1612,16 +1614,17 @@ static int tcpm_pd_send_batt_status(struct tcpm_port *port)
- 	else
- 		batt_present = val.intval > 0;
- 
--	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW,
--					&val);
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_ENERGY_NOW, &val);
- 	if (!ret) {
--		charge_now = val.intval;
--		ret = power_supply_get_property(batt,
--						POWER_SUPPLY_PROP_VOLTAGE_AVG,
--						&val);
--		if (!ret)
--			present_charge = tcpm_charge_to_energy(charge_now,
--							       val.intval);
-+		present_charge = UWH_TO_PD_ENERGY(val.intval);
-+	} else {
-+		ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW, &val);
-+		if (!ret) {
-+			charge_now = val.intval;
-+			ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_VOLTAGE_AVG, &val);
-+			if (!ret)
-+				present_charge = tcpm_charge_to_energy(charge_now, val.intval);
-+		}
- 	}
- 
- 	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_STATUS, &val);
-@@ -1678,19 +1681,31 @@ static int tcpm_pd_send_batt_cap(struct tcpm_port *port)
- 
- 	invalid_ref = false;
- 	batt = port->fixed_batt[batt_id];
--	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_VOLTAGE_AVG,
--					&val);
--	if (!ret) {
--		vol = val.intval;
--		ret = power_supply_get_property(batt,
--						POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
--						&val);
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN, &val);
-+	if (!ret)
-+		design_cap = UWH_TO_PD_ENERGY(val.intval);
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_ENERGY_FULL, &val);
-+	if (!ret)
-+		charge_cap = UWH_TO_PD_ENERGY(val.intval);
-+
-+	if (design_cap != BATTERY_PROPERTY_UNKNOWN && charge_cap != BATTERY_PROPERTY_UNKNOWN)
-+		goto send_cap;
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_VOLTAGE_AVG, &val);
-+	if (ret)
-+		goto send_cap;
-+
-+	vol = val.intval;
-+	if (design_cap == BATTERY_PROPERTY_UNKNOWN) {
-+		ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &val);
- 		if (!ret)
- 			design_cap = tcpm_charge_to_energy(val.intval, vol);
-+	}
- 
--		ret = power_supply_get_property(batt,
--						POWER_SUPPLY_PROP_CHARGE_FULL,
--						&val);
-+	if (charge_cap == BATTERY_PROPERTY_UNKNOWN) {
-+		ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_FULL, &val);
- 		if (!ret)
- 			charge_cap = tcpm_charge_to_energy(val.intval, vol);
- 	}
+  source state        gcc      clang
+  v7.2, unpatched     clean    clean
+  2/2 only            clean    3 errors, build fails
+  1/2 + 2/2           clean    clean
+
+I dropped the attribute rather than widening it because on x86_64 the record
+does not grow either way. The field precedes an unsigned long at offset 8 of
+struct trace_event_raw_smb3_eio, so sizeof() is 32 with __mode(byte), with
+__mode(HI), and with a plain enum. A plain enum also avoids a spelling the tree
+does not use: all 68 __mode() uses in it are __mode(byte).
+
+smb_eio_trace was the only one of those 68 with no room left. rxrpc_abort_reason
+has 127 entries.
+
+Two corrections to what v1's changelog said, both prose and not code. The
+initialised prefix is 256 bytes rather than the 67 I wrote: header_assemble()
+memsets 256 right after cifs_buf_get(), so the byte area only starts past it
+from WordCount 111. And the impact was understated -- once bytes_left wraps, the
+bound handed to cifs_strndup_from_utf16() reaches 65535 against a ~16 KB
+cifs_req_poolp object, so this is a slab out-of-bounds read and not only an
+uninitialised one.
+
+checkSMB() is also not what makes the guard sufficient, which is why 2/2 adds no
+WordCount check: the parse runs on the request buffer, into which SendReceive()
+copies smbCalcSize() bytes, so an honest bytes_left is what keeps the walk
+inside the copy. Reproducer is a fake SMB1 server that answers negprot,
+completes SESSION_SETUP_ANDX and replies to TREE_CONNECT_ANDX with WordCount 128
+and ByteCount 0; KMSAN and KASAN logs on request.
+
+Prior version:
+https://lore.kernel.org/all/20260728-b4-disp-6b8e68d4-v1-1-e69277237297@proton.me/
 
 ---
-base-commit: e1e6e541c5c9cf548e9fdc35fc26808c82074440
-change-id: 20260820-tcpm-energy-props-upstream-a493353f0054
+Bryam Vargas (2):
+      smb: client: let enum smb_eio_trace grow past 128 entries
+      smb: client: reject a tree connect response whose byte count is too small
+
+ fs/smb/client/cifssmb.c | 6 ++++++
+ fs/smb/client/trace.h   | 3 ++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+---
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260820-b4-disp-58f78a28-0dbf722521ec
 
 Best regards,
--- 
-Amit Sunil Dhamne <amitsd@google.com>
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
