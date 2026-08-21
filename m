@@ -1,140 +1,88 @@
-From: Bernd Schubert <bernd@bsbernd.com>
-Date: Fri, 21 Aug 2026 18:19:09 +0200
-Subject: [PATCH v2] fuse: Fix the condition to enable over-io-uring
+From: FAN YE <fy15309206903@gmail.com>
+Date: Fri, 21 Aug 2026 16:36:49 +0000
+Subject: [PATCH RFC] pnfs/blocklayout: fix lost wakeup in
+ bl_resolve_deviceid()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-fuse-fix-enable-condition-v2-1-35a386d3d443@bsbernd.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NSw6CMBRFt0I69hnaIK2O3Idh0M+r1GhL+oBoC
- Hu34AYcnuTccxdGmAMSu1QLyzgHCikWEIeK2V7HO0JwhZmoRVsrwcFPhODDGzBq80SwKbowlhU
- 4r6TWjRUnq1jZDxmLt7dv3Y9pMg+04xbcjD7QmPJnP5/55v3zM3Pg0CjlpTRC4rm9GjKYozva9
- GLduq5fWBoNnNYAAAA=
-X-Change-ID: 20260821-fuse-fix-enable-condition-df87aa4c25c8
-To: Miklos Szeredi <miklos@szeredi.hu>, Bernd Schubert <bernd@bsbernd.com>
-Cc: Joanne Koong <joannelkoong@gmail.com>, fuse-devel@lists.linux.dev, 
- Baokun Li <libaokun@linux.alibaba.com>, 
- Thomas <thomas.fractalbits@gmail.com>, zhu <zzsheng@gmail.com>, 
- Stefan Hajnoczi <stefanha@gmail.com>, stable@kernel.org
-X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4122; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=jUQYqgugAEmYi2fMM2GSsrtAuh84XLRvxWs4GiKHi2A=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLI6qhoO1Z1ccsmkmWXOoc9bq16VBLA7ZP/I0F+cwBHX/
- twqfIJvRykLgxgHg6yYIkuXxB7bKf/4ZNW+rr8OM4eVCWQIAxenAExEKZCR4fcJ1X6V7ZIH0uQn
- vTGfLXT20NSwLW+yJ3Qd4XWPFXK/NZOR4dg/2ZfNgRPY6i/PVEi7c/VF63274ohdUqlGfjODv2/
- y4AUA
-X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
- fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
-X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
+Message-Id: <20260821-rpc-pipefs-blwake-v1-1-3e70ec9b0537@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKB+iGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDCyND3aKCZN2CzILUtGLdpJzyxOxU3SRTczMzy6S0FCOzZCWgvoKi1LT
+ MCrCZ0UpBbs5KsRDB4tKkrNTkEpBpSrW1ACUp1mF6AAAA
+X-Change-ID: 20260821-rpc-pipefs-blwake-b57669bfd26c
+To: Anna Schumaker <anna@kernel.org>, Trond Myklebust <trondmy@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787330208; l=2479;
+ i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
+ bh=c+z4jifpi2nDQnBqxSM28wkVpN1tmwF5BQ5Cy9b5Al8=;
+ b=Lnpzauy2mhybRxGXcwUrYR2F3F+2zhlFwLPs56EQ8jQ/SN42YJaiFZ/pUBnl+ePmuPgN4a1aR
+ yMzDp46Vbc8Bi5gGNIKjcu7BDeXusiaqH73MefiU22XNzhxFbNSyj8k
+X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
+ pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
+X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The existing condition in fuse_uring_cmd() is there only to avoid
-disabling io-uring for connections that already run with it, missing
-was a condition to refuse any IORING_OP_URING_CMD if the
-connection/channel didn't get enabled because of missing FUSE_INIT
-reply flag FUSE_OVER_IO_URING. Without the reply flag the barrier in
-fuse_uring_ready() doesn't work and IO could already be going on and
-cause deadlock states (at a minimum one between fch->bg_lock and
-queue->lock).
+bl_resolve_deviceid() queues itself on nn->bl_wq and calls
+rpc_queue_upcall(), but sets TASK_UNINTERRUPTIBLE only after that call
+returns.  If blkmapd answers on another CPU in between, the wake_up()
+from bl_pipe_downcall() finds the task runnable and the assignment that
+follows overwrites it, so schedule() never returns.  The caller holds
+nn->bl_mutex, so every later blocklayout device resolution blocks behind
+it.
 
-The change itself is trivial, but brings behavior change,
-FUSE_OVER_IO_URING has to be set in the FUSE_INIT_REPLY by fuse servers
-to accept any IORING_OP_URING_CMD. Libfuse does that and the only
-non-libfuse implementation I found (fractal-fuse) also does it.
-Qemu patches for fuse-io-uring are not merged yet, as far as I know.
+Set the state before queueing the upcall and restore TASK_RUNNING on the
+error path.  Of the four rpc_queue_upcall() callers this is the only
+open-coded waiter; __cld_pipe_upcall() uses wait_for_completion(), which
+cannot lose a wakeup this way.
 
-Moved up is the smp_load_acquire(&fch->initialized) check, as a
-fuse-server implementation might try to setup io-uring before FUSE_INIT
-is processed and might have gotten -EOPNOTSUPP instead of -EAGAIN.
-
-Also fixed is a stale comment that explains the handling of the
-FUSE_OVER_IO_URING flag in early RFC versions.
-
-If there should be a report from any library or application we
-probably need to revert this commit.
-
-Fixes: 3393ff964e0f ("fuse: block request allocation until io-uring init is complete")
-Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+Fixes: fe0a9b740881 ("pnfsblock: add device operations")
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: FAN YE <fy15309206903@gmail.com>
 ---
-Changes in v2:
-- Seperate condition for fch->io_uring, switching from "&&" to "||" would have
-  brought up another regression.
-- Commit message update, fortunately bypassing the module option
-  wasn't possible because of another check in process_init_reply()
-- Link to v1: https://patch.msgid.link/20260821-fuse-fix-enable-condition-v1-1-488f77b27e96@bsbernd.com
----
- fs/fuse/dev_uring.c | 31 ++++++++++++++++++-------------
- fs/fuse/inode.c     |  4 ----
- 2 files changed, 18 insertions(+), 17 deletions(-)
+Not seen on a real pNFS mount.  In a VM I reached bl_resolve_deviceid()
+through a debugfs hook with a fake blkmapd and an mdelay() widening the
+window: the caller sticks in D state at schedule(), and the next caller
+then blocks on nn->bl_mutex.  Both go away with this patch.
 
-diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index e22a48c9a678..c6dd420c4034 100644
---- a/fs/fuse/dev_uring.c
-+++ b/fs/fuse/dev_uring.c
-@@ -1665,25 +1665,30 @@ int fuse_uring_cmd(struct io_uring_cmd *cmd, unsigned int issue_flags)
+Two questions:
+- Would you rather have bl_wq converted to a completion, like
+  __cld_pipe_upcall() in fs/nfsd/nfs4recover.c?
+- rpc_queue_upcall() calls dput().  If the pipe were unlinked meanwhile,
+  that could sleep with the task already in TASK_UNINTERRUPTIBLE.  Is that
+  acceptable here?
+---
+ fs/nfs/blocklayout/rpc_pipefs.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/blocklayout/rpc_pipefs.c b/fs/nfs/blocklayout/rpc_pipefs.c
+index d526f5ba7887..15972ca0daf1 100644
+--- a/fs/nfs/blocklayout/rpc_pipefs.c
++++ b/fs/nfs/blocklayout/rpc_pipefs.c
+@@ -84,14 +84,16 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
+ 
+ 	dprintk("%s CALLING USERSPACE DAEMON\n", __func__);
+ 	add_wait_queue(&nn->bl_wq, &wq);
++	set_current_state(TASK_UNINTERRUPTIBLE);
+ 	rc = rpc_queue_upcall(nn->bl_device_pipe, msg);
+ 	if (rc < 0) {
++		__set_current_state(TASK_RUNNING);
+ 		remove_wait_queue(&nn->bl_wq, &wq);
+ 		goto out_free_data;
  	}
- 	fch = fud->chan;
  
--	/* Once a connection has io-uring enabled on it, it can't be disabled */
--	if (!enable_uring && !fch->io_uring) {
--		pr_info_ratelimited("fuse-io-uring is disabled\n");
--		return -EOPNOTSUPP;
--	}
-+	/*
-+	 * The ring is sized from values negotiated by FUSE_INIT
-+	 *
-+	 * Pairs with smp_store_release() in fuse_chan_set_initialized()
-+	 */
-+	if (!smp_load_acquire(&fch->initialized))
-+		return -EAGAIN;
+-	set_current_state(TASK_UNINTERRUPTIBLE);
+ 	schedule();
++	__set_current_state(TASK_RUNNING);
+ 	remove_wait_queue(&nn->bl_wq, &wq);
  
- 	if (fch->abort_with_err)
- 		return -ECONNABORTED;
- 	if (!fch->connected)
- 		return -ENOTCONN;
- 
--	/*
--	 * fuse_uring_register() needs the ring to be initialized,
--	 * we need to know the max payload size
--	 *
--	 * Pairs with smp_store_release() in fuse_chan_set_initialized()
--	 */
--	if (!smp_load_acquire(&fch->initialized))
--		return -EAGAIN;
-+	/* Once a connection has io-uring enabled on it, it can't be disabled */
-+	if (!enable_uring && !fch->io_uring) {
-+		pr_info_ratelimited("fuse-io-uring is disabled by module parameter\n");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	if (!fch->io_uring) {
-+		pr_info_ratelimited(
-+			"fuse-io-uring not enabled on this connection\n");
-+		return -EOPNOTSUPP;
-+	}
- 
- 	switch (cmd_op) {
- 	case FUSE_IO_URING_CMD_REGISTER:
-diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
-index 1c6ee01c6796..e9552be3637b 100644
---- a/fs/fuse/inode.c
-+++ b/fs/fuse/inode.c
-@@ -1480,10 +1480,6 @@ static struct fuse_init_args *fuse_new_init(struct fuse_mount *fm)
- 	if (IS_ENABLED(CONFIG_FUSE_PASSTHROUGH))
- 		flags |= FUSE_PASSTHROUGH;
- 
--	/*
--	 * This is just an information flag for fuse server. No need to check
--	 * the reply - server is either sending IORING_OP_URING_CMD or not.
--	 */
- 	if (fuse_uring_enabled())
- 		flags |= FUSE_OVER_IO_URING | FUSE_HAS_IO_URING_BUFPOOL;
- 
+ 	if (reply->status != BL_DEVICE_REQUEST_PROC) {
 
 ---
-base-commit: d1dbc59200b54944f00251ca4dfbb2b318beca13
-change-id: 20260821-fuse-fix-enable-condition-df87aa4c25c8
+base-commit: 818bebeb63dd6bf5f4e07e145f6cdbace520a34c
+change-id: 20260821-rpc-pipefs-blwake-b57669bfd26c
 
 Best regards,
 --  
-Bernd Schubert <bernd@bsbernd.com>
+FAN YE <fy15309206903@gmail.com>
 
