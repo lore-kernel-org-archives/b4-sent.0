@@ -1,99 +1,83 @@
-From: Sven Peter <sven@kernel.org>
-Date: Fri, 21 Aug 2026 15:50:29 +0200
-Subject: [PATCH 3/3] phy: apple: atc: Implement the USB4 pipehandler state
+From: DAI RENJIE <drj19981414013@gmail.com>
+Date: Fri, 21 Aug 2026 14:08:17 +0000
+Subject: [PATCH] resource: fix lost wakeup when waiting for a muxed region
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-b4-atcphy-usb4-v1-3-45c0b741e0c0@kernel.org>
-References: <20260821-b4-atcphy-usb4-v1-0-45c0b741e0c0@kernel.org>
-In-Reply-To: <20260821-b4-atcphy-usb4-v1-0-45c0b741e0c0@kernel.org>
-To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
- Vinod Koul <vkoul@kernel.org>, Neil Armstrong <neil.armstrong@linaro.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-phy@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Sven Peter <sven@kernel.org>
+Message-Id: <20260821-b4-resource-muxed-lost-wakeup-v1-1-37eb6473a76c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANBbiGoC/yXMTQ6CMBAG0KuQWTtJWwipXsW4gPZT6w8lHaokh
+ LtTdPk2byFBChA6VQslfIKEOBToQ0Xu3g03cPDFZJRplTWa+4YTJObkwO88w/MrysTf7ok8ct1
+ 6661qoI+ayjEmXMP8+8+XvyX3D7hpT2ldN0wSYSaBAAAA
+X-Change-ID: 20260821-b4-resource-muxed-lost-wakeup-36d8d804e191
+To: Mark Brown <broonie@kernel.org>, Kees Cook <kees@kernel.org>
+Cc: linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2592; i=sven@kernel.org;
- h=from:subject:message-id; bh=WrxF+hzknbWy6eCuGGX+A/+N5AW7fUPL2sZ1KI+FggQ=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZH+HLe+IxdyrffM3xjmi3YIcB+Nfa6d4LOU5O0Bp7CM
- v6eOIuOUhYGMS4GWTFFlu377U2fPHwjuHTTpfcwc1iZQIYwcHEKwESu3WZkmDDt7KTCF9O+rfRm
- U37kuvlyb4/eG4UzzhebXjltPf0tIIbhv6dIw76pT2LCiva8NL/+s7jsyjXr203+Vp5Obw4Yti2
- 9xQAA
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787321296; l=2725;
+ i=drj19981414013@gmail.com; s=spd1; h=from:subject:message-id;
+ bh=6IGzf0b/68Vh04oT4XukuXWAvXccrvWh0iRVSpG8jLE=;
+ b=CbjmLHq2ItgsfkRYp7p30gMt8YI3Sofz+R2E2KEHZi34ALtbS1wBlI6fRSYBCIbVtJ7OikN7R
+ 41lRDlabxh8AQ21oEZ9pGe+uUqWd378FWiDahcp+a3FzgYIHkheFDt5
+X-Developer-Key: i=drj19981414013@gmail.com; a=ed25519;
+ pk=7WMYfxvtyutHpCdX474fP0ENk3k/rJxmIXpreEoqPIU=
+X-Endpoint-Received: by B4 Relay for drj19981414013@gmail.com/spd1 with auth_id=967
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-USB3 tunneled via USB4 requires dwc3's PIPE interface to be switched to
-the USB4 NHI which will take care of the tunneling. Add the required
-bringup sequence such that USB3 tunnels work once the USB4 NHI is
-upstream.
+A task waiting for a muxed region can sleep forever in TASK_UNINTERRUPTIBLE
+even though the region it waits for is already free.
+__request_region_locked() queues itself on muxed_resource_wait and drops
+resource_lock before setting TASK_UNINTERRUPTIBLE, while __release_region()
+wakes the queue after dropping the same lock.  A wakeup landing in between
+finds TASK_RUNNING, does not match TASK_NORMAL and is discarded; callers
+hold a muxed region only across a bounded transaction, so no further
+release is coming.  The task is unkillable and its caller never returns.
 
-Signed-off-by: Sven Peter <sven@kernel.org>
+The window is one store wide, but an interrupt is enough to hold the waiter
+in it, and the machine this was seen on runs PREEMPT_DYNAMIC in its
+voluntary default.  Since v6.11 spd5118 exports the DDR5 sensors of AMD
+boards through i2c-piix4, which takes a muxed region per SMBus transaction;
+a third of the in-tree users of request_muxed_region() are hwmon drivers,
+so reading a world-readable attribute is all an unprivileged user needs to
+drive the contention.  The blocked task sleeps holding the i2c adapter bus
+lock, and 27 more piled up behind it.
+
+Fix it by setting the task state before dropping resource_lock, as
+prepare_to_wait() does: the releasing side needs resource_lock to unlink
+the resource, so it cannot reach the wakeup before the state is published.
+
+Fixes: 8b6d043b7ee2 ("resource: shared I/O region support")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: DAI RENJIE <drj19981414013@gmail.com>
 ---
- drivers/phy/apple/atc.c | 41 +++++++++++++++++++++++++++++++++++++----
- 1 file changed, 37 insertions(+), 4 deletions(-)
+Reproduced by building a kernel with the two orderings selectable at
+runtime and a 2ms delay inside the window.  Switching only that knob, a
+two-thread barriered reproducer loses the wakeup 200 times out of 200
+before the fix and 0 out of 200 after it; without the delay it goes 20000
+times through the wait path and loses none.
+---
+ kernel/resource.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/phy/apple/atc.c b/drivers/phy/apple/atc.c
-index 96158d348656..613bcd0ae886 100644
---- a/drivers/phy/apple/atc.c
-+++ b/drivers/phy/apple/atc.c
-@@ -1084,6 +1084,41 @@ static int atcphy_configure_pipehandler_usb3(struct apple_atcphy *atcphy, bool h
- 	return 0;
- }
- 
-+static int atcphy_configure_pipehandler_usb4(struct apple_atcphy *atcphy)
-+{
-+	int ret;
-+
-+	ret = atcphy_pipehandler_check(atcphy);
-+	if (ret)
-+		return ret;
-+
-+	/* Force disable link detection */
-+	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE_VALUES,
-+		PIPEHANDLER_OVERRIDE_VAL_RXDETECT0 | PIPEHANDLER_OVERRIDE_VAL_RXDETECT1);
-+	set32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXVALID);
-+	set32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXDETECT);
-+
-+	ret = atcphy_pipehandler_lock(atcphy);
-+	if (ret) {
-+		dev_err(atcphy->dev, "Failed to lock pipehandler\n");
-+		return ret;
-+	}
-+
-+	/* Configure PIPE mux to the USB4/Thunderbolt controller */
-+	atcphy_pipehandler_set_mux(atcphy, PIPEHANDLER_MUX_CTRL_DATA_USB4,
-+				   PIPEHANDLER_MUX_CTRL_CLK_USB4);
-+
-+	/* Remove link detection override */
-+	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXVALID);
-+	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXDETECT);
-+
-+	ret = atcphy_pipehandler_unlock(atcphy);
-+	if (ret)
-+		dev_warn(atcphy->dev, "Failed to unlock pipehandler\n");
-+
-+	return 0;
-+}
-+
- static int atcphy_configure_pipehandler_dummy(struct apple_atcphy *atcphy)
- {
- 	int ret;
-@@ -1130,10 +1165,8 @@ static int atcphy_configure_pipehandler(struct apple_atcphy *atcphy, bool host)
- 		atcphy->pipehandler_up = true;
- 		break;
- 	case ATCPHY_PIPEHANDLER_STATE_USB4:
--		dev_warn(atcphy->dev,
--			 "ATCPHY_PIPEHANDLER_STATE_USB4 not implemented; falling back to USB2\n");
--		ret = atcphy_configure_pipehandler_dummy(atcphy);
--		atcphy->pipehandler_up = false;
-+		ret = atcphy_configure_pipehandler_usb4(atcphy);
-+		atcphy->pipehandler_up = true;
- 		break;
- 	case ATCPHY_PIPEHANDLER_STATE_DUMMY:
- 		ret = atcphy_configure_pipehandler_dummy(atcphy);
+diff --git a/kernel/resource.c b/kernel/resource.c
+index 3d17e3196a3e..3604b7152808 100644
+--- a/kernel/resource.c
++++ b/kernel/resource.c
+@@ -1350,8 +1350,8 @@ static int __request_region_locked(struct resource *res, struct resource *parent
+ 		}
+ 		if (conflict->flags & flags & IORESOURCE_MUXED) {
+ 			add_wait_queue(&muxed_resource_wait, &wait);
+-			write_unlock(&resource_lock);
+ 			set_current_state(TASK_UNINTERRUPTIBLE);
++			write_unlock(&resource_lock);
+ 			schedule();
+ 			remove_wait_queue(&muxed_resource_wait, &wait);
+ 			write_lock(&resource_lock);
 
--- 
-2.55.0
+---
+base-commit: 818bebeb63dd6bf5f4e07e145f6cdbace520a34c
+change-id: 20260821-b4-resource-muxed-lost-wakeup-36d8d804e191
+
+Best regards,
+--  
+DAI RENJIE <drj19981414013@gmail.com>
 
