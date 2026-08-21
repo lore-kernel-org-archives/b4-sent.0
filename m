@@ -1,10 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Fri, 21 Aug 2026 15:50:28 +0200
-Subject: [PATCH 2/3] phy: apple: atc: Factor out the PIPE mux sequence
+Date: Fri, 21 Aug 2026 15:50:29 +0200
+Subject: [PATCH 3/3] phy: apple: atc: Implement the USB4 pipehandler state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-b4-atcphy-usb4-v1-2-45c0b741e0c0@kernel.org>
+Message-Id: <20260821-b4-atcphy-usb4-v1-3-45c0b741e0c0@kernel.org>
 References: <20260821-b4-atcphy-usb4-v1-0-45c0b741e0c0@kernel.org>
 In-Reply-To: <20260821-b4-atcphy-usb4-v1-0-45c0b741e0c0@kernel.org>
 To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
@@ -13,103 +13,86 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-phy@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4042; i=sven@kernel.org;
- h=from:subject:message-id; bh=4jAaIiXyX7A+vKSBPBQthDtjH8uCrqGssc0AUrXmwpg=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZH+DKuB+oG2UUW35mElVkmWbqs+iXDM3fj9fDQ37uv+
- ly0b93TUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZhIwjlGhlXWluLskgLOt9Mt
- biV2lCx6q3jgvc8Mgc/LP/QrFTB92cTwT8nvyoNc4+rvdWte2zy6dsv7+q9tSgmmJm4cu+Z03FF
- z5QUA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2592; i=sven@kernel.org;
+ h=from:subject:message-id; bh=WrxF+hzknbWy6eCuGGX+A/+N5AW7fUPL2sZ1KI+FggQ=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ1ZH+HLe+IxdyrffM3xjmi3YIcB+Nfa6d4LOU5O0Bp7CM
+ v6eOIuOUhYGMS4GWTFFlu377U2fPHwjuHTTpfcwc1iZQIYwcHEKwESu3WZkmDDt7KTCF9O+rfRm
+ U37kuvlyb4/eG4UzzhebXjltPf0tIIbhv6dIw76pT2LCiva8NL/+s7jsyjXr203+Vp5Obw4Yti2
+ 9xQAA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This sequence is already used in three places and we're about to add a
-fourth copy so let's factor it out to a helper. No functional change.
+USB3 tunneled via USB4 requires dwc3's PIPE interface to be switched to
+the USB4 NHI which will take care of the tunneling. Add the required
+bringup sequence such that USB3 tunnels work once the USB4 NHI is
+upstream.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/phy/apple/atc.c | 46 +++++++++++++++++++---------------------------
- 1 file changed, 19 insertions(+), 27 deletions(-)
+ drivers/phy/apple/atc.c | 41 +++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 37 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/phy/apple/atc.c b/drivers/phy/apple/atc.c
-index a3162f25e6cd..96158d348656 100644
+index 96158d348656..613bcd0ae886 100644
 --- a/drivers/phy/apple/atc.c
 +++ b/drivers/phy/apple/atc.c
-@@ -972,6 +972,19 @@ static int atcphy_pipehandler_check(struct apple_atcphy *atcphy)
+@@ -1084,6 +1084,41 @@ static int atcphy_configure_pipehandler_usb3(struct apple_atcphy *atcphy, bool h
  	return 0;
  }
  
-+static void atcphy_pipehandler_set_mux(struct apple_atcphy *atcphy, u32 data, u32 clk)
++static int atcphy_configure_pipehandler_usb4(struct apple_atcphy *atcphy)
 +{
-+	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
-+	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_OFF));
-+	udelay(10);
-+	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_DATA,
-+	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_DATA, data));
-+	udelay(10);
-+	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
-+	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, clk));
-+	udelay(10);
++	int ret;
++
++	ret = atcphy_pipehandler_check(atcphy);
++	if (ret)
++		return ret;
++
++	/* Force disable link detection */
++	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE_VALUES,
++		PIPEHANDLER_OVERRIDE_VAL_RXDETECT0 | PIPEHANDLER_OVERRIDE_VAL_RXDETECT1);
++	set32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXVALID);
++	set32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXDETECT);
++
++	ret = atcphy_pipehandler_lock(atcphy);
++	if (ret) {
++		dev_err(atcphy->dev, "Failed to lock pipehandler\n");
++		return ret;
++	}
++
++	/* Configure PIPE mux to the USB4/Thunderbolt controller */
++	atcphy_pipehandler_set_mux(atcphy, PIPEHANDLER_MUX_CTRL_DATA_USB4,
++				   PIPEHANDLER_MUX_CTRL_CLK_USB4);
++
++	/* Remove link detection override */
++	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXVALID);
++	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXDETECT);
++
++	ret = atcphy_pipehandler_unlock(atcphy);
++	if (ret)
++		dev_warn(atcphy->dev, "Failed to unlock pipehandler\n");
++
++	return 0;
 +}
 +
- static int atcphy_configure_pipehandler_usb3(struct apple_atcphy *atcphy, bool host)
+ static int atcphy_configure_pipehandler_dummy(struct apple_atcphy *atcphy)
  {
  	int ret;
-@@ -1054,15 +1067,8 @@ static int atcphy_configure_pipehandler_usb3(struct apple_atcphy *atcphy, bool h
- 	}
- 
- 	/* Configure PIPE mux to USB3 PHY */
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_OFF));
--	udelay(10);
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_DATA,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_DATA, PIPEHANDLER_MUX_CTRL_DATA_USB3));
--	udelay(10);
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_USB3));
--	udelay(10);
-+	atcphy_pipehandler_set_mux(atcphy, PIPEHANDLER_MUX_CTRL_DATA_USB3,
-+				   PIPEHANDLER_MUX_CTRL_CLK_USB3);
- 
- 	/* Remove link detection override */
- 	clear32(atcphy->regs.pipehandler + PIPEHANDLER_OVERRIDE, PIPEHANDLER_OVERRIDE_RXVALID);
-@@ -1097,15 +1103,8 @@ static int atcphy_configure_pipehandler_dummy(struct apple_atcphy *atcphy)
- 		dev_warn(atcphy->dev, "Failed to lock pipehandler");
- 
- 	/* Switch to dummy PHY */
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_OFF));
--	udelay(10);
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_DATA,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_DATA, PIPEHANDLER_MUX_CTRL_DATA_DUMMY));
--	udelay(10);
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_DUMMY));
--	udelay(10);
-+	atcphy_pipehandler_set_mux(atcphy, PIPEHANDLER_MUX_CTRL_DATA_DUMMY,
-+				   PIPEHANDLER_MUX_CTRL_CLK_DUMMY);
- 
- 	ret = atcphy_pipehandler_unlock(atcphy);
- 	if (ret)
-@@ -1149,15 +1148,8 @@ static void atcphy_setup_pipehandler(struct apple_atcphy *atcphy)
- {
- 	lockdep_assert_held(&atcphy->lock);
- 
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_OFF));
--	udelay(10);
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_DATA,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_DATA, PIPEHANDLER_MUX_CTRL_DATA_DUMMY));
--	udelay(10);
--	mask32(atcphy->regs.pipehandler + PIPEHANDLER_MUX_CTRL, PIPEHANDLER_MUX_CTRL_CLK,
--	       FIELD_PREP(PIPEHANDLER_MUX_CTRL_CLK, PIPEHANDLER_MUX_CTRL_CLK_DUMMY));
--	udelay(10);
-+	atcphy_pipehandler_set_mux(atcphy, PIPEHANDLER_MUX_CTRL_DATA_DUMMY,
-+				   PIPEHANDLER_MUX_CTRL_CLK_DUMMY);
- }
- 
- static void atcphy_configure_lanes(struct apple_atcphy *atcphy, enum atcphy_mode mode)
+@@ -1130,10 +1165,8 @@ static int atcphy_configure_pipehandler(struct apple_atcphy *atcphy, bool host)
+ 		atcphy->pipehandler_up = true;
+ 		break;
+ 	case ATCPHY_PIPEHANDLER_STATE_USB4:
+-		dev_warn(atcphy->dev,
+-			 "ATCPHY_PIPEHANDLER_STATE_USB4 not implemented; falling back to USB2\n");
+-		ret = atcphy_configure_pipehandler_dummy(atcphy);
+-		atcphy->pipehandler_up = false;
++		ret = atcphy_configure_pipehandler_usb4(atcphy);
++		atcphy->pipehandler_up = true;
+ 		break;
+ 	case ATCPHY_PIPEHANDLER_STATE_DUMMY:
+ 		ret = atcphy_configure_pipehandler_dummy(atcphy);
 
 -- 
 2.55.0
