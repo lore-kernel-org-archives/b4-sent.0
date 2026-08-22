@@ -1,107 +1,89 @@
-From: FAN YE <fy15309206903@gmail.com>
-Date: Sat, 22 Aug 2026 16:24:54 +0000
-Subject: [PATCH] HSI: cmt_speech: fix lost wakeup in cs_char_read()
+From: Rahul Kumar Rai <learn.rahul.rai@gmail.com>
+Date: Sun, 23 Aug 2026 02:30:32 +0530
+Subject: [PATCH] wifi: rtw88: disable ASPM and deep PS on ASUS TUF Gaming
+ A15 FA506IH
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260822-cmt-speech-lost-wakeup-v1-1-27aac852bb1a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFXNiWoC/yXMUQ6CMBCE4auQfXaTpSaNchXjA9RRVhGabkETw
- t2t+vglM/9KhqQwaqqVEhY1ncaCeldR6NvxBtZLMTlxXg7OcXhmtgiEnofJMr/aB+bIe9RHkbL
- wXqicY8JV37/w6fy3zd0dIX9rtG0fXprfQHoAAAA=
-X-Change-ID: 20260822-cmt-speech-lost-wakeup-3e1900082660
-To: Sebastian Reichel <sre@kernel.org>, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787415893; l=3480;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=HHYSwbyjof/va1JoOEQpdo4eqsNpZlQbFHJKLO1qIgc=;
- b=TOE/D6VG8bVhPRaDMIwE796KYPhvnS8GTuJEIXvLM6Nu7LjZ2gqF0z7Ffd45FPfltQ1thx1BA
- sQxJCC5WYFTCItUn/VLyjhw0oAbm2VW2Fwm7XSNeYzkEH3m1EhZM8KZ
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+Message-Id: <20260823-fa506ih-rtw88-quirk-v1-1-ef0984d59e72@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAO8NimoC/yXMQQ6CMBBA0auQWTvJtIbacBXiAssURhKUKagJ4
+ e4WWL7F/yskVuEEVbGC8keSvMYMcykg9M3YMUqbDZasI2+vGJuSnPSo89d7nBbRAV0w5a31FCg
+ ayOVbOcrvuNb302l5PDnM+wq27Q9nRYTvdwAAAA==
+X-Change-ID: 20260823-fa506ih-rtw88-quirk-6c157d80c0f1
+To: Ping-Ke Shih <pkshih@realtek.com>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Rahul Kumar Rai <learn.rahul.rai@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787432431; l=2531;
+ i=learn.rahul.rai@gmail.com; s=20260822; h=from:subject:message-id;
+ bh=Pz6whzycVyQSyKGgPZ2rblAwgpB9ScAj/UQo4bzF9mM=;
+ b=JguIOYUlo7J0TlQpd98nuZmMhoY9B1cNYh/4IdTS6bSWZk4aK5KYYHbZ2xST7iyQZd3kOkH9E
+ 1LCTLu7fZzOAzWuL0xj6F6pvhZVglcdPCQ8mb/lI7ZaMpT+SOViOWSc
+X-Developer-Key: i=learn.rahul.rai@gmail.com; a=ed25519;
+ pk=FKMDyIZj21KmruJbeSaCjxqun1AusvFUl0dM21tRMF4=
+X-Endpoint-Received: by B4 Relay for learn.rahul.rai@gmail.com/20260822 with auth_id=970
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A reader can sleep past an available message in cs_char_read(): the
-queue check happens before prepare_to_wait_exclusive() queues the
-task, and cs_notify() only wakes tasks already on csdata->wait, so a
-message queued in between wakes nobody and the reader waits for
-whichever message shows up next. cs_notify() runs from ssi_pio_thread(),
-so it can land in that window on SMP, or on a preemptible kernel even
-with a single CPU.
+The RTL8822CE on the ASUS TUF Gaming A15 FA506IH fails to return from
+PCIe low-power states across system suspend. The device is inaccessible
+on the way back to D0, so the MAC power-on sequence and the firmware
+handshake that follow it fail, and the driver gives up. Wi-Fi stays
+unavailable until the machine is powered off completely:
 
-Re-check the queues after being queued and skip schedule() if one
-already has an entry, mirroring what wait_event() does internally.
+  rtw88_8822ce 0000:03:00.0: Unable to change power state from D3cold to D0, device inaccessible
+  rtw88_8822ce 0000:03:00.0: failed to poll offset=0x5 mask=0x2 value=0x0
+  rtw88_8822ce 0000:03:00.0: mac power on failed
+  rtw88_8822ce 0000:03:00.0: probe with driver rtw88_8822ce failed with error -114
 
-Fixes: 7f62fe8a5851 ("HSI: cmt_speech: Add cmt-speech driver")
-Assisted-by: Claude:claude-sonnet-5
-Signed-off-by: FAN YE <fy15309206903@gmail.com>
+Reads of the ASPM link-configuration register over DBI also time out
+around the same transitions.
+
+This is not a one-off. It has been recurring on this machine for a long
+time. The kernel logs still on disk begin at 2026-07-20 and already
+contain six failed D-state transitions and three probe failures of this
+kind, and the problem was present well before that window.
+
+This is the same platform ASPM inter-operability problem already handled
+for other machines through rtw_pci_quirks[], including the closely
+related ASUS TUF Gaming A15 FA506II. The FA506IH reports a different DMI
+board name, so that entry does not match. Disabling PCI ASPM and deep
+power save stops the failure on this model as well.
+
+  DMI_SYS_VENDOR = ASUSTeK COMPUTER INC.
+  DMI_BOARD_NAME = FA506IH
+
+Signed-off-by: Rahul Kumar Rai <learn.rahul.rai@gmail.com>
 ---
-Reproduced under QEMU/TCG with a diagnostic build. This driver has no
-hardware and there is no virtual HSI controller, so the harness hands
-cs_hsi_client_probe() a fake hsi_client and calls cs_notify() from an RT
-kthread woken while the reader still holds csdata->lock -- the shape of
-ssi_pio_thread(), which is what runs msg->complete() on omap_ssi.
-waitqueue_active() is read inside cs_notify() just before
-wake_up_interruptible(). One CPU throughout:
+ drivers/net/wireless/realtek/rtw88/pci.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-  arm, CONFIG_PREEMPT
-    unpatched  waitqueue empty at the wakeup; the reader then sleeps in
-               cs_char_read() on the already queued message and wakes
-               only when an unrelated one arrives -- 6.0 s here, which
-               is simply when the test sends it
-    patched    same lost wakeup, read() returns at once (0-1 ms)
-  arm, CONFIG_PREEMPT_VOLUNTARY
-    both       waitqueue not empty, so the race cannot form on one CPU:
-               without CONFIG_PREEMPTION spin_unlock_bh() is not a
-               preemption point and the kthread runs only once the
-               reader is already queued; read() returns at once
-  x86_64, preempt=full and preempt=lazy
-    both       as arm CONFIG_PREEMPT
-
-Rebuilt and re-run from scratch on a second machine, same results.
-Built W=1 for arm/omap2plus and x86_64; checkpatch --strict clean.
----
- drivers/hsi/clients/cmt_speech.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/hsi/clients/cmt_speech.c b/drivers/hsi/clients/cmt_speech.c
-index 7226677ebde7..5be4a4477c44 100644
---- a/drivers/hsi/clients/cmt_speech.c
-+++ b/drivers/hsi/clients/cmt_speech.c
-@@ -1132,6 +1132,7 @@ static ssize_t cs_char_read(struct file *file, char __user *buf, size_t count,
- 	struct cs_char *csdata = file->private_data;
- 	u32 data;
- 	ssize_t retval;
-+	bool empty;
- 
- 	if (count < sizeof(data))
- 		return -EINVAL;
-@@ -1161,7 +1162,18 @@ static ssize_t cs_char_read(struct file *file, char __user *buf, size_t count,
- 		}
- 		prepare_to_wait_exclusive(&csdata->wait, &wait,
- 						TASK_INTERRUPTIBLE);
--		schedule();
-+		/*
-+		 * Re-check after being queued: cs_notify() may have queued
-+		 * an entry and woken csdata->wait in the window between the
-+		 * empty check above and prepare_to_wait_exclusive() adding
-+		 * us to it.
-+		 */
-+		spin_lock_bh(&csdata->lock);
-+		empty = list_empty(&csdata->chardev_queue) &&
-+			list_empty(&csdata->dataind_queue);
-+		spin_unlock_bh(&csdata->lock);
-+		if (empty)
-+			schedule();
- 		finish_wait(&csdata->wait, &wait);
- 	}
+diff --git a/drivers/net/wireless/realtek/rtw88/pci.c b/drivers/net/wireless/realtek/rtw88/pci.c
+index 5b00c1e1eec6..fcb6f4c4cc2d 100644
+--- a/drivers/net/wireless/realtek/rtw88/pci.c
++++ b/drivers/net/wireless/realtek/rtw88/pci.c
+@@ -1789,6 +1789,16 @@ static const struct dmi_system_id rtw_pci_quirks[] = {
+ 		.driver_data = (void *)(BIT(QUIRK_DIS_CAP_PCI_ASPM) |
+ 					BIT(QUIRK_DIS_CAP_LPS_DEEP)),
+ 	},
++	{
++		.callback = rtw_pci_disable_caps,
++		.ident = "ASUS TUF Gaming A15 FA506IH",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_MATCH(DMI_BOARD_NAME, "FA506IH"),
++		},
++		.driver_data = (void *)(BIT(QUIRK_DIS_CAP_PCI_ASPM) |
++					BIT(QUIRK_DIS_CAP_LPS_DEEP)),
++	},
+ 	{}
+ };
  
 
 ---
-base-commit: 26260251022fbc2f248a3d747a9b2b961b18d2d8
-change-id: 20260822-cmt-speech-lost-wakeup-3e1900082660
+base-commit: 66fb95a521110da673090294561844c9f76ebe64
+change-id: 20260823-fa506ih-rtw88-quirk-6c157d80c0f1
 
 Best regards,
 --  
-FAN YE <fy15309206903@gmail.com>
+Rahul Kumar Rai <learn.rahul.rai@gmail.com>
 
