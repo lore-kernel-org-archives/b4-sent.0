@@ -1,191 +1,123 @@
-From: Younes Akhouayri <git@younes.io>
-Date: Sat, 22 Aug 2026 10:44:47 +0200
-Subject: [PATCH v4] rust: num: restrict bool conversion to unsigned Bounded
+From: FAN YE <fy15309206903@gmail.com>
+Date: Sat, 22 Aug 2026 12:45:13 +0000
+Subject: [PATCH] btrfs: zstd: keep the last max level workspace out of
+ reclaim
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260822-fix-rust-bounded-from-bool-submit-v4-1-aa780bfe7f30@younes.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5XOTW7DIBAF4KtErEsLQxKTrnKPqAt+hniqBirAV
- qLIdy+4m6o7Lx96fPOerGAmLOx992QZZyqUYgv7lx1zo4lX5ORbZiDgKLQ88EB3nqdSuU1T9Oh
- 5yOnWQvriZbI3qlyZoNXR6zBIzZrznbF9Wm9cPn5za36iqx3uDWsKcptNdGN/SpmuFN/WKxHvt
- VdGKjXlx7pzlp3aMmmWXHKtAWCwYS+sOT9aFcsrJdYnzbBZhCYaow7WggPw8r+oNouqicE7A0o
- IrU7DX3FZlh8ttU81qwEAAA==
-X-Change-ID: 20260815-fix-rust-bounded-from-bool-submit-3af836d8f718
-To: Alexandre Courbot <acourbot@nvidia.com>, 
- Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
- Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: rust-for-linux@vger.kernel.org, stable@vger.kernel.org, 
- Younes Akhouayri <git@younes.io>, linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260822-btrfs-zstd-max-level-reclaim-v1-1-0eb13c127480@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANiZiWoC/yXMwQ6CMAwA0F8hPdsEZlD0VwyHbnRaM9C0kxAJ/
+ +7U47u8FYxV2OBcraA8i8ljKmh2FYQbTVdGGYrB1e5Qd86hzxoN35YHHGnBxDMnVA6JZMSWfHu
+ iYxO7PUMpnspRll9/6f+2l79zyN8Ttu0DoSZbzYAAAAA=
+X-Change-ID: 20260822-btrfs-zstd-max-level-reclaim-5ab59a71f83e
+To: David Sterba <dsterba@suse.com>, Nick Terrell <terrelln@fb.com>, 
+ Chris Mason <clm@fb.com>
+Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787388300; l=5566;
- i=git@younes.io; s=20260712; h=from:subject:message-id;
- bh=uVHW1vRI40wncU+HxWBGCohHG+09Mqux9cJ0Hc6a/WI=;
- b=IPbUgMeiLVJyxLAr06nVZQ5UqIc20DQ5JzKifJlZWm6zjy3cPAbkufN/xxQyyDUDpV6yfsmYI
- iM1xmrxdwGzBqKVReaowq+ZdA1kdUROa6cOBgNoHMlFY8iPoVUZOxw8
-X-Developer-Key: i=git@younes.io; a=ed25519;
- pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
-X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787402712; l=4571;
+ i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
+ bh=OtLQ/8I9vVwdtLcOdjYllHgpwfHXTt1umssx95LsQ5I=;
+ b=hvDFP+R94dxoHaf3IoWxwvL9AeZaYtUCWHx4GpEe2Xy6GP97zgTjY5NRkQzQV10amzSG4A8ka
+ CRDy6eIl4MxAPti7K9F08ZdZYk0rz+UqvtmEh7lc2YVgiiKkP5z/z+w
+X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
+ pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
+X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From<bool> turns true into 1. A signed Bounded with N = 1 can hold
-only -1 and 0. The current implementation can therefore create a value
-that breaks Bounded's invariant. Deref relies on that invariant and
-calls unreachable_unchecked() when it is broken, so safe Rust can reach
-undefined behavior.
+zstd_put_workspace() makes the "hide this workspace from the reclaim timer"
+decision only when the workspace is returned at its own level.
+Decompression always asks for level 0, so a max level workspace borrowed by
+a read skips the whole block and the test for being the last max level
+workspace is never made: it goes back to idle_ws[] still linked on the lru.
+A read borrowing one while a write holds the other is enough to leave every
+max level workspace on the lru, where the reclaim timer can then free them
+all and clear the level bit.
 
-The other primitive conversions require the source and destination to
-have the same signedness. Treat bool as an unsigned one-bit value and
-allow conversions between bool and Bounded only when the backing integer
-type is unsigned.
+Once no max level workspace is left, zstd_put_workspace() never reaches
+cond_wake_up() and a task sleeping in zstd_get_workspace() after a failed
+allocation has no possible waker.  Make the decision on every put of a max
+level workspace and unlink it from the lru when it is the last one;
+list_del_init() in zstd_find_workspace() keeps the entry usable for that.
+The test also no longer hides workspaces of other levels, which it did
+whenever no max level workspace happened to be idle.
 
-Fixes: 01e345e82ec3 ("rust: num: add Bounded integer wrapping type")
-Closes: https://lore.kernel.org/rust-for-linux/OzuVxu0--J-9@younes.io/
-Cc: stable@vger.kernel.org
-Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
-Assisted-by: Codex:gpt-5.6-sol
-Signed-off-by: Younes Akhouayri <git@younes.io>
+Fixes: 3f93aef535c8 ("btrfs: add zstd compression level support")
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: FAN YE <fy15309206903@gmail.com>
 ---
-Only allow conversions between bool and unsigned Bounded types.
+Reproduced under QEMU/TCG.  Both arms are the same kernel with the reclaim
+interval shortened to 100ms and a module param picking the old or the new
+zstd_put_workspace(); the workload is compress-force=zstd:15, three rounds
+of four concurrent writers followed by drop_caches, four readers and two
+writers.  "unprotected" counts puts of a max level workspace after which
+nothing left in idle_ws[] is off the lru; "borrowed" counts a max level
+workspace taken and returned by a lower level request, the path this patch
+changes.
+
+                    borrowed   unprotected   timer cleared the level bit
+  current code       245/339       118/216                          1/0
+  this patch         300/379           0/0                          0/0
+
+borrowed is of the same order in both arms, so the zeroes are not "the code
+was never reached".  The last column needs the reclaim timer to tick inside
+the window, so it is a coincidence rather than the criterion.
+
+Compile-tested (W=1, x86_64 defconfig + CONFIG_BTRFS_FS=y).  Independent of
+and applies without my lost wakeup fix for zstd_get_workspace(),
+20260821-btrfs-zstd-lost-wakeup-v1-1-84f358d4ea67@gmail.com.
 ---
-Changes in v4:
-- Restrict Bounded-to-bool conversion and into_bool() to unsigned types.
-- Link to v3: https://patch.msgid.link/20260815-fix-rust-bounded-from-bool-submit-v3-1-fdca23008397@younes.io
+ fs/btrfs/zstd.c | 25 ++++++++++++-------------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
 
-Changes in v3:
-- Restrict From<bool> to unsigned Bounded types, matching the other
-  primitive conversions.
-- Remove the BoolFits helper and signed-width list.
-- Link to v2: https://lore.kernel.org/rust-for-linux/20260815-fix-rust-bounded-from-bool-submit-v2-1-aa35bb2c22d1@younes.io/
-
-Changes in v2:
-- Use vertical formatting for the nested `num` import.
-- Link to v1: https://lore.kernel.org/rust-for-linux/20260815-fix-rust-bounded-from-bool-submit-v1-1-882227bf40ba@younes.io/
-
-To: Alexandre Courbot <acourbot@nvidia.com>
-To: Yury Norov <yury.norov@gmail.com>
-To: Miguel Ojeda <ojeda@kernel.org>
-To: Boqun Feng <boqun@kernel.org>
-To: Gary Guo <gary@garyguo.net>
-To: Björn Roy Baron <bjorn3_gh@protonmail.com>
-To: Benno Lossin <lossin@kernel.org>
-To: Andreas Hindborg <a.hindborg@kernel.org>
-To: Alice Ryhl <aliceryhl@google.com>
-To: Trevor Gross <tmgross@umich.edu>
-To: Danilo Krummrich <dakr@kernel.org>
-To: Daniel Almeida <daniel.almeida@collabora.com>
-To: Tamir Duberstein <tamird@kernel.org>
-To: Onur Özkan <work@onurozkan.dev>
-Cc: rust-for-linux@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- rust/kernel/num/bounded.rs | 30 +++++++++++++++++++++---------
- 1 file changed, 21 insertions(+), 9 deletions(-)
-
-diff --git a/rust/kernel/num/bounded.rs b/rust/kernel/num/bounded.rs
-index d192610a687d..2a2b0a4bca5e 100644
---- a/rust/kernel/num/bounded.rs
-+++ b/rust/kernel/num/bounded.rs
-@@ -13,7 +13,10 @@
- };
+diff --git a/fs/btrfs/zstd.c b/fs/btrfs/zstd.c
+index 86919293fd54..8abc4e456f32 100644
+--- a/fs/btrfs/zstd.c
++++ b/fs/btrfs/zstd.c
+@@ -260,7 +260,7 @@ static struct list_head *zstd_find_workspace(struct btrfs_fs_info *fs_info, int
+ 			/* keep its place if it's a lower level using this */
+ 			workspace->req_level = level;
+ 			if (clip_level(level) == workspace->level)
+-				list_del(&workspace->lru_list);
++				list_del_init(&workspace->lru_list);
+ 			if (list_empty(&zwsm->idle_ws[i]))
+ 				clear_bit(i, &zwsm->active_map);
+ 			spin_unlock_bh(&zwsm->lock);
+@@ -335,18 +335,17 @@ void zstd_put_workspace(struct btrfs_fs_info *fs_info, struct list_head *ws)
+ 	ASSERT(zwsm);
+ 	spin_lock_bh(&zwsm->lock);
  
- use kernel::{
--    num::Integer,
-+    num::{
-+        Integer,
-+        Unsigned, //
-+    },
-     prelude::*, //
- };
+-	/* A node is only taken off the lru if we are the corresponding level */
+-	if (clip_level(workspace->req_level) == workspace->level) {
+-		/* Hide a max level workspace from reclaim */
+-		if (list_empty(&zwsm->idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1])) {
+-			INIT_LIST_HEAD(&workspace->lru_list);
+-		} else {
+-			workspace->last_used = jiffies;
+-			list_add(&workspace->lru_list, &zwsm->lru_list);
+-			if (!timer_pending(&zwsm->timer))
+-				mod_timer(&zwsm->timer,
+-					  jiffies + ZSTD_BTRFS_RECLAIM_JIFFIES);
+-		}
++	/* Forward progress depends on always keeping one max level workspace */
++	if (workspace->level == clip_level(ZSTD_BTRFS_MAX_LEVEL) &&
++	    list_empty(&zwsm->idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1])) {
++		list_del_init(&workspace->lru_list);
++	} else if (clip_level(workspace->req_level) == workspace->level) {
++		/* A node is only taken off the lru if we are the corresponding level */
++		workspace->last_used = jiffies;
++		list_add(&workspace->lru_list, &zwsm->lru_list);
++		if (!timer_pending(&zwsm->timer))
++			mod_timer(&zwsm->timer,
++				  jiffies + ZSTD_BTRFS_RECLAIM_JIFFIES);
+ 	}
  
-@@ -174,13 +177,16 @@ fn fits_within<T: Integer>(value: T, num_bits: u32) -> bool {
- /// // `u8` (regardless of the passed value).
- /// // let _ = Bounded::<u32, 6>::from(10u8);
- ///
--/// // Booleans can be converted into single-bit `Bounded`s.
-+/// // Booleans can be converted into unsigned `Bounded`s.
- ///
- /// let v = Bounded::<u64, 1>::from(false);
- /// assert_eq!(v.get(), 0);
- ///
- /// let v = Bounded::<u64, 1>::from(true);
- /// assert_eq!(v.get(), 1);
-+///
-+/// // This does not build because `i8` is signed.
-+/// // let _ = Bounded::<i8, 2>::from(true);
- /// ```
- ///
- /// Infallible conversions from a [`Bounded`] to a primitive integer are also supported, and
-@@ -203,12 +209,16 @@ fn fits_within<T: Integer>(value: T, num_bits: u32) -> bool {
- /// let _v = Bounded::<u32, 10>::new::<10>();
- /// // assert_eq!(u8::from(_v), 10);
- ///
--/// // Single-bit `Bounded`s can be converted into a boolean.
-+/// // Unsigned single-bit `Bounded`s can be converted into a boolean.
- /// let v = Bounded::<u8, 1>::new::<1>();
- /// assert_eq!(bool::from(v), true);
- ///
- /// let v = Bounded::<u8, 1>::new::<0>();
- /// assert_eq!(bool::from(v), false);
-+///
-+/// // This does not build because `i8` is signed.
-+/// // let v = Bounded::<i8, 1>::new::<-1>();
-+/// // let _ = bool::from(v);
- /// ```
- ///
- /// Fallible conversions from any primitive integer to any [`Bounded`] are also supported using the
-@@ -1109,31 +1119,33 @@ fn from(value: Bounded<T, N>) -> $type {
-     i8 i16 i32 i64 isize
- );
- 
--// Single-bit `Bounded`s can be converted from/to a boolean.
-+// Unsigned single-bit `Bounded`s can be converted to a boolean.
- 
- impl<T> From<Bounded<T, 1>> for bool
- where
--    T: Integer + Zeroable,
-+    T: Integer<Signedness = Unsigned> + Zeroable,
- {
-     fn from(value: Bounded<T, 1>) -> Self {
-         value.get() != Zeroable::zeroed()
-     }
- }
- 
-+// Booleans can be converted to unsigned `Bounded`s.
-+
- impl<T, const N: u32> From<bool> for Bounded<T, N>
- where
--    T: Integer + From<bool>,
-+    T: Integer<Signedness = Unsigned> + From<bool>,
- {
-     fn from(value: bool) -> Self {
--        // SAFETY: A boolean can be represented using a single bit, and thus fits within any
--        // integer type for any `N` > 0.
-+        // SAFETY: A boolean is represented by `0` or `1`, so it fits within any valid unsigned
-+        // `Bounded` width.
-         unsafe { Self::__new(T::from(value)) }
-     }
- }
- 
- impl<T> Bounded<T, 1>
- where
--    T: Integer + Zeroable,
-+    T: Integer<Signedness = Unsigned> + Zeroable,
- {
-     /// Converts this [`Bounded`] into a [`bool`].
-     ///
+ 	set_bit(workspace->level, &zwsm->active_map);
 
 ---
-base-commit: 47f27155f17498fccb1f222f79089642337498a9
-change-id: 20260815-fix-rust-bounded-from-bool-submit-3af836d8f718
+base-commit: 26260251022fbc2f248a3d747a9b2b961b18d2d8
+change-id: 20260822-btrfs-zstd-max-level-reclaim-5ab59a71f83e
 
 Best regards,
 --  
-Younes Akhouayri <git@younes.io>
+FAN YE <fy15309206903@gmail.com>
 
