@@ -1,135 +1,191 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Sat, 22 Aug 2026 14:55:33 +0800
-Subject: [PATCH v3] bpf: Annotate bpf_obj_memcpy with data_race
+From: Younes Akhouayri <git@younes.io>
+Date: Sat, 22 Aug 2026 10:44:47 +0200
+Subject: [PATCH v4] rust: num: restrict bool conversion to unsigned Bounded
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260822-bpf-kcsan-obj-memcpy-v3-1-4227b2edd8b4@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NsQ6CMBRFf4V0toY+oAUn/8M40PIqxUCbFomE8
- O8WdHBwcDzJvecsJKA3GMgpWYjHyQRjhwjZISGqrYcbUtNEJpACT0tWUek0vatQD9TKjvbYKzd
- TLtIcJNMKRUPi1XnU5rlrL9c3h4fsUI2ba1u0JozWz3t3Ytvuk4D0d2JilNFMgCqqnAPw8uy8H
- e1w7JFsiQn+kUCUcAEFE3XG8kJ/S9Z1fQH02QaEDwEAAA==
-X-Change-ID: 20260819-bpf-kcsan-obj-memcpy-67042b1fce7d
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>
-Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+44044637ef892e79ca2b@syzkaller.appspotmail.com, 
- Quanye Yang <quanyeyang@proton.me>, Ihor Solodrai <ihor.solodrai@linux.dev>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260822-fix-rust-bounded-from-bool-submit-v4-1-aa780bfe7f30@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5XOTW7DIBAF4KtErEsLQxKTrnKPqAt+hniqBirAV
+ qLIdy+4m6o7Lx96fPOerGAmLOx992QZZyqUYgv7lx1zo4lX5ORbZiDgKLQ88EB3nqdSuU1T9Oh
+ 5yOnWQvriZbI3qlyZoNXR6zBIzZrznbF9Wm9cPn5za36iqx3uDWsKcptNdGN/SpmuFN/WKxHvt
+ VdGKjXlx7pzlp3aMmmWXHKtAWCwYS+sOT9aFcsrJdYnzbBZhCYaow7WggPw8r+oNouqicE7A0o
+ IrU7DX3FZlh8ttU81qwEAAA==
+X-Change-ID: 20260815-fix-rust-bounded-from-bool-submit-3af836d8f718
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, stable@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787381746; l=4009;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=EdAjWYlb5Q2PjeX/bA31+J2pOKETgVMLDyHFAoIpgJ8=;
- b=4hFW+sqs2n7mWyxX2L/0XIoGUg43ttrMGzbnw+4h8coSZ4vMC4DDOtO6E9eVoFYRYmtdm7z1I
- I1KCi35/kkpCgA2QwtHM20zduaSw3S1Be2r17fMoOuUoYdYXYwj15RA
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787388300; l=5566;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=uVHW1vRI40wncU+HxWBGCohHG+09Mqux9cJ0Hc6a/WI=;
+ b=IPbUgMeiLVJyxLAr06nVZQ5UqIc20DQ5JzKifJlZWm6zjy3cPAbkufN/xxQyyDUDpV6yfsmYI
+ iM1xmrxdwGzBqKVReaowq+ZdA1kdUROa6cOBgNoHMlFY8iPoVUZOxw8
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-syzbot reported KCSAN write-write races when two tasks concurrently
-update the same map value. Both accesses reach the ordinary memcpy()
-paths in bpf_obj_memcpy() through copy_map_value().
+From<bool> turns true into 1. A signed Bounded with N = 1 can hold
+only -1 and 0. The current implementation can therefore create a value
+that breaks Bounded's invariant. Deref relies on that invariant and
+calls unreachable_unchecked() when it is broken, so safe Rust can reach
+undefined behavior.
 
-Unlocked in-place updates of published map values are intentionally not
-serialized and may produce torn values. Callers requiring consistency
-must provide synchronization appropriate for the map type.
-bpf_long_memcpy() already annotates the same behavior for long-aligned
-copies.
+The other primitive conversions require the source and destination to
+have the same signedness. Treat bool as an unsigned one-bit value and
+allow conversions between bool and Bounded only when the backing integer
+type is unsigned.
 
-Annotate the ordinary memcpy() sites in bpf_obj_memcpy() with
-data_race(), matching bpf_long_memcpy(). This documents the existing
-concurrency semantics and suppresses KCSAN reports for these intentional
-races without changing synchronization or map update behavior.
-
-Reported-by: syzbot+44044637ef892e79ca2b@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=44044637ef892e79ca2b
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Fixes: 01e345e82ec3 ("rust: num: add Bounded integer wrapping type")
+Closes: https://lore.kernel.org/rust-for-linux/OzuVxu0--J-9@younes.io/
+Cc: stable@vger.kernel.org
+Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
+Assisted-by: Codex:gpt-5.6-sol
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
-The annotations remain in the common bpf_obj_memcpy() helper, matching
-bpf_long_memcpy(). This keeps the existing copy helper interfaces
-unchanged. A narrower annotation would require propagating the
-concurrency context through copy_map_value() or introducing separate
-copy helpers.
-
-The following checkpatch warnings are expected:
-
-- DATA_RACE is reported for the three annotations because checkpatch
-  only recognizes an immediately adjacent comment.
-- MISSING_FIXES_TAG is reported because the commit references syzkaller.
-  No Fixes tag is included because this documents long-standing
-  intentional lockless semantics rather than a regression introduced
-  by a particular commit.
+Only allow conversions between bool and unsigned Bounded types.
 ---
+Changes in v4:
+- Restrict Bounded-to-bool conversion and into_bool() to unsigned types.
+- Link to v3: https://patch.msgid.link/20260815-fix-rust-bounded-from-bool-submit-v3-1-fdca23008397@younes.io
+
 Changes in v3:
-- Restore the original bpf_obj_memcpy() comment as suggested by Andrii.
-- Use the properly cased full name for authorship and Signed-off-by.
-- Link to v2: https://patch.msgid.link/20260820-bpf-kcsan-obj-memcpy-v2-1-672517a3145f@proton.me
+- Restrict From<bool> to unsigned Bounded types, matching the other
+  primitive conversions.
+- Remove the BoolFits helper and signed-width list.
+- Link to v2: https://lore.kernel.org/rust-for-linux/20260815-fix-rust-bounded-from-bool-submit-v2-1-aa35bb2c22d1@younes.io/
 
 Changes in v2:
-- Drop the BPF_F_LOCK recommendation because it is unavailable for
-  per-CPU maps.
-- Scope the concurrency description to unlocked in-place updates of
-  published map values.
-- Fold the redundant commit message paragraphs.
-- Link to v1:
-  https://patch.msgid.link/20260820-bpf-kcsan-obj-memcpy-v1-1-372c59462268@proton.me
+- Use vertical formatting for the nested `num` import.
+- Link to v1: https://lore.kernel.org/rust-for-linux/20260815-fix-rust-bounded-from-bool-submit-v1-1-882227bf40ba@younes.io/
 
-To: Alexei Starovoitov <ast@kernel.org>
-To: Daniel Borkmann <daniel@iogearbox.net>
-To: Andrii Nakryiko <andrii@kernel.org>
-To: Eduard Zingerman <eddyz87@gmail.com>
-To: Kumar Kartikeya Dwivedi <memxor@gmail.com>
-To: Martin KaFai Lau <martin.lau@linux.dev>
-To: Song Liu <song@kernel.org>
-To: Yonghong Song <yonghong.song@linux.dev>
-To: Jiri Olsa <jolsa@kernel.org>
-To: Emil Tsalapatis <emil@etsalapatis.com>
-To: John Fastabend <john.fastabend@gmail.com>
-To: Ihor Solodrai <ihor.solodrai@linux.dev>
-Cc: bpf@vger.kernel.org
+To: Alexandre Courbot <acourbot@nvidia.com>
+To: Yury Norov <yury.norov@gmail.com>
+To: Miguel Ojeda <ojeda@kernel.org>
+To: Boqun Feng <boqun@kernel.org>
+To: Gary Guo <gary@garyguo.net>
+To: Björn Roy Baron <bjorn3_gh@protonmail.com>
+To: Benno Lossin <lossin@kernel.org>
+To: Andreas Hindborg <a.hindborg@kernel.org>
+To: Alice Ryhl <aliceryhl@google.com>
+To: Trevor Gross <tmgross@umich.edu>
+To: Danilo Krummrich <dakr@kernel.org>
+To: Daniel Almeida <daniel.almeida@collabora.com>
+To: Tamir Duberstein <tamird@kernel.org>
+To: Onur Özkan <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 ---
- include/linux/bpf.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ rust/kernel/num/bounded.rs | 30 +++++++++++++++++++++---------
+ 1 file changed, 21 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/bpf.h b/include/linux/bpf.h
-index b7dbf3d9b5c0..6248ff2f506d 100644
---- a/include/linux/bpf.h
-+++ b/include/linux/bpf.h
-@@ -572,7 +572,7 @@ static inline void bpf_obj_memcpy(struct btf_record *rec,
- 		if (long_memcpy)
- 			bpf_long_memcpy(dst, src, size);
- 		else
--			memcpy(dst, src, size);
-+			data_race(memcpy(dst, src, size));
- 		return;
- 	}
+diff --git a/rust/kernel/num/bounded.rs b/rust/kernel/num/bounded.rs
+index d192610a687d..2a2b0a4bca5e 100644
+--- a/rust/kernel/num/bounded.rs
++++ b/rust/kernel/num/bounded.rs
+@@ -13,7 +13,10 @@
+ };
  
-@@ -580,10 +580,10 @@ static inline void bpf_obj_memcpy(struct btf_record *rec,
- 		u32 next_off = rec->fields[i].offset;
- 		u32 sz = next_off - curr_off;
+ use kernel::{
+-    num::Integer,
++    num::{
++        Integer,
++        Unsigned, //
++    },
+     prelude::*, //
+ };
  
--		memcpy(dst + curr_off, src + curr_off, sz);
-+		data_race(memcpy(dst + curr_off, src + curr_off, sz));
- 		curr_off += rec->fields[i].size + sz;
- 	}
--	memcpy(dst + curr_off, src + curr_off, size - curr_off);
-+	data_race(memcpy(dst + curr_off, src + curr_off, size - curr_off));
+@@ -174,13 +177,16 @@ fn fits_within<T: Integer>(value: T, num_bits: u32) -> bool {
+ /// // `u8` (regardless of the passed value).
+ /// // let _ = Bounded::<u32, 6>::from(10u8);
+ ///
+-/// // Booleans can be converted into single-bit `Bounded`s.
++/// // Booleans can be converted into unsigned `Bounded`s.
+ ///
+ /// let v = Bounded::<u64, 1>::from(false);
+ /// assert_eq!(v.get(), 0);
+ ///
+ /// let v = Bounded::<u64, 1>::from(true);
+ /// assert_eq!(v.get(), 1);
++///
++/// // This does not build because `i8` is signed.
++/// // let _ = Bounded::<i8, 2>::from(true);
+ /// ```
+ ///
+ /// Infallible conversions from a [`Bounded`] to a primitive integer are also supported, and
+@@ -203,12 +209,16 @@ fn fits_within<T: Integer>(value: T, num_bits: u32) -> bool {
+ /// let _v = Bounded::<u32, 10>::new::<10>();
+ /// // assert_eq!(u8::from(_v), 10);
+ ///
+-/// // Single-bit `Bounded`s can be converted into a boolean.
++/// // Unsigned single-bit `Bounded`s can be converted into a boolean.
+ /// let v = Bounded::<u8, 1>::new::<1>();
+ /// assert_eq!(bool::from(v), true);
+ ///
+ /// let v = Bounded::<u8, 1>::new::<0>();
+ /// assert_eq!(bool::from(v), false);
++///
++/// // This does not build because `i8` is signed.
++/// // let v = Bounded::<i8, 1>::new::<-1>();
++/// // let _ = bool::from(v);
+ /// ```
+ ///
+ /// Fallible conversions from any primitive integer to any [`Bounded`] are also supported using the
+@@ -1109,31 +1119,33 @@ fn from(value: Bounded<T, N>) -> $type {
+     i8 i16 i32 i64 isize
+ );
+ 
+-// Single-bit `Bounded`s can be converted from/to a boolean.
++// Unsigned single-bit `Bounded`s can be converted to a boolean.
+ 
+ impl<T> From<Bounded<T, 1>> for bool
+ where
+-    T: Integer + Zeroable,
++    T: Integer<Signedness = Unsigned> + Zeroable,
+ {
+     fn from(value: Bounded<T, 1>) -> Self {
+         value.get() != Zeroable::zeroed()
+     }
  }
  
- static inline void copy_map_value(struct bpf_map *map, void *dst, void *src)
++// Booleans can be converted to unsigned `Bounded`s.
++
+ impl<T, const N: u32> From<bool> for Bounded<T, N>
+ where
+-    T: Integer + From<bool>,
++    T: Integer<Signedness = Unsigned> + From<bool>,
+ {
+     fn from(value: bool) -> Self {
+-        // SAFETY: A boolean can be represented using a single bit, and thus fits within any
+-        // integer type for any `N` > 0.
++        // SAFETY: A boolean is represented by `0` or `1`, so it fits within any valid unsigned
++        // `Bounded` width.
+         unsafe { Self::__new(T::from(value)) }
+     }
+ }
+ 
+ impl<T> Bounded<T, 1>
+ where
+-    T: Integer + Zeroable,
++    T: Integer<Signedness = Unsigned> + Zeroable,
+ {
+     /// Converts this [`Bounded`] into a [`bool`].
+     ///
 
 ---
-base-commit: 75b0a6db4300e4c2c9e97a0848deaa7acfb42fb7
-change-id: 20260819-bpf-kcsan-obj-memcpy-67042b1fce7d
+base-commit: 47f27155f17498fccb1f222f79089642337498a9
+change-id: 20260815-fix-rust-bounded-from-bool-submit-3af836d8f718
 
 Best regards,
 --  
-Quanye Yang <quanyeyang@proton.me>
+Younes Akhouayri <git@younes.io>
 
