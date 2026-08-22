@@ -1,232 +1,90 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 22 Aug 2026 04:25:24 +0200
-Subject: [PATCH] clk: qcom: camcc-sdm845/670: Raise CSIPHY timer clock
- limit
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Fri, 21 Aug 2026 19:28:51 -0700
+Subject: [PATCH] ceph: keep dentry in cache when inode still holds caps
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260822-csiphy-sdm845-limits-v1-1-d360bf7cd38f@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSQqEMBBA0atIrbtA40DwKtILk5Ra4kTKbhTx7
- kZdvsX/Bwh5JoEyOsDTn4XnKSD5RGC7emoJ2QWDilURa6XQCi/djuJGneU48MiroEkodaZucpd
- qCOniqeHt2Vbf1/IzPdn1fsF5XqAI/A14AAAA
-X-Change-ID: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
-To: Bjorn Andersson <andersson@kernel.org>, Stephen Boyd <sboyd@kernel.org>, 
- Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20260821-b4-b4-ceph-dentry-caps-v1-1-ff9b77511c97@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMBCE4Vche3YTqFWJr2I4lHaA9VCbLhAN4
+ d0tmszlO8y/kSILlO7VRhmrqLxiQXOqyE8ujmAJxWRqc61b03Bvj3mkiQPinD/sXVJ2wdrb2Qa
+ 49kLlnDIGef/Cj+5vXfon/HzUaN+/qvOFhnoAAAA=
+X-Change-ID: 20260821-b4-b4-ceph-dentry-caps-ad44734dea85
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5946; i=david@ixit.cz;
- h=from:subject:message-id; bh=DYQKHB8AunZw7f/1fW2n+DYOf95ExVe+TTy2tBTvI1Q=;
- b=kA0DAAgBYAI/xNNJIHIByyZiAGqJCJWjGJGYquDI9eAI1VgPj41qzj2+T/sbzqxfO18UYVgEg
- IkCMwQAAQgAHRYhBNd6Cc/u3Cu9U6cEdGACP8TTSSByBQJqiQiVAAoJEGACP8TTSSBymGoQAL4z
- /9+pDXWW6rn2EaAPVVhf6SvOk18a4gNEbEELXCqsAMhF3Rqgre878k85Q9eO3tnNyG0P9JWeXn/
- xDJbrtP2W1EsV+lWZRKwiaKelkeB7VLKndYdoUlXJwJjK+D2WOxXmnOamRFDeU9WWY5zGu62OrK
- qZp11Ch4Fi7NbQfc1ui6TzYy2DVSj0DYK3lxDF/ChxHbZz05mvfrcXW0zXQCX7Px532P2Eu9PAT
- xf10lEIpLyLgyf/JMfgn5jJ/x6B5eL85nvBbOzfp06CgHXkxas2PMrvT26dvkwnXFUVSViSIsym
- lyb2KkWhGQB9A0u+tGQICNuy+TYazu5oj/sTKZ3PT9HxJgXehFa6zydaq+DbVSl2aEG3vbOtd6P
- 2JcsA25eZEHuMVEI5UNz1jS0q4u7CaLYO2R/QoIq4uyE2QjDQF8iLbhjYQcPatEC7LXFGZYqgF2
- pBmq584YxUr3mllKrL5lm9TXnxNLsKZN1hwnb39cORkWPFiIdoK9LDqK6j4aEL+7TxWkEfWuQOL
- vKSOnixIdpQD1PPy0cO7lo11XtIk9beb5I1I/AIgBPfmIEYe7gShR/n/+WPnsNLpzoA+zZORLB/
- 1iNJJvYaNgWKvvgHhYb9BjpcrpHK+30AyJ6Kn2E7Lq6lcx2pPiSCDupCKwPSX8MlgIO4lqJ/Jxm
- wJQy5
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787365734; l=2605;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=o87BO+Zj9nfVEH3ZzSUVwdEu9iBuFdqRTUS2c5dkPxI=;
+ b=FoUTAS/3UP8HD35Ara5xTQueufclkIvm1HlPU1JRHn7li0/zt04oC63/W1K9csd6RFwlj6YhL
+ 2Da6n6clfqhBdnGPTnS06T7z6N80pwFROnGDOZHRlT5kPThy9IqlSpp
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The sdm845 CSIPHY timer clock only listed up to 269.33 MHz, capping the
-supported CSI link frequency at roughly 1.07 GHz
-(CSIPHY timer = link_freq / 4). The Samsung S5K2X7SP camera runs at a
-1.15 GHz link frequency, so camss rejected powering up the
-pipeline with 'Pixel clock is too high for CSIPHY'.
+ceph_d_delete() drops a dentry once its lease expires, which
+releases the inode and destroys its page cache at the last close.
+A buffered write that outlasts the dentry lease duration (30s by
+default on the MDS side) is flushed and closed, yet the reopen
+re-reads everything from the OSDs instead of the page cache, even
+though the caps and the pages are still valid.
 
-Add a 288 MHz entry to the shared camcc CSIPHY timer frequency table
-(PLL1 VCO 1152 MHz, well within range) and add a 400 MHz entry to the
-sdm845 CSIPHY timer clock_rate tables. The camss min_rate check now
-passes and the timer clock rounds to 288 MHz, matching the ~287.5 MHz
-required by the 1.15 GHz link.
+Keep the dentry when the inode still holds caps: the caps guarantee
+the inode object is still valid, and the name linkage is revalidated
+against the MDS by ceph_d_revalidate() on the next lookup anyway.
 
-Assisted-by: tencent:hy3
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Keeping the dentry also keeps the inode and its page cache around
+longer than before.  This is bounded: caps no longer needed by any
+open file or by dirty data are released once the delayed release
+window expires (caps_wanted_delay_max, 60s by default) via
+ceph_check_delayed_caps(), after which the dentry is just an
+ordinary cached dentry.  It is also fully reclaimable: ->d_delete()
+is only consulted on the last dput (in retain_dentry()), while the
+dcache shrinker (shrink_dentry_list() -> __dentry_kill()) does not
+call it, so memory pressure frees these dentries like any others.
+
+The check is deliberately racy: i_ceph_lock cannot be taken under
+dentry->d_lock, but a false result only means keeping or dropping a
+dentry that could have gone the other way, which is safe.
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
-Tested on SHIFT 6MQ with next-20260820.
----
- drivers/clk/qcom/camcc-sdm845.c           |  1 +
- drivers/media/platform/qcom/camss/camss.c | 14 +++++++-------
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ fs/ceph/dir.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/drivers/clk/qcom/camcc-sdm845.c b/drivers/clk/qcom/camcc-sdm845.c
-index 534dc56fc13ca..77bb783b4ef0a 100644
---- a/drivers/clk/qcom/camcc-sdm845.c
-+++ b/drivers/clk/qcom/camcc-sdm845.c
-@@ -250,16 +250,17 @@ static struct clk_rcg2 cam_cc_cphy_rx_clk_src = {
- 		.ops = &clk_rcg2_ops,
- 	},
- };
- 
- static const struct freq_tbl ftbl_cam_cc_csi0phytimer_clk_src[] = {
- 	F(19200000, P_BI_TCXO, 1, 0, 0),
- 	F(240000000, P_CAM_CC_PLL2_OUT_EVEN, 2, 0, 0),
- 	F(269333333, P_CAM_CC_PLL1_OUT_EVEN, 3, 0, 0),
-+	F(288000000, P_CAM_CC_PLL1_OUT_EVEN, 2, 0, 0),
- 	{ }
- };
- 
- static struct clk_rcg2 cam_cc_csi0phytimer_clk_src = {
- 	.cmd_rcgr = 0x5004,
- 	.mnd_width = 0,
- 	.hid_width = 5,
- 	.parent_map = cam_cc_parent_map_0,
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index 2123f6388e3d7..e1bf828cf7af2 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -1070,17 +1070,17 @@ static const struct camss_subdev_resources csiphy_res_670[] = {
- 			{ .supply = "vdda-phy", .init_load_uA = 42800 },
- 			{ .supply = "vdda-pll", .init_load_uA = 13900 }
- 		},
- 		.clock = { "soc_ahb", "cpas_ahb",
- 			   "csiphy0", "csiphy0_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy0" },
- 		.interrupt = { "csiphy0" },
- 		.csiphy = {
- 			.id = 0,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
- 	},
-@@ -1091,17 +1091,17 @@ static const struct camss_subdev_resources csiphy_res_670[] = {
- 			{ .supply = "vdda-phy", .init_load_uA = 42800 },
- 			{ .supply = "vdda-pll", .init_load_uA = 13900 }
- 		},
- 		.clock = { "soc_ahb", "cpas_ahb",
- 			   "csiphy1", "csiphy1_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy1" },
- 		.interrupt = { "csiphy1" },
- 		.csiphy = {
- 			.id = 1,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
- 	},
-@@ -1112,17 +1112,17 @@ static const struct camss_subdev_resources csiphy_res_670[] = {
- 			{ .supply = "vdda-phy", .init_load_uA = 42800 },
- 			{ .supply = "vdda-pll", .init_load_uA = 13900 }
- 		},
- 		.clock = { "soc_ahb", "cpas_ahb",
- 			   "csiphy2", "csiphy2_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy2" },
- 		.interrupt = { "csiphy2" },
- 		.csiphy = {
- 			.id = 2,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
+diff --git a/fs/ceph/dir.c b/fs/ceph/dir.c
+index f4e0bf244fd2..a7d33ad9d2c7 100644
+--- a/fs/ceph/dir.c
++++ b/fs/ceph/dir.c
+@@ -2090,6 +2090,20 @@ static int ceph_d_delete(const struct dentry *dentry)
+ 		if (__dir_lease_try_check(dentry))
+ 			return 0;
  	}
-@@ -1263,17 +1263,17 @@ static const struct camss_subdev_resources csiphy_res_845[] = {
- 				"csiphy0_timer_src", "csiphy0_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy0" },
- 		.interrupt = { "csiphy0" },
- 		.csiphy = {
- 			.id = 0,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
- 	},
-@@ -1286,17 +1286,17 @@ static const struct camss_subdev_resources csiphy_res_845[] = {
- 				"csiphy1_timer_src", "csiphy1_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy1" },
- 		.interrupt = { "csiphy1" },
- 		.csiphy = {
- 			.id = 1,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
- 	},
-@@ -1309,17 +1309,17 @@ static const struct camss_subdev_resources csiphy_res_845[] = {
- 				"csiphy2_timer_src", "csiphy2_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy2" },
- 		.interrupt = { "csiphy2" },
- 		.csiphy = {
- 			.id = 2,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
- 	},
-@@ -1332,17 +1332,17 @@ static const struct camss_subdev_resources csiphy_res_845[] = {
- 				"csiphy3_timer_src", "csiphy3_timer" },
- 		.clock_rate = { { 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
- 				{ 0 },
--				{ 19200000, 240000000, 269333333 } },
-+				{ 19200000, 240000000, 269333333, 400000000 } },
- 		.reg = { "csiphy3" },
- 		.interrupt = { "csiphy3" },
- 		.csiphy = {
- 			.id = 3,
- 			.hw_ops = &csiphy_ops_3ph_1_0,
- 			.formats = &csiphy_formats_sdm845
- 		}
- 	}
++	/*
++	 * The lease has expired, but if the inode still holds caps, keep
++	 * the dentry: dropping it would release the inode and destroy its
++	 * page cache (e.g. on the last close after a long write).  The
++	 * caps guarantee the inode itself is still valid, and the name
++	 * linkage is revalidated against the MDS on the next lookup
++	 * anyway.
++	 *
++	 * This is deliberately racy: we can't take i_ceph_lock under
++	 * dentry->d_lock, but a false result only means we keep or drop a
++	 * dentry we could have done the opposite with, which is safe.
++	 */
++	if (__ceph_is_any_real_caps(ceph_inode(d_inode(dentry))))
++		return 0;
+ 	return 1;
+ }
+ 
 
 ---
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
+base-commit: 6a8322d32e2e2d3e364d31fc86c784e0e0105c08
+change-id: 20260821-b4-b4-ceph-dentry-caps-ad44734dea85
 
 Best regards,
 --  
-David Heidelberg <david@ixit.cz>
+Xiubo Li <xiubo.li@clyso.com>
 
