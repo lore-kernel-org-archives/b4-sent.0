@@ -1,90 +1,80 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Fri, 21 Aug 2026 19:28:51 -0700
-Subject: [PATCH] ceph: keep dentry in cache when inode still holds caps
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Fri, 21 Aug 2026 23:42:59 -0500
+Subject: [PATCH v2] drm/nouveau: Use write-combined maps for coherent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-b4-b4-ceph-dentry-caps-v1-1-ff9b77511c97@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMBCE4Vche3YTqFWJr2I4lHaA9VCbLhAN4
- d0tmszlO8y/kSILlO7VRhmrqLxiQXOqyE8ujmAJxWRqc61b03Bvj3mkiQPinD/sXVJ2wdrb2Qa
- 49kLlnDIGef/Cj+5vXfon/HzUaN+/qvOFhnoAAAA=
-X-Change-ID: 20260821-b4-b4-ceph-dentry-caps-ad44734dea85
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787365734; l=2605;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=o87BO+Zj9nfVEH3ZzSUVwdEu9iBuFdqRTUS2c5dkPxI=;
- b=FoUTAS/3UP8HD35Ara5xTQueufclkIvm1HlPU1JRHn7li0/zt04oC63/W1K9csd6RFwlj6YhL
- 2Da6n6clfqhBdnGPTnS06T7z6N80pwFROnGDOZHRlT5kPThy9IqlSpp
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Message-Id: <20260821-tegra-coherent-wc-v2-1-2b1ddb67bf18@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7RimEUxdeQ/Dok4HmESoaRvUE
+ O5u5QAu30v++yskiSoJLtUKURZNGuYC5lABj24eBNUXBlObtj6bBrMM0SGHUaLMGV+MZO2JPLn
+ GtTWU3TNKr++9eesKj5pyiJ/9YqGf/VdbCAl975mtsWzofh0mp48jhwm6bdu+iwT7VbIAAAA=
+X-Change-ID: 20260725-tegra-coherent-wc-19941d1a5a60
+To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Karol Herbst <kherbst@redhat.com>, 
+ Faith Ekstrand <faith.ekstrand@collabora.com>, 
+ Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787373804; l=1825;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=6HYeU8KylnBhcnrcZPOXIGFiI2xLSNaxtWKW6C5P3EY=;
+ b=E+K0KUreTCalBE7SgwbmAoYYgW1vWcIP+4h8O5xvCnM/Xw/+v3R7Ojy+JrPJaTgM+vbqU6QDQ
+ TqOCd3WkGgIDuzAuBIfm4z/IH0L8P9txEOi2/citcAVSjvqvuIRgS7A
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ceph_d_delete() drops a dentry once its lease expires, which
-releases the inode and destroys its page cache at the last close.
-A buffered write that outlasts the dentry lease duration (30s by
-default on the MDS side) is flushed and closed, yet the reopen
-re-reads everything from the OSDs instead of the page cache, even
-though the caps and the pages are still valid.
+From: Faith Ekstrand <faith.ekstrand@collabora.com>
 
-Keep the dentry when the inode still holds caps: the caps guarantee
-the inode object is still valid, and the name linkage is revalidated
-against the MDS by ceph_d_revalidate() on the next lookup anyway.
+On Tegra devices, uncached maps traslate to device memory, causing
+unaligned accesses by userspace resulting in a SIGBUS. Instead, use
+write-combined maps to ensure proper access.
 
-Keeping the dentry also keeps the inode and its page cache around
-longer than before.  This is bounded: caps no longer needed by any
-open file or by dirty data are released once the delayed release
-window expires (caps_wanted_delay_max, 60s by default) via
-ceph_check_delayed_caps(), after which the dentry is just an
-ordinary cached dentry.  It is also fully reclaimable: ->d_delete()
-is only consulted on the last dput (in retain_dentry()), while the
-dcache shrinker (shrink_dentry_list() -> __dentry_kill()) does not
-call it, so memory pressure frees these dentries like any others.
+This would also affect discrete cards on any Arm device. It was
+determined that discrete cards regardless of cpu arch should use
+write-combined maps for coherent anyways. Thus this change is made for
+all gpu types.
 
-The check is deliberately racy: i_ceph_lock cannot be taken under
-dentry->d_lock, but a false result only means keeping or dropping a
-dentry that could have gone the other way, which is safe.
-
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Signed-off-by: Faith Ekstrand <faith.ekstrand@collabora.com>
+Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- fs/ceph/dir.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Without this change, nouveau can easily hit sigbus errors in the Android
+UI rendering via nvk or running vulkan deqp tests on Tegra. Changing
+coherent maps to use write-combined stops the crashing.
+---
+Changes in v2:
+- Set write-combined for coherent on all gpu types
+- Link to v1: https://lore.kernel.org/r/20260725-tegra-coherent-wc-v1-1-dfdcc929c21b@gmail.com
+---
+ drivers/gpu/drm/nouveau/nouveau_sgdma.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/fs/ceph/dir.c b/fs/ceph/dir.c
-index f4e0bf244fd2..a7d33ad9d2c7 100644
---- a/fs/ceph/dir.c
-+++ b/fs/ceph/dir.c
-@@ -2090,6 +2090,20 @@ static int ceph_d_delete(const struct dentry *dentry)
- 		if (__dir_lease_try_check(dentry))
- 			return 0;
- 	}
-+	/*
-+	 * The lease has expired, but if the inode still holds caps, keep
-+	 * the dentry: dropping it would release the inode and destroy its
-+	 * page cache (e.g. on the last close after a long write).  The
-+	 * caps guarantee the inode itself is still valid, and the name
-+	 * linkage is revalidated against the MDS on the next lookup
-+	 * anyway.
-+	 *
-+	 * This is deliberately racy: we can't take i_ceph_lock under
-+	 * dentry->d_lock, but a false result only means we keep or drop a
-+	 * dentry we could have done the opposite with, which is safe.
-+	 */
-+	if (__ceph_is_any_real_caps(ceph_inode(d_inode(dentry))))
-+		return 0;
- 	return 1;
- }
+diff --git a/drivers/gpu/drm/nouveau/nouveau_sgdma.c b/drivers/gpu/drm/nouveau/nouveau_sgdma.c
+index fa3b4ebf38a83..2bd0376193aee 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_sgdma.c
++++ b/drivers/gpu/drm/nouveau/nouveau_sgdma.c
+@@ -72,9 +72,7 @@ nouveau_sgdma_create_ttm(struct ttm_buffer_object *bo, uint32_t page_flags)
+ 	struct nouveau_sgdma_be *nvbe;
+ 	enum ttm_caching caching;
  
+-	if (nvbo->force_coherent)
+-		caching = ttm_uncached;
+-	else if (drm->agp.bridge)
++	if (nvbo->force_coherent || drm->agp.bridge)
+ 		caching = ttm_write_combined;
+ 	else
+ 		caching = ttm_cached;
 
 ---
-base-commit: 6a8322d32e2e2d3e364d31fc86c784e0e0105c08
-change-id: 20260821-b4-b4-ceph-dentry-caps-ad44734dea85
+base-commit: 903c1cf6dff9964e71eda98a39e2e5d442050472
+change-id: 20260725-tegra-coherent-wc-19941d1a5a60
 
 Best regards,
---  
-Xiubo Li <xiubo.li@clyso.com>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
