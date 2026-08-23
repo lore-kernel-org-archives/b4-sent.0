@@ -1,141 +1,94 @@
-From: FAN YE <fy15309206903@gmail.com>
-Date: Sun, 23 Aug 2026 14:23:03 +0000
-Subject: [PATCH] btrfs: zstd: fix hang when the workspace preallocation
- fails
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH v2 0/7] thunderbolt: Fix DP tunnel teardown while an async
+ DPRX read is running
+Date: Sun, 23 Aug 2026 18:09:13 +0200
+Message-Id: <20260823-b4-tbt-fixes-v2-0-26a18a426c9f@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260823-btrfs-zstd-prealloc-hang-v1-1-d11d25cfb467@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEYCi2oC/yWMQQqDMBBFryKzdiAmtUSvIi5MHNspopKJpVS8u
- 1GXj//f20AoMAnU2QaBviw8TwmKPAP/7qYXIfeJQSv9VFYbdDEMgn+JPS6BunGcPZ5HNM6qwpU
- PW1EFSU/rwL8r3bQ3y+o+5OPZg30/AC4pwI18AAAA
-X-Change-ID: 20260823-btrfs-zstd-prealloc-hang-3b801b5489e9
-To: Nick Terrell <terrelln@fb.com>, Chris Mason <clm@fb.com>, 
- David Sterba <dsterba@suse.com>
-Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNQQ7CIBREr9L8td8AabG68h6miwK/LWpaA0g0D
+ XcXaly4fJmZNyt4cpY8nKoVHEXr7TJnELsK9NTPI6E1mUEwIVnLG1Q1BhVwsC/y2AvZHnkrGZc
+ G8uThaAvy4tJ92T/VlXQojtKYrA+Le29/kZfeT334V0eODMmQEbXkQzPo843cTPf94kboUkof/
+ iyIHLsAAAA=
+X-Change-ID: 20260815-b4-tbt-fixes-a2689186016d
+To: Andreas Noever <andreas.noever@gmail.com>, 
+ Mika Westerberg <westeri@kernel.org>, 
+ Yehezkel Bernat <YehezkelShB@gmail.com>
+Cc: Mika Westerberg <mika.westerberg@linux.intel.com>, 
+ Konrad Dybcio <konradybcio@kernel.org>, asahi@lists.linux.dev, 
+ linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787494982; l=4802;
- i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
- bh=UCmNia2x7JWgu3N0r50Qjrgy2VR0ohDOUqm2J+6lnXQ=;
- b=5DBetzW/YfLuhfiOmNxmCoNffdfumE9zGRbaC7sGHhYl8u5dSqqHzNyKC/MOEB2bVKrkQB14V
- ZssMG/UOwb1BvwTSmC1hzvUczPJ4AydGIyBbStX4RbsfqvvtYToYPUT
-X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
- pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
-X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2420; i=sven@kernel.org;
+ h=from:subject:message-id; bh=SXsFoeeEfcibtEXf8lradzcC9odTvodt9bD65D+EBQM=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ1a3tN35H1OSouYdErSLb7aRvf/Lr99llnRhuco5rWyGq
+ IWWH6w6SlkYxLgYZMUUWbbvtzd98vCN4NJNl97DzGFlAhnCwMUpABPhEWb4K51ypP/0tt8Gfxyy
+ 9mYE/nM2lHolU2W0xS6jXn+RjEXkdUaGe64bz22ouD196XHV15ps8TvZv732rtQMz/i1g3OXl8t
+ 9dgA=
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-zstd_alloc_workspace_manager() only warns when the max level workspace it
-preallocates cannot be allocated, and the mount comes up with none.
-zstd_get_workspace() still sleeps on zwsm->wait when its own allocation
-fails, but zstd_put_workspace() wakes that queue only for a max level
-workspace, and nothing creates one unless the max level is requested.
-Until something on the filesystem asks for it the sleeper has no possible
-waker, and stays in TASK_UNINTERRUPTIBLE in the write path long after the
-memory pressure is over.
+Hi,
 
-Count the max level workspaces in existence and retry the allocation
-instead of sleeping when there are none, backing off with
-memalloc_retry_wait() so the retry does not spin against reclaim.
-btrfs_get_workspace() guards the same preallocation failure the same way,
-using total_ws.
+This series contains a bunch of fixes related to teardown while an async
+DPRX read is running. I ran into some of these while bringing up the
+Apple Silicon NHI and just haven't implemented DP tunneling support yet
+such that the DPRX capabilities read can never complete and will always
+time out.
 
-Fixes: 3f93aef535c8 ("btrfs: add zstd compression level support")
-Assisted-by: Claude:claude-opus-5
-Signed-off-by: FAN YE <fy15309206903@gmail.com>
----
-Reproduced under QEMU/TCG, 4 writers, one forced zstd_alloc_workspace()
-failure, mount time preallocation forced to fail.  Columns are "slept with no
-max level workspace in existence" / "max level puts" / result:
+None of it is specific to that hardware though so I figured it
+makes sense to already send them out.
 
-  prealloc failed, zstd:3,  unpatched    1 / 0    / hang
-  prealloc failed, zstd:3,  patched      0 / 0    / ok
-  prealloc failed, zstd:15, unpatched    1 / 4848 / ok
-  prealloc ok,     zstd:3,  unpatched    0 / 7240 / ok
+Best,
 
-Row 1 hangs in zstd_get_workspace()'s schedule() (btrfs-delalloc kworker,
-hung_task >122s, all four writers stuck behind it).  Row 3 is the same code
-and the same sleep, and recovers only because level 15 traffic creates the
-workspace whose put wakes it.
-
-With every allocation failed for 20s the retry runs 46230/s and the delalloc
-workers burn 11.1 CPU seconds without the backoff, 2733/s and 0.56s with it;
-upstream hangs outright under the same load.  55883 backoff calls under
-KASAN + PROVE_LOCKING + DEBUG_ATOMIC_SLEEP are clean.
-Compile-tested (W=1 and W=2, x86_64 defconfig + CONFIG_BTRFS_FS=y).
----
- fs/btrfs/zstd.c | 25 ++++++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
-
-diff --git a/fs/btrfs/zstd.c b/fs/btrfs/zstd.c
-index 86919293fd54..ef850dd43d3f 100644
---- a/fs/btrfs/zstd.c
-+++ b/fs/btrfs/zstd.c
-@@ -83,6 +83,8 @@ struct zstd_workspace_manager {
- 	unsigned long active_map;
- 	wait_queue_head_t wait;
- 	struct timer_list timer;
-+	/* Number of max level workspaces alive, only their put wakes @wait. */
-+	atomic_t nr_max_level_ws;
- };
- 
- static size_t zstd_ws_mem_sizes[ZSTD_BTRFS_MAX_LEVEL];
-@@ -138,6 +140,9 @@ static void zstd_reclaim_timer_fn(struct timer_list *timer)
- 		list_del(&victim->list);
- 		zstd_free_workspace(&victim->list);
- 
-+		if (level == ZSTD_BTRFS_MAX_LEVEL - 1)
-+			atomic_dec(&zwsm->nr_max_level_ws);
-+
- 		if (list_empty(&zwsm->idle_ws[level]))
- 			clear_bit(level, &zwsm->active_map);
- 
-@@ -204,6 +209,7 @@ int zstd_alloc_workspace_manager(struct btrfs_fs_info *fs_info)
- 	} else {
- 		set_bit(ZSTD_BTRFS_MAX_LEVEL - 1, &zwsm->active_map);
- 		list_add(ws, &zwsm->idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1]);
-+		atomic_set(&zwsm->nr_max_level_ws, 1);
- 	}
- 	return 0;
- }
-@@ -280,7 +286,8 @@ static struct list_head *zstd_find_workspace(struct btrfs_fs_info *fs_info, int
-  * If @level is 0, then any compression level can be used.  Therefore, we begin
-  * scanning from 1.  We first scan through possible workspaces and then after
-  * attempt to allocate a new workspace.  If we fail to allocate one due to
-- * memory pressure, go to sleep waiting for the max level workspace to free up.
-+ * memory pressure, go to sleep waiting for the max level workspace to free up,
-+ * or retry the allocation if no max level workspace exists to wake us.
-  */
- struct list_head *zstd_get_workspace(struct btrfs_fs_info *fs_info, int level)
- {
-@@ -303,6 +310,22 @@ struct list_head *zstd_get_workspace(struct btrfs_fs_info *fs_info, int level)
- 	ws = zstd_alloc_workspace(fs_info, level);
- 	memalloc_nofs_restore(nofs_flag);
- 
-+	if (!IS_ERR(ws) && clip_level(level) == ZSTD_BTRFS_MAX_LEVEL - 1)
-+		atomic_inc(&zwsm->nr_max_level_ws);
-+
-+	/* Waiting without a workspace that can wake us would never end */
-+	if (IS_ERR(ws) && !atomic_read(&zwsm->nr_max_level_ws)) {
-+		static DEFINE_RATELIMIT_STATE(_rs,
-+				/* once per minute */ 60 * HZ,
-+				/* no burst */ 1);
-+
-+		if (__ratelimit(&_rs))
-+			btrfs_warn(fs_info,
-+				   "no zstd compression workspace, low memory, retrying");
-+		memalloc_retry_wait(GFP_KERNEL);
-+		goto again;
-+	}
-+
- 	if (IS_ERR(ws)) {
- 		DEFINE_WAIT(wait);
- 
+Sven
 
 ---
-base-commit: 2709dd5ae32f0828f386327c76bba9f39f63a1c6
-change-id: 20260823-btrfs-zstd-prealloc-hang-3b801b5489e9
+Changes in v2:
+- Make the DP tunnel activation callback mandatory. The DPRX
+  caps are now always read inside dprx_work which now also happens to
+  discovered tunnels when they are activated again after hibernation
+  restore.
+- Mark discovered tunnels as active
+- Add a cleanup commit to drop the callback data that's always the same now
+- Tear down DP tunnels that are inactive in tb_stop instead of
+  exposing tb_tunnel_cancel_dprx.
+- Use "router" instead of "switch" in the subject
+- Added comments how these issues can be reproduced
+- Link to v1: https://patch.msgid.link/20260817-b4-tbt-fixes-v1-0-eded2461f5fc@kernel.org
+
+To: Andreas Noever <andreas.noever@gmail.com>
+To: Mika Westerberg <westeri@kernel.org>
+To: Yehezkel Bernat <YehezkelShB@gmail.com>
+Cc: Mika Westerberg <mika.westerberg@linux.intel.com>
+Cc: Konrad Dybcio <konradybcio@kernel.org>
+Cc: asahi@lists.linux.dev
+Cc: linux-usb@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Sven Peter (7):
+      thunderbolt: Hold a router reference for each path hop
+      thunderbolt: Make the DP tunnel activation callback mandatory
+      thunderbolt: Fix domain reference leak when DPRX read is canceled
+      thunderbolt: Don't access a DP tunnel after its DPRX read was canceled
+      thunderbolt: Mark discovered tunnels as active
+      thunderbolt: Tear down inactive DP tunnels when the domain is stopped
+      thunderbolt: Drop the DP tunnel activation callback data
+
+ drivers/thunderbolt/path.c   | 21 +++++++++++++
+ drivers/thunderbolt/tb.c     | 34 ++++++++++++++-------
+ drivers/thunderbolt/test.c   | 49 ++++++++++++++++++++++-------
+ drivers/thunderbolt/tunnel.c | 73 ++++++++++++++++++++++++++------------------
+ drivers/thunderbolt/tunnel.h | 12 +++-----
+ 5 files changed, 131 insertions(+), 58 deletions(-)
+---
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260815-b4-tbt-fixes-a2689186016d
 
 Best regards,
 --  
-FAN YE <fy15309206903@gmail.com>
+Sven Peter <sven@kernel.org>
 
