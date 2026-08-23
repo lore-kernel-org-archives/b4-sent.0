@@ -1,123 +1,81 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 23 Aug 2026 11:09:55 +0200
-Subject: [PATCH] ASoC: wcd-mbhc-v2: Fix incorrect properties names and
- typos
+From: FAN YE <fy15309206903@gmail.com>
+Date: Sun, 23 Aug 2026 09:28:25 +0000
+Subject: [PATCH] btrfs: scrub: wake up cancel_dev waiters after clearing
+ dev->scrub_ctx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260823-wcd-dt-typo-fix-v1-1-a71b458e0d31@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWZuENq6vIha0g7FA2rpFvLti+
- Z3k/BdYMkwWyuACQxtbniePOAxADc3UE7L2BhGJNMqFxF1p1A7duczY8YFFHgstVZF1lIB/LYb
- 8/BWr+rdd25GUezNw3w/J3L1fcwAAAA==
-X-Change-ID: 20260823-wcd-dt-typo-fix-9812d3c97fe5
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20260823-btrfs-scrub-cancel-dev-wakeup-v1-1-374d618ab25f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADi9imoC/yXMOw7CMAwA0KtUnrEUXFE+V0EdEteBAAqV3RSkq
+ ncnwPiWt4CJJjE4NQuozMnSM1dsNw3w1eeLYBqqgRx17kAthkmjobGWgOwzywMHmfHl71JGjIH
+ k2FK3jzsH9RhVYnr//nP/t5VwE56+KazrBzXfgIyBAAAA
+X-Change-ID: 20260823-btrfs-scrub-cancel-dev-wakeup-fb2e93267f50
+To: Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>
+Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3259; i=david@ixit.cz;
- h=from:subject:message-id; bh=b2eL9Z1VE+RnX6fFKw1IaZPJWpmERV04U6h9XPnL7FM=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqirjjWSeyHMdFLZStFtxonLbX/0wNn4Ih208NO
- gOX1pRZVAuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaoq44wAKCRBgAj/E00kg
- ckQeD/9B6oA9spMyujeC7MMahuIKZjOJrxCHZX1XO04klOuazMbTa079X7ZFRIsdEzYuMrS2Rhq
- sD8Bkx7HicI9wUDPAc2R/mCVJqTmD0jozAOskovrWbIQHd+QHVmuqrdPvbLmRZK+190mdWNtFQu
- Y4S2dJZ5kUu5IsF7OysLjPtIAKD0BEZ1xX+xJsEwhFlLxNgzF28hccrUKYN/ksGqByG48gCRe9c
- zveMI+DCXiOzSYH2yAw1gCdBvO7PvTOQ06gIWNZpjFzJgQENzCRu8NE1Lq9yJ47sSH8AwqWm1z0
- 0qoKlX+NURDMAoUtmDurXnW9zyRLY+Deu8Ut599iuasw6bUVwteS03ckk0lcwr22W7GFW4fnoS+
- RQD4wBZJxsyR6gtjPxfnbR1QLk7Pea4/AOYuHrWAX/hcs1beeHU7ux17jIUWxmMNOFZy2MSFZi+
- 6UVNODX9TgCYs3ivfY/zRiijPStAVvcBmB/8Rv1ePGZzPtNuw9TFRxh83U6du+euvoKHtB4I3hE
- XUH4V73NkJKEe3a6R1Zl6ukmcISy3WhWn77EzRhk9RP7damLo0qfJgEUf3ks3RR6wp03pZ1YxgY
- pNLGWUWHt2ww7viCntaazdY9/MwUU3/X4MIHkaKfGyx7w29uvvy9FZS3M9Sc2Ye3kByvX2JoTtZ
- o2aAHVt1b0NrIBg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787477305; l=2575;
+ i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
+ bh=xdBeUrOdCn8ylb7MLha5PMKpDHCyFGYa0B8rXagVhfI=;
+ b=jLklhCiaNoRe3Z8PESXyLhw//+kfc6CWifs9QTWqXLIQs/D1boASK1id5bwbss+8S7pACduFW
+ jfGTkVxSSs/CTZPF3HU7tgu0vAsQtG2kTqpVg4DhMv8heiEGZlFEprl
+X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
+ pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
+X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Improves debugging experience.
+btrfs_scrub_cancel_dev() waits on fs_info->scrub_pause_wait for
+dev->scrub_ctx to become NULL.  btrfs_scrub_dev() wakes that queue right
+after dropping scrubs_running, several statements before it clears the
+pointer, and never wakes it again.  The canceller is already queued by
+then: it sets sctx->cancel_req before waiting, and the scrub only starts
+finishing once should_cancel_scrub() observes that flag.  So the wakeup it
+gets is the early one, its recheck still finds dev->scrub_ctx set, and it
+goes back to sleep before the store it is waiting for.
 
-Fixes: 0e5c9e7ff899 ("ASoC: codecs: wcd: add multi button Headset detection support")
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Nothing wakes the queue after the store.  scrubs_running is already zero,
+and btrfs_rm_device() reaches btrfs_scrub_cancel_dev() holding a
+transaction handle, so the commit that would call btrfs_scrub_continue()
+blocks behind the sleeping canceller.  Device removal, the transaction
+kthread and any fsync() on the filesystem hang indefinitely.  Wake the
+queue after the store as well.
+
+Fixes: a2de733c78fa ("btrfs: scrub")
+Assisted-by: Claude:claude-opus-5 sashiko
+Signed-off-by: FAN YE <fy15309206903@gmail.com>
 ---
- sound/soc/codecs/wcd-mbhc-v2.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Reproduced on unmodified kernels in a VM: a scrub running on the device
+btrfs_rm_device() removes.  Upstream hangs in all 7 attempts where the
+canceller actually slept - 4 with transaction commits forced back to back,
+3 at the default commit interval - and 0 of 16 with this patch.  ftrace
+records no sched_wakeup at all for the blocked task after dev->scrub_ctx is
+seen NULL, while btrfs-transacti and a plain BTRFS_IOC_SYNC block behind
+it.  Attempts where the cancel returned -ENOTCONN, or returned 0 without
+ever sleeping, are not counted either way.  Moving the existing wakeup
+after the store instead of adding one also works (0 of 9) and is not
+measurably cheaper; this keeps each wakeup next to the store it publishes.
+Compile-tested (W=1, x86_64 defconfig + CONFIG_BTRFS_FS=y).
+---
+ fs/btrfs/scrub.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/sound/soc/codecs/wcd-mbhc-v2.c b/sound/soc/codecs/wcd-mbhc-v2.c
-index bb0c8478a8eb5..850be84d65ceb 100644
---- a/sound/soc/codecs/wcd-mbhc-v2.c
-+++ b/sound/soc/codecs/wcd-mbhc-v2.c
-@@ -859,17 +859,17 @@ static int wcd_get_voltage_from_adc(u8 val, int micbias)
- static int wcd_measure_adc_continuous(struct wcd_mbhc *mbhc)
- {
- 	u8 adc_result;
- 	int output_mv;
- 	int retry = 3;
- 	u8 adc_en;
+diff --git a/fs/btrfs/scrub.c b/fs/btrfs/scrub.c
+index f209e75f0ff5..43fee426fdab 100644
+--- a/fs/btrfs/scrub.c
++++ b/fs/btrfs/scrub.c
+@@ -3177,6 +3177,7 @@ int btrfs_scrub_dev(struct btrfs_fs_info *fs_info, u64 devid, u64 start,
+ 	mutex_lock(&fs_info->scrub_lock);
+ 	dev->scrub_ctx = NULL;
+ 	mutex_unlock(&fs_info->scrub_lock);
++	wake_up(&fs_info->scrub_pause_wait);
  
- 	/* Pre-requisites for ADC continuous measurement */
--	/* Read legacy electircal detection and disable */
-+	/* Read legacy electrical detection and disable */
- 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ELECT_SCHMT_ISRC, 0x00);
- 	/* Set ADC to continuous measurement */
- 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ADC_MODE, 1);
- 	/* Read ADC Enable bit to restore after adc measurement */
- 	adc_en = wcd_mbhc_read_field(mbhc, WCD_MBHC_ADC_EN);
- 	/* Disable ADC_ENABLE bit */
- 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ADC_EN, 0);
- 	/* Disable MBHC FSM */
-@@ -960,17 +960,17 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
- 	u8 adc_mode, elect_ctl, adc_en, fsm_en;
- 	int hphl_adc_res, hphr_adc_res;
- 	bool is_cross_conn = false;
- 
- 	/* If PA is enabled, dont check for cross-connection */
- 	if (wcd_mbhc_read_field(mbhc, WCD_MBHC_HPH_PA_EN))
- 		return -EINVAL;
- 
--	/* Read legacy electircal detection and disable */
-+	/* Read legacy electrical detection and disable */
- 	elect_ctl = wcd_mbhc_read_field(mbhc, WCD_MBHC_ELECT_SCHMT_ISRC);
- 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ELECT_SCHMT_ISRC, 0);
- 
- 	/* Read and set ADC to single measurement */
- 	adc_mode = wcd_mbhc_read_field(mbhc, WCD_MBHC_ADC_MODE);
- 	/* Read ADC Enable bit to restore after adc measurement */
- 	adc_en = wcd_mbhc_read_field(mbhc, WCD_MBHC_ADC_EN);
- 	/* Read FSM status */
-@@ -1465,24 +1465,24 @@ int wcd_dt_parse_mbhc_data(struct device *dev, struct wcd_mbhc_config *cfg)
- 	if (of_property_read_bool(np, "qcom,ground-jack-type-normally-closed"))
- 		cfg->gnd_swh = false;
- 	else
- 		cfg->gnd_swh = true;
- 
- 	ret = of_property_read_u32(np, "qcom,mbhc-headset-vthreshold-microvolt",
- 				   &microvolt);
- 	if (ret)
--		dev_dbg(dev, "missing qcom,mbhc-hs-mic-max-vthreshold--microvolt in dt node\n");
-+		dev_dbg(dev, "missing qcom,mbhc-headset-vthreshold-microvolt in dt node\n");
- 	else
- 		cfg->hs_thr = microvolt/1000;
- 
- 	ret = of_property_read_u32(np, "qcom,mbhc-headphone-vthreshold-microvolt",
- 				   &microvolt);
- 	if (ret)
--		dev_dbg(dev, "missing qcom,mbhc-hs-mic-min-vthreshold-microvolt	entry\n");
-+		dev_dbg(dev, "missing qcom,mbhc-headphone-vthreshold-microvolt entry\n");
- 	else
- 		cfg->hph_thr = microvolt/1000;
- 
- 	ret = of_property_read_u32_array(np,
- 					 "qcom,mbhc-buttons-vthreshold-microvolt",
- 					 &cfg->btn_high[0],
- 					 WCD_MBHC_DEF_BUTTONS);
- 	if (ret)
+ 	scrub_workers_put(fs_info);
+ 	scrub_put_ctx(sctx);
 
 ---
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260823-wcd-dt-typo-fix-9812d3c97fe5
+base-commit: 2709dd5ae32f0828f386327c76bba9f39f63a1c6
+change-id: 20260823-btrfs-scrub-cancel-dev-wakeup-fb2e93267f50
 
 Best regards,
 --  
-David Heidelberg <david@ixit.cz>
+FAN YE <fy15309206903@gmail.com>
 
