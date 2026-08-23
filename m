@@ -1,104 +1,123 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sun, 23 Aug 2026 10:35:29 +0200
-Subject: [PATCH 2/2] arm64: dts: qcom: sc8280xp-microsoft-blackrock: enable
- 4-lane DP altmode
+From: David Heidelberg <david@ixit.cz>
+Date: Sun, 23 Aug 2026 11:09:55 +0200
+Subject: [PATCH] ASoC: wcd-mbhc-v2: Fix incorrect properties names and
+ typos
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260823-blackrock-audio-v1-2-f319387fc6a6@oldschoolsolutions.biz>
-References: <20260823-blackrock-audio-v1-0-f319387fc6a6@oldschoolsolutions.biz>
-In-Reply-To: <20260823-blackrock-audio-v1-0-f319387fc6a6@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787474149; l=2037;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=I7UKGMSk+s4dyW5AvgjG/TZCmq97eEd3LiG6adDQR/4=;
- b=/BdBee6Uq0Z/jqdf9lcGcx2a2obr8yN0u1TYyKWAl3NYqjaEM47SWXjG58PaI5+nl4LaBJStR
- 2pqepi312DyD8IeD0fstKTWghPTwLzaejCXoACQgYiyx2w7VNjwTUYe
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Message-Id: <20260823-wcd-dt-typo-fix-v1-1-a71b458e0d31@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw5AMBCF4VeRWZuENq6vIha0g7FA2rpFvLti+
+ Z3k/BdYMkwWyuACQxtbniePOAxADc3UE7L2BhGJNMqFxF1p1A7duczY8YFFHgstVZF1lIB/LYb
+ 8/BWr+rdd25GUezNw3w/J3L1fcwAAAA==
+X-Change-ID: 20260823-wcd-dt-typo-fix-9812d3c97fe5
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3259; i=david@ixit.cz;
+ h=from:subject:message-id; bh=b2eL9Z1VE+RnX6fFKw1IaZPJWpmERV04U6h9XPnL7FM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqirjjWSeyHMdFLZStFtxonLbX/0wNn4Ih208NO
+ gOX1pRZVAuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaoq44wAKCRBgAj/E00kg
+ ckQeD/9B6oA9spMyujeC7MMahuIKZjOJrxCHZX1XO04klOuazMbTa079X7ZFRIsdEzYuMrS2Rhq
+ sD8Bkx7HicI9wUDPAc2R/mCVJqTmD0jozAOskovrWbIQHd+QHVmuqrdPvbLmRZK+190mdWNtFQu
+ Y4S2dJZ5kUu5IsF7OysLjPtIAKD0BEZ1xX+xJsEwhFlLxNgzF28hccrUKYN/ksGqByG48gCRe9c
+ zveMI+DCXiOzSYH2yAw1gCdBvO7PvTOQ06gIWNZpjFzJgQENzCRu8NE1Lq9yJ47sSH8AwqWm1z0
+ 0qoKlX+NURDMAoUtmDurXnW9zyRLY+Deu8Ut599iuasw6bUVwteS03ckk0lcwr22W7GFW4fnoS+
+ RQD4wBZJxsyR6gtjPxfnbR1QLk7Pea4/AOYuHrWAX/hcs1beeHU7ux17jIUWxmMNOFZy2MSFZi+
+ 6UVNODX9TgCYs3ivfY/zRiijPStAVvcBmB/8Rv1ePGZzPtNuw9TFRxh83U6du+euvoKHtB4I3hE
+ XUH4V73NkJKEe3a6R1Zl6ukmcISy3WhWn77EzRhk9RP7damLo0qfJgEUf3ks3RR6wp03pZ1YxgY
+ pNLGWUWHt2ww7viCntaazdY9/MwUU3/X4MIHkaKfGyx7w29uvvy9FZS3M9Sc2Ye3kByvX2JoTtZ
+ o2aAHVt1b0NrIBg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Allow up to 4 lanes for the DisplayPort links on the USB-C ports and
-the mini-DP connector. Add the standard link-frequencies and move
-data-lanes to the out endpoints where required by the current bindings.
+Improves debugging experience.
 
-Also enable mode-switch on the QMP combo PHYs so that altmode events
-can reach them (same treatment as on the X13s).
-
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Fixes: 0e5c9e7ff899 ("ASoC: codecs: wcd: add multi button Headset detection support")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ sound/soc/codecs/wcd-mbhc-v2.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-index a94141d670f62..aceeda96911db 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-@@ -564,7 +564,9 @@ &mdss0_dp0 {
- };
+diff --git a/sound/soc/codecs/wcd-mbhc-v2.c b/sound/soc/codecs/wcd-mbhc-v2.c
+index bb0c8478a8eb5..850be84d65ceb 100644
+--- a/sound/soc/codecs/wcd-mbhc-v2.c
++++ b/sound/soc/codecs/wcd-mbhc-v2.c
+@@ -859,17 +859,17 @@ static int wcd_get_voltage_from_adc(u8 val, int micbias)
+ static int wcd_measure_adc_continuous(struct wcd_mbhc *mbhc)
+ {
+ 	u8 adc_result;
+ 	int output_mv;
+ 	int retry = 3;
+ 	u8 adc_en;
  
- &mdss0_dp0_out {
--	data-lanes = <0 1>;
-+	data-lanes = <0 1 2 3>;
-+
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
- 	remote-endpoint = <&usb_0_qmpphy_dp_in>;
- };
+ 	/* Pre-requisites for ADC continuous measurement */
+-	/* Read legacy electircal detection and disable */
++	/* Read legacy electrical detection and disable */
+ 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ELECT_SCHMT_ISRC, 0x00);
+ 	/* Set ADC to continuous measurement */
+ 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ADC_MODE, 1);
+ 	/* Read ADC Enable bit to restore after adc measurement */
+ 	adc_en = wcd_mbhc_read_field(mbhc, WCD_MBHC_ADC_EN);
+ 	/* Disable ADC_ENABLE bit */
+ 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ADC_EN, 0);
+ 	/* Disable MBHC FSM */
+@@ -960,17 +960,17 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
+ 	u8 adc_mode, elect_ctl, adc_en, fsm_en;
+ 	int hphl_adc_res, hphr_adc_res;
+ 	bool is_cross_conn = false;
  
-@@ -574,7 +576,9 @@ &mdss0_dp1 {
- };
+ 	/* If PA is enabled, dont check for cross-connection */
+ 	if (wcd_mbhc_read_field(mbhc, WCD_MBHC_HPH_PA_EN))
+ 		return -EINVAL;
  
- &mdss0_dp1_out {
--	data-lanes = <0 1>;
-+	data-lanes = <0 1 2 3>;
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-+
- 	remote-endpoint = <&usb_1_qmpphy_dp_in>;
- };
+-	/* Read legacy electircal detection and disable */
++	/* Read legacy electrical detection and disable */
+ 	elect_ctl = wcd_mbhc_read_field(mbhc, WCD_MBHC_ELECT_SCHMT_ISRC);
+ 	wcd_mbhc_write_field(mbhc, WCD_MBHC_ELECT_SCHMT_ISRC, 0);
  
-@@ -582,12 +586,13 @@ &mdss0_dp2 {
- 	sound-name-prefix = "DisplayPort2";
- 	compatible = "qcom,sc8280xp-dp";
+ 	/* Read and set ADC to single measurement */
+ 	adc_mode = wcd_mbhc_read_field(mbhc, WCD_MBHC_ADC_MODE);
+ 	/* Read ADC Enable bit to restore after adc measurement */
+ 	adc_en = wcd_mbhc_read_field(mbhc, WCD_MBHC_ADC_EN);
+ 	/* Read FSM status */
+@@ -1465,24 +1465,24 @@ int wcd_dt_parse_mbhc_data(struct device *dev, struct wcd_mbhc_config *cfg)
+ 	if (of_property_read_bool(np, "qcom,ground-jack-type-normally-closed"))
+ 		cfg->gnd_swh = false;
+ 	else
+ 		cfg->gnd_swh = true;
  
--	data-lanes = <0 1 2 3>;
--
- 	status = "okay";
- };
+ 	ret = of_property_read_u32(np, "qcom,mbhc-headset-vthreshold-microvolt",
+ 				   &microvolt);
+ 	if (ret)
+-		dev_dbg(dev, "missing qcom,mbhc-hs-mic-max-vthreshold--microvolt in dt node\n");
++		dev_dbg(dev, "missing qcom,mbhc-headset-vthreshold-microvolt in dt node\n");
+ 	else
+ 		cfg->hs_thr = microvolt/1000;
  
- &mdss0_dp2_out {
-+	data-lanes = <0 1 2 3>;
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-+
- 	remote-endpoint = <&dp1_connector_in>;
- };
+ 	ret = of_property_read_u32(np, "qcom,mbhc-headphone-vthreshold-microvolt",
+ 				   &microvolt);
+ 	if (ret)
+-		dev_dbg(dev, "missing qcom,mbhc-hs-mic-min-vthreshold-microvolt	entry\n");
++		dev_dbg(dev, "missing qcom,mbhc-headphone-vthreshold-microvolt entry\n");
+ 	else
+ 		cfg->hph_thr = microvolt/1000;
  
-@@ -932,6 +937,7 @@ &usb_0_qmpphy {
- 	vdda-phy-supply = <&vreg_l9d>;
- 	vdda-pll-supply = <&vreg_l4d>;
- 
-+	mode-switch;
- 	orientation-switch;
- 
- 	status = "okay";
-@@ -969,6 +975,7 @@ &usb_1_qmpphy {
- 	vdda-phy-supply = <&vreg_l4b>;
- 	vdda-pll-supply = <&vreg_l3b>;
- 
-+	mode-switch;
- 	orientation-switch;
- 
- 	status = "okay";
+ 	ret = of_property_read_u32_array(np,
+ 					 "qcom,mbhc-buttons-vthreshold-microvolt",
+ 					 &cfg->btn_high[0],
+ 					 WCD_MBHC_DEF_BUTTONS);
+ 	if (ret)
 
--- 
-2.53.0
+---
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260823-wcd-dt-typo-fix-9812d3c97fe5
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
