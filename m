@@ -1,89 +1,173 @@
-From: Rahul Kumar Rai <learn.rahul.rai@gmail.com>
-Date: Sun, 23 Aug 2026 02:30:32 +0530
-Subject: [PATCH] wifi: rtw88: disable ASPM and deep PS on ASUS TUF Gaming
- A15 FA506IH
+From: FAN YE <fy15309206903@gmail.com>
+Date: Sun, 23 Aug 2026 00:41:18 +0000
+Subject: [PATCH v2] btrfs: zstd: keep the last max level workspace out of
+ reclaim
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260823-fa506ih-rtw88-quirk-v1-1-ef0984d59e72@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAO8NimoC/yXMQQ6CMBBA0auQWTvJtIbacBXiAssURhKUKagJ4
- e4WWL7F/yskVuEEVbGC8keSvMYMcykg9M3YMUqbDZasI2+vGJuSnPSo89d7nBbRAV0w5a31FCg
- ayOVbOcrvuNb302l5PDnM+wq27Q9nRYTvdwAAAA==
-X-Change-ID: 20260823-fa506ih-rtw88-quirk-6c157d80c0f1
-To: Ping-Ke Shih <pkshih@realtek.com>
-Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Rahul Kumar Rai <learn.rahul.rai@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787432431; l=2531;
- i=learn.rahul.rai@gmail.com; s=20260822; h=from:subject:message-id;
- bh=Pz6whzycVyQSyKGgPZ2rblAwgpB9ScAj/UQo4bzF9mM=;
- b=JguIOYUlo7J0TlQpd98nuZmMhoY9B1cNYh/4IdTS6bSWZk4aK5KYYHbZ2xST7iyQZd3kOkH9E
- 1LCTLu7fZzOAzWuL0xj6F6pvhZVglcdPCQ8mb/lI7ZaMpT+SOViOWSc
-X-Developer-Key: i=learn.rahul.rai@gmail.com; a=ed25519;
- pk=FKMDyIZj21KmruJbeSaCjxqun1AusvFUl0dM21tRMF4=
-X-Endpoint-Received: by B4 Relay for learn.rahul.rai@gmail.com/20260822 with auth_id=970
+Message-Id: <20260823-btrfs-zstd-max-level-reclaim-v2-1-2a84517cfeb4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAK1BimoC/yXMwQrCMAwA0F8ZORsYVav4K+Kh7RKNdFOSOoZj/
+ 75Oj+/yZjBSIYNLM4PSKCavocLtGkiPMNwJpasG1zrfnt0eY1E2/FrpsA8TZhopo1LKQXo8eWb
+ 2R2aKB6jFW4ll+vXX29/2iU9KZTthWVYczDzegAAAAA==
+X-Change-ID: 20260823-btrfs-zstd-max-level-reclaim-76fff65ffeb4
+To: David Sterba <dsterba@suse.com>, Nick Terrell <terrelln@fb.com>, 
+ Chris Mason <clm@fb.com>
+Cc: linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787445677; l=6538;
+ i=fy15309206903@gmail.com; s=tbnet3; h=from:subject:message-id;
+ bh=+QanFPZv1V9gqMQYN+jo/lcE8ZMOysJk3M2saAPln6w=;
+ b=E5Gi1h8d4WthQVb8k2Uq6GWRq9EKGIDr3JhuCqWXwUaAtYbkUzpNJcCdz8aIUjF5vyGkL3DnX
+ vRLFR7x1gliAgQ+RITxtrXr4z4LzG4qfEeburYJjCJ+1m9nyv38bC+W
+X-Developer-Key: i=fy15309206903@gmail.com; a=ed25519;
+ pk=6QsQIrI/kruYWIJyCH9ntPMXsHCqF5JtK/DCMtOCzdc=
+X-Endpoint-Received: by B4 Relay for fy15309206903@gmail.com/tbnet3 with auth_id=929
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RTL8822CE on the ASUS TUF Gaming A15 FA506IH fails to return from
-PCIe low-power states across system suspend. The device is inaccessible
-on the way back to D0, so the MAC power-on sequence and the firmware
-handshake that follow it fail, and the driver gives up. Wi-Fi stays
-unavailable until the machine is powered off completely:
+zstd_put_workspace() decides whether a max level workspace should be
+kept off the reclaim lru by checking whether idle_ws[MAX-1] is empty
+at the moment of the put, and only for a put at the workspace's own
+level. Decompression always returns at level 0, so a workspace
+borrowed by a read skips that check and keeps its previous lru state;
+enough readers borrowing every idle max level workspace at once leaves
+none of them protected, and the reclaim timer can free them all,
+leaving a task sleeping in zstd_get_workspace() with no waker.
+Checking a shared list snapshot per put is also not an exclusive
+decision across concurrent returns: two workspaces borrowed together
+can each see idle_ws[MAX-1] empty and each get hidden, so more than
+one ends up off the lru. A put at the workspace's own level puts it
+back, so write traffic keeps correcting this, but a read-only workload
+has no such put: whatever is off the lru when writes stop stays there,
+unreachable to the reclaim timer, which walks only lru_list.
 
-  rtw88_8822ce 0000:03:00.0: Unable to change power state from D3cold to D0, device inaccessible
-  rtw88_8822ce 0000:03:00.0: failed to poll offset=0x5 mask=0x2 value=0x0
-  rtw88_8822ce 0000:03:00.0: mac power on failed
-  rtw88_8822ce 0000:03:00.0: probe with driver rtw88_8822ce failed with error -114
+Track the reserved workspace by identity instead of a snapshot:
+zwsm->pinned_ws names the one max level workspace that must never be
+linked on lru_list, assigned once at manager init or on the first put
+of a max level workspace and never reassigned. Every other max level
+workspace, and every workspace returned below its own level, follows
+the ordinary lru bookkeeping unchanged.
 
-Reads of the ASPM link-configuration register over DBI also time out
-around the same transitions.
+By construction, not just by timing: the only list_add() onto lru_list
+excludes workspace == pinned_ws, and zstd_find_workspace() only ever
+removes from lru_list, so the reclaim timer can never select the
+pinned workspace as a victim.
 
-This is not a one-off. It has been recurring on this machine for a long
-time. The kernel logs still on disk begin at 2026-07-20 and already
-contain six failed D-state transitions and three probe failures of this
-kind, and the problem was present well before that window.
+zstd_find_workspace() has to use list_del_init() rather than list_del()
+for this: the pinned workspace's lru_list is a self-linked node, and
+poisoning it there would make the list_del_init() below dereference
+LIST_POISON1 when it is returned.
 
-This is the same platform ASPM inter-operability problem already handled
-for other machines through rtw_pci_quirks[], including the closely
-related ASUS TUF Gaming A15 FA506II. The FA506IH reports a different DMI
-board name, so that entry does not match. Disabling PCI ASPM and deep
-power save stops the failure on this model as well.
-
-  DMI_SYS_VENDOR = ASUSTeK COMPUTER INC.
-  DMI_BOARD_NAME = FA506IH
-
-Signed-off-by: Rahul Kumar Rai <learn.rahul.rai@gmail.com>
+Fixes: 3f93aef535c8 ("btrfs: add zstd compression level support")
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: FAN YE <fy15309206903@gmail.com>
 ---
- drivers/net/wireless/realtek/rtw88/pci.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Changes since v1
+(20260822-btrfs-zstd-max-level-reclaim-v1-1-0eb13c127480@gmail.com):
+thanks to Sashiko for the review and to Qu Wenruo for relaying it. The
+report is right that v1's idle_ws[MAX-1] snapshot is not exclusive
+across concurrent returns, and it reproduces; v2 replaces the snapshot
+with the pinned_ws pointer above.
 
-diff --git a/drivers/net/wireless/realtek/rtw88/pci.c b/drivers/net/wireless/realtek/rtw88/pci.c
-index 5b00c1e1eec6..fcb6f4c4cc2d 100644
---- a/drivers/net/wireless/realtek/rtw88/pci.c
-+++ b/drivers/net/wireless/realtek/rtw88/pci.c
-@@ -1789,6 +1789,16 @@ static const struct dmi_system_id rtw_pci_quirks[] = {
- 		.driver_data = (void *)(BIT(QUIRK_DIS_CAP_PCI_ASPM) |
- 					BIT(QUIRK_DIS_CAP_LPS_DEEP)),
- 	},
-+	{
-+		.callback = rtw_pci_disable_caps,
-+		.ident = "ASUS TUF Gaming A15 FA506IH",
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-+			DMI_MATCH(DMI_BOARD_NAME, "FA506IH"),
-+		},
-+		.driver_data = (void *)(BIT(QUIRK_DIS_CAP_PCI_ASPM) |
-+					BIT(QUIRK_DIS_CAP_LPS_DEEP)),
-+	},
- 	{}
+Two details in that report did not survive measurement, noted so the
+fix is judged on the right numbers:
+
+  - a max level workspace is zstd_ws_mem_sizes[MAX-1] = 3277447 bytes
+    (3.13 MiB), not ~8 MB;
+  - it is not a one-way ratchet.  A put at the workspace's own level
+    puts it back on the lru, so write traffic keeps correcting it.
+    What persists is whatever is off the lru when writes stop.
+
+Measured under QEMU/TCG, smp=4, one kernel build for all arms,
+compress-force=zstd:15, reclaim interval 100ms, 6 rounds of 8 writers
++ drop_caches + 8 readers/4 writers.  "stuck" is idle max level
+workspaces still off the lru once the reclaim timer has run with no
+further puts, i.e. what stays until unmount; one is intended.
+
+                      tail       stuck (3 runs)   leaked
+  v1 (snapshot)   writes+sync         1 / 1 / 1        0
+  v1 (snapshot)   reads only          3 / 5 / 4    up to 12.5 MiB
+  v2 (pinned_ws)  reads only          1 / 1 / 1        0
+
+Same code and concurrency in both v1 rows; only the tail differs,
+which is why a mixed workload hides this.  The count is bounded by
+concurrent level 15 allocations, i.e. min(nr_online_cpus + 2, 8) --
+6 here, matching the observed peak -- so at most 7 x 3.13 MiB per
+mount on a larger machine.
+
+Compile-tested (W=1, x86_64 defconfig + CONFIG_BTRFS_FS=y).
+---
+ fs/btrfs/zstd.c | 30 ++++++++++++++++++------------
+ 1 file changed, 18 insertions(+), 12 deletions(-)
+
+diff --git a/fs/btrfs/zstd.c b/fs/btrfs/zstd.c
+index 86919293fd546..8bd9045da9dd9 100644
+--- a/fs/btrfs/zstd.c
++++ b/fs/btrfs/zstd.c
+@@ -83,6 +83,8 @@ struct zstd_workspace_manager {
+ 	unsigned long active_map;
+ 	wait_queue_head_t wait;
+ 	struct timer_list timer;
++	/* The one max level workspace forward progress depends on; never on lru_list. */
++	struct workspace *pinned_ws;
  };
  
+ static size_t zstd_ws_mem_sizes[ZSTD_BTRFS_MAX_LEVEL];
+@@ -204,6 +206,7 @@ int zstd_alloc_workspace_manager(struct btrfs_fs_info *fs_info)
+ 	} else {
+ 		set_bit(ZSTD_BTRFS_MAX_LEVEL - 1, &zwsm->active_map);
+ 		list_add(ws, &zwsm->idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1]);
++		zwsm->pinned_ws = list_to_workspace(ws);
+ 	}
+ 	return 0;
+ }
+@@ -260,7 +263,7 @@ static struct list_head *zstd_find_workspace(struct btrfs_fs_info *fs_info, int
+ 			/* keep its place if it's a lower level using this */
+ 			workspace->req_level = level;
+ 			if (clip_level(level) == workspace->level)
+-				list_del(&workspace->lru_list);
++				list_del_init(&workspace->lru_list);
+ 			if (list_empty(&zwsm->idle_ws[i]))
+ 				clear_bit(i, &zwsm->active_map);
+ 			spin_unlock_bh(&zwsm->lock);
+@@ -335,18 +338,21 @@ void zstd_put_workspace(struct btrfs_fs_info *fs_info, struct list_head *ws)
+ 	ASSERT(zwsm);
+ 	spin_lock_bh(&zwsm->lock);
+ 
++	/* Forward progress depends on always keeping one max level workspace */
++	if (workspace->level == clip_level(ZSTD_BTRFS_MAX_LEVEL)) {
++		if (!zwsm->pinned_ws)
++			zwsm->pinned_ws = workspace;
++		if (workspace == zwsm->pinned_ws)
++			list_del_init(&workspace->lru_list);
++	}
+ 	/* A node is only taken off the lru if we are the corresponding level */
+-	if (clip_level(workspace->req_level) == workspace->level) {
+-		/* Hide a max level workspace from reclaim */
+-		if (list_empty(&zwsm->idle_ws[ZSTD_BTRFS_MAX_LEVEL - 1])) {
+-			INIT_LIST_HEAD(&workspace->lru_list);
+-		} else {
+-			workspace->last_used = jiffies;
+-			list_add(&workspace->lru_list, &zwsm->lru_list);
+-			if (!timer_pending(&zwsm->timer))
+-				mod_timer(&zwsm->timer,
+-					  jiffies + ZSTD_BTRFS_RECLAIM_JIFFIES);
+-		}
++	if (workspace != zwsm->pinned_ws &&
++	    clip_level(workspace->req_level) == workspace->level) {
++		workspace->last_used = jiffies;
++		list_add(&workspace->lru_list, &zwsm->lru_list);
++		if (!timer_pending(&zwsm->timer))
++			mod_timer(&zwsm->timer,
++				  jiffies + ZSTD_BTRFS_RECLAIM_JIFFIES);
+ 	}
+ 
+ 	set_bit(workspace->level, &zwsm->active_map);
 
 ---
-base-commit: 66fb95a521110da673090294561844c9f76ebe64
-change-id: 20260823-fa506ih-rtw88-quirk-6c157d80c0f1
+base-commit: 2709dd5ae32f0828f386327c76bba9f39f63a1c6
+change-id: 20260823-btrfs-zstd-max-level-reclaim-76fff65ffeb4
 
 Best regards,
 --  
-Rahul Kumar Rai <learn.rahul.rai@gmail.com>
+FAN YE <fy15309206903@gmail.com>
 
