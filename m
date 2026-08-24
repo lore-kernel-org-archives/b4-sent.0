@@ -1,16 +1,12 @@
 From: Daan De Meyer <daan@amutable.com>
-Subject: [PATCH v2 0/2] loop, nbd: drop partitions left behind by the
- GD_NEED_PART_SCAN removal
-Date: Mon, 24 Aug 2026 15:32:46 +0200
-Message-Id: <20260824-b4-loop-nbd-stale-partitions-v2-0-9815a577cebd@amutable.com>
+Date: Mon, 24 Aug 2026 15:32:47 +0200
+Subject: [PATCH v2 1/2] loop: drop stale partitions on LOOP_CHANGE_FD
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ6CMBBFr2K6dkxpFIgr72FYzNBRaoCSTiEaw
- t1t8QIu3/8zL39VwsGxqOthVYEXJ86PCczxoNoOxyeDs4mV0abUtS6BztB7P8FIFiRizzBhiC6
- mPwFjC82WqwINqqSYAj/ce9ffmx/LTC9uY3bmC0JhoIBj2+VoQIkcctE5iT589mFLkQV/blgK0
- FBWRNUFa1sR33CYI1LPp9YPqtm27QvDn62h9gAAAA==
-X-Change-ID: 20260806-b4-loop-nbd-stale-partitions-2d10ede71a2a
+Message-Id: <20260824-b4-loop-nbd-stale-partitions-v2-1-9815a577cebd@amutable.com>
+References: <20260824-b4-loop-nbd-stale-partitions-v2-0-9815a577cebd@amutable.com>
+In-Reply-To: <20260824-b4-loop-nbd-stale-partitions-v2-0-9815a577cebd@amutable.com>
 To: Jens Axboe <axboe@kernel.dk>, Christian Brauner <brauner@kernel.org>, 
  Josef Bacik <josef@toxicpanda.com>
 Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -19,69 +15,85 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
  Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>, 
  Daan De Meyer <daan@amutable.com>, stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787578374; l=2324;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787578374; l=2855;
  i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=m8oDTs2Omttsm2iVNRsyL1KTq7wF+IDuFw+OPYgP+Kg=;
- b=fNrfiKkFno9FI1OkHU1IpiZwGO7JDAKB2aiPhaNwy4SDOLKjkI6phc4O81sz4kHnlF/d34lTv
- jqFqFl5ACeaCBaP+Szikiya/mlTUw0I82MIJ3feixk0zQoizlshzTB7
+ bh=WMb3SvdJ8nIuT3XTRHYjCJBoiazU8RPkqLA8H581hVc=;
+ b=roJ22zyFQX/Aj5bjWwbYQ1OZriM1r+M8xNrCHVZC76NrO3DAmpoc//cdf8eoGpGjge//Kizny
+ AUInBq9U2srA60ZGkwqHnztnuOc22sPBbB2dGpoO8tyqqSiM3OhIShM
 X-Developer-Key: i=daan@amutable.com; a=ed25519;
  pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
 X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Commit 267ec4d7223a ("loop: fix partition scan race between udev and
-loop_reread_partitions()") stopped disk_force_media_change() from setting
-GD_NEED_PART_SCAN. The caller audit in that commit only considered the bit
-as a request to rescan partitions, but it did more than that:
-bdev_disk_changed() drops every entry in disk->part_tbl before it consults
-disk_has_partscan(), and only the re-adding half is gated on partition
-scanning being enabled. The lazy scan on the next open was therefore also
-the only thing removing partitions from a device that has partitions but
-no partition scanning.
+loop_reread_partitions()") stopped disk_force_media_change() from
+setting GD_NEED_PART_SCAN. That bit did more than request a rescan:
+bdev_disk_changed() drops every partition before it consults
+disk_has_partscan(), so the lazy scan on the next open was also what
+removed partitions from a loop device without LO_FLAGS_PARTSCAN.
 
-Loop devices without LO_FLAGS_PARTSCAN are exactly such devices, and they
-are not unusual. bdev_add_partition() only rejects GENHD_FL_NO_PART disks,
-so BLKPG_ADD_PARTITION works while GD_SUPPRESS_PART_SCAN is set, and
-parted, libfdisk and systemd all fall back to BLKPG when BLKRRPART fails
-with -EINVAL, which is what a loop device without LO_FLAGS_PARTSCAN
-returns.
+Such devices are not unusual. bdev_add_partition() only rejects
+GENHD_FL_NO_PART disks, so BLKPG_ADD_PARTITION works while
+GD_SUPPRESS_PART_SCAN is set, and parted, libfdisk and systemd all fall
+back to BLKPG when BLKRRPART fails with -EINVAL, which is what a loop
+device without LO_FLAGS_PARTSCAN returns.
 
-Commit c4f4c0fc551c ("loop: remove manually added partitions on detach")
-fixed the detach path after this was reported as loop devices picking up
-partition devices from a previously built image:
+loop_change_fd() only rescans when LO_FLAGS_PARTSCAN is set, so those
+partitions now survive the backing file swap and keep describing the old
+file. The new backing file must have the same size, but its partition
+table can be completely different, leaving the partition devices mapping
+the wrong ranges.
 
-  https://bugs.debian.org/1141434
+Call loop_reread_partitions() unconditionally. Without LO_FLAGS_PARTSCAN,
+blk_add_partitions() returns early, so this drops the stale partitions
+without scanning the new backing file.
 
-These two patches fix the two remaining places that relied on the same
-lazy cleanup, LOOP_CHANGE_FD and NBD_CLEAR_SOCK.
-
-Regression tests for both paths have been submitted to blktests:
-
-  https://github.com/linux-blktests/blktests/pull/259
-  https://github.com/linux-blktests/blktests/pull/260
-
+Fixes: 267ec4d7223a ("loop: fix partition scan race between udev and loop_reread_partitions()")
+Cc: stable@vger.kernel.org
+Reviewed-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Reviewed-by: Bart Van Assche <bvanassche@acm.org>
+Tested-by: Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>
 Signed-off-by: Daan De Meyer <daan@amutable.com>
 ---
-Changes in v2:
-- Rewrap the comments added by both patches so they fit in 80 columns
-  (Christoph Hellwig).
-- No functional change, so the review and test tags from v1 were carried
-  over.
-- Link to v1: https://patch.msgid.link/20260806-b4-loop-nbd-stale-partitions-v1-0-67bb75a8d7be@amutable.com
-
----
-Daan De Meyer (2):
-      loop: drop stale partitions on LOOP_CHANGE_FD
-      nbd: drop stale partitions on NBD_CLEAR_SOCK
-
  drivers/block/loop.c | 10 ++++++----
- drivers/block/nbd.c  |  7 +++++++
- 2 files changed, 13 insertions(+), 4 deletions(-)
----
-base-commit: 0a0d1d55dad570724bf8c7ea83409639cfb4be9b
-change-id: 20260806-b4-loop-nbd-stale-partitions-2d10ede71a2a
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-Best regards,
---  
-Daan De Meyer <daan@amutable.com>
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index 6f12976035b0..89935cfc591f 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -550,7 +550,6 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
+ 	struct file *old_file;
+ 	unsigned int memflags;
+ 	int error;
+-	bool partscan;
+ 	bool is_loop;
+ 
+ 	if (!file)
+@@ -604,7 +603,6 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
+ 	loop_assign_backing_file(lo, file);
+ 	loop_update_dio(lo);
+ 	blk_mq_unfreeze_queue(lo->lo_queue, memflags);
+-	partscan = lo->lo_flags & LO_FLAGS_PARTSCAN;
+ 	loop_global_unlock(lo, is_loop);
+ 
+ 	/*
+@@ -622,8 +620,12 @@ static int loop_change_fd(struct loop_device *lo, struct block_device *bdev,
+ 	 */
+ 	fput(old_file);
+ 	dev_set_uevent_suppress(disk_to_dev(lo->lo_disk), 0);
+-	if (partscan)
+-		loop_reread_partitions(lo);
++	/*
++	 * Rescan or, without LO_FLAGS_PARTSCAN, just drop the partitions of
++	 * the old backing file. They can exist without LO_FLAGS_PARTSCAN as
++	 * they may have been added manually with BLKPG.
++	 */
++	loop_reread_partitions(lo);
+ 
+ 	error = 0;
+ done:
+
+-- 
+2.54.0
 
