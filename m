@@ -1,113 +1,77 @@
-From: Jonas Juffinger <jonas.juffinger@liebherr.com>
-Date: Mon, 24 Aug 2026 14:02:38 +0200
-Subject: [PATCH v2] kernel-fit-image: Don't add hash node when signing is
- enabled
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Subject: [PATCH v2 0/4] inv_icm42600 driver enhancements
+Date: Mon, 24 Aug 2026 14:30:06 +0200
+Message-Id: <20260824-inv-icm42600-enhacements-v2-0-0040837fde12@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-bugfix-dont-add-hash-node-to-signed-fit-images-v2-1-c76d81585ea9@liebherr.com>
-X-B4-Tracking: v=1; b=H4sIAN0yjGoC/52PTQ7CIBCFr2JYOwZYWOvKe5gu+BlgjAUDtNE0v
- bu03sDNJN9L3vsyCyuYCQu7HhaWcaZCKTaQxwMzQUWPQLYxk1ye+UX0oCfv6A02xQrKWgiqBIj
- JItQEhXxEC44q0Kg8FhBSaW562QmDrI2+Mrb6LrwPjQOVmvJn989iS/9WzQIEGO6cEYq3092eh
- DpgzieTRjasP32Z9ANN3Z5i6/oF+N/oJAEBAAA=
-X-Change-ID: 20260819-bugfix-dont-add-hash-node-to-signed-fit-images-12ab0c9271ce
-To: openembedded-core@lists.openembedded.org
-Cc: mathieu.dubois-briand@bootlin.com, 
- Jonas Juffinger <jonas.juffinger@liebherr.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787572968; l=4044;
- i=jonas.juffinger@liebherr.com; s=20260615; h=from:subject:message-id;
- bh=h8fVTnhSZfy3nxjthVhpMKFXBxYOGB6uJjr2iuuLFQ0=;
- b=v6kxvmerIdhr69+0Wgu03CaW06ZGy6GflMHlKbDoq5h04ITAuM+iaCUV0iAKo3wxrYS964Oy5
- 9BC3dj+LVfDARVbEEHlt3mKdrTnxgTsfv013968jOuCexutzytngn9i
-X-Developer-Key: i=jonas.juffinger@liebherr.com; a=ed25519;
- pk=57Vzs2aKTP3E7TDrBuZMQibGR+Koattc4oIhiMOs3FI=
-X-Endpoint-Received: by B4 Relay for jonas.juffinger@liebherr.com/20260615 with auth_id=821
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAE45jGoC/3WNQQ6CMBBFr0K6dsy0EaiuvIdhAWWQ0dCatjYaw
+ t0tsHb5kv/fm0UgzxTEpZiFp8SBnc2gDoUwY2vvBNxnFgpVhTWegW0CNtMpIwLZsTU0kY0BJCF
+ JTdWgKy3y/eVp4M+mvjU7h3f3IBNX37oYOUTnv1s7yXW3Z7TC/5kkAQHrstVa9l1Z1tfYP4/GT
+ aJZluUH/uzZYNAAAAA=
+X-Change-ID: 20260709-inv-icm42600-enhacements-1e0e18e6f868
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787574695; l=1889;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=KT6Pf5qqHIW+9eGHA62X1LADJ5xfPm/G15BUFan5T/0=;
+ b=Q7B7t1VJDwwaO7S7p5M4XGfgE4R4YzLhgDwS3kuQ4g1IuEc7BMCaRaiMsFAI7gHO2/Y4MwLRR
+ IDNs7b/5n14DhdjvjYjiWW5l8Js2OJ8YRdFDo6pI6vueYwdL4DHuyA6
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When fit image signing is enabled, mkimage does not fill
-the configuration hash node even if it is present. This causes
-the verification to fail in U-Boot with a "Bad Data Hash" error
-because the hash node exists but is empty.
+This series add enhancements patches to inv_icm42600 driver.
 
-This patch adds a check to only add the configuration hash node
-if signing is not enabled and fixes the respective test cases.
+It includes:
+1. Move of MEMS stabilization sleep before FIFO configuration to avoid
+   pushing incorrect data.
+2. Use a fixed FIFO frame of 16 bits to avoid a bug of dynamic FIFO
+   configuration changed triggered by the sleep move.
+3. Simplify watermark computation using gcd.
+4. Enhance support of high frequency streaming by avoiding read of FIFO
+   count for watermark interrupt.
 
-The example FIT from the official documentation also shows
-the configuration field with only the signature, without the
-hash field:
-https://docs.u-boot.org/en/latest/usage/fit/signature.html#signed-configurations
-
-To further ensure that this change is valid, I also checked
-the U-Boot source for the hash and signature generation code:
-https://github.com/u-boot/u-boot/blob/main/tools/image-host.c#L1593
-The function fit_config_add_verification_data only adds the
-signature and no hash. Compare with fit_image_add_verification_data
-which adds both.
-
-Signed-off-by: Jonas Juffinger <jonas.juffinger@liebherr.com>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
 Changes in v2:
-- Adjusted test cases
-- Link to v1: https://lore.kernel.org/r/20260819-bugfix-dont-add-hash-node-to-signed-fit-images-v1-1-c0ffc1a0fc17@liebherr.com
----
- meta/lib/oe/fitimage.py                  | 2 +-
- meta/lib/oeqa/selftest/cases/fitimage.py | 8 +++++---
- 2 files changed, 6 insertions(+), 4 deletions(-)
+- Add commentaries for easing understanding of changes.
+- Reword commit messages with better explanations.
+- Link to v1: https://patch.msgid.link/20260820-inv-icm42600-enhacements-v1-0-075a881db557@tdk.com
 
-diff --git a/meta/lib/oe/fitimage.py b/meta/lib/oe/fitimage.py
-index d4dacdd508..142a5d60f7 100644
---- a/meta/lib/oe/fitimage.py
-+++ b/meta/lib/oe/fitimage.py
-@@ -485,7 +485,7 @@ class ItsNodeRootKernel(ItsNode):
-             f"{default_flag} {', '.join(conf_desc)}",
-             opt_props=opt_props
-         )
--        if self._hash_algo:
-+        if self._hash_algo and not self._sign_enable:
-             ItsNodeHash(
-                 "hash-1",
-                 conf_node,
-diff --git a/meta/lib/oeqa/selftest/cases/fitimage.py b/meta/lib/oeqa/selftest/cases/fitimage.py
-index 3d8bdc4a74..6f9e6f30e5 100644
---- a/meta/lib/oeqa/selftest/cases/fitimage.py
-+++ b/meta/lib/oeqa/selftest/cases/fitimage.py
-@@ -893,9 +893,10 @@ class KernelFitImageBase(FitImageTestCase):
-             if uboot_sign_enable == "1" and fit_sign_individual == "1":
-                 req_its_paths.append(['/', 'images', image, 'signature-1'])
-         for configuration in configurations:
--            req_its_paths.append(['/', 'configurations', configuration, 'hash-1'])
-             if uboot_sign_enable == "1":
-                 req_its_paths.append(['/', 'configurations', configuration, 'signature-1'])
-+            else:
-+                req_its_paths.append(['/', 'configurations', configuration, 'hash-1'])
- 
-         not_req_its_paths = []
-         for image in not_images:
-@@ -1066,14 +1067,15 @@ class KernelFitImageBase(FitImageTestCase):
-         # Add signing related properties if needed
-         if uboot_sign_enable == "1":
-             for section in req_sections:
--                req_sections[section]['Hash algo'] = fit_hash_alg
-                 if section.startswith(bb_vars['FIT_CONF_PREFIX']):
--                    req_sections[section]['Hash value'] = "unavailable"
-                     req_sections[section]['Sign algo'] = "%s,%s:%s" % (fit_hash_alg, fit_sign_alg, uboot_sign_keyname)
-                     num_signatures += 1
-                 elif fit_sign_individual == "1":
-+                    req_sections[section]['Hash algo'] = fit_hash_alg
-                     req_sections[section]['Sign algo'] = "%s,%s:%s" % (fit_hash_alg, fit_sign_alg, uboot_sign_img_keyname)
-                     num_signatures += 1
-+                else:
-+                    req_sections[section]['Hash algo'] = fit_hash_alg
-         return (req_sections, num_signatures)
- 
-     def _check_signing(self, bb_vars, sections, num_signatures, uboot_tools_bindir, fitimage_path):
+To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 6f7a806ece411ab32e4b1c08a0299400bdf3b588
-change-id: 20260819-bugfix-dont-add-hash-node-to-signed-fit-images-12ab0c9271ce
+Jean-Baptiste Maneyrol (4):
+      iio: imu: inv_icm42600: sleep before enabling FIFO data
+      iio: imu: inv_icm42600: use 2 sensors fixed packet size of 16 bytes
+      iio: imu: inv_icm42600: simplify watermark computation by using GCD
+      iio: imu: inv_icm42600: do not read FIFO count for watermark it
+
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h        |   4 +-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c  |  16 ++-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 112 +++++++++------------
+ drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c   |  16 ++-
+ 4 files changed, 73 insertions(+), 75 deletions(-)
+---
+base-commit: 53c022f51fbe540fffee2121ce9ed3e15266c9a4
+change-id: 20260709-inv-icm42600-enhacements-1e0e18e6f868
 
 Best regards,
 --  
-Jonas Juffinger <jonas.juffinger@liebherr.com>
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
