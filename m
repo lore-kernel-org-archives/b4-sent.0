@@ -1,79 +1,77 @@
-From: Johan Jonker <jbx6244@gmail.com>
-Date: Mon, 24 Aug 2026 12:21:19 +0200
-Subject: [PATCH v2] drm/rockchip: rk3066_hdmi: convert to
- devm_drm_bridge_alloc() API
+From: Cheng Lingfei <chenglingfei@foxmail.com>
+Date: Mon, 24 Aug 2026 18:55:04 +0800
+Subject: [PATCH] docs: cgroup-v2: fix misc.events key format description
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260824-drm-v2-1-7f9273c6020b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAB4bjGoC/x2MQQqAMAzAviI9O5ChY/oV8dDNqj04pRURxL87P
- YaE3KAkTApdcYPQycpbymDLAuKCaSbDY2awlXWVt7UZZTVUO99OrsHgI+QyoJIJgikuX7uiHiS
- f2IUmvv59PzzPC0fXXRZuAAAA
-To: Sandy Huang <hjc@rock-chips.com>, 
- =?utf-8?q?Heiko_St=C3=BCbner?= <heiko@sntech.de>, 
- Andy Yan <andy.yan@rock-chips.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?H=C3=BCseyin_BIYIK?= <boogiepop@gmx.com>, 
- Johan Jonker <jbx6244@gmail.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787566916; l=1499;
- i=jbx6244@gmail.com; s=20260824; h=from:subject:message-id;
- bh=gBdOBm+5/o1a1xd4Bmk6AhfjkzD8KksLg7XU8cwssNc=;
- b=z6EnmGaIvC0JCbT+oiwCL4cHH96OWndTvfdzzWB2RDFX8yV33FbbSVgPjKU5kQIxXBk31f5z8
- 1MCSkG9dw1/C6YYUQvnNufsRh0pyf1RgmtH81zuxSWVfXyT26r1UCjR
-X-Developer-Key: i=jbx6244@gmail.com; a=ed25519;
- pk=MK5Flx1ndjAF0uwXdNm8VvvoghD4KWCNd2hQE8QGyl0=
-X-Endpoint-Received: by B4 Relay for jbx6244@gmail.com/20260824 with auth_id=971
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260824-master-v1-1-6866b77e1f62@foxmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDCyMT3dzE4pLUIl2DpNRk0zRzy1SzZAsloOKCotS0zAqwQdGxEH5xaVJ
+ WanIJSLdSbS0AaDjCvmoAAAA=
+X-Change-ID: 20260824-master-0bec5f79e6c8
+To: Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: cgroups@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Cheng Lingfei <chenglingfei@foxmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787568904; l=1986;
+ i=chenglingfei@foxmail.com; s=20260824; h=from:subject:message-id;
+ bh=bJaj3sDirKHBVj+n44LMo9qeP3F5hcHM4o9UGDzSx74=;
+ b=spZdIoOvb0lu29m40uvXEaSglJuDFY8+PmPwGpb0SosQ5MGLU8trU4eneQJj+l/IPYu45yxYL
+ GfynoEP+vd+ASU/hf6cauZc2kWUriAJnyuEjxHu810DPfCJcTbxm0jI
+X-Developer-Key: i=chenglingfei@foxmail.com; a=ed25519;
+ pk=jJFtzwUiUOhTRJNlFx9WjsWHIYGk49Br17a7AD8MH2I=
+X-Endpoint-Received: by B4 Relay for chenglingfei@foxmail.com/20260824 with auth_id=972
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hüseyin BIYIK <boogiepop@gmx.com>
+In misc cgroup, misc.events does not output a simple "max" key. Instead,
+each registered misc resource outputs a separate key suffixed with ".max"
+(e.g., "res_a.max <val>").
+Update the documentation to clarify the per-resource nature of the events
+file and provide an example matching the rest of the Misc section.
 
-The function devm_drm_bridge_alloc() is the new API for allocating DRM bridges.
-This conversion was missed during the initial conversion of all bridges to
-the new API.
-
-Signed-off-by: Hüseyin BIYIK <boogiepop@gmx.com>
-Signed-off-by: Johan Jonker <jbx6244@gmail.com>
+Signed-off-by: Cheng Lingfei <chenglingfei@foxmail.com>
 ---
- drivers/gpu/drm/rockchip/rk3066_hdmi.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ Documentation/admin-guide/cgroup-v2.rst | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/gpu/drm/rockchip/rk3066_hdmi.c b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
-index f28d6a883e09..39c65ee07caa 100644
---- a/drivers/gpu/drm/rockchip/rk3066_hdmi.c
-+++ b/drivers/gpu/drm/rockchip/rk3066_hdmi.c
-@@ -703,7 +703,6 @@ rk3066_hdmi_register(struct drm_device *drm, struct rk3066_hdmi *hdmi)
- 			 DRM_MODE_ENCODER_TMDS, NULL);
+diff --git a/Documentation/admin-guide/cgroup-v2.rst b/Documentation/admin-guide/cgroup-v2.rst
+index 7c2a8ed80..cfd6cdc0e 100644
+--- a/Documentation/admin-guide/cgroup-v2.rst
++++ b/Documentation/admin-guide/cgroup-v2.rst
+@@ -3059,14 +3059,17 @@ resources (res_a and res_b) are registered then:
+         file.
  
- 	hdmi->bridge.driver_private = hdmi;
--	hdmi->bridge.funcs = &rk3066_hdmi_bridge_funcs;
- 	hdmi->bridge.ops = DRM_BRIDGE_OP_DETECT |
- 			   DRM_BRIDGE_OP_EDID |
- 			   DRM_BRIDGE_OP_HDMI |
-@@ -747,9 +746,10 @@ static int rk3066_hdmi_bind(struct device *dev, struct device *master,
- 	int irq;
- 	int ret;
+   misc.events
+-	A read-only flat-keyed file which exists on non-root cgroups. The
+-	following entries are defined. Unless specified otherwise, a value
+-	change in this file generates a file modified event. All fields in
+-	this file are hierarchical.
++        A read-only flat-keyed file which exists on non-root cgroups. It
++        shows, per resource, the number of times the resource usage of the
++        cgroup and its children was about to go over the max boundary.
++        Unless specified otherwise, a value change in this file generates a
++        file modified event. All fields in this file are hierarchical::
  
--	hdmi = devm_kzalloc(dev, sizeof(*hdmi), GFP_KERNEL);
--	if (!hdmi)
--		return -ENOMEM;
-+	hdmi = devm_drm_bridge_alloc(dev, struct rk3066_hdmi, bridge,
-+				     &rk3066_hdmi_bridge_funcs);
-+	if (IS_ERR(hdmi))
-+		return PTR_ERR(hdmi);
+-	  max
+-		The number of times the cgroup's resource usage was
+-		about to go over the max boundary.
++          $ cat misc.events
++          res_a.max 0
++          res_b.max 0
++
++        Each entry is keyed by the resource name suffixed with ``.max``.
  
- 	hdmi->dev = dev;
- 	hdmi->drm_dev = drm;
+   misc.events.local
+         Similar to misc.events but the fields in the file are local to the
 
 ---
-base-commit: 2709dd5ae32f0828f386327c76bba9f39f63a1c6
-change-id: 20260824-drm-e4689f65ab8c
+base-commit: 0a0d1d55dad570724bf8c7ea83409639cfb4be9b
+change-id: 20260824-master-0bec5f79e6c8
 
 Best regards,
--- 
-Johan Jonker <jbx6244@gmail.com>
+--  
+Cheng Lingfei <chenglingfei@foxmail.com>
 
