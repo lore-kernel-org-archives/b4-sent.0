@@ -1,93 +1,144 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 24 Aug 2026 23:54:40 +0200
-Subject: [PATCH v2] dt-bindings: gpio: fsl,qoriq-gpio: allow gpio-hog child
- nodes
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net v7 0/4] Fix to possible skb leak due to race condtion
+ in tx path
+Date: Mon, 24 Aug 2026 14:57:57 -0700
+Message-Id: <20260824-fix-race-condition-and-crash-v7-0-4323279b18f2@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-for-upstream-dt-qoriq-gpio-hog-v2-1-58bbc82b881e@free.fr>
-X-B4-Tracking: v=1; b=H4sIAJ+9jGoC/42NQQ6CMBAAv0L27JpSQcGT/zAcKt3CHqSwxUZD+
- ncrL/A4c5jZIJAwBbgWGwhFDuynDPpQQD+aaSBkmxm00mfV6AqdF3zNYRUyT7QrLl54wWFmj6M
- fsFatNspVVjUt5Mgs5Pi9D+5d5pHD6uWz/2L5s3+nY4kl2kvd6tOjp97YmxOioxPoUkpfHC6/y
- coAAAA=
-To: Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+X-B4-Tracking: v=1; b=H4sIAGW+jGoC/43QvW7DIBAA4FeJmEsFBxzQqe9RdSBwbhiCI7CsV
+ pHfvcRLXHlwx/vRdz931qhmauztdGeV5tzyWHpgX04sXkL5Ip5TjxkIQIEg+ZC/eQ2ReBxLylN
+ v56EkHmtoF+51EsYERBM168StUu9f+Q9WaGKfPXnJbRrrzzpylmvpf/osueDOEniRvDJ2eB9Lo
+ 2t+jeN1lWfYanigQdfOGE2UglDovaaemhXmQFNdU2Sk05L6F9xO0xsNxIGmH5eCVQSDckHudzN
+ bzR9o5rGbF3iO2pkU9ho+NSfhQMOuYRy8GHQAK8MfbVmWX6uxJnNUAgAA
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
+ Andrew Lunn <andrew@lunn.ch>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787608486; l=2553;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=vLftnW/6ZHYpxUdAguO8gqJD/zFrC/vFGlvGHyTT+do=;
- b=vnETn4Fqarl7H1tavyKw/MO27Msn4zA6zF1Bg6CprtBiH1Fp+nKXMthIjCMp6ZsX/uBB43goO
- nG6wBIpHOwuBuoce7R1RgwnOLGXKTdGdGRNTU64igJgmUY9tksh6P2Q
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787608678; l=4757;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=TV1QbD6sXr1+8Yw4eER0rG1GZxkPLsn7PNhNAV+mTJk=;
+ b=vr/i5du32kkegiOGNuoZXE3IOj8tano+NqSGrEBuuOGEl8MsFpb6uBSg2yH/gCad35if0xYnO
+ qQ1A2BpgzJ1DvRujBgxxLAZ5TDcVIBKsmvfbfdBY8klp0DfTf4ufB/0
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The binding sets additionalProperties: false and describes no child nodes,
-so a gpio-hog on a QorIQ/Layerscape GPIO controller is rejected by
-dtbs_check as an unmatched node name, even though the hardware and the
-kernel both support it.
+Now the traffic is handled in threaded IRQ, and the
+disable_traffic flag is checked before handling the
+data, new race condition is exposed, in which
+buffer may leak, if threaded IRQ interrupts the
+trasmit path midway.
 
-Hogs are not a controller feature and need nothing from the driver:
-gpio-mpc8xxx.c does not mention them at all. A hog on this controller
-works today, only the schema rejects it.
+With this change, disable_traffic and waiting_tx_skb
+pointer are protected by spin lock/unlock pair.
 
-QorIQ and Layerscape boards do need them. These SoCs bring board-level
-reset, enable and mux-select lines out on the SoC GPIOs, and those lines
-have to be driven to a safe level at boot before any consumer claims them,
-which is exactly what a hog is for.
+This is highlighted in Sashiko review
+https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260611-level-trigger-v5-0-4533a9e85ce2%40onsemi.com
 
-Some boards in the tree already express this need where they can:
-fsl-ls1088a-ten64.dts and the tqmls1012a/ls1028a boards all carry hogs, but
-on I2C GPIO expanders, because that is the only place the schema currently
-supports them. No board uses one on this controller yet, so this fixes no
-current failure.
+Also on buffer overrun condition, probably due to loss of
+SPI data chunks, receive path doesn't see the expected
+data chunk with end_valid bit set. As a result, driver
+keeps adding data chunks to the skb before running out
+of space and kernel panic is seen.
 
-Other GPIO bindings already carry the same block. gpio-mvebu.yaml and
-gpio-davinci.yaml use the identical "^(.+-hog(-[0-9]+)?)$" object requiring
-gpio-hog.
+With this change, before adding data to the skb, if there
+is no space, skb is freed and driver starts looking for
+new frame by looking for a data chunk with start_valid
+bit set.
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
----
+[  705.405490] skbuff: skb_over_panic: text:ffffffd2eb72a264 len:1600 put:64 head:ffffff804e5cdc40 data:ffffff804e5cdc80 tail:0x680 end:0x640 dev:eth1
+[  705.405569] ------------[ cut here ]------------
+[  705.405575] kernel BUG at net/core/skbuff.c:214!
+[  705.405589] Internal error: Oops - BUG: 00000000f2000800 [#1]  SMP
+
+[ 6703.427690] Call trace:
+[  705.925157]  skb_panic+0x58/0x68 (P)
+[  705.928726]  skb_put+0x74/0x80
+[  705.931772]  oa_tc6_update_rx_skb+0x44/0x98 [oa_tc6_mod]
+[  705.937084]  oa_tc6_macphy_threaded_irq+0x3f4/0x900 [oa_tc6_mod]
+[  705.943084]  irq_thread_fn+0x34/0xb8
+[  705.946654]  irq_thread+0x1a0/0x300
+[  705.950134]  kthread+0x138/0x150
+[  705.953356]  ret_from_fork+0x10/0x20
+
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>
+Cc: Andrew Lunn <andrew@lunn.ch>
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+
+Changes in v7:
+- Changed the comments to make it simple on why tx queues are
+  disabled.
+- Link to v6: https://lore.kernel.org/r/20260812-fix-race-condition-and-crash-v6-0-6cf90f4a271a@onsemi.com
+
+Changes in v6:
+- Changed the rx_buf_overflow flag to appropriate one
+- Using skb_tailroom instead of fields from skb
+- Updated commit IDs and comments to be accurate
+- Link to v5: https://lore.kernel.org/r/20260729-fix-race-condition-and-crash-v5-0-3906bc485daf@onsemi.com
+
+Changes in v5:
+- Fixed typo in commit messages.
+- Changed the commit message to be more accurate.
+- Fixed the wrong data type used.
+- Link to v4: https://lore.kernel.org/r/20260720-fix-race-condition-and-crash-v4-0-8273e2f38a1f@onsemi.com
+
+Changes in v4:
+  - As disable_traffic means device is uselss unless
+    driver re-loaded, all tx queues are turned off.
+  - Process all the received chunks on buffer overflow,
+    as long as data chunks doesn't have any error bits set
+    in their footer.
+  - Added spin lock protection in every place wait_tx_skb
+    is used.
+  - Carrier is not turned off on disable_traffic.
+
+- Link to v3: https://lore.kernel.org/r/20260705-fix-race-condition-and-crash-v3-0-3e51841e4d08@onsemi.com
+
+Changes in v3:
+- Cover all the instances of disable_traffic flag with
+  spin lock to serialize the access
+- Disabling the tx queue and mark the carrier off when
+  disable_traffic is set.
+- Continue processing received chunks on buffer overflow
+  error and "out of skb" error.
+- Link to v2: https://lore.kernel.org/r/20260626-fix-race-condition-and-crash-v2-0-b6c5c10e604f@onsemi.com
+
 Changes in v2:
-- Change the commit message. Drop the dmesg excerpt: those hog names come
-  from my out-of-tree dev git repo and are not in the tree (Frank Li)
-- Note: the hog call path is: gpiochip_hog_lines(), called from gpiochip_add_data_with_key()
-- Explain why these QorIQ SoCs need it
-- No change to the diff
-- Link to v1: https://lore.kernel.org/r/20260824-for-upstream-dt-qoriq-gpio-hog-v1-1-d75923bcecad@free.fr
----
- Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml b/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml
-index 4cb2a6b9fabfb..a6252440e099b 100644
---- a/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml
-+++ b/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml
-@@ -63,6 +63,13 @@ properties:
-       GPIO registers are used as little endian. If not
-       present registers are used as big endian by default.
- 
-+patternProperties:
-+  "^(.+-hog(-[0-9]+)?)$":
-+    type: object
-+
-+    required:
-+      - gpio-hog
-+
- required:
-   - compatible
-   - reg
+- Improvment to how error -EAGAIN is handled. Took care of
+  couple of use cases where start_bit and end_bit may be missing or
+  repeated due to lost data chunks.
+- Protected handling of waiting_tx_skb pointer with spin lock
+- Link to v1: https://lore.kernel.org/r/20260621-fix-race-condition-and-crash-v1-0-87e290d9357f@onsemi.com
 
 ---
-base-commit: 0a0d1d55dad570724bf8c7ea83409639cfb4be9b
-change-id: 20260824-for-upstream-dt-qoriq-gpio-hog-5092a0f4d089
+Selvamani Rajagopal (4):
+      net: ethernet: oa_tc6: Protect skb pointer used by two different kernel instances
+      net: ethernet: oa_tc6: Improve the error recovery
+      net: ethernet: oa_tc6: Disable tx queues on fatal error
+      net: ethernet: oa_tc6: Fix for the wrong data type
+
+ drivers/net/ethernet/oa_tc6.c | 258 +++++++++++++++++++++++++++++++-----------
+ 1 file changed, 189 insertions(+), 69 deletions(-)
+---
+base-commit: b70b7b71561f2be1183b6046964d950c2b203bfc
+change-id: 20260621-fix-race-condition-and-crash-94d055a665c4
 
 Best regards,
 -- 
-Vincent Jardin <vjardin@free.fr>
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
