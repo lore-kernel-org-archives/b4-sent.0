@@ -1,69 +1,63 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Tue, 25 Aug 2026 00:13:18 +0200
-Subject: [PATCH v2] dt-bindings: hwmon: ti,tmp401: add
- #thermal-sensor-cells
+From: Armandas Kvietkus <armandas.kvietkus@proton.me>
+Date: Tue, 25 Aug 2026 00:46:33 +0200
+Subject: [PATCH v2] platform/x86: asus-wmi: suppress -ENODEV warning in
+ fan_curve_get_factory_default()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-for-upstream-dt-tmp401-vcc-tsc-v2-1-cbc360ec51d9@free.fr>
-X-B4-Tracking: v=1; b=H4sIAP3BjGoC/42NQQ6CMBAAv0L27BpaC1ZO/sNwoGUrPQDNtjYaw
- t+tvMDjzGFmg0jsKUJXbcCUffTrUkCeKrDTsDwJ/VgYZC3bWkuFbmV8hZiYhhnHhGkOqhaYrcU
- ULQ6iNWT1pZGkoEQCk/PvY/DoC08+ppU/xy+Ln/07nQUKJGsacld902a8OyY6O4Z+3/cvYiyKd
- MoAAAA=
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787609598; l=1359;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=7IqoE5ZhPOxL10nbXpkCyJzoAu6XP+fD0RzWcN2r5M0=;
- b=FUecG8K2/KSvdtWoot2MzPZMd10LKgOCutZ3Ibve2Tw8iklA7KBFKzC4XRGE6aYixuT6MTf/B
- Fz1OS0VcCQ8B3eARhsiJ/9oMUdqm2/gFH3fTRzpYkLWuxCxgQ/Mo79q
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260825-fan-curve-v2-1-2ee1ffd2a1a3@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDCyMT3bTEPN3k0qKyVN3UPH8X1zAloMqCotS0zAqwKdGxEH5xaVJWanI
+ JSKtSbS0AMvTBv2cAAAA=
+X-Change-ID: 20260824-fan-curve-enODEV
+To: luke@ljones.dev
+Cc: denis.benato@linux.dev, ilpo.jarvinen@linux.intel.com, hansg@kernel.org, 
+ corentin.chary@gmail.com, fxzxaxon@outlook.com, 
+ platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787611592; l=1285;
+ i=armandas.kvietkus@proton.me; h=from:subject:message-id;
+ bh=5pBe+s77ZOy93/fwA7ehJ07ZlIr00ptgYIjNjLjwA9w=;
+ b=E5yuCqVjc4wnPArmrapjBIVXmsVi5slpvrrhIjDrAnQ2nEaNHVMIj8lPs1S5KPNOD3xd+LzFH
+ 12olN68QLxeCvLpySxHi0RyuKYxUcyV2HyAybNYGsF4dYeNAA6QFc5s
+X-Developer-Key: i=armandas.kvietkus@proton.me; a=ed25519;
+ pk=wuqmImJ9sKlDVcwALOvfGhjj7G8EBjjM4TpCdmlrAf8=
+X-Endpoint-Received: by B4 Relay for armandas.kvietkus@proton.me/default with auth_id=974
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The property is missing, so a board that uses it with a thermal zone fails
-with dtbs_check:
+When firmware does not support the fan curve WMI method,
+asus_wmi_evaluate_method_buf() returns -ENODEV. Callers treat this
+as non-fatal, but the pr_warn() here still fires, producing
+spurious boot noise on unsupported hardware. Downgrade the message
+to pr_debug().
 
-  tmp411@4c (ti,tmp411): '#thermal-sensor-cells' does not match any of the
-  regexes: '^pinctrl-[0-9]+$'
-
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
 Changes in v2:
-- Drop vcc-supply: tmp401.c has no regulator code, every hwmon binding
-  that declares vcc-supply today has a driver consuming it, so declaring it
-  as description only does not belong to this patch (Sashiko)
-- Adapt the commit message
-- Link to v1: https://lore.kernel.org/r/20260824-for-upstream-dt-tmp401-vcc-tsc-v1-1-ecb5ef7898bd@free.fr
+- Downgrade the message to pr_debug() as suggested by Ilpo Järvinen.
+- Link to v1: https://lore.kernel.org/r/20260503174752.26288-1-armundunelis@gmail.com
 ---
- Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/platform/x86/asus-wmi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml b/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml
-index 0e8ddf0ad7890..f283b567d5b6c 100644
---- a/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml
-+++ b/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml
-@@ -50,6 +50,9 @@ properties:
-     minimum: 0
-     maximum: 15
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index e835779b6..527289b7d 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -3610,7 +3610,7 @@ static int fan_curve_get_factory_default(struct asus_wmi *asus, u32 fan_dev)
+ 	err = asus_wmi_evaluate_method_buf(asus->dsts_id, fan_dev, mode, buf,
+ 					   FAN_CURVE_BUF_LEN);
+ 	if (err) {
+-		pr_warn("%s (0x%08x) failed: %d\n", __func__, fan_dev, err);
++		pr_debug("%s (0x%08x) failed: %d\n", __func__, fan_dev, err);
+ 		return err;
+ 	}
  
-+  "#thermal-sensor-cells":
-+    const: 1
-+
- allOf:
-   - if:
-       properties:
 
 ---
-base-commit: 0a0d1d55dad570724bf8c7ea83409639cfb4be9b
-change-id: 20260824-for-upstream-dt-tmp401-vcc-tsc-a16bec8352e4
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260824-fan-curve-enODEV
 
 Best regards,
--- 
-Vincent Jardin <vjardin@free.fr>
+--  
+Armandas Kvietkus <armandas.kvietkus@proton.me>
 
