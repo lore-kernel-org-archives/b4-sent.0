@@ -1,10 +1,11 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 24 Aug 2026 13:54:18 +0800
-Subject: [PATCH 05/12] dt-bindings: timer: Add UltraRISC DP1000 CLINT
+Date: Mon, 24 Aug 2026 13:54:19 +0800
+Subject: [PATCH 06/12] spi: dt-bindings: snps,dw-apb-ssi: Add compatible
+ for UltraRISC DP1000 SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-ultrarisc-dts-v1-5-61ab7aebe9e5@ultrarisc.com>
+Message-Id: <20260824-ultrarisc-dts-v1-6-61ab7aebe9e5@ultrarisc.com>
 References: <20260824-ultrarisc-dts-v1-0-61ab7aebe9e5@ultrarisc.com>
 In-Reply-To: <20260824-ultrarisc-dts-v1-0-61ab7aebe9e5@ultrarisc.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -31,35 +32,36 @@ Cc: Paul Walmsley <paul.walmsley@sifive.com>,
  linux-i2c@vger.kernel.org, netdev@vger.kernel.org, 
  dmaengine@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787552108; l=911;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787552108; l=893;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=L6jb4KXmGtvLsiicue+aqeQTQKu1hh49A3gJ3oqy6b4=;
- b=3VBgJyPcA6mmVBNWMcGIJ+1YMjutXZgCOfb4mFq+iDAvnYVGogpkSCmug1mhP9Sy9rifmwVGF
- wxCcGnbx7b+AMYHNcZfsWQjadMtbfgTg8AsrfwRJhtsVznGo49CzLMX
+ bh=GOAvwSU+bClZtaYEoEYBIUWP7wk56GD6+csu9urD+2Q=;
+ b=KOhSwVprVsR8XwUee2hGHuJ8P2eGS+xmvgFGjizmPpdfUWjvSB0byKgVtUM4XmMAaS+/De/RC
+ sH207vJ1wA5DiQzv7OOIexIT25aDwh0wp7thQjFVDbySqHWWN9WSrTI
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compatible string for UltraRISC DP1000 CLINT.
+Add the SoC-specific compatible string and use the generic one as fallback
+for the UltraRISC DP1000 SPI controller.
 
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
- Documentation/devicetree/bindings/timer/sifive,clint.yaml | 1 +
+ Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/timer/sifive,clint.yaml b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-index 3673836e14de..878f267d089b 100644
---- a/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-+++ b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-@@ -40,6 +40,7 @@ properties:
-               - starfive,jh8100-clint   # StarFive JH8100
-               - starfive,jhb100-clint   # StarFive JHB100
-               - tenstorrent,blackhole-clint # Tenstorrent Blackhole
-+              - ultrarisc,dp1000-clint  # UltraRISC DP1000
-           - const: sifive,clint0        # SiFive CLINT v0 IP block
-       - items:
-           - {}
+diff --git a/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml b/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml
+index 1e70c6804d5d..896205329d7e 100644
+--- a/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml
++++ b/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml
+@@ -63,6 +63,7 @@ properties:
+               - mscc,jaguar2-spi
+               - sophgo,sg2042-spi
+               - thead,th1520-spi
++              - ultrarisc,dp1000-spi
+           - const: snps,dw-apb-ssi
+       - description: Vendor controllers compatible with v1.01a
+         items:
 
 -- 
 2.34.1
