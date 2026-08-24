@@ -1,10 +1,11 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 24 Aug 2026 15:12:01 +0200
-Subject: [PATCH v2 1/3] arm64: dts: lx2160a: fix incorrect pinmux
+Date: Mon, 24 Aug 2026 15:12:02 +0200
+Subject: [PATCH v2 2/3] arm64: dts: lx2160a: fix IIC1 pinmux submask
+ rejected by pinctrl-single
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-for-upstream-lx2160a-pinmux-fix-v2-1-0a525d5f4cd5@free.fr>
+Message-Id: <20260824-for-upstream-lx2160a-pinmux-fix-v2-2-0a525d5f4cd5@free.fr>
 References: <20260824-for-upstream-lx2160a-pinmux-fix-v2-0-0a525d5f4cd5@free.fr>
 In-Reply-To: <20260824-for-upstream-lx2160a-pinmux-fix-v2-0-0a525d5f4cd5@free.fr>
 To: Frank Li <Frank.Li@nxp.com>, Carlos Song <carlos.song@nxp.com>, 
@@ -17,60 +18,70 @@ Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Thibaut Collet <thbt.cllt@gmail.com>, Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787577136; l=1626;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787577136; l=2029;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=cZfDHWxtn03VL7NNB13yIdWVRIXNDxo1MTtXhAgv4U8=;
- b=dHSEpwxeF9dhLwKyueWq+wokOc4uqkX0QwvIMBU7Ty2dsMST7A7Rn24MKI+ZUqoIEeVH/goLx
- WKgk3gOCBUzBv9OBRjRsCCsjhAfCQGBgKygWVieLawOiMoatUKi+UHR
+ bh=O+VGpUg5BMz3UlWXVE3y0mK/EDo+jBPNvLqqP9N2rrU=;
+ b=9Ed/17SijE21QKnYqCS+wmMMquGU+wut4XYtYPBK2z9I734J/iXdafdkfxzBHcSF8wg6ghV31
+ 0FGmBmeWpd4ApF2eECQlKiDvxZBfzEnxrOpJ2ESHJspGQoNp27Xlyro
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For gpio1 value set for pinctrl is outside the mask and so will do
-nothing.
+IIC1_PMUX is a single bit field at RCWSR14 bit 10, so the mask for the
+two iic1 pinmux nodes was narrowed from 0x7 to 0x1 to avoid writing the
+two reserved bits next to it.
 
-Add the missing offset for value field to be the same as the mask as
-expected.
+With pinctrl-single,bit-per-mux the driver does not take the supplied
+mask as the bits to modify. It derives the field from the node's
+pinctrl-single,function-mask, which is 0x7 here, and then requires the
+supplied mask to match it exactly:
 
-Fixes: 284ad7064aaa ("arm64: dts: lx2160a: complete pinmux for rcwsr12 configuration word")
-Suggested-by: Thibaut Collet <thbt.cllt@gmail.com>
+	bit_pos = __ffs(mask);			/* 10 */
+	mask_pos = ((pcs->fmask) << bit_pos);	/* 0x7 << 10 = 0x1c00 */
+	submask = mask & mask_pos;		/* 0x400 */
+	...
+	if (submask != mask_pos) {
+		dev_warn(pcs->dev,
+			 "Invalid submask 0x%x for %pOFn at 0x%x\n",
+			 submask, np, offset);
+		continue;
+	}
+
+A one bit mask gives submask 0x400 against mask_pos 0x1c00, so both
+nodes are rejected and the pins are never muxed with this message:
+
+  pinctrl-single 70010012c.pinmux: Invalid submask 0x400 for iic1-i2c-pins
+  pinctrl-single 70010012c.pinmux: Invalid submask 0x400 for iic1-gpio-pins
+
+The values are not changed:
+  - 0x0 selects IIC1
+  - 0x1 << 10 selects GPIO_1[3:2].
+
+Fixes: 7a3cc49ad1fc ("arm64: dts: lx2160a: change i2c0 (iic1) pinmux mask to one bit")
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-index ae6e37870c5e5..d4522a19405a9 100644
+index d4522a19405a9..fae705dd07669 100644
 --- a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
 +++ b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-@@ -1622,7 +1622,7 @@ fspi_data74_pins: xspi1-data74-pins {
+@@ -1688,11 +1688,11 @@ i2c6_i2c7_pins: iic8-iic7-i2c-pins {
+ 
+ 			/* RCWSR14 */
+ 			i2c0_pins: iic1-i2c-pins {
+-				pinctrl-single,bits = <0x8 0x0 (0x1 << 10)>;
++				pinctrl-single,bits = <0x8 0x0 (0x7 << 10)>;
  			};
  
- 			gpio1_31_28_pins: xspi1-data74-gpio-pins {
--				pinctrl-single,bits = <0x0 0x1 (0x7 << 15)>;
-+				pinctrl-single,bits = <0x0 (0x1 << 15) (0x7 << 15)>;
+ 			gpio0_3_2_pins: iic1-gpio-pins {
+-				pinctrl-single,bits = <0x8 (0x1 << 10) (0x1 << 10)>;
++				pinctrl-single,bits = <0x8 (0x1 << 10) (0x7 << 10)>;
  			};
+ 		};
  
- 			fspi_data30_pins: xspi1-data30-pins {
-@@ -1630,7 +1630,7 @@ fspi_data30_pins: xspi1-data30-pins {
- 			};
- 
- 			gpio1_27_24_pins: xspi1-data30-gpio-pins {
--				pinctrl-single,bits = <0x0 0x1 (0x7 << 18)>;
-+				pinctrl-single,bits = <0x0 (0x1 << 18) (0x7 << 18)>;
- 			};
- 
- 			fspi_dqs_sck_cs10_pins: xspi1-base-pins {
-@@ -1638,7 +1638,7 @@ fspi_dqs_sck_cs10_pins: xspi1-base-pins {
- 			};
- 
- 			gpio1_23_20_pins: xspi1-base-gpio-pins {
--				pinctrl-single,bits = <0x0 0x1 (0x7 << 21)>;
-+				pinctrl-single,bits = <0x0 (0x1 << 21) (0x7 << 21)>;
- 			};
- 
- 			esdhc0_cmd_data30_clk_vsel_pins: sdhc1-base-sdhc-vsel-pins {
 
 -- 
 2.43.0
