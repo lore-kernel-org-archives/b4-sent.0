@@ -1,77 +1,75 @@
-From: Daan De Meyer <daan@amutable.com>
-Date: Mon, 24 Aug 2026 15:32:48 +0200
-Subject: [PATCH v2 2/2] nbd: drop stale partitions on NBD_CLEAR_SOCK
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Mon, 24 Aug 2026 17:16:58 +0200
+Subject: [PATCH] iio: inv_sensors: fix estimated value larger than
+ interrupt timestamp
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-b4-loop-nbd-stale-partitions-v2-2-9815a577cebd@amutable.com>
-References: <20260824-b4-loop-nbd-stale-partitions-v2-0-9815a577cebd@amutable.com>
-In-Reply-To: <20260824-b4-loop-nbd-stale-partitions-v2-0-9815a577cebd@amutable.com>
-To: Jens Axboe <axboe@kernel.dk>, Christian Brauner <brauner@kernel.org>, 
- Josef Bacik <josef@toxicpanda.com>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- nbd@other.debian.org, Christoph Hellwig <hch@infradead.org>, 
- Bart Van Assche <bvanassche@acm.org>, 
- Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>, 
- Daan De Meyer <daan@amutable.com>, stable@vger.kernel.org
+Message-Id: <20260824-iio-common-inv-sensors-fix-estimated-use-v1-1-6e93506e7e93@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAGlgjGoC/yXN0QrCMAyF4VcZuTawlTmrryJebG3UCE2k6YYw9
+ u6revnB4T8rGGUmg0uzQqaFjVUqukMD4TnKg5BjNbjWDa13PTIrBk1JBVkWNBLTbHjnD5IVTmO
+ hiLMRdv0pDmcfnT96qLl3pjr6XV1vf9s8vSiUbx+2bQchNBsyjAAAAA==
+X-Change-ID: 20260824-iio-common-inv-sensors-fix-estimated-use-147d698d2858
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787578374; l=2227;
- i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=IJsYukTCp+gKDcCUl73TRLZtzYPIPmGwnx1/NOZHD4E=;
- b=+3LKI5LgUmNDygotKLNLsRXKAEF5uxws+wjt9ChSEsGXFVqJWzbH+YSsSCGOVnRyU54fmfXoR
- ve0kGD09ernCUHrWvT8l+uWR/XeooSDOTbqrxfcNt+Ur0EoXvdUX9wz
-X-Developer-Key: i=daan@amutable.com; a=ed25519;
- pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
-X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787584621; l=1816;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=mt7gKJjjBCMn9wytqWTTXgvzfjqGHjP0xJ6dO7I7gEo=;
+ b=mc/DmUjy1+bHfZNxWZm68zom2oxgTMovN+/tw02V1vmZWyi9yXJ7jSkPbXXFf+N387Yl2gHEi
+ fSkCYbfSajtDeWqLebB7FMS0Vnk+8dmHUb1scbaBlLHXCLn1GHHV48P
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 267ec4d7223a ("loop: fix partition scan race between udev and
-loop_reread_partitions()") stopped disk_force_media_change() from
-setting GD_NEED_PART_SCAN. Besides requesting a rescan, that bit was what
-removed stale partitions on the next open, as bdev_disk_changed() drops
-all partitions before it consults disk_has_partscan().
+When interrupt timestamp interval is not valid, we use an estimated value
+that can in rare case be bigger than the interrupt timestamp. This is
+obviously wrong, so better use interrupt timestamp in this case.
 
-nbd_clear_sock_ioctl() relied on that. It zeroes the capacity through
-nbd_bdev_reset(), but nothing removes the partitions of the disconnected
-device anymore. With the default max_part=16 they linger until the next
-connect sets GD_NEED_PART_SCAN again. With max_part=0 nothing ever sets
-it, so they are never removed at all, even though nbd does not set
-GENHD_FL_NO_PART and partitions can therefore still be added with BLKPG.
-
-Set GD_NEED_PART_SCAN in nbd_clear_sock_ioctl() so the partitions are
-dropped on the next open. Calling bdev_disk_changed() directly is not an
-option as it needs open_mutex, which nbd_open() acquires under
-config_lock.
-
-Fixes: 267ec4d7223a ("loop: fix partition scan race between udev and loop_reread_partitions()")
+Fixes: 8f4b627656fa ("iio: inv_sensors: better timestamp alignment when using watermark")
 Cc: stable@vger.kernel.org
-Reviewed-by: Christian Brauner (Amutable) <brauner@kernel.org>
-Reviewed-by: Bart Van Assche <bvanassche@acm.org>
-Tested-by: Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>
-Signed-off-by: Daan De Meyer <daan@amutable.com>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- drivers/block/nbd.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/iio/common/inv_sensors/inv_sensors_timestamp.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/block/nbd.c b/drivers/block/nbd.c
-index ffce519bf008..09b4ad70a5d7 100644
---- a/drivers/block/nbd.c
-+++ b/drivers/block/nbd.c
-@@ -1616,6 +1616,13 @@ static void nbd_clear_sock_ioctl(struct nbd_device *nbd)
- 	nbd_clear_sock(nbd);
- 	disk_force_media_change(nbd->disk);
- 	nbd_bdev_reset(nbd);
+diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
+index 88a82d1370c5..8c9e81a77e68 100644
+--- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
++++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
+@@ -167,11 +167,16 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+ 		valid = inv_validate_period(ts, period);
+ 	}
+ 
+-	/* if interrupt interval is valid, sync with interrupt timestamp */
 +	/*
-+	 * Drop the partitions of the disconnected device on the next open.
-+	 * They can exist even with max_part zero as they may have been added
-+	 * manually with BLKPG. Dropping them here is not possible as that
-+	 * needs open_mutex, which nbd_open() acquires under config_lock.
++	 * If interrupt interval is valid, sync with interrupt timestamp.
++	 * Otherwise, use estimated value while ensuring interrupt timestamp
++	 * remains the maximum possible value.
 +	 */
-+	set_bit(GD_NEED_PART_SCAN, &nbd->disk->state);
- 	if (test_and_clear_bit(NBD_RT_HAS_CONFIG_REF,
- 			       &nbd->config->runtime_flags))
- 		nbd_config_put(nbd);
++	period = inv_align_timestamp_it(ts, sample_nb);
+ 	if (valid)
+-		ts->period = inv_align_timestamp_it(ts, sample_nb);
++		ts->period = period;
+ 	else
+-		ts->period = ts->mult * ts->chip_period.val;
++		ts->period = min(ts->mult * ts->chip_period.val, period);
+ }
+ EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_interrupt, "IIO_INV_SENSORS_TIMESTAMP");
+ 
 
--- 
-2.54.0
+---
+base-commit: 22359083a9e74d538ce383d5c0ee30cc20182187
+change-id: 20260824-iio-common-inv-sensors-fix-estimated-use-147d698d2858
+
+Best regards,
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
