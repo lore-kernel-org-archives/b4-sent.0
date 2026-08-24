@@ -1,11 +1,11 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 24 Aug 2026 15:12:02 +0200
-Subject: [PATCH v2 2/3] arm64: dts: lx2160a: fix IIC1 pinmux submask
- rejected by pinctrl-single
+Date: Mon, 24 Aug 2026 15:12:03 +0200
+Subject: [PATCH v2 3/3] arm64: dts: lx2160a: fix the iic5 spi3 pinmux
+ offset and value
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-for-upstream-lx2160a-pinmux-fix-v2-2-0a525d5f4cd5@free.fr>
+Message-Id: <20260824-for-upstream-lx2160a-pinmux-fix-v2-3-0a525d5f4cd5@free.fr>
 References: <20260824-for-upstream-lx2160a-pinmux-fix-v2-0-0a525d5f4cd5@free.fr>
 In-Reply-To: <20260824-for-upstream-lx2160a-pinmux-fix-v2-0-0a525d5f4cd5@free.fr>
 To: Frank Li <Frank.Li@nxp.com>, Carlos Song <carlos.song@nxp.com>, 
@@ -18,70 +18,56 @@ Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Thibaut Collet <thbt.cllt@gmail.com>, Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787577136; l=2029;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787577136; l=1537;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=O+VGpUg5BMz3UlWXVE3y0mK/EDo+jBPNvLqqP9N2rrU=;
- b=9Ed/17SijE21QKnYqCS+wmMMquGU+wut4XYtYPBK2z9I734J/iXdafdkfxzBHcSF8wg6ghV31
- 0FGmBmeWpd4ApF2eECQlKiDvxZBfzEnxrOpJ2ESHJspGQoNp27Xlyro
+ bh=BZq9iBy9zMULsx08pGD1SDDVGE5pMTVNIR3ADNpa4zc=;
+ b=CKuLq+J0V1nANBfd3Gi8NrIBf4GFu2kLUI5rd055oh1iFr2PI2LlUcEnf9TdY1zYJ+Kir0gch
+ xK+EtHn0BzvA6Fa/QWghZyvOzPEphZGYwJwkVtej4BrEKqjdvA4wNTp
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IIC1_PMUX is a single bit field at RCWSR14 bit 10, so the mask for the
-two iic1 pinmux nodes was narrowed from 0x7 to 0x1 to avoid writing the
-two reserved bits next to it.
+The iic5-spi3-pins node has both of its first two cells wrong.
 
-With pinctrl-single,bit-per-mux the driver does not take the supplied
-mask as the bits to modify. It derives the field from the node's
-pinctrl-single,function-mask, which is 0x7 here, and then requires the
-supplied mask to match it exactly:
+The offset selects the register within the node's reg range, where:
+  0x0 is RCWSR12,
+  0x4 is RCWSR13,
+  0x8 is RCWSR14.
 
-	bit_pos = __ffs(mask);			/* 10 */
-	mask_pos = ((pcs->fmask) << bit_pos);	/* 0x7 << 10 = 0x1c00 */
-	submask = mask & mask_pos;		/* 0x400 */
-	...
-	if (submask != mask_pos) {
-		dev_warn(pcs->dev,
-			 "Invalid submask 0x%x for %pOFn at 0x%x\n",
-			 submask, np, offset);
-		continue;
-	}
+An offset of 0x3 is not one of them and is not even aligned for the
+declared 32 bit register width. It is the only node in this pinmux that
+does not use 0x0, 0x4 neither 0x8.
 
-A one bit mask gives submask 0x400 against mask_pos 0x1c00, so both
-nodes are rejected and the pins are never muxed with this message:
+The value is wrong too:
+  IIC5_PMUX is RCWSR12[11:9] and it encodes 0b000 for IIC5,
+  0b001 for GPIO_1[25:24],
+  0b010 for SDHC1_CLK_SYNC_OUT/IN,
+  0b011 for {IIC5_SCL,IIC5_SDA} = {SPI3_SOUT,SPI3_SIN}.
 
-  pinctrl-single 70010012c.pinmux: Invalid submask 0x400 for iic1-i2c-pins
-  pinctrl-single 70010012c.pinmux: Invalid submask 0x400 for iic1-gpio-pins
+This node selects the last of those, so it needs 0x3, not the 0x2, which
+is the value of the neighbouring sdhc1 clock sync node it was copied
+from.
 
-The values are not changed:
-  - 0x0 selects IIC1
-  - 0x1 << 10 selects GPIO_1[3:2].
-
-Fixes: 7a3cc49ad1fc ("arm64: dts: lx2160a: change i2c0 (iic1) pinmux mask to one bit")
+Fixes: 284ad7064aaa ("arm64: dts: lx2160a: complete pinmux for rcwsr12 configuration word")
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-index d4522a19405a9..fae705dd07669 100644
+index fae705dd07669..bf5d9b671d858 100644
 --- a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
 +++ b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-@@ -1688,11 +1688,11 @@ i2c6_i2c7_pins: iic8-iic7-i2c-pins {
- 
- 			/* RCWSR14 */
- 			i2c0_pins: iic1-i2c-pins {
--				pinctrl-single,bits = <0x8 0x0 (0x1 << 10)>;
-+				pinctrl-single,bits = <0x8 0x0 (0x7 << 10)>;
+@@ -1602,7 +1602,7 @@ esdhc0_clksync_pins: iic5-sdhc-clk-pins {
  			};
  
- 			gpio0_3_2_pins: iic1-gpio-pins {
--				pinctrl-single,bits = <0x8 (0x1 << 10) (0x1 << 10)>;
-+				pinctrl-single,bits = <0x8 (0x1 << 10) (0x7 << 10)>;
+ 			dspi2_miso_mosi_pins: iic5-spi3-pins {
+-				pinctrl-single,bits = <0x3 (0x2 << 9) (0x7 << 9)>;
++				pinctrl-single,bits = <0x0 (0x3 << 9) (0x7 << 9)>;
  			};
- 		};
  
+ 			i2c5_pins: iic6-i2c-pins {
 
 -- 
 2.43.0
