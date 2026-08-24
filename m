@@ -1,10 +1,11 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 24 Aug 2026 13:54:15 +0800
-Subject: [PATCH 02/12] dt-bindings: vendor-prefixes: Add shenrongda
+Date: Mon, 24 Aug 2026 13:54:16 +0800
+Subject: [PATCH 03/12] dt-bindings: riscv: cpus: Add UltraRISC CP100
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-ultrarisc-dts-v1-2-61ab7aebe9e5@ultrarisc.com>
+Message-Id: <20260824-ultrarisc-dts-v1-3-61ab7aebe9e5@ultrarisc.com>
 References: <20260824-ultrarisc-dts-v1-0-61ab7aebe9e5@ultrarisc.com>
 In-Reply-To: <20260824-ultrarisc-dts-v1-0-61ab7aebe9e5@ultrarisc.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -31,37 +32,37 @@ Cc: Paul Walmsley <paul.walmsley@sifive.com>,
  linux-i2c@vger.kernel.org, netdev@vger.kernel.org, 
  dmaengine@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787552108; l=834;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787552108; l=751;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=srZhMWhIRRAzwGwjdYH2TAvocE2gftBCjE4OIfGUdvU=;
- b=yRRRYkak7O2YkqfP2DQXp3U8p6gybdlntCgpJlpicK/56orMNBs7mNrmemPaOXLPCAcnIhVjp
- UNZn8Ji8hSjCCwR3u/OEljzLw0WqpXmVLjP+vivIkpOHW7ngnDH0A0x
+ bh=PLH98AWMWhEDDtI7P4MBr8Ej9OKDTOxH4/kye1KfXcs=;
+ b=uI8E83sWqzeJyxFJjF1Pxn9pu9ZOR1cxxf/juShwZi19Ep8HUOnUHoh4zL5GQxA//IsERyKUI
+ 5ouqlO5rBXJBs9s/7mvkSQQFDH828iwCjF1SObjLasgHWv9mbMWyAhT
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Shenzhen Rongda Computer Co., Ltd. to the vendor prefixes.
+Document the UltraRISC CP100 CPU compatible.
 
-Link: http://www.shenrongda.com/
+The CP100 CPU is used in the UltraRISC DP1000 SoC.
+
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/riscv/cpus.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 6780b651acf8..61cd5e625a23 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1505,6 +1505,8 @@ patternProperties:
-     description: SGX Sensortech
-   "^sharp,.*":
-     description: Sharp Corporation
-+  "^shenrongda,.*":
-+    description: Shenzhen Rongda Computer Co., Ltd.
-   "^shift,.*":
-     description: SHIFT GmbH
-   "^shimafuji,.*":
+diff --git a/Documentation/devicetree/bindings/riscv/cpus.yaml b/Documentation/devicetree/bindings/riscv/cpus.yaml
+index 0da219ae6769..85adf72899c9 100644
+--- a/Documentation/devicetree/bindings/riscv/cpus.yaml
++++ b/Documentation/devicetree/bindings/riscv/cpus.yaml
+@@ -67,6 +67,7 @@ properties:
+               - thead,c908
+               - thead,c910
+               - thead,c920
++              - ultrarisc,cp100
+           - const: riscv
+       - items:
+           - enum:
 
 -- 
 2.34.1
