@@ -1,79 +1,70 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 24 Aug 2026 17:42:59 +0200
-Subject: [PATCH] dt-bindings: hwmon: microchip,emc2305: add vcc-supply and
- #cooling-cells
+Date: Mon, 24 Aug 2026 17:46:36 +0200
+Subject: [PATCH] dt-bindings: hwmon: ti,tmp401: add vcc-supply and
+ #thermal-sensor-cells
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-for-upstream-dt-emc2305-vcc-cooling-v1-1-cd3b53dfb5d4@free.fr>
-X-B4-Tracking: v=1; b=H4sIAIJmjGoC/x3NwQqDMAyA4VeRnA3UbBXdq8gOElMNzFZSJwPx3
- Vc8fpf/PyGLqWR4VSeYHJo1xYKmroCXMc6COhUDOWpdR08MyfC75d1kXHHaUVamh/N4MCOn9NE
- 4I/mm9Z77XkIHpbSZBP3dl+F9XX/VYcEJdQAAAA==
+Message-Id: <20260824-for-upstream-dt-tmp401-vcc-tsc-v1-1-ecb5ef7898bd@free.fr>
+X-B4-Tracking: v=1; b=H4sIAFtnjGoC/x3NwQqDMAyA4VeRnBdou07EV5EdaoxbDmpJqgjiu
+ 6/s+F3+/wJjFTbomwuUDzHZ1gr/aIC+af0wylQNwYXWdSHivCnu2YpyWnAqWJYcnceDCIsRJt+
+ OTN3zFThCjWTlWc7/YHjf9w+FU6QHcAAAAA==
 To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Michael Shych <michaelsh@nvidia.com>
+ Conor Dooley <conor+dt@kernel.org>
 Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787586189; l=1919;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787586398; l=1364;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=OmD5dPXn6kP0dHQvQO+WQZsrUb0dqokp2zQV0VNm5M8=;
- b=4G02U1j9qsh/7z1101Y2ZOFcREgjfyaxV5RyC576UKmi5xTmFKqlPMRltcsjvqNE3CO7zTbt9
- o7k55ogWrPUAH4Eq0kVDsG0QOUVT7sfq80KsoDK0+MM+LeE9a6hHvKx
+ bh=P+vvtVa9Xt5cHsZaKRS93Aih5rhUVfFYRpn5jmhnpxM=;
+ b=tyqh1tD1gWbAy0YYrloa/Zvko1FEsMvJGZPig0Y/hhR72qRY3lPu+U5Y750Qap2yS7PRxopyL
+ C4Cmwnwe4M1DBtU9GERurozcJpLm4wnr/e1mcojtfHCg4rkRugJwSh9
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both properties are missing, so a board that supplies either fails with
-dtbs_check:
+Both properties are used by the driver that backs this binding, and
+neither is described, so a board that supplies either fails dtbs_check:
 
-  fan-controller@2c (microchip,emc2305): '#cooling-cells', 'vcc-supply'
-  do not match any of the regexes: '^fan@[0-4]$', '^pinctrl-[0-9]+$'
+  tmp411@4c (ti,tmp411): '#thermal-sensor-cells', 'vcc-supply' do not
+  match any of the regexes: '^pinctrl-[0-9]+$'
 
-The #cooling-cells property belongs to the controller node, which is
-where the driver actually registers.
+vcc-supply is fetched in lm90_probe():
 
-Two cells is what that registration needs: a cooling-maps entry
-references the fan as <&emc2305 min max>.
+  drivers/hwmon/lm90.c:2777
+        err = devm_regulator_get_enable(dev, "vcc");
 
-Two cells also documents what the driver supports today. The
-pwm-separate path registers one cooling device per PWM against the same
-node, and they all get cdev_id 0, so no cell count can tell them apart.
-That is a driver issue, noted here but not addressed.
-
-The examples in this binding put that property on the fan@N subnodes
-instead, which does not match what the driver does: they are left alone
-here rather than changed blind.
-
-vcc-supply describes the chip's own rail, which matters on boards where
-the sensor sits behind a switched supply.
+so a board with the sensor behind a switched rail has no other way to
+describe it, and omitting it means the chip is probed with its supply
+possibly off.
 
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- Documentation/devicetree/bindings/hwmon/microchip,emc2305.yaml | 5 +++++
+ Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml | 5 +++++
  1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/hwmon/microchip,emc2305.yaml b/Documentation/devicetree/bindings/hwmon/microchip,emc2305.yaml
-index 8c2548539d7fd..47640214de100 100644
---- a/Documentation/devicetree/bindings/hwmon/microchip,emc2305.yaml
-+++ b/Documentation/devicetree/bindings/hwmon/microchip,emc2305.yaml
-@@ -44,6 +44,11 @@ properties:
-            - 0 (Open-Drain)
-            - 1 (Push-Pull)
+diff --git a/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml b/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml
+index 0e8ddf0ad7890..69f77aec01a33 100644
+--- a/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml
++++ b/Documentation/devicetree/bindings/hwmon/ti,tmp401.yaml
+@@ -50,6 +50,11 @@ properties:
+     minimum: 0
+     maximum: 15
  
 +  vcc-supply: true
 +
-+  "#cooling-cells":
-+    const: 2
++  "#thermal-sensor-cells":
++    const: 1
 +
- patternProperties:
-   '^fan@[0-4]$':
-     $ref: fan-common.yaml#
+ allOf:
+   - if:
+       properties:
 
 ---
 base-commit: 0a0d1d55dad570724bf8c7ea83409639cfb4be9b
-change-id: 20260824-for-upstream-dt-emc2305-vcc-cooling-251655c99ef8
+change-id: 20260824-for-upstream-dt-tmp401-vcc-tsc-a16bec8352e4
 
 Best regards,
 -- 
