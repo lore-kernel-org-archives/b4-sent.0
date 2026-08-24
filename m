@@ -1,74 +1,90 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 24 Aug 2026 15:12:03 +0200
-Subject: [PATCH v2 3/3] arm64: dts: lx2160a: fix the iic5 spi3 pinmux
- offset and value
+From: "Ji-Ze Hong (Peter Hong)" <peter_hong@fintek.com.tw>
+Date: Mon, 24 Aug 2026 21:18:14 +0800
+Subject: [PATCH v2] can: usb: f81604: fix struct f81604_int_data size
+ mismatch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-for-upstream-lx2160a-pinmux-fix-v2-3-0a525d5f4cd5@free.fr>
-References: <20260824-for-upstream-lx2160a-pinmux-fix-v2-0-0a525d5f4cd5@free.fr>
-In-Reply-To: <20260824-for-upstream-lx2160a-pinmux-fix-v2-0-0a525d5f4cd5@free.fr>
-To: Frank Li <Frank.Li@nxp.com>, Carlos Song <carlos.song@nxp.com>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Josua Mayer <josua@solid-run.com>
-Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Thibaut Collet <thbt.cllt@gmail.com>, Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787577136; l=1537;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=BZq9iBy9zMULsx08pGD1SDDVGE5pMTVNIR3ADNpa4zc=;
- b=CKuLq+J0V1nANBfd3Gi8NrIBf4GFu2kLUI5rd055oh1iFr2PI2LlUcEnf9TdY1zYJ+Kir0gch
- xK+EtHn0BzvA6Fa/QWghZyvOzPEphZGYwJwkVtej4BrEKqjdvA4wNTp
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Message-Id: <20260824-f81604-fix-v2-1-fc9be5581394@fintek.com.tw>
+X-B4-Tracking: v=1; b=H4sIAJVEjGoC/1WMyw7CIBBFf6WZtRAgFdFV/8MYQ+lQ0BQawEfS9
+ N+lunIxuTk3d84CGZPHDKdmgYRPn30MFcSuAeN0GJH4oTIIJiRToiVWcclq+DfRGvuB21Ygk1A
+ f5oS1/srOlx/nR39DUzbDtrApTqS4hPpPWu+wV/TIuSKczFgwXV0MY2d9KHinJk60vGBdP7+so
+ p6vAAAA
+X-Change-ID: 20260824-f81604-fix-aaebd1f42e06
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, "Dynetrex, Admin" <admin@dynetrex.com>, 
+ "Ji-Ze Hong (Peter Hong)" <peter_hong@fintek.com.tw>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787577513; l=2109;
+ i=peter_hong@fintek.com.tw; s=20260824; h=from:subject:message-id;
+ bh=A/8jIUxJ46OgWF9VTd5CR2kRPJceYM0zgcKPipnmPJA=;
+ b=fxLV2EfZZNHmnn2yfRfy1y5DN9RKGDTeDpiVKwJPxa7kBT1XFJQVpvn+wJuBa8uHhrz+2ccA4
+ CpHVrwUXFjCAGXKNN/DXFoxh4QHcWwL+A/8loZYtj+sdK6a43IKvbdD
+X-Developer-Key: i=peter_hong@fintek.com.tw; a=ed25519;
+ pk=8sYixQfVOzNMM+g53fxG9d3MHOFC02ZggNS0OhG5LMA=
+X-Endpoint-Received: by B4 Relay for peter_hong@fintek.com.tw/20260824 with auth_id=973
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The iic5-spi3-pins node has both of its first two cells wrong.
+The struct f81604_int_data defines 9 bytes of interrupt data:
+- Byte 0: Status register (sr)
+- Byte 1: Interrupt register (isrc)
+- Byte 2: Interrupt enable register (ier)
+- Byte 3: Arbitration lost capture (alc)
+- Byte 4: Error code capture (ecc)
+- Byte 5: Error warning limit register (ewlr)
+- Byte 6: RX error counter (rxerr)
+- Byte 7: TX error counter (txerr)
+- Byte 8: Reserved (val)
 
-The offset selects the register within the node's reg range, where:
-  0x0 is RCWSR12,
-  0x4 is RCWSR13,
-  0x8 is RCWSR14.
+The hardware sends exactly 9 bytes for the interrupt endpoint.
+However, the struct was defined with __aligned(4) attribute which
+caused the compiler to pad the struct to 12 bytes.
 
-An offset of 0x3 is not one of them and is not even aligned for the
-declared 32 bit register width. It is the only node in this pinmux that
-does not use 0x0, 0x4 neither 0x8.
+This causes a problem in f81604_read_int_callback() where the short
+URB check compares urb->actual_length against sizeof(*data). When
+sizeof(struct f81604_int_data) is 12 but the hardware only sends 9
+bytes, the check fails and valid interrupt messages are discarded.
 
-The value is wrong too:
-  IIC5_PMUX is RCWSR12[11:9] and it encodes 0b000 for IIC5,
-  0b001 for GPIO_1[25:24],
-  0b010 for SDHC1_CLK_SYNC_OUT/IN,
-  0b011 for {IIC5_SCL,IIC5_SDA} = {SPI3_SOUT,SPI3_SIN}.
+This results in the driver only being able to transmit once because
+the TX complete interrupt is never processed.
 
-This node selects the last of those, so it needs 0x3, not the 0x2, which
-is the value of the neighbouring sdhc1 clock sync node it was copied
-from.
+Fix this by removing the __aligned(4) attribute so the struct size
+matches the actual hardware data size of 9 bytes.
 
-Fixes: 284ad7064aaa ("arm64: dts: lx2160a: complete pinmux for rcwsr12 configuration word")
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Fixes: 7299b1b39a25 ("can: usb: f81604: handle short interrupt urb messages properly")
+Cc: stable@vger.kernel.org
+Reported-by: Dynetrex, Admin <admin@dynetrex.com>
+Closes: https://lore.kernel.org/all/A3834A07-5639-4779-844F-C5843DFC3928@dynetrex.com/
+Signed-off-by: Ji-Ze Hong (Peter Hong) <peter_hong@fintek.com.tw>
 ---
- arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 2 +-
+v2:
+- Added Reported-by and Remove mismatched Fixes tags
+---
+ drivers/net/can/usb/f81604.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-index fae705dd07669..bf5d9b671d858 100644
---- a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-@@ -1602,7 +1602,7 @@ esdhc0_clksync_pins: iic5-sdhc-clk-pins {
- 			};
+diff --git a/drivers/net/can/usb/f81604.c b/drivers/net/can/usb/f81604.c
+index f12318268e46..4c147b9d6d69 100644
+--- a/drivers/net/can/usb/f81604.c
++++ b/drivers/net/can/usb/f81604.c
+@@ -169,7 +169,7 @@ struct f81604_int_data {
+ 	u8 rxerr;
+ 	u8 txerr;
+ 	u8 val;
+-} __packed __aligned(4);
++} __packed;
  
- 			dspi2_miso_mosi_pins: iic5-spi3-pins {
--				pinctrl-single,bits = <0x3 (0x2 << 9) (0x7 << 9)>;
-+				pinctrl-single,bits = <0x0 (0x3 << 9) (0x7 << 9)>;
- 			};
- 
- 			i2c5_pins: iic6-i2c-pins {
+ struct f81604_sff {
+ 	__be16 id;
 
--- 
-2.43.0
+---
+base-commit: a13c140cc289c0b7b3770bce5b3ad42ab35074aa
+change-id: 20260824-f81604-fix-aaebd1f42e06
+
+Best regards,
+--  
+Ji-Ze Hong (Peter Hong) <peter_hong@fintek.com.tw>
 
