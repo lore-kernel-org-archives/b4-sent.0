@@ -1,79 +1,82 @@
-From: Vishnu Razdan <vrazdan@openai.com>
-Date: Mon, 24 Aug 2026 23:58:00 -0700
-Subject: [PATCH] hwmon: (pmbus) Clear generic status alarms with
- CLEAR_FAULTS
+From: Vincent Jardin <vjardin@free.fr>
+Date: Tue, 25 Aug 2026 11:41:57 +0200
+Subject: [PATCH v3] dt-bindings: gpio: fsl,qoriq-gpio: allow gpio-hog child
+ nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260824-vrazdan-pmbus-status-word-b4-v1-1-2606ecd0c029@openai.com>
-X-B4-Tracking: v=1; b=H4sIAPc8jWoC/yWMwQ6CMBBEf4Xs2U2AVCH+ivGwpavUhEJ2WzQS/
- t1WTpM3M3kbKItnhWu1gfDq1c8hQ3OqYBgpPBm9ywxt3V7qvjW4Cn0dBVwmmxQ1UszxnsWhNWh
- r15i+P3edaSArFuGH//z1t/vBmuyLh1ic5WFJGa1QGMZSHda0aBSmCcsK+/4DMTocPaYAAAA=
-X-Change-ID: 20260824-vrazdan-pmbus-status-word-b4-b0d148857741
-To: linux@roeck-us.net
-Cc: vrazdan@openai.com, linux-hwmon@vger.kernel.org, 
- linux-kernel@vger.kernel.org, vikash.chandola@linux.intel.com
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787641169; l=2169;
- i=vrazdan@openai.com; s=io-wq-kernel-20260811; h=from:subject:message-id;
- bh=alnznPhZtLYc/QrJKqWIsTFzP2+B2p3+SqAtTUiocw4=;
- b=XEA92ojJF0fXsiH2Wt20uaU8sx2/6fgUSc2w/Wq51aeTRqP9rLmhIYYAHMym5/972zJOcY/kH
- +m66muWcXo6AQHtut8QLBgh3YPqCcu+znuS7YQ81eLcCFYc6h9jk0XE
-X-Developer-Key: i=vrazdan@openai.com; a=ed25519;
- pk=45vHW8D/KId5RtsP3Qx7zMcNpgDwEvCnL5uAw0KzuS0=
-X-Endpoint-Received: by B4 Relay for vrazdan@openai.com/io-wq-kernel-20260811 with auth_id=937
+Message-Id: <20260825-for-upstream-dt-qoriq-gpio-hog-v3-1-b99bda4f44d7@free.fr>
+X-B4-Tracking: v=1; b=H4sIAGRjjWoC/5XNOxKCMBSF4a0wqb1OCKDByn04FnncQAoJ3GBGh
+ 2HvBhpbLf9TfGdhEcljZJdiYYTJRx+GHNWhYKZXQ4fgbW4muDhxKWpwgeA5xplQPcDOMAXyE3S
+ jD9CHDhreCsVdbblsWUZGQudf+8Htnrv3cQ703v9Sua0/06mEEuy5aUWlDRplr44Qj47YBifxH
+ yYy1kitjRRayhK/2LquH4rh2OAXAQAA
+To: Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>
+Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Alexander Stein <alexander.stein@ew.tq-group.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787650917; l=1854;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=0aUt4yW36dUGRIwt7A7v+to/nNSwTzzg2q1QEySGXKY=;
+ b=zGwXo46K0v1/ao7QgvXl1HZAZNNOzJg/2a3Akb69xALbYZURxU4pC2oco3ldfdEPyrHwGKtQp
+ CH8atLhhJ5WC/EZZ2R/fP3HFQhZLQCffXiWnqrVecI7GKp0r7nRtUmn
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some hwmon alarms fall back to STATUS_WORD summary bits when no
-individual limit alarm is available. On PMBus 1.2 and newer devices,
-pmbus_get_boolean() acknowledges these alarms with the same byte-data
-write used for detailed status registers. For example, PB_STATUS_INPUT
-is 0x2000, so it is truncated to zero when passed to
-_pmbus_write_byte_data(). The resulting write cannot acknowledge the
-input alarm.
+QorIQ GPIO controllers may have hogs in device nodes, so let's expose
+it.
 
-PMBus 1.3 Part II, sections 10.2.4 and 10.2.5, excludes ordinary
-STATUS_BYTE and STATUS_WORD summary bits from individual clearing.
-Their summary bits clear when the underlying status bits clear, so
-changing this to a word-data write would not fix the generic input
-alarm either.
-
-Use the existing page CLEAR_FAULTS path for generic STATUS_WORD
-alarms, including devices whose status accessor uses STATUS_BYTE.
-Keep individual byte writes for detailed status registers on PMBus
-1.2 and newer devices. As with the existing older-device fallback,
-CLEAR_FAULTS can clear other latched status; an active condition can
-reassert its status.
-
-Fixes: 35f165f08950 ("hwmon: (pmbus) Clear pmbus fault/warning bits after read")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Vishnu Razdan <vrazdan@openai.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/hwmon/pmbus/pmbus_core.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Changes in v3:
+- Shorten the commit message, former one tried too much on QorIQ (Krzysztof Kozlowski)
+- Drop redundant brackets from the pattern (Krzysztof Kozlowski)
+- No change to the schema semantics
+- Link to v2: https://lore.kernel.org/r/20260824-for-upstream-dt-qoriq-gpio-hog-v2-1-58bbc82b881e@free.fr
 
-diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
-index 806c9a4913bb0..5f69c1420b4e1 100644
---- a/drivers/hwmon/pmbus/pmbus_core.c
-+++ b/drivers/hwmon/pmbus/pmbus_core.c
-@@ -1275,7 +1275,9 @@ static int pmbus_get_boolean(struct i2c_client *client, struct pmbus_boolean *b,
+Changes in v2:
+- Change the commit message. Drop the dmesg excerpt: those hog names come
+  from my out-of-tree dev git repo and are not in the tree (Frank Li)
+- Note: the hog call path is: gpiochip_hog_lines(), called from gpiochip_add_data_with_key()
+- Explain why these QorIQ SoCs need it
+- No change to the diff
+- Link to v1: https://lore.kernel.org/r/20260824-for-upstream-dt-qoriq-gpio-hog-v1-1-d75923bcecad@free.fr
+---
+ Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml b/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml
+index 4cb2a6b9fabfb..1e61e17b0ee35 100644
+--- a/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml
++++ b/Documentation/devicetree/bindings/gpio/fsl,qoriq-gpio.yaml
+@@ -63,6 +63,13 @@ properties:
+       GPIO registers are used as little endian. If not
+       present registers are used as big endian by default.
  
- 	regval = status & mask;
- 	if (regval) {
--		if (data->revision >= PMBUS_REV_12) {
-+		/* Generic STATUS_WORD alarms are not individually clearable. */
-+		if (data->revision >= PMBUS_REV_12 &&
-+		    reg != PMBUS_STATUS_WORD) {
- 			ret = _pmbus_write_byte_data(client, page, reg, regval);
- 			if (ret)
- 				return ret;
++patternProperties:
++  "^.+-hog(-[0-9]+)?$":
++    type: object
++
++    required:
++      - gpio-hog
++
+ required:
+   - compatible
+   - reg
 
 ---
-base-commit: 83a16909eb64360fd0659f7970665272cdbe65a1
-change-id: 20260824-vrazdan-pmbus-status-word-b4-b0d148857741
+base-commit: 0a0d1d55dad570724bf8c7ea83409639cfb4be9b
+change-id: 20260824-for-upstream-dt-qoriq-gpio-hog-5092a0f4d089
 
 Best regards,
---  
-Vishnu Razdan <vrazdan@openai.com>
+-- 
+Vincent Jardin <vjardin@free.fr>
 
