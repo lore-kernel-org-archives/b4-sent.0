@@ -1,258 +1,145 @@
-From: Rohan Joshi <rohan1sj@cadence.com>
-Date: Tue, 25 Aug 2026 16:40:58 +0530
-Subject: [PATCH v4 2/2] mmc: sdhci-cadence: Add CQE support
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH v5 0/2] ceph: add 'lazyio' mount option to kclient
+Date: Tue, 25 Aug 2026 05:10:35 -0700
+Message-Id: <20260825-lazyio-v5-0-65118679d6fa@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-cdns_sdhci_cqe-support-v4-2-e9f72e338373@cadence.com>
-References: <20260825-cdns_sdhci_cqe-support-v4-0-e9f72e338373@cadence.com>
-In-Reply-To: <20260825-cdns_sdhci_cqe-support-v4-0-e9f72e338373@cadence.com>
-To: Ulf Hansson <ulfh@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Masahiro Yamada <yamada.masahiro@socionext.com>, 
- Adrian Hunter <adrian.hunter@intel.com>
-Cc: Rohan Joshi <rohan1sj@cadence.com>, linux-mmc@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- mparab@cadence.com, pawell@cadence.com, sjakhade@cadence.com, 
- mpillai@cadence.com, razb@mobileye.com, blarson@amd.com
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XNTQ7CIBQE4KsY1mJ4UH7qynsYFwVeFaNiijbWp
+ neX1qQaXU4y30xPEjYBE1kvetJgG1KIlxzkckHcobrskQafM+GMK6a4pKfq2YVIVWl0rYWTUtc
+ kl68N1uExDW1375zu9ojuNuqxcQjpFptuemph7P2NtkCBeguCaaNN6f3GnboUVy6eyTja8g/TD
+ GbGMyudUtqowjBpf5n4MAPlzERmHACYF9oVFn9Z8cU4m1mRmWJgEQEr7sw3G4bhBZ9WvUhTAQA
+ A
+X-Change-ID: 20260625-lazyio-6987f73c557f
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787656261; l=7039;
- i=rohan1sj@cadence.com; s=20260406; h=from:subject:message-id;
- bh=UdDZCZdTFb9J+GcBk4lpdt0hRYsXPZ4V3RxJcKMOXpU=;
- b=wQx3DKZxnxpz0gQgF4PCuQd28wzbXqt31ywcJfCvajzEi+tcjaN+T+maSlxsI2PVQBqIIXhf8
- kLJV3SytvJZA8hx4Vy+Ytv+7DRbXa/H96nsdCzIC6JqCvkREfvsdkFI
-X-Developer-Key: i=rohan1sj@cadence.com; a=ed25519;
- pk=YuwylizMVlVj8I4+VPMZ6xrFR2wyqJAWZyj90OVZgD0=
-X-Endpoint-Received: by B4 Relay for rohan1sj@cadence.com/20260406 with auth_id=723
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787659836; l=5780;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=6nRgB4Mrchp0McGdCqY4rzE7zCJd5Il6xnZ+SRgHe+8=;
+ b=QvwAOK46T8vj5/yyRJvgWaiiGt3pQRDTQYHM/F/9kkJnAMK04LJyqpDHoXUXvvQsotR6EtOod
+ +G6nZdaKmmABd98VKijRKgNAQ1wAErhg0tBrrpEYkr8TKLL8i9x5PQE
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cadence host controller has optional CQE (Command Queue Engine).
-The HW presence of CQE is determined by an additional host capability
-register. Look up for "cqhci" register space from the DT and when
-present, initialize CQHCI engine.
+The following is a test report:
 
-Signed-off-by: Rohan Joshi <rohan1sj@cadence.com>
+=== LazyIO Multi-Client Read Test ===
+(B writes → MDS revokes CACHE from A; lazyio keeps LAZYIO → buffered reads)
+
+  nolazyio: 200 MB in 0.63s -> 319.8 MB/s
+  lazyio  : 200 MB in 0.24s -> 840.3 MB/s
+
+=== IO500 tool ior test: ===
+        nolazyio        lazyio
+Write:  74.49 MB/s  ->  185.24 MB/s
+
+Link: https://tracker.ceph.com/issues/77594
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/mmc/host/Kconfig         |   1 +
- drivers/mmc/host/sdhci-cadence.c | 125 +++++++++++++++++++++++++++++++++++++--
- 2 files changed, 122 insertions(+), 4 deletions(-)
+Changes in v5:
+- Do the CACHE/BUFFER -> LAZYIO used-cap substitution inside __prep_cap()
+  so that the FLUSH paths (try_flush_caps(), __kick_flushing_caps()) can
+  no longer ack a LAZYIO revocation while the page cache is still
+  populated.  ceph_fsync() hit this easily: file_write_and_wait_range()
+  leaves clean cached pages behind and try_flush_caps() runs right after.
+- Apply that substitution per cap rather than once per inode in
+  ceph_check_caps().  On a multi-MDS setup a non-auth cap revoking CACHE
+  without holding LAZYIO would otherwise see (revoking & cap_used) == 0
+  and ack the revocation.
+- Only keep the page cache across a CACHE revocation when every opener is
+  lazy (__ceph_all_opens_lazy()), and gate the used-cap substitution the
+  same way while LAZYIO is still issued.  It has to stay unconditional
+  once LAZYIO is itself being revoked, or the first item above comes back.
+- Invalidate the faulting range in ceph_filemap_fault() when a non-lazy fd
+  did not get CACHE and the page cache is only kept alive by LAZYIO.  An
+  open that happens after the cache was retained sends no cap message, so
+  nothing re-evaluates the inode-level gate above.
+- Map LAZYIO back to CEPH_FILE_MODE_LAZY in get_used_fmode(), so the
+  FMODE_WAIT_BIAS bias applied by __ceph_get_caps() no longer makes a lazy
+  fd that is waiting for caps look like a non-lazy opener.
+- Wake i_cap_wq in ceph_inode_shutdown() and fail ceph_page_mkwrite() with
+  -ESTALE on shutdown, instead of waiting for caps that are never coming
+  back.
+- Link to v4: https://patch.msgid.link/20260820-lazyio-v4-1-601bee1ea2c8@clyso.com
 
-diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 4f060d3e5636..2cc8133e8ef3 100644
---- a/drivers/mmc/host/Kconfig
-+++ b/drivers/mmc/host/Kconfig
-@@ -293,6 +293,7 @@ config MMC_SDHCI_CADENCE
- 	depends on MMC_SDHCI_PLTFM
- 	depends on OF
- 	select MMC_SDHCI_IO_ACCESSORS
-+	select MMC_CQHCI
- 	help
- 	  This selects the Cadence SD/SDIO/eMMC driver.
- 
-diff --git a/drivers/mmc/host/sdhci-cadence.c b/drivers/mmc/host/sdhci-cadence.c
-index 435603c8c00b..aa4431ef2b39 100644
---- a/drivers/mmc/host/sdhci-cadence.c
-+++ b/drivers/mmc/host/sdhci-cadence.c
-@@ -15,6 +15,8 @@
- #include <linux/reset.h>
- 
- #include "sdhci-pltfm.h"
-+#include "sdhci-cqhci.h"
-+#include "cqhci.h"
- 
- /* HRS - Host Register Set (specific to Cadence) */
- #define SDHCI_CDNS_HRS04		0x10		/* PHY access port */
-@@ -36,6 +38,10 @@
- #define   SDHCI_CDNS_HRS06_MODE_MMC_HS400	0x5
- #define   SDHCI_CDNS_HRS06_MODE_MMC_HS400ES	0x6
- 
-+/* Host capabilities not covered by the standard capability registers (SRS16-SRS18) */
-+#define SDHCI_CDNS_HRS30		0x78	/* Host capabilities */
-+#define SDHCI_CDNS_HRS30_CQE_SUPPORTED	BIT(0)
-+
- /* Read block gap */
- #define SDHCI_CDNS_HRS37		0x94	/* interface mode select */
- #define   SDHCI_CDNS_HRS37_MODE_DS		0x0
-@@ -88,6 +94,7 @@ struct sdhci_cdns_priv {
- 	void __iomem *ctl_addr;	/* write control */
- 	spinlock_t wrlock;	/* write lock */
- 	bool enhanced_strobe;
-+	bool cqe_support;	/* Command Queuing Engine support */
- 	void (*priv_writel)(struct sdhci_cdns_priv *priv, u32 val, void __iomem *reg);
- 	struct reset_control *rst_hw;
- 	unsigned int nr_phy_params;
-@@ -385,6 +392,68 @@ static void sdhci_cdns_set_uhs_signaling(struct sdhci_host *host,
- 		sdhci_set_uhs_signaling(host, timing);
- }
- 
-+static u32 sdhci_cdns_cqhci_irq(struct sdhci_host *host, u32 intmask)
-+{
-+	int cmd_err = 0;
-+	int data_err = 0;
-+
-+	/* return original intmask to be handled by other handlers if it's not a CQE interrupt */
-+	if (!sdhci_cqe_irq(host, intmask, &cmd_err, &data_err))
-+		return intmask;
-+
-+	cqhci_irq(host->mmc, cmd_err, data_err);
-+
-+	return 0;
-+}
-+
-+static const struct cqhci_host_ops sdhci_cdns_cqhci_ops = {
-+	.enable		= sdhci_cqe_enable,
-+	.disable	= sdhci_cqe_disable,
-+};
-+
-+static int sdhci_cdns_cqe_add_host(struct sdhci_host *host, struct platform_device *pdev)
-+{
-+	struct cqhci_host *cq_host;
-+	bool dma64;
-+	int ret;
-+
-+	ret = sdhci_setup_host(host);
-+	if (ret)
-+		return ret;
-+
-+	cq_host = cqhci_pltfm_init(pdev);
-+	if (IS_ERR(cq_host)) {
-+		ret = PTR_ERR(cq_host);
-+		dev_err_probe(&pdev->dev, ret, "cqhci platform init failed\n");
-+		goto cleanup;
-+	}
-+
-+	dma64 = host->flags & SDHCI_USE_64_BIT_DMA;
-+	if (dma64)
-+		cq_host->caps |= CQHCI_TASK_DESC_SZ_128;
-+
-+	cq_host->ops = &sdhci_cdns_cqhci_ops;
-+
-+	host->mmc->caps2 |= MMC_CAP2_CQE | MMC_CAP2_CQE_DCMD;
-+
-+	ret = cqhci_init(cq_host, host->mmc, dma64);
-+	if (ret) {
-+		dev_err_probe(&pdev->dev, ret, "cqhci init failed\n");
-+		goto cleanup;
-+	}
-+
-+	/* add host to MMC subsystem */
-+	ret = __sdhci_add_host(host);
-+	if (ret)
-+		goto cleanup;
-+
-+	return 0;
-+
-+cleanup:
-+	sdhci_cleanup_host(host);
-+	return ret;
-+}
-+
- /* Elba control register bits [6:3] are byte-lane enables */
- #define ELBA_BYTE_ENABLE_MASK(x)	((x) << 3)
- 
-@@ -445,8 +514,9 @@ static const struct sdhci_ops sdhci_elba_ops = {
- 	.set_clock = sdhci_set_clock,
- 	.get_timeout_clock = sdhci_cdns_get_timeout_clock,
- 	.set_bus_width = sdhci_set_bus_width,
--	.reset = sdhci_reset,
-+	.reset = sdhci_and_cqhci_reset,
- 	.set_uhs_signaling = sdhci_cdns_set_uhs_signaling,
-+	.irq = sdhci_cdns_cqhci_irq,
- };
- 
- static int elba_drv_init(struct platform_device *pdev)
-@@ -474,9 +544,10 @@ static const struct sdhci_ops sdhci_cdns_ops = {
- 	.set_clock = sdhci_set_clock,
- 	.get_timeout_clock = sdhci_cdns_get_timeout_clock,
- 	.set_bus_width = sdhci_set_bus_width,
--	.reset = sdhci_reset,
-+	.reset = sdhci_and_cqhci_reset,
- 	.platform_execute_tuning = sdhci_cdns_execute_tuning,
- 	.set_uhs_signaling = sdhci_cdns_set_uhs_signaling,
-+	.irq = sdhci_cdns_cqhci_irq,
- };
- 
- static const struct sdhci_cdns_drv_data sdhci_cdns_uniphier_drv_data = {
-@@ -553,6 +624,8 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
- 	int ret;
- 	struct device *dev = &pdev->dev;
- 	static const u16 version = SDHCI_SPEC_400 << SDHCI_SPEC_VER_SHIFT;
-+	bool cqe_enabled;
-+	u32 host_caps;
- 
- 	clk = devm_clk_get_enabled(dev, NULL);
- 	if (IS_ERR(clk))
-@@ -608,7 +681,43 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
- 			host->mmc_host_ops.card_hw_reset = sdhci_cdns_mmc_hw_reset;
- 	}
- 
--	return sdhci_add_host(host);
-+	host_caps = readl(priv->hrs_addr + SDHCI_CDNS_HRS30);
-+
-+	/*
-+	 * CQE is enabled only when both conditions are met:
-+	 *   1. Hardware reports CQE support via HRS30[0].
-+	 *   2. DT provides a named "cqhci" register space.
-+	 */
-+	cqe_enabled = (host_caps & SDHCI_CDNS_HRS30_CQE_SUPPORTED) &&
-+		      !!platform_get_resource_byname(pdev, IORESOURCE_MEM, "cqhci");
-+
-+	if ((host_caps & SDHCI_CDNS_HRS30_CQE_SUPPORTED) && !cqe_enabled)
-+		dev_dbg(dev, "CQE supported by hardware but no 'cqhci' register space in DT, disabling\n");
-+
-+	if (cqe_enabled) {
-+		priv->cqe_support = true;
-+		ret = sdhci_cdns_cqe_add_host(host, pdev);
-+	} else {
-+		ret = sdhci_add_host(host);
-+	}
-+
-+	return ret;
-+}
-+
-+static int sdhci_cdns_suspend(struct device *dev)
-+{
-+	struct sdhci_host *host = dev_get_drvdata(dev);
-+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
-+	struct sdhci_cdns_priv *priv = sdhci_pltfm_priv(pltfm_host);
-+	int ret;
-+
-+	if (priv->cqe_support) {
-+		ret = cqhci_suspend(host->mmc);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return sdhci_pltfm_suspend(dev);
- }
- 
- static int sdhci_cdns_resume(struct device *dev)
-@@ -630,6 +739,14 @@ static int sdhci_cdns_resume(struct device *dev)
- 	if (ret)
- 		goto disable_clk;
- 
-+	/* Resume CQE if enabled */
-+	if (priv->cqe_support) {
-+		ret = cqhci_resume(host->mmc);
-+		if (ret)
-+			dev_warn(dev, "CQE resume failed (%pe), continuing without CQE\n",
-+				 ERR_PTR(ret));
-+	}
-+
- 	return 0;
- 
- disable_clk:
-@@ -638,7 +755,7 @@ static int sdhci_cdns_resume(struct device *dev)
- 	return ret;
- }
- 
--static DEFINE_SIMPLE_DEV_PM_OPS(sdhci_cdns_pm_ops, sdhci_pltfm_suspend, sdhci_cdns_resume);
-+static DEFINE_SIMPLE_DEV_PM_OPS(sdhci_cdns_pm_ops, sdhci_cdns_suspend, sdhci_cdns_resume);
- 
- static const struct of_device_id sdhci_cdns_match[] = {
- 	{
+Changed in V4:
+- Base the CACHE/BUFFER -> LAZYIO used-cap substitution on implemented,
+  not issued, so ceph_check_caps() holds the revoke ACK until writeback
+  and invalidation complete; also queue writeback when revoking LAZYIO
+  with dirty buffers.
+- In try_get_cap_refs(), let LAZYIO substitute for missing CACHE/BUFFER
+  for callers that request LAZYIO, without dropping issued CACHE/BUFFER
+  refs when LAZYIO is unavailable.
+- In handle_cap_grant(), invalidate on CACHE-then-LAZYIO revoke
+  sequences and flush dirty data before ACKing when LAZYIO was
+  covering it.
+- In ceph_page_mkwrite(), wait for BUFFER/LAZYIO to be (re)granted
+  before dirtying the folio instead of proceeding with WR alone.
+- Request LAZYIO from the netfs read path (ceph_init_request) and
+  ceph_renew_caps().
+- Link to v3: https://patch.msgid.link/20260819-lazyio-v3-1-21110d37c4be@clyso.com
 
--- 
-2.43.0
+Changes in v3:
+- Rework try_get_cap_refs() so a missing LAZYIO never makes a want
+  unsatisfiable and silently drops CACHE/BUFFER refs (degrading to sync I/O).
+- Add ceph_adjust_caps_used_for_lazyio() and report LAZYIO in used caps to
+  the MDS when it stands in for CACHE/BUFFER.
+- In handle_cap_grant(), flush dirty data before acking an LAZYIO revoke,
+  and invalidate when either CACHE or LAZYIO is revoked and neither remains.
+- Define CEPH_O_LAZY as 00020000 (matching src/include/ceph_fs.h) and send
+  it in the open request flags.
+- Link to v2: https://patch.msgid.link/20260701-lazyio-v2-1-9c667864805b@clyso.com
+
+Changes in v2:
+- Move LAZYIO fmode addition from ceph_init_file_info() to ceph_open() before
+  ceph_caps_for_mode(), so the MDS sees LAZYIO in the wanted caps at open time.
+  Also cover ceph_atomic_open() for the writer path.
+- Add ceph_adjust_caps_used_for_lazyio() to substitute LAZYIO for CACHE/BUFFER
+  in used caps reported to MDS when those caps are not issued.
+- Gate try_get_cap_refs() LAZYIO substitution on want & CEPH_CAP_FILE_LAZYIO
+  so a non-lazy fd cannot have its consistency guarantees weakened by a lazy fd
+  on the same inode.
+- Separate revocation handling in handle_cap_grant(): BUFFER revocation always
+  triggers writeback; LAZYIO revocation triggers writeback only when dirty data
+  is held (i_wrbuffer_ref/i_wb_ref); clean cached pages fall through to the
+  existing invalidation path.
+- Add LAZYIO to ceph_init_request() so readahead works for lazy fds.
+- Fix fmode propagation: use fmode instead of req->r_fmode in ceph_open() MDS
+  path, and set req->r_fmode |= CEPH_FILE_MODE_LAZY for both ceph_open() and
+  ceph_atomic_open().
+- Remove dead #ifdef O_LAZY blocks in ceph_flags_to_mode() and ceph_renew_caps().
+- Link to v1: https://patch.msgid.link/20260625-lazyio-v1-1-db13078789dd@clyso.com
+
+To: Ilya Dryomov <idryomov@gmail.com>
+To: Alex Markuze <amarkuze@redhat.com>
+To: Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Xiubo Li (2):
+      ceph: wake up i_cap_wq waiters on inode shutdown
+      ceph: add 'lazyio' mount option to kclient
+
+ fs/ceph/addr.c               | 117 ++++++++++++++++++++++++++++
+ fs/ceph/caps.c               | 177 ++++++++++++++++++++++++++++++++++++++++---
+ fs/ceph/file.c               |  33 ++++++--
+ fs/ceph/inode.c              |   7 ++
+ fs/ceph/super.c              |  15 ++++
+ fs/ceph/super.h              |  17 +++++
+ fs/ceph/util.c               |   4 -
+ include/linux/ceph/ceph_fs.h |   1 +
+ 8 files changed, 351 insertions(+), 20 deletions(-)
+---
+base-commit: 9fc75b71fdd38465c76c6f6a884cdd4ae3c72d90
+change-id: 20260625-lazyio-6987f73c557f
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
