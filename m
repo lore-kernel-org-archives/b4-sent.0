@@ -1,14 +1,13 @@
 From: Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
-Subject: [PATCH 0/2] tracing: Fix remote reader page swap failures
-Date: Tue, 25 Aug 2026 01:20:36 -0400
-Message-Id: <20260825-kernel-patch-1-v1-0-e9349aa0b165@gmail.com>
+Date: Tue, 25 Aug 2026 01:20:37 -0400
+Subject: [PATCH 1/2] tracing: Fix retry exhaustion in simple ring buffer
+ reader swap
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBG4avErBtQI4muEi0k/2ooLDQikO6et
- PwW72VKiIJEfZUp4pYkRyjQdUXT6sICFl9MRhmrOtPyhhiw8+muaWXNvlMWjYfSrqUSnRGzPP9
- wGN/3AxXYl1VgAAAA
-X-Change-ID: 20260825-kernel-patch-1-d806e3de01a5
+Message-Id: <20260825-kernel-patch-1-v1-1-e9349aa0b165@gmail.com>
+References: <20260825-kernel-patch-1-v1-0-e9349aa0b165@gmail.com>
+In-Reply-To: <20260825-kernel-patch-1-v1-0-e9349aa0b165@gmail.com>
 To: Steven Rostedt <rostedt@goodmis.org>, 
  Masami Hiramatsu <mhiramat@kernel.org>, 
  Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
@@ -16,50 +15,54 @@ To: Steven Rostedt <rostedt@goodmis.org>,
 Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635292; l=1366;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635292; l=1613;
  i=ivanimmanuel1234@gmail.com; s=20260825; h=from:subject:message-id;
- bh=x74r0oqsaq9tYSELP0l1x9/SUc0crA2uxMOnhcHAnpA=;
- b=ObxVAA6UI2ihrhJIU4/e9qvfLbnlcNFTBkhdrffzuyuU9mZ1EYkMCnplYc4UGI0p/FmqxQ8Rd
- jHQhX13kHVSDZda8WvuCSamRddJzrRXoxqKqSKhZRjixHXrI/RyE5yT
+ bh=GwccFW1nTWWYVnS3r35/SqG9HHBPVSmi0y6pEIwL9rA=;
+ b=uphKKVL9amV7PgkCBG78fcuiBHKszcd+IQnJm6N6imNxYSqSFjW0vwTnoty5JsRCaN+r3ZGwA
+ hLb8upGLaUzDg7I6ayMuYbEt9x+WwgrYYSbp8LSL6urpX6uVbt5TdMF
 X-Developer-Key: i=ivanimmanuel1234@gmail.com; a=ed25519;
  pk=Wx8O3UUs3XneDkbqbOJJnlNdWSpEf2tWbTAoE7/vnqE=
 X-Endpoint-Received: by B4 Relay for ivanimmanuel1234@gmail.com/20260825 with auth_id=975
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The simple ring buffer's reader-page swap retry loop mishandles its last
-attempt. A success at that point is reported as an error, while a failure
-is allowed to continue into the pointer updates. The remote ring buffer
-consumer compounds callback failures by warning and continuing with stale
-reader metadata.
+simple_ring_buffer_swap_reader_page() starts with retry set to 8 and
+post-decrements it only after a failed link replacement. On the final
+attempt, a successful replacement leaves retry at zero, while a failed
+replacement leaves it at -1.
 
-Fix the retry result in the provider, then stop the remote consumer before
-it mutates its local page list when the swap fails.
+The current !retry test reverses both outcomes. It returns an error after
+a successful final replacement, leaving the link update complete but the
+reader bookkeeping unfinished. After a failed final replacement, it
+falls through and updates the head and reader pointers as though the
+replacement succeeded, which can corrupt the ring.
 
-These paths are used by remote tracing, including arm64 nVHE EL2 tracing
-and CONFIG_TRACE_REMOTE_TEST.
+Treat only a negative counter as exhaustion and return the documented
+-EBUSY error.
 
-Testing:
-
-  make C=2 W=1 kernel/trace/simple_ring_buffer.o kernel/trace/ring_buffer.o
-  scripts/checkpatch.pl --no-tree (each formatted patch)
-
-No runtime reproducer was run. The two final-attempt outcomes follow from
-the retry counter's post-decrement semantics. An arm64 cross-compiler was
-not available.
-
+Fixes: 34e5b958bdad ("tracing: Introduce simple_ring_buffer")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM sparse
+Signed-off-by: Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
 ---
-Ivan Immanuel Shaji (2):
-      tracing: Fix retry exhaustion in simple ring buffer reader swap
-      ring-buffer: Stop remote reader update when page swap fails
-
- kernel/trace/ring_buffer.c        | 5 +++--
  kernel/trace/simple_ring_buffer.c | 4 ++--
- 2 files changed, 5 insertions(+), 4 deletions(-)
----
-base-commit: 66498c75b4f8017f62d720d9b59675bdf3abce91
-change-id: 20260825-kernel-patch-1-d806e3de01a5
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Best regards,
+diff --git a/kernel/trace/simple_ring_buffer.c b/kernel/trace/simple_ring_buffer.c
+index f4642f5adda3..49913bb0057a 100644
+--- a/kernel/trace/simple_ring_buffer.c
++++ b/kernel/trace/simple_ring_buffer.c
+@@ -160,8 +160,8 @@ int simple_ring_buffer_swap_reader_page(struct simple_rb_per_cpu *cpu_buffer)
+ 		overrun = cpu_buffer->meta->overrun;
+ 	} while (!simple_bpage_unset_head_link(last, reader, SIMPLE_RB_LINK_NORMAL) && retry--);
+ 
+-	if (!retry)
+-		return -EINVAL;
++	if (retry < 0)
++		return -EBUSY;
+ 
+ 	cpu_buffer->head_page = simple_bpage_from_link(reader->link.next);
+ 	cpu_buffer->head_page->link.prev = &reader->link;
+
 -- 
-Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
+2.53.0
 
