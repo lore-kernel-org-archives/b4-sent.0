@@ -1,163 +1,79 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Wed, 26 Aug 2026 01:53:39 +0800
-Subject: [PATCH v3 6/6] mm/mglru: fix potential generation folio number
- leak
+From: Antonin Malzieu Ridolfi <dev@nanonej.com>
+Subject: [PATCH 0/4] gpu: nova-core: Extract falcon registers
+Date: Wed, 26 Aug 2026 01:44:17 +0200
+Message-Id: <20260826-b4-extract-pfsp-registers-to-falcon-mod-v1-0-38351df09084@nanonej.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260826-mglru-flags-cleanup-v3-6-d9f1c75549c8@tencent.com>
-References: <20260826-mglru-flags-cleanup-v3-0-d9f1c75549c8@tencent.com>
-In-Reply-To: <20260826-mglru-flags-cleanup-v3-0-d9f1c75549c8@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Baoquan He <baoquan.he@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
- Roman Gushchin <roman.gushchin@linux.dev>, 
- Muchun Song <muchun.song@linux.dev>, Chris Li <chrisl@kernel.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Ridong Chen <ridong.chen@linux.dev>, David Hildenbrand <david@kernel.org>, 
- Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <liam@infradead.org>, 
- Vlastimil Babka <vbabka@kernel.org>, Yu Zhao <yuzhao@google.com>, 
- Zi Yan <ziy@nvidia.com>, Qi Zheng <qi.zheng@linux.dev>, 
- cgroups@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Kairui Song <ryncsn@gmail.com>, Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787680416; l=5305;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=100BN63Qk6wpTXHzIP+LZWC/nFv6HG+IQJ3POMrMtTo=;
- b=pkXtD/trrADDPFghgG1C14MnZoGcjG3viYChFQ701qoMLKWuWnnanZr9Csqw6aw4cj7J+yzBR
- M+bha0hrPzfC6wJ1v3kHvCIUwez9fs0a0JiR6nEWDneIZdqIAwmyOPK
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNQQrCMBBA0auUWTsQ0yDqVcRFkk7qiCZhJkqh9
+ O5GXb7N/ysoCZPCeVhB6M3KJXfsdwPEm88zIU/dYI09mKN1GBzS0sTHhjVpRaGZtZEotoLJP2L
+ J+CwTnijYcYyOgiHotSqUePmdLte/9RXuFNs3D9v2AQPfdjqLAAAA
+X-Change-ID: 20260824-b4-extract-pfsp-registers-to-falcon-mod-9eb233c4eb0e
+To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Alexandre Courbot <acourbot@nvidia.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>
+Cc: linux-kernel@vger.kernel.org, nova-gpu@lists.linux.dev, 
+ dri-devel@lists.freedesktop.org, Antonin Malzieu Ridolfi <dev@nanonej.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1951; i=dev@nanonej.com;
+ h=from:subject:message-id; bh=yahlqdnVKdlnxPv7kgdCgJdOJCjTzFaRNEl+vby53Eo=;
+ b=owEBbQKS/ZANAwAKAWaH8SMKFRX9AcsmYgBqjijxzESK/eGaMHr+EPAPyhvYawjQyQmfITTVS
+ zajJ4lOX7OJAjMEAAEKAB0WIQSDtk+wfJEhL1KFIn1mh/EjChUV/QUCao4o8QAKCRBmh/EjChUV
+ /UuXEACoo67K7QxxNIrys3YxVZ8cj7nYt/S+aPbV+AWLvJ/7LFEckl98v6FIOVMwGVnwOT+or7R
+ T3K8W9K+QFQr5a7FkWu5aorbO33T3UEO1wUaigdm4s2MZnIq/SWMb9N8rAzGaBNUGeDIZ1VGCM0
+ SWTqZDMVKNunkErE1EHezeIIqZuxzJU7sLS7LBNYwQ4xWGZ29ibl32HAfO46JFZth5eHUdVpnma
+ 7/DVYcIBfg7fncPUBWZ+SlZFZoc3B/ITjY8fhKLq3d+W9QyzaxVisxdry1NNNc9eKrR1aeIcy8r
+ Vog5YMLI3kHWBX7ZPEqPPm8pzBHFUIr959bW5nzNeVvfA+gQvAOT5+M1uLzneJRrQNJAC9u3FRI
+ T++Idtv9CnjDenDGKTJ8tT/laBvTgV8yi1CC+09drc/tNtlsBqrprHaAuNrnw1ErgLIqJqyQ/Gq
+ CYYk3HLKKhnW+03VSMfiprvAl8+RSJ+ow//FcrMv42ZLaWpWnvaXQaW6xQjF38FaEGZqaXkmohM
+ AAVahj9Fde3NngKLoUxVHVDV6gwLLcByc3PsgLTXagAXrLAqwcrYWP57DY5S2EAckUsINztOzR+
+ iHq+ELKfeS0yEMSpiccrtGq+maxo4X8nY0W3awc4C5dox9GhbpJvw7zc2k7RfkPsBfXz7b9G5JD
+ n0Ftg577Mw28Jww==
+X-Developer-Key: i=dev@nanonej.com; a=openpgp;
+ fpr=83B64FB07C91212F5285227D6687F1230A1515FD
+X-Endpoint-Received: by B4 Relay for dev@nanonej.com/default with auth_id=825
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Each generation of MGLRU accounts anon and file folio numbers
-separately, and the page table walker updates each generation's
-counters in batch once the walk is done. The walker promotes a
-folio's generation with a cmpxchg on folio->flags, and
-update_batch_size() then reads the live flags again to pick the
-anon/file column to charge. The walk holds neither the lruvec lock nor
-the folio lock, so the type can flip between the cmpxchg and that
-read: the lazyfree path clears PG_swapbacked, and reclaim sets it back
-on a dirty lazyfree folio. The batched delta pair is then recorded in
-the wrong type column. Nothing reconciles it afterwards, permanently
-skewing lrugen->nr_pages and the reclaim budgets derived from it.
+Move PFSP, PRISCV, PFALCON2, PFALCON registers definitions from the
+root regs.rs file into the falcon module.
 
-Fix it by capturing the type from the flags snapshot the cmpxchg
-linearized against: folio_update_gen() returns the type of the state
-it transitioned from, and update_batch_size() accounts with that.
+I tried a different solution than rescoping all  registers with
+`crate::super::...` by re-exporting them, hence the comment, but I'm
+not sure it's the best solution. I was hoping they would all disapear
+by the end of my patch series but as we discussed FUSE register
+definitions better stay in the root regs for now.
 
-A folio's type only changes while it is off the LRU list, inside a
-del/add pair under the lruvec lock, with the gen bits cleared in
-between. The generation and PG_swapbacked sit in the same
-folio->flags word, so the cmpxchg snapshot captures them together.
-Let G be the generation that snapshot captured (old_gen) and G' the
-one it wrote (new_gen); the CAS can land in only three places:
+Also the extract of `set_fbif_transcfg_regs_at()` change some
+other functions signature, I think I have covered all but tell me in
+case.
+And I wasn't sure btw if `.try_at()` required `#[inline()]` there.
 
-  - before the del: the folio is anon at G; the batch records anon
-    G -> G', and the del later removes the folio from the anon
-    counters;
-  - between del and add: gen == -1, so folio_update_gen() returns -1
-    without touching the flags and no batch is recorded; the del/add
-    pair accounts for the move alone;
-  - after the add: the folio is file at the fresh generation the add
-    charged; the batch records file, that gen -> G', matching that
-    charge.
+Finaly, If I'm correct, this series should conclude the refacto as the
+remaining registers seems to be better left in the root regs.rs.
 
-Unlike the drift of lazy promotions, which sort_folio() repairs under
-the lruvec lock, the phantom deltas from before this fix land in a
-column the folio never occupies again, so nothing ever repairs them.
-
-Fixes: 018ee47f1489 ("mm: multi-gen LRU: exploit locality in rmap")
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Antonin Malzieu Ridolfi <dev@nanonej.com>
 ---
- include/linux/mm_inline.h |  7 ++++++-
- mm/vmscan.c               | 13 +++++++------
- 2 files changed, 13 insertions(+), 7 deletions(-)
+Antonin Malzieu Ridolfi (4):
+      gpu: nova-core: Extract PFSP register definitions
+      gpu: nova-core: falcon: Extract PRISCV register
+      gpu: nova-core: falcon: Extract PFALCON2 register
+      gpu: nova-core: Extract PFALCON register
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 7f91a89b5ba3..8cf82989ec26 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -10,6 +10,11 @@
- #include <linux/userfaultfd_k.h>
- #include <linux/leafops.h>
- 
-+static inline int folio_flags_is_file_lru(const unsigned long *flags)
-+{
-+	return !test_bit(PG_swapbacked, flags);
-+}
-+
- /**
-  * folio_is_file_lru - Should the folio be on a file LRU or anon LRU?
-  * @folio: The folio to test.
-@@ -27,7 +32,7 @@
-  */
- static inline int folio_is_file_lru(const struct folio *folio)
- {
--	return !folio_test_swapbacked(folio);
-+	return folio_flags_is_file_lru(const_folio_flags(folio, 0));
- }
- 
- static __always_inline void __update_lru_size(struct lruvec *lruvec,
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index cdc2e44875da..6fda948aecf2 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -3269,7 +3269,8 @@ static bool positive_ctrl_err(struct ctrl_pos *sp, struct ctrl_pos *pv)
-  ******************************************************************************/
- 
- /* promote pages accessed through page tables */
--static int folio_update_gen(struct folio *folio, int new_gen, const vma_flags_t *vma_flags)
-+static int folio_update_gen(struct folio *folio, int new_gen, int *is_file,
-+			    const vma_flags_t *vma_flags)
- {
- 	unsigned long new_flags, old_flags = READ_ONCE(*folio_flags(folio, 0));
- 	int old_gen;
-@@ -3298,6 +3299,7 @@ static int folio_update_gen(struct folio *folio, int new_gen, const vma_flags_t
- 		new_flags |= BIT(PG_workingset);
- 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
- 
-+	*is_file = folio_flags_is_file_lru(&old_flags);
- 	return old_gen;
- }
- 
-@@ -3328,9 +3330,8 @@ static int folio_inc_gen(struct lruvec *lruvec, struct folio *folio)
- }
- 
- static void update_batch_size(struct lru_gen_mm_walk *walk, struct folio *folio,
--			      int old_gen, int new_gen)
-+			      int old_gen, int new_gen, int type)
- {
--	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
- 	int delta = folio_nr_pages(folio);
- 
-@@ -3519,7 +3520,7 @@ static bool suitable_to_scan(int total, int young)
- static void walk_update_folio(struct lru_gen_mm_walk *walk, struct vm_area_struct *vma,
- 		struct lruvec *lruvec, struct folio *folio, bool dirty)
- {
--	int new_gen, old_gen;
-+	int new_gen, old_gen, file;
- 
- 	if (!folio)
- 		return;
-@@ -3532,9 +3533,9 @@ static void walk_update_folio(struct lru_gen_mm_walk *walk, struct vm_area_struc
- 		folio_mark_dirty(folio);
- 
- 	if (walk) {
--		old_gen = folio_update_gen(folio, new_gen, &vma->flags);
-+		old_gen = folio_update_gen(folio, new_gen, &file, &vma->flags);
- 		if (old_gen >= 0 && old_gen != new_gen)
--			update_batch_size(walk, folio, old_gen, new_gen);
-+			update_batch_size(walk, folio, old_gen, new_gen, file);
- 	} else if (lru_gen_set_refs(folio, &vma->flags)) {
- 		old_gen = folio_lru_gen(folio);
- 		if (old_gen >= 0 && old_gen != new_gen)
+ drivers/gpu/nova-core/falcon.rs                    |  38 ++-
+ drivers/gpu/nova-core/falcon/fsp.rs                |   6 +-
+ drivers/gpu/nova-core/falcon/gsp.rs                |  16 +-
+ drivers/gpu/nova-core/falcon/hal/ga102.rs          |   4 +-
+ drivers/gpu/nova-core/falcon/hal/tu102.rs          |  12 +-
+ drivers/gpu/nova-core/falcon/regs.rs               | 304 +++++++++++++++++++++
+ drivers/gpu/nova-core/firmware/fwsec/bootloader.rs |  22 +-
+ drivers/gpu/nova-core/gsp/hal/tu102.rs             |   7 +-
+ drivers/gpu/nova-core/regs.rs                      | 295 +-------------------
+ 9 files changed, 352 insertions(+), 352 deletions(-)
+---
+base-commit: d53bc149eea6213e9c4a4604df5521db7b7296ca
+change-id: 20260824-b4-extract-pfsp-registers-to-falcon-mod-9eb233c4eb0e
 
--- 
-2.55.0
+Best regards,
+--  
+Antonin Malzieu Ridolfi <dev@nanonej.com>
 
