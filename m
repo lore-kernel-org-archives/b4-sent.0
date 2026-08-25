@@ -1,11 +1,11 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Mon, 24 Aug 2026 22:18:16 -0700
-Subject: [PATCH v2 1/2] arm64: dts: rockchip: Enable the EG25-G modem on
- the Pinephone Pro
+Date: Mon, 24 Aug 2026 22:18:17 -0700
+Subject: [PATCH v2 2/2] clk: rk808: Select the clock function of CLK32KOUT2
+ on the RK818
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260824-ppp_connectivity-v2-1-a4b0e11cd62c@gmail.com>
+Message-Id: <20260824-ppp_connectivity-v2-2-a4b0e11cd62c@gmail.com>
 References: <20260824-ppp_connectivity-v2-0-a4b0e11cd62c@gmail.com>
 In-Reply-To: <20260824-ppp_connectivity-v2-0-a4b0e11cd62c@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,11 +17,11 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Rudraksha Gupta <guptarud@gmail.com>, linux-clk@vger.kernel.org, 
  mfd@lists.linux.dev, Martijn Braam <martijn@brixit.nl>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635096; l=3686;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635096; l=3455;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=BKJ8ewE7fSzmNjTVUblEb/3+hReBdcpXwAlKzQmJ6A0=;
- b=JfLuqZDAAFi4RexAkel6rjPxl7Ab5EWlSrS/LXNb9jOehBe8iOvV5AQVjfdUL7x/lasiDV5iu
- R8unLNmd0Z6D/Or9z5ISDXintJ2aTYSBlEXJcMEiUDgmot8YG/DQ+xQ
+ bh=btBxv1+lK3NuJ3bLMeNAP2UZMK2asFecMzZxkL+Msaw=;
+ b=hc3J13W/s34ea0bH6JLfnQLZaWIagLwAHIyZadpZ16gudpVF+ttaRbDdXkMoHA+ARJ6eYeZ0m
+ tdH+itjfuWeAqhiMtIVBnJgnrFLkeqGRqL+4Xo8BRLA3st+1wFsA2iB
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
@@ -29,141 +29,110 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Martijn Braam <martijn@brixit.nl>
 
-The Quectel EG25-G modem is soldered to the board. It sits on the USB 2.0
-host controller behind u2phy1, with uart3 as its AT command port, and
-draws from two switched rails: vcc_4g_5v off the RK818 boost, and vcc_4g
-off vcc_sys.
+On the RK818 the CLK32KOUT2 pin is shared between the 32.768 kHz clock
+output and a recovery function, selected by bit 1 of RK808_CLK32OUT_REG.
+CLK32KOUT2_EN only takes effect on the clock function, so the output can
+be enabled and still be silent. The datasheet resets the register to
+zero, but that cannot be relied on: on the Pine64 PinePhone Pro it reads
+0x03 once Linux is up, leaving the wifi and bluetooth without their
+32.768 kHz reference.
 
-Neither rail supplies anything but the modem, which has to stay powered
-for the board to work as a phone, so both are always-on.
+Select the clock function when the output is prepared, so that it can
+also be given back, and report the output as prepared only when it is
+enabled and on the clock function. The bit is not defined on the other
+variants, so give the RK818 its own clk_ops. Boards that never take the
+clock are unaffected.
 
-The modem itself has no binding and no in-kernel driver, so it is not
-described here; its control lines are driven from userspace.
-
-Based on work by Martijn Braam, Kamil Trzciński, Ondrej Jirman and Dang
-Huynh.
+Based on an out-of-tree patch by Martijn Braam & Kamil Trzciński,
+carried by Ondrej Jirman.
 
 Signed-off-by: Martijn Braam <martijn@brixit.nl>
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- .../boot/dts/rockchip/rk3399-pinephone-pro.dts     | 69 ++++++++++++++++++++++
- 1 file changed, 69 insertions(+)
+ drivers/clk/clk-rk808.c   | 46 +++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/mfd/rk808.h |  1 +
+ 2 files changed, 46 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-index 8d26bd9b7500..8d2b6a46b39d 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-@@ -134,6 +134,32 @@ vcca1v8_s3: regulator-vcc1v8-s3 {
- 		regulator-boot-on;
- 	};
- 
-+	vcc_4g: regulator-vcc-4g {
-+		compatible = "regulator-fixed";
-+		enable-active-high;
-+		gpio = <&gpio4 RK_PC7 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&vcc_4g_en>;
-+		regulator-name = "vcc_4g";
-+		regulator-min-microvolt = <3800000>;
-+		regulator-max-microvolt = <3800000>;
-+		vin-supply = <&vcc_sys>;
-+		regulator-always-on;
-+	};
-+
-+	vcc_4g_5v: regulator-vcc-4g-5v {
-+		compatible = "regulator-fixed";
-+		enable-active-high;
-+		gpio = <&gpio1 RK_PC7 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&vcc_4g_5v_en>;
-+		regulator-name = "vcc_4g_5v";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		vin-supply = <&vcc5v0_sys>;
-+		regulator-always-on;
-+	};
-+
- 	vcc1v8_codec: regulator-vcc1v8-codec {
- 		compatible = "regulator-fixed";
- 		enable-active-high;
-@@ -264,6 +290,7 @@ rk818: pmic@1c {
- 		system-power-controller;
- 		wakeup-source;
- 
-+		boost-supply = <&vcc_sys>;
- 		vcc1-supply = <&vcc_sys>;
- 		vcc2-supply = <&vcc_sys>;
- 		vcc3-supply = <&vcc_sys>;
-@@ -318,6 +345,17 @@ regulator-state-mem {
- 				};
- 			};
- 
-+			vcc5v0_sys: DCDC_BOOST {
-+				regulator-name = "vcc5v0_sys";
-+				regulator-always-on;
-+				regulator-boot-on;
-+				regulator-min-microvolt = <5000000>;
-+				regulator-max-microvolt = <5000000>;
-+				regulator-state-mem {
-+					regulator-on-in-suspend;
-+				};
-+			};
-+
- 			vcca3v0_codec: LDO_REG1 {
- 				regulator-name = "vcca3v0_codec";
- 				regulator-min-microvolt = <3000000>;
-@@ -702,6 +740,16 @@ blue_led_pin: blue-led-pin {
- 		};
- 	};
- 
-+	modem {
-+		vcc_4g_5v_en: vcc-4g-5v-en-pin {
-+			rockchip,pins = <1 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+
-+		vcc_4g_en: vcc-4g-en-pin {
-+			rockchip,pins = <4 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
- 	pmic {
- 		pmic_int_l: pmic-int-l {
- 			rockchip,pins = <1 RK_PC5 RK_FUNC_GPIO &pcfg_pull_up>;
-@@ -827,6 +875,15 @@ &tsadc {
- 	status = "okay";
+diff --git a/drivers/clk/clk-rk808.c b/drivers/clk/clk-rk808.c
+index 5a75b5c91555..4aabe0234769 100644
+--- a/drivers/clk/clk-rk808.c
++++ b/drivers/clk/clk-rk808.c
+@@ -71,6 +71,49 @@ static const struct clk_ops rk808_clkout2_ops = {
+ 	.recalc_rate = rk808_clkout_recalc_rate,
  };
  
-+&u2phy1 {
-+	status = "okay";
++static int rk818_clkout2_enable(struct clk_hw *hw, bool enable)
++{
++	struct rk808_clkout *rk808_clkout = container_of(hw,
++							 struct rk808_clkout,
++							 clkout2_hw);
++
++	return regmap_update_bits(rk808_clkout->regmap, RK808_CLK32OUT_REG,
++				  RK818_CLK32KOUT2_FUNC_MASK | CLK32KOUT2_EN,
++				  enable ? CLK32KOUT2_EN : 0);
++}
++
++static int rk818_clkout2_prepare(struct clk_hw *hw)
++{
++	return rk818_clkout2_enable(hw, true);
++}
++
++static void rk818_clkout2_unprepare(struct clk_hw *hw)
++{
++	rk818_clkout2_enable(hw, false);
++}
++
++static int rk818_clkout2_is_prepared(struct clk_hw *hw)
++{
++	struct rk808_clkout *rk808_clkout = container_of(hw,
++							 struct rk808_clkout,
++							 clkout2_hw);
++	u32 val;
++
++	int ret = regmap_read(rk808_clkout->regmap, RK808_CLK32OUT_REG, &val);
++
++	if (ret < 0)
++		return 0;
++
++	return (val & (RK818_CLK32KOUT2_FUNC_MASK | CLK32KOUT2_EN)) == CLK32KOUT2_EN;
++}
++
++static const struct clk_ops rk818_clkout2_ops = {
++	.prepare = rk818_clkout2_prepare,
++	.unprepare = rk818_clkout2_unprepare,
++	.is_prepared = rk818_clkout2_is_prepared,
++	.recalc_rate = rk808_clkout_recalc_rate,
 +};
 +
-+&u2phy1_host {
-+	phy-supply = <&vcc5v0_sys>;
-+	status = "okay";
-+};
-+
- &uart0 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&uart0_xfer &uart0_cts &uart0_rts>;
-@@ -852,6 +909,18 @@ &uart2 {
- 	status = "okay";
- };
+ static struct clk_hw *
+ of_clk_rk808_get(struct of_phandle_args *clkspec, void *data)
+ {
+@@ -134,11 +177,12 @@ static const struct clk_ops *rkpmic_get_ops(long variant)
+ 	case RK809_ID:
+ 	case RK817_ID:
+ 		return &rk817_clkout2_ops;
++	case RK818_ID:
++		return &rk818_clkout2_ops;
+ 	/*
+ 	 * For the default case, it match the following PMIC type.
+ 	 * RK805_ID
+ 	 * RK808_ID
+-	 * RK818_ID
+ 	 */
+ 	default:
+ 		return &rk808_clkout2_ops;
+diff --git a/include/linux/mfd/rk808.h b/include/linux/mfd/rk808.h
+index 7ffc904c864c..e3cb586d34a0 100644
+--- a/include/linux/mfd/rk808.h
++++ b/include/linux/mfd/rk808.h
+@@ -1051,6 +1051,7 @@ enum rk806_dvs_mode {
  
-+&uart3 {
-+	status = "okay";
-+};
-+
-+&usb_host1_ehci {
-+	status = "okay";
-+};
-+
-+&usb_host1_ohci {
-+	status = "okay";
-+};
-+
- &vopb {
- 	status = "okay";
- 	assigned-clocks = <&cru DCLK_VOP0_DIV>, <&cru DCLK_VOP0>,
+ #define VOUT_LO_INT	BIT(0)
+ #define CLK32KOUT2_EN	BIT(0)
++#define RK818_CLK32KOUT2_FUNC_MASK	BIT(1)
+ 
+ #define TEMP105C			0x08
+ #define TEMP115C			0x0c
 
 -- 
 2.55.0
