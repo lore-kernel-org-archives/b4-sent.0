@@ -1,11 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 25 Aug 2026 14:42:33 +0400
-Subject: [PATCH 8/9] arm64: dts: qcom: ipq8074: Flatten usb controller
- nodes
+Date: Tue, 25 Aug 2026 14:42:34 +0400
+Subject: [PATCH 9/9] arm64: dts: qcom: ipq9574: Flatten usb controller node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-ipq-flatten-usb-v1-8-5c1f3170bbe9@outlook.com>
+Message-Id: <20260825-ipq-flatten-usb-v1-9-5c1f3170bbe9@outlook.com>
 References: <20260825-ipq-flatten-usb-v1-0-5c1f3170bbe9@outlook.com>
 In-Reply-To: <20260825-ipq-flatten-usb-v1-0-5c1f3170bbe9@outlook.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -19,11 +18,11 @@ Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org,
  Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787654580; l=5157;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787654580; l=3319;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=hIddtiBZwT8syQLEUJVTu1O+HNgK8pUyjSoAJUmUX9Y=;
- b=xc+csD+UoB54hrKPw1ecnzhZiRJgUlsGMFHE1B9KaHxKwHuP6OWJhfwIuBffKjXb+AseKVhrg
- VmilW7cJdBdAaM9N5KhcyjEuWMdc7I9oe9cApDbgaciAsdzuDGtfxLm
+ bh=59gaIbwJxqd1gc9ND5BnMnViKAwQRYOhscidCPM/sVU=;
+ b=56OxhOno6ncFhmyV+lLK7MyeSU90Ba7ltrTmbq8svHp4yoo7Mrg6RwBeALXCPymWUidFhAQbb
+ nqGT1wG55ajAbNswsgZa9/Y4ONsIy9+dE2IA8weLqoQEiKCJ4uim7OQ
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
@@ -32,170 +31,105 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 Flatten usb controller nodes and update to using latest bindings and
 flattened driver approach.
 
-In addition, fix indentation of properties in both nodes.
+Add property to the USB node to select UTMI as reference clock for the
+DWC3 core to calculate the right values for the period and frame length
+adjustment.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq8074.dtsi | 112 ++++++++++++++++------------------
- 1 file changed, 52 insertions(+), 60 deletions(-)
+ arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi |  6 ++--
+ arch/arm64/boot/dts/qcom/ipq9574.dtsi            | 42 +++++++++++-------------
+ 2 files changed, 21 insertions(+), 27 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq8074.dtsi b/arch/arm64/boot/dts/qcom/ipq8074.dtsi
-index 75a5ae30d966..d4a86b3815f2 100644
---- a/arch/arm64/boot/dts/qcom/ipq8074.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq8074.dtsi
-@@ -625,104 +625,96 @@ qpic_nand: nand-controller@79b0000 {
+diff --git a/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi b/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
+index 62877b46f9b3..0d06a838c233 100644
+--- a/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
+@@ -252,10 +252,6 @@ flash@0 {
+ 	};
+ };
+ 
+-&usb_0_dwc3 {
+-	dr_mode = "host";
+-};
+-
+ &usb_0_qmpphy {
+ 	vdda-pll-supply = <&mp5496_l5>;
+ 	vdda-phy-supply = <&regulator_fixed_0p925>;
+@@ -272,6 +268,8 @@ &usb_0_qusbphy {
+ };
+ 
+ &usb3 {
++	dr_mode = "host";
++
+ 	status = "okay";
+ };
+ 
+diff --git a/arch/arm64/boot/dts/qcom/ipq9574.dtsi b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
+index 5a5bda5f21a1..b56ba76e8b54 100644
+--- a/arch/arm64/boot/dts/qcom/ipq9574.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
+@@ -756,12 +756,9 @@ usb_0_qmpphy: phy@7d000 {
  			status = "disabled";
  		};
  
--		usb_0: usb@8af8800 {
--			compatible = "qcom,ipq8074-dwc3", "qcom,dwc3";
+-		usb3: usb@8af8800 {
+-			compatible = "qcom,ipq9574-dwc3", "qcom,dwc3";
 -			reg = <0x08af8800 0x400>;
 -			#address-cells = <1>;
 -			#size-cells = <1>;
 -			ranges;
-+		usb_0: usb@8a00000 {
-+			compatible = "qcom,ipq8074-dwc3", "qcom,snps-dwc3";
++		usb3: usb@8a00000 {
++			compatible = "qcom,ipq9574-dwc3", "qcom,snps-dwc3";
 +			reg = <0x08a00000 0xfc100>;
  
- 			clocks = <&gcc GCC_SYS_NOC_USB0_AXI_CLK>,
--				<&gcc GCC_USB0_MASTER_CLK>,
--				<&gcc GCC_USB0_SLEEP_CLK>,
--				<&gcc GCC_USB0_MOCK_UTMI_CLK>;
-+				 <&gcc GCC_USB0_MASTER_CLK>,
-+				 <&gcc GCC_USB0_SLEEP_CLK>,
-+				 <&gcc GCC_USB0_MOCK_UTMI_CLK>;
- 			clock-names = "cfg_noc",
--				"core",
--				"sleep",
--				"mock_utmi";
-+				      "core",
-+				      "sleep",
-+				      "mock_utmi";
+ 			clocks = <&gcc GCC_SNOC_USB_CLK>,
+ 				 <&gcc GCC_USB0_MASTER_CLK>,
+@@ -780,32 +777,31 @@ usb3: usb@8af8800 {
+ 			assigned-clock-rates = <200000000>,
+ 					       <24000000>;
  
- 			assigned-clocks = <&gcc GCC_SYS_NOC_USB0_AXI_CLK>,
- 					  <&gcc GCC_USB0_MASTER_CLK>,
- 					  <&gcc GCC_USB0_MOCK_UTMI_CLK>;
- 			assigned-clock-rates = <133330000>,
--						<133330000>,
--						<19200000>;
-+					       <133330000>,
-+					       <19200000>;
- 
--			interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
-+			interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupts-extended = <&intc GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
++			interrupts-extended = <&intc GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
++					      <&intc GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&intc GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&intc GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&intc GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
 -			interrupt-names = "pwr_event",
 +			interrupt-names = "dwc_usb3",
 +					  "pwr_event",
  					  "qusb2_phy",
- 					  "ss_phy_irq";
+ 					  "dm_hs_phy_irq",
+ 					  "dp_hs_phy_irq";
  
- 			power-domains = <&gcc USB0_GDSC>;
- 
-+			phys = <&qusb_phy_0>, <&ssphy_0>;
-+			phy-names = "usb2-phy", "usb3-phy";
-+
-+			snps,parkmode-disable-ss-quirk;
-+			snps,is-utmi-l1-suspend;
-+			snps,hird-threshold = /bits/ 8 <0x0>;
-+			snps,dis_u2_susphy_quirk;
-+			snps,dis_u3_susphy_quirk;
-+			dr_mode = "host";
-+
- 			resets = <&gcc GCC_USB0_BCR>;
+ 			resets = <&gcc GCC_USB_BCR>;
 -			status = "disabled";
  
--			dwc_0: usb@8a00000 {
+-			usb_0_dwc3: usb@8a00000 {
 -				compatible = "snps,dwc3";
 -				reg = <0x8a00000 0xcd00>;
+-				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
+-				clock-names = "ref";
 -				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
--				phys = <&qusb_phy_0>, <&ssphy_0>;
+-				phys = <&usb_0_qusbphy>, <&usb_0_qmpphy>;
 -				phy-names = "usb2-phy", "usb3-phy";
--				snps,parkmode-disable-ss-quirk;
+-				tx-fifo-resize;
 -				snps,is-utmi-l1-suspend;
 -				snps,hird-threshold = /bits/ 8 <0x0>;
 -				snps,dis_u2_susphy_quirk;
 -				snps,dis_u3_susphy_quirk;
--				dr_mode = "host";
 -			};
-+			status = "disabled";
- 		};
- 
--		usb_1: usb@8cf8800 {
--			compatible = "qcom,ipq8074-dwc3", "qcom,dwc3";
--			reg = <0x08cf8800 0x400>;
--			#address-cells = <1>;
--			#size-cells = <1>;
--			ranges;
-+		usb_1: usb@8c00000 {
-+			compatible = "qcom,ipq8074-dwc3", "qcom,snps-dwc3";
-+			reg = <0x08c00000 0xfc100>;
- 
- 			clocks = <&gcc GCC_SYS_NOC_USB1_AXI_CLK>,
--				<&gcc GCC_USB1_MASTER_CLK>,
--				<&gcc GCC_USB1_SLEEP_CLK>,
--				<&gcc GCC_USB1_MOCK_UTMI_CLK>;
-+				 <&gcc GCC_USB1_MASTER_CLK>,
-+				 <&gcc GCC_USB1_SLEEP_CLK>,
-+				 <&gcc GCC_USB1_MOCK_UTMI_CLK>;
- 			clock-names = "cfg_noc",
--				"core",
--				"sleep",
--				"mock_utmi";
-+				      "core",
-+				      "sleep",
-+				      "mock_utmi";
- 
- 			assigned-clocks = <&gcc GCC_SYS_NOC_USB1_AXI_CLK>,
- 					  <&gcc GCC_USB1_MASTER_CLK>,
- 					  <&gcc GCC_USB1_MOCK_UTMI_CLK>;
- 			assigned-clock-rates = <133330000>,
--						<133330000>,
--						<19200000>;
-+					       <133330000>,
-+					       <19200000>;
- 
--			interrupts = <GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>,
-+			interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
- 				     <GIC_SPI 225 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "pwr_event",
-+			interrupt-names = "dwc_usb3",
-+					  "pwr_event",
- 					  "qusb2_phy",
- 					  "ss_phy_irq";
- 
- 			power-domains = <&gcc USB1_GDSC>;
- 
-+			phys = <&qusb_phy_1>, <&ssphy_1>;
++			phys = <&usb_0_qusbphy>, <&usb_0_qmpphy>;
 +			phy-names = "usb2-phy", "usb3-phy";
 +
-+			snps,parkmode-disable-ss-quirk;
++			qcom,select-utmi-as-ref-clk;
++
++			tx-fifo-resize;
 +			snps,is-utmi-l1-suspend;
 +			snps,hird-threshold = /bits/ 8 <0x0>;
 +			snps,dis_u2_susphy_quirk;
 +			snps,dis_u3_susphy_quirk;
-+			dr_mode = "host";
 +
- 			resets = <&gcc GCC_USB1_BCR>;
--			status = "disabled";
- 
--			dwc_1: usb@8c00000 {
--				compatible = "snps,dwc3";
--				reg = <0x8c00000 0xcd00>;
--				interrupts = <GIC_SPI 99 IRQ_TYPE_LEVEL_HIGH>;
--				phys = <&qusb_phy_1>, <&ssphy_1>;
--				phy-names = "usb2-phy", "usb3-phy";
--				snps,parkmode-disable-ss-quirk;
--				snps,is-utmi-l1-suspend;
--				snps,hird-threshold = /bits/ 8 <0x0>;
--				snps,dis_u2_susphy_quirk;
--				snps,dis_u3_susphy_quirk;
--				dr_mode = "host";
--			};
 +			status = "disabled";
  		};
  
