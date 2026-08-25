@@ -1,64 +1,70 @@
-From: Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
-Date: Tue, 25 Aug 2026 01:20:38 -0400
-Subject: [PATCH 2/2] ring-buffer: Stop remote reader update when page swap
- fails
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v4 0/2] thermal: Add support A9
+Date: Tue, 25 Aug 2026 06:28:28 +0000
+Message-Id: <20260825-a9-thermal-v4-0-d8fc9859cf22@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-kernel-patch-1-v1-2-e9349aa0b165@gmail.com>
-References: <20260825-kernel-patch-1-v1-0-e9349aa0b165@gmail.com>
-In-Reply-To: <20260825-kernel-patch-1-v1-0-e9349aa0b165@gmail.com>
-To: Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Vincent Donnefort <vdonnefort@google.com>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAw2jWoC/2XMSwqDMBSF4a1Ixk1Jcq0xHXUfpYM8bjTgo0SRF
+ nHvjVKo0uE58P0zGTAGHMg1m0nEKQyh79LITxmxte4qpMGlTQQTBZMMqFZ0rDG2uqG+EBZ9gVp
+ xTxJ4RvThtcXuj7TrMIx9fG/tia/vNwNsn5k4ZdTJsnAgrdGX8qbbpq+CPdu+JWtoEj9ccn7AI
+ mHpnAUwnBul/zHssDhiSJih1MaDyjnCES/L8gEOipaQIAEAAA==
+X-Change-ID: 20260703-a9-thermal-f62cef6ea91f
+To: Guillaume La Roque <glaroque@baylibre.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635292; l=1498;
- i=ivanimmanuel1234@gmail.com; s=20260825; h=from:subject:message-id;
- bh=Yt3jJEKjDX8/on3DO9yN+/vqaXIqohP/+YVJCaaE2TA=;
- b=KmTfJ3GvG/u3YrBfBZAyX5nOKK+yVn9H2LRQsIdURBZL6eyXNJKeUDzGR4U1N8WGLf9D7C5OU
- bnWoYbWgI93DAs3LZpK+WUo1uq3qAEUUgZNrxB3zqY9axeBmdR+8JnZ
-X-Developer-Key: i=ivanimmanuel1234@gmail.com; a=ed25519;
- pk=Wx8O3UUs3XneDkbqbOJJnlNdWSpEf2tWbTAoE7/vnqE=
-X-Endpoint-Received: by B4 Relay for ivanimmanuel1234@gmail.com/20260825 with auth_id=975
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787639310; l=1596;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=wtn1I+ai2TfN4YtsNfLA2KMBghSMbAH01BL0yp3zDvE=;
+ b=F5+QWQZl4PmucrgygUs+YLg5rrOp+WvqSGZix8VgOu8ehFtrOeF6XCsABxyDJUapkpv9En1pg
+ jN30zNiglk+CB37pANMJqMad75efyfP4iaHscftoGikgpJgMXZ6x1b8
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The remote swap_reader_page callback can fail when the writer moves the
-head before the remote catches it. __rb_get_reader_page_from_remote()
-warns about that failure but continues with the unchanged reader ID and
-rearranges the local page list as though the swap succeeded.
+Document the thermal controller compatibles for the Amlogic A9 SoC
+And add driver support for the Amlogic A9 thermal controller.
 
-Stop immediately after warning. Callers already handle a NULL reader
-page as a failed attempt, and this avoids splicing the same page as both
-the previous and new reader.
-
-Fixes: 2e67fabd8b77 ("ring-buffer: Introduce ring-buffer remotes")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM sparse
-Signed-off-by: Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- kernel/trace/ring_buffer.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Changes in v4:
+- Fix type error in comit mesage, and set factor valid value. 
+- Link to v3: https://lore.kernel.org/r/20260821-a9-thermal-v3-0-0e7abf3941e3@amlogic.com
 
-diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c
-index 3c3ed639923d..d11b2759caac 100644
---- a/kernel/trace/ring_buffer.c
-+++ b/kernel/trace/ring_buffer.c
-@@ -5805,8 +5805,9 @@ __rb_get_reader_page_from_remote(struct ring_buffer_per_cpu *cpu_buffer)
- 
- 	prev_reader = cpu_buffer->subbuf_ids[cpu_buffer->meta_page->reader.id];
- 
--	WARN_ON_ONCE(cpu_buffer->remote->swap_reader_page(cpu_buffer->cpu,
--							  cpu_buffer->remote->priv));
-+	if (WARN_ON_ONCE(cpu_buffer->remote->swap_reader_page(cpu_buffer->cpu,
-+							      cpu_buffer->remote->priv)))
-+		return NULL;
- 	/* nr_pages doesn't include the reader page */
- 	if (WARN_ON_ONCE(cpu_buffer->meta_page->reader.id > cpu_buffer->nr_pages))
- 		return NULL;
+Changes in v3:
+- Binding: add restrictive conditions for clock, and remove remove "amlogic,hw-reset-temp" property.
+- Driver: add private data reset_temp instead of get value from DTS.
+- Link to v2: https://lore.kernel.org/r/20260811-a9-thermal-v2-0-7ddc33b11b9a@amlogic.com
 
+Changes in v2:
+- Fix the spelling mistakes (clock-names) and reset-temp properties is visible to old chips.
+- Adjust the clock enable sequence in resume func and remove the clock disable in remove func.
+- Add the judgment on the divisor zero.
+- Add description of support for over-temperature reset for old chips in commit message.
+- Link to v1: https://lore.kernel.org/r/20260730-a9-thermal-v1-0-d786d37cba58@amlogic.com
+
+---
+Xianwei Zhao (2):
+      dt-bindings: thermal: amlogic: Add A9 thermal bindings
+      thermal: amlogic: Add support for A9 thermal controller
+
+ .../bindings/thermal/amlogic,thermal.yaml          |  27 ++++-
+ drivers/thermal/amlogic_thermal.c                  | 113 ++++++++++++++++++++-
+ 2 files changed, 136 insertions(+), 4 deletions(-)
+---
+base-commit: 78bc8af4affb9a732504eb22eeac7d1e50883853
+change-id: 20260703-a9-thermal-f62cef6ea91f
+
+Best regards,
 -- 
-2.53.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
