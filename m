@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 25 Aug 2026 16:37:22 +0400
-Subject: [PATCH v3 05/12] phy: qualcomm: qcom-uniphy-pcie-usb3-28lp: Use
- bulk reset_control API
+Date: Tue, 25 Aug 2026 16:37:23 +0400
+Subject: [PATCH v3 06/12] phy: qualcomm: qcom-uniphy-pcie-usb3-28lp:
+ Improve error handling in power_on
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-ipq5018-usb3-v3-5-39be0955a6aa@outlook.com>
+Message-Id: <20260825-ipq5018-usb3-v3-6-39be0955a6aa@outlook.com>
 References: <20260825-ipq5018-usb3-v3-0-39be0955a6aa@outlook.com>
 In-Reply-To: <20260825-ipq5018-usb3-v3-0-39be0955a6aa@outlook.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -25,105 +25,71 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-usb@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787661450; l=3269;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787661450; l=2016;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=anmYpL4XdHm2CePMeEnW1kc8uD6kV9bQvtwXZhei8sQ=;
- b=J/54879naA7qYSLWrsAljr2kFOCd8PXFxuQZhTFXpXZSDCASzOr2ohHCctLia9y5e4PFreiOv
- W9jI3yXpHu2CX48WxUKgACuYEyuA5RRzsUgucw2v2HvG1k11WUEmL+L
+ bh=7wBK4ADEhWBDqDww6gxmOEnN2/BlTdDKW1nGKMr0m+o=;
+ b=C/MYQL7TG7DA7JcFLXibus27QkTlcnmxhzu7Vca3khVoAlzNRyJCTtlSZizM71/jTyiIZbUpo
+ j5fKhLDbh4cDHNCctklnY94gRgK3ukpF3JbMkogPcOlKt+EED1pT4yo
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Switch to using bulk reset_control functions to prepare the driver for
-managing multiple resets, acquiring reset controls by name, and
-uniformly storing resets in the private data structure to enable support
-for future combo PHY functionality requiring multiple resets.
+When the PHY fails the enable clocks, it leaves the PHY out of reset.
+Fix this by asserting the reset before returning the error.
+
+In addition, language correct the error messages.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- .../phy/qualcomm/phy-qcom-uniphy-pcie-usb3-28lp.c  | 31 ++++++++++++++++------
- 1 file changed, 23 insertions(+), 8 deletions(-)
+ drivers/phy/qualcomm/phy-qcom-uniphy-pcie-usb3-28lp.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/phy/qualcomm/phy-qcom-uniphy-pcie-usb3-28lp.c b/drivers/phy/qualcomm/phy-qcom-uniphy-pcie-usb3-28lp.c
-index 44ab8f440b8a..671bb805057f 100644
+index 671bb805057f..d25ae9d8b9e7 100644
 --- a/drivers/phy/qualcomm/phy-qcom-uniphy-pcie-usb3-28lp.c
 +++ b/drivers/phy/qualcomm/phy-qcom-uniphy-pcie-usb3-28lp.c
-@@ -64,7 +64,8 @@ struct qcom_uniphy {
- 	const struct qcom_uniphy_data *data;
- 	struct clk_bulk_data *clks;
- 	int num_clks;
--	struct reset_control *resets;
-+	struct reset_control_bulk_data *resets;
-+	int num_resets;
- 	void __iomem *base;
- 	int lanes;
- };
-@@ -133,7 +134,7 @@ static int qcom_uniphy_pcie_usb3_power_off(struct phy *x)
+@@ -144,7 +144,7 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
  
- 	clk_bulk_disable_unprepare(phy->num_clks, phy->clks);
- 
--	return reset_control_assert(phy->resets);
-+	return reset_control_bulk_assert(phy->num_resets, phy->resets);
- }
- 
- static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
-@@ -141,7 +142,7 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
- 	struct qcom_uniphy *phy = phy_get_drvdata(x);
- 	int ret;
- 
--	ret = reset_control_assert(phy->resets);
-+	ret = reset_control_bulk_assert(phy->num_resets, phy->resets);
+ 	ret = reset_control_bulk_assert(phy->num_resets, phy->resets);
  	if (ret) {
- 		dev_err(phy->dev, "reset assert failed (%d)\n", ret);
+-		dev_err(phy->dev, "reset assert failed (%d)\n", ret);
++		dev_err(phy->dev, "failed to assert reset: %d\n", ret);
  		return ret;
-@@ -149,7 +150,7 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
+ 	}
  
- 	usleep_range(RST_ASSERT_DELAY_MIN_US, RST_ASSERT_DELAY_MAX_US);
+@@ -152,7 +152,7 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
  
--	ret = reset_control_deassert(phy->resets);
-+	ret = reset_control_bulk_deassert(phy->num_resets, phy->resets);
+ 	ret = reset_control_bulk_deassert(phy->num_resets, phy->resets);
  	if (ret) {
- 		dev_err(phy->dev, "reset deassert failed (%d)\n", ret);
+-		dev_err(phy->dev, "reset deassert failed (%d)\n", ret);
++		dev_err(phy->dev, "failed to deassert reset: %d\n", ret);
  		return ret;
-@@ -173,19 +174,33 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
- static inline int qcom_uniphy_pcie_usb3_get_resources(struct platform_device *pdev,
- 						      struct qcom_uniphy *phy)
- {
-+	struct device *dev = phy->dev;
- 	struct resource *res;
-+	int i, count;
+ 	}
  
- 	phy->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
- 	if (IS_ERR(phy->base))
- 		return PTR_ERR(phy->base);
+@@ -160,8 +160,8 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
  
--	phy->num_clks = devm_clk_bulk_get_all(phy->dev, &phy->clks);
-+	phy->num_clks = devm_clk_bulk_get_all(dev, &phy->clks);
- 	if (phy->num_clks < 0)
- 		return phy->num_clks;
+ 	ret = clk_bulk_prepare_enable(phy->num_clks, phy->clks);
+ 	if (ret) {
+-		dev_err(phy->dev, "clk prepare and enable failed %d\n", ret);
+-		return ret;
++		dev_err(phy->dev, "failed to enable clocks: %d\n", ret);
++		goto err_assert_resets;
+ 	}
  
--	phy->resets = devm_reset_control_array_get_exclusive(phy->dev);
--	if (IS_ERR(phy->resets))
--		return PTR_ERR(phy->resets);
-+	count = of_count_phandle_with_args(dev->of_node, "resets", "#reset-cells");
-+	if (count < 0)
-+		return count;
-+
-+	phy->resets = devm_kcalloc(dev, count, sizeof(*phy->resets), GFP_KERNEL);
-+	if (!phy->resets)
-+		return -ENOMEM;
-+
-+	for (i = 0; i < count; i++) {
-+		phy->resets[i].rstc = devm_reset_control_get_exclusive_by_index(dev, i);
-+		if (IS_ERR(phy->resets[i].rstc))
-+			return PTR_ERR(phy->resets[i].rstc);
-+	}
-+
-+	phy->num_resets = count;
+ 	usleep_range(CLK_EN_DELAY_MIN_US, CLK_EN_DELAY_MAX_US);
+@@ -169,6 +169,11 @@ static int qcom_uniphy_pcie_usb3_power_on(struct phy *x)
+ 	qcom_uniphy_pcie_usb3_init(phy);
  
  	return 0;
++
++err_assert_resets:
++	reset_control_bulk_assert(phy->num_resets, phy->resets);
++
++	return ret;
  }
+ 
+ static inline int qcom_uniphy_pcie_usb3_get_resources(struct platform_device *pdev,
 
 -- 
 2.53.0
