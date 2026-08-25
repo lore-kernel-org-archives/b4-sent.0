@@ -1,80 +1,85 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 25 Aug 2026 16:37:29 +0400
-Subject: [PATCH v3 12/12] arm64: dts: qcom: ipq5018: Enable USB Super-Speed
- PHY
+From: Vincent Jardin <vjardin@free.fr>
+Date: Tue, 25 Aug 2026 16:00:31 +0200
+Subject: [PATCH RFC net-next] net: pcs: lynx: add support for 25GBASE-R
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-ipq5018-usb3-v3-12-39be0955a6aa@outlook.com>
-References: <20260825-ipq5018-usb3-v3-0-39be0955a6aa@outlook.com>
-In-Reply-To: <20260825-ipq5018-usb3-v3-0-39be0955a6aa@outlook.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Praveenkumar I <praveenkumar.i@oss.qualcomm.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- Nitheesh Sekar <quic_nsekar@quicinc.com>, 
- Wesley Cheng <quic_wcheng@quicinc.com>, 
- Manivannan Sadhasivam <mani@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787661450; l=1078;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=mqT4fUHiS6tNRhSdjnTI3aemIVcVL9vUJPPDNDpgcvM=;
- b=Zbh5XdZj5kfib84EvhnO+1xUv69j2kvgZlvOlgYPrI6hfVGPf812sBi6fbEFwZkzDzuN8g92X
- zu3GBxeoPA+BP2pHmBTWaCK2dYjZLRiSjy+BermATV6GSCSAqPfpC8b
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Message-Id: <20260825-for-upstream-lynx-25gbaser-v1-v1-1-fd71c8047798@free.fr>
+X-B4-Tracking: v=1; b=H4sIAP6fjWoC/x3MwQrCMAwA0F8pORvIKlPrVfADvI4dqs1mQLPR1
+ lEZ+3eLx3d5KySOwgnOZoXIiySZtKLZGXg8vY6MEqrBkj3QybY4TBE/c8qR/RtfXy1o2/Hua4N
+ Lg3sidwyOXCAH9ZgjD1L+fwe368UoZ1QuGfpt+wHFD1/afQAAAA==
+To: Ioana Ciornei <ioana.ciornei@nxp.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787666434; l=1923;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=a3VjYJXTcxGzdn/YmMU6HZTS4gXEW2AU9kDzte4XKBQ=;
+ b=EwUEgjPIsepaU9c2urQfJiF3YOT1Ua67SsGOr0aq+OR6vUUUHexeqbNRFO62UlZdKRyk9L/2E
+ 8QfwNpIh7HZBv6E62byJ4UL38mRb2rARRq8uwuz56LLev7ZX4KmffSC
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the 5V supply regulator and enable USB Super-Speed PHY support.
+The 25G is missing since commit 1cab8fba5073 ("phy: lynx-28g: add
+support for 25GBASER").
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+RFC to check if we apply NXP's intend.
+---
+ drivers/net/pcs/pcs-lynx.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-index 8efb2b21ed9e..ca29f271e673 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-@@ -22,6 +22,14 @@ aliases {
- 	chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
-+
-+	regulator_fixed_5p0: regulator-s0500 {
-+		compatible = "regulator-fixed";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		regulator-name = "fixed_5p0";
-+		gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+	};
- };
+diff --git a/drivers/net/pcs/pcs-lynx.c b/drivers/net/pcs/pcs-lynx.c
+index a92081560e641..da4f99059eef7 100644
+--- a/drivers/net/pcs/pcs-lynx.c
++++ b/drivers/net/pcs/pcs-lynx.c
+@@ -46,6 +46,7 @@ static unsigned int lynx_pcs_inband_caps(struct phylink_pcs *pcs,
+ 		return LINK_INBAND_DISABLE | LINK_INBAND_ENABLE;
  
- &blsp1_uart1 {
-@@ -119,6 +127,12 @@ &usbphy0 {
- 	status = "okay";
- };
+ 	case PHY_INTERFACE_MODE_10GBASER:
++	case PHY_INTERFACE_MODE_25GBASER:
+ 		return LINK_INBAND_DISABLE;
  
-+&usbphy1 {
-+	vdd-supply = <&regulator_fixed_5p0>;
-+
-+	status = "okay";
-+};
-+
- &xo_board_clk {
- 	clock-div = <4>;
- 	clock-mult = <1>;
+ 	case PHY_INTERFACE_MODE_USXGMII:
+@@ -97,6 +98,7 @@ static void lynx_pcs_get_state(struct phylink_pcs *pcs, unsigned int neg_mode,
+ 		lynx_pcs_get_state_usxgmii(lynx->mdio, state);
+ 		break;
+ 	case PHY_INTERFACE_MODE_10GBASER:
++	case PHY_INTERFACE_MODE_25GBASER:
+ 		phylink_mii_c45_pcs_get_state(lynx->mdio, state);
+ 		break;
+ 	default:
+@@ -188,7 +190,8 @@ static int lynx_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
+ 		return lynx_pcs_config_usxgmii(lynx->mdio, ifmode, advertising,
+ 					       neg_mode);
+ 	case PHY_INTERFACE_MODE_10GBASER:
+-		/* Nothing to do here for 10GBASER */
++	case PHY_INTERFACE_MODE_25GBASER:
++		/* Nothing to do here for 10GBASER and 25GBASER */
+ 		break;
+ 	default:
+ 		return -EOPNOTSUPP;
+@@ -279,6 +282,7 @@ static const phy_interface_t lynx_interfaces[] = {
+ 	PHY_INTERFACE_MODE_1000BASEX,
+ 	PHY_INTERFACE_MODE_2500BASEX,
+ 	PHY_INTERFACE_MODE_10GBASER,
++	PHY_INTERFACE_MODE_25GBASER,
+ 	PHY_INTERFACE_MODE_USXGMII,
+ 	PHY_INTERFACE_MODE_10G_QXGMII,
+ };
 
+---
+base-commit: 66498c75b4f8017f62d720d9b59675bdf3abce91
+change-id: 20260825-for-upstream-lynx-25gbaser-v1-30097d909d09
+
+Best regards,
 -- 
-2.53.0
+Vincent Jardin <vjardin@free.fr>
 
