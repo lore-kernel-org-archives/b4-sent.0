@@ -1,139 +1,65 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Mon, 24 Aug 2026 22:18:17 -0700
-Subject: [PATCH v2 2/2] clk: rk808: Select the clock function of CLK32KOUT2
- on the RK818
+From: Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
+Subject: [PATCH 0/2] tracing: Fix remote reader page swap failures
+Date: Tue, 25 Aug 2026 01:20:36 -0400
+Message-Id: <20260825-kernel-patch-1-v1-0-e9349aa0b165@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260824-ppp_connectivity-v2-2-a4b0e11cd62c@gmail.com>
-References: <20260824-ppp_connectivity-v2-0-a4b0e11cd62c@gmail.com>
-In-Reply-To: <20260824-ppp_connectivity-v2-0-a4b0e11cd62c@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Lee Jones <lee@kernel.org>, Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rudraksha Gupta <guptarud@gmail.com>, linux-clk@vger.kernel.org, 
- mfd@lists.linux.dev, Martijn Braam <martijn@brixit.nl>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635096; l=3455;
- i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=btBxv1+lK3NuJ3bLMeNAP2UZMK2asFecMzZxkL+Msaw=;
- b=hc3J13W/s34ea0bH6JLfnQLZaWIagLwAHIyZadpZ16gudpVF+ttaRbDdXkMoHA+ARJ6eYeZ0m
- tdH+itjfuWeAqhiMtIVBnJgnrFLkeqGRqL+4Xo8BRLA3st+1wFsA2iB
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBG4avErBtQI4muEi0k/2ooLDQikO6et
+ PwW72VKiIJEfZUp4pYkRyjQdUXT6sICFl9MRhmrOtPyhhiw8+muaWXNvlMWjYfSrqUSnRGzPP9
+ wGN/3AxXYl1VgAAAA
+X-Change-ID: 20260825-kernel-patch-1-d806e3de01a5
+To: Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+ Vincent Donnefort <vdonnefort@google.com>
+Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787635292; l=1366;
+ i=ivanimmanuel1234@gmail.com; s=20260825; h=from:subject:message-id;
+ bh=x74r0oqsaq9tYSELP0l1x9/SUc0crA2uxMOnhcHAnpA=;
+ b=ObxVAA6UI2ihrhJIU4/e9qvfLbnlcNFTBkhdrffzuyuU9mZ1EYkMCnplYc4UGI0p/FmqxQ8Rd
+ jHQhX13kHVSDZda8WvuCSamRddJzrRXoxqKqSKhZRjixHXrI/RyE5yT
+X-Developer-Key: i=ivanimmanuel1234@gmail.com; a=ed25519;
+ pk=Wx8O3UUs3XneDkbqbOJJnlNdWSpEf2tWbTAoE7/vnqE=
+X-Endpoint-Received: by B4 Relay for ivanimmanuel1234@gmail.com/20260825 with auth_id=975
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Martijn Braam <martijn@brixit.nl>
+The simple ring buffer's reader-page swap retry loop mishandles its last
+attempt. A success at that point is reported as an error, while a failure
+is allowed to continue into the pointer updates. The remote ring buffer
+consumer compounds callback failures by warning and continuing with stale
+reader metadata.
 
-On the RK818 the CLK32KOUT2 pin is shared between the 32.768 kHz clock
-output and a recovery function, selected by bit 1 of RK808_CLK32OUT_REG.
-CLK32KOUT2_EN only takes effect on the clock function, so the output can
-be enabled and still be silent. The datasheet resets the register to
-zero, but that cannot be relied on: on the Pine64 PinePhone Pro it reads
-0x03 once Linux is up, leaving the wifi and bluetooth without their
-32.768 kHz reference.
+Fix the retry result in the provider, then stop the remote consumer before
+it mutates its local page list when the swap fails.
 
-Select the clock function when the output is prepared, so that it can
-also be given back, and report the output as prepared only when it is
-enabled and on the clock function. The bit is not defined on the other
-variants, so give the RK818 its own clk_ops. Boards that never take the
-clock are unaffected.
+These paths are used by remote tracing, including arm64 nVHE EL2 tracing
+and CONFIG_TRACE_REMOTE_TEST.
 
-Based on an out-of-tree patch by Martijn Braam & Kamil Trzciński,
-carried by Ondrej Jirman.
+Testing:
 
-Signed-off-by: Martijn Braam <martijn@brixit.nl>
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+  make C=2 W=1 kernel/trace/simple_ring_buffer.o kernel/trace/ring_buffer.o
+  scripts/checkpatch.pl --no-tree (each formatted patch)
+
+No runtime reproducer was run. The two final-attempt outcomes follow from
+the retry counter's post-decrement semantics. An arm64 cross-compiler was
+not available.
+
 ---
- drivers/clk/clk-rk808.c   | 46 +++++++++++++++++++++++++++++++++++++++++++++-
- include/linux/mfd/rk808.h |  1 +
- 2 files changed, 46 insertions(+), 1 deletion(-)
+Ivan Immanuel Shaji (2):
+      tracing: Fix retry exhaustion in simple ring buffer reader swap
+      ring-buffer: Stop remote reader update when page swap fails
 
-diff --git a/drivers/clk/clk-rk808.c b/drivers/clk/clk-rk808.c
-index 5a75b5c91555..4aabe0234769 100644
---- a/drivers/clk/clk-rk808.c
-+++ b/drivers/clk/clk-rk808.c
-@@ -71,6 +71,49 @@ static const struct clk_ops rk808_clkout2_ops = {
- 	.recalc_rate = rk808_clkout_recalc_rate,
- };
- 
-+static int rk818_clkout2_enable(struct clk_hw *hw, bool enable)
-+{
-+	struct rk808_clkout *rk808_clkout = container_of(hw,
-+							 struct rk808_clkout,
-+							 clkout2_hw);
-+
-+	return regmap_update_bits(rk808_clkout->regmap, RK808_CLK32OUT_REG,
-+				  RK818_CLK32KOUT2_FUNC_MASK | CLK32KOUT2_EN,
-+				  enable ? CLK32KOUT2_EN : 0);
-+}
-+
-+static int rk818_clkout2_prepare(struct clk_hw *hw)
-+{
-+	return rk818_clkout2_enable(hw, true);
-+}
-+
-+static void rk818_clkout2_unprepare(struct clk_hw *hw)
-+{
-+	rk818_clkout2_enable(hw, false);
-+}
-+
-+static int rk818_clkout2_is_prepared(struct clk_hw *hw)
-+{
-+	struct rk808_clkout *rk808_clkout = container_of(hw,
-+							 struct rk808_clkout,
-+							 clkout2_hw);
-+	u32 val;
-+
-+	int ret = regmap_read(rk808_clkout->regmap, RK808_CLK32OUT_REG, &val);
-+
-+	if (ret < 0)
-+		return 0;
-+
-+	return (val & (RK818_CLK32KOUT2_FUNC_MASK | CLK32KOUT2_EN)) == CLK32KOUT2_EN;
-+}
-+
-+static const struct clk_ops rk818_clkout2_ops = {
-+	.prepare = rk818_clkout2_prepare,
-+	.unprepare = rk818_clkout2_unprepare,
-+	.is_prepared = rk818_clkout2_is_prepared,
-+	.recalc_rate = rk808_clkout_recalc_rate,
-+};
-+
- static struct clk_hw *
- of_clk_rk808_get(struct of_phandle_args *clkspec, void *data)
- {
-@@ -134,11 +177,12 @@ static const struct clk_ops *rkpmic_get_ops(long variant)
- 	case RK809_ID:
- 	case RK817_ID:
- 		return &rk817_clkout2_ops;
-+	case RK818_ID:
-+		return &rk818_clkout2_ops;
- 	/*
- 	 * For the default case, it match the following PMIC type.
- 	 * RK805_ID
- 	 * RK808_ID
--	 * RK818_ID
- 	 */
- 	default:
- 		return &rk808_clkout2_ops;
-diff --git a/include/linux/mfd/rk808.h b/include/linux/mfd/rk808.h
-index 7ffc904c864c..e3cb586d34a0 100644
---- a/include/linux/mfd/rk808.h
-+++ b/include/linux/mfd/rk808.h
-@@ -1051,6 +1051,7 @@ enum rk806_dvs_mode {
- 
- #define VOUT_LO_INT	BIT(0)
- #define CLK32KOUT2_EN	BIT(0)
-+#define RK818_CLK32KOUT2_FUNC_MASK	BIT(1)
- 
- #define TEMP105C			0x08
- #define TEMP115C			0x0c
+ kernel/trace/ring_buffer.c        | 5 +++--
+ kernel/trace/simple_ring_buffer.c | 4 ++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+---
+base-commit: 66498c75b4f8017f62d720d9b59675bdf3abce91
+change-id: 20260825-kernel-patch-1-d806e3de01a5
 
+Best regards,
 -- 
-2.55.0
+Ivan Immanuel Shaji <ivanimmanuel1234@gmail.com>
 
