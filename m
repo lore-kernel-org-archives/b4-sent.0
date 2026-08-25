@@ -1,26 +1,26 @@
 From: Vishnu Razdan <vrazdan@openai.com>
-Date: Tue, 25 Aug 2026 09:53:47 -0700
-Subject: [PATCH 6.1.y] io_uring/io-wq: fix worker accounting when canceling
- creation callbacks
+Date: Tue, 25 Aug 2026 09:54:10 -0700
+Subject: [PATCH 5.15.y] io_uring/io-wq: fix worker accounting when
+ canceling creation callbacks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-stable-io-wq-6-1-y-v1-1-8166bc2decba@openai.com>
-X-B4-Tracking: v=1; b=H4sIAJrIjWoC/y2Myw7CIBBFf6WZtdMAVtL4K8YFj6nFGKpMfTRN/
- 11Al+fk3rMCUwrEcGxWSPQKHKaYQe4acKOJF8LgM4MSSoteHZBnY2/ZTvh+oEaJC6q+23thBi+
- og3y8JxrCp0ZPoFvZLnD+aX7aK7m5BMvQGia0yUQ3FvVPV1vLsG1f3kcvzaEAAAA=
-X-Change-ID: 20260825-stable-io-wq-6-1-y-2843d0afd0e4
+Message-Id: <20260825-stable-io-wq-5-15-y-v1-1-a37209dc29ed@openai.com>
+X-B4-Tracking: v=1; b=H4sIALHIjWoC/y2Myw6CMBBFf4XM2iG0yVjirxgX0zpKjSnawQch/
+ LsFXJ6Te88EKjmKwqGaIMs7auxTAbOrIHScroLxXBhsY/dNawl1YH8vtsfPEwkN4YjsHFPLwTo
+ iKM9Hlkv8rtUjUG2oHuG0eX35m4RhSS5LzyroM6fQLeofX+3Whnn+AdtsDWWkAAAA
+X-Change-ID: 20260825-stable-io-wq-5-15-y-a77a58ac2755
 To: stable@vger.kernel.org
-Cc: gregkh@linuxfoundation.org, asml.silence@gmail.com, vrazdan@openai.com, 
- krisman@suse.de, axboe@kernel.dk, io-uring@vger.kernel.org
-In-Reply-To: <2026082423-scotch-snowbird-3d10@gregkh>
-References: <2026082423-scotch-snowbird-3d10@gregkh>
+Cc: io-uring@vger.kernel.org, vrazdan@openai.com, asml.silence@gmail.com, 
+ axboe@kernel.dk, krisman@suse.de, gregkh@linuxfoundation.org
+In-Reply-To: <2026082424-reflux-strut-f1e1@gregkh>
+References: <2026082424-reflux-strut-f1e1@gregkh>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787676831; l=2382;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787676852; l=2384;
  i=vrazdan@openai.com; s=io-wq-kernel-20260811; h=from:subject:message-id;
- bh=sCRULoicw5p9DvIy5OfX6hMqGoHK4NAyp/A0A5zZiaM=;
- b=fdLiFznmtW8IuNsu3K5YlA/j1sU4OmxUeKh1RIChqvDlzNYMHZ+feA+nxGN/GiHsYpeEKZa0r
- 9daucjK824uDTooUhNOb5+69KMhAwlGPLCnKMl3rqYO6EShHrxJ9+fL
+ bh=Tl/OzY3FNyX7xHdZQwqDkXPChdqaGTeIOqQGm/x/EIA=;
+ b=0rivWzHQH5EB0zgdQXfXfJw4rzcv1hvXzZaCw62QHak+jai5mTckSbMfDl9K691WBYrVe6X15
+ HdrDk8KXUubAR4HCsI/RhJ1y+FSXNHI0doARSgDVETVENRHhNhZJRe3
 X-Developer-Key: i=vrazdan@openai.com; a=ed25519;
  pk=45vHW8D/KId5RtsP3Qx7zMcNpgDwEvCnL5uAw0KzuS0=
 X-Endpoint-Received: by B4 Relay for vrazdan@openai.com/io-wq-kernel-20260811 with auth_id=937
@@ -55,16 +55,16 @@ Reviewed-by: Gabriel Krisman Bertazi <krisman@suse.de>
 Link: https://patch.msgid.link/20260811-vrazdan-io-wq-b4-submit-v1-1-719ced16c921@openai.com
 Signed-off-by: Vishnu Razdan <vrazdan@openai.com>
 ---
-Stable backport for linux-6.1.y.
+Stable backport for linux-5.15.y.
 ---
  io_uring/io-wq.c | 9 ++++++---
  1 file changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c
-index 66fdd69fd6cb40..0c3de2fead81cc 100644
+index edcb5af514b53e..f57743d911b4cd 100644
 --- a/io_uring/io-wq.c
 +++ b/io_uring/io-wq.c
-@@ -201,9 +201,12 @@ static void io_worker_cancel_cb(struct io_worker *worker)
+@@ -195,9 +195,12 @@ static void io_worker_cancel_cb(struct io_worker *worker)
  	struct io_wq *wq = wqe->wq;
  
  	atomic_dec(&acct->nr_running);
@@ -82,8 +82,8 @@ index 66fdd69fd6cb40..0c3de2fead81cc 100644
  	io_worker_release(worker);
 
 ---
-base-commit: 05208478041ccec1b348d25e1df5c4013608590e
-change-id: 20260825-stable-io-wq-6-1-y-2843d0afd0e4
+base-commit: 945fa863f02cf8b1638546907f72dd0fc4d6ba85
+change-id: 20260825-stable-io-wq-5-15-y-a77a58ac2755
 
 Best regards,
 --  
