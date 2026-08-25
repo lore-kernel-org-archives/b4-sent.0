@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 25 Aug 2026 16:37:25 +0400
-Subject: [PATCH v3 08/12] arm64: dts: qcom: ipq5018: Add USB Super-Speed
- PHY node
+Date: Tue, 25 Aug 2026 16:37:26 +0400
+Subject: [PATCH v3 09/12] dt-bindings: usb: qcom,snps-dwc3: Add clocks for
+ USB3 on Qualcomm IPQ5018
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-ipq5018-usb3-v3-8-39be0955a6aa@outlook.com>
+Message-Id: <20260825-ipq5018-usb3-v3-9-39be0955a6aa@outlook.com>
 References: <20260825-ipq5018-usb3-v3-0-39be0955a6aa@outlook.com>
 In-Reply-To: <20260825-ipq5018-usb3-v3-0-39be0955a6aa@outlook.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -23,63 +23,68 @@ To: Vinod Koul <vkoul@kernel.org>,
  Manivannan Sadhasivam <mani@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, George Moussalem <george.moussalem@outlook.com>
+ linux-usb@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787661450; l=1320;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787661450; l=1506;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=3gnMuvdkhkSVCiECSjDDLV0IaEe/Z6xvImu3EIsvXdQ=;
- b=Cknj3brONBxs/fkWzuFYk+noU2/5hU46dPVVx7B3IKjGcQqW/s4Vkd1ihFhRVK/WAOdVNL46K
- zO0iGzB9aGdDsirSHzKDD7mgIJjv3NzyIYU3YVMs5Nq49wCwyCE7gJI
+ bh=BrVJTl3Tb6P7JuTScfV3IA2WcKzF+sHcd0AfrYGATWA=;
+ b=e7gfZhyd/OCSOtqtMZiVVCph9z+d7pnrX3IBRHUK6oxcqPBmFaPIS+31US8RRgPhyLW8FUaEo
+ e+XE+GM8iGbBLl1TyEA5G5+LPz0d4Ap8FcjkM+DRpZb6VS/E1SadlOK
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the USB3 PHY node and populate the USB DT clock on the GCC node for
-the GCC to gate the PIPE clock supplied by the USB3 PHY.
+Add aux and lfps clocks in Qualcomm IPQ5018. These clocks are required
+only for USB Super-Speed support.
 
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 19 ++++++++++++++++++-
- 1 file changed, 18 insertions(+), 1 deletion(-)
+ .../devicetree/bindings/usb/qcom,snps-dwc3.yaml     | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 71834606535e..7638299671d8 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -179,6 +179,23 @@ usbphy0: phy@5b000 {
- 			status = "disabled";
- 		};
+diff --git a/Documentation/devicetree/bindings/usb/qcom,snps-dwc3.yaml b/Documentation/devicetree/bindings/usb/qcom,snps-dwc3.yaml
+index aa263dfd42a1..97dd0cefd732 100644
+--- a/Documentation/devicetree/bindings/usb/qcom,snps-dwc3.yaml
++++ b/Documentation/devicetree/bindings/usb/qcom,snps-dwc3.yaml
+@@ -194,6 +194,26 @@ allOf:
+             - const: sleep
+             - const: mock_utmi
  
-+		usbphy1: phy@5d000 {
-+			compatible = "qcom,ipq5018-uniphy-usb3-phy";
-+			reg = <0x0005d000 0x800>;
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,ipq5018-dwc3
++    then:
++      properties:
++        clocks:
++          minItems: 6
++          maxItems: 6
++        clock-names:
++          items:
++            - const: core
++            - const: iface
++            - const: sleep
++            - const: mock_utmi
++            - const: aux
++            - const: lfps
 +
-+			clocks = <&gcc GCC_USB0_PHY_CFG_AHB_CLK>,
-+				 <&gcc GCC_USB0_PIPE_CLK>;
-+
-+			resets = <&gcc GCC_USB0_PHY_BCR>;
-+
-+			#clock-cells = <0>;
-+			#phy-cells = <0>;
-+
-+			qcom,phy-usb-mux-sel = <&tcsr 0x10540>;
-+
-+			status = "disabled";
-+		};
-+
- 		pcie1_phy: phy@7e000 {
- 			compatible = "qcom,ipq5018-uniphy-pcie-phy";
- 			reg = <0x0007e000 0x800>;
-@@ -436,7 +453,7 @@ gcc: clock-controller@1800000 {
- 				 <&sleep_clk>,
- 				 <&pcie0_phy>,
- 				 <&pcie1_phy>,
--				 <0>,
-+				 <&usbphy1>,
- 				 <&gephy_rx_clk>,
- 				 <&gephy_tx_clk>,
- 				 <0>,
+   - if:
+       properties:
+         compatible:
+@@ -295,7 +315,6 @@ allOf:
+         compatible:
+           contains:
+             enum:
+-              - qcom,ipq5018-dwc3
+               - qcom,msm8994-dwc3
+               - qcom,qcs404-dwc3
+     then:
 
 -- 
 2.53.0
