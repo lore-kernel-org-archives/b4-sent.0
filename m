@@ -1,11 +1,11 @@
 From: Colin Huang <u8813345@gmail.com>
-Date: Tue, 25 Aug 2026 18:47:50 +0800
-Subject: [PATCH v6 09/12] ARM: dts: aspeed: anacapa: evt2: Add shunt
- resistor values for HSC monitors
+Date: Tue, 25 Aug 2026 18:47:51 +0800
+Subject: [PATCH v6 10/12] ARM: dts: aspeed: anacapa: Add LPDB fuse monitor
+ GPIO expander
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260825-anacapa-devlop-phase-devicetree-v6-9-9059a2a279ce@gmail.com>
+Message-Id: <20260825-anacapa-devlop-phase-devicetree-v6-10-9059a2a279ce@gmail.com>
 References: <20260825-anacapa-devlop-phase-devicetree-v6-0-9059a2a279ce@gmail.com>
 In-Reply-To: <20260825-anacapa-devlop-phase-devicetree-v6-0-9059a2a279ce@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -14,95 +14,135 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
  colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>, 
- Peter Shen <peter.shen@amd.com>
+ Rex Fu <rex.fu.amd@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787654905; l=2042;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787654905; l=3697;
  i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=Nkr6isVpDdRMMBTaTgNrI6h8ViGx2pJj1Pj8jJLDOHI=;
- b=PbLx5G7AHzh5WHvsZjQlObM/t2WWS+f13JDDHoRPhAHTS4EM3/Kmx+wi9urIcxgO1YkJ1mwJP
- hZ1XInQY+ZCCpJwGP+ghsQrYIQ6SCJwXAdU+hKj3MluKtF1s2p7jfKT
+ bh=E531mFcQuSg4vkfS0BrbVzRcV4G9+LgoYtq/R4Xx1MI=;
+ b=UjQBhYpkRedPJGHhjHpjBxaA7X7I2AKSg5HvZVfdXO73zjLgpdDG00HVQ0TMRWF2h4ynW5o8K
+ giROwDkqboJAqjqasdnTAu8sFudjHh//Uaw8jhZy44wIXQStaTXYPeG
 X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
  pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
 X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Peter Shen <peter.shen@amd.com>
+From: Rex Fu <rex.fu.amd@gmail.com>
 
-Add shunt resistor configuration for LTC4287 hot-swap controllers on
-Anacapa EVT2 platform.
+Add PCA9554 GPIO expanders for PDB fuse monitor signals on the
+Anacapa DVT board.
 
-The resistor values are required for accurate current and power
-measurement by the driver. These settings reflect the actual BOM used
-on EVT2, where different sense resistor values (150 uOhm and 250 uOhm)
-are populated across rails.
+The patch adds GPIO expander definitions for both the left and
+right PDBs under the i2c8 multiplexer and updates the associated
+gpio-line-names to reflect the final signal assignments.
 
-Without this configuration, the reported readings would be incorrect.
-
-Signed-off-by: Peter Shen <peter.shen@amd.com>
+Signed-off-by: Rex Fu <rex.fu.amd@gmail.com>
 ---
- .../aspeed/aspeed-bmc-facebook-anacapa-evt2.dts    | 42 ++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+ .../dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts | 92 ++++++++++++++++++++++
+ 1 file changed, 92 insertions(+)
 
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-index 7fe8d279202a..c36519a601a9 100644
---- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
-@@ -43,6 +43,30 @@ gpio@24 {
- 					"RPDB_FAN7_PRSNT_N_R", "RPDB_FAN8_PRSNT_N_R",
- 					"", "";
- 			};
-+
-+			power-monitor@42 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x42>;
-+				shunt-resistor-micro-ohms = <150>;
-+			};
-+
-+			power-monitor@43 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x43>;
-+				shunt-resistor-micro-ohms = <150>;
-+			};
-+
-+			power-monitor@44 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x44>;
-+				shunt-resistor-micro-ohms = <250>;
-+			};
-+
-+			power-monitor@45 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x45>;
-+				shunt-resistor-micro-ohms = <250>;
-+			};
- 		};
- 
- 		i2c@1 {
-@@ -57,6 +81,24 @@ gpio@24 {
- 					"","",
- 					"","";
- 			};
-+
-+			power-monitor@40 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x40>;
-+				shunt-resistor-micro-ohms = <150>;
-+			};
-+
-+			power-monitor@41 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x41>;
-+				shunt-resistor-micro-ohms = <150>;
-+			};
-+
-+			power-monitor@45 {
-+				compatible = "lltc,ltc4287";
-+				reg = <0x45>;
-+				shunt-resistor-micro-ohms = <250>;
-+			};
- 		};
- 	};
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts
+index 975d603ca540..923954cff7a2 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts
+@@ -8,6 +8,98 @@ / {
+ 	model = "Facebook Anacapa BMC";
  };
+ 
++// MB - PDB
++&i2c8 {
++	i2c-mux@72 {
++		i2c@0 {
++			gpio@22 {
++				gpio-line-names =
++					"RPDB_FAN_FULL_SPEED_R_N", "RPDB_I2C_TMP432_U8_ALERT_R_N",
++					"RPDB_I2C_TMP432_U29_ALERT_R_N", "RPDB_GLOBAL_WP",
++					"RPDB_FAN_CT_FAN_FAIL_R_N", "RPDB_VERID_A0",
++					"RPDB_VERID_A1", "RPDB_VERID_A2",
++					"RPDB_ALERT_P50V_HSC2_R_N", "RPDB_ALERT_P50V_HSC3_R_N",
++					"RPDB_ALERT_P50V_HSC4_R_N", "RPDB_ALERT_P50V_STBY_R_N",
++					"RPDB_P12V_MB_VRM_ALERT_R_N",
++					"RPDB_P12V_STBY_VRM_ALERT_R_N",
++					"RPDB_PGD_P3V3_STBY_PWRGD_R",
++					"RPDB_P12V_STBY_VRM_PWRGD_BUF_R";
++			};
++
++			gpio@24 {
++				gpio-line-names =
++					"RPDB_EAM2_PRSNT_MOS_N_R", "RPDB_EAM3_PRSNT_MOS_N_R",
++					"RPDB_PWRGD_P50V_HSC4_SYS_R",
++					"RPDB_PWRGD_P50V_STBY_SYS_BUF_R",
++					"RPDB_P50V_FAN5_R2_PG", "RPDB_P50V_FAN6_R2_PG",
++					"RPDB_P50V_FAN7_R2_PG", "RPDB_P50V_FAN8_R2_PG",
++					"RPDB_SKU_ID0", "RPDB_FAN5_PRSNT_N_R",
++					"", "RPDB_FAN6_PRSNT_N_R",
++					"RPDB_FAN7_PRSNT_N_R", "RPDB_FAN8_PRSNT_N_R",
++					"", "";
++			};
++
++			gpio@38 {
++				compatible = "nxp,pca9554";
++				reg = <0x38>;
++				#gpio-cells = <2>;
++				gpio-controller;
++
++				gpio-line-names =
++					"RPDB_P50V_FUSE2_TVS1", "RPDB_P50V_FUSE2_TVS2",
++					"RPDB_P50V_FUSE3_TVS1", "RPDB_P50V_FUSE3_TVS2",
++					"RPDB_P50V_FUSE4_TVS1", "",
++					"", "";
++
++				interrupt-parent = <&sgpiom0>;
++				interrupts = <174 IRQ_TYPE_LEVEL_LOW>;
++			};
++		};
++
++		i2c@1 {
++			gpio@22 {
++				gpio-line-names =
++					"LPDB_FAN_FULL_SPEED_R_N", "LPDB_I2C_TEMP75_U8_ALERT_R_N",
++					"LPDB_I2C_TMP432_U29_ALERT_R_N", "LPDB_GLOBAL_WP",
++					"LPDB_FAN_CT_FAN_FAIL_R_N", "LPDB_VERID_A0",
++					"LPDB_VERID_A1", "LPDB_VERID_A2",
++					"LPDB_ALERT_P50V_HSC0_R_N", "LPDB_ALERT_P50V_HSC1_R_N",
++					"LPDB_ALERT_P50V_HSC5_R_N", "LPDB_I2C_P12V_SW_VRM_ALERT_R_N",
++					"LPDB_EAM0_PRSNT_MOS_N_R", "LPDB_EAM1_PRSNT_MOS_N_R",
++					"LPDB_PWRGD_P50V_HSC5_SYS_R", "BARKLIP_PRSNT_N_R3";
++			};
++
++			gpio@24 {
++				gpio-line-names =
++					"LPDB_P50V_FAN0_R2_PG", "LPDB_P50V_FAN1_R2_PG",
++					"LPDB_P50V_FAN2_R2_PG", "LPDB_P50V_FAN3_R2_PG",
++					"LPDB_P50V_FAN4_R2_PG", "LPDB_FAN0_PRSNT_N_R",
++					"LPDB_FAN1_PRSNT_N_R", "LPDB_FAN2_PRSNT_N_R",
++					"LPDB_FAN3_PRSNT_N_R", "LPDB_FAN4_PRSNT_N_R",
++					"LPDB_SKU_ID0", "",
++					"", "",
++					"", "LPDB_PG_P3V3_R";
++			};
++
++			gpio@38 {
++				compatible = "nxp,pca9554";
++				reg = <0x38>;
++				#gpio-cells = <2>;
++				gpio-controller;
++
++				gpio-line-names =
++					"LPDB_P50V_FUSE0_TVS1", "LPDB_P50V_FUSE0_TVS2",
++					"LPDB_P50V_FUSE1_TVS1", "LPDB_P50V_FUSE1_TVS2",
++					"LPDB_P50V_FUSE5_TVS1", "",
++					"", "";
++
++				interrupt-parent = <&sgpiom0>;
++				interrupts = <174 IRQ_TYPE_LEVEL_LOW>;
++			};
++		};
++	};
++};
++
+ &sgpiom0 {
+ 	bus-frequency = <2000000>;
+ 	gpio-line-names =
 
 -- 
 2.34.1
