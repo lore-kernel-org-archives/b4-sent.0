@@ -1,11 +1,11 @@
 From: Nick Faro <yux50000@hotmail.com>
-Date: Thu, 27 Aug 2026 19:44:15 +0200
-Subject: [PATCH 5/6] media: cx231xx: always unregister nodes on USB
- disconnect
+Date: Thu, 27 Aug 2026 19:44:16 +0200
+Subject: [PATCH 6/6] media: cx231xx: size alternate-setting arrays by
+ element count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-cx231xx-disconnect-lifetime-v1-5-7bbf946bbd36@hotmail.com>
+Message-Id: <20260827-cx231xx-disconnect-lifetime-v1-6-7bbf946bbd36@hotmail.com>
 References: <20260827-cx231xx-disconnect-lifetime-v1-0-7bbf946bbd36@hotmail.com>
 In-Reply-To: <20260827-cx231xx-disconnect-lifetime-v1-0-7bbf946bbd36@hotmail.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -13,145 +13,95 @@ To: Mauro Carvalho Chehab <mchehab@kernel.org>,
 Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Nick Faro <yux50000@hotmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787852712; l=5250;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787852712; l=3377;
  i=yux50000@hotmail.com; s=20260827; h=from:subject:message-id;
- bh=lfYMdUVPkBvAiiFLQfWpvqyr8TfO0f8rtCgH5KZb5Kk=;
- b=QcsLRD7jwBhZLD3x9enMGFZKq90mt713EljTrvGk0P4MwqGVCBZViLyEhidR+GLnjZieYsSA0
- 1WoRYO08rwyDwEOkDm+Nh7ZfKcXMcsMWehf4Rb9Hf1g/K7OpFaENMeE
+ bh=kLY4AOB7qHaFhPJKspXqxDDTNgxhM5uHaXa6/IBCVAU=;
+ b=JLFKzpuefLQauppuvB7mF+R3+uw3MRQUz7Xbnfb2Ej0U8gzNTvZ0cL7/U6Hbdn4oGAjnpOjDH
+ P7lmJqHh+ceDicrviTHBxEQZym2ZYhfRLJg5IeyIDDP+/f5dLhRepxU
 X-Developer-Key: i=yux50000@hotmail.com; a=ed25519;
  pk=FMSCCFHmUW8ylFpPOeaegUBqrRhzdMS2snqX/kNbLtM=
 X-Endpoint-Received: by B4 Relay for yux50000@hotmail.com/20260827 with auth_id=979
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The disconnect path skips cx231xx_release_resources() whenever an analog
-video file is open. No close path performs the deferred teardown, so the
-V4L2 nodes and I2C adapters remain registered and a later probe collides
-with the stale instance. The users counter also does not cover MPEG, ALSA
-or other framework references.
+The arguments to kmalloc_array() are the number of elements followed by
+the size of each element. The driver instead passes 32 and the number of
+alternate settings, apparently confusing the width of the stored value
+with its size in bytes.
 
-Always unregister every device node and subsystem during disconnect. Use
-the VB2 unregister helper for queue-backed nodes so active streams are
-stopped, and serialize disconnection against in-flight file operations.
-The v4l2_device references now keep the backing memory alive until old
-file handles close.
+Allocate one correctly sized element for each alternate setting in the
+video, VBI, sliced-caption, transport-stream and audio arrays.
 
 Fixes: e0d3bafd0258 ("V4L/DVB (10954): Add cx231xx USB driver")
 Assisted-by: Codex:gpt-5.6-sol
 Signed-off-by: Nick Faro <yux50000@hotmail.com>
 ---
- drivers/media/usb/cx231xx/cx231xx-417.c   |  2 +-
- drivers/media/usb/cx231xx/cx231xx-cards.c | 11 +++++------
- drivers/media/usb/cx231xx/cx231xx-video.c | 10 +++++-----
- drivers/media/usb/cx231xx/cx231xx.h       |  1 +
- 4 files changed, 12 insertions(+), 12 deletions(-)
+ drivers/media/usb/cx231xx/cx231xx-audio.c |  4 +++-
+ drivers/media/usb/cx231xx/cx231xx-cards.c | 16 ++++++++++++----
+ 2 files changed, 15 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/media/usb/cx231xx/cx231xx-417.c b/drivers/media/usb/cx231xx/cx231xx-417.c
-index 3a509e55f61d..9bda68666b05 100644
---- a/drivers/media/usb/cx231xx/cx231xx-417.c
-+++ b/drivers/media/usb/cx231xx/cx231xx-417.c
-@@ -1672,7 +1672,7 @@ void cx231xx_417_unregister(struct cx231xx *dev)
- 	dprintk(3, "%s()\n", __func__);
- 
- 	if (video_is_registered(&dev->v4l_device)) {
--		video_unregister_device(&dev->v4l_device);
-+		vb2_video_unregister_device(&dev->v4l_device);
- 	}
- }
- 
+diff --git a/drivers/media/usb/cx231xx/cx231xx-audio.c b/drivers/media/usb/cx231xx/cx231xx-audio.c
+index a10b887edf51..eaddad793900 100644
+--- a/drivers/media/usb/cx231xx/cx231xx-audio.c
++++ b/drivers/media/usb/cx231xx/cx231xx-audio.c
+@@ -656,7 +656,9 @@ static int cx231xx_audio_init(struct cx231xx *dev)
+ 	dev_info(dev->dev,
+ 		"audio EndPoint Addr 0x%x, Alternate settings: %i\n",
+ 		adev->end_point_addr, adev->num_alt);
+-	adev->alt_max_pkt_size = kmalloc_array(32, adev->num_alt, GFP_KERNEL);
++	adev->alt_max_pkt_size = kmalloc_array(adev->num_alt,
++					       sizeof(*adev->alt_max_pkt_size),
++					       GFP_KERNEL);
+ 	if (!adev->alt_max_pkt_size) {
+ 		err = -ENOMEM;
+ 		goto err_free_card;
 diff --git a/drivers/media/usb/cx231xx/cx231xx-cards.c b/drivers/media/usb/cx231xx/cx231xx-cards.c
-index 1b1e7bca4c6d..8e23de4cddf8 100644
+index 8e23de4cddf8..3c4bbf724d63 100644
 --- a/drivers/media/usb/cx231xx/cx231xx-cards.c
 +++ b/drivers/media/usb/cx231xx/cx231xx-cards.c
-@@ -1946,7 +1946,6 @@ static int cx231xx_usb_probe(struct usb_interface *interface,
- 	cx231xx_close_extension(dev);
- 	cx231xx_ir_exit(dev);
- 	cx231xx_release_analog_resources(dev);
--	cx231xx_417_unregister(dev);
- 	cx231xx_remove_from_devlist(dev);
- 	cx231xx_dev_uninit(dev);
- err_init:
-@@ -1970,7 +1969,8 @@ static int cx231xx_usb_probe(struct usb_interface *interface,
- /*
-  * cx231xx_usb_disconnect()
-  * called when the device gets disconnected
-- * video device will be unregistered on v4l2_close in case it is still open
-+ * Device nodes are unregistered immediately. Their backing memory remains
-+ * alive until the last open file descriptor is closed.
-  */
- static void cx231xx_usb_disconnect(struct usb_interface *interface)
- {
-@@ -1997,7 +1997,7 @@ static void cx231xx_usb_disconnect(struct usb_interface *interface)
+@@ -1606,7 +1606,9 @@ static int cx231xx_init_v4l2(struct cx231xx *dev,
+ 		 dev->video_mode.num_alt);
  
- 	if (dev->users) {
- 		dev_warn(dev->dev,
--			 "device %s is open! Deregistration and memory deallocation are deferred on close.\n",
-+			 "device %s is open; disconnecting it now\n",
- 			 video_device_node_name(&dev->vdev));
+ 	dev->video_mode.alt_max_pkt_size =
+-		kmalloc_array(32, dev->video_mode.num_alt, GFP_KERNEL);
++		kmalloc_array(dev->video_mode.num_alt,
++			      sizeof(*dev->video_mode.alt_max_pkt_size),
++			      GFP_KERNEL);
+ 	if (dev->video_mode.alt_max_pkt_size == NULL)
+ 		return -ENOMEM;
  
- 		/* Even having users, it is safe to remove the RC i2c driver */
-@@ -2007,17 +2007,16 @@ static void cx231xx_usb_disconnect(struct usb_interface *interface)
- 			cx231xx_uninit_isoc(dev);
- 		else
- 			cx231xx_uninit_bulk(dev);
-+		cx231xx_uninit_vbi_isoc(dev);
- 		wake_up_interruptible(&dev->wait_frame);
- 		wake_up_interruptible(&dev->wait_stream);
--	} else {
- 	}
+@@ -1648,7 +1650,9 @@ static int cx231xx_init_v4l2(struct cx231xx *dev,
  
- 	cx231xx_close_extension(dev);
+ 	/* compute alternate max packet sizes for vbi */
+ 	dev->vbi_mode.alt_max_pkt_size =
+-		kmalloc_array(32, dev->vbi_mode.num_alt, GFP_KERNEL);
++		kmalloc_array(dev->vbi_mode.num_alt,
++			      sizeof(*dev->vbi_mode.alt_max_pkt_size),
++			      GFP_KERNEL);
+ 	if (dev->vbi_mode.alt_max_pkt_size == NULL)
+ 		return -ENOMEM;
  
- 	mutex_unlock(&dev->lock);
+@@ -1691,7 +1695,9 @@ static int cx231xx_init_v4l2(struct cx231xx *dev,
+ 		 dev->sliced_cc_mode.end_point_addr,
+ 		 dev->sliced_cc_mode.num_alt);
+ 	dev->sliced_cc_mode.alt_max_pkt_size =
+-		kmalloc_array(32, dev->sliced_cc_mode.num_alt, GFP_KERNEL);
++		kmalloc_array(dev->sliced_cc_mode.num_alt,
++			      sizeof(*dev->sliced_cc_mode.alt_max_pkt_size),
++			      GFP_KERNEL);
+ 	if (dev->sliced_cc_mode.alt_max_pkt_size == NULL)
+ 		return -ENOMEM;
  
--	if (!dev->users)
--		cx231xx_release_resources(dev);
-+	cx231xx_release_resources(dev);
- }
+@@ -1887,7 +1893,9 @@ static int cx231xx_usb_probe(struct usb_interface *interface,
+ 			 dev->ts1_mode.num_alt);
  
- static struct usb_driver cx231xx_usb_driver = {
-diff --git a/drivers/media/usb/cx231xx/cx231xx-video.c b/drivers/media/usb/cx231xx/cx231xx-video.c
-index 154bb4300392..c8c460da2b9a 100644
---- a/drivers/media/usb/cx231xx/cx231xx-video.c
-+++ b/drivers/media/usb/cx231xx/cx231xx-video.c
-@@ -1561,21 +1561,21 @@ void cx231xx_release_analog_resources(struct cx231xx *dev)
- 
- 	/*FIXME: I2C IR should be disconnected */
- 
-+	if (dev->board.has_417)
-+		cx231xx_417_unregister(dev);
-+
- 	if (video_is_registered(&dev->radio_dev))
- 		video_unregister_device(&dev->radio_dev);
- 	if (video_is_registered(&dev->vbi_dev)) {
- 		dev_info(dev->dev, "V4L2 device %s deregistered\n",
- 			video_device_node_name(&dev->vbi_dev));
--		video_unregister_device(&dev->vbi_dev);
-+		vb2_video_unregister_device(&dev->vbi_dev);
- 	}
- 	if (video_is_registered(&dev->vdev)) {
- 		dev_info(dev->dev, "V4L2 device %s deregistered\n",
- 			video_device_node_name(&dev->vdev));
- 
--		if (dev->board.has_417)
--			cx231xx_417_unregister(dev);
--
--		video_unregister_device(&dev->vdev);
-+		vb2_video_unregister_device(&dev->vdev);
- 	}
- }
- 
-diff --git a/drivers/media/usb/cx231xx/cx231xx.h b/drivers/media/usb/cx231xx/cx231xx.h
-index 19f5036a78d7..8fb1eb9d600e 100644
---- a/drivers/media/usb/cx231xx/cx231xx.h
-+++ b/drivers/media/usb/cx231xx/cx231xx.h
-@@ -873,6 +873,7 @@ void cx231xx_stop_TS1(struct cx231xx *dev);
- void cx231xx_start_TS1(struct cx231xx *dev);
- void cx231xx_uninit_isoc(struct cx231xx *dev);
- void cx231xx_uninit_bulk(struct cx231xx *dev);
-+void cx231xx_uninit_vbi_isoc(struct cx231xx *dev);
- int cx231xx_set_mode(struct cx231xx *dev, enum cx231xx_mode set_mode);
- int cx231xx_unmute_audio(struct cx231xx *dev);
- int cx231xx_ep5_bulkout(struct cx231xx *dev, u8 *firmware, u16 size);
+ 		dev->ts1_mode.alt_max_pkt_size =
+-			kmalloc_array(32, dev->ts1_mode.num_alt, GFP_KERNEL);
++			kmalloc_array(dev->ts1_mode.num_alt,
++				      sizeof(*dev->ts1_mode.alt_max_pkt_size),
++				      GFP_KERNEL);
+ 		if (dev->ts1_mode.alt_max_pkt_size == NULL) {
+ 			retval = -ENOMEM;
+ 			goto err_video_alt;
 
 -- 
 2.43.0
