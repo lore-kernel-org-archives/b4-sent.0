@@ -1,709 +1,492 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Date: Thu, 27 Aug 2026 03:16:04 -0700
-Subject: [PATCH v6 2/2] ceph: add 'lazyio' mount option to kclient
+Subject: [PATCH v3 0/2] ceph: keep the inode, not the name, when a dentry
+ lease expires
+Date: Thu, 27 Aug 2026 04:08:15 -0700
+Message-Id: <20260827-b4-b4-ceph-dentry-caps-v3-0-f0619f4134e0@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260827-lazyio-v6-2-2755b379b8de@clyso.com>
-References: <20260827-lazyio-v6-0-2755b379b8de@clyso.com>
-In-Reply-To: <20260827-lazyio-v6-0-2755b379b8de@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0K6dkxbCgVX3sO4KO0gNUpJi42Ec
+ HcpbtgYk9m85M97MwnoLQZyymbiMdpgXb9CfsiI7lR/Q7BmZcIpL2nFGTQincahA4P96CfQagi
+ gjBAyFwZVVZD1efDY2vcmvly/HF7NHfWYbGnR2TA6P23lyNLubyQyYNC2dSNlwZiu5Vk/puCO2
+ j1JikS+1xQ/NRwoCMYpM1KJqqz2mmVZPhCTBtsVAQAA
+X-Change-ID: 20260821-b4-b4-ceph-dentry-caps-ad44734dea85
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
+ Viacheslav Dubeyko <slava@dubeyko.com>, Jeff Layton <jlayton@kernel.org>, 
+ David Howells <dhowells@redhat.com>
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787825763; l=26264;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787828896; l=18952;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=dzkxCsGeXf7Y/WXJ3aen2qYOzyHPlNjEyoxRy6CMCLw=;
- b=VPg660incPT39F3EJBRgHayfyOKoKDnRgXE3nVYT/RkBmc5FiR8n7N2loBthkdpDxOb/pIlZE
- FvgB9UxUrW9BLEydRIlhpLdDMDc8oKUG2/+sQdcj1oNDGnl7j4IF6hw
+ bh=vCeS/JocqgPkZ3TyBm7IxfV7A1PZqxnPw40nmnI665A=;
+ b=t1rku4SbpK+Nn63eEMBN7I7VYY42aGDgxyEYUWz4YlGOImsEq3/iWVb/FK5n/ifRXnl1NZW8Y
+ FadTaUYkrebDs1yP9Xl+3F34sfpeGzDjnn8LvAXZAVUx+ZUcpetlIxS
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a 'lazyio' mount option to the kernel Ceph client that enables
-LazyIO globally for all regular file opens on a mount. This is the
-kclient equivalent of the 'client_force_lazyio=true' config option
-in the ceph-fuse userspace client.
+When a dentry lease expires, ceph_d_delete() unhashes the dentry and,
+because ceph uses inode_just_drop() for ->drop_inode, that last dput()
+evicts the inode too, discarding a page cache that the inode's caps
+still vouch for.  A workload that opens and closes files repeatedly
+therefore re-reads everything from the OSDs after every dentry purge
+(30s lease by default on the MDS side), even though both the caps and
+the pages were still valid.
 
-When 'lazyio' is specified, CEPH_FILE_MODE_LAZY is automatically
-added to every regular file's fmode at open time in ceph_open() and
-ceph_atomic_open(), causing the I/O paths to request
-CEPH_CAP_FILE_LAZYIO from the MDS. This permits buffered I/O via
-the page cache even when multiple clients have the file open for
-write — beneficial for HPC workloads that can tolerate relaxed
-cache coherency.
+v1 kept the expired name hashed in the dcache instead.  Alex Markuze
+pointed out that this breaks the d_find_alias()-based cap auth in
+ceph_open() and __ceph_setattr(), and that the retention bound claimed
+in the changelog did not exist.  v2 therefore leaves dentry lifetime
+alone and moves the retention to the inode: the expired dentry is
+unhashed exactly as before, and the next lookup reattaches to the same
+inode via iget5_locked() on the vino, with the page cache intact.
 
-The mount option is exposed as 'lazyio' / 'nolazyio' via the VFS
-fsparam_flag_no mechanism and supports remount.
+Patch 1 marks the superblock active after mounting.  ceph_get_tree()
+calls sget_fc() directly and so never goes through vfs_get_super(),
+which is what sets SB_ACTIVE; the flag has been missing since the new
+mount API conversion (Fixes: 82995cc6c5ae) and the bug was invisible
+because ceph's ->drop_inode() always asked for eviction.  Patch 2 makes
+->drop_inode() able to retain inodes, so it needs the flag to work.
 
-Link: https://tracker.ceph.com/issues/77594
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Patch 2 restores ceph_drop_inode() (removed in 52dd0f1b3f94) and keeps
+a regular file's inode while it still has cached pages and still holds
+real caps.  The retention is bounded by the page cache itself: an
+inode holding real folios is not shrinkable, so page reclaim empties
+the mapping first and only then can the inode shrinker evict it, and
+unmount evicts it regardless.  trim_caps_cb() gets an explicit
+override in the one-shot CEPH_I_EVICT_ON_FINAL_IPUT_BIT, which
+ceph_drop_inode() consumes with test_and_clear_bit(), so an MDS cap
+recall still evicts the inode and releases its caps.
+
+Verified on a vstart cluster: after drop_caches the inode and its cap
+survive and a reopen is served from the page cache (no OSD reads); an
+MDS cap recall runs the full chain (trim_caps_cb -> EVICT_ON_FINAL_IPUT
+-> ceph_drop_inode -> ceph_evict_inode -> __ceph_remove_caps) in both
+the no-alias and the d_prune_aliases() cases; and the reopen after the
+trim reads from the OSDs again.
+
 ---
- fs/ceph/addr.c               | 138 +++++++++++++++++++++++++++++++++
- fs/ceph/caps.c               | 177 ++++++++++++++++++++++++++++++++++++++++---
- fs/ceph/file.c               |  33 ++++++--
- fs/ceph/super.c              |  15 ++++
- fs/ceph/super.h              |  17 +++++
- fs/ceph/util.c               |   4 -
- include/linux/ceph/ceph_fs.h |   1 +
- 7 files changed, 365 insertions(+), 20 deletions(-)
+Changes in v3:
+- ceph_drop_inode(): consult fscrypt_drop_inode() after
+  inode_generic_drop() and before the retention, so an inode whose
+  encryption key has been removed is still evicted and the plaintext
+  page cache goes with the key (Alex Markuze)
+- Link to v2: https://patch.msgid.link/20260825-b4-b4-ceph-dentry-caps-v2-0-41201d7a4868@clyso.com
 
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index 18cbb18eee75..1e4f03625912 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -493,6 +493,10 @@ static int ceph_init_request(struct netfs_io_request *rreq, struct file *file)
- 			rreq->netfs_priv = priv;
- 			return 0;
- 		}
-+
-+		/* If this is a lazy fd, also try to get LAZYIO caps */
-+		if (fi->fmode & CEPH_FILE_MODE_LAZY)
-+			want |= CEPH_CAP_FILE_LAZYIO;
- 	}
- 
- 	/*
-@@ -1994,6 +1998,42 @@ static void ceph_restore_sigs(sigset_t *oldset)
- 	sigprocmask(SIG_SETMASK, oldset, NULL);
- }
- 
-+/*
-+ * True if the page cache is only being kept alive by LAZYIO: CACHE is no
-+ * longer present in the implemented cap set, while LAZYIO still is, so
-+ * handle_cap_grant() left the pages in place for the lazy openers.
-+ *
-+ * Such pages are only valid under the lazy semantics, and a non-lazy reader
-+ * must not be served from them.  try_get_cap_refs() already refuses to
-+ * satisfy a non-lazy CACHE want with LAZYIO for read_iter()/write_iter();
-+ * faults need the same gate.
-+ *
-+ * Unlike __prep_cap(), which has to reason about a single cap, the question
-+ * here is whether the cached data can have gone stale, so the aggregate of
-+ * all caps is the right granularity: as long as any one of them still has
-+ * CACHE implemented, its revocation has not been ACKed and the MDS cannot
-+ * have handed CACHE to another client.  Note that __ceph_caps_issued()
-+ * reports i_snap_caps in "have" only and not in "implemented", hence the
-+ * OR; snap caps never include LAZYIO, so folding them in can only make this
-+ * more conservative.
-+ */
-+static bool ceph_pages_retained_for_lazyio(struct inode *inode)
-+{
-+	struct ceph_inode_info *ci = ceph_inode(inode);
-+	int have, implemented;
-+
-+	if (!inode->i_data.nrpages)
-+		return false;
-+
-+	spin_lock(&ci->i_ceph_lock);
-+	have = __ceph_caps_issued(ci, &implemented);
-+	implemented |= have;
-+	spin_unlock(&ci->i_ceph_lock);
-+
-+	return !(implemented & CEPH_CAP_FILE_CACHE) &&
-+	       (implemented & CEPH_CAP_FILE_LAZYIO);
-+}
-+
- /*
-  * vm ops
-  */
-@@ -2029,6 +2069,43 @@ static vm_fault_t ceph_filemap_fault(struct vm_fault *vmf)
- 	doutc(cl, "%llx.%llx %llu got cap refs on %s\n", ceph_vinop(inode),
- 	      off, ceph_cap_string(got));
- 
-+	/*
-+	 * Don't fault a non-lazy mapping in from page cache that only LAZYIO
-+	 * covers.  The "every opener is lazy" gate in handle_cap_grant() can't
-+	 * catch this on its own: an open that happens after the cache was
-+	 * retained sends no cap message, so nothing re-evaluates the decision.
-+	 * Drop the range here instead and let the fault below re-read it.
-+	 */
-+	if (!(fi->fmode & CEPH_FILE_MODE_LAZY) &&
-+	    !(got & CEPH_CAP_FILE_CACHE) &&
-+	    ceph_pages_retained_for_lazyio(inode)) {
-+		struct address_space *mapping = inode->i_mapping;
-+
-+		doutc(cl, "%llx.%llx %llu dropping LAZYIO page cache\n",
-+		      ceph_vinop(inode), off);
-+		err = invalidate_inode_pages2_range(mapping, vmf->pgoff,
-+						    vmf->pgoff);
-+		if (err == -EBUSY) {
-+			/*
-+			 * The folio is dirty and ceph has no launder_folio(),
-+			 * so invalidate_inode_pages2_range() cannot drop it.
-+			 * Write it back and retry -- handing a folio that only
-+			 * LAZYIO covers to a non-lazy vma is not an option.
-+			 */
-+			err = filemap_write_and_wait_range(mapping, off,
-+							   off + PAGE_SIZE - 1);
-+			if (!err)
-+				err = invalidate_inode_pages2_range(mapping,
-+						vmf->pgoff, vmf->pgoff);
-+		}
-+		if (err) {
-+			doutc(cl, "%llx.%llx %llu failed to drop LAZYIO page cache: %d\n",
-+			      ceph_vinop(inode), off, err);
-+			ceph_put_cap_refs(ci, got);
-+			goto out_restore;
-+		}
-+	}
-+
- 	if ((got & (CEPH_CAP_FILE_CACHE | CEPH_CAP_FILE_LAZYIO)) ||
- 	    !ceph_has_inline_data(ci)) {
- 		CEPH_DEFINE_RW_CONTEXT(rw_ctx, got);
-@@ -2088,6 +2165,30 @@ static vm_fault_t ceph_filemap_fault(struct vm_fault *vmf)
- 	return ret;
- }
- 
-+/*
-+ * Return true if the MDS has issued us a cap that covers buffered
-+ * dirtying: either BUFFER, or LAZYIO (as long as LAZYIO itself is not
-+ * being revoked).  This mirrors the conditions under which
-+ * try_get_cap_refs() will hand out a BUFFER or LAZYIO ref.
-+ */
-+static bool ceph_have_dirtyable_caps(struct inode *inode)
-+{
-+	struct ceph_inode_info *ci = ceph_inode(inode);
-+	int have, implemented;
-+	bool ret = false;
-+
-+	spin_lock(&ci->i_ceph_lock);
-+	have = __ceph_caps_issued(ci, &implemented);
-+	if (have & CEPH_CAP_FILE_BUFFER) {
-+		ret = true;
-+	} else if ((have & CEPH_CAP_FILE_LAZYIO) &&
-+		   !((implemented & ~have) & CEPH_CAP_FILE_LAZYIO)) {
-+		ret = true;
-+	}
-+	spin_unlock(&ci->i_ceph_lock);
-+	return ret;
-+}
-+
- static vm_fault_t ceph_page_mkwrite(struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-@@ -2126,6 +2227,7 @@ static vm_fault_t ceph_page_mkwrite(struct vm_fault *vmf)
- 	else
- 		want = CEPH_CAP_FILE_BUFFER;
- 
-+retry_caps:
- 	got = 0;
- 	err = ceph_get_caps(vma->vm_file, CEPH_CAP_FILE_WR, want, off + len, &got);
- 	if (err < 0)
-@@ -2134,6 +2236,42 @@ static vm_fault_t ceph_page_mkwrite(struct vm_fault *vmf)
- 	doutc(cl, "%llx.%llx %llu~%zd got cap refs on %s\n", ceph_vinop(inode),
- 	      off, len, ceph_cap_string(got));
- 
-+	/*
-+	 * ceph_write_iter() makes the same check and falls back to
-+	 * synchronous writes, but a page fault has no such fallback:
-+	 * dirtying the folio without BUFFER or LAZYIO would leave dirty
-+	 * data uncovered by any issued cap (e.g. while LAZYIO is being
-+	 * revoked, or after it has been released).  Wait for the MDS to
-+	 * (re)grant a covering cap, matching how the exclude gate in
-+	 * try_get_cap_refs() blocks buffered writes while BUFFER is
-+	 * revoking.
-+	 */
-+	if ((fi->fmode & CEPH_FILE_MODE_LAZY) &&
-+	    (got & (CEPH_CAP_FILE_BUFFER | CEPH_CAP_FILE_LAZYIO)) == 0) {
-+		ceph_put_cap_refs(ci, got);
-+		got = 0;
-+		doutc(cl, "%llx.%llx %llu~%zd waiting for BUFFER or LAZYIO\n",
-+		      ceph_vinop(inode), off, len);
-+		/*
-+		 * Bail out if the inode is being shut down: the caps are gone
-+		 * for good, so ceph_have_dirtyable_caps() would never become
-+		 * true again.  Note that we cannot rely on ceph_get_caps()
-+		 * failing with -ESTALE on the retry either -- if WR is still
-+		 * held it would succeed without BUFFER or LAZYIO and send us
-+		 * straight back here.
-+		 */
-+		err = wait_event_killable(ci->i_cap_wq,
-+					  ceph_have_dirtyable_caps(inode) ||
-+					  ceph_inode_is_shutdown(inode));
-+		if (err)
-+			goto out_free;
-+		if (ceph_inode_is_shutdown(inode)) {
-+			err = -ESTALE;
-+			goto out_free;
-+		}
-+		goto retry_caps;
-+	}
-+
- 	/* Update time before taking folio lock */
- 	file_update_time(vma->vm_file);
- 	inode_inc_iversion_raw(inode);
+Changes in v2:
+- dropped the dentry change entirely; expired names are unhashed
+  exactly as before, so d_find_alias() never sees a stale hashed name
+- moved the retention from dentry lifetime to inode lifetime (restore
+  ceph_drop_inode())
+- added patch 1 fixing the missing SB_ACTIVE, a prerequisite for the
+  retain branch in iput_final()
+- replaced the bogus 60s caps_wanted_delay_max bound with a bound by
+  the page cache itself
+- Link to v1: https://patch.msgid.link/20260821-b4-b4-ceph-dentry-caps-v1-1-ff9b77511c97@clyso.com
+
+Test program
+------------
+The script below runs the whole scenario on a vstart cluster and prints
+PASS/FAIL per case (Test C: retention, MDS recall override, post-trim
+re-read from the OSDs; Test B: both trim_caps_cb() exits).  The last
+section needs the CEPHDBG debug patch included below (not part of this
+series) to print the per-inode chain from dmesg.
+
+#!/bin/bash
+#
+# Test B/C for "ceph: keep the inode, not the name, when a dentry lease
+# expires".
+#
+# Build the test kernel with /tmp/ceph-v2-debug-trace.patch applied and
+# run this on the client:
+#
+#     sudo bash /tmp/ceph-v2-test-bc.sh <cephfs-mountpoint> [mds-rank]
+#
+# Test C proves the retention + MDS-trim-override lifecycle:
+#   write+close -> dentry/prune -> reopen reads page cache (no OSD read)
+#   -> MDS cap recall -> inode evicted, its cap line gone from
+#   /sys/kernel/debug/ceph/*/caps -> reopen reads from OSDs again.
+#
+# Test B covers the two trim_caps_cb() exits:
+#   case 1: no alias at all   (drop_caches=2 frees the dentry, the parked
+#                               inode keeps its pages, so it is NOT on the
+#                               inode LRU and survives)
+#   case 2: alias still present (d_prune_aliases() path)
+#
+# Each case prints PASS/FAIL. With the debug patch, dmesg should show the
+# full chain per inode:
+#   CEPHDBG trim_caps X set EVICT_ON_FINAL_IPUT
+#   CEPHDBG drop_inode X consumed EVICT_ON_FINAL_IPUT -> drop
+#   CEPHDBG evict_inode X
+#   CEPHDBG remove_caps X
+
+set -u
+
+MNT="${1:?usage: $0 <cephfs-mountpoint> [mds-rank]}"
+MDS_RANK="${2:-0}"
+
+# Prefer the system ceph CLI (it knows /etc/ceph/ceph.conf); the
+# developer-mode build CLI needs the cluster conf on its own.  Override
+# with CEPH_CLI=/path/to/ceph if needed.
+CEPH_CLI="${CEPH_CLI:-}"
+if [ -z "$CEPH_CLI" ]; then
+	CEPH_CLI=$(command -v ceph)
+	[ -n "$CEPH_CLI" ] || CEPH_CLI="/home/xiubli/workspace/ceph/build/bin/ceph"
+fi
+[ -x "$CEPH_CLI" ] || { echo "SKIP: ceph CLI not found (set CEPH_CLI=/path/to/ceph)"; exit 2; }
+
+# The client's debugfs dir is named <fsid>.<clientid>; pick the one for
+# this mount.  The fsid lives in the device field of /proc/mounts, e.g.
+#   admin@0819baf2-55c8-40c7-a480-3ff47b20180d.a=/   (or with a mon list
+#   and optional @ before the fsid, as in mon1,mon2@<fsid>.a=/).
+CFG="$(grep -m1 " $MNT " /proc/mounts)"
+FSID=$(echo "$CFG" | awk '{print $1}' | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+[ -n "$FSID" ] || { echo "FAIL: cannot find fsid for $MNT"; exit 2; }
+DBG=$(find /sys/kernel/debug/ceph -maxdepth 1 -type d -name "$FSID.*" 2>/dev/null | head -1)
+[ -d "$DBG" ] || { echo "FAIL: no debugfs dir for $MNT (is debugfs mounted?)"; exit 2; }
+
+CAPS="$DBG/caps"
+METRICS_FILE="$DBG/metrics/file"
+METRICS_LAT="$DBG/metrics/latency"
+
+WORK="$MNT/.v2-retention-test.$$"
+FILE="$WORK/t.bin"
+SIZE=$((4*1024*1024))
+
+fail() { echo "FAIL: $*"; exit 1; }
+
+# per-inode cap line from debugfs caps: "0x<ino> <mds> <issued> <implemented>"
+cap_line_for() {
+	local ino="$1"
+	grep -E "^0x$ino " "$CAPS" || true
+}
+
+# per-inode debug line from dmesg
+dmesg_line_for() {
+	dmesg | grep -E "$1" | tail -1
+}
+
+wait_for() { # desc, timeout_s, check_fn...
+	local desc="$1" timeout="$2"; shift 2
+	local deadline=$((SECONDS + timeout))
+	while ! "$@" 2>/dev/null; do
+		[ $SECONDS -lt $deadline ] || return 1
+		sleep 1
+	done
+	return 0
+}
+
+reads_total() { awk '/^read[ \t]/{print $2}' "$METRICS_LAT" | head -1; }
+inodes_total() { awk '/total inodes/{print $3}' "$METRICS_FILE"; }
+
+# Trigger an MDS cap recall.  The MDS only recalls a session down to
+# mds_min_caps_per_client caps (default 100), so a kernel client with a
+# handful of caps must have both knobs lowered: mds_recall_max_caps so
+# one recall message is enough, and mds_min_caps_per_client so the
+# session may actually be trimmed.  Old values are restored at exit.
+RECALL_OLD_MAX=""
+RECALL_OLD_MIN=""
+
+recall_caps() {
+	RECALL_OLD_MAX=$("$CEPH_CLI" config get mds mds_recall_max_caps 2>/dev/null | tail -1)
+	RECALL_OLD_MIN=$("$CEPH_CLI" config get mds mds_min_caps_per_client 2>/dev/null | tail -1)
+	[ -n "$RECALL_OLD_MAX" ] || RECALL_OLD_MAX=30000
+	[ -n "$RECALL_OLD_MIN" ] || RECALL_OLD_MIN=100
+	# Lower the knobs FIRST: with the defaults the MDS answers "Success"
+	# but recalls 0 caps, because mds_min_caps_per_client is the floor a
+	# session is never trimmed below.
+	if ! "$CEPH_CLI" config set mds mds_recall_max_caps 1 >/dev/null 2>&1; then
+		return 1
+	fi
+	if ! "$CEPH_CLI" config set mds mds_min_caps_per_client 0 >/dev/null 2>&1; then
+		return 1
+	fi
+	"$CEPH_CLI" tell "mds.${MDS_RANK}" cache drop >/dev/null 2>&1 || return 1
+	return 0
+}
+
+restore_recall() {
+	if [ -n "$RECALL_OLD_MAX" ]; then
+		"$CEPH_CLI" config set mds mds_recall_max_caps "$RECALL_OLD_MAX" >/dev/null 2>&1 || true
+	fi
+	if [ -n "$RECALL_OLD_MIN" ]; then
+		"$CEPH_CLI" config set mds mds_min_caps_per_client "$RECALL_OLD_MIN" >/dev/null 2>&1 || true
+	fi
+	RECALL_OLD_MAX=""
+	RECALL_OLD_MIN=""
+}
+trap restore_recall EXIT
+
+# --- setup ---------------------------------------------------------------
+mkdir -p "$WORK" || fail "mkdir $WORK"
+dd if=/dev/urandom of="$FILE" bs=1M count=$((SIZE/1024/1024)) status=none || fail dd
+ino=$(stat -c %i "$FILE")
+INOX=$(printf '%llx' "$ino")
+
+echo "== mount=$MNT debugfs=$DBG ino=0x$INOX size=$SIZE =="
+echo "== MDS knobs: recall_max_caps=$("$CEPH_CLI" config get mds mds_recall_max_caps 2>/dev/null | tail -1) min_caps_per_client=$("$CEPH_CLI" config get mds mds_min_caps_per_client 2>/dev/null | tail -1) =="
+
+# --- Test C: retention, then trim, then OSD read --------------------------
+echo
+echo "== Test C: page cache retained, trim override, re-read from OSD =="
+
+rm -f /tmp/v2-test-read.$$ /tmp/v2-test-read2.$$
+dd if=/dev/urandom of="$FILE" bs=1M count=$((SIZE/1024/1024)) conv=notrunc status=none
+sync
+echo 1 > /proc/sys/vm/drop_caches   # force the first read to go to the OSDs
+cat "$FILE" > /tmp/v2-test-read.$$ || fail "read 1"
+R0=$(reads_total); [ -n "$R0" ] || fail "cannot read metrics/latency"
+echo "  reads after first read:   $R0"
+
+# Free the dentry; the inode keeps its pages, so it must NOT be evicted.
+echo 2 > /proc/sys/vm/drop_caches
+sleep 1
+I1=$(inodes_total)
+[ "$(cap_line_for "$INOX")" ] || fail "cap already gone after drop_caches"
+# NB: "total inodes" is not a reliable retention signal: it has been
+# observed reading 0 while a live inode with a cap is still cached
+# (the metric drifts across recall/evict cycles).  The cap line above
+# and the read counts below are the real assertions.
+[ -n "$I1" ] && (( I1 >= 1 )) \
+	|| echo "  note: total inodes = ${I1:-?} (metric unreliable on this box, ignoring)"
+
+cat "$FILE" > /tmp/v2-test-read2.$$ || fail "read 2"
+R1=$(reads_total)
+echo "  reads after reopen:       $R1"
+if [ "$R1" -eq "$R0" ]; then
+	echo "  PASS: reopen served from page cache (no OSD read)"
+else
+	fail "reopen read from OSDs ($R0 -> $R1)"
+fi
+
+recall_caps || fail "could not trigger MDS cap recall"
+wait_for "cap removed after recall" 30 test -z "$(cap_line_for "$INOX")" \
+	|| fail "cap line for 0x$INOX still present 30s after recall"
+I2=$(inodes_total)
+[ "$I2" -lt "$I1" ] 2>/dev/null \
+	|| echo "  note: total inodes $I1 -> $I2 (did not drop?)"
+echo "  PASS: recall evicted the inode and its cap"
+
+cat "$FILE" > /tmp/v2-test-read3.$$ || fail "read 3"
+R2=$(reads_total)
+echo "  reads after post-trim reopen: $R2"
+if [ "$R2" -gt "$R1" ]; then
+	echo "  PASS: post-trim reopen read from OSDs"
+else
+	fail "post-trim reopen did not read from OSDs ($R1 -> $R2)"
+fi
+
+echo
+echo "== Test B: the two trim_caps_cb() exits =="
+
+# --- Test B case 2: alias still present -----------------------------------
+echo "-- case 2: alias present (d_prune_aliases path) --"
+echo 3 > /proc/sys/vm/drop_caches
+dd if=/dev/urandom of="$FILE" bs=1M count=$((SIZE/1024/1024)) conv=notrunc status=none
+cat "$FILE" > /dev/null
+# keep the dentry around (no drop_caches after this)
+[ "$(cap_line_for "$INOX")" ] || fail "no cap after setup (case 2)"
+recall_caps || fail "recall (case 2)"
+if wait_for "cap removed" 30 test -z "$(cap_line_for "$INOX")"; then
+	echo "  PASS: d_prune_aliases + EVICT_ON_FINAL_IPUT released the cap"
+else
+	echo "  FAIL: cap still present 30s after recall"
+fi
+
+# --- Test B case 1: no alias at all ---------------------------------------
+echo "-- case 1: no alias (d_find_any_alias() == NULL path) --"
+dd if=/dev/urandom of="$FILE" bs=1M count=$((SIZE/1024/1024)) conv=notrunc status=none
+cat "$FILE" > /dev/null
+echo 2 > /proc/sys/vm/drop_caches       # dentry gone, pages stay, inode parked
+sleep 1
+[ "$(cap_line_for "$INOX")" ] || fail "no cap after setup (case 1)"
+recall_caps || fail "recall (case 1)"
+if wait_for "cap removed" 30 test -z "$(cap_line_for "$INOX")"; then
+	echo "  PASS: no-alias parked inode was marked and evicted"
+else
+	echo "  FAIL: no-alias inode keeps its cap 30s after recall"
+fi
+
+# --- dmesg chain (debug patch only) ---------------------------------------
+echo
+echo "== dmesg chain for 0x$INOX (expect all four lines, in this order) =="
+for pat in "CEPHDBG trim_caps ${INOX}" \
+	   "CEPHDBG drop_inode ${INOX}.*consumed" \
+	   "CEPHDBG evict_inode ${INOX}" \
+	   "CEPHDBG remove_caps ${INOX}"; do
+	dmesg_line_for "$pat" || echo "  (no CEPHDBG line matching: '$pat' — debug patch not applied?)"
+done
+
+# --- cleanup ---------------------------------------------------------------
+rm -rf "$WORK" /tmp/v2-test-read.$$ /tmp/v2-test-read2.$$ /tmp/v2-test-read3.$$
+echo
+echo "== done =="
+
+Debug patch
+-----------
+Apply to the test kernel to get the CEPHDBG per-inode chain in dmesg.
+Not part of this series.
+
 diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index bcb04c6cb92c..ba079483b145 100644
+index 6466e11ca783..ba3a373342b8 100644
 --- a/fs/ceph/caps.c
 +++ b/fs/ceph/caps.c
-@@ -1028,6 +1028,53 @@ int __ceph_caps_used(struct ceph_inode_info *ci)
- 	return used;
- }
- 
-+/*
-+ * Substitute LAZYIO for CACHE/BUFFER when they are not issued.
-+ * If we have LAZYIO but not CACHE/BUFFER, report LAZYIO as used instead
-+ * so the MDS knows we're fine with the weaker consistency guarantee.
-+ *
-+ * Base the substitution on "implemented" rather than "issued": while
-+ * LAZYIO is being revoked, "issued" no longer contains it but
-+ * "implemented" still does.  If used reverted to CACHE/BUFFER at that
-+ * point, ceph_check_caps() would see (revoking & cap_used) == 0 and
-+ * ACK the revoke while dirty or stale pages were still present.  Only
-+ * once the revoke is ACKed does "implemented" drop LAZYIO.
-+ *
-+ * Caller must hold i_ceph_lock.
-+ */
-+static inline int ceph_adjust_caps_used_for_lazyio(struct ceph_inode_info *ci,
-+						   int used, int issued,
-+						   int implemented)
-+{
-+	if (!(used & (CEPH_CAP_FILE_CACHE | CEPH_CAP_FILE_BUFFER)))
-+		return used;
-+	if (!(implemented & CEPH_CAP_FILE_LAZYIO))
-+		return used;
-+	/*
-+	 * While LAZYIO is still issued, it only covers the cached data if
-+	 * every opener has accepted the lazy semantics.  With a non-lazy
-+	 * opener around, keep reporting CACHE/BUFFER so that a pending
-+	 * revocation is not ACKed before the invalidation queued by
-+	 * handle_cap_grant() has emptied the page cache.
-+	 *
-+	 * Once LAZYIO is itself being revoked ("implemented" has it but
-+	 * "issued" no longer does) the substitution is unconditional: the
-+	 * revoke must not be ACKed while pages are still around, no matter
-+	 * who has the file open.
-+	 */
-+	if ((issued & CEPH_CAP_FILE_LAZYIO) && !__ceph_all_opens_lazy(ci))
-+		return used;
-+	if (!(issued & CEPH_CAP_FILE_CACHE)) {
-+		used &= ~CEPH_CAP_FILE_CACHE;
-+		used |= CEPH_CAP_FILE_LAZYIO;
-+	}
-+	if (!(issued & CEPH_CAP_FILE_BUFFER)) {
-+		used &= ~CEPH_CAP_FILE_BUFFER;
-+		used |= CEPH_CAP_FILE_LAZYIO;
-+	}
-+	return used;
-+}
-+
- #define FMODE_WAIT_BIAS 1000
- 
- /*
-@@ -1449,6 +1496,20 @@ static void __prep_cap(struct cap_msg_args *arg, struct ceph_inode_info *ci,
- 	 * dirty pages _before_ allowing sync writes to avoid reordering.
- 	 */
- 	arg->wake = cap->implemented & ~cap->issued;
-+	/*
-+	 * "used" decides which of the revoked caps stay in cap->implemented,
-+	 * i.e. which revocations this message does _not_ ack yet.  Callers on
-+	 * the flush paths (try_flush_caps(), __kick_flushing_caps()) hand us
-+	 * the raw __ceph_caps_used(), which reports CACHE/BUFFER as long as
-+	 * the page cache is populated.  While LAZYIO is being revoked it is no
-+	 * longer in cap->issued, so a raw used set would drop it from
-+	 * cap->implemented and implicitly ack the revoke with pages still
-+	 * cached -- the MDS could then hand CACHE to another client.  Report
-+	 * LAZYIO as used instead, and only stop doing so once writeback and
-+	 * invalidation have emptied the page cache.
-+	 */
-+	used = ceph_adjust_caps_used_for_lazyio(ci, used, cap->issued,
-+						cap->implemented);
- 	cap->implemented &= cap->issued | used;
- 	cap->mds_wanted = want;
- 
-@@ -2094,6 +2155,7 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 	 * usually because they have outstanding references).
- 	 */
- 	issued = __ceph_caps_issued(ci, &implemented);
-+
- 	revoking = implemented & ~issued;
- 
- 	want = file_wanted;
-@@ -2185,6 +2247,19 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 		if (ci->i_auth_cap && cap != ci->i_auth_cap)
- 			cap_used &= ~ci->i_auth_cap->issued;
- 
-+		/*
-+		 * Substitute LAZYIO for CACHE/BUFFER when they are not issued.
-+		 * Do this per cap and not once for the whole inode: only the
-+		 * cap that actually holds LAZYIO may report it as used.  A cap
-+		 * that is revoking CACHE without holding LAZYIO must keep
-+		 * reporting CACHE as used, or the (revoking & cap_used) test
-+		 * below would treat the revocation as completed while the page
-+		 * cache is still populated.
-+		 */
-+		cap_used = ceph_adjust_caps_used_for_lazyio(ci, cap_used,
-+							   cap->issued,
-+							   cap->implemented);
-+
- 		revoking = cap->implemented & ~cap->issued;
- 		doutc(cl, " mds%d cap %p used %s issued %s implemented %s revoking %s\n",
- 		      cap->mds, cap, ceph_cap_string(cap_used),
-@@ -2209,10 +2284,13 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 			 * at most 5 seconds. That means the MDS needs to wait at
- 			 * most 5 seconds to finished the Fb capability's revocation.
- 			 *
--			 * Let's queue a writeback for it.
-+			 * Let's queue a writeback for it.  The same applies when
-+			 * LAZYIO is revoked while it was covering for BUFFER
-+			 * (dirty pages exist, but BUFFER isn't issued).
- 			 */
- 			if (S_ISREG(inode->i_mode) && ci->i_wrbuffer_ref &&
--			    (revoking & CEPH_CAP_FILE_BUFFER))
-+			    (revoking & (CEPH_CAP_FILE_BUFFER |
-+					 CEPH_CAP_FILE_LAZYIO)))
- 				queue_writeback = true;
- 		}
- 
-@@ -2957,9 +3035,45 @@ static int try_get_cap_refs(struct inode *inode, int need, int want,
- 				}
- 				snap_rwsem_locked = true;
- 			}
--			if ((have & want) == want)
-+			/*
-+			 * Allow LAZYIO to act as a substitute for
-+			 * CACHE or BUFFER when those caps are not
-+			 * issued, but only for callers that
-+			 * explicitly requested LAZYIO.  This
-+			 * prevents a non-lazy fd from having its
-+			 * CACHE/BUFFER wants satisfied by LAZYIO
-+			 * on an inode where a different fd is lazy.
-+			 *
-+			 * A missing LAZYIO cap, however, must never
-+			 * cost us the CACHE/BUFFER refs that are
-+			 * actually issued: the MDS only grants
-+			 * LAZYIO for files opened with CEPH_O_LAZY
-+			 * and it can be revoked at any time.  If we
-+			 * made the whole want unsatisfiable without
-+			 * it, the I/O paths would silently drop
-+			 * CACHE/BUFFER (e.g. take no wrbuffer refs)
-+			 * and degrade to synchronous writes.
-+			 */
-+			if ((have & (want & ~CEPH_CAP_FILE_LAZYIO)) ==
-+			    (want & ~CEPH_CAP_FILE_LAZYIO)) {
-+				*got = need | (want & ~exclude &
-+					       ~CEPH_CAP_FILE_LAZYIO);
-+				if ((want & CEPH_CAP_FILE_LAZYIO) &&
-+				    (have & CEPH_CAP_FILE_LAZYIO) &&
-+				    !(exclude & CEPH_CAP_FILE_LAZYIO))
-+					*got |= CEPH_CAP_FILE_LAZYIO;
-+			} else if ((want & CEPH_CAP_FILE_LAZYIO) &&
-+				   (have & CEPH_CAP_FILE_LAZYIO) &&
-+				   !(exclude & CEPH_CAP_FILE_LAZYIO) &&
-+				   ((have & want) ==
-+				    (want & ~(CEPH_CAP_FILE_CACHE |
-+					      CEPH_CAP_FILE_BUFFER)))) {
-+				/*
-+				 * LAZYIO substitutes for missing CACHE/BUFFER;
-+				 * it is already included via (want & ~exclude).
-+				 */
- 				*got = need | (want & ~exclude);
--			else
-+			} else
- 				*got = need;
- 			ceph_take_cap_refs(ci, *got, true);
- 			ret = 1;
-@@ -3048,6 +3162,14 @@ static void check_max_size(struct inode *inode, loff_t endoff)
- 		ceph_check_caps(ci, CHECK_CAPS_AUTHONLY);
- }
- 
-+/*
-+ * The inverse of ceph_caps_for_mode().  LAZYIO has to be mapped back as
-+ * well: __ceph_get_caps() feeds the result to ceph_get_fmode() to bias
-+ * i_nr_by_mode[] by FMODE_WAIT_BIAS while it waits, and dropping LAZY
-+ * here would bias the open count without biasing the lazy count, making
-+ * __ceph_all_opens_lazy() report a phantom non-lazy opener for as long
-+ * as a lazy fd is waiting for caps.
-+ */
- static inline int get_used_fmode(int caps)
- {
- 	int fmode = 0;
-@@ -3055,6 +3177,8 @@ static inline int get_used_fmode(int caps)
- 		fmode |= CEPH_FILE_MODE_RD;
- 	if (caps & CEPH_CAP_FILE_WR)
- 		fmode |= CEPH_FILE_MODE_WR;
-+	if (caps & CEPH_CAP_FILE_LAZYIO)
-+		fmode |= CEPH_FILE_MODE_LAZY;
- 	return fmode;
- }
- 
-@@ -3590,13 +3714,29 @@ static void handle_cap_grant(struct inode *inode,
- 
- 
- 	/*
--	 * If CACHE is being revoked, and we have no dirty buffers,
--	 * try to invalidate (once).  (If there are dirty buffers, we
--	 * will invalidate _after_ writeback.)
-+	 * Check the revocation of *both* CACHE and LAZYIO, because
-+	 * CACHE may have been revoked earlier and cap->issued no
-+	 * longer contains it -- at that point only LAZYIO was
-+	 * covering us.  If LAZYIO is now also being revoked and no
-+	 * cache cap remains, we must invalidate the page cache.
-+	 * Without this, a CACHE-revoked-then-LAZYIO-revoked sequence
-+	 * leaves stale pages in memory until the next periodic
-+	 * check_caps (up to 60s).  Also invalidate when we have no
-+	 * dirty buffers (if dirty, invalidate after writeback).
-+	 *
-+	 * Keeping the page cache alive on a remaining LAZYIO is only
-+	 * safe if every opener has accepted the lazy semantics: those
-+	 * pages are retained for the lazy fds alone, and a non-lazy
-+	 * reader (mmap, or an fd that never asked for LAZYIO) must not
-+	 * be served from them.  So drop the cache as well whenever a
-+	 * non-lazy opener is around.
- 	 */
- 	if (S_ISREG(inode->i_mode) && /* don't invalidate readdir cache */
--	    ((cap->issued & ~newcaps) & CEPH_CAP_FILE_CACHE) &&
--	    (newcaps & CEPH_CAP_FILE_LAZYIO) == 0 &&
-+	    ((cap->issued & ~newcaps) &
-+	     (CEPH_CAP_FILE_CACHE | CEPH_CAP_FILE_LAZYIO)) &&
-+	    !(newcaps & CEPH_CAP_FILE_CACHE) &&
-+	    (!(newcaps & CEPH_CAP_FILE_LAZYIO) ||
-+	     !__ceph_all_opens_lazy(ci)) &&
- 	    !(ci->i_wrbuffer_ref || ci->i_wb_ref)) {
- 		if (try_nonblocking_invalidate(inode)) {
- 			/* there were locked pages.. invalidate later
-@@ -3740,6 +3880,8 @@ static void handle_cap_grant(struct inode *inode,
- 	/* check cap bits */
- 	wanted = __ceph_caps_wanted(ci);
- 	used = __ceph_caps_used(ci);
-+	used = ceph_adjust_caps_used_for_lazyio(ci, used, cap->issued,
-+						cap->implemented);
- 	dirty = __ceph_caps_dirty(ci);
- 	doutc(cl, " my wanted = %s, used = %s, dirty %s\n",
- 	      ceph_cap_string(wanted), ceph_cap_string(used),
-@@ -3767,13 +3909,26 @@ static void handle_cap_grant(struct inode *inode,
- 		doutc(cl, "revocation: %s -> %s (revoking %s)\n",
- 		      ceph_cap_string(cap->issued), ceph_cap_string(newcaps),
- 		      ceph_cap_string(revoking));
-+		/*
-+		 * If BUFFER is being revoked and we have dirty data,
-+		 * trigger writeback before acking.  When LAZYIO was
-+		 * covering for BUFFER (BUFFER not issued, dirty refs
-+		 * held), also trigger writeback.  Clean cached pages
-+		 * under LAZYIO are handled by queue_invalidate below.
-+		 */
- 		if (S_ISREG(inode->i_mode) &&
- 		    (revoking & used & CEPH_CAP_FILE_BUFFER)) {
- 			writeback = true;  /* initiate writeback; will delay ack */
- 			revoke_wait = true;
-+		} else if (S_ISREG(inode->i_mode) &&
-+			   (revoking & used & CEPH_CAP_FILE_LAZYIO) &&
-+			   (ci->i_wrbuffer_ref || ci->i_wb_ref)) {
-+			/* LAZYIO was covering for dirty data — flush first */
-+			writeback = true;
-+			revoke_wait = true;
- 		} else if (queue_invalidate &&
--			 revoking == CEPH_CAP_FILE_CACHE &&
--			 (newcaps & CEPH_CAP_FILE_LAZYIO) == 0) {
-+			 (revoking & (CEPH_CAP_FILE_CACHE | CEPH_CAP_FILE_LAZYIO)) &&
-+			 !(newcaps & (CEPH_CAP_FILE_CACHE | CEPH_CAP_FILE_LAZYIO))) {
- 			revoke_wait = true; /* do nothing yet, invalidation will be queued */
- 		} else if (cap == ci->i_auth_cap) {
- 			check_caps = 1; /* check auth cap only */
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index bd3e3f5c269e..b621930b59f0 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -347,10 +347,6 @@ int ceph_renew_caps(struct inode *inode, int fmode)
- 		flags = O_RDONLY;
- 	else if (wanted & CEPH_CAP_FILE_WR)
- 		flags = O_WRONLY;
--#ifdef O_LAZY
--	if (wanted & CEPH_CAP_FILE_LAZYIO)
--		flags |= O_LAZY;
--#endif
- 
- 	req = prepare_open_request(inode->i_sb, flags, 0);
- 	if (IS_ERR(req)) {
-@@ -358,6 +354,10 @@ int ceph_renew_caps(struct inode *inode, int fmode)
- 		goto out;
- 	}
- 
-+	if (wanted & CEPH_CAP_FILE_LAZYIO) {
-+		req->r_fmode |= CEPH_FILE_MODE_LAZY;
-+		req->r_args.open.flags |= cpu_to_le32(CEPH_O_LAZY);
-+	}
- 	req->r_inode = inode;
- 	ihold(inode);
- 	req->r_num_caps = 1;
-@@ -409,6 +409,19 @@ int ceph_open(struct inode *inode, struct file *file)
- 	doutc(cl, "%p %llx.%llx file %p flags %d (%d)\n", inode,
- 	      ceph_vinop(inode), file, flags, file->f_flags);
- 	fmode = ceph_flags_to_mode(flags);
-+
-+	/*
-+	 * If lazyio mount option is set, enable lazyio for all regular
-+	 * files.  Skip snapped files: snap caps never include LAZYIO,
-+	 * so including it in wanted would force an unnecessary MDS
-+	 * round-trip for every open of a snapped file.
-+	 */
-+	if (S_ISREG(inode->i_mode) &&
-+	    ceph_snap(inode) == CEPH_NOSNAP &&
-+	    (fsc->mount_options->flags & CEPH_MOUNT_OPT_LAZYIO)) {
-+		fmode |= CEPH_FILE_MODE_LAZY;
-+	}
-+
- 	wanted = ceph_caps_for_mode(fmode);
- 
- 	if (fmode & CEPH_FILE_MODE_WR)
-@@ -485,13 +498,16 @@ int ceph_open(struct inode *inode, struct file *file)
- 		err = PTR_ERR(req);
- 		goto out;
- 	}
-+	req->r_fmode |= fmode & CEPH_FILE_MODE_LAZY;
-+	if (fmode & CEPH_FILE_MODE_LAZY)
-+		req->r_args.open.flags |= cpu_to_le32(CEPH_O_LAZY);
- 	req->r_inode = inode;
- 	ihold(inode);
- 
- 	req->r_num_caps = 1;
- 	err = ceph_mdsc_do_request(mdsc, NULL, req);
- 	if (!err)
--		err = ceph_init_file(inode, file, req->r_fmode);
-+		err = ceph_init_file(inode, file, fmode);
- 	ceph_mdsc_put_request(req);
- 	doutc(cl, "open result=%d on %llx.%llx\n", err, ceph_vinop(inode));
- out:
-@@ -836,6 +852,9 @@ int ceph_atomic_open(struct inode *dir, struct dentry *dentry,
- 		} else {
- 			int fmode = ceph_flags_to_mode(flags);
- 
-+			if (fsc->mount_options->flags & CEPH_MOUNT_OPT_LAZYIO)
-+				fmode |= CEPH_FILE_MODE_LAZY;
-+
- 			mask = MAY_READ;
- 			if (fmode & CEPH_FILE_MODE_WR)
- 				mask |= MAY_WRITE;
-@@ -878,6 +897,10 @@ int ceph_atomic_open(struct inode *dir, struct dentry *dentry,
- 		err = PTR_ERR(req);
- 		goto out_ctx;
- 	}
-+	if (fsc->mount_options->flags & CEPH_MOUNT_OPT_LAZYIO) {
-+		req->r_fmode |= CEPH_FILE_MODE_LAZY;
-+		req->r_args.open.flags |= cpu_to_le32(CEPH_O_LAZY);
-+	}
- 	req->r_dentry = dget(dentry);
- 	req->r_num_caps = 2;
- 	mask = CEPH_STAT_CAP_INODE | CEPH_CAP_AUTH_SHARED;
-diff --git a/fs/ceph/super.c b/fs/ceph/super.c
-index 6c6e9a1100db..1667f0be6d82 100644
---- a/fs/ceph/super.c
-+++ b/fs/ceph/super.c
-@@ -181,6 +181,7 @@ enum {
- 	Opt_pagecache,
- 	Opt_sparseread,
- 	Opt_nearfull_sync,
-+	Opt_lazyio,
- };
- 
- enum ceph_recover_session_mode {
-@@ -207,6 +208,7 @@ static const struct fs_parameter_spec ceph_mount_parameters[] = {
- 	fsparam_flag_no	("fsc",				Opt_fscache), // fsc|nofsc
- 	fsparam_string	("fsc",				Opt_fscache), // fsc=...
- 	fsparam_flag_no ("ino32",			Opt_ino32),
-+	fsparam_flag_no	("lazyio",			Opt_lazyio),
- 	fsparam_string	("mds_namespace",		Opt_mds_namespace),
- 	fsparam_string	("mon_addr",			Opt_mon_addr),
- 	fsparam_flag_no	("nearfull_sync",		Opt_nearfull_sync),
-@@ -604,6 +606,12 @@ static int ceph_parse_mount_param(struct fs_context *fc,
- 		else
- 			fsopt->flags |= CEPH_MOUNT_OPT_NEARFULL_SYNC;
- 		break;
-+	case Opt_lazyio:
-+		if (result.negated)
-+			fsopt->flags &= ~CEPH_MOUNT_OPT_LAZYIO;
-+		else
-+			fsopt->flags |= CEPH_MOUNT_OPT_LAZYIO;
-+		break;
- 	case Opt_test_dummy_encryption:
- #ifdef CONFIG_FS_ENCRYPTION
- 		fscrypt_free_dummy_policy(&fsopt->dummy_enc_policy);
-@@ -762,6 +770,8 @@ static int ceph_show_options(struct seq_file *m, struct dentry *root)
- 		seq_puts(m, ",sparseread");
- 	if (fsopt->flags & CEPH_MOUNT_OPT_NEARFULL_SYNC)
- 		seq_puts(m, ",nearfull_sync");
-+	if (fsopt->flags & CEPH_MOUNT_OPT_LAZYIO)
-+		seq_puts(m, ",lazyio");
- 
- 	fscrypt_show_test_dummy_encryption(m, ',', root->d_sb);
- 
-@@ -1423,6 +1433,11 @@ static int ceph_reconfigure_fc(struct fs_context *fc)
- 	else
- 		ceph_clear_mount_opt(fsc, SPARSEREAD);
- 
-+	if (fsopt->flags & CEPH_MOUNT_OPT_LAZYIO)
-+		ceph_set_mount_opt(fsc, LAZYIO);
-+	else
-+		ceph_clear_mount_opt(fsc, LAZYIO);
-+
- 	if (strcmp_null(fsc->mount_options->mon_addr, fsopt->mon_addr)) {
- 		kfree(fsc->mount_options->mon_addr);
- 		fsc->mount_options->mon_addr = fsopt->mon_addr;
-diff --git a/fs/ceph/super.h b/fs/ceph/super.h
-index 72d4e30304dc..cbe898c56a49 100644
---- a/fs/ceph/super.h
-+++ b/fs/ceph/super.h
-@@ -46,6 +46,7 @@
- #define CEPH_MOUNT_OPT_NOPAGECACHE     (1<<16) /* bypass pagecache altogether */
- #define CEPH_MOUNT_OPT_SPARSEREAD      (1<<17) /* always do sparse reads */
- #define CEPH_MOUNT_OPT_NEARFULL_SYNC   (1<<18) /* sync writes when nearfull */
-+#define CEPH_MOUNT_OPT_LAZYIO          (1<<19) /* force lazyio for all file opens */
- 
- #define CEPH_MOUNT_OPT_DEFAULT			\
- 	(CEPH_MOUNT_OPT_DCACHE |		\
-@@ -875,6 +876,22 @@ static inline bool __ceph_is_file_opened(struct ceph_inode_info *ci)
- {
- 	return ci->i_nr_by_mode[0];
- }
-+
-+/*
-+ * True if the inode is open and every opener is a lazy one.  Bit 0 of
-+ * i_nr_by_mode[] is set for every open regardless of mode (see
-+ * ceph_get_fmode()), so it doubles as the total open count.
-+ *
-+ * Callers must hold i_ceph_lock.
-+ */
-+static inline bool __ceph_all_opens_lazy(struct ceph_inode_info *ci)
-+{
-+	int nr_open = ci->i_nr_by_mode[ffs(CEPH_FILE_MODE_PIN)];
-+	int nr_lazy = ci->i_nr_by_mode[ffs(CEPH_FILE_MODE_LAZY)];
-+
-+	return nr_open > 0 && nr_lazy >= nr_open;
-+}
-+
- extern int __ceph_caps_file_wanted(struct ceph_inode_info *ci);
- extern int __ceph_caps_wanted(struct ceph_inode_info *ci);
- 
-diff --git a/fs/ceph/util.c b/fs/ceph/util.c
-index 2c34875675bf..be3db3f20344 100644
---- a/fs/ceph/util.c
-+++ b/fs/ceph/util.c
-@@ -73,10 +73,6 @@ int ceph_flags_to_mode(int flags)
- 		mode = CEPH_FILE_MODE_RDWR;
- 		break;
- 	}
--#ifdef O_LAZY
--	if (flags & O_LAZY)
--		mode |= CEPH_FILE_MODE_LAZY;
--#endif
- 
- 	return mode;
- }
-diff --git a/include/linux/ceph/ceph_fs.h b/include/linux/ceph/ceph_fs.h
-index 69ac3e55a3fe..01fd5f6647c8 100644
---- a/include/linux/ceph/ceph_fs.h
-+++ b/include/linux/ceph/ceph_fs.h
-@@ -414,6 +414,7 @@ extern const char *ceph_mds_op_name(int op);
- #define CEPH_O_CREAT		00000100
- #define CEPH_O_EXCL		00000200
- #define CEPH_O_TRUNC		00001000
-+#define CEPH_O_LAZY		00020000
- #define CEPH_O_DIRECTORY	00200000
- #define CEPH_O_NOFOLLOW		00400000
- 
+@@ -1427,6 +1427,7 @@ void __ceph_remove_caps(struct ceph_inode_info *ci)
+ 	/* lock i_ceph_lock, because ceph_d_revalidate(..., LOOKUP_RCU)
+ 	 * may call __ceph_caps_issued_mask() on a freeing inode. */
+ 	spin_lock(&ci->i_ceph_lock);
++	pr_info("CEPHDBG remove_caps %llx.%llx\n", ceph_vinop(inode));
+ 	p = rb_first(&ci->i_caps);
+ 	while (p) {
+ 		struct ceph_cap *cap = rb_entry(p, struct ceph_cap, ci_node);
+diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
+index 0b1aaf38886f..8a0fedc1635e 100644
+--- a/fs/ceph/inode.c
++++ b/fs/ceph/inode.c
+@@ -741,6 +741,7 @@ void ceph_evict_inode(struct inode *inode)
+ 	struct rb_node *n;
 
--- 
-2.53.0
+ 	doutc(cl, "%p ino %llx.%llx\n", inode, ceph_vinop(inode));
++	pr_info("CEPHDBG evict_inode %llx.%llx\n", ceph_vinop(inode));
+
+ 	percpu_counter_dec(&mdsc->metric.total_inodes);
+
+@@ -820,11 +821,15 @@ void ceph_evict_inode(struct inode *inode)
+ int ceph_drop_inode(struct inode *inode)
+ {
+ 	struct ceph_inode_info *ci = ceph_inode(inode);
++	int ret;
+
+ 	/* the MDS asked for this one back */
+ 	if (test_and_clear_bit(CEPH_I_EVICT_ON_FINAL_IPUT_BIT,
+-			       &ci->i_ceph_flags))
++			       &ci->i_ceph_flags)) {
++		pr_info("CEPHDBG drop_inode %llx.%llx consumed EVICT_ON_FINAL_IPUT -> drop\n",
++			ceph_vinop(inode));
+ 		return 1;
++	}
+
+ 	if (inode_generic_drop(inode))
+ 		return 1;
+@@ -837,7 +842,17 @@ int ceph_drop_inode(struct inode *inode)
+ 		return 1;
+
+ 	/* keep the pages only while the inode still holds real caps */
+-	return !__ceph_is_any_real_caps(ci);
++	ret = !__ceph_is_any_real_caps(ci);
++	pr_info("CEPHDBG drop_inode %llx.%llx nrpages=%lu -> %s\n",
++		ceph_vinop(inode), inode->i_data.nrpages,
++		ret ? "drop" : "KEEP");
++	if (!ret)
++		pr_info("CEPHDBG keep_state %llx.%llx state=%#lx shrinkable=%d empty=%d caps=%d\n",
++			ceph_vinop(inode), inode_state_read(inode),
++			mapping_shrinkable(&inode->i_data),
++			mapping_empty(&inode->i_data),
++			__ceph_is_any_real_caps(ci));
++	return ret;
+ }
+
+ static inline blkcnt_t calc_inode_blocks(u64 size)
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index f5d0590df8b2..20463e229ce4 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -2346,9 +2346,12 @@ static int trim_caps_cb(struct inode *inode, int mds, void *arg)
+ 			 * then runs ceph_evict_inode(), which is what hands
+ 			 * the cap back.
+ 			 */
+-			if (S_ISREG(inode->i_mode) && inode->i_data.nrpages)
++			if (S_ISREG(inode->i_mode) && inode->i_data.nrpages) {
+ 				set_bit(CEPH_I_EVICT_ON_FINAL_IPUT_BIT,
+ 					&ci->i_ceph_flags);
++				pr_info("CEPHDBG trim_caps %llx.%llx set EVICT_ON_FINAL_IPUT\n",
++					ceph_vinop(inode));
++			}
+
+ 			count = icount_read_once(inode);
+ 			if (count == 1)
+diff --git a/fs/inode.c b/fs/inode.c
+index 31c5b9ee3a81..7c691510e094 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -23,6 +23,7 @@
+ #include <linux/rw_hint.h>
+ #include <linux/seq_file.h>
+ #include <linux/debugfs.h>
++#include <linux/magic.h>	/* CEPHDBG test probe only */
+ #include <trace/events/writeback.h>
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/timestamp.h>
+@@ -990,6 +991,12 @@ static enum lru_status inode_lru_isolate(struct list_head *item,
+ 	}
+
+ 	WARN_ON(inode_state_read(inode) & I_NEW);
++	pr_info("CEPHDBG lru_evict ino=%lx state=%#lx nrpages=%lu shrinkable=%d empty=%d count=%d\n",
++		inode->i_ino, inode_state_read(inode),
++		inode->i_data.nrpages,
++		mapping_shrinkable(&inode->i_data),
++		mapping_empty(&inode->i_data),
++		icount_read(inode));
+ 	inode_state_set(inode, I_FREEING);
+ 	list_lru_isolate_move(lru, &inode->i_lru, freeable);
+ 	spin_unlock(&inode->i_lock);
+@@ -1986,6 +1993,13 @@ static void iput_final(struct inode *inode)
+ 	else
+ 		drop = inode_generic_drop(inode);
+
++	if (sb->s_magic == CEPH_SUPER_MAGIC)
++		pr_info("CEPHDBG iput_final ino=%lx drop=%d dontcache=%d sb_active=%d state=%#lx\n",
++			inode->i_ino, drop,
++			!!(inode_state_read(inode) & I_DONTCACHE),
++			!!(sb->s_flags & SB_ACTIVE),
++			inode_state_read(inode));
++
+ 	if (!drop &&
+ 	    !(inode_state_read(inode) & I_DONTCACHE) &&
+ 	    (sb->s_flags & SB_ACTIVE)) {
+
+Test results
+------------
+Full run of the test program on a vstart cluster (kernel built with the
+debug patch; the script lowers mds_recall_max_caps/mds_min_caps_per_client
+for the recall and restores them on exit):
+
+  PASS: reopen served from page cache (no OSD read)
+  PASS: recall evicted the inode and its cap
+  PASS: post-trim reopen read from OSDs
+  PASS: d_prune_aliases + EVICT_ON_FINAL_IPUT released the cap
+  PASS: no-alias parked inode was marked and evicted
+
+Retention, from dmesg:
+
+  CEPHDBG drop_inode 1000000020c.fffffffffffffffe nrpages=1024 -> KEEP
+  CEPHDBG keep_state 1000000020c.fffffffffffffffe state=0x0 shrinkable=0 empty=0 caps=1
+  CEPHDBG iput_final ino=1000000020c drop=0 dontcache=0 sb_active=1 state=0x0
+
+Trim chain, from dmesg:
+
+  CEPHDBG trim_caps 1000000020c.fffffffffffffffe set EVICT_ON_FINAL_IPUT
+  CEPHDBG drop_inode 1000000020c.fffffffffffffffe consumed EVICT_ON_FINAL_IPUT -> drop
+  CEPHDBG evict_inode 1000000020c.fffffffffffffffe
+  CEPHDBG remove_caps 1000000020c.fffffffffffffffe
+
+---
+Xiubo Li (2):
+      ceph: mark the superblock active after mounting
+      ceph: keep the inode, not the name, when a dentry lease expires
+
+ fs/ceph/inode.c      | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ceph/mds_client.c | 37 ++++++++++++++++++++++++++------
+ fs/ceph/super.c      | 11 +++++++++-
+ fs/ceph/super.h      |  2 ++
+ 4 files changed, 102 insertions(+), 7 deletions(-)
+---
+base-commit: 3e5e634912819a56c91f78f0d9bf9d6c416455a4
+change-id: 20260821-b4-b4-ceph-dentry-caps-ad44734dea85
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
