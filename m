@@ -1,147 +1,117 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Thu, 27 Aug 2026 21:16:17 +0000
-Subject: [PATCH] usb: typec: tcpm: constrain TCPM_SOURCING_VBUS event
- handling
+From: Charles Vosburgh <theminershive@gmail.com>
+Date: Thu, 27 Aug 2026 17:32:53 -0400
+Subject: [PATCH net v2] sctp: validate chunk length in the inqueue parser
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-sourcing-vbus-v1-1-9be1aca991a0@google.com>
-X-B4-Tracking: v=1; b=H4sIACCpkGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDCyNz3eL80qLkzLx03bKk0mJdyzQL8+RkkyQzI1NzJaCegqLUtMwKsHn
- RsbW1ABFhy4VfAAAA
-X-Change-ID: 20260827-sourcing-vbus-9f87cc4b6257
-To: Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- stable@vger.kernel.org, Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787865383; l=5389;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=gaGRedxsfMiw49b510/kkrdqTxwg1oPfINQUp7PootY=;
- b=9iW5Sva4MeTGBN2PD1qqfEDMcVLM+9SZtj+/C5hSg1WJV+vOJ1WpGFPJgrp+SL6UljSVtLMN4
- 43SijATKFW0DYOOd2acHxdPS5r0i1pxT5u/A4F3oSSDxxkLuH6dg0sl
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+Message-Id: <20260827-sctp-zero-chunk-inqueue-v2-1-2e7669c6a6cb@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAStkGoC/4WNSxKCMBBEr2LN2rEgJSG68h4WCxgGiEqC+VAqx
+ d0FPIDL7nr9egLPTrOH824Cx6P22poliP0OqCtNy6jrJYNIhEyUkOgpDPhhZ5G6aO6ozTNyZKy
+ OuaqpzDJBEpb14LjRr818BcMBil/pY3VjCqtzxTrtg3Xv7X9MN/jv1Zhiikrm8lQT5Y2iS9uX+
+ nEg20Mxz/MXDZKt/9UAAAA=
+X-Change-ID: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, security@kernel.org, 
+ Charles Vosburgh <theminershive@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787866405; l=3668;
+ i=theminershive@gmail.com; s=20260727; h=from:subject:message-id;
+ bh=aM1ph9zq6C+26p9W6U+K2Mb79wS90gFjxiNAMYMThSw=;
+ b=yOUN1WGQwKC2FssCDQfG6NXk/XFqXZEmxrdaW17BwiCsXzi4m6rDqx93FMG7YAwyiKyotxUXS
+ G4c8lbHU8VHAA43OTRgolr3YtKERSkmHoPHvRYQIJY3KUXbNE0x/LYi
+X-Developer-Key: i=theminershive@gmail.com; a=ed25519;
+ pk=kxCwp20gY82hL3ixb5IXlZ2N0X9TDxiKPCpjPcWqN3E=
+X-Endpoint-Received: by B4 Relay for theminershive@gmail.com/20260727 with auth_id=977
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a sink detach occurs while waiting for TX send status, the old
-TCPM_SOURCING_VBUS event along with TCPM_VBUS_EVENT and TCPM_CC_EVENT
-can be queued in port->pd_events. Because TCPM_SOURCING_VBUS is
-evaluated after TCPM_VBUS_EVENT and TCPM_CC_EVENT in
-tcpm_pd_event_handler(), a stale TCPM_SOURCING_VBUS event can override
-the detach handling and incorrectly set port->vbus_source and
-port->vbus_present to true.
+SCTP chunks always include a four-byte generic header, but
+sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
+chunk leaves chunk_end at the current header.
 
-Add a state guard to check that the port is either operating as a
-Source (tcpm_port_is_source(port)) or in a Fast Role Swap (FRS) state
-up to FR_SWAP_SNK_SRC_SOURCE_VBUS_APPLIED before processing
-TCPM_SOURCING_VBUS. Otherwise, discard and log the event.
+When ASCONF is covered by the association's SCTP-AUTH policy,
+sctp_assoc_bh_rcv() can continue before the state machine performs its
+normal chunk-length check. sctp_inq_pop() then returns the same malformed
+chunk repeatedly and the receive softirq can lock up.
 
-Log snippet for error condition before fix:
-[72792.204955] state change SRC_ATTACHED -> SRC_STARTUP [rev3 NONE_AMS]
-[72792.204960] sourcing vbus
-[72792.204962] VBUS on
-[72792.204970] AMS POWER_NEGOTIATION start
-[72792.204974] cc:=4
-[72792.205319] state change SRC_STARTUP -> AMS_START [rev3 POWER_NEGOTIATION]
-[72792.205325] state change AMS_START -> SRC_SEND_CAPABILITIES [rev3 POWER_NEGOTIATION]
-[72792.205332] PD TX, header: 0x11a1
-[72792.216911] PD TX complete, status: 2
-[72792.216957] pending state change SRC_SEND_CAPABILITIES -> SRC_SEND_CAPABILITIES @ 150 ms [rev3 POWER_NEGOTIATION]
-[72792.218005] VBUS off
-[72792.218013] pending state change SRC_SEND_CAPABILITIES -> SNK_UNATTACHED @ 650 ms [rev3 POWER_NEGOTIATION]
-[72792.218020] VBUS VSAFE0V
-[72792.218024] state change SRC_SEND_CAPABILITIES -> SNK_UNATTACHED [rev3 POWER_NEGOTIATION]
-[72792.218458] CC1: 2 -> 0, CC2: 0 -> 0 [state SNK_UNATTACHED, polarity 0, disconnected]
-[72792.218467] VBUS on --> VBUS left on
-[72792.218980] disable vbus discharge ret:0
-[72792.235193] Start toggling
+A remote SCTP peer can trigger this after establishing an association on
+a kernel built with CONFIG_IP_SCTP and configured with
+net.sctp.addip_enable=1 and net.sctp.auth_enable=1. The reproducer did
+not require application credentials, a shared SCTP AUTH key, or
+net.sctp.addip_noauth_enable=1.
 
-After fix:
-[ 1195.291691] state change SRC_ATTACHED -> SRC_STARTUP [rev3 NONE_AMS]
-[ 1195.291698] sourcing vbus
-[ 1195.291700] VBUS on
-[ 1195.291707] AMS POWER_NEGOTIATION start
-[ 1195.291710] cc:=4
-[ 1195.291758] state change SRC_STARTUP -> AMS_START [rev3 POWER_NEGOTIATION]
-[ 1195.291794] state change AMS_START -> SRC_SEND_CAPABILITIES [rev3 POWER_NEGOTIATION]
-[ 1195.291798] PD TX, header: 0x11a1
-[ 1195.297056] PD TX complete, status: 2
-[ 1195.297092] pending state change SRC_SEND_CAPABILITIES -> SRC_SEND_CAPABILITIES @ 150 ms [rev3 POWER_NEGOTIATION]
-[ 1195.297177] VBUS off
-[ 1195.297184] pending state change SRC_SEND_CAPABILITIES -> SNK_UNATTACHED @ 650 ms [rev3 POWER_NEGOTIATION]
-[ 1195.297227] CC1: 2 -> 0, CC2: 0 -> 0 [state SRC_SEND_CAPABILITIES, polarity 0, disconnected]
-[ 1195.307469] cc:=2
-[ 1195.307544] pending state change SRC_SEND_CAPABILITIES -> SNK_UNATTACHED @ 650 ms [rev3 POWER_NEGOTIATION]
-[ 1195.307555] Discarding sourcing vbus! Invalid state SRC_SEND_CAPABILITIES
-[ 1195.957636] state change SRC_SEND_CAPABILITIES -> SNK_UNATTACHED [delayed 650 ms]
-[ 1195.957732] disable vbus discharge ret:0
-[ 1195.970196] Start toggling
-[ 1195.970468] VBUS off
-[ 1196.051637] VBUS off
-[ 1196.051642] VBUS VSAFE0V
+On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
+one zero-length ASCONF caused repeated
+watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
+health probes succeeded, while 36 of 37 post-trigger probes failed. With
+this change, all 37 post-trigger probes succeeded and no equivalent
+soft-lockup signature appeared.
 
-Fixes: 8dc4bd073663 ("usb: typec: tcpm: Add support for Sink Fast Role SWAP(FRS)")
+Reject chunks shorter than the generic SCTP header at the shared inqueue
+parser boundary. Mark the packet for discard before either caller can
+continue processing it, while preserving the four-byte generic minimum.
+Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
+remained healthy. The patched sctp_hello selftest passed for IPv4 and
+IPv6.
+
+The complete private reproducer and validation evidence are available
+directly to maintainers on request.
+
+Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
 Cc: stable@vger.kernel.org
-Assisted-by: Gemini:gemini-3.1-pro
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Assisted-by: ChatGPT:GPT-5.6-Sol
+Assisted-by: Vantix:claude-opus-5
+Assisted-by: Codex:GPT-5
+Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 28 ++++++++++++++++++++++------
- 1 file changed, 22 insertions(+), 6 deletions(-)
+Changes in v2:
+- Fold the minimum-header check into the existing chunk classifier.
+- Keep pr_debug() on the malformed path and leave chunk_end unchanged.
+- Retest lengths 0--4, legitimate ASCONF, and IPv4/IPv6 SCTP traffic.
+- Link to v1: https://patch.msgid.link/20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index a8cd1959c426..2d6b14aa2085 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -7119,16 +7119,32 @@ static void tcpm_pd_event_handler(struct kthread_work *work)
- 			}
- 		}
- 		if (events & TCPM_SOURCING_VBUS) {
--			tcpm_log(port, "sourcing vbus");
- 			/*
- 			 * In fast role swap case TCPC autonomously sources vbus. Set vbus_source
--			 * true as TCPM wouldn't have called tcpm_set_vbus.
-+			 * true conditionally as TCPM wouldn't have called tcpm_set_vbus.
-+			 * If TCPM calls tcpm_set_vbus to source vbus, vbus_source would already
-+			 * be true.
- 			 *
--			 * When vbus is sourced on the command on TCPM i.e. TCPM called
--			 * tcpm_set_vbus to source vbus, vbus_source would already be true.
-+			 * When TCPM_FRS_EVENT and TCPM_SOURCING_VBUS arrive simultaneously,
-+			 * handling TCPM_FRS_EVENT above transitions the state to AMS_START
-+			 * with upcoming_state FR_SWAP_SEND.
- 			 */
--			port->vbus_source = true;
--			_tcpm_pd_vbus_on(port);
-+
-+			if (tcpm_port_is_source(port) ||
-+			    tcpm_port_is_debug_source(port) ||
-+			    (port->state == AMS_START && port->upcoming_state == FR_SWAP_SEND) ||
-+			    port->state == FR_SWAP_SEND ||
-+			    port->state == FR_SWAP_SEND_TIMEOUT ||
-+			    port->state == FR_SWAP_SNK_SRC_TRANSITION_TO_OFF ||
-+			    port->state == FR_SWAP_SNK_SRC_NEW_SINK_READY ||
-+			    port->state == FR_SWAP_SNK_SRC_SOURCE_VBUS_APPLIED) {
-+				tcpm_log(port, "sourcing vbus");
-+				port->vbus_source = true;
-+				_tcpm_pd_vbus_on(port);
-+			} else {
-+				tcpm_log(port, "Discarding sourcing vbus! Invalid state %s",
-+					 tcpm_states[port->state]);
-+			}
- 		}
- 		if (events & TCPM_PORT_CLEAN) {
- 			tcpm_log(port, "port clean");
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Xin Long <lucien.xin@gmail.com>
+To: "David S. Miller" <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Simon Horman <horms@kernel.org>
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ net/sctp/inqueue.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index 5f988b3a8814f..d666cec6b194e 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -212,8 +212,10 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
+ 	chunk->chunk_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
+ 	skb_pull(chunk->skb, sizeof(*ch));
+ 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
+-
+-	if (chunk->chunk_end + sizeof(*ch) <= skb_tail_pointer(chunk->skb)) {
++	if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
++		chunk->pdiscard = 1;
++	} else if (chunk->chunk_end + sizeof(*ch) <=
++		   skb_tail_pointer(chunk->skb)) {
+ 		/* This is not a singleton */
+ 		chunk->singleton = 0;
+ 	} else if (chunk->chunk_end > skb_tail_pointer(chunk->skb)) {
 
 ---
-base-commit: 45c13f3f9e3bb15fd89ff2864c6f627a3b4b4229
-change-id: 20260827-sourcing-vbus-9f87cc4b6257
+base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
+change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
 
 Best regards,
--- 
-Amit Sunil Dhamne <amitsd@google.com>
+--  
+Charles Vosburgh <theminershive@gmail.com>
 
