@@ -1,98 +1,83 @@
-From: Ramses de Norre <ramses@well-founded.dev>
-Date: Thu, 27 Aug 2026 13:52:56 +0200
-Subject: [PATCH net] wireguard: queueing: preserve tstamp_type in
- wg_reset_packet()
+From: David Heidelberg <david@ixit.cz>
+Date: Thu, 27 Aug 2026 16:27:41 +0200
+Subject: [PATCH] mfd: Fix MAX77705 dependency on regmap
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-wg-tstamp-v1-1-4acfebb855ef@well-founded.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMzQqDMBAGX0W+cwNmiz/0VUoPMW51BVPJRlsQ3
- 72xPc4wzA7lKKy4FTsib6LyChnspYAfXRjYSJ8ZVFJdtrYx78EkTW5eTHelpqXKEvUeuV8iP+X
- ze90ROOHxl7p2E/t0XnAcXx73bRhyAAAA
-X-Change-ID: 20260817-wg-tstamp-b327825122dc
-To: "Jason A. Donenfeld" <Jason@zx2c4.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Martin KaFai Lau <kafai@fb.com>
-Cc: wireguard@lists.zx2c4.com, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ramses de Norre <ramses@well-founded.dev>
+Message-Id: <20260827-deps-reg-max77705-v1-1-c83a74d3d428@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CQAxA4auQrmlSxkAHrkJcjFCxJvxkimYSw
+ t0ddfkt3jvAJKoYdMUBUd5qui4ZVVnA8AjLJKhjNjhyDXnHOMpmGGXCOSRmphrJX+rQkm+ZG8j
+ dFuWu6ffsr3/b6/aUYf+O4Dw/ONQoLnUAAAA=
+X-Change-ID: 20260827-deps-reg-max77705-0835a9089776
+To: Lee Jones <lee@kernel.org>, Dzmitry Sankouski <dsankouski@gmail.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+Cc: mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, stable@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787831576; l=2656;
- i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
- bh=WGuiPvIeqUZ6TraJfQmCZ8rPDSP8532P5rIyXoxvRGI=;
- b=Gp5zWyXdujY/Zn8Q99qdy4u61/WREzVXqkjjg9LH0XlpiPw0K+sImzBcyS/Zw+L4bOCAJLCxr
- q3EkFWdJUutAN5I84XhRxOgYoY4rZsdXKQWzkRt84APQoOdYYQSLNX5
-X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
- pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
-X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1508; i=david@ixit.cz;
+ h=from:subject:message-id; bh=QX7JkiZbHlW0D55dPU0RlQr972FkBkLXUTJRO6pdqeY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqkElknuZIm/NYkZXg7Xt2bid7sZ6JEAFx+AMRt
+ PXGnID3HHaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapBJZAAKCRBgAj/E00kg
+ chMOEACpS6o4pAozT1WKpIs7KcZyTvKxndxnrZpXi1iGLUPhkGd5dU0GZoiOEk+D5iyY50emJvR
+ nw9iLvGZn2TyTgtQzB18XwMVPxUlv6DBYvoR2shXdxRxF5Rll8jh0PCxLPOeT82XOUsudOXmc6B
+ 1vBGgiCMc8SbRBTw0zK9CLfyKZfUGubRlKxMeNJbgf1MmJh026Pil2SSxNIDQnLH2MVmVmJQzEv
+ w5alpjNGPM6T+TIqeBIUoTuZupSHihh4sQTT7OGm7vfHp3IU8BOGqHfFlZRBU3hE/9YaPHsReyL
+ NPIFv83r1s1ylog3+sThQItEyqPrJfQH7YCrDT18yYkCeU3hE9+dWWbbf1ujQJvxA17A25u3yjo
+ F7pFiz3y/OBO0c8G2XoDnlcDbbenW60rKAPj+mKW6aL7qy5oJ6us/GYM8VNImtA/VFhDMPOT1AF
+ R87hOY7D1WRvpeBvGL+7KmwsT2GPkcRksmjqa6avPJC60w83i4dcUuloDoOJoy/bSdjS7f9ROiV
+ kQJmPI6l9RmJBpsER/lXnxcTYACTJldjwY9+ATB2ZADpWVrmcseYjD8eMWnQBjVSpavYm4BNyqt
+ 7RlSi0i+Uzv915slto0Y7TWUU7PUpJbUDD+ALd+Du11DSVUi2qajmCnE4yyxx0GkwhIgYE95/29
+ ffzu6KRdQQwYyRQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sending traffic through a wireguard tunnel on a host using the fq
-qdisc fills the log with:
+The max77705 uses devm_regmap_add_irq_chip(), so add REGMAP_IRQ
+and REGMAP_I2C to what the core driver selects in order to provide
+thise APIs.
+This fixes a build error:
 
-  fq: likely mono tstamp with tstamp_type 0
+drivers/mfd/max77705.o: in function `max77705_i2c_probe':
+max77705.c:(.text+0x250): undefined reference to `devm_regmap_add_irq_chip'
 
-An skb carries a timestamp in skb->tstamp and, separately, a
-skb->tstamp_type field recording which clock that timestamp came from.
-The two have to agree.
-
-When wireguard encapsulates a packet it calls wg_reset_packet(), which
-clears the fields that must not leak from the inner packet into the
-tunnel packet. It does so in two steps:
-
-  skb_scrub_packet(skb, true);
-  memset(&skb->headers, 0, sizeof(skb->headers));
-
-skb_scrub_packet() deliberately keeps skb->tstamp when it holds a
-monotonic timestamp: that value is the time the packet is scheduled to
-be sent, and the qdisc still needs it. The memset then zeroes
-skb->tstamp_type, because that field sits inside the headers group
-while skb->tstamp does not. The packet therefore leaves wireguard
-carrying a monotonic timestamp labelled as a realtime one.
-
-Nothing noticed until commit c4f796c4f16b ("net_sched: sch_fq: convert
-skb->tstamp if not monotonic"): fq used to assume every timestamp was
-monotonic. It now consults tstamp_type, spots the mismatch, warns, and
-falls back to treating the value as monotonic. Pacing still ends up
-correct, so the log spam is the actual problem.
-
-Save tstamp_type before the memset and restore it when encapsulating,
-next to the hash fields that are already carried over this way. When
-decapsulating it stays zeroed, which is right: an incoming packet's
-timestamp is a realtime receive timestamp.
-
-Fixes: de799101519a ("net: Add skb_clear_tstamp() to keep the mono delivery_time")
-Signed-off-by: Ramses de Norre <ramses@well-founded.dev>
+Cc: stable@vger.kernel.org
+Fixes: c8d50f029748 ("mfd: Add new driver for MAX77705 PMIC")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/net/wireguard/queueing.h | 2 ++
+ drivers/mfd/Kconfig | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/wireguard/queueing.h b/drivers/net/wireguard/queueing.h
-index 79b6d70de236b..663b19b783953 100644
---- a/drivers/net/wireguard/queueing.h
-+++ b/drivers/net/wireguard/queueing.h
-@@ -78,12 +78,14 @@ static inline void wg_reset_packet(struct sk_buff *skb, bool encapsulating)
- 	u8 l4_hash = skb->l4_hash;
- 	u8 sw_hash = skb->sw_hash;
- 	u32 hash = skb->hash;
-+	u8 tstamp_type = skb->tstamp_type;
- 	skb_scrub_packet(skb, true);
- 	memset(&skb->headers, 0, sizeof(skb->headers));
- 	if (encapsulating) {
- 		skb->l4_hash = l4_hash;
- 		skb->sw_hash = sw_hash;
- 		skb->hash = hash;
-+		skb->tstamp_type = tstamp_type;
- 	}
- 	skb->queue_mapping = 0;
- 	skb->nohdr = 0;
+diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
+index e4fd4572472f9..857ca3bb0d5bf 100644
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -1001,16 +1001,18 @@ config MFD_MAX77693
+ 	  additional drivers must be enabled in order to use the functionality
+ 	  of the device.
+ 
+ config MFD_MAX77705
+ 	tristate "Maxim MAX77705 PMIC Support"
+ 	depends on I2C
+ 	select MFD_CORE
+ 	select MFD_SIMPLE_MFD_I2C
++	select REGMAP_I2C
++	select REGMAP_IRQ
+ 	help
+ 	  Say yes here to add support for Maxim Integrated MAX77705 PMIC.
+ 	  This is a Power Management IC with Charger, safe LDOs, Flash, Haptic
+ 	  and MUIC controls on chip.
+ 	  This driver provides common support for accessing the device;
+ 	  additional drivers must be enabled in order to use the functionality
+ 	  of the device.
+ 
 
 ---
-base-commit: 24ef02f934eeb48830cff6b739abc3c62b1d107b
-change-id: 20260817-wg-tstamp-b327825122dc
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260827-deps-reg-max77705-0835a9089776
 
 Best regards,
 --  
-Ramses de Norre <ramses@well-founded.dev>
+David Heidelberg <david@ixit.cz>
 
