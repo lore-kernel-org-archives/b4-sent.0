@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 27 Aug 2026 08:40:11 +0000
-Subject: [PATCH v4 2/4] pwm: meson: add the PWM count driver data
+Date: Thu, 27 Aug 2026 08:40:12 +0000
+Subject: [PATCH v4 3/4] pwm: meson: use bulk API for per-channel clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-s6-s7-pwm-v4-2-d28a2015177d@amlogic.com>
+Message-Id: <20260827-s6-s7-pwm-v4-3-d28a2015177d@amlogic.com>
 References: <20260827-s6-s7-pwm-v4-0-d28a2015177d@amlogic.com>
 In-Reply-To: <20260827-s6-s7-pwm-v4-0-d28a2015177d@amlogic.com>
 To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
@@ -17,151 +17,93 @@ Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787820043; l=4621;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787820043; l=2584;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=XWBLCai/fzPSLXT+rV6gvMmqDHi7OFZogDsuyVzW6gk=;
- b=Rh9OjEOD7SNxnECzTQEmrJSTchFP5bhVfta+X6y2sVbP3EbhfJ6CZfSi1WkgC2qIsCwNZv0rq
- Z1YyvX/Xj/fCH3vrsAFgdZ5vcf9hEZiU/0sVB4IXqNQ7PoIEkRdXils
+ bh=I6lbpR1bOMmChsZo3uQ/k/8BNNbhwj3qLcmflQoEjK8=;
+ b=j1659NKbIuXJqxgowGvB/TkkqxEEPFicBgqlHDxBXEX9bMCN9fRiQx9seZz5ofywGTUY37R5K
+ 0EH1aPdXWnQBkszh56C7j+op9cREnOXfODis0Hj3utlZ1eD5vzSxP3i
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add .npwm fill the  existing entries, use it in probe, and switch the loop
-in meson_pwm_init_clocks_meson8b() and meson_pwm_init_channels_s4() to
-chip->npwm. No functional change.
+The S4 PWM driver currently gets each channel clock individually with
+of_clk_get() and uses a custom cleanup action to release the clocks.
+
+Use devm_clk_bulk_get_all() instead to retrieve all per-channel clocks
+at once. Verify that the number of clocks matches the number of PWM
+channels and assign each clock to its corresponding channel.
+
+This also allows the per-channel clock initialization code to be shared
+by Meson PWM variants using one clock per channel.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/pwm/pwm-meson.c | 20 ++++++++++++++++----
- 1 file changed, 16 insertions(+), 4 deletions(-)
+ drivers/pwm/pwm-meson.c | 40 ++++++++++++++++------------------------
+ 1 file changed, 16 insertions(+), 24 deletions(-)
 
 diff --git a/drivers/pwm/pwm-meson.c b/drivers/pwm/pwm-meson.c
-index 8c6bf3d49753..22cefc6d5dd0 100644
+index 22cefc6d5dd0..6f151464d7cc 100644
 --- a/drivers/pwm/pwm-meson.c
 +++ b/drivers/pwm/pwm-meson.c
-@@ -113,6 +113,7 @@ struct meson_pwm_data {
- 	int (*channels_init)(struct pwm_chip *chip);
- 	bool has_constant;
- 	bool has_polarity;
-+	u8 npwm;
- };
+@@ -497,33 +497,25 @@ static int meson_pwm_init_channels_meson8b_v2(struct pwm_chip *chip)
+ 	return meson_pwm_init_clocks_meson8b(chip, mux_parent_data);
+ }
  
- struct meson_pwm {
-@@ -382,7 +383,7 @@ static int meson_pwm_init_clocks_meson8b(struct pwm_chip *chip,
- 	char name[255];
- 	int err;
- 
--	for (i = 0; i < MESON_NUM_PWMS; i++) {
-+	for (i = 0; i < chip->npwm; i++) {
- 		struct meson_pwm_channel *channel = &meson->channels[i];
- 		struct clk_parent_data div_parent = {}, gate_parent = {};
- 		struct clk_init_data init = {};
-@@ -510,7 +511,7 @@ static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
+-static void meson_pwm_s4_put_clk(void *data)
+-{
+-	struct clk *clk = data;
+-
+-	clk_put(clk);
+-}
+-
+-static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
++static int meson_pwm_init_channels_per_channel_clk(struct pwm_chip *chip)
+ {
+ 	struct device *dev = pwmchip_parent(chip);
+-	struct device_node *np = dev->of_node;
  	struct meson_pwm *meson = to_meson_pwm(chip);
- 	int i, ret;
+-	int i, ret;
++	struct clk_bulk_data *clks;
++	unsigned int i;
++	int num;
  
--	for (i = 0; i < MESON_NUM_PWMS; i++) {
-+	for (i = 0; i < chip->npwm; i++) {
- 		meson->channels[i].clk = of_clk_get(np, i);
- 		if (IS_ERR(meson->channels[i].clk))
- 			return dev_err_probe(dev,
-@@ -530,6 +531,7 @@ static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
- static const struct meson_pwm_data pwm_meson8b_data = {
- 	.parent_names = { "xtal", NULL, "fclk_div4", "fclk_div3" },
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
-+	.npwm = 2,
- };
+-	for (i = 0; i < chip->npwm; i++) {
+-		meson->channels[i].clk = of_clk_get(np, i);
+-		if (IS_ERR(meson->channels[i].clk))
+-			return dev_err_probe(dev,
+-					     PTR_ERR(meson->channels[i].clk),
+-					     "Failed to get clk\n");
+-
+-		ret = devm_add_action_or_reset(dev, meson_pwm_s4_put_clk,
+-					       meson->channels[i].clk);
+-		if (ret)
+-			return dev_err_probe(dev, ret,
+-					     "Failed to add clk_put action\n");
+-	}
++	num = devm_clk_bulk_get_all(dev, &clks);
++	if (num < 0)
++		return dev_err_probe(dev, num, "Failed to get clocks\n");
++
++	if (num != chip->npwm)
++		return dev_err_probe(dev, -EINVAL,
++				"expected %u clocks, got %d\n",
++				chip->npwm, num);
++
++	for (i = 0; i < chip->npwm; i++)
++		meson->channels[i].clk = clks[i].clk;
  
- /*
-@@ -539,6 +541,7 @@ static const struct meson_pwm_data pwm_meson8b_data = {
- static const struct meson_pwm_data pwm_gxbb_ao_data = {
- 	.parent_names = { "xtal", "clk81", NULL, NULL },
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_axg_ee_data = {
-@@ -546,6 +549,7 @@ static const struct meson_pwm_data pwm_axg_ee_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
- 	.has_constant = true,
- 	.has_polarity = true,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_axg_ao_data = {
-@@ -553,6 +557,7 @@ static const struct meson_pwm_data pwm_axg_ao_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
- 	.has_constant = true,
- 	.has_polarity = true,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_g12a_ee_data = {
-@@ -560,6 +565,7 @@ static const struct meson_pwm_data pwm_g12a_ee_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
- 	.has_constant = true,
- 	.has_polarity = true,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_g12a_ao_ab_data = {
-@@ -567,6 +573,7 @@ static const struct meson_pwm_data pwm_g12a_ao_ab_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
- 	.has_constant = true,
- 	.has_polarity = true,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_g12a_ao_cd_data = {
-@@ -574,22 +581,26 @@ static const struct meson_pwm_data pwm_g12a_ao_cd_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_legacy,
- 	.has_constant = true,
- 	.has_polarity = true,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_meson8_v2_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_v2,
-+	.npwm = 2,
- };
- 
- static const struct meson_pwm_data pwm_meson_axg_v2_data = {
- 	.channels_init = meson_pwm_init_channels_meson8b_v2,
- 	.has_constant = true,
- 	.has_polarity = true,
-+	.npwm = 2,
+ 	return 0;
+ }
+@@ -597,7 +589,7 @@ static const struct meson_pwm_data pwm_meson_axg_v2_data = {
  };
  
  static const struct meson_pwm_data pwm_s4_data = {
- 	.channels_init = meson_pwm_init_channels_s4,
+-	.channels_init = meson_pwm_init_channels_s4,
++	.channels_init = meson_pwm_init_channels_per_channel_clk,
  	.has_constant = true,
  	.has_polarity = true,
-+	.npwm = 2,
- };
- 
- static const struct of_device_id meson_pwm_matches[] = {
-@@ -650,9 +661,10 @@ static int meson_pwm_probe(struct platform_device *pdev)
- {
- 	struct pwm_chip *chip;
- 	struct meson_pwm *meson;
-+	const struct meson_pwm_data *pdata = of_device_get_match_data(&pdev->dev);
- 	int err;
- 
--	chip = devm_pwmchip_alloc(&pdev->dev, MESON_NUM_PWMS, sizeof(*meson));
-+	chip = devm_pwmchip_alloc(&pdev->dev, pdata->npwm, sizeof(*meson));
- 	if (IS_ERR(chip))
- 		return PTR_ERR(chip);
- 	meson = to_meson_pwm(chip);
-@@ -664,7 +676,7 @@ static int meson_pwm_probe(struct platform_device *pdev)
- 	spin_lock_init(&meson->lock);
- 	chip->ops = &meson_pwm_ops;
- 
--	meson->data = of_device_get_match_data(&pdev->dev);
-+	meson->data = pdata;
- 
- 	err = meson->data->channels_init(chip);
- 	if (err < 0)
+ 	.npwm = 2,
 
 -- 
 2.52.0
