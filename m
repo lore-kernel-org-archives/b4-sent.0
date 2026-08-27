@@ -1,393 +1,149 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Wed, 26 Aug 2026 23:52:38 -0700
-Subject: [PATCH v3] ceph: parallelize object copy in ceph_do_objects_copy()
+From: Johnathan Browall <johnathan.browall@topgolf.com>
+Date: Thu, 27 Aug 2026 09:11:25 +0200
+Subject: [PATCH net] bnxt_en: avoid redundant RX mask updates in UC
+ overflow state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260826-b4-ceph-copyfrom-v3-1-9bbeb82a9a80@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ7CIBQE0Ks0rMXAt6HUlfcwLij8WowtDVRi0
- /TuQl3owricZObNQgJ6i4Eci4V4jDZYN6Rw2BVEd2q4IrUmZQIMBKuA0aakGseOajfOrXc91VJ
- I1oARgguSZqPH1j438nx55/Bobqin7ORGZ8Pk/Lx9Rp57f/jIKae1KjVAbVqBcNL3Obi9dj3Jf
- IQPIHn1A4AEMMnSnCtTgvoG1nV9AVcmy/0DAQAA
-X-Change-ID: 20260720-b4-ceph-copyfrom-c8680b2d6616
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787813560; l=14002;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=1Vc99rIYK9UgCS8AivFwPJ+F2Mx4RpInpLR4XDaHXpE=;
- b=Uy2fdoqRuOh/IQfgPYsJdN18kxVo7X7CqsW+mOa6vxxli6pfoOgfqiWanvlXYUUhN0RuGBn97
- CL3wKjfRd9iCi7hYNBV4jdEtI5LkpIOSyx3pK1f9gx0QRMWE2yz79q+
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Message-Id: <20260827-bnxt-uc-overflow-v1-1-f20d48864fe9@topgolf.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBBFf6XctQM1Yij+irhw4qSdUhJJ0geU/
+ rtRl+deztmRJalk3JodSRbNGkOF86mBG56hF9JXZZjW2LYzljhshWZHcZHkp7iSv/C1q4+xzKj
+ aO4nX7Ze8I0jB4z/mmUdx5RvDcXwAl7BU2HkAAAA=
+X-Change-ID: 20260826-bnxt-uc-overflow-f3b5882626bb
+To: Michael Chan <michael.chan@broadcom.com>, 
+ Pavan Chebbi <pavan.chebbi@broadcom.com>, netdev@vger.kernel.org
+Cc: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ =?utf-8?q?Pontus_H=C3=A5llstedt?= <pontus.hallstedt@topgolf.com>, 
+ Johnathan Browall <johnathan.browall@topgolf.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787814691; l=5499;
+ i=johnathan.browall@topgolf.com; s=20260826; h=from:subject:message-id;
+ bh=4U2myiO1oDFh7prFk52MM8vNlU4NypZBLmBkndBL97o=;
+ b=0KlDHFG7dkd488T0jnp+ZyUQ2EuxyAZh34SuX9VDDNs+oAZAjWPvl4WKWB7k5rD9mj0sbtNdp
+ ahyVEujONtsBRlkZBP9x50fbZFmTQSSafnBfORH33KLacWMmLTM5tmZ
+X-Developer-Key: i=johnathan.browall@topgolf.com; a=ed25519;
+ pk=w6Hvfd81SFSs3dF3Kpe2Y17SpDtiKU3eXu0RdWOCnZk=
+X-Endpoint-Received: by B4 Relay for johnathan.browall@topgolf.com/20260826 with auth_id=976
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current ceph_do_objects_copy() submits COPY_FROM2 requests serially
-(submit-wait-submit-wait), which means the total latency scales linearly
-with the number of objects being copied.
+bnxt_cfg_rx_mode() stops programming individual L2 filters and turns
+on the promiscuous bit in the VNIC rx mask when the interface has more
+unicast addresses than the hardware has filter slots
+(BNXT_MAX_UC_ADDRS).  The driver state never becomes consistent after
+that: vnic->uc_filter_count stays at 1, so bnxt_uc_list_updated()
+keeps reporting the UC list as changed on every rx-mode callback, and
+bnxt_set_rx_mode() removes the promiscuous bit from the mask it
+computes (it only re-adds it for IFF_PROMISC), so the mask comparison
+also fails every time.
 
-Convert to a sliding-window parallel model: submit up to
-copyfrom_max_inflight (16) requests concurrently, then wait for them
-in FIFO order.  Because all in-flight requests make progress while we
-wait for the oldest one, the total wait time is MAX(latency_i) rather
-than SUM(latency_i).
+As a consequence, every rx-mode callback resends the same
+HWRM_CFA_L2_SET_RX_MASK to the firmware, including for requests that
+change nothing, such as setting a link flag to the value it already
+has, or a macvlan going up or down.  That would only cost an
+unnecessary firmware call if SET_RX_MASK processing did not affect
+traffic, but on BCM57416 and BCM57504 (firmware 23.3 and 23.6) it
+does: each invocation causes a short interval in which incoming
+unicast traffic is dropped.  We observed this in production as
+sequence gaps in GigE Vision camera streams on a PF carrying 19
+secondary unicast addresses, with HWRM tracing showing a SET_RX_MASK
+(and no filter alloc/free) for every repeated "ip link set ... arp on"
+that changed nothing.
 
-Error handling uses a 'truncate at first failure' strategy: results are
-scanned in offset order and the copy is truncated at the first failing
-object.  Parallel requests may have already written destination objects
-past the failure point before the failure is detected; that is only
-harmless when the copy starts at or beyond the destination EOF, where
-the excess objects end up beyond the new (truncated) EOF and are
-unreachable through reads.  Copies into the middle of an existing file
-are therefore submitted serially, so they can never modify destination
-data past the position implied by the result.
+Fix it by recording the overflow state in a new vnic flag.  While the
+flag is set, the UC list is only treated as updated once it has shrunk
+enough to fit the available filters (the content of the list does not
+matter while all unicast is accepted through promiscuous mode), and
+bnxt_set_rx_mode() keeps the promiscuous bit in the mask, subject to
+the same bnxt_promisc_ok() check that bnxt_cfg_rx_mode() applies.
+bnxt_cfg_rx_mode() sets the flag when the list does not fit and clears
+it, together with the promiscuous bit, when the list fits again.
 
-The window size is snapshotted per call so a concurrent sysfs write to
-copyfrom_max_inflight cannot shift the window bounds mid-copy, and an
-allocation failure is reported only if no earlier in-flight request
-failed with a real I/O error.
+An unchanged rx mode no longer causes any firmware call, and neither do
+UC list changes that stay above the limit.  Crossing the limit and
+real changes to the flags or the MC list are programmed as before.
 
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Tested with the equivalent patch on 6.12.y on BCM57416: the repeated
+SET_RX_MASK invocations no longer occur and the receive disruption is
+no longer reproducible.
+
+Fixes: c0c050c58d84 ("bnxt_en: New Broadcom ethernet driver.")
+Cc: stable@vger.kernel.org
+Co-developed-by: Pontus Hållstedt <pontus.hallstedt@topgolf.com>
+Signed-off-by: Pontus Hållstedt <pontus.hallstedt@topgolf.com>
+Signed-off-by: Johnathan Browall <johnathan.browall@topgolf.com>
 ---
-Changes in v3:
-- use div_u64_rem() instead of direct 64-bit modulo when computing
-  the reqs[] ring-buffer slot, fixing the 32-bit build (modpost:
-  "__umoddi3" undefined) reported by Ilya
-- Link to v2: https://patch.msgid.link/20260817-b4-ceph-copyfrom-v2-1-08029d1ad42a@clyso.com
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c | 21 +++++++++++++++++++++
+ drivers/net/ethernet/broadcom/bnxt/bnxt.h |  1 +
+ 2 files changed, 22 insertions(+)
 
-Changes in v2:
-- Address review comments from Alex Markuze:
-- Fix a use-after-free in the drain loop: clear the ring-buffer slot
-  after putting the request, and stop draining once all in-flight
-  requests have been waited on.
-- Snapshot copyfrom_max_inflight once per call (clamped to >= 1) and
-  use it for all window bookkeeping, so a concurrent sysfs write can
-  no longer shift the window bounds mid-copy.
-- Track request-allocation failures separately so they never mask a
-  real I/O error from an earlier in-flight request.
-- Only parallelize copies that start at or beyond the destination EOF.
-  Copies into the middle of an existing file are submitted serially
-  (window of 1), so a failed copy can never leave destination objects
-  written past the failure point inside the file.  This assumes the
-  destination size is stable during the copy: CephFS does not serialize
-  concurrent size updates (FILE_WR caps are shared among clients and no
-  inode/MDS lock is held across the copies), and concurrent
-  modification is outside copy_file_range()'s guarantees.
-- Widen the object indices to u64 to avoid overflow for very large
-  copies with small object sizes.
-- Link to v1: https://patch.msgid.link/20260720-b4-ceph-copyfrom-v1-1-9a4c229df6e2@clyso.com
-
-To: Ilya Dryomov <idryomov@gmail.com>
-To: Alex Markuze <amarkuze@redhat.com>
-To: Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- fs/ceph/file.c | 247 +++++++++++++++++++++++++++++++++++++++++++++++----------
- 1 file changed, 206 insertions(+), 41 deletions(-)
-
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index bd3e3f5c269e..756b5a2a4d18 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -12,6 +12,7 @@
- #include <linux/falloc.h>
- #include <linux/iversion.h>
- #include <linux/ktime.h>
-+#include <linux/math64.h>
- #include <linux/splice.h>
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index 9c2cc5027..4805ee63e 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -13791,6 +13791,16 @@ static bool bnxt_uc_list_updated(struct bnxt *bp,
+ 	struct netdev_hw_addr *ha;
+ 	int off = 0;
  
- #include "super.h"
-@@ -3000,6 +3001,22 @@ ceph_alloc_copyfrom_request(struct ceph_osd_client *osdc,
- 	return ERR_PTR(ret);
- }
++	/* In the overflow state all unicast is accepted through the
++	 * promiscuous RX mask and no secondary L2 filters are in use,
++	 * so the list only needs reprogramming once it fits the
++	 * available filters again.  Reporting an update here would
++	 * resend an identical SET_RX_MASK on every callback, which
++	 * causes brief RX packet loss on some chips.
++	 */
++	if (vnic->flags & BNXT_VNIC_UC_PROMISC_FLAG)
++		return netdev_hw_addr_list_count(uc) <= (BNXT_MAX_UC_ADDRS - 1);
++
+ 	if (netdev_hw_addr_list_count(uc) != (vnic->uc_filter_count - 1))
+ 		return true;
  
-+/*
-+ * Default maximum number of in-flight COPY_FROM2 requests.  Can be
-+ * overridden at module load time or at runtime via sysfs through the
-+ * copyfrom_max_inflight parameter.  The value is snapshotted per
-+ * copy_file_range call, so a runtime change only affects new copies.
-+ *
-+ * Higher values improve throughput over high-latency links, but too many
-+ * concurrent requests can saturate OSD disk queues, especially in small
-+ * clusters.  Tune this to match the number of OSDs and their concurrency
-+ * capability.  For most clusters 16--64 is a reasonable range.
-+ */
-+static unsigned int copyfrom_max_inflight = 16;
-+module_param(copyfrom_max_inflight, uint, 0644);
-+MODULE_PARM_DESC(copyfrom_max_inflight,
-+		 "Maximum in-flight COPY_FROM2 requests per copy_file_range call");
-+
- static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off,
- 				    struct ceph_inode_info *dst_ci, u64 *dst_off,
- 				    struct ceph_fs_client *fsc,
-@@ -3008,13 +3025,21 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
- 	struct ceph_object_locator src_oloc, dst_oloc;
- 	struct ceph_object_id src_oid, dst_oid;
- 	struct ceph_osd_client *osdc;
-+	struct ceph_osd_request **reqs = NULL;
- 	struct ceph_osd_request *req;
- 	ssize_t bytes = 0;
- 	u64 src_objnum, src_objoff, dst_objnum, dst_objoff;
- 	u32 src_objlen, dst_objlen;
- 	u32 object_size = src_ci->i_layout.object_size;
- 	struct ceph_client *cl = fsc->client;
--	int ret;
-+	u64 orig_src_off = *src_off;
-+	u64 orig_dst_off = *dst_off;
-+	u64 num_objects, head = 0, tail = 0;
-+	u64 first_fail_obj = U64_MAX, alloc_fail_obj = U64_MAX;
-+	unsigned int max_inflight;
-+	int first_fail_err = 0, alloc_fail_err = 0, inflight = 0;
-+	int slot, ret;
-+	bool have_eopnotsupp = false;
+@@ -13826,6 +13836,13 @@ static int bnxt_set_rx_mode(struct net_device *dev,
+ 	if (dev->flags & IFF_PROMISC)
+ 		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
  
- 	src_oloc.pool = src_ci->i_layout.pool_id;
- 	src_oloc.pool_ns = ceph_try_get_string(src_ci->i_layout.pool_ns);
-@@ -3022,54 +3047,194 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
- 	dst_oloc.pool_ns = ceph_try_get_string(dst_ci->i_layout.pool_ns);
- 	osdc = &fsc->client->osdc;
++	/* Keep the promiscuous bit while the UC list is longer than the
++	 * available L2 filters, so that an unchanged rx mode is not
++	 * treated as a mask change.
++	 */
++	if ((vnic->flags & BNXT_VNIC_UC_PROMISC_FLAG) && bnxt_promisc_ok(bp))
++		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
++
+ 	uc_update = bnxt_uc_list_updated(bp, uc);
  
--	while (len >= object_size) {
--		ceph_calc_file_object_mapping(&src_ci->i_layout, *src_off,
--					      object_size, &src_objnum,
--					      &src_objoff, &src_objlen);
--		ceph_calc_file_object_mapping(&dst_ci->i_layout, *dst_off,
--					      object_size, &dst_objnum,
--					      &dst_objoff, &dst_objlen);
--		ceph_oid_init(&src_oid);
--		ceph_oid_printf(&src_oid, "%llx.%08llx",
--				src_ci->i_vino.ino, src_objnum);
--		ceph_oid_init(&dst_oid);
--		ceph_oid_printf(&dst_oid, "%llx.%08llx",
--				dst_ci->i_vino.ino, dst_objnum);
--		/* Do an object remote copy */
--		req = ceph_alloc_copyfrom_request(osdc, src_ci->i_vino.snap,
--						  &src_oid, &src_oloc,
--						  &dst_oid, &dst_oloc,
--						  dst_ci->i_truncate_seq,
--						  dst_ci->i_truncate_size);
--		if (IS_ERR(req))
--			ret = PTR_ERR(req);
--		else {
-+	num_objects = len / object_size;
-+	if (!num_objects)
-+		goto out;
-+
-+	/*
-+	 * Snapshot the window size once.  A concurrent sysfs write to
-+	 * copyfrom_max_inflight must not be able to shift the window bounds
-+	 * mid-copy: that would corrupt the ring-buffer bookkeeping and could
-+	 * index past reqs[].
-+	 *
-+	 * Parallel requests can write destination objects beyond the first
-+	 * failure before the failure is detected.  That is only harmless
-+	 * when the copy starts at or beyond the destination EOF: the excess
-+	 * objects end up beyond the new (truncated) EOF and are unreachable
-+	 * through reads.  When copying into the middle of an existing file,
-+	 * the excess objects would clobber live data on failure, so such
-+	 * copies are submitted serially (window of 1).
-+	 *
-+	 * This assumes the destination size is stable for the duration of
-+	 * the copy.  CephFS does not serialize concurrent size updates --
-+	 * FILE_WR caps are shared among clients and no inode/MDS lock is
-+	 * held across the copies -- but concurrent modification is outside
-+	 * copy_file_range()'s guarantees, and the pre-existing serial
-+	 * implementation was equally racy in that case.
-+	 */
-+	max_inflight = copyfrom_max_inflight;
-+	if (!max_inflight)
-+		max_inflight = 1;
-+	if (orig_dst_off < i_size_read(&dst_ci->netfs.inode))
-+		max_inflight = 1;
-+
-+	reqs = kvmalloc_array(max_inflight, sizeof(*reqs), GFP_KERNEL);
-+	if (!reqs) {
-+		bytes = -ENOMEM;
-+		goto out;
-+	}
-+
-+	/*
-+	 * Sliding window: submit requests up to max_inflight, then wait for
-+	 * the oldest in-flight request to complete before submitting more.
-+	 * The reqs[] ring buffer is indexed by (slot % max_inflight), so
-+	 * memory is bounded to max_inflight regardless of num_objects.
-+	 * First-failure and EOPNOTSUPP detection happen inline — no post-scan
-+	 * needed.
-+	 */
-+	/*
-+	 * Drain only the valid window: stop once all in-flight requests are
-+	 * waited on (head == tail) and no new submission can follow, instead
-+	 * of walking head past the tail over freed/never-filled slots.
-+	 */
-+	while (head < tail ||
-+	       (tail < num_objects &&
-+		first_fail_obj == U64_MAX && alloc_fail_obj == U64_MAX)) {
-+		u32 rem;
-+
-+		/* Submit new requests while the window has room */
-+		while (tail < num_objects &&
-+		       first_fail_obj == U64_MAX && alloc_fail_obj == U64_MAX &&
-+		       inflight < max_inflight) {
-+			u64 object_src_off = orig_src_off +
-+					     (u64)tail * object_size;
-+			u64 object_dst_off = orig_dst_off +
-+					     (u64)tail * object_size;
-+
-+			ceph_calc_file_object_mapping(&src_ci->i_layout,
-+						      object_src_off,
-+						      object_size,
-+						      &src_objnum,
-+						      &src_objoff,
-+						      &src_objlen);
-+			ceph_calc_file_object_mapping(&dst_ci->i_layout,
-+						      object_dst_off,
-+						      object_size,
-+						      &dst_objnum,
-+						      &dst_objoff,
-+						      &dst_objlen);
-+			ceph_oid_init(&src_oid);
-+			ceph_oid_printf(&src_oid, "%llx.%08llx",
-+					src_ci->i_vino.ino, src_objnum);
-+			ceph_oid_init(&dst_oid);
-+			ceph_oid_printf(&dst_oid, "%llx.%08llx",
-+					dst_ci->i_vino.ino, dst_objnum);
-+
-+			/* Do an object remote copy */
-+			div_u64_rem(tail, max_inflight, &rem);
-+			slot = rem;
-+			req = ceph_alloc_copyfrom_request(osdc,
-+						src_ci->i_vino.snap,
-+						&src_oid, &src_oloc,
-+						&dst_oid, &dst_oloc,
-+						dst_ci->i_truncate_seq,
-+						dst_ci->i_truncate_size);
-+			if (IS_ERR(req)) {
-+				/*
-+				 * Remember the allocation failure and stop
-+				 * submitting.  In-flight requests may still
-+				 * carry a real I/O error for an earlier
-+				 * object; the drain loop records it and it
-+				 * takes precedence over this failure when the
-+				 * result is reported.
-+				 */
-+				alloc_fail_obj = tail;
-+				alloc_fail_err = PTR_ERR(req);
-+				reqs[slot] = NULL;
-+				tail++;
-+				continue;
-+			}
- 			ceph_osdc_start_request(osdc, req);
--			ret = ceph_osdc_wait_request(osdc, req);
-+			reqs[slot] = req;
-+			tail++;
-+			inflight++;
-+		}
-+
-+		/*
-+		 * Wait for the oldest in-flight request (FIFO order).
-+		 * This is required for correctness: we must determine the
-+		 * first failure in object-offset order to know how many
-+		 * bytes were successfully copied.  It does not hurt
-+		 * performance because all requests in the window are
-+		 * submitted concurrently -- later requests complete in
-+		 * the background while we wait, so the wall-clock time
-+		 * is dominated by the slowest request, not the sum.
-+		 */
-+		div_u64_rem(head, max_inflight, &rem);
-+		slot = rem;
-+		if (reqs[slot]) {
-+			ret = ceph_osdc_wait_request(osdc, reqs[slot]);
- 			ceph_update_copyfrom_metrics(&fsc->mdsc->metric,
--						     req->r_start_latency,
--						     req->r_end_latency,
-+						     reqs[slot]->r_start_latency,
-+						     reqs[slot]->r_end_latency,
- 						     object_size, ret);
--			ceph_osdc_put_request(req);
--		}
--		if (ret) {
--			if (ret == -EOPNOTSUPP) {
--				fsc->have_copy_from2 = false;
--				pr_notice_client(cl,
--					"OSDs don't support copy-from2; disabling copy offload\n");
-+			ceph_osdc_put_request(reqs[slot]);
-+			reqs[slot] = NULL;
-+			inflight--;
-+
-+			if (ret == -EOPNOTSUPP)
-+				have_eopnotsupp = true;
-+
-+			if (ret < 0 && first_fail_obj == U64_MAX) {
-+				first_fail_obj = head;
-+				first_fail_err = ret;
- 			}
--			doutc(cl, "returned %d\n", ret);
--			if (bytes <= 0)
--				bytes = ret;
--			goto out;
-+			if (ret)
-+				doutc(cl, "object %llu returned %d\n", head, ret);
- 		}
--		len -= object_size;
--		bytes += object_size;
--		*src_off += object_size;
--		*dst_off += object_size;
-+		/*
-+		 * A NULL slot means the object was never submitted (its
-+		 * allocation failed, or submission stopped after a failure)
-+		 * or was already drained -- just skip past it.
-+		 */
-+		head++;
-+	}
-+
-+	/*
-+	 * Determine bytes copied: all objects before the first failure
-+	 * succeeded.  An allocation failure is only reported if no earlier
-+	 * in-flight request failed, so a real I/O error is never masked by
-+	 * -ENOMEM.
-+	 */
-+	if (first_fail_obj == U64_MAX && alloc_fail_obj != U64_MAX) {
-+		first_fail_obj = alloc_fail_obj;
-+		first_fail_err = alloc_fail_err;
-+	}
-+	if (first_fail_obj == U64_MAX)
-+		bytes = (ssize_t)num_objects * object_size;
-+	else if (first_fail_obj == 0)
-+		bytes = first_fail_err;
-+	else
-+		bytes = (ssize_t)first_fail_obj * object_size;
-+
-+	/*
-+	 * Deferred until after the drain loop, but safe: any request
-+	 * failure stops new submissions, so no COPY_FROM2 requests are
-+	 * sent after EOPNOTSUPP was seen, and the flag is cleared before
-+	 * this function returns.
-+	 */
-+	if (have_eopnotsupp) {
-+		fsc->have_copy_from2 = false;
-+		pr_notice_client(cl,
-+			"OSDs don't support copy-from2; disabling copy offload\n");
- 	}
- 
-+	if (bytes > 0) {
-+		*src_off = orig_src_off + bytes;
-+		*dst_off = orig_dst_off + bytes;
-+	}
- out:
-+	kvfree(reqs);
- 	ceph_oloc_destroy(&src_oloc);
- 	ceph_oloc_destroy(&dst_oloc);
- 	return bytes;
+ 	if (dev->flags & IFF_BROADCAST)
+@@ -13869,7 +13886,11 @@ static int bnxt_cfg_rx_mode(struct bnxt *bp, struct netdev_hw_addr_list *uc,
+ 	netif_addr_lock_bh(dev);
+ 	if (netdev_hw_addr_list_count(uc) > (BNXT_MAX_UC_ADDRS - 1)) {
+ 		vnic->rx_mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
++		vnic->flags |= BNXT_VNIC_UC_PROMISC_FLAG;
+ 	} else {
++		vnic->flags &= ~BNXT_VNIC_UC_PROMISC_FLAG;
++		if (!(dev->flags & IFF_PROMISC))
++			vnic->rx_mask &= ~CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
+ 		netdev_hw_addr_list_for_each(ha, uc) {
+ 			memcpy(vnic->uc_list + off, ha->addr, ETH_ALEN);
+ 			off += ETH_ALEN;
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.h b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
+index ab894f8ad..53ad39f44 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.h
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
+@@ -1332,6 +1332,7 @@ struct bnxt_vnic_info {
+ #define BNXT_VNIC_RFS_NEW_RSS_FLAG	0x10
+ #define BNXT_VNIC_NTUPLE_FLAG		0x20
+ #define BNXT_VNIC_RSSCTX_FLAG		0x40
++#define BNXT_VNIC_UC_PROMISC_FLAG	0x80
+ 	struct ethtool_rxfh_context *rss_ctx;
+ 	u32		vnic_id;
+ 	u16		default_rx_ring;
 
 ---
-base-commit: 3e5e634912819a56c91f78f0d9bf9d6c416455a4
-change-id: 20260720-b4-ceph-copyfrom-c8680b2d6616
+base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
+change-id: 20260826-bnxt-uc-overflow-f3b5882626bb
 
 Best regards,
 --  
-Xiubo Li <xiubo.li@clyso.com>
+Johnathan Browall <johnathan.browall@topgolf.com>
 
