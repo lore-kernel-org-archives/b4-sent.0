@@ -1,84 +1,73 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Thu, 27 Aug 2026 09:52:49 +0200
-Subject: [PATCH 2/2] arm64: dts: qcom: sc8280xp-x13s: Add DP0/DP1 audio
- playback support
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v4 0/4] Add PWM support Amlogic S7 S7D S6
+Date: Thu, 27 Aug 2026 08:40:09 +0000
+Message-Id: <20260827-s6-s7-pwm-v4-0-d28a2015177d@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-x13s-dpaudio-v1-2-da73414c6ab5@oldschoolsolutions.biz>
-References: <20260827-x13s-dpaudio-v1-0-da73414c6ab5@oldschoolsolutions.biz>
-In-Reply-To: <20260827-x13s-dpaudio-v1-0-da73414c6ab5@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAOn3j2oC/2XM3w6CIBiH4VtpHEfDD/ljR91H60AQlC3FQaOa8
+ 95Dt6atwx98zzuhaIIzEZ0PEwomuej8kEd5PCDd1UNrsGvyRkCAEwoMR46jwOOzxyALzqSSUlC
+ O8v0YjHWvtXW95d25+PDhvaZTsbx+K3xXSQUmmAsDVoCqpNKXur/71umT9j1aOgk2WxLYW1gsE
+ 402+adi/N/SzTIo9pZmy4QiglpVW2N/7TzPH5JA1UscAQAA
+X-Change-ID: 20260325-s6-s7-pwm-281658b88736
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Junyi Zhao <junyi.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Alexandre Mergnat <amergnat@baylibre.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787817176; l=1351;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=7xkjdxOijSp8eM/DKmvoe1hNzfXCqUIYUtM74xYVJGw=;
- b=1iaEPMNaAOFOZtYc0BXthpLHOKrtbjEjgfwWY2HfhD/umsVxNMJpsk9O110OstDMcoPDoW7ag
- uqfjJt2VvVyDbilHT+CVyguKfajGGrdAg4bTc57xytBlpxstQayV9+e
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787820043; l=1421;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=ktpLGSlyRRlqw7auNzLNwbOhfx3Zng7gvl3lK1CmWIs=;
+ b=1mluRuPLujAiR3pYWMwR9d/nxY/Xl2i8+db1I3eTojXLA+UvV9RemLT0/znYBS+HpudSEpHsx
+ 8m2SQN7OUFBA8QSNObT2Q2Cease9XiDpI6K5sA8P4vVgg3LKrZBzQas
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The X13s sound card has no DAI links for the Type-C DisplayPort
-controllers, so those playback paths never show up. Add DP0 and DP1
-links using the existing mdss0_dp DAIs and DISPLAY_PORT_RX_{0,1}.
+Add bindings and driver support Amlogic S7/S7D/S6 SoCs.
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts     | 32 ++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+Changes in v4:
+- It is divided into three submissions based on the function-driven part.
+- Merge and modify functions for init clocks, According to Alexandre's suggestion.
+- Link to v3: https://lore.kernel.org/r/20260521-s6-s7-pwm-v3-0-57b073fbafef@amlogic.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
-index 467e14ca21e56..bd4b4cb6245cf 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-lenovo-thinkpad-x13s.dts
-@@ -1215,6 +1215,38 @@ &sound {
- 		"VA DMIC2", "MIC BIAS3",
- 		"TX SWR_ADC1", "ADC2_OUTPUT";
- 
-+	dp0-dai-link {
-+		link-name = "DP0 Playback";
-+
-+		codec {
-+			sound-dai = <&mdss0_dp0>;
-+		};
-+
-+		cpu {
-+			sound-dai = <&q6apmbedai DISPLAY_PORT_RX_0>;
-+		};
-+
-+		platform {
-+			sound-dai = <&q6apm>;
-+		};
-+	};
-+
-+	dp1-dai-link {
-+		link-name = "DP1 Playback";
-+
-+		codec {
-+			sound-dai = <&mdss0_dp1>;
-+		};
-+
-+		cpu {
-+			sound-dai = <&q6apmbedai DISPLAY_PORT_RX_1>;
-+		};
-+
-+		platform {
-+			sound-dai = <&q6apm>;
-+		};
-+	};
-+
- 	wcd-playback-dai-link {
- 		link-name = "WCD Playback";
- 		cpu {
+Changes in v3:
+- Use npwm instead of single_pwm in priv_data and format adjustments.
+- Link to v2: https://lore.kernel.org/r/20260402-s6-s7-pwm-v2-0-657dce040956@amlogic.com
 
+Changes in v2:
+- Simpler s7 clock desc, and drop the example in bindings.
+- Make minor changes to probe based on Martin's suggestion.
+- Link to v1: https://lore.kernel.org/r/20260326-s6-s7-pwm-v1-0-67e2f72b98bc@amlogic.com
+
+---
+Junyi Zhao (1):
+      dt-bindings: pwm: amlogic: Add new bindings for S6 S7 S7D
+
+Xianwei Zhao (3):
+      pwm: meson: add the PWM count driver data
+      pwm: meson: use bulk API for per-channel clocks
+      pwm: meson: Add support for Amlogic S7
+
+ .../devicetree/bindings/pwm/pwm-amlogic.yaml       | 19 ++++++
+ drivers/pwm/pwm-meson.c                            | 73 +++++++++++++---------
+ 2 files changed, 63 insertions(+), 29 deletions(-)
+---
+base-commit: b1385d0c7b7c633e55adcf4a7c1ef46c43a84a4a
+change-id: 20260325-s6-s7-pwm-281658b88736
+
+Best regards,
 -- 
-2.53.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
