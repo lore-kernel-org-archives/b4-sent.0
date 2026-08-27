@@ -1,102 +1,96 @@
 From: Ramses de Norre <ramses@well-founded.dev>
-Date: Thu, 27 Aug 2026 13:44:42 +0200
-Subject: [PATCH net v2] bonding: fix initial last_rx vs ARP-monitor slack
- window
+Date: Thu, 27 Aug 2026 13:52:56 +0200
+Subject: [PATCH net] wireguard: queueing: preserve tstamp_type in
+ wg_reset_packet()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-bonding-last-rx-v2-1-7c3833822c23@well-founded.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNzQ6CMBCEX8Xs2TVtMfx48j0Mh8JuoYYU05aKI
- by7gGePM/nmmwUCe8sBbqcFPCcb7Oi2oM4naHvtOkZLWwYlVC5KWWAzOrKuw0GHiH5GkYnMaHE
- tTUWwrV6ejZ0P4wMcR6h/ZZiaJ7dxd+1Yb0Mc/ef4TfKA/14kiRIr0rkpDJlSqvubhwHNODliu
- hAnqNd1/QJN45NXzAAAAA==
-X-Change-ID: 20260817-bonding-last-rx-0303fa048f9d
-To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+Message-Id: <20260827-wg-tstamp-v1-1-4acfebb855ef@well-founded.dev>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMzQqDMBAGX0W+cwNmiz/0VUoPMW51BVPJRlsQ3
+ 72xPc4wzA7lKKy4FTsib6LyChnspYAfXRjYSJ8ZVFJdtrYx78EkTW5eTHelpqXKEvUeuV8iP+X
+ ze90ROOHxl7p2E/t0XnAcXx73bRhyAAAA
+X-Change-ID: 20260817-wg-tstamp-b327825122dc
+To: "Jason A. Donenfeld" <Jason@zx2c4.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Jiri Bohac <jbohac@suse.cz>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ramses de Norre <ramses@well-founded.dev>
+ Martin KaFai Lau <kafai@fb.com>
+Cc: wireguard@lists.zx2c4.com, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ramses de Norre <ramses@well-founded.dev>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787831083; l=3281;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787831576; l=2656;
  i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
- bh=T48xGoU3KzSkcd2tBf16bfYAqcNmp14bJn/dIB4xjzI=;
- b=ZZHu3gviffYLVV8oZ2OKEx6X52QwFdffsj9mJfhVUiQejyjD+VV3wqVMziQpwqybaK22kj36/
- 3r34ASxNiQlAoY1k1Fhnf9qYA+t+iqvrvtadjO2tZGCPc6uFfAKWHdN
+ bh=WGuiPvIeqUZ6TraJfQmCZ8rPDSP8532P5rIyXoxvRGI=;
+ b=Gp5zWyXdujY/Zn8Q99qdy4u61/WREzVXqkjjg9LH0XlpiPw0K+sImzBcyS/Zw+L4bOCAJLCxr
+ q3EkFWdJUutAN5I84XhRxOgYoY4rZsdXKQWzkRt84APQoOdYYQSLNX5
 X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
  pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
 X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit f31c7937c254 ("bonding: start slaves with link down for ARP
-monitor") initialises a freshly enslaved port's last_rx to
-jiffies - (arp_interval + 1) so that it does not "immediately cause
-fake detection of 'up' state". At the time, the comparison was a plain
-<= arp_interval and the value was just stale enough.
+Sending traffic through a wireguard tunnel on a host using the fq
+qdisc fills the log with:
 
-Commit da210f559019 ("bonding: add some slack to arp monitoring time
-limits"), four months later, added a +arp_interval/2 slack term to
-every comparison (now bond_time_in_interval()) but did not widen the
-init to match. Since then, bond_time_in_interval(bond, last_rx, 1) is
-true for the first ~arp_interval/2 after enslavement even though no
-packet has been received: the upper bound is last_rx + 1.5*delta and
-last_rx was set to jiffies - delta - 1.
+  fq: likely mono tstamp with tstamp_type 0
 
-If the ARP monitor tick lands in that window, bond_ab_arp_inspect()
-proposes the slave UP. If the slave is the configured primary,
-bond_ab_arp_commit() sets do_failover and the still-armed
-force_primary in bond_choose_primary_or_current() makes it the active
-slave regardless of primary_reselect. ARP validation as the active
-slave then fails (the link has not actually received anything; on
-SFP+ ports the PHY is often still negotiating) and the bond falls back
-to the backup. With primary_reselect=failure, force_primary has now
-been spent and the bond stays on the backup until something else
-triggers a reselect.
+An skb carries a timestamp in skb->tstamp and, separately, a
+skb->tstamp_type field recording which clock that timestamp came from.
+The two have to agree.
 
-Reproducer:
+When wireguard encapsulates a packet it calls wg_reset_packet(), which
+clears the fields that must not leak from the inner packet into the
+tunnel packet. It does so in two steps:
 
-  ip link add bond0 type bond mode active-backup arp_interval 1000 \
-      arp_validate all arp_ip_target 192.0.2.1 \
-      primary eth0 primary_reselect failure
-  # eth0: SFP+ (slow link-up), eth1: RJ45 (fast link-up)
-  ip link set eth0 master bond0
-  ip link set eth1 master bond0
-  ip link set bond0 up
-  # bond0 lands on eth0 via force_primary, ARP-fails it before the
-  # SFP+ has carrier, falls to eth1, and stays there.
+  skb_scrub_packet(skb, true);
+  memset(&skb->headers, 0, sizeof(skb->headers));
 
-Initialise last_rx (and the per-target array, and last_tx) to two full
-intervals in the past so it is outside the slack window from the
-start.
+skb_scrub_packet() deliberately keeps skb->tstamp when it holds a
+monotonic timestamp: that value is the time the packet is scheduled to
+be sent, and the qdisc still needs it. The memset then zeroes
+skb->tstamp_type, because that field sits inside the headers group
+while skb->tstamp does not. The packet therefore leaves wireguard
+carrying a monotonic timestamp labelled as a realtime one.
 
-Fixes: da210f559019 ("bonding: add some slack to arp monitoring time limits")
+Nothing noticed until commit c4f796c4f16b ("net_sched: sch_fq: convert
+skb->tstamp if not monotonic"): fq used to assume every timestamp was
+monotonic. It now consults tstamp_type, spots the mismatch, warns, and
+falls back to treating the value as monotonic. Pacing still ends up
+correct, so the log spam is the actual problem.
+
+Save tstamp_type before the memset and restore it when encapsulating,
+next to the hash fields that are already carried over this way. When
+decapsulating it stays zeroed, which is right: an incoming packet's
+timestamp is a realtime receive timestamp.
+
+Fixes: de799101519a ("net: Add skb_clear_tstamp() to keep the mono delivery_time")
 Signed-off-by: Ramses de Norre <ramses@well-founded.dev>
 ---
-Changes in v2:
-- No code changes. Resend with my personal name in the From and
-  Signed-off-by lines instead of my handle, as requested for the DCO.
-- Link to v1: https://patch.msgid.link/20260817-bonding-last-rx-v1-1-9da6f7fdf812@well-founded.dev
----
- drivers/net/bonding/bond_main.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/wireguard/queueing.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
-index 522eab060f9ed..23e1544faf39f 100644
---- a/drivers/net/bonding/bond_main.c
-+++ b/drivers/net/bonding/bond_main.c
-@@ -2123,7 +2123,7 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
- 		new_slave->link = BOND_LINK_DOWN;
- 
- 	new_slave->last_rx = jiffies -
--		(msecs_to_jiffies(bond->params.arp_interval) + 1);
-+		(2 * msecs_to_jiffies(bond->params.arp_interval) + 1);
- 	for (i = 0; i < BOND_MAX_ARP_TARGETS; i++)
- 		new_slave->target_last_arp_rx[i] = new_slave->last_rx;
- 
+diff --git a/drivers/net/wireguard/queueing.h b/drivers/net/wireguard/queueing.h
+index 79b6d70de236b..663b19b783953 100644
+--- a/drivers/net/wireguard/queueing.h
++++ b/drivers/net/wireguard/queueing.h
+@@ -78,12 +78,14 @@ static inline void wg_reset_packet(struct sk_buff *skb, bool encapsulating)
+ 	u8 l4_hash = skb->l4_hash;
+ 	u8 sw_hash = skb->sw_hash;
+ 	u32 hash = skb->hash;
++	u8 tstamp_type = skb->tstamp_type;
+ 	skb_scrub_packet(skb, true);
+ 	memset(&skb->headers, 0, sizeof(skb->headers));
+ 	if (encapsulating) {
+ 		skb->l4_hash = l4_hash;
+ 		skb->sw_hash = sw_hash;
+ 		skb->hash = hash;
++		skb->tstamp_type = tstamp_type;
+ 	}
+ 	skb->queue_mapping = 0;
+ 	skb->nohdr = 0;
 
 ---
 base-commit: 24ef02f934eeb48830cff6b739abc3c62b1d107b
-change-id: 20260817-bonding-last-rx-0303fa048f9d
+change-id: 20260817-wg-tstamp-b327825122dc
 
 Best regards,
 --  
