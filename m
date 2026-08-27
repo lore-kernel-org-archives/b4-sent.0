@@ -1,97 +1,393 @@
-From: Charles Vosburgh <theminershive@gmail.com>
-Date: Wed, 26 Aug 2026 21:01:30 -0400
-Subject: [PATCH net] sctp: validate chunk length in the inqueue parser
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Wed, 26 Aug 2026 23:52:38 -0700
+Subject: [PATCH v3] ceph: parallelize object copy in ceph_do_objects_copy()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGmMj2oC/yWMwQ6CMBAFf4Xs2U2wkUr8FeMBlqesJgW7LTES/
- t2qx5lkZiVDVBidqpUiFjWdQoH9riIZu3AD61CYXO183TrPJmnmN+LEMubwYA3PjAzuD8d2kK5
- pnHgq9Rxx1dfvfKaARJe/tNzfIen7pG37AMBtY+GAAAAA
-X-Change-ID: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, security@kernel.org, 
- Charles Vosburgh <theminershive@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260826-b4-ceph-copyfrom-v3-1-9bbeb82a9a80@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ7CIBQE0Ks0rMXAt6HUlfcwLij8WowtDVRi0
+ /TuQl3owricZObNQgJ6i4Eci4V4jDZYN6Rw2BVEd2q4IrUmZQIMBKuA0aakGseOajfOrXc91VJ
+ I1oARgguSZqPH1j438nx55/Bobqin7ORGZ8Pk/Lx9Rp57f/jIKae1KjVAbVqBcNL3Obi9dj3Jf
+ IQPIHn1A4AEMMnSnCtTgvoG1nV9AVcmy/0DAQAA
+X-Change-ID: 20260720-b4-ceph-copyfrom-c8680b2d6616
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787792493; l=2767;
- i=theminershive@gmail.com; s=20260727; h=from:subject:message-id;
- bh=vMqw/cZjBCZMhglW7zLT3gwURYELJivbP13I5N01yIA=;
- b=AmMthM08XUQ5X5Ww1jjqDX9nET7jygzPCTaHbOa8fI2r79rQo6SpJ45SG3itooGWFrAhE2fma
- bP9tGswl6nJDoONJJV1u1R8Ugp+D1++c0DcsIn5EUbQuFbpRVESWpsN
-X-Developer-Key: i=theminershive@gmail.com; a=ed25519;
- pk=kxCwp20gY82hL3ixb5IXlZ2N0X9TDxiKPCpjPcWqN3E=
-X-Endpoint-Received: by B4 Relay for theminershive@gmail.com/20260727 with auth_id=977
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787813560; l=14002;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=1Vc99rIYK9UgCS8AivFwPJ+F2Mx4RpInpLR4XDaHXpE=;
+ b=Uy2fdoqRuOh/IQfgPYsJdN18kxVo7X7CqsW+mOa6vxxli6pfoOgfqiWanvlXYUUhN0RuGBn97
+ CL3wKjfRd9iCi7hYNBV4jdEtI5LkpIOSyx3pK1f9gx0QRMWE2yz79q+
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SCTP chunks always include a four-byte generic header, but
-sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
-chunk leaves chunk_end at the current header.
+The current ceph_do_objects_copy() submits COPY_FROM2 requests serially
+(submit-wait-submit-wait), which means the total latency scales linearly
+with the number of objects being copied.
 
-When ASCONF is covered by the association's SCTP-AUTH policy,
-sctp_assoc_bh_rcv() can continue before the state machine performs its
-normal chunk-length check. sctp_inq_pop() then returns the same malformed
-chunk repeatedly and the receive softirq can lock up.
+Convert to a sliding-window parallel model: submit up to
+copyfrom_max_inflight (16) requests concurrently, then wait for them
+in FIFO order.  Because all in-flight requests make progress while we
+wait for the oldest one, the total wait time is MAX(latency_i) rather
+than SUM(latency_i).
 
-A remote SCTP peer can trigger this after establishing an association on
-a kernel built with CONFIG_IP_SCTP and configured with
-net.sctp.addip_enable=1 and net.sctp.auth_enable=1. The reproducer did
-not require application credentials, a shared SCTP AUTH key, or
-net.sctp.addip_noauth_enable=1.
+Error handling uses a 'truncate at first failure' strategy: results are
+scanned in offset order and the copy is truncated at the first failing
+object.  Parallel requests may have already written destination objects
+past the failure point before the failure is detected; that is only
+harmless when the copy starts at or beyond the destination EOF, where
+the excess objects end up beyond the new (truncated) EOF and are
+unreachable through reads.  Copies into the middle of an existing file
+are therefore submitted serially, so they can never modify destination
+data past the position implied by the result.
 
-On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
-one zero-length ASCONF caused repeated
-watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
-health probes succeeded, while 36 of 37 post-trigger probes failed. With
-this change, all 37 post-trigger probes succeeded and no equivalent
-soft-lockup signature appeared.
+The window size is snapshotted per call so a concurrent sysfs write to
+copyfrom_max_inflight cannot shift the window bounds mid-copy, and an
+allocation failure is reported only if no earlier in-flight request
+failed with a real I/O error.
 
-Reject chunks shorter than the generic SCTP header at the shared inqueue
-parser boundary. Mark the packet for discard before either caller can
-continue processing it, while preserving the four-byte generic minimum.
-Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
-remained healthy. The patched sctp_hello selftest passed for IPv4 and
-IPv6.
-
-The complete private reproducer and validation evidence are available
-directly to maintainers on request.
-
-Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
-Cc: stable@vger.kernel.org
-Assisted-by: ChatGPT:GPT-5.6-Sol
-Assisted-by: Vantix:claude-opus-5
-Assisted-by: Codex:GPT-5
-Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- net/sctp/inqueue.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Changes in v3:
+- use div_u64_rem() instead of direct 64-bit modulo when computing
+  the reqs[] ring-buffer slot, fixing the 32-bit build (modpost:
+  "__umoddi3" undefined) reported by Ilya
+- Link to v2: https://patch.msgid.link/20260817-b4-ceph-copyfrom-v2-1-08029d1ad42a@clyso.com
 
-diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-index 5f988b3a8814..12a46868165a 100644
---- a/net/sctp/inqueue.c
-+++ b/net/sctp/inqueue.c
-@@ -212,6 +212,11 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
- 	chunk->chunk_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
- 	skb_pull(chunk->skb, sizeof(*ch));
- 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
-+	if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
-+		chunk->pdiscard = 1;
-+		chunk->chunk_end = chunk->skb->data;
-+		return chunk;
-+	}
+Changes in v2:
+- Address review comments from Alex Markuze:
+- Fix a use-after-free in the drain loop: clear the ring-buffer slot
+  after putting the request, and stop draining once all in-flight
+  requests have been waited on.
+- Snapshot copyfrom_max_inflight once per call (clamped to >= 1) and
+  use it for all window bookkeeping, so a concurrent sysfs write can
+  no longer shift the window bounds mid-copy.
+- Track request-allocation failures separately so they never mask a
+  real I/O error from an earlier in-flight request.
+- Only parallelize copies that start at or beyond the destination EOF.
+  Copies into the middle of an existing file are submitted serially
+  (window of 1), so a failed copy can never leave destination objects
+  written past the failure point inside the file.  This assumes the
+  destination size is stable during the copy: CephFS does not serialize
+  concurrent size updates (FILE_WR caps are shared among clients and no
+  inode/MDS lock is held across the copies), and concurrent
+  modification is outside copy_file_range()'s guarantees.
+- Widen the object indices to u64 to avoid overflow for very large
+  copies with small object sizes.
+- Link to v1: https://patch.msgid.link/20260720-b4-ceph-copyfrom-v1-1-9a4c229df6e2@clyso.com
+
+To: Ilya Dryomov <idryomov@gmail.com>
+To: Alex Markuze <amarkuze@redhat.com>
+To: Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ fs/ceph/file.c | 247 +++++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 206 insertions(+), 41 deletions(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index bd3e3f5c269e..756b5a2a4d18 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -12,6 +12,7 @@
+ #include <linux/falloc.h>
+ #include <linux/iversion.h>
+ #include <linux/ktime.h>
++#include <linux/math64.h>
+ #include <linux/splice.h>
  
- 	if (chunk->chunk_end + sizeof(*ch) <= skb_tail_pointer(chunk->skb)) {
- 		/* This is not a singleton */
+ #include "super.h"
+@@ -3000,6 +3001,22 @@ ceph_alloc_copyfrom_request(struct ceph_osd_client *osdc,
+ 	return ERR_PTR(ret);
+ }
+ 
++/*
++ * Default maximum number of in-flight COPY_FROM2 requests.  Can be
++ * overridden at module load time or at runtime via sysfs through the
++ * copyfrom_max_inflight parameter.  The value is snapshotted per
++ * copy_file_range call, so a runtime change only affects new copies.
++ *
++ * Higher values improve throughput over high-latency links, but too many
++ * concurrent requests can saturate OSD disk queues, especially in small
++ * clusters.  Tune this to match the number of OSDs and their concurrency
++ * capability.  For most clusters 16--64 is a reasonable range.
++ */
++static unsigned int copyfrom_max_inflight = 16;
++module_param(copyfrom_max_inflight, uint, 0644);
++MODULE_PARM_DESC(copyfrom_max_inflight,
++		 "Maximum in-flight COPY_FROM2 requests per copy_file_range call");
++
+ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off,
+ 				    struct ceph_inode_info *dst_ci, u64 *dst_off,
+ 				    struct ceph_fs_client *fsc,
+@@ -3008,13 +3025,21 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
+ 	struct ceph_object_locator src_oloc, dst_oloc;
+ 	struct ceph_object_id src_oid, dst_oid;
+ 	struct ceph_osd_client *osdc;
++	struct ceph_osd_request **reqs = NULL;
+ 	struct ceph_osd_request *req;
+ 	ssize_t bytes = 0;
+ 	u64 src_objnum, src_objoff, dst_objnum, dst_objoff;
+ 	u32 src_objlen, dst_objlen;
+ 	u32 object_size = src_ci->i_layout.object_size;
+ 	struct ceph_client *cl = fsc->client;
+-	int ret;
++	u64 orig_src_off = *src_off;
++	u64 orig_dst_off = *dst_off;
++	u64 num_objects, head = 0, tail = 0;
++	u64 first_fail_obj = U64_MAX, alloc_fail_obj = U64_MAX;
++	unsigned int max_inflight;
++	int first_fail_err = 0, alloc_fail_err = 0, inflight = 0;
++	int slot, ret;
++	bool have_eopnotsupp = false;
+ 
+ 	src_oloc.pool = src_ci->i_layout.pool_id;
+ 	src_oloc.pool_ns = ceph_try_get_string(src_ci->i_layout.pool_ns);
+@@ -3022,54 +3047,194 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
+ 	dst_oloc.pool_ns = ceph_try_get_string(dst_ci->i_layout.pool_ns);
+ 	osdc = &fsc->client->osdc;
+ 
+-	while (len >= object_size) {
+-		ceph_calc_file_object_mapping(&src_ci->i_layout, *src_off,
+-					      object_size, &src_objnum,
+-					      &src_objoff, &src_objlen);
+-		ceph_calc_file_object_mapping(&dst_ci->i_layout, *dst_off,
+-					      object_size, &dst_objnum,
+-					      &dst_objoff, &dst_objlen);
+-		ceph_oid_init(&src_oid);
+-		ceph_oid_printf(&src_oid, "%llx.%08llx",
+-				src_ci->i_vino.ino, src_objnum);
+-		ceph_oid_init(&dst_oid);
+-		ceph_oid_printf(&dst_oid, "%llx.%08llx",
+-				dst_ci->i_vino.ino, dst_objnum);
+-		/* Do an object remote copy */
+-		req = ceph_alloc_copyfrom_request(osdc, src_ci->i_vino.snap,
+-						  &src_oid, &src_oloc,
+-						  &dst_oid, &dst_oloc,
+-						  dst_ci->i_truncate_seq,
+-						  dst_ci->i_truncate_size);
+-		if (IS_ERR(req))
+-			ret = PTR_ERR(req);
+-		else {
++	num_objects = len / object_size;
++	if (!num_objects)
++		goto out;
++
++	/*
++	 * Snapshot the window size once.  A concurrent sysfs write to
++	 * copyfrom_max_inflight must not be able to shift the window bounds
++	 * mid-copy: that would corrupt the ring-buffer bookkeeping and could
++	 * index past reqs[].
++	 *
++	 * Parallel requests can write destination objects beyond the first
++	 * failure before the failure is detected.  That is only harmless
++	 * when the copy starts at or beyond the destination EOF: the excess
++	 * objects end up beyond the new (truncated) EOF and are unreachable
++	 * through reads.  When copying into the middle of an existing file,
++	 * the excess objects would clobber live data on failure, so such
++	 * copies are submitted serially (window of 1).
++	 *
++	 * This assumes the destination size is stable for the duration of
++	 * the copy.  CephFS does not serialize concurrent size updates --
++	 * FILE_WR caps are shared among clients and no inode/MDS lock is
++	 * held across the copies -- but concurrent modification is outside
++	 * copy_file_range()'s guarantees, and the pre-existing serial
++	 * implementation was equally racy in that case.
++	 */
++	max_inflight = copyfrom_max_inflight;
++	if (!max_inflight)
++		max_inflight = 1;
++	if (orig_dst_off < i_size_read(&dst_ci->netfs.inode))
++		max_inflight = 1;
++
++	reqs = kvmalloc_array(max_inflight, sizeof(*reqs), GFP_KERNEL);
++	if (!reqs) {
++		bytes = -ENOMEM;
++		goto out;
++	}
++
++	/*
++	 * Sliding window: submit requests up to max_inflight, then wait for
++	 * the oldest in-flight request to complete before submitting more.
++	 * The reqs[] ring buffer is indexed by (slot % max_inflight), so
++	 * memory is bounded to max_inflight regardless of num_objects.
++	 * First-failure and EOPNOTSUPP detection happen inline — no post-scan
++	 * needed.
++	 */
++	/*
++	 * Drain only the valid window: stop once all in-flight requests are
++	 * waited on (head == tail) and no new submission can follow, instead
++	 * of walking head past the tail over freed/never-filled slots.
++	 */
++	while (head < tail ||
++	       (tail < num_objects &&
++		first_fail_obj == U64_MAX && alloc_fail_obj == U64_MAX)) {
++		u32 rem;
++
++		/* Submit new requests while the window has room */
++		while (tail < num_objects &&
++		       first_fail_obj == U64_MAX && alloc_fail_obj == U64_MAX &&
++		       inflight < max_inflight) {
++			u64 object_src_off = orig_src_off +
++					     (u64)tail * object_size;
++			u64 object_dst_off = orig_dst_off +
++					     (u64)tail * object_size;
++
++			ceph_calc_file_object_mapping(&src_ci->i_layout,
++						      object_src_off,
++						      object_size,
++						      &src_objnum,
++						      &src_objoff,
++						      &src_objlen);
++			ceph_calc_file_object_mapping(&dst_ci->i_layout,
++						      object_dst_off,
++						      object_size,
++						      &dst_objnum,
++						      &dst_objoff,
++						      &dst_objlen);
++			ceph_oid_init(&src_oid);
++			ceph_oid_printf(&src_oid, "%llx.%08llx",
++					src_ci->i_vino.ino, src_objnum);
++			ceph_oid_init(&dst_oid);
++			ceph_oid_printf(&dst_oid, "%llx.%08llx",
++					dst_ci->i_vino.ino, dst_objnum);
++
++			/* Do an object remote copy */
++			div_u64_rem(tail, max_inflight, &rem);
++			slot = rem;
++			req = ceph_alloc_copyfrom_request(osdc,
++						src_ci->i_vino.snap,
++						&src_oid, &src_oloc,
++						&dst_oid, &dst_oloc,
++						dst_ci->i_truncate_seq,
++						dst_ci->i_truncate_size);
++			if (IS_ERR(req)) {
++				/*
++				 * Remember the allocation failure and stop
++				 * submitting.  In-flight requests may still
++				 * carry a real I/O error for an earlier
++				 * object; the drain loop records it and it
++				 * takes precedence over this failure when the
++				 * result is reported.
++				 */
++				alloc_fail_obj = tail;
++				alloc_fail_err = PTR_ERR(req);
++				reqs[slot] = NULL;
++				tail++;
++				continue;
++			}
+ 			ceph_osdc_start_request(osdc, req);
+-			ret = ceph_osdc_wait_request(osdc, req);
++			reqs[slot] = req;
++			tail++;
++			inflight++;
++		}
++
++		/*
++		 * Wait for the oldest in-flight request (FIFO order).
++		 * This is required for correctness: we must determine the
++		 * first failure in object-offset order to know how many
++		 * bytes were successfully copied.  It does not hurt
++		 * performance because all requests in the window are
++		 * submitted concurrently -- later requests complete in
++		 * the background while we wait, so the wall-clock time
++		 * is dominated by the slowest request, not the sum.
++		 */
++		div_u64_rem(head, max_inflight, &rem);
++		slot = rem;
++		if (reqs[slot]) {
++			ret = ceph_osdc_wait_request(osdc, reqs[slot]);
+ 			ceph_update_copyfrom_metrics(&fsc->mdsc->metric,
+-						     req->r_start_latency,
+-						     req->r_end_latency,
++						     reqs[slot]->r_start_latency,
++						     reqs[slot]->r_end_latency,
+ 						     object_size, ret);
+-			ceph_osdc_put_request(req);
+-		}
+-		if (ret) {
+-			if (ret == -EOPNOTSUPP) {
+-				fsc->have_copy_from2 = false;
+-				pr_notice_client(cl,
+-					"OSDs don't support copy-from2; disabling copy offload\n");
++			ceph_osdc_put_request(reqs[slot]);
++			reqs[slot] = NULL;
++			inflight--;
++
++			if (ret == -EOPNOTSUPP)
++				have_eopnotsupp = true;
++
++			if (ret < 0 && first_fail_obj == U64_MAX) {
++				first_fail_obj = head;
++				first_fail_err = ret;
+ 			}
+-			doutc(cl, "returned %d\n", ret);
+-			if (bytes <= 0)
+-				bytes = ret;
+-			goto out;
++			if (ret)
++				doutc(cl, "object %llu returned %d\n", head, ret);
+ 		}
+-		len -= object_size;
+-		bytes += object_size;
+-		*src_off += object_size;
+-		*dst_off += object_size;
++		/*
++		 * A NULL slot means the object was never submitted (its
++		 * allocation failed, or submission stopped after a failure)
++		 * or was already drained -- just skip past it.
++		 */
++		head++;
++	}
++
++	/*
++	 * Determine bytes copied: all objects before the first failure
++	 * succeeded.  An allocation failure is only reported if no earlier
++	 * in-flight request failed, so a real I/O error is never masked by
++	 * -ENOMEM.
++	 */
++	if (first_fail_obj == U64_MAX && alloc_fail_obj != U64_MAX) {
++		first_fail_obj = alloc_fail_obj;
++		first_fail_err = alloc_fail_err;
++	}
++	if (first_fail_obj == U64_MAX)
++		bytes = (ssize_t)num_objects * object_size;
++	else if (first_fail_obj == 0)
++		bytes = first_fail_err;
++	else
++		bytes = (ssize_t)first_fail_obj * object_size;
++
++	/*
++	 * Deferred until after the drain loop, but safe: any request
++	 * failure stops new submissions, so no COPY_FROM2 requests are
++	 * sent after EOPNOTSUPP was seen, and the flag is cleared before
++	 * this function returns.
++	 */
++	if (have_eopnotsupp) {
++		fsc->have_copy_from2 = false;
++		pr_notice_client(cl,
++			"OSDs don't support copy-from2; disabling copy offload\n");
+ 	}
+ 
++	if (bytes > 0) {
++		*src_off = orig_src_off + bytes;
++		*dst_off = orig_dst_off + bytes;
++	}
+ out:
++	kvfree(reqs);
+ 	ceph_oloc_destroy(&src_oloc);
+ 	ceph_oloc_destroy(&dst_oloc);
+ 	return bytes;
 
 ---
-base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
-change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
+base-commit: 3e5e634912819a56c91f78f0d9bf9d6c416455a4
+change-id: 20260720-b4-ceph-copyfrom-c8680b2d6616
 
 Best regards,
 --  
-Charles Vosburgh <theminershive@gmail.com>
+Xiubo Li <xiubo.li@clyso.com>
 
