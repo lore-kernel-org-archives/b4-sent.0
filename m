@@ -1,64 +1,77 @@
-From: Matt Eaton <linux@divinehawk.com>
-Date: Fri, 28 Aug 2026 14:37:56 +0200
-Subject: [PATCH 2/2] usb: xhci-plat: add xhci-no-soft-retry-quirk device
- property
+From: Maurycy Pawlowski-Wieronski <maurycy@maurycy.com>
+Date: Fri, 28 Aug 2026 15:38:18 +0200
+Subject: [PATCH] hfsplus: fix truncated xattr names in listxattr()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260828-xhci-no-soft-retry-v1-2-b9c264b56601@divinehawk.com>
-References: <20260828-xhci-no-soft-retry-v1-0-b9c264b56601@divinehawk.com>
-In-Reply-To: <20260828-xhci-no-soft-retry-v1-0-b9c264b56601@divinehawk.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Mathias Nyman <mathias.nyman@intel.com>
-Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Matt Eaton <linux@divinehawk.com>
+Message-Id: <20260828-hfsplus-copy_name-fix-v1-1-75ed9f0f378c@maurycy.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMUQrCMBCE4auUfXYhhlqCVxGRNU7tiqYh24pSe
+ nejPn4D8y9kKAqjfbNQwVNNx1Sx3TQUB0lXsF6qyTvfueADD73l+2wcx/w+JXmAe32xdPDipG3
+ DDlS/uaDOv+7h+LfN5xvi9I3Run4AK56TeXkAAAA=
+X-Change-ID: 20260828-hfsplus-copy_name-fix-a6e2a0a4485e
+To: Viacheslav Dubeyko <slava@dubeyko.com>, 
+ John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>, 
+ Yangtao Li <frank.li@vivo.com>, Kees Cook <kees@kernel.org>, 
+ Justin Stitt <justinstitt@google.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Maurycy Pawlowski-Wieronski <maurycy@maurycy.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787920681; l=1564;
- i=linux@divinehawk.com; s=20260828; h=from:subject:message-id;
- bh=hre3DhXtEdMtBActPCAC6ChtUOOZ9DzGbOAgxtv43Gk=;
- b=XAbaNZQo5priU8H5STolVWtvAB0wfYM/0PrITDc5tHB9fDkQ4+lyydfBmcHBIOMcyT9qf2EkL
- raRHLj6xlj3DLGYY5Or4LjFYOureX42HUbMEc7/Yqx3RBz6V+id0N1G
-X-Developer-Key: i=linux@divinehawk.com; a=ed25519;
- pk=UG4KnKXGwxjTNdirUPh/nySblET4aRxWYWSMTQwzlMw=
-X-Endpoint-Received: by B4 Relay for linux@divinehawk.com/20260828 with auth_id=982
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787924298; l=1797;
+ i=maurycy@maurycy.com; s=20260828; h=from:subject:message-id;
+ bh=IQcRwEprbEp3pKKBaOEYBUQJiRxQaoTwOUPdhNAlj1I=;
+ b=KcE8oNk53vD38NezIG497FfmNiyzCJPCYtuzI0dy2SFvEjiWNpAhZl283vPZfwo6yGp39RBOD
+ X3kCNlZskQ1DEEROGsjwU3ev4JIDLn460WlxnqGa+gmEQw9eLaGwy9p
+X-Developer-Key: i=maurycy@maurycy.com; a=ed25519;
+ pk=cK6zOi8RCOCUTWtJDER0YR5jWodFabZ1wH57I+KmldA=
+X-Endpoint-Received: by B4 Relay for maurycy@maurycy.com/20260828 with auth_id=983
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-XHCI_NO_SOFT_RETRY exists for hosts that can't perform xHCI 1.0 Soft Retry
-correctly, but it's only reachable from xhci-pci, matched against two AMD
-Promontory PCI ids. Platform hosts have no way to ask for it.
+Commit 7dcbf17e3f91 ("hfsplus: refactor copy_name to not use strncpy")
+changed copy_name() to build names in the osx. namespace with
+scnprintf().
 
-Add it as a device property, the same way as quirk-broken-port-ped and its
-neighbors. It's opt-in, so no existing platform is affected.
+The supplied buffer size includes room for the prefix and the name, but
+not for the terminating NUL:
 
-Needed for the Synopsys DWC3 on a Qualcomm IPQ4019, whose command ring
-wedges when a Stop Endpoint command lands on a just-soft-retry-reset
-endpoint -- exactly what unplugging a device mid-transfer triggers:
+  $ python3 -c "import os; print(os.listxattr('/mnt/tm/.DS_Store'))"
+  ['osx.com.apple.FinderInf']
 
-xhci-hcd xhci-hcd.1.auto: xHCI host not responding to stop endpoint command
-xhci-hcd xhci-hcd.1.auto: xHCI host controller not responding, assume dead
-xhci-hcd xhci-hcd.1.auto: HC died; cleaning up
+The truncated names cannot be passed back to getxattr(), so getfattr -d,
+rsync -X, cp --preserve=xattr and tar --xattrs etc. seem to lose all
+Apple attributes on hfsplus volumes.
 
-Signed-off-by: Matt Eaton <linux@divinehawk.com>
+Names in other namespaces go through the strscpy() branch, which already
+sizes the buffer correctly. That's `why xfstests generic/377 does not
+catch it.
+
+Fixes: 7dcbf17e3f91 ("hfsplus: refactor copy_name to not use strncpy")
+Cc: stable@vger.kernel.org # v6.10+
+Signed-off-by: Maurycy Pawlowski-Wieronski <maurycy@maurycy.com>
 ---
- drivers/usb/host/xhci-plat.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/hfsplus/xattr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/usb/host/xhci-plat.c b/drivers/usb/host/xhci-plat.c
-index 6fd595f81a30..22057493f935 100644
---- a/drivers/usb/host/xhci-plat.c
-+++ b/drivers/usb/host/xhci-plat.c
-@@ -265,6 +265,9 @@ int xhci_plat_probe(struct platform_device *pdev, struct device *sysdev, const s
- 		if (device_property_read_bool(tmpdev, "quirk-broken-port-ped"))
- 			xhci->quirks |= XHCI_BROKEN_PORT_PED;
+diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
+index 21a1c196c71f..4a3c97373682 100644
+--- a/fs/hfsplus/xattr.c
++++ b/fs/hfsplus/xattr.c
+@@ -515,8 +515,8 @@ static ssize_t copy_name(char *buffer, const char *xattr_name, size_t name_len)
+ 	memset(buffer, 0, name_len);
  
-+		if (device_property_read_bool(tmpdev, "xhci-no-soft-retry-quirk"))
-+			xhci->quirks |= XHCI_NO_SOFT_RETRY;
-+
- 		if (device_property_read_bool(tmpdev, "xhci-sg-trb-cache-size-quirk"))
- 			xhci->quirks |= XHCI_SG_TRB_CACHE_SIZE_QUIRK;
- 
+ 	if (!is_known_namespace(xattr_name)) {
+-		len = scnprintf(buffer, name_len + XATTR_MAC_OSX_PREFIX_LEN,
+-				 "%s%s", XATTR_MAC_OSX_PREFIX, xattr_name);
++		len = scnprintf(buffer, name_len + XATTR_MAC_OSX_PREFIX_LEN + 1,
++				"%s%s", XATTR_MAC_OSX_PREFIX, xattr_name);
+ 	} else {
+ 		len = strscpy(buffer, xattr_name, name_len + 1);
+ 		if (len < 0) {
 
--- 
-2.43.0
+---
+base-commit: 1b78070aaef63512688aebfbc82365ef9d6660f1
+change-id: 20260828-hfsplus-copy_name-fix-a6e2a0a4485e
+
+Best regards,
+--  
+Maurycy Pawlowski-Wieronski <maurycy@maurycy.com>
 
