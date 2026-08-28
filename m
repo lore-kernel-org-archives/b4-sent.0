@@ -1,131 +1,163 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Fri, 28 Aug 2026 00:19:44 -0700
-Subject: [PATCH] ceph: unregister aborted requests in
- ceph_mdsc_wait_request()
+From: Johnathan Browall <johnathan.browall@topgolf.com>
+Date: Fri, 28 Aug 2026 09:20:04 +0200
+Subject: [PATCH net v2] bnxt_en: avoid redundant RX mask updates in UC
+ overflow state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260828-b4-ceph-fix-abort-request-uaf-new-v1-1-96e480d5a028@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNywrCMBSE4VcpZ+2BGKRGX0VcJOnEHhdpzUWF0
- ndvqssPhn8WykiCTNduoYS3ZJliw/HQkR9tfIBlaCatdK+MPrM7scc8cpAvWzelwgmvily42sA
- RH7YXE4zvB6sUqHXmhDb+fdzuf+fqnvBlD9O6botkd5+FAAAA
-X-Change-ID: 20260827-b4-ceph-fix-abort-request-uaf-new-a98f8c6da00e
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>, Sage Weil <sage@newdream.net>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787901589; l=5446;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=xOjNIYx5UpPI1bdwdUUnY3dY/FlR7eDo3///O/wyWVM=;
- b=LvkX9rMT+9tEYkPvxddgvQpdntIdw59wdI46lYJbusiYeTXuEA2GcuQQfrMvX024FCCZ46uqn
- 2E+CNs242arBulo8VUgVk5fVqkAQc5Kr0xDx2D9+N9q/KJqTlIUc+aO
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260828-bnxt-uc-overflow-v2-1-faddc16b0ea0@topgolf.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNyxKCIBSGX8U562iUjKhV79G4CDwojYEDSDYO7
+ x5au5b/9VvAo9Po4VIs4DBqr63Jgu4KkP3ddEh0mzXQkrKSU0aEmQOZJLERnRrsi6iDOPKcUCY
+ E5NnoUOl5u7yBwQDN1/STeKAM69la67UP1r03cKy28o9x+mfEilRE0bKtOWe1wvM12LGzg9pL+
+ 4QmpfQBLS7WuMkAAAA=
+X-Change-ID: 20260826-bnxt-uc-overflow-f3b5882626bb
+To: Michael Chan <michael.chan@broadcom.com>, 
+ Pavan Chebbi <pavan.chebbi@broadcom.com>, netdev@vger.kernel.org
+Cc: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ =?utf-8?q?Pontus_H=C3=A5llstedt?= <pontus.hallstedt@topgolf.com>, 
+ Johnathan Browall <johnathan.browall@topgolf.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787901604; l=6188;
+ i=johnathan.browall@topgolf.com; s=20260826; h=from:subject:message-id;
+ bh=qoOM3hdhVbw91pW/wNxs7uEg1sZi5YWQl5/bh0WuJk8=;
+ b=K4DRdM9Zda0czMudUWEnNRU1fUXHX27PYMLtDmiyHGqSIYR2gF/VfJtfXXh9aJ5aPRpuvXzrP
+ CSPB4SNEqKWBsP99AgxBZkalUolZXj1B/vjXnL9VjG+OsSRWDY4krHE
+X-Developer-Key: i=johnathan.browall@topgolf.com; a=ed25519;
+ pk=w6Hvfd81SFSs3dF3Kpe2Y17SpDtiKU3eXu0RdWOCnZk=
+X-Endpoint-Received: by B4 Relay for johnathan.browall@topgolf.com/20260826 with auth_id=976
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a request is aborted because the waiter was killed or the wait
-timed out, the abort path marks it with CEPH_MDS_R_ABORTED but leaves
-it parked on a wait list (r_wait) and registered in the request tree.
-The waiter's put can then be the last reference while the request is
-still linked, freeing it with r_wait non-empty:
+bnxt_cfg_rx_mode() stops programming individual L2 filters and turns
+on the promiscuous bit in the VNIC rx mask when the interface has more
+unicast addresses than the hardware has filter slots
+(BNXT_MAX_UC_ADDRS).  The driver state never becomes consistent after
+that: vnic->uc_filter_count stays at 1, so bnxt_uc_list_updated()
+keeps reporting the UC list as changed on every rx-mode callback, and
+bnxt_set_rx_mode() removes the promiscuous bit from the mask it
+computes (it only re-adds it for IFF_PROMISC), so the mask comparison
+also fails every time.
 
-  WARNING: fs/ceph/mds_client.c:1233 ceph_mdsc_release_request+0x247/0x250
-  WARN_ON_ONCE(!list_empty(&req->r_wait))
+As a consequence, every rx-mode callback resends the same
+HWRM_CFA_L2_SET_RX_MASK to the firmware, including for requests that
+change nothing, such as setting a link flag to the value it already
+has, or a macvlan going up or down.  That would only cost an
+unnecessary firmware call if SET_RX_MASK processing did not affect
+traffic, but on BCM57416 and BCM57504 (firmware 23.3 and 23.6) it
+does: each invocation causes a short interval in which incoming
+unicast traffic is dropped.  We observed this in production as
+sequence gaps in GigE Vision camera streams on a PF carrying 19
+secondary unicast addresses, with HWRM tracing showing a SET_RX_MASK
+(and no filter alloc/free) for every repeated "ip link set ... arp on"
+that changed nothing.
 
-The freed request stays behind as a dangling entry on the session's
-waiting list, and the next __wake_requests() or kick_requests() walk
-uses it after free (a stress test that SIGKILLs waiters during MDS
-failovers reproduces this reliably).
+Fix it by recording the overflow state in a new vnic flag.  While the
+flag is set, the UC list is only treated as updated once it has shrunk
+enough to fit the available filters (the content of the list does not
+matter while all unicast is accepted through promiscuous mode), and
+bnxt_set_rx_mode() keeps the promiscuous bit in the mask, subject to
+the same bnxt_promisc_ok() check that bnxt_cfg_rx_mode() applies.
+bnxt_cfg_rx_mode() sets the flag when the list does not fit and clears
+it, together with the promiscuous bit, when the list fits again.
 
-Fix the abort path so that the request is removed from its wait list
-and from the request tree when the waiter gives up, making the waiter's
-put the final reference on a request that is no longer linked anywhere.
-Both operations happen under mdsc->mutex; a racing reply or forward may
-already have unregistered the request, so only unregister it when it is
-still in the tree.
+An unchanged rx mode no longer causes any firmware call, and neither do
+UC list changes that stay above the limit.  Crossing the limit and
+real changes to the flags or the MC list are programmed as before.
 
-Fixes: e1518c7c0a67a ("ceph: clean up mds reply, error handling")
-Cc: stable@vger.kernel.org
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Tested with the equivalent patch on 6.12.y on BCM57416: the repeated
+SET_RX_MASK invocations no longer occur and the receive disruption is
+no longer reproducible.
+
+Fixes: c0c050c58d84 ("bnxt_en: New Broadcom ethernet driver.")
+Cc: stable@vger.kernel.org # needs adjustment for <= 6.18
+Co-developed-by: Pontus Hållstedt <pontus.hallstedt@topgolf.com>
+Signed-off-by: Pontus Hållstedt <pontus.hallstedt@topgolf.com>
+Reviewed-by: Pavan Chebbi <pavan.chebbi@broadcom.com>
+Signed-off-by: Johnathan Browall <johnathan.browall@topgolf.com>
 ---
-The full call trace:
-
- ------------[ cut here ]------------
- refcount_t: addition on 0; use-after-free.
- WARNING: lib/refcount.c:25 at refcount_warn_saturate+0x6a/0x90, CPU#1: kworker/1:1/99
- Modules linked in: ceph libceph krb5 netfs xsk_diag vsock_diag uinput snd_seq_dummy snd_hrtimer rfkill nf_conntrack_netbios_ns nf_conntrack_broadcast nft_fib_inet nft_fib_ipv4 nft_fib_ipv6 nft_fib nft_reject_inet nf_reject_ipv4 nf_reject_ipv6 nft_reject nft_ct nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 nf_tables qrtr sunrpc intel_rapl_msr intel_rapl_common intel_uncore_frequency_common intel_pmc_core pmt_telemetry pmt_discovery pmt_class intel_pmc_ssram_telemetry intel_pmc_pwrm_telemetry intel_vsec kvm_intel kvm snd_hda_codec_generic irqbypass snd_hda_intel rapl snd_hda_codec snd_hda_core snd_intel_dspcfg snd_intel_sdw_acpi snd_hwdep snd_seq iTCO_wdt snd_seq_device intel_pmc_bxt snd_pcm i2c_i801 snd_timer pcspkr i2c_smbus snd lpc_ich virtio_balloon soundcore joydev zram lz4hc_compress vmw_vsock_virtio_transport vmw_vsock_virtio_transport_common vsock virtio_net net_failover virtio_gpu failover virtio_dma_buf serio_raw i2c_dev qemu_fw_cfg virtiofs fuse
- CPU: 1 UID: 0 PID: 99 Comm: kworker/1:1 Tainted: G      D             7.2.0-rc7-lockdep+ #13 PREEMPT(lazy)
- Tainted: [D]=DIE
- Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.17.0-10.fc44 06/10/2025
- Workqueue: ceph-msgr ceph_con_workfn [libceph]
- RIP: 0010:refcount_warn_saturate+0x6a/0x90
- Code: cc 48 8d 3d b8 f6 d4 01 67 48 0f b9 3a c3 cc cc cc cc 48 8d 3d b7 f6 d4 01 67 48 0f b9 3a c3 cc cc cc cc 48 8d 3d b6 f6 d4 01 <67> 48 0f b9 3a c3 cc cc cc cc 48 8d 3d b5 f6 d4 01 67 48 0f b9 3a
- RSP: 0018:ffffcdb6403a7cc0 EFLAGS: 00010246
- RAX: 0000000000000000 RBX: ffff8d5e6441c000 RCX: ffff8d5e43de6a60
- RDX: ffff8d5e5afbd468 RSI: 0000000000000002 RDI: ffffffffa7fbe040
- RBP: ffffcdb6403a7ce8 R08: 0000000000000001 R09: ffff8d5e5afbd550
- R10: ffffcdb6403a7cc8 R11: 0000000000000000 R12: ffff8d5e6441c000
- R13: ffff8d5e5afbd028 R14: ffff8d5e515c0000 R15: ffff8d5e5a621008
- FS:  0000000000000000(0000) GS:ffff8d61f7904000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 00007f0541dbf000 CR3: 000000011ad8b005 CR4: 0000000000772ef0
- PKRU: 55555554
- Call Trace:
-  <TASK>
-  __wake_requests+0x3af/0x3d0 [ceph]
-  mds_dispatch+0xad/0x240 [ceph]
-  ceph_con_process_message+0x88/0x1c0 [libceph]
-  ceph_con_v1_try_read+0x316/0x6f0 [libceph]
-  ceph_con_workfn+0x1f4/0x500 [libceph]
-  ? process_one_work+0x20d/0x600
-  process_one_work+0x234/0x600
-  worker_thread+0x1e5/0x3c0
-  ? __pfx_worker_thread+0x10/0x10
-  kthread+0xf5/0x130
-  ? __pfx_kthread+0x10/0x10
-  ret_from_fork+0x24a/0x360
-  ? __pfx_kthread+0x10/0x10
-  ret_from_fork_asm+0x1a/0x30
-  </TASK>
- irq event stamp: 7923424
- hardirqs last  enabled at (7923423): [<ffffffffa6d5b2a8>] _raw_spin_unlock_irq+0x28/0x50
- hardirqs last disabled at (7923424): [<ffffffffa6d4cdb5>] __schedule+0x685/0x820
+Changes in v2:
+- Wrap a line exceeding 80 columns (Pavan Chebbi)
+- Collect Reviewed-by (Pavan Chebbi)
+- Note on the stable Cc that trees <= 6.18 need an adjusted version:
+  the rx-mode path was restructured for ndo_set_rx_mode_async in 7.x,
+  so this patch does not apply to any current stable tree. A version
+  against the older API is ready and will be sent to stable@ once this
+  is merged; it applies cleanly to 6.18.y down to 5.10.y and has been
+  running in production on 6.12.y.
+- Link to v1: https://patch.msgid.link/20260827-bnxt-uc-overflow-v1-1-f20d48864fe9@topgolf.com
 ---
- fs/ceph/mds_client.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ drivers/net/ethernet/broadcom/bnxt/bnxt.c | 22 ++++++++++++++++++++++
+ drivers/net/ethernet/broadcom/bnxt/bnxt.h |  1 +
+ 2 files changed, 23 insertions(+)
 
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index 85f8ceb10377..6b27146d0c9f 100644
---- a/fs/ceph/mds_client.c
-+++ b/fs/ceph/mds_client.c
-@@ -4024,6 +4024,19 @@ int ceph_mdsc_wait_request(struct ceph_mds_client *mdsc,
- 		if (req->r_parent &&
- 		    (req->r_op & CEPH_MDS_OP_WRITE))
- 			ceph_invalidate_dir_request(req);
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.c b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+index 9c2cc5027..d960cf942 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.c
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.c
+@@ -13791,6 +13791,16 @@ static bool bnxt_uc_list_updated(struct bnxt *bp,
+ 	struct netdev_hw_addr *ha;
+ 	int off = 0;
+ 
++	/* In the overflow state all unicast is accepted through the
++	 * promiscuous RX mask and no secondary L2 filters are in use,
++	 * so the list only needs reprogramming once it fits the
++	 * available filters again.  Reporting an update here would
++	 * resend an identical SET_RX_MASK on every callback, which
++	 * causes brief RX packet loss on some chips.
++	 */
++	if (vnic->flags & BNXT_VNIC_UC_PROMISC_FLAG)
++		return netdev_hw_addr_list_count(uc) <= (BNXT_MAX_UC_ADDRS - 1);
 +
-+		/*
-+		 * The waiter is about to drop its reference, which is
-+		 * the last one held by the request's caller.  Make sure
-+		 * the request is no longer parked on a wait list or
-+		 * registered in the request tree, or it could be walked
-+		 * (and in the tree case, replied to) after it is freed.
-+		 * A racing reply may already have unregistered it, in
-+		 * which case it is no longer in the tree.
-+		 */
-+		list_del_init(&req->r_wait);
-+		if (lookup_request(&mdsc->request_tree, req->r_tid) == req)
-+			__unregister_request(mdsc, req);
+ 	if (netdev_hw_addr_list_count(uc) != (vnic->uc_filter_count - 1))
+ 		return true;
+ 
+@@ -13826,6 +13836,13 @@ static int bnxt_set_rx_mode(struct net_device *dev,
+ 	if (dev->flags & IFF_PROMISC)
+ 		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
+ 
++	/* Keep the promiscuous bit while the UC list is longer than the
++	 * available L2 filters, so that an unchanged rx mode is not
++	 * treated as a mask change.
++	 */
++	if ((vnic->flags & BNXT_VNIC_UC_PROMISC_FLAG) && bnxt_promisc_ok(bp))
++		mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
++
+ 	uc_update = bnxt_uc_list_updated(bp, uc);
+ 
+ 	if (dev->flags & IFF_BROADCAST)
+@@ -13869,7 +13886,12 @@ static int bnxt_cfg_rx_mode(struct bnxt *bp, struct netdev_hw_addr_list *uc,
+ 	netif_addr_lock_bh(dev);
+ 	if (netdev_hw_addr_list_count(uc) > (BNXT_MAX_UC_ADDRS - 1)) {
+ 		vnic->rx_mask |= CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
++		vnic->flags |= BNXT_VNIC_UC_PROMISC_FLAG;
  	} else {
- 		err = req->r_err;
- 	}
++		vnic->flags &= ~BNXT_VNIC_UC_PROMISC_FLAG;
++		if (!(dev->flags & IFF_PROMISC))
++			vnic->rx_mask &=
++				~CFA_L2_SET_RX_MASK_REQ_MASK_PROMISCUOUS;
+ 		netdev_hw_addr_list_for_each(ha, uc) {
+ 			memcpy(vnic->uc_list + off, ha->addr, ETH_ALEN);
+ 			off += ETH_ALEN;
+diff --git a/drivers/net/ethernet/broadcom/bnxt/bnxt.h b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
+index ab894f8ad..53ad39f44 100644
+--- a/drivers/net/ethernet/broadcom/bnxt/bnxt.h
++++ b/drivers/net/ethernet/broadcom/bnxt/bnxt.h
+@@ -1332,6 +1332,7 @@ struct bnxt_vnic_info {
+ #define BNXT_VNIC_RFS_NEW_RSS_FLAG	0x10
+ #define BNXT_VNIC_NTUPLE_FLAG		0x20
+ #define BNXT_VNIC_RSSCTX_FLAG		0x40
++#define BNXT_VNIC_UC_PROMISC_FLAG	0x80
+ 	struct ethtool_rxfh_context *rss_ctx;
+ 	u32		vnic_id;
+ 	u16		default_rx_ring;
 
 ---
-base-commit: dee30ce1286a0d18b14545ecac345e4cf4a80511
-change-id: 20260827-b4-ceph-fix-abort-request-uaf-new-a98f8c6da00e
+base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
+change-id: 20260826-bnxt-uc-overflow-f3b5882626bb
 
 Best regards,
 --  
-Xiubo Li <xiubo.li@clyso.com>
+Johnathan Browall <johnathan.browall@topgolf.com>
 
