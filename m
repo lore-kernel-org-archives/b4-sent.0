@@ -1,117 +1,62 @@
-From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Fri, 28 Aug 2026 13:51:47 +0300
-Subject: [PATCH] media: i2c: imx258: Add reset-gpio support
+From: Matt Eaton <linux@divinehawk.com>
+Subject: [PATCH 0/2] usb: xhci: add xhci-no-soft-retry-quirk
+Date: Fri, 28 Aug 2026 14:37:54 +0200
+Message-Id: <20260828-xhci-no-soft-retry-v1-0-b9c264b56601@divinehawk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260828-imx258-add-reset-gpio-patch-v1-1-633972d2a700@mainlining.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQ5AMAwA0F+RnjVhTMaviMPSFj1g2UQk4t8tj
- u/yHkgSVRIMxQNRLk167Bl1WQCtfl8ElbPBVKarnLGo222sQ8+MUZKcuAQ9MPiTVqS2ccyNnXs
- iyEOIMuv97+P0vh/hRW3qbQAAAA==
-X-Change-ID: 20260825-imx258-add-reset-gpio-patch-c438dd35f9cc
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: git@luigi311.com, pavel@ucw.cz, tomm.merciai@gmail.com, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, =?utf-8?q?Ond=C5=99ej_Jirman?= <megi@xff.cz>, 
- Muzaffer Kadir <muzafferkadir@mainlining.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787914322; l=3095;
- i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=K0S+hjXRamfbzSLaocvKAIe3EyDCb1YJZikydR5BEuc=;
- b=mjwp5RpdIhMaH1pNMCJ5xaW0CERNyBgRwYlJG2z3+TccO462CU5jd3zCCEWTr3EzakaORCNEx
- 6IBnSq136srDLxgZiUy0s/fEBaI2XemBZih+Mkgl2SXHumI/QKC0ORB
-X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
- pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
-X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
+X-B4-Tracking: v=1; b=H4sIACKBkWoC/yXMwQ6CMAyA4VchPdsEpwH0VYwH6Dooh82000AI7
+ +6U43f4/w2MVdjgXm2g/BGTFAvOpwpo6uPIKL4YXO2aunMdLhMJxoSWQkblrCte+9DQ7eKp9Q5
+ K+FIOsvynj+dhew8zU/6dYN+/xQH0bHYAAAA=
+X-Change-ID: 20260828-xhci-no-soft-retry-4af6c93dc7d2
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Mathias Nyman <mathias.nyman@intel.com>
+Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Matt Eaton <linux@divinehawk.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787920681; l=1395;
+ i=linux@divinehawk.com; s=20260828; h=from:subject:message-id;
+ bh=zT+ccwsVbDtmhy4mHNgwYuK8CPx9UNRBC8oZGrS4HfM=;
+ b=Gia0aSsr++SsY5Pr7hEjjZEnaNMwgsU1wIyG7TA4uR/9knq0iYiuHDVPzlTXWMTFIqvZFnDkr
+ TyjBMHoIEwBC6RUXZJN+UXWPiNo8r4vRWPuP3rFtltfnFolE5XGQcD1
+X-Developer-Key: i=linux@divinehawk.com; a=ed25519;
+ pk=UG4KnKXGwxjTNdirUPh/nySblET4aRxWYWSMTQwzlMw=
+X-Endpoint-Received: by B4 Relay for linux@divinehawk.com/20260828 with auth_id=982
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-reset-gpio is already documented in dt-bindings but never implemented
-in the driver.
-Reset deassert delay comes from Luis Garcia's and Ondrej Jirman's patch.
+This series adds an opt-in device property so platform xHCI hosts can
+request the XHCI_NO_SOFT_RETRY quirk, currently only reachable from
+xhci-pci matched against two AMD Promontory PCI ids.
 
-Link: https://lore.kernel.org/all/20240602201345.328737-22-git@luigi311.com
-Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
+Motivating case: the Synopsys DWC3 xHCI instances on Qualcomm IPQ4019
+mishandle xHCI 1.0 Soft Retry. A Stop Endpoint command landing on a
+just-soft-retry-reset endpoint wedges the command ring; the
+stop-endpoint watchdog then kills the host five seconds later. Setting
+the property falls back to the pre-Soft-Retry recovery path (full
+endpoint reset), which the vendor's 4.4 kernel uses unconditionally
+and which is well tolerated on this hardware.
+
+Patch 1 documents the property. Patch 2 wires it into xhci-plat.c.
+
+The devicetree change enabling this on IPQ4019 is being sent
+separately to linux-arm-msm, since this series only adds the
+mechanism.
+
+Signed-off-by: Matt Eaton <linux@divinehawk.com>
 ---
-I have a device that is not upstreamed yet (General Mobile Shamrock)
-whose camera needs reset gpio to probe, it is documented for
-dts check but not implemented for some reason.
-With adding it rear camera on the device probes correctly.
+Matt Eaton (2):
+      dt-bindings: usb: xhci: add xhci-no-soft-retry-quirk
+      usb: xhci-plat: add xhci-no-soft-retry-quirk device property
 
-I created this patch without knowing the older one that submitted
-before: https://lore.kernel.org/all/20240602201345.328737-22-git@luigi311.com/
-
-I don't fully know the correct reset timing so I was using a random wait before,
-after I discovered existing patch I reused previous work for delay time after reset.
+ Documentation/devicetree/bindings/usb/usb-xhci.yaml | 4 ++++
+ drivers/usb/host/xhci-plat.c                        | 3 +++
+ 2 files changed, 7 insertions(+)
 ---
- drivers/media/i2c/imx258.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
-
-diff --git a/drivers/media/i2c/imx258.c b/drivers/media/i2c/imx258.c
-index bc9ee449a87c..af3f12c7452a 100644
---- a/drivers/media/i2c/imx258.c
-+++ b/drivers/media/i2c/imx258.c
-@@ -9,6 +9,7 @@
- #include <linux/pm_runtime.h>
- #include <linux/regulator/consumer.h>
- #include <linux/unaligned.h>
-+#include <linux/gpio/consumer.h>
- 
- #include <media/v4l2-cci.h>
- #include <media/v4l2-ctrls.h>
-@@ -681,6 +682,7 @@ struct imx258 {
- 
- 	struct clk *clk;
- 	struct regulator_bulk_data supplies[IMX258_NUM_SUPPLIES];
-+	struct gpio_desc *reset_gpio;
- };
- 
- static inline struct imx258 *to_imx258(struct v4l2_subdev *_sd)
-@@ -1128,6 +1130,18 @@ static int imx258_power_on(struct device *dev)
- 	if (ret) {
- 		dev_err(dev, "failed to enable clock\n");
- 		regulator_bulk_disable(IMX258_NUM_SUPPLIES, imx258->supplies);
-+		return ret;
-+	}
-+
-+	if (imx258->reset_gpio) {
-+		ret = gpiod_set_value_cansleep(imx258->reset_gpio, 0);
-+		if (ret) {
-+			dev_err(dev, "failed to deassert reset\n");
-+			clk_disable_unprepare(imx258->clk);
-+			regulator_bulk_disable(IMX258_NUM_SUPPLIES, imx258->supplies);
-+			return ret;
-+		}
-+		usleep_range(400, 500);
- 	}
- 
- 	return ret;
-@@ -1138,6 +1152,7 @@ static int imx258_power_off(struct device *dev)
- 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
- 	struct imx258 *imx258 = to_imx258(sd);
- 
-+	gpiod_set_value_cansleep(imx258->reset_gpio, 1);
- 	clk_disable_unprepare(imx258->clk);
- 	regulator_bulk_disable(IMX258_NUM_SUPPLIES, imx258->supplies);
- 
-@@ -1382,6 +1397,11 @@ static int imx258_probe(struct i2c_client *client)
- 		return ret;
- 	}
- 
-+	imx258->reset_gpio = devm_gpiod_get_optional(imx258->dev, "reset", GPIOD_OUT_HIGH);
-+	if (IS_ERR(imx258->reset_gpio))
-+		return dev_err_probe(imx258->dev, PTR_ERR(imx258->reset_gpio),
-+				     "Failed to get reset-gpios\n");
-+
- 	ret = imx258_get_regulators(imx258);
- 	if (ret)
- 		return dev_err_probe(imx258->dev, ret,
-
----
-base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
-change-id: 20260825-imx258-add-reset-gpio-patch-c438dd35f9cc
+base-commit: 45c13f3f9e3bb15fd89ff2864c6f627a3b4b4229
+change-id: 20260828-xhci-no-soft-retry-4af6c93dc7d2
 
 Best regards,
--- 
-Muzaffer Kadir <muzafferkadir@mainlining.org>
+--  
+Matt Eaton <linux@divinehawk.com>
 
