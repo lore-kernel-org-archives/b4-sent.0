@@ -1,117 +1,131 @@
-From: Charles Vosburgh <theminershive@gmail.com>
-Date: Thu, 27 Aug 2026 17:32:53 -0400
-Subject: [PATCH net v2] sctp: validate chunk length in the inqueue parser
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Fri, 28 Aug 2026 00:19:44 -0700
+Subject: [PATCH] ceph: unregister aborted requests in
+ ceph_mdsc_wait_request()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260827-sctp-zero-chunk-inqueue-v2-1-2e7669c6a6cb@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAStkGoC/4WNSxKCMBBEr2LN2rEgJSG68h4WCxgGiEqC+VAqx
- d0FPIDL7nr9egLPTrOH824Cx6P22poliP0OqCtNy6jrJYNIhEyUkOgpDPhhZ5G6aO6ozTNyZKy
- OuaqpzDJBEpb14LjRr818BcMBil/pY3VjCqtzxTrtg3Xv7X9MN/jv1Zhiikrm8lQT5Y2iS9uX+
- nEg20Mxz/MXDZKt/9UAAAA=
-X-Change-ID: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, security@kernel.org, 
- Charles Vosburgh <theminershive@gmail.com>
+Message-Id: <20260828-b4-ceph-fix-abort-request-uaf-new-v1-1-96e480d5a028@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNywrCMBSE4VcpZ+2BGKRGX0VcJOnEHhdpzUWF0
+ ndvqssPhn8WykiCTNduoYS3ZJliw/HQkR9tfIBlaCatdK+MPrM7scc8cpAvWzelwgmvily42sA
+ RH7YXE4zvB6sUqHXmhDb+fdzuf+fqnvBlD9O6botkd5+FAAAA
+X-Change-ID: 20260827-b4-ceph-fix-abort-request-uaf-new-a98f8c6da00e
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>, Sage Weil <sage@newdream.net>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787866405; l=3668;
- i=theminershive@gmail.com; s=20260727; h=from:subject:message-id;
- bh=aM1ph9zq6C+26p9W6U+K2Mb79wS90gFjxiNAMYMThSw=;
- b=yOUN1WGQwKC2FssCDQfG6NXk/XFqXZEmxrdaW17BwiCsXzi4m6rDqx93FMG7YAwyiKyotxUXS
- G4c8lbHU8VHAA43OTRgolr3YtKERSkmHoPHvRYQIJY3KUXbNE0x/LYi
-X-Developer-Key: i=theminershive@gmail.com; a=ed25519;
- pk=kxCwp20gY82hL3ixb5IXlZ2N0X9TDxiKPCpjPcWqN3E=
-X-Endpoint-Received: by B4 Relay for theminershive@gmail.com/20260727 with auth_id=977
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787901589; l=5446;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=xOjNIYx5UpPI1bdwdUUnY3dY/FlR7eDo3///O/wyWVM=;
+ b=LvkX9rMT+9tEYkPvxddgvQpdntIdw59wdI46lYJbusiYeTXuEA2GcuQQfrMvX024FCCZ46uqn
+ 2E+CNs242arBulo8VUgVk5fVqkAQc5Kr0xDx2D9+N9q/KJqTlIUc+aO
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SCTP chunks always include a four-byte generic header, but
-sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
-chunk leaves chunk_end at the current header.
+When a request is aborted because the waiter was killed or the wait
+timed out, the abort path marks it with CEPH_MDS_R_ABORTED but leaves
+it parked on a wait list (r_wait) and registered in the request tree.
+The waiter's put can then be the last reference while the request is
+still linked, freeing it with r_wait non-empty:
 
-When ASCONF is covered by the association's SCTP-AUTH policy,
-sctp_assoc_bh_rcv() can continue before the state machine performs its
-normal chunk-length check. sctp_inq_pop() then returns the same malformed
-chunk repeatedly and the receive softirq can lock up.
+  WARNING: fs/ceph/mds_client.c:1233 ceph_mdsc_release_request+0x247/0x250
+  WARN_ON_ONCE(!list_empty(&req->r_wait))
 
-A remote SCTP peer can trigger this after establishing an association on
-a kernel built with CONFIG_IP_SCTP and configured with
-net.sctp.addip_enable=1 and net.sctp.auth_enable=1. The reproducer did
-not require application credentials, a shared SCTP AUTH key, or
-net.sctp.addip_noauth_enable=1.
+The freed request stays behind as a dangling entry on the session's
+waiting list, and the next __wake_requests() or kick_requests() walk
+uses it after free (a stress test that SIGKILLs waiters during MDS
+failovers reproduces this reliably).
 
-On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
-one zero-length ASCONF caused repeated
-watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
-health probes succeeded, while 36 of 37 post-trigger probes failed. With
-this change, all 37 post-trigger probes succeeded and no equivalent
-soft-lockup signature appeared.
+Fix the abort path so that the request is removed from its wait list
+and from the request tree when the waiter gives up, making the waiter's
+put the final reference on a request that is no longer linked anywhere.
+Both operations happen under mdsc->mutex; a racing reply or forward may
+already have unregistered the request, so only unregister it when it is
+still in the tree.
 
-Reject chunks shorter than the generic SCTP header at the shared inqueue
-parser boundary. Mark the packet for discard before either caller can
-continue processing it, while preserving the four-byte generic minimum.
-Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
-remained healthy. The patched sctp_hello selftest passed for IPv4 and
-IPv6.
-
-The complete private reproducer and validation evidence are available
-directly to maintainers on request.
-
-Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
+Fixes: e1518c7c0a67a ("ceph: clean up mds reply, error handling")
 Cc: stable@vger.kernel.org
-Assisted-by: ChatGPT:GPT-5.6-Sol
-Assisted-by: Vantix:claude-opus-5
-Assisted-by: Codex:GPT-5
-Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
-Changes in v2:
-- Fold the minimum-header check into the existing chunk classifier.
-- Keep pr_debug() on the malformed path and leave chunk_end unchanged.
-- Retest lengths 0--4, legitimate ASCONF, and IPv4/IPv6 SCTP traffic.
-- Link to v1: https://patch.msgid.link/20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com
+The full call trace:
 
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To: Xin Long <lucien.xin@gmail.com>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Simon Horman <horms@kernel.org>
-To: Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+ ------------[ cut here ]------------
+ refcount_t: addition on 0; use-after-free.
+ WARNING: lib/refcount.c:25 at refcount_warn_saturate+0x6a/0x90, CPU#1: kworker/1:1/99
+ Modules linked in: ceph libceph krb5 netfs xsk_diag vsock_diag uinput snd_seq_dummy snd_hrtimer rfkill nf_conntrack_netbios_ns nf_conntrack_broadcast nft_fib_inet nft_fib_ipv4 nft_fib_ipv6 nft_fib nft_reject_inet nf_reject_ipv4 nf_reject_ipv6 nft_reject nft_ct nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 nf_tables qrtr sunrpc intel_rapl_msr intel_rapl_common intel_uncore_frequency_common intel_pmc_core pmt_telemetry pmt_discovery pmt_class intel_pmc_ssram_telemetry intel_pmc_pwrm_telemetry intel_vsec kvm_intel kvm snd_hda_codec_generic irqbypass snd_hda_intel rapl snd_hda_codec snd_hda_core snd_intel_dspcfg snd_intel_sdw_acpi snd_hwdep snd_seq iTCO_wdt snd_seq_device intel_pmc_bxt snd_pcm i2c_i801 snd_timer pcspkr i2c_smbus snd lpc_ich virtio_balloon soundcore joydev zram lz4hc_compress vmw_vsock_virtio_transport vmw_vsock_virtio_transport_common vsock virtio_net net_failover virtio_gpu failover virtio_dma_buf serio_raw i2c_dev qemu_fw_cfg virtiofs fuse
+ CPU: 1 UID: 0 PID: 99 Comm: kworker/1:1 Tainted: G      D             7.2.0-rc7-lockdep+ #13 PREEMPT(lazy)
+ Tainted: [D]=DIE
+ Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.17.0-10.fc44 06/10/2025
+ Workqueue: ceph-msgr ceph_con_workfn [libceph]
+ RIP: 0010:refcount_warn_saturate+0x6a/0x90
+ Code: cc 48 8d 3d b8 f6 d4 01 67 48 0f b9 3a c3 cc cc cc cc 48 8d 3d b7 f6 d4 01 67 48 0f b9 3a c3 cc cc cc cc 48 8d 3d b6 f6 d4 01 <67> 48 0f b9 3a c3 cc cc cc cc 48 8d 3d b5 f6 d4 01 67 48 0f b9 3a
+ RSP: 0018:ffffcdb6403a7cc0 EFLAGS: 00010246
+ RAX: 0000000000000000 RBX: ffff8d5e6441c000 RCX: ffff8d5e43de6a60
+ RDX: ffff8d5e5afbd468 RSI: 0000000000000002 RDI: ffffffffa7fbe040
+ RBP: ffffcdb6403a7ce8 R08: 0000000000000001 R09: ffff8d5e5afbd550
+ R10: ffffcdb6403a7cc8 R11: 0000000000000000 R12: ffff8d5e6441c000
+ R13: ffff8d5e5afbd028 R14: ffff8d5e515c0000 R15: ffff8d5e5a621008
+ FS:  0000000000000000(0000) GS:ffff8d61f7904000(0000) knlGS:0000000000000000
+ CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+ CR2: 00007f0541dbf000 CR3: 000000011ad8b005 CR4: 0000000000772ef0
+ PKRU: 55555554
+ Call Trace:
+  <TASK>
+  __wake_requests+0x3af/0x3d0 [ceph]
+  mds_dispatch+0xad/0x240 [ceph]
+  ceph_con_process_message+0x88/0x1c0 [libceph]
+  ceph_con_v1_try_read+0x316/0x6f0 [libceph]
+  ceph_con_workfn+0x1f4/0x500 [libceph]
+  ? process_one_work+0x20d/0x600
+  process_one_work+0x234/0x600
+  worker_thread+0x1e5/0x3c0
+  ? __pfx_worker_thread+0x10/0x10
+  kthread+0xf5/0x130
+  ? __pfx_kthread+0x10/0x10
+  ret_from_fork+0x24a/0x360
+  ? __pfx_kthread+0x10/0x10
+  ret_from_fork_asm+0x1a/0x30
+  </TASK>
+ irq event stamp: 7923424
+ hardirqs last  enabled at (7923423): [<ffffffffa6d5b2a8>] _raw_spin_unlock_irq+0x28/0x50
+ hardirqs last disabled at (7923424): [<ffffffffa6d4cdb5>] __schedule+0x685/0x820
 ---
- net/sctp/inqueue.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/ceph/mds_client.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-index 5f988b3a8814f..d666cec6b194e 100644
---- a/net/sctp/inqueue.c
-+++ b/net/sctp/inqueue.c
-@@ -212,8 +212,10 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
- 	chunk->chunk_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
- 	skb_pull(chunk->skb, sizeof(*ch));
- 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
--
--	if (chunk->chunk_end + sizeof(*ch) <= skb_tail_pointer(chunk->skb)) {
-+	if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
-+		chunk->pdiscard = 1;
-+	} else if (chunk->chunk_end + sizeof(*ch) <=
-+		   skb_tail_pointer(chunk->skb)) {
- 		/* This is not a singleton */
- 		chunk->singleton = 0;
- 	} else if (chunk->chunk_end > skb_tail_pointer(chunk->skb)) {
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index 85f8ceb10377..6b27146d0c9f 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -4024,6 +4024,19 @@ int ceph_mdsc_wait_request(struct ceph_mds_client *mdsc,
+ 		if (req->r_parent &&
+ 		    (req->r_op & CEPH_MDS_OP_WRITE))
+ 			ceph_invalidate_dir_request(req);
++
++		/*
++		 * The waiter is about to drop its reference, which is
++		 * the last one held by the request's caller.  Make sure
++		 * the request is no longer parked on a wait list or
++		 * registered in the request tree, or it could be walked
++		 * (and in the tree case, replied to) after it is freed.
++		 * A racing reply may already have unregistered it, in
++		 * which case it is no longer in the tree.
++		 */
++		list_del_init(&req->r_wait);
++		if (lookup_request(&mdsc->request_tree, req->r_tid) == req)
++			__unregister_request(mdsc, req);
+ 	} else {
+ 		err = req->r_err;
+ 	}
 
 ---
-base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
-change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
+base-commit: dee30ce1286a0d18b14545ecac345e4cf4a80511
+change-id: 20260827-b4-ceph-fix-abort-request-uaf-new-a98f8c6da00e
 
 Best regards,
 --  
-Charles Vosburgh <theminershive@gmail.com>
+Xiubo Li <xiubo.li@clyso.com>
 
