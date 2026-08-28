@@ -1,82 +1,61 @@
-From: Tim Sweetman <agenttimblog@gmail.com>
-Date: Fri, 28 Aug 2026 15:52:10 -0500
-Subject: [PATCH BlueZ] client: Handle system bus setup failure
+From: Johan Jonker <jbx6244@gmail.com>
+Date: Sat, 29 Aug 2026 01:40:57 +0200
+Subject: [PATCH] ARM: rockchip: smp: enable CPU1 for rk3066a
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260828-master-v1-1-4810753bb693@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBQFr0Le2ia1IdJ6FeOiwEO/UTT9QAiEu
- 1tlOZPJrFAmoeJcrEicROXdZzgeCjT32N9opM0MZ93JeufNK+rAZOgrGwJjWbqAHH8SO5n/owv
- q58gF113rWD/YDL8Jtu0LnhRwPHEAAAA=
-X-Change-ID: 20260828-master-e87099ea4429
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787950335; l=1695;
- i=agenttimblog@gmail.com; s=20260828; h=from:subject:message-id;
- bh=7y4abkrz48lLqW5SQLAirvn4+UMow52d5O4nL718atw=;
- b=aqp96l0FFhoUb32dl2O8Y1xZXdABV3B9TBk+ZAx+Cwfk8/WQku141/+tCPtUhg1cvchsnzJWU
- lix23FzYzTXCO4AUTi6PwagVuczrXT27GTG1Nk2aUqF1NucC46WeuBI
-X-Developer-Key: i=agenttimblog@gmail.com; a=ed25519;
- pk=NS/gYW7o9HkuX4A52JuRee/RWJwzgk9mNfy2J4gZag4=
-X-Endpoint-Received: by B4 Relay for agenttimblog@gmail.com/20260828 with auth_id=985
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260829-cpu-v1-1-33dca576db92@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIgckmoC/x2Myw5AMBAAf0X2rAn19ivi0NZiD0p2EYn4d+U4m
+ cncIMiEAm10A+NJQqsPkMYRuNn4CRUNgUEnukxq3Si3HcoVaW0HbGxeZRBKawSVZePd/LWLkR3
+ 5ExvjSNe/7/rneQFSUuj+bgAAAA==
+To: Russell King <linux@armlinux.org.uk>, Heiko Stuebner <heiko@sntech.de>
+Cc: linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?H=C3=BCseyin_BIYIK?= <boogiepop@gmx.com>, 
+ Johan Jonker <jbx6244@gmail.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787960488; l=1108;
+ i=jbx6244@gmail.com; s=20260824; h=from:subject:message-id;
+ bh=Q4ZSXnEGPX/xMD0x0AdrlN53Gm6CKYRCS3MOUSLsunY=;
+ b=Vw6eld+44Gh/khFTRVcv/sOa5YWLdfmEdWq01JtLn4DNUXt+gABYGzH9ZTyfxX2eCa+C2CNu0
+ VDZe77oCt0WAimJY5KI+u9V3ya0gu5smP2WQO5UaK52asUC0kxxqc/7
+X-Developer-Key: i=jbx6244@gmail.com; a=ed25519;
+ pk=MK5Flx1ndjAF0uwXdNm8VvvoghD4KWCNd2hQE8QGyl0=
+X-Endpoint-Received: by B4 Relay for jbx6244@gmail.com/20260824 with auth_id=971
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-g_dbus_setup_bus() returns NULL when it cannot connect to the system
-bus. bluetoothctl currently passes that NULL connection to
-g_dbus_attach_object_manager(), causing libdbus to abort on its
-connection assertion.
+From: Hüseyin BIYIK <boogiepop@gmx.com>
 
-Initialize a DBusError, report the connection failure, and exit cleanly
-before using the connection.
+RK3066a CPU1 fails to come online. Fix by using
+a similar mailbox construction as in use with
+other Rockchip SoCs.
 
-Fixes: https://github.com/bluez/bluez/issues/2446
+Signed-off-by: Hüseyin BIYIK <boogiepop@gmx.com>
+Signed-off-by: Johan Jonker <jbx6244@gmail.com>
 ---
-Tested with make check (34 tests).
----
- client/main.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ arch/arm/mach-rockchip/platsmp.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/client/main.c b/client/main.c
-index 069e20485..d7cecb118 100644
---- a/client/main.c
-+++ b/client/main.c
-@@ -4017,6 +4017,7 @@ static bool timeout_quit(void *user_data)
- int main(int argc, char *argv[])
- {
- 	GDBusClient *client;
-+	DBusError error;
- 	int status;
- 	int timeout;
- 	unsigned int timeout_id;
-@@ -4048,7 +4049,21 @@ int main(int argc, char *argv[])
- 	else
- 		auto_register_agent = g_strdup("");
+diff --git a/arch/arm/mach-rockchip/platsmp.c b/arch/arm/mach-rockchip/platsmp.c
+index f659d894bfae..d7d080c29f3c 100644
+--- a/arch/arm/mach-rockchip/platsmp.c
++++ b/arch/arm/mach-rockchip/platsmp.c
+@@ -133,7 +133,8 @@ static int rockchip_boot_secondary(unsigned int cpu, struct task_struct *idle)
+ 	if (ret < 0)
+ 		return ret;
  
--	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
-+	dbus_error_init(&error);
-+	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &error);
-+	if (dbus_conn == NULL) {
-+		if (dbus_error_is_set(&error)) {
-+			fprintf(stderr, "Failed to connect to system bus: %s\n",
-+							error.message);
-+			dbus_error_free(&error);
-+		} else {
-+			fprintf(stderr, "Failed to connect to system bus\n");
-+		}
-+
-+		g_free(auto_register_agent);
-+		return EXIT_FAILURE;
-+	}
-+
- 	g_dbus_attach_object_manager(dbus_conn);
- 
- 	bt_shell_set_env("DBUS_CONNECTION", dbus_conn);
+-	if (read_cpuid_part() != ARM_CPU_PART_CORTEX_A9) {
++	if (read_cpuid_part() != ARM_CPU_PART_CORTEX_A9 ||
++	    of_machine_is_compatible("rockchip,rk3066a")) {
+ 		/*
+ 		 * We communicate with the bootrom to active the cpus other
+ 		 * than cpu0, after a blob of initialize code, they will
 
 ---
-base-commit: e8141342284be2a52e16565b96b513ebe1297d84
-change-id: 20260828-master-e87099ea4429
+base-commit: 2709dd5ae32f0828f386327c76bba9f39f63a1c6
+change-id: 20260829-cpu-c518bde9b473
 
 Best regards,
---  
-Tim Sweetman <agenttimblog@gmail.com>
+-- 
+Johan Jonker <jbx6244@gmail.com>
 
