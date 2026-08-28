@@ -1,16 +1,12 @@
 From: Jack Wu <jackbb_wu@compal.com>
-Subject: [PATCH v7 0/6] net: wwan: t9xx: Add MediaTek T9XX WWAN driver
-Date: Fri, 28 Aug 2026 17:17:17 +0800
-Message-Id: <20260828-t9xx_driver_v1-v7-0-bf8f6074d88a@compal.com>
+Date: Fri, 28 Aug 2026 17:17:18 +0800
+Subject: [PATCH v7 1/6] net: wwan: t9xx: Add PCIe core
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAB1SkWoC/3XP3UrEMBAF4FdZcm1l8t945XuILMkk40Z0u6S1V
- Ja+u+l60ZUgBMKB+U4mVzamktPIng5XVtKcxzyca7APB4Ynf35LXY41MwHCgBaum9yyHGPJcyr
- HmXfcKkW9J2ulYxVdSqK83ApfXn/z+BXeE05byzZxyuM0lO/bizPf5v4trwe6EAMlgcCTts84f
- F78x2O92NY+i90bDo0X1aPRPkYSMkhqvLzzQjVeVm8lEUgygKpvvNq9hXZ/Vb3vEcBFDQ514/W
- dF7Lxevu/sJ6Cc4ghNN7svue88aZ6gc448lFbNH/8uq4/KKbuTP8BAAA=
-X-Change-ID: 20260529-t9xx_driver_v1-1744f8af7739
+Message-Id: <20260828-t9xx_driver_v1-v7-1-bf8f6074d88a@compal.com>
+References: <20260828-t9xx_driver_v1-v7-0-bf8f6074d88a@compal.com>
+In-Reply-To: <20260828-t9xx_driver_v1-v7-0-bf8f6074d88a@compal.com>
 To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
  Sergey Ryazanov <ryazanov.s.a@gmail.com>, 
  Johannes Berg <johannes@sipsolutions.net>, 
@@ -29,503 +25,1672 @@ Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  linux-doc@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787908678; l=27498;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787908678; l=49666;
  i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=q8eqBjOp/PSu4fZI6FC/B4f2iIIhMwMBLHAx8HTf0BQ=;
- b=AczDrsNUGq+jSGhYCHoUF42KLevZtv/8LjrFPBLENsjjil7qR3NgwoG0gvUhL+fqDXFz3bJ0+
- 1L5cs/4mRGiAmFM0hCcyJaIZU1cX2v5uDu7IeAosZhPJIDhT5Vp4/rx
+ bh=Vfxz4KMd0V3mv/HzibsRz2XM3C4UrJ2Y1cnW/ftprkE=;
+ b=BOPGvJTdTiCBXqQrdbrNOcAx/kN3la9uOq7ELvZgEIE0G0g5e0QWWYkuH0tuYSyjFWApUMBq/
+ jw9whHyK7MkA0DqgxtPLOwMZZ5ejZkYll/DnJ4CPKAMOP7NrMP74B2R
 X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
  pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
 X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-T9XX is the PCIe host device driver for MediaTek's
-t900 modem. The driver uses the WWAN framework
-infrastructure to create the following control ports
-and network interfaces for data transactions.
-* /dev/wwan0at0 - Interface that supports AT commands.
-* /dev/wwan0mbim0 - Interface conforming to the MBIM
-  protocol.
-* wwan0-X - Primary network interface for IP traffic.
+Registers the T900 device driver with the kernel. Set up all
+the fundamental configurations for the device: PCIe layer,
+Modem Host Cross Core Interface (MHCCIF), modem common control
+operations, build infrastructure and MAINTAINERS entry.
 
-The main blocks in the T9XX driver are:
-* HW layer - Abstracts the hardware bus operations for
-   the device, and provides generic interfaces for the
-   transaction layer to get the device's information and
-   control the device's behavior. It includes:
+* PCIe layer code implements driver probe and removal, MSI-X
+  interrupt initialization and de-initialization, and the way
+  of resetting the device.
+* MHCCIF provides interrupt channels to communicate events
+  such as handshake, PM and port enumeration.
+* Modem common control operations provide the basic read/write
+  functions of the device's hardware registers,
+  mask/unmask/get/clear functions of the device's interrupt
+  registers and inquiry functions of the device's status.
+* Add MAINTAINERS entry for the MediaTek T9XX 5G WWAN modem
+  device driver.
 
-   * PCIe - Implements probe, removal and interrupt
-     handling.
-   * MHCCIF (Modem Host Cross-Core Interface) - Provides
-     interrupt channels for bidirectional event
-     notification such as handshake and port enumeration.
-
-* Transaction layer - Implements data transactions for
-   the control plane and the data plane. It includes:
-
-   * DPMAIF (Data Plane Modem AP Interface) - Controls
-     the hardware that provides uplink and downlink
-     queues for the data path. The data exchange takes
-     place using circular buffers to share data buffer
-     addresses and metadata to describe the packets.
-   * CLDMA (Cross Layer DMA) - Manages the hardware
-     used by the port layer to send control messages to
-     the device using MediaTek's CCCI (Cross-Core
-     Communication Interface) protocol.
-   * TX Services - Dispatch packets from the port layer
-     to the device.
-   * RX Services - Dispatch packets to the port layer
-     when receiving packets from the device.
-
-* Port layer - Provides control plane and data plane
-   interfaces to userspace. It includes:
-
-   * Control Plane - Provides device node interfaces
-     for controlling data transactions.
-   * Data Plane - Provides network link interfaces
-     wwanX (0, 1, 2...) for IP data transactions.
-
-* Device lifecycle management - Contains the logic that
-   keeps the device working. It includes:
-
-   * FSM (Finite State Machine) - Drives the T9xx
-     device lifecycle (boot handshake, error recovery,
-     removal), and notifies each module when the state
-     changes.
-
-The compilation of the T9XX driver is enabled by the
-CONFIG_MTK_T9XX and CONFIG_MTK_T9XX_PCI config option
-which depends on CONFIG_WWAN.
-
-This submission covers the control plane only
-(patches 1-6). The data plane will follow in a
-separate series once the control plane is accepted.
-
+Signed-off-by: Jack Wu <jackbb_wu@compal.com>
 ---
-Changes in v7:
-- Cover letter: renamed "Core logic" to "Device lifecycle management".
-  The FSM is T9xx-specific (same model as the in-tree t7xx driver) and
-  stays in the driver rather than the WWAN framework.
-- Patch 1 (Add PCIe core):
-  - Removed RGU wording from commit message, no RGU code in the series
-  - Removed `select NET_DEVLINK` from Kconfig, no devlink consumer
-  - Reordered ATR setup: program TRSL_ADDR/TRSL_PARAM before enabling
-    ATR in SRC_ADDR_LSB, with a readback, matching t7xx
-  - Adopted the t7xx IRQ model: require exactly MTK_IRQ_CNT_MAX MSI-X
-    vectors with one handler per vector; removed the merged-IRQ mode
-    and scoped dispatch to each vector's own status bits
-  - Fixed IRQ callback publish ordering: WRITE_ONCE + smp_wmb on
-    register, READ_ONCE + smp_rmb in the interrupt handler
-  - Added hw_bits == 0 guard in mtk_pci_send_ext_evt() to reject
-    unmapped event channels
-  - MHCCIF callbacks stay under spin_lock_bh by design; added a comment
-    documenting the must-not-sleep callback contract
-  - Added a drain loop in mtk_mhccif_exit() to free any remaining
-    callback nodes
-  - Moved cancel_work_sync(&priv->mhccif_work) before mtk_pci_pldr()
-    in remove, preventing worker MMIO during the power cycle
-  - Squashed the MAINTAINERS entry into this patch (was Patch 7); the
-    series is now 6 patches
-- Patch 2 (Add control plane transaction layer):
-  - Commit message and Kconfig help text now name both modules
-    (mtk_t9xx and mtk_t9xx_pcie)
-  - Reworded mtk_ctrl_exit() kernel-doc: the allocation itself is
-    devres-managed and freed on driver detach
-- Patch 3 (Add control DMA interface):
-  - RX re-map failure now keeps the buffer in its slot instead of
-    freeing it and advancing free_idx, preventing a permanent ring
-    stall from a stale GPD DMA address
-  - mtk_cldma_stop_queue() returns -ETIMEDOUT on poll timeout; alloc
-    paths abort on failure, free paths warn and proceed
-  - Added READ_ONCE() for the free_idx and tx_started reads in
-    mtk_cldma_start_xfer()
-  - mtk_cldma_get_tx_start_addr() reads ADDRL+ADDRH as u64, so a >4GB
-    DMA address is not mistaken for "queue not started"
-  - mtk_cldma_open() decrements usr_cnt on failure. Beyond the emailed
-    reply: mtk_pcie_hif_init() re-zeroes usr_cnt and ENABLE/DISABLE no
-    longer gate on TX budget, so a channel reopens after devlink reload
-  - mtk_cldma_close() completes the TRB with -EPIPE when drv_info is
-    already gone, instead of stalling the submitter until timeout
-  - mtk_cldma_txbuf_set() returns -ENOMEM instead of -EAGAIN on
-    dma_map failure (no infinite retry); dev_err_ratelimited
-  - Added the 0x0900 (MTK reference) entry to mtk_ctrl_info_tbl[];
-    both PCI IDs are now present in all dispatch tables
-  - Documented the single-consumer assumption of
-    mtk_ctrl_trb_handler() in a comment
-  - Added a submit_lock mutex closing the submit vs. hif_exit race on
-    trans->available; hif_cmd_func() now checks available
-  - Kept the empty queue table: queue_info entries are populated by
-    the next patch "Add control port"
-  - Commit message notes TX/RX paths are wired up by later patches
-  - hif_exit has no caller at this commit, but ops->init is not called
-    either, so nothing is allocated to leak; patch 5 wires up both
-  - The trb_handler default case completes the TRB with -EINVAL
-    instead of silently leaking the SKB
-  - Documented the non-BD skb_headlen() == skb->len invariant
-  - trb_open_priv overlay size is safe by construction
-  - Removed the unused CLDMA4 support here at the source, instead of
-    introducing it and deleting it again in Patch 5
-  - Fixed an skb leak in the mtk_cldma_rxq_free() BD path: the parent
-    skb was never freed after detaching frag_list
-  - Replaced the free_idx/wr_idx boundary check added in v5 with a
-    per-queue ring_lock following drivers/net/wwan/t7xx: the check
-    raced with submit_tx and could stall TX forever; the lock also
-    closes the submit/reclaim race the check was originally added for
-  - Removed the write-only queues_cnt and tx_req.data_vm_addr fields
-- Patch 5 (Add FSM thread):
-  - Commit message: five FSM states (not seven); now describes the
-    HS1/HS2/HS3 handshake and CLDMA bring-up/teardown in detail
-  - Check ops->init() return in FSM_STATE_ON; NULL guard for srv in
-    trb_srv_exit(); check mtk_cldma_dev_init() return in the listener
-  - Kept the HS2 feature parser as is: the protocol requires dense
-    ascending order and the ft_id check catches violations
-  - Reject data_len == 0 before calling the query_rtft handler
-  - Drop duplicate HS2 messages when hs_info->rt_data is already set
-  - Added a notifier_lock mutex protecting FSM notifier list walks
-  - Reordered HS2 handling: parse HS2, send HS3, and only then switch
-    state, so FSM_STATE_READY implies HS3 was delivered
-  - Unmask the HS channels on handshake error so the modem can retry
-  - Moved wake_up_process() under evtq_lock with a fsm_handler NULL
-    check; exit sets GATECLOSED and clears fsm_handler under the lock
-  - mtk_fsm_hs_info_init() propagates event-registration failures and
-    unwinds on error
-  - The CLDMA ISR logs, clears and re-unmasks QUEUE_ERROR bits
-  - CLDMA dev_exit unregisters the IRQ callback before mask +
-    synchronize_irq, preventing ISR re-arm after teardown
-  - Reordered FSM_STATE_OFF teardown: stop the TRB threads before
-    freeing CLDMA, with the per-hif teardown moved into
-    mtk_cldma_exit(); fixes a silently skipped teardown that broke the
-    next reset cycle and leaked the CLDMA resources
-  - mtk_trans_ctrl_exit() falls back to hif_exit when the
-    FSM_STATE_OFF teardown never ran (guarded by trans->available)
-  - mtk_pci_dev_start() propagates evt_submit/fsm_start errors
-  - Restored TASK_INTERRUPTIBLE for the FSM event kthread: the v2 flip
-    to TASK_UNINTERRUPTIBLE was not requested by review, and an idle
-    D-state kthread blocks suspend and trips the hung-task detector
-- Patch 6 (Add AT & MBIM WWAN ports):
-  - Check and log mtk_port_enable_by_type() failure in the FSM state
-    handler
-  - A short WWAN write now returns -EIO; consume_skb() on success
-  - The wwan_enable failure path calls mtk_port_ch_disable() to undo
-    usr_cnt and partial resources
-  - Publish the wwan_port pointer only after IS_ERR validation, so the
-    RX path never sees an ERR_PTR
-  - Pass wwan_port_caps (frag_len = negotiated tx_mtu, CCCI header
-    headroom) to wwan_create_port(); a tx_mtu == 0 guard prevents
-    userspace write() from spinning forever on frag_len == 0
-  - Set PORT_S_WR/PORT_S_ENABLE before wwan_create_port() and clear
-    both bits on failure
-- Link to v6: https://patch.msgid.link/20260811-t9xx_driver_v1-v6-0-2c969fad57c6@compal.com
+ MAINTAINERS                                   |   11 +
+ drivers/net/wwan/Kconfig                      |   11 +
+ drivers/net/wwan/Makefile                     |    1 +
+ drivers/net/wwan/t9xx/Makefile                |   10 +
+ drivers/net/wwan/t9xx/mtk_dev.h               |  108 +++
+ drivers/net/wwan/t9xx/pcie/mtk_pci.c          | 1047 +++++++++++++++++++++++++
+ drivers/net/wwan/t9xx/pcie/mtk_pci.h          |  233 ++++++
+ drivers/net/wwan/t9xx/pcie/mtk_pci_drv_m9xx.c |   69 ++
+ drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h      |   69 ++
+ 9 files changed, 1559 insertions(+)
 
-Changes in v6:
-- Patch 3 (Add control DMA interface):
-  - Move extern declarations for mtk_cldma_regs_m9xx and
-    cldma_drv_ops_m9xx from Patch 5 to Patch 3 where the
-    symbols are first defined, fixing sparse W=1 C=1 warnings
-  - Fix RX done recycle path: skip buffer recycle in BD mode
-    (nr_bds > 0) to prevent BDP flag mismatch causing HW to
-    misinterpret data buffer address as BD chain pointer
-    [sashiko]
-  - Fix RX done recycle path: on dma_map_single failure,
-    free skb and advance free_idx instead of goto out, to
-    prevent ring stall [sashiko]
-- Patch 4 (Add control port):
-  - Replace wake_up_interruptible_all() with wake_up_all()
-    for trb_wq and rx_wq in open/close/tx completion
-    callbacks and common_close, fixing mismatch with
-    wait_event_timeout (TASK_UNINTERRUPTIBLE) waiters in
-    ch_enable/ch_disable that caused spurious timeouts
-    [sashiko]
-- Link to v5: https://patch.msgid.link/20260723-t9xx_driver_v1-v5-0-b27afb99ccbb@compal.com
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 461a3eed6129..8f13ef7440ce 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -16494,6 +16494,17 @@ L:	netdev@vger.kernel.org
+ S:	Supported
+ F:	drivers/net/wwan/t7xx/
+ 
++MEDIATEK T9XX 5G WWAN MODEM DRIVER
++M:	Jack Wu <jackbb_wu@compal.com>
++M:	Robert Yu <robert_yu@compal.com>
++M:	Jeff Chang <Jeff_Chang@compal.com>
++R:	Wen-Zhi Huang <wen-zhi.huang@mediatek.com>
++R:	Shi-Wei Yeh <shi-wei.yeh@mediatek.com>
++R:	Minano Tseng <Minano.tseng@mediatek.com>
++L:	netdev@vger.kernel.org
++S:	Supported
++F:	drivers/net/wwan/t9xx/
++
+ MEDIATEK USB3 DRD IP DRIVER
+ M:	Chunfeng Yun <chunfeng.yun@mediatek.com>
+ L:	linux-usb@vger.kernel.org
+diff --git a/drivers/net/wwan/Kconfig b/drivers/net/wwan/Kconfig
+index 88df55d78d90..55c45af410ee 100644
+--- a/drivers/net/wwan/Kconfig
++++ b/drivers/net/wwan/Kconfig
+@@ -121,6 +121,17 @@ config MTK_T7XX
+ 
+ 	  If unsure, say N.
+ 
++config MTK_T9XX
++	tristate "MediaTek PCIe 5G WWAN modem T9xx device"
++	depends on PCI && ACPI
++	help
++	  Enables MediaTek PCIe based 5G WWAN modem (T9xx series) device.
++
++	  To compile this driver as a module, choose M here: the module will be
++	  called mtk_t9xx.
++
++	  If unsure, say N.
++
+ endif # WWAN
+ 
+ endmenu
+diff --git a/drivers/net/wwan/Makefile b/drivers/net/wwan/Makefile
+index 3960c0ae2445..7361eef4c472 100644
+--- a/drivers/net/wwan/Makefile
++++ b/drivers/net/wwan/Makefile
+@@ -14,3 +14,4 @@ obj-$(CONFIG_QCOM_BAM_DMUX) += qcom_bam_dmux.o
+ obj-$(CONFIG_RPMSG_WWAN_CTRL) += rpmsg_wwan_ctrl.o
+ obj-$(CONFIG_IOSM) += iosm/
+ obj-$(CONFIG_MTK_T7XX) += t7xx/
++obj-$(CONFIG_MTK_T9XX) += t9xx/
+diff --git a/drivers/net/wwan/t9xx/Makefile b/drivers/net/wwan/t9xx/Makefile
+new file mode 100644
+index 000000000000..6f2dd3f91454
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/Makefile
+@@ -0,0 +1,10 @@
++# SPDX-License-Identifier: GPL-2.0-only
++
++ccflags-y += -I$(src)/pcie
++ccflags-y += -I$(src)
++
++obj-$(CONFIG_MTK_T9XX) += mtk_t9xx.o
++
++mtk_t9xx-y := \
++	pcie/mtk_pci.o \
++	pcie/mtk_pci_drv_m9xx.o
+diff --git a/drivers/net/wwan/t9xx/mtk_dev.h b/drivers/net/wwan/t9xx/mtk_dev.h
+new file mode 100644
+index 000000000000..8278a0e2875e
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/mtk_dev.h
+@@ -0,0 +1,108 @@
++/* SPDX-License-Identifier: GPL-2.0-only
++ *
++ * Copyright (c) 2022, MediaTek Inc.
++ */
++
++#ifndef __MTK_DEV_H__
++#define __MTK_DEV_H__
++
++#include <linux/dma-mapping.h>
++#include <linux/dmapool.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/sched.h>
++#include <linux/slab.h>
++#include <linux/spinlock.h>
++
++#define MTK_DEV_STR_LEN 16
++
++enum mtk_user_id {
++	MTK_USER_MIN,
++	MTK_USER_CTRL,
++	MTK_USER_DATA,
++	MTK_USER_MAX
++};
++
++enum mtk_dev_evt_h2d {
++	DEV_EVT_H2D_DEVICE_RESET	= BIT(2),
++	DEV_EVT_H2D_MAX			= BIT(5)
++};
++
++enum mtk_dev_evt_d2h {
++	DEV_EVT_D2H_BOOT_FLOW_SYNC	= BIT(4),
++	DEV_EVT_D2H_ASYNC_HS_NOTIFY_SAP = BIT(5),
++	DEV_EVT_D2H_ASYNC_HS_NOTIFY_MD	= BIT(6),
++	DEV_EVT_D2H_MAX			= BIT(11)
++};
++
++struct mtk_md_dev;
++
++struct mtk_dev_ops {
++	u32 (*get_dev_state)(struct mtk_md_dev *mdev);
++	void (*ack_dev_state)(struct mtk_md_dev *mdev, u32 state);
++	u32 (*get_dev_cfg)(struct mtk_md_dev *mdev);
++	int (*register_dev_evt)(struct mtk_md_dev *mdev, u32 dev_evt,
++				int (*evt_cb)(u32 status, void *data), void *data);
++	void (*unregister_dev_evt)(struct mtk_md_dev *mdev, u32 dev_evt);
++	void (*mask_dev_evt)(struct mtk_md_dev *mdev, u32 dev_evt);
++	void (*unmask_dev_evt)(struct mtk_md_dev *mdev, u32 dev_evt);
++	void (*clear_dev_evt)(struct mtk_md_dev *mdev, u32 dev_evt);
++	int (*send_dev_evt)(struct mtk_md_dev *mdev, u32 dev_evt);
++};
++
++/* mtk_md_dev defines the structure of MTK modem device */
++struct mtk_md_dev {
++	struct device *dev;
++	const struct mtk_dev_ops *dev_ops;
++	void *hw_priv;
++	u32 hw_ver;
++	char dev_str[MTK_DEV_STR_LEN];
++};
++
++static inline u32 mtk_dev_get_dev_state(struct mtk_md_dev *mdev)
++{
++	return mdev->dev_ops->get_dev_state(mdev);
++}
++
++static inline void mtk_dev_ack_dev_state(struct mtk_md_dev *mdev, u32 state)
++{
++	return mdev->dev_ops->ack_dev_state(mdev, state);
++}
++
++static inline u32 mtk_dev_get_dev_cfg(struct mtk_md_dev *mdev)
++{
++	return mdev->dev_ops->get_dev_cfg(mdev);
++}
++
++static inline int mtk_dev_register_dev_evt(struct mtk_md_dev *mdev, u32 dev_evt,
++					   int (*evt_cb)(u32 status, void *data), void *data)
++{
++	return mdev->dev_ops->register_dev_evt(mdev, dev_evt, evt_cb, data);
++}
++
++static inline void mtk_dev_unregister_dev_evt(struct mtk_md_dev *mdev, u32 dev_evt)
++{
++	mdev->dev_ops->unregister_dev_evt(mdev, dev_evt);
++}
++
++static inline void mtk_dev_mask_dev_evt(struct mtk_md_dev *mdev, u32 dev_evt)
++{
++	mdev->dev_ops->mask_dev_evt(mdev, dev_evt);
++}
++
++static inline void mtk_dev_unmask_dev_evt(struct mtk_md_dev *mdev, u32 dev_evt)
++{
++	mdev->dev_ops->unmask_dev_evt(mdev, dev_evt);
++}
++
++static inline void mtk_dev_clear_dev_evt(struct mtk_md_dev *mdev, u32 dev_evt)
++{
++	mdev->dev_ops->clear_dev_evt(mdev, dev_evt);
++}
++
++static inline int mtk_dev_send_dev_evt(struct mtk_md_dev *mdev, u32 dev_evt)
++{
++	return mdev->dev_ops->send_dev_evt(mdev, dev_evt);
++}
++
++#endif /* __MTK_DEV_H__ */
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci.c b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
+new file mode 100644
+index 000000000000..a89780390dd2
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
+@@ -0,0 +1,1047 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (c) 2022, MediaTek Inc.
++ */
++
++#include <linux/acpi.h>
++#include <linux/aer.h>
++#include <linux/bitfield.h>
++#include <linux/debugfs.h>
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/dma-mapping.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++
++#include "mtk_dev.h"
++#include "mtk_pci.h"
++#include "mtk_pci_reg.h"
++
++#define MTK_PCI_BAR_NUM		6
++#define MTK_PCI_TRANSPARENT_ATR_SIZE	(0x3F)
++#define MTK_PCI_MINIMUM_ATR_SIZE	(0x1000)
++#define ATR_SIZE_LO32_MASK		GENMASK_ULL(31, 0)
++#define ATR_SIZE_HI32_MASK		GENMASK_ULL(63, 32)
++#define ATR_SIZE_BIAS_FROM_LO32		2
++#define ATR_ADDR_ALIGN_MASK		0xFFFFF000
++#define ATR_EN				BIT(0)
++#define ATR_PARAM_OFFSET		16
++/* Delay between ACPI PXP._OFF and _ON for modem power cycle stabilization */
++#define MTK_PLDR_POWER_OFF_DELAY_MS	500
++#define SET_HW_BITS(dest, chs, mhccif, dev)		\
++	({						\
++		if ((chs) & (dev))					\
++			(dest) |= FIELD_PREP(mhccif, 1);		\
++	})
++
++struct mtk_mhccif_cb {
++	struct list_head entry;
++	int (*evt_cb)(u32 status, void *data);
++	void *data;
++	u32 chs;
++};
++
++/**
++ * mtk_pci_setup_atr() - Configure a PCIe address translation rule
++ * @mdev: MTK MD device
++ * @cfg: ATR configuration parameters
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_setup_atr(struct mtk_md_dev *mdev, struct mtk_atr_cfg *cfg)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	u32 addr, val, size_h, size_l;
++	int atr_size, pos, offset;
++
++	if (cfg->transparent) {
++		/* No address conversion is performed */
++		atr_size = MTK_PCI_TRANSPARENT_ATR_SIZE;
++	} else {
++		if (cfg->size < MTK_PCI_MINIMUM_ATR_SIZE)
++			cfg->size = MTK_PCI_MINIMUM_ATR_SIZE;
++
++		if (cfg->src_addr & (cfg->size - 1)) {
++			dev_err(mdev->dev, "Invalid atr src addr is not aligned to size\n");
++			return -EFAULT;
++		}
++
++		if (cfg->trsl_addr & (cfg->size - 1)) {
++			dev_err(mdev->dev,
++				"Invalid atr trsl addr is not aligned to size, %llx, %llx\n",
++				cfg->trsl_addr, cfg->size - 1);
++			return -EFAULT;
++		}
++
++		size_l = FIELD_GET(ATR_SIZE_LO32_MASK, cfg->size);
++		size_h = FIELD_GET(ATR_SIZE_HI32_MASK, cfg->size);
++		pos = ffs(size_l);
++		if (pos) {
++			atr_size = pos - ATR_SIZE_BIAS_FROM_LO32;
++		} else {
++			pos = ffs(size_h);
++			atr_size = pos + 32 - ATR_SIZE_BIAS_FROM_LO32;
++		}
++	}
++
++	/* Calculate table offset */
++	offset = ATR_PORT_OFFSET * cfg->port + ATR_TABLE_OFFSET * cfg->table;
++
++	addr = REG_ATR_PCIE_WIN0_T0_SRC_ADDR_MSB + offset;
++	val = (u32)(cfg->src_addr >> 32);
++	mtk_pci_mac_write32(priv, addr, val);
++
++	addr = REG_ATR_PCIE_WIN0_T0_TRSL_ADDR_MSB + offset;
++	val = (u32)(cfg->trsl_addr >> 32);
++	mtk_pci_mac_write32(priv, addr, val);
++
++	addr = REG_ATR_PCIE_WIN0_T0_TRSL_ADDR_LSB + offset;
++	val = (u32)(cfg->trsl_addr & ATR_ADDR_ALIGN_MASK);
++	mtk_pci_mac_write32(priv, addr, val);
++
++	/* TRSL_PARAM */
++	addr = REG_ATR_PCIE_WIN0_T0_TRSL_PARAM + offset;
++	val = (cfg->trsl_param << ATR_PARAM_OFFSET) | cfg->trsl_id;
++	mtk_pci_mac_write32(priv, addr, val);
++
++	/* Enable ATR last, after translation target is fully programmed */
++	addr = REG_ATR_PCIE_WIN0_T0_SRC_ADDR_LSB + offset;
++	val = (u32)(cfg->src_addr & ATR_ADDR_ALIGN_MASK) | (atr_size << 1) | ATR_EN;
++	mtk_pci_mac_write32(priv, addr, val);
++
++	/* Ensure ATR is set */
++	mtk_pci_mac_read32(priv, addr);
++
++	return 0;
++}
++
++/**
++ * mtk_pci_atr_disable() - Disable all PCIe address translation rules
++ * @priv: MTK PCI private data
++ */
++void mtk_pci_atr_disable(struct mtk_pci_priv *priv)
++{
++	int port, tbl, offset;
++	u32 val;
++
++	/* Disable all ATR table for all ports */
++	for (port = ATR_SRC_PCI_WIN0; port <= ATR_SRC_AXIS_3; port++)
++		for (tbl = 0; tbl < ATR_TABLE_NUM_PER_ATR; tbl++) {
++			/* Calculate table offset */
++			offset = ATR_PORT_OFFSET * port + ATR_TABLE_OFFSET * tbl;
++			val = mtk_pci_mac_read32(priv, REG_ATR_PCIE_WIN0_T0_SRC_ADDR_LSB + offset);
++			val = val & (~BIT(0));
++			/* Disable table by SRC_ADDR_L */
++			mtk_pci_mac_write32(priv, REG_ATR_PCIE_WIN0_T0_SRC_ADDR_LSB + offset, val);
++		}
++}
++
++/**
++ * mtk_pci_get_dev_state() - Read the device state from the modem
++ * @mdev: MTK MD device
++ *
++ * Return: Device state value.
++ */
++u32 mtk_pci_get_dev_state(struct mtk_md_dev *mdev)
++{
++	return mtk_pci_mac_read32(mdev->hw_priv, REG_PCIE_DEBUG_DUMMY_7);
++}
++
++/**
++ * mtk_pci_ack_dev_state() - Acknowledge the device state to the modem
++ * @mdev: MTK MD device
++ * @state: State value to acknowledge
++ */
++void mtk_pci_ack_dev_state(struct mtk_md_dev *mdev, u32 state)
++{
++	mtk_pci_mac_write32(mdev->hw_priv, REG_PCIE_DEBUG_DUMMY_7, state);
++}
++
++/**
++ * mtk_pci_get_irq_id() - Map an IRQ source to its hardware IRQ ID
++ * @mdev: MTK MD device
++ * @irq_src: IRQ source enum
++ *
++ * Return: IRQ ID on success, -EINVAL on failure.
++ */
++int mtk_pci_get_irq_id(struct mtk_md_dev *mdev, enum mtk_irq_src irq_src)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	const int *irq_tbl = priv->cfg->irq_tbl;
++	int irq_id = -EINVAL;
++
++	if (irq_src > MTK_IRQ_SRC_MIN && irq_src < MTK_IRQ_SRC_MAX) {
++		irq_id = irq_tbl[irq_src];
++		if (irq_id < 0 || irq_id >= MTK_IRQ_CNT_MAX)
++			irq_id = -EINVAL;
++	}
++
++	return irq_id;
++}
++
++/**
++ * mtk_pci_get_virq_id() - Get the Linux virtual IRQ for a hardware IRQ ID
++ * @mdev: MTK MD device
++ * @irq_id: Hardware IRQ ID
++ *
++ * Return: Virtual IRQ number on success, negative error code on failure.
++ */
++int mtk_pci_get_virq_id(struct mtk_md_dev *mdev, int irq_id)
++{
++	struct pci_dev *pdev = to_pci_dev(mdev->dev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	if (irq_id < 0 || irq_id >= priv->irq_cnt)
++		return -EINVAL;
++
++	return pci_irq_vector(pdev, irq_id);
++}
++
++/**
++ * mtk_pci_register_irq() - Register a callback for a hardware IRQ
++ * @mdev: MTK MD device
++ * @irq_id: Hardware IRQ ID
++ * @irq_cb: Callback function
++ * @data: Private data passed to callback
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_register_irq(struct mtk_md_dev *mdev, int irq_id,
++			 int (*irq_cb)(int irq_id, void *data), void *data)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	if ((irq_id < 0 || irq_id >= MTK_IRQ_CNT_MAX) || !irq_cb)
++		return -EINVAL;
++
++	if (priv->irq_cb_list[irq_id]) {
++		dev_err(mdev->dev,
++			"Unable to register irq, irq_id=%d, it's already been register by %ps.\n",
++			irq_id, priv->irq_cb_list[irq_id]);
++		return -EFAULT;
++	}
++	priv->irq_cb_data[irq_id] = data;
++	smp_wmb(); /* Ensure data is visible before callback */
++	WRITE_ONCE(priv->irq_cb_list[irq_id], irq_cb);
++
++	return 0;
++}
++
++/**
++ * mtk_pci_unregister_irq() - Unregister a hardware IRQ callback
++ * @mdev: MTK MD device
++ * @irq_id: Hardware IRQ ID
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_unregister_irq(struct mtk_md_dev *mdev, int irq_id)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	if (irq_id < 0 || irq_id >= MTK_IRQ_CNT_MAX)
++		return -EINVAL;
++
++	if (!priv->irq_cb_list[irq_id]) {
++		dev_err(mdev->dev, "irq_id=%d has not been registered\n", irq_id);
++		return -EFAULT;
++	}
++	WRITE_ONCE(priv->irq_cb_list[irq_id], NULL);
++	smp_wmb(); /* Ensure callback is NULL before clearing data */
++	priv->irq_cb_data[irq_id] = NULL;
++
++	return 0;
++}
++
++/**
++ * mtk_pci_mask_irq() - Mask (disable) a hardware IRQ
++ * @mdev: MTK MD device
++ * @irq_id: Hardware IRQ ID
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_mask_irq(struct mtk_md_dev *mdev, int irq_id)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	if (irq_id < 0 || irq_id >= MTK_IRQ_CNT_MAX ||
++	    priv->irq_type != PCI_IRQ_MSIX) {
++		dev_err(mdev->dev, "Failed to mask irq: input irq_id=%d\n", irq_id);
++		return -EINVAL;
++	}
++
++	mtk_pci_mac_write32(priv, REG_IMASK_HOST_MSIX_CLR_GRP0_0, BIT(irq_id));
++
++	return 0;
++}
++
++/**
++ * mtk_pci_unmask_irq() - Unmask (enable) a hardware IRQ
++ * @mdev: MTK MD device
++ * @irq_id: Hardware IRQ ID
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_unmask_irq(struct mtk_md_dev *mdev, int irq_id)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	if (irq_id < 0 || irq_id >= MTK_IRQ_CNT_MAX ||
++	    priv->irq_type != PCI_IRQ_MSIX) {
++		dev_err(mdev->dev, "Failed to unmask irq: input irq_id=%d\n", irq_id);
++		return -EINVAL;
++	}
++
++	mtk_pci_mac_write32(priv, REG_IMASK_HOST_MSIX_SET_GRP0_0, BIT(irq_id));
++
++	return 0;
++}
++
++/**
++ * mtk_pci_clear_irq() - Clear (acknowledge) a hardware IRQ
++ * @mdev: MTK MD device
++ * @irq_id: Hardware IRQ ID
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_clear_irq(struct mtk_md_dev *mdev, int irq_id)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	if (irq_id < 0 || irq_id >= MTK_IRQ_CNT_MAX ||
++	    priv->irq_type != PCI_IRQ_MSIX) {
++		dev_err(mdev->dev, "Failed to clear irq: input irq_id=%d\n", irq_id);
++		return -EINVAL;
++	}
++
++	mtk_pci_mac_write32(priv, REG_MSIX_ISTATUS_HOST_GRP0_0, BIT(irq_id));
++
++	return 0;
++}
++
++static u32 mtk_pci_ext_d2h_evt_hw_bits(u32 chs)
++{
++	u32 hw_bits = 0;
++
++	SET_HW_BITS(hw_bits, chs, MHCCIF_EP2RC_EVT_BOOT_FLOW_SYNC,
++		    DEV_EVT_D2H_BOOT_FLOW_SYNC);
++	SET_HW_BITS(hw_bits, chs, MHCCIF_EP2RC_EVT_ASYNC_HS_NOTIFY_SAP,
++		    DEV_EVT_D2H_ASYNC_HS_NOTIFY_SAP);
++	SET_HW_BITS(hw_bits, chs, MHCCIF_EP2RC_EVT_ASYNC_HS_NOTIFY_MD,
++		    DEV_EVT_D2H_ASYNC_HS_NOTIFY_MD);
++
++	return hw_bits;
++}
++
++static u32 mtk_pci_ext_d2h_evt_chs(u32 hw_bits)
++{
++	u32 chs = 0;
++
++	if (!hw_bits)
++		return chs;
++
++	chs = FIELD_PREP(DEV_EVT_D2H_BOOT_FLOW_SYNC,
++			 FIELD_GET(MHCCIF_EP2RC_EVT_BOOT_FLOW_SYNC, hw_bits)) |
++	      FIELD_PREP(DEV_EVT_D2H_ASYNC_HS_NOTIFY_SAP,
++			 FIELD_GET(MHCCIF_EP2RC_EVT_ASYNC_HS_NOTIFY_SAP, hw_bits)) |
++	      FIELD_PREP(DEV_EVT_D2H_ASYNC_HS_NOTIFY_MD,
++			 FIELD_GET(MHCCIF_EP2RC_EVT_ASYNC_HS_NOTIFY_MD, hw_bits));
++
++	return chs;
++}
++
++/**
++ * mtk_pci_register_ext_evt() - Register a callback for MHCCIF device events
++ * @mdev: MTK MD device
++ * @chs: Bitmask of event channels to register
++ * @evt_cb: Callback function
++ * @data: Private data passed to callback
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_register_ext_evt(struct mtk_md_dev *mdev, u32 chs,
++			     int (*evt_cb)(u32 status, void *data), void *data)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	struct mtk_mhccif_cb *cb;
++	int ret = 0;
++
++	if (!chs || !evt_cb)
++		return -EINVAL;
++
++	spin_lock_bh(&priv->mhccif_lock);
++	list_for_each_entry(cb, &priv->mhccif_cb_list, entry) {
++		if (cb->chs & chs) {
++			ret = -EFAULT;
++			dev_err(mdev->dev,
++				"Unable to register evt, intersection: chs=0x%08x&0x%08x cb=%ps\n",
++				chs, cb->chs, cb->evt_cb);
++			goto err_spin_unlock;
++		}
++	}
++	cb = kzalloc(sizeof(*cb), GFP_ATOMIC);
++	if (!cb) {
++		ret = -ENOMEM;
++		goto err_spin_unlock;
++	}
++	cb->evt_cb = evt_cb;
++	cb->data = data;
++	cb->chs = chs;
++	list_add_tail(&cb->entry, &priv->mhccif_cb_list);
++err_spin_unlock:
++	spin_unlock_bh(&priv->mhccif_lock);
++
++	return ret;
++}
++
++/**
++ * mtk_pci_unregister_ext_evt() - Unregister an MHCCIF device event callback
++ * @mdev: MTK MD device
++ * @chs: Bitmask of event channels to unregister
++ */
++void mtk_pci_unregister_ext_evt(struct mtk_md_dev *mdev, u32 chs)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	struct mtk_mhccif_cb *cb, *next;
++
++	if (!chs)
++		return;
++
++	spin_lock_bh(&priv->mhccif_lock);
++	list_for_each_entry_safe(cb, next, &priv->mhccif_cb_list, entry) {
++		if (cb->chs == chs) {
++			list_del(&cb->entry);
++			kfree(cb);
++			goto out;
++		}
++	}
++	dev_warn(mdev->dev,
++		 "Unable to unregister evt, no chs=0x%08x has been registered.\n", chs);
++out:
++	spin_unlock_bh(&priv->mhccif_lock);
++}
++
++/**
++ * mtk_pci_mask_ext_evt() - Mask (disable) MHCCIF device events
++ * @mdev: MTK MD device
++ * @chs: Bitmask of event channels to mask
++ */
++void mtk_pci_mask_ext_evt(struct mtk_md_dev *mdev, u32 chs)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	u32 hw_bits = mtk_pci_ext_d2h_evt_hw_bits(chs);
++
++	mtk_pci_write32(mdev, priv->cfg->mhccif_rc_base_addr +
++			MHCCIF_EP2RC_SW_INT_EAP_MASK_SET, hw_bits);
++}
++
++/**
++ * mtk_pci_unmask_ext_evt() - Unmask (enable) MHCCIF device events
++ * @mdev: MTK MD device
++ * @chs: Bitmask of event channels to unmask
++ */
++void mtk_pci_unmask_ext_evt(struct mtk_md_dev *mdev, u32 chs)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	u32 hw_bits = mtk_pci_ext_d2h_evt_hw_bits(chs);
++
++	mtk_pci_write32(mdev, priv->cfg->mhccif_rc_base_addr +
++			MHCCIF_EP2RC_SW_INT_EAP_MASK_CLR, hw_bits);
++}
++
++/**
++ * mtk_pci_clear_ext_evt() - Clear (acknowledge) MHCCIF device events
++ * @mdev: MTK MD device
++ * @chs: Bitmask of event channels to clear
++ */
++void mtk_pci_clear_ext_evt(struct mtk_md_dev *mdev, u32 chs)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	u32 hw_bits = mtk_pci_ext_d2h_evt_hw_bits(chs);
++
++	mtk_pci_write32(mdev, priv->cfg->mhccif_rc_base_addr +
++			MHCCIF_EP2RC_SW_INT_ACK, hw_bits);
++}
++
++static u32 mtk_pci_ext_h2d_evt_hw_bits(u32 chs)
++{
++	u32 hw_bits = 0;
++
++	SET_HW_BITS(hw_bits, chs, MHCCIF_RC2EP_EVT_DEVICE_RESET,
++		    DEV_EVT_H2D_DEVICE_RESET);
++	return hw_bits;
++}
++
++/**
++ * mtk_pci_send_ext_evt() - Send an MHCCIF event to the modem
++ * @mdev: MTK MD device
++ * @ch: Event channel to trigger (must be a single bit)
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_send_ext_evt(struct mtk_md_dev *mdev, u32 ch)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	u32 rc_base, hw_bits;
++
++	rc_base = priv->cfg->mhccif_rc_base_addr;
++
++	/* Only allow one ch to be triggered at a time */
++	if (!is_power_of_2(ch)) {
++		dev_err(mdev->dev, "Unsupported ext evt ch=0x%08x\n", ch);
++		return -EINVAL;
++	}
++
++	hw_bits = mtk_pci_ext_h2d_evt_hw_bits(ch);
++	if (!hw_bits) {
++		dev_err(mdev->dev, "Unmapped ext evt ch=0x%08x\n", ch);
++		return -EINVAL;
++	}
++
++	mtk_pci_write32(mdev, rc_base + MHCCIF_RC2EP_SW_BSY, hw_bits);
++	mtk_pci_write32(mdev, rc_base + MHCCIF_RC2EP_SW_TCHNUM, ffs(hw_bits) - 1);
++	return 0;
++}
++
++static u32 mtk_pci_get_ext_evt_hw_status(struct mtk_md_dev *mdev)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	return mtk_pci_read32(mdev, priv->cfg->mhccif_rc_base_addr +
++			      MHCCIF_EP2RC_SW_INT_STS);
++}
++
++/**
++ * mtk_pci_fldr() - Perform a Function Level Device Reset via ACPI _RST
++ * @mdev: MTK MD device
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_fldr(struct mtk_md_dev *mdev)
++{
++	struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
++	acpi_status acpi_ret;
++	acpi_handle handle;
++
++	if (acpi_disabled) {
++		dev_err(mdev->dev, "Unsupported, acpi function isn't enable\n");
++		return -ENODEV;
++	}
++
++	handle = ACPI_HANDLE(mdev->dev);
++
++	if (!handle) {
++		dev_err(mdev->dev, "Unsupported, acpi handle isn't found\n");
++		return -ENODEV;
++	}
++
++	if (!acpi_has_method(handle, "_RST")) {
++		dev_err(mdev->dev, "Unsupported, _RST method isn't found\n");
++		return -ENODEV;
++	}
++
++	acpi_ret = acpi_evaluate_object(handle, "_RST", NULL, &buffer);
++	if (ACPI_FAILURE(acpi_ret)) {
++		dev_err(mdev->dev, "Failed to execute _RST method: %s\n",
++			acpi_format_exception(acpi_ret));
++		return -EFAULT;
++	}
++
++	acpi_os_free(buffer.pointer);
++
++	return 0;
++}
++
++/**
++ * mtk_pci_pldr() - Perform a PCIe Link Down Reset via ACPI PXP._OFF/_ON
++ * @mdev: MTK MD device
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_pldr(struct mtk_md_dev *mdev)
++{
++	struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
++	struct pci_dev *bridge;
++	acpi_status acpi_ret;
++	acpi_handle handle;
++
++	if (acpi_disabled) {
++		dev_err(mdev->dev, "Unsupported, acpi function isn't enable\n");
++		return -ENODEV;
++	}
++
++	bridge = pci_upstream_bridge(to_pci_dev(mdev->dev));
++	if (!bridge) {
++		dev_err(mdev->dev, "Unable to find bridge\n");
++		return -ENODEV;
++	}
++
++	handle = ACPI_HANDLE(&bridge->dev);
++	if (!handle) {
++		dev_err(mdev->dev, "Unsupported, acpi handle isn't found\n");
++		return -ENODEV;
++	}
++	if (!acpi_has_method(handle, "PXP._OFF") ||
++	    !acpi_has_method(handle, "PXP._ON")) {
++		dev_err(mdev->dev, "Unsupported, pldr method isn't supported\n");
++		return -ENODEV;
++	}
++	acpi_ret = acpi_evaluate_object(handle, "PXP._OFF", NULL, &buffer);
++	if (ACPI_FAILURE(acpi_ret)) {
++		dev_err(mdev->dev, "Failed to execute _OFF method: %s\n",
++			acpi_format_exception(acpi_ret));
++		return -EFAULT;
++	}
++	acpi_os_free(buffer.pointer);
++
++	msleep(MTK_PLDR_POWER_OFF_DELAY_MS);
++
++	buffer.length = ACPI_ALLOCATE_BUFFER;
++	buffer.pointer = NULL;
++	acpi_ret = acpi_evaluate_object(handle, "PXP._ON", NULL, &buffer);
++	if (ACPI_FAILURE(acpi_ret)) {
++		dev_err(mdev->dev, "Failed to execute _ON method: %s\n",
++			acpi_format_exception(acpi_ret));
++		return -EFAULT;
++	}
++	acpi_os_free(buffer.pointer);
++
++	return 0;
++}
++
++/**
++ * mtk_pci_get_dev_cfg() - Read the device configuration from the modem
++ * @mdev: MTK MD device
++ *
++ * Return: Device configuration value.
++ */
++u32 mtk_pci_get_dev_cfg(struct mtk_md_dev *mdev)
++{
++	u32 val;
++
++	val = mtk_pci_mac_read32(mdev->hw_priv, REG_PCIE_DEBUG_DUMMY_4);
++	return (val >> MTK_CFG_INFO_BIT_SHIFT);
++}
++
++static int mtk_pci_dev_reset(struct mtk_md_dev *mdev, enum mtk_reset_type type)
++{
++	switch (type) {
++	case RESET_MHCCIF:
++		return mtk_pci_send_ext_evt(mdev, DEV_EVT_H2D_DEVICE_RESET);
++	case RESET_FLDR:
++		return mtk_pci_fldr(mdev);
++	case RESET_PLDR:
++		return mtk_pci_pldr(mdev);
++	default:
++		return -EINVAL;
++	}
++}
++
++/**
++ * mtk_pci_reset() - Reset the modem device
++ * @mdev: MTK MD device
++ * @type: Reset type (MHCCIF, FLDR, or PLDR)
++ *
++ * Return: 0 on success, negative error code on failure.
++ */
++int mtk_pci_reset(struct mtk_md_dev *mdev, enum mtk_reset_type type)
++{
++	return mtk_pci_dev_reset(mdev, type);
++}
++
++/**
++ * mtk_pci_link_check() - Check if the PCIe link to the modem is active
++ * @mdev: MTK MD device
++ *
++ * Return: true if the device is present, false otherwise.
++ */
++bool mtk_pci_link_check(struct mtk_md_dev *mdev)
++{
++	return pci_device_is_present(to_pci_dev(mdev->dev));
++}
++
++static void mtk_mhccif_isr_work(struct work_struct *work)
++{
++	struct mtk_pci_priv *priv =
++		container_of(work, struct mtk_pci_priv, mhccif_work);
++	struct mtk_md_dev *mdev = priv->irq_desc->mdev;
++	struct mtk_mhccif_cb *cb;
++	u32 stat, mask, chs;
++
++	stat = mtk_pci_get_ext_evt_hw_status(mdev);
++	mask = mtk_pci_read32(mdev, priv->cfg->mhccif_rc_base_addr
++		+ MHCCIF_EP2RC_SW_INT_EAP_MASK);
++	if (unlikely(stat == U32_MAX && !(mtk_pci_link_check(mdev)))) {
++		/* When link failed, we don't need to unmask/clear. */
++		dev_err(mdev->dev, "Failed to check link in MHCCIF handler.\n");
++		return;
++	}
++
++	stat &= ~mask;
++	chs = mtk_pci_ext_d2h_evt_chs(stat);
++	/* Callbacks must not sleep or modify mhccif_cb_list */
++	spin_lock_bh(&priv->mhccif_lock);
++	list_for_each_entry(cb, &priv->mhccif_cb_list, entry) {
++		if (cb->chs & chs)
++			cb->evt_cb(cb->chs & chs, cb->data);
++	}
++	spin_unlock_bh(&priv->mhccif_lock);
++
++	mtk_pci_clear_irq(mdev, priv->mhccif_irq_id);
++	mtk_pci_unmask_irq(mdev, priv->mhccif_irq_id);
++}
++
++static const struct  pci_device_id t9xx_pci_table[] = {
++	MTK_PCI_DEV_CFG(0x0900, mtk_dev_cfg_0900),
++	CEI_PCI_DEV_CFG(0x01CA, mtk_dev_cfg_0900),
++	{/* end: all zeroes */}
++};
++
++MODULE_DEVICE_TABLE(pci, t9xx_pci_table);
++
++static int mtk_pci_bar_init(struct mtk_md_dev *mdev)
++{
++	struct pci_dev *pdev = to_pci_dev(mdev->dev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	u32 bar[MTK_PCI_BAR_NUM];
++	int i, ret;
++
++	for (i = 0; i < MTK_PCI_BAR_NUM; i++)
++		pci_read_config_dword(to_pci_dev(mdev->dev),
++				      PCI_BASE_ADDRESS_0 + (i << 2), bar + i);
++
++	ret = pcim_iomap_regions(pdev, MTK_REQUESTED_BARS, mdev->dev_str);
++	if (ret) {
++		dev_err(mdev->dev, "Failed to init MMIO. ret=%d\n", ret);
++		return ret;
++	}
++
++	/* get ioremapped memory */
++	priv->mac_reg_base = pcim_iomap_table(pdev)[MTK_BAR_0_1_IDX];
++	priv->bar23_addr = pcim_iomap_table(pdev)[MTK_BAR_2_3_IDX];
++	if (!priv->mac_reg_base || !priv->bar23_addr) {
++		dev_err(mdev->dev, "Failed to init BAR.\n");
++		return -EINVAL;
++	}
++	/* We use MD view base address "0" to observe registers */
++	priv->ext_reg_base = priv->bar23_addr - ATR_PCIE_REG_TRSL_ADDR;
++
++	return 0;
++}
++
++static int mtk_mhccif_irq_cb(int irq_id, void *data)
++{
++	struct mtk_md_dev *mdev = data;
++	struct mtk_pci_priv *priv;
++
++	priv = mdev->hw_priv;
++	queue_work(system_highpri_wq, &priv->mhccif_work);
++
++	return 0;
++}
++
++static int mtk_mhccif_init(struct mtk_md_dev *mdev)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	int ret;
++
++	INIT_LIST_HEAD(&priv->mhccif_cb_list);
++	spin_lock_init(&priv->mhccif_lock);
++	INIT_WORK(&priv->mhccif_work, mtk_mhccif_isr_work);
++
++	ret = mtk_pci_get_irq_id(mdev, MTK_IRQ_SRC_MHCCIF);
++	if (ret < 0) {
++		dev_err(mdev->dev, "Failed to get mhccif_irq_id. ret=%d\n", ret);
++		return ret;
++	}
++	priv->mhccif_irq_id = ret;
++
++	ret = mtk_pci_register_irq(mdev, priv->mhccif_irq_id, mtk_mhccif_irq_cb, mdev);
++	if (ret) {
++		dev_err(mdev->dev, "Failed to register mhccif_irq callback\n");
++		return ret;
++	}
++
++	return 0;
++}
++
++static void mtk_mhccif_exit(struct mtk_md_dev *mdev)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	struct mtk_mhccif_cb *cb, *tmp;
++
++	mtk_pci_unregister_irq(mdev, priv->mhccif_irq_id);
++	cancel_work_sync(&priv->mhccif_work);
++
++	list_for_each_entry_safe(cb, tmp, &priv->mhccif_cb_list, entry) {
++		list_del(&cb->entry);
++		kfree(cb);
++	}
++}
++
++static irqreturn_t mtk_pci_irq_handler(struct mtk_md_dev *mdev, u32 irq_state)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	int irq_id;
++
++	/* Check whether each set bit has a callback, if has, call it */
++	do {
++		int (*cb)(int irq_id, void *data);
++
++		irq_id = fls(irq_state) - 1;
++		irq_state &= ~BIT(irq_id);
++		cb = READ_ONCE(priv->irq_cb_list[irq_id]);
++		if (likely(cb)) {
++			smp_rmb(); /* Ensure data is read after callback */
++			cb(irq_id, priv->irq_cb_data[irq_id]);
++		} else {
++			dev_err(mdev->dev, "Unhandled irq_id=%d, no callback for it.\n", irq_id);
++		}
++	} while (irq_state);
++
++	return IRQ_HANDLED;
++}
++
++static irqreturn_t mtk_pci_irq_msix(int irq, void *data)
++{
++	struct mtk_pci_irq_desc *irq_desc = data;
++	struct mtk_md_dev *mdev = irq_desc->mdev;
++	struct mtk_pci_priv *priv;
++	u32 irq_state, irq_enable;
++
++	priv = mdev->hw_priv;
++	irq_state = mtk_pci_mac_read32(priv, REG_MSIX_ISTATUS_HOST_GRP0_0);
++	irq_enable = mtk_pci_mac_read32(priv, REG_IMASK_HOST_MSIX_GRP0_0);
++	irq_state &= irq_enable;
++
++	if (unlikely(irq_state == U32_MAX && irq_enable == U32_MAX))
++		return IRQ_NONE; /* device gone */
++
++	irq_state &= irq_desc->msix_bits; /* scope to this vector */
++	if (unlikely(!irq_state))
++		return IRQ_NONE;
++
++	/* Mask the bit and user needs to unmask by itself */
++	mtk_pci_mac_write32(priv, REG_IMASK_HOST_MSIX_CLR_GRP0_0,
++			    irq_state & ~BIT(30));
++
++	return mtk_pci_irq_handler(mdev, irq_state);
++}
++
++static int mtk_pci_request_irq_msix(struct mtk_md_dev *mdev)
++{
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	struct mtk_pci_irq_desc *irq_desc;
++	struct pci_dev *pdev;
++	int ret, i;
++
++	pdev = to_pci_dev(mdev->dev);
++	irq_desc = priv->irq_desc;
++
++	priv->irq_cnt = MTK_IRQ_CNT_MAX;
++	priv->irq_type = PCI_IRQ_MSIX;
++
++	for (i = 0; i < MTK_IRQ_CNT_MAX; i++) {
++		irq_desc[i].mdev = mdev;
++		irq_desc[i].msix_bits = BIT(i);
++		snprintf(irq_desc[i].name, MTK_IRQ_NAME_LEN, "msix%d-%s", i, mdev->dev_str);
++		ret = pci_request_irq(pdev, i, mtk_pci_irq_msix, NULL,
++				      &irq_desc[i], "%s", irq_desc[i].name);
++		if (ret) {
++			dev_err(mdev->dev, "Failed to request %s: ret=%d\n",
++				irq_desc[i].name, ret);
++			for (i--; i >= 0; i--)
++				pci_free_irq(pdev, i, &irq_desc[i]);
++			priv->irq_cnt = 0;
++			priv->irq_type = 0;
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++static int mtk_pci_request_irq(struct mtk_md_dev *mdev)
++{
++	struct pci_dev *pdev = to_pci_dev(mdev->dev);
++	int ret;
++
++	ret = pci_alloc_irq_vectors(pdev, MTK_IRQ_CNT_MAX,
++				    MTK_IRQ_CNT_MAX, PCI_IRQ_MSIX);
++	if (ret < 0) {
++		dev_err(mdev->dev,
++			"Unable to alloc %d MSI-X vectors: ret=%d\n",
++			MTK_IRQ_CNT_MAX, ret);
++		return ret;
++	}
++
++	ret = mtk_pci_request_irq_msix(mdev);
++	if (ret)
++		pci_free_irq_vectors(pdev);
++
++	return ret;
++}
++
++static void mtk_pci_free_irq(struct mtk_md_dev *mdev)
++{
++	struct pci_dev *pdev = to_pci_dev(mdev->dev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	int i;
++
++	for (i = 0; i < priv->irq_cnt; i++)
++		pci_free_irq(pdev, i, &priv->irq_desc[i]);
++
++	pci_free_irq_vectors(pdev);
++}
++
++static const struct mtk_dev_ops pci_hw_ops = {
++	.get_dev_state = mtk_pci_get_dev_state,
++	.ack_dev_state = mtk_pci_ack_dev_state,
++	.get_dev_cfg = mtk_pci_get_dev_cfg,
++	.register_dev_evt = mtk_pci_register_ext_evt,
++	.unregister_dev_evt = mtk_pci_unregister_ext_evt,
++	.mask_dev_evt = mtk_pci_mask_ext_evt,
++	.unmask_dev_evt = mtk_pci_unmask_ext_evt,
++	.clear_dev_evt = mtk_pci_clear_ext_evt,
++	.send_dev_evt = mtk_pci_send_ext_evt,
++};
++
++static int mtk_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
++{
++	struct device *dev = &pdev->dev;
++	struct mtk_pci_priv *priv;
++	struct mtk_md_dev *mdev;
++	int ret;
++
++	mdev = devm_kzalloc(dev, sizeof(*mdev), GFP_KERNEL);
++	if (!mdev) {
++		ret = -ENOMEM;
++		goto log_err;
++	}
++	mdev->dev_ops = &pci_hw_ops;
++	mdev->dev = dev;
++
++	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
++	if (!priv) {
++		ret = -ENOMEM;
++		goto log_err;
++	}
++
++	pci_set_drvdata(pdev, mdev);
++	priv->cfg = (void *)id->driver_data;
++	priv->mdev = mdev;
++	mdev->hw_ver  = pdev->device;
++	mdev->hw_priv = priv;
++	mdev->dev     = dev;
++	snprintf(mdev->dev_str, MTK_DEV_STR_LEN, "%02x%02x%d",
++		 pdev->bus->number, PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
++	if (pdev->state_saved)
++		pci_restore_state(pdev);
++
++	ret = pcim_enable_device(pdev);
++	if (ret) {
++		dev_err(mdev->dev, "Failed to enable pci device.\n");
++		goto log_err;
++	}
++
++	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
++	if (ret) {
++		dev_err(mdev->dev, "Failed to set DMA Mask and Coherent. (ret=%d)\n", ret);
++		goto log_err;
++	}
++
++	ret = mtk_pci_bar_init(mdev);
++	if (ret)
++		goto log_err;
++
++	ret = priv->cfg->atr_init(mdev);
++	if (ret)
++		goto log_err;
++
++	ret = mtk_mhccif_init(mdev);
++	if (ret)
++		goto log_err;
++
++	/* mask all irqs */
++	if (priv->cfg->flag & MTK_CFG_IRQ_DFLT_MASK)
++		mtk_pci_mac_write32(priv, REG_IMASK_HOST_MSIX_CLR_GRP0_0, U32_MAX);
++
++	ret = mtk_pci_request_irq(mdev);
++	if (ret)
++		goto free_mhccif;
++
++	pci_set_master(pdev);
++	mtk_pci_unmask_irq(mdev, priv->mhccif_irq_id);
++
++	if (mtk_pci_link_check(mdev)) {
++		pci_save_state(pdev);
++	} else {
++		ret = -ENOLINK;
++		goto clear_master;
++	}
++
++	priv->saved_state = pci_store_saved_state(pdev);
++	if (!priv->saved_state) {
++		ret = -EFAULT;
++		goto clear_master;
++	}
++
++	return 0;
++
++clear_master:
++	pci_clear_master(pdev);
++	mtk_pci_free_irq(mdev);
++free_mhccif:
++	mtk_mhccif_exit(mdev);
++log_err:
++	dev_err(dev, "Failed to probe device, ret=%d\n", ret);
++
++	return ret;
++}
++
++static void mtk_pci_remove(struct pci_dev *pdev)
++{
++	struct mtk_md_dev *mdev = pci_get_drvdata(pdev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	struct device *dev = &pdev->dev;
++
++	mtk_pci_mask_irq(mdev, priv->mhccif_irq_id);
++	cancel_work_sync(&priv->mhccif_work);
++
++	if (mtk_pci_pldr(mdev)) {
++		dev_warn(dev, "Failed to execute PLDR, try external event\n");
++		mtk_pci_reset(mdev, RESET_MHCCIF);
++	}
++
++	pci_clear_master(pdev);
++	mtk_pci_free_irq(mdev);
++	mtk_mhccif_exit(mdev);
++	pci_load_and_free_saved_state(pdev, &priv->saved_state);
++}
++
++static pci_ers_result_t mtk_pci_error_detected(struct pci_dev *pdev,
++					       pci_channel_state_t state)
++{
++	struct mtk_md_dev *mdev = pci_get_drvdata(pdev);
++
++	dev_err(mdev->dev, "AER detected: pci_channel_state_t=%d\n", state);
++
++	/* AER recovery not supported, disconnect the device */
++	return PCI_ERS_RESULT_DISCONNECT;
++}
++
++static const struct pci_error_handlers mtk_pci_err_handler = {
++	.error_detected = mtk_pci_error_detected,
++};
++
++static struct pci_driver mtk_pci_drv = {
++	.name = "mtk_pci_drv",
++	.id_table = t9xx_pci_table,
++	.probe = mtk_pci_probe,
++	.remove = mtk_pci_remove,
++	.err_handler = &mtk_pci_err_handler
++};
++
++module_pci_driver(mtk_pci_drv);
++
++MODULE_DESCRIPTION("MediaTek T9xx PCIe WWAN driver pcie layer");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci.h b/drivers/net/wwan/t9xx/pcie/mtk_pci.h
+new file mode 100644
+index 000000000000..d3e13bbc3066
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci.h
+@@ -0,0 +1,233 @@
++/* SPDX-License-Identifier: GPL-2.0-only
++ *
++ * Copyright (c) 2022, MediaTek Inc.
++ */
++
++#ifndef __MTK_PCI_H__
++#define __MTK_PCI_H__
++
++#include <linux/pci.h>
++
++#include "../mtk_dev.h"
++
++enum mtk_irq_src {
++	MTK_IRQ_SRC_MIN,
++	MTK_IRQ_SRC_MHCCIF,
++	MTK_IRQ_SRC_DPMAIF,
++	MTK_IRQ_SRC_DPMAIF2,
++	MTK_IRQ_SRC_CLDMA0,
++	MTK_IRQ_SRC_CLDMA1,
++	MTK_IRQ_SRC_CLDMA2,
++	MTK_IRQ_SRC_CLDMA3,
++	MTK_IRQ_SRC_PM_LOCK,
++	MTK_IRQ_SRC_DPMAIF3,
++	MTK_IRQ_SRC_DPMAIF6,
++	MTK_IRQ_SRC_MAX
++};
++
++enum mtk_reset_type {
++	RESET_FLDR,
++	RESET_PLDR,
++	RESET_MHCCIF,
++};
++
++enum mtk_atr_type {
++	ATR_PCI2AXI = 0,
++	ATR_AXI2PCI,
++};
++
++enum mtk_atr_src_port {
++	ATR_SRC_PCI_WIN0 = 0,
++	ATR_SRC_PCI_WIN1,
++	ATR_SRC_AXIS_0,
++	ATR_SRC_AXIS_1,
++	ATR_SRC_AXIS_2,
++	ATR_SRC_AXIS_3,
++};
++
++enum mtk_atr_dst_port {
++	ATR_DST_PCI_TRX = 0,
++	ATR_DST_AXIM_0 = 4,
++	ATR_DST_AXIM_1,
++	ATR_DST_AXIM_2,
++	ATR_DST_AXIM_3,
++};
++
++enum mtk_pci_evt_h2d {
++	DEV_EVT_H2D_EXTEND_BASE            = DEV_EVT_H2D_MAX,
++	EXT_EVT_H2D_RESERVED_FOR_CLDMA0    = DEV_EVT_H2D_EXTEND_BASE << 1,
++	EXT_EVT_H2D_RESERVED_FOR_CLDMA1    = DEV_EVT_H2D_EXTEND_BASE << 2,
++	EXT_EVT_H2D_RESERVED_FOR_CLDMA3    = DEV_EVT_H2D_EXTEND_BASE << 3,
++	EXT_EVT_H2D_RESERVED_FOR_CLDMA2    = DEV_EVT_H2D_EXTEND_BASE << 4,
++	EXT_EVT_H2D_RESERVED_FOR_DPMAIF    = DEV_EVT_H2D_EXTEND_BASE << 5,
++	EXT_EVT_H2D_PCIE_PM_SUSPEND_REQ    = DEV_EVT_H2D_EXTEND_BASE << 6,
++	EXT_EVT_H2D_PCIE_PM_RESUME_REQ     = DEV_EVT_H2D_EXTEND_BASE << 7,
++	EXT_EVT_H2D_PCIE_PM_SUSPEND_REQ_AP = DEV_EVT_H2D_EXTEND_BASE << 8,
++	EXT_EVT_H2D_PCIE_PM_RESUME_REQ_AP  = DEV_EVT_H2D_EXTEND_BASE << 9,
++	EXT_EVT_H2D_RESERVED_FOR_TEST      = DEV_EVT_H2D_EXTEND_BASE << 11,
++};
++
++enum mtk_pci_evt_d2h {
++	DEV_EVT_D2H_EXTEND_BASE            = DEV_EVT_D2H_MAX,
++	EXT_EVT_D2H_RESERVED_FOR_CLDMA0    = DEV_EVT_D2H_EXTEND_BASE << 1,
++	EXT_EVT_D2H_RESERVED_FOR_CLDMA1    = DEV_EVT_D2H_EXTEND_BASE << 2,
++	EXT_EVT_D2H_RESERVED_FOR_CLDMA3    = DEV_EVT_D2H_EXTEND_BASE << 3,
++	EXT_EVT_D2H_RESERVED_FOR_CLDMA2    = DEV_EVT_D2H_EXTEND_BASE << 4,
++	EXT_EVT_D2H_RESERVED_FOR_DPMAIF    = DEV_EVT_D2H_EXTEND_BASE << 5,
++	EXT_EVT_D2H_PCIE_PM_SUSPEND_ACK    = DEV_EVT_D2H_EXTEND_BASE << 6,
++	EXT_EVT_D2H_PCIE_PM_RESUME_ACK     = DEV_EVT_D2H_EXTEND_BASE << 7,
++	EXT_EVT_D2H_PCIE_PM_SUSPEND_ACK_AP = DEV_EVT_D2H_EXTEND_BASE << 8,
++	EXT_EVT_D2H_PCIE_PM_RESUME_ACK_AP  = DEV_EVT_D2H_EXTEND_BASE << 9,
++	EXT_EVT_D2H_SOFT_OFF_NOTIFY        = DEV_EVT_D2H_EXTEND_BASE << 10,
++	EXT_EVT_D2H_FRC_DONE_NOTIFY        = DEV_EVT_D2H_EXTEND_BASE << 11,
++	EXT_EVT_D2H_RESERVED_FOR_TEST1	   = DEV_EVT_D2H_EXTEND_BASE << 12,
++	EXT_EVT_D2H_RESERVED_FOR_TEST2	   = DEV_EVT_D2H_EXTEND_BASE << 13,
++};
++
++#define MTK_PCI_CLASS                 0x0D4000
++#define MTK_PCI_VENDOR_ID             0x14C3
++#define CEI_PCI_VENDOR_ID             0x03F0
++
++#define MTK_CFG_INFO_BIT_SHIFT        4
++
++#define MTK_PCI_DEV_CFG(id, cfg) \
++{ \
++	PCI_DEVICE(MTK_PCI_VENDOR_ID, id), \
++	MTK_PCI_CLASS, PCI_ANY_ID, \
++	.driver_data = (kernel_ulong_t)&(cfg), \
++}
++
++#define CEI_PCI_DEV_CFG(id, cfg) \
++{ \
++	PCI_DEVICE(CEI_PCI_VENDOR_ID, id), \
++	MTK_PCI_CLASS, PCI_ANY_ID, \
++	.driver_data = (kernel_ulong_t)&(cfg), \
++}
++
++#define MTK_CFG_IRQ_DFLT_MASK		BIT(0)
++#define MTK_CFG_DISABLE_AP_DRM		BIT(2)
++#define MTK_CFG_PM_SW_IRQ		BIT(6)
++
++#define MTK_BAR_0_1_IDX                 0
++#define MTK_BAR_2_3_IDX                 2
++
++#define MTK_REQUESTED_BARS \
++	((1 << MTK_BAR_0_1_IDX) | \
++	 (1 << MTK_BAR_2_3_IDX))
++
++#define MTK_IRQ_CNT_MAX				32
++#define MTK_IRQ_NAME_LEN			32
++
++#define ATR_PORT_OFFSET				0x100
++#define ATR_TABLE_OFFSET			0x20
++#define ATR_TABLE_NUM_PER_ATR			8
++#define ATR_PCIE_REG_TRSL_ADDR			0x10000000
++#define ATR_PCIE_REG_SIZE			0x00400000
++#define ATR_PCIE_REG_PORT			ATR_SRC_PCI_WIN0
++#define ATR_PCIE_REG_TABLE_NUM			1
++#define ATR_PCIE_REG_TRSL_PORT			ATR_DST_AXIM_0
++#define ATR_PCIE_DEV_DMA_SRC_ADDR		0x00000000
++#define ATR_PCIE_DEV_DMA_TRANSPARENT		1
++#define ATR_PCIE_DEV_DMA_SIZE			0
++#define ATR_PCIE_DEV_DMA_TABLE_NUM		0
++#define ATR_PCIE_DEV_DMA_TRSL_ADDR		0x00000000
++
++struct mtk_pci_irq_desc {
++	struct mtk_md_dev *mdev;
++	u32 msix_bits;
++	char name[MTK_IRQ_NAME_LEN];
++};
++
++struct mtk_pci_dev_cfg {
++	u32 flag;
++	u32 mhccif_rc_base_addr;
++	u32 istatus_host_ctrl_addr;
++	int irq_tbl[MTK_IRQ_SRC_MAX];
++	int (*atr_init)(struct mtk_md_dev *mdev);
++};
++
++extern const struct mtk_pci_dev_cfg mtk_dev_cfg_0900;
++
++struct mtk_pci_priv {
++	struct mtk_md_dev *mdev;
++	const struct mtk_pci_dev_cfg *cfg;
++	void __iomem *bar23_addr;
++	void __iomem *mac_reg_base;
++	void __iomem *ext_reg_base;
++	int irq_cnt;
++	int irq_type;
++	void *irq_cb_data[MTK_IRQ_CNT_MAX];
++
++	int (*irq_cb_list[MTK_IRQ_CNT_MAX])(int irq_id, void *data);
++	struct mtk_pci_irq_desc irq_desc[MTK_IRQ_CNT_MAX];
++	struct list_head mhccif_cb_list;
++	/* mhccif_lock: lock to protect mhccif_cb_list */
++	spinlock_t mhccif_lock;
++	struct work_struct mhccif_work;
++	int mhccif_irq_id;
++	struct pci_saved_state *saved_state;
++};
++
++struct mtk_atr_cfg {
++	u64 src_addr;
++	u64 trsl_addr;
++	u64 size;
++	u32 type;      /* Port type */
++	u32 port;      /* Port number */
++	u32 table;     /* Table number (8 tables for each port) */
++	u32 trsl_id;
++	u32 trsl_param;
++	u32 transparent;
++};
++
++/* BAR 0/1 MMIO access */
++static inline u32 mtk_pci_mac_read32(struct mtk_pci_priv *priv, u64 addr)
++{
++	return ioread32(priv->mac_reg_base + addr);
++}
++
++static inline void mtk_pci_mac_write32(struct mtk_pci_priv *priv, u64 addr, u32 val)
++{
++	iowrite32(val, priv->mac_reg_base + addr);
++}
++
++/* BAR 2/3 MMIO access */
++static inline u32 mtk_pci_read32(struct mtk_md_dev *mdev, u64 addr)
++{
++	return ioread32(((struct mtk_pci_priv *)mdev->hw_priv)->ext_reg_base + addr);
++}
++
++static inline void mtk_pci_write32(struct mtk_md_dev *mdev, u64 addr, u32 val)
++{
++	iowrite32(val, ((struct mtk_pci_priv *)mdev->hw_priv)->ext_reg_base + addr);
++}
++
++/* Device operations */
++u32 mtk_pci_get_dev_state(struct mtk_md_dev *mdev);
++void mtk_pci_ack_dev_state(struct mtk_md_dev *mdev, u32 state);
++u32 mtk_pci_get_dev_cfg(struct mtk_md_dev *mdev);
++/* IRQ Related operations */
++int mtk_pci_get_irq_id(struct mtk_md_dev *mdev, enum mtk_irq_src irq_src);
++int mtk_pci_get_virq_id(struct mtk_md_dev *mdev, int irq_id);
++int mtk_pci_register_irq(struct mtk_md_dev *mdev, int irq_id,
++			 int (*irq_cb)(int irq_id, void *data), void *data);
++int mtk_pci_unregister_irq(struct mtk_md_dev *mdev, int irq_id);
++int mtk_pci_mask_irq(struct mtk_md_dev *mdev, int irq_id);
++int mtk_pci_unmask_irq(struct mtk_md_dev *mdev, int irq_id);
++int mtk_pci_clear_irq(struct mtk_md_dev *mdev, int irq_id);
++/* External event related */
++int mtk_pci_register_ext_evt(struct mtk_md_dev *mdev, u32 chs,
++			     int (*evt_cb)(u32 status, void *data), void *data);
++void mtk_pci_unregister_ext_evt(struct mtk_md_dev *mdev, u32 chs);
++void mtk_pci_mask_ext_evt(struct mtk_md_dev *mdev, u32 chs);
++void mtk_pci_unmask_ext_evt(struct mtk_md_dev *mdev, u32 chs);
++void mtk_pci_clear_ext_evt(struct mtk_md_dev *mdev, u32 chs);
++int mtk_pci_send_ext_evt(struct mtk_md_dev *mdev, u32 ch);
++int mtk_pci_fldr(struct mtk_md_dev *mdev);
++int mtk_pci_pldr(struct mtk_md_dev *mdev);
++int mtk_pci_reset(struct mtk_md_dev *mdev, enum mtk_reset_type type);
++bool mtk_pci_link_check(struct mtk_md_dev *mdev);
++int mtk_pci_setup_atr(struct mtk_md_dev *mdev, struct mtk_atr_cfg *cfg);
++void mtk_pci_atr_disable(struct mtk_pci_priv *priv);
++
++#endif /* __MTK_PCI_H__ */
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci_drv_m9xx.c b/drivers/net/wwan/t9xx/pcie/mtk_pci_drv_m9xx.c
+new file mode 100644
+index 000000000000..88b44142afb7
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci_drv_m9xx.c
+@@ -0,0 +1,69 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (c) 2022, MediaTek Inc.
++ */
++#include <linux/types.h>
++#include "mtk_pci.h"
++#include "mtk_pci_reg.h"
++
++static int mtk_pci_atr_init_m9xx(struct mtk_md_dev *mdev)
++{
++	struct pci_dev *pdev = to_pci_dev(mdev->dev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	struct mtk_atr_cfg cfg;
++	int port, ret;
++
++	mtk_pci_atr_disable(priv);
++
++	/* Config ATR for RC to access device's register */
++	cfg.src_addr = pci_resource_start(pdev, MTK_BAR_2_3_IDX);
++	cfg.size = ATR_PCIE_REG_SIZE;
++	cfg.trsl_addr = ATR_PCIE_REG_TRSL_ADDR;
++	cfg.type = ATR_PCI2AXI;
++	cfg.port = ATR_PCIE_REG_PORT;
++	cfg.table = ATR_PCIE_REG_TABLE_NUM;
++	cfg.trsl_id = ATR_PCIE_REG_TRSL_PORT;
++	cfg.trsl_param = 0x0;
++	cfg.transparent = 0x0;
++	ret = mtk_pci_setup_atr(mdev, &cfg);
++	if (ret)
++		return ret;
++
++	/* Config ATR for EP to access RC's memory */
++	for (port = ATR_SRC_AXIS_0; port <= ATR_SRC_AXIS_3; port++) {
++		cfg.src_addr = ATR_PCIE_DEV_DMA_SRC_ADDR;
++		cfg.size = ATR_PCIE_DEV_DMA_SIZE;
++		cfg.trsl_addr = ATR_PCIE_DEV_DMA_TRSL_ADDR;
++		cfg.type = ATR_AXI2PCI;
++		cfg.port = port;
++		cfg.table = ATR_PCIE_DEV_DMA_TABLE_NUM;
++		cfg.trsl_id = ATR_DST_PCI_TRX;
++		cfg.trsl_param = 0x0;
++		/* Enable transparent translation */
++		cfg.transparent = ATR_PCIE_DEV_DMA_TRANSPARENT;
++		ret = mtk_pci_setup_atr(mdev, &cfg);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++const struct mtk_pci_dev_cfg mtk_dev_cfg_0900 = {
++	.flag = MTK_CFG_PM_SW_IRQ,
++	.mhccif_rc_base_addr = 0x1000A000,
++	.istatus_host_ctrl_addr = REG_ISTATUS_HOST_CTRL_NEW,
++	.irq_tbl = {
++		[MTK_IRQ_SRC_DPMAIF]  = 24,
++		[MTK_IRQ_SRC_CLDMA0]  = 27,
++		[MTK_IRQ_SRC_CLDMA1]  = 26,
++		[MTK_IRQ_SRC_CLDMA2]  = 25,
++		[MTK_IRQ_SRC_MHCCIF]  = 28,
++		[MTK_IRQ_SRC_DPMAIF2] = 29,
++		[MTK_IRQ_SRC_CLDMA3]  = 31,
++		[MTK_IRQ_SRC_PM_LOCK] = 0,
++		[MTK_IRQ_SRC_DPMAIF3] = 7,
++		[MTK_IRQ_SRC_DPMAIF6]  = 10,
++	},
++	.atr_init = mtk_pci_atr_init_m9xx,
++};
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h b/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h
+new file mode 100644
+index 000000000000..5ac3076766d2
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h
+@@ -0,0 +1,69 @@
++/* SPDX-License-Identifier: GPL-2.0-only
++ *
++ * Copyright (c) 2022, MediaTek Inc.
++ */
++
++#ifndef __MTK_PCI_REG_H__
++#define __MTK_PCI_REG_H__
++
++#define REG_ISTATUS_HOST_CTRL_NEW		0x031C
++#define REG_PCIE_MISC_CTRL			0x0348
++#define REG_ATR_PCIE_WIN0_T0_SRC_ADDR_LSB	0x0600
++#define REG_ATR_PCIE_WIN0_T0_SRC_ADDR_MSB	0x0604
++#define REG_ATR_PCIE_WIN0_T0_TRSL_ADDR_LSB	0x0608
++#define REG_ATR_PCIE_WIN0_T0_TRSL_ADDR_MSB	0x060C
++#define REG_ATR_PCIE_WIN0_T0_TRSL_PARAM		0x0610
++#define REG_PCIE_DEBUG_DUMMY_3			0x0D0C
++#define REG_PCIE_DEBUG_DUMMY_4			0x0D10
++#define REG_PCIE_DEBUG_DUMMY_7			0x0D1C
++#define REG_MSIX_ISTATUS_HOST_GRP0_0		0x0F00
++#define REG_IMASK_HOST_MSIX_SET_GRP0_0		0x3000
++#define REG_IMASK_HOST_MSIX_CLR_GRP0_0		0x3080
++#define REG_IMASK_HOST_MSIX_GRP0_0		0x3100
++
++/* mhccif registers */
++#define MHCCIF_RC2EP_SW_BSY			0x4
++#define MHCCIF_RC2EP_SW_TCHNUM			0xC
++#define MHCCIF_RC2EP_EVT_RESERVED_FOR_CLDMA0	BIT(4)
++#define MHCCIF_RC2EP_EVT_RESERVED_FOR_CLDMA1	BIT(5)
++#define MHCCIF_RC2EP_EVT_RESERVED_FOR_CLDMA3	BIT(6)
++#define MHCCIF_RC2EP_EVT_RESERVED_FOR_CLDMA2	BIT(7)
++#define MHCCIF_RC2EP_EVT_RESERVED_FOR_DPMAIF	BIT(8)
++#define MHCCIF_RC2EP_EVT_PCIE_PM_SUSPEND_REQ	BIT(9)
++#define MHCCIF_RC2EP_EVT_PCIE_PM_RESUME_REQ	BIT(10)
++#define MHCCIF_RC2EP_EVT_PCIE_PM_SUSPEND_REQ_AP	BIT(11)
++#define MHCCIF_RC2EP_EVT_PCIE_PM_RESUME_REQ_AP	BIT(12)
++#define MHCCIF_RC2EP_EVT_DEVICE_RESET		BIT(13)
++#define MHCCIF_RC2EP_EVT_RESERVED_FOR_TEST	BIT(31)
++
++#define MHCCIF_EP2RC_SW_INT_STS			0x10
++#define MHCCIF_EP2RC_SW_INT_ACK			0x14
++#define MHCCIF_EP2RC_SW_INT_EAP_MASK		0x20
++#define MHCCIF_EP2RC_SW_INT_EAP_MASK_SET	0x30
++#define MHCCIF_EP2RC_SW_INT_EAP_MASK_CLR	0x40
++#define MHCCIF_EP2RC_SPARE_REG_1		0x0104
++#define MHCCIF_EP2RC_SPARE_REG_5		0x0114
++#define MHCCIF_EP2RC_SPARE_REG_13		0x0134
++#define MHCCIF_EP2RC_SPARE_REG_14		0x0138
++#define MHCCIF_EP2RC_EVT_BOOT_FLOW_SYNC		BIT(5)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_CLDMA0	BIT(6)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_CLDMA1	BIT(7)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_CLDMA3	BIT(8)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_CLDMA2	BIT(9)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_DPMAIF	BIT(10)
++#define MHCCIF_EP2RC_EVT_PCIE_PM_SUSPEND_ACK	BIT(11)
++#define MHCCIF_EP2RC_EVT_PCIE_PM_RESUME_ACK	BIT(12)
++#define MHCCIF_EP2RC_EVT_PCIE_PM_SUSPEND_ACK_AP	BIT(13)
++#define MHCCIF_EP2RC_EVT_PCIE_PM_RESUME_ACK_AP	BIT(14)
++#define MHCCIF_EP2RC_EVT_ASYNC_HS_NOTIFY_SAP	BIT(15)
++#define MHCCIF_EP2RC_EVT_ASYNC_HS_NOTIFY_MD	BIT(16)
++#define MHCCIF_EP2RC_EVT_SOFT_OFF_NOTIFY	BIT(17)
++#define MHCCIF_EP2RC_EVT_MD_REBOOT		BIT(19)
++#define MHCCIF_EP2RC_EVT_MD_POWEROFF		BIT(20)
++#define MHCCIF_EP2RC_EVT_GNSS_ENABLE		BIT(21)
++#define MHCCIF_EP2RC_EVT_GNSS_DISABLE		BIT(22)
++#define MHCCIF_EP2RC_EVT_FRC_DONE_NOTIFY	BIT(24)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_TEST1	BIT(30)
++#define MHCCIF_EP2RC_EVT_RESERVED_FOR_TEST2	BIT(31)
++
++#endif /* __MTK_PCI_REG_H__ */
 
-Changes in v5:
-- Patch 1 (Add PCIe core):
-  - Remove LE32_TO_U32(cpu_to_le32()) no-op endianness
-    roundtrip, return hw_bits directly
-  - Use "%s" format string in pci_request_irq() to prevent
-    format string injection
-  - Return PCI_ERS_RESULT_DISCONNECT from AER error_detected,
-    driver does not support AER recovery
-- Patch 2 (Add control plane transaction layer):
-  - Rewrite commit message to accurately describe skeleton
-    content
-- Patch 3 (Add control DMA interface):
-  - Replace rmb() with dma_rmb() after HWO check in TX/RX
-    done paths for correct DMA descriptor ordering
-  - Add ring boundary check in TX done to prevent crossing
-    into submit territory
-  - Fix RX stall on reload failure: recycle old buffer with
-    skb_trim() + dma_map_single() instead of losing descriptor
-  - Convert devm_kcalloc to kcalloc for req_pool and
-    bd_dsc_pool, matching existing kfree in teardown
-  - Set bd_dsc->skb = NULL after dev_kfree_skb_any() in
-    reload error path to prevent use-after-free
-  - Use skb_headlen(skb) instead of skb->len for linear
-    segment size in txbuf_set non-BD path
-  - Use WRITE_ONCE() for wr_idx update in submit_tx
-- Patch 4 (Add control port):
-  - Fix direct mtk_port_release() calls to use kref_put()
-    in mtk_port_free_or_backup and stale_list_grp_cleanup
-  - Add ida_free() before kfree(s_list) in stale list
-    cleanup to prevent IDA leak
-  - Remove double-free of skb in mtk_port_internal_recv()
-    drop_data path, caller owns the skb
-  - Add port_cnt bounds check against data_len in
-    mtk_port_status_update() to prevent OOB read
-  - Replace wait_event_interruptible_timeout with
-    wait_event_timeout in ch_enable/ch_disable to prevent
-    busy-spin on pending signals
-- Patch 5 (Add FSM thread):
-  - Validate rtft data_len before passing to query_rtft
-    callback to prevent OOB access
-  - Zero-initialize HS3 skb data with memset() to prevent
-    heap infoleak
-  - Set hs_info->rt_data = NULL after dev_kfree_skb() in
-    SAP/MD ctrl msg handlers to prevent use-after-free
-  - Move wake_up_process() inside spinlock in evt_submit,
-    clear fsm_handler under lock in exit to fix race
-  - Replace kcalloc + radix_tree_gang_lookup with
-    radix_tree_for_each_slot() in mtk_port_disable()
-  - Add rt_data cleanup loop in FSM teardown path
-- Patch 7 (Add maintainers entry):
-  - Add Robert Yu and Jeff Chang as maintainers
-- Link to v4: https://patch.msgid.link/20260709-t9xx_driver_v1-v4-0-a8c009d509c5@compal.com
-
-Changes in v4:
-- Patch 1 (Add PCIe core):
-  - Add ACPI dependency to Kconfig (depends on PCI && ACPI)
-    and remove #ifdef CONFIG_ACPI / #else guards from
-    mtk_pci_fldr() and mtk_pci_pldr()
-  - Remove unnecessary parentheses in (mdev)->dev across
-    all dev_err/dev_warn calls
-  - Remove devm_kfree() calls from mtk_pci_probe() error
-    path and mtk_pci_remove(), devres handles cleanup
-  - Remove mtk_dev_alloc()/mtk_dev_free() wrappers, use
-    devm_kzalloc() directly in mtk_pci_probe()
-  - Convert ext_evt callbacks from devm_kzalloc/devm_kfree
-    to kzalloc/kfree for runtime-managed resources
-- Patch 2 (Add control plane transaction layer):
-  - Remove mtk_dev_alloc()/mtk_dev_free() declarations and
-    implementations from mtk_dev.h and mtk_dev.c
-  - Remove empty module_init/module_exit stubs, defer to
-    Patch 4 where they have actual content
-  - Remove devm_kfree() and unused ctrl_blk variable in
-    mtk_ctrl_exit(), devres handles cleanup
-- Patch 3 (Add control DMA interface):
-  - Remove inline keyword from mtk_cldma_clr_bd_dsc() in
-    .c file, let compiler decide inlining
-  - Replace dev_warn() with dev_warn_ratelimited() for SKB
-    alloc/map failure messages in data path
-  - Replace open-coded do/while polling loop with
-    read_poll_timeout() from <linux/iopoll.h> in
-    mtk_cldma_stop_queue()
-  - Remove ctrl_port_chl_mtu module_param, MODULE_PARM_DESC,
-    and mtk_ctrl_queue_info_update() with associated macros
-  - Remove unnecessary parentheses in (mdev)->dev across
-    mtk_cldma.c and mtk_trans_ctrl.c
-  - Convert CLDMA txq/rxq/cd from devm_kzalloc/devm_kfree
-    to kzalloc/kfree for runtime-managed resources
-  - Convert trb_srv/srv_que from devm_kzalloc/devm_kfree
-    to kzalloc/kfree for runtime-managed resources
-  - Remove devm_kfree() and unused variables from
-    mtk_cldma_exit() and mtk_trans_ctrl_exit(), devres
-    handles cleanup for device-lifetime resources
-  - Remove unnecessary NULL checks before kfree() for
-    bd_dsc_pool in txq_free/rxq_free
-- Patch 4 (Add control port):
-  - Add module_init/module_exit with mtk_port_io_init/exit
-    content, moved from Patch 2
-  - Remove unnecessary parentheses in (mdev)->dev in
-    mtk_port.c
-  - Remove devm_kfree() from mtk_port_mngr_init() error
-    path and mtk_port_mngr_exit(), devres handles cleanup
-  - Simplify mtk_trans_ctrl_init() error path: replace goto
-    err_free_trans with direct return -ENOMEM
-- Patch 5 (Add FSM thread):
-  - Remove unnecessary parentheses in (mdev)->dev across
-    mtk_fsm.c and mtk_ctrl_plane.c
-  - Convert FSM notifiers from devm_kzalloc/devm_kfree to
-    kzalloc/kfree for runtime-managed resources
-  - Convert CLDMA drv_info from devm_kzalloc/devm_kfree to
-    kzalloc/kfree for runtime-managed resources
-  - Remove devm_kfree() from mtk_fsm_init()/mtk_fsm_exit()
-    and mtk_ctrl_init()/mtk_ctrl_exit(), devres handles
-    cleanup for device-lifetime resources
-- Link to v3: https://patch.msgid.link/20260624-t9xx_driver_v1-v3-0-73ff03f60c48@compal.com
-
-Changes in v3:
-- Address sashiko AI code review comments and fix sparse warnings
-- Patch 1 (Add PCIe core):
-  - Move extern declaration of mtk_dev_cfg_0900 from mtk_pci.c to mtk_pci.h to fix sparse warning
-  - Remove mtk_pci_bar_exit(): pcim_iounmap_region() was called with bitmask instead of BAR index, and pcim_iomap_regions() is devres-managed so manual unmap is redundant [sashiko]
-  - Remove pci_disable_device() from probe error path and remove path: pcim_enable_device() registers devres cleanup, manual disable causes enable_cnt underflow [sashiko]
-- Patch 3 (Add control DMA interface):
-  - Add #include "mtk_cldma.h" in mtk_cldma_drv_m9xx.c to fix sparse undeclared symbol warnings for mtk_cldma_regs_m9xx and cldma_drv_ops_m9xx
-  - Move extern declaration of mtk_ctrl_info_m9xx from mtk_trans_ctrl.c to mtk_trans_ctrl.h to fix sparse undeclared symbol warning
-  - Replace kcalloc + radix_tree_gang_lookup with radix_tree_for_each_slot() in mtk_ctrl_remove_radix_tree() to eliminate allocation in teardown path [sashiko]
-  - Add missing mtk_pci_dev_exit() call in mtk_pci_remove() to properly clean up FSM and trans_ctrl resources before device removal [sashiko]
-- Patch 4 (Add control port):
-  - Replace kcalloc + radix_tree_gang_lookup with radix_tree_for_each_slot() and single-entry gang_lookup in mtk_port_tbl_destroy() to eliminate allocation failure in teardown path [sashiko]
-  - Add port = NULL after mtk_port_put_locked() in mtk_port_internal_open() error path to prevent returning un-refcounted pointer [sashiko]
-  - Restore skb_unlink + trb_complete for non-EAGAIN errors in mtk_ctrl_trb_handler() TX path to prevent infinite retry loop [sashiko]
-- Patch 5 (Add FSM thread):
-  - Check mtk_pci_register_irq() return value in mtk_cldma_dev_init() and add err_destroy_wq error label to fix unreachable dead code [sashiko]
-  - Propagate specific error codes (ENOMEM/EIO/EINVAL) from mtk_cldma_dev_init() error paths instead of generic -EIO [sashiko]
-  - Free head SKB after detaching frag_list in mtk_cldma_rxq_free() scatter-gather mode to fix memory leak [sashiko]
-- Patch 6 (Add AT & MBIM WWAN ports):
-  - Remove unused write_lock mutex from struct mtk_port and its mutex_init call [sashiko]
-- Link to v2: https://patch.msgid.link/20260610-t9xx_driver_v1-v2-0-c65addf23b3f@compal.com
-
-Changes in v2:
-- Split series into control plane (this v2) and data plane (follow-up)
-- Patch 1 (Add PCIe core):
-  - Rename BAR_NUM to MTK_PCI_BAR_NUM for driver prefix consistency
-  - Replace magic numbers in mtk_pci_setup_atr() with named defines
-  - Remove redundant ATR register comments, use blank line separators
-  - Add kernel-doc comments to all non-static functions
-  - Convert 4 MMIO wrapper functions to static inline in header [sashiko]
-  - Remove unnecessary unlikely() from IRQ validation paths
-  - Add irq_cnt == 0 and irq_id < 0 guards in mtk_pci_get_virq_id() [sashiko]
-  - Initialize hw_bits at declaration for consistency
-  - Merge same-type variable declarations into single lines
-  - Add #else/#endif comments for CONFIG_ACPI blocks
-  - Add newlines in mtk_pci_pldr() for readability
-  - Move return into default case in mtk_pci_dev_reset()
-  - Simplify mtk_mhccif_init() error path to use direct returns
-  - Change -EFAULT to -ENOLINK for PCIe link check failure
-  - Rename goto label "out" to "log_err" in mtk_pci_probe()
-  - Wrap long lines to stay within 80 columns
-  - Fix IRQ vector leak: add pci_free_irq_vectors() on error path [sashiko]
-  - Fix mtk_pci_remove() ordering: free IRQ before cancel_work_sync [sashiko]
-  - Fix mtk_pci_pldr() ACPI buffer leak: free first result before second call [sashiko]
-  - Replace msleep(500) with MTK_PLDR_POWER_OFF_DELAY_MS define
-  - Remove unused EXT_EVT_H2D_DRM_DISABLE_AP and related register define [sashiko]
-  - Increase MTK_IRQ_NAME_LEN from 20 to 32 to fix W=1 format-truncation warning [sashiko]
-- Patch 2 (Add control plane transaction layer):
-  - Add kernel-doc comments to mtk_ctrl_init() and mtk_ctrl_exit()
-  - Change mtk_ctrl_exit() return type from int to void
-  - Set mdev->ctrl_blk to NULL after freeing in mtk_ctrl_exit() [sashiko]
-  - Change ctrl_blk from void* to typed struct mtk_ctrl_blk* [sashiko]
-  - Remove redundant "depends on MTK_T9XX" from MTK_T9XX_PCI Kconfig [sashiko]
-  - Use mtk_dev_free() instead of devm_kfree() in mtk_pci_probe() error path [sashiko]
-- Patch 3 (Add control DMA interface):
-  - Add @ops kernel-doc parameter for mtk_ctrl_init()
-  - Rename 'err' to 'ret' consistently throughout the patch
-  - Reorder variable declarations to follow reverse Christmas tree style
-  - Change mtk_cldma_txq_free() return type from int to void
-  - Change mtk_cldma_rxq_free() return type from int to void
-  - Change mtk_cldma_exit() return type from int to void
-  - Remove unnecessary zero-initialization of ret in mtk_cldma_start_xfer()
-  - Remove unnecessary zero-initialization of ret in mtk_cldma_tx()
-  - Use direct return instead of goto out in mtk_cldma_submit_tx() error paths
-  - Move software state before HWO flag in mtk_cldma_submit_tx()
-  - Squash variable declarations in mtk_cldma_check_intr_status()
-  - Remove unlikely() from validation paths in mtk_cldma_check_ch_cfg()
-  - Clamp data_recv_len with min_t to prevent skb_over_panic in mtk_cldma_rx_skb_adjust() [sashiko]
-  - Use READ_ONCE() for HWO flag polling in mtk_cldma_check_rx_req() [sashiko]
-  - Fix mtk_cldma_rx_done_work() to always unmask interrupt on error path [sashiko]
-  - Add DMA address guard in mtk_cldma_txq_free() teardown loop [sashiko]
-  - Add IS_ERR() check for kthread_run() in mtk_ctrl_trb_srv_init() [sashiko]
-  - Fix queue_info memory leak on validation failure in mtk_pcie_hif_init() [sashiko]
-  - Handle non-EAGAIN errors in mtk_ctrl_trb_handler() TX path [sashiko]
-  - Fix 'err' typo to 'ret' in mtk_cldma_txbuf_set() error message
-  - Remove unused variable mdev in mtk_cldma_rx_check_again() [sashiko]
-  - Remove unused variables trans and ctrl_blk in mtk_cldma_txq_free() and mtk_cldma_rxq_free() [sashiko]
-- Patch 4 (Add control port):
-  - Add @cfg kernel-doc parameter for mtk_ctrl_init()
-  - Update mtk_ctrl_init() return description to cover additional error codes
-  - Fix double list_del in mtk_port_stale_list_grp_cleanup() [sashiko]
-  - Fix direct mtk_port_trb_free() call to use kref_put() in mtk_port_ch_enable() error path [sashiko]
-  - Fix direct mtk_port_trb_free() call to use kref_put() in mtk_port_ch_disable() error path [sashiko]
-  - Add mtk_port_tbl_destroy() in mtk_port_mngr_init() error path to prevent port memory leak [sashiko]
-  - Change port_ops exit/reset/enable/disable callbacks from int to void
-  - Move -EIO dispatch comment to where the code was introduced
-- Patch 5 (Add FSM thread):
-  - Add bounds check for rtft_entry in mtk_fsm_parse_hs2_msg() [sashiko]
-  - Add skb length validation before accessing ctrl_msg_header in mtk_fsm_sap_ctrl_msg_handler() [sashiko]
-  - Fix skb leak on CTRL_MSG_HS2 mismatch return in mtk_fsm_sap_ctrl_msg_handler() [sashiko]
-  - Add skb length validation before accessing ctrl_msg_header in mtk_fsm_md_ctrl_msg_handler() [sashiko]
-  - Replace devm_kzalloc/devm_kfree with kzalloc/kfree for FSM events [sashiko]
-  - Fix mtk_fsm_evt_submit() to return -ETIMEDOUT on blocking event timeout [sashiko]
-  - Change FSM kthread from TASK_INTERRUPTIBLE to TASK_UNINTERRUPTIBLE [sashiko]
-  - Remove unused variable hw_id in mtk_cldma_dev_exit() [sashiko]
-- Patch 6 (Add AT & MBIM WWAN ports):
-  - Use imperative mode in commit message
-  - Remove unnecessary zero-initialization of ret in mtk_port_copy_data_from()
-  - Change copy_from_user() error code from -EFAULT to -EINVAL in mtk_port_copy_data_from()
-  - Return -EINVAL for zero-length write in mtk_port_common_write()
-  - Change mtk_port_wwan_exit/enable/disable() return type from int to void
-  - Fix packet_size to account for CCCI header reservation in mtk_port_common_write() [sashiko]
-  - Fix WWAN tx callbacks to consume skb and return 0 per wwan_port_ops contract [sashiko]
-  - Fix wwan_create_port() error path: clear ERR_PTR to NULL and call mtk_port_ch_disable() [sashiko]
-- Patch 7 (Add maintainers entry): new patch
-- Link to v1: https://patch.msgid.link/20260529-t9xx_driver_v1-v1-0-bdbfe2c01e57@compal.com
-
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>
-To: Sergey Ryazanov <ryazanov.s.a@gmail.com>
-To: Johannes Berg <johannes@sipsolutions.net>
-To: Andrew Lunn <andrew+netdev@lunn.ch>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Jack Wu <jackbb_wu@compal.com>
-To: Robert Yu <robert_yu@compal.com>
-To: Jeff Chang <Jeff_Chang@compal.com>
-To: Wen-Zhi Huang <wen-zhi.huang@mediatek.com>
-To: Shi-Wei Yeh <shi-wei.yeh@mediatek.com>
-To: Minano Tseng <Minano.tseng@mediatek.com>
-To: Matthias Brugger <matthias.bgg@gmail.com>
-To: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-kernel@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-mediatek@lists.infradead.org
-
----
-Jack Wu (6):
-      net: wwan: t9xx: Add PCIe core
-      net: wwan: t9xx: Add control plane transaction layer
-      net: wwan: t9xx: Add control DMA interface
-      net: wwan: t9xx: Add control port
-      net: wwan: t9xx: Add FSM thread
-      net: wwan: t9xx: Add AT & MBIM WWAN ports
-
- MAINTAINERS                                     |   11 +
- drivers/net/wwan/Kconfig                        |   16 +
- drivers/net/wwan/Makefile                       |    1 +
- drivers/net/wwan/t9xx/Makefile                  |   14 +
- drivers/net/wwan/t9xx/mtk_ctrl_plane.c          |  114 ++
- drivers/net/wwan/t9xx/mtk_ctrl_plane.h          |   88 ++
- drivers/net/wwan/t9xx/mtk_dev.c                 |   33 +
- drivers/net/wwan/t9xx/mtk_dev.h                 |  111 ++
- drivers/net/wwan/t9xx/mtk_fsm.c                 | 1006 +++++++++++++++
- drivers/net/wwan/t9xx/mtk_fsm.h                 |  144 +++
- drivers/net/wwan/t9xx/mtk_port.c                |  971 +++++++++++++++
- drivers/net/wwan/t9xx/mtk_port.h                |  174 +++
- drivers/net/wwan/t9xx/mtk_port_io.c             |  599 +++++++++
- drivers/net/wwan/t9xx/mtk_port_io.h             |   41 +
- drivers/net/wwan/t9xx/mtk_utility.h             |   33 +
- drivers/net/wwan/t9xx/pcie/Makefile             |   15 +
- drivers/net/wwan/t9xx/pcie/mtk_cldma.c          | 1516 +++++++++++++++++++++++
- drivers/net/wwan/t9xx/pcie/mtk_cldma.h          |  177 +++
- drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.c      |  374 ++++++
- drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.h      |  174 +++
- drivers/net/wwan/t9xx/pcie/mtk_cldma_drv_m9xx.c |  178 +++
- drivers/net/wwan/t9xx/pcie/mtk_cldma_drv_m9xx.h |  101 ++
- drivers/net/wwan/t9xx/pcie/mtk_ctrl_cfg_m9xx.c  |   55 +
- drivers/net/wwan/t9xx/pcie/mtk_pci.c            | 1109 +++++++++++++++++
- drivers/net/wwan/t9xx/pcie/mtk_pci.h            |  233 ++++
- drivers/net/wwan/t9xx/pcie/mtk_pci_drv_m9xx.c   |   69 ++
- drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h        |   70 ++
- drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c     |  617 +++++++++
- drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h     |  108 ++
- 29 files changed, 8152 insertions(+)
----
-base-commit: eb3f4b7426cfd2b79d65b7d37155480b32259a11
-change-id: 20260529-t9xx_driver_v1-1744f8af7739
-
-Best regards,
---  
-Jack Wu <jackbb_wu@compal.com>
+-- 
+2.34.1
 
