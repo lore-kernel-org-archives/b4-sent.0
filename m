@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sat, 29 Aug 2026 10:08:33 +0200
-Subject: [PATCH v3 1/7] thunderbolt: Hold a router reference for each
- allocated HopID
+Date: Sat, 29 Aug 2026 10:08:34 +0200
+Subject: [PATCH v3 2/7] thunderbolt: Make the DP tunnel activation callback
+ mandatory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-b4-tbt-fixes-v3-1-e1fab6ac54fe@kernel.org>
+Message-Id: <20260829-b4-tbt-fixes-v3-2-e1fab6ac54fe@kernel.org>
 References: <20260829-b4-tbt-fixes-v3-0-e1fab6ac54fe@kernel.org>
 In-Reply-To: <20260829-b4-tbt-fixes-v3-0-e1fab6ac54fe@kernel.org>
 To: Andreas Noever <andreas.noever@gmail.com>, 
@@ -16,127 +16,329 @@ Cc: Mika Westerberg <mika.westerberg@linux.intel.com>,
  linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4048; i=sven@kernel.org;
- h=from:subject:message-id; bh=MOWklr/9/zxO0RK1ptJ7O/V6sWasLOgUeySDBc1yB98=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9akyd3veqeH3Ww13ZVas2f1JYF0IeVnP8WTD99SyNldm
- 3B+mr5ERykLgxgXg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAixk8YGdqYBJiehU2ax+K+
- d7qakdb72ZI7/DgWTc6VbrAN5ZTeOZuRodPU8sEf//Ot3qWKKZUSAbekDz2Pfv7pQ/V8I79qfvH
- d7AA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=13575; i=sven@kernel.org;
+ h=from:subject:message-id; bh=drUQ/9LCnjgsH8dTdZZsgx0jQ7RPPm7Ngc2sH0x40Uo=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9akyT08eduV992rnJPVwnX9Qh9X+IvSiAqbF22+zJZlN
+ +Tn1k/uKGVhEONikBVTZNm+3970ycM3gks3XXoPM4eVCWQIAxenAEzksBsjwy4j20tZxfbtt5+U
+ isrxuyXe1Ne6VD4vtc02w+ru7WXWbIwMjx8Xsr+bXawg63qeoawydxrH+4gZd79nZggfe7XBsfY
+ sEwA=
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tb_stop drops the reference to all DP tunnels but does not deactivate
-them, thus nothing cancels a dprx_work still in flight (which holds its
-own tunnel reference) and the tunnel can outlive tb_switch_remove. The
-HopID releases in tb_path_free then operate on freed IDAs and trigger
-warnings like
+tb_tunnel_alloc_dp() takes an optional callback which is run from
+dprx_work once the DPRX capabilities read has completed. Without that
+callback tb_dp_dprx_start() reads the capabilities synchronously and
+never queues the work. It however always takes a tunnel reference which
+is only dropped by dprx_work itself or by tb_dp_dprx_stop() when
+cancel_delayed_work() actually canceled that work. That reference is
+thus leaked for every tunnel without a callback.
 
-  ida_free called for id=8 which is not allocated.
+The only tunnels without one are those from tb_tunnel_discover_dp(),
+which are activated again when restoring from hibernation.
+Pass the callback to tb_tunnel_discover_dp() as well and drop the
+synchronous path such that the DPRX capabilities are always read from
+dprx_work. Hibernation restore then also no longer blocks for up to 12
+seconds while waiting for that read to complete.
 
-This can be triggered by unbinding the driver while a DP tunnel is still
-waiting for the DPRX capabilities read to finish. On the Apple NHI
-unplugging the cable runs into just that reliably because the read can
-never finish right now and because the unplug powers down the entire
-USB4 complex and removes the NHI device.
-
-Take a router reference whenever an input or output HopID is allocated
-and drop it again after the HopID is released. This keeps the ports and
-their HopID IDAs alive for as long as they are used.
-
-The KUnit tests allocate routers without ever registering their devices
-so initialize the embedded struct device there as well and drop its
-initial reference when the test is finished.
+Also fix up the KUnit tests.
 
 Fixes: d6d458d42e1e ("thunderbolt: Handle DisplayPort tunnel activation asynchronously")
 Cc: stable@vger.kernel.org
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/thunderbolt/switch.c |  9 ++++++++-
- drivers/thunderbolt/test.c   | 21 +++++++++++++++++++++
- 2 files changed, 29 insertions(+), 1 deletion(-)
+tb_dp_tunnel_active() calls five helpers that are defined later in the
+file. Moving the entire function up would require forward declarations
+for all of those, so keep the single forward declaration instead.
+---
+ drivers/thunderbolt/tb.c     |  4 +++-
+ drivers/thunderbolt/test.c   | 37 +++++++++++++++++++++++-----------
+ drivers/thunderbolt/tunnel.c | 47 ++++++++++++++++++++++++--------------------
+ drivers/thunderbolt/tunnel.h |  8 +++++---
+ 4 files changed, 60 insertions(+), 36 deletions(-)
 
-diff --git a/drivers/thunderbolt/switch.c b/drivers/thunderbolt/switch.c
-index a830c82bb905..217e18f8a7c7 100644
---- a/drivers/thunderbolt/switch.c
-+++ b/drivers/thunderbolt/switch.c
-@@ -765,6 +765,7 @@ static int tb_port_alloc_hopid(struct tb_port *port, bool in, int min_hopid,
+diff --git a/drivers/thunderbolt/tb.c b/drivers/thunderbolt/tb.c
+index f43f2d952372..29b9879c40d8 100644
+--- a/drivers/thunderbolt/tb.c
++++ b/drivers/thunderbolt/tb.c
+@@ -89,6 +89,7 @@ static void tb_dp_resource_unavailable(struct tb *tb, struct tb_port *port,
+ 				       const char *reason);
+ static void tb_queue_dp_bandwidth_request(struct tb *tb, u64 route, u8 port,
+ 					  int retry, unsigned long delay);
++static void tb_dp_tunnel_active(struct tb_tunnel *tunnel, void *data);
+ 
+ static void tb_queue_hotplug(struct tb *tb, u64 route, u8 port, bool unplug)
  {
- 	int port_max_hopid;
- 	struct ida *ida;
-+	int ret;
+@@ -385,7 +386,8 @@ static void tb_switch_discover_tunnels(struct tb_switch *sw,
  
- 	if (in) {
- 		port_max_hopid = port->config.max_in_hop_id;
-@@ -784,7 +785,11 @@ static int tb_port_alloc_hopid(struct tb_port *port, bool in, int min_hopid,
- 	if (max_hopid < 0 || max_hopid > port_max_hopid)
- 		max_hopid = port_max_hopid;
+ 		switch (port->config.type) {
+ 		case TB_TYPE_DP_HDMI_IN:
+-			tunnel = tb_tunnel_discover_dp(tb, port, alloc_hopids);
++			tunnel = tb_tunnel_discover_dp(tb, port, alloc_hopids,
++						       tb_dp_tunnel_active, tb);
+ 			tb_increase_tmu_accuracy(tunnel);
+ 			break;
  
--	return ida_alloc_range(ida, min_hopid, max_hopid, GFP_KERNEL);
-+	ret = ida_alloc_range(ida, min_hopid, max_hopid, GFP_KERNEL);
-+	if (ret >= 0)
-+		tb_switch_get(port->sw);
-+
-+	return ret;
- }
- 
- /**
-@@ -823,6 +828,7 @@ int tb_port_alloc_out_hopid(struct tb_port *port, int min_hopid, int max_hopid)
- void tb_port_release_in_hopid(struct tb_port *port, int hopid)
- {
- 	ida_free(&port->in_hopids, hopid);
-+	tb_switch_put(port->sw);
- }
- 
- /**
-@@ -833,6 +839,7 @@ void tb_port_release_in_hopid(struct tb_port *port, int hopid)
- void tb_port_release_out_hopid(struct tb_port *port, int hopid)
- {
- 	ida_free(&port->out_hopids, hopid);
-+	tb_switch_put(port->sw);
- }
- 
- static inline bool tb_switch_is_reachable(const struct tb_switch *parent,
 diff --git a/drivers/thunderbolt/test.c b/drivers/thunderbolt/test.c
-index 05652ee82fbf..799ada97cbc9 100644
+index 799ada97cbc9..c8c648f31107 100644
 --- a/drivers/thunderbolt/test.c
 +++ b/drivers/thunderbolt/test.c
-@@ -33,6 +33,18 @@ static void kunit_ida_init(struct kunit *test, struct ida *ida)
- 	kunit_alloc_resource(test, __ida_init, __ida_destroy, GFP_KERNEL, ida);
+@@ -1407,6 +1407,10 @@ static void tb_test_tunnel_pcie(struct kunit *test)
+ 	tb_tunnel_put(tunnel1);
  }
  
-+static void tb_test_switch_release(struct device *dev)
++static void tb_test_dp_tunnel_active(struct tb_tunnel *tunnel, void *data)
 +{
-+	/* The memory is owned by KUnit, nothing to do here */
 +}
 +
-+static void tb_test_switch_put(void *data)
-+{
-+	struct tb_switch *sw = data;
-+
-+	put_device(&sw->dev);
-+}
-+
- static struct tb_switch *alloc_switch(struct kunit *test, u64 route,
- 				      u8 upstream_port, u8 max_port_number)
+ static void tb_test_tunnel_dp(struct kunit *test)
  {
-@@ -44,6 +56,15 @@ static struct tb_switch *alloc_switch(struct kunit *test, u64 route,
- 	if (!sw)
- 		return NULL;
+ 	struct tb_switch *host, *dev;
+@@ -1427,7 +1431,8 @@ static void tb_test_tunnel_dp(struct kunit *test)
+ 	in = &host->ports[5];
+ 	out = &dev->ports[13];
  
-+	/*
-+	 * HopID allocations take a reference to their routers and those devices
-+	 * have to be initialized for that to work.
-+	 */
-+	sw->dev.release = tb_test_switch_release;
-+	device_initialize(&sw->dev);
-+	if (kunit_add_action_or_reset(test, tb_test_switch_put, sw))
+-	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++				    tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1473,7 +1478,8 @@ static void tb_test_tunnel_dp_chain(struct kunit *test)
+ 	in = &host->ports[5];
+ 	out = &dev4->ports[14];
+ 
+-	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++				    tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1523,7 +1529,8 @@ static void tb_test_tunnel_dp_tree(struct kunit *test)
+ 	in = &dev2->ports[13];
+ 	out = &dev5->ports[13];
+ 
+-	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++				    tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1588,7 +1595,8 @@ static void tb_test_tunnel_dp_max_length(struct kunit *test)
+ 	in = &dev6->ports[13];
+ 	out = &dev12->ports[13];
+ 
+-	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++				    tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
+@@ -1658,7 +1666,8 @@ static void tb_test_tunnel_3dp(struct kunit *test)
+ 	out2 = &dev5->ports[13];
+ 	out3 = &dev4->ports[14];
+ 
+-	tunnel1 = tb_tunnel_alloc_dp(NULL, in1, out1, 1, 0, 0, NULL, NULL);
++	tunnel1 = tb_tunnel_alloc_dp(NULL, in1, out1, 1, 0, 0,
++				     tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_TRUE(test, tunnel1 != NULL);
+ 	KUNIT_EXPECT_EQ(test, tunnel1->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel1->src_port, in1);
+@@ -1666,7 +1675,8 @@ static void tb_test_tunnel_3dp(struct kunit *test)
+ 	KUNIT_ASSERT_EQ(test, tunnel1->npaths, 3);
+ 	KUNIT_ASSERT_EQ(test, tunnel1->paths[0]->path_length, 3);
+ 
+-	tunnel2 = tb_tunnel_alloc_dp(NULL, in2, out2, 1, 0, 0, NULL, NULL);
++	tunnel2 = tb_tunnel_alloc_dp(NULL, in2, out2, 1, 0, 0,
++				     tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_TRUE(test, tunnel2 != NULL);
+ 	KUNIT_EXPECT_EQ(test, tunnel2->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel2->src_port, in2);
+@@ -1674,7 +1684,8 @@ static void tb_test_tunnel_3dp(struct kunit *test)
+ 	KUNIT_ASSERT_EQ(test, tunnel2->npaths, 3);
+ 	KUNIT_ASSERT_EQ(test, tunnel2->paths[0]->path_length, 4);
+ 
+-	tunnel3 = tb_tunnel_alloc_dp(NULL, in3, out3, 1, 0, 0, NULL, NULL);
++	tunnel3 = tb_tunnel_alloc_dp(NULL, in3, out3, 1, 0, 0,
++				     tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_TRUE(test, tunnel3 != NULL);
+ 	KUNIT_EXPECT_EQ(test, tunnel3->type, TB_TUNNEL_DP);
+ 	KUNIT_EXPECT_PTR_EQ(test, tunnel3->src_port, in3);
+@@ -1772,7 +1783,8 @@ static void tb_test_tunnel_port_on_path(struct kunit *test)
+ 	in = &dev2->ports[13];
+ 	out = &dev5->ports[13];
+ 
+-	dp_tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	dp_tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++				       tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel);
+ 
+ 	KUNIT_EXPECT_TRUE(test, tb_tunnel_port_on_path(dp_tunnel, in));
+@@ -2204,7 +2216,8 @@ static void tb_test_credit_alloc_dp(struct kunit *test)
+ 	in = &host->ports[5];
+ 	out = &dev->ports[14];
+ 
+-	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++				    tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
+ 	KUNIT_ASSERT_EQ(test, tunnel->npaths, (size_t)3);
+ 
+@@ -2440,7 +2453,8 @@ static struct tb_tunnel *TB_TEST_DP_TUNNEL1(struct kunit *test,
+ 
+ 	in = &host->ports[5];
+ 	out = &dev->ports[13];
+-	dp_tunnel1 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	dp_tunnel1 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++					tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel1);
+ 	KUNIT_ASSERT_EQ(test, dp_tunnel1->npaths, (size_t)3);
+ 
+@@ -2477,7 +2491,8 @@ static struct tb_tunnel *TB_TEST_DP_TUNNEL2(struct kunit *test,
+ 
+ 	in = &host->ports[6];
+ 	out = &dev->ports[14];
+-	dp_tunnel2 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0, NULL, NULL);
++	dp_tunnel2 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
++					tb_test_dp_tunnel_active, NULL);
+ 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel2);
+ 	KUNIT_ASSERT_EQ(test, dp_tunnel2->npaths, (size_t)3);
+ 
+diff --git a/drivers/thunderbolt/tunnel.c b/drivers/thunderbolt/tunnel.c
+index b7f32305f14a..1f978fddaeed 100644
+--- a/drivers/thunderbolt/tunnel.c
++++ b/drivers/thunderbolt/tunnel.c
+@@ -1106,8 +1106,7 @@ static void tb_dp_dprx_work(struct work_struct *work)
+ 		mutex_unlock(&tb->lock);
+ 	}
+ 
+-	if (tunnel->callback)
+-		tunnel->callback(tunnel, tunnel->callback_data);
++	tunnel->callback(tunnel, tunnel->callback_data);
+ 	tb_tunnel_put(tunnel);
+ }
+ 
+@@ -1120,15 +1119,10 @@ static int tb_dp_dprx_start(struct tb_tunnel *tunnel)
+ 	tb_tunnel_get(tunnel);
+ 
+ 	tunnel->dprx_started = true;
++	tunnel->dprx_timeout = dprx_timeout_to_ktime(dprx_timeout);
++	queue_delayed_work(tunnel->tb->wq, &tunnel->dprx_work, 0);
+ 
+-	if (tunnel->callback) {
+-		tunnel->dprx_timeout = dprx_timeout_to_ktime(dprx_timeout);
+-		queue_delayed_work(tunnel->tb->wq, &tunnel->dprx_work, 0);
+-		return -EINPROGRESS;
+-	}
+-
+-	return tb_dp_is_usb4(tunnel->src_port->sw) ?
+-		tb_dp_wait_dprx(tunnel, dprx_timeout) : 0;
++	return -EINPROGRESS;
+ }
+ 
+ static void tb_dp_dprx_stop(struct tb_tunnel *tunnel)
+@@ -1579,20 +1573,28 @@ static void tb_dp_dump(struct tb_tunnel *tunnel)
+  * @tb: Pointer to the domain structure
+  * @in: DP in adapter
+  * @alloc_hopid: Allocate HopIDs from visited ports
++ * @callback: Callback that is called when the DP tunnel is fully
++ *	      activated (or there is an error)
++ * @callback_data: Data for @callback
+  *
+  * If @in adapter is active, follows the tunnel to the DP out adapter
+  * and back. Returns the discovered tunnel or %NULL if there was no
+- * tunnel.
++ * tunnel. See tb_tunnel_alloc_dp() for @callback.
+  *
+  * Return: Pointer to &struct tb_tunnel or %NULL if no tunnel found.
+  */
+ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+-					bool alloc_hopid)
++					bool alloc_hopid,
++					void (*callback)(struct tb_tunnel *, void *),
++					void *callback_data)
+ {
+ 	struct tb_tunnel *tunnel;
+ 	struct tb_port *port;
+ 	struct tb_path *path;
+ 
++	if (WARN_ON(!callback))
 +		return NULL;
 +
- 	sw->config.upstream_port_number = upstream_port;
- 	sw->config.depth = tb_route_length(route);
- 	sw->config.route_hi = upper_32_bits(route);
+ 	if (!tb_dp_port_is_enabled(in))
+ 		return NULL;
+ 
+@@ -1608,6 +1610,9 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+ 	tunnel->alloc_bandwidth = tb_dp_alloc_bandwidth;
+ 	tunnel->consumed_bandwidth = tb_dp_consumed_bandwidth;
+ 	tunnel->src_port = in;
++	tunnel->callback = callback;
++	tunnel->callback_data = callback_data;
++	INIT_DELAYED_WORK(&tunnel->dprx_work, tb_dp_dprx_work);
+ 
+ 	path = tb_path_discover(in, TB_DP_VIDEO_HOPID, NULL, -1,
+ 				&tunnel->dst_port, "Video", alloc_hopid);
+@@ -1674,16 +1679,16 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+  *	    %0 if no available bandwidth.
+  * @max_down: Maximum available downstream bandwidth for the DP tunnel.
+  *	      %0 if no available bandwidth.
+- * @callback: Optional callback that is called when the DP tunnel is
+- *	      fully activated (or there is an error)
+- * @callback_data: Optional data for @callback
++ * @callback: Callback that is called when the DP tunnel is fully
++ *	      activated (or there is an error)
++ * @callback_data: Data for @callback
+  *
+  * Allocates a tunnel between @in and @out that is capable of tunneling
+- * Display Port traffic. If @callback is not %NULL it will be called
+- * after tb_tunnel_activate() once the tunnel has been fully activated.
+- * It can call tb_tunnel_is_active() to check if activation was
+- * successful (or if it returns %false there was some sort of issue).
+- * The @callback is called without @tb->lock held.
++ * Display Port traffic. The @callback is called after tb_tunnel_activate()
++ * once the tunnel has been fully activated. It can call
++ * tb_tunnel_is_active() to check if activation was successful (or if it
++ * returns %false there was some sort of issue). The @callback is called
++ * without @tb->lock held.
+  *
+  * Return: Pointer to @struct tb_tunnel or %NULL in case of failure.
+  */
+@@ -1698,7 +1703,7 @@ struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
+ 	struct tb_path *path;
+ 	bool pm_support;
+ 
+-	if (WARN_ON(!in->cap_adap || !out->cap_adap))
++	if (WARN_ON(!in->cap_adap || !out->cap_adap || !callback))
+ 		return NULL;
+ 
+ 	tunnel = tb_tunnel_alloc(tb, 3, TB_TUNNEL_DP);
+diff --git a/drivers/thunderbolt/tunnel.h b/drivers/thunderbolt/tunnel.h
+index 4878763a82b3..7d1d255ab5a7 100644
+--- a/drivers/thunderbolt/tunnel.h
++++ b/drivers/thunderbolt/tunnel.h
+@@ -66,8 +66,8 @@ enum tb_tunnel_state {
+  * @dprx_canceled: Was DPRX capabilities read poll canceled
+  * @dprx_timeout: If set DPRX capabilities read poll work will timeout after this passes
+  * @dprx_work: Worker that is scheduled to poll completion of DPRX capabilities read
+- * @callback: Optional callback called when DP tunnel is fully activated
+- * @callback_data: Optional data for @callback
++ * @callback: Callback called when DP tunnel is fully activated
++ * @callback_data: Data for @callback
+  * @paths: All paths required by the tunnel
+  */
+ struct tb_tunnel {
+@@ -117,7 +117,9 @@ struct tb_tunnel *tb_tunnel_alloc_pci(struct tb *tb, struct tb_port *up,
+ bool tb_tunnel_reserved_pci(struct tb_port *port, int *reserved_up,
+ 			    int *reserved_down);
+ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
+-					bool alloc_hopid);
++					bool alloc_hopid,
++					void (*callback)(struct tb_tunnel *, void *),
++					void *callback_data);
+ struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
+ 				     struct tb_port *out, int link_nr,
+ 				     int max_up, int max_down,
 
 -- 
 2.55.0
