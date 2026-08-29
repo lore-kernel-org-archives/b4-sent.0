@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 29 Aug 2026 14:35:33 -0500
-Subject: [PATCH v3 3/4] arm64: dts: qcom: Add Retroid Pocket 6
+Date: Sat, 29 Aug 2026 14:35:34 -0500
+Subject: [PATCH v3 4/4] arm64: dts: qcom: Add Retroid Pocket Nova
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-rp-qcs8550-v3-3-198d5b2fc475@gmail.com>
+Message-Id: <20260829-rp-qcs8550-v3-4-198d5b2fc475@gmail.com>
 References: <20260829-rp-qcs8550-v3-0-198d5b2fc475@gmail.com>
 In-Reply-To: <20260829-rp-qcs8550-v3-0-198d5b2fc475@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -13,51 +13,45 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788032141; l=4432;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788032141; l=4201;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Wvn74/6unZDQh66OwyzH7MkGfyg7mtx/3XanHCJ30no=;
- b=ScHrXXBTRT7PP4U/gIBHEZbAWhIJqBIRT1AkDexDi+zXbVngEk+uylaIqHC0HHsyl6QGRUdoM
- 7jYe1o3m2huCsaGVW919ZJB4vlP8W9ZIZonldJWF+Gz/xb6ZfsTM6On
+ bh=63P4oT6UJRI5RcFp4MDSgRO4yYmZZbwljJ7ZdnJQdDk=;
+ b=nwHV3NkkV7sI7YBD3Fu/DkaYuLqOeo1Bi1uE2d0d4Ru/dHZaX0AN3skjYvqj9tRVWgQGn5yrh
+ xXu0vW5HxeoBpHLEWNfNimQzLDdf39E1m/xT+QwsfXWQ1z8ctVUQPuZ
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Retroid Pocket 6 is a high-performance Android-based handheld gaming
-console powered by the Qualcomm Snapdragon 8 Gen 2 processor featuring a
-5.5-inch AMOLED touchscreen.
-
-This is based on the support by ROCKNIX, however their history does not
-show who the original author was, so direct attribution cannot be given.
+The Retroid Pocket Nova is a high-performance Android-based handheld
+gaming console powered by the Qualcomm Snapdragon 8 Gen 2 processor
+featuring a 4.5-inch 4:3 AMOLED touchscreen.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
  arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/qcs8550-retroidpocket-rp6.dts    | 120 +++++++++++++++++++++
- 2 files changed, 121 insertions(+)
+ .../boot/dts/qcom/qcs8550-retroidpocket-nova.dts   | 116 +++++++++++++++++++++
+ 2 files changed, 117 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index a7b0fb759099e..09b3c5b2d9dab 100644
+index 09b3c5b2d9dab..582805e89f4cb 100644
 --- a/arch/arm64/boot/dts/qcom/Makefile
 +++ b/arch/arm64/boot/dts/qcom/Makefile
 @@ -196,6 +196,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2mini.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2portal.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-thor.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-retroidpocket-rp6.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-retroidpocket-nova.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-retroidpocket-rp6.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-rb5gen2.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride-r3.dtb
-diff --git a/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-rp6.dts b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-rp6.dts
+diff --git a/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
 new file mode 100644
-index 0000000000000..a93fe74b83383
+index 0000000000000..0a0546977a026
 --- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-rp6.dts
-@@ -0,0 +1,120 @@
++++ b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
+@@ -0,0 +1,116 @@
 +// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (C) 2026-present ROCKNIX (https://github.com/ROCKNIX).
-+ */
 +
 +/dts-v1/;
 +
@@ -66,8 +60,8 @@ index 0000000000000..a93fe74b83383
 +#include "qcs8550-ayntec-common.dtsi"
 +
 +&{/} {
-+	model = "Retroid Pocket 6";
-+	compatible = "retroidpocket,rp6", "qcom,qcs8550", "qcom,sm8550";
++	model = "Retroid Pocket Nova";
++	compatible = "retroidpocket,nova", "qcom,qcs8550", "qcom,sm8550";
 +
 +	backlight: backlight {
 +		compatible = "pwm-backlight";
@@ -146,9 +140,8 @@ index 0000000000000..a93fe74b83383
 +		pinctrl-1 = <&ts_p_rst_sleep>, <&ts_p_int_sleep>;
 +		pinctrl-names = "default", "sleep";
 +
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1920>;
-+		touchscreen-swapped-x-y;
++		touchscreen-size-x = <1280>;
++		touchscreen-size-y = <960>;
 +	};
 +};
 +
@@ -161,18 +154,18 @@ index 0000000000000..a93fe74b83383
 +};
 +
 +&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/retroidpocket/rp6/adsp.mbn",
-+			"qcom/sm8550/retroidpocket/rp6/adsp_dtb.mbn";
++	firmware-name = "qcom/sm8550/retroidpocket/nova/adsp.mbn",
++			"qcom/sm8550/retroidpocket/nova/adsp_dtb.mbn";
 +
 +	status = "okay";
 +};
 +
 +&spk_amp_l {
-+	firmware-name = "qcom/sm8550/retroidpocket/rp6/aw883xx_acf.bin";
++	firmware-name = "qcom/sm8550/retroidpocket/nova/aw883xx_acf.bin";
 +};
 +
 +&spk_amp_r {
-+	firmware-name = "qcom/sm8550/retroidpocket/rp6/aw883xx_acf.bin";
++	firmware-name = "qcom/sm8550/retroidpocket/nova/aw883xx_acf.bin";
 +};
 
 -- 
