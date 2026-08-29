@@ -1,11 +1,11 @@
 From: Tobias Jakobsen <tjakobsen84@protonmail.com>
-Date: Sat, 29 Aug 2026 03:04:32 +0200
-Subject: [PATCH 1/2] mtd: spi-nor: allow the platform to supply write
- protection state
+Date: Sat, 29 Aug 2026 03:04:33 +0200
+Subject: [PATCH 2/2] spi: spi-intel: report controller enforced write
+ protection
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-spi-nor-platform-lock-v1-1-cd362d4914e2@protonmail.com>
+Message-Id: <20260829-spi-nor-platform-lock-v1-2-cd362d4914e2@protonmail.com>
 References: <20260829-spi-nor-platform-lock-v1-0-cd362d4914e2@protonmail.com>
 In-Reply-To: <20260829-spi-nor-platform-lock-v1-0-cd362d4914e2@protonmail.com>
 To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>, 
@@ -17,153 +17,112 @@ Cc: Mika Westerberg <mika.westerberg@linux.intel.com>,
  linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
  linux-spi@vger.kernel.org, Tobias Jakobsen <tjakobsen84@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787965476; l=5341;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787965476; l=3457;
  i=tjakobsen84@protonmail.com; s=20260829; h=from:subject:message-id;
- bh=UHLaWTixtcU+k1LSS+E9v9r7hrQI/HQPhvP207K3ckc=;
- b=Uc6lZZVF5l+oa1XBG2QK/BZpMBVQdT7Qg/6dqsmR7YyvjNV08simmoHiRb+3omLFJzKFQtWHc
- Y/MO/PaaGykBXxyYOT5YnunkGFGSnmR9LQJng5ZjWBG3BLxnMaZuOfR
+ bh=gtEEAKizpcnWW1tUrFGFb4Gr6XQwi2idSgfJOzM3heg=;
+ b=NKpDKeAa95+S/284Or3ncZbzcN15LrGx+vzGVdClOGc8pkjWpxqzTfoSd/t2Xh3BYsdjWFifP
+ ZKP2wx74Y9TDUGvCbybWdMm80iFd8N0wmmI0YnQGudh7Ex0EkMAjC9u
 X-Developer-Key: i=tjakobsen84@protonmail.com; a=ed25519;
  pk=UREd6cisfwsFIDP455nUH6Ysx+ZDGnAVE9nGmKzm1Ks=
 X-Endpoint-Received: by B4 Relay for tjakobsen84@protonmail.com/20260829 with auth_id=986
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some flashes are write protected by the platform they are attached to
-rather than by their own block protection bits. An Intel PCH SPI
-controller programmed with protected range registers is one example: it
-refuses writes to a range regardless of what the chip's status register
-says, while the chip's block protection bits are typically left clear.
+On Intel PCH platforms write protection is enforced by the controller's
+protected range registers, not by the flash chip's block protection
+bits, which are typically left clear. The SPI MEM conversion left
+spi-intel without visibility of the MTD device, so it cannot supply MTD
+locking operations directly.
 
-MEMISLOCKED therefore either fails with -EOPNOTSUPP, or, once the chip
-gains SPI_NOR_HAS_LOCK, reports a range as unlocked while writes to it
-are in fact being refused.
+Pass a write protection query through struct flash_platform_data, which
+spi-intel already uses to hand the partition layout to spi-nor.
 
-Let the platform supply an optional is_locked() callback in struct
-flash_platform_data, alongside the partitions it can already supply, and
-prefer it over the chip's own block protection bits. This is independent
-of SPI_NOR_HAS_LOCK, so an answer is also given for chips that have no
-block protection support of their own.
+Note this asks the opposite question to intel_spi_is_protected(): rather
+than whether a flash region contains a protected range, it asks whether
+the queried range is itself entirely covered by one, which is what the
+MTD layer means by locked.
 
-lock() and unlock() return -EOPNOTSUPP, as platform enforced protection
-is not expected to be changed at runtime.
+Tested on a Coffee Lake i5 with PR0 covering 0x860000-0xffffff and
+FLOCKDN set, querying MEMISLOCKED over four ranges:
 
-Platforms that do not supply the callback are unaffected.
+                               PR0 range  whole chip  in PR0  below PR0
+  unpatched                       -95        -95       -95      -95
+  chip lock flags only              0          0         0        0
+  patched, no chip lock flags       1          0         1        0
+  patched + chip lock flags         1          0         1        0
+
+The whole chip and below-PR0 columns stay unlocked because only
+0x860000-0xffffff is covered by a protected range.
 
 Link: https://bugzilla.kernel.org/show_bug.cgi?id=221927
 Signed-off-by: Tobias Jakobsen <tjakobsen84@protonmail.com>
 ---
- drivers/mtd/spi-nor/core.c | 52 ++++++++++++++++++++++++++++++++++++++++++++--
- include/linux/spi/flash.h  | 12 +++++++++++
- 2 files changed, 62 insertions(+), 2 deletions(-)
+ drivers/spi/spi-intel.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
 
-diff --git a/drivers/mtd/spi-nor/core.c b/drivers/mtd/spi-nor/core.c
-index ccf4396cd..a5c37eea4 100644
---- a/drivers/mtd/spi-nor/core.c
-+++ b/drivers/mtd/spi-nor/core.c
-@@ -3001,6 +3001,50 @@ static void spi_nor_init_fixup_flags(struct spi_nor *nor)
- 		nor->flags |= SNOR_F_IO_MODE_EN_VOLATILE;
+diff --git a/drivers/spi/spi-intel.c b/drivers/spi/spi-intel.c
+index 7494b921a..667291979 100644
+--- a/drivers/spi/spi-intel.c
++++ b/drivers/spi/spi-intel.c
+@@ -1223,6 +1223,46 @@ static bool intel_spi_is_protected(const struct intel_spi *ispi,
+ 	return false;
  }
  
-+static int spi_nor_platform_lock(struct spi_nor *nor, loff_t ofs, u64 len)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
-+static int spi_nor_platform_unlock(struct spi_nor *nor, loff_t ofs, u64 len)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
-+static int spi_nor_platform_is_locked(struct spi_nor *nor, loff_t ofs, u64 len)
-+{
-+	struct flash_platform_data *data = dev_get_platdata(nor->dev);
-+
-+	return data->is_locked(nor->spimem->spi, ofs, len);
-+}
-+
-+static const struct spi_nor_locking_ops spi_nor_platform_locking_ops = {
-+	.lock = spi_nor_platform_lock,
-+	.unlock = spi_nor_platform_unlock,
-+	.is_locked = spi_nor_platform_is_locked,
-+};
-+
-+/**
-+ * spi_nor_init_platform_locking_ops() - Use the platform supplied write
-+ *	protection query, if there is one.
-+ * @nor:	pointer to a 'struct spi_nor'
-+ *
-+ * Some flashes are write protected by the platform they are attached to rather
-+ * than by their own block protection bits, for example by an Intel PCH SPI
-+ * controller programmed with protected range registers. In that case the chip's
-+ * block protection bits are typically left clear and say nothing about what is
-+ * actually enforced, so prefer the platform supplied query when available.
++/*
++ * Unlike intel_spi_is_protected(), which asks whether a flash region contains
++ * any protected range, this asks the opposite: whether the given range is
++ * itself entirely covered by a write protected range. That is what the MTD
++ * layer means by "locked".
 + */
-+static void spi_nor_init_platform_locking_ops(struct spi_nor *nor)
++static bool intel_spi_is_range_protected(const struct intel_spi *ispi,
++					 unsigned int base, unsigned int limit)
 +{
-+	struct flash_platform_data *data = dev_get_platdata(nor->dev);
++	int i;
 +
-+	if (!data || !data->is_locked || !nor->spimem)
-+		return;
++	for (i = 0; i < ispi->pr_num; i++) {
++		u32 pr_base, pr_limit, pr_value;
 +
-+	nor->params->locking_ops = &spi_nor_platform_locking_ops;
++		pr_value = readl(ispi->pregs + PR(i));
++		if (!(pr_value & PR_WPE))
++			continue;
++
++		pr_limit = (pr_value & PR_LIMIT_MASK) >> PR_LIMIT_SHIFT;
++		pr_base = pr_value & PR_BASE_MASK;
++
++		if (base >= pr_base && limit <= pr_limit)
++			return true;
++	}
++
++	return false;
 +}
 +
- /**
-  * spi_nor_late_init_params() - Late initialization of default flash parameters.
-  * @nor:	pointer to a 'struct spi_nor'
-@@ -3040,9 +3084,13 @@ static int spi_nor_late_init_params(struct spi_nor *nor)
- 	spi_nor_init_fixup_flags(nor);
- 
- 	/*
--	 * NOR protection support. When locking_ops are not provided, we pick
--	 * the default ones.
-+	 * NOR protection support. Platform enforced protection is preferred
-+	 * over the chip's own, as the chip is not necessarily aware of it.
-+	 * When locking_ops are not provided, we pick the default ones.
- 	 */
-+	if (!nor->params->locking_ops)
-+		spi_nor_init_platform_locking_ops(nor);
++static int intel_spi_is_locked(struct spi_device *spi, loff_t ofs, u64 len)
++{
++	struct intel_spi *ispi = spi_controller_get_devdata(spi->controller);
 +
- 	if (nor->flags & SNOR_F_HAS_LOCK && !nor->params->locking_ops)
- 		spi_nor_init_default_locking_ops(nor);
- 
-diff --git a/include/linux/spi/flash.h b/include/linux/spi/flash.h
-index 2401a0887..f415e2c0b 100644
---- a/include/linux/spi/flash.h
-+++ b/include/linux/spi/flash.h
-@@ -2,7 +2,10 @@
- #ifndef LINUX_SPI_FLASH_H
- #define LINUX_SPI_FLASH_H
- 
-+#include <linux/types.h>
++	if (!len)
++		return 0;
 +
- struct mtd_partition;
-+struct spi_device;
- 
- /**
-  * struct flash_platform_data: board-specific flash data
-@@ -11,6 +14,13 @@ struct mtd_partition;
-  * @nr_parts: number of mtd_partitions for static partitioning
-  * @type: optional flash device type (e.g. m25p80 vs m25p64), for use
-  *	with chips that can't be queried for JEDEC or other IDs
-+ * @is_locked: optional callback to query write protection enforced by the
-+ *	platform rather than by the flash chip itself, for example a SPI
-+ *	controller that gates writes to a range of the flash. Returns 1 if
-+ *	the whole range is protected, 0 if it is not, or a negative errno.
-+ *	When supplied it takes precedence over the chip's own block
-+ *	protection bits, which do not necessarily reflect what is actually
-+ *	being enforced.
-  *
-  * Board init code (in arch/.../mach-xxx/board-yyy.c files) can
-  * provide information about SPI flash parts (such as DataFlash) to
-@@ -26,6 +36,8 @@ struct flash_platform_data {
- 
- 	char		*type;
- 
-+	int		(*is_locked)(struct spi_device *spi, loff_t ofs, u64 len);
++	/* Protected range registers work in 4k units */
++	return intel_spi_is_range_protected(ispi, ofs >> 12,
++					    (ofs + len - 1) >> 12);
++}
 +
- 	/* we'll likely add more ... use JEDEC IDs, etc */
- };
+ /*
+  * There will be a single partition holding all enabled flash regions. We
+  * call this "BIOS".
+@@ -1395,6 +1435,12 @@ static int intel_spi_populate_chip(struct intel_spi *ispi)
  
+ 	intel_spi_fill_partition(ispi, pdata->parts);
+ 
++	/*
++	 * The protected range registers address the first chip, so only it can
++	 * be queried this way.
++	 */
++	pdata->is_locked = intel_spi_is_locked;
++
+ 	memset(&chip, 0, sizeof(chip));
+ 	snprintf(chip.modalias, 8, "spi-nor");
+ 	chip.platform_data = pdata;
 
 -- 
 2.53.0
