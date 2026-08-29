@@ -1,88 +1,68 @@
-From: Maximilian Passarello <git@0xMax42.io>
-Date: Sat, 29 Aug 2026 19:29:42 +0200
-Subject: [PATCH] drm/amd/display: set remote MST sink power state on
- payload changes
+From: Matt Eaton <linux@divinehawk.com>
+Subject: [PATCH 0/2] ARM: dts: qcom: ipq4019: migrate USB to qcom,snps-dwc3
+Date: Sat, 29 Aug 2026 21:31:24 +0200
+Message-Id: <20260829-ipq4019-dwc3-migration-v1-0-cc66b54ce21c@divinehawk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-mst-remote-sink-power-v1-1-b9eab331e0d5@0xMax42.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBA0avIrB2IQWzjVcSF2kk7FBOZCSqE3
- L2hy7f4P4OSMCmMTQahk5VjqOjaBrbPEt6E/KoGa+xgntbhrgmF9pgIlcMXj3iR4LYY//B9tzr
- joLaHkOf7/53mUn63RxQXZwAAAA==
-X-Change-ID: 20260829-mst-remote-sink-power-ca0f7f41b909
-To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
- Rodrigo Siqueira <siqueira@igalia.com>, 
- Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Maximilian Passarello <git@0xMax42.io>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2297; i=git@0xMax42.io;
- s=20251130; h=from:subject:message-id;
- bh=z7GIZHa6GjvkEEzvyXbXQn2iCrZf54tBoOQm4lCih+c=;
- b=owGbwMvMwCWWb8ayoV75uQzjabUkhqzJ4vz/IkqunV5o2zuhMGdJrLBU3wrFuSuC5RYI2RTmM
- EQkPg7sKGVhEONikBVTZOlsXTbvoRJj8/TOAG+YOaxMIEMYuDgFYCL/sxj+l3J9OtnD9EJ5WnmC
- 3JLcQ683M5xwz15ekCDGyPtm06wTGQz/LLV/L8i4fuhr4cmg8EW+yget2q8wTUrQt2hkkz7jdzu
- VHwA=
-X-Developer-Key: i=git@0xMax42.io; a=openpgp;
- fpr=BB652AF8176BC2EA82C83A5B025EF9E480AC8E43
-X-Endpoint-Received: by B4 Relay for git@0xMax42.io/20251130 with auth_id=989
+X-B4-Tracking: v=1; b=H4sIAIwzk2oC/yXMTQ6DIBBA4auQWTsJ0JZIr2K6oDDqmIgU7E9iv
+ HtpXX6L9zYolJkKXMUGmV5ceIkVqhHgRxcHQg7VoKU2stUWOT3OUlkMb3/CmYfs1pqgv5C0pjX
+ OugA1Tpl6/vzH3e1wed4n8uvvBvv+BUx4EEd6AAAA
+X-Change-ID: 20260829-ipq4019-dwc3-migration-c5e09686a9ad
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Wesley Cheng <quic_wcheng@quicinc.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Matt Eaton <linux@divinehawk.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788031913; l=1536;
+ i=linux@divinehawk.com; s=20260828; h=from:subject:message-id;
+ bh=zWA0e3paKnXOqIGFnWjHF3VMRHadOpn9Ntl94B44z5U=;
+ b=9f+XEHPhEA/ioFMP3AAehqUvv8yDsQJIYgEi19TaElsbHSKfxoyM2+smbqfM7oCi4jkRWAKDt
+ xsyDRGt8OgyBpEdTEvhpkRiExp3s0xGBkaO5l3G8gU7Es9CB9Pf6SS8
+X-Developer-Key: i=linux@divinehawk.com; a=ed25519;
+ pk=UG4KnKXGwxjTNdirUPh/nySblET4aRxWYWSMTQwzlMw=
+X-Endpoint-Received: by B4 Relay for linux@divinehawk.com/20260828 with auth_id=982
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some downstream MST displays keep their backlight on after DPMS off because
-removing the MST payload does not update DP_SET_POWER on the remote sink.
+The ipq4019 USB nodes still use the legacy qcom,dwc3 glue, which
+describes the DWC3 core as a child node. qcom,snps-dwc3 embeds it in the
+glue device instead, so the two nodes collapse into one.
 
-Set the remote sink to D0 before allocating its payload and to D3 before
-removing it. Log AUX errors without changing the existing payload flow.
+Patch 1 relaxes the interrupt requirements for qcom,ipq4019-dwc3. The
+binding groups it with platforms supplying five or six named interrupts,
+but neither mainline nor Qualcomm's own vendor devicetree specifies wakeup
+interrupts for this SoC, so the migrated devicetree fails dtbs_check
+without it.
 
-Signed-off-by: Maximilian Passarello <git@0xMax42.io>
+Patch 2 does the migration, and moves the ap120c-ac SS phy override up to
+the parent node since the child's label goes away with it.
+
+Patch 1 is for the USB tree, patch 2 for the qcom tree.
+
+This is a prerequisite for setting per-SoC properties from the qcom glue,
+which the legacy path has no mechanism for.
+
+Tested on a Ubiquiti UniFi Travel Router.
+
+Signed-off-by: Matt Eaton <linux@divinehawk.com>
 ---
- drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Matt Eaton (2):
+      dt-bindings: usb: qcom,snps-dwc3: relax interrupt requirements for ipq4019
+      ARM: dts: qcom: ipq4019: migrate USB to the qcom,snps-dwc3 glue
 
-diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c
-index ab15ceec4daa..ce27024a9593 100644
---- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c
-+++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_helpers.c
-@@ -372,6 +372,7 @@ bool dm_helpers_dp_mst_write_payload_allocation_table(
- 	struct drm_dp_mst_topology_state *mst_state;
- 	struct drm_dp_mst_atomic_payload *target_payload, *new_payload, old_payload;
- 	struct drm_dp_mst_topology_mgr *mst_mgr;
-+	int ret;
- 
- 	aconnector = (struct amdgpu_dm_connector *)stream->dm_stream_context;
- 	/* Accessing the connector state is required for vcpi_slots allocation
-@@ -388,11 +389,23 @@ bool dm_helpers_dp_mst_write_payload_allocation_table(
- 	new_payload = drm_atomic_get_mst_payload_state(mst_state, aconnector->mst_output_port);
- 
- 	if (enable) {
-+		ret = drm_dp_link_power_up(&aconnector->mst_output_port->aux,
-+					   aconnector->mst_output_port->dpcd_rev);
-+		if (ret < 0)
-+			drm_dbg_dp(mst_mgr->dev,
-+				   "Failed to power up remote MST sink: %d\n", ret);
-+
- 		target_payload = new_payload;
- 
- 		/* It's OK for this to fail */
- 		drm_dp_add_payload_part1(mst_mgr, mst_state, new_payload);
- 	} else {
-+		ret = drm_dp_link_power_down(&aconnector->mst_output_port->aux,
-+					     aconnector->mst_output_port->dpcd_rev);
-+		if (ret < 0)
-+			drm_dbg_dp(mst_mgr->dev,
-+				   "Failed to power down remote MST sink: %d\n", ret);
-+
- 		/* construct old payload by VCPI*/
- 		dm_helpers_construct_old_payload(mst_mgr, mst_state,
- 						 new_payload, &old_payload);
-
+ .../devicetree/bindings/usb/qcom,snps-dwc3.yaml    | 23 ++++++++++-
+ arch/arm/boot/dts/qcom/qcom-ipq4018-ap120c-ac.dtsi |  4 --
+ arch/arm/boot/dts/qcom/qcom-ipq4019.dtsi           | 46 ++++++++--------------
+ 3 files changed, 37 insertions(+), 36 deletions(-)
 ---
-base-commit: 75a5e1b6b3661c3f946885d01eebeb6b031035ef
-change-id: 20260829-mst-remote-sink-power-ca0f7f41b909
+base-commit: 18f7fcd5e69a04df57b563360b88be72471d6b62
+change-id: 20260829-ipq4019-dwc3-migration-c5e09686a9ad
 
 Best regards,
--- 
-Maximilian Passarello <git@0xMax42.io>
+--  
+Matt Eaton <linux@divinehawk.com>
 
