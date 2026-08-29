@@ -1,102 +1,82 @@
-From: Matt Eaton <linux@divinehawk.com>
-Date: Sat, 29 Aug 2026 22:04:12 +0200
-Subject: [PATCH v2 3/3] usb: dwc3: qcom: set xhci_no_soft_retry for IPQ4019
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/4] sdm845: Configure USB3/DP combo properly
+Date: Sun, 30 Aug 2026 00:23:23 +0200
+Message-Id: <20260830-b4-sdm845-usb-gadget-v1-0-9f20e842d628@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-xhci-no-soft-retry-v2-3-0efe22f1c2f8@divinehawk.com>
-References: <20260829-xhci-no-soft-retry-v2-0-0efe22f1c2f8@divinehawk.com>
-In-Reply-To: <20260829-xhci-no-soft-retry-v2-0-0efe22f1c2f8@divinehawk.com>
-To: Mathias Nyman <mathias.nyman@intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Thinh Nguyen <Thinh.Nguyen@synopsys.com>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Matt Eaton <linux@divinehawk.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788033855; l=3072;
- i=linux@divinehawk.com; s=20260828; h=from:subject:message-id;
- bh=pZdj9EBvPXV7nO9flwfMVrSwQKB9H/3tZS+G/WrrLgA=;
- b=cXcKD/TOysPCU/i/CcnxXTgpuqlAXCyvLvU+XVNC3ebgO4vj85HYdu/8ui3f0jqTTgg+O6gzi
- 4+TPh3rVV7NAAB/BBF/9JD0DLvk5w+7U9hAhq6qIPsfNSN7Ta/f8vQf
-X-Developer-Key: i=linux@divinehawk.com; a=ed25519;
- pk=UG4KnKXGwxjTNdirUPh/nySblET4aRxWYWSMTQwzlMw=
-X-Endpoint-Received: by B4 Relay for linux@divinehawk.com/20260828 with auth_id=982
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQalrSXqV0YTLTdAStZGIRx
+ LsbdfkW/y+gnIQVntUCif+i8hsKrpcKwrcdIqNQMdSmvhvXGPQWlXpnbzipx9hS5IzBNp5dIPO
+ wBCUdE39kPrav92mdfMch7y9Y1w37SnxeeAAAAA==
+X-Change-ID: 20260830-b4-sdm845-usb-gadget-c43be8cd094d
+To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
+ u-boot@lists.denx.de
+Cc: Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
+ David Heidelberg <david@ixit.cz>, 
+ Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
+ Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
+ Jaehoon Chung <jh80.chung@samsung.com>, Peng Fan <peng.fan@nxp.com>, 
+ Luca Weiss <luca.weiss@fairphone.com>, 
+ Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
+ Federico Amedeo Izzo <federico@izzo.pro>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, phone-devel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1470; i=david@ixit.cz;
+ h=from:subject:message-id; bh=yvQNbB4WsqUjnGquebHPVDRLjeNDGpk9WqWIK9AQ75s=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqk1vdf01OlqMt7OVfNSc8ox0Zausqsk8K7c8Bq
+ g0wwO+0cdeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapNb3QAKCRBgAj/E00kg
+ coSLD/0aI2vzfR8cfP+8jNf+HzKRnjxPXqClKSmX+cLHhKjTKYeG8BE5ySUQhv2v++YJIJWP1lh
+ kj1wmMIGeZME1BJNodryFWCg/bTzLK1m/KjUMfn4wxBipHBKy86pQT4YpSoCIAcPDqewj48kPEJ
+ xydrquRqsqON3EF03IEkMmdNzEA5UtHWbgziZBxUfnH/tKLEDP29Rl6wj4iSqfbXJ3IbjWu5kbN
+ UQq9c9+8yAJCgZnTzBGhMDSF5ZBRTz0BjpeuTKuiaEr86ABEYVi2Rk7eCGpVWbrn52aEkSjv7Ez
+ UZhIlSGJ3nE0wAEFW3yN8z+BCz05TF85PWfzRMg5wKF3+519XO441RYzOlHZS04L8Gm6HAGRjWQ
+ Ej62e+spLxbsK5Rq0OiywRBaGsAfLGVDzNU3KnUZ4id5m5ucuSvd2bhXPy63NF0LT2FB3a4H09n
+ wzjOvWj3XCO4EIfsnxeVRVwKeZo+PamDj5rRQM1xWtwsBw6oVVWlno6/J7frODe/5wOdiactJzB
+ 8bV8qOX2aMaL/j94oU2Rytea2QDPwnKOn/TBIs46yR2QjwIHzkk1xVBPf9x+LYMdT37x1Z0oAsR
+ 3xJVPBNFvtPUcoKrMOBdjmJ+vmWo0h4oBu9vUwlIocPotkOHfnJ6jvw7BA/qtrupHT6A4C0b8rO
+ PQ0ZBJWJYcLtfPw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The dwc3 instances on IPQ4019 mishandle xHCI 1.0 Soft Retry. A Stop
-Endpoint command that lands on a just-soft-retry-reset endpoint wedges
-the command ring, and the stop-endpoint watchdog kills the host five
-seconds later:
+USB gadget mode nor serial console does not work on some sdm845 boards:
 
-xhci-hcd xhci-hcd.1.auto: xHCI host not responding to stop endpoint command
-xhci-hcd xhci-hcd.1.auto: xHCI host controller not responding, assume dead
-xhci-hcd xhci-hcd.1.auto: HC died; cleaning up
+  dwc3-generic-peripheral usb@a600000: failed to enable ep0out
 
-Reproducible by unplugging a USB-tethered phone mid-transfer. The port
-stays dead until the platform device is rebound. The controller itself
-is alive throughout, hence the -110 timeout rather than -ENODEV.
-Qualcomm's 4.4 vendor kernel predates Soft Retry entirely, so it has
-never been able to hit this.
+with exception of the first boot.
 
-This is a property of the IP rather than of any board, so it is carried
-as match data on the SoC compatible.
+This series implements "qcom,sdm845-qmp-usb3-dp-phy", so the USB3/DP combo
+PHY is never bound, GCC_USB3_PRIM_PHY_PIPE_CLK has no source and stays off,
+and the DWC3 endpoint command times out. It can be masked by an earlier
+boot stage having left the PHY initialised, which is why this only shows
+up on some boots.
 
-Both dwc3 nodes on this SoC share the compatible, so both get the quirk.
-Measured on the usb2 instance, which drives the external port; the usb3
-instance on the board under test hosts a soldered Bluetooth radio that
-is never unplugged, so it cannot reach the trigger in normal use.
+Add SDM845 to the combo PHY driver, plus the two things needed to make
+it usable: PM8998 regulators, without which the PHY cannot get its
+supplies, and the defconfig symbol, without which the driver is left out
+of the build entirely.
 
-Suggested-by: Thinh Nguyen <Thinh.Nguyen@synopsys.com>
-Signed-off-by: Matt Eaton <linux@divinehawk.com>
+Tested on Google Pixel 3 (blueline).
+
 ---
- drivers/usb/dwc3/dwc3-qcom.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+David Heidelberg (4):
+      phy: qcom: qmp-combo: select PCS register offsets per version
+      phy: qcom: qmp-combo: add SDM845 support
+      power: regulator: qcom-rpmh: add PM8998 support
+      configs: qcom: enable QMP USB3-DP combo PHY
 
-diff --git a/drivers/usb/dwc3/dwc3-qcom.c b/drivers/usb/dwc3/dwc3-qcom.c
-index ac68b4218b56..1edf75696e45 100644
---- a/drivers/usb/dwc3/dwc3-qcom.c
-+++ b/drivers/usb/dwc3/dwc3-qcom.c
-@@ -607,8 +607,19 @@ static struct dwc3_glue_ops dwc3_qcom_glue_ops = {
- 	.pre_run_stop	= dwc3_qcom_run_stop_notifier,
- };
- 
-+/*
-+ * The dwc3 instances on IPQ4019 mishandle xHCI Soft Retry: a Stop
-+ * Endpoint command landing on a just-soft-retry-reset endpoint wedges the
-+ * command ring and the host is killed by the stop-endpoint watchdog.
-+ */
-+static const struct dwc3_properties dwc3_qcom_ipq4019_properties = {
-+	.gsbuscfg0_reqinfo = DWC3_GSBUSCFG0_REQINFO_UNSPECIFIED,
-+	.xhci_no_soft_retry = 1,
-+};
-+
- static int dwc3_qcom_probe(struct platform_device *pdev)
- {
-+	const struct dwc3_properties *properties;
- 	struct dwc3_probe_data	probe_data = {};
- 	struct device		*dev = &pdev->dev;
- 	struct dwc3_qcom	*qcom;
-@@ -704,7 +715,10 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
- 	probe_data.dwc = &qcom->dwc;
- 	probe_data.res = &res;
- 	probe_data.ignore_clocks_and_resets = true;
--	probe_data.properties = DWC3_DEFAULT_PROPERTIES;
-+
-+	properties = of_device_get_match_data(dev);
-+	probe_data.properties = properties ? *properties : DWC3_DEFAULT_PROPERTIES;
-+
- 	ret = dwc3_core_probe(&probe_data);
- 	if (ret)  {
- 		ret = dev_err_probe(dev, ret, "failed to register DWC3 Core\n");
-@@ -839,6 +853,7 @@ static const struct dev_pm_ops dwc3_qcom_dev_pm_ops = {
- };
- 
- static const struct of_device_id dwc3_qcom_of_match[] = {
-+	{ .compatible = "qcom,ipq4019-dwc3", .data = &dwc3_qcom_ipq4019_properties },
- 	{ .compatible = "qcom,snps-dwc3" },
- 	{ }
- };
+ configs/qcom_defconfig                        |   1 +
+ drivers/phy/qcom/phy-qcom-qmp-combo.c         | 168 ++++++++++++++++++++++++--
+ drivers/power/regulator/qcom-rpmh-regulator.c | 137 +++++++++++++++++++++
+ 3 files changed, 299 insertions(+), 7 deletions(-)
+---
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20260830-b4-sdm845-usb-gadget-c43be8cd094d
 
--- 
-2.43.0
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
