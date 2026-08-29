@@ -1,173 +1,79 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 29 Aug 2026 14:35:34 -0500
-Subject: [PATCH v3 4/4] arm64: dts: qcom: Add Retroid Pocket Nova
+From: Matt Eaton <linux@divinehawk.com>
+Subject: [PATCH v2 0/3] usb: xhci: add xhci-no-soft-retry-quirk
+Date: Sat, 29 Aug 2026 22:04:09 +0200
+Message-Id: <20260829-xhci-no-soft-retry-v2-0-0efe22f1c2f8@divinehawk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-rp-qcs8550-v3-4-198d5b2fc475@gmail.com>
-References: <20260829-rp-qcs8550-v3-0-198d5b2fc475@gmail.com>
-In-Reply-To: <20260829-rp-qcs8550-v3-0-198d5b2fc475@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788032141; l=4201;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=63P4oT6UJRI5RcFp4MDSgRO4yYmZZbwljJ7ZdnJQdDk=;
- b=nwHV3NkkV7sI7YBD3Fu/DkaYuLqOeo1Bi1uE2d0d4Ru/dHZaX0AN3skjYvqj9tRVWgQGn5yrh
- xXu0vW5HxeoBpHLEWNfNimQzLDdf39E1m/xT+QwsfXWQ1z8ctVUQPuZ
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-B4-Tracking: v=1; b=H4sIADk7k2oC/32NwQ6CMBAFf4X07JpSsYIn/8NwoO1iV2Nr2lohh
+ H8X8O5xknnzJhYxEEZ2LiYWMFMk7xYQu4Jp27kbApmFmeBC8lrUMFhN4DxE3ycImMIIVddL3Ry
+ MPhnBluErYE/DFr22P45vdUed1tJqWIrJh3F7zeXq/T3IJXBQjRayUkcpeXkxlMmh7T6PvfZP1
+ s7z/AUq87jjywAAAA==
+X-Change-ID: 20260828-xhci-no-soft-retry-4af6c93dc7d2
+To: Mathias Nyman <mathias.nyman@intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Thinh Nguyen <Thinh.Nguyen@synopsys.com>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Matt Eaton <linux@divinehawk.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788033855; l=2142;
+ i=linux@divinehawk.com; s=20260828; h=from:subject:message-id;
+ bh=ZsVboOaElz1fshbAtApbyNEwQi9OTkk/MIHXqoY+l/w=;
+ b=pJ9FzabRTijMqGGViWZE3UpnKnL2rty/NfNQ6n0yRb4LvaTCcZ1zQX4fU19Zvj9p/TnVWlV9s
+ 1a2gOXPpJ6mBWLfPEwKEMNCDXlnLZgMXDIDJvEFMYKdFZiedcdHX0tl
+X-Developer-Key: i=linux@divinehawk.com; a=ed25519;
+ pk=UG4KnKXGwxjTNdirUPh/nySblET4aRxWYWSMTQwzlMw=
+X-Endpoint-Received: by B4 Relay for linux@divinehawk.com/20260828 with auth_id=982
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Retroid Pocket Nova is a high-performance Android-based handheld
-gaming console powered by the Qualcomm Snapdragon 8 Gen 2 processor
-featuring a 4.5-inch 4:3 AMOLED touchscreen.
+The dwc3 instances on Qualcomm IPQ4019 mishandle xHCI 1.0 Soft Retry. A
+Stop Endpoint command landing on a just-soft-retry-reset endpoint wedges
+the command ring, and the stop-endpoint watchdog kills the host five
+seconds later. Reproducible by unplugging a USB-tethered phone
+mid-transfer; the port stays dead until the platform device is rebound.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+XHCI_NO_SOFT_RETRY already exists for this class of defect but is only
+reachable from xhci-pci, matched against two AMD Promontory PCI ids.
+
+Patch 1 adds a device property so platform hosts can request it. Patch 2
+carries it through the dwc3 core as a software property. Patch 3 sets it
+from the qcom glue on the SoC compatible.
+
+The match entry in patch 3 has no effect until the ipq4019 devicetree
+moves to the qcom,snps-dwc3 glue, sent separately:
+https://lore.kernel.org/r/20260829-ipq4019-dwc3-migration-v1-0-cc66b54ce21c@divinehawk.com
+
+This series applies and builds independently of that.
+
+Tested on a Ubiquiti UniFi Travel Router.
+
+Signed-off-by: Matt Eaton <linux@divinehawk.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/qcs8550-retroidpocket-nova.dts   | 116 +++++++++++++++++++++
- 2 files changed, 117 insertions(+)
+Changes in v2:
+- Drop the dt-bindings patch; Krzysztof pointed out this is implied by
+  compatible and shouldn't be a devicetree property.
+- Set the quirk from the dwc3 core instead, via a new dwc3_properties
+  field carried as match data in the qcom glue, per Thinh's review.
+- Link to v1: https://lore.kernel.org/r/20260828-xhci-no-soft-retry-v1-0-b9c264b56601@divinehawk.com
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 09b3c5b2d9dab..582805e89f4cb 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -196,6 +196,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2mini.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2portal.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-thor.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-retroidpocket-nova.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-retroidpocket-rp6.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-rb5gen2.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride.dtb
-diff --git a/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
-new file mode 100644
-index 0000000000000..0a0546977a026
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/qcs8550-retroidpocket-nova.dts
-@@ -0,0 +1,116 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include "qcs8550-ayntec-common.dtsi"
-+
-+&{/} {
-+	model = "Retroid Pocket Nova";
-+	compatible = "retroidpocket,nova", "qcom,qcs8550", "qcom,sm8550";
-+
-+	backlight: backlight {
-+		compatible = "pwm-backlight";
-+		pwms = <&pmk8550_pwm 0 860000>;
-+		brightness-levels = <1023 0>;
-+		num-interpolated-steps = <1023>;
-+		default-brightness-level = <600>;
-+		power-supply = <&vph_pwr>;
-+		enable-gpios = <&pmk8550_gpios 5 GPIO_ACTIVE_HIGH>;
-+		pinctrl-0 = <&pwm_backlight_default>;
-+		pinctrl-names = "default";
-+	};
-+
-+	vdd_disp_1v8: regulator-vdd-disp-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp_1v8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 70 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp_2v8: regulator-vdd-disp-2v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp_2v8";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 142 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	ts_avdd_3v0: regulator-ts-avdd-3v0 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "ts_avdd_3v0";
-+
-+		regulator-min-microvolt = <3000000>;
-+		regulator-max-microvolt = <3000000>;
-+
-+		gpio = <&tlmm 144 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	ts_vddio_1v8: regulator-ts-vddio-1v8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "ts_vddio_1v8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 102 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+};
-+
-+&i2c_hub_3 {
-+	clock-frequency = <100000>;
-+
-+	status = "okay";
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft5426";
-+		reg = <0x38>;
-+
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
-+		reset-gpios = <&tlmm 14 GPIO_ACTIVE_LOW>;
-+
-+		vcc-supply = <&ts_avdd_3v0>;
-+		iovcc-supply = <&ts_vddio_1v8>;
-+
-+		pinctrl-0 = <&ts_p_rst_default>, <&ts_p_int_default>;
-+		pinctrl-1 = <&ts_p_rst_sleep>, <&ts_p_int_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1280>;
-+		touchscreen-size-y = <960>;
-+	};
-+};
-+
-+&mdss_dsi1 {
-+	status = "disabled";
-+};
-+
-+&pmk8550_pwm {
-+	status = "okay";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/retroidpocket/nova/adsp.mbn",
-+			"qcom/sm8550/retroidpocket/nova/adsp_dtb.mbn";
-+
-+	status = "okay";
-+};
-+
-+&spk_amp_l {
-+	firmware-name = "qcom/sm8550/retroidpocket/nova/aw883xx_acf.bin";
-+};
-+
-+&spk_amp_r {
-+	firmware-name = "qcom/sm8550/retroidpocket/nova/aw883xx_acf.bin";
-+};
+---
+Matt Eaton (3):
+      usb: xhci-plat: add xhci-no-soft-retry-quirk device property
+      usb: dwc3: add xhci_no_soft_retry software property
+      usb: dwc3: qcom: set xhci_no_soft_retry for IPQ4019
 
--- 
-2.54.0
+ drivers/usb/dwc3/core.c      |  3 +++
+ drivers/usb/dwc3/core.h      |  3 +++
+ drivers/usb/dwc3/dwc3-qcom.c | 17 ++++++++++++++++-
+ drivers/usb/dwc3/glue.h      |  3 +++
+ drivers/usb/dwc3/host.c      |  5 ++++-
+ drivers/usb/host/xhci-plat.c |  3 +++
+ 6 files changed, 32 insertions(+), 2 deletions(-)
+---
+base-commit: 45c13f3f9e3bb15fd89ff2864c6f627a3b4b4229
+change-id: 20260828-xhci-no-soft-retry-4af6c93dc7d2
+
+Best regards,
+--  
+Matt Eaton <linux@divinehawk.com>
 
