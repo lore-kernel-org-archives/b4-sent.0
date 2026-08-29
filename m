@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 30 Aug 2026 00:23:25 +0200
-Subject: [PATCH 2/4] phy: qcom: qmp-combo: add SDM845 support
+Date: Sun, 30 Aug 2026 00:23:26 +0200
+Subject: [PATCH 3/4] power: regulator: qcom-rpmh: add PM8998 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-b4-sdm845-usb-gadget-v1-2-9f20e842d628@ixit.cz>
+Message-Id: <20260830-b4-sdm845-usb-gadget-v1-3-9f20e842d628@ixit.cz>
 References: <20260830-b4-sdm845-usb-gadget-v1-0-9f20e842d628@ixit.cz>
 In-Reply-To: <20260830-b4-sdm845-usb-gadget-v1-0-9f20e842d628@ixit.cz>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -21,253 +21,236 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Marek Vasut <marek.vasut+renesas@mailbox.org>, 
  Quentin Schulz <quentin.schulz@cherry.de>, phone-devel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9713; i=david@ixit.cz;
- h=from:subject:message-id; bh=VkErWTSw2XahQwlBnGeiHXcoEPE5JwVBl+r7JSYE0e4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqk1vdwvApzTjRMDe1BpZC5g+AdtxJTKSTUz6ze
- 5GjAT9mHh+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapNb3QAKCRBgAj/E00kg
- ckKAEADPJCUGpgrSFK+UGkXlPZofoH0H3SsKizfFknDj5aYjWSbC26b6su5i3byznHEnEcirMIY
- 2gxpQFk3p3meY/w0+KBUju4AXi4Lw1AijjRxlPWo2FQBeY4LaylaJrZmgxooX9OsSHbtBBJJSf3
- ZqtCENwPwd1KL3yk1kHJR898u/3sWGUnEEDdoqRELtbpA+PWdUQy/nx4UJFFT9jy1qAi9E4E1oL
- yE93ElZuUIY7HPmqtXTBBI3lxBDuBOIf0CM1/kjBYqHRRiDoK8AtJqBog9E1y7+BfACHK8Yi8yx
- vRTIaoVDGGP9tz/X3yH/TQTNoA9pAg/M+n+fMtdOZAfdz5av7I/3K86WNHMn1WprUteh/UIiCJP
- ALl1WJzKwveX9Szs11YY49wc0Vd+7GaXwfPC574mBcTDpX2e1HNC1GB2XxEyVeJkWw2IeJhsXdf
- 3RGBTIksvgytQwmXg8OxWlNgLeGxumNIUOazdnlGCbGV027xo43lsxQJp0Bw4PMH6fEoKIuqv8o
- xi5/0xOqzMhkRTE/PzzgM9c9K5vFpZqi4IH0TS6H7urccWhWa5dbwCCwxyRDUg8nXLJX1xPPc8y
- HbTdiDSKzE7TedHJZyGeHnkcJlUehAXOE1VUk5dSQyo+52iwSpZzZ0PFEIxPL7eOisjGM6VbMVy
- nZY66df9S+ZT/Ig==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8607; i=david@ixit.cz;
+ h=from:subject:message-id; bh=FJOGHauH25p6RoTou6Xp22u9LMqLrDnD4kTM7ElXUqE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqk1vdtsI1ZLmD60+oeI2wu1CP1R5rzl+nLbAJJ
+ ZMWMqxEHQOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapNb3QAKCRBgAj/E00kg
+ cl94D/4lF7kXgJdLUMcbaqTJfx7xkJb+w//di3P9cLaDbCbQvuPTtmIAWLmRonkpu+gMThJPnSl
+ xNmAWZpre5KnTa5DFqKFBBW1siXNJhAPMcC+wVG8NTrIwlAsAJFSPtmy4dP0Brs0OK6i44CVRac
+ 9SwcWxzoA3TZvQ34bPSyqIOFXWIn+2jlHHVQ+SyLNVQa1YntKin8ioudi0iRBpgIrBOmnReNSlM
+ yeSnXYD2wBYFHKT/G/9bVErK2iUGCwP7j+AcLjM6ZZlafsFLE2uAUv50nsY5erAmaLIHuKYcoX0
+ BXJaPR6MByIP6g8jtR8V+D5RpYTz0FiC6j1BHtkfSuZE0sJ36ZesA5KtVD5QM5MEkR6tOYbNL7x
+ rbWT+IHPp8umHtS0FEg+7sazi+ky2rbITwoGEvShoVBIQwRmpzQJDTMrToLuXH5koTF2zImLasp
+ 0ybhiwehsWA0yH9G0nX6MGQ0czJ3SjdSFiJ0FFTMJc8pMweM1OHFB9esmziH7pqxyUJqR7fjVJN
+ cBLwjO2eIRuvx2oBExrHO1EaiMAt4sdUnrzTB9jzqOJhozCY1oLmjFofGlzb8nnck/0uiJCkI0n
+ w3ZNmr4oeXE6JXW/LQ10DbRNZhUQFk/GLTW1VmV7empE5509dfuKK+uNT3YJaJGPSwAH3RU8amY
+ bkRM7Vs68rlPgPQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SDM845 describes its USB3/DP combo PHY as
-"qcom,sdm845-qmp-usb3-dp-phy", which nothing in the driver claims, so
-the PHY is never bound. As a result GCC_USB3_PRIM_PHY_PIPE_CLK has no
-source and stays off, the DWC3 SS clock domain is dead and the first
-endpoint command never completes:
+PM8998 is the primary PMIC on SDM845 boards, but the driver only knows
+about PMIC5 based parts, so "qcom,pm8998-rpmh-regulators" is never
+matched and none of its regulators are bound. Consumers then fail to
+acquire their supplies, for example on Google Pixel 3:
 
-  dwc3-generic-peripheral usb@a600000: failed to enable ep0out
+  phy@88e8000: failed to get regulator vdda-phy-supply: -19
+  Failed to get PHY1 for usb@a600000
 
-which leaves the board without USB gadget support. This is only hit
-once the PHY has actually been powered down, so it can be masked by an
-earlier boot stage having left it initialised.
+Add the PMIC4 mode maps and regulator types, import the PM8998
+regulator list from Linux and match on the compatible.
 
-Import the v3 USB3 serdes, tx, rx and pcs tables from Linux and add a
-configuration for SDM845. The register block layout is already
-described by qmp_combo_offsets_v3, so only the tables, the v3 PCS
-offsets and the compatible are needed.
+The LVS regulators are left out: they are XOB type and this driver
+only implements the VRM accelerator.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/phy/qcom/phy-qcom-qmp-combo.c | 134 ++++++++++++++++++++++++++++++++++
- 1 file changed, 134 insertions(+)
+ drivers/power/regulator/qcom-rpmh-regulator.c | 137 ++++++++++++++++++++++++++
+ 1 file changed, 137 insertions(+)
 
-diff --git a/drivers/phy/qcom/phy-qcom-qmp-combo.c b/drivers/phy/qcom/phy-qcom-qmp-combo.c
-index e4550302b71..b2bffeda395 100644
---- a/drivers/phy/qcom/phy-qcom-qmp-combo.c
-+++ b/drivers/phy/qcom/phy-qcom-qmp-combo.c
-@@ -53,16 +53,23 @@
-  */
- struct qmp_combo_regs {
- 	u16 sw_reset;
- 	u16 pwrdn_ctrl;
- 	u16 start_ctrl;
- 	u16 pcs_status;
+diff --git a/drivers/power/regulator/qcom-rpmh-regulator.c b/drivers/power/regulator/qcom-rpmh-regulator.c
+index f789b5b6f86..0d68c8fc305 100644
+--- a/drivers/power/regulator/qcom-rpmh-regulator.c
++++ b/drivers/power/regulator/qcom-rpmh-regulator.c
+@@ -478,16 +478,100 @@ static struct dm_regulator_mode pmic_mode_map_pmic5_smps[] = {
+ 		.name = "PMIC5_SMPS_MODE_AUTO"
+ 	}, {
+ 		.id = REGULATOR_MODE_HPM,
+ 		.register_value = PMIC5_SMPS_MODE_PWM,
+ 		.name = "PMIC5_SMPS_MODE_PWM"
+ 	},
  };
  
-+static const struct qmp_combo_regs qmp_combo_regs_v3 = {
-+	.sw_reset	= QPHY_V3_PCS_SW_RESET,
-+	.pwrdn_ctrl	= QPHY_V3_PCS_POWER_DOWN_CONTROL,
-+	.start_ctrl	= QPHY_V3_PCS_START_CONTROL,
-+	.pcs_status	= QPHY_V3_PCS_PCS_STATUS,
++static struct dm_regulator_mode pmic_mode_map_pmic4_ldo[] = {
++	{
++		.id = REGULATOR_MODE_RETENTION,
++		.register_value = PMIC4_LDO_MODE_RETENTION,
++		.name = "PMIC4_LDO_MODE_RETENTION"
++	}, {
++		.id = REGULATOR_MODE_LPM,
++		.register_value = PMIC4_LDO_MODE_LPM,
++		.name = "PMIC4_LDO_MODE_LPM"
++	}, {
++		.id = REGULATOR_MODE_HPM,
++		.register_value = PMIC4_LDO_MODE_HPM,
++		.name = "PMIC4_LDO_MODE_HPM"
++	},
 +};
 +
- static const struct qmp_combo_regs qmp_combo_regs_v4 = {
- 	.sw_reset	= QPHY_V4_PCS_SW_RESET,
- 	.pwrdn_ctrl	= QPHY_V4_PCS_POWER_DOWN_CONTROL,
- 	.start_ctrl	= QPHY_V4_PCS_START_CONTROL,
- 	.pcs_status	= QPHY_V4_PCS_PCS_STATUS1,
++static struct dm_regulator_mode pmic_mode_map_pmic4_smps[] = {
++	{
++		.id = REGULATOR_MODE_RETENTION,
++		.register_value = PMIC4_SMPS_MODE_RETENTION,
++		.name = "PMIC4_SMPS_MODE_RETENTION"
++	}, {
++		.id = REGULATOR_MODE_LPM,
++		.register_value = PMIC4_SMPS_MODE_PFM,
++		.name = "PMIC4_SMPS_MODE_PFM"
++	}, {
++		.id = REGULATOR_MODE_AUTO,
++		.register_value = PMIC4_SMPS_MODE_AUTO,
++		.name = "PMIC4_SMPS_MODE_AUTO"
++	}, {
++		.id = REGULATOR_MODE_HPM,
++		.register_value = PMIC4_SMPS_MODE_PWM,
++		.name = "PMIC4_SMPS_MODE_PWM"
++	},
++};
++
++static const struct rpmh_vreg_hw_data pmic4_pldo = {
++	.regulator_type = VRM,
++	.ops = &rpmh_regulator_vrm_drms_ops,
++	.voltage_range = REGULATOR_LINEAR_RANGE(1664000, 0, 255, 8000),
++	.n_voltages = 256,
++	.hpm_min_load_uA = 10000,
++	.pmic_mode_map = pmic_mode_map_pmic4_ldo,
++	.n_modes = ARRAY_SIZE(pmic_mode_map_pmic4_ldo),
++};
++
++static const struct rpmh_vreg_hw_data pmic4_pldo_lv = {
++	.regulator_type = VRM,
++	.ops = &rpmh_regulator_vrm_drms_ops,
++	.voltage_range = REGULATOR_LINEAR_RANGE(1256000, 0, 127, 8000),
++	.n_voltages = 128,
++	.hpm_min_load_uA = 10000,
++	.pmic_mode_map = pmic_mode_map_pmic4_ldo,
++	.n_modes = ARRAY_SIZE(pmic_mode_map_pmic4_ldo),
++};
++
++static const struct rpmh_vreg_hw_data pmic4_nldo = {
++	.regulator_type = VRM,
++	.ops = &rpmh_regulator_vrm_drms_ops,
++	.voltage_range = REGULATOR_LINEAR_RANGE(312000, 0, 127, 8000),
++	.n_voltages = 128,
++	.hpm_min_load_uA = 30000,
++	.pmic_mode_map = pmic_mode_map_pmic4_ldo,
++	.n_modes = ARRAY_SIZE(pmic_mode_map_pmic4_ldo),
++};
++
++static const struct rpmh_vreg_hw_data pmic4_hfsmps3 = {
++	.regulator_type = VRM,
++	.ops = &rpmh_regulator_vrm_drms_ops,
++	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 215, 8000),
++	.n_voltages = 216,
++	.pmic_mode_map = pmic_mode_map_pmic4_smps,
++	.n_modes = ARRAY_SIZE(pmic_mode_map_pmic4_smps),
++};
++
++static const struct rpmh_vreg_hw_data pmic4_ftsmps426 = {
++	.regulator_type = VRM,
++	.ops = &rpmh_regulator_vrm_drms_ops,
++	.voltage_range = REGULATOR_LINEAR_RANGE(320000, 0, 258, 4000),
++	.n_voltages = 259,
++	.pmic_mode_map = pmic_mode_map_pmic4_smps,
++	.n_modes = ARRAY_SIZE(pmic_mode_map_pmic4_smps),
++};
++
+ static const struct rpmh_vreg_hw_data pmic5_bob = {
+ 	.regulator_type = VRM,
+ 	.ops = &rpmh_regulator_vrm_drms_ops,
+ 	.voltage_range = REGULATOR_LINEAR_RANGE(3000000, 0, 31, 32000),
+ 	.n_voltages = 32,
+ 	.pmic_mode_map = pmic_mode_map_pmic5_bob,
+ 	.n_modes = ARRAY_SIZE(pmic_mode_map_pmic5_bob),
  };
+@@ -624,16 +708,65 @@ static const struct rpmh_vreg_hw_data pmic5_pldo515_mv = {
+ #define RPMH_VREG(_name, _resource_name, _hw_data, _supply_name) \
+ { \
+ 	.name		= _name, \
+ 	.resource_name	= _resource_name, \
+ 	.hw_data	= _hw_data, \
+ 	.supply_name	= _supply_name, \
+ }
  
- struct qmp_combo_offsets {
-@@ -203,16 +210,122 @@ static const struct qmp_phy_init_tbl sm8250_usb3_pcs_tbl[] = {
- 	QMP_PHY_INIT_CFG(QPHY_V4_PCS_EQ_CONFIG5, 0x10),
- };
- 
- static const struct qmp_phy_init_tbl sm8250_usb3_pcs_usb_tbl[] = {
- 	QMP_PHY_INIT_CFG(QPHY_V4_PCS_USB3_LFPS_DET_HIGH_COUNT_VAL, 0xf8),
- 	QMP_PHY_INIT_CFG(QPHY_V4_PCS_USB3_RXEQTRAINING_DFE_TIME_S2, 0x07),
- };
- 
-+static const struct qmp_phy_init_tbl qmp_v3_usb3_serdes_tbl[] = {
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_PLL_IVCO, 0x07),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SYSCLK_EN_SEL, 0x14),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_BIAS_EN_CLKBUFLR_EN, 0x08),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_CLK_SELECT, 0x30),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SYS_CLK_CTRL, 0x02),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_RESETSM_CNTRL2, 0x08),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_CMN_CONFIG, 0x16),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SVS_MODE_CLK_SEL, 0x01),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_HSCLK_SEL, 0x80),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_DEC_START_MODE0, 0x82),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_DIV_FRAC_START1_MODE0, 0xab),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_DIV_FRAC_START2_MODE0, 0xea),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_DIV_FRAC_START3_MODE0, 0x02),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_CP_CTRL_MODE0, 0x06),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_PLL_RCTRL_MODE0, 0x16),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_PLL_CCTRL_MODE0, 0x36),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_INTEGLOOP_GAIN1_MODE0, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_INTEGLOOP_GAIN0_MODE0, 0x3f),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_VCO_TUNE2_MODE0, 0x01),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_VCO_TUNE1_MODE0, 0xc9),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_CORECLK_DIV_MODE0, 0x0a),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_LOCK_CMP3_MODE0, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_LOCK_CMP2_MODE0, 0x34),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_LOCK_CMP1_MODE0, 0x15),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_LOCK_CMP_EN, 0x04),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_CORE_CLK_EN, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_LOCK_CMP_CFG, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_VCO_TUNE_MAP, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SYSCLK_BUF_ENABLE, 0x0a),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_EN_CENTER, 0x01),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_PER1, 0x31),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_PER2, 0x01),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_ADJ_PER1, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_ADJ_PER2, 0x00),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_STEP_SIZE1, 0x85),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_COM_SSC_STEP_SIZE2, 0x07),
++/*
++ * LVS regulators are omitted: they are XOB type and this driver only
++ * implements the VRM accelerator.
++ */
++static const struct rpmh_vreg_init_data pm8998_vreg_data[] = {
++	RPMH_VREG("smps1",  "smp%s1",  &pmic4_ftsmps426, "vdd-s1"),
++	RPMH_VREG("smps2",  "smp%s2",  &pmic4_ftsmps426, "vdd-s2"),
++	RPMH_VREG("smps3",  "smp%s3",  &pmic4_hfsmps3,   "vdd-s3"),
++	RPMH_VREG("smps4",  "smp%s4",  &pmic4_hfsmps3,   "vdd-s4"),
++	RPMH_VREG("smps5",  "smp%s5",  &pmic4_hfsmps3,   "vdd-s5"),
++	RPMH_VREG("smps6",  "smp%s6",  &pmic4_ftsmps426, "vdd-s6"),
++	RPMH_VREG("smps7",  "smp%s7",  &pmic4_ftsmps426, "vdd-s7"),
++	RPMH_VREG("smps8",  "smp%s8",  &pmic4_ftsmps426, "vdd-s8"),
++	RPMH_VREG("smps9",  "smp%s9",  &pmic4_ftsmps426, "vdd-s9"),
++	RPMH_VREG("smps10", "smp%s10", &pmic4_ftsmps426, "vdd-s10"),
++	RPMH_VREG("smps11", "smp%s11", &pmic4_ftsmps426, "vdd-s11"),
++	RPMH_VREG("smps12", "smp%s12", &pmic4_ftsmps426, "vdd-s12"),
++	RPMH_VREG("smps13", "smp%s13", &pmic4_ftsmps426, "vdd-s13"),
++	RPMH_VREG("ldo1",   "ldo%s1",  &pmic4_nldo,      "vdd-l1-l27"),
++	RPMH_VREG("ldo2",   "ldo%s2",  &pmic4_nldo,      "vdd-l2-l8-l17"),
++	RPMH_VREG("ldo3",   "ldo%s3",  &pmic4_nldo,      "vdd-l3-l11"),
++	RPMH_VREG("ldo4",   "ldo%s4",  &pmic4_nldo,      "vdd-l4-l5"),
++	RPMH_VREG("ldo5",   "ldo%s5",  &pmic4_nldo,      "vdd-l4-l5"),
++	RPMH_VREG("ldo6",   "ldo%s6",  &pmic4_pldo,      "vdd-l6"),
++	RPMH_VREG("ldo7",   "ldo%s7",  &pmic4_pldo_lv,   "vdd-l7-l12-l14-l15"),
++	RPMH_VREG("ldo8",   "ldo%s8",  &pmic4_nldo,      "vdd-l2-l8-l17"),
++	RPMH_VREG("ldo9",   "ldo%s9",  &pmic4_pldo,      "vdd-l9"),
++	RPMH_VREG("ldo10",  "ldo%s10", &pmic4_pldo,      "vdd-l10-l23-l25"),
++	RPMH_VREG("ldo11",  "ldo%s11", &pmic4_nldo,      "vdd-l3-l11"),
++	RPMH_VREG("ldo12",  "ldo%s12", &pmic4_pldo_lv,   "vdd-l7-l12-l14-l15"),
++	RPMH_VREG("ldo13",  "ldo%s13", &pmic4_pldo,      "vdd-l13-l19-l21"),
++	RPMH_VREG("ldo14",  "ldo%s14", &pmic4_pldo_lv,   "vdd-l7-l12-l14-l15"),
++	RPMH_VREG("ldo15",  "ldo%s15", &pmic4_pldo_lv,   "vdd-l7-l12-l14-l15"),
++	RPMH_VREG("ldo16",  "ldo%s16", &pmic4_pldo,      "vdd-l16-l28"),
++	RPMH_VREG("ldo17",  "ldo%s17", &pmic4_nldo,      "vdd-l2-l8-l17"),
++	RPMH_VREG("ldo18",  "ldo%s18", &pmic4_pldo,      "vdd-l18-l22"),
++	RPMH_VREG("ldo19",  "ldo%s19", &pmic4_pldo,      "vdd-l13-l19-l21"),
++	RPMH_VREG("ldo20",  "ldo%s20", &pmic4_pldo,      "vdd-l20-l24"),
++	RPMH_VREG("ldo21",  "ldo%s21", &pmic4_pldo,      "vdd-l13-l19-l21"),
++	RPMH_VREG("ldo22",  "ldo%s22", &pmic4_pldo,      "vdd-l18-l22"),
++	RPMH_VREG("ldo23",  "ldo%s23", &pmic4_pldo,      "vdd-l10-l23-l25"),
++	RPMH_VREG("ldo24",  "ldo%s24", &pmic4_pldo,      "vdd-l20-l24"),
++	RPMH_VREG("ldo25",  "ldo%s25", &pmic4_pldo,      "vdd-l10-l23-l25"),
++	RPMH_VREG("ldo26",  "ldo%s26", &pmic4_nldo,      "vdd-l26"),
++	RPMH_VREG("ldo27",  "ldo%s27", &pmic4_nldo,      "vdd-l1-l27"),
++	RPMH_VREG("ldo28",  "ldo%s28", &pmic4_pldo,      "vdd-l16-l28"),
++	{}
 +};
 +
-+static const struct qmp_phy_init_tbl qmp_v3_usb3_tx_tbl[] = {
-+	QMP_PHY_INIT_CFG(QSERDES_V3_TX_HIGHZ_DRVR_EN, 0x10),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_TX_RCV_DETECT_LVL_2, 0x12),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_TX_LANE_MODE_1, 0x16),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_TX_RES_CODE_LANE_OFFSET_RX, 0x09),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_TX_RES_CODE_LANE_OFFSET_TX, 0x06),
-+};
-+
-+static const struct qmp_phy_init_tbl qmp_v3_usb3_rx_tbl[] = {
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_UCDR_FASTLOCK_FO_GAIN, 0x0b),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_RX_EQU_ADAPTOR_CNTRL2, 0x0f),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_RX_EQU_ADAPTOR_CNTRL3, 0x4e),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_RX_EQU_ADAPTOR_CNTRL4, 0x18),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_RX_EQ_OFFSET_ADAPTOR_CNTRL1, 0x77),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_RX_OFFSET_ADAPTOR_CNTRL2, 0x80),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_SIGDET_CNTRL, 0x03),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_SIGDET_DEGLITCH_CNTRL, 0x16),
-+	QMP_PHY_INIT_CFG(QSERDES_V3_RX_UCDR_SO_SATURATION_AND_ENABLE, 0x75),
-+};
-+
-+static const struct qmp_phy_init_tbl qmp_v3_usb3_pcs_tbl[] = {
-+	/* FLL settings */
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_FLL_CNTRL2, 0x83),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_FLL_CNT_VAL_L, 0x09),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_FLL_CNT_VAL_H_TOL, 0xa2),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_FLL_MAN_CODE, 0x40),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_FLL_CNTRL1, 0x02),
-+
-+	/* Lock Det settings */
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_LOCK_DETECT_CONFIG1, 0xd1),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_LOCK_DETECT_CONFIG2, 0x1f),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_LOCK_DETECT_CONFIG3, 0x47),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_POWER_STATE_CONFIG2, 0x1b),
-+
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RX_SIGDET_LVL, 0xba),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXMGN_V0, 0x9f),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXMGN_V1, 0x9f),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXMGN_V2, 0xb7),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXMGN_V3, 0x4e),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXMGN_V4, 0x65),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXMGN_LS, 0x6b),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M6DB_V0, 0x15),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M3P5DB_V0, 0x0d),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M6DB_V1, 0x15),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M3P5DB_V1, 0x0d),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M6DB_V2, 0x15),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M3P5DB_V2, 0x0d),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M6DB_V3, 0x15),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M3P5DB_V3, 0x1d),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M6DB_V4, 0x15),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M3P5DB_V4, 0x0d),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M6DB_LS, 0x15),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TXDEEMPH_M3P5DB_LS, 0x0d),
-+
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RATE_SLEW_CNTRL, 0x02),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_PWRUP_RESET_DLY_TIME_AUXCLK, 0x04),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_TSYNC_RSYNC_TIME, 0x44),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_PWRUP_RESET_DLY_TIME_AUXCLK, 0x04),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RCVR_DTCT_DLY_P1U2_L, 0xe7),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RCVR_DTCT_DLY_P1U2_H, 0x03),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RCVR_DTCT_DLY_U3_L, 0x40),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RCVR_DTCT_DLY_U3_H, 0x00),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RXEQTRAINING_WAIT_TIME, 0x75),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_LFPS_TX_ECSTART_EQTLOCK, 0x86),
-+	QMP_PHY_INIT_CFG(QPHY_V3_PCS_RXEQTRAINING_RUN_TIME, 0x13),
-+};
-+
- struct qmp_phy_cfg {
- 	const struct qmp_combo_offsets *offsets;
- 	const struct qmp_combo_regs *regs;
- 	const struct qmp_phy_init_tbl *serdes_tbl;
- 	int serdes_tbl_num;
- 	const struct qmp_phy_init_tbl *tx_tbl;
- 	int tx_tbl_num;
- 	const struct qmp_phy_init_tbl *rx_tbl;
-@@ -618,16 +731,33 @@ static const struct qmp_phy_cfg sc7280_usb3dpphy_cfg = {
- 	.pcs_usb_tbl		= sm8250_usb3_pcs_usb_tbl,
- 	.pcs_usb_tbl_num	= ARRAY_SIZE(sm8250_usb3_pcs_usb_tbl),
- 	.vreg_list		= qmp_phy_vreg_l,
- 	.num_vregs		= ARRAY_SIZE(qmp_phy_vreg_l),
- 
- 	.has_pwrdn_delay	= true,
- };
- 
-+static const struct qmp_phy_cfg sdm845_usb3dpphy_cfg = {
-+	.offsets		= &qmp_combo_offsets_v3,
-+	.regs			= &qmp_combo_regs_v3,
-+	.serdes_tbl		= qmp_v3_usb3_serdes_tbl,
-+	.serdes_tbl_num		= ARRAY_SIZE(qmp_v3_usb3_serdes_tbl),
-+	.tx_tbl			= qmp_v3_usb3_tx_tbl,
-+	.tx_tbl_num		= ARRAY_SIZE(qmp_v3_usb3_tx_tbl),
-+	.rx_tbl			= qmp_v3_usb3_rx_tbl,
-+	.rx_tbl_num		= ARRAY_SIZE(qmp_v3_usb3_rx_tbl),
-+	.pcs_tbl		= qmp_v3_usb3_pcs_tbl,
-+	.pcs_tbl_num		= ARRAY_SIZE(qmp_v3_usb3_pcs_tbl),
-+	.vreg_list		= qmp_phy_vreg_l,
-+	.num_vregs		= ARRAY_SIZE(qmp_phy_vreg_l),
-+
-+	.has_pwrdn_delay	= true,
-+};
-+
- static int qmp_combo_xlate(struct phy *phy, struct ofnode_phandle_args *args)
- {
- 	if (args->args_count != 1) {
- 		debug("Invalid args_count: %d\n", args->args_count);
- 		return -EINVAL;
- 	}
- 
- 	/* We only support the USB3 phy at slot 0 */
-@@ -645,16 +775,20 @@ static struct phy_ops qmp_combo_ops = {
- 	.of_xlate = qmp_combo_xlate,
- };
- 
- static const struct udevice_id qmp_combo_ids[] = {
+ static const struct rpmh_vreg_init_data pm6150l_vreg_data[] = {
+ 	/* smps1 - smps8 are not added to u-boot yet */
+ 	RPMH_VREG("ldo1",   "ldo%s1",  &pmic5_pldo_lv,   "vdd-l1-l8"),
+ 	RPMH_VREG("ldo2",   "ldo%s2",  &pmic5_nldo,      "vdd-l2-l3"),
+ 	RPMH_VREG("ldo3",   "ldo%s3",  &pmic5_nldo,      "vdd-l2-l3"),
+ 	RPMH_VREG("ldo4",   "ldo%s4",  &pmic5_pldo,      "vdd-l4-l5-l6"),
+ 	RPMH_VREG("ldo5",   "ldo%s5",  &pmic5_pldo,      "vdd-l4-l5-l6"),
+ 	RPMH_VREG("ldo6",   "ldo%s6",  &pmic5_pldo,      "vdd-l4-l5-l6"),
+@@ -1004,16 +1137,20 @@ static const struct udevice_id rpmh_regulator_ids[] = {
  	{
- 		.compatible = "qcom,sc7280-qmp-usb3-dp-phy",
- 		.data = (ulong)&sc7280_usb3dpphy_cfg,
+ 		.compatible = "qcom,pm8550ve-rpmh-regulators",
+ 		.data = (ulong)pm8550ve_vreg_data,
+ 	},
+ 	{
+ 		.compatible = "qcom,pm8550vs-rpmh-regulators",
+ 		.data = (ulong)pm8550vs_vreg_data,
  	},
 +	{
-+		.compatible = "qcom,sdm845-qmp-usb3-dp-phy",
-+		.data = (ulong)&sdm845_usb3dpphy_cfg,
++		.compatible = "qcom,pm8998-rpmh-regulators",
++		.data = (ulong)pm8998_vreg_data,
 +	},
- 	{ }
- };
- 
- U_BOOT_DRIVER(qmp_combo) = {
- 	.name = "qcom-qmp-usb3-dp-phy",
- 	.id = UCLASS_PHY,
- 	.of_match = qmp_combo_ids,
- 	.ops = &qmp_combo_ops,
+ 	{
+ 		.compatible = "qcom,pmc8380-rpmh-regulators",
+ 		.data = (ulong)pmc8380_vreg_data,
+ 	},
+ 	{
+ 		.compatible = "qcom,pmm8654au-rpmh-regulators",
+ 		.data = (ulong)pmm8654au_vreg_data,
+ 	},
 
 -- 
 2.55.0
