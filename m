@@ -1,15 +1,12 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Subject: [PATCH v2 0/2] Add Reset GPIO to imx258
-Date: Sat, 29 Aug 2026 16:06:32 +0300
-Message-Id: <20260829-imx258-add-reset-gpio-patch-v2-0-bfd27891e225@mainlining.org>
+Date: Sat, 29 Aug 2026 16:06:33 +0300
+Subject: [PATCH v2 1/2] media: i2c: imx258: Add wait after enabling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6DIBCF4asY1p0GoSp21Xs0LgiMOEkFAsbYG
- O9eatJtl/9bfG9nGRNhZvdqZwlXyhR8CXGpmJm0dwhkSzPBRcuVaIDmTTQKtLWQMOMCLlKAqBc
- zgblJZa1sxt4YVoSYcKTt1J9D6YnyEtL7PFvr7/pz1V93raGGVsq+E1bojvPHrMm/yJN315AcG
- 47j+AD0X9lxywAAAA==
-X-Change-ID: 20260825-imx258-add-reset-gpio-patch-c438dd35f9cc
+Message-Id: <20260829-imx258-add-reset-gpio-patch-v2-1-bfd27891e225@mainlining.org>
+References: <20260829-imx258-add-reset-gpio-patch-v2-0-bfd27891e225@mainlining.org>
+In-Reply-To: <20260829-imx258-add-reset-gpio-patch-v2-0-bfd27891e225@mainlining.org>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>
 Cc: git@luigi311.com, pavel@ucw.cz, tomm.merciai@gmail.com, 
@@ -17,42 +14,39 @@ Cc: git@luigi311.com, pavel@ucw.cz, tomm.merciai@gmail.com,
  phone-devel@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  =?utf-8?q?Ond=C5=99ej_Jirman?= <megi@xff.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788008809; l=1088;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788008809; l=852;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=pn5KGflifh7k3NcNdmit0vyAmA8cfWgPj83zaSLLpq0=;
- b=Qitmu8ApwZ3hUILh+CiqgQ/xGkk1ZWjMDQw2js1q0jjmynZqg0foEkzw5HLDqW0hpobWdqSzc
- L9vKIvia2Q3ClsEb/OUOD96aLdh7Xxmx3ve+XHXmxj4P3VoMENd+vHT
+ bh=6gFgGcWn8XWMZgFcAqImtkE7Mtn0Fv/loz0A+OqkWoQ=;
+ b=uDYz4J8Nixs5xOqxBYgf/sToUz4lEo/oxloyl5W/XX50cB3pCXI9ryVqXDpD2cvMOCYz4mBB5
+ gDjt0HwAdhpDyOM1OGRks8jJLKAZGPyV9NUsTA31ue5+WUOQEMa7t6Z
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I have a device that is not upstreamed yet (General Mobile Shamrock)
-whose camera needs reset gpio to probe, it is documented in
-dt-bindings but not implemented for some reason.
-With adding it rear camera on the device probes correctly.
+After enabling the device, a delay is required before the sensor is
+ready for CCI access. 0.4ms delay needed between enabling and
+reading the ID register over CCI.
 
+Link: https://lore.kernel.org/phone-devel/apF5oxsCf7MJt1lk@kekkonen.localdomain/T/#md6a0411e81a2e3a563c935348f2fb4f3d52df64f
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
-Changes in v2:
-- Moved error handling in power on to gotos as Sakari Ailus requested
-- Use fsleep instead of usleep_range as Sakari Ailus requested
-- Separated delay after enable and reset gpio patches as Sakari
-  Ailus requested
-- Link to v1: https://lore.kernel.org/r/20260828-imx258-add-reset-gpio-patch-v1-1-633972d2a700@mainlining.org
+ drivers/media/i2c/imx258.c | 1 +
+ 1 file changed, 1 insertion(+)
 
----
-Muzaffer Kadir (2):
-      media: i2c: imx258: Add wait after enabling
-      media: i2c: imx258: Add reset-gpio support
+diff --git a/drivers/media/i2c/imx258.c b/drivers/media/i2c/imx258.c
+index bc9ee449a87c..9c3a6579df0d 100644
+--- a/drivers/media/i2c/imx258.c
++++ b/drivers/media/i2c/imx258.c
+@@ -1129,6 +1129,7 @@ static int imx258_power_on(struct device *dev)
+ 		dev_err(dev, "failed to enable clock\n");
+ 		regulator_bulk_disable(IMX258_NUM_SUPPLIES, imx258->supplies);
+ 	}
++	fsleep(400);
+ 
+ 	return ret;
+ }
 
- drivers/media/i2c/imx258.c | 25 ++++++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
----
-base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
-change-id: 20260825-imx258-add-reset-gpio-patch-c438dd35f9cc
-
-Best regards,
 -- 
-Muzaffer Kadir <muzafferkadir@mainlining.org>
+2.54.0
 
