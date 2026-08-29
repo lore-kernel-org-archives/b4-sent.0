@@ -1,304 +1,243 @@
-From: Sven Peter <sven@kernel.org>
-Date: Sat, 29 Aug 2026 10:08:39 +0200
-Subject: [PATCH v3 7/7] thunderbolt: Drop the DP tunnel activation callback
- data
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH v6 0/5] ceph: reduce mdsc->mutex contention in the cephfs
+ kclient
+Date: Sat, 29 Aug 2026 04:35:00 -0700
+Message-Id: <20260829-ceph-mdsc-mutex-optimization-v6-0-466936ccbd9d@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260829-b4-tbt-fixes-v3-7-e1fab6ac54fe@kernel.org>
-References: <20260829-b4-tbt-fixes-v3-0-e1fab6ac54fe@kernel.org>
-In-Reply-To: <20260829-b4-tbt-fixes-v3-0-e1fab6ac54fe@kernel.org>
-To: Andreas Noever <andreas.noever@gmail.com>, 
- Mika Westerberg <westeri@kernel.org>, 
- Yehezkel Bernat <YehezkelShB@gmail.com>
-Cc: Mika Westerberg <mika.westerberg@linux.intel.com>, 
- Konrad Dybcio <konradybcio@kernel.org>, asahi@lists.linux.dev, 
- linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sven Peter <sven@kernel.org>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Ny07DMBQE0F+pvMbI18+EFf+BWPhxQ4xIHcVu1
+ FLl33HKgkhZhOVIM2fuJOMUMZOX051MOMcc07kG/XQivrfnD6Qx1Ew445oZENTj2NMhZE+HS8E
+ rTWOJQ/y2pQ6pQSOt0875xpFKjBN28frg395/c764T/RlNddGH3NJ0+3xP8Pa++fVDJTR1qKyH
+ oTyQr76r1tOzz4NZL2a+RZTBxhfMYYNOMO14TtM/GENwAEmKhaYAAApoe12mNxi/ACTFeu8Fc5
+ Izbt2h6kt1hxgqmImCKGssBCY22LLsvwAFkVUcg4CAAA=
+X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11508; i=sven@kernel.org;
- h=from:subject:message-id; bh=onwj9ZvmShEMgbw8Rtmke+EWIIMyg7UeYx5VmGnUVLE=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9akyf1yXqkpGZY8ob7Hkq3uBrBEfl4X27R/yraL3zvFN
- 53jyb/YUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZiIBgPDX9mNd+5vZlhts//y
- 2xmBSWdupCdc9lh0/m5dkuZsvlus1zgYGa5v4hdhKzVTnh+2+M/ivpn3HCzNznKeeleTOj9k9dS
- WqxwA
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788003303; l=11052;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=iXY8OQV9CG5FQSTQU5cbYVtSRXcHYHW8p2VsYCNoln4=;
+ b=v5/xf0hLj7EjGGTLbiejUo2NvFhGlH6Kd/GzW6jVf7BUOiEvvkyoqNECXYgA3qJu2d8UXwn8N
+ RMOMFIAwoR+C8qxLCAA5PhpLSFSwdS+5PODYDoF17WRRbloEo46MQKT
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The callback data is always the domain the tunnel belongs to which the
-callback can just take from the tunnel itself.
+This series reduces mdsc->mutex hold times from hundreds of
+microseconds to tens of microseconds on the hot request-submit and
+reply-handling paths.
 
-Signed-off-by: Sven Peter <sven@kernel.org>
+The approach is incremental:
+  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
+     and __send_request() no longer need the mutex.
+  2. Replace the request_tree rbtree with an xarray for O(1) lookups
+     and internally-locked iteration.
+  3. Add a dedicated wait_list_lock spinlock so wait-list operations
+     no longer depend on the global mutex.
+  4. Move mdsc->mutex acquisition inside __do_request(), then release
+     it during the send phase (message construction and path walking),
+     leaving only the brief setup/teardown under the lock.
+  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
+
+Tested with concurrent readdir + stat on a 5000-file directory
+(32 threads).  bpftrace measurements show:
+
+                 before         after
+  __do_request   354-2327 us    10-68 us    (34x)
+  handle_reply   51-416 us     10-32 us    (13x)
+  submit_request 89-211 us     10-41 us    (5x)
+
+Benchmark results from test_i_caps (aggregate cache test):
+
+  | Test                | Before   | After    | Improvement |
+  |---------------------|----------|----------|-------------|
+  | stat storm ST       | 692k/s   | 1,420k/s | +105% (2.1x)|
+  | stat storm MT       | 722k/s   | 1,373k/s | +90%  (1.9x)|
+  | open/close          | 403k/s   | 524k/s   | +30%        |
+  | stat hot (cache)    | 353k/s   | 540k/s   | +53%        |
+  | readdir             | 877/s    | 832/s    | ~0%         |
+  | Total time          | 195s     | 121s     | -38%  (1.6x)|
+
+The 2x stat throughput gain comes from __do_request() no longer
+holding mdsc->mutex during the __send_request() phase, so dentry
+path walking and message encoding in create_request_message()
+run outside the lock.
+
+No functional changes intended.
+
+Testing for 24+ hours:
+
+The runtime validation ran on a vstart cluster (3 active + 3 standby
+MDS) with a 32-thread metadata load generator and a kernel built with
+CONFIG_PROVE_LOCKING, CONFIG_DEBUG_LIST and CONFIG_DETECT_HUNG_TASK:
+
+- fsstress + dbench smoke runs: clean.
+- r1, single-MDS failover churn: 108 failovers across 4 runs, every
+  session reconnected, no lost wakeups, no hangs.
+- r2, double "ceph mds fail" chaos: ~90 double-fail cycles across
+  2 runs, zero hangs, zero kernel warnings, clean teardown.
+- r3, double-fail plus victim processes SIGKILLed every 50-400 ms
+  (5084 kills in one run) to exercise the request abort path: zero
+  warnings, zero list-corruption reports, zero refcount issues.
+- r4 (double mds fail + evict churn + 8 victim processes killed at
+  200-2000 ms): one 32-minute run FAILED -- a worker was stuck in
+  truncate for ~15 minutes at shutdown, the join oracle's first hit
+  across all runs.  Live-kernel forensics (drgn against /proc/kcore)
+  showed the wedge is unrelated to this series: the double-fail had
+  dropped the inode's dirty caps in the session-loss path (caps.c)
+  without cleaning up the page wrbuffer refs, so the ceph_inode_work()
+  kworker spun forever in __ceph_do_pending_vmtruncate()'s flush
+  branch -- with no dirty caps, ceph_writepages_start() returns
+  -ENODATA without writing, the refs never drain, and the loop holds
+  i_truncate_mutex indefinitely, starving concurrent truncates (and,
+  via setattr's inode lock and vfs_unlink()'s target-inode lock,
+  unlinks).  Every link of that chain is in caps.c/inode.c/addr.c/VFS
+  code untouched by these patches; it is a pre-existing consistency
+  bug (dirty caps dropped without wrbuffer-ref cleanup on session
+  loss, plus an unbounded flush loop) to be fixed separately.  (The
+  r4 evict trigger was skipped in this run as debugfs was not
+  mounted; session eviction itself had been exercised in earlier
+  testing.)
+
+No lockdep reports, list corruption, refcount warnings, or hung tasks
+across the whole campaign.  The campaign also exposed two pre-existing
+mainline bugs (a NULL oldest-snapc dereference in the writeback path
+and a request abort-path use-after-free), both reproducible without
+this series on a vanilla 7.2 kernel and fixed separately.
+
+The whole test code could be find in:
+https://tracker.ceph.com/issues/80086
+Or
+https://tracker.ceph.com/issues/80084
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/thunderbolt/tb.c     | 10 +++++-----
- drivers/thunderbolt/test.c   | 24 ++++++++++++------------
- drivers/thunderbolt/tunnel.c | 12 +++---------
- drivers/thunderbolt/tunnel.h | 10 +++-------
- 4 files changed, 23 insertions(+), 33 deletions(-)
+Changes in v6:
+- Only patch 5/5 is changed; patches 1-4 are identical to v5.
+- Replace the ad-hoc r_attempts dispatch gate with an explicit
+  ownership protocol.  __do_request() and replay_unsafe_requests()
+  claim CEPH_MDS_R_DISPATCHING under mdsc->mutex before the unlocked
+  prepare/send window and release it on exit, so only one context ever
+  rebuilds and sends a request's message.  A claim consumes any
+  pending CEPH_MDS_R_RESEND.
+- cleanup_session_requests() and handle_forward() set
+  CEPH_MDS_R_RESEND under mdsc->mutex when they see DISPATCHING held,
+  instead of relying on r_attempts == 0 to trigger a resend.  Fixes
+  the v5 race where cleanup_session_requests() could zero r_attempts
+  while a sender was between the mutex release and __send_request(),
+  letting a second __do_request() in and double ceph_msg_put() the
+  request message.
+- On release, the owner consumes a pending CEPH_MDS_R_RESEND
+  and re-dispatches the request through __do_request() (restart label)
+  as long as it is still registered in the request xarray.
+- __wake_requests() now takes mdsc->mutex and splices the wait
+  list under it, pinning a reference on each request in the same
+  critical section as the list_del_init().  This fixes the v5 lockless
+  walk of the spliced list against concurrent list_del_init() by the
+  park paths, and serializes the SESSION_OPEN wake in handle_session()
+  against the park decision in __do_request().
+- Collector exclusivity — kick_requests(), __wake_requests()
+  and replay_unsafe_requests() skip any request whose r_aux_item is
+  non-empty (checked under mdsc->mutex), so two concurrent collectors
+  can no longer add the same node to their local lists.
+- The re-park paths in __do_request() now list_del_init() the
+  request before list_add()ing it onto a wait list, so re-parking is
+  idempotent (needed now that a request can re-enter __do_request()
+  through the RESEND restart loop).
+- __do_request() refuses to dispatch GOT_UNSAFE requests,
+  clearing any pending RESEND/DISPATCHING bits, so an unsafe request
+  is never parked on a wait list.  Together with the exclusivity
+  predicate this guarantees a request is never both wait-listed and on
+  session->s_unsafe, and replay_unsafe_requests() remains the only
+  replayer of unsafe requests.
+- replay_unsafe_requests() claims DISPATCHING in both collect
+  loops, and after __send_request() consumes a pending RESEND and
+  re-dispatches through __do_request().
+- send_mds_reconnect() drops snap_rwsem before calling
+  __wake_requests(), which now takes mdsc->mutex internally (lock
+  order).
+- Link to v5: https://patch.msgid.link/20260818-ceph-mdsc-mutex-optimization-v5-0-7d335a3a1d0b@clyso.com
 
-diff --git a/drivers/thunderbolt/tb.c b/drivers/thunderbolt/tb.c
-index 921adba3544f..40a5a3ebb31d 100644
---- a/drivers/thunderbolt/tb.c
-+++ b/drivers/thunderbolt/tb.c
-@@ -89,7 +89,7 @@ static void tb_dp_resource_unavailable(struct tb *tb, struct tb_port *port,
- 				       const char *reason);
- static void tb_queue_dp_bandwidth_request(struct tb *tb, u64 route, u8 port,
- 					  int retry, unsigned long delay);
--static void tb_dp_tunnel_active(struct tb_tunnel *tunnel, void *data);
-+static void tb_dp_tunnel_active(struct tb_tunnel *tunnel);
- 
- static void tb_queue_hotplug(struct tb *tb, u64 route, u8 port, bool unplug)
- {
-@@ -387,7 +387,7 @@ static void tb_switch_discover_tunnels(struct tb_switch *sw,
- 		switch (port->config.type) {
- 		case TB_TYPE_DP_HDMI_IN:
- 			tunnel = tb_tunnel_discover_dp(tb, port, alloc_hopids,
--						       tb_dp_tunnel_active, tb);
-+						       tb_dp_tunnel_active);
- 			tb_increase_tmu_accuracy(tunnel);
- 			break;
- 
-@@ -1905,11 +1905,11 @@ static struct tb_port *tb_find_dp_out(struct tb *tb, struct tb_port *in)
- 	return NULL;
- }
- 
--static void tb_dp_tunnel_active(struct tb_tunnel *tunnel, void *data)
-+static void tb_dp_tunnel_active(struct tb_tunnel *tunnel)
- {
- 	struct tb_port *in = tunnel->src_port;
- 	struct tb_port *out = tunnel->dst_port;
--	struct tb *tb = data;
-+	struct tb *tb = tunnel->tb;
- 
- 	mutex_lock(&tb->lock);
- 
-@@ -2038,7 +2038,7 @@ static void tb_tunnel_one_dp(struct tb *tb, struct tb_port *in,
- 	       available_up, available_down);
- 
- 	tunnel = tb_tunnel_alloc_dp(tb, in, out, link_nr, available_up,
--				    available_down, tb_dp_tunnel_active, tb);
-+				    available_down, tb_dp_tunnel_active);
- 	if (!tunnel) {
- 		tb_port_dbg(out, "could not allocate DP tunnel\n");
- 		goto err_reclaim_usb;
-diff --git a/drivers/thunderbolt/test.c b/drivers/thunderbolt/test.c
-index c8c648f31107..a1f9dbb66940 100644
---- a/drivers/thunderbolt/test.c
-+++ b/drivers/thunderbolt/test.c
-@@ -1407,7 +1407,7 @@ static void tb_test_tunnel_pcie(struct kunit *test)
- 	tb_tunnel_put(tunnel1);
- }
- 
--static void tb_test_dp_tunnel_active(struct tb_tunnel *tunnel, void *data)
-+static void tb_test_dp_tunnel_active(struct tb_tunnel *tunnel)
- {
- }
- 
-@@ -1432,7 +1432,7 @@ static void tb_test_tunnel_dp(struct kunit *test)
- 	out = &dev->ports[13];
- 
- 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--				    tb_test_dp_tunnel_active, NULL);
-+				    tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
- 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
-@@ -1479,7 +1479,7 @@ static void tb_test_tunnel_dp_chain(struct kunit *test)
- 	out = &dev4->ports[14];
- 
- 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--				    tb_test_dp_tunnel_active, NULL);
-+				    tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
- 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
-@@ -1530,7 +1530,7 @@ static void tb_test_tunnel_dp_tree(struct kunit *test)
- 	out = &dev5->ports[13];
- 
- 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--				    tb_test_dp_tunnel_active, NULL);
-+				    tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
- 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
-@@ -1596,7 +1596,7 @@ static void tb_test_tunnel_dp_max_length(struct kunit *test)
- 	out = &dev12->ports[13];
- 
- 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--				    tb_test_dp_tunnel_active, NULL);
-+				    tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
- 	KUNIT_EXPECT_EQ(test, tunnel->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel->src_port, in);
-@@ -1667,7 +1667,7 @@ static void tb_test_tunnel_3dp(struct kunit *test)
- 	out3 = &dev4->ports[14];
- 
- 	tunnel1 = tb_tunnel_alloc_dp(NULL, in1, out1, 1, 0, 0,
--				     tb_test_dp_tunnel_active, NULL);
-+				     tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_TRUE(test, tunnel1 != NULL);
- 	KUNIT_EXPECT_EQ(test, tunnel1->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel1->src_port, in1);
-@@ -1676,7 +1676,7 @@ static void tb_test_tunnel_3dp(struct kunit *test)
- 	KUNIT_ASSERT_EQ(test, tunnel1->paths[0]->path_length, 3);
- 
- 	tunnel2 = tb_tunnel_alloc_dp(NULL, in2, out2, 1, 0, 0,
--				     tb_test_dp_tunnel_active, NULL);
-+				     tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_TRUE(test, tunnel2 != NULL);
- 	KUNIT_EXPECT_EQ(test, tunnel2->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel2->src_port, in2);
-@@ -1685,7 +1685,7 @@ static void tb_test_tunnel_3dp(struct kunit *test)
- 	KUNIT_ASSERT_EQ(test, tunnel2->paths[0]->path_length, 4);
- 
- 	tunnel3 = tb_tunnel_alloc_dp(NULL, in3, out3, 1, 0, 0,
--				     tb_test_dp_tunnel_active, NULL);
-+				     tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_TRUE(test, tunnel3 != NULL);
- 	KUNIT_EXPECT_EQ(test, tunnel3->type, TB_TUNNEL_DP);
- 	KUNIT_EXPECT_PTR_EQ(test, tunnel3->src_port, in3);
-@@ -1784,7 +1784,7 @@ static void tb_test_tunnel_port_on_path(struct kunit *test)
- 	out = &dev5->ports[13];
- 
- 	dp_tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--				       tb_test_dp_tunnel_active, NULL);
-+				       tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel);
- 
- 	KUNIT_EXPECT_TRUE(test, tb_tunnel_port_on_path(dp_tunnel, in));
-@@ -2217,7 +2217,7 @@ static void tb_test_credit_alloc_dp(struct kunit *test)
- 	out = &dev->ports[14];
- 
- 	tunnel = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--				    tb_test_dp_tunnel_active, NULL);
-+				    tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, tunnel);
- 	KUNIT_ASSERT_EQ(test, tunnel->npaths, (size_t)3);
- 
-@@ -2454,7 +2454,7 @@ static struct tb_tunnel *TB_TEST_DP_TUNNEL1(struct kunit *test,
- 	in = &host->ports[5];
- 	out = &dev->ports[13];
- 	dp_tunnel1 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--					tb_test_dp_tunnel_active, NULL);
-+					tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel1);
- 	KUNIT_ASSERT_EQ(test, dp_tunnel1->npaths, (size_t)3);
- 
-@@ -2492,7 +2492,7 @@ static struct tb_tunnel *TB_TEST_DP_TUNNEL2(struct kunit *test,
- 	in = &host->ports[6];
- 	out = &dev->ports[14];
- 	dp_tunnel2 = tb_tunnel_alloc_dp(NULL, in, out, 1, 0, 0,
--					tb_test_dp_tunnel_active, NULL);
-+					tb_test_dp_tunnel_active);
- 	KUNIT_ASSERT_NOT_NULL(test, dp_tunnel2);
- 	KUNIT_ASSERT_EQ(test, dp_tunnel2->npaths, (size_t)3);
- 
-diff --git a/drivers/thunderbolt/tunnel.c b/drivers/thunderbolt/tunnel.c
-index 3785e29cf92b..cbffb1e612b6 100644
---- a/drivers/thunderbolt/tunnel.c
-+++ b/drivers/thunderbolt/tunnel.c
-@@ -1113,7 +1113,7 @@ static void tb_dp_dprx_work(struct work_struct *work)
- 	}
- 	mutex_unlock(&tb->lock);
- 
--	tunnel->callback(tunnel, tunnel->callback_data);
-+	tunnel->callback(tunnel);
- 	tb_tunnel_put(tunnel);
- 	tb_domain_put(tb);
- }
-@@ -1589,7 +1589,6 @@ static void tb_dp_dump(struct tb_tunnel *tunnel)
-  * @alloc_hopid: Allocate HopIDs from visited ports
-  * @callback: Callback that is called when the DP tunnel is fully
-  *	      activated (or there is an error)
-- * @callback_data: Data for @callback
-  *
-  * If @in adapter is active, follows the tunnel to the DP out adapter
-  * and back. Returns the discovered tunnel or %NULL if there was no
-@@ -1599,8 +1598,7 @@ static void tb_dp_dump(struct tb_tunnel *tunnel)
-  */
- struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
- 					bool alloc_hopid,
--					void (*callback)(struct tb_tunnel *, void *),
--					void *callback_data)
-+					void (*callback)(struct tb_tunnel *))
- {
- 	struct tb_tunnel *tunnel;
- 	struct tb_port *port;
-@@ -1625,7 +1623,6 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
- 	tunnel->consumed_bandwidth = tb_dp_consumed_bandwidth;
- 	tunnel->src_port = in;
- 	tunnel->callback = callback;
--	tunnel->callback_data = callback_data;
- 	INIT_DELAYED_WORK(&tunnel->dprx_work, tb_dp_dprx_work);
- 
- 	path = tb_path_discover(in, TB_DP_VIDEO_HOPID, NULL, -1,
-@@ -1696,7 +1693,6 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
-  *	      %0 if no available bandwidth.
-  * @callback: Callback that is called when the DP tunnel is fully
-  *	      activated (or there is an error)
-- * @callback_data: Data for @callback
-  *
-  * Allocates a tunnel between @in and @out that is capable of tunneling
-  * Display Port traffic. The @callback is called after tb_tunnel_activate()
-@@ -1710,8 +1706,7 @@ struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
- struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
- 				     struct tb_port *out, int link_nr,
- 				     int max_up, int max_down,
--				     void (*callback)(struct tb_tunnel *, void *),
--				     void *callback_data)
-+				     void (*callback)(struct tb_tunnel *))
- {
- 	struct tb_tunnel *tunnel;
- 	struct tb_path **paths;
-@@ -1737,7 +1732,6 @@ struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
- 	tunnel->max_up = max_up;
- 	tunnel->max_down = max_down;
- 	tunnel->callback = callback;
--	tunnel->callback_data = callback_data;
- 	INIT_DELAYED_WORK(&tunnel->dprx_work, tb_dp_dprx_work);
- 
- 	paths = tunnel->paths;
-diff --git a/drivers/thunderbolt/tunnel.h b/drivers/thunderbolt/tunnel.h
-index 7d1d255ab5a7..28f49f7e9f56 100644
---- a/drivers/thunderbolt/tunnel.h
-+++ b/drivers/thunderbolt/tunnel.h
-@@ -67,7 +67,6 @@ enum tb_tunnel_state {
-  * @dprx_timeout: If set DPRX capabilities read poll work will timeout after this passes
-  * @dprx_work: Worker that is scheduled to poll completion of DPRX capabilities read
-  * @callback: Callback called when DP tunnel is fully activated
-- * @callback_data: Data for @callback
-  * @paths: All paths required by the tunnel
-  */
- struct tb_tunnel {
-@@ -104,8 +103,7 @@ struct tb_tunnel {
- 	bool dprx_canceled;
- 	ktime_t dprx_timeout;
- 	struct delayed_work dprx_work;
--	void (*callback)(struct tb_tunnel *tunnel, void *data);
--	void *callback_data;
-+	void (*callback)(struct tb_tunnel *tunnel);
- 
- 	struct tb_path *paths[] __counted_by(npaths);
- };
-@@ -118,13 +116,11 @@ bool tb_tunnel_reserved_pci(struct tb_port *port, int *reserved_up,
- 			    int *reserved_down);
- struct tb_tunnel *tb_tunnel_discover_dp(struct tb *tb, struct tb_port *in,
- 					bool alloc_hopid,
--					void (*callback)(struct tb_tunnel *, void *),
--					void *callback_data);
-+					void (*callback)(struct tb_tunnel *));
- struct tb_tunnel *tb_tunnel_alloc_dp(struct tb *tb, struct tb_port *in,
- 				     struct tb_port *out, int link_nr,
- 				     int max_up, int max_down,
--				     void (*callback)(struct tb_tunnel *, void *),
--				     void *callback_data);
-+				     void (*callback)(struct tb_tunnel *));
- struct tb_tunnel *tb_tunnel_alloc_dma(struct tb *tb, struct tb_port *nhi,
- 				      struct tb_port *dst, int transmit_path,
- 				      int transmit_ring, int receive_path,
+Changes in v5:
+- patch 4: add INIT_LIST_HEAD(&req->r_aux_item) in ceph_mdsc_create_request().
+- patch 5: keep requests on session->s_unsafe during replay; use r_aux_item
+  only as a walk list.
+- Link to v4: https://patch.msgid.link/20260812-ceph-mdsc-mutex-optimization-v4-0-fca3b7462f94@clyso.com
 
--- 
-2.55.0
+Changes in v4:
+- Fix ref leak in __register_request() xa_store error path
+- Fix r_attempts data race: move r_attempts++ from
+  __prepare_send_request() (lockless) into __do_request() and
+  replay_unsafe_requests() under mdsc->mutex.  Adjust the retry
+  overflow check accordingly.
+- Fix kick_requests() list corruption: detach r_wait from the local
+  kick_list before calling __do_request().
+- Fix collect-then-replay list-node races in both kick_requests()
+  and replay_unsafe_requests(): introduce r_aux_item, a dedicated
+  list_head for temporary local list iteration, so that concurrent
+  __unregister_request() cannot corrupt the iterator.
+- Link to v3: https://patch.msgid.link/20260811-ceph-mdsc-mutex-optimization-v3-0-d031114419f4@clyso.com
+
+Changes in v3:
+- Restrict CEPH_FS to 64BIT to prevent xarray index truncation of
+  u64 transaction IDs on 32-bit platforms, instead of the previous
+  #if BITS_PER_LONG guard.  There are no 32-bit users.
+  The survey: https://lore.kernel.org/ceph-devel/CAOJNxR+XiUxR1GNUgd8T18x2KH8kstWtpxwL-mwwE0i_qospJA@mail.gmail.com/T/#t
+- Fix two plain reads of oldest_tid in the writer paths to use
+  READ_ONCE() for consistency with the lockless read side.
+- Replace the original replay_unsafe_requests() change with a
+  proper collect-then-replay pattern: unsafe list entries and
+  matching old xarray entries are gathered under the mutex with a
+  reference taken, then replayed outside it.  Taking a reference
+  ensures a concurrent reply handler cannot free an entry out
+  from under the local-list iterator.
+- Rewrite all commit messages as descriptive prose, focusing on
+  the problem and the approach rather than enumerating modified
+  functions.
+- Link to v2: https://patch.msgid.link/20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com
+
+Changes in v2:
+- Add xa_store() error handling and bail out on failure in the submit path
+- Guard xarray conversion with BITS_PER_LONG==64, fall back to rbtree on 32-bit
+- Fix missing mutex_unlock on early-return path in __do_request()
+- Move mutex_unlock before __wake_requests() and kick_requests() calls to
+  avoid recursive lock acquisition
+- Pin requests with ceph_mdsc_get_request() across lockless __send_request()
+  in replay_unsafe_requests() to prevent use-after-free
+- Keep mdsc->mutex held on 32-bit for rb_first()/rb_next() iteration in
+  replay_unsafe_requests()
+- Drop stale "called under mdsc->mutex" comment on __wake_requests()
+- Add benchmark results from test_i_caps (2.1x stat throughput improvement)
+- Link to v1: https://patch.msgid.link/20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com
+
+To: Ilya Dryomov <idryomov@gmail.com>
+To: Alex Markuze <amarkuze@redhat.com>
+To: Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Xiubo Li (5):
+      ceph: use READ_ONCE/WRITE_ONCE for oldest_tid
+      ceph: replace the request_tree rbtree with an xarray keyed by r_tid
+      ceph: add wait_list_lock for wait-list serialization
+      ceph: move mdsc->mutex into __do_request()
+      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
+
+ fs/ceph/Kconfig      |   1 +
+ fs/ceph/debugfs.c    |   6 +-
+ fs/ceph/mds_client.c | 530 +++++++++++++++++++++++++++++++++++++++------------
+ fs/ceph/mds_client.h |  35 +++-
+ 4 files changed, 440 insertions(+), 132 deletions(-)
+---
+base-commit: dee30ce1286a0d18b14545ecac345e4cf4a80511
+change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
