@@ -1,119 +1,111 @@
-From: Sven Peter <sven@kernel.org>
-Date: Sun, 30 Aug 2026 20:24:55 +0200
-Subject: [PATCH 2/2] dt-check-style: Handle indented fragments in
- indent-consistent
+From: Kairui Song <kasong@tencent.com>
+Subject: [PATCH v4 0/6] mm/mglru: clean up folio counters and flag usage
+Date: Mon, 31 Aug 2026 02:43:30 +0800
+Message-Id: <20260831-mglru-flags-cleanup-v4-0-2d15dde0d7ee@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-b4-dts-check-fix-v1-2-e7c1b2774730@kernel.org>
-References: <20260830-b4-dts-check-fix-v1-0-e7c1b2774730@kernel.org>
-In-Reply-To: <20260830-b4-dts-check-fix-v1-0-e7c1b2774730@kernel.org>
-To: Rob Herring <robh@kernel.org>, Saravana Kannan <saravanak@kernel.org>
-Cc: Daniel Golle <daniel@makrotopia.org>, 
- Krzysztof Kozlowski <krzk@kernel.org>, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, asahi@lists.linux.dev, 
- Sven Peter <sven@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3411; i=sven@kernel.org;
- h=from:subject:message-id; bh=JMPnBMGvgZ/FE+epN+cZJhAYFT7odaEQX02dt28/WNA=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9aU0robe566yklmrM+RC37v+mxHgWgpz9H6NTdlVj3ic
- JhV5PK6o5SFQYyLQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCR2mqGv1ITv+08E6b6zGup
- oXHevOAZi44zccuInjYQWCAZUaTje5qR4YJcopmn5XzV7PcWnYeF934IjT9cyeB6Sm2FWXU0T/B
- HZgA=
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33PQQ6CMBAF0KuYrq1pS8HqynsYF2U6hRospgWiM
+ dzdghuMxOVP/ryfeZGIwWEkx82LBBxcdK1PQW43BGrtK6TOpEwEEwVTXNFb1YSe2kZXkUKD2vd
+ 3CiAPYLUpcmlJurwHtO4xq+fLJ8e+vCJ0EzU1ahe7Njzn2YFPvf8LA6eMKlOWRgMzQsGpQw/ou
+ x20NzJtDGKhCLmuiKQwziTPBOdS46+SLZViXcmSYg6Wwz7P0+PqWxnH8Q3x40MQVgEAAA==
+X-Change-ID: 20260818-mglru-flags-cleanup-cc49cfad654f
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
+ Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
+ Baoquan He <baoquan.he@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Muchun Song <muchun.song@linux.dev>, Chris Li <chrisl@kernel.org>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Ridong Chen <ridong.chen@linux.dev>, Lian Wang <lianux.mm@gmail.com>, 
+ Yu Zhao <yuzhao@google.com>, Zi Yan <ziy@nvidia.com>, 
+ Qi Zheng <qi.zheng@linux.dev>, cgroups@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kairui Song <ryncsn@gmail.com>, 
+ Kairui Song <kasong@tencent.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788115415; l=3114;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=r8MlvVN1Hrr7nFXT/twKw1mcbQBSoK+7gb7Pqz1TrzU=;
+ b=qvvnolvYWKShhvmr1tUm9SVdTo6PBNA1ZlhFYB/9rJqU/D1nqXkHACF4VUiZsG7q24kwA1i/q
+ AoyKSNXNaiDDBhZ61n6ZzFVKQ+U6TYuP5GRyLpe7fIoC7KeswtgHzkw
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-indent-consistent compares every line against its nesting depth without
-accounting for the constant indentation prefix used for include fragments.
-It thus rejects otherwise valid fragments.
+This is a cleanup series separated out from the MGLRU-FG series [1]. As
+that series is getting too long in following updates, seperate out the
+clean up part for easier review and merge.
 
-Fix that by adding the fragment prefix to the expected indentation and add
-test fixtures.
+No feature change is intended, except one bugfix. It mostly replaces
+the open-coded bit operations scattered throughout the MGLRU code with
+new helpers, with proper kdocs, sanity debug checks, and hardens a few
+MGLRU functions.
 
-Signed-off-by: Sven Peter <sven@kernel.org>
+A subtle generation counter leak is also found during the refactoring
+and the fix is included.
+
+Also collected review feedbacks on the cleanup part from the posted
+series.
+
+Link: https://lore.kernel.org/linux-mm/20260804-mglru-fg-v1-0-4d8dad39dad6@tencent.com/ [1]
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- scripts/dtc/dt-check-style                            |  3 ++-
- .../dt-style-selftest/bad/dts-fragment-indent.dtsi    | 12 ++++++++++++
- .../expected/dts-fragment-indent.dtsi.txt             |  3 +++
- scripts/dtc/dt-style-selftest/good/dts-fragment.dtsi  | 19 +++++++++++++++++++
- 4 files changed, 36 insertions(+), 1 deletion(-)
+Changes in v4:
+- Rename lru_gen_set_flags/lru_gen_from_flags to
+  lru_set_gen_flags/lru_get_gen_flags, similiar with lru refs helpers,
+  as suggested by [ Barry Song ].
+- Added some comments to cover concerned raised by [ Barry Song ] and [
+  Baolin Wang ].
+- A little code shuffling and better sanity check for concerns raised by 
+  [ Ridong Chen ].
+- Collect tags.
+- Link to v3: https://patch.msgid.link/20260826-mglru-flags-cleanup-v3-0-d9f1c75549c8@tencent.com
 
-diff --git a/scripts/dtc/dt-check-style b/scripts/dtc/dt-check-style
-index 2afc05fa6602..f867cb6d8070 100755
---- a/scripts/dtc/dt-check-style
-+++ b/scripts/dtc/dt-check-style
-@@ -486,6 +486,7 @@ def check_indent_consistent(ctx):
-         if unit != '\t':
-             return
- 
-+    prefix = detect_fragment_offset(ctx)
-     for dl in ctx.lines:
-         if dl.linetype in (LineType.BLANK, LineType.PREPROCESSOR):
-             continue
-@@ -498,7 +499,7 @@ def check_indent_consistent(ctx):
-         # The indent must be 'unit' repeated dl.depth times, exactly.
-         # NODE_CLOSE lines have depth equal to the post-decrement value,
-         # which matches the indent expected.
--        expected = unit * dl.depth
-+        expected = prefix + unit * dl.depth
-         if dl.indent_str != expected:
-             yield (dl.lineno,
-                    'indent mismatch (expected depth %d * %r)' %
-diff --git a/scripts/dtc/dt-style-selftest/bad/dts-fragment-indent.dtsi b/scripts/dtc/dt-style-selftest/bad/dts-fragment-indent.dtsi
-new file mode 100644
-index 000000000000..6d143c4dd9b2
---- /dev/null
-+++ b/scripts/dtc/dt-style-selftest/bad/dts-fragment-indent.dtsi
-@@ -0,0 +1,12 @@
-+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+/* Incorrect indentation inside an indented include fragment. */
-+
-+	bus@10000 {
-+		compatible = "simple-bus";
-+		reg = <0x10000 0x1000>;
-+
-+		device@100 {
-+				compatible = "example,test";
-+				reg = <0x100 0x10>;
-+		};
-+	};
-diff --git a/scripts/dtc/dt-style-selftest/expected/dts-fragment-indent.dtsi.txt b/scripts/dtc/dt-style-selftest/expected/dts-fragment-indent.dtsi.txt
-new file mode 100644
-index 000000000000..84ec8eb73468
---- /dev/null
-+++ b/scripts/dtc/dt-style-selftest/expected/dts-fragment-indent.dtsi.txt
-@@ -0,0 +1,3 @@
-+# mode=strict
-+bad/dts-fragment-indent.dtsi:9: [indent-consistent] indent mismatch (expected depth 2 * '\t')
-+bad/dts-fragment-indent.dtsi:10: [indent-consistent] indent mismatch (expected depth 2 * '\t')
-diff --git a/scripts/dtc/dt-style-selftest/good/dts-fragment.dtsi b/scripts/dtc/dt-style-selftest/good/dts-fragment.dtsi
-new file mode 100644
-index 000000000000..58735112d3aa
---- /dev/null
-+++ b/scripts/dtc/dt-style-selftest/good/dts-fragment.dtsi
-@@ -0,0 +1,19 @@
-+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+/* Include fragment indented for its inclusion context. */
-+
-+	bus@10000 {
-+		compatible = "simple-bus";
-+		reg = <0x10000 0x1000>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+
-+		device@100 {
-+			compatible = "example,test";
-+			reg = <0x100 0x10>;
-+		};
-+	};
-+
-+	bus@20000 {
-+		compatible = "simple-bus";
-+		reg = <0x20000 0x1000>;
-+	};
+Changes in v3:
+- Set PG_workingset before setting LRU refs bit to avoid any potential
+  under report of folio tier.
+- Migrate folio's referenced status before PG_update so lockless readers
+  won't set stale referenced status.
+- Link to v2: https://patch.msgid.link/20260824-mglru-flags-cleanup-v2-0-0104132114ae@tencent.com
 
--- 
-2.55.0
+Changes in v2:
+- Dropped the redundant LRU_GEN_MAX macro.
+- Renamed folio_migrate_refs() to folio_migrate_lru_refs() and reworded
+  its commit message to describe the referenced state being transferred.
+- Rewrote patch 6's commit message with a detailed analysis of the
+  anon/file accounting race.
+- Dropped patch 7, it doesn't really fix anything, and might be in
+  conflict with other updating series.
+- Collected Reviewed-by tags.
+- Link to v1: https://patch.msgid.link/20260818-mglru-flags-cleanup-v1-0-8dbbdac0d28c@tencent.com
+
+---
+Kairui Song (6):
+      mm/memcontrol: make lru_zone_size atomic and simplify sanity check
+      mm/mglru: introduce helpers for manipulating gen and refs flags
+      mm/migrate: copy all referenced state via folio_migrate_lru_refs
+      mm/mglru: move max_seq read into walk_update_folio
+      mm/mglru: use explicit tier range in read_ctrl_pos()
+      mm/mglru: fix potential generation folio number leak
+
+ include/linux/memcontrol.h |   9 +++-
+ include/linux/mm_inline.h  | 111 ++++++++++++++++++++++++++++++++++++------
+ include/linux/mmzone.h     |   3 ++
+ mm/folio.c                 |  19 ++++----
+ mm/memcontrol.c            |  18 +------
+ mm/migrate.c               |   6 +--
+ mm/vmscan.c                | 117 +++++++++++++++++++++++----------------------
+ 7 files changed, 183 insertions(+), 100 deletions(-)
+---
+base-commit: aeddb4d52acfcc5ce5e988acd48f2906fe966ca3
+change-id: 20260818-mglru-flags-cleanup-cc49cfad654f
+
+Best regards,
+--  
+Kairui Song <kasong@tencent.com>
 
