@@ -1,79 +1,126 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 30 Aug 2026 00:23:27 +0200
-Subject: [PATCH 4/4] configs: qcom: enable QMP USB3-DP combo PHY
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Sun, 30 Aug 2026 15:09:55 +0800
+Subject: [PATCH] RDMA/rtrs-clt: Fix CQ pool leak when connect is
+ interrupted
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-b4-sdm845-usb-gadget-v1-4-9f20e842d628@ixit.cz>
-References: <20260830-b4-sdm845-usb-gadget-v1-0-9f20e842d628@ixit.cz>
-In-Reply-To: <20260830-b4-sdm845-usb-gadget-v1-0-9f20e842d628@ixit.cz>
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.denx.de
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- David Heidelberg <david@ixit.cz>, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
- Jaehoon Chung <jh80.chung@samsung.com>, Peng Fan <peng.fan@nxp.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, 
- Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
- Federico Amedeo Izzo <federico@izzo.pro>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Quentin Schulz <quentin.schulz@cherry.de>, phone-devel@vger.kernel.org
+Message-Id: <20260830-rdma-rtrs-clt-cq-pool-leak-v1-1-b169434fd3df@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMAwA0F8hPdtkA+KIv2I8jFG0Ohm005AQ/
+ t2px3d5GygJk8Kp2kDozcppKrCHCsLNT1dCHoqhNvXRdI1BGZ4eJYtiiBnDgnNKESP5B7putL1
+ xjprWQglmoZHXX36+/K2v/k4hf0fY9w/JgTQkfgAAAA==
+X-Change-ID: 20260830-rdma-rtrs-clt-cq-pool-leak-78f1b077e341
+To: "Md. Haris Iqbal" <haris.iqbal@ionos.com>, 
+ Jack Wang <jinpu.wang@ionos.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Leon Romanovsky <leon@kernel.org>
+Cc: Jack Wang <jinpu.wang@cloud.ionos.com>, linux-rdma@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+d396918a29afb8543e1c@syzkaller.appspotmail.com, 
+ Quanye Yang <quanyeyang@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1041; i=david@ixit.cz;
- h=from:subject:message-id; bh=+1d4BTHteqIRt7GUekOg8l3SKZOkytAi29bL4pgGHWA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqk1vezUgRAXSMNhLkvZpC4upz6ah3U4IDJT6WA
- V11YExWTZeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapNb3gAKCRBgAj/E00kg
- cmxuD/0fhWvNHp1IWIdKuSkCKvDggkizofzUBFwEf2MD2KsG7whj3d4ioz7TSHpoiPRZvyiBmg9
- rUIVzVJooz5iDxkKnGJJzIuaQRpwt/wJeVJy5ERXD1Y7KarRZVzD5y3+WBKT7Frgp1laS//cHQh
- UOsx6auVgkVOMV+g3LzXjLaji/g3/pPkahIoBCUKv9Nr1tIJf02Fxop+w/2O7iZwLUGK2wI9LZu
- 0vmQmisCPgNlHxi6ERBMT/YKjn/FFXZuv8PmmXID1iHAmsYkx6DGx2xVImHao+UbTirJ2C4r0v1
- btPoCrMLzfN2COmqvF2R1OtqAtoRUrE/nZRbeKehrgyTd7gUXqWkflK29oXF3BRTj1aMDlFQsc1
- CnD9sFlHlY2k01U52OM1Xhlu8d0JGiXED4n9ImLE+XHTtQADxwpdRLRwRriN4AqC0UvQGQNIm0l
- xIXNRgI3hoBxJcOETlD4+4PzloAL5PEn0ZypItl4vMf6AMaRcTKfusnctCu0issWK5zpJKwr1/H
- K08pGqfAprITTM06ttkT0+U6M0+jh+ZqnZyNh7N0dPAZVY7NkIIp58U0jwQ2dajf7hd2TBKxWR0
- 1eZXYGy797dcwi+l2wpZf+OQE2tuMqHlaDqr32t0kJRCmic3Kc/g7YSGLhGi4VouwB5qm3l2Dba
- z/qXoLb4mZCU3cA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788073795; l=3778;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=cn9IkRUu0B89uWfK7vLWOhB21IgObrIMhVPL+RLvT4M=;
+ b=aDuIS6UusZbS31KSqt2aMZnI1gtCGGold4AKeQ8ALgGzI9GcUH8Rxd2ul3d4COI5PPUaBxmHb
+ 6dVUDASJ/bWCiY+RaiE8sp1ALqEDqC8ASBTQjiJx0xgPfa8rdyhgCgx
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SDM845 boards need this PHY to bring up their USB controller, and
-without it in the defconfig the driver is silently left out of the
-build, so the PHY never binds and USB gadget mode fails with:
+The client borrows shared CQ credits in the ADDR_RESOLVED handler via
+ib_cq_pool_get(), before the peer is connected. create_cm() can return
+-ERESTARTSYS from wait_event_interruptible_timeout() without destroying
+the CM ID. The init_conns() and stop-and-destroy paths then call
+destroy_con_cq_qp() while cq is still NULL (no PUT) and only afterwards
+rdma_destroy_id().
 
-  dwc3-generic-peripheral usb@a600000: failed to enable ep0out
+CMA serializes the handler against rdma_destroy_id() with handler_mutex,
+but that does not order the GET against destroy_con_cq_qp(). If
+ADDR_RESOLVED has already passed the DESTROYING check, it can take
+con_mutex, GET credits, and then lose the con to kfree. Device
+unregister later hits WARN_ON(cq->cqe_used) in ib_cq_pool_cleanup().
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Set a per-connection flag under con_mutex before CQ/QP teardown so a
+racing ADDR_RESOLVED cannot borrow credits after teardown has begun.
+
+Reported-by: syzbot+d396918a29afb8543e1c@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=d396918a29afb8543e1c
+Fixes: 3b89e92c2a95 ("RDMA/rtrs: Use new shared CQ mechanism")
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- configs/qcom_defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Fix a syzbot WARNING in ib_cq_pool_cleanup(): an ADDR_RESOLVED handler
+can ib_cq_pool_get() after connection teardown has already skipped the
+matching PUT.
 
-diff --git a/configs/qcom_defconfig b/configs/qcom_defconfig
-index b0d0f51b1c0..880edcb504b 100644
---- a/configs/qcom_defconfig
-+++ b/configs/qcom_defconfig
-@@ -104,16 +104,17 @@ CONFIG_MMC_SDHCI_MSM=y
- CONFIG_DM_MDIO=y
- CONFIG_DM_ETH_PHY=y
- CONFIG_DWC_ETH_QOS=y
- CONFIG_DWC_ETH_QOS_QCOM=y
- CONFIG_RGMII=y
- CONFIG_PHY_MICREL=y
- CONFIG_PHY_MICREL_KSZ90X1=y
- CONFIG_PHY=y
-+CONFIG_PHY_QCOM_QMP_COMBO=y
- CONFIG_PHY_QCOM_QMP_UFS=y
- CONFIG_PHY_QCOM_QUSB2=y
- CONFIG_PHY_QCOM_USB_SNPS_FEMTO_V2=y
- CONFIG_PHY_QCOM_SNPS_EUSB2=y
- CONFIG_PINCTRL=y
- CONFIG_PINCONF=y
- CONFIG_PINCTRL_QCOM_GENERIC=y
- CONFIG_QCOM_RPMH_POWER_DOMAIN=y
+Reproduced on rxe with rnbd-client only (no rtrs server): write
+map_device with path=ip:127.0.0.1, interrupt create_cm() with a signal,
+then rdma link delete. Device unregister no longer reports leftover
+cqe_used after this change.
+---
+ drivers/infiniband/ulp/rtrs/rtrs-clt.c | 8 ++++++++
+ drivers/infiniband/ulp/rtrs/rtrs-clt.h | 2 ++
+ 2 files changed, 10 insertions(+)
 
--- 
-2.55.0
+diff --git a/drivers/infiniband/ulp/rtrs/rtrs-clt.c b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
+index 7b2c51ae614f..eac38b57b00d 100644
+--- a/drivers/infiniband/ulp/rtrs/rtrs-clt.c
++++ b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
+@@ -1732,6 +1732,8 @@ static void destroy_con_cq_qp(struct rtrs_clt_con *con)
+ 	/*
+ 	 * Be careful here: destroy_con_cq_qp() can be called even
+ 	 * create_con_cq_qp() failed, see comments there.
++	 * Caller must set con->destroyed under this lock first so a
++	 * racing ADDR_RESOLVED cannot ib_cq_pool_get() after we PUT/SKIP.
+ 	 */
+ 	lockdep_assert_held(&con->con_mutex);
+ 	rtrs_cq_qp_destroy(&con->c);
+@@ -1766,6 +1768,10 @@ static int rtrs_rdma_addr_resolved(struct rtrs_clt_con *con)
+ 	int err;
+ 
+ 	mutex_lock(&con->con_mutex);
++	if (con->destroyed) {
++		mutex_unlock(&con->con_mutex);
++		return -ECONNABORTED;
++	}
+ 	err = create_con_cq_qp(con);
+ 	mutex_unlock(&con->con_mutex);
+ 	if (err) {
+@@ -2221,6 +2227,7 @@ static void rtrs_clt_stop_and_destroy_conns(struct rtrs_clt_path *clt_path)
+ 			break;
+ 		con = to_clt_con(clt_path->s.con[cid]);
+ 		mutex_lock(&con->con_mutex);
++		con->destroyed = true;
+ 		destroy_con_cq_qp(con);
+ 		mutex_unlock(&con->con_mutex);
+ 		destroy_cm(con);
+@@ -2387,6 +2394,7 @@ static int init_conns(struct rtrs_clt_path *clt_path)
+ 		if (con->c.cm_id) {
+ 			stop_cm(con);
+ 			mutex_lock(&con->con_mutex);
++			con->destroyed = true;
+ 			destroy_con_cq_qp(con);
+ 			mutex_unlock(&con->con_mutex);
+ 			destroy_cm(con);
+diff --git a/drivers/infiniband/ulp/rtrs/rtrs-clt.h b/drivers/infiniband/ulp/rtrs/rtrs-clt.h
+index 1305601a6251..ad64f4517c4b 100644
+--- a/drivers/infiniband/ulp/rtrs/rtrs-clt.h
++++ b/drivers/infiniband/ulp/rtrs/rtrs-clt.h
+@@ -75,6 +75,8 @@ struct rtrs_clt_con {
+ 	unsigned int		cpu;
+ 	struct mutex		con_mutex;
+ 	int			cm_err;
++	/* Set under con_mutex before CQ/QP teardown. */
++	bool			destroyed;
+ };
+ 
+ /**
+
+---
+base-commit: 08dbfad3f5040f5bdb6c529da20d6d4e81fefd72
+change-id: 20260830-rdma-rtrs-clt-cq-pool-leak-78f1b077e341
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
