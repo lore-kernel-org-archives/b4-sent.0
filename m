@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 30 Aug 2026 22:19:21 +0200
-Subject: [PATCH 03/19] usb: typec: tipd: Hook up Thunderbolt switch for
- CD321x
+Date: Sun, 30 Aug 2026 22:19:22 +0200
+Subject: [PATCH 04/19] dt-bindings: thunderbolt: Add Apple USB4/Thunderbolt
+ NHI
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-b4-apple-soc-tbt-v1-3-44bc9348683c@kernel.org>
+Message-Id: <20260830-b4-apple-soc-tbt-v1-4-44bc9348683c@kernel.org>
 References: <20260830-b4-apple-soc-tbt-v1-0-44bc9348683c@kernel.org>
 In-Reply-To: <20260830-b4-apple-soc-tbt-v1-0-44bc9348683c@kernel.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -22,149 +22,213 @@ Cc: Konrad Dybcio <konradybcio@kernel.org>, linux-usb@vger.kernel.org,
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5456; i=sven@kernel.org;
- h=from:subject:message-id; bh=q5r1Np3eUnTrcGkauW7sWKDIVR3AiUTcYWTLnTecjRk=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9aUCcEvz8Zqf/RaeGPtVz3fzT37LhzIDzx/7okus8bvZ
- rM/a9itO0pZGMS4GGTFFFm277c3ffLwjeDSTZfew8xhZQIZwsDFKQAT2S3B8Jvt8rrFP/3YZKd6
- zJme18FY+uiBcf2mqjmJdQFubg+UuxYwMnQV3U8OTAtjz5IzcoqU3JwielmIabrcoY+/DJOy1y4
- qZwQA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6395; i=sven@kernel.org;
+ h=from:subject:message-id; bh=ST4ik3WBagvYGb9odthpBturzioGl2ubZbVZscCANes=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9aUCSEBrgwKebrpG/+knlBjvKEQsijsQnr6Me4rogLlM
+ /6+DWjpKGVhEONikBVTZNm+3970ycM3gks3XXoPM4eVCWQIAxenAEzkZTfD/4zUd9GLIzY+Znz1
+ wFnrxf49lxcm73i47Qfz1YOS15pEOK0Y/ru/Nnrv5OPcFmm+9Pe5g4X3WD6vWve9YvnyN1NjWWJ
+ +P+YFAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Look up the Thunderbolt switch for CD321x ports and forward cable details
-whenever a Thunderbolt or USB4 connection comes up or goes away.
+The Native Host Interface (NHI) provides the TX and RX rings used by the
+software connection manager on Apple Silicon SoCs.
+
+The NHI is part of the ACIO host router and is exposed to the main SoC
+bus while the ACIO co-processor is running.
+
+T6000 and T6020 use one DART stream for the TX and RX control rings and
+one shared by all other rings, which are used for XDomain connections.
+This likely improves the isolation of those host-to-host connections.
+
+The M3 generation uses a slightly insane set of 24 IOMMU entries. These
+are probably one DART stream for each TX and RX ring.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/usb/typec/tipd/core.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+ .../bindings/thunderbolt/apple,t8103-usb4-nhi.yaml | 151 +++++++++++++++++++++
+ MAINTAINERS                                        |   2 +
+ 2 files changed, 153 insertions(+)
 
-diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index 522f56742aa9..5016f9dba956 100644
---- a/drivers/usb/typec/tipd/core.c
-+++ b/drivers/usb/typec/tipd/core.c
-@@ -216,6 +216,8 @@ struct cd321x {
- 	struct typec_mux *mux;
- 	struct typec_mux_state state;
- 
-+	struct typec_thunderbolt_switch *tbt_switch;
+diff --git a/Documentation/devicetree/bindings/thunderbolt/apple,t8103-usb4-nhi.yaml b/Documentation/devicetree/bindings/thunderbolt/apple,t8103-usb4-nhi.yaml
+new file mode 100644
+index 000000000000..a80c8db3ef51
+--- /dev/null
++++ b/Documentation/devicetree/bindings/thunderbolt/apple,t8103-usb4-nhi.yaml
+@@ -0,0 +1,151 @@
++# SPDX-License-Identifier: GPL-2.0 OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/thunderbolt/apple,t8103-usb4-nhi.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- 	struct cd321x_status update_status;
- 	struct delayed_work update_work;
- 	struct usb_pd_identity cur_partner_identity;
-@@ -677,6 +679,9 @@ static void tps6598x_handle_plug_event(struct tps6598x *tps, u32 status)
- static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status *st)
- {
- 	struct cd321x *cd321x = container_of(tps, struct cd321x, tps);
-+	struct typec_thunderbolt_switch_data tbt_switch_data = {
-+		.state = TYPEC_THUNDERBOLT_SWITCH_OFF,
-+	};
- 
- 	if (!(st->data_status & TPS_DATA_STATUS_DATA_CONNECTION)) {
- 		if (cd321x->state.mode == TYPEC_STATE_SAFE)
-@@ -684,6 +689,7 @@ static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status
- 		cd321x->state.alt = NULL;
- 		cd321x->state.mode = TYPEC_STATE_SAFE;
- 		cd321x->state.data = NULL;
-+		typec_thunderbolt_switch_set(cd321x->tbt_switch, &tbt_switch_data);
- 		typec_mux_set(cd321x->mux, &cd321x->state);
- 	} else if (st->data_status & TPS_DATA_STATUS_DP_CONNECTION) {
- 		struct typec_displayport_data dp_data;
-@@ -723,6 +729,7 @@ static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status
- 		cd321x->state.alt = cd321x->port_altmode_dp;
- 		cd321x->state.data = &dp_data;
- 		cd321x->state.mode = mode;
-+		typec_thunderbolt_switch_set(cd321x->tbt_switch, &tbt_switch_data);
- 		typec_mux_set(cd321x->mux, &cd321x->state);
- 	} else if (st->data_status & TPS_DATA_STATUS_TBT_CONNECTION) {
- 		struct typec_thunderbolt_data tbt_data;
-@@ -738,6 +745,13 @@ static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status
- 		cd321x->state.mode = TYPEC_TBT_MODE;
- 		cd321x->state.data = &tbt_data;
- 		typec_mux_set(cd321x->mux, &cd321x->state);
++title: Apple Silicon USB4/Thunderbolt Native Host Interface (NHI)
 +
-+		tbt_switch_data.state = TYPEC_THUNDERBOLT_SWITCH_TBT;
-+		tbt_switch_data.tbt = tbt_data;
-+		tbt_switch_data.orientation = TPS_STATUS_TO_UPSIDE_DOWN(st->status) ?
-+						      TYPEC_ORIENTATION_REVERSE :
-+						      TYPEC_ORIENTATION_NORMAL;
-+		typec_thunderbolt_switch_set(cd321x->tbt_switch, &tbt_switch_data);
- 	} else if (st->data_status & CD321X_DATA_STATUS_USB4_CONNECTION) {
- 		struct enter_usb_data eusb_data;
- 
-@@ -752,12 +766,20 @@ static void cd321x_typec_update_mode(struct tps6598x *tps, struct cd321x_status
- 		cd321x->state.data = &eusb_data;
- 		cd321x->state.mode = TYPEC_MODE_USB4;
- 		typec_mux_set(cd321x->mux, &cd321x->state);
++maintainers:
++  - Sven Peter <sven@kernel.org>
 +
-+		tbt_switch_data.state = TYPEC_THUNDERBOLT_SWITCH_USB4;
-+		tbt_switch_data.usb4 = eusb_data;
-+		tbt_switch_data.orientation = TPS_STATUS_TO_UPSIDE_DOWN(st->status) ?
-+						      TYPEC_ORIENTATION_REVERSE :
-+						      TYPEC_ORIENTATION_NORMAL;
-+		typec_thunderbolt_switch_set(cd321x->tbt_switch, &tbt_switch_data);
- 	} else {
- 		if (cd321x->state.alt == NULL && cd321x->state.mode == TYPEC_STATE_USB)
- 			return;
- 		cd321x->state.alt = NULL;
- 		cd321x->state.mode = TYPEC_STATE_USB;
- 		cd321x->state.data = NULL;
-+		typec_thunderbolt_switch_set(cd321x->tbt_switch, &tbt_switch_data);
- 		typec_mux_set(cd321x->mux, &cd321x->state);
- 	}
- 
-@@ -771,6 +793,9 @@ static void cd321x_update_work(struct work_struct *work)
- 					    struct cd321x, update_work);
- 	struct tps6598x *tps = &cd321x->tps;
- 	struct cd321x_status st;
-+	struct typec_thunderbolt_switch_data tbt_switch_data = {
-+		.state = TYPEC_THUNDERBOLT_SWITCH_OFF,
-+	};
- 
- 	guard(mutex)(&tps->lock);
- 
-@@ -821,6 +846,7 @@ static void cd321x_update_work(struct work_struct *work)
- 
- 	/* If there was a disconnection, set PHY to off */
- 	if (!new_connected || was_disconnected) {
-+		typec_thunderbolt_switch_set(cd321x->tbt_switch, &tbt_switch_data);
- 		cd321x->state.alt = NULL;
- 		cd321x->state.mode = TYPEC_STATE_SAFE;
- 		cd321x->state.data = NULL;
-@@ -1328,6 +1354,12 @@ cd321x_register_port(struct tps6598x *tps, struct fwnode_handle *fwnode)
- 		goto err_unregister_altmodes;
- 	}
- 
-+	cd321x->tbt_switch = fwnode_typec_thunderbolt_switch_get(fwnode);
-+	if (IS_ERR(cd321x->tbt_switch)) {
-+		ret = PTR_ERR(cd321x->tbt_switch);
-+		goto err_unregister_mux;
-+	}
++description: |
++  On Apple Silicon SoCs the Native Host Interface (NHI) is part of the ACIO
++  host router. It provides the transmit and receive rings used by the software
++  connection manager.
 +
- 	cd321x->state.alt = NULL;
- 	cd321x->state.mode = TYPEC_STATE_SAFE;
- 	cd321x->state.data = NULL;
-@@ -1335,6 +1367,9 @@ cd321x_register_port(struct tps6598x *tps, struct fwnode_handle *fwnode)
++  The ACIO co-processor exposes its registers to the main SoC bus while it is
++  running. The NHI is therefore represented as a child of the ACIO node.
++
++properties:
++  compatible:
++    oneOf:
++      - const: apple,t8103-usb4-nhi
++      - items:
++          - enum:
++              - apple,t6000-usb4-nhi
++              - apple,t6020-usb4-nhi
++              - apple,t6030-usb4-nhi
++              - apple,t6031-usb4-nhi
++              - apple,t8112-usb4-nhi
++              - apple,t8122-usb4-nhi
++          - const: apple,t8103-usb4-nhi
++
++  reg:
++    items:
++      - description: NHI registers with the transmit and receive rings
++      - description:
++          Protocol Defined Field (PDF) bitmasks selecting which frames are
++          accepted by each receive ring
++
++  reg-names:
++    items:
++      - const: nhi
++      - const: pdf
++
++  interrupts:
++    description:
++      One interrupt for each of the 12 transmit rings followed by one for each
++      of the 12 receive rings.
++    maxItems: 24
++
++  interrupt-names:
++    items:
++      - const: txring0
++      - const: txring1
++      - const: txring2
++      - const: txring3
++      - const: txring4
++      - const: txring5
++      - const: txring6
++      - const: txring7
++      - const: txring8
++      - const: txring9
++      - const: txring10
++      - const: txring11
++      - const: rxring0
++      - const: rxring1
++      - const: rxring2
++      - const: rxring3
++      - const: rxring4
++      - const: rxring5
++      - const: rxring6
++      - const: rxring7
++      - const: rxring8
++      - const: rxring9
++      - const: rxring10
++      - const: rxring11
++
++  iommus:
++    minItems: 1
++    maxItems: 24
++    description: |
++      T8103 and T8112 use a single IOMMU for all DMA transactions.
++
++      T6000 and T6020 use two IOMMUs: The first is used for transmit ring 0
++      and receive ring 0 which carry control traffic. The second is shared by
++      all other rings which are only used for XDomain connections to other
++      hosts.
++
++      T6030, T6031 and T8122 use 24 IOMMUs. These are most likely one DART
++      stream for each of the 12 transmit and 12 receive rings.
++
++  apple,thunderbolt-drom:
++    $ref: /schemas/types.yaml#/definitions/uint8-array
++    description:
++      DROM of the host router built by the bootloader from Apple's Device Tree.
++
++  apple,tunable-nhi:
++    $ref: /schemas/types.yaml#/definitions/uint32-matrix
++    items:
++      items:
++        - description: Register offset
++        - description: Mask of bits to clear
++        - description: Bits to set
++    description: |
++      List of (register offset, mask, value) tuples copied from Apple's Device
++      Tree, converted by the bootloader and used to configure the NHI after
++      the co-processor has booted.
++
++required:
++  - compatible
++  - reg
++  - reg-names
++  - interrupts
++  - interrupt-names
++  - iommus
++  - apple,thunderbolt-drom
++
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - apple,t6030-usb4-nhi
++              - apple,t6031-usb4-nhi
++              - apple,t8122-usb4-nhi
++    then:
++      properties:
++        iommus:
++          minItems: 24
++          maxItems: 24
++    else:
++      if:
++        properties:
++          compatible:
++            contains:
++              enum:
++                - apple,t6000-usb4-nhi
++                - apple,t6020-usb4-nhi
++      then:
++        properties:
++          iommus:
++            minItems: 2
++            maxItems: 2
++      else:
++        properties:
++          iommus:
++            maxItems: 1
++
++additionalProperties: false
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 3a19da74d00c..bb26036a043f 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2658,6 +2658,7 @@ F:	Documentation/devicetree/bindings/rtc/apple,smc-rtc.yaml
+ F:	Documentation/devicetree/bindings/soc/apple/apple,t6000-pmgr-misc.yaml
+ F:	Documentation/devicetree/bindings/spi/apple,spi.yaml
+ F:	Documentation/devicetree/bindings/spmi/apple,spmi.yaml
++F:	Documentation/devicetree/bindings/thunderbolt/apple,t8103-usb4-nhi.yaml
+ F:	Documentation/devicetree/bindings/usb/apple,dwc3.yaml
+ F:	Documentation/devicetree/bindings/watchdog/apple,wdt.yaml
+ F:	Documentation/hwmon/macsmc-hwmon.rst
+@@ -27215,6 +27216,7 @@ L:	linux-usb@vger.kernel.org
+ S:	Maintained
+ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/westeri/thunderbolt.git
+ F:	Documentation/admin-guide/thunderbolt.rst
++F:	Documentation/devicetree/bindings/thunderbolt/
+ F:	drivers/thunderbolt/
+ F:	include/linux/thunderbolt.h
  
- 	return 0;
- 
-+err_unregister_mux:
-+	typec_mux_put(cd321x->mux);
-+	cd321x->mux = NULL;
- err_unregister_altmodes:
- 	typec_unregister_altmode(cd321x->port_altmode_dp);
- 	typec_unregister_altmode(cd321x->port_altmode_tbt);
-@@ -1356,6 +1391,8 @@ cd321x_unregister_port(struct tps6598x *tps)
- {
- 	struct cd321x *cd321x = container_of(tps, struct cd321x, tps);
- 
-+	typec_thunderbolt_switch_put(cd321x->tbt_switch);
-+	cd321x->tbt_switch = NULL;
- 	typec_mux_put(cd321x->mux);
- 	cd321x->mux = NULL;
- 	typec_unregister_altmode(cd321x->port_altmode_dp);
 
 -- 
 2.55.0
