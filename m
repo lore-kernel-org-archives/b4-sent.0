@@ -1,126 +1,181 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Sun, 30 Aug 2026 15:09:55 +0800
-Subject: [PATCH] RDMA/rtrs-clt: Fix CQ pool leak when connect is
- interrupted
+From: Alon Shakevsky <shakevsky@berkeley.edu>
+Date: Sun, 30 Aug 2026 08:59:41 +0000
+Subject: [PATCH] ntfs3: fix INSERT_RANGE for resident data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-rdma-rtrs-clt-cq-pool-leak-v1-1-b169434fd3df@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMAwA0F8hPdtkA+KIv2I8jFG0Ohm005AQ/
- t2px3d5GygJk8Kp2kDozcppKrCHCsLNT1dCHoqhNvXRdI1BGZ4eJYtiiBnDgnNKESP5B7putL1
- xjprWQglmoZHXX36+/K2v/k4hf0fY9w/JgTQkfgAAAA==
-X-Change-ID: 20260830-rdma-rtrs-clt-cq-pool-leak-78f1b077e341
-To: "Md. Haris Iqbal" <haris.iqbal@ionos.com>, 
- Jack Wang <jinpu.wang@ionos.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
- Leon Romanovsky <leon@kernel.org>
-Cc: Jack Wang <jinpu.wang@cloud.ionos.com>, linux-rdma@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- syzbot+d396918a29afb8543e1c@syzkaller.appspotmail.com, 
- Quanye Yang <quanyeyang@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788073795; l=3778;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=cn9IkRUu0B89uWfK7vLWOhB21IgObrIMhVPL+RLvT4M=;
- b=aDuIS6UusZbS31KSqt2aMZnI1gtCGGold4AKeQ8ALgGzI9GcUH8Rxd2ul3d4COI5PPUaBxmHb
- 6dVUDASJ/bWCiY+RaiE8sp1ALqEDqC8ASBTQjiJx0xgPfa8rdyhgCgx
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+Message-Id: <20260830-ntfs3-submission-v1-v1-1-08f61d390cd2@berkeley.edu>
+X-B4-Tracking: v=1; b=H4sIAPzwk2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDC2MD3byStGJj3eLSpNzMYpBi3TJDXUsjo0TDxDQjI1MDYyWgzoKi1LT
+ MCrCp0bG1tQBZb6o+ZQAAAA==
+X-Change-ID: 20260830-ntfs3-submission-v1-922a1af22503
+To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
+Cc: linux-kernel@vger.kernel.org, ntfs3@lists.linux.dev
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788080426; l=5177;
+ i=shakevsky@berkeley.edu; s=20260829; h=from:subject:message-id;
+ bh=pGlbQ/ekefG5GvysW3lyBdsViq83oasBwnZLQT7+l98=;
+ b=YcPXHYyqboxJBcv6XOjxgfhvZmOgZzEPmHPM21MveJGjldQcBwK7Z9ZE+j2RNR+RIg4QB4q2z
+ qa7trNr0dkDAYOQiqd6grhGzz64DT76NDAPGviYXFFpMA++9dSblZ0n
+X-Developer-Key: i=shakevsky@berkeley.edu; a=ed25519;
+ pk=yWZAM5+fHWudgjDI2F4zjbrSoHRSkvQ4pqpdyFWJUis=
+X-Endpoint-Received: by B4 Relay for shakevsky@berkeley.edu/20260829 with auth_id=987
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The client borrows shared CQ credits in the ADDR_RESOLVED handler via
-ib_cq_pool_get(), before the peer is connected. create_cm() can return
--ERESTARTSYS from wait_event_interruptible_timeout() without destroying
-the CM ID. The init_conns() and stop-and-destroy paths then call
-destroy_con_cq_qp() while cq is still NULL (no PUT) and only afterwards
-rdma_destroy_id().
+attr_insert_range() grows a resident data attribute before creating the
+hole. It then moves data with:
 
-CMA serializes the handler against rdma_destroy_id() with handler_mutex,
-but that does not order the GET against destroy_con_cq_qp(). If
-ADDR_RESOLVED has already passed the DESTROYING check, it can take
-con_mutex, GET credits, and then lose the con to kfree. Device
-unregister later hits WARN_ON(cq->cqe_used) in ib_cq_pool_cleanup().
+  memmove(data + bytes, data, bytes);
 
-Set a per-connection flag under con_mutex before CQ/QP teardown so a
-racing ADDR_RESOLVED cannot borrow credits after teardown has begun.
+The move starts at offset zero and copies the insertion length. It should
+start at vbo and copy the bytes between vbo and the old end of the value. A
+valid insertion can therefore write past the MFT record allocation. KASAN
+reports a slab out-of-bounds write in attr_insert_range().
 
-Reported-by: syzbot+d396918a29afb8543e1c@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=d396918a29afb8543e1c
-Fixes: 3b89e92c2a95 ("RDMA/rtrs: Use new shared CQ mechanism")
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+attr_set_size() also sets i_size to the expanded size. The resident path
+adds the insertion length again after the copy. If attr_set_size() converts
+the value to nonresident storage, attr_insert_range() shifts the cluster
+mapping using the expanded size and then adds the length again. Both paths
+grow the file twice. The conversion path also leaves the original data at
+its old offset.
+
+An unprivileged user who can create files on a writable NTFS3 mount can
+reach the resident path by marking a file sparse while it is empty, writing
+resident data, and calling FALLOC_FL_INSERT_RANGE.
+
+Before resizing a resident value, check whether the expanded value will fit
+in its MFT record. If it fits, move the data from vbo, clear the new range,
+and keep the size set by attr_set_size(). Otherwise, return
+E_NTFS_NONRESIDENT so ntfs_fallocate() converts the original value before
+retrying the insertion.
+
+The new conversion path can fail while writing the cached data through its
+new mapping. Update i_blocks and mark the inode dirty in
+attr_force_nonresident() so the converted attribute does not leave stale
+inode accounting.
+
+Fixes: aa30eccb24e5 ("fs/ntfs3: Fallocate (FALLOC_FL_INSERT_RANGE) implementation")
+Cc: stable@vger.kernel.org
+Assisted-by: Antiproof:GPT-5.6-Sol
+Signed-off-by: Alon Shakevsky <shakevsky@berkeley.edu>
 ---
-Fix a syzbot WARNING in ib_cq_pool_cleanup(): an ADDR_RESOLVED handler
-can ib_cq_pool_get() after connection teardown has already skipped the
-matching PUT.
+ fs/ntfs3/attrib.c | 42 ++++++++++++++++++++++++------------------
+ fs/ntfs3/file.c   | 17 +++++++++++++++++
+ 2 files changed, 41 insertions(+), 18 deletions(-)
 
-Reproduced on rxe with rnbd-client only (no rtrs server): write
-map_device with path=ip:127.0.0.1, interrupt create_cm() with a signal,
-then rdma link delete. Device unregister no longer reports leftover
-cqe_used after this change.
----
- drivers/infiniband/ulp/rtrs/rtrs-clt.c | 8 ++++++++
- drivers/infiniband/ulp/rtrs/rtrs-clt.h | 2 ++
- 2 files changed, 10 insertions(+)
-
-diff --git a/drivers/infiniband/ulp/rtrs/rtrs-clt.c b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
-index 7b2c51ae614f..eac38b57b00d 100644
---- a/drivers/infiniband/ulp/rtrs/rtrs-clt.c
-+++ b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
-@@ -1732,6 +1732,8 @@ static void destroy_con_cq_qp(struct rtrs_clt_con *con)
+diff --git a/fs/ntfs3/attrib.c b/fs/ntfs3/attrib.c
+index b1c315206ffa..a16e0c259ab1 100644
+--- a/fs/ntfs3/attrib.c
++++ b/fs/ntfs3/attrib.c
+@@ -2589,35 +2589,37 @@ int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes)
+ 	down_write(&ni->file.run_lock);
+ 
+ 	if (!attr_b->non_res) {
++		char *data;
++		u32 used = le32_to_cpu(mi_b->mrec->used);
++		u64 dsize;
++
++		dsize = ALIGN(data_size + bytes, 8) - ALIGN(data_size, 8);
++		if (used + dsize > sbi->max_bytes_per_attr) {
++			err = E_NTFS_NONRESIDENT;
++			goto out;
++		}
++
+ 		err = attr_set_size(ni, ATTR_DATA, ni->file.ads.name,
+ 				    ni->file.ads.len, run, data_size + bytes,
+ 				    NULL, false);
++		if (err)
++			goto out;
+ 
+ 		le_b = NULL;
+ 		attr_b = ni_find_attr(ni, NULL, &le_b, ATTR_DATA,
+ 				      ni->file.ads.name, ni->file.ads.len, NULL,
+ 				      &mi_b);
+-		if (!attr_b) {
++		if (!attr_b || attr_b->non_res) {
+ 			err = -EINVAL;
+ 			goto bad_inode;
+ 		}
+ 
+-		if (err)
+-			goto out;
+-
+-		if (!attr_b->non_res) {
+-			/* Still resident. */
+-			char *data = Add2Ptr(attr_b,
+-					     le16_to_cpu(attr_b->res.data_off));
+-
+-			memmove(data + bytes, data, bytes);
+-			memset(data, 0, bytes);
+-			goto done;
+-		}
+-
+-		/* Resident file becomes nonresident. */
+-		data_size = le64_to_cpu(attr_b->nres.data_size);
+-		alloc_size = le64_to_cpu(attr_b->nres.alloc_size);
++		data = resident_data(attr_b);
++		memmove(data + vbo + bytes, data + vbo, data_size - vbo);
++		memset(data + vbo, 0, bytes);
++		if (vbo <= ni->i_valid)
++			ni->i_valid += bytes;
++		goto out;
+ 	}
+ 
  	/*
- 	 * Be careful here: destroy_con_cq_qp() can be called even
- 	 * create_con_cq_qp() failed, see comments there.
-+	 * Caller must set con->destroyed under this lock first so a
-+	 * racing ADDR_RESOLVED cannot ib_cq_pool_get() after we PUT/SKIP.
- 	 */
- 	lockdep_assert_held(&con->con_mutex);
- 	rtrs_cq_qp_destroy(&con->c);
-@@ -1766,6 +1768,10 @@ static int rtrs_rdma_addr_resolved(struct rtrs_clt_con *con)
- 	int err;
+@@ -2716,7 +2718,6 @@ int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes)
+ 		attr_b->nres.valid_size = cpu_to_le64(ni->i_valid);
+ 	mi_b->dirty = true;
  
- 	mutex_lock(&con->con_mutex);
-+	if (con->destroyed) {
-+		mutex_unlock(&con->con_mutex);
-+		return -ECONNABORTED;
+-done:
+ 	i_size_write(&ni->vfs_inode, ni->vfs_inode.i_size + bytes);
+ 	ni->ni_flags |= NI_FLAG_UPDATE_PARENT;
+ 	mark_inode_dirty(&ni->vfs_inode);
+@@ -2807,6 +2808,11 @@ int attr_force_nonresident(struct ntfs_inode *ni)
+ 				    le32_to_cpu(attr->res.data_size),
+ 				    &ni->file.run, &attr, NULL);
+ 	up_write(&ni->file.run_lock);
++	if (!err) {
++		inode_set_bytes(&ni->vfs_inode, attr_ondisk_size(attr));
++		ni->ni_flags |= NI_FLAG_UPDATE_PARENT;
++		mark_inode_dirty(&ni->vfs_inode);
 +	}
- 	err = create_con_cq_qp(con);
- 	mutex_unlock(&con->con_mutex);
- 	if (err) {
-@@ -2221,6 +2227,7 @@ static void rtrs_clt_stop_and_destroy_conns(struct rtrs_clt_path *clt_path)
- 			break;
- 		con = to_clt_con(clt_path->s.con[cid]);
- 		mutex_lock(&con->con_mutex);
-+		con->destroyed = true;
- 		destroy_con_cq_qp(con);
- 		mutex_unlock(&con->con_mutex);
- 		destroy_cm(con);
-@@ -2387,6 +2394,7 @@ static int init_conns(struct rtrs_clt_path *clt_path)
- 		if (con->c.cm_id) {
- 			stop_cm(con);
- 			mutex_lock(&con->con_mutex);
-+			con->destroyed = true;
- 			destroy_con_cq_qp(con);
- 			mutex_unlock(&con->con_mutex);
- 			destroy_cm(con);
-diff --git a/drivers/infiniband/ulp/rtrs/rtrs-clt.h b/drivers/infiniband/ulp/rtrs/rtrs-clt.h
-index 1305601a6251..ad64f4517c4b 100644
---- a/drivers/infiniband/ulp/rtrs/rtrs-clt.h
-+++ b/drivers/infiniband/ulp/rtrs/rtrs-clt.h
-@@ -75,6 +75,8 @@ struct rtrs_clt_con {
- 	unsigned int		cpu;
- 	struct mutex		con_mutex;
- 	int			cm_err;
-+	/* Set under con_mutex before CQ/QP teardown. */
-+	bool			destroyed;
- };
  
- /**
+ 	return err;
+ }
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 2abf334bfa0c..e11b17f14087 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -617,6 +617,23 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
+ 		ni_lock(ni);
+ 		err = attr_insert_range(ni, vbo, len);
+ 		ni_unlock(ni);
++		if (err == E_NTFS_NONRESIDENT) {
++			ni_lock(ni);
++			err = attr_force_nonresident(ni);
++			ni_unlock(ni);
++			if (err)
++				goto out;
++
++			err = filemap_write_and_wait_range(mapping, vbo_down,
++							   LLONG_MAX);
++			if (err)
++				goto out;
++			truncate_pagecache(inode, vbo_down);
++
++			ni_lock(ni);
++			err = attr_insert_range(ni, vbo, len);
++			ni_unlock(ni);
++		}
+ 		if (err)
+ 			goto out;
+ 	} else {
 
 ---
 base-commit: 08dbfad3f5040f5bdb6c529da20d6d4e81fefd72
-change-id: 20260830-rdma-rtrs-clt-cq-pool-leak-78f1b077e341
+change-id: 20260830-ntfs3-submission-v1-922a1af22503
 
 Best regards,
 --  
-Quanye Yang <quanyeyang@proton.me>
+Alon Shakevsky <shakevsky@berkeley.edu>
 
