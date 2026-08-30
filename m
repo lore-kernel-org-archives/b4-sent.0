@@ -1,10 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 30 Aug 2026 22:19:30 +0200
-Subject: [PATCH 12/19] thunderbolt: Add ring_configure to tb_nhi_ops
+Date: Sun, 30 Aug 2026 22:19:31 +0200
+Subject: [PATCH 13/19] thunderbolt: Add QUIRK_NO_DMA_PORT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-b4-apple-soc-tbt-v1-12-44bc9348683c@kernel.org>
+Message-Id: <20260830-b4-apple-soc-tbt-v1-13-44bc9348683c@kernel.org>
 References: <20260830-b4-apple-soc-tbt-v1-0-44bc9348683c@kernel.org>
 In-Reply-To: <20260830-b4-apple-soc-tbt-v1-0-44bc9348683c@kernel.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -21,145 +21,108 @@ Cc: Konrad Dybcio <konradybcio@kernel.org>, linux-usb@vger.kernel.org,
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4597; i=sven@kernel.org;
- h=from:subject:message-id; bh=bjN1NTiSvc6/6RtUd8MUWugBmdf1TrTNf6e7OfieaZY=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9aUCRGb7y9IvDeVK3KSiYFpxoEfsc4HqxmXntyjaagmf
- yRQbEZGRykLgxgXg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAir1YzMpzSj7SPu/RBwvxf
- lbBpvc+a6mBDu4LtrcH83uU184xrSxgZbi3cLN/E9OBG0Zqtb9yntJi8UnvbmbIlPm6p7k1vP9V
- /PAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3244; i=sven@kernel.org;
+ h=from:subject:message-id; bh=ys3MSPTh8sqC1O/yv08O/qeOshWA9L72ZznWjJevtX4=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9aUCZFKJbWRpu7a9XZdn2duKzJSeVjsdFhs3m2/zbenb
+ gnJSb/fUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZjI35MM/4zbDoYaJr+eqLZE
+ 4xGPrfarjvYz4XGXFhklFluHfMrP+8zIMKHxub3n3VMNi/vTtk7SyZiuFVKR57d2i1KUYeA1Ged
+ 73AA=
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Apple NHI has to configure and enable each ring with a single write
-and uses a separate register range for the receive ring PDF masks. Add
-an optional tb_nhi_ops hook for it which falls back to the standard USB4
-NHI method when it is not set.
+Apple Silicon machines load and update the host router firmware with a
+separate, proprietary mechanism and have no DMA port. Add a quirk to
+skip its initialization.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/thunderbolt/nhi.c | 55 ++++++++++++++++++++++++++++++-----------------
- drivers/thunderbolt/nhi.h |  4 ++++
- 2 files changed, 39 insertions(+), 20 deletions(-)
+ drivers/thunderbolt/nhi.h    |  1 +
+ drivers/thunderbolt/switch.c | 10 ++++++----
+ drivers/thunderbolt/tb.c     |  8 ++++++++
+ drivers/thunderbolt/tb.h     |  2 ++
+ 4 files changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/thunderbolt/nhi.c b/drivers/thunderbolt/nhi.c
-index 3cb69deec63e..696da52abff6 100644
---- a/drivers/thunderbolt/nhi.c
-+++ b/drivers/thunderbolt/nhi.c
-@@ -239,6 +239,31 @@ static void ring_iowrite32options(struct tb_ring *ring, u32 value, u32 offset)
- 	iowrite32(value, ring_options_base(ring) + offset);
- }
- 
-+static void ring_configure(struct tb_ring *ring, u32 flags, u32 e2e_flags)
-+{
-+	if (ring->is_tx)
-+		ring_iowrite32options(ring, 0, 4);
-+	else
-+		ring_iowrite32options(ring, ring->sof_mask << 16 | ring->eof_mask, 4);
-+
-+	ring_iowrite32options(ring, flags, 0);
-+
-+	/*
-+	 * Now that the ring valid bit is set we can configure E2E if
-+	 * enabled for the ring.
-+	 */
-+	if (e2e_flags)
-+		ring_iowrite32options(ring, flags | e2e_flags, 0);
-+}
-+
-+static void nhi_ring_configure(struct tb_ring *ring, u32 flags, u32 e2e_flags)
-+{
-+	if (ring->nhi->ops->ring_configure)
-+		ring->nhi->ops->ring_configure(ring, flags, e2e_flags);
-+	else
-+		ring_configure(ring, flags, e2e_flags);
-+}
-+
- static bool ring_full(struct tb_ring *ring)
- {
- 	return ((ring->head + 1) % ring->size) == ring->tail;
-@@ -694,6 +719,7 @@ EXPORT_SYMBOL_GPL(tb_ring_alloc_rx);
-  */
- void tb_ring_start(struct tb_ring *ring)
- {
-+	u32 e2e_flags = 0;
- 	u16 frame_size;
- 	u32 flags;
- 
-@@ -717,30 +743,13 @@ void tb_ring_start(struct tb_ring *ring)
- 		flags = RING_FLAG_ENABLE | RING_FLAG_RAW;
- 	}
- 
--	ring_iowrite64desc(ring, ring->descriptors_dma, 0);
--	if (ring->is_tx) {
--		ring_iowrite32desc(ring, ring->size, 12);
--		ring_iowrite32options(ring, 0, 4);
--		ring_iowrite32options(ring, flags, 0);
--	} else {
--		u32 sof_eof_mask = ring->sof_mask << 16 | ring->eof_mask;
--
--		ring_iowrite32desc(ring, (frame_size << 16) | ring->size, 12);
--		ring_iowrite32options(ring, sof_eof_mask, 4);
--		ring_iowrite32options(ring, flags, 0);
--	}
--
--	/*
--	 * Now that the ring valid bit is set we can configure E2E if
--	 * enabled for the ring.
--	 */
- 	if (ring->flags & RING_FLAG_E2E) {
- 		if (!ring->is_tx) {
- 			u32 hop;
- 
- 			hop = ring->e2e_tx_hop << REG_RX_OPTIONS_E2E_HOP_SHIFT;
- 			hop &= REG_RX_OPTIONS_E2E_HOP_MASK;
--			flags |= hop;
-+			e2e_flags |= hop;
- 
- 			dev_dbg(ring->nhi->dev,
- 				"enabling E2E for %s %d with TX HopID %d\n",
-@@ -750,10 +759,16 @@ void tb_ring_start(struct tb_ring *ring)
- 				RING_TYPE(ring), ring->hop);
- 		}
- 
--		flags |= RING_FLAG_E2E_FLOW_CONTROL;
--		ring_iowrite32options(ring, flags, 0);
-+		e2e_flags |= RING_FLAG_E2E_FLOW_CONTROL;
- 	}
- 
-+	ring_iowrite64desc(ring, ring->descriptors_dma, 0);
-+	if (ring->is_tx)
-+		ring_iowrite32desc(ring, ring->size, 12);
-+	else
-+		ring_iowrite32desc(ring, (frame_size << 16) | ring->size, 12);
-+	nhi_ring_configure(ring, flags, e2e_flags);
-+
- 	if (!(ring->flags & RING_FLAG_NO_INTERRUPT))
- 		nhi_ring_interrupt_active(ring, true);
- 	ring->running = true;
 diff --git a/drivers/thunderbolt/nhi.h b/drivers/thunderbolt/nhi.h
-index 5f70d7ddc2e2..670b48efeec5 100644
+index 670b48efeec5..c2d16ab6994e 100644
 --- a/drivers/thunderbolt/nhi.h
 +++ b/drivers/thunderbolt/nhi.h
-@@ -76,6 +76,9 @@ struct tb_nhi_ring_layout {
-  * @ring_interrupt_mask: NHI specific hook to mask/unmask the interrupt of a
-  *			 single ring. If not set the standard USB4 NHI
-  *			 registers are used.
-+ * @ring_configure: NHI specific hook to program the ring options registers
-+ *		    and enable the ring with the given flags. If not set
-+ *		    the standard USB4 NHI registers are used.
-  * @is_present: Whether the device is currently present on the parent bus
-  * @init_interrupts: NHI specific interrupt initialization hook
-  * @reset_interface: Resets the host interface
-@@ -93,6 +96,7 @@ struct tb_nhi_ops {
- 	void (*release_ring_irq)(struct tb_ring *ring);
- 	void (*ring_interrupt_active)(struct tb_ring *ring, bool active);
- 	void (*ring_interrupt_mask)(struct tb_ring *ring, bool mask);
-+	void (*ring_configure)(struct tb_ring *ring, u32 flags, u32 e2e_flags);
- 	bool (*is_present)(struct tb_nhi *nhi);
- 	int (*init_interrupts)(struct tb_nhi *nhi);
- 	void (*reset_interface)(struct tb_nhi *nhi);
+@@ -168,6 +168,7 @@ struct tb_nhi_ops {
+ #define QUIRK_AUTO_CLEAR_INT				BIT(0)
+ #define QUIRK_E2E					BIT(1)
+ #define QUIRK_RESET_DMA_ON_TEARDOWN			BIT(2)
++#define QUIRK_NO_DMA_PORT				BIT(3)
+ 
+ /*
+  * Minimal number of vectors when we use MSI-X. Two for control channel
+diff --git a/drivers/thunderbolt/switch.c b/drivers/thunderbolt/switch.c
+index 3f54a5ae56b0..ef267f40c103 100644
+--- a/drivers/thunderbolt/switch.c
++++ b/drivers/thunderbolt/switch.c
+@@ -3317,10 +3317,12 @@ int tb_switch_add(struct tb_switch *sw)
+ 	 * to the userspace. NVM can be accessed through DMA
+ 	 * configuration based mailbox.
+ 	 */
+-	ret = tb_switch_add_dma_port(sw);
+-	if (ret) {
+-		dev_err(&sw->dev, "failed to add DMA port\n");
+-		return ret;
++	if (!sw->no_dma_port) {
++		ret = tb_switch_add_dma_port(sw);
++		if (ret) {
++			dev_err(&sw->dev, "failed to add DMA port\n");
++			return ret;
++		}
+ 	}
+ 
+ 	ret = tb_switch_nvm_init(sw);
+diff --git a/drivers/thunderbolt/tb.c b/drivers/thunderbolt/tb.c
+index 47753a5c0f2e..c43cdd2c2e2e 100644
+--- a/drivers/thunderbolt/tb.c
++++ b/drivers/thunderbolt/tb.c
+@@ -15,6 +15,7 @@
+ #include "tb.h"
+ #include "tb_regs.h"
+ #include "tunnel.h"
++#include "nhi.h"
+ 
+ #define TB_TIMEOUT		100	/* ms */
+ #define TB_RELEASE_BW_TIMEOUT	10000	/* ms */
+@@ -3036,6 +3037,13 @@ static int tb_start(struct tb *tb, bool reset)
+ 	/* All USB4 routers support runtime PM */
+ 	tb->root_switch->rpm = tb_switch_is_usb4(tb->root_switch);
+ 
++	/*
++	 * Apple Silicon machines have a separate, proprietary mechanism for
++	 * loading and updating firmware. Skip the DMA port initialization on
++	 * these machines.
++	 */
++	tb->root_switch->no_dma_port = tb->nhi->quirks & QUIRK_NO_DMA_PORT;
++
+ 	ret = tb_switch_configure(tb->root_switch);
+ 	if (ret) {
+ 		tb_switch_put(tb->root_switch);
+diff --git a/drivers/thunderbolt/tb.h b/drivers/thunderbolt/tb.h
+index 4373336d9425..0977cd690d7e 100644
+--- a/drivers/thunderbolt/tb.h
++++ b/drivers/thunderbolt/tb.h
+@@ -139,6 +139,7 @@ struct tb_switch_tmu {
+  * @drom: DROM of the switch (%NULL if not found)
+  * @nvm: Pointer to the NVM if the switch has one (%NULL otherwise)
+  * @no_nvm_upgrade: Prevent NVM upgrade of this switch
++ * @no_dma_port: Prevent adding the DMA port of this switch
+  * @safe_mode: The switch is in safe-mode
+  * @boot: Whether the switch was already authorized on boot or not
+  * @rpm: The switch supports runtime PM
+@@ -194,6 +195,7 @@ struct tb_switch {
+ 	u8 *drom;
+ 	struct tb_nvm *nvm;
+ 	bool no_nvm_upgrade;
++	bool no_dma_port;
+ 	bool safe_mode;
+ 	bool boot;
+ 	bool rpm;
 
 -- 
 2.55.0
