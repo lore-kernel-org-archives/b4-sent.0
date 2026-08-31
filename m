@@ -1,14 +1,15 @@
 From: Sophon Z <aiqubits@hotmail.com>
-Date: Mon, 31 Aug 2026 14:04:37 +0800
-Subject: [PATCH] rust: pci: Reject IRQ vector indices that do not fit in
+Date: Mon, 31 Aug 2026 14:08:25 +0800
+Subject: [PATCH v2] rust: pci: Reject IRQ vector indices that do not fit in
  u32
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-fix-pci-irq-vector-index-truncation-v1-1-d63217d99b67@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIAHQZlWoC/yWNMQ6DMAwAv4I811ISBFT9CuqQJgbcIYATEBLi7
- 3Xb8Ya7OyGTMGV4VCcI7Zx5Tgr2VkGYfBoJOSqDM64199riwAcugZFlxZ1CmQU5RTqwyJaCL+p
- j2zVuqLvGehNBS4uQar9L//xz3l5vtb9puK4PLIBAx4cAAAA=
+Message-Id: <20260831-fix-pci-irq-vector-index-truncation-v2-1-4030ea7746a9@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIAFgalWoC/5WOQQ6DIBREr2JY9zeCEWpXvUfjAgHrbypYQGJjv
+ HvRnqDLSea9mZUE49EEci1W4k3CgM7mwE4FUYO0DwOocyasZLy8VBR6XGBSCOjfkIyKzgNabRa
+ IfrZKxswDFzXrK1FTWWqSTZM3GTtW7u0vh7l7ZnpX740BQzZ9jhuJ7r3/FhMFCppXjArdNB0Xt
+ 8HFUeLrrNxI2m3bvtOKzczqAAAA
 X-Change-ID: 20260831-fix-pci-irq-vector-index-truncation-6752f3751a0d
 To: Danilo Krummrich <dakr@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
  =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
@@ -24,11 +25,11 @@ To: Danilo Krummrich <dakr@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>,
 Cc: linux-pci@vger.kernel.org, rust-for-linux@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sophon Z <aiqubits@hotmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788156278; l=1555;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788156508; l=1800;
  i=aiqubits@hotmail.com; s=20260831; h=from:subject:message-id;
- bh=rcVDRPrSPnO1Ee98t164DOTONn63WizVtKhr1VeOh7E=;
- b=LgZKS9pMGXvpbAQyZ5Hry/cE3R8kl1Bl5vL+AIH8R4F7C5szyNioSICnCSc6RthNm2KJeSkLx
- CsOlwGpNTz9CfotyhIy50EhtQoOy0oJodwRebOr2/Sz9bYyplCx6cES
+ bh=JB/vDrVKoSMdb5udCU7YZtYM2GvhKfSyR/Fi+588RxA=;
+ b=lajGYWVxLYRWQ1oDpiwfLyx+cSA2JychjNd4DIGdGGYkY2mUfaf10rG3OuyF5c1H3EaLyWi/G
+ Y0uhMRHvJ1tAMvPmWWRtPqZBa23F6bGcAS04gZjNeMIgAmN9a/72MRc
 X-Developer-Key: i=aiqubits@hotmail.com; a=ed25519;
  pk=+mrkwQAyCCkZdVPpu+CBQr1VZQlkXa7/1WizfeSF/yg=
 X-Endpoint-Received: by B4 Relay for aiqubits@hotmail.com/20260831 with auth_id=992
@@ -46,6 +47,11 @@ represented by the C API.
 Fixes: 2fb7755b0a7e ("rust: pci: resolve IRQ in index() and embed IrqRequest in IrqVector")
 
 Signed-off-by: Sophon Z <aiqubits@hotmail.com>
+---
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://patch.msgid.link/20260831-fix-pci-irq-vector-index-truncation-v1-1-d63217d99b67@hotmail.com
 ---
  rust/kernel/pci/irq.rs | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
