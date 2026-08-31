@@ -1,11 +1,11 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Mon, 31 Aug 2026 16:21:24 +0300
-Subject: [PATCH v16 05/22] dt-bindings: media: i2c: max96717: add support
- for MAX96793
+Date: Mon, 31 Aug 2026 16:21:25 +0300
+Subject: [PATCH v16 06/22] dt-bindings: media: i2c: max96712: use pattern
+ properties for ports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-gmsl2-3_serdes-v16-5-4fa6e08bb514@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260831-gmsl2-3_serdes-v16-6-4fa6e08bb514@analog.com>
 References: <20260831-gmsl2-3_serdes-v16-0-4fa6e08bb514@analog.com>
 In-Reply-To: <20260831-gmsl2-3_serdes-v16-0-4fa6e08bb514@analog.com>
 To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
@@ -25,11 +25,11 @@ Cc: Tomi Valkeinen <tomi.valkeinen@ideasonboard.com>,
  Andrian Suciu <Adrian.Suciu@analog.com>, 
  Cosmin Tanislav <demonsingur@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788182495; l=1028;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788182495; l=2057;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=5T+tpCCmLzMZaxPkOt0UaUd/8TUY4jmophGIYdhTq/w=;
- b=MSfTmAQKXURvud3KTgdLq60Pxu2OyY9mGRIbZg8RsNuR56Ddkqss9XdWUioJnqhs7Padx5Sgb
- z7yt8i68RZeBuXSxAAVe3hjq8WxegSlFtVPBquNcFYFg0hq+t7ztIbK
+ bh=I52ZK89SDidgv9Kh0KUq2eBXwlYMLSWhPo+aSFUbLXE=;
+ b=tsAB71uuSnoh/mZWjFj2U9HwX2VA4B6ybMQSPZPi51GZfimdsgVHc5Gfp2on/HU9TNAcCNnIw
+ qcxqX+dkklUAHCMgjNcsc7i+iFUCUeC8/SmLv8aGFzdBGQAGcJrE5+h
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
@@ -37,38 +37,69 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Cosmin Tanislav <demonsingur@gmail.com>
 
-MAX96793 is a newer variant of the MAX96717 which also supports GMSL3
-links.
+The MAX96712 and MAX96724 support up to 4 separate PHYs, depending on
+the selected PHY configuration. Use patternProperties to document this.
 
-Document this compatibility.
+The input ports are all the same, use patternProperties for them.
 
 Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
+Reviewed-by: Niklas Söderlund <niklas.soderlund+renesas@ragnatech.se>
 ---
- Documentation/devicetree/bindings/media/i2c/maxim,max96717.yaml | 3 +++
- 1 file changed, 3 insertions(+)
+ .../bindings/media/i2c/maxim,max96712.yaml         | 29 ++++++++--------------
+ 1 file changed, 10 insertions(+), 19 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96717.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96717.yaml
-index 2159fd85a9bf..eea0f974874f 100644
---- a/Documentation/devicetree/bindings/media/i2c/maxim,max96717.yaml
-+++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96717.yaml
-@@ -29,6 +29,8 @@ description:
+diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
+index 26f85151afbd..583bbd60157c 100644
+--- a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
++++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
+@@ -39,27 +39,15 @@ properties:
+   ports:
+     $ref: /schemas/graph.yaml#/properties/ports
  
-   MAX9295A only supports pixel mode.
+-    properties:
+-      port@0:
++    patternProperties:
++      '^port@[0-3]$':
+         $ref: /schemas/graph.yaml#/properties/port
+-        description: GMSL Input 0
++        description: GMSL Input ports 0-3
  
-+  MAX96793 also supports GMSL3 mode.
-+
- properties:
-   compatible:
-     oneOf:
-@@ -38,6 +40,7 @@ properties:
-       - items:
-           - enum:
-               - maxim,max96717
-+              - maxim,max96793
-           - const: maxim,max96717f
+-      port@1:
+-        $ref: /schemas/graph.yaml#/properties/port
+-        description: GMSL Input 1
+-
+-      port@2:
+-        $ref: /schemas/graph.yaml#/properties/port
+-        description: GMSL Input 2
+-
+-      port@3:
+-        $ref: /schemas/graph.yaml#/properties/port
+-        description: GMSL Input 3
+-
+-      port@4:
++      '^port@[4-7]$':
+         $ref: /schemas/graph.yaml#/$defs/port-base
+         unevaluatedProperties: false
+-        description: CSI-2 Output
++        description: CSI-2 Output port 0-3
  
-   '#gpio-cells':
+         properties:
+           endpoint:
+@@ -77,8 +65,11 @@ properties:
+               - data-lanes
+               - bus-type
+ 
+-    required:
+-      - port@4
++    anyOf:
++      - required: [port@4]
++      - required: [port@5]
++      - required: [port@6]
++      - required: [port@7]
+ 
+ required:
+   - compatible
 
 -- 
 2.53.0
