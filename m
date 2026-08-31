@@ -1,11 +1,11 @@
 From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Mon, 31 Aug 2026 14:00:18 -0500
-Subject: [PATCH v7 6/8] scsi: ibmvfc: extend channel registration and
- deregistration for async subq
+Date: Mon, 31 Aug 2026 14:00:19 -0500
+Subject: [PATCH v7 7/8] scsi: ibmvfc: register and use asynchronous sub CRQ
+ for events
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-ibmvfc-fpin-support-v7-6-77d0b9809080@linux.ibm.com>
+Message-Id: <20260831-ibmvfc-fpin-support-v7-7-77d0b9809080@linux.ibm.com>
 References: <20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com>
 In-Reply-To: <20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com>
 To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
@@ -19,210 +19,201 @@ Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
  Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
  Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788202815; l=7629;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788202815; l=7361;
  i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=ZROYgN39rdbuUK7fdcXw+txphK/HPTgHxLUiPh7hm+E=;
- b=qXTNO1kBKWaV8mpIr8Xy3BNRjhH8dyBXHPY3Cq0d45Fk5OTBMvALlg17gzjpNJOZaL858F0vT
- io0CGRbZSKxCEojlfgO/Jk/q5EeAp76vM6DB74FGu0JCTKdfucc0xSy
+ bh=9woutTO9IZ0oIxUVgJf61e0UTSfXq3+3bsmkWl8gGFg=;
+ b=pZDwXGEubcPN8bbAbrEi6Fv4u8QxLY8XRerdz1JQ5W76eqDOpJ846u2C/WkGxavzp09wi6BDs
+ hQvyto04LdlCj0xALWk0dz0TaFo4aIfji0PTHbq96VIBhWbw5uJupz0
 X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
  pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
 X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ibmvfc_register_channel() and ibmvfc_deregister_channel() previously only
-handled indexed sub-CRQ channels drawn from the channels->scrqs[] array.
-The async sub-CRQ (vhost->async_sub_crq) had no registration path through
-these helpers, requiring separate handling.
+Wire the async sub-CRQ into the sub-CRQ lifecycle so it is allocated,
+registered, and freed alongside the SCSI channel queues.
 
-Extend both functions to accept a negative index as a sentinel value
-signalling that the async sub-CRQ should be operated on instead of an
-indexed scrq entry. When index < 0, the queue pointer is set to
-&vhost->async_sub_crq, the IRQ is named "ibmvfc-<addr>-async", and the
-handler is set to ibmvfc_interrupt_async_subq rather than the per-protocol
-ibmvfc_interrupt_mq handler. hwq_id assignment is skipped for the async
-queue since it has no meaningful hardware queue index.
+In ibmvfc_init_sub_crqs(), allocate the async sub-CRQ queue buffer via
+ibmvfc_alloc_queue() before allocating the SCSI channels. Register it
+with the VIOS by calling ibmvfc_register_channel() with index -1 (the
+negative-index sentinel introduced in the previous commit). Either
+failure disables multi-queue and aborts init.
 
-Stopped marking ibmvfc_interrupt_async_subq as __maybe_unused.
+In ibmvfc_release_sub_crqs(), deregister and free the async sub-CRQ
+before tearing down the SCSI channels.
 
-Error messages in both paths are updated to distinguish async sub-CRQ
-failures from indexed sub-CRQ failures. Kernel-doc headers are added to
-both functions documenting the negative-index convention.
+In ibmvfc_channel_setup_done(), capture the async sub-CRQ handle
+returned by the VIOS in the channel setup response and store it in
+vhost->async_sub_crq.vios_cookie.
+
+In ibmvfc_set_login_info(), advertise IBMVFC_USE_ASYNC_SUBQ,
+IBMVFC_CAN_HANDLE_FPIN, and IBMVFC_YES_SCSI capabilities whenever
+multi-queue channels are enabled. IBMVFC_YES_SCSI was previously only
+set for NVMe-enabled configurations; move it to the common multi-queue
+path so it is always advertised when channels are in use.
 
 Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
- drivers/scsi/ibmvscsi/ibmvfc-core.c  | 93 +++++++++++++++++++++++++++---------
- drivers/scsi/ibmvscsi/ibmvfc_kunit.c |  2 +-
- 2 files changed, 71 insertions(+), 24 deletions(-)
+ drivers/scsi/ibmvscsi/ibmvfc-core.c | 45 ++++++++++++++++++++++++++++++++-----
+ 1 file changed, 40 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/scsi/ibmvscsi/ibmvfc-core.c b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-index a28875c1f983..cc1ef8258060 100644
+index cc1ef8258060..adc730af67d2 100644
 --- a/drivers/scsi/ibmvscsi/ibmvfc-core.c
 +++ b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-@@ -4409,7 +4409,7 @@ static void ibmvfc_drain_async_subq(struct ibmvfc_queue *scrq)
-  * @scrq_instance: async subq
-  *
-  **/
--static irqreturn_t __maybe_unused ibmvfc_interrupt_async_subq(int irq, void *scrq_instance)
-+static irqreturn_t ibmvfc_interrupt_async_subq(int irq, void *scrq_instance)
- {
- 	struct ibmvfc_queue *scrq = (struct ibmvfc_queue *)scrq_instance;
+@@ -192,6 +192,8 @@ static void ibmvfc_tgt_move_login(struct ibmvfc_target *);
  
-@@ -6799,13 +6799,29 @@ static int ibmvfc_init_crq(struct ibmvfc_host *vhost)
- 	return retrc;
- }
+ static void ibmvfc_dereg_sub_crqs(struct ibmvfc_host *, struct ibmvfc_channels *);
+ static void ibmvfc_reg_sub_crqs(struct ibmvfc_host *, struct ibmvfc_channels *);
++static void ibmvfc_deregister_channel(struct ibmvfc_host *, struct ibmvfc_channels *, int);
++static int ibmvfc_register_channel(struct ibmvfc_host *, struct ibmvfc_channels *, int);
  
-+/**
-+ * ibmvfc_register_channel - Register a sub-CRQ channel with the hypervisor
-+ * @vhost:	ibmvfc host struct
-+ * @channels:	ibmvfc channels struct containing the channel array and protocol
-+ * @index:	index into the channels array for the queue to register, or
-+ *		a negative value to register the async sub-CRQ
-+ *
-+ * Register a sub-CRQ with the hypervisor via h_reg_sub_crq, map its hardware
-+ * IRQ to a Linux IRQ, and bind an interrupt handler to it. The handler is
-+ * selected based on the channel protocol (SCSI or NVMe) for normal queues, or
-+ * set to the async sub-CRQ handler when @index is negative.
-+ *
-+ * Return value:
-+ *	0 on success / non-zero on failure
-+ **/
- static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
- 				   struct ibmvfc_channels *channels,
- 				   int index)
- {
- 	struct device *dev = vhost->dev;
- 	struct vio_dev *vdev = to_vio_dev(dev);
--	struct ibmvfc_queue *scrq = &channels->scrqs[index];
-+	bool is_async = index < 0;
-+	struct ibmvfc_queue *scrq = !is_async ? &channels->scrqs[index] : &vhost->async_sub_crq;
+ static const char *unknown_error = "unknown error";
+ 
+@@ -964,6 +966,7 @@ static int ibmvfc_reenable_crq_queue(struct ibmvfc_host *vhost)
+ 	struct vio_dev *vdev = to_vio_dev(vhost->dev);
+ 	unsigned long flags;
+ 
++	ibmvfc_deregister_channel(vhost, &vhost->scsi_scrqs, -1);
+ 	ibmvfc_dereg_sub_crqs(vhost, &vhost->scsi_scrqs);
+ 	ibmvfc_dereg_sub_crqs(vhost, &vhost->nvme_scrqs);
+ 
+@@ -986,6 +989,7 @@ static int ibmvfc_reenable_crq_queue(struct ibmvfc_host *vhost)
+ 	spin_unlock(vhost->crq.q_lock);
+ 	spin_unlock_irqrestore(vhost->host->host_lock, flags);
+ 
++	ibmvfc_register_channel(vhost, &vhost->scsi_scrqs, -1);
+ 	ibmvfc_reg_sub_crqs(vhost, &vhost->scsi_scrqs);
+ 	ibmvfc_reg_sub_crqs(vhost, &vhost->nvme_scrqs);
+ 
+@@ -1006,6 +1010,7 @@ static int ibmvfc_reset_crq(struct ibmvfc_host *vhost)
+ 	struct vio_dev *vdev = to_vio_dev(vhost->dev);
+ 	struct ibmvfc_queue *crq = &vhost->crq;
+ 
++	ibmvfc_deregister_channel(vhost, &vhost->scsi_scrqs, -1);
+ 	ibmvfc_dereg_sub_crqs(vhost, &vhost->scsi_scrqs);
+ 	ibmvfc_dereg_sub_crqs(vhost, &vhost->nvme_scrqs);
+ 
+@@ -1042,6 +1047,7 @@ static int ibmvfc_reset_crq(struct ibmvfc_host *vhost)
+ 	spin_unlock(vhost->crq.q_lock);
+ 	spin_unlock_irqrestore(vhost->host->host_lock, flags);
+ 
++	ibmvfc_register_channel(vhost, &vhost->scsi_scrqs, -1);
+ 	ibmvfc_reg_sub_crqs(vhost, &vhost->scsi_scrqs);
+ 	ibmvfc_reg_sub_crqs(vhost, &vhost->nvme_scrqs);
+ 
+@@ -1584,9 +1590,11 @@ static void ibmvfc_set_login_info(struct ibmvfc_host *vhost)
+ 
+ 	if (vhost->mq_enabled || vhost->using_channels) {
+ 		login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_USE_CHANNELS);
++		login_info->capabilities |= cpu_to_be64(IBMVFC_USE_ASYNC_SUBQ);
++		login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_HANDLE_FPIN);
++		login_info->capabilities |= cpu_to_be64(IBMVFC_YES_SCSI);
+ 		if (vhost->nvme_enabled) {
+ 			login_info->capabilities |= cpu_to_be64(IBMVFC_YES_NVMEOF);
+-			login_info->capabilities |= cpu_to_be64(IBMVFC_YES_SCSI);
+ 			login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_USE_WWPN_ALL);
+ 		}
+ 	}
+@@ -5800,6 +5808,7 @@ static void ibmvfc_channel_setup_done(struct ibmvfc_event *evt)
+ 		for (i = 0; i < nvme->active_queues; i++)
+ 			nvme->scrqs[i].vios_cookie =
+ 				be64_to_cpu(setup->channel_handles[scsi->active_queues + i]);
++		vhost->async_sub_crq.vios_cookie = be64_to_cpu(setup->async_sub_crq_handle);
+ 
+ 		ibmvfc_dbg(vhost, "Using %u SCSI channels\n",
+ 			   scsi->active_queues);
+@@ -5859,6 +5868,7 @@ static void ibmvfc_channel_setup(struct ibmvfc_host *vhost)
+ 		for (i = 0; i < nvme_channels; i++)
+ 			setup_buf->channel_handles[scsi_channels + i] =
+ 				cpu_to_be64(nvme->scrqs[i].cookie);
++		setup_buf->async_sub_crq_handle = cpu_to_be64(vhost->async_sub_crq.cookie);
+ 	}
+ 
+ 	ibmvfc_init_event(evt, ibmvfc_channel_setup_done, IBMVFC_MAD_FORMAT);
+@@ -6823,6 +6833,7 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
+ 	bool is_async = index < 0;
+ 	struct ibmvfc_queue *scrq = !is_async ? &channels->scrqs[index] : &vhost->async_sub_crq;
  	int rc = -ENOMEM;
++	int hcall_rc;
  
  	ENTER;
-@@ -6825,36 +6841,49 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
  
- 	if (!scrq->irq) {
- 		rc = -EINVAL;
--		dev_err(dev, "Error mapping sub-crq[%d] irq\n", index);
-+		if (!is_async)
-+			dev_err(dev, "Error mapping sub-crq[%d] irq\n", index);
-+		else
-+			dev_err(dev, "Error mapping async sub-crq irq\n");
- 		goto irq_failed;
+@@ -6890,8 +6901,8 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
+ 
+ irq_failed:
+ 	do {
+-		rc = plpar_hcall_norets(H_FREE_SUB_CRQ, vdev->unit_address, scrq->cookie);
+-	} while (rc == H_BUSY || H_IS_LONG_BUSY(rc));
++		hcall_rc = plpar_hcall_norets(H_FREE_SUB_CRQ, vdev->unit_address, scrq->cookie);
++	} while (hcall_rc == H_BUSY || H_IS_LONG_BUSY(hcall_rc));
+ reg_failed:
+ 	LEAVE;
+ 	return rc;
+@@ -6957,7 +6968,9 @@ static void ibmvfc_reg_sub_crqs(struct ibmvfc_host *vhost,
+ 	for (i = 0; i < channels->max_queues; i++) {
+ 		if (ibmvfc_register_channel(vhost, channels, i)) {
+ 			for (j = i; j > 0; j--)
+-				ibmvfc_deregister_channel(vhost, channels, j - 1);
++				ibmvfc_deregister_channel(
++					vhost, channels, j - 1);
++
+ 			vhost->do_enquiry = 0;
+ 			return;
+ 		}
+@@ -7012,16 +7025,26 @@ static int ibmvfc_alloc_channels(struct ibmvfc_host *vhost,
+ 
+ static void ibmvfc_init_sub_crqs(struct ibmvfc_host *vhost)
+ {
++	int rc = 0;
++
+ 	ENTER;
+ 	if (!vhost->mq_enabled)
+ 		return;
+ 
+-	if (ibmvfc_alloc_channels(vhost, &vhost->scsi_scrqs)) {
++	rc = ibmvfc_alloc_queue(vhost, &vhost->async_sub_crq, IBMVFC_SUB_CRQ_FMT);
++	if (rc) {
+ 		vhost->do_enquiry = 0;
+ 		vhost->mq_enabled = 0;
+ 		return;
  	}
  
--	switch (channels->protocol) {
--	case IBMVFC_PROTO_SCSI:
--		snprintf(scrq->name, sizeof(scrq->name), "ibmvfc-%x-scsi%d",
--			 vdev->unit_address, index);
--		scrq->handler = ibmvfc_interrupt_mq;
--		break;
--	case IBMVFC_PROTO_NVME:
--		snprintf(scrq->name, sizeof(scrq->name), "ibmvfc-%x-nvmf%d",
--			 vdev->unit_address, index);
--		scrq->handler = ibmvfc_interrupt_mq;
--		break;
--	default:
--		dev_err(dev, "Unknown channel protocol (%d)\n",
--			channels->protocol);
--		goto irq_failed;
-+	if (!is_async) {
-+		switch (channels->protocol) {
-+		case IBMVFC_PROTO_SCSI:
-+			snprintf(scrq->name, sizeof(scrq->name), "ibmvfc-%x-scsi%d",
-+				 vdev->unit_address, index);
-+			scrq->handler = ibmvfc_interrupt_mq;
-+			break;
-+		case IBMVFC_PROTO_NVME:
-+			snprintf(scrq->name, sizeof(scrq->name), "ibmvfc-%x-nvmf%d",
-+				 vdev->unit_address, index);
-+			scrq->handler = ibmvfc_interrupt_mq;
-+			break;
-+		default:
-+			dev_err(dev, "Unknown channel protocol (%d)\n",
-+				channels->protocol);
-+			goto irq_failed;
-+		}
-+	} else {
-+		snprintf(scrq->name, sizeof(scrq->name), "ibmvfc-%x-async",
-+			 vdev->unit_address);
-+		scrq->handler = ibmvfc_interrupt_async_subq;
++	/* register async_sub_crq channel */
++	if (ibmvfc_register_channel(vhost, &vhost->scsi_scrqs, -1))
++		goto free_async_sub_crq;
++
++	if (ibmvfc_alloc_channels(vhost, &vhost->scsi_scrqs))
++		goto deregister_async_sub_crq;
++
+ 	ibmvfc_reg_sub_crqs(vhost, &vhost->scsi_scrqs);
+ 
+ 	if (vhost->nvme_enabled) {
+@@ -7032,6 +7055,15 @@ static void ibmvfc_init_sub_crqs(struct ibmvfc_host *vhost)
  	}
- 
- 	rc = request_irq(scrq->irq, scrq->handler, 0, scrq->name, scrq);
- 
- 	if (rc) {
--		dev_err(dev, "Couldn't register sub-crq[%d] irq\n", index);
-+		if (!is_async)
-+			dev_err(dev, "Couldn't register sub-crq[%d] irq\n", index);
-+		else
-+			dev_err(dev, "Couldn't register async sub-crq irq\n");
- 		irq_dispose_mapping(scrq->irq);
- 		goto irq_failed;
- 	}
- 
--	scrq->hwq_id = index;
-+	if (!is_async)
-+		scrq->hwq_id = index;
  
  	LEAVE;
- 	return 0;
-@@ -6868,13 +6897,26 @@ static int ibmvfc_register_channel(struct ibmvfc_host *vhost,
- 	return rc;
++	return;
++
++ deregister_async_sub_crq:
++	ibmvfc_deregister_channel(vhost, &vhost->scsi_scrqs, -1);
++free_async_sub_crq:
++	ibmvfc_free_queue(vhost, &vhost->async_sub_crq);
++	vhost->do_enquiry = 0;
++	vhost->mq_enabled = 0;
++	return;
  }
  
-+/**
-+ * ibmvfc_deregister_channel - Deregister a sub-CRQ channel with the hypervisor
-+ * @vhost:	ibmvfc host struct
-+ * @channels:	ibmvfc channels struct containing the sub-CRQ array
-+ * @index:	index into the sub-CRQ array, or -1 to deregister the
-+ *		asynchronous sub-CRQ
-+ *
-+ * Frees the IRQ, disposes of the IRQ mapping, and calls H_FREE_SUB_CRQ to
-+ * release the sub-CRQ with the hypervisor. On success the queue message
-+ * buffer is zeroed and the current index is reset. If H_FREE_SUB_CRQ fails,
-+ * an error is logged but the channel resources are cleaned up regardless.
-+ */
- static void ibmvfc_deregister_channel(struct ibmvfc_host *vhost,
- 				      struct ibmvfc_channels *channels,
- 				      int index)
+ static void ibmvfc_release_channels(struct ibmvfc_host *vhost,
+@@ -7055,6 +7087,9 @@ static void ibmvfc_release_channels(struct ibmvfc_host *vhost,
+ static void ibmvfc_release_sub_crqs(struct ibmvfc_host *vhost)
  {
- 	struct device *dev = vhost->dev;
- 	struct vio_dev *vdev = to_vio_dev(dev);
--	struct ibmvfc_queue *scrq = &channels->scrqs[index];
-+	bool is_async = index < 0;
-+	struct ibmvfc_queue *scrq = !is_async ? &channels->scrqs[index] : &vhost->async_sub_crq;
- 	long rc;
- 
  	ENTER;
-@@ -6888,8 +6930,13 @@ static void ibmvfc_deregister_channel(struct ibmvfc_host *vhost,
- 					scrq->cookie);
- 	} while (rc == H_BUSY || H_IS_LONG_BUSY(rc));
++	ibmvfc_deregister_channel(vhost, &vhost->scsi_scrqs, -1);
++	ibmvfc_free_queue(vhost, &vhost->async_sub_crq);
++
+ 	if (!vhost->scsi_scrqs.scrqs)
+ 		return;
  
--	if (rc)
--		dev_err(dev, "Failed to free sub-crq[%d]: rc=%ld\n", index, rc);
-+	if (rc) {
-+		if (!is_async)
-+			dev_err(dev, "Failed to free sub-crq[%d]: rc=%ld\n",
-+				index, rc);
-+		else
-+			dev_err(dev, "Failed to free async sub-crq: rc=%ld\n", rc);
-+	}
- 
- 	/* Clean out the queue */
- 	memset(scrq->msgs.crq, 0, PAGE_SIZE);
-diff --git a/drivers/scsi/ibmvscsi/ibmvfc_kunit.c b/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-index bc6e542f11ce..47f7c4e79cd8 100644
---- a/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-+++ b/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-@@ -199,7 +199,7 @@ static void ibmvfc_full_fpin_test(struct kunit *test)
- 	flush_workqueue(vhost->fpin_workq);
- 
- 	post[IBMVFC_AE_FPIN_LINK_CONGESTED] = READ_ONCE(fc_host->fpin_stats.cn_device_specific);
--	post[IBMVFC_AE_FPIN_PORT_CONGESTED] = READ_ONCE(tgt->rport->fpin_stats.cn);
-+	post[IBMVFC_AE_FPIN_PORT_CONGESTED] = READ_ONCE(tgt->rport->fpin_stats.cn_device_specific);
- 	post[IBMVFC_AE_FPIN_PORT_CLEARED] = READ_ONCE(tgt->rport->fpin_stats.cn_clear);
- 	post[IBMVFC_AE_FPIN_PORT_DEGRADED] = READ_ONCE(tgt->rport->fpin_stats.li_failure_unknown);
- 	post[IBMVFC_AE_FPIN_CONGESTION_CLEARED] = READ_ONCE(fc_host->fpin_stats.cn_clear);
 
 -- 
 2.55.0
