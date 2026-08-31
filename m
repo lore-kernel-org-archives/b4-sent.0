@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Sun, 30 Aug 2026 17:25:45 -0700
-Subject: [PATCH v12 44/45] KVM: selftests: Update
- private_mem_conversions_test for in-place conversions
+Date: Sun, 30 Aug 2026 17:25:46 -0700
+Subject: [PATCH v12 45/45] KVM: selftests: Update private memory exits test
+ to work with per-gmem attributes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-gmem-inplace-conversion-v12-44-85e5fd25252a@google.com>
+Message-Id: <20260830-gmem-inplace-conversion-v12-45-85e5fd25252a@google.com>
 References: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 In-Reply-To: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -44,157 +44,102 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135916; l=5680;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135916; l=3875;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=1X1DA4tCAHh53esF+mJakIrdUfA/0k+CNqzh025SQ+I=;
- b=q2PZoPyAMrhu+u+7JvbSLoJN9cFAttmsbb84heBDBlERga8e9Hybf0q4RUT8pEXtUMNU1LnQn
- xooi06cBSXdCr8UzLSYDo4mk68lH7DL7w3WrvB1d1g3KSsm0AjYYexF
+ bh=mmy51FSAm74sXNx3NluUXGdNtIyrfc0yrVpZYstCmaY=;
+ b=x1tSYHkMiZA15KG15MvuWidKGKIO9ZIkKkpYPRyas8DXVI2Iq/AGOOCZ5f2nE5+/RixYjQCnq
+ p1pUwVfslNYAIHRIX9zYPGrQXJ1fNDZmZcdduy/XQlbcBp8CmqVZs0+
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update private_mem_conversions_test for in-place conversions. In-place
-conversions support is detected in selftests with kvm_has_gmem_attributes.
+From: Sean Christopherson <seanjc@google.com>
 
-With in-place conversions, specifying userspace_addr from some other memory
-provider that is not the guest_memfd associated with the memslot is a user
-error, since KVM will only use both shared and private memory from the
-guest_memfd.
+Skip setting memory to private in the private memory exits test when using
+per-gmem memory attributes, as memory is initialized to private by default
+for guest_memfd, and using vm_mem_set_private() on a guest_memfd instance
+requires creating guest_memfd with GUEST_MEMFD_FLAG_MMAP (which is totally
+doable, but would need to be conditional and is ultimately unnecessary).
 
-Hence, when kvm_has_gmem_attributes, only test in-place conversions with
-single backing, where guest_memfd provides both shared and private memory.
+Expect an emulated MMIO instead of a memory fault exit when attributes are
+per-gmem, as deleting the memslot effectively drops the private status,
+i.e. the GPA becomes shared and thus supports emulated MMIO.
 
-For single backing, guest_memfd must be created with
-GUEST_MEMFD_FLAG_MMAP. Initialize the guest_memfd as shared to align with
-how memory would default to shared when shared/private state was tracked at
-the VM level (the test expects this, it was written for
-non-in-place-conversions).
+Skip the "memslot not private" test entirely, as private vs. shared state
+for x86 software-protected VMs comes from the memory attributes themselves,
+and so when doing in-place conversions there can never be a disconnect
+between the expected and actual states.
 
-When handling a hypercall to set attributes, use
-vm_mem_set_memory_attributes() to send the ioctl to the guest_memfd instead
-of the VM.
-
-When testing in-place conversions (single-backing), don't allow the user to
-configure src_type, since src_type will be ignored. Don't use src_type to
-determine alignment for rounding up per-cpu test memory size, since
-guest_memfd's backing page size is always the system PAGE_SIZE.
-
-Co-developed-by: Sean Christopherson <seanjc@google.com>
 Signed-off-by: Sean Christopherson <seanjc@google.com>
+Reviewed-by: Fuad Tabba <tabba@google.com>
+Tested-by: Shivank Garg <shivankg@amd.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../kvm/x86/private_mem_conversions_test.c         | 57 +++++++++++++++++-----
- 1 file changed, 44 insertions(+), 13 deletions(-)
+ .../selftests/kvm/x86/private_mem_kvm_exits_test.c | 36 ++++++++++++++++++----
+ 1 file changed, 30 insertions(+), 6 deletions(-)
 
-diff --git a/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c b/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
-index cf50e9a332c5b..33b610383693b 100644
---- a/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
-+++ b/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
-@@ -306,9 +306,12 @@ static void handle_exit_hypercall(struct kvm_vcpu *vcpu)
- 	if (do_fallocate)
- 		vm_guest_mem_fallocate(vm, gpa, size, map_shared);
+diff --git a/tools/testing/selftests/kvm/x86/private_mem_kvm_exits_test.c b/tools/testing/selftests/kvm/x86/private_mem_kvm_exits_test.c
+index e6d16e9d61200..f7228e0f1ac61 100644
+--- a/tools/testing/selftests/kvm/x86/private_mem_kvm_exits_test.c
++++ b/tools/testing/selftests/kvm/x86/private_mem_kvm_exits_test.c
+@@ -62,8 +62,9 @@ static void test_private_access_memslot_deleted(void)
  
--	if (set_attributes)
--		vm_set_memory_attributes(vm, gpa, size,
--					 map_shared ? 0 : KVM_MEMORY_ATTRIBUTE_PRIVATE);
-+	if (set_attributes) {
-+		u64 attrs = map_shared ? 0 : KVM_MEMORY_ATTRIBUTE_PRIVATE;
-+
-+		vm_mem_set_memory_attributes(vm, gpa, size, attrs);
+ 	virt_map(vm, EXITS_TEST_GVA, EXITS_TEST_GPA, EXITS_TEST_NPAGES);
+ 
+-	/* Request to access page privately */
+-	vm_mem_set_private(vm, EXITS_TEST_GPA, EXITS_TEST_SIZE);
++	/* Request to access page privately. */
++	if (!kvm_has_gmem_attributes)
++		vm_mem_set_private(vm, EXITS_TEST_GPA, EXITS_TEST_SIZE);
+ 
+ 	kvm_pthread_create(&vm_thread, NULL,
+ 			   (pthread_fn_t)run_vcpu_get_exit_reason, (void *)vcpu);
+@@ -73,10 +74,26 @@ static void test_private_access_memslot_deleted(void)
+ 	kvm_pthread_join(vm_thread, &thread_return);
+ 	exit_reason = (u32)(u64)thread_return;
+ 
+-	TEST_ASSERT_EQ(exit_reason, KVM_EXIT_MEMORY_FAULT);
+-	TEST_ASSERT_EQ(vcpu->run->memory_fault.flags, KVM_MEMORY_EXIT_FLAG_PRIVATE);
+-	TEST_ASSERT_EQ(vcpu->run->memory_fault.gpa, EXITS_TEST_GPA);
+-	TEST_ASSERT_EQ(vcpu->run->memory_fault.size, EXITS_TEST_SIZE);
++	/*
++	 * If attributes are tracked per-gmem, deleting the memslot that points
++	 * at the gmem instance effectively makes the memory shared, and so the
++	 * read should trigger emulated MMIO.
++	 *
++	 * If attributes are tracked per-VM, deleting the memslot shouldn't
++	 * affect the private attribute, and so KVM should generate a memory
++	 * fault exit (emulated MMIO on private GPAs is disallowed).
++	 */
++	if (kvm_has_gmem_attributes) {
++		TEST_ASSERT_EQ(exit_reason, KVM_EXIT_MMIO);
++		TEST_ASSERT_EQ(vcpu->run->mmio.phys_addr, EXITS_TEST_GPA);
++		TEST_ASSERT_EQ(vcpu->run->mmio.len, sizeof(u64));
++		TEST_ASSERT_EQ(vcpu->run->mmio.is_write, false);
++	} else {
++		TEST_ASSERT_EQ(exit_reason, KVM_EXIT_MEMORY_FAULT);
++		TEST_ASSERT_EQ(vcpu->run->memory_fault.flags, KVM_MEMORY_EXIT_FLAG_PRIVATE);
++		TEST_ASSERT_EQ(vcpu->run->memory_fault.gpa, EXITS_TEST_GPA);
++		TEST_ASSERT_EQ(vcpu->run->memory_fault.size, EXITS_TEST_SIZE);
 +	}
-+
- 	run->hypercall.ret = 0;
+ 
+ 	kvm_vm_free(vm);
  }
+@@ -87,6 +104,13 @@ static void test_private_access_memslot_not_private(void)
+ 	struct kvm_vcpu *vcpu;
+ 	u32 exit_reason;
  
-@@ -352,8 +355,21 @@ static void *__test_mem_conversions(void *__vcpu)
- 				size_t nr_bytes = min_t(size_t, vm->page_size, size - i);
- 				u8 *hva = addr_gpa2hva(vm, gpa + i);
- 
--				/* In all cases, the host should observe the shared data. */
--				memcmp_h(hva, gpa + i, uc.args[3], nr_bytes);
-+				if (kvm_has_gmem_attributes &&
-+				    uc.args[0] == SYNC_PRIVATE) {
-+					TEST_EXPECT_SIGBUS(READ_ONCE(*hva));
-+				} else {
-+					/*
-+					 * If not testing in-place conversion
-+					 * (dual backing), the host should
-+					 * always observe shared data, since the
-+					 * shared memory is a separate page.
-+					 *
-+					 * For SYNC_SHARED, test that the host
-+					 * can see shared memory.
-+					 */
-+					memcmp_h(hva, gpa + i, uc.args[3], nr_bytes);
-+				}
- 
- 				/* For shared, write the new pattern to guest memory. */
- 				if (uc.args[0] == SYNC_SHARED)
-@@ -369,20 +385,29 @@ static void *__test_mem_conversions(void *__vcpu)
- 	}
- }
- 
-+/* Align each vCPU's chunk of memory naturally to the size of the backing store. */
-+static size_t compute_per_cpu_size(enum vm_mem_backing_src_type src_type)
-+{
-+	size_t alignment;
-+
++	/*
++	 * Accessing non-private memory as private with a software-protected VM
++	 * isn't possible when doing in-place conversions.
++	 */
 +	if (kvm_has_gmem_attributes)
-+		alignment = getpagesize();
-+	else
-+		alignment = get_backing_src_pagesz(src_type);
++		return;
 +
-+	return align_up(PER_CPU_DATA_SIZE, max_t(size_t, SZ_2M, alignment));
-+}
-+
- static void test_mem_conversions(enum vm_mem_backing_src_type src_type, u32 nr_vcpus,
- 				 u32 nr_memslots)
- {
--	/*
--	 * Allocate enough memory so that each vCPU's chunk of memory can be
--	 * naturally aligned with respect to the size of the backing store.
--	 */
--	const size_t alignment = max_t(size_t, SZ_2M, get_backing_src_pagesz(src_type));
--	const size_t per_cpu_size = align_up(PER_CPU_DATA_SIZE, alignment);
-+	const size_t per_cpu_size = compute_per_cpu_size(src_type);
- 	const size_t memfd_size = per_cpu_size * nr_vcpus;
- 	const size_t slot_size = memfd_size / nr_memslots;
- 	struct kvm_vcpu *vcpus[KVM_MAX_VCPUS];
- 	pthread_t threads[KVM_MAX_VCPUS];
- 	struct kvm_vm *vm;
-+	u64 gmem_flags;
- 	int memfd, i;
+ 	vm = vm_create_shape_with_one_vcpu(protected_vm_shape, &vcpu,
+ 					   guest_repeatedly_read);
  
- 	const struct vm_shape shape = {
-@@ -397,12 +422,16 @@ static void test_mem_conversions(enum vm_mem_backing_src_type src_type, u32 nr_v
- 
- 	vm_enable_cap(vm, KVM_CAP_EXIT_HYPERCALL, (1 << KVM_HC_MAP_GPA_RANGE));
- 
--	memfd = vm_create_guest_memfd(vm, memfd_size, 0);
-+	gmem_flags = 0;
-+	if (kvm_has_gmem_attributes)
-+		gmem_flags = GUEST_MEMFD_FLAG_MMAP | GUEST_MEMFD_FLAG_INIT_SHARED;
-+
-+	memfd = vm_create_guest_memfd(vm, memfd_size, gmem_flags);
- 
- 	for (i = 0; i < nr_memslots; i++)
- 		vm_mem_add(vm, src_type, BASE_DATA_GPA + slot_size * i,
- 			   BASE_DATA_SLOT + i, slot_size / vm->page_size,
--			   KVM_MEM_GUEST_MEMFD, memfd, slot_size * i, 0);
-+			   KVM_MEM_GUEST_MEMFD, memfd, slot_size * i, gmem_flags);
- 
- 	for (i = 0; i < nr_vcpus; i++) {
- 		gpa_t gpa =  BASE_DATA_GPA + i * per_cpu_size;
-@@ -462,6 +491,8 @@ int main(int argc, char *argv[])
- 	while ((opt = getopt(argc, argv, "hm:s:n:")) != -1) {
- 		switch (opt) {
- 		case 's':
-+			TEST_ASSERT(!kvm_has_gmem_attributes,
-+				    "src_type is only configurable when testing without in-place conversion");
- 			src_type = parse_backing_src_type(optarg);
- 			break;
- 		case 'n':
 
 -- 
 2.55.0.897.gb25b4bd76c-goog
