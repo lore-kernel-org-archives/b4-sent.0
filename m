@@ -1,163 +1,245 @@
-From: Chen Linxuan <me@black-desk.cn>
-Date: Mon, 31 Aug 2026 10:59:08 +0800
-Subject: [PATCH v2 3/3] pidfd: Add task path ioctls
+From: Bingfang Guo <bingfangguo@tencent.com>
+Date: Mon, 31 Aug 2026 11:32:43 +0800
+Subject: [PATCH] mm/memcg: clear folio memcg after changing per memcg stats
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-pidfd-get-paths-v2-3-c59ea6a21b72@black-desk.cn>
-References: <20260831-pidfd-get-paths-v2-0-c59ea6a21b72@black-desk.cn>
-In-Reply-To: <20260831-pidfd-get-paths-v2-0-c59ea6a21b72@black-desk.cn>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, Ingo Molnar <mingo@redhat.com>, 
- Peter Zijlstra <peterz@infradead.org>, Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
- K Prateek Nayak <kprateek.nayak@amd.com>, Kees Cook <kees@kernel.org>, 
- John Johansen <john.johansen@canonical.com>, 
- Georgia Garcia <georgia.garcia@canonical.com>, 
- Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
- "Serge E. Hallyn" <serge@hallyn.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, apparmor@lists.ubuntu.com, 
- linux-security-module@vger.kernel.org, linux-api@vger.kernel.org, 
- Chen Linxuan <me@black-desk.cn>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3678; i=me@black-desk.cn;
- s=20260831; h=from:subject:message-id;
- bh=ZADtZNdlB7oE/hBsTTGGqoCz5/1kKnW1D9F4WuU2Sco=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqlO39Ayt8SEEcYynePriQkVXfWPjAUsBYWbqbX
- dslGZuXhKOJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCapTt/QAKCRB2HuYUOZmu
- iyLMD/42sfTAfcQHAYOWOJ+1xkyRw56ENUpVgpNhdtd3yFPnmHrvcsrRE+b8eeBW8lTK1jTZmwh
- m/b/X7YW+O3DWxXjKeBMihhsiieg2Qjxnuva26Dx82wX5SZBv98ehkyw8pJSdi6Xigi1ChJcTZk
- wLzpDF0H0qF0bIkVdvgbTgdFyq4GEAksg8fdpq/tzbWs+wM9KDAZ06SgoUsrJULms0Ck61Owig/
- ta6YSZh9VJSeqbbSe2efkkQ9lZXouB0uRpUgdfY2iYrb/Orprb/V3WpzlU0l1n8eI5sSRC2I4p4
- qxB1Gga1IWS2P5+r3xvZYQo/5LJV//6ca18irPp9HX9lL+trhCEfNLyIrFxmnkODZqFn7mrXm0V
- u++2ACXeLlIjQ/Bu3dEma/WRfcYF3cUmNCMv8cbKQnZdJS0MtW9XBnLy5mOT8U3UzFZtSfVzsVe
- yQUopFXBBAUEWdWGLfZuTAbd6RLLbBYOFSsPHlOPsQtUwRGEy2Osh1/BMpL6oszntsPrL8dH4rp
- KnftSmefkfh0pWnt17qzNceLjHOlTbMLX0SiU2kzTs1w56pW93DWGqfS50H0fmf9+QCGMeqIEzj
- 7C9QTjehkhz9odNBtcBgvfXk+28gp8cDxlj7ZOJURuE5ZEALFjSQRRPvLcHmj9h9WyWaR5kuObN
- BcBuQvS2RLXfJpA==
-X-Developer-Key: i=me@black-desk.cn; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for me@black-desk.cn/20260831 with auth_id=991
+Message-Id: <20260831-memcg-swapcache-stats-fix-v1-1-1c0819ebdb86@tencent.com>
+X-B4-Tracking: v=1; b=H4sIANr1lGoC/x2MQQqEQAwEvyI5G9ARRPzK4iHGHs1BVyaigvj3H
+ fZYBVUPOZLBqS8eSjjN7btlqMuCdJFtBtuUmUIV2qoLHa9YdWa/ZFfRBeyHHM7Rbq5HIDaTNhJ
+ Hyv2ekPX//Rne9we/XHqtawAAAA==
+To: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
+ Kairui Song <kasong@tencent.com>, Kemeng Shi <shikemeng@huaweicloud.com>, 
+ Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
+ Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
+ David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
+ Lorenzo Stoakes <ljs@kernel.org>, Bingfang Guo <bfguo@icloud.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Bingfang Guo <bingfangguo@tencent.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788147164; l=7052;
+ i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
+ bh=DPpRbQF86jYJoz6ub5OV8sLTgDaDKPnnRudDq0rAReQ=;
+ b=zdD0Y+JBfYx/Li1nXRK9QYFn2esdFWxR2b4tKB6Ehp1OZUhY7RVBNUJhFflzjvNUonSp1jdqU
+ amyjT2ckU8pALozhOYwFSqG6RkdKQbYqJAxnHvwTbAKcGihbMDLjsmy
+X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
+ pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
+X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add PIDFD_GET_EXE, PIDFD_GET_CWD, and PIDFD_GET_ROOT to return
-close-on-exec O_PATH file descriptors referencing the target task's
-executable, working directory, and root directory.
+__memcg1_swapout() transfers the memsw charge of a folio to its swap
+entry and clears folio->memcg_data as part of that.  In the vmscan
+swapout path it runs before __swap_cache_del_folio(), which then
+decrements the swapcache stats through lruvec_stat_mod_folio().  Since
+folio->memcg_data has already been cleared, folio_memcg() returns NULL
+and the NR_SWAPCACHE decrement only updates the node-level counter
+instead of the memcg's lruvec, leaking the per-memcg swapcache count.
 
-The new ioctls use the same PTRACE_MODE_READ_FSCREDS permission check
-and nonzero-argument rejection as the existing namespace ioctls.  The
-target is sampled while holding exec_update_lock so that the access
-check and path read cannot race with execve().
+Move the __memcg1_swapout() call into __swap_cache_del_folio(), after
+the NR_FILE_PAGES and NR_SWAPCACHE updates but before
+__swap_cache_do_del_folio() removes the folio from the swap cache.  This
+keeps the stats attributed to the folio's memcg while still recording
+the swap cgroup with a valid folio->swap.  Add a swapout parameter so
+the plain swap_cache_del_folio() path is left unchanged.
 
-This allows userspace to obtain stable path references from a pidfd
-without requiring procfs.
-
-Assisted-by: LLM
-Signed-off-by: Chen Linxuan <me@black-desk.cn>
+Fixes: b197d41462c20 ("mm/memcg, swap: store cgroup id in cluster table directly")
+Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
- fs/pidfs.c                 | 38 ++++++++++++++++++++++++++++++++++++++
- include/uapi/linux/pidfd.h |  7 +++++++
- 2 files changed, 45 insertions(+)
+The problem is reproducible using the following script and program:
 
-diff --git a/fs/pidfs.c b/fs/pidfs.c
-index 49a1ab0c42f9..b21374f00002 100644
---- a/fs/pidfs.c
-+++ b/fs/pidfs.c
-@@ -4,6 +4,7 @@
- #include <linux/exportfs.h>
- #include <linux/file.h>
- #include <linux/fs.h>
-+#include <linux/fs_struct.h>
- #include <linux/cgroup.h>
- #include <linux/magic.h>
- #include <linux/mount.h>
-@@ -510,6 +511,9 @@ static bool pidfs_ioctl_valid(unsigned int cmd)
- 	case PIDFD_GET_UTS_NAMESPACE:
- 	case PIDFD_GET_USER_NAMESPACE:
- 	case PIDFD_GET_PID_NAMESPACE:
-+	case PIDFD_GET_EXE:
-+	case PIDFD_GET_CWD:
-+	case PIDFD_GET_ROOT:
- 		return true;
- 	}
+```
+#!/bin/bash
+set -e
+
+CG=/sys/fs/cgroup/memory/swapcache-leak-test
+SIZE=$((256 * 1024 * 1024))   # 256 MiB of anon memory
+
+[ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
+grep -q . /proc/swaps <<<"$(tail -n +2 /proc/swaps)" || { echo "no swap active; run: swapon <dev>"; exit 1; }
+
+cleanup() { rmdir "$CG" 2>/dev/null || true; }
+trap cleanup EXIT
+
+cc -O2 swapout.c -o swapout
+
+mkdir -p "$CG"
+echo "+memory" > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
+
+echo "== before reclaim =="
+grep -E '^(swapcached|anon) ' "$CG/memory.stat"
+
+# Put ourselves in the cgroup, allocate & touch anon memory, then wait to be reclaimed.
+(
+        echo $BASHPID > "$CG/cgroup.procs"
+        # Allocate and dirty SIZE bytes of anonymous memory.
+        ./swapout
+) &
+WORKER=$!
+sleep 2
+
+echo "== after reclaim (swap cache should drain to ~0) =="
+grep -E '^(swapcached|anon) ' "$CG/memory.stat"
+
+SWAPCACHED=$(awk '/^swapcached /{print $2}' "$CG/memory.stat")
+echo
+if [ "$SWAPCACHED" -gt $((1024 * 1024)) ]; then
+        echo "LEAK DETECTED: swapcached = $SWAPCACHED bytes (expected ~0)  [BUGGY kernel]"
+        RC=1
+else
+        echo "OK: swapcached = $SWAPCACHED bytes  [FIXED kernel]"
+        RC=0
+fi
+
+kill "$WORKER" 2>/dev/null || true
+wait "$WORKER" 2>/dev/null || true
+exit $RC
+```
+
+swapout.c:
+```
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
+int main(int argc, char **argv)
+{
+        size_t mib = (argc > 1) ? strtoul(argv[1], NULL, 10) : 256;
+        size_t size = mib * 1024UL * 1024UL;
+        long page = sysconf(_SC_PAGESIZE);
+        char *buf;
+        size_t i;
+
+        buf = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (buf == MAP_FAILED) {
+                perror("mmap");
+                return 1;
+        }
+
+        /* Fault in and dirty every page so it becomes reclaimable anon. */
+        for (i = 0; i < size; i += page)
+                buf[i] = 1;
+
+        printf("allocated and dirtied %zu MiB, paging out...\n", mib);
+
+        /* Force the whole range out to swap. */
+        if (madvise(buf, size, MADV_PAGEOUT)) {
+                perror("madvise(MADV_PAGEOUT)");
+                return 1;
+        }
+
+        /* Give reclaim a moment, then stay alive so the cgroup can be inspected. */
+        printf("paged out; sleeping so memory.stat can be read. pid=%d\n", getpid());
+        sleep(30);
+
+        munmap(buf, size);
+        return 0;
+}
+```
+
+Test result:
+
+before:
+```
+== before reclaim ==
+swapcached 0
+allocated and dirtied 256 MiB, paging out...
+paged out; sleeping so memory.stat can be read. pid=4778
+== after reclaim (swap cache should drain to ~0) ==
+swapcached 268435456
+
+LEAK DETECTED: swapcached = 268435456 bytes (expected ~0)  [BUGGY kernel]
+```
+
+after the patch:
+```
+== before reclaim ==
+swapcached 0
+allocated and dirtied 256 MiB, paging out...
+paged out; sleeping so memory.stat can be read. pid=2601
+== after reclaim (swap cache should drain to ~0) ==
+swapcached 0
+
+OK: swapcached = 0 bytes  [FIXED kernel]
+```
+---
+ mm/swap.h       |  3 ++-
+ mm/swap_state.c | 10 +++++++---
+ mm/vmscan.c     |  3 +--
+ 3 files changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/mm/swap.h b/mm/swap.h
+index 90a551a88df63..c5a49b0ed3430 100644
+--- a/mm/swap.h
++++ b/mm/swap.h
+@@ -319,7 +319,8 @@ struct folio *swap_cache_alloc_folio(swp_entry_t target_entry, gfp_t gfp_mask,
+ void __swap_cache_add_folio(struct swap_cluster_info *ci,
+ 			    struct folio *folio, swp_entry_t entry);
+ void __swap_cache_del_folio(struct swap_cluster_info *ci,
+-			    struct folio *folio, swp_entry_t entry, void *shadow);
++			    struct folio *folio, swp_entry_t entry, void *shadow,
++			    bool swapout);
+ void __swap_cache_replace_folio(struct swap_cluster_info *ci,
+ 				struct folio *old, struct folio *new);
  
-@@ -678,9 +682,31 @@ static struct ns_common *pidfd_get_namespace(struct pid *pid,
- 	return ns_common;
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index f3961fdd857dc..825e623b03d16 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -314,13 +314,17 @@ static void __swap_cache_do_del_folio(struct swap_cluster_info *ci,
+  * using the index of @entry, and lock the cluster that holds the entries.
+  */
+ void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
+-			    swp_entry_t entry, void *shadow)
++			    swp_entry_t entry, void *shadow, bool swapout)
+ {
+ 	unsigned long nr_pages = folio_nr_pages(folio);
+ 
+-	__swap_cache_do_del_folio(ci, folio, entry, shadow);
+ 	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
+ 	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
++
++	if (swapout)
++		__memcg1_swapout(folio, ci);
++
++	__swap_cache_do_del_folio(ci, folio, entry, shadow);
  }
  
-+static int pidfd_get_task_path(struct pid *pid, unsigned int cmd,
-+			       unsigned long arg, struct path *path)
-+{
-+	CLASS(pidfd_task_locked, task)(pid, arg);
-+
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+
-+	switch (cmd) {
-+	case PIDFD_GET_EXE:
-+		return get_task_exe_path(task, path);
-+	case PIDFD_GET_CWD:
-+		return get_task_pwd(task, path);
-+	case PIDFD_GET_ROOT:
-+		return get_task_root(task, path);
-+	}
-+
-+	return -EINVAL;
-+}
-+
- static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- {
- 	struct ns_common *ns_common = NULL;
-+	struct path path __free(path_put) = {};
-+	int error;
+ /**
+@@ -339,7 +343,7 @@ void swap_cache_del_folio(struct folio *folio)
+ 	swp_entry_t entry = folio->swap;
  
- 	if (!pidfs_ioctl_valid(cmd))
- 		return -ENOIOCTLCMD;
-@@ -698,6 +724,18 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	if (_IOC_NR(cmd) == _IOC_NR(PIDFD_GET_INFO))
- 		return pidfd_info(file, cmd, arg);
+ 	ci = swap_cluster_lock(__swap_entry_to_info(entry), swp_offset(entry));
+-	__swap_cache_del_folio(ci, folio, entry, NULL);
++	__swap_cache_del_folio(ci, folio, entry, NULL, false);
+ 	swap_cluster_unlock(ci);
  
-+	switch (cmd) {
-+	case PIDFD_GET_EXE:
-+	case PIDFD_GET_CWD:
-+	case PIDFD_GET_ROOT:
-+		error = pidfd_get_task_path(pidfd_pid(file), cmd, arg, &path);
-+		if (error)
-+			return error;
-+
-+		return FD_ADD(O_CLOEXEC,
-+			      dentry_open(&path, O_PATH, current_cred()));
-+	}
-+
- 	ns_common = pidfd_get_namespace(pidfd_pid(file), cmd, arg);
- 	if (IS_ERR(ns_common))
- 		return PTR_ERR(ns_common);
-diff --git a/include/uapi/linux/pidfd.h b/include/uapi/linux/pidfd.h
-index 0919246a1611..95ce1819f423 100644
---- a/include/uapi/linux/pidfd.h
-+++ b/include/uapi/linux/pidfd.h
-@@ -121,4 +121,11 @@ struct pidfd_info {
- #define PIDFD_GET_UTS_NAMESPACE               _IO(PIDFS_IOCTL_MAGIC, 10)
- #define PIDFD_GET_INFO                        _IOWR(PIDFS_IOCTL_MAGIC, 11, struct pidfd_info)
+ 	folio_ref_sub(folio, folio_nr_pages(folio));
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index f11491ee9ed5c..17ab01693ae8d 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -735,8 +735,7 @@ static int __remove_mapping(struct address_space *mapping, struct folio *folio,
  
-+/* Return an O_PATH file descriptor for the target task's executable. */
-+#define PIDFD_GET_EXE                         _IO(PIDFS_IOCTL_MAGIC, 12)
-+/* Return an O_PATH file descriptor for the target task's working directory. */
-+#define PIDFD_GET_CWD                         _IO(PIDFS_IOCTL_MAGIC, 13)
-+/* Return an O_PATH file descriptor for the target task's root directory. */
-+#define PIDFD_GET_ROOT                        _IO(PIDFS_IOCTL_MAGIC, 14)
-+
- #endif /* _UAPI_LINUX_PIDFD_H */
+ 		if (reclaimed && !mapping_exiting(mapping))
+ 			shadow = workingset_eviction(folio, target_memcg);
+-		__memcg1_swapout(folio, ci);
+-		__swap_cache_del_folio(ci, folio, swap, shadow);
++		__swap_cache_del_folio(ci, folio, swap, shadow, true);
+ 		swap_cluster_unlock_irq(ci);
+ 	} else {
+ 		void (*free_folio)(struct folio *);
 
+---
+base-commit: 42d64d4fef83a241c919c8693fdf0a21b2cb6061
+change-id: 20260828-memcg-swapcache-stats-fix-1beef3dc3afb
+
+Best regards,
 -- 
-2.53.0
+Bingfang Guo <bingfangguo@tencent.com>
 
