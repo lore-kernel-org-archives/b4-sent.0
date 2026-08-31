@@ -1,10 +1,11 @@
 From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Mon, 31 Aug 2026 14:00:14 -0500
-Subject: [PATCH v7 2/8] scsi: ibmvfc: Add NOOP command support
+Date: Mon, 31 Aug 2026 14:00:15 -0500
+Subject: [PATCH v7 3/8] scsi: ibmvfc: add FPIN extended flag and async
+ sub-CRQ queue handle
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-ibmvfc-fpin-support-v7-2-77d0b9809080@linux.ibm.com>
+Message-Id: <20260831-ibmvfc-fpin-support-v7-3-77d0b9809080@linux.ibm.com>
 References: <20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com>
 In-Reply-To: <20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com>
 To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
@@ -18,79 +19,48 @@ Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
  Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
  Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788202815; l=2519;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788202815; l=1156;
  i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=ZPYobFx4Tjmjv4+HMsDvOBnSXCtpmV13W5cWm9Aqs+k=;
- b=QhmopkvLCRSB87GEEqkFKKcdQ19roqMvftbaia9cA9eSUNEKQ5PJbfYNBlak1jIlBPZmmW1hr
- qSgI9yD0UunDT7qfO4ewn/esxZ5b2OoH9ouZJOps3mJaW963qSncfWa
+ bh=LHQEdLSXmrelE8PxihHPWRiGoEQFDjeL6jTPhksOZpY=;
+ b=WVDH/Gt43dZKsRfLhefKop8P2BeM2nsgkaxFVpJgKHvfkep9WTxXsuBRcE/m7xfsiCCKKR9pm
+ YsJslS+wF9/DeKJE5acnlxqT1WJ3PUJICpPJo28iK8/aflMIwlpOqwh
 X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
  pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
 X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for VFC_NOOP messages from VIOS to enable keep-alive
-functionality between the client and server.
+Add IBMVFC_ASYNC_IS_FPIN_EXT flag bit (0x02) to ibmvfc_async_sub_crq.flags
+to distinguish extended FPIN events from standard ones.
 
-Define the VFC_NOOP CRQ format and add handling in both the main CRQ
-handler (ibmvfc_handle_crq) and sub-CRQ handler (ibmvfc_handle_scrq).
-Log unexpected NOOP messages if received before VIOS advertises support
-during NPIV login. Also fix a typo in ibmvfc_handle_scrq.
-
-Set the IBMVFC_CAN_USE_NOOP_CMD capability bit during NPIV login to
-inform VIOS that the client can handle NOOP commands.
+Add async_sub_crq field of type ibmvfc_queue to ibmvfc_host to hold the
+queue handle for the asynchronous sub-CRQ, alongside the existing crq and
+async_crq queues.
 
 Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
- drivers/scsi/ibmvscsi/ibmvfc-core.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+ drivers/scsi/ibmvscsi/ibmvfc.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/scsi/ibmvscsi/ibmvfc-core.c b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-index 78be00d31a06..e972e4ec5be0 100644
---- a/drivers/scsi/ibmvscsi/ibmvfc-core.c
-+++ b/drivers/scsi/ibmvscsi/ibmvfc-core.c
-@@ -1578,7 +1578,9 @@ static void ibmvfc_set_login_info(struct ibmvfc_host *vhost)
- 		login_info->flags |= cpu_to_be16(IBMVFC_CLIENT_MIGRATED);
- 
- 	login_info->max_cmds = cpu_to_be32(max_cmds);
--	login_info->capabilities = cpu_to_be64(IBMVFC_CAN_MIGRATE | IBMVFC_CAN_SEND_VF_WWPN);
-+	login_info->capabilities =
-+		cpu_to_be64(IBMVFC_CAN_MIGRATE | IBMVFC_CAN_SEND_VF_WWPN |
-+			    IBMVFC_CAN_USE_NOOP_CMD);
- 
- 	if (vhost->mq_enabled || vhost->using_channels) {
- 		login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_USE_CHANNELS);
-@@ -3693,6 +3695,14 @@ static void ibmvfc_handle_crq(struct ibmvfc_crq *crq, struct ibmvfc_host *vhost,
- 	if (crq->format == IBMVFC_ASYNC_EVENT)
- 		return;
- 
-+	if (crq->format == IBMVFC_NOOP) {
-+		if (vhost->state == IBMVFC_ACTIVE &&
-+		    !ibmvfc_check_caps(vhost, IBMVFC_SUPPORT_NOOP_CMD))
-+			dev_err_ratelimited(vhost->dev,
-+					    "Received unexpected NOOP command from partner\n");
-+		return;
-+	}
-+
- 	/* The only kind of payload CRQs we should get are responses to
- 	 * things we send. Make sure this response is to something we
- 	 * actually sent
-@@ -4223,7 +4233,15 @@ static void ibmvfc_handle_scrq(struct ibmvfc_crq *crq, struct ibmvfc_host *vhost
- 	case IBMVFC_CRQ_XPORT_EVENT:
- 		return;
- 	default:
--		dev_err(vhost->dev, "Got and invalid message type 0x%02x\n", crq->valid);
-+		dev_err(vhost->dev, "Got an invalid message type 0x%02x\n", crq->valid);
-+		return;
-+	}
-+
-+	if (crq->format == IBMVFC_NOOP)
-+		return;
-+
-+	if (unlikely(!evt)) {
-+		dev_err(vhost->dev, "Received null event\n");
- 		return;
- 	}
- 
+diff --git a/drivers/scsi/ibmvscsi/ibmvfc.h b/drivers/scsi/ibmvscsi/ibmvfc.h
+index 646aaa01177c..3848fa936e38 100644
+--- a/drivers/scsi/ibmvscsi/ibmvfc.h
++++ b/drivers/scsi/ibmvscsi/ibmvfc.h
+@@ -773,6 +773,7 @@ struct ibmvfc_async_sub_crq {
+ 	volatile u8 valid;
+ 	u8 flags;
+ #define IBMVFC_ASYNC_ID_IS_ASSOC_ID	0x01
++#define IBMVFC_ASYNC_IS_FPIN_EXT	0x02
+ 	u8 link_state;
+ 	u8 fpin_status;
+ 	__be16 event;
+@@ -990,6 +991,7 @@ struct ibmvfc_host {
+ 	mempool_t *tgt_pool;
+ 	struct ibmvfc_queue crq;
+ 	struct ibmvfc_queue async_crq;
++	struct ibmvfc_queue async_sub_crq;
+ 	struct ibmvfc_channels scsi_scrqs;
+ 	struct ibmvfc_channels nvme_scrqs;
+ 	struct ibmvfc_npiv_login login_info;
 
 -- 
 2.55.0
