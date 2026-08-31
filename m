@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Sun, 30 Aug 2026 17:25:06 -0700
-Subject: [PATCH v12 05/45] KVM: Enumerate support for PRIVATE memory iff
- kvm_arch_has_private_mem is defined
+Date: Sun, 30 Aug 2026 17:25:07 -0700
+Subject: [PATCH v12 06/45] KVM: Rename memory attribute APIs to prepare for
+ in-place gmem conversion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-gmem-inplace-conversion-v12-5-85e5fd25252a@google.com>
+Message-Id: <20260830-gmem-inplace-conversion-v12-6-85e5fd25252a@google.com>
 References: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 In-Reply-To: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -45,11 +45,11 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
  Xiaoyao Li <xiaoyao.li@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135915; l=2388;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135915; l=10021;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Npw45RhiuLmUU1MwINVjbSZRhJ+VqvMGA2O5ckbiMOE=;
- b=hcW6l//v6f2eUwZw8P7Qz727FIbcXf31OIfmzbJ/LOZhc5nkpROp8zwh5hMXWqpp7ERrejoqB
- F7AAbMsg+GBDHdwp37rBq/IND3M1JNVanBPieJM9VYyO2L3kDVkp0n3
+ bh=fDMvsndjh9kiPdU+EOjmSK37yD3KVUvdGEDhGSeU9Yc=;
+ b=lB0XddyerqtBMcJR1vCoGfSIBRTqg4NdDZJdpmaLJfB/IBI68i71qvfQ+s493eCuKY+GqFdQL
+ ZUqx1UZYxAABwOt4BMeuLBbc0xD6bsPRxhFLtXiZ3XjBYhEJO7ifu42
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -57,65 +57,247 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Sean Christopherson <seanjc@google.com>
 
-Explicitly guard reporting support for KVM_MEMORY_ATTRIBUTE_PRIVATE based
-on kvm_arch_has_private_mem being #defined in anticipation of tracking
-PRIVATE vs. SHARED state per-guest_memfd, not per-VM (to allow in-place
-conversion).
+Rename memory attribute APIs to add a "vm_" in the name in anticipation of
+moving PRIVATE tracking into guest_memfd, to allow in-place conversion
+between SHARED and PRIVATE.  At that point, there will effectively be two
+(potential) sources of memory attributes: the VM and guest_memfd.
 
-guest_memfd support for memory attributes is expected to be unconditional
-to avoid yet more macros (all architectures that support guest_memfd are
-expected to use per-gmem attributes at some point), at which point
-enumerating support KVM_MEMORY_ATTRIBUTE_PRIVATE based solely on memory
-attributes being supported by KVM at-large would result in a system-scope
-check (NULL @kvm) over-reporting support on arm64.
+kvm_vm_set_mem_attributes() already has "vm" in the name to indicate that
+it is a VM ioctl. Rename it to kvm_set_vm_mem_attributes() to show that it
+is setting the VM's memory attributes. (Drop the VM-ioctl scoping since it
+is a helper local to the file.) Update the accompanying trace function to
+match.
 
-Give architectures full control over overriding the default definition of
-kvm_arch_has_private_mem() by removing the coupling with
-CONFIG_KVM_VM_MEMORY_ATTRIBUTES.
-
-In a later patch, kvm_arch_has_private_mem() will be defined based on
-whether architectural features are compiled in, and made orthogonal to
-CONFIG_KVM_VM_MEMORY_ATTRIBUTES.
+No functional change intended.
 
 Signed-off-by: Sean Christopherson <seanjc@google.com>
 Reviewed-by: Fuad Tabba <tabba@google.com>
-Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
 Tested-by: Shivank Garg <shivankg@amd.com>
 Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/kvm_host.h | 2 +-
- virt/kvm/kvm_main.c      | 2 ++
- 2 files changed, 3 insertions(+), 1 deletion(-)
+ arch/x86/kvm/mmu/mmu.c     | 14 +++++++-------
+ include/linux/kvm_host.h   | 16 ++++++++--------
+ include/trace/events/kvm.h |  2 +-
+ virt/kvm/kvm_main.c        | 32 ++++++++++++++++----------------
+ 4 files changed, 32 insertions(+), 32 deletions(-)
 
+diff --git a/arch/x86/kvm/mmu/mmu.c b/arch/x86/kvm/mmu/mmu.c
+index b88c00e11854a..10e59507d252f 100644
+--- a/arch/x86/kvm/mmu/mmu.c
++++ b/arch/x86/kvm/mmu/mmu.c
+@@ -8116,8 +8116,8 @@ static void hugepage_set_mixed(struct kvm_memory_slot *slot, gfn_t gfn,
+ 	lpage_info_slot(gfn, slot, level)->disallow_lpage |= KVM_LPAGE_MIXED_FLAG;
+ }
+ 
+-bool kvm_arch_pre_set_memory_attributes(struct kvm *kvm,
+-					struct kvm_gfn_range *range)
++bool kvm_arch_pre_set_vm_memory_attributes(struct kvm *kvm,
++					   struct kvm_gfn_range *range)
+ {
+ 	struct kvm_memory_slot *slot = range->slot;
+ 	int level;
+@@ -8186,18 +8186,18 @@ static bool hugepage_has_attrs(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 	const unsigned long end = start + KVM_PAGES_PER_HPAGE(level);
+ 
+ 	if (level == PG_LEVEL_2M)
+-		return kvm_range_has_memory_attributes(kvm, start, end, ~0, attrs);
++		return kvm_range_has_vm_memory_attributes(kvm, start, end, ~0, attrs);
+ 
+ 	for (gfn = start; gfn < end; gfn += KVM_PAGES_PER_HPAGE(level - 1)) {
+ 		if (hugepage_test_mixed(slot, gfn, level - 1) ||
+-		    attrs != kvm_get_memory_attributes(kvm, gfn))
++		    attrs != kvm_get_vm_memory_attributes(kvm, gfn))
+ 			return false;
+ 	}
+ 	return true;
+ }
+ 
+-bool kvm_arch_post_set_memory_attributes(struct kvm *kvm,
+-					 struct kvm_gfn_range *range)
++bool kvm_arch_post_set_vm_memory_attributes(struct kvm *kvm,
++					    struct kvm_gfn_range *range)
+ {
+ 	unsigned long attrs = range->arg.attributes;
+ 	struct kvm_memory_slot *slot = range->slot;
+@@ -8290,7 +8290,7 @@ void kvm_mmu_init_memslot_memory_attributes(struct kvm *kvm,
+ 		 * be manually checked as the attributes may already be mixed.
+ 		 */
+ 		for (gfn = start; gfn < end; gfn += nr_pages) {
+-			unsigned long attrs = kvm_get_memory_attributes(kvm, gfn);
++			unsigned long attrs = kvm_get_vm_memory_attributes(kvm, gfn);
+ 
+ 			if (hugepage_has_attrs(kvm, slot, gfn, level, attrs))
+ 				hugepage_clear_mixed(slot, gfn, level);
 diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
-index cffa16647f2ab..b45fb80b0aca0 100644
+index b45fb80b0aca0..6ca81f5349db8 100644
 --- a/include/linux/kvm_host.h
 +++ b/include/linux/kvm_host.h
-@@ -722,7 +722,7 @@ static inline int kvm_arch_vcpu_memslots_id(struct kvm_vcpu *vcpu)
+@@ -2561,21 +2561,21 @@ static inline bool kvm_memslot_is_gmem_only(const struct kvm_memory_slot *slot)
  }
- #endif
  
--#ifndef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
-+#ifndef kvm_arch_has_private_mem
- static inline bool kvm_arch_has_private_mem(struct kvm *kvm)
+ #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
+-static inline unsigned long kvm_get_memory_attributes(struct kvm *kvm, gfn_t gfn)
++static inline unsigned long kvm_get_vm_memory_attributes(struct kvm *kvm, gfn_t gfn)
  {
- 	return false;
+ 	return xa_to_value(xa_load(&kvm->mem_attr_array, gfn));
+ }
+ 
+-bool kvm_range_has_memory_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
+-				     unsigned long mask, unsigned long attrs);
+-bool kvm_arch_pre_set_memory_attributes(struct kvm *kvm,
+-					struct kvm_gfn_range *range);
+-bool kvm_arch_post_set_memory_attributes(struct kvm *kvm,
+-					 struct kvm_gfn_range *range);
++bool kvm_range_has_vm_memory_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
++					unsigned long mask, unsigned long attrs);
++bool kvm_arch_pre_set_vm_memory_attributes(struct kvm *kvm,
++					   struct kvm_gfn_range *range);
++bool kvm_arch_post_set_vm_memory_attributes(struct kvm *kvm,
++					    struct kvm_gfn_range *range);
+ 
+ static inline bool kvm_mem_is_private(struct kvm *kvm, gfn_t gfn)
+ {
+-	return kvm_get_memory_attributes(kvm, gfn) & KVM_MEMORY_ATTRIBUTE_PRIVATE;
++	return kvm_get_vm_memory_attributes(kvm, gfn) & KVM_MEMORY_ATTRIBUTE_PRIVATE;
+ }
+ #else
+ static inline bool kvm_mem_is_private(struct kvm *kvm, gfn_t gfn)
+diff --git a/include/trace/events/kvm.h b/include/trace/events/kvm.h
+index 1ba72bd73ea2f..c4d514d2350cf 100644
+--- a/include/trace/events/kvm.h
++++ b/include/trace/events/kvm.h
+@@ -364,7 +364,7 @@ TRACE_EVENT(kvm_dirty_ring_exit,
+  * @end:	End address of guest memory range
+  * @attr:	The value of the attribute being set.
+  */
+-TRACE_EVENT(kvm_vm_set_mem_attributes,
++TRACE_EVENT(kvm_set_vm_mem_attributes,
+ 	TP_PROTO(gfn_t start, gfn_t end, unsigned long attr),
+ 	TP_ARGS(start, end, attr),
+ 
 diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index 7d5325e3cb44b..050757544a1cb 100644
+index 050757544a1cb..91d5af7d60d0f 100644
 --- a/virt/kvm/kvm_main.c
 +++ b/virt/kvm/kvm_main.c
-@@ -2422,8 +2422,10 @@ static int kvm_vm_ioctl_clear_dirty_log(struct kvm *kvm,
- #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
- static u64 kvm_supported_mem_attributes(struct kvm *kvm)
- {
-+#ifdef kvm_arch_has_private_mem
- 	if (!kvm || kvm_arch_has_private_mem(kvm))
- 		return KVM_MEMORY_ATTRIBUTE_PRIVATE;
-+#endif
+@@ -2420,7 +2420,7 @@ static int kvm_vm_ioctl_clear_dirty_log(struct kvm *kvm,
+ #endif /* CONFIG_KVM_GENERIC_DIRTYLOG_READ_PROTECT */
  
- 	return 0;
+ #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
+-static u64 kvm_supported_mem_attributes(struct kvm *kvm)
++static u64 kvm_supported_vm_mem_attributes(struct kvm *kvm)
+ {
+ #ifdef kvm_arch_has_private_mem
+ 	if (!kvm || kvm_arch_has_private_mem(kvm))
+@@ -2434,19 +2434,19 @@ static u64 kvm_supported_mem_attributes(struct kvm *kvm)
+  * Returns true if _all_ gfns in the range [@start, @end) have attributes
+  * such that the bits in @mask match @attrs.
+  */
+-bool kvm_range_has_memory_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
+-				     unsigned long mask, unsigned long attrs)
++bool kvm_range_has_vm_memory_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
++					unsigned long mask, unsigned long attrs)
+ {
+ 	XA_STATE(xas, &kvm->mem_attr_array, start);
+ 	unsigned long index;
+ 	void *entry;
+ 
+-	mask &= kvm_supported_mem_attributes(kvm);
++	mask &= kvm_supported_vm_mem_attributes(kvm);
+ 	if (attrs & ~mask)
+ 		return false;
+ 
+ 	if (end == start + 1)
+-		return (kvm_get_memory_attributes(kvm, start) & mask) == attrs;
++		return (kvm_get_vm_memory_attributes(kvm, start) & mask) == attrs;
+ 
+ 	guard(rcu)();
+ 	if (!attrs)
+@@ -2517,8 +2517,8 @@ static __always_inline void kvm_handle_gfn_range(struct kvm *kvm,
+ 		KVM_MMU_UNLOCK(kvm);
  }
+ 
+-static bool kvm_pre_set_memory_attributes(struct kvm *kvm,
+-					  struct kvm_gfn_range *range)
++static bool kvm_pre_set_vm_memory_attributes(struct kvm *kvm,
++					     struct kvm_gfn_range *range)
+ {
+ 	/*
+ 	 * Unconditionally add the range to the invalidation set, regardless of
+@@ -2533,18 +2533,18 @@ static bool kvm_pre_set_memory_attributes(struct kvm *kvm,
+ 	 */
+ 	kvm_mmu_invalidate_range_add(kvm, range->start, range->end);
+ 
+-	return kvm_arch_pre_set_memory_attributes(kvm, range);
++	return kvm_arch_pre_set_vm_memory_attributes(kvm, range);
+ }
+ 
+ /* Set @attributes for the gfn range [@start, @end). */
+-static int kvm_vm_set_mem_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
++static int kvm_set_vm_mem_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
+ 				     unsigned long attributes)
+ {
+ 	struct kvm_mmu_notifier_range pre_set_range = {
+ 		.start = start,
+ 		.end = end,
+ 		.arg.attributes = attributes,
+-		.handler = kvm_pre_set_memory_attributes,
++		.handler = kvm_pre_set_vm_memory_attributes,
+ 		.on_lock = kvm_mmu_invalidate_start,
+ 		.flush_on_ret = true,
+ 		.may_block = true,
+@@ -2553,7 +2553,7 @@ static int kvm_vm_set_mem_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
+ 		.start = start,
+ 		.end = end,
+ 		.arg.attributes = attributes,
+-		.handler = kvm_arch_post_set_memory_attributes,
++		.handler = kvm_arch_post_set_vm_memory_attributes,
+ 		.on_lock = kvm_mmu_invalidate_end,
+ 		.may_block = true,
+ 	};
+@@ -2563,12 +2563,12 @@ static int kvm_vm_set_mem_attributes(struct kvm *kvm, gfn_t start, gfn_t end,
+ 
+ 	entry = attributes ? xa_mk_value(attributes) : NULL;
+ 
+-	trace_kvm_vm_set_mem_attributes(start, end, attributes);
++	trace_kvm_set_vm_mem_attributes(start, end, attributes);
+ 
+ 	mutex_lock(&kvm->slots_lock);
+ 
+ 	/* Nothing to do if the entire range has the desired attributes. */
+-	if (kvm_range_has_memory_attributes(kvm, start, end, ~0, attributes))
++	if (kvm_range_has_vm_memory_attributes(kvm, start, end, ~0, attributes))
+ 		goto out_unlock;
+ 
+ 	/*
+@@ -2607,7 +2607,7 @@ static int kvm_vm_ioctl_set_mem_attributes(struct kvm *kvm,
+ 	/* flags is currently not used. */
+ 	if (attrs->flags)
+ 		return -EINVAL;
+-	if (attrs->attributes & ~kvm_supported_mem_attributes(kvm))
++	if (attrs->attributes & ~kvm_supported_vm_mem_attributes(kvm))
+ 		return -EINVAL;
+ 	if (attrs->size == 0 || attrs->address + attrs->size < attrs->address)
+ 		return -EINVAL;
+@@ -2624,7 +2624,7 @@ static int kvm_vm_ioctl_set_mem_attributes(struct kvm *kvm,
+ 	 */
+ 	BUILD_BUG_ON(sizeof(attrs->attributes) != sizeof(unsigned long));
+ 
+-	return kvm_vm_set_mem_attributes(kvm, start, end, attrs->attributes);
++	return kvm_set_vm_mem_attributes(kvm, start, end, attrs->attributes);
+ }
+ #endif /* CONFIG_KVM_VM_MEMORY_ATTRIBUTES */
+ 
+@@ -4945,7 +4945,7 @@ static int kvm_vm_ioctl_check_extension_generic(struct kvm *kvm, long arg)
+ 		return 1;
+ #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
+ 	case KVM_CAP_MEMORY_ATTRIBUTES:
+-		return kvm_supported_mem_attributes(kvm);
++		return kvm_supported_vm_mem_attributes(kvm);
+ #endif
+ #ifdef CONFIG_KVM_GUEST_MEMFD
+ 	case KVM_CAP_GUEST_MEMFD:
 
 -- 
 2.55.0.897.gb25b4bd76c-goog
