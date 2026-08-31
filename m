@@ -1,11 +1,10 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Sun, 30 Aug 2026 17:25:19 -0700
-Subject: [PATCH v12 18/45] KVM: guest_memfd: Handle lru_add fbatch
- refcounts during conversion safety check
+Date: Sun, 30 Aug 2026 17:25:20 -0700
+Subject: [PATCH v12 19/45] KVM: guest_memfd: Zero page while getting pfn
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-gmem-inplace-conversion-v12-18-85e5fd25252a@google.com>
+Message-Id: <20260830-gmem-inplace-conversion-v12-19-85e5fd25252a@google.com>
 References: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 In-Reply-To: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -43,141 +42,98 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
- Fuad Tabba <fuad.tabba@linux.dev>
+ Xiaoyao Li <xiaoyao.li@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135915; l=4735;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135915; l=3028;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Ty5BgQhIGN1xkSlbhdIOV4bbPZLbusnibdr1eTvGdlc=;
- b=91swEloDGQUbfYBsHAl/7syD81mtjIP2F0V0Ab45bJ3IEkR1Q5bwBtEL76LfwbU26GezrPCHL
- XT0wJWHs3EeBheGTp9WnqG2e2q+vGU7johvpQZYqq79+7IhHv7ZWqRu
+ bh=cUGg+sf4DufBRW7+H+nQruNnSYvplZ5+HPGnat0Z7N0=;
+ b=iaUEix/boqWHf265FiFwo3RPtQTjSrXq4zSJrf1krBwQQG7RpimowPl9GrMH5wwiWvEnLTWM6
+ eoZpOCymVXPCpSEDnOsDrQzfSoTA27VtGyKj0i0A3pUg0T40KvmIX/V
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A guest_memfd folio has no outstanding references if guest_memfd holds the
-only references on it. Any other references on the folio may indicate
-another user, and guest_memfd cannot convert it to private if there may be
-an existing host user.
+Move the folio initialization logic from kvm_gmem_get_pfn() into
+__kvm_gmem_get_pfn() to also zero pages if the page is to be used in
+kvm_gmem_populate().
 
-A folio will have outstanding references if it is present in a per-CPU
-lru_add fbatch. guest_memfd does not actually participate in LRU, but
-freshly-allocated folios are still added to the lru_add fbatch for batch
-LRU statistics processing.
+With in-place conversion, the existing data in a guest_memfd page can be
+populated into guest memory through platform-specific ioctls.
 
-A folio may also have extra refcounts if it is on the mlock fbatch.
+Without first zeroing the page obtained using __kvm_gmem_get_pfn(), it
+might contain uninitialized host memory, which would leak to the guest if
+the populate completes.
 
-These two known "usages" of the folio are handled by calling
-lru_cache_drain_for_folio, which drains both the lru_add and mlock
-fbatches. After draining, if the refcount is still elevated, then there are
-truly outstanding references.
+guest_memfd pages are zeroed at most once in the page's entire lifetime
+with guest_memfd, and that is tracked using the uptodate flag.
 
-If the page may be dma pinned, DMA is using it and hence there are
-outstanding references. folio_maybe_dma_pinned() can have false positives,
-but that's only with a significant number of refcounts, at which point
-draining LRU is not going to move the needle - it can still be concluded
-that the folio has outstanding references.
+Zeroing the page in __kvm_gmem_get_pfn() is chosen over zeroing in
+kvm_gmem_get_folio() since other flows, such as a future write() syscall,
+can get a page, write to the page and then set page uptodate without
+zeroing.
 
-If the page is still mapped after guest_memfd tried to unmap it earlier in
-the conversion process, it also has outstanding references.
+There may be some performance penalty due to redundant zeroing, but this
+would pale in comparison to the cost of actually assigning the page to the
+VM.
 
-Return true and exit early to avoid unnecessary draining in these 2 cases.
+This aligns with the concept of zeroing before first use - the other place
+where zeroing happens is in kvm_gmem_fault_user_mapping().
 
-Provide a drain status to only drain once ever while processing a batch of
-folios.
+On populate failure, the page is not re-zeroed, since on SNP, if firmware
+rejects a CPUID page, the expected CPUID values provided by firmware are
+returned to userspace via page contents. More generally, page contents may
+be modified on populate failure.
 
-Acked-by: Vlastimil Babka (SUSE) <vbabka@kernel.org>
-Suggested-by: David Hildenbrand <david@kernel.org>
-Reviewed-by: Fuad Tabba <fuad.tabba@linux.dev>
+Don't mark the page uptodate again after populating, since the page would
+already be marked uptodate before the post_populate() call.
+
+Reviewed-by: Fuad Tabba <tabba@google.com>
+Tested-by: Shivank Garg <shivankg@amd.com>
+Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
 Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- mm/folio.c             |  2 ++
- virt/kvm/guest_memfd.c | 30 ++++++++++++++++++++++--------
- 2 files changed, 24 insertions(+), 8 deletions(-)
+ virt/kvm/guest_memfd.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/mm/folio.c b/mm/folio.c
-index c02dcea9c03c2..50a6dbe55998e 100644
---- a/mm/folio.c
-+++ b/mm/folio.c
-@@ -33,6 +33,7 @@
- #include <linux/page_idle.h>
- #include <linux/local_lock.h>
- #include <linux/buffer_head.h>
-+#include <linux/kvm_types.h>
- 
- #include "internal.h"
- #include "page_alloc.h"
-@@ -926,6 +927,7 @@ void lru_cache_drain_for_folio(const struct folio *folio,
- 			*drained = LRU_CACHE_DRAINED_ALL;
- 	}
- }
-+EXPORT_SYMBOL_FOR_KVM(lru_cache_drain_for_folio);
- 
- atomic_t lru_disable_count = ATOMIC_INIT(0);
- 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index ac8e0c6d6e942..1fe935aaef36f 100644
+index 1fe935aaef36f..5db578fdce6af 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -8,6 +8,7 @@
- #include <linux/mempolicy.h>
- #include <linux/pseudo_fs.h>
- #include <linux/pagemap.h>
-+#include <linux/swap.h>
+@@ -1105,6 +1105,11 @@ static struct folio *__kvm_gmem_get_pfn(struct file *file,
+ 		return ERR_PTR(-EHWPOISON);
+ 	}
  
- #include "kvm_mm.h"
- #include "guest_memfd.h"
-@@ -556,10 +557,28 @@ static int kvm_gmem_mas_preallocate(struct ma_state *mas, u64 attributes,
- 	return mas_preallocate(mas, xa_mk_value(attributes), GFP_KERNEL);
- }
- 
-+static bool __folio_has_outstanding_references(struct folio *folio,
-+					       enum lru_cache_drained *drained)
-+{
-+	if (folio_maybe_dma_pinned(folio) || folio_mapped(folio))
-+		return true;
++	if (!folio_test_uptodate(folio)) {
++		clear_highpage(folio_page(folio, 0));
++		folio_mark_uptodate(folio);
++	}
 +
-+	/* 1 reference held by filemap_get_folios() in the folio batch. */
-+	lru_cache_drain_for_folio(folio, 1, drained);
-+
-+	/*
-+	 * Outstanding references are anything other than those from the page
-+	 * cache, plus 1 temporary reference held by filemap_get_folios() in the
-+	 * folio batch.
-+	 */
-+	return folio_ref_count(folio) != folio_nr_pages(folio) + 1;
-+}
-+
- static bool kvm_gmem_has_outstanding_references(struct inode *inode,
- 						pgoff_t start, size_t nr_pages,
- 						pgoff_t *err_index)
- {
-+	enum lru_cache_drained drained = LRU_CACHE_NOT_DRAINED;
- 	struct address_space *mapping = inode->i_mapping;
- 	pgoff_t last = start + nr_pages - 1;
- 	bool has_outstanding = false;
-@@ -570,17 +589,12 @@ static bool kvm_gmem_has_outstanding_references(struct inode *inode,
- 	folio_batch_init(&fbatch);
+ 	*pfn = folio_file_pfn(folio, index);
+ 	if (max_order)
+ 		*max_order = 0;
+@@ -1133,11 +1138,6 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 		goto out;
+ 	}
  
- 	next = start;
--	while (has_outstanding && filemap_get_folios(mapping, &next, last, &fbatch)) {
-+	while (!has_outstanding && filemap_get_folios(mapping, &next, last, &fbatch)) {
- 		for (i = 0; i < folio_batch_count(&fbatch); ++i) {
- 			struct folio *folio = fbatch.folios[i];
+-	if (!folio_test_uptodate(folio)) {
+-		clear_highpage(folio_page(folio, 0));
+-		folio_mark_uptodate(folio);
+-	}
+-
+ 	if (kvm_arch_has_gmem_convert() &&
+ 	    kvm_gmem_is_private_mem(file_inode(file), index))
+ 		r = kvm_arch_gmem_make_private(kvm, gfn, *pfn,
+@@ -1179,8 +1179,6 @@ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 	}
  
--			/*
--			 * Outstanding references are anything other than those
--			 * from the page cache, plus 1 temporary reference held
--			 * by filemap_get_folios() in the folio batch.
--			 */
--			if (folio_ref_count(folio) != folio_nr_pages(folio) + 1) {
--				has_outstanding = true;
-+			has_outstanding = __folio_has_outstanding_references(folio, &drained);
-+			if (has_outstanding) {
- 				*err_index = max(start, folio->index);
- 				break;
- 			}
+ 	ret = post_populate(kvm, gfn, pfn, src_page, opaque);
+-	if (!ret)
+-		folio_mark_uptodate(folio);
+ 
+ out_put_folio:
+ 	folio_put(folio);
 
 -- 
 2.55.0.897.gb25b4bd76c-goog
