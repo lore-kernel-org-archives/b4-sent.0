@@ -1,10 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Sun, 30 Aug 2026 17:25:20 -0700
-Subject: [PATCH v12 19/45] KVM: guest_memfd: Zero page while getting pfn
+Date: Sun, 30 Aug 2026 17:25:21 -0700
+Subject: [PATCH v12 20/45] KVM: SEV: Make 'uaddr' parameter optional for
+ KVM_SEV_SNP_LAUNCH_UPDATE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260830-gmem-inplace-conversion-v12-19-85e5fd25252a@google.com>
+Message-Id: <20260830-gmem-inplace-conversion-v12-20-85e5fd25252a@google.com>
 References: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 In-Reply-To: <20260830-gmem-inplace-conversion-v12-0-85e5fd25252a@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -41,99 +42,131 @@ To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com,
 Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
- linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
- Xiaoyao Li <xiaoyao.li@intel.com>
+ linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135915; l=3028;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788135915; l=5596;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=cUGg+sf4DufBRW7+H+nQruNnSYvplZ5+HPGnat0Z7N0=;
- b=iaUEix/boqWHf265FiFwo3RPtQTjSrXq4zSJrf1krBwQQG7RpimowPl9GrMH5wwiWvEnLTWM6
- eoZpOCymVXPCpSEDnOsDrQzfSoTA27VtGyKj0i0A3pUg0T40KvmIX/V
+ bh=wPi3PLQGrKXDeuAU5z9J7AGBTrQFd9B/lpdUMyrGDEE=;
+ b=9k/bLEF3An1XBhsojLn0UeoSCr6PDB828IGyADWhdI3CcerN0zYcgRaFKrrd+pDMI6fEmwe7e
+ Jh0JJIyXJ9DDWGXI4dES9EK0noyDEDN1Lyspx/TT+yisOfiYEXsItsu
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the folio initialization logic from kvm_gmem_get_pfn() into
-__kvm_gmem_get_pfn() to also zero pages if the page is to be used in
-kvm_gmem_populate().
+From: Michael Roth <michael.roth@amd.com>
 
-With in-place conversion, the existing data in a guest_memfd page can be
-populated into guest memory through platform-specific ioctls.
+Make the source page for populating an SNP guest_memfd instance optional
+if in-place conversion/population is enabled.  If KVM can convert the page
+in-place, then it's possible for guest memory to be initialized directly
+from userspace by mmap()'ing the guest_memfd and writing to it while the
+corresponding GPA ranges are in a 'shared' state, before converting them
+to the 'private' state expected by KVM_SEV_SNP_LAUNCH_UPDATE.
 
-Without first zeroing the page obtained using __kvm_gmem_get_pfn(), it
-might contain uninitialized host memory, which would leak to the guest if
-the populate completes.
+Update the handling/documentation for KVM_SEV_SNP_LAUNCH_UPDATE to allow
+for 'uaddr' to be set to NULL when in-place conversion is enabled, which
+SNP_LAUNCH_UPDATE will then use to determine when it should/shouldn't
+copy in data from a separate memory location. Continue to enforce
+non-NULL when PRIVATE is tracked per-VM, not per-guest_memfd.
 
-guest_memfd pages are zeroed at most once in the page's entire lifetime
-with guest_memfd, and that is tracked using the uptodate flag.
-
-Zeroing the page in __kvm_gmem_get_pfn() is chosen over zeroing in
-kvm_gmem_get_folio() since other flows, such as a future write() syscall,
-can get a page, write to the page and then set page uptodate without
-zeroing.
-
-There may be some performance penalty due to redundant zeroing, but this
-would pale in comparison to the cost of actually assigning the page to the
-VM.
-
-This aligns with the concept of zeroing before first use - the other place
-where zeroing happens is in kvm_gmem_fault_user_mapping().
-
-On populate failure, the page is not re-zeroed, since on SNP, if firmware
-rejects a CPUID page, the expected CPUID values provided by firmware are
-returned to userspace via page contents. More generally, page contents may
-be modified on populate failure.
-
-Don't mark the page uptodate again after populating, since the page would
-already be marked uptodate before the post_populate() call.
-
-Reviewed-by: Fuad Tabba <tabba@google.com>
+Signed-off-by: Michael Roth <michael.roth@amd.com>
+[Moved condition to snp_launch_update]
+Signed-off-by: Sean Christopherson <seanjc@google.com>
 Tested-by: Shivank Garg <shivankg@amd.com>
-Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
-Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ Documentation/virt/kvm/x86/amd-memory-encryption.rst | 14 ++++++++++----
+ arch/x86/kvm/svm/sev.c                               | 11 ++++++-----
+ virt/kvm/kvm_main.c                                  |  1 +
+ 3 files changed, 17 insertions(+), 9 deletions(-)
 
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 1fe935aaef36f..5db578fdce6af 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -1105,6 +1105,11 @@ static struct folio *__kvm_gmem_get_pfn(struct file *file,
- 		return ERR_PTR(-EHWPOISON);
- 	}
+diff --git a/Documentation/virt/kvm/x86/amd-memory-encryption.rst b/Documentation/virt/kvm/x86/amd-memory-encryption.rst
+index bd04a908a8dbd..5977fbe33b98c 100644
+--- a/Documentation/virt/kvm/x86/amd-memory-encryption.rst
++++ b/Documentation/virt/kvm/x86/amd-memory-encryption.rst
+@@ -503,7 +503,8 @@ secrets.
  
-+	if (!folio_test_uptodate(folio)) {
-+		clear_highpage(folio_page(folio, 0));
-+		folio_mark_uptodate(folio);
-+	}
+ It is required that the GPA ranges initialized by this command have had the
+ KVM_MEMORY_ATTRIBUTE_PRIVATE attribute set in advance. See the documentation
+-for KVM_SET_MEMORY_ATTRIBUTES for more details on this aspect.
++for KVM_SET_MEMORY_ATTRIBUTES/KVM_SET_MEMORY_ATTRIBUTES2 for more details on
++this aspect.
+ 
+ Upon success, this command is not guaranteed to have processed the entire
+ range requested. Instead, the ``gfn_start``, ``uaddr``, and ``len`` fields of
+@@ -511,9 +512,14 @@ range requested. Instead, the ``gfn_start``, ``uaddr``, and ``len`` fields of
+ remaining range that has yet to be processed. The caller should continue
+ calling this command until those fields indicate the entire range has been
+ processed, e.g. ``len`` is 0, ``gfn_start`` is equal to the last GFN in the
+-range plus 1, and ``uaddr`` is the last byte of the userspace-provided source
+-buffer address plus 1. In the case where ``type`` is KVM_SEV_SNP_PAGE_TYPE_ZERO,
+-``uaddr`` will be ignored completely.
++range plus 1, and ``uaddr`` (if specified) is the last byte of the
++userspace-provided source buffer address plus 1.
 +
- 	*pfn = folio_file_pfn(folio, index);
- 	if (max_order)
- 		*max_order = 0;
-@@ -1133,11 +1138,6 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 		goto out;
- 	}
++In the case where ``type`` is KVM_SEV_SNP_PAGE_TYPE_ZERO, ``uaddr`` will be
++ignored completely. For all other page types, ``uaddr`` is optional if in-place
++conversion is enabled (i.e. when the data had been written directly to
++guest_memfd while the page was in the shared state) and is required if in-place
++conversion is disabled.
  
--	if (!folio_test_uptodate(folio)) {
--		clear_highpage(folio_page(folio, 0));
--		folio_mark_uptodate(folio);
--	}
--
- 	if (kvm_arch_has_gmem_convert() &&
- 	    kvm_gmem_is_private_mem(file_inode(file), index))
- 		r = kvm_arch_gmem_make_private(kvm, gfn, *pfn,
-@@ -1179,8 +1179,6 @@ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
- 	}
+ Parameters (in): struct  kvm_sev_snp_launch_update
  
- 	ret = post_populate(kvm, gfn, pfn, src_page, opaque);
--	if (!ret)
--		folio_mark_uptodate(folio);
+diff --git a/arch/x86/kvm/svm/sev.c b/arch/x86/kvm/svm/sev.c
+index dff684b88f153..63e8cfa9bf559 100644
+--- a/arch/x86/kvm/svm/sev.c
++++ b/arch/x86/kvm/svm/sev.c
+@@ -2400,7 +2400,7 @@ static int sev_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ 	 */
+ 	if (ret && !snp_page_reclaim(kvm, pfn) &&
+ 	    sev_populate_args->type == KVM_SEV_SNP_PAGE_TYPE_CPUID &&
+-	    sev_populate_args->fw_error == SEV_RET_INVALID_PARAM) {
++	    sev_populate_args->fw_error == SEV_RET_INVALID_PARAM && src_page) {
+ 		void *src_vaddr = kmap_local_page(src_page);
+ 		void *dst_vaddr = kmap_local_pfn(pfn);
  
- out_put_folio:
- 	folio_put(folio);
+@@ -2433,8 +2433,8 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
+ 	if (copy_from_user(&params, u64_to_user_ptr(argp->data), sizeof(params)))
+ 		return -EFAULT;
+ 
+-	pr_debug("%s: GFN start 0x%llx length 0x%llx type %d flags %d\n", __func__,
+-		 params.gfn_start, params.len, params.type, params.flags);
++	pr_debug("%s: GFN start 0x%llx length 0x%llx type %d flags %d src %llx\n", __func__,
++		 params.gfn_start, params.len, params.type, params.flags, params.uaddr);
+ 
+ 	if (!params.len || !PAGE_ALIGNED(params.len) || params.flags ||
+ 	    (params.type != KVM_SEV_SNP_PAGE_TYPE_NORMAL &&
+@@ -2446,7 +2446,8 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
+ 
+ 	if (params.type == KVM_SEV_SNP_PAGE_TYPE_ZERO)
+ 		src = NULL;
+-	else if (!params.uaddr || !PAGE_ALIGNED(params.uaddr))
++	else if ((!gmem_in_place_conversion && !params.uaddr) ||
++		 !PAGE_ALIGNED(params.uaddr))
+ 		return -EINVAL;
+ 	else
+ 		src = u64_to_user_ptr(params.uaddr);
+@@ -2493,7 +2494,7 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
+ 
+ 	params.gfn_start += count;
+ 	params.len -= count * PAGE_SIZE;
+-	if (params.type != KVM_SEV_SNP_PAGE_TYPE_ZERO)
++	if (src && params.type != KVM_SEV_SNP_PAGE_TYPE_ZERO)
+ 		params.uaddr += count * PAGE_SIZE;
+ 
+ 	if (copy_to_user(u64_to_user_ptr(argp->data), &params, sizeof(params)))
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index 1ea8198821917..05c518c9b8078 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -104,6 +104,7 @@ module_param(allow_unsafe_mappings, bool, 0444);
+ 
+ #ifdef kvm_arch_has_private_mem
+ bool __ro_after_init gmem_in_place_conversion = false;
++EXPORT_SYMBOL_FOR_KVM_INTERNAL(gmem_in_place_conversion);
+ #endif
+ 
+ /*
 
 -- 
 2.55.0.897.gb25b4bd76c-goog
