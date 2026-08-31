@@ -1,11 +1,10 @@
 From: Congcong Yao <congcong.yao@mediatek.com>
-Date: Mon, 31 Aug 2026 14:52:06 +0800
-Subject: [PATCH v4 1/2] dt-bindings: memory-controllers: mtk-smi: Add
- support for mt8189
+Date: Mon, 31 Aug 2026 14:52:07 +0800
+Subject: [PATCH v4 2/2] memory: mtk-smi: Add MT8189 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260831-8189-smi-support-v4-1-8ae66dd3eeed@mediatek.com>
+Message-Id: <20260831-8189-smi-support-v4-2-8ae66dd3eeed@mediatek.com>
 References: <20260831-8189-smi-support-v4-0-8ae66dd3eeed@mediatek.com>
 In-Reply-To: <20260831-8189-smi-support-v4-0-8ae66dd3eeed@mediatek.com>
 To: Yong Wu <yong.wu@mediatek.com>, Krzysztof Kozlowski <krzk@kernel.org>, 
@@ -17,11 +16,11 @@ Cc: linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org,
  Congcong Yao <congcong.yao@mediatek.com>, 
  Zhengnan Chen <zhengnan.chen@mediatek.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788159129; l=4285;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788159129; l=4600;
  i=congcong.yao@mediatek.com; s=20260722; h=from:subject:message-id;
- bh=ZF8KkSLsu9zOPR4yaUhFcqIyHzmeP14MmlF5WXU/Mkg=;
- b=w6tfEJj1nGx+w3aW53I4RyfZzi8umc3Td7D9o1Y6YQHDeHdqJubX3vaGIgAmy9Dh5dBMIMxbB
- pO8Ok1iYfGKCUOC37ZrtK1ChYIzqbXUXBjTtYwYuhx1pYG++/8MR9dx
+ bh=7az4Dgk3CXFVdlAoxr6OTNIBaBixjBIVkNdiyT0OpGA=;
+ b=7LVFR45UNQ9UzEL7SqZVZ0eq6zimK7axUTNrz6xTswY9mxWDD6vec7IEIXQuqUyUJKMBnXMWH
+ wLzJoC+nF49ACS+Bkzrja75h1kmEDkK6BwbYGc6Si6MxD80YvXPmV2C
 X-Developer-Key: i=congcong.yao@mediatek.com; a=ed25519;
  pk=tIrmGxKQQxnfyb48iCCd19063tppPj89U3nupGYAIxg=
 X-Endpoint-Received: by B4 Relay for congcong.yao@mediatek.com/20260722 with auth_id=889
@@ -29,107 +28,100 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Zhengnan Chen <zhengnan.chen@mediatek.com>
 
-Add the SMI LARB, common and sub-common binding descriptions for
-MT8189.
+Add the MT8189 SMI common, sub-common and LARB platform data.
 
-MT8189 adds an SMI sub-common block. Document this topology in
-mediatek,smi-common.yaml.
+Enable the GALS clock for the MT8189 SMI sub-common.
 
 Signed-off-by: Zhengnan Chen <zhengnan.chen@mediatek.com>
 Signed-off-by: Congcong Yao <congcong.yao@mediatek.com>
 ---
- .../memory-controllers/mediatek,smi-common.yaml     | 21 ++++++++++++++++++++-
- .../memory-controllers/mediatek,smi-larb.yaml       |  3 +++
- 2 files changed, 23 insertions(+), 1 deletion(-)
+ drivers/memory/mtk-smi.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-index 0762e0ff66ef..33c989f7fc33 100644
---- a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-@@ -16,7 +16,7 @@ description: |
-   MediaTek SMI have two generations of HW architecture, here is the list
-   which generation the SoCs use:
-   generation 1: mt2701 and mt7623.
--  generation 2: mt2712, mt6779, mt8167, mt8173, mt8183, mt8186, mt8188, mt8192 and mt8195.
-+  generation 2: mt2712, mt6779, mt8167, mt8173, mt8183, mt8186, mt8188, mt8189, mt8192 and mt8195.
+diff --git a/drivers/memory/mtk-smi.c b/drivers/memory/mtk-smi.c
+index aaeba8ab211e..8c4606cbd73d 100644
+--- a/drivers/memory/mtk-smi.c
++++ b/drivers/memory/mtk-smi.c
+@@ -401,6 +401,30 @@ static const u8 mtk_smi_larb_mt8188_ostd[][SMI_LARB_PORT_NR_MAX] = {
+ 	[25] = {0x01},
+ };
  
-   There's slight differences between the two SMI, for generation 2, the
-   register which control the iommu port is at each larb's register base. But
-@@ -25,6 +25,21 @@ description: |
-   SMI generation 1 to transform the smi clock into emi clock domain, but that is
-   not needed for SMI generation 2.
- 
-+  The smi-common connects with smi-larb and IOMMU. The maximum inputs number of
-+  a smi-common is 8. In SMI generation 2, the engines number may be over 8.
-+  In this case, we use a smi-sub-common to merge some larbs.
-+  The block diagram something is like:
++static const u8 mtk_smi_larb_mt8189_ostd[][SMI_LARB_PORT_NR_MAX] = {
++	[0] = {0x8, 0x20, 0x20, 0x20, 0x20, 0x20, 0x10,},
++	[1] = {0x8, 0x20, 0x20, 0x20, 0x20, 0x20, 0x10,},
++	[2] = {0x7, 0x7, 0x4, 0x4, 0x1, 0x1, 0x2, 0x2, 0x7, 0x7,},
++	[4] = {0x2f, 0x1e, 0x9, 0x1, 0x1, 0x1, 0x1, 0x2, 0x2, 0x5, 0x1, 0x17,},
++	[7] = {0x20, 0x2, 0x1, 0x1, 0x1, 0x4, 0x2, 0x1, 0x1, 0x2, 0x3, 0x2,
++	       0xa, 0xf, 0x4, 0x6, 0x5, 0x1,},
++	[9] = {0x6, 0x3, 0xc, 0x6, 0x1, 0x4, 0x3, 0x1, 0x2, 0x4, 0x5, 0x2,
++	       0x4, 0x2, 0x3, 0xb, 0x1, 0x4, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
++	       0x1, 0x1,},
++	[11] = {0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
++		0x1, 0x1, 0x1, 0xb, 0x1, 0x4, 0x6, 0x5, 0x6, 0x1, 0x5, 0x2,
++		0x9, 0x5,},
++	[13] = {0x2, 0x8, 0x8, 0x8, 0x4, 0x4, 0x4, 0x4, 0x4, 0xe, 0x4, 0x1,
++		0x6, 0x6, 0x2,},
++	[14] = {0x1, 0x1, 0x1, 0x20, 0xe, 0x4, 0x8, 0x8, 0x6, 0x4,},
++	[16] = {0x1e, 0xc, 0x2, 0x8, 0xe, 0x2, 0x1e, 0x10, 0x4, 0x2, 0x2, 0x2,
++		0x2, 0x2, 0x4, 0x2, 0x4,},
++	[17] = {0x1e, 0xc, 0x2, 0x8, 0xe, 0x2, 0x1e, 0x10, 0x4, 0x2, 0x2, 0x2,
++		0x2, 0x2, 0x4, 0x2, 0x4,},
++	[19] = {0x2, 0x1, 0x3, 0x1,},
++	[20] = {0x7, 0x7, 0x3, 0x3, 0x1, 0x1,},
++};
 +
-+                          IOMMU
-+                           | |
-+                       smi-common
-+              ---------------------------
-+               |          |           ...
-+              larb0   sub-common      ...  <-max number is 8
-+                   ----------------
-+                    |     |    ...
-+                  larb1 larbX  ...  <-max number is 8
+ static const u8 mtk_smi_larb_mt8192_ostd[][SMI_LARB_PORT_NR_MAX] = {
+ 	[0] = {0x2, 0x2, 0x28, 0xa, 0xc, 0x28,},
+ 	[1] = {0x2, 0x2, 0x18, 0x18, 0x18, 0xa, 0xc, 0x28,},
+@@ -533,6 +557,13 @@ static const struct mtk_smi_larb_gen mtk_smi_larb_mt8188 = {
+ 	.ostd		            = mtk_smi_larb_mt8188_ostd,
+ };
+ 
++static const struct mtk_smi_larb_gen mtk_smi_larb_mt8189 = {
++	.config_port                = mtk_smi_larb_config_port_gen2_general,
++	.flags_general	            = MTK_SMI_FLAG_THRT_UPDATE | MTK_SMI_FLAG_SW_FLAG |
++				      MTK_SMI_FLAG_SLEEP_CTL | MTK_SMI_FLAG_CFG_PORT_SEC_CTL,
++	.ostd		            = mtk_smi_larb_mt8189_ostd,
++};
 +
- properties:
-   compatible:
-     oneOf:
-@@ -40,6 +55,8 @@ properties:
-           - mediatek,mt8186-smi-common
-           - mediatek,mt8188-smi-common-vdo
-           - mediatek,mt8188-smi-common-vpp
-+          - mediatek,mt8189-smi-common
-+          - mediatek,mt8189-smi-sub-common
-           - mediatek,mt8192-smi-common
-           - mediatek,mt8195-smi-common-vdo
-           - mediatek,mt8195-smi-common-vpp
-@@ -108,6 +125,7 @@ allOf:
-         compatible:
-           contains:
-             enum:
-+              - mediatek,mt8189-smi-sub-common
-               - mediatek,mt8195-smi-sub-common
-     then:
-       required:
-@@ -157,6 +175,7 @@ allOf:
-             - mediatek,mt6795-smi-common
-             - mediatek,mt8167-smi-common
-             - mediatek,mt8173-smi-common
-+            - mediatek,mt8189-smi-common
+ static const struct mtk_smi_larb_gen mtk_smi_larb_mt8192 = {
+ 	.config_port                = mtk_smi_larb_config_port_gen2_general,
+ 	.ostd			    = mtk_smi_larb_mt8192_ostd,
+@@ -556,6 +587,7 @@ static const struct of_device_id mtk_smi_larb_of_ids[] = {
+ 	{.compatible = "mediatek,mt8183-smi-larb", .data = &mtk_smi_larb_mt8183},
+ 	{.compatible = "mediatek,mt8186-smi-larb", .data = &mtk_smi_larb_mt8186},
+ 	{.compatible = "mediatek,mt8188-smi-larb", .data = &mtk_smi_larb_mt8188},
++	{.compatible = "mediatek,mt8189-smi-larb", .data = &mtk_smi_larb_mt8189},
+ 	{.compatible = "mediatek,mt8192-smi-larb", .data = &mtk_smi_larb_mt8192},
+ 	{.compatible = "mediatek,mt8195-smi-larb", .data = &mtk_smi_larb_mt8195},
+ 	{}
+@@ -808,6 +840,17 @@ static const struct mtk_smi_common_plat mtk_smi_common_mt8188_vpp = {
+ 	.init     = mtk_smi_common_mt8195_init,
+ };
  
-     then:
-       properties:
-diff --git a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-index 2e7fac4b5094..9a5dafd7c07e 100644
---- a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-@@ -27,6 +27,7 @@ properties:
-           - mediatek,mt8183-smi-larb
-           - mediatek,mt8186-smi-larb
-           - mediatek,mt8188-smi-larb
-+          - mediatek,mt8189-smi-larb
-           - mediatek,mt8192-smi-larb
-           - mediatek,mt8195-smi-larb
- 
-@@ -85,6 +86,7 @@ allOf:
-             - mediatek,mt8183-smi-larb
-             - mediatek,mt8186-smi-larb
-             - mediatek,mt8188-smi-larb
-+            - mediatek,mt8189-smi-larb
-             - mediatek,mt8195-smi-larb
- 
-     then:
-@@ -119,6 +121,7 @@ allOf:
-               - mediatek,mt6779-smi-larb
-               - mediatek,mt8186-smi-larb
-               - mediatek,mt8188-smi-larb
-+              - mediatek,mt8189-smi-larb
-               - mediatek,mt8192-smi-larb
-               - mediatek,mt8195-smi-larb
- 
++static const struct mtk_smi_common_plat mtk_smi_common_mt8189 = {
++	.type     = MTK_SMI_GEN2,
++	.bus_sel  = F_MMU1_LARB(1) | F_MMU1_LARB(3) | F_MMU1_LARB(5) |
++		    F_MMU1_LARB(7),
++};
++
++static const struct mtk_smi_common_plat mtk_smi_sub_common_mt8189 = {
++	.type     = MTK_SMI_GEN2_SUB_COMM,
++	.has_gals = true,
++};
++
+ static const struct mtk_smi_common_plat mtk_smi_common_mt8192 = {
+ 	.type     = MTK_SMI_GEN2,
+ 	.has_gals = true,
+@@ -852,6 +895,8 @@ static const struct of_device_id mtk_smi_common_of_ids[] = {
+ 	{.compatible = "mediatek,mt8186-smi-common", .data = &mtk_smi_common_mt8186},
+ 	{.compatible = "mediatek,mt8188-smi-common-vdo", .data = &mtk_smi_common_mt8188_vdo},
+ 	{.compatible = "mediatek,mt8188-smi-common-vpp", .data = &mtk_smi_common_mt8188_vpp},
++	{.compatible = "mediatek,mt8189-smi-common",     .data = &mtk_smi_common_mt8189},
++	{.compatible = "mediatek,mt8189-smi-sub-common", .data = &mtk_smi_sub_common_mt8189},
+ 	{.compatible = "mediatek,mt8192-smi-common", .data = &mtk_smi_common_mt8192},
+ 	{.compatible = "mediatek,mt8195-smi-common-vdo", .data = &mtk_smi_common_mt8195_vdo},
+ 	{.compatible = "mediatek,mt8195-smi-common-vpp", .data = &mtk_smi_common_mt8195_vpp},
 
 -- 
 2.43.0
