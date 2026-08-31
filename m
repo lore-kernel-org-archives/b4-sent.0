@@ -1,100 +1,147 @@
-From: Sophon Zhang <aiqubits@hotmail.com>
-Date: Tue, 01 Sep 2026 01:09:53 +0800
-Subject: [PATCH v4] rust: pci: reject IRQ vector indices that do not fit in
- u32
+From: Dave Marquardt <davemarq@linux.ibm.com>
+Subject: [PATCH v7 0/8] scsi: ibmvfc: make ibmvfc support FPIN messages
+Date: Mon, 31 Aug 2026 14:00:12 -0500
+Message-Id: <20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-fix-pci-irq-vector-index-truncation-v4-1-f94aa6932fd9@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIAGC1lWoC/53OPQ7CMAwF4KugzBjlpySUiXsghpAYagQtJCUCo
- d4dFybEBOOT/L7nh8iYCLNYTh4iYaFMXcuhmk5EaHy7R6DIWWiprVwYBTu6wTkQULpAwdB3Cai
- NeIM+Xdvge+6DdXO9M26uvIyCpXNCrr1W1pt3ztftgdsjPV40lFm6v94oarz7bbEoUBCt0crFu
- t5at2q6/uTpOAvdSYybRf+halYraSR65yrr62/V/KEaVr1W7C6qqCV+qsMwPAH8zWrBlgEAAA=
- =
-X-Change-ID: 20260831-fix-pci-irq-vector-index-truncation-6752f3751a0d
-To: Danilo Krummrich <dakr@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: linux-pci@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sophon Zhang <aiqubits@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIADzPlWoC/3XRTU7DMBAF4KtUXuNq7HhshxX3QCz8S41oEsWJV
+ VTl7jhFqBUyyye9+d5iriSHOYVMng9XMoeSchqHGtTTgbiTGd4DTb5mwoFLEKBosucSHY1TGmh
+ ep2mcF2p7iwqd594wUi+nOcR0uamvbz85r/YjuGWn9sYp5WWcv26zhe293wXdXCiMAkVuQTohR
+ YDu5TMN6+VYu0c3nsm+Uvjdkf85vDpesIgCojXoWk53dxTwttPtTo+2R6Fc1LrliAeHQdsR1Qk
+ ROmYc65FDy8G7o0G2HawO66KXURsdtW058sFh7U8WWR3JDffIMSjwf51t274BMPZrQTQCAAA=
+X-Change-ID: 20260407-ibmvfc-fpin-support-b9b575cd2da1
+To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Tyrel Datwyler <tyreld@linux.ibm.com>, 
+ "Martin K. Petersen" <mkp@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, Brian King <brking@linux.ibm.com>, 
+ Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
+ Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788196549; l=2550;
- i=aiqubits@hotmail.com; s=20260831; h=from:subject:message-id;
- bh=aDpWwnCHJqNDAl+iMV/Pt6CcKak8JY7tJ57zkb1ld5w=;
- b=NHZdgqGpnU8lETGIZIzu3ZLXvJ5MUb7qp3HPbYOF5EZ6zD3TUOvdD19e2lx9OaKdyoL8P9bx0
- oXZbGHZhaj/BBqC18cpsZ4tDH2lJz928e3nN1ux9aBvnlhVV2c3sNI9
-X-Developer-Key: i=aiqubits@hotmail.com; a=ed25519;
- pk=+mrkwQAyCCkZdVPpu+CBQr1VZQlkXa7/1WizfeSF/yg=
-X-Endpoint-Received: by B4 Relay for aiqubits@hotmail.com/20260831 with auth_id=992
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788202815; l=5318;
+ i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
+ bh=bGxCMqk7Tca/HbrntvZOHhlkrnA0xoCRIXj6OVdWpxo=;
+ b=A7iQTutu+dU3vu9jiywR5kwlmiVFYEJuzMJfkBBxWBd3WrtGzqPsWURMi3FcVvTIhBV6pcOSv
+ 5H1wlfVsOekBV6fLddp5A/leff0rbq9ssfSKPWfOQGf0EHRQws7jUAB
+X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
+ pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
+X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IrqVectorRegistration::index() accepts a usize, but pci_irq_vector()
-takes an unsigned int. On 64-bit architectures, casting an index larger
-than u32::MAX wraps it before the PCI core can validate it. In
-particular, u32::MAX + 1 becomes zero and can resolve to the first
-allocated vector.
+This patch series adds FPIN (fabric performance impact notification)
+support to the ibmvfc (IBM Virtual Fibre Channel) driver. This comes
+in three flavors:
 
-Use a checked conversion and return EINVAL when the index cannot be
-represented by the C API.
+- basic, to recognize existing FPIN messages from the virtual I/O
+  server (VIOS) (patch 1)
+- full, supporting additional FPIN information and using its own
+  asynchronous sub-queue and interrupt (patches 3-7)
+- extended, supporting FC-LS-5 (patch 8)
 
-Fixes: 2fb7755b0a7e ("rust: pci: resolve IRQ in index() and embed IrqRequest in IrqVector")
-Signed-off-by: Sophon Zhang <aiqubits@hotmail.com>
+Full and extended FPIN support requires a new asynchronous sub-queue
+with its own interrupt. The asynchronous sub-queue support requires
+ibmvfc to also support a new IBMVFC_NOOP command, which the driver
+recognizes and ignores (patch 2).
+
+The asynchronous sub-queue work is split across three patches: patch 3
+defines the necessary data structures, patch 5 adds the interrupt and
+drain routines for the queue, and patch 6 refactors channel
+registration and deregistration to accommodate the new queue. Patch 7
+wires everything together, registering the async sub-queue during
+channel initialization and advertising support to VIOS during NPIV
+login.
+
+All three modes convert an incoming FPIN message from VIOS to an FC
+extended link service message, in some cases using default values for
+information not provided by the VIOS FPIN message but expected in the
+FC ELS message. This FC ELS message is passed to fc_host_rcv_fpin for
+updating statistics and sending the information upstream by netlink
+multicast, where it may be read by listeners including the DM
+multipath daemon "multipathd."
+
+Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
-Prevent 64-bit Rust IRQ vector indices from wrapping when they cross the
-PCI C API boundary.
----
+Changes in v7:
+- Removed CRQ valid bit clearing to callers of ibmvfc_handle_async in
+  all cases
+- Added validity checks that IBMVFC_ASYNC_ID_IS_ASSOC_ID is clear
+  before using node_name
+- Fixed error path cleanup in ibmvfc_init_sub_crqs
+- Deregister and reregister async sub-CRQ in CRQ reset and reenable
+  code.
+- Moved work queue destruction after sub CRQs teardown in ibmvfc_remove
+- Modified async event handling code to use a tagged union rather than
+  void *.
+- Use WQ_UNBOUND rather than WQ_PERCPU for fpin workqueue, as FPIN
+  events should be rare. Hold q_lock only in
+  ibmvfc_drain_async_subq(), like ibmvfc_drain_sub_crq().
+- Hardened KUnit tests to use host_lock and kref.
+- Link to v6: https://patch.msgid.link/20260817-ibmvfc-fpin-support-v6-0-62a2d525e70d@linux.ibm.com
+
+Changes in v6:
+- Use alloc_workqueue rather than devm_alloc_workqueue, and add
+  explicit destroy_workqueue calls
+- Moved ibmvfc_find_target into patch 1
+- Link to v5: https://patch.msgid.link/20260806-ibmvfc-fpin-support-v5-0-13fd6f8a8f8b@linux.ibm.com
+
+Changes in v5:
+- Incorporate changes for NVME-over-FC.
+- Removed now redundant fabric login patch.
+- Link to v4: https://patch.msgid.link/20260710-ibmvfc-fpin-support-v4-0-ef031ac19520@linux.ibm.com
+
 Changes in v4:
-- Drop the explicit length check in favor of PCI core range validation.
-- Use the existing TryFromIntError-to-Error conversion directly.
-- Keep commit trailers adjacent and narrow the description to truncation.
-- Link to v3: https://patch.msgid.link/20260831-fix-pci-irq-vector-index-truncation-v3-1-a2103084d20e@hotmail.com
+- Refactored channel registration
+- Check whether async work queue is allocated before using or freeing
+- Fixed work queue allocation/destruction
+- Skip basic KUnit test when there are no ibmvfc devices available
+- Fix target not found condition in ibmvfc_process_async_work
+- Link to v3: https://patch.msgid.link/20260702-ibmvfc-fpin-support-v3-0-d95b9747cf88@linux.ibm.com
 
 Changes in v3:
-- Check the index against the allocated vector count before entering the C API.
-- Keep the checked usize-to-u32 conversion and document the C-side warning.
-- Link to v2: https://patch.msgid.link/20260831-fix-pci-irq-vector-index-truncation-v2-1-4030ea7746a9@hotmail.com
+- Fixed latent bug, exposed by VFC_NOOP, related to dataless CRQs and events
+- Fixed FPIN TLV descriptor length calculations
+- Use safe list walker to walk targets in ibmvfc_process_async_work
+- Added write memory barriers after clearing CRQ valid field
+- Use per-vhost work queue for FPIN work
+- Link to v2: https://patch.msgid.link/20260608-ibmvfc-fpin-support-v2-0-d41f540fba5c@linux.ibm.com
 
-Changes in v2:
-- No code changes.
-- Link to v1: https://patch.msgid.link/20260831-fix-pci-irq-vector-index-truncation-v1-1-d63217d99b67@hotmail.com
-
-Testing:
-- make rustfmtcheck
-- Not build- or hardware-tested; bindgen is unavailable in the test environment.
----
- rust/kernel/pci/irq.rs | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/rust/kernel/pci/irq.rs b/rust/kernel/pci/irq.rs
-index 6741046ec1c0..22e2cdf82a21 100644
---- a/rust/kernel/pci/irq.rs
-+++ b/rust/kernel/pci/irq.rs
-@@ -151,8 +151,10 @@ pub fn irq_type(&self) -> IrqType {
-     /// [`Self::len()`].
-     #[inline]
-     pub fn index(&self, index: usize) -> Result<IrqVector<'_>> {
-+        let index = u32::try_from(index)?;
-+
-         // SAFETY: `self.dev.as_raw()` is a valid pointer to a `struct pci_dev`.
--        let irq = unsafe { bindings::pci_irq_vector(self.dev.as_raw(), index as u32) };
-+        let irq = unsafe { bindings::pci_irq_vector(self.dev.as_raw(), index) };
-         if irq < 0 {
-             return Err(Error::from_errno(irq));
-         }
+Highlights of changes in v2:
+- Refactored mostly common FPIN conversion routines and async event
+  processing into single routines with wrappers for differences.
+- Moved FPIN processing to a work queue to avoid conflicts with
+  fc_host_fpin_rcv and memory allocation
+- Set descriptor sizes correctly
+- Use target WWPN for basic FPIN descriptor
+- Split patch 4 into 3 patches, for definition, allocation, and use of
+  the asynchronous sub-queue for events
+- Link to v1: https://patch.msgid.link/20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com
 
 ---
-base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
-change-id: 20260831-fix-pci-irq-vector-index-truncation-6752f3751a0d
+Dave Marquardt (8):
+      scsi: ibmvfc: add basic FPIN support
+      scsi: ibmvfc: Add NOOP command support
+      scsi: ibmvfc: add FPIN extended flag and async sub-CRQ queue handle
+      scsi: ibmvfc: extend async event handlers to handle async sub queue events
+      scsi: ibmvfc: add interrupt routine for asynchronous sub CRQ
+      scsi: ibmvfc: extend channel registration and deregistration for async subq
+      scsi: ibmvfc: register and use asynchronous sub CRQ for events
+      scsi: ibmvfc: handle extended FPIN events
+
+ drivers/scsi/Kconfig                 |  10 +
+ drivers/scsi/ibmvscsi/Makefile       |   1 +
+ drivers/scsi/ibmvscsi/ibmvfc-core.c  | 690 ++++++++++++++++++++++++++++++++---
+ drivers/scsi/ibmvscsi/ibmvfc.h       |  63 ++++
+ drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 398 ++++++++++++++++++++
+ 5 files changed, 1105 insertions(+), 57 deletions(-)
+---
+base-commit: 12e67eb89eb2b9516685c744d3f7de0a2d1bd701
+change-id: 20260407-ibmvfc-fpin-support-b9b575cd2da1
 
 Best regards,
 --  
-Sophon Zhang <aiqubits@hotmail.com>
+Dave Marquardt <davemarq@linux.ibm.com>
 
