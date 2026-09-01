@@ -1,74 +1,78 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Tue, 01 Sep 2026 17:25:57 +0200
-Subject: [PATCH v10 6/6] arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU
- fan node
+From: Ke Sun <sunke@kylinos.cn>
+Subject: [PATCH 0/9] drm/tyr: add VM and BO ioctl support
+Date: Wed, 02 Sep 2026 00:08:59 +0800
+Message-Id: <20260902-tyr-ioctls-v1-0-e0fdbf8bd108@kylinos.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-add-mcu-fan-khadas-vim4-v10-6-aecdb9955a30@aliel.fr>
-References: <20260901-add-mcu-fan-khadas-vim4-v10-0-aecdb9955a30@aliel.fr>
-In-Reply-To: <20260901-add-mcu-fan-khadas-vim4-v10-0-aecdb9955a30@aliel.fr>
-To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Beniamino Galvani <b.galvani@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
- mfd@lists.linux.dev, Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-B4-Tracking: v=1; b=H4sIAJv4lmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDSwND3ZLKIt3M/OSSnGLdNEOD1DSDlOSktEQzJaCGgqLUtMwKsGHRsbW
+ 1AO+8sJJcAAAA
+X-Change-ID: 20260901-tyr-ioctls-f10ef0dcbfa6
+To: rust-for-linux@vger.kernel.org
+Cc: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <liam@infradead.org>, 
+ Lyude Paul <lyude@redhat.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, dri-devel@lists.freedesktop.org, 
+ Ke Sun <sunke@kylinos.cn>, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1095;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=Z7uWC5BzI9Wq+imS2bvYjb9eymbusN6NdD/vEPC6HdE=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9a0dx+UNA2Ttpa2JXA3PdoSsHGmck9Q4CLtFVdlXdnNc
- 3c8frulo5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZiInjcjw5y6K3lTNi7Sf6Pc
- u7Oy75iP5V65osVc5kI1U1JivyY8b2VkmC3f+OgiH4OMVPka742bN3hdZA1vX5m+LjcnUWTh8b6
- DDAA=
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788278954; l=1522;
+ i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
+ bh=lhvqr0YNmYNoIT3ggMS891E1w+CGEgfi2rFuaQKH4aU=;
+ b=GbkfXIDW39GboxU034l9GzN9Tiqr6XulAfvPJh7sfrXyDINKCLMkm70knCQ9US4+CJvXzLMtP
+ 0dBNuorJ9UVDYn9ZADuaLj9cY/ophtfF2gmKfXQBW1qNlmPyVMCSMp/
+X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable and configure i2c MCU node to get fan working on Khadas VIM4.
+Add the VM and BO ioctls to the Tyr driver, aligning its userspace
+interface with panthor. The series is based on Danilo's `drm-file`
+series on `drm-rust-next`, and uses the existing IdPool and xarray
+abstractions for per-file VM management.
 
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+The panthor IGT tests pass on an RK3588S device.
+
+Signed-off-by: Ke Sun <sunke@kylinos.cn>
 ---
- .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts      | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Alvin Sun (9):
+      rust: sizes: add SZ_4G constant
+      rust: mm: add `task_size` helper
+      rust: sync: arc: relax `ForeignOwnable` for `Arc<T>`
+      drm/tyr: add per-file VM pool
+      drm/tyr: add user and MCU VM specifications
+      drm/tyr: add BO creation and lookup helpers
+      drm/tyr: refactor new_dummy_object to use new_object
+      drm/tyr: add VM-related ioctls
+      drm/tyr: add BO-related ioctls
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-index c41525a34b721..7d95aadcf6a66 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-@@ -167,6 +167,19 @@ xtal: xtal-clk {
- 	};
- };
- 
-+&i2c_m_ao_a {
-+	status = "okay";
-+	pinctrl-0 = <&i2c0_ao_d_pins>;
-+	pinctrl-names = "default";
-+
-+	khadas_mcu: system-controller@18 {
-+		compatible = "khadas,vim4-mcu";
-+		reg = <0x18>;
-+		fan-supply = <&vcc5v>;
-+		#cooling-cells = <2>;
-+	};
-+};
-+
- &pwm_ab {
- 	status = "okay";
- 	pinctrl-0 = <&pwm_a_pins>;
+ drivers/gpu/drm/tyr/driver.rs   |  14 +-
+ drivers/gpu/drm/tyr/file.rs     | 394 ++++++++++++++++++++++++++++++++++++++--
+ drivers/gpu/drm/tyr/fw.rs       |   8 +-
+ drivers/gpu/drm/tyr/gem.rs      |  41 ++++-
+ drivers/gpu/drm/tyr/pool.rs     | 102 +++++++++++
+ drivers/gpu/drm/tyr/tyr.rs      |   1 +
+ drivers/gpu/drm/tyr/vm.rs       | 158 +++++++++++++++-
+ rust/bindings/bindings_helper.h |   1 +
+ rust/kernel/mm.rs               |   7 +
+ rust/kernel/sizes.rs            |  12 ++
+ rust/kernel/sync/arc.rs         |  12 +-
+ 11 files changed, 714 insertions(+), 36 deletions(-)
+---
+base-commit: 0b0aa9dcf17b6cffa9e325ff641e843b20d40c31
+change-id: 20260901-tyr-ioctls-f10ef0dcbfa6
 
+Best regards,
 -- 
-2.49.0
+Ke Sun <sunke@kylinos.cn>
 
