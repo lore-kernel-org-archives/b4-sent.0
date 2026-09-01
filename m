@@ -1,127 +1,118 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Tue, 22 Sep 2026 21:40:33 +0200
-Subject: [PATCH net-next v2] net: pcs: lynx: add support for 25GBASE-R
+From: George Kokolakis <george.kokolakis.ece@gmail.com>
+Date: Tue, 01 Sep 2026 21:24:14 +0300
+Subject: [PATCH] ACPI: PM: Use EFI power off on Lenovo ThinkPad T14 Gen 5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-for-upstream-lynx-25gbaser-v1-v2-1-1e6cf79c7b52@free.fr>
-X-B4-Tracking: v=1; b=H4sIALDZsmoC/42NQQqDMBBFryKz7pQkrY3pqvcoLqyZaKBNZJKKI
- t69wRMU/ubx4P0NErGnBPdqA6bZJx9DAXWqoB+7MBB6WxiUUDfRqBpdZPxOKTN1H3yvYUFVD6+
- uZHCWeBHCaGuEscJAaUxMzi9H/wmBMgZaMrTFjD7lyOtxPMvD//lRJtFZLftGXLU2zcMx0dkxt
- Pu+/wBOo3+Q0gAAAA==
-To: Ioana Ciornei <ioana.ciornei@nxp.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vincent Jardin <vjardin@free.fr>
+Message-Id: <20260901-fix-thinkpad-t14-gen5-efi-poweroff-v1-1-7f766dc13ee9@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAE0Yl2oC/x2NywqEMAwAf0VyNtC61tevLHsINtUgtKUVVxD/3
+ eJxGJi5IHMSzjBVFyQ+JEvwBXRdwbySXxjFFoZGNZ0alUYnJ+6r+C2SxV23uLA3yE4whj+n4Bw
+ O/UCfubVkyEAJxVT0+U6+v/t+AEHMSI90AAAA
+To: rafael@kernel.org
+Cc: lenb@kernel.org, linux-acpi@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790106068; l=3594;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=bmf6B3F6ohB69HA6ZyITfXa57iK/cRlvOW+wygkEdRw=;
- b=ezUeCvdgVgzuSEY24djbVTGKsQyeB2ZhpUeAe4SYXcES261DGvI5h1+9nh3ozxA5sXv2A3fWa
- MfS04tacPR0CdceNxpv9IrYnMaJt0hF2JLuWYKEWuCxEKdCfzvOdUiR
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788287057; l=3071;
+ i=george.kokolakis.ece@gmail.com; s=kernel-20260901;
+ h=from:subject:message-id; bh=eB+R26itJ2JkTVFa+VyNE4Mw+wr0JpISWwRbkykFcQw=;
+ b=aSci7cGWGfRq3MarVunw1Msq3HGDWZbbRiXQRA3urKl1v3DbiAHzC4FBhgvUbWczAKlBytAdU
+ Lz8Shk+Jny/Ax6FZsxQ/UjkLuAKUTR/95kAdax752IRfkyvJn34lvEc
+X-Developer-Key: i=george.kokolakis.ece@gmail.com; a=ed25519;
+ pk=vZ27t8agUnF5GcuvLoIUzClMG59D0bvQE7GXXdwXJ9I=
+X-Endpoint-Received: by B4 Relay for george.kokolakis.ece@gmail.com/kernel-20260901 with auth_id=995
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Lynx PCS never supported 25GBASE-R. Add it, so that a 25G DPMAC on
-LX2160A can be driven by phylink.
+A Lenovo ThinkPad T14 Gen 5 (type 21ML) powers back on immediately
+after an orderly ACPI S5 shutdown.  This was reproduced with BIOS
+N47ET29W 1.18 and Ubuntu kernel 7.0.0-30-generic.
 
-The SerDes side had the mode since the commit
-  1cab8fba5073 ("phy: lynx-28g: add support for 25GBASER")
-and dpaa2-mac maps DPMAC_ETH_IF_CAUI to PHY_INTERFACE_MODE_25GBASER,
-but the PCS never handled it, so phylink_validate() failed with the
-interface.
+A standalone UEFI application invoking ResetSystem(EfiResetShutdown)
+leaves the same machine powered off.  A DMI-scoped test module that
+skips the ACPI S5 power-off preparation handler and invokes ResetSystem
+at the final sys-off stage also leaves it off during an ordinary
+userspace shutdown.
 
-25GBASE-R is a serial mode without clause-37 in-band autonegotiation,
-exactly like 10GBASE-R: it does not needs any configuration, its state
-is read with phylink_mii_c45_pcs_get_state(), and it reports
-LINK_INBAND_DISABLE.
+Mark ACPI S5 unusable for power-off on this model.  This makes the
+existing x86 EFI code register its higher-priority EFI shutdown handler.
+Do not register the two ACPI power-off handlers when the quirk is active,
+but retain ACPI S5 preparation for restart.
 
-phylink_mii_c45_pcs_get_state() is extended in the same patch because
-without it the link comes up reporting Unknown/Unknown.
-
-Suggested-by: Ioana Ciornei <ioana.ciornei@nxp.com>
-Co-developed-by: Ioana Ciornei <ioana.ciornei@nxp.com>
-Signed-off-by: Ioana Ciornei <ioana.ciornei@nxp.com>
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Link: https://bugs.launchpad.net/bugs/2162837
+Cc: stable@vger.kernel.org
+Signed-off-by: George Kokolakis <george.kokolakis.ece@gmail.com>
 ---
-Repost of the RFC now that net-next has reopened, rebased on net-next.
----
-Changes in v2:
-- Reword: this adds 25GBASE-R support, it does not fix a regression
-  (Ioana Ciornei)
-- Squash in the phylink_mii_c45_pcs_get_state() 25GBASER case, without
-  which the link comes up as Unknown/Unknown (Ioana Ciornei)
-- Link to v1: https://lore.kernel.org/r/20260825-for-upstream-lynx-25gbaser-v1-v1-1-fd71c8047798@free.fr
----
- drivers/net/pcs/pcs-lynx.c | 6 +++++-
- drivers/net/phy/phylink.c  | 5 +++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+ drivers/acpi/sleep.c | 30 +++++++++++++++++++++++-------
+ 1 file changed, 23 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/net/pcs/pcs-lynx.c b/drivers/net/pcs/pcs-lynx.c
-index a92081560e641..da4f99059eef7 100644
---- a/drivers/net/pcs/pcs-lynx.c
-+++ b/drivers/net/pcs/pcs-lynx.c
-@@ -46,6 +46,7 @@ static unsigned int lynx_pcs_inband_caps(struct phylink_pcs *pcs,
- 		return LINK_INBAND_DISABLE | LINK_INBAND_ENABLE;
+diff --git a/drivers/acpi/sleep.c b/drivers/acpi/sleep.c
+index 132a9df984..d14833eb59 100644
+--- a/drivers/acpi/sleep.c
++++ b/drivers/acpi/sleep.c
+@@ -27,7 +27,7 @@
+ #include "sleep.h"
  
- 	case PHY_INTERFACE_MODE_10GBASER:
-+	case PHY_INTERFACE_MODE_25GBASER:
- 		return LINK_INBAND_DISABLE;
+ /*
+- * Some HW-full platforms do not have _S5, so they may need
++ * Some HW-full platforms do not have a usable _S5, so they may need
+  * to leverage efi power off for a shutdown.
+  */
+ bool acpi_no_s5;
+@@ -173,6 +173,12 @@ static int __init init_default_s3(const struct dmi_system_id *d)
+ 	return 0;
+ }
  
- 	case PHY_INTERFACE_MODE_USXGMII:
-@@ -97,6 +98,7 @@ static void lynx_pcs_get_state(struct phylink_pcs *pcs, unsigned int neg_mode,
- 		lynx_pcs_get_state_usxgmii(lynx->mdio, state);
- 		break;
- 	case PHY_INTERFACE_MODE_10GBASER:
-+	case PHY_INTERFACE_MODE_25GBASER:
- 		phylink_mii_c45_pcs_get_state(lynx->mdio, state);
- 		break;
- 	default:
-@@ -188,7 +190,8 @@ static int lynx_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
- 		return lynx_pcs_config_usxgmii(lynx->mdio, ifmode, advertising,
- 					       neg_mode);
- 	case PHY_INTERFACE_MODE_10GBASER:
--		/* Nothing to do here for 10GBASER */
-+	case PHY_INTERFACE_MODE_25GBASER:
-+		/* Nothing to do here for 10GBASER and 25GBASER */
- 		break;
- 	default:
- 		return -EOPNOTSUPP;
-@@ -279,6 +282,7 @@ static const phy_interface_t lynx_interfaces[] = {
- 	PHY_INTERFACE_MODE_1000BASEX,
- 	PHY_INTERFACE_MODE_2500BASEX,
- 	PHY_INTERFACE_MODE_10GBASER,
-+	PHY_INTERFACE_MODE_25GBASER,
- 	PHY_INTERFACE_MODE_USXGMII,
- 	PHY_INTERFACE_MODE_10G_QXGMII,
- };
-diff --git a/drivers/net/phy/phylink.c b/drivers/net/phy/phylink.c
-index 3ec3bb4391095..ff4375f1e9108 100644
---- a/drivers/net/phy/phylink.c
-+++ b/drivers/net/phy/phylink.c
-@@ -4360,6 +4360,11 @@ void phylink_mii_c45_pcs_get_state(struct mdio_device *pcs,
- 		state->duplex = DUPLEX_FULL;
- 		break;
- 
-+	case PHY_INTERFACE_MODE_25GBASER:
-+		state->speed = SPEED_25000;
-+		state->duplex = DUPLEX_FULL;
-+		break;
++static int __init init_no_s5(const struct dmi_system_id *d)
++{
++	acpi_no_s5 = true;
++	return 0;
++}
 +
- 	default:
- 		break;
- 	}
+ static const struct dmi_system_id acpisleep_dmi_table[] __initconst = {
+ 	{
+ 	.callback = init_old_suspend_ordering,
+@@ -407,6 +413,14 @@ static const struct dmi_system_id acpisleep_dmi_table[] __initconst = {
+ 		DMI_MATCH(DMI_PRODUCT_NAME, "20GGA00L00"),
+ 		},
+ 	},
++	{
++	.callback = init_no_s5,
++	.ident = "Lenovo ThinkPad T14 Gen 5 (21ML)",
++	.matches = {
++		DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
++		DMI_MATCH(DMI_PRODUCT_NAME, "21ML"),
++		},
++	},
+ 	{},
+ };
+ 
+@@ -1117,13 +1131,15 @@ int __init acpi_sleep_init(void)
+ 	if (acpi_sleep_state_supported(ACPI_STATE_S5)) {
+ 		sleep_states[ACPI_STATE_S5] = 1;
+ 
+-		register_sys_off_handler(SYS_OFF_MODE_POWER_OFF_PREPARE,
+-					 SYS_OFF_PRIO_FIRMWARE,
+-					 acpi_power_off_prepare, NULL);
++		if (!acpi_no_s5) {
++			register_sys_off_handler(SYS_OFF_MODE_POWER_OFF_PREPARE,
++						 SYS_OFF_PRIO_FIRMWARE,
++						 acpi_power_off_prepare, NULL);
+ 
+-		register_sys_off_handler(SYS_OFF_MODE_POWER_OFF,
+-					 SYS_OFF_PRIO_FIRMWARE,
+-					 acpi_power_off, NULL);
++			register_sys_off_handler(SYS_OFF_MODE_POWER_OFF,
++						 SYS_OFF_PRIO_FIRMWARE,
++						 acpi_power_off, NULL);
++		}
+ 
+ 		/*
+ 		 * Windows uses S5 for reboot, so some BIOSes depend on it to
 
 ---
-base-commit: c8ea08ba34f2a2e9bfb18ff3d69eb2d69b324f49
-change-id: 20260825-for-upstream-lynx-25gbaser-v1-30097d909d09
+base-commit: 786262be6048deab760f68c8acc2c85607165894
+change-id: 20260901-fix-thinkpad-t14-gen5-efi-poweroff-878a3c4da5a5
 
 Best regards,
 -- 
-Vincent Jardin <vjardin@free.fr>
+George Kokolakis <george.kokolakis.ece@gmail.com>
 
