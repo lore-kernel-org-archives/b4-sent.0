@@ -1,10 +1,10 @@
 From: Ke Sun <sunke@kylinos.cn>
-Date: Wed, 02 Sep 2026 00:09:03 +0800
-Subject: [PATCH 4/9] drm/tyr: add per-file VM pool
+Date: Wed, 02 Sep 2026 00:09:04 +0800
+Subject: [PATCH 5/9] drm/tyr: add user and MCU VM specifications
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-tyr-ioctls-v1-4-e0fdbf8bd108@kylinos.cn>
+Message-Id: <20260902-tyr-ioctls-v1-5-e0fdbf8bd108@kylinos.cn>
 References: <20260902-tyr-ioctls-v1-0-e0fdbf8bd108@kylinos.cn>
 In-Reply-To: <20260902-tyr-ioctls-v1-0-e0fdbf8bd108@kylinos.cn>
 To: rust-for-linux@vger.kernel.org
@@ -24,11 +24,11 @@ Cc: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
  linux-mm@kvack.org, dri-devel@lists.freedesktop.org, 
  Ke Sun <sunke@kylinos.cn>, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788278954; l=3857;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788278954; l=8800;
  i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
- bh=GYNt5fASDjvzxxgWZLDWPIxhdkvjI20iaVSTTPTfRwI=;
- b=zNDRrCK4SuOMnUEDGOcfEfklYsW34X7DcrbeHuulWK+S9BJ2TEp/jQ1FknCrKMDLdreWsyCD/
- nGswWYrR5lrDce2bdKmuXNKhOd67JYC7lkzIJftaHcELHGgPGNrZ0Jc
+ bh=2SBxoqBj8xjU52eYLbPgv6zsg5Z424qq5hzSskCeA58=;
+ b=lEifaEgkXm0ISzMuvaMYK9zl3QonHu4Ce8AA/bVbkJGYW8WMBH2HIyuEvsXxAWmIWfPDVbBoj
+ eLgQpug/RpnDdEO2EW/ISHVRrGbp9azDFYpzPSfDrpgUdi2EC/LtyqA
 X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
@@ -36,135 +36,261 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Alvin Sun <alvin.sun@linux.dev>
 
-Add a per-file VM pool using the IdPool for ID allocation
-and an XArray for VM storage.
+Distinguish MCU VMs from user VMs, and compute the user/kernel
+GPU VA split for user VMs.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- drivers/gpu/drm/tyr/pool.rs | 102 ++++++++++++++++++++++++++++++++++++++++++++
- drivers/gpu/drm/tyr/tyr.rs  |   1 +
- 2 files changed, 103 insertions(+)
+ drivers/gpu/drm/tyr/fw.rs |   8 +--
+ drivers/gpu/drm/tyr/vm.rs | 134 +++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 131 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/gpu/drm/tyr/pool.rs b/drivers/gpu/drm/tyr/pool.rs
-new file mode 100644
-index 0000000000000..1745116930c3e
---- /dev/null
-+++ b/drivers/gpu/drm/tyr/pool.rs
-@@ -0,0 +1,102 @@
-+// SPDX-License-Identifier: GPL-2.0 or MIT
-+
-+//! Per-drm-file VM id pool.
-+
-+use kernel::{
-+    id_pool::IdPool,
-+    new_mutex,
-+    prelude::*,
-+    sync::{
-+        Arc,
-+        ArcBorrow,
-+        Mutex, //
-+    },
-+    xarray::{
-+        AllocKind,
-+        XArray, //
+diff --git a/drivers/gpu/drm/tyr/fw.rs b/drivers/gpu/drm/tyr/fw.rs
+index 47d25c901bd01..9b4b488521b85 100644
+--- a/drivers/gpu/drm/tyr/fw.rs
++++ b/drivers/gpu/drm/tyr/fw.rs
+@@ -51,7 +51,6 @@
+         KernelBoVaAlloc, //
+     },
+     gpu::GpuInfo,
+-
+     mmu::Mmu,
+     regs::{
+         gpu_control::{
+@@ -66,7 +65,10 @@
+             JOB_IRQ_RAWSTAT, //
+         }, //
+     },
+-    vm::Vm, //
++    vm::{
++        Vm,
++        VmSpec, //
 +    }, //
-+};
-+
-+use crate::vm::Vm;
-+
-+/// Maximum number of VMs per open file. Matches panthor's
-+/// `PANTHOR_MAX_VMS_PER_FILE`.
-+pub(crate) const PANTHOR_MAX_VMS_PER_FILE: u32 = 32;
-+
-+/// Per-open-file pool of VMs.
-+#[pin_data]
-+pub(crate) struct VmPool<'drm> {
-+    #[pin]
-+    ids: Mutex<IdPool>,
-+    #[pin]
-+    vms: XArray<Arc<Vm<'drm>>>,
+ };
+ 
+ mod parser;
+@@ -220,7 +222,7 @@ pub(crate) fn new(
+         mmu: ArcBorrow<'_, Mmu<'drm>>,
+         gpu_info: &GpuInfo,
+     ) -> Result<Firmware<'drm>> {
+-        let vm = Vm::new(dev, ddev, mmu, gpu_info)?;
++        let vm = Vm::new(dev, ddev, mmu, gpu_info, VmSpec::Mcu)?;
+         vm.activate()?;
+ 
+         let result = (|| {
+diff --git a/drivers/gpu/drm/tyr/vm.rs b/drivers/gpu/drm/tyr/vm.rs
+index c5e307b1e2416..76c3d60bb2fe2 100644
+--- a/drivers/gpu/drm/tyr/vm.rs
++++ b/drivers/gpu/drm/tyr/vm.rs
+@@ -8,6 +8,7 @@
+ //! mapped into hardware address space (AS) slots for GPU execution.
+ 
+ use core::marker::PhantomData;
++use core::num::NonZeroU64;
+ use core::ops::Range;
+ 
+ use kernel::{
+@@ -43,6 +44,8 @@
+     new_mutex,
+     prelude::*,
+     sizes::{
++        LargeSizeConstants,
++        SizeConstants,
+         SZ_1G,
+         SZ_2M,
+         SZ_4K, //
+@@ -154,6 +157,109 @@ fn try_from(value: u32) -> Result<Self, Self::Error> {
+     }
+ }
+ 
++/// User VA size request for a user VM.
++pub(crate) enum UserVaRequest {
++    /// Split based on `task_size()` and the GPU VA range.
++    Auto,
++    /// Caller-specified size; construction guarantees `> 0`.
++    Fixed(NonZeroU64),
 +}
 +
-+impl<'drm> VmPool<'drm> {
-+    /// Creates a new [`VmPool`] with capacity for [`PANTHOR_MAX_VMS_PER_FILE`] VMs.
-+    pub(crate) fn new() -> Result<impl PinInit<Self>> {
-+        let ids = IdPool::with_capacity(PANTHOR_MAX_VMS_PER_FILE as usize, GFP_KERNEL)?;
-+        Ok(pin_init!(Self {
-+            ids <- new_mutex!(ids),
-+            vms <- XArray::new(AllocKind::Alloc),
-+        }))
++impl UserVaRequest {
++    /// UAPI boundary normalization: `0` -> [`Auto`](Self::Auto).
++    pub(crate) fn from_uapi(v: u64) -> Self {
++        match NonZeroU64::new(v) {
++            Some(size) => Self::Fixed(size),
++            None => Self::Auto,
++        }
++    }
++}
++
++pub(crate) enum VmSpec {
++    /// MCU/firmware VM, entirely kernel-managed.
++    Mcu,
++    /// User VM: full GPU VA range, split into user/kernel per `user_va`.
++    User { user_va: UserVaRequest },
++}
++
++/// Final user/kernel VA layout for a VM.
++pub(crate) struct VmLayout {
++    /// Full GPU VA range covered by this VM.
++    pub(crate) full: Range<u64>,
++    /// User-accessible VA range. Empty for MCU VMs.
++    pub(crate) user: Range<u64>,
++}
++
++impl VmLayout {
++    /// Kernel VA range, reserved for future kernel object allocation.
++    #[expect(dead_code)]
++    pub(crate) fn kernel(&self) -> Range<u64> {
++        self.user.end..self.full.end
 +    }
 +
-+    /// Inserts a VM into the pool, returning the allocated ID.
-+    pub(crate) fn add(&self, vm: ArcBorrow<'_, Vm<'drm>>) -> Result<u32> {
-+        let id = {
-+            let mut ids = self.ids.lock();
-+            ids.find_unused_id(1).ok_or(ENOSPC)?.acquire()
++    /// Compute a user/kernel split for a user VM from the full GPU VA range and
++    /// a user request.
++    pub(crate) fn compute(full: Range<u64>, req: UserVaRequest) -> Result<Self> {
++        /// Minimum VA space reserved for kernel objects (heaps, ring buffers, ...).
++        const MIN_KERNEL_VA: u64 = u64::SZ_256M;
++
++        if full.end <= MIN_KERNEL_VA {
++            pr_err!(
++                "Invalid VA range {:#x}..{:#x}, kernel VA min required: >{:#x}\n",
++                full.start,
++                full.end,
++                MIN_KERNEL_VA
++            );
++            return Err(EINVAL);
++        }
++
++        let user_max = full.end - MIN_KERNEL_VA;
++
++        let user_end = match req {
++            UserVaRequest::Fixed(v) => {
++                let user_size = v.get();
++                if user_size > user_max {
++                    pr_err!(
++                        "Requested user VA range {:#x} exceeds maximum {:#x}\n",
++                        user_size,
++                        user_max
++                    );
++                    return Err(EINVAL);
++                }
++                user_size
++            }
++            UserVaRequest::Auto => {
++                let task_size = current!().mm().map(|mm| mm.task_size());
++                let candidate = match task_size {
++                    // `task_size()` returns usize; widen to u64 for the comparison.
++                    Some(t) if (t as u64) < full.end => t as u64,
++                    None | Some(_) => {
++                        // If the range exceeds 4G, split it in two so CPU and
++                        // GPU share the same addresses (SVM).
++                        if full.end > u64::SZ_4G {
++                            full.end / 2
++                        } else {
++                            user_max
++                        }
++                    }
++                };
++                candidate.min(user_max)
++            }
 +        };
 +
-+        let vm: Arc<Vm<'drm>> = vm.into();
-+        let mut vms = self.vms.lock();
-+        match vms.store(id, vm, GFP_KERNEL) {
-+            Ok(previous) => {
-+                // Drop the previous entry (expected `None`).
-+                drop(previous);
-+                Ok(id as u32)
-+            }
-+            Err(err) => {
-+                // Drop the XArray spinlock before acquiring the `ids` mutex.
-+                drop(vms);
-+                // Release the stored entry and the pooled id.
-+                drop(err.value);
-+                let mut ids = self.ids.lock();
-+                ids.release_id(id);
-+                Err(err.error)
-+            }
-+        }
-+    }
++        let delta = full.end - user_end;
++        // Pick a kernel VA range that's a power of two, to have a clear split.
++        let kernel_va_range = 1u64 << delta.ilog2();
++        let kernel_va_start = full.end - kernel_va_range;
++        let full_start = full.start;
 +
-+    /// Removes the VM with the given ID.
-+    pub(crate) fn remove(&self, id: u32) -> Result<Arc<Vm<'drm>>> {
-+        let mut vms = self.vms.lock();
-+        match vms.remove(id as usize) {
-+            Some(vm) => {
-+                drop(vms);
-+                let mut ids = self.ids.lock();
-+                ids.release_id(id as usize);
-+                Ok(vm)
-+            }
-+            None => Err(EINVAL),
-+        }
-+    }
-+
-+    /// Gets the VM with the given ID.
-+    pub(crate) fn get(&self, id: u32) -> Option<Arc<Vm<'drm>>> {
-+        let vms = self.vms.lock();
-+        let borrow = vms.get(id as usize)?;
-+        Some(Arc::from(borrow))
-+    }
-+
-+    /// Removes and returns the first VM in the pool.
-+    pub(crate) fn pop_first(&self) -> Option<Arc<Vm<'drm>>> {
-+        for id in 0..PANTHOR_MAX_VMS_PER_FILE {
-+            if let Ok(vm) = self.remove(id) {
-+                return Some(vm);
-+            }
-+        }
-+        None
++        Ok(Self {
++            full,
++            user: full_start..kernel_va_start,
++        })
 +    }
 +}
-diff --git a/drivers/gpu/drm/tyr/tyr.rs b/drivers/gpu/drm/tyr/tyr.rs
-index e7ec450bdc9c0..8c0c18c1a970b 100644
---- a/drivers/gpu/drm/tyr/tyr.rs
-+++ b/drivers/gpu/drm/tyr/tyr.rs
-@@ -13,6 +13,7 @@
- mod gem;
- mod gpu;
- mod mmu;
-+mod pool;
- mod regs;
- mod slot;
- mod vm;
++
+ /// Arguments for a virtual memory map operation.
+ struct VmMapArgs<'drm> {
+     /// Access permissions and caching behavior for the mapping.
+@@ -329,8 +435,8 @@ pub(crate) struct Vm<'drm> {
+     /// Non-core part of the GPUVM. Can be used for stuff that doesn't modify the
+     /// internal mapping tree, like GpuVm::obtain()
+     gpuvm: ARef<GpuVm<GpuVmData<'drm>>>,
+-    /// VA range for this VM.
+-    va_range: Range<u64>,
++    /// VA layout for this VM.
++    pub(crate) layout: VmLayout,
+ }
+ 
+ impl<'drm> Vm<'drm> {
+@@ -343,6 +449,7 @@ pub(crate) fn new(
+         ddev: &TyrDrmDevice,
+         mmu: ArcBorrow<'_, Mmu<'drm>>,
+         gpu_info: &GpuInfo,
++        spec: VmSpec,
+     ) -> Result<Arc<Vm<'drm>>> {
+         let mmu_features = MMU_FEATURES::from_raw(gpu_info.mmu_features);
+         let va_bits = mmu_features.va_bits().get();
+@@ -351,6 +458,14 @@ pub(crate) fn new(
+         let range = 0..(1u64 << va_bits);
+         let reserve_range = 0..0u64;
+ 
++        let layout = match spec {
++            VmSpec::Mcu => VmLayout {
++                full: range.clone(),
++                user: 0..0u64,
++            },
++            VmSpec::User { user_va } => VmLayout::compute(range.clone(), user_va)?,
++        };
++
+         // dummy_obj is used to initialize the GPUVM tree.
+         let dummy_obj = gem::new_dummy_object(ddev).inspect_err(|e| {
+             dev_err!(dev, "Failed to create dummy GEM object: {:?}", e);
+@@ -380,7 +495,7 @@ pub(crate) fn new(
+                 mmu: mmu.into(),
+                 gpuvm,
+                 gpuvm_unique <- new_mutex!(gpuvm_unique),
+-                va_range: range,
++                layout,
+             }),
+             GFP_KERNEL,
+         )?;
+@@ -414,7 +529,10 @@ pub(crate) fn kill(&self) {
+         // TODO: Turn the VM into a state where it can't be used.
+         let _ = self.deactivate();
+         let _ = self
+-            .unmap_range(self.va_range.start, self.va_range.end - self.va_range.start)
++            .unmap_range(
++                self.layout.full.start,
++                self.layout.full.end - self.layout.full.start,
++            )
+             .inspect_err(|e| {
+                 dev_err!(self.dev, "Failed to unmap range during deactivate: {:?}", e);
+             });
+@@ -551,14 +669,14 @@ pub(crate) fn unmap_range(&self, va: u64, size: u64) -> Result {
+ 
+         let end = va.checked_add(size).ok_or(EINVAL)?;
+ 
+-        if va < self.va_range.start || end > self.va_range.end {
++        if va < self.layout.full.start || end > self.layout.full.end {
+             dev_err!(
+                 self.dev,
+                 "Unmap range {:#x}..{:#x} exceeds VM range {:#x}..{:#x}",
+                 va,
+                 end,
+-                self.va_range.start,
+-                self.va_range.end
++                self.layout.full.start,
++                self.layout.full.end
+             );
+             return Err(EINVAL);
+         }
+@@ -568,7 +686,7 @@ pub(crate) fn unmap_range(&self, va: u64, size: u64) -> Result {
+             region: va..end,
+         };
+ 
+-        let full_vm = va == self.va_range.start && end == self.va_range.end;
++        let full_vm = va == self.layout.full.start && end == self.layout.full.end;
+ 
+         let mut resources = VmOpResources {
+             preallocated_gpuvas: if full_vm {
 
 -- 
 2.43.0
