@@ -1,93 +1,269 @@
-From: Alon Shakevsky <shakevsky@berkeley.edu>
-Date: Tue, 01 Sep 2026 00:05:31 +0000
-Subject: [PATCH] ksmbd: validate COPYCHUNK source and target ranges
+From: Bingfang Guo <bingfangguo@tencent.com>
+Date: Tue, 01 Sep 2026 14:49:11 +0800
+Subject: [PATCH v2] mm/memcg: clear folio memcg after changing per memcg
+ stats
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-review-ksmbd-copychunk-offsets-v2-v1-1-4a7f598eb9c9@berkeley.edu>
-X-B4-Tracking: v=1; b=H4sIAMoWlmoC/yXNywqDMBCF4VeRWXcgCSVoX6V0UZNJnUoTyXipi
- O9ubJcfHP6zgVBmErhVG2SaWTjFAn2pwHXP+CJkXwxGGasapfEc0YK9fFqPLg2r66bYYwpBaBS
- cDSprbK29b641QekMmQJ/fx/3x98ytW9y4xmGfT8Ad8NK+4UAAAA=
-X-Change-ID: 20260901-review-ksmbd-copychunk-offsets-v2-062681dd948e
-To: Namjae Jeon <linkinjeon@kernel.org>
-Cc: Sergey Senozhatsky <senozhatsky@chromium.org>, 
- ChenXiaoSong <chenxiaosong@chenxiaosong.com>, linux-kernel@vger.kernel.org, 
- linux-cifs@vger.kernel.org, Tom Talpey <tom@talpey.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788221130; l=2533;
- i=shakevsky@berkeley.edu; s=20260829; h=from:subject:message-id;
- bh=zk9ntSxK6KH2GBnQw9ciD278sqGKtMWF34uLWFj0peY=;
- b=yQA1yMpddtk2egLqVHUYN9brG83RmkSNGDeABt7kbCc/rFdF0Pl7zbbN/CwWszVWRlgfpuyxQ
- 8MYJPOjQWenDntrG3a+c5HxEROmx4fRFLOTRfeJRyEh5MpcRpDeqM8w
-X-Developer-Key: i=shakevsky@berkeley.edu; a=ed25519;
- pk=yWZAM5+fHWudgjDI2F4zjbrSoHRSkvQ4pqpdyFWJUis=
-X-Endpoint-Received: by B4 Relay for shakevsky@berkeley.edu/20260829 with auth_id=987
+Message-Id: <20260901-memcg-swapcache-stats-fix-v2-1-9caad330459b@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAGZ1lmoC/32NwQqDMBBEf0X23C0mgqQ99T+Kh2RdNQejZENsE
+ f+9qfRc5vQG5s0OwtGzwL3aIXL24pdQQF8qoMmGkdH3hUHXuq2NNjjzTCPKZleyNDFKsklw8C9
+ Ujnloemrs4KDs18ilPt3PrvDkJS3xfV5l9W1/1kb9sWaFJVQbdWPXO9M+EgfikK60zNAdx/EBV
+ /EG3cQAAAA=
+To: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
+ Kairui Song <kasong@tencent.com>, Kemeng Shi <shikemeng@huaweicloud.com>, 
+ Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
+ Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
+ David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
+ Lorenzo Stoakes <ljs@kernel.org>, Bingfang Guo <bfguo@icloud.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Bingfang Guo <bingfangguo@tencent.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788245363; l=7992;
+ i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
+ bh=4FztJIrokZHGN2SlXXzmWENVmLBTnEVTBI5yiE1+1VQ=;
+ b=DiK5n7qAly2OitjlWEKUNrJhfm6FISgJap/2n5ed6BgAJEOSzjG6/k8IEIZJjx/oAnldr5O4V
+ x50SbV7azrsAjXMbu4PFAlC5dzGpjQKLAuHd1zd5krNpG+4lwBUsy2h
+X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
+ pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
+X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ksmbd_vfs_copy_file_ranges() rejects negative source offsets in the
-copy loop, but it does not validate target offsets. It also calculates
-lock and overlap endpoints before ensuring that either range fits within
-MAX_LFS_FILESIZE.
+I notice extremely high swapcached count in the per memcg level
+memory.stat when running tests with cgroupv1 setup by swapping pages in
+and out.  It seems that the counter never gets decreased so the value is
+rather useless and confusing to users reading it. So I think fixing it
+so that the value can reflect the actual swapcache usage correctly could
+be helpful.
 
-When the target is an alternate data stream, the buffered path passes a
-negative target offset to ksmbd_vfs_stream_write(). Let n be Length and
-let -d be TargetOffset, where 0 < d < n <= XATTR_SIZE_MAX. For an empty
-stream, the writer allocates n - d bytes, then copies n bytes starting d
-bytes before the allocation. An authenticated SMB client can control d
-and the source data, overwrite kernel heap memory, and crash the host.
+__memcg1_swapout() transfers the memsw charge of a folio to its swap
+entry and clears folio->memcg_data as part of that.  In the vmscan
+swapout path it runs before __swap_cache_del_folio(), which then
+decrements the swapcache stats through lruvec_stat_mod_folio().  Since
+folio->memcg_data has already been cleared, folio_memcg() returns NULL
+and the NR_SWAPCACHE decrement only updates the node-level counter
+instead of the memcg's lruvec, leaking the per-memcg swapcache count.
 
-Validate both ranges before lock, overlap, or I/O calculations.
+Move the __memcg1_swapout() call into __swap_cache_del_folio(), after
+the NR_FILE_PAGES and NR_SWAPCACHE updates but before
+__swap_cache_do_del_folio() removes the folio from the swap cache.  This
+keeps the stats attributed to the folio's memcg while still recording
+the swap cgroup with a valid folio->swap.  Add a swapout parameter so
+the plain swap_cache_del_folio() path is left unchanged.
 
-Fixes: 8482150a0743 ("ksmbd: support copychunk for alternate data streams")
-Assisted-by: Antiproof:GPT-5.6-Sol
-Signed-off-by: Alon Shakevsky <shakevsky@berkeley.edu>
+Fixes: b197d41462c20 ("mm/memcg, swap: store cgroup id in cluster table directly")
+Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
- fs/smb/server/vfs.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+The problem is reproducible using the following script and program:
 
-diff --git a/fs/smb/server/vfs.c b/fs/smb/server/vfs.c
-index 35123550a5535..3a6f3139c6f52 100644
---- a/fs/smb/server/vfs.c
-+++ b/fs/smb/server/vfs.c
-@@ -2009,6 +2009,11 @@ static ssize_t ksmbd_vfs_copy_file_range_buffered(struct ksmbd_work *work,
- 	return ret;
+```
+#!/bin/bash
+set -e
+
+CG=/sys/fs/cgroup/memory/swapcache-leak-test
+SIZE=$((256 * 1024 * 1024))   # 256 MiB of anon memory
+
+[ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
+grep -q . /proc/swaps <<<"$(tail -n +2 /proc/swaps)" || { echo "no swap active; run: swapon <dev>"; exit 1; }
+
+cleanup() { rmdir "$CG" 2>/dev/null || true; }
+trap cleanup EXIT
+
+cc -O2 swapout.c -o swapout
+
+mkdir -p "$CG"
+echo "+memory" > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
+
+echo "== before reclaim =="
+grep -E '^(swapcached|anon) ' "$CG/memory.stat"
+
+# Put ourselves in the cgroup, allocate & touch anon memory, then wait to be reclaimed.
+(
+        echo $BASHPID > "$CG/cgroup.procs"
+        # Allocate and dirty SIZE bytes of anonymous memory.
+        ./swapout
+) &
+WORKER=$!
+sleep 2
+
+echo "== after reclaim (swap cache should drain to ~0) =="
+grep -E '^(swapcached|anon) ' "$CG/memory.stat"
+
+SWAPCACHED=$(awk '/^swapcached /{print $2}' "$CG/memory.stat")
+echo
+if [ "$SWAPCACHED" -gt $((1024 * 1024)) ]; then
+        echo "LEAK DETECTED: swapcached = $SWAPCACHED bytes (expected ~0)  [BUGGY kernel]"
+        RC=1
+else
+        echo "OK: swapcached = $SWAPCACHED bytes  [FIXED kernel]"
+        RC=0
+fi
+
+kill "$WORKER" 2>/dev/null || true
+wait "$WORKER" 2>/dev/null || true
+exit $RC
+```
+
+swapout.c:
+```
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
+int main(int argc, char **argv)
+{
+        size_t mib = (argc > 1) ? strtoul(argv[1], NULL, 10) : 256;
+        size_t size = mib * 1024UL * 1024UL;
+        long page = sysconf(_SC_PAGESIZE);
+        char *buf;
+        size_t i;
+
+        buf = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (buf == MAP_FAILED) {
+                perror("mmap");
+                return 1;
+        }
+
+        /* Fault in and dirty every page so it becomes reclaimable anon. */
+        for (i = 0; i < size; i += page)
+                buf[i] = 1;
+
+        printf("allocated and dirtied %zu MiB, paging out...\n", mib);
+
+        /* Force the whole range out to swap. */
+        if (madvise(buf, size, MADV_PAGEOUT)) {
+                perror("madvise(MADV_PAGEOUT)");
+                return 1;
+        }
+
+        /* Give reclaim a moment, then stay alive so the cgroup can be inspected. */
+        printf("paged out; sleeping so memory.stat can be read. pid=%d\n", getpid());
+        sleep(30);
+
+        munmap(buf, size);
+        return 0;
+}
+```
+
+Test result:
+
+before:
+```
+== before reclaim ==
+swapcached 0
+allocated and dirtied 256 MiB, paging out...
+paged out; sleeping so memory.stat can be read. pid=4778
+== after reclaim (swap cache should drain to ~0) ==
+swapcached 268435456
+
+LEAK DETECTED: swapcached = 268435456 bytes (expected ~0)  [BUGGY kernel]
+```
+
+after the patch:
+```
+== before reclaim ==
+swapcached 0
+allocated and dirtied 256 MiB, paging out...
+paged out; sleeping so memory.stat can be read. pid=2601
+== after reclaim (swap cache should drain to ~0) ==
+swapcached 0
+
+OK: swapcached = 0 bytes  [FIXED kernel]
+```
+---
+Changes in v2:
+- Update the commit message to describe the problem in the beginnning.
+- Change function declaration for !CONFIG_SWAP as well.
+- Link to v1: https://lore.kernel.org/r/20260831-memcg-swapcache-stats-fix-v1-1-1c0819ebdb86@tencent.com
+---
+ mm/swap.h       |  6 ++++--
+ mm/swap_state.c | 10 +++++++---
+ mm/vmscan.c     |  3 +--
+ 3 files changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/mm/swap.h b/mm/swap.h
+index 0b5d507739bcb..b3b54c28929a1 100644
+--- a/mm/swap.h
++++ b/mm/swap.h
+@@ -319,7 +319,8 @@ struct folio *swap_cache_alloc_folio(swp_entry_t target_entry, gfp_t gfp_mask,
+ void __swap_cache_add_folio(struct swap_cluster_info *ci,
+ 			    struct folio *folio, swp_entry_t entry);
+ void __swap_cache_del_folio(struct swap_cluster_info *ci,
+-			    struct folio *folio, swp_entry_t entry, void *shadow);
++			    struct folio *folio, swp_entry_t entry, void *shadow,
++			    bool swapout);
+ void __swap_cache_replace_folio(struct swap_cluster_info *ci,
+ 				struct folio *old, struct folio *new);
+ 
+@@ -452,7 +453,8 @@ static inline void swap_cache_del_folio(struct folio *folio)
  }
  
-+static bool ksmbd_vfs_copy_range_valid(loff_t offset, size_t len)
-+{
-+	return offset >= 0 && (loff_t)len <= MAX_LFS_FILESIZE - offset;
-+}
+ static inline void __swap_cache_del_folio(struct swap_cluster_info *ci,
+-		struct folio *folio, swp_entry_t entry, void *shadow)
++		struct folio *folio, swp_entry_t entry, void *shadow,
++		bool swapout)
+ {
+ }
+ 
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index 305877e1f4d7b..9e0684166b78a 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -314,13 +314,17 @@ static void __swap_cache_do_del_folio(struct swap_cluster_info *ci,
+  * using the index of @entry, and lock the cluster that holds the entries.
+  */
+ void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
+-			    swp_entry_t entry, void *shadow)
++			    swp_entry_t entry, void *shadow, bool swapout)
+ {
+ 	unsigned long nr_pages = folio_nr_pages(folio);
+ 
+-	__swap_cache_do_del_folio(ci, folio, entry, shadow);
+ 	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
+ 	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
 +
- int ksmbd_vfs_copy_file_ranges(struct ksmbd_work *work,
- 			       struct ksmbd_file *src_fp,
- 			       struct ksmbd_file *dst_fp,
-@@ -2044,6 +2049,10 @@ int ksmbd_vfs_copy_file_ranges(struct ksmbd_work *work,
- 			dst_off = le64_to_cpu(chunks[i].TargetOffset);
- 			len = le32_to_cpu(chunks[i].Length);
- 
-+			if (!ksmbd_vfs_copy_range_valid(src_off, len) ||
-+			    !ksmbd_vfs_copy_range_valid(dst_off, len))
-+				return -E2BIG;
++	if (swapout)
++		__memcg1_swapout(folio, ci);
 +
- 			if (check_lock_range(src_fp->filp, src_off,
- 					     src_off + len - 1, READ))
- 				return -EAGAIN;
-@@ -2136,7 +2145,8 @@ int ksmbd_vfs_copy_file_ranges(struct ksmbd_work *work,
- 		len = le32_to_cpu(chunks[i].Length);
- 		copy_len = len;
++	__swap_cache_do_del_folio(ci, folio, entry, shadow);
+ }
  
--		if (src_off < 0)
-+		if (!ksmbd_vfs_copy_range_valid(src_off, len) ||
-+		    !ksmbd_vfs_copy_range_valid(dst_off, len))
- 			return -E2BIG;
+ /**
+@@ -339,7 +343,7 @@ void swap_cache_del_folio(struct folio *folio)
+ 	swp_entry_t entry = folio->swap;
  
- 		if (src_off > src_file_size || len > src_file_size - src_off) {
+ 	ci = swap_cluster_lock(__swap_entry_to_info(entry), swp_offset(entry));
+-	__swap_cache_del_folio(ci, folio, entry, NULL);
++	__swap_cache_del_folio(ci, folio, entry, NULL, false);
+ 	swap_cluster_unlock(ci);
+ 
+ 	folio_ref_sub(folio, folio_nr_pages(folio));
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index b4c9b8f3dfe99..af7dfa905cb50 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -735,8 +735,7 @@ static int __remove_mapping(struct address_space *mapping, struct folio *folio,
+ 
+ 		if (reclaimed && !mapping_exiting(mapping))
+ 			shadow = workingset_eviction(folio, target_memcg);
+-		__memcg1_swapout(folio, ci);
+-		__swap_cache_del_folio(ci, folio, swap, shadow);
++		__swap_cache_del_folio(ci, folio, swap, shadow, true);
+ 		swap_cluster_unlock_irq(ci);
+ 	} else {
+ 		void (*free_folio)(struct folio *);
 
 ---
-base-commit: e53a23f960a10bf85ed2c9dbe0c1fc7d09c077ae
-change-id: 20260901-review-ksmbd-copychunk-offsets-v2-062681dd948e
+base-commit: 88297631d4d42f6004cb39c0ba3da7d2d10a616f
+change-id: 20260828-memcg-swapcache-stats-fix-1beef3dc3afb
 
 Best regards,
---  
-Alon Shakevsky <shakevsky@berkeley.edu>
+-- 
+Bingfang Guo <bingfangguo@tencent.com>
 
