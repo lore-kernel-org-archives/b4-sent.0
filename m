@@ -1,118 +1,119 @@
-From: George Kokolakis <george.kokolakis.ece@gmail.com>
-Date: Tue, 01 Sep 2026 21:24:14 +0300
-Subject: [PATCH] ACPI: PM: Use EFI power off on Lenovo ThinkPad T14 Gen 5
+From: Vincent Jardin <vjardin@free.fr>
+Date: Tue, 01 Sep 2026 22:04:37 +0200
+Subject: [PATCH] bus: fsl-mc: register the object drivers after misc_class
+ exists
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260901-fix-thinkpad-t14-gen5-efi-poweroff-v1-1-7f766dc13ee9@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAE0Yl2oC/x2NywqEMAwAf0VyNtC61tevLHsINtUgtKUVVxD/3
- eJxGJi5IHMSzjBVFyQ+JEvwBXRdwbySXxjFFoZGNZ0alUYnJ+6r+C2SxV23uLA3yE4whj+n4Bw
- O/UCfubVkyEAJxVT0+U6+v/t+AEHMSI90AAAA
-To: rafael@kernel.org
-Cc: lenb@kernel.org, linux-acpi@vger.kernel.org, 
- linux-kernel@vger.kernel.org
+Message-Id: <20260901-for-upstream-fsl-mc-initcall-order-v1-1-36ffe48f767d@free.fr>
+X-B4-Tracking: v=1; b=H4sIANQvl2oC/x3NwQrCMAyA4VcZORtoU5jMVxEPtUs10LUj2UQYe
+ 3eLx+/y/wcYq7DBbThA+SMmrXb4ywDpHeuLUeZuIEejm4gwN8V9tU05Lpit4JJQqmwploJNZ1b
+ kEPwYJnf19IQeWpWzfP+T++M8f6bGI1F0AAAA
+To: Ioana Ciornei <ioana.ciornei@nxp.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
+Cc: Laurentiu Tudor <laurentiu.tudor@nxp.com>, 
+ linuxppc-dev@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, stable+noautosel@kernel.org, 
+ Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788287057; l=3071;
- i=george.kokolakis.ece@gmail.com; s=kernel-20260901;
- h=from:subject:message-id; bh=eB+R26itJ2JkTVFa+VyNE4Mw+wr0JpISWwRbkykFcQw=;
- b=aSci7cGWGfRq3MarVunw1Msq3HGDWZbbRiXQRA3urKl1v3DbiAHzC4FBhgvUbWczAKlBytAdU
- Lz8Shk+Jny/Ax6FZsxQ/UjkLuAKUTR/95kAdax752IRfkyvJn34lvEc
-X-Developer-Key: i=george.kokolakis.ece@gmail.com; a=ed25519;
- pk=vZ27t8agUnF5GcuvLoIUzClMG59D0bvQE7GXXdwXJ9I=
-X-Endpoint-Received: by B4 Relay for george.kokolakis.ece@gmail.com/kernel-20260901 with auth_id=995
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788293080; l=2613;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=SXlMvnAA+Yv9aOr3bof+GHsV/62VSrRffjRMXK6jUP8=;
+ b=Q0DNQlW6k/74/YvmvMnm7KR6URJ1LrX/mfYfTlKrZ73dg+vhupeXaUuRo+NA7LhYlLA4RULEh
+ Bl42jSLrySdALA0c54lYp2NUpW7m/nPrOleoqbafewj1sO6QtpbR7ZC
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A Lenovo ThinkPad T14 Gen 5 (type 21ML) powers back on immediately
-after an orderly ACPI S5 shutdown.  This was reproduced with BIOS
-N47ET29W 1.18 and Ubuntu kernel 7.0.0-30-generic.
+Unbinding and re-binding the root DPRC fails with:
 
-A standalone UEFI application invoking ResetSystem(EfiResetShutdown)
-leaves the same machine powered off.  A DMI-scoped test module that
-skips the ACPI S5 power-off preparation handler and invokes ResetSystem
-at the final sys-off stage also leaves it off during an ordinary
-userspace shutdown.
+  sysfs: cannot create duplicate filename '/dev/char/10:256'
+    misc_register / fsl_mc_uapi_create_device_file /
+    dprc_setup / dprc_probe
 
-Mark ACPI S5 unusable for power-off on this model.  This makes the
-existing x86 EFI code register its higher-priority EFI shutdown handler.
-Do not register the two ACPI power-off handlers when the quirk is active,
-but retain ACPI S5 preparation for restart.
-
-Link: https://bugs.launchpad.net/bugs/2162837
-Cc: stable@vger.kernel.org
-Signed-off-by: George Kokolakis <george.kokolakis.ece@gmail.com>
+Cc: stable+noautosel@kernel.org # niche: root DPRC unbind/rebind only
+Fixes: 2cf1e703f066 ("bus: fsl-mc: add fsl-mc userspace support")
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/acpi/sleep.c | 30 +++++++++++++++++++++++-------
- 1 file changed, 23 insertions(+), 7 deletions(-)
+Issue found when unbinding/rebinding the root DPRC on an LX2160A.
 
-diff --git a/drivers/acpi/sleep.c b/drivers/acpi/sleep.c
-index 132a9df984..d14833eb59 100644
---- a/drivers/acpi/sleep.c
-+++ b/drivers/acpi/sleep.c
-@@ -27,7 +27,7 @@
- #include "sleep.h"
+The failure is silent at bind time and only shows up as a
+duplicate /dev/char entry on the second bind.
+---
+ drivers/bus/fsl-mc/fsl-mc-bus.c | 40 ++++++++++++++++++++++++----------------
+ 1 file changed, 24 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/bus/fsl-mc/fsl-mc-bus.c b/drivers/bus/fsl-mc/fsl-mc-bus.c
+index 66a4fa73c5b86..7f283844e4500 100644
+--- a/drivers/bus/fsl-mc/fsl-mc-bus.c
++++ b/drivers/bus/fsl-mc/fsl-mc-bus.c
+@@ -1264,35 +1264,43 @@ static int __init fsl_mc_bus_driver_init(void)
+ 	error = bus_register(&fsl_mc_bus_type);
+ 	if (error < 0) {
+ 		pr_err("bus type registration failed: %d\n", error);
+-		goto error_cleanup_cache;
++		return error;
+ 	}
  
- /*
-- * Some HW-full platforms do not have _S5, so they may need
-+ * Some HW-full platforms do not have a usable _S5, so they may need
-  * to leverage efi power off for a shutdown.
-  */
- bool acpi_no_s5;
-@@ -173,6 +173,12 @@ static int __init init_default_s3(const struct dmi_system_id *d)
- 	return 0;
- }
- 
-+static int __init init_no_s5(const struct dmi_system_id *d)
-+{
-+	acpi_no_s5 = true;
-+	return 0;
-+}
+-	error = platform_driver_register(&fsl_mc_bus_driver);
+-	if (error < 0) {
+-		pr_err("platform_driver_register() failed: %d\n", error);
++	error = bus_register_notifier(&platform_bus_type, &fsl_mc_nb);
++	if (error < 0)
+ 		goto error_cleanup_bus;
+-	}
 +
- static const struct dmi_system_id acpisleep_dmi_table[] __initconst = {
- 	{
- 	.callback = init_old_suspend_ordering,
-@@ -407,6 +413,14 @@ static const struct dmi_system_id acpisleep_dmi_table[] __initconst = {
- 		DMI_MATCH(DMI_PRODUCT_NAME, "20GGA00L00"),
- 		},
- 	},
-+	{
-+	.callback = init_no_s5,
-+	.ident = "Lenovo ThinkPad T14 Gen 5 (21ML)",
-+	.matches = {
-+		DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
-+		DMI_MATCH(DMI_PRODUCT_NAME, "21ML"),
-+		},
-+	},
- 	{},
- };
++	return 0;
++
++error_cleanup_bus:
++	bus_unregister(&fsl_mc_bus_type);
++	return error;
++}
++postcore_initcall(fsl_mc_bus_driver_init);
++
++static int __init fsl_mc_bus_drivers_init(void)
++{
++	int error;
  
-@@ -1117,13 +1131,15 @@ int __init acpi_sleep_init(void)
- 	if (acpi_sleep_state_supported(ACPI_STATE_S5)) {
- 		sleep_states[ACPI_STATE_S5] = 1;
+ 	error = dprc_driver_init();
+ 	if (error < 0)
+-		goto error_cleanup_driver;
++		return error;
  
--		register_sys_off_handler(SYS_OFF_MODE_POWER_OFF_PREPARE,
--					 SYS_OFF_PRIO_FIRMWARE,
--					 acpi_power_off_prepare, NULL);
-+		if (!acpi_no_s5) {
-+			register_sys_off_handler(SYS_OFF_MODE_POWER_OFF_PREPARE,
-+						 SYS_OFF_PRIO_FIRMWARE,
-+						 acpi_power_off_prepare, NULL);
+ 	error = fsl_mc_allocator_driver_init();
+ 	if (error < 0)
+ 		goto error_cleanup_dprc_driver;
  
--		register_sys_off_handler(SYS_OFF_MODE_POWER_OFF,
--					 SYS_OFF_PRIO_FIRMWARE,
--					 acpi_power_off, NULL);
-+			register_sys_off_handler(SYS_OFF_MODE_POWER_OFF,
-+						 SYS_OFF_PRIO_FIRMWARE,
-+						 acpi_power_off, NULL);
-+		}
+-	return bus_register_notifier(&platform_bus_type, &fsl_mc_nb);
++	error = platform_driver_register(&fsl_mc_bus_driver);
++	if (error < 0) {
++		pr_err("platform_driver_register() failed: %d\n", error);
++		goto error_cleanup_dprc_driver;
++	}
++
++	return 0;
  
- 		/*
- 		 * Windows uses S5 for reboot, so some BIOSes depend on it to
+ error_cleanup_dprc_driver:
+ 	dprc_driver_exit();
+-
+-error_cleanup_driver:
+-	platform_driver_unregister(&fsl_mc_bus_driver);
+-
+-error_cleanup_bus:
+-	bus_unregister(&fsl_mc_bus_type);
+-
+-error_cleanup_cache:
+ 	return error;
+ }
+-postcore_initcall(fsl_mc_bus_driver_init);
++subsys_initcall_sync(fsl_mc_bus_drivers_init);
 
 ---
 base-commit: 786262be6048deab760f68c8acc2c85607165894
-change-id: 20260901-fix-thinkpad-t14-gen5-efi-poweroff-878a3c4da5a5
+change-id: 20260922-for-upstream-fsl-mc-initcall-order-e3316390712b
 
 Best regards,
 -- 
-George Kokolakis <george.kokolakis.ece@gmail.com>
+Vincent Jardin <vjardin@free.fr>
 
