@@ -1,11 +1,10 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 02 Sep 2026 14:51:08 +0200
-Subject: [PATCH v11 4/6] thermal: khadas-mcu-fan: Add fan config from
- platform data Add regulator support
+Date: Wed, 02 Sep 2026 14:51:09 +0200
+Subject: [PATCH v11 5/6] arm64: dts: amlogic: t7: Add i2c controller node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-add-mcu-fan-khadas-vim4-v11-4-5f1610d83bf0@aliel.fr>
+Message-Id: <20260902-add-mcu-fan-khadas-vim4-v11-5-5f1610d83bf0@aliel.fr>
 References: <20260902-add-mcu-fan-khadas-vim4-v11-0-5f1610d83bf0@aliel.fr>
 In-Reply-To: <20260902-add-mcu-fan-khadas-vim4-v11-0-5f1610d83bf0@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
@@ -23,217 +22,51 @@ Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
  mfd@lists.linux.dev, Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5696;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1224;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=zXGNIJ6KCWP9FF8FljP2h9aLndxz2U6+8oWPcyZ4qNY=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9YM6c9/lAQnGdfs3vnxtdpH7p0Pb6ydzMtbf4Tn7z3Jw
- Mnef7J+dJSyMIhxMciKKbL0z7U88e7y0TNf96inwMxhZQIZwsDFKQATCXFn+B+YtsC+eodxzpmV
- 9RLP9qf9UP3iPbkyOeLs2ZWxS9NERfQZ/pfciNmX9e/ckTL2XXtuCCoLpRhYbPs3LT38r6vZleB
- lf7gB
+ bh=aLYRKhvnbuah+/DuOuT+PfGuc1jyAXlae73BAxIufCo=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9YM6R/Kq3Xfa9am3t4mKPfjg/gHsevT5s9TvrH6/Wfzl
+ +wsR/Qmd5SyMIhxMciKKbL0z7U88e7y0TNf96inwMxhZQIZwsDFKQATqbrNyPB6U+bxtJowE+VV
+ jKXeV56d2hxmuPXsRc4eZweLrjm2z5YxMkz9bma2lekmw4NvHK2uprd+fk3gfTpB1X1f1KYynuc
+ a67gB
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Read the fan register and level table from platform_data (fan_reg,
-levels[] and nlevels) instead of hardcoding a single register and
-level count, as new MCUs need different values. MAX_LEVEL is kept
-and bumped from 3 to 5 to make the speed change more gradual with
-the newer MCUs.
+Add the T7 i2c controller node used by the Khadas VIM4
+for MCU communication.
 
-The cooling device's state is stored as an index into levels[],
-and khadas_mcu_fan_set_level() writes levels[state] to fan_reg,
-rather than writing the raw state value as before.
-
-Optionally acquire and enable a "fan" regulator supply
-at probe time and on resume,
-so boards that gate fan power through a regulator are handled.
-The regulator is released via a devm_add_action_or_reset()
-callback.
+Use amlogic,meson-axg-i2c as fallback compatible.
 
 Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
+Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/thermal/khadas_mcu_fan.c | 90 ++++++++++++++++++++++++++++++----------
- 1 file changed, 69 insertions(+), 21 deletions(-)
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/drivers/thermal/khadas_mcu_fan.c b/drivers/thermal/khadas_mcu_fan.c
-index 21b3d0a71bd0d..62d4736985b2d 100644
---- a/drivers/thermal/khadas_mcu_fan.c
-+++ b/drivers/thermal/khadas_mcu_fan.c
-@@ -13,34 +13,33 @@
- #include <linux/regmap.h>
- #include <linux/sysfs.h>
- #include <linux/thermal.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/minmax.h>
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+index c3dc479b137de..0f48e23077e99 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+@@ -724,6 +724,16 @@ pwm_ao_cd: pwm@60000 {
+ 				status = "disabled";
+ 			};
  
--#define MAX_LEVEL 3
-+#define MAX_LEVEL 5
- 
- struct khadas_mcu_fan_ctx {
- 	struct khadas_mcu *mcu;
-+	unsigned int fan_reg;
- 	unsigned int level;
-+	const unsigned int *levels;
-+	unsigned int nlevels;
- 	struct thermal_cooling_device *cdev;
-+	struct regulator *power;
- };
- 
- static int khadas_mcu_fan_set_level(struct khadas_mcu_fan_ctx *ctx,
- 				    unsigned int level)
- {
--	int ret;
--
--	ret = regmap_write(ctx->mcu->regmap, KHADAS_MCU_CMD_FAN_STATUS_CTRL_REG,
--			   level);
--	if (ret)
--		return ret;
--
--	ctx->level = level;
--
--	return 0;
-+	return regmap_write(ctx->mcu->regmap, ctx->fan_reg, level);
- }
- 
- static int khadas_mcu_fan_get_max_state(struct thermal_cooling_device *cdev,
- 					unsigned long *state)
- {
--	*state = MAX_LEVEL;
-+	struct khadas_mcu_fan_ctx *ctx = cdev->devdata;
++			i2c_m_ao_a: i2c@76000 {
++				compatible = "amlogic,t7-i2c", "amlogic,meson-axg-i2c";
++				reg = <0x0 0x76000 0x0 0x48>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				interrupts = <GIC_SPI 330 IRQ_TYPE_EDGE_RISING>;
++				clocks = <&clkc_periphs CLKID_SYS_I2C_AO_A>;
++				status = "disabled";
++			};
 +
-+	*state = min_t(unsigned int, MAX_LEVEL, ctx->nlevels - 1);
- 
- 	return 0;
- }
-@@ -60,14 +59,21 @@ khadas_mcu_fan_set_cur_state(struct thermal_cooling_device *cdev,
- 			     unsigned long state)
- {
- 	struct khadas_mcu_fan_ctx *ctx = cdev->devdata;
-+	int ret;
- 
--	if (state > MAX_LEVEL)
-+	if (state > MAX_LEVEL || state >= ctx->nlevels)
- 		return -EINVAL;
- 
- 	if (state == ctx->level)
- 		return 0;
- 
--	return khadas_mcu_fan_set_level(ctx, state);
-+	ret = khadas_mcu_fan_set_level(ctx, ctx->levels[state]);
-+	if (ret)
-+		return ret;
-+
-+	ctx->level = state;
-+
-+	return 0;
- }
- 
- static const struct thermal_cooling_device_ops khadas_mcu_fan_cooling_ops = {
-@@ -76,22 +82,56 @@ static const struct thermal_cooling_device_ops khadas_mcu_fan_cooling_ops = {
- 	.set_cur_state = khadas_mcu_fan_set_cur_state,
- };
- 
-+static void khadas_mcu_fan_regulator_disable(void *data)
-+{
-+	struct regulator *power = data;
-+
-+	regulator_disable(power);
-+}
-+
- static int khadas_mcu_fan_probe(struct platform_device *pdev)
- {
-+	const struct khadas_mcu_fan_pdata *pdata = dev_get_platdata(&pdev->dev);
- 	struct khadas_mcu *mcu = dev_get_drvdata(pdev->dev.parent);
- 	struct thermal_cooling_device *cdev;
- 	struct device *dev = &pdev->dev;
- 	struct khadas_mcu_fan_ctx *ctx;
- 	int ret;
- 
-+
-+	if (!dev->of_node)
-+		dev->of_node = of_node_get(dev->parent->of_node);
-+
-+	if (!pdata)
-+		return -EINVAL;
-+
- 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
- 	if (!ctx)
- 		return -ENOMEM;
-+
- 	ctx->mcu = mcu;
-+	ctx->fan_reg = pdata->fan_reg;
-+	ctx->levels = pdata->levels;
-+	ctx->nlevels = pdata->nlevels;
-+
-+	ctx->power = devm_regulator_get(dev, "fan");
-+	if (IS_ERR(ctx->power))
-+		return PTR_ERR(ctx->power);
-+
-+	ret = regulator_enable(ctx->power);
-+	if (ret) {
-+		dev_err(dev, "Failed to enable fan power supply: %d\n", ret);
-+		return ret;
-+	}
-+
-+	ret = devm_add_action_or_reset(dev, khadas_mcu_fan_regulator_disable, ctx->power);
-+	if (ret)
-+		return ret;
-+
- 	platform_set_drvdata(pdev, ctx);
- 
--	cdev = devm_thermal_of_child_cooling_device_register(dev->parent,
--							     dev->parent->of_node,
-+	cdev = devm_thermal_of_child_cooling_device_register(dev,
-+							     dev->of_node,
- 							     "khadas-mcu-fan", ctx,
- 							     &khadas_mcu_fan_cooling_ops);
- 	if (IS_ERR(cdev)) {
-@@ -109,21 +149,24 @@ static void khadas_mcu_fan_shutdown(struct platform_device *pdev)
- {
- 	struct khadas_mcu_fan_ctx *ctx = platform_get_drvdata(pdev);
- 
--	khadas_mcu_fan_set_level(ctx, 0);
-+	khadas_mcu_fan_set_level(ctx, ctx->levels[0]);
- }
- 
- #ifdef CONFIG_PM_SLEEP
- static int khadas_mcu_fan_suspend(struct device *dev)
- {
- 	struct khadas_mcu_fan_ctx *ctx = dev_get_drvdata(dev);
--	unsigned int level_save = ctx->level;
- 	int ret;
- 
--	ret = khadas_mcu_fan_set_level(ctx, 0);
-+	ret = khadas_mcu_fan_set_level(ctx, ctx->levels[0]);
- 	if (ret)
- 		return ret;
- 
--	ctx->level = level_save;
-+	ret = regulator_disable(ctx->power);
-+	if (ret) {
-+		khadas_mcu_fan_set_level(ctx, ctx->levels[ctx->level]);
-+		return ret;
-+	}
- 
- 	return 0;
- }
-@@ -131,8 +174,13 @@ static int khadas_mcu_fan_suspend(struct device *dev)
- static int khadas_mcu_fan_resume(struct device *dev)
- {
- 	struct khadas_mcu_fan_ctx *ctx = dev_get_drvdata(dev);
-+	int ret;
-+
-+	ret = regulator_enable(ctx->power);
-+	if (ret)
-+		return ret;
- 
--	return khadas_mcu_fan_set_level(ctx, ctx->level);
-+	return khadas_mcu_fan_set_level(ctx, ctx->levels[ctx->level]);
- }
- #endif
- 
+ 			sd_emmc_a: mmc@88000 {
+ 				compatible = "amlogic,t7-mmc", "amlogic,meson-axg-mmc";
+ 				reg = <0x0 0x88000 0x0 0x800>;
 
 -- 
 2.49.0
