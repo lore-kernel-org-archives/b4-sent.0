@@ -1,102 +1,142 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Wed, 02 Sep 2026 23:39:41 +0800
-Subject: [PATCH mptcp-net] mptcp: pm: cap userspace extra_subflows at
- U8_MAX
+From: George Kokolakis <george.kokolakis.ece@gmail.com>
+Date: Wed, 02 Sep 2026 20:14:01 +0300
+Subject: [PATCH RFC v2] ACPI: PM: Use EFI power off on Lenovo ThinkPad T14
+ Gen 5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-mptcp-pm-extra-subflows-v1-1-68540a866e5a@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBAAv1L27EKSgzV+RTzEdFdXbBqyUQulf
- ze1x2GYWUCpCCmcuwUKfURlSg3soYP4COlOKENjcMYdjTcOx1xjxjwizbUE1PeNX9NXceDAvWf
- L1p+g1bkQy/w/X2CPElW47qplT4p1O8O6/gCdgIayhgAAAA==
-X-Change-ID: 20260902-mptcp-pm-extra-subflows-dfaf79f1f198
-To: MPTCP Linux <mptcp@lists.linux.dev>
-Cc: stable@vger.kernel.org, Quanye Yang <quanyeyang@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788363590; l=2427;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=+jfn89CDI/g1UvxfJ7Ik7RDNGDH+6qQ2aiBRuMEY2cY=;
- b=bVQdvZ37Klkrs9hOECOB2sv2DGJEHzlvD4P/XBqCiDGRq6uqW+lGKa5JnUopiszMa7GKjDdZW
- vcmg641hIUlBqT1Gtghzypwv/iI/SXpz7jk0U/gydbvcHZtblnBKkwe
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+Message-Id: <20260902-fix-thinkpad-t14-gen5-efi-poweroff-v2-1-c7bb29c91832@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFhZmGoC/5WNTQqDMBBGryKz7hTjv10VCj1At8VFSCY6tCaSi
+ LWId2/wBl2+78H3NgjkmQJckg08LRzY2QjZKQE1SNsTso4MWZpVaZsKNLziPLB9TVLjLArsyZZ
+ IhnFyH/LOGGzqRuaq0LKUJcSjyUe9HpEnPO436OI4cJid/x7hRRzqn8YiUGBt6qrSSuRE7bUfJ
+ b/Pyo3Q7fv+A+IotRzZAAAA
+To: rafael@kernel.org
+Cc: lenb@kernel.org, linux-acpi@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ George Kokolakis <george.kokolakis.ece@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788369240; l=4295;
+ i=george.kokolakis.ece@gmail.com; s=kernel-20260901;
+ h=from:subject:message-id; bh=SNEEUPIgMfmYyvsyn9AZanB8keYappwqTWEzg+lMawE=;
+ b=2DkAo9p8UxluXuemZ8Anbc+0+NDw1b/m5Eay1BxZ33k/2HrEVmCbXpdDWWiFM2ItLx+nUDmg2
+ MM1sxzFMD7UDtx9WjRHr6UnnVKcxRO+PNPoo+vAdIosfKBZHUyNM4xY
+X-Developer-Key: i=george.kokolakis.ece@gmail.com; a=ed25519;
+ pk=vZ27t8agUnF5GcuvLoIUzClMG59D0bvQE7GXXdwXJ9I=
+X-Endpoint-Received: by B4 Relay for george.kokolakis.ece@gmail.com/kernel-20260901 with auth_id=995
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The userspace PM increments extra_subflows with no upper bound. The
-field is a u8, so the 256th extra subflow wraps the counter to 0 and
-the next close hits WARN_ON_ONCE().
+A Lenovo ThinkPad T14 Gen 5 (type 21ML) powers back on immediately
+after an orderly ACPI S5 shutdown. This was reproduced with BIOS
+N47ET29W 1.18 and Ubuntu kernel 7.0.0-30-generic.
 
-Refuse admission at U8_MAX for incoming MP_JOIN and for the Netlink
-create path.
+A standalone UEFI application invoking ResetSystem(EfiResetShutdown)
+left the same machine powered off, and an out-of-tree DMI-scoped
+module implementing this same approach also succeeded on its first
+real shutdown test.
 
-Fixes: 77e4b94a3de6 ("mptcp: update userspace pm infos")
+Update: on subsequent independent shutdown attempts with the same
+out-of-tree module active, the machine intermittently powered back
+on again despite the EFI power-off handler running. Disabling the
+Intel Wi-Fi ACPI wake source (CNVW) for one boot did not change the
+outcome, ruling that out as the variable. The underlying trigger is
+not yet identified and may be a firmware/EC race rather than a fixed
+choice between ACPI S5 and EFI ResetSystem.
+
+Sending as RFC: the EFI path is a real improvement in most observed
+cases, but is not yet confirmed reliable enough for stable/mainline
+inclusion. Posting the updated data so review isn't based on the
+single-success report in v1, and to ask whether EC-side conditions
+(e.g. AC/dock/Thunderbolt wake arming) are known to affect this on
+other Meteor Lake ThinkPads.
+
+Link: https://bugs.launchpad.net/bugs/2162837
 Cc: stable@vger.kernel.org
-Link: https://github.com/multipath-tcp/mptcp_net-next/issues/629
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Signed-off-by: George Kokolakis <george.kokolakis.ece@gmail.com>
 ---
- net/mptcp/pm.c           |  6 ++++--
- net/mptcp/pm_userspace.c | 20 +++++++++++++-------
- 2 files changed, 17 insertions(+), 9 deletions(-)
+Changes in v2:
+- Additional real-world shutdown attempts on the same hardware showed
+  the EFI power-off path does not reliably prevent the reboot-on-
+  poweroff behavior: it succeeded on the first two independent tests
+  but failed on two subsequent ones with the same handlers active.
+- Disabling the Intel Wi-Fi ACPI wake source (CNVW) for one boot did
+  not change the outcome, ruling it out as the variable.
+- Re-posting as RFC with this data rather than letting v1's single
+  success stand unqualified; asking whether EC-side conditions (AC/
+  dock/Thunderbolt wake arming) are known to matter here.
+- Link to v1: https://lore.kernel.org/r/20260901-fix-thinkpad-t14-gen5-efi-poweroff-v1-1-7f766dc13ee9@gmail.com
+---
+ drivers/acpi/sleep.c | 30 +++++++++++++++++++++++-------
+ 1 file changed, 23 insertions(+), 7 deletions(-)
 
-diff --git a/net/mptcp/pm.c b/net/mptcp/pm.c
-index b0b71adefb8f..d2ea0bd39a69 100644
---- a/net/mptcp/pm.c
-+++ b/net/mptcp/pm.c
-@@ -563,9 +563,11 @@ bool mptcp_pm_allow_new_subflow(struct mptcp_sock *msk)
- 	if (mptcp_pm_is_userspace(msk)) {
- 		if (mptcp_userspace_pm_active(msk)) {
- 			spin_lock_bh(&pm->lock);
--			pm->extra_subflows++;
-+			ret = pm->extra_subflows < U8_MAX;
-+			if (ret)
-+				pm->extra_subflows++;
- 			spin_unlock_bh(&pm->lock);
--			return true;
-+			return ret;
- 		}
- 		return false;
- 	}
-diff --git a/net/mptcp/pm_userspace.c b/net/mptcp/pm_userspace.c
-index fab16d953dbf..6d798dd96702 100644
---- a/net/mptcp/pm_userspace.c
-+++ b/net/mptcp/pm_userspace.c
-@@ -427,16 +427,22 @@ int mptcp_pm_nl_subflow_create_doit(struct sk_buff *skb, struct genl_info *info)
- 	local.ifindex = entry.ifindex;
+diff --git a/drivers/acpi/sleep.c b/drivers/acpi/sleep.c
+index 132a9df984..d14833eb59 100644
+--- a/drivers/acpi/sleep.c
++++ b/drivers/acpi/sleep.c
+@@ -27,7 +27,7 @@
+ #include "sleep.h"
  
- 	spin_lock_bh(&msk->pm.lock);
--	msk->pm.extra_subflows++;
--	spin_unlock_bh(&msk->pm.lock);
-+	if (msk->pm.extra_subflows == U8_MAX) {
-+		spin_unlock_bh(&msk->pm.lock);
-+		GENL_SET_ERR_MSG(info, "too many extra subflows");
-+		err = -ENOSPC;
-+	} else {
-+		msk->pm.extra_subflows++;
-+		spin_unlock_bh(&msk->pm.lock);
+ /*
+- * Some HW-full platforms do not have _S5, so they may need
++ * Some HW-full platforms do not have a usable _S5, so they may need
+  * to leverage efi power off for a shutdown.
+  */
+ bool acpi_no_s5;
+@@ -173,6 +173,12 @@ static int __init init_default_s3(const struct dmi_system_id *d)
+ 	return 0;
+ }
  
--	lock_sock(sk);
--	err = __mptcp_subflow_connect(sk, &local, &addr_r);
--	release_sock(sk);
-+		lock_sock(sk);
-+		err = __mptcp_subflow_connect(sk, &local, &addr_r);
-+		release_sock(sk);
-+		if (err)
-+			GENL_SET_ERR_MSG_FMT(info, "connect error: %d", err);
-+	}
++static int __init init_no_s5(const struct dmi_system_id *d)
++{
++	acpi_no_s5 = true;
++	return 0;
++}
++
+ static const struct dmi_system_id acpisleep_dmi_table[] __initconst = {
+ 	{
+ 	.callback = init_old_suspend_ordering,
+@@ -407,6 +413,14 @@ static const struct dmi_system_id acpisleep_dmi_table[] __initconst = {
+ 		DMI_MATCH(DMI_PRODUCT_NAME, "20GGA00L00"),
+ 		},
+ 	},
++	{
++	.callback = init_no_s5,
++	.ident = "Lenovo ThinkPad T14 Gen 5 (21ML)",
++	.matches = {
++		DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
++		DMI_MATCH(DMI_PRODUCT_NAME, "21ML"),
++		},
++	},
+ 	{},
+ };
  
- 	if (err) {
--		GENL_SET_ERR_MSG_FMT(info, "connect error: %d", err);
--
- 		spin_lock_bh(&msk->pm.lock);
- 		mptcp_userspace_pm_delete_local_addr(msk, &entry);
- 		spin_unlock_bh(&msk->pm.lock);
+@@ -1117,13 +1131,15 @@ int __init acpi_sleep_init(void)
+ 	if (acpi_sleep_state_supported(ACPI_STATE_S5)) {
+ 		sleep_states[ACPI_STATE_S5] = 1;
+ 
+-		register_sys_off_handler(SYS_OFF_MODE_POWER_OFF_PREPARE,
+-					 SYS_OFF_PRIO_FIRMWARE,
+-					 acpi_power_off_prepare, NULL);
++		if (!acpi_no_s5) {
++			register_sys_off_handler(SYS_OFF_MODE_POWER_OFF_PREPARE,
++						 SYS_OFF_PRIO_FIRMWARE,
++						 acpi_power_off_prepare, NULL);
+ 
+-		register_sys_off_handler(SYS_OFF_MODE_POWER_OFF,
+-					 SYS_OFF_PRIO_FIRMWARE,
+-					 acpi_power_off, NULL);
++			register_sys_off_handler(SYS_OFF_MODE_POWER_OFF,
++						 SYS_OFF_PRIO_FIRMWARE,
++						 acpi_power_off, NULL);
++		}
+ 
+ 		/*
+ 		 * Windows uses S5 for reboot, so some BIOSes depend on it to
 
 ---
-base-commit: 9fbdf9ec14b806afdf66ea265477cb9d4790c866
-change-id: 20260902-mptcp-pm-extra-subflows-dfaf79f1f198
+base-commit: 786262be6048deab760f68c8acc2c85607165894
+change-id: 20260901-fix-thinkpad-t14-gen5-efi-poweroff-878a3c4da5a5
 
 Best regards,
---  
-Quanye Yang <quanyeyang@proton.me>
+-- 
+George Kokolakis <george.kokolakis.ece@gmail.com>
 
