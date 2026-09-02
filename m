@@ -1,281 +1,73 @@
-From: Bingfang Guo <bingfangguo@tencent.com>
-Date: Wed, 02 Sep 2026 10:06:46 +0800
-Subject: [PATCH v3] mm/memcg: clear folio memcg after changing per memcg
- stats
+From: Sperrbert <sperrbert@proton.me>
+Date: Wed, 02 Sep 2026 06:56:13 +0200
+Subject: [PATCH] wifi: iwlwifi: mvm: fix VHT NSS reporting for legacy RX
+ API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-memcg-swapcache-stats-fix-v3-1-795f5d455f7b@tencent.com>
-X-B4-Tracking: v=1; b=H4sIALWEl2oC/33NTQrCMBAF4KtI1kbyoyVx5T3ERTKZtlk0LUmIS
- undTYsgbsqs3oP3zUwSRo+JXA8ziVh88mOoQR4PBHoTOqTe1UwEEw1TQtEBB+hoepoJDPRIUzY
- 50da/KLeIrXQgTWtJ3U8Ra73Z90fNvU95jO/tVeFr+1Ul31ELp/WAKa7ROquaW8YAGPIJxoGsb
- hE/S7NdS1RLgzFOSna+aPtvLcvyARjIpw8QAQAA
-To: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
- Kairui Song <kasong@tencent.com>, Kemeng Shi <shikemeng@huaweicloud.com>, 
- Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
- Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
- Lorenzo Stoakes <ljs@kernel.org>, Bingfang Guo <bfguo@icloud.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Bingfang Guo <bingfangguo@tencent.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788314815; l=8591;
- i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
- bh=2wL0CIVj+NumZ4jS21cH6aQlJclRk7X+OAm/clFB4c8=;
- b=fcHvD8Ml1Jpyd2jCE8ru20/mr66E0sgeh97kx0WqWyL3elbRz4LPQfUYPousj2Yc44IpoNrGC
- PBf/irpcQR3AAqRw4MxgkGay3OVc2OiZIytxK0zwy5z5Arco2INWCYq
-X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
- pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
-X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
+Message-Id: <20260902-master-v1-1-a2cc0a65ce12@proton.me>
+X-B4-Tracking: v=1; b=H4sIAGysl2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDSwMj3dzE4pLUIl2DxOQUgzRzk5Q0Y0sloOKCotS0zAqwQdGxEH5xaVJ
+ WanIJSLdSbS0A+QIyhWoAAAA=
+X-Change-ID: 20260902-master-0acd0f74df39
+To: Miri Korenblit <miriam.rachel.korenblit@intel.com>, 
+ Johannes Berg <johannes.berg@intel.com>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Sperrbert <sperrbert@proton.me>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788324990; l=1903;
+ i=sperrbert@proton.me; s=20260902; h=from:subject:message-id;
+ bh=/4vIsjR1iXuI+GVen+yjkyDz9ZsAQbCF2/9KiJ5Y6q4=;
+ b=ZGRpShq2jaDCmTRs/2rwAYCGEwyDQ+V0mYpd3peVBHM8zxMpbVdIrRzZoT7VpP7vJtiyIj5wR
+ 45Pnal/sF3HApAcor6gbCdTTd5dJsqsW4vuShHEBQp6/YWyrBxGWSxJ
+X-Developer-Key: i=sperrbert@proton.me; a=ed25519;
+ pk=I4XYiGGbh8WAF7fk5prqJ3RawLcpmMRrm1y+qO0YOf8=
+X-Endpoint-Received: by B4 Relay for sperrbert@proton.me/20260902 with auth_id=996
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I notice extremely high swapcached count in the per memcg level
-memory.stat when running tests with cgroupv1 setup by swapping pages in
-and out.  It seems that the counter never gets decreased so the value is
-rather useless and confusing to users reading it. So I think fixing it
-so that the value can reflect the actual swapcache usage correctly could
-be helpful.
+Commit 774302d2d3ad ("wifi: iwlwifi: mvm: clean up duplicated defines")
+replaced the explicit legacy VHT NSS decoding with
+RATE_MCS_NSS_MSK, which was equivalent at the time.
 
-__memcg1_swapout() transfers the memsw charge of a folio to its swap
-entry and clears folio->memcg_data as part of that.  In the vmscan
-swapout path it runs before __swap_cache_del_folio(), which then
-decrements the swapcache stats through lruvec_stat_mod_folio().  Since
-folio->memcg_data has already been cleared, folio_memcg() returns NULL
-and the NR_SWAPCACHE decrement only updates the node-level counter
-instead of the memcg's lruvec, leaking the per-memcg swapcache count.
+Commit dabc88cb3b78 ("wifi: iwlwifi: handle v3 rates") later changed
+RATE_MCS_NSS_MSK for the v3 rate format, where NSS is encoded at a
+different bit position. The legacy RX path, however, still handles
+VHT rate_n_flags using the v1 format.
 
-Move the __memcg1_swapout() call into __swap_cache_del_folio(), after
-the NR_FILE_PAGES and NR_SWAPCACHE updates but before
-__swap_cache_do_del_folio() removes the folio from the swap cache.  This
-keeps the stats attributed to the folio's memcg while still recording
-the swap cgroup with a valid folio->swap.  Add a swapout parameter so
-the plain swap_cache_del_folio() path is left unchanged.
+As a result, two-stream VHT RX rates on older devices can be reported
+as NSS 1. Use RATE_VHT_MCS_NSS_MSK when decoding VHT NSS in the
+legacy RX path.
 
-Fixes: b197d41462c20 ("mm/memcg, swap: store cgroup id in cluster table directly")
-Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
+On an Intel Wireless-AC 7260, an unmodified kernel reports VHT NSS 1
+while receiving about 460 Mbit/s. With this change the same connection
+is correctly reported as VHT NSS 2, with unchanged throughput.
+
+Fixes: dabc88cb3b78 ("wifi: iwlwifi: handle v3 rates")
+Cc: stable@vger.kernel.org
+Signed-off-by: Sperrbert <sperrbert@proton.me>
 ---
-The problem is reproducible using the following script and program:
+ drivers/net/wireless/intel/iwlwifi/mvm/rx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-```
-#!/bin/bash
-set -e
-
-CG=/sys/fs/cgroup/memory/swapcache-leak-test
-SIZE=$((256 * 1024 * 1024))   # 256 MiB of anon memory
-
-[ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
-grep -q . /proc/swaps <<<"$(tail -n +2 /proc/swaps)" || { echo "no swap active; run: swapon <dev>"; exit 1; }
-
-cleanup() { rmdir "$CG" 2>/dev/null || true; }
-trap cleanup EXIT
-
-cc -O2 swapout.c -o swapout
-
-mkdir -p "$CG"
-echo "+memory" > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
-
-echo "== before reclaim =="
-grep -E '^(swapcached|anon) ' "$CG/memory.stat"
-
-# Put ourselves in the cgroup, allocate & touch anon memory, then wait to be reclaimed.
-(
-        echo $BASHPID > "$CG/cgroup.procs"
-        # Allocate and dirty SIZE bytes of anonymous memory.
-        ./swapout
-) &
-WORKER=$!
-sleep 2
-
-echo "== after reclaim (swap cache should drain to ~0) =="
-grep -E '^(swapcached|anon) ' "$CG/memory.stat"
-
-SWAPCACHED=$(awk '/^swapcached /{print $2}' "$CG/memory.stat")
-echo
-if [ "$SWAPCACHED" -gt $((1024 * 1024)) ]; then
-        echo "LEAK DETECTED: swapcached = $SWAPCACHED bytes (expected ~0)  [BUGGY kernel]"
-        RC=1
-else
-        echo "OK: swapcached = $SWAPCACHED bytes  [FIXED kernel]"
-        RC=0
-fi
-
-kill "$WORKER" 2>/dev/null || true
-wait "$WORKER" 2>/dev/null || true
-exit $RC
-```
-
-swapout.c:
-```
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
-
-int main(int argc, char **argv)
-{
-        size_t mib = (argc > 1) ? strtoul(argv[1], NULL, 10) : 256;
-        size_t size = mib * 1024UL * 1024UL;
-        long page = sysconf(_SC_PAGESIZE);
-        char *buf;
-        size_t i;
-
-        buf = mmap(NULL, size, PROT_READ | PROT_WRITE,
-                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (buf == MAP_FAILED) {
-                perror("mmap");
-                return 1;
-        }
-
-        /* Fault in and dirty every page so it becomes reclaimable anon. */
-        for (i = 0; i < size; i += page)
-                buf[i] = 1;
-
-        printf("allocated and dirtied %zu MiB, paging out...\n", mib);
-
-        /* Force the whole range out to swap. */
-        if (madvise(buf, size, MADV_PAGEOUT)) {
-                perror("madvise(MADV_PAGEOUT)");
-                return 1;
-        }
-
-        /* Give reclaim a moment, then stay alive so the cgroup can be inspected. */
-        printf("paged out; sleeping so memory.stat can be read. pid=%d\n", getpid());
-        sleep(30);
-
-        munmap(buf, size);
-        return 0;
-}
-```
-
-Test result:
-
-before:
-```
-== before reclaim ==
-swapcached 0
-allocated and dirtied 256 MiB, paging out...
-paged out; sleeping so memory.stat can be read. pid=4778
-== after reclaim (swap cache should drain to ~0) ==
-swapcached 268435456
-
-LEAK DETECTED: swapcached = 268435456 bytes (expected ~0)  [BUGGY kernel]
-```
-
-after the patch:
-```
-== before reclaim ==
-swapcached 0
-allocated and dirtied 256 MiB, paging out...
-paged out; sleeping so memory.stat can be read. pid=2601
-== after reclaim (swap cache should drain to ~0) ==
-swapcached 0
-
-OK: swapcached = 0 bytes  [FIXED kernel]
-```
----
-Changes in v3:
-- Add doc for the new parameter.
-- Link to v2: https://lore.kernel.org/r/20260901-memcg-swapcache-stats-fix-v2-1-9caad330459b@tencent.com
-
-Changes in v2:
-- Update the commit message to describe the problem in the beginnning.
-- Change function declaration for !CONFIG_SWAP as well.
-- Link to v1: https://lore.kernel.org/r/20260831-memcg-swapcache-stats-fix-v1-1-1c0819ebdb86@tencent.com
----
- mm/swap.h       |  6 ++++--
- mm/swap_state.c | 11 ++++++++---
- mm/vmscan.c     |  3 +--
- 3 files changed, 13 insertions(+), 7 deletions(-)
-
-diff --git a/mm/swap.h b/mm/swap.h
-index 0b5d507739bcb..b3b54c28929a1 100644
---- a/mm/swap.h
-+++ b/mm/swap.h
-@@ -319,7 +319,8 @@ struct folio *swap_cache_alloc_folio(swp_entry_t target_entry, gfp_t gfp_mask,
- void __swap_cache_add_folio(struct swap_cluster_info *ci,
- 			    struct folio *folio, swp_entry_t entry);
- void __swap_cache_del_folio(struct swap_cluster_info *ci,
--			    struct folio *folio, swp_entry_t entry, void *shadow);
-+			    struct folio *folio, swp_entry_t entry, void *shadow,
-+			    bool swapout);
- void __swap_cache_replace_folio(struct swap_cluster_info *ci,
- 				struct folio *old, struct folio *new);
- 
-@@ -452,7 +453,8 @@ static inline void swap_cache_del_folio(struct folio *folio)
- }
- 
- static inline void __swap_cache_del_folio(struct swap_cluster_info *ci,
--		struct folio *folio, swp_entry_t entry, void *shadow)
-+		struct folio *folio, swp_entry_t entry, void *shadow,
-+		bool swapout)
- {
- }
- 
-diff --git a/mm/swap_state.c b/mm/swap_state.c
-index 305877e1f4d7b..99985208b529b 100644
---- a/mm/swap_state.c
-+++ b/mm/swap_state.c
-@@ -306,6 +306,7 @@ static void __swap_cache_do_del_folio(struct swap_cluster_info *ci,
-  * @folio: The folio.
-  * @entry: The first swap entry that the folio corresponds to.
-  * @shadow: shadow value to be filled in the swap cache.
-+ * @swapout: whether this operation swaps out the folio.
-  *
-  * Removes a folio from the swap cache and fills a shadow in place.
-  * This won't put the folio's refcount. The caller has to do that.
-@@ -314,13 +315,17 @@ static void __swap_cache_do_del_folio(struct swap_cluster_info *ci,
-  * using the index of @entry, and lock the cluster that holds the entries.
-  */
- void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
--			    swp_entry_t entry, void *shadow)
-+			    swp_entry_t entry, void *shadow, bool swapout)
- {
- 	unsigned long nr_pages = folio_nr_pages(folio);
- 
--	__swap_cache_do_del_folio(ci, folio, entry, shadow);
- 	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
- 	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
-+
-+	if (swapout)
-+		__memcg1_swapout(folio, ci);
-+
-+	__swap_cache_do_del_folio(ci, folio, entry, shadow);
- }
- 
- /**
-@@ -339,7 +344,7 @@ void swap_cache_del_folio(struct folio *folio)
- 	swp_entry_t entry = folio->swap;
- 
- 	ci = swap_cluster_lock(__swap_entry_to_info(entry), swp_offset(entry));
--	__swap_cache_del_folio(ci, folio, entry, NULL);
-+	__swap_cache_del_folio(ci, folio, entry, NULL, false);
- 	swap_cluster_unlock(ci);
- 
- 	folio_ref_sub(folio, folio_nr_pages(folio));
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index b4c9b8f3dfe99..af7dfa905cb50 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -735,8 +735,7 @@ static int __remove_mapping(struct address_space *mapping, struct folio *folio,
- 
- 		if (reclaimed && !mapping_exiting(mapping))
- 			shadow = workingset_eviction(folio, target_memcg);
--		__memcg1_swapout(folio, ci);
--		__swap_cache_del_folio(ci, folio, swap, shadow);
-+		__swap_cache_del_folio(ci, folio, swap, shadow, true);
- 		swap_cluster_unlock_irq(ci);
- 	} else {
- 		void (*free_folio)(struct folio *);
+diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/rx.c b/drivers/net/wireless/intel/iwlwifi/mvm/rx.c
+index ab1eb2eb0c3cd..124a5f52c53d1 100644
+--- a/drivers/net/wireless/intel/iwlwifi/mvm/rx.c
++++ b/drivers/net/wireless/intel/iwlwifi/mvm/rx.c
+@@ -502,7 +502,7 @@ void iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct napi_struct *napi,
+ 		u8 stbc = (rate_n_flags & RATE_MCS_STBC_MSK) >>
+ 				RATE_MCS_STBC_POS;
+ 		rx_status->nss =
+-			FIELD_GET(RATE_MCS_NSS_MSK, rate_n_flags) + 1;
++			FIELD_GET(RATE_VHT_MCS_NSS_MSK, rate_n_flags) + 1;
+ 		rx_status->rate_idx = rate_n_flags & RATE_VHT_MCS_RATE_CODE_MSK;
+ 		rx_status->encoding = RX_ENC_VHT;
+ 		rx_status->enc_flags |= stbc << RX_ENC_FLAG_STBC_SHIFT;
 
 ---
-base-commit: 88297631d4d42f6004cb39c0ba3da7d2d10a616f
-change-id: 20260828-memcg-swapcache-stats-fix-1beef3dc3afb
+base-commit: 786262be6048deab760f68c8acc2c85607165894
+change-id: 20260902-master-0acd0f74df39
 
 Best regards,
--- 
-Bingfang Guo <bingfangguo@tencent.com>
+--  
+Sperrbert <sperrbert@proton.me>
 
