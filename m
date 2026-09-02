@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 02 Sep 2026 22:59:12 +0200
-Subject: [PATCH 1/3] arm64: dts: qcom: sdm845-google: Set i2c3 frequency to
- 400 kHz
+Date: Wed, 02 Sep 2026 22:59:13 +0200
+Subject: [PATCH 2/3] arm64: dts: qcom: sdm845-google: Improve NFC pins
+ description
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-sdm670-sargo-nfc-v1-1-bed1cbbffc46@ixit.cz>
+Message-Id: <20260902-sdm670-sargo-nfc-v1-2-bed1cbbffc46@ixit.cz>
 References: <20260902-sdm670-sargo-nfc-v1-0-bed1cbbffc46@ixit.cz>
 In-Reply-To: <20260902-sdm670-sargo-nfc-v1-0-bed1cbbffc46@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,60 +17,109 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: Marco Mattiolo <marco.mattiolo@hotmail.it>, 
  linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=994; i=david@ixit.cz;
- h=from:subject:message-id; bh=T/CRKHYH4PIgdGiSr8q4F541f/u8HxxrZ0dMSKkBtEE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmI4l+pCJ3gAVi1n8xvqjRvyWxHpn+m0A5goCe
- gohhxLxPT+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapiOJQAKCRBgAj/E00kg
- crogEACOYjOXFkXvRhVblWYmN1Qp5NNVlbfikzjXOt1Zxa/KYTRFPlouVMDHBxRSDP0ySBBbvbj
- SJneiCh9dIzQ8thojQKGxgWhnFrs9xaWNWQYJpWp9pilDU5vFb0ptCnpw1tm6NEwroOzRYvsgdn
- a2fTvW986kqbHOtldB+Jn0XT+7pcn+g1wK0Mr2HgSMVjD0KSZw6/yrkAVtH8aC32T7X8K+sFjzz
- 7PFHzDJ7PCzdHYAK+17qaIUNbX09J7aAh7LDnCid7uYL5raycbd5k6Fb8acYXrFW93rOYlqSaPB
- IbOSkn9AnSUCslfAW6jBDdszYDidQj+AxWFOzctXJfVRnnDXWhocCk7nOLJWoQhgWrncMlP424p
- P1rneMsrVaqb+oBY+Cj1AbsSvDVxEQkcu6Bt47ZJJkz/rarAgVEexU4BMPPDulFOM8IsF4gffiq
- RnlPYbgSAmo5EFjdjl+QMCwI7CuWs+Wp6tZHc0C+tC5mCj9epeZ2Yp43yac10gbhMcwdb5VUzzT
- T7+RnYIxe3BSq2rleumRUeld80bJIoy/VEnI0JJJtyYfuxRIsU4B0GfZDiGMCMv6S4+B04lhVF4
- K5m3Aj8mCbicU+ygIVPMHbQzWgK+IuvFvKJ0j1lAFq8+vlGxeQX0PPcaux2ITgboaV4Jj5oraE5
- S8A3249GzIx5XPg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2154; i=david@ixit.cz;
+ h=from:subject:message-id; bh=1g5bzY+HsNyCbevfoHcORR+VD1MfbCn1WfNGutR8+KA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmI4lOhMcUlhuWQwB8IJwJ0OMA0LRE/4ETGGyk
+ 2h/u6PZJoiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapiOJQAKCRBgAj/E00kg
+ cjnmD/96ZqcIp7Pv1yb8cSdUWl6kGkV9H7jNxfyUoqFmPEJWYwJKwD88Q6lPnsJety5miI/0mYL
+ B/GAn2NxMheJRMCJlK/58aUTAGekVYWyFbB42vD0IAv5qKMKiBMit/1wkdTvMCOEShthcfwuz86
+ KGGD94K+TFIbJ0wGIkAhfvjCzisGoHJGlRM19T/iUuoH2FwMZLDrDrlxFpAD5ZgJk4UQcA22eMe
+ GLgHtf9nDWt9YwrDXZS3JArqnxhoCFsgN6suaJFB9TUYfcZOtKDMaGHcs9FKmgKS+21lKjKjLlH
+ nEiWin2Yj9A8Kl4Yc7AwdZgZmdHaLdRv9YC6w6zCeA2HfWbabHtpzcbK1wVDVOtc4g3XfaZ1ywK
+ +RAtUfm5SYUFunS59EBkWCQAx1WaqUhLCMuLprbE25dCf0NKyNGz6aJ2kU2x16QNmQaMXKiTnHj
+ StIuCe30NL5JX3x+egXp71wwqjXIJWZL6EowVtxhVj9ROTa0btsOYASGmkvC5czETOjY9kJD4YD
+ HScjpP//QW+jtAiLJ7NxodZQRi11XgxNR1nUMftqAJm/v0CFDyj2oAow3dlZCTWUdtpfdwEb04G
+ UPUJCRsSVco76Sosvffn7Ufl59yATUHRt1uO6JiQFWM/Sne6ZSfdKSQMY7XDDVWB902G310tAa+
+ ZnaHlOFySJSOAyg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When downstream value is undefined, it fallback to 400 kHz. Set it in
-mainline too.
+Be more clear with pin description and group all of them into one state.
 
-Cc: stable@vger.kernel.org
-Fixes: 10f91b0dfaf6 ("arm64: dts: qcom: sdm845-google-common: Enable NFC")
+No functional changes.
+
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 34 ++++++++++++++--------
+ 1 file changed, 22 insertions(+), 12 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 9e952f9862f24..f73d4ea57705f 100644
+index f73d4ea57705f..f1379857e2742 100644
 --- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -387,16 +387,18 @@ &gpu {
- 	status = "okay";
- };
- 
- &gpu_zap_shader {
- 	firmware-name = "qcom/sdm845/Google/blueline/a630_zap.mbn";
- };
- 
- &i2c3 {
-+	clock-frequency = <400000>;
-+
- 	status = "okay";
- 
- 	nfc@28 {
+@@ -400,17 +400,17 @@ nfc@28 {
  		compatible = "nxp,pn557", "nxp,nxp-nci-i2c";
  		reg = <0x28>;
  
  		interrupts-extended = <&tlmm 63 IRQ_TYPE_EDGE_RISING>;
  
+ 		enable-gpios = <&tlmm 25 GPIO_ACTIVE_HIGH>;
+ 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
+ 
+-		pinctrl-0 = <&nfc_int_default &nfc_enable_default>;
++		pinctrl-0 = <&nfc_default>;
+ 		pinctrl-names = "default";
+ 	};
+ };
+ 
+ &i2c12 {
+ 	/* Bottom spkr (right) CS35L36 @ 40 */
+ 
+ 	/* Top spkr (left) CS35L36 @ 41 */
+@@ -473,28 +473,38 @@ &qup_uart9_tx {
+ 	drive-strength = <2>;
+ 	bias-disable;
+ };
+ 
+ &tlmm {
+ 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
+ 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
+ 
+-	nfc_int_default: nfc-int-default-state {
+-		pins = "gpio63";
+-		function = "gpio";
+-		drive-strength = <2>;
+-		bias-pull-down;
+-	};
++	nfc_default: nfc-default-state {
++		enable-pins {
++			pins = "gpio25";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
++
++		irq-pins {
++			pins = "gpio63";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
++
++		firmware-pins {
++			pins = "gpio79";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
+ 
+-	nfc_enable_default: nfc-enable-default-state {
+-		pins = "gpio25", "gpio79";
+-		function = "gpio";
+-		drive-strength = <2>;
+-		bias-pull-down;
+ 	};
+ 
+ 	touchscreen_reset: ts-reset-state {
+ 		pins = "gpio99";
+ 		function = "gpio";
+ 		drive-strength = <8>;
+ 		bias-pull-up;
+ 	};
 
 -- 
 2.55.0
