@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 02 Sep 2026 17:50:56 +0800
-Subject: [PATCH v5 3/6] mm/migrate: copy all referenced state via
- folio_migrate_lru_refs
+Date: Wed, 02 Sep 2026 17:50:57 +0800
+Subject: [PATCH v5 4/6] mm/mglru: move max_seq read into walk_update_folio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-mglru-flags-cleanup-v5-3-9db761d779ef@tencent.com>
+Message-Id: <20260902-mglru-flags-cleanup-v5-4-9db761d779ef@tencent.com>
 References: <20260902-mglru-flags-cleanup-v5-0-9db761d779ef@tencent.com>
 In-Reply-To: <20260902-mglru-flags-cleanup-v5-0-9db761d779ef@tencent.com>
 To: linux-mm@kvack.org
@@ -25,109 +24,156 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, Kairui Song <ryncsn@gmail.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788342657; l=3683;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788342657; l=5248;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=Ox6zaP/QbfpF5dExxI36sjV5rWUkpJpYAOEG95FC1rw=;
- b=FEnfQvBL3/fmg1asiheJX1Ar9Ld/4KCcGnDdckAqj+CLkjyccsIX7u5VcGKPNX6YhMjrv98vM
- Hkt6CXlJifbB7kso51KMQSSbOdxbtfGM4GOe5GnDa2NksnCGAoAPNpT
+ bh=7TChCfTyyaJ0Q3bIhLSmtfbdyXgREQ74noYCwDfeHq0=;
+ b=jV8xURSe/w44tQhocpoNNDiokQnNheOfpgai7WIEzKSb+pCCY7rv38ODeBRFIPti58LC4eKoX
+ kOO35SR86TCB95HpmWSlqs7HriHb7Tk++yQeqwE7ASe5wFBSJMEDvp8
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-folio_migrate_flags() copies PG_referenced separately from the MGLRU
-refs counter, which folio_migrate_refs() transfers. Yet under MGLRU,
-PG_referenced and the refs counter bits together describe the
-referenced status of a folio.
+walk_pte_range(), walk_pmd_range_locked(), and lru_gen_look_around()
+each read lrugen->max_seq to compute the target generation used by
+walk_update_folio(), then pass it as a parameter. Move the read into
+walk_update_folio() itself so the callers no longer need to compute
+or pass the value.
 
-Consolidate the two: rename folio_migrate_refs() to
-folio_migrate_lru_refs() and let it copy the complete referenced
-status, i.e., the MGLRU refs count including PG_referenced, or just
-PG_referenced for the active/inactive LRU. Drop the open-coded
-PG_referenced copy so the referenced status is transferred in one
-place. No behavior change is intended: under the active/inactive LRU
-the extra bits are unused, so operating on them is a noop.
-
-Transfer the reference state first, before the destination folio is
-marked uptodate, so a concurrent lockless reader cannot have its
-reference update overwritten by the copy.
+The max_seq read now happens once per folio update rather than once
+per walk range, so folios always get promoted to the current youngest
+generation.
 
 Reviewed-by: Baoquan He <baoquan.he@linux.dev>
 Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
-Acked-by: David Hildenbrand (Arm) <david@kernel.org>
+Reviewed-by: Ridong Chen <ridong.chen@linux.dev>
 Reviewed-by: Lian Wang <lianux.mm@gmail.com>
 Reviewed-by: Barry Song <baohua@kernel.org>
-Reviewed-by: Ridong Chen <ridong.chen@linux.dev>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 20 +++++++++++++++-----
- mm/migrate.c              |  6 +++---
- 2 files changed, 18 insertions(+), 8 deletions(-)
+ mm/vmscan.c | 29 ++++++++++++-----------------
+ 1 file changed, 12 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 3f4bd5b02b54..047295ae6e8a 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -373,11 +373,19 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	return true;
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 24d09711e820..96fdfc14f615 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -3517,13 +3517,15 @@ static bool suitable_to_scan(int total, int young)
  }
  
--static inline void folio_migrate_refs(struct folio *new, const struct folio *old)
-+/**
-+ * folio_migrate_lru_refs - copy the reference state to a new folio
-+ * @new: the destination folio
-+ * @old: the source folio
-+ *
-+ * Transfer the reference state to @new during migration: the MGLRU
-+ * refs count, including PG_referenced, or just PG_referenced for the
-+ * active/inactive LRU.
-+ */
-+static inline void folio_migrate_lru_refs(struct folio *new, const struct folio *old)
+ static void walk_update_folio(struct lru_gen_mm_walk *walk, struct vm_area_struct *vma,
+-		struct folio *folio, int new_gen, bool dirty)
++		struct lruvec *lruvec, struct folio *folio, bool dirty)
  {
--	unsigned long refs = READ_ONCE(old->flags.f) & LRU_REFS_MASK;
--
--	set_mask_bits(&new->flags.f, LRU_REFS_MASK, refs);
-+	BUILD_BUG_ON(LRU_REFS_MASK & BIT(PG_referenced));
-+	folio_set_lru_refs(new, folio_lru_refs(old));
- }
- #else /* !CONFIG_LRU_GEN */
+-	int old_gen;
++	int new_gen, old_gen;
  
-@@ -406,8 +414,10 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	return false;
- }
+ 	if (!folio)
+ 		return;
  
--static inline void folio_migrate_refs(struct folio *new, const struct folio *old)
-+static inline void folio_migrate_lru_refs(struct folio *new, const struct folio *old)
- {
-+	if (folio_test_referenced(old))
-+		folio_set_referenced(new);
- }
- #endif /* CONFIG_LRU_GEN */
- 
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 15b45832bcfa..a369d0c95c38 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -776,8 +776,9 @@ void folio_migrate_flags(struct folio *newfolio, struct folio *folio)
- {
- 	int cpupid;
- 
--	if (folio_test_referenced(folio))
--		folio_set_referenced(newfolio);
-+	/* Copy the reference state, including PG_referenced */
-+	folio_migrate_lru_refs(newfolio, folio);
++	new_gen = lru_gen_from_seq(READ_ONCE(lruvec->lrugen.max_seq));
 +
- 	if (folio_test_uptodate(folio))
- 		folio_mark_uptodate(newfolio);
- 	if (folio_test_clear_active(folio)) {
-@@ -807,7 +808,6 @@ void folio_migrate_flags(struct folio *newfolio, struct folio *folio)
- 	if (folio_test_idle(folio))
- 		folio_set_idle(newfolio);
+ 	if (dirty && !folio_test_dirty(folio) &&
+ 	    !(folio_test_anon(folio) && folio_test_swapbacked(folio) &&
+ 	      !folio_test_swapcache(folio)))
+@@ -3554,8 +3556,6 @@ static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
+ 	struct lru_gen_mm_walk *walk = args->private;
+ 	struct mem_cgroup *memcg = lruvec_memcg(walk->lruvec);
+ 	struct pglist_data *pgdat = lruvec_pgdat(walk->lruvec);
+-	DEFINE_MAX_SEQ(walk->lruvec);
+-	int gen = lru_gen_from_seq(max_seq);
+ 	unsigned int nr;
+ 	pmd_t pmdval;
  
--	folio_migrate_refs(newfolio, folio);
- 	/*
- 	 * Copy NUMA information to the new page, to prevent over-eager
- 	 * future migrations of this same page.
+@@ -3606,7 +3606,7 @@ static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
+ 			continue;
+ 
+ 		if (last != folio) {
+-			walk_update_folio(walk, args->vma, last, gen, dirty);
++			walk_update_folio(walk, args->vma, walk->lruvec, last, dirty);
+ 
+ 			last = folio;
+ 			dirty = false;
+@@ -3619,7 +3619,7 @@ static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
+ 		walk->mm_stats[MM_LEAF_YOUNG] += nr;
+ 	}
+ 
+-	walk_update_folio(walk, args->vma, last, gen, dirty);
++	walk_update_folio(walk, args->vma, walk->lruvec, last, dirty);
+ 	last = NULL;
+ 
+ 	if (i < PTRS_PER_PTE && get_next_vma(PMD_MASK, PAGE_SIZE, args, &start, &end))
+@@ -3642,8 +3642,6 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
+ 	struct lru_gen_mm_walk *walk = args->private;
+ 	struct mem_cgroup *memcg = lruvec_memcg(walk->lruvec);
+ 	struct pglist_data *pgdat = lruvec_pgdat(walk->lruvec);
+-	DEFINE_MAX_SEQ(walk->lruvec);
+-	int gen = lru_gen_from_seq(max_seq);
+ 
+ 	VM_WARN_ON_ONCE(pud_leaf(*pud));
+ 
+@@ -3697,7 +3695,7 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
+ 			goto next;
+ 
+ 		if (last != folio) {
+-			walk_update_folio(walk, vma, last, gen, dirty);
++			walk_update_folio(walk, vma, walk->lruvec, last, dirty);
+ 
+ 			last = folio;
+ 			dirty = false;
+@@ -3711,7 +3709,7 @@ static void walk_pmd_range_locked(pud_t *pud, unsigned long addr, struct vm_area
+ 		i = i > MIN_LRU_BATCH ? 0 : find_next_bit(bitmap, MIN_LRU_BATCH, i) + 1;
+ 	} while (i <= MIN_LRU_BATCH);
+ 
+-	walk_update_folio(walk, vma, last, gen, dirty);
++	walk_update_folio(walk, vma, walk->lruvec, last, dirty);
+ 
+ 	lazy_mmu_mode_disable();
+ 	spin_unlock(ptl);
+@@ -4275,8 +4273,6 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
+ 	struct pglist_data *pgdat = folio_pgdat(folio);
+ 	struct lruvec *lruvec;
+ 	struct lru_gen_mm_state *mm_state;
+-	unsigned long max_seq;
+-	int gen;
+ 
+ 	lockdep_assert_held(pvmw->ptl);
+ 	VM_WARN_ON_ONCE_FOLIO(folio_test_lru(folio), folio);
+@@ -4313,8 +4309,6 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
+ 
+ 	memcg = get_mem_cgroup_from_folio(folio);
+ 	lruvec = mem_cgroup_lruvec(memcg, pgdat);
+-	max_seq = READ_ONCE((lruvec)->lrugen.max_seq);
+-	gen = lru_gen_from_seq(max_seq);
+ 	mm_state = get_mm_state(lruvec);
+ 
+ 	lazy_mmu_mode_enable();
+@@ -4346,7 +4340,7 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
+ 			continue;
+ 
+ 		if (last != folio) {
+-			walk_update_folio(walk, vma, last, gen, dirty);
++			walk_update_folio(walk, vma, lruvec, last, dirty);
+ 
+ 			last = folio;
+ 			dirty = false;
+@@ -4358,13 +4352,14 @@ bool lru_gen_look_around(struct page_vma_mapped_walk *pvmw, unsigned int nr)
+ 		young += nr;
+ 	}
+ 
+-	walk_update_folio(walk, vma, last, gen, dirty);
++	walk_update_folio(walk, vma, lruvec, last, dirty);
+ 
+ 	lazy_mmu_mode_disable();
+ 
+ 	/* feedback from rmap walkers to page table walkers */
+ 	if (mm_state && suitable_to_scan(i, young))
+-		update_bloom_filter(mm_state, max_seq, pvmw->pmd);
++		update_bloom_filter(mm_state, READ_ONCE(lruvec->lrugen.max_seq),
++				    pvmw->pmd);
+ 
+ 	mem_cgroup_put(memcg);
+ 
 
 -- 
 2.55.0
