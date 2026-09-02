@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 02 Sep 2026 22:59:13 +0200
-Subject: [PATCH 2/3] arm64: dts: qcom: sdm845-google: Improve NFC pins
- description
+Date: Wed, 02 Sep 2026 22:59:14 +0200
+Subject: [PATCH 3/3] arm64: dts: qcom: sdm670-google: Add NFC support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260902-sdm670-sargo-nfc-v1-2-bed1cbbffc46@ixit.cz>
+Message-Id: <20260902-sdm670-sargo-nfc-v1-3-bed1cbbffc46@ixit.cz>
 References: <20260902-sdm670-sargo-nfc-v1-0-bed1cbbffc46@ixit.cz>
 In-Reply-To: <20260902-sdm670-sargo-nfc-v1-0-bed1cbbffc46@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,107 +18,116 @@ Cc: Marco Mattiolo <marco.mattiolo@hotmail.it>,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2154; i=david@ixit.cz;
- h=from:subject:message-id; bh=1g5bzY+HsNyCbevfoHcORR+VD1MfbCn1WfNGutR8+KA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmI4lOhMcUlhuWQwB8IJwJ0OMA0LRE/4ETGGyk
- 2h/u6PZJoiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapiOJQAKCRBgAj/E00kg
- cjnmD/96ZqcIp7Pv1yb8cSdUWl6kGkV9H7jNxfyUoqFmPEJWYwJKwD88Q6lPnsJety5miI/0mYL
- B/GAn2NxMheJRMCJlK/58aUTAGekVYWyFbB42vD0IAv5qKMKiBMit/1wkdTvMCOEShthcfwuz86
- KGGD94K+TFIbJ0wGIkAhfvjCzisGoHJGlRM19T/iUuoH2FwMZLDrDrlxFpAD5ZgJk4UQcA22eMe
- GLgHtf9nDWt9YwrDXZS3JArqnxhoCFsgN6suaJFB9TUYfcZOtKDMaGHcs9FKmgKS+21lKjKjLlH
- nEiWin2Yj9A8Kl4Yc7AwdZgZmdHaLdRv9YC6w6zCeA2HfWbabHtpzcbK1wVDVOtc4g3XfaZ1ywK
- +RAtUfm5SYUFunS59EBkWCQAx1WaqUhLCMuLprbE25dCf0NKyNGz6aJ2kU2x16QNmQaMXKiTnHj
- StIuCe30NL5JX3x+egXp71wwqjXIJWZL6EowVtxhVj9ROTa0btsOYASGmkvC5czETOjY9kJD4YD
- HScjpP//QW+jtAiLJ7NxodZQRi11XgxNR1nUMftqAJm/v0CFDyj2oAow3dlZCTWUdtpfdwEb04G
- UPUJCRsSVco76Sosvffn7Ufl59yATUHRt1uO6JiQFWM/Sne6ZSfdKSQMY7XDDVWB902G310tAa+
- ZnaHlOFySJSOAyg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2123; i=david@ixit.cz;
+ h=from:subject:message-id; bh=nLoRLzWSD9I8QjZocCX1KJtlPxdBkqwCM/C1ynX9oYU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmI4lAGgep8wCBGzhi2XmUy1eTpd8/Zc4BltUq
+ VVVEFJB3t2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapiOJQAKCRBgAj/E00kg
+ cmINEACG77+AleMKMB6rN/hKly9BtOeMUj9oRTl0d2+0na6z7eZHh/ihzDX9SpiA6pAFYS2dEqy
+ fbAvi8Wd5/0ILeH3UBAT60VfQPkkcKF2AI8GPXuM/eiWb2ERpiEwp01ztoxbWWlV8XGGIA0Q8d9
+ z728nkurL7iRPObbQ709ae18JWQJrhMwPks48Pz0YS7uaD09F6hyAj/ggmFPC6hDegIc/K5sst8
+ r81ssdbscKNdwmkY6LWMOGCNez4yfuh0DDMBER+7v7WZjoZSkX1gkFtNCFzvBavqEo7YblRZ3WO
+ h/MI3jitl909G45vDKSDSiULcIHdnDvdbDH8vI0ElnJY27F34In8BNA8l6efldyztYvT8DWdzRv
+ Fwda6uRjnOnlUpr692y0Xkx5slvTXYT7Tq8DjZcBM5+/pXHiZGNiRt/V+zu4AY3QwPzdk9zFom9
+ pYIlNqEBJRLNZ/dPkNTnsS972JwGVueHBBUo8BFJkEObHSboXIMFzET59ALPqDSsYiptI3mBgsI
+ cYdIiz9oQqExslxtu2KgtNTC2vB+hject/SvVQmGmIMVUv236/7kHwHZf7GU7a3vFjZYAf+49iN
+ W6fekChjwbJEV1XBPF9m7v+8dlq7FMj1iA7b1KjaTelq6uzcQsl35Rts9JeorzDgwjsS7NRu/ip
+ E7ZnTx7keLk/PSA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Be more clear with pin description and group all of them into one state.
+From: Richard Acayan <mailingradian@gmail.com>
 
-No functional changes.
+The NFC driver can detect and read an NFC tag.
 
+Signed-off-by: Richard Acayan <mailingradian@gmail.com>
+Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 34 ++++++++++++++--------
- 1 file changed, 22 insertions(+), 12 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi | 42 ++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index f73d4ea57705f..f1379857e2742 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -400,17 +400,17 @@ nfc@28 {
- 		compatible = "nxp,pn557", "nxp,nxp-nci-i2c";
- 		reg = <0x28>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
+index b4854801a5f5e..5c2613e53679c 100644
+--- a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
+@@ -485,16 +485,35 @@ &gpi_dma1 {
+ &gpu {
+ 	status = "okay";
+ };
  
- 		interrupts-extended = <&tlmm 63 IRQ_TYPE_EDGE_RISING>;
+ &gpu_zap_shader {
+ 	firmware-name = "qcom/sdm670/sargo/a615_zap.mbn";
+ };
  
- 		enable-gpios = <&tlmm 25 GPIO_ACTIVE_HIGH>;
- 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
- 
--		pinctrl-0 = <&nfc_int_default &nfc_enable_default>;
++&i2c3 {
++	clock-frequency = <400000>;
++
++	status = "okay";
++
++	nfc@28 {
++		compatible = "nxp,pn557", "nxp,nxp-nci-i2c";
++		reg = <0x28>;
++
++		interrupts-extended = <&tlmm 44 IRQ_TYPE_EDGE_RISING>;
++
++		enable-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
++		firmware-gpios = <&tlmm 43 GPIO_ACTIVE_HIGH>;
++
 +		pinctrl-0 = <&nfc_default>;
- 		pinctrl-names = "default";
++		pinctrl-names = "default";
++	};
++};
++
+ &i2c9 {
+ 	clock-frequency = <100000>;
+ 	status = "okay";
+ 
+ 	synaptics-rmi4-i2c@20 {
+ 		compatible = "syna,rmi4-i2c";
+ 		reg = <0x20>;
+ 		interrupts-extended = <&tlmm 125 IRQ_TYPE_EDGE_FALLING>;
+@@ -686,16 +705,39 @@ ts-irq-pins {
+ 		ts-switch-pins {
+ 			pins = "gpio135";
+ 			function = "gpio";
+ 			drive-strength = <2>;
+ 			bias-disable;
+ 			output-low;
+ 		};
  	};
- };
- 
- &i2c12 {
- 	/* Bottom spkr (right) CS35L36 @ 40 */
- 
- 	/* Top spkr (left) CS35L36 @ 41 */
-@@ -473,28 +473,38 @@ &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
- };
- 
- &tlmm {
- 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
- 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
- 
--	nfc_int_default: nfc-int-default-state {
--		pins = "gpio63";
--		function = "gpio";
--		drive-strength = <2>;
--		bias-pull-down;
--	};
++
 +	nfc_default: nfc-default-state {
 +		enable-pins {
-+			pins = "gpio25";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+
-+		irq-pins {
-+			pins = "gpio63";
++			pins = "gpio12";
 +			function = "gpio";
 +			drive-strength = <2>;
 +			bias-pull-down;
 +		};
 +
 +		firmware-pins {
-+			pins = "gpio79";
++			pins = "gpio43";
 +			function = "gpio";
 +			drive-strength = <2>;
 +			bias-pull-down;
 +		};
++
++		irq-pins {
++			pins = "gpio44";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
++	};
+ };
  
--	nfc_enable_default: nfc-enable-default-state {
--		pins = "gpio25", "gpio79";
--		function = "gpio";
--		drive-strength = <2>;
--		bias-pull-down;
- 	};
+ &usb_1_hsphy {
+ 	vdd-supply = <&vreg_l1b_0p925>;
+ 	vdda-pll-supply = <&vreg_l10a_1p8>;
+ 	vdda-phy-dpdm-supply = <&vreg_l7b_3p125>;
  
- 	touchscreen_reset: ts-reset-state {
- 		pins = "gpio99";
- 		function = "gpio";
- 		drive-strength = <8>;
- 		bias-pull-up;
- 	};
+ 	status = "okay";
 
 -- 
 2.55.0
