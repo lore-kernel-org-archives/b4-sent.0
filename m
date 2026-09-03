@@ -1,280 +1,104 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 03 Sep 2026 20:26:42 +0200
-Subject: [PATCH RFC v2 6/6] arm64: dts: qcom: sdm845-google: Add basic
- audio support
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Thu, 03 Sep 2026 21:37:13 +0200
+Subject: [PATCH] iio: imu: inv_icm42600: fix odr change not caught in
+ certain cases
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260903-pixel3-audio-v2-6-7c22ed915291@ixit.cz>
-References: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
-In-Reply-To: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- David Rhodes <david.rhodes@cirrus.com>, 
- Richard Fitzgerald <rf@opensource.cirrus.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- David Rhodes <drhodes@opensource.cirrus.com>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, patches@opensource.cirrus.com, 
- devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5540; i=david@ixit.cz;
- h=from:subject:message-id; bh=kcOJuw/9+ohJx6Qaeb4TQNVMUEcnU0DSvegSZd7bX2g=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvhTfl1EXtZDTwfw3yAzBzxGM/FJIhTIo2ys
- TErcfXu9aKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
- ckGSD/wJ69vnz1ofZpIVB54E7qYekdE6wOfLXvQU1FH0YYOqrFMGRAU+JbWToP6a+MdIPQNksrH
- UulLFMOuFqpsYaeYOH3MWcCD81Qre+prVb1JOdG9wgu01HK/PPJmLm94fIcmTtGBsGtoZX5l3yd
- y1L8VAJXUrtWo7o2GgwPyI+2z74nzS97lZeNswWdumyVo0rym37nGkHCye0GZx3k0L4eaSefnmT
- 9fluoLkgSIc8RxJOoI9viLPGMFEnJ8C21kNiKpyeoqqX3G/DM1vzguJjwFecUxkKg1xifxNvUYs
- wcAp4bpmSVundraSCx2L9tH19n0y3s48eaYd+KZxfQW6uJjQBupSHiyEjN+k5WRhIQvg5dqY6mA
- pRoo6Wmqt7r5vCEWskufA8ys+vAoIt3pzOwb4u6tOnX3JuIsG8i6l0LrME8h1CfMKi8P8O4eTIF
- UzxabCiBsvwFAdPfnZrsKh8jrkbl3AizELlqnVtHURVNkhS5lpZAxEMZNfwt5NcTgWAkJJXyH4s
- XH7a3BNXhzWNBSozBwFcZkEtVOjoCEFMCvTBy1U4IgS/tacR8ryUbzMrVVG42WLQ8awIhqde9Zy
- 436Romslj+hPeZrDHFWhKlzNr9voN7wXvYY7FyuONlbk9GHiEaL2V6lbOseKge71k34yeeG6QeO
- +9+Ylw4IfRvUfWg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20260903-iio-imu-inv-icm42600-fix-odr-change-never-caught-v1-1-029c5f1cbce2@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAGjMmWoC/y2NwQqDMBBEf0X23IU0tYr9leIhJquuYFISEwriv
+ 3fbenzDzLwdEkWmBI9qh0iFEwcvcL1UYGfjJ0J2wqCVblSnbsgckNeM7AuyXWuJFY78xuAinhN
+ PhQRMnuYNB9foutV346gFuX1FkvpP+ez/nPKwkN2+HjiOD6/NEpOUAAAA
+X-Change-ID: 20260903-iio-imu-inv-icm42600-fix-odr-change-never-caught-bd624725ade7
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788464239; l=2940;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=m60S/Iw6rtSEbJaApo5jUI0iF3VazngX65yETOcKHwE=;
+ b=w9aaIbjDwjHyWh2vnYmdg7uSe/Z5FtSOJUuNtoDF944JZ7VLjbzR5zlMVdP5tnpRYSzShiv5R
+ +pdmEs+el5vAuIShf+0fdu1LFJ0Ik6SZJe0qKkWiulg7tZuj16H8296
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce support for sound card and wire two CS35L36 audio codecs for
-top and bottom speakers.
+When using both accel and gyro with different frequencies, the ODR
+change flag in the FIFO header can be sometime in a packet with
+invalid data. Since we are ignoring these packets, we miss the ODR
+change and any further change are blocked until sensor is turned off.
 
-Inspired by commit from Joel Selvaraj.
+Fix this by moving the packet data validity check after the ODR change
+flag check.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: ec74ae9fd37c ("iio: imu: inv_icm42600: add accurate timestamping")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 132 ++++++++++++++++++++-
- 1 file changed, 130 insertions(+), 2 deletions(-)
+ drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c | 8 ++++----
+ drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c  | 8 ++++----
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 9e952f9862f24..cf87b582e3997 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -2,16 +2,18 @@
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
+index 3197081a808a..65d29de8ecf9 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
+@@ -1235,15 +1235,15 @@ int inv_icm42600_accel_parse_fifo(struct iio_dev *indio_dev)
+ 		if (size <= 0)
+ 			return size;
  
- /dts-v1/;
+-		/* skip packet if no accel data or data is invalid */
+-		if (accel == NULL || !inv_icm42600_fifo_is_data_valid(accel))
+-			continue;
+-
+ 		/* update odr */
+ 		if (odr & INV_ICM42600_SENSOR_ACCEL)
+ 			inv_sensors_timestamp_apply_odr(ts, st->fifo.period,
+ 							st->fifo.nb.total, no);
  
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include <dt-bindings/sound/qcom,q6afe.h>
-+#include <dt-bindings/sound/qcom,q6asm.h>
- 
- #include "sdm845.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
- 
- /delete-node/ &mpss_region;
- /delete-node/ &venus_mem;
- /delete-node/ &cdsp_mem;
-@@ -404,19 +406,61 @@ nfc@28 {
- 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
- 
- 		pinctrl-0 = <&nfc_int_default &nfc_enable_default>;
- 		pinctrl-names = "default";
- 	};
- };
- 
- &i2c12 {
--	/* Bottom spkr (right) CS35L36 @ 40 */
-+	status = "okay";
++		/* skip packet if no accel data or data is invalid */
++		if (accel == NULL || !inv_icm42600_fifo_is_data_valid(accel))
++			continue;
 +
-+	cs35l36_bottom: audio-codec@40 {
-+		compatible = "cirrus,cs35l36";
-+		reg = <0x40>;
-+		reset-gpios = <&tlmm 112 GPIO_ACTIVE_HIGH>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "Right"; /* Bottom */
-+		VA-supply = <&vreg_s4a_1p8>;
-+		interrupts-extended = <&tlmm 115 IRQ_TYPE_LEVEL_LOW>;
-+
-+		pinctrl-0 = <&cs35l36_bottom_default_state>;
-+		pinctrl-names = "default";
-+
-+		cirrus,boost-ind-nanohenry = <1000>;
-+		cirrus,boost-ctl-select = <1>;
-+		cirrus,boost-ctl-millivolt = <10000>;
-+		cirrus,boost-peak-milliamp = <3700>;
-+		cirrus,temp-warn-threshold = <1>;
-+		cirrus,multi-amp-mode;
-+		cirrus,irq-drive-select = <0>;
-+		cirrus,irq-gpio-select = <0>;
-+	};
+ 		memcpy(&buffer.accel, accel, sizeof(buffer.accel));
+ 		/* convert 8 bits FIFO temperature in high resolution format */
+ 		buffer.temp = temp ? (*temp * 64) : 0;
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
+index 9de5c383665f..4e20d61d897b 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
+@@ -816,15 +816,15 @@ int inv_icm42600_gyro_parse_fifo(struct iio_dev *indio_dev)
+ 		if (size <= 0)
+ 			return size;
  
--	/* Top spkr (left) CS35L36 @ 41 */
-+	cs35l36_top: audio-codec@41 {
-+		compatible = "cirrus,cs35l36";
-+		reg = <0x41>;
-+		reset-gpios = <&tlmm 75 GPIO_ACTIVE_HIGH>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "Left"; /* Top */
-+		VA-supply = <&vreg_s4a_1p8>;
-+		interrupts-extended = <&tlmm 40 IRQ_TYPE_LEVEL_LOW>;
-+
-+		pinctrl-0 = <&cs35l36_top_default_state>;
-+		pinctrl-names = "default";
-+
-+		cirrus,boost-ind-nanohenry = <1000>;
-+		cirrus,boost-ctl-select = <0x01>;
-+		cirrus,boost-ctl-millivolt = <10000>;
-+		cirrus,boost-peak-milliamp = <3700>;
-+		cirrus,temp-warn-threshold = <1>;
-+		cirrus,multi-amp-mode;
-+		cirrus,irq-drive-select = <0>;
-+		cirrus,irq-gpio-select = <0>;
-+	};
- };
+-		/* skip packet if no gyro data or data is invalid */
+-		if (gyro == NULL || !inv_icm42600_fifo_is_data_valid(gyro))
+-			continue;
+-
+ 		/* update odr */
+ 		if (odr & INV_ICM42600_SENSOR_GYRO)
+ 			inv_sensors_timestamp_apply_odr(ts, st->fifo.period,
+ 							st->fifo.nb.total, no);
  
- &ipa {
- 	firmware-name = "qcom/sdm845/Google/blueline/ipa_fws.mbn";
- 	memory-region = <&ipa_fw_mem>;
- 
- 	status = "okay";
- };
-@@ -449,16 +493,35 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&q6afedai {
-+	dai@72 {
-+		reg = <QUATERNARY_TDM_RX_0>;
++		/* skip packet if no gyro data or data is invalid */
++		if (gyro == NULL || !inv_icm42600_fifo_is_data_valid(gyro))
++			continue;
 +
-+		qcom,tdm-sync-mode = <0>;
-+		qcom,tdm-sync-src = <1>;
-+		qcom,tdm-data-out = <0>;
-+		qcom,tdm-invert-sync = <0>;
-+		qcom,tdm-data-delay = <1>;
-+		qcom,tdm-data-align = <0>;
-+	};
-+};
-+
-+&q6asmdai {
-+	dai@0 {
-+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
- };
- 
-@@ -467,16 +530,49 @@ &qup_uart9_rx {
- 	bias-pull-up;
- };
- 
- &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
- };
- 
-+&sound {
-+	compatible = "qcom,sdm845-sndcard";
-+	model = "blueline";
-+	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
-+		    <&quat_mi2s_sd1_active>;
-+	pinctrl-names = "default";
-+
-+	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
-+	mm1-dai-link {
-+		link-name = "MultiMedia1";
-+
-+		cpu {
-+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
-+		};
-+	};
-+
-+	cs35l36-dai-link {
-+		link-name = "Speaker Playback";
-+
-+		codec {
-+			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
-+		};
-+
-+		cpu {
-+			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
-+		};
-+
-+		platform {
-+			sound-dai = <&q6routing>;
-+		};
-+	};
-+};
-+
- &tlmm {
- 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
- 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
- 
- 	nfc_int_default: nfc-int-default-state {
- 		pins = "gpio63";
- 		function = "gpio";
- 		drive-strength = <2>;
-@@ -505,16 +601,48 @@ touchscreen_pins: ts-pins-gpio-state {
- 	};
- 
- 	touchscreen_i2c_pins: qup-i2c2-gpio-state {
- 		pins = "gpio27", "gpio28";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
- 	};
-+
-+	cs35l36_bottom_default_state: cs35l36-bottom-default-state {
-+		reset-pins {
-+			pins = "gpio112";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+
-+		irq-pins {
-+			pins = "gpio115";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+	};
-+
-+	cs35l36_top_default_state: cs35l36-top-default-state {
-+		irq-pins {
-+			pins = "gpio40";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+
-+		reset-pins {
-+			pins = "gpio75";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+	};
- };
- 
- &uart6 {
- 	pinctrl-0 = <&qup_uart6_4pin>;
- 
- 	status = "okay";
- 
- 	bluetooth {
+ 		memcpy(&buffer.gyro, gyro, sizeof(buffer.gyro));
+ 		/* convert 8 bits FIFO temperature in high resolution format */
+ 		buffer.temp = temp ? (*temp * 64) : 0;
 
--- 
-2.55.0
+---
+base-commit: 183f05a300eab41e4578337eac59335730dfebf9
+change-id: 20260903-iio-imu-inv-icm42600-fix-odr-change-never-caught-bd624725ade7
+
+Best regards,
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
