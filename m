@@ -1,15 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH RFC v2 0/6] Speakers for Pixel 3 / 3 XL
-Date: Thu, 03 Sep 2026 20:26:36 +0200
-Message-Id: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
+Date: Thu, 03 Sep 2026 20:26:37 +0200
+Subject: [PATCH RFC v2 1/6] ASoC: qcom: sdm845: Demystify TDM masks a bit
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNSw6CMBCGr0JmbU1LpYArExMP4NawoDCVSQxgC
- wQlvbsFVi7/57eAQ0vo4BwtYHEiR10bRHyIoGrK9omM6qAh5rHiSkjW04wvycqxpo7pWht9yjH
- jMoUw6S2akK93D7jfrlDspsX3GK6HPVnNhtzQ2c/GncTW3xApT/4Rk2CcSa2UkTJLciMuNNNwr
- L5QeO9/GIJ0KMAAAAA=
-X-Change-ID: 20260613-pixel3-audio-bdbfb49e8037
+Message-Id: <20260903-pixel3-audio-v2-1-7c22ed915291@ixit.cz>
+References: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
+In-Reply-To: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
@@ -25,72 +22,106 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1964; i=david@ixit.cz;
- h=from:subject:message-id; bh=swhrbSD3HdK0AP2/e4RRVmalQc9TAXTMchmltY6AmDY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvhftd5/BDYBefz6ncuVCrJMR4oiHkZymA2Y
- rhYtGPVMhOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
- csJyD/9g2iBXVdmahUfPlV2YCq+X8+YMg4Kx9IpFkCAj5FPbRy+irB570MhZZ3CY7OZyYkp8KzZ
- 9mnkOSzziuzrxGk1QQshe1sCxdnJ4SI+KUQkPaPmwUMIO9pLS1wdV/32+A9jSWmvQwVpiinN10R
- 9suoCgEqM6b7VS9yFdPGHtYlfoxfO9YsbyGHgcyOCAPaVexup9C0m+mD9aZ0//PjzAn3qiL1q45
- Uow9oxLCfmgy9NOYoC646l65WsS9uon1EU89FFNYhaDwpjYOxbfcNUoTP5gBjo6Bk7m04Ltbx24
- +qSG4WJxwDGzK8lpvVzJENr87SYs1+vyuoy5a/eCR7U6iBFg5j4hwRxtn1AbhWHRHdevoUVRTu8
- 9oCO9Gqvb5pS7SKVqTEzg2BHwEE2xeetR4qRmLLpEIvSqIUN2by+puo4Sd8yYCKQeixZvH3bozZ
- agmvaYIZ7nyGdkbs/Xlo1Ued9ZIQUFK6Sb7EWkAdX8hCoj5hnm563sT62NuGJkVP0xxH45aDdP3
- +kFV1S5kRtCepS0gDWgL/5hWKx1hynbTMxn1f/W81quT15eyKfHTWtl5CCLtMAF2vjC0zkT24Z5
- SZkQv2Qv13i1StKvYCYLtDbH6ypuAXSxkRPGox1sQv6ktdpplQ/2U6dH3KhdqgcRy7wC6FOGhvp
- mXaO/T/wg8x4bIQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2687; i=david@ixit.cz;
+ h=from:subject:message-id; bh=cPwrEY4ZNqiKfvbC0ASAoVk96Jl21/NzxFU+I7j9SBQ=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvhxwq/202EQUg7sPGfMmY8UagSnnoYZN3nW
+ tFBAMgI0qmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
+ chwgEACEFfcVpyGEbKOWWdYcMAyngylTuHsY9hAchAakiWMg8mNUjb+G4VdoSIagaaGKzRhrZ/d
+ EHSBe5JLdxart/C98n0J49NYtRt2z85WmaIpRXkhBRCV8x0IS5M/ROCppr7gFkO6CtizuavP1rP
+ rB+WnwEHyAM07oeZPVeNvz+KOhyK7n/eY76kQuIds+3K+62UVRvrcivSE/fPqhmk8xuzmm15NmD
+ 7yfIZWCB8Mq1DWqgtOHYhmIWqoTN5cbuAXom5Ul/ij1EtjIgUJZH+cj9CZAmQBM2237g61iyUQG
+ Mw86EXqHXBDi38NR8RsO7W0vgrrcn73Y+VV6bFxYbqT08EsbzPPgm1xJrEc822lYhYS4pFCc2Qx
+ hrcvnrM+dASSiI4858sDotZCs4U8++MFWJFuMHTwryd3ucEuqHx2mO8UZpzbHU9O7Kobl0y5/No
+ yIJ/5EMYJoF3y1DQ0JJ0gx9zVEEFHuC3bcyAcjXdb+0YF+SfVTOIxW07QIWvMJrT7wjkjYUQkEm
+ oF2AmKkrpKff/MKX0ZQdIfwfkstiu2azEpycpoCVKSySGhCQmxZ7AKXwggg3/4zSZt/zfJFyYHa
+ dnr8veLLOqxMUe8lQf7tst0igh3F4HiDhL7WiQmO6Cfu1+14EmK+oTo9kTiO4ExsoZYNjXtDXG8
+ eRWpU1OnOCCwhCQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series address:
-
-0. demistify the hex to BIT() macro and add left/right rx spk
-1. most likely wrongly set DSP_B in sdm845.c
-   my guess this is because TDM was never used in the mainline with
-   sdm845
-2. applying correct mask to left/right speaker for the TDM in sdm845.c,
-   so both speakers can work simultaneusly
-3. setting sysclk at startups, which some codecs need (such as cs35l36)
-4. setting proper tdm slot in the cs35l36 driver
-5. device-tree wiring for Pixel 3 / 3 XL
-
-Consider my knowledge here limited, thus sending RFC. Some parts we're
-heavily assisted by LLM.
-
-David
+Describe the mask with the bits used for each RX/TX.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v2:
-- Device-tree name sorting, with exception keeping mm1-dai-link in it's
-  place. (Konrad)
-- Make set_tdm_slot cleaner and less leveled. (Konrad)
-- Added TDM MIC defines in sdm845.c.
-  Should we in capture use speaker mask?
-- Renamed model from 'Google Pixel 3' to 'blueline', I would love to
-  hear feedback on this one.
-- Link to v1: https://lore.kernel.org/r/20260705-pixel3-audio-v1-0-3b66f33859f1@ixit.cz
+ sound/soc/qcom/sdm845.c | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
 
----
-David Heidelberg (6):
-      ASoC: qcom: sdm845: Demystify TDM masks a bit
-      ASoC: qcom: sdm845: use DSP_A format for TDM codec DAIs
-      ASoC: qcom: sdm845: Use per-speaker RX masks for TDM slot assignment
-      ASoC: qcom: sdm845: Set codec dai and component sysclk during startup
-      ASoC: cs35l36: Implement set_tdm_slot to program RX and TX slots
-      arm64: dts: qcom: sdm845-google: Add basic audio support
+diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
+index 6843ab8ba017e..0ce8265ab1c1f 100644
+--- a/sound/soc/qcom/sdm845.c
++++ b/sound/soc/qcom/sdm845.c
+@@ -18,19 +18,24 @@
+ #include "sdw.h"
+ #include "../codecs/rt5663.h"
+ 
+ #define DRIVER_NAME	"sdm845"
+ #define DEFAULT_SAMPLE_RATE_48K		48000
+ #define DEFAULT_MCLK_RATE		24576000
+ #define TDM_BCLK_RATE		6144000
+ #define MI2S_BCLK_RATE		1536000
+-#define LEFT_SPK_TDM_TX_MASK    0x30
+-#define RIGHT_SPK_TDM_TX_MASK   0xC0
+-#define SPK_TDM_RX_MASK         0x03
++#define LEFT_SPK_TDM_RX_MASK	BIT(0)
++#define RIGHT_SPK_TDM_RX_MASK	BIT(1)
++#define SPK_TDM_RX_MASK		(LEFT_SPK_TDM_RX_MASK | RIGHT_SPK_TDM_RX_MASK)
++#define MIC1_TDM_RX_MASK	BIT(2)
++#define MIC2_TDM_RX_MASK	BIT(3)
++#define MIC_TDM_RX_MASK		(MIC1_TDM_RX_MASK | MIC2_TDM_RX_MASK)
++#define LEFT_SPK_TDM_TX_MASK	(BIT(4) | BIT(5))
++#define RIGHT_SPK_TDM_TX_MASK	(BIT(6) | BIT(7))
+ #define NUM_TDM_SLOTS           8
+ #define SLIM_MAX_TX_PORTS 16
+ #define SLIM_MAX_RX_PORTS 13
+ #define WCD934X_DEFAULT_MCLK_RATE	9600000
+ 
+ struct sdm845_snd_data {
+ 	struct snd_soc_jack jack;
+ 	bool jack_setup;
+@@ -107,34 +112,36 @@ static int sdm845_tdm_snd_hw_params(struct snd_pcm_substream *substream,
+ 	default:
+ 		dev_err(rtd->dev, "%s: invalid param format 0x%x\n",
+ 				__func__, params_format(params));
+ 		return -EINVAL;
+ 	}
+ 
+ 	channels = params_channels(params);
+ 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+-		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0, 0x3,
+-				8, slot_width);
++		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0, SPK_TDM_RX_MASK,
++					       NUM_TDM_SLOTS, slot_width);
+ 		if (ret < 0) {
+ 			dev_err(rtd->dev, "%s: failed to set tdm slot, err:%d\n",
+ 					__func__, ret);
+ 			goto end;
+ 		}
+ 
+ 		ret = snd_soc_dai_set_channel_map(cpu_dai, 0, NULL,
+ 				channels, tdm_slot_offset);
+ 		if (ret < 0) {
+ 			dev_err(rtd->dev, "%s: failed to set channel map, err:%d\n",
+ 					__func__, ret);
+ 			goto end;
+ 		}
+ 	} else {
+-		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0xf, 0,
+-				8, slot_width);
++		ret = snd_soc_dai_set_tdm_slot(cpu_dai,
++					       SPK_TDM_RX_MASK |
++					       MIC_TDM_RX_MASK, 0,
++					       NUM_TDM_SLOTS, slot_width);
+ 		if (ret < 0) {
+ 			dev_err(rtd->dev, "%s: failed to set tdm slot, err:%d\n",
+ 					__func__, ret);
+ 			goto end;
+ 		}
+ 
+ 		ret = snd_soc_dai_set_channel_map(cpu_dai, channels,
+ 				tdm_slot_offset, 0, NULL);
 
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 132 ++++++++++++++++++++-
- sound/soc/codecs/cs35l36.c                         |  44 +++++++
- sound/soc/qcom/sdm845.c                            |  49 ++++++--
- 3 files changed, 213 insertions(+), 12 deletions(-)
----
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260613-pixel3-audio-bdbfb49e8037
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
