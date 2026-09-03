@@ -1,78 +1,80 @@
-From: Nicolas Giuliani <nicolas.giuliani@hotmail.com>
-Date: Thu, 03 Sep 2026 22:31:46 +0200
-Subject: [PATCH] staging: rtl8723bs: use unsigned int in
- rtw_get_rateset_len
+From: Roman Prucha <zorgan.roman@gmail.com>
+Date: Thu, 03 Sep 2026 23:14:44 +0200
+Subject: [PATCH] ALSA: ctxfi: Fix CA20K2 S/PDIF passthrough
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260903-send-final-v1-1-e72dd23d65f2@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIADHZmWoC/x3MQQrCQAyF4auUrA1Op1itVxEXaSczDUgqkyKF0
- rsbXT2+xft3MK7CBvdmh8ofMVnU0Z4amGbSwijJDTHEPgyhQ2NNmEXphW3Mly4PN+qvCfzwrpx
- l+8ceT/dIxjhW0mn+JZYqRfRsK/kUVN5WOI4vSrYTOIIAAAA=
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Nicolas Giuliani <nicolas.giuliani@hotmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788467518; l=1893;
- i=nicolas.giuliani@hotmail.com; s=default; h=from:subject:message-id;
- bh=yzibu705xasWBwsTRqp/0Aaw3bazN0NuQTOEDempaJk=;
- b=d2HcfVqHrHqQY9mq6AR0LFZNjY2wk1086j03Gug2e2dlY0bxZhN0tpb8g3l666lQ8KJa45qsd
- PU5/LWRAhjjCADFtO2Q59x4vfnWm1O7RK2mXAdwaUXqMUCqxNE3zD/I
-X-Developer-Key: i=nicolas.giuliani@hotmail.com; a=ed25519;
- pk=rNNxmS9TbBXKwfX1dwZ1c+DGVtBOSY1rgDwqf9Ecog4=
-X-Endpoint-Received: by B4 Relay for nicolas.giuliani@hotmail.com/default with auth_id=1000
+Message-Id: <20260903-ctxfi-spdif-conf9-fix-v1-1-5e4e3e1f801c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvxJ7bsESDPtKdCjdrb2YaIQg/T3pO
+ AMzFTIloQxzVyHRI1mu0GDoO3DnFg5C8Y1hVKNRVml0d2HBHL0wuiuwRZaCu1WWJ9LGeAetjYm
+ a/r/L+r4f6f2l2GcAAAA=
+X-Change-ID: 20260903-ctxfi-spdif-conf9-fix-b909f7e366dc
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Colin Ian King <colin.i.king@gmail.com>
+Cc: Takashi Iwai <tiwai@suse.de>, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Roman Prucha <zorgan.roman@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788470085; l=1760;
+ i=zorgan.roman@gmail.com; s=20260903; h=from:subject:message-id;
+ bh=jp1ueNFuA7dYZ45fIz/uA/BuyiO44DD0w6SFBbr7Fa0=;
+ b=z3wyA/sdLPH8AAAP3N3Tqh9wZQJozr+KoUi594t9AJYiIajbW0/CJga6QNj9JUZYR/aLf3hMp
+ LZ8Q2LFr1REC5GQA9FP6t1eVQsRP6woUy8JBsHMOVV3uUk7feiqmH0L
+X-Developer-Key: i=zorgan.roman@gmail.com; a=ed25519;
+ pk=nrIfal6DL0s9II7312EtRS98gHuLh87xybqQk8LhJw4=
+X-Endpoint-Received: by B4 Relay for zorgan.roman@gmail.com/20260903 with auth_id=1001
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the uint typedef with unsigned int in rtw_get_rateset_len()
-and its declaration.
+dao_rsc_init() encodes the DAIO configuration as
 
-This addresses the rtl8723bs TODO item to convert remaining unusual
-variable types. No functional change intended.
+    conf = (desc->msr & 0x7) | (desc->passthru << 3);
 
+S/PDIF passthrough uses msr=1 and passthru=1, resulting in
+conf=9.
+
+daio_mgr_dao_init() masks conf with 0xf, but handles only values
+1, 2, 4 and 8 when programming ATXCTL_NUC. As a result, conf=9
+falls through to the default case and leaves NUC at its previous
+setting.
+
+On a Creative X-Fi Titanium HD SB1270 (CA20K2), this breaks AC3
+IEC61937 passthrough when snd_ctxfi runs with
+reference_rate=48000,multiple=2. The receiver detects a non-audio
+stream but cannot decode the AC3 payload.
+
+With the unmodified driver, multiple=1 makes the same stream work.
+Handle conf=9 through the same NUC=0 path as conf=1.
+
+The change was runtime tested on the SB1270 with multiple=2 using
+IEC958 stereo PCM, pre-encoded AC3 IEC61937 passthrough and ALSA
+A52 live 5.1 encoding.
+
+Fixes: 26a9630c72eb ("ALSA: ctxfi: cthw20k2: fix mask on conf to allow 4 bits")
+Cc: stable@vger.kernel.org
 Assisted-by: LLM
-Signed-off-by: Nicolas Giuliani <nicolas.giuliani@hotmail.com>
+Signed-off-by: Roman Prucha <zorgan.roman@gmail.com>
 ---
-staging: rtl8723bs: use unsigned int in rtw_get_rateset_len
----
- drivers/staging/rtl8723bs/core/rtw_ieee80211.c | 4 ++--
- drivers/staging/rtl8723bs/include/ieee80211.h  | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ sound/pci/ctxfi/cthw20k2.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/staging/rtl8723bs/core/rtw_ieee80211.c b/drivers/staging/rtl8723bs/core/rtw_ieee80211.c
-index 66f476a46a..8c20609fc3 100644
---- a/drivers/staging/rtl8723bs/core/rtw_ieee80211.c
-+++ b/drivers/staging/rtl8723bs/core/rtw_ieee80211.c
-@@ -278,9 +278,9 @@ void rtw_set_supported_rate(u8 *supported_rates, uint mode)
- 	}
- }
- 
--uint rtw_get_rateset_len(u8 *rateset)
-+unsigned int rtw_get_rateset_len(u8 *rateset)
- {
--	uint i;
-+	unsigned int i;
- 
- 	for (i = 0; i < 13; i++)
- 		if (rateset[i] == 0)
-diff --git a/drivers/staging/rtl8723bs/include/ieee80211.h b/drivers/staging/rtl8723bs/include/ieee80211.h
-index 9f421e4875..e8f99e700c 100644
---- a/drivers/staging/rtl8723bs/include/ieee80211.h
-+++ b/drivers/staging/rtl8723bs/include/ieee80211.h
-@@ -722,7 +722,7 @@ u8 *rtw_get_wps_attr_content(u8 *wps_ie, uint wps_ielen, u16 target_attr_id, u8
- 	for (ie = (void *)buf; (((u8 *)ie) - ((u8 *)buf) + 1) < buf_len; \
- 		ie = (void *)(((u8 *)ie) + *(((u8 *)ie) + 1) + 2))
- 
--uint	rtw_get_rateset_len(u8 *rateset);
-+unsigned int	rtw_get_rateset_len(u8 *rateset);
- 
- struct registry_priv;
- int rtw_generate_ie(struct registry_priv *pregistrypriv);
+diff --git a/sound/pci/ctxfi/cthw20k2.c b/sound/pci/ctxfi/cthw20k2.c
+index 07e1490a6d17..36066ffe8784 100644
+--- a/sound/pci/ctxfi/cthw20k2.c
++++ b/sound/pci/ctxfi/cthw20k2.c
+@@ -994,6 +994,7 @@ static int daio_mgr_dao_init(struct hw *hw, void *blk, unsigned int idx, unsigne
+ 		/* S/PDIF output */
+ 		switch ((conf & 0xf)) {
+ 		case 1:
++		case 9:
+ 			set_field(&ctl->txctl[idx], ATXCTL_NUC, 0);
+ 			break;
+ 		case 2:
 
 ---
-base-commit: 758be99c46265b74476d5e1173d781abe325533e
-change-id: 20260903-send-final-12f53f98a67d
+base-commit: 7f71fd44a1089b362eacf87e1f451ddd4fb7df62
+change-id: 20260903-ctxfi-spdif-conf9-fix-b909f7e366dc
 
 Best regards,
 -- 
-Nicolas Giuliani <nicolas.giuliani@hotmail.com>
+Roman Prucha <zorgan.roman@gmail.com>
 
