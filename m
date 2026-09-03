@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 03 Sep 2026 20:26:41 +0200
-Subject: [PATCH RFC v2 5/6] ASoC: cs35l36: Implement set_tdm_slot to
- program RX and TX slots
+Date: Thu, 03 Sep 2026 20:26:42 +0200
+Subject: [PATCH RFC v2 6/6] arm64: dts: qcom: sdm845-google: Add basic
+ audio support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260903-pixel3-audio-v2-5-7c22ed915291@ixit.cz>
+Message-Id: <20260903-pixel3-audio-v2-6-7c22ed915291@ixit.cz>
 References: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
 In-Reply-To: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -23,113 +23,257 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2990; i=david@ixit.cz;
- h=from:subject:message-id; bh=ym0/FZGn+mYbakmqUH1BRKBz1D0NS99SfJsNBeHBZQs=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvhWz/gfsv85ZCKgoKangayDG05Zi49SJDpn
- sE/h/EP9kmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
- cunzD/4tamaMGNQ9rjorRT9oA7X0iaUYI7EcCyocbR0HWK24zuIOYIMOWiTMOsnPtt5bsSwC3NK
- ooXk5VSSJiAEDl8DHtzcDynx2kYfY7pu2XQlb6WqoqvIAXcjPc7mVMsFrbZK09/H/Q1V8oOL7Cf
- ugluLr0nwXNQeKc3Ipg/P9H1VrhRrubvBCAAYzvPLeQNzJTZX+G183ETaJTc08KaJI8/xSnoWtm
- sxUyZyQqQz/SpKQWni9OZu98gwi/YainoTeYYiRK0BTYA22Fp2UGjlc+EzQ2Ki8Pa7Gwv0N/a6U
- w1LEWbVyBfUdmHEqZRcy8if17gwwiVST1JQ6srL9E6UNYtiuCAWhjtwAfyve1iw77PaqlzxYfdx
- vokQuC2N8Ho//3F4sc5VIgz02Yd0NpCPtxNMb86RplSKv89pn4QTAAKjoObEBx5qAyQsfOKU00u
- j/Vhx65v4kkccdLdglqmBVpKxVpVt/SQLRJHQmIL9E0/1IZmRqzNkPcem7vJtNgdPts3dpkVw4u
- 9DOkQBJXaBpezF7Vb2Mb+JzhvzoJHUX5u2kamXh64TfOi7psMM8oxvn5gQbBPvl6VCL6CewlQzQ
- cWFoYsKlyFYxgQ+c7e3yuRGw4S4od3ITr8JoQfx9rTOW3nh+m+Drd803eqPcfEoEkIEyRsbytuQ
- TOFDnIohNw5P7mA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5540; i=david@ixit.cz;
+ h=from:subject:message-id; bh=kcOJuw/9+ohJx6Qaeb4TQNVMUEcnU0DSvegSZd7bX2g=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvhTfl1EXtZDTwfw3yAzBzxGM/FJIhTIo2ys
+ TErcfXu9aKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
+ ckGSD/wJ69vnz1ofZpIVB54E7qYekdE6wOfLXvQU1FH0YYOqrFMGRAU+JbWToP6a+MdIPQNksrH
+ UulLFMOuFqpsYaeYOH3MWcCD81Qre+prVb1JOdG9wgu01HK/PPJmLm94fIcmTtGBsGtoZX5l3yd
+ y1L8VAJXUrtWo7o2GgwPyI+2z74nzS97lZeNswWdumyVo0rym37nGkHCye0GZx3k0L4eaSefnmT
+ 9fluoLkgSIc8RxJOoI9viLPGMFEnJ8C21kNiKpyeoqqX3G/DM1vzguJjwFecUxkKg1xifxNvUYs
+ wcAp4bpmSVundraSCx2L9tH19n0y3s48eaYd+KZxfQW6uJjQBupSHiyEjN+k5WRhIQvg5dqY6mA
+ pRoo6Wmqt7r5vCEWskufA8ys+vAoIt3pzOwb4u6tOnX3JuIsG8i6l0LrME8h1CfMKi8P8O4eTIF
+ UzxabCiBsvwFAdPfnZrsKh8jrkbl3AizELlqnVtHURVNkhS5lpZAxEMZNfwt5NcTgWAkJJXyH4s
+ XH7a3BNXhzWNBSozBwFcZkEtVOjoCEFMCvTBy1U4IgS/tacR8ryUbzMrVVG42WLQ8awIhqde9Zy
+ 436Romslj+hPeZrDHFWhKlzNr9voN7wXvYY7FyuONlbk9GHiEaL2V6lbOseKge71k34yeeG6QeO
+ +9+Ylw4IfRvUfWg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Program the ASP RX and TX slot registers from the TDM masks passed by
-the machine driver. Each set bit in a mask names a slot; codec channels
-are assigned to those slots in order, ASPRX1 taking the first RX slot
-and ASPTX1..TX8 the first eight TX slots, with a warning if the mask
-names more slots than the device has channels.
+Introduce support for sound card and wire two CS35L36 audio codecs for
+top and bottom speakers.
 
-Passing slots == 0 or an empty mask restores the hardware defaults,
-ASPRX1 in slot 0 and ASPTX1..TX8 in slots 0..7.
+Inspired by commit from Joel Selvaraj.
 
-This lets a machine driver with several amplifiers on one bus, such as
-sdm845 with two CS35L36, put each amplifier on its own RX slot and keep
-their TX slots from colliding.
-
-Assisted-by: Claude:claude-4.6-opus
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- sound/soc/codecs/cs35l36.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 44 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 132 ++++++++++++++++++++-
+ 1 file changed, 130 insertions(+), 2 deletions(-)
 
-diff --git a/sound/soc/codecs/cs35l36.c b/sound/soc/codecs/cs35l36.c
-index 89645327945f1..4d35ca6291548 100644
---- a/sound/soc/codecs/cs35l36.c
-+++ b/sound/soc/codecs/cs35l36.c
-@@ -942,20 +942,64 @@ static const struct cs35l36_pll_config *cs35l36_get_clk_config(
- 	for (i = 0; i < ARRAY_SIZE(cs35l36_pll_sysclk); i++) {
- 		if (cs35l36_pll_sysclk[i].freq == freq)
- 			return &cs35l36_pll_sysclk[i];
- 	}
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+index 9e952f9862f24..cf87b582e3997 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+@@ -2,16 +2,18 @@
  
- 	return NULL;
- }
+ /dts-v1/;
  
-+static void cs35l36_mask_to_slots(struct cs35l36_private *cs35l36,
-+				  unsigned long mask, unsigned int base_reg,
-+				  unsigned int nchan)
-+{
-+	unsigned int chan = 0, shift;
-+	int slot;
-+
-+	/* Two 6-bit slot fields per register, at bits 0 and 16 */
-+	for_each_set_bit(slot, &mask, BITS_PER_TYPE(mask)) {
-+		if (chan == nchan) {
-+			dev_warn(cs35l36->dev,
-+				 "Too many slots in TDM mask: %lx\n", mask);
-+			return;
-+		}
-+
-+		shift = (chan % 2) * CS35L36_ASP_TX2_SLOT_SHIFT;
-+		regmap_update_bits(cs35l36->regmap, base_reg + (chan / 2) * 4,
-+				   CS35L36_ASP_RX1_SLOT_MASK << shift,
-+				   slot << shift);
-+		chan++;
-+	}
-+}
-+
-+static int cs35l36_set_tdm_slot(struct snd_soc_dai *dai,
-+				unsigned int tx_mask, unsigned int rx_mask,
-+				int slots, int slot_width)
-+{
-+	struct cs35l36_private *cs35l36 =
-+			snd_soc_component_get_drvdata(dai->component);
-+
-+	/* Note: rx/tx is from point of view of the CPU end */
-+	if (!slots || !rx_mask)
-+		rx_mask = BIT(0);		/* ASPRX1 in slot 0 */
-+
-+	if (!slots || !tx_mask)
-+		tx_mask = GENMASK(7, 0);	/* ASPTX1..8 in slots 0..7 */
-+
-+	cs35l36_mask_to_slots(cs35l36, rx_mask, CS35L36_ASP_RX1_SLOT, 1);
-+	cs35l36_mask_to_slots(cs35l36, tx_mask, CS35L36_ASP_TX1_TX2_SLOT, 8);
-+
-+	return 0;
-+}
-+
- static const struct snd_soc_dai_ops cs35l36_ops = {
- 	.set_fmt = cs35l36_set_dai_fmt,
- 	.hw_params = cs35l36_pcm_hw_params,
- 	.set_sysclk = cs35l36_dai_set_sysclk,
-+	.set_tdm_slot = cs35l36_set_tdm_slot,
+ #include <dt-bindings/arm/qcom,ids.h>
+ #include <dt-bindings/dma/qcom-gpi.h>
+ #include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
++#include <dt-bindings/sound/qcom,q6afe.h>
++#include <dt-bindings/sound/qcom,q6asm.h>
+ 
+ #include "sdm845.dtsi"
+ #include "pm8998.dtsi"
+ #include "pmi8998.dtsi"
+ 
+ /delete-node/ &mpss_region;
+ /delete-node/ &venus_mem;
+ /delete-node/ &cdsp_mem;
+@@ -404,19 +406,61 @@ nfc@28 {
+ 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
+ 
+ 		pinctrl-0 = <&nfc_int_default &nfc_enable_default>;
+ 		pinctrl-names = "default";
+ 	};
  };
  
- #define CS35L36_RATES (		    \
- 	SNDRV_PCM_RATE_8000_48000 | \
- 	SNDRV_PCM_RATE_12000 |	    \
- 	SNDRV_PCM_RATE_24000 |	    \
- 	SNDRV_PCM_RATE_88200 |	    \
- 	SNDRV_PCM_RATE_96000 |	    \
+ &i2c12 {
+-	/* Bottom spkr (right) CS35L36 @ 40 */
++	status = "okay";
++
++	cs35l36_bottom: audio-codec@40 {
++		compatible = "cirrus,cs35l36";
++		reg = <0x40>;
++		reset-gpios = <&tlmm 112 GPIO_ACTIVE_HIGH>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "Right"; /* Bottom */
++		VA-supply = <&vreg_s4a_1p8>;
++		interrupts-extended = <&tlmm 115 IRQ_TYPE_LEVEL_LOW>;
++
++		pinctrl-0 = <&cs35l36_bottom_default_state>;
++		pinctrl-names = "default";
++
++		cirrus,boost-ind-nanohenry = <1000>;
++		cirrus,boost-ctl-select = <1>;
++		cirrus,boost-ctl-millivolt = <10000>;
++		cirrus,boost-peak-milliamp = <3700>;
++		cirrus,temp-warn-threshold = <1>;
++		cirrus,multi-amp-mode;
++		cirrus,irq-drive-select = <0>;
++		cirrus,irq-gpio-select = <0>;
++	};
+ 
+-	/* Top spkr (left) CS35L36 @ 41 */
++	cs35l36_top: audio-codec@41 {
++		compatible = "cirrus,cs35l36";
++		reg = <0x41>;
++		reset-gpios = <&tlmm 75 GPIO_ACTIVE_HIGH>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "Left"; /* Top */
++		VA-supply = <&vreg_s4a_1p8>;
++		interrupts-extended = <&tlmm 40 IRQ_TYPE_LEVEL_LOW>;
++
++		pinctrl-0 = <&cs35l36_top_default_state>;
++		pinctrl-names = "default";
++
++		cirrus,boost-ind-nanohenry = <1000>;
++		cirrus,boost-ctl-select = <0x01>;
++		cirrus,boost-ctl-millivolt = <10000>;
++		cirrus,boost-peak-milliamp = <3700>;
++		cirrus,temp-warn-threshold = <1>;
++		cirrus,multi-amp-mode;
++		cirrus,irq-drive-select = <0>;
++		cirrus,irq-gpio-select = <0>;
++	};
+ };
+ 
+ &ipa {
+ 	firmware-name = "qcom/sdm845/Google/blueline/ipa_fws.mbn";
+ 	memory-region = <&ipa_fw_mem>;
+ 
+ 	status = "okay";
+ };
+@@ -449,16 +493,35 @@ &pm8998_resin {
+ };
+ 
+ &pmi8998_charger {
+ 	monitored-battery = <&battery>;
+ 
+ 	status = "okay";
+ };
+ 
++&q6afedai {
++	dai@72 {
++		reg = <QUATERNARY_TDM_RX_0>;
++
++		qcom,tdm-sync-mode = <0>;
++		qcom,tdm-sync-src = <1>;
++		qcom,tdm-data-out = <0>;
++		qcom,tdm-invert-sync = <0>;
++		qcom,tdm-data-delay = <1>;
++		qcom,tdm-data-align = <0>;
++	};
++};
++
++&q6asmdai {
++	dai@0 {
++		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
++	};
++};
++
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
+ 
+ &qupv3_id_1 {
+ 	status = "okay";
+ };
+ 
+@@ -467,16 +530,49 @@ &qup_uart9_rx {
+ 	bias-pull-up;
+ };
+ 
+ &qup_uart9_tx {
+ 	drive-strength = <2>;
+ 	bias-disable;
+ };
+ 
++&sound {
++	compatible = "qcom,sdm845-sndcard";
++	model = "blueline";
++	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
++		    <&quat_mi2s_sd1_active>;
++	pinctrl-names = "default";
++
++	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
++	mm1-dai-link {
++		link-name = "MultiMedia1";
++
++		cpu {
++			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
++		};
++	};
++
++	cs35l36-dai-link {
++		link-name = "Speaker Playback";
++
++		codec {
++			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
++		};
++
++		cpu {
++			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
++		};
++
++		platform {
++			sound-dai = <&q6routing>;
++		};
++	};
++};
++
+ &tlmm {
+ 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
+ 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
+ 
+ 	nfc_int_default: nfc-int-default-state {
+ 		pins = "gpio63";
+ 		function = "gpio";
+ 		drive-strength = <2>;
+@@ -505,16 +601,48 @@ touchscreen_pins: ts-pins-gpio-state {
+ 	};
+ 
+ 	touchscreen_i2c_pins: qup-i2c2-gpio-state {
+ 		pins = "gpio27", "gpio28";
+ 		function = "gpio";
+ 		drive-strength = <2>;
+ 		bias-disable;
+ 	};
++
++	cs35l36_bottom_default_state: cs35l36-bottom-default-state {
++		reset-pins {
++			pins = "gpio112";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-disable;
++		};
++
++		irq-pins {
++			pins = "gpio115";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++	};
++
++	cs35l36_top_default_state: cs35l36-top-default-state {
++		irq-pins {
++			pins = "gpio40";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++
++		reset-pins {
++			pins = "gpio75";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-disable;
++		};
++	};
+ };
+ 
+ &uart6 {
+ 	pinctrl-0 = <&qup_uart6_4pin>;
+ 
+ 	status = "okay";
+ 
+ 	bluetooth {
 
 -- 
 2.55.0
