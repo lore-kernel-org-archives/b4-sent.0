@@ -1,178 +1,122 @@
-From: Torsten Rupp <torsten.rupp@8tronix.de>
-Date: Thu, 03 Sep 2026 09:20:42 +0200
-Subject: [PATCH] fix 32bit silent truncation of 64bit offset in
- mmc_get_env_addr()
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v12 0/3] Add Amlogic general DMA
+Date: Thu, 03 Sep 2026 07:38:27 +0000
+Message-Id: <20260903-amlogic-dma-v12-0-f769bc344056@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260903-mmc-fixes-v1-1-946242839347@8tronix.de>
-X-B4-Tracking: v=1; b=H4sIAMofmWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDSwNj3dzcZN20zIrUYl2LxMQkIxNTS1NLSwsloPqColSwBFB5dGxtLQA
- XpJDyWwAAAA==
-To: "NXP i.MX U-Boot Team" <uboot-imx@nxp.com>, 
- u-boot@lists.u-boot-project.org
-Cc: Frieder Schrempf <frieder.schrempf@kontron.de>, 
- Tom Rini <trini@konsulko.com>, Stefano Babic <sbabic@nabladev.com>, 
- Fabio Estevam <festevam@gmail.com>, Peng Fan <peng.fan@nxp.com>, 
- Jaehoon Chung <jh80.chung@samsung.com>, 
- Tanmay Kathpalia <tanmay.kathpalia@altera.com>, 
- Eric Chung <eric.chung@riscstar.com>, Han Xu <han.xu@nxp.com>, 
- Torsten Rupp <torsten.rupp@8tronix.de>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788420043; l=5217;
- i=torsten.rupp@8tronix.de; s=20260903; h=from:subject:message-id;
- bh=N6Oa9ovFnWj46mDS7TgLCycBPoyr0wpKaQ0+dg6Tbb8=;
- b=9GcuB7eAl6+f15bU5Nub2g0oBza1JWytDfG8bTlinAESI3LtVAoWSxcF+WGMhtK0d5y4kWdZy
- O36R2EacfsgD7/mqvBVyoeNFdy3lNr32ikSL9CD+o/7eJdYUFZPxJUT
-X-Developer-Key: i=torsten.rupp@8tronix.de; a=ed25519;
- pk=DFK2o6nuApZFiFHnUsWwIP/HTQZwoFI2698xwMNi5rw=
-X-Endpoint-Received: by B4 Relay for torsten.rupp@8tronix.de/20260903 with auth_id=999
+X-B4-Tracking: v=1; b=H4sIAPQjmWoC/23SzU7DMAwH8FdBPVMUO86HOfEeiEOauFsltqIWV
+ aBp7046MbVNd4yj39+OlUs1ytDJWL0+XapBpm7s+nM+AD4/VfEYzgepu5QLFSo0gGDqcPrsD12
+ s0ynUjsm5ZGJCS1UWX4O03c8t7v0jn4/d+N0Pv7f0CebqPcduciaoVS3oWYwTtsG9/d++xP5Uz
+ UkT3rVVgG6rMWsyaJJGlxylvdaLRlX01lkb2zbcGpaEuNe00mVvyrpFI2SBhJsHk5tFa0VbbbI
+ OgYxOQG0ivdd2rXmrbdZWa+KEuknU7LVbaSx6u3ly3zCIAGOEvfaLNghb7bP2NkaMwgT0YGu8a
+ IvFznneufHJOowU2Ow1qIU7UMV3UfPsLSUJ4rWTB1sHWPvi6TD/tySOI2om9MX01+v1D1nUWlo
+ ZAwAA
+X-Change-ID: 20251215-amlogic-dma-79477d5cd264
+To: Vinod Koul <vkoul@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Frank Li <Frank.Li@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hardening@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Frank Li <Frank.Li@nxp.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788421111; l=3676;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=/PsXy4EqiEqfiQEwDz+wINSsCBL8sXDWpm7+CjYgc4k=;
+ b=Q00xKoZ6eLMDiuVNVDQsvidBGSTrthNIB7Y5mIi5qorDJUS6tf/12zWXDPUifjk+LnL7dFe1h
+ zvcpJQBgl4VCtyEalqH3fo/GDN8tECdaPaRgkWhuOE7EtVo+lHelUoB
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The function mmc_get_env_addr() return the address (offset) of the
-enviroment variables. Internally it calculates a 64bit value, but
-the value is silently truncated by the provided 32bit return value.
-For offsets greater than 4GB the environment is read from and written
-to the wrong place in e. g. the flash memory and may override
-arbitrary data.
+Add DMA driver and bindigns for the Amlogic SoCs.
 
-Signed-off-by: Torsten Rupp <torsten.rupp@8tronix.de>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-The function mmc_get_env_addr() return the address (offset) of the
-enviroment variables. Internally it calculates a 64bit value, but
-the value is silently truncated by the provided 32bit return value.
-For offsets greater than 4GB the environment is read from and written
-to the wrong place in e. g. the flash memory and may override
-arbitrary data.
----
- board/kontron/osm-s-mx8mp/osm-s-mx8mp.c |  2 +-
- board/kontron/osm-s-mx93/osm-s-mx93.c   |  2 +-
- board/kontron/sl-mx8mm/sl-mx8mm.c       |  2 +-
- board/nxp/common/sdhc_boot.c            |  2 +-
- env/mmc.c                               | 10 +++++-----
- include/mmc.h                           |  2 +-
- 6 files changed, 10 insertions(+), 10 deletions(-)
+Changes in v12:
+- Add prefix "AMLOGIG_A9_" for channel type.
+- Use workqueue to free,and when remove module,destory queue.
+- Consider the little-endian for hardware.
+- Modify get dma status return value. 
+- Optimize the code according to Vinod's suggestion.
+- Link to v11: https://lore.kernel.org/r/20260714-amlogic-dma-v11-0-de79c2394282@amlogic.com
 
-diff --git a/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c b/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c
-index 739a78d2c8b..aaf73a2bbb2 100644
---- a/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c
-+++ b/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c
-@@ -132,7 +132,7 @@ uint mmc_get_env_part(struct mmc *mmc)
- 	}
- }
- 
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	/* use normal offset for SD card */
- 	if (IS_SD(mmc)) {
-diff --git a/board/kontron/osm-s-mx93/osm-s-mx93.c b/board/kontron/osm-s-mx93/osm-s-mx93.c
-index 02bee34ac66..23e33bddc53 100644
---- a/board/kontron/osm-s-mx93/osm-s-mx93.c
-+++ b/board/kontron/osm-s-mx93/osm-s-mx93.c
-@@ -120,7 +120,7 @@ uint mmc_get_env_part(struct mmc *mmc)
- 	}
- }
- 
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	/* use normal offset for SD card */
- 	if (IS_SD(mmc)) {
-diff --git a/board/kontron/sl-mx8mm/sl-mx8mm.c b/board/kontron/sl-mx8mm/sl-mx8mm.c
-index d24d5286e45..0138c5921a2 100644
---- a/board/kontron/sl-mx8mm/sl-mx8mm.c
-+++ b/board/kontron/sl-mx8mm/sl-mx8mm.c
-@@ -256,7 +256,7 @@ uint mmc_get_env_part(struct mmc *mmc)
- 	}
- }
- 
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	/* use normal offset for SD card */
- 	if (IS_SD(mmc)) {
-diff --git a/board/nxp/common/sdhc_boot.c b/board/nxp/common/sdhc_boot.c
-index 5ee730cefd0..0c2532a8595 100644
---- a/board/nxp/common/sdhc_boot.c
-+++ b/board/nxp/common/sdhc_boot.c
-@@ -16,7 +16,7 @@
- 
- #define ESDHC_DEFAULT_ENVADDR	0x400
- 
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	u8 *tmp_buf;
- 	u32 blklen, code_offset, code_len, n;
-diff --git a/env/mmc.c b/env/mmc.c
-index 1eddba3b0f8..4b5f8e2dcee 100644
---- a/env/mmc.c
-+++ b/env/mmc.c
-@@ -230,7 +230,7 @@ static bool mmc_env_is_redundant_in_both_boot_hwparts(struct mmc *mmc)
- 	return mmc_offset(mmc, 0) == mmc_offset(mmc, 1);
- }
- 
--__weak int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+__weak int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	s64 offset = mmc_offset(mmc, copy);
- 
-@@ -331,7 +331,7 @@ static int env_mmc_save(void)
- 	ALLOC_CACHE_ALIGN_BUFFER(env_t, env_new, 1);
- 	int dev = mmc_get_env_dev();
- 	struct mmc *mmc = find_mmc_device(dev);
--	u32	offset;
-+	u64	offset;
- 	int	ret, copy = 0;
- 	const char *errmsg;
- 
-@@ -402,7 +402,7 @@ static int env_mmc_erase(void)
- 	int dev = mmc_get_env_dev();
- 	struct mmc *mmc = find_mmc_device(dev);
- 	int	ret, copy = 0;
--	u32	offset;
-+	u64	offset;
- 	const char *errmsg;
- 
- 	errmsg = init_mmc_for_env(mmc);
-@@ -459,7 +459,7 @@ static inline int read_env(struct mmc *mmc, unsigned long size,
- static int env_mmc_load_redundant(void)
- {
- 	struct mmc *mmc;
--	u32 offset1, offset2;
-+	u64 offset1, offset2;
- 	int read1_fail = 0, read2_fail = 0;
- 	int ret;
- 	int dev = mmc_get_env_dev();
-@@ -517,7 +517,7 @@ static int env_mmc_load_singular(void)
- {
- 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE);
- 	struct mmc *mmc;
--	u32 offset;
-+	u64 offset;
- 	int ret;
- 	int dev = mmc_get_env_dev();
- 	const char *errmsg;
-diff --git a/include/mmc.h b/include/mmc.h
-index 4bda44ea220..9a796e0655f 100644
---- a/include/mmc.h
-+++ b/include/mmc.h
-@@ -1002,7 +1002,7 @@ void mmc_set_preinit(struct mmc *mmc, int preinit);
- void board_mmc_power_init(void);
- int board_mmc_init(struct bd_info *bis);
- int cpu_mmc_init(struct bd_info *bis);
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr);
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr);
- # ifdef CONFIG_ENV_MMC_EMMC_HW_PARTITION
- extern uint mmc_get_env_part(struct mmc *mmc);
- # endif
+Changes in v11:
+- MAX_DMA_LEN 4-byte align, and return real status when get, and lockless error print.
+- Link to v10: https://lore.kernel.org/r/20260710-amlogic-dma-v10-0-ff4deae837e7@amlogic.com
+
+Changes in v10:
+- Free dma memory in workqueue.
+- Deal with zero len sg (not consume sg_link),and reset status to DMA_COMPLETE when terminal channel.
+- Add desc for #dma-cells in dt-bindings.
+- Link to v9: https://lore.kernel.org/r/20260626-amlogic-dma-v9-0-558d672c4a95@amlogic.com
+
+Changes in v9:
+- Use each transmission request sg_link mem instead of the loop mem get.
+- Fix some hidden issues which reviewed by ai robot.
+- Link to v8: https://lore.kernel.org/r/20260521-amlogic-dma-v8-0-86cc2ce94142@amlogic.com
+
+Changes in v8:
+- Use kzalloc instead of kmalloc.
+- Initialize the temporary variable and fix a spelling mistake.
+- Link to v7: https://lore.kernel.org/r/20260324-amlogic-dma-v7-0-f8b91ee192c1@amlogic.com
+
+Changes in v7:
+- Take use vchan to support mltiple txns.
+- Link to v6: https://lore.kernel.org/r/20260309-amlogic-dma-v6-0-63349d23bd4b@amlogic.com
+
+Changes in v6:
+- Some minor modifications according to Frank's suggestion.
+- Link to v5: https://lore.kernel.org/r/20260304-amlogic-dma-v5-0-aa453d14fd43@amlogic.com
+
+Changes in v5:
+- Rename head file and rename macro definition.
+- Rename the subject in [2/3] from "dma" to "dmaengine".
+- Link to v4: https://lore.kernel.org/r/20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com
+
+Changes in v4:
+- Support split transfer when data len > MAX_LEN.
+- When a module fails or exits, perform de-initialization.
+- Some other minor modifications.
+- Link to v3: https://lore.kernel.org/r/20260206-amlogic-dma-v3-0-56fb9f59ed22@amlogic.com
+
+Changes in v3:
+- Adjust the format of binding according to Frank's suggestion.
+- Some code format modified according to Frank's suggestion.
+- Support one prep_sg and one submit, drop multi prep_sg and one submit.
+- Keep pre state when resume from pause status.
+- Link to v2: https://lore.kernel.org/r/20260127-amlogic-dma-v2-0-4525d327d74d@amlogic.com
+
+Changes in v2:
+- Introduce what the DMA is used for in the A9 SoC.
+- Some minor modifications were made according to Krzysztof's suggestions.
+- Some modifications were made according to Neil's suggestions.
+- Fix a build error.
+- Link to v1: https://lore.kernel.org/r/20251216-amlogic-dma-v1-0-e289e57e96a7@amlogic.com
 
 ---
-base-commit: cc8c034e78eba6b2a3845783889b80753bb1af1e
-change-id: 20260903-mmc-fixes-8aab24595998
+Xianwei Zhao (3):
+      dt-bindings: dma: Add Amlogic A9 SoC DMA
+      dmaengine: amlogic: Add general DMA driver for A9
+      MAINTAINERS: Add an entry for Amlogic DMA driver
+
+ .../devicetree/bindings/dma/amlogic,a9-dma.yaml    |  68 ++
+ MAINTAINERS                                        |   7 +
+ drivers/dma/Kconfig                                |  10 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/amlogic-dma.c                          | 737 +++++++++++++++++++++
+ include/dt-bindings/dma/amlogic,a9-dma.h           |   8 +
+ 6 files changed, 831 insertions(+)
+---
+base-commit: bea91d748771879c695b869a6c5a4a172cb0035f
+change-id: 20251215-amlogic-dma-79477d5cd264
 
 Best regards,
 -- 
-Torsten Rupp <torsten.rupp@8tronix.de>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
