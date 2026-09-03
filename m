@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 03 Sep 2026 20:26:38 +0200
-Subject: [PATCH RFC v2 2/6] ASoC: qcom: sdm845: use DSP_A format for TDM
- codec DAIs
+Date: Thu, 03 Sep 2026 20:26:39 +0200
+Subject: [PATCH RFC v2 3/6] ASoC: qcom: sdm845: Use per-speaker RX masks
+ for TDM slot assignment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260903-pixel3-audio-v2-2-7c22ed915291@ixit.cz>
+Message-Id: <20260903-pixel3-audio-v2-3-7c22ed915291@ixit.cz>
 References: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
 In-Reply-To: <20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -23,58 +23,78 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1269; i=david@ixit.cz;
- h=from:subject:message-id; bh=1wKqiBzByWUp0kGcvJt9kwURHXbEVlcog8LeXEB9/TU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvhddqIGVtEXOs2uUDDcFfq0XRCR8ZgEfEHf
- NbQDtltCjCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
- cq4ID/44AlVuaenS6d5+Hs9fVvSs6O+ByXmGPBqTTR2mVxCh1/eh4v8uXSU2Db65McM9SeMBloB
- JjnYK6pP2kWNwBl76u9Pd8/7G0J5KNbtMEJQ9hXADGypqL6d7IvR+l2j/aRR3V6/fP3SiqAB1rd
- PDBApYvFZiQ2GWSy+xhqyTfyUBr6PE9sY+wb6jC3aKT4/sirHAj7wJ4FefEW2TbicphWXbv8OvT
- IeJXiWOBwQiFBuve/7UZhVNq4dsoGgfUMo+FRMJgThjwA12uXk1SOWhycCt4aWjx8vWTzKwQpPq
- irZbwqUgm35a+0MfJZBipHE/QTG8PdOMpXw1nFV+Z1GdxH0mTPBT+hq+NZBiXBpaR4XeSfOurW2
- vb8MDQQe8rvHggvX9BdfaPtYRng7hyQOYMhwnYt3mnff5Cn/69yMvCm9JbgJmzrsJqeVVhRBqwn
- wp0na5sM1z3hs7ptwD/2gwlIN091re9svLEVoiOAEVbf545MOyu6wFjpzHMniP0MtsvIO2qSY3c
- 1TSdEM5czTKmj/W+WJExLAhtiuHgYC+R3mCOdNk6wDSdp0P9FtmslNqYK0E35oWUgTWhhAg0LiZ
- Ne0mwldKyD2Vwthaa2Ghe/eFL/n8C5/eQDfeUeyP+M8LGdsP/JRnTmV/FIdUvxOsXdKO5ZwHFvK
- jDnPlI03bLMqisA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1658; i=david@ixit.cz;
+ h=from:subject:message-id; bh=VW92RXiOO5nv27+E+RkT/N6Yp/7ZgcRQKzeb8agg9FI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmbvh3NTfrj1m1h88rAOq1LhKiZViyj1q4CoZa
+ Pm0BfvwljyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapm74QAKCRBgAj/E00kg
+ chH4D/4wKr1ik+rYF/zXmIp1rnXHYXSp7bBAPwx8AdoB6o1dIc9UZwJI873aiGSi6zMofnnTHET
+ SuSO912wwU9+Io0tzf3/TeUO+Qt0Mn6/yZqvI1x+kWnawE090OdIGrihSTo24xR20i4y5DFKZb3
+ GQzJjYY+4L8sX/t3aN4xn1wNKXBw+K3qv5dhi4j/D2vG7s7WczwAyyERzyGLBz5NxyIC2raBoLZ
+ pwykee2wKTrNYL5hmVUl+t4pz0SpMe0XN3WWYjwMj1DyrrHjTlL63hiii+3ytvoA26Os1p0IJRG
+ Z1oOEJxR7Z7B+apUSTdRelrBOQbJdkN9dnkpRFlxa7TVInvpdoXeFX/UtHN7EeKJf6mEazfpZwI
+ VNzO8HXzwrXEAxrdIgLYsVdR4YVnX7qMfvrXU+gVpSVgT/EVA/JTXLtGV7jt1J4/LvwUjy3A3of
+ 1oteF+UJJtOpclyKXA7eSggs1vIVk8095W+qjZevih1TXlHWRR2SREjJpXTKFzW4vcCHOFdM4GF
+ Gbars/WBKkwFJM77lsGCerKtN2ejYVb1STEr4sUD8L8KzpoIfRMPP8gOcolre0ywafLSZi1wo1u
+ +qGDCCMPyXo7einqVNbaNHwtAy8yiQQ7jWonb+Jq/f2rBBdvfGcL7OGk+Gq9ZZ+NdCVSLi0iTaF
+ 7LJLr95AKYSv/Ig==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Before the DSP_B only worked because the only close-to-mainline consumer
-cs35l36 codec was patched to map both DSP_A and DSP_B to the same
-hardware register value (asp_fmt = 0), which is inherently DSP_A timing.
-Use the right codec (DSP_A) which works as expected.
+Both Left and Right codec DAIs were passing the same SPK_TDM_RX_MASK,
+both speakers ended up on slot 0, breaking the one speaker in
+configuration such as on Pixel 3.
 
+Split SPK_TDM_RX_MASK into per-speaker masks so that the Left codec
+gets slot 0 (rx_mask=0x01) and the Right codec gets slot 1
+(rx_mask=0x02).
+
+This commit is here, so later CS35L36 receives correct slot for right
+and left speakers.
+
+Assisted-by: Claude:claude-4.6-opus
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- sound/soc/qcom/sdm845.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ sound/soc/qcom/sdm845.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
-index 0ce8265ab1c1f..d1cc825fc5cdc 100644
+index d1cc825fc5cdc..59cfa3b26cd4d 100644
 --- a/sound/soc/qcom/sdm845.c
 +++ b/sound/soc/qcom/sdm845.c
-@@ -382,17 +382,17 @@ static int sdm845_snd_startup(struct snd_pcm_substream *substream)
- 	case QUATERNARY_TDM_RX_0:
- 	case QUATERNARY_TDM_TX_0:
- 		if (++(data->quat_tdm_clk_count) == 1) {
- 			snd_soc_dai_set_sysclk(cpu_dai,
- 				Q6AFE_LPASS_CLK_ID_QUAD_TDM_IBIT,
- 				TDM_BCLK_RATE, SNDRV_PCM_STREAM_PLAYBACK);
+@@ -152,29 +152,29 @@ static int sdm845_tdm_snd_hw_params(struct snd_pcm_substream *substream,
+ 		}
+ 	}
+ 
+ 	for_each_rtd_codec_dais(rtd, j, codec_dai) {
+ 
+ 		if (!strcmp(codec_dai->component->name_prefix, "Left")) {
+ 			ret = snd_soc_dai_set_tdm_slot(
+ 					codec_dai, LEFT_SPK_TDM_TX_MASK,
+-					SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
++					LEFT_SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
+ 					slot_width);
+ 			if (ret < 0) {
+ 				dev_err(rtd->dev,
+ 					"DEV0 TDM slot err:%d\n", ret);
+ 				return ret;
+ 			}
  		}
  
--		codec_dai_fmt |= SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_DSP_B;
-+		codec_dai_fmt |= SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_DSP_A;
- 
- 		for_each_rtd_codec_dais(rtd, j, codec_dai) {
- 
- 			if (!strcmp(codec_dai->component->name_prefix,
- 				    "Left")) {
- 				ret = snd_soc_dai_set_fmt(
- 						codec_dai, codec_dai_fmt);
- 				if (ret < 0) {
+ 		if (!strcmp(codec_dai->component->name_prefix, "Right")) {
+ 			ret = snd_soc_dai_set_tdm_slot(
+ 					codec_dai, RIGHT_SPK_TDM_TX_MASK,
+-					SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
++					RIGHT_SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
+ 					slot_width);
+ 			if (ret < 0) {
+ 				dev_err(rtd->dev,
+ 					"DEV1 TDM slot err:%d\n", ret);
+ 				return ret;
+ 			}
+ 		}
+ 	}
 
 -- 
 2.55.0
