@@ -1,68 +1,97 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Thu, 03 Sep 2026 18:48:36 -0700
-Subject: [PATCH] libceph: only set read_from_replica on read requests
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Fri, 04 Sep 2026 11:08:33 +0800
+Subject: [PATCH mptcp-next] mptcp: shrink struct mptcp_options_received
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260903-b4-read-from-replica-v1-1-76d1ad8d7c2e@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMBCE4Vche3aT2iUEfRXjoS0DrFEgWzUmh
- Hen6m2+w/wrZZgi07layfDWrPNUcDxUlMYwDWDtisk737iTE441G0LHvc2Pspa7psBeRBBi9Gi
- FynUx9Pr5ZS/Xv/Mr3pCe3xZt2w4AJj7qeAAAAA==
-X-Change-ID: 20260903-b4-read-from-replica-2333eabb2e83
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>, Jeff Layton <jlayton@kernel.org>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
+Message-Id: <20260904-mptcp-shrink-opt-rx-v1-1-2d87ab9505ff@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2OQW7DIBBFr2KxLhXYTGKiqOo9qixgGCc0AbtAL
+ EtR7l7iePn15/15D5Ypecrs0DxYotlnP8Ya5EfD8GLimbh3NbNWtDuhheJhKjjxfEk+Xvk4FZ4
+ WTkMPvRxkC25glZwSDX5ZV3/YG4i0FHZ6d/lufwnLa3a7TvR3r6/LhliTieMYgi9VRTjYO+wAU
+ GsSe2mk7gkEKgDRWSStlHOAr6lAOZvV+dAcN+VuUw7ech9nc1utZ8kF75UB6BCgtbvvK6VIt88
+ xnb/Y6fn8B9vGUFYaAQAA
+X-Change-ID: 20260904-mptcp-shrink-opt-rx-ef8581f125df
+To: MPTCP Linux <mptcp@lists.linux.dev>
+Cc: Quanye Yang <quanyeyang@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788486534; l=1667;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=1pp/hauPyQPUhFkDy5Rb9gGCh+DLMtRFxWdPt0GBjHY=;
- b=dsJX6n/Fq3mMTVrwc5yJ4ApdkX4MOSvn+uELMQtll59cU0ddJ1liPq502KO3I9qJ4Lf4d4o/n
- U6kHeQxGItsBPQOhW9Ov8Eh04CDAoqBA0UGqlOyPY8ozSVCx7X4+7x4
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788491322; l=2103;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=1B+1XumgR9LhmxTgiEsBwIPrCKh6bLV+MlAgeHF3ilY=;
+ b=6maB2qmgVUN5tItUCYFpsStaBgnYO//ht5tuTdzUjbvIVH/T8fHdLScBmfaEBDy4FYCYgIjgC
+ 21XCdaUiOhCCZqKjdOL7fx3klf9xM5CNdeLDLbI8ral11A0a3fQdmKc
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ceph_osdc_alloc_request() ORs the mount option's read_from_replica
-flag into r_flags for every request, writes included.  The flag is
-meant for reads: calc_target() skips the replica choice for any
-request that has CEPH_OSD_FLAG_WRITE, and the OSDs only know
-BALANCE_READS on read ops.  Sending it on writes is at best ignored;
-with read_from_replica=balance a buffered write that fell back to
-ceph_sync_write() after losing BUFFER to a revoke failed with -EIO,
-while the same run without the option works fine.
+struct mptcp_options_received is allocated on the stack while parsing
+incoming MPTCP options.
 
-Gate the flag on CEPH_OSD_FLAG_READ.
+The sender key, MP_JOIN fields, ADD_ADDR fields and MP_FAIL sequence
+number are mutually exclusive, as enforced by mptcp_parse_option().
+Place them in an anonymous union while keeping the existing field
+access unchanged.
 
-Fixes: 22d2cfdffa5b ("libceph: move away from global osd_req_flags")
-Cc: stable@vger.kernel.org
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+This reduces the structure size from 136 to 88 bytes on x86_64.
+
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/625
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- net/ceph/osd_client.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ net/mptcp/protocol.h | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/net/ceph/osd_client.c b/net/ceph/osd_client.c
-index f68918fc27f9..a5fc5de2c2b5 100644
---- a/net/ceph/osd_client.c
-+++ b/net/ceph/osd_client.c
-@@ -1109,7 +1109,9 @@ struct ceph_osd_request *ceph_osdc_new_request(struct ceph_osd_client *osdc,
- 	req->r_base_oloc.pool = layout->pool_id;
- 	req->r_base_oloc.pool_ns = ceph_try_get_string(layout->pool_ns);
- 	ceph_oid_printf(&req->r_base_oid, "%llx.%08llx", vino.ino, objnum);
--	req->r_flags = flags | osdc->client->options->read_from_replica;
-+	req->r_flags = flags;
-+	if (flags & CEPH_OSD_FLAG_READ)
-+		req->r_flags |= osdc->client->options->read_from_replica;
+diff --git a/net/mptcp/protocol.h b/net/mptcp/protocol.h
+index 739f9006c1e1..6646c428dbdf 100644
+--- a/net/mptcp/protocol.h
++++ b/net/mptcp/protocol.h
+@@ -142,7 +142,6 @@ static inline bool before64(__u64 seq1, __u64 seq2)
+ #define after64(seq2, seq1)	before64(seq1, seq2)
  
- 	req->r_snapid = vino.snap;
- 	if (flags & CEPH_OSD_FLAG_WRITE)
+ struct mptcp_options_received {
+-	u64	sndr_key;
+ 	u64	rcvr_key;
+ 	u64	data_ack;
+ 	u64	data_seq;
+@@ -166,14 +165,22 @@ struct mptcp_options_received {
+ 		    __unused:1;
+ 	);
+ 	u8	join_id;
+-	u32	token;
+-	u32	nonce;
+-	u64	thmac;
+-	u8	hmac[MPTCPOPT_HMAC_LEN];
+-	struct mptcp_addr_info addr;
+ 	struct mptcp_rm_list rm_list;
+-	u64	ahmac;
+-	u64	fail_seq;
++	/* Options below are mutually exclusive, see mptcp_parse_option() */
++	union {
++		u64 sndr_key;
++		struct {
++			u32 token;
++			u32 nonce;
++			u64 thmac;
++			u8 hmac[MPTCPOPT_HMAC_LEN];
++		};
++		struct {
++			struct mptcp_addr_info addr;
++			u64 ahmac;
++		};
++		u64 fail_seq;
++	};
+ };
+ 
+ static inline __be32 mptcp_option(u8 subopt, u8 len, u8 nib, u8 field)
 
 ---
-base-commit: 6b039a71d37a39bb90a64c4e271f90ee0588ac4a
-change-id: 20260903-b4-read-from-replica-2333eabb2e83
+base-commit: 10d57dc355c99e071a198e50c45503bce944dd5c
+change-id: 20260904-mptcp-shrink-opt-rx-ef8581f125df
+prerequisite-message-id: <20260903-mptcp-mib-inval-opt-v1-0-84a553c552b6@kernel.org>
+prerequisite-patch-id: 7f8decba16ce568283eaa86b23cd93b183aaa675
+prerequisite-patch-id: c8fedc4ff2b5997f716dac0c30ec7620ecf11fc0
+prerequisite-patch-id: 5abea779f2b0af347cd88d6b65bfc3b9eefff405
 
 Best regards,
 --  
-Xiubo Li <xiubo.li@clyso.com>
+Quanye Yang <quanyeyang@proton.me>
 
