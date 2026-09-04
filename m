@@ -1,233 +1,177 @@
-From: Bochao Cao <bochaolucky@gmail.com>
-Date: Fri, 04 Sep 2026 12:44:16 +0800
-Subject: [PATCH net-next v3] selftests/bpf: Track test_xdp_features DUT
- processes
+From: Long Zhao <longzhao@ambarella.com>
+Subject: [PATCH v6 00/13] Ambarella CV75 SoC minimal bring-up
+Date: Fri, 04 Sep 2026 14:38:07 +0800
+Message-Id: <20260904-cv75-v5-v6-0-e918514cb3b1@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260904-xdp-dut-process-lifecycle-gmail-v3-1-5b7eee4f7009@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42Oyw6DIBBFf8Ww7jSAj2pX/Y+mC4VBaXwF0GiM/
- 16kG3ft8s7cOWc2YtFotOQebcTgrK0eeh/iS0REU/Y1gpY+E055RnOawiJHkJOD0QwCrYVWKxS
- raBHqrtQtZDKjlcqlkIoRTxkNKr0Ew5P06KDHxZHXd2On6o3CHYKj22jrBrOGZ2YWLv72zgwYJ
- GmRJ9LbeZE+wvwqhi7YZn7iMf6bxz2vojEqXpasKm5n3r7vHy+oWnY6AQAA
-X-Change-ID: 20260805-xdp-dut-process-lifecycle-gmail-6d60bf8dcdf1
-To: Daniel Borkmann <daniel@iogearbox.net>, 
- Jakub Kicinski <kuba@kernel.org>
-Cc: =?utf-8?q?Alexis_Lothor=C3=A9?= <alexis.lothore@bootlin.com>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Lorenzo Bianconi <lorenzo@kernel.org>, Shuah Khan <shuah@kernel.org>, 
- bpf@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Bochao Cao <bochaolucky@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAE9nmmoC/2WNyw7CIBREf6W5azEUhLau/A/TBRcvFtOHgUo0T
+ f9dWpcmsznJmZkFIgVPEc7FAoGSj34aM+hDAbYz452Yv2UGwYXmdVkzmyrFkmINCS4blKcGLWT
+ 7Gcj59750bX8cX/ggO2/1zeh8nKfw2a+S2rz/1RzOKkQsheNSc3cxA5pAfW+OdhqgXdf1C+//V
+ q60AAAA
+X-Change-ID: 20260818-cv75-v5-9e2039b349bc
+To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, soc@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org
+Cc: Long Zhao <longzhao@ambarella.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Long Zhao <zl020895@163.com>, Lee Jones <lee@kernel.org>, 
+ mfd@lists.linux.dev, devicetree@vger.kernel.org, linux-clk@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, linux-serial@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788497071; l=6447;
- i=bochaolucky@gmail.com; s=20260805; h=from:subject:message-id;
- bh=I2n4a59uAKEvkbSso4YQc4bQe47kg2xl5vnB8E1CvlM=;
- b=p6gzwSNVBLab6wCc/Fk60sH5alBgRcLdhxrE9e+AFKFcFlF/7xCxhaTn/PP4yPX8ZnHMHoR7d
- +QVZsMgPQXlCeqzN22LC2kil+Pgo13uSEAutkJf3o7sfSPzzeysNRen
-X-Developer-Key: i=bochaolucky@gmail.com; a=ed25519;
- pk=ZYp7O2eXSIrJ9YmKrl0iHDoulPYSG+1lzICsicAvld0=
-X-Endpoint-Received: by B4 Relay for bochaolucky@gmail.com/20260805 with auth_id=920
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788503951; l=6543;
+ i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
+ bh=LxLxPJS2q6jYJIGAo6MwQAdyWp2ZE/7Rdic404uX3xA=;
+ b=ENX8HEu3vC3vFKYcc+0iVKl38o5zcbzl/k14mVuhkoY0elUtXceU6NAL07rLJDdlZeYD5pqG6
+ dV8jgL444PmC3m3nsJMVSQEunm2v7OFrtkNfZLI+mD8upIPF4BJmEdn
+X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
+ pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
+X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-test_xdp_features.sh waits for any xdp_features listener to appear and
-uses pidof during cleanup. A concurrent test can therefore make another
-test proceed before its own DUT is ready, and cleanup kills every
-xdp_features process on the host. The readiness loop also has no timeout,
-so a DUT that exits before listening leaves the test hung indefinitely.
+This series adds minimal Ambarella CV75 support for early bring-up with
+a serial console: DT bindings, RCT/CCU clocks, pinctrl, PL061 GPIO via
+gpio-regmap, 8250_dw UART quirks, ARCH_AMBARELLA, CV75 EVK DT, and
+MAINTAINERS.
 
-Track one active DUT at a time, wait for ss to report that exact PID with
-a bounded retry loop, and reap it after each test. Consult the shell job
-table before signaling the DUT so a stale PID cannot target an unrelated
-process. On failure, terminate the shell job with SIGKILL and reap it so
-blocked I/O cannot hang cleanup. Install an EXIT trap and signal handlers
-so failure paths also remove network setup.
+This is a single unified series. Please apply via the SoC tree;
+subsystem maintainers are Cc'd for their pieces.
 
-Fixes: 4dba3e7852b7 ("selftests/bpf: introduce XDP compliance test tool")
-Signed-off-by: Bochao Cao <bochaolucky@gmail.com>
-Reviewed-by: Emil Tsalapatis <emil@etsalapatis.com>
+Verified with:
+- scripts/checkpatch.pl --strict (0 errors)
+- make dt_binding_check DT_SCHEMA_FILES=ambarella:pl061-gpio.yaml:syscon.yaml:snps-dw-apb-uart.yaml
+- make CHECK_DTBS=y ambarella/cv75-evk.dtb
+- arm64 build of new drivers/DTS
+- CV75 EVK: console via 8250_dw (dw-apb-uart); GPIO edge IRQ
+  (gpio-hammer / gpio-event-mon)
+
+Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
-Tests:
-- bash -n tools/testing/selftests/bpf/test_xdp_features.sh
-- make -C tools/testing/selftests/bpf xdp_features
-- sudo tools/testing/selftests/bpf/test_xdp_features.sh
-- verified cleanup terminates a blocked DUT without affecting an unrelated process
----
-Changes in v3:
-- Rebase onto net-next.
-- Retarget the patch from bpf-next to net-next so the hardware-test
-  migration can follow in the same tree without conflicts.
-- Drop the Debian bug Closes tag; dependency cleanup can be handled
-  independently by Debian.
-- Add Emil's Reviewed-by tag.
-- Link to v2: https://patch.msgid.link/20260812-xdp-dut-process-lifecycle-gmail-v2-1-b03ef2aa1b97@gmail.com
+Changes in v6:
+- gpio: convert gpio-pl061 data path to gpio-regmap; keep PL061 irqchip
+  (Andy, Linus). Add write_data_after_dir + girq helpers to gpio-regmap.
+  Ambarella layout uses JEP106 periphid 0x000e8061; no AFSEL clearing in
+  the GPIO driver; Ambarella skips unverified GPIO PM save/restore
+- serial: restore 8250_dw Ambarella quirks from v3; drop standalone
+  8250_ambarella (Andy). Commit message clarifies Ambarella IP with a
+  DW-like register map needing only a thin quirk. Binding under
+  snps-dw-apb-uart; DT uses ambarella,cv75-uart + snps,dw-apb-uart with
+  reg-shift/reg-io-width
+- clock/RCT: document #reset-cells (Krzysztof); soft-reset ID header and
+  reset provider deferred (no resets= consumers in this series)
+- arm64/Kconfig: do not select ARM_PSCI / HAVE_ARM_ARCH_TIMER (Sashiko)
+- pinctrl: no Ambarella suspend/resume claim without validated PM
 
-Changes in v2:
-- Clarify that avoiding name-wide process matching, rather than dropping a dependency, is the motivation.
-- Track and reap one active DUT at a time instead of retaining historical PIDs.
-- Address PID reuse by signaling only the current Bash job during cleanup.
-- Use SIGKILL on failure cleanup so blocked DUT I/O cannot hang wait indefinitely.
-- Link to v1: https://patch.msgid.link/20260805-xdp-dut-process-lifecycle-gmail-v1-1-45984df8d295@gmail.com
----
- tools/testing/selftests/bpf/test_xdp_features.sh | 82 ++++++++++++++++++------
- 1 file changed, 62 insertions(+), 20 deletions(-)
+Link to v5:
+https://lore.kernel.org/r/20260818-cv75-v5-v5-0-7bbb12f0360f@ambarella.com
+Link to v2:
+https://lore.kernel.org/r/20260806-longzhao-upstream-cv75-v2-v2-0-6b09707c5fe9@ambarella.com
+Link to v3-A:
+https://lore.kernel.org/r/20260813-cv75-v3-a-v3-0-cfdd20b1b4dd@ambarella.com
+Link to v3-B:
+https://lore.kernel.org/r/20260813-cv75-v3-b-v3-0-1d82e18da09b@ambarella.com
+Link to v3-C:
+https://lore.kernel.org/r/20260813-cv75-v3-c-v3-0-9352b3fd6026@ambarella.com
+Link to v4-B:
+https://lore.kernel.org/r/20260814-cv75-v4-b-v4-0-622e63153d97@ambarella.com
 
-diff --git a/tools/testing/selftests/bpf/test_xdp_features.sh b/tools/testing/selftests/bpf/test_xdp_features.sh
-index 0aa71c4455c0..35ce0d4e2418 100755
---- a/tools/testing/selftests/bpf/test_xdp_features.sh
-+++ b/tools/testing/selftests/bpf/test_xdp_features.sh
-@@ -8,6 +8,7 @@ readonly V0_IP6=2001:db8::11
- readonly V1_IP6=2001:db8::1
- 
- ret=1
-+dut_pid=""
- 
- setup() {
- 	{
-@@ -30,77 +31,118 @@ setup() {
- 	} > /dev/null 2>&1
- }
- 
-+terminate_dut_server() {
-+	[ -z "$dut_pid" ] && return
-+
-+	# Use the shell job instead of a PID which may have been reused.
-+	if [ "$(jobs -pr %% 2> /dev/null)" = "$dut_pid" ]; then
-+		kill -KILL %% 2> /dev/null || true
-+	fi
-+
-+	wait "$dut_pid" 2> /dev/null || true
-+	dut_pid=""
-+}
-+
- cleanup() {
--	ip link del v1 2> /dev/null
--	ip netns del ${NS} 2> /dev/null
--	[ "$(pidof xdp_features)" = "" ] || kill $(pidof xdp_features) 2> /dev/null
-+	terminate_dut_server
-+	ip link del v1 2> /dev/null || true
-+	ip netns del "${NS}" 2> /dev/null || true
- }
- 
- wait_for_dut_server() {
--	while sleep 1; do
--		ss -tlp | grep -q xdp_features
--		[ $? -eq 0 ] && break
-+	local i
-+
-+	for ((i = 0; i < 10; i++)); do
-+		if [ "$(jobs -pr %% 2> /dev/null)" != "$dut_pid" ]; then
-+			echo "xdp_features server $dut_pid exited before accepting connections" >&2
-+			return 1
-+		fi
-+
-+		if ss -tlp 2> /dev/null | grep -q "pid=$dut_pid,"; then
-+			return 0
-+		fi
-+
-+		sleep 1
- 	done
-+
-+	echo "Timed out waiting for xdp_features server $dut_pid" >&2
-+	return 1
-+}
-+
-+start_dut_server() {
-+	./xdp_features "$@" &
-+	dut_pid=$!
-+	wait_for_dut_server
-+}
-+
-+reap_dut_server() {
-+	local status=0
-+
-+	wait "$dut_pid" || status=$?
-+	dut_pid=""
-+	return "$status"
- }
- 
- test_xdp_features() {
- 	setup
- 
- 	## XDP_PASS
--	./xdp_features -f XDP_PASS -D $V1_IP6 -T $V0_IP6 v1 &
--	wait_for_dut_server
-+	start_dut_server -f XDP_PASS -D $V1_IP6 -T $V0_IP6 v1
- 	ip netns exec ${NS} ./xdp_features -t -f XDP_PASS \
- 					   -D $V1_IP6 -C $V1_IP6 \
- 					   -T $V0_IP6 v0
- 	[ $? -ne 0 ] && exit
-+	reap_dut_server
- 
- 	## XDP_DROP
--	./xdp_features -f XDP_DROP -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1 &
--	wait_for_dut_server
-+	start_dut_server -f XDP_DROP -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1
- 	ip netns exec ${NS} ./xdp_features -t -f XDP_DROP \
- 					   -D ::ffff:$V1_IP4 \
- 					   -C ::ffff:$V1_IP4 \
- 					   -T ::ffff:$V0_IP4 v0
- 	[ $? -ne 0 ] && exit
-+	reap_dut_server
- 
- 	## XDP_ABORTED
--	./xdp_features -f XDP_ABORTED -D $V1_IP6 -T $V0_IP6 v1 &
--	wait_for_dut_server
-+	start_dut_server -f XDP_ABORTED -D $V1_IP6 -T $V0_IP6 v1
- 	ip netns exec ${NS} ./xdp_features -t -f XDP_ABORTED \
- 					   -D $V1_IP6 -C $V1_IP6 \
- 					   -T $V0_IP6 v0
- 	[ $? -ne 0 ] && exit
-+	reap_dut_server
- 
- 	## XDP_TX
--	./xdp_features -f XDP_TX -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1 &
--	wait_for_dut_server
-+	start_dut_server -f XDP_TX -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1
- 	ip netns exec ${NS} ./xdp_features -t -f XDP_TX \
- 					   -D ::ffff:$V1_IP4 \
- 					   -C ::ffff:$V1_IP4 \
- 					   -T ::ffff:$V0_IP4 v0
- 	[ $? -ne 0 ] && exit
-+	reap_dut_server
- 
- 	## XDP_REDIRECT
--	./xdp_features -f XDP_REDIRECT -D $V1_IP6 -T $V0_IP6 v1 &
--	wait_for_dut_server
-+	start_dut_server -f XDP_REDIRECT -D $V1_IP6 -T $V0_IP6 v1
- 	ip netns exec ${NS} ./xdp_features -t -f XDP_REDIRECT \
- 					   -D $V1_IP6 -C $V1_IP6 \
- 					   -T $V0_IP6 v0
- 	[ $? -ne 0 ] && exit
-+	reap_dut_server
- 
- 	## XDP_NDO_XMIT
--	./xdp_features -f XDP_NDO_XMIT -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1 &
--	wait_for_dut_server
-+	start_dut_server -f XDP_NDO_XMIT -D ::ffff:$V1_IP4 -T ::ffff:$V0_IP4 v1
- 	ip netns exec ${NS} ./xdp_features -t -f XDP_NDO_XMIT \
- 					   -D ::ffff:$V1_IP4 \
- 					   -C ::ffff:$V1_IP4 \
- 					   -T ::ffff:$V0_IP4 v0
- 	ret=$?
--	cleanup
-+	reap_dut_server
- }
- 
- set -e
--trap cleanup 2 3 6 9
-+trap cleanup EXIT
-+trap 'exit 129' HUP
-+trap 'exit 130' INT
-+trap 'exit 143' TERM
- 
- test_xdp_features
- 
+To: Arnd Bergmann <arnd@arndb.de>
+To: Krzysztof Kozlowski <krzk@kernel.org>
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>
+To: soc@lists.linux.dev
+To: linux-arm-kernel@lists.infradead.org
+Cc: Rob Herring <robh@kernel.org>
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: Conor Dooley <conor+dt@kernel.org>
+Cc: Michael Turquette <mturquette@baylibre.com>
+Cc: Stephen Boyd <sboyd@kernel.org>
+Cc: Linus Walleij <linusw@kernel.org>
+Cc: Bartosz Golaszewski <brgl@kernel.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Jiri Slaby <jirislaby@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Cc: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Will Deacon <will@kernel.org>
+Cc: Long Zhao <zl020895@163.com>
+Cc: Lee Jones <lee@kernel.org>
+Cc: mfd@lists.linux.dev
+Cc: devicetree@vger.kernel.org
+Cc: linux-clk@vger.kernel.org
+Cc: linux-gpio@vger.kernel.org
+Cc: linux-serial@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 6ebcf5074cff0402730c6981d2397139fee6322d
-change-id: 20260805-xdp-dut-process-lifecycle-gmail-6d60bf8dcdf1
+Long Zhao (13):
+      dt-bindings: arm: add Ambarella CV75 platforms
+      dt-bindings: mfd: syscon: add Ambarella CV75 secure scratchpad
+      dt-bindings: clock: add Ambarella CV75 RCT
+      dt-bindings: pinctrl: add Ambarella CV75 pinctrl
+      dt-bindings: gpio: pl061: add Ambarella CV75 variant
+      dt-bindings: serial: snps-dw-apb-uart: add ambarella,cv75-uart
+      clk: ambarella: add CV75 CCU driver
+      gpio: regmap: support write_data_after_dir and girq
+      gpio: pl061: use gpio-regmap and add Ambarella layout
+      pinctrl: ambarella: add CV75 pin controller
+      serial: 8250_dw: add Ambarella CV75 quirks
+      arm64: ambarella: add ARCH_AMBARELLA and CV75 EVK DT
+      MAINTAINERS: add ARM/AMBARELLA SoC support
+
+ .../devicetree/bindings/arm/ambarella.yaml         |  24 +
+ .../bindings/clock/ambarella,cv75-rct.yaml         |  64 ++
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       |  32 +-
+ Documentation/devicetree/bindings/mfd/syscon.yaml  |   1 +
+ .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 239 +++++++
+ .../bindings/serial/snps-dw-apb-uart.yaml          |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |  14 +
+ arch/arm64/Kconfig.platforms                       |   6 +
+ arch/arm64/boot/dts/Makefile                       |   1 +
+ arch/arm64/boot/dts/ambarella/Makefile             |   3 +
+ arch/arm64/boot/dts/ambarella/cv75-evk.dts         |  30 +
+ arch/arm64/boot/dts/ambarella/cv75.dtsi            | 177 +++++
+ arch/arm64/configs/defconfig                       |   1 +
+ drivers/clk/Kconfig                                |   1 +
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/ambarella/Kconfig                      |  13 +
+ drivers/clk/ambarella/Makefile                     |   6 +
+ drivers/clk/ambarella/ccu-cv75.c                   | 296 ++++++++
+ drivers/clk/ambarella/ccu_common.c                 |  60 ++
+ drivers/clk/ambarella/ccu_common.h                 |  25 +
+ drivers/clk/ambarella/ccu_mux_div.c                | 234 +++++++
+ drivers/clk/ambarella/ccu_mux_div.h                |  35 +
+ drivers/clk/ambarella/ccu_pll.c                    | 421 ++++++++++++
+ drivers/clk/ambarella/ccu_pll.h                    |  70 ++
+ drivers/gpio/Kconfig                               |   2 +
+ drivers/gpio/gpio-pl061.c                          | 342 +++++----
+ drivers/gpio/gpio-regmap.c                         |  24 +-
+ drivers/pinctrl/Kconfig                            |  15 +
+ drivers/pinctrl/Makefile                           |   2 +
+ drivers/pinctrl/pinctrl-ambarella-cv75.c           | 561 +++++++++++++++
+ drivers/pinctrl/pinctrl-ambarella.c                | 761 +++++++++++++++++++++
+ drivers/pinctrl/pinctrl-ambarella.h                |  50 ++
+ drivers/tty/serial/8250/8250_dw.c                  |  34 +
+ include/dt-bindings/clock/ambarella,cv75-rct.h     |  15 +
+ include/linux/amba/bus.h                           |   1 +
+ include/linux/gpio/regmap.h                        |  13 +
+ 37 files changed, 3439 insertions(+), 138 deletions(-)
+---
+base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
+change-id: 20260818-cv75-v5-9e2039b349bc
 
 Best regards,
 --  
-Bochao Cao <bochaolucky@gmail.com>
+Long Zhao <longzhao@ambarella.com>
 
