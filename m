@@ -1,10 +1,11 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Fri, 04 Sep 2026 14:38:11 +0800
-Subject: [PATCH v6 04/13] dt-bindings: pinctrl: add Ambarella CV75 pinctrl
+Date: Fri, 04 Sep 2026 14:38:12 +0800
+Subject: [PATCH v6 05/13] dt-bindings: gpio: pl061: add Ambarella CV75
+ variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260904-cv75-v5-v6-4-e918514cb3b1@ambarella.com>
+Message-Id: <20260904-cv75-v5-v6-5-e918514cb3b1@ambarella.com>
 References: <20260904-cv75-v5-v6-0-e918514cb3b1@ambarella.com>
 In-Reply-To: <20260904-cv75-v5-v6-0-e918514cb3b1@ambarella.com>
 To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
@@ -26,269 +27,88 @@ Cc: Long Zhao <longzhao@ambarella.com>, Rob Herring <robh@kernel.org>,
  linux-gpio@vger.kernel.org, linux-serial@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788503951; l=6330;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788503951; l=1865;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=XEvKncSGovDF7OgNkB6DKQG+ZkDy9YW2XQhMlWM+4n0=;
- b=J85/StinRj7wAPEfbN+dp3uPD4R+wEdU/zQ/jETw4vUnxggpithWNm1aXZWtOyc1Fq6bsa7B7
- IjYvYIV9HyCBW/Lq+AoURDZm5qv0zCEcn5pXsb1RIkUcpBuXRctnFKe
+ bh=IvHuWjRWqe2GmNP+ujYSmH5KztId+5pd7GEzVRxQiIc=;
+ b=9awv2H/6OPgoOrKIfYBIBsoB6+FPJzmgGLFpuHhv3d4js+dye2ijWwVDlPOZIE3v2V7yW+OSB
+ gmWcsT5soz0BKXkrXyes6HqLyDuCI2/JiKqCR8FlP+DOeCtp553Ss+g
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the CV75 pin controller binding using generic function and
-groups properties for pinmux configuration.
+Document the Ambarella CV75 GPIO bank compatible and the synthetic
+arm,primecell-periphid used with the PL061 binding.
 
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- .../bindings/pinctrl/ambarella,cv75-pinctrl.yaml   | 239 +++++++++++++++++++++
- 1 file changed, 239 insertions(+)
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       | 32 +++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
-new file mode 100644
-index 000000000000..34054bc56c3b
---- /dev/null
-+++ b/Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
-@@ -0,0 +1,239 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/pinctrl/ambarella,cv75-pinctrl.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Ambarella CV75 Pin Controller
-+
-+maintainers:
-+  - Long Zhao <longzhao@ambarella.com>
-+
-+description:
-+  The Ambarella CV75 pin controller configures pin multiplexing, bias and
-+  drive strength for the main GPIO banks. Pin groups and their mux settings
-+  are defined by the pin controller driver and selected by function and group
-+  names.
-+
-+allOf:
-+  - $ref: pinctrl.yaml#
-+
-+properties:
-+  compatible:
-+    const: ambarella,cv75-pinctrl
-+
-+  reg:
-+    maxItems: 1
-+    description: IOMUX registers
-+
-+  ambarella,drive-strength-syscon:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description: RCT syscon containing the drive-strength registers.
-+
-+  ambarella,pull-syscon:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description: Secure scratchpad syscon containing the pull registers.
-+
-+patternProperties:
-+  "^[a-z0-9-]+-pins$":
-+    type: object
-+    allOf:
-+      - $ref: pinmux-node.yaml#
-+      - $ref: pincfg-node.yaml#
-+    additionalProperties: false
-+
-+    properties:
-+      function:
+diff --git a/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml b/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml
+index 4d970e55104b..5a6d95e84df2 100644
+--- a/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml
++++ b/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml
+@@ -15,7 +15,9 @@ select:
+   properties:
+     compatible:
+       contains:
+-        const: arm,pl061
 +        enum:
-+          - can0
-+          - can1
-+          - clk_au
-+          - dmic0
-+          - enet0
-+          - hsync0
-+          - hsync1
-+          - i2c0
-+          - i2c1
-+          - i2c2
-+          - i2c3
-+          - i2cs
-+          - i2s0
-+          - i2s1
-+          - ir
-+          - pwm0
-+          - pwm1
-+          - pwm2
-+          - pwm3
-+          - pwm4
-+          - pwm5
-+          - pwm6
-+          - pwm7
-+          - pwm8
-+          - pwm9
-+          - pwm10
-+          - pwm11
-+          - sdmmc0
-+          - sdmmc1
-+          - snand
-+          - spi0
-+          - spi1
-+          - spi2
-+          - spi3
-+          - spi_slave
-+          - spinor
-+          - uart0
-+          - uart1
-+          - uart2
-+          - uart3
-+          - uart4
-+          - vin_master_sync
-+          - vsync0
-+          - vsync1
-+          - vsync2
-+          - vsync3
-+          - wdt
++          - arm,pl061
++          - ambarella,cv75-gpio
+   required:
+     - compatible
+ 
+@@ -24,9 +26,13 @@ properties:
+     pattern: "^gpio@[0-9a-f]+$"
+ 
+   compatible:
+-    items:
+-      - const: arm,pl061
+-      - const: arm,primecell
++    oneOf:
++      - items:
++          - const: arm,pl061
++          - const: arm,primecell
++      - items:
++          - const: ambarella,cv75-gpio
++          - const: arm,primecell
+ 
+   reg:
+     maxItems: 1
+@@ -46,6 +52,10 @@ properties:
+ 
+   clock-names: true
+ 
++  arm,primecell-periphid:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    description: Override for the PrimeCell peripheral ID.
 +
-+      groups:
-+        items:
-+          enum:
-+            - can0
-+            - can1
-+            - clk_au
-+            - dmic0
-+            - enet_2nd_ref_clk_a
-+            - enet_2nd_ref_clk_b
-+            - enet_ext_osc_clk
-+            - enet0_ptp_pps_o
-+            - hsync0
-+            - hsync1
-+            - i2c0_a
-+            - i2c0_b
-+            - i2c1_a
-+            - i2c1_b
-+            - i2c2
-+            - i2c3_a
-+            - i2c3_b
-+            - i2c3_c
-+            - i2cs_a
-+            - i2cs_b
-+            - i2cs_c
-+            - i2cs_d
-+            - i2s0
-+            - i2s1
-+            - ir
-+            - pwm0
-+            - pwm1
-+            - pwm2
-+            - pwm3
-+            - pwm4_a
-+            - pwm4_b
-+            - pwm5_a
-+            - pwm5_b
-+            - pwm6_a
-+            - pwm6_b
-+            - pwm7_a
-+            - pwm7_b
-+            - pwm8_a
-+            - pwm8_b
-+            - pwm9_a
-+            - pwm9_b
-+            - pwm10_a
-+            - pwm10_b
-+            - pwm11_a
-+            - pwm11_b
-+            - rgmii0
-+            - rmii0
-+            - sdmmc0_1bit
-+            - sdmmc0_4bit
-+            - sdmmc0_cd
-+            - sdmmc0_hs_sel
-+            - sdmmc0_reset
-+            - sdmmc0_wp
-+            - sdmmc1_1bit
-+            - sdmmc1_4bit
-+            - sdmmc1_cd
-+            - sdmmc1_hs_sel
-+            - sdmmc1_reset
-+            - sdmmc1_wp
-+            - snand
-+            - spi0
-+            - spi1
-+            - spi2
-+            - spi3_a
-+            - spi3_b
-+            - spi3_c
-+            - spi_slave_a
-+            - spi_slave_b
-+            - spi_slave_c
-+            - spi_slave_d
-+            - spi_slave_e
-+            - spinor
-+            - uart0
-+            - uart1
-+            - uart1_flow
-+            - uart2_a
-+            - uart2_b
-+            - uart2_c
-+            - uart2_flow_a
-+            - uart2_flow_b
-+            - uart3_a
-+            - uart3_b
-+            - uart3_flow_a
-+            - uart3_flow_b
-+            - uart4_a
-+            - uart4_b
-+            - uart4_flow_a
-+            - uart4_flow_b
-+            - vin_master_sync_a
-+            - vin_master_sync_b
-+            - vin_master_sync_c
-+            - vin_master_sync_d
-+            - vin_master_sync_e
-+            - vsync0
-+            - vsync1
-+            - vsync2
-+            - vsync3
-+            - wdt_a
-+            - wdt_b
-+            - wdt_c
-+            - wdt_d
-+            - wdt_e
-+            - wdt_f
-+        minItems: 1
-+        maxItems: 6
-+        uniqueItems: true
+   "#gpio-cells":
+     const: 2
+ 
+@@ -64,6 +74,20 @@ required:
+   - "#gpio-cells"
+   - gpio-controller
+ 
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: ambarella,cv75-gpio
++    then:
++      properties:
++        arm,primecell-periphid:
++          const: 0x000e8061
++      required:
++        - arm,primecell-periphid
++        - gpio-ranges
 +
-+      bias-disable: true
-+      bias-pull-down: true
-+      bias-pull-up: true
-+
-+      drive-strength:
-+        enum: [3, 4, 5, 6, 7, 8, 9, 12]
-+
-+    required:
-+      - function
-+      - groups
-+
-+required:
-+  - compatible
-+  - reg
-+  - ambarella,drive-strength-syscon
-+  - ambarella,pull-syscon
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    pinctrl: pinctrl@e4010000 {
-+        compatible = "ambarella,cv75-pinctrl";
-+        reg = <0xe4010000 0x1000>;
-+        ambarella,drive-strength-syscon = <&rct>;
-+        ambarella,pull-syscon = <&scratchpad>;
-+
-+        uart0-pins {
-+            function = "uart0";
-+            groups = "uart0";
-+            bias-disable;
-+            drive-strength = <8>;
-+        };
-+    };
+ additionalProperties: false
+ 
+ ...
 
 -- 
 2.34.1
