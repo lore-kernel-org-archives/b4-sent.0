@@ -1,81 +1,105 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 04 Sep 2026 19:53:47 +0200
-Subject: [PATCH v2 4/4] configs: qcom: enable QMP USB3-DP combo PHY
+From: "Mark C. Chu-Carroll" <markchucarroll@fastmail.com>
+Subject: [PATCH 0/2] Update tests to use semantic functions
+Date: Fri, 04 Sep 2026 16:35:51 -0400
+Message-Id: <20260904-file-tests-use-shell-functions-v1-0-b66f9cb4adbe@fastmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260904-b4-sdm845-usb-gadget-v2-4-cf1baa65a6d4@ixit.cz>
-References: <20260904-b4-sdm845-usb-gadget-v2-0-cf1baa65a6d4@ixit.cz>
-In-Reply-To: <20260904-b4-sdm845-usb-gadget-v2-0-cf1baa65a6d4@ixit.cz>
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.denx.de
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
- Jaehoon Chung <jh80.chung@samsung.com>, Peng Fan <peng.fan@nxp.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, 
- Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
- Federico Amedeo Izzo <federico@izzo.pro>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Quentin Schulz <quentin.schulz@cherry.de>, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNwQrCMBCE4Vcpe3YhliagryIeNJm0KyFKNhGh9
+ N2N9vgd5p+VFEWgdB5WKniLyjN3HA8D+eWWZ7CEbhrN6MzJTBwlgSu0KjcF64KUOLbsa18qwwT
+ n7WSDdZ565FUQ5fM/uFx3a7s/4OuvStv2BXMXTYyCAAAA
+X-Change-ID: 20260904-file-tests-use-shell-functions-e0d6c545d56c
+To: git@vger.kernel.org
+Cc: "Mark C. Chu-Carroll" <markchucarroll@fastmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1098; i=david@ixit.cz;
- h=from:subject:message-id; bh=mxpWgs1cNiJ065iRuJH0M7lM5/w0wLWaEBrcuJ5E9S4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqmwWsQ3P6+DzLXZDk2gCub7kJuIUW3iDrS/F1B
- 3P650IXTz2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapsFrAAKCRBgAj/E00kg
- cuyfEACA42HNsoYti3oBe6ToQm1nKJpRk1CBVP6vz5P+dVLCCNVQEubJmNEWIWiiGRdGW3E+FSo
- 47dl2/7jtOaTR2PSqp/TBJhEZVETR7F2s/UhUNPB9KuT2SkFPdDXNzZBcLNVaPqB4/RjwBbt81J
- 0PGRelkgFhft7TLDxezTCdm7Kr4f0noBzMnPrpSkWZ7NHVGLGDAb+Wpcfiqw2pixgj76whANbIq
- CHW3DJySIrku/aNQe3CQ8jtCpE21JZOXVhzP3JkPqwoavRt6lo6CZQYWg6rTFAfKeUzvknlJ5zg
- 23W6aVJN0vFuH562r/iv109H06FH/AG4BZxPnzsL/Q8UpHNmgTMjbMPwWS/6aZZXgJ2UF+W0m5l
- eoe/fdzJ5MvIyZ/WrBBqVNs56pC4qQpiLzX8agxaQJjjcs1oHCWAFxslKfnyuan8quz/6k7rfh0
- FWiP38f25GsUp+VXLv6W54C6foVQ7ayGQlLCrJsSI3TGGhhr1sQ8O7PnxqZoSqBnP1nmik0RpCP
- QVw05BhoTYxwWpfZRcMfwQ2q/TuY7RdRY6L4GZvnhMnSwwASew/YDmZHVYiVSEryx5yDIZ73MZk
- t7ZFVhoa5L/lpNU4+/2ixbw3amdrhv+C5lcrOdk44p2fNyv8ihfHTRrkz9I7JcGRk/lhPjqaaJA
- ZDAU1/bvzX3zI6w==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3800;
+ i=markchucarroll@fastmail.com; h=from:subject:message-id;
+ bh=G1J9z1l3cMiNxee29mdtRcU82QSFZ4+kwd3igm9S4C8=;
+ b=owGbwMvMwCUWOPFJle/8tn2Mp9WSGLJma6+pUFtxtYkhoMx2LUN7woyUeWrNylL9s8X6UjoNm
+ fi+1ER3lLIwiHExyIopsvz/J9D4iuWBhF/Qu08wc1iZQIYwcHEKwETOrmD4H7ah7OJMjrBXFyqy
+ Ez7suPfjZ2nbtrniRU05WwTaGOef5GT4Z+Px7fLN0t1n/EVM+wRSZJ/Yl/bFnu9wqFl68Ahf6it
+ nDgA=
+X-Developer-Key: i=markchucarroll@fastmail.com; a=openpgp;
+ fpr=FFFE1081EA04E0184E52EEF25191E47A4D9F86BE
+X-Endpoint-Received: by B4 Relay for markchucarroll@fastmail.com/default with auth_id=1002
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SDM845 boards need this PHY to bring up their USB controller, and
-without it in the defconfig the driver is silently left out of the
-build, so the PHY never binds and USB gadget mode fails with:
+Update tests to use semantic functions like "test_path_is_file"
+instead of the older "test -f". All of the tests that make simple
+usages are updated; tests that do more complicated things like
+starting subshells are left unchanged.
 
-  dwc3-generic-peripheral usb@a600000: failed to enable ep0out
-
-Reviewed-by: Casey Connolly <casey.connolly@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Mark C. Chu-Carroll <markchucarroll@fastmail.com>
 ---
- configs/qcom_defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Mark C. Chu-Carroll (2):
+      Update shell tests to use semantic functions
+      Second batch of shell test migrations.
 
-diff --git a/configs/qcom_defconfig b/configs/qcom_defconfig
-index b0d0f51b1c0..880edcb504b 100644
---- a/configs/qcom_defconfig
-+++ b/configs/qcom_defconfig
-@@ -104,16 +104,17 @@ CONFIG_MMC_SDHCI_MSM=y
- CONFIG_DM_MDIO=y
- CONFIG_DM_ETH_PHY=y
- CONFIG_DWC_ETH_QOS=y
- CONFIG_DWC_ETH_QOS_QCOM=y
- CONFIG_RGMII=y
- CONFIG_PHY_MICREL=y
- CONFIG_PHY_MICREL_KSZ90X1=y
- CONFIG_PHY=y
-+CONFIG_PHY_QCOM_QMP_COMBO=y
- CONFIG_PHY_QCOM_QMP_UFS=y
- CONFIG_PHY_QCOM_QUSB2=y
- CONFIG_PHY_QCOM_USB_SNPS_FEMTO_V2=y
- CONFIG_PHY_QCOM_SNPS_EUSB2=y
- CONFIG_PINCTRL=y
- CONFIG_PINCONF=y
- CONFIG_PINCTRL_QCOM_GENERIC=y
- CONFIG_QCOM_RPMH_POWER_DOMAIN=y
+ t/perf/p5302-pack-index.sh              |  2 +-
+ t/t0007-git-var.sh                      |  2 +-
+ t/t0031-lockfile-pid.sh                 |  2 +-
+ t/t0081-find-pack.sh                    |  2 +-
+ t/t0200-gettext-basic.sh                |  2 +-
+ t/t1007-hash-object.sh                  |  6 +++---
+ t/t1700-split-index.sh                  |  2 +-
+ t/t2005-checkout-index-symlinks.sh      |  2 +-
+ t/t2030-unresolve-info.sh               |  8 ++++----
+ t/t2201-add-update-typechange.sh        |  2 +-
+ t/t3300-funny-names.sh                  |  2 +-
+ t/t3306-notes-prune.sh                  |  2 +-
+ t/t3311-notes-merge-fanout.sh           |  2 +-
+ t/t3434-rebase-i18n.sh                  |  2 +-
+ t/t3902-quoted.sh                       |  2 +-
+ t/t4013-diff-various.sh                 |  2 +-
+ t/t4014-format-patch.sh                 |  6 +++---
+ t/t4016-diff-quote.sh                   |  2 +-
+ t/t4032-diff-inter-hunk-context.sh      |  4 ++--
+ t/t4102-apply-rename.sh                 |  2 +-
+ t/t4131-apply-fake-ancestor.sh          |  2 +-
+ t/t4132-apply-removal.sh                |  4 ++--
+ t/t4252-am-options.sh                   |  2 +-
+ t/t5000-tar-tree.sh                     |  2 +-
+ t/t5100-mailinfo.sh                     |  6 +++---
+ t/t5300-pack-object.sh                  | 10 +++++-----
+ t/t5301-sliding-window.sh               |  4 ++--
+ t/t5302-pack-index.sh                   |  8 ++++----
+ t/t5334-incremental-multi-pack-index.sh |  2 +-
+ t/t5402-post-merge-hook.sh              |  2 +-
+ t/t5500-fetch-pack.sh                   |  2 +-
+ t/t5502-quickfetch.sh                   |  2 +-
+ t/t5510-fetch.sh                        |  8 ++++----
+ t/t5515-fetch-merge-logic.sh            |  4 ++--
+ t/t5516-fetch-push.sh                   |  2 +-
+ t/t5526-fetch-submodules.sh             |  8 ++++----
+ t/t5534-push-signed.sh                  |  6 +++---
+ t/t5550-http-fetch-dumb.sh              |  2 +-
+ t/t5601-clone.sh                        | 16 ++++++++--------
+ t/t5604-clone-reference.sh              |  2 +-
+ t/t5702-protocol-v2.sh                  |  4 ++--
+ t/t5710-promisor-remote-capability.sh   |  2 +-
+ t/t6030-bisect-porcelain.sh             |  2 +-
+ t/t6500-gc.sh                           |  2 +-
+ t/t7004-tag.sh                          |  4 ++--
+ t/t7011-skip-worktree-reading.sh        |  2 +-
+ t/t7012-skip-worktree-writing.sh        |  2 +-
+ t/t7102-reset.sh                        |  2 +-
+ t/t7104-reset-hard.sh                   |  2 +-
+ t/t7113-post-index-change-hook.sh       | 12 ++++++------
+ t/t7201-co.sh                           |  6 +++---
+ t/t7400-submodule-basic.sh              | 10 +++++-----
+ t/t7407-submodule-foreach.sh            |  6 +++---
+ t/t7409-submodule-detached-work-tree.sh |  2 +-
+ t/t7412-submodule-absorbgitdirs.sh      |  8 ++++----
+ t/t7450-bad-git-dotfiles.sh             |  6 +++---
+ t/t7602-merge-octopus-many.sh           |  2 +-
+ t/t7606-merge-custom.sh                 |  8 ++++----
+ t/t7610-mergetool.sh                    |  6 +++---
+ t/t9400-git-cvsserver-server.sh         |  6 +++---
+ t/t9804-git-p4-label.sh                 |  8 ++++----
+ 61 files changed, 126 insertions(+), 126 deletions(-)
 
--- 
-2.55.0
+
+---
+base-commit: 2c3adbb2c475981e340c79fdc5e7f4f9b5d9054e
+change-id: 20260904-file-tests-use-shell-functions-e0d6c545d56c
 
