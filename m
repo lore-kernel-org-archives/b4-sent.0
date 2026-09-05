@@ -1,71 +1,92 @@
-From: Johann Fischer <johann.fischer@nordicsemi.no>
-Date: Sat, 05 Sep 2026 00:24:08 +0200
-Subject: [PATCH] Bluetooth: btusb: do not probe non-HCI interfaces
+From: Younes Akhouayri <git@younes.io>
+Date: Sat, 05 Sep 2026 04:17:45 +0200
+Subject: [PATCH] rust: num: seal Integer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260905-btusb-skip-non-hci-ifaces-v1-1-32dda494122f@nordicsemi.no>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrB1Igz+1VxEXmXSsUyFKRkUQ7
- 25sl9/ivQOUo7DCKzsg8iYqU0h45Bn4wYUPo7yTwRpbmcYUSMuqhDrKjGEKOHhB6Z1nRSotO9s
- 8q7omSP0cuZf99267v3WlL/vlHsJ5XnnktPR9AAAA
-X-Change-ID: 20260904-btusb-skip-non-hci-ifaces-b52ea298677b
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Johann Fischer <johann.fischer@nordicsemi.no>
+Message-Id: <20260905-feature-rust-num-seal-integer-v1-1-83096115ad64@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0Q7CIAyF4VdZuLYRcSGZr2K8ANaxGmWmBWOy7
+ N2F7fJver5VCTKhqFu3KsYvCS2pxuXUqTC7FBForK2MNlYP+goTulwYgYtkSOUNgu4FlDJGZHC
+ 9sWacejMEq6rxYZzot/v3x9FS/BNDbmj78E4QPLsU5nZamCKl864fy237A9lWeQilAAAA
+X-Change-ID: 20260903-feature-rust-num-seal-integer-a4262df429c6
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1109;
- i=johann.fischer@nordicsemi.no; h=from:subject:message-id;
- bh=N9bMTaAocKK1v8xDH8TgTymZY5ojzij51J8enWGWLwY=;
- b=owEBbQKS/ZANAwAKAYSE5whenKmxAcsmYgBqm0UZ9dRRF5Qie8QtQ3kv0opJyLtOVGhp78COk
- rMYHFv7SfyJAjMEAAEKAB0WIQRX82HLlVW1Jm9YMr+EhOcIXpypsQUCaptFGQAKCRCEhOcIXpyp
- seC/EACvELEj4cxv8kO2tR9jfXdVyszVPCZ8e+4YQdBtTrUcroSwb8Wp9J9JmrdkIQsTrs93Uyp
- P4QG64asNL+z1uuAwdi1HwQBGVlNUFzTmTVRLhC2U1GQYoapmtWDI7L3xbhvW1jhynxbZFPHIqO
- KnV0xYoGj4oOSDHWmMyY/HESTqKQHY9m4thSDjze6eg0xK/CjHMZep6Z8azi84oXhcAm2Ums8Fc
- +VeAU81ERiprydS0gEanuzXrGaznZC7Ygmn1/LfJkAbOA+ZZh3G0SaYugNuuGf4EyriAnIT4V/a
- uohIlY3w1q5wAZ5jM9g85G5KiI3VtWejxaNj4LXebwOCM4XpkA1eWN2+r9iwfDFadx6fkHUrXSV
- r7/9yNcIR8WH19pSoDFNuhuxg9cn3R4bt9XaUbE55jdQ8wCKChslEFoNa64ZOM43WItuWc2gqCc
- /pYrb2QTa+WtYwokE65bs05EuoiGZeHqcDFjtpgIGBXPiMdzP0gKqafCSuxZd0IK0pj0L8cq68x
- eDHXVpqU4yMKC5oR22sF4URK5gcUxuc77509y7MLqqjRNUi9ZSXFk0yILSKSVpykWPouASy7kIK
- aJJEWyovgqKZtq/bLtVgPHYoi1tNS1PRfUFCRQFvJbrc1V0geNs65754B101kzfNHj57LSxQwBp
- PmMZaJMpL9RUdkQ==
-X-Developer-Key: i=johann.fischer@nordicsemi.no; a=openpgp;
- fpr=57F361CB9555B5266F5832BF8484E7085E9CA9B1
-X-Endpoint-Received: by B4 Relay for johann.fischer@nordicsemi.no/default with auth_id=1003
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788574676; l=1759;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=bVjKmsDC3xyhPHxsbELDrHtf25N1qLrwIDkcTJtI+Hw=;
+ b=tn6YSXWPvKIjGWNXFsc+QIj5PzBOLQzeokvmPUB666OHKjbnHLWLMM+YIRl87t9+YEYlqeFkH
+ UOZmavqYAaJCk/4Rs0Jf1qgDYBfLRIG6qyvjqPfVMPOiB4TA55gUurs
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If the driver selects BTUSB_PROTO_H4, the second interface (voice
-channels) remains unclaimed. Then, the btusb_probe() is called for the
-second interface. It misidentifies the interface as one that supports
-legacy mode and fails with "failed to enumerate endpoints".
+Bounded relies on Integer implementations to describe primitive integer
+semantics correctly. In particular, it uses Integer::BITS and Signedness
+to justify unchecked operations.
 
-Signed-off-by: Johann Fischer <johann.fischer@nordicsemi.no>
+Integer is currently safe and externally implementable, so an
+implementation can violate those assumptions and make safe Bounded
+operations reach undefined behavior.
+
+Seal Integer so only the primitive implementations provided by the
+kernel crate can satisfy it.
+
+Fixes: 01e345e82ec3 ("rust: num: add Bounded integer wrapping type")
+Closes: https://lore.kernel.org/rust-for-linux/CANiq72mOfR33s4y+Ueivd5NrC5yre+Pcp57ZOBz0msw9A4AP1Q@mail.gmail.com/
+Cc: stable@vger.kernel.org
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- drivers/bluetooth/btusb.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ rust/kernel/num.rs | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
-index dfefb43fb792..44f0db347643 100644
---- a/drivers/bluetooth/btusb.c
-+++ b/drivers/bluetooth/btusb.c
-@@ -4293,6 +4293,11 @@ static int btusb_probe(struct usb_interface *intf,
- 			return -ENODEV;
- 	}
+diff --git a/rust/kernel/num.rs b/rust/kernel/num.rs
+index dbe848e30efe..de589792a77a 100644
+--- a/rust/kernel/num.rs
++++ b/rust/kernel/num.rs
+@@ -15,9 +15,14 @@ pub enum Unsigned {}
+ /// Designates signed primitive types.
+ pub enum Signed {}
  
-+	/*  Skip interfaces that do not implement the HCI transport */
-+	if (usb_find_common_endpoints(intf->cur_altsetting,
-+				      &bulk_rx_ep, &bulk_tx_ep, &intr_ep, NULL))
-+		return -ENODEV;
++mod private {
++    pub trait Sealed {}
++}
 +
- 	data = kzalloc_obj(*data);
- 	if (!data)
- 		return -ENOMEM;
+ /// Describes core properties of integer types.
+ pub trait Integer:
+-    Sized
++    private::Sealed
++    + Sized
+     + Copy
+     + Clone
+     + PartialEq
+@@ -56,6 +61,8 @@ pub trait Integer:
+ macro_rules! impl_integer {
+     ($($type:ty: $signedness:ty), *) => {
+         $(
++        impl private::Sealed for $type {}
++
+         impl Integer for $type {
+             type Signedness = $signedness;
+ 
 
 ---
-base-commit: 88a8184cb44c8952e6a6fd21e250445300d1c7aa
-change-id: 20260904-btusb-skip-non-hci-ifaces-b52ea298677b
+base-commit: e510334fbaeaa016ac76d80b4c5f47611c5f7860
+change-id: 20260903-feature-rust-num-seal-integer-a4262df429c6
 
 Best regards,
 --  
-Johann
+Younes Akhouayri <git@younes.io>
 
