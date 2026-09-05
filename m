@@ -1,94 +1,105 @@
-From: =?utf-8?q?Nikolaj_Klitlund_B=C3=B8rty?= <nbn@sj.dk>
-Date: Sat, 05 Sep 2026 14:05:12 +0200
-Subject: [PATCH] Bluetooth: btusb: Add device ID for Realtek RTL8761BUE
- (StarTech AV53C1)
+From: Younes Akhouayri <git@younes.io>
+Date: Sat, 05 Sep 2026 17:16:51 +0200
+Subject: [PATCH v2] rust: num: seal Integer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260905-startech-av53c1-v1-1-3385f9bb220c@sj.dk>
-X-B4-Tracking: v=1; b=H4sIAHcFnGoC/x3MQQqAIBBA0avIrBPUsqirRAubxppNhYoE0t2Tl
- m/xf4FIgSnCJAoEyhz5Oit0IwAPd+4keasGo0yvRmVlTC4kwkO6bFvUUq8d2dYbq3GAWt2BPD/
- /cV7e9wNlCZg3YQAAAA==
-X-Change-ID: 20260905-startech-av53c1-1b4e53f251c7
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, =?utf-8?q?Nikolaj_Klitlund_B=C3=B8rty?= <nbn@sj.dk>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788609911; l=2680;
- i=nbn@sj.dk; s=20260905; h=from:subject:message-id;
- bh=qikB7+kXC0YvR5kdQ4345D7/gSWOZ6njl78gr4Q01Mc=;
- b=KvlU26Ro04cGwNSf5bWuo5LvGwBncPF0PXfBHwsjW6ROazoTYySahibtxhOFiV3/0PuoK3dqP
- L/xMQdFIWkzDD18eU1CaGm6EAv6HszIS9+xbLfUElaHsJBhPP7Vrk57
-X-Developer-Key: i=nbn@sj.dk; a=ed25519;
- pk=gSabhnk9EeLlA58h6ZHttMKWKQwb5LGja3BORiZv9gQ=
-X-Endpoint-Received: by B4 Relay for nbn@sj.dk/20260905 with auth_id=1005
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260905-feature-rust-num-seal-integer-v2-1-f1311ffbe6e7@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOQQ6CMBBFr2K6dpQWbMSV9zAuCgwwRlsz0xIN4
+ e4CxrXLN/nz8kYlyISiTptRMQ4kFPwMZrtRde98h0DNzMpkxmZllkOLLiZG4CQRfHqAoLsD+Yg
+ dMrjCWNO0hSlrq2bHk7Gl1+q/XL8sqbphHRfpsqicIFTsfN0vp8DUkd+v9u/nvOlJYuD3Gjnox
+ fXrOfzpGTRoOOZZabU+uMYW53dIHmVHQV2nafoAdb6TGQABAAA=
+X-Change-ID: 20260903-feature-rust-num-seal-integer-a4262df429c6
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Younes Akhouayri <git@younes.io>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788621419; l=2338;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=w3evkKPlORxFzdaoWSJdzBunzT4aj8vrZEoXJAMB0Fc=;
+ b=Py2LLT2lfR1UqvYYX8yRzX2xAx+lxeA/scMrtSFI4ym+IvF9pY69MJD8KP347wRkoRscpNhR8
+ cz6ZcRsmr/tCHr7nHOrs/fa9lC0Rdw0OF27lEo9+fItKTPCgp00kgYG
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the USB ID 0x14b0:0x047a for the StarTech AV53C1-USB-BLUETOOTH
-adapter, a Realtek RTL8761BUE based Bluetooth 5.3 dongle.
+Bounded relies on Integer implementations to describe primitive integer
+semantics correctly. In particular, it uses Integer::BITS and Signedness
+to justify unchecked operations.
 
-Without this entry btusb treats the device as a generic Bluetooth
-adapter and never loads the Realtek firmware, leaving the controller on
-its ROM firmware. In that state it advertises and scans actively, but
-never reports advertisements during passive scanning. LE connections
-initiated by the kernel wait for a passive-scan report before issuing
-LE Create Connection, so connecting and pairing from BlueZ time out
-without any error from the controller.
+Integer is currently safe and externally implementable, so an
+implementation can violate those assumptions and make safe Bounded
+operations reach undefined behavior.
 
-The same product is also sold with the ID 0x2c0a:0x8761, which is
-already supported.
+For example, an Integer implementation for a u8 wrapper can report
+BITS = 16. Safe code can then cast a Bounded<u16, 9> containing 256
+to that wrapper. Its TryFrom<u16> implementation returns Err, and
+Bounded::cast() calls unwrap_unchecked() on it, causing undefined
+behavior.
 
-lsusb -v output for the device:
+Seal Integer so only the primitive implementations provided by the
+kernel crate can satisfy it.
 
-Bus 001 Device 010: ID 14b0:047a StarTech.com Ltd. Bluetooth Radio
-Device Descriptor:
-  bcdUSB               1.10
-  bDeviceClass          224 Wireless
-  bDeviceSubClass         1 Radio Frequency
-  bDeviceProtocol         1 Bluetooth
-  idVendor           0x14b0 StarTech.com Ltd.
-  idProduct          0x047a
-  bcdDevice            2.00
-  iManufacturer           1 Realtek
-  iProduct                2 Bluetooth Radio
-  iSerial                 3 00E04C239987
-  bNumInterfaces          2
-    Interface Descriptor:
-      bInterfaceClass       224 Wireless
-      bInterfaceSubClass      1 Radio Frequency
-      bInterfaceProtocol      1 Bluetooth
-
+Fixes: 01e345e82ec3 ("rust: num: add Bounded integer wrapping type")
+Reported-by: Miguel Ojeda <ojeda@kernel.org>
+Closes: https://lore.kernel.org/rust-for-linux/CANiq72mOfR33s4y+Ueivd5NrC5yre+Pcp57ZOBz0msw9A4AP1Q@mail.gmail.com/
 Cc: stable@vger.kernel.org
-Signed-off-by: Nikolaj Klitlund Børty <nbn@sj.dk>
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
-Tested on Home Assistant OS 18.2 (kernel 6.18.39): without this entry the
-adapter enumerates and scans, but btusb never loads rtl_bt/rtl8761bu_fw.bin,
-and LE connections from BlueZ never complete because the controller reports
-no advertisements during passive scanning. Details in the commit message.
+Changes in v2:
+- Explain how an incorrect Integer implementation can cause undefined behavior.
+- Add the missing Reported-by trailer.
+- Link to v1: https://patch.msgid.link/20260905-feature-rust-num-seal-integer-v1-1-83096115ad64@younes.io
 ---
- drivers/bluetooth/btusb.c | 2 ++
- 1 file changed, 2 insertions(+)
+ rust/kernel/num.rs | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
-index d70a3e7a13f5d18c75bc1c9fbc1ac5706e832f61..c3c581a5adbb09f7118a3932cdda210d68d2336d 100644
---- a/drivers/bluetooth/btusb.c
-+++ b/drivers/bluetooth/btusb.c
-@@ -860,6 +860,8 @@ static const struct usb_device_id quirks_table[] = {
- 						     BTUSB_WIDEBAND_SPEECH },
- 	{ USB_DEVICE(0x37ad, 0x0600), .driver_info = BTUSB_REALTEK |
- 						     BTUSB_WIDEBAND_SPEECH },
-+	{ USB_DEVICE(0x14b0, 0x047a), .driver_info = BTUSB_REALTEK |
-+						     BTUSB_WIDEBAND_SPEECH },
+diff --git a/rust/kernel/num.rs b/rust/kernel/num.rs
+index dbe848e30efe..de589792a77a 100644
+--- a/rust/kernel/num.rs
++++ b/rust/kernel/num.rs
+@@ -15,9 +15,14 @@ pub enum Unsigned {}
+ /// Designates signed primitive types.
+ pub enum Signed {}
  
- 	/* Additional Realtek 8761CU Bluetooth devices */
- 	{ USB_DEVICE(0x0b05, 0x1bef), .driver_info = BTUSB_REALTEK |
++mod private {
++    pub trait Sealed {}
++}
++
+ /// Describes core properties of integer types.
+ pub trait Integer:
+-    Sized
++    private::Sealed
++    + Sized
+     + Copy
+     + Clone
+     + PartialEq
+@@ -56,6 +61,8 @@ pub trait Integer:
+ macro_rules! impl_integer {
+     ($($type:ty: $signedness:ty), *) => {
+         $(
++        impl private::Sealed for $type {}
++
+         impl Integer for $type {
+             type Signedness = $signedness;
+ 
 
 ---
-base-commit: 4d7d9486c04d917265f64c55bd23b2cc4fe7749c
-change-id: 20260905-startech-av53c1-1b4e53f251c7
+base-commit: e510334fbaeaa016ac76d80b4c5f47611c5f7860
+change-id: 20260903-feature-rust-num-seal-integer-a4262df429c6
 
 Best regards,
--- 
-Nikolaj Klitlund Børty <nbn@sj.dk>
+--  
+Younes Akhouayri <git@younes.io>
 
