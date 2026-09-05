@@ -1,123 +1,68 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sat, 05 Sep 2026 11:29:02 +0200
-Subject: [PATCH 7/7] arm64: dts: qcom: ideacentre-mini: Drop the unused USB
- MP port
+From: =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+Subject: [PATCH 0/2] arm64: dts: rockchip: Add FriendlyElec NanoPi R28S
+Date: Sat, 05 Sep 2026 19:17:25 +0800
+Message-Id: <20260905-r28s-upstream-v1-0-f68d5389269a@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260905-x1-ideacentre-mini-prettify-v1-7-9a87882973bb@oldschoolsolutions.biz>
-References: <20260905-x1-ideacentre-mini-prettify-v1-0-9a87882973bb@oldschoolsolutions.biz>
-In-Reply-To: <20260905-x1-ideacentre-mini-prettify-v1-0-9a87882973bb@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788600555; l=2341;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=gkyKf5ZSbwzYMe5U0u9i2d5O8EacSLGu0fqHLK27Fys=;
- b=Wl7JQ/KLljoztzelh6cLZb3JnVOpKkmZCiCA10zUt5w7eCxUuOedIpntaagczI/B/6OCr16AM
- KhQgChYben+CHNuO4YciwAeyvVOlxYbGQA8hHw38YYdZsHDK+lG2wm3
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDSwNT3SIji2Ld0oLikqLUxFzdVCNDo1Qj8xQzQzNTJaCegqLUtMwKsHn
+ RsRB+cWlSVmpyCcgQpdpaABtk4b1xAAAA
+X-Change-ID: 20260905-r28s-upstream-e212e27d6165
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ jensen <jensenhuang@friendlyarm.com>, 
+ =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1842;
+ i=HystericalDragons@proton.me; h=from:subject:message-id;
+ bh=oAmDDrKnMv/AyVbWT0Wk8eZYpbvdxe5fXhli2PbtOEg=;
+ b=owGbwMvMwCUmepz3XUtTHjvjabUkhqzZv71PLerYNfnZBvaoZZdaI6qZFjxf2XOXhd1bVqb0/
+ bqVphy1HaUsDGJcDLJiiiyym6ojhVZFzyxikToOM4eVCWQIAxenAEwkuIXhJ6Pel+MTvVhbdk5a
+ /PrxU7WGX1++1N7UfRV0Ma47eqrvzShGhvWKCyfHh719vXbvvEkJl2yzfvoyWP8u299w3a9wdeG
+ +XGYA
+X-Developer-Key: i=HystericalDragons@proton.me; a=openpgp;
+ fpr=1DB27B5912AA5B9972041AC715C70DEE84826E07
+X-Endpoint-Received: by B4 Relay for HystericalDragons@proton.me/default with auth_id=1004
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-usb_mp port 1 (hsphy1, qmpphy1, PTN3222 @ 0x4f, TLMM 184) is not
-populated. lsusb only shows two xHCI controllers: USB-C on usb_1_ss0
-and the rear ports behind a Genesys hub on usb_mp port 0.
+The [NanoPi R28S](https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R28S) is a dual gigabit Ethernet router board based on the
+Rockchip RK3528 SoC. It is closely related to the already supported
+NanoPi Zero2, sharing most of its power tree and peripheral routing.
 
-Remove that repeater, its reset pin, and the second MP PHYs. Pin
-usb_mp to usb2-0 / usb3-0 so the controller does not claim empty
-PHYs.
+Tested on a metal-case unit without the optional onboard eMMC: boots
+from microSD, both Ethernet ports link up at 1000 Mbps, the HYM8563 RTC
+registers, and all three LEDs are functional. The USB Type-C connector
+registers as a DWC3 UDC in peripheral mode; gadget enumeration against
+a USB host was not completed, because that connector is also the 5V
+input and a PC port cannot power the board.
 
-Tested-on: IdeaCentre Mini 01Q8X10, Purwa (X1-26-100)
+The patch referred to [fridendlyarm/kernel-rockchip](https://github.com/friendlyarm/kernel-rockchip/commit/ee640c5344b13a0a317436e2357df01af8268ce7) but with many changes make it suitable for kernel mainline.
 
-Assisted-by: Grok 4.5 (xAI)
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Two things I didn't do because they are limited by my current hardware:
+
+- The AICSemi AIC8800D80 WiFi chip on sdio0 has no upstream driver, so
+  only the SDIO controller is described.
+- The eMMC is described as HS200 rather than the vendor's HS400 with
+  enhanced strobe, since the board at hand has an unpopulated eMMC
+  footprint and the faster modes could not be verified.
+
 ---
- .../qcom/x1-lenovo-ideacentre-mini-01q8x10.dtsi    | 40 ++--------------------
- 1 file changed, 3 insertions(+), 37 deletions(-)
+安容 (2):
+      dt-bindings: arm: rockchip: Add FriendlyElec NanoPi R28S
+      arm64: dts: rockchip: Add devicetree for the FriendlyElec NanoPi R28S
 
-diff --git a/arch/arm64/boot/dts/qcom/x1-lenovo-ideacentre-mini-01q8x10.dtsi b/arch/arm64/boot/dts/qcom/x1-lenovo-ideacentre-mini-01q8x10.dtsi
-index 5a2db91d5e587..b720622c5d90e 100644
---- a/arch/arm64/boot/dts/qcom/x1-lenovo-ideacentre-mini-01q8x10.dtsi
-+++ b/arch/arm64/boot/dts/qcom/x1-lenovo-ideacentre-mini-01q8x10.dtsi
-@@ -650,19 +650,6 @@ eusb3_repeater: redriver@47 {
- 		pinctrl-names = "default";
- 	};
- 
--	eusb6_repeater: redriver@4f {
--		compatible = "nxp,ptn3222";
--		reg = <0x4f>;
--		#phy-cells = <0>;
--
--		vdd3v3-supply = <&vreg_l13b>;
--		vdd1v8-supply = <&vreg_l4b>;
--
--		reset-gpios = <&tlmm 184 GPIO_ACTIVE_LOW>;
--
--		pinctrl-0 = <&eusb6_reset_n>;
--		pinctrl-names = "default";
--	};
- };
- 
- &lpass_vamacro {
-@@ -1059,14 +1046,6 @@ wake-n-pins {
- 		};
- 	};
- 
--	eusb6_reset_n: eusb6-reset-n-state {
--		pins = "gpio184";
--		function = "gpio";
--		drive-strength = <2>;
--		bias-disable;
--		output-low;
--	};
--
- 	wcd_default: wcd-reset-n-active-state {
- 		pins = "gpio191";
- 		function = "gpio";
-@@ -1184,6 +1163,9 @@ usb_1_ss2_qmpphy_out_dp: endpoint@0 {
- 
- &usb_mp {
- 	status = "okay";
-+
-+	phys = <&usb_mp_hsphy0>, <&usb_mp_qmpphy0>;
-+	phy-names = "usb2-0", "usb3-0";
- };
- 
- &usb_mp_hsphy0 {
-@@ -1195,25 +1177,9 @@ &usb_mp_hsphy0 {
- 	status = "okay";
- };
- 
--&usb_mp_hsphy1 {
--	vdd-supply = <&vreg_l2e>;
--	vdda12-supply = <&vreg_l3e>;
--
--	phys = <&eusb6_repeater>;
--
--	status = "okay";
--};
--
- &usb_mp_qmpphy0 {
- 	vdda-phy-supply = <&vreg_l3c>;
- 	vdda-pll-supply = <&vreg_l3e>;
- 
- 	status = "okay";
- };
--
--&usb_mp_qmpphy1 {
--	vdda-phy-supply = <&vreg_l3c>;
--	vdda-pll-supply = <&vreg_l3e>;
--
--	status = "okay";
--};
+ .../devicetree/bindings/arm/rockchip.yaml          |   5 +
+ arch/arm64/boot/dts/rockchip/Makefile              |   1 +
+ .../arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts | 404 +++++++++++++++++++++
+ 3 files changed, 410 insertions(+)
+---
+base-commit: 32e0f64640d558a0f5410ac5cdd8ebf371c5e6a6
+change-id: 20260905-r28s-upstream-e212e27d6165
 
--- 
-2.53.0
+Best regards,
+--  
+安容 <HystericalDragons@proton.me>
 
