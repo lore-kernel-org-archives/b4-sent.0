@@ -1,10 +1,11 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Sat, 05 Sep 2026 12:13:43 -0600
-Subject: [PATCH v8 29/43] dyndbg: detect class_id reservation conflicts
+Date: Sat, 05 Sep 2026 12:13:44 -0600
+Subject: [PATCH v8 30/43] dyndbg: check
+ DYNAMIC_DEBUG_CLASSMAP_{DEFINE,USE_} args at compile-time
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260905-dd-cmap-part2-clean-v8-29-a4cc0674f6fd@gmail.com>
+Message-Id: <20260905-dd-cmap-part2-clean-v8-30-a4cc0674f6fd@gmail.com>
 References: <20260905-dd-cmap-part2-clean-v8-0-a4cc0674f6fd@gmail.com>
 In-Reply-To: <20260905-dd-cmap-part2-clean-v8-0-a4cc0674f6fd@gmail.com>
 To: Jason Baron <jbaron@akamai.com>, Shuah Khan <shuah@kernel.org>, 
@@ -21,166 +22,156 @@ To: Jason Baron <jbaron@akamai.com>, Shuah Khan <shuah@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  dri-devel@lists.freedesktop.org, linux-arch@vger.kernel.org, 
  linux-modules@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kbuild@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>, 
- Louis Chauvet <louis.chauvet@bootlin.com>
+ linux-kbuild@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788632017; l=5252;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788632017; l=5096;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=+Fu19EtO6mFi5QrtesRyRT1gAQPhpFWR+F91tSJzJrc=;
- b=1Nj5SlcAyuHAXQ1Y+fH4dGsyk46MdGEpOzWvsea/rDXMLj/PoVA9+3qKoHYAKLLapqfguchlW
- 9uKmEWJ0mOMDud90YW2mRELwn7TI358E8u4to3mb7hjq3TyIrYmIFTt
+ bh=VgTTD8eYDpf9gDBRtS+HNw/vwTQOr86etlW3SA01j8E=;
+ b=LSUiedr+LTkYlMtktB0uOI6ikp5+WZiQriGGgtmIUQAd1jKwhq0zB5nfu9Trw9EURKPALupTH
+ N9PepUKm/TNBQ863oik1kMBvI3ATxw+wUqBKh15Z3HbQJPo/nKd+Gtx
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a module _DEFINEs 2 or more classmaps, it must devise them to share
-the per-module 0..62 class-id space; ie their respective base,+length
-reservations cannot overlap.
+Add __DYNAMIC_DEBUG_CLASSMAP_CHECK to implement the following
+arg-checks at compile-time:
 
-To detect conflicts at modprobe, add ddebug_class_range_overlap(),
-call it from ddebug_add_module(), and WARN and return -EINVAL when
-they're detected.
+	0 <= _base < 63
+	class_names is not empty
+	class_names[0] is a string
+	class_names.length <= 32
+	(class_names.length + _base) < 63
+	dd-map-type is known value
 
-This insures that class_id -> classname lookup has just 1 answer, so
-the 1st-found search in find-class-name works properly.
+These compile-time checks will prevent several simple misuses, issuing
+obvious errors if violated.
 
-test_dynamic_debug.c:
-
-If built with -DFORCE_CLASSID_CONFLICT, the test-modules invoke 2
-conflicting DYNAMIC_DEBUG_CLASSMAP_DEFINE() declarations, into parent
-and the _submod.  These conflict with one of the good ones in the
-parent (D2_CORE..etc), causing the modprobe(s) to WARN and fail.
+several bad examples are ifdef DDD_MACRO_ARGCHECK qualified, into
+test_dynamic_debug_submod.ko, and will fail compilation if added to
+cflags.
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
-Reviewed-by: Louis Chauvet <louis.chauvet@bootlin.com>
 ---
-v2: RvB after SoB
+v5: additional test: classes.length <= 32
 
-old-v9 - fix WARN() by adding new 1st arg 1.
-old-v12 - drop maybe_unused on range-overlap fn
+old-v13
+
+reword 2 failing tests (active only when -DDD_MACRO_ARGCHECK is
+passed to cc) to better identify what error is being tested against
+
+-v12
+
+check map-type at compile-time
+
+make base+len(classnames) check more explicit
+
+dyndbg-test: add more tests of compile-time CHECKs
+
+add 3 tests of static-asserts added to 2 macros:
+DYNAMIC_DEBUG_CLASSMAP_{DEFINE,USE_}
+
+_DEFINE():
+1- validates maptype,
+2- validate classmap.length + base-offset < 63
+_USE_():
+3- validate user-offset < 63
+
+As before, these tests fail when activated:
+
+make KCPPFLAGS="-DDD_MACRO_ARGCHECK" lib/test_dynamic_debug_submod.o
+
+NOTE: _USE_() cannot test classmap.length, since its a property of
+the referent, not the macro itself.
+
+dyndbg-test: verify DYNAMIC_DEBUG_CLASSMAP_USE_() compile-time CHECK
+
+Add another failing use-case, this time to verify that _USE properly
+rejects an offset > 62.  This is an incomplete test; the proper test
+is: classes.length + base + offset < 63, but the macro cannot test
+classes.length at compile-time.
+
+Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
- lib/dynamic_debug.c      | 40 ++++++++++++++++++++++++++++++++--------
- lib/test_dynamic_debug.c |  8 ++++++++
- 2 files changed, 40 insertions(+), 8 deletions(-)
+ include/linux/dynamic_debug.h | 16 +++++++++++++++-
+ lib/test_dynamic_debug.c      | 20 +++++++++++++++++---
+ 2 files changed, 32 insertions(+), 4 deletions(-)
 
-diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
-index ba618dcf9677..0f89b6784ab2 100644
---- a/lib/dynamic_debug.c
-+++ b/lib/dynamic_debug.c
-@@ -1101,18 +1101,19 @@ static void *ddebug_proc_next(struct seq_file *m, void *p, loff_t *pos)
- 	return dp;
- }
+diff --git a/include/linux/dynamic_debug.h b/include/linux/dynamic_debug.h
+index 17fc3a29d97b..471b9891bd83 100644
+--- a/include/linux/dynamic_debug.h
++++ b/include/linux/dynamic_debug.h
+@@ -197,6 +197,19 @@ struct ddebug_class_param {
+  * __pr_debug_cls(22, "no such class"); compiles but is not reachable
+  */
  
--static bool ddebug_class_in_range(const int class_id, const struct ddebug_class_map *map)
-+static bool ddebug_class_map_in_range(const int class_id, const struct ddebug_class_map *map)
- {
-+	if (!map)
-+		return false;
- 	return (class_id >= map->base &&
- 		class_id < map->base + map->length);
- }
- 
--static bool ddebug_user_class_in_range(const int class_id, const struct ddebug_class_user *cli)
-+static bool ddebug_class_user_in_range(const int class_id, const struct ddebug_class_user *user)
- {
--	if (!cli || !cli->map)
-+	if (!user)
- 		return false;
--	int base = cli->map->base + cli->offset;
--	return (class_id >= base && class_id < base + cli->map->length);
-+	return ddebug_class_map_in_range(class_id - user->offset, user->map);
- }
- 
- static const char *ddebug_class_name(struct _ddebug_info *di, struct _ddebug *dp)
-@@ -1122,11 +1123,11 @@ static const char *ddebug_class_name(struct _ddebug_info *di, struct _ddebug *dp
- 	int i;
- 
- 	for_subvec(i, map, di, maps)
--		if (ddebug_class_in_range(dp->class_id, map))
-+		if (ddebug_class_map_in_range(dp->class_id, map))
- 			return map->class_names[dp->class_id - map->base];
- 
- 	for_subvec(i, cli, di, users)
--		if (ddebug_user_class_in_range(dp->class_id, cli))
-+		if (ddebug_class_user_in_range(dp->class_id, cli))
- 			return cli->map->class_names[dp->class_id - cli->map->base - cli->offset];
- 
- 	return NULL;
-@@ -1369,6 +1370,20 @@ static void ddebug_apply_class_users(const struct _ddebug_info *di)
- 		__di->_vec.start = __start;				\
- })
- 
-+static int ddebug_class_range_overlap(struct ddebug_class_map *cm, u64 *reserved_ids)
-+{
-+	u64 range = (((1ULL << cm->length) - 1) << cm->base);
++#define __DYNAMIC_DEBUG_CLASSMAP_CHECK(_clnames, _base, _mapty)		\
++	static_assert(((_base) >= 0 && (_base) < _DPRINTK_CLASS_DFLT),	\
++		      "_base must be in 0..62");			\
++	static_assert(__DDEBUG_ARRAY_SIZE(_clnames) > 0,				\
++		      "classnames array size must be > 0");		\
++	static_assert(__DDEBUG_ARRAY_SIZE(_clnames) <= 32,			\
++		      "classnames array size must be <= 32");		\
++	static_assert((__DDEBUG_ARRAY_SIZE(_clnames) + (_base)) < _DPRINTK_CLASS_DFLT, \
++		      "_base + classnames.length must be <= 62");	\
++	static_assert(((_mapty) >= DD_CLASS_TYPE_DISJOINT_BITS) &&	\
++		      ((_mapty) <= DD_CLASS_TYPE_LEVEL_NUM),		\
++		      "unknown class_map_type")
 +
-+	if (range & *reserved_ids) {
-+		pr_err("[%d..%d] on %s conflicts with %llx\n", cm->base,
-+		       cm->base + cm->length - 1, cm->class_names[0],
-+		       *reserved_ids);
-+		return -EINVAL;
-+	}
-+	*reserved_ids |= range;
-+	return 0;
-+}
-+
- /*
-  * Allocate a new ddebug_table for the given module
-  * and add it to the global list.
-@@ -1378,6 +1393,7 @@ static int ddebug_add_module(struct _ddebug_info *di)
- 	struct ddebug_table *dt;
- 	struct ddebug_class_map *cm;
- 	struct ddebug_class_user *cli;
-+	u64 reserved_ids = 0;
- 	int i;
- 
- 	if (!di->descs.len)
-@@ -1409,16 +1425,24 @@ static int ddebug_add_module(struct _ddebug_info *di)
- 	dd_set_module_subrange(i, cm, &dt->info, maps);
- 	dd_set_module_subrange(i, cli, &dt->info, users);
- 
-+	/* insure 2+ classmaps share the per-module 0..62 class_id space */
-+	for_subvec(i, cm, &dt->info, maps)
-+		if (ddebug_class_range_overlap(cm, &reserved_ids))
-+			goto cleanup;
-+
- 	mutex_lock(&ddebug_lock);
- 	list_add_tail(&dt->link, &ddebug_tables);
- 	mutex_unlock(&ddebug_lock);
--
- 	if (dt->info.users.len)
- 		ddebug_apply_class_users(&dt->info);
- 
- 	vpr_info("%3u debug prints in module %s\n",
- 		 dt->info.descs.len, dt->info.mod_name);
- 	return 0;
-+cleanup:
-+	WARN_ONCE(1, "dyndbg multi-classmap conflict in %s\n", di->mod_name);
-+	kfree(dt);
-+	return -EINVAL;
- }
- 
- /* helper for ddebug_dyndbg_(boot|module)_param_cb */
+ /**
+  * DYNAMIC_DEBUG_CLASSMAP_DEFINE - define debug classes used by a module.
+  * @_var:   name of the classmap, exported for other modules coordinated use.
+@@ -210,6 +223,7 @@ struct ddebug_class_param {
+  */
+ #define DYNAMIC_DEBUG_CLASSMAP_DEFINE(_var, _mapty, _base, ...)		\
+ 	static const char *_var##_classnames[] = { __VA_ARGS__ };	\
++	__DYNAMIC_DEBUG_CLASSMAP_CHECK(_var##_classnames, (_base), (_mapty)); \
+ 	extern struct ddebug_class_map _var;				\
+ 	struct ddebug_class_map __aligned(8) __used			\
+ 		__section("__dyndbg_class_maps") _var = {		\
+@@ -217,7 +231,7 @@ struct ddebug_class_param {
+ 		.mod_name = DDEBUG_MODNAME,				\
+ 		.base = (_base),					\
+ 		.map_type = (_mapty),					\
+-		.length = ARRAY_SIZE(_var##_classnames),		\
++		.length = __DDEBUG_ARRAY_SIZE(_var##_classnames),	\
+ 		.class_names = _var##_classnames,			\
+ 	};								\
+ 	EXPORT_SYMBOL(_var)
 diff --git a/lib/test_dynamic_debug.c b/lib/test_dynamic_debug.c
-index 34e51996aa20..3a69cc3cae6d 100644
+index 3a69cc3cae6d..01ce07001d4c 100644
 --- a/lib/test_dynamic_debug.c
 +++ b/lib/test_dynamic_debug.c
-@@ -128,6 +128,14 @@ DYNAMIC_DEBUG_CLASSMAP_DEFINE(map_disjoint_bits, DD_CLASS_TYPE_DISJOINT_BITS,
- DYNAMIC_DEBUG_CLASSMAP_DEFINE(map_level_num, DD_CLASS_TYPE_LEVEL_NUM,
- 			      V1, "V1", "V2", "V3", "V4", "V5", "V6", "V7");
+@@ -148,12 +148,26 @@ DYNAMIC_DEBUG_CLASSMAP_USE_(map_level_num, 7);
  
-+#ifdef FORCE_CLASSID_CONFLICT
-+/*
-+ * Enable with -Dflag on compile to test overlapping class-id range
-+ * detection.  This should warn on modprobes.
-+ */
-+DYNAMIC_DEBUG_CLASSMAP_DEFINE(classid_range_conflict, 0, D2_CORE + 1, "D3_CORE");
-+#endif
-+
- #else /* TEST_DYNAMIC_DEBUG_SUBMOD */
+ enum cat_level_offset { Vu1 = V1 + 7, Vu2, Vu3, Vu4, Vu5, Vu6, Vu7 };
  
+-#endif
+-
++#if defined(DD_MACRO_ARGCHECK)
  /*
+- * now add the sysfs-params
++ * Exersize compile-time arg-checks in DYNAMIC_DEBUG_CLASSMAP_DEFINE.
++ * These will break compilation.
+  */
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_base_neg, 0, -1, "NEGATIVE_BASE_ARG");
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_base_big, 0, 100, "TOOBIG_BASE_ARG");
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_str_type, 0, 0, 1 /* not a string */);
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_emptyclass, 0, 0 /* ,empty */);
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_maptype, 3, 10, "no such type");
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_base_len, 0, 60,
++			      "base", "plus", "classes", "length", "too-big");
++DYNAMIC_DEBUG_CLASSMAP_USE_(fail_offset_big, 100);
++#endif /* DD_MACRO_ARGCHECK */
++
++#endif /* TEST_DYNAMIC_DEBUG_SUBMOD */
+ 
++/*
++ * now add the sysfs-params to both sub/super-mods
++ */
+ DYNAMIC_DEBUG_CLASSMAP_PARAM(disjoint_bits, p);
+ DYNAMIC_DEBUG_CLASSMAP_PARAM(level_num, p);
+ 
 
 -- 
 2.55.0
