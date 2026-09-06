@@ -1,89 +1,77 @@
 From: Miles Krause <mileskrause5200@gmail.com>
-Date: Sun, 06 Sep 2026 15:11:37 -0400
-Subject: [PATCH] leds: max77705: fix fwnode reference leak in
- max77705_add_led()
+Date: Sun, 06 Sep 2026 15:43:48 -0400
+Subject: [PATCH] drm/meson: fix device_node leak in
+ meson_encoder_dsi_probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-leds-max77705-fwnode-leak-v1-1-eba6822529fd@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOi6nWoC/x2MwQqDMBAFf0X23IUoamp/pXgIm6cu1VgSUEH8d
- 4PHGZg5KSEqEn2KkyI2TbqGDOWrIJlcGMHqM1NlqtZ0puUZPvHiDmutaXjYw+qRpftxKR51J5D
- mLZT7f8Sgx/P+9td1A0pFE3prAAAA
-To: Chanwoo Choi <cw00.choi@samsung.com>, 
- Krzysztof Kozlowski <krzk@kernel.org>, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, Dzmitry Sankouski <dsankouski@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-leds@vger.kernel.org, 
+Message-Id: <20260906-meson-dsi-of-node-leak-v1-1-9d183560279d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHPCnWoC/x3MTQqAIBBA4avErBswsR+7SrSQnGqoNByIILp70
+ vJbvPeAUGIS6IsHEl0sHENGVRYwrS4shOyzQSvdKKsaPEhiQC+MccYQPeFObsPWmM5a7+q20pD
+ jM9HM9z8exvf9AD146hxoAAAA
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Nicolas Belin <nbelin@baylibre.com>, 
+ Jagan Teki <jagan@amarulasolutions.com>
+Cc: dri-devel@lists.freedesktop.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Miles Krause <mileskrause5200@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788721897; l=2511;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788723828; l=1903;
  i=mileskrause5200@gmail.com; s=20260906; h=from:subject:message-id;
- bh=uWLiKNxt5uyo3KP1HFhOtzgKNbhHZtcLBJPxpW7G2g8=;
- b=ZvEU3/DJpCoqDJBpko40f9/7MTbBMNSzC3WwHVGJHzdQXl5AypBkKKB608YtWIT3eb/FRPHhJ
- h8oxhhAUz1rD0D9tfrHFXQVclZyw3mfOj76Mf7X3Hoh38E3eupMEmh6
+ bh=MzPOZoQJIZouNhopaY53pEz59ebt1korUstt2TswX5s=;
+ b=n7TDRXCuDuGLEEk4/VPeuku3N6NRmryW5wydClhaAsHiByeSusM+Nz8hYgNrxmDeRC7QSYUTm
+ N24E5yCU0OhCuzbiwy8lCyAhHI/GXTrgxQ923wq10hBuHkzwXY3Jr/P
 X-Developer-Key: i=mileskrause5200@gmail.com; a=ed25519;
  pk=zcIfq4TGtPwMRJUW6WsbE2zLHvOMwk6ZyT/CGd6XzyI=
 X-Endpoint-Received: by B4 Relay for mileskrause5200@gmail.com/20260906 with auth_id=1010
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-max77705_add_led() iterates over the multicolor LED's child nodes with
-fwnode_for_each_child_node() and returns directly from inside the loop
-when parsing a child fails:
+meson_encoder_dsi_probe() looks up the DSI transceiver's device node
+with of_graph_get_remote_node() and hands it to
+of_drm_find_and_get_bridge(), but never drops the reference that the
+lookup returned.
 
-	fwnode_for_each_child_node(np, child) {
-		ret = max77705_parse_subled(dev, child, &info[i]);
-		if (ret < 0)
-			return ret;
-		...
-	}
+of_graph_get_remote_node() returns the node with its refcount
+incremented, and of_drm_find_and_get_bridge() takes its own reference
+on the bridge it finds, so 'remote' is leaked on every path once the
+lookup succeeds: on the -EPROBE_DEFER return taken when no bridge is
+found, and on a fully successful probe alike.
 
-The iterator holds a reference on the current child for the duration of
-each iteration: fwnode_get_next_child_node() takes a reference on the
-node it returns and only drops the previous one when it is called again
-(for the OF backend that is the of_node_put(prev) in
-of_get_next_status_child()).  Returning from inside the loop skips that
-final call, so the reference taken for the child that failed to parse is
-never released.
+The two sibling encoders in this driver already handle this correctly.
+meson_encoder_cvbs_probe() calls of_node_put(remote) immediately after
+of_drm_find_and_get_bridge(), and meson_encoder_hdmi_probe() releases
+the node both on its error path and after of_find_device_by_node().
 
-max77705_parse_subled() rejects a missing, zero or out-of-range "reg"
-property and propagates errors from reading "color", so a malformed
-device tree is enough to leak a device_node reference.
+Release the reference in the same place meson_encoder_cvbs_probe()
+does, which covers both the error and the success path.
 
-Use fwnode_for_each_child_node_scoped() instead, which releases the
-reference on every exit path, and drop the now unused 'child'
-declaration.  max77705_led_probe() already uses the equivalent
-device_for_each_child_node_scoped() for the outer loop.
-
-Fixes: aebb5fc9a0d8 ("leds: max77705: Add LEDs support")
+Fixes: 42dcf15f901c ("drm/meson: add DSI encoder")
 Signed-off-by: Miles Krause <mileskrause5200@gmail.com>
 ---
- drivers/leds/leds-max77705.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/gpu/drm/meson/meson_encoder_dsi.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/leds/leds-max77705.c b/drivers/leds/leds-max77705.c
-index 1e2054c1bf80..4fd803c95989 100644
---- a/drivers/leds/leds-max77705.c
-+++ b/drivers/leds/leds-max77705.c
-@@ -160,7 +160,6 @@ static int max77705_add_led(struct device *dev, struct regmap *regmap, struct fw
- 	struct max77705_led *led;
- 	struct led_classdev *cdev;
- 	struct mc_subled *info;
--	struct fwnode_handle *child;
- 	struct led_init_data init_data = {};
+diff --git a/drivers/gpu/drm/meson/meson_encoder_dsi.c b/drivers/gpu/drm/meson/meson_encoder_dsi.c
+index 3e422b612f74..3fe604496294 100644
+--- a/drivers/gpu/drm/meson/meson_encoder_dsi.c
++++ b/drivers/gpu/drm/meson/meson_encoder_dsi.c
+@@ -120,6 +120,7 @@ int meson_encoder_dsi_probe(struct meson_drm *priv)
+ 	}
  
- 	led = devm_kzalloc(dev, sizeof(*led), GFP_KERNEL);
-@@ -191,7 +190,7 @@ static int max77705_add_led(struct device *dev, struct regmap *regmap, struct fw
- 		cdev->brightness_set_blocking = max77705_led_brightness_set_multi;
- 		cdev->blink_set = max77705_rgb_blink;
- 
--		fwnode_for_each_child_node(np, child) {
-+		fwnode_for_each_child_node_scoped(np, child) {
- 			ret = max77705_parse_subled(dev, child, &info[i]);
- 			if (ret < 0)
- 				return ret;
+ 	meson_encoder_dsi->bridge.next_bridge = of_drm_find_and_get_bridge(remote);
++	of_node_put(remote);
+ 	if (!meson_encoder_dsi->bridge.next_bridge)
+ 		return dev_err_probe(priv->dev, -EPROBE_DEFER,
+ 				     "Failed to find DSI transceiver bridge\n");
 
 ---
 base-commit: 88405f0ad1d5c680afe3ea0ce9345fa9e1deaac8
-change-id: 20260906-leds-max77705-fwnode-leak-1cde49cec58c
+change-id: 20260906-meson-dsi-of-node-leak-744899da5712
 
 Best regards,
 -- 
