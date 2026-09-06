@@ -1,14 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/3] Xiaomi Poco F1 (ebbg display variant) fixes
-Date: Sun, 06 Sep 2026 15:19:01 +0200
-Message-Id: <20260906-ebbg-ft8719-fixups-v1-0-4e846510cad1@ixit.cz>
+Date: Sun, 06 Sep 2026 15:19:02 +0200
+Subject: [PATCH 1/3] drm/panel: ebbg-ft8719: Set prepare_prev_first
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23IIuPaxfiQ5Zm+3FRCuC6N+Tj
- sMw80DiKJygLx6IfEmS3WfQZQHzNnnHKEtmIEWN0kTI1jpcD9PqDle5z5DQzlxXhmplFUEOQ+R
- s/ukwvu8H1f1homQAAAA=
-X-Change-ID: 20260122-ebbg-ft8719-fixups-bce548250b02
+Message-Id: <20260906-ebbg-ft8719-fixups-v1-1-4e846510cad1@ixit.cz>
+References: <20260906-ebbg-ft8719-fixups-v1-0-4e846510cad1@ixit.cz>
+In-Reply-To: <20260906-ebbg-ft8719-fixups-v1-0-4e846510cad1@ixit.cz>
 To: Joel Selvaraj <jo@jsfamily.in>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, 
@@ -21,43 +19,62 @@ Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
  Casey Connolly <casey.connolly@linaro.org>, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=629; i=david@ixit.cz;
- h=from:subject:message-id; bh=nvyihE17l+ORxYrEI+2u0xDHs4DHHPvWAuMH2VNNS00=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnWhPbx8vOR2yaGpvwMlaKW+s7YDfp9h0MCAvW
- FVn8Yx7fo+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCap1oTwAKCRBgAj/E00kg
- cjH5D/9JcSicP7F+mjJ2JommLLfpDtCS/jKb1KHE3bw12u7csi/uLmFfSjNfK3io5v96H8JA5z6
- /PIRLhqrzQMN9RHb9f5byx+rcunUDjNJgIQmxUZAwYFpLIE+HxkNT0x0JvCYy7xzHLRs7U43GIT
- 4ZUVAWzJ+IeENr7JiWdI+yMEcT+kRqwa0EHU1A0JHI896yRIjRpKIzaWxUBxX5bZBLSLAL4gvD9
- zn6hZRjA+lfBrO0a/AkkHCw/MkrLN9hE53/lCQdtDxs/miXum0H5XdOUdbtnEndCC+Q631XTnX/
- PCcGG/blI6vdEnZ3/suzQ9fthli5G7oe38jtFZ4Xsiq2FqgzNAY/+7eiGSjNsnE8VrCBVkBDxOs
- L7Za0hakVc28AFqLsKC7mB5nSDbZYJXMeVxN5oAJHzFansysHBLKltj5+ji9jxOWV3T7u3tgyQC
- b/CuhCDAKdZZDGlZ9RZ00hIQVp/AH01BtmrPWvmLpZVWKSkdUrBZmATRoBs4nS9rCqUQVPS3Syp
- A67hk4k8ajrERT3soJzTvmKSVvZ87e+ItecT7qvsAUYIPhjqVFJN7KQu3h8ltY0xHf9kTghG9n3
- 8efVwKvJ+pC689BcbPUXnjDnSXM6xyNKmzWaNzifCQuJv2npIe9c8FzYEHncNwgszKzHlupwrLF
- 0TKbGRaUYoarUKA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1210; i=david@ixit.cz;
+ h=from:subject:message-id; bh=MdKS4MaN+wl5Cm+tdhGjh1Y6pdj5edF/ffF4+200w9w=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnWhPI76LaG4om4ZpsbFRORTnkEMFZ4suxTmK5
+ QUqeYXA9JSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCap1oTwAKCRBgAj/E00kg
+ cga2EADLwprPfozo4mnQ3SHTqkt5yXwlnKlXeLiAuz3rs7kylKD/ov9rwC4F9et4v1qo5i9d5Vo
+ bQ86yjgrFQhjW10D/8T5tgK/r037RdK2WMNtlj4j8yqIYOzepyZ5DSyo1tXTYSf7rtdgoXfS363
+ PsuDFzL6GSfairKq8AbzjgyCRuZg1N4/ankH9+1vYBP5Z14fAmo4jnEJgktYWK7gK4DQWb9zvOb
+ U5XjoyVpfjO7pXsHgwV9ejQ/t3Pz5dZspJCtDSLywJl+v0qNUnPwDOJv7pdsKLyuJm6VZyGDFjV
+ Cgr1U1jO2rB72t59pCQQU+0uRux/GafvV/IL5orsNLxrf/2Pi8gjYcRWWG52FzWzjiSh2CLCbg7
+ bzGIxDGxHJVsfXXgC+WgXnrqb7EmIbcppOCvXggTSJ8fDPC1a6AHol5SxyZThGXTIhDTWND7rrw
+ S8oX2llUvvtPMXR5nG3vtd2y+BByn4E0Xg13NG3lsO5xtRHGxN3EeFx5QnnB6Tkr/0tpf+SjwBI
+ GznskK6hFt3ABwr49l/yFzFtJdYCp0a7YIQ4J/XEPwxqvCB9z9RQUgrQkf7u+8NdsPfQmeXyTXV
+ m02TQhR89R6SPmvkhfKwgHHUipoRuiiisBxmoth875tFgRXhCPswQPB2WFIbVfhbvzlEJmyKRti
+ WeFbOiq9oK3gZpw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Been broken in mainline for some time.
+From: Casey Connolly <casey.connolly@linaro.org>
 
+This corrects the host initialisation sequence so that we can send
+DSI/DCS commands in prepare().
+
+Cc: stable@vger.kernel.org
+Fixes: b00de0e237da ("drm/panel: introduce ebbg,ft8719 panel")
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Casey Connolly (1):
-      drm/panel: ebbg-ft8719: Set prepare_prev_first
+ drivers/gpu/drm/panel/panel-ebbg-ft8719.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-David Heidelberg (2):
-      drm/panel: ebbg-ft8719: Fix the MODULE_LICENSE() string
-      drm/panel: ebbg-ft8719: Split initialization into enable/disable fn
+diff --git a/drivers/gpu/drm/panel/panel-ebbg-ft8719.c b/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
+index fb9f9f42be4f2..1ab09c50a6306 100644
+--- a/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
++++ b/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
+@@ -193,16 +193,18 @@ static int ebbg_ft8719_probe(struct mipi_dsi_device *dsi)
+ 	ctx->dsi = dsi;
+ 	mipi_dsi_set_drvdata(dsi, ctx);
+ 
+ 	dsi->lanes = 4;
+ 	dsi->format = MIPI_DSI_FMT_RGB888;
+ 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
+ 			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
+ 
++	ctx->panel.prepare_prev_first = true;
++
+ 	ret = drm_panel_of_backlight(&ctx->panel);
+ 	if (ret)
+ 		return dev_err_probe(dev, ret, "Failed to get backlight\n");
+ 
+ 	drm_panel_add(&ctx->panel);
+ 
+ 	ret = mipi_dsi_attach(dsi);
+ 	if (ret < 0) {
 
- drivers/gpu/drm/panel/panel-ebbg-ft8719.c | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
----
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260122-ebbg-ft8719-fixups-bce548250b02
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
