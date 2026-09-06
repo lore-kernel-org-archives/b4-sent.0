@@ -1,66 +1,63 @@
-From: Sven Peter <sven@kernel.org>
-Date: Sun, 06 Sep 2026 14:43:28 +0200
-Subject: [PATCH] usb: typec: tipd: Zero-initialize CD321x partner
- descriptor
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/3] Xiaomi Poco F1 (ebbg display variant) fixes
+Date: Sun, 06 Sep 2026 15:19:01 +0200
+Message-Id: <20260906-ebbg-ft8719-fixups-v1-0-4e846510cad1@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-b4-tipd-partner-desc-v1-1-073559f142ff@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ7CMAxA4atUnrHkRNCqXAUx5MeAGUJkB4RU9
- e5NYfyG9xYwVmGD87CA8kdMXqXDHQZIj1DujJK7wZMfaaYR4xGb1Iw1aCusmNkS0jS7U3B+ihS
- gp1X5Jt/f9nL9297xyantL1jXDXtL0+54AAAA
-X-Change-ID: 20260906-b4-tipd-partner-desc-07915a127b0a
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: asahi@lists.linux.dev, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sven Peter <sven@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1428; i=sven@kernel.org;
- h=from:subject:message-id; bh=F0fgm1i8HFGP9oMA1VAKRxErBO1BdcjfJnpab90e2YQ=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bc+E8/pjcv2yXwrrvGdsf2Ba8/Xj54wZLfxy5rzcdo7
- 2n5bnzdHaUsDGJcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJlHQyMmzhWywm9kzqh+if
- dyG/J5hxFT7wWvQs8bSWFI/2qzcJb34y/NMLcxHTn3l/y89DSxS/buqbWWdfrcm+etXEn+umTdq
- nNp0BAA==
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23IIuPaxfiQ5Zm+3FRCuC6N+Tj
+ sMw80DiKJygLx6IfEmS3WfQZQHzNnnHKEtmIEWN0kTI1jpcD9PqDle5z5DQzlxXhmplFUEOQ+R
+ s/ukwvu8H1f1homQAAAA=
+X-Change-ID: 20260122-ebbg-ft8719-fixups-bce548250b02
+To: Joel Selvaraj <jo@jsfamily.in>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Sam Ravnborg <sam@ravnborg.org>, Marco Mattiolo <marco.mattiolo@hotmail.it>, 
+ Linus Walleij <linusw@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ Casey Connolly <casey.connolly@linaro.org>, stable@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=629; i=david@ixit.cz;
+ h=from:subject:message-id; bh=nvyihE17l+ORxYrEI+2u0xDHs4DHHPvWAuMH2VNNS00=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnWhPbx8vOR2yaGpvwMlaKW+s7YDfp9h0MCAvW
+ FVn8Yx7fo+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCap1oTwAKCRBgAj/E00kg
+ cjH5D/9JcSicP7F+mjJ2JommLLfpDtCS/jKb1KHE3bw12u7csi/uLmFfSjNfK3io5v96H8JA5z6
+ /PIRLhqrzQMN9RHb9f5byx+rcunUDjNJgIQmxUZAwYFpLIE+HxkNT0x0JvCYy7xzHLRs7U43GIT
+ 4ZUVAWzJ+IeENr7JiWdI+yMEcT+kRqwa0EHU1A0JHI896yRIjRpKIzaWxUBxX5bZBLSLAL4gvD9
+ zn6hZRjA+lfBrO0a/AkkHCw/MkrLN9hE53/lCQdtDxs/miXum0H5XdOUdbtnEndCC+Q631XTnX/
+ PCcGG/blI6vdEnZ3/suzQ9fthli5G7oe38jtFZ4Xsiq2FqgzNAY/+7eiGSjNsnE8VrCBVkBDxOs
+ L7Za0hakVc28AFqLsKC7mB5nSDbZYJXMeVxN5oAJHzFansysHBLKltj5+ji9jxOWV3T7u3tgyQC
+ b/CuhCDAKdZZDGlZ9RZ00hIQVp/AH01BtmrPWvmLpZVWKSkdUrBZmATRoBs4nS9rCqUQVPS3Syp
+ A67hk4k8ajrERT3soJzTvmKSVvZ87e+ItecT7qvsAUYIPhjqVFJN7KQu3h8ltY0xHf9kTghG9n3
+ 8efVwKvJ+pC689BcbPUXnjDnSXM6xyNKmzWaNzifCQuJv2npIe9c8FzYEHncNwgszKzHlupwrLF
+ 0TKbGRaUYoarUKA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The typec_partner_desc struct isn't initialized and instead filled with
-whatever values happen to be on the stack. We especially don't overwrite
-the attach/detach callbacks. Just zero initialize it to make sure we don't
-run into weird issues in the future.
+Been broken in mainline for some time.
 
-Fixes: 82432bbfb9e8 ("usb: typec: tipd: Handle mode transitions for CD321x")
-Signed-off-by: Sven Peter <sven@kernel.org>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-I deliberately didn't cc stable@ since we can't even reach the path
-that would try to run these callbacks on platforms where this is used.
-Just noticed this while working on the USB4/Thunderbolt series for Apple
-Silicon.
----
- drivers/usb/typec/tipd/core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Casey Connolly (1):
+      drm/panel: ebbg-ft8719: Set prepare_prev_first
 
-diff --git a/drivers/usb/typec/tipd/core.c b/drivers/usb/typec/tipd/core.c
-index 522f56742aa9..07d6d88e3a0e 100644
---- a/drivers/usb/typec/tipd/core.c
-+++ b/drivers/usb/typec/tipd/core.c
-@@ -841,7 +841,7 @@ static void cd321x_update_work(struct work_struct *work)
- 
- 	/* Set up partner if we were previously disconnected (or changed). */
- 	if (!tps->partner) {
--		struct typec_partner_desc desc;
-+		struct typec_partner_desc desc = { };
- 
- 		desc.usb_pd = is_pd;
- 		desc.accessory = TYPEC_ACCESSORY_NONE; /* XXX: handle accessories */
+David Heidelberg (2):
+      drm/panel: ebbg-ft8719: Fix the MODULE_LICENSE() string
+      drm/panel: ebbg-ft8719: Split initialization into enable/disable fn
 
+ drivers/gpu/drm/panel/panel-ebbg-ft8719.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 ---
-base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
-change-id: 20260906-b4-tipd-partner-desc-07915a127b0a
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260122-ebbg-ft8719-fixups-bce548250b02
 
 Best regards,
 --  
-Sven Peter <sven@kernel.org>
+David Heidelberg <david@ixit.cz>
 
