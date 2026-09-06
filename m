@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 06 Sep 2026 20:36:34 +0200
-Subject: [PATCH v2 11/22] thunderbolt: Find Apple VSE capability during
- startup
+Date: Sun, 06 Sep 2026 20:36:35 +0200
+Subject: [PATCH v2 12/22] thunderbolt: Add ring_interrupt_active to
+ tb_nhi_ops
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-b4-apple-soc-tbt-v2-11-1f80085f93fb@kernel.org>
+Message-Id: <20260906-b4-apple-soc-tbt-v2-12-1f80085f93fb@kernel.org>
 References: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 In-Reply-To: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -19,80 +19,89 @@ To: Heikki Krogerus <heikki.krogerus@linux.intel.com>,
 Cc: Konrad Dybcio <konradybcio@kernel.org>, linux-usb@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Sven Peter <sven@kernel.org>
+ Sven Peter <sven@kernel.org>, Joshua Peisach <jpeisach@ubuntu.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2467; i=sven@kernel.org;
- h=from:subject:message-id; bh=hWtjtaprJYt4jyipWU9LokTTRoke60o6AWtWpZvW760=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTQeP+QZZqqv3lf21S5op6nGjZtsUQ7d5LZFzQ2y3m
- bnmeLJ2lLIwiHExyIopsmzfb2/65OEbwaWbLr2HmcPKBDKEgYtTACbi+ZeRoWHKom2Moj7Mexm0
- trcsX2nZ7Hpdq8WHU87p1d197PO1JBn+hzCoq79lrpKR3axyyW6+/2WPkmdMV47cMXUUML75Qjm
- NCQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2844; i=sven@kernel.org;
+ h=from:subject:message-id; bh=JhMORvwjpL+vSOXSZRgQ34FsUDioPUDXHqRnLjyFxTw=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTYc6Di2y31B1ZZp04ac3vlqF31cFbWjLvyTSuHTNR
+ K+Q0MX7O0pZGMS4GGTFFFm277c3ffLwjeDSTZfew8xhZQIZwsDFKQATiXnP8N/tw420F0kTZkwz
+ lN60Q1c4PUqiMHxZd5H/pf0LFZeLJ/YyMnxbcCzvxK4Fr8zj1Bf9Mrvz0iNIor9vaWNt78YfL56
+ 98eIAAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Only Apple Silicon host routers have the Apple vendor-specific extended
-capability. Look it up when the software connection manager starts and
-store its offset in the root switch.
-
-The Apple NHI driver can then use the stored offset when programming
-cable information without searching the router capabilities itself.
+The Apple NHI enables and disables ring interrupts differently. Add an
+optional tb_nhi_ops hook to override ring_interrupt_active which falls
+back to the standard USB4 method when it is not set.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
+Reviewed-by: Joshua Peisach <jpeisach@ubuntu.com>
 ---
- drivers/thunderbolt/tb.c      | 4 ++++
- drivers/thunderbolt/tb.h      | 2 ++
- drivers/thunderbolt/tb_regs.h | 1 +
- 3 files changed, 7 insertions(+)
+ drivers/thunderbolt/nhi.c | 12 ++++++++++--
+ drivers/thunderbolt/nhi.h |  4 ++++
+ 2 files changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/thunderbolt/tb.c b/drivers/thunderbolt/tb.c
-index bf1c192ec10a..d2832323cc36 100644
---- a/drivers/thunderbolt/tb.c
-+++ b/drivers/thunderbolt/tb.c
-@@ -3025,6 +3025,10 @@ static int tb_start(struct tb *tb, bool reset)
- 		return dev_err_probe(tb->nhi->dev, PTR_ERR(tb->root_switch),
- 				     "failed to allocate host router\n");
+diff --git a/drivers/thunderbolt/nhi.c b/drivers/thunderbolt/nhi.c
+index 6a97dcd57deb..fc54ff7edfb9 100644
+--- a/drivers/thunderbolt/nhi.c
++++ b/drivers/thunderbolt/nhi.c
+@@ -149,6 +149,14 @@ static void ring_interrupt_active(struct tb_ring *ring, bool active)
+ 		nhi_mask_interrupt(ring->nhi, mask, index);
+ }
  
-+	ret = tb_switch_find_vse_cap(tb->root_switch, TB_VSE_CAP_APPLE);
-+	if (ret > 0)
-+		tb->root_switch->cap_vsec_apple = ret;
++static void nhi_ring_interrupt_active(struct tb_ring *ring, bool active)
++{
++	if (ring->nhi->ops->ring_interrupt_active)
++		ring->nhi->ops->ring_interrupt_active(ring, active);
++	else
++		ring_interrupt_active(ring, active);
++}
 +
- 	/*
- 	 * ICM firmware upgrade needs running firmware and in native
- 	 * mode that is not available so disable firmware upgrade of the
-diff --git a/drivers/thunderbolt/tb.h b/drivers/thunderbolt/tb.h
-index 4373336d9425..fbd1a0a9927a 100644
---- a/drivers/thunderbolt/tb.h
-+++ b/drivers/thunderbolt/tb.h
-@@ -132,6 +132,7 @@ struct tb_switch_tmu {
-  * @link_usb4: Upstream link is USB4
-  * @generation: Switch Thunderbolt generation
-  * @cap_plug_events: Offset to the plug events capability (%0 if not found)
-+ * @cap_vsec_apple: Offset to the Apple vendor specific capability (%0 if not found)
-  * @cap_vsec_tmu: Offset to the TMU vendor specific capability (%0 if not found)
-  * @cap_lc: Offset to the link controller capability (%0 if not found)
-  * @cap_lp: Offset to the low power (CLx for TBT) capability (%0 if not found)
-@@ -187,6 +188,7 @@ struct tb_switch {
- 	bool link_usb4;
- 	unsigned int generation;
- 	int cap_plug_events;
-+	int cap_vsec_apple;
- 	int cap_vsec_tmu;
- 	int cap_lc;
- 	int cap_lp;
-diff --git a/drivers/thunderbolt/tb_regs.h b/drivers/thunderbolt/tb_regs.h
-index 92d893634d2b..a37e55fec157 100644
---- a/drivers/thunderbolt/tb_regs.h
-+++ b/drivers/thunderbolt/tb_regs.h
-@@ -31,6 +31,7 @@ enum tb_switch_cap {
- };
+ /*
+  * nhi_disable_interrupts() - disable interrupts for all rings
+  *
+@@ -724,7 +732,7 @@ void tb_ring_start(struct tb_ring *ring)
+ 	}
  
- enum tb_switch_vse_cap {
-+	TB_VSE_CAP_APPLE		= 0x00,
- 	TB_VSE_CAP_PLUG_EVENTS		= 0x01, /* also EEPROM */
- 	TB_VSE_CAP_TIME2		= 0x03,
- 	TB_VSE_CAP_CP_LP		= 0x04,
+ 	if (!(ring->flags & RING_FLAG_NO_INTERRUPT))
+-		ring_interrupt_active(ring, true);
++		nhi_ring_interrupt_active(ring, true);
+ 	ring->running = true;
+ err:
+ 	spin_unlock(&ring->lock);
+@@ -785,7 +793,7 @@ void tb_ring_stop(struct tb_ring *ring)
+ 		goto err;
+ 	}
+ 	if (!(ring->flags & RING_FLAG_NO_INTERRUPT))
+-		ring_interrupt_active(ring, false);
++		nhi_ring_interrupt_active(ring, false);
+ 
+ 	ring_iowrite32options(ring, 0, 0);
+ 	ring_iowrite64desc(ring, 0, 0);
+diff --git a/drivers/thunderbolt/nhi.h b/drivers/thunderbolt/nhi.h
+index f72d6b274501..4884c3f5a2b2 100644
+--- a/drivers/thunderbolt/nhi.h
++++ b/drivers/thunderbolt/nhi.h
+@@ -52,6 +52,9 @@ extern const struct dev_pm_ops nhi_pm_ops;
+  * @post_nvm_auth: hook to run after Thunderbolt 3 NVM authentication
+  * @request_ring_irq: NHI specific interrupt retrieval hook
+  * @release_ring_irq: NHI specific interrupt release hook
++ * @ring_interrupt_active: NHI specific hook to activate/deactivate the
++ *			   interrupt of a single ring. If not set the
++ *			   standard USB4 NHI registers are used.
+  * @is_present: Whether the device is currently present on the parent bus
+  * @init_interrupts: NHI specific interrupt initialization hook
+  * @reset_interface: Resets the host interface
+@@ -67,6 +70,7 @@ struct tb_nhi_ops {
+ 	void (*post_nvm_auth)(struct tb_nhi *nhi);
+ 	int (*request_ring_irq)(struct tb_ring *ring, bool no_suspend);
+ 	void (*release_ring_irq)(struct tb_ring *ring);
++	void (*ring_interrupt_active)(struct tb_ring *ring, bool active);
+ 	bool (*is_present)(struct tb_nhi *nhi);
+ 	int (*init_interrupts)(struct tb_nhi *nhi);
+ 	void (*reset_interface)(struct tb_nhi *nhi);
 
 -- 
 2.55.0
