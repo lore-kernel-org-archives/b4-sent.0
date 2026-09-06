@@ -1,11 +1,11 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 06 Sep 2026 20:36:31 +0200
-Subject: [PATCH v2 08/22] thunderbolt: Don't read the UID if we already
- know it
+Date: Sun, 06 Sep 2026 20:36:32 +0200
+Subject: [PATCH v2 09/22] thunderbolt: Allocate ring HopID before
+ requesting the ring interrupt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-b4-apple-soc-tbt-v2-8-1f80085f93fb@kernel.org>
+Message-Id: <20260906-b4-apple-soc-tbt-v2-9-1f80085f93fb@kernel.org>
 References: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 In-Reply-To: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -21,51 +21,75 @@ Cc: Konrad Dybcio <konradybcio@kernel.org>, linux-usb@vger.kernel.org,
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Sven Peter <sven@kernel.org>, Joshua Peisach <jpeisach@ubuntu.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1183; i=sven@kernel.org;
- h=from:subject:message-id; bh=nAvvsoDo0FnW497Le/eu1wxUngPW7Yw1+XhupbJs0xU=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTft1bIN3s71O0l644+DSY66WJwU0J+ZPd2KNX6Jp8
- 2rWPMMLHaUsDGJcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJbJrDyPCP8cBJFrGu0xry
- bS2MqjJ5+b1LWh7XS5bY7Ol+1/NbUIuR4cFSFi6ZL3ExVSc9XOZEKQpxTJogVW5WPvXiadWgyyp
- yPAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1903; i=sven@kernel.org;
+ h=from:subject:message-id; bh=pqtln2usNi6swABEnkmItz3rmeApDprpV00ba9Y2o4U=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTfvfJHSebPS66FR+0uz22qYPSQqxzA955cyc3u/pM
+ pbt8d/RUcrCIMbFICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZhIyX+G/zkGbVnfJaVSv516
+ XFy/6YkxV5+4zKuXZVKM3wNPTxX/Ks7I8H/PzPwJszvEb50wWnWj/8W+ws8VcjkLn61cv8941YS
+ Ha1gA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Apple Silicon the host router's UID comes from the DROM provided by
-the device tree and is already known by the time tb_switch_set_uuid()
-runs. Skip reading it from the config space again in that case.
-
-For other USB4 hosts this only drops a duplicate read because
-tb_drom_host_read() has already filled in the UID from ROUTER_CS_7
-before tb_switch_set_uuid() runs. Device routers keep reading it
-unconditionally.
+The Apple NHI has one interrupt per ring and request_ring_irq picks it
+based on ring->hop which is still -1 at this point for rings allocated
+with an automatic HopID. Allocate the HopID first and release it again
+if the interrupt request fails.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 Reviewed-by: Joshua Peisach <jpeisach@ubuntu.com>
 ---
- drivers/thunderbolt/switch.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ drivers/thunderbolt/nhi.c | 23 ++++++++++++++++-------
+ 1 file changed, 16 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/thunderbolt/switch.c b/drivers/thunderbolt/switch.c
-index 404c0693df50..3f54a5ae56b0 100644
---- a/drivers/thunderbolt/switch.c
-+++ b/drivers/thunderbolt/switch.c
-@@ -2692,9 +2692,11 @@ static int tb_switch_set_uuid(struct tb_switch *sw)
- 		return 0;
+diff --git a/drivers/thunderbolt/nhi.c b/drivers/thunderbolt/nhi.c
+index 5809809f64d4..6a97dcd57deb 100644
+--- a/drivers/thunderbolt/nhi.c
++++ b/drivers/thunderbolt/nhi.c
+@@ -534,6 +534,16 @@ static int nhi_alloc_hop(struct tb_nhi *nhi, struct tb_ring *ring)
+ 	return ret;
+ }
  
- 	if (tb_switch_is_usb4(sw)) {
--		ret = usb4_switch_read_uid(sw, &sw->uid);
--		if (ret)
--			return ret;
-+		if (tb_route(sw) || !sw->uid) {
-+			ret = usb4_switch_read_uid(sw, &sw->uid);
-+			if (ret)
-+				return ret;
-+		}
- 		uid = true;
- 	} else {
- 		/*
++static void nhi_free_hop(struct tb_nhi *nhi, struct tb_ring *ring)
++{
++	guard(spinlock_irq)(&nhi->lock);
++
++	if (ring->is_tx)
++		nhi->tx_rings[ring->hop] = NULL;
++	else
++		nhi->rx_rings[ring->hop] = NULL;
++}
++
+ static struct tb_ring *tb_ring_alloc(struct tb_nhi *nhi, u32 hop, int size,
+ 				     bool transmit, unsigned int flags,
+ 				     int e2e_tx_hop, u16 sof_mask, u16 eof_mask,
+@@ -581,19 +591,18 @@ static struct tb_ring *tb_ring_alloc(struct tb_nhi *nhi, u32 hop, int size,
+ 	if (!ring->descriptors)
+ 		goto err_free_ring;
+ 
++	if (nhi_alloc_hop(nhi, ring))
++		goto err_free_descs;
++
+ 	if (!(flags & RING_FLAG_NO_INTERRUPT) && nhi->ops->request_ring_irq) {
+ 		if (nhi->ops->request_ring_irq(ring, flags & RING_FLAG_NO_SUSPEND))
+-			goto err_free_descs;
++			goto err_free_hop;
+ 	}
+ 
+-	if (nhi_alloc_hop(nhi, ring))
+-		goto err_release_msix;
+-
+ 	return ring;
+ 
+-err_release_msix:
+-	if (nhi->ops->release_ring_irq)
+-		nhi->ops->release_ring_irq(ring);
++err_free_hop:
++	nhi_free_hop(nhi, ring);
+ err_free_descs:
+ 	dma_free_coherent(ring->nhi->dev,
+ 			  ring->size * sizeof(*ring->descriptors),
 
 -- 
 2.55.0
