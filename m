@@ -1,10 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 06 Sep 2026 20:36:43 +0200
-Subject: [PATCH v2 20/22] arm64: dts: apple: t8103: Add USB4 ACIO and NHI
+Date: Sun, 06 Sep 2026 20:36:44 +0200
+Subject: [PATCH v2 21/22] arm64: dts: apple: t8112: Add USB4 ACIO and NHI
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-b4-apple-soc-tbt-v2-20-1f80085f93fb@kernel.org>
+Message-Id: <20260906-b4-apple-soc-tbt-v2-21-1f80085f93fb@kernel.org>
 References: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 In-Reply-To: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -20,43 +20,43 @@ Cc: Konrad Dybcio <konradybcio@kernel.org>, linux-usb@vger.kernel.org,
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10392; i=sven@kernel.org;
- h=from:subject:message-id; bh=+AIT3rGrnA1dnHtXc4jyApvNKaFqdKHWbR5KbldVPvw=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTWfm/ZV93LNvs0HqFM71LNvyntR8NjNWbJb7ukGuc
- WHnuxVSHaUsDGJcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJvFjPyHBq37QzaWve6jzT
- +rIt5MECSfvG5LiSCy/P3S22qBdjiuliZJgvvFw6ulL3dNkbjehWBk3+UqZN4RPUok8yrL77rZz
- lHB8A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=10505; i=sven@kernel.org;
+ h=from:subject:message-id; bh=yCkOmBaR5nil6EWh+gg1vqFVc4hjJ7N+uufRHhr7jwc=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTWe3bLoX8SFp0buN0X4LP5nz/D1bqfjsfMH+XLGbz
+ yyazky62VHKwiDGxSArpsiyfb+96ZOHbwSXbrr0HmYOKxPIEAYuTgGYiOImRoaHvAncd4/Jylc7
+ 6upKtG39u1z40oW+9TLHEqzO/34k872O4X+m2s6fe08dCsz9sGmrY3jhbbbeZdej4/++8ajNvh9
+ fcYsXAA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the ACIO host router, NHI, DART and M3 mailbox nodes for both Type-C
-ports on t8103 and connect the host routers to the Type-C connectors.
+Add the ACIO host router, NHI, DART and mailbox nodes for both Type-C
+ports on t8112 and connect the host routers to the Type-C connectors.
 Also describe the USB3 path from each host router to its DWC3 controller
 so the NHI driver can create the required device link.
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- arch/arm64/boot/dts/apple/t8103-jxxx.dtsi |  95 ++++++++++++++-
- arch/arm64/boot/dts/apple/t8103.dtsi      | 184 ++++++++++++++++++++++++++++++
- 2 files changed, 277 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/apple/t8112-jxxx.dtsi |  95 ++++++++++++++-
+ arch/arm64/boot/dts/apple/t8112.dtsi      | 186 ++++++++++++++++++++++++++++++
+ 2 files changed, 279 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-index 686fb1dd215d..01c942b0a75b 100644
---- a/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103-jxxx.dtsi
-@@ -17,6 +17,10 @@ aliases {
- 		wifi0 = &wifi0;
+diff --git a/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi b/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
+index 562e7a25a1e8..d0dc7eaaca35 100644
+--- a/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
++++ b/arch/arm64/boot/dts/apple/t8112-jxxx.dtsi
+@@ -13,6 +13,10 @@ / {
+ 	aliases {
  		atcphy0 = &atcphy0;
  		atcphy1 = &atcphy1;
 +		usb4-0-acio = &usb4_0_acio;
 +		usb4-0-nhi = &usb4_0_nhi;
 +		usb4-1-acio = &usb4_1_acio;
 +		usb4-1-nhi = &usb4_1_nhi;
+ 		serial0 = &serial0;
+ 		serial2 = &serial2;
  	};
- 
- 	chosen {
 @@ -76,6 +80,13 @@ typec0_connector_ss: endpoint {
  						remote-endpoint = <&atcphy0_typec_lanes>;
  					};
@@ -186,48 +186,48 @@ index 686fb1dd215d..01c942b0a75b 100644
 +	};
 +};
 +
- /*
-  * Force the bus number assignments so that we can declare some of the
-  * on-board devices and properties that are populated by the bootloader
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index 985dbd8e68ca..735591c72fde 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -988,6 +988,14 @@ pinctrl_aop: pinctrl@24a820000 {
- 				     <AIC_IRQ 272 IRQ_TYPE_LEVEL_HIGH>,
- 				     <AIC_IRQ 273 IRQ_TYPE_LEVEL_HIGH>,
- 				     <AIC_IRQ 274 IRQ_TYPE_LEVEL_HIGH>;
+ &i2c1 {
+ 	status = "okay";
+ };
+diff --git a/arch/arm64/boot/dts/apple/t8112.dtsi b/arch/arm64/boot/dts/apple/t8112.dtsi
+index 2c3b59e05e01..e70ed4a470e1 100644
+--- a/arch/arm64/boot/dts/apple/t8112.dtsi
++++ b/arch/arm64/boot/dts/apple/t8112.dtsi
+@@ -991,6 +991,14 @@ pinctrl_aop: pinctrl@24a820000 {
+ 				     <AIC_IRQ 305 IRQ_TYPE_LEVEL_HIGH>,
+ 				     <AIC_IRQ 306 IRQ_TYPE_LEVEL_HIGH>,
+ 				     <AIC_IRQ 307 IRQ_TYPE_LEVEL_HIGH>;
 +
 +			acio0_pins: acio0-pins {
-+				pinmux = <APPLE_PINMUX(39, 1)>;
++				pinmux = <APPLE_PINMUX(28, 1)>;
 +			};
 +
 +			acio1_pins: acio1-pins {
-+				pinmux = <APPLE_PINMUX(41, 1)>;
++				pinmux = <APPLE_PINMUX(30, 1)>;
 +			};
  		};
  
  		ans_mbox: mbox@277408000 {
-@@ -1024,6 +1032,94 @@ nvme@27bcc0000 {
- 			resets = <&ps_ans2>;
+@@ -1027,6 +1035,95 @@ nvme@27bcc0000 {
+ 			resets = <&ps_ans>;
  		};
  
-+		usb4_0_mbox: mailbox@381100000 {
-+			compatible = "apple,t8103-m3-mailbox",
-+				"apple,m3-mailbox-v2";
-+			reg = <0x3 0x81100000 0x0 0x4000>;
++		usb4_0_mbox: mailbox@381108000 {
++			compatible = "apple,t8112-asc-mailbox",
++				"apple,asc-mailbox-v4";
++			reg = <0x3 0x81108000 0x0 0x4000>;
 +			interrupt-parent = <&aic>;
-+			interrupts = <AIC_IRQ 812 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 813 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 814 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 815 IRQ_TYPE_LEVEL_HIGH>;
++			interrupts = <AIC_IRQ 1067 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 1068 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 1069 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 1070 IRQ_TYPE_LEVEL_HIGH>;
 +			interrupt-names = "send-empty", "send-not-empty",
 +				"recv-empty", "recv-not-empty";
 +			#mbox-cells = <0>;
 +		};
 +
 +		usb4_0_acio: cio@381ac0000 {
-+			compatible = "apple,t8103-usb4-acio";
++			compatible = "apple,t8112-usb4-acio", "apple,t8103-usb4-acio";
 +			reg = <0x3 0x81ac0000 0x0 0xc000>,
 +				<0x3 0x81080000 0x0 0x20000>;
 +			reg-names = "rc", "sram";
@@ -248,10 +248,10 @@ index 985dbd8e68ca..735591c72fde 100644
 +			nonposted-mmio;
 +
 +			usb4_0_dart: iommu@a80000 {
-+				compatible = "apple,t8103-dart";
++				compatible = "apple,t8110-dart";
 +				reg = <0xa80000 0x4000>;
 +				interrupt-parent = <&aic>;
-+				interrupts = <AIC_IRQ 810 IRQ_TYPE_LEVEL_HIGH>;
++				interrupts = <AIC_IRQ 1065 IRQ_TYPE_LEVEL_HIGH>;
 +				#iommu-cells = <1>;
 +			};
 +
@@ -259,32 +259,33 @@ index 985dbd8e68ca..735591c72fde 100644
 +				reg = <0xf00000 0x100000>,
 +					<0xdb0000 0x30004>;
 +				reg-names = "nhi", "pdf";
-+				compatible = "apple,t8103-usb4-nhi";
++				compatible = "apple,t8112-usb4-nhi",
++					"apple,t8103-usb4-nhi";
 +				interrupt-parent = <&aic>;
-+				interrupts = <AIC_IRQ 783 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 784 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 785 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 786 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 787 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 788 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 789 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 790 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 791 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 792 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 793 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 794 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 795 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 796 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 797 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 798 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 799 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 800 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 801 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 802 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 803 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 804 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 805 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 806 IRQ_TYPE_LEVEL_HIGH>;
++				interrupts = <AIC_IRQ 1038 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1039 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1040 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1041 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1042 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1043 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1044 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1045 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1046 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1047 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1048 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1049 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1050 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1051 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1052 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1053 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1054 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1055 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1056 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1057 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1058 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1059 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1060 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1061 IRQ_TYPE_LEVEL_HIGH>;
 +				interrupt-names =
 +					"txring0", "txring1", "txring2",
 +					"txring3", "txring4", "txring5",
@@ -301,28 +302,28 @@ index 985dbd8e68ca..735591c72fde 100644
 +		};
 +
  		dwc3_0: usb@382280000 {
- 			compatible = "apple,t8103-dwc3";
+ 			compatible = "apple,t8112-dwc3", "apple,t8103-dwc3";
  			reg = <0x3 0x82280000 0x0 0xcd00>, <0x3 0x8228cd00 0x0 0x3200>;
-@@ -1076,6 +1172,94 @@ atcphy0: phy@383000000 {
+@@ -1079,6 +1176,95 @@ atcphy0: phy@383000000 {
  			power-domains = <&ps_atc0_usb>;
  		};
  
-+		usb4_1_mbox: mailbox@501100000 {
-+			compatible = "apple,t8103-m3-mailbox",
-+				"apple,m3-mailbox-v2";
-+			reg = <0x5 0x01100000 0x0 0x4000>;
++		usb4_1_mbox: mailbox@501108000 {
++			compatible = "apple,t8112-asc-mailbox",
++				"apple,asc-mailbox-v4";
++			reg = <0x5 0x01108000 0x0 0x4000>;
 +			interrupt-parent = <&aic>;
-+			interrupts = <AIC_IRQ 892 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 893 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 894 IRQ_TYPE_LEVEL_HIGH>,
-+				<AIC_IRQ 895 IRQ_TYPE_LEVEL_HIGH>;
++			interrupts = <AIC_IRQ 1148 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 1149 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 1150 IRQ_TYPE_LEVEL_HIGH>,
++				<AIC_IRQ 1151 IRQ_TYPE_LEVEL_HIGH>;
 +			interrupt-names = "send-empty", "send-not-empty",
 +				"recv-empty", "recv-not-empty";
 +			#mbox-cells = <0>;
 +		};
 +
 +		usb4_1_acio: cio@501ac0000 {
-+			compatible = "apple,t8103-usb4-acio";
++			compatible = "apple,t8112-usb4-acio", "apple,t8103-usb4-acio";
 +			reg = <0x5 0x01ac0000 0x0 0xc000>,
 +				<0x5 0x01080000 0x0 0x20000>;
 +			reg-names = "rc", "sram";
@@ -343,10 +344,10 @@ index 985dbd8e68ca..735591c72fde 100644
 +			nonposted-mmio;
 +
 +			usb4_1_dart: iommu@a80000 {
-+				compatible = "apple,t8103-dart";
++				compatible = "apple,t8110-dart";
 +				reg = <0xa80000 0x4000>;
 +				interrupt-parent = <&aic>;
-+				interrupts = <AIC_IRQ 890 IRQ_TYPE_LEVEL_HIGH>;
++				interrupts = <AIC_IRQ 1146 IRQ_TYPE_LEVEL_HIGH>;
 +				#iommu-cells = <1>;
 +			};
 +
@@ -354,32 +355,33 @@ index 985dbd8e68ca..735591c72fde 100644
 +				reg = <0xf00000 0x100000>,
 +					<0xdb0000 0x30004>;
 +				reg-names = "nhi", "pdf";
-+				compatible = "apple,t8103-usb4-nhi";
++				compatible = "apple,t8112-usb4-nhi",
++					"apple,t8103-usb4-nhi";
 +				interrupt-parent = <&aic>;
-+				interrupts = <AIC_IRQ 863 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 864 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 865 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 866 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 867 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 868 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 869 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 870 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 871 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 872 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 873 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 874 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 875 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 876 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 877 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 878 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 879 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 880 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 881 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 882 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 883 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 884 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 885 IRQ_TYPE_LEVEL_HIGH>,
-+					<AIC_IRQ 886 IRQ_TYPE_LEVEL_HIGH>;
++				interrupts = <AIC_IRQ 1119 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1120 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1121 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1122 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1123 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1124 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1125 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1126 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1127 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1128 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1129 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1130 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1131 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1132 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1133 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1134 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1135 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1136 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1137 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1138 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1139 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1140 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1141 IRQ_TYPE_LEVEL_HIGH>,
++					<AIC_IRQ 1142 IRQ_TYPE_LEVEL_HIGH>;
 +				interrupt-names =
 +					"txring0", "txring1", "txring2",
 +					"txring3", "txring4", "txring5",
@@ -396,7 +398,7 @@ index 985dbd8e68ca..735591c72fde 100644
 +		};
 +
  		dwc3_1: usb@502280000 {
- 			compatible = "apple,t8103-dwc3";
+ 			compatible = "apple,t8112-dwc3", "apple,t8103-dwc3";
  			reg = <0x5 0x02280000 0x0 0xcd00>, <0x5 0x0228cd00 0x0 0x3200>;
 
 -- 
