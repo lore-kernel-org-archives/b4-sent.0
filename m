@@ -1,79 +1,124 @@
-From: Miles Krause <mileskrause5200@gmail.com>
-Date: Sun, 06 Sep 2026 15:43:48 -0400
-Subject: [PATCH] drm/meson: fix device_node leak in
- meson_encoder_dsi_probe()
+From: Ryan Leung <untilscour@protonmail.com>
+Date: Sun, 06 Sep 2026 21:42:06 +0000
+Subject: [PATCH mt76 v3] wifi: mt76: mt7915: fix thermal zone
+ use-after-free and cooling device leak
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-meson-dsi-of-node-leak-v1-1-9d183560279d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAHPCnWoC/x3MTQqAIBBA4avErBswsR+7SrSQnGqoNByIILp70
- vJbvPeAUGIS6IsHEl0sHENGVRYwrS4shOyzQSvdKKsaPEhiQC+MccYQPeFObsPWmM5a7+q20pD
- jM9HM9z8exvf9AD146hxoAAAA
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Nicolas Belin <nbelin@baylibre.com>, 
- Jagan Teki <jagan@amarulasolutions.com>
-Cc: dri-devel@lists.freedesktop.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Miles Krause <mileskrause5200@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788723828; l=1903;
- i=mileskrause5200@gmail.com; s=20260906; h=from:subject:message-id;
- bh=MzPOZoQJIZouNhopaY53pEz59ebt1korUstt2TswX5s=;
- b=n7TDRXCuDuGLEEk4/VPeuku3N6NRmryW5wydClhaAsHiByeSusM+Nz8hYgNrxmDeRC7QSYUTm
- N24E5yCU0OhCuzbiwy8lCyAhHI/GXTrgxQ923wq10hBuHkzwXY3Jr/P
-X-Developer-Key: i=mileskrause5200@gmail.com; a=ed25519;
- pk=zcIfq4TGtPwMRJUW6WsbE2zLHvOMwk6ZyT/CGd6XzyI=
-X-Endpoint-Received: by B4 Relay for mileskrause5200@gmail.com/20260906 with auth_id=1010
+Message-Id: <20260906-mt7915-unregister-thermal-v3-1-efb2d06e61f4@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAC3enWoC/42OQQ6DIBBFr2JYlwawIHbVezRdII5Ko2AATRvj3
+ Yu6bNJ0+Sf/vzcLCuANBHTNFuRhNsE4m0J+ypDulG0BmzplxAgTRJISD7EoKceT9dCaEMHj2IE
+ fVI8lA0m4FlQqgdJ+9NCY186+ozQT6HFcw1Q9QccNu/W6hHH+vb8w07192Cj5YZsppliLmhfVR
+ Ve5kLfRu+jsoEx/1m7YZTP7G8cSjinScKrqhovmC7eu6wdbFVLDLgEAAA==
+X-Change-ID: 20260809-mt7915-unregister-thermal-82e805c618a6
+To: Felix Fietkau <nbd@nbd.name>, Lorenzo Bianconi <lorenzo@kernel.org>, 
+ Ryder Lee <ryder.lee@mediatek.com>, Shayne Chen <shayne.chen@mediatek.com>, 
+ Sean Wang <sean.wang@mediatek.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ Ryan Leung <untilscour@protonmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788730934; l=3446;
+ i=untilscour@protonmail.com; s=20260906; h=from:subject:message-id;
+ bh=jg+VrZXwazJVrct69E59ekan8eJXBrNoBIRKgj68l10=;
+ b=x0FHS3zeNHr8A2J5GkukmZc+dv0Tf0y/xb73NXQoLHXl+rMbmkLv3Ip73CTp8uRdJ87MOUzDI
+ 6LOHGLHUKcRBQjZ36TG1u1kk3G9PC4jq4R2mfU36LyzCQZS0BvQnaVt
+X-Developer-Key: i=untilscour@protonmail.com; a=ed25519;
+ pk=eCaNcoQNRWYKZ9D7KbOGKvQVK2YFguJXZxglTtAR7Xk=
+X-Endpoint-Received: by B4 Relay for untilscour@protonmail.com/20260906 with auth_id=1011
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-meson_encoder_dsi_probe() looks up the DSI transceiver's device node
-with of_graph_get_remote_node() and hands it to
-of_drm_find_and_get_bridge(), but never drops the reference that the
-lookup returned.
+The thermal zone registered against the parent device is never torn
+down when the phy is unregistered, so it can still be dereferenced
+by the thermal core after the phy is freed. The thermal zone and
+cooling device are also left registered if a later hwmon
+registration step fails during init, leaking both.
 
-of_graph_get_remote_node() returns the node with its refcount
-incremented, and of_drm_find_and_get_bridge() takes its own reference
-on the bridge it finds, so 'remote' is leaked on every path once the
-lookup succeeds: on the -EPROBE_DEFER return taken when no bridge is
-found, and on a fully successful probe alike.
+Unregister the thermal zone alongside the cooling device on both the
+regular unregister path and the init failure path. Also clear
+phy->tzone and phy->cdev after unregistering so that a future caller
+invoking the function twice doesn't unregister already-freed objects.
 
-The two sibling encoders in this driver already handle this correctly.
-meson_encoder_cvbs_probe() calls of_node_put(remote) immediately after
-of_drm_find_and_get_bridge(), and meson_encoder_hdmi_probe() releases
-the node both on its error path and after of_find_device_by_node().
+While at it, include the band index in the thermal zone registration
+warning to help identify which band failed on multi-band chips.
 
-Release the reference in the same place meson_encoder_cvbs_probe()
-does, which covers both the error and the success path.
-
-Fixes: 42dcf15f901c ("drm/meson: add DSI encoder")
-Signed-off-by: Miles Krause <mileskrause5200@gmail.com>
+Fixes: 313f1a27ebcb ("wifi: mt76: mt7915: add thermal zone device registration")
+Signed-off-by: Ryan Leung <untilscour@protonmail.com>
 ---
- drivers/gpu/drm/meson/meson_encoder_dsi.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v3:
+- Clear phy->tzone/phy->cdev in mt7915_unregister_thermal() after
+  unregistering, making it idempotent.
+- Link to v2: https://patch.msgid.link/20260810-mt7915-unregister-thermal-v2-1-2a0f51adf56f@protonmail.com
 
-diff --git a/drivers/gpu/drm/meson/meson_encoder_dsi.c b/drivers/gpu/drm/meson/meson_encoder_dsi.c
-index 3e422b612f74..3fe604496294 100644
---- a/drivers/gpu/drm/meson/meson_encoder_dsi.c
-+++ b/drivers/gpu/drm/meson/meson_encoder_dsi.c
-@@ -120,6 +120,7 @@ int meson_encoder_dsi_probe(struct meson_drm *priv)
+Changes in v2:
+- Unwind cdev/tzone registration in mt7915_thermal_init() on hwmon registration failure.
+- Link to v1: https://patch.msgid.link/20260810-mt7915-unregister-thermal-v1-1-c6d57b4cb368@protonmail.com
+---
+ drivers/net/wireless/mediatek/mt76/mt7915/init.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/mediatek/mt76/mt7915/init.c b/drivers/net/wireless/mediatek/mt76/mt7915/init.c
+index ca46a203aa48..e5285d1a1f9d 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt7915/init.c
++++ b/drivers/net/wireless/mediatek/mt76/mt7915/init.c
+@@ -200,11 +200,17 @@ static void mt7915_unregister_thermal(struct mt7915_phy *phy)
+ {
+ 	struct wiphy *wiphy = phy->mt76->hw->wiphy;
+ 
++	if (phy->tzone) {
++		devm_thermal_of_zone_unregister(phy->dev->mt76.dev, phy->tzone);
++		phy->tzone = NULL;
++	}
++
+ 	if (!phy->cdev)
+ 		return;
+ 
+ 	sysfs_remove_link(&wiphy->dev.kobj, "cooling_device");
+ 	thermal_cooling_device_unregister(phy->cdev);
++	phy->cdev = NULL;
+ }
+ 
+ static int mt7915_thermal_init(struct mt7915_phy *phy)
+@@ -213,6 +219,7 @@ static int mt7915_thermal_init(struct mt7915_phy *phy)
+ 	struct thermal_cooling_device *cdev;
+ 	struct device *hwmon;
+ 	const char *name;
++	int ret;
+ 
+ 	name = devm_kasprintf(&wiphy->dev, GFP_KERNEL, "mt7915_%s",
+ 			      wiphy_name(wiphy));
+@@ -238,8 +245,8 @@ static int mt7915_thermal_init(struct mt7915_phy *phy)
+ 	if (IS_ERR(phy->tzone)) {
+ 		if (PTR_ERR(phy->tzone) != -ENODEV)
+ 			dev_warn(phy->dev->mt76.dev,
+-				 "failed to register thermal zone: %ld\n",
+-				 PTR_ERR(phy->tzone));
++				 "failed to register thermal zone %d: %ld\n",
++				 phy->mt76->band_idx, PTR_ERR(phy->tzone));
+ 		phy->tzone = NULL;
  	}
  
- 	meson_encoder_dsi->bridge.next_bridge = of_drm_find_and_get_bridge(remote);
-+	of_node_put(remote);
- 	if (!meson_encoder_dsi->bridge.next_bridge)
- 		return dev_err_probe(priv->dev, -EPROBE_DEFER,
- 				     "Failed to find DSI transceiver bridge\n");
+@@ -248,7 +255,11 @@ static int mt7915_thermal_init(struct mt7915_phy *phy)
+ 
+ 	hwmon = devm_hwmon_device_register_with_groups(&wiphy->dev, name, phy,
+ 						       mt7915_hwmon_groups);
+-	return PTR_ERR_OR_ZERO(hwmon);
++	ret = PTR_ERR_OR_ZERO(hwmon);
++	if (ret)
++		mt7915_unregister_thermal(phy);
++
++	return ret;
+ }
+ 
+ static void mt7915_led_set_config(struct led_classdev *led_cdev,
 
 ---
-base-commit: 88405f0ad1d5c680afe3ea0ce9345fa9e1deaac8
-change-id: 20260906-meson-dsi-of-node-leak-744899da5712
+base-commit: 1b60ed34f712e9f606d80951f1586f4274ebadf1
+change-id: 20260809-mt7915-unregister-thermal-82e805c618a6
 
 Best regards,
--- 
-Miles Krause <mileskrause5200@gmail.com>
+--  
+Ryan Leung <untilscour@protonmail.com>
 
