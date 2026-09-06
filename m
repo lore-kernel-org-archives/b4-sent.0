@@ -1,14 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH RFC 0/4] Add modemsmem for Google phones
-Date: Sun, 06 Sep 2026 02:41:11 +0200
-Message-Id: <20260906-modemsmem-v1-0-a3634b553841@ixit.cz>
+Date: Sun, 06 Sep 2026 02:41:12 +0200
+Subject: [PATCH RFC 1/4] dt-bindings: soc: google: Add modemsmem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDSwMz3dz8lNTc4tzUXF3LRMOUZEMDc4M08yQloPqCotS0zAqwWdFKQW7
- OSrEQweLSpKzU5BKQKUq1tQAKYQHUcgAAAA==
-X-Change-ID: 20260906-modemsmem-9a1dc1070f7b
+Message-Id: <20260906-modemsmem-v1-1-a3634b553841@ixit.cz>
+References: <20260906-modemsmem-v1-0-a3634b553841@ixit.cz>
+In-Reply-To: <20260906-modemsmem-v1-0-a3634b553841@ixit.cz>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Richard Acayan <mailingradian@gmail.com>, Petr Vorel <petr.vorel@gmail.com>, 
@@ -18,54 +16,81 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1141; i=david@ixit.cz;
- h=from:subject:message-id; bh=eRvLe1XRVJ8TJbygbWAv61WmLhsSguAjpbdT8YXOflU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnLavI/xFthM9qoq5L8tR9KOe+uWdiqXgpmubn
- oboO6k4ciSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapy2rwAKCRBgAj/E00kg
- cu7KD/429ltHh5MLUGPQPw+neYzhaT/vOibNrQQ7hV4l36Fw1kRqtychUvN+zuVCr3voZDVvGz3
- iG3acvJPbPjrgo6/aqancRWolPgoqXPvmaR5IRXLB86jwvyora50tQXS6YLVXKLk8Hyc9AhmSOo
- tA7XP6U31FFv9CbroE/pMA84XihZTojdrzqcoh80t5KdvLi5KD4et8yMnPSm+iXMG61Bj7H0Iek
- ZwyhbQ5J5I4/w+2U3nj3b2q/PPtVjnO05jjm2EtPE6wlnyLJLZwTJp7wpJW6Nnph1YWGTVVjaiv
- fPt99lX+ncJ8Y3JoSzQi4bQ/0uyQl2Nm9xB0toH/7GCxVAt5WkBVSv79vD8ewoK8+/GBbcHFPLG
- OeB0PARBkOyeGstFGXk/FZbKnvak34f++YOCvCK9G3MunYKzl5iw7a/pe1bOoSNqoZXi8z227NH
- 5gfe/O630JicZ0Myd56ws2FV64jiOcw6IDnB2AsmN+bpyx+ejzn0/5x88AaagJ/t1JZXMwZd8aR
- a7HOqvmtVD/p4I0bC6iCf//vF87extyqoclzC0dYGeD1YD7s7O4A8gHNgIQ4B7tcPyWS2cfRTII
- XoXoco7gX0wtRYEmslGGBGvrew4PlMKrsQkDBqzMskQzFvkaikIeVTzwJjPnqqoci6FeTO0zmrL
- Mh90CNDthUoA03w==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1760; i=david@ixit.cz;
+ h=from:subject:message-id; bh=vqaYf4qSxGlGwj04FourVUrqHojhUtgjS5zVQccHpxU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnLavH8A1eT79EINjEArRKcRlMijgu1WDfsr/l
+ PXO/RGsN6+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapy2rwAKCRBgAj/E00kg
+ cqEwEACaYUWLxuCN0WmfEkHeuzUtEYFxhSebcWiC3rAFJNtiTWEMJOpLJPvI2xSpMlWbaaVKQ/7
+ 4FBN4yDGqD9+zDP9zHQorsTu8V1IdIKthqOiRVFWnWLbiqwvDOsdr70QmaXcRxsNqOu5b89ZoDU
+ 2XarvvPy7itht6d1CyiRsMqCw36oNz6EhnoVUZMGqDrJjQC+m78k8/NfYSXo3feMKDetN9XBvp3
+ tX5HGdaKQw869WQl9yMy/yB0FGJbTdDziArffSdKe+iImHEcQYilrk/IMYFNdIk7s735nrcHzFs
+ KoUm0uHjcD32fIBcaucvw+rT6hcfS3qRRAo3ceDcfQ9ASGXOJBH19mj2Wmsc9pCFrVhOHDXeezT
+ LeMPlYlLMnxmUHW0NyDzzsLWEIPhBB6NKUcrniRhG4U9aFbnJ3t+3TOSbkrWVQ/GpAz6oZmndnc
+ y6tjkNS95T5ztKmtiElpD7hYI9hc4i2qaJ9fW0WPd1g4oabwFveYdYou3ViipzxObnsprMA8z9J
+ 4wdIY9yT8WqcJigRGPA4EL2Pk9TCVgIPs6WnOo8rwzwB10XGBUw7ClTPaXpPD/Aiuqbn+WFq/3a
+ lHYXV1Y0yFFR5/wxI1stjh0AeVVcHNHYb8VHHAyrNcv4R+lSPNE2oVZxi66DdVmY5WyUgd9tK19
+ BrBsfxiVhNgEQtQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Q:
-Where do these types of drivers go? This driver is probably providing
-info to vendor code in the modem firmware, so it might not belong in
-drivers/soc/qcom/.
+The modem firmware on Google Pixel 3 - 5a devices expects the application
+processor to publish SoC platform information in a vendor-defined SMEM
+item before the modem boots.
 
-Maybe it should go in another directory, like drivers/misc or firmware?
-
+Assisted-by: LLM
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-David Heidelberg (2):
-      dt-bindings: soc: google: Add modemsmem
-      arm64: dts: qcom: sdm845-google: Add modemsmem
+ .../bindings/soc/google/google,modemsmem.yaml      | 39 ++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
-Richard Acayan (2):
-      soc: qcom: Add modemsmem for Google phones
-      arm64: dts: qcom: sdm670-google: Add modemsmem
+diff --git a/Documentation/devicetree/bindings/soc/google/google,modemsmem.yaml b/Documentation/devicetree/bindings/soc/google/google,modemsmem.yaml
+new file mode 100644
+index 0000000000000..a5214a8093ba0
+--- /dev/null
++++ b/Documentation/devicetree/bindings/soc/google/google,modemsmem.yaml
+@@ -0,0 +1,39 @@
++# SPDX-License-Identifier: GPL-2.0-only
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/soc/google/google,modemsmem.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Google Modem Shared Memory
++
++maintainers:
++  - Richard Acayan <mailingradian@gmail.com>
++
++description:
++  The modem firmware on Google Pixel devices (Pixel 3 through Pixel 5a)
++  expects the application processor to publish SoC information (platform
++  type and revision) in a vendor-defined Qualcomm Shared Memory (SMEM)
++  item before the modem boots.
++
++properties:
++  compatible:
++    const: google,modemsmem
++
++  qcom,smem-id:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    description:
++      Identifier of the SMEM item the SoC information is written to. Google
++      firmware uses the first vendor-reserved item.
++
++required:
++  - compatible
++  - qcom,smem-id
++
++additionalProperties: false
++
++examples:
++  - |
++    modemsmem {
++        compatible = "google,modemsmem";
++        qcom,smem-id = <134>;
++    };
 
- .../bindings/soc/google/google,modemsmem.yaml      | 39 +++++++++
- arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi |  5 ++
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi |  5 ++
- drivers/soc/qcom/Kconfig                           | 14 ++++
- drivers/soc/qcom/Makefile                          |  1 +
- drivers/soc/qcom/modemsmem.c                       | 98 ++++++++++++++++++++++
- 6 files changed, 162 insertions(+)
----
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260906-modemsmem-9a1dc1070f7b
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
