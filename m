@@ -1,16 +1,12 @@
 From: Sven Peter <sven@kernel.org>
-Subject: [PATCH v2 00/22] Initial USB4/Thunderbolt support for Apple
- M1/M2/M3 SoCs
-Date: Sun, 06 Sep 2026 20:36:23 +0200
-Message-Id: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
+Date: Sun, 06 Sep 2026 20:36:24 +0200
+Subject: [PATCH v2 01/22] usb: typec: Add alternate mode state notifiers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WOQQ6CMBBFr0K6dkxtKxZX3sOwaMsIVUKxLURDu
- LsFSVy4fJP//5uJBPQWAzlnE/E42mBdl4DtMmIa1dUItkpMGGU5lawALUD1fYsQnIGoIyhKUZ6
- 4OrJKk1TrPd7sa528ll8Og76jicvOlvD4HJIr/mKNDdH59/rIeFium5PTf+d4AApCaFNwIXPJz
- eWBvsN273xNynmeP94g8K7YAAAA
-X-Change-ID: 20260829-b4-apple-soc-tbt-a00e873a52db
+Message-Id: <20260906-b4-apple-soc-tbt-v2-1-1f80085f93fb@kernel.org>
+References: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
+In-Reply-To: <20260906-b4-apple-soc-tbt-v2-0-1f80085f93fb@kernel.org>
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,205 +18,189 @@ To: Heikki Krogerus <heikki.krogerus@linux.intel.com>,
 Cc: Konrad Dybcio <konradybcio@kernel.org>, linux-usb@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Sven Peter <sven@kernel.org>, Joshua Peisach <jpeisach@ubuntu.com>
+ Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9734; i=sven@kernel.org;
- h=from:subject:message-id; bh=ctP7tFAUzmbrQ//d68YH++TkcYEnYEQHDv78Hba+RxY=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTet62P+LfRQ0ObU86dLJuSwGjWzVnOwCVy3qtlgxf
- Kn7/dmoo5SFQYyLQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCRg6cZ/vDZ6MTlulx85/xg
- YqCg6KbrIfrhPUu+zdvt9uPEh1Yjt0SG/4mPGitfNfZx655rCJ5VsfXR89BHe6a2bqthue86/4t
- 2EA8A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5945; i=sven@kernel.org;
+ h=from:subject:message-id; bh=DTWuRGoGwBcM1jGnxAkzk6R1cL0Y4ZnoYiAhUMuNaHk=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bcTTvX7XKrMNssNHvL2jO9X7SW17ybzmu/rSdt7XXjp
+ 5a2l/MvdJSyMIhxMciKKbJs329v+uThG8Glmy69h5nDygQyhIGLUwAmcqmU4X/Am4pD875f0N64
+ ZlZmYdsk2+plr0UqeKYErJ7Gn3ll0dEbjAyTt2Rd8LgRrvGW7fi5N6rOU+6lu/qxXL0ZtfaaU/d
+ l4/N8AA==
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+The Apple Silicon USB4/Thunderbolt driver needs to be made aware of
+cable details and whenever USB4 or Thunderbolt is entered. The cable
+details are already available as part of the typec subsystem but there
+is no way to get a notification on typec_altmode_update_active() so
+far.
 
-This series adds initial USB4/Thunderbolt support for Apple Silicon
-M1, M2 and M3 SoCs. Each USB4 capable Type-C port comes with an ACIO
-("Apple Converged I/O") block which contains a Cortex-M3 co-processor
-and the hardware implementing the USB4 router.
+Add a blocking notifier chain to each alternate mode and call it
+whenever the mode is activated or deactivated right next to the already
+existing sysfs and kobject_uevent notifications. Replay activations when a
+notifier is registered.
 
-The NHI and DART IOMMU are part of this ACIO block as well. Instead of
-being exposed as independent always-accessible devices the main SoC bus
-only gets a 16 MiB window into ACIO's MMIO space while its co-processor
-is running. It is not entirely clear whether this is ACIO's own address
-space or a window into the co-processor's address space.
-
-This is why the device tree represents the NHI and DART as children of
-ACIO with addresses relative to that window. The driver only populates
-these children after booting the co-processor and removes them again
-before powering ACIO down. This setup is slightly unusual but matches
-both the MMIO layout and the lifetime of the devices.
-
-ACIO also has rather strict ordering requirements: it can only be
-started after the Type-C PHY has been configured for USB4/Thunderbolt
-(and ideally has to be stopped again before the PHY is powered down but
-this doesn't break anything unlike getting startup wrong). It also
-needs cable details which are only known to the Type-C port controller.
-
-The first two patches add synchronous Type-C alternate mode state
-notifiers and support for representing USB4 connections on the Type-C
-bus. USB4 uses Enter_USB instead of Enter Mode and has no SVID, so it
-gets its own mode kind and stores the negotiated EUDO directly.
-The next two patches register a USB4 port mode and publish
-the negotiated Thunderbolt and USB4 partner modes on the Type-C bus,
-along with the Thunderbolt cable mode. These modes are marked active
-after the mux has been configured and deactivated before it is switched
-back to its safe state.
-
-The following two patches add the bindings for the NHI and ACIO. The
-Thunderbolt core patches prepare for the different NHI register layout
-and interrupt handling, read the USB4 router DROM from the device tree,
-unlock the host router ports and find the Apple VSE capability. They
-also add a hook for device links to tunneled native ports, a quirk for
-USB3 bandwidth allocation not implemented by the Apple hardware and
-the symbol exports needed by the driver.
-
-The main driver registers the newly introduced notifications for the
-negotiated Type-C modes, powers up ACIO, boots the co-processor,
-populates the DART and NHI children once their MMIO regions are
-accessible and registers the NHI with the software connection
-manager. The last three patches add the device tree nodes
-for the M1 and M2. M3 nodes will follow once the rest of the stack is
-upstream, but the current Thunderbolt/USB4 code has already been
-successfully tested on those.
-
-Right now only XDomain connections and USB3-via-USB4 tunnels are
-supported. Both PCIe and DisplayPort tunnels will come later since those
-require additional work and reverse engineering that is not done yet.
-Suspend is also not supported yet and we actually have to prevent
-suspending whenever an active connection is present because we would
-otherwise resume into an SError.
-
-This series depends on the Apple CIO reset controller [1], the ATCPHY
-USB3-via-4 pipehandler support [2], support for specifying the DART DMA
-aperture in the device tree [3], a fix for CD321x Thunderbolt
-altmode VDOs [4], and fixes for making the DPTX capabilities read fail
-gracefully [5]. I couldn't split it any further since the remaining
-patches now directly depend upon each other.
-Except for the dts changes the series applies cleanly without these
-dependencies though.
-
-For merging we'll probably need an immutable brach with the first two
-commits after they've been reviewed which is then merged in both the usb
-and thunderbolt tree sincethere are other tipd changes in flight as well.
-
-Happy to split this series in two as well if you prefer that.
-
-Best,
-
-Sven
-
-[1] https://patch.msgid.link/20260821-b4-cio-reset-v2-0-2d045f80a424@kernel.org
-[2] https://patch.msgid.link/20260821-b4-atcphy-usb4-v1-0-45c0b741e0c0@kernel.org
-[3] https://patch.msgid.link/20260819-iommu-apple-dart-aperture-v1-0-252703f381aa@jannau.net
-[4] https://patch.msgid.link/20260813-b4-tipd-vdo-fix-v1-1-70317f2cd554@kernel.org
-[5] https://patch.msgid.link/20260829-b4-tbt-fixes-v3-0-e1fab6ac54fe@kernel.org
-
----
-Changes in v2:
-- Dropped thunderbolt switch in favor of the typec bus and an additional
-  notifer
-- Add USB4 to the Type-C bus with its own mode kind instead of an SVID
-- Register port/partner altmodes for CD321x
-- Replaced the struct with ring MMIO offsets with two callbacks insid
-  tb_nhi_ops
-- Moved port unlock sequence and finding the Apple VSE capability into
-  core tb code
-- Added device links for USB3 tunnels
-- Move the USB3 BW quirk from an NHI quirk to a router quirk
-- Added Joshua's rb to patches which didn't change
-- Link to v1: https://patch.msgid.link/20260830-b4-apple-soc-tbt-v1-0-44bc9348683c@kernel.org
-
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Janne Grunau <j@jannau.net>
-To: Neal Gompa <neal@gompa.dev>
-To: Andreas Noever <andreas.noever@gmail.com>
-To: Mika Westerberg <westeri@kernel.org>
-To: Yehezkel Bernat <YehezkelShB@gmail.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-usb@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: asahi@lists.linux.dev
-Cc: linux-arm-kernel@lists.infradead.org
 Signed-off-by: Sven Peter <sven@kernel.org>
-
 ---
-Sven Peter (22):
-      usb: typec: Add alternate mode state notifiers
-      usb: typec: Represent USB4 on the Type-C bus
-      usb: typec: tipd: Register a USB4 port mode for CD321x
-      usb: typec: tipd: Publish CD321x partner alternate modes
-      dt-bindings: thunderbolt: Add Apple USB4/Thunderbolt NHI
-      dt-bindings: thunderbolt: Add Apple USB4/Thunderbolt ACIO block
-      thunderbolt: Try reading host DROM from device tree first
-      thunderbolt: Don't read the UID if we already know it
-      thunderbolt: Allocate ring HopID before requesting the ring interrupt
-      thunderbolt: Unlock host router ports during startup
-      thunderbolt: Find Apple VSE capability during startup
-      thunderbolt: Add ring_interrupt_active to tb_nhi_ops
-      thunderbolt: Add ring register accessors to tb_nhi_ops
-      thunderbolt: Add ring_interrupt_mask to tb_nhi_ops
-      thunderbolt: Add ring_configure to tb_nhi_ops
-      thunderbolt: Add add_links to tb_nhi_ops
-      thunderbolt: Add QUIRK_NO_USB3_BW_ALLOC
-      thunderbolt: Export symbols required by the Apple Silicon driver
-      thunderbolt: Add Apple Silicon support
-      arm64: dts: apple: t8103: Add USB4 ACIO and NHI
-      arm64: dts: apple: t8112: Add USB4 ACIO and NHI
-      arm64: dts: apple: t60xx: Add USB4 ACIO and NHI
+ drivers/usb/typec/bus.h   |  6 +++++
+ drivers/usb/typec/class.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/usb/typec.h | 16 +++++++++++++
+ 3 files changed, 81 insertions(+)
 
- Documentation/ABI/testing/sysfs-bus-typec          |   36 +
- .../thunderbolt/apple,t8103-usb4-acio.yaml         |  213 ++++
- .../bindings/thunderbolt/apple,t8103-usb4-nhi.yaml |  151 +++
- MAINTAINERS                                        |    4 +
- arch/arm64/boot/dts/apple/t6002-j375d.dts          |  101 +-
- arch/arm64/boot/dts/apple/t600x-dieX.dtsi          |  376 ++++++
- arch/arm64/boot/dts/apple/t600x-j314-j316.dtsi     |  158 ++-
- arch/arm64/boot/dts/apple/t600x-j375.dtsi          |  205 +++-
- arch/arm64/boot/dts/apple/t6022-j180d.dts          |  304 ++++-
- arch/arm64/boot/dts/apple/t6022-j475d.dts          |   10 +
- arch/arm64/boot/dts/apple/t6022-jxxxd.dtsi         |   91 +-
- arch/arm64/boot/dts/apple/t602x-dieX.dtsi          |  376 ++++++
- arch/arm64/boot/dts/apple/t8103-jxxx.dtsi          |   95 +-
- arch/arm64/boot/dts/apple/t8103.dtsi               |  184 +++
- arch/arm64/boot/dts/apple/t8112-jxxx.dtsi          |   95 +-
- arch/arm64/boot/dts/apple/t8112.dtsi               |  186 +++
- drivers/thunderbolt/Kconfig                        |   13 +
- drivers/thunderbolt/Makefile                       |    3 +
- drivers/thunderbolt/apple.c                        | 1277 ++++++++++++++++++++
- drivers/thunderbolt/ctl.c                          |    2 +
- drivers/thunderbolt/domain.c                       |    2 +
- drivers/thunderbolt/eeprom.c                       |   27 +-
- drivers/thunderbolt/nhi.c                          |  127 +-
- drivers/thunderbolt/nhi.h                          |   20 +
- drivers/thunderbolt/quirks.c                       |    9 +
- drivers/thunderbolt/switch.c                       |    8 +-
- drivers/thunderbolt/tb.c                           |   18 +-
- drivers/thunderbolt/tb.h                           |    4 +
- drivers/thunderbolt/tb_regs.h                      |    1 +
- drivers/thunderbolt/tunnel.c                       |   60 +-
- drivers/usb/typec/bus.c                            |   67 +-
- drivers/usb/typec/bus.h                            |    6 +
- drivers/usb/typec/class.c                          |  142 ++-
- drivers/usb/typec/mode_selection.c                 |    6 +-
- drivers/usb/typec/tipd/core.c                      |  241 +++-
- include/linux/usb/typec.h                          |   36 +-
- include/linux/usb/typec_altmode.h                  |   10 +-
- 37 files changed, 4533 insertions(+), 131 deletions(-)
----
-base-commit: 19998fc5177866e77a3be488644438a2227ff370
-change-id: 20260829-b4-apple-soc-tbt-a00e873a52db
+diff --git a/drivers/usb/typec/bus.h b/drivers/usb/typec/bus.h
+index 7df5deb1dd3a..4dc60c48c91e 100644
+--- a/drivers/usb/typec/bus.h
++++ b/drivers/usb/typec/bus.h
+@@ -3,6 +3,8 @@
+ #ifndef __USB_TYPEC_ALTMODE_H__
+ #define __USB_TYPEC_ALTMODE_H__
+ 
++#include <linux/mutex.h>
++#include <linux/notifier.h>
+ #include <linux/usb/typec_altmode.h>
+ 
+ struct typec_mux;
+@@ -23,6 +25,10 @@ struct altmode {
+ 
+ 	struct altmode			*partner;
+ 	struct altmode			*plug[2];
++
++	/* Serializes active state changes and notifier registration. */
++	struct mutex			state_lock;
++	struct blocking_notifier_head	state_notifier;
+ };
+ 
+ #define to_altmode(d) container_of(d, struct altmode, adev)
+diff --git a/drivers/usb/typec/class.c b/drivers/usb/typec/class.c
+index 54c7810b563b..5808a3ef0d6c 100644
+--- a/drivers/usb/typec/class.c
++++ b/drivers/usb/typec/class.c
+@@ -299,8 +299,11 @@ static void typec_altmode_put_partner(struct altmode *altmode)
+  */
+ void typec_altmode_update_active(struct typec_altmode *adev, bool active)
+ {
++	struct altmode *alt = to_altmode(adev);
+ 	char dir[6];
+ 
++	guard(mutex)(&alt->state_lock);
++
+ 	if (adev->active == active)
+ 		return;
+ 
+@@ -312,6 +315,10 @@ void typec_altmode_update_active(struct typec_altmode *adev, bool active)
+ 	}
+ 
+ 	adev->active = active;
++	blocking_notifier_call_chain(&alt->state_notifier,
++				     active ? TYPEC_ALTMODE_ENTERED :
++					      TYPEC_ALTMODE_EXITED,
++				     adev);
+ 	snprintf(dir, sizeof(dir), "mode%d", adev->mode);
+ 	sysfs_notify(&adev->dev.kobj, dir, "active");
+ 	sysfs_notify(&adev->dev.kobj, NULL, "active");
+@@ -319,6 +326,56 @@ void typec_altmode_update_active(struct typec_altmode *adev, bool active)
+ }
+ EXPORT_SYMBOL_GPL(typec_altmode_update_active);
+ 
++/**
++ * typec_altmode_register_notifier - Register an alternate mode state notifier
++ * @adev: Handle to the alternate mode
++ * @nb: Notifier block
++ *
++ * The notifier is called synchronously when the mode represented by @adev is
++ * entered or exited. If @adev is already active %TYPEC_ALTMODE_ENTERED will be
++ * emitted before this function returns. Callbacks must not update the state of
++ * @adev or register or unregister another notifier for @adev. They must also
++ * handle failures locally and return %NOTIFY_OK or %NOTIFY_DONE so that other
++ * subscribers also receive the event. Callback return values do not affect the
++ * active state or the result of notifier registration.
++ *
++ * Return: 0 on success or a negative error code on failure.
++ */
++int typec_altmode_register_notifier(struct typec_altmode *adev,
++				    struct notifier_block *nb)
++{
++	struct altmode *alt = to_altmode(adev);
++	int ret;
++
++	guard(mutex)(&alt->state_lock);
++	ret = blocking_notifier_chain_register(&alt->state_notifier, nb);
++	if (!ret && adev->active)
++		nb->notifier_call(nb, TYPEC_ALTMODE_ENTERED, adev);
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(typec_altmode_register_notifier);
++
++/**
++ * typec_altmode_unregister_notifier - Unregister an alternate mode notifier
++ * @adev: Handle to the alternate mode
++ * @nb: Notifier block
++ *
++ * Return: 0 on success or a negative error code on failure.
++ */
++int typec_altmode_unregister_notifier(struct typec_altmode *adev,
++				      struct notifier_block *nb)
++{
++	struct altmode *alt = to_altmode(adev);
++	int ret;
++
++	guard(mutex)(&alt->state_lock);
++	ret = blocking_notifier_chain_unregister(&alt->state_notifier, nb);
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(typec_altmode_unregister_notifier);
++
+ /**
+  * typec_altmode2port - Alternate Mode to USB Type-C port
+  * @alt: The Alternate Mode
+@@ -658,6 +715,8 @@ typec_register_altmode(struct device *parent,
+ 	alt->adev.mode_selection = desc->mode_selection;
+ 	alt->roles = desc->roles;
+ 	alt->id = id;
++	mutex_init(&alt->state_lock);
++	BLOCKING_INIT_NOTIFIER_HEAD(&alt->state_notifier);
+ 
+ 	alt->attrs[0] = &dev_attr_vdo.attr;
+ 	alt->attrs[1] = &dev_attr_description.attr;
+diff --git a/include/linux/usb/typec.h b/include/linux/usb/typec.h
+index 10a783b738ef..914a6f0844c5 100644
+--- a/include/linux/usb/typec.h
++++ b/include/linux/usb/typec.h
+@@ -19,6 +19,7 @@ struct typec_plug;
+ struct typec_port;
+ struct typec_altmode_ops;
+ struct typec_cable_ops;
++struct notifier_block;
+ 
+ struct bus_type;
+ struct fwnode_handle;
+@@ -184,6 +185,21 @@ struct typec_port *typec_altmode2port(struct typec_altmode *alt);
+ 
+ void typec_altmode_update_active(struct typec_altmode *alt, bool active);
+ 
++/**
++ * enum typec_altmode_event - USB Type-C alternate mode state event
++ * @TYPEC_ALTMODE_ENTERED: The alternate mode has been entered
++ * @TYPEC_ALTMODE_EXITED: The alternate mode has been exited
++ */
++enum typec_altmode_event {
++	TYPEC_ALTMODE_ENTERED,
++	TYPEC_ALTMODE_EXITED,
++};
++
++int typec_altmode_register_notifier(struct typec_altmode *alt,
++				    struct notifier_block *nb);
++int typec_altmode_unregister_notifier(struct typec_altmode *alt,
++				      struct notifier_block *nb);
++
+ void typec_altmode_set_ops(struct typec_altmode *alt,
+ 			   const struct typec_altmode_ops *ops);
+ 
 
-Best regards,
---  
-Sven Peter <sven@kernel.org>
+-- 
+2.55.0
 
