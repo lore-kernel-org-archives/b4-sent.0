@@ -1,142 +1,74 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Sun, 06 Sep 2026 08:46:49 +0400
-Subject: [PATCH v3 10/10] arm64: dts: qcom: ipq9574: Flatten usb controller
- node
+From: Younes Akhouayri <git@younes.io>
+Date: Sun, 06 Sep 2026 09:40:53 +0200
+Subject: [PATCH] rust: num: document why Integer is sealed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-ipq-flatten-usb-v3-10-13e4e0f63123@outlook.com>
-References: <20260906-ipq-flatten-usb-v3-0-13e4e0f63123@outlook.com>
-In-Reply-To: <20260906-ipq-flatten-usb-v3-0-13e4e0f63123@outlook.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Wesley Cheng <quic_wcheng@quicinc.com>, 
- Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788670018; l=3383;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=tC+/n/l2GL/RsZoPV770YyexNIiGMPAPlCiic/jUtRw=;
- b=jPP0ec1ndGEEKu+1KpZpm+xBXD11ZT5GR739/IPOTjwRgjegzk5tru2sM0TtEmPzTqidDJtkq
- 0lmfBS30v/9DtvyKIE2bAvIftZrtTOClnTRy6QAjV3By4QwKpJzxVGX
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Message-Id: <20260906-docs-rust-num-integer-sealing-safety-v1-1-78057391302c@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNSw7CMAxEr1JljUUIqFCugli4qZsagYvsFIGq3
+ p1+lm8082Z0Rspk7lqMTunDxr3McNgVLnYoiYCbmV3wofSVL6Hpo4EOlkGGF7BkSqRghE+WBIY
+ t5R8c0VOoyjNWp4ubVW+llr/rze2+sQ31g2Je3EujRiOoFSV2S9QrJ5b9+rMtp+kPvosgoKwAA
+ AA=
+X-Change-ID: 20260906-docs-rust-num-integer-sealing-safety-3a0e2967a948
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788680463; l=1364;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=toyc2RIIIaJbEQPl2zcDj4AAt9VV1aOmVSKrcNUyvD0=;
+ b=NgZNpApSLlAtQzmYTKRmaZGWYOb9/B1JL8s1nbgvApDS4vo2LedCRd6bYosnD3J/hCiO18diG
+ Dbdja9+/wYwC+64T/Fa3/SUF/A94QovyNcHgfRwkiCEGsbD2ozxkZpW
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Flatten usb controller nodes and update to using latest bindings and
-flattened driver approach.
+Bounded relies on Integer::BITS and Integer::Signedness accurately
+describing the implementing type to justify unchecked operations.
+The reason external implementations are prohibited is currently recorded
+only in the commit history.
 
-In addition, swap interrupts for dp_hs_phy_irq and dm_hs_phy_irq as
-per order in updated binding.
+Document this safety requirement on Integer itself.
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Link: https://lore.kernel.org/all/CANiq72m8kycbfQ1teyne-OtB5d5TsUcX_WW0FCkWB3Ayyg-qWw@mail.gmail.com/
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi |  6 +--
- arch/arm64/boot/dts/qcom/ipq9574.dtsi            | 48 +++++++++++-------------
- 2 files changed, 23 insertions(+), 31 deletions(-)
+ rust/kernel/num.rs | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi b/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
-index 62877b46f9b3..0d06a838c233 100644
---- a/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
-@@ -252,10 +252,6 @@ flash@0 {
- 	};
- };
+diff --git a/rust/kernel/num.rs b/rust/kernel/num.rs
+index de589792a77a..1d06395d3a63 100644
+--- a/rust/kernel/num.rs
++++ b/rust/kernel/num.rs
+@@ -20,6 +20,11 @@ pub trait Sealed {}
+ }
  
--&usb_0_dwc3 {
--	dr_mode = "host";
--};
--
- &usb_0_qmpphy {
- 	vdda-pll-supply = <&mp5496_l5>;
- 	vdda-phy-supply = <&regulator_fixed_0p925>;
-@@ -272,6 +268,8 @@ &usb_0_qusbphy {
- };
- 
- &usb3 {
-+	dr_mode = "host";
-+
- 	status = "okay";
- };
- 
-diff --git a/arch/arm64/boot/dts/qcom/ipq9574.dtsi b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
-index 5a5bda5f21a1..199ec0c2ae9e 100644
---- a/arch/arm64/boot/dts/qcom/ipq9574.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
-@@ -756,12 +756,9 @@ usb_0_qmpphy: phy@7d000 {
- 			status = "disabled";
- 		};
- 
--		usb3: usb@8af8800 {
--			compatible = "qcom,ipq9574-dwc3", "qcom,dwc3";
--			reg = <0x08af8800 0x400>;
--			#address-cells = <1>;
--			#size-cells = <1>;
--			ranges;
-+		usb3: usb@8a00000 {
-+			compatible = "qcom,ipq9574-dwc3", "qcom,snps-dwc3";
-+			reg = <0x08a00000 0xfc100>;
- 
- 			clocks = <&gcc GCC_SNOC_USB_CLK>,
- 				 <&gcc GCC_USB0_MASTER_CLK>,
-@@ -780,32 +777,29 @@ usb3: usb@8af8800 {
- 			assigned-clock-rates = <200000000>,
- 					       <24000000>;
- 
--			interrupts-extended = <&intc GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
-+			interrupts-extended = <&intc GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
-+					      <&intc GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
- 					      <&intc GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
--					      <&intc GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>,
--					      <&intc GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "pwr_event",
-+					      <&intc GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
-+					      <&intc GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "dwc_usb3",
-+					  "pwr_event",
- 					  "qusb2_phy",
--					  "dm_hs_phy_irq",
--					  "dp_hs_phy_irq";
-+					  "dp_hs_phy_irq",
-+					  "dm_hs_phy_irq";
- 
- 			resets = <&gcc GCC_USB_BCR>;
--			status = "disabled";
- 
--			usb_0_dwc3: usb@8a00000 {
--				compatible = "snps,dwc3";
--				reg = <0x8a00000 0xcd00>;
--				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
--				clock-names = "ref";
--				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
--				phys = <&usb_0_qusbphy>, <&usb_0_qmpphy>;
--				phy-names = "usb2-phy", "usb3-phy";
--				tx-fifo-resize;
--				snps,is-utmi-l1-suspend;
--				snps,hird-threshold = /bits/ 8 <0x0>;
--				snps,dis_u2_susphy_quirk;
--				snps,dis_u3_susphy_quirk;
--			};
-+			phys = <&usb_0_qusbphy>, <&usb_0_qmpphy>;
-+			phy-names = "usb2-phy", "usb3-phy";
-+
-+			tx-fifo-resize;
-+			snps,is-utmi-l1-suspend;
-+			snps,hird-threshold = /bits/ 8 <0x0>;
-+			snps,dis_u2_susphy_quirk;
-+			snps,dis_u3_susphy_quirk;
-+
-+			status = "disabled";
- 		};
- 
- 		intc: interrupt-controller@b000000 {
+ /// Describes core properties of integer types.
++///
++/// This trait is sealed because [`Bounded`] relies on [`Integer::BITS`] and
++/// [`Integer::Signedness`] accurately describing the implementing type to
++/// justify unchecked operations. An incorrect implementation could therefore
++/// make safe [`Bounded`] operations cause undefined behavior.
+ pub trait Integer:
+     private::Sealed
+     + Sized
 
--- 
-2.53.0
+---
+base-commit: c6709d5e14072d0e3d02f291daee46a199e5dad3
+change-id: 20260906-docs-rust-num-integer-sealing-safety-3a0e2967a948
+
+Best regards,
+--  
+Younes Akhouayri <git@younes.io>
 
