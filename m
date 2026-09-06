@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 06 Sep 2026 02:41:14 +0200
-Subject: [PATCH RFC 3/4] arm64: dts: qcom: sdm845-google: Add modemsmem
+Date: Sun, 06 Sep 2026 02:41:15 +0200
+Subject: [PATCH RFC 4/4] arm64: dts: qcom: sdm670-google: Add modemsmem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-modemsmem-v1-3-a3634b553841@ixit.cz>
+Message-Id: <20260906-modemsmem-v1-4-a3634b553841@ixit.cz>
 References: <20260906-modemsmem-v1-0-a3634b553841@ixit.cz>
 In-Reply-To: <20260906-modemsmem-v1-0-a3634b553841@ixit.cz>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -16,45 +16,46 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1069; i=david@ixit.cz;
- h=from:subject:message-id; bh=b+1IVxExDwgj47OWR0x+s35O/UGQ7JVi4BXYWVb7qSY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnLav0FwqvuyDjMDjQqc7bKbewTR3zwlTsGc7i
- 7Yh1MVDvLGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapy2rwAKCRBgAj/E00kg
- csW/D/42fuQ/V1IPHNOfmJkuKvyDISFWUD+KCOWuWnMo6Fg8VcL3plpAoRM6qzReXDd8ZYtjoNK
- FNpDCVN0MxeUtdqNomShgpNCoe0f/dIkMflKBw6NYKjZNkrkIkjARsi5z9CMCWFS4QWrfQPhJyz
- mpnqkneOswda9DPw7iLi7X6grKWv2Py3wEmOnlB/4KPEsufF20/U06UX3vlVAKtcHRrwG7mklwL
- NlUV6qxWhg8YpiVHVpVomNrGBdb+CO3esTI4JoCiOgLyeS9JZUp5tsvzurOdI2O4VOqJ0Z7woSt
- s0tVrJOYIuSrFGl+jOFfrcXBFQHiy4iDEUpxQWw2trrogE6fVVKGFTgrQI8xYwI3n5jqPHFozij
- /G+SdfqVUU9V8P5RqeYsIQPMCy/DB2e/cvfTTDIyTqbTtbPFmni2qDAHU+JmF5So4lXCL4hgGgL
- hnwaaTt3yOs8rTEYWYRpTG1fbr0Zt7C+b05KnW5JC9Fy/pLYpZkJp8q986lkP0BItwnoWm2aarU
- G8ulGHxztD6NxFCRlPJkE4sC6MuNaX/56cch5wfvO16OGybyvCs0JZk7hRL8FfndM5ENsKMf1M/
- iScz3gwxWXQqWtS0kOcXw0AR+F2XEtahZviF5adqH2BWYTx+6m0isAUIu5mXqvUtscCPVXosw5X
- UJ4Mh/NG3bxjJCA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1040; i=david@ixit.cz;
+ h=from:subject:message-id; bh=TWhq237rZhu1dOgSbAfHXHmc82yvCd23tTIcG8XeM4Y=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnLavPpWNaZfkKWF76bCFYzF1GnMpyQalCsKCF
+ PD96WyDkxuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCapy2rwAKCRBgAj/E00kg
+ cneXEADEztAkrJN/obtgTy+goU4i3hQ35Ps3C2kYGdyQscbWK6dJp0WxpnUI05+wQk61Pf53DYh
+ 8JjDb6qqVM1UtpK/2nIiw0LTItZu12fuBCq9y+PJFGiFdb/qMXe6FZlsXVcaxjkEnktggI0IwkB
+ H2aCmPeU8qf28YCGOvTQF8djBgAeCg3rdq4MPLTVcOC/sWBDabJZoK6obixqYph34tNDvS9Hxyt
+ wp1H5WkAtUubyiV4BfqQHYn8T/qj49taWd5+4VlRF9iwBF4j/hskzEV9aDNwTBezeIM7ZoQ/qoX
+ 9lVF99tsTSaTfBMLW2DfrwMX/9W/3/V6mABKIrh/0RXU0MC9u34wvZuq1OWUIW31NBmhSCMrbzJ
+ vHbVqsntooUkb/bvRziHnaxPTDXHl33brhbHv2nFNWOejI6+se5PGpwW/gvWpSHai0fXTRQKCZm
+ CwYHGO4i767HgYW96sJpMVekSJyssIXGjEyvLcETLrZOyH37ZGqskbQkstma9XkxaZjNNyb0cNU
+ huRNCf84fqcM4CFnye4g9MaGagWLfrP4Soo+0qh3qU2jyYo6Z03XbcHOEBzo/4HwNlKNUVMHMmO
+ a5XV25IRY8p4acKTACABfVxLiV20gmted+a3GL8svlihI8iZAPE6taP4XwGjFyCqnVx14COIlTC
+ NeBbN5oUj4K8Zfw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Pixel 3 / 3 XL modem needs the modemsmem client. Add it in the device
+From: Richard Acayan <mailingradian@gmail.com>
+
+The Pixel 3a modem needs the modemsmem client. Add it in the device
 tree so the modem can properly boot.
 
-Based on work of Casey Tunturi.
-
+Signed-off-by: Richard Acayan <mailingradian@gmail.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 5 +++++
+ arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi | 5 +++++
  1 file changed, 5 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 9e952f9862f24..7e8f1a34a79f8 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -45,16 +45,21 @@ chosen {
- 		framebuffer0: framebuffer-0 {
- 			compatible = "simple-framebuffer";
- 			memory-region = <&cont_splash_mem>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
+index b4854801a5f5e..4604c4eb2192a 100644
+--- a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
+@@ -61,16 +61,21 @@ gpio-keys {
  
- 			format = "a8r8g8b8";
+ 		key-vol-up {
+ 			label = "Volume Up";
+ 			linux,code = <KEY_VOLUMEUP>;
+ 			gpios = <&pm660l_gpios 7 GPIO_ACTIVE_LOW>;
  		};
  	};
  
@@ -64,13 +65,13 @@ index 9e952f9862f24..7e8f1a34a79f8 100644
 +	};
 +
  	reserved-memory {
- 		cont_splash_mem: splash@9d400000 {
- 			reg = <0 0x9d400000 0 0x02400000>;
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+ 
+ 		mpss_region: mpss@8b000000 {
+ 			reg = <0 0x8b000000 0 0x9800000>;
  			no-map;
  		};
- 
- 		mpss_region: memory@8e000000 {
- 			reg = <0 0x8e000000 0 0x9800000>;
 
 -- 
 2.55.0
