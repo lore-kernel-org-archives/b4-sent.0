@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Sun, 06 Sep 2026 08:46:41 +0400
-Subject: [PATCH v3 02/10] usb: dwc3: qcom: Add support for selecting UTMI
- as reference clock
+Date: Sun, 06 Sep 2026 08:46:42 +0400
+Subject: [PATCH v3 03/10] arm64: dts: qcom: ipq5018: Flatten usb controller
+ node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260906-ipq-flatten-usb-v3-2-13e4e0f63123@outlook.com>
+Message-Id: <20260906-ipq-flatten-usb-v3-3-13e4e0f63123@outlook.com>
 References: <20260906-ipq-flatten-usb-v3-0-13e4e0f63123@outlook.com>
 In-Reply-To: <20260906-ipq-flatten-usb-v3-0-13e4e0f63123@outlook.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -17,67 +17,125 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- George Moussalem <george.moussalem@outlook.com>
+ George Moussalem <george.moussalem@outlook.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788670018; l=1928;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788670018; l=3217;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=o+kaADaB/p5iiIE1oFwC/8s5jkCmJhEr9uLhza+Gk4A=;
- b=jdoxNq02LkiVU+QjL52dFm4hoFrIyClozniAK3hpKN92xpLxs2NgMSqqRhfHI1+E5H+C8j/KZ
- TKvs9C59Ds1D2RK6MEsDvJRMBNGLmaS1BbILAb/4fa8lUksoqVSD6Ac
+ bh=d4OUV1ubr3frsOV//1ALOKp4iIE5azs6C7X+EbQ6/2I=;
+ b=nITrPC21x9Y9BL71zqAWKhah5eSe+DL7XTNs5FqNeF4gC3YqQ3mTDf5UxgG+oEjRJVtIMfYdD
+ HbGHsVn7DufAObR7M3KkKhhhTGevRPTKzU+XMyjE5xgVD6zxbSWKzFA
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On many Qualcomm chipsets, the UTMI clock is used as the reference clock
-(ex. IPQ5018, IPQ6018, and IPQ9574 and more). Since moving to the new
-flattened snps-dwc3 model, it is no longer possible to pass the
-reference clock to the dwc3 core driver.
+Flatten usb controller node and update to using latest bindings and
+flattened driver approach.
 
-The clock rate is used by the dwc3 core to compute the reference clock
-period and frame length adjustment. This is needed when the reference
-clock rate used computes values that deviate from the hardware defaults.
-Above mentioned SoCs require values different from the defaults and, as
-such, the core initializes with the wrong values which leads to
-non-functional USB operation.
-
-In Qualcomm chipsets, if available, the UTMI clock is used as the
-reference clock. Therefore, acquire the reference clock by name
-('mock_utmi') and pass its clock rate to the core using the probe_data
-structure.
+In addition, set the right UTMI clock rate and override any clock
+rate inherited from the bootloader.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 ---
- drivers/usb/dwc3/dwc3-qcom.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts |  6 +--
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi          | 51 ++++++++++++--------------
+ 2 files changed, 25 insertions(+), 32 deletions(-)
 
-diff --git a/drivers/usb/dwc3/dwc3-qcom.c b/drivers/usb/dwc3/dwc3-qcom.c
-index ac68b4218b56..8c1aca40c810 100644
---- a/drivers/usb/dwc3/dwc3-qcom.c
-+++ b/drivers/usb/dwc3/dwc3-qcom.c
-@@ -617,6 +617,7 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
- 	int			ret;
- 	bool			ignore_pipe_clk;
- 	bool			wakeup_source;
-+	struct clk		*ref_clk;
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
+index 33eef92b19b1..8efb2b21ed9e 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
++++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
+@@ -110,11 +110,9 @@ data-pins {
+ };
  
- 	qcom = devm_kzalloc(&pdev->dev, sizeof(*qcom), GFP_KERNEL);
- 	if (!qcom)
-@@ -698,6 +699,14 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
- 			qcom->current_role = USB_ROLE_DEVICE;
- 	}
- 
-+	ref_clk = devm_clk_get_optional(dev, "mock_utmi");
-+	if (IS_ERR(ref_clk)) {
-+		ret = dev_err_probe(dev, PTR_ERR(ref_clk), "failed to get ref clock\n");
-+		goto clk_disable;
-+	} else if (ref_clk) {
-+		probe_data.ref_clk_rate = clk_get_rate(ref_clk);
-+	}
+ &usb {
+-	status = "okay";
+-};
+-
+-&usb_dwc {
+ 	dr_mode = "host";
 +
- 	qcom->dwc.glue_ops = &dwc3_qcom_glue_ops;
++	status = "okay";
+ };
  
- 	qcom->dwc.dev = dev;
+ &usbphy0 {
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index 4fc627b47fe7..956d3217ec52 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -580,16 +580,9 @@ qpic_nand: spi@79b0000 {
+ 			status = "disabled";
+ 		};
+ 
+-		usb: usb@8af8800 {
+-			compatible = "qcom,ipq5018-dwc3", "qcom,dwc3";
+-			reg = <0x08af8800 0x400>;
+-
+-			interrupts = <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
+-				     <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
+-				     <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "pwr_event",
+-					  "dp_hs_phy_irq",
+-					  "dm_hs_phy_irq";
++		usb: usb@8a00000 {
++			compatible = "qcom,ipq5018-dwc3", "qcom,snps-dwc3";
++			reg = <0x08a00000 0xfc100>;
+ 
+ 			clocks = <&gcc GCC_USB0_MASTER_CLK>,
+ 				 <&gcc GCC_SYS_NOC_USB0_AXI_CLK>,
+@@ -599,30 +592,32 @@ usb: usb@8af8800 {
+ 				      "iface",
+ 				      "sleep",
+ 				      "mock_utmi";
++			assigned-clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
++			assigned-clock-rates = <60000000>;
++
++			interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
++				     <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "dwc_usb3",
++					  "pwr_event",
++					  "dp_hs_phy_irq",
++					  "dm_hs_phy_irq";
+ 
+ 			resets = <&gcc GCC_USB0_BCR>;
+ 
++			phys = <&usbphy0>;
++			phy-names = "usb2-phy";
++
+ 			qcom,select-utmi-as-pipe-clk;
+-			#address-cells = <1>;
+-			#size-cells = <1>;
+-			ranges;
+ 
+-			status = "disabled";
++			tx-fifo-resize;
++			snps,is-utmi-l1-suspend;
++			snps,hird-threshold = /bits/ 8 <0x0>;
++			snps,dis_u2_susphy_quirk;
++			snps,dis_u3_susphy_quirk;
+ 
+-			usb_dwc: usb@8a00000 {
+-				compatible = "snps,dwc3";
+-				reg = <0x08a00000 0xe000>;
+-				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
+-				clock-names = "ref";
+-				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
+-				phy-names = "usb2-phy";
+-				phys = <&usbphy0>;
+-				tx-fifo-resize;
+-				snps,is-utmi-l1-suspend;
+-				snps,hird-threshold = /bits/ 8 <0x0>;
+-				snps,dis_u2_susphy_quirk;
+-				snps,dis_u3_susphy_quirk;
+-			};
++			status = "disabled";
+ 		};
+ 
+ 		intc: interrupt-controller@b000000 {
 
 -- 
 2.53.0
