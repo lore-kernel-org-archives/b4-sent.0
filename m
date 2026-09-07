@@ -1,10 +1,11 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 07 Sep 2026 17:54:43 +0800
-Subject: [PATCH v2 04/10] dt-bindings: timer: Add UltraRISC DP1000 CLINT
+Date: Mon, 07 Sep 2026 17:54:44 +0800
+Subject: [PATCH v2 05/10] spi: dt-bindings: snps,dw-apb-ssi: Add compatible
+ for UltraRISC DP1000 SoC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260907-ultrarisc-dts-v2-4-5eb4c97477c5@ultrarisc.com>
+Message-Id: <20260907-ultrarisc-dts-v2-5-5eb4c97477c5@ultrarisc.com>
 References: <20260907-ultrarisc-dts-v2-0-5eb4c97477c5@ultrarisc.com>
 In-Reply-To: <20260907-ultrarisc-dts-v2-0-5eb4c97477c5@ultrarisc.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,39 +24,67 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  Paul Walmsley <paul.walmsley@sifive.com>, 
  Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
  linux-riscv@lists.infradead.org, linux-spi@vger.kernel.org, 
- linux-i2c@vger.kernel.org, dmaengine@vger.kernel.org, 
- Conor Dooley <conor.dooley@microchip.com>
+ linux-i2c@vger.kernel.org, dmaengine@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788775103; l=964;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788775103; l=1663;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=H5nCeqGhgsZIHGD5OQKUEdhmWR2MLVPLwQY1q4JBFrk=;
- b=qZtQO6xJbyoxFeLqeiG+vgTPNhUyPEuYbIwJnEzAzbJcXnokLi+XQS2BFd26iySduD/N/wyv/
- yYBn2YXqHC6Br7I/x7XTpSZr6fcB0ViDdeu7/ewOh278fFgD6mTrBWB
+ bh=MXexzfKaPsc1YI5omohzcuM1x6URdiZA7ZlibFWo5PY=;
+ b=jHfiWF3egeJiK4FJHG5XZJ1nRggFi5xxHcKkEwd489i11A9dsyBbH2WRxwI0hbTImifyHwAIs
+ albED9FdwPtDjWNaBmhG8DAPlQojzHWfV20BSgWMUNeSwi3TMJrs+A8
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compatible string for UltraRISC DP1000 CLINT.
+Add the SoC-specific compatible string and use the generic one as fallback
+for the UltraRISC DP1000 SPI controller.
+
+The DP1000 integrates two SPI controllers. SPI0 supports standard, dual
+and quad transfers with three native chip-select signals. SPI1 supports
+standard transfers with four native chip-select signals.
+
+Both controllers have one register range and separate reference and APB
+interface clocks.
 
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
- Documentation/devicetree/bindings/timer/sifive,clint.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ .../devicetree/bindings/spi/snps,dw-apb-ssi.yaml         | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/timer/sifive,clint.yaml b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-index 3673836e14de..878f267d089b 100644
---- a/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-+++ b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-@@ -40,6 +40,7 @@ properties:
-               - starfive,jh8100-clint   # StarFive JH8100
-               - starfive,jhb100-clint   # StarFive JHB100
-               - tenstorrent,blackhole-clint # Tenstorrent Blackhole
-+              - ultrarisc,dp1000-clint  # UltraRISC DP1000
-           - const: sifive,clint0        # SiFive CLINT v0 IP block
-       - items:
-           - {}
+diff --git a/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml b/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml
+index 1e70c6804d5d..e8d6d5d858b6 100644
+--- a/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml
++++ b/Documentation/devicetree/bindings/spi/snps,dw-apb-ssi.yaml
+@@ -44,6 +44,21 @@ allOf:
+     else:
+       properties:
+         starfive,sfc-filter-syscon: false
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: ultrarisc,dp1000-spi
++    then:
++      properties:
++        reg:
++          maxItems: 1
++        clocks:
++          minItems: 2
++        clock-names:
++          minItems: 2
++      required:
++        - clock-names
+ 
+ properties:
+   compatible:
+@@ -63,6 +78,7 @@ properties:
+               - mscc,jaguar2-spi
+               - sophgo,sg2042-spi
+               - thead,th1520-spi
++              - ultrarisc,dp1000-spi
+           - const: snps,dw-apb-ssi
+       - description: Vendor controllers compatible with v1.01a
+         items:
 
 -- 
 2.34.1
