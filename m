@@ -1,10 +1,11 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 07 Sep 2026 17:54:40 +0800
-Subject: [PATCH v2 01/10] dt-bindings: vendor-prefixes: Add shenrongda
+Date: Mon, 07 Sep 2026 17:54:41 +0800
+Subject: [PATCH v2 02/10] dt-bindings: riscv: cpus: Add UltraRISC CP100
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260907-ultrarisc-dts-v2-1-5eb4c97477c5@ultrarisc.com>
+Message-Id: <20260907-ultrarisc-dts-v2-2-5eb4c97477c5@ultrarisc.com>
 References: <20260907-ultrarisc-dts-v2-0-5eb4c97477c5@ultrarisc.com>
 In-Reply-To: <20260907-ultrarisc-dts-v2-0-5eb4c97477c5@ultrarisc.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -26,38 +27,38 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-i2c@vger.kernel.org, dmaengine@vger.kernel.org, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788775103; l=887;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788775103; l=804;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=e/Kow+cCHmWBpSOP+t1oxwgy4BH4snNIyYRmuufij+E=;
- b=CR9ZckKOmzRgkynMxxjsH9rH+5MRkkuyyO5RWGoWCZBgJ9+mRHevzyy21zSGICPYhWEoToO9w
- 2Kmphmkzo25Bfj0HIxEXWJH+ogZkWr5HtF7yOJTdXD+dM6ShhURhDZS
+ bh=4TAyfkBcv/s6Kdb5vlK3fVOCoBkGrwHfHTtS6V/To4w=;
+ b=04IAVKJmYQ28f7nAGz0dHm9GO1Vgegc5GElVxIZXoj7fRUuKnABRoMqHm7KL3iCfc2B9IICMH
+ gryMZxqSeskCmFYBsg07DsCpnu0Sg1xVQaOwwDeG2iF1Nf/RU9+lFN0
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Shenzhen Rongda Computer Co., Ltd. to the vendor prefixes.
+Document the UltraRISC CP100 CPU compatible.
 
-Link: http://www.shenrongda.com/
+The CP100 CPU is used in the UltraRISC DP1000 SoC.
+
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/riscv/cpus.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index ba2002969373..e100f3993e57 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1507,6 +1507,8 @@ patternProperties:
-     description: SGX Sensortech
-   "^sharp,.*":
-     description: Sharp Corporation
-+  "^shenrongda,.*":
-+    description: Shenzhen Rongda Computer Co., Ltd.
-   "^shift,.*":
-     description: SHIFT GmbH
-   "^shimafuji,.*":
+diff --git a/Documentation/devicetree/bindings/riscv/cpus.yaml b/Documentation/devicetree/bindings/riscv/cpus.yaml
+index 0da219ae6769..85adf72899c9 100644
+--- a/Documentation/devicetree/bindings/riscv/cpus.yaml
++++ b/Documentation/devicetree/bindings/riscv/cpus.yaml
+@@ -67,6 +67,7 @@ properties:
+               - thead,c908
+               - thead,c910
+               - thead,c920
++              - ultrarisc,cp100
+           - const: riscv
+       - items:
+           - enum:
 
 -- 
 2.34.1
