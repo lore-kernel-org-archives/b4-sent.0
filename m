@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v7 0/4] Input: support for STM FTS5
-Date: Mon, 07 Sep 2026 12:50:18 +0200
-Message-Id: <20260907-stmfts5-v7-0-4a53381cd038@ixit.cz>
+Date: Mon, 07 Sep 2026 12:50:19 +0200
+Subject: [PATCH v7 1/4] Input: stmfts - wait for controller ready after
+ reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13Qy07DMBAF0F+pvMZo/JqxWfEfqIv4Rb2greIoK
- q3y7zhFwgnLO55zNfKD1TSWVNnb4cHGNJdaLucW6OXAwmk4fyZeYstMgkSQQvM6feWpGu41KSG
- yj6Qka9vXMeVyezZ9HFs+lTpdxu9n8SzW6W+HAvHXMQsOXMqgjfVuCGjfy61Mr+HO1oZZbpQwX
- cmmCHywKiVnnNgr1ZUG1ZVqysSB0IYcJfxTeqtcV7op1Dlhe6LozV6ZrqyArkxTEEhRdNI5wr3
- CrhxgV7heCNlnHLIlsfmNZVl+AKQTNa2qAQAA
-X-Change-ID: 20260214-stmfts5-b47311fbd732
+Message-Id: <20260907-stmfts5-v7-1-4a53381cd038@ixit.cz>
+References: <20260907-stmfts5-v7-0-4a53381cd038@ixit.cz>
+In-Reply-To: <20260907-stmfts5-v7-0-4a53381cd038@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
  Alexandre Torgue <alexandre.torgue@foss.st.com>, 
@@ -23,147 +20,163 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, stable@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5373; i=david@ixit.cz;
- h=from:subject:message-id; bh=328YlRURSnwE9509rxzvq5+6g3dgVhnXmI0R4w081vU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnpbw7CTfQD20iAy7QP722kBWmhdyptr4YGf1q
- TlII4vMoZCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCap6W8AAKCRBgAj/E00kg
- cpD+EACUOpDB08iVN6wok2XLH/J1kMoL3X0OxfHA5gMFmX/l54JuGUdTJf0wyL6m/bijWlnZ5uq
- E2MC5UM24BbSzYtlNPXobJSkhpLOwEw9ZlVaDWJ45FEMICupqK6KEFgZZZC98m03gYPy9wiWj0N
- WDihKrS16KroCHUO1kHfHHBxnh5hYIMfPfaD0QFEokVH4ZWDupR4JF1VT4eOX25+ltRur/pkYom
- TtMxfclsNuBdlO6gOnk3SGglEO4kUg+jinkHgZyWRRm88U9n3u4AnQ+VVgrfNLf2Y2OwZhXVC5P
- W9XgD/3jO9kJaC64qtkeZv99W+OoS4Km5bS81IpPV8+hG15gH7N6A723BnPVHjNiglmwbBS3+VO
- HbvdI7ARXTm7SR5sM1zk8A4YUpz1Vqp7yFtCUyvoBN6jB7V5/Tgf36j1kx/FOp8ZD55F8qD6KHJ
- acyqM59Ccx8hi1Re0BwZ4yc9yFqzwHo4uHlIuGYCbYBgjgyZMnQslZR0/bVWlGxVUW6oSYEfAfF
- WI/rXRmuVL5CvsQUwOPSmmqJUc3oQiPclVSiT2lSyZpLQ97nrnOFAkxf0sLyiH5Rucu7SlV70Fg
- eoYxclNX3Fo0PRuRjQpV4+KQ5hi9+awS9ncc8HlrdlOfk6ihvwhESXeaz8hh1x4wMgJ2W0XsdmD
- HOCI0f4V7/JoSlQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4142; i=david@ixit.cz;
+ h=from:subject:message-id; bh=YmMrxv3+joaFyhDdky+ZUqbM/9lF/0oWq3x6guxAV2s=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqnpbwAwkKuZp8iMC+4TNWLuqzbOQ67FVsHERWr
+ RQJfGwiAHeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCap6W8AAKCRBgAj/E00kg
+ cs9AD/9mAd9wZH7ZvgdJcGEic/BXuAnUNEa+Gzd7l1ycSC/I+JEXEOMyi3KY8UVnRfcvFMqK9qp
+ 6YZWzG2xGkIPJ7aoQNZQpLMS6BVs7lqGKuzpNmjcGM3P6inTAuj74yv/wVDPSUQfwzbETv6vtSP
+ FUdlB3uXtHZ52nAzm/OiWnoNZPFI7d4IAYZdr7BWhl+IW6+lEgcowYYTZusMCOA2sBdLhxG1jvi
+ 05/bDV02N8yxOsKy3UQTxKts9FmukAE8b4MCOVTgJihHOl6ysq4Drw5NH4SPZSkt66OY9WUvTEP
+ gcpE2Tr7IsN0aTbN6iuN3500VnaKGVUjHSFMB2RYGwPlfy8BlaFzEsaZXCYkF6iJ6pd5GwnaKZz
+ ez7k584X5VxNSZwMAmB8HYQ1+pph7+voLWEmRYuC8YzqTtNwWamHo+I2b+rg/m59Z0pQfN8L3B+
+ FwI2DGs0AgEpFnlgZwHAS5hU6Cji7tN5KG5UQoXuZFLAI3y02ErzRKgr1p4jrEIkWqhZyuTzPJA
+ TnQgG8PEigcQkwAFyrESeY8W4zrHFaKNbo8QUkSDaQvkXTs0Z6jvEB/MAGxtUFvM8wgoJLXQPOe
+ ymczNk9faRPZvJWGT4nNVSrAqPNTB6wP1FFEHhmXX2Xcpwb2FNjQXDulW2uzO3YSxSwI5HDz2S1
+ rkViDVpSK76Z/sQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Used on various phones. Minimal viable driver.
+After releasing the reset line stmfts_reset() sleeps a fixed 50 ms and
+stmfts_power_on() another 50 ms before the first I2C access.  That is
+enough for a warm reset, but when both supplies were really cut during
+system suspend the controller boots from cold and can need longer.  If
+it does, the first read fails, stmfts_resume() returns an error and the
+touchscreen is left powered off with its interrupt disabled.
 
-Includes device-tree enabling touchscreen on Pixel 3.
-Also, tested on Xiaomi Mi 8 (device-tree is not yet inside the mainline).
+The controller posts a controller ready event once it has booted, and
+the event parser already completes cmd_done on it.  Enable the interrupt
+right after releasing reset and wait for that event instead of sleeping,
+giving the controller 300 ms, the total budget the vendor driver allows.
+Boards without a reset line keep the old timing.
 
-What is missing:
- - switching between AP and SLPI mode (to be able to wake up phone by touch)
- - firmware loading
- - anything above basic touch
+Usually phones such as Pixel 4a and Xiaomi Mi 8 needs longer delay, so
+without this change touchscreen stops working.
 
+Fixes: 8a1f9de80e45 ("Input: stmfts - add optional reset GPIO support")
+Cc: stable@vger.kernel.org
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v7:
-- Added 'Input: stmfts - wait for controller ready after reset',
-  the waiting is done for both FTS4 and FTS5, similarly to the
-  downstream driver. Should improve reliability everywhere.
-- Link to v6: https://patch.msgid.link/20260906-stmfts5-v6-0-50fbf6af8718@ixit.cz
+ drivers/input/touchscreen/stmfts.c | 34 ++++++++++++++++++++++++----------
+ 1 file changed, 24 insertions(+), 10 deletions(-)
 
-Changes in v6:
-- Enable only the multi-touch scan on FTS5 sense-on (0xff was wrong,
-  only 0x01 is needed. This broke Xiaomi Mi 8 toucschreen).
-- Fixed Y-coordinate comments. (Dmitry)
-- Corrected event[0] parsing. (Dmitry)
-- Dropped checking < 0 on unsigned area. (Dmitry)
-- Dropped unnecessary i2c writes after reset. Verified against
-  downstream driver. (Dmitry, Sashiko)
-- Added pieces for supporting non-OF integration. (Sashiko)
-- Shared input open/close into one impl. (Dmitry).
-- Link to v5: https://patch.msgid.link/20260810-stmfts5-v5-0-0c737d929976@ixit.cz
+diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
+index 972687797f826..711e3ad8587a0 100644
+--- a/drivers/input/touchscreen/stmfts.c
++++ b/drivers/input/touchscreen/stmfts.c
+@@ -59,16 +59,18 @@
+ #define STMFTS_MASK_X_MSB			0x0f
+ #define STMFTS_MASK_Y_LSB			0xf0
+ 
+ /* key related event masks */
+ #define STMFTS_MASK_KEY_NO_TOUCH		0x00
+ #define STMFTS_MASK_KEY_MENU			0x01
+ #define STMFTS_MASK_KEY_BACK			0x02
+ 
++#define STMFTS_RESET_TIMEOUT_MS	300
++
+ #define STMFTS_EVENT_SIZE	8
+ #define STMFTS_STACK_DEPTH	32
+ #define STMFTS_DATA_MAX_SIZE	(STMFTS_EVENT_SIZE * STMFTS_STACK_DEPTH)
+ #define STMFTS_MAX_FINGERS	10
+ #define STMFTS_DEV_NAME		"stmfts"
+ 
+ static const struct regulator_bulk_data stmfts_supplies[] = {
+ 	{ .supply = "vdd" },
+@@ -538,23 +540,30 @@ static int stmfts_read_system_info(struct stmfts_data *sdata)
+ 	sdata->chip_ver = reg[0];
+ 	sdata->fw_ver = be16_to_cpup((__be16 *)&reg[2]);
+ 	sdata->config_id = reg[4];
+ 	sdata->config_ver = reg[5];
+ 
+ 	return 0;
+ }
+ 
+-static void stmfts_reset(struct stmfts_data *sdata)
++static int stmfts_reset(struct stmfts_data *sdata)
+ {
+ 	gpiod_set_value_cansleep(sdata->reset_gpio, 1);
+ 	msleep(20);
+ 
++	reinit_completion(&sdata->cmd_done);
+ 	gpiod_set_value_cansleep(sdata->reset_gpio, 0);
+-	msleep(50);
++	enable_irq(sdata->client->irq);
++
++	if (!wait_for_completion_timeout(&sdata->cmd_done,
++					 msecs_to_jiffies(STMFTS_RESET_TIMEOUT_MS)))
++		return -ETIMEDOUT;
++
++	return 0;
+ }
+ 
+ static int stmfts_configure(struct stmfts_data *sdata)
+ {
+ 	int err;
+ 
+ 	err = stmfts_command(sdata, STMFTS_SYSTEM_RESET);
+ 	if (err)
+@@ -593,42 +602,47 @@ static int stmfts_power_on(struct stmfts_data *sdata)
+ 		return err;
+ 
+ 	/*
+ 	 * The datasheet does not specify the power on time, but considering
+ 	 * that the reset time is < 10ms, I sleep 20ms to be sure
+ 	 */
+ 	msleep(20);
+ 
+-	if (sdata->reset_gpio)
+-		stmfts_reset(sdata);
++	if (sdata->reset_gpio) {
++		err = stmfts_reset(sdata);
++		if (err) {
++			dev_err(&sdata->client->dev,
++				"controller not ready after reset: %d\n", err);
++			goto err_disable_irq;
++		}
++	} else {
++		enable_irq(sdata->client->irq);
++		msleep(50);
++	}
+ 
+ 	err = stmfts_read_system_info(sdata);
+ 	if (err)
+-		goto err_disable_regulators;
+-
+-	enable_irq(sdata->client->irq);
+-
+-	msleep(50);
++		goto err_disable_irq;
+ 
+ 	err = stmfts_configure(sdata);
+ 	if (err)
+ 		goto err_disable_irq;
+ 
+ 	/*
+ 	 * At this point no one is using the touchscreen
+ 	 * and I don't really care about the return value
+ 	 */
+ 	(void)i2c_smbus_write_byte(sdata->client, STMFTS_SLEEP_IN);
+ 
+ 	return 0;
+ 
+ err_disable_irq:
+ 	disable_irq(sdata->client->irq);
+-err_disable_regulators:
++
+ 	regulator_bulk_disable(ARRAY_SIZE(stmfts_supplies), sdata->supplies);
+ 	return err;
+ }
+ 
+ static void stmfts_power_off(void *data)
+ {
+ 	struct stmfts_data *sdata = data;
+ 
 
-Changes in v5:
-- 3.3V is analog, 1.8V is digital supply. Fix that.
-- Name the error variables "err" (Dmitry)
-- Use scoped_guard() for ->running, and only set it once the scan
-  mode has actually been enabled. (Dmitry)
-- Use i2c_master_send() instead of open-coding a single-message
-  i2c_transfer(). (Dmitry)
-- Drivers may report coordinates outside the declared min/max, so
-  remove the clamping. (Dmitry)
-- BTN_TOUCH and INPUT_PROP_DIRECT are already set up by
-  input_mt_init_slots(..., INPUT_MT_DIRECT). (Dmitry)
-- Let the input core track contacts: drop the touch_id/stylus_id
-  bitmaps and the hand-rolled BTN_TOUCH reporting, and sync the frame
-  once per interrupt with input_mt_sync_frame() instead of calling
-  input_sync() per contact event. The controller pushes contacts one
-  by one into the event FIFO and only resends the ones that changed,
-  so INPUT_MT_DROP_UNUSED is wrong here and is dropped as well. (Dmitry)
-- Restore the FTS4 interrupts accidentally dropped by introduction of
-  FTS5.
-- mode-switch-gpios isn't required with stmfts5. Some designs, such as
-  Xiaomi Mi 8, has no such GPIO connected and is limited to AP mode.
-- Nit: updated example to use interrupts-extended.
-- Nit: (maximum x/y coordinate reported + 1), corrected example.
-- Link to v4: https://lore.kernel.org/r/20260409-stmfts5-v4-0-64fe62027db5@ixit.cz
-
-Changes in v4:
-- Wrap everything below enabling the supplies into stmfts_configure()
-  to avoid bunch of gotos to power off on error (Dmitry T.)
-- Finished chip specific ops and removed is_fts5. (Dmitry T.)
-- Link to v3: https://lore.kernel.org/r/20260403-stmfts5-v3-0-5da768cfd201@ixit.cz
-
-Changes in v3:
-- s/touchscreen_pins/touchscreen_irq_n. (Konrad)
-- Use interrupts-extended. (Konrad)
-- Fixed rebase conflict against 8665ceb926ec ("Input: stmfts - use guard notation when acquiring mutex")
-- Rename switch-gpios to mode-switch-gpios.
-- Do not define properties in if:then: branches. (Krzysztof)
-- Link to v2: https://lore.kernel.org/r/20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz
-
-Changes in v2:
-- Fix typo in the binding s/switch-gpio/switch-gpios/.
-- Deduplacate allOf. (Rob yamllint)
-- Add missing S-off-by. (Dmitry B.)
-- Dropped irq-gpios as it's not needed. (Konrad)
-- Correct x and y touchscreen area size. (Konrad)
-- Correct reset introduction commit description. (Krzysztof)
-- Partially implemented chip specific ops. (Dmitry T.)
-- Separeted license naming cleanup into separate commit (Dmitry T.)
-- Link to v1: https://lore.kernel.org/r/20260301-stmfts5-v1-0-22c458b9ac68@ixit.cz
-
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-To: Maxime Coquelin <mcoquelin.stm32@gmail.com>
-To: Alexandre Torgue <alexandre.torgue@foss.st.com>
-To: Petr Hodina <petr.hodina@protonmail.com>
-To: David Heidelberg <david@ixit.cz>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Henrik Rydberg <rydberg@bitmath.org>
-To: Bjorn Andersson <andersson@kernel.org>
-To: Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-input@vger.kernel.org
-Cc: linux-stm32@st-md-mailman.stormreply.com
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-kernel@vger.kernel.org
-Cc: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: devicetree@vger.kernel.org
-Cc: linux-arm-msm@vger.kernel.org
-
----
-David Heidelberg (3):
-      Input: stmfts - wait for controller ready after reset
-      dt-bindings: input: touchscreen: st,stmfts: Introduce STM FTS5
-      Input: stmfts - support FTS5
-
-Petr Hodina (1):
-      arm64: dts: qcom: sdm845-google: Add STM FTS touchscreen support
-
- .../bindings/input/touchscreen/st,stmfts.yaml      |  29 +-
- .../arm64/boot/dts/qcom/sdm845-google-blueline.dts |  19 +-
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi |   2 +-
- drivers/input/touchscreen/stmfts.c                 | 438 ++++++++++++++++++---
- 4 files changed, 429 insertions(+), 59 deletions(-)
----
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260214-stmfts5-b47311fbd732
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
