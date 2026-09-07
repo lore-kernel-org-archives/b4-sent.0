@@ -1,442 +1,160 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 07 Sep 2026 16:27:39 +0200
-Subject: [PATCH 3/3] arm64: dts: freescale: add Nodebox v3 CPU Module
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Mon, 07 Sep 2026 23:12:51 +0800
+Subject: [PATCH mptcp-net v4] mptcp: fix data-race in
+ mptcp_subflow_get_send / tcp_ack
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260907-for-upstream-nbxv3-dts-v1-3-f43fd0028b78@free.fr>
-References: <20260907-for-upstream-nbxv3-dts-v1-0-f43fd0028b78@free.fr>
-In-Reply-To: <20260907-for-upstream-nbxv3-dts-v1-0-f43fd0028b78@free.fr>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788791274; l=9504;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=dHBU2Ihfr+4t/3Zt83s1FxYDh/Fl6BbEVZpQjxiSwpQ=;
- b=Z14IJRnex/qHe2OyqA2X+ca3TcA81iFQ0hKvzALBHlTAJYdSYVaccXoqAFrmZ5qOmGhKNW3x1
- QNfFyjj4GpIDBthcqgRNJPz8wWp391uWjsgNc+4yf639qLdAw3Zcg75
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Message-Id: <20260907-mptcp-snd-una-race-v4-1-6cd76668a8e3@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22OQQ6CMBREr0L+2m9qERBW3sOwaMtHakLbtIVoC
+ He3gEuXk5k3MwsE8poCNNkCnmYdtDVJXE8ZqEGYJ6HukgbOeMlqVuLoonIYTIeTEeiFIpSUTE4
+ 3LusKEug89fq9lz7gyBuK0B5WmOSLVNxKt/CgQ7T+sx+Y8x35bVX/tuYcGZaFFKwresb55e68j
+ dacR4J2Xdcv/EH+QdEAAAA=
+X-Change-ID: 20260906-mptcp-snd-una-race-be0262e82b97
+To: mptcp@lists.linux.dev
+Cc: pabeni@redhat.com, geliang@kernel.org, matttbe@kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788793985; l=6105;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=16sVBMvvNv6uANW5wJoXGNVKFp/tLZOlBxzNyVXE+ZU=;
+ b=cMCKmQ/Nut9txGLlioDVDOFB/Td36+nX56XfNq1BgBMyYamO5K4Xp9NOaMURxMvq9mnkPmRhd
+ rwx5MoEq4TpA2BdeRp8hh+gCzXQDPMLKloFXJaaRCK9IeT1MVMBV+iq
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Nodebox v3 is a Free Mobile CPU module built around the NXP
-LX2160A (16x Cortex-A72, DPAA2).
+Syzkaller found this data-race:
 
-The same .dtsi is used by the U-Boot port, so both Linux and
-u-boot should not drift.
+  BUG: KCSAN: data-race in mptcp_subflow_get_send / tcp_ack
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+  write (marked) to 0xffff88800ea00eaa of 1 bytes by interrupt on cpu 1:
+   inet_csk_clear_xmit_timer include/net/inet_connection_sock.h:209 [inline]
+   tcp_rearm_rto net/ipv4/tcp_input.c:3536 [inline]
+   tcp_set_xmit_timer net/ipv4/tcp_input.c:3556 [inline]
+   tcp_ack+0x2d3f/0x4240 net/ipv4/tcp_input.c:4430
+   tcp_rcv_established+0x46e/0x1fb0 net/ipv4/tcp_input.c:6678
+   tcp_v4_do_rcv+0x356/0x6e0 net/ipv4/tcp_ipv4.c:1854
+   tcp_v4_rcv+0x1b04/0x26b0 net/ipv4/tcp_ipv4.c:2248
+   ip_protocol_deliver_rcu+0x42/0x280 net/ipv4/ip_input.c:207
+   ip_local_deliver_finish+0x18d/0x270 net/ipv4/ip_input.c:241
+   NF_HOOK include/linux/netfilter.h:325 [inline]
+   NF_HOOK include/linux/netfilter.h:319 [inline]
+   ip_local_deliver+0xdb/0x200 net/ipv4/ip_input.c:262
+   dst_input include/net/dst.h:480 [inline]
+   ip_rcv_finish net/ipv4/ip_input.c:492 [inline]
+   NF_HOOK include/linux/netfilter.h:325 [inline]
+   NF_HOOK include/linux/netfilter.h:319 [inline]
+   ip_rcv+0x206/0x230 net/ipv4/ip_input.c:612
+   __netif_receive_skb_one_core+0xe9/0x110 net/core/dev.c:6264
+   __netif_receive_skb+0x1d/0xd0 net/core/dev.c:6377
+   process_backlog+0x16d/0x360 net/core/dev.c:6728
+   __napi_poll+0x73/0x3a0 net/core/dev.c:7787
+   napi_poll net/core/dev.c:7850 [inline]
+   net_rx_action+0x6ee/0x800 net/core/dev.c:8007
+   handle_softirqs+0xc1/0x260 kernel/softirq.c:645
+   do_softirq kernel/softirq.c:546 [inline]
+   do_softirq+0x40/0x60 kernel/softirq.c:533
+   __local_bh_enable_ip+0x65/0x70 kernel/softirq.c:473
+   __raw_spin_unlock_bh include/linux/spinlock_api_smp.h:237 [inline]
+   _raw_spin_unlock_bh+0x1f/0x30 kernel/locking/spinlock.c:245
+   spin_unlock_bh include/linux/spinlock.h:407 [inline]
+   unlock_sock_fast include/net/sock.h:1773 [inline]
+   mptcp_subflow_cleanup_rbuf net/mptcp/protocol.c:659 [inline]
+   mptcp_cleanup_rbuf+0x300/0x380 net/mptcp/protocol.c:690
+   mptcp_recvmsg+0x6bb/0xd50 net/mptcp/protocol.c:2495
+   inet_recvmsg+0x204/0x210 net/ipv4/af_inet.c:894
+   sock_recvmsg_nosec net/socket.c:1151 [inline]
+   sock_recvmsg+0x11a/0x140 net/socket.c:1173
+   __sys_recvfrom+0x178/0x240 net/socket.c:2331
+   __do_sys_recvfrom net/socket.c:2346 [inline]
+   __se_sys_recvfrom net/socket.c:2342 [inline]
+   __x64_sys_recvfrom+0x76/0x90 net/socket.c:2342
+   x64_sys_call+0x199f/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:46
+   do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+   do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
+   entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+  read to 0xffff88800ea00eaa of 1 bytes by task 2523 on cpu 0:
+   mptcp_timeout_from_subflow net/mptcp/protocol.c:609 [inline]
+   mptcp_subflow_get_send+0x120/0x600 net/mptcp/protocol.c:1651
+   mptcp_sched_default_get_send net/mptcp/sched.c:23 [inline]
+   mptcp_sched_get_send+0x276/0x2b0 net/mptcp/sched.c:191
+   __mptcp_push_pending+0xa6/0x370 net/mptcp/protocol.c:1802
+   mptcp_release_cb+0x3b6/0x900 net/mptcp/protocol.c:3885
+   release_sock+0x100/0x150 net/core/sock.c:3863
+   sk_stream_wait_memory+0x4ea/0x9d0 net/core/stream.c:148
+   mptcp_sendmsg+0x8fc/0x1220 net/mptcp/protocol.c:2145
+   inet6_sendmsg+0xda/0xe0 net/ipv6/af_inet6.c:641
+   sock_sendmsg_nosec net/socket.c:800 [inline]
+   __sock_sendmsg net/socket.c:815 [inline]
+   ____sys_sendmsg+0x409/0x680 net/socket.c:2713
+   ___sys_sendmsg+0x11d/0x160 net/socket.c:2767
+   __sys_sendmsg+0xde/0x160 net/socket.c:2799
+   __do_sys_sendmsg net/socket.c:2804 [inline]
+   __se_sys_sendmsg net/socket.c:2802 [inline]
+   __x64_sys_sendmsg+0x45/0x50 net/socket.c:2802
+   x64_sys_call+0x7aa/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:47
+   do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+   do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
+   entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+  value changed: 0x05 -> 0x00
+
+Reported by Kernel Concurrency Sanitizer on:
+CPU: 0 UID: 0 PID: 2523 Comm: syz.2.3 Not tainted 7.2.0-g39d4f32c5d53 #76 PREEMPT(full)
+
+The write is tcp_ack() dropping ICSK_TIME_LOSS_PROBE (0x05) with
+smp_store_release() on icsk_pending, from the subflow receive path
+after unlock_sock_fast().
+
+The read is mptcp_timeout_from_subflow(), called from
+mptcp_subflow_get_send() while holding the MPTCP socket lock. That
+lock does not cover the TCP subflow's icsk_pending.
+
+Use smp_load_acquire() to pair with TCP's store-release updates and
+with the other lockless readers of this field.
+
+Fixes: 33d41c9cd74c ("mptcp: more accurate timeout")
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/627
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- arch/arm64/boot/dts/freescale/Makefile             |   2 +
- .../arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts |  30 ++
- .../boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi      | 342 +++++++++++++++++++++
- 3 files changed, 374 insertions(+)
+Changes in v4:
+- drop the snd_una patch (already fixed by 96d846e3e2a7)
+- drop the generic sk_err patch (will be sent separately to net)
+- include the full KCSAN splat
+- Link to v3: https://patch.msgid.link/20260907-mptcp-snd-una-race-v3-0-65ba0d5f0221@proton.me
 
-diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
-index 95ae85ab4adf5..f67d0a53cdc34 100644
---- a/arch/arm64/boot/dts/freescale/Makefile
-+++ b/arch/arm64/boot/dts/freescale/Makefile
-@@ -59,6 +59,8 @@ DTC_FLAGS_fsl-lx2160a-qds := -Wno-interrupt_map
- dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-qds.dtb
- DTC_FLAGS_fsl-lx2160a-rdb := -Wno-interrupt_map
- dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-rdb.dtb
-+DTC_FLAGS_fsl-lx2160a-nbxv3 := -Wno-interrupt_map
-+dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-nbxv3.dtb
- DTC_FLAGS_fsl-lx2162a-clearfog := -Wno-interrupt_map
- dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2162a-clearfog.dtb
- DTC_FLAGS_fsl-lx2162a-qds := -Wno-interrupt_map
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts
-new file mode 100644
-index 0000000000000..ccc5855208a63
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts
-@@ -0,0 +1,30 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Free Mobile Nodebox v3 CPU Module (LX2160A)
-+ *
-+ * Copyright 2026 Free Mobile, Vincent Jardin
-+ */
-+
-+/dts-v1/;
-+
-+#include "fsl-lx2160a-rev2.dtsi"
-+#include "fsl-lx2160a-nbxv3.dtsi"
-+
-+/ {
-+	model = "Free Mobile Nodebox v3 CPU Module (LX2160A)";
-+	compatible = "freemobile,nbxv3", "fsl,lx2160a";
-+};
-+
-+&fspi {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&fspi_dqs_sck_cs10_pins>, <&fspi_data30_pins>,
-+		    <&gpio1_31_28_pins>;
-+};
-+
-+&pcs_mdio13 {
-+	status = "okay";
-+};
-+
-+&pcs_mdio14 {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-new file mode 100644
-index 0000000000000..bd10eccac4fb4
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-@@ -0,0 +1,342 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Free Mobile Nodebox v3 CPU Module (LX2160A)
-+ *
-+ * Copyright 2026 Free Mobile, Vincent Jardin
-+ *
-+ * This file is shared by the Linux kernel and U-Boot.
-+ */
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+
-+/ {
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	gpio-restart {
-+		compatible = "gpio-restart";
-+		gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
-+		priority = <128>;
-+	};
-+};
-+
-+&crypto {
-+	status = "okay";
-+};
-+
-+&dspi0 {
-+	status = "okay";
-+
-+	dpll@0 {
-+		compatible = "microchip,zl30733";
-+		reg = <0>;
-+		spi-max-frequency = <12500000>;
-+	};
-+};
-+
-+&dspi2 {
-+	status = "okay";
-+};
-+
-+&dpmac13 {
-+	status = "okay";
-+	phy-handle = <&lan8023_phy_s0>;
-+	phy-connection-type = "10gbase-r";
-+};
-+
-+&dpmac14 {
-+	status = "okay";
-+	phy-handle = <&lan8023_phy_s1>;
-+	phy-connection-type = "10gbase-r";
-+};
-+
-+&dpmac17 {
-+	status = "okay";
-+	phy-handle = <&rtl8211fd>;
-+	phy-connection-type = "rgmii-id";
-+};
-+
-+&emdio1 {
-+	status = "okay";
-+
-+	/* Microchip LAN8023 dual 10G PCS/retimer, Clause 45 only, one address per slice */
-+	lan8023_phy_s0: ethernet-phy@2 {
-+		compatible = "ethernet-phy-ieee802.3-c45";
-+		reg = <2>;
-+	};
-+
-+	lan8023_phy_s1: ethernet-phy@3 {
-+		compatible = "ethernet-phy-ieee802.3-c45";
-+		reg = <3>;
-+	};
-+
-+	rtl8211fd: ethernet-phy@6 {
-+		compatible = "ethernet-phy-id001c.c916";
-+		reg = <6>;
-+	};
-+};
-+
-+&emdio2 {
-+	status = "okay";
-+};
-+
-+&esdhc1 {
-+	status = "okay";
-+	bus-width = <8>;
-+	non-removable;
-+	mmc-hs200-1_8v;
-+	mmc-hs400-1_8v;
-+};
-+
-+&fspi {
-+	status = "okay";
-+
-+	/* GigaDevice GD55LB02GF, 256 MiB boot NOR */
-+	flash@0 {
-+		compatible = "jedec,spi-nor";
-+		reg = <0>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		spi-max-frequency = <150000000>;
-+		spi-rx-bus-width = <1>;
-+		spi-tx-bus-width = <1>;
-+	};
-+};
-+
-+&fsl_mc {
-+	status = "okay";
-+};
-+
-+&gpio0 {
-+	status = "okay";
-+	gpio-line-names =
-+		"", "",
-+		"altfn:iic1-sda", "altfn:iic1-scl",
-+		"altfn:uart4-sin", "altfn:uart4-sout",
-+		"altfn:uart2-sin", "altfn:uart2-sout",
-+		"altfn:uart3-sin", "altfn:uart3-sout",
-+		"altfn:uart1-sin", "altfn:uart1-sout",
-+		"altfn:spi3-pcs3", "altfn:spi3-pcs2",
-+		"altfn:spi3-pcs1", "altfn:spi3-pcs0",
-+		"altfn:spi1-sck", "altfn:spi1-sin",
-+		"altfn:spi1-pcs2", "altfn:spi1-pcs1",
-+		"altfn:spi1-pcs0", "altfn:spi1-sout",
-+		"altfn:iic6-sda", "altfn:iic6-scl",
-+		"altfn:spi3-sin", "altfn:spi3-sout",
-+		"altfn:iic4-sda", "altfn:iic4-scl",
-+		"altfn:iic3-sda", "altfn:iic3-scl",
-+		"altfn:iic2-sda", "altfn:iic2-scl";
-+};
-+
-+&gpio1 {
-+	status = "okay";
-+	gpio-line-names =
-+		"", "", "", "", "", "",
-+		"cfg-rcw-src2", "cfg-rcw-src3",
-+		"reset-req-b",
-+		"altfn:sdhc2-clk", "altfn:sdhc2-ds",
-+		"altfn:sdhc2-dat0", "altfn:sdhc2-dat1",
-+		"altfn:sdhc2-dat2", "altfn:sdhc2-dat3",
-+		"altfn:sdhc2-dat4", "altfn:sdhc2-dat5",
-+		"altfn:sdhc2-dat6", "altfn:sdhc2-dat7",
-+		"altfn:sdhc2-cmd",
-+		"cfg-svr1",
-+		"altfn:xspi1-cs0", "altfn:xspi1-sck",
-+		"thermtrip",
-+		"altfn:xspi1-data0", "altfn:xspi1-data1",
-+		"", "",
-+		"flash-reset#", "pltrst#", "", "ethsw-reset#";
-+
-+	pltrst-hog {
-+		gpio-hog;
-+		gpios = <29 GPIO_ACTIVE_LOW>;
-+		output-low;
-+		line-name = "pltrst#";
-+	};
-+
-+	thermtrip-hog {
-+		gpio-hog;
-+		gpios = <23 GPIO_ACTIVE_HIGH>;
-+		output-low;
-+		line-name = "thermtrip";
-+	};
-+
-+	/* Boot NOR reset, released: electrical high */
-+	flash-reset-hog {
-+		gpio-hog;
-+		gpios = <28 GPIO_ACTIVE_LOW>;
-+		output-low;
-+		line-name = "flash-reset#";
-+	};
-+
-+	/* Ethernet switch reset, released: electrical high */
-+	ethsw-reset-hog {
-+		gpio-hog;
-+		gpios = <31 GPIO_ACTIVE_HIGH>;
-+		output-high;
-+		line-name = "ethsw-reset#";
-+	};
-+};
-+
-+&gpio2 {
-+	status = "okay";
-+	gpio-line-names =
-+		"lan8023-mdint",
-+		"i2c2-alert#", "i2c4-alert#", "i2c6-alert#",
-+		"u800-tca9539-int#",
-+		"spi3-alert#",
-+		"wake0", "wake1",
-+		"carrier-hot#",
-+		"u1300-rtl8211fd-int#",
-+		"ethsw-int#",
-+		"", "",
-+		"u1700-zl30733-clk-gpio0", "u1700-zl30733-clk-gpio1",
-+		"u1700-zl30733-clk-gpio2", "u1700-zl30733-clk-gpio3",
-+		"", "", "", "", "", "", "", "",
-+		"", "", "", "", "", "", "";
-+};
-+
-+&gpio3 {
-+	status = "okay";
-+	gpio-line-names =
-+		"altfn:ec1-txd3", "altfn:ec1-txd2",
-+		"altfn:ec1-txd1", "altfn:ec1-txd0",
-+		"altfn:ec1-tx-en", "altfn:ec1-gtx-clk",
-+		"altfn:ec1-rxd3", "altfn:ec1-rxd2",
-+		"altfn:ec1-rxd1", "altfn:ec1-rxd0",
-+		"altfn:ec1-rx-clk", "altfn:ec1-rx-dv",
-+		"", "",
-+		"ptp-refclk-in",
-+		"", "", "", "", "", "", "", "",
-+		"u1700-zl30733-pps-out",
-+		"",
-+		"ethsw-mdio-en",
-+		"usb01-oc#",	/* USB1_PWRFAULT and USB2_PWRFAULT share one net */
-+		"",
-+		"usb01-oc#",
-+		"altfn:spi3-sck",
-+		"", "";
-+
-+	/* Low enables the carrier-side EMDIO2 level translator */
-+	ethsw-mdio-en-hog {
-+		gpio-hog;
-+		gpios = <25 GPIO_ACTIVE_HIGH>;
-+		output-low;
-+		line-name = "ethsw-mdio-en";
-+	};
-+};
-+
-+/* On-module management bus */
-+&i2c0 {
-+	status = "okay";
-+
-+	eeprom@52 {
-+		compatible = "atmel,24c32";
-+		reg = <0x52>;
-+		pagesize = <32>;
-+	};
-+
-+	/* Board ID straps */
-+	gpio@74 {
-+		compatible = "ti,tca9539";
-+		reg = <0x74>;
-+		gpio-controller;
-+		#gpio-cells = <2>;
-+		gpio-line-names =
-+			"boardid-0x0001", "boardid-0x0002",
-+			"boardid-0x0004", "boardid-0x0008",
-+			"boardid-0x0010", "boardid-0x0020",
-+			"boardid-0x0040", "boardid-0x0080",
-+			"boardid-0x0100", "boardid-0x0200",
-+			"boardid-0x0400", "boardid-0x0800",
-+			"boardid-0x1000", "boardid-0x2000",
-+			"boardid-0x4000", "boardid-0x8000";
-+	};
-+
-+	u800: gpio@75 {
-+		compatible = "ti,tca9539";
-+		reg = <0x75>;
-+		gpio-controller;
-+		#gpio-cells = <2>;
-+		interrupt-controller;
-+		#interrupt-cells = <2>;
-+		interrupt-parent = <&gpio2>;
-+		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
-+		gpio-line-names =
-+			"carrier-gpio0", "carrier-gpio1",
-+			"carrier-gpio2", "carrier-gpio3",
-+			"carrier-gpio4", "carrier-gpio5",
-+			"carrier-gpio6", "carrier-gpio7",
-+			"carrier-gpio8", "carrier-gpio9",
-+			"carrier-gpio10", "carrier-gpio11",
-+			"", "", "",
-+			"lan8023-rst";
-+	};
-+
-+	/* +0V8_VDD core rail, MPS MPQ8646 (MPQ8785 core) over PMBus */
-+	vdd08: regulator@10 {
-+		compatible = "mps,mpq8646";
-+		reg = <0x10>;
-+	};
-+
-+	/* SO-DIMM SPD temperature sensors */
-+	temperature-sensor@18 {
-+		compatible = "jedec,jc-42.4-temp";
-+		reg = <0x18>;
-+	};
-+
-+	temperature-sensor@19 {
-+		compatible = "jedec,jc-42.4-temp";
-+		reg = <0x19>;
-+	};
-+};
-+
-+&i2c1 {
-+	status = "okay";
-+};
-+
-+&i2c2 {
-+	status = "okay";
-+};
-+
-+&i2c3 {
-+	status = "okay";
-+};
-+
-+&i2c5 {
-+	status = "okay";
-+};
-+
-+&pcie3 {
-+	status = "okay";
-+};
-+
-+&pcie4 {
-+	status = "okay";
-+};
-+
-+&pcie5 {
-+	status = "okay";
-+};
-+
-+&pcie6 {
-+	status = "okay";
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
-+
-+&usb0 {
-+	status = "okay";
-+};
-+
-+&usb1 {
-+	status = "okay";
-+};
+Changes in v3:
+- rebase on the MPTCP export branch
+- wrap the snd_una field comment to satisfy checkpatch
+- add fixes for the reported icsk_pending and sk_err races
+- exclude the unrelated workqueue and timekeeping reports
+---
+ net/mptcp/protocol.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
--- 
-2.43.0
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index 0b24e0afedfb..f4f63df9d787 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -606,7 +606,9 @@ static long mptcp_timeout_from_subflow(const struct mptcp_subflow_context *subfl
+ {
+ 	const struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+ 
+-	return inet_csk(ssk)->icsk_pending && !subflow->stale_count ?
++	/* Pair this lockless read with TCP's store-release updates. */
++	return smp_load_acquire(&inet_csk(ssk)->icsk_pending) &&
++	       !subflow->stale_count ?
+ 	       tcp_timeout_expires(ssk) - jiffies : 0;
+ }
+ 
+
+---
+base-commit: 45f7c939f8b155208c7447517e588c9fb133388c
+change-id: 20260906-mptcp-snd-una-race-be0262e82b97
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
