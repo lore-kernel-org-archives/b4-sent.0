@@ -1,89 +1,93 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Mon, 07 Sep 2026 19:35:42 +0800
-Subject: [PATCH] f2fs: force out-place update for all writes on compressed
- file
+From: =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+Subject: [PATCH v2 0/3] arm64: dts: rockchip: Add FriendlyElec NanoPi R28S
+Date: Mon, 07 Sep 2026 22:13:54 +0800
+Message-Id: <20260907-r28s-upstream-v2-0-21ab570fc91c@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260907-origin-dev-v1-1-85ae7ebc8c98@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAI2hnmoC/03MQQrCMBCF4auUWRvJjBqDq95DugjpmA7YRhIJS
- sndjcWFy//B+1bInIQzXLoVEhfJEpcWuOvAT24JrGRsDaTJaItWxSRBFjVyUZqtNwcmPJ4ctMM
- j8U1eG3YdWk+SnzG9N7vgd/0xZP6ZggqVJ6QzOkuode/mewzi9z7OMNRaP6PQm9qmAAAA
-X-Change-ID: 20260818-origin-dev-0e8c63e2145a
-To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, jianxin.pan@amlogic.com, tao.zeng@amlogic.com, 
- tuan.zhang@amlogic.com, Jiucheng Xu <jiucheng.xu@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788780945; l=2497;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=YNrmwUC6hZBgGF3yjLDcDf3MEef/HpM3lXoE8cXM+oc=;
- b=2QKUyokgLLcsjxunR6k7wQ0huDmzz9QlttyBun5ZhJCS8hhFtf0fT5/2MtvQZv6XkjvH1SZt1
- xqgZwn86I2+BJAHh+YZhlRgzQj05jHztIJ+/JhOUkSZjkvKltWETVXa
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr0JmbU07hgquuIdhgTBITaBkphAN6
+ d2luHb5kvff30CIHQncsg2YVifOTzvgKYN2aKYnKdftDKjR6lLnirEQtcwSmJpRERokvHbW2Bz
+ 2zczUu/fRu9c/luXxojakSDIGJ8Hz5zhcTfL+tVejtOpt0eWXokRbNtXMPvjpPBLUMcYv9b06Y
+ rwAAAA=
+X-Change-ID: 20260905-r28s-upstream-e212e27d6165
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chukun Pan <amadeus@jmu.edu.cn>, jensen <jensenhuang@friendlyarm.com>, 
+ =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2794;
+ i=HystericalDragons@proton.me; h=from:subject:message-id;
+ bh=upxHPP9ArbDCrRBkmQM8oFLShkIqVXPIci/IXpan42U=;
+ b=owGbwMvMwCUmepz3XUtTHjvjabUkhqx5x7bFa+woUbApXbLNuU94kVaD381VvSaSt7dlMakVs
+ /7N/J7VUcrCIMbFICumyCK7qTpSaFX0zCIWqeMwc1iZQIYwcHEKwETKvzD8z+ngy/h3aQK3qujx
+ umh1VcNjc3crHphRbbmzYRbDJ02mDEaGH145tVeF41u+ry5YVfmy4ec6hhWr591KDQv6IyGZeug
+ OLwA=
+X-Developer-Key: i=HystericalDragons@proton.me; a=openpgp;
+ fpr=1DB27B5912AA5B9972041AC715C70DEE84826E07
+X-Endpoint-Received: by B4 Relay for HystericalDragons@proton.me/default with auth_id=1004
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For compressed file, compressed write may fail and fall back to raw
-write.
+The NanoPi R28S is a dual gigabit Ethernet router board based on the
+Rockchip RK3528 SoC:
 
--Thread A                                         - Thread B
-  - f2fs_write_multi_pages                          - f2fs_down_write(&sbi->cp_rwsem);
-   - f2fs_write_compressed_pages                    - ...
-    - f2fs_trylock_op                               - ...
-     - f2fs_down_read_trylock(&sbi->cp_rwsem);      - ...
-   - f2fs_write_raw_pages                           - ...
+  https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R28S
 
-Thread B acquires the lock first, which causes Thread A to fail lock
-acquisition and fall back to raw-data write.
-IPU_FORCE is enabled on small-capacity storage devices (< 16GB),
-so f2fs_write_raw_pages() overwrites the original compressed data
-in-place.
+It is closely related to the already supported NanoPi Zero2, sharing
+most of its power tree and peripheral routing. Patch 2 therefore moves
+the common parts into rk3528-nanopi.dtsi, and patch 3 adds the board on
+top of it. The split leaves the NanoPi Zero2 dtb unchanged; I verified
+this by decompiling the dtb before and after the split and comparing
+them with the phandle numbering normalised.
 
-The in-memory node has been updated with raw-data addresses, while the
-node metadata stored on eMMC still remains in compressed state.
-If a power-cut occurs before the node is flushed to disk, on-disk
-inconsistency arises: disk data is raw, yet metadata treats it as a
-compressed cluster, leading to decompression failure.
+The devicetree was derived from the vendor tree:
 
-To eliminate this risk completely, force out-place update for all
-write operations on compressed file.
+  https://github.com/friendlyarm/kernel-rockchip/commit/ee640c5344b13a0a317436e2357df01af8268ce7
 
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
----
-- Link to v1: https://lore.kernel.org/r/20260826-origin-dev-v1-1-c21271a82100@amlogic.com
----
- fs/f2fs/data.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+but with many changes to make it suitable for mainline.
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 6ae0eb37d20f96ed51a8124f59ba90dabf632fb5..aaeea561dcd30681b9b37f2f6f0493ed58ec2fe0 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -2973,10 +2973,12 @@ bool f2fs_should_update_outplace(struct inode *inode, struct f2fs_io_info *fio)
- 		return true;
- 	if (f2fs_used_in_atomic_write(inode))
- 		return true;
--	/* rewrite low ratio compress data w/ OPU mode to avoid fragmentation */
--	if (f2fs_compressed_file(inode) &&
--		F2FS_OPTION(sbi).compress_mode == COMPR_MODE_USER &&
--		is_inode_flag_set(inode, FI_ENABLE_COMPRESS))
-+	/*
-+	 * rewrite low ratio compress data w/ OPU mode to avoid fragmentation.
-+	 * If IO comes from compressed write path and fallback to raw write,
-+	 * force out‑place to prevent metadata‑data inconsistency.
-+	 */
-+	if (f2fs_compressed_file(inode))
- 		return true;
- 
- 	/* swap file is migrating in aligned write mode */
+Tested on a metal-case unit without the optional onboard eMMC: boots
+from microSD, both Ethernet ports link up at 1000 Mbps, the HYM8563 RTC
+registers, and all three LEDs are functional. The USB Type-C connector
+registers as a DWC3 UDC in peripheral mode; gadget enumeration against
+a USB host was not completed, because that connector is also the 5V
+input and a PC port cannot power the board.
+
+Two things I did not do, because my hardware cannot verify them:
+
+- The AICSemi AIC8800D80 WiFi chip on sdio0 has no upstream driver, so
+  only the SDIO controller is described.
+- The eMMC is described as HS200 rather than the vendor's HS400 with
+  enhanced strobe, since the board at hand has an unpopulated eMMC
+  footprint and the faster modes could not be verified.
 
 ---
-base-commit: 0a1703eba23707e3b2edfa2a2329352e7abc0ffa
-change-id: 20260818-origin-dev-0e8c63e2145a
+Changes in v2:
+- Split the parts shared with the NanoPi Zero2 into a new
+  rk3528-nanopi.dtsi (new patch 2). The NanoPi Zero2 dtb is unchanged.
+- Name the pinctrl labels after the nets in the schematic: usr_btn,
+  led1, led2, led_sys, pwr_wf and pcie_eth_perstb.
+- Rename the button node to button-user and its label to "USER".
+- Link to v1: https://patch.msgid.link/20260905-r28s-upstream-v1-0-f68d5389269a@proton.me
+
+---
+安容 (3):
+      dt-bindings: arm: rockchip: Add FriendlyElec NanoPi R28S
+      arm64: dts: rockchip: Split out the common NanoPi RK3528 parts
+      arm64: dts: rockchip: Add devicetree for the FriendlyElec NanoPi R28S
+
+ .../devicetree/bindings/arm/rockchip.yaml          |   5 +
+ arch/arm64/boot/dts/rockchip/Makefile              |   1 +
+ .../arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts | 142 +++++++++++
+ .../boot/dts/rockchip/rk3528-nanopi-zero2.dts      | 271 +-------------------
+ arch/arm64/boot/dts/rockchip/rk3528-nanopi.dtsi    | 279 +++++++++++++++++++++
+ 5 files changed, 428 insertions(+), 270 deletions(-)
+---
+base-commit: 32e0f64640d558a0f5410ac5cdd8ebf371c5e6a6
+change-id: 20260905-r28s-upstream-e212e27d6165
 
 Best regards,
--- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+--  
+安容 <HystericalDragons@proton.me>
 
