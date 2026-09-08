@@ -1,156 +1,110 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 08 Sep 2026 14:45:04 +0200
-Subject: [PATCH v2 3/3] drm/panel: ebbg-ft8719: Split initialization into
- enable/disable fn
+From: Jonas Juffinger <jonas.juffinger@liebherr.com>
+Date: Tue, 08 Sep 2026 16:31:35 +0200
+Subject: [PATCH RESEND v2] kernel-fit-image: Don't add hash node when
+ signing is enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260908-ebbg-ft8719-fixups-v2-3-5454ae1f5581@ixit.cz>
-References: <20260908-ebbg-ft8719-fixups-v2-0-5454ae1f5581@ixit.cz>
-In-Reply-To: <20260908-ebbg-ft8719-fixups-v2-0-5454ae1f5581@ixit.cz>
-To: Joel Selvaraj <foss@joelselvaraj.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Sam Ravnborg <sam@ravnborg.org>, Marco Mattiolo <marco.mattiolo@hotmail.it>, 
- Linus Walleij <linusw@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20260908-bugfix-dont-add-hash-node-to-signed-fit-images-v2-1-c993a8fcf378@liebherr.com>
+To: openembedded-core@lists.openembedded.org
+Cc: mathieu.dubois-briand@bootlin.com, 
+ Jonas Juffinger <jonas.juffinger@liebherr.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3584; i=david@ixit.cz;
- h=from:subject:message-id; bh=p59FHt+W5RxJxYzBAZ41gjyX0PrqfPnJroW1P4JaiHQ=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqoANO4JeodgFDo3sfvRALM9dtf/AW0QxG/TDpk
- O4JX5PpurCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqADTgAKCRBgAj/E00kg
- ch4ED/kBbl106wXrSg1G9m+3LB2P1WbofO4pTJc0f7pF03qbU8bV5HoUip4tdyriX4T1FWPfwc4
- 4/1ea49TeJgoshYNKq/uMUbEaVkuAZSfGxeZBZWR+KSQgzcrMmcBaY95/xJgCW0ECsTShqHOc2o
- 388J4TMMQbYfl4Ypl+WEaFVjBt672e+nn7j69kVd5CA842LBbPfXAC443DwrbuAhs+0wm1N+aFS
- 9qdcQOR14Pt8+NGUTRu6/FwAULpScQybwZwCsAtf4uFiCBzK3QMyhNxGoYSHBYmfCtRmiHAHJLC
- NgvO0OP1+BLK3Qk+Jgh9YQNmO/SCExw08LCQVjcfzrfiT+fcDhWORgnFEPYOXzi4+LYb8AxdZlJ
- zr4zklkzAPm6z4qb0A4YxMxisu2PwTc66YJIw73BGbvUnBFo07erFs+SGkUuoE5LPpn0ENZWMSM
- C1eBUWjQfNqL0GfXO2mrjp4/MXES1gWAzwUseRUN0fCfLih7t5ueCX4OOgpuqQDuQSqZCNnt4uU
- iQp+RSFAQENJgeO8tqZXBcRXl+MuSUO3sxz6un2OISH3D0EtXOTkeGllE+6ZYGndpBFUw51C3MQ
- uoKGPWSxkEXxO7RR4pLRuseOa2dprp7nP9y5MpqWmCPpaaIab+X43y9q5TMbA98b705ytD4jWAq
- YyhTn26GWCJXBbg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788877902; l=4095;
+ i=jonas.juffinger@liebherr.com; s=20260615; h=from:subject:message-id;
+ bh=d8k2iVWYy11A4qUEi1AtPL1bOa7UzBC826kPvrcFklM=;
+ b=1HRbEB+dUyDsgEyYBE7iL3u/z66l9pUXbzyI0I2UDTW7fxlQn1xEjVA+auIuTByCGa2k90lvl
+ zxkwBOoVYDbABZi4YEDkOgZwIPl/kXNYlllYrH3L6ya2v6qEQzXhcv9
+X-Developer-Key: i=jonas.juffinger@liebherr.com; a=ed25519;
+ pk=57Vzs2aKTP3E7TDrBuZMQibGR+Koattc4oIhiMOs3FI=
+X-Endpoint-Received: by B4 Relay for jonas.juffinger@liebherr.com/20260615 with auth_id=821
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the MIPI commands into enable/disable callbacks since they
-are called between prepare/unprepare callbacks.
+When fit image signing is enabled, mkimage does not fill
+the configuration hash node even if it is present. This causes
+the verification to fail in U-Boot with a "Bad Data Hash" error
+because the hash node exists but is empty.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+This patch adds a check to only add the configuration hash node
+if signing is not enabled and fixes the respective test cases.
+
+The example FIT from the official documentation also shows
+the configuration field with only the signature, without the
+hash field:
+https://docs.u-boot.org/en/latest/usage/fit/signature.html#signed-configurations
+
+To further ensure that this change is valid, I also checked
+the U-Boot source for the hash and signature generation code:
+https://github.com/u-boot/u-boot/blob/main/tools/image-host.c#L1593
+The function fit_config_add_verification_data only adds the
+signature and no hash. Compare with fit_image_add_verification_data
+which adds both.
+
+Signed-off-by: Jonas Juffinger <jonas.juffinger@liebherr.com>
 ---
- drivers/gpu/drm/panel/panel-ebbg-ft8719.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+Changes in v2:
+- Adjusted test cases
+- Link to v1: https://lore.kernel.org/r/20260819-bugfix-dont-add-hash-node-to-signed-fit-images-v1-1-c0ffc1a0fc17@liebherr.com
+---
+ meta/lib/oe/fitimage.py                  | 2 +-
+ meta/lib/oeqa/selftest/cases/fitimage.py | 8 +++++---
+ 2 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/gpu/drm/panel/panel-ebbg-ft8719.c b/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
-index 14982263a94f1..1652de70900f1 100644
---- a/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
-+++ b/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
-@@ -49,74 +49,69 @@ static void ebbg_ft8719_reset(struct ebbg_ft8719 *ctx)
- 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
- 	usleep_range(4000, 5000);
- 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
- 	usleep_range(1000, 2000);
- 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
- 	usleep_range(15000, 16000);
- }
+diff --git a/meta/lib/oe/fitimage.py b/meta/lib/oe/fitimage.py
+index d4dacdd508..142a5d60f7 100644
+--- a/meta/lib/oe/fitimage.py
++++ b/meta/lib/oe/fitimage.py
+@@ -485,7 +485,7 @@ class ItsNodeRootKernel(ItsNode):
+             f"{default_flag} {', '.join(conf_desc)}",
+             opt_props=opt_props
+         )
+-        if self._hash_algo:
++        if self._hash_algo and not self._sign_enable:
+             ItsNodeHash(
+                 "hash-1",
+                 conf_node,
+diff --git a/meta/lib/oeqa/selftest/cases/fitimage.py b/meta/lib/oeqa/selftest/cases/fitimage.py
+index 3d8bdc4a74..6f9e6f30e5 100644
+--- a/meta/lib/oeqa/selftest/cases/fitimage.py
++++ b/meta/lib/oeqa/selftest/cases/fitimage.py
+@@ -893,9 +893,10 @@ class KernelFitImageBase(FitImageTestCase):
+             if uboot_sign_enable == "1" and fit_sign_individual == "1":
+                 req_its_paths.append(['/', 'images', image, 'signature-1'])
+         for configuration in configurations:
+-            req_its_paths.append(['/', 'configurations', configuration, 'hash-1'])
+             if uboot_sign_enable == "1":
+                 req_its_paths.append(['/', 'configurations', configuration, 'signature-1'])
++            else:
++                req_its_paths.append(['/', 'configurations', configuration, 'hash-1'])
  
--static int ebbg_ft8719_on(struct ebbg_ft8719 *ctx)
-+static int ebbg_ft8719_enable(struct drm_panel *panel)
- {
-+	struct ebbg_ft8719 *ctx = to_ebbg_ft8719(panel);
- 	struct mipi_dsi_device *dsi = ctx->dsi;
- 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
+         not_req_its_paths = []
+         for image in not_images:
+@@ -1066,14 +1067,15 @@ class KernelFitImageBase(FitImageTestCase):
+         # Add signing related properties if needed
+         if uboot_sign_enable == "1":
+             for section in req_sections:
+-                req_sections[section]['Hash algo'] = fit_hash_alg
+                 if section.startswith(bb_vars['FIT_CONF_PREFIX']):
+-                    req_sections[section]['Hash value'] = "unavailable"
+                     req_sections[section]['Sign algo'] = "%s,%s:%s" % (fit_hash_alg, fit_sign_alg, uboot_sign_keyname)
+                     num_signatures += 1
+                 elif fit_sign_individual == "1":
++                    req_sections[section]['Hash algo'] = fit_hash_alg
+                     req_sections[section]['Sign algo'] = "%s,%s:%s" % (fit_hash_alg, fit_sign_alg, uboot_sign_img_keyname)
+                     num_signatures += 1
++                else:
++                    req_sections[section]['Hash algo'] = fit_hash_alg
+         return (req_sections, num_signatures)
  
- 	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
- 
- 	mipi_dsi_dcs_set_display_brightness_multi(&dsi_ctx, 0x00ff);
- 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x24);
- 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_WRITE_POWER_SAVE, 0x00);
- 
- 	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
- 	mipi_dsi_msleep(&dsi_ctx, 90);
- 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
- 
- 	return dsi_ctx.accum_err;
- }
- 
--static int ebbg_ft8719_off(struct ebbg_ft8719 *ctx)
-+static int ebbg_ft8719_disable(struct drm_panel *panel)
- {
-+	struct ebbg_ft8719 *ctx = to_ebbg_ft8719(panel);
- 	struct mipi_dsi_device *dsi = ctx->dsi;
- 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
- 
--	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+	ctx->dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
- 
- 	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
- 	mipi_dsi_usleep_range(&dsi_ctx, 10000, 11000);
- 	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
- 	mipi_dsi_msleep(&dsi_ctx, 90);
- 
--	return dsi_ctx.accum_err;
-+	return 0;
- }
- 
- static int ebbg_ft8719_prepare(struct drm_panel *panel)
- {
- 	struct ebbg_ft8719 *ctx = to_ebbg_ft8719(panel);
- 	int ret;
- 
- 	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
- 	if (ret < 0)
- 		return ret;
- 
- 	ebbg_ft8719_reset(ctx);
- 
--	ret = ebbg_ft8719_on(ctx);
--	if (ret < 0) {
--		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
--		return ret;
--	}
--
- 	return 0;
- }
- 
- static int ebbg_ft8719_unprepare(struct drm_panel *panel)
- {
- 	struct ebbg_ft8719 *ctx = to_ebbg_ft8719(panel);
- 
--	ebbg_ft8719_off(ctx);
- 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
- 	regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
- 
- 	return 0;
- }
- 
- static const struct drm_display_mode ebbg_ft8719_mode = {
- 	.clock = (1080 + 28 + 4 + 16) * (2246 + 120 + 4 + 12) * 60 / 1000,
-@@ -148,16 +143,18 @@ static int ebbg_ft8719_get_modes(struct drm_panel *panel,
- 	connector->display_info.height_mm = mode->height_mm;
- 	drm_mode_probed_add(connector, mode);
- 
- 	return 1;
- }
- 
- static const struct drm_panel_funcs ebbg_ft8719_panel_funcs = {
- 	.prepare = ebbg_ft8719_prepare,
-+	.enable = ebbg_ft8719_enable,
-+	.disable = ebbg_ft8719_disable,
- 	.unprepare = ebbg_ft8719_unprepare,
- 	.get_modes = ebbg_ft8719_get_modes,
- };
- 
- static int ebbg_ft8719_probe(struct mipi_dsi_device *dsi)
- {
- 	struct device *dev = &dsi->dev;
- 	struct ebbg_ft8719 *ctx;
+     def _check_signing(self, bb_vars, sections, num_signatures, uboot_tools_bindir, fitimage_path):
 
+---
+base-commit: 6f7a806ece411ab32e4b1c08a0299400bdf3b588
+change-id: 20260819-bugfix-dont-add-hash-node-to-signed-fit-images-12ab0c9271ce
+
+Best regards,
+--
+Jonas Juffinger <jonas.juffinger@liebherr.com>
 -- 
-2.55.0
+Jonas Juffinger <jonas.juffinger@liebherr.com>
 
