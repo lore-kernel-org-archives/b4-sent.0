@@ -1,116 +1,82 @@
-From: =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>
-Date: Tue, 08 Sep 2026 17:57:01 +0200
-Subject: [PATCH v3 3/3] arm64: dts: qcom: sm8250: add device tree for the
- Xiaomi Mi Pad 5 Pro 5G
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH v3 0/3] arm64: dts: freescale: add Free Mobile Nodebox v3
+ CPU Module (LX2160A)
+Date: Tue, 08 Sep 2026 04:12:42 +0200
+Message-Id: <20260908-for-upstream-nbxv3-dts-v3-0-1d88b2c11680@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260908-sm8250-xiaomi-enuma-v3-3-0198c3bf954a@dawidwrobel.com>
-References: <20260908-sm8250-xiaomi-enuma-v3-0-0198c3bf954a@dawidwrobel.com>
-In-Reply-To: <20260908-sm8250-xiaomi-enuma-v3-0-0198c3bf954a@dawidwrobel.com>
-To: Jianhua Lu <lujianhua000@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- =?utf-8?q?Dawid_Wr=C3=B3bel?= <me@dawidwrobel.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2890; i=me@dawidwrobel.com;
- h=from:subject:message-id; bh=WjYBVrEZzP3ExAdg6WDhwCT+UwHmbXt9I8SNxESJ/BU=;
- b=owGbwMvMwCV2qrTGfeXVd28ZT6slMWQtMAiJPyGz9fSSzfH2R1vMX/KtE9EQK30gVfKTb+2Ok
- uK1sUUsHaUsDGJcDLJiiix6aUF7rIJffn/34nc4zBxWJpAhDFycAjCRvo8M/5Prfb86hXeUfvKI
- T/+ndmv3ZHmFKTumuTzN02Y/fVNaV5qR4fNdycKTqu1OzVXfb5iqla3fZ9NgW7fmzgaNxdND/s5
- ayAEA
-X-Developer-Key: i=me@dawidwrobel.com; a=openpgp;
- fpr=B64A778E0E64049A70C831C8B7B81FA12B282A92
-X-Endpoint-Received: by B4 Relay for me@dawidwrobel.com/default with auth_id=901
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABpvn2oC/43NsQ6CMBDG8VchnT1ztASqE+9hHFp6lQ4CuWKDI
+ by7hcVRx/+X3O9WEYkDRXEtVsGUQgzjkEOdCtH1ZngQBJdbSJQ1XrABPzK8pjgzmScMdkkK3Bz
+ BWuocVqi0kSIfT0w+LAd8u+fuQ5xHfh9/UrmvP8lUAoKvlHeIUttGt56Jzp7FDib5HyIzUtvKe
+ KfqUqP9Itu2fQC73TaL/wAAAA==
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788833565; l=2061;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=4+muMEoWw3cPoLSSzPR0U9e4YeLXdeRe95f6AWfkX3o=;
+ b=67315suM+GsZ6EL42fG/+PWICzlCEB+krrRAUp8QOUeulfHHHg1IGE4H7HryEnn/wABCORfSo
+ KZzd4sulMJ2ApjC6eN7Dt+CQ1yew29vmrgy8H5wzKJIxIqUOkvCSywD
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Mi Pad 5 Pro 5G (enuma, 2021) is the modem-equipped variant of the
-Mi Pad 5 Pro. The board is otherwise the elish design, so describe it as
-the common device tree plus its own board ID, panel compatible and WiFi
-board data variant.
+The Nodebox v3 is a Free Mobile CPU module built around the NXP LX2160A
+(16x Cortex-A72, DPAA2).
 
-Unlike elish, this model shipped with a single display variant, so there
-is one device tree rather than a per-panel pair.
+The same fsl-lx2160a-nbxv3.dtsi shall be used verbatim by the
+U-Boot port, sent in parallel to the U-Boot list, so the two trees
+cannot drift.
 
-The WiFi node in the common device tree gains a label, so this board can
-override its calibration variant.
+Dependency:
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Dawid Wróbel <me@dawidwrobel.com>
+the DTS uses gpio hogs on the QorIQ GPIO controllers, which
+needs the commit
+  78c0baf85cd0 ("dt-bindings: gpio: fsl,qoriq-gpio: allow gpio-hog child nodes")
+already in gpio/for-next and that will likely arrive in v7.4-rc1.
+Until it lands, dtbs_check reports the five hog nodes, the rest of the
+tree validates clean against the current schemas.
+
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  1 +
- .../boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi  |  2 +-
- arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts   | 27 ++++++++++++++++++++++
- 3 files changed, 29 insertions(+), 1 deletion(-)
+Changes in v3:
+- Drop the thermtrip hog on gpio1 line 23, should have been clean'd
+  before
+- Link to v2: https://lore.kernel.org/r/20260907-for-upstream-nbxv3-dts-v2-0-6b4afd36180b@free.fr
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index e05414290d8e..529e29ffb25a 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -369,6 +369,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-sony-xperia-edo-pdx203.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-sony-xperia-edo-pdx206.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-elish-boe.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-elish-csot.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-enuma.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8250-xiaomi-pipa.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8350-hdk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8350-microsoft-surface-duo2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
-index 19aff83ecf7b..12a2ba48340f 100644
---- a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-elish-common.dtsi
-@@ -817,7 +817,7 @@ &pcie0_phy {
- };
- 
- &pcieport0 {
--	wifi@0 {
-+	wifi_0: wifi@0 {
- 		compatible = "pci17cb,1101";
- 		reg = <0x10000 0x0 0x0 0x0 0x0>;
- 
-diff --git a/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts
-new file mode 100644
-index 000000000000..45bcc0438138
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sm8250-xiaomi-enuma.dts
-@@ -0,0 +1,27 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025-2026 Dawid Wróbel <me@dawidwrobel.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "sm8250-xiaomi-elish-common.dtsi"
-+
-+/ {
-+	model = "Xiaomi Mi Pad 5 Pro 5G";
-+	compatible = "xiaomi,enuma", "xiaomi,elish", "qcom,sm8250";
-+
-+	/* Platform type differs from elish; msm-id is inherited unchanged. */
-+	qcom,board-id = <0x2e 0>;
-+};
-+
-+&display_panel {
-+	compatible = "xiaomi,enuma-csot-nt36523", "xiaomi,elish-csot-nt36523",
-+		     "novatek,nt36523";
-+
-+	status = "okay";
-+};
-+
-+&wifi_0 {
-+	qcom,calibration-variant = "Xiaomi_Pad_5Pro_5G";
-+};
+Changes in v2: (from Sashiko's comments)
+- Makefile: dtb entry in alphabetical order (before qds).
+- Move the XSPI1_A_DATA[7:4] GPIO mux group from &fspi to &gpio1, so
+  the reset hogs on gpio1 do not depend on the fspi probe.
+- gpio hogs: describe ethsw-reset# and ethsw-mdio-en with their
+  active-low polarity (GPIO_ACTIVE_LOW), same electrical levels.
+- Link to v1: https://lore.kernel.org/r/20260907-for-upstream-nbxv3-dts-v1-0-f43fd0028b78@free.fr
 
+---
+Vincent Jardin (3):
+      dt-bindings: vendor-prefixes: add Free Mobile
+      dt-bindings: arm: fsl: add freemobile,nbxv3 board
+      arm64: dts: freescale: add Nodebox v3 CPU Module
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   6 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/freescale/Makefile             |   2 +
+ .../arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts |  34 +++
+ .../boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi      | 335 +++++++++++++++++++++
+ 5 files changed, 379 insertions(+)
+---
+base-commit: df2908090cda368b01ff43709f51890076c56157
+change-id: 20260907-for-upstream-nbxv3-dts-bbecd04038a2
+
+Best regards,
 -- 
-2.55.0
+Vincent Jardin <vjardin@free.fr>
 
