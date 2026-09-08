@@ -1,85 +1,73 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 08 Sep 2026 13:41:06 +0400
-Subject: [PATCH v4 13/13] arm64: dts: qcom: ipq5018-rdp432-c2: Enable USB
- Super-Speed PHY
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/3] Xiaomi Poco F1 (ebbg display variant) fixes
+Date: Tue, 08 Sep 2026 14:45:01 +0200
+Message-Id: <20260908-ebbg-ft8719-fixups-v2-0-5454ae1f5581@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260908-ipq5018-usb3-v4-13-b789702f0695@outlook.com>
-References: <20260908-ipq5018-usb3-v4-0-b789702f0695@outlook.com>
-In-Reply-To: <20260908-ipq5018-usb3-v4-0-b789702f0695@outlook.com>
-To: Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Praveenkumar I <praveenkumar.i@oss.qualcomm.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- Nitheesh Sekar <quic_nsekar@quicinc.com>, 
- Wesley Cheng <quic_wcheng@quicinc.com>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Varadarajan Narayanan <quic_varada@quicinc.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Stanislaw Pal <kuncy7@gmail.com>, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788860513; l=1184;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=55+OVTWKoDEF3wFthbSUFmewrmNa0eMnoTEShtYSUqE=;
- b=7ZYFYqUEweAtZ4nB5oD6JUvuE6pzxgG0QSFyde93gD0Xb4pnc7NncPC4g/lv/YdjfWRAuQQ+T
- 6LUVZWGdY9xCIkpncL1xBsS/Ja2ivIPl4+oWlRWEdXa+yynBBhj4Ss5
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NsQ6DMAxEfwV5rivHAgqd+I+KgQQDXgAlFNEi/
+ r0pXTu+O927HYJ4lQD3ZAcvqwadxgh8ScANzdgLahsZmDgnw4xibY/dUtxMiZ1uzzmgdZKlBWd
+ kiSEOZy+xOaWPOvKgYZn86/xYzTf96UrK/+lWg4SpFGmeGXJNayrddLm6N9THcXwAEn4yybIAA
+ AA=
+X-Change-ID: 20260122-ebbg-ft8719-fixups-bce548250b02
+To: Joel Selvaraj <foss@joelselvaraj.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Sam Ravnborg <sam@ravnborg.org>, Marco Mattiolo <marco.mattiolo@hotmail.it>, 
+ Linus Walleij <linusw@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ Casey Connolly <casey.connolly@linaro.org>, stable@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1011; i=david@ixit.cz;
+ h=from:subject:message-id; bh=tggSJCl2AdaSwI6K1UKsXMUFn3nfnZ+dlVIx8qMmy08=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqoANOFJeLQjNYi0kXTpsGdTO+bBpMS+a5Wl0S6
+ Nl0RyjUoaiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqADTgAKCRBgAj/E00kg
+ ciBnD/wNSFGRfZVkyBhqNF/AkPwW+A9tFaAfw6x8X3yaefweifSqELEDIH87v+L6N1TSxgj32QD
+ RNZ6ocaJEAZge4WV6qcvklwSJcWGlwhWFoBDHnIndBbRudUMIkdZkxvIo1htvE9Wn9Gq7GCsCwY
+ mhIRGr05Uba06qS+W0SoZt1jt8U+Y0O9N1AOql3NGNv0qRXD63M8cPh2PYBuOFgcu/nQVOrF3m8
+ GNB9GKF5dPRjRfjNB7Yp0pUCX+4OrS1opxeRZ4qZi9pin26icIIoMHBqMV+tz7qY+x5eRNJSL5y
+ RmNkl2frVAmm4Apapb120L0gG4Rezu9RS/0hC94pRoRAypz4Ku2ZkhJ/7IlDbgEV8yNu4S0zCyg
+ WoRACCzChM1NvHTey88xChBgEzsNleOO1GXjqVvzTNkCnFyNuTqIMDBdmhdM0poX/QGKu5Y4dPX
+ F2dXB8APaQPmZssiW72lizk5G84nletKZKvHiPRO/y9M4B4pRzyGmw2cQ86Q+XSADb7Hj7HjZlk
+ g3r6G1Dt47ugA8YxFSSvqT+CJH+zhTxcc+DbXHn2+Ein+ejEjocHPVGm1NCIrh6RUmvxULnvBOB
+ FkHPEFCE+Z1A61t5ROmhpTKdQwRjALU9ow3HIQD40cy5V2cZLJGGWQbZs0Sfrg4hJxyvbBZljdv
+ laqYTedl76R230A==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the 5V supply regulator and enable USB Super-Speed PHY support.
+Been broken in mainline for some time.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Tested-by: Stanislaw Pal <kuncy7@gmail.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Changes in v2:
+- Ignore the disable() errors, as there were ignored before too. (Neil)
+- Update the `Split initialization into enable/disable fn` commit
+  message. (Neil)
+- Replaced the maintainer old email with new, so Joel gets notified
+  about this patchset being sent.
+- Link to v1: https://patch.msgid.link/20260906-ebbg-ft8719-fixups-v1-0-4e846510cad1@ixit.cz
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-index 8efb2b21ed9e..ca29f271e673 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-+++ b/arch/arm64/boot/dts/qcom/ipq5018-rdp432-c2.dts
-@@ -22,6 +22,14 @@ aliases {
- 	chosen {
- 		stdout-path = "serial0:115200n8";
- 	};
-+
-+	regulator_fixed_5p0: regulator-s0500 {
-+		compatible = "regulator-fixed";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		regulator-name = "fixed_5p0";
-+		gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+	};
- };
- 
- &blsp1_uart1 {
-@@ -119,6 +127,12 @@ &usbphy0 {
- 	status = "okay";
- };
- 
-+&usbphy1 {
-+	vdd-supply = <&regulator_fixed_5p0>;
-+
-+	status = "okay";
-+};
-+
- &xo_board_clk {
- 	clock-div = <4>;
- 	clock-mult = <1>;
+---
+Casey Connolly (1):
+      drm/panel: ebbg-ft8719: Set prepare_prev_first
 
--- 
-2.53.0
+David Heidelberg (2):
+      drm/panel: ebbg-ft8719: Fix the MODULE_LICENSE() string
+      drm/panel: ebbg-ft8719: Split initialization into enable/disable fn
+
+ drivers/gpu/drm/panel/panel-ebbg-ft8719.c | 23 +++++++++++------------
+ 1 file changed, 11 insertions(+), 12 deletions(-)
+---
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260122-ebbg-ft8719-fixups-bce548250b02
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
