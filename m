@@ -1,110 +1,221 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Tue, 08 Sep 2026 10:59:58 +0800
-Subject: [PATCH net] tcp: fix data-race in tcp_recv_should_stop
+From: Younes Akhouayri <git@younes.io>
+Date: Tue, 08 Sep 2026 06:39:59 +0200
+Subject: [PATCH v2] rust: num: document why Integer is sealed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260908-mptcp-sk-err-net-v1-1-da71aaec9afd@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ7CMAwEv1L5jCVTFQh8BfUAYQMGESI7IKSqf
- yfAcVY7M5HDFE67biLDS10fucFy0VG8HPIZrKfG1Eu/lq0EvpcaC/uNYcYZlTcphYAkKxkGalo
- xJH3/kntqBxr/oz+PV8T6jdE8fwBOehg3eQAAAA==
-X-Change-ID: 20260908-mptcp-sk-err-net-7ff88ef05044
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
- Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Quanye Yang <quanyeyang@proton.me>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260908-docs-rust-num-integer-sealing-safety-v2-1-e8c65234db82@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5WOTQ6CMBCFr2K6drQUBerKexgWpQwwRlvTKURCu
+ Lv8nMDlN3nzvTcJxkDI4naYRMCBmLxbQB0PwnbGtQhULyyUVJnUMoPaW4bQcwTXv4FcxBYDMJo
+ XuRbYNBhHSI1EpbPc6EshFtUnYEPfreZR7sx99UQbV/eaqAwjVME4260nH6gld9569s8l0xFHH
+ 8Zt65Csrj9nDQkkkBfymqc6SaWy99H3DvlEXpTzPP8ACs769g4BAAA=
+X-Change-ID: 20260906-docs-rust-num-integer-sealing-safety-3a0e2967a948
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788836410; l=3380;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=aVD2Wy+C2Sd5Y8HCYwrqgTQ88TLljMqiVxf6EXpAQ2M=;
- b=DZaxjjeF5h5EPEKOuqP9tYOn8GIuV4AEQ6hyK5BKm7tPeAcH0LLEUFKTA0wJIMc/HgWmWOsXW
- 1wUGmPsA+GVB5j0owZlUsT0LJiow8C3G8zvTrN6f6a2GV8siHYkxgjf
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788842431; l=9303;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=Npbz8G8u3MVnEdlz8DnebUk4PDv4U212b+94+h5OrC8=;
+ b=YiE7+5KB3cJuv28DOLy2HKRm0h7SC4WELGqi/f/u/IiYFHrwmNsGWOFhSzEjq1n8TmG+2JXrK
+ u5Pzyk1ks7LB0ZGHUXoNxR29fIMrlQfGXlEQit9qNh6zGQqiCpfox7b
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-BUG: KCSAN: data-race in do_recvmmsg / mptcp_recvmsg
+Bounded relies on Integer implementations to provide primitive integer
+semantics. Unsafe blocks use those semantics to justify unchecked
+construction and conversion, but their safety comments do not say why a
+safe trait may be trusted.
 
-read-write (marked) to 0xffff8880134d391c of 4 bytes by task 2619 on cpu 1:
- instrument_atomic_read_write include/linux/instrumented.h:113 [inline]
- sock_error include/net/sock.h:2565 [inline]
- do_recvmmsg+0x50c/0x580 net/socket.c:3049
- __sys_recvmmsg net/socket.c:3144 [inline]
- __do_sys_recvmmsg net/socket.c:3167 [inline]
- __se_sys_recvmmsg net/socket.c:3160 [inline]
- __x64_sys_recvmmsg+0x161/0x180 net/socket.c:3160
- x64_sys_call+0x19c7/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:300
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
+Document the seal at those safety comments and next to the private
+supertrait.
 
-read to 0xffff8880134d391c of 4 bytes by task 2620 on cpu 0:
- tcp_recv_should_stop include/net/tcp.h:3086 [inline]
- mptcp_recvmsg+0x54d/0xd50 net/mptcp/protocol.c:2466
- inet_recvmsg+0x204/0x210 net/ipv4/af_inet.c:894
- sock_recvmsg_nosec net/socket.c:1151 [inline]
- sock_recvmsg+0x11a/0x140 net/socket.c:1173
- ____sys_recvmsg+0x14b/0x3c0 net/socket.c:2933
- ___sys_recvmsg+0x116/0x160 net/socket.c:2975
- __sys_recvmsg net/socket.c:3008 [inline]
- __do_sys_recvmsg net/socket.c:3014 [inline]
- __se_sys_recvmsg net/socket.c:3011 [inline]
- __x64_sys_recvmsg+0xeb/0x160 net/socket.c:3011
- x64_sys_call+0x1319/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:48
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-
-value changed: 0x0000006b -> 0x00000000
-
-Reported by Kernel Concurrency Sanitizer on:
-CPU: 0 UID: 0 PID: 2620 Comm: syz.2.33 Not tainted 7.2.0-g39d4f32c5d53 #76 PREEMPT(full)
-Hardware name: QEMU Ubuntu 26.04 PC (i440FX + PIIX, 1996), BIOS 1.17.0-debian-1.17.0-1ubuntu1 04/01/2014
-
-do_recvmmsg() calls sock_error() without the socket lock. sock_error()
-clears sk_err with xchg(), which races with the unmarked load in
-tcp_recv_should_stop(). The same race exists for plain TCP with
-concurrent recvmmsg() readers; KCSAN reported it on an MPTCP socket
-because mptcp_recvmsg() uses this helper.
-
-Use READ_ONCE() for the lockless peek. No extra ordering is needed:
-the value is only used to decide whether receiving should stop.
-This does not consume sk_err; the check-then-sock_error() TOCTOU
-on the no-data paths is a separate issue.
-
-Fixes: eb477fdd6803 ("tcp: add recv_should_stop helper")
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Suggested-by: Gary Guo <gary@garyguo.net>
+Link: https://lore.kernel.org/all/CANiq72m8kycbfQ1teyne-OtB5d5TsUcX_WW0FCkWB3Ayyg-qWw@mail.gmail.com/
+Link: https://lore.kernel.org/all/DL88SQWYU15W.2CVZB5NVSSJGK@garyguo.net/
+Link: https://lore.kernel.org/all/CANiq72kx-YPPEruOFdu-Dp7GX+8=Et6svG+sQtqEmmF7kpnVyQ@mail.gmail.com/
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
-Link: https://lore.kernel.org/all/14749060-d011-41e7-9a4b-754eb5bd9d5b@redhat.com/
----
- include/net/tcp.h | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Changes in v2:
+- Shorten the comment explaining why `Integer` is sealed.
+- Mention the seal in the `SAFETY` comments that rely on it.
+- Link to v1: https://patch.msgid.link/20260906-docs-rust-num-integer-sealing-safety-v1-1-78057391302c@younes.io
 
-diff --git a/include/net/tcp.h b/include/net/tcp.h
-index 436495ff2271..c61d8678eafd 100644
---- a/include/net/tcp.h
-+++ b/include/net/tcp.h
-@@ -3082,7 +3082,8 @@ enum skb_drop_reason tcp_inbound_hash(struct sock *sk,
+To: Alexandre Courbot <acourbot@nvidia.com>
+To: Yury Norov <yury.norov@gmail.com>
+To: Miguel Ojeda <ojeda@kernel.org>
+To: Boqun Feng <boqun@kernel.org>
+To: Gary Guo <gary@garyguo.net>
+To: Björn Roy Baron <bjorn3_gh@protonmail.com>
+To: Benno Lossin <lossin@kernel.org>
+To: Andreas Hindborg <a.hindborg@kernel.org>
+To: Alice Ryhl <aliceryhl@google.com>
+To: Trevor Gross <tmgross@umich.edu>
+To: Danilo Krummrich <dakr@kernel.org>
+To: Daniel Almeida <daniel.almeida@collabora.com>
+To: Tamir Duberstein <tamird@kernel.org>
+To: Onur Özkan <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ rust/kernel/num.rs         |  1 +
+ rust/kernel/num/bounded.rs | 48 ++++++++++++++++++++++++++--------------------
+ 2 files changed, 28 insertions(+), 21 deletions(-)
+
+diff --git a/rust/kernel/num.rs b/rust/kernel/num.rs
+index de589792a77a..0449e84a384a 100644
+--- a/rust/kernel/num.rs
++++ b/rust/kernel/num.rs
+@@ -21,6 +21,7 @@ pub trait Sealed {}
  
- static inline int tcp_recv_should_stop(struct sock *sk)
+ /// Describes core properties of integer types.
+ pub trait Integer:
++    // Sealed so that unsafe code can rely on the correctness of its implementations.
+     private::Sealed
+     + Sized
+     + Copy
+diff --git a/rust/kernel/num/bounded.rs b/rust/kernel/num/bounded.rs
+index 2a2b0a4bca5e..1a3f369cd886 100644
+--- a/rust/kernel/num/bounded.rs
++++ b/rust/kernel/num/bounded.rs
+@@ -336,7 +336,8 @@ impl<T, const N: u32> Bounded<T, N>
+     /// ```
+     pub fn try_new(value: T) -> Option<Self> {
+         fits_within(value, N).then(|| {
+-            // SAFETY: `fits_within` confirmed that `value` can be represented within `N` bits.
++            // SAFETY: `Integer` is sealed, so `fits_within` has primitive integer semantics and
++            // confirmed that `value` can be represented within `N` bits.
+             unsafe { Self::__new(value) }
+         })
+     }
+@@ -379,7 +380,8 @@ pub fn from_expr(expr: T) -> Self {
+             "Requested value larger than maximal representable value."
+         );
+ 
+-        // SAFETY: `fits_within` confirmed that `expr` can be represented within `N` bits.
++        // SAFETY: `Integer` is sealed, so `fits_within` has primitive integer semantics and
++        // confirmed that `expr` can be represented within `N` bits.
+         unsafe { Self::__new(expr) }
+     }
+ 
+@@ -420,8 +422,8 @@ pub const fn extend<const M: u32>(self) -> Bounded<T, M> {
+             "Requested number of bits is less than the current representation."
+         );
+ 
+-        // SAFETY: The value did fit within `N` bits, so it will all the more fit within
+-        // the larger `M` bits.
++        // SAFETY: `Integer` is sealed, so the `Bounded` invariant can be relied upon. The value
++        // did fit within `N` bits, so it will all the more fit within the larger `M` bits.
+         unsafe { Bounded::__new(self.0) }
+     }
+ 
+@@ -472,12 +474,13 @@ pub fn cast<U>(self) -> Bounded<U, N>
+         T: Integer,
+         U: Integer<Signedness = T::Signedness>,
+     {
+-        // SAFETY: The converted value is represented using `N` bits, `U` can contain `N` bits, and
+-        // `U` and `T` have the same sign, hence this conversion cannot fail.
++        // SAFETY: `Integer` is sealed, so the bit widths and signedness are correct. The converted
++        // value is represented using `N` bits, `U` can contain `N` bits, and `U` and `T` have the
++        // same sign, hence this conversion cannot fail.
+         let value = unsafe { U::try_from(self.get()).unwrap_unchecked() };
+ 
+-        // SAFETY: Although the backing type has changed, the value is still represented within
+-        // `N` bits, and with the same signedness.
++        // SAFETY: `Integer` is sealed, so the signedness is correct. Although the backing type has
++        // changed, the value is still represented within `N` bits, and with the same signedness.
+         unsafe { Bounded::__new(value) }
+     }
+ 
+@@ -498,8 +501,9 @@ pub fn shr<const SHIFT: u32, const RES: u32>(self) -> Bounded<T, RES> {
+         const_assert!(SHIFT < T::BITS);
+         const_assert!(RES + SHIFT >= N);
+ 
+-        // SAFETY: We shift the value right by `SHIFT`, reducing the number of bits needed to
+-        // represent the shifted value by as much, and just asserted that `RES >= N - SHIFT`.
++        // SAFETY: `Integer` is sealed, so the shift has primitive integer semantics. We reduce the
++        // number of bits needed to represent the shifted value by `SHIFT`, and just asserted that
++        // `RES >= N - SHIFT`.
+         unsafe { Bounded::__new(self.0 >> SHIFT) }
+     }
+ 
+@@ -550,8 +554,9 @@ pub fn shr_exact<const SHIFT: u32, const RES: u32>(self) -> Option<Bounded<T, RE
+     pub fn shl<const SHIFT: u32, const RES: u32>(self) -> Bounded<T, RES> {
+         const_assert!(RES >= N + SHIFT);
+ 
+-        // SAFETY: We shift the value left by `SHIFT`, augmenting the number of bits needed to
+-        // represent the shifted value by as much, and just asserted that `RES >= N + SHIFT`.
++        // SAFETY: `Integer` is sealed, so the shift has primitive integer semantics. We augment
++        // the number of bits needed to represent the shifted value by `SHIFT`, and just asserted
++        // that `RES >= N + SHIFT`.
+         unsafe { Bounded::__new(self.0 << SHIFT) }
+     }
+ }
+@@ -565,8 +570,8 @@ impl<T, const N: u32> Deref for Bounded<T, N>
+     fn deref(&self) -> &Self::Target {
+         // Enforce the invariant to inform the compiler of the bounds of the value.
+         if !fits_within(self.0, N) {
+-            // SAFETY: Per the `Bounded` invariants, `fits_within` can never return `false` on the
+-            // value of a valid instance.
++            // SAFETY: `Integer` is sealed, so `fits_within` has primitive integer semantics. Per
++            // the `Bounded` invariants, it cannot return `false` on the value of a valid instance.
+             unsafe { core::hint::unreachable_unchecked() }
+         }
+ 
+@@ -1028,8 +1033,9 @@ impl<T, const N: u32> From<$type> for Bounded<T, N>
+             Self: AtLeastXBits<{ <$type as Integer>::BITS as usize }>,
+         {
+             fn from(value: $type) -> Self {
+-                // SAFETY: The trait bound on `Self` guarantees that `N` bits is
+-                // enough to hold any value of the source type.
++                // SAFETY: `Integer` is sealed, so the bit widths and signedness are correct. The
++                // trait bound on `Self` guarantees that `N` bits is enough to hold any value of
++                // the source type.
+                 unsafe { Self::__new(T::from(value)) }
+             }
+         }
+@@ -1104,9 +1110,9 @@ impl<T, const N: u32> From<Bounded<T, N>> for $type
+             Bounded<T, N>: FitsInXBits<{ <$type as Integer>::BITS as usize }>,
+         {
+             fn from(value: Bounded<T, N>) -> $type {
+-                // SAFETY: The trait bound on `Bounded` ensures that any value it holds (which
+-                // is constrained to `N` bits) can fit into the destination type, so this
+-                // conversion cannot fail.
++                // SAFETY: `Integer` is sealed, so the bit widths and signedness are correct. The
++                // trait bound on `Bounded` ensures that any value it holds (which is constrained
++                // to `N` bits) can fit into the destination type, so this conversion cannot fail.
+                 unsafe { <$type>::try_from(value.get()).unwrap_unchecked() }
+             }
+         }
+@@ -1137,8 +1143,8 @@ impl<T, const N: u32> From<bool> for Bounded<T, N>
+     T: Integer<Signedness = Unsigned> + From<bool>,
  {
--	return sk->sk_err ||
-+	/* sk_err can be cleared locklessly by sock_error(). */
-+	return READ_ONCE(sk->sk_err) ||
- 	       sk->sk_state == TCP_CLOSE ||
- 	       (sk->sk_shutdown & RCV_SHUTDOWN) ||
- 	       signal_pending(current);
+     fn from(value: bool) -> Self {
+-        // SAFETY: A boolean is represented by `0` or `1`, so it fits within any valid unsigned
+-        // `Bounded` width.
++        // SAFETY: `Integer` is sealed, so `T` is a primitive unsigned integer. A boolean is
++        // represented by `0` or `1`, so it fits within any valid unsigned `Bounded` width.
+         unsafe { Self::__new(T::from(value)) }
+     }
+ }
 
 ---
-base-commit: 38b6be101006d3e7af972999f45d4f1e8250587a
-change-id: 20260908-mptcp-sk-err-net-7ff88ef05044
+base-commit: c6709d5e14072d0e3d02f291daee46a199e5dad3
+change-id: 20260906-docs-rust-num-integer-sealing-safety-3a0e2967a948
 
 Best regards,
 --  
-Quanye Yang <quanyeyang@proton.me>
+Younes Akhouayri <git@younes.io>
 
