@@ -1,14 +1,12 @@
 From: Joel Selvaraj <foss@joelselvaraj.com>
-Subject: [PATCH 0/4] Update my email address
-Date: Wed, 09 Sep 2026 01:11:58 -0700
-Message-Id: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
+Date: Wed, 09 Sep 2026 01:11:59 -0700
+Subject: [PATCH 1/4] mailmap: update Joel Selvaraj's email address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJwWioVzEuxvYHhiiSDhASw
- t2puvwW721kSAqjW7FRwqKmnyGjPBUUOhlasMZsqlx1dd7VPI9RJjDeoi+WGBPMGBAEj+Zy9iX
- ldExodP1t74+/bX72CNP3Rft+AOhrz7Z4AAAA
-X-Change-ID: 20260908-update-email-address-eeaec9ef5391
+Message-Id: <20260909-update-email-address-v1-1-94a240f9469e@joelselvaraj.com>
+References: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
+In-Reply-To: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -19,37 +17,36 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
 Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  devicetree@vger.kernel.org, Joel Selvaraj <foss@joelselvaraj.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941524; l=985;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941524; l=809;
  i=foss@joelselvaraj.com; s=20260909; h=from:subject:message-id;
- bh=9dMkHMleRdbFXq/Tngq9Z7Icy4JxHXPrtaDymmuML0o=;
- b=jiHVWBP063DjZH2azjp48G9TpUTak2H2UEhlwqzRmb5KYIzCgfIHDAhlaCa9tVAYPf+XT+5Wk
- cQ54I+X6ziHBNNAf+ezwTiBNaAxrbOp5X0hxQUAS7kDfDUwFNviY1JQ
+ bh=KfWlaqHF//2UprpPY6mCM27F9EEMcI/pUqHOiV1Fdas=;
+ b=p/SvXrdgooOYa5zsVaumVxUoo5aRmok8IdVXXUmW4AzD8RpeKo+2oYqKgOXpGua/UBK/qz/3D
+ 8pnvjlJv3DpDaNRL4axKfjXKDt9atpvpWgoETCUh9H8hODxlzsCZZPy
 X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
  pk=UUJ1v4UQJ/nljqj3NjsWt5H4mphWQ7etpQ4Z7JiR2yo=
 X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20260909 with auth_id=1018
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-My jsfamily.in email address is no longer active, so update the kernel
-tree to use my current address instead.
+Map my old, no longer active, jsfamily.in address to my current one.
 
 Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
-Joel Selvaraj (4):
-      mailmap: update Joel Selvaraj's email address
-      MAINTAINERS: update Joel Selvaraj's email address
-      dt-bindings: display: panel: ebbg,ft8719: update Joel Selvaraj's email address
-      drm/panel: ebbg-ft8719: update Joel Selvaraj's email address
+ .mailmap | 1 +
+ 1 file changed, 1 insertion(+)
 
- .mailmap                                                         | 1 +
- Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml | 2 +-
- MAINTAINERS                                                      | 2 +-
- drivers/gpu/drm/panel/panel-ebbg-ft8719.c                        | 4 ++--
- 4 files changed, 5 insertions(+), 4 deletions(-)
----
-base-commit: a9d7ced84989ec05be09b4b8428759ef60450a0f
-change-id: 20260908-update-email-address-eeaec9ef5391
+diff --git a/.mailmap b/.mailmap
+index 742244a422c32..516c877ef9cf3 100644
+--- a/.mailmap
++++ b/.mailmap
+@@ -458,6 +458,7 @@ Jisheng Zhang <jszhang@kernel.org> <Jisheng.Zhang@synaptics.com>
+ Jishnu Prakash <quic_jprakash@quicinc.com> <jprakash@codeaurora.org>
+ Joe Damato <joe@dama.to> <jdamato@fastly.com>
+ Joel Granados <joel.granados@kernel.org> <j.granados@samsung.com>
++Joel Selvaraj <foss@joelselvaraj.com> <jo@jsfamily.in>
+ Johan Hovold <johan@kernel.org> <jhovold@gmail.com>
+ Johan Hovold <johan@kernel.org> <johan@hovoldconsulting.com>
+ John Crispin <john@phrozen.org> <blogic@openwrt.org>
 
-Best regards,
---  
-Joel Selvaraj <foss@joelselvaraj.com>
+-- 
+2.55.0
 
