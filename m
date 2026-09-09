@@ -1,61 +1,130 @@
-From: Joel Selvaraj <foss@joelselvaraj.com>
-Date: Wed, 09 Sep 2026 01:12:02 -0700
-Subject: [PATCH 4/4] drm/panel: ebbg-ft8719: update Joel Selvaraj's email
- address
+From: linuszeng <linuszeng@tencent.com>
+Subject: [PATCH v2 0/3] mm: page_counter: move hierarchical protection out
+ of struct page_counter
+Date: Wed, 09 Sep 2026 17:44:18 +0800
+Message-Id: <20260909-descriptive-name-v2-0-d7dd7c099049@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-update-email-address-v1-4-94a240f9469e@joelselvaraj.com>
-References: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
-In-Reply-To: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- devicetree@vger.kernel.org, Joel Selvaraj <foss@joelselvaraj.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941524; l=1165;
- i=foss@joelselvaraj.com; s=20260909; h=from:subject:message-id;
- bh=vsAeeSW3w+ssvIy6gSDQz4fsGrrch3NZw9153qCisHI=;
- b=tt3Ct6OmTKkCdgyfIorTs6yKB7jYvq4ymidkt9KLqpjcins4+v5pPR2dYqnRxHSfVt+UIZ7sg
- BRK4cliA86gB1WM23XgL7ah9gnKg+jKcUSHHjUHT0QMK4yrhKa5sduy
-X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
- pk=UUJ1v4UQJ/nljqj3NjsWt5H4mphWQ7etpQ4Z7JiR2yo=
-X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20260909 with auth_id=1018
+X-B4-Tracking: v=1; b=H4sIAHIqoWoC/32NQQ7CIBBFr9LM2jFAkwquvEfTBcLUzqK0AUI0D
+ XcXewCX7yX//QMSRaYE9+6ASIUTb6GBunTgFhtehOwbgxJqEEYY9JRc5D1zIQx2JaReK9vP5qa
+ 9hzbbI838PpPj1HjhlLf4OR+K/Nk/sSJRoNRKm0G6p5D2kSk4CvnqthWmWusX0JWKTLIAAAA=
+To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Maarten Lankhorst <dev@lankhorst.se>, Maxime Ripard <mripard@kernel.org>, 
+ Natalie Vock <nat@pixelcluster.dev>, Tejun Heo <tj@kernel.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
+ Oscar Salvador <osalvador@suse.de>, 
+ Jingxiang Zeng <jingxiangzeng.cas@gmail.com>
+Cc: Michal Hocko <mhocko@suse.com>, cgroups@vger.kernel.org, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ dri-devel@lists.freedesktop.org, linuszeng <linuszeng@tencent.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788947061; l=4455;
+ i=linuszeng@tencent.com; s=20260909; h=from:subject:message-id;
+ bh=p/FFus9bKe5tMEJQcywlfhVh8H2JBkhG45wwhRpVejU=;
+ b=hJTwX6JHH/uUOp9uHufT3TwNsMm+bWbW8cQjl9xqdJC3KPtmdS0V4dRJcPJJbMw26XXmcfYw6
+ f4kAsSPB1svC72rIgJlJBLAxwUHAIMyEP1iKgbuGtVIe8pJCi+QT/mm
+X-Developer-Key: i=linuszeng@tencent.com; a=ed25519;
+ pk=6K54xRzYIRWqatrAPy86M4E0MsI92BVJBhXwz5NdC74=
+X-Endpoint-Received: by B4 Relay for linuszeng@tencent.com/20260909 with auth_id=1017
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-My jsfamily.in address is no longer active, switch to my current one.
+Hierarchical memory protection (memory.min / memory.low) is built on
+struct page_counter today: every counter carries the full protection
+state - emin/elow, the protected-usage trackers (min_usage,
+children_min_usage, low_usage, children_low_usage), the configured
+min/low values and a protection_support flag - although only the memory
+page counter (and dmem pools) ever participates in protection.
+swap/memsw, kmem, tcpmem and hugetlb counters ship this state around
+unused.
 
-Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
+This series moves that state into a dedicated struct
+page_counter_protection, instantiated only for the counters that
+actually support protection, which shrinks struct page_counter by one
+cache line.
+
+Patch 1 adds struct page_counter_protection and links it to struct
+page_counter through a ->prot pointer (NULL when protection is not
+supported).  page_counter_init() loses its protection_support argument,
+and the new page_counter_init_protection() attaches the context.
+Protection stays enabled only on the cgroup v2 hierarchy, matching the
+previous page_counter_init(..., memcg_on_dfl) behaviour, and the root
+memcg keeps it unconditionally.
+
+Patch 2 migrates the read/write side of protection onto the new
+structure: propagate_protected_usage(), page_counter_set_min()/low()
+and page_counter_calculate_protection() now operate on the protection
+context, and the memcg and dmem accessors (mem_cgroup_protection,
+mem_cgroup_below_min/low, the dmem below_min/low helpers and the dmem
+eviction check) read emin/elow/children_*_usage from it.
+
+Patch 3 deletes the now-unused fields from struct page_counter.  On
+64-bit the structure drops from three cache lines to two, one cache
+line saved per counter.  For reference, pahole shows the layout before
+and after (x86_64, 64-byte cache lines):
+
+    before:                                after:
+     0  usage                               0  usage
+     8  failcnt                             8  failcnt
+    64  emin                               64  watermark
+    72  min_usage                          72  local_watermark
+    80  children_min_usage                 80  track_failcnt
+    88  elow                               88  high
+    96  low_usage                          96  max
+   104  children_low_usage                104  parent
+   112  watermark                         112  prot
+   120  local_watermark
+   128  protection_support                 size 128, 2 cachelines,
+   129  track_failcnt                         11 members
+   136  min
+   144  low                                (the protection fields moved
+   152  high                               into struct
+   160  max                                page_counter_protection,
+   168  parent                              72 bytes, allocated only
+                                           where protection is used)
+   size 192, 3 cachelines, 19 members
+
+The four embedded page counters of struct mem_cgroup all shrink by 64
+bytes, which translates to 128 bytes saved per cgroup once the one
+embedded page_counter_protection is accounted for (2176 -> 2048 bytes
+with CONFIG_MEMCG_V1=y, verified with pahole).
+
+No functional change is intended: protection semantics and the cgroup
+v1/v2 behaviour are preserved.
+
+Signed-off-by: linuszeng <linuszeng@tencent.com>
 ---
- drivers/gpu/drm/panel/panel-ebbg-ft8719.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v2:
+- dmem: fix up prot.parent in get_cg_pool_locked() too, so bottom-up
+  created pools keep hierarchical protection.
+- Drop the orphaned _pad2_ padding and its stale comment from struct
+  page_counter.
+- Link to v1: https://lore.kernel.org/r/20260909-descriptive-name-v1-0-1828961cb01a@tencent.com
 
-diff --git a/drivers/gpu/drm/panel/panel-ebbg-ft8719.c b/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
-index fb9f9f42be4f2..5ee8b52962847 100644
---- a/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
-+++ b/drivers/gpu/drm/panel/panel-ebbg-ft8719.c
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0-only
- /*
-- * Copyright (c) 2022 Joel Selvaraj <jo@jsfamily.in>
-+ * Copyright (c) 2022 Joel Selvaraj <foss@joelselvaraj.com>
-  * Generated with linux-mdss-dsi-panel-driver-generator from vendor device tree:
-  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
-  */
-@@ -242,6 +242,6 @@ static struct mipi_dsi_driver ebbg_ft8719_driver = {
- };
- module_mipi_dsi_driver(ebbg_ft8719_driver);
- 
--MODULE_AUTHOR("Joel Selvaraj <jo@jsfamily.in>");
-+MODULE_AUTHOR("Joel Selvaraj <foss@joelselvaraj.com>");
- MODULE_DESCRIPTION("DRM driver for EBBG FT8719 video dsi panel");
- MODULE_LICENSE("GPL v2");
+---
+linuszeng (3):
+      mm: page_counter: add page_counter_protection struct and init API
+      mm: page_counter: track protection state in page_counter_protection
+      mm: page_counter: drop protection fields from struct page_counter
 
+ include/linux/memcontrol.h   | 15 ++++++---
+ include/linux/page_counter.h | 73 +++++++++++++++++++++++++++++++-------------
+ kernel/cgroup/dmem.c         | 21 +++++++------
+ mm/hugetlb_cgroup.c          |  4 +--
+ mm/memcontrol.c              | 29 ++++++++++--------
+ mm/page_counter.c            | 61 +++++++++++++++++++++++-------------
+ 6 files changed, 133 insertions(+), 70 deletions(-)
+---
+base-commit: d118502628f8b673be9023db8bdf878f64a7ed45
+change-id: 20260909-descriptive-name-e382a3f978dd
+
+Best regards,
 -- 
-2.55.0
+linuszeng <linuszeng@tencent.com>
 
