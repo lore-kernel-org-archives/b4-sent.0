@@ -1,10 +1,11 @@
 From: Joel Selvaraj <foss@joelselvaraj.com>
-Date: Wed, 09 Sep 2026 01:12:00 -0700
-Subject: [PATCH 2/4] MAINTAINERS: update Joel Selvaraj's email address
+Date: Wed, 09 Sep 2026 01:12:01 -0700
+Subject: [PATCH 3/4] dt-bindings: display: panel: ebbg,ft8719: update Joel
+ Selvaraj's email address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-update-email-address-v1-2-94a240f9469e@joelselvaraj.com>
+Message-Id: <20260909-update-email-address-v1-3-94a240f9469e@joelselvaraj.com>
 References: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
 In-Reply-To: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -17,11 +18,11 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
 Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  devicetree@vger.kernel.org, Joel Selvaraj <foss@joelselvaraj.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941524; l=744;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941524; l=912;
  i=foss@joelselvaraj.com; s=20260909; h=from:subject:message-id;
- bh=J8deV8p+5atN7V9RAY+ZWNm5S7W0BWIcfSjOFp0qHJM=;
- b=7iAatDXk6owcd/aSlf/Ltlt4ip/Wb/d7+1+ounJYLITYp+4HFka0N6bD7FDYS1kXV2H0mofKZ
- BSCR0yznXJfDAJk0dAQ2EvU/FkSIG0ZAviwkBUoD8C4g6Nu1j10M1jN
+ bh=9NSve4XIc6DX1T3YVP+A0UkXTxGHu31A3Erg3TEI1SQ=;
+ b=EYlG4vgmN24PmUjGG0Vl1NAmxTzJ9EVzEfD5FnUB/rnw3bZBi5xkg1arMEB6ZA7fUcmgwu4y6
+ Hh0zgYkiRHfDs91XqK2oTF41uYnuHUr7PqskhSMJnjjLlsHDb7A0AAi
 X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
  pk=UUJ1v4UQJ/nljqj3NjsWt5H4mphWQ7etpQ4Z7JiR2yo=
 X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20260909 with auth_id=1018
@@ -31,22 +32,22 @@ My jsfamily.in address is no longer active, switch to my current one.
 
 Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- MAINTAINERS | 2 +-
+ Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 503b4c4586a41..29b6381d46523 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -8124,7 +8124,7 @@ F:	Documentation/devicetree/bindings/display/bridge/chipone,icn6211.yaml
- F:	drivers/gpu/drm/bridge/chipone-icn6211.c
+diff --git a/Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml b/Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml
+index 80deedc01c7c5..5a7f2ff40fe0e 100644
+--- a/Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml
++++ b/Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml
+@@ -7,7 +7,7 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ title: EBBG FT8719 MIPI-DSI LCD panel
  
- DRM DRIVER FOR EBBG FT8719 PANEL
--M:	Joel Selvaraj <jo@jsfamily.in>
-+M:	Joel Selvaraj <foss@joelselvaraj.com>
- S:	Maintained
- T:	git https://gitlab.freedesktop.org/drm/misc/kernel.git
- F:	Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml
+ maintainers:
+-  - Joel Selvaraj <jo@jsfamily.in>
++  - Joel Selvaraj <foss@joelselvaraj.com>
+ 
+ description: |
+   The FT8719 panel from EBBG is a FHD+ LCD display panel with a resolution
 
 -- 
 2.55.0
