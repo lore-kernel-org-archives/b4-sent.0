@@ -1,116 +1,68 @@
-From: Zakariya Hadrami <zkh@mailbox.org>
-Date: Wed, 09 Sep 2026 21:38:03 +0200
-Subject: [PATCH v4 4/4] ARM: dts: mediatek: Add basic support for Amazon
- ford board
+From: Johan Jonker <jbx6244@gmail.com>
+Date: Wed, 09 Sep 2026 23:20:54 +0200
+Subject: [PATCH v2] drm: rockchip: add drm_plane_create_blend_mode_property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-mt8127-amazon-ford-basic-v4-4-e9af5c420ab1@mailbox.org>
-References: <20260909-mt8127-amazon-ford-basic-v4-0-e9af5c420ab1@mailbox.org>
-In-Reply-To: <20260909-mt8127-amazon-ford-basic-v4-0-e9af5c420ab1@mailbox.org>
-To: Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sean Wang <sean.wang@mediatek.com>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-watchdog@vger.kernel.org, zkh1@proton.me, 
- Zakariya Hadrami <zkh@mailbox.org>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788982689; l=2117;
- i=zkh@mailbox.org; s=20260908; h=from:subject:message-id;
- bh=ArzZhvqbaHzkwMRg8G+mxS9/RyxJ5FW/7LRvsjsHapo=;
- b=GLHETlbpi5XIYO5QxABxqgKWx4PFuSTFhmt6Oyla2JeDqArgYfJ4Jzy/6UZPNy3TTgT8Z5D9j
- HHjkqdWyeIBBP2EZtQFQZSvXX4vK0efzQFHYK3qZtMuidLgqks4qiAs
-X-Developer-Key: i=zkh@mailbox.org; a=ed25519;
- pk=up24Xn4ScFKugfT4EJru/UQAS7JOIN+DSQqro+a05T4=
-X-Endpoint-Received: by B4 Relay for zkh@mailbox.org/20260908 with auth_id=1015
+Message-Id: <20260909-blend-v2-1-37e27af4faee@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALXNoWoC/x2NywqEMAwAf0Vy3kIpixh/RTz0ETWgVZJlEYr/b
+ vU4zMAUUBImhb4pIPRn5T1XcJ8G4uLzTIZTZXDWtRYtmrBSTiZ2mFzEqcXuC7UNXskE8TkuT71
+ 5/ZE84hCa+HwHw3hdNwJAikJwAAAA
+To: Sandy Huang <hjc@rock-chips.com>, 
+ =?utf-8?q?Heiko_St=C3=BCbner?= <heiko@sntech.de>, 
+ Andy Yan <andy.yan@rock-chips.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Johan Jonker <jbx6244@gmail.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788988866; l=1304;
+ i=jbx6244@gmail.com; s=20260824; h=from:subject:message-id;
+ bh=Vv2dAdwZrZngpYkZZtAtqUthy17ncXSrnl8lfyqCNow=;
+ b=7Y4+ehZW3Pl8LcRBNO/umDaR4t+TQniFaUIL8IMw+k7AXa7gOy7ImS/oeZzJ6Q0zkM5k63iLE
+ CSUZaUjRPkDC43hP0rkLVd0w6yVkois1LwGyvp87PxSPBGhVEUwn16D
+X-Developer-Key: i=jbx6244@gmail.com; a=ed25519;
+ pk=MK5Flx1ndjAF0uwXdNm8VvvoghD4KWCNd2hQE8QGyl0=
+X-Endpoint-Received: by B4 Relay for jbx6244@gmail.com/20260824 with auth_id=971
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This tablet uses a MediaTek MT8127 system-on-chip with 1GB of RAM.
-It can currently boot into initramfs with a working UART and
-Simple Framebuffer using already initialized panel by the bootloader.
+A validate_blend_mode_for_alpha_formats() function was added that
+fills the kernel log with warnings for Rockchip VOP version 1 SoCs.
+Add a drm_plane_create_blend_mode_property() function as fix.
+VOP version 1 doesn't support blending with a pixel alpha background
+layer, only with a constant alpha. Advertise blending capability with
+DRM_MODE_BLEND_PIXEL_NONE.
 
-Signed-off-by: Zakariya Hadrami <zkh@mailbox.org>
+Signed-off-by: Johan Jonker <jbx6244@gmail.com>
 ---
- arch/arm/boot/dts/mediatek/Makefile               |  1 +
- arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts | 54 +++++++++++++++++++++++
- 2 files changed, 55 insertions(+)
 
-diff --git a/arch/arm/boot/dts/mediatek/Makefile b/arch/arm/boot/dts/mediatek/Makefile
-index 37c4cded0eae..a610bc75c7d9 100644
---- a/arch/arm/boot/dts/mediatek/Makefile
-+++ b/arch/arm/boot/dts/mediatek/Makefile
-@@ -14,5 +14,6 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += \
- 	mt7623n-rfb-emmc.dtb \
- 	mt7623n-bananapi-bpi-r2.dtb \
- 	mt7629-rfb.dtb \
-+	mt8127-amazon-ford.dtb \
- 	mt8127-moose.dtb \
- 	mt8135-evbp1.dtb
-diff --git a/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts b/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts
-new file mode 100644
-index 000000000000..8edad5482de2
---- /dev/null
-+++ b/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts
-@@ -0,0 +1,54 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+/dts-v1/;
-+#include "mt8127.dtsi"
-+
-+/ {
-+	model = "MediaTek MT8127 Amazon Ford";
-+	compatible = "amazon,ford", "mediatek,mt8127";
-+	chassis-type = "tablet";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+		stdout-path = "serial0:921600n8";
-+
-+		framebuffer0: framebuffer@b7a00000 {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&framebuffer_reserved>;
-+			width = <1024>;
-+			height = <600>;
-+			stride = <(1024 * 2)>;
-+			format = "r5g6b5";
-+		};
-+	};
-+
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0 0x80000000 0 0x40000000>;
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer_reserved: framebuffer@b7a00000 {
-+			reg = <0 0xb7a00000 0 0x1000000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
-+
-+&watchdog {
-+	status = "okay";
-+};
+Changed V2:
+Add comment line
+---
+ drivers/gpu/drm/rockchip/rockchip_drm_vop.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+index 0090d8ff0c79..0bc5b606f021 100644
+--- a/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
++++ b/drivers/gpu/drm/rockchip/rockchip_drm_vop.c
+@@ -1850,6 +1850,8 @@ static void vop_plane_add_properties(struct drm_plane *plane,
+ 	if (flags)
+ 		drm_plane_create_rotation_property(plane, DRM_MODE_ROTATE_0,
+ 						   DRM_MODE_ROTATE_0 | flags);
++	drm_plane_create_blend_mode_property(plane,
++					     BIT(DRM_MODE_BLEND_PIXEL_NONE));
+ }
+ 
+ static int vop_create_crtc(struct vop *vop)
+
+---
+base-commit: 9d80aa4617b32f5054c5aa471d06b66704854935
+change-id: 20260909-blend-c89d2c9f6984
+
+Best regards,
 -- 
-2.54.0
+Johan Jonker <jbx6244@gmail.com>
 
