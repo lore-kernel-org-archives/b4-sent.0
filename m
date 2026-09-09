@@ -1,77 +1,66 @@
-From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 09 Sep 2026 10:11:01 -0700
-Subject: [PATCH v2 2/2] mm: hugetlb: Drop refcount before freeing on memcg
- charge failure
+From: Roland Dreier <rolanddreier@rivian.com>
+Date: Wed, 09 Sep 2026 17:58:59 +0000
+Subject: [PATCH] firmware: arm_scmi: Fix error path leak in
+ scmi_raw_message_send()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-hugetlb-alloc-folio-memcg-charge-error-handling-v2-2-4b4a8a19a7f7@google.com>
-References: <20260909-hugetlb-alloc-folio-memcg-charge-error-handling-v2-0-4b4a8a19a7f7@google.com>
-In-Reply-To: <20260909-hugetlb-alloc-folio-memcg-charge-error-handling-v2-0-4b4a8a19a7f7@google.com>
-To: Alex Shi <alexs@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Dongliang Mu <dzm91@hust.edu.cn>, 
- Hongxiang Lou <louhongxiang@huawei.com>, 
- Johannes Weiner <hannes@cmpxchg.org>, Jonathan Corbet <corbet@lwn.net>, 
- Joshua Hahn <joshua.hahnjy@gmail.com>, 
- "Liam R. Howlett" <liam@infradead.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- Miaohe Lin <linmiaohe@huawei.com>, Michal Hocko <mhocko@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Muchun Song <muchun.song@linux.dev>, 
- Nhat Pham <nphamcs@gmail.com>, Oscar Salvador <osalvador@suse.de>, 
- Peter Xu <peterx@redhat.com>, Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, 
- Shuah Khan <skhan@linuxfoundation.org>, jthoughton@google.com, 
- fvdl@google.com, rientjes@google.com, vannapurve@google.com, 
- Suren Baghdasaryan <surenb@google.com>, Vlastimil Babka <vbabka@kernel.org>, 
- Wupeng Ma <mawupeng1@huawei.com>, Yanteng Si <si.yanteng@linux.dev>
-Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
- Ackerley Tng <ackerleytng@google.com>, stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788973868; l=1354;
- i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=RCk4FUhHtfR9+WkuFadogmxvoeEME9GEkAvOLYp7r3U=;
- b=gBpcMiO0hmn63lrRPn7N0MR5W2dOzYOn5xT2nETVl+UJrZXPV8t92Dbe0aMohlnvWSzSzqKO6
- Lcdbw5LVxr6DJq6Hl54+GpzcN4ODPHZbPRq6605zAFWp8ctP3310CTf
-X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
- pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
-X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
+Message-Id: <20260909-scmi-raw-v1-1-de3fa75d2c6f@rivian.com>
+X-B4-Tracking: v=1; b=H4sIAGKeoWoC/yXM3QpAQBCG4VvRHNsahLgVOVhrllF+2vFXcu8Wh
+ 0+933eBkGMSKIMLHO0sPE8eURiA6fXUkeLWG2KMMyywUGJGVk4fCq1NLDWpxjwBny+OLJ/fVVX
+ /lq0ZyKzvHu77AWfXCqhsAAAA
+X-Change-ID: 20260909-scmi-raw-0ff3feb5a073
+To: Sudeep Holla <sudeep.holla@kernel.org>, 
+ Cristian Marussi <cristian.marussi@arm.com>
+Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Sashiko <sashiko-bot@kernel.org>, 
+ Roland Dreier <rolanddreier@rivian.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788976750; l=1401;
+ i=rolanddreier@rivian.com; s=20260814; h=from:subject:message-id;
+ bh=ulhzZqaSwBOt3awtuXWQe6D8VST705i7vhwvE1JyWas=;
+ b=JKBsDDq4LGcT0kglXB6DsxiCDeXT92Dxot3q04+qCvF0saYsODSHs0CU+wFYqxRjYsAICdNWr
+ ICITTR1FohHBDKI+3eDcOAyowR2GrTj861j+uevgLJs0L0jabq16Qmt
+X-Developer-Key: i=rolanddreier@rivian.com; a=ed25519;
+ pk=C7SBXsDIlarq7BpINqyDL67XV/AGNqNt09NCCpFcExk=
+X-Endpoint-Received: by B4 Relay for rolanddreier@rivian.com/20260814 with auth_id=952
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When mem_cgroup_charge_hugetlb(folio, gfp) returns -ENOMEM, the folio has
-its refcount set to 1 via folio_ref_unfreeze(folio, 1).
+When the is_transport_polling_capable() check fails in scmi_raw_message_send(),
+it returns -EINVAL without doing scmi_xfer_raw_put(), which will leak a
+struct scmi_xfer.
 
-The error path calls free_huge_folio(folio) directly, which expects a
-refcount of 0. Hence, VM_BUG_ON_FOLIO(folio_ref_count(folio), folio) is
-triggered.
-
-Even with CONFIG_DEBUG_VM disabled, returning a folio with refcount 1 to
-the freelist can corrupt allocator state later.
-
-Use folio_put(folio) instead of free_huge_folio(folio) to properly drop the
-reference before freeing it.
-
-Fixes: 991135774c0e0 ("memcg/hugetlb: introduce mem_cgroup_charge_hugetlb")
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
-Reviewed-by: Muchun Song <muchun.song@linux.dev>
-Reviewed-by: Joshua Hahn <joshua.hahnjy@gmail.com>
-Cc: stable@vger.kernel.org
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Link: https://sashiko.dev/#/patchset/20260909-scmi-async-done-race-v2-0-cc5dec25c6be%40rivian.com
+Fixes: 07cb8c324b63 ("firmware: arm_scmi: Add polling support to raw mode")
+Signed-off-by: Roland Dreier <rolanddreier@rivian.com>
 ---
- mm/hugetlb.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Sashiko pointed out this pre-existing bug when reviewing my patchset:
+https://sashiko.dev/#/patchset/20260909-scmi-async-done-race-v2-0-cc5dec25c6be%40rivian.com
 
-diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 522487d341841..f5b853a5377c2 100644
---- a/mm/hugetlb.c
-+++ b/mm/hugetlb.c
-@@ -2891,7 +2891,7 @@ struct folio *hugetlb_alloc_folio(struct hstate *h,
- 	lruvec_stat_mod_folio(folio, NR_HUGETLB, nr_pages);
- 
- 	if (ret == -ENOMEM) {
--		free_huge_folio(folio);
-+		folio_put(folio);
- 		/*
- 		 * Skip uncharging hugetlb_cgroup since the charges
- 		 * were committed to the folio and freeing the folio
+Fix is trivial so sending it out.
+---
+ drivers/firmware/arm_scmi/raw_mode.c | 1 +
+ 1 file changed, 1 insertion(+)
 
--- 
-2.55.0.1007.g17ff1f9808-goog
+diff --git a/drivers/firmware/arm_scmi/raw_mode.c b/drivers/firmware/arm_scmi/raw_mode.c
+index 1f6e51670208..279fee7c6ce9 100644
+--- a/drivers/firmware/arm_scmi/raw_mode.c
++++ b/drivers/firmware/arm_scmi/raw_mode.c
+@@ -694,6 +694,7 @@ static int scmi_raw_message_send(struct scmi_raw_mode_info *raw,
+ 		} else {
+ 			dev_err(raw->handle->dev,
+ 				"Failed to send RAW message - Polling NOT supported\n");
++			scmi_xfer_raw_put(raw->handle, xfer);
+ 			return -EINVAL;
+ 		}
+ 	}
+
+---
+base-commit: 893e11787f78e43b534e252249ac3fff4d1333f8
+change-id: 20260909-scmi-raw-0ff3feb5a073
+
+Best regards,
+--  
+Roland Dreier <rolanddreier@rivian.com>
 
