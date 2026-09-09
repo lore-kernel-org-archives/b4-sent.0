@@ -1,114 +1,75 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Wed, 09 Sep 2026 10:40:49 +0800
-Subject: [PATCH mptcp-next v3 2/2] mptcp: shrink struct
- mptcp_options_received
+From: Roland Dreier <rolanddreier@rivian.com>
+Subject: [PATCH v2 0/2] Couple of SCMI race fixes
+Date: Wed, 09 Sep 2026 04:32:26 +0000
+Message-Id: <20260909-scmi-async-done-race-v2-0-cc5dec25c6be@rivian.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-mptcp-shrink-opt-rx-v2-v3-2-92bb3009a665@proton.me>
-References: <20260909-mptcp-shrink-opt-rx-v2-v3-0-92bb3009a665@proton.me>
-In-Reply-To: <20260909-mptcp-shrink-opt-rx-v2-v3-0-92bb3009a665@proton.me>
-To: MPTCP Linux <mptcp@lists.linux.dev>
-Cc: Quanye Yang <quanyeyang@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788921669; l=2657;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=YpW1YW98fTieQNQguyspktoCp+D2q9Bq/4Xz1WxldUA=;
- b=HNol1HmkDp8gGW2N0KttaORjzWENHxPvnAi8R3DT4y04QijGCQxeWd7+t0KmhwQdRXQ/gne9N
- P/gDDszp6hVDzgwSpP4eKzeGio+0KUc01mmtZ7i7MXljfdw2Cj0TD3E
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-B4-Tracking: v=1; b=H4sIAFrhoGoC/4WNQQ6CMBBFr0Jm7RimCKgr72FYlHaQMaE1LTYSw
+ t0FPIDLl7z//gyRg3CEazZD4CRRvFtBHTIwvXYPRrErg8pVlZ/phNEMgjpOzqD1jjFow6guRHV
+ niS+6hHX6CtzJZ8/emx/Hd/tkM26tzegljj5M+2+izftzkQhzLIqypaqwdc18C5JEu6PxAzTLs
+ nwB6wXKZcsAAAA=
+X-Change-ID: 20260814-scmi-async-done-race-29117fd1e9a5
+To: Sudeep Holla <sudeep.holla@kernel.org>, 
+ Cristian Marussi <cristian.marussi@arm.com>
+Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Roland Dreier <rolanddreier@rivian.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788928354; l=2176;
+ i=rolanddreier@rivian.com; s=20260814; h=from:subject:message-id;
+ bh=GGvaoobDFjXxyynB7itBjEHKaBgEXjrPgUkJXaWfKWw=;
+ b=Wd3xx9+HBZXxwiSDuiO7nMb+AEUibpqrk8KVUL3jzg0Bh28DAiyPw4TOmweKDH1VM+Mg5SHLi
+ tzBihPf2lgkABSv8mRAU7bwcEeXfDyZXtFMpa+B81Vyce6sluDwTlQw
+X-Developer-Key: i=rolanddreier@rivian.com; a=ed25519;
+ pk=C7SBXsDIlarq7BpINqyDL67XV/AGNqNt09NCCpFcExk=
+X-Endpoint-Received: by B4 Relay for rolanddreier@rivian.com/20260814 with auth_id=952
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-struct mptcp_options_received is allocated on the stack while parsing
-incoming MPTCP options. Several suboptions are mutually exclusive, as
-enforced by mptcp_parse_option(), so their payloads can overlap.
+Noticed a couple of races in SCMI code around delayed responses that
+time out. These are probably nearly impossible to hit in practice but
+the fixes are pretty straightforward and it seems worth having the
+code be sound.
 
-Group fields by suboption and place the mutually exclusive payloads in
-an anonymous union. Keep DSS and rm_list outside the union: they can
-be combined with other suboptions. Move join_id into the MP_JOIN
-group, and overlap token, thmac and hmac inside that group.
+The v1 fixes were correct as posted, despite Sashiko warning that the
+new "delayed_response_dropped" debug counter might never increment.
+However, that review made me think that a new debug counter for a
+one-in-a-gazillion race condition is probably less useful than a
+kernel error message. So the change in v2 is having the first patch
+log an error for a delayed response that arrives in the race window it
+closes (matching the existing "Delayed Response not expected" error in
+scmi_msg_response_validate()). The new error is expected to be
+extremely rare but it makes sure there is no path where a delayed
+response gets matched and then discarded without any logging.
 
-Further shrinking would require changing the parser so currently
-coexisting fields (DSS mapping vs ACK, rm_list, status flags) can
-overlap. That adds complexity for little gain, since the outer union is
-already dominated by the MP_JOIN / ADD_ADDR members.
-
-This reduces the structure size from 136 to 72 bytes on x86_64.
-
-Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/625
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Signed-off-by: Roland Dreier <rolanddreier@rivian.com>
 ---
- net/mptcp/protocol.h | 45 ++++++++++++++++++++++++++++-----------------
- 1 file changed, 28 insertions(+), 17 deletions(-)
+Changes in v2:
+- Patch 1: replace the new delayed_response_dropped debugfs counter
+  with a dev_err() log message, since the condition is rare enough
+  that logging is more useful than counting (per sashiko review of v1).
+- Link to v1: https://patch.msgid.link/20260814-scmi-async-done-race-v1-0-335b163d77ee@rivian.com
 
-diff --git a/net/mptcp/protocol.h b/net/mptcp/protocol.h
-index 04e1180012b9..534d052ec007 100644
---- a/net/mptcp/protocol.h
-+++ b/net/mptcp/protocol.h
-@@ -145,16 +145,13 @@ static inline bool before64(__u64 seq1, __u64 seq2)
- #define after64(seq2, seq1)	before64(seq1, seq2)
- 
- struct mptcp_options_received {
--	u64	sndr_key;
--	union {
--		u64	rcvr_key;
--		u64	fc_recv_key;
-+	struct { /* DSS, also used by MP_CAPABLE with data */
-+		u64	data_ack;
-+		u64	data_seq;
-+		u32	subflow_seq;
-+		u16	data_len;
-+		__sum16	csum;
- 	};
--	u64	data_ack;
--	u64	data_seq;
--	u32	subflow_seq;
--	u16	data_len;
--	__sum16	csum;
- 	struct_group(status,
- 		u16 suboptions;
- 		u16 use_map:1,
-@@ -170,15 +167,29 @@ struct mptcp_options_received {
- 		    deny_join_id0:1,
- 		    __unused:2;
- 	);
--	u8	join_id;
--	u32	token;
--	u32	nonce;
--	u64	thmac;
--	u8	hmac[MPTCPOPT_HMAC_LEN];
--	struct mptcp_addr_info addr;
- 	struct mptcp_rm_list rm_list;
--	u64	ahmac;
--	u64	fail_seq;
-+	/* Options below are mutually exclusive, see mptcp_parse_option() */
-+	union {
-+		struct { /* MP_CAPABLE */
-+			u64	sndr_key;
-+			u64	rcvr_key;
-+		};
-+		struct { /* MP_JOIN */
-+			u32	nonce;
-+			u8	join_id;
-+			union {
-+				u32	token;			/* SYN */
-+				u64	thmac;			/* SYN + ACK */
-+				u8	hmac[MPTCPOPT_HMAC_LEN];	/* ACK */
-+			};
-+		};
-+		struct { /* ADD_ADDR */
-+			struct mptcp_addr_info addr;
-+			u64	ahmac;
-+		};
-+		u64	fail_seq;	/* MP_FAIL */
-+		u64	fc_recv_key;	/* MP_FASTCLOSE */
-+	};
- };
- 
- static inline __be32 mptcp_option(u8 subopt, u8 len, u8 nib, u8 field)
+To: Sudeep Holla <sudeep.holla@kernel.org>
+To: Cristian Marussi <cristian.marussi@arm.com>
+Cc: arm-scmi@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
 
--- 
-2.55.0
+---
+Roland Dreier (2):
+      firmware: arm_scmi: Protect xfer->async_done with xfer->lock
+      firmware: arm_scmi: Don't reuse raw xfers with async_done still armed
+
+ drivers/firmware/arm_scmi/common.h    | 22 ++++++++++++++++++++
+ drivers/firmware/arm_scmi/driver.c    | 38 ++++++++++++++++++++++++++++++-----
+ drivers/firmware/arm_scmi/protocols.h |  9 ++++++---
+ drivers/firmware/arm_scmi/raw_mode.c  | 29 ++++++++++++++++++++------
+ 4 files changed, 84 insertions(+), 14 deletions(-)
+---
+base-commit: 786262be6048deab760f68c8acc2c85607165894
+change-id: 20260814-scmi-async-done-race-29117fd1e9a5
+
+Best regards,
+--  
+Roland Dreier <rolanddreier@rivian.com>
 
