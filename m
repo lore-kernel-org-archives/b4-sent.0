@@ -1,204 +1,122 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Wed, 09 Sep 2026 17:14:07 +0300
-Subject: [PATCH 3/3] iommu/mediatek-v1: add mt6572 support
+From: =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+Subject: [PATCH v3 0/5] arm64: dts: rockchip: Add FriendlyElec NanoPi R28S
+Date: Wed, 09 Sep 2026 22:33:21 +0800
+Message-Id: <20260909-r28s-upstream-v3-0-ee3e1a34a353@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-6572-iommu-v1-3-de261da09fb2@protonmail.com>
-References: <20260909-6572-iommu-v1-0-de261da09fb2@protonmail.com>
-In-Reply-To: <20260909-6572-iommu-v1-0-de261da09fb2@protonmail.com>
-To: Yong Wu <yong.wu@mediatek.com>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: iommu@lists.linux.dev, linux-mediatek@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNywrDIBQFfyW4rkVv0MSu+h+lC2NuGgt5oEZaQ
+ v69mm5CocuBM3NW4tFZ9ORSrMRhtN5OY4LyVBDT6/GB1LaJCTCQTDFBHdSeLrMPDvVAETggVK3
+ kUpDkzA47+9p7t/uX/dI80YQcyYve+jC5934Yed79a0dOGe1k3YqyViCVvs5uCtN4HpDkdoSjX
+ f3akGzguhEV64zi5mhv2/YBUZ16QfoAAAA=
+X-Change-ID: 20260905-r28s-upstream-e212e27d6165
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chukun Pan <amadeus@jmu.edu.cn>, jensen <jensenhuang@friendlyarm.com>, 
+ Andrey Korshunov <razor1702@gmail.com>, 
+ Diederik de Haas <diederik@cknow-tech.com>, 
+ =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788963261; l=5880;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=Q9DENazAgwi3T2qykCPLy9Ktvy2jjfeMJUql9cSW4PY=;
- b=8+P8cpShisgwoJq0VZRjZTKZLtcBmRIMxKVIDut/OQ5H+DuS0IRCr8OkGmuFQBBntJL5u+eAM
- gSO9ctW66BlAB6sGh2wQRaETyPAsSTIhioXn1Gf/IaQj0ZaS0FCL5+k
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4356;
+ i=HystericalDragons@proton.me; h=from:subject:message-id;
+ bh=M+gdn9bgR3lkxhAgqB4Nv6rYR7CI1y4judKjqeu65wo=;
+ b=owGbwMvMwCUmepz3XUtTHjvjabUkhqyFeYGXhcq49d7uvXL2/wbHIyzvVkgmfg4q01wSzuh9Q
+ v7m9949HaUsDGJcDLJiiiyym6ojhVZFzyxikToOM4eVCWQIAxenAEzk7wtGhgdzOZuO6rmKdR3c
+ daV92mfW8pT0PxYf9ny/2/ZUoO5nQDPD/3D79RMUTSYs/OK5JTJpot6VlEVqspxnV5hdvFwqHvN
+ OjxkA
+X-Developer-Key: i=HystericalDragons@proton.me; a=openpgp;
+ fpr=1DB27B5912AA5B9972041AC715C70DEE84826E07
+X-Endpoint-Received: by B4 Relay for HystericalDragons@proton.me/default with auth_id=1004
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mt6572 SoC utilizes an earlier version of the IOMMU, that shares the
-same v1 architecture, but has minor hardware differences compared to
-mt2701.
+The NanoPi R28S is a dual gigabit Ethernet router board based on the
+Rockchip RK3528 SoC:
 
-Introduce mtk_iommu_type to distinguish between mt2701 and mt6572
-variant and apply the necessary logic.
+  https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R28S
 
-Finally, add a platform data for the mt6572 SoC.
+It is closely related to the already supported NanoPi Zero2, sharing
+most of its power tree and peripheral routing. Patch 3 therefore moves
+the common parts into rk3528-nanopi.dtsi, and patch 4 adds the board on
+top of it. The split leaves the NanoPi Zero2 dtb unchanged; I verified
+this by decompiling the dtb before and after the split and comparing
+them with the phandle numbering normalised.
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+Patch 1 fixes the NanoPi Zero2 and comes first so that it can be
+backported on its own. Its RGMII PHY reset is described in the PHY
+node, where the MDIO core applies it only after it has already read the
+PHY ID over the bus, so a PHY that the bootloader left in reset is
+never found. Describing the reset on the MDIO bus instead makes it
+happen before any device on the bus is registered. The R28S wires the
+same net and inherits the fix through the dtsi. Patch 5 is a coding
+style cleanup across the three NanoPi RK3528 devicetrees.
+
+The devicetree was derived from the vendor tree:
+
+  https://github.com/friendlyarm/kernel-rockchip/commit/ee640c5344b13a0a317436e2357df01af8268ce7
+
+but with many changes to make it suitable for mainline.
+
+Tested on a metal-case unit without the optional onboard eMMC: boots
+from microSD, both Ethernet ports link up at 1000 Mbps, the HYM8563 RTC
+registers, and all three LEDs are functional. The USB Type-C connector
+registers as a DWC3 UDC in peripheral mode; gadget enumeration against
+a USB host was not completed, because that connector is also the 5V
+input and a PC port cannot power the board.
+
+Two things I did not do, because my hardware cannot verify them:
+
+- The AICSemi AIC8800D80 WiFi chip on sdio0 has no upstream driver, so
+  only the SDIO controller is described.
+- The eMMC is described as HS200 rather than the vendor's HS400 with
+  enhanced strobe, since the board at hand has an unpopulated eMMC
+  footprint and the faster modes could not be verified.
+
 ---
-Based on my downstream findings, this change may also support mt6582 SoC,
-but I don't have the hardware to test if it actually works.
+Changes in v3:
+- New patch 1: describe the NanoPi Zero2 RGMII PHY reset on the MDIO
+  bus rather than in the PHY node, so that it is applied before the PHY
+  ID is read. A PHY held in reset by the bootloader was otherwise never
+  probed, leaving the port dead. Reported by Andrey Korshunov, who
+  proposed the deprecated snps,reset-gpio properties on the MAC; the
+  bus level reset-gpios in mdio.yaml fixes the same ordering without a
+  deprecated property.
+- New patch 5: follow the DTS coding style in the three NanoPi RK3528
+  devicetrees, as found by scripts/dtc/dt-check-style --mode=strict:
+  pinctrl-0 before pinctrl-names, and a blank line before status.
+  Suggested by Diederik de Haas.
+- Picked up Conor Dooley's Acked-by on the binding.
+- Link to v2: https://patch.msgid.link/20260907-r28s-upstream-v2-0-21ab570fc91c@proton.me
+
+Changes in v2:
+- Split the parts shared with the NanoPi Zero2 into a new
+  rk3528-nanopi.dtsi (new patch 2). The NanoPi Zero2 dtb is unchanged.
+- Name the pinctrl labels after the nets in the schematic: usr_btn,
+  led1, led2, led_sys, pwr_wf and pcie_eth_perstb.
+- Rename the button node to button-user and its label to "USER".
+- Link to v1: https://patch.msgid.link/20260905-r28s-upstream-v1-0-f68d5389269a@proton.me
+
 ---
- drivers/iommu/mtk_iommu_v1.c | 72 +++++++++++++++++++++++++++++++++-----------
- 1 file changed, 55 insertions(+), 17 deletions(-)
+安容 (5):
+      arm64: dts: rockchip: Reset the NanoPi Zero2 PHY from the MDIO bus
+      dt-bindings: arm: rockchip: Add FriendlyElec NanoPi R28S
+      arm64: dts: rockchip: Split out the common NanoPi RK3528 parts
+      arm64: dts: rockchip: Add devicetree for the FriendlyElec NanoPi R28S
+      arm64: dts: rockchip: Follow the DTS coding style in the NanoPi RK3528 devicetrees
 
-diff --git a/drivers/iommu/mtk_iommu_v1.c b/drivers/iommu/mtk_iommu_v1.c
-index 72355f41c36a..b6f547b100d1 100644
---- a/drivers/iommu/mtk_iommu_v1.c
-+++ b/drivers/iommu/mtk_iommu_v1.c
-@@ -7,6 +7,7 @@
-  *
-  * Based on driver/iommu/mtk_iommu.c
-  */
-+#include <linux/bitfield.h>
- #include <linux/bug.h>
- #include <linux/clk.h>
- #include <linux/component.h>
-@@ -85,6 +86,13 @@ struct dma_iommu_mapping {
- #define F_DESC_NONSEC				BIT(3)
- #define MT2701_M4U_TF_LARB(TF)			(6 - (((TF) >> 13) & 0x7))
- #define MT2701_M4U_TF_PORT(TF)			(((TF) >> 8) & 0xF)
-+
-+#define MT6572_MMU_INT_ID_PORT_ID		GENMASK(12, 8)
-+#define MT6572_MMU_INT_ID_LARB_ID		GENMASK(14, 13)
-+
-+#define MT6572_M4U_TF_PORT(TF)			FIELD_GET(MT6572_MMU_INT_ID_PORT_ID, TF)
-+#define MT6572_M4U_TF_LARB(TF)			(FIELD_GET(MT6572_MMU_INT_ID_LARB_ID, TF) - 1)
-+
- /* MTK generation one iommu HW only support 4K size mapping */
- #define MT2701_IOMMU_PAGE_SHIFT			12
- #define MT2701_IOMMU_PAGE_SIZE			(1UL << MT2701_IOMMU_PAGE_SHIFT)
-@@ -96,6 +104,11 @@ struct dma_iommu_mapping {
-  */
- #define M2701_IOMMU_PGT_SIZE			SZ_4M
- 
-+enum mtk_iommu_type {
-+	MTK_IOMMU_MT6572,
-+	MTK_IOMMU_V1,
-+};
-+
- struct mtk_iommu_v1_suspend_reg {
- 	u32			standard_axi_mode;
- 	u32			dcm_dis;
-@@ -116,6 +129,8 @@ struct mtk_iommu_v1_data {
- 	struct mtk_smi_larb_iommu	larb_imu[MTK_LARB_NR_MAX];
- 
- 	struct mtk_iommu_v1_suspend_reg	reg;
-+
-+	enum mtk_iommu_type type;
- };
- 
- struct mtk_iommu_v1_domain {
-@@ -170,8 +185,12 @@ static inline int mt2701_m4u_to_port(int id)
- 
- static void mtk_iommu_v1_tlb_flush_all(struct mtk_iommu_v1_data *data)
- {
--	writel_relaxed(F_INVLD_EN1 | F_INVLD_EN0,
--			data->base + REG_MMU_INV_SEL);
-+	u32 val = F_INVLD_EN0;
-+
-+	if (data->type == MTK_IOMMU_V1)
-+		val |= F_INVLD_EN1;
-+
-+	writel_relaxed(val, data->base + REG_MMU_INV_SEL);
- 	writel_relaxed(F_ALL_INVLD, data->base + REG_MMU_INVALIDATE);
- 	wmb(); /* Make sure the tlb flush all done */
- }
-@@ -180,25 +199,33 @@ static void mtk_iommu_v1_tlb_flush_range(struct mtk_iommu_v1_data *data,
- 					 unsigned long iova, size_t size)
- {
- 	int ret;
--	u32 tmp;
-+	u32 tmp, val = F_INVLD_EN0;
- 
--	writel_relaxed(F_INVLD_EN1 | F_INVLD_EN0,
--		data->base + REG_MMU_INV_SEL);
-+	if (data->type == MTK_IOMMU_V1)
-+		val |= F_INVLD_EN1;
-+
-+	writel_relaxed(val, data->base + REG_MMU_INV_SEL);
- 	writel_relaxed(iova & F_MMU_FAULT_VA_MSK,
- 		data->base + REG_MMU_INVLD_START_A);
- 	writel_relaxed((iova + size - 1) & F_MMU_FAULT_VA_MSK,
- 		data->base + REG_MMU_INVLD_END_A);
- 	writel_relaxed(F_MMU_INV_RANGE, data->base + REG_MMU_INVALIDATE);
- 
--	ret = readl_poll_timeout_atomic(data->base + REG_MMU_CPE_DONE,
--				tmp, tmp != 0, 10, 100000);
--	if (ret) {
--		dev_warn(data->dev,
--			 "Partial TLB flush timed out, falling back to full flush\n");
--		mtk_iommu_v1_tlb_flush_all(data);
-+	if (data->type == MTK_IOMMU_V1) {
-+		ret = readl_poll_timeout_atomic(data->base + REG_MMU_CPE_DONE,
-+						tmp, tmp != 0, 10, 100000);
-+		if (ret) {
-+			dev_warn(data->dev,
-+				 "Partial TLB flush timed out, falling back to full flush\n");
-+			mtk_iommu_v1_tlb_flush_all(data);
-+		}
-+
-+		/* Clear the CPE status */
-+		writel_relaxed(0, data->base + REG_MMU_CPE_DONE);
-+	} else {
-+		/* Make sure the TLB flush is done */
-+		wmb();
- 	}
--	/* Clear the CPE status */
--	writel_relaxed(0, data->base + REG_MMU_CPE_DONE);
- }
- 
- static irqreturn_t mtk_iommu_v1_isr(int irq, void *dev_id)
-@@ -215,8 +242,14 @@ static irqreturn_t mtk_iommu_v1_isr(int irq, void *dev_id)
- 	fault_iova &= F_MMU_FAULT_VA_MSK;
- 	fault_pa = readl_relaxed(data->base + REG_MMU_INVLD_PA);
- 	regval = readl_relaxed(data->base + REG_MMU_INT_ID);
--	fault_larb = MT2701_M4U_TF_LARB(regval);
--	fault_port = MT2701_M4U_TF_PORT(regval);
-+
-+	if (data->type == MTK_IOMMU_V1) {
-+		fault_larb = MT2701_M4U_TF_LARB(regval);
-+		fault_port = MT2701_M4U_TF_PORT(regval);
-+	} else {
-+		fault_larb = MT6572_M4U_TF_LARB(regval);
-+		fault_port = MT6572_M4U_TF_PORT(regval);
-+	}
- 
- 	/*
- 	 * MTK v1 iommu HW could not determine whether the fault is read or
-@@ -539,7 +572,10 @@ static int mtk_iommu_v1_hw_init(const struct mtk_iommu_v1_data *data)
- 		return ret;
- 	}
- 
--	regval = F_MMU_CTRL_COHERENT_EN | F_MMU_TF_PROTECT_SEL(2);
-+	regval = F_MMU_TF_PROTECT_SEL(2);
-+	if (data->type == MTK_IOMMU_V1)
-+		regval |= F_MMU_CTRL_COHERENT_EN;
-+
- 	writel_relaxed(regval, data->base + REG_MMU_CTRL_REG);
- 
- 	regval = F_INT_TRANSLATION_FAULT |
-@@ -588,7 +624,8 @@ static const struct iommu_ops mtk_iommu_v1_ops = {
- };
- 
- static const struct of_device_id mtk_iommu_v1_of_ids[] = {
--	{ .compatible = "mediatek,mt2701-m4u", },
-+	{ .compatible = "mediatek,mt2701-m4u", .data = (void *)MTK_IOMMU_V1 },
-+	{ .compatible = "mediatek,mt6572-m4u", .data = (void *)MTK_IOMMU_MT6572 },
- 	{}
- };
- MODULE_DEVICE_TABLE(of, mtk_iommu_v1_of_ids);
-@@ -612,6 +649,7 @@ static int mtk_iommu_v1_probe(struct platform_device *pdev)
- 		return -ENOMEM;
- 
- 	data->dev = dev;
-+	data->type = (enum mtk_iommu_type)(uintptr_t)of_device_get_match_data(dev);
- 
- 	/* Protect memory. HW will access here while translation fault.*/
- 	protect = devm_kcalloc(dev, 2, MTK_PROTECT_PA_ALIGN,
+ .../devicetree/bindings/arm/rockchip.yaml          |   5 +
+ arch/arm64/boot/dts/rockchip/Makefile              |   1 +
+ .../arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts | 145 +++++++++++
+ .../boot/dts/rockchip/rk3528-nanopi-zero2.dts      | 274 +-------------------
+ arch/arm64/boot/dts/rockchip/rk3528-nanopi.dtsi    | 288 +++++++++++++++++++++
+ 5 files changed, 442 insertions(+), 271 deletions(-)
+---
+base-commit: 32e0f64640d558a0f5410ac5cdd8ebf371c5e6a6
+change-id: 20260905-r28s-upstream-e212e27d6165
 
--- 
-2.55.0
+Best regards,
+--  
+安容 <HystericalDragons@proton.me>
 
