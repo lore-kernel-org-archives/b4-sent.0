@@ -1,94 +1,122 @@
-From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Wed, 09 Sep 2026 08:27:22 +0200
-Subject: [PATCH u-boot] net, common: add NET_SKIP_BOOT_INIT for gadget-only
+From: linuszeng <linuszeng@tencent.com>
+Subject: [PATCH 0/3] mm: page_counter: move hierarchical protection out of
+ struct page_counter
+Date: Wed, 09 Sep 2026 16:08:50 +0800
+Message-Id: <20260909-descriptive-name-v1-0-1828961cb01a@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-b4-net-skip-boot-init-v1-1-e2a460818205@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBBFryKz7kAiEqVXKV0046SOhUQysRTEu
- xvt8n3+exsoZ2GFe7NB5q+opFjB3hqg6RXfjDJWhta0zjhr0XcYuaB+ZEGfUkGJUnBwgQKRcX0
- 3QnWXzEF+V/cB63WE53/X1c9M5YzCvh+oRIKigQAAAA==
-X-Change-ID: 20260611-b4-net-skip-boot-init-86fcfcc0674d
-To: u-boot@lists.denx.de
-Cc: Tom Rini <trini@konsulko.com>, 
- Jerome Forissier <jerome.forissier@arm.com>, 
- Quentin Schulz <quentin.schulz@cherry.de>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Peter Robinson <pbrobinson@gmail.com>, Simon Glass <sjg@chromium.org>, 
- Michael Walle <mwalle@kernel.org>, Michal Simek <michal.simek@amd.com>, 
- =?utf-8?q?Alvin_=C5=A0ipraga?= <alvin@pqrs.dk>, 
- David Heidelberg <david@ixit.cz>, Heinrich Schuchardt <xypron.glpk@gmx.de>, 
- Petr Hodina <petr.hodina@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788935254; l=1858;
- i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=IF4rVkjfbIS1XY/uUJfKFGMRapQTniYTNdv/cb22bn0=;
- b=WFWiV4SfUHJb7nhE8STLwX7+g4DCD86qVEucJkwG9XFbvPcqfj1n4hQAsUr1v/TxJfCU5ZMZC
- /kfdp3qOSEgA+SNTGU6isQ+LbkXnGHPA7iZba3Z/+nyRQkm0VoECxdV
-X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
- pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
-X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
+X-B4-Tracking: v=1; b=H4sIABIUoWoC/x3MQQqAIBRF0a3IHyeYQWVbiQair/qDTDQkiPaeN
+ DyDex/KSIxMk3gooXDmM1S0jSC327BBsq8mrXSvjDLSI7vE8eICGewBiW7UtlvNMHpPNYsJK9/
+ /cl7e9wOwMuUWYgAAAA==
+To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Maarten Lankhorst <dev@lankhorst.se>, Maxime Ripard <mripard@kernel.org>, 
+ Natalie Vock <nat@pixelcluster.dev>, Tejun Heo <tj@kernel.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
+ Oscar Salvador <osalvador@suse.de>, 
+ Jingxiang Zeng <jingxiangzeng.cas@gmail.com>
+Cc: Michal Hocko <mhocko@suse.com>, cgroups@vger.kernel.org, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ dri-devel@lists.freedesktop.org, linuszeng <linuszeng@tencent.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941332; l=4127;
+ i=linuszeng@tencent.com; s=20260909; h=from:subject:message-id;
+ bh=0N4tCqvoyEM1SL2Vocr2i9WoAjYrlgAoSQ2+oga4Vkk=;
+ b=Pt6vMJJnazt3S702QoElX0h3DiSOPfuKq644OwsYOWwrBGuuzqbgGc1I5x8AomssdowVUMDs4
+ 53xvtqoHIipD+Mkj2ZSK1V4uwV1wqmkXLlj0IzhO7K0eYBvimjsL7eZ
+X-Developer-Key: i=linuszeng@tencent.com; a=ed25519;
+ pk=6K54xRzYIRWqatrAPy86M4E0MsI92BVJBhXwz5NdC74=
+X-Endpoint-Received: by B4 Relay for linuszeng@tencent.com/20260909 with auth_id=1017
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Gate the initr_net() INITCALL on CONFIG_NET_SKIP_BOOT_INIT at the
-call site in initcall_run_r(), so boards with no wired NIC can skip
-the boot-time probe and "Net:" banner without touching initr_net()
-itself.
+Hierarchical memory protection (memory.min / memory.low) is built on
+struct page_counter today: every counter carries the full protection
+state - emin/elow, the protected-usage trackers (min_usage,
+children_min_usage, low_usage, children_low_usage), the configured
+min/low values and a protection_support flag - although only the memory
+page counter (and dmem pools) ever participates in protection.
+swap/memsw, kmem, tcpmem and hugetlb counters ship this state around
+unused.
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+This series moves that state into a dedicated struct
+page_counter_protection, instantiated only for the counters that
+actually support protection, which shrinks struct page_counter by one
+cache line.
+
+Patch 1 adds struct page_counter_protection and links it to struct
+page_counter through a ->prot pointer (NULL when protection is not
+supported).  page_counter_init() loses its protection_support argument,
+and the new page_counter_init_protection() attaches the context.
+Protection stays enabled only on the cgroup v2 hierarchy, matching the
+previous page_counter_init(..., memcg_on_dfl) behaviour, and the root
+memcg keeps it unconditionally.
+
+Patch 2 migrates the read/write side of protection onto the new
+structure: propagate_protected_usage(), page_counter_set_min()/low()
+and page_counter_calculate_protection() now operate on the protection
+context, and the memcg and dmem accessors (mem_cgroup_protection,
+mem_cgroup_below_min/low, the dmem below_min/low helpers and the dmem
+eviction check) read emin/elow/children_*_usage from it.
+
+Patch 3 deletes the now-unused fields from struct page_counter.  On
+64-bit the structure drops from three cache lines to two, one cache
+line saved per counter.  For reference, pahole shows the layout before
+and after (x86_64, 64-byte cache lines):
+
+    before:                                after:
+     0  usage                               0  usage
+     8  failcnt                             8  failcnt
+    64  emin                               64  watermark
+    72  min_usage                          72  local_watermark
+    80  children_min_usage                 80  track_failcnt
+    88  elow                               88  high
+    96  low_usage                          96  max
+   104  children_low_usage                104  parent
+   112  watermark                         112  prot
+   120  local_watermark
+   128  protection_support                 size 128, 2 cachelines,
+   129  track_failcnt                         11 members
+   136  min
+   144  low                                (the protection fields moved
+   152  high                               into struct
+   160  max                                page_counter_protection,
+   168  parent                              72 bytes, allocated only
+                                           where protection is used)
+   size 192, 3 cachelines, 19 members
+
+The four embedded page counters of struct mem_cgroup all shrink by 64
+bytes, which translates to 128 bytes saved per cgroup once the one
+embedded page_counter_protection is accounted for (2176 -> 2048 bytes
+with CONFIG_MEMCG_V1=y, verified with pahole).
+
+No functional change is intended: protection semantics and the cgroup
+v1/v2 behaviour are preserved.
+
+Signed-off-by: linuszeng <linuszeng@tencent.com>
 ---
-initr_net() probes for Ethernet and prints a "Net:" banner when `NET` option
-is enabled, which is not relevant for boards that use USB gadgets
-for networking.
+linuszeng (3):
+      mm: page_counter: add page_counter_protection struct and init API
+      mm: page_counter: track protection state in page_counter_protection
+      mm: page_counter: drop protection fields from struct page_counter
 
-Add CONFIG_NET_SKIP_BOOT_INIT to skip that boot-time probe. Later
-invocations still probe UCLASS_ETH normally. Defaults to n.
+ include/linux/memcontrol.h   | 15 ++++++---
+ include/linux/page_counter.h | 76 ++++++++++++++++++++++++++++++++------------
+ kernel/cgroup/dmem.c         | 18 ++++++-----
+ mm/hugetlb_cgroup.c          |  4 +--
+ mm/memcontrol.c              | 29 ++++++++++-------
+ mm/page_counter.c            | 61 ++++++++++++++++++++++-------------
+ 6 files changed, 134 insertions(+), 69 deletions(-)
 ---
- common/board_r.c | 6 ++++--
- net/Kconfig      | 7 +++++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/common/board_r.c b/common/board_r.c
-index a397e20959d..1de4b4925b1 100644
---- a/common/board_r.c
-+++ b/common/board_r.c
-@@ -761,8 +761,10 @@ static void initcall_run_r(void)
- 	INITCALL(pci_ep_init);
- #endif
- #if CONFIG_IS_ENABLED(NET)
--	WATCHDOG_RESET();
--	INITCALL(initr_net);
-+	if (!IS_ENABLED(CONFIG_NET_SKIP_BOOT_INIT)) {
-+		WATCHDOG_RESET();
-+		INITCALL(initr_net);
-+	}
- #endif
- #if CONFIG_IS_ENABLED(POST)
- 	INITCALL(initr_post);
-diff --git a/net/Kconfig b/net/Kconfig
-index e712a0dd2ac..d42a68d8e12 100644
---- a/net/Kconfig
-+++ b/net/Kconfig
-@@ -14,6 +14,13 @@ menuconfig NET
- 
- if NET
- 
-+config NET_SKIP_BOOT_INIT
-+	bool "Skip the boot-time ethernet probe + 'Net:' banner"
-+	help
-+	  By default init runs eth_initialize() if `NET` option is enabled.
-+	  Some boards do not have a wired NIC but use RNDIS or CDC-NCM
-+	  gadgets on the USB to provide network connectivity.
-+
- choice
- 	prompt "Networking stack"
- 	default NET_LEGACY
-
----
-base-commit: ece349ade2973e220f524ce59e59711cc919263f
-change-id: 20260611-b4-net-skip-boot-init-86fcfcc0674d
+base-commit: d118502628f8b673be9023db8bdf878f64a7ed45
+change-id: 20260909-descriptive-name-e382a3f978dd
 
 Best regards,
---  
-Petr Hodina <petr.hodina@protonmail.com>
+-- 
+linuszeng <linuszeng@tencent.com>
 
