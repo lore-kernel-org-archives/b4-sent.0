@@ -1,143 +1,243 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Wed, 09 Sep 2026 19:04:40 +0200
-Subject: [PATCH v2] bus: fsl-mc: register the object drivers after
- misc_class exists
+From: Ackerley Tng <ackerleytng@google.com>
+Subject: [PATCH v2 0/2] Fix bugs in HugeTLB allocation when
+ mem_cgroup_charge_hugetlb() fails
+Date: Wed, 09 Sep 2026 10:10:59 -0700
+Message-Id: <20260909-hugetlb-alloc-folio-memcg-charge-error-handling-v2-0-4b4a8a19a7f7@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-for-upstream-fsl-mc-initcall-order-v2-1-b7a04634fcf1@free.fr>
-X-B4-Tracking: v=1; b=H4sIAKeRoWoC/42NSw6CMBBAr0K6dkw/pogr72FYIMzIJEDJFBsN4
- e5W4gFcvrd4b1URhTGqS7EqwcSRw5TBHgrV9s30QOAus7Lael1ZCxQEnnNcBJsRKA4wtsATL20
- zDBCkQwF0znhX6dLYu8qhWZD4tU9udeae4xLkvT+T+dpfXpt/8smAAeeJ8HSm0pfdlQTxSKLqb
- ds+MEjWltIAAAA=
-To: Ioana Ciornei <ioana.ciornei@nxp.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: Laurentiu Tudor <laurentiu.tudor@nxp.com>, 
- linuxppc-dev@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, stable+noautosel@kernel.org, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788973486; l=3680;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=4w8EyLodWYbpAxy4IdhaZ8kc0Y8HbWHFCMkpK6NuPbI=;
- b=Rid5LvQoK9miq+gA7+YL1kd3AUGRJD8FeSxJ1xg5zimcVvmU64GZjtoDj5sORC46X9N1xjtkj
- HACM4entDAGAiqmRKDC0kGr5rSInrkDPfoIfd+y7zLR9ubxcwGErk7M
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-B4-Tracking: v=1; b=H4sIACOToWoC/5WOTQ6CMBCFr2K6dkxbfgKuvIdhAWUokxTGTJFoC
+ He3kngAl9/Lm/nepiIKYVTX06YEV4rEcwJ7Pik3trNHoD6xstqWutYGxqfHJXTQhsAOBg7EMOH
+ kPKS+pD6KsEC67QPNHoqqtFhmFouhUOnrQ3Cg12G8N4lHigvL+xiwmm/6c9m/XasBDZhhVefWm
+ dx0N8/sA14cT6rZ9/0DFpRMqu8AAAA=
+X-Change-ID: 20260901-hugetlb-alloc-folio-memcg-charge-error-handling-5862e632e5f5
+To: Alex Shi <alexs@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Dongliang Mu <dzm91@hust.edu.cn>, 
+ Hongxiang Lou <louhongxiang@huawei.com>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Joshua Hahn <joshua.hahnjy@gmail.com>, 
+ "Liam R. Howlett" <liam@infradead.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ Miaohe Lin <linmiaohe@huawei.com>, Michal Hocko <mhocko@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Muchun Song <muchun.song@linux.dev>, 
+ Nhat Pham <nphamcs@gmail.com>, Oscar Salvador <osalvador@suse.de>, 
+ Peter Xu <peterx@redhat.com>, Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, 
+ Shuah Khan <skhan@linuxfoundation.org>, jthoughton@google.com, 
+ fvdl@google.com, rientjes@google.com, vannapurve@google.com, 
+ Suren Baghdasaryan <surenb@google.com>, Vlastimil Babka <vbabka@kernel.org>, 
+ Wupeng Ma <mawupeng1@huawei.com>, Yanteng Si <si.yanteng@linux.dev>
+Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
+ Ackerley Tng <ackerleytng@google.com>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788973868; l=5588;
+ i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
+ bh=JJXmwYHmUvSusX1DyThNrlPnFKXOBGPTJbxZczSEH3E=;
+ b=Tr/DEN/PwN2tkgr39zD84Od1pqwQlrkuQNp87eW1zgxYaBQ1Pqn6UK2GbphbhIn6yxjTKonO1
+ zZqU5F/yQqoC+3UlrG+86rEo67cdhKkBSu8Kyr7wcqY2R9pLYLnzDEy
+X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
+ pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
+X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Unbinding and re-binding the root DPRC fails with:
+In hugetlb_alloc_folio(), when mem_cgroup_charge_hugetlb() fails, there are
+2 issues:
 
-  sysfs: cannot create duplicate filename '/dev/char/10:256'
-    misc_register / fsl_mc_uapi_create_device_file /
-    dprc_setup / dprc_probe
+1. free_huge_folio() expects a non-refcounted folio and will
+   VM_BUG_ON_FOLIO().
 
-It happens when the fsl-mc bus probe is not deferred, without SMMU:
-- the dprc driver is registered at postcore_initcall,
-- the DT node is populated at arch_initcall_sync,
-- the root DPRC probes right there, before misc_init() has
-  registered misc_class at subsys_initcall.
+2. -ENOMEM is returned, causing an infinite loop retrying the fault.
 
-misc_register() still succeeds but the device gets
-no class, so misc_deregister() at unbind cannot find it:
-the minor is freed while the device and its /sys/dev/char/ link leak,
-and then the next bind collides on the same minor.
+This patch series is a subset of patches in [1].
 
-Let's move the dprc and allocator drivers registration, and
-platform_driver_register(), to subsys_initcall_sync, after misc_init()
-at subsys_initcall.
-bus_register() and the platform-bus notifier stay at postcore_initcall
-so that fsl_mc_bus_notifier() still pauses the MC before the SMMU is probed.
+Note: [1] was applied on an earlier version of HugeTLB allocation. In that
+earlier version, VMA reservations were not undone on
+mem_cgroup_charge_hugetlb() failure.
 
-Cc: stable+noautosel@kernel.org # niche: root DPRC unbind/rebind only
-Fixes: 2cf1e703f066 ("bus: fsl-mc: add fsl-mc userspace support")
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
----
-Issue found when unbinding/rebinding the root DPRC on an LX2160A.
+5737df3826dee: ("mm: hugetlb: refactor out hugetlb_alloc_folio()") fixed
+that, since returning an error from hugetlb_alloc_folio() causes
+alloc_hugetlb_folio() to execute vma_end_reservation().
 
-The failure is silent at bind time and only shows up as a
-duplicate /dev/char entry on the second bind.
----
+In [2], an earlier revision of [1], "mm: hugetlb: Drop refcount before
+freeing on memcg charge failure" was named "mm: hugetlb: Fix folio refcount
+mismatch on memcg charge failure".
+
+[1] https://lore.kernel.org/all/20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com/
+[2] https://lore.kernel.org/all/20260708-hugetlb-alloc-failure-fixes-v2-0-c7f27cbb462b@google.com/
+
 Changes in v2:
-- Commit message: the bug needs a non-deferred fsl-mc bus
-  probe (no SMMU) - Ioana Ciornei
-- No code change
-- Link to v1: https://lore.kernel.org/r/20260901-for-upstream-fsl-mc-initcall-order-v1-1-36ffe48f767d@free.fr
----
- drivers/bus/fsl-mc/fsl-mc-bus.c | 40 ++++++++++++++++++++++++----------------
- 1 file changed, 24 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/bus/fsl-mc/fsl-mc-bus.c b/drivers/bus/fsl-mc/fsl-mc-bus.c
-index 66a4fa73c5b86..7f283844e4500 100644
---- a/drivers/bus/fsl-mc/fsl-mc-bus.c
-+++ b/drivers/bus/fsl-mc/fsl-mc-bus.c
-@@ -1264,35 +1264,43 @@ static int __init fsl_mc_bus_driver_init(void)
- 	error = bus_register(&fsl_mc_bus_type);
- 	if (error < 0) {
- 		pr_err("bus type registration failed: %d\n", error);
--		goto error_cleanup_cache;
-+		return error;
- 	}
- 
--	error = platform_driver_register(&fsl_mc_bus_driver);
--	if (error < 0) {
--		pr_err("platform_driver_register() failed: %d\n", error);
-+	error = bus_register_notifier(&platform_bus_type, &fsl_mc_nb);
-+	if (error < 0)
- 		goto error_cleanup_bus;
--	}
-+
-+	return 0;
-+
-+error_cleanup_bus:
-+	bus_unregister(&fsl_mc_bus_type);
-+	return error;
-+}
-+postcore_initcall(fsl_mc_bus_driver_init);
-+
-+static int __init fsl_mc_bus_drivers_init(void)
-+{
-+	int error;
- 
- 	error = dprc_driver_init();
- 	if (error < 0)
--		goto error_cleanup_driver;
-+		return error;
- 
- 	error = fsl_mc_allocator_driver_init();
- 	if (error < 0)
- 		goto error_cleanup_dprc_driver;
- 
--	return bus_register_notifier(&platform_bus_type, &fsl_mc_nb);
-+	error = platform_driver_register(&fsl_mc_bus_driver);
-+	if (error < 0) {
-+		pr_err("platform_driver_register() failed: %d\n", error);
-+		goto error_cleanup_dprc_driver;
-+	}
-+
-+	return 0;
- 
- error_cleanup_dprc_driver:
- 	dprc_driver_exit();
--
--error_cleanup_driver:
--	platform_driver_unregister(&fsl_mc_bus_driver);
--
--error_cleanup_bus:
--	bus_unregister(&fsl_mc_bus_type);
--
--error_cleanup_cache:
- 	return error;
- }
--postcore_initcall(fsl_mc_bus_driver_init);
-+subsys_initcall_sync(fsl_mc_bus_drivers_init);
++ Made comment before returning -ENOSPC more concise
 
+v1: https://lore.kernel.org/r/20260902-hugetlb-alloc-folio-memcg-charge-error-handling-v1-0-e3e8942c141b@google.com
+
+Here's a reproducer to trigger mem_cgroup_charge_hugetlb() failure:
+
+static void write_file_val(const char *path, const char *val)
+{
+	int fd = open(path, O_WRONLY);
+
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
+		exit(1);
+	}
+	if (write(fd, val, strlen(val)) < 0) {
+		fprintf(stderr, "Failed to write %s to %s: %s\n", val, path, strerror(errno));
+		close(fd);
+		exit(1);
+	}
+	close(fd);
+}
+
+static int is_hugetlb_accounting_enabled(void)
+{
+	char spec[256], file[256], type[256], opts[512];
+	char line[1024];
+	int enabled = 0;
+	FILE *fp;
+
+	fp = fopen("/proc/mounts", "r");
+	if (!fp) {
+		perror("fopen /proc/mounts");
+		return -1;
+	}
+
+	while (fgets(line, sizeof(line), fp)) {
+		if (sscanf(line, "%255s %255s %255s %511s", spec, file, type, opts) == 4) {
+			if (strcmp(file, CGROUP_PATH) == 0 && strcmp(type, "cgroup2") == 0) {
+				if (strstr(opts, "memory_hugetlb_accounting") != NULL)
+					enabled = 1;
+				break;
+			}
+		}
+	}
+	fclose(fp);
+	return enabled;
+}
+
+static int enable_hugetlb_accounting(void)
+{
+	int ret;
+
+	printf("Attempting to remount cgroup2 with memory_hugetlb_accounting...\n");
+	ret = system("mount -o remount,memory_hugetlb_accounting " CGROUP_PATH);
+	if (ret != 0) {
+		fprintf(stderr, "Failed to remount: system() returned %d\n", ret);
+		return -1;
+	}
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	struct stat st;
+	size_t size;
+	void *addr;
+	pid_t pid;
+	int enabled;
+	int status;
+	int fd;
+
+	if (stat(CGROUP_PATH, &st) != 0 || !S_ISDIR(st.st_mode)) {
+		fprintf(stderr, "cgroup v2 not mounted at %s\n", CGROUP_PATH);
+		return 1;
+	}
+
+	enabled = is_hugetlb_accounting_enabled();
+	if (enabled < 0)
+		return 1;
+
+	if (!enabled) {
+		if (enable_hugetlb_accounting() != 0) {
+			fprintf(stderr, "Could not enable memory_hugetlb_accounting\n");
+			return 1;
+		}
+		/* Re-check */
+		enabled = is_hugetlb_accounting_enabled();
+		if (enabled <= 0) {
+			fprintf(stderr, "Failed to enable memory_hugetlb_accounting (re-check failed)\n");
+			return 1;
+		}
+		printf("Successfully enabled memory_hugetlb_accounting\n");
+	} else {
+		printf("memory_hugetlb_accounting is already enabled\n");
+	}
+
+	/* Enable memory controller in subtree */
+	fd = open(CGROUP_PATH "/cgroup.subtree_control", O_WRONLY);
+	if (fd >= 0) {
+		(void)write(fd, "+memory", 7);
+		close(fd);
+	}
+
+	if (mkdir(TEST_CGROUP_PATH, 0755) != 0) {
+		if (errno != EEXIST) {
+			perror("mkdir test_reproducer");
+			return 1;
+		}
+	}
+
+	/* Set memory limit to 1MB (less than 2MB hugepage) */
+	write_file_val(TEST_CGROUP_PATH "/memory.max", "1M");
+
+	pid = fork();
+	if (pid < 0) {
+		perror("fork");
+		return 1;
+	}
+
+	if (pid == 0) {
+		/* Child: Move to cgroup */
+		write_file_val(TEST_CGROUP_PATH "/cgroup.procs", "0");
+
+		printf("Child: Attempting to allocate and touch 2MB hugepage...\n");
+		/* Allocate 2MB hugepage */
+		size = 2 * 1024 * 1024;
+		addr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+			    MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+		if (addr == MAP_FAILED) {
+			perror("Child: mmap MAP_HUGETLB");
+			exit(1);
+		}
+
+		printf("Child: mmap succeeded at %p, touching it now...\n", addr);
+		*(char *)addr = 1;
+
+		printf("Child: Successfully touched page (bug not triggered?).\n");
+		munmap(addr, size);
+		exit(0);
+	}
+
+	/* Parent */
+	waitpid(pid, &status, 0);
+
+	printf("Parent: Child exited. Cleaning up.\n");
+	rmdir(TEST_CGROUP_PATH);
+
+	if (WIFSIGNALED(status)) {
+		printf("Parent: Child killed by signal %d (%s)\n",
+		       WTERMSIG(status), strsignal(WTERMSIG(status)));
+		if (WTERMSIG(status) == SIGBUS)
+			printf("Parent: Child got SIGBUS as expected.\n");
+	} else if (WIFEXITED(status)) {
+		printf("Parent: Child exited with status %d\n", WEXITSTATUS(status));
+	}
+
+	return 0;
+}
+
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
-base-commit: 786262be6048deab760f68c8acc2c85607165894
-change-id: 20260922-for-upstream-fsl-mc-initcall-order-e3316390712b
+Ackerley Tng (2):
+      mm: hugetlb: Return -ENOSPC on memcg charge failure
+      mm: hugetlb: Drop refcount before freeing on memcg charge failure
+
+ mm/hugetlb.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+---
+base-commit: df2908090cda368b01ff43709f51890076c56157
+change-id: 20260901-hugetlb-alloc-folio-memcg-charge-error-handling-5862e632e5f5
 
 Best regards,
--- 
-Vincent Jardin <vjardin@free.fr>
+--
+Ackerley Tng <ackerleytng@google.com>
 
