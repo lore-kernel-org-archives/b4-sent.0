@@ -1,11 +1,11 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Wed, 09 Sep 2026 16:27:46 +0300
-Subject: [PATCH v17 09/22] dt-bindings: media: i2c: max96712: add support
- for MAX96724F/R
+Date: Wed, 09 Sep 2026 16:27:47 +0300
+Subject: [PATCH v17 10/22] dt-bindings: media: i2c: max96712: add
+ control-channel-port property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260909-gmsl2-3_serdes-v17-9-002499e534e8@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260909-gmsl2-3_serdes-v17-10-002499e534e8@analog.com>
 References: <20260909-gmsl2-3_serdes-v17-0-002499e534e8@analog.com>
 In-Reply-To: <20260909-gmsl2-3_serdes-v17-0-002499e534e8@analog.com>
 To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
@@ -23,52 +23,48 @@ Cc: Tomi Valkeinen <tomi.valkeinen@ideasonboard.com>,
  =?utf-8?q?Niklas_S=C3=B6derlund?= <niklas.soderlund+renesas@ragnatech.se>, 
  Martin Hecht <Martin.Hecht@avnet.eu>, 
  Andrian Suciu <Adrian.Suciu@analog.com>, 
- Cosmin Tanislav <demonsingur@gmail.com>
+ Vivekananda Dayananda <vivekana@amd.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788960478; l=1289;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788960478; l=1210;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=ZSTakNbBz4Qus1NiPPbe76vFnVEQ3NLtF7fl+Vgxvf8=;
- b=3jK+0G83r1ljSloscdC10fjOIXH3JfY64mhtIgCbPLhzQaoeFHSGSYI5C7RXeJYLDS/VbzV3j
- q9qSXOshQkXCyRaLZK5kIscMcGucsdACh45TQbuXs2CeunI+6ZPFIwe
+ bh=zHQWciR44LLL2n9JRuufsEezIBfNdUsq5fR2eFezGHc=;
+ b=DZQDw8tZumsUX4Wwj+GaDKNN0YTnVx22zEaaXHbR6SMqVR3ZobgjST/mp41eAtAnKWZc+iCTG
+ 0EodkIpK+uuADTNnHUZlcJYEistQt0L7qmpQ9lWNFtRiAbofLjz4fyU
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Cosmin Tanislav <demonsingur@gmail.com>
+Add maxim,control-channel-port property to allow platforms choose which
+control-channel port MAX96724 exposes to the upstream I2C host.
 
-MAX96724F/MAX96724R are a lower capability variant of the MAX96724 which
-only support a fixed rate of 3Gbps in the forward direction.
-
-Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
+Suggested-by: Vivekananda Dayananda <vivekana@amd.com>
+Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
-Reviewed-by: Niklas Söderlund <niklas.soderlund+renesas@ragnatech.se>
 ---
- Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-index d2dd72f2e924..161d40acdd28 100644
+index 161d40acdd28..ab1dcd8ff8e7 100644
 --- a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
 +++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-@@ -23,12 +23,17 @@ description: |
-   MAX96712 can be paired with first-generation 3.12Gbps or 1.5Gbps GMSL1
-   serializers or operate up to 3.12Gbps with GMSL2 serializers in GMSL1 mode.
+@@ -41,6 +41,15 @@ properties:
  
-+  MAX96724F and MAX96724R only support a fixed rate of 3Gbps in the forward
-+  direction.
+   enable-gpios: true
+ 
++  maxim,control-channel-port:
++    description:
++      Selects which deserializer control-channel port is connected to the
++      upstream I2C segment when the device resets. 0 selects port 0, 1 selects
++      port 1. Defaults to 0 when omitted.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [0, 1]
++    default: 0
 +
- properties:
-   compatible:
-     items:
-       - enum:
-           - maxim,max96712
-           - maxim,max96724
-+          - maxim,max96724f
-+          - maxim,max96724r
+   i2c-alias-pool:
+     maxItems: 4
  
-   reg:
-     description: I2C device address
 
 -- 
 2.53.0
