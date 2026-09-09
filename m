@@ -1,94 +1,55 @@
-From: linuszeng <linuszeng@tencent.com>
-Date: Wed, 09 Sep 2026 16:08:53 +0800
-Subject: [PATCH 3/3] mm: page_counter: drop protection fields from struct
- page_counter
+From: Joel Selvaraj <foss@joelselvaraj.com>
+Subject: [PATCH 0/4] Update my email address
+Date: Wed, 09 Sep 2026 01:11:58 -0700
+Message-Id: <20260909-update-email-address-v1-0-94a240f9469e@joelselvaraj.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-descriptive-name-v1-3-1828961cb01a@tencent.com>
-References: <20260909-descriptive-name-v1-0-1828961cb01a@tencent.com>
-In-Reply-To: <20260909-descriptive-name-v1-0-1828961cb01a@tencent.com>
-To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
- Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Maarten Lankhorst <dev@lankhorst.se>, Maxime Ripard <mripard@kernel.org>, 
- Natalie Vock <nat@pixelcluster.dev>, Tejun Heo <tj@kernel.org>, 
- =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
- Oscar Salvador <osalvador@suse.de>, 
- Jingxiang Zeng <jingxiangzeng.cas@gmail.com>
-Cc: Michal Hocko <mhocko@suse.com>, cgroups@vger.kernel.org, 
- linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, linuszeng <linuszeng@tencent.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941332; l=1787;
- i=linuszeng@tencent.com; s=20260909; h=from:subject:message-id;
- bh=shz9WUAjddH3Alsemp6w1PbzeLYHyRzk5zeGNg7NEjM=;
- b=2xbTnqKMfvIkkyGThb5sZPBIowVjmF2rt6clRF6E2moyVUbPwRWuAbXWnddNr77RCDf9wUlxB
- Bi7dxyJ1ndxAb4B78hc5cPxuy0anDb/3ZihIS8QvYsge+PRe+X+8kCI
-X-Developer-Key: i=linuszeng@tencent.com; a=ed25519;
- pk=6K54xRzYIRWqatrAPy86M4E0MsI92BVJBhXwz5NdC74=
-X-Endpoint-Received: by B4 Relay for linuszeng@tencent.com/20260909 with auth_id=1017
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJwWioVzEuxvYHhiiSDhASw
+ t2puvwW721kSAqjW7FRwqKmnyGjPBUUOhlasMZsqlx1dd7VPI9RJjDeoi+WGBPMGBAEj+Zy9iX
+ ldExodP1t74+/bX72CNP3Rft+AOhrz7Z4AAAA
+X-Change-ID: 20260908-update-email-address-eeaec9ef5391
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ devicetree@vger.kernel.org, Joel Selvaraj <foss@joelselvaraj.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788941524; l=985;
+ i=foss@joelselvaraj.com; s=20260909; h=from:subject:message-id;
+ bh=9dMkHMleRdbFXq/Tngq9Z7Icy4JxHXPrtaDymmuML0o=;
+ b=jiHVWBP063DjZH2azjp48G9TpUTak2H2UEhlwqzRmb5KYIzCgfIHDAhlaCa9tVAYPf+XT+5Wk
+ cQ54I+X6ziHBNNAf+ezwTiBNaAxrbOp5X0hxQUAS7kDfDUwFNviY1JQ
+X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
+ pk=UUJ1v4UQJ/nljqj3NjsWt5H4mphWQ7etpQ4Z7JiR2yo=
+X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20260909 with auth_id=1018
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The protection state now lives in struct page_counter_protection, so
-remove the emin/min_usage/children_min_usage, elow/low_usage/
-children_low_usage, min, low and protection_support fields from struct
-page_counter.
+My jsfamily.in email address is no longer active, so update the kernel
+tree to use my current address instead.
 
-swap/memsw, kmem, tcpmem and hugetlb counters no longer carry this
-unused state: on 64-bit the structure shrinks from three cache lines to
-two, saving one cache line.
+Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- include/linux/page_counter.h | 19 +++----------------
- 1 file changed, 3 insertions(+), 16 deletions(-)
+Joel Selvaraj (4):
+      mailmap: update Joel Selvaraj's email address
+      MAINTAINERS: update Joel Selvaraj's email address
+      dt-bindings: display: panel: ebbg,ft8719: update Joel Selvaraj's email address
+      drm/panel: ebbg-ft8719: update Joel Selvaraj's email address
 
-diff --git a/include/linux/page_counter.h b/include/linux/page_counter.h
-index b81f16702764..a4dd461523af 100644
---- a/include/linux/page_counter.h
-+++ b/include/linux/page_counter.h
-@@ -43,27 +43,11 @@ struct page_counter {
- 
- 	CACHELINE_PADDING(_pad1_);
- 
--	/* effective memory.min and memory.min usage tracking */
--	unsigned long emin;
--	atomic_long_t min_usage;
--	atomic_long_t children_min_usage;
--
--	/* effective memory.low and memory.low usage tracking */
--	unsigned long elow;
--	atomic_long_t low_usage;
--	atomic_long_t children_low_usage;
--
- 	unsigned long watermark;
- 	/* Latest cg2 reset watermark */
- 	unsigned long local_watermark;
- 
--	/* Keep all the read most fields in a separete cacheline. */
--	CACHELINE_PADDING(_pad2_);
--
--	bool protection_support;
- 	bool track_failcnt;
--	unsigned long min;
--	unsigned long low;
- 	unsigned long high;
- 	unsigned long max;
- 	struct page_counter *parent;
-@@ -73,6 +57,9 @@ struct page_counter {
- 	 * support memory.min/memory.low (swap, memsw, kmem, tcpmem, ...).
- 	 */
- 	struct page_counter_protection *prot;
-+
-+	/* Keep all the read most fields in a separete cacheline. */
-+	CACHELINE_PADDING(_pad2_);
- } ____cacheline_internodealigned_in_smp;
- 
- #if BITS_PER_LONG == 32
+ .mailmap                                                         | 1 +
+ Documentation/devicetree/bindings/display/panel/ebbg,ft8719.yaml | 2 +-
+ MAINTAINERS                                                      | 2 +-
+ drivers/gpu/drm/panel/panel-ebbg-ft8719.c                        | 4 ++--
+ 4 files changed, 5 insertions(+), 4 deletions(-)
+---
+base-commit: a9d7ced84989ec05be09b4b8428759ef60450a0f
+change-id: 20260908-update-email-address-eeaec9ef5391
 
--- 
-2.43.7
+Best regards,
+--  
+Joel Selvaraj <foss@joelselvaraj.com>
 
