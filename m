@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 09 Sep 2026 14:49:28 -0700
-Subject: [PATCH v2 3/4] mm: hugetlb: Fix subpool usage leak on allocation
- failure
+Date: Wed, 09 Sep 2026 14:49:29 -0700
+Subject: [PATCH v2 4/4] mm: hugetlb: Avoid re-allocating global
+ reservations on region add failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-hugetlb-subpool-always-track-used-v2-3-30c5d83b572a@google.com>
+Message-Id: <20260909-hugetlb-subpool-always-track-used-v2-4-30c5d83b572a@google.com>
 References: <20260909-hugetlb-subpool-always-track-used-v2-0-30c5d83b572a@google.com>
 In-Reply-To: <20260909-hugetlb-subpool-always-track-used-v2-0-30c5d83b572a@google.com>
 To: Alex Shi <alexs@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, 
@@ -26,113 +26,89 @@ To: Alex Shi <alexs@kernel.org>, Andrew Morton <akpm@linux-foundation.org>,
  Yanteng Si <si.yanteng@linux.dev>, fvdl@google.com, jthoughton@google.com, 
  rientjes@google.com, vannapurve@google.com
 Cc: linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, Ackerley Tng <ackerleytng@google.com>, 
- stable@vger.kernel.org
+ linux-mm@kvack.org, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788990577; l=3569;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788990577; l=3199;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=cYJ89cnWWYewpfV2xJr1JZku8Dzt8E3hqm4GB5Ws6/g=;
- b=saJolngd03Eu0+scYnu3x47RfGTgFmOprIS5lh7xp/uDq2/hCD/CKZYbPTtBY4n9Hn7uqo2rO
- V8dm6FOIsbRBfyagUeDDamv2dWK3Q7IFZscOJPx3Tg8l77vta/SfUMo
+ bh=EoLqecRMxYnQilsAlZ6TRmi6EOz6fqVlkxDRkYXZEGk=;
+ b=pn54b1X1S+6OXfUVQLwJl5j4qFJzOlrJTC968pEjDav5b3JyIY5oXTBnAPkDoWOqMP4ghK560
+ lOxRYC1UM8FCni/NJJLHPTOLuS739e0OBT7fH7w+J2lRsFmvY3WNYZC
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When folio allocation fails early (e.g. buddy allocation failure or
-cgroup charging failure) and a reservation was not used (meaning an
-unreserved global page was needed), the subpool page acquired during the
-allocation attempt must still be returned.
+When reserving huge pages for a shared mapping, reservations are first
+requested from the subpool, and any remainder is accounted in global
+reservations. When adding the file region entries fails later in the
+process, the reservation attempt must be rolled back.
 
-Currently, the subpool cleanup error path only returns the page to the
-subpool if a reservation was used. If no reservation was used, it skips
-releasing the page back to the subpool, permanently leaking the subpool's
-used pages counter.
+Previously, this error path explicitly dropped the global reservations
+that were just acquired before jumping to the cleanup label. The cleanup
+label then returned the pages to the subpool. If concurrent activity in
+the subpool allowed the subpool to absorb more reservations upon return
+than it supplied initially, the cleanup label calculated a positive
+difference and attempted to allocate new global reservations from scratch.
 
-With subpools now always tracking used pages, always release the page
-back to the subpool whenever a subpool page was acquired.
+This premature release was completely unnecessary because all requested
+pages were already backed globally: partly by the mount guarantee and
+partly by the global reservations just acquired. Prematurely dissolving
+those reservations forced the cleanup path to attempt fresh buddy
+allocations that could fail under memory pressure.
 
-Opportunistically rename the local variables tracking global reservations
-needed and global reservations returned. This clarifies the accounting:
-a value of zero for needed global reservations indicates an existing
-reservation satisfies the allocation, while a non-zero value indicates
-new global pages are required.
+Instead, track the number of global reservations actually accounted so
+far. In the cleanup label, subtract the already-accounted amount from the
+difference between requested and returned reservations. This ensures
+that when global reservations were already acquired, the adjustment is
+purely non-positive, dropping excess reservations without ever attempting
+fresh allocations.
 
-Adjust global reservations using the difference between reservations
-needed and reservations returned to properly handle races where concurrent
-threads interact with the same subpool.
-
-Fixes: a833a693a490 ("mm: hugetlb: fix incorrect fallback for subpool")
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
-Cc: stable@vger.kernel.org
 ---
- mm/hugetlb.c | 23 ++++++++++-------------
- 1 file changed, 10 insertions(+), 13 deletions(-)
+ mm/hugetlb.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 9eb9f3442574c..652cfb55c6e6e 100644
+index 652cfb55c6e6e..1151ad959ffd5 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -2957,7 +2957,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	struct hugepage_subpool *spool = subpool_vma(vma);
- 	struct hstate *h = hstate_vma(vma);
- 	struct folio *folio;
--	long retval, gbl_chg, gbl_reserve;
-+	long retval, gbl_resv_get;
- 	map_chg_state map_chg;
- 	struct mempolicy_interpreted mpoli;
- 	gfp_t gfp = htlb_alloc_mask(h);
-@@ -2996,8 +2996,8 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	 * Or if it can get one from the pool reservation directly.
- 	 */
- 	if (map_chg) {
--		gbl_chg = hugepage_subpool_get_pages(spool, 1);
--		if (gbl_chg < 0) {
-+		gbl_resv_get = hugepage_subpool_get_pages(spool, 1);
-+		if (gbl_resv_get < 0) {
- 			ret = -ENOSPC;
- 			goto out_end_reservation;
- 		}
-@@ -3006,7 +3006,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 		 * If we have the vma reservation ready, no need for extra
- 		 * global reservation.
- 		 */
--		gbl_chg = 0;
-+		gbl_resv_get = 0;
- 	}
+@@ -6678,6 +6678,7 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 	struct hugepage_subpool *spool = subpool_inode(inode);
+ 	struct resv_map *resv_map;
+ 	struct hugetlb_cgroup *h_cg = NULL;
++	long gbl_resv_accted = 0;
+ 	long regions_needed = 0;
+ 	long gbl_resv_get;
+ 	long gbl_resv_put;
+@@ -6768,6 +6769,7 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 	err = hugetlb_acct_memory(h, gbl_resv_get);
+ 	if (err < 0)
+ 		goto out_put_pages;
++	gbl_resv_accted = gbl_resv_get;
  
  	/*
-@@ -3017,10 +3017,10 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 		alloc_flags |= HUGETLB_ALLOC_CHARG_CGROUP_RSVD;
+ 	 * Account for the reservations made. Shared mappings record regions
+@@ -6784,7 +6786,6 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 		add = region_add(resv_map, from, to, regions_needed, h, h_cg);
  
- 	/*
--	 * gbl_chg == 0 indicates a reservation exists for this
-+	 * gbl_resv_get == 0 indicates a reservation exists for this
- 	 * allocation, so try to use it.
+ 		if (unlikely(add < 0)) {
+-			hugetlb_acct_memory(h, -gbl_resv_get);
+ 			err = add;
+ 			goto out_put_pages;
+ 		} else if (unlikely(chg > add)) {
+@@ -6831,9 +6832,10 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 	 * There may be a difference between the number of
+ 	 * reservations to consume and the number to restore now if
+ 	 * there are multiple threads interacting with the subpool -
+-	 * restore the difference.
++	 * restore the difference, taking into account any global
++	 * reservations already acquired.
  	 */
--	if (gbl_chg == 0)
-+	if (gbl_resv_get == 0)
- 		alloc_flags |= HUGETLB_ALLOC_USE_GLOBAL_RESERVATIONS;
+-	hugetlb_acct_memory(h, gbl_resv_get - gbl_resv_put);
++	hugetlb_acct_memory(h, gbl_resv_get - gbl_resv_put - gbl_resv_accted);
  
- 	/* Takes reference on mpol. */
-@@ -3074,13 +3074,10 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	return folio;
- 
- out_subpool_put:
--	/*
--	 * put page to subpool iff the quota of subpool's rsv_hpages is used
--	 * during hugepage_subpool_get_pages.
--	 */
--	if (map_chg && !gbl_chg) {
--		gbl_reserve = hugepage_subpool_put_pages(spool, 1);
--		hugetlb_acct_memory(h, -gbl_reserve);
-+	if (map_chg) {
-+		long gbl_resv_put = hugepage_subpool_put_pages(spool, 1);
-+
-+		hugetlb_acct_memory(h, gbl_resv_get - gbl_resv_put);
- 	}
- 
- out_end_reservation:
+ out_uncharge_cgroup:
+ 	hugetlb_cgroup_uncharge_cgroup_rsvd(hstate_index(h),
 
 -- 
 2.55.0.1007.g17ff1f9808-goog
