@@ -1,102 +1,117 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Tue, 08 Sep 2026 18:55:35 -0600
-Subject: [PATCH v9 39/39] dyndbg: add DEBUG-biased fallback stubs for
- _dynamic_func_call_cls
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Wed, 09 Sep 2026 10:05:08 +0800
+Subject: [PATCH net v2] tcp: fix data-race in tcp_recv_should_stop
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260908-dd-cmap-part2-clean-v9-39-3a3f621f4a10@gmail.com>
-References: <20260908-dd-cmap-part2-clean-v9-0-3a3f621f4a10@gmail.com>
-In-Reply-To: <20260908-dd-cmap-part2-clean-v9-0-3a3f621f4a10@gmail.com>
-To: Jason Baron <jbaron@akamai.com>, Shuah Khan <shuah@kernel.org>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Arnd Bergmann <arnd@arndb.de>, Luis Chamberlain <mcgrof@kernel.org>, 
- Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez <da.gomez@kernel.org>, 
- Sami Tolvanen <samitolvanen@google.com>, Aaron Tomlin <atomlin@atomlin.com>, 
- Jonathan Corbet <corbet@net.net>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Len Brown <lenb@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, linux-arch@vger.kernel.org, 
- linux-modules@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kbuild@vger.kernel.org, linux-pm@vger.kernel.org, 
- Jim Cromie <jim.cromie@gmail.com>, kernel test robot <lkp@intel.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788915300; l=2698;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=UzHqkocJhhqs+OcvBRzlrKDtVugWnfrgPJr08BsCHJ8=;
- b=/PPxAaGfLhiX44RK2guq5ZLmp4hnvE4FW3a8ac+SsdeTmiRzph0dBsC4T9QZLrlPTLKSIOI9/
- dLe/Jsba9mNDzB7/UP+Oq0rg0H8+vdv52Wth5Q5ISRI4RB3e/ieM5NH
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+Message-Id: <20260909-mptcp-sk-err-net-v2-1-5044abecac90@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ6CMBBEf4Xs2TUtQQFP/IfhUMtWqqFttpVoC
+ P9uwbPHN3kzs0AkthThUizANNtovctQHgrQo3J3QjtkhlKUZ9GKBqeQdMD4RGJGRwlrY5qGjDi
+ JqoJcC0zGvvfJK2QB+l8YX7cH6bSNbdpoY/L82Y9nucv/P2aJEgdVS6VIt8oMXWCfvDtOBP26r
+ l/zAnN8xwAAAA==
+X-Change-ID: 20260908-mptcp-sk-err-net-7ff88ef05044
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Quanye Yang <quanyeyang@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788919517; l=3682;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=dJErtNJjTbHRqHJAsgAUQgVauvLdJ8L4HcDbe4mYVzA=;
+ b=UpWHLgav9EkyotUa2n5ykWw6LJVh7yWZHp6hs7BCT4Ez31xmzU9zTR/67/MpD2YKXriHVKSfd
+ PCLycswzloXAyvo1ZDnE+oX/27Z1be6rjYpruo0F16b1zrThIXhzD8I
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the dynamic debug core is enabled (CONFIG_DYNAMIC_DEBUG_CORE=y) but
-the global CONFIG_DYNAMIC_DEBUG is disabled, subsystems can opt-in to
-dynamic debug by defining DYNAMIC_DEBUG_MODULE.
+BUG: KCSAN: data-race in do_recvmmsg / mptcp_recvmsg
 
-However, for built-in code (like DRM core) where DYNAMIC_DEBUG_MODULE
-is not defined, the macros fall back to the disabled #else block in
-include/linux/dynamic_debug.h.
+read-write (marked) to 0xffff8880134d391c of 4 bytes by task 2619 on cpu 1:
+ instrument_atomic_read_write include/linux/instrumented.h:113 [inline]
+ sock_error include/net/sock.h:2565 [inline]
+ do_recvmmsg+0x50c/0x580 net/socket.c:3049
+ __sys_recvmmsg net/socket.c:3144 [inline]
+ __do_sys_recvmmsg net/socket.c:3167 [inline]
+ __se_sys_recvmmsg net/socket.c:3160 [inline]
+ __x64_sys_recvmmsg+0x161/0x180 net/socket.c:3160
+ x64_sys_call+0x19c7/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:300
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
 
-In this block, the family of _dynamic_func_call_cls macros were
-completely undefined. This caused build failures (implicit declarations)
-in subsystems (like DRM) that attempt to use these macros to wrap their
-own debug functions even when dynamic debug is disabled.
+read to 0xffff8880134d391c of 4 bytes by task 2620 on cpu 0:
+ tcp_recv_should_stop include/net/tcp.h:3086 [inline]
+ mptcp_recvmsg+0x54d/0xd50 net/mptcp/protocol.c:2466
+ inet_recvmsg+0x204/0x210 net/ipv4/af_inet.c:894
+ sock_recvmsg_nosec net/socket.c:1151 [inline]
+ sock_recvmsg+0x11a/0x140 net/socket.c:1173
+ ____sys_recvmsg+0x14b/0x3c0 net/socket.c:2933
+ ___sys_recvmsg+0x116/0x160 net/socket.c:2975
+ __sys_recvmsg net/socket.c:3008 [inline]
+ __do_sys_recvmsg net/socket.c:3014 [inline]
+ __se_sys_recvmsg net/socket.c:3011 [inline]
+ __x64_sys_recvmsg+0xeb/0x160 net/socket.c:3011
+ x64_sys_call+0x1319/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:48
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
 
-Add stub definitions that mirror the enabled behavior and respect the
-DEBUG macro, similar to pr_debug. If DEBUG is defined, they inject NULL
-as the first argument (to satisfy the expected descriptor pointer) and
-pass the arguments through, allowing the wrapped function's own slow-path
-fallback logic to execute. If DEBUG is not defined, they use an if (0)
-statement-expression to compile out the call while returning 0, achieving
-zero overhead while maintaining compile-time argument checking.
+value changed: 0x0000006b -> 0x00000000
 
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202605201408.x1sHT6fx-lkp@intel.com/
-Assisted-by: Gemini-CLI:gemini-2.5-pro
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Reported by Kernel Concurrency Sanitizer on:
+CPU: 0 UID: 0 PID: 2620 Comm: syz.2.33 Not tainted 7.2.0-g39d4f32c5d53 #76 PREEMPT(full)
+Hardware name: QEMU Ubuntu 26.04 PC (i440FX + PIIX, 1996), BIOS 1.17.0-debian-1.17.0-1ubuntu1 04/01/2014
+
+do_recvmmsg() calls sock_error() without the socket lock. sock_error()
+clears sk_err with xchg(), which races with the unmarked load in
+tcp_recv_should_stop(). The same race exists for plain TCP with
+concurrent recvmmsg() readers; KCSAN reported it on an MPTCP socket
+because mptcp_recvmsg() uses this helper.
+
+Use READ_ONCE() for the lockless peek. No extra ordering is needed:
+the value is only used to decide whether receiving should stop.
+This does not consume sk_err; the check-then-sock_error() TOCTOU
+on the no-data paths is a separate issue.
+
+Fixes: eb477fdd6803 ("tcp: add recv_should_stop helper")
+Reported-by: Matthieu Baerts (NGI0) <matttbe@kernel.org>
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/632
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- include/linux/dynamic_debug.h | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+Link: https://lore.kernel.org/all/14749060-d011-41e7-9a4b-754eb5bd9d5b@redhat.com/
+---
+Changes in v2:
+- add Reported-by and Closes for the MPTCP syzkaller report
+- Link to v1: https://patch.msgid.link/20260908-mptcp-sk-err-net-v1-1-da71aaec9afd@proton.me
+---
+ include/net/tcp.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/dynamic_debug.h b/include/linux/dynamic_debug.h
-index 064df695b3a4..a04e8aeca000 100644
---- a/include/linux/dynamic_debug.h
-+++ b/include/linux/dynamic_debug.h
-@@ -541,6 +541,23 @@ void ddebug_increment_call_count(void);
- #define DYNAMIC_DEBUG_BRANCH(descriptor) false
- #define DECLARE_DYNDBG_CLASSMAP(...)
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index 436495ff2271..c61d8678eafd 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -3082,7 +3082,8 @@ enum skb_drop_reason tcp_inbound_hash(struct sock *sk,
  
-+#if defined(DEBUG)
-+#define _dynamic_func_call_cls(cls, fmt, func, ...)		\
-+	do { func(NULL, ##__VA_ARGS__); } while (0)
-+#define _dynamic_func_call_cls_no_desc(cls, fmt, func, ...)	\
-+	do { func(__VA_ARGS__); } while (0)
-+#else
-+#define _dynamic_func_call_cls(cls, fmt, func, ...)		\
-+	do { if (0) func(NULL, ##__VA_ARGS__); } while (0)
-+#define _dynamic_func_call_cls_no_desc(cls, fmt, func, ...)	\
-+	do { if (0) func(__VA_ARGS__); } while (0)
-+#endif
-+
-+#define _dynamic_func_call(fmt, func, ...)			\
-+	_dynamic_func_call_cls(_DPRINTK_CLASS_DFLT, fmt, func, ##__VA_ARGS__)
-+#define _dynamic_func_call_no_desc(fmt, func, ...)		\
-+	_dynamic_func_call_cls_no_desc(_DPRINTK_CLASS_DFLT, fmt, func, ##__VA_ARGS__)
-+
- #define dynamic_pr_debug(fmt, ...)					\
- 	no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
- #define dynamic_dev_dbg(dev, fmt, ...)					\
+ static inline int tcp_recv_should_stop(struct sock *sk)
+ {
+-	return sk->sk_err ||
++	/* sk_err can be cleared locklessly by sock_error(). */
++	return READ_ONCE(sk->sk_err) ||
+ 	       sk->sk_state == TCP_CLOSE ||
+ 	       (sk->sk_shutdown & RCV_SHUTDOWN) ||
+ 	       signal_pending(current);
 
--- 
-2.55.0
+---
+base-commit: 38b6be101006d3e7af972999f45d4f1e8250587a
+change-id: 20260908-mptcp-sk-err-net-7ff88ef05044
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
