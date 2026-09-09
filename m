@@ -1,148 +1,94 @@
-From: Roland Dreier <rolanddreier@rivian.com>
-Date: Wed, 09 Sep 2026 04:32:28 +0000
-Subject: [PATCH v2 2/2] firmware: arm_scmi: Don't reuse raw xfers with
- async_done still armed
+From: Petr Hodina <petr.hodina@protonmail.com>
+Date: Wed, 09 Sep 2026 08:27:22 +0200
+Subject: [PATCH u-boot] net, common: add NET_SKIP_BOOT_INIT for gadget-only
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260909-scmi-async-done-race-v2-2-cc5dec25c6be@rivian.com>
-References: <20260909-scmi-async-done-race-v2-0-cc5dec25c6be@rivian.com>
-In-Reply-To: <20260909-scmi-async-done-race-v2-0-cc5dec25c6be@rivian.com>
-To: Sudeep Holla <sudeep.holla@kernel.org>, 
- Cristian Marussi <cristian.marussi@arm.com>
-Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Roland Dreier <rolanddreier@rivian.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1788928354; l=4879;
- i=rolanddreier@rivian.com; s=20260814; h=from:subject:message-id;
- bh=lSQlG8l7yS93nl1ymFQxqscEtFohEzwB1dp70n6pFeI=;
- b=HZOSFuWSuNxEEKPqd7+alIQGq5wamsT0h73sBDg0Rd0dnAhkpZXx/4vVoa1l512hrdZ0qfxHi
- 9im1wJRv31OCyspwCOv5eUB8J88TR3v0iWXPGcd1H6+FYYtuDuhtekt
-X-Developer-Key: i=rolanddreier@rivian.com; a=ed25519;
- pk=C7SBXsDIlarq7BpINqyDL67XV/AGNqNt09NCCpFcExk=
-X-Endpoint-Received: by B4 Relay for rolanddreier@rivian.com/20260814 with auth_id=952
+Message-Id: <20260909-b4-net-skip-boot-init-v1-1-e2a460818205@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBBFryKz7kAiEqVXKV0046SOhUQysRTEu
+ xvt8n3+exsoZ2GFe7NB5q+opFjB3hqg6RXfjDJWhta0zjhr0XcYuaB+ZEGfUkGJUnBwgQKRcX0
+ 3QnWXzEF+V/cB63WE53/X1c9M5YzCvh+oRIKigQAAAA==
+X-Change-ID: 20260611-b4-net-skip-boot-init-86fcfcc0674d
+To: u-boot@lists.denx.de
+Cc: Tom Rini <trini@konsulko.com>, 
+ Jerome Forissier <jerome.forissier@arm.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Peter Robinson <pbrobinson@gmail.com>, Simon Glass <sjg@chromium.org>, 
+ Michael Walle <mwalle@kernel.org>, Michal Simek <michal.simek@amd.com>, 
+ =?utf-8?q?Alvin_=C5=A0ipraga?= <alvin@pqrs.dk>, 
+ David Heidelberg <david@ixit.cz>, Heinrich Schuchardt <xypron.glpk@gmx.de>, 
+ Petr Hodina <petr.hodina@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1788935254; l=1858;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=IF4rVkjfbIS1XY/uUJfKFGMRapQTniYTNdv/cb22bn0=;
+ b=WFWiV4SfUHJb7nhE8STLwX7+g4DCD86qVEucJkwG9XFbvPcqfj1n4hQAsUr1v/TxJfCU5ZMZC
+ /kfdp3qOSEgA+SNTGU6isQ+LbkXnGHPA7iZba3Z/+nyRQkm0VoECxdV
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In SCMI raw mode, scmi_xfer_raw_worker() releases the xfer before
-releasing the waiter that disarms xfer->async_done, and scmi_xfer_get()
-does not clear async_done when it hands out a recycled xfer. A concurrent
-transaction can therefore pick up the xfer while it still points at the
-old waiter's completion, so:
+Gate the initr_net() INITCALL on CONFIG_NET_SKIP_BOOT_INIT at the
+call site in initcall_run_r(), so boards with no wired NIC can skip
+the boot-time probe and "Net:" banner without touching initr_net()
+itself.
 
- - a delayed response arriving for the new transaction can be signalled
-   on the old waiter's completion, which may already be re-armed for yet
-   another unrelated transaction, making that transaction's wait return
-   early; and
-
- - the old waiter's disarm, which still runs after the xfer has been
-   released, clobbers the arming just installed by the new transaction,
-   so the new waiter times out even if its delayed response arrives.
-
-Release the waiter first, while the worker still holds a reference on
-the xfer, so that an xfer can never reach the free list still
-armed. Track whether a delayed response is expected in the waiter
-itself instead of peeking at xfer->async_done outside xfer->lock, and
-wait on the waiter's own embedded completion. (The new async flag is
-not strictly needed but it makes the logic easier to reason about)
-
-Finally, harden scmi_xfer_get() to clear async_done when handing out
-an xfer, so that no future release-ordering change can leak a stale
-arming into a new transaction.
-
-Fixes: 3c3d818a9317 ("firmware: arm_scmi: Add core raw transmission support")
-Signed-off-by: Roland Dreier <rolanddreier@rivian.com>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/firmware/arm_scmi/driver.c   |  1 +
- drivers/firmware/arm_scmi/raw_mode.c | 25 +++++++++++++++++++++----
- 2 files changed, 22 insertions(+), 4 deletions(-)
+initr_net() probes for Ethernet and prints a "Net:" banner when `NET` option
+is enabled, which is not relevant for boards that use USB gadgets
+for networking.
 
-diff --git a/drivers/firmware/arm_scmi/driver.c b/drivers/firmware/arm_scmi/driver.c
-index 847c09da310e..eb20488d39d3 100644
---- a/drivers/firmware/arm_scmi/driver.c
-+++ b/drivers/firmware/arm_scmi/driver.c
-@@ -718,6 +718,7 @@ static struct scmi_xfer *scmi_xfer_get(const struct scmi_handle *handle,
- 
- 	refcount_set(&xfer->users, 1);
- 	atomic_set(&xfer->busy, SCMI_XFER_FREE);
-+	xfer->async_done = NULL;
- 	spin_unlock_irqrestore(&minfo->xfer_lock, flags);
- 
- 	return xfer;
-diff --git a/drivers/firmware/arm_scmi/raw_mode.c b/drivers/firmware/arm_scmi/raw_mode.c
-index 8751cff5fa4e..5ee21f6b7001 100644
---- a/drivers/firmware/arm_scmi/raw_mode.c
-+++ b/drivers/firmware/arm_scmi/raw_mode.c
-@@ -198,6 +198,8 @@ struct scmi_raw_mode_info {
-  * @async_response: A completion to be, optionally, used for async waits: it
-  *		    will be setup by @scmi_do_xfer_raw_start, if needed, to be
-  *		    pointed at by xfer->async_done.
-+ * @async: True if @async_response was armed on @xfer, i.e. if a delayed
-+ *	   response has to be waited for.
-  * @node: A list node.
-  */
- struct scmi_xfer_raw_waiter {
-@@ -205,6 +207,7 @@ struct scmi_xfer_raw_waiter {
- 	struct scmi_chan_info *cinfo;
- 	struct scmi_xfer *xfer;
- 	struct completion async_response;
-+	bool async;
- 	struct list_head node;
- };
- 
-@@ -349,6 +352,7 @@ scmi_xfer_raw_waiter_get(struct scmi_raw_mode_info *raw, struct scmi_xfer *xfer,
- 			scmi_xfer_async_response_arm(xfer, &rw->async_response);
- 		}
- 
-+		rw->async = async;
- 		rw->cinfo = cinfo;
- 		rw->xfer = xfer;
- 	}
-@@ -361,8 +365,16 @@ static void scmi_xfer_raw_waiter_put(struct scmi_raw_mode_info *raw,
- 				     struct scmi_xfer_raw_waiter *rw)
- {
- 	if (rw->xfer) {
-+		/*
-+		 * Disarm the delayed response before this waiter, and its
-+		 * embedded completion, can be picked up again for a new
-+		 * transaction: a delayed response received late, after the
-+		 * related wait timed out, must not signal a completion which
-+		 * has been in the meantime re-armed on a different xfer.
-+		 */
- 		scmi_xfer_async_response_disarm(rw->xfer);
- 		rw->xfer = NULL;
-+		rw->async = false;
- 	}
- 
- 	mutex_lock(&raw->free_mtx);
-@@ -479,18 +491,23 @@ static void scmi_xfer_raw_worker(struct work_struct *work)
- 				    ret, scmi_inflight_count(raw->handle));
- 
- 		/* Wait also for an async delayed response if needed */
--		if (!ret && xfer->async_done) {
-+		if (!ret && rw->async) {
- 			unsigned long tmo = msecs_to_jiffies(SCMI_MAX_RESPONSE_TIMEOUT);
- 
--			if (!wait_for_completion_timeout(xfer->async_done, tmo))
-+			if (!wait_for_completion_timeout(&rw->async_response, tmo))
- 				dev_err(dev,
- 					"timed out in RAW delayed resp - HDR:%08X\n",
- 					pack_scmi_header(&xfer->hdr));
- 		}
- 
--		/* Release waiter and xfer */
--		scmi_xfer_raw_put(raw->handle, xfer);
-+		/*
-+		 * Release the waiter first: this disarms the delayed response
-+		 * while we still hold a reference on the xfer, so that the xfer
-+		 * cannot be recycled by a new transaction while it still points
-+		 * at this waiter's completion.
-+		 */
- 		scmi_xfer_raw_waiter_put(raw, rw);
-+		scmi_xfer_raw_put(raw->handle, xfer);
- 	} while (1);
- }
- 
+Add CONFIG_NET_SKIP_BOOT_INIT to skip that boot-time probe. Later
+invocations still probe UCLASS_ETH normally. Defaults to n.
+---
+ common/board_r.c | 6 ++++--
+ net/Kconfig      | 7 +++++++
+ 2 files changed, 11 insertions(+), 2 deletions(-)
 
--- 
-2.54.0
+diff --git a/common/board_r.c b/common/board_r.c
+index a397e20959d..1de4b4925b1 100644
+--- a/common/board_r.c
++++ b/common/board_r.c
+@@ -761,8 +761,10 @@ static void initcall_run_r(void)
+ 	INITCALL(pci_ep_init);
+ #endif
+ #if CONFIG_IS_ENABLED(NET)
+-	WATCHDOG_RESET();
+-	INITCALL(initr_net);
++	if (!IS_ENABLED(CONFIG_NET_SKIP_BOOT_INIT)) {
++		WATCHDOG_RESET();
++		INITCALL(initr_net);
++	}
+ #endif
+ #if CONFIG_IS_ENABLED(POST)
+ 	INITCALL(initr_post);
+diff --git a/net/Kconfig b/net/Kconfig
+index e712a0dd2ac..d42a68d8e12 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -14,6 +14,13 @@ menuconfig NET
+ 
+ if NET
+ 
++config NET_SKIP_BOOT_INIT
++	bool "Skip the boot-time ethernet probe + 'Net:' banner"
++	help
++	  By default init runs eth_initialize() if `NET` option is enabled.
++	  Some boards do not have a wired NIC but use RNDIS or CDC-NCM
++	  gadgets on the USB to provide network connectivity.
++
+ choice
+ 	prompt "Networking stack"
+ 	default NET_LEGACY
+
+---
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20260611-b4-net-skip-boot-init-86fcfcc0674d
+
+Best regards,
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
