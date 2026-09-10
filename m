@@ -1,22 +1,19 @@
 From: Andrei Lalaev <andrei.lalaev@anton-paar.com>
-Date: Thu, 10 Sep 2026 09:23:05 +0200
-Subject: [PATCH] ref-manual: update DEBUG_OPTIMIZATION/FULL_OPTIMIZATION
+Date: Thu, 10 Sep 2026 09:41:55 +0200
+Subject: [PATCH RESEND] ref-manual: update
+ DEBUG_OPTIMIZATION/FULL_OPTIMIZATION
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-master-v1-1-425674593882@anton-paar.com>
-X-B4-Tracking: v=1; b=H4sIANhaomoC/yXMQQqAIBCF4avErBPUhWFXiRZqU02QhVMRRHfPa
- vnB/94FjImQoS4uSHgQ0xIzVFlAGF0cUFCXDVpqI62SYna8YRKhV85W6I0PGnK8Juzp/I6a9jf
- vfsKwvWu47wfEqLYQagAAAA==
-X-Change-ID: 20260910-master-cf1a97eb6bc2
+Message-Id: <20260910-master-v1-1-7bf67b4fbebd@anton-paar.com>
 To: docs@lists.yoctoproject.org
 Cc: Andrei Lalaev <andrei.lalaev@anton-paar.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789024985; l=1807;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789026119; l=1856;
  i=andrei.lalaev@anton-paar.com; s=20250820; h=from:subject:message-id;
- bh=OFy/tSvfyRnOzOk+v6b8DX1GcCZQL6xs0GstCSKHXE4=;
- b=+w389CQ79TyV5UpssrE4OGeGJd3/Nc+aLiOEEWjuBy0UQvpoQDNR5+MPL5FYOPJS13OQq+m7L
- R8jAadcIHMvAU7YFjQlFhHPEHAezwwQMNn5ne5PBcSR9EWgrolCU3/4
+ bh=trinjwU2PSarYRydVzkoUwZSFKpYANZpkeqa7LktkOI=;
+ b=lFzz6C3sUBv7upYZqYnwNXeDvjodRR6nIuQ0wVRxzvxmPAHea5vkq9hw0McDk/MIPN9O8crzP
+ zXFZxkrQrbGCPxI/rcKhYXlOdnK/WGGqqWLatjxcy6tYWHJJVESbzkD
 X-Developer-Key: i=andrei.lalaev@anton-paar.com; a=ed25519;
  pk=728nZXw7ILalhZmxQ0hPJ77AKRvsdNkq+v6XdryA5fM=
 X-Endpoint-Received: by B4 Relay for andrei.lalaev@anton-paar.com/20250820 with auth_id=496
@@ -64,6 +61,8 @@ base-commit: e35e86e9aea4e4ae12e8e0ba8a6391f2b2555b63
 change-id: 20260910-master-cf1a97eb6bc2
 
 Best regards,
---  
+--
+Andrei Lalaev <andrei.lalaev@anton-paar.com>
+-- 
 Andrei Lalaev <andrei.lalaev@anton-paar.com>
 
