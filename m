@@ -1,150 +1,114 @@
-From: "Mark C. Chu-Carroll" <markchucarroll@fastmail.com>
-Date: Thu, 10 Sep 2026 13:07:35 -0400
-Subject: [PATCH v2 3/3] Update t4010 to use modern style.
+From: Brian Ellis <brianellis@gotenna.com>
+Date: Thu, 10 Sep 2026 13:53:59 -0600
+Subject: [PATCH] usb: gadget: u_serial: fix NULL deref in gs_close() after
+ failed open
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-modernize-t4001-v2-3-ac53e9f5d717@fastmail.com>
-References: <20260910-modernize-t4001-v2-0-ac53e9f5d717@fastmail.com>
-In-Reply-To: <20260910-modernize-t4001-v2-0-ac53e9f5d717@fastmail.com>
-To: git@vger.kernel.org
-Cc: "Mark C. Chu-Carroll" <markchucarroll@fastmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3836;
- i=markchucarroll@fastmail.com; h=from:subject:message-id;
- bh=jbDFKk5FP41wRp0ysubaMC1p6nuvLVe5p07ZV5O63Pw=;
- b=owGbwMvMwCUWOPFJle/8tn2Mp9WSGLIWPX5Wrl9cqvjq1neLJayyCn9cE+dGfFy88OICR6FbM
- 8zvL/oZ1lHKwiDGxSArpsjy/59A4yuWBxJ+Qe8+wcxhZQIZwsDFKQATOSjFyHBMujlB4ec2v4Kt
- DrdvLQhW+im7W6cj5nlyKOPcdwKycXcYGXb1COzscrnG3ZJR32DeoVd3eNLDXy9rbBb2303vW75
- BiAcA
-X-Developer-Key: i=markchucarroll@fastmail.com; a=openpgp;
- fpr=FFFE1081EA04E0184E52EEF25191E47A4D9F86BE
-X-Endpoint-Received: by B4 Relay for markchucarroll@fastmail.com/default with auth_id=1002
+Message-Id: <20260910-u_serial-gs-close-null-v1-1-9a5e848b1dfb@gotenna.com>
+X-B4-Tracking: v=1; b=H4sIANYKo2oC/x2MQQqAIBAAvyJ7bkErovpKREhttSAaLkYQ/T1rb
+ nOYuUEoMgn06oZIJwsHn8UUCubd+o2Ql+xQ6rLRndGYpq+wDjfB2QUh9Mk5tK22ddVkqIUcH5F
+ Wvv7xMD7PC/YgSY1oAAAA
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Kuen-Han Tsai <khtsai@google.com>, 
+ Prashanth K <prashanth.k@oss.qualcomm.com>, stable@vger.kernel.org, 
+ Brian Ellis <brianellis@gotenna.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789070049; l=2951;
+ i=brianellis@gotenna.com; s=20260910; h=from:subject:message-id;
+ bh=elm183E8ARQLqVNCj2uC/Zn4AQumLckjzIgt6S1EnX0=;
+ b=6fsaZbzfuwEtD5Xr3Gvzr3qRhjpR4OxD/mPqG7UrV+ekUxg3qGiM/kayiEUntWUnUkKA2Sg+o
+ sjH+Mu9jzQqA+4jhG/oFJf93J+k63j1lchrThYPfFdJ8Sa0XbYrWcpe
+X-Developer-Key: i=brianellis@gotenna.com; a=ed25519;
+ pk=JciDR8ctfMqvKeRCDP8VPwNLUDULxCAqDum6H+/ByBY=
+X-Endpoint-Received: by B4 Relay for brianellis@gotenna.com/20260910 with auth_id=1022
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+gs_close() dereferences tty->driver_data without checking it:
+
+	struct gs_port *port = tty->driver_data;
+	struct gserial	*gser;
+
+	spin_lock_irq(&port->port_lock);
+
+but gs_open() assigns tty->driver_data only after two error returns:
+
+	if (!port) {
+		status = -ENODEV;
+		goto out;
+	}
+	...
+		status = kfifo_alloc(&port->port_write_buf,
+				     WRITE_BUF_SIZE, GFP_KERNEL);
+		if (status) {
+			...
+			goto out;
+		}
+	...
+	tty->driver_data = port;
+
+and when ->open() returns an error the tty core calls ->close() anyway:
+
+	if (tty->ops->open)
+		retval = tty->ops->open(tty, filp);
+	...
+	if (retval) {
+		tty_debug_hangup(tty, "open error %d, releasing\n", retval);
+		tty_unlock(tty); /* need to call tty_release without BTM */
+		tty_release(inode, filp);
+
+So opening /dev/ttyGS<n> for a port that has already been freed, or when
+the write-buffer allocation fails, oopses in gs_close().
+
+This is not the situation commit ffd603f21423 ("usb: gadget: u_serial: Add
+null pointer check in gs_start_io") was reverted for. That check was
+redundant because gs_start_io()'s callers are required to hold port_lock
+with port.tty and port_usb non-NULL, and the dereference it hid was a race.
+Here the NULL is not a race: the tty core deliberately calls ->close() for
+an ->open() that failed, as its own debug message says, so driver_data is
+legitimately unset on that path and every tty driver has to tolerate it.
+
+Fixes: c1dca562be8a ("usb gadget: split out serial core")
+Cc: stable@vger.kernel.org
+Signed-off-by: Brian Ellis <brianellis@gotenna.com>
 ---
- t/t4010-diff-pathspec.sh | 88 +++++++++++++++++-------------------------------
- 1 file changed, 31 insertions(+), 57 deletions(-)
+Found on a downstream 6.6-adi BSP kernel, then confirmed present in usb-linus
+by inspection: gs_close() still dereferences tty->driver_data unguarded, and
+gs_open() still assigns it only after its error returns.
 
-diff --git a/t/t4010-diff-pathspec.sh b/t/t4010-diff-pathspec.sh
-index 8d980823b0..76ddd3ff4e 100755
---- a/t/t4010-diff-pathspec.sh
-+++ b/t/t4010-diff-pathspec.sh
-@@ -13,60 +13,34 @@ Prepare:
- . ./test-lib.sh
- . "$TEST_DIRECTORY"/lib-diff.sh ;# test-lib chdir's into trash
- 
--test_expect_success \
--    setup \
--    'echo frotz >file0 &&
--     mkdir path1 &&
--     echo rezrov >path1/file1 &&
--     before0=$(git hash-object file0) &&
--     before1=$(git hash-object path1/file1) &&
--     git update-index --add file0 path1/file1 &&
--     tree=$(git write-tree) &&
--     echo "$tree" &&
--     echo nitfol >file0 &&
--     echo yomin >path1/file1 &&
--     after0=$(git hash-object file0) &&
--     after1=$(git hash-object path1/file1) &&
--     git update-index file0 path1/file1'
--
--cat >expected <<\EOF
--EOF
--test_expect_success \
--    'limit to path should show nothing' \
--    'git diff-index --cached $tree -- path >current &&
--     compare_diff_raw current expected'
--
--cat >expected <<EOF
--:100644 100644 $before1 $after1 M	path1/file1
--EOF
--test_expect_success \
--    'limit to path1 should show path1/file1' \
--    'git diff-index --cached $tree -- path1 >current &&
--     compare_diff_raw current expected'
--
--cat >expected <<EOF
--:100644 100644 $before1 $after1 M	path1/file1
--EOF
--test_expect_success \
--    'limit to path1/ should show path1/file1' \
--    'git diff-index --cached $tree -- path1/ >current &&
--     compare_diff_raw current expected'
--
--cat >expected <<EOF
--:100644 100644 $before1 $after1 M	path1/file1
--EOF
--test_expect_success \
--    '"*file1" should show path1/file1' \
--    'git diff-index --cached $tree -- "*file1" >current &&
--     compare_diff_raw current expected'
--
--cat >expected <<EOF
--:100644 100644 $before0 $after0 M	file0
--EOF
--test_expect_success \
--    'limit to file0 should show file0' \
--    'git diff-index --cached $tree -- file0 >current &&
--     compare_diff_raw current expected'
-+
-+test_expect_success 'limit to path should show nothing' '
-+	echo frotz >file0 &&
-+	mkdir path1 &&
-+	echo rezrov >path1/file1 &&
-+	before0=$(git hash-object file0) &&
-+	before1=$(git hash-object path1/file1) &&
-+	git update-index --add file0 path1/file1 &&
-+	tree=$(git write-tree) &&
-+	echo "$tree" &&
-+	echo nitfol >file0 &&
-+	echo yomin >path1/file1 &&
-+	after0=$(git hash-object file0) &&
-+	after1=$(git hash-object path1/file1) &&
-+	git update-index file0 path1/file1 &&
-+	: >expected &&
-+	git diff-index --cached $tree -- path >current &&
-+	compare_diff_raw current expected
-+'
-+
-+test_expect_success 'limit to path1 should show path1/file1' '
-+	cat >expected <<-EOF &&
-+	:100644 100644 $before1 $after1 M	path1/file1
-+	EOF
-+
-+	git diff-index --cached $tree -- path1 >current &&
-+	compare_diff_raw current expected
-+'
- 
- test_expect_success 'limit to path1/ should show path1/file1' '
- 	cat >expected <<-EOF &&
-@@ -80,7 +54,7 @@ test_expect_success '"*file1" should show path1/file1' '
- 	cat >expected <<-EOF &&
- 	:100644 100644 $before1 $after1 M	path1/file1
- 	EOF
--    
-+
- 	git diff-index --cached $tree -- "*file1" >current &&
- 	compare_diff_raw current expected
- '
-@@ -89,13 +63,13 @@ test_expect_success 'limit to file0 should show file0' '
- 	cat >expected <<-EOF &&
- 	:100644 100644 $before0 $after0 M	file0
- 	EOF
--    
-+
- 	git diff-index --cached $tree -- file0 >current &&
- 	compare_diff_raw current expected
- '
- 
- test_expect_success 'limit to file0/ should emit nothing.' '
--    : >expected &&     
-+    : >expected &&
- 	git diff-index --cached $tree -- file0/ >current &&
- 	compare_diff_raw current expected
- '
+Compile-tested against usb-linus with allmodconfig (CONFIG_USB_U_SERIAL=m).
+Not boot-tested on mainline: the board it was found on needs a vendor BSP
+device tree to boot, so the argument here is from source, with both halves
+quoted in the commit message.
+---
+ drivers/usb/gadget/function/u_serial.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
+diff --git a/drivers/usb/gadget/function/u_serial.c b/drivers/usb/gadget/function/u_serial.c
+index cdd1dfc66..5bbb4d04b 100644
+--- a/drivers/usb/gadget/function/u_serial.c
++++ b/drivers/usb/gadget/function/u_serial.c
+@@ -695,6 +695,13 @@ static void gs_close(struct tty_struct *tty, struct file *file)
+ 	struct gs_port *port = tty->driver_data;
+ 	struct gserial	*gser;
+ 
++	/*
++	 * tty_open() calls tty_release(), and hence this, when ->open()
++	 * failed before gs_open() had set tty->driver_data.
++	 */
++	if (!port)
++		return;
++
+ 	spin_lock_irq(&port->port_lock);
+ 
+ 	if (port->port.count != 1) {
+
+---
+base-commit: be4219dd98608736e13e0b790ef742b76a13254d
+change-id: 20260910-u_serial-gs-close-null-a80a436666e8
+
+Best regards,
 -- 
-2.53.0
+Brian Ellis <brianellis@gotenna.com>
 
