@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 10 Sep 2026 16:55:38 -0700
-Subject: [PATCH v13 12/44] KVM: guest_memfd: Always fault from guest_memfd
- if in-place conversion is enabled
+Date: Thu, 10 Sep 2026 16:55:39 -0700
+Subject: [PATCH v13 13/44] KVM: guest_memfd: Pass mapping type filter to
+ invalidation helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-gmem-inplace-conversion-v13-12-dd6fbf94f4e1@google.com>
+Message-Id: <20260910-gmem-inplace-conversion-v13-13-dd6fbf94f4e1@google.com>
 References: <20260910-gmem-inplace-conversion-v13-0-dd6fbf94f4e1@google.com>
 In-Reply-To: <20260910-gmem-inplace-conversion-v13-0-dd6fbf94f4e1@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -45,102 +45,92 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
  Fuad Tabba <fuad.tabba@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789084533; l=4606;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789084533; l=3075;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=+WBdIWJC64hu8Hv2GEhpz7fsUgnbUjGHHH+Q9r+ACN4=;
- b=usjQGlypHSjCPwZTCoDIDlRGkN0v482L+z0wWA2+6lIPU5dTk9O03KS69230OC8njTRx9lUiY
- SH18HCX0W2IBGpCWM1wMQF93AhSh1p1qfzD7ctVmGfFjWTIhYMsV8lK
+ bh=olcJqZe/kIoxozaeU+OrcoTgHksLE0XmCcjni2I7E2I=;
+ b=PuzcQplh7gT51UloHv+ksBnamz11cj9OVdlBS5Uv6zl9EQj3TJbbaqQLWZ/soHHP9gmqJhceI
+ hjoYykTAE84BkNyY+4TA4mZ6z4mYfa48tiQc0dA3c5wb0giaT/aBERH
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a guest_memfd memslot is created but the guest_memfd does not have the
-GUEST_MEMFD_FLAG_MMAP set, KVM still fulfils guest faults by looking up the
-memslot's userspace_addr.
+Accept the mapping type filter as a parameter in the invalidation start
+helper instead of querying it internally. This allows callers to specify
+which mappings (shared, private, or both) should be invalidated.
 
-Set KVM_MEMSLOT_GMEM_ONLY if in-place conversion is enabled so that the
-guest_memfd's memory will be used for both shared and private memory. With
-in-place conversion, guest_memfd will be the only backing memory for the
-memslot.
+In the next patch, the conversion process will use this new parameter to
+invalidate mappings only when they're different from the target state of
+the conversion, i.e. invalidate only shared mappings on a shared to private
+conversion and not both.
 
-No validation is performed to require userspace_addr to be a mapping from
-the associated guest_memfd because even after validation, userspace is free
-to remap something else at the provided userspace_addr.
+No functional change intended.
 
-userspace_addr will still be used by functions like kvm_read_guest(), and
-if userspace_addr does not match up with the corresponding memory in the
-memslot's guest_memfd (whether userspace_addr points to the wrong offset or
-some non-guest_memfd memory, etc), that is a user error.
-
-Requiring both shared and private memory to come from the only associated
-guest_memfd simplifies invalidation in stage 2 page tables. On a PUNCH_HOLE
-operation on a guest_memfd, the invalidation is now guaranteed to be
-invalidating only memory mapped from the given guest_memfd.
-
-Suggested-by: Sean Christopherson <seanjc@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 Reviewed-by: Fuad Tabba <fuad.tabba@linux.dev>
 Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
 Reviewed-by: David Hildenbrand (Arm) <david@kernel.org>
 ---
- Documentation/virt/kvm/api.rst | 22 ++++++++++++++--------
- virt/kvm/guest_memfd.c         |  2 +-
- 2 files changed, 15 insertions(+), 9 deletions(-)
+ virt/kvm/guest_memfd.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/virt/kvm/api.rst b/Documentation/virt/kvm/api.rst
-index 09967e0308031..35d94c51cc56a 100644
---- a/Documentation/virt/kvm/api.rst
-+++ b/Documentation/virt/kvm/api.rst
-@@ -6381,10 +6381,16 @@ mapping for userspace_addr is not required to be valid/populated at the time of
- KVM_SET_USER_MEMORY_REGION2, e.g. shared memory can be lazily mapped/allocated
- on-demand.
- 
--When mapping a gfn into the guest, KVM selects shared vs. private, i.e. consumes
--userspace_addr vs. guest_memfd, based on the state in guest_memfd, which is the
--sole authority on private vs. shared memory.  See :ref:`KVM_CREATE_GUEST_MEMFD`
--to find out more about the creation-time shared/private status.
-+When mapping a gfn into the guest, guest faults are always serviced from
-+guest_memfd regardless of whether memory is shared or private.  KVM determines
-+shared vs. private based on the state in guest_memfd, which is the sole
-+authority on private vs. shared memory.  See :ref:`KVM_CREATE_GUEST_MEMFD` to
-+find out more about the creation-time shared/private status.
-+
-+userspace_addr is expected to be the mmap()-ed address corresponding to the
-+right offset within the guest_memfd. Any mismatch between userspace_addr and
-+guest_memfd is not validated and is a user error. userspace_addr is only used
-+for host-side guest accesses such as kvm_read_guest().
- 
- If in-place conversion is disabled, KVM selects shared vs. private based on the
- gfn's KVM_MEMORY_ATTRIBUTE_PRIVATE state.  At VM creation time, all memory is
-@@ -6490,10 +6496,10 @@ specified via KVM_CREATE_GUEST_MEMFD.  Currently defined flags:
-                                page tables. Private memory cannot.
-   ============================ ================================================
- 
--When the KVM MMU performs a PFN lookup to service a guest fault and the backing
--guest_memfd has the GUEST_MEMFD_FLAG_MMAP set, then the fault will always be
--consumed from guest_memfd, regardless of whether it is a shared or a private
--fault.
-+When the KVM MMU performs a PFN lookup to service a guest fault, the fault will
-+always be consumed from guest_memfd, regardless of whether it is a shared or a
-+private fault (unless in-place conversion is disabled and the backing
-+guest_memfd does not have the GUEST_MEMFD_FLAG_MMAP flag set).
- 
- See KVM_SET_USER_MEMORY_REGION2 for additional details.
- 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 0afe1468d2d9d..e41802944756b 100644
+index e41802944756b..e19de803149c2 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -746,7 +746,7 @@ int kvm_gmem_bind(struct kvm *kvm, struct kvm_memory_slot *slot,
- 	 */
- 	WRITE_ONCE(slot->gmem.file, file);
- 	slot->gmem.pgoff = start;
--	if (kvm_gmem_supports_mmap(inode))
-+	if (gmem_in_place_conversion || kvm_gmem_supports_mmap(inode))
- 		slot->flags |= KVM_MEMSLOT_GMEM_ONLY;
+@@ -192,13 +192,13 @@ static void __kvm_gmem_invalidate_start(struct gmem_file *f, pgoff_t start,
+ }
  
- 	xa_store_range(&f->bindings, start, end - 1, slot, GFP_KERNEL);
+ static void kvm_gmem_invalidate_start(struct inode *inode, pgoff_t start,
+-				      pgoff_t end)
++				      pgoff_t end,
++				      enum kvm_gfn_range_filter filter)
+ {
+-	enum kvm_gfn_range_filter attr_filter = kvm_gmem_get_all_gfns_filter(inode);
+ 	struct gmem_file *f;
+ 
+ 	kvm_gmem_for_each_file(f, inode)
+-		__kvm_gmem_invalidate_start(f, start, end, attr_filter);
++		__kvm_gmem_invalidate_start(f, start, end, filter);
+ }
+ 
+ static void __kvm_gmem_invalidate_end(struct gmem_file *f, pgoff_t start,
+@@ -224,6 +224,7 @@ static void kvm_gmem_invalidate_end(struct inode *inode, pgoff_t start,
+ 
+ static long kvm_gmem_punch_hole(struct inode *inode, loff_t offset, loff_t len)
+ {
++	enum kvm_gfn_range_filter filter = kvm_gmem_get_all_gfns_filter(inode);
+ 	pgoff_t start = offset >> PAGE_SHIFT;
+ 	pgoff_t end = (offset + len) >> PAGE_SHIFT;
+ 
+@@ -233,7 +234,7 @@ static long kvm_gmem_punch_hole(struct inode *inode, loff_t offset, loff_t len)
+ 	 */
+ 	filemap_invalidate_lock(inode->i_mapping);
+ 
+-	kvm_gmem_invalidate_start(inode, start, end);
++	kvm_gmem_invalidate_start(inode, start, end, filter);
+ 
+ 	truncate_inode_pages_range(inode->i_mapping, offset, offset + len - 1);
+ 
+@@ -522,6 +523,8 @@ static int kvm_gmem_migrate_folio(struct address_space *mapping,
+ 
+ static int kvm_gmem_error_folio(struct address_space *mapping, struct folio *folio)
+ {
++	struct inode *inode = mapping->host;
++	enum kvm_gfn_range_filter filter;
+ 	pgoff_t start, end;
+ 
+ 	filemap_invalidate_lock_shared(mapping);
+@@ -529,7 +532,8 @@ static int kvm_gmem_error_folio(struct address_space *mapping, struct folio *fol
+ 	start = folio->index;
+ 	end = start + folio_nr_pages(folio);
+ 
+-	kvm_gmem_invalidate_start(mapping->host, start, end);
++	filter = kvm_gmem_get_all_gfns_filter(inode);
++	kvm_gmem_invalidate_start(inode, start, end, filter);
+ 
+ 	/*
+ 	 * Do not truncate the range, what action is taken in response to the
 
 -- 
 2.55.0.1007.g17ff1f9808-goog
