@@ -1,114 +1,150 @@
-From: Brian Ellis <brianellis@gotenna.com>
-Date: Thu, 10 Sep 2026 13:53:59 -0600
-Subject: [PATCH] usb: gadget: u_serial: fix NULL deref in gs_close() after
- failed open
+From: Ricardo Pardini <ricardo@pardini.net>
+Subject: [PATCH v5 0/7] describe RTL8125 PCIe NICs on Rockchip boards (and
+ add DT binding)
+Date: Thu, 10 Sep 2026 22:07:50 +0200
+Message-Id: <20260910-rk3588-dts-rtl-eth-describe-dt-alias-v5-0-c1b9e5f10cd6@pardini.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-u_serial-gs-close-null-v1-1-9a5e848b1dfb@gotenna.com>
-X-B4-Tracking: v=1; b=H4sIANYKo2oC/x2MQQqAIBAAvyJ7bkErovpKREhttSAaLkYQ/T1rb
- nOYuUEoMgn06oZIJwsHn8UUCubd+o2Ql+xQ6rLRndGYpq+wDjfB2QUh9Mk5tK22ddVkqIUcH5F
- Wvv7xMD7PC/YgSY1oAAAA
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Kuen-Han Tsai <khtsai@google.com>, 
- Prashanth K <prashanth.k@oss.qualcomm.com>, stable@vger.kernel.org, 
- Brian Ellis <brianellis@gotenna.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789070049; l=2951;
- i=brianellis@gotenna.com; s=20260910; h=from:subject:message-id;
- bh=elm183E8ARQLqVNCj2uC/Zn4AQumLckjzIgt6S1EnX0=;
- b=6fsaZbzfuwEtD5Xr3Gvzr3qRhjpR4OxD/mPqG7UrV+ekUxg3qGiM/kayiEUntWUnUkKA2Sg+o
- sjH+Mu9jzQqA+4jhG/oFJf93J+k63j1lchrThYPfFdJ8Sa0XbYrWcpe
-X-Developer-Key: i=brianellis@gotenna.com; a=ed25519;
- pk=JciDR8ctfMqvKeRCDP8VPwNLUDULxCAqDum6H+/ByBY=
-X-Endpoint-Received: by B4 Relay for brianellis@gotenna.com/20260910 with auth_id=1022
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Oy07DMBAF0F+pvGaQn7HTFf+BuvBjQgaqtLLdC
+ FTl33GKEEWwyPKOrs6dKyuYCQvb764s40yFTlML5mHH4uinFwRKLTPJZceN1JDflHEOUi2Q6xG
+ wjpCwxEwB2xH8kXyBKDAJZ4ONhrNGnTMO9H6beT585XIJrxjraq+NkUo95Y/bH7NYe9+TZtvkL
+ ECA74aYvOmUj/bp7HOiiR4nrGwdneU9229kJXDQveVcaie0Gv6y6odt8EZWNdZ554wNqk/+H1b
+ fscJuZHVjZUjK9VImIfvf7LIsn1ekkhrxAQAA
+X-Change-ID: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5210; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=r6js+jziMUsagrxNtK58g/Crq9cEVtYCRnaAMm14gsM=;
+ b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqow4jqF3C07w44Xc2TTt2lfJlkhcQU0sB7UkUX
+ 6VOO4ISsdeJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaqMOIxsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7enshQf9HvMZjiH911nFDwBRO/U9Hl2hYxBMaDd
+ Sh/ookigB/p5J/Jx+H7kvXw0Wysc7mVB78f3iU6z/O03r49guS4ZuQ4EoqQWdcPFjM9IZ1qE5lr
+ jyldWV3qeAY0bdeTyq61Cgu0jaz7VZE8CaE9CNs5E2D7oBTibYWqe6dsIdcqOHFF6sJFtuFPUij
+ Zf/H/vPMvTTASiC3RWk+tGD9IjaOXbdSZgY70bvYU6ZafuXmJgkxBJep4xPusG0k5SgM3w182II
+ ZNRt+9qHthnp9QRGYMSUW3/vGlfhBLu+duhYiWMX0a3meSAhk9id9T1Y/A9/+RtFuvvsx5u6khj
+ moJMXTi39bw==
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gs_close() dereferences tty->driver_data without checking it:
+Several Rockchip rk35xx boards carry on-board Realtek RTL8125 2.5GbE
+NICs whose PCI function nodes are not described in the DT. Describing
+them allows for stable ethernetN aliases (matching the GMAC alias
+convention on these boards) and lets U-Boot's fdt_fixup_ethernet()
+inject mac-address properties from its ethaddr/ethNaddr env, so MACs
+stay stable across boots and U-Boot and kernel MAC match.
 
-	struct gs_port *port = tty->driver_data;
-	struct gserial	*gser;
+Tested on a NanoPC-T6: /sys/bus/pci/devices/0004:41:00.0/of_node ->
+/sys/firmware/devicetree/base/pcie@fe190000/pcie@0,0/ethernet@0,0 and
+u-boot correctly adds local-mac-address property there which is
+correctly picked up kernel-side:
 
-	spin_lock_irq(&port->port_lock);
+  => setenv eth1addr 8e:b4:90:66:66:66
+  => boot
+  ...
+  # readlink -f /sys/bus/pci/devices/0004:41:00.0/of_node
+  /sys/firmware/devicetree/base/pcie@fe190000/pcie@0,0/ethernet@0,0
+  # xxd /sys/bus/pci/devices/0004:41:00.0/of_node/local-mac-address
+  00000000: 8eb4 9066 6666                           ...fff
+  # ip link show dev end1 | grep ether
+       link/ether 8e:b4:90:66:66:66 brd ff:ff:ff:ff:ff:ff
 
-but gs_open() assigns tty->driver_data only after two error returns:
+Patch 1 adds a DT binding for Realtek RTL8125 family PCIe Ethernet
+controllers.
 
-	if (!port) {
-		status = -ENODEV;
-		goto out;
-	}
-	...
-		status = kfifo_alloc(&port->port_write_buf,
-				     WRITE_BUF_SIZE, GFP_KERNEL);
-		if (status) {
-			...
-			goto out;
-		}
-	...
-	tty->driver_data = port;
-
-and when ->open() returns an error the tty core calls ->close() anyway:
-
-	if (tty->ops->open)
-		retval = tty->ops->open(tty, filp);
-	...
-	if (retval) {
-		tty_debug_hangup(tty, "open error %d, releasing\n", retval);
-		tty_unlock(tty); /* need to call tty_release without BTM */
-		tty_release(inode, filp);
-
-So opening /dev/ttyGS<n> for a port that has already been freed, or when
-the write-buffer allocation fails, oopses in gs_close().
-
-This is not the situation commit ffd603f21423 ("usb: gadget: u_serial: Add
-null pointer check in gs_start_io") was reverted for. That check was
-redundant because gs_start_io()'s callers are required to hold port_lock
-with port.tty and port_usb non-NULL, and the dereference it hid was a race.
-Here the NULL is not a race: the tty core deliberately calls ->close() for
-an ->open() that failed, as its own debug message says, so driver_data is
-legitimately unset on that path and every tty driver has to tolerate it.
-
-Fixes: c1dca562be8a ("usb gadget: split out serial core")
-Cc: stable@vger.kernel.org
-Signed-off-by: Brian Ellis <brianellis@gotenna.com>
----
-Found on a downstream 6.6-adi BSP kernel, then confirmed present in usb-linus
-by inspection: gs_close() still dereferences tty->driver_data unguarded, and
-gs_open() still assigns it only after its error returns.
-
-Compile-tested against usb-linus with allmodconfig (CONFIG_USB_U_SERIAL=m).
-Not boot-tested on mainline: the board it was found on needs a vendor BSP
-device tree to boot, so the argument here is from source, with both halves
-quoted in the commit message.
----
- drivers/usb/gadget/function/u_serial.c | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/drivers/usb/gadget/function/u_serial.c b/drivers/usb/gadget/function/u_serial.c
-index cdd1dfc66..5bbb4d04b 100644
---- a/drivers/usb/gadget/function/u_serial.c
-+++ b/drivers/usb/gadget/function/u_serial.c
-@@ -695,6 +695,13 @@ static void gs_close(struct tty_struct *tty, struct file *file)
- 	struct gs_port *port = tty->driver_data;
- 	struct gserial	*gser;
- 
-+	/*
-+	 * tty_open() calls tty_release(), and hence this, when ->open()
-+	 * failed before gs_open() had set tty->driver_data.
-+	 */
-+	if (!port)
-+		return;
-+
- 	spin_lock_irq(&port->port_lock);
- 
- 	if (port->port.count != 1) {
+Patch 2-7 describes the on-board RTL8125 function nodes on a few
+Rockchip boards.
 
 ---
-base-commit: be4219dd98608736e13e0b790ef742b76a13254d
-change-id: 20260910-u_serial-gs-close-null-a80a436666e8
+Changes in v5:
+- binding: reword commit message: pci10ec,8125 is already covered by
+  dtschema pci-device.yaml; the binding is added only to validate the
+  ethernet-controller properties on these nodes (local-mac-address,
+  nvmem-cells, et al) (ref Krzysztof, Heiner).
+- boards: add a few more Rockchip boards with RTL8125's.
+- Link to v4: https://patch.msgid.link/20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-0-2bd38922d129@pardini.net
+
+Changes in v4:
+- binding: simplify the binding YAML ref Sashiko's and Krzysztof's
+  reviews
+- binding: describe only the RTL8125 + rename to match ref Heiner's
+  review.
+- dt: fix the bus-range according to Sashiko's review.
+- Link to v3: https://patch.msgid.link/20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-0-8a8857b39daf@pardini.net
+
+Changes in v3:
+- new patch: add a DT binding for Realtek r8169 family PCIe Ethernet
+  controllers, per Sebastian Reichel's review (the "pciVVVV,DDDD" OF
+  spelling still needs a binding when used in a board DT).
+- new patch for Rock5 series, and include a brief rationale in each.
+- retitle the series, since it now covers a few boards and a binding
+  rather than just DeviceTree changes for the NanoPC-T6.
+- drop the v2 "rename vcc3v3_pcie2x1l0 regulator" patch from this
+  series; it will be sent separately as it is not relevant to this.
+- Link to v2: https://patch.msgid.link/20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-0-49700248143f@pardini.net
+
+Changes in v2:
+- fix: pcie2x1l0, not pcie2x1l1; indirectly caught by Sashiko's review [1]
+- while-at-it: rename regulator vcc3v3_pcie2x1l0 to l1
+- Link to v1: https://patch.msgid.link/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7@pardini.net
+
+[1] https://sashiko.dev/#/patchset/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7%40pardini.net
+
+To: Heiner Kallweit <hkallweit1@gmail.com>
+To: nic_swsd@realtek.com
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: "David S. Miller" <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+Cc: Sebastian Reichel <sebastian.reichel@collabora.com>
+Cc: netdev@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+
+---
+Ricardo Pardini (7):
+      dt-bindings: net: add Realtek RTL8125 PCIe Ethernet
+      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on NanoPC-T6
+      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on ROCK 5 family
+      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on CM3588-NAS
+      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on NanoPi R5S
+      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on NanoPi R6C
+      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on ROCK 5 ITX
+
+ .../devicetree/bindings/net/realtek,rtl8125.yaml   | 43 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ arch/arm64/boot/dts/rockchip/rk3568-nanopi-r5s.dts | 30 +++++++++++++++
+ .../rockchip/rk3588-friendlyelec-cm3588-nas.dts    | 21 +++++++++++
+ arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 30 +++++++++++++++
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5-itx.dts | 30 +++++++++++++++
+ .../boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi   | 15 ++++++++
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts    | 18 +++++++++
+ .../arm64/boot/dts/rockchip/rk3588s-nanopi-r6c.dts | 21 +++++++++++
+ 9 files changed, 209 insertions(+)
+---
+base-commit: df2908090cda368b01ff43709f51890076c56157
+change-id: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
 
 Best regards,
--- 
-Brian Ellis <brianellis@gotenna.com>
+--  
+Ricardo Pardini <ricardo@pardini.net>
 
