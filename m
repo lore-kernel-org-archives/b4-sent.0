@@ -1,182 +1,69 @@
-From: Torsten Rupp <torsten.rupp@8tronix.de>
-Date: Thu, 10 Sep 2026 08:42:48 +0200
-Subject: [PATCH v2] fix 32bit silent truncation of 64bit offset in
- mmc_get_env_addr()
+From: Andrei Lalaev <andrei.lalaev@anton-paar.com>
+Date: Thu, 10 Sep 2026 09:23:05 +0200
+Subject: [PATCH] ref-manual: update DEBUG_OPTIMIZATION/FULL_OPTIMIZATION
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-mmc-fixes-v2-1-d13ecacd6688@8tronix.de>
-X-B4-Tracking: v=1; b=H4sIAGdRomoC/22Myw6CMBBFf4XM2pq+wI4r/8OwqDDKLGhNSwiG9
- N+trF2ee0/ODpkSU4Zrs0OilTPHUEGfGhgmH14keKwMWupOojRingfx5I2ycN4/tG2xRXRQ/Xe
- i46j6va88cV5i+hzpVf3Wf5VVCSXQdtpqZ9DYy80tKQbeziNBX0r5AvjvU1mjAAAA
-To: "NXP i.MX U-Boot Team" <uboot-imx@nxp.com>, 
- u-boot@lists.u-boot-project.org
-Cc: Frieder Schrempf <frieder.schrempf@kontron.de>, 
- Tom Rini <trini@konsulko.com>, Stefano Babic <sbabic@nabladev.com>, 
- Fabio Estevam <festevam@gmail.com>, Peng Fan <peng.fan@nxp.com>, 
- Jaehoon Chung <jh80.chung@samsung.com>, 
- Tanmay Kathpalia <tanmay.kathpalia@altera.com>, 
- Eric Chung <eric.chung@riscstar.com>, Han Xu <han.xu@nxp.com>, 
- Torsten Rupp <torsten.rupp@8tronix.de>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789022572; l=5369;
- i=torsten.rupp@8tronix.de; s=20260903; h=from:subject:message-id;
- bh=aUJRvuZJd4fEAFqypKvw8jgJ5Wfj7Mv/m32QlHBsqAI=;
- b=/Vp2mE1Tg3eXpMKjeMqQrO+kAX7jNj33PHFN/+3fxrfLvH3X88zHa4hfkA2AeDuvJkZLMOvas
- AINnhx+wgoVCfYyccp+Xxz/tAEx66fsIpA58ZmAAVEl5+634qQk6UCe
-X-Developer-Key: i=torsten.rupp@8tronix.de; a=ed25519;
- pk=DFK2o6nuApZFiFHnUsWwIP/HTQZwoFI2698xwMNi5rw=
-X-Endpoint-Received: by B4 Relay for torsten.rupp@8tronix.de/20260903 with auth_id=999
+Message-Id: <20260910-master-v1-1-425674593882@anton-paar.com>
+X-B4-Tracking: v=1; b=H4sIANhaomoC/yXMQQqAIBCF4avErBPUhWFXiRZqU02QhVMRRHfPa
+ vnB/94FjImQoS4uSHgQ0xIzVFlAGF0cUFCXDVpqI62SYna8YRKhV85W6I0PGnK8Juzp/I6a9jf
+ vfsKwvWu47wfEqLYQagAAAA==
+X-Change-ID: 20260910-master-cf1a97eb6bc2
+To: docs@lists.yoctoproject.org
+Cc: Andrei Lalaev <andrei.lalaev@anton-paar.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789024985; l=1807;
+ i=andrei.lalaev@anton-paar.com; s=20250820; h=from:subject:message-id;
+ bh=OFy/tSvfyRnOzOk+v6b8DX1GcCZQL6xs0GstCSKHXE4=;
+ b=+w389CQ79TyV5UpssrE4OGeGJd3/Nc+aLiOEEWjuBy0UQvpoQDNR5+MPL5FYOPJS13OQq+m7L
+ R8jAadcIHMvAU7YFjQlFhHPEHAezwwQMNn5ne5PBcSR9EWgrolCU3/4
+X-Developer-Key: i=andrei.lalaev@anton-paar.com; a=ed25519;
+ pk=728nZXw7ILalhZmxQ0hPJ77AKRvsdNkq+v6XdryA5fM=
+X-Endpoint-Received: by B4 Relay for andrei.lalaev@anton-paar.com/20250820 with auth_id=496
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The function mmc_get_env_addr() return the address (offset) of the
-enviroment variables. Internally it calculates a 64bit value, but
-the value is silently truncated by the provided 32bit return value.
-For offsets greater than 4GB the environment is read from and written
-to the wrong place in e. g. the flash memory and may override
-arbitrary data.
+Commit 9badf68d78d9 ("bitbake.conf: Further cleanup compiler
+optimization flags") in openembedded-core changed the default values
+of these variables. But documentation wasn't updated.
+Update to the correct values.
 
-Reviewed-by: Peng Fan <peng.fan@nxp.com>
-Signed-off-by: Torsten Rupp <torsten.rupp@8tronix.de>
+Signed-off-by: Andrei Lalaev <andrei.lalaev@anton-paar.com>
 ---
-The function mmc_get_env_addr() return the address (offset) of the
-enviroment variables. Internally it calculates a 64bit value, but
-the value is silently truncated by the provided 32bit return value.
-For offsets greater than 4GB the environment is read from and written
-to the wrong place in e. g. the flash memory and may override
-arbitrary data.
----
-Changes in v2:
-- Link to v1: https://lore.kernel.org/r/20260903-mmc-fixes-v1-1-946242839347@8tronix.de
----
- board/kontron/osm-s-mx8mp/osm-s-mx8mp.c |  2 +-
- board/kontron/osm-s-mx93/osm-s-mx93.c   |  2 +-
- board/kontron/sl-mx8mm/sl-mx8mm.c       |  2 +-
- board/nxp/common/sdhc_boot.c            |  2 +-
- env/mmc.c                               | 10 +++++-----
- include/mmc.h                           |  2 +-
- 6 files changed, 10 insertions(+), 10 deletions(-)
+ documentation/ref-manual/variables.rst | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c b/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c
-index 739a78d2c8b..aaf73a2bbb2 100644
---- a/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c
-+++ b/board/kontron/osm-s-mx8mp/osm-s-mx8mp.c
-@@ -132,7 +132,7 @@ uint mmc_get_env_part(struct mmc *mmc)
- 	}
- }
+diff --git a/documentation/ref-manual/variables.rst b/documentation/ref-manual/variables.rst
+index 83bc59efe..e0055920e 100644
+--- a/documentation/ref-manual/variables.rst
++++ b/documentation/ref-manual/variables.rst
+@@ -2180,8 +2180,8 @@ system and gives an overview of their function and contents.
  
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	/* use normal offset for SD card */
- 	if (IS_SD(mmc)) {
-diff --git a/board/kontron/osm-s-mx93/osm-s-mx93.c b/board/kontron/osm-s-mx93/osm-s-mx93.c
-index 02bee34ac66..23e33bddc53 100644
---- a/board/kontron/osm-s-mx93/osm-s-mx93.c
-+++ b/board/kontron/osm-s-mx93/osm-s-mx93.c
-@@ -120,7 +120,7 @@ uint mmc_get_env_part(struct mmc *mmc)
- 	}
- }
+    :term:`DEBUG_OPTIMIZATION`
+       The options to pass in :term:`TARGET_CFLAGS` and :term:`CFLAGS` when
+-      compiling a system for debugging. This variable defaults to "-O
+-      -fno-omit-frame-pointer ${DEBUG_FLAGS} -pipe".
++      compiling a system for debugging. This variable defaults to "-Og
++      ${DEBUG_LEVELFLAG}".
  
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	/* use normal offset for SD card */
- 	if (IS_SD(mmc)) {
-diff --git a/board/kontron/sl-mx8mm/sl-mx8mm.c b/board/kontron/sl-mx8mm/sl-mx8mm.c
-index d24d5286e45..0138c5921a2 100644
---- a/board/kontron/sl-mx8mm/sl-mx8mm.c
-+++ b/board/kontron/sl-mx8mm/sl-mx8mm.c
-@@ -256,7 +256,7 @@ uint mmc_get_env_part(struct mmc *mmc)
- 	}
- }
+    :term:`DEBUG_PREFIX_MAP`
+       Allows to set C compiler options, such as ``-fdebug-prefix-map``,
+@@ -3811,8 +3811,8 @@ system and gives an overview of their function and contents.
  
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	/* use normal offset for SD card */
- 	if (IS_SD(mmc)) {
-diff --git a/board/nxp/common/sdhc_boot.c b/board/nxp/common/sdhc_boot.c
-index 5ee730cefd0..0c2532a8595 100644
---- a/board/nxp/common/sdhc_boot.c
-+++ b/board/nxp/common/sdhc_boot.c
-@@ -16,7 +16,7 @@
+    :term:`FULL_OPTIMIZATION`
+       The options to pass in :term:`TARGET_CFLAGS` and :term:`CFLAGS` when
+-      compiling an optimized system. This variable defaults to "-O2 -pipe
+-      ${DEBUG_FLAGS}".
++      compiling an optimized system. This variable defaults to "-O2
++      ${DEBUG_LEVELFLAG}".
  
- #define ESDHC_DEFAULT_ENVADDR	0x400
- 
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	u8 *tmp_buf;
- 	u32 blklen, code_offset, code_len, n;
-diff --git a/env/mmc.c b/env/mmc.c
-index 1eddba3b0f8..4b5f8e2dcee 100644
---- a/env/mmc.c
-+++ b/env/mmc.c
-@@ -230,7 +230,7 @@ static bool mmc_env_is_redundant_in_both_boot_hwparts(struct mmc *mmc)
- 	return mmc_offset(mmc, 0) == mmc_offset(mmc, 1);
- }
- 
--__weak int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr)
-+__weak int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr)
- {
- 	s64 offset = mmc_offset(mmc, copy);
- 
-@@ -331,7 +331,7 @@ static int env_mmc_save(void)
- 	ALLOC_CACHE_ALIGN_BUFFER(env_t, env_new, 1);
- 	int dev = mmc_get_env_dev();
- 	struct mmc *mmc = find_mmc_device(dev);
--	u32	offset;
-+	u64	offset;
- 	int	ret, copy = 0;
- 	const char *errmsg;
- 
-@@ -402,7 +402,7 @@ static int env_mmc_erase(void)
- 	int dev = mmc_get_env_dev();
- 	struct mmc *mmc = find_mmc_device(dev);
- 	int	ret, copy = 0;
--	u32	offset;
-+	u64	offset;
- 	const char *errmsg;
- 
- 	errmsg = init_mmc_for_env(mmc);
-@@ -459,7 +459,7 @@ static inline int read_env(struct mmc *mmc, unsigned long size,
- static int env_mmc_load_redundant(void)
- {
- 	struct mmc *mmc;
--	u32 offset1, offset2;
-+	u64 offset1, offset2;
- 	int read1_fail = 0, read2_fail = 0;
- 	int ret;
- 	int dev = mmc_get_env_dev();
-@@ -517,7 +517,7 @@ static int env_mmc_load_singular(void)
- {
- 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, CONFIG_ENV_SIZE);
- 	struct mmc *mmc;
--	u32 offset;
-+	u64 offset;
- 	int ret;
- 	int dev = mmc_get_env_dev();
- 	const char *errmsg;
-diff --git a/include/mmc.h b/include/mmc.h
-index 4bda44ea220..9a796e0655f 100644
---- a/include/mmc.h
-+++ b/include/mmc.h
-@@ -1002,7 +1002,7 @@ void mmc_set_preinit(struct mmc *mmc, int preinit);
- void board_mmc_power_init(void);
- int board_mmc_init(struct bd_info *bis);
- int cpu_mmc_init(struct bd_info *bis);
--int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr);
-+int mmc_get_env_addr(struct mmc *mmc, int copy, u64 *env_addr);
- # ifdef CONFIG_ENV_MMC_EMMC_HW_PARTITION
- extern uint mmc_get_env_part(struct mmc *mmc);
- # endif
+    :term:`GCCPIE`
+       Enables Position Independent Executables (PIE) within the GNU C
 
 ---
-base-commit: cc8c034e78eba6b2a3845783889b80753bb1af1e
-change-id: 20260903-mmc-fixes-8aab24595998
+base-commit: e35e86e9aea4e4ae12e8e0ba8a6391f2b2555b63
+change-id: 20260910-master-cf1a97eb6bc2
 
 Best regards,
--- 
-Torsten Rupp <torsten.rupp@8tronix.de>
+--  
+Andrei Lalaev <andrei.lalaev@anton-paar.com>
 
