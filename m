@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 10 Sep 2026 16:55:27 -0700
-Subject: [PATCH v13 01/44] KVM: guest_memfd: Optimize away conversion
- overheads via dead-code elimination
+Date: Thu, 10 Sep 2026 16:55:28 -0700
+Subject: [PATCH v13 02/44] KVM: guest_memfd: Use kvm_mem_is_private() when
+ populating guest_memfd memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-gmem-inplace-conversion-v13-1-dd6fbf94f4e1@google.com>
+Message-Id: <20260910-gmem-inplace-conversion-v13-2-dd6fbf94f4e1@google.com>
 References: <20260910-gmem-inplace-conversion-v13-0-dd6fbf94f4e1@google.com>
 In-Reply-To: <20260910-gmem-inplace-conversion-v13-0-dd6fbf94f4e1@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -43,13 +43,13 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-trace-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>, 
- Fuad Tabba <fuad.tabba@linux.dev>
+ Xiaoyao Li <xiaoyao.li@intel.com>, Fuad Tabba <fuad.tabba@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789084533; l=3368;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789084533; l=1294;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=jdeuN8QAludHAg4pQOQtYLnhlGiFogxOH8nIW0ZEBXU=;
- b=sww7etsIuwKRvcfuD8DJ8EQ6FFI8MsNcKxp95SrzPjrCWGonLp4p47TacW9Do8Uk33c+xvNLV
- eZ8ISUk5/WfAr0WBMyA/jilQOtj6AdalhDVD7M/1i+snixje8pJKuVS
+ bh=xBY4/PDaaQtcraLoiAXWiRvSzJvbVV+mCywqqocyhZQ=;
+ b=jHExpGn19+46TGPhs2mSl/iRUELt5TmexnGBnzViqDnulHKSXZHs6JhnFrc0k/g5LfTsHjFl8
+ V2SEJMaaAvDAthuaxmPPzBuyzANiE73i2fVJSedDfp0EMUynAudIhb8
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -57,82 +57,39 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Sean Christopherson <seanjc@google.com>
 
-Add and use kvm_arch_has_gmem_convert() to guard guest_memfd's invocation
-of arch hooks related to converting memory between private and shared, as
-only one half of the x86 CoCo duo needs the runtime hooks (any pre-work is
-pure overhead for TDX).  At this exact moment, the overhead is negligible,
-but that will change when in-place conversion comes along, at which point
-to-shared conversions will "need" to find all affected folios prior to
-calling into arch code.  In quotes because very technically that work could
-be pushed to arch code, but that would bleed guest_memfd details into arch
-code and would be far worse than adding yet another kvm_arch_has... hook.
+Use kvm_mem_is_private() when populating guest_memfd instead of using an
+open coded equivalent.  In addition to simplifying the populate code *now*,
+this avoids the need to provide a range-based gmem lookup API in the future
+as well.
 
-Opportunistically provide the kvm_arch_gmem_make_private() declaration, and
-rely on dead-code elimination to eliminate the call to non-existent code
-when CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT=n.
+No functional change intended.
 
-Reported-by: Binbin Wu <binbin.wu@linux.intel.com>
-Closes: https://lore.kernel.org/all/1ec08cd8-3072-4753-ad5e-cd34956647f8@linux.intel.com
-Suggested-by: Ackerley Tng <ackerleytng@google.com>
+Suggested-by: Xiaoyao Li <xiaoyao.li@intel.com>
 Signed-off-by: Sean Christopherson <seanjc@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
-Reviewed-by: Fuad Tabba <fuad.tabba@linux.dev>
+Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
 Reviewed-by: Binbin Wu <binbin.wu@linux.intel.com>
+Reviewed-by: Fuad Tabba <fuad.tabba@linux.dev>
 Reviewed-by: David Hildenbrand (Arm) <david@kernel.org>
 ---
- arch/x86/include/asm/kvm_host.h | 3 +++
- include/linux/kvm_host.h        | 3 ++-
- virt/kvm/guest_memfd.c          | 5 ++---
- 3 files changed, 7 insertions(+), 4 deletions(-)
+ virt/kvm/guest_memfd.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
-index 683bb8bf43a94..6beddd8a0c749 100644
---- a/arch/x86/include/asm/kvm_host.h
-+++ b/arch/x86/include/asm/kvm_host.h
-@@ -1854,6 +1854,9 @@ enum kvm_intr_type {
- #ifdef CONFIG_KVM_GENERIC_MEMORY_ATTRIBUTES
- #define kvm_arch_has_private_mem(kvm) ((kvm)->arch.has_private_mem)
- #endif
-+#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
-+#define kvm_arch_has_gmem_convert() (!!kvm_x86_ops.gmem_make_private)
-+#endif
- 
- #define kvm_arch_has_readonly_mem(kvm) (!(kvm)->arch.has_protected_state)
- 
-diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
-index 502465119ca0c..b7516e19ef419 100644
---- a/include/linux/kvm_host.h
-+++ b/include/linux/kvm_host.h
-@@ -2597,9 +2597,10 @@ static inline int kvm_gmem_get_pfn(struct kvm *kvm,
- }
- #endif /* CONFIG_KVM_GUEST_MEMFD */
- 
--#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
- int kvm_arch_gmem_make_private(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
- 			       kvm_pfn_t nr_pages);
-+#ifndef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
-+#define kvm_arch_has_gmem_convert() false
- #endif
- 
- #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_POPULATE
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 798d91df69537..2190e4d6b6bea 100644
+index 2190e4d6b6bea..69612bf146be1 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -772,11 +772,10 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 		folio_mark_uptodate(folio);
- 	}
- 
--#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
--	if (kvm_gmem_is_private_mem(file_inode(file), index))
-+	if (kvm_arch_has_gmem_convert() &&
-+	    kvm_gmem_is_private_mem(file_inode(file), index))
- 		r = kvm_arch_gmem_make_private(kvm, gfn, *pfn,
- 					       (kvm_pfn_t)1 << *max_order);
--#endif
+@@ -805,9 +805,7 @@ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
  
  	folio_unlock(folio);
- 	folio_put(folio);
+ 
+-	if (!kvm_range_has_memory_attributes(kvm, gfn, gfn + 1,
+-					     KVM_MEMORY_ATTRIBUTE_PRIVATE,
+-					     KVM_MEMORY_ATTRIBUTE_PRIVATE)) {
++	if (!kvm_mem_is_private(kvm, gfn)) {
+ 		ret = -EINVAL;
+ 		goto out_put_folio;
+ 	}
 
 -- 
 2.55.0.1007.g17ff1f9808-goog
