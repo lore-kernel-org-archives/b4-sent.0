@@ -1,119 +1,64 @@
-From: Gunter Woytowitz <gunter@vcinity.io>
-Date: Thu, 10 Sep 2026 11:17:47 -0400
-Subject: [PATCH net] net: mana: never hand a non-page_pool buffer to XDP
+From: "Mark C. Chu-Carroll" <markchucarroll@fastmail.com>
+Subject: [PATCH v2 0/3] Update t40* tests to use modern style.
+Date: Thu, 10 Sep 2026 13:07:32 -0400
+Message-Id: <20260910-modernize-t4001-v2-0-ac53e9f5d717@fastmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260910-mana-xdp-pagepool-v1-1-dab140d91fed@vcinity.io>
-X-B4-Tracking: v=1; b=H4sIABrKomoC/yWMwQrCMBAFf6W8swtJkEr8FfGwbbZ1RZOQVCmU/
- rtRjzMws6FKUak4dxuKvLVqig3socN44zgLaWgMZ1xvvDX05Mi0hkyZZ8kpPSj0lk9Hb9zgJ7Q
- uF5l0/T0viLLg+pf1NdxlXL437PsH5/mPFHoAAAA=
-X-Change-ID: 20260910-mana-xdp-pagepool-d61a74902b9f
-To: "K. Y. Srinivasan" <kys@microsoft.com>, 
- Haiyang Zhang <haiyangz@microsoft.com>, Wei Liu <wei.liu@kernel.org>, 
- Dexuan Cui <decui@microsoft.com>, Long Li <longli@microsoft.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Stanislav Fomichev <sdf@fomichev.me>
-Cc: "open list:Hyper-V/Azure CORE AND DRIVERS" <linux-hyperv@vger.kernel.org>, 
- "open list:NETWORKING DRIVERS" <netdev@vger.kernel.org>, 
- open list <linux-kernel@vger.kernel.org>, 
- "open list:XDP eXpress Data Path:Keyword:?:b|_xdp?:b|_" <bpf@vger.kernel.org>, 
- Gunter Woytowitz <gunter@vcinity.io>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789053514; l=3692;
- i=gunter@vcinity.io; s=20260910; h=from:subject:message-id;
- bh=t35EUXvqFJ2uE2i3MYOOcxmhW+Pix8QOFDeXbTpTRo0=;
- b=NKaAMktkjRymX7yeIUQMcFSX4xXFQO1p857Cw9i+09qUKmkP9XE+M6xbd3BtmFug/Js4+KWft
- qyu9RTS81xNCSgon0yLahJiPGi8+Qlqu6LQsm8RGoRCLk9sBeRnGX4m
-X-Developer-Key: i=gunter@vcinity.io; a=ed25519;
- pk=6nOwIllYdhcDoigio1cuWODQHYf4rmE6FCJmKXcGH7w=
-X-Endpoint-Received: by B4 Relay for gunter@vcinity.io/20260910 with auth_id=1021
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr2Jmbc20JSquvIdhMZSpjBFq2kpUw
+ t0FXLt8yfvvj5A4Cic4bUaIPEiS0M9gthtwLfVXVtLMDAbNHks8qi40HHv5sMoFola+LqxF44h
+ 8CfPqEdnLay1eqh+nZ31jl5fMYrSScojv9XLQi/e/PmiFylFtS2tJH6w/e0q5I7nvXOigmqbpC
+ 8JO5cvDAAAA
+X-Change-ID: 20260908-modernize-t4001-fb43302caaf9
+In-Reply-To: <20260908-modernize-t4001-v1-0-cab3933a173f@fastmail.com>
+References: <20260908-modernize-t4001-v1-0-cab3933a173f@fastmail.com>
+To: git@vger.kernel.org
+Cc: "Mark C. Chu-Carroll" <markchucarroll@fastmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1308;
+ i=markchucarroll@fastmail.com; h=from:subject:message-id;
+ bh=CA9yrxQUt4PlZC34oSgrFs5ZHGHGZupY9A3VOEHg8y4=;
+ b=owGbwMvMwCUWOPFJle/8tn2Mp9WSGLIWPX7yeU12P0fsh0Ndm5Z9vrhlys6sS6lnPArm50kpR
+ FyyDP0i0lHKwiDGxSArpsjy/59A4yuWBxJ+Qe8+wcxhZQIZwsDFKQATucrNyDDlr7VxZ8Cpzcq5
+ e5TLX219cjX2lWCAyGyO7c7cLHHJQlUMf3h4crVOnDjyoPzv2mzz7f7HBG33rIq1WdZ6zZXXyoX
+ XgRsA
+X-Developer-Key: i=markchucarroll@fastmail.com; a=openpgp;
+ fpr=FFFE1081EA04E0184E52EEF25191E47A4D9F86BE
+X-Endpoint-Received: by B4 Relay for markchucarroll@fastmail.com/default with auth_id=1002
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mana_create_rxq() registers MEM_TYPE_PAGE_POOL for the rxq
-unconditionally, so every buffer XDP can see must be owned by that
-page_pool: on XDP_REDIRECT the frame is freed through __xdp_return()
--> page_pool_put_full_page().
+To: git@vger.kernel.org
+Signed-off-by: Mark C. Chu-Carroll <markchucarroll@fastmail.com>
 
-mana_xdp_set() assigns apc->bpf_prog before calling
-mana_pre_alloc_rxbufs(), which allocates with dev_alloc_pages(), and
-mana_fill_rx_oob() prefers those buffers whenever mpc->rxbufs_pre is
-set, leaving from_pool false. So for a port that is up when a program
-is attached, the entire re-created ring is filled with pages the
-page_pool does not own.
+Changes in v2:
+- Merged setups into main test bodies.
+- Removed unnecessary echos.
+- Cleaned up here-docs.
+- Updated names to modern style.
 
-The page_pool then sees pp_ref_count == 0 when such a frame is
-returned, so the atomic_long_sub_return() in page_pool_unref_netmem()
-goes negative and trips its WARN_ON(ret < 0), once per redirected
-frame. Observed on a 5.14-based distro kernel, where that warning sits
-at helpers.h:269:
-
-  WARNING: CPU: 3 PID: 0 at include/net/page_pool/helpers.h:269
-                                            __xdp_return+0x2b3/0x2c0
-  mana_process_rx_cqe -> mana_run_xdp -> mana_rx_skb -> xsk_map_redirect
-                                            -> __xdp_return
-
-On a VM booted with console=ttyS0 the resulting stack traces peg the
-console thread and the machine becomes unusable.
-
-Fill from the page_pool when a program is attached, using
-mana_xdp_get() -- the predicate mana_get_rxbuf_cfg() already uses to
-choose the XDP buffer geometry. With no program attached nothing
-changes, so the pre-allocation still does its job of keeping
-mana_attach() from failing on allocation.
-
-Leaving the pre-allocated buffers unconsumed is safe:
-mana_pre_dealloc_rxbufs() dma-unmaps and put_page()s the remainder,
-and every caller (mana_xdp_set(), mana_change_mtu(), and both ethtool
-ring and channel paths) already runs it after mana_attach().
-
-The rxq->xdp_save_va reuse in mana_get_rxfrag() also leaves from_pool
-false, but that cache is fed only by the drop path's non-pool branch,
-which this change makes unreachable while a program is attached, so
-it needs no fix.
-
-Found and fixed on a 5.14-based distro kernel running AF_XDP over
-MANA in copy mode: 24M+ redirected frames with no warnings, where the
-unpatched driver warned on essentially every redirected frame. All of
-the code involved is unchanged in mainline.
-
-Fixes: b1d13f7a3b53 ("net: mana: Add page pool for RX buffers")
-Signed-off-by: Gunter Woytowitz <gunter@vcinity.io>
----
- drivers/net/ethernet/microsoft/mana/mana_en.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/net/ethernet/microsoft/mana/mana_en.c b/drivers/net/ethernet/microsoft/mana/mana_en.c
-index 7a1ac853e..a2cb66753 100644
---- a/drivers/net/ethernet/microsoft/mana/mana_en.c
-+++ b/drivers/net/ethernet/microsoft/mana/mana_en.c
-@@ -2925,7 +2925,14 @@ static int mana_fill_rx_oob(struct mana_recv_buf_oob *rx_oob, u32 mem_key,
- 	dma_addr_t da;
- 	void *va;
- 
--	if (mpc->rxbufs_pre)
-+	/* The pre-allocated buffers come from dev_alloc_pages(), not from the
-+	 * rxq's page_pool. With a program attached any buffer can reach
-+	 * __xdp_return(), which returns it to the pool the rxq registered, so
-+	 * fill from the pool instead. The unused pre-allocated buffers are
-+	 * released by the mana_pre_dealloc_rxbufs() every caller already runs
-+	 * after mana_attach().
-+	 */
-+	if (mpc->rxbufs_pre && !mana_xdp_get(mpc))
- 		va = mana_get_rxbuf_pre(rxq, &da);
- 	else
- 		va = mana_get_rxfrag(rxq, dev, &da, &from_pool, &pp_page,
+- Link to v1: https://patch.msgid.link/20260908-modernize-t4001-v1-0-cab3933a173f@fastmail.com
 
 ---
-base-commit: 50d05c7c76c96b90462f24debacca971d2e86713
-change-id: 20260910-mana-xdp-pagepool-d61a74902b9f
+Mark C. Chu-Carroll (3):
+      Update t4001 to use modern syntax.
+      Update t4009 to use modern style.
+      Update t4010 to use modern style.
 
-Best regards,
---  
-Gunter Woytowitz <gunter@vcinity.io>
+ t/t4001-diff-rename.sh   |  97 ++++++++++++++++-------------------
+ t/t4009-diff-rename-4.sh | 131 +++++++++++++++++++++++------------------------
+ t/t4010-diff-pathspec.sh |  88 +++++++++++--------------------
+ 3 files changed, 137 insertions(+), 179 deletions(-)
+
+Range-diff versus v1:
+
+1:  d55c790b60 < -:  ---------- Update t4001 to use modern syntax.
+2:  0fec9484a6 < -:  ---------- Update t4009 to use modern style.
+3:  4dbb726578 < -:  ---------- Update t4010 to use modern style.
+-:  ---------- > 1:  d560c2a155 Update t4001 to use modern syntax.
+-:  ---------- > 2:  a52bf71409 Update t4009 to use modern style.
+-:  ---------- > 3:  553fe00594 Update t4010 to use modern style.
+
+---
+base-commit: 5c40f33ab5825c90dd32cfb08198de2beedc6ed1
+change-id: 20260908-modernize-t4001-fb43302caaf9
 
