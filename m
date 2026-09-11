@@ -1,452 +1,164 @@
-From: Eric Yang <eric.yang.wiwynn@gmail.com>
-Date: Fri, 11 Sep 2026 08:37:16 +0000
-Subject: [PATCH linux dev-6.18] hwmon: (pmbus) Add MPQ82D00 driver
+From: =?utf-8?q?Y=C4=B0=C4=9E=C4=B0TCAN_KAVAKLI?= <kavakliyigitcan@gmail.com>
+Subject: [PATCH RFC 00/10] arm64: qcom: sm6125-ginkgo: display, backlight,
+ and touch support
+Date: Fri, 11 Sep 2026 11:50:57 +0300
+Message-Id: <20260911-ginkgo-submission-final-v1-0-0e68e63a18d4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-backport-mpq82d00-dev-6-18-v1-1-6a3f5eb7532b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALu9o2oC/x2MQQ7CIBAAv9Ls2TUsjQT8ivFQYNWNSilo06Tp3
- 8UeZzKZFSoX4QrnboXCs1QZUwM6dBAeQ7ozSmwMWmmjHBH6ITzzWD74zpPVUSmMPKNBsuhOgb2
- 3veudgTbIhW+y7PMLvCR9l7/d8yNZuG7bDz5b6ql/AAAA
-To: tan.siewert@9elements.com, andrew@codeconstruct.com.au, 
- openbmc@lists.ozlabs.org
-Cc: Marshall_Zhan@wiwynn.com, joel@jms.id.au, Angela_Cheng@wiwynn.com, 
- Wensheng Wang <wenswang@yeah.net>, Guenter Roeck <linux@roeck-us.net>, 
- Eric Yang <eric.yang.wiwynn@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789115836; l=11563;
- i=eric.yang.wiwynn@gmail.com; s=20260911; h=from:subject:message-id;
- bh=XoIaLLi4TjhqfPrDQKq1cOXhjhSXhuvqpcUKEl4L5eQ=;
- b=7gOuXR/QfEBXeWBJEFF3NpfwlPNDTRZOqL4D6qCj+hhKfu8DthvKJfvHcQtW1IklaEqLcqWbz
- Vl1i23Q3FAvB/ra2DD9qBzkZC2+WHAieX9+8LIY3J/e281kmATnv8eF
-X-Developer-Key: i=eric.yang.wiwynn@gmail.com; a=ed25519;
- pk=XYQiwgPZNUCt1JCbsO7zX8ODEiRKocz7fYwt+aWnXBs=
-X-Endpoint-Received: by B4 Relay for eric.yang.wiwynn@gmail.com/20260911 with auth_id=1023
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPHAo2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDS0ND3fTMvOz0fN3i0qTczGKQat20zLzEHF0zcwPjJAtjUwNjU3MloO6
+ CotS0zAqwydFKQW7OSrG1tQANxwocbgAAAA==
+X-Change-ID: 20260911-ginkgo-submission-final-6703b8350357
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Sumit Semwal <sumit.semwal@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Henrik Rydberg <rydberg@bitmath.org>, 
+ Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, linux-input@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, freedreno@lists.freedesktop.org, 
+ =?utf-8?q?Y=C4=B0=C4=9E=C4=B0TCAN_KAVAKLI?= <kavakliyigitcan@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789116671; l=6606;
+ i=kavakliyigitcan@gmail.com; s=20260911; h=from:subject:message-id;
+ bh=tXGlROxpJEoJs8ys8hL2wCVQSvGrnJqMHuLMf6SWryw=;
+ b=F9sCtUdsZnrbTxUweRexehtvWmh7jODfw2hugXQy5LvdLtntAotU0HIT7olWxdAPKyTfFnW8p
+ +S2m6ZLHc5eBimxf9ju4MCs5vuc/fqeRi0c2q5huyTRgrX2W6cS/ehk
+X-Developer-Key: i=kavakliyigitcan@gmail.com; a=ed25519;
+ pk=W2GaxVotULs2vAjRMMLheaDtMMYs4037zO1LVVfFtPI=
+X-Endpoint-Received: by B4 Relay for kavakliyigitcan@gmail.com/20260911 with auth_id=1024
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Wensheng Wang <wenswang@yeah.net>
+This RFC series introduces full display, backlight, and touchscreen support
+for the Xiaomi Redmi Note 8 ("ginkgo"), based on the Qualcomm SM6125 platform.
 
-Add support for MPS mpq82d00 controller. This driver exposes
-telemetry and limit value readings and writtings.
+Hardware architecture summary:
+1. Kinetic KTD3136 3-channel 11-bit I2C LED backlight driver.
+2. Novatek NT36672A TDDI controller driving a 1080x2340 FHD+ video-mode DSI panel.
+3. Novatek NT36672A SPI touchscreen interface (co-packaged within the TDDI
+   controller, sharing physical reset and power lines with the display panel).
+4. Qualcomm DPU 5.4 / DSI display subsystem on SM6125.
 
-(cherry picked from commit ff71049f36172fd3590bd170d1bc9cdd9c3e6839)
+-------------------------------------------------------------------------------
+RFC / Open Review Questions
+-------------------------------------------------------------------------------
 
-Signed-off-by: Wensheng Wang <wenswang@yeah.net>
-Link: https://lore.kernel.org/r/20260704081952.1701914-2-wenswang@yeah.net
-[groeck: Fixed "WARNING: Title underline too short"]
-Signed-off-by: Guenter Roeck <linux@roeck-us.net>
-Signed-off-by: Eric Yang <eric.yang.wiwynn@gmail.com>
+1. Panel Compatible Naming:
+   - The compatible used in this series is `tianma,fhd-video-ginkgo`.
+   - THIS IS AN OPEN REVIEW QUESTION. An authoritative Tianma module part
+     number (e.g. TMxxxx) is not currently known or visible on accessible
+     hardware markings for this OEM display module.
+   - This compatible is NOT claimed as established upstream naming. We welcome
+     maintainer guidance on whether to retain `tianma,fhd-video-ginkgo`, standardize
+     on a board-specific or controller-specific fallback, or use an alternate convention.
+
+2. External Touchscreen Firmware:
+   - The Novatek NT36672A touchscreen controller requires SRAM firmware download.
+   - Firmware is dynamically requested via request_firmware() using the name
+     "novatek/nt36672a_tianma.bin" (118,784 bytes).
+   - This firmware is externally loaded from userspace filesystem and NOT
+     included in the kernel patches.
+
+3. SM6125 DPU Programmable Fetch Delay:
+   - On the tested SM6125 hardware, video mode output empirically requires the
+     programmable fetch start counter to be offset by one horizontal total line
+     (fetch_start += horiz_total).
+   - Without this offset, the hardware suffers immediate DSI FIFO/TIMEOUT status=5
+     errors and fails to display pixels.
+   - Patch 7 models this via a catalog quirk `has_prg_fetch_delay` for SM6125.
+     Reviewer feedback on whether this should be catalog-driven or handled in the
+     encoder layer is appreciated.
+
+4. MSM DSI Host Link vs Video Streaming Separation:
+   - Patch 9 separates host link enable (atomic_pre_enable) from video stream
+     enable (atomic_enable) to allow video-mode panels to accept DCS initialization
+     packets before active pixel transmission begins.
+   - Patch 8 enforces mutual exclusion between command and video modes.
+
+-------------------------------------------------------------------------------
+Physical Hardware Validation Summary
+-------------------------------------------------------------------------------
+
+Validation on physical Xiaomi Redmi Note 8 (SM6125) hardware:
+- Display / DRM: Console text and graphical output verified crisp and stable.
+- Backlight: Kinetic KTD3136 11-bit brightness scaling (0..2047) verified.
+- Touchscreen: Continuous 10-second user interaction confirmed smooth 60 Hz event
+  flow (985 hardware interrupts, 5034 EV_ABS events, 536 SYN_REPORT frames,
+  median interval 8.36 ms).
+- Lifecycle / Stress:
+  * 10 / 10 consecutive isolated display OFF -> ON cycles PASSED with active
+    touch verified responsive after wake on every cycle.
+  * Rapid power-button spam stress PASSED without wedging display or power daemon.
+  * Zero DSI FIFO errors, zero firmware load timeouts (-110, -5).
+
+-------------------------------------------------------------------------------
+Series Structure
+-------------------------------------------------------------------------------
+
+Patch 01: dt-bindings: backlight: add Kinetic KTD3136
+Patch 02: backlight: add Kinetic KTD3136 driver
+Patch 03: dt-bindings: display: panel: novatek,nt36672a: add Tianma FHD+ video mode variant
+Patch 04: drm/panel: novatek-nt36672a: add Tianma FHD+ video mode panel
+Patch 05: dt-bindings: input: touchscreen: add Novatek NT36672A SPI touchscreen
+Patch 06: Input: novatek-nt36672a-spi: add driver for Novatek NT36672A SPI touchscreen
+Patch 07: drm/msm/dpu: describe SM6125 programmable-fetch delayed-start quirk
+Patch 08: drm/msm/dsi: make command and video mode configuration mutually exclusive
+Patch 09: drm/msm/dsi: separate host link enable from video stream enable
+Patch 10: arm64: dts: qcom: sm6125-xiaomi-ginkgo: enable display, backlight and touchscreen
+
+Signed-off-by: YİĞİTCAN KAVAKLI <kavakliyigitcan@gmail.com>
 ---
- Documentation/hwmon/index.rst    |   1 +
- Documentation/hwmon/mpq82d00.rst |  73 ++++++++++++
- MAINTAINERS                      |   7 ++
- drivers/hwmon/pmbus/Kconfig      |   9 ++
- drivers/hwmon/pmbus/Makefile     |   1 +
- drivers/hwmon/pmbus/mpq82d00.c   | 249 +++++++++++++++++++++++++++++++++++++++
- 6 files changed, 340 insertions(+)
+YİĞİTCAN KAVAKLI (10):
+      dt-bindings: backlight: add Kinetic KTD3136
+      backlight: add Kinetic KTD3136 driver
+      dt-bindings: display: panel: novatek,nt36672a: add Tianma FHD+ video mode variant
+      drm/panel: novatek-nt36672a: add Tianma FHD+ video mode panel
+      dt-bindings: input: touchscreen: add Novatek NT36672A SPI touchscreen
+      Input: novatek-nt36672a-spi: add driver for Novatek NT36672A SPI touchscreen
+      drm/msm/dpu: describe SM6125 programmable-fetch delayed-start quirk
+      drm/msm/dsi: make command and video mode configuration mutually exclusive
+      drm/msm/dsi: separate host link enable from video stream enable
+      arm64: dts: qcom: sm6125-xiaomi-ginkgo: enable display, backlight and touchscreen
 
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index c5ab1aa5d416..136ffb914ede 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -188,6 +188,7 @@ Hardware Monitoring Kernel Drivers
-    mp5990
-    mp9941
-    mp9945
-+   mpq82d00
-    mpq8785
-    nct6683
-    nct6775
-diff --git a/Documentation/hwmon/mpq82d00.rst b/Documentation/hwmon/mpq82d00.rst
-new file mode 100644
-index 000000000000..0749c130bd11
---- /dev/null
-+++ b/Documentation/hwmon/mpq82d00.rst
-@@ -0,0 +1,73 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+Kernel driver mpq82d00
-+======================
-+
-+Supported chips:
-+
-+  * MPS mpq82d00
-+
-+    Prefix: 'mpq82d00'
-+
-+Author:
-+
-+	Wensheng Wang <wenswang@yeah.net>
-+
-+Description
-+-----------
-+
-+This driver implements support for Monolithic Power Systems, Inc. (MPS)
-+MPQ82D00 Step-Down Controller.
-+
-+Device compliant with:
-+
-+- PMBus rev 1.3 interface.
-+
-+The driver exports the following attributes via the 'sysfs' files
-+for input voltage:
-+
-+**in1_input**
-+
-+**in1_label**
-+
-+**in1_alarm**
-+
-+The driver provides the following attributes for output voltage:
-+
-+**in2_input**
-+
-+**in2_label**
-+
-+**in2_alarm**
-+
-+The driver provides the following attributes for output current:
-+
-+**curr1_input**
-+
-+**curr1_label**
-+
-+**curr1_crit**
-+
-+**curr1_crit_alarm**
-+
-+The driver provides the following attributes for input power:
-+
-+**power1_input**
-+
-+**power1_label**
-+
-+**power1_alarm**
-+
-+The driver provides the following attributes for output power:
-+
-+**power2_input**
-+
-+**power2_label**
-+
-+The driver provides the following attributes for temperature:
-+
-+**temp1_input**
-+
-+**temp1_crit**
-+
-+**temp1_crit_alarm**
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1f2873fe5a84..1d8b181b55e2 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17562,6 +17562,13 @@ S:	Maintained
- F:	Documentation/hwmon/mp9945.rst
- F:	drivers/hwmon/pmbus/mp9945.c
- 
-+MPS MPQ82D00 DRIVER
-+M:	Wensheng Wang <wenswang@yeah.net>
-+L:	linux-hwmon@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/hwmon/mpq82d00.rst
-+F:	drivers/hwmon/pmbus/mpq82d00.c
-+
- MR800 AVERMEDIA USB FM RADIO DRIVER
- M:	Alexey Klimov <alexey.klimov@linaro.org>
- L:	linux-media@vger.kernel.org
-diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 3043d1899a7e..730b6b0d1a4f 100644
---- a/drivers/hwmon/pmbus/Kconfig
-+++ b/drivers/hwmon/pmbus/Kconfig
-@@ -523,6 +523,15 @@ config SENSORS_MPQ7932
- 	  This driver can also be built as a module. If so, the module will
- 	  be called mpq7932.
- 
-+config SENSORS_MPQ82D00
-+	tristate "MPS MPQ82D00"
-+	help
-+	  If you say yes here you get hardware monitoring functionality support
-+	  for power management IC MPS MPQ82D00.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called mpq82d00.
-+
- config SENSORS_MPQ8785
- 	tristate "MPS MPQ8785"
- 	help
-diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index bd2dd3bb2e48..60a0c5770ac4 100644
---- a/drivers/hwmon/pmbus/Makefile
-+++ b/drivers/hwmon/pmbus/Makefile
-@@ -52,6 +52,7 @@ obj-$(CONFIG_SENSORS_MP5990)	+= mp5990.o
- obj-$(CONFIG_SENSORS_MP9941)	+= mp9941.o
- obj-$(CONFIG_SENSORS_MP9945)	+= mp9945.o
- obj-$(CONFIG_SENSORS_MPQ7932)	+= mpq7932.o
-+obj-$(CONFIG_SENSORS_MPQ82D00)	+= mpq82d00.o
- obj-$(CONFIG_SENSORS_MPQ8785)	+= mpq8785.o
- obj-$(CONFIG_SENSORS_PLI1209BC)	+= pli1209bc.o
- obj-$(CONFIG_SENSORS_PM6764TR)	+= pm6764tr.o
-diff --git a/drivers/hwmon/pmbus/mpq82d00.c b/drivers/hwmon/pmbus/mpq82d00.c
-new file mode 100644
-index 000000000000..d51fcffcc6d9
---- /dev/null
-+++ b/drivers/hwmon/pmbus/mpq82d00.c
-@@ -0,0 +1,249 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Hardware monitoring driver for MPS Synchronous Step-Down Converter(MPQ82D00)
-+ */
-+
-+#include <linux/bitfield.h>
-+#include <linux/err.h>
-+#include <linux/i2c.h>
-+#include <linux/init.h>
-+#include <linux/kernel.h>
-+#include <linux/module.h>
-+#include "pmbus.h"
-+
-+#define MPQ82D00_VOUT_DIV	64
-+
-+#define MPQ82D00_PAGE_NUM	1
-+
-+#define MPQ82D00_RAIL1_FUNC	(PMBUS_HAVE_VIN | PMBUS_HAVE_VOUT | \
-+							PMBUS_HAVE_IOUT | PMBUS_HAVE_TEMP | \
-+							PMBUS_HAVE_POUT | PMBUS_HAVE_PIN | \
-+							PMBUS_HAVE_STATUS_VOUT | \
-+							PMBUS_HAVE_STATUS_IOUT | \
-+							PMBUS_HAVE_STATUS_TEMP | \
-+							PMBUS_HAVE_STATUS_INPUT)
-+
-+struct mpq82d00_data {
-+	struct pmbus_driver_info info;
-+	int vout_scale;
-+};
-+
-+#define to_mpq82d00_data(x) container_of(x, struct mpq82d00_data, info)
-+
-+static u16 mpq82d00_linear_exp_transfer(u16 word, u16 expect_exponent)
-+{
-+	s16 exponent, mantissa, target_exponent;
-+
-+	exponent = ((s16)word) >> 11;
-+	mantissa = ((s16)((word & 0x7ff) << 5)) >> 5;
-+	target_exponent = (s16)((expect_exponent & 0x1f) << 11) >> 11;
-+
-+	/*
-+	 * The MPQ82D00 does not support negtive limit value, if a negtive
-+	 * limit value is written, the limit value will become to 0. And
-+	 * the maximum positive limit value is limitted to 0x3FF.
-+	 */
-+	if (mantissa < 0) {
-+		mantissa = 0;
-+	} else {
-+		if (exponent > target_exponent) {
-+			mantissa = (1023 >> (exponent - target_exponent)) >= mantissa ?
-+						mantissa << (exponent - target_exponent) :
-+						0x3FF;
-+		} else {
-+			mantissa = clamp_val(mantissa >> (target_exponent - exponent),
-+					     0, 0x3FF);
-+		}
-+	}
-+
-+	return mantissa | ((expect_exponent << 11) & 0xf800);
-+}
-+
-+static int mpq82d00_read_byte_data(struct i2c_client *client, int page, int reg)
-+{
-+	int ret;
-+
-+	switch (reg) {
-+	case PMBUS_VOUT_MODE:
-+		/*
-+		 * The MPQ82D00 does not follow standard PMBus protocol completely,
-+		 * and the calculation of vout in this driver is based on direct
-+		 * format. As a result, the format of vout is enforced to direct.
-+		 */
-+		ret = PB_VOUT_MODE_DIRECT;
-+		break;
-+	default:
-+		/*
-+		 * These registers are not explicitly handled by the driver,
-+		 * as a result, return -ENODATA directly.
-+		 */
-+		ret = -ENODATA;
-+		break;
-+	}
-+
-+	return ret;
-+}
-+
-+static int mpq82d00_read_word_data(struct i2c_client *client, int page,
-+				   int phase, int reg)
-+{
-+	const struct pmbus_driver_info *info = pmbus_get_driver_info(client);
-+	struct mpq82d00_data *data = to_mpq82d00_data(info);
-+	int ret;
-+
-+	switch (reg) {
-+	case PMBUS_STATUS_WORD:
-+	case PMBUS_READ_VIN:
-+	case PMBUS_READ_IOUT:
-+	case PMBUS_READ_POUT:
-+	case PMBUS_READ_PIN:
-+	case PMBUS_READ_TEMPERATURE_1:
-+	case PMBUS_IOUT_OC_FAULT_LIMIT:
-+	case PMBUS_OT_FAULT_LIMIT:
-+		/*
-+		 * These registers are not explicitly handled by the driver,
-+		 * as a result, return -ENODATA directly.
-+		 */
-+		ret = -ENODATA;
-+		break;
-+	case PMBUS_READ_VOUT:
-+		ret = pmbus_read_word_data(client, page, phase, reg);
-+		if (ret < 0)
-+			return ret;
-+
-+		ret = DIV_ROUND_CLOSEST((ret & GENMASK(11, 0)) * data->vout_scale,
-+					MPQ82D00_VOUT_DIV);
-+		break;
-+	default:
-+		/*
-+		 * The MPQ82D00 do not support other telemetry and limit
-+		 * value reading, so, return -EINVAL directly.
-+		 */
-+		ret = -EINVAL;
-+		break;
-+	}
-+
-+	return ret;
-+}
-+
-+static int mpq82d00_write_word_data(struct i2c_client *client, int page, int reg,
-+				    u16 word)
-+{
-+	int ret;
-+
-+	switch (reg) {
-+	case PMBUS_OT_FAULT_LIMIT:
-+		/*
-+		 * The PMBUS_OT_FAULT_LIMIT of MPQ82D00 is linear11 format,
-+		 * and the exponent is a constant value(5'b00000), so the
-+		 * exponent of word parameter should be converted to 5'b00000.
-+		 */
-+		ret = pmbus_write_word_data(client, page, reg,
-+					    mpq82d00_linear_exp_transfer(word, 0x00));
-+		break;
-+	case PMBUS_IOUT_OC_FAULT_LIMIT:
-+		/*
-+		 * The PMBUS_IOUT_OC_FAULT_LIMIT of MPQ82D00 is linear11 format,
-+		 * and the exponent is a constant value(5'b11100), so the
-+		 * exponent of word parameter should be converted to 5'b11100.
-+		 */
-+		ret = pmbus_write_word_data(client, page, reg,
-+					    mpq82d00_linear_exp_transfer(word, 0x1C));
-+		break;
-+	default:
-+		/*
-+		 * The MPQ82D00 do not support other limit value configuration,
-+		 * so, return -EINVAL directly.
-+		 */
-+		ret = -EINVAL;
-+		break;
-+	}
-+
-+	return ret;
-+}
-+
-+static int mpq82d00_identify(struct i2c_client *client, struct pmbus_driver_info *info)
-+{
-+	struct mpq82d00_data *data = to_mpq82d00_data(info);
-+	int ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, PMBUS_PAGE, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = i2c_smbus_read_byte_data(client, PMBUS_VOUT_MODE);
-+	if (ret < 0)
-+		return ret;
-+
-+	/*
-+	 * The MPQ82D00 supports three vout mode. If PMBUS_VOUT_MODE
-+	 * bit5 is 1, the vout scale is 5mv/LSB.If PMBUS_VOUT_MODE bit5
-+	 * is 0, it is linear mode, the vout scale is 1.953125mv/LSB.
-+	 */
-+	if (FIELD_GET(GENMASK(5, 5), ret))
-+		data->vout_scale = 320;
-+	else
-+		data->vout_scale = 125;
-+
-+	return 0;
-+}
-+
-+static struct pmbus_driver_info mpq82d00_info = {
-+	.pages = MPQ82D00_PAGE_NUM,
-+	.format[PSC_VOLTAGE_IN] = linear,
-+	.format[PSC_CURRENT_OUT] = linear,
-+	.format[PSC_TEMPERATURE] = linear,
-+	.format[PSC_VOLTAGE_OUT] = direct,
-+	.format[PSC_POWER] = linear,
-+
-+	.m[PSC_VOLTAGE_OUT] = 1,
-+	.R[PSC_VOLTAGE_OUT] = 3,
-+	.b[PSC_VOLTAGE_OUT] = 0,
-+
-+	.func[0] = MPQ82D00_RAIL1_FUNC,
-+	.read_word_data = mpq82d00_read_word_data,
-+	.read_byte_data = mpq82d00_read_byte_data,
-+	.write_word_data = mpq82d00_write_word_data,
-+	.identify = mpq82d00_identify,
-+};
-+
-+static int mpq82d00_probe(struct i2c_client *client)
-+{
-+	struct mpq82d00_data *data;
-+
-+	data = devm_kzalloc(&client->dev, sizeof(struct mpq82d00_data), GFP_KERNEL);
-+	if (!data)
-+		return -ENOMEM;
-+
-+	memcpy(&data->info, &mpq82d00_info, sizeof(mpq82d00_info));
-+
-+	return pmbus_do_probe(client, &data->info);
-+}
-+
-+static const struct i2c_device_id mpq82d00_id[] = {
-+	{.name = "mpq82d00"},
-+	{}
-+};
-+MODULE_DEVICE_TABLE(i2c, mpq82d00_id);
-+
-+static const struct of_device_id __maybe_unused mpq82d00_of_match[] = {
-+	{.compatible = "mps,mpq82d00"},
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, mpq82d00_of_match);
-+
-+static struct i2c_driver mpq82d00_driver = {
-+	.driver = {
-+		.name = "mpq82d00",
-+		.of_match_table = mpq82d00_of_match,
-+	},
-+	.probe = mpq82d00_probe,
-+	.id_table = mpq82d00_id,
-+};
-+
-+module_i2c_driver(mpq82d00_driver);
-+
-+MODULE_AUTHOR("Wensheng Wang <wenswang@yeah.net");
-+MODULE_DESCRIPTION("PMBus driver for MPS MPQ82D00 device");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("PMBUS");
-
+ .../bindings/display/panel/novatek,nt36672a.yaml   |   1 +
+ .../input/touchscreen/novatek,nt36672a-spi.yaml    |  66 ++
+ .../bindings/leds/backlight/kinetic,ktd3136.yaml   |  65 ++
+ .../boot/dts/qcom/sm6125-xiaomi-ginkgo-common.dtsi | 100 +++
+ .../gpu/drm/msm/disp/dpu1/catalog/dpu_5_4_sm6125.h |   1 +
+ .../gpu/drm/msm/disp/dpu1/dpu_encoder_phys_vid.c   |  11 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h     |   2 +
+ drivers/gpu/drm/msm/dsi/dsi.h                      |   1 +
+ drivers/gpu/drm/msm/dsi/dsi_host.c                 |  29 +-
+ drivers/gpu/drm/msm/dsi/dsi_manager.c              |  20 +
+ drivers/gpu/drm/panel/panel-novatek-nt36672a.c     | 141 ++++-
+ drivers/input/touchscreen/Kconfig                  |  11 +
+ drivers/input/touchscreen/Makefile                 |   1 +
+ drivers/input/touchscreen/novatek-nt36672a-spi.c   | 674 +++++++++++++++++++++
+ drivers/video/backlight/Kconfig                    |  12 +
+ drivers/video/backlight/Makefile                   |   1 +
+ drivers/video/backlight/ktd3136-backlight.c        | 262 ++++++++
+ 17 files changed, 1362 insertions(+), 36 deletions(-)
 ---
-base-commit: 3a7b2a135e6b2628768fef537590c5b5bdb6fe7a
-change-id: 20260911-backport-mpq82d00-dev-6-18-95cebb839396
+base-commit: 893e11787f78e43b534e252249ac3fff4d1333f8
+change-id: 20260911-ginkgo-submission-final-6703b8350357
 
 Best regards,
 -- 
-Eric Yang <eric.yang.wiwynn@gmail.com>
+YİĞİTCAN KAVAKLI <kavakliyigitcan@gmail.com>
 
