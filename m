@@ -1,215 +1,84 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Fri, 11 Sep 2026 19:45:18 +0800
-Subject: [PATCH RFC v2 15/15] mm/mglru: make folio_test_workingset() work
- based on folio LRU refs
+From: =?utf-8?q?Juan_Carlos_Guti=C3=A9rrez_Lavado?= <jcarlosgl96@proton.me>
+Subject: [PATCH v2 0/2] Add SPC Glee 10.1 A64 board support
+Date: Fri, 11 Sep 2026 15:48:36 +0200
+Message-Id: <20260911-b4-spc-glee-a64-v1-v2-0-ed0b7ff02e0b@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-mglru-fg-v2-15-f26e5cb26da7@tencent.com>
-References: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
-In-Reply-To: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, Muchun Song <muchun.song@linux.dev>, 
- Qi Zheng <qi.zheng@linux.dev>, Ying Huang <ying.huang@linux.alibaba.com>, 
- Chris Li <chrisl@kernel.org>, Baoquan He <baoquan.he@linux.dev>, 
- Nico Pache <nico.pache@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Michal Hocko <mhocko@kernel.org>, Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, David Hildenbrand <david@kernel.org>, 
- Lorenzo Stoakes <ljs@kernel.org>, Barry Song <baohua@kernel.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Vlastimil Babka <vbabka@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
- Youngjun Park <youngjun.park@lge.com>, Zi Yan <ziy@nvidia.com>, 
- Gregory Price <gourry@gourry.net>, 
- "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Lance Yang <lance.yang@linux.dev>, Hugh Dickins <hughd@google.com>, 
- SeongJae Park <sj@kernel.org>, David Rientjes <rientjes@google.com>, 
- Yu Zhao <yuzhao@google.com>, Vernon Yang <vernon2gm@gmail.com>, 
- Zicheng Wang <wangzicheng@honor.com>, Chen Ridong <chenridong@xiaomi.com>, 
- Tal Zussman <tz2294@columbia.edu>, Kairui Song <ryncsn@gmail.com>, 
- zhaozhengzhuo <zhaozhengzhuo@uniontech.com>, linux-kernel@vger.kernel.org, 
- cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
- Nico Pache <nico.pache@linux.dev>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127107; l=5993;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=deEdlZTK2eJdMlJCmft+0M6XrLp2DEbeIvYEzIeBHb4=;
- b=8cdpfQ65fKaBOCUvSWeg19Boa12RWupyRJjKI6kQDVsK4M3/UKS0jqTG+T0V0BAYyhk9Fgk3i
- x+1Da0pZfuZBjjHQyy9CjSWnClkZWvECW+2Kcijr5MVykt6+6RCKIHe
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ7CIBREr9L8td8AbYm68h6mC2h/W4wCAWw0D
+ XeX1r3JbF4yM2+FSMFQhEu1QqDFRONsAXGooJ+VnQjNUBgEE5KdmUTdYPQ9Tg8iVLLBhaMkOWh
+ Vn5RqCcrQBxrNez+9dT+OL32nPm1PW2M2Mbnw2a0L33p/BSUMpeDDKHjbUs2vPrjk7PFJ0OWcv
+ 8IU1QfGAAAA
+X-Change-ID: 20260906-b4-spc-glee-a64-v1-6e6dba38aa5e
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Juan_Carlos_Guti=C3=A9rrez_Lavado?= <jcarlosgl96@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789134516; l=2744;
+ i=jcarlosgl96@proton.me; s=20260906; h=from:subject:message-id;
+ bh=lG4KDAp2pMa37LUQNtZbacnmooezoxlM4A7rINK4vpY=;
+ b=9cQ8HQazllEZ9I3uWCMPeNw1KeaNAYJ7K67hJqRBiRk3vDkZLO8y0O98Kuiym09Ba9Fr+zhVv
+ ihA3uDDYJ0HBtZRMro+NaiR2KP+HnwLY8llpeA3HBQck4uWQtw7cFMw
+X-Developer-Key: i=jcarlosgl96@proton.me; a=ed25519;
+ pk=2/GzZfrbHAiuUrsA5A4A9ixfHKnypfDfzyE+fToY4Io=
+X-Endpoint-Received: by B4 Relay for jcarlosgl96@proton.me/20260906 with auth_id=1008
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-folio_test_workingset() currently tests the PG_workingset bit, which
-is only the second lowest access bit of the folio LRU refs count now.
-Folios with a higher refs count carry it in the LRU_REFS_MASK field
-and no longer have PG_workingset set, so the bit test misses them.
+Add initial support for the SPC Glee 10.1 tablet with Allwinner A64
+and AXP803 PMIC. Describe essential supplies, 2 GiB DRAM, microSD,
+UART, battery monitoring and USB peripheral mode. Keep unverified
+peripherals disabled. The microSD slot uses broken-cd and a conservative
+25 MHz limit until its card-detect wiring and faster modes are validated.
 
-folio_set_workingset() currently sets the PG_workingset bit with a
-plain set_bit(), which also over-promotes folios at a higher refs
-count: e.g. a folio at refs 4 is bumped to refs 6, advancing it
-toward LRU_REFS_MAX and an unintended generation promotion on the
-next access.
+Validation against sunxi/for-next base 913f7eda9f3e:
+- DTB build, binding checks and full DTB schema validation pass with
+  dt-schema 2026.6. W=1 retains three inherited SoC warnings.
+- Cold boot from microSD and kexec into Linux 7.3.0-rc1 with the corrected
+  DTB reach accessible userspace without regulator_ignore_unused.
+- CPUfreq transitions to 648, 816 and 1152 MHz were observed.
+- CPU cooling state 7 limits the CPU to 648 MHz. Automatic thermal updates
+  were paused briefly to test this actuator, then restored.
+- USB supply online/present changed 1 -> 0 -> 1 during cable unplug/replug;
+  SSH reconnected after the cable was restored.
+- Automatic CPU thermal cooling reduced frequency under load. Two SHA-256
+  workers completed 10 minutes, peaking at 78.37 C, with USB/SSH connected.
+  Cooling state returned to 0 after removing the load. A four-worker test
+  was stopped at a conservative 80 C limit after 27 seconds.
 
-Move the test into mm_inline.h as an inline helper based on
-folio_lru_refs(), checking refs >= LRU_REFS_WORKINGSET.  The set
-stays a plain PG_workingset bit operation reserved for the
-classical LRU: under MGLRU the refs count is maintained by
-folio_inc_lru_refs(), and now triggers a debug WARN when called
-while MGLRU is fully on (the switching window is exempt, as the
-classical paths legitimately run alongside MGLRU then).  The one
-PageWorkingset() user in erofs is converted to the folio helper.
+Long-duration stability, sustained full four-core load and broader peripheral
+support remain unvalidated.
 
-Under the classical LRU the refs count is not maintained, so the
-test falls back to the PG_workingset bit test, which is the old
-behavior.
-
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Juan Carlos Gutiérrez Lavado <jcarlosgl96@proton.me>
 ---
- fs/btrfs/compression.c     |  1 +
- fs/erofs/zdata.c           |  3 ++-
- include/linux/mm_inline.h  | 35 +++++++++++++++++++++++++++++++++++
- include/linux/page-flags.h |  2 --
- mm/filemap.c               |  1 +
- mm/page_io.c               |  1 +
- 6 files changed, 40 insertions(+), 3 deletions(-)
+Changes in v2:
+- Use the onspc vendor prefix and place its registry entry alphabetically.
+- Include CPU OPPs for CPUfreq and CPU thermal cooling.
+- Enable the AXP803 USB supply and link it to the USB PHY for VBUS detection.
+- Keep ALDO2 (VCC-PL, 1.8 V) and ALDO3 (VCC-PLL/AVCC, 3.0 V) always on.
+  These supplies are identified by the stock firmware and match the
+  measured baseline settings. Earlier test boots stopped progressing
+  without regulator_ignore_unused; the corrected DTB remains responsive.
+- Link to v1: https://lore.kernel.org/all/20260906-b4-spc-glee-a64-v1-v1-0-621df2155e31@proton.me/
 
-diff --git a/fs/btrfs/compression.c b/fs/btrfs/compression.c
-index c62b5148d5ac..57d24413265e 100644
---- a/fs/btrfs/compression.c
-+++ b/fs/btrfs/compression.c
-@@ -8,6 +8,7 @@
- #include <linux/file.h>
- #include <linux/fs.h>
- #include <linux/pagemap.h>
-+#include <linux/mm_inline.h>
- #include <linux/folio_batch.h>
- #include <linux/highmem.h>
- #include <linux/kthread.h>
-diff --git a/fs/erofs/zdata.c b/fs/erofs/zdata.c
-index e1e25ca0d190..e326456214b5 100644
---- a/fs/erofs/zdata.c
-+++ b/fs/erofs/zdata.c
-@@ -6,6 +6,7 @@
-  */
- #include "compress.h"
- #include <linux/psi.h>
-+#include <linux/mm_inline.h>
- #include <linux/cpuhotplug.h>
- #include <trace/events/erofs.h>
- 
-@@ -1725,7 +1726,7 @@ static void z_erofs_submit_queue(struct z_erofs_frontend *f,
- 				DBG_BUGON(bvec.bv_len < sb->s_blocksize);
- 			}
- 
--			if (unlikely(PageWorkingset(bvec.bv_page)) &&
-+			if (unlikely(folio_test_workingset(page_folio(bvec.bv_page))) &&
- 			    !memstall) {
- 				psi_memstall_enter(&pflags);
- 				memstall = 1;
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index bca00599dec6..1dd853c10a54 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -258,6 +258,24 @@ static inline bool lru_gen_enabled(void)
- }
- #endif
- 
-+/**
-+ * folio_test_workingset - Test if a folio is in the workingset.
-+ * @folio: the folio
-+ *
-+ * A folio is workingset when its LRU refs count reaches
-+ * LRU_REFS_WORKINGSET.  Under the classical LRU the refs count never
-+ * goes above it, so this is just testing the PG_workingset bit.
-+ * NOTE: folio_set_workingset() must not be used under MGLRU, as the
-+ * folio refs are tracked by folio_inc_lru_refs(), it triggers a debug
-+ * WARN instead for MGLRU.
-+ *
-+ * Return: true if the folio is workingset.
-+ */
-+static __always_inline bool folio_test_workingset(const struct folio *folio)
-+{
-+	return folio_lru_refs(folio) >= LRU_REFS_WORKINGSET;
-+}
-+
- static inline bool lru_gen_in_fault(void)
- {
- 	return current->in_lru_fault;
-@@ -445,6 +463,11 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- {
- 	return false;
- }
-+
-+static inline bool folio_test_workingset(const struct folio *folio)
-+{
-+	return test_bit(PG_workingset, const_folio_flags(folio, FOLIO_HEAD_PAGE));
-+}
- #endif /* CONFIG_LRU_GEN */
- 
- /**
-@@ -473,6 +496,18 @@ static __always_inline void folio_inc_lru_refs_fast(struct folio *folio)
- 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
- }
- 
-+/*
-+ * For the classical LRU only: under MGLRU the PG_workingset bit is
-+ * part of the folio refs count maintained by folio_inc_lru_refs(),
-+ * and a raw set would corrupt it.  The switching window is exempt
-+ * because the classical paths legitimately run alongside MGLRU then.
-+ */
-+static __always_inline void folio_set_workingset(struct folio *folio)
-+{
-+	VM_WARN_ON_ONCE(lru_gen_enabled() && !lru_gen_switching());
-+	set_bit(PG_workingset, folio_flags(folio, FOLIO_HEAD_PAGE));
-+}
-+
- static __always_inline
- void lruvec_add_folio(struct lruvec *lruvec, struct folio *folio)
- {
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index 86dd0470da11..c5a8ac0a1599 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -554,8 +554,6 @@ PAGEFLAG(LRU, lru, PF_HEAD) __CLEARPAGEFLAG(LRU, lru, PF_HEAD)
- FOLIO_FLAG(active, FOLIO_HEAD_PAGE)
- 	__FOLIO_CLEAR_FLAG(active, FOLIO_HEAD_PAGE)
- 	FOLIO_TEST_CLEAR_FLAG(active, FOLIO_HEAD_PAGE)
--PAGEFLAG(Workingset, workingset, PF_HEAD)
--	TESTCLEARFLAG(Workingset, workingset, PF_HEAD)
- PAGEFLAG(Checked, checked, PF_NO_COMPOUND)	   /* Used by some filesystems */
- 
- /* Xen */
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 00fd89cf6f55..c7dac67a0081 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -21,6 +21,7 @@
- #include <linux/gfp.h>
- #include <linux/mm.h>
- #include <linux/swap.h>
-+#include <linux/mm_inline.h>
- #include <linux/leafops.h>
- #include <linux/syscalls.h>
- #include <linux/mman.h>
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 1da4ff484f09..0fb87ca042d4 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -16,6 +16,7 @@
- #include <linux/gfp.h>
- #include <linux/pagemap.h>
- #include <linux/swap.h>
-+#include <linux/mm_inline.h>
- #include <linux/bio.h>
- #include <linux/swapops.h>
- #include <linux/writeback.h>
+---
+Juan Carlos Gutiérrez Lavado (2):
+      dt-bindings: arm: sunxi: Add SPC Glee 10.1 A64
+      arm64: dts: allwinner: Add SPC Glee 10.1 A64
 
--- 
-2.55.0
+ Documentation/devicetree/bindings/arm/sunxi.yaml   |   5 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/allwinner/Makefile             |   1 +
+ .../boot/dts/allwinner/sun50i-a64-spc-glee.dts     | 143 +++++++++++++++++++++
+ 4 files changed, 151 insertions(+)
+---
+base-commit: 913f7eda9f3e3fb1c67285e144e202494d440049
+change-id: 20260906-b4-spc-glee-a64-v1-6e6dba38aa5e
+
+Best regards,
+--  
+Juan Carlos Gutiérrez Lavado <jcarlosgl96@proton.me>
 
