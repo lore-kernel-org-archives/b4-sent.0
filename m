@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 11 Sep 2026 19:45:12 +0800
-Subject: [PATCH RFC v2 09/15] mm/madvise: adapt for LRU refs based
- operations in MGLRU
+Date: Fri, 11 Sep 2026 19:45:13 +0800
+Subject: [PATCH RFC v2 10/15] mm/damon: convert to LRU refs based
+ operations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-mglru-fg-v2-9-f26e5cb26da7@tencent.com>
+Message-Id: <20260911-mglru-fg-v2-10-f26e5cb26da7@tencent.com>
 References: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 In-Reply-To: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 To: linux-mm@kvack.org
@@ -35,113 +35,47 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127106; l=3579;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127106; l=1029;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=pmj3P/HChz1ZRyXZspIgJRWwIbXzfxFrfJsIOvXtfWs=;
- b=OqQF+CHj07t5BGpiOKt6owYBMczI7DdeygcSZALiFcAbH7fMx79vuC0X8jtXv74o3Fg4K2wwv
- Hxmig2GiAyIBMdICKTsfcw6NAhJCqCpBrTMNaTy0Dg7bbRGZy/kUj4Z
+ bh=bcXldTPRhQXaWP3mxZJ2ezjk1cc+Ox0W+LQc8aNOz8c=;
+ b=do1F4divk/7w2Elskq/IjnlxGlD0GvPCpGcO1NxNx128hC5/j7AU69z6BO05EBV0r14XpdFLF
+ hEo32isNyfKBA1akJ+lhRl/ob9TCe+kfwahhgsT2XTfHRCJu2kj/T8I
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For the active/inactive LRU, madvise clears PG_referenced so that one more
-access is not enough to reactivate a folio, and keeps PG_workingset on a
-folio demoted out of the active list so its refault is still accounted as
-a workingset refault (PSI).
+damon_pa_pageout() cleared PG_referenced directly, which under MGLRU
+may corrupts the folio's refs count in later commits. That flag is now
+bit 0 of the count (LRU_REFS_FLAGS).
 
-MGLRU keeps that history in the folio's refs count instead, which now
-lives in PG_referenced, PG_workingset and LRU_REFS_MASK, so writing to
-those bits directly corrupts the count. The two hints want different
-things:
-
-- MADV_COLD resets the count in folio_deactivate(), which also moves the
-  folio to the oldest generation.
-- MADV_PAGEOUT isolates the folio and hands it to reclaim_pages(), which
-  ignores the count, so keep it and let the eviction shadow record the
-  folio's real hotness.
-
-PG_young is idle-page-tracking state, not a reclaim input, so it is still
-cleared for both LRUs.
+Reset the count instead under MGLRU.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/madvise.c | 48 ++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 34 insertions(+), 14 deletions(-)
+ mm/damon/paddr.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/mm/madvise.c b/mm/madvise.c
-index f75a9d139980..cdd1bebf2485 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -361,6 +361,38 @@ static inline int madvise_folio_pte_batch(unsigned long addr, unsigned long end,
- 				     FPB_MERGE_YOUNG_DIRTY);
- }
- 
-+/*
-+ * Drop the recency information madvise() is expected to drop before
-+ * deactivating or reclaiming a folio.
-+ */
-+static void madvise_cold_or_pageout_prep_folio(struct folio *folio)
-+{
-+	/*
-+	 * VM couldn't reclaim the folio unless we clear PG_young.
-+	 * As a side effect, it makes confuse idle-page tracking
-+	 * because they will miss recent referenced history.
-+	 */
-+	folio_test_clear_young(folio);
-+
-+	/*
-+	 * MGLRU keeps this history in the refs count. MADV_COLD resets
-+	 * it in folio_deactivate(), MADV_PAGEOUT hands the folio to
-+	 * reclaim_pages(), which ignores the count, so keep it, and let
-+	 * the eviction shadow record the folio's real hotness.
-+	 */
-+	if (lru_gen_enabled())
-+		return;
-+
-+	/*
-+	 * For the active/inactive LRU, a folio demoted out of the active
-+	 * list should have PG_workingset so its refault is still accounted
-+	 * as a workingset refault.
-+	 */
-+	folio_clear_referenced(folio);
-+	if (folio_test_active(folio))
-+		folio_set_workingset(folio);
-+}
-+
- static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 				unsigned long addr, unsigned long end,
- 				struct mm_walk *walk)
-@@ -438,10 +470,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 			tlb_remove_pmd_tlb_entry(tlb, pmd, addr);
- 		}
+diff --git a/mm/damon/paddr.c b/mm/damon/paddr.c
+index 79195026b903..38d3ff7019e3 100644
+--- a/mm/damon/paddr.c
++++ b/mm/damon/paddr.c
+@@ -280,7 +280,14 @@ static unsigned long damon_pa_pageout(struct damon_region *r,
+ 		else
+ 			*sz_filter_passed += folio_size(folio) / addr_unit;
  
 -		folio_clear_referenced(folio);
--		folio_test_clear_young(folio);
--		if (folio_test_active(folio))
--			folio_set_workingset(folio);
-+		madvise_cold_or_pageout_prep_folio(folio);
- 		if (pageout) {
- 			if (folio_isolate_lru(folio)) {
- 				if (folio_test_unevictable(folio))
-@@ -547,16 +576,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 			tlb_remove_tlb_entries(tlb, pte, nr, addr);
- 		}
- 
--		/*
--		 * We are deactivating a folio for accelerating reclaiming.
--		 * VM couldn't reclaim the folio unless we clear PG_young.
--		 * As a side effect, it makes confuse idle-page tracking
--		 * because they will miss recent referenced history.
--		 */
--		folio_clear_referenced(folio);
--		folio_test_clear_young(folio);
--		if (folio_test_active(folio))
--			folio_set_workingset(folio);
-+		madvise_cold_or_pageout_prep_folio(folio);
- 		if (pageout) {
- 			if (folio_isolate_lru(folio)) {
- 				if (folio_test_unevictable(folio))
++		/*
++		 * DAMON only gets here for regions it measured as cold,
++		 * so the hotness can be, and better be dropped.
++		 */
++		if (lru_gen_enabled())
++			folio_set_lru_refs(folio, 0);
++		else
++			folio_clear_referenced(folio);
+ 		folio_test_clear_young(folio);
+ 		if (!folio_isolate_lru(folio))
+ 			goto put_folio;
 
 -- 
 2.55.0
