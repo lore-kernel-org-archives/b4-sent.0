@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 11 Sep 2026 19:45:04 +0800
-Subject: [PATCH RFC v2 01/15] mm/memcontrol: allow update of LRU statistic
- without holding LRU lock
+Date: Fri, 11 Sep 2026 19:45:05 +0800
+Subject: [PATCH RFC v2 02/15] mm/mglru: make generation page counters
+ atomic
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-mglru-fg-v2-1-f26e5cb26da7@tencent.com>
+Message-Id: <20260911-mglru-fg-v2-2-f26e5cb26da7@tencent.com>
 References: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 In-Reply-To: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 To: linux-mm@kvack.org
@@ -35,95 +35,139 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127106; l=3250;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127106; l=5649;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=HPL0IDynbJIttYnOEHBWr8ihbXmo9qxsFuOTnhhs8gc=;
- b=x5yYdtClJFJY2q6tOQeScr8nDkYHljCqLLx/jRAoZo8wYLWf9ATedGlxlqAl/8g9c6uiEift9
- Glqm3tshTP6DlN9hrGw2ZhQUaA33tSd0Tilfsg+1vzqcFc9T9djfnO9
+ bh=iN/Q8dZIgZxx+9iuwvelb6tR+yDB9kWeJh/4kOz7Oag=;
+ b=ggaKNAylOjplopmOOzY3r9A+0oqE75cRlvDfKuE0kjIZMgdGrzhGzQJLNb6U0QC35vVt/wVN4
+ IBulwGHLgWGA2jT2vEfqONjwZ2YZbCFl4fK05iEaVGxRLz0FZbOgNiS
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To enable moving file pages in folio_mark_accessed directly and lazily
-for MGLRU, allow updating the LRU statistic atomically without holding a
-lock. It may cause temporary counter underflow, which should be fine as
-we still follow final consistency of the counter, and it only serves as
-a factor for calculating the reclaim budget in vmscan. A little
-inaccuracy has no visible effect.
+No feature change, convert them to atomic so we can update them without
+holding the LRU lock. There is no risk of overflow. The reader always
+compares and uses zero instead if the counter values are negative. It
+follows final consistency.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/memcontrol.h | 6 +++---
- include/linux/mm_inline.h  | 3 +--
- mm/memcontrol.c            | 6 +++---
- 3 files changed, 7 insertions(+), 8 deletions(-)
+ include/linux/mm_inline.h |  6 ++----
+ include/linux/mmzone.h    |  2 +-
+ mm/vmscan.c               | 27 ++++++++++++---------------
+ 3 files changed, 15 insertions(+), 20 deletions(-)
 
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index 46bf724cae7a..2daf2be5d1e5 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -106,7 +106,7 @@ struct mem_cgroup_per_node {
- 
- 	/* Written on every LRU update and on every reclaim iteration. */
- 	__cacheline_group_begin_aligned(memcg_pn_write_hot);
--	long			lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
-+	atomic_long_t		lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
- 	struct mem_cgroup_reclaim_iter	iter;
- #ifdef CONFIG_MEMCG_NMI_SAFETY_REQUIRES_ATOMIC
- 	/* slab stats for nmi context */
-@@ -926,8 +926,8 @@ unsigned long mem_cgroup_get_zone_lru_size(struct lruvec *lruvec,
- 	struct mem_cgroup_per_node *mz;
- 
- 	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
--	val = READ_ONCE(mz->lru_zone_size[zone_idx][lru]);
--	if (WARN_ON_ONCE(val < 0))
-+	val = atomic_long_read(&mz->lru_zone_size[zone_idx][lru]);
-+	if (val < 0)
- 		return 0;
- 
- 	return val;
 diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index ab69b9930893..597f013c8e04 100644
+index 597f013c8e04..f52f02e8e5be 100644
 --- a/include/linux/mm_inline.h
 +++ b/include/linux/mm_inline.h
-@@ -47,11 +47,10 @@ static __always_inline void __update_lru_size(struct lruvec *lruvec,
- {
- 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
+@@ -265,11 +265,9 @@ static inline void lru_gen_update_size(struct lruvec *lruvec, struct folio *foli
+ 	VM_WARN_ON_ONCE(old_gen == -1 && new_gen == -1);
  
--	lockdep_assert_held(&lruvec->lru_lock);
- 	WARN_ON_ONCE(nr_pages != (int)nr_pages);
+ 	if (old_gen >= 0)
+-		WRITE_ONCE(lrugen->nr_pages[old_gen][type][zone],
+-			   lrugen->nr_pages[old_gen][type][zone] - delta);
++		atomic_long_sub(delta, &lrugen->nr_pages[old_gen][type][zone]);
+ 	if (new_gen >= 0)
+-		WRITE_ONCE(lrugen->nr_pages[new_gen][type][zone],
+-			   lrugen->nr_pages[new_gen][type][zone] + delta);
++		atomic_long_add(delta, &lrugen->nr_pages[new_gen][type][zone]);
  
- 	mod_lruvec_state(lruvec, NR_LRU_BASE + lru, nr_pages);
--	__mod_zone_page_state(&pgdat->node_zones[zid],
-+	mod_zone_page_state(&pgdat->node_zones[zid],
- 				NR_ZONE_LRU_BASE + lru, nr_pages);
- }
+ 	/* addition */
+ 	if (old_gen < 0) {
+diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
+index acd94cecc0d3..de7d3f8059a5 100644
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -576,7 +576,7 @@ struct lru_gen_folio {
+ 	/* the multi-gen LRU lists, lazily sorted on eviction */
+ 	struct list_head folios[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
+ 	/* the multi-gen LRU sizes, eventually consistent */
+-	long nr_pages[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
++	atomic_long_t nr_pages[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
+ 	/* the exponential moving average of refaulted */
+ 	unsigned long avg_refaulted[ANON_AND_FILE][MAX_NR_TIERS];
+ 	/* the exponential moving average of evicted+protected */
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index aaceed4759ee..32890e628240 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -3451,8 +3451,7 @@ static void reset_batch_size(struct lru_gen_mm_walk *walk)
+ 			continue;
  
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index 1460cba53588..3cc14d1932f0 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -1544,8 +1544,8 @@ struct lruvec *folio_lruvec_lock_irqsave(struct folio *folio,
-  * @zid: zone id of the accounted pages
-  * @nr_pages: positive when adding or negative when removing
-  *
-- * This function must be called under lru_lock, just before a page is added
-- * to or just after a page is removed from an lru list.
-+ * This function must be called when a page is added to or removed from
-+ * an lru list. Caller need to protect the lruvec from being freed.
-  */
- void mem_cgroup_update_lru_size(struct lruvec *lruvec, enum lru_list lru,
- 				int zid, long nr_pages)
-@@ -1556,7 +1556,7 @@ void mem_cgroup_update_lru_size(struct lruvec *lruvec, enum lru_list lru,
- 		return;
+ 		walk->nr_pages[gen][type][zone] = 0;
+-		WRITE_ONCE(lrugen->nr_pages[gen][type][zone],
+-			   lrugen->nr_pages[gen][type][zone] + delta);
++		atomic_long_add(delta, &lrugen->nr_pages[gen][type][zone]);
  
- 	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
--	mz->lru_zone_size[zid][lru] += nr_pages;
-+	atomic_long_add(nr_pages, &mz->lru_zone_size[zid][lru]);
- }
+ 		if (lru_gen_is_active(lruvec, gen))
+ 			lru += LRU_ACTIVE;
+@@ -4072,11 +4071,8 @@ static bool inc_min_seq(struct lruvec *lruvec, int type, int swappiness)
+ 				break;
+ 		}
+ 		flush_lru_batch(head, &batch_end, target_list);
+-
+-		WRITE_ONCE(lrugen->nr_pages[old_gen][type][zone],
+-			   lrugen->nr_pages[old_gen][type][zone] - delta);
+-		WRITE_ONCE(lrugen->nr_pages[target_gen][type][zone],
+-			   lrugen->nr_pages[target_gen][type][zone] + delta);
++		atomic_long_sub(delta, &lrugen->nr_pages[old_gen][type][zone]);
++		atomic_long_add(delta, &lrugen->nr_pages[target_gen][type][zone]);
+ 		if (!remaining)
+ 			return false;
+ 	}
+@@ -4181,8 +4177,8 @@ static bool inc_max_seq(struct lruvec *lruvec, unsigned long seq, int swappiness
+ 	for (type = 0; type < ANON_AND_FILE; type++) {
+ 		for (zone = 0; zone < MAX_NR_ZONES; zone++) {
+ 			enum lru_list lru = type * LRU_INACTIVE_FILE;
+-			long delta = lrugen->nr_pages[prev][type][zone] -
+-				     lrugen->nr_pages[next][type][zone];
++			long delta = atomic_long_read(&lrugen->nr_pages[prev][type][zone]) -
++				     atomic_long_read(&lrugen->nr_pages[next][type][zone]);
  
- /**
+ 			if (!delta)
+ 				continue;
+@@ -4300,7 +4296,8 @@ static unsigned long lruvec_evictable_size(struct lruvec *lruvec, int swappiness
+ 		for (seq = min_seq[type]; seq <= max_seq; seq++) {
+ 			gen = lru_gen_from_seq(seq);
+ 			for (zone = 0; zone < MAX_NR_ZONES; zone++)
+-				total += max(READ_ONCE(lrugen->nr_pages[gen][type][zone]), 0L);
++				total += max(atomic_long_read(&lrugen->nr_pages[gen][type][zone]),
++					     0L);
+ 		}
+ 	}
+ 
+@@ -4720,7 +4717,7 @@ static void __lru_gen_reparent_memcg(struct lruvec *child_lruvec, struct lruvec
+ 
+ 	for (i = 0; i < get_nr_gens(child_lruvec, type); i++) {
+ 		int gen = lru_gen_from_seq(child_lrugen->max_seq - i);
+-		long nr_pages = child_lrugen->nr_pages[gen][type][zone];
++		long nr_pages = atomic_long_read(&child_lrugen->nr_pages[gen][type][zone]);
+ 		int child_lru_active = lru_gen_is_active(child_lruvec, gen) ? LRU_ACTIVE : 0;
+ 		int parent_lru_active = lru_gen_is_active(parent_lruvec, gen) ? LRU_ACTIVE : 0;
+ 
+@@ -4728,9 +4725,8 @@ static void __lru_gen_reparent_memcg(struct lruvec *child_lruvec, struct lruvec
+ 		list_splice_tail_init(&child_lrugen->folios[gen][type][zone],
+ 				      &parent_lrugen->folios[gen][type][zone]);
+ 
+-		WRITE_ONCE(child_lrugen->nr_pages[gen][type][zone], 0);
+-		WRITE_ONCE(parent_lrugen->nr_pages[gen][type][zone],
+-			   parent_lrugen->nr_pages[gen][type][zone] + nr_pages);
++		atomic_long_set(&child_lrugen->nr_pages[gen][type][zone], 0);
++		atomic_long_add(nr_pages, &parent_lrugen->nr_pages[gen][type][zone]);
+ 
+ 		if (lru_gen_is_active(child_lruvec, gen) != lru_gen_is_active(parent_lruvec, gen)) {
+ 			__update_lru_size(child_lruvec, lru + child_lru_active, zone, -nr_pages);
+@@ -5807,7 +5803,8 @@ static int lru_gen_seq_show(struct seq_file *m, void *v)
+ 			char mark = full && seq < min_seq[type] ? 'x' : ' ';
+ 
+ 			for (zone = 0; zone < MAX_NR_ZONES; zone++)
+-				size += max(READ_ONCE(lrugen->nr_pages[gen][type][zone]), 0L);
++				size += max(atomic_long_read(&lrugen->nr_pages[gen][type][zone]),
++					    0L);
+ 
+ 			seq_printf(m, " %10lu%c", size, mark);
+ 		}
 
 -- 
 2.55.0
