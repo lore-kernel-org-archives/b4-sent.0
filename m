@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 11 Sep 2026 19:45:16 +0800
-Subject: [PATCH RFC v2 13/15] mm/mglru: make folio_inc_lru_refs lruvec
- lockless
+Date: Fri, 11 Sep 2026 19:45:17 +0800
+Subject: [PATCH RFC v2 14/15] mm/khugepaged: check folio referenced state
+ via LRU refs under MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-mglru-fg-v2-13-f26e5cb26da7@tencent.com>
+Message-Id: <20260911-mglru-fg-v2-14-f26e5cb26da7@tencent.com>
 References: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 In-Reply-To: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 To: linux-mm@kvack.org
@@ -35,145 +35,45 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127107; l=5413;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127107; l=1294;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=qsSEp2ETBhYitLGlOVBAtq/PfXkJQgb2Hmat92vvGJg=;
- b=l8a+8v6n/1QzmI7ilkWtjQPVIgmIJTsD3dquNkK6HfeVXxZOTqeddMwskrazQKI3froEPK8Fo
- oMTMAJIVNsdAPPdbneLuKsC39Q+bijNPcrllJ2Ajiq3dP+S6HphaauW
+ bh=zchwlwZldDLwVx1Yq2g1QvDGVk9gZBPpwZe0aRzvkdA=;
+ b=qjywNahDHCQVaV3S4S7QIY5jyXUEqesc5qZ4g+OelXa62URAQOi7WM0+TdW7u7NEhmJ2RiHIZ
+ lWk5a8pAJd4CVHK4G3U5Tqb0FMS0S4a4xTvJceWp7JkrGpHEFP/v5Ou
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lruvec spinlock in folio_inc_lru_refs was only taken to keep
-concurrent aging from corrupting the size counters.  This is no
-longer needed: the per-generation counters are atomic, and the
-active/inactive ABI counters are updated per folio and linearized by
-the CAS on the folio flags, so concurrent aging can no longer corrupt
-them.  The same argument already allowed folio_reset_lru_refs() to
-drop the lock.
+For MGLRU, PG_referenced is only the lowest bit of the folio LRU refs
+count, so folios with a higher refs count no longer have the bit set.
+folio_pte_referenced() testing the raw bit misses hot folios at
+refs >= 2, under-counting the referenced folios of a candidate range
+and aborting otherwise good collapses with SCAN_LACK_REFERENCED_PAGE.
 
-Use folio_lruvec_live_get()/folio_lruvec_live_put() to hold the RCU
-read lock around the lruvec lookup, and drop the spinlock entirely.
-
-Also simplify the post-CAS accounting guards: gen is only assigned
-non-negative values after the old_gen < 0 early exit, so gen != old_gen
-implies gen >= 0, and lru_gen_update_size() needs no explicit guard.
-The active/inactive ABI update keeps its gen >= 0 check because an
-off-LRU folio has no lruvec to update.
+Test the refs count directly when MGLRU is enabled, mirroring the
+smaps conversion.  The classical LRU keeps the plain bit test.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 10 +++++-----
- mm/vmscan.c               | 30 ++++++++++++++++--------------
- 2 files changed, 21 insertions(+), 19 deletions(-)
+ mm/khugepaged.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 686294fe81b8..bca00599dec6 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -293,10 +293,9 @@ static inline int folio_lru_gen(const struct folio *folio)
- 	return lru_get_gen_flags(READ_ONCE(*const_folio_flags(folio, 0)));
- }
- 
--static inline void lru_gen_update_size(struct lruvec *lruvec, struct folio *folio,
--				       int old_gen, int new_gen)
-+static inline void lru_gen_update_size(struct lruvec *lruvec, int type,
-+		struct folio *folio, int old_gen, int new_gen)
+diff --git a/mm/khugepaged.c b/mm/khugepaged.c
+index 1deb74cf28af..a3ce6735bc32 100644
+--- a/mm/khugepaged.c
++++ b/mm/khugepaged.c
+@@ -597,7 +597,9 @@ static bool folio_pte_referenced(struct folio *folio,
+ 		struct vm_area_struct *vma, unsigned long addr, pte_t pteval)
  {
--	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
- 	int delta = folio_nr_pages(folio);
- 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
-@@ -371,7 +370,7 @@ static inline bool lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio,
- 	/* use the refs from the atomic snapshot to avoid raced update */
- 	refs = lru_get_refs_flags(flags);
- 
--	lru_gen_update_size(lruvec, folio, -1, gen);
-+	lru_gen_update_size(lruvec, type, folio, -1, gen);
- 	if (lru_refs_is_active(refs))
- 		lru += LRU_ACTIVE;
- 	__update_lru_size(lruvec, lru, zone, delta);
-@@ -389,6 +388,7 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- {
- 	unsigned long flags;
- 	int gen, refs;
-+	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
- 	int delta = folio_nr_pages(folio);
- 	enum lru_list lru = folio_is_file_lru(folio) * LRU_INACTIVE_FILE;
-@@ -411,7 +411,7 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	if (!reclaiming && ((max_seq - gen) % MAX_NR_GENS) < MIN_NR_GENS)
- 		folio_set_active(folio);
- 
--	lru_gen_update_size(lruvec, folio, gen, -1);
-+	lru_gen_update_size(lruvec, type, folio, gen, -1);
- 	if (lru_refs_is_active(refs))
- 		lru += LRU_ACTIVE;
- 	__update_lru_size(lruvec, lru, zone, -delta);
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 240a8747490a..9deeb40fd5f3 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -960,16 +960,8 @@ void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
- 		gen = old_gen;
- 		if (old_gen < 0)
- 			goto out;
--		/*
--		 * Lock the lruvec if the folio is on-list. We are already
--		 * doing lazy promotion so in theory we don't need this,
--		 * but for now, concurrent aging would still corrupt the
--		 * size counters.  This is a temporary limitation and
--		 * will be lifted very soon, so the lock here is not a
--		 * performance concern.
--		 */
- 		if (!lruvec) {
--			lruvec = lruvec_live_lock_irq(folio_lruvec(folio));
-+			lruvec = folio_lruvec_live_get(folio);
- 			lrugen = &lruvec->lrugen;
- 		}
- 		max_seq = READ_ONCE(lrugen->max_seq);
-@@ -1001,9 +993,19 @@ void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
- 			lru_set_gen_flags(&new_flags, gen);
- 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
- 
--	if (gen != old_gen)
--		lru_gen_update_size(lruvec, folio, old_gen, gen);
--	if (lru_refs_is_active(old_refs) != lru_refs_is_active(refs) && old_gen >= 0) {
-+	if (gen != old_gen) {
-+		lru_gen_update_size(lruvec, file, folio, old_gen, gen);
-+		/*
-+		 * Gen can only go forward while on list, so concurrent aging
-+		 * is fine, except when multiple aging increase max_seq cross
-+		 * the sliding window border causing hotness inversion. In that
-+		 * very unlikely case, just activate the folio.
-+		 */
-+		if (unlikely(READ_ONCE(lrugen->max_seq) - max_seq > MIN_NR_GENS))
-+			folio_activate(folio);
-+	}
-+
-+	if (lru_refs_is_active(old_refs) != lru_refs_is_active(refs) && gen >= 0) {
- 		enum lru_list lru = file * LRU_INACTIVE_FILE;
- 
- 		__update_lru_size(lruvec, lru + lru_refs_is_active(old_refs),
-@@ -1012,7 +1014,7 @@ void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
- 				  folio_zonenum(folio), nr_pages);
- 	}
- 	if (lruvec)
--		lruvec_unlock_irq(lruvec);
-+		folio_lruvec_live_put(lruvec);
- }
- 
- /**
-@@ -3590,7 +3592,7 @@ static int folio_inc_gen(struct lruvec *lruvec, struct folio *folio)
- 
- 	new_gen = __folio_inc_gen(lruvec, folio, old_gen, &gen_increased);
- 	if (gen_increased)
--		lru_gen_update_size(lruvec, folio, old_gen, new_gen);
-+		lru_gen_update_size(lruvec, type, folio, old_gen, new_gen);
- 
- 	return new_gen;
- }
+ 	/* The folio was referenced previously ... */
+-	if (folio_test_young(folio) || folio_test_referenced(folio))
++	if (folio_test_young(folio))
++		return true;
++	if (lru_gen_enabled() ? folio_lru_refs(folio) : folio_test_referenced(folio))
+ 		return true;
+ 	/* ... or the PTE mapping was recently used */
+ 	return pte_young(pteval) || mmu_notifier_test_young(vma->vm_mm, addr);
 
 -- 
 2.55.0
