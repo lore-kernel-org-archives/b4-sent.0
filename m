@@ -1,10 +1,10 @@
 From: =?utf-8?q?Juan_Carlos_Guti=C3=A9rrez_Lavado?= <jcarlosgl96@proton.me>
-Date: Fri, 11 Sep 2026 15:48:37 +0200
-Subject: [PATCH v2 1/2] dt-bindings: arm: sunxi: Add SPC Glee 10.1 A64
+Date: Fri, 11 Sep 2026 15:48:38 +0200
+Subject: [PATCH v2 2/2] arm64: dts: allwinner: Add SPC Glee 10.1 A64
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260911-b4-spc-glee-a64-v1-v2-1-ed0b7ff02e0b@proton.me>
+Message-Id: <20260911-b4-spc-glee-a64-v1-v2-2-ed0b7ff02e0b@proton.me>
 References: <20260911-b4-spc-glee-a64-v1-v2-0-ed0b7ff02e0b@proton.me>
 In-Reply-To: <20260911-b4-spc-glee-a64-v1-v2-0-ed0b7ff02e0b@proton.me>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,54 +15,198 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
  =?utf-8?q?Juan_Carlos_Guti=C3=A9rrez_Lavado?= <jcarlosgl96@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789134516; l=1619;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789134516; l=4667;
  i=jcarlosgl96@proton.me; s=20260906; h=from:subject:message-id;
- bh=Xzdem3/+TDF7+9mo+NvDiiNz7PMRPxV5UR/Ew2LHb1M=;
- b=YK4WUVsNgqCrbxbQjewYp5t3YdnZ0R53TOZ9mwRj/PuFL8VHGh+KG2mjM7I4sg9EBbzfI5fkH
- N34XWTWhC0BBDG8xkngZKdCmCbrwwK7TrH8DOmzZarDMztSTfI5E8Cp
+ bh=v/cawxXxdXZKjcweHZdbEFDgYMy+E7V99spb2yKbGds=;
+ b=qsQtxz4gxmaInXq9SaLSqSixivQFR9Vp5n5x39Jxmc0a9q2MJrOs1N2YSbX4JQdj+4UE5oZBK
+ abHmHNMNhAsD1nDs069CTcr/5ds4yp0Lw6SdV3ID0lqYqoVTnhtjJmF
 X-Developer-Key: i=jcarlosgl96@proton.me; a=ed25519;
  pk=2/GzZfrbHAiuUrsA5A4A9ixfHKnypfDfzyE+fToY4Io=
 X-Endpoint-Received: by B4 Relay for jcarlosgl96@proton.me/20260906 with auth_id=1008
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Smart Products Connection vendor prefix and the board
-compatible for the SPC Glee 10.1 tablet based on the Allwinner A64.
+Add support for the SPC Glee 10.1 tablet based on the Allwinner A64.
+Describe the 2 GiB DRAM configuration, AXP803 PMIC, essential supplies,
+microSD, UART, battery monitoring and USB peripheral port. Leave eMMC
+and unverified peripherals disabled.
+
+Include CPU operating points for frequency scaling and thermal cooling.
+Enable the PMIC USB supply and connect it to the PHY for VBUS detection.
+Keep the ALDO2 VCC-PL and ALDO3 VCC-PLL/AVCC supplies enabled, matching
+the stock firmware and the measured 1.8 V and 3.0 V baseline settings.
+
+Tested with kexec into Linux 7.3.0-rc1 without regulator_ignore_unused:
+CPU frequency transitions, CPU cooling frequency cap, and USB supply
+unplug/replug detection with SSH reconnection. Cold-boot validation of
+this revision remains pending.
 
 Signed-off-by: Juan Carlos Gutiérrez Lavado <jcarlosgl96@proton.me>
 ---
- Documentation/devicetree/bindings/arm/sunxi.yaml       | 5 +++++
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 2 files changed, 7 insertions(+)
+ arch/arm64/boot/dts/allwinner/Makefile             |   1 +
+ .../boot/dts/allwinner/sun50i-a64-spc-glee.dts     | 143 +++++++++++++++++++++
+ 2 files changed, 144 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/sunxi.yaml b/Documentation/devicetree/bindings/arm/sunxi.yaml
-index f04db28c6..459a1772d 100644
---- a/Documentation/devicetree/bindings/arm/sunxi.yaml
-+++ b/Documentation/devicetree/bindings/arm/sunxi.yaml
-@@ -902,6 +902,11 @@ properties:
-           - const: allwinner,suniv-f1c200s
-           - const: allwinner,suniv-f1c100s
- 
-+      - description: SPC Glee 10.1 A64 tablet
-+        items:
-+          - const: onspc,glee-10-1-a64
-+          - const: allwinner,sun50i-a64
+diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
+index aa21f58a4..cc6687b39 100644
+--- a/arch/arm64/boot/dts/allwinner/Makefile
++++ b/arch/arm64/boot/dts/allwinner/Makefile
+@@ -21,6 +21,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-pinephone-1.2.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-pinetab.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-pinetab-early-adopter.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-sopine-baseboard.dtb
++dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-spc-glee.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-teres-i.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h64-remix-mini-pc.dtb
+ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a100-allwinner-perf1.dtb
+diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-spc-glee.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-spc-glee.dts
+new file mode 100644
+index 000000000..0f8f37b14
+--- /dev/null
++++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-spc-glee.dts
+@@ -0,0 +1,143 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Copyright (C) 2026 SPC Glee A64 Linux contributors
++ */
 +
-       - description: SL631 Action Camera with IMX179
-         items:
-           - const: allwinner,sl631-imx179
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index ba2002969..9d864dc56 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1253,6 +1253,8 @@ patternProperties:
-     description: Onion Corporation
-   "^onnn,.*":
-     description: ON Semiconductor Corp.
-+  "^onspc,.*":
-+    description: Smart Products Connection S.A.
-   "^ontat,.*":
-     description: On Tat Industrial Company
-   "^opalkelly,.*":
++/dts-v1/;
++
++#include "sun50i-a64.dtsi"
++#include "sun50i-a64-cpu-opp.dtsi"
++
++/ {
++	model = "SPC Glee 10.1 A64";
++	compatible = "onspc,glee-10-1-a64", "allwinner,sun50i-a64";
++	chassis-type = "tablet";
++
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	memory@40000000 {
++		device_type = "memory";
++		reg = <0x40000000 0x80000000>;
++	};
++};
++
++&cpu0 {
++	cpu-supply = <&reg_dcdc2>;
++};
++
++&cpu1 {
++	cpu-supply = <&reg_dcdc2>;
++};
++
++&cpu2 {
++	cpu-supply = <&reg_dcdc2>;
++};
++
++&cpu3 {
++	cpu-supply = <&reg_dcdc2>;
++};
++
++&mmc0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&mmc0_pins>;
++	vmmc-supply = <&reg_dcdc1>;
++	vqmmc-supply = <&reg_dcdc1>;
++	broken-cd;
++	bus-width = <4>;
++	max-frequency = <25000000>;
++	status = "okay";
++};
++
++&r_rsb {
++	status = "okay";
++
++	axp803: pmic@3a3 {
++		compatible = "x-powers,axp803";
++		reg = <0x3a3>;
++		interrupt-parent = <&r_intc>;
++		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_LOW>;
++	};
++};
++
++#include "axp803.dtsi"
++
++&axp_adc {
++	status = "okay";
++};
++
++&battery_power_supply {
++	status = "okay";
++};
++
++&reg_aldo2 {
++	regulator-always-on;
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++	regulator-name = "vcc-pl";
++};
++
++&reg_aldo3 {
++	regulator-always-on;
++	regulator-min-microvolt = <3000000>;
++	regulator-max-microvolt = <3000000>;
++	regulator-name = "vcc-pll-avcc";
++};
++
++&reg_dcdc1 {
++	regulator-always-on;
++	regulator-name = "vcc-3v3";
++};
++
++&reg_dcdc2 {
++	regulator-always-on;
++	regulator-min-microvolt = <1000000>;
++	regulator-max-microvolt = <1300000>;
++	regulator-name = "vdd-cpux";
++};
++
++&reg_dcdc5 {
++	regulator-always-on;
++	regulator-min-microvolt = <1500000>;
++	regulator-max-microvolt = <1500000>;
++	regulator-name = "vcc-dram";
++};
++
++&reg_dcdc6 {
++	regulator-always-on;
++	regulator-min-microvolt = <1100000>;
++	regulator-max-microvolt = <1100000>;
++	regulator-name = "vdd-sys";
++};
++
++&reg_fldo2 {
++	regulator-always-on;
++	regulator-min-microvolt = <1100000>;
++	regulator-max-microvolt = <1100000>;
++	regulator-name = "vdd-cpus";
++};
++
++&uart0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart0_pb_pins>;
++	status = "okay";
++};
++
++&usb_otg {
++	dr_mode = "peripheral";
++	status = "okay";
++};
++
++&usb_power_supply {
++	status = "okay";
++};
++
++&usbphy {
++	usb0_vbus_power-supply = <&usb_power_supply>;
++	status = "okay";
++};
 
 -- 
 2.55.0
