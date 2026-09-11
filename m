@@ -1,11 +1,11 @@
 From: =?utf-8?q?Y=C4=B0=C4=9E=C4=B0TCAN_KAVAKLI?= <kavakliyigitcan@gmail.com>
-Date: Fri, 11 Sep 2026 11:51:06 +0300
-Subject: [PATCH RFC 09/10] drm/msm/dsi: separate host link enable from
- video stream enable
+Date: Fri, 11 Sep 2026 11:51:07 +0300
+Subject: [PATCH RFC 10/10] arm64: dts: qcom: sm6125-xiaomi-ginkgo: enable
+ display, backlight and touchscreen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260911-ginkgo-submission-final-v1-9-0e68e63a18d4@gmail.com>
+Message-Id: <20260911-ginkgo-submission-final-v1-10-0e68e63a18d4@gmail.com>
 References: <20260911-ginkgo-submission-final-v1-0-0e68e63a18d4@gmail.com>
 In-Reply-To: <20260911-ginkgo-submission-final-v1-0-0e68e63a18d4@gmail.com>
 To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
@@ -33,120 +33,159 @@ Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, freedreno@lists.freedesktop.org, 
  =?utf-8?q?Y=C4=B0=C4=9E=C4=B0TCAN_KAVAKLI?= <kavakliyigitcan@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789116671; l=4404;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789116671; l=3582;
  i=kavakliyigitcan@gmail.com; s=20260911; h=from:subject:message-id;
- bh=V8nqA1aw4sLc5FPA3CMsuU6cEpTrAqNLa+vYEEKpC58=;
- b=Xgf0bzykBXhHaxOrLtuXKDxVfuAVHziW83ocSKAKZpSsd2068AHVSXqKBe+Olh/lzxrqVGPzv
- eJMuE07GXCkCuR070oxMTfkNJaNJCaUrsGpJoK9vi85cEDPhpsUfB0k
+ bh=x7HUi8j9WM0O66VRg2zaqPmBSUKqKlYUrg3o+6fVUMA=;
+ b=0p7Sw0WODkPHyr6uYaCxqJhHD15HpgWvncYsEcFoTIdse3nMrsA429rybhBMBFN9lnbCG75i0
+ EoyAv2U5cNvCyIAm66vhUwtwyvhJf5el9hJ1LDQvAl6pw6l7r3yALhq
 X-Developer-Key: i=kavakliyigitcan@gmail.com; a=ed25519;
  pk=W2GaxVotULs2vAjRMMLheaDtMMYs4037zO1LVVfFtPI=
 X-Endpoint-Received: by B4 Relay for kavakliyigitcan@gmail.com/20260911 with auth_id=1024
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In video mode DSI displays, enabling the host previously engaged the
-hardware video engine immediately during atomic_pre_enable. When panel
-prepare routines transmit initial DCS sleep-out and setup commands,
-concurrent active video transmission causes DMA timeouts (-110).
+Enable the display subsystem (MDSS/MDP/DSI0), Kinetic KTD3136 backlight,
+and Novatek NT36672A SPI touchscreen on the Xiaomi Redmi Note 8 (ginkgo).
 
-Keep the DSI host in command mode during atomic_pre_enable to permit
-clean panel preparation, and start video streaming in atomic_enable
-after the panel has completed initialization.
+Hardware nodes added:
+- Fixed LCDB regulators (lcdb_lab and lcdb_ibb at +/- 5.5V)
+- MDSS and DSI0 with Tianma 1080x2340 FHD+ video panel
+- I2C1 backlight node at 0x36 with PMI632 GPIO 6 hardware enable
+- SPI2 touchscreen node at CS0 with GPIO 88 interrupt and panel follower
+  reference
+- Touchscreen active pinctrl definition on GPIO 88
 
 Signed-off-by: YİĞİTCAN KAVAKLI <kavakliyigitcan@gmail.com>
 ---
- drivers/gpu/drm/msm/dsi/dsi.h         |  1 +
- drivers/gpu/drm/msm/dsi/dsi_host.c    | 23 ++++++++++++-----------
- drivers/gpu/drm/msm/dsi/dsi_manager.c | 20 ++++++++++++++++++++
- 3 files changed, 33 insertions(+), 11 deletions(-)
+ .../boot/dts/qcom/sm6125-xiaomi-ginkgo-common.dtsi | 100 +++++++++++++++++++++
+ 1 file changed, 100 insertions(+)
 
-diff --git a/drivers/gpu/drm/msm/dsi/dsi.h b/drivers/gpu/drm/msm/dsi/dsi.h
-index 93c028a122f3a59b1632da76472e0a3e781c6ae8..cfb2b51cae0a9227fbe88ecc5291ac1a9f82a5ce 100644
---- a/drivers/gpu/drm/msm/dsi/dsi.h
-+++ b/drivers/gpu/drm/msm/dsi/dsi.h
-@@ -69,6 +69,7 @@ int msm_dsi_host_cmd_rx(struct mipi_dsi_host *host,
- void msm_dsi_host_cmd_xfer_commit(struct mipi_dsi_host *host,
- 					u32 dma_base, u32 len);
- int msm_dsi_host_enable(struct mipi_dsi_host *host);
-+void msm_dsi_host_enable_video(struct mipi_dsi_host *host);
- int msm_dsi_host_disable(struct mipi_dsi_host *host);
- void msm_dsi_host_enable_irq(struct mipi_dsi_host *host);
- void msm_dsi_host_disable_irq(struct mipi_dsi_host *host);
-diff --git a/drivers/gpu/drm/msm/dsi/dsi_host.c b/drivers/gpu/drm/msm/dsi/dsi_host.c
-index b9e2867d435a3ad8b6db6b57c440bbd827180b6e..b2702f772ee195b2758433d98d0f071e3f55955e 100644
---- a/drivers/gpu/drm/msm/dsi/dsi_host.c
-+++ b/drivers/gpu/drm/msm/dsi/dsi_host.c
-@@ -2438,22 +2438,23 @@ int msm_dsi_host_enable(struct mipi_dsi_host *host)
- {
- 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
+diff --git a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-ginkgo-common.dtsi b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-ginkgo-common.dtsi
+index 59042a5937535c4acda064fa0f865f4f5a52d01b..f4b9e2092a814e56cdc23218025cb4166dec110a 100644
+--- a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-ginkgo-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-ginkgo-common.dtsi
+@@ -26,11 +26,30 @@ / {
+ 	chassis-type = "handset";
  
--	dsi_op_mode_config(msm_host,
--		!!(msm_host->mode_flags & MIPI_DSI_MODE_VIDEO), true);
--
--	/* TODO: clock should be turned off for command mode,
--	 * and only turned on before MDP START.
--	 * This part of code should be enabled once mdp driver support it.
--	 */
--	/* if (msm_panel->mode == MSM_DSI_CMD_MODE) {
--	 *	dsi_link_clk_disable(msm_host);
--	 *	pm_runtime_put(&msm_host->pdev->dev);
--	 * }
-+	/* Keep DSI host in command mode (VID_MODE_EN = 0) during panel init
-+	 * to allow clean DCS communication without premature video engine startup.
- 	 */
-+	dsi_op_mode_config(msm_host, false, true);
-+
- 	msm_host->enabled = true;
- 	return 0;
- }
+ 	qcom,msm-id = <QCOM_ID_SM6125 0x10000>;
++	qcom,board-id = <34 0>, <34 1>, <34 2>, <34 3>, <34 4>, <0 0>;
  
-+void msm_dsi_host_enable_video(struct mipi_dsi_host *host)
-+{
-+	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
-+
-+	if (msm_host->mode_flags & MIPI_DSI_MODE_VIDEO)
-+		dsi_op_mode_config(msm_host, true, true);
-+}
-+
- int msm_dsi_host_disable(struct mipi_dsi_host *host)
- {
- 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
-diff --git a/drivers/gpu/drm/msm/dsi/dsi_manager.c b/drivers/gpu/drm/msm/dsi/dsi_manager.c
-index 959daa88b1d022da5f552bb21ca7c04006524fa4..9e3f125ec4ea8e3fae50c8226e67b4106c01dc76 100644
---- a/drivers/gpu/drm/msm/dsi/dsi_manager.c
-+++ b/drivers/gpu/drm/msm/dsi/dsi_manager.c
-@@ -446,12 +446,32 @@ static int dsi_mgr_bridge_attach(struct drm_bridge *bridge,
- 				 bridge, flags);
- }
+ 	aliases {
+ 		serial0 = &uart4;
+ 	};
  
-+static void dsi_mgr_bridge_enable(struct drm_bridge *bridge,
-+				  struct drm_atomic_commit *commit)
-+{
-+	int id = dsi_mgr_bridge_get_id(bridge);
-+	struct msm_dsi *msm_dsi = dsi_mgr_get_dsi(id);
-+	struct msm_dsi *msm_dsi1 = dsi_mgr_get_dsi(DSI_1);
-+	struct mipi_dsi_host *host = msm_dsi->host;
-+	bool is_bonded_dsi = IS_BONDED_DSI();
++	lcdb_lab: regulator-lcdb-lab {
++		compatible = "regulator-fixed";
++		regulator-name = "lcdb_lab";
++		regulator-min-microvolt = <5500000>;
++		regulator-max-microvolt = <5500000>;
++		regulator-boot-on;
++		regulator-always-on;
++	};
 +
-+	DBG("id=%d", id);
++	lcdb_ibb: regulator-lcdb-ibb {
++		compatible = "regulator-fixed";
++		regulator-name = "lcdb_ibb";
++		regulator-min-microvolt = <5500000>;
++		regulator-max-microvolt = <5500000>;
++		regulator-boot-on;
++		regulator-always-on;
++	};
 +
-+	if (is_bonded_dsi && !IS_MASTER_DSI_LINK(id))
-+		return;
+ 	chosen {
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+@@ -356,6 +375,13 @@ irled@1 {
+ 
+ &tlmm {
+ 	gpio-reserved-ranges = <0 4>, <30 4>;
 +
-+	msm_dsi_host_enable_video(host);
-+	if (is_bonded_dsi && msm_dsi1)
-+		msm_dsi_host_enable_video(msm_dsi1->host);
-+}
++	ts_int_active: ts-int-active-state {
++		pins = "gpio88";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++	};
+ };
+ 
+ &uart4 {
+@@ -369,3 +395,77 @@ &usb3 {
+ &usb_dwc3_hs {
+ 	remote-endpoint = <&pmi632_hs_in>;
+ };
 +
- static const struct drm_bridge_funcs dsi_mgr_bridge_funcs = {
- 	.atomic_create_state = drm_atomic_helper_bridge_create_state,
- 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
- 	.atomic_duplicate_state = drm_atomic_helper_bridge_duplicate_state,
- 	.attach = dsi_mgr_bridge_attach,
- 	.atomic_pre_enable = dsi_mgr_bridge_pre_enable,
-+	.atomic_enable = dsi_mgr_bridge_enable,
- 	.atomic_post_disable = dsi_mgr_bridge_post_disable,
- 	.mode_set = dsi_mgr_bridge_mode_set,
- 	.mode_valid = dsi_mgr_bridge_mode_valid,
++&mdss {
++	status = "okay";
++};
++
++&mdss_mdp {
++	status = "okay";
++};
++
++&mdss_dsi0_phy {
++	vdds-supply = <&vreg_l7a>;
++	status = "okay";
++};
++
++&mdss_dsi0 {
++	vdda-supply = <&vreg_l18a>;
++	status = "okay";
++
++	panel: panel@0 {
++		compatible = "tianma,fhd-video-ginkgo", "novatek,nt36672a";
++		reg = <0>;
++
++		reset-gpios = <&tlmm 90 GPIO_ACTIVE_LOW>;
++		vddio-supply = <&vreg_l9a>;
++		vddpos-supply = <&lcdb_lab>;
++		vddneg-supply = <&lcdb_ibb>;
++		backlight = <&backlight>;
++
++		port {
++			panel_in: endpoint {
++				remote-endpoint = <&mdss_dsi0_out>;
++			};
++		};
++	};
++};
++
++&mdss_dsi0_out {
++	remote-endpoint = <&panel_in>;
++	data-lanes = <0 1 2 3>;
++};
++
++&qupv3_id_0 {
++	status = "okay";
++};
++
++&i2c1 {
++	clock-frequency = <400000>;
++	status = "okay";
++
++	backlight: backlight@36 {
++		compatible = "kinetic,ktd3136";
++		reg = <0x36>;
++		enable-gpios = <&pmi632_gpios 6 GPIO_ACTIVE_HIGH>;
++		default-brightness = <2047>;
++		max-brightness = <2047>;
++	};
++};
++
++&spi2 {
++	status = "okay";
++
++	touchscreen@0 {
++		compatible = "novatek,nt36672a-spi", "novatek,nt36672a-ts";
++		reg = <0>;
++		spi-max-frequency = <4000000>;
++		interrupt-parent = <&tlmm>;
++		interrupts = <88 IRQ_TYPE_EDGE_RISING>;
++		pinctrl-0 = <&ts_int_active>;
++		pinctrl-names = "default";
++		panel = <&panel>;
++		touchscreen-size-x = <1080>;
++		touchscreen-size-y = <2340>;
++	};
++};
 
 -- 
 2.47.3
