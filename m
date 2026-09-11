@@ -1,11 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Fri, 11 Sep 2026 20:18:48 +0200
-Subject: [PATCH 2/4] common: Add command line parameter masking
- functionality
+Date: Fri, 11 Sep 2026 20:18:49 +0200
+Subject: [PATCH 3/4] common: Add Android bootloader parameter parsing
+ helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-b4-android-bootargs-carryover-v1-2-6ebb43da3df0@protonmail.com>
+Message-Id: <20260911-b4-android-bootargs-carryover-v1-3-6ebb43da3df0@protonmail.com>
 References: <20260911-b4-android-bootargs-carryover-v1-0-6ebb43da3df0@protonmail.com>
 In-Reply-To: <20260911-b4-android-bootargs-carryover-v1-0-6ebb43da3df0@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -25,199 +25,159 @@ Cc: Tom Rini <trini@konsulko.com>,
  David Heidelberg <david@ixit.cz>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789150739; l=4681;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789150739; l=4609;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=x9zxeiR0oC68kj6krUFAO8+pGh69IAz5yDuBqH8tHJ4=;
- b=TOYFTGNY/VpAUvfmwFBjv9cm+dtGg6/vQ6Th37r9PDaLYDHJsgjWmUFNmcg3qodEtKf6mBL7D
- PJgZ6VgxqNcBNF0CsoekWlvvX9OeFGpKwXfzkGmqZdrABUuk4WYgZZ1
+ bh=ADTW9ak8hL9UuOnFKO7/IuU053qw6uSflnja4Upt8cc=;
+ b=38dag9Zqw3SzsOnZ8PnlGY0aPm1TZwwnmb2ssJQi20si20oTXqXLOaZLE1HxNICtQPCGlFIu7
+ BKRRxhzUrqCBUYiipJzLd7UlXlxB8UlsQalQLsMzQ/OnWkAtOwl2hII
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend cmdline_utils to support masking or replacing parameters in
-command line strings. This is useful for filtering sensitive data or
-modifying boot parameters.
+Add a convenience wrapper for parsing common Android bootloader
+parameters from the kernel command line. This simplifies extracting
+the numerous androidboot.* parameters used in Android systems.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- include/cmdline_utils.h |   7 +++
- lib/cmdline_utils.c     | 150 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 157 insertions(+)
+ include/cmdline_utils.h | 32 +++++++++++++++++++
+ lib/cmdline_utils.c     | 85 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 117 insertions(+)
 
 diff --git a/include/cmdline_utils.h b/include/cmdline_utils.h
-index cf127b64e55..fa6e20b2417 100644
+index fa6e20b2417..af9b5226dab 100644
 --- a/include/cmdline_utils.h
 +++ b/include/cmdline_utils.h
-@@ -18,4 +18,11 @@ struct cmdline_param {
+@@ -25,4 +25,36 @@ struct cmdline_mask_param {
  
- int parse_cmdline_params(const char *cmdline, struct cmdline_param *params, int count);
+ char *mask_cmdline_params(const char *cmdline, struct cmdline_mask_param *params, int count);
  
-+struct cmdline_mask_param {
-+	const char *key;
-+	const char *new_value;
++struct androidboot_params {
++	char *hardware_ddr;
++	char *ddr_info;
++	char *ddr_size;
++
++	char *dsi_display0;
++
++	char *slot_suffix;
++	char *slot_retry_count;
++	char *slot_successful;
++
++	char *hardware_platform;
++	char *hardware;
++	char *revision;
++	char *hardware_sku;
++	char *hardware_majorid;
++
++	char *bootloader;
++	char *bootreason;
++	char *secure_boot;
++	char *mode;
++
++	char *cdt_hwid;
++	char *dtb_idx;
++
++	char *serialno;
 +};
 +
-+char *mask_cmdline_params(const char *cmdline, struct cmdline_mask_param *params, int count);
++int parse_androidboot_params(const char *cmdline, struct androidboot_params *params);
++
++void free_androidboot_params(struct androidboot_params *params);
 +
  #endif /* _CMDLINE_UTILS_H_ */
 diff --git a/lib/cmdline_utils.c b/lib/cmdline_utils.c
-index b4798c439b8..4355bdd45f4 100644
+index 4355bdd45f4..f8fe5e79bb9 100644
 --- a/lib/cmdline_utils.c
 +++ b/lib/cmdline_utils.c
-@@ -94,3 +94,153 @@ cleanup_error:
- 	}
- 	return -ENOMEM;
+@@ -244,3 +244,88 @@ char *mask_cmdline_params(const char *cmdline, struct cmdline_mask_param *params
+ 	*dst_pos = '\0';
+ 	return result;
  }
 +
-+static int ensure_capacity(char **result, int *result_len, char **dst_pos, int needed)
++int parse_androidboot_params(const char *cmdline, struct androidboot_params *params)
 +{
-+	int current_pos = *dst_pos - *result;
-+	char *temp;
++	struct cmdline_param cmdline_params[] = {
++		{"androidboot.hardware.ddr", NULL, 0},
++		{"androidboot.ddr_info", NULL, 0},
++		{"androidboot.ddr_size", NULL, 0},
++		{"msm_drm.dsi_display0", NULL, 0},
++		{"androidboot.slot_suffix", NULL, 0},
++		{"androidboot.slot_retry_count", NULL, 0},
++		{"androidboot.slot_successful", NULL, 0},
++		{"androidboot.hardware.platform", NULL, 0},
++		{"androidboot.hardware", NULL, 0},
++		{"androidboot.revision", NULL, 0},
++		{"androidboot.bootloader", NULL, 0},
++		{"androidboot.hardware.sku", NULL, 0},
++		{"androidboot.secure_boot", NULL, 0},
++		{"androidboot.cdt_hwid", NULL, 0},
++		{"androidboot.hardware.majorid", NULL, 0},
++		{"androidboot.dtb_idx", NULL, 0},
++		{"androidboot.mode", NULL, 0},
++		{"androidboot.bootreason", NULL, 0},
++		{"androidboot.serialno", NULL, 0},
++	};
++	int ret, count = ARRAY_SIZE(cmdline_params);
 +
-+	if (current_pos + needed < *result_len)
-+		return 0;
++	if (!cmdline || !params)
++		return -EINVAL;
 +
-+	while (current_pos + needed >= *result_len)
-+		*result_len *= 2;
++	memset(params, 0, sizeof(struct androidboot_params));
 +
-+	temp = realloc(*result, *result_len + 1);
-+	if (!temp) {
-+		free(*result);
-+		return -ENOMEM;
-+	}
++	ret = parse_cmdline_params(cmdline, cmdline_params, count);
++	if (ret < 0)
++		return ret;
 +
-+	*result = temp;
-+	*dst_pos = *result + current_pos;
++	params->hardware_ddr = cmdline_params[0].value;
++	params->ddr_info = cmdline_params[1].value;
++	params->ddr_size = cmdline_params[2].value;
++	params->dsi_display0 = cmdline_params[3].value;
++	params->slot_suffix = cmdline_params[4].value;
++	params->slot_retry_count = cmdline_params[5].value;
++	params->slot_successful = cmdline_params[6].value;
++	params->hardware_platform = cmdline_params[7].value;
++	params->hardware = cmdline_params[8].value;
++	params->revision = cmdline_params[9].value;
++	params->bootloader = cmdline_params[10].value;
++	params->hardware_sku = cmdline_params[11].value;
++	params->secure_boot = cmdline_params[12].value;
++	params->cdt_hwid = cmdline_params[13].value;
++	params->hardware_majorid = cmdline_params[14].value;
++	params->dtb_idx = cmdline_params[15].value;
++	params->mode = cmdline_params[16].value;
++	params->bootreason = cmdline_params[17].value;
++	params->serialno = cmdline_params[18].value;
 +
 +	return 0;
 +}
 +
-+static int write_replacement(char **result, int *result_len, char **dst_pos,
-+			     const char *key_with_equals, const char *new_value)
++void free_androidboot_params(struct androidboot_params *params)
 +{
-+	int key_len = strlen(key_with_equals);
-+	int new_value_len = strlen(new_value);
++	if (!params)
++		return;
 +
-+	if (ensure_capacity(result, result_len, dst_pos, key_len + new_value_len))
-+		return -ENOMEM;
++	free(params->hardware_ddr);
++	free(params->ddr_info);
++	free(params->ddr_size);
++	free(params->dsi_display0);
++	free(params->slot_suffix);
++	free(params->slot_retry_count);
++	free(params->slot_successful);
++	free(params->hardware_platform);
++	free(params->hardware);
++	free(params->revision);
++	free(params->bootloader);
++	free(params->hardware_sku);
++	free(params->secure_boot);
++	free(params->cdt_hwid);
++	free(params->hardware_majorid);
++	free(params->dtb_idx);
++	free(params->mode);
++	free(params->bootreason);
++	free(params->serialno);
 +
-+	memcpy(*dst_pos, key_with_equals, key_len);
-+	*dst_pos += key_len;
-+
-+	strcpy(*dst_pos, new_value);
-+	*dst_pos += new_value_len;
-+
-+	return 0;
-+}
-+
-+enum match_result {
-+	NO_MATCH,
-+	MATCHED,
-+	MATCH_ERROR,
-+};
-+
-+static enum match_result apply_mask_param(const char *cmdline, const char *src_pos,
-+					  struct cmdline_mask_param *param,
-+					  char **result, int *result_len, char **dst_pos,
-+					  const char **next_src_pos)
-+{
-+	char *key_with_equals;
-+	int key_len;
-+	const char *value_start, *value_end, *param_end;
-+	enum match_result ret;
-+
-+	if (!param->key)
-+		return NO_MATCH;
-+
-+	key_len = strlen(param->key);
-+	if (param->key[key_len - 1] == '=') {
-+		key_with_equals = (char *)param->key;
-+	} else {
-+		key_with_equals = malloc(key_len + 2);
-+		if (!key_with_equals) {
-+			free(*result);
-+			return MATCH_ERROR;
-+		}
-+		strcpy(key_with_equals, param->key);
-+		strcat(key_with_equals, "=");
-+	}
-+
-+	if (strncmp(src_pos, key_with_equals, strlen(key_with_equals)) != 0 ||
-+	    (src_pos != cmdline && *(src_pos - 1) != ' ')) {
-+		ret = NO_MATCH;
-+		goto out;
-+	}
-+
-+	value_start = src_pos + strlen(key_with_equals);
-+	value_end = strstr(value_start, " ");
-+	if (!value_end)
-+		value_end = value_start + strlen(value_start);
-+	param_end = value_end;
-+
-+	if (!param->new_value) {
-+		*next_src_pos = (*param_end == ' ') ? param_end + 1 : param_end;
-+	} else if (write_replacement(result, result_len, dst_pos,
-+				      key_with_equals, param->new_value)) {
-+		ret = MATCH_ERROR;
-+		goto out;
-+	} else {
-+		*next_src_pos = param_end;
-+	}
-+
-+	ret = MATCHED;
-+
-+out:
-+	if (key_with_equals != param->key)
-+		free(key_with_equals);
-+	return ret;
-+}
-+
-+char *mask_cmdline_params(const char *cmdline, struct cmdline_mask_param *params, int count)
-+{
-+	char *result;
-+	const char *src_pos;
-+	char *dst_pos;
-+	int i, result_len, cmdline_len;
-+	bool found_match;
-+
-+	if (!cmdline || !params || count <= 0)
-+		return NULL;
-+
-+	cmdline_len = strlen(cmdline);
-+	result_len = cmdline_len * 2;
-+	result = malloc(result_len + 1);
-+	if (!result)
-+		return NULL;
-+
-+	src_pos = cmdline;
-+	dst_pos = result;
-+
-+	while (*src_pos) {
-+		found_match = false;
-+
-+		for (i = 0; i < count; i++) {
-+			enum match_result mr;
-+
-+			mr = apply_mask_param(cmdline, src_pos, &params[i],
-+					      &result, &result_len, &dst_pos, &src_pos);
-+			if (mr == MATCH_ERROR)
-+				return NULL;
-+			if (mr == MATCHED) {
-+				found_match = true;
-+				break;
-+			}
-+		}
-+
-+		if (!found_match) {
-+			if (ensure_capacity(&result, &result_len, &dst_pos, 1))
-+				return NULL;
-+			*dst_pos++ = *src_pos++;
-+		}
-+	}
-+
-+	*dst_pos = '\0';
-+	return result;
++	memset(params, 0, sizeof(struct androidboot_params));
 +}
 
 -- 
