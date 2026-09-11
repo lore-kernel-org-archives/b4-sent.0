@@ -1,213 +1,61 @@
-From: =?utf-8?q?Juan_Carlos_Guti=C3=A9rrez_Lavado?= <jcarlosgl96@proton.me>
-Date: Fri, 11 Sep 2026 15:48:38 +0200
-Subject: [PATCH v2 2/2] arm64: dts: allwinner: Add SPC Glee 10.1 A64
+From: Quanye Yang <quanyeyang@proton.me>
+Subject: [PATCH mptcp-net v2 0/2] mptcp: fix leftover fallback after failed
+ connect
+Date: Fri, 11 Sep 2026 23:42:06 +0800
+Message-Id: <20260911-mptcp-connect-undo-net-v2-0-54224cea2238@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260911-b4-spc-glee-a64-v1-v2-2-ed0b7ff02e0b@proton.me>
-References: <20260911-b4-spc-glee-a64-v1-v2-0-ed0b7ff02e0b@proton.me>
-In-Reply-To: <20260911-b4-spc-glee-a64-v1-v2-0-ed0b7ff02e0b@proton.me>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Juan_Carlos_Guti=C3=A9rrez_Lavado?= <jcarlosgl96@proton.me>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOzQ6CMBCEX4Xs2TVtbfDn5HsYDqUsUhO2TVuIx
+ vDuFngAj5OZb2a+kCg6SnCrvhBpdsl5LkIdKrCD4Seh64oGJVQtrlLgGLINaD0z2YwTdx6ZMrY
+ XQVIbkr1RUOAQqXfvrfgBO1Ni0OxWmtpXwdfiNTy4lH38bCdmuSH/9maJArWuSZuyeqLzPUSfP
+ R9HgmZZlh8CtEmx2QAAAA==
+X-Change-ID: 20260910-mptcp-connect-undo-net-b80e14ae1fa2
+To: mptcp@lists.linux.dev
+Cc: 
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789134516; l=4667;
- i=jcarlosgl96@proton.me; s=20260906; h=from:subject:message-id;
- bh=v/cawxXxdXZKjcweHZdbEFDgYMy+E7V99spb2yKbGds=;
- b=qsQtxz4gxmaInXq9SaLSqSixivQFR9Vp5n5x39Jxmc0a9q2MJrOs1N2YSbX4JQdj+4UE5oZBK
- abHmHNMNhAsD1nDs069CTcr/5ds4yp0Lw6SdV3ID0lqYqoVTnhtjJmF
-X-Developer-Key: i=jcarlosgl96@proton.me; a=ed25519;
- pk=2/GzZfrbHAiuUrsA5A4A9ixfHKnypfDfzyE+fToY4Io=
-X-Endpoint-Received: by B4 Relay for jcarlosgl96@proton.me/20260906 with auth_id=1008
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789141332; l=1398;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=UaSkOzfR/aYP/kzb/C1pqEvi8lsHEKH84b3uUs8YwZA=;
+ b=jaGVp2UDWKpbsFq7CSDshgi3GD3Dy4R6pJ6nwaiZZ4UNFdQG3/onduUSpYDwvr8VX1emRg9Ti
+ SsE8/febCA8B0q6Bm1gBH9ORzjB/hHUHIEQlTLUEZYAK4xIg81r9Cxk
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the SPC Glee 10.1 tablet based on the Allwinner A64.
-Describe the 2 GiB DRAM configuration, AXP803 PMIC, essential supplies,
-microSD, UART, battery monitoring and USB peripheral port. Leave eMMC
-and unverified peripherals disabled.
+When mptcp_connect() fails before the socket reaches SS_CONNECTING,
+->disconnect() is not called. Early fallback may already have set
+MPTCP_FALLBACK_DONE and cleared request_mptcp, so a later connect()
+on the same fd stays TCP-only.
 
-Include CPU operating points for frequency scaling and thermal cooling.
-Enable the PMIC USB supply and connect it to the PHY for VBUS detection.
-Keep the ALDO2 VCC-PL and ALDO3 VCC-PLL/AVCC supplies enabled, matching
-the stock firmware and the measured 1.8 V and 3.0 V baseline settings.
+Patch 1 undoes that state on the connect error path.
+Patch 2 adds a mptcp_join.sh coverage for the same-fd retry.
 
-Tested with kexec into Linux 7.3.0-rc1 without regulator_ignore_unused:
-CPU frequency transitions, CPU cooling frequency cap, and USB supply
-unplug/replug detection with SSH reconnection. Cold-boot validation of
-this revision remains pending.
-
-Signed-off-by: Juan Carlos Gutiérrez Lavado <jcarlosgl96@proton.me>
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/633
 ---
- arch/arm64/boot/dts/allwinner/Makefile             |   1 +
- .../boot/dts/allwinner/sun50i-a64-spc-glee.dts     | 143 +++++++++++++++++++++
- 2 files changed, 144 insertions(+)
+Changes in v2:
+- remove the helper function and open code the function
+- also drop the NULL check on the ssk; __mptcp_nmpc_sk() already
+  guarantees it
+- Link to v1: https://patch.msgid.link/20260910-mptcp-connect-undo-net-v1-0-446e4a4ae3e7@proton.me
 
-diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
-index aa21f58a4..cc6687b39 100644
---- a/arch/arm64/boot/dts/allwinner/Makefile
-+++ b/arch/arm64/boot/dts/allwinner/Makefile
-@@ -21,6 +21,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-pinephone-1.2.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-pinetab.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-pinetab-early-adopter.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-sopine-baseboard.dtb
-+dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-spc-glee.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a64-teres-i.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h64-remix-mini-pc.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-a100-allwinner-perf1.dtb
-diff --git a/arch/arm64/boot/dts/allwinner/sun50i-a64-spc-glee.dts b/arch/arm64/boot/dts/allwinner/sun50i-a64-spc-glee.dts
-new file mode 100644
-index 000000000..0f8f37b14
---- /dev/null
-+++ b/arch/arm64/boot/dts/allwinner/sun50i-a64-spc-glee.dts
-@@ -0,0 +1,143 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright (C) 2026 SPC Glee A64 Linux contributors
-+ */
-+
-+/dts-v1/;
-+
-+#include "sun50i-a64.dtsi"
-+#include "sun50i-a64-cpu-opp.dtsi"
-+
-+/ {
-+	model = "SPC Glee 10.1 A64";
-+	compatible = "onspc,glee-10-1-a64", "allwinner,sun50i-a64";
-+	chassis-type = "tablet";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	memory@40000000 {
-+		device_type = "memory";
-+		reg = <0x40000000 0x80000000>;
-+	};
-+};
-+
-+&cpu0 {
-+	cpu-supply = <&reg_dcdc2>;
-+};
-+
-+&cpu1 {
-+	cpu-supply = <&reg_dcdc2>;
-+};
-+
-+&cpu2 {
-+	cpu-supply = <&reg_dcdc2>;
-+};
-+
-+&cpu3 {
-+	cpu-supply = <&reg_dcdc2>;
-+};
-+
-+&mmc0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&mmc0_pins>;
-+	vmmc-supply = <&reg_dcdc1>;
-+	vqmmc-supply = <&reg_dcdc1>;
-+	broken-cd;
-+	bus-width = <4>;
-+	max-frequency = <25000000>;
-+	status = "okay";
-+};
-+
-+&r_rsb {
-+	status = "okay";
-+
-+	axp803: pmic@3a3 {
-+		compatible = "x-powers,axp803";
-+		reg = <0x3a3>;
-+		interrupt-parent = <&r_intc>;
-+		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_LOW>;
-+	};
-+};
-+
-+#include "axp803.dtsi"
-+
-+&axp_adc {
-+	status = "okay";
-+};
-+
-+&battery_power_supply {
-+	status = "okay";
-+};
-+
-+&reg_aldo2 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <1800000>;
-+	regulator-max-microvolt = <1800000>;
-+	regulator-name = "vcc-pl";
-+};
-+
-+&reg_aldo3 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <3000000>;
-+	regulator-max-microvolt = <3000000>;
-+	regulator-name = "vcc-pll-avcc";
-+};
-+
-+&reg_dcdc1 {
-+	regulator-always-on;
-+	regulator-name = "vcc-3v3";
-+};
-+
-+&reg_dcdc2 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <1000000>;
-+	regulator-max-microvolt = <1300000>;
-+	regulator-name = "vdd-cpux";
-+};
-+
-+&reg_dcdc5 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <1500000>;
-+	regulator-max-microvolt = <1500000>;
-+	regulator-name = "vcc-dram";
-+};
-+
-+&reg_dcdc6 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <1100000>;
-+	regulator-max-microvolt = <1100000>;
-+	regulator-name = "vdd-sys";
-+};
-+
-+&reg_fldo2 {
-+	regulator-always-on;
-+	regulator-min-microvolt = <1100000>;
-+	regulator-max-microvolt = <1100000>;
-+	regulator-name = "vdd-cpus";
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_pb_pins>;
-+	status = "okay";
-+};
-+
-+&usb_otg {
-+	dr_mode = "peripheral";
-+	status = "okay";
-+};
-+
-+&usb_power_supply {
-+	status = "okay";
-+};
-+
-+&usbphy {
-+	usb0_vbus_power-supply = <&usb_power_supply>;
-+	status = "okay";
-+};
+---
+Quanye Yang (2):
+      mptcp: reset msk state on early connect failure
+      selftests: mptcp: join: retry connect after early fallback
 
--- 
-2.55.0
+ net/mptcp/protocol.c                               |   9 +-
+ tools/testing/selftests/net/mptcp/.gitignore       |   1 +
+ tools/testing/selftests/net/mptcp/Makefile         |   1 +
+ .../selftests/net/mptcp/mptcp_connect_retry.c      | 216 +++++++++++++++++++++
+ tools/testing/selftests/net/mptcp/mptcp_join.sh    | 108 +++++++++++
+ 5 files changed, 334 insertions(+), 1 deletion(-)
+---
+base-commit: 38b6be101006d3e7af972999f45d4f1e8250587a
+change-id: 20260910-mptcp-connect-undo-net-b80e14ae1fa2
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
