@@ -1,10 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 11 Sep 2026 19:45:11 +0800
-Subject: [PATCH RFC v2 08/15] mm/smap: convert to LRU refs based operations
+Date: Fri, 11 Sep 2026 19:45:12 +0800
+Subject: [PATCH RFC v2 09/15] mm/madvise: adapt for LRU refs based
+ operations in MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-mglru-fg-v2-8-f26e5cb26da7@tencent.com>
+Message-Id: <20260911-mglru-fg-v2-9-f26e5cb26da7@tencent.com>
 References: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 In-Reply-To: <20260911-mglru-fg-v2-0-f26e5cb26da7@tencent.com>
 To: linux-mm@kvack.org
@@ -34,87 +35,113 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
  Nico Pache <nico.pache@linux.dev>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127106; l=2654;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789127106; l=3579;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=HXO5gwClyDxia1jxGpm9V9P3/YbOdlVcEqlSn7qAT1k=;
- b=Fdkhhl4v1znpzampw4t/OvUwYvz+mRHHNoOG27pPcgbl+BBiTNjNLJ3mj8LifcHwbvHDT9ZHo
- 7FfnH5bZ6ffA38pZL3nPEw5wpbT995npKwBnooE+V6ZedJ7G7+gAXhx
+ bh=pmj3P/HChz1ZRyXZspIgJRWwIbXzfxFrfJsIOvXtfWs=;
+ b=OqQF+CHj07t5BGpiOKt6owYBMczI7DdeygcSZALiFcAbH7fMx79vuC0X8jtXv74o3Fg4K2wwv
+ Hxmig2GiAyIBMdICKTsfcw6NAhJCqCpBrTMNaTy0Dg7bbRGZy/kUj4Z
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For MGLRU, switch smap to use the folio refs count API so smap will
-report all folio with referenced count >= 1 as "Referenced". Current
-smap checking PG_referenced is causing folios to flick between
-referenced and not-reference status, because for both MGLRU and
-active/inactive LRU, PG_referenced may got cleared on second access.
-(Increase of LRU referenced times count for MGLRU, and movig to active
-list active/inactive all clears that bit).
+For the active/inactive LRU, madvise clears PG_referenced so that one more
+access is not enough to reactivate a folio, and keeps PG_workingset on a
+folio demoted out of the active list so its refault is still accounted as
+a workingset refault (PSI).
 
-After this, we will have a more reliable and useful reading for MGLRU
-after the FG change. The behavior is basically identical to what we had
-before the series. And there is no behavior change for classical LRU.
+MGLRU keeps that history in the folio's refs count instead, which now
+lives in PG_referenced, PG_workingset and LRU_REFS_MASK, so writing to
+those bits directly corrupts the count. The two hints want different
+things:
+
+- MADV_COLD resets the count in folio_deactivate(), which also moves the
+  folio to the oldest generation.
+- MADV_PAGEOUT isolates the folio and hands it to reclaim_pages(), which
+  ignores the count, so keep it and let the eviction shadow record the
+  folio's real hotness.
+
+PG_young is idle-page-tracking state, not a reclaim input, so it is still
+cleared for both LRUs.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- fs/proc/task_mmu.c | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
+ mm/madvise.c | 48 ++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 34 insertions(+), 14 deletions(-)
 
-diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index e671b4fd8ded..9cc47efbaa51 100644
---- a/fs/proc/task_mmu.c
-+++ b/fs/proc/task_mmu.c
-@@ -880,6 +880,22 @@ static void smaps_page_accumulate(struct mem_size_stats *mss,
- 	}
+diff --git a/mm/madvise.c b/mm/madvise.c
+index f75a9d139980..cdd1bebf2485 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -361,6 +361,38 @@ static inline int madvise_folio_pte_batch(unsigned long addr, unsigned long end,
+ 				     FPB_MERGE_YOUNG_DIRTY);
  }
  
-+static bool smap_check_folio_referenced(struct folio *folio)
++/*
++ * Drop the recency information madvise() is expected to drop before
++ * deactivating or reclaiming a folio.
++ */
++static void madvise_cold_or_pageout_prep_folio(struct folio *folio)
 +{
++	/*
++	 * VM couldn't reclaim the folio unless we clear PG_young.
++	 * As a side effect, it makes confuse idle-page tracking
++	 * because they will miss recent referenced history.
++	 */
++	folio_test_clear_young(folio);
++
++	/*
++	 * MGLRU keeps this history in the refs count. MADV_COLD resets
++	 * it in folio_deactivate(), MADV_PAGEOUT hands the folio to
++	 * reclaim_pages(), which ignores the count, so keep it, and let
++	 * the eviction shadow record the folio's real hotness.
++	 */
 +	if (lru_gen_enabled())
-+		return folio_lru_refs(folio);
-+	else
-+		return folio_test_referenced(folio);
++		return;
++
++	/*
++	 * For the active/inactive LRU, a folio demoted out of the active
++	 * list should have PG_workingset so its refault is still accounted
++	 * as a workingset refault.
++	 */
++	folio_clear_referenced(folio);
++	if (folio_test_active(folio))
++		folio_set_workingset(folio);
 +}
 +
-+static void smap_clear_folio_referenced(struct folio *folio)
-+{
-+	if (lru_gen_enabled())
-+		folio_set_lru_refs(folio, 0);
-+	else
-+		folio_clear_referenced(folio);
-+}
-+
- static void smaps_account(struct mem_size_stats *mss, struct page *page,
- 		bool compound, bool young, bool dirty, bool locked,
- 		bool present)
-@@ -906,7 +922,7 @@ static void smaps_account(struct mem_size_stats *mss, struct page *page,
+ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 				unsigned long addr, unsigned long end,
+ 				struct mm_walk *walk)
+@@ -438,10 +470,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 			tlb_remove_pmd_tlb_entry(tlb, pmd, addr);
+ 		}
  
- 	mss->resident += size;
- 	/* Accumulate the size in pages that have been accessed. */
--	if (young || folio_test_young(folio) || folio_test_referenced(folio))
-+	if (young || folio_test_young(folio) || smap_check_folio_referenced(folio))
- 		mss->referenced += size;
+-		folio_clear_referenced(folio);
+-		folio_test_clear_young(folio);
+-		if (folio_test_active(folio))
+-			folio_set_workingset(folio);
++		madvise_cold_or_pageout_prep_folio(folio);
+ 		if (pageout) {
+ 			if (folio_isolate_lru(folio)) {
+ 				if (folio_test_unevictable(folio))
+@@ -547,16 +576,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
+ 			tlb_remove_tlb_entries(tlb, pte, nr, addr);
+ 		}
  
- 	/*
-@@ -1709,7 +1725,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
- 		/* Clear accessed and referenced bits. */
- 		pmdp_test_and_clear_young(vma, addr, pmd);
- 		folio_test_clear_young(folio);
+-		/*
+-		 * We are deactivating a folio for accelerating reclaiming.
+-		 * VM couldn't reclaim the folio unless we clear PG_young.
+-		 * As a side effect, it makes confuse idle-page tracking
+-		 * because they will miss recent referenced history.
+-		 */
 -		folio_clear_referenced(folio);
-+		smap_clear_folio_referenced(folio);
- out:
- 		spin_unlock(ptl);
- 		return 0;
-@@ -1738,7 +1754,7 @@ static int clear_refs_pte_range(pmd_t *pmd, unsigned long addr,
- 		/* Clear accessed and referenced bits. */
- 		ptep_test_and_clear_young(vma, addr, pte);
- 		folio_test_clear_young(folio);
--		folio_clear_referenced(folio);
-+		smap_clear_folio_referenced(folio);
- 	}
- 	pte_unmap_unlock(pte - 1, ptl);
- 	cond_resched();
+-		folio_test_clear_young(folio);
+-		if (folio_test_active(folio))
+-			folio_set_workingset(folio);
++		madvise_cold_or_pageout_prep_folio(folio);
+ 		if (pageout) {
+ 			if (folio_isolate_lru(folio)) {
+ 				if (folio_test_unevictable(folio))
 
 -- 
 2.55.0
