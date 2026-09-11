@@ -1,98 +1,197 @@
-From: Mark Amirkan <markdamirkan@gmail.com>
-Date: Fri, 11 Sep 2026 16:11:22 -0700
-Subject: [PATCH net 2/2] selftests: net: add RPL SRH loop test
+From: Haseeb Malik <haseebulhaq55@gmail.com>
+Date: Fri, 11 Sep 2026 19:57:21 -0400
+Subject: [PATCH net] macsec: initialize SecY before registering the
+ netdevice
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-sympwn-rpl-send-v1-2-1753993bb584@gmail.com>
-References: <20260911-sympwn-rpl-send-v1-0-1753993bb584@gmail.com>
-In-Reply-To: <20260911-sympwn-rpl-send-v1-0-1753993bb584@gmail.com>
-To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Alexander Aring <alex.aring@gmail.com>, 
- Shuah Khan <shuah@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Mark Amirkan <markdamirkan@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789168285; l=2121;
- i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
- bh=oYolW/2kgmaKhTJtOnbVhNTitMeYR8kNTB72g56mfrI=;
- b=0qrhrLzhLU4s5WCOOGL+Sb8Y7nG72SoC7cAB0bpXuevjbeF4Nb744BtxjOSTiIYledauPAv+f
- pVCl44yEdPQARSt1BVeseREqX1K8mXPvx8PtvZMGIX8NsnlTjjkAEG4
-X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
- pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
-X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
+Message-Id: <20260911-fix-macsec-net-v1-1-c82aa58ae741@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGCVpGoC/x2MQQrCQAxFr1KyNnSmYku9irjIxIzNolEmIkLp3
+ Y0u3+P9v4FLU3E4dxs0eavrwwLyoQNeyO6CeguGIQ1jmnPGqh9ciV0YTV5Y67HwSSYqiSBGzyZ
+ R/A8vEAFcQxZywdLIePl9he5XUoN9/wIHzjdwgAAAAA==
+To: Sabrina Dubroca <sd@queasysnail.net>
+Cc: Andrew Lunn <andrew+netdev@lunn.ch>, Simon Horman <horms@kernel.org>, 
+ Hangbin Liu <hangbin.liu@linux.dev>, 
+ Felix Walter <felix.walter@cloudandheat.com>, netdev@vger.kernel.org, 
+ syzkaller-bugs@googlegroups.com, Jakub Kicinski <kuba@kernel.org>, 
+ syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com, 
+ "David S. Miller" <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, 
+ Eric Dumazet <edumazet@google.com>, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789171045; l=5581;
+ i=haseebulhaq55@gmail.com; s=default; h=from:subject:message-id;
+ bh=KSA/709t2+4DBX9OBd6ktaJ9IHFKNEyjhqrtYtrgPRk=;
+ b=FrLFoZNkqAVAf7jQS/0uFbGMIu17BznN0PwdWaGq1SToCd23aRuB6hYGqH+mVpXpzbVxTabmS
+ enUsZOBgTJtBKiIxLN+NmoXcMhIT5LsIaTkofNp4wm66wc4EjNhz+9M
+X-Developer-Key: i=haseebulhaq55@gmail.com; a=ed25519;
+ pk=U/yCVc6cTsqDqxWLzvoONZ7DUA3EfRU+rfO9Xxo4p2w=
+X-Endpoint-Received: by B4 Relay for haseebulhaq55@gmail.com/default with auth_id=1026
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add two local addresses to a network namespace and exercise RPL route
-validation. Verify that adjacent local addresses remain valid, while a
-non-local address between them causes the route to be rejected.
+Creating a MACsec device with MAC offload over an LRO-capable lower
+device triggers a warning in rtmsg_ifinfo_build_skb() when IPv4
+forwarding is enabled by default.
 
-Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
-Assisted-by: Symbolic
+register_netdevice() invokes inetdev_init(), which disables LRO and emits
+a NETDEV_FEAT_CHANGE notification. This reaches macsec_fill_info() before
+macsec_add_dev() initializes the SecY. key_len is still zero, so
+macsec_fill_info() returns -EMSGSIZE and trips the WARN_ON in
+rtmsg_ifinfo_build_skb(), even though the skb has enough space.
+
+Initialize the SecY and apply the new-link attributes before registration.
+Move the per-CPU statistics and metadata destination allocation into
+ndo_init(), and release partial allocations on failure. Keep SCI
+assignment after registration because ndo_init() may inherit the lower
+device's MAC address.
+
+Fixes: ccfdec908922 ("macsec: Add support for GCM-AES-256 cipher suite")
+Reported-by: syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=f2f6312ad1b5a0bfe316
+Suggested-by: Sabrina Dubroca <sd@queasysnail.net>
+Link: https://lists.openwall.net/linux-kernel/2026/08/19/552
+Assisted-by: LLM
+Signed-off-by: Haseeb Malik <haseebulhaq55@gmail.com>
 ---
- tools/testing/selftests/net/Makefile        |  1 +
- tools/testing/selftests/net/rpl_srh_loop.sh | 38 +++++++++++++++++++++++++++++
- 2 files changed, 39 insertions(+)
+Tests:
+  - arm64 KASAN/lockdep kernel build
+  - original syzbot reproducer and reduced reproducer
+  - 16 cipher/offload/forwarding combinations
+  - link notifications, configuration error paths, and encrypted veth
+    traffic
+  - W=1 MACsec object builds with allmodconfig and allyesconfig
+---
+ drivers/net/macsec.c | 66 ++++++++++++++++++++++++++++------------------------
+ 1 file changed, 35 insertions(+), 31 deletions(-)
 
-diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
-index 3ee3378f8b26..7fe7e38b9c6c 100644
---- a/tools/testing/selftests/net/Makefile
-+++ b/tools/testing/selftests/net/Makefile
-@@ -80,6 +80,7 @@ TEST_PROGS := \
- 	reuseport_addr_any.sh \
- 	route_hint.sh \
- 	route_localnet.sh \
-+	rpl_srh_loop.sh \
- 	rps_default_mask.sh \
- 	rtnetlink.py \
- 	rtnetlink.sh \
-diff --git a/tools/testing/selftests/net/rpl_srh_loop.sh b/tools/testing/selftests/net/rpl_srh_loop.sh
-new file mode 100755
-index 000000000000..a2e9991d789d
---- /dev/null
-+++ b/tools/testing/selftests/net/rpl_srh_loop.sh
-@@ -0,0 +1,38 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
+diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
+index 6f9f3aceffaa..11207d671fb6 100644
+--- a/drivers/net/macsec.c
++++ b/drivers/net/macsec.c
+@@ -3539,6 +3539,20 @@ static int macsec_dev_init(struct net_device *dev)
+ 	if (err)
+ 		return err;
+ 
++	err = -ENOMEM;
++	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
++	if (!macsec->stats)
++		goto destroy_gro_cells;
 +
-+source lib.sh
++	macsec->secy.tx_sc.stats = netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
++	if (!macsec->secy.tx_sc.stats)
++		goto free_secy_stats;
 +
-+cleanup()
-+{
-+	cleanup_ns "$NS"
-+}
++	macsec->secy.tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC,
++						       GFP_KERNEL);
++	if (!macsec->secy.tx_sc.md_dst)
++		goto free_tx_sc_stats;
 +
-+trap cleanup EXIT
+ 	macsec_inherit_tso_max(dev);
+ 
+ 	dev->hw_features = real_dev->hw_features & MACSEC_OFFLOAD_FEATURES;
+@@ -3560,6 +3574,14 @@ static int macsec_dev_init(struct net_device *dev)
+ 	netdev_hold(real_dev, &macsec->dev_tracker, GFP_KERNEL);
+ 
+ 	return 0;
 +
-+require_command ip
-+setup_ns NS || exit $?
++free_tx_sc_stats:
++	free_percpu(macsec->secy.tx_sc.stats);
++free_secy_stats:
++	free_percpu(macsec->stats);
++destroy_gro_cells:
++	gro_cells_destroy(&macsec->gro_cells);
++	return err;
+ }
+ 
+ static void macsec_dev_uninit(struct net_device *dev)
+@@ -4116,29 +4138,11 @@ static sci_t dev_to_sci(struct net_device *dev, __be16 port)
+ 	return make_sci(dev->dev_addr, port);
+ }
+ 
+-static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
++static void macsec_init_secy(struct net_device *dev, u8 icv_len)
+ {
+ 	struct macsec_dev *macsec = macsec_priv(dev);
+ 	struct macsec_secy *secy = &macsec->secy;
+ 
+-	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
+-	if (!macsec->stats)
+-		return -ENOMEM;
+-
+-	secy->tx_sc.stats = netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
+-	if (!secy->tx_sc.stats)
+-		return -ENOMEM;
+-
+-	secy->tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC, GFP_KERNEL);
+-	if (!secy->tx_sc.md_dst)
+-		/* macsec and secy percpu stats will be freed when unregistering
+-		 * net_device in macsec_free_netdev()
+-		 */
+-		return -ENOMEM;
+-
+-	if (sci == MACSEC_UNDEF_SCI)
+-		sci = dev_to_sci(dev, MACSEC_PORT_ES);
+-
+ 	secy->netdev = dev;
+ 	secy->operational = true;
+ 	secy->key_len = DEFAULT_SAK_LEN;
+@@ -4148,16 +4152,12 @@ static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
+ 	secy->replay_protect = false;
+ 	secy->xpn = DEFAULT_XPN;
+ 
+-	secy->sci = sci;
+-	secy->tx_sc.md_dst->u.macsec_info.sci = sci;
+ 	secy->tx_sc.active = true;
+ 	secy->tx_sc.encoding_sa = DEFAULT_ENCODING_SA;
+ 	secy->tx_sc.encrypt = DEFAULT_ENCRYPT;
+ 	secy->tx_sc.send_sci = DEFAULT_SEND_SCI;
+ 	secy->tx_sc.end_station = false;
+ 	secy->tx_sc.scb = false;
+-
+-	return 0;
+ }
+ 
+ static struct lock_class_key macsec_netdev_addr_lock_key;
+@@ -4220,6 +4220,14 @@ static int macsec_newlink(struct net_device *dev,
+ 	if (rx_handler && rx_handler != macsec_handle_frame)
+ 		return -EBUSY;
+ 
++	/* Registration can notify listeners before returning. */
++	macsec_init_secy(dev, icv_len);
++	if (data) {
++		err = macsec_changelink_common(dev, data);
++		if (err)
++			return err;
++	}
 +
-+ip -n "$NS" -6 address add 2001:db8:1::1/128 dev lo nodad
-+ip -n "$NS" -6 address add 2001:db8:3::1/128 dev lo nodad
-+
-+if ! ip -n "$NS" -6 route add 2001:db8:10::/64 \
-+	encap rpl segs 2001:db8:4::1 dev lo 2>/dev/null; then
-+	echo "SKIP: RPL lightweight tunnel support not available"
-+	exit $ksft_skip
-+fi
-+
-+RET=0
-+ip -n "$NS" -6 route add 2001:db8:11::/64 \
-+	encap rpl segs 2001:db8:1::1,2001:db8:3::1 dev lo
-+check_err $? "Adjacent local addresses were rejected"
-+log_test "RPL accepts adjacent local addresses"
-+
-+RET=0
-+ip -n "$NS" -6 route add 2001:db8:12::/64 \
-+	encap rpl segs 2001:db8:1::1,2001:db8:2::1,2001:db8:3::1 dev lo \
-+	2>/dev/null
-+check_fail $? "Separated local addresses were accepted"
-+log_test "RPL rejects separated local addresses"
-+
-+exit $EXIT_STATUS
+ 	err = register_netdevice(dev);
+ 	if (err < 0)
+ 		return err;
+@@ -4247,15 +4255,11 @@ static int macsec_newlink(struct net_device *dev,
+ 		goto unlink;
+ 	}
+ 
+-	err = macsec_add_dev(dev, sci, icv_len);
+-	if (err)
+-		goto unlink;
++	if (sci == MACSEC_UNDEF_SCI)
++		sci = dev_to_sci(dev, MACSEC_PORT_ES);
+ 
+-	if (data) {
+-		err = macsec_changelink_common(dev, data);
+-		if (err)
+-			goto del_dev;
+-	}
++	macsec->secy.sci = sci;
++	macsec->secy.tx_sc.md_dst->u.macsec_info.sci = sci;
+ 
+ 	/* If h/w offloading is available, propagate to the device */
+ 	if (macsec_is_offloaded(macsec)) {
 
+---
+base-commit: 78445023439506ebd83b86d40b1e428a3b309d4a
+change-id: 20260911-fix-macsec-net-ff3bc5e7ab0a
+
+Best regards,
 -- 
-2.43.0
+Haseeb Malik <haseebulhaq55@gmail.com>
 
