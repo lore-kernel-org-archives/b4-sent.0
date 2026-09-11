@@ -1,11 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Fri, 11 Sep 2026 20:18:49 +0200
-Subject: [PATCH 3/4] common: Add Android bootloader parameter parsing
- helper
+Date: Fri, 11 Sep 2026 20:18:50 +0200
+Subject: [PATCH 4/4] arm: carry previous bootloader's bootargs into
+ $bootargs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260911-b4-android-bootargs-carryover-v1-3-6ebb43da3df0@protonmail.com>
+Message-Id: <20260911-b4-android-bootargs-carryover-v1-4-6ebb43da3df0@protonmail.com>
 References: <20260911-b4-android-bootargs-carryover-v1-0-6ebb43da3df0@protonmail.com>
 In-Reply-To: <20260911-b4-android-bootargs-carryover-v1-0-6ebb43da3df0@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -25,160 +25,79 @@ Cc: Tom Rini <trini@konsulko.com>,
  David Heidelberg <david@ixit.cz>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789150739; l=4609;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789150739; l=2305;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=ADTW9ak8hL9UuOnFKO7/IuU053qw6uSflnja4Upt8cc=;
- b=38dag9Zqw3SzsOnZ8PnlGY0aPm1TZwwnmb2ssJQi20si20oTXqXLOaZLE1HxNICtQPCGlFIu7
- BKRRxhzUrqCBUYiipJzLd7UlXlxB8UlsQalQLsMzQ/OnWkAtOwl2hII
+ bh=VbmVfaCKN9oCVXFuYc3390vt4fabre7I+6mi2MUK2Qs=;
+ b=hS+XKBq4FxRJuDN5uOIiyex2j8Jzqfvc+9VvoLkTxcnfsuwNjYw10UuHZf8JAsGnjIcveVap8
+ Y7IbCy7amaODAm8Rm9hrO7LNeUBtlWiZV6MssN6JH3VN0nVx8jfBoDq
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a convenience wrapper for parsing common Android bootloader
-parameters from the kernel command line. This simplifies extracting
-the numerous androidboot.* parameters used in Android systems.
+The existing SAVE_PREV_BL_FDT_ADDR / SAVE_PREV_BL_INITRAMFS_START_ADDR
+options surface the chained FDT base and an initramfs pointer in env,
+but the kernel command-line ABL had already prepared in
+/chosen/bootargs is silently dropped the moment U-Boot starts.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- include/cmdline_utils.h | 32 +++++++++++++++++++
- lib/cmdline_utils.c     | 85 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 117 insertions(+)
+ arch/arm/lib/save_prev_bl_data.c | 15 ++++++++++++++-
+ boot/Kconfig                     |  8 ++++++++
+ 2 files changed, 22 insertions(+), 1 deletion(-)
 
-diff --git a/include/cmdline_utils.h b/include/cmdline_utils.h
-index fa6e20b2417..af9b5226dab 100644
---- a/include/cmdline_utils.h
-+++ b/include/cmdline_utils.h
-@@ -25,4 +25,36 @@ struct cmdline_mask_param {
+diff --git a/arch/arm/lib/save_prev_bl_data.c b/arch/arm/lib/save_prev_bl_data.c
+index 4357acaef6c..5ad607a6251 100644
+--- a/arch/arm/lib/save_prev_bl_data.c
++++ b/arch/arm/lib/save_prev_bl_data.c
+@@ -66,7 +66,9 @@ int save_prev_bl_data(void)
  
- char *mask_cmdline_params(const char *cmdline, struct cmdline_mask_param *params, int count);
+ 	if (IS_ENABLED(CONFIG_SAVE_PREV_BL_FDT_ADDR))
+ 		env_set_addr("prevbl_fdt_addr", (void *)reg0);
+-	if (!IS_ENABLED(CONFIG_SAVE_PREV_BL_INITRAMFS_START_ADDR))
++
++	if (!IS_ENABLED(CONFIG_SAVE_PREV_BL_INITRAMFS_START_ADDR) &&
++	    !IS_ENABLED(CONFIG_SAVE_PREV_BL_BOOTARGS))
+ 		return 0;
  
-+struct androidboot_params {
-+	char *hardware_ddr;
-+	char *ddr_info;
-+	char *ddr_size;
+ 	node = fdt_path_offset(fdt_blob, "/chosen");
+@@ -75,6 +77,17 @@ int save_prev_bl_data(void)
+ 					__func__, reg0);
+ 		return -ENODATA;
+ 	}
 +
-+	char *dsi_display0;
++	if (IS_ENABLED(CONFIG_SAVE_PREV_BL_BOOTARGS)) {
++		const char *bootargs = fdt_getprop(fdt_blob, node, "bootargs",
++						   NULL);
 +
-+	char *slot_suffix;
-+	char *slot_retry_count;
-+	char *slot_successful;
++		if (bootargs && *bootargs)
++			env_set("bootargs", bootargs);
++	}
 +
-+	char *hardware_platform;
-+	char *hardware;
-+	char *revision;
-+	char *hardware_sku;
-+	char *hardware_majorid;
++	if (!IS_ENABLED(CONFIG_SAVE_PREV_BL_INITRAMFS_START_ADDR))
++		return 0;
+ 	/*
+ 	 * linux,initrd-start property might be either 64 or 32 bit,
+ 	 * depending on primary bootloader implementation.
+diff --git a/boot/Kconfig b/boot/Kconfig
+index ae6f09a6ede..92ecc89e06f 100644
+--- a/boot/Kconfig
++++ b/boot/Kconfig
+@@ -2036,6 +2036,14 @@ config SAVE_PREV_BL_INITRAMFS_START_ADDR
+ 	  If no initramfs was provided by previous bootloader, no env variables
+ 	  will be created.
+ 
++config SAVE_PREV_BL_BOOTARGS
++	depends on ARM
++	bool "Save /chosen/bootargs from the previous bootloader's FDT into $bootargs"
++	help
++	  When u-boot is chain-loaded from a primary bootloader that already
++	  populated /chosen/bootargs in the device tree it handed off (Android
++	  ABL) copy that string into U-Boot's bootargs environment variable.
 +
-+	char *bootloader;
-+	char *bootreason;
-+	char *secure_boot;
-+	char *mode;
-+
-+	char *cdt_hwid;
-+	char *dtb_idx;
-+
-+	char *serialno;
-+};
-+
-+int parse_androidboot_params(const char *cmdline, struct androidboot_params *params);
-+
-+void free_androidboot_params(struct androidboot_params *params);
-+
- #endif /* _CMDLINE_UTILS_H_ */
-diff --git a/lib/cmdline_utils.c b/lib/cmdline_utils.c
-index 4355bdd45f4..f8fe5e79bb9 100644
---- a/lib/cmdline_utils.c
-+++ b/lib/cmdline_utils.c
-@@ -244,3 +244,88 @@ char *mask_cmdline_params(const char *cmdline, struct cmdline_mask_param *params
- 	*dst_pos = '\0';
- 	return result;
- }
-+
-+int parse_androidboot_params(const char *cmdline, struct androidboot_params *params)
-+{
-+	struct cmdline_param cmdline_params[] = {
-+		{"androidboot.hardware.ddr", NULL, 0},
-+		{"androidboot.ddr_info", NULL, 0},
-+		{"androidboot.ddr_size", NULL, 0},
-+		{"msm_drm.dsi_display0", NULL, 0},
-+		{"androidboot.slot_suffix", NULL, 0},
-+		{"androidboot.slot_retry_count", NULL, 0},
-+		{"androidboot.slot_successful", NULL, 0},
-+		{"androidboot.hardware.platform", NULL, 0},
-+		{"androidboot.hardware", NULL, 0},
-+		{"androidboot.revision", NULL, 0},
-+		{"androidboot.bootloader", NULL, 0},
-+		{"androidboot.hardware.sku", NULL, 0},
-+		{"androidboot.secure_boot", NULL, 0},
-+		{"androidboot.cdt_hwid", NULL, 0},
-+		{"androidboot.hardware.majorid", NULL, 0},
-+		{"androidboot.dtb_idx", NULL, 0},
-+		{"androidboot.mode", NULL, 0},
-+		{"androidboot.bootreason", NULL, 0},
-+		{"androidboot.serialno", NULL, 0},
-+	};
-+	int ret, count = ARRAY_SIZE(cmdline_params);
-+
-+	if (!cmdline || !params)
-+		return -EINVAL;
-+
-+	memset(params, 0, sizeof(struct androidboot_params));
-+
-+	ret = parse_cmdline_params(cmdline, cmdline_params, count);
-+	if (ret < 0)
-+		return ret;
-+
-+	params->hardware_ddr = cmdline_params[0].value;
-+	params->ddr_info = cmdline_params[1].value;
-+	params->ddr_size = cmdline_params[2].value;
-+	params->dsi_display0 = cmdline_params[3].value;
-+	params->slot_suffix = cmdline_params[4].value;
-+	params->slot_retry_count = cmdline_params[5].value;
-+	params->slot_successful = cmdline_params[6].value;
-+	params->hardware_platform = cmdline_params[7].value;
-+	params->hardware = cmdline_params[8].value;
-+	params->revision = cmdline_params[9].value;
-+	params->bootloader = cmdline_params[10].value;
-+	params->hardware_sku = cmdline_params[11].value;
-+	params->secure_boot = cmdline_params[12].value;
-+	params->cdt_hwid = cmdline_params[13].value;
-+	params->hardware_majorid = cmdline_params[14].value;
-+	params->dtb_idx = cmdline_params[15].value;
-+	params->mode = cmdline_params[16].value;
-+	params->bootreason = cmdline_params[17].value;
-+	params->serialno = cmdline_params[18].value;
-+
-+	return 0;
-+}
-+
-+void free_androidboot_params(struct androidboot_params *params)
-+{
-+	if (!params)
-+		return;
-+
-+	free(params->hardware_ddr);
-+	free(params->ddr_info);
-+	free(params->ddr_size);
-+	free(params->dsi_display0);
-+	free(params->slot_suffix);
-+	free(params->slot_retry_count);
-+	free(params->slot_successful);
-+	free(params->hardware_platform);
-+	free(params->hardware);
-+	free(params->revision);
-+	free(params->bootloader);
-+	free(params->hardware_sku);
-+	free(params->secure_boot);
-+	free(params->cdt_hwid);
-+	free(params->hardware_majorid);
-+	free(params->dtb_idx);
-+	free(params->mode);
-+	free(params->bootreason);
-+	free(params->serialno);
-+
-+	memset(params, 0, sizeof(struct androidboot_params));
-+}
+ menu "Configuration editor"
+ 
+ config CEDIT
 
 -- 
 2.55.0
