@@ -1,10 +1,10 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Sat, 12 Sep 2026 11:39:24 +0300
-Subject: [PATCH RFC 15/20] soc: qcom: ubwc: Add UBWC config for MSM8952
+Date: Sat, 12 Sep 2026 11:39:25 +0300
+Subject: [PATCH RFC 16/20] dt-bindings: thermal: tsens: Add MSM8952
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-msm8952-initial-support-v1-15-0e742578b524@mainlining.org>
+Message-Id: <20260912-msm8952-initial-support-v1-16-0e742578b524@mainlining.org>
 References: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 In-Reply-To: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -40,35 +40,35 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=932;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=797;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=skwIjxkrl7U33MIrHcZ89NbRfjE7bPXAcmofXi9BbYM=;
- b=QSHsJj7/vHWLcjnNVscnJ/gGyO7FHTOR1kVfDAfCo5wB3CWXS9770w3VqpF+uwlvHODfeTlsk
- CriGqM9bLadByD66M3rOK+Ae2KwoD1bd+Wri0Qn1UgfLewtf+i8HiP7
+ bh=SHQrlXrOKfClSSRN67nbliq/vzHPWzLada9e+lrsFjk=;
+ b=6PA6NmEgUQ0+HVxnxKIS1Rps1nE6jluEZqKw0B9t6fZK/k8tUGG/aqh5ETyWK0HE8R1OS6mTS
+ vmKKlI3zzAJAx5HjDMNyrJM829WeCzGX14kOv3rZ0gjr7eQCdkhmj/G
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MSM8952 uses Adreno 405 and predates ubwc just like MSM8939.
+Add compatible string for tsens block found in MSM8952.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- drivers/soc/qcom/ubwc_config.c | 1 +
+ Documentation/devicetree/bindings/thermal/qcom-tsens.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/soc/qcom/ubwc_config.c b/drivers/soc/qcom/ubwc_config.c
-index 36c90f72943f..53c1df3ca641 100644
---- a/drivers/soc/qcom/ubwc_config.c
-+++ b/drivers/soc/qcom/ubwc_config.c
-@@ -130,6 +130,7 @@ static const struct of_device_id qcom_ubwc_configs[] __maybe_unused = {
- 	{ .compatible = "qcom,msm8937", .data = &ubwc_1_0_hbb14 },
- 	{ .compatible = "qcom,msm8929", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8939", .data = &no_ubwc_data },
-+	{ .compatible = "qcom,msm8952", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8953", .data = &ubwc_1_0_hbb14 },
- 	{ .compatible = "qcom,msm8956", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8974", .data = &no_ubwc_data },
+diff --git a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+index 5a8f7673e730..c78074fbcecf 100644
+--- a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
++++ b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+@@ -46,6 +46,7 @@ properties:
+         items:
+           - enum:
+               - qcom,msm8937-tsens
++              - qcom,msm8952-tsens
+               - qcom,msm8956-tsens
+               - qcom,msm8976-tsens
+               - qcom,qcs404-tsens
 
 -- 
 2.54.0
