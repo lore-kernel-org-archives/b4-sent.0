@@ -1,10 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Sat, 12 Sep 2026 11:39:12 +0300
-Subject: [PATCH RFC 03/20] dt-bindings: nvmem: Add compatible for MSM8952
+Date: Sat, 12 Sep 2026 11:39:13 +0300
+Subject: [PATCH RFC 04/20] dt-bindings: power: rpmpd: Add MSM8952 power
+ domains
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-msm8952-initial-support-v1-3-0e742578b524@mainlining.org>
+Message-Id: <20260912-msm8952-initial-support-v1-4-0e742578b524@mainlining.org>
 References: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 In-Reply-To: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -40,35 +41,35 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=797;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=754;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=KPWh3nm9PQmseVb7i0DEMou+AXydIuwF+UdhOvlk108=;
- b=XMWmcJJQTiOZvONwNP2Fc0z27vfW2XM7BgryKDkrLcGwWYCxhIbNgNlTvKN27uEkFjmQ7W0F4
- gyTaFBnj1YiBP1X78V44RhU1VmeSq1RtlZp3MrUSbQfBjLbcrloNpx2
+ bh=6ZI51ceEaOIY/u/VVB+l7JnsBp7inUEcGIBHgiYAiBE=;
+ b=dztDjXymTNo98gMcgzcAM1ZlmGVG6mQv95qqYW9EttJLlaVnbTxsMMBF33je4lABvOJ+nHxUo
+ gFM1b8UvYs5BFp5RzBbSVzQruiYPNmdITMMrXf0e6F6EM7uMpa5ttXT
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the QFPROM block found on MSM8952.
+Document the compatible for the rpmpd found on MSM8952.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml | 1 +
+ Documentation/devicetree/bindings/power/qcom,rpmpd.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml b/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
-index 566304ed4c78..646f2e8dcf4d 100644
---- a/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
-+++ b/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
-@@ -37,6 +37,7 @@ properties:
-           - qcom,msm8916-qfprom
-           - qcom,msm8917-qfprom
-           - qcom,msm8937-qfprom
-+          - qcom,msm8952-qfprom
-           - qcom,msm8960-qfprom
-           - qcom,msm8974-qfprom
-           - qcom,msm8976-qfprom
+diff --git a/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml b/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml
+index a70bfacbc5d1..8ee1c25a7c9d 100644
+--- a/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml
++++ b/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml
+@@ -76,6 +76,7 @@ properties:
+       - items:
+           - enum:
+               - qcom,msm8937-rpmpd
++              - qcom,msm8952-rpmpd
+           - const: qcom,msm8917-rpmpd
+       - items:
+           - enum:
 
 -- 
 2.54.0
