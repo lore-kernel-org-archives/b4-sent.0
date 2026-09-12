@@ -1,11 +1,10 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Sat, 12 Sep 2026 11:39:14 +0300
-Subject: [PATCH RFC 05/20] dt-bindings: mmc: sdhci-msm: Add MSM8952
- compatible
+Date: Sat, 12 Sep 2026 11:39:15 +0300
+Subject: [PATCH RFC 06/20] dt-bindings: vendor-prefixes: Add General Mobile
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-msm8952-initial-support-v1-5-0e742578b524@mainlining.org>
+Message-Id: <20260912-msm8952-initial-support-v1-6-0e742578b524@mainlining.org>
 References: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 In-Reply-To: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -41,36 +40,37 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=861;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=851;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=i5JYnHiSTI2FsDfkaSc7QQm0T2uZHX+0vDTSQH293vs=;
- b=rjKT3vKCGe+tuI8MU/z1XGpbuQVv/ke+KNZMWn+sOLwz+aMBrDn6Valk9bYaifasRV15rtB6N
- dn/v6Dz6be2BZg1MvcsdUFgQyAMQa2giIzKk6qWaaWtpvS+mB8rBHZo
+ bh=r3ZLJrtM9n2VHMSFrmIfF7hLeBB7OX3rKnjug6/4v2s=;
+ b=HjCW1YfrhClV6QDEqd2tMP79zA2T3UvNy9/heINjnpQPnPG7PQc2eI2U55+9ASYNYWq4IOEeJ
+ LSKyO0FajxVDp2KCf3ltIwZ+8Kt4jK55TaAd8XZ0d0yyGzrlScJmi3l
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the compatible string for the SDHCI controller on the
-msm8952 platform.
+Add vendor prefix for General Mobile.
+Link: https://www.generalmobile.com
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml b/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
-index 69bd44e65ad7..9d4409c958fa 100644
---- a/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
-+++ b/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
-@@ -26,6 +26,7 @@ properties:
-               - qcom,ipq4019-sdhci
-               - qcom,ipq8074-sdhci
-               - qcom,msm8226-sdhci
-+              - qcom,msm8952-sdhci
-               - qcom,msm8953-sdhci
-               - qcom,msm8974-sdhci
-               - qcom,msm8976-sdhci
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index ba2002969373..37f991d9352c 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -662,6 +662,8 @@ patternProperties:
+     description: Gemei Digital Technology Co., Ltd.
+   "^gemtek,.*":
+     description: Gemtek Technology Co., Ltd.
++  "^generalmobile,.*":
++    description: General Mobile Fzc.
+   "^genesys,.*":
+     description: Genesys Logic, Inc.
+   "^genexis,.*":
 
 -- 
 2.54.0
