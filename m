@@ -1,72 +1,70 @@
-From: Myria Sarvay <myrialsarvay@gmail.com>
-Date: Sat, 12 Sep 2026 18:03:35 +1000
-Subject: [PATCH] drivers/perf: apple_m1: Add macOS 27 M2 Event
+From: Mark Amirkan <markdamirkan@gmail.com>
+Date: Sat, 12 Sep 2026 01:11:14 -0700
+Subject: [PATCH] crypto: af_alg/hash: Report errors that discard hash state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-m2-9f-pmu-name-v1-1-da682557453c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB3QKajjVYoLm07aEZJKYkQQ7
- 96oy7f4f4coQSVCX+wQZNWoP59RlwWY7+g/gvrOBqqoqbgmdIRscXYJ/egE246NbejBtmXI0Rz
- E6nYNn8PtmF6TmOW8wHH8AWdXnI5yAAAA
-X-Change-ID: 20260912-m2-9f-pmu-name-789cf6239f79
-To: Will Deacon <will@kernel.org>, Mark Rutland <mark.rutland@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-perf-users@vger.kernel.org, 
- linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
- Myria Sarvay <myrialsarvay@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1883;
- i=myrialsarvay@gmail.com; h=from:subject:message-id;
- bh=WE/9S0PEWj724ZfvllqIPRhYse7Qz5ha7AiDrC/FTsg=;
- b=owJ4nJvAy8zAJRbk4iixYu2/l4yn1ZIYspayxz65P616LZ9MUu9hz417PhrzyN/98Wr2pZPXq
- g4Kqv4IMn/eUcrCIMbFICumyKJvmqY9ma3hUuky1y0wc1iZQIYwcHEKwET0rRgZlv4v+ytisH/V
- bqWbC7UP50ttuHTvbs7Vdjcvb+b+oMU3lBgZdvy9F5kzfcrGTY6/DLfXWXYdFnbz/DBZV4Jt0QP
- NvyEKzADqTksT
-X-Developer-Key: i=myrialsarvay@gmail.com; a=openpgp;
- fpr=2F35662B930680D275A645B452444118A8ADFEE9
-X-Endpoint-Received: by B4 Relay for myrialsarvay@gmail.com/default with auth_id=1027
+Message-Id: <20260912-afalg-b4-send-20260912-v1-1-c6cf966d3f1a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACEJpWoC/z2MQQrCMBBFr1Jm7UASaqFeRVzMpJM2IlEyVoTSu
+ 5vY6vI9/n8LqOQoCqdmgSyvqPGeCthDA36iNArGoTA44zrTW4cU6DYit6iSBvzrzvVi2hAMHy2
+ U8yNLiO9v+HzZWGe+in/WWl0wqSBnSn6qau9W+YvCun4A8eM/HKAAAAA=
+X-Change-ID: 20260912-afalg-b4-send-20260912-629e04ff0b51
+To: "David S. Miller" <davem@davemloft.net>, 
+ Herbert Xu <herbert@gondor.apana.org.au>
+Cc: David Howells <dhowells@redhat.com>, Paolo Abeni <pabeni@redhat.com>, 
+ linux-kernel@vger.kernel.org, linux-crypto@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789200677; l=1532;
+ i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
+ bh=UF6Le/jUVT/fxnhJHG6G7FxL9hFdSTl92xjIHL6gpDk=;
+ b=uf6R7cz671hAJYDC58+wvlpj5pkJe6Xs9n1KM/a+eJopY7h8DSPxJLdsqFekaSixNU/zxy323
+ E4hEbOZj1jeCXZBK8fLkhBvgsdInnhReOqjyka5gwHuC7ih44pvcFnS
+X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
+ pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
+X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds another known PMU event that can be found under
-/usr/share/kpep on macOS 27 for M2 macs. INST_SIMD_ALU_VEC purports to
-count "Retired non-load/store vector Advanced SIMD instructions", and as
-we already noted, can only be registered on counter 7. Though this event
-only shows up on the M2 kpep records, it can be set on M1 CPUs, and
-records something.
+hash_sendmsg() processes large requests in several batches.  If a later
+batch fails, the common error path calls hash_free_result() and clears
+ctx->more.  The next operation therefore starts a new hash request.
 
-Link: https://github.com/0ax1/apmc/blob/9cff99a9df2ae055f1e3065c64f633e38bb6beec/counters/m2.md
-Signed-off-by: Myria Sarvay <myrialsarvay@gmail.com>
+The function nevertheless returns the number of bytes processed by earlier
+batches.  With failslab, a 262144-byte SHA-1 send without MSG_MORE returns
+262128 when the result allocation fails.  A digest read then returns the
+digest of an empty input.  Retrying the last 16 bytes instead returns the
+digest of only those 16 bytes.
+
+Return the error whenever the request state is discarded.  This also
+restores the error-first behavior used before the request batching code was
+reworked.
+
+Fixes: c662b043cdca ("crypto: af_alg/hash: Support MSG_SPLICE_PAGES")
+Cc: stable@vger.kernel.org
+Assisted-by: Symbolic
+Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
 ---
- drivers/perf/apple_m1_cpu_pmu.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ crypto/algif_hash.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/perf/apple_m1_cpu_pmu.c b/drivers/perf/apple_m1_cpu_pmu.c
-index 81b6f1a62349..1f73c8a77462 100644
---- a/drivers/perf/apple_m1_cpu_pmu.c
-+++ b/drivers/perf/apple_m1_cpu_pmu.c
-@@ -81,7 +81,7 @@ enum m1_pmu_events {
- 	M1_PMU_PERFCTR_INST_SIMD_ALU				= 0x9a,
- 	M1_PMU_PERFCTR_INST_LDST				= 0x9b,
- 	M1_PMU_PERFCTR_INST_BARRIER				= 0x9c,
--	M1_PMU_PERFCTR_UNKNOWN_9f				= 0x9f,
-+	M1_PMU_PERFCTR_INST_SIMD_ALU_VEC			= 0x9f,
- 	M1_PMU_PERFCTR_L1D_TLB_ACCESS				= 0xa0,
- 	M1_PMU_PERFCTR_L1D_TLB_MISS				= 0xa1,
- 	M1_PMU_PERFCTR_L1D_CACHE_MISS_ST			= 0xa2,
-@@ -150,7 +150,7 @@ static const u16 m1_pmu_event_affinity[M1_PMU_PERFCTR_LAST + 1] = {
- 	[M1_PMU_PERFCTR_INST_SIMD_ALU]				= BIT(7),
- 	[M1_PMU_PERFCTR_INST_LDST]				= BIT(7),
- 	[M1_PMU_PERFCTR_INST_BARRIER]				= ONLY_5_6_7,
--	[M1_PMU_PERFCTR_UNKNOWN_9f]				= BIT(7),
-+	[M1_PMU_PERFCTR_INST_SIMD_ALU_VEC]			= BIT(7),
- 	[M1_PMU_PERFCTR_L1D_CACHE_MISS_LD_NONSPEC]		= ONLY_5_6_7,
- 	[M1_PMU_PERFCTR_L1D_CACHE_MISS_ST_NONSPEC]		= ONLY_5_6_7,
- 	[M1_PMU_PERFCTR_L1D_TLB_MISS_NONSPEC]			= ONLY_5_6_7,
+diff --git a/crypto/algif_hash.c b/crypto/algif_hash.c
+index 6e8b5fb82a7f1..7c1910c370ad6 100644
+--- a/crypto/algif_hash.c
++++ b/crypto/algif_hash.c
+@@ -184,7 +184,7 @@ static int hash_sendmsg(struct socket *sock, struct msghdr *msg,
+ 	err = 0;
+ unlock:
+ 	release_sock(sk);
+-	return copied ?: err;
++	return err ?: copied;
+ 
+ unlock_free:
+ 	af_alg_free_sg(&ctx->sgl);
 
 ---
-base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
-change-id: 20260912-m2-9f-pmu-name-789cf6239f79
+base-commit: 5225b8eec4c9bb21aecff6295fab6346a3c3738e
+change-id: 20260912-afalg-b4-send-20260912-629e04ff0b51
 
 Best regards,
 --  
-Myria Sarvay <myrialsarvay@gmail.com>
+Mark Amirkan <markdamirkan@gmail.com>
 
