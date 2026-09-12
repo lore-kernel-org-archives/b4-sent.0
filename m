@@ -1,10 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Sat, 12 Sep 2026 11:39:22 +0300
-Subject: [PATCH RFC 13/20] clk: qcom: smd-rpm: Add clocks for MSM8952
+Date: Sat, 12 Sep 2026 11:39:23 +0300
+Subject: [PATCH RFC 14/20] drm: msm: mdp5: Add MDP5 configuration for
+ MSM8952
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-msm8952-initial-support-v1-13-0e742578b524@mainlining.org>
+Message-Id: <20260912-msm8952-initial-support-v1-14-0e742578b524@mainlining.org>
 References: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 In-Reply-To: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -40,70 +41,122 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=2526;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=2908;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=+fbbxQznzh0EAsRYoXyBD9lf98TEt7urc9Q1WfJgNWo=;
- b=QkA6CKY/iZxxVumpyHBKti6xBNNNjPEOZTgP8ktL+4FuOcB5mh12Wqar04/gVtSyc72YdRvRx
- gSHRBLEIIbIA6XL7tN/dseny4/Qk+50P2Nv+Mii5/RLCKH790m8lR7Z
+ bh=tN86AwIVz+/4z2KwlUplPpbsNM+e16O69T3qlIbXC0E=;
+ b=D+Mx3bXoA7Gp2aJrzbakliBWsehboQQCDHUiAE6mtMMsP3Rz+XXR7XoC9JCqMmHP/BbvAqRJb
+ pM6YBmDSDrSC8nbOgefdBSyahFuqo9ikgTtGT80P59kglzet9qZyeZz
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MSM8952 has same clocks with MSM8976 and MSM8940.
+Add the mdp5_cfg_hw entry for MDP5 version v1.12 found on MSM8952.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- drivers/clk/qcom/clk-smd-rpm.c | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+ drivers/gpu/drm/msm/disp/mdp5/mdp5_cfg.c | 81 ++++++++++++++++++++++++++++++++
+ 1 file changed, 81 insertions(+)
 
-diff --git a/drivers/clk/qcom/clk-smd-rpm.c b/drivers/clk/qcom/clk-smd-rpm.c
-index 487d715ed5d2..4ed08cbfa8a2 100644
---- a/drivers/clk/qcom/clk-smd-rpm.c
-+++ b/drivers/clk/qcom/clk-smd-rpm.c
-@@ -740,6 +740,34 @@ static const struct rpm_smd_clk_desc rpm_clk_msm8940 = {
- 	.num_icc_clks = ARRAY_SIZE(bimc_pcnoc_snoc_smmnoc_icc_clks),
+diff --git a/drivers/gpu/drm/msm/disp/mdp5/mdp5_cfg.c b/drivers/gpu/drm/msm/disp/mdp5/mdp5_cfg.c
+index 7c91fc1915f3..d34c94d6f7e2 100644
+--- a/drivers/gpu/drm/msm/disp/mdp5/mdp5_cfg.c
++++ b/drivers/gpu/drm/msm/disp/mdp5/mdp5_cfg.c
+@@ -744,6 +744,86 @@ static const struct mdp5_cfg_hw msm8x76_config = {
+ 	.max_clk = 360000000,
  };
  
-+static struct clk_smd_rpm *msm8952_clks[] = {
-+	[RPM_SMD_XO_CLK_SRC] = &clk_smd_rpm_branch_bi_tcxo,
-+	[RPM_SMD_XO_A_CLK_SRC] = &clk_smd_rpm_branch_bi_tcxo_a,
-+	[RPM_SMD_QDSS_CLK] = &clk_smd_rpm_qdss_clk,
-+	[RPM_SMD_QDSS_A_CLK] = &clk_smd_rpm_qdss_a_clk,
-+	[RPM_SMD_BB_CLK1] = &clk_smd_rpm_bb_clk1,
-+	[RPM_SMD_BB_CLK1_A] = &clk_smd_rpm_bb_clk1_a,
-+	[RPM_SMD_BB_CLK2] = &clk_smd_rpm_bb_clk2,
-+	[RPM_SMD_BB_CLK2_A] = &clk_smd_rpm_bb_clk2_a,
-+	[RPM_SMD_RF_CLK2] = &clk_smd_rpm_rf_clk2,
-+	[RPM_SMD_RF_CLK2_A] = &clk_smd_rpm_rf_clk2_a,
-+	[RPM_SMD_BB_CLK1_PIN] = &clk_smd_rpm_bb_clk1_pin,
-+	[RPM_SMD_BB_CLK1_A_PIN] = &clk_smd_rpm_bb_clk1_a_pin,
-+	[RPM_SMD_BB_CLK2_PIN] = &clk_smd_rpm_bb_clk2_pin,
-+	[RPM_SMD_BB_CLK2_A_PIN] = &clk_smd_rpm_bb_clk2_a_pin,
-+	[RPM_SMD_DIV_CLK2] = &clk_smd_rpm_div_clk2,
-+	[RPM_SMD_DIV_A_CLK2] = &clk_smd_rpm_div_clk2_a,
-+	[RPM_SMD_IPA_CLK] = &clk_smd_rpm_ipa_clk,
-+	[RPM_SMD_IPA_A_CLK] = &clk_smd_rpm_ipa_a_clk,
++static const struct mdp5_cfg_hw msm8952_config = {
++	.name = "msm8952",
++	.mdp = {
++		.count = 1,
++		.base = { 0x0 },
++		.caps = MDP_CAP_SMP |
++			0,
++	},
++	.smp = {
++		.mmb_count = 8,
++		.mmb_size = 8192,
++		.clients = {
++			[SSPP_VIG0] = 1, [SSPP_DMA0] = 4,
++			[SSPP_RGB0] = 7, [SSPP_RGB1] = 8,
++		},
++	},
++	.ctl = {
++		.count = 3,
++		.base = { 0x01000, 0x01200, 0x01400 },
++		.flush_hw_mask = 0xffffffff,
++	},
++	.pipe_vig = {
++		.count = 1,
++		.base = { 0x04000 },
++		.caps = MDP_PIPE_CAP_HFLIP | MDP_PIPE_CAP_VFLIP |
++				MDP_PIPE_CAP_SCALE | MDP_PIPE_CAP_CSC |
++				MDP_PIPE_CAP_DECIMATION,
++	},
++	.pipe_rgb = {
++		.count = 2,
++		.base = { 0x14000, 0x16000 },
++		.caps = MDP_PIPE_CAP_HFLIP | MDP_PIPE_CAP_VFLIP |
++				MDP_PIPE_CAP_DECIMATION,
++	},
++	.pipe_dma = {
++		.count = 1,
++		.base = { 0x24000 },
++		.caps = MDP_PIPE_CAP_HFLIP | MDP_PIPE_CAP_VFLIP,
++	},
++	.pipe_cursor = {
++		.count = 1,
++		.base = { 0x440DC },
++		.caps = MDP_PIPE_CAP_HFLIP	|
++			MDP_PIPE_CAP_VFLIP	|
++			MDP_PIPE_CAP_SW_PIX_EXT	|
++			MDP_PIPE_CAP_CURSOR	|
++			0,
++	},
++	.lm = {
++		.count = 2,
++		.base = { 0x44000, 0x47000 },
++		.instances = {
++				{ .id = 0, .pp = 0, .dspp = 0,
++				  .caps = MDP_LM_CAP_DISPLAY, },
++				{ .id = 3, .pp = -1, .dspp = -1,
++				  .caps = MDP_LM_CAP_WB },
++			     },
++		.nb_stages = 8,
++		.max_width = 2048,
++		.max_height = 0xFFFF,
++	},
++	.dspp = {
++		.count = 1,
++		.base = { 0x54000 },
++
++	},
++	.pp = {
++		.count = 3,
++		.base = { 0x70000, 0x70800, 0x72000 },
++	},
++	.intf = {
++		.base = { 0x00000, 0x6a800 },
++		.connect = {
++			[0] = INTF_DISABLED,
++			[1] = INTF_DSI,
++		},
++	},
++	.max_clk = 320000000,
 +};
 +
-+static const struct rpm_smd_clk_desc rpm_clk_msm8952 = {
-+	.clks = msm8952_clks,
-+	.num_clks = ARRAY_SIZE(msm8952_clks),
-+	.icc_clks = bimc_pcnoc_snoc_smmnoc_icc_clks,
-+	.num_icc_clks = ARRAY_SIZE(bimc_pcnoc_snoc_smmnoc_icc_clks),
-+};
-+
- static struct clk_smd_rpm *msm8974_clks[] = {
- 	[RPM_SMD_XO_CLK_SRC]		= &clk_smd_rpm_branch_bi_tcxo,
- 	[RPM_SMD_XO_A_CLK_SRC]		= &clk_smd_rpm_branch_bi_tcxo_a,
-@@ -1292,6 +1320,7 @@ static const struct of_device_id rpm_smd_clk_match_table[] = {
- 	{ .compatible = "qcom,rpmcc-msm8936", .data = &rpm_clk_msm8936 },
- 	{ .compatible = "qcom,rpmcc-msm8937", .data = &rpm_clk_msm8937 },
- 	{ .compatible = "qcom,rpmcc-msm8940", .data = &rpm_clk_msm8940 },
-+	{ .compatible = "qcom,rpmcc-msm8952", .data = &rpm_clk_msm8952 },
- 	{ .compatible = "qcom,rpmcc-msm8953", .data = &rpm_clk_msm8953 },
- 	{ .compatible = "qcom,rpmcc-msm8974", .data = &rpm_clk_msm8974 },
- 	{ .compatible = "qcom,rpmcc-msm8976", .data = &rpm_clk_msm8976 },
+ static const struct mdp5_cfg_hw msm8x53_config = {
+ 	.name = "msm8x53",
+ 	.mdp = {
+@@ -1017,6 +1097,7 @@ static const struct mdp5_cfg_handler cfg_handlers_v1[] = {
+ 	{ .revision = 9, .config = { .hw = &msm8x94_config } },
+ 	{ .revision = 7, .config = { .hw = &msm8x96_config } },
+ 	{ .revision = 11, .config = { .hw = &msm8x76_config } },
++	{ .revision = 12, .config = { .hw = &msm8952_config } },
+ 	{ .revision = 14, .config = { .hw = &msm8937_config } },
+ 	{ .revision = 15, .config = { .hw = &msm8917_config } },
+ 	{ .revision = 16, .config = { .hw = &msm8x53_config } },
 
 -- 
 2.54.0
