@@ -1,431 +1,229 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Sat, 12 Sep 2026 15:32:38 +0200
-Subject: [PATCH v5 3/3] arm64: dts: freescale: add Nodebox v3 CPU Module
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Sat, 12 Sep 2026 23:43:34 +0800
+Subject: [PATCH net-next v3] tcp: annotate lockless access to sk->sk_err
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-for-upstream-nbxv3-dts-v5-3-ead604dba61b@free.fr>
-References: <20260912-for-upstream-nbxv3-dts-v5-0-ead604dba61b@free.fr>
-In-Reply-To: <20260912-for-upstream-nbxv3-dts-v5-0-ead604dba61b@free.fr>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789219957; l=9157;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=FRb13gz7F1L1AEx3aobWJiLzlyRHDD1gJnj/Fr57/uQ=;
- b=ftpyNsNIbqYk4DGJ/r5unMKCgc/QOCaWSGRYRAmtCEEoxUX6hxrzYB61euzx0V4ZxcIc8sC8R
- QUE320/pzFeCq5FsHwMFYoSRrOnDROwQuLsFeNy4gf/Ab+5IcZutTjk
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Message-Id: <20260912-mptcp-sk-err-net-v3-1-c41383878bde@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOQQ7CIBAF0Ks0rMVQrLa48h7GBaWDRVMggKSm6
+ d0F3HShy5+ZeX8W5MEp8OhcLchBVF4ZncJhVyExcn0HrIaUESX0RBjp8GSDsNg/MTiHNQTcStl
+ 1IMmRNA1KZ9aBVHMhrygvaJgDun0n/tU/QIQs5t1R+WDcu7THulz8L4o1rvHA25pzEIzL4WKdC
+ UbvJyh8pFuA/QBoAvKbvAfBBSNbYF3XD1F12ooNAQAA
+X-Change-ID: 20260908-mptcp-sk-err-net-7ff88ef05044
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789227816; l=7237;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=/TVHWLyjQ1Gp2BZxsaZ2r2VGQqosRER2Bq/lIgTk0VQ=;
+ b=NV3pMCvEwnCXyey3N0gWPatws1sUCJbNRLchS+CksVpIf1fqjhRdtuBFoByj4n4XqMwhi8vZI
+ A/7bL/lNpZIDpJ3C1wO76pYowk8+wIHq1UALWoeiQLUPh1/2aqb535Q
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Nodebox v3 is a Free Mobile CPU module built around the NXP
-LX2160A (16x Cortex-A72, DPAA2).
+BUG: KCSAN: data-race in do_recvmmsg / mptcp_recvmsg
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+read-write (marked) to 0xffff8880134d391c of 4 bytes by task 2619 on cpu 1:
+ instrument_atomic_read_write include/linux/instrumented.h:113 [inline]
+ sock_error include/net/sock.h:2565 [inline]
+ do_recvmmsg+0x50c/0x580 net/socket.c:3049
+ __sys_recvmmsg net/socket.c:3144 [inline]
+ __do_sys_recvmmsg net/socket.c:3167 [inline]
+ __se_sys_recvmmsg net/socket.c:3160 [inline]
+ __x64_sys_recvmmsg+0x161/0x180 net/socket.c:3160
+ x64_sys_call+0x19c7/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:300
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+read to 0xffff8880134d391c of 4 bytes by task 2620 on cpu 0:
+ tcp_recv_should_stop include/net/tcp.h:3086 [inline]
+ mptcp_recvmsg+0x54d/0xd50 net/mptcp/protocol.c:2466
+ inet_recvmsg+0x204/0x210 net/ipv4/af_inet.c:894
+ sock_recvmsg_nosec net/socket.c:1151 [inline]
+ sock_recvmsg+0x11a/0x140 net/socket.c:1173
+ ____sys_recvmsg+0x14b/0x3c0 net/socket.c:2933
+ ___sys_recvmsg+0x116/0x160 net/socket.c:2975
+ __sys_recvmsg net/socket.c:3008 [inline]
+ __do_sys_recvmsg net/socket.c:3014 [inline]
+ __se_sys_recvmsg net/socket.c:3011 [inline]
+ __x64_sys_recvmsg+0xeb/0x160 net/socket.c:3011
+ x64_sys_call+0x1319/0x1ca0 arch/x86/include/generated/asm/syscalls_64.h:48
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0xde/0x3d0 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+value changed: 0x0000006b -> 0x00000000
+
+Reported by Kernel Concurrency Sanitizer on:
+CPU: 0 UID: 0 PID: 2620 Comm: syz.2.33 Not tainted 7.2.0-g39d4f32c5d53 #76 PREEMPT(full)
+Hardware name: QEMU Ubuntu 26.04 PC (i440FX + PIIX, 1996), BIOS 1.17.0-debian-1.17.0-1ubuntu1 04/01/2014
+
+do_recvmmsg() and getsockopt(SO_ERROR) call sock_error() without the
+socket lock. sock_error() clears sk_err with xchg(), which races with
+unmarked loads of the same field.
+
+KCSAN reported the unmarked peek in tcp_recv_should_stop(). The same
+lockless writer races with the other plain sk_err reads on the
+TCP/MPTCP send, recv and splice paths.
+
+Annotate those peeks with READ_ONCE(). No extra ordering is needed:
+the value is only used to decide whether I/O should stop. This does
+not consume sk_err; the check-then-sock_error() TOCTOU on the no-data
+paths is a separate issue.
+
+Suggested-by: Jiayuan Chen <jiayuan.chen@linux.dev>
+Link: https://lore.kernel.org/netdev/8bbee583-6f21-4817-bfeb-2d60057380a3@linux.dev/
+Reported-by: Matthieu Baerts (NGI0) <matttbe@kernel.org>
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/632
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- arch/arm64/boot/dts/freescale/Makefile             |   2 +
- .../arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts |  34 +++
- .../boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi      | 330 +++++++++++++++++++++
- 3 files changed, 366 insertions(+)
+Changes in v3:
+- drop the Fixes tag and retarget to net-next
+- annotate the remaining unmarked sk_err peeks on the TCP/MPTCP
+  send, recv and splice paths
+- Link to v2: https://patch.msgid.link/20260909-mptcp-sk-err-net-v2-1-5044abecac90@proton.me
 
-diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
-index 95ae85ab4adf..faab8bf0e167 100644
---- a/arch/arm64/boot/dts/freescale/Makefile
-+++ b/arch/arm64/boot/dts/freescale/Makefile
-@@ -55,6 +55,8 @@ DTC_FLAGS_fsl-lx2160a-half-twins := -Wno-interrupt_map
- dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-half-twins.dtb
- DTC_FLAGS_fsl-lx2160a-honeycomb := -Wno-interrupt_map
- dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-honeycomb.dtb
-+DTC_FLAGS_fsl-lx2160a-nbxv3 := -Wno-interrupt_map
-+dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-nbxv3.dtb
- DTC_FLAGS_fsl-lx2160a-qds := -Wno-interrupt_map
- dtb-$(CONFIG_ARCH_LAYERSCAPE) += fsl-lx2160a-qds.dtb
- DTC_FLAGS_fsl-lx2160a-rdb := -Wno-interrupt_map
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts
-new file mode 100644
-index 000000000000..cc02204e9d1b
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts
-@@ -0,0 +1,34 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Free Mobile Nodebox v3 CPU Module (LX2160A)
-+ *
-+ * Copyright 2026 Free Mobile, Vincent Jardin
-+ */
-+
-+/dts-v1/;
-+
-+#include "fsl-lx2160a-rev2.dtsi"
-+#include "fsl-lx2160a-nbxv3.dtsi"
-+
-+/ {
-+	compatible = "freemobile,nbxv3", "fsl,lx2160a";
-+	model = "Free Mobile Nodebox v3 CPU Module (LX2160A)";
-+};
-+
-+&fspi {
-+	pinctrl-0 = <&fspi_dqs_sck_cs10_pins>, <&fspi_data30_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&gpio1 {
-+	pinctrl-0 = <&gpio1_31_28_pins>;
-+	pinctrl-names = "default";
-+};
-+
-+&pcs_mdio13 {
-+	status = "okay";
-+};
-+
-+&pcs_mdio14 {
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-new file mode 100644
-index 000000000000..ca4fb5329c0b
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-@@ -0,0 +1,330 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Free Mobile Nodebox v3 CPU Module (LX2160A)
-+ *
-+ * Copyright 2026 Free Mobile, Vincent Jardin
-+ *
-+ * This file is shared by the Linux kernel and U-Boot.
-+ */
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+
-+/ {
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	gpio-restart {
-+		compatible = "gpio-restart";
-+		gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
-+		priority = <128>;
-+	};
-+
-+	reg_ethsw_mdio: regulator-ethsw-mdio {
-+		compatible = "regulator-fixed";
-+		gpio = <&gpio3 25 GPIO_ACTIVE_LOW>;
-+		regulator-always-on;
-+		regulator-boot-on;
-+		regulator-name = "ethsw-mdio-en";
-+	};
-+};
-+
-+&crypto {
-+	status = "okay";
-+};
-+
-+&dpmac13 {
-+	phy-connection-type = "10gbase-r";
-+	phy-handle = <&lan8023_phy_s0>;
-+
-+	status = "okay";
-+};
-+
-+&dpmac14 {
-+	phy-connection-type = "10gbase-r";
-+	phy-handle = <&lan8023_phy_s1>;
-+
-+	status = "okay";
-+};
-+
-+&dpmac17 {
-+	phy-connection-type = "rgmii-id";
-+	phy-handle = <&rtl8211fd>;
-+
-+	status = "okay";
-+};
-+
-+&dspi0 {
-+	status = "okay";
-+
-+	dpll@0 {
-+		compatible = "microchip,zl30733";
-+		reg = <0>;
-+		spi-max-frequency = <12500000>;
-+	};
-+};
-+
-+&dspi2 {
-+	status = "okay";
-+};
-+
-+&emdio1 {
-+	status = "okay";
-+
-+	/* Microchip LAN8023 dual 10G PCS/retimer, Clause 45 only, one address per slice */
-+	lan8023_phy_s0: ethernet-phy@2 {
-+		compatible = "ethernet-phy-ieee802.3-c45";
-+		reg = <2>;
-+	};
-+
-+	lan8023_phy_s1: ethernet-phy@3 {
-+		compatible = "ethernet-phy-ieee802.3-c45";
-+		reg = <3>;
-+	};
-+
-+	rtl8211fd: ethernet-phy@6 {
-+		compatible = "ethernet-phy-id001c.c916";
-+		reg = <6>;
-+	};
-+};
-+
-+&emdio2 {
-+	status = "okay";
-+};
-+
-+&esdhc1 {
-+	bus-width = <8>;
-+	mmc-hs200-1_8v;
-+	mmc-hs400-1_8v;
-+	non-removable;
-+
-+	status = "okay";
-+};
-+
-+&fsl_mc {
-+	status = "okay";
-+};
-+
-+&fspi {
-+	status = "okay";
-+
-+	/* GigaDevice GD55LB02GF, 256 MiB boot NOR */
-+	flash@0 {
-+		compatible = "jedec,spi-nor";
-+		reg = <0>;
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		reset-gpios = <&gpio1 28 GPIO_ACTIVE_LOW>;
-+		spi-max-frequency = <150000000>;
-+		spi-rx-bus-width = <1>;
-+		spi-tx-bus-width = <1>;
-+	};
-+};
-+
-+&gpio0 {
-+	gpio-line-names =
-+		"", "",
-+		"altfn:iic1-sda", "altfn:iic1-scl",
-+		"altfn:uart4-sin", "altfn:uart4-sout",
-+		"altfn:uart2-sin", "altfn:uart2-sout",
-+		"altfn:uart3-sin", "altfn:uart3-sout",
-+		"altfn:uart1-sin", "altfn:uart1-sout",
-+		"altfn:spi3-pcs3", "altfn:spi3-pcs2",
-+		"altfn:spi3-pcs1", "altfn:spi3-pcs0",
-+		"altfn:spi1-sck", "altfn:spi1-sin",
-+		"altfn:spi1-pcs2", "altfn:spi1-pcs1",
-+		"altfn:spi1-pcs0", "altfn:spi1-sout",
-+		"altfn:iic6-sda", "altfn:iic6-scl",
-+		"altfn:spi3-sin", "altfn:spi3-sout",
-+		"altfn:iic4-sda", "altfn:iic4-scl",
-+		"altfn:iic3-sda", "altfn:iic3-scl",
-+		"altfn:iic2-sda", "altfn:iic2-scl";
-+
-+	status = "okay";
-+};
-+
-+&gpio1 {
-+	gpio-line-names =
-+		"", "", "", "", "", "",
-+		"cfg-rcw-src2", "cfg-rcw-src3",
-+		"reset-req-b",
-+		"altfn:sdhc2-clk", "altfn:sdhc2-ds",
-+		"altfn:sdhc2-dat0", "altfn:sdhc2-dat1",
-+		"altfn:sdhc2-dat2", "altfn:sdhc2-dat3",
-+		"altfn:sdhc2-dat4", "altfn:sdhc2-dat5",
-+		"altfn:sdhc2-dat6", "altfn:sdhc2-dat7",
-+		"altfn:sdhc2-cmd",
-+		"cfg-svr1",
-+		"altfn:xspi1-cs0", "altfn:xspi1-sck",
-+		"altfn:xspi1-dqs",
-+		"altfn:xspi1-data0", "altfn:xspi1-data1",
-+		"", "",
-+		"flash-reset#", "pltrst#", "", "ethsw-reset#";
-+
-+	status = "okay";
-+
-+	/* Platform reset, no consumer node: released at boot */
-+	pltrst-hog {
-+		gpio-hog;
-+		gpios = <29 GPIO_ACTIVE_LOW>;
-+		line-name = "pltrst#";
-+		output-low;
-+	};
-+};
-+
-+&gpio2 {
-+	gpio-line-names =
-+		"lan8023-mdint",
-+		"i2c2-alert#", "i2c4-alert#", "i2c6-alert#",
-+		"u800-tca9539-int#",
-+		"spi3-alert#",
-+		"wake0", "wake1",
-+		"carrier-hot#",
-+		"u1300-rtl8211fd-int#",
-+		"ethsw-int#",
-+		"", "",
-+		"u1700-zl30733-clk-gpio0", "u1700-zl30733-clk-gpio1",
-+		"u1700-zl30733-clk-gpio2", "u1700-zl30733-clk-gpio3",
-+		"", "", "", "", "", "", "", "",
-+		"", "", "", "", "", "", "";
-+
-+	status = "okay";
-+};
-+
-+&gpio3 {
-+	gpio-line-names =
-+		"altfn:ec1-txd3", "altfn:ec1-txd2",
-+		"altfn:ec1-txd1", "altfn:ec1-txd0",
-+		"altfn:ec1-tx-en", "altfn:ec1-gtx-clk",
-+		"altfn:ec1-rxd3", "altfn:ec1-rxd2",
-+		"altfn:ec1-rxd1", "altfn:ec1-rxd0",
-+		"altfn:ec1-rx-clk", "altfn:ec1-rx-dv",
-+		"", "",
-+		"ptp-refclk-in",
-+		"", "", "", "", "", "", "", "",
-+		"u1700-zl30733-pps-out",
-+		"",
-+		"ethsw-mdio-en",
-+		"usb01-oc#",	/* USB1_PWRFAULT and USB2_PWRFAULT share one net */
-+		"",
-+		"usb01-oc#",
-+		"altfn:spi3-sck",
-+		"", "";
-+
-+	status = "okay";
-+};
-+
-+/* On-module management bus */
-+&i2c0 {
-+	status = "okay";
-+
-+	/* +0V8_VDD core rail, MPS MPQ8646 (MPQ8785 core) over PMBus */
-+	vdd08: regulator@10 {
-+		compatible = "mps,mpq8646";
-+		reg = <0x10>;
-+	};
-+
-+	/* SO-DIMM SPD temperature sensors */
-+	temperature-sensor@18 {
-+		compatible = "jedec,jc-42.4-temp";
-+		reg = <0x18>;
-+	};
-+
-+	temperature-sensor@19 {
-+		compatible = "jedec,jc-42.4-temp";
-+		reg = <0x19>;
-+	};
-+
-+	eeprom@52 {
-+		compatible = "atmel,24c32";
-+		reg = <0x52>;
-+		pagesize = <32>;
-+	};
-+
-+	/* Board ID straps */
-+	gpio@74 {
-+		compatible = "ti,tca9539";
-+		reg = <0x74>;
-+		#gpio-cells = <2>;
-+		gpio-controller;
-+		gpio-line-names =
-+			"boardid-0x0001", "boardid-0x0002",
-+			"boardid-0x0004", "boardid-0x0008",
-+			"boardid-0x0010", "boardid-0x0020",
-+			"boardid-0x0040", "boardid-0x0080",
-+			"boardid-0x0100", "boardid-0x0200",
-+			"boardid-0x0400", "boardid-0x0800",
-+			"boardid-0x1000", "boardid-0x2000",
-+			"boardid-0x4000", "boardid-0x8000";
-+	};
-+
-+	u800: gpio@75 {
-+		compatible = "ti,tca9539";
-+		reg = <0x75>;
-+		#gpio-cells = <2>;
-+		#interrupt-cells = <2>;
-+		gpio-controller;
-+		gpio-line-names =
-+			"carrier-gpio0", "carrier-gpio1",
-+			"carrier-gpio2", "carrier-gpio3",
-+			"carrier-gpio4", "carrier-gpio5",
-+			"carrier-gpio6", "carrier-gpio7",
-+			"carrier-gpio8", "carrier-gpio9",
-+			"carrier-gpio10", "carrier-gpio11",
-+			"", "", "",
-+			"lan8023-rst";
-+		interrupt-controller;
-+		interrupt-parent = <&gpio2>;
-+		interrupts = <4 IRQ_TYPE_LEVEL_LOW>;
-+	};
-+};
-+
-+&i2c1 {
-+	status = "okay";
-+};
-+
-+&i2c2 {
-+	status = "okay";
-+};
-+
-+&i2c3 {
-+	status = "okay";
-+};
-+
-+&i2c5 {
-+	status = "okay";
-+};
-+
-+&pcie3 {
-+	status = "okay";
-+};
-+
-+&pcie4 {
-+	status = "okay";
-+};
-+
-+&pcie5 {
-+	status = "okay";
-+};
-+
-+&pcie6 {
-+	status = "okay";
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
-+
-+&usb0 {
-+	status = "okay";
-+};
-+
-+&usb1 {
-+	status = "okay";
-+};
+Changes in v2:
+- add Reported-by and Closes for the MPTCP syzkaller report
+- Link to v1: https://patch.msgid.link/20260908-mptcp-sk-err-net-v1-1-da71aaec9afd@proton.me
+---
+ include/net/tcp.h    | 3 ++-
+ net/core/stream.c    | 2 +-
+ net/ipv4/tcp.c       | 6 +++---
+ net/ipv4/tcp_bpf.c   | 7 +++----
+ net/mptcp/protocol.c | 6 +++---
+ 5 files changed, 12 insertions(+), 12 deletions(-)
 
--- 
-2.43.0
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index 5e5f5f9b89a3..6ee513bdb503 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -3093,7 +3093,8 @@ enum skb_drop_reason tcp_inbound_hash(struct sock *sk,
+ 
+ static inline int tcp_recv_should_stop(struct sock *sk)
+ {
+-	return sk->sk_err ||
++	/* sk_err can be cleared locklessly by sock_error(). */
++	return READ_ONCE(sk->sk_err) ||
+ 	       sk->sk_state == TCP_CLOSE ||
+ 	       (sk->sk_shutdown & RCV_SHUTDOWN) ||
+ 	       signal_pending(current);
+diff --git a/net/core/stream.c b/net/core/stream.c
+index 2d748581862d..5c0adc3077f0 100644
+--- a/net/core/stream.c
++++ b/net/core/stream.c
+@@ -133,7 +133,7 @@ int sk_stream_wait_memory(struct sock *sk, long *timeo_p)
+ 	while (1) {
+ 		sk_set_bit(SOCKWQ_ASYNC_NOSPACE, sk);
+ 
+-		if (sk->sk_err || (sk->sk_shutdown & SEND_SHUTDOWN))
++		if (READ_ONCE(sk->sk_err) || (sk->sk_shutdown & SEND_SHUTDOWN))
+ 			goto do_error;
+ 		if (!*timeo_p)
+ 			goto do_eagain;
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 1c867a302444..9e7fa7e39726 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -843,7 +843,7 @@ ssize_t tcp_splice_read(struct socket *sock, loff_t *ppos,
+ 				break;
+ 			if (sock_flag(sk, SOCK_DONE))
+ 				break;
+-			if (sk->sk_err) {
++			if (READ_ONCE(sk->sk_err)) {
+ 				ret = sock_error(sk);
+ 				break;
+ 			}
+@@ -1228,7 +1228,7 @@ int tcp_sendmsg_locked(struct sock *sk, struct msghdr *msg, size_t size)
+ 	mss_now = tcp_send_mss(sk, &size_goal, flags);
+ 
+ 	err = -EPIPE;
+-	if (sk->sk_err || (sk->sk_shutdown & SEND_SHUTDOWN))
++	if (READ_ONCE(sk->sk_err) || (sk->sk_shutdown & SEND_SHUTDOWN))
+ 		goto do_error;
+ 
+ 	while (msg_data_left(msg)) {
+@@ -2760,7 +2760,7 @@ static int tcp_recvmsg_locked(struct sock *sk, struct msghdr *msg, size_t len,
+ 			if (sock_flag(sk, SOCK_DONE))
+ 				break;
+ 
+-			if (sk->sk_err) {
++			if (READ_ONCE(sk->sk_err)) {
+ 				copied = sock_error(sk);
+ 				break;
+ 			}
+diff --git a/net/ipv4/tcp_bpf.c b/net/ipv4/tcp_bpf.c
+index 2e234d155b5e..a96323e65758 100644
+--- a/net/ipv4/tcp_bpf.c
++++ b/net/ipv4/tcp_bpf.c
+@@ -286,7 +286,7 @@ static int tcp_bpf_recvmsg_parser(struct sock *sk,
+ 		if (sock_flag(sk, SOCK_DONE))
+ 			goto out;
+ 
+-		if (sk->sk_err) {
++		if (READ_ONCE(sk->sk_err)) {
+ 			copied = sock_error(sk);
+ 			goto out;
+ 		}
+@@ -553,10 +553,9 @@ static int tcp_bpf_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
+ 		bool enospc = false;
+ 		u32 copy, osize;
+ 
+-		if (sk->sk_err) {
+-			err = -sk->sk_err;
++		err = -READ_ONCE(sk->sk_err);
++		if (err)
+ 			goto out_err;
+-		}
+ 
+ 		copy = msg_data_left(msg);
+ 		if (!sk_stream_memory_free(sk))
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index e1f08f71cdb1..7631fa582834 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -2028,7 +2028,7 @@ static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	}
+ 
+ 	ret = -EPIPE;
+-	if (unlikely(sk->sk_err || (sk->sk_shutdown & SEND_SHUTDOWN)))
++	if (unlikely(READ_ONCE(sk->sk_err) || (sk->sk_shutdown & SEND_SHUTDOWN)))
+ 		goto do_error;
+ 
+ 	pfrag = sk_page_frag(sk);
+@@ -2429,7 +2429,7 @@ static int mptcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+ 			    !timeo)
+ 				break;
+ 		} else {
+-			if (sk->sk_err) {
++			if (READ_ONCE(sk->sk_err)) {
+ 				copied = sock_error(sk);
+ 				break;
+ 			}
+@@ -4655,7 +4655,7 @@ static ssize_t mptcp_splice_read(struct socket *sock, loff_t *ppos,
+ 				break;
+ 			if (sock_flag(sk, SOCK_DONE))
+ 				break;
+-			if (sk->sk_err) {
++			if (READ_ONCE(sk->sk_err)) {
+ 				ret = sock_error(sk);
+ 				break;
+ 			}
+
+---
+base-commit: 211f2a875f6f447745d80d5762d6d614503ac84a
+change-id: 20260908-mptcp-sk-err-net-7ff88ef05044
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
