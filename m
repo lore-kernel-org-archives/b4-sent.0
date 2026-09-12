@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Sat, 12 Sep 2026 11:39:20 +0300
-Subject: [PATCH RFC 11/20] dt-bindings: firmware: qcom,scm: Document
- MSM8952 SCM
+Date: Sat, 12 Sep 2026 11:39:21 +0300
+Subject: [PATCH RFC 12/20] dt-bindings: clock: qcom,rpmcc: Add MSM8952
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-msm8952-initial-support-v1-11-0e742578b524@mainlining.org>
+Message-Id: <20260912-msm8952-initial-support-v1-12-0e742578b524@mainlining.org>
 References: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 In-Reply-To: <20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -41,51 +41,43 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=1326;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789202354; l=1095;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=y9z+BmiJWSSl0cHCd04a2j09/dawogbBu+CncXJroZE=;
- b=jED5d9jA1E9k+qYhTSIWrvjNI0LnSmE4aVay8EjQTIze1BX7RZ/XWWGSYQ2Bv0n4VFxpeR75r
- tuGtBofQQnMA6ncpzlOky/XF2GOE+CYtvfsYmHngrQmNeIiOwXAEkdC
+ bh=RjoJbvQY6DTtuLDZ5TP0oZiQtiyl85vhqU0L6uvEo40=;
+ b=pcRaa0ZTvYkfbl+BsShmjQWmwODB4ZJDeAyLKhVRHL0xmSF18K3ztVbIsuT78yBj0Vys2iYkw
+ nyq7g0GOjpBBYcwa6YVmOnON71GKl7fv8Tyn0qvKac5nQklOJ6BfjCU
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the scm compatible for msm8952 SoC.
+Document the rpmcc found on MSM8952.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/firmware/qcom,scm.yaml | 3 +++
- 1 file changed, 3 insertions(+)
+ Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
-index ecee5aef65a7..40a267c54b00 100644
---- a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
-+++ b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
-@@ -45,6 +45,7 @@ properties:
-           - qcom,scm-msm8660
-           - qcom,scm-msm8916
-           - qcom,scm-msm8937
-+          - qcom,scm-msm8952
-           - qcom,scm-msm8953
-           - qcom,scm-msm8960
-           - qcom,scm-msm8974
-@@ -153,6 +154,7 @@ allOf:
-               - qcom,scm-msm8660
-               - qcom,scm-msm8916
-               - qcom,scm-msm8937
-+              - qcom,scm-msm8952
-               - qcom,scm-msm8953
-               - qcom,scm-msm8960
-               - qcom,scm-msm8974
-@@ -199,6 +201,7 @@ allOf:
-               - qcom,scm-msm8226
-               - qcom,scm-msm8916
-               - qcom,scm-msm8937
-+              - qcom,scm-msm8952
-               - qcom,scm-msm8953
-               - qcom,scm-msm8974
-               - qcom,scm-msm8976
+diff --git a/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml b/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml
+index 17332aa55886..4532d2b6c1fd 100644
+--- a/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml
++++ b/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml
+@@ -36,6 +36,7 @@ properties:
+               - qcom,rpmcc-msm8936
+               - qcom,rpmcc-msm8937
+               - qcom,rpmcc-msm8940
++              - qcom,rpmcc-msm8952
+               - qcom,rpmcc-msm8953
+               - qcom,rpmcc-msm8974
+               - qcom,rpmcc-msm8976
+@@ -121,6 +122,7 @@ allOf:
+               - qcom,rpmcc-msm8936
+               - qcom,rpmcc-msm8937
+               - qcom,rpmcc-msm8940
++              - qcom,rpmcc-msm8952
+               - qcom,rpmcc-msm8953
+               - qcom,rpmcc-msm8974
+               - qcom,rpmcc-msm8976
 
 -- 
 2.54.0
