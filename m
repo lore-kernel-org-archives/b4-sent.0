@@ -1,209 +1,195 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Sat, 12 Sep 2026 20:59:05 +0300
-Subject: [PATCH] Input: synaptics-rmi4 - add support for reset gpios
+From: Rudraksha Gupta <guptarud@gmail.com>
+Subject: [PATCH v7 0/3] Samsung Expressatt: Camera Flash
+Date: Sat, 12 Sep 2026 19:38:07 -0700
+Message-Id: <20260912-expressatt_camera_flash-v7-0-e1fd2edc8d84@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260912-rmi4-reset-v1-1-4a3fc8856830@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDQAxG4atI1h0Yowj2KtLFqL8aQSuJiiDe3
- bFdfov3TjKowOidnKTYxeQ7R6SvhJohzD2ctNHEngtfpux0ktwpDKsrQ9Yyh+A5B8VgUXRy/Gb
- V52/b6hHN+hzoum5syBkebgAAAA==
-X-Change-ID: 20260912-rmi4-reset-9a3d22aa024e
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789236069; l=8397;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=SC4bkSgscCz+QLd+mGi3E8BCJE+tAFj7zaREBtUQLHs=;
- b=8n+44RCzB8TMGYrpXtr1As+8TbD0RyZSlJY0hiQO3yrSkJX7PAYHBa8ealuSoCh2w5r8Q37hj
- rp9LmF6GOPyBHJqIq0dy1pRzkTZUORANrHBlzFVkqtJsU2vo3t83XaP
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XR32rCMBQG8FcpuV4k/2NkjL3HGHKanKxh1m5NL
+ Yr47ov1wq7gdvmFnN+XQ84kY58wk011Jj2OKaduX4J9qohvYP+BNIWSiWDCMMkMxeNXjznDMGw
+ 9tNjDNu4gN5RLzzVYJSwAKdPlVkzHSX57v+Uevw+lYLgdkvbKTAWb6nnytbAznw7dwTefeKKjo
+ Jwy5YIHxaOX8PrRQtqtfNe+XLtqyEhLaNOwqUa7EuTa2KQ8dP1pWm3kU+W/W4ylh9bcOROtDzG
+ Ee9NkjmLm8PVjRxRHe1E7MEIGXy8dOXPEH++RxUGrUQe9do7FpaNmjuSPHVWcyNG5qKzSXC4df
+ Xc0k48dXRyntVCaGbDOLR0zc3795sIxxQnIIteMCYVq7lwulx/fCOLTmAIAAA==
+X-Change-ID: 20260306-expressatt_camera_flash-13c15a7427aa
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, David Heidelberg <david@ixit.cz>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789267087; l=5616;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=ZnOgLdspKp6PXfMxtUeiK8FG0a+Ot0kQxnHtZbQFrOY=;
+ b=sP4WXXThtqcRH2L60jl8kDIxLzzTTNrY+FCptx+CJiD8G2aOtAnBHF6RfWOhw52NBybIE/cj+
+ VwgkWELg9tRBelLN5av60WPhv3EDEItrmLEi/qPDL102G4qrc0RXQLP
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In some cases, the touchscreen is wired to the always-on regulator, so
-resetting is required for proper I2C communication. Add reset support to
-the rmi_i2c driver.
+This small series adds camera flash to an existing similar mainline
+driver and adds it to the Samsung Expressatt's DTS
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+// Tests
+
+// # Navigate to LED
+sudo su
+cd /sys/class/leds/white:flash
+
+// # Should stay at dim brightness
+echo 1 > brightness
+echo 1 > brightness
+echo 1 > brightness
+echo 1 > brightness
+echo 0 > brightness           # LED_OFF
+
+// # Max Brightness
+echo 50 > brightness
+echo 0 > brightness           # LED_OFF
+echo 99 > brightness
+echo 0 > brightness           # LED_OFF
+echo 1000 > brightness
+echo 0 > brightness           # LED_OFF
+echo 100 > brightness
+echo 0 > brightness           # LED_OFF
+
+// # Should increase in brightness
+for i in $(seq 1 16); do echo $i > brightness; sleep 1; done
+echo 0 > brightness           # LED_OFF
+
+// # Test flash strobe (rt8515_led_flash_strobe_set)
+cat max_flash_timeout          # check max
+echo 200000 > flash_timeout    # 200ms
+echo 1 > flash_strobe          # strobe ON → brightness_commit + timer
+cat flash_strobe               # should read 1, then 0 after timeout
+sleep 1
+cat flash_strobe               # should be 0 (timer fired)
+
+// # Test manual strobe cancel
+echo 1 > flash_strobe ; echo 0 > flash_strobe          # immediate off
+
+// # Check regulator error handling
+dmesg | tail -20                     # look for any "failed to turn off LED" msgs
+
+// # Multiple strobes shouldn't cause errors
+echo 200000 > flash_timeout
+echo 1 > flash_strobe
+echo 1 > flash_strobe
+sleep 1
+cat flash_strobe
+dmesg | tail -20
+
+// # Multiple strobes shouldn't cause errors (extreme test)
+for i in $(seq 1 500); do echo 1 > flash_strobe; echo 0 > flash_strobe; done
+dmesg | tail -20
+
+// # Test minimal timeout (turns on briefly)
+echo 1 > flash_timeout
+echo 1 > flash_strobe
+sleep 0.1
+cat flash_strobe
+dmesg | tail -20
+
+// # Flash strobe overrides brightness and flashes at full brightness
+echo 200000 > flash_timeout
+echo 1 > brightness
+echo 1 > flash_strobe
+sleep 1
+cat flash_strobe
+cat brightness
+dmesg | tail -20
+
+Downstream reference:
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
+
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Tested on Lenovo Vibe X2 (S3528 IC).
-Before:
-[    3.944523] rmi4_i2c 2-0038: rmi_set_page: set page failed: -6.
-[    3.944615] rmi4_i2c 2-0038: Failed to set page select to 0
-[    3.944747] rmi4_i2c 2-0038: Dropping the link to regulator.29
-[    3.944917] rmi4_i2c 2-0038: Dropping the link to regulator.0
-[    3.945052] rmi4_i2c 2-0038: probe with driver rmi4_i2c rejects match -6
+Changes in v7:
+- address Lee's comments
+- PM8921_MPP_S4 instead of PM8921_GPIO_S4 for the MPP4 power-source
+- Link to v6: https://lore.kernel.org/r/20260527-expressatt_camera_flash-v6-0-de0f150024e4@gmail.com
 
-After:
-[    3.824640] rmi4_i2c 1-0038: using DT '/soc/i2c@11009000/touchscreen@38' for 'reset' GPIO lookup
-[    3.964557] rmi4_i2c 1-0038: registering I2C-connected sensor
-[    3.964655] device: 'rmi4-00': device_add
-[    3.964682] bus: 'rmi4': add device rmi4-00
-[    3.964716] PM: Adding info for rmi4:rmi4-00
-[    3.964752] rmi4 rmi4-00: bus: 'rmi4': __driver_probe_device: matched device with driver rmi4_physical
-[    3.964768] rmi4 rmi4-00: bus: 'rmi4': really_probe: probing driver rmi4_physical with device
-[    3.964788] rmi4_physical rmi4-00: no default pinctrl state
-[    4.131969] device: 'rmi4-00.fn34': device_add
-[    4.132003] bus: 'rmi4': add device rmi4-00.fn34
-[    4.132041] PM: Adding info for rmi4:rmi4-00.fn34
-[    4.132077] rmi4 rmi4-00.fn34: bus: 'rmi4': __driver_probe_device: matched device with driver rmi4_f34
-[    4.132099] rmi4 rmi4-00.fn34: bus: 'rmi4': really_probe: probing driver rmi4_f34 with device
-[    4.132121] rmi4_f34 rmi4-00.fn34: no default pinctrl state
-[    4.133001] rmi4_f34 rmi4-00.fn34: rmi_f34v7_probe: Unrecognized bootloader version: 29 (\x1d) 16 (\x10)
-[    4.133118] rmi4_f34 rmi4-00.fn34: probe with driver rmi4_f34 failed with error -22
-[    4.134425] device: 'rmi4-00.fn01': device_add
-[    4.134448] bus: 'rmi4': add device rmi4-00.fn01
-[    4.134477] PM: Adding info for rmi4:rmi4-00.fn01
-[    4.134502] rmi4 rmi4-00.fn01: bus: 'rmi4': __driver_probe_device: matched device with driver rmi4_f01
-[    4.134517] rmi4 rmi4-00.fn01: bus: 'rmi4': really_probe: probing driver rmi4_f01 with device
-[    4.134534] rmi4_f01 rmi4-00.fn01: no default pinctrl state
-[    4.141919] rmi4_f01 rmi4-00.fn01: found RMI device, manufacturer: Synaptics, product: X2, fw id: 1730877
-[    4.144846] rmi4_f01 rmi4-00.fn01: driver: 'rmi4_f01': driver_bound: bound to device
-[    4.144898] rmi4_f01 rmi4-00.fn01: bus: 'rmi4': really_probe: bound device to driver rmi4_f01
-[    4.145874] device: 'rmi4-00.fn12': device_add
-[    4.145901] bus: 'rmi4': add device rmi4-00.fn12
-[    4.145935] PM: Adding info for rmi4:rmi4-00.fn12
-[    4.145963] rmi4 rmi4-00.fn12: bus: 'rmi4': __driver_probe_device: matched device with driver rmi4_f12
-[    4.145980] rmi4 rmi4-00.fn12: bus: 'rmi4': really_probe: probing driver rmi4_f12 with device
-[    4.145998] rmi4_f12 rmi4-00.fn12: no default pinctrl state
-[    4.159397] rmi4_f12 rmi4-00.fn12: driver: 'rmi4_f12': driver_bound: bound to device
-[    4.159446] rmi4_f12 rmi4-00.fn12: bus: 'rmi4': really_probe: bound device to driver rmi4_f12
-[    4.161703] device: 'rmi4-00.fn54': device_add
-[    4.161730] bus: 'rmi4': add device rmi4-00.fn54
-[    4.161764] PM: Adding info for rmi4:rmi4-00.fn54
-[    4.164027] device: 'rmi4-00.fn1a': device_add
-[    4.164052] bus: 'rmi4': add device rmi4-00.fn1a
-[    4.164085] PM: Adding info for rmi4:rmi4-00.fn1a
-[    4.164113] rmi4 rmi4-00.fn1a: bus: 'rmi4': __driver_probe_device: matched device with driver rmi4_f1a
-[    4.164128] rmi4 rmi4-00.fn1a: bus: 'rmi4': really_probe: probing driver rmi4_f1a with device
-[    4.164148] rmi4_f1a rmi4-00.fn1a: no default pinctrl state
-[    4.164262] rmi4_f1a rmi4-00.fn1a: driver: 'rmi4_f1a': driver_bound: bound to device
-[    4.164302] rmi4_f1a rmi4-00.fn1a: bus: 'rmi4': really_probe: bound device to driver rmi4_f1a
-[    4.166558] device: 'rmi4-00.fn55': device_add
-[    4.166588] bus: 'rmi4': add device rmi4-00.fn55
-[    4.166619] PM: Adding info for rmi4:rmi4-00.fn55
-[    4.166648] rmi4 rmi4-00.fn55: bus: 'rmi4': __driver_probe_device: matched device with driver rmi4_f55
-[    4.166664] rmi4 rmi4-00.fn55: bus: 'rmi4': really_probe: probing driver rmi4_f55 with device
-[    4.166683] rmi4_f55 rmi4-00.fn55: no default pinctrl state
-[    4.173199] rmi4_f55 rmi4-00.fn55: driver: 'rmi4_f55': driver_bound: bound to device
-[    4.173233] rmi4_f55 rmi4-00.fn55: bus: 'rmi4': really_probe: bound device to driver rmi4_f55
-[    4.175496] device: 'rmi4-00.fn51': device_add
-[    4.175523] bus: 'rmi4': add device rmi4-00.fn51
-[    4.175557] PM: Adding info for rmi4:rmi4-00.fn51
-[    4.180078] input: Synaptics X2 as /devices/platform/soc/11009000.i2c/i2c-1/1-0038/rmi4-00/input/input2
-[    4.184031] rmi4_physical rmi4-00: driver: 'rmi4_physical': driver_bound: bound to device
-[    4.184072] rmi4_physical rmi4-00: bus: 'rmi4': really_probe: bound device to driver rmi4_physical
-[    4.184095] rmi4_i2c 1-0038: driver: 'rmi4_i2c': driver_bound: bound to device
-[    4.184151] rmi4_i2c 1-0038: bus: 'i2c': really_probe: bound device to driver rmi4_i2c
----
- drivers/input/rmi4/rmi_i2c.c | 29 ++++++++++++++++++++++++++---
- 1 file changed, 26 insertions(+), 3 deletions(-)
+Changes in v6:
+- Address Lee Jones's comments:
+    - formatting
+    - use cancel_delayed_work_sync()
+- Link to v5: https://lore.kernel.org/r/20260503-expressatt_camera_flash-v5-0-95524506a799@gmail.com
 
-diff --git a/drivers/input/rmi4/rmi_i2c.c b/drivers/input/rmi4/rmi_i2c.c
-index e11d0acb9b96..da560988f44a 100644
---- a/drivers/input/rmi4/rmi_i2c.c
-+++ b/drivers/input/rmi4/rmi_i2c.c
-@@ -8,6 +8,7 @@
- #include <linux/rmi.h>
- #include <linux/of.h>
- #include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
- #include <linux/regulator/consumer.h>
- #include "rmi_driver.h"
- 
-@@ -40,6 +41,7 @@ struct rmi_i2c_xport {
- 
- 	struct regulator_bulk_data supplies[2];
- 	u32 startup_delay;
-+	struct gpio_desc *reset_gpio;
- };
- 
- #define RMI_PAGE_SELECT_REGISTER 0xff
-@@ -198,6 +200,16 @@ static void rmi_i2c_unregister_transport(void *data)
- 	rmi_unregister_transport_device(&rmi_i2c->xport);
- }
- 
-+static void rmi_i2c_release_reset(struct rmi_i2c_xport *rmi_i2c)
-+{
-+	if (rmi_i2c->reset_gpio) {
-+		usleep_range(10000, 20000);
-+		gpiod_set_value_cansleep(rmi_i2c->reset_gpio, 0);
-+	}
-+
-+	msleep(rmi_i2c->startup_delay);
-+}
-+
- static int rmi_i2c_probe(struct i2c_client *client)
- {
- 	struct rmi_device_platform_data *pdata;
-@@ -235,6 +247,11 @@ static int rmi_i2c_probe(struct i2c_client *client)
- 	if (error < 0)
- 		return error;
- 
-+	rmi_i2c->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
-+						      GPIOD_OUT_HIGH);
-+	if (IS_ERR(rmi_i2c->reset_gpio))
-+		return PTR_ERR(rmi_i2c->reset_gpio);
-+
- 	error = regulator_bulk_enable(ARRAY_SIZE(rmi_i2c->supplies),
- 				       rmi_i2c->supplies);
- 	if (error < 0)
-@@ -249,7 +266,7 @@ static int rmi_i2c_probe(struct i2c_client *client)
- 	of_property_read_u32(client->dev.of_node, "syna,startup-delay-ms",
- 			     &rmi_i2c->startup_delay);
- 
--	msleep(rmi_i2c->startup_delay);
-+	rmi_i2c_release_reset(rmi_i2c);
- 
- 	rmi_i2c->client = client;
- 	mutex_init(&rmi_i2c->page_mutex);
-@@ -297,6 +314,9 @@ static int rmi_i2c_suspend(struct device *dev)
- 	if (ret)
- 		dev_warn(dev, "Failed to resume device: %d\n", ret);
- 
-+	if (rmi_i2c->reset_gpio)
-+		gpiod_set_value_cansleep(rmi_i2c->reset_gpio, 1);
-+
- 	regulator_bulk_disable(ARRAY_SIZE(rmi_i2c->supplies),
- 			       rmi_i2c->supplies);
- 
-@@ -314,7 +334,7 @@ static int rmi_i2c_resume(struct device *dev)
- 	if (ret)
- 		return ret;
- 
--	msleep(rmi_i2c->startup_delay);
-+	rmi_i2c_release_reset(rmi_i2c);
- 
- 	ret = rmi_driver_resume(rmi_i2c->xport.rmi_dev, true);
- 	if (ret)
-@@ -333,6 +353,9 @@ static int rmi_i2c_runtime_suspend(struct device *dev)
- 	if (ret)
- 		dev_warn(dev, "Failed to resume device: %d\n", ret);
- 
-+	if (rmi_i2c->reset_gpio)
-+		gpiod_set_value_cansleep(rmi_i2c->reset_gpio, 1);
-+
- 	regulator_bulk_disable(ARRAY_SIZE(rmi_i2c->supplies),
- 			       rmi_i2c->supplies);
- 
-@@ -350,7 +373,7 @@ static int rmi_i2c_runtime_resume(struct device *dev)
- 	if (ret)
- 		return ret;
- 
--	msleep(rmi_i2c->startup_delay);
-+	rmi_i2c_release_reset(rmi_i2c);
- 
- 	ret = rmi_driver_resume(rmi_i2c->xport.rmi_dev, false);
- 	if (ret)
+Changes in v5:
+- Address Lee Jones's comments:
+    - formatting
+    - use devm_regulator_get_optional()
+    - use a workqueue instead of a timer
+    - previously we were validating ent-gpios xor vin-supply at probe,
+        but was removed. update the commit msg to reflect this
+- Link to v4: https://lore.kernel.org/r/20260331-expressatt_camera_flash-v4-0-f1e99f474513@gmail.com
+
+Changes in v4:
+- Driver:
+    - revert function renames
+    - add comment to use flash instead if torch pin not available
+- Link to v3: https://lore.kernel.org/r/20260326-expressatt_camera_flash-v3-0-e75e5d58990f@gmail.com
+
+Changes in v3:
+- DTS:
+    - Renamed and reordered nodes
+- Driver:
+    - Use regulator_is_enabled() instead of reg_enabled
+    - remove ent xor vin check
+    - remove rt->reg == -ENODEV check
+    - rename functions to reflect what they do and added ret's
+    - Fixed: LED was increasing in brightness when setting the same
+        brightness multiple times
+- Link to v2: https://lore.kernel.org/r/20260318-expressatt_camera_flash-v2-0-5c2b9a623dcb@gmail.com
+
+Changes in v2:
+- dt-bindings: Explain the hardware and not the driver
+- **/*: Use vin-supply instead of unlock-gpio
+- expressatt DTS: Reorder pinctrl-*
+- expressatt DTS: Define rfs-ohms to a default (couldn't find
+                  information about this)
+- Link to v1: https://lore.kernel.org/r/20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com
+
+To: Lee Jones <lee@kernel.org>
+To: Pavel Machek <pavel@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Linus Walleij <linusw@kernel.org>
+To: Liam Girdwood <lgirdwood@gmail.com>
+To: Mark Brown <broonie@kernel.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-leds@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
 
 ---
-base-commit: 68142f986ff04b2b70b31db00f719bf690f64a9a
-change-id: 20260912-rmi4-reset-9a3d22aa024e
+Rudraksha Gupta (3):
+      dt-bindings: leds: rt8515: Support single-GPIO flash ICs with vin supply
+      leds: flash: rt8515: Support single-GPIO flash ICs with vin supply
+      ARM: dts: qcom: msm8960: expressatt: Add camera flash
+
+ .../devicetree/bindings/leds/richtek,rt8515.yaml   |  34 ++++-
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   |  44 ++++++
+ drivers/leds/flash/leds-rt8515.c                   | 147 +++++++++++++++------
+ 3 files changed, 184 insertions(+), 41 deletions(-)
+---
+base-commit: 237a1c39e8dfd3e1c6f1f023eea37a48ec04cc63
+change-id: 20260306-expressatt_camera_flash-13c15a7427aa
+prerequisite-message-id: <20260527-expressatt-touchkey-v2-1-049dca41fc3a@gmail.com>
+prerequisite-patch-id: 2b24e9ba47500ef05d38e37b40d8ca2dceb4716a
 
 Best regards,
 --  
-Roman Vivchar <rva333@protonmail.com>
+Rudraksha Gupta <guptarud@gmail.com>
 
