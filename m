@@ -1,70 +1,90 @@
 From: Mark Amirkan <markdamirkan@gmail.com>
-Date: Sun, 13 Sep 2026 10:30:05 +0000
-Subject: [PATCH net] mptcp: return sk_wait_data() errors from recvmsg()
+Date: Sun, 13 Sep 2026 10:30:37 +0000
+Subject: [PATCH] io_uring/io-wq: stop a single cancel after one running
+ match
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260913-b4-send-mptcp-recv-error-v1-1-4eaa3684a8b8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAC17pmoC/yWMwQ6CMBAFf4Xs2U0KqAF/xXCQ5VXXxNJsKyEh/
- LtVjzPJzEYJpkh0qTYyLJp0DgXqQ0XyuIU7WKfC1Ljm7Pq65fHICWHiV8wS2SALw2w2hne+6zu
- 4kwiVPBq8rr/1lQIyDX+Z3uMTkr9T2vcPxYYZLIEAAAA=
-X-Change-ID: 20260913-b4-send-mptcp-recv-error-ef0f898e05cc
-To: Matthieu Baerts <matttbe@kernel.org>, 
- Mat Martineau <martineau@kernel.org>, mptcp@lists.linux.dev
-Cc: Jakub Kicinski <kuba@kernel.org>, Geliang Tang <geliang@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@kernel.org>, 
- linux-kernel@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>, 
- netdev@vger.kernel.org, Eric Dumazet <edumazet@google.com>
+Message-Id: <20260913-b4-send-io-wq-cancel-v1-1-dcfe47275c6e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAEx7pmoC/yXMSQ6DMAxA0asgr7EUQhjKVRALCKZ1VYUSM0mIu
+ 5OW5Vv8f4CQZxKoogM8rSw8uoAkjsC+Wvck5D4YtNK5eiQpdgaFXI884jahbZ2lD2aqMGU5FFq
+ bDEL69TTw/t/WzW1ZujfZ+feC87wAE6bFqngAAAA=
+X-Change-ID: 20260913-b4-send-io-wq-cancel-507488f72245
+To: Jens Axboe <axboe@kernel.dk>, io-uring@vger.kernel.org
+Cc: Max Kellermann <max.kellermann@ionos.com>, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789295423; l=1552;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789295453; l=2320;
  i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
- bh=nFns6QPwNtc6ZlWxL0DfCPRqrLoyi61MO8NmnrCReZ0=;
- b=zUnCB4O2oj2YTonWyuK6Qcw/TnT5pXlznkPJPKBbwLfP6dmUgoy5JYhplV6fjLQ/c/NfTunoJ
- yPRzcwrZ8Q8A6ln++W+b0owuF5pCAcU12geosagpf0liSbGaRVjlZH4
+ bh=zEcwHR2kQSy3dfsGCzpbxbgI9eHTSwWnoSfY7BAfcpo=;
+ b=cCFKWrKxZT+Dh8OtKAXY4k/2l3YdVhb71iiGjzuYVQ9LKbof4yktciTuZx2U9gHVXvhO3lDU9
+ STu8WUmIXhsBt/s4D4MzUGqqf3hCDE6n/6P/TQ3Nbk07bwwO6mZasv2
 X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
  pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
 X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 581302298524 ("mptcp: error out earlier on disconnect") made
-mptcp_recvmsg() stop when sk_wait_data() returns an error.  The error is
-stored in err, but the function then jumps to a path which returns
-copied.  When no data was copied, recvmsg() therefore returns zero and
-reports a false EOF.
+io_wq_worker_cancel() asks io_acct_for_each_worker() to stop after one
+match when cancel_all is clear.  io_acct_cancel_running_work() discards
+that result, so io_wq_cancel_running_work() continues into the other
+worker account with nr_running already set.
 
-Store the result in copied, which is the value returned by the function.
-This also keeps the usual partial-read result when data was copied before
-the error.
+If the first worker there also matches, one non-ALL cancel signals a
+request in both the bounded and unbounded accounts.
 
-A recvmsg() blocked in one thread reproduces the issue when another
-thread disconnects the same MPTCP socket with connect(AF_UNSPEC).
-Before this change recvmsg() returns zero; afterwards it returns -EPIPE.
+Return the iterator result and stop scanning accounts after a match.
+IORING_ASYNC_CANCEL_ALL is unchanged because its callback does not stop
+the iteration.
 
-Fixes: 581302298524 ("mptcp: error out earlier on disconnect")
+A test runs a blocking open in the bounded account and a blocking
+pipe-to-pipe splice in the unbounded account with the same user_data.
+Before this change both operations are interrupted by one cancel.  After
+the change only the open is interrupted, and the splice completes when
+input is supplied.
+
+Fixes: 751eedc4b4b7 ("io_uring/io-wq: move worker lists to struct io_wq_acct")
 Cc: stable@vger.kernel.org
 Assisted-by: Symbolic
 Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
 ---
- net/mptcp/protocol.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ io_uring/io-wq.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
-index 0098e28309..8dc25ef154 100644
---- a/net/mptcp/protocol.c
-+++ b/net/mptcp/protocol.c
-@@ -2459,7 +2459,7 @@ static int mptcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 		mptcp_cleanup_rbuf(msk, copied);
- 		err = sk_wait_data(sk, &timeo, last);
- 		if (err < 0) {
--			err = copied ? : err;
-+			copied = copied ? : err;
- 			goto out_err;
- 		}
+diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c
+index 2ca223e47d..9f9039e3d3 100644
+--- a/io_uring/io-wq.c
++++ b/io_uring/io-wq.c
+@@ -1181,12 +1181,15 @@ static void io_wq_cancel_pending_work(struct io_wq *wq,
  	}
+ }
+ 
+-static void io_acct_cancel_running_work(struct io_wq_acct *acct,
++static bool io_acct_cancel_running_work(struct io_wq_acct *acct,
+ 					struct io_cb_cancel_data *match)
+ {
++	bool ret;
++
+ 	raw_spin_lock(&acct->workers_lock);
+-	io_acct_for_each_worker(acct, io_wq_worker_cancel, match);
++	ret = io_acct_for_each_worker(acct, io_wq_worker_cancel, match);
+ 	raw_spin_unlock(&acct->workers_lock);
++	return ret;
+ }
+ 
+ static void io_wq_cancel_running_work(struct io_wq *wq,
+@@ -1195,7 +1198,8 @@ static void io_wq_cancel_running_work(struct io_wq *wq,
+ 	rcu_read_lock();
+ 
+ 	for (int i = 0; i < IO_WQ_ACCT_NR; i++)
+-		io_acct_cancel_running_work(&wq->acct[i], match);
++		if (io_acct_cancel_running_work(&wq->acct[i], match))
++			break;
+ 
+ 	rcu_read_unlock();
+ }
 
 ---
-base-commit: 78445023439506ebd83b86d40b1e428a3b309d4a
-change-id: 20260913-b4-send-mptcp-recv-error-ef0f898e05cc
+base-commit: 11773ae6da9c9d92f5d1def78f7e70a9f1fa7b1c
+change-id: 20260913-b4-send-io-wq-cancel-507488f72245
 
 Best regards,
 --  
