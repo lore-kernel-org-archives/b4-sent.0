@@ -1,73 +1,71 @@
-From: Mark Amirkan <markdamirkan@gmail.com>
-Date: Sun, 13 Sep 2026 10:31:43 +0000
-Subject: [PATCH net] net/packet: preserve TX_RING progress on a later frame
- error
+From: Norbert Szetei <norbert@doyensec.com>
+Subject: [PATCH v2 0/2] RDMA/rxe: fix ADVISE_MR prefetch on non-ODP MRs
+Date: Sun, 13 Sep 2026 13:45:14 +0200
+Message-Id: <20260913-rxe-advise-mr-v2-v2-0-b806c789871c@doyensec.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260913-b4-send-packet-tx-progress-v1-1-01b99569cda6@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAI57pmoC/yXMwQrCMAyA4VcZORvo6izOV5Edli7OKHQlqTIYe
- 3erHv//8G1grMIGl2YD5beYLKlGe2gg3sc0M8pUG7zzwfXtEalD4zRhHuOTC5YVsy6zshl6cvF
- MgbpTH6ACWfkm6w+/QuICw3/aix4cy5eFff8AiKklT4MAAAA=
-X-Change-ID: 20260913-b4-send-packet-tx-progress-2b0c8b6b4596
-To: netdev@vger.kernel.org, 
- Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Cc: Paolo Abeni <pabeni@redhat.com>, linux-kernel@vger.kernel.org, 
- Johann Baudy <johann.baudy@gnu-log.net>, Simon Horman <horms@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QpFUBCF4VfRXJvaRpHzKjoXZhuM4mg2UvLut
+ uPyq7X+E4KYSoBPcoLJrkF/cwSlCfihmXtBbaOBHBWuynK0Q7Bp41BwMtwJq5IzR1wyFx7ibTH
+ p9Pgn6+/rsPEofn06cF03ttphCXQAAAA=
+X-Change-ID: 20260913-rxe-advise-mr-v2-97b102b7bb6c
+To: Zhu Yanjun <zyjzyj2000@gmail.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Leon Romanovsky <leon@kernel.org>, Bob Pearson <rpearsonhpe@gmail.com>, 
+ Daisuke Matsuda <dskmtsd@gmail.com>
+Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Zhu Yanjun <yanjun.zhu@linux.dev>, Norbert Szetei <norbert@doyensec.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789295522; l=1484;
- i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
- bh=dhnk2shFALnyl3JxYCIX5pXwOJ09oReH25daGsUO0Vc=;
- b=k5VhyfjCXOqw7mmi8aVQ9fDYsibiMVtyKGHetYprQ+zcj4h7HwcmM/cZvjL7TBO8DHAgwKfzJ
- nUslr5E5LyRA2HbZQU4BRTIjfdfLa6ZuH1xBNmbwvaKLW9RmZsZhCso
-X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
- pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
-X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789300003; l=1834;
+ i=norbert@doyensec.com; s=20260913; h=from:subject:message-id;
+ bh=q5TKN32g5tRPa2GMvzux/v2i38wCpGQecf0oQjVNALs=;
+ b=hYZWDWlFLXaBI0EBj3Qojkc7OJTzdrFVGyn1hLQBFgsM8nyjMZbg769prDM6MvJJzaw7+VGFM
+ 1pi10Pm4MuBA3qGdFcAnNjy5Tfa9lm6aLX0LzuWnDBtrq/gEOm6fd9l
+X-Developer-Key: i=norbert@doyensec.com; a=ed25519;
+ pk=c6ZqJ+mhvi5FloJOiMJUcIPPjT7tczbglx5gruwpVi8=
+X-Endpoint-Received: by B4 Relay for norbert@doyensec.com/20260913 with auth_id=1029
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tpacket_snd() can transmit one or more frames before a later frame fails
-validation.  The failing frame is marked TP_STATUS_WRONG_FORMAT, but its
-error replaces len_sum, so send() reports failure despite the earlier
-transmission.
+ADVISE_MR prefetch on a plain MR runs to_ib_umem_odp() on a struct
+ib_umem, giving a KASAN slab-out-of-bounds read in
+ib_umem_odp_map_dma_and_lock() (splat in patch 2).
 
-Return the completed byte count when it is nonzero, as the allocation
-failure path already does.  Keep TP_STATUS_WRONG_FORMAT on the bad frame
-so userspace can identify it.
+v1 checked is_odp_mr() after lookup_mr(). Leon asked for lookup_mr() to
+do the check itself, off mr->access. That only holds once mr->access
+cannot disagree with the umem, so patch 1 stops the two paths that
+assign mr->access after registration from touching IB_ACCESS_ON_DEMAND,
+and patch 2 passes the flag to lookup_mr() in both prefetch arms.
 
-In a two-frame TPACKET_V2 test, a valid 60-byte frame followed by an
-oversized frame sends the first frame but returns -EMSGSIZE.  With this
-change, send() returns 60 and the second frame remains marked
-TP_STATUS_WRONG_FORMAT.
+Patch 1 adds another failure return to rxe_rereg_user_mr(), so it
+depends on ae36a5b609ae ("RDMA/rxe: validate access flags before
+swapping the MR's PD"), which moved the validation above the
+mr->ibmr.pd swap. The series is based on for-rc.
 
-Fixes: 69e3c75f4d54 ("net: TX_RING and packet mmap")
-Cc: stable@vger.kernel.org
-Assisted-by: Symbolic
-Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
+v1 -> v2:
+ - patch 1 (new): reject IB_ACCESS_ON_DEMAND in rxe_rereg_user_mr() and
+   rxe_reg_fast_mr(), so mr->access keeps agreeing with the umem
+ - patch 2: use lookup_mr(..., IB_ACCESS_ON_DEMAND) instead of an
+   explicit is_odp_mr() check; a non-ODP MR now fails with -EINVAL from
+   lookup_mr() rather than -EOPNOTSUPP
+ - dropped Zhu Yanjun's Reviewed-by, the implementation changed
+
+v1: https://lore.kernel.org/all/521D5E74-89E3-43C0-81C7-AC0BE52591E7@doyensec.com/
+
+Signed-off-by: Norbert Szetei <norbert@doyensec.com>
 ---
- net/packet/af_packet.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Norbert Szetei (2):
+      RDMA/rxe: Reject IB_ACCESS_ON_DEMAND changes after MR creation
+      RDMA/rxe: Reject prefetch of a non-ODP MR
 
-diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
-index 76bde7906d..b7e1848b61 100644
---- a/net/packet/af_packet.c
-+++ b/net/packet/af_packet.c
-@@ -2893,7 +2893,7 @@ static int tpacket_snd(struct packet_sock *po, struct msghdr *msg)
- 				continue;
- 			} else {
- 				status = TP_STATUS_WRONG_FORMAT;
--				err = tp_len;
-+				err = len_sum ? : tp_len;
- 				goto out_status;
- 			}
- 		}
-
+ drivers/infiniband/sw/rxe/rxe_mr.c    | 6 ++++++
+ drivers/infiniband/sw/rxe/rxe_odp.c   | 4 ++--
+ drivers/infiniband/sw/rxe/rxe_verbs.c | 6 ++++++
+ 3 files changed, 14 insertions(+), 2 deletions(-)
 ---
-base-commit: e6b6078ea1731b05b3b552497b3bce4bf8b014ae
-change-id: 20260913-b4-send-packet-tx-progress-2b0c8b6b4596
+base-commit: e22a3627b7151754f07f90ea3d1ab6e85f5d93f4
+change-id: 20260913-rxe-advise-mr-v2-97b102b7bb6c
 
 Best regards,
 --  
-Mark Amirkan <markdamirkan@gmail.com>
+Norbert Szetei <norbert@doyensec.com>
 
