@@ -1,14 +1,13 @@
 From: Norbert Szetei <norbert@doyensec.com>
-Subject: [PATCH v2 0/2] RDMA/rxe: fix ADVISE_MR prefetch on non-ODP MRs
-Date: Sun, 13 Sep 2026 13:45:14 +0200
-Message-Id: <20260913-rxe-advise-mr-v2-v2-0-b806c789871c@doyensec.com>
+Date: Sun, 13 Sep 2026 13:45:15 +0200
+Subject: [PATCH v2 1/2] RDMA/rxe: Reject IB_ACCESS_ON_DEMAND changes after
+ MR creation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QpFUBCF4VfRXJvaRpHzKjoXZhuM4mg2UvLut
- uPyq7X+E4KYSoBPcoLJrkF/cwSlCfihmXtBbaOBHBWuynK0Q7Bp41BwMtwJq5IzR1wyFx7ibTH
- p9Pgn6+/rsPEofn06cF03ttphCXQAAAA=
-X-Change-ID: 20260913-rxe-advise-mr-v2-97b102b7bb6c
+Message-Id: <20260913-rxe-advise-mr-v2-v2-1-b806c789871c@doyensec.com>
+References: <20260913-rxe-advise-mr-v2-v2-0-b806c789871c@doyensec.com>
+In-Reply-To: <20260913-rxe-advise-mr-v2-v2-0-b806c789871c@doyensec.com>
 To: Zhu Yanjun <zyjzyj2000@gmail.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
  Leon Romanovsky <leon@kernel.org>, Bob Pearson <rpearsonhpe@gmail.com>, 
  Daisuke Matsuda <dskmtsd@gmail.com>
@@ -16,56 +15,80 @@ Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
  Zhu Yanjun <yanjun.zhu@linux.dev>, Norbert Szetei <norbert@doyensec.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789300003; l=1834;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789300003; l=2511;
  i=norbert@doyensec.com; s=20260913; h=from:subject:message-id;
- bh=q5TKN32g5tRPa2GMvzux/v2i38wCpGQecf0oQjVNALs=;
- b=hYZWDWlFLXaBI0EBj3Qojkc7OJTzdrFVGyn1hLQBFgsM8nyjMZbg769prDM6MvJJzaw7+VGFM
- 1pi10Pm4MuBA3qGdFcAnNjy5Tfa9lm6aLX0LzuWnDBtrq/gEOm6fd9l
+ bh=WfQ+zWkXJa3zyWUSkxo61iXUBwiw4y7RVv8+6skS7S8=;
+ b=uCGIqDGe7VX55U16C43zCc8eXH7mDUR8/6keThP82xn2mfG1r/FnfNMF/OysI2ZUIaNEY1vSG
+ L/bV/auc0P1A7o6y6pK0qJgO4gH6M9LIaGAE9pKqm63i6961qBc7hS4
 X-Developer-Key: i=norbert@doyensec.com; a=ed25519;
  pk=c6ZqJ+mhvi5FloJOiMJUcIPPjT7tczbglx5gruwpVi8=
 X-Endpoint-Received: by B4 Relay for norbert@doyensec.com/20260913 with auth_id=1029
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ADVISE_MR prefetch on a plain MR runs to_ib_umem_odp() on a struct
-ib_umem, giving a KASAN slab-out-of-bounds read in
-ib_umem_odp_map_dma_and_lock() (splat in patch 2).
+Whether an MR is an ODP MR is decided once, at registration time:
+rxe_reg_user_mr() picks rxe_odp_mr_init_user() over rxe_mr_init_user()
+based on IB_ACCESS_ON_DEMAND, and only the former builds an ib_umem_odp
+via ib_umem_odp_get(). The umem cannot change type afterwards, and
+is_odp_mr() reads mr->umem->is_odp.
 
-v1 checked is_odp_mr() after lookup_mr(). Leon asked for lookup_mr() to
-do the check itself, off mr->access. That only holds once mr->access
-cannot disagree with the umem, so patch 1 stops the two paths that
-assign mr->access after registration from touching IB_ACCESS_ON_DEMAND,
-and patch 2 passes the flag to lookup_mr() in both prefetch arms.
+Two paths assign mr->access after that point and can leave it
+describing an MR type the umem does not have:
 
-Patch 1 adds another failure return to rxe_rereg_user_mr(), so it
-depends on ae36a5b609ae ("RDMA/rxe: validate access flags before
-swapping the MR's PD"), which moved the validation above the
-mr->ibmr.pd swap. The series is based on for-rc.
+rxe_rereg_user_mr() with IB_MR_REREG_ACCESS overwrites mr->access with
+the caller's value, and IB_ACCESS_ON_DEMAND is part of
+RXE_ACCESS_SUPPORTED_MR, so userspace can set the flag on a plain MR or
+clear it on an ODP MR while the umem stays what it was.
 
-v1 -> v2:
- - patch 1 (new): reject IB_ACCESS_ON_DEMAND in rxe_rereg_user_mr() and
-   rxe_reg_fast_mr(), so mr->access keeps agreeing with the umem
- - patch 2: use lookup_mr(..., IB_ACCESS_ON_DEMAND) instead of an
-   explicit is_odp_mr() check; a non-ODP MR now fails with -EINVAL from
-   lookup_mr() rather than -EOPNOTSUPP
- - dropped Zhu Yanjun's Reviewed-by, the implementation changed
+rxe_reg_fast_mr() takes mr->access from the REG_MR work request
+unmasked and moves the MR to RXE_MR_STATE_VALID, on an MR that
+rxe_mr_init_fast() left with a NULL umem.
 
-v1: https://lore.kernel.org/all/521D5E74-89E3-43C0-81C7-AC0BE52591E7@doyensec.com/
+Reject IB_ACCESS_ON_DEMAND in both, so mr->access carries the flag only
+for an MR that has an ODP umem and the flag can be used to identify one.
 
+Fixes: 544c7f62cf32 ("RDMA/rxe: Implement rereg_user_mr")
+Cc: stable@vger.kernel.org
 Signed-off-by: Norbert Szetei <norbert@doyensec.com>
 ---
-Norbert Szetei (2):
-      RDMA/rxe: Reject IB_ACCESS_ON_DEMAND changes after MR creation
-      RDMA/rxe: Reject prefetch of a non-ODP MR
-
  drivers/infiniband/sw/rxe/rxe_mr.c    | 6 ++++++
- drivers/infiniband/sw/rxe/rxe_odp.c   | 4 ++--
  drivers/infiniband/sw/rxe/rxe_verbs.c | 6 ++++++
- 3 files changed, 14 insertions(+), 2 deletions(-)
----
-base-commit: e22a3627b7151754f07f90ea3d1ab6e85f5d93f4
-change-id: 20260913-rxe-advise-mr-v2-97b102b7bb6c
+ 2 files changed, 12 insertions(+)
 
-Best regards,
---  
-Norbert Szetei <norbert@doyensec.com>
+diff --git a/drivers/infiniband/sw/rxe/rxe_mr.c b/drivers/infiniband/sw/rxe/rxe_mr.c
+index 71d9ea477289..615da4bb9a38 100644
+--- a/drivers/infiniband/sw/rxe/rxe_mr.c
++++ b/drivers/infiniband/sw/rxe/rxe_mr.c
+@@ -796,6 +796,12 @@ int rxe_reg_fast_mr(struct rxe_qp *qp, struct rxe_send_wqe *wqe)
+ 		return -EINVAL;
+ 	}
+ 
++	/* an MR with no umem is never an ODP MR */
++	if (unlikely(access & IB_ACCESS_ON_DEMAND)) {
++		rxe_dbg_mr(mr, "access = 0x%x requests ODP\n", access);
++		return -EINVAL;
++	}
++
+ 	mr->access = access;
+ 	mr->lkey = key;
+ 	mr->rkey = key;
+diff --git a/drivers/infiniband/sw/rxe/rxe_verbs.c b/drivers/infiniband/sw/rxe/rxe_verbs.c
+index 3864284522eb..46d0810ea2a7 100644
+--- a/drivers/infiniband/sw/rxe/rxe_verbs.c
++++ b/drivers/infiniband/sw/rxe/rxe_verbs.c
+@@ -1337,6 +1337,12 @@ static struct ib_mr *rxe_rereg_user_mr(struct ib_mr *ibmr, int flags,
+ 		return ERR_PTR(-EOPNOTSUPP);
+ 	}
+ 
++	if ((flags & IB_MR_REREG_ACCESS) &&
++	    ((access ^ mr->access) & IB_ACCESS_ON_DEMAND)) {
++		rxe_err_mr(mr, "cannot change IB_ACCESS_ON_DEMAND\n");
++		return ERR_PTR(-EOPNOTSUPP);
++	}
++
+ 	if (flags & IB_MR_REREG_PD) {
+ 		rxe_put(old_pd);
+ 		rxe_get(pd);
+
+-- 
+2.55.0
 
