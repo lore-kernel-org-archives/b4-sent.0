@@ -1,90 +1,71 @@
 From: Mark Amirkan <markdamirkan@gmail.com>
-Date: Sun, 13 Sep 2026 10:30:37 +0000
-Subject: [PATCH] io_uring/io-wq: stop a single cancel after one running
- match
+Date: Sun, 13 Sep 2026 10:31:08 +0000
+Subject: [PATCH net] net/packet: avoid truncating TPACKET_V3 private size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260913-b4-send-io-wq-cancel-v1-1-dcfe47275c6e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEx7pmoC/yXMSQ6DMAxA0asgr7EUQhjKVRALCKZ1VYUSM0mIu
- 5OW5Vv8f4CQZxKoogM8rSw8uoAkjsC+Wvck5D4YtNK5eiQpdgaFXI884jahbZ2lD2aqMGU5FFq
- bDEL69TTw/t/WzW1ZujfZ+feC87wAE6bFqngAAAA=
-X-Change-ID: 20260913-b4-send-io-wq-cancel-507488f72245
-To: Jens Axboe <axboe@kernel.dk>, io-uring@vger.kernel.org
-Cc: Max Kellermann <max.kellermann@ionos.com>, linux-kernel@vger.kernel.org
+Message-Id: <20260913-b4-send-packet-private-v1-1-925eab2cd388@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGx7pmoC/yWMzQrCMBAGX6Xs2YU01mJ9FekhP5+6CjFkYxFK3
+ 92oxxmYWUlRBEqnbqWCRVSeqUG/6yjcXLqCJTYma+xopn7PfmBFipxdeKByLrK4Ch6m6H00R2f
+ HA7U4F1zk/RufKaHS/Jf68neE+l3Stn0A6apwK38AAAA=
+X-Change-ID: 20260913-b4-send-packet-private-49dbbd08a265
+To: Willem de Bruijn <willemdebruijn.kernel@gmail.com>, 
+ netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>, 
+ Eric Dumazet <edumazet@google.com>, Simon Horman <horms@kernel.org>, 
+ Chetan Loke <loke.chetan@gmail.com>, Jakub Kicinski <kuba@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789295453; l=2320;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789295487; l=1549;
  i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
- bh=zEcwHR2kQSy3dfsGCzpbxbgI9eHTSwWnoSfY7BAfcpo=;
- b=cCFKWrKxZT+Dh8OtKAXY4k/2l3YdVhb71iiGjzuYVQ9LKbof4yktciTuZx2U9gHVXvhO3lDU9
- STu8WUmIXhsBt/s4D4MzUGqqf3hCDE6n/6P/TQ3Nbk07bwwO6mZasv2
+ bh=Xrbgrj2e+0VtiEmFZJKiwvN6mF1r9zb2KOZmKfHcoEo=;
+ b=ViISPkrNOzUErHhzk7g0veNyTTw2KwI8ocX+cBTB3PYd/mydDVg8fT9d6MYU0RCIejslPrWW8
+ Rdbb50RwMGhARgPIOKVxfjIlFowy/+OU3YfRnddMS0s6UKzqsQffI0/
 X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
  pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
 X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-io_wq_worker_cancel() asks io_acct_for_each_worker() to stop after one
-match when cancel_all is clear.  io_acct_cancel_running_work() discards
-that result, so io_wq_cancel_running_work() continues into the other
-worker account with nr_running already set.
+tpacket_req3.tp_sizeof_priv is an unsigned int, and packet_set_ring()
+validates the full value against the block size.  init_prb_bdqc() then
+stores it in the unsigned short blk_sizeof_priv field.
 
-If the first worker there also matches, one non-ALL cancel signals a
-request in both the bounded and unbounded accounts.
+Commit 2b6867c2ce76 ("net/packet: fix overflow in check for priv area
+size") fixed the validation arithmetic, but an accepted value above
+USHRT_MAX still narrows when it is stored.
 
-Return the iterator result and stop scanning accounts after a match.
-IORING_ASYNC_CANCEL_ALL is unchanged because its callback does not stop
-the iteration.
+For a 131072-byte block, tp_sizeof_priv=65536 is valid.  The narrowing
+makes offset_to_first_pkt 48 instead of 65584, so packet records can be
+placed in the private area that userspace asked the kernel to preserve.
 
-A test runs a blocking open in the bounded account and a blocking
-pipe-to-pipe splice in the unbounded account with the same user_data.
-Before this change both operations are interrupted by one cancel.  After
-the change only the open is interrupted, and the splice completes when
-input is supplied.
+blk_sizeof_priv is internal state, so widen it to hold the validated
+UAPI value.
 
-Fixes: 751eedc4b4b7 ("io_uring/io-wq: move worker lists to struct io_wq_acct")
+Fixes: f6fb8f100b80 ("af-packet: TPACKET_V3 flexible buffer implementation.")
 Cc: stable@vger.kernel.org
 Assisted-by: Symbolic
 Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
 ---
- io_uring/io-wq.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ net/packet/internal.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c
-index 2ca223e47d..9f9039e3d3 100644
---- a/io_uring/io-wq.c
-+++ b/io_uring/io-wq.c
-@@ -1181,12 +1181,15 @@ static void io_wq_cancel_pending_work(struct io_wq *wq,
- 	}
- }
+diff --git a/net/packet/internal.h b/net/packet/internal.h
+index b76e645cd7..f5c8cd0eed 100644
+--- a/net/packet/internal.h
++++ b/net/packet/internal.h
+@@ -21,7 +21,7 @@ struct tpacket_kbdq_core {
+ 	unsigned int	hdrlen;
+ 	unsigned char	reset_pending_on_curr_blk;
+ 	unsigned short	kactive_blk_num;
+-	unsigned short	blk_sizeof_priv;
++	unsigned int	blk_sizeof_priv;
  
--static void io_acct_cancel_running_work(struct io_wq_acct *acct,
-+static bool io_acct_cancel_running_work(struct io_wq_acct *acct,
- 					struct io_cb_cancel_data *match)
- {
-+	bool ret;
-+
- 	raw_spin_lock(&acct->workers_lock);
--	io_acct_for_each_worker(acct, io_wq_worker_cancel, match);
-+	ret = io_acct_for_each_worker(acct, io_wq_worker_cancel, match);
- 	raw_spin_unlock(&acct->workers_lock);
-+	return ret;
- }
+ 	unsigned short  version;
  
- static void io_wq_cancel_running_work(struct io_wq *wq,
-@@ -1195,7 +1198,8 @@ static void io_wq_cancel_running_work(struct io_wq *wq,
- 	rcu_read_lock();
- 
- 	for (int i = 0; i < IO_WQ_ACCT_NR; i++)
--		io_acct_cancel_running_work(&wq->acct[i], match);
-+		if (io_acct_cancel_running_work(&wq->acct[i], match))
-+			break;
- 
- 	rcu_read_unlock();
- }
 
 ---
-base-commit: 11773ae6da9c9d92f5d1def78f7e70a9f1fa7b1c
-change-id: 20260913-b4-send-io-wq-cancel-507488f72245
+base-commit: e6b6078ea1731b05b3b552497b3bce4bf8b014ae
+change-id: 20260913-b4-send-packet-private-49dbbd08a265
 
 Best regards,
 --  
