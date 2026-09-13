@@ -1,117 +1,114 @@
-From: Maria Lisina <sekoohaka.sarisan@gmail.com>
-Date: Sun, 13 Sep 2026 17:53:53 +0500
-Subject: [PATCH v3] mfd: intel-lpss: Fix DebugFS initialization
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 14 Sep 2026 00:04:01 +0200
+Subject: [PATCH v2] media: qcom: camss: Don't reject sensor links faster
+ than 4x the CSIPHY timer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260913-intel-lpss-debugfs-v3-1-1b8e2b1f0992@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOCcpmoC/4XNTQ6CMBCG4auQrq2hrRBw5T2Mi9LOwCT8pYONh
- nB3CytXuny/ZJ5ZBUMgYHHNVhEgEtM0pjCnTLjOji1I8qmFznWZ18pIGhfoZT8zSw/Ns0WWgGi
- KKvdK14VIh3MApNeB3h+pO+JlCu/jR1T7+pOLSipZGeOapkREV9/awVJ/dtMgdi7q/4ROhFX2g
- hYL50rzTWzb9gGIcA0c9wAAAA==
-X-Change-ID: 20260913-intel-lpss-debugfs-eff3580d1295
-To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Lee Jones <lee@kernel.org>
-Cc: mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
- Maria Lisina <sekoohaka.sarisan@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2621;
- i=sekoohaka.sarisan@gmail.com; h=from:subject:message-id;
- bh=OVkJMMmF2nNAP+pSJ+NbAfwUA1hhsgKU2CZw5r4W0AY=;
- b=owEBbQKS/ZANAwAKARPrfuqZo5+iAcsmYgBqppzjEw0hXTFqWpVN3rqwYCWeMDGy5njMudwbP
- clhpm2zHJGJAjMEAAEKAB0WIQQ8HZKKOdqg5DRiM0sT637qmaOfogUCaqac4wAKCRAT637qmaOf
- oj8DD/9tdUlqGKBOVJOZG4JdnJe8DbuTY4weyNPBtJK2jgwUk9Y9V4cO5dVjlcFpTAv5P5DFTZE
- yvzbPS34JmdH216m7GcPWv9+gzPgf3w6XOWE52DbxSJFPBYFpcNcJABtwO4Fu9/4EaxnJn0o7M+
- d8OSS0nZPFw+COlkjgOv/wNBEB0oVTHLNes9NbdRtqw4Rw5I96pCVDBNpir9iZ7NAY92BxuEKUY
- MPumWSoVcsSy7OeIR5CN+ALgJ3uZavtDA//FPQb3NbmKVA/KTgBtDsgjuxHjw70p3R/DgzhjAXg
- hNrMYWP5JMHnY1sBv4aKNJ+iHFzKFgKDJFppXXZeyGr1B5+hHqjB2vSI0rthEp2f0xmQOrQwKKU
- faiwbSUxqrQYiay9upI0Cj+bSDYGRBFF1RtUnBfP3ZijPKT7VKmtfbx0RRGs0v7fTL5QZnG5Ma9
- GyOmKyxBfIIIeKG/W4nETwoK2U/HZIzsl6MWaVB4v5RVrrOrmDCVlPp/FJrpiix7SNLb/mi7P3C
- ueVsUUeNhXb00LAhLbqk8ZaQyteiwmy7aGa7En9ZH5ex39gWAiq8uE+aRjc3zvgmo6fqQjV5X28
- hwv3rJszGiq5pE6VNy2PD1OBGQWfhIjRetMLudcKKewEIlTcAsFdPOJ9yXhRjIqq46BhDEVpsYE
- H5qQ37aacTcYQjw==
-X-Developer-Key: i=sekoohaka.sarisan@gmail.com; a=openpgp;
- fpr=3C1D928A39DAA0E43462334B13EB7EEA99A39FA2
-X-Endpoint-Received: by B4 Relay for sekoohaka.sarisan@gmail.com/default with auth_id=1030
+Message-Id: <20260914-csiphy-sdm845-limits-v2-1-622db5a6ebf0@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBBGr0JmbQ0tgsQV9zAsaDuVMfKTTiUg4
+ e4WPIDLl3zfeyswekKGW7KCx4mYhj6COiVg2qZ/oCAbGVSqirRUShimsV0E26685OJFHQUWWmJ
+ mdeNym5UQr6NHR/Ohvdc/5rd+ogm7a1+0xGHwy9Gd5L77k5ikkMJmRard1cSMq2imcDYfqLdt+
+ wK+q0GsyAAAAA==
+X-Change-ID: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
+To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Bjorn Andersson <andersson@kernel.org>, linux-media@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2724; i=david@ixit.cz;
+ h=from:subject:message-id; bh=4Cq9bOXeGKICKWJHpNyYvsyQ9j7GJVD/aYCdslBWgjk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqpx3SFUalm5mC9E2nv/wBYp16G9lduNx5j352M
+ stJXr6XkPWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqcd0gAKCRBgAj/E00kg
+ clLbD/4+CjTgR2qBsW2lv29+7ydJstXFbe0MqkBjKJBxK33hfox9lLhnbqy40UzSWx+UyBb8+rO
+ aZttSoYguDNXTTZ5aooSzzhwCS1X1DXK1bIta7WQ1ubiSPRytWD7FbMQTBqmqIqqjf3UuaPr0PS
+ SiYvqj8B11J8z/xYaCCz7JDIddW0nd9fJeLw2HxMPUDIPjfPYfcBoIbXoitX5ShrbUvATIBfX0N
+ CvvfBu6lDHu9/p/Kz7/A7NhyHCTng2FdtqYhyDh/TTF64GPeHv/+7JzEmYLTG6HOG9nXoJSfMww
+ 0weqpHGm7sUn/aqPCQir4Fn3SGBlVSHHeV/hP420TSSWWn4dMygoLDR9XbnGFhd6Ehq7IywRBZH
+ 0OtVyBNyC9Kf7Y388ECqFePMaexPcaxqbqK0gaAWzuhbsTNPFidr+NITA5H7ZnyWesLVkS79dq/
+ PK2D+tzihFgnrx52q4iQ4qythhVarC3VnT7WYS3wfii601fTfoxG90QgXZN3awXN0iubcqdilxH
+ +YZpRPH6tlN7uB4WSNzdUCh0u+ml4ROD8E8A5+N8YL1db5etY9dierXJUUeT794ekW2SIm8L1fk
+ Fh5HiSx7cl3dC9QOGJZ9JvXH4z8vHPWEyMJL4gUHN0Q+TGo8FcdEfGe1nltlvB9h7i+l2PldQSs
+ SjvDXAZPrTv0Krg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The original code defers DebugFS check with unnecessary warning message
-which also appears when DebugFS is simply disabled.
+The timer clock has no such relationship to the link rate. Both the 2ph
+and 3ph code use it only as the reference for csiphy_settle_cnt_calc(),
+where a faster link makes the settle count smaller, not larger: at
+269.33 MHz the count converges to 16 as the link rate grows. The vendor
+driver pins the timer to 269.33 MHz for every sensor (it is the highest
+rate in the SDM845 clock plan) and streams this exact link with it.
 
-Therefore it spams dmesg with these messages:
+Clamp to the highest listed rate instead of failing, the same way the
+unknown-link-rate case is already handled.
 
-  intel-lpss 0000:00:15.0: Failed to create debugfs entries
-  intel-lpss 0000:00:15.3: Failed to create debugfs entries
-  intel-lpss 0000:00:1e.0: Failed to create debugfs entries
-  intel-lpss 0000:00:1e.2: Failed to create debugfs entries
+Solves issue on sdm845 that caps the link at ~1.02 GHz,
+so the Samsung S5K2X7SP, ~2.3 Gbps/lane, link 1.15 GHz) fails with
+Pixel clock is too high for CSIPHY
 
-This patch adds proper checks to intel_lpss_init() and
-intel_lpss_debugfs_add() functions and removes warning message.
-
-Signed-off-by: Maria Lisina <sekoohaka.sarisan@gmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v3:
-- Fixed commit name and description.
-- Link to v2: https://lore.kernel.org/r/20260913-intel-lpss-debugfs-v2-1-a1a4faf5cc63@gmail.com
-
+Tested on SHIFT 6MQ with sdm845-next-20260820-9.
+---
 Changes in v2:
-- Fixed function name in comment section.
-- Link to v1: https://lore.kernel.org/r/20260913-intel-lpss-debugfs-v1-1-833cbb6fffc9@gmail.com
+- Drop the camcc change entirely; the 269.33 MHz ceiling stands. (Konrad)
+- Fix the check in camss instead: clamp the timer clock to the highest
+  listed rate rather than failing, matching the vendor driver.
+- Link to v1: https://patch.msgid.link/20260822-csiphy-sdm845-limits-v1-1-d360bf7cd38f@ixit.cz
 ---
- drivers/mfd/intel-lpss.c | 19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
+ drivers/media/platform/qcom/camss/camss-csiphy.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/mfd/intel-lpss.c b/drivers/mfd/intel-lpss.c
-index 63d6694f71457b2e09d238af0a9bfb897a169a64..c2cb58c0f98a996d5a2718956092e74139f2a286 100644
---- a/drivers/mfd/intel-lpss.c
-+++ b/drivers/mfd/intel-lpss.c
-@@ -146,9 +146,12 @@ static int intel_lpss_debugfs_add(struct intel_lpss *lpss)
- {
- 	struct dentry *dir;
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
+index 539ac4888b608..f3d17ea0ab515 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
+@@ -157,25 +157,23 @@ static int csiphy_set_clock_rates(struct csiphy_device *csiphy)
+ 			long round_rate;
  
-+	if (!intel_lpss_debugfs) {
-+		lpss->debugfs = NULL;
-+		return 0;
-+	}
-+
- 	dir = debugfs_create_dir(dev_name(lpss->dev), intel_lpss_debugfs);
--	if (IS_ERR(dir))
--		return PTR_ERR(dir);
+ 			camss_add_clock_margin(&min_rate);
  
- 	/* Cache the values into lpss structure */
- 	intel_lpss_cache_ltr(lpss);
-@@ -432,10 +435,7 @@ int intel_lpss_probe(struct device *dev,
- 		goto err_clk_register;
+ 			for (j = 0; j < clock->nfreqs; j++)
+ 				if (min_rate < clock->freq[j])
+ 					break;
  
- 	intel_lpss_ltr_expose(lpss);
+-			if (j == clock->nfreqs) {
+-				dev_err(dev,
+-					"Pixel clock is too high for CSIPHY\n");
+-				return -EINVAL;
+-			}
 -
--	ret = intel_lpss_debugfs_add(lpss);
--	if (ret)
--		dev_warn(dev, "Failed to create debugfs entries\n");
-+	intel_lpss_debugfs_add(lpss);
+-			/* if sensor pixel clock is not available */
+-			/* set highest possible CSIPHY clock rate */
+-			if (min_rate == 0)
++			/*
++			 * The timer clock is only the reference for the
++			 * settle count and does not need to track the link
++			 * rate. Use the highest listed rate when the link is
++			 * faster than the table covers or unknown.`
++			 */
++			if (j == clock->nfreqs || min_rate == 0)
+ 				j = clock->nfreqs - 1;
  
- 	if (intel_lpss_has_idma(lpss)) {
- 		ret = mfd_add_devices(dev, lpss->devid, &intel_lpss_idma64_cell,
-@@ -539,6 +539,13 @@ EXPORT_NS_GPL_DEV_PM_OPS(intel_lpss_pm_ops, INTEL_LPSS) = {
- static int __init intel_lpss_init(void)
- {
- 	intel_lpss_debugfs = debugfs_create_dir("intel_lpss", NULL);
-+
-+	/* Ensure intel_lpss_debugfs stays NULL on error,
-+	 * so intel_lpss_debugfs_add() exits properly.
-+	 */
-+	if (IS_ERR(intel_lpss_debugfs))
-+		intel_lpss_debugfs = NULL;
-+
- 	return 0;
- }
- module_init(intel_lpss_init);
+ 			round_rate = clk_round_rate(clock->clk, clock->freq[j]);
+ 			if (round_rate < 0) {
+ 				dev_err(dev, "clk round rate failed: %ld\n",
+ 					round_rate);
+ 				return -EINVAL;
+ 			}
 
 ---
-base-commit: 2f0c1cf72f4682178506f513bbf015e591b1aa4a
-change-id: 20260913-intel-lpss-debugfs-eff3580d1295
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
 
 Best regards,
--- 
-Maria Lisina <sekoohaka.sarisan@gmail.com>
+--  
+David Heidelberg <david@ixit.cz>
 
