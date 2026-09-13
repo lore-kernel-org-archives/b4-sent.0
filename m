@@ -1,35 +1,35 @@
 From: Maria Lisina <sekoohaka.sarisan@gmail.com>
-Date: Sun, 13 Sep 2026 17:49:11 +0500
-Subject: [PATCH v2] mfd/intel-lpss: Fix DebugFS initialization
+Date: Sun, 13 Sep 2026 17:53:53 +0500
+Subject: [PATCH v3] mfd: intel-lpss: Fix DebugFS initialization
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260913-intel-lpss-debugfs-v2-1-a1a4faf5cc63@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMabpmoC/32NSwqDQBAFryK9TgdnBkWzyj3EhY7d2uCPaSMJ4
- t0z8QBZVsGrd4BSEFJ4JAcE2kVlmSPYWwJ+aOaeULrIYFObp6VxKPNGI46rKnbUvnpWJGaXFWl
- nbJlBHK6BWN5XtKojD6LbEj7Xx25+9m9uN2iwcM63bc7Mvnz2UyPj3S8T1Od5fgFcEVjmtAAAA
- A==
+Message-Id: <20260913-intel-lpss-debugfs-v3-1-1b8e2b1f0992@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOCcpmoC/4XNTQ6CMBCG4auQrq2hrRBw5T2Mi9LOwCT8pYONh
+ nB3CytXuny/ZJ5ZBUMgYHHNVhEgEtM0pjCnTLjOji1I8qmFznWZ18pIGhfoZT8zSw/Ns0WWgGi
+ KKvdK14VIh3MApNeB3h+pO+JlCu/jR1T7+pOLSipZGeOapkREV9/awVJ/dtMgdi7q/4ROhFX2g
+ hYL50rzTWzb9gGIcA0c9wAAAA==
 X-Change-ID: 20260913-intel-lpss-debugfs-eff3580d1295
 To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
  Lee Jones <lee@kernel.org>
 Cc: mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
  Maria Lisina <sekoohaka.sarisan@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2468;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2621;
  i=sekoohaka.sarisan@gmail.com; h=from:subject:message-id;
- bh=ObhylMvBLeRGP+c+qG/FbxaQVC32MIujLgILkv2Vqy4=;
- b=owEBbQKS/ZANAwAKARPrfuqZo5+iAcsmYgBqppvQHgPFedfrDk2pLoPHPjV5eByNXH1CK3RoH
- U9d2kUS6MqJAjMEAAEKAB0WIQQ8HZKKOdqg5DRiM0sT637qmaOfogUCaqab0AAKCRAT637qmaOf
- onR5D/9FAEnj5NRceIFDPBYNbMlWBvZXYvf4+Q8Yf/W575f4mH1DfVI9gijvSJ//EEex0TUEuaK
- QkGjniZ7HNA4guQc09yzNgGtq1nwpOqYBqhfcVVR9FWWE/Hw7JzyXLCxBTdsivgcNJIWD8FHWDl
- 7ZQJdvo9oyt3+WaumB55pSPX2HfqIRj4kZw0N/nI1sTmmJpo3vSBSlhqjFcRJ82WONjbIRKYInM
- i+O2UxUPN2EtqI0rSYFCrOPRfMxfZUx4p20LIRteVTDKfozcLH04RiDBIBT/KisnQICj1NIPOSv
- jUG9AURr/SH3GuOJrLNy30K+lmRDqnZUYGF8FUzXjCrYjCFdI395TunAsyQRzPdtS5E9Ou07XhJ
- GUjIm1L6jDkGK6MKjnYTnDE/F8KiBMTqZxsMpLUAi8lDgBWCgyINVD6mLIRXzNbvOSJLTE8yhkV
- m5CEO5TxtstfVntpdWc6xhZE6cLQgqZ3PS3zo/tO634K+whnimVrviwo6O36lDaIiaqqhqt6QmE
- Ou9sbFeGw0hG8Ygs8t9lF96VVtd+Q6TrPzkOjAiBAJlrQtGWSEBXUQIvZ/ec1jLXvrs90zEva9j
- boPZtdIB/YS8ax/EKlhC0ppQgzlBVkyXtN3RNSP1Jb16MudQweGLTAUvYMawAUflcsciWVbeuqp
- kNCEUuxcI/mPdlQ==
+ bh=OVkJMMmF2nNAP+pSJ+NbAfwUA1hhsgKU2CZw5r4W0AY=;
+ b=owEBbQKS/ZANAwAKARPrfuqZo5+iAcsmYgBqppzjEw0hXTFqWpVN3rqwYCWeMDGy5njMudwbP
+ clhpm2zHJGJAjMEAAEKAB0WIQQ8HZKKOdqg5DRiM0sT637qmaOfogUCaqac4wAKCRAT637qmaOf
+ oj8DD/9tdUlqGKBOVJOZG4JdnJe8DbuTY4weyNPBtJK2jgwUk9Y9V4cO5dVjlcFpTAv5P5DFTZE
+ yvzbPS34JmdH216m7GcPWv9+gzPgf3w6XOWE52DbxSJFPBYFpcNcJABtwO4Fu9/4EaxnJn0o7M+
+ d8OSS0nZPFw+COlkjgOv/wNBEB0oVTHLNes9NbdRtqw4Rw5I96pCVDBNpir9iZ7NAY92BxuEKUY
+ MPumWSoVcsSy7OeIR5CN+ALgJ3uZavtDA//FPQb3NbmKVA/KTgBtDsgjuxHjw70p3R/DgzhjAXg
+ hNrMYWP5JMHnY1sBv4aKNJ+iHFzKFgKDJFppXXZeyGr1B5+hHqjB2vSI0rthEp2f0xmQOrQwKKU
+ faiwbSUxqrQYiay9upI0Cj+bSDYGRBFF1RtUnBfP3ZijPKT7VKmtfbx0RRGs0v7fTL5QZnG5Ma9
+ GyOmKyxBfIIIeKG/W4nETwoK2U/HZIzsl6MWaVB4v5RVrrOrmDCVlPp/FJrpiix7SNLb/mi7P3C
+ ueVsUUeNhXb00LAhLbqk8ZaQyteiwmy7aGa7En9ZH5ex39gWAiq8uE+aRjc3zvgmo6fqQjV5X28
+ hwv3rJszGiq5pE6VNy2PD1OBGQWfhIjRetMLudcKKewEIlTcAsFdPOJ9yXhRjIqq46BhDEVpsYE
+ H5qQ37aacTcYQjw==
 X-Developer-Key: i=sekoohaka.sarisan@gmail.com; a=openpgp;
  fpr=3C1D928A39DAA0E43462334B13EB7EEA99A39FA2
 X-Endpoint-Received: by B4 Relay for sekoohaka.sarisan@gmail.com/default with auth_id=1030
@@ -45,11 +45,15 @@ Therefore it spams dmesg with these messages:
   intel-lpss 0000:00:1e.0: Failed to create debugfs entries
   intel-lpss 0000:00:1e.2: Failed to create debugfs entries
 
-This patch adds proper checks to intel_lpss_exit() and
+This patch adds proper checks to intel_lpss_init() and
 intel_lpss_debugfs_add() functions and removes warning message.
 
 Signed-off-by: Maria Lisina <sekoohaka.sarisan@gmail.com>
 ---
+Changes in v3:
+- Fixed commit name and description.
+- Link to v2: https://lore.kernel.org/r/20260913-intel-lpss-debugfs-v2-1-a1a4faf5cc63@gmail.com
+
 Changes in v2:
 - Fixed function name in comment section.
 - Link to v1: https://lore.kernel.org/r/20260913-intel-lpss-debugfs-v1-1-833cbb6fffc9@gmail.com
