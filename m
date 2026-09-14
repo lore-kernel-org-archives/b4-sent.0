@@ -1,66 +1,52 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 14 Sep 2026 08:56:08 +0000
-Subject: [PATCH] pmdomain: amlogic: Keep Amlogic A9 ETH domain always on
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Mon, 14 Sep 2026 04:37:24 -0500
+Subject: [PATCH RESEND] Bluetooth: btbcm: Add entry for BCM4356A3 UART
+ bluetooth
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-a9-pwr-eth-v1-1-752005131135@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAKe2p2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDS0MT3URL3YLyIt3UkgxdM0MD0zQL8zTLNNNUJaCGgqLUtMwKsGHRsbW
- 1AJXB/KxcAAAA
-X-Change-ID: 20260914-a9-pwr-eth-6105f87f9f5e
-To: Ulf Hansson <ulfh@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Qingpeng Yang <qingpeng.yang@amlogic.com>, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+Message-Id: <20260914-bcm4356a3-bt-v1-1-ce44d0abb5db@gmail.com>
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>
+Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789376170; l=1200;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=9qMUad9FU6+wYS82AvwnPOBXh42Rv4up5LorY693ESs=;
- b=tko0/R7PKuB0XsbGu+238gRyuJkZ2G0grG4LU/4gsM3oPW9tHndYA+300KtG/VVqHOmAvMpir
- Ar8z80zCKuDA/0AtjPVCXmk62hTUOYWVdPHEIVkPGRlzYqNptAjkhl8
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789378684; l=1010;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=bQ6WFjUIqP2rPELTYAWoRuAn5MAUJ18Jq8ZRipAGP0w=;
+ b=8OUptnnuLKHDleCzLZRrCt5VceNmOhOqslfjCD1QV3P3xw5xezfea/Gb5tV7OY71WWvIh9qgj
+ hKCW0VMIp/EDwAVDMyp2Vp52VDxGpukgEr36a0uCFu0T/e4MEjn/xi5
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Qingpeng Yang <qingpeng.yang@amlogic.com>
+This patch adds the device ID for the bluetooth chip used in the
+Nvidia specific Broadcom BCM4356 PCI-E WiFi / UART BT chip.
 
-Mark the A9 ethernet power domain as always-on since it is required
-for ethernet online wakeup and must not be powered down.
-
-Signed-off-by: Qingpeng Yang <qingpeng.yang@amlogic.com>
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Keep Amlogic A9 ETH domain always on.
----
- drivers/pmdomain/amlogic/meson-secure-pwrc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ drivers/bluetooth/btbcm.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/pmdomain/amlogic/meson-secure-pwrc.c b/drivers/pmdomain/amlogic/meson-secure-pwrc.c
-index 133549956efa..daf09cf86335 100644
---- a/drivers/pmdomain/amlogic/meson-secure-pwrc.c
-+++ b/drivers/pmdomain/amlogic/meson-secure-pwrc.c
-@@ -196,7 +196,8 @@ static const struct meson_secure_pwrc_domain_desc a9_pwrc_domains[] = {
- 	SEC_PD(A9_VICP,		0),
- 	SEC_PD(A9_SD_EMMC_A,	0),
- 	SEC_PD(A9_SD_EMMC_B,	0),
--	SEC_PD(A9_ETH,		0),
-+	/* ETH is for ethernet online wakeup, and should be always on */
-+	SEC_PD(A9_ETH,		GENPD_FLAG_ALWAYS_ON),
- 	SEC_PD(A9_PCIE_A,	0),
- 	SEC_PD(A9_PCIE_B,	0),
- 	SEC_PD(A9_NNA_4T,	0),
+diff --git a/drivers/bluetooth/btbcm.c b/drivers/bluetooth/btbcm.c
+index 463d59890befe..14acea7325478 100644
+--- a/drivers/bluetooth/btbcm.c
++++ b/drivers/bluetooth/btbcm.c
+@@ -506,6 +506,7 @@ static const struct bcm_subver_table bcm_uart_subver_table[] = {
+ 	{ 0x6606, "BCM4345C5"	},	/* 003.006.006 */
+ 	{ 0x230f, "BCM4356A2"	},	/* 001.003.015 */
+ 	{ 0x2310, "BCM4343A2"	},	/* 001.003.016 */
++	{ 0x2409, "BCM4356A3"	},	/* 001.004.009 */
+ 	{ 0x220e, "BCM20702A1"  },	/* 001.002.014 */
+ 	{ 0x420d, "BCM4349B1"	},	/* 002.002.013 */
+ 	{ 0x420e, "BCM4349B1"	},	/* 002.002.014 */
 
 ---
-base-commit: 26b9ea4f00732908c4f87501483c20ecaaf4eca5
-change-id: 20260914-a9-pwr-eth-6105f87f9f5e
+base-commit: 49362394dad7df66c274c867a271394c10ca2bb8
+change-id: 20260717-bcm4356a3-bt-cd78cc0f42e8
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Aaron Kling <webgeek1234@gmail.com>
 
