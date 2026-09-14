@@ -1,77 +1,49 @@
-From: Mark Amirkan <markdamirkan@gmail.com>
-Date: Sun, 13 Sep 2026 17:15:52 -0700
-Subject: [PATCH] HID: bpf: reject oversized device events before copying
+From: Takahiro Kuwano <takahiro.kuwano@infineon.com>
+Subject: [PATCH 0/2] mtd: spi-nor: spansion: Cleanup S25FS256S
+Date: Mon, 14 Sep 2026 13:50:35 +0900
+Message-Id: <20260914-s25fs256s-fixup-v1-0-e94019455c1e@infineon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260913-b4-send-hid-bpf-event-bounds-v1-1-614fb56a0635@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CMBAG0KuQWTtJi41/VzEsnPZDxkUhHSAmh
- Ltbdfk2byNDURjdmo0KVjUdc4U/NBSHR36CNVVT69qTu/ojS2BDTjxoYpl6xoo8s4xLTsYhOVz
- 82UVIoFpMBb2+f/29+9sWeSHO35P2/QN9qlUagAAAAA==
-X-Change-ID: 20260913-b4-send-hid-bpf-event-bounds-4d0e8170ceb4
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- bpf@vger.kernel.org, stable@vger.kernel.org, 
- Mark Amirkan <markdamirkan@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789344983; l=2003;
- i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
- bh=Ia7zUbF957KqlNGyqwYypZyyCwU42rijJnHEBVEKNhk=;
- b=/ogx9vdoMRR7AlMAI52cVD4nGYJ2/YRgv9iUk25VVCPdxw4rOqGtU80OanuLdFs4XcUedo0at
- v1g/vX0R8LPDexYwhHBG8kYNxIxHsLcWdv5W7A4/Yt3mRET+GkVUpCJ
-X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
- pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
-X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
+X-B4-Tracking: v=1; b=H4sIABt9p2oC/yWMyw5AMBBFf0VmrYk2lPoVsfCYMhZIB5GIfzdY3
+ MXJzTkXMAZChjK6IOBBTMssoOMIurGZB1TUC4NJjE2c1opN5mWWladzX1Xv8iYr0lZ760CsNaA
+ cX7Gqf+a9nbDb3gzc9wOC8PqWcwAAAA==
+X-Change-ID: 20260911-s25fs256s-fixup-d97a584b1f69
+To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alexander Sverdlin <alex@sverdlin.org>
+Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Takahiro Kuwano <takahiro.kuwano@infineon.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789361446; l=642;
+ i=takahiro.kuwano@infineon.com; s=20250227; h=from:subject:message-id;
+ bh=TMaKqT3wETJ/Kskr95mwiLzIopTwehVGMkfPEoOkcbI=;
+ b=lnjrw4rRAXxTvWObos4WOftuLLGns+FPN0r0oNgviWqSVvkeAamdhX5h8yTGBAG69UfrtqT7K
+ GNY4ZWuAS6ACCVH+jddxxNRdfala2L/j2JEO6K0MUSU5FCtV/hymeEJ
+X-Developer-Key: i=takahiro.kuwano@infineon.com; a=ed25519;
+ pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
+X-Endpoint-Received: by B4 Relay for takahiro.kuwano@infineon.com/20250227 with auth_id=566
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-HID-BPF allocates its device-event buffer from the largest report in the
-device's parsed report descriptor.  dispatch_hid_bpf_device_event() then
-copies the transport-provided report into that buffer before checking its
-size.
+This series cleans up the S25FS256S entries in the Spansion ID table.
+Remove the invalid s25fs256s0 entry and assign the existing S25FS-S
+fixups to s25fs256s1.
 
-An input report larger than the allocated event buffer therefore causes
-a heap out-of-bounds write when a device-event program is attached.  The
-later check of the BPF program's return value cannot prevent the initial
-copy.
-
-Reject reports that exceed either the transport buffer or the persistent
-HID-BPF event buffer before clearing or copying the data.
-
-With a 64-byte event allocation, a same-file KUnit test produced a
-one-byte KASAN out-of-bounds write for a 65-byte report in three runs.
-The 64-byte boundary remained clean.  After this change, both cases were
-clean in three runs and the oversized report returned -EINVAL.  The test
-exercised the production dispatch function but not the complete UHID and
-BPF attachment path.
-
-Fixes: 658ee5a64fcf ("HID: bpf: allocate data memory for device_event BPF programs")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM Symbolic
-Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
+Signed-off-by: Takahiro Kuwano <takahiro.kuwano@infineon.com>
 ---
- drivers/hid/bpf/hid_bpf_dispatch.c | 3 +++
- 1 file changed, 3 insertions(+)
+Takahiro Kuwano (2):
+      mtd: spi-nor: spansion: Remove s25fs256s0
+      mtd: spi-nor: spansion: Assign .fixups to s25fs256s1
 
-diff --git a/drivers/hid/bpf/hid_bpf_dispatch.c b/drivers/hid/bpf/hid_bpf_dispatch.c
-index 536f6d01fd..06ba833eb9 100644
---- a/drivers/hid/bpf/hid_bpf_dispatch.c
-+++ b/drivers/hid/bpf/hid_bpf_dispatch.c
-@@ -50,6 +50,9 @@ dispatch_hid_bpf_device_event(struct hid_device *hdev, enum hid_report_type type
- 	if (!hdev->bpf.device_data)
- 		return data;
- 
-+	if (*size > *buf_size || *size > ctx_kern.ctx.allocated_size)
-+		return ERR_PTR(-EINVAL);
-+
- 	memset(ctx_kern.data, 0, hdev->bpf.allocated_data);
- 	memcpy(ctx_kern.data, data, *size);
- 
-
+ drivers/mtd/spi-nor/spansion.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 ---
-base-commit: 9cdc7e6dc7a99ad7311ad5e7c145f2b9ce4e24b0
-change-id: 20260913-b4-send-hid-bpf-event-bounds-4d0e8170ceb4
+base-commit: eb652d33da1b99c58a1465028b1336af5a3367c5
+change-id: 20260911-s25fs256s-fixup-d97a584b1f69
 
 Best regards,
 --  
-Mark Amirkan <markdamirkan@gmail.com>
+Takahiro Kuwano <takahiro.kuwano@infineon.com>
 
