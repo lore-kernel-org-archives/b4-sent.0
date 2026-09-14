@@ -1,133 +1,83 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Mon, 14 Sep 2026 14:43:42 +0200
-Subject: [PATCH] iio: imu: inv_icm42600: force accel odr change when
- switching power mode
+From: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
+Date: Mon, 14 Sep 2026 07:30:47 -0600
+Subject: [PATCH] arm64: dts: qcom: Fix touchscreen address on Dell Inspiron
+ 7441
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-iio-imu-inv-icm42600-fix-odr-change-event-issue-when-switching-power-mode-v1-1-9bbe0cb3eb07@tdk.com>
-X-B4-Tracking: v=1; b=H4sIAP3rp2oC/y2O2w6CMBBEf4Xss5O0eAH9FeODtgusCS3pcjEh/
- Lv18ngmmZmzknISVroUKyWeRSWGDHZXkOvuoWWIz0ylKU/mbC1EIqSfIGGGuP6QY4NGXog+4V/
- hmcMIUZ0YS8cBusjoOgkthrhwQh89o7Z7X9WmavjoKP8NifPO1+V6+7FOjye78SNA2/YG6h5RM
- K0AAAA=
-X-Change-ID: 20260911-iio-imu-inv-icm42600-fix-odr-change-event-issue-when-switching-power-mode-813d7807fe5c
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Message-Id: <20260914-dell7441-touchscreen-v1-1-d79540ca5e81@est.una.ac.cr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMyw7CIBBFf6WZtSSABB+/YlwAHWVMpWaGGpOm/
+ y7o8tzcc1YQZEKB87AC45uE5tLA7AZIOZQ7Khobg9XW65NxasRpOjhnVJ2XlCUxYlE+eqvN3h1
+ D9NDUF+ONPr/s5fpnWeIDU+2t/ohBUEUOJeU+PYNUZNi2Lxvirp6RAAAA
+X-Change-ID: 20260914-dell7441-touchscreen-6b6201348ab6
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Val Packett <val@packett.cool>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789389839; l=4187;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=WBL1h1VZ++TsPLXkm1zUr0D3bZ+XYIOH2ftsXG9Um3A=;
- b=g550qyeV5zMce1PI/8k/dzj6ckSaQV+QAP0LJwN9RRmGTb6Vq0JQ3Z0QfCo6IMGBwNuX1qyaP
- LBAeeLvog/cAdKjQYiNcB73sUghEhah2aBKE3etDEgkpELpbfiV8uXK
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789392660; l=1937;
+ i=avalon.vargas.centeno@est.una.ac.cr; s=avalon-una-20260914;
+ h=from:subject:message-id; bh=cWKOXfSe8ZMCWag3Rxp781xh1Hgee6YPOPUmg88AEUg=;
+ b=FayQ/FIpndcg5F9U82KQTUWBFChd9LE0wC09Rwqx5L/LbJmEocy1yRMpLDy6XxVvXCd7RqZO/
+ e4kAxKsH227CfRIje3fiLIkNHHlW5RPRbbXXgsMdHh8llOfoxy/alhI
+X-Developer-Key: i=avalon.vargas.centeno@est.una.ac.cr; a=ed25519;
+ pk=I7FZ301yhA9Jl2LReBEqv+9LUrd5zi397CIT2gTB6RE=
+X-Endpoint-Received: by B4 Relay for avalon.vargas.centeno@est.una.ac.cr/avalon-una-20260914 with auth_id=1032
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When accel must switch from low-power mode to low-noise due to a change in
-ODR, there is an hardware bug that sometimes prevent the ODR change flag
-to be set in the FIFO header. If this happens, the driver is stuck waiting
-for the ODR change flag that is never happening.
+The LXST2021 touchscreen on the tested Dell Inspiron 14 Plus 7441
+responds at I2C address 0x09, while the device tree specifies 0x10.
+Probing the latter fails with -ENXIO and no touchscreen input device
+is registered.
 
-Fix this by using accel_force_odr flag set when switching mode for forcing
-apply of ODR change. Do the apply after parsing FIFO data to let the flag
-do the job if it is here.
+Use address 0x09, matching the LXST2021 configuration on the related
+Dell Latitude 7455. With this address, the controller identifies as
+29BD:1103 and binds to hid-multitouch. Touch input and suspend/resume
+have been verified on the affected Inspiron using Linux 7.2.4 with
+the equivalent device-tree overlay.
 
-Fixes: ec74ae9fd37c ("iio: imu: inv_icm42600: add accurate timestamping")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Signed-off-by: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h        | 1 +
- drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c  | 9 ++++++++-
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 2 ++
- drivers/iio/imu/inv_icm42600/inv_icm42600_core.c   | 9 +++++++++
- 4 files changed, 20 insertions(+), 1 deletion(-)
+This replaces the earlier report-plus-diff with a patch submission.
+Only one unit has been tested. I have no evidence of double-sourcing
+or a working Inspiron touchscreen at 0x10; a typo remains possible.
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index f6c7c84c7e45..e56943931b6a 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -179,6 +179,7 @@ struct inv_icm42600_state {
- 	struct {
- 		s64 gyro;
- 		s64 accel;
-+		bool accel_force_odr;
- 	} timestamp;
- 	struct inv_icm42600_apex apex;
- 	struct inv_icm42600_fifo fifo;
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-index 65d29de8ecf9..cc8c074777c9 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-@@ -1236,9 +1236,11 @@ int inv_icm42600_accel_parse_fifo(struct iio_dev *indio_dev)
- 			return size;
+touch input and suspend/resume. The native upstream patch has not yet
+undergone a full kernel DTB build or dtbs_check.
+
+Validation: Linux 7.2.4 plus the equivalent local DT overlay, physical
+---
+ arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
+index 75e10d9..0cf5716 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
+@@ -25,9 +25,10 @@ &gpu_zap_shader {
+ };
  
- 		/* update odr */
--		if (odr & INV_ICM42600_SENSOR_ACCEL)
-+		if (odr & INV_ICM42600_SENSOR_ACCEL) {
- 			inv_sensors_timestamp_apply_odr(ts, st->fifo.period,
- 							st->fifo.nb.total, no);
-+			st->timestamp.accel_force_odr = false;
-+		}
+ &i2c8 {
+-	touchscreen@10 {
++	/* LXST2021 */
++	touchscreen@9 {
+ 		compatible = "hid-over-i2c";
+-		reg = <0x10>;
++		reg = <0x09>;
  
- 		/* skip packet if no accel data or data is invalid */
- 		if (accel == NULL || !inv_icm42600_fifo_is_data_valid(accel))
-@@ -1251,5 +1253,10 @@ int inv_icm42600_accel_parse_fifo(struct iio_dev *indio_dev)
- 		iio_push_to_buffers_with_timestamp(indio_dev, &buffer, ts_val);
- 	}
- 
-+	if (st->timestamp.accel_force_odr) {
-+		inv_sensors_timestamp_apply_odr(ts, 0, 0, 0);
-+		st->timestamp.accel_force_odr = false;
-+	}
-+
- 	return 0;
- }
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-index ded45dfe46a2..2bf9fc29d7d2 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-@@ -384,6 +384,8 @@ static int inv_icm42600_buffer_postdisable(struct iio_dev *indio_dev)
- 	mutex_lock(&st->lock);
- 
- 	inv_sensors_timestamp_apply_odr(ts, 0, 0, 0);
-+	if (sensor == INV_ICM42600_SENSOR_ACCEL)
-+		st->timestamp.accel_force_odr = false;
- 
- 	ret = inv_icm42600_buffer_set_fifo_en(st, st->fifo.en & ~sensor);
- 	if (ret)
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-index be8cbecdd92e..cd2e53416f5b 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_core.c
-@@ -325,6 +325,15 @@ int inv_icm42600_set_accel_conf(struct inv_icm42600_state *st,
- 		break;
- 	}
- 
-+	/*
-+	 * If we change mode from low-power to low-noise because of odr,
-+	 * we need to force odr change.
-+	 */
-+	if (oldconf->mode == INV_ICM42600_SENSOR_MODE_LOW_POWER &&
-+	    conf->mode == INV_ICM42600_SENSOR_MODE_LOW_NOISE &&
-+	    conf->odr != oldconf->odr)
-+		st->timestamp.accel_force_odr = true;
-+
- 	/* set ACCEL_CONFIG0 register (accel fullscale & odr) */
- 	if (conf->fs != oldconf->fs || conf->odr != oldconf->odr) {
- 		val = INV_ICM42600_ACCEL_CONFIG0_FS(conf->fs) |
+ 		hid-descr-addr = <0x1>;
+ 		interrupts-extended = <&tlmm 51 IRQ_TYPE_LEVEL_LOW>;
 
 ---
-base-commit: a7c07602e00596a45de8a4a700af96392953ed38
-change-id: 20260911-iio-imu-inv-icm42600-fix-odr-change-event-issue-when-switching-power-mode-813d7807fe5c
+base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
+change-id: 20260914-dell7441-touchscreen-6b6201348ab6
 
 Best regards,
 --  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
 
