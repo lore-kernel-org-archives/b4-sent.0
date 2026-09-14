@@ -1,114 +1,76 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 14 Sep 2026 00:04:01 +0200
-Subject: [PATCH v2] media: qcom: camss: Don't reject sensor links faster
- than 4x the CSIPHY timer
+From: Mark Amirkan <markdamirkan@gmail.com>
+Date: Sun, 13 Sep 2026 17:14:09 -0700
+Subject: [PATCH net] net: lan743x: fix RX checksum use-after-free
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-csiphy-sdm845-limits-v2-1-622db5a6ebf0@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBBGr0JmbQ0tgsQV9zAsaDuVMfKTTiUg4
- e4WPIDLl3zfeyswekKGW7KCx4mYhj6COiVg2qZ/oCAbGVSqirRUShimsV0E26685OJFHQUWWmJ
- mdeNym5UQr6NHR/Ohvdc/5rd+ogm7a1+0xGHwy9Gd5L77k5ikkMJmRard1cSMq2imcDYfqLdt+
- wK+q0GsyAAAAA==
-X-Change-ID: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
-To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Bjorn Andersson <andersson@kernel.org>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20260913-b4-send-lan743x-uaf-v1-1-73d563d08ba9@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBAAvyJ77kKM2pB+pXiIyWq3lG3Jqgji3
+ 03b4wzM7KCUmRRu1Q6ZVlZ+S4H6UkF8BJkIORUGa+zV+LrBoUUlSfgK4tpmwyWM6JNzJqQueuu
+ hlJ9MI2+/6x2EZuj/UpfhSXH+/uA4Tkf7Y+R8AAAA
+X-Change-ID: 20260913-b4-send-lan743x-uaf-9d770ad5c929
+To: Bryan Whitehead <bryan.whitehead@microchip.com>, 
+ UNGLinuxDriver@microchip.com, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Raju Lakkaraju <Raju.Lakkaraju@microchip.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Mark Amirkan <markdamirkan@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2724; i=david@ixit.cz;
- h=from:subject:message-id; bh=4Cq9bOXeGKICKWJHpNyYvsyQ9j7GJVD/aYCdslBWgjk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqpx3SFUalm5mC9E2nv/wBYp16G9lduNx5j352M
- stJXr6XkPWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqcd0gAKCRBgAj/E00kg
- clLbD/4+CjTgR2qBsW2lv29+7ydJstXFbe0MqkBjKJBxK33hfox9lLhnbqy40UzSWx+UyBb8+rO
- aZttSoYguDNXTTZ5aooSzzhwCS1X1DXK1bIta7WQ1ubiSPRytWD7FbMQTBqmqIqqjf3UuaPr0PS
- SiYvqj8B11J8z/xYaCCz7JDIddW0nd9fJeLw2HxMPUDIPjfPYfcBoIbXoitX5ShrbUvATIBfX0N
- CvvfBu6lDHu9/p/Kz7/A7NhyHCTng2FdtqYhyDh/TTF64GPeHv/+7JzEmYLTG6HOG9nXoJSfMww
- 0weqpHGm7sUn/aqPCQir4Fn3SGBlVSHHeV/hP420TSSWWn4dMygoLDR9XbnGFhd6Ehq7IywRBZH
- 0OtVyBNyC9Kf7Y388ECqFePMaexPcaxqbqK0gaAWzuhbsTNPFidr+NITA5H7ZnyWesLVkS79dq/
- PK2D+tzihFgnrx52q4iQ4qythhVarC3VnT7WYS3wfii601fTfoxG90QgXZN3awXN0iubcqdilxH
- +YZpRPH6tlN7uB4WSNzdUCh0u+ml4ROD8E8A5+N8YL1db5etY9dierXJUUeT794ekW2SIm8L1fk
- Fh5HiSx7cl3dC9QOGJZ9JvXH4z8vHPWEyMJL4gUHN0Q+TGo8FcdEfGe1nltlvB9h7i+l2PldQSs
- SjvDXAZPrTv0Krg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789344881; l=2027;
+ i=markdamirkan@gmail.com; s=pscsi-20260818; h=from:subject:message-id;
+ bh=+D0VC0g8sC9iwdKy6+YMNFy+J0OscJTzNWqy5rMabrU=;
+ b=LsFa/Ck+61ygVbvn3cK3h7HmOLhrEcg+D1fG//LEQbKWreZCnKj8nO8wxZYj6UsX6xLSNuUTz
+ HlkaZh5ytQCBUyPHtykaIktIuqlK9S1/z7BTq753h2gi8y86RwMgmTY
+X-Developer-Key: i=markdamirkan@gmail.com; a=ed25519;
+ pk=/wb49ibt4gZFDncmhFQBYtjPvzT1tfJtvK4Mqt1P2Wc=
+X-Endpoint-Received: by B4 Relay for markdamirkan@gmail.com/pscsi-20260818 with auth_id=961
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timer clock has no such relationship to the link rate. Both the 2ph
-and 3ph code use it only as the reference for csiphy_settle_cnt_calc(),
-where a faster link makes the settle count smaller, not larger: at
-269.33 MHz the count converges to 16 as the link rate grows. The vendor
-driver pins the timer to 269.33 MHz for every sensor (it is the highest
-rate in the SDM845 clock plan) and streams this exact link with it.
+lan743x_rx_process_buffer() adds each non-first receive buffer to the
+head skb's frag_list.  On the last descriptor, lan743x_rx_trim_skb()
+linearizes the head and frees the fragment skb metadata.
 
-Clamp to the highest listed rate instead of failing, the same way the
-unknown-link-rate case is already handled.
+The checksum-success path then writes ip_summed through the local skb
+pointer, which still points to the final fragment.  This causes a
+use-after-free write when a packet spans more than one receive buffer.
 
-Solves issue on sdm845 that caps the link at ~1.02 GHz,
-so the Samsung S5K2X7SP, ~2.3 Gbps/lane, link 1.15 GHz) fails with
-Pixel clock is too high for CSIPHY
+Set ip_summed on the surviving head skb instead.  Multi-buffer receive
+can occur after a live MTU increase because existing ring entries keep
+their old buffer size until they are replenished.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+A KUnit test invoking lan743x_rx_process_buffer() with a two-buffer
+packet produced a one-byte KASAN use-after-free write before this change.
+The same test passed after the change.  The driver object also builds
+with W=1.  This was not tested on physical LAN743x hardware.
+
+Fixes: cd6910501cfd ("net: lan743x: Add support for Rx IP & TCP checksum offload")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM Symbolic
+Signed-off-by: Mark Amirkan <markdamirkan@gmail.com>
 ---
-Tested on SHIFT 6MQ with sdm845-next-20260820-9.
----
-Changes in v2:
-- Drop the camcc change entirely; the 269.33 MHz ceiling stands. (Konrad)
-- Fix the check in camss instead: clamp the timer clock to the highest
-  listed rate rather than failing, matching the vendor driver.
-- Link to v1: https://patch.msgid.link/20260822-csiphy-sdm845-limits-v1-1-d360bf7cd38f@ixit.cz
----
- drivers/media/platform/qcom/camss/camss-csiphy.c | 16 +++++++---------
- 1 file changed, 7 insertions(+), 9 deletions(-)
+ drivers/net/ethernet/microchip/lan743x_main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
-index 539ac4888b608..f3d17ea0ab515 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
-@@ -157,25 +157,23 @@ static int csiphy_set_clock_rates(struct csiphy_device *csiphy)
- 			long round_rate;
- 
- 			camss_add_clock_margin(&min_rate);
- 
- 			for (j = 0; j < clock->nfreqs; j++)
- 				if (min_rate < clock->freq[j])
- 					break;
- 
--			if (j == clock->nfreqs) {
--				dev_err(dev,
--					"Pixel clock is too high for CSIPHY\n");
--				return -EINVAL;
--			}
--
--			/* if sensor pixel clock is not available */
--			/* set highest possible CSIPHY clock rate */
--			if (min_rate == 0)
-+			/*
-+			 * The timer clock is only the reference for the
-+			 * settle count and does not need to track the link
-+			 * rate. Use the highest listed rate when the link is
-+			 * faster than the table covers or unknown.`
-+			 */
-+			if (j == clock->nfreqs || min_rate == 0)
- 				j = clock->nfreqs - 1;
- 
- 			round_rate = clk_round_rate(clock->clk, clock->freq[j]);
- 			if (round_rate < 0) {
- 				dev_err(dev, "clk round rate failed: %ld\n",
- 					round_rate);
- 				return -EINVAL;
- 			}
+diff --git a/drivers/net/ethernet/microchip/lan743x_main.c b/drivers/net/ethernet/microchip/lan743x_main.c
+index 24ae56a3c9ed7..82d3ec20ba259 100644
+--- a/drivers/net/ethernet/microchip/lan743x_main.c
++++ b/drivers/net/ethernet/microchip/lan743x_main.c
+@@ -2604,7 +2604,7 @@ static int lan743x_rx_process_buffer(struct lan743x_rx *rx)
+ 							rx->adapter->netdev);
+ 		if (rx->adapter->netdev->features & NETIF_F_RXCSUM) {
+ 			if (!is_ice && !is_tce && !is_icsm)
+-				skb->ip_summed = CHECKSUM_UNNECESSARY;
++				rx->skb_head->ip_summed = CHECKSUM_UNNECESSARY;
+ 		}
+ 		netdev_dbg(netdev, "sending %d byte frame to OS",
+ 			   rx->skb_head->len);
 
 ---
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260822-csiphy-sdm845-limits-b1e3dbaf5d38
+base-commit: e6b6078ea1731b05b3b552497b3bce4bf8b014ae
+change-id: 20260913-b4-send-lan743x-uaf-9d770ad5c929
 
 Best regards,
 --  
-David Heidelberg <david@ixit.cz>
+Mark Amirkan <markdamirkan@gmail.com>
 
