@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 15 Sep 2026 01:14:57 +0800
-Subject: [PATCH v5 16/17] mm/huge_memory: count only swap cache refs in
- anon folio split
+Date: Tue, 15 Sep 2026 01:14:58 +0800
+Subject: [PATCH v5 17/17] mm/huge_memory: drop the redundant mapping
+ argument of __split_frozen_folio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-swap-thp-cleanup-v5-16-39878b37dfb0@tencent.com>
+Message-Id: <20260915-swap-thp-cleanup-v5-17-39878b37dfb0@tencent.com>
 References: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 In-Reply-To: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 To: linux-mm@kvack.org
@@ -25,134 +25,83 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
  Kairui Song <ryncsn@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=4345;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=2788;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=LOWEUGV9vnWcliQuTxGteL39iwN2Kn7ndHm2EI5yAVw=;
- b=ie6374ir/x+K25U6wjmKfoB0/V1PKSM3rsUQuIIKzzyOIKN76JGaAbZhbDmrNN8BDbQ9Moz/Y
- eHqhH95YDcTCCXWkdYuBHaiBGmnu0Q0G6fglWUZgCQqcJevhOw0Borh
+ bh=+E6N2oy8FpNafU2Z3huhtJo7IvohC2gL0cpJrQRmd9E=;
+ b=Vkn1vtgDfrbSxsGtxl9d7mfIBkJBRGTQUulktuyh7kBaaz+DZJcm4fsJx7vrh7K0SS0EB70ZJ
+ UaRBqz3W1eJBPBnkos8yFgH1tXFyjrFISteDatoWYdmp9bPGOsWhasZ
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Only __folio_freeze_split_anon() sees anon folios and swap cache folios
-now. The file split helper only handles page cache folios, which hold
-exactly folio_nr_pages() references.
+The mapping parameter only served as a non-NULL check to detect
+whether page cache entries need updating.  The xa_state pointer
+conveys exactly the same information: the anon split helper passes
+NULL and the file split helper passes &xas, which is non-NULL iff
+the folio is in the page cache.
 
-Rename folio_cache_ref_count() to folio_swapcache_ref_count() and drop
-the anon check so the helper counts what its name says. The file split
-helper now uses folio_nr_pages() directly.
-
-No feature change.
+Use the xas pointer instead and drop the parameter, along with its
+kerneldoc entry.
 
 Reviewed-by: Zi Yan <ziy@nvidia.com>
 Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
 Reviewed-by: Kiryl Shutsemau (Meta) <kas@kernel.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 35 +++++++++++++++--------------------
- 1 file changed, 15 insertions(+), 20 deletions(-)
+ mm/huge_memory.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index ea8bcace028d..fc4dc3f9b563 100644
+index fc4dc3f9b563..df84a47447c8 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3994,10 +3994,10 @@ int folio_check_splittable(struct folio *folio, unsigned int new_order,
- 	return 0;
- }
- 
--/* Number of folio references from the pagecache or the swapcache. */
--static unsigned int folio_cache_ref_count(const struct folio *folio)
-+/* Number of folio references from the swapcache. */
-+static unsigned int folio_swapcache_ref_count(const struct folio *folio)
+@@ -3830,7 +3830,6 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
+  * @split_at: in buddy allocator like split, the folio containing @split_at
+  *            will be split until its order becomes @new_order.
+  * @xas: xa_state pointing to folio->mapping->i_pages and locked by caller
+- * @mapping: @folio->mapping
+  * @split_type: if the split is uniform or not (buddy allocator like split)
+  *
+  *
+@@ -3863,7 +3862,7 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
+  */
+ static int __split_frozen_folio(struct folio *folio, int new_order,
+ 		struct page *split_at, struct xa_state *xas,
+-		struct address_space *mapping, enum split_type split_type)
++		enum split_type split_type)
  {
--	if (folio_test_anon(folio) && !folio_test_swapcache(folio))
-+	if (!folio_test_swapcache(folio))
- 		return 0;
- 	return folio_nr_pages(folio);
- }
-@@ -4065,7 +4065,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
+ 	const bool is_anon = folio_test_anon(folio);
+ 	int old_order = folio_order(folio);
+@@ -3887,7 +3886,7 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
+ 		if (is_anon && split_order == 1)
+ 			continue;
  
- 	local_irq_disable();
- 
--	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
-+	if (!folio_ref_freeze(folio, folio_swapcache_ref_count(folio) + 1)) {
- 		ret = -EAGAIN;
- 		goto out_no_split;
- 	}
-@@ -4102,7 +4102,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
- 		next = folio_next(new_folio);
- 		zone_device_private_split_cb(folio, new_folio);
- 		folio_ref_unfreeze(new_folio,
--				   folio_cache_ref_count(new_folio) + 1);
-+				   folio_swapcache_ref_count(new_folio) + 1);
- 		if (do_lru)
- 			lru_add_split_folio(folio, new_folio, lruvec, list);
- 		if (ci)
-@@ -4110,7 +4110,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
- 	}
- 
- 	zone_device_private_split_cb(folio, NULL);
--	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
-+	folio_ref_unfreeze(folio, folio_swapcache_ref_count(folio) + 1);
- 
+-		if (mapping) {
++		if (xas) {
+ 			/*
+ 			 * uniform split has xas_split_alloc() called before
+ 			 * irq is disabled to allocate enough memory, whereas
+@@ -4087,8 +4086,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
  	if (do_lru)
- 		lruvec_unlock(lruvec);
-@@ -4139,6 +4139,7 @@ static int __folio_freeze_split_file(struct folio *folio,
- 	struct address_space *mapping = folio->mapping;
- 	XA_STATE(xas, &mapping->i_pages, folio->index);
- 	struct folio *end_folio = folio_next(folio);
-+	long old_nr_pages = folio_nr_pages(folio);
- 	struct mem_cgroup *memcg, *old_memcg;
- 	struct folio *new_folio, *next;
- 	int nr_shmem_dropped = 0;
-@@ -4209,22 +4210,16 @@ static int __folio_freeze_split_file(struct folio *folio,
- 		goto fail;
- 	}
+ 		lruvec = folio_lruvec_lock(folio);
  
--	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
-+	if (!folio_ref_freeze(folio, old_nr_pages + 1)) {
- 		ret = -EAGAIN;
- 		goto fail;
- 	}
+-	ret = __split_frozen_folio(folio, new_order, split_at, NULL,
+-				   NULL, split_type);
++	ret = __split_frozen_folio(folio, new_order, split_at, NULL, split_type);
  
--	if (folio_test_pmd_mappable(folio) &&
--	    new_order < HPAGE_PMD_ORDER) {
--		int nr = folio_nr_pages(folio);
--
--		if (folio_test_swapbacked(folio)) {
--			lruvec_stat_mod_folio(folio,
--					NR_SHMEM_THPS, -nr);
--		} else {
--			lruvec_stat_mod_folio(folio,
--					NR_FILE_THPS, -nr);
--		}
-+	if (folio_test_pmd_mappable(folio) && new_order < HPAGE_PMD_ORDER) {
-+		if (folio_test_swapbacked(folio))
-+			lruvec_stat_mod_folio(folio, NR_SHMEM_THPS, -old_nr_pages);
-+		else
-+			lruvec_stat_mod_folio(folio, NR_FILE_THPS, -old_nr_pages);
- 	}
+ 	/*
+ 	 * Unfreeze the after-split folios and put them back to the right
+@@ -4224,8 +4222,7 @@ static int __folio_freeze_split_file(struct folio *folio,
  
  	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
-@@ -4248,7 +4243,7 @@ static int __folio_freeze_split_file(struct folio *folio,
- 		next = folio_next(new_folio);
+ 	lruvec = folio_lruvec_lock(folio);
+-	ret = __split_frozen_folio(folio, new_order, split_at, &xas,
+-				   mapping, split_type);
++	ret = __split_frozen_folio(folio, new_order, split_at, &xas, split_type);
  
- 		folio_ref_unfreeze(new_folio,
--				   folio_cache_ref_count(new_folio) + 1);
-+				   folio_nr_pages(new_folio) + 1);
- 
- 		lru_add_split_folio(folio, new_folio, lruvec, list);
- 
-@@ -4275,7 +4270,7 @@ static int __folio_freeze_split_file(struct folio *folio,
- 	 * Otherwise, a parallel folio_try_get() can grab @folio
- 	 * and its caller can see stale page cache entries.
- 	 */
--	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
-+	folio_ref_unfreeze(folio, folio_nr_pages(folio) + 1);
- 	lruvec_unlock(lruvec);
- fail:
  	/*
+ 	 * Unfreeze after-split folios and put them back to the right
 
 -- 
 2.55.0
