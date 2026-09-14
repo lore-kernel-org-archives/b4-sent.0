@@ -1,135 +1,126 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Mon, 14 Sep 2026 21:42:21 +0200
-Subject: [PATCH] arm64: dts: qcom: x1: split PAS remoteproc iommus out of
- x1-el2
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH v7 0/3] arm64: dts: freescale: add Free Mobile Nodebox v3
+ CPU Module (LX2160A)
+Date: Mon, 14 Sep 2026 23:01:33 +0200
+Message-Id: <20260914-for-upstream-nbxv3-dts-v7-0-373a142b08d5@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-x1-el2-unfuck-v1-1-00d8bc35a635@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDU0MT3QpD3dQcI93SvLTS5Gxdg2QTM0Mzc1NjizQTJaCegqLUtMwKsHn
- RsbW1AE+96IRfAAAA
-X-Change-ID: 20260514-x1-el2-unfuck-0c46167538f4
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Xin Liu <xin.liu@oss.qualcomm.com>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Nikita Travkin <nikita@trvn.ru>, Birk Skyum <birk.skyum@pm.me>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>, 
- Xin Liu <xin.liu@oss.qualcomm.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789414947; l=3766;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=pcARbTPQLLzJMHpzrEgAxvpBCM84LLIQ4irIlV+wpRg=;
- b=hOgJH7ZgIKORaNu2PEFpC1fObpJibjTEqdFQTFW9H8XrKZERkN8v+deMZW7sbb2gJ32oTjs8Z
- AAVFcSOvpqNCwHIfuoQEyhX2V+6Edk0kynR4v99nFooF9+VBBRwViFL
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-B4-Tracking: v=1; b=H4sIAK1gqGoC/43PPW7DMAwF4KsEmquC+lc69R5FBtGiGg21A8kVE
+ gS+e5UsdQIY7fgI8HvklVUqmSp7211ZoZZrnsYe3MuODccwfhLPsWcmQVrYg+NpKvz7VOdC4Yu
+ PeG6Kx7lyRBoiaFA+SNaXT4VSPt/hj0PPx1znqVzuPU3cpn+STXDgSasUAaRH599TIXpNhd3AJ
+ v+HyI5Y1CFFZYUHfETUGvGbiOqIiN6jHISwHh4RvUKE2ER0R2R/xkVjnAlPl5g1IjcR0xEK0YK
+ OGKx4QuwaUZuI7QgYb6zFvcIgfpFlWX4AnImoyBMCAAA=
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Vincent Jardin <vjardin@free.fr>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789419694; l=3965;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=abhkSVp4+hSR25yIjnuuhX22Z25hgW7n7760yvmKfN8=;
+ b=ZGGXQUp5d2bpOnBKIbhJlinwXBz5sxD4d8eZgnwyO73++EkGbwZkJhBejxwypgjUncyqhCGQY
+ rHU5KEDHtaTCVzHBKTLyQ76KDXRFoS3hv3rGVJ8ZJrRoq2bDb3gnMDu
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The shared x1-el2 overlay currently attaches apps_smmu streams to
-remoteproc_adsp/cdsp so Linux can program those SIDs when PAS is
-used to authenticate and reset the DSPs.
+The Nodebox v3 is a Free Mobile CPU module built around the NXP LX2160A
+(16x Cortex-A72, DPAA2).
 
-That is wrong for the common WoA EL2 path (slbounce + shipping
-UEFI). There the DSPs are already running from the bootloader and
-the SMMU probe path leaves their SIDs in bypass. Describing iommus
-on the remoteproc nodes replaces that bypass with a translated
-context that is never set up, and boot dies in an SMMU fault storm
-on SID 0x1000 before userspace.
+The same fsl-lx2160a-nbxv3.dtsi shall be used verbatim by the
+U-Boot port, sent in parallel to the U-Boot list, so the two trees
+cannot drift.
 
-Move the remoteproc iommus into a new x1-el2-pas overlay and apply
-it only on hamoa-iot-evk, which is the platform that actually needs
-PAS-managed remoteproc under EL2. Other x1e/x1p -el2 DTBs stay on
-the generic overlay.
+Dependency:
 
-Tested on:
-  Lenovo Yoga Slim 7x (83ED, BIOS NHCN62WW) by Birk
-  Lenovo Thinkpad T14s G6 (21N1, Hamoa)
-  Lenovo IdeaCentre Mini 01q8x10 (91B6, Purwa)
-  Lenovo Ideapad 5 2in1 14Q8X9 (83GH, Purwa)
+the DTS uses gpio hogs on the QorIQ GPIO controllers, which
+needs the commit
+  78c0baf85cd0 ("dt-bindings: gpio: fsl,qoriq-gpio: allow gpio-hog child nodes")
+already in gpio/for-next and that will likely arrive in v7.4-rc1.
+Until it lands, dtbs_check reports the five hog nodes, the rest of the
+tree validates clean against the current schemas.
 
-Fixes: 47c88db49f6c ("arm64: dts: qcom: hamoa: Add remoteproc IOMMUS in EL2 device trees")
-Link: https://lore.kernel.org/all/20260130073113.3091884-1-xin.liu@oss.qualcomm.com/
-Suggested-by: Nikita Travkin <nikita@trvn.ru>
-Assisted-by: Grok(xAI):4.6
-Tested-by: Birk Skyum <birk.skyum@pm.me>
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+About the patch 2, following Krzysztof's question on v5: the CPU module
+boots on its own, so it is listed as a plain LX2160A board. It is also
+a SoM that will support many carrier boards.
+
+But those carrier boards are still work in progress, so they are not part
+of this series yet. When they will be, fsl.yaml should get them (not
+included with this series, just for comments and TBC):
+
+      - description: Free Mobile Nodebox v3 CPU Module based Boards
+        items:
+          - enum:
+              - freemobile,nbv30
+              - freemobile,nbv31
+              - freemobile,nbv32
+          - const: freemobile,nbxv3
+          - const: fsl,lx2160a
+
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- arch/arm64/boot/dts/qcom/Makefile        |  2 +-
- arch/arm64/boot/dts/qcom/x1-el2-pas.dtso | 21 +++++++++++++++++++++
- arch/arm64/boot/dts/qcom/x1-el2.dtso     |  8 --------
- 3 files changed, 22 insertions(+), 9 deletions(-)
+Changes in v7:
+- gpio3: both USB over-current different names (Frank Li, Sashiko)
+- dt-bindings: arm: fsl: Acked-by Krzysztof Kozlowski
+- Link to v6: https://lore.kernel.org/r/20260913-for-upstream-nbxv3-dts-v6-0-058566b93ba1@free.fr
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index d6547fb18edf0..1d1cdf057fd99 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -22,7 +22,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= glymur-hp-elitebook-x-g2q.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= glymur-lenovo-yoga-slim7x.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= hamoa-iot-evk.dtb
- 
--hamoa-iot-evk-el2-dtbs	:= hamoa-iot-evk.dtb x1-el2.dtbo
-+hamoa-iot-evk-el2-dtbs := hamoa-iot-evk.dtb x1-el2.dtbo x1-el2-pas.dtbo
- 
- dtb-$(CONFIG_ARCH_QCOM)	+= hamoa-iot-evk-el2.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= hamoa-lenovo-ideacentre-mini-01q8x10.dtb
-diff --git a/arch/arm64/boot/dts/qcom/x1-el2-pas.dtso b/arch/arm64/boot/dts/qcom/x1-el2-pas.dtso
-new file mode 100644
-index 0000000000000..05364b439182a
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/x1-el2-pas.dtso
-@@ -0,0 +1,21 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Extra EL2 overlay for platforms where Linux programs remoteproc
-+ * IOMMU streams because PAS is available.
-+ *
-+ * Do not apply this on current WoA firmware. Those DSPs are started
-+ * by the bootloader and rely on the SMMU SID bypass set up in
-+ * qcom_smmu_cfg_probe(). Attaching iommus here replaces that bypass
-+ * with an empty translated context and faults SID 0x1000.
-+ */
-+
-+/dts-v1/;
-+/plugin/;
-+
-+&remoteproc_adsp {
-+	iommus = <&apps_smmu 0x1000 0x80>;
-+};
-+
-+&remoteproc_cdsp {
-+	iommus = <&apps_smmu 0x0c00 0x0>;
-+};
-diff --git a/arch/arm64/boot/dts/qcom/x1-el2.dtso b/arch/arm64/boot/dts/qcom/x1-el2.dtso
-index ee006742d6f3b..175679be01eba 100644
---- a/arch/arm64/boot/dts/qcom/x1-el2.dtso
-+++ b/arch/arm64/boot/dts/qcom/x1-el2.dtso
-@@ -52,14 +52,6 @@ &pcie_smmu {
- 	status = "okay";
- };
- 
--&remoteproc_adsp {
--	iommus = <&apps_smmu 0x1000 0x80>;
--};
--
--&remoteproc_cdsp {
--	iommus = <&apps_smmu 0x0c00 0x0>;
--};
--
- /*
-  * The "SBSA watchdog" is implemented in software in Gunyah
-  * and can't be used when running in EL2.
+Changes in v6:
+- dt-bindings: arm: fsl: freemobile,nbxv3 no 1 entry enum for the
+  "LX2160A based Boards" (Krzysztof Kozlowski)
+- Link to v5: https://lore.kernel.org/r/20260912-for-upstream-nbxv3-dts-v5-0-ead604dba61b@free.fr
+
+Changes in v5:
+- read dts-coding-style: many reorder/cleanup including
+  comments from Frank Li without functional changes
+- Link to v4: https://lore.kernel.org/r/20260911-for-upstream-nbxv3-dts-v4-0-2fd07d5575ab@free.fr
+
+Changes in v4:
+- dt-bindings: arm: fsl: commit message like the other ones (Krzysztof Kozlowski)
+- Acked-by on the vendor prefix
+- Drop U-Boot comments from the DTS commit message (Frank Li)
+- Boot NOR reset: reset-gpios on flash@0 instead of a gpio hog (Frank Li)
+- ethsw-mdio-en: regulator-fixed instead of a gpio hog (Frank Li)
+- ethsw-reset#: hog dropped (Frank Li)
+- pltrst#: platform without consumer node
+- Link to v3: https://lore.kernel.org/r/20260908-for-upstream-nbxv3-dts-v3-0-1d88b2c11680@free.fr
+
+Changes in v3:
+- Drop the thermtrip hog on gpio1 line 23, should have been clean'd
+  before
+- Link to v2: https://lore.kernel.org/r/20260907-for-upstream-nbxv3-dts-v2-0-6b4afd36180b@free.fr
+
+Changes in v2: (from Sashiko's comments)
+- Makefile: dtb entry in alphabetical order (before qds).
+- Move the XSPI1_A_DATA[7:4] GPIO mux group from &fspi to &gpio1, so
+  the reset hogs on gpio1 do not depend on the fspi probe.
+- gpio hogs: describe ethsw-reset# and ethsw-mdio-en with their
+  active-low polarity (GPIO_ACTIVE_LOW), same electrical levels.
+- Link to v1: https://lore.kernel.org/r/20260907-for-upstream-nbxv3-dts-v1-0-f43fd0028b78@free.fr
 
 ---
-base-commit: 1a1de54f7369cd2b5bac0f265910e60ad3a6b4c3
-change-id: 20260514-x1-el2-unfuck-0c46167538f4
+Vincent Jardin (3):
+      dt-bindings: vendor-prefixes: add Free Mobile
+      dt-bindings: arm: fsl: add Free Mobile Nodebox v3 CPU Module
+      arm64: dts: freescale: add Nodebox v3 CPU Module
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/freescale/Makefile             |   2 +
+ .../arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dts |  34 +++
+ .../boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi      | 330 +++++++++++++++++++++
+ 5 files changed, 369 insertions(+)
+---
+base-commit: df2908090cda368b01ff43709f51890076c56157
+change-id: 20260907-for-upstream-nbxv3-dts-bbecd04038a2
 
 Best regards,
 -- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Vincent Jardin <vjardin@free.fr>
 
