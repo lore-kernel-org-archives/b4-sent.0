@@ -1,17 +1,13 @@
 From: Kairui Song <kasong@tencent.com>
-Subject: [PATCH v5 00/17] mm/huge_memory: clean up and decouple the anon
- and file split helpers
-Date: Tue, 15 Sep 2026 01:14:41 +0800
-Message-Id: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
+Date: Tue, 15 Sep 2026 01:14:42 +0800
+Subject: [PATCH v5 01/17] mm/swap: fix off-by-one in swap cache replace
+ sanity check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23PQU7DMBAF0KtUXmNkzziuzYp7IBbOdEKMwIliN
- 4Cq3B2nCFGULL/0533NRWSeImfxcLiIieeY45BqaO4OgvqQXljGU80CFFjllJH5I4yy9KOkNw7
- pPEpLDC1b6rB1op6NE3fx80o+Pf/kfG5fmcrqrI0+5jJMX9fNWa+9X95t+VlLJa3zHn04EhE+F
- k7EqdzT8C7WgRluCI07BFTiBMzGkQ3B+C2BNwToHQIr4VuDXaMtArotYf4Iv/uIqUTbIATsQPF
- R/yeWZfkGCQxUSo0BAAA=
-X-Change-ID: 20260804-swap-thp-cleanup-6ce2be6cf3b8
+Message-Id: <20260915-swap-thp-cleanup-v5-1-39878b37dfb0@tencent.com>
+References: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
+In-Reply-To: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 To: linux-mm@kvack.org
 Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
  David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
@@ -29,140 +25,56 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
  Kairui Song <ryncsn@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=6208;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=1650;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=nC8VguaT94phisv0ka20gk/RJPeIjp9sWwfJEtDSKJk=;
- b=nujeGiQo38WYNQObayt+D3hvinyRBHya+/hXQ8SpPWqz+uniU9+ITC3tIFJu93b2IdPZGKSho
- bbYUBE3Z2iaA4+bWY/Pnw3AFT63lWptVgYzgoLOLnPH4+0c1EjdqilA
+ bh=810n4do4aOKMWihCxqnhsHXg2hcES1SAm+rRly1NOZc=;
+ b=TD7AokuIIIO3qHuTryNrrJFaeotme90f+Sx8e3cBvBRNKxx+8aj6JZLK5qKRH21lcwrMz1ac5
+ Z6Yn5pDcF3EAmvXXtvcBrZhV529Cqpzegiilz1N9cpCkU/1k+pvbA9g
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The folio split path handles anon, page cache and swap cache folios in
-one routine.  That mixing is what makes the swap cache split
-restrictions hard to lift and to review. We now support uniform split to
-order-0 only, and no mappingless swap cache folios. And it has left a fair
-number of dead or redundant checks behind.
+The DEBUG_VM sanity check in __swap_cache_replace_folio() iterates
+the old folio's range with "while (ci_off++ < ci_end)", so the loop
+body runs on the already-incremented offset: the first entry is
+skipped and one entry past the range is read.  For a folio split
+that entry belongs to the first after-split folio and was just
+repointed by the replacement loop above, so the check would warn
+spuriously whenever sub-folio orders differ from the head folio's.
 
-This series prepares for lifting those restrictions by cleaning up the
-code first: split the routine into an anon and a file helper, and keep
-all swap cache handling in the anon helper.  The file helper never sees
-a swap cache folio, folio_check_splittable() rejects them up front.
+Currently we don't support non-uniform swapcache split, but this still
+needs a fix to clean it up and prepare for non-uniform swap cache split.
 
-Apart from two bug fixes (patch 1 and 2) and a slight adjustment of anon
-splitting (patch 12), this is a pure cleanup.
+Use the same do-while pattern as the replacement loop.
 
-Testing:
-
-The in-tree split_huge_page_test selftest (uniform, non-uniform and
-in-folio-offset splits of anon and pagecache folios) passes 62/62 over
-600 runs on the patched kernel.
-
-ftrace function_graph tracing filtered on __folio_split() was used to
-compare per-call durations between the base and the patched kernel on
-the same x86-64 box (interleaved runs across alternating reboots.
-135 split calls per run, 600 test runs):
-
-Before: 68.52 us, stddev: 1.58
-After:  67.38 us, stddev: 1.33
-
-The patched kernel is slightly faster. The stack usage and object size
-change as the config and compiler change, but in general the stack
-usage is reduced and object size is basically unchanged.
-
+Fixes: 8578e0c00dcf ("mm, swap: use the swap table for the swap cache and switch API")
+Acked-by: Zi Yan <ziy@nvidia.com>
+Reviewed-by: Barry Song <baohua@kernel.org>
+Acked-by: David Hildenbrand (Arm) <david@kernel.org>
+Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
+Acked-by: Kiryl Shutsemau (Meta) <kas@kernel.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Changes in v5:
-- Rebase onto mm-new.
-- Rename remap_folio() to remap_anon_folio(), and reword the changelog
-  to explain why only anon folios are remapped. [David Hildenbrand,
-  Kiryl Shutsemau]
-- Expand the folio_mapped() comment in the anon helper, and drop the
-  folio_lock_anon_vma_read() reference from the changelog.
-  [Zi Yan, Kiryl Shutsemau]
-- Kept the old test result and the code change is identical, and initial
-  test matches previous results.
-- Clarify the after-split folio freeing changelog.
-- Collect Reviewed-by/Acked-by tags.
-- Link to v4: https://patch.msgid.link/20260908-swap-thp-cleanup-v4-0-b532a3f20e71@tencent.com
+ mm/swap_state.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Changes in v4:
-- Rebase on top of mm-unstable, also mergable on mm-new now.
-- Patch 12 might need some attention as we can skip anon_vma locking for
-  unmapped anon folio now due to further cleanup, including unmapped anon
-  swap cache (not mappingless swap cache).
-- Drop the two swap cache behavior changes, will be sent separately once
-  this lands, so it gets its own attention. Also drop related doc
-  updates. [ David Hildenbrand ]
-- Rename the split helpers to __folio_freeze_split_anon() and
-  __folio_freeze_split_file(), frozen implies unmapped.
-  [ Kiryl Shutsemau, David Hildenbrand ]
-- Keep zone_device_private_split_cb() in the anon helper only, and add
-  VM_WARN_ON_ONCE_FOLIO(folio_is_device_private()) to the file helper:
-  device private folios can only back anonymous memory.
-  [ Kiryl Shutsemau ]
-- Replace the "bool unmap" parameter with a folio_mapped(), rename
-  remap_page() to remap_folio() and document it. [ David Hildenbrand ]
-- Move the racy folio_expected_ref_count() check into unmap_folio()
-  instead of duplicating it.
-- Make more locals const.
-- Reword the mm/swap off-by-one fix: non-uniform swap cache split is not
-  enabled yet, so the bogus sanity check is currently dead code.
-- Collect Reviewed-by/Acked-by tags.
-- Link to v3: https://patch.msgid.link/20260821-swap-thp-cleanup-v3-0-9b43f5163238@tencent.com
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index 625c185a1ca4..cef44aadee61 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -396,8 +396,9 @@ void __swap_cache_replace_folio(struct swap_cluster_info *ci,
+ 	    folio_order(old) != folio_order(new)) {
+ 		ci_off = swp_cluster_offset(old->swap);
+ 		ci_end = ci_off + folio_nr_pages(old);
+-		while (ci_off++ < ci_end)
++		do {
+ 			WARN_ON_ONCE(swp_tb_to_folio(__swap_table_get(ci, ci_off)) != old);
++		} while (++ci_off < ci_end);
+ 	}
+ }
+ 
 
-Changes in v3:
-- Get rid of for_each_folio_safe and open code it.
-- Check if the folio is mapped before freeing it swap cache to avoid
-  potential performance lose.
-- Initial test and binary analyze showed everything is very similiar to
-  previously series.
-- Drop the redundant mapping argument of __split_frozen_folio
-- Link to v2: https://patch.msgid.link/20260813-swap-thp-cleanup-v2-0-d2ee48c6aa49@tencent.com
-
-Changes in v2:
-- Return -EBUSY instead of -EINVAL for swap cache & shmem folio split
-  attempt.
-- Introduce a for_each_folio_safe macro to dedupliate the code and
-  hightlight the reason we need to keep the iterate safe from folio
-  freeing. [ Zi Yan ]
-- Rename __split_unmapped_folio() to __split_frozen_folio [ Zi Yan ]
-- Rename __folio_freeze_split_unmap_anon. [ Zi Yan ]
-- Several comment improments [ Zi Yan ]
-- Drop an unused do_lru argument.
-- Previouse test results are basically unchanged, stack usage reduced,
-  object very slightly larger.
-- Link to v1: https://patch.msgid.link/20260808-swap-thp-cleanup-v1-0-689939a7ccc3@tencent.com
-
----
-Kairui Song (17):
-      mm/swap: fix off-by-one in swap cache replace sanity check
-      mm/huge_memory: fix rejection of swap cache folios with a mapping
-      mm/huge_memory: invert folio_ref_freeze() check to reduce indentation
-      mm/huge_memory: split the routine for splitting anon and file folio
-      mm/huge_memory: rename __split_unmapped_folio() to __split_frozen_folio()
-      mm/huge_memory: consolidate irq and locking for folio split
-      mm/huge_memory: move EOF trimming into the file split helper
-      mm/huge_memory: move unmap and remap into the split helpers
-      mm/huge_memory: rename remap_page() to remap_anon_folio()
-      mm/huge_memory: move the racy refcount check into unmap_folio()
-      mm/huge_memory: move filemap management into the file split helper
-      mm/huge_memory: move anon_vma handling into the anon split helper
-      mm/huge_memory: move memcg switch into the file split helper
-      mm/huge_memory: drop the unused do_lru argument of the file split helper
-      mm/huge_memory: clean up after-split folio freeing in __folio_split
-      mm/huge_memory: count only swap cache refs in anon folio split
-      mm/huge_memory: drop the redundant mapping argument of __split_frozen_folio
-
- mm/huge_memory.c | 585 +++++++++++++++++++++++++++++--------------------------
- mm/swap_state.c  |   3 +-
- 2 files changed, 307 insertions(+), 281 deletions(-)
----
-base-commit: baa8de2f3448d1466a888a805c18d01c998fe052
-change-id: 20260804-swap-thp-cleanup-6ce2be6cf3b8
-
-Best regards,
---  
-Kairui Song <kasong@tencent.com>
+-- 
+2.55.0
 
