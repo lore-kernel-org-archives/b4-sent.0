@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 15 Sep 2026 01:14:54 +0800
-Subject: [PATCH v5 13/17] mm/huge_memory: move memcg switch into the file
- split helper
+Date: Tue, 15 Sep 2026 01:14:55 +0800
+Subject: [PATCH v5 14/17] mm/huge_memory: drop the unused do_lru argument
+ of the file split helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-swap-thp-cleanup-v5-13-39878b37dfb0@tencent.com>
+Message-Id: <20260915-swap-thp-cleanup-v5-14-39878b37dfb0@tencent.com>
 References: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 In-Reply-To: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 To: linux-mm@kvack.org
@@ -25,127 +25,84 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
  Kairui Song <ryncsn@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=3709;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=2493;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=cmwyWDJZVe1UvzzNSicYdeAQ1Ie6761/rX/pYHb2eu4=;
- b=oOZsXsWV809p10fdYi+5NGL+uJfyRilYaw5kkrwFnSewNLF7giO6F61RSFENYbBJxk0dJI/zE
- mNb0H2jt/+hC6Jrk10LJOWm+/Tqv9YKH7qc8fIM4brbqWOGk5LJyOFo
+ bh=m/gjZObWp8hCab6M96EKaw8DHAEZ6xi7L6smiR7GbzY=;
+ b=rnXVgY74a30UHXc+wyXVoP6EU8ZLn0d/jeMbScPXNNuqGMhKenNKy3TiLHdK9+2njQQvoFhc9
+ nEGmzGkbcZZDqomGRYto19YmQIXqwIwaqH18VCglN9jyhtOIWHTo6tD
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The xarray node allocations in __folio_freeze_split_file() need
-to be charged to the folio's memcg, so move the memcg switch from
-__folio_split() into the helper.
+The only caller of __folio_freeze_split_file() always passes do_lru as
+true, so the argument and the branches gated on it are dead code.
+Drop it.
 
-The anon split helper and the after-split folio freeing perform no
-chargeable allocations, so no memcg handling is left in __folio_split().
-Rename its out_no_memcg label to out.
-
-Acked-by: Zi Yan <ziy@nvidia.com>
+Reviewed-by: Zi Yan <ziy@nvidia.com>
 Acked-by: David Hildenbrand (Arm) <david@kernel.org>
 Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
 Reviewed-by: Kiryl Shutsemau (Meta) <kas@kernel.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 36 +++++++++++++++++++-----------------
- 1 file changed, 19 insertions(+), 17 deletions(-)
+ mm/huge_memory.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index a4c2e38f4a6d..169832e2a866 100644
+index 169832e2a866..b134acfe1542 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -4140,6 +4140,7 @@ static int __folio_freeze_split_file(struct folio *folio,
+@@ -4134,8 +4134,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
+ 
+ static int __folio_freeze_split_file(struct folio *folio,
+ 		unsigned int new_order, struct page *split_at,
+-		bool do_lru, struct list_head *list,
+-		enum split_type split_type)
++		struct list_head *list, enum split_type split_type)
+ {
  	struct address_space *mapping = folio->mapping;
  	XA_STATE(xas, &mapping->i_pages, folio->index);
- 	struct folio *end_folio = folio_next(folio);
-+	struct mem_cgroup *memcg, *old_memcg;
- 	struct folio *new_folio, *next;
- 	int nr_shmem_dropped = 0;
- 	unsigned int min_order;
-@@ -4152,9 +4153,18 @@ static int __folio_freeze_split_file(struct folio *folio,
- 	if (new_order < min_order)
- 		return -EINVAL;
- 
-+	/*
-+	 * Switch to folio's memcg as xarray node allocation can happen and
-+	 * needs to charge to it.
-+	 */
-+	memcg = get_mem_cgroup_from_folio(folio);
-+	old_memcg = set_active_memcg(memcg);
-+
- 	gfp = current_gfp_context(mapping_gfp_mask(mapping) & GFP_RECLAIM_MASK);
--	if (!filemap_release_folio(folio, gfp))
--		return -EBUSY;
-+	if (!filemap_release_folio(folio, gfp)) {
-+		ret = -EBUSY;
-+		goto fail_free;
-+	}
- 
- 	mapping_set_update(&xas, mapping);
- 
-@@ -4290,6 +4300,9 @@ static int __folio_freeze_split_file(struct folio *folio,
- 	 */
- 	i_mmap_unlock_read(mapping);
- fail_free:
-+	/* Restore the previously active memcg */
-+	set_active_memcg(old_memcg);
-+	mem_cgroup_put(memcg);
- 	xas_destroy(&xas);
- 	return ret;
- }
-@@ -4321,7 +4334,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- {
- 	struct folio *end_folio = folio_next(folio);
- 	bool is_anon = folio_test_anon(folio);
--	struct mem_cgroup *memcg, *old_memcg;
- 	int old_order = folio_order(folio);
- 	struct folio *new_folio, *next;
- 	int ret;
-@@ -4331,27 +4343,20 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 
- 	if (folio != page_folio(split_at) || folio != page_folio(lock_at)) {
- 		ret = -EINVAL;
--		goto out_no_memcg;
-+		goto out;
+@@ -4229,9 +4228,7 @@ static int __folio_freeze_split_file(struct folio *folio,
  	}
  
- 	if (new_order >= old_order) {
- 		ret = -EINVAL;
--		goto out_no_memcg;
-+		goto out;
- 	}
- 
- 	ret = folio_check_splittable(folio, new_order, split_type);
- 	if (ret) {
- 		VM_WARN_ONCE(ret == -EINVAL, "Tried to split an unsplittable folio");
--		goto out_no_memcg;
-+		goto out;
- 	}
- 
--	/*
--	 * switch to folio's memcg as xarray node allocation can happen and
--	 * needs to charge to it.
--	 */
--	memcg = get_mem_cgroup_from_folio(folio);
--	old_memcg = set_active_memcg(memcg);
+ 	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
+-	if (do_lru)
+-		lruvec = folio_lruvec_lock(folio);
 -
- 	if (is_anon)
- 		ret = __folio_freeze_split_anon(folio, new_order, split_at,
- 						true, list, split_type);
-@@ -4378,10 +4383,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		free_folio_and_swap_cache(new_folio);
- 	}
++	lruvec = folio_lruvec_lock(folio);
+ 	ret = __split_frozen_folio(folio, new_order, split_at, &xas,
+ 				   mapping, split_type);
  
--	/* restore to caller's old_memcg */
--	set_active_memcg(old_memcg);
--	mem_cgroup_put(memcg);
--out_no_memcg:
-+out:
- 	if (is_pmd_order(old_order))
- 		count_vm_event(!ret ? THP_SPLIT_PAGE : THP_SPLIT_PAGE_FAILED);
- 	count_mthp_stat(old_order, !ret ? MTHP_STAT_SPLIT : MTHP_STAT_SPLIT_FAILED);
+@@ -4253,8 +4250,7 @@ static int __folio_freeze_split_file(struct folio *folio,
+ 		folio_ref_unfreeze(new_folio,
+ 				   folio_cache_ref_count(new_folio) + 1);
+ 
+-		if (do_lru)
+-			lru_add_split_folio(folio, new_folio, lruvec, list);
++		lru_add_split_folio(folio, new_folio, lruvec, list);
+ 
+ 		/* Add the new folio to the page cache. */
+ 		if (new_folio->index < end) {
+@@ -4280,9 +4276,7 @@ static int __folio_freeze_split_file(struct folio *folio,
+ 	 * and its caller can see stale page cache entries.
+ 	 */
+ 	folio_ref_unfreeze(folio, folio_cache_ref_count(folio) + 1);
+-
+-	if (do_lru)
+-		lruvec_unlock(lruvec);
++	lruvec_unlock(lruvec);
+ fail:
+ 	/*
+ 	 * If we want to use try_to_migrate() on file in unmap_folio,
+@@ -4362,7 +4356,7 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
+ 						true, list, split_type);
+ 	else
+ 		ret = __folio_freeze_split_file(folio, new_order, split_at,
+-						true, list, split_type);
++						list, split_type);
+ 
+ 	/*
+ 	 * Unlock all after-split folios except the one containing
 
 -- 
 2.55.0
