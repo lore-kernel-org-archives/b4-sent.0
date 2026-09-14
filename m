@@ -1,11 +1,10 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Mon, 14 Sep 2026 21:21:03 +0200
-Subject: [PATCH 06/10] media: i2c: ov9282: refresh flash_duration range on
- an HBLANK write
+Date: Mon, 14 Sep 2026 21:21:04 +0200
+Subject: [PATCH 07/10] media: i2c: ov9282: drop redundant vblank field
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-ov9282-fixes-v1-6-f520af59df1b@linux.dev>
+Message-Id: <20260914-ov9282-fixes-v1-7-f520af59df1b@linux.dev>
 References: <20260914-ov9282-fixes-v1-0-f520af59df1b@linux.dev>
 In-Reply-To: <20260914-ov9282-fixes-v1-0-f520af59df1b@linux.dev>
 To: Dave Stevenson <dave.stevenson@raspberrypi.com>, 
@@ -20,54 +19,84 @@ Cc: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Richard Leitner <richard.leitner@linux.dev>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789413683; l=1339;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789413683; l=2525;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=+9D94c2OnHxByotyk71RiVy678NF0Rq9EnxYDsY4DUE=;
- b=JZMY05pUX3MajCM1j9FFQ79UlIRT5svduZfkVMrNnEvqzNZy238MT6AzNBwL5QWAcgg8uqnnD
- RdSoL8Wu9EbDPb1Zb5bsQDN35moVeepLsqT9UU2PfDf0LSwndBOWPHK
+ bh=gOLNNogmoOOUL45wHXQtYclrVHmbDfqCCG9L2KZ0nIU=;
+ b=UC0U5HwzoIhjoGvQsq/peph0ucT2991+FX2i8rB/xNgGLAYdlDCgUuUqZysXuVZK6hQyes9I6
+ YhrtGd6BADYCUjCTQLPWjrtLSWg2oubxi1zHtdjLagIsaSPL5F+F2eW
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The strobe ceiling is the exposure time in microseconds, so it follows
-the line time, and the line length sets the line time. Writing HBLANK moves
-it and nothing recomputes the flash_duration ceiling.
+The ov9282 main struct has a dedicated vblank field which was only used
+to duplicate the value of the vblank v4l2 control.
 
-Therefore add the missing flash_duration range update when HBLANK is set.
-
-The exposure range is counted in lines, so it is unaffected and does not
-need refreshing here.
+Therefore drop this struct field.
 
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- drivers/media/i2c/ov9282.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ drivers/media/i2c/ov9282.c | 15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
 
 diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index e64d8343c18e9..632184e76b9bd 100644
+index 632184e76b9bd..28f8b05b4c09e 100644
 --- a/drivers/media/i2c/ov9282.c
 +++ b/drivers/media/i2c/ov9282.c
-@@ -674,6 +674,19 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
+@@ -193,7 +193,6 @@ struct ov9282_mode {
+  * @again_ctrl: Pointer to analog gain control
+  * @pixel_rate: Pointer to pixel rate control
+  * @flash_duration: Pointer to flash duration control
+- * @vblank: Vertical blanking in lines
+  * @noncontinuous_clock: Selection of CSI2 noncontinuous clock mode
+  * @cur_mode: Pointer to current selected sensor mode
+  * @code: Mbus code currently selected
+@@ -216,7 +215,6 @@ struct ov9282 {
+ 	};
+ 	struct v4l2_ctrl *pixel_rate;
+ 	struct v4l2_ctrl *flash_duration;
+-	u32 vblank;
+ 	bool noncontinuous_clock;
+ 	const struct ov9282_mode *cur_mode;
+ 	u32 code;
+@@ -646,17 +644,13 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
+ 
+ 	switch (ctrl->id) {
+ 	case V4L2_CID_VBLANK:
+-		ov9282->vblank = ov9282->vblank_ctrl->val;
+-
++		lpfr = ctrl->val + ov9282->cur_mode->height;
+ 		dev_dbg(ov9282->dev, "Received vblank %u, new lpfr %u",
+-			ov9282->vblank,
+-			ov9282->vblank + ov9282->cur_mode->height);
++			ctrl->val, lpfr);
+ 
+ 		ret = __v4l2_ctrl_modify_range(ov9282->exp_ctrl,
+ 					       OV9282_EXPOSURE_MIN,
+-					       ov9282->vblank +
+-					       ov9282->cur_mode->height -
+-					       OV9282_EXPOSURE_OFFSET,
++					       lpfr - OV9282_EXPOSURE_OFFSET,
+ 					       1, OV9282_EXPOSURE_DEFAULT);
  		if (ret)
  			return ret;
+@@ -704,7 +698,7 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
+ 		ret = ov9282_update_exp_gain(ov9282, exposure, analog_gain);
  		break;
-+	case V4L2_CID_HBLANK:
-+		/*
-+		 * HBLANK affects the line time, which then affects the flash
-+		 * duration. Therefore recalculate the flash duration range
-+		 * here.
-+		 */
-+		exposure = ov9282_exposure_to_us(ov9282, ov9282->exp_ctrl->val);
-+		ret = __v4l2_ctrl_modify_range(ov9282->flash_duration, 0,
-+					       exposure, 1,
-+					       OV9282_STROBE_FRAME_SPAN_DEFAULT);
-+		if (ret)
-+			return ret;
-+		break;
- 	}
+ 	case V4L2_CID_VBLANK:
+-		lpfr = ov9282->vblank + ov9282->cur_mode->height;
++		lpfr = ctrl->val + ov9282->cur_mode->height;
+ 		ret = cci_write(ov9282->regmap, OV9282_REG_LPFR, lpfr, NULL);
+ 		break;
+ 	case V4L2_CID_HFLIP:
+@@ -1412,7 +1406,6 @@ static int ov9282_probe(struct i2c_client *client)
+ 	/* Set default mode to first mode */
+ 	ov9282->cur_mode = &supported_modes[DEFAULT_MODE];
+ 	ov9282->code = MEDIA_BUS_FMT_Y10_1X10;
+-	ov9282->vblank = ov9282->cur_mode->vblank;
  
- 	/* Set controls only if sensor is in power on state */
+ 	ret = ov9282_init_controls(ov9282);
+ 	if (ret) {
 
 -- 
 2.53.0
