@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v2 0/3] backlight: qcom-wled: Fix OVP IRQ imbalance and
- start from the hardware state
-Date: Mon, 14 Sep 2026 19:42:46 +0200
-Message-Id: <20260914-qcom-wled-backlight-v2-0-a908d9233e93@ixit.cz>
+Date: Mon, 14 Sep 2026 19:42:47 +0200
+Subject: [PATCH v2 1/3] backlight: qcom-wled: Fix WLED3 brightness register
+ stride
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NSxKCMBAFr0LN2rFCABFX3sNiEZIBRvloEhGlu
- LuAe5dd1a/fBI4sk4NTMIGlgR333QJyF4CuVVcRslkYpJAHkYkjPnTf4qshg4XSt4ar2mNpsiS
- NhUyjJIJlebdU8rhVL/mP3bO4kvZrajVqdr637+12CFfv/8MQYog6NiYmVRgl0jOP7Pf6A/k8z
- 1+qgE5jxgAAAA==
-X-Change-ID: 20260908-qcom-wled-backlight-fd9574027353
+Message-Id: <20260914-qcom-wled-backlight-v2-1-a908d9233e93@ixit.cz>
+References: <20260914-qcom-wled-backlight-v2-0-a908d9233e93@ixit.cz>
+In-Reply-To: <20260914-qcom-wled-backlight-v2-0-a908d9233e93@ixit.cz>
 To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
  Jingoo Han <jingoohan1@gmail.com>, Helge Deller <deller@gmx.de>, 
  Kiran Gunda <quic_kgunda@quicinc.com>, 
@@ -22,64 +19,72 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  Joel Selvaraj <foss@joelselvaraj.com>, David Heidelberg <david@ixit.cz>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1862; i=david@ixit.cz;
- h=from:subject:message-id; bh=PUvlkcnmJaXZt5p8As0KvIuk3AZONRe1vja4HE+7gb4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqDIcJVfrVXuYj/bpDoKLOG0YCDlIZtHrntKuG
- wxZR0f1JvmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqgyHAAKCRBgAj/E00kg
- chiGD/0RSVqrVoapWgon9AH1/YrrdXUVhs7NeYk97yKba4FByYxmYxUxhEyFzw3Vs3/3n37ezd5
- k2EB62/9RJUxQLTsJmiOheaSwYwBMC9NBAHUOP5FJponINw0xDfpigHOE0im7qnkzeBU0BAORH2
- EpWkzpwX6fitA8wVyeaAvN3X8XLAiht+U9aDQSlhjIhwTG6vWWdftMwPfS9OoN/7sDMhHrMysIV
- o16MmdHmD5v+gDUMtQC/UIZllBlXXWXcdb4Dt5E5znCnXQTKa+TVZhuo/ZnGB+W0erezMwl69qE
- RGMBW6W+mEzz2w5ZPO/2kjud/WYYfUFJeqBuVO13c06VK17YOa2oTWunhbAEW8rHgaGouxdCzQa
- r8gs2Q53wye/wJQKy+Nh+mfMhGo3SUiU7s3nBD8sB9Wuf+hUwhay2Hdf8FfC2A6KcK46utsg6Dm
- l/9H1iVQhgmiixrAZdJpDnrdn30GAvpS/dGdUiFZfrjom77pmuUnitnaaHXDM0oLxcn3A31RGSw
- eur/3WTXv3hhTjn3Sc8R0XocFa96rLXn/86Zxc0pC5XJ22mJVy6EBHmBQOrP9f0zm61IlH/VNCO
- 2aJZ1OqRbuEAb4Zgo2/vek+YjIk73WC92wo4t5rI4Fj3KE1BM3qGSzEx5/jSThRKd0qnDHmkYJl
- ZZaJZK/5nolyKnQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1777; i=david@ixit.cz;
+ h=from:subject:message-id; bh=PsAxMRrlqktvAML3hjPt0kdVxbrGmbj1j8uq3J3KhxU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqDIczKVPe0nj8x6gYBinetl5UNl7M9qN/9D+u
+ Huri6kL01OJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqgyHAAKCRBgAj/E00kg
+ cpRRD/4uxVlLCDyUgCdbl13H0nFe+KpG/WrmuFvVrcWCoeqUwbyrSKXINFNEGFO2MZguwOaGh1Z
+ Qqo0tIv9KFB/iCTMR/oDegM+TaAIeWX0lsI3u/0fse4Mp/iUuolXWm16Vg8VgZIitH5TCpP/4ky
+ m038DfnBD0B1efEf1UWHAVjz4npq7R5VSkfmWehv2CHBxooQCtlkPQEYXBtFHFPlJAAvl9a0G8N
+ R7EQQQAoJ+33HOKS5Oq4ZWPfIFuaf39ut8Yg1m/rLAU9PMwfr8pBpfoj4q6ZRVPUSPxTUapmf/A
+ TeRW9vm8lN5IH+240m+ugggXP8zr6ffLH7yfw7Qcw0gqOF+ZYq+rdj8oPJNm4P7WKDnwVwXboKI
+ zeCWyNEGgyQk0Zku/LWwUC14oxfULW5Wp4/W+BcBRF8RQkqI2IJaDcqTe4K4CTMDpTgOwJu6x2S
+ xrKTGWmJWvO6aKCd+VQCMHytzQ5kZi22Ii7M80qW8rxdkZU20Pbs7/2zyT40seoq6pd1ZthMVQv
+ 0e2TT6KgFY3DcEBodKTbKEpxTxGZVD9if7s73YS+p9BVRPcHtrkYE6/Xn2QOVY/5r2OoXYb8O7H
+ ZNifwhPBfCA2e4u+JMA0xp+uckgaAie3iGfKpQnIRA7VoMRpCMN5zP4NLpSfsR/a94tPILnWB5f
+ XrbZPdxAHtZzCPA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The qcom-wled OVP interrupt is enabled at probe whenever the module is
-already on, but the driver still believes the backlight is off, so the
-first brightness update re-enables the interrupt and trips "Unbalanced
-enable for IRQ". sdm845-mainline has carried a workaround for years and
-Joel posted a flag-based version last October [1], which Konrad and
-Daniel asked to be replaced by something that does not track the IRQ
-state by hand.
+WLED3 has a 16-bit brightness register pair per string, at 0x40 + 2*n,
+which is what the pm8941-wled driver wrote to:
 
-The first patch is unrelated and fell out of writing the readback: the
-WLED3 brightness register stride has been one byte instead of two since
-the 2019 restructuring, so multi-string pm8941 boards only program one
-string correctly. Untested, I have no WLED3 board; it restores what
-pm8941-wled.c did and matches the downstream leds-qpnp.c layout.
+	rc = regmap_bulk_write(wled->regmap,
+			wled->addr + WLED3_CTRL_REG_VAL_BASE + 2 * i,
+			v, 2);
 
-[1] https://lore.kernel.org/all/20251021-qcom-wled-fix-unbalanced-ovp-irq-enable-v2-1-7ff115b4ffe7@joelselvaraj.com/
+The restructuring for WLED3 turned that into WLED3_SINK_REG_BRIGHT(n),
+defined as 0x40 + n, so the two byte writes for consecutive strings
+overlap: string 1 overwrites the MSB of string 0 with its own LSB, and
+with the default three strings only string 1 ends up with the requested
+value.
 
+Use the 2 byte stride.
+
+Fixes: 775d2ffb4af6 ("backlight: qcom-wled: Restructure the driver for WLED3")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v2:
-- Add a fix for the WLED3 brightness register stride.
-- Add patch reading the programmed brightness back via
-  backlight_ops.get_brightness. (Konrad)
-- Note the brightness readback is done in the follow-up to the first
-  patch.
-- Link to v1: https://patch.msgid.link/20260908-qcom-wled-backlight-v1-1-c4dd4eabda07@ixit.cz
+ drivers/video/backlight/qcom-wled.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
----
-David Heidelberg (3):
-      backlight: qcom-wled: Fix WLED3 brightness register stride
-      backlight: qcom-wled: Fix unbalanced OVP IRQ enable at probe
-      backlight: qcom-wled: Read back the programmed brightness at probe
+diff --git a/drivers/video/backlight/qcom-wled.c b/drivers/video/backlight/qcom-wled.c
+index 650dd95f06ef5..22c35da72dce3 100644
+--- a/drivers/video/backlight/qcom-wled.c
++++ b/drivers/video/backlight/qcom-wled.c
+@@ -54,17 +54,17 @@
+ #define WLED3_SINK_REG_SYNC				0x47
+ #define  WLED3_SINK_REG_SYNC_CLEAR			0x00
+ 
+ #define WLED3_SINK_REG_CURR_SINK			0x4f
+ #define  WLED3_SINK_REG_CURR_SINK_MASK			GENMASK(7, 5)
+ #define  WLED3_SINK_REG_CURR_SINK_SHFT			5
+ 
+ /* WLED3 specific per-'string' registers below */
+-#define WLED3_SINK_REG_BRIGHT(n)			(0x40 + n)
++#define WLED3_SINK_REG_BRIGHT(n)			(0x40 + (n * 0x10))
+ 
+ #define WLED3_SINK_REG_STR_MOD_EN(n)			(0x60 + (n * 0x10))
+ #define  WLED3_SINK_REG_STR_MOD_MASK			BIT(7)
+ 
+ #define WLED3_SINK_REG_STR_FULL_SCALE_CURR(n)		(0x62 + (n * 0x10))
+ #define  WLED3_SINK_REG_STR_FULL_SCALE_CURR_MASK	GENMASK(4, 0)
+ 
+ #define WLED3_SINK_REG_STR_MOD_SRC(n)			(0x63 + (n * 0x10))
 
- drivers/video/backlight/qcom-wled.c | 88 +++++++++++++++++++++++++++++++------
- 1 file changed, 75 insertions(+), 13 deletions(-)
----
-base-commit: 944a035ecca915ae947905dcfb03f2b9dc6d032c
-change-id: 20260908-qcom-wled-backlight-fd9574027353
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
