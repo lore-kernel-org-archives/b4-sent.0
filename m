@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 15 Sep 2026 01:14:49 +0800
-Subject: [PATCH v5 08/17] mm/huge_memory: move unmap and remap into the
- split helpers
+Date: Tue, 15 Sep 2026 01:14:50 +0800
+Subject: [PATCH v5 09/17] mm/huge_memory: rename remap_page() to
+ remap_anon_folio()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-swap-thp-cleanup-v5-8-39878b37dfb0@tencent.com>
+Message-Id: <20260915-swap-thp-cleanup-v5-9-39878b37dfb0@tencent.com>
 References: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 In-Reply-To: <20260915-swap-thp-cleanup-v5-0-39878b37dfb0@tencent.com>
 To: linux-mm@kvack.org
@@ -25,134 +25,90 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
  Kairui Song <ryncsn@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=3825;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789406149; l=3127;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=1AepHMPhtQhcirQKIFtuSgKsIjuLHdIJpzp6kOWU4PE=;
- b=lHpDt8hux/TpdAKSrD8AgwYlgPrsCYAm5NsJFwkw3s3EQTUfy23K+R3Bagt1JACVz0WPUWYCl
- mtOhIVUKypvCswC3oDduF78iBvKXj35nfiqHt6wz3f91m+WWyjS1goI
+ bh=ExS3iXqpo6EWOs0c9NJj+fgN8aW+sshu/TIwyTi4/5Q=;
+ b=Y9+nNMHYhV9nhxAXbvADVASdUNcBZtc1OtdH8YWUKSGPhLNd8GhGs8EA+UdTwNypv2ZjEdP5e
+ kG/KWg5Q5svCci6svRnAHXzSF2FUH7jMNCkRnQrjceueAUdlJWjA0yO
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To prepare for further cleanup, move the unmap/remap handling from
-__folio_split() into the split helpers.  Only anon folios need to
-be remapped, so remap_page() is now only called for anon splits and
-the anon check in remap_page() is redundant and can be removed.
+remap_page() now only has one caller, __folio_freeze_split_anon(),
+and is only ever called for anon folios: unmap_folio() currently
+leaves file folios unmapped after the split, so they need no
+remapping.
+
+Rename it to remap_anon_folio() to make that explicit, and add a
+VM_WARN_ON_FOLIO() documenting it.
 
 Reviewed-by: Zi Yan <ziy@nvidia.com>
-Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
 Reviewed-by: Kiryl Shutsemau (Meta) <kas@kernel.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
+ mm/huge_memory.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
 
 diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 5ba3bcdfc42d..1749905ade6a 100644
+index 1749905ade6a..77bf68c9b9af 100644
 --- a/mm/huge_memory.c
 +++ b/mm/huge_memory.c
-@@ -3641,9 +3641,6 @@ static void remap_page(struct folio *folio, unsigned long nr, int flags)
+@@ -3552,7 +3552,7 @@ static void unmap_folio(struct folio *folio)
+ 	/*
+ 	 * Anon pages need migration entries to preserve them, but file
+ 	 * pages can simply be left unmapped, then faulted back on demand.
+-	 * If that is ever changed (perhaps for mlock), update remap_page().
++	 * If that is ever changed (perhaps for mlock), update remap_anon_folio().
+ 	 */
+ 	if (folio_test_anon(folio))
+ 		try_to_migrate(folio, ttu_flags);
+@@ -3637,10 +3637,17 @@ bool unmap_huge_pmd_locked(struct vm_area_struct *vma, unsigned long addr,
+ 	return __discard_anon_folio_pmd_locked(vma, addr, pmdp, folio);
+ }
+ 
+-static void remap_page(struct folio *folio, unsigned long nr, int flags)
++static void remap_anon_folio(struct folio *folio, unsigned long nr, int flags)
  {
  	int i = 0;
  
--	/* If unmap_folio() uses try_to_migrate() on file, remove this check */
--	if (!folio_test_anon(folio))
--		return;
++	/*
++	 * unmap_folio() installs migration entries only for anon folios,
++	 * so currently only anon folios need to be remapped. File folios
++	 * stay unmapped after the split and are faulted back on demand.
++	 */
++	VM_WARN_ON_FOLIO(!folio_test_anon(folio), folio);
++
  	for (;;) {
  		remove_migration_ptes(folio, folio, TTU_RMAP_LOCKED | flags);
  		i += folio_nr_pages(folio);
-@@ -4017,15 +4014,23 @@ static int __folio_freeze_split_anon(struct folio *folio,
- {
- 	struct folio *end_folio = folio_next(folio);
- 	struct swap_cluster_info *ci = NULL;
-+	int old_order = folio_order(folio);
- 	struct folio *new_folio, *next;
-+	enum ttu_flags ttu_flags = 0;
- 	struct lruvec *lruvec;
-+	bool need_remap = false;
- 	int ret = 0;
- 
-+	if (folio_mapped(folio)) {
-+		need_remap = true;
-+		unmap_folio(folio);
-+	}
-+
- 	local_irq_disable();
- 
- 	if (!folio_ref_freeze(folio, folio_cache_ref_count(folio) + 1)) {
--		local_irq_enable();
--		return -EAGAIN;
-+		ret = -EAGAIN;
-+		goto out_no_split;
+@@ -3724,7 +3731,7 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
+ 		 *
+ 		 * Note that for mapped sub-pages of an anonymous THP,
+ 		 * PG_anon_exclusive has been cleared in unmap_folio() and is stored in
+-		 * the migration entry instead from where remap_page() will restore it.
++		 * the migration entry instead from where remap_anon_folio() will restore it.
+ 		 * We can still have PG_anon_exclusive set on effectively unmapped and
+ 		 * unreferenced sub-pages of an anonymous THP: we can simply drop
+ 		 * PG_anon_exclusive (-> PG_mappedtodisk) for these here.
+@@ -4084,7 +4091,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
+ 	if (need_remap) {
+ 		if (!ret && !folio_is_device_private(folio))
+ 			ttu_flags = TTU_USE_SHARED_ZEROPAGE;
+-		remap_page(folio, 1 << old_order, ttu_flags);
++		remap_anon_folio(folio, 1 << old_order, ttu_flags);
  	}
- 
- 	/* Take off the deferred split queue while frozen and memcg set */
-@@ -4074,7 +4079,13 @@ static int __folio_freeze_split_anon(struct folio *folio,
- 		lruvec_unlock(lruvec);
- 	if (ci)
- 		swap_cluster_unlock(ci);
-+out_no_split:
- 	local_irq_enable();
-+	if (need_remap) {
-+		if (!ret && !folio_is_device_private(folio))
-+			ttu_flags = TTU_USE_SHARED_ZEROPAGE;
-+		remap_page(folio, 1 << old_order, ttu_flags);
-+	}
  
  	return ret;
- }
-@@ -4106,6 +4117,8 @@ static int __folio_freeze_split_file(struct folio *folio,
- 	if (shmem_mapping(mapping))
- 		end = shmem_fallocend(mapping->host, end);
- 
-+	unmap_folio(folio);
-+
- 	xas_lock_irq(xas);
- 
- 	/*
-@@ -4190,8 +4203,11 @@ static int __folio_freeze_split_file(struct folio *folio,
- 
- 	if (do_lru)
- 		lruvec_unlock(lruvec);
--
+@@ -4206,7 +4213,7 @@ static int __folio_freeze_split_file(struct folio *folio,
  fail:
-+	/*
-+	 * If we want to use try_to_migrate() on file in unmap_folio,
-+	 * remember to add remap_page() and adapt it.
-+	 */
+ 	/*
+ 	 * If we want to use try_to_migrate() on file in unmap_folio,
+-	 * remember to add remap_page() and adapt it.
++	 * remember to add remap_anon_folio() and adapt it.
+ 	 */
  	xas_unlock_irq(xas);
  	if (nr_shmem_dropped)
- 		shmem_uncharge(mapping->host, nr_shmem_dropped);
-@@ -4231,7 +4247,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 	struct anon_vma *anon_vma = NULL;
- 	int old_order = folio_order(folio);
- 	struct folio *new_folio, *next;
--	enum ttu_flags ttu_flags = 0;
- 	int ret;
- 
- 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
-@@ -4319,8 +4334,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		goto out_unlock;
- 	}
- 
--	unmap_folio(folio);
--
- 	if (is_anon)
- 		ret = __folio_freeze_split_anon(folio, new_order, split_at,
- 						true, list, split_type);
-@@ -4328,11 +4341,6 @@ static int __folio_split(struct folio *folio, unsigned int new_order,
- 		ret = __folio_freeze_split_file(folio, new_order, split_at, &xas, mapping,
- 						true, list, split_type);
- 
--	if (!ret && is_anon && !folio_is_device_private(folio))
--		ttu_flags = TTU_USE_SHARED_ZEROPAGE;
--
--	remap_page(folio, 1 << old_order, ttu_flags);
--
- 	/*
- 	 * Drop the mapping while the inode is still pinned. @folio stays
- 	 * locked and present in the page cache until the loop below, so
 
 -- 
 2.55.0
