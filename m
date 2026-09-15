@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 16 Sep 2026 00:25:46 +0200
-Subject: [PATCH 1/2] arm64: dts: qcom: sdm845-xiaomi-beryllium: Extend the
+Date: Wed, 16 Sep 2026 00:25:47 +0200
+Subject: [PATCH 2/2] arm64: dts: qcom: sdm845-xiaomi-polaris: Extend the
  xbl_mem region
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-sdm845-xbl-mem-v1-1-6e3c88507997@ixit.cz>
+Message-Id: <20260916-sdm845-xbl-mem-v1-2-6e3c88507997@ixit.cz>
 References: <20260916-sdm845-xbl-mem-v1-0-6e3c88507997@ixit.cz>
 In-Reply-To: <20260916-sdm845-xbl-mem-v1-0-6e3c88507997@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,20 +18,20 @@ Cc: Konrad Dybcio <konradybcio@gmail.com>, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1763; i=david@ixit.cz;
- h=from:subject:message-id; bh=nkYxNGwqi71eWLxoR5wj/HoAFsGXPhGtpZfAJGRQLec=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqcXyhjnlZWX7C1cxpCl3Lx1Rfj3NlhXI+TYhL
- vkwFo2bGdmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqnF8gAKCRBgAj/E00kg
- ciejEAC4S/CPMXUM2vUubes9T7thsCMCtTny3IncbHCk8GVSUXTYikx59oAYAalERluT6UgvWFv
- OGbQBoLEej3+hAC3D2vNNRcrLy0OpChM+G6tyiGd8mvmeylRIxrTbwPSl1yHkHLDSjvy3/a5P87
- D+oqhQUCbTa7RaGPFefY7QD1O5oeJ7x/YdIfyQIvq8fLHLb6dBUOkqOCCeZRapyBQ5hM18StWPz
- kz9rQkCnYvrXqcP35zy83SRFiybadVjR1kpwdkOPxN+URWMVtEbAFEyI6wsaO8IxQsrZckJQVa/
- 9PILag5dkIO5JYRQrT3/VH55ARkHhzn0hqTBRxm+kt5fNLA15/gfUd9rClkJmYyzBcnvbxgc1vc
- rY1lk9+LYJK7c+7s0sQCI0S8jDIibFPsKbYmODW5SIR6qIhK7BKNckLSWxe63EBqg4AKV7pf+Hj
- 2v/9xnuf2XmY0cG2OCmtWkqmYGzHtqpd+AJMGk/aQvkbnLEEF0F2TMZFcNx5ryxRqpXhGmpwcgr
- s7jFBXm1WIwP1s3jUsKZKlRUnCTxl8YoBVy9Ae9aI+IxK2JU3g7kVhT220PH4lwxhmQGyXjEB9W
- 0q6qlqRqbfR7d2Tx/R1xF1VVBz241iKIjROoTdCoNjPD9vANpCahRWRpl6oPg8F+N3XfFDw7mxN
- Gmbn/VZc+QpCAkg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1740; i=david@ixit.cz;
+ h=from:subject:message-id; bh=KhYtwAwwEEXXn9tBUw2nXm8/lwiJ0Ak0iHOYARf9L+U=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqcXyLbC8CHVLLesOcCo2SCkcuNpN3GjL6x/rH
+ u2kBTerxUWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqnF8gAKCRBgAj/E00kg
+ cuOKD/9jiRMig1oJLnCMIdmnE/PzVhRMa+SIv9Af4gTT+JywSfkc8vPV53MqqutyT1vvV7kqB8e
+ YyvzSUhRnh8wKVEvqjy/XQPOK66YyKpeO4upTv0UsIwHjxK7EKBAxRRZP1ybhgKOrXcT5rUz7TG
+ GNEjBVsAuvevgZ9vFAO3V2Iw9NNBuZkPhnYrXcEuVvdcLg+pMkUXaOc7uwl/wDpdL2k0PgNO+pH
+ g0Ukyv+5HqycK9ekwogknYL/47aQQI36OY3dsdyHRVr3ObRsqZFUbX9XR/3Ne3Z5936I6C0Q5qd
+ TAoZeC8N7Y7xMYh6BLt8HaP43otEwJ2ZfRjkB2hk6yuaDSEjiKuoOaaoku8DLax/j4dSVYiYNli
+ yDQv+azssGsM3eqGNVwJY8DdkBAZ4xY+1uxahj8TTekzSc0Bu+Z8U4k/9sY9VTV3JcKgm8B/ea9
+ Uv2k0Iif+FRpuwRrtgUAmqbs9ILTqTaSmCSYtLuSNGWPVSz1VW1Jfx/QUwsXVi6ET/7/bHxYhQ7
+ UFxxOtfrR7PyW3RpdSScspGg+pXwgs34oxLUzWsohUXCbe32Vb/oQAz1LBY4obwQZyFQaQXELfN
+ mD7MLjKYvasHwx5KHecZomdvI6dlc8QLYQWLXo2bWWN1sg4QBibtCXTQlZ4zh8DoHMczuLzs+0E
+ RVVZkLUoU9AJPBA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -42,17 +42,19 @@ arrived with the Pie import. This isn't a board-layout quirk, it tracks
 the firmware. The later XBL wants one extra MiB below the old region.
 
 Cc: stable@vger.kernel.org
-Fixes: 77809cf74a8c ("arm64: dts: qcom: Add support for Xiaomi Poco F1 (Beryllium)")
+Fixes: be497abe19bf ("arm64: dts: qcom: Add support for Xiaomi Mi Mix2s")
+
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 6 ++++++
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts | 6 ++++++
  1 file changed, 6 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 080f5294988d3..35babe8c5f757 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -22,16 +22,17 @@
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts
+index d3162e4444532..a782023d0dcb3 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts
+@@ -27,16 +27,17 @@
+ /delete-node/ &adsp_mem;
  /delete-node/ &wlan_msa_mem;
  /delete-node/ &mpss_region;
  /delete-node/ &venus_mem;
@@ -60,37 +62,36 @@ index 080f5294988d3..35babe8c5f757 100644
  /delete-node/ &mba_region;
  /delete-node/ &slpi_mem;
  /delete-node/ &spss_mem;
- /delete-node/ &rmtfs_mem;
 +/delete-node/ &xbl_mem;
  
  / {
+ 	model = "Xiaomi Mi MIX 2S";
+ 	compatible = "xiaomi,polaris", "qcom,sdm845";
  	chassis-type = "handset";
  
  	/* required for bootloader to select correct board */
- 	qcom,board-id = <69 0>;
  	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
- 
-@@ -66,16 +67,21 @@ key-vol-up {
+@@ -58,16 +59,21 @@ key-vol-up {
  			label = "Volume Up";
  			linux,code = <KEY_VOLUMEUP>;
  			gpios = <&pm8998_gpios 6 GPIO_ACTIVE_LOW>;
+ 			debounce-interval = <15>;
  		};
  	};
  
- 	/* Reserved memory changes from downstream */
  	reserved-memory {
 +		xbl-mem@85d00000 {
 +			reg = <0 0x85d00000 0 0x200000>;
 +			no-map;
 +		};
 +
- 		tz_mem: memory@86200000 {
- 			reg = <0 0x86200000 0 0x4900000>;
+ 		adsp_mem: memory@8c500000 {
+ 			reg = <0 0x8c500000 0 0x1e00000>;
  			no-map;
  		};
  
- 		adsp_mem: memory@8c500000 {
- 			reg = <0 0x8c500000 0 0x1e00000>;
+ 		wlan_msa_mem: memory@8e300000 {
+ 			reg = <0 0x8e300000 0 0x100000>;
  			no-map;
 
 -- 
