@@ -1,226 +1,348 @@
-From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Tue, 15 Sep 2026 11:42:46 -0700
-Subject: [PATCH 4/4] perf script: Document and test --lazy-load-symbols and
- --max-symbol-bytes
+From: Fabio Forni <development@redaril.me>
+Date: Tue, 15 Sep 2026 21:35:21 +0200
+Subject: [PATCH] mux: convert to use fwnode interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-perf-symbol-memory-send-v1-4-1d3360e21f07@uber.com>
-References: <20260915-perf-symbol-memory-send-v1-0-1d3360e21f07@uber.com>
-In-Reply-To: <20260915-perf-symbol-memory-send-v1-0-1d3360e21f07@uber.com>
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>, Andrii Nakryiko <andriin@fb.com>, 
- Alexei Starovoitov <ast@kernel.org>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alireza Haghdoost <haghdoost@uber.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6198; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=ozeisEeLUlyeoorFaW7r4WB+nw0aEmnGGVlEP7mmb2o=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBqqZHOO79qSbapVu7FstSxOFn6KxUcXOhoUCYQ1
- bXfEiLi0MCJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCaqmRzhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAth0mA/+Pt0cuUTq8AeRJ2ktRGG2FnZOgPD/HtS
- JOqLpmcMT5dRHYsgVYt0K6XyaVNBLT1KXAaQ3UIYyWv7ikqiyd2cTFrWXlVPij2wT6ItcL5blXF
- pAMifxDaeljgtOE0oqwG2+Q7IO0qvF+qtXZEmlqc2qn8DLyVrjX1JXIZXgw+6OLBYWv+iraL71H
- 62u7atJSwkfimQlKv6yO/5xrsFrx06Tq9/lGs/KBaB/R48/lK+F9/qgp2OvwoDvOY4B/+FTbTBW
- hdwzzPKgCUbWrDXmwjtkWiMHlnUG9L5hXTFZeWhKU6KeSyuIoSq0R6VUXYhNrjbS+lL+8FpbnPv
- +pz2zEL6mq1kt4u4IHpGFiBM+azREB4ma+riwivc6rkYHfkqNeGigunSIXoahnT5pViKEtUY7+g
- Re7/cvBUq8uyrtsi9VGO7N1JWAbaLEgRyfZAHSir0VPw/r14h5KIUaCXP4UYEkCKxJQJvdrlTdE
- t7bQPszpi0I20M7MkTBd7TQOFTXWDXc3Og8UTHLqquoZZz9Iio3loEmGddBg0sDNSEyR2DNo5lu
- KSoiqAqTkweB9lvanN5zphq7ThJUOqHpopk3vJK01Zm+yHtJDcH8yp0InOQoORgx0rCPd+dF5Wt
- vrUgMgj0wQcwfmywJr4bUFfExIDOqqe3HHLAr4GNur2OSfMgWKRU=
-X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
- fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
-X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
+Message-Id: <20260915-mux_fwnode-v1-1-ed5a6d8202d4@redaril.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDS0NT3dzSivi08rz8lFTdREMzU0vjZGPLtLQUJaCGgqLUtMwKsGHRsbW
+ 1AFe/s/9cAAAA
+X-Change-ID: 20260915-mux_fwnode-a16593c39ffd
+To: Peter Rosin <peda@lysator.liu.se>, Linus Walleij <linusw@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ xu.yang_2@nxp.com, Fabio Forni <development@redaril.me>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=12642;
+ i=development@redaril.me; h=from:subject:message-id;
+ bh=JNk4y1gUu8yNoKSpP9Cw+3Zk597uwGKQpVC+yDgTGnU=;
+ b=owGbwMvMwCXWeKho1tqFWemMp9WSGLJWzmPijRNYnXrLUl/so8MNJjfjsy/D5Pwmdqdt+zFpc
+ rq20xK5jlIWBjEuBlkxRZb/Tkabus1MjG71S9TCzGFlAhnCwMUpABP5lM/wv2C9iKt6cIWup6hX
+ Tl/Kv8UVl7aw3lzg9HFR1aKnnm76FYwMV+TlZq+qFptx9PCxq0mL1Rfd8ZgXP7F149uI/9Xz6tf
+ sZAcA
+X-Developer-Key: i=development@redaril.me; a=openpgp;
+ fpr=FF4232B28B363432DA8F187D81C2729AADA16A67
+X-Endpoint-Received: by B4 Relay for development@redaril.me/default with auth_id=1033
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document both new options in perf-script.txt: their interaction, the
-memory tradeoff, that lazy loading applies only to userspace ELF DSOs
-(kernel DSOs and modules always load eagerly), and that output may
-differ from the default loader for some targets.
+As firmware node is a more common abstract, this will convert the whole
+thing to fwnode interface.
 
-Add a shell test that records a small profile with callchains and
-asserts:
-
-- --lazy-load-symbols produces output byte-identical to the eager
-  loader, and that at least one symbol actually resolved (so the
-  comparison can't pass vacuously on all-[unknown] output);
-- --max-symbol-bytes=1K, with and without lazy loading, forces
-  [unknown] resolution with a single warning and exit code 0 (no crash).
-
-Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
-Assisted-by: Kimi:K3
+Co-developed-by: Xu Yang <xu.yang_2@nxp.com>
+Signed-off-by: Xu Yang <xu.yang_2@nxp.com>
+Signed-off-by: Fabio Forni <development@redaril.me>
 ---
- tools/perf/Documentation/perf-script.txt           |  24 +++++
- tools/perf/tests/shell/script_lazy_load_symbols.sh | 120 +++++++++++++++++++++
- 2 files changed, 144 insertions(+)
+This patch migrates the multiplexer subsystem from using the of_*          
+family of functions and structs, to the more generic fwnode framework.     
+                                                                           
+It is a rebase of a single commit[1] contained in a old patch series[2]
+submitted by Xu Yang. The original commit plus follow-up comments were
+tested on kernel v6.12 on an arm64-based board, but this current rebase
+isn't tested yet.                                                  
+                                                                           
+Link: https://lore.kernel.org/all/20220823195429.1243516-3-xu.yang_2@nxp.com [1]
+Link: https://lore.kernel.org/all/20220823195429.1243516-1-xu.yang_2@nxp.com [2]
+---
+ drivers/mux/core.c                    | 96 ++++++++++++++++++-----------------
+ drivers/pinctrl/pinctrl-generic-mux.c |  4 +-
+ include/linux/mux/consumer.h          |  6 ++-
+ 3 files changed, 57 insertions(+), 49 deletions(-)
 
-diff --git a/tools/perf/Documentation/perf-script.txt b/tools/perf/Documentation/perf-script.txt
-index 200ea25891d8..b5a90ff22342 100644
---- a/tools/perf/Documentation/perf-script.txt
-+++ b/tools/perf/Documentation/perf-script.txt
-@@ -412,6 +412,30 @@ include::itrace.txt[]
+diff --git a/drivers/mux/core.c b/drivers/mux/core.c
+index 5083e3d19606..2de0d1fd43d0 100644
+--- a/drivers/mux/core.c
++++ b/drivers/mux/core.c
+@@ -18,7 +18,7 @@
+ #include <linux/module.h>
+ #include <linux/mux/consumer.h>
+ #include <linux/mux/driver.h>
+-#include <linux/of.h>
++#include <linux/property.h>
+ #include <linux/slab.h>
  
-         Default: 127
+ /*
+@@ -118,6 +118,7 @@ struct mux_chip *mux_chip_alloc(struct device *dev,
+ 	mux_chip->dev.type = &mux_type;
+ 	mux_chip->dev.parent = dev;
+ 	mux_chip->dev.of_node = dev->of_node;
++	mux_chip->dev.fwnode = dev->fwnode;
+ 	dev_set_drvdata(&mux_chip->dev, mux_chip);
  
-+--lazy-load-symbols::
-+	Resolve symbols lazily instead of eagerly loading the full
-+	symbol table of every DSO that appears in a sample. A compact
-+	sorted index is built per DSO and only the addresses that appear
-+	in samples are materialized into symbols, with names read from the
-+	file's string table at lookup time. This sharply reduces memory
-+	(and usually time) for profiles of large binaries where only a
-+	small fraction of the symbol table is referenced. This applies only
-+	to userspace ELF DSOs; kernel DSOs and modules always load eagerly.
-+	Output may differ from the default loader for some targets
-+	(e.g. PPC64 .opd, .gnu_debugdata, or split debuginfo). Default: off.
-+
-+--max-symbol-bytes::
-+	Limit the bytes held in struct symbol allocations (and, with
-+	--lazy-load-symbols, the lazy index) for DSOs on the ELF symbol
-+	loader path -- userspace DSOs plus vmlinux-as-ELF and kernel
-+	modules. This is not a cap on all symbol memory or RSS: symbols
-+	from kallsyms, JIT maps, PLT synthesis, and libbfd are counted
-+	but not capped. Accepts a size with a B/K/M/G suffix (e.g. 128M).
-+	When the budget is exceeded, further symbols resolve to [unknown]
-+	and a warning is printed. This is a safety net independent of
-+	--lazy-load-symbols and can be used with or without it. Default: 0
-+	(unlimited).
-+
- --ns::
- 	Use 9 decimal places when displaying time (i.e. show the nanoseconds)
+ 	mux_chip->id = ida_alloc(&mux_ida, GFP_KERNEL);
+@@ -517,11 +518,11 @@ int mux_state_deselect(struct mux_state *mstate)
+ EXPORT_SYMBOL_GPL(mux_state_deselect);
  
-diff --git a/tools/perf/tests/shell/script_lazy_load_symbols.sh b/tools/perf/tests/shell/script_lazy_load_symbols.sh
-new file mode 100755
-index 000000000000..799c61e2f3e8
---- /dev/null
-+++ b/tools/perf/tests/shell/script_lazy_load_symbols.sh
-@@ -0,0 +1,120 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# perf script lazy symbol loading tests
-+#
-+# Verifies that --lazy-load-symbols produces output identical to the default
-+# eager symbol loader, and that --max-symbol-bytes caps symbol allocations
-+# (emitting [unknown] plus a warning) without crashing.
+ /* Note this function returns a reference to the mux_chip dev. */
+-static struct mux_chip *of_find_mux_chip_by_node(struct device_node *np)
++static struct mux_chip *mux_chip_find_by_fwnode(struct fwnode_handle *fwnode)
+ {
+ 	struct device *dev;
+ 
+-	dev = class_find_device_by_of_node(&mux_class, np);
++	dev = class_find_device_by_fwnode(&mux_class, fwnode);
+ 
+ 	return dev ? to_mux_chip(dev) : NULL;
+ }
+@@ -533,17 +534,17 @@ static struct mux_chip *of_find_mux_chip_by_node(struct device_node *np)
+  * @state: Pointer to where the requested state is returned, or NULL when
+  *         the required multiplexer states are handled by other means.
+  * @optional: Whether to return NULL and silence errors when mux doesn't exist.
+- * @node: the device nodes, use dev->of_node if it is NULL.
++ * @node: the device nodes, use dev's fwnode if it is NULL.
+  *
+  * Return: Pointer to the mux-control on success, an ERR_PTR with a negative
+  * errno on error, or NULL if optional is true and mux doesn't exist.
+  */
+ static struct mux_control *mux_get(struct device *dev, const char *mux_name,
+ 				   unsigned int *state, bool optional,
+-				   struct device_node *node)
++				   struct fwnode_handle *node)
+ {
+-	struct device_node *np = node ? node : dev->of_node;
+-	struct of_phandle_args args;
++	struct fwnode_handle *fwnode = node ? node : dev_fwnode(dev);
++	struct fwnode_reference_args args;
+ 	struct mux_chip *mux_chip;
+ 	unsigned int controller;
+ 	int index = 0;
+@@ -551,11 +552,13 @@ static struct mux_control *mux_get(struct device *dev, const char *mux_name,
+ 
+ 	if (mux_name) {
+ 		if (state)
+-			index = of_property_match_string(np, "mux-state-names",
+-							 mux_name);
++			index = fwnode_property_match_string(fwnode,
++							     "mux-state-names",
++							     mux_name);
+ 		else
+-			index = of_property_match_string(np, "mux-control-names",
+-							 mux_name);
++			index = fwnode_property_match_string(fwnode,
++							     "mux-control-names",
++							     mux_name);
+ 		if (index < 0 && optional) {
+ 			return NULL;
+ 		} else if (index < 0) {
+@@ -566,39 +569,40 @@ static struct mux_control *mux_get(struct device *dev, const char *mux_name,
+ 	}
+ 
+ 	if (state)
+-		ret = of_parse_phandle_with_args(np,
+-						 "mux-states", "#mux-state-cells",
+-						 index, &args);
++		ret = fwnode_property_get_reference_args(fwnode, "mux-states",
++							 "#mux-state-cells", 0,
++							 index, &args);
+ 	else
+-		ret = of_parse_phandle_with_args(np,
+-						 "mux-controls", "#mux-control-cells",
+-						 index, &args);
++		ret = fwnode_property_get_reference_args(fwnode,
++							 "mux-controls", "#mux-control-cells",
++							 0, index, &args);
 +
-+set -e
-+
-+shelldir=$(dirname "$0")
-+# shellcheck source=lib/perf_has_symbol.sh
-+. "${shelldir}"/lib/perf_has_symbol.sh
-+
-+testsym="test_loop"
-+
-+skip_test_missing_symbol ${testsym}
-+
-+err=0
-+temp_dir=$(mktemp -d /tmp/__perf_test.lazy_load.XXXXX)
-+perfdata="${temp_dir}/perf.data"
-+eager_out="${temp_dir}/eager.out"
-+lazy_out="${temp_dir}/lazy.out"
-+
-+cleanup() {
-+	rm -rf "${temp_dir}"
-+	trap - EXIT TERM INT
-+}
-+
-+trap_cleanup() {
-+	echo "Unexpected signal in ${FUNCNAME[1]}"
-+	cleanup
-+	exit 1
-+}
-+trap trap_cleanup EXIT TERM INT
-+
-+test_lazy_load_identical() {
-+	echo "Lazy-load output matches eager loader"
-+
-+	# Record a small profile with callchains so symbol resolution runs.
-+	if ! perf record -o "${perfdata}" -g -- perf test -w thloop 2> /dev/null
-+	then
-+		echo "Lazy-load identical [Skipped record not supported]"
-+		return
-+	fi
-+
-+	if ! perf script -i "${perfdata}" 2> /dev/null > "${eager_out}" || \
-+	   ! perf script --lazy-load-symbols -i "${perfdata}" 2> /dev/null > "${lazy_out}"
-+	then
-+		echo "Lazy-load identical [Failed perf script error]"
-+		err=1
-+		return
-+	fi
-+
-+	# The comparison is only meaningful if something actually resolved;
-+	# two all-[unknown] outputs would also match.
-+	if ! grep -q "${testsym}" "${eager_out}"
-+	then
-+		echo "Lazy-load identical [Skipped no ${testsym} resolved]"
-+		return
-+	fi
-+
-+	if ! cmp -s "${eager_out}" "${lazy_out}"
-+	then
-+		echo "Lazy-load identical [Failed output differs]"
-+		err=1
-+		return
-+	fi
-+	echo "Lazy-load identical [Success]"
-+}
-+
-+test_max_symbol_bytes() {
-+	echo "--max-symbol-bytes budget enforcement"
-+
-+	# Depends on ${perfdata} from test_lazy_load_identical.
-+	if [ ! -s "${perfdata}" ]
-+	then
-+		echo "--max-symbol-bytes budget [Skipped record not supported]"
-+		return
-+	fi
-+
-+	# A tiny budget forces most symbols to be dropped as [unknown],
-+	# with a single warning, and must not crash.
-+	if ! perf script --max-symbol-bytes=1K -i "${perfdata}" > /dev/null \
-+		2> "${temp_dir}/budget.err"
-+	then
-+		echo "--max-symbol-bytes budget [Failed nonzero exit]"
-+		err=1
-+		return
-+	fi
-+	if ! grep -q "symbol memory budget exceeded" "${temp_dir}/budget.err"
-+	then
-+		echo "--max-symbol-bytes budget [Failed missing warning]"
-+		err=1
-+		return
-+	fi
-+
-+	if ! perf script --lazy-load-symbols --max-symbol-bytes=1K \
-+		-i "${perfdata}" > /dev/null 2> "${temp_dir}/lazy-budget.err"
-+	then
-+		echo "--max-symbol-bytes lazy budget [Failed nonzero exit]"
-+		err=1
-+		return
-+	fi
-+	warnings=$(grep -c "symbol memory budget exceeded" \
-+		"${temp_dir}/lazy-budget.err" || true)
-+	if [ "${warnings}" -ne 1 ]
-+	then
-+		echo "--max-symbol-bytes lazy budget [Failed warning count: ${warnings}]"
-+		err=1
-+		return
-+	fi
-+	echo "--max-symbol-bytes budget [Success]"
-+}
-+
-+test_lazy_load_identical
-+test_max_symbol_bytes
-+
-+cleanup
-+exit $err
+ 	if (ret) {
+ 		if (optional && ret == -ENOENT)
+ 			return NULL;
+ 
+-		dev_err(dev, "%pOF: failed to get mux-%s %s(%i)\n",
+-			np, state ? "state" : "control",
+-			mux_name ?: "", index);
++		dev_err(dev, "%pfw: failed to get mux-%s %s(%i)\n",
++			fwnode, state ? "state" : "control", mux_name ?: "",
++			index);
+ 		return ERR_PTR(ret);
+ 	}
+ 
+-	mux_chip = of_find_mux_chip_by_node(args.np);
+-	of_node_put(args.np);
++	mux_chip = mux_chip_find_by_fwnode(args.fwnode);
++	fwnode_handle_put(args.fwnode);
+ 	if (!mux_chip)
+ 		return ERR_PTR(-EPROBE_DEFER);
+ 
+ 	controller = 0;
+ 	if (state) {
+-		if (args.args_count > 2 || args.args_count == 0 ||
+-		    (args.args_count < 2 && mux_chip->controllers > 1)) {
+-			dev_err(dev, "%pOF: wrong #mux-state-cells for %pOF\n",
+-				np, args.np);
++		if (args.nargs > 2 || args.nargs == 0 ||
++		    (args.nargs < 2 && mux_chip->controllers > 1)) {
++			dev_err(dev, "%pfw: wrong #mux-state-cells for %pfw\n",
++				fwnode, args.fwnode);
+ 			put_device(&mux_chip->dev);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+ 
+-		if (args.args_count == 2) {
++		if (args.nargs == 2) {
+ 			controller = args.args[0];
+ 			*state = args.args[1];
+ 		} else {
+@@ -606,21 +610,21 @@ static struct mux_control *mux_get(struct device *dev, const char *mux_name,
+ 		}
+ 
+ 	} else {
+-		if (args.args_count > 1 ||
+-		    (!args.args_count && mux_chip->controllers > 1)) {
+-			dev_err(dev, "%pOF: wrong #mux-control-cells for %pOF\n",
+-				np, args.np);
++		if (args.nargs > 1 ||
++		    (!args.nargs && mux_chip->controllers > 1)) {
++			dev_err(dev, "%pfw: wrong #mux-control-cells for %pfw\n",
++				fwnode, args.fwnode);
+ 			put_device(&mux_chip->dev);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+ 
+-		if (args.args_count)
++		if (args.nargs)
+ 			controller = args.args[0];
+ 	}
+ 
+ 	if (controller >= mux_chip->controllers) {
+-		dev_err(dev, "%pOF: bad mux controller %u specified in %pOF\n",
+-			np, controller, args.np);
++		dev_err(dev, "%pfw: bad mux controller %u specified in %pfw\n",
++			fwnode, controller, args.fwnode);
+ 		put_device(&mux_chip->dev);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+@@ -714,14 +718,14 @@ EXPORT_SYMBOL_GPL(devm_mux_control_get);
+  * @dev: The device that needs a mux-state.
+  * @mux_name: The name identifying the mux-state.
+  * @optional: Whether to return NULL and silence errors when mux doesn't exist.
+- * @np: the device nodes, use dev->of_node if it is NULL.
++ * @node: the device nodes, use dev's fwnode if it is NULL.
+  *
+  * Return: Pointer to the mux-state on success, an ERR_PTR with a negative
+  * errno on error, or NULL if optional is true and mux doesn't exist.
+  */
+ static struct mux_state *
+ mux_state_get(struct device *dev, const char *mux_name, bool optional,
+-	      struct device_node *np)
++	      struct fwnode_handle *node)
+ {
+ 	struct mux_state *mstate;
+ 
+@@ -729,7 +733,7 @@ mux_state_get(struct device *dev, const char *mux_name, bool optional,
+ 	if (!mstate)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	mstate->mux = mux_get(dev, mux_name, &mstate->state, optional, np);
++	mstate->mux = mux_get(dev, mux_name, &mstate->state, optional, node);
+ 	if (IS_ERR(mstate->mux)) {
+ 		int err = PTR_ERR(mstate->mux);
+ 
+@@ -771,7 +775,7 @@ static void devm_mux_state_release(struct device *dev, void *res)
+  * @dev: The device that needs a mux-state.
+  * @mux_name: The name identifying the mux-state.
+  * @optional: Whether to return NULL and silence errors when mux doesn't exist.
+- * @np: The device nodes, use dev->of_node if it is NULL.
++ * @node: The device nodes, use dev's fwnode if it is NULL.
+  * @init: Optional function pointer for mux-state object initialisation.
+  * @exit: Optional function pointer for mux-state object cleanup on release.
+  *
+@@ -779,7 +783,7 @@ static void devm_mux_state_release(struct device *dev, void *res)
+  * errno on error, or NULL if optional is true and mux doesn't exist.
+  */
+ static struct mux_state *__devm_mux_state_get(struct device *dev, const char *mux_name,
+-					      bool optional, struct device_node *np,
++					      bool optional, struct fwnode_handle *node,
+ 					      int (*init)(struct mux_state *mstate),
+ 					      int (*exit)(struct mux_state *mstate))
+ {
+@@ -787,7 +791,7 @@ static struct mux_state *__devm_mux_state_get(struct device *dev, const char *mu
+ 	struct mux_state *mstate;
+ 	int ret;
+ 
+-	mstate = mux_state_get(dev, mux_name, optional, np);
++	mstate = mux_state_get(dev, mux_name, optional, node);
+ 	if (IS_ERR(mstate))
+ 		return ERR_CAST(mstate);
+ 	else if (optional && !mstate)
+@@ -821,23 +825,23 @@ static struct mux_state *__devm_mux_state_get(struct device *dev, const char *mu
+ }
+ 
+ /**
+- * devm_mux_state_get_from_np() - Get the mux-state for a device, with resource
++ * devm_mux_state_get_from_swnode() - Get the mux-state for a device, with resource
+  *				  management.
+  * @dev: The device that needs a mux-control.
+  * @mux_name: The name identifying the mux-control.
+- * @np: the device nodes, use dev->of_node if it is NULL.
++ * @node: the device nodes, use dev's fwnode if it is NULL.
+  *
+  * Return: Pointer to the mux-state, or an ERR_PTR with a negative errno.
+  *
+  * The mux-state will automatically be freed on release.
+  */
+ struct mux_state *
+-devm_mux_state_get_from_np(struct device *dev, const char *mux_name,
+-			   struct device_node *np)
++devm_mux_state_get_from_swnode(struct device *dev, const char *mux_name,
++			       struct fwnode_handle *node)
+ {
+-	return __devm_mux_state_get(dev, mux_name, false, np, NULL, NULL);
++	return __devm_mux_state_get(dev, mux_name, false, node, NULL, NULL);
+ }
+-EXPORT_SYMBOL_GPL(devm_mux_state_get_from_np);
++EXPORT_SYMBOL_GPL(devm_mux_state_get_from_swnode);
+ 
+ /**
+  * devm_mux_state_get_optional() - Get the optional mux-state for a device,
+diff --git a/drivers/pinctrl/pinctrl-generic-mux.c b/drivers/pinctrl/pinctrl-generic-mux.c
+index 202b72351efb..bb6681753727 100644
+--- a/drivers/pinctrl/pinctrl-generic-mux.c
++++ b/drivers/pinctrl/pinctrl-generic-mux.c
+@@ -50,7 +50,9 @@ mux_pinmux_dt_node_to_map(struct pinctrl_dev *pctldev,
+ 	if (!group_names)
+ 		return -ENOMEM;
+ 
+-	function->mux_state = devm_mux_state_get_from_np(pctldev->dev, NULL, np_config);
++	function->mux_state = devm_mux_state_get_from_swnode(pctldev->dev,
++							     NULL,
++							     of_fwnode_handle(np_config));
+ 	if (IS_ERR(function->mux_state))
+ 		return PTR_ERR(function->mux_state);
+ 
+diff --git a/include/linux/mux/consumer.h b/include/linux/mux/consumer.h
+index 449e38e6e2c5..ceb6858cdce8 100644
+--- a/include/linux/mux/consumer.h
++++ b/include/linux/mux/consumer.h
+@@ -11,6 +11,7 @@
+ #define _LINUX_MUX_CONSUMER_H
+ 
+ #include <linux/compiler.h>
++#include <linux/device.h>
+ 
+ struct device;
+ struct mux_control;
+@@ -62,7 +63,8 @@ void mux_control_put(struct mux_control *mux);
+ struct mux_control *devm_mux_control_get(struct device *dev, const char *mux_name);
+ 
+ struct mux_state *
+-devm_mux_state_get_from_np(struct device *dev, const char *mux_name, struct device_node *np);
++devm_mux_state_get_from_swnode(struct device *dev, const char *mux_name,
++			       struct fwnode_handle *node);
+ 
+ struct mux_state *devm_mux_state_get_optional(struct device *dev, const char *mux_name);
+ struct mux_state *devm_mux_state_get_selected(struct device *dev, const char *mux_name);
+@@ -165,6 +167,6 @@ static inline struct mux_state *devm_mux_state_get_optional_selected(struct devi
+ #endif /* CONFIG_MULTIPLEXER */
+ 
+ #define devm_mux_state_get(dev, mux_name)		\
+-	devm_mux_state_get_from_np(dev, mux_name, NULL)
++	devm_mux_state_get_from_swnode(dev, mux_name, NULL)
+ 
+ #endif /* _LINUX_MUX_CONSUMER_H */
 
+---
+base-commit: f6e7b42bf05b2427fb8a7a1d1c387a86638bb413
+change-id: 20260915-mux_fwnode-a16593c39ffd
+
+Best regards,
 -- 
-Git-155)
+Fabio Forni <development@redaril.me>
 
