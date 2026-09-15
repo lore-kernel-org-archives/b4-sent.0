@@ -1,136 +1,81 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 15 Sep 2026 16:24:06 +0200
-Subject: [PATCH 5/5] Bluetooth: btnxpuart: Drop serdev based M.2 power
- sequencing code
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/2] Introduce support for Xiaomi Mi 8
+Date: Tue, 15 Sep 2026 16:32:23 +0200
+Message-Id: <20260915-dipper-v2-0-cbade54919ee@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-pci-m2-bt-rework-v1-5-3c7d9cf9c010@oss.qualcomm.com>
-References: <20260915-pci-m2-bt-rework-v1-0-3c7d9cf9c010@oss.qualcomm.com>
-In-Reply-To: <20260915-pci-m2-bt-rework-v1-0-3c7d9cf9c010@oss.qualcomm.com>
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Bartosz Golaszewski <brgl@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Amitkumar Karwar <amitkumar.karwar@nxp.com>, 
- Neeraj Kale <neeraj.sanjaykale@nxp.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-kernel@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org, 
- linux-pm@vger.kernel.org, Rahul Samana <rahul.samana@oss.qualcomm.com>, 
- Wei Deng <wei.deng@oss.qualcomm.com>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3237;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=+YzVex5t/UFDNNH6FtEmazomhrj+PormXoK6KhBhZYo=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqqVUTH7YYitnfHOUyQSnpkRPlZLBO68tqUNH23
- AuTotDAoamJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaqlVEwAKCRBVnxHm/pHO
- 9QuzCACee6+MFgwP7AqcyjVGPJ49iNhWnNA/QQBP5XWHvZIRUwkSM9nGmJOKCNtA6/Rt5EbBtJS
- QjXcjGxZZGH+a/wVnKK3hj/HYljm3l32CScy14+i8qa6htukWCXBA/F215lEJ/IjrTYEp7X7+RJ
- TJGqOFj1oDtT44KMkBhXxcnxlucOpaXC/9rg9pvFIpaehY6LwshJdkFRHd1wHMXl1vzjtQ6hcj8
- 6NxYgrSMZFhX+cIkd5tusO4VcLBJsyZrxLuiY5Q+8oievV4bU5OzMSLOiZbt/gaOrxxT9TA6IQZ
- 5KoARp+qth/nE6Gd3c4jr4S9I6cYoIa5UIJKbm3A4dnTKq7v
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/zXMQQ7CIBCF4as0sxYzYLHoynuYLiwMdjYtgYZUG
+ +4u1rj8X16+DRJFpgTXZoNImRPPUw11aMCOj+lJgl1tUKjO2CkUjkOgKIx3Jy+p7fRgoZ5DJM/
+ rDt372iOnZY6v3c3yu/4Ig5c/kaVAQUPrNEoy2vkbr7wc7Rv6UsoHjb5qS5oAAAA=
+X-Change-ID: 20260720-dipper-8fd3f1e475bc
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1593; i=david@ixit.cz;
+ h=from:subject:message-id; bh=q79L61CA7e2y8xizqfBNTzm3tp/94ga0fZ23l5wPvDo=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqVb6LsUVTVE683mcrWSWmXyTRm5z0DXFx6PuW
+ vzBcW+yLC+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqlW+gAKCRBgAj/E00kg
+ cuckEACkt2DxySYgI2eP6FvS2n5LonF9gB5/KkvaIM+qn0yhegFV1qCnf7C9KOGkLGt/IKr7nmd
+ beo1vY1bDagxznjNVPgh8dc+6+NSs9r3Y6snIIC6Ytk3Wqy21UXaaYHjDYl52PQtlPw3T+GoRGO
+ bD1pRaAiJYaTELtLhyLuZcPBTRQQmrkT84ed29reEil14idMCM5KfLlYycz40k9sFfBCEWhZ987
+ BjQWm8qfg7BZuCl1laA5T6q4otK3Yhoa5My06OdbQnf0WCfXtOEgrfuFxLAXKM+MQyZJGivCKBy
+ L45OoKzxXebN6uuF24ktqfvF0BDUXhReoQLDe5AKukv1jdtRv6h0mVXkreiOdm5Mut7dRpcXWkp
+ hXD64Ir7eC1DaVeb9ej/1ZgU/SD7pJ6hKyuM8ZLKCPVfcT1m+7E6420Yz/SE0vHsjfcur1ni+vS
+ fW8o0wvsGNHrmVyIuCD8feHmISeQ4hfkU7GV/P+3T+2yQQQ6ihgO24sX6omtY6QvvHKPQk0cOOa
+ ZhMLvqrNnaoPrGK1k1tqKUAtT/bkuEyu3wfvZDkAteAROkUVE4RiXvaZ/cg0wX4XNJnmt0ipE5i
+ HnnVLyT77vT/FDPReu8fulDjh7qRr2Sz4tldobTzf+kjrl8tfMOeIc1wngu/pRLMFFQI25JD2/d
+ +6g5knRTh6G8UBQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Bluetooth interface in M.2 modules is now enumerated using an auxiliary
-device instead of serdev. The power sequencing driver now allocates an
-auxiliary device for the Bluetooth interface whenever a compatible
-M.2 module shows up over PCIe. And the auxiliary device gets bind to this
-btnxpuart driver using the existing auxiliary driver matching logic.
+Currently only Mi 8 itself is supported, but the
+sdm845-xiaomi-dipper-common should ensure, that other family members
+such as Mi 8 Pro, Mi 8 Explorer will be likely supported too without
+much of additional work. These variants should differ only in the small
+details (such as battery size, fingerprint sensor etc.).
 
-Earlier the same modules were brought up by fabricating a bluetooth
-node under the UART controller, so that the serdev bus matched this
-driver, and nxp_serdev_probe grabbed the "uart" sequencer when the M.2
-connector was reachable over the OF graph. That node is no longer
-created, so the serdev driver never binds for an M.2 module.
+Minimal viable support for xiaomi-dipper. Enough to get basic u-boot and
+Linux functional. More improvements will follow.
 
-Hence, remove the connector helper and the serdev power sequencing code.
+The display and touchscreen support are work-in-progress, but waiting
+for other bits to land.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/bluetooth/btnxpuart.c | 48 +------------------------------------------
- 1 file changed, 1 insertion(+), 47 deletions(-)
+Changes in v2:
+- Deduplicate simplified xiaomi,dipper compatbile from the dt-binding.
+- Reorder reserved-memory by address.
+- vreg-s4a-1p8 -> regulator-vreg-s4a-1p8. (Konrad)
+- adsp firmware moved to dipper variant (as I cannot test others)
+  (Konrad)
+- Removed Bluetooth path comment. (Konrad)
+- Link to v1: https://patch.msgid.link/20260809-dipper-v1-0-eb4d501e85df@ixit.cz
 
-diff --git a/drivers/bluetooth/btnxpuart.c b/drivers/bluetooth/btnxpuart.c
-index 2672e481ef15..eaa82cc6444f 100644
---- a/drivers/bluetooth/btnxpuart.c
-+++ b/drivers/bluetooth/btnxpuart.c
-@@ -10,7 +10,6 @@
- #include <linux/auxiliary_bus.h>
- #include <linux/serdev.h>
- #include <linux/of.h>
--#include <linux/of_graph.h>
- #include <linux/pwrseq/consumer.h>
- #include <linux/pwrseq/pcie-m2-bt.h>
- #include <linux/skbuff.h>
-@@ -1820,28 +1819,6 @@ static void nxp_coredump_notify(struct hci_dev *hdev, int state)
- 	kobject_uevent_env(&serdev->dev.kobj, KOBJ_CHANGE, envp);
- }
- 
--/*
-- * Check if the remote M.2 connector device linked via OF graph is present
-- * and available. This is used to determine whether the pwrseq path should
-- * be taken. When the remote connector node is disabled (e.g., by a DT
-- * overlay switching from PCIe WiFi to SDIO WiFi), the pwrseq path is
-- * skipped, allowing the BT driver to use a direct bluetooth child node
-- * instead.
-- */
--static bool nxp_m2_connector_is_available(struct device *dev)
--{
--	struct device_node *ep __free(device_node) =
--		of_graph_get_next_endpoint(dev_of_node(dev), NULL);
--
--	if (!ep)
--		return false;
--
--	struct device_node *remote __free(device_node) =
--		of_graph_get_remote_port_parent(ep);
--
--	return remote && of_device_is_available(remote);
--}
--
- static int nxp_register_dev(struct btnxpuart_dev *nxpdev)
- {
- 	struct serdev_device *serdev = nxpdev->serdev;
-@@ -1962,30 +1939,7 @@ static int nxp_serdev_probe(struct serdev_device *serdev)
- 		return err;
- 	}
- 
--	if (nxp_m2_connector_is_available(&serdev->ctrl->dev)) {
--		struct pwrseq_desc *pwrseq;
--
--		pwrseq = pwrseq_get(&serdev->ctrl->dev, "uart");
--		if (IS_ERR(pwrseq))
--			return dev_err_probe(&serdev->dev, PTR_ERR(pwrseq),
--					     "failed to get pwrseq\n");
--
--		nxpdev->pwrseq = pwrseq;
--		err = pwrseq_enable(pwrseq);
--		if (err)
--			goto err_pwrseq_put;
--	}
--
--	err = nxp_register_dev(nxpdev);
--	if (err)
--		goto err_pwrseq_put;
--
--	return 0;
--
--err_pwrseq_put:
--	if (nxpdev->pwrseq)
--		pwrseq_put(nxpdev->pwrseq);
--	return err;
-+	return nxp_register_dev(nxpdev);
- }
- 
- static void __nxp_remove(struct btnxpuart_dev *nxpdev)
+---
+David Heidelberg (2):
+      dt-bindings: arm: qcom: Add Xiaomi Mi 8 family compatibles
+      arm64: dts: qcom: add Xiaomi Mi 8 (dipper)
 
--- 
-2.43.0
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   9 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/sdm845-xiaomi-dipper-common.dtsi | 607 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper.dts  |  36 ++
+ 4 files changed, 653 insertions(+)
+---
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260720-dipper-8fd3f1e475bc
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
