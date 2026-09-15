@@ -1,108 +1,74 @@
-From: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
-Date: Mon, 14 Sep 2026 16:04:23 -0600
-Subject: [PATCH v3] arm64: dts: qcom: Fix touchscreen address on Dell
- Inspiron 7441
+From: Junrui Luo <moonafterrain@outlook.com>
+Subject: [PATCH v2 0/4] drm/virtio: fix GEM object leaks on error paths
+Date: Tue, 15 Sep 2026 15:39:09 +0800
+Message-Id: <20260915-fixes-v2-0-a0d799e4db66@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260914-dell7441-touchscreen-v3-1-062d6b93d1ea@est.una.ac.cr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ6CMBBFr0K6tqQtBcSV9zAu2mGQGiymU4iGc
- Hep7tzo8s38eX8WRhgcEjtkCws4O3Kj36DYZQx64y/IXbsxU0JVopGatzgMtdaSx3GCniAgel7
- ZSglZ6L2xFdtO7wE793hrT+cP02SvCDG5UsIaQm6D8dCn0c1QxJAWvaM4huf7oVkmwY/uWXLJ2
- 7optQBT4l4ekWI+eZMbyCGw1D+rf0RqE9VdrZQGAYDlt2hd1xd8yIy3MAEAAA==
-X-Change-ID: 20260914-dell7441-touchscreen-6b6201348ab6
-In-Reply-To: <20260914-dell7441-touchscreen-v2-1-7f7224c0cce5@est.una.ac.cr>
-References: <20260914-dell7441-touchscreen-v2-1-7f7224c0cce5@est.una.ac.cr>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Val Packett <val@packett.cool>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>, 
- Laurentiu Tudor <laurentiu.tudor1@dell.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789423465; l=2783;
- i=avalon.vargas.centeno@est.una.ac.cr; s=avalon-una-20260914;
- h=from:subject:message-id; bh=v75HzOpWBajfOEjPLTpITjnQWejmIESrbq0Y0aBQQ9A=;
- b=6JsiynCVSClNZxDDovanJcVOxZuqP0EkykCbcmO6O0jomdmTCwsuoKM+iScQYWFLJ7r4XEGty
- iwFJVH5JddnB9rbu3s7O3rXeQO4qZCDZg/nLgd/ZFn+FFnoZymXm+Ju
-X-Developer-Key: i=avalon.vargas.centeno@est.una.ac.cr; a=ed25519;
- pk=I7FZ301yhA9Jl2LReBEqv+9LUrd5zi397CIT2gTB6RE=
-X-Endpoint-Received: by B4 Relay for avalon.vargas.centeno@est.una.ac.cr/avalon-una-20260914 with auth_id=1032
+X-B4-Tracking: v=1; b=H4sIAB32qGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDS0NT3bTMitRiXYtkM0tD81RLAzMzUyWg2oKiVLAEUGl0bG0tAJP91iF
+ XAAAA
+X-Change-ID: 20260915-fixes-8c6917e90665
+To: David Airlie <airlied@redhat.com>, Gerd Hoffmann <kraxel@redhat.com>, 
+ Dmitry Osipenko <dmitry.osipenko@collabora.com>, 
+ Gurchetan Singh <gurchetansingh@chromium.org>, 
+ Chia-I Wu <olvaffe@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Simona Vetter <simona@ffwll.ch>, "Michael S. Tsirkin" <mst@redhat.com>, 
+ Dave Airlie <airlied@gmail.com>
+Cc: dri-devel@lists.freedesktop.org, virtualization@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Junrui Luo <moonafterrain@outlook.com>, 
+ Yuhao Jiang <danisjiang@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1536;
+ i=moonafterrain@outlook.com; h=from:subject:message-id;
+ bh=X2czHbrSs18WUTeT1j+/DpL6IMrShozvKKb9NfGC9O0=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrBXfHN90179brFw37+qpt7Fmt+eoMjV+P7nk3s4JO
+ nJyRscL4uo7SlkYxLgYZMUUWY4XXPpm4btFd4vPlmSYOaxMIEMYuDgFYCIJAQx/hdckFe99sNTx
+ R8R8lSk5FV8WXbeZXcHwuKmgaN2O9coHnzIy3M0z/2R5xODBp9l/+FmXXbHK4nXaU5tveGFSX76
+ ir+xpTgBXL07U
+X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
+ fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
+X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with auth_id=909
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The LXST2021 touchscreen on the tested Dell Inspiron 14 Plus 7441
-responds at I2C address 0x09, while the device tree specifies 0x10.
-Probing the latter fails with -ENXIO and no touchscreen input device
-is registered.
+v1 fixed one drm_gem_object_release() misuse in virtio_gpu_gem_create().
+Dmitry asked for the other occurrences the Sashiko bot pointed at [1], so
+v2 turns it into a series.
 
-Use address 0x09, matching the LXST2021 configuration on the related
-Dell Latitude 7455. With this address, the controller identifies as
-29BD:1103 and binds to hid-multitouch.
+Patches 1-3 replace drm_gem_object_release() with drm_gem_object_put() on
+the GEM creation error paths. Patch 1 is unchanged from v1.
 
-Fixes: e7733b42111c ("arm64: dts: qcom: Add support for Dell Inspiron 7441 / Latitude 7455")
-Signed-off-by: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
----
-This replaces the earlier report-plus-diff with a patch submission.
-Only one unit has been tested. I have no evidence of double-sourcing
-or a working Inspiron touchscreen at 0x10; a typo remains possible.
+Patch 4 adds the missing drm_gem_object_release() before kfree(vram) in
+virtio_gpu_vram_create().
 
-touch input and suspend/resume. The native upstream patch has not yet
-undergone a full kernel DTB build or dtbs_check.
+Only compile-tested (x86_64, CONFIG_DRM_VIRTIO_GPU=m).
 
-Validation: Linux 7.2.4 plus the equivalent local DT overlay, physical
----
-Changes in v3:
-- Add the Fixes tag for the commit that introduced the incorrect address.
-- Link to v2: https://patch.msgid.link/20260914-dell7441-touchscreen-v2-1-7f7224c0cce5@est.una.ac.cr
+[1] https://lore.kernel.org/all/55240372-c265-4b38-be94-f29a58ddbb22@collabora.com/
 
 Changes in v2:
-- Drop the testing details from the commit message as requested.
-- Link to v1: https://patch.msgid.link/20260914-dell7441-touchscreen-v1-1-d79540ca5e81@est.una.ac.cr
+- Add patches 2-4 covering the other occurrences reported by the bot
+  (Dmitry Osipenko)
+- Link to v1: https://lore.kernel.org/r/20260815-virtgpu-gem-create-leak-v1-1-a4e9fb18caa3@outlook.com
 
-To: Bjorn Andersson <andersson@kernel.org>
-To: Konrad Dybcio <konradybcio@kernel.org>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Laurentiu Tudor <laurentiu.tudor1@dell.com>
-To: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-To: Val Packett <val@packett.cool>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Junrui Luo (4):
+      drm/virtio: fix object leak when drm_gem_handle_create() fails
+      drm/virtio: fix object leak in virtio_gpu_resource_create_ioctl()
+      drm/virtio: fix object leaks in virtio_gpu_resource_create_blob_ioctl()
+      drm/virtio: release the GEM object on virtio_gpu_vram_create() errors
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
-index 75e10d97c..0cf5716cd 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
-@@ -25,9 +25,10 @@ &gpu_zap_shader {
- };
- 
- &i2c8 {
--	touchscreen@10 {
-+	/* LXST2021 */
-+	touchscreen@9 {
- 		compatible = "hid-over-i2c";
--		reg = <0x10>;
-+		reg = <0x09>;
- 
- 		hid-descr-addr = <0x1>;
- 		interrupts-extended = <&tlmm 51 IRQ_TYPE_LEVEL_LOW>;
-
+ drivers/gpu/drm/virtio/virtgpu_gem.c   |  2 +-
+ drivers/gpu/drm/virtio/virtgpu_ioctl.c |  6 +++---
+ drivers/gpu/drm/virtio/virtgpu_vram.c  | 17 +++++++++--------
+ 3 files changed, 13 insertions(+), 12 deletions(-)
 ---
-base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
-change-id: 20260914-dell7441-touchscreen-6b6201348ab6
+base-commit: 587858367581b9c55c3690f4e63382ad622719d4
+change-id: 20260915-fixes-8c6917e90665
 
 Best regards,
---  
-Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
+-- 
+Junrui Luo <moonafterrain@outlook.com>
 
