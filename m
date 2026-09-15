@@ -1,85 +1,101 @@
-From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Tue, 15 Sep 2026 10:39:20 -0700
-Subject: [PATCH net v5] net: pcs: rzn1-miic: Fix config array
- initialization
+From: Alireza Haghdoost <haghdoost@uber.com>
+Subject: [PATCH 0/4] perf script: Bounded and lazy symbol loading
+Date: Tue, 15 Sep 2026 11:42:42 -0700
+Message-Id: <20260915-perf-symbol-memory-send-v1-0-1d3360e21f07@uber.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-rzn1-miic-fix-array-v5-1-b7173fd5b97d@reliablecontrols.com>
-X-B4-Tracking: v=1; b=H4sIAMeCqWoC/33NQW7CMBAF0KsgrzvI4zhx3FXvUbEww7hYCnZlR
- xEU5e412cAiZPnn67+5i8I5cBGfu7vIPIUSUqyh/dgJOrv4wxBONQslVSd7bCD/RYRLCAQ+XMH
- l7G7AnWOtW0USjajL38y1XNRvEXkUh3o8hzKmfFs+TbhUm+iEgHBse3KeyKLhr8xDcMeBKcUxp
- 6HsKV0WelJPzkpc5xRIaNhKI7VlY+QG17xyap1rHpw3JyLvnW/dBqdfONTrnK6c7Cyi8szUd2+
- 4eZ7/AVtCHJuzAQAA
-To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>, 
- linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Geert Uytterhoeven <geert+renesas@glider.be>, 
- Kyle Hendry <khendry@reliablecontrols.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789493977; l=2005;
- i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=I5i1St31oPo6d7N+HMb7ky+0UtXFiiyAOVC61bDQiwI=;
- b=zw5AD/zG7P/DBb2uXZ1IYVXEZMobeYcifInldvzVGBL52emRFgSyi7IJ1pn44x6B0axvooYqo
- dEOoW+Taqm+B5/AuG/p3mZow7Mk4GGOPHFaQnSF97FCcD+aX+0UGj2r
-X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
- pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
-X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORtYJ1Pmq4iHLk01YtuRqGyMv
+ btVj9/h/1cwVmGDU7OC8ltMSq5wuwbo5vOVUUI1dG13aAfX48Qa0ZY0lgcmTkUXNM4B+UiRvPO
+ 0DwPUelKOMv/O58vf9hrvTM/vDrbtAz418Kl7AAAA
+X-Change-ID: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>, Andrii Nakryiko <andriin@fb.com>, 
+ Alexei Starovoitov <ast@kernel.org>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Alireza Haghdoost <haghdoost@uber.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3069; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=i2H74OGGigBmuYhmxMZk49EwD06ks5w+/N4nWC1cfPU=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBqqZHFcDMfo4i4poKnBKXUWqae19aK7vTXIHbuN
+ 3SbRNgXOoeJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCaqmRxRsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtgC0Q//bawrXizVdiCBgvq8GADczq9yOkYBhXO
+ fVDn+FXYxHEkN4P76MquTjAw9QKMqsXwY4lr8ECEyWNeEzG4QMWWZUdkQZX/p8p7FLv1jfpzbVB
+ zXwBg33Dd72xFdTJlhreN1lbeb0OtZqbHHgz4hLyuNe8Bx0HxOuI8HvmHFiyLHZywEWligweBfh
+ 6H4qkrgbS6Dj7SFd//dgVtdvB8f54INWOeYx1ZaEDHCXI+gL2b37AvHyuOiwy34nXjAOeOhfY0n
+ miUO4ng1xcwu+NZE5Qo4b3ckQTOQjUpamvKHjiHg/MrVAiwJRrRlah/RYucHkEQ2ZTYl2RoynQo
+ ZaZz1Gexa6/goqZkvizs/s7m7WLfPrd8pKzlGY7bW5Wd6awTLRuhNJpTVXkXulDRIJdHnA3Q+Ja
+ TuUAtXp0NApCqJvORUj8EfXvbg2zAyiiBFJHjosUrkMw8E2KcN+c5a79PvWqWURiExlZTb+aArf
+ /TeeNxu6kRnRVp0mHuwXDVt/Ul3q6Xl9LToYICEghZo7Sj2tHsDRBsuUmCAQsaYeB8adZ7B17CE
+ 2gqeaq3DWp2y2dNLumhg+b/x0c/W48nVkkKJzKOS95C8YVVjXMNpZsRaA35+KrPgMbEBIvGiKLQ
+ abLix8zbTr4x8z1R6X2BiLRcmjQzSsSVP2KZ6CBj3VuMmeKVQT7M=
+X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
+ fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
+X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix memset parameters to initialize the entire DT value array
+perf script loads the entire ELF symbol table of every DSO that appears
+in a sample, allocating each symbol into an rb-tree held until process
+exit.  Therefore, a large enough profile turns symbol loading into an OOM kill.
+This is not scalable for profiling a large cgroup with a lot of large
+binaries on a production system with limited free memory.
 
-Fixes: f39e968dc168a7bd ("net: pcs: rzn1-miic: Move configuration data to SoC-specific struct")
-Reviewed-by: Geert Uytterhoeven <geert+renesas@glider.be>
-Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
+This series adds two independent, opt-in mechanisms and a leading
+regression fix they build on:
+
+  [1/4] Fix a broken "#ifdef ELF_C_READ_MMAP" guard so perf actually
+        mmaps ELF files instead of malloc'ing section data. This is a
+        standalone regression fix introduced by 22dd1ac91a77.
+
+  [2/4] --max-symbol-bytes <size>: a byte budget on struct symbol
+        allocations (and the lazy index) enforced at the ELF symbol
+        loader, degrading to [unknown] with a warning past the cap.
+        An unbounded profile doesn't just risk OOM-killing itself.  It
+        also forces memory pressure on the whole host, pushing the kernel
+        to reclaim from co-located latency-sensitive processes.  Capping
+        it lets the user bound that footprint up front and choose the
+        trade-off explicitly.
+
+  [3/4] --lazy-load-symbols: build a compact per-DSO sorted index and
+        resolve only the sampled addresses, reading names via pread()
+        from the file's string table at lookup time. On the production fixture,
+        peak RssAnon drops from 265 MiB to 39 MiB (6.8x) and wall time
+        from 3.1 s to 1.85 s (1.7x). Memory optimizations usually cost
+        time; this one does not because lazy loading skips a lot of calloc and
+        demangle calls. The output is byte-identical to the default loader.
+
+  [4/4] Documentation and a shell test.
+
+Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
-Fix issues when populating dt_val array from device tree values
+Alireza Haghdoost (4):
+      perf symbols: Fix broken ELF_C_READ_MMAP fallback guard
+      perf script: Add --max-symbol-bytes to bound ELF symbol memory
+      perf script: Add --lazy-load-symbols for lazy symbol loading
+      perf script: Document and test --lazy-load-symbols and --max-symbol-bytes
 
-Changes in v5:
- * Target memset patch for net 
- * Drop port number validation patch for later submission to net-next 
-
-Changes in v4: https://lore.kernel.org/r/20260914-rzn1-miic-fix-array-v4-0-069112feec86@reliablecontrols.com
- * Fix lines longer than 80 char
- * Add of_node_put() before returning
-
-Changes in v3: https://lore.kernel.org/r/20260902-rzn1-miic-fix-array-v3-0-3f7dccffaf5a@reliablecontrols.com
- * Make invalid port number return error
- * Update commit tags
-
-Changes in v2: https://lore.kernel.org/r/20260901-rzn1-miic-fix-array-v2-0-3e907049e770@reliablecontrols.com
- * Use a more correct array size in memset
- * Ensure that write to dt_val is in range
-
-Link to v1: https://lore.kernel.org/r/20260813-rzn1-miic-fix-array-v1-1-b58cafcc917e@reliablecontrols.com
+ tools/perf/Documentation/perf-script.txt           |  24 +
+ tools/perf/builtin-script.c                        |  33 ++
+ tools/perf/tests/shell/script_lazy_load_symbols.sh | 120 +++++
+ tools/perf/util/dso.c                              |  10 +
+ tools/perf/util/dso.h                              |  29 ++
+ tools/perf/util/map.c                              |   9 +-
+ tools/perf/util/symbol-elf.c                       | 561 +++++++++++++++++++++
+ tools/perf/util/symbol-minimal.c                   |  11 +
+ tools/perf/util/symbol.c                           |  87 +++-
+ tools/perf/util/symbol.h                           |  18 +-
+ tools/perf/util/symbol_conf.h                      |   2 +
+ 11 files changed, 875 insertions(+), 29 deletions(-)
 ---
- drivers/net/pcs/pcs-rzn1-miic.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
-index 2b72fa98ddf1..cb74861e823c 100644
---- a/drivers/net/pcs/pcs-rzn1-miic.c
-+++ b/drivers/net/pcs/pcs-rzn1-miic.c
-@@ -683,7 +683,8 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
- 	if (!dt_val)
- 		return -ENOMEM;
- 
--	memset(dt_val, MIIC_MODCTRL_CONF_NONE, sizeof(*dt_val));
-+	memset(dt_val, MIIC_MODCTRL_CONF_NONE,
-+	       sizeof(*dt_val) * miic->of_data->conf_conv_count);
- 
- 	if (of_property_read_u32(np, "renesas,miic-switch-portin", &conf) == 0)
- 		dt_val[0] = conf;
-
----
-base-commit: 83a945a529d6e002dd7339c532288a931f463dba
-change-id: 20260813-rzn1-miic-fix-array-e6ae4452c017
+base-commit: aa18964dd64511305de0711fed912054da6f5d18
+change-id: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
 
 Best regards,
--- 
-Kyle Hendry <khendry@reliablecontrols.com>
+--  
+Alireza Haghdoost <haghdoost@uber.com>
 
