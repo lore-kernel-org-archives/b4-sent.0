@@ -1,737 +1,85 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 15 Sep 2026 16:32:25 +0200
-Subject: [PATCH v2 2/2] arm64: dts: qcom: add Xiaomi Mi 8 (dipper)
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Date: Tue, 15 Sep 2026 10:39:20 -0700
+Subject: [PATCH net v5] net: pcs: rzn1-miic: Fix config array
+ initialization
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260915-dipper-v2-2-cbade54919ee@ixit.cz>
-References: <20260915-dipper-v2-0-cbade54919ee@ixit.cz>
-In-Reply-To: <20260915-dipper-v2-0-cbade54919ee@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
- Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=17116; i=david@ixit.cz;
- h=from:subject:message-id; bh=n9jwcsyr4Nk3pbkjLDxXbjXxJBdnsWTux9XZ+JhkE6o=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqVb606KthIO8B7xOJvrk+qNtdKQRq9VO8s/uV
- IbpyEShIeGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqlW+gAKCRBgAj/E00kg
- ctKCD/4jEJKN3QzJtxFfiSRJb85yQy8i1/3KRPa2UvtLu/ZZULV2erak97RliZeX1/jPwvOKYnV
- qTfORr/UciR1CLSMaf7kR9I4/zOycmKSoH0XcqStRBjZpgGVYaVOxq4xYrJ/bjwEmfSa/4z4vir
- TNSoyAWJBUKETeNN9931/CVBxeM+9MGLNjMZhEC+iFE78jUk0n2hmPi4eAQT1YB4FtPk0a2qj8l
- kiqMK3v9pn+02GQPUNX6msbBypGahLIIkOrftvi31IfeKwjs4s1EK/1+9Ss+snNSVVNwdSohVSL
- X+6Tj2ivLIQNJhS/pjufNvsRrK2X7SmJVvh8RYSsxSoFVDb0nPa+Vka+D6PfrEtrLH7yv7tGY8q
- DHCSKWzdQj1QKs53xudcDcxT5hyIms6eQHfx5lUz0nL8E4wrS6gxt5vYoLc1N1+3OaQjwCDIq9B
- NRm00J7ayBWNNe5jBDV6k50E+12w7YFm/mYSApNv+tqTLon1Fw/jbQ6fIp7u+EXGUa0cgudwrUf
- 8GSAjQmlRcQspObbQIpt9BWCkf91k7zDFHNUrACDWYtJKUXV6b7iqfPlngS9YkWmn2k/FJs/i9T
- FuyjsRyo/5vCAd400AAldbkolJks0QzXon30j3wphg+7wfm/CY0AdOki/3zXPjPZcHz+j9O5mER
- Nr5hJo6luFjLjqw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20260915-rzn1-miic-fix-array-v5-1-b7173fd5b97d@reliablecontrols.com>
+X-B4-Tracking: v=1; b=H4sIAMeCqWoC/33NQW7CMBAF0KsgrzvI4zhx3FXvUbEww7hYCnZlR
+ xEU5e412cAiZPnn67+5i8I5cBGfu7vIPIUSUqyh/dgJOrv4wxBONQslVSd7bCD/RYRLCAQ+XMH
+ l7G7AnWOtW0USjajL38y1XNRvEXkUh3o8hzKmfFs+TbhUm+iEgHBse3KeyKLhr8xDcMeBKcUxp
+ 6HsKV0WelJPzkpc5xRIaNhKI7VlY+QG17xyap1rHpw3JyLvnW/dBqdfONTrnK6c7Cyi8szUd2+
+ 4eZ7/AVtCHJuzAQAA
+To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>, 
+ linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Geert Uytterhoeven <geert+renesas@glider.be>, 
+ Kyle Hendry <khendry@reliablecontrols.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789493977; l=2005;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=I5i1St31oPo6d7N+HMb7ky+0UtXFiiyAOVC61bDQiwI=;
+ b=zw5AD/zG7P/DBb2uXZ1IYVXEZMobeYcifInldvzVGBL52emRFgSyi7IJ1pn44x6B0axvooYqo
+ dEOoW+Taqm+B5/AuG/p3mZow7Mk4GGOPHFaQnSF97FCcD+aX+0UGj2r
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Initial submission for one member of the prime Xiaomi Mi 8 family.
-Mi 8 Pro (equuleus) and Mi 8 Explorer (ursa) are nearly identical.
-Known differences are battery capacity and fingerprint sensor placement.
-This submission includes basic abstraction for other developers to be
-able easily extend it to support other variants.
+Fix memset parameters to initialize the entire DT value array
 
-What does work: framebuffer, USB, UFS, Bluetooth, Wi-Fi.
-
-Based on work of multiple people trying to bring the device in the past.
-Last attempt was done by Max Furman.
-
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: f39e968dc168a7bd ("net: pcs: rzn1-miic: Move configuration data to SoC-specific struct")
+Reviewed-by: Geert Uytterhoeven <geert+renesas@glider.be>
+Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sdm845-xiaomi-dipper-common.dtsi | 607 +++++++++++++++++++++
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper.dts  |  36 ++
- 3 files changed, 644 insertions(+)
+Fix issues when populating dt_val array from device tree values
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 1c86e7e98f55d..02793d00503e3 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -325,16 +325,17 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-mtp.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-oneplus-enchilada.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-oneplus-fajita.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-samsung-starqltechn.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-sony-xperia-tama-akari.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-sony-xperia-tama-akatsuki.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-sony-xperia-tama-apollo.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-xiaomi-beryllium-ebbg.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-xiaomi-beryllium-tianma.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-xiaomi-dipper.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-xiaomi-polaris.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm845-shift-axolotl.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm850-huawei-matebook-e-2019.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm850-lenovo-yoga-c630.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdm850-samsung-w737.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sdx75-idp.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= shikra-cqm-evk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= shikra-cqs-evk.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper-common.dtsi
-new file mode 100644
-index 0000000000000..eb4243e7f2c07
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper-common.dtsi
-@@ -0,0 +1,607 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Xiaomi Mi 8 family common device tree source.
-+ * Covers Mi 8 Explorer Edition (equuleus), Mi 8 (dipper), Mi 8 Pro (urza).
-+ *
-+ * Copyright David Heidelberg.
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/arm/qcom,ids.h>
-+#include <dt-bindings/firmware/qcom,scm.h>
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/linux-event-codes.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/phy/phy-qcom-qusb2.h>
-+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include "sdm845.dtsi"
-+#include "pm8998.dtsi"
-+#include "pmi8998.dtsi"
-+
-+/delete-node/ &adsp_mem;
-+/delete-node/ &cdsp_mem;
-+/delete-node/ &mba_region;
-+/delete-node/ &mpss_region;
-+/delete-node/ &rmtfs_mem;
-+/delete-node/ &slpi_mem;
-+/delete-node/ &spss_mem;
-+/delete-node/ &tz_mem;
-+/delete-node/ &venus_mem;
-+/delete-node/ &wlan_msa_mem;
-+
-+/ {
-+	chassis-type = "handset";
-+
-+	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
-+
-+	aliases {
-+		serial0 = &uart9;
-+		serial1 = &uart6;
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&cont_splash_mem>;
-+
-+			vci-supply = <&vreg_panel_vci>;
-+			vddio-supply = <&vreg_panel_vddio>;
-+
-+			width = <1080>;
-+			height = <2248>;
-+			stride = <(1080 * 4)>;
-+			format = "a8r8g8b8";
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		autorepeat;
-+
-+		pinctrl-0 = <&volume_up_gpio>;
-+		pinctrl-names = "default";
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			linux,code = <KEY_VOLUMEUP>;
-+			gpios = <&pm8998_gpios 6 GPIO_ACTIVE_LOW>;
-+			wakeup-source;
-+			debounce-interval = <15>;
-+		};
-+	};
-+
-+	vreg_panel_vci: regulator-panel-vci {
-+		compatible = "regulator-fixed";
-+		regulator-name = "panel_vci_vreg";
-+
-+		regulator-min-microvolt = <3000000>;
-+		regulator-max-microvolt = <3000000>;
-+
-+		gpio = <&tlmm 35 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		startup-delay-us = <4000>;
-+		regulator-boot-on;
-+	};
-+
-+	vreg_panel_vddio: regulator-panel-vddio {
-+		compatible = "regulator-fixed";
-+		regulator-name = "panel_vddio_vreg";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 23 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		startup-delay-us = <4000>;
-+		regulator-boot-on;
-+	};
-+
-+	vph_pwr: regulator-vph-pwr {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vph_pwr";
-+
-+		regulator-min-microvolt = <3700000>;
-+		regulator-max-microvolt = <3700000>;
-+	};
-+
-+	vreg_s4a_1p8: regulator-vreg-s4a-1p8 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vreg_s4a_1p8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+		regulator-always-on;
-+		regulator-boot-on;
-+
-+		vin-supply = <&vph_pwr>;
-+	};
-+
-+	reserved-memory {
-+		/*
-+		 * It seems like reserving the old rmtfs_mem region is
-+		 * also needed to prevent random crashes
-+		 */
-+		old-rmtfs@88f00000 {
-+			reg = <0 0x88f00000 0 0x200000>;
-+			no-map;
-+		};
-+
-+		adsp_mem: adsp@8c500000 {
-+			reg = <0 0x8c500000 0 0x1e00000>;
-+			no-map;
-+		};
-+
-+		wlan_msa_mem: wlan-msa@8e300000 {
-+			reg = <0 0x8e300000 0 0x100000>;
-+			no-map;
-+		};
-+
-+		mpss_region: mpss@8e400000 {
-+			reg = <0 0x8e400000 0 0x7800000>;
-+			no-map;
-+		};
-+
-+		venus_mem: venus@95c00000 {
-+			reg = <0 0x95c00000 0 0x500000>;
-+			no-map;
-+		};
-+
-+		cdsp_mem: cdsp@96100000 {
-+			reg = <0 0x96100000 0 0x800000>;
-+			no-map;
-+		};
-+
-+		mba_region: mba@96900000 {
-+			reg = <0 0x96900000 0 0x200000>;
-+			no-map;
-+		};
-+
-+		slpi_mem: slpi@96b00000 {
-+			reg = <0 0x96b00000 0 0x1400000>;
-+			no-map;
-+		};
-+
-+		spss_mem: spss@97f00000 {
-+			reg = <0 0x97f00000 0 0x100000>;
-+			no-map;
-+		};
-+
-+		cont_splash_mem: splash@9d400000 {
-+			reg = <0 0x9d400000 0 0x950000>;
-+			no-map;
-+		};
-+
-+		ramoops@b0000000 {
-+			compatible = "ramoops";
-+			reg = <0 0xb0000000 0 0x00400000>;
-+			record-size = <0x40000>;
-+			console-size = <0x40000>;
-+			ftrace-size = <0x40000>;
-+			pmsg-size = <0x200000>;
-+		};
-+
-+		rmtfs_mem: memory@f7300000 {
-+			compatible = "qcom,rmtfs-mem";
-+			reg = <0 0xf7300000 0 0x202000>;
-+			qcom,use-guard-pages;
-+			no-map;
-+
-+			qcom,client-id = <1>;
-+			qcom,vmid = <QCOM_SCM_VMID_MSS_MSA>;
-+		};
-+	};
-+
-+	wcn3990-pmu {
-+		compatible = "qcom,wcn3990-pmu";
-+
-+		pinctrl-0 = <&sw_ctrl_default>;
-+		pinctrl-names = "default";
-+
-+		vddio-supply = <&vreg_s4a_1p8>;
-+		vddxo-supply = <&vreg_l7a_1p8>;
-+		vddrf-supply = <&vreg_l17a_1p3>;
-+		vddch0-supply = <&vreg_l25a_3p3>;
-+		vddch1-supply = <&vreg_l23a_3p3>;
-+
-+		swctrl-gpios = <&pm8998_gpios 3 GPIO_ACTIVE_HIGH>;
-+
-+		regulators {
-+			vreg_pmu_io: ldo0 {
-+				regulator-name = "vreg_pmu_io";
-+			};
-+
-+			vreg_pmu_xo: ldo1 {
-+				regulator-name = "vreg_pmu_xo";
-+			};
-+
-+			vreg_pmu_rf: ldo2 {
-+				regulator-name = "vreg_pmu_rf";
-+			};
-+
-+			vreg_pmu_ch0: ldo3 {
-+				regulator-name = "vreg_pmu_ch0";
-+			};
-+
-+			vreg_pmu_ch1: ldo4 {
-+				regulator-name = "vreg_pmu_ch1";
-+			};
-+		};
-+	};
-+};
-+
-+&apps_rsc {
-+	regulators-0 {
-+		compatible = "qcom,pm8998-rpmh-regulators";
-+		qcom,pmic-id = "a";
-+
-+		vdd-s1-supply = <&vph_pwr>;
-+		vdd-s2-supply = <&vph_pwr>;
-+		vdd-s3-supply = <&vph_pwr>;
-+		vdd-s4-supply = <&vph_pwr>;
-+		vdd-s5-supply = <&vph_pwr>;
-+		vdd-s6-supply = <&vph_pwr>;
-+		vdd-s7-supply = <&vph_pwr>;
-+		vdd-s8-supply = <&vph_pwr>;
-+		vdd-s9-supply = <&vph_pwr>;
-+		vdd-s10-supply = <&vph_pwr>;
-+		vdd-s11-supply = <&vph_pwr>;
-+		vdd-s12-supply = <&vph_pwr>;
-+		vdd-s13-supply = <&vph_pwr>;
-+		vdd-l1-l27-supply = <&vreg_s7a_1p025>;
-+		vdd-l2-l8-l17-supply = <&vreg_s3a_1p35>;
-+		vdd-l3-l11-supply = <&vreg_s7a_1p025>;
-+		vdd-l4-l5-supply = <&vreg_s7a_1p025>;
-+		vdd-l6-supply = <&vph_pwr>;
-+		vdd-l7-l12-l14-l15-supply = <&vreg_s5a_2p04>;
-+		vdd-l9-supply = <&vreg_bob>;
-+		vdd-l10-l23-l25-supply = <&vreg_bob>;
-+		vdd-l13-l19-l21-supply = <&vreg_bob>;
-+		vdd-l16-l28-supply = <&vreg_bob>;
-+		vdd-l18-l22-supply = <&vreg_bob>;
-+		vdd-l20-l24-supply = <&vreg_bob>;
-+		vdd-l26-supply = <&vreg_s3a_1p35>;
-+		vin-lvs-1-2-supply = <&vreg_s4a_1p8>;
-+
-+		vreg_s2a_1p125: smps2 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+		};
-+
-+		vreg_s3a_1p35: smps3 {
-+			regulator-min-microvolt = <1352000>;
-+			regulator-max-microvolt = <1352000>;
-+		};
-+
-+		vreg_s5a_2p04: smps5 {
-+			regulator-min-microvolt = <1904000>;
-+			regulator-max-microvolt = <2040000>;
-+		};
-+
-+		vreg_s7a_1p025: smps7 {
-+			regulator-min-microvolt = <900000>;
-+			regulator-max-microvolt = <1028000>;
-+		};
-+
-+		vreg_l1a_0p875: ldo1 {
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <880000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l2a_1p2: ldo2 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l5a_0p8: ldo5 {
-+			regulator-min-microvolt = <800000>;
-+			regulator-max-microvolt = <800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l7a_1p8: ldo7 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l12a_1p8: ldo12 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l14a_1p8: ldo14 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-boot-on;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l17a_1p3: ldo17 {
-+			regulator-min-microvolt = <1304000>;
-+			regulator-max-microvolt = <1304000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l20a_2p95: ldo20 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2960000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l22a_2p864: ldo22 {
-+			regulator-min-microvolt = <2864000>;
-+			regulator-max-microvolt = <2864000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l23a_3p3: ldo23 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3312000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l24a_3p075: ldo24 {
-+			regulator-min-microvolt = <3088000>;
-+			regulator-max-microvolt = <3088000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l25a_3p3: ldo25 {
-+			regulator-min-microvolt = <3300000>;
-+			regulator-max-microvolt = <3312000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l26a_1p2: ldo26 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-boot-on;
-+		};
-+
-+		vreg_l28a_3p3: ldo28 {
-+			regulator-min-microvolt = <2856000>;
-+			regulator-max-microvolt = <3008000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_lvs1_1p8: lvs1 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+	};
-+
-+	regulators-1 {
-+		compatible = "qcom,pmi8998-rpmh-regulators";
-+		qcom,pmic-id = "b";
-+
-+		vdd-bob-supply = <&vph_pwr>;
-+
-+		vreg_bob: bob {
-+			regulator-min-microvolt = <3312000>;
-+			regulator-max-microvolt = <3600000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_AUTO>;
-+			regulator-allow-bypass;
-+		};
-+	};
-+};
-+
-+&dispcc {
-+	/* Disable for now so simple-framebuffer continues working */
-+	status = "disabled";
-+};
-+
-+&gcc {
-+	protected-clocks = <GCC_QSPI_CORE_CLK>,
-+			   <GCC_QSPI_CORE_CLK_SRC>,
-+			   <GCC_QSPI_CNOC_PERIPH_AHB_CLK>,
-+			   <GCC_LPASS_Q6_AXI_CLK>,
-+			   <GCC_LPASS_SWAY_CLK>;
-+};
-+
-+&gpi_dma0 {
-+	status = "okay";
-+};
-+
-+&gpi_dma1 {
-+	status = "okay";
-+};
-+
-+&gpu {
-+	status = "okay";
-+};
-+
-+&gpu_zap_shader {
-+	firmware-name = "qcom/sdm845/Xiaomi/dipper/a630_zap.mbn";
-+};
-+
-+&ibb {
-+	regulator-min-microvolt = <4600000>;
-+	regulator-max-microvolt = <6000000>;
-+	regulator-over-current-protection;
-+	regulator-pull-down;
-+	regulator-soft-start;
-+};
-+
-+&ipa {
-+	firmware-name = "qcom/sdm845/Xiaomi/dipper/ipa_fws.mbn";
-+
-+	status = "okay";
-+};
-+
-+&lab {
-+	regulator-min-microvolt = <4600000>;
-+	regulator-max-microvolt = <6000000>;
-+	regulator-pull-down;
-+	regulator-soft-start;
-+};
-+
-+&mdss {
-+	/* Disable for now so simple-framebuffer continues working */
-+	status = "disabled";
-+};
-+
-+&mss_pil {
-+	firmware-name = "qcom/sdm845/Xiaomi/dipper/mba.mbn",
-+			"qcom/sdm845/Xiaomi/dipper/modem.mbn";
-+
-+	status = "okay";
-+};
-+
-+&pmi8998_charger {
-+	monitored-battery = <&battery>;
-+
-+	status = "okay";
-+};
-+
-+&pm8998_gpios {
-+	sw_ctrl_default: sw-ctrl-default-state {
-+		pins = "gpio3";
-+		function = "normal";
-+		input-enable;
-+		bias-pull-down;
-+	};
-+
-+	volume_up_gpio: vol-up-active-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		input-enable;
-+		bias-pull-up;
-+		power-source = <0>;
-+	};
-+};
-+
-+&pm8998_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+
-+	status = "okay";
-+};
-+
-+&qupv3_id_0 {
-+	status = "okay";
-+};
-+
-+&qupv3_id_1 {
-+	status = "okay";
-+};
-+
-+&qup_uart9_rx {
-+	drive-strength = <2>;
-+	bias-pull-up;
-+};
-+
-+&qup_uart9_tx {
-+	drive-strength = <2>;
-+	bias-disable;
-+};
-+
-+&i2c5 {
-+	status = "okay";
-+
-+	/* tas2557 @4c */
-+};
-+
-+&i2c14 {
-+	clock-frequency = <400000>;
-+
-+	status = "okay";
-+
-+	/* stmfts5 @49 */
-+};
-+
-+&tlmm {
-+	gpio-reserved-ranges = < 0 4>, /* SPI (Goodix Fingerprint) */
-+			       <81 4>; /* SPI (Synaptics Fingerprint) */
-+};
-+
-+&ufs_mem_hc {
-+	reset-gpios = <&tlmm 150 GPIO_ACTIVE_LOW>;
-+
-+	vcc-supply = <&vreg_l20a_2p95>;
-+	vcc-max-microamp = <600000>;
-+	vccq2-supply = <&vreg_s4a_1p8>;
-+	vccq2-max-microamp = <600000>;
-+
-+	status = "okay";
-+
-+};
-+
-+&ufs_mem_phy {
-+	vdda-phy-supply = <&vreg_l1a_0p875>;
-+	vdda-pll-supply = <&vreg_l26a_1p2>;
-+
-+	status = "okay";
-+};
-+
-+&usb_1 {
-+	qcom,select-utmi-as-pipe-clk;
-+
-+	status = "okay";
-+};
-+
-+&usb_1_dwc3 {
-+	/* Until we have Type C hooked up we'll force this as peripheral. */
-+	dr_mode = "peripheral";
-+
-+	maximum-speed = "high-speed";
-+	phys = <&usb_1_hsphy>;
-+	phy-names = "usb2-phy";
-+};
-+
-+&usb_1_hsphy {
-+	vdd-supply = <&vreg_l1a_0p875>;
-+	vdda-pll-supply = <&vreg_l12a_1p8>;
-+	vdda-phy-dpdm-supply = <&vreg_l24a_3p075>;
-+
-+	qcom,imp-res-offset-value = <8>;
-+	qcom,hstx-trim-value = <QUSB2_V2_HSTX_TRIM_21_6_MA>;
-+	qcom,preemphasis-level = <QUSB2_V2_PREEMPHASIS_5_PERCENT>;
-+	qcom,preemphasis-width = <QUSB2_V2_PREEMPHASIS_WIDTH_HALF_BIT>;
-+
-+	status = "okay";
-+};
-+
-+&uart6 {
-+	pinctrl-0 = <&qup_uart6_4pin>;
-+
-+	status = "okay";
-+
-+	bluetooth {
-+		compatible = "qcom,wcn3990-bt";
-+
-+		firmware-name = "Xiaomi/dipper/crnv21.bin";
-+
-+		vddio-supply = <&vreg_pmu_io>;
-+		vddxo-supply = <&vreg_pmu_xo>;
-+		vddrf-supply = <&vreg_pmu_rf>;
-+		vddch0-supply = <&vreg_pmu_ch0>;
-+
-+		max-speed = <3200000>;
-+	};
-+};
-+
-+&uart9 {
-+	status = "okay";
-+};
-+
-+&wifi {
-+	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
-+	vdd-1.8-xo-supply = <&vreg_pmu_xo>;
-+	vdd-1.3-rfa-supply = <&vreg_pmu_rf>;
-+	vdd-3.3-ch0-supply = <&vreg_pmu_ch0>;
-+	vdd-3.3-ch1-supply = <&vreg_pmu_ch1>;
-+
-+	qcom,snoc-host-cap-skip-quirk;
-+
-+	status = "okay";
-+};
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper.dts b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper.dts
-new file mode 100644
-index 0000000000000..bf45fe8fde80b
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-dipper.dts
-@@ -0,0 +1,36 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Xiaomi Mi 8 (dipper).
-+ *
-+ * Copyright David Heidelberg.
-+ */
-+
-+/dts-v1/;
-+
-+#include "sdm845-xiaomi-dipper-common.dtsi"
-+
-+/ {
-+	model = "Xiaomi Mi 8";
-+	compatible = "xiaomi,dipper", "xiaomi,dipper-common", "qcom,sdm845";
-+
-+	qcom,board-id = <55 0>;
-+
-+	battery: battery {
-+		compatible = "simple-battery";
-+
-+		charge-full-design-microamp-hours = <3400000>;
-+		voltage-min-design-microvolt = <3400000>;
-+		voltage-max-design-microvolt = <4400000>;
-+	};
-+
-+};
-+
-+&adsp_pas {
-+	firmware-name = "qcom/sdm845/Xiaomi/dipper/adsp.mbn";
-+
-+	status = "okay";
-+};
-+
-+&wifi {
-+	qcom,calibration-variant = "Xiaomi_dipper";
-+};
+Changes in v5:
+ * Target memset patch for net 
+ * Drop port number validation patch for later submission to net-next 
 
+Changes in v4: https://lore.kernel.org/r/20260914-rzn1-miic-fix-array-v4-0-069112feec86@reliablecontrols.com
+ * Fix lines longer than 80 char
+ * Add of_node_put() before returning
+
+Changes in v3: https://lore.kernel.org/r/20260902-rzn1-miic-fix-array-v3-0-3f7dccffaf5a@reliablecontrols.com
+ * Make invalid port number return error
+ * Update commit tags
+
+Changes in v2: https://lore.kernel.org/r/20260901-rzn1-miic-fix-array-v2-0-3e907049e770@reliablecontrols.com
+ * Use a more correct array size in memset
+ * Ensure that write to dt_val is in range
+
+Link to v1: https://lore.kernel.org/r/20260813-rzn1-miic-fix-array-v1-1-b58cafcc917e@reliablecontrols.com
+---
+ drivers/net/pcs/pcs-rzn1-miic.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
+index 2b72fa98ddf1..cb74861e823c 100644
+--- a/drivers/net/pcs/pcs-rzn1-miic.c
++++ b/drivers/net/pcs/pcs-rzn1-miic.c
+@@ -683,7 +683,8 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
+ 	if (!dt_val)
+ 		return -ENOMEM;
+ 
+-	memset(dt_val, MIIC_MODCTRL_CONF_NONE, sizeof(*dt_val));
++	memset(dt_val, MIIC_MODCTRL_CONF_NONE,
++	       sizeof(*dt_val) * miic->of_data->conf_conv_count);
+ 
+ 	if (of_property_read_u32(np, "renesas,miic-switch-portin", &conf) == 0)
+ 		dt_val[0] = conf;
+
+---
+base-commit: 83a945a529d6e002dd7339c532288a931f463dba
+change-id: 20260813-rzn1-miic-fix-array-e6ae4452c017
+
+Best regards,
 -- 
-2.55.0
+Kyle Hendry <khendry@reliablecontrols.com>
 
