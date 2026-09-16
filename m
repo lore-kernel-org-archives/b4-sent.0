@@ -1,522 +1,192 @@
-From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Wed, 16 Sep 2026 17:22:24 +0300
-Subject: [PATCH v2 19/19] arm64: dts: qcom: generalmobile-shamrock: new
- device
+From: Younes Akhouayri <git@younes.io>
+Date: Wed, 16 Sep 2026 17:10:38 +0200
+Subject: [PATCH v3] rust: num: document why Integer is sealed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-msm8952-initial-support-v2-19-798c2602dde1@mainlining.org>
-References: <20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org>
-In-Reply-To: <20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org>
-To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Srinivas Kandagatla <srini@kernel.org>, 
- Ulf Hansson <ulfh@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, Lee Jones <lee@kernel.org>, 
- Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Robert Marko <robimarko@gmail.com>, Guru Das Srinagesh <linux@gurudas.dev>, 
- Amit Kucheria <amitk@kernel.org>, Thara Gopinath <thara.gopinath@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Kees Cook <kees@kernel.org>, 
- Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>, 
- phone-devel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-mmc@vger.kernel.org, 
- iommu@lists.linux.dev, mfd@lists.linux.dev, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, Krzysztof Kozlowski <krzk@kernel.org>, 
- linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
- Muzaffer Kadir <muzafferkadir@mainlining.org>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260916-docs-rust-num-integer-sealing-safety-v3-1-00f950426c85@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5WOQW7CMBBFr4K87lDHhsRh1XtULBxnSKYqNvI4E
+ RHK3bHDhmW7fKM/7/+HYIyELE67h4g4E1PwGfTHTrjR+gGB+sxCSVXLVtbQB8cQJ07gpyuQTzh
+ gBEb7S34AthdMC2grUbV1Y9uDEVl1i3ih+1bzfX4xT90PulTcJdFZRuii9W4spxBpIP+59bw+c
+ 2YkTiEu29a5Kq5/zporqKAx8tjottJSua8lTB55T0GUWbN6l5o/SlWWonH1UelD3xn1Ll3X9Qn
+ nTQh2YwEAAA==
+X-Change-ID: 20260906-docs-rust-num-integer-sealing-safety-3a0e2967a948
+To: Alexandre Courbot <acourbot@nvidia.com>, 
+ Yury Norov <yury.norov@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789568579; l=11308;
- i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=/IrfQac56QvvxYiADORju0/FWRcrPJaPis1VE0E9U5M=;
- b=6ZN09MjQ+trrem67KAH/ylyagf/vDayDtWtal8Pff15BEzniGYKdfzw/UvOVtNC393qb/jd6p
- IMUcP65wJpYBZmlnVd+VIccIBkOkWGYNz3QuQRQSiK4tSj12O4Wjuum
-X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
- pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
-X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789571453; l=7870;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=6EBGJ4a6/ShfQ/6ynR/rskrjn3ZQAYYZNFuSE3dWtm8=;
+ b=6TmRtiwtGmVkccHklAtYYJopUGxnctI2PmWwSUaGmimoD5HX1Ikr+iTGieknagyKCoG9/LlAA
+ KjGvj31yH77AFdLRUSbVVBZU/hKdmzILPOrn1aVcyxX2Ad22nFSNd2G
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add General Mobile Shamrock (GM 5 Plus). Shamrock is designed
-similar to L9300. Downstream reference is [1].
+Bounded relies on Integer implementations to provide primitive integer
+semantics when justifying unchecked operations.
 
-[1] https://github.com/Asderdd/android_kernel_generalmobile_shamrock/blob/cm-14.1/arch/arm/boot/dts/qcom/msm8952-l9300.dtsi
+Explain why Integer is sealed next to its private supertrait. Document
+the dependency inside fits_within, so callers can rely on its result
+without repeating that explanation. Mention sealing in safety comments
+that directly rely on integer metadata, shifts or conversions.
 
-Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Suggested-by: Gary Guo <gary@garyguo.net>
+Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
+Link: https://lore.kernel.org/all/CANiq72m8kycbfQ1teyne-OtB5d5TsUcX_WW0FCkWB3Ayyg-qWw@mail.gmail.com/
+Link: https://lore.kernel.org/all/DL88SQWYU15W.2CVZB5NVSSJGK@garyguo.net/
+Link: https://lore.kernel.org/all/CANiq72kx-YPPEruOFdu-Dp7GX+8=Et6svG+sQtqEmmF7kpnVyQ@mail.gmail.com/
+Link: https://lore.kernel.org/all/DLDSZ09SM8HI.3PHPYGLV2YZBX@nvidia.com/
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../dts/qcom/msm8952-generalmobile-shamrock.dts    | 436 +++++++++++++++++++++
- 2 files changed, 437 insertions(+)
+Changes in v3:
+- Document the sealing dependency inside fits_within and restore its
+  callers' original safety comments, following Alexandre's feedback.
+- Restore extend's invariant-based comment and remove the repeated
+  sealing explanation from the second cast safety comment.
+- Link to v2: https://patch.msgid.link/20260908-docs-rust-num-integer-sealing-safety-v2-1-e8c65234db82@younes.io
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index d6547fb18edf..3cc2dfb09116 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -125,6 +125,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-samsung-a7.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-sony-xperia-kanuti-tulip.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-wingtech-wt82918.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8939-wingtech-wt82918hd.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= msm8952-generalmobile-shamrock.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-flipkart-rimob.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-motorola-potter.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= msm8953-xiaomi-daisy.dtb
-diff --git a/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
-new file mode 100644
-index 000000000000..e6c92ebcbf21
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
-@@ -0,0 +1,436 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+/dts-v1/;
-+
-+#include "msm8952.dtsi"
-+#include "pm8950.dtsi"
-+#include "pmi8950.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/leds/common.h>
-+
-+/ {
-+	model = "General Mobile GM 5 Plus";
-+	compatible = "generalmobile,shamrock", "qcom,msm8952";
-+	qcom,msm-id = <QCOM_ID_MSM8952 0x0>;
-+	qcom,board-id = <QCOM_BOARD_ID_QRD 1>;
-+	chassis-type = "handset";
-+
-+	aliases {
-+		mmc0 = &sdhc_1; /* SDC1 eMMC slot */
-+		mmc1 = &sdhc_2; /* SDC2 SD card slot */
-+		serial0 = &blsp1_uart2;
-+	};
-+
-+	battery: battery {
-+		compatible = "simple-battery";
-+
-+		charge-term-current-microamp = <100000>;
-+		charge-full-design-microamp-hours = <3100000>;
-+		constant-charge-current-max-microamp = <3000000>;
-+		constant-charge-voltage-max-microvolt = <4400000>;
-+		voltage-min-design-microvolt = <3400000>;
-+		voltage-max-design-microvolt = <4400000>;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+
-+		framebuffer {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&cont_splash_mem>;
-+
-+			width = <1080>;
-+			height = <1920>;
-+			stride = <(1080 * 3)>;
-+			format = "r8g8b8";
-+
-+			power-domains = <&gcc MDSS_GDSC>;
-+
-+			clocks = <&gcc GCC_MDSS_AHB_CLK>,
-+				 <&gcc GCC_MDSS_AXI_CLK>,
-+				 <&gcc GCC_MDSS_VSYNC_CLK>,
-+				 <&gcc GCC_MDSS_MDP_CLK>,
-+				 <&gcc GCC_MDSS_BYTE0_CLK>,
-+				 <&gcc GCC_MDSS_PCLK0_CLK>,
-+				 <&gcc GCC_MDSS_ESC0_CLK>;
-+		};
-+	};
-+
-+	/* Front Flash */
-+	flash-led-controller {
-+		compatible = "sgmicro,sgm3140";
-+
-+		enable-gpios = <&tlmm 33 GPIO_ACTIVE_HIGH>;
-+		flash-gpios = <&tlmm 128 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&front_flash_default>;
-+		pinctrl-names = "default";
-+
-+		front_flash_led: led {
-+			function = LED_FUNCTION_FLASH;
-+			color = <LED_COLOR_ID_WHITE>;
-+			flash-max-microamp = <1000000>;
-+			led-max-microamp = <625000>;
-+			flash-max-timeout-us = <1280000>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&gpio_hall_sensor_default>, <&gpio_keys_default>;
-+		pinctrl-names = "default";
-+
-+		event-hall-sensor {
-+			label = "Hall Effect Sensor";
-+			gpios = <&tlmm 46 GPIO_ACTIVE_LOW>;
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+
-+		button-volume-up {
-+			label = "Volume Up";
-+			gpios = <&tlmm 85 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			debounce-interval = <15>;
-+			wakeup-source;
-+		};
-+	};
-+
-+	multi-led {
-+		compatible = "leds-group-multicolor";
-+		color = <LED_COLOR_ID_RGB>;
-+		function = LED_FUNCTION_INDICATOR;
-+		leds = <&red_status>, <&green_status>, <&blue_status>;
-+	};
-+
-+	reserved-memory {
-+		cont_splash_mem: cont-splash@83200000 {
-+			reg = <0x0 0x83200000 0x0 (1080 * 1920 * 3)>;
-+			no-map;
-+		};
-+	};
-+
-+	vph_pwr: regulator-vph-pwr {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vph-pwr";
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+&adsp {
-+	status = "okay";
-+};
-+
-+&blsp1_i2c2 {
-+	status = "okay";
-+	/* SMB1351 @1d charger */
-+	/* wsa881x-i2c @e @44 @f @45 audio amplifier */
-+};
-+
-+&blsp1_i2c3 {
-+	status = "okay";
-+
-+	/* himax,852x@48 Touchscreen */
-+
-+	touchscreen@5d {
-+		compatible = "goodix,gt970", "goodix,gt911";
-+		reg = <0x5d>;
-+		interrupts-extended = <&tlmm 65 IRQ_TYPE_EDGE_FALLING>;
-+		irq-gpios = <&tlmm 65 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
-+		AVDD28-supply = <&pm8950_l10>;
-+		VDDIO-supply = <&pm8950_l6>;
-+
-+		pinctrl-0 = <&touchscreen_default>;
-+		pinctrl-names = "default";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1920>;
-+	};
-+};
-+
-+&blsp2_i2c1 {
-+	status = "okay";
-+
-+	/* FUSB301 @25 USB-C Controller */
-+
-+	tpa6130a2: tpa6130a2@60 {
-+		compatible = "ti,tpa6130a2";
-+		pinctrl-0 = <&tpa6130a2_default>;
-+		pinctrl-names = "default";
-+		reg = <0x60>;
-+		power-gpio = <&tlmm 61 GPIO_ACTIVE_HIGH>;
-+		Vdd-supply = <&pm8950_l22>;
-+	};
-+
-+	tusb320: tusb320@67 {
-+		compatible = "ti,tusb320";
-+		reg = <0x67>;
-+		interrupts-extended = <&tlmm 45 IRQ_TYPE_EDGE_RISING>;
-+	};
-+
-+	led-controller@68 {
-+		compatible = "si-en,sn3193";
-+		reg = <0x68>;
-+
-+		shutdown-gpios = <&tlmm 68 GPIO_ACTIVE_HIGH>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		red_status: led@1 {
-+			reg = <1>;
-+			label = "red:status";
-+			led-max-microamp = <17500>;
-+		};
-+
-+		green_status: led@2 {
-+			reg = <2>;
-+			label = "green:status";
-+			led-max-microamp = <17500>;
-+		};
-+
-+		blue_status: led@3 {
-+			reg = <3>;
-+			label = "blue:status";
-+			led-max-microamp = <17500>;
-+		};
-+	};
-+};
-+
-+&lpass_mem {
-+	status = "okay";
-+};
-+
-+&pm8950_spmi_regulators {
-+	/* PM8950 S5 + S6 = VDD_APC supply */
-+	pm8950_s5: s5 {
-+		regulator-min-microvolt = <1050000>;
-+		regulator-max-microvolt = <1350000>;
-+		regulator-always-on;
-+		regulator-boot-on;
-+	};
-+};
-+
-+&pm8950_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+
-+	status = "okay";
-+};
-+
-+&pmi8950_wled {
-+	qcom,enabled-strings = <0 1>;
-+	qcom,current-limit-microamp = <30000>;
-+	qcom,ovp-millivolt = <29500>;
-+	qcom,external-pfet;
-+
-+	status = "okay";
-+};
-+
-+&ramoops_mem {
-+	status = "okay";
-+};
-+
-+&rpm_requests {
-+	pm8950_rpm_regulators: regulators {
-+		compatible = "qcom,rpm-pm8950-regulators";
-+		vdd_s1-supply = <&vph_pwr>;
-+		vdd_s2-supply = <&vph_pwr>;
-+		vdd_s3-supply = <&vph_pwr>;
-+		vdd_s4-supply = <&vph_pwr>;
-+		vdd_s6-supply = <&vph_pwr>;
-+		vdd_l1_l19-supply = <&pm8950_s3>;
-+		vdd_l2_l23-supply = <&pm8950_s3>;
-+		vdd_l3-supply = <&pm8950_s3>;
-+		vdd_l5_l6_l7_l16-supply = <&pm8950_s4>;
-+		vdd_l8_l11_l12_l17_l22-supply = <&vph_pwr>;
-+		vdd_l9_l10_l13_l14_l15_l18-supply = <&vph_pwr>;
-+
-+		pm8950_s1: s1 {
-+			regulator-min-microvolt = <1000000>;
-+			regulator-max-microvolt = <1225000>;
-+		};
-+
-+		pm8950_s3: s3 {
-+			regulator-min-microvolt = <1300000>;
-+			regulator-max-microvolt = <1300000>;
-+		};
-+		pm8950_s4: s4 {
-+			regulator-min-microvolt = <2050000>;
-+			regulator-max-microvolt = <2050000>;
-+		};
-+
-+		pm8950_l2: l2 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-always-on;
-+			regulator-boot-on;
-+		};
-+
-+		/* pm8950_l3 is managed by rpmpd (RPMPD_VDDMX) */
-+
-+		pm8950_l5: l5 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l6: l6 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l7: l7 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l8: l8 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2900000>;
-+		};
-+
-+		pm8950_l9: l9 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l10: l10 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8950_l11: l11 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2950000>;
-+			regulator-allow-set-load;
-+			regulator-system-load = <200000>;
-+		};
-+
-+		pm8950_l12: l12 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2950000>;
-+		};
-+
-+		pm8950_l13: l13 {
-+			regulator-min-microvolt = <3075000>;
-+			regulator-max-microvolt = <3075000>;
-+		};
-+
-+		pm8950_l14: l14 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l15: l15 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+		};
-+
-+		pm8950_l16: l16 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		pm8950_l17: l17 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+		};
-+
-+		pm8950_l19: l19 {
-+			regulator-min-microvolt = <1225000>;
-+			regulator-max-microvolt = <1350000>;
-+		};
-+
-+		pm8950_l22: l22 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <2800000>;
-+		};
-+
-+		pm8950_l23: l23 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+		};
-+	};
-+};
-+
-+&sdhc_1 {
-+	vmmc-supply = <&pm8950_l8>;
-+	vqmmc-supply = <&pm8950_l5>;
-+
-+	status = "okay";
-+};
-+
-+&sdhc_2 {
-+	cd-gpios = <&tlmm 67 GPIO_ACTIVE_HIGH>;
-+	vmmc-supply = <&pm8950_l11>;
-+	vqmmc-supply = <&pm8950_l12>;
-+
-+	status = "okay";
-+};
-+
-+&sleep_clk {
-+	clock-frequency = <32768>;
-+};
-+
-+&tlmm {
-+	gpio-reserved-ranges = <20 4>; /* Unknown, TZ Protected */
-+
-+	gpio_hall_sensor_default: gpio-hall-sensor-default-state {
-+		pins = "gpio46";
-+		function = "gpio";
-+		drive-strength = <6>;
-+		bias-pull-up;
-+	};
-+
-+	tpa6130a2_default: tpa6130a2-default-state {
-+		pins = "gpio61";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-pull-down;
-+	};
-+
-+	touchscreen_default: touchscreen-default-state {
-+		ts-reset-pins {
-+			pins = "gpio64";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+		ts-irq-pins {
-+			pins = "gpio65";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+	};
-+
-+	gpio_keys_default: gpio-keys-default-state {
-+		pins = "gpio85";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-up;
-+	};
-+
-+	front_flash_default: front-flash-default-state {
-+		front-flash-enable-pins {
-+			pins = "gpio33";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+		front-flash-flash-pins {
-+			pins = "gpio128";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+	};
-+};
-+
-+&xo_board {
-+	clock-frequency = <19200000>;
-+};
+Changes in v2:
+- Shorten the comment explaining why `Integer` is sealed.
+- Mention the seal in the `SAFETY` comments that rely on it.
+- Link to v1: https://patch.msgid.link/20260906-docs-rust-num-integer-sealing-safety-v1-1-78057391302c@younes.io
 
--- 
-2.55.0
+To: Alexandre Courbot <acourbot@nvidia.com>
+To: Yury Norov <yury.norov@gmail.com>
+To: Miguel Ojeda <ojeda@kernel.org>
+To: Boqun Feng <boqun@kernel.org>
+To: Gary Guo <gary@garyguo.net>
+To: Björn Roy Baron <bjorn3_gh@protonmail.com>
+To: Benno Lossin <lossin@kernel.org>
+To: Andreas Hindborg <a.hindborg@kernel.org>
+To: Alice Ryhl <aliceryhl@google.com>
+To: Trevor Gross <tmgross@umich.edu>
+To: Danilo Krummrich <dakr@kernel.org>
+To: Daniel Almeida <daniel.almeida@collabora.com>
+To: Tamir Duberstein <tamird@kernel.org>
+To: Onur Özkan <work@onurozkan.dev>
+Cc: rust-for-linux@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ rust/kernel/num.rs         |  1 +
+ rust/kernel/num/bounded.rs | 32 +++++++++++++++++++-------------
+ 2 files changed, 20 insertions(+), 13 deletions(-)
+
+diff --git a/rust/kernel/num.rs b/rust/kernel/num.rs
+index de589792a77a..0449e84a384a 100644
+--- a/rust/kernel/num.rs
++++ b/rust/kernel/num.rs
+@@ -21,6 +21,7 @@ pub trait Sealed {}
+ 
+ /// Describes core properties of integer types.
+ pub trait Integer:
++    // Sealed so that unsafe code can rely on the correctness of its implementations.
+     private::Sealed
+     + Sized
+     + Copy
+diff --git a/rust/kernel/num/bounded.rs b/rust/kernel/num/bounded.rs
+index 2a2b0a4bca5e..aff35e2eb616 100644
+--- a/rust/kernel/num/bounded.rs
++++ b/rust/kernel/num/bounded.rs
+@@ -40,6 +40,8 @@ macro_rules! fits_within {
+ /// Returns `true` if `value` can be represented with at most `N` bits in a `T`.
+ #[inline(always)]
+ fn fits_within<T: Integer>(value: T, num_bits: u32) -> bool {
++    // `Integer` is sealed, so the bit width, shifts and equality have primitive integer semantics.
++    // Unsafe code relies on this function correctly checking whether `value` fits.
+     fits_within!(value, T, num_bits)
+ }
+ 
+@@ -472,8 +474,9 @@ pub fn cast<U>(self) -> Bounded<U, N>
+         T: Integer,
+         U: Integer<Signedness = T::Signedness>,
+     {
+-        // SAFETY: The converted value is represented using `N` bits, `U` can contain `N` bits, and
+-        // `U` and `T` have the same sign, hence this conversion cannot fail.
++        // SAFETY: `Integer` is sealed, so the bit widths and signedness are correct. The converted
++        // value is represented using `N` bits, `U` can contain `N` bits, and `U` and `T` have the
++        // same sign, hence this conversion cannot fail.
+         let value = unsafe { U::try_from(self.get()).unwrap_unchecked() };
+ 
+         // SAFETY: Although the backing type has changed, the value is still represented within
+@@ -498,8 +501,9 @@ pub fn shr<const SHIFT: u32, const RES: u32>(self) -> Bounded<T, RES> {
+         const_assert!(SHIFT < T::BITS);
+         const_assert!(RES + SHIFT >= N);
+ 
+-        // SAFETY: We shift the value right by `SHIFT`, reducing the number of bits needed to
+-        // represent the shifted value by as much, and just asserted that `RES >= N - SHIFT`.
++        // SAFETY: `Integer` is sealed, so the shift has primitive integer semantics. We reduce the
++        // number of bits needed to represent the shifted value by `SHIFT`, and just asserted that
++        // `RES >= N - SHIFT`.
+         unsafe { Bounded::__new(self.0 >> SHIFT) }
+     }
+ 
+@@ -550,8 +554,9 @@ pub fn shr_exact<const SHIFT: u32, const RES: u32>(self) -> Option<Bounded<T, RE
+     pub fn shl<const SHIFT: u32, const RES: u32>(self) -> Bounded<T, RES> {
+         const_assert!(RES >= N + SHIFT);
+ 
+-        // SAFETY: We shift the value left by `SHIFT`, augmenting the number of bits needed to
+-        // represent the shifted value by as much, and just asserted that `RES >= N + SHIFT`.
++        // SAFETY: `Integer` is sealed, so the shift has primitive integer semantics. We augment
++        // the number of bits needed to represent the shifted value by `SHIFT`, and just asserted
++        // that `RES >= N + SHIFT`.
+         unsafe { Bounded::__new(self.0 << SHIFT) }
+     }
+ }
+@@ -1028,8 +1033,9 @@ impl<T, const N: u32> From<$type> for Bounded<T, N>
+             Self: AtLeastXBits<{ <$type as Integer>::BITS as usize }>,
+         {
+             fn from(value: $type) -> Self {
+-                // SAFETY: The trait bound on `Self` guarantees that `N` bits is
+-                // enough to hold any value of the source type.
++                // SAFETY: `Integer` is sealed, so the bit widths and signedness are correct. The
++                // trait bound on `Self` guarantees that `N` bits is enough to hold any value of
++                // the source type.
+                 unsafe { Self::__new(T::from(value)) }
+             }
+         }
+@@ -1104,9 +1110,9 @@ impl<T, const N: u32> From<Bounded<T, N>> for $type
+             Bounded<T, N>: FitsInXBits<{ <$type as Integer>::BITS as usize }>,
+         {
+             fn from(value: Bounded<T, N>) -> $type {
+-                // SAFETY: The trait bound on `Bounded` ensures that any value it holds (which
+-                // is constrained to `N` bits) can fit into the destination type, so this
+-                // conversion cannot fail.
++                // SAFETY: `Integer` is sealed, so the bit widths and signedness are correct. The
++                // trait bound on `Bounded` ensures that any value it holds (which is constrained
++                // to `N` bits) can fit into the destination type, so this conversion cannot fail.
+                 unsafe { <$type>::try_from(value.get()).unwrap_unchecked() }
+             }
+         }
+@@ -1137,8 +1143,8 @@ impl<T, const N: u32> From<bool> for Bounded<T, N>
+     T: Integer<Signedness = Unsigned> + From<bool>,
+ {
+     fn from(value: bool) -> Self {
+-        // SAFETY: A boolean is represented by `0` or `1`, so it fits within any valid unsigned
+-        // `Bounded` width.
++        // SAFETY: `Integer` is sealed, so `T` is a primitive unsigned integer. A boolean is
++        // represented by `0` or `1`, so it fits within any valid unsigned `Bounded` width.
+         unsafe { Self::__new(T::from(value)) }
+     }
+ }
+
+---
+base-commit: c6709d5e14072d0e3d02f291daee46a199e5dad3
+change-id: 20260906-docs-rust-num-integer-sealing-safety-3a0e2967a948
+
+Best regards,
+--  
+Younes Akhouayri <git@younes.io>
 
