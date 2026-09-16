@@ -1,10 +1,10 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Wed, 16 Sep 2026 09:33:16 -0600
-Subject: [PATCH v10 24/38] selftests/dyndbg: Enable FT_classmap_inheritance
+Date: Wed, 16 Sep 2026 09:33:17 -0600
+Subject: [PATCH v10 25/38] dyndbg: detect class_id reservation conflicts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-dd-cmap-part2-clean-v10-24-af4cf4767707@gmail.com>
+Message-Id: <20260916-dd-cmap-part2-clean-v10-25-af4cf4767707@gmail.com>
 References: <20260916-dd-cmap-part2-clean-v10-0-af4cf4767707@gmail.com>
 In-Reply-To: <20260916-dd-cmap-part2-clean-v10-0-af4cf4767707@gmail.com>
 To: Jason Baron <jbaron@akamai.com>, Shuah Khan <shuah@kernel.org>, 
@@ -26,155 +26,234 @@ Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
  dri-devel@lists.freedesktop.org, linux-arch@vger.kernel.org, 
  linux-modules@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kbuild@vger.kernel.org, linux-pm@vger.kernel.org, 
- Jim Cromie <jim.cromie@gmail.com>
+ Jim Cromie <jim.cromie@gmail.com>, 
+ Louis Chauvet <louis.chauvet@bootlin.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789572777; l=5931;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789572777; l=7209;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=6OJ9UW17PHmqcN0g3YruYiGL+oiRmIXie0aYgidVUu0=;
- b=++kI8qArwuxEzMKHq4StXWqdWptUzDszSvpOM/3L/YkwYo86t5hk2xEofy93NPwpHpVKRXFdf
- X2f9LpeYqQ9DBFrgIBH9nWtjL96clDN6XT1DKf0Sis6HdYVx9uOW20e
+ bh=xxABDWJkgFABEIsF2TNys/tSi7oHKA9H1Gdoz5kwLhQ=;
+ b=wEv99KyebWPbXPtoKYkvDQRhuVj7Mt81+U6MteOlt7sHUF/VtvIq5aiQyQcflmm4sYIie+gWS
+ xgA+6iDy1G6ARtZLgUx6SiBx4+hJUUUTnXqys6kFicc59gpWuPIymy0
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Exercise classmap state inheritance between supermod and submod,
-verifying that class settings and controlling parameter states propagate
-from parent classmap definitions to dependent class users upon module
-load and during runtime reconfiguration.
+If a module _DEFINEs 2 or more classmaps, it must devise them to share
+the per-module 0..62 class-id space; ie their respective base,+length
+reservations cannot overlap.
 
-Add FT_classmap_inheritance to exercise classmap parameter propagation
-across test_dynamic_debug and test_dynamic_debug_submod. Enable it under
-modular_tests and register its 8 golden record checksums.
+To detect conflicts at modprobe, add ddebug_class_range_overlap(),
+call it from ddebug_add_module(), and WARN and return -EINVAL when
+they're detected.
+
+This insures that class_id -> classname lookup has just 1 answer, so
+the 1st-found search in find-class-name works properly.
+
+test_dynamic_debug.c:
+
+If built with -DFORCE_CLASSID_CONFLICT, the test-modules invoke 2
+conflicting DYNAMIC_DEBUG_CLASSMAP_DEFINE() declarations, into parent
+and the _submod.  These conflict with one of the good ones in the
+parent (D2_CORE..etc), causing the modprobe(s) to WARN and fail.
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Reviewed-by: Louis Chauvet <louis.chauvet@bootlin.com>
 ---
- .../selftests/dynamic_debug/dyndbg_selftest.sh     | 84 +++++++++++++++++++++-
- 1 file changed, 83 insertions(+), 1 deletion(-)
+v9:
+. make ddebug_add_module() failure non-fatal during dynamic_debug_init(),
+  logging warning and continuing instead of tearing down all tables kernel-wide.
+v2: RvB after SoB
 
-diff --git a/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh b/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
-index 09a8dbf239dc..51338ebc74bf 100755
---- a/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
-+++ b/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
-@@ -64,6 +64,7 @@ function ifrmmod {
+old-v9 - fix WARN() by adding new 1st arg 1.
+old-v12 - drop maybe_unused on range-overlap fn
+---
+ lib/dynamic_debug.c      | 64 +++++++++++++++++++++++++++---------------------
+ lib/test_dynamic_debug.c |  8 ++++++
+ 2 files changed, 44 insertions(+), 28 deletions(-)
+
+diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
+index 566c3860d7bf..7736fb3d3b79 100644
+--- a/lib/dynamic_debug.c
++++ b/lib/dynamic_debug.c
+@@ -1101,18 +1101,19 @@ static void *ddebug_proc_next(struct seq_file *m, void *p, loff_t *pos)
+ 	return dp;
  }
  
- # Clean up any leftover loaded test modules at initialization
-+ifrmmod test_dynamic_debug_submod
- ifrmmod test_dynamic_debug
- 
- # ===========================================================================
-@@ -196,7 +197,7 @@ function FT_grammar_ok {
- 
-     # use 4 keywords (max 9 words inc flags)
-     ddcmd "module foo file bar.c func buz class D2_CORE +_"	# 4 keywords
--    #ddcmd "module foo file bar.c func buz class D2 line 100 +_" # 5 keywords
-+    ddcmd "module foo file bar.c func buz class D2 line 100 +_" # 5 keywords
- 
-     # 3. Dedicated lineno range grammar assertions (side-effect-free proofs)
-     ddcmd "line 42 +_"		# test exact line syntax
-@@ -298,6 +299,78 @@ function FT_basic_queries {
-     ddcmd "file $f =_" "$f"
+-static bool ddebug_class_in_range(const int class_id, const struct ddebug_class_map *map)
++static bool ddebug_class_map_in_range(const int class_id, const struct ddebug_class_map *map)
+ {
++	if (!map)
++		return false;
+ 	return (class_id >= map->base &&
+ 		class_id < map->base + map->length);
  }
  
-+function FT_classmap_inheritance {
-+    v_echo "${GREEN}# TEST_MOD_SUBMOD ${NC}"
+-static bool ddebug_user_class_in_range(const int class_id, const struct ddebug_class_user *cli)
++static bool ddebug_class_user_in_range(const int class_id, const struct ddebug_class_user *user)
+ {
+-	if (!cli || !cli->map)
++	if (!user)
+ 		return false;
+-	int base = cli->map->base + cli->offset;
+-	return (class_id >= base && class_id < base + cli->map->length);
++	return ddebug_class_map_in_range(class_id - user->offset, user->map);
+ }
+ 
+ static const char *ddebug_class_name(struct _ddebug_info *di, struct _ddebug *dp)
+@@ -1122,11 +1123,11 @@ static const char *ddebug_class_name(struct _ddebug_info *di, struct _ddebug *dp
+ 	int i;
+ 
+ 	for_subvec(i, map, di, maps)
+-		if (ddebug_class_in_range(dp->class_id, map))
++		if (ddebug_class_map_in_range(dp->class_id, map))
+ 			return map->class_names[dp->class_id - map->base];
+ 
+ 	for_subvec(i, cli, di, users)
+-		if (ddebug_user_class_in_range(dp->class_id, cli))
++		if (ddebug_class_user_in_range(dp->class_id, cli))
+ 			return cli->map->class_names[dp->class_id - cli->map->base - cli->offset];
+ 
+ 	return NULL;
+@@ -1372,6 +1373,20 @@ static void ddebug_apply_class_users(const struct _ddebug_info *di)
+ 		__di->_vec.start = __start;				\
+ })
+ 
++static int ddebug_class_range_overlap(struct ddebug_class_map *cm, u64 *reserved_ids)
++{
++	u64 range = (((1ULL << cm->length) - 1) << cm->base);
 +
-+    ifrmmod test_dynamic_debug_submod
-+    ifrmmod test_dynamic_debug
-+
-+    # modprobe with plain-old +p & 3 class enablements
-+    my_modprobe test_dynamic_debug \
-+	"dyndbg=+p;class D2_CORE +pf;class D2_KMS +pt;class D2_ATOMIC +pm"
-+    verify_control_slice '\[test_dynamic_debug\]'
-+
-+    set_param 5 /sys/module/test_dynamic_debug/parameters/p_level_num
-+    verify_control_slice '\[test_dynamic_debug\]'
-+
-+    my_modprobe test_dynamic_debug_submod
-+    verify_control_slice 'test_dynamic_debug_submod'
-+
-+    # fresh start, to clear all above flags (test-fn limits)
-+    ifrmmod test_dynamic_debug_submod
-+    ifrmmod test_dynamic_debug
-+
-+    # load submod, which loads supermod
-+    my_modprobe test_dynamic_debug_submod \
-+	"dyndbg=+p;class D2_CORE +pfs;class D2_KMS +pts;class D2_ATOMIC +pmf"
-+    verify_control_slice 'test_dynamic_debug'
-+
-+    # runtime changes to both
-+    set_param 0x57 /sys/module/test_dynamic_debug/parameters/p_disjoint_bits
-+    set_param 4 /sys/module/test_dynamic_debug/parameters/p_level_num
-+    verify_control_slice 'test_dynamic_debug'
-+
-+    ifrmmod test_dynamic_debug_submod
-+    ifrmmod test_dynamic_debug
-+
-+    # set super-mod params at load-time
-+    my_modprobe test_dynamic_debug p_disjoint_bits=0x16 p_level_num=5
-+    verify_control_slice '\[test_dynamic_debug\]'
-+
-+    # see them picked up by submod
-+    my_modprobe test_dynamic_debug_submod
-+    verify_control_slice 'test_dynamic_debug'
-+
-+    # Real-time mathematical proof that load-time (modprobe) parameter parsing
-+    # and runtime (sysfs write) parameter configurations are perfectly equivalent!
-+    local hash_modprobe=$(slice_and_hash_ddctrl '\[test_dynamic_debug\]')
-+
-+    # Fresh load with default parameters, then configure them dynamically at runtime
-+    ifrmmod test_dynamic_debug_submod
-+    ifrmmod test_dynamic_debug
-+    my_modprobe test_dynamic_debug
-+    my_modprobe test_dynamic_debug_submod
-+    echo 0x16 > /sys/module/test_dynamic_debug/parameters/p_disjoint_bits
-+    echo 5 > /sys/module/test_dynamic_debug/parameters/p_level_num
-+
-+    local hash_sysfs=$(slice_and_hash_ddctrl '\[test_dynamic_debug\]')
-+    if [ "$hash_modprobe" != "$hash_sysfs" ]; then
-+        echo -e "${RED}: Load-time vs runtime parameter equivalence check failed!${NC}"
-+        exit $ksft_fail
-+    else
-+        v_echo "${GREEN}: Proven: parameter load-time (modprobe) " \
-+            "and runtime (sysfs write) are equivalent!${NC}"
-+    fi
-+    # --- Live Content Fingerprinting Phase ---
-+    log_start
-+    echo 1 > /sys/module/test_dynamic_debug/parameters/do_prints
-+    echo 1 > /sys/module/test_dynamic_debug_submod/parameters/do_prints
-+    log_stop
-+
-+    ifrmmod test_dynamic_debug_submod
-+    ifrmmod test_dynamic_debug
++	if (range & *reserved_ids) {
++		pr_err("[%d..%d] on %s conflicts with %llx\n", cm->base,
++		       cm->base + cm->length - 1, cm->class_names[0],
++		       *reserved_ids);
++		return -EINVAL;
++	}
++	*reserved_ids |= range;
++	return 0;
 +}
 +
- # Built-in Feature Tests (Can run on any CONFIG_DYNAMIC_DEBUG kernel, modular or monolithic)
- builtin_tests=(
-     FT_grammar_ok
-@@ -307,6 +380,7 @@ builtin_tests=(
+ /*
+  * Allocate a new ddebug_table for the given module
+  * and add it to the global list.
+@@ -1381,6 +1396,7 @@ static int ddebug_add_module(struct _ddebug_info *di)
+ 	struct ddebug_table *dt;
+ 	struct ddebug_class_map *cm;
+ 	struct ddebug_class_user *cli;
++	u64 reserved_ids = 0;
+ 	int i;
  
- # Modular Feature Tests (Require CONFIG_MODULES=y and test_dynamic_debug*.ko available)
- modular_tests=(
-+    FT_classmap_inheritance
- )
+ 	if (!di->descs.len)
+@@ -1412,16 +1428,24 @@ static int ddebug_add_module(struct _ddebug_info *di)
+ 	dd_set_module_subrange(i, cm, &dt->info, maps);
+ 	dd_set_module_subrange(i, cli, &dt->info, users);
  
- # ==============================================================================
-@@ -390,6 +464,14 @@ function GOLDEN_RECORDS {
- #K= 02e4fd94602e108cb89bfc70d47a5dad FT_basic_queries.5
- #K= f03a7ca7316e8db4c0e16523dc41e75d FT_basic_queries.6
- #K= c518a50ba30ba8099d0dc874a27ecf16 FT_basic_queries.7
-+#K= fb294f02a4207b28b2a874524ef07afd FT_classmap_inheritance.1
-+#K= 7a0b87016fdc237077dfe96bbbb3661b FT_classmap_inheritance.2
-+#K= 2784d60f5056fc5cc03b3ceb854293f5 FT_classmap_inheritance.3
-+#K= bf66aaf8ff612272c0cda29778ed2131 FT_classmap_inheritance.4
-+#K= 49fdd29d91a4c1d16f8b59bb431e741b FT_classmap_inheritance.5
-+#K= a8aa244285d048b5ebe33061fa99c424 FT_classmap_inheritance.6
-+#K= 3060b86a0f553dd5a826bb7023284925 FT_classmap_inheritance.7
-+#K= f43e0aff8a4b38435b73d90ed8100d1b FT_classmap_inheritance.8
- EOF
-         # Read the K-recs and skip those for tests that can't run
-         while read -r line; do
++	/* insure 2+ classmaps share the per-module 0..62 class_id space */
++	for_subvec(i, cm, &dt->info, maps)
++		if (ddebug_class_range_overlap(cm, &reserved_ids))
++			goto cleanup;
++
+ 	mutex_lock(&ddebug_lock);
+ 	list_add_tail(&dt->link, &ddebug_tables);
+ 	mutex_unlock(&ddebug_lock);
+-
+ 	if (dt->info.users.len)
+ 		ddebug_apply_class_users(&dt->info);
+ 
+ 	vpr_info("%3u debug prints in module %s\n",
+ 		 dt->info.descs.len, dt->info.mod_name);
+ 	return 0;
++cleanup:
++	WARN_ONCE(1, "dyndbg multi-classmap conflict in %s\n", di->mod_name);
++	kfree(dt);
++	return -EINVAL;
+ }
+ 
+ /* helper for ddebug_dyndbg_(boot|module)_param_cb */
+@@ -1464,14 +1488,14 @@ int ddebug_dyndbg_module_param_cb(char *param, char *val, const char *module)
+ 	return ddebug_dyndbg_param_cb(param, val, module, -ENOENT);
+ }
+ 
++#ifdef CONFIG_MODULES
++
+ static void ddebug_table_free(struct ddebug_table *dt)
+ {
+ 	list_del_init(&dt->link);
+ 	kfree(dt);
+ }
+ 
+-#ifdef CONFIG_MODULES
+-
+ /*
+  * Called in response to a module being unloaded.  Removes
+  * any ddebug_table's which point at the module.
+@@ -1523,18 +1547,6 @@ static struct notifier_block ddebug_module_nb = {
+ 
+ #endif /* CONFIG_MODULES */
+ 
+-static void ddebug_remove_all_tables(void)
+-{
+-	mutex_lock(&ddebug_lock);
+-	while (!list_empty(&ddebug_tables)) {
+-		struct ddebug_table *dt = list_entry(ddebug_tables.next,
+-						     struct ddebug_table,
+-						     link);
+-		ddebug_table_free(dt);
+-	}
+-	mutex_unlock(&ddebug_lock);
+-}
+-
+ static __initdata int ddebug_init_success;
+ 
+ static int __init dynamic_debug_init_control(void)
+@@ -1605,7 +1617,7 @@ static int __init dynamic_debug_init(void)
+ 			di.mod_name = modname;
+ 			ret = ddebug_add_module(&di);
+ 			if (ret)
+-				goto out_err;
++				pr_warn("failed to add built-in module %s: %d\n", modname, ret);
+ 
+ 			mod_ct++;
+ 
+@@ -1620,7 +1632,7 @@ static int __init dynamic_debug_init(void)
+ 	di.mod_name = modname;
+ 	ret = ddebug_add_module(&di);
+ 	if (ret)
+-		goto out_err;
++		pr_warn("failed to add built-in module %s: %d\n", modname, ret);
+ 
+ 	mod_ct++;
+ 
+@@ -1645,10 +1657,6 @@ static int __init dynamic_debug_init(void)
+ 		   0, 0, 0, NULL, &ddebug_dyndbg_boot_param_cb);
+ 	kfree(cmdline);
+ 	return 0;
+-
+-out_err:
+-	ddebug_remove_all_tables();
+-	return 0;
+ }
+ /* Allow early initialization for boot messages via boot param */
+ early_initcall(dynamic_debug_init);
+diff --git a/lib/test_dynamic_debug.c b/lib/test_dynamic_debug.c
+index 34e51996aa20..3a69cc3cae6d 100644
+--- a/lib/test_dynamic_debug.c
++++ b/lib/test_dynamic_debug.c
+@@ -128,6 +128,14 @@ DYNAMIC_DEBUG_CLASSMAP_DEFINE(map_disjoint_bits, DD_CLASS_TYPE_DISJOINT_BITS,
+ DYNAMIC_DEBUG_CLASSMAP_DEFINE(map_level_num, DD_CLASS_TYPE_LEVEL_NUM,
+ 			      V1, "V1", "V2", "V3", "V4", "V5", "V6", "V7");
+ 
++#ifdef FORCE_CLASSID_CONFLICT
++/*
++ * Enable with -Dflag on compile to test overlapping class-id range
++ * detection.  This should warn on modprobes.
++ */
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(classid_range_conflict, 0, D2_CORE + 1, "D3_CORE");
++#endif
++
+ #else /* TEST_DYNAMIC_DEBUG_SUBMOD */
+ 
+ /*
 
 -- 
 2.55.0
