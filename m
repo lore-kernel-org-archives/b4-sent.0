@@ -1,99 +1,63 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 16 Sep 2026 00:25:47 +0200
-Subject: [PATCH 2/2] arm64: dts: qcom: sdm845-xiaomi-polaris: Extend the
- xbl_mem region
+From: Roman Vivchar <rva333@protonmail.com>
+Date: Wed, 16 Sep 2026 14:42:35 +0300
+Subject: [PATCH] dt-bindings: iio: adc: mediatek,mt2701-auxadc: add mt6572
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-sdm845-xbl-mem-v1-2-6e3c88507997@ixit.cz>
-References: <20260916-sdm845-xbl-mem-v1-0-6e3c88507997@ixit.cz>
-In-Reply-To: <20260916-sdm845-xbl-mem-v1-0-6e3c88507997@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20260916-6572-dt-auxadc-v1-1-e8190d614c33@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAxA0asgz1gKJk0RV0EMIXFadwCUAEJC3
+ J1Axzf8f0DiKJygLQ6IvEmSacyoygLc144fRvHZQIqMaiqN5vUm9AvadbfeIRsfSNmhJt1Ajub
+ IQfZn2PV/p3X4sVvuC5znBTiodohyAAAA
+X-Change-ID: 20260814-6572-dt-auxadc-e6df20ab3248
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Amit Pundir <amit.pundir@linaro.org>, 
- Molly Sophia <mollysophia379@gmail.com>, 
- Petr Hodina <petr.hodina@protonmail.com>
-Cc: Konrad Dybcio <konradybcio@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1740; i=david@ixit.cz;
- h=from:subject:message-id; bh=KhYtwAwwEEXXn9tBUw2nXm8/lwiJ0Ak0iHOYARf9L+U=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqqcXyLbC8CHVLLesOcCo2SCkcuNpN3GjL6x/rH
- u2kBTerxUWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqnF8gAKCRBgAj/E00kg
- cuOKD/9jiRMig1oJLnCMIdmnE/PzVhRMa+SIv9Af4gTT+JywSfkc8vPV53MqqutyT1vvV7kqB8e
- YyvzSUhRnh8wKVEvqjy/XQPOK66YyKpeO4upTv0UsIwHjxK7EKBAxRRZP1ybhgKOrXcT5rUz7TG
- GNEjBVsAuvevgZ9vFAO3V2Iw9NNBuZkPhnYrXcEuVvdcLg+pMkUXaOc7uwl/wDpdL2k0PgNO+pH
- g0Ukyv+5HqycK9ekwogknYL/47aQQI36OY3dsdyHRVr3ObRsqZFUbX9XR/3Ne3Z5936I6C0Q5qd
- TAoZeC8N7Y7xMYh6BLt8HaP43otEwJ2ZfRjkB2hk6yuaDSEjiKuoOaaoku8DLax/j4dSVYiYNli
- yDQv+azssGsM3eqGNVwJY8DdkBAZ4xY+1uxahj8TTekzSc0Bu+Z8U4k/9sY9VTV3JcKgm8B/ea9
- Uv2k0Iif+FRpuwRrtgUAmqbs9ILTqTaSmCSYtLuSNGWPVSz1VW1Jfx/QUwsXVi6ET/7/bHxYhQ7
- UFxxOtfrR7PyW3RpdSScspGg+pXwgs34oxLUzWsohUXCbe32Vb/oQAz1LBY4obwQZyFQaQXELfN
- mD7MLjKYvasHwx5KHecZomdvI6dlc8QLYQWLXo2bWWN1sg4QBibtCXTQlZ4zh8DoHMczuLzs+0E
- RVVZkLUoU9AJPBA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Zhiyong Tao <zhiyong.tao@mediatek.com>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789558977; l=1058;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=RZDlKUe7DkcNemzM8RoN8vGwJ99E8wZHTiCH/d1P1qc=;
+ b=sAqCN+D1D/bp0wpWn6DIoDT5q9AaznJfEIUcDQ7I9fdG5FPPYC5pfDjIC9wSL6V3bOBTnmb/7
+ hqK+o78k6yxDozFO2zoTZfpaH3rmXvvXlR9HVzsEf2JetXl9yHjHDHS
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Xiaomi's Oreo-era tree still had the CAF 1 MiB region, the 2 MiB version
-arrived with the Pie import. This isn't a board-layout quirk, it tracks
-the firmware. The later XBL wants one extra MiB below the old region.
+Add a compatible string for the mt6572 AUXADC, that is compatible with
+mt8173 IP.
 
-Cc: stable@vger.kernel.org
-Fixes: be497abe19bf ("arm64: dts: qcom: Add support for Xiaomi Mi Mix2s")
-
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts | 6 ++++++
- 1 file changed, 6 insertions(+)
+ Documentation/devicetree/bindings/iio/adc/mediatek,mt2701-auxadc.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts
-index d3162e4444532..a782023d0dcb3 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-polaris.dts
-@@ -27,16 +27,17 @@
- /delete-node/ &adsp_mem;
- /delete-node/ &wlan_msa_mem;
- /delete-node/ &mpss_region;
- /delete-node/ &venus_mem;
- /delete-node/ &cdsp_mem;
- /delete-node/ &mba_region;
- /delete-node/ &slpi_mem;
- /delete-node/ &spss_mem;
-+/delete-node/ &xbl_mem;
- 
- / {
- 	model = "Xiaomi Mi MIX 2S";
- 	compatible = "xiaomi,polaris", "qcom,sdm845";
- 	chassis-type = "handset";
- 
- 	/* required for bootloader to select correct board */
- 	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
-@@ -58,16 +59,21 @@ key-vol-up {
- 			label = "Volume Up";
- 			linux,code = <KEY_VOLUMEUP>;
- 			gpios = <&pm8998_gpios 6 GPIO_ACTIVE_LOW>;
- 			debounce-interval = <15>;
- 		};
- 	};
- 
- 	reserved-memory {
-+		xbl-mem@85d00000 {
-+			reg = <0 0x85d00000 0 0x200000>;
-+			no-map;
-+		};
-+
- 		adsp_mem: memory@8c500000 {
- 			reg = <0 0x8c500000 0 0x1e00000>;
- 			no-map;
- 		};
- 
- 		wlan_msa_mem: memory@8e300000 {
- 			reg = <0 0x8e300000 0 0x100000>;
- 			no-map;
+diff --git a/Documentation/devicetree/bindings/iio/adc/mediatek,mt2701-auxadc.yaml b/Documentation/devicetree/bindings/iio/adc/mediatek,mt2701-auxadc.yaml
+index d9e825e5054f..750e1e837fb8 100644
+--- a/Documentation/devicetree/bindings/iio/adc/mediatek,mt2701-auxadc.yaml
++++ b/Documentation/devicetree/bindings/iio/adc/mediatek,mt2701-auxadc.yaml
+@@ -38,6 +38,7 @@ properties:
+           - const: mediatek,mt7986-auxadc
+       - items:
+           - enum:
++              - mediatek,mt6572-auxadc
+               - mediatek,mt6893-auxadc
+               - mediatek,mt8183-auxadc
+               - mediatek,mt8186-auxadc
 
--- 
-2.55.0
+---
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260814-6572-dt-auxadc-e6df20ab3248
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
