@@ -1,10 +1,10 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Wed, 16 Sep 2026 17:22:19 +0300
-Subject: [PATCH v2 14/19] soc: qcom: ubwc: Add UBWC config for MSM8952
+Date: Wed, 16 Sep 2026 17:22:20 +0300
+Subject: [PATCH v2 15/19] dt-bindings: thermal: tsens: Add MSM8952
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-msm8952-initial-support-v2-14-798c2602dde1@mainlining.org>
+Message-Id: <20260916-msm8952-initial-support-v2-15-798c2602dde1@mainlining.org>
 References: <20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org>
 In-Reply-To: <20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -38,41 +38,37 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  iommu@lists.linux.dev, mfd@lists.linux.dev, dri-devel@lists.freedesktop.org, 
  freedreno@lists.freedesktop.org, Krzysztof Kozlowski <krzk@kernel.org>, 
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
- Muzaffer Kadir <muzafferkadir@mainlining.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Abel Vesa <abel.vesa@oss.qualcomm.com>
+ Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789568579; l=1046;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789568579; l=797;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=wTQZRJDoSbh+aK8zsamDgiJT0DGZohLPPtS+hjHbra4=;
- b=rLiDG4DvfwWoU6/aTYqLOcLfSWhlO5y5ZHJQUGn5Ge1EbSNtHYyEECiEtJrskfe76FWn9Psvk
- uq/4jddWBXrDmYOw4xz+neldTl20XqZPdDe5PLW7bqC9rNzwJLMhqpZ
+ bh=qpZ4iKLD/3vBtZO46iDlquc+pQ/AKxoxvg54YFCLw48=;
+ b=2XsdEXnBXh1Az36JsopU3NLkX1Igbws9nWi07z6oO8aDEqtGI6mtUKxfnWg2d+BBR0GxtQ7e1
+ qJLGLY6WuOpDgkI9y1IxqNf0lYodueH9m/FsNohPFgxWRIecX7ypuRI
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MSM8952 uses Adreno 405 and predates ubwc just like MSM8939.
+Add compatible string for tsens block found in MSM8952.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Abel Vesa <abel.vesa@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- drivers/soc/qcom/ubwc_config.c | 1 +
+ Documentation/devicetree/bindings/thermal/qcom-tsens.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/soc/qcom/ubwc_config.c b/drivers/soc/qcom/ubwc_config.c
-index 36c90f72943f..53c1df3ca641 100644
---- a/drivers/soc/qcom/ubwc_config.c
-+++ b/drivers/soc/qcom/ubwc_config.c
-@@ -130,6 +130,7 @@ static const struct of_device_id qcom_ubwc_configs[] __maybe_unused = {
- 	{ .compatible = "qcom,msm8937", .data = &ubwc_1_0_hbb14 },
- 	{ .compatible = "qcom,msm8929", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8939", .data = &no_ubwc_data },
-+	{ .compatible = "qcom,msm8952", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8953", .data = &ubwc_1_0_hbb14 },
- 	{ .compatible = "qcom,msm8956", .data = &no_ubwc_data },
- 	{ .compatible = "qcom,msm8974", .data = &no_ubwc_data },
+diff --git a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+index 5a8f7673e730..c78074fbcecf 100644
+--- a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
++++ b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+@@ -46,6 +46,7 @@ properties:
+         items:
+           - enum:
+               - qcom,msm8937-tsens
++              - qcom,msm8952-tsens
+               - qcom,msm8956-tsens
+               - qcom,msm8976-tsens
+               - qcom,qcs404-tsens
 
 -- 
 2.55.0
