@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Wed, 16 Sep 2026 17:22:15 +0300
-Subject: [PATCH v2 10/19] dt-bindings: display/msm: qcom, mdp5: Add MSM8952
- compatible
+Date: Wed, 16 Sep 2026 17:22:16 +0300
+Subject: [PATCH v2 11/19] dt-bindings: firmware: qcom,scm: Document MSM8952
+ SCM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-msm8952-initial-support-v2-10-798c2602dde1@mainlining.org>
+Message-Id: <20260916-msm8952-initial-support-v2-11-798c2602dde1@mainlining.org>
 References: <20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org>
 In-Reply-To: <20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -41,35 +41,51 @@ Cc: David Heidelberg <david@ixit.cz>, Dang Huynh <danct12@riseup.net>,
  linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789568579; l=837;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789568579; l=1326;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=j1cyFUrA8K2mGnvaltP8lasGm8e1/N+retm6o6lMinU=;
- b=Sd9tzlC4Xu7TGLcWPZSbxF86KgcgyzvvPzeBb0XmLLia8ok8x+YRMBOuc+MkIw6ZdW/DgUnx2
- G+qU3ERkFWRCw3Jz57IG09IrV5ZbH30BPOxo/j/eDslCfWwEk4LsBgD
+ bh=OEY+8HQ+THyf1oFhHKgv6oxkhWtr6anAPLLMMsQ2ZwA=;
+ b=JFQmYzTMCmZs6MQrVAm2QJblVknQeWsTRHYbbIIBess8d9dffHU8hRrAwir0ji9NCJDNFQprD
+ BQXfCW7XdNzA88oF0kIkGQJ4o5fvzpGFyIjDhbJf72+S1VJhdlr2jDZ
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the compatible for the MDP5 found on MSM8952.
+Document the scm compatible for msm8952 SoC.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/display/msm/qcom,mdp5.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/firmware/qcom,scm.yaml | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/display/msm/qcom,mdp5.yaml b/Documentation/devicetree/bindings/display/msm/qcom,mdp5.yaml
-index 2735c78b0b67..2f0a32a3f586 100644
---- a/Documentation/devicetree/bindings/display/msm/qcom,mdp5.yaml
-+++ b/Documentation/devicetree/bindings/display/msm/qcom,mdp5.yaml
-@@ -26,6 +26,7 @@ properties:
-               - qcom,msm8916-mdp5
-               - qcom,msm8917-mdp5
-               - qcom,msm8937-mdp5
-+              - qcom,msm8952-mdp5
-               - qcom,msm8953-mdp5
-               - qcom,msm8974-mdp5
-               - qcom,msm8976-mdp5
+diff --git a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
+index ecee5aef65a7..40a267c54b00 100644
+--- a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
++++ b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
+@@ -45,6 +45,7 @@ properties:
+           - qcom,scm-msm8660
+           - qcom,scm-msm8916
+           - qcom,scm-msm8937
++          - qcom,scm-msm8952
+           - qcom,scm-msm8953
+           - qcom,scm-msm8960
+           - qcom,scm-msm8974
+@@ -153,6 +154,7 @@ allOf:
+               - qcom,scm-msm8660
+               - qcom,scm-msm8916
+               - qcom,scm-msm8937
++              - qcom,scm-msm8952
+               - qcom,scm-msm8953
+               - qcom,scm-msm8960
+               - qcom,scm-msm8974
+@@ -199,6 +201,7 @@ allOf:
+               - qcom,scm-msm8226
+               - qcom,scm-msm8916
+               - qcom,scm-msm8937
++              - qcom,scm-msm8952
+               - qcom,scm-msm8953
+               - qcom,scm-msm8974
+               - qcom,scm-msm8976
 
 -- 
 2.55.0
