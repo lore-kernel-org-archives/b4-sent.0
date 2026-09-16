@@ -1,11 +1,10 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Wed, 16 Sep 2026 09:33:25 -0600
-Subject: [PATCH v10 33/38] dyndbg: harden classmap and descriptor
- validation
+Date: Wed, 16 Sep 2026 09:33:26 -0600
+Subject: [PATCH v10 34/38] docs/dyndbg: add classmap info to howto
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260916-dd-cmap-part2-clean-v10-33-af4cf4767707@gmail.com>
+Message-Id: <20260916-dd-cmap-part2-clean-v10-34-af4cf4767707@gmail.com>
 References: <20260916-dd-cmap-part2-clean-v10-0-af4cf4767707@gmail.com>
 In-Reply-To: <20260916-dd-cmap-part2-clean-v10-0-af4cf4767707@gmail.com>
 To: Jason Baron <jbaron@akamai.com>, Shuah Khan <shuah@kernel.org>, 
@@ -27,246 +26,222 @@ Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
  dri-devel@lists.freedesktop.org, linux-arch@vger.kernel.org, 
  linux-modules@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kbuild@vger.kernel.org, linux-pm@vger.kernel.org, 
- Jim Cromie <jim.cromie@gmail.com>
+ Jim Cromie <jim.cromie@gmail.com>, 
+ Louis Chauvet <louis.chauvet@bootlin.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789572777; l=9553;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789572777; l=7938;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=nVFWnFKk0QgFo8thqqeslt7rKlx+zalXosrMpbqoT/M=;
- b=HjX+eUvHojWORc3aN6sS1EcixM4R5BxkavlY5DAiN/HRS2V5h377CNjRsgFDeciopyiA/XGdn
- 7YYA3T+SZWxCGh5hAVPTLpIegxifalHI9iGY11AjOpH9bXXs0ADMZzC
+ bh=bDBlM3OKBf1bitIDxea2Srxslww3od17iV3usIW+vIY=;
+ b=2ht0QItFlKCvvNP0VfIsa6vhiFSYkTOXmJHT6fGWxDEPRGN+BObHbdwVvpet2i/N/+mhAW82L
+ vHyGe80g+LoBs4zTVIneBLbnTjQjZq+GUyCMmjTClasQy82KUpdzmNS
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Dynamic debug classmaps allow modules to _DEFINE and/or _USE multiple
-classmaps, but this requires coordination amongst the classmaps.
+Describe the 3 API macros providing dynamic_debug's classmaps
 
-Previously, class validation done by DYNAMIC_DEBUG_CLASSMAP_DEFINE at
-compile-time, and ddebug_class_range_overlap() at modprobe-time, was
-incomplete, and DYNAMIC_DEBUG_CLASSMAP_USE_ had no validation. This
-could allow broken classmaps, making them harder to use well.
+DYNAMIC_DEBUG_CLASSMAP_DEFINE - create & export a classmap
+DYNAMIC_DEBUG_CLASSMAP_USE    - refer to exported map
+DYNAMIC_DEBUG_CLASSMAP_PARAM  - bind control param to the classmap
+DYNAMIC_DEBUG_CLASSMAP_PARAM_REF + use module's storage - __drm_debug
 
-This commit improves classmap and descriptor validation:
+NB: The _DEFINE & _USE model makes the user dependent on the definer,
+just like EXPORT_SYMBOL(__drm_debug) already does.
 
-- Add run-time overlap checks for _USEd classmaps in ddebug_add_module()
-  to prevent collisions between private maps and imported APIs.
-
-- Scan module descriptors at load time to print a single warning per
-  missing class_id, rather than waiting for a user query to trip over it.
-
-- Downgrade the global WARN_ONCE in ddebug_match_desc() to a
-  pr_warn_ratelimited, since orphaned class IDs are now tracked and
-  warned about early at module load.
-
+cc: linux-doc@vger.kernel.org
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Reviewed-by: Louis Chauvet <louis.chauvet@bootlin.com>
 ---
-v10:
-. fix pr_warn_ratelimited() line wrap in ddebug_match_desc().
+v9:
+. fix typo in class keyword documentation.
+. document DYNAMIC_DEBUG_CLASSMAP_PARAM_REF.
+v2: RvB after SoB
 ---
- lib/dynamic_debug.c                                | 68 ++++++++++++++++++++--
- lib/test_dynamic_debug.c                           | 16 +++--
- .../selftests/dynamic_debug/dyndbg_selftest.sh     | 22 +++----
- 3 files changed, 84 insertions(+), 22 deletions(-)
+ Documentation/admin-guide/dynamic-debug-howto.rst | 145 ++++++++++++++++++++--
+ 1 file changed, 135 insertions(+), 10 deletions(-)
 
-diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
-index ac54a0499369..eb28831a6cb2 100644
---- a/lib/dynamic_debug.c
-+++ b/lib/dynamic_debug.c
-@@ -317,7 +317,8 @@ static bool ddebug_match_desc(const struct ddebug_query *query,
- 	/* site is class'd */
- 	site_map = ddebug_find_map_by_class_id(di, dp->class_id);
- 	if (!site_map) {
--		WARN_ONCE(1, "unknown class_id %d, check %s's CLASSMAP definitions", dp->class_id, di->mod_name);
-+		pr_warn_ratelimited("unknown class_id %d, check %s's CLASSMAP definitions\n",
-+				    dp->class_id, di->mod_name);
- 		return false;
- 	}
- 	/* module(-param) decides protection */
-@@ -1490,6 +1491,23 @@ static int ddebug_class_range_overlap(struct ddebug_class_map *cm, u64 *reserved
- 	return 0;
- }
+diff --git a/Documentation/admin-guide/dynamic-debug-howto.rst b/Documentation/admin-guide/dynamic-debug-howto.rst
+index a8962ab22aaf..f5b1470a4b88 100644
+--- a/Documentation/admin-guide/dynamic-debug-howto.rst
++++ b/Documentation/admin-guide/dynamic-debug-howto.rst
+@@ -146,6 +146,9 @@ keywords are::
+   "1-30" is valid range but "1 - 30" is not.
  
-+static int ddebug_class_user_overlap(struct ddebug_class_user *cli,
-+				     u64 *reserved_ids)
-+{
-+	struct ddebug_class_map *cm = cli->map;
-+	int base = cm->base + cli->offset;
-+	u64 range = (((1ULL << cm->length) - 1) << base);
-+
-+	if (range & *reserved_ids) {
-+		pr_err("module %s: [%d..%d] (from %s) conflicts with %llx\n",
-+		       cli->mod_name, base, base + cm->length - 1,
-+		       cm->class_names[0], *reserved_ids);
-+		return -EINVAL;
-+	}
-+	*reserved_ids |= range;
-+	return 0;
-+}
-+
- /*
-  * Allocate a new ddebug_table for the given module
-  * and add it to the global list.
-@@ -1500,7 +1518,8 @@ static int ddebug_add_module(struct _ddebug_info *di)
- 	struct ddebug_class_map *cm;
- 	struct ddebug_class_user *cli;
- 	u64 reserved_ids = 0;
--	int i;
-+	u64 bad_ids = 0;
-+	int i, err = 0;
  
- 	if (!di->descs.len)
- 		return 0;
-@@ -1531,10 +1550,47 @@ static int ddebug_add_module(struct _ddebug_info *di)
- 	dd_set_module_subrange(i, cm, &dt->info, maps);
- 	dd_set_module_subrange(i, cli, &dt->info, users);
++Keywords
++--------
++
+ The meanings of each keyword are:
  
--	/* insure 2+ classmaps share the per-module 0..62 class_id space */
-+	/* validate the per-module shared 0..62 class_id space */
- 	for_subvec(i, cm, &dt->info, maps)
- 		if (ddebug_class_range_overlap(cm, &reserved_ids))
--			goto cleanup;
-+			err = -EINVAL;
-+
-+	for_subvec(i, cli, &dt->info, users) {
-+		cm = cli->map;
-+		if (!cm) {
-+			pr_err("module %s: classmap not found for user\n", di->mod_name);
-+			err = -EINVAL;
-+			continue;
-+		}
-+
-+		if (cm->base + cm->length + cli->offset > _DPRINTK_CLASS_DFLT) {
-+			pr_err("module %s: base:%d + classes.len:%d + cli.offset:%d must be <= %d\n",
-+			       di->mod_name, cm->base, cm->length,
-+			       cli->offset, _DPRINTK_CLASS_DFLT);
-+			err = -EINVAL;
-+			continue;
-+		}
-+
-+		if (ddebug_class_user_overlap(cli, &reserved_ids))
-+			err = -EINVAL;
-+	}
-+	if (err)
-+		goto cleanup;
-+
-+	/* validate all class_ids against module's classmaps/users */
-+	for (i = 0; i < dt->info.descs.len; i++) {
-+		struct _ddebug *dp = &dt->info.descs.start[i];
-+
-+		if (dp->class_id == _DPRINTK_CLASS_DFLT)
-+			continue;
-+		if (bad_ids & (1ULL << dp->class_id))
-+			continue;
-+		if (!ddebug_find_map_by_class_id(&dt->info, dp->class_id)) {
-+			pr_warn("module %s uses unknown class_id %d\n",
-+				dt->info.mod_name, dp->class_id);
-+			bad_ids |= (1ULL << dp->class_id);
-+		}
-+	}
+ func
+@@ -193,16 +196,6 @@ format
+ 	format "nfsd: SETATTR"  // a neater way to match a format with whitespace
+ 	format 'nfsd: SETATTR'  // yet another way to match a format with whitespace
  
- 	mutex_lock(&ddebug_lock);
- 	list_add_tail(&dt->link, &ddebug_tables);
-@@ -1546,7 +1602,7 @@ static int ddebug_add_module(struct _ddebug_info *di)
- 		 dt->info.descs.len, dt->info.mod_name);
- 	return 0;
- cleanup:
--	WARN_ONCE(1, "dyndbg multi-classmap conflict in %s\n", di->mod_name);
-+	pr_err("dyndbg multi-classmap conflict in %s\n", di->mod_name);
- 	kfree(dt);
- 	return -EINVAL;
- }
-@@ -1633,7 +1689,7 @@ static int ddebug_module_notify(struct notifier_block *self, unsigned long val,
- 		mod->dyndbg_info.mod_name = mod->name;
- 		ret = ddebug_add_module(&mod->dyndbg_info);
- 		if (ret)
--			WARN(1, "Failed to allocate memory: dyndbg may not work properly.\n");
-+			pr_err("dyndbg: failed to add module %s: %d\n", mod->name, ret);
- 		break;
- 	case MODULE_STATE_GOING:
- 		ddebug_remove_module(mod->name);
-diff --git a/lib/test_dynamic_debug.c b/lib/test_dynamic_debug.c
-index 7c10a1ddc630..fe5b885398f3 100644
---- a/lib/test_dynamic_debug.c
-+++ b/lib/test_dynamic_debug.c
-@@ -161,14 +161,20 @@ DYNAMIC_DEBUG_CLASSMAP_DEFINE(fail_base_len, 0, 60,
- #endif
- 
- #else /* TEST_DYNAMIC_DEBUG_SUBMOD */
+-class
+-    The given class_name is validated against each module, which may
+-    have declared a list of known class_names.  If the class_name is
+-    found for a module, callsite & class matching and adjustment
+-    proceeds.  Examples::
 -
- /*
-- * in submod/drm-drivers, use the classmaps defined in top/parent
-- * module above.
-+ * In submod (drm-drivers/helpers) use the classmaps defined in
-+ * top/parent module above.  We _USE_() with offset, to test the
-+ * non-zero case.
-  */
+-	class DRM_UT_KMS	# a DRM.debug category
+-	class JUNK		# silent non-match
+-	// class TLD_*		# NOTICE: no wildcard in class names
 -
- DYNAMIC_DEBUG_CLASSMAP_USE(map_disjoint_bits);
--DYNAMIC_DEBUG_CLASSMAP_USE_(map_level_num, 7);
-+/*
-+ * maybe force failure of runtime sanity test of classmap.length + offset < 63
-+ */
-+#if !defined(DD_RUNTIME_CLASS_CHECK)
-+DYNAMIC_DEBUG_CLASSMAP_USE_(map_level_num, 8);
-+#else
-+DYNAMIC_DEBUG_CLASSMAP_USE_(map_level_num, 55);
-+#endif
+ line
+     The given line number or range of line numbers is compared
+     against the line number of each ``pr_debug()`` callsite.  A single
+@@ -217,6 +210,25 @@ line
+ 	line -1605          // the 1605 lines from line 1 to line 1605
+ 	line 1600-          // all lines from line 1600 to the end of the file
  
- #if defined(DD_MACRO_ARGCHECK)
- DYNAMIC_DEBUG_CLASSMAP_USE_(fail_offset_big, 100);
-diff --git a/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh b/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
-index a91a0ffa92d4..ef5f41ca7f7d 100755
---- a/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
-+++ b/tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
-@@ -583,12 +583,12 @@ function GOLDEN_RECORDS {
- #K= c518a50ba30ba8099d0dc874a27ecf16 FT_multi_query.4
- #K= 8f18ea82c09460434b6e9e4cd12543e8 FT_test_classes.1
- #K= a15ec4843acd721fbdfddc0b512c8032 FT_test_classes.2
--#K= 20d4545f9753e677e72e3adf52527fd3 FT_test_classes.3
--#K= 934d8677872fe26bd636a6c3d6416aa2 FT_classmap_inheritance.1
--#K= cd1389958807063baa1ea4b06c61fa02 FT_classmap_inheritance.2
-+#K= bc074e657d8d7f0bbc960e4dfa8de25d FT_test_classes.3
-+#K= a60284143b51b5d13c4562f7f4a2e807 FT_classmap_inheritance.1
-+#K= 1d43471dca765597d88a1be25d776c92 FT_classmap_inheritance.2
- #K= 0708a283f0f1959135c797e36119e4af FT_classmap_inheritance.3
--#K= 05f6efb80299d24cde65174f64d97308 FT_classmap_inheritance.4
--#K= 7e92245008439ee79fe2460aeaa16a9b FT_classmap_inheritance.5
-+#K= a0b9a8a9530706b85c4f8bf911607db0 FT_classmap_inheritance.4
-+#K= f43e0aff8a4b38435b73d90ed8100d1b FT_classmap_inheritance.5
- #K= 53d1b6875b65c79cfd759e209ae50b11 FT_modprobe_w_param.1
- #K= 53d1b6875b65c79cfd759e209ae50b11 FT_modprobe_w_param.2
- #K= 79d912e2aeb04dea70f9c7e701333f0a FT_modprobe_w_param.3
-@@ -599,11 +599,11 @@ function GOLDEN_RECORDS {
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.8
- #K= f9cee4512e5604603e0262fba4bea223 FT_modprobe_w_param.9
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.10
--#K= b6a62433165f6423b81417f782551ab9 FT_modprobe_w_param.11
-+#K= 7c645692e3e3796d4d3b8604c49583f7 FT_modprobe_w_param.11
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.12
--#K= de89753b843449d11da14240c4da4cad FT_modprobe_w_param.13
-+#K= e995f70c0509334a33aec40ada9e6e6c FT_modprobe_w_param.13
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.14
--#K= 1d966d0cae735457791c93a86e9e1650 FT_modprobe_w_param.15
-+#K= 72f97ca3e8f4c3e7f34fbe91de62e223 FT_modprobe_w_param.15
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.16
- #K= 1aacb7c196a8354c46c60c73d78c6bf2 FT_modprobe_w_param.17
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.18
-@@ -617,11 +617,11 @@ function GOLDEN_RECORDS {
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.26
- #K= 7fa4c84490c42c750986614c3539d56a FT_modprobe_w_param.27
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.28
--#K= 1eb866a813551061cd73178ba7833543 FT_modprobe_w_param.29
-+#K= fc098897aa3e1472a536e7ae8069c84f FT_modprobe_w_param.29
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.30
--#K= a9e7424ed7b02696b5e12108971792dd FT_modprobe_w_param.31
-+#K= 38ea63fed62a0308241325e57020b28e FT_modprobe_w_param.31
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.32
--#K= 5323d7746d983cdcfda4866255cd5123 FT_modprobe_w_param.33
-+#K= 4b896adb5e7cfcc79f9ffa879d791f37 FT_modprobe_w_param.33
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.34
- #K= 7f961a7d3facd89bdd4b9d8e7b5541e9 FT_modprobe_w_param.35
- #K= 6a320774e2b535ceb89d6cdde6f5d0fb FT_modprobe_w_param.36
++class
++
++    The given class_name is validated against each module, which may
++    have declared a list of class_names it accepts.  If the class_name
++    is accepted by a module, callsite & class matching and adjustment
++    proceeds.  Examples::
++
++	class DRM_UT_KMS	# a drm.debug category
++	class JUNK		# silent non-match
++	// class TLD_*		# NOTICE: no wildcard in class names
++
++.. note::
++
++    Unlike other keywords, classes are "name-to-change", not
++    "omitting-constraint-allows-change".  See Dynamic Debug Classmaps
++
++Flags
++-----
++
+ The flags specification comprises a change operation followed
+ by one or more flag characters.  The change operation is one
+ of the characters::
+@@ -238,6 +250,11 @@ The flags are::
+   l    Include line number
+   d    Include call trace
+ 
++.. note::
++
++   * To query without changing	``+_`` or ``-_``.
++   * To clear all flags		``=_`` or ``-fslmpt``.
++
+ For ``print_hex_dump_debug()`` and ``print_hex_dump_bytes()``, only
+ the ``p`` flag has meaning, other flags are ignored.
+ 
+@@ -394,3 +411,111 @@ just a shortcut for ``print_hex_dump(KERN_DEBUG)``.
+ For ``print_hex_dump_debug()``/``print_hex_dump_bytes()``, format string is
+ its ``prefix_str`` argument, if it is constant string; or ``hexdump``
+ in case ``prefix_str`` is built dynamically.
++
++.. _dyndbg-classmaps:
++
++Dynamic Debug Classmaps
++=======================
++
++The "class" keyword selects prdbgs based on author supplied,
++domain-oriented names.  This complements the nested-scope keywords:
++module, file, function, line.
++
++The main difference from the others: classes must be named to be
++changed.  This protects them from unintended overwrite::
++
++  # IOW this cannot undo any drm.debug settings
++  :#> ddcmd -p
++
++This protection is needed; /sys/module/drm/parameters/debug is ABI.
++drm.debug is authoritative when dyndbg is not used, dyndbg-under-DRM
++is an implementation detail, and must not behave erratically, just
++because another admin fed >control something unrelated.
++
++So each class must be enabled individually (no wildcards)::
++
++  :#> ddcmd class DRM_UT_CORE +p
++  :#> ddcmd class DRM_UT_KMS +p
++  # or more selectively
++  :#> ddcmd class DRM_UT_CORE module drm +p
++
++That makes direct >control wordy and annoying, but it is a secondary
++interface; it is not intended to replace the ABI, just slide in
++underneath and reimplement the guaranteed behavior.  So DRM would keep
++using the convenient way, and be able to trust it::
++
++  :#> echo 0x1ff > /sys/module/drm/parameters/debug
++
++That said, since the sysfs/kparam is the ABI, if the author omits the
++CLASSMAP_PARAM, theres no ABI to guard, and he probably wants a less
++pedantic >control interface.  In this case, protection is dropped.
++
++Dynamic Debug Classmap API
++==========================
++
++DYNAMIC_DEBUG_CLASSMAP_DEFINE(clname,type,_base,classnames) - this maps
++classnames (a list of strings) onto class-ids consecutively, starting
++at _base.
++
++DYNAMIC_DEBUG_CLASSMAP_USE(clname) & _USE_(clname,_base) - modules
++call this to refer to the var _DEFINEd elsewhere (and exported).
++
++DYNAMIC_DEBUG_CLASSMAP_PARAM(clname) - creates the sysfs/kparam,
++maps/exposes bits 0..N as class-names.
++
++DYNAMIC_DEBUG_CLASSMAP_PARAM_REF(name,bits,var,flags) - connects an
++existing module parameter variable (e.g. __drm_debug) to a classmap.
++
++Classmaps are opt-in: modules invoke _DEFINE or _USE to authorize
++dyndbg to update those named classes.  "class FOO" queries are
++validated against the classes defined or used by the module, this
++finds the classid to alter; classes are not directly selectable by
++their classid.
++
++Classnames are global in scope, so subsystems (module-groups) should
++prepend a subsystem name; unqualified names like "CORE" are discouraged.
++
++NB: It is an inherent API limitation (due to class_id's int type) that
++the following are possible:
++
++  // these errors should be caught in review
++  __pr_debug_cls(0, "fake DRM_UT_CORE msg");  // this works
++  __pr_debug_cls(62, "un-known classid msg"); // this compiles, does nothing
++
++There are 2 types of classmaps:
++
++* DD_CLASS_TYPE_DISJOINT_BITS: classes are independent, like drm.debug
++* DD_CLASS_TYPE_LEVEL_NUM: classes are relative, ordered (V3 > V2)
++
++DYNAMIC_DEBUG_CLASSMAP_PARAM - modelled after module_param_cb, it
++refers to a DEFINEd classmap, and associates it to the param's
++data-store.  This state is then applied to DEFINEr and USEr modules
++when they're modprobed.
++
++The PARAM interface also enforces the DD_CLASS_TYPE_LEVEL_NUM relation
++amongst the contained classnames; all classes are independent in the
++control parser itself.  There is no implied meaning in names like "V4"
++or "PL_ERROR" vs "PL_WARNING".
++
++Modules or subsystems (drm & drivers) can define multiple classmaps,
++as long as they (all the classmaps) share the limited 0..62
++per-module-group _class_id range, without overlap.
++
++If a module encounters a conflict between 2 classmaps it is _USEing or
++_DEFINEing, it can invoke the extended _USE_(name,_base) macro to
++de-conflict the respective ranges.
++
++``#define DEBUG`` will enable all pr_debugs in scope, including any
++class'd ones.  This won't be reflected in the PARAM readback value,
++but the class'd pr_debug callsites can be forced off by toggling the
++classmap-kparam all-on then all-off.
++
++Self-Testing and Validation
++===========================
++
++Dynamic debug includes a regression test script in kselftest::
++
++  :#> make -C tools/testing/selftests TARGETS=dynamic_debug run_tests
++  # Or run directly on a running kernel:
++  :#> ./tools/testing/selftests/dynamic_debug/dyndbg_selftest.sh
++
 
 -- 
 2.55.0
