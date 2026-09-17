@@ -1,108 +1,124 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Thu, 17 Sep 2026 06:41:23 -0700
-Subject: [PATCH net-next v4 2/2] mptcp: annotate lockless access to
- sk->sk_err
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v8 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Thu, 17 Sep 2026 19:27:13 +0530
+Message-Id: <20260917-master-v8-0-823d2c5d090a@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-mptcp-sk-err-net-v4-2-1f04f52f2561@proton.me>
-References: <20260917-mptcp-sk-err-net-v4-0-1f04f52f2561@proton.me>
-In-Reply-To: <20260917-mptcp-sk-err-net-v4-0-1f04f52f2561@proton.me>
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
- Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIALnxq2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyLHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDS0Nz3dzE4pLUIl2zZCNzc4s0U/NEy0QloOKCotS0zAqwQdGxEH5xaVJ
+ WanIJSLdSbS0Ab7+x0WoAAAA=
+X-Change-ID: 20260917-master-6c2778f57a9a
+To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
+ bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
+ krzk+dt@kernel.org, conor+dt@kernel.org, 
+ srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789652484; l=2705;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=ihY4XRH9RMhjOfpeeT8tP21amLumdct00zIA9m8+V+0=;
- b=aVmi+5F/8xiss5rWi3toBzgrunkk83nLr2KlK9bCozxOF/I0HOGOHLYCcS31Cmj8ypY5PZdpX
- PMwW+Qzqs6mDMbvOaz+KlBtStYkgNFM/Rgb851whA+mkCgBJtLLcWzl
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789653433; l=4235;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=5xE5ElBBUihkYKnwR0UoXKzWT+6rxpjmTNNoQUpWXR0=;
+ b=778m3bD7tLimJw12lPQMr9cN70j0vngxl/2ER1Uaok7iXCWJsIX4JY7dBMvfCPH6RJqtdsoTe
+ /Y/HnrBmSPGCHKOQ9ySQG8rVF161DaiFWUxtZ7eWeESd3GAnVqghXB1
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sock_error() can clear sk_err with xchg() without the socket lock.
-Annotate the remaining MPTCP peeks on the msk send/recv/splice paths
-and on the subflow error-report path with READ_ONCE().
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-This does not consume sk_err; the check-then-sock_error() TOCTOU on
-the no-data paths is a separate issue.
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
 
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
+
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
+
+Changes in v8:
+- Rebase the series on linux-next next-20260916.
+- Require the LPASS LPR and audio vote clocks to access VA CSR
+  register space safely.
+- Attach the DT vote clocks to runtime PM and resume the device before
+  programming the rate generator registers.
+- Program the counter and delay registers once during probe.
+- Use qcom's simple regmap gate ops for the enable bit (Srinivas).
+- Drop the unreachable of_device_get_match_data() NULL check (Srinivas).
+- Drop stale Reviewed-by/Tested-by tags after the binding and driver
+  changes.
+- Link to v7: https://patch.msgid.link/20260831-heartbeat-v7-next-20260828-v7-0-e3ffeac46a51@oss.qualcomm.com
+
+Changes in v7:
+- Rebase the series on linux-next next-20260828.
+- Add Prasad's Reviewed-by and Tested-by tags to patch 2.
+- Link to v6: https://patch.msgid.link/20260821-heartbeat-v6-next-20260821-send-v6-0-62c5df84ce21@oss.qualcomm.com
+
+Changes in v6:
+- Rebase the series on linux-next next-20260821.
+- Capitalize Hawi in binding text (Bjorn).
+- Simplify the binding example by removing the soc wrapper and
+  two-cell address/size setup (Bjorn).
+- Keep the full VA CSR register window in the binding and describe it
+  as the VA CSR register block after Konrad clarified the earlier
+  register-range concern (Bjorn, Konrad).
+- Link to v5: https://patch.msgid.link/20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries.
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Changes in v4:
+- Rename the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml (Krzysztof).
+- Rename Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE (Konrad).
+- Add devm_pm_runtime_enable() in the lpass-va-csr probe path.
+- Drop the qcom,lpass-va-macro binding extension patch; it will be
+  resubmitted with the Hawi DTSI changes.
+- Drop sound/soc/codecs/Kconfig select wiring to keep this series
+  clock-only (Konrad).
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Changes in v3:
+- Move the qcom,lpass-va-csr binding under
+  Documentation/devicetree/bindings/clock/ (Krzysztof).
+- Move the driver under drivers/clk/qcom/ (Krzysztof).
+- Improve the schema description and use generic clock-controller node
+  naming (Krzysztof).
+- Use additionalProperties: false and keep compatibles sorted.
+
+Changes in v2:
+- Split the qcom,lpass-va-csr and qcom,lpass-va-macro bindings into
+  separate patches.
+
+Changes in v1:
+- Initial version
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- net/mptcp/protocol.c | 8 ++++----
- net/mptcp/subflow.c  | 4 ++--
- 2 files changed, 6 insertions(+), 6 deletions(-)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
-index e1f08f71cdb1..91637d1ed070 100644
---- a/net/mptcp/protocol.c
-+++ b/net/mptcp/protocol.c
-@@ -969,7 +969,7 @@ static bool move_skbs_to_msk(struct mptcp_sock *msk, struct sock *ssk)
- 
- 	moved = __mptcp_move_skbs_from_subflow(msk, ssk, true);
- 	__mptcp_ofo_queue(msk);
--	if (unlikely(ssk->sk_err))
-+	if (unlikely(READ_ONCE(ssk->sk_err)))
- 		__mptcp_subflow_error_report(sk, ssk);
- 
- 	/* If the moves have caught up with the DATA_FIN sequence number
-@@ -2028,7 +2028,7 @@ static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- 	}
- 
- 	ret = -EPIPE;
--	if (unlikely(sk->sk_err || (sk->sk_shutdown & SEND_SHUTDOWN)))
-+	if (unlikely(READ_ONCE(sk->sk_err) || (sk->sk_shutdown & SEND_SHUTDOWN)))
- 		goto do_error;
- 
- 	pfrag = sk_page_frag(sk);
-@@ -2429,7 +2429,7 @@ static int mptcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 			    !timeo)
- 				break;
- 		} else {
--			if (sk->sk_err) {
-+			if (READ_ONCE(sk->sk_err)) {
- 				copied = sock_error(sk);
- 				break;
- 			}
-@@ -4655,7 +4655,7 @@ static ssize_t mptcp_splice_read(struct socket *sock, loff_t *ppos,
- 				break;
- 			if (sock_flag(sk, SOCK_DONE))
- 				break;
--			if (sk->sk_err) {
-+			if (READ_ONCE(sk->sk_err)) {
- 				ret = sock_error(sk);
- 				break;
- 			}
-diff --git a/net/mptcp/subflow.c b/net/mptcp/subflow.c
-index af81ad5e699d..ec9668fe8d5b 100644
---- a/net/mptcp/subflow.c
-+++ b/net/mptcp/subflow.c
-@@ -1541,7 +1541,7 @@ static void subflow_data_ready(struct sock *sk)
- 		if (mptcp_data_avail(msk) < parent->sk_rcvlowat &&
- 		    (tcp_sk(sk)->rcv_nxt - tcp_sk(sk)->rcv_wup) > inet_csk(sk)->icsk_ack.rcv_mss)
- 			inet_csk(sk)->icsk_ack.pending |= ICSK_ACK_NOW;
--	} else if (unlikely(sk->sk_err)) {
-+	} else if (unlikely(READ_ONCE(sk->sk_err))) {
- 		subflow_error_report(sk);
- 	}
- }
-@@ -1889,7 +1889,7 @@ static void subflow_state_change(struct sock *sk)
- 	 */
- 	if (mptcp_subflow_data_available(sk))
- 		mptcp_data_ready(parent, sk);
--	else if (unlikely(sk->sk_err))
-+	else if (unlikely(READ_ONCE(sk->sk_err)))
- 		subflow_error_report(sk);
- 
- 	subflow_sched_work_if_closed(mptcp_sk(parent), sk);
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  62 +++++++++
+ drivers/clk/qcom/Kconfig                           |  14 +++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 140 +++++++++++++++++++++
+ 4 files changed, 217 insertions(+)
+---
+base-commit: 0d9d0dbf2fddcff5859d623e90ca73c4054276e1
+change-id: 20260917-master-6c2778f57a9a
 
--- 
-2.55.0
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
