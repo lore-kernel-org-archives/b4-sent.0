@@ -1,69 +1,80 @@
-From: Peter-Simon Dieterich <peter-simon.dieterich@vaillant-group.com>
-Date: Thu, 17 Sep 2026 15:00:43 +0200
-Subject: [PATCH 2/2] mtd: rawnand: Reflect that ESMT and GigaDevice share
- ID 0xc8
+From: Quanye Yang <quanyeyang@proton.me>
+Subject: [PATCH net-next v4 0/2] tcp: annotate lockless access to
+ sk->sk_err
+Date: Thu, 17 Sep 2026 06:41:21 -0700
+Message-Id: <20260917-mptcp-sk-err-net-v4-0-1f04f52f2561@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-esmt-gd9fu2g8f3a-v1-2-577c0ab2d31a@vaillant-group.com>
-References: <20260917-esmt-gd9fu2g8f3a-v1-0-577c0ab2d31a@vaillant-group.com>
-In-Reply-To: <20260917-esmt-gd9fu2g8f3a-v1-0-577c0ab2d31a@vaillant-group.com>
-To: Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Peter-Simon Dieterich <peter-simon.dieterich@vaillant-group.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOTQ6CMBAF4KuQrq3pD0px5T2Mi1KmUo2FtLXBE
+ O5uixticPkyM9+bCXlwBjw6FRNyEI03vU2h3BVIddLeAJs2ZcQIO5KaCPwcghqwf2BwDlsIuNJ
+ aCNDkQMoSpbPBgTbjQl5QXrAwBnT9TvyruYMKWcy7nfGhd++lPdLl4n9RpJjiVlZUSlC11O15c
+ H3o7f4JCx/ZGqg3AJaA/KZsQElVk1+ArwDKNgCeAFVSLrioRNPCGpjn+QOpj8leTgEAAA==
+X-Change-ID: 20260908-mptcp-sk-err-net-7ff88ef05044
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789650050; l=1759;
- i=peter-simon.dieterich@vaillant-group.com; s=20260820;
- h=from:subject:message-id; bh=GVgrbaeNYYC74jEu4meBBZ7WRozFmcBvWG5whH/D0VM=;
- b=l0SsMisYo5Dfq77I3F5DLjARmFARoNm+su+9JXxGB+DtQTaQrbkkGFRcVSCRzJQ4zmwFZdYYk
- oLMu8xtFbkRASk2T/LZE2YjQ83lC8FgGTFHxMwqqWNHGT7upYXwwOT9
-X-Developer-Key: i=peter-simon.dieterich@vaillant-group.com; a=ed25519;
- pk=YI8VL1pBCnAIu0GVWI3a6qn/SG0pMQhm9n/RZTI5KZg=
-X-Endpoint-Received: by B4 Relay for peter-simon.dieterich@vaillant-group.com/20260820 with auth_id=965
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789652484; l=1644;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=HST9EaucmkFhUHvdO3KRl/gCm8AxlEQ93kW9f+QlSbg=;
+ b=Wu3a89wukqLv07lr32vRc6ZT8eJkrZgIyh1uRSesnCrwQSUegOODeADllKXYrBB6JithBQ+93
+ 1+BriVbD70HA3ImNzIori9P7I2wbQVDRy9PIiBQAWuFHHYL/piRqmIj
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-JEDEC manufacturer ID 0xc8 is used by both ESMT and GigaDevice, so
-nand_esmt.c handles chips from both vendors. Chips from either
-vendor are currently reported as "ESMT", which is misleading when
-debugging a GigaDevice part.
+do_recvmmsg() and getsockopt(SO_ERROR) call sock_error() without the
+socket lock and clear sk_err with xchg(). Annotate the matching
+lockless peeks with READ_ONCE().
 
-Rename the manufacturer entry to "ESMT/GigaDevice" and document the
-collision next to the NAND_MFR_ESMT definition. The only behavioural
-change is the manufacturer name printed at detection time.
+Patch 1 covers TCP. Patch 2 covers MPTCP, including the remaining
+unmarked subflow peeks.
 
-Signed-off-by: Peter-Simon Dieterich <peter-simon.dieterich@vaillant-group.com>
+This does not consume sk_err. The check-then-sock_error() TOCTOU on
+the no-data paths is a separate issue.
+
 ---
- drivers/mtd/nand/raw/internals.h | 1 +
- drivers/mtd/nand/raw/nand_ids.c  | 2 +-
- 2 files changed, 2 insertions(+), 1 deletion(-)
+Changes in v4:
+- split the annotation change, one points to tcp and another points to
+  mptcp.
+- annotate the remaining unmarked MPTCP sk_err peeks on the
+  subflow error-report path.
+- Link to v3: https://patch.msgid.link/20260912-mptcp-sk-err-net-v3-1-c41383878bde@proton.me
 
-diff --git a/drivers/mtd/nand/raw/internals.h b/drivers/mtd/nand/raw/internals.h
-index b7162ced9efa..b8b29341b88c 100644
---- a/drivers/mtd/nand/raw/internals.h
-+++ b/drivers/mtd/nand/raw/internals.h
-@@ -19,6 +19,7 @@
- #define NAND_MFR_AMD		0x01
- #define NAND_MFR_ATO		0x9b
- #define NAND_MFR_EON		0x92
-+/* ESMT and GigaDevice share the same manufacturer ID. */
- #define NAND_MFR_ESMT		0xc8
- #define NAND_MFR_FUJITSU	0x04
- #define NAND_MFR_HYNIX		0xad
-diff --git a/drivers/mtd/nand/raw/nand_ids.c b/drivers/mtd/nand/raw/nand_ids.c
-index 08707ce9d7c0..9b2dd246398f 100644
---- a/drivers/mtd/nand/raw/nand_ids.c
-+++ b/drivers/mtd/nand/raw/nand_ids.c
-@@ -185,7 +185,7 @@ static const struct nand_manufacturer_desc nand_manufacturer_descs[] = {
- 	{NAND_MFR_AMD, "AMD/Spansion", &amd_nand_manuf_ops},
- 	{NAND_MFR_ATO, "ATO"},
- 	{NAND_MFR_EON, "Eon"},
--	{NAND_MFR_ESMT, "ESMT", &esmt_nand_manuf_ops},
-+	{NAND_MFR_ESMT, "ESMT/GigaDevice", &esmt_nand_manuf_ops},
- 	{NAND_MFR_FUJITSU, "Fujitsu"},
- 	{NAND_MFR_HYNIX, "Hynix", &hynix_nand_manuf_ops},
- 	{NAND_MFR_INTEL, "Intel"},
+Changes in v3:
+- drop the Fixes tag and retarget to net-next
+- annotate the remaining unmarked sk_err peeks on the TCP/MPTCP
+  send, recv and splice paths
+- Link to v2: https://patch.msgid.link/20260909-mptcp-sk-err-net-v2-1-5044abecac90@proton.me
 
--- 
-2.55.0
+Changes in v2:
+- add Reported-by and Closes for the MPTCP syzkaller report
+- Link to v1: https://patch.msgid.link/20260908-mptcp-sk-err-net-v1-1-da71aaec9afd@proton.me
+
+---
+Quanye Yang (2):
+      tcp: annotate lockless access to sk->sk_err
+      mptcp: annotate lockless access to sk->sk_err
+
+ include/net/tcp.h    | 3 ++-
+ net/core/stream.c    | 2 +-
+ net/ipv4/tcp.c       | 6 +++---
+ net/ipv4/tcp_bpf.c   | 7 +++----
+ net/mptcp/protocol.c | 8 ++++----
+ net/mptcp/subflow.c  | 4 ++--
+ 6 files changed, 15 insertions(+), 15 deletions(-)
+---
+base-commit: 211f2a875f6f447745d80d5762d6d614503ac84a
+change-id: 20260908-mptcp-sk-err-net-7ff88ef05044
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
