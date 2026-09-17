@@ -1,62 +1,158 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Thu, 17 Sep 2026 10:32:08 +0300
-Subject: [PATCH 3/3] usb: mtu3: add mt6595 support
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v12 0/6] Add VIM4 MCU/FAN support
+Date: Thu, 17 Sep 2026 09:58:59 +0200
+Message-Id: <20260917-add-mcu-fan-khadas-vim4-v12-0-497cd543a148@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-6595-mtu3-v1-3-a2ba7c230d68@protonmail.com>
-References: <20260917-6595-mtu3-v1-0-a2ba7c230d68@protonmail.com>
-In-Reply-To: <20260917-6595-mtu3-v1-0-a2ba7c230d68@protonmail.com>
-To: Chunfeng Yun <chunfeng.yun@mediatek.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XSzW6DMAwA4FepOC9TnF/S095j2sH5W6MVugFFn
+ aq++wI9gCLBcnMkf7Zs36s+dCn01fFwr7owpj5d2hwAezlU7oTtZyDJ54+KUaaooIyg96RxVxK
+ xJV8n9NiTMTWCoANng5TcGVvl7O8uxHSb6fePZ9yFn2uuMDw/K4t9IO7SNGk4HtpwG8hcRHOop
+ oRT6odL9zu3NsKc8W8TIxBKmAUWrECnLX3Dcwrn19jN5MjWDN9mWGY0lVxZxgQ3WDB8xYDeZnh
+ mUKGOUlMLYAtGrBgG24zIjBAaQCCrI/MFI9eM2Gbk1E10ETVIbRkvGLUwEtQ2ozLj8jNWQRRKF
+ oxeGLU3Yp0ZaYTFGo2Svi6YemH03sLraeFCxBCCAeSqYMzC1FRuM2ZauPRR1xqoNaFggC6OoTu
+ rAjoNOThvjZESeXmAAGto75CnS5YRFFBfcxvX0OPx+AP+ztPfuQMAAA==
+X-Change-ID: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789630384; l=1062;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=sZViwWtqWfFRXSefwZIoIPpxQbOgrFtCVXkoQ8L9Uwg=;
- b=D5uVFPYcautf7sRmVtTQmFT4QBspLwRkRzybP2kgv6vzIGe75Tfjl0r8/u2BdrHCyoP8mDVxj
- V8/PXosevVhCNc3Kn5GOvQmHDjr3VQUmnA26HWY8NdjPNTfaB/Z0n2/
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+ Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Beniamino Galvani <b.galvani@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
+ mfd@lists.linux.dev, Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5925;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=PWfCdpTKB1C6HQc7+rrgUdUSi/qDI88n3Csfp1Nb2cs=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9bqeewvjq5YceeHxLSsqKi+F9Jxi1P7JIMbjnzlTpjVl
+ CgpYxjbUcrCIMbFICumyNI/1/LEu8tHz3zdo54CM4eVCWQIAxenAEwkwYuR4bvFboPZJqE58ub5
+ XvlsHx6d8m6rt62TyXM48tBUYP3DGwz/Y3Jb+HezdSifnSXHeT1Ic0nkfsF7l7Y4Hz5S+rPJUHY
+ 3AwA=
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a platform data for the MediaTek mt6595 SoC MTU3 IP block with a
-quirk for single FIFO slot.
+The Khadas VIM4 board features a different MCU variant compared to
+previous VIM boards.
+While it shares the same I2C-based communication model,
+it differs in some ways:
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+  - A distinct register map with its own volatile/writeable register set
+  - A fan control with 0–100 levels instead of the 0–3 levels previously
+  - A fan power supply gated through a regulator
+
+This series adds support for this new variant by:
+
+  1. Refactoring the khadas-mcu MFD driver to use per-variant data
+     structures (regmap config, cells, fan platform data),
+     and adding the khadas,vim4-mcu compatible string.
+
+  2. Extending the fan thermal driver to retrieve the fan register
+     and maximum level from platform_data,
+     and to optionally manage a power regulator for the fan supply.
+
+  3. Adding the corresponding DTS node for the VIM4, wiring the MCU to
+     the I2C AO_A bus and exposing it as a thermal cooling device.
+
+As the thermal patch depends on MFD, it should go through MFD tree.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/usb/mtu3/mtu3_plat.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Changes in v12:
+- PATCH 1,3,4: Remove platform data in MFD, and use platform name to get the fan variant.
+- Link to v11: https://lore.kernel.org/r/20260902-add-mcu-fan-khadas-vim4-v11-0-5f1610d83bf0@aliel.fr
 
-diff --git a/drivers/usb/mtu3/mtu3_plat.c b/drivers/usb/mtu3/mtu3_plat.c
-index bc65acdfb0de..c29778b3f009 100644
---- a/drivers/usb/mtu3/mtu3_plat.c
-+++ b/drivers/usb/mtu3/mtu3_plat.c
-@@ -611,11 +611,16 @@ static const struct dev_pm_ops mtu3_pm_ops = {
- 
- #define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &mtu3_pm_ops : NULL)
- 
-+static const struct mtu3_platform_data mt6595_platform_data = {
-+	.single_slot = true,
-+};
-+
- static const struct mtu3_platform_data mt8173_platform_data = {
- 	.single_slot = false,
- };
- 
- static const struct of_device_id mtu3_of_match[] = {
-+	{ .compatible = "mediatek,mt6595-mtu3", .data = &mt6595_platform_data },
- 	{ .compatible = "mediatek,mt8173-mtu3", .data = &mt8173_platform_data },
- 	{ .compatible = "mediatek,mtu3", .data = &mt8173_platform_data },
- 	{},
+Changes in v11:
+- PATCH 4: Use of_node_get to avoid reference count underflow.
+           Check pdata for NULL pointer on probe.
+           Manage rollback for regulator_disable failure on suspend.
+           Remove regulator disable on resume failure, managed by devm reset.
+- Link to v10: https://lore.kernel.org/r/20260901-add-mcu-fan-khadas-vim4-v10-0-aecdb9955a30@aliel.fr
 
+Changes in v10:
+- PATCH 1: makes KHADAS_MCU_GENERIC explicitly non-zero to remove the ambiguity with
+           of_device_get_match_data() returning NULL/0 on a failed match. Reported by Sashiko.
+- PATCH 4: devres for the regulator and cooling device are now attached to the child device (not the parent),
+           closing a leak/use-after-free window. Also adds proper regulator teardown on unbind,
+           fixes a level-vs-index mixup in shutdown/suspend, and disables the regulator if resume fails.
+- Link to v9: https://lore.kernel.org/r/20260805-add-mcu-fan-khadas-vim4-v9-0-75df78710b9e@aliel.fr
+
+Changes in v9:
+- Rebased on next-20260731 (patches 1/8, 2/8 and 6/8 already applied, dropped from this series).
+- PATCH 1: Add levels table and nlevels in khadas_mcu_fan_pdata struct.
+- PATCH 2: Use MFD_CELL_* macros instead of open-coding mfd_cell.
+- PATCH 3: Provide levels table and nlevels to platform data.
+           Check match_data before the switch.
+- PATCH 4: Use levels[] and nlevels from platform data. VIM4 levels is (0, 30, 40, 55, 75, 100).
+- Link to v8: https://lore.kernel.org/r/20260702-add-mcu-fan-khadas-vim4-v8-0-244feee91a36@aliel.fr
+
+Changes in v8:
+- PATCH 4: Define constant for fan max level, remove extra space for unnecessary alignment.
+           Thanks to Lee's review.
+- Link to v7: https://lore.kernel.org/r/20260603-add-mcu-fan-khadas-vim4-v7-0-594ba8a965d8@aliel.fr
+
+Changes in v7:
+- PATCH 3-4: Simplify the per-variant handling by using local variables in khadas_mcu_probe()
+             instead of introducing a dedicated data structure. Thanks to Lee's review.
+- Link to v6: https://lore.kernel.org/r/20260516-add-mcu-fan-khadas-vim4-v6-0-cccc9b61f465@aliel.fr
+
+Changes in v6:
+- PATCH 4: Address Lee's review comments:
+  - Use an enum to discriminate between MCU types instead of passing
+    MFD data through the DT match table
+  - Fix error code from -EINVAL to -ENODEV when no MCU type is matched
+  - Make khadas_mcu_fan_cells and khadas_mcu_cells const
+  - Use dev_err_probe() for regmap initialization error
+  - Document fan speed levels for max_level
+- Link to v5: https://lore.kernel.org/r/20260424-add-mcu-fan-khadas-vim4-v5-0-afcfa7157b23@aliel.fr
+
+Changes in v5:
+- PATCH 5: Replace devm_regulator_get_optional() with devm_regulator_get()
+           to simplify error handling and remove NULL checks, also
+           ordering as reverse christmas according to Neil's feedback.
+- Link to v4: https://lore.kernel.org/r/20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr
+
+Changes in v4:
+- PATCH 1: limit fan-supply property by compatible according to Conor's feedback.
+- Link to v3: https://lore.kernel.org/r/20260417-add-mcu-fan-khadas-vim4-v3-0-a6a7f570b11b@aliel.fr
+
+Changes in v3:
+- PATCH 1: adding comment on vim4 compatible saying it is not discoverable,
+           thanks to Rob's and Neil's feedback.
+- Link to v2: https://lore.kernel.org/r/20260403-add-mcu-fan-khadas-vim4-v2-0-70536b22439a@aliel.fr
+
+Changes in v2:
+- PATCH 5: Add regulator_disable on suspend thanks to Neil's feedback.
+- Link to v1: https://lore.kernel.org/r/20260402-add-mcu-fan-khadas-vim4-v1-0-2b12eb4ac7b0@aliel.fr
+
+---
+Ronald Claveau (6):
+      mfd: khadas-mcu: Add per-variant configuration infrastructure and VIM4 support
+      mfd: khadas-mcu: Use MFD_CELL_* macros for cell declarations
+      mfd: khadas-mcu: Add support for VIM4 MCU variant
+      thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+      arm64: dts: amlogic: t7: Add i2c controller node
+      arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node
+
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  |  13 +++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |  10 ++
+ drivers/mfd/khadas-mcu.c                           | 104 ++++++++++++++++----
+ drivers/thermal/khadas_mcu_fan.c                   | 108 ++++++++++++++++-----
+ include/linux/mfd/khadas-mcu.h                     |  19 +++-
+ 5 files changed, 214 insertions(+), 40 deletions(-)
+---
+base-commit: 9dba66b6217aacb924d997de3866e7e4c0dcf952
+change-id: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+
+Best regards,
 -- 
-2.55.0
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
