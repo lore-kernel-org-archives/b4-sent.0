@@ -1,117 +1,121 @@
-From: Jian Hu <jian.hu@amlogic.com>
-Date: Thu, 17 Sep 2026 16:39:09 +0800
-Subject: [PATCH v3] dt-bindings: clock: Add Amlogic A9 SCMI clock
- controller
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v10 0/2] Add initial dual front camera and rear flash
+ support for Pixel 3 / 3 XL
+Date: Thu, 17 Sep 2026 11:46:19 +0200
+Message-Id: <20260917-pixel3-camera-v10-0-df631279b39d@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-a9_scmi-v3-1-5ad843766774@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIACynq2oC/2XMQQrCMBCF4auUWRuZJrW0rryHFJmmYztgGkkkK
- CV3N3br8n88vg0iB+EI52qDwEmi+LWEOVRgF1pnVjKVBo26xRaNov4WrRPVkG5MPWI3cQfl/Qx
- 8l/cuXYfSi8SXD58dTvq3/htJq1qZExLbnsYa6ULu4WexR+sdDDnnL5hzRWqgAAAA
-X-Change-ID: 20260603-a9_scmi-4a2431b08de8
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33SzW7CMAwH8FdBOa9TnE+b095j2iFpnRFpA9ayi
+ g3x7kthEm2QOMbK72/L8kkM3GcexHp1Ej2Peci7bXmAfFqJdhO279zkrhSEkspJDbbZ5yN/6KY
+ Nn9yHJhAhxWSRmEUx+55T+TAFvr6V9yYPh13/c8kfYapekwxAlTRCIxvlrXfSWbDRveRjPjy3v
+ 2LKGdVDq4o1EBEpxAimXVo9t6q2ulhWLkqSwQHIpTU364Fqa6a+2IYISju0amntQ2uLJbKkE8Q
+ OuZrZzayStXXFhsQGKHIyvtqVn9u7XfliUXVa6da1tqtmxpsleWfxMnMCS4haG1xamltfWyo2A
+ iGkqTnBzZ6vh9Pz13c5wMP/9ZzPf3zGyoKeAgAA
+X-Change-ID: 20260315-pixel3-camera-a9989bf589ee
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
- Jian Hu <jian.hu@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789634366; l=2919;
- i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
- bh=WQM5jl9E8gItT5ANuR7GZhx7n8JoVv2XfXGNwu6d1P4=;
- b=i/KIdVkG2b96oq/izhj1bcE1ZkVA1v5Ve8xYqMnFWGApZWJaIXYUIAbiX6LELtXvgkzAxlzDX
- L0FTn9MOAM2BdQSkxT50WnOFjr2jpeoR5t4ILIqtXG035TmpkTXEIIK
-X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
- pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
-X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Petr Hodina <petr.hodina@protonmail.com>, 
+ Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3146; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Uvv+fZqSIFf6jNidbTCuLHrACtAw3kFSjvIsUFMpzQk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqq7btYerePyrnfPlipZdUJA2HzV9ha6vsm5Z3K
+ yRGMN38OHWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqu27QAKCRBgAj/E00kg
+ cmeYD/9puE3BY45GbBvNGPFlyAGfcA9XXS6a0HAAqPBHJa39ZVui1HEEC+mRYlIpifKyUBjH2zN
+ 85gNLCDOMC++eP91RyAoxylicRkpnz1swq78q2J52pqdogCE2rkcVvi9uiyhOF8LqA8hHRdvay4
+ tUCzI8xNTGgrrabbR2T+WBT2bbXkNa1Qr4o/1iOSAlMs8DrMrjLODmLBufXZWKof2vDcX2cKunG
+ TT23t7Gbw4ZaDTgU9rz+E00A/wqXa+H9x53SLI97CqqSWNxdDbA5VYM0mT/dkr9DUMYZmY2vdq9
+ C0HMIV8ZkjGyRc3EC0ub4j/c6mXCrZ9SntE1PCV2bjLxU1inQT+bBr/Pl4nsrwS9xR4MX4TkNY1
+ wrTKp7epKJYsVqh1kWwO3xOfjdE7ex3Tp+SAvGjKxbviU9hW7yID1tyS9gYQertrJPx4gKwh5O1
+ OuiWt0VlWYaHbzdrhMSw6mlnCCAMIwynJnHvERDglUbn5AL44J5rPMsptbqGCoLjY9H7Cs0tXus
+ FnB/Q+NotyUYvKT1OgmSpI0a8pT+QuIuo3HBen7IuVUw81AIw2Qw5fvybRXfSzHLejHxz7+3Zsh
+ 6zbjgj3UezkRkIDHhGCBP2x+5qgTpfrGsWuFzj2JbOdD1ZzifNQd1siIoWdZBr8jVHm8Jr3P3Pw
+ dE27f+yVnSi5ugg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SCMI clock controller dt-bindings for the Amlogic A9 SoC family.
+Describe the dual front-facing IMX355 sensors (standard and wide)
+and enable the PMI8998 flash LED with hardware-accurate limits.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
-Signed-off-by: Jian Hu <jian.hu@amlogic.com>
+This brings up the basic camera topology and flash support in DT.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
+Changes in v10:
+- Removed the (not yet met) dependency. I'll apply fix after it gets
+  merged. Feel free to pick between v10 and v9 for merging as what you
+  think is the best way.
+- Link to v9: https://patch.msgid.link/20260907-pixel3-camera-v9-0-b1981f2d3291@ixit.cz
+
+Changes in v9:
+- Dependency merged, no longer depends on anything.
+- Link to v8: https://patch.msgid.link/20260901-pixel3-camera-v8-0-99f159883348@ixit.cz
+
+Changes in v8:
+- Fix ordering of includes. (Konrad)
+- Link to v7: https://lore.kernel.org/r/20260721-pixel3-camera-v7-0-82d323c6c5d2@ixit.cz
+
+Changes in v7:
+- Depend on the
+  https://lore.kernel.org/all/20260628-kbingham-orientation-v3-0-4ed92968aff8@ideasonboard.com/
+  (Konrad)
+- Sort the renamed regulators. Why Mr. Anderson, why. (Konrad)
+- Link to v6: https://lore.kernel.org/r/20260720-pixel3-camera-v6-0-afe419bef476@ixit.cz
+
+Changes in v6:
+- Remove forgotten bias-pull-down property from cci0_sleep node.
+  (dtbs_check)
+- ..-regulator -> regulator-.. (Konrad)
+- Rename camera -pin to -state and remove _pin from the labes. (Konrad,
+  dtbs_check)
+- Link to v5: https://lore.kernel.org/r/20260719-pixel3-camera-v5-0-99593f1bd8ec@ixit.cz
+
+Changes in v5:
+- Added function-enumarator to flash LEDs. (Sashiko)
+- Dropped l22a regulator needed only for NFOV actuator. (Sashiko)
+- Dropped vdda-csi[0-2]-supply, as it was unused. (Sashiko).
+- Added previously omited cam_mclk2_sleep sleep state.
+- Link to v4: https://lore.kernel.org/r/20260719-pixel3-camera-v4-0-48cab1236852@ixit.cz
+
+Changes in v4:
+- Use 24 MHz ext clock for the cameras, as the downstream does, since
+  the upstream driver can now support it.
+- Added additional LED, as the phone contains two separately controlled
+  white LEDs flash (upper and bottom, in one module).
+- Increase flash-max-microamp, as I took wrong "flash" from the
+  downstream sources and dropped Dmitry R-b.
+- Address formatting issues. (Konrad)
+- Link to v3: https://lore.kernel.org/r/20260412-pixel3-camera-v3-0-e26b090a6110@ixit.cz
+
 Changes in v3:
-- Add Conor Dooley's Acked-by tag.
-- Link to v2: https://lore.kernel.org/r/20260603-a9_scmi-v2-1-350aec9ab10a@amlogic.com
+- Dropped cam_vio label. (Dmitry)
+- Move the MCLK2 pinctrl from cameras to common camss. (Dmitry)
+- Link to v2: https://lore.kernel.org/r/20260411-pixel3-camera-v2-0-41b889abb14c@ixit.cz
 
 Changes in v2:
-- Split the A9 clock driver and send the SCMI clock separately.
-  The A9 PLL introduces several new features, and the Meson PLL framework
-  needs to be refactored to support them. Since this work requires more
-  time and there is no hard dependency between the different A9 clock
-  controllers, split out the A9 clock driver and submit it separately to
-  ease review.
-- Link to v1: https://lore.kernel.org/all/20260511-b4-a9_clk-v1-1-41cb4071b7c9@amlogic.com/
----
- include/dt-bindings/clock/amlogic,a9-scmi-clkc.h | 51 ++++++++++++++++++++++++
- 1 file changed, 51 insertions(+)
-
-diff --git a/include/dt-bindings/clock/amlogic,a9-scmi-clkc.h b/include/dt-bindings/clock/amlogic,a9-scmi-clkc.h
-new file mode 100644
-index 000000000000..d543db9fe035
---- /dev/null
-+++ b/include/dt-bindings/clock/amlogic,a9-scmi-clkc.h
-@@ -0,0 +1,51 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+/*
-+ * Copyright (C) 2026 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#ifndef __AMLOGIC_A9_SCMI_CLKC_H
-+#define __AMLOGIC_A9_SCMI_CLKC_H
-+
-+#define CLKID_GP0_PLL_OSC			0
-+#define CLKID_GP1_PLL_OSC			1
-+#define CLKID_HIFI_PLL_OSC			2
-+#define CLKID_GP2_PLL_OSC			3
-+#define CLKID_MCLK_PLL_OSC			4
-+#define CLKID_FIXED_PLL				5
-+#define CLKID_FCLK_50M_PREDIV			6
-+#define CLKID_FCLK_50M_DIV			7
-+#define CLKID_FCLK_50M				8
-+#define CLKID_FCLK_DIV2_DIV			9
-+#define CLKID_FCLK_DIV2				10
-+#define CLKID_FCLK_DIV2P5_DIV			11
-+#define CLKID_FCLK_DIV2P5			12
-+#define CLKID_FCLK_DIV3_DIV			13
-+#define CLKID_FCLK_DIV3				14
-+#define CLKID_FCLK_DIV4_DIV			15
-+#define CLKID_FCLK_DIV4				16
-+#define CLKID_FCLK_DIV5_DIV			17
-+#define CLKID_FCLK_DIV5				18
-+#define CLKID_FCLK_DIV7_DIV			19
-+#define CLKID_FCLK_DIV7				20
-+#define CLKID_SYS_CLK				21
-+#define CLKID_SYS_AO_SYS			22
-+#define CLKID_SYS_MMC_APB			23
-+#define CLKID_SYS_CPU_APB			24
-+#define CLKID_SYS_GIC				25
-+#define CLKID_AXI_CLK				26
-+#define CLKID_AXI_SYS_NIC			27
-+#define CLKID_AXI_RAMA				28
-+#define CLKID_CPU_CLK				29
-+#define CLKID_A78_CLK				30
-+#define CLKID_DSU_CLK				31
-+#define CLKID_ACLKM				32
-+#define CLKID_GP1_PLL				33
-+#define CLKID_GP2_PLL				34
-+#define CLKID_SYS_PLL_DIV16			35
-+#define CLKID_CPU_CLK_DIV16			36
-+#define CLKID_A78_CLK_DIV16			37
-+#define CLKID_DSU_CLK_DIV16			38
-+#define CLKID_GIC_CLK				39
-+#define CLKID_RTC				40
-+
-+#endif /* __AMLOGIC_A9_SCMI_CLKC_H */
+- leds.h include escaped the initial submission. Fixed.
+- Link to v1: https://lore.kernel.org/r/20260411-pixel3-camera-v1-0-2757606515b6@ixit.cz
 
 ---
-base-commit: 43e1705ecab981c66baee89041e6f728c0436f19
-change-id: 20260603-a9_scmi-4a2431b08de8
+David Heidelberg (2):
+      arm64: dts: qcom: sdm845-google: Add dual front IMX355 cameras
+      arm64: dts: qcom: sdm845-google: Enable PMI8998 camera flash LEDs
+
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 198 ++++++++++++++++++++-
+ 1 file changed, 197 insertions(+), 1 deletion(-)
+---
+base-commit: 944a035ecca915ae947905dcfb03f2b9dc6d032c
+change-id: 20260315-pixel3-camera-a9989bf589ee
 
 Best regards,
--- 
-Jian Hu <jian.hu@amlogic.com>
+--  
+David Heidelberg <david@ixit.cz>
 
