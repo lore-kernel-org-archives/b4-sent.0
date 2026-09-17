@@ -1,262 +1,381 @@
-From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Thu, 17 Sep 2026 17:06:39 +0200
-Subject: [PATCH v3] riscv: Add ERRATA_MIPS_P8700_WFI to replace WFI with
- mips.pause
+From: 0xSmash0th <0xSmash0th@gmail.com>
+Date: Thu, 17 Sep 2026 17:20:24 -0400
+Subject: [PATCH] firmware: tegra: ivc: back off when a peer stalls the
+ handshake
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-p8700-wfi-v3-1-ada4b0584712@htecgroup.com>
-X-B4-Tracking: v=1; b=H4sIAP4BrGoC/12PQW7DIBBFr2KxLtGATcBWVOUeURcYDzFSHVwgt
- FGUuxfblZp2+Ue8x/93EjE4jKSr7iRgdtH5Swn1S0XMqC9npG4omXDge2iYoLOSAPTTOtqCqns
- 2KDlwTsr7OaB1X6vr9Fby6GLy4baqM1uum0Uw9mTJjDIKbVtMDKyx/DgmNOfgr/PO+Ikspsx/6
- T2oZ5oXWkq0RjaitfXwn35sxQJ+XMu2tLUjE8ao121ddVi1isGPFnV4v9He+7R1E6bRGtQgAOx
- f++uyutcRaQmTS12V5a6mwdTl38c3JO3WFlsBAAA=
-X-Change-ID: 20260415-p8700-wfi-9083b1d87d22
-To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
- "Maciej W. Rozycki" <macro@orcam.me.uk>
-Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789657607; l=8514;
- i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=n0m09g/GIUzyP9cpXaZLszGSi2479dLawQiQ5FMQ/B0=;
- b=9EQhNV70uI3AeYCwTKNiw70eH5fxlScnkdc8BUwsJf/+gNz2Xus7IHLr9P5N0U6TrGhSZmMFV
- tbgzon/sn+LAhKPWlgKQQ9uRH4eQL0kmfswnK1E4PYF/Bhml7r3nneK
-X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
- pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
-X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
+Message-Id: <20260917-ivc-resync-backoff-v1-1-dd41ef3a1390@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBuwIM2uEi10GmsILBSiiO6et
+ HyL/x/InIQzDNUDiU/JsseCpq6AVhcXRpmLoVWtVrYxKCdh4nxHQu9o20NAb3TfacteEUEJj8R
+ Brn86Tu/7AazuO8VkAAAA
+X-Change-ID: 20260917-ivc-resync-backoff-b768569eb0cc
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ 0xSmash0th <0xSmash0th@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789680034; l=13677;
+ i=0xSmash0th@gmail.com; s=20260917; h=from:subject:message-id;
+ bh=xI23HGnd1O7JPgGTS/M47lGy5+o/8IZV4S5U1Ah6NHw=;
+ b=GM9OUxc05mtbQd3pbhl3RcsXMbSB7uqdjcegbRRk+L+IrGaBBaCj7H1rcOuczia/9STMK+0RK
+ NxOYCWLMOcDAYEhkzzRwlqmVoxEM9vpJVxxtx5e6NAJAJNNsKRh/JiQ
+X-Developer-Key: i=0xSmash0th@gmail.com; a=ed25519;
+ pk=zVeoR0UBzAAUPJSb7skqhhRlouyNu+2xwsW4ThiH5YU=
+X-Endpoint-Received: by B4 Relay for 0xSmash0th@gmail.com/20260917 with auth_id=1034
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Djordje Todorovic <djordje.todorovic@htecgroup.com>
+An untrusted peer can wedge a channel for ever: park its state word on
+SYNC and stop touching the ring.  No path in tegra_ivc_notified() can
+change the victim's rx word, so rx_state stays SYNC and the loop is
+absorbing rather than slow -- pass 7,651,085 is indistinguishable from
+pass 1.  Each pass rewrites the ACK already in tx.state, re-zeroes both
+counters, rings the doorbell and returns -EAGAIN.
 
-The MIPS P8700 has bugs with the WFI instruction. A WFI instruction
-after a mispredicted branch can result in erroneous address
-translation on the MIPS P8700. MIPS has not published an erratum
-for this.
+The only in-tree caller, tegra186_bpmp_channel_reset(), retries on that
+with no timeout, no iteration cap and no cpu_relax(), on both the probe
+and the resume path, so the victim burns a core at roughly 1.5M
+iterations per second for as long as the peer stays quiet.
 
-The workaround uses the RISC-V alternatives framework to patch all WFI
-instructions with the MIPS P8700 pause opcode (0x00501013)
-at runtime when running on P8700 hardware.
+A peer is a service, not a VM: one untrusted guest can hold a channel to
+each of a rack of service partitions, and nothing here makes wedging the
+tenth harder than the first.
 
-Two call sites are patched:
- - arch/riscv/kernel/head.S: secondary hart parking loop
- - arch/riscv/include/asm/processor.h: wait_for_interrupt()
+This is not a new class of concern for ivc.c.  tegra_ivc_empty() already
+carries an over-full check "to prevent denial of service attacks", and
+calls that condition "an invalid case caused by a potentially malicious
+peer".  That defence covers the counters; the handshake has none.
 
-Signed-off-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
-Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Apply geometric backoff to calls that make no progress, modelled on
+xen_irq_lateeoi_locked(): a saturating count, a doubling delay, a hard
+cap, and a reset the moment the peer moves.  Progress is detected by
+reading tx.state back rather than by tracking which branch ran, so the
+states from which no branch can escape are covered too.  The wait is a
+bounded busy-wait by default because tegra_bpmp_transfer_atomic() reaches
+this with interrupts disabled, and it uses local_clock() because the
+resume path can run with timekeeping suspended.
+
+This is a floor, not a fix.  The return value is unchanged, the caller
+still retries for ever and probe or resume still never completes -- the
+spin just stops costing what other channels have to share.  Bounding the
+loop belongs in the caller.
+
+Assisted-by: LLM
+Signed-off-by: 0xSmash0th <0xSmash0th@gmail.com>
 ---
-This patch was tested on QEMU configured with eight P8700 harts,
-as well as on the MIPS Boston board, configured with a single P8700 CPU.
-Errata application was tested by disassembling with GDB on QEMU
-and inserting an illegal instruction on the Boston board.
-Correctness was tested with a combination of kselftests
-and torture tests (rcu, locktorture), along with coremark testing.
+Precedent
+---------
+ivc.c already models a hostile peer.  tegra_ivc_empty() carries an
+over-full check "to prevent denial of service attacks", and calls the
+condition "an invalid case caused by a potentially malicious peer".  That
+defence covers the counters; the handshake has none.  This closes the
+second path, not a new class of concern.
 
-This patch depends on 'riscv: Add support for early boot errata application on
-MIPS chips' [1].
+The handshake has never been revisited: since 2016, every patch to ivc.c
+has been the import itself or a tree-wide sweep.
 
-Links:
-[1] https://lore.kernel.org/linux-riscv/20260810-p8700-early-boot-v1-1-5c4aa08d500f@htecgroup.com/
+Scope
+-----
+A peer is a service on one channel, not a VM: DRIVE OS is one untrusted
+Linux guest with a channel to each of about ten service partitions.  One
+hostile peer wedges one channel, and nothing makes wedging the tenth
+harder than the first.
+
+Whether x services down becomes the SoC down, I cannot show.  That needs
+the spinning partitions to share cores rather than being pinned apart by
+the PCT, and the hypervisor to enforce no per-partition CPU budget.  I
+have no Tegra hardware and have not looked at the hypervisor -- treat the
+SoC-wide version as something to check, not a claim made here.
+
+Measurements
+------------
+Keying the test on the first branch -- where the doorbell amplification
+lives -- would cover only a third of the reachable cases.  Over 30 inputs
+that stall the loop:
+
+    looping endpoint                  n    before        after
+    rx=SYNC, tx=ACK   (branch A)      9   ~7,700,000      50-64
+    rx=SYNC, tx=SYNC  (enters A)      2   ~7,700,000         65
+    tx=SYNC, rx=EST   (empty else)   15    8,387,013      63-64
+    tx=SYNC, rx=OTHER (empty else)    3    7,648,606         64
+    tx=OTHER, rx=EST  (no escape)     1    8,244,347         64
+
+Two thirds are the do-nothing else at the end of the chain, which emits no
+doorbell at all -- silent, and so easier to miss.  The last row is an
+out-of-enum tx.state from which no branch can escape.
+
+Why only a floor
+----------------
+xen-netback puts five layers between a hostile frontend and the host that
+IVC has none of: a thread per peer, a blocking wait, stall detection that
+parks and recovers, a per-peer quota, and a fatal way to declare one peer
+dead.  Backoff is the floor under those, not a substitute.
+
+The two tunables and two counters are documented at their declarations in
+ivc.h.  Nothing in the tree sets or reads them yet.
+
+Testing
+-------
+Exercised under LKL with a userspace fuzzer driving ivc.c directly; the
+numbers above are from those runs.
+
+arm64 defconfig builds clean to vmlinux and Image under W=1 with TEGRA_IVC,
+TEGRA_BPMP and the 186/194/234/264 SoC options on.  ivc.o also builds clean
+for 32-bit ARM and pulls in no 64-bit division helper.  Not run on Tegra
+hardware.
+
+Tool assistance
+---------------
+AI tooling was used throughout -- audit, fuzzing setup, patch and changelog
+-- but never fully automated; every step was hand-checked.  The Assisted-by
+trailer is on the patch.
 ---
-Changes in v3:
-- Rebase onto the early boot patch (linked in [1])
-- Expand the errata comment with additional information about PAUSE instruction latency.
-- Link to v2: https://lore.kernel.org/r/20260608-p8700-wfi-v2-1-77efc7459f3d@htecgroup.com
+ drivers/firmware/tegra/ivc.c | 132 +++++++++++++++++++++++++++++++++++++++++++
+ include/soc/tegra/ivc.h      |  44 +++++++++++++++
+ 2 files changed, 176 insertions(+)
 
-Changes in v2:
-- Replace .insn with .4byte in ALT_WFI macro
-- Add explanatory comments
-- Link to v1: https://lore.kernel.org/r/20260511-p8700-wfi-v1-1-099b1d10fcf2@htecgroup.com
----
- arch/riscv/Kconfig.errata                    | 11 +++++++++
- arch/riscv/errata/mips/errata.c              | 17 +++++++++++++
- arch/riscv/include/asm/errata_list.h         | 37 ++++++++++++++++++++++++++++
- arch/riscv/include/asm/errata_list_vendors.h |  5 ++--
- arch/riscv/include/asm/processor.h           |  3 ++-
- arch/riscv/kernel/head.S                     |  4 ++-
- 6 files changed, 73 insertions(+), 4 deletions(-)
-
-diff --git a/arch/riscv/Kconfig.errata b/arch/riscv/Kconfig.errata
-index 45f3a4a7c9e234e1dc95ff4595a91922ce6176d1..7e7f784a6194bc3c4cdab5fde559e4f37f784dc2 100644
---- a/arch/riscv/Kconfig.errata
-+++ b/arch/riscv/Kconfig.errata
-@@ -45,6 +45,17 @@ config ERRATA_MIPS_P8700_PAUSE_OPCODE
+diff --git a/drivers/firmware/tegra/ivc.c b/drivers/firmware/tegra/ivc.c
+index 8c9aff9804c0..2b7d7a240aa6 100644
+--- a/drivers/firmware/tegra/ivc.c
++++ b/drivers/firmware/tegra/ivc.c
+@@ -3,6 +3,12 @@
+  * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+  */
  
- 	   If you are not using the P8700 processor, say n.
++#include <linux/delay.h>
++#include <linux/math64.h>
++#include <linux/minmax.h>
++#include <linux/sched/clock.h>
++#include <linux/time64.h>
++
+ #include <soc/tegra/ivc.h>
  
-+config ERRATA_MIPS_P8700_WFI
-+	bool "Replace WFI with mips.pause for MIPS P8700"
-+	depends on ERRATA_MIPS && 64BIT
-+	default n
-+	help
-+	   The RISCV MIPS P8700 has bugs with the WFI instruction.
-+	   This errata replaces all WFI instructions with the MIPS
-+	   P8700 pause opcode to avoid these issues.
-+
-+	   If you are not using the P8700 processor, say n.
-+
- config ERRATA_SIFIVE
- 	bool "SiFive errata"
- 	depends on RISCV_ALTERNATIVE
-diff --git a/arch/riscv/errata/mips/errata.c b/arch/riscv/errata/mips/errata.c
-index ac9a12d0a30c9d2bf5d4920d5f6e9d2ed22fe0e5..6e715552745011d0b719d78199290490e19d6d2f 100644
---- a/arch/riscv/errata/mips/errata.c
-+++ b/arch/riscv/errata/mips/errata.c
-@@ -27,6 +27,20 @@ static inline bool errata_probe_pause(unsigned int stage)
- 	return true;
+ #define TEGRA_IVC_ALIGN 64
+@@ -395,10 +401,111 @@ int tegra_ivc_write_advance(struct tegra_ivc *ivc)
  }
+ EXPORT_SYMBOL(tegra_ivc_write_advance);
  
-+static inline bool errata_probe_wfi(unsigned int stage)
++/*
++ * A peer that moves to the SYNC state and then stops responding leaves this
++ * end with nothing to do. Each call to tegra_ivc_notified() repeats the same
++ * work, changes no state and returns -EAGAIN again, and the only in-tree
++ * caller retries in a loop with no timeout and no iteration limit. The result
++ * is a doorbell and several shared memory writes per iteration, for as long as
++ * the peer stays silent.
++ *
++ * Delay the call instead of skipping the work. Each call still does everything
++ * it did before, so the behaviour a caller sees is unchanged apart from how
++ * long the call takes. The delay doubles on each fruitless call, up to
++ * TEGRA_IVC_RESYNC_MAX_NS, which reduces the doorbell rate, the memory traffic
++ * and the CPU time together.
++ *
++ * A call counts as fruitless if it did not change this end's own state and is
++ * about to return -EAGAIN. That covers every case where a peer can stall the
++ * handshake, including the states from which no branch below can make
++ * progress, without naming any of them.
++ *
++ * The loop itself is not bounded by this. The channel really is not ready, so
++ * the return value does not change and a caller that retries forever still
++ * does. Only the cost of retrying falls.
++ */
++#define TEGRA_IVC_RESYNC_MIN_NS		(10 * NSEC_PER_USEC)
++#define TEGRA_IVC_RESYNC_MAX_NS		(100 * NSEC_PER_MSEC)
++#define TEGRA_IVC_RESYNC_MAX_SHIFT	16
++#define TEGRA_IVC_RESYNC_THRESHOLD	1
++
++/*
++ * resync_count stops increasing at U8_MAX, so a threshold near that value
++ * would leave no room for the delay to grow and the backoff would never take
++ * effect. Clamp the threshold so that a larger value always means a longer
++ * grace period, and leave TEGRA_IVC_RESYNC_DISABLED as the only way to turn
++ * the backoff off.
++ */
++#define TEGRA_IVC_RESYNC_THRESHOLD_MAX	32
++
++static void tegra_ivc_resync_restart(struct tegra_ivc *ivc)
 +{
-+	if (!IS_ENABLED(CONFIG_ERRATA_MIPS_P8700_WFI))
-+		return false;
-+
-+	if (!riscv_isa_vendor_extension_available(MIPS_VENDOR_ID, XMIPSEXECTL))
-+		return false;
-+
-+	if (stage == RISCV_ALTERNATIVES_EARLY_BOOT)
-+		return false;
-+
-+	return true;
++	ivc->resync_count = 0;
 +}
 +
- static u32 mips_errata_probe(unsigned int stage)
++static void tegra_ivc_resync_wait(struct tegra_ivc *ivc)
++{
++	unsigned int threshold = ivc->resync_threshold;
++	unsigned int shift;
++	u64 deadline;
++	u64 delay;
++
++	if (threshold == TEGRA_IVC_RESYNC_DISABLED)
++		return;
++
++	if (!threshold)
++		threshold = TEGRA_IVC_RESYNC_THRESHOLD;
++	else if (threshold > TEGRA_IVC_RESYNC_THRESHOLD_MAX)
++		threshold = TEGRA_IVC_RESYNC_THRESHOLD_MAX;
++
++	ivc->resync_events++;
++
++	if (ivc->resync_count != U8_MAX)
++		ivc->resync_count++;
++
++	/*
++	 * A small number of fruitless calls is normal while a peer catches
++	 * up, so they are not delayed. Still yield to any sibling thread,
++	 * because the caller is likely to be spinning.
++	 */
++	if (ivc->resync_count <= threshold) {
++		cpu_relax();
++		return;
++	}
++
++	shift = ivc->resync_count - 1 - threshold;
++	if (shift >= TEGRA_IVC_RESYNC_MAX_SHIFT)
++		delay = TEGRA_IVC_RESYNC_MAX_NS;
++	else
++		delay = min_t(u64, TEGRA_IVC_RESYNC_MIN_NS << shift,
++			      TEGRA_IVC_RESYNC_MAX_NS);
++
++	ivc->resync_delayed_ns += delay;
++
++	if (ivc->resync_can_sleep) {
++		might_sleep();
++		fsleep(div_u64(delay, NSEC_PER_USEC));
++		return;
++	}
++
++	/*
++	 * This can be reached while the device is suspended, where
++	 * timekeeping may also be suspended and ktime_get() would warn and
++	 * return a clock that is not advancing. local_clock() remains valid
++	 * there, and tegra_bpmp_wait_request_channel_free() busy-waits the
++	 * same way for the same reason.
++	 */
++	deadline = local_clock() + delay;
++	while (local_clock() < deadline)
++		cpu_relax();
++}
++
+ void tegra_ivc_reset(struct tegra_ivc *ivc)
  {
- 	u32 cpu_req_errata = 0;
-@@ -34,6 +48,9 @@ static u32 mips_errata_probe(unsigned int stage)
- 	if (errata_probe_pause(stage))
- 		cpu_req_errata |= BIT(ERRATA_MIPS_P8700_PAUSE_OPCODE);
+ 	unsigned int offset = offsetof(struct tegra_ivc_header, tx.count);
  
-+	if (errata_probe_wfi(stage))
-+		cpu_req_errata |= BIT(ERRATA_MIPS_P8700_WFI);
++	tegra_ivc_resync_restart(ivc);
 +
- 	return cpu_req_errata;
+ 	tegra_ivc_header_write_field(&ivc->tx.map, tx.state, TEGRA_IVC_STATE_SYNC);
+ 	tegra_ivc_flush(ivc, ivc->tx.phys + offset);
+ 	ivc->notify(ivc, ivc->notify_data);
+@@ -546,6 +653,17 @@ int tegra_ivc_notified(struct tegra_ivc *ivc)
+ 		 */
+ 	}
+ 
++	/*
++	 * Read the state back to find out whether any of the branches above
++	 * changed it, rather than tracking which branch ran. A peer that is
++	 * making progress moves us along and resets the backoff; a peer that
++	 * has stopped leaves the value sampled at the top of this function.
++	 */
++	if (tegra_ivc_header_read_field(&ivc->tx.map, tx.state) != tx_state)
++		tegra_ivc_resync_restart(ivc);
++	else if (tx_state != TEGRA_IVC_STATE_ESTABLISHED)
++		tegra_ivc_resync_wait(ivc);
++
+ 	if (tx_state != TEGRA_IVC_STATE_ESTABLISHED)
+ 		return -EAGAIN;
+ 
+@@ -702,6 +820,20 @@ int tegra_ivc_init(struct tegra_ivc *ivc, struct device *peer, const struct iosy
+ 	ivc->tx.position = 0;
+ 	ivc->rx.position = 0;
+ 
++	/*
++	 * This function assigns the fields it uses and does not zero the
++	 * structure, so clear the backoff state explicitly. A caller that
++	 * passes an uninitialised structure would otherwise inherit a random
++	 * resync_can_sleep and could end up sleeping in atomic context. Both
++	 * of the caller-settable fields are cleared here, so they have to be
++	 * set after this function returns.
++	 */
++	ivc->resync_can_sleep = false;
++	ivc->resync_threshold = 0;
++	ivc->resync_count = 0;
++	ivc->resync_events = 0;
++	ivc->resync_delayed_ns = 0;
++
+ 	return 0;
  }
+ EXPORT_SYMBOL(tegra_ivc_init);
+diff --git a/include/soc/tegra/ivc.h b/include/soc/tegra/ivc.h
+index be45d5f5adea..548512e3113f 100644
+--- a/include/soc/tegra/ivc.h
++++ b/include/soc/tegra/ivc.h
+@@ -7,12 +7,20 @@
+ #define __TEGRA_IVC_H
  
-diff --git a/arch/riscv/include/asm/errata_list.h b/arch/riscv/include/asm/errata_list.h
-index 6694b5ccdcf85cfe7e767ea4de981b34f2b17b04..6fdb445c0f45430e5bdd9a8e1382c6f63efe6323 100644
---- a/arch/riscv/include/asm/errata_list.h
-+++ b/arch/riscv/include/asm/errata_list.h
-@@ -25,6 +25,16 @@ ALTERNATIVE(__stringify(RISCV_PTR do_page_fault),			\
- 	    __stringify(RISCV_PTR sifive_cip_453_page_fault_trp),	\
- 	    SIFIVE_VENDOR_ID, ERRATA_SIFIVE_CIP_453,			\
- 	    CONFIG_ERRATA_SIFIVE_CIP_453)
-+
-+#ifdef CONFIG_ERRATA_MIPS_P8700_WFI
-+#define ALT_WFI								\
-+ALTERNATIVE("wfi; .rept 7; nop; .endr;",				\
-+	".rept 8; .4byte 0x00501013; .endr;", MIPS_VENDOR_ID,		\
-+	ERRATA_MIPS_P8700_WFI, CONFIG_ERRATA_MIPS_P8700_WFI)
-+#else
-+#define ALT_WFI	wfi
-+#endif
-+
- #else /* !__ASSEMBLER__ */
+ #include <linux/device.h>
++#include <linux/limits.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/iosys-map.h>
+ #include <linux/types.h>
  
- #define ALT_SFENCE_VMA_ASID(asid)					\
-@@ -53,6 +63,33 @@ asm(ALTERNATIVE(	\
- 	: /* no inputs */	\
- 	: "memory")
+ struct tegra_ivc_header;
  
-+#ifdef CONFIG_ERRATA_MIPS_P8700_WFI
 +/*
-+ * A WFI instruction after a mispredicted branch can result in erroneous address translation
-+ * on the MIPS P8700.
-+ * The number of MIPS_PAUSE instructions required was determined by measuring
-+ * Coremark performance on a one-core, two-hart configuration. Eight PAUSE instructions matched
-+ * the latency of a single WFI instruction.
-+ * Usually, the maximum number of cycles per PAUSE instruction is 63. Exceptionally, if the hart's
-+ * LR reservation bit is set, the maximum number of cycles is extended to 255
-+ * (and the hart is woken up once it is cleared). This case should not affect the patched sites.
++ * Store this in tegra_ivc.resync_threshold to turn the re-synchronisation
++ * backoff off. tegra_ivc_notified() then behaves as it did before the backoff
++ * was added, and the counters below stay at zero.
 + */
-+#define ALT_RISCV_WFI()										\
-+asm volatile(ALTERNATIVE(									\
-+		"wfi\n" /* Original RISC-V wfi insn */						\
-+		__nops(7),									\
-+		".rept 8;" MIPS_PAUSE ".endr;\n", /* Replacement: mips.pause for P8700 */	\
-+		MIPS_VENDOR_ID, /* Vendor ID to match */					\
-+		ERRATA_MIPS_P8700_WFI, /* patch_id */						\
-+		CONFIG_ERRATA_MIPS_P8700_WFI)							\
-+		: /* no outputs */								\
-+		: /* no inputs */								\
-+		: "memory")
-+#else
-+#define ALT_RISCV_WFI()		\
-+	__asm__ __volatile__ ("wfi")
-+#endif
++#define TEGRA_IVC_RESYNC_DISABLED	U8_MAX
 +
- /*
-  * _val is marked as "will be overwritten", so need to set it to 0
-  * in the default case.
-diff --git a/arch/riscv/include/asm/errata_list_vendors.h b/arch/riscv/include/asm/errata_list_vendors.h
-index ec7eba3734371a2d8b68fbd4cbd88a8e7135a413..4505317a6b949be602f507547fc9cd495c923e32 100644
---- a/arch/riscv/include/asm/errata_list_vendors.h
-+++ b/arch/riscv/include/asm/errata_list_vendors.h
-@@ -22,8 +22,9 @@
- #endif
+ struct tegra_ivc {
+ 	struct device *peer;
  
- #ifdef CONFIG_ERRATA_MIPS
--#define	ERRATA_MIPS_P8700_PAUSE_OPCODE 0
--#define	ERRATA_MIPS_NUMBER 1
-+#define ERRATA_MIPS_P8700_PAUSE_OPCODE 0
-+#define ERRATA_MIPS_P8700_WFI 1
-+#define ERRATA_MIPS_NUMBER 2
- #endif
+@@ -27,6 +35,42 @@ struct tegra_ivc {
  
- #endif /* ASM_ERRATA_LIST_VENDORS_H */
-diff --git a/arch/riscv/include/asm/processor.h b/arch/riscv/include/asm/processor.h
-index 812517b2cec1350f741849c1c56a35027321ef50..c65c2314206d7d958a1e52cd81b18a8142a6e1a8 100644
---- a/arch/riscv/include/asm/processor.h
-+++ b/arch/riscv/include/asm/processor.h
-@@ -17,6 +17,7 @@
- #include <asm/alternative-macros.h>
- #include <asm/hwcap.h>
- #include <asm/usercfi.h>
-+#include <asm/errata_list.h>
+ 	unsigned int num_frames;
+ 	size_t frame_size;
++
++	/*
++	 * Backoff applied when a peer stops responding and calls to
++	 * tegra_ivc_notified() stop making progress. The call is delayed
++	 * rather than skipped, so the work it does is unchanged and only the
++	 * rate at which a retrying caller can repeat it falls. See the comment
++	 * above TEGRA_IVC_RESYNC_MIN_NS in ivc.c.
++	 *
++	 * @resync_can_sleep: set only if every call site of
++	 * tegra_ivc_notified() is allowed to sleep. When false, which is the
++	 * default, the delay is a bounded busy-wait that is safe in any
++	 * context. Do not set it just because the common path can sleep, as
++	 * tegra_bpmp_transfer_atomic() reaches this code with interrupts
++	 * disabled.
++	 *
++	 * @resync_threshold: how many calls that make no progress are allowed
++	 * through before the delay begins. Zero selects a default. Values
++	 * above TEGRA_IVC_RESYNC_THRESHOLD_MAX are clamped, so a larger value
++	 * always means a longer grace period and never disables the backoff.
++	 *
++	 * Both of the above are cleared by tegra_ivc_init(), so set them after
++	 * calling it.
++	 *
++	 * @resync_count: how many calls in a row have made no progress. Reset
++	 * whenever the state changes and by tegra_ivc_reset(). Internal.
++	 *
++	 * @resync_events: how many calls have made no progress in total.
++	 * @resync_delayed_ns: how long this channel has spent delayed, in
++	 * nanoseconds. Both are for diagnostics, are only cleared by
++	 * tegra_ivc_init(), and are not used elsewhere in the kernel.
++	 */
++	bool resync_can_sleep;
++	u8 resync_threshold;
++	u8 resync_count;
++	u32 resync_events;
++	u64 resync_delayed_ns;
+ };
  
- #define arch_get_mmap_end(addr, len, flags)			\
- ({								\
-@@ -176,7 +177,7 @@ extern unsigned long __get_wchan(struct task_struct *p);
- 
- static inline void wait_for_interrupt(void)
- {
--	__asm__ __volatile__ ("wfi");
-+	ALT_RISCV_WFI();
- }
- 
- extern phys_addr_t dma32_phys_limit;
-diff --git a/arch/riscv/kernel/head.S b/arch/riscv/kernel/head.S
-index f6a8ca49e6277c39b634b3b7d5c248ffa1a0b310..1631fd6bc786b81c9c63e5e38217108ddbde47cd 100644
---- a/arch/riscv/kernel/head.S
-+++ b/arch/riscv/kernel/head.S
-@@ -15,6 +15,8 @@
- #include <asm/image.h>
- #include <asm/scs.h>
- #include <asm/usercfi.h>
-+#include <asm/alternative.h>
-+#include <asm/errata_list.h>
- #include "efi-header.S"
- 
- __HEAD
-@@ -189,7 +191,7 @@ secondary_start_sbi:
- 	 *  - receive an early trap, before setup_trap_vector finished
- 	 *  - fail in smp_callin(), as a successful one wouldn't return
- 	 */
--	wfi
-+	ALT_WFI
- 	j .Lsecondary_park
- 
- .align 2
+ /**
 
 ---
-base-commit: c2cd463d6ee7d55a3ec0719d93c49ff99022d58f
-change-id: 20260415-p8700-wfi-9083b1d87d22
-prerequisite-message-id: <20260810-p8700-early-boot-v1-1-5c4aa08d500f@htecgroup.com>
-prerequisite-patch-id: d530f62a25369e72a6ead97617c437b1fca1b276
+base-commit: dc9c9c4fcb88a5660259dcef93c1ef5acd767189
+change-id: 20260917-ivc-resync-backoff-b768569eb0cc
 
 Best regards,
 -- 
-Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+0xSmash0th <0xSmash0th@gmail.com>
 
