@@ -1,18 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v10 0/2] Add initial dual front camera and rear flash
- support for Pixel 3 / 3 XL
-Date: Thu, 17 Sep 2026 11:46:19 +0200
-Message-Id: <20260917-pixel3-camera-v10-0-df631279b39d@ixit.cz>
+Date: Thu, 17 Sep 2026 11:46:20 +0200
+Subject: [PATCH v10 1/2] arm64: dts: qcom: sdm845-google: Add dual front
+ IMX355 cameras
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33SzW7CMAwH8FdBOa9TnE+b095j2iFpnRFpA9ayi
- g3x7kthEm2QOMbK72/L8kkM3GcexHp1Ej2Peci7bXmAfFqJdhO279zkrhSEkspJDbbZ5yN/6KY
- Nn9yHJhAhxWSRmEUx+55T+TAFvr6V9yYPh13/c8kfYapekwxAlTRCIxvlrXfSWbDRveRjPjy3v
- 2LKGdVDq4o1EBEpxAimXVo9t6q2ulhWLkqSwQHIpTU364Fqa6a+2IYISju0amntQ2uLJbKkE8Q
- OuZrZzayStXXFhsQGKHIyvtqVn9u7XfliUXVa6da1tqtmxpsleWfxMnMCS4haG1xamltfWyo2A
- iGkqTnBzZ6vh9Pz13c5wMP/9ZzPf3zGyoKeAgAA
-X-Change-ID: 20260315-pixel3-camera-a9989bf589ee
+Message-Id: <20260917-pixel3-camera-v10-1-df631279b39d@ixit.cz>
+References: <20260917-pixel3-camera-v10-0-df631279b39d@ixit.cz>
+In-Reply-To: <20260917-pixel3-camera-v10-0-df631279b39d@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,99 +18,306 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3146; i=david@ixit.cz;
- h=from:subject:message-id; bh=Uvv+fZqSIFf6jNidbTCuLHrACtAw3kFSjvIsUFMpzQk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqq7btYerePyrnfPlipZdUJA2HzV9ha6vsm5Z3K
- yRGMN38OHWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqu27QAKCRBgAj/E00kg
- cmeYD/9puE3BY45GbBvNGPFlyAGfcA9XXS6a0HAAqPBHJa39ZVui1HEEC+mRYlIpifKyUBjH2zN
- 85gNLCDOMC++eP91RyAoxylicRkpnz1swq78q2J52pqdogCE2rkcVvi9uiyhOF8LqA8hHRdvay4
- tUCzI8xNTGgrrabbR2T+WBT2bbXkNa1Qr4o/1iOSAlMs8DrMrjLODmLBufXZWKof2vDcX2cKunG
- TT23t7Gbw4ZaDTgU9rz+E00A/wqXa+H9x53SLI97CqqSWNxdDbA5VYM0mT/dkr9DUMYZmY2vdq9
- C0HMIV8ZkjGyRc3EC0ub4j/c6mXCrZ9SntE1PCV2bjLxU1inQT+bBr/Pl4nsrwS9xR4MX4TkNY1
- wrTKp7epKJYsVqh1kWwO3xOfjdE7ex3Tp+SAvGjKxbviU9hW7yID1tyS9gYQertrJPx4gKwh5O1
- OuiWt0VlWYaHbzdrhMSw6mlnCCAMIwynJnHvERDglUbn5AL44J5rPMsptbqGCoLjY9H7Cs0tXus
- FnB/Q+NotyUYvKT1OgmSpI0a8pT+QuIuo3HBen7IuVUw81AIw2Qw5fvybRXfSzHLejHxz7+3Zsh
- 6zbjgj3UezkRkIDHhGCBP2x+5qgTpfrGsWuFzj2JbOdD1ZzifNQd1siIoWdZBr8jVHm8Jr3P3Pw
- dE27f+yVnSi5ugg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6989; i=david@ixit.cz;
+ h=from:subject:message-id; bh=jGzk6kIhqrBSfmOX35wd7xGwnEvYmyg5GpJ/96Me5tY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqq7btjkSaBStYkqnc0fp4HE5cGI43vY3K5Jme6
+ uuzgq4M5ESJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqu27QAKCRBgAj/E00kg
+ ctvrD/9NQZ9r3koURz1nCx1A1Zpo9snZa7NRfol60Rx1VqUDIGJizKlh0u+uNO4dmdhMd6IVu3G
+ KDoku7nsJfas5PIq3Bxo/SRNluQIjvvaYYhHDEiOXmvSU00GjV8MbNEXrBWmomE0yxdsT4KSHim
+ +M5O5YQQ7PGDzWCzDKiu9WSBob5meBfUDa6j9SBcsPkHzXMaPy9xcxDqGSqk5D6T2oAmpPALJR0
+ Kfo/vk0UW99XVaYrsgd/6OzzaW/5fSsX0i8bzMp+LI89N4TKsPgt9bAVOkTIfnxqSzb3oCk+4kU
+ hd24IMjBt6vcZTgbX1r6h1VAGBA7/7rv1DPcoiaHH21nYIzkwAKC0/zau6QfDEEeaYMPDmi1kDV
+ ikwJr/YakG/PNxQVooOYAgB+JshG+MlAb9HTFVFC5mpELaYxLrh24/T3jtkIzKdeGyftEKc4Nic
+ 1wxmpnkfk8+Cf3W0HUHEA7mWE09CJ6m1ZCVdqfUK34Ndt7YDySt6zfQv61+lMj6DHL+7sGmYyET
+ Z7us1DMyR9jyKj0kGy27pCA9UpBtuwbWPnkjBB15kSJYSMwEzf/2wVMBb5BgRXEZ0MU0P6XsFua
+ oT5lanc1QxaA8ABBVe/x9EBDB5N+3C1sgTHo0ZtOl081xV9z7Vk12oceq31sae9UoVC6kK4IXF7
+ oZKlxFR1mntDKFg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the dual front-facing IMX355 sensors (standard and wide)
-and enable the PMI8998 flash LED with hardware-accurate limits.
+The Pixel 3 features two front-facing Sony IMX355 sensors with
+different focal lengths (standard and wide-angle).
 
-This brings up the basic camera topology and flash support in DT.
+Sensors are connected via CSIPHY port 1 and 2 and controlled over CCI
+I2C1, using MCLK2 as the clock source.
+
+This enables support for the dual front camera configuration.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v10:
-- Removed the (not yet met) dependency. I'll apply fix after it gets
-  merged. Feel free to pick between v10 and v9 for merging as what you
-  think is the best way.
-- Link to v9: https://patch.msgid.link/20260907-pixel3-camera-v9-0-b1981f2d3291@ixit.cz
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 171 ++++++++++++++++++++-
+ 1 file changed, 170 insertions(+), 1 deletion(-)
 
-Changes in v9:
-- Dependency merged, no longer depends on anything.
-- Link to v8: https://patch.msgid.link/20260901-pixel3-camera-v8-0-99f159883348@ixit.cz
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+index f1379857e2742..8b430776e8a54 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+@@ -1,16 +1,17 @@
+ // SPDX-License-Identifier: GPL-2.0-only
+ 
+ /dts-v1/;
+ 
+ #include <dt-bindings/arm/qcom,ids.h>
+ #include <dt-bindings/dma/qcom-gpi.h>
+ #include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
++#include <dt-bindings/media/video-interfaces.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+ 
+ #include "sdm845.dtsi"
+ #include "pm8998.dtsi"
+ #include "pmi8998.dtsi"
+ 
+ /delete-node/ &mpss_region;
+ /delete-node/ &venus_mem;
+@@ -108,16 +109,48 @@ gpio-keys {
+ 		key-vol-up {
+ 			label = "Volume Up";
+ 			linux,code = <KEY_VOLUMEUP>;
+ 			gpios = <&pm8998_gpios 6 GPIO_ACTIVE_LOW>;
+ 			debounce-interval = <15>;
+ 		};
+ 	};
+ 
++	camera_front_avdd: regulator-front-cam-avdd {
++		compatible = "regulator-fixed";
++		regulator-name = "front_cam_avdd";
++
++		regulator-min-microvolt = <2800000>;
++		regulator-max-microvolt = <2800000>;
++
++		gpios = <&tlmm 8 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&cam_front_avdd_default>;
++		pinctrl-names = "default";
++
++		vin-supply = <&vreg_bob>;
++	};
++
++	camera_front_aux_avdd: regulator-front-cam-aux-avdd {
++		compatible = "regulator-fixed";
++		regulator-name = "front_cam_aux_avdd";
++
++		regulator-min-microvolt = <2800000>;
++		regulator-max-microvolt = <2800000>;
++
++		gpios = <&tlmm 14 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&cam_front_aux_avdd_default>;
++		pinctrl-names = "default";
++
++		vin-supply = <&vreg_bob>;
++	};
++
+ 	vph_pwr: regulator-vph-pwr {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vph_pwr";
+ 		regulator-min-microvolt = <3700000>;
+ 		regulator-max-microvolt = <3700000>;
+ 	};
+ 
+ 	vreg_s4a_1p8: regulator-vreg-s4a-1p8 {
+@@ -314,16 +347,21 @@ vreg_l28a_3p0: ldo28 {
+ 			regulator-initial-mode = <RPMH_REGULATOR_MODE_LPM>;
+ 			regulator-boot-on;
+ 			/*
+ 			 * We can't properly bring the panel back if it gets turned off
+ 			 * so keep it's regulators always on for now.
+ 			 */
+ 			regulator-always-on;
+ 		};
++
++		vreg_lvs1_1p8: lvs1 {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <1800000>;
++		};
+ 	};
+ 
+ 	regulators-1 {
+ 		compatible = "qcom,pmi8998-rpmh-regulators";
+ 		qcom,pmic-id = "b";
+ 
+ 		vdd-bob-supply = <&vph_pwr>;
+ 
+@@ -346,24 +384,127 @@ regulators-2 {
+ 
+ 		vreg_s3c_0p6: smps3 {
+ 			regulator-min-microvolt = <600000>;
+ 			regulator-max-microvolt = <600000>;
+ 		};
+ 	};
+ };
+ 
++&camss {
++	vdda-phy-supply = <&vreg_l1a_0p875>;
++	vdda-pll-supply = <&vreg_l26a_1p2>;
++
++	/*
++	 * MCLK2 (GPIO15) is shared between both front camera sensors.
++	 * The clock is generated by CAMCC, therefore the pin is
++	 * configured here rather than in individual sensor nodes.
++	 */
++	pinctrl-0 = <&cam_mclk2_default>;
++	pinctrl-1 = <&cam_mclk2_sleep>;
++	pinctrl-names = "default", "sleep";
++
++	status = "okay";
++
++	ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		port@1 {
++			reg = <1>;
++
++			camss_endpoint1: endpoint {
++				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++				data-lanes = <0 1 2 3>;
++				remote-endpoint = <&cam_aux_front_endpoint>;
++			};
++		};
++
++		port@2 {
++			reg = <2>;
++
++			camss_endpoint2: endpoint {
++				bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++				data-lanes = <0 1 2 3>;
++				remote-endpoint = <&cam_front_endpoint>;
++			};
++		};
++	};
++};
++
++&cci0_sleep {
++	/* bus has external pull-up */
++	/delete-property/ bias-pull-down;
++	bias-disable;
++};
++
+ &cci {
+ 	status = "okay";
+ };
+ 
+ &cci_i2c1 {
+ 	/* actuator @0c */
+ 
+-	/* front camera, imx355 @1a */
++	front_cam: camera@10 {
++		compatible = "sony,imx355";
++		reg = <0x10>;
++
++		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
++		assigned-clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
++		assigned-clock-rates = <24000000>;
++
++		reset-gpios = <&tlmm 21 GPIO_ACTIVE_LOW>;
++
++		avdd-supply = <&camera_front_avdd>;
++		dvdd-supply = <&vreg_s3a_1p35>;
++		dovdd-supply = <&vreg_lvs1_1p8>;
++
++		pinctrl-0 = <&cam_front_reset_default>;
++		pinctrl-names = "default";
++
++		rotation = <270>;
++		orientation = <0>; /* MEDIA_ORIENTATION_FRONT */
++
++		port {
++			cam_front_endpoint: endpoint {
++				data-lanes = <1 2 3 4>;
++				link-frequencies = /bits/ 64 <360000000>;
++				remote-endpoint = <&camss_endpoint2>;
++			};
++		};
++	};
++
++	front_aux_cam: camera@1a {
++		compatible = "sony,imx355";
++		reg = <0x1a>;
++
++		clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
++		assigned-clocks = <&clock_camcc CAM_CC_MCLK2_CLK>;
++		assigned-clock-rates = <24000000>;
++
++		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
++
++		avdd-supply = <&camera_front_aux_avdd>;
++		dvdd-supply = <&vreg_s3a_1p35>;
++		dovdd-supply = <&vreg_lvs1_1p8>;
++
++		pinctrl-0 = <&cam_front_aux_reset_default>;
++		pinctrl-names = "default";
++
++		rotation = <270>;
++		orientation = <0>; /* MEDIA_ORIENTATION_FRONT */
++
++		port {
++			cam_aux_front_endpoint: endpoint {
++				data-lanes = <1 2 3 4>;
++				link-frequencies = /bits/ 64 <360000000>;
++				remote-endpoint = <&camss_endpoint1>;
++			};
++		};
++	};
+ 
+ 	/* eeprom @50, at24 driver says 8K */
+ };
+ 
+ &cdsp_pas {
+ 	firmware-name = "qcom/sdm845/Google/blueline/cdsp.mbn";
+ 
+ 	status = "okay";
+@@ -497,16 +638,44 @@ firmware-pins {
+ 			pins = "gpio79";
+ 			function = "gpio";
+ 			drive-strength = <2>;
+ 			bias-pull-down;
+ 		};
+ 
+ 	};
+ 
++	cam_front_avdd_default: cam-avdd-default-state {
++		pins = "gpio8";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	cam_front_aux_reset_default: cam-front-aux-reset-default-state {
++		pins = "gpio9";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	cam_front_aux_avdd_default: cam-avdd-aux-default-state {
++		pins = "gpio14";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	cam_front_reset_default: cam-front-reset-default-state {
++		pins = "gpio21";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
+ 	touchscreen_reset: ts-reset-state {
+ 		pins = "gpio99";
+ 		function = "gpio";
+ 		drive-strength = <8>;
+ 		bias-pull-up;
+ 	};
+ 
+ 	touchscreen_pins: ts-pins-gpio-state {
 
-Changes in v8:
-- Fix ordering of includes. (Konrad)
-- Link to v7: https://lore.kernel.org/r/20260721-pixel3-camera-v7-0-82d323c6c5d2@ixit.cz
-
-Changes in v7:
-- Depend on the
-  https://lore.kernel.org/all/20260628-kbingham-orientation-v3-0-4ed92968aff8@ideasonboard.com/
-  (Konrad)
-- Sort the renamed regulators. Why Mr. Anderson, why. (Konrad)
-- Link to v6: https://lore.kernel.org/r/20260720-pixel3-camera-v6-0-afe419bef476@ixit.cz
-
-Changes in v6:
-- Remove forgotten bias-pull-down property from cci0_sleep node.
-  (dtbs_check)
-- ..-regulator -> regulator-.. (Konrad)
-- Rename camera -pin to -state and remove _pin from the labes. (Konrad,
-  dtbs_check)
-- Link to v5: https://lore.kernel.org/r/20260719-pixel3-camera-v5-0-99593f1bd8ec@ixit.cz
-
-Changes in v5:
-- Added function-enumarator to flash LEDs. (Sashiko)
-- Dropped l22a regulator needed only for NFOV actuator. (Sashiko)
-- Dropped vdda-csi[0-2]-supply, as it was unused. (Sashiko).
-- Added previously omited cam_mclk2_sleep sleep state.
-- Link to v4: https://lore.kernel.org/r/20260719-pixel3-camera-v4-0-48cab1236852@ixit.cz
-
-Changes in v4:
-- Use 24 MHz ext clock for the cameras, as the downstream does, since
-  the upstream driver can now support it.
-- Added additional LED, as the phone contains two separately controlled
-  white LEDs flash (upper and bottom, in one module).
-- Increase flash-max-microamp, as I took wrong "flash" from the
-  downstream sources and dropped Dmitry R-b.
-- Address formatting issues. (Konrad)
-- Link to v3: https://lore.kernel.org/r/20260412-pixel3-camera-v3-0-e26b090a6110@ixit.cz
-
-Changes in v3:
-- Dropped cam_vio label. (Dmitry)
-- Move the MCLK2 pinctrl from cameras to common camss. (Dmitry)
-- Link to v2: https://lore.kernel.org/r/20260411-pixel3-camera-v2-0-41b889abb14c@ixit.cz
-
-Changes in v2:
-- leds.h include escaped the initial submission. Fixed.
-- Link to v1: https://lore.kernel.org/r/20260411-pixel3-camera-v1-0-2757606515b6@ixit.cz
-
----
-David Heidelberg (2):
-      arm64: dts: qcom: sdm845-google: Add dual front IMX355 cameras
-      arm64: dts: qcom: sdm845-google: Enable PMI8998 camera flash LEDs
-
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 198 ++++++++++++++++++++-
- 1 file changed, 197 insertions(+), 1 deletion(-)
----
-base-commit: 944a035ecca915ae947905dcfb03f2b9dc6d032c
-change-id: 20260315-pixel3-camera-a9989bf589ee
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
