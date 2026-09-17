@@ -1,122 +1,64 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 17 Sep 2026 11:46:21 +0200
-Subject: [PATCH v10 2/2] arm64: dts: qcom: sdm845-google: Enable PMI8998
- camera flash LEDs
+From: Andy Chung <Andy.Chung@amd.com>
+Subject: [PATCH linux dev-6.18 v2 0/4] hwmon: (kb9002) backport Kandou
+ KB9002 retimer support
+Date: Thu, 17 Sep 2026 17:49:20 +0800
+Message-Id: <20260917-kb9002-backport-v2-0-71d46021f051@amd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-pixel3-camera-v10-2-df631279b39d@ixit.cz>
-References: <20260917-pixel3-camera-v10-0-df631279b39d@ixit.cz>
-In-Reply-To: <20260917-pixel3-camera-v10-0-df631279b39d@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2201; i=david@ixit.cz;
- h=from:subject:message-id; bh=cHGJQST27WPLwUlkNSzkEUOgMKHYsptlnCzlkuUIwyE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqq7bteUn6D31oSkBN2bZksG1/pzGqbcQD++rK9
- M7sv2GgMwyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqu27QAKCRBgAj/E00kg
- cp6pEACmO1fBW/XrjvHhxfo48EKhX/jxhDOlDDje5zavkW12a7nXHzSWTI4JsJWHMcJbcA8vs1s
- PWB8fGyMnlfVKEGi8HI2T0oZGBx97LsXo7K9Pb3xSKP5TEeoVdZjHmWgZxC0j5WbBirhuP88ji+
- 6gfOvOYxHuupEQysScjZrYwE3tDEhXfMtlkk1oQ1iuc1CcHO4iCyazi0izlFnNOMa5lNr6yfeVL
- qwr6914/3ZR7EoqOLM2Viw682YQqeSQSJC2vKzicYyyQ2qpOzMfAxivgxRqUTzEPnZLq58+xpjf
- cHwub1Zn9IkQZcHWagekdm+ElS/dOktQrVFj5EkhzPAJcEx5tbcvawLwVYLBESXrxsPZDPpTB7d
- tnlbGVM9jN2ual3U86HsZMRVIkehpDX5ZrFGPPyYKp6QAylbLYMRyJG7ilAEL7j6l5/yDA7DfHX
- VqWbBE+imTgWgKHn9qiFCxf8QHNO+CLTsx1qM2+R1ogymmxmU/fYhfejYvuTlnj/Qr8YESgBLAG
- zr61WaFjqBYhJT9dnDOhWd2TJOE/FL2phBzFug1zKUhbyKmT0hJM8F8funi91FCeUNMiay7Xlh2
- 1xb+ZoSVoCEDbSo6W6UR6euRQpTzExbcPbTShwD+88AV1GRjRk0EONbbarSKfQhP8HxLlJnl90S
- nCavqb1dwHhwO3g==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAKC3q2oC/3WOyw6CMBREf4XctSW95VFx5X8YFoVepCKUtNBgC
+ P8u4NrlZHLOzAqenCEPt2gFR8F4Y4c9iEsEdauGJzGj9wyCi5zLhLOuKjgXrFJ1N1o3sYQnBZJ
+ CiVrCTo2OGrOcxge8zTAvkabA8hivUP56P1cvqqdDexCt8ZN1n/NCwJP7uxaQcZZik0pBmRCY3
+ VWv49r2UG7b9gXdx51gzgAAAA==
+X-Change-ID: 20260730-kb9002-backport-30391ea171d7
+To: openbmc@lists.ozlabs.org, andrew@codeconstruct.com.au, 
+ tan.siewert@9elements.com
+Cc: joel@jms.id.au
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789638570; l=1522;
+ i=Andy.Chung@amd.com; s=20260327; h=from:subject:message-id;
+ bh=WvLlG+9TFFpIHe3V0qHRidaA1MY9dLqUJ8V5UcdplsQ=;
+ b=oOwSzvyaOyoXVgrcNYOq8XDEf2Krx+JPiSS/cX4SaZF+1IoT4pmhQb2RSoGl04RmLXrXHLWS3
+ 1skF9YDu4OFBLKy7U74PPIcNnq9t5zEqMKCy635fI/FxAKISdY/uUwy
+X-Developer-Key: i=Andy.Chung@amd.com; a=ed25519;
+ pk=X2gaHRnhU2q5hvMjkC6xmIcC03vKNvHY9CQRdsj9ecM=
+X-Endpoint-Received: by B4 Relay for Andy.Chung@amd.com/20260327 with auth_id=696
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the PMI8998 flash LED block and describe two white flash LEDs
-used for the rear camera.
+The upstream series is in mainline as of v7.3-rc1.
 
-Configure the LED in flash mode with hardware limits matching the
-original device configuration, including maximum current and timeout.
-
-In contrary to downstream, we can control both LEDs separately.
-
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Andy Chung <Andy.Chung@amd.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Changes in v2:
+- Redo the backport with "git cherry-pick -x -s" so every commit carries the
+  upstream cherry-pick reference and a sign-off, as required by
+  openbmc/docs kernel-development.md.
+- Record in patch 3/4 that guard(hwmon_lock) was converted to the
+  hwmon_lock()/hwmon_unlock() pair, which is the only form dev-6.18 has.
+  The code itself is unchanged from v1.
+- Link to v1: https://patch.msgid.link/20260730-kb9002-backport-v1-0-41f472e52215@amd.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 8b430776e8a54..0ee226f0e48e6 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -1,16 +1,17 @@
- // SPDX-License-Identifier: GPL-2.0-only
- 
- /dts-v1/;
- 
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- 
- #include "sdm845.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
- 
- /delete-node/ &mpss_region;
-@@ -592,16 +593,42 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&pmi8998_flash {
-+	status = "okay";
-+
-+	/* upper part of the flash module */
-+	led-0 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <1>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <0>;
-+	};
-+
-+	/* lower part of the flash module */
-+	led-1 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <2>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <1>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
- };
- 
+---
+Andy Chung (4):
+      dt-bindings: Add vendor prefix for Kandou
+      dt-bindings: trivial-devices: Add Kandou KB9002
+      hwmon: (kb9002) Add driver for Kandou KB9002 retimer
+      hwmon: (kb9002) Add documentation
 
--- 
-2.55.0
+ .../devicetree/bindings/trivial-devices.yaml       |   2 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ Documentation/hwmon/index.rst                      |   1 +
+ Documentation/hwmon/kb9002.rst                     |  64 +++
+ MAINTAINERS                                        |   7 +
+ drivers/hwmon/Kconfig                              |  11 +
+ drivers/hwmon/Makefile                             |   1 +
+ drivers/hwmon/kb9002.c                             | 459 +++++++++++++++++++++
+ 8 files changed, 547 insertions(+)
+---
+base-commit: c2b9fc3f7091157518a3ac2282a0a8bc797c227a
+change-id: 20260730-kb9002-backport-30391ea171d7
+
+Best regards,
+--  
+Andy Chung <Andy.Chung@amd.com>
 
