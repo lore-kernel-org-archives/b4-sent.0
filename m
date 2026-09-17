@@ -1,85 +1,68 @@
-From: Takahiro Kuwano <takahiro.kuwano@infineon.com>
-Date: Thu, 17 Sep 2026 14:02:15 +0900
-Subject: [PATCH] mtd: spi-nor: sfdp: Increase SFDP data size limit to 16
- KiB
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH 0/3] usb: mtu3: add mt6595 support
+Date: Thu, 17 Sep 2026 10:32:05 +0300
+Message-Id: <20260917-6595-mtu3-v1-0-a2ba7c230d68@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260917-sfdp_size-v1-1-c1cdb1003f48@infineon.com>
-X-B4-Tracking: v=1; b=H4sIAFZ0q2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDS0Nz3eK0lIL44syqVN00yxRTg+QUA1NjyxQloPqCotS0zAqwWdGxEH5
- xaVJWanIJyACl2loAVFtAnm0AAAA=
-X-Change-ID: 20260917-sfdp_size-f9d50cd0539d
-To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Takahiro Kuwano <takahiro.kuwano@infineon.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqAIBBA4avErBPULLSrRIusqSboB60IpLtnt
+ fzg8QJ4dIQeyiSAw5M8rUuESBNox2YZkFEXDZLLghuhWJGbnM37kTEtbcaVRiWwgdhvDnu6vld
+ V//aHnbDd3wHc9wMhjh8EbQAAAA==
+X-Change-ID: 20260914-6595-mtu3-82b3048e41ea
+To: Chunfeng Yun <chunfeng.yun@mediatek.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789621347; l=1832;
- i=takahiro.kuwano@infineon.com; s=20250227; h=from:subject:message-id;
- bh=jgdfCpo97xb3riAigqfD6paumJXjsCSiN5EBCeoaUd8=;
- b=EYyWvTs7HkUROsN5diVtZwPfmb2LAcsPLbkL0iMzPO9AymQzBW+5TD0aj2cK07tiktx2QJBK/
- f/1qsUw8CyaDgSVnWlSUe+PDsMRdrkst37+t75YXntzbuawrrFDhLtn
-X-Developer-Key: i=takahiro.kuwano@infineon.com; a=ed25519;
- pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
-X-Endpoint-Received: by B4 Relay for takahiro.kuwano@infineon.com/20250227 with auth_id=566
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789630384; l=1576;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=kCGe432I3vUAjPVT/CDhk2BJ7I2g/1ANQbFVz8sSuQE=;
+ b=SK94WZQmS3o4qVCAnmSDclmJHkwsENMKm+EEpEt8QvpZSjti1zoCWDWIKMJF+GPynY+AcVlH/
+ cPyiI0kR0qtDzf2zOIYRjweNjn6v0N8q4QyKjzYCLiFgBSTiY8Tp6P0
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The size of SFDP data read and cached is limited to avoid allocating
-too much memory. The current limit is PAGE_SIZE, but the Spansion S25FS256S
-has parameter tables at offsets beyond 4 KiB.
+This patch series adds mt6595 SoC support to the mtu3 driver.
 
-Increase the limit to 16 KiB to support such devices by introducing the
-SFDP_MAX_SIZE macro.
+Unlike the mt8173 and newer controllers, the 6595 uses older IP revision
+that can handle only one FIFO slot. Without this series, the current
+driver implementation results in 2 to 4 lost bytes on USB transfers.
 
-Suggested-by: Miquel Raynal <miquel.raynal@bootlin.com>
-Suggested-by: Michael Walle <mwalle@kernel.org>
-Signed-off-by: Takahiro Kuwano <takahiro.kuwano@infineon.com>
+In mediatek sources, mt6595 is sometimes called 6795. Most of their
+clocks/pins are also compatible. It's not clear if 6795 has the same
+issue or simply lacks T-PHY patch. Other (rare) mobile SoCs with mtu3,
+like mt6757 or 6771, don't need this series.
+
+Another thing worth mentioning, this series is not enough for the USB on
+6595. The other T-PHY patch is required to get the link up. This issue
+has been observed on some 65xx and most 67xx SoCs. Though this is a
+subject for the separate discussion.
+
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/mtd/spi-nor/sfdp.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+Roman Vivchar (3):
+      dt-bindings: usb: mtu3: add mt6595
+      usb: mtu3: introduce platform data
+      usb: mtu3: add mt6595 support
 
-diff --git a/drivers/mtd/spi-nor/sfdp.c b/drivers/mtd/spi-nor/sfdp.c
-index 641f17ad51a0..5d5bb6e587bf 100644
---- a/drivers/mtd/spi-nor/sfdp.c
-+++ b/drivers/mtd/spi-nor/sfdp.c
-@@ -115,6 +115,12 @@ struct sfdp_bfpt_erase {
- 
- #define SFDP_4BAIT_DWORD_MAX	2
- 
-+/*
-+ * Limit the total size of SFDP to a reasonable value to avoid allocating too
-+ * much memory just of because the flash returned some insane values.
-+ */
-+#define SFDP_MAX_SIZE	SZ_16K
-+
- struct sfdp_4bait {
- 	/* The hardware capability. */
- 	u32		hwcaps;
-@@ -1594,14 +1600,10 @@ int spi_nor_parse_sfdp(struct spi_nor *nor)
- 				  SFDP_PARAM_HEADER_PARAM_LEN(param_header));
- 	}
- 
--	/*
--	 * Limit the total size to a reasonable value to avoid allocating too
--	 * much memory just of because the flash returned some insane values.
--	 */
--	if (sfdp_size > PAGE_SIZE) {
-+	if (sfdp_size > SFDP_MAX_SIZE) {
- 		dev_dbg(dev, "SFDP data (%zu) too big, truncating\n",
- 			sfdp_size);
--		sfdp_size = PAGE_SIZE;
-+		sfdp_size = SFDP_MAX_SIZE;
- 	}
- 
- 	sfdp = devm_kzalloc(dev, sizeof(*sfdp), GFP_KERNEL);
-
+ Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml |  1 +
+ drivers/usb/mtu3/mtu3.h                                  |  9 +++++++++
+ drivers/usb/mtu3/mtu3_core.c                             |  5 +++++
+ drivers/usb/mtu3/mtu3_gadget.c                           |  8 ++++++--
+ drivers/usb/mtu3/mtu3_plat.c                             | 13 +++++++++++--
+ 5 files changed, 32 insertions(+), 4 deletions(-)
 ---
-base-commit: a96edc3f0b4f036a5b6ebc9b1eca4273ef5ce2d0
-change-id: 20260917-sfdp_size-f9d50cd0539d
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260914-6595-mtu3-82b3048e41ea
 
 Best regards,
 --  
-Takahiro Kuwano <takahiro.kuwano@infineon.com>
+Roman Vivchar <rva333@protonmail.com>
 
