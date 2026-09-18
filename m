@@ -1,190 +1,168 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 18 Sep 2026 02:04:22 +0200
-Subject: [PATCH RFC] wifi: ath10k: skip completion wait for pairwise key
- removal
+From: Jingxiang Zeng <linuszeng@tencent.com>
+Subject: [PATCH 0/6] mm: memcontrol: implement the memsw limit on cgroup v2
+Date: Fri, 18 Sep 2026 16:53:40 +0800
+Message-Id: <20260918-descriptive-name-v1-0-dfcfdd91b456@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-ath10k-del-v1-1-53cd7a7d682b@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDS0Nz3cSSDEODbN2U1BzdFMs0S1Oz1FRDQzNzJaCGgqLUtMwKsGHRSkF
- uzkqxEMHi0qSs1OQSkDFKtbUAf3SBRnMAAAA=
-X-Change-ID: 20260917-ath10k-del-d9f956ee1167
-To: Jeff Johnson <jjohnson@kernel.org>, 
- James Prestwood <prestwoj@gmail.com>
-Cc: linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6103; i=david@ixit.cz;
- h=from:subject:message-id; bh=FELe9NmnHc/Z1AYZfWNf8CZnzmbSuiDQc/9zq9Hq4ec=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqrIAO+KO32+sfEQMGmqCkJT59g32a8tMUC+aHU
- 3KgUSRtui2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaqyADgAKCRBgAj/E00kg
- clX9D/4tO8IZM5DVpv4uC5hOfA4JXfKNbHMdfu403oIAq7wmEY3Cfa9mAN85xaiCwbYAAR4NbuL
- kP/uIMpQzOnpSTNZP66CMC0neDE+8iABDxRdCAfCO3QxqPnhdOyBZeK6NRcYMxJNeDleLDkOrpm
- hFuY/lVPaUxZTroisSTfumlQMl/zVaPktFCUNZFgMpnVsECOO/YxStj0ZxyZEJQeYZEQJ50aXcR
- NClyajPMo0+oOxmym4UsAp5O8B3jKi3rWARUe9X/SomAZMP7NiFBKtCiZ2j9FoIbb8x0Kxjkz89
- xX4HslBOF67uSKDtdWfLZuBwdReXMzfQUrzc7xRbnL4tNN/e1PIv063nDgv7UohSQ5VL9JgyP1+
- ZOHbKEqsN80keWy7CNQ7jKETFso8inwBiBfDLQBQqd3xidLRFXwDJFqtwCumtzL7qVN+FNEdzJC
- d5awthuuA/G/3+sNz3rSKhCALBfuFr9XQfLJyqXRqRRgcbmMawXPnqvRnff8nfZNy303ZTBbpPW
- lIbp+5OORDdxgrFmqaUPv3VH1Qfd/qxGls67rdNEK/HzfrOvw9CApNYpstVAZKjWPGUcKJQCm2f
- H05It/D9VsLskmrWn7wDUKeikseRXB9/d1BQ7V08uOqR3Edd80vh+xVSMZH0A92XSCAidkE7tX5
- yq6UAurYDl20cng==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIABT8rGoC/x3MTQqAIBBA4avErBPGfoS6SrSwcaxZZKERgXT3p
+ OW3eC9D4iicYKwyRL4lyREKdF0BbTasrMQVQ4ONwUEb5ThRlPOSm1WwOyskj65vO7PQAiU7I3t
+ 5/uU0v+8H6UmwSWIAAAA=
+To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Maarten Lankhorst <dev@lankhorst.se>, Maxime Ripard <mripard@kernel.org>, 
+ Natalie Vock <nat@pixelcluster.dev>, Tejun Heo <tj@kernel.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
+ Oscar Salvador <osalvador@suse.de>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>
+Cc: Jingxiang Zeng <jingxiangzeng.cas@gmail.com>, cgroups@vger.kernel.org, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ dri-devel@lists.freedesktop.org, linux-doc@vger.kernel.org, 
+ Jingxiang Zeng <linuszeng@tencent.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789721651; l=6623;
+ i=linuszeng@tencent.com; s=20260909; h=from:subject:message-id;
+ bh=mc0laF+Rrv6F0Aaeni+B8Gm6Oo9raw0zuKM9XV7mPww=;
+ b=RM1zhgBseQSHr0NWSr6StBGrfeyxAy9ZtlO0U66cJh5jbRc835a/Ii+noHNJQfwMnFm0YmIQz
+ 3kxCptrTsXiDrNpFxH2oJREf2Wqq+ba18OFWloiXpNW+iH/KuuH/5V/
+X-Developer-Key: i=linuszeng@tencent.com; a=ed25519;
+ pk=6K54xRzYIRWqatrAPy86M4E0MsI92BVJBhXwz5NdC74=
+X-Endpoint-Received: by B4 Relay for linuszeng@tencent.com/20260909 with auth_id=1017
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When removing a pairwise key, ath10k_send_key() sends a
-WMI_VDEV_INSTALL_KEY with WMI_CIPHER_NONE and no key data. On WCN3990
-the firmware never answers that with an HTT security indication, so
-ath10k_install_key() always sleeps for the full 3 s and then fails:
+cgroup v1 caps the sum of memory and swap through memsw.limit_in_bytes.
+v2 only offers separate memory.max and memory.swap.max, so a workload
+that has to be capped on the total of the two has no equivalent knob:
+memory.max alone can be met by swapping, and capping both separately
+reserves swap the workload may never use.
 
-    [  117.285854] wlan0: deauthenticating from XX:XX:XX:XX:XX:XX by local choice (Reason: 3=DEAUTH_LEAVING)
-    [  120.302934] ath10k_snoc 18800000.wifi: failed to install key for vdev 0 peer XX:XX:XX:XX:XX:XX: -110
-    [  120.302996] wlan0: failed to remove key (0, XX:XX:XX:XX:XX:XX) from hardware (-110)
+A container capped at N pages should stay capped at N once swapping is
+possible, but with memory.max alone the pages move to swap and it
+allocates N more; reserving swap per cgroup instead means guessing how
+much of the footprint will be cold at any moment.  The combined limit
+states the intent directly - N pages however they are divided between RAM
+and swap - and leaves the host free to offload cold pages.
 
-The indication is missing, not late. Tracing mac80211:drv_set_key and
-the ath10k "sec ind" debug message on WCN3990 with firmware
-WLAN.HL.2.0.c8-00050-QCAHLSWMTPLZ-1.435283.1.441421.1 across a
-disconnect/reconnect shows no indication at all for the pairwise
-removal, while both installs on reconnect are acknowledged within 2 ms:
+This has been discussed before [1], and the direction agreed on was to
+track and control the combined counter as a proper v2 feature rather than
+fold it into the existing swap knobs:
 
-    866.899253: drv_set_key: sta:AP cmd: 1 flags=0x9, keyidx=0
-    866.899270: ath10k_log_dbg: wmi tlv vdev install key
-    869.920623: ath10k_log_warn: failed to install key ... peer AP: -110
-    880.701296: drv_set_key: sta:AP cmd: 0 flags=0x8, keyidx=0
-    880.701318: ath10k_log_dbg: wmi tlv vdev install key
-    880.701584: ath10k_log_dbg: sec ind peer_id 86 unicast 1 type 6
-    880.716075: drv_set_key: sta:GROUP cmd: 0 flags=0x0, keyidx=2
-    880.716088: ath10k_log_dbg: wmi tlv vdev install key
-    880.718250: ath10k_log_dbg: sec ind peer_id 86 unicast 0 type 6
+  My suggestion is to factor out from struct page_counter all the stuff
+  that is not necessary for all users, and then have separate counters
+  for swap and memsw.
 
-Shortening the timeout would still stall every disconnect and still log
-a failure for a key the firmware has already dropped. Add a
-no_pairwise_key_del_ind hw_params flag, set it for WCN3990 only, and
-skip the wait for pairwise removal when it is set. Other firmware
-families have been observed to acknowledge the cipher-none deletion;
-skipping the wait there would leave a stale indication that completes
-the next installation's wait early, so they keep the unconditional wait.
+  The protection stuff is long overdue for this.  It makes up nearly half
+  of the struct's members, but is only used by the memory counter.  Even
+  before your patches this is unnecessary bloat in the swap/memsw, kmem
+  and tcpmem counters.
 
-Group-key removal is left alone on all targets: ath10k_send_key()
-implements it as an installation of a random key with the original
-cipher, which the firmware does acknowledge, and ieee80211_key_replace()
-issues the following SET_KEY right after the DISABLE_KEY.
+  Fix that and having separate counters is a non-issue.
 
-Tested on WCN3990 (SDM845): the pairwise removal returns immediately and
-the reconnect installs are acknowledged as before.
+and, on the interface:
 
-From previous mailing list discussion assumed it's relevant for QCA6174 HW3.0.
+  This should be new knobs, e.g. memory.memsw.current, memory.memsw.max.
 
-Assisted-by: LLM
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Patches 1-3 are that refactoring.  Hierarchical protection is only used
+by the memory counter and by dmem pools, yet every page_counter carried
+it; moving it into a separate struct page_counter_protection, embedded
+only where it is used, takes struct page_counter from 192 to 128 bytes on
+x86_64.  Both embedders put the context on a cache line boundary (384 in
+struct mem_cgroup, 192 in the dmem pool state), so the fields the charge
+path touches - min, low and the four usage counters - share a cache line
+with emin, which only reclaim recomputes; only elow crosses into the
+next one.
+
+Patch 4 splits the counters.  swap and memsw share a union today because
+v1 only ever charges memsw and v2 only ever charges swap, so charging
+both on both hierarchies is what the combined limit needs.  v2 hands the
+combined charge over to the swap slot in __mem_cgroup_try_charge_swap()
+and drops it again in __mem_cgroup_uncharge_swap().  memsw.max still
+defaults to "max" and v2 cannot set it, so behaviour does not change.
+
+Patch 5 exposes memory.memsw.current and memory.memsw.max on non-root
+cgroups.  A charge counted there is held for as long as the memory
+occupies either RAM or a swap slot, so reclaim cannot get back under the
+limit by swapping; try_to_free_mem_cgroup_pages() is called without
+MEMCG_RECLAIM_MAY_SWAP when the limit is written, and the cgroup OOM
+killer is the last resort, mirroring memory.max.  Both writers keep
+memory.max <= memory.memsw.max under a mutex, so the two limits cannot be
+configured into a state reclaim could never satisfy - the invariant v1
+keeps in mem_cgroup_resize_max(), including its serialization.
+
+Patch 6 clamps mem_cgroup_get_max() to the new limit.  That value becomes
+oc->totalpages for memcg OOM and oom_badness() scales oom_score_adj by
+it, so while the v2 branch derived the ceiling from memory.max plus
+memory.swap.max it overstated the reachable total once a combined limit
+was set, and oom_score_adj weighed correspondingly more than intended.
+
+Size effect, measured with pahole (x86_64, 64-byte cache lines).  The
+split costs a cgroup one more page counter, and without patches 1-3 that
+counter would be 192 bytes:
+
+  struct mem_cgroup (CONFIG_MEMCG_V1=y)  2240 -> 2432 -> 2240
+  struct mem_cgroup (CONFIG_MEMCG_V1=n)  1664 -> 1856 -> 1792
+
+The middle figure is the same tree with the union split but the counters
+left at 192 bytes, so it is what the series would have cost without the
+refactoring.  On a v1 kernel that is the whole 192 bytes paid back; on a
+v2-only one the three counters involved shed 192 bytes between them, but
+the protection context takes 72 back and alignment a further 56, so 64
+are paid back.  Counters that gain nothing keep their share:
+
+  struct page_counter             192 -> 128 bytes
+  struct hugetlb_cgroup          1344 -> 1088 bytes
+  dmem pool state                 320 ->  320 bytes
+
+Tested on x86_64 with CONFIG_MEMCG_V1=y and =n, each patch building on
+its own:
+
+- memory.memsw.current equals memory.current plus memory.swap.current
+  across swapout, swapin and swapoff.
+- Squeezing memory.max drops memory.current while memory.memsw.current
+  holds, and a combined limit stops a 128M working set that otherwise
+  escapes a 32M memory.max by swapping.
+- Writing memory.memsw.max reclaims without MEMCG_RECLAIM_MAY_SWAP: swap
+  usage stays flat and the cgroup goes to OOM, where writing memory.max
+  swaps instead.
+- Concurrent writers to the two limits could not leave the invariant
+  violated in 600 rounds.
+- A kretprobe on mem_cgroup_get_max() returns 48M for memory.max=32M and
+  memory.memsw.max=48M with 2G of swap, and is unchanged with
+  memory.memsw.max left at "max".
+- v1 memsw.limit_in_bytes, and the v1 paths reaching the new NULL ->prot
+  guards (css_offline, css_reset, lru_gen_age_node), behave as before.
+
+[1] https://lore.kernel.org/all/20250320144722.GH1876369@cmpxchg.org/
+
+Signed-off-by: Jingxiang Zeng <linuszeng@tencent.com>
 ---
- drivers/net/wireless/ath/ath10k/core.c | 2 ++
- drivers/net/wireless/ath/ath10k/hw.h   | 6 ++++++
- drivers/net/wireless/ath/ath10k/mac.c  | 5 +++++
- 3 files changed, 13 insertions(+)
+Jingxiang Zeng (6):
+      mm: page_counter: add page_counter_protection struct and init API
+      mm: page_counter: track protection state in page_counter_protection
+      mm: page_counter: drop protection fields from struct page_counter
+      mm: memcontrol: give swap and memsw their own page counters
+      mm: memcontrol: add memory.memsw.max to the default hierarchy
+      mm: memcontrol: clamp mem_cgroup_get_max() to the combined limit
 
-diff --git a/drivers/net/wireless/ath/ath10k/core.c b/drivers/net/wireless/ath/ath10k/core.c
-index 7c2939cbde5f0..3177fa415ea06 100644
---- a/drivers/net/wireless/ath/ath10k/core.c
-+++ b/drivers/net/wireless/ath/ath10k/core.c
-@@ -342,16 +342,17 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
- 		.fw_diag_ce_download = false,
- 		.credit_size_workaround = false,
- 		.tx_stats_over_pktlog = false,
- 		.dynamic_sar_support = false,
- 		.hw_restart_disconnect = false,
- 		.use_fw_tx_credits = true,
- 		.delay_unmap_buffer = false,
- 		.mcast_frame_registration = false,
-+		.no_pairwise_key_del_ind = true,
- 	},
- 	{
- 		.id = QCA6174_HW_3_2_VERSION,
- 		.dev_id = QCA6174_2_1_DEVICE_ID,
- 		.bus = ATH10K_BUS_PCI,
- 		.name = "qca6174 hw3.2",
- 		.patch_load_addr = QCA6174_HW_3_0_PATCH_LOAD_ADDR,
- 		.uart_pin = 6,
-@@ -741,16 +742,17 @@ static const struct ath10k_hw_params ath10k_hw_params_list[] = {
- 		.fw_diag_ce_download = false,
- 		.credit_size_workaround = false,
- 		.tx_stats_over_pktlog = false,
- 		.dynamic_sar_support = true,
- 		.hw_restart_disconnect = true,
- 		.use_fw_tx_credits = false,
- 		.delay_unmap_buffer = true,
- 		.mcast_frame_registration = false,
-+		.no_pairwise_key_del_ind = true,
- 	},
- };
- 
- static const char *const ath10k_core_fw_feature_str[] = {
- 	[ATH10K_FW_FEATURE_EXT_WMI_MGMT_RX] = "wmi-mgmt-rx",
- 	[ATH10K_FW_FEATURE_WMI_10X] = "wmi-10.x",
- 	[ATH10K_FW_FEATURE_HAS_WMI_MGMT_TX] = "has-wmi-mgmt-tx",
- 	[ATH10K_FW_FEATURE_NO_P2P] = "no-p2p",
-diff --git a/drivers/net/wireless/ath/ath10k/hw.h b/drivers/net/wireless/ath/ath10k/hw.h
-index cd468b24bd333..a6abab83df7df 100644
---- a/drivers/net/wireless/ath/ath10k/hw.h
-+++ b/drivers/net/wireless/ath/ath10k/hw.h
-@@ -633,16 +633,22 @@ struct ath10k_hw_params {
- 	bool hw_restart_disconnect;
- 
- 	bool use_fw_tx_credits;
- 
- 	bool delay_unmap_buffer;
- 
- 	/* The hardware support multicast frame registrations */
- 	bool mcast_frame_registration;
-+
-+	/* Firmware sends no HTT security indication for a pairwise key
-+	 * removal (WMI_CIPHER_NONE install), so waiting for one would only
-+	 * time out.
-+	 */
-+	bool no_pairwise_key_del_ind;
- };
- 
- struct htt_resp;
- struct htt_data_tx_completion_ext;
- struct htt_rx_ring_rx_desc_offsets;
- 
- /* Defines needed for Rx descriptor abstraction */
- struct ath10k_hw_ops {
-diff --git a/drivers/net/wireless/ath/ath10k/mac.c b/drivers/net/wireless/ath/ath10k/mac.c
-index 8e604697d6c20..653bc70a9e6af 100644
---- a/drivers/net/wireless/ath/ath10k/mac.c
-+++ b/drivers/net/wireless/ath/ath10k/mac.c
-@@ -319,16 +319,21 @@ static int ath10k_install_key(struct ath10k_vif *arvif,
- 
- 	if (arvif->nohwcrypt)
- 		return 1;
- 
- 	ret = ath10k_send_key(arvif, key, cmd, macaddr, flags);
- 	if (ret)
- 		return ret;
- 
-+	/* Group-key removal installs a replacement key and is acknowledged. */
-+	if (cmd == DISABLE_KEY && !(flags & WMI_KEY_GROUP) &&
-+	    ar->hw_params.no_pairwise_key_del_ind)
-+		return 0;
-+
- 	time_left = wait_for_completion_timeout(&ar->install_key_done, 3 * HZ);
- 	if (time_left == 0)
- 		return -ETIMEDOUT;
- 
- 	return 0;
- }
- 
- static int ath10k_install_peer_wep_keys(struct ath10k_vif *arvif,
-
+ Documentation/admin-guide/cgroup-v2.rst |  32 +++++
+ include/linux/memcontrol.h              |  27 ++--
+ include/linux/page_counter.h            |  88 +++++++++---
+ kernel/cgroup/dmem.c                    |  21 +--
+ mm/hugetlb_cgroup.c                     |   4 +-
+ mm/memcontrol.c                         | 241 ++++++++++++++++++++++++++------
+ mm/page_counter.c                       |  61 +++++---
+ 7 files changed, 371 insertions(+), 103 deletions(-)
 ---
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260917-ath10k-del-d9f956ee1167
+base-commit: 1ed9cdd724d46119dd9adf0ffba2f2daaa3335ef
+change-id: 20260916-descriptive-name-0cf0d5346bcb
 
 Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+Jingxiang Zeng <linuszeng@tencent.com>
 
