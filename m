@@ -1,223 +1,132 @@
-From: Haseeb Malik <haseebulhaq55@gmail.com>
-Date: Fri, 18 Sep 2026 15:01:29 -0400
-Subject: [PATCH net v2] macsec: initialize SecY before registering the
- netdevice
+From: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
+Date: Fri, 18 Sep 2026 14:51:36 -0600
+Subject: [PATCH] arm64: dts: qcom: Fix backlight control on Dell Inspiron
+ 7441
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-fix-macsec-net-v2-1-784203ec4836@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIiKrWoC/3WNwQ6CMBBEf4Xs2VVaRcCT/2E4bNcFmkgxLSEaw
- r+7cPc4kzdvFkgSvSS4ZQtEmX3yY9BgDxlwT6ET9E/NYHN7zWtjsPUfHIiTMAaZsG3PjgspyeU
- EOnpHUWIXPkABaLR0lARdpMD95tL6NJAPG9/7NI3xu//PZl/9u5oNGuTKEhUVSXkx904tryOPA
- zTruv4ABmU0vswAAAA=
-To: sd@queasysnail.net
-Cc: felix.walter@cloudandheat.com, edumazet@google.com, 
- linux-kernel@vger.kernel.org, andrew+netdev@lunn.ch, hangbin.liu@linux.dev, 
- kuba@kernel.org, netdev@vger.kernel.org, pabeni@redhat.com, 
- horms@kernel.org, davem@davemloft.net, syzkaller-bugs@googlegroups.com, 
- syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com, 
- Haseeb Malik <haseebulhaq55@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789758088; l=6548;
- i=haseebulhaq55@gmail.com; s=default; h=from:subject:message-id;
- bh=Ofpz92fyDetbB9sI3s9Y5WrVdHLm9pvDMHak9KjjLSU=;
- b=vNEEA34fqIpmcmaFFh0Asy9wQ4Q84rQJOhdwEstm8Leuu2iJIw3J4W81K0RM3qV87ut3aRj7H
- 68rvFSiHG9EA0l/icu0sw+dW67WNPJfO9vARQ3W6HCchTXpzlGnYT+m
-X-Developer-Key: i=haseebulhaq55@gmail.com; a=ed25519;
- pk=U/yCVc6cTsqDqxWLzvoONZ7DUA3EfRU+rfO9Xxo4p2w=
-X-Endpoint-Received: by B4 Relay for haseebulhaq55@gmail.com/default with auth_id=1026
+Message-Id: <20260918-dell7441-backlight-v1-1-f7646ae30cae@est.una.ac.cr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ7CIBBFr9LMWiKQRqtXMS4GmMIoUgNoTJreX
+ dDl+/nvrVAoMxU4DytkenPhJTVQuwFswORJsGsMWuqDPKlJOIrxOI5KGLT3yD5UIaVWGmfpUE3
+ QxGemmT+/6OX65/IyN7K1l/rDYCFhMiYb+rRk9pz2DyyVMmzbF4efdZOWAAAA
+X-Change-ID: 20260918-dell7441-backlight-00212af0da18
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Laurentiu Tudor <laurentiu.tudor1@dell.com>
+Cc: Rafael Dettogni Guariento <rafael.guariento@ufms.br>, 
+ Val Packett <val@packett.cool>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, dri-devel@lists.freedesktop.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789764699; l=3410;
+ i=avalon.vargas.centeno@est.una.ac.cr; s=avalon-una-20260914;
+ h=from:subject:message-id; bh=u1ZQbSAfwqgtkK6O3ck7wrXaPpGTJgsfRfeZp/Dum9o=;
+ b=NSvKR5ItR/Oz/hETmop6P86/UAhimlz7RdxF5dxrGq3/54atF0ntlj1lafEpn/GUPJJTR4ioM
+ bovpfN74o6jDNqbjWke+hZ3L72DSQWyc4iXOt/A/6wv9tmLOCaSP5FF
+X-Developer-Key: i=avalon.vargas.centeno@est.una.ac.cr; a=ed25519;
+ pk=I7FZ301yhA9Jl2LReBEqv+9LUrd5zi397CIT2gTB6RE=
+X-Endpoint-Received: by B4 Relay for avalon.vargas.centeno@est.una.ac.cr/avalon-una-20260914 with auth_id=1032
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Creating a MACsec device with MAC offload over an LRO-capable lower
-device triggers a warning in rtmsg_ifinfo_build_skb() when IPv4
-forwarding is enabled by default.
+The AUO B140QAX01.H panel on tested Dell Inspiron 14 Plus 7441 units
+advertises PWM brightness control but not AUX brightness setting.
+Without a backlight described in the device tree, the panel falls back
+to the AUX helper, which registers a backlight with max_brightness=0.
+Brightness adjustment is consequently unavailable.
 
-register_netdevice() invokes inetdev_init(), which disables LRO and emits
-a NETDEV_FEAT_CHANGE notification. This reaches macsec_fill_info() before
-macsec_add_dev() initializes the SecY. key_len is still zero, so
-macsec_fill_info() returns -EMSGSIZE and trips the WARN_ON in
-rtmsg_ifinfo_build_skb(), even though the skb has enough space.
+Enable PMK8550 PWM channel 0, route it through GPIO5, and connect a PWM
+backlight to the panel. Provide an interpolated brightness table with
+101 levels and a default level of 80.
 
-Initialize the SecY and apply the new-link attributes before registration.
-Move MAC address inheritance into macsec_newlink() so the SCI can also be
-initialized before registration-time notifications report it. Move the
-per-CPU statistics and metadata destination allocation into ndo_init(),
-and release partial allocations on failure.
-
-Fixes: ccfdec908922 ("macsec: Add support for GCM-AES-256 cipher suite")
-Reported-by: syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=f2f6312ad1b5a0bfe316
-Suggested-by: Sabrina Dubroca <sd@queasysnail.net>
-Link: https://lists.openwall.net/linux-kernel/2026/08/19/552
-Signed-off-by: Haseeb Malik <haseebulhaq55@gmail.com>
+Fixes: e7733b42111c ("arm64: dts: qcom: Add support for Dell Inspiron 7441 / Latitude 7455")
+Reported-by: Rafael Dettogni Guariento <rafael.guariento@ufms.br>
+Tested-by: Rafael Dettogni Guariento <rafael.guariento@ufms.br>
+Signed-off-by: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
 ---
-Changes in v2:
-- Initialize the SCI before registration, including MAC address inheritance,
-  so registration-time notifications carry the configured SCI.
-- Wrap the per-CPU statistics allocation at 80 columns.
-- Link to v1: https://lore.kernel.org/netdev/20260911-fix-macsec-net-v1-1-c82aa58ae741@gmail.com/
----
- drivers/net/macsec.c | 84 +++++++++++++++++++++++++++-------------------------
- 1 file changed, 43 insertions(+), 41 deletions(-)
+Equivalent configurations have been tested on two Dell Inspiron 7441
+units. Rafael tested this patch's resulting nodes on his stock DTB,
+verified the live interpolated table, and confirmed brightness control,
+Fn keys, no low-brightness flicker, and successful suspend/resume.
+His Tested-by was supplied by direct email.
 
-diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
-index 6f9f3aceffaa..78a19b134632 100644
---- a/drivers/net/macsec.c
-+++ b/drivers/net/macsec.c
-@@ -3539,6 +3539,22 @@ static int macsec_dev_init(struct net_device *dev)
- 	if (err)
- 		return err;
- 
-+	err = -ENOMEM;
-+	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
-+	if (!macsec->stats)
-+		goto destroy_gro_cells;
+The 4266537 ns PWM period is borrowed from the upstream ThinkPad T14s
+LCD configuration. It works on both tested units but has not been
+measured from Dell firmware. Feedback on that choice is welcome.
+
+Validation: strict checkpatch has only the missing public report URL
+warning for Reported-by (the report was direct email). GCC/dtc DTB build
+and dt-validate against this tree's bindings pass, with the same dtc
+warnings as the unchanged base. The kernel dtbs_check target was not run.
+
+This is scoped to the 7441. The earlier report of working AUX control
+on a 7445 with the same panel model remains to be compared for platform,
+EDID and DPCD differences.
+---
+ .../qcom/x1e80100-dell-inspiron-14-plus-7441.dts   | 32 ++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
+index 75e10d97c..98632cccd 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
+@@ -10,6 +10,19 @@
+ / {
+ 	model = "Dell Inspiron 14 Plus 7441";
+ 	compatible = "dell,inspiron-14-plus-7441", "qcom,x1e80100";
 +
-+	macsec->secy.tx_sc.stats =
-+		netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
-+	if (!macsec->secy.tx_sc.stats)
-+		goto free_secy_stats;
++	backlight: backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pmk8550_pwm 0 4266537>;
++		power-supply = <&vreg_edp_3p3>;
 +
-+	macsec->secy.tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC,
-+						       GFP_KERNEL);
-+	if (!macsec->secy.tx_sc.md_dst)
-+		goto free_tx_sc_stats;
-+	macsec->secy.tx_sc.md_dst->u.macsec_info.sci = macsec->secy.sci;
++		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
++		num-interpolated-steps = <10>;
++		default-brightness-level = <80>;
 +
- 	macsec_inherit_tso_max(dev);
++		pinctrl-0 = <&edp_bl_pwm>;
++		pinctrl-names = "default";
++	};
+ };
  
- 	dev->hw_features = real_dev->hw_features & MACSEC_OFFLOAD_FEATURES;
-@@ -3551,8 +3567,6 @@ static int macsec_dev_init(struct net_device *dev)
+ &sound {
+@@ -42,6 +55,25 @@ &iris {
+ 	status = "okay";
+ };
  
- 	macsec_set_head_tail_room(dev);
- 
--	if (is_zero_ether_addr(dev->dev_addr))
--		eth_hw_addr_inherit(dev, real_dev);
- 	if (is_zero_ether_addr(dev->broadcast))
- 		memcpy(dev->broadcast, real_dev->broadcast, dev->addr_len);
- 
-@@ -3560,6 +3574,14 @@ static int macsec_dev_init(struct net_device *dev)
- 	netdev_hold(real_dev, &macsec->dev_tracker, GFP_KERNEL);
- 
- 	return 0;
++&mdss_dp3 {
++	aux-bus {
++		panel {
++			backlight = <&backlight>;
++		};
++	};
++};
 +
-+free_tx_sc_stats:
-+	free_percpu(macsec->secy.tx_sc.stats);
-+free_secy_stats:
-+	free_percpu(macsec->stats);
-+destroy_gro_cells:
-+	gro_cells_destroy(&macsec->gro_cells);
-+	return err;
- }
- 
- static void macsec_dev_uninit(struct net_device *dev)
-@@ -4116,26 +4138,11 @@ static sci_t dev_to_sci(struct net_device *dev, __be16 port)
- 	return make_sci(dev->dev_addr, port);
- }
- 
--static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
-+static void macsec_init_secy(struct net_device *dev, sci_t sci, u8 icv_len)
- {
- 	struct macsec_dev *macsec = macsec_priv(dev);
- 	struct macsec_secy *secy = &macsec->secy;
- 
--	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
--	if (!macsec->stats)
--		return -ENOMEM;
--
--	secy->tx_sc.stats = netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
--	if (!secy->tx_sc.stats)
--		return -ENOMEM;
--
--	secy->tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC, GFP_KERNEL);
--	if (!secy->tx_sc.md_dst)
--		/* macsec and secy percpu stats will be freed when unregistering
--		 * net_device in macsec_free_netdev()
--		 */
--		return -ENOMEM;
--
- 	if (sci == MACSEC_UNDEF_SCI)
- 		sci = dev_to_sci(dev, MACSEC_PORT_ES);
- 
-@@ -4149,15 +4156,12 @@ static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
- 	secy->xpn = DEFAULT_XPN;
- 
- 	secy->sci = sci;
--	secy->tx_sc.md_dst->u.macsec_info.sci = sci;
- 	secy->tx_sc.active = true;
- 	secy->tx_sc.encoding_sa = DEFAULT_ENCODING_SA;
- 	secy->tx_sc.encrypt = DEFAULT_ENCRYPT;
- 	secy->tx_sc.send_sci = DEFAULT_SEND_SCI;
- 	secy->tx_sc.end_station = false;
- 	secy->tx_sc.scb = false;
--
--	return 0;
- }
- 
- static struct lock_class_key macsec_netdev_addr_lock_key;
-@@ -4220,6 +4224,24 @@ static int macsec_newlink(struct net_device *dev,
- 	if (rx_handler && rx_handler != macsec_handle_frame)
- 		return -EBUSY;
- 
-+	if (is_zero_ether_addr(dev->dev_addr))
-+		eth_hw_addr_inherit(dev, real_dev);
++&pmk8550_gpios {
++	edp_bl_pwm: edp-bl-pwm-state {
++		pins = "gpio5";
++		function = "func3";
++	};
++};
 +
-+	if (data && data[IFLA_MACSEC_SCI])
-+		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
-+	else if (data && data[IFLA_MACSEC_PORT])
-+		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
-+	else
-+		sci = dev_to_sci(dev, MACSEC_PORT_ES);
++&pmk8550_pwm {
++	status = "okay";
++};
 +
-+	/* Registration can notify listeners before returning. */
-+	macsec_init_secy(dev, sci, icv_len);
-+	if (data) {
-+		err = macsec_changelink_common(dev, data);
-+		if (err)
-+			return err;
-+	}
-+
- 	err = register_netdevice(dev);
- 	if (err < 0)
- 		return err;
-@@ -4232,31 +4254,11 @@ static int macsec_newlink(struct net_device *dev,
- 	if (err < 0)
- 		goto unregister;
- 
--	/* need to be already registered so that ->init has run and
--	 * the MAC addr is set
--	 */
--	if (data && data[IFLA_MACSEC_SCI])
--		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
--	else if (data && data[IFLA_MACSEC_PORT])
--		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
--	else
--		sci = dev_to_sci(dev, MACSEC_PORT_ES);
--
- 	if (rx_handler && sci_exists(real_dev, sci)) {
- 		err = -EBUSY;
- 		goto unlink;
- 	}
- 
--	err = macsec_add_dev(dev, sci, icv_len);
--	if (err)
--		goto unlink;
--
--	if (data) {
--		err = macsec_changelink_common(dev, data);
--		if (err)
--			goto del_dev;
--	}
--
- 	/* If h/w offloading is available, propagate to the device */
- 	if (macsec_is_offloaded(macsec)) {
- 		const struct macsec_ops *ops;
+ &remoteproc_adsp {
+ 	firmware-name = "qcom/x1e80100/dell/inspiron-14-plus-7441/qcadsp8380.mbn",
+ 			"qcom/x1e80100/dell/inspiron-14-plus-7441/adsp_dtbs.elf";
 
 ---
-base-commit: 78445023439506ebd83b86d40b1e428a3b309d4a
-change-id: 20260911-fix-macsec-net-ff3bc5e7ab0a
+base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
+change-id: 20260918-dell7441-backlight-00212af0da18
 
 Best regards,
--- 
-Haseeb Malik <haseebulhaq55@gmail.com>
+--  
+Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
 
