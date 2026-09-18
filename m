@@ -1,11 +1,11 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Fri, 18 Sep 2026 21:06:45 +1000
-Subject: [PATCH v2 02/10] dt-bindings: mailbox: apple: Add DockChannel
- mailbox
+Date: Fri, 18 Sep 2026 21:06:46 +1000
+Subject: [PATCH v2 03/10] dt-bindings: iommu: apple,dart: Add M3
+ compatibles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-apple-mtp-keyboard-final-v2-2-a5c685e50b60@gmail.com>
+Message-Id: <20260918-apple-mtp-keyboard-final-v2-3-a5c685e50b60@gmail.com>
 References: <20260918-apple-mtp-keyboard-final-v2-0-a5c685e50b60@gmail.com>
 In-Reply-To: <20260918-apple-mtp-keyboard-final-v2-0-a5c685e50b60@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -24,124 +24,42 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  Sasha Finkelstein <k@chaosmail.tech>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789729608; l=3526;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789729608; l=1038;
  i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=2Ignuv/vmTwVuxidQ+JOxc1KREH4iq4mptqg1ItCXik=;
- b=nnLrE9aMURPR7ok122ZX/EN0I6t61pJnDpyIdEpGWN2dl5iAa76AyInFFv/1FP1DHJNGkQL7B
- ARpM1EkuBiTCwKGYBtSXu0v6fLLXs1QnOOiGDIZ+JL83+nMMlQbcW0q
+ bh=eobqpYoOQsgGWNW9L5TA1i/2YQsYWCHpu2/7P/SVNyI=;
+ b=1IQ7yYuYjitCuZJEYkWFM3TVxzJza7gs9nOblyZS8+q6iSQRIi3XBrJqVKGWInCX0EfluCxog
+ 84CIIn8467SDD0eS1P43JTtvwvhhWOcN3lsVN0f1LHS4cFt3R2Be/aB
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DockChannel is a FIFO and interrupt block used by Apple coprocessors
-to exchange byte-stream traffic with the AP.
-
-Describe it as a mailbox provider so HID and future serial clients can
-use the common mailbox API.
+Add the t8122, t6030 and t6031 DART compatibles used by the MTP
+coprocessor on M3, M3 Pro and M3 Max SoCs, with the t8110 fallback.
 
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
-Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
- .../bindings/mailbox/apple,t8112-dockchannel.yaml  | 77 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 78 insertions(+)
+ Documentation/devicetree/bindings/iommu/apple,dart.yaml | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml b/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
-new file mode 100644
-index 000000000..dd2fdfa01
---- /dev/null
-+++ b/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
-@@ -0,0 +1,77 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/mailbox/apple,t8112-dockchannel.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Apple DockChannel FIFO Mailbox
-+
-+maintainers:
-+  - Michael Reeves <michael.reeves077@gmail.com>
-+
-+description:
-+  DockChannel is a hardware FIFO and interrupt block used on Apple SoCs for
-+  low-latency byte stream communication with co-processors.
-+
-+properties:
-+  compatible:
-+    oneOf:
-+      - items:
-+          - const: apple,t8112-dockchannel
-+      - items:
+diff --git a/Documentation/devicetree/bindings/iommu/apple,dart.yaml b/Documentation/devicetree/bindings/iommu/apple,dart.yaml
+index 47ec7fa52..efadec786 100644
+--- a/Documentation/devicetree/bindings/iommu/apple,dart.yaml
++++ b/Documentation/devicetree/bindings/iommu/apple,dart.yaml
+@@ -29,7 +29,11 @@ properties:
+           - apple,t8110-dart
+           - apple,t6000-dart
+       - items:
+-          - const: apple,t6020-dart
 +          - enum:
-+              - apple,t6020-dockchannel
-+              - apple,t6030-dockchannel
-+              - apple,t6031-dockchannel
-+              - apple,t8122-dockchannel
-+          - const: apple,t8112-dockchannel
-+
-+  reg:
-+    items:
-+      - description: Interrupt control registers
-+      - description: FIFO configuration registers
-+      - description: FIFO data registers
-+
-+  reg-names:
-+    items:
-+      - const: irq
-+      - const: config
-+      - const: data
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  "#mbox-cells":
-+    const: 0
-+
-+  nonposted-mmio: true
-+
-+required:
-+  - compatible
-+  - reg
-+  - reg-names
-+  - interrupts
-+  - "#mbox-cells"
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/apple-aic.h>
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
-+    soc {
-+        #address-cells = <2>;
-+        #size-cells = <2>;
-+
-+        mailbox@24eb14000 {
-+            compatible = "apple,t8112-dockchannel";
-+            reg = <0x2 0x4eb14000 0x0 0x4000>,
-+                  <0x2 0x4eb30000 0x0 0x4000>,
-+                  <0x2 0x4eb34000 0x0 0x4000>;
-+            reg-names = "irq", "config", "data";
-+            interrupt-parent = <&aic>;
-+            interrupts = <AIC_IRQ 850 IRQ_TYPE_LEVEL_HIGH>;
-+            #mbox-cells = <0>;
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 3b2eb2a7a..0183c3e1c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2643,6 +2643,7 @@ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
- F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
- F:	Documentation/devicetree/bindings/leds/backlight/apple,dwi-bl.yaml
- F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
-+F:	Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
- F:	Documentation/devicetree/bindings/mfd/apple,smc.yaml
- F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
- F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
++              - apple,t6020-dart
++              - apple,t6030-dart
++              - apple,t6031-dart
++              - apple,t8122-dart
+           - const: apple,t8110-dart
+ 
+   reg:
 
 -- 
 2.55.0
