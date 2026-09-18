@@ -1,82 +1,99 @@
-From: Jingxiang Zeng <linuszeng@tencent.com>
-Date: Fri, 18 Sep 2026 16:53:46 +0800
-Subject: [PATCH 6/6] mm: memcontrol: clamp mem_cgroup_get_max() to the
- combined limit
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH 00/21] media: i2c: it6625: address review feedback and
+ adopt subdev state
+Date: Fri, 18 Sep 2026 16:57:15 +0800
+Message-Id: <20260918-upstream-it6625-follow-up-patch-v1-0-78d72d7886a5@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-descriptive-name-v1-6-dfcfdd91b456@tencent.com>
-References: <20260918-descriptive-name-v1-0-dfcfdd91b456@tencent.com>
-In-Reply-To: <20260918-descriptive-name-v1-0-dfcfdd91b456@tencent.com>
-To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
- Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Maarten Lankhorst <dev@lankhorst.se>, Maxime Ripard <mripard@kernel.org>, 
- Natalie Vock <nat@pixelcluster.dev>, Tejun Heo <tj@kernel.org>, 
- =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>, 
- Oscar Salvador <osalvador@suse.de>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: Jingxiang Zeng <jingxiangzeng.cas@gmail.com>, cgroups@vger.kernel.org, 
- linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, linux-doc@vger.kernel.org, 
- Jingxiang Zeng <linuszeng@tencent.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789721651; l=1734;
- i=linuszeng@tencent.com; s=20260909; h=from:subject:message-id;
- bh=zhtOFhKxtUFb8xp+y1sRK9RNl80hp/9T+5xQLqfkz8g=;
- b=EL4RDYrjbrEVE0Vr7y+4cIOSQgOIfXScAu7h3KFs+GeoFED9JQADdqJOi0z5dI/RGqwmZiadl
- oD5iJCJEyvMDmM2LC4+vXp+Pk0BjC/J109Snq3XrqY5aSU7jeIHLraO
-X-Developer-Key: i=linuszeng@tencent.com; a=ed25519;
- pk=6K54xRzYIRWqatrAPy86M4E0MsI92BVJBhXwz5NdC74=
-X-Endpoint-Received: by B4 Relay for linuszeng@tencent.com/20260909 with auth_id=1017
+X-B4-Tracking: v=1; b=H4sIAOv8rGoC/x2NQQqDMBAAvyJ7dsFEu61+RXqIca0LakKSakH8e
+ 4PHmcPMCZGDcISuOCHwLlHclkGVBdjZbB9GGTODrjRVrXri18cU2KwoiUg/cHLL4o6s0ZtkZxx
+ eaqgbTWSbGnLFB57kdx/693X9AXgJcXhxAAAA
+X-Change-ID: 20260917-upstream-it6625-follow-up-patch-b81b34266c43
+To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789721837; l=3695;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=/ldhIMFWu7DdQUmmy+rNousW8O/UMnToBE4wp8FaHPU=;
+ b=0pOHzX3dviMo7TqpQv7NpqGfe+U+IQ7p2ex7Z5hg8W/CuvptWU0bmMVlQQcWN2/+dPNE4np1k
+ JIJtphwUqKiAFpaSjsyjC99s9TDrg0M7J5JjAtwJhCAMXf2lQR7qVW9
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mem_cgroup_get_max() reports the memory ceiling of a cgroup.  Its
-default-hierarchy branch derives that ceiling from memory.max plus
-memory.swap.max, which overstates the reachable total once a combined
-memory+swap limit is configured: with memory.max at 32M,
-memory.memsw.max at 48M and 2G of swap online it reports about 2080M.
+Sakari Ailus reviewed "[PATCH v10 2/2] media: i2c: add driver for ITE
+IT6625/IT6626" and, separately, "[PATCH v1 1/2]" (the dt-bindings patch)
+after both had already been merged into next. This series addresses
+that feedback as a follow-up, since the original commits can no longer
+be amended.
 
-For memcg OOM, constrained_alloc() stores that value in oc->totalpages,
-and oom_badness() scales the task's oom_score_adj by
-totalpages / OOM_SCORE_ADJ_MAX, so an overstated ceiling weighs
-oom_score_adj far more than intended inside such a cgroup: in the
-example above about forty times, enough that a task with a negative
-adjustment stops being selectable at all while a positive one is picked
-long before its rss would justify it.
+Scope of this series:
+ - one dt-bindings fix documenting the CSI-2 bus-type default;
+ - one control-update error-handling fix;
+ - mechanical and style cleanups (declaration ordering, unsigned loop
+   indices, redundant boilerplate, unaligned-access helpers, an early
+   return conversion);
+ - a link-frequency reporting fix for one-/two-trio C-PHY configurations,
+   found while implementing a related style request;
+ - tightening DT endpoint parsing to require the documented endpoint
+   instead of silently defaulting;
+ - folding subdev initialization into probe() for explicit error
+   handling;
+ - adopting the subdev active-state model: sharing the driver mutex as
+   both the subdev state lock and the control handler lock, moving the
+   current format out of driver-private fields and into the pad format,
+   and calling v4l2_subdev_init_finalize()/v4l2_subdev_cleanup();
+ - converting from the deprecated s_stream video op to the
+   enable_streams/disable_streams pad ops, keeping
+   v4l2_subdev_s_stream_helper for legacy callers.
 
-Clamp the result to memory.memsw.max, which is what the v1 branch
-already derives its ceiling from.  The limit defaults to "max", so this
-changes nothing until a combined limit is configured.
+The locking-model change is the one part of this series most likely to
+need another look: it changes what the driver's own mutex protects and
+who else already holds it by the time driver code runs. It's isolated
+to its own commit with an explicit trace of every lock acquisition site
+against the actual core locking contract, kept separate from the
+mechanical/bug-fix commits that precede it.
 
-Signed-off-by: Jingxiang Zeng <linuszeng@tencent.com>
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- mm/memcontrol.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Hermes Wu (21):
+      media: dt-bindings: ite,it6625: document the default CSI-2 bus type
+      media: i2c: it6625: propagate control-update errors
+      media: i2c: it6625: default the debug module parameter to 0
+      media: i2c: it6625: drop unused bus field from struct it6625
+      media: i2c: it6625: drop stale GCC < 4.4.6 workaround
+      media: i2c: it6625: use unsigned int loop indices in table lookups
+      media: i2c: it6625: drop redundant parentheses in status helpers
+      media: i2c: it6625: make the audio sampling-rate table static const
+      media: i2c: it6625: tidy CEC buffer init and a continuation line
+      media: i2c: it6625: clean up it6625_wait_for_status()
+      media: i2c: it6625: use unsigned int indices in EDID read/write
+      media: i2c: it6625: use unaligned/units helpers to decode pixel clock
+      media: i2c: it6625: decode detected timings via typed register structs
+      media: i2c: it6625: fix link-frequency reporting for one-/two-trio C-PHY
+      media: i2c: it6625: use early returns in it6625_update_timings_if_changed()
+      media: i2c: it6625: drop the private CSI-format name table
+      media: i2c: it6625: require a DT endpoint and simplify endpoint parsing
+      media: i2c: it6625: finish reverse fir-tree declaration order
+      media: i2c: it6625: fold subdev initialization into probe
+      media: i2c: it6625: use centrally managed active state
+      media: i2c: it6625: use enable_streams and disable_streams
 
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index 9e8a176e7afb..e229de0d35e0 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -1919,6 +1919,12 @@ unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg)
- 		if (mem_cgroup_swappiness(memcg))
- 			max += min(READ_ONCE(memcg->swap.max),
- 				   (unsigned long)total_swap_pages);
-+		/*
-+		 * A combined memory+swap limit caps the sum of the two, so it
-+		 * is the real ceiling once it is configured.  It defaults to
-+		 * "max", which leaves the value above unchanged.
-+		 */
-+		max = min(max, READ_ONCE(memcg->memsw.max));
- 	}
- 	return max;
- }
+ .../devicetree/bindings/media/i2c/ite,it6625.yaml  |   2 +
+ drivers/media/i2c/it6625.c                         | 519 +++++++++++----------
+ 2 files changed, 282 insertions(+), 239 deletions(-)
+---
+base-commit: b38d06ad1e13c32970d58039c154f009b81a3368
+change-id: 20260917-upstream-it6625-follow-up-patch-b81b34266c43
 
+Best regards,
 -- 
-2.43.7
+Hermes Wu <Hermes.wu@ite.com.tw>
 
