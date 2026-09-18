@@ -1,15 +1,12 @@
 From: Bingfang Guo <bingfangguo@tencent.com>
-Subject: [PATCH 0/4] memcg: move memcgid refcount to objcg to unpin dying
- memcgs
-Date: Fri, 18 Sep 2026 17:18:39 +0800
-Message-Id: <20260918-bingfangguo-memcgid-rework-v1-0-5bbf3220d88f@tencent.com>
+Date: Fri, 18 Sep 2026 17:18:40 +0800
+Subject: [PATCH 1/4] memcg: keep swap charging under RCU protection
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAO8BrWoC/33NQQ6CMBCF4auQrh1TxmDBlfcwLEo7lImhJS2ih
- nB3K+5d/m+Sb1aRKDIlcSlWEWnhxMHnKA+FMIP2joBtboESz7JGBR171+eDewQYaTSOLUR6hni
- H5lQTVmR0p1FkYIrU82vHb23ugdMc4nv/teB3/bGNLP+xC4KEmqxVvdIKq/I6kzfk56MJo2i3b
- fsAZMijKsYAAAA=
+Message-Id: <20260918-bingfangguo-memcgid-rework-v1-1-5bbf3220d88f@tencent.com>
+References: <20260918-bingfangguo-memcgid-rework-v1-0-5bbf3220d88f@tencent.com>
+In-Reply-To: <20260918-bingfangguo-memcgid-rework-v1-0-5bbf3220d88f@tencent.com>
 To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
  Roman Gushchin <roman.gushchin@linux.dev>, 
  Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
@@ -22,129 +19,75 @@ To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>,
 Cc: cgroups@vger.kernel.org, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, Bingfang Guo <bingfangguo@tencent.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789723137; l=5707;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789723137; l=2119;
  i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
- bh=HumpYWRvgw+zE8iW9fnW9BLZuICOHn1xarDSuFOUwNk=;
- b=JK6vnLeJDS4DDri2IkSmkhJ4WAGjPV2qPJrDt2KG5O4yzojD3NmCiPh0b/br6WT6IGGXuFHXr
- vhRvhXx1dA5D6lho+ASHD0US+LtbkZn0YKux6e5dH4o2HtiNHfitw88
+ bh=aNz5CIHBA0S+5g/N6vd9VKb1cpBJlA1cYu/omCgqzbc=;
+ b=85Mfwmjg8Hw0ij0tgq5WRMyNU987rySAkUozMzMbKjZ4EMuLJjIpx4j/3IQ2O6QO3UEKF4Ac2
+ Bd4qZmnpAuUD0TVgkE277fCPMZ0RJDGGHP/A5uHi2CEtksfylrjwdne
 X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
  pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
 X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Changes since RFC:
-- Make the ID API symmetric: mem_cgroup_private_id_get() returns the ID
-  and mem_cgroup_private_id_put() takes the ID. (Muchun Song)
-- Drop the "take the ID only after the charge succeeded" and the
-  dying-memcg walk-up in the swap charge path. (Muchun Song)
-- Fold the list_lru / workingset / MGLRU NULL handling into the patch
-  that moves the refcount, so the broken intermediate state is never
-  introduced. (Muchun Song)
-- Add obj_cgroup_from_private_id() and use it in the swap uncharge path,
-  so the final put reuses the objcg that was already looked up instead
-  of having the put helper return a memcg. (Muchun Song)
-- Rename mem_cgroup->id_objcg to private_id_objcg, and make
-  mem_cgroup->private_id an unsigned short. (Muchun Song)
-- Require the caller to hold the RCU read lock in the ID helpers instead
-  of taking it inside them. (Muchun Song)
-- Add mem_cgroup_private_id_is_root() and decide whether a swap entry
-  carries a counter charge from the ID's root status instead of the
-  resolved memcg's, which keeps charge and uncharge symmetric after
-  reparenting.
-- Reorder and merge commits; the series is now four patches.
-- Link to RFC v2: https://lore.kernel.org/r/20260901-bingfangguo-memcgid-rework-v2-0-8edd7f7a7251@tencent.com
+This is a preparatory work for unbinding memcgid from memcg. No
+functional change.
 
-Although the dying memcg problem caused by LRU pages is fixed, I can
-still see many dying memcgs on some workloads that use shmem and those
-pages are swapped out. For example, programs populating logs to tmpfs or
-containers sharing data using shmem.  This series binds the memcgid
-refcount to objcgs so dying memcgs can be freed normally in this case.
+The swap charging path currently drops its RCU read lock after acquiring
+a private ID reference. This is safe because the ID reference pins the
+memcg's CSS.
 
-The memcg private ID identifies memcgs for objects that can outlive the
-cgroup itself: swap entries and workingset shadows.  Today the ID's
-refcount is embedded in the css, and every outstanding ID reference
-(mostly swap entries) pins the css, keeping the entire memcg alive,
-which brings a problem: A swapped-out page holds a memcgid reference
-that pins the css, so the memcg cannot be freed until the page is
-swapped back in and charged back to its online parent.
+Moving private ID references to objcgs will remove that lifetime
+guarantee. Keep the RCU read lock held while accessing the memcg for
+counter charging, statistics and failure handling. (This matches what
+__memcg1_swapout() already does.).
 
-The work done by Muchun Song and Qi Zheng already charges folios to the
-objcg, which is reparented to its parent when the memcg offlines.  This
-series applies similar idea to the memcg private ID: the ID's refcount
-moves from the css into the objcg, and the memcgid xarray holds a
-reference to an objcg instead of pinning the css.  When the memcg
-offlines, the objcg is reparented and any remaining memcgid references
-resolve to the ancestor, so swapped-out pages no longer pin the dying
-memcg and get the online parent naturally on swapin.
-
-Unbinding the ID from the memcg has three consequences the series has to
-deal with:
-
-  1. The ID stops pinning the memcg, so the paths that relied on the ID
-     reference to keep the memcg alive have to hold the RCU read lock
-     instead.  (Patch 1.)
-
-  2. Charge and uncharge no longer necessarily happen on the same memcg:
-     swapout charges the folio's memcg, while the slot free resolves the
-     nearest live ancestor.  The counters are hierarchical, and the
-     MEMCG_SWAP stat is either reparented at offline (v1) or not visible
-     (v2), so nothing leaks.  But "does this entry carry a counter
-     charge at all" can no longer be answered from the resolved memcg:
-     root is skipped only because root's swap is not accounted, and a
-     non-root ID whose memcg was reparented into root still carries a
-     charge that must be released.  Patch 2 adds
-     mem_cgroup_private_id_is_root() and makes all three swap paths
-     decide on the ID's root status.
-
-  3. An ID can now outlive the memcg it was allocated to, so the memcg
-     resolved from an ID is not necessarily the memcg the ID was handed
-     out for.  Callers that need exactly that memcg (list_lru, the
-     workingset and MGLRU shadow tests) now get NULL and skip the entry,
-     while the swap paths, which only need something to account to, get
-     the nearest live ancestor.  (Patch 4.)
-
-The series is now four patches:
-
-  memcg: keep swap charging under RCU protection
-  memcg: base swap charge accounting on memcgid root status
-  memcg: manipulate memcg private ID references by ID
-  memcg: move memcg private ID refcount to objcg
-
-Only the last patch changes behavior.  The first three are preparation
-that keeps today's semantics while the ID is still bound to the css.
-
-RFC v1 contains some scripts and codes for reproducing the problem and
-testing the fix.
-
-** Changelogs **
-
-Changes in RFC v2:
-- Rework the logic to try to keep changes small.
-- Change order of the commits to make it cleaner.
-- Fix problems reported by sashiko.
-- Reparent to mm-unstable.
-- Link to RFC v1: https://lore.kernel.org/r/20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com
+Save the private ID before dropping the RCU read lock, and use the saved
+value when recording the swap entry. The swap cluster locking remains
+outside the RCU read-side critical section.
 
 Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
-Bingfang Guo (4):
-      memcg: keep swap charging under RCU protection
-      memcg: base swap charge accounting on memcgid root status
-      memcg: manipulate memcg private ID references by ID
-      memcg: move memcg private ID refcount to objcg
+ mm/memcontrol.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
- include/linux/memcontrol.h |   9 ++--
- mm/list_lru.c              |   2 +-
- mm/memcontrol-v1.c         |  21 ++++-----
- mm/memcontrol-v1.h         |   8 +++-
- mm/memcontrol.c            | 111 ++++++++++++++++++++++++++++++++++-----------
- mm/workingset.c            |   5 +-
- 6 files changed, 110 insertions(+), 46 deletions(-)
----
-base-commit: 27e4e1835109ef599d72abe6c09711e0b1916033
-change-id: 20260827-bingfangguo-memcgid-rework-938e25ecaba2
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 791e536efaebe..72522ec827c9a 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -5954,6 +5954,7 @@ int __mem_cgroup_try_charge_swap(struct folio *folio)
+ 	struct page_counter *counter;
+ 	struct mem_cgroup *memcg;
+ 	struct obj_cgroup *objcg;
++	unsigned short private_id;
+ 
+ 	if (do_memsw_account())
+ 		return 0;
+@@ -5973,20 +5974,21 @@ int __mem_cgroup_try_charge_swap(struct folio *folio)
+ 
+ 	memcg = mem_cgroup_private_id_get_online(memcg, nr_pages);
+ 	/* memcg is pined by memcg ID. */
+-	rcu_read_unlock();
++	private_id = mem_cgroup_private_id(memcg);
+ 
+ 	if (!mem_cgroup_is_root(memcg) &&
+ 	    !page_counter_try_charge(&memcg->swap, nr_pages, &counter)) {
+ 		memcg_memory_event(memcg, MEMCG_SWAP_MAX);
+ 		memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
+ 		mem_cgroup_private_id_put(memcg, nr_pages);
++		rcu_read_unlock();
+ 		return -ENOMEM;
+ 	}
+ 	mod_memcg_state(memcg, MEMCG_SWAP, nr_pages);
++	rcu_read_unlock();
+ 
+ 	ci = swap_cluster_get_and_lock(folio);
+-	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_pages,
+-			  mem_cgroup_private_id(memcg));
++	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_pages, private_id);
+ 	swap_cluster_unlock(ci);
+ 
+ 	return 0;
 
-Best regards,
 -- 
-Bingfang Guo <bingfangguo@tencent.com>
+2.43.7
 
