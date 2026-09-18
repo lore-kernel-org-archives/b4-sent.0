@@ -1,116 +1,150 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Fri, 18 Sep 2026 16:57:36 +0800
-Subject: [PATCH 21/21] media: i2c: it6625: use enable_streams and
- disable_streams
+From: Bingfang Guo <bingfangguo@tencent.com>
+Subject: [PATCH 0/4] memcg: move memcgid refcount to objcg to unpin dying
+ memcgs
+Date: Fri, 18 Sep 2026 17:18:39 +0800
+Message-Id: <20260918-bingfangguo-memcgid-rework-v1-0-5bbf3220d88f@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-upstream-it6625-follow-up-patch-v1-21-78d72d7886a5@ite.com.tw>
-References: <20260918-upstream-it6625-follow-up-patch-v1-0-78d72d7886a5@ite.com.tw>
-In-Reply-To: <20260918-upstream-it6625-follow-up-patch-v1-0-78d72d7886a5@ite.com.tw>
-To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789721837; l=3281;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=PmFwvFAlIGe8S5KkdJ/0dJSm3Ai5OjykPBxjocuRLS8=;
- b=pzg0mXTeiUoizaAnBVMTecVitw6D/qbWMbgqWu7RkNbG+vrol9O4e0pUXFH4uag8CLYkMdXvT
- K27Qx+tvexPAVVABJ4Z5YxusCgmv5j4VfLMGKwesNZacVpQyMQYErWL
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-B4-Tracking: v=1; b=H4sIAO8BrWoC/33NQQ6CMBCF4auQrh1TxmDBlfcwLEo7lImhJS2ih
+ nB3K+5d/m+Sb1aRKDIlcSlWEWnhxMHnKA+FMIP2joBtboESz7JGBR171+eDewQYaTSOLUR6hni
+ H5lQTVmR0p1FkYIrU82vHb23ugdMc4nv/teB3/bGNLP+xC4KEmqxVvdIKq/I6kzfk56MJo2i3b
+ fsAZMijKsYAAAA=
+To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Dave Chinner <david@fromorbit.com>, Qi Zheng <qi.zheng@linux.dev>, 
+ Kairui Song <kasong@tencent.com>, Barry Song <baohua@kernel.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, David Hildenbrand <david@kernel.org>, 
+ Lorenzo Stoakes <ljs@kernel.org>, Bingfang Guo <bfguo@icloud.com>
+Cc: cgroups@vger.kernel.org, linux-mm@kvack.org, 
+ linux-kernel@vger.kernel.org, Bingfang Guo <bingfangguo@tencent.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789723137; l=5707;
+ i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
+ bh=HumpYWRvgw+zE8iW9fnW9BLZuICOHn1xarDSuFOUwNk=;
+ b=JK6vnLeJDS4DDri2IkSmkhJ4WAGjPV2qPJrDt2KG5O4yzojD3NmCiPh0b/br6WT6IGGXuFHXr
+ vhRvhXx1dA5D6lho+ASHD0US+LtbkZn0YKux6e5dH4o2HtiNHfitw88
+X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
+ pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
+X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The .s_stream video op is deprecated; add .enable_streams()/
-.disable_streams() pad ops instead and keep v4l2_subdev_s_stream_helper
-for legacy .s_stream callers, matching the same-device-class precedent
-in lt6911uxe.c.
+Changes since RFC:
+- Make the ID API symmetric: mem_cgroup_private_id_get() returns the ID
+  and mem_cgroup_private_id_put() takes the ID. (Muchun Song)
+- Drop the "take the ID only after the charge succeeded" and the
+  dying-memcg walk-up in the swap charge path. (Muchun Song)
+- Fold the list_lru / workingset / MGLRU NULL handling into the patch
+  that moves the refcount, so the broken intermediate state is never
+  introduced. (Muchun Song)
+- Add obj_cgroup_from_private_id() and use it in the swap uncharge path,
+  so the final put reuses the objcg that was already looked up instead
+  of having the put helper return a memcg. (Muchun Song)
+- Rename mem_cgroup->id_objcg to private_id_objcg, and make
+  mem_cgroup->private_id an unsigned short. (Muchun Song)
+- Require the caller to hold the RCU read lock in the ID helpers instead
+  of taking it inside them. (Muchun Song)
+- Add mem_cgroup_private_id_is_root() and decide whether a swap entry
+  carries a counter charge from the ID's root status instead of the
+  resolved memcg's, which keeps charge and uncharge symmetric after
+  reparenting.
+- Reorder and merge commits; the series is now four patches.
+- Link to RFC v2: https://lore.kernel.org/r/20260901-bingfangguo-memcgid-rework-v2-0-8edd7f7a7251@tencent.com
 
-it6625_enable_streams()/it6625_disable_streams() call
-it6625_enable_stream_locked() directly rather than the removed
-lock-taking it6625_enable_stream() wrapper: v4l2_subdev_enable_streams()/
-disable_streams() already lock the active state -- and hence
-it6625_lock, shared as sd->state_lock since the previous change --
-before calling into these ops.
+Although the dying memcg problem caused by LRU pages is fixed, I can
+still see many dying memcgs on some workloads that use shmem and those
+pages are swapped out. For example, programs populating logs to tmpfs or
+containers sharing data using shmem.  This series binds the memcgid
+refcount to objcgs so dying memcgs can be freed normally in this case.
 
-Do not set V4L2_SUBDEV_FL_STREAMS: this device has a single,
-non-multiplexed source pad, so the core's implicit stream 0 is
-sufficient and v4l2_subdev_s_stream_helper() already handles that case
-without it. Error handling is unchanged from the locked helper these
-ops now call directly, so streaming failures are reported to the core
-instead of being silently absorbed.
+The memcg private ID identifies memcgs for objects that can outlive the
+cgroup itself: swap entries and workingset shadows.  Today the ID's
+refcount is embedded in the css, and every outstanding ID reference
+(mostly swap entries) pins the css, keeping the entire memcg alive,
+which brings a problem: A swapped-out page holds a memcgid reference
+that pins the css, so the memcg cannot be freed until the page is
+swapped back in and charged back to its online parent.
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+The work done by Muchun Song and Qi Zheng already charges folios to the
+objcg, which is reparented to its parent when the memcg offlines.  This
+series applies similar idea to the memcg private ID: the ID's refcount
+moves from the css into the objcg, and the memcgid xarray holds a
+reference to an objcg instead of pinning the css.  When the memcg
+offlines, the objcg is reparented and any remaining memcgid references
+resolve to the ancestor, so swapped-out pages no longer pin the dying
+memcg and get the online parent naturally on swapin.
+
+Unbinding the ID from the memcg has three consequences the series has to
+deal with:
+
+  1. The ID stops pinning the memcg, so the paths that relied on the ID
+     reference to keep the memcg alive have to hold the RCU read lock
+     instead.  (Patch 1.)
+
+  2. Charge and uncharge no longer necessarily happen on the same memcg:
+     swapout charges the folio's memcg, while the slot free resolves the
+     nearest live ancestor.  The counters are hierarchical, and the
+     MEMCG_SWAP stat is either reparented at offline (v1) or not visible
+     (v2), so nothing leaks.  But "does this entry carry a counter
+     charge at all" can no longer be answered from the resolved memcg:
+     root is skipped only because root's swap is not accounted, and a
+     non-root ID whose memcg was reparented into root still carries a
+     charge that must be released.  Patch 2 adds
+     mem_cgroup_private_id_is_root() and makes all three swap paths
+     decide on the ID's root status.
+
+  3. An ID can now outlive the memcg it was allocated to, so the memcg
+     resolved from an ID is not necessarily the memcg the ID was handed
+     out for.  Callers that need exactly that memcg (list_lru, the
+     workingset and MGLRU shadow tests) now get NULL and skip the entry,
+     while the swap paths, which only need something to account to, get
+     the nearest live ancestor.  (Patch 4.)
+
+The series is now four patches:
+
+  memcg: keep swap charging under RCU protection
+  memcg: base swap charge accounting on memcgid root status
+  memcg: manipulate memcg private ID references by ID
+  memcg: move memcg private ID refcount to objcg
+
+Only the last patch changes behavior.  The first three are preparation
+that keeps today's semantics while the ID is still bound to the css.
+
+RFC v1 contains some scripts and codes for reproducing the problem and
+testing the fix.
+
+** Changelogs **
+
+Changes in RFC v2:
+- Rework the logic to try to keep changes small.
+- Change order of the commits to make it cleaner.
+- Fix problems reported by sashiko.
+- Reparent to mm-unstable.
+- Link to RFC v1: https://lore.kernel.org/r/20260813-memcgid-objcg-v1-0-83d21c685b77@tencent.com
+
+Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
- drivers/media/i2c/it6625.c | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+Bingfang Guo (4):
+      memcg: keep swap charging under RCU protection
+      memcg: base swap charge accounting on memcgid root status
+      memcg: manipulate memcg private ID references by ID
+      memcg: move memcg private ID refcount to objcg
 
-diff --git a/drivers/media/i2c/it6625.c b/drivers/media/i2c/it6625.c
-index 550eb95c6f74a81fc11cc055b4590159ac50e969..680f27a4587eccfb863bb091c1dede290e57e909 100644
---- a/drivers/media/i2c/it6625.c
-+++ b/drivers/media/i2c/it6625.c
-@@ -936,12 +936,6 @@ static int it6625_enable_stream_locked(struct it6625 *it6625, bool enable)
- 	return it6625_update_config(it6625);
- }
- 
--static int it6625_enable_stream(struct it6625 *it6625, bool enable)
--{
--	guard(mutex)(&it6625->it6625_lock);
--	return it6625_enable_stream_locked(it6625, enable);
--}
--
- static int it6625_set_mipi_config_locked(struct it6625 *it6625, u32 cfg_val)
- {
- 	u8 mipi_data_type;
-@@ -1503,11 +1497,22 @@ static int it6625_dv_timings_cap(struct v4l2_subdev *sd,
- 	return 0;
- }
- 
--static int it6625_s_stream(struct v4l2_subdev *sd, int enable)
-+static int it6625_enable_streams(struct v4l2_subdev *sd,
-+				 struct v4l2_subdev_state *state,
-+				 u32 pad, u64 streams_mask)
-+{
-+	struct it6625 *it6625 = sd_to_6625(sd);
-+
-+	return it6625_enable_stream_locked(it6625, true);
-+}
-+
-+static int it6625_disable_streams(struct v4l2_subdev *sd,
-+				  struct v4l2_subdev_state *state,
-+				  u32 pad, u64 streams_mask)
- {
- 	struct it6625 *it6625 = sd_to_6625(sd);
- 
--	return it6625_enable_stream(it6625, enable);
-+	return it6625_enable_stream_locked(it6625, false);
- }
- 
- static int it6625_enum_mbus_code(struct v4l2_subdev *sd,
-@@ -1795,7 +1800,7 @@ static const struct v4l2_subdev_core_ops it6625_core_ops = {
- 
- static const struct v4l2_subdev_video_ops it6625_video_ops = {
- 	.g_input_status = it6625_g_input_status,
--	.s_stream = it6625_s_stream,
-+	.s_stream = v4l2_subdev_s_stream_helper,
- };
- 
- static const struct v4l2_subdev_pad_ops it6625_pad_ops = {
-@@ -1810,6 +1815,8 @@ static const struct v4l2_subdev_pad_ops it6625_pad_ops = {
- 	.s_dv_timings = it6625_pad_s_dv_timings,
- 	.g_dv_timings = it6625_pad_g_dv_timings,
- 	.query_dv_timings = it6625_pad_query_dv_timings,
-+	.enable_streams = it6625_enable_streams,
-+	.disable_streams = it6625_disable_streams,
- };
- 
- static const struct v4l2_subdev_ops it6625_ops = {
+ include/linux/memcontrol.h |   9 ++--
+ mm/list_lru.c              |   2 +-
+ mm/memcontrol-v1.c         |  21 ++++-----
+ mm/memcontrol-v1.h         |   8 +++-
+ mm/memcontrol.c            | 111 ++++++++++++++++++++++++++++++++++-----------
+ mm/workingset.c            |   5 +-
+ 6 files changed, 110 insertions(+), 46 deletions(-)
+---
+base-commit: 27e4e1835109ef599d72abe6c09711e0b1916033
+change-id: 20260827-bingfangguo-memcgid-rework-938e25ecaba2
 
+Best regards,
 -- 
-2.34.1
+Bingfang Guo <bingfangguo@tencent.com>
 
