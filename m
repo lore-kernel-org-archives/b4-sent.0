@@ -1,154 +1,223 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Fri, 18 Sep 2026 18:28:16 +0200
-Subject: [PATCH 4/4] wifi: ath12k: Connect to the QMI server belonging to
- the device owned by this driver
+From: Haseeb Malik <haseebulhaq55@gmail.com>
+Date: Fri, 18 Sep 2026 15:01:29 -0400
+Subject: [PATCH net v2] macsec: initialize SecY before registering the
+ netdevice
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-qrtr-multi-ep-v1-4-8a06caa368d3@oss.qualcomm.com>
-References: <20260918-qrtr-multi-ep-v1-0-8a06caa368d3@oss.qualcomm.com>
-In-Reply-To: <20260918-qrtr-multi-ep-v1-0-8a06caa368d3@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
- ath11k@lists.infradead.org, ath12k@lists.infradead.org, 
- Bjorn Andersson <andersson@kernel.org>, 
- Chris Lew <christopher.lew@oss.qualcomm.com>, 
- Deepak Kumar Singh <deepak.singh@oss.qualcomm.com>, 
- Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
- Juha-Matti Tilli <juha-matti.tilli@iki.fi>, 
- Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4259;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=curbfmqjxjKsnWzL9i8aIUn+dQtL2mKCKSdc3ihT0zc=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqrWafO1di1O4lB6nHUNfWzvdQz+gMTm6+uqD9f
- 2NI1o3gjLqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaq1mnwAKCRBVnxHm/pHO
- 9dNECACBqfY4aXbYqtyfGh1aw0bHIUcBfUl/RrqJgbsU87TPa6Yil/k4pOBcfgsWi8H6LyL7L4L
- 8MnL0j7MpsK5W/M3Fa0Rs9miENaW3fgyJ/Ds8k82EyAJX06ERwWPJBFPuUKIwIdAIl67F1YBW/t
- xhTrc6kciZywKXMUiMRID8ePN9LAu/FY5tK2v7PQiI9b2PdUgGxOT6WuY/FppsvnmciD/xf68+J
- MJBSC2m7ocBiOFoFFQY3WfhLcG7iDLysHmeWs5BPTSLekphfYyKpznypApBQZS3n9UW9PZskSQj
- sCwsTbApOTAM2u3AZ4qQ716vhSy9uiP87Hr5JHNpPSDmj3Br
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+Message-Id: <20260918-fix-macsec-net-v2-1-784203ec4836@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIiKrWoC/3WNwQ6CMBBEf4Xs2VVaRcCT/2E4bNcFmkgxLSEaw
+ r+7cPc4kzdvFkgSvSS4ZQtEmX3yY9BgDxlwT6ET9E/NYHN7zWtjsPUfHIiTMAaZsG3PjgspyeU
+ EOnpHUWIXPkABaLR0lARdpMD95tL6NJAPG9/7NI3xu//PZl/9u5oNGuTKEhUVSXkx904tryOPA
+ zTruv4ABmU0vswAAAA=
+To: sd@queasysnail.net
+Cc: felix.walter@cloudandheat.com, edumazet@google.com, 
+ linux-kernel@vger.kernel.org, andrew+netdev@lunn.ch, hangbin.liu@linux.dev, 
+ kuba@kernel.org, netdev@vger.kernel.org, pabeni@redhat.com, 
+ horms@kernel.org, davem@davemloft.net, syzkaller-bugs@googlegroups.com, 
+ syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com, 
+ Haseeb Malik <haseebulhaq55@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789758088; l=6548;
+ i=haseebulhaq55@gmail.com; s=default; h=from:subject:message-id;
+ bh=Ofpz92fyDetbB9sI3s9Y5WrVdHLm9pvDMHak9KjjLSU=;
+ b=vNEEA34fqIpmcmaFFh0Asy9wQ4Q84rQJOhdwEstm8Leuu2iJIw3J4W81K0RM3qV87ut3aRj7H
+ 68rvFSiHG9EA0l/icu0sw+dW67WNPJfO9vARQ3W6HCchTXpzlGnYT+m
+X-Developer-Key: i=haseebulhaq55@gmail.com; a=ed25519;
+ pk=U/yCVc6cTsqDqxWLzvoONZ7DUA3EfRU+rfO9Xxo4p2w=
+X-Endpoint-Received: by B4 Relay for haseebulhaq55@gmail.com/default with auth_id=1026
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When two identical ath12k PCIe devices are connected to the same host, both
-advertise the WLFW service with the same service and instance id. The QMI
-lookup reports both servers to each device, so a device may connect to the
-firmware running on the other device.
+Creating a MACsec device with MAC offload over an LRO-capable lower
+device triggers a warning in rtmsg_ifinfo_build_skb() when IPv4
+forwarding is enabled by default.
 
-But now, QRTR provides each MHI endpoint a unique node id which is
-different from the node id announced by the device. So use the same id to
-pick the correct server. Add a get_qrtr_node_id() HIF callback that returns
-the node id derived from the MHI controller index and zero for transports
-that do not assign one. In the new_server callback, skip any service whose
-node id does not match. A node id of zero disables the check, so transports
-that do not assign one keep their current behavior.
+register_netdevice() invokes inetdev_init(), which disables LRO and emits
+a NETDEV_FEAT_CHANGE notification. This reaches macsec_fill_info() before
+macsec_add_dev() initializes the SecY. key_len is still zero, so
+macsec_fill_info() returns -EMSGSIZE and trips the WARN_ON in
+rtmsg_ifinfo_build_skb(), even though the skb has enough space.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Initialize the SecY and apply the new-link attributes before registration.
+Move MAC address inheritance into macsec_newlink() so the SCI can also be
+initialized before registration-time notifications report it. Move the
+per-CPU statistics and metadata destination allocation into ndo_init(),
+and release partial allocations on failure.
+
+Fixes: ccfdec908922 ("macsec: Add support for GCM-AES-256 cipher suite")
+Reported-by: syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=f2f6312ad1b5a0bfe316
+Suggested-by: Sabrina Dubroca <sd@queasysnail.net>
+Link: https://lists.openwall.net/linux-kernel/2026/08/19/552
+Signed-off-by: Haseeb Malik <haseebulhaq55@gmail.com>
 ---
- drivers/net/wireless/ath/ath12k/hif.h |  9 +++++++++
- drivers/net/wireless/ath/ath12k/pci.c |  9 +++++++++
- drivers/net/wireless/ath/ath12k/qmi.c | 11 +++++++++++
- 3 files changed, 29 insertions(+)
+Changes in v2:
+- Initialize the SCI before registration, including MAC address inheritance,
+  so registration-time notifications carry the configured SCI.
+- Wrap the per-CPU statistics allocation at 80 columns.
+- Link to v1: https://lore.kernel.org/netdev/20260911-fix-macsec-net-v1-1-c82aa58ae741@gmail.com/
+---
+ drivers/net/macsec.c | 84 +++++++++++++++++++++++++++-------------------------
+ 1 file changed, 43 insertions(+), 41 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath12k/hif.h b/drivers/net/wireless/ath/ath12k/hif.h
-index 4de8667690e9..be9c070cf716 100644
---- a/drivers/net/wireless/ath/ath12k/hif.h
-+++ b/drivers/net/wireless/ath/ath12k/hif.h
-@@ -32,6 +32,7 @@ struct ath12k_hif_ops {
- 	void (*get_ce_msi_idx)(struct ath12k_base *ab, u32 ce_id, u32 *msi_idx);
- 	int (*panic_handler)(struct ath12k_base *ab);
- 	void (*coredump_download)(struct ath12k_base *ab);
-+	int (*get_qrtr_node_id)(struct ath12k_base *ab);
- };
+diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
+index 6f9f3aceffaa..78a19b134632 100644
+--- a/drivers/net/macsec.c
++++ b/drivers/net/macsec.c
+@@ -3539,6 +3539,22 @@ static int macsec_dev_init(struct net_device *dev)
+ 	if (err)
+ 		return err;
  
- static inline int ath12k_hif_map_service_to_pipe(struct ath12k_base *ab, u16 service_id,
-@@ -162,4 +163,12 @@ static inline void ath12k_hif_coredump_download(struct ath12k_base *ab)
- 	if (ab->hif.ops->coredump_download)
- 		ab->hif.ops->coredump_download(ab);
++	err = -ENOMEM;
++	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
++	if (!macsec->stats)
++		goto destroy_gro_cells;
++
++	macsec->secy.tx_sc.stats =
++		netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
++	if (!macsec->secy.tx_sc.stats)
++		goto free_secy_stats;
++
++	macsec->secy.tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC,
++						       GFP_KERNEL);
++	if (!macsec->secy.tx_sc.md_dst)
++		goto free_tx_sc_stats;
++	macsec->secy.tx_sc.md_dst->u.macsec_info.sci = macsec->secy.sci;
++
+ 	macsec_inherit_tso_max(dev);
+ 
+ 	dev->hw_features = real_dev->hw_features & MACSEC_OFFLOAD_FEATURES;
+@@ -3551,8 +3567,6 @@ static int macsec_dev_init(struct net_device *dev)
+ 
+ 	macsec_set_head_tail_room(dev);
+ 
+-	if (is_zero_ether_addr(dev->dev_addr))
+-		eth_hw_addr_inherit(dev, real_dev);
+ 	if (is_zero_ether_addr(dev->broadcast))
+ 		memcpy(dev->broadcast, real_dev->broadcast, dev->addr_len);
+ 
+@@ -3560,6 +3574,14 @@ static int macsec_dev_init(struct net_device *dev)
+ 	netdev_hold(real_dev, &macsec->dev_tracker, GFP_KERNEL);
+ 
+ 	return 0;
++
++free_tx_sc_stats:
++	free_percpu(macsec->secy.tx_sc.stats);
++free_secy_stats:
++	free_percpu(macsec->stats);
++destroy_gro_cells:
++	gro_cells_destroy(&macsec->gro_cells);
++	return err;
  }
-+
-+static inline int ath12k_hif_get_qrtr_node_id(struct ath12k_base *ab)
-+{
-+	if (!ab->hif.ops->get_qrtr_node_id)
-+		return 0;
-+
-+	return ab->hif.ops->get_qrtr_node_id(ab);
-+}
- #endif /* ATH12K_HIF_H */
-diff --git a/drivers/net/wireless/ath/ath12k/pci.c b/drivers/net/wireless/ath/ath12k/pci.c
-index 6441927b5382..2b1b122bbb3b 100644
---- a/drivers/net/wireless/ath/ath12k/pci.c
-+++ b/drivers/net/wireless/ath/ath12k/pci.c
-@@ -10,6 +10,7 @@
- #include <linux/pci.h>
- #include <linux/time.h>
- #include <linux/vmalloc.h>
-+#include <net/qrtr.h>
  
- #include "pci.h"
- #include "core.h"
-@@ -1491,6 +1492,13 @@ static int ath12k_pci_panic_handler(struct ath12k_base *ab)
- 	return NOTIFY_OK;
+ static void macsec_dev_uninit(struct net_device *dev)
+@@ -4116,26 +4138,11 @@ static sci_t dev_to_sci(struct net_device *dev, __be16 port)
+ 	return make_sci(dev->dev_addr, port);
  }
  
-+static int ath12k_pci_get_qrtr_node_id(struct ath12k_base *ab)
-+{
-+	struct ath12k_pci *ab_pci = ath12k_pci_priv(ab);
-+
-+	return qrtr_host_node_id(ab_pci->mhi_ctrl->index);
-+}
-+
- static const struct ath12k_hif_ops ath12k_pci_hif_ops = {
- 	.start = ath12k_pci_start,
- 	.stop = ath12k_pci_stop,
-@@ -1512,6 +1520,7 @@ static const struct ath12k_hif_ops ath12k_pci_hif_ops = {
- #ifdef CONFIG_ATH12K_COREDUMP
- 	.coredump_download = ath12k_pci_coredump_download,
- #endif
-+	.get_qrtr_node_id = ath12k_pci_get_qrtr_node_id,
- };
+-static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
++static void macsec_init_secy(struct net_device *dev, sci_t sci, u8 icv_len)
+ {
+ 	struct macsec_dev *macsec = macsec_priv(dev);
+ 	struct macsec_secy *secy = &macsec->secy;
  
- static enum ath12k_device_family
-diff --git a/drivers/net/wireless/ath/ath12k/qmi.c b/drivers/net/wireless/ath/ath12k/qmi.c
-index 280e50a1f31d..22b8cbbbf4f4 100644
---- a/drivers/net/wireless/ath/ath12k/qmi.c
-+++ b/drivers/net/wireless/ath/ath12k/qmi.c
-@@ -9,6 +9,7 @@
- #include "qmi.h"
- #include "core.h"
- #include "debug.h"
-+#include "hif.h"
- #include <linux/of.h>
- #include <linux/firmware.h>
- #include <linux/of_address.h>
-@@ -3940,8 +3941,18 @@ static int ath12k_qmi_ops_new_server(struct qmi_handle *qmi_hdl,
- 	struct ath12k_qmi *qmi = container_of(qmi_hdl, struct ath12k_qmi, handle);
- 	struct ath12k_base *ab = qmi->ab;
- 	struct sockaddr_qrtr *sq = &qmi->sq;
-+	int node_id;
- 	int ret;
+-	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
+-	if (!macsec->stats)
+-		return -ENOMEM;
+-
+-	secy->tx_sc.stats = netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
+-	if (!secy->tx_sc.stats)
+-		return -ENOMEM;
+-
+-	secy->tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC, GFP_KERNEL);
+-	if (!secy->tx_sc.md_dst)
+-		/* macsec and secy percpu stats will be freed when unregistering
+-		 * net_device in macsec_free_netdev()
+-		 */
+-		return -ENOMEM;
+-
+ 	if (sci == MACSEC_UNDEF_SCI)
+ 		sci = dev_to_sci(dev, MACSEC_PORT_ES);
  
-+	/* Identical devices advertise the same QMI services, so connect only to
-+	 * the QMI server on this device's node. A node id of 0 means the
-+	 * transport has not assigned a unique node id, so accept the server
-+	 * unfiltered.
-+	 */
-+	node_id = ath12k_hif_get_qrtr_node_id(ab);
-+	if (node_id && service->node != node_id)
-+		return 0;
+@@ -4149,15 +4156,12 @@ static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
+ 	secy->xpn = DEFAULT_XPN;
+ 
+ 	secy->sci = sci;
+-	secy->tx_sc.md_dst->u.macsec_info.sci = sci;
+ 	secy->tx_sc.active = true;
+ 	secy->tx_sc.encoding_sa = DEFAULT_ENCODING_SA;
+ 	secy->tx_sc.encrypt = DEFAULT_ENCRYPT;
+ 	secy->tx_sc.send_sci = DEFAULT_SEND_SCI;
+ 	secy->tx_sc.end_station = false;
+ 	secy->tx_sc.scb = false;
+-
+-	return 0;
+ }
+ 
+ static struct lock_class_key macsec_netdev_addr_lock_key;
+@@ -4220,6 +4224,24 @@ static int macsec_newlink(struct net_device *dev,
+ 	if (rx_handler && rx_handler != macsec_handle_frame)
+ 		return -EBUSY;
+ 
++	if (is_zero_ether_addr(dev->dev_addr))
++		eth_hw_addr_inherit(dev, real_dev);
 +
- 	sq->sq_family = AF_QIPCRTR;
- 	sq->sq_node = service->node;
- 	sq->sq_port = service->port;
++	if (data && data[IFLA_MACSEC_SCI])
++		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
++	else if (data && data[IFLA_MACSEC_PORT])
++		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
++	else
++		sci = dev_to_sci(dev, MACSEC_PORT_ES);
++
++	/* Registration can notify listeners before returning. */
++	macsec_init_secy(dev, sci, icv_len);
++	if (data) {
++		err = macsec_changelink_common(dev, data);
++		if (err)
++			return err;
++	}
++
+ 	err = register_netdevice(dev);
+ 	if (err < 0)
+ 		return err;
+@@ -4232,31 +4254,11 @@ static int macsec_newlink(struct net_device *dev,
+ 	if (err < 0)
+ 		goto unregister;
+ 
+-	/* need to be already registered so that ->init has run and
+-	 * the MAC addr is set
+-	 */
+-	if (data && data[IFLA_MACSEC_SCI])
+-		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
+-	else if (data && data[IFLA_MACSEC_PORT])
+-		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
+-	else
+-		sci = dev_to_sci(dev, MACSEC_PORT_ES);
+-
+ 	if (rx_handler && sci_exists(real_dev, sci)) {
+ 		err = -EBUSY;
+ 		goto unlink;
+ 	}
+ 
+-	err = macsec_add_dev(dev, sci, icv_len);
+-	if (err)
+-		goto unlink;
+-
+-	if (data) {
+-		err = macsec_changelink_common(dev, data);
+-		if (err)
+-			goto del_dev;
+-	}
+-
+ 	/* If h/w offloading is available, propagate to the device */
+ 	if (macsec_is_offloaded(macsec)) {
+ 		const struct macsec_ops *ops;
 
+---
+base-commit: 78445023439506ebd83b86d40b1e428a3b309d4a
+change-id: 20260911-fix-macsec-net-ff3bc5e7ab0a
+
+Best regards,
 -- 
-2.43.0
+Haseeb Malik <haseebulhaq55@gmail.com>
 
