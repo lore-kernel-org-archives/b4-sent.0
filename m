@@ -1,11 +1,11 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Fri, 18 Sep 2026 16:57:32 +0800
-Subject: [PATCH 17/21] media: i2c: it6625: require a DT endpoint and
- simplify endpoint parsing
+Date: Fri, 18 Sep 2026 16:57:33 +0800
+Subject: [PATCH 18/21] media: i2c: it6625: finish reverse fir-tree
+ declaration order
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-upstream-it6625-follow-up-patch-v1-17-78d72d7886a5@ite.com.tw>
+Message-Id: <20260918-upstream-it6625-follow-up-patch-v1-18-78d72d7886a5@ite.com.tw>
 References: <20260918-upstream-it6625-follow-up-patch-v1-0-78d72d7886a5@ite.com.tw>
 In-Reply-To: <20260918-upstream-it6625-follow-up-patch-v1-0-78d72d7886a5@ite.com.tw>
 To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
@@ -16,109 +16,105 @@ Cc: Sakari Ailus <sakari.ailus@linux.intel.com>,
  linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789721837; l=3504;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789721837; l=3134;
  i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=MkgaFi0YkzZts+Nod07WKhmRFmBveGro/77MU+eqB+8=;
- b=55NHn9PbFvUfsc4RiYBDrjDl6wKwG8O7ronfw6KPa+uiUp4YyDfEJZPLQGg1HKKEwU0J9zGqP
- d0Y6bpO7SO4BmGBkRdBhVZZUKYuO2RhudMoaDeUarN/UAjvVe67XbZ5
+ bh=h51JBSr7kq0MZnjjXG3L1mkawFYUPIXiUhBmbLr0E/o=;
+ b=podvbG+0wVxXUVGMYWykB2mzzVWPLeh+WDGdKSww5lxBXsDfNiYc6xmlGX4Hyd/hTKGaRqAOb
+ XM0MALxYUO6Apr/qjsoEs8sS6DuCsszfsbiV2HcQBRSzoNZ3BLFHq8y
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-it6625_init_data() preset csi_lanes/port_num/bus_type before DT
-parsing ran, and it6625_parse_endpoint() fell back to those hardcoded
-defaults whenever no CSI-2 endpoint node was found instead of failing.
-The binding requires port@0, so a missing endpoint should surface as a
-probe error, not silently apply a hardcoded D-PHY/4-lane
-configuration.
-
-Drop the presets from it6625_init_data() -- these values must come
-only from DT -- and delete the no-endpoint fallback entirely rather
-than reshaping it. This is safe: of_fwnode_handle(NULL) returns NULL,
-and v4l2_fwnode_endpoint_alloc_parse() -> __v4l2_fwnode_endpoint_parse()
-already returns -EPROBE_DEFER for a NULL fwnode before touching
-anything else, which is a strictly better result for the no-endpoint
-case than a driver-local -EINVAL.
-
-While here, consolidate the three -EINVAL return sites in
-it6625_parse_endpoint() through a single error-path label instead of
-repeating v4l2_fwnode_endpoint_free() at each one.
+Reorder the remaining declarations that don't follow reverse fir-tree
+order (struct/pointer types before plain scalars): the five register
+accessor helpers it6625_read_byte()/write_byte()/set_bits()/
+read_bytes()/write_bytes(), where a plain int was declared ahead of
+the struct device *dev pointer, and it6625_set_fmt()/it6625_s_edid(),
+where an initialized wider-type local was declared after a plain int.
+Swept the rest of the file for the same pattern; no other functions
+need it.
 
 Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/media/i2c/it6625.c | 26 +++++++++-----------------
- 1 file changed, 9 insertions(+), 17 deletions(-)
+ drivers/media/i2c/it6625.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/media/i2c/it6625.c b/drivers/media/i2c/it6625.c
-index 4a54de2eb42bba7a6efc84c0b43cad4d2465d3a7..5fa8441f073691425c64fbd2b4e537129a43a2b7 100644
+index 5fa8441f073691425c64fbd2b4e537129a43a2b7..40cd413e0ed49c118421ce3dec77bb2df08cf042 100644
 --- a/drivers/media/i2c/it6625.c
 +++ b/drivers/media/i2c/it6625.c
-@@ -2050,9 +2050,6 @@ static void it6625_init_data(struct it6625 *it6625)
- 	static struct v4l2_dv_timings default_timing =
- 			V4L2_DV_BT_CEA_1920X1080P60;
+@@ -433,9 +433,9 @@ static int it6625_regmap_i2c_init(struct i2c_client *client,
  
--	it6625->csi_lanes = 4;
--	it6625->port_num = 1;
--	it6625->bus_type = V4L2_MBUS_CSI2_DPHY;
- 	it6625->csi_format = it6625_formats[0].csi_format;
- 	it6625->mbus_fmt_code = it6625_formats[0].mbus_fmt_code;
- 	it6625->timings = default_timing;
-@@ -2098,13 +2095,6 @@ static int it6625_parse_endpoint(struct it6625 *it6625)
- 			of_node_put(port_ep);
- 	}
+ static int it6625_read_byte(struct it6625 *it6625, u8 reg)
+ {
++	struct device *dev = it6625->dev;
+ 	unsigned int val;
+ 	int err;
+-	struct device *dev = it6625->dev;
  
--	if (!ep) {
--		it6625->port_num = 1;
--		dev_dbg(dev, "no CSI-2 endpoint node found, using default %u CSI lanes",
--			it6625->csi_lanes);
--		return 0;
--	}
--
- 	ret = v4l2_fwnode_endpoint_alloc_parse(of_fwnode_handle(ep), &endpoint);
- 	of_node_put(ep);
- 	if (ret) {
-@@ -2116,15 +2106,15 @@ static int it6625_parse_endpoint(struct it6625 *it6625)
- 	    endpoint.bus_type != V4L2_MBUS_CSI2_CPHY) {
- 		dev_err(dev, "unsupported bus type %d, expected CSI-2 D-PHY or C-PHY",
- 			endpoint.bus_type);
--		v4l2_fwnode_endpoint_free(&endpoint);
--		return -EINVAL;
-+		ret = -EINVAL;
-+		goto out_free_endpoint;
- 	}
+ 	err = regmap_read(it6625->it6625_regmap, reg, &val);
+ 	if (err < 0) {
+@@ -448,8 +448,8 @@ static int it6625_read_byte(struct it6625 *it6625, u8 reg)
  
- 	if (endpoint.bus_type == V4L2_MBUS_CSI2_CPHY &&
- 	    it6625->chip_type != IT6626_CHIP) {
- 		dev_err(dev, "IT6625 does not support C-PHY, only IT6626 does");
--		v4l2_fwnode_endpoint_free(&endpoint);
--		return -EINVAL;
-+		ret = -EINVAL;
-+		goto out_free_endpoint;
- 	}
+ static int it6625_write_byte(struct it6625 *it6625, u8 reg, u8 val)
+ {
+-	int err;
+ 	struct device *dev = it6625->dev;
++	int err;
  
- 	max_lanes = (endpoint.bus_type == V4L2_MBUS_CSI2_CPHY) ? 3 : 4;
-@@ -2134,15 +2124,17 @@ static int it6625_parse_endpoint(struct it6625 *it6625)
- 		dev_err(dev,
- 			"invalid number of CSI data lanes: %u (max %u for this bus type)",
- 			endpoint.bus.mipi_csi2.num_data_lanes, max_lanes);
--		v4l2_fwnode_endpoint_free(&endpoint);
--		return -EINVAL;
-+		ret = -EINVAL;
-+		goto out_free_endpoint;
- 	}
+ 	err = regmap_write(it6625->it6625_regmap, reg, val);
+ 	if (err < 0) {
+@@ -462,8 +462,8 @@ static int it6625_write_byte(struct it6625 *it6625, u8 reg, u8 val)
  
- 	it6625->csi_lanes = endpoint.bus.mipi_csi2.num_data_lanes;
- 	it6625->bus_type = endpoint.bus_type;
-+
-+out_free_endpoint:
- 	v4l2_fwnode_endpoint_free(&endpoint);
+ static int it6625_set_bits(struct it6625 *it6625, u8 reg, u8 mask, u8 val)
+ {
+-	int err;
+ 	struct device *dev = it6625->dev;
++	int err;
  
--	return 0;
-+	return ret;
- }
+ 	err = regmap_update_bits(it6625->it6625_regmap, reg, mask, val);
+ 	if (err < 0) {
+@@ -476,8 +476,8 @@ static int it6625_set_bits(struct it6625 *it6625, u8 reg, u8 mask, u8 val)
  
- static int it6625_parse_dt(struct it6625 *it6625)
+ static int it6625_read_bytes(struct it6625 *it6625, u8 reg, u8 *buf, int len)
+ {
+-	int err;
+ 	struct device *dev = it6625->dev;
++	int err;
+ 
+ 	err = regmap_bulk_read(it6625->it6625_regmap, reg, buf, len);
+ 	if (err < 0) {
+@@ -490,8 +490,8 @@ static int it6625_read_bytes(struct it6625 *it6625, u8 reg, u8 *buf, int len)
+ 
+ static int it6625_write_bytes(struct it6625 *it6625, u8 reg, u8 *buf, int len)
+ {
+-	int err;
+ 	struct device *dev = it6625->dev;
++	int err;
+ 
+ 	err = regmap_bulk_write(it6625->it6625_regmap, reg, buf, len);
+ 	if (err < 0) {
+@@ -1624,8 +1624,8 @@ static int it6625_set_fmt(struct v4l2_subdev *sd,
+ 			  struct v4l2_subdev_format *format)
+ {
+ 	struct it6625 *it6625 = sd_to_6625(sd);
+-	int ret;
+ 	u32 mbus_fmt_code = format->format.code;
++	int ret;
+ 
+ 	ret = it6625_get_fmt(sd, sd_state, format);
+ 	format->format.code = mbus_fmt_code;
+@@ -1705,8 +1705,8 @@ static int it6625_s_edid(struct v4l2_subdev *sd,
+ 			 struct v4l2_subdev_edid *edid)
+ {
+ 	struct it6625 *it6625 = sd_to_6625(sd);
+-	int err;
+ 	u16 parent_pa = CEC_PHYS_ADDR_INVALID;
++	int err;
+ 
+ 	if (edid->pad != 0) {
+ 		v4l2_err(sd, "invalid pad %d", edid->pad);
 
 -- 
 2.34.1
