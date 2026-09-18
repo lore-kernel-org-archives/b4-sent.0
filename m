@@ -1,13 +1,17 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Fri, 18 Sep 2026 21:06:53 +1000
-Subject: [PATCH v2 10/10] arm64: dts: apple: Enable DockChannel HID on M2
- and M3 laptops
+Subject: [PATCH v3 00/10] Add support for Apple Silicon DockChannel
+ internal keyboards
+Date: Fri, 18 Sep 2026 23:28:30 +1000
+Message-Id: <20260918-apple-mtp-keyboard-final-v3-0-e356464e454b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-apple-mtp-keyboard-final-v2-10-a5c685e50b60@gmail.com>
-References: <20260918-apple-mtp-keyboard-final-v2-0-a5c685e50b60@gmail.com>
-In-Reply-To: <20260918-apple-mtp-keyboard-final-v2-0-a5c685e50b60@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6XPwW7DIAwG4FepOM8TkEGbnfYeUw+GmAYthMhE0
+ aoq717oZb1slx1/yf5++yYKcaQi3g83wbTFEvNcQ/dyEH7E+UIQh5qFltpKq3vAZZkI0rrAF11
+ dRh4gxBkn6JV3Bm0Ib8GLur4whfj9oD/PNTssBI5x9mMDE5aVuA0GzgnWkQmfmjr5e9OmQIKRd
+ ug7i+oojx+XhHF69Tk1b4xlzXx9vLSpVv9Ps12/6R+oV6c/IF0hNN6eDBnprHyG9n2/AzzaYlx
+ yAQAA
+X-Change-ID: 20260629-apple-mtp-keyboard-final-91cb5a6ff4fc
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
  Neal Gompa <neal@gompa.dev>, Jassi Brar <jassisinghbrar@gmail.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,372 +25,126 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  iommu@lists.linux.dev, linux-input@vger.kernel.org, 
  Yureka Lilian <yureka@cyberchaos.dev>, Julian Braha <julianbraha@gmail.com>, 
- Sasha Finkelstein <k@chaosmail.tech>
+ Sasha Finkelstein <k@chaosmail.tech>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789729608; l=7273;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789738118; l=5610;
  i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=78kUfdeWKUeiEf4dX7SZ0qB0VILZ/K/tdCVxq/uYAb0=;
- b=SlCQi8R+AsDGd7i6kEdHhrkowfvRK7D4GPBrG+nolP9gXvfAkOOkqK8McyMEOXCUP/cRKrnH/
- T9OI6ggaRtxDXum667qxqJmtLkZd0DyGfXUqKjQhSeJzFVZsQDz22yB
+ bh=YleLy9dsJjhq7c2nL6zzJF1A+Z7obcoDrQWMYbeXFIk=;
+ b=ms7eApJ7nsr0wjgHHtKYCWL3B3/z3GjP5w1ujKulzGNlcSmNoTDNfB1PTg64iK5ob9YyQe/zl
+ 5yYk+rKZGW6B4QPaMW6qZrwgYwWYTUHCZAQ/2llIhbwieBH6uY1QKqW
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the MTP mailbox, DART, DockChannel mailbox, and HID transport on
-the M2 and M3 laptop device trees using this internal input path.
+This series introduces support for the internal keyboards on Apple
+Silicon M2 and M3 MacBook models.
 
-Add a keyboard alias and keyboard child node for each machine so the
-transport can expose the internal keyboard.
+On these platforms, built-in input devices are managed by a dedicated
+coprocessor running an RTKit-based operating system. Communication
+between this coprocessor and the main processor is carried out over a
+low-latency hardware byte FIFO interface called DockChannel.
 
-Co-developed-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Hector Martin <marcan@marcan.st>
+To support this input path, the series introduces a few new components:
+- An apple-dockchannel mailbox driver to handle the low-level
+  byte-stream FIFO.
+- A DockChannel HID transport driver (apple-hid) that boots the
+  coprocessor using the RTKit framework and encapsulates the HID
+  protocol over the mailbox.
+- Minor additions to the apple-rtkit and hid-apple drivers to support
+  the TraceKit endpoint and integrate the keyboards into the existing
+  input-quirks framework.
+- Devicetree bindings and DTS updates to describe the nodes on M2 and
+  M3 laptops.
+
+The transport driver is based on an original out-of-tree implementation
+by Hector Martin, but it has been significantly rewritten for upstream
+inclusion to use the standard Linux mailbox framework and align better
+with upstream HID design patterns and reduce reliance on hacks.
+
+While the coprocessor manages both the keyboard and the trackpad, this
+series only enables keyboard support. The keyboard can be initialised
+without loading external firmware, whereas the trackpad requires
+firmware. Trackpad support will be submitted in a subsequent series
+once these base transport layers are established.
+
+Tested on: MacBook Air M3 (J613).
+
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+
+Changes in v3:
+- Link to v2: https://lore.kernel.org/all/20260918-apple-mtp-keyboard-final-v2-0-a5c685e50b60@gmail.com/
+- Fix failed-probe cleanup and interface publication ordering.
+- Fix report lengths/types and reject replacement descriptors.
+- Terminate serial replies and encode checksums as little endian.
+- Honor HID_QUIRK_IGNORE_SPECIAL_DRIVER.
+- Clarify the DockChannel TX byte register layout.
+- All changes above address Sashiko feedback.
+
+Changes in v2:
+- Link to v1: https://lore.kernel.org/asahi/20260630-apple-mtp-keyboard-final-v1-0-506d936a1707@gmail.com/
+- Rebase onto latest upstream and add M3 Pro/Max device-tree support.
+- Use an optional STM node to decide whether to wait for device IDs
+  (suggested by Yureka Lilian).
+- Rename bindings to match the t8112 fallback (suggested by Conor Dooley).
+- Fix FIFO MMIO write width (suggested by Yureka Lilian) and run mailbox
+  interrupt handling in the IRQ thread.
+- Remove the duplicate report fixup (suggested by Sasha Finkelstein)
+  and redundant HID dependency (suggested by Julian Braha).
+- Fix teardown and the missing HID stop callback; simplify interface lookup.
+
 ---
- arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi | 29 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi | 24 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j413.dts       | 24 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j415.dts       | 24 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts       | 26 ++++++++++++++++++++++-
- arch/arm64/boot/dts/apple/t8122-j504.dts       | 26 +++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j613.dts       | 27 ++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j615.dts       | 27 ++++++++++++++++++++++++
- 8 files changed, 206 insertions(+), 1 deletion(-)
+Michael Reeves (9):
+      dt-bindings: mailbox: apple: Add M3 ASC mailbox compatibles
+      dt-bindings: mailbox: apple: Add DockChannel mailbox
+      dt-bindings: iommu: apple,dart: Add M3 compatibles
+      dt-bindings: input: apple: Add DockChannel HID transport
+      mailbox: apple: Add DockChannel FIFO controller
+      HID: apple: Add support for DockChannel HID keyboards
+      HID: apple: Add DockChannel HID transport driver
+      arm64: dts: apple: Add MTP DockChannel HID nodes
+      arm64: dts: apple: Enable DockChannel HID on M2 and M3 laptops
 
-diff --git a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-index 0e806d8dd..91fda44d9 100644
---- a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-+++ b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-@@ -16,6 +16,12 @@
- 
- #include "t600x-j314-j316.dtsi"
- 
-+/ {
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+};
-+
- &framebuffer0 {
- 	power-domains = <&ps_disp0_cpu0>, <&ps_dptx_phy_ps>;
- };
-@@ -43,3 +49,26 @@ &wifi0 {
- &bluetooth0 {
- 	compatible = "pci14e4,5f72";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi b/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-index 517b84c18..f6fe382de 100644
---- a/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-+++ b/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-@@ -21,6 +21,7 @@ / {
- 	chassis-type = "laptop";
- 
- 	aliases {
-+		keyboard = &keyboard;
- 		serial0 = &serial0;
- 	};
- 
-@@ -64,3 +65,26 @@ &serial0 {
- &fpwm0 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j413.dts b/arch/arm64/boot/dts/apple/t8112-j413.dts
-index 7ccfceb08..5b9bdad3d 100644
---- a/arch/arm64/boot/dts/apple/t8112-j413.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j413.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -93,3 +94,26 @@ &fpwm1 {
- };
- 
- #include "hwmon-laptop.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j415.dts b/arch/arm64/boot/dts/apple/t8112-j415.dts
-index fdc3409d2..3da132eeb 100644
---- a/arch/arm64/boot/dts/apple/t8112-j415.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j415.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -93,3 +94,26 @@ &fpwm1 {
- };
- 
- #include "hwmon-laptop.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 7cea5c594..ecc057929 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0+ OR MIT
- /*
-- * Apple MacBook Pro (13-inch, M1, 2022)
-+ * Apple MacBook Pro (13-inch, M2, 2022)
-  *
-  * target-type: J493
-  *
-@@ -24,6 +24,7 @@ / {
- 	 */
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		touchbar0 = &touchbar0;
- 		wifi0 = &wifi0;
- 	};
-@@ -149,3 +150,26 @@ touchbar0: touchbar@0 {
- 
- #include "hwmon-laptop.dtsi"
- #include "hwmon-fan.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j504.dts b/arch/arm64/boot/dts/apple/t8122-j504.dts
-index 464491b55..a08a130be 100644
---- a/arch/arm64/boot/dts/apple/t8122-j504.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j504.dts
-@@ -18,6 +18,10 @@ / {
- 	compatible = "apple,j504", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Pro (14-inch, M3, 2023)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -35,3 +39,25 @@ &fpwm1 {
- 	status = "okay";
- };
- 
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j613.dts b/arch/arm64/boot/dts/apple/t8122-j613.dts
-index 51894ea70..a81326cd5 100644
---- a/arch/arm64/boot/dts/apple/t8122-j613.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j613.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j613", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (13-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -33,3 +37,26 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j615.dts b/arch/arm64/boot/dts/apple/t8122-j615.dts
-index 2a1970c1b..21bcacb6f 100644
---- a/arch/arm64/boot/dts/apple/t8122-j615.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j615.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j615", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (15-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -33,3 +37,26 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
+Sasha Finkelstein (1):
+      soc: apple: rtkit: Add tracekit endpoint
 
+ .../input/apple,t8112-dockchannel-hid.yaml         |  104 ++
+ .../devicetree/bindings/iommu/apple,dart.yaml      |    6 +-
+ .../devicetree/bindings/mailbox/apple,mailbox.yaml |    3 +
+ .../bindings/mailbox/apple,t8112-dockchannel.yaml  |   77 ++
+ MAINTAINERS                                        |    5 +
+ arch/arm64/boot/dts/apple/t602x-die0.dtsi          |   46 +
+ arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi     |   29 +
+ arch/arm64/boot/dts/apple/t6030.dtsi               |   46 +
+ arch/arm64/boot/dts/apple/t6031-die0.dtsi          |   46 +
+ arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi     |   24 +
+ arch/arm64/boot/dts/apple/t8112-j413.dts           |   24 +
+ arch/arm64/boot/dts/apple/t8112-j415.dts           |   24 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |   26 +-
+ arch/arm64/boot/dts/apple/t8112.dtsi               |   46 +
+ arch/arm64/boot/dts/apple/t8122-j504.dts           |   26 +
+ arch/arm64/boot/dts/apple/t8122-j613.dts           |   27 +
+ arch/arm64/boot/dts/apple/t8122-j615.dts           |   27 +
+ arch/arm64/boot/dts/apple/t8122.dtsi               |   47 +
+ drivers/hid/Kconfig                                |    2 +
+ drivers/hid/Makefile                               |    2 +
+ drivers/hid/dockchannel/Kconfig                    |   14 +
+ drivers/hid/dockchannel/Makefile                   |    3 +
+ drivers/hid/dockchannel/apple-hid.c                | 1177 ++++++++++++++++++++
+ drivers/hid/hid-apple.c                            |  118 +-
+ drivers/mailbox/Kconfig                            |   12 +
+ drivers/mailbox/Makefile                           |    2 +
+ drivers/mailbox/apple-dockchannel.c                |  372 +++++++
+ drivers/soc/apple/rtkit.c                          |    2 +
+ include/linux/hid.h                                |    1 +
+ include/linux/mailbox/apple-dockchannel.h          |   29 +
+ 30 files changed, 2319 insertions(+), 48 deletions(-)
+---
+base-commit: 5dd1818b15d98d4a20806cd00b1b40320b06004f
+change-id: 20260629-apple-mtp-keyboard-final-91cb5a6ff4fc
+
+Best regards,
 -- 
-2.55.0
+Michael Reeves <michael.reeves077@gmail.com>
 
