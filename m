@@ -1,124 +1,127 @@
-From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Sat, 19 Sep 2026 16:06:37 +0530
-Subject: [PATCH v6 14/14] iio: temperature: hid-sensor-temperature: convert
- probe and teardown to devm-managed resources
+From: Ilyas <ilyas.tasli@outlook.fr>
+Date: Sat, 19 Sep 2026 16:01:31 +0200
+Subject: [PATCH] gsupplicant: Enable optional PMF via global Pmf property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-28-apr-iio-redundant-argument-v5-temp-v6-14-d577b2371b3c@gmail.com>
-References: <20260919-28-apr-iio-redundant-argument-v5-temp-v6-0-d577b2371b3c@gmail.com>
-In-Reply-To: <20260919-28-apr-iio-redundant-argument-v5-temp-v6-0-d577b2371b3c@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Jiri Kosina <jikos@kernel.org>, 
- Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789814199; l=3471;
- i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=1Xb2KI32YvGlS/Xf3zjMfPomVo3QjnOydjNIX/ii4Sk=;
- b=PMW2nTN2cnFdguySR2C8vQb0ytoKT1PRHbd3zQGsre6RwZ6Kitm/xx4KDZwGqIEpTTFyqAWkl
- /dUsZcTaRwkAocZXal0WZte9Sj1FIXoWVTe8y0liH0tpqMlFykzkyVs
-X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
- pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
-X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
+Message-Id: <20260919-pmf-fix-v1-1-a84bab14eb34@outlook.fr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDS0NL3YLcNN20zArdFMOUFFMgSko0SlECqi4oSgUKg02Kjq2tBQAIqv+
+ 6WQAAAA==
+X-Change-ID: 20260919-pmf-fix-d1dd5dd5ba2d
+To: connman@lists.linux.dev
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789826491; l=3866;
+ i=ilyas.tasli@outlook.fr; s=20260919; h=from:subject:message-id;
+ bh=EgLdVURvHPPQtsiaA4LiJhJ/WdC3Px5qicPECTierkA=;
+ b=IwIc1m50QcKP+bIS6V0qarYsV8wVUJqZsAOICi+Vo7BRk4+bLR7Fpo+eStfNavFFA7OVPovGc
+ axyKh8jPiFUBkoKNogJWgVH2npAdHRkYIsep8RRNwxEh3CMcTGJiQ4D
+X-Developer-Key: i=ilyas.tasli@outlook.fr; a=ed25519;
+ pk=fZdGZtPpfn0Iv4oEHCu8FTesIPeAvMU/PRD3RrLl4mE=
+X-Endpoint-Received: by B4 Relay for ilyas.tasli@outlook.fr/20260919 with auth_id=1039
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert HID IIO driver resource management to use devm-managed helpers,
-tying the lifetime of all resources to the device.
+Commit 5e73b55e ("gsupplicant: Set MFP optional and key_mgmt for PSK")
+sets ieee80211w=1 on every PSK network. When ieee80211w is set
+explicitly, wpa_supplicant uses it as is and skips its check for BIP
+support in the driver. That check only runs when PMF comes from the
+global pmf setting.
 
-HID trigger setup, IIO registration, and sensor hub callback resource
-are now managed using devm APIs. Cleanup logic previously handled
-explicitly in probe error and teardown paths.
+Drivers without any BIP cipher, e.g. iwlwifi/iwldvm (Centrino
+Wireless-N 2230, Advanced-N 6205/6235), therefore negotiate PMF with
+PMF-capable APs and then fail to install the IGTK:
 
-This simplifies the probe path by removing goto-based error handling,
-eliminates the remove callback entirely.
+  nl80211: kernel reports: key setting validation failed
+  wlan0: WPA: Failed to configure IGTK to the driver
+  wlan0: RSN: Failed to configure IGTK
 
-Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+The station then deauthenticates locally right after the 4-way
+handshake, so it can no longer connect to WPA2 networks it used to
+connect to before 1.45.
+
+Set the per-interface global Pmf property to "1" instead and stop
+adding ieee80211w to PSK networks. MFPC is still advertised on
+hardware that supports PMF, as intended by 5e73b55e. wpa_supplicant
+disables PMF itself when the driver lacks BIP. NetworkManager uses
+the same approach (NetworkManager commit a9ab50ef, "supplicant: set
+optional PMF using global supplicant property").
+
 ---
- drivers/iio/temperature/hid-sensor-temperature.c | 39 ++++++------------------
- 1 file changed, 9 insertions(+), 30 deletions(-)
+Tested with connman 1.45 and wpa_supplicant 2.11 on an Intel Centrino
+Wireless-N 2230 (iwldvm, no BIP cipher advertised) against a WPA2-PSK
+AP advertising MFPC: without this patch the connection fails with
+"Failed to configure IGTK", with it the station connects and gets a
+DHCP lease.
+---
+ gsupplicant/supplicant.c | 26 ++++++++++++++++----------
+ 1 file changed, 16 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/iio/temperature/hid-sensor-temperature.c b/drivers/iio/temperature/hid-sensor-temperature.c
-index aa5a2b872247..ac5a287d1de3 100644
---- a/drivers/iio/temperature/hid-sensor-temperature.c
-+++ b/drivers/iio/temperature/hid-sensor-temperature.c
-@@ -189,11 +189,12 @@ static struct hid_sensor_hub_callbacks temperature_callbacks = {
- /* Function to initialize the processing for usage id */
- static int hid_temperature_probe(struct platform_device *pdev)
- {
-+	struct device *dev = &pdev->dev;
-+	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
- 	static const char *name = "temperature";
- 	struct iio_dev *indio_dev;
- 	struct temperature_state *temp_st;
- 	struct iio_chan_spec *temp_chans;
--	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
- 	int ret;
- 
- 	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*temp_st));
-@@ -230,42 +231,21 @@ static int hid_temperature_probe(struct platform_device *pdev)
- 
- 	atomic_set(&temp_st->common_attributes.data_ready, 0);
- 
--	ret = hid_sensor_setup_trigger(indio_dev, name,
--				       &temp_st->common_attributes);
-+	ret = devm_hid_sensor_setup_trigger(dev, indio_dev, name,
-+					    &temp_st->common_attributes);
- 	if (ret)
- 		return ret;
- 
- 	platform_set_drvdata(pdev, indio_dev);
- 
- 	temperature_callbacks.pdev = pdev;
--	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_TEMPERATURE,
--					   &temperature_callbacks);
-+	ret = devm_sensor_hub_register_callback(dev, hsdev,
-+						HID_USAGE_SENSOR_TEMPERATURE,
-+						&temperature_callbacks);
- 	if (ret)
--		goto error_remove_trigger;
--
--	ret = iio_device_register(indio_dev);
--	if (ret)
--		goto error_remove_callback;
--
--	return ret;
--
--error_remove_callback:
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_TEMPERATURE);
--error_remove_trigger:
--	hid_sensor_remove_trigger(&temp_st->common_attributes);
--	return ret;
--}
--
--/* Function to deinitialize the processing for usage id */
--static void hid_temperature_remove(struct platform_device *pdev)
--{
--	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
--	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
--	struct temperature_state *temp_st = iio_priv(indio_dev);
-+		return ret;
- 
--	iio_device_unregister(indio_dev);
--	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_TEMPERATURE);
--	hid_sensor_remove_trigger(&temp_st->common_attributes);
-+	return devm_iio_device_register(dev, indio_dev);
+diff --git a/gsupplicant/supplicant.c b/gsupplicant/supplicant.c
+index 5e289953..8e569aed 100644
+--- a/gsupplicant/supplicant.c
++++ b/gsupplicant/supplicant.c
+@@ -2538,6 +2538,13 @@ static GSupplicantInterface *interface_alloc(const char *path)
+ 	return interface;
  }
  
- static const struct platform_device_id hid_temperature_ids[] = {
-@@ -284,7 +264,6 @@ static struct platform_driver hid_temperature_platform_driver = {
- 		.pm	= &hid_sensor_pm_ops,
- 	},
- 	.probe		= hid_temperature_probe,
--	.remove		= hid_temperature_remove,
- };
- module_platform_driver(hid_temperature_platform_driver);
++static void set_pmf(DBusMessageIter *iter, void *user_data)
++{
++	const char *pmf = user_data;
++
++	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &pmf);
++}
++
+ static void interface_added(DBusMessageIter *iter, void *user_data)
+ {
+ 	GSupplicantInterface *interface;
+@@ -2561,6 +2568,15 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
+ 	if (!interface)
+ 		return;
  
++	/*
++	 * Enable optional PMF through the per-interface global setting
++	 * instead of per-network ieee80211w=1, so that wpa_supplicant
++	 * disables it when the driver does not support any BIP cipher.
++	 */
++	supplicant_dbus_property_set(path, SUPPLICANT_INTERFACE ".Interface",
++				"Pmf", DBUS_TYPE_STRING_AS_STRING,
++				set_pmf, NULL, "1", NULL);
++
+ 	if (!properties_appended) {
+ 		supplicant_dbus_property_get_all(path,
+ 						SUPPLICANT_INTERFACE ".Interface",
+@@ -4930,16 +4946,8 @@ static void add_network_security_proto(DBusMessageIter *dict,
+ 	g_free(proto);
+ }
+ 
+-static void add_network_ieee80211w(DBusMessageIter *dict, GSupplicantSSID *ssid,
+-				   GSupplicantMfpOptions ieee80211w)
+-{
+-	supplicant_dbus_dict_append_basic(dict, "ieee80211w", DBUS_TYPE_UINT32,
+-					  &ieee80211w);
+-}
+-
+ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
+ {
+-	GSupplicantMfpOptions ieee80211w;
+ 	char *key_mgmt;
+ 
+ 	switch (ssid->security) {
+@@ -4956,8 +4964,6 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
+ 		break;
+ 	case G_SUPPLICANT_SECURITY_PSK:
+ 		key_mgmt = "SAE WPA-PSK WPA-PSK-SHA256";
+-		ieee80211w = G_SUPPLICANT_MFP_OPTIONAL;
+-		add_network_ieee80211w(dict, ssid, ieee80211w);
+ 		add_network_security_psk(dict, ssid);
+ 		add_network_security_ciphers(dict, ssid);
+ 		add_network_security_proto(dict, ssid);
 
+---
+base-commit: 9e46e4a021cd8566b942d1a72b41b14a0a58f506
+change-id: 20260919-pmf-fix-d1dd5dd5ba2d
+
+Best regards,
 -- 
-2.34.1
+Ilyas <ilyas.tasli@outlook.fr>
 
