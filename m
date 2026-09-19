@@ -1,244 +1,126 @@
-From: =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
-Date: Sat, 19 Sep 2026 18:28:19 +0800
-Subject: [PATCH v7 3/3] arm64: dts: rockchip: Add devicetree for the
- FriendlyElec NanoPi R28S
+From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+Subject: [PATCH v6 00/14] HID: iio: Introduce devm_ APIs for HID sensors
+Date: Sat, 19 Sep 2026 16:06:23 +0530
+Message-Id: <20260919-28-apr-iio-redundant-argument-v5-temp-v6-0-d577b2371b3c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260919-r28s-upstream-v7-3-e80a6f8ef521@proton.me>
-References: <20260919-r28s-upstream-v7-0-e80a6f8ef521@proton.me>
-In-Reply-To: <20260919-r28s-upstream-v7-0-e80a6f8ef521@proton.me>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chukun Pan <amadeus@jmu.edu.cn>, Jonas Karlman <jonas@kwiboo.se>, 
- jensen <jensenhuang@friendlyarm.com>, 
- Andrey Korshunov <razor1702@gmail.com>, 
- Diederik de Haas <diederik@cknow-tech.com>, 
- =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAKdlrmoC/42OTQ6DIBCFr2JYdxr8I9hV79G4oDDoNEUMqGljv
+ HtRL9DVvC95ed+sLGIgjOyWrSzgQpH8kEBcMqZ7NXQIZBKzgheCC15CIUGNAYg8BDTzYNQwgQr
+ d7DCFpYYJ3QgVVg2ikaJUlqWtMaClz+F5tCfH+flCPe3je6OnOPnwPR5Z6r13OiUXfzrT5WBz2
+ xQ6N7Lk9t45Re+r9o6127b9AOVA8wjsAAAA
+X-Change-ID: 20260603-28-apr-iio-redundant-argument-v5-temp-4e49eed863af
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Jiri Kosina <jikos@kernel.org>, 
+ Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
+ Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
+ Zhang Lixu <lixu.zhang@intel.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5467;
- i=HystericalDragons@proton.me; h=from:subject:message-id;
- bh=NuAc4jMDfk/Tx8+/OfV/iX5ruACbgsmXbYkj7OTFAfs=;
- b=owGbwMvMwCUmepz3XUtTHjvjabUkhqx1yceXr2ayXmq7evK12Getv6IOS7/RWDCr5tS/nrtyH
- +Yk1S9z7ihlYRDjYpAVU2SR3VQdKbQqemYRi9RxmDmsTCBDGLg4BWAihW8YGS5WrotmfXCFa8GR
- Oyopu0Kfah5es3NNpzn7309rdkxYlW7DyLD1uCPzZPa0hdkMVhIbjvdZnbpvwLkgednNhqZ/7KL
- 5zxkB
-X-Developer-Key: i=HystericalDragons@proton.me; a=openpgp;
- fpr=1DB27B5912AA5B9972041AC715C70DEE84826E07
-X-Endpoint-Received: by B4 Relay for HystericalDragons@proton.me/default with auth_id=1004
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789814199; l=5636;
+ i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
+ bh=Dz56lHO8he1vv9orP1xWMaqbnHaRAuLjNpCvMw/oeR0=;
+ b=Hwm6WS3aJO+JiF5ZNf4/y8CcFyKoAwS5naAdP6HrzsnobPjAQt7bHvzAx0McnR/w75y+ahfW0
+ cHbR30bQaudCa//Bh3wqPxRCIL9+MIfIDyxJn1ZLiQ/Lu023639RK4G
+X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
+ pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
+X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The NanoPi R28S is a dual gigabit Ethernet router board based on the
-Rockchip RK3528 SoC, designed and developed by FriendlyElec. It shares
-most of its design with the NanoPi Zero2, so it builds on the common
-rk3528-nanopi.dtsi.
+Following feedback from reviewers and Srinivas, v4 series was split
+into two additional sub-series to perform cleanup and preparatory work
+before adding devm support:
+- HID: iio: warning clean up and prefer kernel coding style
+  https://lore.kernel.org/all/20260707-15-jun-hid-iio-alignment-v3-0-8791574ad0fe@gmail.com/
+- HID: iio: basic clean up for usage_id
+  https://lore.kernel.org/all/20260610-6-june-hid-iio-correct-usage-id-v2-0-c3c5f0720493@gmail.com/
 
-Specification:
-- Rockchip RK3528
-- 1GB RAM
-- eMMC socket (optional)
-- MicroSD slot
-- 1x 1000Base-T (GMAC1, Realtek RTL8211F)
-- 1x 1000Base-T (PCIe, Realtek RTL8111H)
-- AICSemi AIC8800D80 SDIO WiFi + Bluetooth
-- 3x LEDs (SYS, LAN, WAN)
-- 1x USB 2.0 Type-C OTG, shared with the 5V power input
-- User and MaskROM buttons
-- Haoyu HYM8563 RTC
-- 1x USB Type-C debug UART (onboard WCH CH340E)
+Both series have been merged into IIO tree. This series introduces
+device-managed APIs and converts HID IIO sensor drivers to use the new
+devm-managed resources.
 
-The AIC8800D80 has no upstream driver yet, so only the SDIO and UART
-controllers it hangs off are enabled, along with the WiFi and Bluetooth
-wake and power pins taken from the schematics.
+checkpatch reports a "suspect code indent" warning on the DEFINE_FREE()
+declaration, but this appears to be a false positive caused by the macro
+expansion. The code builds cleanly.
 
-Assisted-by: LLM
-Signed-off-by: 安容 <HystericalDragons@proton.me>
+Changes in v6:
+- Following input from Andy rectify kernel-doc for return
+- With input from Jonathan used devres framework implemetation with
+  cleanup helpder to reduce complexity and resource allocation.
+- Link to v5: https://patch.msgid.link/20260806-28-apr-iio-redundant-argument-v5-temp-v5-0-f1f92c1d830f@gmail.com
+Changes in v5:
+- With input from Jonathan, convert all HID IIO drivers to use
+  fully devm instead of partial or specific API; this is potential
+  goal and validation on that will reduce multiple validation cycle.
+- Rebase changes on latest iio/testing tree and resolve merge conflict
+- Resolve mail client issue as v4 series was splitted into sub-series
+- Link to v5: https://lore.kernel.org/all/20260524192059.1193716-1-sanjayembedded@gmail.com/
+Changes in v4:
+- Extend the series to cover remaining HID IIO drivers with devm API usage
+- Reorder patches to place cleanup and warning fix at beginning and,
+  devm-related changes toward the end based on feedback from David
+- v3 series -> https://lore.kernel.org/all/20260509101040.791404-1-sanjayembedded@gmail.com/
+Changes in v3:
+- Added cleanup and prepratory changes before adding devm_ API
+  conversion based on self review: 0002, 0004, 0006, 0007 and 0008
+- Address andy's review comment on commit message and coding style
+- v2 series -> https://lore.kernel.org/all/20260429175918.2541914-1-sanjayembedded@gmail.com/
+Changes in v2:
+- Following input from Jonathan and Andy, squash initial patch v1
+  series in single change as individual change should not break anything
+- Add devm API support and two driver using the same
+- v1 series -> https://lore.kernel.org/all/20260428071613.1134053-1-sanjayembedded@gmail.com/
+
+Testing:
+  - Compiled with W=1 for each patch in series
+PS:
+- Sashiko reported an issue in a different driver and noted that it is not
+  introduced by this series. I have taken this feedback into account and
+  will address the actual issue in a separate series focus on that driver.
+- Following input from Jonathan, will prepare followup series for
+  HID IIO drivers to consistency support for logs in probe() path
+
 ---
- arch/arm64/boot/dts/rockchip/Makefile              |   1 +
- .../arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts | 160 +++++++++++++++++++++
- 2 files changed, 161 insertions(+)
+Sanjay Chitroda (14):
+      iio: hid-sensors: remove unused iio_dev argument
+      iio: hid-sensors: introduce device managed API
+      HID: hid-sensor-hub: introduce device managed API
+      iio: gyro: hid-sensor-gyro-3d: convert probe and teardown to devm-managed resources
+      iio: accel: hid-sensor-accel-3d: convert probe and teardown to devm-managed resources
+      iio: humidity: hid-sensor-humidity: convert probe and teardown to devm-managed resources
+      iio: light: hid-sensor-prox: convert probe and teardown to devm-managed resources
+      iio: light: hid-sensor-als: convert probe and teardown to devm-managed resources
+      iio: magnetometer: hid-sensor-magn-3d: convert probe and teardown to devm-managed resources
+      iio: orientation: hid-sensor-incl-3d: convert probe and teardown to devm-managed resources
+      iio: orientation: hid-sensor-rotation: convert probe and teardown to devm-managed resources
+      iio: position: hid-sensor-custom-intel-hinge: convert probe and teardown to devm-managed resources
+      iio: pressure: hid-sensor-press: convert probe and teardown to devm-managed resources
+      iio: temperature: hid-sensor-temperature: convert probe and teardown to devm-managed resources
 
-diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
-index b677914cd3..51a9889088 100644
---- a/arch/arm64/boot/dts/rockchip/Makefile
-+++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -94,6 +94,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-vicharak-vaaman.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-rock-pi-n10.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-armsom-sige1.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-hinlink-h28k.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-nanopi-r28s.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-nanopi-zero2.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-radxa-e20c.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-rock-2a.dtb
-diff --git a/arch/arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts b/arch/arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts
-new file mode 100644
-index 0000000000..294b66f60e
---- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts
-@@ -0,0 +1,160 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+/*
-+ * Copyright (c) 2022 Rockchip Electronics Co., Ltd.
-+ * Copyright (c) 2026 FriendlyElec Computer Tech. Co., Ltd.
-+ * Copyright (c) 2026 安容 <HystericalDragons@proton.me>
-+ */
-+
-+/dts-v1/;
-+
-+#include "rk3528-nanopi.dtsi"
-+
-+/ {
-+	model = "FriendlyElec NanoPi R28S";
-+	compatible = "friendlyarm,nanopi-r28s", "rockchip,rk3528";
-+
-+	aliases {
-+		mmc2 = &sdio0;
-+		serial2 = &uart2;
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio4_b2_usr_btn>;
-+
-+		button-user {
-+			debounce-interval = <50>;
-+			gpios = <&gpio4 RK_PB2 GPIO_ACTIVE_LOW>;
-+			label = "USER";
-+			linux,code = <BTN_1>;
-+			wakeup-source;
-+		};
-+	};
-+
-+	sdio_pwrseq: sdio-pwrseq {
-+		compatible = "mmc-pwrseq-simple";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pwr_wf>;
-+		post-power-on-delay-ms = <100>;
-+		reset-gpios = <&gpio1 RK_PC2 GPIO_ACTIVE_LOW>;
-+	};
-+};
-+
-+&combphy {
-+	status = "okay";
-+};
-+
-+&led1 {
-+	default-state = "off";
-+	function = LED_FUNCTION_WAN;
-+	linux,default-trigger = "netdev";
-+};
-+
-+&leds {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&led_sys_pin>, <&led1_pin>, <&led2_pin>;
-+
-+	led-2 {
-+		color = <LED_COLOR_ID_GREEN>;
-+		default-state = "off";
-+		function = LED_FUNCTION_LAN;
-+		gpios = <&gpio4 RK_PB3 GPIO_ACTIVE_HIGH>;
-+		linux,default-trigger = "netdev";
-+	};
-+};
-+
-+&pcie {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pcie_eth_perstb>;
-+	reset-gpios = <&gpio4 RK_PC0 GPIO_ACTIVE_HIGH>;
-+	vpcie3v3-supply = <&vcc_3v3>;
-+	status = "okay";
-+};
-+
-+&pinctrl {
-+	bluetooth {
-+		bt_wake_host: bt-wake-host {
-+			rockchip,pins = <1 RK_PB5 RK_FUNC_GPIO &pcfg_pull_down>;
-+		};
-+
-+		host_wake_bt: host-wake-bt {
-+			rockchip,pins = <1 RK_PB4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		gpio4_b2_usr_btn: gpio4-b2-usr-btn {
-+			rockchip,pins = <4 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
-+		};
-+	};
-+
-+	leds {
-+		led2_pin: led2-pin {
-+			rockchip,pins = <4 RK_PB3 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	pcie {
-+		pcie_eth_perstb: pcie-eth-perstb {
-+			rockchip,pins = <4 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	wifi {
-+		host_wake_wl: host-wake-wl {
-+			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+
-+		pwr_wf: pwr-wf {
-+			rockchip,pins = <1 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+
-+		wl_wake_host: wl-wake-host {
-+			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_down>;
-+		};
-+	};
-+};
-+
-+&sdio0 {
-+	bus-width = <4>;
-+	cap-sd-highspeed;
-+	cap-sdio-irq;
-+	keep-power-in-suspend;
-+	mmc-pwrseq = <&sdio_pwrseq>;
-+	no-mmc;
-+	no-sd;
-+	non-removable;
-+	sd-uhs-sdr104;
-+	vmmc-supply = <&vcc_3v3>;
-+	vqmmc-supply = <&vcc_1v8>;
-+	status = "okay";
-+};
-+
-+&uart2 {
-+	dma-names = "tx", "rx";
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart2m1_xfer>, <&uart2m1_ctsn>, <&uart2m1_rtsn>;
-+	uart-has-rtscts;
-+	status = "okay";
-+};
-+
-+&usb_host0_xhci {
-+	/*
-+	 * The Type-C port is also the 5V power input, so it comes up as a
-+	 * device, but host mode works with an externally powered hub.
-+	 */
-+	extcon = <&usb2phy>;
-+	maximum-speed = "high-speed";
-+	phys = <&usb2phy_otg>;
-+	phy-names = "usb2-phy";
-+	status = "okay";
-+};
-+
-+&usb2phy {
-+	status = "okay";
-+};
-+
-+&usb2phy_otg {
-+	status = "okay";
-+};
+ drivers/hid/hid-sensor-hub.c                       | 35 ++++++++++++++++++
+ drivers/iio/accel/hid-sensor-accel-3d.c            | 40 +++++----------------
+ .../iio/common/hid-sensors/hid-sensor-trigger.c    | 21 +++++++++--
+ .../iio/common/hid-sensors/hid-sensor-trigger.h    |  5 +--
+ drivers/iio/gyro/hid-sensor-gyro-3d.c              | 41 +++++----------------
+ drivers/iio/humidity/hid-sensor-humidity.c         | 38 +++++---------------
+ drivers/iio/light/hid-sensor-als.c                 | 39 +++++---------------
+ drivers/iio/light/hid-sensor-prox.c                | 40 +++++----------------
+ drivers/iio/magnetometer/hid-sensor-magn-3d.c      | 41 +++++----------------
+ drivers/iio/orientation/hid-sensor-incl-3d.c       | 42 +++++-----------------
+ drivers/iio/orientation/hid-sensor-rotation.c      | 40 +++++----------------
+ .../iio/position/hid-sensor-custom-intel-hinge.c   | 38 ++++----------------
+ drivers/iio/pressure/hid-sensor-press.c            | 41 +++++----------------
+ drivers/iio/temperature/hid-sensor-temperature.c   | 39 +++++---------------
+ include/linux/hid-sensor-hub.h                     | 26 ++++++++++++++
+ 15 files changed, 175 insertions(+), 351 deletions(-)
+---
+base-commit: 9c464e7473f762cee4c031a09da04f65a1c65d49
+change-id: 20260603-28-apr-iio-redundant-argument-v5-temp-4e49eed863af
 
--- 
-2.55.0
+Best regards,
+--  
+Sanjay Chitroda <sanjayembeddedse@gmail.com>
 
