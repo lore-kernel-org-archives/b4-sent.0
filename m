@@ -1,132 +1,112 @@
-From: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
-Date: Fri, 18 Sep 2026 14:51:36 -0600
-Subject: [PATCH] arm64: dts: qcom: Fix backlight control on Dell Inspiron
- 7441
+From: Amit Sunil Dhamne <amitsd@google.com>
+Date: Sat, 19 Sep 2026 01:04:10 +0000
+Subject: [PATCH v3] arm64: dts: exynos: gs101-pixel-common: add supply and
+ regulator properties
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260918-dell7441-backlight-v1-1-f7646ae30cae@est.una.ac.cr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ7CIBBFr9LMWiKQRqtXMS4GmMIoUgNoTJreX
- dDl+/nvrVAoMxU4DytkenPhJTVQuwFswORJsGsMWuqDPKlJOIrxOI5KGLT3yD5UIaVWGmfpUE3
- QxGemmT+/6OX65/IyN7K1l/rDYCFhMiYb+rRk9pz2DyyVMmzbF4efdZOWAAAA
-X-Change-ID: 20260918-dell7441-backlight-00212af0da18
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260919-max77759-charger-dts-v3-1-78b68fbf7d4a@google.com>
+X-B4-Tracking: v=1; b=H4sIAInfrWoC/43NwQ7CIAyA4VcxnK3ZCozhyfcwHpBVRuKGgYXML
+ Ht32W6e9Pi36deFJYqeEjsfFhYp++TDWIIfD8z2ZnQEvivNsMKmQhQwmFkpJTWUdXQUoZsSIBe
+ ac92SUpaV01ekh5939nor3fs0hfjev+R6m/4Acw013IXgUkhbCWMuLgT3pJMNA9vEjP8oWBTdc
+ myksS01/EtZ1/UDH3S0sP8AAAA=
+X-Change-ID: 20260224-max77759-charger-dts-23493398e77c
+To: Peter Griffin <peter.griffin@linaro.org>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Laurentiu Tudor <laurentiu.tudor1@dell.com>
-Cc: Rafael Dettogni Guariento <rafael.guariento@ufms.br>, 
- Val Packett <val@packett.cool>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, dri-devel@lists.freedesktop.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789764699; l=3410;
- i=avalon.vargas.centeno@est.una.ac.cr; s=avalon-una-20260914;
- h=from:subject:message-id; bh=u1ZQbSAfwqgtkK6O3ck7wrXaPpGTJgsfRfeZp/Dum9o=;
- b=NSvKR5ItR/Oz/hETmop6P86/UAhimlz7RdxF5dxrGq3/54atF0ntlj1lafEpn/GUPJJTR4ioM
- bovpfN74o6jDNqbjWke+hZ3L72DSQWyc4iXOt/A/6wv9tmLOCaSP5FF
-X-Developer-Key: i=avalon.vargas.centeno@est.una.ac.cr; a=ed25519;
- pk=I7FZ301yhA9Jl2LReBEqv+9LUrd5zi397CIT2gTB6RE=
-X-Endpoint-Received: by B4 Relay for avalon.vargas.centeno@est.una.ac.cr/avalon-una-20260914 with auth_id=1032
+ Conor Dooley <conor+dt@kernel.org>, Alim Akhtar <alim.akhtar@samsung.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789779853; l=2698;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=H3o0xNkJTaPRJts1fDtzq2bsFqrsr68JNgCV5PXC4hE=;
+ b=WDzv0jaKgpSBLo/lEduuK+4j/pX+X87tGgx6bpqVRhUSPl1/NMl8e1FF7uY8ghZGnB15jdeUE
+ wRo9yz4Y3bnC57nOsWQmWSHaS5w6zxRHV/l4ri4qmMYDTx/WYIwLL2f
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The AUO B140QAX01.H panel on tested Dell Inspiron 14 Plus 7441 units
-advertises PWM brightness control but not AUX brightness setting.
-Without a backlight described in the device tree, the panel falls back
-to the AUX helper, which registers a backlight with max_brightness=0.
-Brightness adjustment is consequently unavailable.
+Add power supply and regulator properties to the MAX77759 pmic. The
+usb-typec device will reference the regulator provided by the pmic as
+it supplies vbus to the typec device when operating in source mode.
 
-Enable PMK8550 PWM channel 0, route it through GPIO5, and connect a PWM
-backlight to the panel. Provide an interpolated brightness table with
-101 levels and a default level of 80.
+Additionally, describe the charging path as well. The pmic draws its
+input from the Type-C port and in turn charges the battery that the
+fuel gauge measures, which gives the full ladder:
 
-Fixes: e7733b42111c ("arm64: dts: qcom: Add support for Dell Inspiron 7441 / Latitude 7455")
-Reported-by: Rafael Dettogni Guariento <rafael.guariento@ufms.br>
-Tested-by: Rafael Dettogni Guariento <rafael.guariento@ufms.br>
-Signed-off-by: Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
+  usb-typec@25  ->  pmic@66  ->  fuel-gauge@36
+
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-Equivalent configurations have been tested on two Dell Inspiron 7441
-units. Rafael tested this patch's resulting nodes on his stock DTB,
-verified the live interpolated table, and confirmed brightness control,
-Fn keys, no low-brightness flicker, and successful suspend/resume.
-His Tested-by was supplied by direct email.
+Changes in v3:
+- Additionally describe the charging path from max77759_pmic to the
+  fuel-gauge.
+- Dropped André's Reviewed-by, as the patch grew a property.
+- Link to v2: https://lore.kernel.org/r/20260224-max77759-charger-dts-v2-1-983265ac8e63@google.com
 
-The 4266537 ns PWM period is borrowed from the upstream ThinkPad T14s
-LCD configuration. It works on both tested units but has not been
-measured from Dell firmware. Feedback on that choice is welcome.
-
-Validation: strict checkpatch has only the missing public report URL
-warning for Reported-by (the report was direct email). GCC/dtc DTB build
-and dt-validate against this tree's bindings pass, with the same dtc
-warnings as the unchanged base. The kernel dtbs_check target was not run.
-
-This is scoped to the 7441. The earlier report of working AUX control
-on a 7445 with the same panel model remains to be compared for platform,
-EDID and DPCD differences.
+Changes in v2:
+- Added a line between property and child node as per DTS coding std.
+  (Krzysztof Kozlowski)
+- Added the "power-supplies" property immediately after the prev
+  property without leaving a line space.
+- Link to v1: https://lore.kernel.org/r/20260224-max77759-charger-dts-v1-1-b443545c04aa@google.com
 ---
- .../qcom/x1e80100-dell-inspiron-14-plus-7441.dts   | 32 ++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+ arch/arm64/boot/dts/exynos/google/gs101-pixel-common.dtsi | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
-index 75e10d97c..98632cccd 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-dell-inspiron-14-plus-7441.dts
-@@ -10,6 +10,19 @@
- / {
- 	model = "Dell Inspiron 14 Plus 7441";
- 	compatible = "dell,inspiron-14-plus-7441", "qcom,x1e80100";
-+
-+	backlight: backlight {
-+		compatible = "pwm-backlight";
-+		pwms = <&pmk8550_pwm 0 4266537>;
-+		power-supply = <&vreg_edp_3p3>;
-+
-+		brightness-levels = <0 10 20 30 40 50 60 70 80 90 100>;
-+		num-interpolated-steps = <10>;
-+		default-brightness-level = <80>;
-+
-+		pinctrl-0 = <&edp_bl_pwm>;
-+		pinctrl-names = "default";
-+	};
- };
- 
- &sound {
-@@ -42,6 +55,25 @@ &iris {
+diff --git a/arch/arm64/boot/dts/exynos/google/gs101-pixel-common.dtsi b/arch/arm64/boot/dts/exynos/google/gs101-pixel-common.dtsi
+index a12f2b88d72d..c366df36380b 100644
+--- a/arch/arm64/boot/dts/exynos/google/gs101-pixel-common.dtsi
++++ b/arch/arm64/boot/dts/exynos/google/gs101-pixel-common.dtsi
+@@ -646,12 +646,13 @@ &hsi2c_12 {
  	status = "okay";
- };
+ 	/* TODO: add the devices once drivers exist */
  
-+&mdss_dp3 {
-+	aux-bus {
-+		panel {
-+			backlight = <&backlight>;
+-	usb-typec@25 {
++	maxtcpci: usb-typec@25 {
+ 		compatible = "maxim,max77759-tcpci", "maxim,max33359";
+ 		reg = <0x25>;
+ 		interrupts-extended = <&gpa8 2 IRQ_TYPE_LEVEL_LOW>;
+ 		pinctrl-0 = <&typec_int>;
+ 		pinctrl-names = "default";
++		vbus-supply = <&chgin_otg_reg>;
+ 
+ 		connector {
+ 			compatible = "usb-c-connector";
+@@ -738,9 +739,10 @@ fuel-gauge@36 {
+ 		interrupts-extended = <&gpa9 3 IRQ_TYPE_LEVEL_LOW>;
+ 
+ 		shunt-resistor-micro-ohms = <5000>;
++		power-supplies = <&max77759_pmic>;
+ 	};
+ 
+-	pmic@66 {
++	max77759_pmic: pmic@66 {
+ 		compatible = "maxim,max77759";
+ 		reg = <0x66>;
+ 
+@@ -750,6 +752,11 @@ pmic@66 {
+ 
+ 		interrupt-controller;
+ 		#interrupt-cells = <2>;
++		power-supplies = <&maxtcpci>;
++
++		chgin_otg_reg: chgin-otg-regulator {
++			regulator-name = "chgin-otg";
 +		};
-+	};
-+};
-+
-+&pmk8550_gpios {
-+	edp_bl_pwm: edp-bl-pwm-state {
-+		pins = "gpio5";
-+		function = "func3";
-+	};
-+};
-+
-+&pmk8550_pwm {
-+	status = "okay";
-+};
-+
- &remoteproc_adsp {
- 	firmware-name = "qcom/x1e80100/dell/inspiron-14-plus-7441/qcadsp8380.mbn",
- 			"qcom/x1e80100/dell/inspiron-14-plus-7441/adsp_dtbs.elf";
+ 
+ 		gpio {
+ 			compatible = "maxim,max77759-gpio";
 
 ---
-base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
-change-id: 20260918-dell7441-backlight-00212af0da18
+base-commit: 587858367581b9c55c3690f4e63382ad622719d4
+change-id: 20260224-max77759-charger-dts-23493398e77c
 
 Best regards,
---  
-Avalon Vargas <avalon.vargas.centeno@est.una.ac.cr>
+-- 
+Amit Sunil Dhamne <amitsd@google.com>
 
