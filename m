@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sat, 19 Sep 2026 08:54:37 +0200
-Subject: [PATCH RFC v3 09/12] arm64: dts: s32g: Add SCMI reset controller
+Date: Sat, 19 Sep 2026 08:54:38 +0200
+Subject: [PATCH RFC v3 10/12] arm64: dts: s32g: Add SerDes controller nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-s32g_serdes-v3-9-9d68868c1e89@oss.nxp.com>
+Message-Id: <20260919-s32g_serdes-v3-10-9d68868c1e89@oss.nxp.com>
 References: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 In-Reply-To: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 To: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>, 
@@ -44,63 +44,115 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  Vincent Guittot <vincent.guittot@linaro.org>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=1526;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=3680;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=s7buOZdDvodKw7Hq43O6GmpzZ0pqHm5HLVNx4kLjU1Q=;
- b=UKoL7keU5f8uRgheEtd9Ox/5Gs7CzetGT2D3vJQ2AR2FYlGInxWjJh0Y/JoIJzY2VmneeHylO
- /4trx+wVwMoCfCuRY6oJj2e7JzCffJCDPKfpcMr1ohHIKB8IHg8Xg4u
+ bh=+XdDZhOByuFg4ugqbcosSUu/1UqTDyBj7h2t2yZcItw=;
+ b=kZUh437M7THMDFoZdyk69tr7g1HHaMmr1ZlQyhm0sBeIJNMStvThEvrBZyUPuUKNJgHwFCwqz
+ YeZiqpPQy75C/lroDEnwnQIfWWGthgowbolg75PLA4GriZYTmxmDaPO
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SCMI reset domain protocol (protocol@16) node under the SCMI
-firmware node for both S32G2 and S32G3, so that on-SoC controllers can
-request resets through the SCMI reset controller.
-
-The node is labelled scmi_reset rather than reset: a label that
-generic in a SoC .dtsi invites collisions and reads poorly at the use
-sites, and the sibling clock protocol node already uses the shortened
-clks form.
+Add the SerDes/PCIe combo-PHY controller nodes for S32G2 and S32G3 in
+the disabled state. Each SoC integrates two SerDes instances (SerDes_0
+and SerDes_1) with identical register layout; every instance exposes
+the PCIe PHY and the two XPCS instances used for SGMII. Board device
+trees enable the required instance and add the lane PHY child nodes
+matching the wanted SerDes subsystem mode.
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- arch/arm64/boot/dts/freescale/s32g2.dtsi | 5 +++++
- arch/arm64/boot/dts/freescale/s32g3.dtsi | 5 +++++
- 2 files changed, 10 insertions(+)
+ arch/arm64/boot/dts/freescale/s32g2.dtsi | 32 ++++++++++++++++++++++++++++++++
+ arch/arm64/boot/dts/freescale/s32g3.dtsi | 32 ++++++++++++++++++++++++++++++++
+ 2 files changed, 64 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-index 996494e34593..6a2774d53747 100644
+index 6a2774d53747..404913b208fb 100644
 --- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
 +++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-@@ -100,6 +100,11 @@ clks: protocol@14 {
- 				reg = <0x14>;
- 				#clock-cells = <1>;
+@@ -877,6 +877,38 @@ gmac0mdio: mdio {
  			};
-+
-+			scmi_reset: protocol@16 {
-+				reg = <0x16>;
-+				#reset-cells = <1>;
-+			};
  		};
  
- 		psci {
++		serdes0: serdes@40480000 {
++			compatible = "nxp,s32g2-serdes0", "nxp,s32g2-serdes";
++			reg = <0x40480000 0x108>,
++			      <0x40483008 0x10>,
++			      <0x40482000 0x800>,
++			      <0x40482800 0x800>;
++			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
++			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
++			clock-names = "axi", "aux", "apb", "ref";
++			resets = <&scmi_reset 9>, <&scmi_reset 8>;
++			reset-names = "serdes", "pcie";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++		};
++
++		serdes1: serdes@44180000 {
++			compatible = "nxp,s32g2-serdes1", "nxp,s32g2-serdes";
++			reg = <0x44180000 0x108>,
++			      <0x44183008 0x10>,
++			      <0x44182000 0x800>,
++			      <0x44182800 0x800>;
++			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
++			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
++			clock-names = "axi", "aux", "apb", "ref";
++			resets = <&scmi_reset 11>, <&scmi_reset 10>;
++			reset-names = "serdes", "pcie";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++		};
++
+ 		gic: interrupt-controller@50800000 {
+ 			compatible = "arm,gic-v3";
+ 			reg = <0x50800000 0x10000>,
 diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-index 31f7aad00b76..da3915b7e915 100644
+index da3915b7e915..0d001b2895c6 100644
 --- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
 +++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-@@ -139,6 +139,11 @@ clks: protocol@14 {
- 				reg = <0x14>;
- 				#clock-cells = <1>;
+@@ -956,6 +956,38 @@ gmac0mdio: mdio {
  			};
-+
-+			scmi_reset: protocol@16 {
-+				reg = <0x16>;
-+				#reset-cells = <1>;
-+			};
  		};
  
- 		psci: psci {
++		serdes0: serdes@40480000 {
++			compatible = "nxp,s32g3-serdes0", "nxp,s32g3-serdes";
++			reg = <0x40480000 0x108>,
++			      <0x40483008 0x10>,
++			      <0x40482000 0x800>,
++			      <0x40482800 0x800>;
++			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
++			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
++			clock-names = "axi", "aux", "apb", "ref";
++			resets = <&scmi_reset 9>, <&scmi_reset 8>;
++			reset-names = "serdes", "pcie";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++		};
++
++		serdes1: serdes@44180000 {
++			compatible = "nxp,s32g3-serdes1", "nxp,s32g3-serdes";
++			reg = <0x44180000 0x108>,
++			      <0x44183008 0x10>,
++			      <0x44182000 0x800>,
++			      <0x44182800 0x800>;
++			reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
++			clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
++			clock-names = "axi", "aux", "apb", "ref";
++			resets = <&scmi_reset 11>, <&scmi_reset 10>;
++			reset-names = "serdes", "pcie";
++			#address-cells = <1>;
++			#size-cells = <0>;
++			status = "disabled";
++		};
++
+ 		swt8: watchdog@40500000 {
+ 			compatible = "nxp,s32g3-swt", "nxp,s32g2-swt";
+ 			reg = <0x40500000 0x1000>;
 
 -- 
 2.55.0
