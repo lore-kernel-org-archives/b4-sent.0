@@ -1,13 +1,13 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Subject: [PATCH RFC v3 00/12] Add support for the NXP S32G SerDes subsystem
-Date: Sat, 19 Sep 2026 08:54:28 +0200
-Message-Id: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
+Date: Sat, 19 Sep 2026 08:54:29 +0200
+Subject: [PATCH RFC v3 01/12] dt-bindings: phy: Add NXP S32G SerDes
+ subsystem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKQxrmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHUUlJIzE
- vPSU3UzU4B8JSMDIzMDS0ML3WJjo/R4oKaU1GJdcwsDcyBMSQXSSkAdBUWpaZkVYNOilYLcnJV
- ia2sBuam+6GIAAAA=
+Message-Id: <20260919-s32g_serdes-v3-1-9d68868c1e89@oss.nxp.com>
+References: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
+In-Reply-To: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 To: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>, 
  NXP S32 Linux Team <s32@nxp.com>, Vinod Koul <vkoul@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -43,138 +43,315 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  imx@lists.linux.dev, linux-pci@vger.kernel.org, 
  linux-stm32@st-md-mailman.stormreply.com, 
  Vincent Guittot <vincent.guittot@linaro.org>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
- Alexandru-Catalin Ionita <alexandru-catalin.ionita@nxp.com>, 
- Ionut Vicovan <Ionut.Vicovan@nxp.com>, 
- Bogdan Roman <bogdan-gabriel.roman@nxp.com>
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=6250;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=10647;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=B0bGHXVmsabhCJwTaoYe1xZvYfRlznf5vkJN3+gI+kI=;
- b=1yvMr9hjZ/knlaYPjq/Du80xtRHyTiYfNcQvgHSiDW0xchVS+JYmlGZx3hOKvZleunJQVmoZu
- Zj9MGuRWAYsCYyMJUnOdjhiwwp4WjxVMRAWsS+eW3V1rfYL7P9+lbC1
+ bh=jWc5rUFrCSvy3cyhVKnTv3ExtsHxUm+n1VLVLDsYybw=;
+ b=SFCifXNfc9pfu2YbrTq99I+sUT4yNBnNVyHoAKO09bNUJ4rFkMCxzQHi9bBblxFHSHAP37/im
+ cGtZaRxeknpCKYT82Hdr/dHf1X+m+HHxfY+uaTyfEfD9HF+U0vH3RtH
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series continues the S32G SerDes/XPCS upstreaming started by Vincent
-Guittot. The effort has moved in-house at NXP and I am carrying it
-forward from his v2 [v2] below, rather than restarting from scratch.
-Authorship of the patches originating from his series is preserved
-through Co-developed-by and his Signed-off-by; the rest builds on top.
-Thanks to Vincent for the v1 -> v2 groundwork.
+The S32G SerDes subsystem multiplexes two lanes between a PCIe PHY and
+two DesignWare XPCS instances. Describe it with one node per SerDes and
+one child node per lane.
 
-The S32G SoC family integrates two SerDes subsystems. Each one is built
-from a DesignWare PCIe controller, two DesignWare Ethernet XPCS
-instances and a shared two-lane combo PHY (PMA). The two lanes are
-multiplexed between the PCIe controller and the XPCS instances, so a
-given SerDes instance can run PCIe only, SGMII only, or a combination of
-both, depending on the selected subsystem working mode.
+Compared to the previous revision, the vendor nxp,sys-mode property is
+removed: the SS_RW_REG_0[SUBSYS_MODE] value is fully derivable from the
+child-node lane mux and the XPCS instance routing (nxp,xpcs-instance).
+Each working mode described here has a unique lane mux, so the mode is
+a pure function of the child nodes. The reference-clock rate is
+validated against the derived mode; it is not used to select it.
 
-This series adds the device tree bindings, the SerDes subsystem PHY
-driver that owns the shared PMA and sequences the bring-up, a
-transport-agnostic XPCS PCS core shared with i.MX, the S32G XPCS glue,
-the SGMII support in the dwmac-s32 MAC glue, and the device tree nodes
-for S32G2 and S32G3 including two routing variants for the
-S32G3-VNP-RDB3 board.
+The 3.125 Gbit/s working modes are deliberately not described yet.
+Distinguishing them from the 1.25 Gbit/s dual-XPCS mode requires a
+per-lane 2500BASE-X capability that this binding does not express, and
+the reference clock does not distinguish them either - both accept 100
+or 125 MHz. They are added by the 2500BASE-X follow-up.
 
-The lane multiplexing is the reason the XPCS is not a self-contained PCS
-platform device: in the mixed PCIe+SGMII modes both XPCS instances share
-the PMA with the PCIe lane, so the reset and bring-up ordering has to be
-driven by the SerDes PHY driver, which owns the shared resources. The
-MAC obtains its phylink PCS from the SerDes subsystem through the
-standard pcs-handle property.
+Only the PCIe lane child gets '#phy-cells'. An XPCS lane is not a
+generic PHY provider; the Ethernet controller references it through the
+standard pcs-handle property instead.
 
-Only the 1.25 Gbit/s (1000BASE-X / SGMII) working modes are wired up
-here. The 2500BASE-X register paths are present in the PCS but are not
-enabled, as there is no in-tree consumer yet; they are added by a
-follow-up series together with the per-lane capability the binding would
-need to describe them.
+S32G2 and S32G3 use distinct compatibles without fallback because the
+full reference-manual mode tables differ per SoC and per SerDes
+instance.
 
-Tested on an S32G3-VNP-RDB3 board, in SerDes mode 1 (SGMII alongside two
-active PCIe root complexes) and in SerDes mode 3.
-
-Compared to v2 this series is rebased onto current mainline master
-(see base-commit at the end of this cover letter) instead of the tree
-the previous revision was generated against.
-
-Changes since v2:
-- Restructured the series: the single "serdes subsystem" driver has been
-  split into the SerDes PHY driver (drivers/phy/freescale) and the PCS
-  side (drivers/net/pcs), and the PCS side is further split into a
-  transport-agnostic XPCS core shared with i.MX plus the S32G-specific
-  glue. The core operates on regmaps supplied by the platform glue, so
-  the S32G indirect memory-mapped transport and the i.MX Clause 45 MDIO
-  transport can share it.
-- Binding: dropped the vendor nxp,sys-mode property. The
-  SS_RW_REG_0[SUBSYS_MODE] value is now derived from the lane child
-  nodes and the nxp,xpcs-instance routing, since each described working
-  mode has a unique lane mux. The reference-clock rate is validated
-  against the derived mode instead of selecting it.
-- Binding: S32G2 and S32G3 now use distinct compatibles without
-  fallback, because the reference-manual mode tables differ per SoC and
-  per SerDes instance.
-- Binding: only the PCIe lane child carries '#phy-cells'; an XPCS lane
-  is referenced by the MAC through pcs-handle rather than as a generic
-  PHY provider.
-- Documented pcs-handle for nxp,s32-dwmac and fixed the SerDes PHY
-  phandle in the nxp,s32g-pcie example.
-- Added SGMII support to the dwmac-s32 glue (pcs_init / select_pcs) and
-  fixed the PHY interface selector to handle SGMII, RGMII, RMII and MII.
-- Converted the vendor driver busy-waits to read_poll_timeout().
-- Added the S32G2/S32G3 SerDes, PCIe and SCMI reset controller DT nodes
-  and the S32G3-RDB3 SerDes routing overlays.
-
-Link: https://lore.kernel.org/all/20260203161917.1666696-1-vincent.guittot@linaro.org/ [v2]
-
+Co-developed-by: Vincent Guittot <vincent.guittot@linaro.org>
+Signed-off-by: Vincent Guittot <vincent.guittot@linaro.org>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
-Clark Wang (1):
-      net: pcs: add NXP SerDes XPCS shared core
+ .../devicetree/bindings/phy/nxp,s32g-serdes.yaml   | 258 +++++++++++++++++++++
+ 1 file changed, 258 insertions(+)
 
-Jan Petrous (OSS) (8):
-      dt-bindings: phy: Add NXP S32G SerDes subsystem
-      dt-bindings: net: nxp,s32-dwmac: Document pcs-handle
-      dt-bindings: PCI: nxp,s32g-pcie: Fix SerDes PHY phandle in example
-      net: stmmac: dwmac-s32: Add SGMII support
-      arm64: dts: s32g: Add SCMI reset controller
-      arm64: dts: s32g: Add SerDes controller nodes
-      arm64: dts: s32g: Add PCIe controller nodes
-      arm64: dts: s32g: Add S32G3-RDB3 SerDes routing variants
+diff --git a/Documentation/devicetree/bindings/phy/nxp,s32g-serdes.yaml b/Documentation/devicetree/bindings/phy/nxp,s32g-serdes.yaml
+new file mode 100644
+index 000000000000..6343d01bfde4
+--- /dev/null
++++ b/Documentation/devicetree/bindings/phy/nxp,s32g-serdes.yaml
+@@ -0,0 +1,258 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/phy/nxp,s32g-serdes.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: NXP S32G2xxx/S32G3xxx SerDes PHY subsystem
++
++maintainers:
++  - Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
++  - Jan Petrous <jan.petrous@oss.nxp.com>
++
++description: |
++  The SerDes subsystem multiplexes two SerDes lanes between one PCIe
++  controller PHY and two Synopsys DesignWare XPCS (Ethernet PCS) instances,
++  behind a shared 2-lane combo PHY. The active routing is selected by the
++  SS_RW_REG_0[SUBSYS_MODE] field.
++
++  Reference-manual working modes described by this binding:
++
++  Mode  Lane0   Lane1   PHY refclk (MHz)  Description
++  ------------------------------------------------------------
++  0     PCIe    PCIe    100               PCIe x2
++  1     PCIe    XPCS0   100               PCIe x1 + SGMII
++  2     PCIe    XPCS1   100               PCIe x1 + SGMII
++  3     XPCS0   XPCS1   100 or 125        dual SGMII, 1.25 Gbit/s
++
++  Which Ethernet MAC an XPCS instance feeds is fixed by the SoC integration
++  and differs per SoC and per SerDes instance - on S32G3 SerDes_0, XPCS0
++  feeds GMAC0 and XPCS1 feeds PFE_MAC2, while on SerDes_1 the same two
++  instances feed PFE_MAC0 and PFE_MAC1. That mapping is a property of the
++  SoC, not of this binding, and is resolved by the driver.
++
++  The 3.125 Gbit/s working modes are not described here yet. Distinguishing
++  them from mode 3 requires a per-lane 2500BASE-X capability, which this
++  binding does not express; the reference clock does not distinguish them
++  either, as both accept 100 or 125 MHz. They are added by a follow-up.
++
++  SUBSYS_MODE is not encoded in the devicetree. It is derived at probe from
++  information already present in standard form:
++    - the lane mux, from the per-lane child nodes below;
++    - the XPCS instance a lane feeds, from nxp,xpcs-instance (this is what
++      distinguishes modes 1 and 2).
++  Each mode above has a unique lane mux, so the mode is a pure function of
++  the child nodes. The reference-clock rate is validated against the
++  derived mode; it is never used to select it.
++
++  Both lanes must always be described, even a lane the board does not wire
++  out to a connector. The lane mux is a property of the hardware
++  SUBSYS_MODE, not of the board routing: in mode 1, for example, the
++  subsystem internally routes lane 1 to XPCS0 whether or not the board
++  connects that lane to anything. The child nodes describe that fixed
++  hardware mux, so both must be present; omitting a lane leaves the mode
++  underivable and the probe fails with -EINVAL. Which of those lanes is
++  actually used by a given board is expressed elsewhere (the consumer's
++  phys / pcs-handle reference), not by leaving the lane out here.
++
++  The full reference-manual mode tables differ per SoC, which is why S32G2
++  and S32G3 use distinct compatibles without a fallback between them.
++
++  They also differ between the two SerDes instances of one SoC, so each
++  instance additionally carries a compatible naming it, with the per-SoC
++  string as fallback:
++
++    serdes0: compatible = "nxp,s32g3-serdes0", "nxp,s32g3-serdes";
++    serdes1: compatible = "nxp,s32g3-serdes1", "nxp,s32g3-serdes";
++
++  For the modes described here the two instances behave identically and a
++  driver need only match the fallback. They diverge outside this scope:
++  on S32G3 the 3.125 Gbit/s dual-XPCS mode 4 exists on SerDes_1 only, and
++  on S32G2 only SerDes_1 reaches 3.125 Gbit/s at all. Recording the
++  instance now means the follow-up that adds those modes is purely
++  additive - it matches the specific strings and needs no devicetree
++  change.
++
++  The same mechanism covers SoCs whose instances differ in kind rather
++  than in degree: on S32R47 one SerDes has no PCIe controller at all, so
++  its compatible must be distinguishable in order to reject a PCIe lane
++  child in schema rather than at probe time.
++
++properties:
++  compatible:
++    oneOf:
++      - items:
++          - enum:
++              - nxp,s32g2-serdes0
++              - nxp,s32g2-serdes1
++          - const: nxp,s32g2-serdes
++      - items:
++          - enum:
++              - nxp,s32g3-serdes0
++              - nxp,s32g3-serdes1
++          - const: nxp,s32g3-serdes
++
++  reg:
++    maxItems: 4
++
++  reg-names:
++    items:
++      - const: ss-pcie
++      - const: pcie-phy
++      - const: xpcs0
++      - const: xpcs1
++
++  clocks:
++    minItems: 4
++    maxItems: 5
++
++  clock-names:
++    minItems: 4
++    items:
++      - const: axi
++      - const: aux
++      - const: apb
++      - const: ref
++      - const: ext
++    description:
++      The combo PHY reference can be taken from the internal reference
++      clock ("ref") or from the external reference pad ("ext"). A board
++      that routes the external pad lists both; the external reference is
++      then the one used.
++
++  resets:
++    maxItems: 2
++
++  reset-names:
++    items:
++      - const: serdes
++      - const: pcie
++
++  '#address-cells':
++    const: 1
++
++  '#size-cells':
++    const: 0
++
++patternProperties:
++  '^phy@[01]$':
++    description: One SerDes lane. The unit address is the physical lane index.
++    type: object
++    additionalProperties: false
++
++    properties:
++      reg:
++        description: Physical lane index.
++        maximum: 1
++
++      compatible:
++        enum:
++          - nxp,s32g-serdes-pcie-phy
++          - nxp,s32g-serdes-xpcs
++
++      '#phy-cells':
++        const: 0
++
++      nxp,xpcs-instance:
++        $ref: /schemas/types.yaml#/definitions/uint32
++        enum: [0, 1]
++        description:
++          DesignWare XPCS instance this lane is routed to. Required for, and
++          only valid on, XPCS lanes. Distinguishes modes 1 and 2; for the
++          dual-XPCS mode the instance equals the lane index.
++
++    required:
++      - reg
++      - compatible
++
++    allOf:
++      - if:
++          properties:
++            compatible:
++              const: nxp,s32g-serdes-xpcs
++          required:
++            - compatible
++        then:
++          # An XPCS lane is not a generic PHY provider. It is referenced by
++          # the Ethernet controller through pcs-handle, not through phys.
++          required:
++            - nxp,xpcs-instance
++          properties:
++            '#phy-cells': false
++        else:
++          required:
++            - '#phy-cells'
++          properties:
++            nxp,xpcs-instance: false
++
++required:
++  - compatible
++  - reg
++  - reg-names
++  - clocks
++  - clock-names
++  - resets
++  - reset-names
++  - '#address-cells'
++  - '#size-cells'
++
++additionalProperties: false
++
++examples:
++  # PCIe x1 on lane 0 + 1G SGMII on lane 1 via XPCS0 (derived mode 1).
++  - |
++    serdes@40480000 {
++        compatible = "nxp,s32g3-serdes0", "nxp,s32g3-serdes";
++        reg = <0x40480000 0x108>,
++              <0x40483008 0x10>,
++              <0x40482000 0x800>,
++              <0x40482800 0x800>;
++        reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
++        clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
++        clock-names = "axi", "aux", "apb", "ref";
++        resets = <&scmi_reset 1>, <&scmi_reset 0>;
++        reset-names = "serdes", "pcie";
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        phy@0 {
++            reg = <0>;
++            compatible = "nxp,s32g-serdes-pcie-phy";
++            #phy-cells = <0>;
++        };
++
++        phy@1 {
++            reg = <1>;
++            compatible = "nxp,s32g-serdes-xpcs";
++            nxp,xpcs-instance = <0>;
++        };
++    };
++
++  # Dual 1G SGMII (derived mode 3).
++  - |
++    serdes@44180000 {
++        compatible = "nxp,s32g3-serdes1", "nxp,s32g3-serdes";
++        reg = <0x44180000 0x108>,
++              <0x44183008 0x10>,
++              <0x44182000 0x800>,
++              <0x44182800 0x800>;
++        reg-names = "ss-pcie", "pcie-phy", "xpcs0", "xpcs1";
++        clocks = <&clks 1>, <&clks 2>, <&clks 3>, <&clks 4>;
++        clock-names = "axi", "aux", "apb", "ref";
++        resets = <&scmi_reset 11>, <&scmi_reset 10>;
++        reset-names = "serdes", "pcie";
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        phy@0 {
++            reg = <0>;
++            compatible = "nxp,s32g-serdes-xpcs";
++            nxp,xpcs-instance = <0>;
++        };
++
++        phy@1 {
++            reg = <1>;
++            compatible = "nxp,s32g-serdes-xpcs";
++            nxp,xpcs-instance = <1>;
++        };
++    };
 
-Vincent Guittot (3):
-      net: pcs: Add NXP S32G XPCS driver
-      phy: freescale: s32g: Add SerDes subsystem PHY
-      MAINTAINERS: Add NXP S32G SerDes and SerDes xPCS core entries
-
- .../devicetree/bindings/net/nxp,s32-dwmac.yaml     |   11 +-
- .../devicetree/bindings/pci/nxp,s32g-pcie.yaml     |    3 +-
- .../devicetree/bindings/phy/nxp,s32g-serdes.yaml   |  258 +++++
- MAINTAINERS                                        |   23 +
- arch/arm64/boot/dts/freescale/Makefile             |    6 +
- arch/arm64/boot/dts/freescale/s32g2.dtsi           |  118 +++
- arch/arm64/boot/dts/freescale/s32g3.dtsi           |  118 +++
- .../dts/freescale/s32g399a-rdb3-serdes-mode1.dtso  |  111 ++
- .../dts/freescale/s32g399a-rdb3-serdes-mode3.dtso  |   60 ++
- drivers/net/ethernet/stmicro/stmmac/Kconfig        |    6 +
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c    |   74 +-
- drivers/net/pcs/Kconfig                            |   25 +
- drivers/net/pcs/Makefile                           |    2 +
- drivers/net/pcs/pcs-nxp-s32g-xpcs.c                |  947 ++++++++++++++++++
- drivers/net/pcs/pcs-nxp-serdes-xpcs.c              |  853 ++++++++++++++++
- drivers/phy/freescale/Kconfig                      |    9 +
- drivers/phy/freescale/Makefile                     |    1 +
- drivers/phy/freescale/phy-nxp-s32g-serdes.c        | 1057 ++++++++++++++++++++
- include/linux/pcs/pcs-nxp-s32g-xpcs.h              |   48 +
- include/linux/pcs/pcs-nxp-serdes-xpcs.h            |  100 ++
- include/linux/phy/nxp-s32g-serdes.h                |   25 +
- 21 files changed, 3850 insertions(+), 5 deletions(-)
----
-base-commit: 5dd1818b15d98d4a20806cd00b1b40320b06004f
-change-id: 20260918-s32g_serdes-7807070de807
-
-Best regards,
 -- 
-Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+2.55.0
 
