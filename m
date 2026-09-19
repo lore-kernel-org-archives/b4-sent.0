@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sat, 19 Sep 2026 08:54:32 +0200
-Subject: [PATCH RFC v3 04/12] net: pcs: add NXP SerDes XPCS shared core
+Date: Sat, 19 Sep 2026 08:54:33 +0200
+Subject: [PATCH RFC v3 05/12] net: pcs: Add NXP S32G XPCS driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-s32g_serdes-v3-4-9d68868c1e89@oss.nxp.com>
+Message-Id: <20260919-s32g_serdes-v3-5-9d68868c1e89@oss.nxp.com>
 References: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 In-Reply-To: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 To: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>, 
@@ -42,1055 +42,1110 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  imx@lists.linux.dev, linux-pci@vger.kernel.org, 
  linux-stm32@st-md-mailman.stormreply.com, 
  Vincent Guittot <vincent.guittot@linaro.org>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>, 
+ Alexandru-Catalin Ionita <alexandru-catalin.ionita@nxp.com>, 
+ Ionut Vicovan <Ionut.Vicovan@nxp.com>, 
+ Bogdan Roman <bogdan-gabriel.roman@nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=32040;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=36151;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=/tGWAZYs+yVQKlNG/JCHWlZQHasfBUZSHRqwcQVhlvs=;
- b=FjC08RMtHpHArGzgP+1CKCxuOTAyhHkPhpSLlK28fXSnCRRPItDjXrqhrhqtHaVlJE7p2NlEF
- Oi2c9f0ZEoGCCCH+/FAEw8BbsZ+WnywR/bUdG1l4htUU5bPBgbZHTGJ
+ bh=FuZPc7FJF/cHyE1LhW4YAcwQylCGFM0v+ZpuNmY5EdQ=;
+ b=X8vaSniPSq5sH2yPF2K1IutlKRsp/u+xvGXoTzD9fcQ1lXIdAQyXeRW4bXalwatOhRudYLV5H
+ eQ+ln/0coSJCTQJO61K8FVaSubbPuxk/rEsUb1oYYGcIcxxEAmcp8lP
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Clark Wang <xiaoning.wang@nxp.com>
+From: Vincent Guittot <vincent.guittot@linaro.org>
 
-The SerDes subsystems found on NXP S32G and i.MX SoCs integrate a
-Synopsys DesignWare Ethernet XPCS and an Ethernet PHY (PMA) with an
-identical register layout. Only the register transport differs: indirect
-memory mapped access on S32G, Clause 45 MDIO on i.MX.
+The S32G SoC family includes two SerDes subsystems, each made of one
+PCIe controller, two DesignWare XPCS instances and a shared 2-lane
+combo PHY. Add the phylink PCS driver for the XPCS instances, with 1G
+SGMII support.
 
-Add a transport agnostic phylink PCS core which operates on regmaps
-provided by the platform glue. It implements the phylink PCS operations,
-the Clause 37 SGMII / 2500BASE-X / USXGMII / 10GBASE-R configuration and
-link state handling, soft reset and polling helpers, and the common
-feature sets. The platform specific register sequences, compatibility
-tables and quirks are supplied through a per revision descriptor by the
-platform drivers selecting this core.
+The XPCS PMA/PLL bring-up is a property of the shared combo PHY: in the
+PCIe+SGMII modes the two XPCS instances share the PHY with the PCIe
+lane, so the XPCS cannot be a self-contained PCS platform device that
+owns its own reset/bring-up sequence. This driver therefore exposes a
+small init/bring-up API which the SerDes PHY driver sequences (it owns
+the shared PMA and enforces the required ordering, e.g. XPCS1 before
+XPCS0 in the dual-SGMII mode), while the phylink_pcs ops consumed by the
+MAC live here in the PCS driver. The MAC obtains its phylink PCS via
+s32g_serdes_pcs_create().
 
-The register sequences and the feature lists are derived from the
-Synopsys pcs-xpcs driver, so its copyright is retained. A separate driver
-is needed because struct dw_xpcs is built around an mdio_device and owns
-the transport, the reset and the identification of a standalone PCS,
-while here the PMA can be shared with a PCIe controller, the bring-up is
-sequenced across both XPCS instances by the SerDes PHY driver, and the
-transport is not always MDIO.
+The busy-waits of the vendor driver are converted to
+read_poll_timeout(); the PMA is only touched after the SerDes PHY
+reports operational (MPLL_STATE), which the SerDes driver guarantees.
 
-Tested on an S32G3-VNP-RDB3 board through the S32G platform glue added
-by the next patch, in both SerDes working modes this series describes:
-mode 1 (PCIe x1 + 1G SGMII) and mode 3 (dual SGMII). GMAC0 links at 1G
-over XPCS0 and passes traffic in both.
+2.5G (2500BASE-X) register paths are retained but not wired up; they
+are enabled by a follow-up series, as there is currently no in-tree
+consumer of the 2.5G links.
 
-Signed-off-by: Clark Wang <xiaoning.wang@nxp.com>
-[jan.petrous: report in-band SGMII link down until BMSR_ANEGCOMPLETE]
+Tested on an S32G3-VNP-RDB3 board in both SerDes working modes this
+series describes: mode 1 (PCIe x1 on lane 0 + 1G SGMII via XPCS0 on
+lane 1) and mode 3 (dual SGMII, XPCS0 on lane 0 and XPCS1 on lane 1).
+GMAC0 links at 1G over XPCS0 and passes traffic in both.
+
+Signed-off-by: Vincent Guittot <vincent.guittot@linaro.org>
+Co-developed-by: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>
+Signed-off-by: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>
+Co-developed-by: Alexandru-Catalin Ionita <alexandru-catalin.ionita@nxp.com>
+Signed-off-by: Alexandru-Catalin Ionita <alexandru-catalin.ionita@nxp.com>
+Co-developed-by: Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
+Signed-off-by: Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
+Co-developed-by: Ionut Vicovan <Ionut.Vicovan@nxp.com>
+Signed-off-by: Ionut Vicovan <Ionut.Vicovan@nxp.com>
+Co-developed-by: Bogdan Roman <bogdan-gabriel.roman@nxp.com>
+Signed-off-by: Bogdan Roman <bogdan-gabriel.roman@nxp.com>
+Co-developed-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/pcs/Kconfig                 |  11 +
- drivers/net/pcs/Makefile                |   1 +
- drivers/net/pcs/pcs-nxp-serdes-xpcs.c   | 853 ++++++++++++++++++++++++++++++++
- include/linux/pcs/pcs-nxp-serdes-xpcs.h | 100 ++++
- 4 files changed, 965 insertions(+)
+ drivers/net/pcs/Kconfig               |  14 +
+ drivers/net/pcs/Makefile              |   1 +
+ drivers/net/pcs/pcs-nxp-s32g-xpcs.c   | 947 ++++++++++++++++++++++++++++++++++
+ include/linux/pcs/pcs-nxp-s32g-xpcs.h |  48 ++
+ 4 files changed, 1010 insertions(+)
 
 diff --git a/drivers/net/pcs/Kconfig b/drivers/net/pcs/Kconfig
-index e417fd66f660..ec4af294003f 100644
+index ec4af294003f..7a4c0da406c9 100644
 --- a/drivers/net/pcs/Kconfig
 +++ b/drivers/net/pcs/Kconfig
-@@ -12,6 +12,17 @@ config PCS_XPCS
- 	  This module provides a driver and helper functions for Synopsys
- 	  DesignWare XPCS controllers.
+@@ -46,4 +46,18 @@ config PCS_RZN1_MIIC
+ 	  Renesas RZ/N1, RZ/N2H, and RZ/T2H SoCs. This PCS converts MII to
+ 	  RMII/RGMII, or can be set in pass-through mode for MII.
  
-+config PCS_NXP_SERDES_XPCS
-+	tristate "NXP SerDes XPCS shared core"
++config PCS_NXP_S32G_XPCS
++	tristate "NXP S32G XPCS support"
 +	select PHYLINK
 +	select REGMAP
++	select PCS_NXP_SERDES_XPCS
 +	help
-+	  Transport agnostic phylink PCS core for the Synopsys DesignWare
-+	  Ethernet XPCS and Ethernet PHY of the SerDes subsystems found on
-+	  NXP S32G and i.MX SoCs. The platform specific register transport
-+	  (indirect MMIO on S32G, Clause 45 MDIO on i.MX) is implemented as
-+	  regmap callbacks by the platform drivers selecting this core.
++	  This option enables the NXP S32G SerDes XPCS platform glue. It
++	  provides the indirect-MMIO register transport and the S32G PMA/PLL
++	  bring-up sequences on top of the shared NXP SerDes xPCS core
++	  (PCS_NXP_SERDES_XPCS), which supplies the phylink PCS layer for the
++	  SGMII / 2500BASE-X lanes of the shared SerDes combo PHY. It is
++	  driven by the S32G SerDes PHY driver. Say Y or M here if you need
++	  SGMII Ethernet on an NXP S32G2 or S32G3 SoC.
 +
- config PCS_LYNX
- 	tristate
- 	help
+ endmenu
 diff --git a/drivers/net/pcs/Makefile b/drivers/net/pcs/Makefile
-index 4f7920618b90..bbf063b18f1f 100644
+index bbf063b18f1f..337e9b503553 100644
 --- a/drivers/net/pcs/Makefile
 +++ b/drivers/net/pcs/Makefile
-@@ -5,6 +5,7 @@ pcs_xpcs-$(CONFIG_PCS_XPCS)	:= pcs-xpcs.o pcs-xpcs-plat.o \
- 				   pcs-xpcs-nxp.o pcs-xpcs-wx.o
- 
- obj-$(CONFIG_PCS_XPCS)		+= pcs_xpcs.o
-+obj-$(CONFIG_PCS_NXP_SERDES_XPCS) += pcs-nxp-serdes-xpcs.o
+@@ -9,3 +9,4 @@ obj-$(CONFIG_PCS_NXP_SERDES_XPCS) += pcs-nxp-serdes-xpcs.o
  obj-$(CONFIG_PCS_LYNX)		+= pcs-lynx.o
  obj-$(CONFIG_PCS_MTK_LYNXI)	+= pcs-mtk-lynxi.o
  obj-$(CONFIG_PCS_RZN1_MIIC)	+= pcs-rzn1-miic.o
-diff --git a/drivers/net/pcs/pcs-nxp-serdes-xpcs.c b/drivers/net/pcs/pcs-nxp-serdes-xpcs.c
++obj-$(CONFIG_PCS_NXP_S32G_XPCS)	+= pcs-nxp-s32g-xpcs.o
+diff --git a/drivers/net/pcs/pcs-nxp-s32g-xpcs.c b/drivers/net/pcs/pcs-nxp-s32g-xpcs.c
 new file mode 100644
-index 000000000000..cc739914496e
+index 000000000000..a44f1da54429
 --- /dev/null
-+++ b/drivers/net/pcs/pcs-nxp-serdes-xpcs.c
-@@ -0,0 +1,853 @@
++++ b/drivers/net/pcs/pcs-nxp-s32g-xpcs.c
+@@ -0,0 +1,947 @@
 +// SPDX-License-Identifier: GPL-2.0
-+/* NXP SerDes XPCS / XPCS-PHY shared core
-+ *
-+ * Transport agnostic phylink PCS driver for the Ethernet XPCS and Ethernet
-+ * PHY (XPCS-PHY) of the SerDes subsystems found on NXP S32G and i.MX SoCs.
-+ * The platform glue provides the regmaps and a per revision descriptor
-+ * with the compatibility table, quirks and PMA programming sequences.
-+ *
-+ * The XPCS is a Synopsys DesignWare core, so the Clause 37 / 2500BASE-X /
-+ * USXGMII / 10GBASE-R register sequences below are shared with the Synopsys
-+ * pcs-xpcs driver and were derived from it. This is a separate driver rather
-+ * than an extension of pcs-xpcs because struct dw_xpcs is built around an
-+ * mdio_device: it owns the transport, the reset and the identification of a
-+ * standalone PCS. That model does not fit these SerDes subsystems, where the
-+ * PMA belongs to a combo PHY shared with a PCIe controller, the bring-up is
-+ * sequenced across both XPCS instances by the PHY driver, and the register
-+ * transport is either indirect MMIO or Clause 45 MDIO. What is left here is
-+ * the phylink PCS layer on top of a regmap.
-+ *
-+ * Keep the register sequences in sync with drivers/net/pcs/pcs-xpcs.c when
-+ * fixes apply to both.
-+ *
-+ * Copyright 2023-2026 NXP
-+ * Copyright (c) 2020 Synopsys, Inc. and/or its affiliates.
-+ */
-+
-+#include <linux/device.h>
-+#include <linux/ethtool.h>
-+#include <linux/iopoll.h>
-+#include <linux/mdio.h>
-+#include <linux/mii.h>
-+#include <linux/module.h>
-+#include <linux/pcs/pcs-nxp-serdes-xpcs.h>
-+#include <linux/phylink.h>
-+
-+/* SR_MII USXGMII speed selection */
-+#define DW_USXGMII_RST			BIT(10)
-+#define DW_USXGMII_EN			BIT(9)
-+#define DW_USXGMII_FULL			BIT(8)
-+#define DW_USXGMII_SS_MASK		(BIT(13) | BIT(6) | BIT(5))
-+#define DW_USXGMII_10000		(BIT(13) | BIT(6))
-+#define DW_USXGMII_5000			(BIT(13) | BIT(5))
-+#define DW_USXGMII_2500			(BIT(5))
-+#define DW_USXGMII_1000			(BIT(6))
-+#define DW_USXGMII_100			(BIT(13))
-+#define DW_USXGMII_10			(0)
-+
-+/* VR MII MMD registers offsets */
-+#define DW_VR_MII_DIG_CTRL1		0x8000
-+#define DW_VR_MII_DIG_CTRL1_MAC_AUTO_SW		BIT(9)
-+#define DW_VR_MII_DIG_CTRL1_2G5_EN		BIT(2)
-+
-+#define DW_VR_MII_AN_CTRL		0x8001
-+#define DW_VR_MII_TX_CONFIG_MASK		BIT(3)
-+#define DW_VR_MII_TX_CONFIG_MAC_SIDE_SGMII	0x0
-+#define DW_VR_MII_PCS_MODE_MASK			GENMASK(2, 1)
-+#define DW_VR_MII_PCS_MODE_C37_SGMII		0x2
-+#define DW_VR_MII_AN_INTR_EN			BIT(0)
-+
-+#define DW_VR_MII_AN_INTR_STS		0x8002
-+#define DW_VR_MII_AN_STS_C37_ANCMPLT_INTR	BIT(0)
-+#define DW_VR_MII_AN_STS_C37_ANSGM_FD		BIT(1)
-+#define DW_VR_MII_AN_STS_C37_ANSGM_SP		GENMASK(3, 2)
-+#define DW_VR_MII_C37_ANSGM_SP_10		0x0
-+#define DW_VR_MII_C37_ANSGM_SP_100		0x1
-+#define DW_VR_MII_C37_ANSGM_SP_1000		0x2
-+#define DW_VR_MII_C37_ANSGM_SP_LNKSTS		BIT(4)
-+#define DW_VR_MII_USX_AN_STS_MASK		GENMASK(14, 8)
-+
-+#define DW_VR_MII_EEE_MCTRL0		0x8006
-+#define DW_VR_MII_EEE_LTX_EN			BIT(0)  /* LPI Tx Enable */
-+#define DW_VR_MII_EEE_LRX_EN			BIT(1)  /* LPI Rx Enable */
-+#define DW_VR_MII_EEE_TX_QUIET_EN		BIT(2)  /* Tx Quiet Enable */
-+#define DW_VR_MII_EEE_RX_QUIET_EN		BIT(3)  /* Rx Quiet Enable */
-+#define DW_VR_MII_EEE_TX_EN_CTRL		BIT(4)  /* Tx Control Enable */
-+#define DW_VR_MII_EEE_RX_EN_CTRL		BIT(7)  /* Rx Control Enable */
-+#define DW_VR_MII_EEE_MULT_FACT_100NS		GENMASK(11, 8)
-+
-+#define DW_VR_MII_EEE_MCTRL1		0x800b
-+#define DW_VR_MII_EEE_TRN_LPI		BIT(0)	/* Transparent Mode Enable */
-+
-+const int nxp_serdes_xpcs_usxgmii_features[] = {
-+	ETHTOOL_LINK_MODE_Pause_BIT,
-+	ETHTOOL_LINK_MODE_Asym_Pause_BIT,
-+	ETHTOOL_LINK_MODE_Autoneg_BIT,
-+	ETHTOOL_LINK_MODE_1000baseKX_Full_BIT,
-+	ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT,
-+	ETHTOOL_LINK_MODE_10000baseKR_Full_BIT,
-+	ETHTOOL_LINK_MODE_2500baseX_Full_BIT,
-+	__ETHTOOL_LINK_MODE_MASK_NBITS,
-+};
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_usxgmii_features);
-+
-+const int nxp_serdes_xpcs_2500basex_features[] = {
-+	ETHTOOL_LINK_MODE_Pause_BIT,
-+	ETHTOOL_LINK_MODE_Asym_Pause_BIT,
-+	ETHTOOL_LINK_MODE_Autoneg_BIT,
-+	ETHTOOL_LINK_MODE_2500baseX_Full_BIT,
-+	ETHTOOL_LINK_MODE_2500baseT_Full_BIT,
-+	__ETHTOOL_LINK_MODE_MASK_NBITS,
-+};
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_2500basex_features);
-+
-+const int nxp_serdes_xpcs_sgmii_features[] = {
-+	ETHTOOL_LINK_MODE_Pause_BIT,
-+	ETHTOOL_LINK_MODE_Asym_Pause_BIT,
-+	ETHTOOL_LINK_MODE_Autoneg_BIT,
-+	ETHTOOL_LINK_MODE_10baseT_Half_BIT,
-+	ETHTOOL_LINK_MODE_10baseT_Full_BIT,
-+	ETHTOOL_LINK_MODE_100baseT_Half_BIT,
-+	ETHTOOL_LINK_MODE_100baseT_Full_BIT,
-+	ETHTOOL_LINK_MODE_1000baseT_Half_BIT,
-+	ETHTOOL_LINK_MODE_1000baseT_Full_BIT,
-+	__ETHTOOL_LINK_MODE_MASK_NBITS,
-+};
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_sgmii_features);
-+
-+static const struct nxp_serdes_xpcs_compat *
-+nxp_serdes_xpcs_find_compat(struct nxp_serdes_xpcs *xpcs,
-+			    phy_interface_t interface)
-+{
-+	const struct nxp_serdes_xpcs_compat *compat;
-+
-+	for (compat = xpcs->desc->compat; compat->supported; compat++)
-+		if (compat->interface == interface)
-+			return compat;
-+
-+	return NULL;
-+}
-+
-+static void nxp_serdes_xpcs_get_interfaces(struct nxp_serdes_xpcs *xpcs,
-+					   unsigned long *interfaces)
-+{
-+	const struct nxp_serdes_xpcs_compat *compat;
-+
-+	for (compat = xpcs->desc->compat; compat->supported; compat++)
-+		__set_bit(compat->interface, interfaces);
-+}
-+
-+int nxp_serdes_xpcs_read(struct nxp_serdes_xpcs *xpcs, u8 devad, u32 reg)
-+{
-+	unsigned int val;
-+	int ret;
-+
-+	ret = regmap_read(xpcs->xpcs_regmap, (devad << 16) | (reg & 0xffff),
-+			  &val);
-+	if (ret < 0)
-+		return ret;
-+
-+	return val;
-+}
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_read);
-+
-+int nxp_serdes_xpcs_write(struct nxp_serdes_xpcs *xpcs, u8 devad, u32 reg,
-+			  u16 val)
-+{
-+	return regmap_write(xpcs->xpcs_regmap, (devad << 16) | (reg & 0xffff),
-+			    val);
-+}
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_write);
-+
-+int nxp_serdes_xpcs_modify(struct nxp_serdes_xpcs *xpcs, u8 devad, u32 reg,
-+			   u16 mask, u16 set)
-+{
-+	return regmap_update_bits(xpcs->xpcs_regmap,
-+				  (devad << 16) | (reg & 0xffff), mask, set);
-+}
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_modify);
-+
-+static int nxp_serdes_xpcs_poll_reset(struct nxp_serdes_xpcs *xpcs, int dev)
-+{
-+	int ret, val;
-+
-+	ret = read_poll_timeout(nxp_serdes_xpcs_read, val,
-+				val < 0 || !(val & BMCR_RESET),
-+				50000, 600000, true, xpcs, dev, MII_BMCR);
-+	if (val < 0)
-+		ret = val;
-+
-+	return ret;
-+}
-+
-+static int nxp_serdes_xpcs_soft_reset(struct nxp_serdes_xpcs *xpcs,
-+				      const struct nxp_serdes_xpcs_compat *compat)
-+{
-+	int ret, dev;
-+
-+	switch (compat->an_mode) {
-+	case NXP_SERDES_10GBASER:
-+		dev = MDIO_MMD_PCS;
-+		break;
-+	case NXP_SERDES_AN_C37_SGMII:
-+	case NXP_SERDES_AN_C37_USXGMII:
-+	case NXP_SERDES_2500BASEX:
-+		dev = MDIO_MMD_VEND2;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	ret = nxp_serdes_xpcs_write(xpcs, dev, MII_BMCR, BMCR_RESET);
-+	if (ret < 0)
-+		return ret;
-+
-+	return nxp_serdes_xpcs_poll_reset(xpcs, dev);
-+}
-+
-+static int nxp_serdes_xpcs_validate(struct phylink_pcs *pcs,
-+				    unsigned long *supported,
-+				    const struct phylink_link_state *state)
-+{
-+	__ETHTOOL_DECLARE_LINK_MODE_MASK(xpcs_supported) = { 0, };
-+	const struct nxp_serdes_xpcs_compat *compat;
-+	struct nxp_serdes_xpcs *xpcs;
-+	int i;
-+
-+	xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+	compat = nxp_serdes_xpcs_find_compat(xpcs, state->interface);
-+	if (!compat)
-+		return -EINVAL;
-+
-+	for (i = 0; compat->supported[i] != __ETHTOOL_LINK_MODE_MASK_NBITS; i++)
-+		set_bit(compat->supported[i], xpcs_supported);
-+
-+	linkmode_and(supported, supported, xpcs_supported);
-+
-+	return 0;
-+}
-+
-+static unsigned int nxp_serdes_xpcs_inband_caps(struct phylink_pcs *pcs,
-+						phy_interface_t interface)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+	const struct nxp_serdes_xpcs_compat *compat;
-+
-+	compat = nxp_serdes_xpcs_find_compat(xpcs, interface);
-+	if (!compat)
-+		return 0;
-+
-+	switch (compat->an_mode) {
-+	case NXP_SERDES_AN_C37_USXGMII:
-+		return LINK_INBAND_ENABLE;
-+
-+	case NXP_SERDES_AN_C37_SGMII:
-+		return LINK_INBAND_DISABLE | LINK_INBAND_ENABLE;
-+
-+	case NXP_SERDES_10GBASER:
-+	case NXP_SERDES_2500BASEX:
-+		return LINK_INBAND_DISABLE;
-+
-+	default:
-+		return 0;
-+	}
-+}
-+
-+static void nxp_serdes_xpcs_disable(struct phylink_pcs *pcs)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+
-+	if (xpcs->desc->reset)
-+		xpcs->desc->reset(xpcs);
-+}
-+
-+static void nxp_serdes_xpcs_pre_config(struct phylink_pcs *pcs,
-+				       phy_interface_t interface)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+	const struct nxp_serdes_xpcs_compat *compat;
-+	int ret;
-+
-+	if (xpcs->interface != interface) {
-+		if (interface == PHY_INTERFACE_MODE_SGMII)
-+			xpcs->need_reset = true;
-+		xpcs->interface = interface;
-+	}
-+
-+	if (xpcs->desc->quirks & NXP_SERDES_QUIRK_NO_POLL)
-+		xpcs->pcs.poll = false;
-+
-+	if (xpcs->desc->quirks & NXP_SERDES_QUIRK_NO_SOFT_RESET)
-+		xpcs->need_reset = false;
-+
-+	if (!xpcs->need_reset)
-+		return;
-+
-+	compat = nxp_serdes_xpcs_find_compat(xpcs, interface);
-+	if (!compat) {
-+		dev_err(xpcs->dev, "unsupported interface %s\n",
-+			phy_modes(interface));
-+		return;
-+	}
-+
-+	ret = nxp_serdes_xpcs_soft_reset(xpcs, compat);
-+	if (ret)
-+		dev_err(xpcs->dev, "soft reset failed: %pe\n", ERR_PTR(ret));
-+
-+	xpcs->need_reset = false;
-+}
-+
-+static int nxp_serdes_xpcs_config_aneg_c37_sgmii(struct nxp_serdes_xpcs *xpcs,
-+						 unsigned int neg_mode)
-+{
-+	int ret, mdio_ctrl;
-+	u16 mask, val;
-+
-+	/* Disable AN while PCS_MODE and TX_CONFIG are switched to C37 SGMII on
-+	 * the MAC side, then re-enable it for in-band mode. MAC_AUTO_SW lets
-+	 * the hardware apply the negotiated speed and duplex.
-+	 */
-+	mdio_ctrl = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2, MII_BMCR);
-+	if (mdio_ctrl < 0)
-+		return mdio_ctrl;
-+
-+	if (mdio_ctrl & BMCR_ANENABLE) {
-+		ret = nxp_serdes_xpcs_write(xpcs, MDIO_MMD_VEND2, MII_BMCR,
-+					    mdio_ctrl & ~BMCR_ANENABLE);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	mask = DW_VR_MII_PCS_MODE_MASK | DW_VR_MII_TX_CONFIG_MASK;
-+	val = FIELD_PREP(DW_VR_MII_PCS_MODE_MASK,
-+			 DW_VR_MII_PCS_MODE_C37_SGMII);
-+	val |= FIELD_PREP(DW_VR_MII_TX_CONFIG_MASK,
-+			  DW_VR_MII_TX_CONFIG_MAC_SIDE_SGMII);
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, DW_VR_MII_AN_CTRL,
-+				     mask, val);
-+	if (ret < 0)
-+		return ret;
-+
-+	val = 0;
-+	mask = DW_VR_MII_DIG_CTRL1_2G5_EN | DW_VR_MII_DIG_CTRL1_MAC_AUTO_SW;
-+
-+	if (neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED)
-+		val = DW_VR_MII_DIG_CTRL1_MAC_AUTO_SW;
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, DW_VR_MII_DIG_CTRL1,
-+				     mask, val);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED)
-+		ret = nxp_serdes_xpcs_write(xpcs, MDIO_MMD_VEND2, MII_BMCR,
-+					    mdio_ctrl | BMCR_ANENABLE);
-+
-+	return ret;
-+}
-+
-+static int nxp_serdes_xpcs_config_2500basex(struct nxp_serdes_xpcs *xpcs)
-+{
-+	int ret;
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, DW_VR_MII_DIG_CTRL1,
-+				     DW_VR_MII_DIG_CTRL1_2G5_EN |
-+				     DW_VR_MII_DIG_CTRL1_MAC_AUTO_SW,
-+				     DW_VR_MII_DIG_CTRL1_2G5_EN);
-+	if (ret < 0)
-+		return ret;
-+
-+	return nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, MII_BMCR,
-+				      BMCR_ANENABLE | BMCR_SPEED1000 |
-+				      BMCR_SPEED100, BMCR_SPEED1000);
-+}
-+
-+static int nxp_serdes_xpcs_config_10gbaser(struct nxp_serdes_xpcs *xpcs)
-+{
-+	return nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, DW_VR_MII_DIG_CTRL1,
-+				      DW_VR_MII_DIG_CTRL1_MAC_AUTO_SW, 0);
-+}
-+
-+static int nxp_serdes_xpcs_do_config(struct nxp_serdes_xpcs *xpcs,
-+				     phy_interface_t interface,
-+				     const unsigned long *advertising,
-+				     unsigned int neg_mode)
-+{
-+	const struct nxp_serdes_xpcs_compat *compat;
-+	int ret;
-+
-+	compat = nxp_serdes_xpcs_find_compat(xpcs, interface);
-+	if (!compat)
-+		return -ENODEV;
-+
-+	switch (compat->an_mode) {
-+	case NXP_SERDES_10GBASER:
-+		ret = nxp_serdes_xpcs_config_10gbaser(xpcs);
-+		if (ret)
-+			return ret;
-+		break;
-+	case NXP_SERDES_AN_C37_USXGMII:
-+		break;
-+	case NXP_SERDES_AN_C37_SGMII:
-+		ret = nxp_serdes_xpcs_config_aneg_c37_sgmii(xpcs, neg_mode);
-+		if (ret)
-+			return ret;
-+		break;
-+	case NXP_SERDES_2500BASEX:
-+		ret = nxp_serdes_xpcs_config_2500basex(xpcs);
-+		if (ret)
-+			return ret;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	if (compat->pma_config) {
-+		ret = compat->pma_config(xpcs);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int nxp_serdes_xpcs_config(struct phylink_pcs *pcs,
-+				  unsigned int neg_mode,
-+				  phy_interface_t interface,
-+				  const unsigned long *advertising,
-+				  bool permit_pause_to_mac)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+
-+	return nxp_serdes_xpcs_do_config(xpcs, interface, advertising, neg_mode);
-+}
-+
-+static int nxp_serdes_xpcs_get_state_c37_sgmii(struct nxp_serdes_xpcs *xpcs,
-+					       unsigned int neg_mode,
-+					       struct phylink_link_state *state)
-+{
-+	int ret;
-+
-+	state->link = false;
-+	state->speed = SPEED_UNKNOWN;
-+	state->duplex = DUPLEX_UNKNOWN;
-+	state->pause = 0;
-+
-+	/* Until AN completes, the status still holds the previous SGMII word */
-+	if (neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED) {
-+		ret = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2, MII_BMSR);
-+		if (ret < 0)
-+			return ret;
-+
-+		if (!(ret & BMSR_ANEGCOMPLETE))
-+			return 0;
-+	}
-+
-+	ret = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2, DW_VR_MII_AN_INTR_STS);
-+	if (ret < 0)
-+		return ret;
-+
-+	state->an_complete = ret & DW_VR_MII_AN_STS_C37_ANCMPLT_INTR;
-+
-+	if (ret & DW_VR_MII_C37_ANSGM_SP_LNKSTS) {
-+		int speed_value;
-+
-+		state->link = true;
-+
-+		speed_value = FIELD_GET(DW_VR_MII_AN_STS_C37_ANSGM_SP, ret);
-+		if (speed_value == DW_VR_MII_C37_ANSGM_SP_1000)
-+			state->speed = SPEED_1000;
-+		else if (speed_value == DW_VR_MII_C37_ANSGM_SP_100)
-+			state->speed = SPEED_100;
-+		else
-+			state->speed = SPEED_10;
-+
-+		if (ret & DW_VR_MII_AN_STS_C37_ANSGM_FD)
-+			state->duplex = DUPLEX_FULL;
-+		else
-+			state->duplex = DUPLEX_HALF;
-+	} else if (ret == DW_VR_MII_AN_STS_C37_ANCMPLT_INTR) {
-+		int speed, duplex;
-+
-+		state->link = true;
-+
-+		speed = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2, MII_BMCR);
-+		if (speed < 0)
-+			return speed;
-+
-+		speed &= BMCR_SPEED100 | BMCR_SPEED1000;
-+		if (speed == BMCR_SPEED1000)
-+			state->speed = SPEED_1000;
-+		else if (speed == BMCR_SPEED100)
-+			state->speed = SPEED_100;
-+		else if (speed == 0)
-+			state->speed = SPEED_10;
-+
-+		duplex = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2,
-+					      MII_ADVERTISE);
-+		if (duplex < 0)
-+			return duplex;
-+
-+		if (duplex & ADVERTISE_1000XFULL)
-+			state->duplex = DUPLEX_FULL;
-+		else if (duplex & ADVERTISE_1000XHALF)
-+			state->duplex = DUPLEX_HALF;
-+
-+		nxp_serdes_xpcs_write(xpcs, MDIO_MMD_VEND2,
-+				      DW_VR_MII_AN_INTR_STS, 0);
-+	}
-+
-+	return 0;
-+}
-+
-+static int nxp_serdes_xpcs_get_state_2500basex(struct nxp_serdes_xpcs *xpcs,
-+					       struct phylink_link_state *state)
-+{
-+	int ret;
-+
-+	ret = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2, MII_BMSR);
-+	if (ret < 0) {
-+		state->link = 0;
-+		return ret;
-+	}
-+
-+	state->link = !!(ret & BMSR_LSTATUS);
-+	if (!state->link)
-+		return 0;
-+
-+	state->speed = SPEED_2500;
-+	state->pause |= MLO_PAUSE_TX | MLO_PAUSE_RX;
-+	state->duplex = DUPLEX_FULL;
-+
-+	return 0;
-+}
-+
-+static int nxp_serdes_xpcs_get_state_c37_usxgmii(struct nxp_serdes_xpcs *xpcs,
-+						 struct phylink_link_state *state)
-+{
-+	u16 usxg_an_status;
-+	int ret;
-+
-+	state->link = false;
-+	state->speed = SPEED_UNKNOWN;
-+	state->duplex = DUPLEX_UNKNOWN;
-+	state->pause = 0;
-+
-+	ret = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_VEND2, DW_VR_MII_AN_INTR_STS);
-+	if (ret < 0)
-+		return ret;
-+
-+	usxg_an_status = FIELD_GET(DW_VR_MII_USX_AN_STS_MASK, ret);
-+	if (!(usxg_an_status & BIT(6)))
-+		return 0;
-+
-+	state->link = true;
-+	state->an_complete = true;
-+	phylink_decode_usxgmii_word(state, usxg_an_status << 7);
-+
-+	return 0;
-+}
-+
-+static void nxp_serdes_xpcs_get_state(struct phylink_pcs *pcs,
-+				      unsigned int neg_mode,
-+				      struct phylink_link_state *state)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+	const struct nxp_serdes_xpcs_compat *compat;
-+	int stat1;
-+	int ret;
-+
-+	compat = nxp_serdes_xpcs_find_compat(xpcs, state->interface);
-+	if (!compat)
-+		return;
-+
-+	switch (compat->an_mode) {
-+	case NXP_SERDES_10GBASER:
-+		stat1 = nxp_serdes_xpcs_read(xpcs, MDIO_MMD_PCS, MDIO_STAT1);
-+		if (stat1 < 0) {
-+			state->link = false;
-+			break;
-+		}
-+
-+		if (stat1 & MDIO_STAT1_FAULT)
-+			nxp_serdes_xpcs_do_config(xpcs, state->interface, NULL,
-+						  PHYLINK_PCS_NEG_NONE);
-+
-+		state->link = !!(stat1 & MDIO_STAT1_LSTATUS);
-+		if (state->link &&
-+		    state->interface == PHY_INTERFACE_MODE_10GBASER) {
-+			state->speed = SPEED_10000;
-+			state->duplex = DUPLEX_FULL;
-+		}
-+		break;
-+	case NXP_SERDES_AN_C37_USXGMII:
-+		ret = nxp_serdes_xpcs_get_state_c37_usxgmii(xpcs, state);
-+		if (ret)
-+			dev_err(xpcs->dev, "%s returned %pe\n",
-+				"nxp_serdes_xpcs_get_state_c37_usxgmii",
-+				ERR_PTR(ret));
-+		break;
-+	case NXP_SERDES_AN_C37_SGMII:
-+		ret = nxp_serdes_xpcs_get_state_c37_sgmii(xpcs, neg_mode, state);
-+		if (ret)
-+			dev_err(xpcs->dev, "%s returned %pe\n",
-+				"nxp_serdes_xpcs_get_state_c37_sgmii",
-+				ERR_PTR(ret));
-+		break;
-+	case NXP_SERDES_2500BASEX:
-+		ret = nxp_serdes_xpcs_get_state_2500basex(xpcs, state);
-+		if (ret)
-+			dev_err(xpcs->dev, "%s returned %pe\n",
-+				"nxp_serdes_xpcs_get_state_2500basex",
-+				ERR_PTR(ret));
-+		break;
-+	default:
-+		return;
-+	}
-+}
-+
-+static void nxp_serdes_xpcs_link_up_sgmii_1000basex(struct nxp_serdes_xpcs *xpcs,
-+						    unsigned int neg_mode,
-+						    phy_interface_t interface,
-+						    int speed, int duplex)
-+{
-+	int ret;
-+
-+	if (neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED)
-+		return;
-+
-+	if (interface == PHY_INTERFACE_MODE_1000BASEX) {
-+		if (speed != SPEED_1000) {
-+			dev_err(xpcs->dev, "%s: speed %dMbps not supported\n",
-+				__func__, speed);
-+			return;
-+		}
-+
-+		if (duplex != DUPLEX_FULL)
-+			dev_err(xpcs->dev, "%s: half duplex not supported\n",
-+				__func__);
-+	}
-+
-+	ret = nxp_serdes_xpcs_write(xpcs, MDIO_MMD_VEND2, MII_BMCR,
-+				    mii_bmcr_encode_fixed(speed, duplex));
-+	if (ret)
-+		dev_err(xpcs->dev, "%s: write returned %pe\n",
-+			__func__, ERR_PTR(ret));
-+}
-+
-+static void nxp_serdes_xpcs_link_up_usxgmii(struct nxp_serdes_xpcs *xpcs,
-+					    int speed)
-+{
-+	int ret, speed_sel;
-+
-+	switch (speed) {
-+	case SPEED_10:
-+		speed_sel = DW_USXGMII_10;
-+		break;
-+	case SPEED_100:
-+		speed_sel = DW_USXGMII_100;
-+		break;
-+	case SPEED_1000:
-+		speed_sel = DW_USXGMII_1000;
-+		break;
-+	case SPEED_2500:
-+		speed_sel = DW_USXGMII_2500;
-+		break;
-+	case SPEED_5000:
-+		speed_sel = DW_USXGMII_5000;
-+		break;
-+	case SPEED_10000:
-+		speed_sel = DW_USXGMII_10000;
-+		break;
-+	default:
-+		return;
-+	}
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_PCS, BIT(15) | MDIO_CTRL1,
-+				     DW_USXGMII_EN, DW_USXGMII_EN);
-+	if (ret < 0)
-+		goto out;
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, MII_BMCR,
-+				     DW_USXGMII_SS_MASK,
-+				     speed_sel | DW_USXGMII_FULL);
-+	if (ret < 0)
-+		goto out;
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_PCS, BIT(15) | MDIO_CTRL1,
-+				     DW_USXGMII_RST, DW_USXGMII_RST);
-+	if (ret < 0)
-+		goto out;
-+
-+	return;
-+
-+out:
-+	dev_err(xpcs->dev, "%s: XPCS access returned %pe\n",
-+		__func__, ERR_PTR(ret));
-+}
-+
-+static void nxp_serdes_xpcs_link_up(struct phylink_pcs *pcs,
-+				    unsigned int neg_mode,
-+				    phy_interface_t interface, int speed,
-+				    int duplex)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+	const struct nxp_serdes_xpcs_compat *compat;
-+	int ret;
-+
-+	switch (interface) {
-+	case PHY_INTERFACE_MODE_USXGMII:
-+		nxp_serdes_xpcs_link_up_usxgmii(xpcs, speed);
-+		break;
-+
-+	case PHY_INTERFACE_MODE_SGMII:
-+	case PHY_INTERFACE_MODE_1000BASEX:
-+		nxp_serdes_xpcs_link_up_sgmii_1000basex(xpcs, neg_mode,
-+							interface, speed,
-+							duplex);
-+		break;
-+
-+	default:
-+		break;
-+	}
-+
-+	compat = nxp_serdes_xpcs_find_compat(xpcs, interface);
-+	if (compat && compat->pma_link_up) {
-+		ret = compat->pma_link_up(xpcs, speed, duplex);
-+		if (ret)
-+			dev_err(xpcs->dev, "%s: pma_link_up returned %pe\n",
-+				__func__, ERR_PTR(ret));
-+	}
-+}
-+
-+static void nxp_serdes_xpcs_an_restart(struct phylink_pcs *pcs)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+
-+	nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2, MII_BMCR, BMCR_ANRESTART,
-+			       BMCR_ANRESTART);
-+}
-+
-+static int nxp_serdes_xpcs_config_eee(struct nxp_serdes_xpcs *xpcs,
-+				      bool enable)
-+{
-+	u16 mask, val;
-+	int ret;
-+
-+	mask = DW_VR_MII_EEE_LTX_EN | DW_VR_MII_EEE_LRX_EN |
-+	       DW_VR_MII_EEE_TX_QUIET_EN | DW_VR_MII_EEE_RX_QUIET_EN |
-+	       DW_VR_MII_EEE_TX_EN_CTRL | DW_VR_MII_EEE_RX_EN_CTRL |
-+	       DW_VR_MII_EEE_MULT_FACT_100NS;
-+
-+	if (enable)
-+		val = DW_VR_MII_EEE_LTX_EN | DW_VR_MII_EEE_LRX_EN |
-+		      DW_VR_MII_EEE_TX_QUIET_EN | DW_VR_MII_EEE_RX_QUIET_EN |
-+		      DW_VR_MII_EEE_TX_EN_CTRL | DW_VR_MII_EEE_RX_EN_CTRL |
-+		      /* No platform needs a non-default multiply factor */
-+		      FIELD_PREP(DW_VR_MII_EEE_MULT_FACT_100NS, 0);
-+	else
-+		val = 0;
-+
-+	ret = nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2,
-+				     DW_VR_MII_EEE_MCTRL0, mask, val);
-+	if (ret < 0)
-+		return ret;
-+
-+	return nxp_serdes_xpcs_modify(xpcs, MDIO_MMD_VEND2,
-+				      DW_VR_MII_EEE_MCTRL1,
-+				      DW_VR_MII_EEE_TRN_LPI,
-+				      enable ? DW_VR_MII_EEE_TRN_LPI : 0);
-+}
-+
-+static void nxp_serdes_xpcs_disable_eee(struct phylink_pcs *pcs)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+
-+	if (xpcs->desc->quirks & NXP_SERDES_QUIRK_NO_EEE)
-+		return;
-+
-+	nxp_serdes_xpcs_config_eee(xpcs, false);
-+}
-+
-+static void nxp_serdes_xpcs_enable_eee(struct phylink_pcs *pcs)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+
-+	if (xpcs->desc->quirks & NXP_SERDES_QUIRK_NO_EEE)
-+		return;
-+
-+	nxp_serdes_xpcs_config_eee(xpcs, true);
-+}
-+
-+static const struct phylink_pcs_ops nxp_serdes_xpcs_phylink_ops = {
-+	.pcs_validate = nxp_serdes_xpcs_validate,
-+	.pcs_inband_caps = nxp_serdes_xpcs_inband_caps,
-+	.pcs_pre_config = nxp_serdes_xpcs_pre_config,
-+	.pcs_disable = nxp_serdes_xpcs_disable,
-+	.pcs_config = nxp_serdes_xpcs_config,
-+	.pcs_get_state = nxp_serdes_xpcs_get_state,
-+	.pcs_an_restart = nxp_serdes_xpcs_an_restart,
-+	.pcs_link_up = nxp_serdes_xpcs_link_up,
-+	.pcs_disable_eee = nxp_serdes_xpcs_disable_eee,
-+	.pcs_enable_eee = nxp_serdes_xpcs_enable_eee,
-+};
-+
-+/**
-+ * nxp_serdes_xpcs_create() - create a NXP SerDes XPCS phylink PCS
-+ * @dev: device the PCS belongs to, used for error reporting
-+ * @xpcs_regmap: regmap of the XPCS registers
-+ * @phy_regmap: regmap of the XPCS-PHY registers, may be NULL
-+ * @desc: revision descriptor, see &struct nxp_serdes_xpcs_desc
-+ * @portid: index of the XPCS port, used to select the shared MPLL
-+ * @interface: PHY interface mode used for the link
-+ *
-+ * The regmaps must stay valid until nxp_serdes_xpcs_destroy() has been called.
-+ *
-+ * Return: a pointer to a &struct phylink_pcs, or an ERR_PTR() on failure.
-+ */
-+struct phylink_pcs *nxp_serdes_xpcs_create(struct device *dev,
-+					   struct regmap *xpcs_regmap,
-+					   struct regmap *phy_regmap,
-+					   const struct nxp_serdes_xpcs_desc *desc,
-+					   u8 portid, phy_interface_t interface)
-+{
-+	struct nxp_serdes_xpcs *xpcs;
-+
-+	if (!desc || !desc->compat)
-+		return ERR_PTR(-EINVAL);
-+
-+	xpcs = kzalloc_obj(struct nxp_serdes_xpcs, GFP_KERNEL);
-+	if (!xpcs)
-+		return ERR_PTR(-ENOMEM);
-+
-+	xpcs->dev = dev;
-+	xpcs->xpcs_regmap = xpcs_regmap;
-+	xpcs->phy_regmap = phy_regmap;
-+	xpcs->desc = desc;
-+	xpcs->pma_id = desc->pma_id;
-+	xpcs->portid = portid;
-+	xpcs->interface = interface;
-+	xpcs->pcs.ops = &nxp_serdes_xpcs_phylink_ops;
-+	xpcs->pcs.poll = true;
-+	nxp_serdes_xpcs_get_interfaces(xpcs, xpcs->pcs.supported_interfaces);
-+	xpcs->need_reset = true;
-+
-+	return &xpcs->pcs;
-+}
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_create);
-+
-+void nxp_serdes_xpcs_destroy(struct phylink_pcs *pcs)
-+{
-+	struct nxp_serdes_xpcs *xpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
-+
-+	if (!xpcs)
-+		return;
-+
-+	kfree(xpcs);
-+}
-+EXPORT_SYMBOL_GPL(nxp_serdes_xpcs_destroy);
-+
-+MODULE_DESCRIPTION("NXP SerDes XPCS shared core");
-+MODULE_AUTHOR("Clark Wang <xiaoning.wang@nxp.com>");
-+MODULE_LICENSE("GPL");
-diff --git a/include/linux/pcs/pcs-nxp-serdes-xpcs.h b/include/linux/pcs/pcs-nxp-serdes-xpcs.h
-new file mode 100644
-index 000000000000..2579c6b14a61
---- /dev/null
-+++ b/include/linux/pcs/pcs-nxp-serdes-xpcs.h
-@@ -0,0 +1,100 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
 +/*
-+ * NXP SerDes XPCS shared core
-+ * Copyright 2026 NXP
++ * Copyright 2021-2026 NXP
++ *
++ * S32G SerDes XPCS platform glue for the NXP SerDes xPCS shared core.
++ *
++ * This module no longer implements its own phylink PCS. It provides the
++ * S32G specific parts the shared core (pcs-nxp-serdes-xpcs.c) consumes:
++ *   - the indirect-MMIO regmap transport. The S32G flat register address
++ *     0x1fXXXX is already identical to the shared core's regmap key
++ *     "(devad << 16) | reg" (devad 0x1f == MDIO_MMD_VEND2 for the VR_MII
++ *     page, devad 0x1f reg 0x0000 == SR_MII_CTRL/MII_BMCR), so the same
++ *     regmap serves both the S32G PMA sequences below and the shared core.
++ *   - the S32G PMA/PLL bring-up sequences, exported to the SerDes PHY
++ *     driver which drives the ordered dual-XPCS bring-up barrier.
++ *   - a struct nxp_serdes_xpcs_desc describing the S32G revision, with a
++ *     compat[] table (C37 SGMII + 2500BASE-X) and two pma_config() hooks
++ *     (SGMII link-timer / CL37 override, and the 1G<->2.5G PLL switch).
 + */
 +
-+#ifndef __LINUX_PCS_NXP_SERDES_XPCS_H
-+#define __LINUX_PCS_NXP_SERDES_XPCS_H
-+
++#include <linux/bitfield.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/errno.h>
++#include <linux/io.h>
++#include <linux/iopoll.h>
++#include <linux/module.h>
++#include <linux/pcs/pcs-nxp-s32g-xpcs.h>
++#include <linux/pcs/pcs-nxp-serdes-xpcs.h>
 +#include <linux/phy.h>
 +#include <linux/phylink.h>
 +#include <linux/regmap.h>
++#include <linux/units.h>
 +
-+/* AN mode values as defined by the DesignWare XPCS */
-+enum nxp_serdes_an_mode {
-+	NXP_SERDES_AN_C37_SGMII = 2,
-+	NXP_SERDES_2500BASEX = 3,
-+	NXP_SERDES_10GBASER = 5,
-+	NXP_SERDES_AN_C37_USXGMII = 6,
++enum s32g_xpcs_pll {
++	S32G_XPCS_PLLA,	/* Slow PLL */
++	S32G_XPCS_PLLB,	/* Fast PLL */
 +};
 +
-+/* The revision runs its own reset sequence, skip the soft reset */
-+#define NXP_SERDES_QUIRK_NO_SOFT_RESET	BIT(0)
-+/* The revision reports the link state to the MAC, do not poll the PCS */
-+#define NXP_SERDES_QUIRK_NO_POLL	BIT(1)
-+/* The revision does not implement the VR_MII_EEE_MCTRL0/1 registers */
-+#define NXP_SERDES_QUIRK_NO_EEE		BIT(2)
-+
-+struct nxp_serdes_xpcs;
-+
-+struct nxp_serdes_xpcs_compat {
-+	phy_interface_t interface;
-+	const int *supported;
-+	enum nxp_serdes_an_mode an_mode;
-+	int (*pma_config)(struct nxp_serdes_xpcs *xpcs);
-+	int (*pma_link_up)(struct nxp_serdes_xpcs *xpcs, int speed,
-+			   int duplex);
-+};
-+
-+/* Description of one SerDes revision, provided by the platform glue */
-+struct nxp_serdes_xpcs_desc {
-+	const char *name;
-+	u32 pma_id;
-+	const struct nxp_serdes_xpcs_compat *compat;
-+	unsigned int quirks;
-+	void (*reset)(struct nxp_serdes_xpcs *xpcs);
-+};
-+
-+struct nxp_serdes_xpcs {
++struct s32g_xpcs {
++	void __iomem *base;
 +	struct device *dev;
-+	struct regmap *xpcs_regmap;
-+	struct regmap *phy_regmap;
-+	const struct nxp_serdes_xpcs_desc *desc;
-+	struct phylink_pcs pcs;
-+	phy_interface_t interface;
-+	u32 pma_id;
-+	u8 portid;
-+	bool need_reset;
-+	bool sgmii_internal_ref_clk;
-+	void *priv;
++	unsigned char id;
++	struct regmap *regmap;
++	enum s32g_xpcs_pll ref;
++	bool ext_clk;
++	bool mhz125;
++	enum s32g_xpcs_shared pcie_shared;
++	/* phylink PCS owned by the shared core, created in s32g_xpcs_create() */
++	struct phylink_pcs *pcs;
 +};
 +
-+#define phylink_pcs_to_nxp_serdes_xpcs(pl_pcs) \
-+	container_of((pl_pcs), struct nxp_serdes_xpcs, pcs)
++#define XPCS_TIMEOUT_US				(300 * USEC_PER_MSEC)
++#define XPCS_POLL_SLEEP_US			100
 +
-+static inline void nxp_serdes_xpcs_set_drvdata(struct nxp_serdes_xpcs *xpcs,
-+					       void *priv)
-+{
-+	xpcs->priv = priv;
-+}
++#define ADDR1_OFS				0x3fc
 +
-+static inline void *nxp_serdes_xpcs_get_drvdata(struct nxp_serdes_xpcs *xpcs)
-+{
-+	return xpcs->priv;
-+}
++#define SR_MII_CTRL				0x1f0000
++#define   SS13					BIT(13)
++#define   AN_ENABLE				BIT(12)
++#define   RESTART_AN				BIT(9)
++#define   DUPLEX_MODE				BIT(8)
++#define   SS6					BIT(6)
++#define SR_MII_STS				0x1f0001
++#define   LINK_STS				BIT(2)
++#define VR_MII_DIG_CTRL1			0x1f8000
++#define   BYP_PWRUP				BIT(1)
++#define   EN_2_5G_MODE				BIT(2)
++#define   CL37_TMR_OVRRIDE			BIT(3)
++#define   INIT					BIT(8)
++#define   MAC_AUTO_SW				BIT(9)
++#define   VR_RST				BIT(15)
++#define VR_MII_AN_CTRL				0x1f8001
++#define   MII_AN_INTR_EN			BIT(0)
++#define   PCS_MODE_MASK				GENMASK(2, 1)
++#define    PCS_MODE_SGMII			2
++#define   MII_CTRL				BIT(8)
++#define VR_MII_AN_INTR_STS			0x1f8002
++#define  CL37_ANCMPLT_INTR			BIT(0)
++#define  CL37_ANSGM_STS_DUPLEX			BIT(1)
++#define  CL37_ANSGM_STS_SPEED_MASK		GENMASK(3, 2)
++#define   CL37_ANSGM_10MBPS			0
++#define   CL37_ANSGM_100MBPS			1
++#define   CL37_ANSGM_1000MBPS			2
++#define  CL37_ANSGM_STS_LINK			BIT(4)
++#define VR_MII_DBG_CTRL				0x1f8005
++#define   SUPPRESS_LOS_DET			BIT(4)
++#define   RX_DT_EN_CTL				BIT(6)
++#define VR_MII_LINK_TIMER_CTRL			0x1f800a
++#define VR_MII_DIG_STS				0x1f8010
++#define   PSEQ_STATE_MASK			GENMASK(4, 2)
++#define     POWER_GOOD_STATE			0x4
++#define VR_MII_GEN5_12G_16G_TX_GENCTRL1		0x1f8031
++#define   TX_CLK_RDY_0				BIT(12)
++#define	VR_MII_GEN5_12G_16G_TX_GENCTRL2		0x1f8032
++#define	  TX_REQ_0				BIT(0)
++#define VR_MII_GEN5_12G_16G_TX_RATE_CTRL	0x1f8034
++#define   TX0_RATE_MASK				GENMASK(2, 0)
++#define     TX0_BAUD_DIV_1			0
++#define     TX0_BAUD_DIV_4			2
++#define VR_MII_GEN5_12G_16G_TX_EQ_CTRL0		0x1f8036
++#define   TX_EQ_MAIN_MASK			GENMASK(13, 8)
++#define VR_MII_GEN5_12G_16G_TX_EQ_CTRL1		0x1f8037
++#define   TX_EQ_OVR_RIDE			BIT(6)
++#define VR_MII_CONSUMER_10G_TX_TERM_CTRL	0x1f803c
++#define   TX0_TERM_MASK				GENMASK(2, 0)
++#define VR_MII_GEN5_12G_16G_RX_GENCTRL1		0x1f8051
++#define   RX_RST_0				BIT(4)
++#define VR_MII_GEN5_12G_16G_RX_GENCTRL2		0x1f8052
++#define   RX_REQ_0				BIT(0)
++#define VR_MII_GEN5_12G_16G_RX_RATE_CTRL	0x1f8054
++#define   RX0_RATE_MASK				GENMASK(1, 0)
++#define     RX0_BAUD_DIV_2			0x1
++#define     RX0_BAUD_DIV_8			0x3
++#define VR_MII_GEN5_12G_16G_CDR_CTRL		0x1f8056
++#define   VCO_LOW_FREQ_0			BIT(8)
++#define VR_MII_GEN5_12G_16G_MPLL_CMN_CTRL	0x1f8070
++#define   MPLLB_SEL_0				BIT(4)
++#define VR_MII_GEN5_12G_16G_MPLLA_CTRL0		0x1f8071
++#define   MPLLA_CAL_DISABLE			BIT(15)
++#define   MLLA_MULTIPLIER_MASK			GENMASK(7, 0)
++#define VR_MII_GEN5_12G_MPLLA_CTRL1		0x1f8072
++#define   MPLLA_FRACN_CTRL_MASK			GENMASK(15, 5)
++#define VR_MII_GEN5_12G_16G_MPLLA_CTRL2		0x1f8073
++#define   MPLLA_TX_CLK_DIV_MASK			GENMASK(13, 11)
++#define   MPLLA_DIV10_CLK_EN			BIT(9)
++#define VR_MII_GEN5_12G_16G_MPLLB_CTRL0		0x1f8074
++#define   MPLLB_CAL_DISABLE			BIT(15)
++#define   MLLB_MULTIPLIER_MASK			GENMASK(7, 0)
++#define VR_MII_GEN5_12G_MPLLB_CTRL1		0x1f8075
++#define   MPLLB_FRACN_CTRL_MASK			GENMASK(15, 5)
++#define VR_MII_GEN5_12G_16G_MPLLB_CTRL2		0x1f8076
++#define   MPLLB_TX_CLK_DIV_MASK			GENMASK(13, 11)
++#define   MPLLB_DIV10_CLK_EN			BIT(9)
++#define VR_MII_GEN5_12G_MPLLA_CTRL3		0x1f8077
++#define   MPLLA_BANDWIDTH_MASK			GENMASK(15, 0)
++#define VR_MII_GEN5_12G_MPLLB_CTRL3		0x1f8078
++#define   MPLLB_BANDWIDTH_MASK			GENMASK(15, 0)
++#define VR_MII_GEN5_12G_16G_MISC_CTRL0		0x1f8090
++#define   PLL_CTRL				BIT(15)
++#define VR_MII_GEN5_12G_16G_REF_CLK_CTRL	0x1f8091
++#define   REF_USE_PAD				BIT(1)
++#define   REF_CLK_DIV2				BIT(2)
++#define   REF_RANGE_MASK			GENMASK(5, 3)
++#define     RANGE_26_53_MHZ			0x1
++#define     RANGE_52_78_MHZ			0x2
++#define   REF_MPLLA_DIV2			BIT(6)
++#define   REF_MPLLB_DIV2			BIT(7)
++#define VR_MII_GEN5_12G_16G_VCO_CAL_LD0		0x1f8092
++#define   VCO_LD_VAL_0_MASK			GENMASK(12, 0)
++#define VR_MII_GEN5_12G_VCO_CAL_REF0		0x1f8096
++#define   VCO_REF_LD_0_MASK			GENMASK(5, 0)
 +
-+/* Feature sets for struct nxp_serdes_xpcs_compat::supported */
-+extern const int nxp_serdes_xpcs_usxgmii_features[];
-+extern const int nxp_serdes_xpcs_2500basex_features[];
-+extern const int nxp_serdes_xpcs_sgmii_features[];
++typedef bool (*xpcs_poll_func_t)(struct s32g_xpcs *);
 +
-+struct phylink_pcs *nxp_serdes_xpcs_create(struct device *dev,
-+					   struct regmap *xpcs_regmap,
-+					   struct regmap *phy_regmap,
-+					   const struct nxp_serdes_xpcs_desc *desc,
-+					   u8 portid,
-+					   phy_interface_t interface);
-+void nxp_serdes_xpcs_destroy(struct phylink_pcs *pcs);
-+
-+/* Register accesses are encoded in the regmap as "(devad << 16) | reg", with
-+ * "devad" the Clause 45 device address and "reg" the 16-bit register address.
-+ * Decoding both fields is up to the regmap of the platform glue.
++/*
++ * XPCS registers can't be accessed directly and an indirect address method
++ * must be used instead. The 32-bit "reg" is the flat XPCS address and is
++ * identical to the shared core's "(devad << 16) | reg" key.
 + */
-+int nxp_serdes_xpcs_read(struct nxp_serdes_xpcs *xpcs, u8 devad, u32 reg);
-+int nxp_serdes_xpcs_write(struct nxp_serdes_xpcs *xpcs, u8 devad, u32 reg,
-+			  u16 val);
-+int nxp_serdes_xpcs_modify(struct nxp_serdes_xpcs *xpcs, u8 devad, u32 reg,
-+			   u16 mask, u16 set);
 +
-+#endif /* __LINUX_PCS_NXP_SERDES_XPCS_H */
++static const struct regmap_range s32g_xpcs_wr_ranges[] = {
++	regmap_reg_range(0x1f0000, 0x1f0000),
++	regmap_reg_range(0x1f0004, 0x1f0004),
++	regmap_reg_range(0x1f8000, 0x1f8003),
++	regmap_reg_range(0x1f8005, 0x1f8005),
++	regmap_reg_range(0x1f800a, 0x1f800a),
++	regmap_reg_range(0x1f8012, 0x1f8012),
++	regmap_reg_range(0x1f8015, 0x1f8015),
++	regmap_reg_range(0x1f8030, 0x1f8037),
++	regmap_reg_range(0x1f803c, 0x1f803e),
++	regmap_reg_range(0x1f8050, 0x1f8058),
++	regmap_reg_range(0x1f805c, 0x1f805e),
++	regmap_reg_range(0x1f8064, 0x1f8064),
++	regmap_reg_range(0x1f806b, 0x1f806b),
++	regmap_reg_range(0x1f8070, 0x1f8078),
++	regmap_reg_range(0x1f8090, 0x1f8092),
++	regmap_reg_range(0x1f8096, 0x1f8096),
++	regmap_reg_range(0x1f8099, 0x1f8099),
++	regmap_reg_range(0x1f80a0, 0x1f80a2),
++	regmap_reg_range(0x1f80e1, 0x1f80e1),
++};
++
++static const struct regmap_access_table s32g_xpcs_wr_table = {
++	.yes_ranges = s32g_xpcs_wr_ranges,
++	.n_yes_ranges = ARRAY_SIZE(s32g_xpcs_wr_ranges),
++};
++
++static const struct regmap_range s32g_xpcs_rd_ranges[] = {
++	regmap_reg_range(0x1f0000, 0x1f0006),
++	regmap_reg_range(0x1f000f, 0x1f000f),
++	regmap_reg_range(0x1f0708, 0x1f0710),
++	regmap_reg_range(0x1f8000, 0x1f8003),
++	regmap_reg_range(0x1f8005, 0x1f8005),
++	regmap_reg_range(0x1f800a, 0x1f800a),
++	regmap_reg_range(0x1f8010, 0x1f8012),
++	regmap_reg_range(0x1f8015, 0x1f8015),
++	regmap_reg_range(0x1f8018, 0x1f8018),
++	regmap_reg_range(0x1f8020, 0x1f8020),
++	regmap_reg_range(0x1f8030, 0x1f8037),
++	regmap_reg_range(0x1f803c, 0x1f803c),
++	regmap_reg_range(0x1f8040, 0x1f8040),
++	regmap_reg_range(0x1f8050, 0x1f8058),
++	regmap_reg_range(0x1f805c, 0x1f805e),
++	regmap_reg_range(0x1f8060, 0x1f8060),
++	regmap_reg_range(0x1f8064, 0x1f8064),
++	regmap_reg_range(0x1f806b, 0x1f806b),
++	regmap_reg_range(0x1f8070, 0x1f8078),
++	regmap_reg_range(0x1f8090, 0x1f8092),
++	regmap_reg_range(0x1f8096, 0x1f8096),
++	regmap_reg_range(0x1f8098, 0x1f8099),
++	regmap_reg_range(0x1f80a0, 0x1f80a2),
++	regmap_reg_range(0x1f80e1, 0x1f80e1),
++};
++
++static const struct regmap_access_table s32g_xpcs_rd_table = {
++	.yes_ranges = s32g_xpcs_rd_ranges,
++	.n_yes_ranges = ARRAY_SIZE(s32g_xpcs_rd_ranges),
++};
++
++static int s32g_xpcs_regmap_reg_read(void *context, unsigned int reg,
++				     unsigned int *result)
++{
++	struct s32g_xpcs *xpcs = context;
++	u16 ofsleft = (reg >> 8) & 0xffffU;
++	u16 ofsright = (reg & 0xffU);
++
++	writew(ofsleft, xpcs->base + ADDR1_OFS);
++	*result = readw(xpcs->base + (ofsright * 4));
++
++	return 0;
++}
++
++static int s32g_xpcs_regmap_reg_write(void *context, unsigned int reg,
++				      unsigned int val)
++{
++	struct s32g_xpcs *xpcs = context;
++	u16 ofsleft = (reg >> 8) & 0xffffU;
++	u16 ofsright = (reg & 0xffU);
++
++	writew(ofsleft, xpcs->base + ADDR1_OFS);
++	writew(val, xpcs->base + (ofsright * 4));
++
++	return 0;
++}
++
++static const struct regmap_config s32g_xpcs0_regmap_config = {
++	.reg_bits = 32,
++	.val_bits = 16,
++	.reg_read = s32g_xpcs_regmap_reg_read,
++	.reg_write = s32g_xpcs_regmap_reg_write,
++	.wr_table = &s32g_xpcs_wr_table,
++	.rd_table = &s32g_xpcs_rd_table,
++	.max_register = 0x1f80e1,
++	.name = "xpcs0",
++};
++
++static const struct regmap_config s32g_xpcs1_regmap_config = {
++	.reg_bits = 32,
++	.val_bits = 16,
++	.reg_read = s32g_xpcs_regmap_reg_read,
++	.reg_write = s32g_xpcs_regmap_reg_write,
++	.wr_table = &s32g_xpcs_wr_table,
++	.rd_table = &s32g_xpcs_rd_table,
++	.max_register = 0x1f80e1,
++	.name = "xpcs1",
++};
++
++static void s32g_xpcs_write_bits(struct s32g_xpcs *xpcs, unsigned int reg,
++				 unsigned int mask, unsigned int value)
++{
++	int ret = regmap_write_bits(xpcs->regmap, reg, mask, value);
++
++	if (ret)
++		dev_err(xpcs->dev, "Failed to write bits of XPCS reg: 0x%x\n", reg);
++}
++
++static void s32g_xpcs_write(struct s32g_xpcs *xpcs, unsigned int reg,
++			    unsigned int value)
++{
++	int ret = regmap_write(xpcs->regmap, reg, value);
++
++	if (ret)
++		dev_err(xpcs->dev, "Failed to write XPCS reg: 0x%x\n", reg);
++}
++
++static unsigned int s32g_xpcs_read(struct s32g_xpcs *xpcs, unsigned int reg)
++{
++	unsigned int val = 0;
++	int ret;
++
++	ret = regmap_read(xpcs->regmap, reg, &val);
++	if (ret)
++		dev_err(xpcs->dev, "Failed to read XPCS reg: 0x%x\n", reg);
++
++	return val;
++}
++
++/*
++ * Internal XPCS function
++ */
++
++static int s32g_xpcs_wait(struct s32g_xpcs *xpcs, xpcs_poll_func_t func)
++{
++	bool val;
++
++	return read_poll_timeout(func, val, val, XPCS_POLL_SLEEP_US,
++				 XPCS_TIMEOUT_US, false, xpcs);
++}
++
++static int s32g_xpcs_wait_bits(struct s32g_xpcs *xpcs, unsigned int reg,
++			       unsigned int mask, unsigned int bits)
++{
++	unsigned int val;
++
++	return read_poll_timeout(s32g_xpcs_read, val, (val & mask) == bits,
++				 XPCS_POLL_SLEEP_US, XPCS_TIMEOUT_US, false,
++				 xpcs, reg);
++}
++
++static unsigned int s32g_xpcs_digital_status(struct s32g_xpcs *xpcs)
++{
++	return s32g_xpcs_read(xpcs, VR_MII_DIG_STS);
++}
++
++static int s32g_xpcs_wait_power_good_state(struct s32g_xpcs *xpcs)
++{
++	unsigned int val;
++
++	return read_poll_timeout(s32g_xpcs_digital_status, val,
++				 FIELD_GET(PSEQ_STATE_MASK, val) == POWER_GOOD_STATE,
++				 XPCS_POLL_SLEEP_US,
++				 XPCS_TIMEOUT_US, false, xpcs);
++}
++
++void s32g_xpcs_vreset(struct s32g_xpcs *xpcs)
++{
++	/* Step 19 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1, VR_RST, VR_RST);
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_vreset);
++
++static bool s32g_xpcs_is_not_in_reset(struct s32g_xpcs *xpcs)
++{
++	unsigned int val;
++
++	val = s32g_xpcs_read(xpcs, VR_MII_DIG_CTRL1);
++
++	return !(val & VR_RST);
++}
++
++int s32g_xpcs_wait_vreset(struct s32g_xpcs *xpcs)
++{
++	int ret;
++
++	/* Step 20 */
++	ret = s32g_xpcs_wait(xpcs, s32g_xpcs_is_not_in_reset);
++	if (ret)
++		dev_err(xpcs->dev, "XPCS%d is in reset\n", xpcs->id);
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_wait_vreset);
++
++int s32g_xpcs_reset_rx(struct s32g_xpcs *xpcs)
++{
++	int ret = 0;
++
++	/*
++	 * On the shared 1G combo lane the PMA power-up is gated by the PCIe
++	 * side and BYP_PWRUP stays set, so the power sequencer never reaches
++	 * POWER_GOOD on its own and the wait would always time out.
++	 */
++	if (xpcs->pcie_shared != S32G_PCIE_XPCS_1G) {
++		ret = s32g_xpcs_wait_power_good_state(xpcs);
++		if (ret) {
++			dev_err(xpcs->dev, "Failed to enter in PGOOD state after vendor reset\n");
++			return ret;
++		}
++	}
++
++	/* Step 21 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_RX_GENCTRL1,
++			     RX_RST_0, RX_RST_0);
++
++	/* Step 22 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_RX_GENCTRL1,
++			     RX_RST_0, 0);
++
++	/* Step 23 */
++	/* Wait until SR_MII_STS[LINK_STS] = 1 */
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_reset_rx);
++
++static int s32g_xpcs_ref_clk_sel(struct s32g_xpcs *xpcs,
++				 enum s32g_xpcs_pll ref_pll)
++{
++	switch (ref_pll) {
++	case S32G_XPCS_PLLA:
++		s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MPLL_CMN_CTRL,
++				     MPLLB_SEL_0, 0);
++		xpcs->ref = S32G_XPCS_PLLA;
++		break;
++	case S32G_XPCS_PLLB:
++		s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MPLL_CMN_CTRL,
++				     MPLLB_SEL_0, MPLLB_SEL_0);
++		xpcs->ref = S32G_XPCS_PLLB;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static void s32g_xpcs_electrical_configure(struct s32g_xpcs *xpcs)
++{
++	/* Step 2 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_TX_EQ_CTRL0,
++			     TX_EQ_MAIN_MASK, FIELD_PREP(TX_EQ_MAIN_MASK, 0xc));
++
++	/* Step 3 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_CONSUMER_10G_TX_TERM_CTRL,
++			     TX0_TERM_MASK, FIELD_PREP(TX0_TERM_MASK, 0x4));
++}
++
++static int s32g_xpcs_vco_cfg(struct s32g_xpcs *xpcs, enum s32g_xpcs_pll vco_pll)
++{
++	unsigned int vco_ld = 0;
++	unsigned int vco_ref = 0;
++	unsigned int rx_baud = 0;
++	unsigned int tx_baud = 0;
++
++	switch (vco_pll) {
++	case S32G_XPCS_PLLA:
++		if (xpcs->mhz125) {
++			vco_ld = FIELD_PREP(VCO_LD_VAL_0_MASK, 1360);
++			vco_ref = FIELD_PREP(VCO_REF_LD_0_MASK, 17);
++		} else {
++			vco_ld = FIELD_PREP(VCO_LD_VAL_0_MASK, 1350);
++			vco_ref = FIELD_PREP(VCO_REF_LD_0_MASK, 27);
++		}
++
++		rx_baud = FIELD_PREP(RX0_RATE_MASK, RX0_BAUD_DIV_8);
++		tx_baud = FIELD_PREP(TX0_RATE_MASK, TX0_BAUD_DIV_4);
++		break;
++	case S32G_XPCS_PLLB:
++		if (xpcs->mhz125) {
++			vco_ld = FIELD_PREP(VCO_LD_VAL_0_MASK, 1350);
++			vco_ref = FIELD_PREP(VCO_REF_LD_0_MASK, 27);
++		} else {
++			vco_ld = FIELD_PREP(VCO_LD_VAL_0_MASK, 1344);
++			vco_ref = FIELD_PREP(VCO_REF_LD_0_MASK, 43);
++		}
++
++		rx_baud = FIELD_PREP(RX0_RATE_MASK, RX0_BAUD_DIV_2);
++		tx_baud = FIELD_PREP(TX0_RATE_MASK, TX0_BAUD_DIV_1);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_VCO_CAL_LD0,
++			     VCO_LD_VAL_0_MASK, vco_ld);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_VCO_CAL_REF0,
++			     VCO_REF_LD_0_MASK, vco_ref);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_TX_RATE_CTRL,
++			     TX0_RATE_MASK, tx_baud);
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_RX_RATE_CTRL,
++			     RX0_RATE_MASK, rx_baud);
++
++	if (vco_pll == S32G_XPCS_PLLB) {
++		s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_CDR_CTRL,
++				     VCO_LOW_FREQ_0, VCO_LOW_FREQ_0);
++	} else {
++		s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_CDR_CTRL,
++				     VCO_LOW_FREQ_0, 0);
++	}
++
++	return 0;
++}
++
++static void s32g_xpcs_init_mplla(struct s32g_xpcs *xpcs)
++{
++	unsigned int val;
++
++	/* Step 7 */
++	val = 0;
++	if (xpcs->ext_clk)
++		val |= REF_USE_PAD;
++
++	if (xpcs->mhz125) {
++		val |= REF_MPLLA_DIV2;
++		val |= REF_CLK_DIV2;
++		val |= FIELD_PREP(REF_RANGE_MASK, RANGE_52_78_MHZ);
++	} else {
++		/*
++		 * A non-125 MHz reference is 100 MHz, which falls in the
++		 * 26-53 MHz range after the internal divider, so select
++		 * RANGE_26_53_MHZ.
++		 */
++		val |= FIELD_PREP(REF_RANGE_MASK, RANGE_26_53_MHZ);
++	}
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_REF_CLK_CTRL,
++			     REF_MPLLA_DIV2 | REF_USE_PAD | REF_RANGE_MASK |
++			     REF_CLK_DIV2, val);
++
++	/* Step 8 */
++	if (xpcs->mhz125)
++		val = FIELD_PREP(MLLA_MULTIPLIER_MASK, 80);
++	else
++		val = FIELD_PREP(MLLA_MULTIPLIER_MASK, 25);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MPLLA_CTRL0,
++			     MPLLA_CAL_DISABLE | MLLA_MULTIPLIER_MASK,
++			     val);
++
++	/* Step 9 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_MPLLA_CTRL1,
++			     MPLLA_FRACN_CTRL_MASK, 0);
++
++	/* Step 10 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MPLLA_CTRL2,
++			     MPLLA_TX_CLK_DIV_MASK | MPLLA_DIV10_CLK_EN,
++			     FIELD_PREP(MPLLA_TX_CLK_DIV_MASK, 1) | MPLLA_DIV10_CLK_EN);
++
++	/* Step 11 */
++	if (xpcs->mhz125)
++		val = FIELD_PREP(MPLLA_BANDWIDTH_MASK, 43);
++	else
++		val = FIELD_PREP(MPLLA_BANDWIDTH_MASK, 357);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_MPLLA_CTRL3,
++			     MPLLA_BANDWIDTH_MASK, val);
++}
++
++static void s32g_xpcs_init_mpllb(struct s32g_xpcs *xpcs)
++{
++	unsigned int val;
++
++	/* Step 7 */
++	val = 0;
++	if (xpcs->ext_clk)
++		val |= REF_USE_PAD;
++
++	if (xpcs->mhz125) {
++		val |= REF_MPLLB_DIV2;
++		val |= REF_CLK_DIV2;
++		val |= FIELD_PREP(REF_RANGE_MASK, RANGE_52_78_MHZ);
++	} else {
++		/*
++		 * REF_RANGE selects the reference-clock frequency band and is
++		 * shared by both PLLs. For a 100 MHz reference this is the
++		 * 26-53 MHz range after the internal divider: RANGE_26_53_MHZ.
++		 */
++		val |= FIELD_PREP(REF_RANGE_MASK, RANGE_26_53_MHZ);
++	}
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_REF_CLK_CTRL,
++			     REF_MPLLB_DIV2 | REF_USE_PAD | REF_RANGE_MASK |
++			     REF_CLK_DIV2, val);
++
++	/* Step 8 */
++	if (xpcs->mhz125)
++		val = FIELD_PREP(MLLB_MULTIPLIER_MASK, 125);
++	else
++		val = FIELD_PREP(MLLB_MULTIPLIER_MASK, 39);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MPLLB_CTRL0,
++			     MPLLB_CAL_DISABLE | MLLB_MULTIPLIER_MASK,
++			     val);
++
++	/* Step 9 */
++	if (xpcs->mhz125)
++		val = FIELD_PREP(MPLLB_FRACN_CTRL_MASK, 0);
++	else
++		val = FIELD_PREP(MPLLB_FRACN_CTRL_MASK, 1044);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_MPLLB_CTRL1,
++			     MPLLB_FRACN_CTRL_MASK, val);
++
++	/* Step 10 */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MPLLB_CTRL2,
++			     MPLLB_TX_CLK_DIV_MASK | MPLLB_DIV10_CLK_EN,
++			     FIELD_PREP(MPLLB_TX_CLK_DIV_MASK, 5) | MPLLB_DIV10_CLK_EN);
++
++	/* Step 11 */
++	if (xpcs->mhz125)
++		val = FIELD_PREP(MPLLB_BANDWIDTH_MASK, 68);
++	else
++		val = FIELD_PREP(MPLLB_BANDWIDTH_MASK, 102);
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_MPLLB_CTRL3,
++			     MPLLB_BANDWIDTH_MASK, val);
++}
++
++static void s32g_serdes_pma_high_freq_recovery(struct s32g_xpcs *xpcs)
++{
++	/* PCS signal protection, PLL railout recovery */
++	s32g_xpcs_write_bits(xpcs, VR_MII_DBG_CTRL, SUPPRESS_LOS_DET | RX_DT_EN_CTL,
++			     SUPPRESS_LOS_DET | RX_DT_EN_CTL);
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_MISC_CTRL0,
++			     PLL_CTRL, PLL_CTRL);
++}
++
++static void s32g_serdes_pma_configure_tx_eq_post(struct s32g_xpcs *xpcs)
++{
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_TX_EQ_CTRL1,
++			     TX_EQ_OVR_RIDE, TX_EQ_OVR_RIDE);
++}
++
++static int s32g_serdes_bifurcation_pll_transit(struct s32g_xpcs *xpcs,
++					       enum s32g_xpcs_pll target_pll)
++{
++	int ret = 0;
++	struct device *dev = xpcs->dev;
++
++	/* Configure XPCS speed and VCO */
++	if (target_pll == S32G_XPCS_PLLA) {
++		s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1, EN_2_5G_MODE, 0);
++		s32g_xpcs_vco_cfg(xpcs, S32G_XPCS_PLLA);
++	} else {
++		s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1,
++				     EN_2_5G_MODE, EN_2_5G_MODE);
++		s32g_xpcs_vco_cfg(xpcs, S32G_XPCS_PLLB);
++	}
++
++	/* Signal that clock are not available */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_TX_GENCTRL1,
++			     TX_CLK_RDY_0, 0);
++
++	/* Select PLL reference */
++	if (target_pll == S32G_XPCS_PLLA)
++		s32g_xpcs_ref_clk_sel(xpcs, S32G_XPCS_PLLA);
++	else
++		s32g_xpcs_ref_clk_sel(xpcs, S32G_XPCS_PLLB);
++
++	/* Initiate transmitter TX reconfiguration request */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_TX_GENCTRL2,
++			     TX_REQ_0, TX_REQ_0);
++
++	/* Wait for transmitter to reconfigure */
++	ret = s32g_xpcs_wait_bits(xpcs, VR_MII_GEN5_12G_16G_TX_GENCTRL2,
++				  TX_REQ_0, 0);
++	if (ret) {
++		dev_err(dev, "Switch to TX_REQ_0 failed\n");
++		return ret;
++	}
++
++	/* Initiate transmitter RX reconfiguration request */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_RX_GENCTRL2,
++			     RX_REQ_0, RX_REQ_0);
++
++	/* Wait for receiver to reconfigure */
++	ret = s32g_xpcs_wait_bits(xpcs, VR_MII_GEN5_12G_16G_RX_GENCTRL2,
++				  RX_REQ_0, 0);
++	if (ret) {
++		dev_err(dev, "Switch to RX_REQ_0 failed\n");
++		return ret;
++	}
++
++	/* Signal that clock are available */
++	s32g_xpcs_write_bits(xpcs, VR_MII_GEN5_12G_16G_TX_GENCTRL1,
++			     TX_CLK_RDY_0, TX_CLK_RDY_0);
++
++	/* Flush internal logic */
++	s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1, INIT, INIT);
++
++	/* Wait for init */
++	ret = s32g_xpcs_wait_bits(xpcs, VR_MII_DIG_CTRL1, INIT, 0);
++	if (ret) {
++		dev_err(dev, "XPCS INIT failed\n");
++		return ret;
++	}
++
++	return ret;
++}
++
++/*
++ * PMA hooks, run from the shared core's pcs_config() after the generic C37
++ * SGMII / 2500BASE-X setup. The S32G context hangs off the shared
++ * nxp_serdes_xpcs priv pointer, set in s32g_xpcs_create().
++ */
++
++static int s32g_xpcs_pma_sgmii(struct nxp_serdes_xpcs *nxpcs)
++{
++	struct s32g_xpcs *xpcs = nxp_serdes_xpcs_get_drvdata(nxpcs);
++	int ret;
++
++	/*
++	 * The shared core sets PCS_MODE_SGMII, TX_CONFIG and MAC_AUTO_SW. The
++	 * link timer differs on the PCIe-shared 2.5G lane, where
++	 * CL37_TMR_OVRRIDE must be set for the override value to take effect.
++	 */
++	if (xpcs->pcie_shared == S32G_PCIE_XPCS_2G5) {
++		s32g_xpcs_write(xpcs, VR_MII_LINK_TIMER_CTRL, 0x2faf);
++		s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1,
++				     MAC_AUTO_SW, MAC_AUTO_SW);
++	} else {
++		s32g_xpcs_write(xpcs, VR_MII_LINK_TIMER_CTRL, 0x7a1);
++
++		/*
++		 * Clearing EN_2_5G_MODE does not reprogram the PMA line rate:
++		 * the VCO load, the baud dividers and MPLLB_SEL stay at 2.5G if
++		 * the lane last came up as 2500BASE-X. A 2.5G to 1G
++		 * renegotiation then links at 1000 Mbps while the PMA keeps
++		 * clocking at 3.125 Gbaud and no traffic passes, so run the
++		 * full transition back to PLLA. Idempotent on a fresh 1G lane.
++		 */
++		ret = s32g_serdes_bifurcation_pll_transit(xpcs,
++							  S32G_XPCS_PLLA);
++		if (ret)
++			return ret;
++	}
++
++	s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1,
++			     CL37_TMR_OVRRIDE, CL37_TMR_OVRRIDE);
++
++	return 0;
++}
++
++static int s32g_xpcs_pma_2500basex(struct nxp_serdes_xpcs *nxpcs)
++{
++	struct s32g_xpcs *xpcs = nxp_serdes_xpcs_get_drvdata(nxpcs);
++
++	/*
++	 * The shared core has set EN_2_5G_MODE (DW_VR_MII_DIG_CTRL1_2G5_EN)
++	 * via nxp_serdes_xpcs_config_2500basex(). S32G additionally needs the
++	 * PMA switched from the slow PLLA to the fast PLLB and re-initialised.
++	 */
++	return s32g_serdes_bifurcation_pll_transit(xpcs, S32G_XPCS_PLLB);
++}
++
++static int s32g_xpcs_pma_link_up_sgmii(struct nxp_serdes_xpcs *nxpcs,
++				       int speed, int duplex)
++{
++	struct s32g_xpcs *xpcs = nxp_serdes_xpcs_get_drvdata(nxpcs);
++
++	/*
++	 * A 2.5G SGMII fixed-link keeps interface == SGMII and never reaches
++	 * the 2500BASE-X hook, so the PMA would stay on the 1G-class PLLA that
++	 * pma_sgmii() programmed at config time. Move to PLLB (which also sets
++	 * EN_2_5G_MODE) once the link resolves to 2.5G; below that the
++	 * config-time PLLA setting is already right.
++	 */
++	if (speed != SPEED_2500)
++		return 0;
++
++	return s32g_serdes_bifurcation_pll_transit(xpcs, S32G_XPCS_PLLB);
++}
++
++static const struct nxp_serdes_xpcs_compat s32g_xpcs_compat[] = {
++	{
++		.interface = PHY_INTERFACE_MODE_SGMII,
++		.supported = nxp_serdes_xpcs_sgmii_features,
++		.an_mode = NXP_SERDES_AN_C37_SGMII,
++		.pma_config = s32g_xpcs_pma_sgmii,
++		.pma_link_up = s32g_xpcs_pma_link_up_sgmii,
++	},
++	{
++		.interface = PHY_INTERFACE_MODE_2500BASEX,
++		.supported = nxp_serdes_xpcs_2500basex_features,
++		.an_mode = NXP_SERDES_2500BASEX,
++		.pma_config = s32g_xpcs_pma_2500basex,
++	},
++	{ }
++};
++
++static const struct nxp_serdes_xpcs_desc s32g_xpcs_desc = {
++	.name = "s32g-serdes-xpcs",
++	.compat = s32g_xpcs_compat,
++	/*
++	 * S32G runs its own vendor reset (VR_RST) as part of the ordered
++	 * dual-XPCS bring-up barrier in the SerDes PHY driver, so the shared
++	 * core must not issue the generic BMCR soft reset. S32G3 does not
++	 * implement the EEE VR_MII_EEE_MCTRL0/1 registers either.
++	 */
++	.quirks = NXP_SERDES_QUIRK_NO_SOFT_RESET | NXP_SERDES_QUIRK_NO_EEE,
++	.reset = NULL,
++};
++
++/*
++ * Serdes functions for initializing/configuring/releasing the xpcs
++ */
++
++int s32g_xpcs_init_plls(struct s32g_xpcs *xpcs)
++{
++	int ret;
++
++	if (!xpcs->ext_clk) {
++		/* Step 1 */
++		s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1, BYP_PWRUP, BYP_PWRUP);
++	} else if (xpcs->pcie_shared == S32G_NOT_SHARED) {
++		ret = s32g_xpcs_wait_power_good_state(xpcs);
++		if (ret)
++			return ret;
++	} else if (xpcs->pcie_shared == S32G_PCIE_XPCS_2G5) {
++		ret = s32g_xpcs_wait_power_good_state(xpcs);
++		if (ret)
++			return ret;
++		/* Configure equalization */
++		s32g_serdes_pma_configure_tx_eq_post(xpcs);
++		s32g_xpcs_electrical_configure(xpcs);
++
++		/* Enable receiver recover */
++		s32g_serdes_pma_high_freq_recovery(xpcs);
++		return 0;
++	}
++
++	s32g_xpcs_electrical_configure(xpcs);
++
++	s32g_xpcs_ref_clk_sel(xpcs, S32G_XPCS_PLLA);
++	s32g_xpcs_init_mplla(xpcs);
++	s32g_xpcs_init_mpllb(xpcs);
++	s32g_xpcs_vco_cfg(xpcs, S32G_XPCS_PLLA);
++
++	/*
++	 * Step 18: for an internal reference BYP_PWRUP was set in Step 1 to
++	 * bypass the power-up sequencer; clear it so the PMA powers up. The
++	 * shared 1G lane keeps it set - there the PCIe side drives power-up
++	 * and clearing it stalls the XPCS bring-up.
++	 */
++	if (!xpcs->ext_clk && xpcs->pcie_shared != S32G_PCIE_XPCS_1G)
++		s32g_xpcs_write_bits(xpcs, VR_MII_DIG_CTRL1, BYP_PWRUP, 0);
++
++	/* Will be cleared by Step 19 Vreset */
++	s32g_xpcs_write_bits(xpcs, SR_MII_CTRL, AN_ENABLE, 0);
++	s32g_xpcs_write_bits(xpcs, SR_MII_CTRL, DUPLEX_MODE, DUPLEX_MODE);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_init_plls);
++
++void s32g_xpcs_disable_an(struct s32g_xpcs *xpcs)
++{
++	s32g_xpcs_write_bits(xpcs, SR_MII_CTRL, DUPLEX_MODE, DUPLEX_MODE);
++	s32g_xpcs_write_bits(xpcs, SR_MII_CTRL, AN_ENABLE, 0);
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_disable_an);
++
++static void s32g_xpcs_pcs_destroy(void *pcs)
++{
++	nxp_serdes_xpcs_destroy(pcs);
++}
++
++/**
++ * s32g_xpcs_create() - allocate and set up one XPCS instance
++ * @dev: the SerDes device the XPCS belongs to; owns the allocation
++ * @id: XPCS instance number within the SerDes subsystem (0 or 1)
++ * @base: mapped register block of that instance
++ * @ext_clk: reference is taken from the external pad rather than internal
++ * @rate: reference clock rate, 100 or 125 MHz
++ * @pcie_shared: whether the lane shares the combo PHY with PCIe
++ *
++ * The instance is devm-allocated against @dev, so it lives as long as the
++ * SerDes device and must not be freed by the caller. The returned handle
++ * is opaque; use s32g_xpcs_pcs() to obtain the phylink PCS created on top
++ * of the NXP SerDes xPCS shared core.
++ *
++ * Return: the XPCS handle, or an ERR_PTR() on failure.
++ */
++struct s32g_xpcs *s32g_xpcs_create(struct device *dev, unsigned char id,
++				   void __iomem *base, bool ext_clk,
++				   unsigned long rate,
++				   enum s32g_xpcs_shared pcie_shared)
++{
++	const struct regmap_config *conf;
++	struct nxp_serdes_xpcs *nxpcs;
++	struct s32g_xpcs *xpcs;
++	struct phylink_pcs *pcs;
++	int ret;
++
++	if (rate != (125 * HZ_PER_MHZ) && rate != (100 * HZ_PER_MHZ)) {
++		dev_err(dev, "XPCS cannot operate @%lu HZ\n", rate);
++		return ERR_PTR(-EINVAL);
++	}
++
++	xpcs = devm_kzalloc(dev, sizeof(*xpcs), GFP_KERNEL);
++	if (!xpcs)
++		return ERR_PTR(-ENOMEM);
++
++	xpcs->base = base;
++	xpcs->ext_clk = ext_clk;
++	xpcs->id = id;
++	xpcs->dev = dev;
++	xpcs->pcie_shared = pcie_shared;
++
++	if (rate == (125 * HZ_PER_MHZ))
++		xpcs->mhz125 = true;
++	else
++		xpcs->mhz125 = false;
++
++	if (!id)
++		conf = &s32g_xpcs0_regmap_config;
++	else
++		conf = &s32g_xpcs1_regmap_config;
++
++	xpcs->regmap = devm_regmap_init(dev, NULL, xpcs, conf);
++	if (IS_ERR(xpcs->regmap))
++		return ERR_PTR(dev_err_probe(dev, PTR_ERR(xpcs->regmap),
++					     "Failed to init register map\n"));
++
++	/*
++	 * Create the phylink PCS on the shared core, handing it the S32G
++	 * regmap as the register transport. SGMII is the initial interface;
++	 * phylink re-runs pcs_config() with the real interface at link time.
++	 */
++	pcs = nxp_serdes_xpcs_create(dev, xpcs->regmap, NULL, &s32g_xpcs_desc,
++				     id, PHY_INTERFACE_MODE_SGMII);
++	if (IS_ERR(pcs))
++		return ERR_PTR(dev_err_probe(dev, PTR_ERR(pcs),
++					     "Failed to create SerDes xPCS\n"));
++
++	ret = devm_add_action_or_reset(dev, s32g_xpcs_pcs_destroy, pcs);
++	if (ret)
++		return ERR_PTR(ret);
++
++	/* Let the S32G PMA hooks recover their context from the shared PCS. */
++	nxpcs = phylink_pcs_to_nxp_serdes_xpcs(pcs);
++	nxp_serdes_xpcs_set_drvdata(nxpcs, xpcs);
++
++	xpcs->pcs = pcs;
++
++	return xpcs;
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_create);
++
++/**
++ * s32g_xpcs_pcs() - the phylink PCS of an XPCS instance
++ * @xpcs: handle from s32g_xpcs_create()
++ *
++ * Return: the phylink_pcs, owned by the SerDes device.
++ */
++struct phylink_pcs *s32g_xpcs_pcs(struct s32g_xpcs *xpcs)
++{
++	return xpcs->pcs;
++}
++EXPORT_SYMBOL_GPL(s32g_xpcs_pcs);
++
++MODULE_DESCRIPTION("NXP S32G SerDes XPCS driver");
++MODULE_AUTHOR("Jan Petrous (OSS) <jan.petrous@oss.nxp.com>");
++MODULE_LICENSE("GPL");
+diff --git a/include/linux/pcs/pcs-nxp-s32g-xpcs.h b/include/linux/pcs/pcs-nxp-s32g-xpcs.h
+new file mode 100644
+index 000000000000..7e1dfb6b638f
+--- /dev/null
++++ b/include/linux/pcs/pcs-nxp-s32g-xpcs.h
+@@ -0,0 +1,48 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright 2021-2026 NXP
++ */
++#ifndef PCS_NXP_S32G_XPCS_H
++#define PCS_NXP_S32G_XPCS_H
++
++#include <linux/types.h>
++
++struct device;
++struct phylink_pcs;
++
++/*
++ * Opaque. The XPCS state, including its regmap and the embedded
++ * phylink_pcs, is private to the PCS driver; the SerDes PHY driver only
++ * ever holds pointers handed out by s32g_xpcs_create().
++ */
++struct s32g_xpcs;
++
++/*
++ * Whether the XPCS shares the combo PHY with the PCIe lane. In the shared
++ * modes the PMA power-up is driven from the PCIe side, which changes the
++ * bring-up sequence.
++ */
++enum s32g_xpcs_shared {
++	S32G_NOT_SHARED,
++	S32G_PCIE_XPCS_1G,
++	S32G_PCIE_XPCS_2G5,
++};
++
++struct s32g_xpcs *s32g_xpcs_create(struct device *dev, unsigned char id,
++				   void __iomem *base, bool ext_clk,
++				   unsigned long rate,
++				   enum s32g_xpcs_shared pcie_shared);
++struct phylink_pcs *s32g_xpcs_pcs(struct s32g_xpcs *xpcs);
++
++/*
++ * Bring-up steps, called by the SerDes PHY driver. They are separate
++ * because the dual-XPCS mode needs cross-instance barriers: every
++ * instance must complete a step before any instance starts the next.
++ */
++int s32g_xpcs_init_plls(struct s32g_xpcs *xpcs);
++void s32g_xpcs_vreset(struct s32g_xpcs *xpcs);
++int s32g_xpcs_wait_vreset(struct s32g_xpcs *xpcs);
++int s32g_xpcs_reset_rx(struct s32g_xpcs *xpcs);
++void s32g_xpcs_disable_an(struct s32g_xpcs *xpcs);
++
++#endif /* PCS_NXP_S32G_XPCS_H */
 
 -- 
 2.55.0
