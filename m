@@ -1,142 +1,104 @@
-From: Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
-Date: Sat, 19 Sep 2026 21:52:07 +0200
-Subject: [PATCH net] net: dsa: mv88e6xxx: continue without PTP if the TAI
- period is invalid
+From: Kim Wooseok <5mghybrid@khu.ac.kr>
+Subject: [PATCH rtw-next v3 0/3] wifi: rtl8xxxu: keep RX requests available
+ across transient errors
+Date: Sun, 20 Sep 2026 05:44:03 +0900
+Message-Id: <20260920-codex-rtl-rx-v3-submit-v3-0-883d11351963@khu.ac.kr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-send-net-v1-1-4355c72465ee@studio.unibo.it>
-X-B4-Tracking: v=1; b=H4sIAObnrmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDS0NL3eLUvBTdvNQSXUvzxERTM1PjxGQTCyWg8oKi1LTMCrBR0UpABUq
- xEMHi0qSs1OQSkCFKtbUAyPl0X3EAAAA=
-X-Change-ID: 20260919-send-net-97aa5653ac48
-To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Richard Cochran <richardcochran@gmail.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/zWMTQrCMBCFr1Jm7UCaSqFeRVwk6WhHNJXJtAZK7
+ 26i+Hbf+9sgkTAlODUbCK2ceI4FukMDYXLxRshjYbDG9mawBsM8UkbRB0rGtcO0+Ccrtv5Irh9
+ sWwRl/BK6cv4en0H0jZGywuWXlM2dgtbf2vUuEXpxMUzV+rex+rDvH22yDfOkAAAA
+X-Change-ID: 20260920-codex-rtl-rx-v3-submit-1b4ea6921111
+To: linux-wireless@vger.kernel.org
+Cc: pkshih@realtek.com, kvalo@kernel.org, linux-kernel@vger.kernel.org, 
+ Jes.Sorensen@gmail.com
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789847526; l=4280;
- i=nicolo.giuliani6@studio.unibo.it; s=20260919; h=from:subject:message-id;
- bh=haUUtbJie+EjEYk90JGwrIsIrQgUGbrvgziB9gbyIW8=;
- b=w2vPGeC+6ZP61hNrUcRrizJlSyJkisrIAWxRnyt4sEGyBEd1yu7TE44TpkQUqvxoO0xNImE6d
- /TqD/ni2PcgDxJKKdVPAppiC4HUJpLUGoSYZRanQwUF5LS9uHunMH1v
-X-Developer-Key: i=nicolo.giuliani6@studio.unibo.it; a=ed25519;
- pk=D652ecdT01GkA1eoFWNFNX85xIg5ZnFwUWyjfestgQw=
-X-Endpoint-Received: by B4 Relay for nicolo.giuliani6@studio.unibo.it/20260919 with auth_id=1040
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789850643; l=3892;
+ i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
+ bh=d3AcLn4a9qFXJlJjzccqYgcSQqR+1GNbo3HUaZ6Dgyc=;
+ b=PVDobP5412hrNvkdROl4fhz7cddNWT6/pJNIsO6Hgy8yahYI2/XJT7sZQNi+reDOAJoWAUTs2
+ fgoBmASBR3UDpoq7TO6RmEd/Gmv5rpAX6q18sjXn+ZnArcQQLwK1Opn
+X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
+ pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
+X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 7e3c18097a70 ("net: dsa: mv88e6xxx: read cycle counter
-period from hardware"), mv88e6xxx_ptp_setup() reads the TAI clock period
-register and fails with -ENODEV if the value is not one of the supported
-periods. mv88e6xxx_setup() propagates the error, so the switch does not
-probe at all, although it is fully usable without PTP. Before that commit
-the register was not read and the probe did not depend on its value.
+rtl8xxxu keeps 32 RX URBs in circulation. Completed requests wait on a
+pending list until more than eight are ready to be submitted again.
+Completion errors free their URBs, however, so a finite run of errors
+can leave too few requests to reach that threshold. At that point,
+reception can stay stopped even after the errors end.
 
-The 88E6193X on the Sophos XGS 107w reads 0 in that register, so its
-probe fails with:
+This series fixes that loss of RX requests, along with two problems in
+the submission and startup paths: a failed submission can leak its skb,
+and a failed start can leave earlier requests active or report success
+after only part of the pool was allocated.
 
-  mv88e6xxx ...: unexpected cycle counter period of 0 ps
+In v3, normal completions and recoverable failures return requests to
+one pending list, serviced by one delayed work item. An error queues a
+100 ms retry. When a normal completion takes the pending count above
+eight, mod_delayed_work(..., 0) brings the work forward. ENOMEM/EAGAIN
+during submission uses the same retry path.
 
-Treat -ENODEV from mv88e6xxx_ptp_setup() as the absence of a usable PTP
-clock: warn, skip the hardware timestamping setup and carry on without
-registering a PHC. -ENODEV can only come from mv88e6xxx_cc_coeff_get(),
-which runs before ptp_setup changes any state, so there is nothing to
-undo, and all other errors still fail the probe.
+The delay limits repeated retries when normal reception is not
+progressing; it is not a minimum wait for each URB. During stop, the RX
+lock prevents new reservations once shutdown is set. Stop then cancels
+the delayed work before draining active and pending requests.
 
-Without a PHC chip->ptp_clock stays NULL, and the timestamping entry
-points dereference it (ptp_clock_index() in get_ts_info,
-ptp_schedule_worker() in the rx and tx paths). Make get_ts_info,
-port_hwtstamp_set/get and mv88e6xxx_should_tstamp() treat a missing
-clock like a chip without ptp_support. Switches that register a PHC are
-unaffected.
+Changes since v2:
+- Keep patch 1's code unchanged and retain Ping-Ke's Reviewed-by.
+- Share the startup and worker submission loop, preserving their
+  different handling of fatal errors.
+- Replace the separate retry list and worker with one pending list
+  and one delayed work item; normal completions can advance a retry.
+- Remove the shutdown initialization added in probe.
+- Drop the KUnit patch and its test-only hooks from this series.
+- Use the confirmed author name and verify the Fixes references.
 
-Fixes: 7e3c18097a70 ("net: dsa: mv88e6xxx: read cycle counter period from hardware")
-Assisted-by: LLM
-Signed-off-by: Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
----
- drivers/net/dsa/mv88e6xxx/chip.c     | 19 ++++++++++++++-----
- drivers/net/dsa/mv88e6xxx/hwtstamp.c |  8 ++++----
- 2 files changed, 18 insertions(+), 9 deletions(-)
+I built the driver at baseline and after each patch with W=1 under ARM64
+allmodconfig and allyesconfig. Both full kernel builds also passed, and
+the baseline/final sparse comparisons produced no new diagnostics.
 
-diff --git a/drivers/net/dsa/mv88e6xxx/chip.c b/drivers/net/dsa/mv88e6xxx/chip.c
-index 7f68a0c55..2d6de43f2 100644
---- a/drivers/net/dsa/mv88e6xxx/chip.c
-+++ b/drivers/net/dsa/mv88e6xxx/chip.c
-@@ -4106,12 +4106,21 @@ static int mv88e6xxx_setup(struct dsa_switch *ds)
- 	/* Setup PTP Hardware Clock and timestamping */
- 	if (chip->info->ptp_support) {
- 		err = mv88e6xxx_ptp_setup(chip);
--		if (err)
--			goto unlock;
--
--		err = mv88e6xxx_hwtstamp_setup(chip);
--		if (err)
-+		if (err == -ENODEV) {
-+			/* The TAI clock period is not one that the driver
-+			 * supports: run the switch without PTP rather than
-+			 * failing the whole probe.
-+			 */
-+			dev_warn(chip->dev,
-+				 "PTP clock unavailable, hardware timestamping disabled\n");
-+			err = 0;
-+		} else if (err) {
- 			goto unlock;
-+		} else {
-+			err = mv88e6xxx_hwtstamp_setup(chip);
-+			if (err)
-+				goto unlock;
-+		}
- 	}
- 
- 	err = mv88e6xxx_stats_setup(chip);
-diff --git a/drivers/net/dsa/mv88e6xxx/hwtstamp.c b/drivers/net/dsa/mv88e6xxx/hwtstamp.c
-index 6e6472a3b..847f9dd44 100644
---- a/drivers/net/dsa/mv88e6xxx/hwtstamp.c
-+++ b/drivers/net/dsa/mv88e6xxx/hwtstamp.c
-@@ -72,7 +72,7 @@ int mv88e6xxx_get_ts_info(struct dsa_switch *ds, int port,
- 	chip = ds->priv;
- 	ptp_ops = chip->info->ops->ptp_ops;
- 
--	if (!chip->info->ptp_support)
-+	if (!chip->info->ptp_support || !chip->ptp_clock)
- 		return -EOPNOTSUPP;
- 
- 	info->so_timestamping =
-@@ -176,7 +176,7 @@ int mv88e6xxx_port_hwtstamp_set(struct dsa_switch *ds, int port,
- 	struct mv88e6xxx_port_hwtstamp *ps = &chip->port_hwtstamp[port];
- 	int err;
- 
--	if (!chip->info->ptp_support)
-+	if (!chip->info->ptp_support || !chip->ptp_clock)
- 		return -EOPNOTSUPP;
- 
- 	err = mv88e6xxx_set_hwtstamp_config(chip, port, config);
-@@ -195,7 +195,7 @@ int mv88e6xxx_port_hwtstamp_get(struct dsa_switch *ds, int port,
- 	struct mv88e6xxx_chip *chip = ds->priv;
- 	struct mv88e6xxx_port_hwtstamp *ps = &chip->port_hwtstamp[port];
- 
--	if (!chip->info->ptp_support)
-+	if (!chip->info->ptp_support || !chip->ptp_clock)
- 		return -EOPNOTSUPP;
- 
- 	*config = ps->tstamp_config;
-@@ -213,7 +213,7 @@ static struct ptp_header *mv88e6xxx_should_tstamp(struct mv88e6xxx_chip *chip,
- 	struct mv88e6xxx_port_hwtstamp *ps = &chip->port_hwtstamp[port];
- 	struct ptp_header *hdr;
- 
--	if (!chip->info->ptp_support)
-+	if (!chip->info->ptp_support || !chip->ptp_clock)
- 		return NULL;
- 
- 	hdr = ptp_parse_header(skb, type);
+The hardware tests used an RTL8192EU USB adapter on a Raspberry Pi. I
+adapted the RX changes to the Pi's existing Linux 6.18.46 RT kernel to
+run them on the device. V3 passed 52 tests covering allocation and
+submission failures, all six completion errors, repeated failures,
+scheduling, stop and normal RX/down-up. Two interrupt-URB tests were not
+run because this device does not use that path.
+
+Nine of the passing tests failed the first start after a fresh module
+load, at the first, middle or last TX/RX allocation or fatal RX
+submission. Each began with no previous start, cleaned up after the
+injected failure, and received packets after the next start.
+
+For the same 24 injected EPROTO completions in a 32-URB pool, the
+unpatched driver stopped with eight pending requests and none in flight.
+V3 kept all 32 and received 1,225 packets over 30 seconds without
+restarting the interface.
+
+The fault-injection changes are kept outside the series and exercise the
+actual allocation, submission, completion, worker and stop paths.
+
+v2: https://lore.kernel.org/linux-wireless/20260913-codex-rtw-rx-v2-v2-0-f09c964e0b96@khu.ac.kr/
+
+Assisted-by: GPT-6 Astra
+Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
 
 ---
-base-commit: 6c096bb08de97cdca051fecddad22cac6a1fd275
-change-id: 20260919-send-net-97aa5653ac48
+Kim Wooseok (3):
+      wifi: rtl8xxxu: free RX skb when URB submission fails
+      wifi: rtl8xxxu: unwind incomplete receive startup
+      wifi: rtl8xxxu: preserve RX requests across recoverable transfer errors
+
+ drivers/net/wireless/realtek/rtl8xxxu/core.c     | 153 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------------------------------------------
+ drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h |   2 +-
+ 2 files changed, 86 insertions(+), 69 deletions(-)
+---
+base-commit: 73e3b1c94c7d5b4a113e7cbb42665dc2fe3b9d78
+change-id: 20260920-codex-rtl-rx-v3-submit-1b4ea6921111
 
 Best regards,
 --  
-Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
+Kim Wooseok <5mghybrid@khu.ac.kr>
 
