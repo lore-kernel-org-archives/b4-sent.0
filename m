@@ -1,10 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sat, 19 Sep 2026 08:54:39 +0200
-Subject: [PATCH RFC v3 11/12] arm64: dts: s32g: Add PCIe controller nodes
+Date: Sat, 19 Sep 2026 08:54:40 +0200
+Subject: [PATCH RFC v3 12/12] arm64: dts: s32g: Add S32G3-RDB3 SerDes
+ routing variants
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-s32g_serdes-v3-11-9d68868c1e89@oss.nxp.com>
+Message-Id: <20260919-s32g_serdes-v3-12-9d68868c1e89@oss.nxp.com>
 References: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 In-Reply-To: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
 To: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>, 
@@ -44,243 +45,251 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org,
  Vincent Guittot <vincent.guittot@linaro.org>, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=9124;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=8208;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=CObtpizqm2FbdaO4lznyHJO1W6Uk5JcEqGF+ZU0OltE=;
- b=TPbscWA4SDJpJ8EeJJ6VNcHNVAUNaot8uGc3VU0JgOhtBMLCNLmMoNVwQ9Q7MYtvlr+KWPd9d
- Z0oO0gZmI+JCgVIhQEkxBtwc55G0CpOp+lYQxZd8ERLgtvAncIxf8zj
+ bh=5z4a13gWRMykKe+seCCTumv26V+4peuuuGKtho0kPws=;
+ b=uo7Rz77sFsHHFKZLKP/otnbvVqBAA1sIeo+ZnR8YMNnaZwcWyUEXjmlvCvdHtffRIullQ+XMA
+ 0SQbpctcZToAc8EoLHdVwO9wAOcLd2M8Z+KmOlBJsVxfOl1saOMGMJg
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the two PCIe controllers of the S32G2 and S32G3, disabled. Each is
-the root complex half of one SerDes subsystem: PCIe_0 pairs with
-SerDes_0 and PCIe_1 with SerDes_1. A board device tree that routes a
-SerDes lane to PCIe enables the controller and points the root port at
-the lane PHY child node of the matching SerDes.
+The S32G3-VNP-RDB3 board wires GMAC0 to an on-board KSZ9031 RGMII PHY by
+default. Add two device tree variants that reroute GMAC0 over the
+SerDes_0 XPCS lane for SGMII, matching the two SerDes lane layouts:
 
-Both SoCs integrate the controllers identically - same register layout
-and same GIC SPI assignment - so the nodes differ only in the
-compatible: S32G3 adds "nxp,s32g3-pcie" ahead of the "nxp,s32g2-pcie"
-base, as the binding describes. The S32G3-VNP-RDB3 and the
-S32G2-VNP-RDB2 wire the same two root complexes to the M.2 slots and
-the PCIe card slot.
+  - Mode 1: PCIe x1 root complex on lane 0 plus 1G SGMII via GMAC0
+    (XPCS0) on lane 1.
+  - Mode 3: dual SGMII, GMAC0 (XPCS0) on lane 0 and PFE_EMAC_2 (XPCS1)
+    on lane 1.
 
-Their configuration space (0x5f_ffffe000 and 0x4f_ffffe000) lies above
-the 32-bit window mapped by soc@0, so the controllers are described at
-the device tree root rather than under soc@0.
+The SerDes SUBSYS_MODE is derived from the lane child nodes present, so
+each layout requires its own board device tree. The Mode 1 variant
+enables both PCIe root complexes and extends their root ports by label
+(pcie0_rp, pcie1_rp), matching the RDB3 wiring: PCIe_0 reaches the M.2
+slots when board switch SW17-2 is ON, PCIe_1 the PCIe card slot.
 
-The root ports are labelled (pcie0_rp, pcie1_rp) so board device trees
-can extend them by label. An overlay that instead re-declares a pcie@0
-child inside the controller node makes dtc emit a unit_address_vs_reg
-warning, because the overlay alone carries no reg for that node.
+The GMAC references its PCS with the standard pcs-handle property. On
+this board the SGMII lane runs back-to-back to the on-board SJA1110
+switch, so there is no PHY on the segment and nothing for phy-handle to
+point at - the link partner is a switch port. The MAC-side link is
+therefore described as a fixed 1G link and phylink uses out-of-band
+negotiation. The SJA1110 itself is not described by these overlays.
 
-The GIC nodes gain '#address-cells = <0>'. The PCIe interrupt-map
-entries name the GIC as their interrupt parent, and without it dtc
-warns on every entry and falls back to zero.
+Verified on the board:
 
-Only the S32G3-VNP-RDB3 board device trees in this series enable a
-controller; the S32G2 nodes stay disabled until a board enables them.
+  - Mode 3: GMAC0 links at 1G and passes traffic.
+  - Mode 1: GMAC0 SGMII path up, and both PCIe root complexes come up -
+    PCIe_1 enumerates the card-slot NIC and passes traffic at full line
+    rate, PCIe_0 enumerates the M.2 slot with SW17-2 ON.
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- arch/arm64/boot/dts/freescale/s32g2.dtsi | 81 ++++++++++++++++++++++++++++++++
- arch/arm64/boot/dts/freescale/s32g3.dtsi | 81 ++++++++++++++++++++++++++++++++
- 2 files changed, 162 insertions(+)
+ arch/arm64/boot/dts/freescale/Makefile             |   6 ++
+ .../dts/freescale/s32g399a-rdb3-serdes-mode1.dtso  | 111 +++++++++++++++++++++
+ .../dts/freescale/s32g399a-rdb3-serdes-mode3.dtso  |  60 +++++++++++
+ 3 files changed, 177 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-index 404913b208fb..539840340318 100644
---- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-@@ -918,7 +918,88 @@ gic: interrupt-controller@50800000 {
- 			      <0x50420000 0x2000>;
- 			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
- 			interrupt-controller;
-+			#address-cells = <0>;
- 			#interrupt-cells = <3>;
- 		};
- 	};
+diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
+index 95ae85ab4adf..3f68f36ac2be 100644
+--- a/arch/arm64/boot/dts/freescale/Makefile
++++ b/arch/arm64/boot/dts/freescale/Makefile
+@@ -786,5 +786,11 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mm-phygate-tauri-l-rs232-rs485.dtb
+ dtb-$(CONFIG_ARCH_S32) += s32g274a-evb.dtb
+ dtb-$(CONFIG_ARCH_S32) += s32g274a-rdb2.dtb
+ dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3.dtb
++dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode1.dtb
++dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode3.dtb
++s32g399a-rdb3-serdes-mode1-dtbs := s32g399a-rdb3.dtb s32g399a-rdb3-serdes-mode1.dtbo
++s32g399a-rdb3-serdes-mode3-dtbs := s32g399a-rdb3.dtb s32g399a-rdb3-serdes-mode3.dtbo
++dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode1.dtbo
++dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode3.dtbo
+ dtb-$(CONFIG_ARCH_S32) += s32n79-rdb.dtb
+ dtb-$(CONFIG_ARCH_S32) += s32v234-evb.dtb
+diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dtso b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dtso
+new file mode 100644
+index 000000000000..43219d9bb6eb
+--- /dev/null
++++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dtso
+@@ -0,0 +1,111 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
++/*
++ * Copyright 2021-2026 NXP
++ *
++ * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3),
++ * SerDes_0 Mode 1: PCIe x1 (lane 0) + 1G SGMII via GMAC0 (XPCS0, lane 1).
++ *
++ * Overlay applied on top of s32g399a-rdb3.dtb. It reroutes GMAC0 from the
++ * on-board RGMII PHY to the SerDes_0 XPCS0 lane and brings up the PCIe
++ * controllers as root complexes. The lane layout present here selects
++ * SerDes SUBSYS_MODE 1.
++ */
++
++/dts-v1/;
++/plugin/;
++
++&serdes0 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++
++	/* Mode 1 lane layout: PCIe on lane 0, GMAC SGMII (XPCS0) on lane 1. */
++	serdes0_pcie0: phy@0 {
++		reg = <0>;
++		compatible = "nxp,s32g-serdes-pcie-phy";
++		#phy-cells = <0>;
++	};
++
++	serdes0_xpcs0: phy@1 {
++		reg = <1>;
++		compatible = "nxp,s32g-serdes-xpcs";
++		nxp,xpcs-instance = <0>;
++	};
++};
++
++&serdes1 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
 +
 +	/*
-+	 * PCIe controllers. Their config space (0x5f_ffffe000 / 0x4f_ffffe000)
-+	 * lies above the 32-bit window mapped by soc@0, so the root complexes
-+	 * are described at the device tree root. Disabled here; a board file
-+	 * that wires a lane to PCIe enables the controller and adds the phys.
++	 * SerDes_1 Mode 1 lane layout: PCIe on lane 0, SGMII (PFE_MAC0
++	 * via XPCS0) on lane 1.
++	 *
++	 * Both lanes must be described: the SerDes driver derives the
++	 * SUBSYS_MODE from the full lane mux, so lane 1 has to be present
++	 * as XPCS instance 0 (PFE_MAC0) for the mode-1 match to succeed.
++	 * PFE is not modeled as a MAC consumer in this upstreaming device
++	 * tree, so the XPCS lane is only brought up by the SerDes driver
++	 * and left without a pcs-handle user.
 +	 */
-+	pcie0: pcie@40400000 {
-+		compatible = "nxp,s32g2-pcie";
-+		reg = <0x00 0x40400000 0x0 0x00001000>,	/* dbi */
-+		      <0x00 0x40420000 0x0 0x00001000>,	/* dbi2 */
-+		      <0x00 0x40460000 0x0 0x00001000>,	/* atu */
-+		      <0x00 0x40470000 0x0 0x00001000>,	/* dma */
-+		      <0x00 0x40481000 0x0 0x000000f8>,	/* ctrl */
-+		      <0x5f 0xffffe000 0x0 0x00002000>;	/* config */
-+		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
-+		dma-coherent;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		device_type = "pci";
-+		ranges = <0x01000000 0x0 0x00000000 0x5f 0xfffe0000 0x0 0x00010000>,
-+			 <0x02000000 0x0 0x00000000 0x58 0x00000000 0x0 0x80000000>,
-+			 <0x02000000 0x1 0x00000000 0x59 0x00000000 0x6 0xfffe0000>;
-+		bus-range = <0x0 0xff>;
-+		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>,
-+			     <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "msi", "dma";
-+		#interrupt-cells = <1>;
-+		interrupt-map-mask = <0 0 0 0x7>;
-+		interrupt-map = <0 0 0 1 &gic GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 2 &gic GIC_SPI 129 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 3 &gic GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 4 &gic GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
-+
-+		pcie0_rp: pcie@0 {
-+			reg = <0x0 0x0 0x0 0x0 0x0>;
-+			#address-cells = <3>;
-+			#size-cells = <2>;
-+			ranges;
-+			device_type = "pci";
-+		};
++	serdes1_pcie0: phy@0 {
++		reg = <0>;
++		compatible = "nxp,s32g-serdes-pcie-phy";
++		#phy-cells = <0>;
 +	};
 +
-+	pcie1: pcie@44100000 {
-+		compatible = "nxp,s32g2-pcie";
-+		reg = <0x00 0x44100000 0x0 0x00001000>,	/* dbi */
-+		      <0x00 0x44120000 0x0 0x00001000>,	/* dbi2 */
-+		      <0x00 0x44160000 0x0 0x00001000>,	/* atu */
-+		      <0x00 0x44170000 0x0 0x00001000>,	/* dma */
-+		      <0x00 0x44181000 0x0 0x000000f8>,	/* ctrl */
-+		      <0x4f 0xffffe000 0x0 0x00002000>;	/* config */
-+		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
-+		dma-coherent;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		device_type = "pci";
-+		ranges = <0x01000000 0x0 0x00000000 0x4f 0xfffe0000 0x0 0x00010000>,
-+			 <0x02000000 0x0 0x00000000 0x48 0x00000000 0x0 0x80000000>,
-+			 <0x02000000 0x1 0x00000000 0x49 0x00000000 0x6 0xfffe0000>;
-+		bus-range = <0x0 0xff>;
-+		interrupts = <GIC_SPI 216 IRQ_TYPE_LEVEL_HIGH>,
-+			     <GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "msi", "dma";
-+		#interrupt-cells = <1>;
-+		interrupt-map-mask = <0 0 0 0x7>;
-+		interrupt-map = <0 0 0 1 &gic GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 2 &gic GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 3 &gic GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 4 &gic GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
-+
-+		pcie1_rp: pcie@0 {
-+			reg = <0x0 0x0 0x0 0x0 0x0>;
-+			#address-cells = <3>;
-+			#size-cells = <2>;
-+			ranges;
-+			device_type = "pci";
-+		};
++	serdes1_xpcs0: phy@1 {
++		reg = <1>;
++		compatible = "nxp,s32g-serdes-xpcs";
++		nxp,xpcs-instance = <0>;
 +	};
- };
-diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-index 0d001b2895c6..fdf086363c02 100644
---- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-@@ -1058,6 +1058,7 @@ stm11: timer@4052c000 {
- 
- 		gic: interrupt-controller@50800000 {
- 			compatible = "arm,gic-v3";
-+			#address-cells = <0>;
- 			#interrupt-cells = <3>;
- 			interrupt-controller;
- 			reg = <0x50800000 0x10000>,
-@@ -1069,6 +1070,86 @@ gic: interrupt-controller@50800000 {
- 		};
- 	};
- 
++};
++
++/*
++ * Both PCIe root complexes are wired on the RDB3:
++ *  - PCIe_0 reaches the M.2 slots (M-key or E-key) when board switch
++ *    SW17-2 is set to ON. It consumes SerDes_0 lane-0 PCIe phy.
++ *  - PCIe_1 reaches the PCIe card slot. It consumes SerDes_1 lane-0 PCIe phy.
++ */
++&pcie0 {
++	status = "okay";
++};
++
++&pcie0_rp {
++	num-lanes = <1>;
++	phys = <&serdes0_pcie0>;
++};
++
++&pcie1 {
++	status = "okay";
++};
++
++&pcie1_rp {
++	num-lanes = <1>;
++	phys = <&serdes1_pcie0>;
++};
++
++&gmac0 {
++	/delete-property/ phy-handle;
++	clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
++	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
++	phy-mode = "sgmii";
++	pcs-handle = <&serdes0_xpcs0>;
++	status = "okay";
++
 +	/*
-+	 * PCIe controllers. Their config space (0x5f_ffffe000 / 0x4f_ffffe000)
-+	 * lies above the 32-bit window mapped by soc@0, so the root complexes
-+	 * are described at the device tree root. Disabled here; a board file
-+	 * that wires a lane to PCIe enables the controller and adds the phys.
++	 * GMAC0 is wired back-to-back to the on-board SJA1110 switch over
++	 * this SGMII lane. There is no PHY on the segment, so there is
++	 * nothing to reference with phy-handle: the link partner is a
++	 * switch port. Describe it as a fixed 1G link; phylink then uses
++	 * out-of-band negotiation. The switch itself is not described by
++	 * this overlay. The PCS also supports in-band negotiation, for
++	 * boards whose link partner is described.
 +	 */
-+	pcie0: pcie@40400000 {
-+		compatible = "nxp,s32g3-pcie", "nxp,s32g2-pcie";
-+		reg = <0x00 0x40400000 0x0 0x00001000>,	/* dbi */
-+		      <0x00 0x40420000 0x0 0x00001000>,	/* dbi2 */
-+		      <0x00 0x40460000 0x0 0x00001000>,	/* atu */
-+		      <0x00 0x40470000 0x0 0x00001000>,	/* dma */
-+		      <0x00 0x40481000 0x0 0x000000f8>,	/* ctrl */
-+		      <0x5f 0xffffe000 0x0 0x00002000>;	/* config */
-+		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
-+		dma-coherent;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		device_type = "pci";
-+		ranges = <0x01000000 0x0 0x00000000 0x5f 0xfffe0000 0x0 0x00010000>,
-+			 <0x02000000 0x0 0x00000000 0x58 0x00000000 0x0 0x80000000>,
-+			 <0x02000000 0x1 0x00000000 0x59 0x00000000 0x6 0xfffe0000>;
-+		bus-range = <0x0 0xff>;
-+		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>,
-+			     <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "msi", "dma";
-+		#interrupt-cells = <1>;
-+		interrupt-map-mask = <0 0 0 0x7>;
-+		interrupt-map = <0 0 0 1 &gic GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 2 &gic GIC_SPI 129 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 3 &gic GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 4 &gic GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
++	fixed-link {
++		speed = <1000>;
++		full-duplex;
++		pause;
++	};
++};
+diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dtso b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dtso
+new file mode 100644
+index 000000000000..195c8043c18a
+--- /dev/null
++++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dtso
+@@ -0,0 +1,60 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
++/*
++ * Copyright 2021-2026 NXP
++ *
++ * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3),
++ * SerDes_0 Mode 3: dual SGMII, GMAC0 (XPCS0, lane 0) + PFE_EMAC_2
++ * (XPCS1, lane 1), both 1G.
++ *
++ * Overlay applied on top of s32g399a-rdb3.dtb. It reroutes GMAC0 from the
++ * on-board RGMII PHY to the SerDes_0 XPCS0 lane. The lane-1 XPCS1
++ * (PFE_EMAC_2) is described so the mode is derivable and both XPCS
++ * instances are initialised; it has no upstream MAC consumer in this
++ * device tree. The lane layout present here selects SerDes SUBSYS_MODE 3.
++ */
 +
-+		pcie0_rp: pcie@0 {
-+			reg = <0x0 0x0 0x0 0x0 0x0>;
-+			#address-cells = <3>;
-+			#size-cells = <2>;
-+			ranges;
-+			device_type = "pci";
-+		};
++/dts-v1/;
++/plugin/;
++
++&serdes0 {
++	#address-cells = <1>;
++	#size-cells = <0>;
++	status = "okay";
++
++	/* Mode 3 lane layout: GMAC SGMII (XPCS0) on lane 0, PFE2 (XPCS1) on lane 1. */
++	serdes0_xpcs0: phy@0 {
++		reg = <0>;
++		compatible = "nxp,s32g-serdes-xpcs";
++		nxp,xpcs-instance = <0>;
 +	};
 +
-+	pcie1: pcie@44100000 {
-+		compatible = "nxp,s32g3-pcie", "nxp,s32g2-pcie";
-+		reg = <0x00 0x44100000 0x0 0x00001000>,	/* dbi */
-+		      <0x00 0x44120000 0x0 0x00001000>,	/* dbi2 */
-+		      <0x00 0x44160000 0x0 0x00001000>,	/* atu */
-+		      <0x00 0x44170000 0x0 0x00001000>,	/* dma */
-+		      <0x00 0x44181000 0x0 0x000000f8>,	/* ctrl */
-+		      <0x4f 0xffffe000 0x0 0x00002000>;	/* config */
-+		reg-names = "dbi", "dbi2", "atu", "dma", "ctrl", "config";
-+		dma-coherent;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		device_type = "pci";
-+		ranges = <0x01000000 0x0 0x00000000 0x4f 0xfffe0000 0x0 0x00010000>,
-+			 <0x02000000 0x0 0x00000000 0x48 0x00000000 0x0 0x80000000>,
-+			 <0x02000000 0x1 0x00000000 0x49 0x00000000 0x6 0xfffe0000>;
-+		bus-range = <0x0 0xff>;
-+		interrupts = <GIC_SPI 216 IRQ_TYPE_LEVEL_HIGH>,
-+			     <GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "msi", "dma";
-+		#interrupt-cells = <1>;
-+		interrupt-map-mask = <0 0 0 0x7>;
-+		interrupt-map = <0 0 0 1 &gic GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 2 &gic GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 3 &gic GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
-+				<0 0 0 4 &gic GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
-+		status = "disabled";
-+
-+		pcie1_rp: pcie@0 {
-+			reg = <0x0 0x0 0x0 0x0 0x0>;
-+			#address-cells = <3>;
-+			#size-cells = <2>;
-+			ranges;
-+			device_type = "pci";
-+		};
++	serdes0_xpcs1: phy@1 {
++		reg = <1>;
++		compatible = "nxp,s32g-serdes-xpcs";
++		nxp,xpcs-instance = <1>;
 +	};
++};
 +
- 	timer {
- 		compatible = "arm,armv8-timer";
- 		interrupt-parent = <&gic>;
++&gmac0 {
++	/delete-property/ phy-handle;
++	clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
++	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
++	phy-mode = "sgmii";
++	pcs-handle = <&serdes0_xpcs0>;
++	status = "okay";
++
++	/*
++	 * GMAC0 is wired back-to-back to the on-board SJA1110 switch over
++	 * this SGMII lane. There is no PHY on the segment, so there is
++	 * nothing to reference with phy-handle: the link partner is a
++	 * switch port. Describe it as a fixed 1G link; phylink then uses
++	 * out-of-band negotiation. The switch itself is not described by
++	 * this overlay. The PCS also supports in-band negotiation, for
++	 * boards whose link partner is described.
++	 */
++	fixed-link {
++		speed = <1000>;
++		full-duplex;
++		pause;
++	};
++};
 
 -- 
 2.55.0
