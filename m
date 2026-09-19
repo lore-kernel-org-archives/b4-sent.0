@@ -1,105 +1,240 @@
 From: Kim Wooseok <5mghybrid@khu.ac.kr>
-Date: Sun, 20 Sep 2026 05:44:04 +0900
-Subject: [PATCH rtw-next v3 1/3] wifi: rtl8xxxu: free RX skb when URB
- submission fails
+Date: Sun, 20 Sep 2026 05:44:05 +0900
+Subject: [PATCH rtw-next v3 2/3] wifi: rtl8xxxu: unwind incomplete receive
+ startup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260920-codex-rtl-rx-v3-submit-v3-1-883d11351963@khu.ac.kr>
+Message-Id: <20260920-codex-rtl-rx-v3-submit-v3-2-883d11351963@khu.ac.kr>
 References: <20260920-codex-rtl-rx-v3-submit-v3-0-883d11351963@khu.ac.kr>
 In-Reply-To: <20260920-codex-rtl-rx-v3-submit-v3-0-883d11351963@khu.ac.kr>
 To: linux-wireless@vger.kernel.org
 Cc: pkshih@realtek.com, kvalo@kernel.org, linux-kernel@vger.kernel.org, 
  Jes.Sorensen@gmail.com
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789850643; l=2896;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789850643; l=6605;
  i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
- bh=v2NnvT75DMsgHtN+8TES4Q5i+B5ih9gWoiLYF9i+R38=;
- b=h0UorFHxgw9YQh1jMuFlj1/Q60jdD1CohOrRCrh/RRwWjWDvvdl6vAGo11wragppHxOkdahJc
- gy4jF4SF3NuBDcSpAuOxwmV+BKXmuVz2XqWflvjlaosMCy0B9WFiScF
+ bh=OyDx5rqQosEORE8l/erZWFaYVL1RAiawqnAc+isUD8g=;
+ b=AyIU/A7O/gd25EvcDw8HcPXZvk2amnaZxTQiI8/QUnLjF1+cdS8aa2Igk2w7J6cq0qe9YozoV
+ ERUJ/87p5VfBJSWw7dRp39BX6dFeDVxX5l0FYtV/yCCWGoaodwc1X+A
 X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
  pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
 X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When usb_submit_urb() fails, rtl8xxxu_submit_rx_urb() unanchors the URB
-but leaves the newly allocated skb in urb.context. For ENOMEM/EAGAIN,
-the RX worker puts the request back on the pending list. The next
-submission allocates another skb and overwrites that pointer, leaking
-the previous buffer. Stopping before the retry also leaks it, because
-pending-list cleanup frees only the URB.
+rtl8xxxu_start() allocates and submits RX URBs one at a time. If a later
+allocation fails, the error path frees the TX pool but leaves earlier RX
+requests active. A partial TX or RX allocation failure can also leave
+ret at zero, so start reports success despite the incomplete setup.
 
-Free the skb and clear urb.context in rtl8xxxu_submit_rx_urb() when
-submission fails. This keeps buffer allocation and failure cleanup in
-the same function, so a request returned for retry or teardown no longer
-owns an skb. Remove the corresponding cleanup from start and the RX
-worker; they only need to decide whether to retry or free the URB.
+Allocate the RX pool before submitting any of it, and return ENOMEM
+whenever a pool allocation fails. Pass start errors through
+rtl8xxxu_stop(), including interrupt URB submission failures, so the
+existing stop path cancels work and releases both active requests and
+partially allocated pools.
+
+Share the submission loop with the RX worker. Both callers keep requests
+that fail with ENOMEM/EAGAIN. For a fatal error during startup, free the
+rest of the unsubmitted batch and return the error so start can unwind.
+In the worker, free only the failed request and continue with the rest
+of the batch.
+
+Keep the allocation loop in a small helper so the setup and error paths
+in start remain easy to follow.
 
 Fixes: 26f1fad29ad9 ("New driver: rtl8xxxu (mac80211)")
-Reviewed-by: Ping-Ke Shih <pkshih@realtek.com>
 Assisted-by: GPT-6 Astra
 Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
 ---
- drivers/net/wireless/realtek/rtl8xxxu/core.c | 16 +++++-----------
- 1 file changed, 5 insertions(+), 11 deletions(-)
+ drivers/net/wireless/realtek/rtl8xxxu/core.c | 96 ++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
+ 1 file changed, 54 insertions(+), 42 deletions(-)
 
 diff --git a/drivers/net/wireless/realtek/rtl8xxxu/core.c b/drivers/net/wireless/realtek/rtl8xxxu/core.c
-index bddbd0990de72..795a5ec2f8cd4 100644
+index 795a5ec2f8cd4..5ae3dbf5034ac 100644
 --- a/drivers/net/wireless/realtek/rtl8xxxu/core.c
 +++ b/drivers/net/wireless/realtek/rtl8xxxu/core.c
-@@ -5864,7 +5864,6 @@ static void rtl8xxxu_rx_urb_work(struct work_struct *work)
- 	struct rtl8xxxu_priv *priv;
+@@ -58,6 +58,7 @@ MODULE_PARM_DESC(dma_agg_pages, "Set DMA aggregation pages (range 1-127, 0 to di
+ #define RTL8XXXU_TX_URB_LOW_WATER	25
+ #define RTL8XXXU_TX_URB_HIGH_WATER	32
+ 
++static void rtl8xxxu_stop(struct ieee80211_hw *hw, bool suspend);
+ static int rtl8xxxu_submit_rx_urb(struct rtl8xxxu_priv *priv,
+ 				  struct rtl8xxxu_rx_urb *rx_urb);
+ 
+@@ -5832,6 +5833,27 @@ static void rtl8xxxu_free_rx_resources(struct rtl8xxxu_priv *priv)
+ 	spin_unlock_irqrestore(&priv->rx_urb_lock, flags);
+ }
+ 
++static int rtl8xxxu_alloc_rx_urbs(struct rtl8xxxu_priv *priv)
++{
++	struct rtl8xxxu_rx_urb *rx_urb;
++	int i;
++
++	/* No RX work is active until the complete pool has been allocated. */
++	for (i = 0; i < RTL8XXXU_RX_URBS; i++) {
++		rx_urb = kmalloc_obj(struct rtl8xxxu_rx_urb);
++		if (!rx_urb)
++			return -ENOMEM;
++
++		usb_init_urb(&rx_urb->urb);
++		INIT_LIST_HEAD(&rx_urb->list);
++		rx_urb->hw = priv->hw;
++		list_add_tail(&rx_urb->list, &priv->rx_urb_pending_list);
++		priv->rx_urb_pending_count++;
++	}
++
++	return 0;
++}
++
+ static void rtl8xxxu_queue_rx_urb(struct rtl8xxxu_priv *priv,
+ 				  struct rtl8xxxu_rx_urb *rx_urb)
+ {
+@@ -5859,32 +5881,21 @@ static void rtl8xxxu_queue_rx_urb(struct rtl8xxxu_priv *priv,
+ 	spin_unlock_irqrestore(&priv->rx_urb_lock, flags);
+ }
+ 
+-static void rtl8xxxu_rx_urb_work(struct work_struct *work)
++static int rtl8xxxu_submit_rx_urbs(struct rtl8xxxu_priv *priv, bool startup)
+ {
+-	struct rtl8xxxu_priv *priv;
  	struct rtl8xxxu_rx_urb *rx_urb, *tmp;
- 	struct list_head local;
--	struct sk_buff *skb;
+-	struct list_head local;
  	unsigned long flags;
++	LIST_HEAD(local);
  	int ret;
  
-@@ -5896,8 +5895,6 @@ static void rtl8xxxu_rx_urb_work(struct work_struct *work)
+-	priv = container_of(work, struct rtl8xxxu_priv, rx_urb_wq);
+-	INIT_LIST_HEAD(&local);
+-
+ 	spin_lock_irqsave(&priv->rx_urb_lock, flags);
+-
+ 	list_splice_init(&priv->rx_urb_pending_list, &local);
+ 	priv->rx_urb_pending_count = 0;
+-
+ 	spin_unlock_irqrestore(&priv->rx_urb_lock, flags);
+ 
+ 	list_for_each_entry_safe(rx_urb, tmp, &local, list) {
+ 		list_del_init(&rx_urb->list);
+ 		ret = rtl8xxxu_submit_rx_urb(priv, rx_urb);
+-		/*
+-		 * If out of memory or temporary error, put it back on the
+-		 * queue and try again. Otherwise the device is dead/gone
+-		 * and we should drop it.
+-		 */
+ 		switch (ret) {
+ 		case 0:
+ 			break;
+@@ -5893,11 +5904,30 @@ static void rtl8xxxu_rx_urb_work(struct work_struct *work)
+ 			rtl8xxxu_queue_rx_urb(priv, rx_urb);
+ 			break;
  		default:
++			usb_free_urb(&rx_urb->urb);
++			if (startup)
++				goto free_remaining;
  			dev_warn(&priv->udev->dev,
  				 "failed to requeue urb with error %i\n", ret);
--			skb = (struct sk_buff *)rx_urb->urb.context;
--			dev_kfree_skb(skb);
- 			usb_free_urb(&rx_urb->urb);
+-			usb_free_urb(&rx_urb->urb);
  		}
  	}
-@@ -6596,8 +6593,11 @@ static int rtl8xxxu_submit_rx_urb(struct rtl8xxxu_priv *priv,
- 			  skb_size, rtl8xxxu_rx_complete, skb);
- 	usb_anchor_urb(&rx_urb->urb, &priv->rx_anchor);
- 	ret = usb_submit_urb(&rx_urb->urb, GFP_ATOMIC);
--	if (ret)
-+	if (ret) {
- 		usb_unanchor_urb(&rx_urb->urb);
-+		dev_kfree_skb(skb);
-+		rx_urb->urb.context = NULL;
++
++	return 0;
++
++free_remaining:
++	list_for_each_entry_safe(rx_urb, tmp, &local, list) {
++		list_del(&rx_urb->list);
++		usb_free_urb(&rx_urb->urb);
 +	}
++	return ret;
++}
++
++static void rtl8xxxu_rx_urb_work(struct work_struct *work)
++{
++	struct rtl8xxxu_priv *priv;
++
++	priv = container_of(work, struct rtl8xxxu_priv, rx_urb_wq);
++	rtl8xxxu_submit_rx_urbs(priv, false);
+ }
+ 
+ /*
+@@ -7408,7 +7438,6 @@ static void rtl8xxxu_watchdog_callback(struct work_struct *work)
+ static int rtl8xxxu_start(struct ieee80211_hw *hw)
+ {
+ 	struct rtl8xxxu_priv *priv = hw->priv;
+-	struct rtl8xxxu_rx_urb *rx_urb;
+ 	struct rtl8xxxu_tx_urb *tx_urb;
+ 	unsigned long flags;
+ 	int ret, i;
+@@ -7423,14 +7452,13 @@ static int rtl8xxxu_start(struct ieee80211_hw *hw)
+ 	if (priv->usb_interrupts) {
+ 		ret = rtl8xxxu_submit_int_urb(hw);
+ 		if (ret)
+-			goto exit;
++			goto error_out;
+ 	}
+ 
+ 	for (i = 0; i < RTL8XXXU_TX_URBS; i++) {
+ 		tx_urb = kmalloc_obj(struct rtl8xxxu_tx_urb);
+ 		if (!tx_urb) {
+-			if (!i)
+-				ret = -ENOMEM;
++			ret = -ENOMEM;
+ 
+ 			goto error_out;
+ 		}
+@@ -7441,31 +7469,21 @@ static int rtl8xxxu_start(struct ieee80211_hw *hw)
+ 		priv->tx_urb_free_count++;
+ 	}
+ 
++	ret = rtl8xxxu_alloc_rx_urbs(priv);
++	if (ret)
++		goto error_out;
++
+ 	priv->tx_stopped = false;
+ 
+ 	spin_lock_irqsave(&priv->rx_urb_lock, flags);
+ 	priv->shutdown = false;
+ 	spin_unlock_irqrestore(&priv->rx_urb_lock, flags);
+ 
+-	for (i = 0; i < RTL8XXXU_RX_URBS; i++) {
+-		rx_urb = kmalloc_obj(struct rtl8xxxu_rx_urb);
+-		if (!rx_urb) {
+-			if (!i)
+-				ret = -ENOMEM;
+-
+-			goto error_out;
+-		}
+-		usb_init_urb(&rx_urb->urb);
+-		INIT_LIST_HEAD(&rx_urb->list);
+-		rx_urb->hw = hw;
+-
+-		ret = rtl8xxxu_submit_rx_urb(priv, rx_urb);
+-		if (ret)
+-			rtl8xxxu_queue_rx_urb(priv, rx_urb);
+-	}
++	ret = rtl8xxxu_submit_rx_urbs(priv, true);
++	if (ret)
++		goto error_out;
+ 
+ 	schedule_delayed_work(&priv->ra_watchdog, 2 * HZ);
+-exit:
+ 	/*
+ 	 * Accept all data and mgmt frames
+ 	 */
+@@ -7478,13 +7496,7 @@ static int rtl8xxxu_start(struct ieee80211_hw *hw)
+ 	return ret;
+ 
+ error_out:
+-	rtl8xxxu_free_tx_resources(priv);
+-	/*
+-	 * Disable all data and mgmt frames
+-	 */
+-	rtl8xxxu_write16(priv, REG_RXFLTMAP2, 0x0000);
+-	rtl8xxxu_write16(priv, REG_RXFLTMAP0, 0x0000);
+-
++	rtl8xxxu_stop(hw, false);
  	return ret;
  }
  
-@@ -7410,7 +7410,6 @@ static int rtl8xxxu_start(struct ieee80211_hw *hw)
- 	struct rtl8xxxu_priv *priv = hw->priv;
- 	struct rtl8xxxu_rx_urb *rx_urb;
- 	struct rtl8xxxu_tx_urb *tx_urb;
--	struct sk_buff *skb;
- 	unsigned long flags;
- 	int ret, i;
- 
-@@ -7461,13 +7460,8 @@ static int rtl8xxxu_start(struct ieee80211_hw *hw)
- 		rx_urb->hw = hw;
- 
- 		ret = rtl8xxxu_submit_rx_urb(priv, rx_urb);
--		if (ret) {
--			if (ret != -ENOMEM) {
--				skb = (struct sk_buff *)rx_urb->urb.context;
--				dev_kfree_skb(skb);
--			}
-+		if (ret)
- 			rtl8xxxu_queue_rx_urb(priv, rx_urb);
--		}
- 	}
- 
- 	schedule_delayed_work(&priv->ra_watchdog, 2 * HZ);
 
 -- 
 2.53.0
