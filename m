@@ -1,127 +1,80 @@
-From: Ilyas <ilyas.tasli@outlook.fr>
-Date: Sat, 19 Sep 2026 16:01:31 +0200
-Subject: [PATCH] gsupplicant: Enable optional PMF via global Pmf property
+From: Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
+Subject: [PATCH 0/3] arm64: dts: marvell: Add Sophos XGS 107w NPU
+Date: Sat, 19 Sep 2026 21:44:16 +0200
+Message-Id: <20260919-send-dt-v1-0-365615a74ef3@studio.unibo.it>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-pmf-fix-v1-1-a84bab14eb34@outlook.fr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDS0NL3YLcNN20zArdFMOUFFMgSko0SlECqi4oSgUKg02Kjq2tBQAIqv+
- 6WQAAAA==
-X-Change-ID: 20260919-pmf-fix-d1dd5dd5ba2d
-To: connman@lists.linux.dev
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789826491; l=3866;
- i=ilyas.tasli@outlook.fr; s=20260919; h=from:subject:message-id;
- bh=EgLdVURvHPPQtsiaA4LiJhJ/WdC3Px5qicPECTierkA=;
- b=IwIc1m50QcKP+bIS6V0qarYsV8wVUJqZsAOICi+Vo7BRk4+bLR7Fpo+eStfNavFFA7OVPovGc
- axyKh8jPiFUBkoKNogJWgVH2npAdHRkYIsep8RRNwxEh3CMcTGJiQ4D
-X-Developer-Key: i=ilyas.tasli@outlook.fr; a=ed25519;
- pk=fZdGZtPpfn0Iv4oEHCu8FTesIPeAvMU/PRD3RrLl4mE=
-X-Endpoint-Received: by B4 Relay for ilyas.tasli@outlook.fr/20260919 with auth_id=1039
+X-B4-Tracking: v=1; b=H4sIABDmrmoC/yXMyw5AMBCF4VeRWWtSjbi9ili0ZjAWJR1EIt5ds
+ fyS/5wLhAKTQJNcEOhg4cVHZGkC/WT9SIoxGow2ha6zWgl5VLipwjnUlc1LjQZivQYa+Pye2u6
+ 37G6mfnvncN8Pa32lp2sAAAA=
+X-Change-ID: 20260919-send-dt-6bbd08a470d2
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Gregory Clement <gregory.clement@bootlin.com>, 
+ Sebastian Hesselbarth <sebastian.hesselbarth@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789847056; l=2324;
+ i=nicolo.giuliani6@studio.unibo.it; s=20260919; h=from:subject:message-id;
+ bh=jN/xuLLWQ0ENNdxly/LSIJeQTI5L1wucNlyu8/3PGvQ=;
+ b=kF2s2/YeaYZ1CM7tARbZ5N2d9Es+LHHwr6izOEkX3j/au1XGeuQjHgcgk6MQ6+Kb4u7qZaqGy
+ YhZM/MnpVpGBQ102hDH2Y0PuLwtiPWljNEVU5qXc9b5S4nvI+unVrLb
+X-Developer-Key: i=nicolo.giuliani6@studio.unibo.it; a=ed25519;
+ pk=D652ecdT01GkA1eoFWNFNX85xIg5ZnFwUWyjfestgQw=
+X-Endpoint-Received: by B4 Relay for nicolo.giuliani6@studio.unibo.it/20260919 with auth_id=1040
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 5e73b55e ("gsupplicant: Set MFP optional and key_mgmt for PSK")
-sets ieee80211w=1 on every PSK network. When ieee80211w is set
-explicitly, wpa_supplicant uses it as is and skips its check for BIP
-support in the driver. That check only runs when PMF comes from the
-global pmf setting.
+The Sophos XGS 87/107 desktop firewalls pair an AMD x86 host with a
+separate network processing unit (NPU): a Marvell Armada CN9130 SoC with
+its own eMMC and SPI NOR flash. The NPU serves the eight RJ45 ports and
+the SFP cage through a Marvell 88E6193X switch on its MDIO bus, which is
+connected to the SoC by a 10GBASE-R link, and reaches the x86 host over
+PCIe.
 
-Drivers without any BIP cipher, e.g. iwlwifi/iwldvm (Centrino
-Wireless-N 2230, Advanced-N 6205/6235), therefore negotiate PMF with
-PMF-capable APs and then fail to install the IGTK:
+This series adds the Sophos vendor prefix, the compatible string of the
+NPU board and a device tree that describes the NPU as a standalone system:
+UART console, eMMC, SPI NOR flash, the PCA9555 GPIO expander of the port
+LEDs, the SFP cage and the switch with its ports. The LEDs, the USB ports
+and the PCIe link to the x86 host (the CN9130 acts as a PCIe endpoint
+towards it, which needs endpoint support that is not part of this series)
+are not described.
 
-  nl80211: kernel reports: key setting validation failed
-  wlan0: WPA: Failed to configure IGTK to the driver
-  wlan0: RSN: Failed to configure IGTK
+The reset line of the switch is not passed to the mv88e6xxx driver as
+reset-gpios, because the 88E6193X needs about two seconds after a reset,
+much longer than the driver waits. The boot loader resets it instead.
+The details are in patch 3.
 
-The station then deauthenticates locally right after the 4-way
-handshake, so it can no longer connect to WPA2 networks it used to
-connect to before 1.45.
+Tested on an XGS 107w with Linux 6.18: boot from eMMC, eMMC and SPI NOR
+access, the mvpp2 link to the switch at 10 Gb/s, the 88E6193X probing with
+its eight user ports, and 936 Mbit/s through a front port. The SFP cage
+and the PCA9555 outputs are untested.
 
-Set the per-interface global Pmf property to "1" instead and stop
-adding ieee80211w to PSK networks. MFPC is still advertised on
-hardware that supports PMF, as intended by 5e73b55e. wpa_supplicant
-disables PMF itself when the driver lacks BIP. NetworkManager uses
-the same approach (NetworkManager commit a9ab50ef, "supplicant: set
-optional PMF using global supplicant property").
+dt_binding_check passes for vendor-prefixes.yaml and armada-7k-8k.yaml,
+and CHECK_DTBS=y on marvell/cn9130-sophos-xgs107w.dtb reports no warning
+specific to this board.
 
+Based on the mvebu/dt branch of the mvebu tree (008e9faade).
+
+Signed-off-by: Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
 ---
-Tested with connman 1.45 and wpa_supplicant 2.11 on an Intel Centrino
-Wireless-N 2230 (iwldvm, no BIP cipher advertised) against a WPA2-PSK
-AP advertising MFPC: without this patch the connection fails with
-"Failed to configure IGTK", with it the station connects and gets a
-DHCP lease.
----
- gsupplicant/supplicant.c | 26 ++++++++++++++++----------
- 1 file changed, 16 insertions(+), 10 deletions(-)
+Nicolo Giuliani (3):
+      dt-bindings: vendor-prefixes: Add Sophos
+      dt-bindings: arm: marvell: Add Sophos XGS 107w NPU
+      arm64: dts: marvell: Add Sophos XGS 107w NPU board
 
-diff --git a/gsupplicant/supplicant.c b/gsupplicant/supplicant.c
-index 5e289953..8e569aed 100644
---- a/gsupplicant/supplicant.c
-+++ b/gsupplicant/supplicant.c
-@@ -2538,6 +2538,13 @@ static GSupplicantInterface *interface_alloc(const char *path)
- 	return interface;
- }
- 
-+static void set_pmf(DBusMessageIter *iter, void *user_data)
-+{
-+	const char *pmf = user_data;
-+
-+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &pmf);
-+}
-+
- static void interface_added(DBusMessageIter *iter, void *user_data)
- {
- 	GSupplicantInterface *interface;
-@@ -2561,6 +2568,15 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
- 	if (!interface)
- 		return;
- 
-+	/*
-+	 * Enable optional PMF through the per-interface global setting
-+	 * instead of per-network ieee80211w=1, so that wpa_supplicant
-+	 * disables it when the driver does not support any BIP cipher.
-+	 */
-+	supplicant_dbus_property_set(path, SUPPLICANT_INTERFACE ".Interface",
-+				"Pmf", DBUS_TYPE_STRING_AS_STRING,
-+				set_pmf, NULL, "1", NULL);
-+
- 	if (!properties_appended) {
- 		supplicant_dbus_property_get_all(path,
- 						SUPPLICANT_INTERFACE ".Interface",
-@@ -4930,16 +4946,8 @@ static void add_network_security_proto(DBusMessageIter *dict,
- 	g_free(proto);
- }
- 
--static void add_network_ieee80211w(DBusMessageIter *dict, GSupplicantSSID *ssid,
--				   GSupplicantMfpOptions ieee80211w)
--{
--	supplicant_dbus_dict_append_basic(dict, "ieee80211w", DBUS_TYPE_UINT32,
--					  &ieee80211w);
--}
--
- static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
- {
--	GSupplicantMfpOptions ieee80211w;
- 	char *key_mgmt;
- 
- 	switch (ssid->security) {
-@@ -4956,8 +4964,6 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
- 		break;
- 	case G_SUPPLICANT_SECURITY_PSK:
- 		key_mgmt = "SAE WPA-PSK WPA-PSK-SHA256";
--		ieee80211w = G_SUPPLICANT_MFP_OPTIONAL;
--		add_network_ieee80211w(dict, ssid, ieee80211w);
- 		add_network_security_psk(dict, ssid);
- 		add_network_security_ciphers(dict, ssid);
- 		add_network_security_proto(dict, ssid);
-
+ .../bindings/arm/marvell/armada-7k-8k.yaml         |   9 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ arch/arm64/boot/dts/marvell/Makefile               |   1 +
+ .../boot/dts/marvell/cn9130-sophos-xgs107w.dts     | 209 +++++++++++++++++++++
+ 4 files changed, 221 insertions(+)
 ---
-base-commit: 9e46e4a021cd8566b942d1a72b41b14a0a58f506
-change-id: 20260919-pmf-fix-d1dd5dd5ba2d
+base-commit: 008e9faadef8c0aaa9b8a3ff05a2126e3c5b08b7
+change-id: 20260919-send-dt-6bbd08a470d2
 
 Best regards,
--- 
-Ilyas <ilyas.tasli@outlook.fr>
+--  
+Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
 
