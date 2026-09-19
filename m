@@ -1,296 +1,210 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Sat, 19 Sep 2026 08:54:40 +0200
-Subject: [PATCH RFC v3 12/12] arm64: dts: s32g: Add S32G3-RDB3 SerDes
- routing variants
+From: =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+Subject: [PATCH v7 0/3] arm64: dts: rockchip: Add FriendlyElec NanoPi R28S
+Date: Sat, 19 Sep 2026 18:28:16 +0800
+Message-Id: <20260919-r28s-upstream-v7-0-e80a6f8ef521@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260919-s32g_serdes-v3-12-9d68868c1e89@oss.nxp.com>
-References: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
-In-Reply-To: <20260919-s32g_serdes-v3-0-9d68868c1e89@oss.nxp.com>
-To: Ciprian Marian Costea <ciprianmarian.costea@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Geert Uytterhoeven <geert+renesas@glider.be>, 
- Magnus Damm <magnus.damm@gmail.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Bogdan Hamciuc <bogdan.hamciuc@nxp.com>, 
- Ionut Vicovan <ionut.vicovan@nxp.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Clark Wang <xiaoning.wang@nxp.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, 
- Richard Cochran <richardcochran@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-phy@lists.infradead.org, 
- netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-renesas-soc@vger.kernel.org, 
- imx@lists.linux.dev, linux-pci@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789800879; l=8208;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=5z4a13gWRMykKe+seCCTumv26V+4peuuuGKtho0kPws=;
- b=uo7Rz77sFsHHFKZLKP/otnbvVqBAA1sIeo+ZnR8YMNnaZwcWyUEXjmlvCvdHtffRIullQ+XMA
- 0SQbpctcZToAc8EoLHdVwO9wAOcLd2M8Z+KmOlBJsVxfOl1saOMGMJg
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OTU7DMBAF4KtUXmNkj/+74h6IhWNPqJGaRHYag
+ arcHbtsIiNYPmm+N+9OCuaEhZxPd5JxSyXNUw3m6UTCxU/vSFOsmQADzRxTNIMt9LaUNaO/UgQ
+ OCCZqrhWpZsk4ps9H3+vbTy634QPD2kraxSWVdc5fj4cbb3d/dW+cMjpqG5WwDrTzL0ue13l6v
+ iJp3Rsctek1VA3cD8qwMTgeei2O2vVaVI0okHshvVCi1/KgOe+1bMsHHawaAXSUvVZHLXutqja
+ SuSCdRRt/Ldf/at2We4cxGhU46KPe9/0bLBb3DvIBAAA=
+X-Change-ID: 20260905-r28s-upstream-e212e27d6165
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chukun Pan <amadeus@jmu.edu.cn>, Jonas Karlman <jonas@kwiboo.se>, 
+ jensen <jensenhuang@friendlyarm.com>, 
+ Andrey Korshunov <razor1702@gmail.com>, 
+ Diederik de Haas <diederik@cknow-tech.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=9461;
+ i=HystericalDragons@proton.me; h=from:subject:message-id;
+ bh=QJuegv5AvaKXKaFqU+9Y3yj6OxSF+29JojZjmqC2qJM=;
+ b=owGbwMvMwCUmepz3XUtTHjvjabUkhqx1yccNtubfnTo9/qVfzi8hjts9gmcv6f8+8Okgi9ZRG
+ a71/ik8HaUsDGJcDLJiiiyym6ojhVZFzyxikToOM4eVCWQIAxenAExkx1xGhp4yi79fpU/92RL8
+ /viN4IpJ1QZJ7W+Z+QJ/retpneSb5cfIsEBqF0eVYsHnpvMHSmQCbn6+43T05tvrtf9svwkzBim
+ 8YwYA
+X-Developer-Key: i=HystericalDragons@proton.me; a=openpgp;
+ fpr=1DB27B5912AA5B9972041AC715C70DEE84826E07
+X-Endpoint-Received: by B4 Relay for HystericalDragons@proton.me/default with auth_id=1004
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The S32G3-VNP-RDB3 board wires GMAC0 to an on-board KSZ9031 RGMII PHY by
-default. Add two device tree variants that reroute GMAC0 over the
-SerDes_0 XPCS lane for SGMII, matching the two SerDes lane layouts:
+The NanoPi R28S is a dual gigabit Ethernet router board based on the
+Rockchip RK3528 SoC:
 
-  - Mode 1: PCIe x1 root complex on lane 0 plus 1G SGMII via GMAC0
-    (XPCS0) on lane 1.
-  - Mode 3: dual SGMII, GMAC0 (XPCS0) on lane 0 and PFE_EMAC_2 (XPCS1)
-    on lane 1.
+  https://wiki.friendlyelec.com/wiki/index.php/NanoPi_R28S
 
-The SerDes SUBSYS_MODE is derived from the lane child nodes present, so
-each layout requires its own board device tree. The Mode 1 variant
-enables both PCIe root complexes and extends their root ports by label
-(pcie0_rp, pcie1_rp), matching the RDB3 wiring: PCIe_0 reaches the M.2
-slots when board switch SW17-2 is ON, PCIe_1 the PCIe card slot.
+It is closely related to the already supported NanoPi Zero2, sharing
+most of its power tree and peripheral routing. Patch 2 therefore moves
+the common parts into rk3528-nanopi.dtsi, and patch 3 adds the board on
+top of it. The split leaves the NanoPi Zero2 hardware description
+unchanged; I verified this by comparing the node and property sets of
+the dtb before and after the split, which differ only in node order,
+phandle numbering and the two renamed LED pin configuration nodes.
 
-The GMAC references its PCS with the standard pcs-handle property. On
-this board the SGMII lane runs back-to-back to the on-board SJA1110
-switch, so there is no PHY on the segment and nothing for phy-handle to
-point at - the link partner is a switch port. The MAC-side link is
-therefore described as a fixed 1G link and phylink uses out-of-band
-negotiation. The SJA1110 itself is not described by these overlays.
+The devicetree was derived from the vendor tree:
 
-Verified on the board:
+  https://github.com/friendlyarm/kernel-rockchip/commit/ee640c5344b13a0a317436e2357df01af8268ce7
 
-  - Mode 3: GMAC0 links at 1G and passes traffic.
-  - Mode 1: GMAC0 SGMII path up, and both PCIe root complexes come up -
-    PCIe_1 enumerates the card-slot NIC and passes traffic at full line
-    rate, PCIe_0 enumerates the M.2 slot with SW17-2 ON.
+but with many changes to make it suitable for mainline.
 
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Tested on a metal-case unit without the optional onboard eMMC: boots
+from microSD, both Ethernet ports link up at 1000 Mbps, the HYM8563 RTC
+registers, and all three LEDs are functional. The USB Type-C connector
+registers as a DWC3 UDC; gadget enumeration against a USB host was not
+completed, because that connector is also the 5V input and a PC port
+cannot power the board. Jonas Karlman verified host mode on the same
+board with an externally powered hub, so the port is left in the SoC's
+default OTG mode.
+
+The bootloader was U-Boot 2026.07 with a board specific R28S target,
+which releases the RGMII PHY reset before Linux starts, so the reset
+description in the PHY node is all the kernel needs.
+
+Two things I did not do, because my hardware cannot verify them:
+
+- The AICSemi AIC8800D80 WiFi and Bluetooth chip has no upstream driver,
+  so only the SDIO and UART controllers it hangs off are enabled, along
+  with its wake and power pins.
+- The eMMC is described as HS200 rather than the vendor's HS400 with
+  enhanced strobe, since the board at hand has an unpopulated eMMC
+  footprint and the faster modes could not be verified.
+
 ---
- arch/arm64/boot/dts/freescale/Makefile             |   6 ++
- .../dts/freescale/s32g399a-rdb3-serdes-mode1.dtso  | 111 +++++++++++++++++++++
- .../dts/freescale/s32g399a-rdb3-serdes-mode3.dtso  |  60 +++++++++++
- 3 files changed, 177 insertions(+)
+Changes in v7:
+- Named the binding entry after the SoC, "FriendlyElec NanoPi RK3528
+  series boards", so further RK3528 boards can join it without another
+  rename and reorder (Jonas Karlman).
+- Described the second LED in rk3528-nanopi.dtsi, since both boards
+  drive it from the same pin, and left only the function, trigger and
+  default state to the board devicetrees. The LED pin configurations
+  gained the usual _pin suffix, which frees the led1 label for the LED
+  node (Jonas Karlman).
+- Added pinctrl-names to the &leds override in the NanoPi R28S
+  devicetree, which redefines pinctrl-0 (Jonas Karlman).
+- Dropped the leds/common.h include from both board devicetrees, as
+  rk3528-nanopi.dtsi already pulls it in (Jonas Karlman).
+- Dropped the header comment from rk3528-nanopi.dtsi (Jonas Karlman).
+- Added the WiFi and Bluetooth wake pins from the schematic (Jonas
+  Karlman).
+- Kept the OTG port in the SoC's default OTG mode instead of forcing
+  dr_mode = "peripheral", since host mode works with an externally
+  powered hub (Jonas Karlman).
+- Link to v6: https://patch.msgid.link/20260914-r28s-upstream-v6-0-ea9edd75c126@proton.me
 
-diff --git a/arch/arm64/boot/dts/freescale/Makefile b/arch/arm64/boot/dts/freescale/Makefile
-index 95ae85ab4adf..3f68f36ac2be 100644
---- a/arch/arm64/boot/dts/freescale/Makefile
-+++ b/arch/arm64/boot/dts/freescale/Makefile
-@@ -786,5 +786,11 @@ dtb-$(CONFIG_ARCH_MXC) += imx8mm-phygate-tauri-l-rs232-rs485.dtb
- dtb-$(CONFIG_ARCH_S32) += s32g274a-evb.dtb
- dtb-$(CONFIG_ARCH_S32) += s32g274a-rdb2.dtb
- dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3.dtb
-+dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode1.dtb
-+dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode3.dtb
-+s32g399a-rdb3-serdes-mode1-dtbs := s32g399a-rdb3.dtb s32g399a-rdb3-serdes-mode1.dtbo
-+s32g399a-rdb3-serdes-mode3-dtbs := s32g399a-rdb3.dtb s32g399a-rdb3-serdes-mode3.dtbo
-+dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode1.dtbo
-+dtb-$(CONFIG_ARCH_S32) += s32g399a-rdb3-serdes-mode3.dtbo
- dtb-$(CONFIG_ARCH_S32) += s32n79-rdb.dtb
- dtb-$(CONFIG_ARCH_S32) += s32v234-evb.dtb
-diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dtso b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dtso
-new file mode 100644
-index 000000000000..43219d9bb6eb
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode1.dtso
-@@ -0,0 +1,111 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
-+/*
-+ * Copyright 2021-2026 NXP
-+ *
-+ * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3),
-+ * SerDes_0 Mode 1: PCIe x1 (lane 0) + 1G SGMII via GMAC0 (XPCS0, lane 1).
-+ *
-+ * Overlay applied on top of s32g399a-rdb3.dtb. It reroutes GMAC0 from the
-+ * on-board RGMII PHY to the SerDes_0 XPCS0 lane and brings up the PCIe
-+ * controllers as root complexes. The lane layout present here selects
-+ * SerDes SUBSYS_MODE 1.
-+ */
-+
-+/dts-v1/;
-+/plugin/;
-+
-+&serdes0 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	/* Mode 1 lane layout: PCIe on lane 0, GMAC SGMII (XPCS0) on lane 1. */
-+	serdes0_pcie0: phy@0 {
-+		reg = <0>;
-+		compatible = "nxp,s32g-serdes-pcie-phy";
-+		#phy-cells = <0>;
-+	};
-+
-+	serdes0_xpcs0: phy@1 {
-+		reg = <1>;
-+		compatible = "nxp,s32g-serdes-xpcs";
-+		nxp,xpcs-instance = <0>;
-+	};
-+};
-+
-+&serdes1 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	/*
-+	 * SerDes_1 Mode 1 lane layout: PCIe on lane 0, SGMII (PFE_MAC0
-+	 * via XPCS0) on lane 1.
-+	 *
-+	 * Both lanes must be described: the SerDes driver derives the
-+	 * SUBSYS_MODE from the full lane mux, so lane 1 has to be present
-+	 * as XPCS instance 0 (PFE_MAC0) for the mode-1 match to succeed.
-+	 * PFE is not modeled as a MAC consumer in this upstreaming device
-+	 * tree, so the XPCS lane is only brought up by the SerDes driver
-+	 * and left without a pcs-handle user.
-+	 */
-+	serdes1_pcie0: phy@0 {
-+		reg = <0>;
-+		compatible = "nxp,s32g-serdes-pcie-phy";
-+		#phy-cells = <0>;
-+	};
-+
-+	serdes1_xpcs0: phy@1 {
-+		reg = <1>;
-+		compatible = "nxp,s32g-serdes-xpcs";
-+		nxp,xpcs-instance = <0>;
-+	};
-+};
-+
-+/*
-+ * Both PCIe root complexes are wired on the RDB3:
-+ *  - PCIe_0 reaches the M.2 slots (M-key or E-key) when board switch
-+ *    SW17-2 is set to ON. It consumes SerDes_0 lane-0 PCIe phy.
-+ *  - PCIe_1 reaches the PCIe card slot. It consumes SerDes_1 lane-0 PCIe phy.
-+ */
-+&pcie0 {
-+	status = "okay";
-+};
-+
-+&pcie0_rp {
-+	num-lanes = <1>;
-+	phys = <&serdes0_pcie0>;
-+};
-+
-+&pcie1 {
-+	status = "okay";
-+};
-+
-+&pcie1_rp {
-+	num-lanes = <1>;
-+	phys = <&serdes1_pcie0>;
-+};
-+
-+&gmac0 {
-+	/delete-property/ phy-handle;
-+	clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "sgmii";
-+	pcs-handle = <&serdes0_xpcs0>;
-+	status = "okay";
-+
-+	/*
-+	 * GMAC0 is wired back-to-back to the on-board SJA1110 switch over
-+	 * this SGMII lane. There is no PHY on the segment, so there is
-+	 * nothing to reference with phy-handle: the link partner is a
-+	 * switch port. Describe it as a fixed 1G link; phylink then uses
-+	 * out-of-band negotiation. The switch itself is not described by
-+	 * this overlay. The PCS also supports in-band negotiation, for
-+	 * boards whose link partner is described.
-+	 */
-+	fixed-link {
-+		speed = <1000>;
-+		full-duplex;
-+		pause;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dtso b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dtso
-new file mode 100644
-index 000000000000..195c8043c18a
---- /dev/null
-+++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3-serdes-mode3.dtso
-@@ -0,0 +1,60 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
-+/*
-+ * Copyright 2021-2026 NXP
-+ *
-+ * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3),
-+ * SerDes_0 Mode 3: dual SGMII, GMAC0 (XPCS0, lane 0) + PFE_EMAC_2
-+ * (XPCS1, lane 1), both 1G.
-+ *
-+ * Overlay applied on top of s32g399a-rdb3.dtb. It reroutes GMAC0 from the
-+ * on-board RGMII PHY to the SerDes_0 XPCS0 lane. The lane-1 XPCS1
-+ * (PFE_EMAC_2) is described so the mode is derivable and both XPCS
-+ * instances are initialised; it has no upstream MAC consumer in this
-+ * device tree. The lane layout present here selects SerDes SUBSYS_MODE 3.
-+ */
-+
-+/dts-v1/;
-+/plugin/;
-+
-+&serdes0 {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+	status = "okay";
-+
-+	/* Mode 3 lane layout: GMAC SGMII (XPCS0) on lane 0, PFE2 (XPCS1) on lane 1. */
-+	serdes0_xpcs0: phy@0 {
-+		reg = <0>;
-+		compatible = "nxp,s32g-serdes-xpcs";
-+		nxp,xpcs-instance = <0>;
-+	};
-+
-+	serdes0_xpcs1: phy@1 {
-+		reg = <1>;
-+		compatible = "nxp,s32g-serdes-xpcs";
-+		nxp,xpcs-instance = <1>;
-+	};
-+};
-+
-+&gmac0 {
-+	/delete-property/ phy-handle;
-+	clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "sgmii";
-+	pcs-handle = <&serdes0_xpcs0>;
-+	status = "okay";
-+
-+	/*
-+	 * GMAC0 is wired back-to-back to the on-board SJA1110 switch over
-+	 * this SGMII lane. There is no PHY on the segment, so there is
-+	 * nothing to reference with phy-handle: the link partner is a
-+	 * switch port. Describe it as a fixed 1G link; phylink then uses
-+	 * out-of-band negotiation. The switch itself is not described by
-+	 * this overlay. The PCS also supports in-band negotiation, for
-+	 * boards whose link partner is described.
-+	 */
-+	fixed-link {
-+		speed = <1000>;
-+		full-duplex;
-+		pause;
-+	};
-+};
+Changes in v6:
+- Dropped the coding style patch, and the blank line before "status" in
+  the new devicetree along with it. Only 18 of the ~2900 "status"
+  properties in arch/arm64/boot/dts/rockchip are preceded by a blank
+  line, so the series now does what the rockchip devicetrees do (Jonas
+  Karlman).
+- Listed the NanoPi R28S and the NanoPi Zero2 in a single binding entry,
+  since they share a devicetree. The entry only changed shape, so I kept
+  Conor's Acked-by; please shout if that is not fine (Jonas Karlman).
+- Kept all USB nodes in the board devicetrees instead of moving the OTG
+  port into rk3528-nanopi.dtsi, since the NanoPi NEO3 Plus has USB 3.0
+  and configures it differently (Jonas Karlman).
+- Added the serial2 alias for the Bluetooth UART (Jonas Karlman).
+- Named the user button pin configuration after its net in the
+  schematic, GPIO4_B2_USR_BTN (Jonas Karlman).
+- Described the SDIO slot more precisely: no-mmc, no-sd and the missing
+  vmmc-supply. The module's VBAT comes from VCC_3V3 through a ferrite
+  bead, VDDIO from VCC_1V8 (Jonas Karlman).
+- Enabled DMA on uart2 with dma-names (Jonas Karlman).
+- Kept dr_mode = "peripheral" and said why in a comment. The Type-C port
+  is the 5V input: both CC pins have a 5.1k pull-down (R3811, R3812),
+  USB20_OTG0_ID is not connected (R3922 is /NC) and VBUS only feeds
+  VCC5V0_SYS through the input protection. So the port cannot present
+  itself as a host or source VBUS, not even behind a powered hub.
+- Did not add the WiFi and Bluetooth wake pin configurations. The pins
+  are there, HOST_WAKE_WL and WL_WAKE_HOST on GPIO1_A6 and GPIO1_A7,
+  HOST_WAKE_BT and BT_WAKE_HOST on GPIO1_B4 and GPIO1_B5, but the
+  AIC8800D80 has no upstream driver, so there is no wifi@1 or bluetooth
+  node to reference them from and the pin states would never be applied.
+  They belong in the patch that adds those nodes (Jonas Karlman).
+- Link to v5: https://patch.msgid.link/20260914-r28s-upstream-v5-0-7409c498e8dc@proton.me
 
--- 
-2.55.0
+Changes in v5:
+- Dropped the pinctrl-0 before pinctrl-names reordering from the coding
+  style patch and used the order the rest of the rockchip devicetrees
+  use, pinctrl-names first, in the new devicetree as well. The strict
+  mode of scripts/dtc/dt-check-style asks for the alphabetical order,
+  but it does so for many other properties that no rockchip devicetree
+  sorts that way either (Chukun Pan).
+- Moved the SYS LED, which the NanoPi R28S shares with the NanoPi Zero2,
+  and the led1 and led_sys pin configurations into rk3528-nanopi.dtsi.
+  Both boards now only add their own LEDs to &leds (Chukun Pan).
+- Renamed the NanoPi R28S LED nodes to led-1 and led-2, to use the
+  led-[0-9] node naming (Chukun Pan).
+- Changed the user button from KEY_RESTART to BTN_1. It is a general
+  purpose button on this board, not a reset button (Chukun Pan).
+- Link to v4: https://patch.msgid.link/20260911-r28s-upstream-v4-0-fb6c85f226d4@proton.me
+
+Changes in v4:
+- Dropped the patch that moved the NanoPi Zero2 RGMII PHY reset to the
+  MDIO bus. GPIO4_C2 resets the PHY, not the bus, so describing it on
+  &mdio1 is not a description of the hardware. It would also break
+  Ethernet in U-Boot, which reads reset-gpios, reset-assert-us and
+  reset-deassert-us from the PHY node and has no support for a bus
+  level reset. The nanopi-zero2-rk3528 U-Boot target releases the PHY
+  reset before Linux starts; the failure I reported was seen with the
+  generic-rk3528 target, which carries no board devicetree. Pointed out
+  by Chukun Pan, and by Jonas Karlman in the same discussion for the
+  HINLINK H28K:
+  https://lore.kernel.org/lkml/1e8da54f-ef87-4d31-9a0a-17c0ff66bee0@kwiboo.se/
+  My own R28S has in fact been running a board specific U-Boot target
+  all along, with the PHY node description this series now keeps, so
+  the reset ordering problem I described does not arise there.
+- Reworded the coding style patch to state the coding style violation
+  itself as the reason, rather than the tool that found it (Diederik de
+  Haas).
+- Link to v3: https://patch.msgid.link/20260909-r28s-upstream-v3-0-ee3e1a34a353@proton.me
+
+Changes in v3:
+- New patch 1: describe the NanoPi Zero2 RGMII PHY reset on the MDIO
+  bus rather than in the PHY node, so that it is applied before the PHY
+  ID is read. A PHY held in reset by the bootloader was otherwise never
+  probed, leaving the port dead. Reported by Andrey Korshunov, who
+  proposed the deprecated snps,reset-gpio properties on the MAC; the
+  bus level reset-gpios in mdio.yaml fixes the same ordering without a
+  deprecated property.
+- New patch 5: follow the DTS coding style in the three NanoPi RK3528
+  devicetrees, as found by scripts/dtc/dt-check-style --mode=strict:
+  pinctrl-0 before pinctrl-names, and a blank line before status.
+  Suggested by Diederik de Haas.
+- Picked up Conor Dooley's Acked-by on the binding.
+- Link to v2: https://patch.msgid.link/20260907-r28s-upstream-v2-0-21ab570fc91c@proton.me
+
+Changes in v2:
+- Split the parts shared with the NanoPi Zero2 into a new
+  rk3528-nanopi.dtsi (new patch 2). The NanoPi Zero2 dtb is unchanged.
+- Name the pinctrl labels after the nets in the schematic: usr_btn,
+  led1, led2, led_sys, pwr_wf and pcie_eth_perstb.
+- Rename the button node to button-user and its label to "USER".
+- Link to v1: https://patch.msgid.link/20260905-r28s-upstream-v1-0-f68d5389269a@proton.me
+
+---
+安容 (3):
+      dt-bindings: arm: rockchip: Add FriendlyElec NanoPi R28S
+      arm64: dts: rockchip: Split out the common NanoPi RK3528 parts
+      arm64: dts: rockchip: Add devicetree for the FriendlyElec NanoPi R28S
+
+ .../devicetree/bindings/arm/rockchip.yaml          |  12 +-
+ arch/arm64/boot/dts/rockchip/Makefile              |   1 +
+ .../arm64/boot/dts/rockchip/rk3528-nanopi-r28s.dts | 160 +++++++++++
+ .../boot/dts/rockchip/rk3528-nanopi-zero2.dts      | 290 +-------------------
+ arch/arm64/boot/dts/rockchip/rk3528-nanopi.dtsi    | 291 +++++++++++++++++++++
+ 5 files changed, 464 insertions(+), 290 deletions(-)
+---
+base-commit: 32e0f64640d558a0f5410ac5cdd8ebf371c5e6a6
+change-id: 20260905-r28s-upstream-e212e27d6165
+
+Best regards,
+--  
+安容 <HystericalDragons@proton.me>
 
