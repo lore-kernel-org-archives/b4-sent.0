@@ -1,56 +1,82 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Sun, 20 Sep 2026 18:25:14 +0800
-Subject: [PATCH v2 12/12] arm64: dts: amlogic: a9: Add clk-measure
- controller node
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 00/11] Pixel 3 XL display panel support
+Date: Sun, 20 Sep 2026 13:05:43 +0200
+Message-Id: <20260920-crosshatch-panel-v1-0-de6e9512da96@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260920-more-socs-to-support-clk_measure-v2-12-224382a429e8@amlogic.com>
-References: <20260920-more-socs-to-support-clk_measure-v2-0-224382a429e8@amlogic.com>
-In-Reply-To: <20260920-more-socs-to-support-clk_measure-v2-0-224382a429e8@amlogic.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5FMBBA0V+RWWtSFn34FbGoMdURKekgEvHv6
+ lmexb0XCEUmgSa7INLBwktIKPIM0NswkuIhGUpdGl3pQmFcRLzd0KvVBpqVNkiVNbXrfw5StkZ
+ yfP6XbfdZ9n4i3N4P3PcDWZWJPnQAAAA=
+X-Change-ID: 20260801-crosshatch-panel-06ce8a69fb7f
+To: Dzmitry Sankouski <dsankouski@gmail.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789899904; l=796;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=4DgrEoOMoCExjYXex82UD7PxEvK6o2H5kIyRyw8MyZw=;
- b=LH5sb4t5IBJ5szFqCCnGHBi6Bi9K23ols2Lss7BhhYVthrPh4WCUqLF+KqihHHF+XFO3j5Q72
- lzZKwoZzJiHB4rAs+2DPnS7Bu/PNMX34qrQWqwwmZ4qO6uaPcepLXTM
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ stable@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1752; i=david@ixit.cz;
+ h=from:subject:message-id; bh=EJWkMZMekiOD8WaCohx4ypgSL1x/M1fKD7fZsYIwGLI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqr74I+wMXsFX69qUr3dPQUtBnc4sv57WrxTS+T
+ EHXLku8qXiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaq++CAAKCRBgAj/E00kg
+ clCFD/9WKcjRK5+Yp1wtDtfJ+l8NacQx+caBsWGCQzUEvfwQr2mm5wN0x24T/OBkQwMLKdKsGRM
+ Mwt+5BSV8AE4+TH+IQxAANqrLfFCURPJ+FIPHF4+BPLcnQBS/vk7Vq7HskZ6X/AdZqZfyZHghHx
+ dSLLYpEe5MtLBf/x0r8XeaKv7UUlLPaCDjkTmF5P7Kdsg+nhJOWXP3htiAi/vk8qDp3XjI1Awvu
+ 6/4Fmcu0pLXgB2aasjt35SZfXb62xKDCz31Mimotd5emBbexycOWvJMZ4rnF+nxb8S5dsP7wKGg
+ N2b1OvSt/VdWDaTCdp5eRFYDAxLN2A76XL7nVyMiyMj9KksGpdfsXcKLo4eWN+WPuN9mpDjzPuc
+ cVWYXMH0SPFrKav+IeNRCRJbcsDbnwwmHBJ8rFZ5hq1Frmzc9/pZLJJCSLDpz5oa5hQOIThYb/w
+ LTuYaN/E1QwG00nzfhfuOpiRWpsacxosi4g2/ct2BJcyDK/AFiDci8W+H9ZJ077AvORmBRDQQku
+ KXtZd+KeiUFxagfbboVdfcmuuGUxAetpcgm9cCEdmrwiZsp2vRJ9zS9CrIRtf6wohi81XD8Y8kf
+ JM5huXnW+4IqZKOWUHEL49W3r77Lx5IW9Rza40pzOmfs3bp0BFTZlHN/tBSiKpZxXxQZPbkdhfg
+ ZV5vcsV6PN/S3Ig==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the clk-measure controller node for A9 SoC family.
+Introduce Samsung AMB630QY01 (Google Pixel 3 XL) panel.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Includes refactoring and improvements to the S6E3HA8 DDIC which is also
+used by Samsung S9 (Korea version).
+
+Patches 9 and 11 switch to the new compatibles, so they must not reach
+the qcom tree before the driver patches land.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi | 5 +++++
- 1 file changed, 5 insertions(+)
+David Heidelberg (11):
+      dt-bindings: display: panel: s6e3ha8: Adjust to reflect the DDIC and panel used
+      dt-bindings: display: panel: samsung,s6e3ha8: Add AMB630QY01 panel
+      drm/panel: s6e3ha8: Really assert reset on the failure
+      drm/panel: s6e3ha8: Introduce AMB577PX01 panel compatible
+      drm/panel: s6e3ha8: Prepare for supporting multiple panels
+      drm/panel: s6e3ha8: Correct the polarity logic within
+      drm/panel: s6e3ha8: Assert reset GPIO in unprepare
+      drm/panel: s6e3ha8: add Samsung AMB630QY01 (Google Pixel 3 XL) panel
+      arm64: dts: qcom: sdm845-samsung-starqltechn: Update panel compatible
+      arm64: dts: qcom: sdm845-google: Move panel pins into common
+      arm64: dts: qcom: sdm845-google-crosshatch: Add display panel
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-index b0e0fadeed82..91f4cf319b0d 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-@@ -185,6 +185,11 @@ gpio_intc: interrupt-controller@4080 {
- 				amlogic,channel-interrupts =
- 					<10 11 12 13 14 15 16 17 18 19 20 21>;
- 			};
-+
-+			clk_msr: clock-measure@48000 {
-+				compatible = "amlogic,a9-clk-measure";
-+				reg = <0x0 0x48000 0x0 0x1c>;
-+			};
- 		};
- 
- 		gic: interrupt-controller@ff800000 {
+ .../bindings/display/panel/samsung,s6e3ha8.yaml    |  46 +++-
+ .../arm64/boot/dts/qcom/sdm845-google-blueline.dts |  18 --
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi |  16 ++
+ .../boot/dts/qcom/sdm845-google-crosshatch.dts     |  60 +++-
+ .../boot/dts/qcom/sdm845-samsung-starqltechn.dts   |   4 +-
+ drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c      | 304 +++++++++++++++++----
+ 6 files changed, 367 insertions(+), 81 deletions(-)
+---
+base-commit: 3f2425f5b5bbbdd991ca9cdfd5502e68d8895998
+change-id: 20260801-crosshatch-panel-06ce8a69fb7f
 
--- 
-2.42.0
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
