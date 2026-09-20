@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 20 Sep 2026 13:05:46 +0200
-Subject: [PATCH 03/11] drm/panel: s6e3ha8: Really assert reset on the
- failure
+Date: Sun, 20 Sep 2026 13:05:47 +0200
+Subject: [PATCH 04/11] drm/panel: s6e3ha8: Introduce AMB577PX01 panel
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260920-crosshatch-panel-v1-3-de6e9512da96@ixit.cz>
+Message-Id: <20260920-crosshatch-panel-v1-4-de6e9512da96@ixit.cz>
 References: <20260920-crosshatch-panel-v1-0-de6e9512da96@ixit.cz>
 In-Reply-To: <20260920-crosshatch-panel-v1-0-de6e9512da96@ixit.cz>
 To: Dzmitry Sankouski <dsankouski@gmail.com>, 
@@ -19,65 +19,61 @@ To: Dzmitry Sankouski <dsankouski@gmail.com>,
  Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
- stable@vger.kernel.org
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1389; i=david@ixit.cz;
- h=from:subject:message-id; bh=OzfdLbaebYlg4g6M/9ljeqwCz3P5UUikOpZwTfDJ7s0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqr74IiMaZ7eLSG3j8Ye4MMpjqsDY0WqPVVnciA
- RGMdGMkZo+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaq++CAAKCRBgAj/E00kg
- cn7QEACQA+ybHIvQR/Yu+E2AKsYzq8P5HZlmFlqdHwKT5AQioEW6jFpABsWBJ/uxVNOv32VGwSu
- ncr6ADDQsHfHJOBaipFhVHKDeDlFyG2iprIGXmhQiZOvd3FL3jfQTY0XbypWxJO3SdKc//0YI9g
- CzHkSK4boes7UYqZL0p428PuMd7Hd9hm+i9QfzVv9OlhIsvb4ZV/IE0S8jMenZZ8xNwcE14acKl
- QyA/ubpfJ8hRnKI+qdes+EPwSgpXI8WvBeeDNtjegucNlKDiG1PzlAwI5WAFOAiLjK2sMfE5aRp
- 9GP8WOxyMfT0+V2PCXPOgX7N5LvafeiIFuEahMxuG1awrYE5wYnUVrVh+VvmSWt+LAHcn8F8lMR
- +dq7DuJDS4OONC0qlCe4gmAcabPcqxqkF04IuxMy7YMfA15FKI/CRWtDy7G6qCtnZ+svkE+rYNe
- oGJs8iMLYJlTKByD195Xu4/ISCLOoHJZSdxoFI91dtfLtyfGY+YUDkk9ezxrUQFrPShs+AXDbV4
- mPy2T9YP36Co5Owsgr5BB+s+9MQgg3TZSBnR+Wpbai8mS5yNSg1XbkxFzkKp+yJwoQNFgXNUeGh
- vSnHYxPOAhJM+cy5d0CM2KzbrlQQO+orvcl2Ga9ou0B1PRq5c6NJmVziKJeej4pA+1sxOeZW6RC
- HK6oY9OVFo7//vw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1322; i=david@ixit.cz;
+ h=from:subject:message-id; bh=vNLA8ljeR4J/HqPCfoTtAaLLmwPmUGSGqujdb8X7JAM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqr74ILPghpGdFk2JPKioQ/CBEKEUlRYPW8YCxR
+ OabUG9VYbiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaq++CAAKCRBgAj/E00kg
+ criHEACyex0p+sdn2RW0coN+uPAHjIF1Nex/5Ut0SRCiQak8JtdRY2rPccdKuV+Fx2vMf/hxwW3
+ vtNdETHNiKARn0KMVEAUltCQIZ4SI/e/8T8c94t/oeiGFzwOej8AaQ7O2s4RbRh4QbV4qme/qB2
+ 5W+YK0Nk9/HC0jziYJUREDXmChSvtN5QBMJKOoLA9cXiy/C0zF8enBd9m/MBtN7uFLZDrM2CupR
+ 2vzAL4SQ5TahFxyZNWmQISXJx3wFLhdcuL6L0wGkl0wO36dhV7Xybfp+zRoINtkooiWMoj8NVnX
+ ayu3trGiLtsNqkMGhgn8Rr96OB4ez56UWrP79tCl84N5Z3TxuemfALA3EGDajqljptneSofmIDU
+ cZ01utFMfAvy82fqWNx+efBLt1YXNREdPJhNFYnGzFLMFbDJvYkezEXuEAzZbCa61/PkAKo3gDX
+ aRjeTETO5ZwIvciGFSP53cW5TMvx6sh2uKxYAeRsdIuLDx7vJ+v7vmWWcTc1MFfF2vF7TgL+QL3
+ r+E7P/d/vReuV0fmb/FbL+TnYw6Qd4UT1c1jvnw2U/BO9HyXWuE5wS4+ZZ3qDR1JH4XEoFL+x1S
+ ls2TiR2tKsgK8wORCRePpomYwYGvIRP+UmDNCN0qqgUQbe5p+IHOcUSdBcf1CIQgsVhyobKjUMo
+ vMH3Cv9xY6ecJPQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Due to incorrect implementation 0 == asserted, thus when driver fails it
-needs to assert reset.
+S6E3HA8 is the DDIC, while the panel used on the Samsung Galaxy S9 is
+the Samsung AMB577PX01. Match on the new panel compatible, and keep
+the deprecated DDIC-only one working for existing devicetrees.
 
-Minimal fix for stable; the polarity convention is corrected properly
-later in this series.
-
-Fixes: 779679d3c1640 ("drm/panel: Add support for S6E3HA8 panel driver")
-Cc: stable@vger.kernel.org
 Assisted-by: LLM
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c b/drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c
-index 078523df48860..835121b322f4a 100644
+index 835121b322f4a..a0015ac0e2782 100644
 --- a/drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c
 +++ b/drivers/gpu/drm/panel/panel-samsung-s6e3ha8.c
-@@ -179,17 +179,17 @@ static int s6e3ha8_amb577px01_wqhd_prepare(struct drm_panel *panel)
- 	ret = regulator_bulk_enable(ARRAY_SIZE(s6e3ha8_supplies), priv->supplies);
- 	if (ret < 0)
+@@ -296,17 +296,18 @@ static int s6e3ha8_amb577px01_wqhd_probe(struct mipi_dsi_device *dsi)
+ 		dev_err(dev, "Failed to attach to DSI host: %d\n", ret);
  		return ret;
- 	mipi_dsi_msleep(&ctx, 120);
- 	s6e3ha8_amb577px01_wqhd_reset(priv);
- 
- 	ret = s6e3ha8_amb577px01_wqhd_on(priv);
- 	if (ret < 0) {
--		gpiod_set_value_cansleep(priv->reset_gpio, 1);
-+		gpiod_set_value_cansleep(priv->reset_gpio, 0);
- 		goto err;
  	}
  
- 	drm_dsc_pps_payload_pack(&pps, &priv->dsc);
+ 	return 0;
+ }
  
- 	samsung_dsi_test_key_on_lvl1(&ctx);
- 	mipi_dsi_picture_parameter_set_multi(&ctx, &pps);
- 	samsung_dsi_test_key_off_lvl1(&ctx);
+ static const struct of_device_id s6e3ha8_amb577px01_wqhd_of_match[] = {
+-	{ .compatible = "samsung,s6e3ha8" },
++	{ .compatible = "samsung,s6e3ha8" }, /* deprecated */
++	{ .compatible = "samsung,s6e3ha8-amb577px01" },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, s6e3ha8_amb577px01_wqhd_of_match);
+ 
+ static struct mipi_dsi_driver s6e3ha8_amb577px01_wqhd_driver = {
+ 	.probe = s6e3ha8_amb577px01_wqhd_probe,
+ 	.driver = {
+ 		.name = "panel-s6e3ha8",
 
 -- 
 2.55.0
