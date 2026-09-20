@@ -1,184 +1,128 @@
-From: Kim Wooseok <5mghybrid@khu.ac.kr>
-Date: Sun, 20 Sep 2026 05:44:06 +0900
-Subject: [PATCH rtw-next v3 3/3] wifi: rtl8xxxu: preserve RX requests
- across recoverable transfer errors
+From: Alireza Haghdoost <haghdoost@uber.com>
+Subject: [PATCH v2 0/4] perf script: Bounded and lazy symbol loading
+Date: Sat, 19 Sep 2026 19:33:55 -0700
+Message-Id: <20260919-perf-symbol-memory-send-v2-0-495b8f00ad7c@uber.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260920-codex-rtl-rx-v3-submit-v3-3-883d11351963@khu.ac.kr>
-References: <20260920-codex-rtl-rx-v3-submit-v3-0-883d11351963@khu.ac.kr>
-In-Reply-To: <20260920-codex-rtl-rx-v3-submit-v3-0-883d11351963@khu.ac.kr>
-To: linux-wireless@vger.kernel.org
-Cc: pkshih@realtek.com, kvalo@kernel.org, linux-kernel@vger.kernel.org, 
- Jes.Sorensen@gmail.com
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789850643; l=6457;
- i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
- bh=ELcGIj3/1qa+I+rYa4pUTPcIEvRdg4LJVJ6OX7JJaPE=;
- b=uTxba9X02x6TPEKEvMraKPHDpYmSCZZVbBfHEyNQqaj6HGtwEgU4mEVvLH2CNjwI+uT+7/F3B
- zPJY7FyWL89D5/gOd1e4l7k4z6Byzyz5oCzbVmkuaAIg5nWyWLo3947
-X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
- pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
-X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zi2RAiuvAdhAe1UaiwlHSASw
+ t0teACXL/nvvw2YoiOGe7ZBpMWxC0MCdclA9+3wJHQmMSihClHJG44ULfLqu/BGTz7EFZkGg1R
+ qq1vZ6txUkOwxknWf87lufsxz9yI9HXfHonc8Jf1ML/LY/a8sEgVKk+eFICWtKB9zR/Gqg4dm3
+ /cvB1OQm88AAAA=
+X-Change-ID: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>, Alexei Starovoitov <ast@kernel.org>, 
+ Andrii Nakryiko <andriin@fb.com>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Alireza Haghdoost <haghdoost@uber.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4316; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=4VCBXfJVofxyyT0RDxutQE8DtQhSmd5uEOtKwOdl87Y=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBqr0Y2Q9+6RUrJJinzBl358kmTMnP+Mu+455/Ye
+ Iqx72Y1iRmJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCaq9GNhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtjUOA/+MTMiVz2HbgFHwNRXgnlndYPSfcC4Dzb
+ 9YEZu/BDN9qZyEMDy4tt4F/BazhhS2tlpIdjVwroeWEycB3q+9eoNCoJBY/IN/r1/8ADYjVtiWr
+ JpS6V12/FWWsWtY72e8sfdp6uCQYrNL+aNprYof3DPOzFux9ELGW8pINDeAVc40U4Q8WyzELTBL
+ X6c7hrisctaQydtIvMTS+7updRX/jSTIrMapVcJtQKhFL1C2ljuHC28ht6yGXS047IVa61LAyh+
+ il72MkyORST+m/MllAHBk4Ki6Sn5N7XEjzMHAQV3AAd8YArbfcZDyAsBTRG8E0OV2N6/rvhPeR7
+ j1wK9Bp8B5hEeITztXHBnObzo8ru5kMCKT/P5lby8Mq0ZOCLKr1VVh4yMQd6SNuoZdUZFvNUBx1
+ 4Y0J38O/wu9IG89gQPdloXi8YK9aydhSnY1ItcmVBnU4aFq04JyCbphMw8ZRdHWBjCP6wlBFPx1
+ v9FJsdImn7BqrBOq66d9GWzqYKKMEAXfR/7Y/AX59wy69UMfzjrtbNE36yXub3afVmI4XNnG5Dt
+ YVNWToEcL4gXtPlg8YyYj7+XynNjiBFsMCrwzXrMp6CWp62dRJkLBWKLNS304C2lLGodKKztUnX
+ Z4+jX34eFCoiwq99aY8SIyxRzGbkX9p18PT/iPugcfPwRSktbFm0=
+X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
+ fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
+X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rtl8xxxu resubmits completed RX requests when more than eight URBs are
-waiting on the pending list. It starts with 32 URBs, but frees them on
-completion errors. After enough errors, the remaining pool can no longer
-reach the submission threshold. Reception then stays stopped even after
-the errors end. Temporary submission failures can leave a small batch
-waiting with no further work scheduled, too.
+perf script loads the entire ELF symbol table of every DSO that appears
+in a sample, allocating each symbol into an rb-tree held until process
+exit. Therefore, a large enough profile turns symbol loading into an
+OOM kill.
+This is not scalable for profiling a large cgroup with a lot of large
+binaries on a production system with limited free memory.
 
-Keep the URB when a completion reports EPROTO, EILSEQ, ETIME, EOVERFLOW,
-ECOMM or ENOSR. Free its receive buffer and return the request to the
-same pending list used by normal completions. ENOMEM/EAGAIN from startup
-or worker submission uses this path as well, so a submission failure
-cannot strand a request during recovery.
+This series adds two independent, opt-in mechanisms and a leading
+regression fix they build on:
 
-Use one delayed work item to submit the pending requests. An error
-queues a retry after 100 ms without moving an existing reservation back.
-If a normal completion takes the pending count above eight,
-mod_delayed_work(..., 0) brings the work forward. This limits repeated
-retries when reception is not progressing, while allowing normal traffic
-to replenish the pool promptly. The 100 ms delay is therefore not a
-minimum wait for each failed URB.
+  [1/4] Fix a broken "#ifdef ELF_C_READ_MMAP" guard so perf actually
+        mmaps ELF files instead of malloc'ing section data. This is a
+        standalone regression fix that is introduced by 22dd1ac91a77.
 
-Keep the shutdown check, queue insertion and scheduling under the RX
-lock. Stop sets shutdown under that lock, cancels the delayed work
-synchronously, then drains active and pending requests. Cancellation and
-device removal continue to free their URBs.
+  [2/4] --max-symbol-bytes <size>: a byte budget on struct symbol
+        allocations (and the lazy index) enforced at the ELF symbol
+        loader, degrading to [unknown] with a warning past the cap.
+        An unbounded profile doesn't just risk OOM-killing itself. It
+        also forces memory pressure on the whole host, pushing the kernel
+        to reclaim from co-located latency-sensitive processes. Capping
+        it lets the user bound that footprint up front and choose the
+        trade-off explicitly.
 
-Fixes: 26f1fad29ad9 ("New driver: rtl8xxxu (mac80211)")
-Assisted-by: GPT-6 Astra
-Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
+  [3/4] --lazy-load-symbols: build a compact per-DSO sorted index and
+        resolve only the sampled addresses, reading names through the DSO
+        data cache at lookup time. On the production fixture, peak RssAnon
+        drops from 265 MiB to 39 MiB (6.8x) and wall time from 3.1 s to
+        1.85 s (1.7x). Memory optimizations usually cost time; this one
+        does not because lazy loading skips a lot of calloc and demangle
+        calls.
+
+  [4/4] Shell and unit tests for both options.
+
+Lazy loading handles the common userspace ELF symtab/dynsym path. Eager
+loading remains available for dense coverage and for PPC64 .opd and
+.gnu_debugdata.
+
+Changes in v2:
+
+- Replace direct pread() name reads with the exact symbol source's DSO data
+  cache, preserving split-debuginfo offsets and descriptor reopen behavior.
+- Drop the byte-identical-output claim and retain eager loading for PPC64
+  .opd and .gnu_debugdata.
+- Make the symbol budget atomic and strict, account complete name lengths,
+  accept a bare 0 as unlimited, and keep partial zero-sized ranges from
+  covering omitted symbols.
+- Align lazy lookup with eager duplicate and IFUNC selection, PLT clipping,
+  and name-sorted materialization.
+- Move option documentation into the feature patches. Add unit and shell
+  coverage for cache reopen, truncated names, budget truncation, and skip
+  handling.
+
+Link: https://lore.kernel.org/all/20260915-perf-symbol-memory-send-v1-0-1d3360e21f07@uber.com/
 ---
- drivers/net/wireless/realtek/rtl8xxxu/core.c     | 45 ++++++++++++++++++++++++++++-----------------
- drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h |  2 +-
- 2 files changed, 29 insertions(+), 18 deletions(-)
+Alireza Haghdoost (4):
+      perf symbols: Fix broken ELF_C_READ_MMAP fallback guard
+      perf script: Add --max-symbol-bytes to bound ELF symbol memory
+      perf script: Add --lazy-load-symbols for lazy symbol loading
+      perf test: Test lazy symbol loading and symbol memory limits
 
-diff --git a/drivers/net/wireless/realtek/rtl8xxxu/core.c b/drivers/net/wireless/realtek/rtl8xxxu/core.c
-index 5ae3dbf5034ac..8e513a0cb2e24 100644
---- a/drivers/net/wireless/realtek/rtl8xxxu/core.c
-+++ b/drivers/net/wireless/realtek/rtl8xxxu/core.c
-@@ -54,6 +54,7 @@ MODULE_PARM_DESC(dma_agg_pages, "Set DMA aggregation pages (range 1-127, 0 to di
- #define USB_VENDOR_ID_REALTEK		0x0bda
- #define RTL8XXXU_RX_URBS		32
- #define RTL8XXXU_RX_URB_PENDING_WATER	8
-+#define RTL8XXXU_RX_URB_RETRY_DELAY_MS	100
- #define RTL8XXXU_TX_URBS		64
- #define RTL8XXXU_TX_URB_LOW_WATER	25
- #define RTL8XXXU_TX_URB_HIGH_WATER	32
-@@ -5855,9 +5856,8 @@ static int rtl8xxxu_alloc_rx_urbs(struct rtl8xxxu_priv *priv)
- }
- 
- static void rtl8xxxu_queue_rx_urb(struct rtl8xxxu_priv *priv,
--				  struct rtl8xxxu_rx_urb *rx_urb)
-+				  struct rtl8xxxu_rx_urb *rx_urb, bool retry)
- {
--	struct sk_buff *skb;
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&priv->rx_urb_lock, flags);
-@@ -5865,16 +5865,13 @@ static void rtl8xxxu_queue_rx_urb(struct rtl8xxxu_priv *priv,
- 	if (!priv->shutdown) {
- 		list_add_tail(&rx_urb->list, &priv->rx_urb_pending_list);
- 		priv->rx_urb_pending_count++;
--		/*
--		 * Arm the worker under rx_urb_lock so this is atomic with the
--		 * shutdown check: moving it out of the lock would let a
--		 * completion arm the work after rtl8xxxu_stop() canceled it.
--		 */
--		if (priv->rx_urb_pending_count > RTL8XXXU_RX_URB_PENDING_WATER)
--			schedule_work(&priv->rx_urb_wq);
-+		/* Serialize scheduling with the shutdown check and cancellation. */
-+		if (retry)
-+			queue_delayed_work(system_wq, &priv->rx_urb_wq,
-+					   msecs_to_jiffies(RTL8XXXU_RX_URB_RETRY_DELAY_MS));
-+		else if (priv->rx_urb_pending_count > RTL8XXXU_RX_URB_PENDING_WATER)
-+			mod_delayed_work(system_wq, &priv->rx_urb_wq, 0);
- 	} else {
--		skb = (struct sk_buff *)rx_urb->urb.context;
--		dev_kfree_skb_irq(skb);
- 		usb_free_urb(&rx_urb->urb);
- 	}
- 
-@@ -5901,7 +5898,7 @@ static int rtl8xxxu_submit_rx_urbs(struct rtl8xxxu_priv *priv, bool startup)
- 			break;
- 		case -ENOMEM:
- 		case -EAGAIN:
--			rtl8xxxu_queue_rx_urb(priv, rx_urb);
-+			rtl8xxxu_queue_rx_urb(priv, rx_urb, true);
- 			break;
- 		default:
- 			usb_free_urb(&rx_urb->urb);
-@@ -5926,7 +5923,8 @@ static void rtl8xxxu_rx_urb_work(struct work_struct *work)
- {
- 	struct rtl8xxxu_priv *priv;
- 
--	priv = container_of(work, struct rtl8xxxu_priv, rx_urb_wq);
-+	priv = container_of(to_delayed_work(work), struct rtl8xxxu_priv,
-+			    rx_urb_wq);
- 	rtl8xxxu_submit_rx_urbs(priv, false);
- }
- 
-@@ -6585,10 +6583,23 @@ static void rtl8xxxu_rx_complete(struct urb *urb)
- 
- 		skb = NULL;
- 		rx_urb->urb.context = NULL;
--		rtl8xxxu_queue_rx_urb(priv, rx_urb);
-+		rtl8xxxu_queue_rx_urb(priv, rx_urb, false);
- 	} else {
- 		dev_dbg(dev, "%s: status %i\n",	__func__, urb->status);
--		goto cleanup;
-+		switch (urb->status) {
-+		case -EPROTO:
-+		case -EILSEQ:
-+		case -ETIME:
-+		case -EOVERFLOW:
-+		case -ECOMM:
-+		case -ENOSR:
-+			dev_kfree_skb(skb);
-+			urb->context = NULL;
-+			rtl8xxxu_queue_rx_urb(priv, rx_urb, true);
-+			return;
-+		default:
-+			goto cleanup;
-+		}
- 	}
- 	return;
- 
-@@ -7519,7 +7530,7 @@ static void rtl8xxxu_stop(struct ieee80211_hw *hw, bool suspend)
- 	 * it drained via rtl8xxxu_submit_rx_urb(), so a worker still running
- 	 * after the kill could submit a URB that escapes it.
- 	 */
--	cancel_work_sync(&priv->rx_urb_wq);
-+	cancel_delayed_work_sync(&priv->rx_urb_wq);
- 
- 	usb_kill_anchored_urbs(&priv->rx_anchor);
- 	usb_kill_anchored_urbs(&priv->tx_anchor);
-@@ -7832,7 +7843,7 @@ static int rtl8xxxu_probe(struct usb_interface *interface,
- 	spin_lock_init(&priv->tx_urb_lock);
- 	INIT_LIST_HEAD(&priv->rx_urb_pending_list);
- 	spin_lock_init(&priv->rx_urb_lock);
--	INIT_WORK(&priv->rx_urb_wq, rtl8xxxu_rx_urb_work);
-+	INIT_DELAYED_WORK(&priv->rx_urb_wq, rtl8xxxu_rx_urb_work);
- 	INIT_DELAYED_WORK(&priv->ra_watchdog, rtl8xxxu_watchdog_callback);
- 	INIT_DELAYED_WORK(&priv->update_beacon_work, rtl8xxxu_update_beacon_work_callback);
- 	skb_queue_head_init(&priv->c2hcmd_queue);
-diff --git a/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h b/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h
-index eeb18eb0e4c0f..c6953051d9c40 100644
---- a/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h
-+++ b/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h
-@@ -1809,7 +1809,7 @@ struct rtl8xxxu_priv {
- 	struct list_head rx_urb_pending_list;
- 	int rx_urb_pending_count;
- 	bool shutdown;
--	struct work_struct rx_urb_wq;
-+	struct delayed_work rx_urb_wq;
- 
- 	u8 mac_addr[ETH_ALEN];
- 	char chip_name[8];
+ tools/perf/Documentation/perf-script.txt           |  28 +
+ tools/perf/arch/powerpc/util/sym-handling.c        |   5 +-
+ tools/perf/builtin-script.c                        |  44 ++
+ tools/perf/tests/Build                             |   1 +
+ tools/perf/tests/builtin-test.c                    |   1 +
+ tools/perf/tests/shell/script_lazy_load_symbols.sh | 278 ++++++++
+ .../tests/shell/script_lazy_load_symbols_skip.sh   |  26 +
+ tools/perf/tests/symbol-bytes.c                    | 340 ++++++++++
+ tools/perf/tests/tests.h                           |   1 +
+ tools/perf/util/dso.c                              |  63 +-
+ tools/perf/util/dso.h                              |  49 ++
+ tools/perf/util/map.c                              |  30 +-
+ tools/perf/util/symbol-elf.c                       | 733 ++++++++++++++++++++-
+ tools/perf/util/symbol-minimal.c                   |  17 +
+ tools/perf/util/symbol.c                           | 140 +++-
+ tools/perf/util/symbol.h                           |  24 +-
+ tools/perf/util/symbol_conf.h                      |   2 +
+ 17 files changed, 1723 insertions(+), 59 deletions(-)
+---
+base-commit: aa18964dd64511305de0711fed912054da6f5d18
+change-id: 20260915-perf-symbol-memory-send-e7cfca1ac3d9
 
--- 
-2.53.0
+Best regards,
+--  
+Alireza Haghdoost <haghdoost@uber.com>
 
