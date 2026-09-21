@@ -1,11 +1,10 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Mon, 21 Sep 2026 21:18:56 +0300
-Subject: [PATCH v3 05/19] dt-bindings: mmc: sdhci-msm: Add MSM8952
- compatible
+Date: Mon, 21 Sep 2026 21:18:57 +0300
+Subject: [PATCH v3 06/19] dt-bindings: vendor-prefixes: Add General Mobile
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-msm8952-initial-support-v3-5-b96fd3fe298b@mainlining.org>
+Message-Id: <20260921-msm8952-initial-support-v3-6-b96fd3fe298b@mainlining.org>
 References: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 In-Reply-To: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -38,38 +37,41 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  linux-mmc@vger.kernel.org, iommu@lists.linux.dev, mfd@lists.linux.dev, 
  dri-devel@lists.freedesktop.org, freedreno@lists.freedesktop.org, 
  Krzysztof Kozlowski <krzk@kernel.org>, linux-pm@vger.kernel.org, 
- linux-input@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>
+ linux-input@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=861;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=921;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=uQuDsY7sKCtxhxupdBeZKbofdc/eOc+AEju250sV/h8=;
- b=5bo6Glg8xIDB0IqcOMpsjfx6TEdUNtAcAjWM6/Eh4Z25sWgteEFdun/P28zIXLJvbvsvxvCxQ
- F2N2run4UfSBrJoz80bZGUEy3gF9319Y08wgeBv0AX3+8jRewNt1abb
+ bh=PnYLUgGz3s0uCTErVdwKOvW0TSbIMZuWd4fgenpThBM=;
+ b=oooIact20WyWw3vnWthGA4tgys+GchSsDImgXI2OZloY1CLI2yJ4FYpu2H1TfCf8iN/euYXgn
+ MsqmOcr0/lhCkGVVwozpZirzO43nZZxcWp74nOGVPNFSnLIw3lavYc6
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the compatible string for the SDHCI controller on the
-MSM8952 platform.
+Add vendor prefix for General Mobile.
+Link: https://www.generalmobile.com
 
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml b/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
-index 69bd44e65ad7..9d4409c958fa 100644
---- a/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
-+++ b/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
-@@ -26,6 +26,7 @@ properties:
-               - qcom,ipq4019-sdhci
-               - qcom,ipq8074-sdhci
-               - qcom,msm8226-sdhci
-+              - qcom,msm8952-sdhci
-               - qcom,msm8953-sdhci
-               - qcom,msm8974-sdhci
-               - qcom,msm8976-sdhci
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index 4a5cf436eb14..8197b4155b6d 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -662,6 +662,8 @@ patternProperties:
+     description: Gemei Digital Technology Co., Ltd.
+   "^gemtek,.*":
+     description: Gemtek Technology Co., Ltd.
++  "^generalmobile,.*":
++    description: General Mobile Fzc.
+   "^genesys,.*":
+     description: Genesys Logic, Inc.
+   "^genexis,.*":
 
 -- 
 2.55.0
