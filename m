@@ -1,186 +1,108 @@
-From: Kim Wooseok <5mghybrid@khu.ac.kr>
-Date: Mon, 21 Sep 2026 16:59:51 +0900
-Subject: [PATCH rtw-next v4 3/3] wifi: rtl8xxxu: preserve RX requests
- across recoverable transfer errors
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v4 0/4] backlight: qcom-wled: Fix OVP IRQ imbalance and
+ start from the hardware state
+Date: Mon, 21 Sep 2026 12:46:21 +0200
+Message-Id: <20260921-qcom-wled-backlight-v4-0-bab8c7ef73cb@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-codex-rtl-rx-v3-submit-v4-3-eeb09fe8f791@khu.ac.kr>
-References: <20260921-codex-rtl-rx-v3-submit-v4-0-eeb09fe8f791@khu.ac.kr>
-In-Reply-To: <20260921-codex-rtl-rx-v3-submit-v4-0-eeb09fe8f791@khu.ac.kr>
-To: linux-wireless@vger.kernel.org
-Cc: Ping-Ke Shih <pkshih@realtek.com>, 
- Jes Sorensen <Jes.Sorensen@gmail.com>, Kalle Valo <kvalo@kernel.org>, 
- linux-kernel@vger.kernel.org, Kim Wooseok <5mghybrid@khu.ac.kr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Nyw6CMBQE0F8xXXtNXwJ15X8YF6W9yPWFUsRX+
+ HcLLtTEGJeTzJy5s4A1YWCz0Z3V2FKgah+DHo+YK+1+hUA+Zia5TLjhGRxdtYPzFj3k1m22tCo
+ bKLyZpprLVE0Vi8tDjQVdBnWxfOZwytfomp7qGyWFpqqvw20r+t7vh1aAAKe912hzb3k6pws1E
+ 3djvd/KN0Ho74IEDjb63kil0KhPQf0hqCj4xBRoMq0yLV5C13UPinWQCUoBAAA=
+X-Change-ID: 20260908-qcom-wled-backlight-fd9574027353
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Helge Deller <deller@gmx.de>, 
+ Kiran Gunda <quic_kgunda@quicinc.com>, 
+ Marco Mattiolo <marco.mattiolo@hotmail.it>, 
+ =?utf-8?q?Barnab=C3=A1s_Cz=C3=A9m=C3=A1n?= <barnabas.czeman@mainlining.org>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ linux-fbdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Joel Selvaraj <foss@joelselvaraj.com>, David Heidelberg <david@ixit.cz>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789977589; l=6556;
- i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
- bh=s5LeAHyjThLc6mAtyZ76vXgD5nPgBRiYvXbrCmu0990=;
- b=YObtkdvOMk+XG1WWAVnXkHgOmGgdoUHXvEkcPBMAUaJMcqBe2K2HJdatthNn8lrllh7AB6Cx6
- dkFEgSu1Ca6C8FvlVTohaqf6UYgrL//bDqu+AUq8e5WL7nkaiUDVAhw
-X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
- pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
-X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2942; i=david@ixit.cz;
+ h=from:subject:message-id; bh=dswMCVWk69SqXPG+rhoT9B3P5QaoF6XoSY5Y1WH7cc0=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqsQr++Qskohu/NoPUViM/Xnk4ZG3uJpJuUybj5
+ yyYXTm1AsOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarEK/gAKCRBgAj/E00kg
+ cpH9EACra0QFYoHrS1Yjszh/axxwX/h6rI35LsVlMTojnr38RvSmntCUM3j4CeQJLiXp/2jFlyl
+ KsENmnXSftVWoCAvvrFrMu+zAG1W+/BeX9LsjDkToTqv6JL9TJ06IBMQA9Dep8jcf/DAdpf5S1u
+ bA+Xs/XRP4wsHoar3vZeFjlIrpNLJwStYokEcC6fjm5RM3xH3lOp5Lwo/MZJSjdsglMHJuvHwfH
+ NMgQA4eXKMR9nsVAYeOkSCBSna/DmJxYTIbOQ7TYABSN5dYYXphi++t49lRnWAix7uNA9seCbbh
+ 6u/EdmWUUQ1hZnTT3o3ezcR1c0UBd6Y1P+fANrRhTfEwD+Mp1cr9LvCWYwW4ZVQGiBpeBQsPpas
+ D7R/wmFqgFTmf03DM02XKvnseeZ00sk+wDM3Lb8ZUzBGqoOSFwU38g+NxSfiJQOS16qggWNIDPP
+ 468gVzzN9JKu3y0eD+nGVy5S4eG5WEujnasCrpqSGAS+6SDYXEW4gIPdUc5LzMDni/t6qxA4uMz
+ xaYdN/aVqngpUneD1F0MDGFsFDrKqI+iFcORfWK1r5TMHKvBRXXs+iomkxosx0xtDZfOZdaBzLg
+ xUX/j3y2i0z7tnO21jkrK84rJQ8e0/1Opu1xv0YoFdgoQqBXQ5kIWsjIfFcQ4GewGRr79eA60Ha
+ tfxlKl0In9XBo8Q==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rtl8xxxu resubmits completed RX requests when more than eight URBs are
-waiting on the pending list. It starts with 32 URBs, but frees them on
-completion errors. After enough errors, the remaining pool can no longer
-reach the submission threshold. Reception then stays stopped even after
-the errors end. Temporary submission failures can leave a small batch
-waiting with no further work scheduled, too.
+The qcom-wled OVP interrupt is enabled at probe whenever the module is
+already on, but the driver still believes the backlight is off, so the
+first brightness update re-enables the interrupt and trips "Unbalanced
+enable for IRQ". sdm845-mainline has carried a workaround for years and
+Joel posted a flag-based version last October [1], which Konrad and
+Daniel asked to be replaced by something that does not track the IRQ
+state by hand.
 
-Keep the URB when a completion reports EPROTO, EILSEQ, ETIME, EOVERFLOW,
-ECOMM or ENOSR. Free its receive buffer and return the request to the
-same pending list used by normal completions. ENOMEM/EAGAIN from startup
-or worker submission uses this path as well, so a submission failure
-cannot strand a request during recovery.
+Patch 1 is the drvdata fix I said I would drop after v3. The objection
+was that it stored the wrong object, not that the fix was wrong, so it
+is back with the right one stored.
 
-Use one delayed work item to submit the pending requests. An error
-queues a retry after 100 ms without moving an existing reservation back.
-If a normal completion takes the pending count above eight,
-mod_delayed_work(..., 0) brings the work forward. This limits repeated
-retries when reception is not progressing, while allowing normal traffic
-to replenish the pool promptly. The 100 ms delay is therefore not a
-minimum wait for each failed URB.
+Patch 2 is unrelated too and fell out of writing the readback: the WLED3
+brightness register stride has been one byte instead of two since the
+2019 restructuring, so multi-string pm8941 boards only program one
+string correctly. Untested, I have no WLED3 board; it restores what
+pm8941-wled.c did and matches the downstream leds-qpnp.c layout.
 
-Keep the shutdown check, queue insertion and scheduling under the RX
-lock. Stop sets shutdown under that lock, cancels the delayed work
-synchronously, then drains active and pending requests. Cancellation and
-device removal continue to free their URBs.
+[1] https://lore.kernel.org/all/20251021-qcom-wled-fix-unbalanced-ovp-irq-enable-v2-1-7ff115b4ffe7@joelselvaraj.com/
 
-Fixes: 26f1fad29ad9 ("New driver: rtl8xxxu (mac80211)")
-Assisted-by: GPT-6 Astra
-Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/net/wireless/realtek/rtl8xxxu/core.c     | 46 +++++++++++++++---------
- drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h |  2 +-
- 2 files changed, 30 insertions(+), 18 deletions(-)
+Changes in v4:
+- I applied the 0x10 fix too late, now it's fixed in the right commit.
+  (Konrad)
+- Right object stored in the drvdata. (Konrad)
+- Set the drvdata next to the other wled fields instead  of next to the
+  backlight device registration.
+- Reworded the drvdata commit, the NULL dereference is in wled_remove(),
+  the driver has no PM callbacks.
+- Link to v3: https://patch.msgid.link/20260914-qcom-wled-backlight-v3-0-d69fe9843841@ixit.cz
 
-diff --git a/drivers/net/wireless/realtek/rtl8xxxu/core.c b/drivers/net/wireless/realtek/rtl8xxxu/core.c
-index 5cd6498cc47f2..3d0c22db30a80 100644
---- a/drivers/net/wireless/realtek/rtl8xxxu/core.c
-+++ b/drivers/net/wireless/realtek/rtl8xxxu/core.c
-@@ -54,6 +54,7 @@ MODULE_PARM_DESC(dma_agg_pages, "Set DMA aggregation pages (range 1-127, 0 to di
- #define USB_VENDOR_ID_REALTEK		0x0bda
- #define RTL8XXXU_RX_URBS		32
- #define RTL8XXXU_RX_URB_PENDING_WATER	8
-+#define RTL8XXXU_RX_URB_RETRY_DELAY_MS	100
- #define RTL8XXXU_TX_URBS		64
- #define RTL8XXXU_TX_URB_LOW_WATER	25
- #define RTL8XXXU_TX_URB_HIGH_WATER	32
-@@ -5856,9 +5857,8 @@ static int rtl8xxxu_alloc_rx_urbs(struct rtl8xxxu_priv *priv)
- }
- 
- static void rtl8xxxu_queue_rx_urb(struct rtl8xxxu_priv *priv,
--				  struct rtl8xxxu_rx_urb *rx_urb)
-+				  struct rtl8xxxu_rx_urb *rx_urb, bool defer_schedule)
- {
--	struct sk_buff *skb;
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&priv->rx_urb_lock, flags);
-@@ -5866,16 +5866,13 @@ static void rtl8xxxu_queue_rx_urb(struct rtl8xxxu_priv *priv,
- 	if (!priv->shutdown) {
- 		list_add_tail(&rx_urb->list, &priv->rx_urb_pending_list);
- 		priv->rx_urb_pending_count++;
--		/*
--		 * Arm the worker under rx_urb_lock so this is atomic with the
--		 * shutdown check: moving it out of the lock would let a
--		 * completion arm the work after rtl8xxxu_stop() canceled it.
--		 */
--		if (priv->rx_urb_pending_count > RTL8XXXU_RX_URB_PENDING_WATER)
--			schedule_work(&priv->rx_urb_wq);
-+		/* Serialize scheduling with the shutdown check and cancellation. */
-+		if (defer_schedule)
-+			schedule_delayed_work(&priv->rx_urb_wq,
-+					      msecs_to_jiffies(RTL8XXXU_RX_URB_RETRY_DELAY_MS));
-+		else if (priv->rx_urb_pending_count > RTL8XXXU_RX_URB_PENDING_WATER)
-+			mod_delayed_work(system_percpu_wq, &priv->rx_urb_wq, 0);
- 	} else {
--		skb = (struct sk_buff *)rx_urb->urb.context;
--		dev_kfree_skb_irq(skb);
- 		usb_free_urb(&rx_urb->urb);
- 	}
- 
-@@ -5902,7 +5899,7 @@ static int rtl8xxxu_submit_rx_urbs(struct rtl8xxxu_priv *priv, bool startup)
- 			break;
- 		case -ENOMEM:
- 		case -EAGAIN:
--			rtl8xxxu_queue_rx_urb(priv, rx_urb);
-+			rtl8xxxu_queue_rx_urb(priv, rx_urb, true);
- 			break;
- 		default:
- 			usb_free_urb(&rx_urb->urb);
-@@ -5925,7 +5922,8 @@ static int rtl8xxxu_submit_rx_urbs(struct rtl8xxxu_priv *priv, bool startup)
- 
- static void rtl8xxxu_rx_urb_work(struct work_struct *work)
- {
--	struct rtl8xxxu_priv *priv = container_of(work, struct rtl8xxxu_priv, rx_urb_wq);
-+	struct rtl8xxxu_priv *priv = container_of(to_delayed_work(work),
-+					       struct rtl8xxxu_priv, rx_urb_wq);
- 
- 	rtl8xxxu_submit_rx_urbs(priv, false);
- }
-@@ -6585,10 +6583,24 @@ static void rtl8xxxu_rx_complete(struct urb *urb)
- 
- 		skb = NULL;
- 		rx_urb->urb.context = NULL;
--		rtl8xxxu_queue_rx_urb(priv, rx_urb);
-+		rtl8xxxu_queue_rx_urb(priv, rx_urb, false);
- 	} else {
- 		dev_dbg(dev, "%s: status %i\n",	__func__, urb->status);
--		goto cleanup;
-+
-+		switch (urb->status) {
-+		case -EPROTO:
-+		case -EILSEQ:
-+		case -ETIME:
-+		case -EOVERFLOW:
-+		case -ECOMM:
-+		case -ENOSR:
-+			dev_kfree_skb(skb);
-+			urb->context = NULL;
-+			rtl8xxxu_queue_rx_urb(priv, rx_urb, true);
-+			return;
-+		default:
-+			goto cleanup;
-+		}
- 	}
- 	return;
- 
-@@ -7519,7 +7531,7 @@ static void rtl8xxxu_stop(struct ieee80211_hw *hw, bool suspend)
- 	 * it drained via rtl8xxxu_submit_rx_urb(), so a worker still running
- 	 * after the kill could submit a URB that escapes it.
- 	 */
--	cancel_work_sync(&priv->rx_urb_wq);
-+	cancel_delayed_work_sync(&priv->rx_urb_wq);
- 
- 	usb_kill_anchored_urbs(&priv->rx_anchor);
- 	usb_kill_anchored_urbs(&priv->tx_anchor);
-@@ -7832,7 +7844,7 @@ static int rtl8xxxu_probe(struct usb_interface *interface,
- 	spin_lock_init(&priv->tx_urb_lock);
- 	INIT_LIST_HEAD(&priv->rx_urb_pending_list);
- 	spin_lock_init(&priv->rx_urb_lock);
--	INIT_WORK(&priv->rx_urb_wq, rtl8xxxu_rx_urb_work);
-+	INIT_DELAYED_WORK(&priv->rx_urb_wq, rtl8xxxu_rx_urb_work);
- 	INIT_DELAYED_WORK(&priv->ra_watchdog, rtl8xxxu_watchdog_callback);
- 	INIT_DELAYED_WORK(&priv->update_beacon_work, rtl8xxxu_update_beacon_work_callback);
- 	skb_queue_head_init(&priv->c2hcmd_queue);
-diff --git a/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h b/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h
-index eeb18eb0e4c0f..c6953051d9c40 100644
---- a/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h
-+++ b/drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h
-@@ -1809,7 +1809,7 @@ struct rtl8xxxu_priv {
- 	struct list_head rx_urb_pending_list;
- 	int rx_urb_pending_count;
- 	bool shutdown;
--	struct work_struct rx_urb_wq;
-+	struct delayed_work rx_urb_wq;
- 
- 	u8 mac_addr[ETH_ALEN];
- 	char chip_name[8];
+Changes in v3:
+- Fix typo 0x10 != 0b10. (Sashiko)
+- Added fix for a unrelated issue, but since reported as critical, let's
+  squeeze it:
+  Missing platform_set_drvdata() in wled_probe() leads to a guaranteed NULL pointer dereference in wled_remove().
+  (Sashiko)
+- Link to v2: https://patch.msgid.link/20260914-qcom-wled-backlight-v2-0-a908d9233e93@ixit.cz
 
--- 
-2.53.0
+Changes in v2:
+- Add a fix for the WLED3 brightness register stride.
+- Add patch reading the programmed brightness back via
+  backlight_ops.get_brightness. (Konrad)
+- Note the brightness readback is done in the follow-up to the first
+  patch.
+- Link to v1: https://patch.msgid.link/20260908-qcom-wled-backlight-v1-1-c4dd4eabda07@ixit.cz
+
+---
+David Heidelberg (4):
+      backlight: qcom-wled: Fix NULL pointer dereference in wled_remove()
+      backlight: qcom-wled: Fix WLED3 brightness register stride
+      backlight: qcom-wled: Fix unbalanced OVP IRQ enable at probe
+      backlight: qcom-wled: Read back the programmed brightness at probe
+
+ drivers/video/backlight/qcom-wled.c | 89 +++++++++++++++++++++++++++++++------
+ 1 file changed, 76 insertions(+), 13 deletions(-)
+---
+base-commit: 944a035ecca915ae947905dcfb03f2b9dc6d032c
+change-id: 20260908-qcom-wled-backlight-fd9574027353
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
