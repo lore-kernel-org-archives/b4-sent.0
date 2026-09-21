@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Mon, 21 Sep 2026 21:18:55 +0300
-Subject: [PATCH v3 04/19] dt-bindings: power: rpmpd: Add MSM8952 power
- domains
+Date: Mon, 21 Sep 2026 21:18:56 +0300
+Subject: [PATCH v3 05/19] dt-bindings: mmc: sdhci-msm: Add MSM8952
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-msm8952-initial-support-v3-4-b96fd3fe298b@mainlining.org>
+Message-Id: <20260921-msm8952-initial-support-v3-5-b96fd3fe298b@mainlining.org>
 References: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 In-Reply-To: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -40,35 +40,36 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  Krzysztof Kozlowski <krzk@kernel.org>, linux-pm@vger.kernel.org, 
  linux-input@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=754;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=861;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=z3YwdcIAvY7eEvL/O1RSkMfScbVn/9IEcdYfTg2p+uc=;
- b=aD03aRLvv0uALeFCpOrG6qdXaG2xh7yMpxRCPexSUDqs3EZH4fNwHzu0upCWSCn+CDei2JEZQ
- t8/B0ovbu3JDDWOT6lneOyAFHnN9qW6xXWRfovibPb8icD9fO1iRHCx
+ bh=uQuDsY7sKCtxhxupdBeZKbofdc/eOc+AEju250sV/h8=;
+ b=5bo6Glg8xIDB0IqcOMpsjfx6TEdUNtAcAjWM6/Eh4Z25sWgteEFdun/P28zIXLJvbvsvxvCxQ
+ F2N2run4UfSBrJoz80bZGUEy3gF9319Y08wgeBv0AX3+8jRewNt1abb
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the compatible for the rpmpd found on MSM8952.
+Document the compatible string for the SDHCI controller on the
+MSM8952 platform.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/power/qcom,rpmpd.yaml | 1 +
+ Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml b/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml
-index a70bfacbc5d1..8ee1c25a7c9d 100644
---- a/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml
-+++ b/Documentation/devicetree/bindings/power/qcom,rpmpd.yaml
-@@ -76,6 +76,7 @@ properties:
-       - items:
-           - enum:
-               - qcom,msm8937-rpmpd
-+              - qcom,msm8952-rpmpd
-           - const: qcom,msm8917-rpmpd
-       - items:
-           - enum:
+diff --git a/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml b/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
+index 69bd44e65ad7..9d4409c958fa 100644
+--- a/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
++++ b/Documentation/devicetree/bindings/mmc/qcom,sdhci-msm.yaml
+@@ -26,6 +26,7 @@ properties:
+               - qcom,ipq4019-sdhci
+               - qcom,ipq8074-sdhci
+               - qcom,msm8226-sdhci
++              - qcom,msm8952-sdhci
+               - qcom,msm8953-sdhci
+               - qcom,msm8974-sdhci
+               - qcom,msm8976-sdhci
 
 -- 
 2.55.0
