@@ -1,10 +1,10 @@
 From: Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
-Date: Mon, 21 Sep 2026 02:26:42 +0200
-Subject: [PATCH v2 2/3] dt-bindings: arm: marvell: Add Sophos XGS 107w NPU
+Date: Mon, 21 Sep 2026 02:26:43 +0200
+Subject: [PATCH v2 3/3] arm64: dts: marvell: Add Sophos XGS 107w NPU board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-send-dt-v2-2-fb6b81002ad7@studio.unibo.it>
+Message-Id: <20260921-send-dt-v2-3-fb6b81002ad7@studio.unibo.it>
 References: <20260921-send-dt-v2-0-fb6b81002ad7@studio.unibo.it>
 In-Reply-To: <20260921-send-dt-v2-0-fb6b81002ad7@studio.unibo.it>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,48 +15,252 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, 
  Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789950401; l=1394;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789950401; l=5800;
  i=nicolo.giuliani6@studio.unibo.it; s=20260919; h=from:subject:message-id;
- bh=lyDMMre6EWQH7CiEprIS9UxuPjln7GFy4OUwneOalSI=;
- b=XH+pUXfYOL6RW3KhZLUS9vw02g1QOZ+Wz32F90LYLT2qMP4KyByADqVmYEIGFa+Qe97WHG1ga
- XawU60uusXPAG7FuzKQHL2L5NiNGzRHI9893tueFqx6qbKkK7RiRPSd
+ bh=8wZTzfWWfxJCcfQhfgPWj+G5wLPzig9U9sVX6n8unng=;
+ b=jikZ4TlVOrU/oqutu3YHm0CZ1r9460ZPVE66bWr3bSskobA8LRZJN4NPV3CRfRtuucJkd4C9n
+ DnWWhORYFGnD4dYHCg+OdFNdfU9wu74yPg24S2fYvRkVgu7ruj/HC/b
 X-Developer-Key: i=nicolo.giuliani6@studio.unibo.it; a=ed25519;
  pk=D652ecdT01GkA1eoFWNFNX85xIg5ZnFwUWyjfestgQw=
 X-Endpoint-Received: by B4 Relay for nicolo.giuliani6@studio.unibo.it/20260919 with auth_id=1040
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Sophos XGS 87/107 desktop firewalls combine an AMD x86 host with a
-separate network processing unit (NPU). The NPU is a Marvell Armada CN9130
-SoC with its own eMMC and SPI NOR flash, connected to the x86 host over
-PCIe. It serves the front panel ports through a Marvell 88E6193X switch.
+Add a device tree for the network processing unit (NPU) of the Sophos
+XGS 87/107 desktop firewalls. The appliance pairs an AMD x86 host with the
+NPU, a Marvell Armada CN9130 SoC with its own eMMC and SPI NOR flash that
+runs independently of the host and serves the front panel ports.
 
-Document the compatible string of the NPU board, with the CN9130 SoC
-compatibles as fallbacks.
+The eight RJ45 ports and the SFP cage are connected through a Marvell
+88E6193X switch on the MDIO bus of the SoC, at address 2. Switch port 0
+is the CPU port, a 10GBASE-R link to the first mvpp2 port. Ports 1 to 8
+are the RJ45 ports, which use the internal PHYs of the switch, and
+port 9 is the SFP cage, connected over 1000BASE-X.
+
+Describe the UART console, the eMMC, the SPI NOR flash that holds the boot
+loader and its environment (read-only), the SFP cage and the switch with
+its ports. The port LEDs, the PCIe link to the x86 host and the USB ports
+are not described.
+
+The switch is reset through CP GPIO2 pin 17.
+
+Tested on an XGS 107w with Linux 6.18: boot from eMMC, eMMC and SPI NOR
+access, the mvpp2 link to the switch at 10 Gb/s, the 88E6193X probing with
+its eight user ports, and 936 Mbit/s through a front port. The SFP cage is
+untested.
 
 Assisted-by: LLM
 Signed-off-by: Nicolo Giuliani <nicolo.giuliani6@studio.unibo.it>
 ---
- Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm64/boot/dts/marvell/Makefile               |   1 +
+ .../boot/dts/marvell/cn9130-sophos-xgs107w.dts     | 188 +++++++++++++++++++++
+ 2 files changed, 189 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml b/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml
-index 7e77310da6..130128c462 100644
---- a/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml
-+++ b/Documentation/devicetree/bindings/arm/marvell/armada-7k-8k.yaml
-@@ -118,6 +118,13 @@ properties:
-           - const: marvell,armada-ap807-quad
-           - const: marvell,armada-ap807
+diff --git a/arch/arm64/boot/dts/marvell/Makefile b/arch/arm64/boot/dts/marvell/Makefile
+index 09d1544041..3e301c8265 100644
+--- a/arch/arm64/boot/dts/marvell/Makefile
++++ b/arch/arm64/boot/dts/marvell/Makefile
+@@ -32,6 +32,7 @@ dtb-$(CONFIG_ARCH_MVEBU) += ac5x-rd-carrier-cn9131.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += ac5-98dx35xx-rd.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-cf-base.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9130-cf-pro.dtb
++dtb-$(CONFIG_ARCH_MVEBU) += cn9130-sophos-xgs107w.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9131-cf-solidwan.dtb
+ dtb-$(CONFIG_ARCH_MVEBU) += cn9132-clearfog.dtb
  
-+      - description:
-+          Sophos XGS 87/107 network processing unit (Armada CN9130 SoC
-+          with an 88E6193X switch)
-+        items:
-+          - const: sophos,xgs107w-npu
-+          - const: marvell,cn9130
+diff --git a/arch/arm64/boot/dts/marvell/cn9130-sophos-xgs107w.dts b/arch/arm64/boot/dts/marvell/cn9130-sophos-xgs107w.dts
+new file mode 100644
+index 0000000000..da6a1da1cc
+--- /dev/null
++++ b/arch/arm64/boot/dts/marvell/cn9130-sophos-xgs107w.dts
+@@ -0,0 +1,188 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Device tree for the network processing unit (NPU) of the Sophos XGS 87/107
++ * firewalls: a Marvell CN9130 SoC with a Marvell 88E6193X switch.
++ *
++ * The x86 host on the same board is not described here.
++ */
 +
-       - description:
-           SolidRun CN9130 SoM based single-board computers
-         items:
++/dts-v1/;
++
++#include "cn9130.dtsi"
++#include <dt-bindings/gpio/gpio.h>
++
++/ {
++	model = "Sophos XGS 107w (CN9130 NPU)";
++	compatible = "sophos,xgs107w-npu", "marvell,cn9130";
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	aliases {
++		ethernet0 = &cp0_eth0;
++		i2c1 = &cp0_i2c1;
++	};
++
++	memory@0 {
++		device_type = "memory";
++		reg = <0x0 0x0 0x0 0x80000000>;
++	};
++
++	reserved-memory {
++		/* OP-TEE, reserved by the firmware */
++		tee@4400000 {
++			reg = <0x0 0x4400000 0x0 0x1000000>;
++			no-map;
++		};
++	};
++
++	/* Front-panel SFP cage "F1", wired to switch port 9 */
++	sfp: sfp {
++		compatible = "sff,sfp";
++		i2c-bus = <&cp0_i2c1>;
++		los-gpios = <&cp0_gpio1 1 GPIO_ACTIVE_HIGH>;
++		tx-fault-gpios = <&cp0_gpio1 2 GPIO_ACTIVE_HIGH>;
++		mod-def0-gpios = <&cp0_gpio1 3 GPIO_ACTIVE_LOW>;
++		tx-disable-gpios = <&cp0_gpio1 7 GPIO_ACTIVE_HIGH>;
++	};
++};
++
++&uart0 {
++	status = "okay";
++};
++
++/* eMMC on the AP */
++&ap_sdhci0 {
++	bus-width = <8>;
++	non-removable;
++	mmc-ddr-1_8v;
++	status = "okay";
++};
++
++/*
++ * The MPP pin muxing is left as configured by the boot loader; the pin
++ * controller node only exists to back the GPIO banks.
++ */
++&cp0_syscon0 {
++	cp0_pinctrl: pinctrl {
++		compatible = "marvell,cp115-standalone-pinctrl";
++	};
++};
++
++&cp0_i2c1 {
++	/* I2C bus of the SFP cage */
++	clock-frequency = <100000>;
++	status = "okay";
++};
++
++/* 4 MB SPI NOR with U-Boot and its environment, read-only on purpose */
++&cp0_spi0 {
++	status = "okay";
++
++	flash@0 {
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		spi-max-frequency = <40000000>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "u-boot";
++				reg = <0x0 0x3f0000>;
++				read-only;
++			};
++
++			partition@3f0000 {
++				label = "u-boot-env";
++				reg = <0x3f0000 0x10000>;
++				read-only;
++			};
++		};
++	};
++};
++
++&cp0_ethernet {
++	status = "okay";
++};
++
++/* 10G link to switch port 0 */
++&cp0_eth0 {
++	phy-mode = "10gbase-r";
++	phys = <&cp0_comphy4 0>;
++	managed = "in-band-status";
++	status = "okay";
++};
++
++&cp0_mdio {
++	status = "okay";
++
++	switch@2 {
++		compatible = "marvell,mv88e6190";
++		reg = <2>;
++		reset-gpios = <&cp0_gpio2 17 GPIO_ACTIVE_LOW>;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++				ethernet = <&cp0_eth0>;
++				phy-mode = "10gbase-r";
++				managed = "in-band-status";
++			};
++
++			port@1 {
++				reg = <1>;
++				label = "p1";
++			};
++
++			port@2 {
++				reg = <2>;
++				label = "p2";
++			};
++
++			port@3 {
++				reg = <3>;
++				label = "p3";
++			};
++
++			port@4 {
++				reg = <4>;
++				label = "p4";
++			};
++
++			port@5 {
++				reg = <5>;
++				label = "p5";
++			};
++
++			port@6 {
++				reg = <6>;
++				label = "p6";
++			};
++
++			port@7 {
++				reg = <7>;
++				label = "p7";
++			};
++
++			port@8 {
++				reg = <8>;
++				label = "p8";
++			};
++
++			port@9 {
++				reg = <9>;
++				label = "sfp";
++				phy-mode = "1000base-x";
++				managed = "in-band-status";
++				sfp = <&sfp>;
++			};
++		};
++	};
++};
 
 -- 
 2.48.1
