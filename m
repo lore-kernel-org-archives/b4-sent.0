@@ -1,10 +1,11 @@
 From: Bingfang Guo <bingfangguo@tencent.com>
-Date: Mon, 21 Sep 2026 14:16:24 +0800
-Subject: [PATCH v2 1/4] memcg: keep swap charging under RCU protection
+Date: Mon, 21 Sep 2026 14:16:25 +0800
+Subject: [PATCH v2 2/4] memcg: base swap charge accounting on memcgid root
+ status
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-bingfangguo-memcgid-rework-v2-1-6c0637dc0edb@tencent.com>
+Message-Id: <20260921-bingfangguo-memcgid-rework-v2-2-6c0637dc0edb@tencent.com>
 References: <20260921-bingfangguo-memcgid-rework-v2-0-6c0637dc0edb@tencent.com>
 In-Reply-To: <20260921-bingfangguo-memcgid-rework-v2-0-6c0637dc0edb@tencent.com>
 To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
@@ -19,97 +20,132 @@ To: Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>,
 Cc: cgroups@vger.kernel.org, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, Bingfang Guo <bingfangguo@tencent.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1789971391; l=2959;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1789971391; l=4757;
  i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
- bh=sE3zMklqkcFz3uR1w6qomhpryX2R8nExKsjfG+k30bI=;
- b=jYqZPOQzuqXt3gG9v8XXM4BalCcLyDqai9BvgC5xpefOPP5WMa23il4SGzRfiEbjc9+PIIj0H
- GvQ5nU6AAg/DDtdj1U5G90CxDuQBHe6GOo2QGChpb/L3eR4heGMLTma
+ bh=9FAyfMKM+7unLAdMxjg2Op7yswvqwLDZxs1E3W/Lmyo=;
+ b=DJXQvDM7Ki8+9464bK5faIcO6vt3cMKvvJ33Y66tpyyuAQyR1gRDHKvAv1MkCrl8UZpXxh0MQ
+ BNC0qblHNNqC/SHLIKTKwIuhj7rHyNsStz7NfFvhohcYC5smbLkRYHS
 X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
  pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
 X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is a preparatory work for unbinding memcgid from memcg. No
-functional change.
+A private ID currently pins its original memcg, so testing whether the
+ID belongs to root is equivalent to testing whether the resolved memcg
+is root.
 
-The swap charging path currently drops its RCU read lock after acquiring
-a private ID reference. This is safe because the ID reference pins the
-memcg's CSS.  After ID references are moved to pin objcgs, that lifetime
-guarantee will no longer hold.
+That equivalence will no longer hold when IDs refer to objcgs. A
+non-root ID may resolve to root after reparenting, but its swap entries
+still carry counter charges inherited by root. Skipping their uncharge
+based on the resolved memcg would leave those charges behind.
 
-Keep the RCU read lock held while accessing the memcg for counter
-charging, statistics and failure handling. (This matches what
-__memcg1_swapout() already does).  Save the private ID for swap memcg
-recording before dropping the RCU read lock. So the swap cluster locking
-remains outside the RCU read-side critical section.
+Use the private ID's root status to decide whether a swap entry carries
+a counter charge. A root-ID entry carries none, while a non-root-ID
+entry must release its charge even if its current accounting memcg has
+become root.
+
+This patch adds a new helper to check if the memcgid equals to that of
+the root memcg.  For swap uncharging and v2 swap charging, simply decide
+whether to charge/uncharge memsw or swap counter based on the swap
+memcgid is root or not. For v1 swapout, don't recharge the memsw
+counter, just cancel the charge if the swap memcg ID refers to the root
+memcg.
+
+This makes memory and swap charging have similar semantics: one relys on
+the objcg's root status, and the other relys on the memcgid's root
+status.
 
 Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 Acked-by: Muchun Song <muchun.song@linux.dev>
 ---
- mm/memcontrol.c | 38 +++++++++++++++++++-------------------
- 1 file changed, 19 insertions(+), 19 deletions(-)
+ mm/memcontrol-v1.c | 16 ++++++++--------
+ mm/memcontrol-v1.h |  5 +++++
+ mm/memcontrol.c    |  4 ++--
+ 3 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index 791e536efaebe..981a231a76129 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -5954,6 +5954,7 @@ int __mem_cgroup_try_charge_swap(struct folio *folio)
- 	struct page_counter *counter;
- 	struct mem_cgroup *memcg;
+diff --git a/mm/memcontrol-v1.c b/mm/memcontrol-v1.c
+index bf2c7d53b01b1..ed015fdd95123 100644
+--- a/mm/memcontrol-v1.c
++++ b/mm/memcontrol-v1.c
+@@ -271,6 +271,7 @@ void __memcg1_swapout(struct folio *folio, struct swap_cluster_info *ci)
+ 	struct mem_cgroup *memcg, *swap_memcg;
  	struct obj_cgroup *objcg;
+ 	unsigned int nr_entries;
 +	unsigned short private_id;
  
- 	if (do_memsw_account())
- 		return 0;
-@@ -5963,30 +5964,29 @@ int __mem_cgroup_try_charge_swap(struct folio *folio)
- 	if (!objcg)
- 		return 0;
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_swapcache(folio), folio);
+ 	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
+@@ -293,25 +294,24 @@ void __memcg1_swapout(struct folio *folio, struct swap_cluster_info *ci)
+ 	/*
+ 	 * In case the memcg owning these pages has been offlined and doesn't
+ 	 * have an ID allocated to it anymore, charge the closest online
+-	 * ancestor for the swap instead and transfer the memory+swap charge.
++	 * ancestor for the swap instead and cancel the memory+swap charge
++	 * if the ID refers to the root memcg.
+ 	 */
+ 	nr_entries = folio_nr_pages(folio);
+ 	swap_memcg = mem_cgroup_private_id_get_online(memcg, nr_entries);
++	private_id = mem_cgroup_private_id(swap_memcg);
+ 	mod_memcg_state(swap_memcg, MEMCG_SWAP, nr_entries);
  
--	rcu_read_lock();
--	memcg = obj_cgroup_memcg(objcg);
--	if (!folio_test_swapcache(folio)) {
--		memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
--		rcu_read_unlock();
--		return 0;
--	}
-+	scoped_guard(rcu) {
-+		memcg = obj_cgroup_memcg(objcg);
-+		if (!folio_test_swapcache(folio)) {
-+			memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
-+			return 0;
-+		}
+-	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_entries,
+-			  mem_cgroup_private_id(swap_memcg));
++	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_entries, private_id);
  
--	memcg = mem_cgroup_private_id_get_online(memcg, nr_pages);
--	/* memcg is pined by memcg ID. */
--	rcu_read_unlock();
-+		memcg = mem_cgroup_private_id_get_online(memcg, nr_pages);
-+		/* memcg is pined by memcg ID. */
-+		private_id = mem_cgroup_private_id(memcg);
+ 	folio_unqueue_deferred_split(folio);
+ 	folio->memcg_data = 0;
  
--	if (!mem_cgroup_is_root(memcg) &&
--	    !page_counter_try_charge(&memcg->swap, nr_pages, &counter)) {
--		memcg_memory_event(memcg, MEMCG_SWAP_MAX);
--		memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
--		mem_cgroup_private_id_put(memcg, nr_pages);
--		return -ENOMEM;
-+		if (!mem_cgroup_is_root(memcg) &&
-+		    !page_counter_try_charge(&memcg->swap, nr_pages, &counter)) {
-+			memcg_memory_event(memcg, MEMCG_SWAP_MAX);
-+			memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
-+			mem_cgroup_private_id_put(memcg, nr_pages);
-+			return -ENOMEM;
-+		}
-+		mod_memcg_state(memcg, MEMCG_SWAP, nr_pages);
+-	if (!obj_cgroup_is_root(objcg))
++	if (!obj_cgroup_is_root(objcg)) {
+ 		page_counter_uncharge(&memcg->memory, nr_entries);
+ 
+-	if (memcg != swap_memcg) {
+-		if (!mem_cgroup_is_root(swap_memcg))
+-			page_counter_charge(&swap_memcg->memsw, nr_entries);
+-		page_counter_uncharge(&memcg->memsw, nr_entries);
++		if (mem_cgroup_private_id_is_root(private_id))
++			page_counter_uncharge(&memcg->memsw, nr_entries);
  	}
--	mod_memcg_state(memcg, MEMCG_SWAP, nr_pages);
  
- 	ci = swap_cluster_get_and_lock(folio);
--	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_pages,
--			  mem_cgroup_private_id(memcg));
-+	__swap_cgroup_set(ci, swp_cluster_offset(folio->swap), nr_pages, private_id);
- 	swap_cluster_unlock(ci);
+ 	/*
+diff --git a/mm/memcontrol-v1.h b/mm/memcontrol-v1.h
+index 2cd37e1792d79..23be2512702dc 100644
+--- a/mm/memcontrol-v1.h
++++ b/mm/memcontrol-v1.h
+@@ -22,6 +22,11 @@ void drain_all_stock(struct mem_cgroup *root_memcg);
  
- 	return 0;
+ int memory_stat_show(struct seq_file *m, void *v);
+ 
++static inline bool mem_cgroup_private_id_is_root(unsigned short id)
++{
++	return id == mem_cgroup_private_id(root_mem_cgroup);
++}
++
+ struct mem_cgroup *mem_cgroup_private_id_get_online(struct mem_cgroup *memcg,
+ 						    unsigned int n);
+ 
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 981a231a76129..aedac862fe254 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -5975,7 +5975,7 @@ int __mem_cgroup_try_charge_swap(struct folio *folio)
+ 		/* memcg is pined by memcg ID. */
+ 		private_id = mem_cgroup_private_id(memcg);
+ 
+-		if (!mem_cgroup_is_root(memcg) &&
++		if (!mem_cgroup_private_id_is_root(private_id) &&
+ 		    !page_counter_try_charge(&memcg->swap, nr_pages, &counter)) {
+ 			memcg_memory_event(memcg, MEMCG_SWAP_MAX);
+ 			memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
+@@ -6004,7 +6004,7 @@ void __mem_cgroup_uncharge_swap(unsigned short id, unsigned int nr_pages)
+ 	rcu_read_lock();
+ 	memcg = mem_cgroup_from_private_id(id);
+ 	if (memcg) {
+-		if (!mem_cgroup_is_root(memcg)) {
++		if (!mem_cgroup_private_id_is_root(id)) {
+ 			if (do_memsw_account())
+ 				page_counter_uncharge(&memcg->memsw, nr_pages);
+ 			else
 
 -- 
 2.43.7
