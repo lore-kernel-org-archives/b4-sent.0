@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Mon, 21 Sep 2026 21:18:58 +0300
-Subject: [PATCH v3 07/19] dt-bindings: arm: qcom: Document MSM8952 SoC
- binding
+Date: Mon, 21 Sep 2026 21:18:59 +0300
+Subject: [PATCH v3 08/19] dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU
+ to SMMUv2 compatibles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-msm8952-initial-support-v3-7-b96fd3fe298b@mainlining.org>
+Message-Id: <20260921-msm8952-initial-support-v3-8-b96fd3fe298b@mainlining.org>
 References: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 In-Reply-To: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -38,51 +38,39 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  linux-mmc@vger.kernel.org, iommu@lists.linux.dev, mfd@lists.linux.dev, 
  dri-devel@lists.freedesktop.org, freedreno@lists.freedesktop.org, 
  Krzysztof Kozlowski <krzk@kernel.org>, linux-pm@vger.kernel.org, 
- linux-input@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ linux-input@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=1122;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=899;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=AJzo82+GowJ1DrA4G+irwKKpUINfQlsq4w+qyJQ1wNs=;
- b=CR+O8eOXF6KRKvbHo5vhCWclRk+uo9iFwNap7htKZyOF6mJ9MdxFR+BdM9fiJlf/E+sL4tesd
- uH4IEOs9GAsDAz0BpjUxeDI+4BhjbiyepRsp3bA6NhUkOiTgxrsnScW
+ bh=0sCdnuV2zL4qFCD91/lsOBAdGEuX14F5OA12mUrh81M=;
+ b=3wp/HtNlPzHfkvZaPzAf7wFmwQ5obdI7/17EfTPBGkMnmfiGf52VEGUMHqnrOE7CV5nhJqmeY
+ Rd0C96WIDoSDfuPn3kcGfviiTLQElgFV64SsStjh2VK0GOAXGdTrSHl
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the MSM8952 and add General Mobile shamrock to it.
+Add MSM8952 compatible string with "qcom,msm-iommu-v2" as fallback
+for the MSM8952 IOMMU which is compatible with Qualcomm's secure
+fw "SMMU v2" implementation.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 6 ++++++
- 1 file changed, 6 insertions(+)
+ Documentation/devicetree/bindings/iommu/qcom,iommu.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index cf9d940f7371..e3b3c9b056d5 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -297,6 +297,11 @@ properties:
-               - wingtech,wt82918hdhw39
-           - const: qcom,msm8939
- 
-+      - items:
-+          - enum:
-+              - generalmobile,shamrock
-+          - const: qcom,msm8952
-+
+diff --git a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
+index 93a489025317..9952b9da9a6a 100644
+--- a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
++++ b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
+@@ -27,6 +27,7 @@ properties:
+           - const: qcom,msm-iommu-v1
        - items:
            - enum:
-               - flipkart,rimob
-@@ -1342,6 +1347,7 @@ allOf:
-               - qcom,msm8917
-               - qcom,msm8937
-               - qcom,msm8939
-+              - qcom,msm8952
-               - qcom,msm8953
-               - qcom,msm8956
-               - qcom,msm8992
++              - qcom,msm8952-iommu
+               - qcom,msm8953-iommu
+               - qcom,msm8976-iommu
+           - const: qcom,msm-iommu-v2
 
 -- 
 2.55.0
