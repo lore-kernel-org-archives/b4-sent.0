@@ -1,10 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Mon, 21 Sep 2026 21:18:57 +0300
-Subject: [PATCH v3 06/19] dt-bindings: vendor-prefixes: Add General Mobile
+Date: Mon, 21 Sep 2026 21:18:58 +0300
+Subject: [PATCH v3 07/19] dt-bindings: arm: qcom: Document MSM8952 SoC
+ binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-msm8952-initial-support-v3-6-b96fd3fe298b@mainlining.org>
+Message-Id: <20260921-msm8952-initial-support-v3-7-b96fd3fe298b@mainlining.org>
 References: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 In-Reply-To: <20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org>
 To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
@@ -40,38 +41,48 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  linux-input@vger.kernel.org, Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=921;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790014748; l=1122;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=PnYLUgGz3s0uCTErVdwKOvW0TSbIMZuWd4fgenpThBM=;
- b=oooIact20WyWw3vnWthGA4tgys+GchSsDImgXI2OZloY1CLI2yJ4FYpu2H1TfCf8iN/euYXgn
- MsqmOcr0/lhCkGVVwozpZirzO43nZZxcWp74nOGVPNFSnLIw3lavYc6
+ bh=AJzo82+GowJ1DrA4G+irwKKpUINfQlsq4w+qyJQ1wNs=;
+ b=CR+O8eOXF6KRKvbHo5vhCWclRk+uo9iFwNap7htKZyOF6mJ9MdxFR+BdM9fiJlf/E+sL4tesd
+ uH4IEOs9GAsDAz0BpjUxeDI+4BhjbiyepRsp3bA6NhUkOiTgxrsnScW
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add vendor prefix for General Mobile.
-Link: https://www.generalmobile.com
+Document the MSM8952 and add General Mobile shamrock to it.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/arm/qcom.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 4a5cf436eb14..8197b4155b6d 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -662,6 +662,8 @@ patternProperties:
-     description: Gemei Digital Technology Co., Ltd.
-   "^gemtek,.*":
-     description: Gemtek Technology Co., Ltd.
-+  "^generalmobile,.*":
-+    description: General Mobile Fzc.
-   "^genesys,.*":
-     description: Genesys Logic, Inc.
-   "^genexis,.*":
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index cf9d940f7371..e3b3c9b056d5 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -297,6 +297,11 @@ properties:
+               - wingtech,wt82918hdhw39
+           - const: qcom,msm8939
+ 
++      - items:
++          - enum:
++              - generalmobile,shamrock
++          - const: qcom,msm8952
++
+       - items:
+           - enum:
+               - flipkart,rimob
+@@ -1342,6 +1347,7 @@ allOf:
+               - qcom,msm8917
+               - qcom,msm8937
+               - qcom,msm8939
++              - qcom,msm8952
+               - qcom,msm8953
+               - qcom,msm8956
+               - qcom,msm8992
 
 -- 
 2.55.0
