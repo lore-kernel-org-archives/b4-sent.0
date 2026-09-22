@@ -1,160 +1,157 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 22 Sep 2026 15:41:48 +0200
-Subject: [PATCH v3 4/4] wifi: ath12k: Connect to the QMI server belonging
- to the device owned by this driver
+From: Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
+Date: Tue, 22 Sep 2026 15:46:46 +0000
+Subject: [PATCH] scsi: ch: Do not keep references to data transfer element
+ devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-qrtr-multi-ep-v3-4-c00831e88957@oss.qualcomm.com>
-References: <20260922-qrtr-multi-ep-v3-0-c00831e88957@oss.qualcomm.com>
-In-Reply-To: <20260922-qrtr-multi-ep-v3-0-c00831e88957@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
- ath11k@lists.infradead.org, ath12k@lists.infradead.org, 
- Bjorn Andersson <andersson@kernel.org>, 
- Chris Lew <christopher.lew@oss.qualcomm.com>, 
- Deepak Kumar Singh <deepak.singh@oss.qualcomm.com>, 
- Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
- Juha-Matti Tilli <juha-matti.tilli@iki.fi>, 
- Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Vasanthakumar Thiagarajan <vasanthakumar.thiagarajan@oss.qualcomm.com>
+Message-Id: <20260922-ch-dt-leak-v1-1-2b2e40bf1624@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOWismoC/yXMQQ5AMBBA0avIrE2isxBcRSyqHQyCtIikcXfF8
+ i3+D+DZCXuokgCOT/GyLhEqTcAMeukZxUYDZZRnJRGaAe2OM+sJDalCtbntrC4gBpvjTq5vVje
+ //dGObPb3APf9AEgl7kZuAAAA
+X-Change-ID: 20260922-ch-dt-leak-c2181b6dfda8
+To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <mkp@kernel.org>
+Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yang Hao <yanghao_ht@163.com>, stable@vger.kernel.org, 
+ Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4571;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=DT5YD9KTy297qpxKLqV6vZHXShu1pl5/Yf8kTL/Z9m0=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqsoWqqaEGmIX1e1MOg+bhi/qVVyOX76+2krCmI
- ggELmaZBu6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCarKFqgAKCRBVnxHm/pHO
- 9fnSCACPxOdLmSmSN7FrB/o4IzSO5N+EKMM6HAibXYNODm5gQjXEjcGJL9rvwR29v1pY8JSOOb0
- 1TXJ2gowJHdaVJ6ufYFuO2yQmEmxu46Y2+643i1fX5UHXN795Grkm3UQ7VIJgA70FX668yHYM25
- 7HfC2tkXqOlVQKbmIEDRkj/NItVJ8dSx1Ttq6l7AFoph2u6ebEGESJh3mtjizT/DZZMn/YRHFKb
- UmjCC7IEsUKf8C4vt17Ndd+IQ1roaQ+hzeJWNgmnwYOfs3MylAtqsQbwYht293L2CKT3vSWL1iM
- slsOmXX5PgCaKNCwOmw09wE3BUt9A8vqjlaGEjbSiGdSUnAX
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790092005; l=4470;
+ i=ahmedhal@gmail.com; s=20260922; h=from:subject:message-id;
+ bh=iZVNPPB7mUfBqJBncawixvxcm8hSCLkSxjGpPuZxEew=;
+ b=2UeofKhw6wI3aDTyud1oM5f9gWPbzV/lXmlrRTDrU5Zin6Goi0XrWOYBjoukeqmobkRtEamLV
+ Q4zxzAKCxGeAIi45BP/0CXWSByCib97cq3Wj7wrIAU2JschKSHZPQU6
+X-Developer-Key: i=ahmedhal@gmail.com; a=ed25519;
+ pk=UEFWTgykG696wvaHZw+52zx9UkpJCW3L3hvdRay28Fo=
+X-Endpoint-Received: by B4 Relay for ahmedhal@gmail.com/20260922 with auth_id=1049
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When two identical ath12k PCIe devices are connected to the same host, both
-advertise the WLFW service with the same service and instance id. The QMI
-lookup reports both servers to each device, so a device may connect to the
-firmware running on the other device.
+ch_readconfig() looks up the scsi_device of every data transfer element
+whose SCSI id the changer reports in READ ELEMENT STATUS, and stores it
+in ch->dt[]. scsi_device_lookup() takes a reference, and nothing ever
+drops it: ch_destroy() frees the array with kfree(). ch->dt[] is read
+nowhere else - it only supplies the vendor, model and revision printed
+in the same loop.
 
-But now, QRTR provides each MHI endpoint a unique node id which is
-different from the node id announced by the device. So use the same id to
-pick the correct server. Add a get_qrtr_node_id() HIF callback that returns
-the node id derived from the MHI controller index and zero for transports
-that do not assign one. In the new_server callback, skip any service whose
-node id does not match. A node id of zero disables the check, so transports
-that do not assign one keep their current behavior.
+Once such a drive is removed, its scsi_device can never be released. It
+stays on the host's device list at its address, so a new device there is
+refused by anything that walks the list - target_core_pscsi reports
+"scsi_device_get() failed for H:C:T:L" - and the low-level driver's
+module can no longer be unloaded. Only a reboot recovers.
 
-Tested-on: 2x WCN7850 hw2.0 WLAN.IOE_HMT.1.1-00018-QCAHMTSWPL_V1.0_V2.0_SILICONZ-1
-Tested-on: 1x WCN6855 ath11k + 1x WCN7850 ath12k
+It shows with any changer that reports its drives' ids; with the mhvtl
+virtual library (IBM 3573-TL personality), each create and remove of a
+library with four drives leaves four references behind, counted by the
+module's use count in lsmod. With ch not bound the count is unchanged,
+and with this patch applied it is unchanged too.
 
-Tested-by: Juha-Matti Tilli <juha-matti.tilli@iki.fi>
-Reviewed-by: Vasanthakumar Thiagarajan <vasanthakumar.thiagarajan@oss.qualcomm.com>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Drop the reference as soon as the name has been printed, and remove the
+now unused dt[] array. That also removes the array leaked when
+ch_probe() fails after ch_readconfig().
+
+The same leak was reported with an RFC patch in 2022, which was not
+merged.
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Cc: stable@vger.kernel.org
+Link: https://lore.kernel.org/linux-scsi/20220719075442.6215-1-yanghao_ht@163.com/
+Signed-off-by: Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
 ---
- drivers/net/wireless/ath/ath12k/hif.h |  9 +++++++++
- drivers/net/wireless/ath/ath12k/pci.c |  9 +++++++++
- drivers/net/wireless/ath/ath12k/qmi.c | 11 +++++++++++
- 3 files changed, 29 insertions(+)
+Reproduced and tested on RHEL 9 (5.14.0-687.47.1.el9_8) with mhvtl,
+IBM 3573-TL personality, four ULT3580-HHA drives, library created and
+removed; mhvtl module use count leaked:
 
-diff --git a/drivers/net/wireless/ath/ath12k/hif.h b/drivers/net/wireless/ath/ath12k/hif.h
-index 4de8667690e9..b8592c3d84e7 100644
---- a/drivers/net/wireless/ath/ath12k/hif.h
-+++ b/drivers/net/wireless/ath/ath12k/hif.h
-@@ -32,6 +32,7 @@ struct ath12k_hif_ops {
- 	void (*get_ce_msi_idx)(struct ath12k_base *ab, u32 ce_id, u32 *msi_idx);
- 	int (*panic_handler)(struct ath12k_base *ab);
- 	void (*coredump_download)(struct ath12k_base *ab);
-+	unsigned int (*get_qrtr_node_id)(struct ath12k_base *ab);
- };
- 
- static inline int ath12k_hif_map_service_to_pipe(struct ath12k_base *ab, u16 service_id,
-@@ -162,4 +163,12 @@ static inline void ath12k_hif_coredump_download(struct ath12k_base *ab)
- 	if (ab->hif.ops->coredump_download)
- 		ab->hif.ops->coredump_download(ab);
- }
-+
-+static inline unsigned int ath12k_hif_get_qrtr_node_id(struct ath12k_base *ab)
-+{
-+	if (!ab->hif.ops->get_qrtr_node_id)
-+		return 0;
-+
-+	return ab->hif.ops->get_qrtr_node_id(ab);
-+}
- #endif /* ATH12K_HIF_H */
-diff --git a/drivers/net/wireless/ath/ath12k/pci.c b/drivers/net/wireless/ath/ath12k/pci.c
-index 6441927b5382..9b6108c1abdc 100644
---- a/drivers/net/wireless/ath/ath12k/pci.c
-+++ b/drivers/net/wireless/ath/ath12k/pci.c
-@@ -10,6 +10,7 @@
- #include <linux/pci.h>
- #include <linux/time.h>
- #include <linux/vmalloc.h>
-+#include <net/qrtr.h>
- 
- #include "pci.h"
- #include "core.h"
-@@ -1491,6 +1492,13 @@ static int ath12k_pci_panic_handler(struct ath12k_base *ab)
- 	return NOTIFY_OK;
- }
- 
-+static unsigned int ath12k_pci_get_qrtr_node_id(struct ath12k_base *ab)
-+{
-+	struct ath12k_pci *ab_pci = ath12k_pci_priv(ab);
-+
-+	return qrtr_host_node_id(ab_pci->mhi_ctrl->index);
-+}
-+
- static const struct ath12k_hif_ops ath12k_pci_hif_ops = {
- 	.start = ath12k_pci_start,
- 	.stop = ath12k_pci_stop,
-@@ -1512,6 +1520,7 @@ static const struct ath12k_hif_ops ath12k_pci_hif_ops = {
- #ifdef CONFIG_ATH12K_COREDUMP
- 	.coredump_download = ath12k_pci_coredump_download,
- #endif
-+	.get_qrtr_node_id = ath12k_pci_get_qrtr_node_id,
- };
- 
- static enum ath12k_device_family
-diff --git a/drivers/net/wireless/ath/ath12k/qmi.c b/drivers/net/wireless/ath/ath12k/qmi.c
-index 280e50a1f31d..e1e75cc9d144 100644
---- a/drivers/net/wireless/ath/ath12k/qmi.c
-+++ b/drivers/net/wireless/ath/ath12k/qmi.c
-@@ -9,6 +9,7 @@
- #include "qmi.h"
- #include "core.h"
- #include "debug.h"
-+#include "hif.h"
- #include <linux/of.h>
- #include <linux/firmware.h>
- #include <linux/of_address.h>
-@@ -3940,8 +3941,18 @@ static int ath12k_qmi_ops_new_server(struct qmi_handle *qmi_hdl,
- 	struct ath12k_qmi *qmi = container_of(qmi_hdl, struct ath12k_qmi, handle);
- 	struct ath12k_base *ab = qmi->ab;
- 	struct sockaddr_qrtr *sq = &qmi->sq;
-+	unsigned int node_id;
- 	int ret;
- 
-+	/* Identical devices advertise the same QMI services, so connect only to
-+	 * the QMI server on this device's node. A node id of 0 means the
-+	 * transport has not assigned a unique node id, so accept the server
-+	 * unfiltered.
-+	 */
-+	node_id = ath12k_hif_get_qrtr_node_id(ab);
-+	if (node_id && service->node != node_id)
-+		return 0;
-+
- 	sq->sq_family = AF_QIPCRTR;
- 	sq->sq_node = service->node;
- 	sq->sq_port = service->port;
+  stock ch.ko:                          4
+  ch.ko with this fix:                  0
+  ch.ko with this fix, changer daemon
+  restarted twice while it existed:     0
 
--- 
-2.43.0
+Build-tested on mkp/scsi.git for-next.
+---
+ drivers/scsi/ch.c | 29 +++++++++--------------------
+ 1 file changed, 9 insertions(+), 20 deletions(-)
+
+diff --git a/drivers/scsi/ch.c b/drivers/scsi/ch.c
+index 87e51e50a..b2c9fb71c 100644
+--- a/drivers/scsi/ch.c
++++ b/drivers/scsi/ch.c
+@@ -112,7 +112,6 @@ typedef struct {
+ 	int                 minor;
+ 	char                name[8];
+ 	struct scsi_device  *device;
+-	struct scsi_device  **dt;        /* ptrs to data transfer elements */
+ 	u_int               firsts[CH_TYPES];
+ 	u_int               counts[CH_TYPES];
+ 	u_int		    voltags;
+@@ -354,15 +353,10 @@ ch_readconfig(scsi_changer *ch)
+ 			vendor_labels[i]);
+ 	}
+ 
+-	/* look up the devices of the data transfer elements */
+-	ch->dt = kzalloc_objs(*ch->dt, ch->counts[CHET_DT]);
+-
+-	if (!ch->dt) {
+-		kfree(buffer);
+-		return -ENOMEM;
+-	}
+-
++	/* report the devices of the data transfer elements */
+ 	for (elem = 0; elem < ch->counts[CHET_DT]; elem++) {
++		struct scsi_device *sdev;
++
+ 		id  = -1;
+ 		lun = 0;
+ 		if (elem < CH_DT_MAX  &&  -1 != dt_id[elem]) {
+@@ -378,10 +372,8 @@ ch_readconfig(scsi_changer *ch)
+ 			VPRINTK(KERN_INFO, "dt 0x%x: ",elem+ch->firsts[CHET_DT]);
+ 			if (data[6] & 0x80) {
+ 				VPRINTK(KERN_CONT, "not this SCSI bus\n");
+-				ch->dt[elem] = NULL;
+ 			} else if (0 == (data[6] & 0x30)) {
+ 				VPRINTK(KERN_CONT, "ID/LUN unknown\n");
+-				ch->dt[elem] = NULL;
+ 			} else {
+ 				id  = ch->device->id;
+ 				lun = 0;
+@@ -391,18 +383,16 @@ ch_readconfig(scsi_changer *ch)
+ 		}
+ 		if (-1 != id) {
+ 			VPRINTK(KERN_CONT, "ID %i, LUN %i, ",id,lun);
+-			ch->dt[elem] =
+-				scsi_device_lookup(ch->device->host,
+-						   ch->device->channel,
+-						   id,lun);
+-			if (!ch->dt[elem]) {
++			sdev = scsi_device_lookup(ch->device->host,
++						  ch->device->channel,
++						  id, lun);
++			if (!sdev) {
+ 				/* should not happen */
+ 				VPRINTK(KERN_CONT, "Huh? device not found!\n");
+ 			} else {
+ 				VPRINTK(KERN_CONT, "name: %8.8s %16.16s %4.4s\n",
+-					ch->dt[elem]->vendor,
+-					ch->dt[elem]->model,
+-					ch->dt[elem]->rev);
++					sdev->vendor, sdev->model, sdev->rev);
++				scsi_device_put(sdev);
+ 			}
+ 		}
+ 	}
+@@ -566,7 +556,6 @@ static void ch_destroy(struct kref *ref)
+ 	scsi_changer *ch = container_of(ref, scsi_changer, ref);
+ 
+ 	ch->device = NULL;
+-	kfree(ch->dt);
+ 	kfree(ch);
+ }
+ 
+
+---
+base-commit: c3cff7fac01638ab58e85fe7df41a04fa25c5bae
+change-id: 20260922-ch-dt-leak-c2181b6dfda8
+
+Best regards,
+--  
+Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
 
