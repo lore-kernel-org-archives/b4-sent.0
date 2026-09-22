@@ -1,13 +1,17 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 22 Sep 2026 14:20:21 +0200
-Subject: [PATCH v4 3/3] usb: typec: mux: ps883x: disable USB4 on incomplete
- USB4 platforms
+Subject: [PATCH v5 0/3] usb: typec: ps883x: fixes for older Thunderbolt 4 /
+ USB4 docks
+Date: Tue, 22 Sep 2026 14:25:28 +0200
+Message-Id: <20260922-ps883x-disable-usb4-v5-0-02c0414978e6@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-ps883x-disable-usb4-v4-3-0a7b5b70cba3@oldschoolsolutions.biz>
-References: <20260922-ps883x-disable-usb4-v4-0-0a7b5b70cba3@oldschoolsolutions.biz>
-In-Reply-To: <20260922-ps883x-disable-usb4-v4-0-0a7b5b70cba3@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OPW7DMAwF4KsEmqtCv7bUqfcoOogSXQswosBMj
+ LSB714mSzO4Hh8Bfu/dBOFckcTb4SZmXCrVduTgXw4ij+n4hbIWzsIo06leB3miEOxVlkoJJpQ
+ XAid1BDVkbcEnEPx5mnGo14f68cl5rHRu8/ejZNH36763aKlkxhy6oiCqiO9tKpTH1iZq0+XMG
+ +kV6o+444v5A6N226Bh0BubrQGHrvS7oH0Gu23QMhgGHW3onOeZu6B7Ao3ZBh2DKvXgoVcZkv0
+ XXNf1FwUqwQC2AQAA
+X-Change-ID: 20260718-ps883x-disable-usb4-19b0fc13b5ab
 To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Abel Vesa <abelvesa@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
@@ -18,119 +22,103 @@ Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790079631; l=3472;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790079937; l=4078;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=1iyfmiUDL9sgFDlX61zRTpyxAquXyuctxtavKjTdzIc=;
- b=J0IUqClEUZPz1wWom/lQCMTO4v8fyoIfQF/bbD/d9SuXRG/vyp8zSbreuHbgUP3MVqnOqEMvJ
- x3waPJ0VHuuCK2otyRIwSyjXtCTf42dUM6dCdz72OG7HzVNCfIFrHjy
+ bh=vdk2TN5YpN4vvPM7gYUgZOVeY63gdyrUQXLWIQe0P2Y=;
+ b=ywXCm0G+CkYyYcLt8Gx+wK7L16zhqLETf97ju0T5wwpFVWO8aeW2ATK4mLMXVCN9ZWD2N3etB
+ frhvCS7TAQRB/THGs0Ktegr/48NLCk3I+J+zixdv9SR1jN6xlLdwkQ5
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 On Qualcomm X1E80100 / X1P42100 platforms using the Parade PS883x
-retimer, hotplugging USB4-capable docks such as the Lenovo 40B0 can
-result in working USB but no DisplayPort output.
+retimer, connecting USB4-capable docks such as the Lenovo 40B0 via a
+regular Type-C cable (Type-C fallback mode) often results in working
+USB but no DisplayPort output.
 
-When the dock negotiates USB4, the retimer receives TYPEC_MODE_USB4
-and forwards it via typec_mux_set(). The qmp-combo PHY then selects
-USB3-only because no classic DP altmode SVID is present in the state,
-leaving the DP transmitter and AUX channel disabled.
+This series addresses the issue with three driver-only changes:
 
-Reject USB4 with -EOPNOTSUPP on platforms whose USB4 / DP-tunneling
-stack is not ready yet. The Type-C stack then falls back to USB3 + DP
-Alt Mode. DP altmode configuration continues to use the existing
-ps883x_set() path.
+- Support the legacy TYPEC_DP_STATE_F request (deprecated since DP Alt
+  Mode 1.0b) that docks such as the 40B0 and SSK SC220 still send.
+  Handle it in the existing DP altmode path in ps883x_set(). F is 
+  programmed like D; E is unchanged.
 
-Use a machine-compatible table rather than a DT property so the quirk
-stays inside the kernel and can be removed later without creating ABI.
+- Add a post-configuration delay after writing the connection-status
+  registers so the analog front-end can settle. This makes DP Alt Mode
+  hotplug reliable on the 40B0.
+
+- On platforms whose USB4 / DP-tunneling stack is not ready yet, reject
+  TYPEC_MODE_USB4 with -EOPNOTSUPP. That forces the Type-C stack to
+  fall back to USB3 + DP Alt Mode. The quirk is a machine-compatible
+  table inside the driver, not a DT property.
+
+This is a temporary workaround until full USB4 DP tunneling support is
+available in the X1E USB4 controller and qmp-combo PHY stack.
+
+As an additional observation, the same dock with a Type-C cable works
+well on Thinkpad X13s, Thinkbook 16 G7 QOY and Ideapad 5 14Q8X9, which
+do not use this retimer.
+
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Abel Vesa <abelvesa@kernel.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Sebastian Reichel <sre@kernel.org>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
+Cc: stable@vger.kernel.org
+Cc: Dr. David Alan Gilbert <dave@treblig.org>
+Cc: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 
 Assisted-by: Grok(xAI):4.6
-Tested-by: Dr. David Alan Gilbert <dave@treblig.org>
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/usb/typec/mux/ps883x.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+Changes in v5:
+- picket up Acked-by tags from Heikki (thanks!)
+- Link to v4: https://lore.kernel.org/r/20260922-ps883x-disable-usb4-v4-0-0a7b5b70cba3@oldschoolsolutions.biz
 
-diff --git a/drivers/usb/typec/mux/ps883x.c b/drivers/usb/typec/mux/ps883x.c
-index 15aee1d613b1a..2ec57cfe748a9 100644
---- a/drivers/usb/typec/mux/ps883x.c
-+++ b/drivers/usb/typec/mux/ps883x.c
-@@ -13,6 +13,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
-+#include <linux/of.h>
- #include <linux/regmap.h>
- #include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
-@@ -42,6 +43,22 @@
- #define CONN_STATUS_2_TBT_UNIDIR_LSRX_ACT_LT	BIT(4)
- #define CONN_STATUS_2_USB4_CONNECTED		BIT(7)
- 
-+/*
-+ * Platforms where the USB4 / DP-tunneling stack is not ready yet. Rejecting
-+ * USB4 here lets the Type-C stack fall back to USB3 + DP Alt Mode instead of
-+ * negotiating USB4 and then failing to drive DisplayPort.
-+ *
-+ * This is a temporary, kernel-contained quirk (not DT ABI). Drop the entries
-+ * once the corresponding USB4 support is complete.
-+ */
-+static const char * const ps883x_disable_usb4_compats[] = {
-+	"qcom,x1e80100",
-+	"qcom,x1p42100",
-+	"qcom,hamoa",
-+	"qcom,purwa",
-+	NULL,
-+};
-+
- struct ps883x_retimer {
- 	struct i2c_client *client;
- 	struct gpio_desc *reset_gpio;
-@@ -63,8 +80,21 @@ struct ps883x_retimer {
- 
- 	enum typec_orientation orientation;
- 	bool in_reset;
-+	bool disable_usb4;
- };
- 
-+static bool ps883x_should_disable_usb4(void)
-+{
-+	const char * const *compat;
-+
-+	for (compat = ps883x_disable_usb4_compats; *compat; compat++) {
-+		if (of_machine_is_compatible(*compat))
-+			return true;
-+	}
-+
-+	return false;
-+}
-+
- static int ps883x_enable_vregs(struct ps883x_retimer *retimer)
- {
- 	struct device *dev = &retimer->client->dev;
-@@ -260,6 +290,9 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
- 			cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
- 			break;
- 		case TYPEC_MODE_USB4:
-+			if (retimer->disable_usb4)
-+				return -EOPNOTSUPP;
-+
- 			eudo_data = state->data;
- 
- 			cfg2 |= CONN_STATUS_2_USB4_CONNECTED;
-@@ -389,6 +422,10 @@ static int ps883x_retimer_probe(struct i2c_client *client)
- 
- 	retimer->client = client;
- 
-+	retimer->disable_usb4 = ps883x_should_disable_usb4();
-+	if (retimer->disable_usb4)
-+		dev_info(dev, "USB4 disabled until platform USB4 support is complete\n");
-+
- 	mutex_init(&retimer->lock);
- 
- 	retimer->regmap = devm_regmap_init_i2c(client, &ps883x_retimer_regmap);
+Changes in v4:
+- remove ambiguous link in patch 3, pointing to a semi-related issue.
+- Link to v3: https://lore.kernel.org/r/20260916-ps883x-disable-usb4-v3-0-8f19386456d0@oldschoolsolutions.biz
 
+Changes in v3:
+- reduced the dp logic changein ps883x_set() to only adding 
+  TYPEC_DP_STATE_F handling grouped with TYPEC_DP_STATE_D.
+- picked up Tested-by tag from David, thanks for the re-test.
+- Link to v2: https://lore.kernel.org/r/20260914-ps883x-disable-usb4-v2-0-523c32b4e4d7@oldschoolsolutions.biz
+
+Changes in v2:
+- Drop the parade,disable-usb4 DT property, bindings and board DTS
+  changes (Sebastian Reichel, Krzysztof Kozlowski). DT describes
+  hardware; incomplete software support is not a board property.
+- Disable USB4 from the driver via of_machine_is_compatible() for
+  qcom,x1e80100, qcom,x1p42100, qcom,hamoa and qcom,purwa. The quirk
+  stays kernel-contained and can be dropped later without ABI.
+- Keep DP altmode handling in the existing ps883x_set() path instead
+  of extracting a helper (Konrad Dybcio). Treat STATE_F like STATE_D
+  and STATE_E like STATE_C, matching qcom-qmp-combo.
+- Replace usleep_range(20000, 30000) with fsleep(30000) and document
+  why the delay is required (Heikki Krogerus).
+- Drop the per-event "USB4 disabled via DT property" log; print once
+  at probe when the quirk is active.
+- Link to v1: https://lore.kernel.org/r/20260718-ps883x-disable-usb4-v1-0-cec86d0b909e@oldschoolsolutions.biz
+
+---
+Jens Glathe (3):
+      usb: typec: mux: ps883x: support TYPEC_DP_STATE_F
+      usb: typec: mux: ps883x: add a delay after writing config regs
+      usb: typec: mux: ps883x: disable USB4 on incomplete USB4 platforms
+
+ drivers/usb/typec/mux/ps883x.c | 48 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+---
+base-commit: 601057b3eec13d1f37e5b45dd1410facd7b1bdeb
+change-id: 20260718-ps883x-disable-usb4-19b0fc13b5ab
+
+Best regards,
 -- 
-2.53.0
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
