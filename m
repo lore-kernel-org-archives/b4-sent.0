@@ -1,68 +1,119 @@
-From: Rouven Czerwinski <rouven.czerwinski@linaro.org>
-Date: Tue, 22 Sep 2026 13:25:09 +0200
-Subject: [PATCH] net: phy: mxl-gpy: add 2.5G for MXL68211C
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v4 0/3] usb: typec: ps883x: fixes for older Thunderbolt 4 /
+ USB4 docks
+Date: Tue, 22 Sep 2026 14:20:18 +0200
+Message-Id: <20260922-ps883x-disable-usb4-v4-0-0a7b5b70cba3@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-mainline-rouven-mxl2g5-v1-1-a0ed53631a5f@linaro.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5EQBBA4atIrVXSKvE3V5lY0AollEk3IhF31
- 8byW7x3gmcn7OETneB4Fy+LBiRxBHaotWeUNhjIUGZKIpxr0UmU0S3bzorzMVGfYk6NTZOWijI
- 3EOKf406O//hbvfZbM7Jdnxtc1w2+JTMfegAAAA==
-X-Change-ID: 20260922-mainline-rouven-mxl2g5-72bc51d28970
-To: Xu Liang <lxu@maxlinear.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Daniel Golle <daniel@makrotopia.org>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Rouven Czerwinski <rouven.czerwinski@linaro.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790076309; l=1299;
- i=rouven.czerwinski@linaro.org; s=20260126; h=from:subject:message-id;
- bh=FhxIeimRH2FMtZe6AVDcaAIBuNHx/BLHGEk99OxHqR8=;
- b=3yHtTW7SSXcyJX6qd70w7Pzh8M+YvhdIFCee0ZdsEGtHIKDwlye1fUmIn5TryCg/6lQDfIRbe
- hbC5QSYtAZUCMyr/CFlcycDZBM4bBkWp9LMptWPPwrBbT27eOvsmXsy
-X-Developer-Key: i=rouven.czerwinski@linaro.org; a=ed25519;
- pk=/5pmUK/XIAIIo8JA0axgfy1k8NRhRTQkxVwZYa1ga7U=
-X-Endpoint-Received: by B4 Relay for rouven.czerwinski@linaro.org/20260126 with auth_id=616
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OTQ7CIBAF4Ks0rMXw1wquvIdxUWBqSYg0HSXVp
+ ncXu9GFunyTzPfeTBDGAEj21UxGyAFDupSgNhVxfXs5Aw2+ZCKYaNiOazqg1nKiPmBrI9AbWkW
+ 5saxzXNq6taR8DiN0YVrV46nkPuA1jfe1JPPX9b+XOWXUgdONZ9YwA4cUPbo+pYgp3q5lI25te
+ JAXnsUbNFx9B0UBayGdFFaB8ru/oPwEm++gLKDuuJG6UXWZ+RNcluUJIVbOh2UBAAA=
+X-Change-ID: 20260718-ps883x-disable-usb4-19b0fc13b5ab
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Abel Vesa <abelvesa@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Sebastian Reichel <sre@kernel.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, stable@vger.kernel.org, 
+ "Dr. David Alan Gilbert" <dave@treblig.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790079631; l=3900;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=jT8Mc5dzMMu4StOp/AWxj502rk91paR2qgzaD1OGDhk=;
+ b=Ycc7ZNihcutzLG5bmFzTaJ2IbdSx9XZ1vp3A1M1dr/FXsxpZTnRlP3pOKXwisN/Sw1K79qLek
+ 5IWX0vS0rbVC4TX4SFkOY4ccW2LZPL9zIIYj5iabxKlGEyvJsQVnHbe
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MXL86211C also supports 2.5G via 2500BASEX, switch the config init
-to indicate support for that mode. Datasheet checks indicate that the
-2.5G speed indication is the same between GPY211 & MXL68211C.
+On Qualcomm X1E80100 / X1P42100 platforms using the Parade PS883x
+retimer, connecting USB4-capable docks such as the Lenovo 40B0 via a
+regular Type-C cable (Type-C fallback mode) often results in working
+USB but no DisplayPort output.
 
-The same should be true for MXL86252 & MXL86282, those are not modified
-for a lack of testing hardware.
+This series addresses the issue with three driver-only changes:
 
-With this change 2.5G negotiates correctly with a Mikrotik
-CRS310-G+2S+IN.
+- Support the legacy TYPEC_DP_STATE_F request (deprecated since DP Alt
+  Mode 1.0b) that docks such as the 40B0 and SSK SC220 still send.
+  Handle it in the existing DP altmode path in ps883x_set(). F is 
+  programmed like D; E is unchanged.
 
-Signed-off-by: Rouven Czerwinski <rouven.czerwinski@linaro.org>
+- Add a post-configuration delay after writing the connection-status
+  registers so the analog front-end can settle. This makes DP Alt Mode
+  hotplug reliable on the 40B0.
+
+- On platforms whose USB4 / DP-tunneling stack is not ready yet, reject
+  TYPEC_MODE_USB4 with -EOPNOTSUPP. That forces the Type-C stack to
+  fall back to USB3 + DP Alt Mode. The quirk is a machine-compatible
+  table inside the driver, not a DT property.
+
+This is a temporary workaround until full USB4 DP tunneling support is
+available in the X1E USB4 controller and qmp-combo PHY stack.
+
+As an additional observation, the same dock with a Type-C cable works
+well on Thinkpad X13s, Thinkbook 16 G7 QOY and Ideapad 5 14Q8X9, which
+do not use this retimer.
+
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Abel Vesa <abelvesa@kernel.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Sebastian Reichel <sre@kernel.org>
+Cc: linux-usb@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
+Cc: stable@vger.kernel.org
+Cc: Dr. David Alan Gilbert <dave@treblig.org>
+Cc: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+
+Assisted-by: Grok(xAI):4.6
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/net/phy/mxl-gpy.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v4:
+- remove ambiguous link in patch 3, pointing to a semi-related issue.
+- Link to v3: https://lore.kernel.org/r/20260916-ps883x-disable-usb4-v3-0-8f19386456d0@oldschoolsolutions.biz
 
-diff --git a/drivers/net/phy/mxl-gpy.c b/drivers/net/phy/mxl-gpy.c
-index 0da2d4e9d8548..089a1a9e5bc61 100644
---- a/drivers/net/phy/mxl-gpy.c
-+++ b/drivers/net/phy/mxl-gpy.c
-@@ -1405,7 +1405,7 @@ static struct phy_driver gpy_drivers[] = {
- 		PHY_ID_MATCH_MODEL(PHY_ID_MXL86211C),
- 		.name		= "Maxlinear Ethernet MxL86211C",
- 		.get_features	= genphy_c45_pma_read_abilities,
--		.config_init	= gpy_config_init,
-+		.config_init	= gpy21x_config_init,
- 		.probe		= gpy_probe,
- 		.inband_caps	= gpy_inband_caps,
- 		.config_inband	= gpy_config_inband,
+Changes in v3:
+- reduced the dp logic changein ps883x_set() to only adding 
+  TYPEC_DP_STATE_F handling grouped with TYPEC_DP_STATE_D.
+- picked up Tested-by tag from David, thanks for the re-test.
+- Link to v2: https://lore.kernel.org/r/20260914-ps883x-disable-usb4-v2-0-523c32b4e4d7@oldschoolsolutions.biz
+
+Changes in v2:
+- Drop the parade,disable-usb4 DT property, bindings and board DTS
+  changes (Sebastian Reichel, Krzysztof Kozlowski). DT describes
+  hardware; incomplete software support is not a board property.
+- Disable USB4 from the driver via of_machine_is_compatible() for
+  qcom,x1e80100, qcom,x1p42100, qcom,hamoa and qcom,purwa. The quirk
+  stays kernel-contained and can be dropped later without ABI.
+- Keep DP altmode handling in the existing ps883x_set() path instead
+  of extracting a helper (Konrad Dybcio). Treat STATE_F like STATE_D
+  and STATE_E like STATE_C, matching qcom-qmp-combo.
+- Replace usleep_range(20000, 30000) with fsleep(30000) and document
+  why the delay is required (Heikki Krogerus).
+- Drop the per-event "USB4 disabled via DT property" log; print once
+  at probe when the quirk is active.
+- Link to v1: https://lore.kernel.org/r/20260718-ps883x-disable-usb4-v1-0-cec86d0b909e@oldschoolsolutions.biz
 
 ---
-base-commit: 2d7341a020a57b30c1826db38f81bbc257ae3bbc
-change-id: 20260922-mainline-rouven-mxl2g5-72bc51d28970
+Jens Glathe (3):
+      usb: typec: mux: ps883x: support TYPEC_DP_STATE_F
+      usb: typec: mux: ps883x: add a delay after writing config regs
+      usb: typec: mux: ps883x: disable USB4 on incomplete USB4 platforms
+
+ drivers/usb/typec/mux/ps883x.c | 48 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+---
+base-commit: 601057b3eec13d1f37e5b45dd1410facd7b1bdeb
+change-id: 20260718-ps883x-disable-usb4-19b0fc13b5ab
 
 Best regards,
---  
-Rouven Czerwinski <rouven.czerwinski@linaro.org>
+-- 
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
