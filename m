@@ -1,234 +1,258 @@
-From: Haseeb Malik <haseebulhaq55@gmail.com>
-Date: Mon, 21 Sep 2026 16:40:30 -0400
-Subject: [PATCH net v3] macsec: initialize SecY before registering the
- netdevice
+From: Jaidev Shastri <jaidevshastri@vt.edu>
+Date: Mon, 21 Sep 2026 20:28:17 -0400
+Subject: [PATCH] firmware: imx: sm: publish the protocol handle after the
+ ops pointer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-fix-macsec-net-v3-1-accf94f93f5e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAD2WsWoC/3WNyw7CIBREf6VhLVqgD3TlfxgXF7xtSSw10BBN0
- 3/3llUT43Imc+YsLGJwGNmlWFjA5KKbPAV1KJgdwPfI3YMyk6VsyrMQvHNvPoKNaLnHmXedMrb
- GFkwJjKBXQFrkwxujAbtTaSAiNwG8HbYvqk8jOL/tBxfnKXyyP4lM/VMlwQW3WgLUGrCtxLWnl
- +fRTmO2JLnH9Q8uCW91JUuFttKq2ePrun4BDjYdnAsBAAA=
-To: sd@queasysnail.net
-Cc: netdev@vger.kernel.org, davem@davemloft.net, 
- linux-kernel@vger.kernel.org, edumazet@google.com, horms@kernel.org, 
- kuba@kernel.org, andrew+netdev@lunn.ch, hangbin.liu@linux.dev, 
- pabeni@redhat.com, syzkaller-bugs@googlegroups.com, 
- felix.walter@cloudandheat.com, 
- syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com, 
- Haseeb Malik <haseebulhaq55@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790023229; l=7020;
- i=haseebulhaq55@gmail.com; s=default; h=from:subject:message-id;
- bh=5Szn+IqOQJizOOAwkL5s9HojNuSFN5aNN9B/x6gHH+Y=;
- b=kLwvMf4EbUrD89LkwEgKRKlxlRJQehnPNiOyGRUYxqCAsw7iFfTs/sDfv74u9L+n/XMFsNoSH
- 7CBgQimuaq8CKseDIlIQw4t5qrgWHgsAj6UxSftkLShcVw8PKbaSObY
-X-Developer-Key: i=haseebulhaq55@gmail.com; a=ed25519;
- pk=U/yCVc6cTsqDqxWLzvoONZ7DUA3EfRU+rfO9Xxo4p2w=
-X-Endpoint-Received: by B4 Relay for haseebulhaq55@gmail.com/default with auth_id=1026
+Message-Id: <20260921-mb-imx-sm-v1-1-39f17526d253@vt.edu>
+X-B4-Tracking: v=1; b=H4sIAKDLsWoC/yXMywrCMBCF4Vcps3YkSY23VxEXSRztCIkyo6VQ+
+ u4mdfkdDv8MSsKkcO5mEBpZ+VUq7KaDNITyIORbNTjj9ubkLOaInCfUjNH0R0rkvfUO6v8tdOd
+ pbV2uf+s3Pil9WqA9YlDCKKGkoU0rx8O2R0k7WJYfL32Z2Y0AAAA=
+X-Change-ID: 20260921-mb-imx-sm-b038ece55152
+To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Jaidev Shastri <jaidevshastri@vt.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790036919; l=7699;
+ i=jaidevshastri@vt.edu; s=20260921; h=from:subject:message-id;
+ bh=MVi9AlTKi2qUQtZyArCJT4Gbtet0T4epZvMQSbFRRLc=;
+ b=+HX5ho3X6G6TKmcmVBZqXdSKnvD/ZBoZe11QNj4rKhZp1o9Gt9MLVR53YC6JnddxMrPp+KFMa
+ 4bHBzgek/MABfU/R5+nDtB/2NNSaS7rt7j3JJIdrYX7G8iCKFEasN94
+X-Developer-Key: i=jaidevshastri@vt.edu; a=ed25519;
+ pk=J7+xYJRlTPds+pv5hbqFFRqGCpDeJDzmZT1ggRwj7/0=
+X-Endpoint-Received: by B4 Relay for jaidevshastri@vt.edu/20260921 with auth_id=1044
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Creating a MACsec device with MAC offload over an LRO-capable lower
-device triggers a warning in rtmsg_ifinfo_build_skb() when IPv4
-forwarding is enabled by default.
+sm-cpu, sm-lmm and sm-misc export helpers such as scmi_imx_cpu_start()
+and scmi_imx_lmm_info() to imx_rproc, fsl_sai and the i.MX SOF driver.
+Each helper gates on the file-scope protocol handle:
 
-register_netdevice() invokes inetdev_init(), which disables LRO and emits
-a NETDEV_FEAT_CHANGE notification. This reaches macsec_fill_info() before
-macsec_add_dev() initializes the SecY. key_len is still zero, so
-macsec_fill_info() returns -EMSGSIZE and trips the WARN_ON in
-rtmsg_ifinfo_build_skb(), even though the skb has enough space.
+	if (!ph)
+		return -EPROBE_DEFER;
+	return imx_cpu_ops->cpu_start(ph, ...);
 
-Even without the warning, notifications during registration can report
-uninitialized SecY attributes, including the SCI. This ordering has existed
-since the driver was introduced.
+The probe functions set both globals in one statement:
 
-Initialize the SecY and apply the new-link attributes before registration.
-Move MAC address inheritance into macsec_newlink() so the SCI can also be
-initialized before registration-time notifications report it. Move the
-per-CPU statistics and metadata destination allocation into ndo_init(),
-and release partial allocations on failure.
+	imx_cpu_ops = handle->devm_protocol_get(sdev, ..., &ph);
 
-Fixes: c09440f7dcb3 ("macsec: introduce IEEE 802.1AE driver")
-Reported-by: syzbot+f2f6312ad1b5a0bfe316@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=f2f6312ad1b5a0bfe316
-Suggested-by: Sabrina Dubroca <sd@queasysnail.net>
-Link: https://lists.openwall.net/linux-kernel/2026/08/19/552
-Signed-off-by: Haseeb Malik <haseebulhaq55@gmail.com>
+scmi_devm_protocol_get() stores *ph before it returns, so the gate
+becomes non-NULL before the ops pointer it guards is written. A consumer
+that passes the gate in that window dereferences imx_cpu_ops == NULL.
+Nothing orders the two stores for a reader either: the writer has no
+release, the reader has no acquire, and the load of imx_cpu_ops does not
+depend on the value of ph.
+
+Take the handle into a local, assign the ops pointer first and publish
+the handle with smp_store_release(). Read it with smp_load_acquire() in
+the exported helpers.
+
+Found with MBCheck, a static herd7-based memory consistency checker.
+
+Signed-off-by: Jaidev Shastri <jaidevshastri@vt.edu>
 ---
-Changes in v3:
-- Correct the Fixes tag to the original MACsec driver commit, as pointed
-  out by Sabrina. Explain that the initialization order predates the
-  warning. No code changes from v2.
-- Link to v2: https://lore.kernel.org/netdev/20260918-fix-macsec-net-v2-1-784203ec4836@gmail.com/
+ drivers/firmware/imx/sm-cpu.c  | 24 ++++++++++++++++++------
+ drivers/firmware/imx/sm-lmm.c  | 24 ++++++++++++++++++------
+ drivers/firmware/imx/sm-misc.c | 24 ++++++++++++++++++------
+ 3 files changed, 54 insertions(+), 18 deletions(-)
 
-Changes in v2:
-- Initialize the SCI before registration, including MAC address inheritance,
-  so registration-time notifications carry the configured SCI.
-- Wrap the per-CPU statistics allocation at 80 columns.
-- Link to v1: https://lore.kernel.org/netdev/20260911-fix-macsec-net-v1-1-c82aa58ae741@gmail.com/
----
- drivers/net/macsec.c | 84 +++++++++++++++++++++++++++-------------------------
- 1 file changed, 43 insertions(+), 41 deletions(-)
-
-diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
-index 6f9f3aceffaa..78a19b134632 100644
---- a/drivers/net/macsec.c
-+++ b/drivers/net/macsec.c
-@@ -3539,6 +3539,22 @@ static int macsec_dev_init(struct net_device *dev)
- 	if (err)
- 		return err;
- 
-+	err = -ENOMEM;
-+	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
-+	if (!macsec->stats)
-+		goto destroy_gro_cells;
-+
-+	macsec->secy.tx_sc.stats =
-+		netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
-+	if (!macsec->secy.tx_sc.stats)
-+		goto free_secy_stats;
-+
-+	macsec->secy.tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC,
-+						       GFP_KERNEL);
-+	if (!macsec->secy.tx_sc.md_dst)
-+		goto free_tx_sc_stats;
-+	macsec->secy.tx_sc.md_dst->u.macsec_info.sci = macsec->secy.sci;
-+
- 	macsec_inherit_tso_max(dev);
- 
- 	dev->hw_features = real_dev->hw_features & MACSEC_OFFLOAD_FEATURES;
-@@ -3551,8 +3567,6 @@ static int macsec_dev_init(struct net_device *dev)
- 
- 	macsec_set_head_tail_room(dev);
- 
--	if (is_zero_ether_addr(dev->dev_addr))
--		eth_hw_addr_inherit(dev, real_dev);
- 	if (is_zero_ether_addr(dev->broadcast))
- 		memcpy(dev->broadcast, real_dev->broadcast, dev->addr_len);
- 
-@@ -3560,6 +3574,14 @@ static int macsec_dev_init(struct net_device *dev)
- 	netdev_hold(real_dev, &macsec->dev_tracker, GFP_KERNEL);
- 
- 	return 0;
-+
-+free_tx_sc_stats:
-+	free_percpu(macsec->secy.tx_sc.stats);
-+free_secy_stats:
-+	free_percpu(macsec->stats);
-+destroy_gro_cells:
-+	gro_cells_destroy(&macsec->gro_cells);
-+	return err;
- }
- 
- static void macsec_dev_uninit(struct net_device *dev)
-@@ -4116,26 +4138,11 @@ static sci_t dev_to_sci(struct net_device *dev, __be16 port)
- 	return make_sci(dev->dev_addr, port);
- }
- 
--static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
-+static void macsec_init_secy(struct net_device *dev, sci_t sci, u8 icv_len)
+diff --git a/drivers/firmware/imx/sm-cpu.c b/drivers/firmware/imx/sm-cpu.c
+index 091b014f7..60ba700d0 100644
+--- a/drivers/firmware/imx/sm-cpu.c
++++ b/drivers/firmware/imx/sm-cpu.c
+@@ -16,7 +16,8 @@ static struct scmi_protocol_handle *ph;
+ int scmi_imx_cpu_reset_vector_set(u32 cpuid, u64 vector, bool start, bool boot,
+ 				  bool resume)
  {
- 	struct macsec_dev *macsec = macsec_priv(dev);
- 	struct macsec_secy *secy = &macsec->secy;
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
  
--	macsec->stats = netdev_alloc_pcpu_stats(struct pcpu_secy_stats);
--	if (!macsec->stats)
--		return -ENOMEM;
--
--	secy->tx_sc.stats = netdev_alloc_pcpu_stats(struct pcpu_tx_sc_stats);
--	if (!secy->tx_sc.stats)
--		return -ENOMEM;
--
--	secy->tx_sc.md_dst = metadata_dst_alloc(0, METADATA_MACSEC, GFP_KERNEL);
--	if (!secy->tx_sc.md_dst)
--		/* macsec and secy percpu stats will be freed when unregistering
--		 * net_device in macsec_free_netdev()
--		 */
--		return -ENOMEM;
--
- 	if (sci == MACSEC_UNDEF_SCI)
- 		sci = dev_to_sci(dev, MACSEC_PORT_ES);
+ 	return imx_cpu_ops->cpu_reset_vector_set(ph, cpuid, vector, start,
+@@ -26,7 +27,8 @@ EXPORT_SYMBOL(scmi_imx_cpu_reset_vector_set);
  
-@@ -4149,15 +4156,12 @@ static int macsec_add_dev(struct net_device *dev, sci_t sci, u8 icv_len)
- 	secy->xpn = DEFAULT_XPN;
+ int scmi_imx_cpu_start(u32 cpuid, bool start)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
  
- 	secy->sci = sci;
--	secy->tx_sc.md_dst->u.macsec_info.sci = sci;
- 	secy->tx_sc.active = true;
- 	secy->tx_sc.encoding_sa = DEFAULT_ENCODING_SA;
- 	secy->tx_sc.encrypt = DEFAULT_ENCRYPT;
- 	secy->tx_sc.send_sci = DEFAULT_SEND_SCI;
- 	secy->tx_sc.end_station = false;
- 	secy->tx_sc.scb = false;
--
--	return 0;
- }
+ 	if (start)
+@@ -38,7 +40,8 @@ EXPORT_SYMBOL(scmi_imx_cpu_start);
  
- static struct lock_class_key macsec_netdev_addr_lock_key;
-@@ -4220,6 +4224,24 @@ static int macsec_newlink(struct net_device *dev,
- 	if (rx_handler && rx_handler != macsec_handle_frame)
- 		return -EBUSY;
+ int scmi_imx_cpu_started(u32 cpuid, bool *started)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
  
-+	if (is_zero_ether_addr(dev->dev_addr))
-+		eth_hw_addr_inherit(dev, real_dev);
-+
-+	if (data && data[IFLA_MACSEC_SCI])
-+		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
-+	else if (data && data[IFLA_MACSEC_PORT])
-+		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
-+	else
-+		sci = dev_to_sci(dev, MACSEC_PORT_ES);
-+
-+	/* Registration can notify listeners before returning. */
-+	macsec_init_secy(dev, sci, icv_len);
-+	if (data) {
-+		err = macsec_changelink_common(dev, data);
-+		if (err)
-+			return err;
-+	}
-+
- 	err = register_netdevice(dev);
- 	if (err < 0)
- 		return err;
-@@ -4232,31 +4254,11 @@ static int macsec_newlink(struct net_device *dev,
- 	if (err < 0)
- 		goto unregister;
+ 	if (!started)
+@@ -51,6 +54,8 @@ EXPORT_SYMBOL(scmi_imx_cpu_started);
+ static int scmi_imx_cpu_probe(struct scmi_device *sdev)
+ {
+ 	const struct scmi_handle *handle = sdev->handle;
++	const struct scmi_imx_cpu_proto_ops *ops;
++	struct scmi_protocol_handle *cpu_ph;
  
--	/* need to be already registered so that ->init has run and
--	 * the MAC addr is set
--	 */
--	if (data && data[IFLA_MACSEC_SCI])
--		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
--	else if (data && data[IFLA_MACSEC_PORT])
--		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
--	else
--		sci = dev_to_sci(dev, MACSEC_PORT_ES);
--
- 	if (rx_handler && sci_exists(real_dev, sci)) {
- 		err = -EBUSY;
- 		goto unlink;
+ 	if (!handle)
+ 		return -ENODEV;
+@@ -60,9 +65,16 @@ static int scmi_imx_cpu_probe(struct scmi_device *sdev)
+ 		return -EEXIST;
  	}
  
--	err = macsec_add_dev(dev, sci, icv_len);
--	if (err)
--		goto unlink;
--
--	if (data) {
--		err = macsec_changelink_common(dev, data);
--		if (err)
--			goto del_dev;
--	}
--
- 	/* If h/w offloading is available, propagate to the device */
- 	if (macsec_is_offloaded(macsec)) {
- 		const struct macsec_ops *ops;
+-	imx_cpu_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_CPU, &ph);
+-	if (IS_ERR(imx_cpu_ops))
+-		return PTR_ERR(imx_cpu_ops);
++	ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_CPU, &cpu_ph);
++	if (IS_ERR(ops))
++		return PTR_ERR(ops);
++
++	imx_cpu_ops = ops;
++	/*
++	 * ph is the gate the exported helpers test. Publish it only after
++	 * imx_cpu_ops is set, and pair with the smp_load_acquire() there.
++	 */
++	smp_store_release(&ph, cpu_ph);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/firmware/imx/sm-lmm.c b/drivers/firmware/imx/sm-lmm.c
+index 6807bf563..0e2cc7153 100644
+--- a/drivers/firmware/imx/sm-lmm.c
++++ b/drivers/firmware/imx/sm-lmm.c
+@@ -15,7 +15,8 @@ static struct scmi_protocol_handle *ph;
+ 
+ int scmi_imx_lmm_info(u32 lmid, struct scmi_imx_lmm_info *info)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
+ 
+ 	if (!info)
+@@ -27,7 +28,8 @@ EXPORT_SYMBOL(scmi_imx_lmm_info);
+ 
+ int scmi_imx_lmm_reset_vector_set(u32 lmid, u32 cpuid, u32 flags, u64 vector)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
+ 
+ 	return imx_lmm_ops->lmm_reset_vector_set(ph, lmid, cpuid, flags, vector);
+@@ -36,7 +38,8 @@ EXPORT_SYMBOL(scmi_imx_lmm_reset_vector_set);
+ 
+ int scmi_imx_lmm_operation(u32 lmid, enum scmi_imx_lmm_op op, u32 flags)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
+ 
+ 	switch (op) {
+@@ -57,6 +60,8 @@ EXPORT_SYMBOL(scmi_imx_lmm_operation);
+ static int scmi_imx_lmm_probe(struct scmi_device *sdev)
+ {
+ 	const struct scmi_handle *handle = sdev->handle;
++	const struct scmi_imx_lmm_proto_ops *ops;
++	struct scmi_protocol_handle *lmm_ph;
+ 
+ 	if (!handle)
+ 		return -ENODEV;
+@@ -66,9 +71,16 @@ static int scmi_imx_lmm_probe(struct scmi_device *sdev)
+ 		return -EEXIST;
+ 	}
+ 
+-	imx_lmm_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_LMM, &ph);
+-	if (IS_ERR(imx_lmm_ops))
+-		return PTR_ERR(imx_lmm_ops);
++	ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_LMM, &lmm_ph);
++	if (IS_ERR(ops))
++		return PTR_ERR(ops);
++
++	imx_lmm_ops = ops;
++	/*
++	 * ph is the gate the exported helpers test. Publish it only after
++	 * imx_lmm_ops is set, and pair with the smp_load_acquire() there.
++	 */
++	smp_store_release(&ph, lmm_ph);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/firmware/imx/sm-misc.c b/drivers/firmware/imx/sm-misc.c
+index fb8d7bdb5..178a3f748 100644
+--- a/drivers/firmware/imx/sm-misc.c
++++ b/drivers/firmware/imx/sm-misc.c
+@@ -43,7 +43,8 @@ static const struct of_device_id allowlist[] = {
+ 
+ int scmi_imx_misc_ctrl_set(u32 id, u32 val)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
+ 
+ 	return imx_misc_ctrl_ops->misc_ctrl_set(ph, id, 1, &val);
+@@ -52,7 +53,8 @@ EXPORT_SYMBOL(scmi_imx_misc_ctrl_set);
+ 
+ int scmi_imx_misc_ctrl_get(u32 id, u32 *num, u32 *val)
+ {
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -EPROBE_DEFER;
+ 
+ 	return imx_misc_ctrl_ops->misc_ctrl_get(ph, id, num, val);
+@@ -82,7 +84,8 @@ static int syslog_show(struct seq_file *file, void *priv)
+ 	if (!syslog)
+ 		return -ENOMEM;
+ 
+-	if (!ph)
++	/* Pairs with the smp_store_release() in the probe function. */
++	if (!smp_load_acquire(&ph))
+ 		return -ENODEV;
+ 
+ 	ret = imx_misc_ctrl_ops->misc_syslog(ph, &size, syslog);
+@@ -153,6 +156,8 @@ static int scmi_imx_misc_ctrl_probe(struct scmi_device *sdev)
+ {
+ 	const struct scmi_handle *handle = sdev->handle;
+ 	struct device_node *np = sdev->dev.of_node;
++	const struct scmi_imx_misc_proto_ops *ops;
++	struct scmi_protocol_handle *misc_ph;
+ 	struct dentry *scmi_imx_dentry;
+ 	u32 src_id, flags;
+ 	int ret, i, num;
+@@ -165,9 +170,16 @@ static int scmi_imx_misc_ctrl_probe(struct scmi_device *sdev)
+ 		return -EEXIST;
+ 	}
+ 
+-	imx_misc_ctrl_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_MISC, &ph);
+-	if (IS_ERR(imx_misc_ctrl_ops))
+-		return PTR_ERR(imx_misc_ctrl_ops);
++	ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_MISC, &misc_ph);
++	if (IS_ERR(ops))
++		return PTR_ERR(ops);
++
++	imx_misc_ctrl_ops = ops;
++	/*
++	 * ph is the gate the exported helpers test. Publish it only after
++	 * imx_misc_ctrl_ops is set, and pair with the smp_load_acquire() there.
++	 */
++	smp_store_release(&ph, misc_ph);
+ 
+ 	num = of_property_count_u32_elems(np, "nxp,ctrl-ids");
+ 	if (num % 2) {
 
 ---
-base-commit: 78445023439506ebd83b86d40b1e428a3b309d4a
-change-id: 20260911-fix-macsec-net-ff3bc5e7ab0a
+base-commit: 93f51579e7df248780214094418f205253383cc5
+change-id: 20260921-mb-imx-sm-b038ece55152
 
 Best regards,
--- 
-Haseeb Malik <haseebulhaq55@gmail.com>
+--  
+Jaidev Shastri <jaidevshastri@vt.edu>
 
