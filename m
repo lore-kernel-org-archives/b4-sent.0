@@ -1,137 +1,121 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Tue, 22 Sep 2026 14:25:31 +0200
-Subject: [PATCH v5 3/3] usb: typec: mux: ps883x: disable USB4 on incomplete
- USB4 platforms
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v3 0/4] net: qrtr: Add support for using identical MHI
+ endpoint devices
+Date: Tue, 22 Sep 2026 15:41:44 +0200
+Message-Id: <20260922-qrtr-multi-ep-v3-0-c00831e88957@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-ps883x-disable-usb4-v5-3-02c0414978e6@oldschoolsolutions.biz>
-References: <20260922-ps883x-disable-usb4-v5-0-02c0414978e6@oldschoolsolutions.biz>
-In-Reply-To: <20260922-ps883x-disable-usb4-v5-0-02c0414978e6@oldschoolsolutions.biz>
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Abel Vesa <abelvesa@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Sebastian Reichel <sre@kernel.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, stable@vger.kernel.org, 
- "Dr. David Alan Gilbert" <dave@treblig.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790079937; l=3533;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=IJn1a2EheO3ZjpVwt5jjaDW809GzOJ6t3d7J87gPtzw=;
- b=ot0/2N+7+ydQsD6dddRkkNDt8HxG0HETgQ/y+QQSwjkyG9ZfHE9eoGnrTHnZ4sLCDAUyIweqn
- YWKi+hBCeCmCEbWAjMIpOGlR7n2qrmi1aT/ojsbKBY0oG1XM3kfKBVD
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJiFsmoC/3XN0Q6CIBQG4FdxXIcDNKWueo/WBcIpaSoKyGrOd
+ w/sprW6Odu//ef7F+TAanDomC3IQtBOmyGGYpch2YrhBlirmBEjrCIHyvFkvcX93HmNYcSS1ZI
+ 1cl8CUBR/RgtX/di88+Wd3dzcQfqEpEarnTf2uQ0Gmnr/7EAxwVyQSgpRVFwVJ+NcPs2ik6bv8
+ 3hQmgjsA2H0G2ERYbVSnCheUkF+IOu6vgBOaOD4CAEAAA==
+X-Change-ID: 20260918-qrtr-multi-ep-c27c2bc54ee1
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
+ ath11k@lists.infradead.org, ath12k@lists.infradead.org, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Chris Lew <christopher.lew@oss.qualcomm.com>, 
+ Deepak Kumar Singh <deepak.singh@oss.qualcomm.com>, 
+ Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
+ Juha-Matti Tilli <juha-matti.tilli@iki.fi>, 
+ Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Vasanthakumar Thiagarajan <vasanthakumar.thiagarajan@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3240;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=+7hgMzH+bUETBpciyveHW9m+55rtTRhGRMMDzVczHHs=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqsoWhJbkRU/X1+Ad7kGtYbrJVhlsIhCOo64Xp8
+ 6JUHKH95qSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCarKFoQAKCRBVnxHm/pHO
+ 9ZFHB/sHbFtYkUxenvI3tCEX7PFWivliqXjghO3lpuXBSqbZOY+ZVTdQ1LiS1Q7auKj/53jTl5f
+ 7FXtPZ6Q7UPs2KRSPizAV2uJL3txPrqvnKmvhFhntiTk8KUYOpDvqCVXXGrlIZYSkShGaOW/Aqa
+ a7boMPoCYttyFnTwMbWWPHojaKAp5Jj7LddPpsnGpMAWqiiWLLV9KDFILZcklHNwEvf1RBPNLmm
+ dlqOsBeLHJUXnXuqwKiYvHHLGWRD7IfQ+g8L4ReQHG18JjTcKFRXLF5sb03SVrhgf8Z5+ywieGt
+ kk2B25NOZwR0C+m6jCBuFQl3QGKL35KE0BS8mpSsmpw/P8le
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Qualcomm X1E80100 / X1P42100 platforms using the Parade PS883x
-retimer, hotplugging USB4-capable docks such as the Lenovo 40B0 can
-result in working USB but no DisplayPort output.
+Hi,
 
-When the dock negotiates USB4, the retimer receives TYPEC_MODE_USB4
-and forwards it via typec_mux_set(). The qmp-combo PHY then selects
-USB3-only because no classic DP altmode SVID is present in the state,
-leaving the DP transmitter and AUX channel disabled.
+This series reworks the QRTR driver to add support for using identical MHI
+endpoint devices at the same time. Currently, QRTR driver has a limitation on
+using more than one identical MHI endpoint devices like QCS6490 or any Qcom
+Endpoint device making use of QRTR at the same time. Because of the fact that
+these devices will have the identical QRTR node id, they cannot be used at the
+same time, on the same host machine.
 
-Reject USB4 with -EOPNOTSUPP on platforms whose USB4 / DP-tunneling
-stack is not ready yet. The Type-C stack then falls back to USB3 + DP
-Alt Mode. DP altmode configuration continues to use the existing
-ps883x_set() path.
+This limitation is a blocker for running upstream kernel on devices like Qcom
+based routers as they often have multiple identical WLAN Endpoint devices
+connected to the Router SoC.
 
-Use a machine-compatible table rather than a DT property so the quirk
-stays inside the kernel and can be removed later without creating ABI.
+This series supersedes the following 2 series from Juha:
+https://lore.kernel.org/all/20260915054207.2513877-1-juha-matti.tilli@iki.fi
+https://lore.kernel.org/all/20260915074135.2567411-1-juha-matti.tilli@iki.fi
 
-Assisted-by: Grok(xAI):4.6
-Tested-by: Dr. David Alan Gilbert <dave@treblig.org>
-Acked-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Compared to the series from Juha, this series simplifies the multi-endpoint
+support by computing a unique node id for each MHI endpoint and uses it for the
+internal QRTR book keeping. This ensures that even if the MHI endpoint devices
+have same node ids, the host QRTR will always use a unique node id for each one
+of them.
+
+More details can be found in the individual patches.
+
+Testing
+=======
+
+Juha tested this series on multi ath11k/12k setup by backporting this series to
+6.6 kernel. 
+
+Merge Strategy
+==============
+
+Since both QRTR and ath drivers are falling under the networking tree, the whole
+series can be merged through netdev tree.
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/usb/typec/mux/ps883x.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+Changes in v3:
+- Added missing qrtr_node_rewrite_ctrl() for QRTR_TYPE_RESUME_TX
+- Fixed the types of ath{11k/12k}_pci_get_qrtr_node_id() and helpers to use
+  'unsigned int' to match qrtr_host_node_id()
+- Collected tags
+- Link to v2: https://patch.msgid.link/20260921-qrtr-multi-ep-v2-0-27dd80d841a0@oss.qualcomm.com
 
-diff --git a/drivers/usb/typec/mux/ps883x.c b/drivers/usb/typec/mux/ps883x.c
-index 15aee1d613b1a..2ec57cfe748a9 100644
---- a/drivers/usb/typec/mux/ps883x.c
-+++ b/drivers/usb/typec/mux/ps883x.c
-@@ -13,6 +13,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
-+#include <linux/of.h>
- #include <linux/regmap.h>
- #include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
-@@ -42,6 +43,22 @@
- #define CONN_STATUS_2_TBT_UNIDIR_LSRX_ACT_LT	BIT(4)
- #define CONN_STATUS_2_USB4_CONNECTED		BIT(7)
- 
-+/*
-+ * Platforms where the USB4 / DP-tunneling stack is not ready yet. Rejecting
-+ * USB4 here lets the Type-C stack fall back to USB3 + DP Alt Mode instead of
-+ * negotiating USB4 and then failing to drive DisplayPort.
-+ *
-+ * This is a temporary, kernel-contained quirk (not DT ABI). Drop the entries
-+ * once the corresponding USB4 support is complete.
-+ */
-+static const char * const ps883x_disable_usb4_compats[] = {
-+	"qcom,x1e80100",
-+	"qcom,x1p42100",
-+	"qcom,hamoa",
-+	"qcom,purwa",
-+	NULL,
-+};
-+
- struct ps883x_retimer {
- 	struct i2c_client *client;
- 	struct gpio_desc *reset_gpio;
-@@ -63,8 +80,21 @@ struct ps883x_retimer {
- 
- 	enum typec_orientation orientation;
- 	bool in_reset;
-+	bool disable_usb4;
- };
- 
-+static bool ps883x_should_disable_usb4(void)
-+{
-+	const char * const *compat;
-+
-+	for (compat = ps883x_disable_usb4_compats; *compat; compat++) {
-+		if (of_machine_is_compatible(*compat))
-+			return true;
-+	}
-+
-+	return false;
-+}
-+
- static int ps883x_enable_vregs(struct ps883x_retimer *retimer)
- {
- 	struct device *dev = &retimer->client->dev;
-@@ -260,6 +290,9 @@ static int ps883x_set(struct ps883x_retimer *retimer, struct typec_retimer_state
- 			cfg0 |= CONN_STATUS_0_USB_3_1_CONNECTED;
- 			break;
- 		case TYPEC_MODE_USB4:
-+			if (retimer->disable_usb4)
-+				return -EOPNOTSUPP;
-+
- 			eudo_data = state->data;
- 
- 			cfg2 |= CONN_STATUS_2_USB4_CONNECTED;
-@@ -389,6 +422,10 @@ static int ps883x_retimer_probe(struct i2c_client *client)
- 
- 	retimer->client = client;
- 
-+	retimer->disable_usb4 = ps883x_should_disable_usb4();
-+	if (retimer->disable_usb4)
-+		dev_info(dev, "USB4 disabled until platform USB4 support is complete\n");
-+
- 	mutex_init(&retimer->lock);
- 
- 	retimer->regmap = devm_regmap_init_i2c(client, &ps883x_retimer_regmap);
+Changes in v2:
+- Rebased on top of net-next/main
+- Used READ/WRITE_ONCE for reading/writing ep_nid
+- Link to v1: https://patch.msgid.link/20260918-qrtr-multi-ep-v1-0-8a06caa368d3@oss.qualcomm.com
 
--- 
-2.53.0
+---
+Manivannan Sadhasivam (4):
+      net: qrtr: Allow the host QRTR to assign a unique node id
+      net: qrtr: Assign unique node id for MHI endpoints
+      wifi: ath11k: Connect to the QMI server belonging to the device owned by this driver
+      wifi: ath12k: Connect to the QMI server belonging to the device owned by this driver
+
+ MAINTAINERS                           |  1 +
+ drivers/net/wireless/ath/ath11k/hif.h |  9 +++++
+ drivers/net/wireless/ath/ath11k/pci.c |  9 +++++
+ drivers/net/wireless/ath/ath11k/qmi.c | 10 ++++++
+ drivers/net/wireless/ath/ath12k/hif.h |  9 +++++
+ drivers/net/wireless/ath/ath12k/pci.c |  9 +++++
+ drivers/net/wireless/ath/ath12k/qmi.c | 11 +++++++
+ include/net/qrtr.h                    | 21 ++++++++++++
+ net/qrtr/af_qrtr.c                    | 62 +++++++++++++++++++++++++++++++----
+ net/qrtr/mhi.c                        |  4 ++-
+ 10 files changed, 137 insertions(+), 8 deletions(-)
+---
+base-commit: 8830e65ed46de41f849eefb8ba227d4852c460f6
+change-id: 20260918-qrtr-multi-ep-c27c2bc54ee1
+
+Best regards,
+--  
+மணிவண்ணன் சதாசிவம்
 
