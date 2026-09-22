@@ -1,79 +1,85 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Tue, 22 Sep 2026 11:08:13 +0200
-Subject: [PATCH] ipvs: skip committing sync_threshold when proc_dointvec
- fails
+From: Kim Wooseok <5mghybrid@khu.ac.kr>
+Subject: [PATCH net-next 0/4] net: macb: Rework hardware timestamp
+ configuration
+Date: Tue, 22 Sep 2026 18:10:48 +0900
+Message-Id: <20260922-codex-macb-hwtstamp-submit-v1-0-9d1abaa53296@khu.ac.kr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-lklm-sysctl-retval-fix-v1-1-7290ea4253a4@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAHxFsmoC/x2M2wpAQBBAf0XzbIpRxK/Iw9odTNalHYnk320ez
- 6lzHlAOwgpN8kDgU1S2NUKeJmAns46M4iIDZVRmNRH62S+ot9rDY+DjNB4HudD0xlHtbFH1DmK
- 8B476H7fd+350fIRlaAAAAA==
-X-Change-ID: 20260922-lklm-sysctl-retval-fix-abad29dc37bd
-To: Simon Horman <horms@verge.net.au>, Julian Anastasov <ja@ssi.bg>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, 
- Phil Sutter <phil@nwl.cc>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>
-Cc: Simon Horman <horms@kernel.org>, netdev@vger.kernel.org, 
- lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
- coreteam@netfilter.org, linux-kernel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1296;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=aWEqlZnVkFRgp0qQKu7X23kGg0ZHVehrYng8L//OeY0=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGqyRZGUA0KCGTVtlF++nMgUcIdQrRiZq3RUU
- /YgHZ0t3bnNBokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqskWRAAoJELqXzVK3
- lkFPDmYMAJI5M0li0IFDoGjBI7dEFL6+2/SLWT6ezLqZGKpiiRPP3nCorSqTS0ybmW666HQuCL5
- dl+yPbeZ7QhF6ret88F/aAbXd0D24GHNSsgns1igp2JdZSpfgJWVFwYXed3twvuH8C7ZOlkpwTY
- q1MDtTpBcHHo3iasIgrhs3ve760S3aEWRFx0m5t1X1HsiBqF0OPl/4E4A/0D/lKXV3Xll3mhnSA
- zH+0b2/bmW/N68hXf1BeUgxPRQzrejpqiGy+VTMxfT/XF0fvpktRdIaDPyOeFVRvIfLX+gkPl8b
- qjWI21hUbFwmQUmDe+gJ1A743mX4qpKw+PuIcR9xo/hk0P3pN05i4WcBUhtfinx7cYQTmjRwZrh
- 9//gOU3degccRS6r4Ot/Qqyb3+EX0RtqReRilJAdaB5Kvx46ukpCnBvX8vuYHKfDoc2wXLjiOQg
- S/GVKugi5BLDPXCSqC1jArJQzeBwgwu7Z11zRLwTe70gaQiOU+S7nkCHMrYk9fTuS93/sayKDF5
- do=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNTQ6CMBCFr0Jm7UScIAlexbiYltGOSQtpq5IQ7
+ m6LK5fv73srJIkqCS7NClHemnQKRZwODVjH4SGoY9FALfXtQIR2GmVBz9ag++SU2c+YXsZrRjq
+ z6ZikN0MHBTBHueuyw68QJGOQJcPtl5TNU2yu7No1nARN5GBdtfaX4/9LrcC2fQFNbsejswAAA
+ A==
+X-Change-ID: 20260922-codex-macb-hwtstamp-submit-25ab4a2e6b94
+To: netdev@vger.kernel.org, 
+ =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
+ Rafal Ozieblo <rafalo@cadence.com>
+Cc: Conor Dooley <conor.dooley@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Richard Cochran <richardcochran@gmail.com>, 
+ Nicolai Buchwitz <nb@tipi-net.de>, linux-kernel@vger.kernel.org, 
+ Kim Wooseok <5mghybrid@khu.ac.kr>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790068248; l=2436;
+ i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
+ bh=++NArL2q0a8Rq+zt75joMwHyZFnjjRheWuposG1DMl8=;
+ b=wQXn2eJM2sexqJSEKmc4voyyNCPbXLXtHOOAZmQmoGY+F/omgQx6vr6b5ZUGxcMC8xMue+Ixf
+ tNVHJpQzOLJAg8jV1zrFtGr9d/Yc1GvshBJPzH/KwnfQi2p3NhiGEdw
+X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
+ pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
+X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Forward rc value and skip updating sysctl_sync_threshold when
-proc_dointvec fails. This targets a write such as "5 x" which would fail
-with -EINVAL but would store the first element anyway.
+This started with two problems I found while using PTP hardware
+timestamping on a Raspberry Pi 5. A rejected RX filter could still
+change the TX one-step setting, and the PTPv1 Sync and Delay_Req filters
+returned success without enabling RX timestamps.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+This series reworks gem_set_hwtst() to validate the whole request before
+programming the hardware. It calculates the settings locally, then
+updates the registers and saved configuration under bp->lock. With the
+register writes now in the setter, the two helpers are no longer needed.
+
+The remaining patches use the existing ALL fallback for the specific
+PTPv1 filters, turn off one-step mode for TX_OFF, and clear SRTSM when
+switching away from a PTPv2 filter. Each change is kept in its own patch.
+
+I compared the old and new behavior on the Pi 5. When I requested a TX
+mode change together with an invalid RX filter, the patched driver
+rejected the request without changing the saved settings or NCR. I
+also switched from one-step TX and PTPv2 RX to other settings and back.
+Only the relevant bits changed, and restoring the original settings
+restored NCR.
+
+For the PTPv1 filters, I checked the effect by sending Sync and Delay_Req
+packets over Ethernet. Before the change, the packets arrived without
+hardware timestamps. With the patches, the driver returned ALL and I
+could read the hardware timestamps from the received packets. PTPv2
+multicast reception continued to provide hardware timestamps, and
+selecting NONE disabled timestamping. I ran these tests with the changes
+backported to the Pi's existing Linux 6.18.46 RT kernel.
+
+On net-next, I built the series with ARM64 allyesconfig and allmodconfig,
+both with W=1. Sparse reported no diagnostics in macb_ptp.c.
+
+Assisted-by: GPT-6 Astra
+Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
 ---
- net/netfilter/ipvs/ip_vs_ctl.c | 3 +++
- 1 file changed, 3 insertions(+)
+Kim Wooseok (4):
+      net: macb: Preserve timestamp settings on rejected requests
+      net: macb: Enable RX timestamping for specific PTPv1 filters
+      net: macb: Disable one-step mode when TX timestamping is off
+      net: macb: Clear SRTSM outside PTPv2 receive filters
 
-diff --git a/net/netfilter/ipvs/ip_vs_ctl.c b/net/netfilter/ipvs/ip_vs_ctl.c
-index 4c1c739446b76ea455dab2958a844d05e31a46a7..7c260529238cd2015f1d30abd094d25b056b30fa 100644
---- a/net/netfilter/ipvs/ip_vs_ctl.c
-+++ b/net/netfilter/ipvs/ip_vs_ctl.c
-@@ -2454,6 +2454,8 @@ proc_do_sync_threshold(const struct ctl_table *table, int write,
- 	mutex_lock(&ipvs->sync_mutex);
- 	memcpy(val, valp, sizeof(val));
- 	rc = proc_dointvec(&tmp, write, buffer, lenp, ppos);
-+	if (rc)
-+		goto out;
- 	if (write) {
- 		if (val[0] < 0 || val[1] < 0 ||
- 		    (val[0] >= val[1] && val[1]))
-@@ -2461,6 +2463,7 @@ proc_do_sync_threshold(const struct ctl_table *table, int write,
- 		else
- 			memcpy(valp, val, sizeof(val));
- 	}
-+out:
- 	mutex_unlock(&ipvs->sync_mutex);
- 	return rc;
- }
-
+ drivers/net/ethernet/cadence/macb_ptp.c | 63 ++++++++++++---------------------
+ 1 file changed, 23 insertions(+), 40 deletions(-)
 ---
-base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20260922-lklm-sysctl-retval-fix-abad29dc37bd
+base-commit: 8830e65ed46de41f849eefb8ba227d4852c460f6
+change-id: 20260922-codex-macb-hwtstamp-submit-25ab4a2e6b94
 
 Best regards,
--- 
-Joel Granados <joel.granados@kernel.org>
+--  
+Kim Wooseok <5mghybrid@khu.ac.kr>
 
