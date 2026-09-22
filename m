@@ -1,11 +1,11 @@
 From: Kim Wooseok <5mghybrid@khu.ac.kr>
-Date: Tue, 22 Sep 2026 18:10:50 +0900
-Subject: [PATCH net-next 2/4] net: macb: Enable RX timestamping for
- specific PTPv1 filters
+Date: Tue, 22 Sep 2026 18:10:51 +0900
+Subject: [PATCH net-next 3/4] net: macb: Disable one-step mode when TX
+ timestamping is off
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-codex-macb-hwtstamp-submit-v1-2-9d1abaa53296@khu.ac.kr>
+Message-Id: <20260922-codex-macb-hwtstamp-submit-v1-3-9d1abaa53296@khu.ac.kr>
 References: <20260922-codex-macb-hwtstamp-submit-v1-0-9d1abaa53296@khu.ac.kr>
 In-Reply-To: <20260922-codex-macb-hwtstamp-submit-v1-0-9d1abaa53296@khu.ac.kr>
 To: netdev@vger.kernel.org, 
@@ -19,57 +19,68 @@ Cc: Conor Dooley <conor.dooley@microchip.com>,
  Nicolai Buchwitz <nb@tipi-net.de>, linux-kernel@vger.kernel.org, 
  Kim Wooseok <5mghybrid@khu.ac.kr>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790068248; l=1704;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790068248; l=2010;
  i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
- bh=05d3+CCGF+y6/qkvPziNFKV5JO+MRqQk0vWJIck2XbY=;
- b=BjzpZj5RdiFWJ1zAgBFdT58RNlAD67fXhVaHfPmCgmKQ/6AW29OnPsOrZ3rL5mQuYdFo9DjIC
- 6qdQVdFmNXDCkr+3o9ol+ChqbbV8dZLveyw4HhjoxsSMSdLgAzW0uvj
+ bh=AaQyUqH6VFPMs1/0x+Fd3W9TD7i8rMBiz5TU2m1yxnc=;
+ b=IQurmeYA7DFWjdPRj7UfRJHg8TwEQJeTOEO1xUU+9bThz0nVwSi7KxOqUJzNwWxhb9H4P5PQi
+ Wc04hm8+RtRBQmK/THGGcmYXqVBPDTHVPh0eO4DTVX4ecXJoxz2Vtj7
 X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
  pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
 X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Selecting a PTPv1 Sync or Delay_Req filter in gem_set_hwtst() returns
-success, but leaves rx_bd_control at its initial value of
-TSTAMP_DISABLED. The requested filter therefore appears to have been
-applied, even though received packets have no hardware timestamps.
+Switching from HWTSTAMP_TX_ONESTEP_SYNC to HWTSTAMP_TX_OFF turns off
+descriptor timestamping, but leaves NCR.OSSMODE set, so one-step mode
+remains enabled.
 
-The PTPv1 event case already enables timestamping for all frames, so
-use that path for Sync and Delay_Req as well. This enables timestamping
-for both requests and returns HWTSTAMP_FILTER_ALL to tell the caller
-which filter was actually applied.
+Update OSSMODE for every accepted TX mode and set it only for
+HWTSTAMP_TX_ONESTEP_SYNC. This also clears the previous one-step setting
+when switching to OFF. Since the update mask now always includes
+OSSMODE, drop the check for an empty mask.
 
 Fixes: ab91f0a9b5f4 ("net: macb: Add hardware PTP support")
 Assisted-by: GPT-6 Astra
 Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
 ---
- drivers/net/ethernet/cadence/macb_ptp.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ drivers/net/ethernet/cadence/macb_ptp.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/net/ethernet/cadence/macb_ptp.c b/drivers/net/ethernet/cadence/macb_ptp.c
-index 4dbb6daa6..b6d17fef4 100644
+index b6d17fef4..6376b6631 100644
 --- a/drivers/net/ethernet/cadence/macb_ptp.c
 +++ b/drivers/net/ethernet/cadence/macb_ptp.c
-@@ -419,10 +419,6 @@ int gem_set_hwtst(struct net_device *netdev,
- 	switch (rx_filter) {
- 	case HWTSTAMP_FILTER_NONE:
+@@ -390,7 +390,7 @@ int gem_set_hwtst(struct net_device *netdev,
+ 		  struct kernel_hwtstamp_config *tstamp_config,
+ 		  struct netlink_ext_ack *extack)
+ {
+-	u32 ncr_mask = 0;
++	u32 ncr_mask = MACB_BIT(OSSMODE);
+ 	enum macb_bd_control tx_bd_control = TSTAMP_DISABLED;
+ 	enum macb_bd_control rx_bd_control = TSTAMP_DISABLED;
+ 	int rx_filter = tstamp_config->rx_filter;
+@@ -409,7 +409,6 @@ int gem_set_hwtst(struct net_device *netdev,
+ 		ncr_bits |= MACB_BIT(OSSMODE);
+ 		fallthrough;
+ 	case HWTSTAMP_TX_ON:
+-		ncr_mask |= MACB_BIT(OSSMODE);
+ 		tx_bd_control = TSTAMP_ALL_FRAMES;
  		break;
--	case HWTSTAMP_FILTER_PTP_V1_L4_SYNC:
--		break;
--	case HWTSTAMP_FILTER_PTP_V1_L4_DELAY_REQ:
--		break;
- 	case HWTSTAMP_FILTER_PTP_V2_EVENT:
- 	case HWTSTAMP_FILTER_PTP_V2_L2_EVENT:
- 	case HWTSTAMP_FILTER_PTP_V2_L4_EVENT:
-@@ -437,6 +433,8 @@ int gem_set_hwtst(struct net_device *netdev,
- 		ncr_mask |= MACB_BIT(SRTSM);
- 		ncr_bits |= MACB_BIT(SRTSM);
- 		break;
-+	case HWTSTAMP_FILTER_PTP_V1_L4_SYNC:
-+	case HWTSTAMP_FILTER_PTP_V1_L4_DELAY_REQ:
- 	case HWTSTAMP_FILTER_PTP_V1_L4_EVENT:
- 	case HWTSTAMP_FILTER_ALL:
- 		rx_bd_control = TSTAMP_ALL_FRAMES;
+ 	default:
+@@ -445,11 +444,9 @@ int gem_set_hwtst(struct net_device *netdev,
+ 	}
+ 
+ 	spin_lock_irqsave(&bp->lock, flags);
+-	if (ncr_mask) {
+-		regval = macb_readl(bp, NCR);
+-		regval = (regval & ~ncr_mask) | ncr_bits;
+-		macb_writel(bp, NCR, regval);
+-	}
++	regval = macb_readl(bp, NCR);
++	regval = (regval & ~ncr_mask) | ncr_bits;
++	macb_writel(bp, NCR, regval);
+ 
+ 	gem_writel(bp, TXBDCTRL, GEM_BF(TXTSMODE, tx_bd_control));
+ 	gem_writel(bp, RXBDCTRL, GEM_BF(RXTSMODE, rx_bd_control));
 
 -- 
 2.53.0
