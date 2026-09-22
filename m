@@ -1,297 +1,443 @@
 From: Jaidev Shastri <jaidevshastri@vt.edu>
-Date: Mon, 21 Sep 2026 20:54:00 -0400
-Subject: [PATCH] firmware: xilinx: zynqmp: serialise and publish the
- feature check cache
+Date: Mon, 21 Sep 2026 20:55:17 -0400
+Subject: [PATCH] soc: xilinx: xlnx_event_manager: protect the registration
+ table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-mb-zynqmp-fw-v1-1-1b7f9773df46@vt.edu>
-X-B4-Tracking: v=1; b=H4sIAKfRsWoC/yXMzQ6CMBAE4Fche3ZNKYjRVzEe+rPImlBxK6AS3
- t0Wj99kZhaIJEwRzsUCQhNHfoSEcleA60y4EbJPBq10o066xN7i9xOe/YDtjMrWlTroxhtvIE0
- GoZbf293l+ncc7Z3cK3/khjWR0IoJrsvRxum4r1BcDev6A+kiiJ+QAAAA
-X-Change-ID: 20260921-mb-zynqmp-fw-0b430526dada
+Message-Id: <20260921-mb-xlnx-event-v1-1-e0a62b9bd785@vt.edu>
+X-B4-Tracking: v=1; b=H4sIAPTRsWoC/yXMwQ6CMBAE0F8he3ZNKUTBXzEeunWVNbqaFpsmh
+ H+3xeObzMwCkYNwhFOzQOAkUd5a0O4a8JPTO6Nci8EaezCjbfFFmJ+akRPrjANb6qkbDNEIZfM
+ JfJO8/Z0vf8cvPdjP9aQ2yEVGCk79VKON6bjvMPge1vUHdVu0hpEAAAA=
+X-Change-ID: 20260921-mb-xlnx-event-8e2b4b380bb9
 To: Michal Simek <michal.simek@amd.com>
 Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Jaidev Shastri <jaidevshastri@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790038443; l=10397;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790038519; l=14636;
  i=jaidevshastri@vt.edu; s=20260921; h=from:subject:message-id;
- bh=ld144bmnJCTHlODiihZvEWWLWKVWTqPEqRizGBX4ouo=;
- b=gDekVjwALg8OAzkZTix3rqQ6vJnBuSRB6bhgsQAHlbptwQJ4BFkw8/PCNVboPQa3CJyY4bfVr
- OKT+kZ8Uts7Adje9rM5grdhcXAp8ucVxkqK9q/MVowqPbaVGn6TpFOX
+ bh=2FhiPy8TQSKIt73xgcEyqVI5ArjGi5istvRlySD3F0U=;
+ b=ozXzmMi6Fimy9dqeMTRjpCzApeRg6eQeLf1V4QQRWyWhukrragqq6x54lLZ1vyj3kc13JG88s
+ UwQG45/OwXIC+Cee6Z9EFsvZ/Ja6rkaF5CXTUBad5JhL1d5zUrfT7N1
 X-Developer-Key: i=jaidevshastri@vt.edu; a=ed25519;
  pk=J7+xYJRlTPds+pv5hbqFFRqGCpDeJDzmZT1ggRwj7/0=
 X-Endpoint-Received: by B4 Relay for jaidevshastri@vt.edu/20260921 with auth_id=1044
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Every firmware call reaches do_feature_check_call() through
-zynqmp_pm_invoke_fn() and zynqmp_pm_feature(). It caches the firmware's
-answers in pm_api_features_map and extends that hash table on a miss
-with hash_add(), taking no lock. Clock, pinctrl, reset, power domain and
-GPIO operations all reach it, from any CPU, concurrently.
+xlnx_register_event() and xlnx_unregister_event() modify reg_driver_map
+and the per-event callback lists with hash_add(), list_add(), hash_del()
+and list_del(), taking no lock. xlnx_event_handler() walks the same
+table and lists from the SGI, on whichever CPU the firmware raised it,
+also without a lock, and calls the registered callbacks.
 
-Two CPUs that miss on the same bucket both call hlist_add_head() on it
-and corrupt the list. hash_add() is also a plain store of the node
-pointer, so a CPU walking the bucket can see the node before pm_api_id
-and feature_status are visible and return an answer meant for a
-different API. The IOCTL and QUERY masks are copied into ioctl_features
-and query_features after the entry is published, so
-zynqmp_pm_is_function_supported() can find the entry and read an all
-zero mask, reporting every IOCTL as unsupported.
+Once the first event is registered with the firmware the SGI can arrive
+at any time, including while versal_edac or zynqmp_power registers
+further events. hlist_add_head() and list_add() are plain stores, so the
+handler can see a node before its key, flags, list head or callback
+pointer are visible, and call through a pointer it reads as NULL. Two
+registrations hashing to the same bucket corrupt it outright.
 
-Serialise insertions with a spinlock, recheck the bucket under it and
-publish with hash_add_rcu(). Look up under rcu_read_lock() with
-hash_for_each_possible_rcu(). Move the IOCTL and QUERY masks into the
-entry so that they are published with it, and free entries with
-kfree_rcu().
-
-The lock is taken with interrupts disabled because firmware calls are
-made from atomic context, for example under the clock enable lock.
+Serialise the writers with a spinlock and walk the table and the lists
+under RCU in the handler. hash_add_rcu() and list_add_rcu() publish the
+entries, removed entries are freed with kfree_rcu(), and the allocations
+move in front of the critical section so that they keep using
+GFP_KERNEL. The lock is taken with interrupts disabled because the
+handler removes entries when re-registration with the firmware fails.
 
 Found with MBCheck, a static herd7-based memory consistency checker.
 
 Signed-off-by: Jaidev Shastri <jaidevshastri@vt.edu>
 ---
- drivers/firmware/xilinx/zynqmp.c | 108 +++++++++++++++++++++++++++++----------
- 1 file changed, 80 insertions(+), 28 deletions(-)
+ drivers/soc/xilinx/xlnx_event_manager.c | 183 ++++++++++++++++++++------------
+ 1 file changed, 116 insertions(+), 67 deletions(-)
 
-diff --git a/drivers/firmware/xilinx/zynqmp.c b/drivers/firmware/xilinx/zynqmp.c
-index fe650747a..3d395d5a4 100644
---- a/drivers/firmware/xilinx/zynqmp.c
-+++ b/drivers/firmware/xilinx/zynqmp.c
-@@ -25,6 +25,8 @@
- #include <linux/slab.h>
- #include <linux/uaccess.h>
- #include <linux/hashtable.h>
+diff --git a/drivers/soc/xilinx/xlnx_event_manager.c b/drivers/soc/xilinx/xlnx_event_manager.c
+index f733dc42b..157051e45 100644
+--- a/drivers/soc/xilinx/xlnx_event_manager.c
++++ b/drivers/soc/xilinx/xlnx_event_manager.c
+@@ -18,7 +18,9 @@
+ #include <linux/module.h>
+ #include <linux/of_irq.h>
+ #include <linux/platform_device.h>
 +#include <linux/rcupdate.h>
+ #include <linux/slab.h>
 +#include <linux/spinlock.h>
  
- #include <linux/firmware/xlnx-zynqmp.h>
- #include <linux/firmware/xlnx-event-manager.h>
-@@ -45,8 +47,8 @@
+ static DEFINE_PER_CPU_READ_MOSTLY(int, dummy_cpu_number);
  
- static bool feature_check_enabled;
- static DEFINE_HASHTABLE(pm_api_features_map, PM_API_FEATURE_CHECK_MAX_ORDER);
--static u32 ioctl_features[FEATURE_PAYLOAD_SIZE];
--static u32 query_features[FEATURE_PAYLOAD_SIZE];
-+/* Serialises insertions into pm_api_features_map; lookups run under RCU. */
-+static DEFINE_SPINLOCK(pm_api_features_lock);
+@@ -39,6 +41,11 @@ static int event_manager_availability = -EACCES;
+ #define REGISTER_NOTIFIER_FIRMWARE_VERSION	(2U)
  
- static u32 sip_svc_version;
- static struct platform_device *em_dev;
-@@ -65,12 +67,16 @@ struct zynqmp_devinfo {
-  * struct pm_api_feature_data - PM API Feature data
-  * @pm_api_id:		PM API Id, used as key to index into hashmap
-  * @feature_status:	status of PM API feature: valid, invalid
-+ * @features:		supported IOCTL/QUERY IDs mask reported by the firmware
-  * @hentry:		hlist_node that hooks this entry into hashtable
-+ * @rcu:		used to free the entry after a grace period
+ static DEFINE_HASHTABLE(reg_driver_map, REGISTERED_DRIVER_MAX_ORDER);
++/*
++ * Serialises insertions into and removals from reg_driver_map and the
++ * per-event callback lists. The SGI handler walks both under RCU.
++ */
++static DEFINE_SPINLOCK(reg_driver_map_lock);
+ static int sgi_num = XLNX_EVENT_SGI_NUM;
+ 
+ static bool is_need_to_unregister;
+@@ -48,11 +55,13 @@ static bool is_need_to_unregister;
+  * @agent_data:		Data passed back to handler function.
+  * @eve_cb:		Function pointer to store the callback function.
+  * @list:		member to create list.
++ * @rcu:		used to free the callback after a grace period.
   */
- struct pm_api_feature_data {
- 	u32 pm_api_id;
- 	int feature_status;
-+	u32 features[FEATURE_PAYLOAD_SIZE];
+ struct agent_cb {
+ 	void *agent_data;
+ 	event_cb_func_t eve_cb;
+ 	struct list_head list;
++	struct rcu_head rcu;
+ };
+ 
+ /**
+@@ -66,6 +75,7 @@ struct agent_cb {
+  * @cb_list_head:	Head of call back data list which contain the information
+  *			about registered handler and private data.
+  * @hentry:		hlist_node that hooks this entry into hashtable.
++ * @rcu:		used to free the entry after a grace period.
+  */
+ struct registered_event_data {
+ 	u64 key;
+@@ -73,6 +83,7 @@ struct registered_event_data {
+ 	bool wake;
+ 	struct list_head cb_list_head;
  	struct hlist_node hentry;
 +	struct rcu_head rcu;
  };
  
- struct platform_fw_data {
-@@ -257,18 +263,46 @@ static int __do_feature_check_call(const u32 api_id, u32 *ret_payload)
- 	return ret_payload[1];
+ static bool xlnx_is_error_event(const u32 node_id)
+@@ -104,14 +115,27 @@ static bool xlnx_is_error_event(const u32 node_id)
+ static int xlnx_add_cb_for_notify_event(const u32 node_id, const u32 event, const bool wake,
+ 					event_cb_func_t cb_fun,	void *data)
+ {
+-	u64 key = 0;
++	u64 key = ((u64)node_id << 32U) | (u64)event;
+ 	bool present_in_hash = false;
+-	struct registered_event_data *eve_data;
++	struct registered_event_data *eve_data, *new_eve_data;
+ 	struct agent_cb *cb_data;
+ 	struct agent_cb *cb_pos;
+-	struct agent_cb *cb_next;
++	unsigned long flags;
++
++	/* Allocate up front: the hash table is updated under a spinlock */
++	new_eve_data = kmalloc_obj(*new_eve_data);
++	if (!new_eve_data)
++		return -ENOMEM;
++
++	cb_data = kmalloc_obj(*cb_data);
++	if (!cb_data) {
++		kfree(new_eve_data);
++		return -ENOMEM;
++	}
++	cb_data->eve_cb = cb_fun;
++	cb_data->agent_data = data;
+ 
+-	key = ((u64)node_id << 32U) | (u64)event;
++	spin_lock_irqsave(&reg_driver_map_lock, flags);
+ 	/* Check for existing entry in hash table for given key id */
+ 	hash_for_each_possible(reg_driver_map, eve_data, hentry, key) {
+ 		if (eve_data->key == key) {
+@@ -122,85 +146,94 @@ static int xlnx_add_cb_for_notify_event(const u32 node_id, const u32 event, cons
+ 
+ 	if (!present_in_hash) {
+ 		/* Add new entry if not present in HASH table */
+-		eve_data = kmalloc_obj(*eve_data);
+-		if (!eve_data)
+-			return -ENOMEM;
++		eve_data = new_eve_data;
++		new_eve_data = NULL;
+ 		eve_data->key = key;
+ 		eve_data->cb_type = PM_NOTIFY_CB;
+ 		eve_data->wake = wake;
+ 		INIT_LIST_HEAD(&eve_data->cb_list_head);
+ 
+-		cb_data = kmalloc_obj(*cb_data);
+-		if (!cb_data) {
+-			kfree(eve_data);
+-			return -ENOMEM;
+-		}
+-		cb_data->eve_cb = cb_fun;
+-		cb_data->agent_data = data;
+-
+ 		/* Add into callback list */
+-		list_add(&cb_data->list, &eve_data->cb_list_head);
+-
+-		/* Add into HASH table */
+-		hash_add(reg_driver_map, &eve_data->hentry, key);
++		list_add_rcu(&cb_data->list, &eve_data->cb_list_head);
++		cb_data = NULL;
++
++		/*
++		 * Add into HASH table. hash_add_rcu() publishes the entry with
++		 * release semantics, so the SGI handler, which walks the table
++		 * without the lock, sees the key, the flags and the callback
++		 * list only once they have been written.
++		 */
++		hash_add_rcu(reg_driver_map, &eve_data->hentry, key);
+ 	} else {
+ 		/* Search for callback function and private data in list */
+-		list_for_each_entry_safe(cb_pos, cb_next, &eve_data->cb_list_head, list) {
++		list_for_each_entry(cb_pos, &eve_data->cb_list_head, list) {
+ 			if (cb_pos->eve_cb == cb_fun &&
+-			    cb_pos->agent_data == data) {
+-				return 0;
+-			}
++			    cb_pos->agent_data == data)
++				goto out;
+ 		}
+ 
+ 		/* Add multiple handler and private data in list */
+-		cb_data = kmalloc_obj(*cb_data);
+-		if (!cb_data)
+-			return -ENOMEM;
+-		cb_data->eve_cb = cb_fun;
+-		cb_data->agent_data = data;
+-
+-		list_add(&cb_data->list, &eve_data->cb_list_head);
++		list_add_rcu(&cb_data->list, &eve_data->cb_list_head);
++		cb_data = NULL;
+ 	}
+ 
++out:
++	spin_unlock_irqrestore(&reg_driver_map_lock, flags);
++	kfree(new_eve_data);
++	kfree(cb_data);
++
+ 	return 0;
  }
  
--static int do_feature_check_call(const u32 api_id)
-+/*
-+ * Look up the cached firmware answer for @api_id. Called under
-+ * rcu_read_lock() or with pm_api_features_lock held.
-+ */
-+static struct pm_api_feature_data *pm_api_feature_lookup(const u32 api_id)
-+{
-+	struct pm_api_feature_data *feature_data;
-+
-+	hash_for_each_possible_rcu(pm_api_features_map, feature_data, hentry,
-+				   api_id, lockdep_is_held(&pm_api_features_lock)) {
-+		if (feature_data->pm_api_id == api_id)
-+			return feature_data;
-+	}
-+
-+	return NULL;
-+}
-+
-+/*
-+ * Return the feature status of @api_id, asking the firmware on the first
-+ * call. When @features is not NULL, the IOCTL/QUERY ID mask the firmware
-+ * reported for @api_id is copied into it.
-+ */
-+static int do_feature_check_call(const u32 api_id, u32 *features)
+ static int xlnx_add_cb_for_suspend(event_cb_func_t cb_fun, void *data)
  {
- 	int ret;
- 	u32 ret_payload[PAYLOAD_ARG_CNT];
--	struct pm_api_feature_data *feature_data;
-+	struct pm_api_feature_data *feature_data, *found;
+-	struct registered_event_data *eve_data;
++	struct registered_event_data *eve_data, *new_eve_data;
+ 	struct agent_cb *cb_data;
 +	unsigned long flags;
++	int ret = 0;
  
- 	/* Check for existing entry in hash table for given api */
--	hash_for_each_possible(pm_api_features_map, feature_data, hentry,
--			       api_id) {
--		if (feature_data->pm_api_id == api_id)
--			return feature_data->feature_status;
-+	rcu_read_lock();
-+	found = pm_api_feature_lookup(api_id);
-+	if (found) {
-+		ret = found->feature_status;
-+		if (features)
-+			memcpy(features, found->features, sizeof(found->features));
-+		rcu_read_unlock();
-+		return ret;
++	/* Allocate up front: the hash table is updated under a spinlock */
++	new_eve_data = kmalloc_obj(*new_eve_data);
++	if (!new_eve_data)
++		return -ENOMEM;
++
++	cb_data = kmalloc_obj(*cb_data);
++	if (!cb_data) {
++		kfree(new_eve_data);
++		return -ENOMEM;
++	}
++	cb_data->eve_cb = cb_fun;
++	cb_data->agent_data = data;
++
++	spin_lock_irqsave(&reg_driver_map_lock, flags);
+ 	/* Check for existing entry in hash table for given cb_type */
+ 	hash_for_each_possible(reg_driver_map, eve_data, hentry, PM_INIT_SUSPEND_CB) {
+ 		if (eve_data->cb_type == PM_INIT_SUSPEND_CB) {
+ 			pr_err("Found as already registered\n");
+-			return -EINVAL;
++			ret = -EINVAL;
++			goto out;
+ 		}
  	}
-+	rcu_read_unlock();
  
  	/* Add new entry if not present */
- 	feature_data = kmalloc_obj(*feature_data, GFP_ATOMIC);
-@@ -277,16 +311,33 @@ static int do_feature_check_call(const u32 api_id)
- 
- 	feature_data->pm_api_id = api_id;
- 	ret = __do_feature_check_call(api_id, ret_payload);
+-	eve_data = kmalloc_obj(*eve_data);
+-	if (!eve_data)
+-		return -ENOMEM;
 -
- 	feature_data->feature_status = ret;
--	hash_add(pm_api_features_map, &feature_data->hentry, api_id);
-+	/* Supported IOCTL/QUERY IDs mask, meaningful for PM_IOCTL and PM_QUERY_DATA */
-+	memcpy(feature_data->features, &ret_payload[2], sizeof(feature_data->features));
++	eve_data = new_eve_data;
++	new_eve_data = NULL;
+ 	eve_data->key = 0;
+ 	eve_data->cb_type = PM_INIT_SUSPEND_CB;
+ 	INIT_LIST_HEAD(&eve_data->cb_list_head);
+ 
+-	cb_data = kmalloc_obj(*cb_data);
+-	if (!cb_data) {
+-		kfree(eve_data);
+-		return -ENOMEM;
+-	}
+-	cb_data->eve_cb = cb_fun;
+-	cb_data->agent_data = data;
+-
+ 	/* Add into callback list */
+-	list_add(&cb_data->list, &eve_data->cb_list_head);
++	list_add_rcu(&cb_data->list, &eve_data->cb_list_head);
++	cb_data = NULL;
+ 
+-	hash_add(reg_driver_map, &eve_data->hentry, PM_INIT_SUSPEND_CB);
++	hash_add_rcu(reg_driver_map, &eve_data->hentry, PM_INIT_SUSPEND_CB);
+ 
+-	return 0;
++out:
++	spin_unlock_irqrestore(&reg_driver_map_lock, flags);
++	kfree(new_eve_data);
++	kfree(cb_data);
 +
-+	/*
-+	 * Firmware calls are made from any CPU without a common lock, so a
-+	 * concurrent caller may have added an entry for the same API while the
-+	 * firmware was being asked. Insert under pm_api_features_lock and
-+	 * recheck. hash_add_rcu() publishes the entry with release semantics,
-+	 * which pairs with the rcu_dereference() in the lockless lookup above,
-+	 * so a reader never sees the entry before its fields.
-+	 */
-+	spin_lock_irqsave(&pm_api_features_lock, flags);
-+	found = pm_api_feature_lookup(api_id);
-+	if (found) {
-+		ret = found->feature_status;
-+		if (features)
-+			memcpy(features, found->features, sizeof(found->features));
-+		spin_unlock_irqrestore(&pm_api_features_lock, flags);
-+		kfree(feature_data);
-+		return ret;
-+	}
-+	hash_add_rcu(pm_api_features_map, &feature_data->hentry, api_id);
-+	spin_unlock_irqrestore(&pm_api_features_lock, flags);
- 
--	if (api_id == PM_IOCTL)
--		/* Store supported IOCTL IDs mask */
--		memcpy(ioctl_features, &ret_payload[2], FEATURE_PAYLOAD_SIZE * 4);
--	else if (api_id == PM_QUERY_DATA)
--		/* Store supported QUERY IDs mask */
--		memcpy(query_features, &ret_payload[2], FEATURE_PAYLOAD_SIZE * 4);
-+	if (features)
-+		memcpy(features, &ret_payload[2], sizeof(feature_data->features));
- 
- 	return ret;
++	return ret;
  }
-@@ -305,7 +356,7 @@ int zynqmp_pm_feature(const u32 api_id)
- 	if (!feature_check_enabled)
- 		return 0;
  
--	ret = do_feature_check_call(api_id);
-+	ret = do_feature_check_call(api_id, NULL);
- 
- 	return ret;
- }
-@@ -322,14 +373,14 @@ EXPORT_SYMBOL_GPL(zynqmp_pm_feature);
- int zynqmp_pm_is_function_supported(const u32 api_id, const u32 id)
- {
- 	int ret;
--	u32 *bit_mask;
-+	u32 bit_mask[FEATURE_PAYLOAD_SIZE];
- 
- 	/* Input arguments validation */
- 	if (id >= 64 || (api_id != PM_IOCTL && api_id != PM_QUERY_DATA))
- 		return -EINVAL;
- 
- 	/* Check feature check API version */
--	ret = do_feature_check_call(PM_FEATURE_CHECK);
-+	ret = do_feature_check_call(PM_FEATURE_CHECK, NULL);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -339,12 +390,10 @@ int zynqmp_pm_is_function_supported(const u32 api_id, const u32 id)
- 		 * Call feature check for IOCTL/QUERY API to get IOCTL ID or
- 		 * QUERY ID feature status.
- 		 */
--		ret = do_feature_check_call(api_id);
-+		ret = do_feature_check_call(api_id, bit_mask);
- 		if (ret < 0)
- 			return ret;
- 
--		bit_mask = (api_id == PM_IOCTL) ? ioctl_features : query_features;
--
- 		if ((bit_mask[(id / 32)] & BIT((id % 32))) == 0U)
- 			return -EOPNOTSUPP;
- 	} else {
-@@ -2184,7 +2233,7 @@ static int zynqmp_clear_pm_state(struct device *dev)
- 	if (pm_family_code == PM_VERSAL_FAMILY_CODE ||
- 	    pm_family_code == PM_VERSAL_NET_FAMILY_CODE) {
- 		/* Check if EL3 firmware supports TF_A_CLEAR_PM_STATE */
--		ret = do_feature_check_call(TF_A_CLEAR_PM_STATE);
-+		ret = do_feature_check_call(TF_A_CLEAR_PM_STATE, NULL);
- 		if (ret >= 0 && ((ret & FIRMWARE_VERSION_MASK) >= PM_API_VERSION_1)) {
- 			/* Clear PM specific data in EL3 firmware */
- 			ret = zynqmp_pm_invoke_fn(TF_A_CLEAR_PM_STATE, NULL, 0);
-@@ -2197,7 +2246,7 @@ static int zynqmp_clear_pm_state(struct device *dev)
- 		}
- 
- 		/* Check if the firmware supports the PM_DEV_ALL_PERIPH node ID */
--		ret = do_feature_check_call(PM_RELEASE_NODE);
-+		ret = do_feature_check_call(PM_RELEASE_NODE, NULL);
- 		if (ret >= 0 && ((ret & FIRMWARE_VERSION_MASK) >= PM_API_VERSION_3)) {
- 			/* Attempt to release all peripheral devices via firmware */
- 			ret = zynqmp_pm_release_node(PM_DEV_ALL_PERIPH);
-@@ -2210,7 +2259,7 @@ static int zynqmp_clear_pm_state(struct device *dev)
- 		}
- 
- 		/* Check if the firmware supports the PM_ALL_NOTIFIERS node ID */
--		ret = do_feature_check_call(PM_REGISTER_NOTIFIER);
-+		ret = do_feature_check_call(PM_REGISTER_NOTIFIER, NULL);
- 		if (ret >= 0 && ((ret & FIRMWARE_VERSION_MASK) >= PM_API_VERSION_3)) {
- 			/* Attempt to unregister all notifier callbacks via firmware */
- 			ret = zynqmp_pm_register_notifier(PM_ALL_NOTIFIERS, 0, 0, 0);
-@@ -2248,7 +2297,7 @@ static int zynqmp_firmware_probe(struct platform_device *pdev)
- 	if (ret)
- 		return ret;
- 
--	ret = do_feature_check_call(PM_FEATURE_CHECK);
-+	ret = do_feature_check_call(PM_FEATURE_CHECK, NULL);
- 	if (ret >= 0 && ((ret & FIRMWARE_VERSION_MASK) >= PM_API_VERSION_1))
- 		feature_check_enabled = true;
- 
-@@ -2325,15 +2374,18 @@ static void zynqmp_firmware_remove(struct platform_device *pdev)
- {
- 	struct pm_api_feature_data *feature_data;
+ static int xlnx_remove_cb_for_suspend(event_cb_func_t cb_fun)
+@@ -210,9 +243,11 @@ static int xlnx_remove_cb_for_suspend(event_cb_func_t cb_fun)
+ 	struct agent_cb *cb_pos;
+ 	struct agent_cb *cb_next;
  	struct hlist_node *tmp;
 +	unsigned long flags;
- 	int i;
  
- 	mfd_remove_devices(&pdev->dev);
- 	zynqmp_pm_api_debugfs_exit();
+ 	is_need_to_unregister = false;
  
-+	spin_lock_irqsave(&pm_api_features_lock, flags);
- 	hash_for_each_safe(pm_api_features_map, i, tmp, feature_data, hentry) {
--		hash_del(&feature_data->hentry);
--		kfree(feature_data);
-+		hash_del_rcu(&feature_data->hentry);
-+		kfree_rcu(feature_data, rcu);
++	spin_lock_irqsave(&reg_driver_map_lock, flags);
+ 	/* Check for existing entry in hash table for given cb_type */
+ 	hash_for_each_possible_safe(reg_driver_map, eve_data, tmp, hentry, PM_INIT_SUSPEND_CB) {
+ 		if (eve_data->cb_type == PM_INIT_SUSPEND_CB) {
+@@ -220,16 +255,17 @@ static int xlnx_remove_cb_for_suspend(event_cb_func_t cb_fun)
+ 			list_for_each_entry_safe(cb_pos, cb_next, &eve_data->cb_list_head, list) {
+ 				if (cb_pos->eve_cb == cb_fun) {
+ 					is_callback_found = true;
+-					list_del_init(&cb_pos->list);
+-					kfree(cb_pos);
++					list_del_rcu(&cb_pos->list);
++					kfree_rcu(cb_pos, rcu);
+ 				}
+ 			}
+ 			/* remove an object from a hashtable */
+-			hash_del(&eve_data->hentry);
+-			kfree(eve_data);
++			hash_del_rcu(&eve_data->hentry);
++			kfree_rcu(eve_data, rcu);
+ 			is_need_to_unregister = true;
+ 		}
  	}
-+	spin_unlock_irqrestore(&pm_api_features_lock, flags);
++	spin_unlock_irqrestore(&reg_driver_map_lock, flags);
+ 	if (!is_callback_found) {
+ 		pr_warn("Didn't find any registered callback for suspend event\n");
+ 		return -EINVAL;
+@@ -247,9 +283,11 @@ static int xlnx_remove_cb_for_notify_event(const u32 node_id, const u32 event,
+ 	struct agent_cb *cb_pos;
+ 	struct agent_cb *cb_next;
+ 	struct hlist_node *tmp;
++	unsigned long flags;
  
- 	platform_device_unregister(em_dev);
+ 	is_need_to_unregister = false;
+ 
++	spin_lock_irqsave(&reg_driver_map_lock, flags);
+ 	/* Check for existing entry in hash table for given key id */
+ 	hash_for_each_possible_safe(reg_driver_map, eve_data, tmp, hentry, key) {
+ 		if (eve_data->key == key) {
+@@ -258,20 +296,21 @@ static int xlnx_remove_cb_for_notify_event(const u32 node_id, const u32 event,
+ 				if (cb_pos->eve_cb == cb_fun &&
+ 				    cb_pos->agent_data == data) {
+ 					is_callback_found = true;
+-					list_del_init(&cb_pos->list);
+-					kfree(cb_pos);
++					list_del_rcu(&cb_pos->list);
++					kfree_rcu(cb_pos, rcu);
+ 				}
+ 			}
+ 
+ 			/* Remove HASH table if callback list is empty */
+ 			if (list_empty(&eve_data->cb_list_head)) {
+ 				/* remove an object from a HASH table */
+-				hash_del(&eve_data->hentry);
+-				kfree(eve_data);
++				hash_del_rcu(&eve_data->hentry);
++				kfree_rcu(eve_data, rcu);
+ 				is_need_to_unregister = true;
+ 			}
+ 		}
+ 	}
++	spin_unlock_irqrestore(&reg_driver_map_lock, flags);
+ 	if (!is_callback_found) {
+ 		pr_warn("Didn't find any registered callback for 0x%x 0x%x\n",
+ 			node_id, event);
+@@ -445,17 +484,18 @@ static void xlnx_call_suspend_cb_handler(const u32 *payload)
+ 	struct registered_event_data *eve_data;
+ 	u32 cb_type = payload[0];
+ 	struct agent_cb *cb_pos;
+-	struct agent_cb *cb_next;
+ 
+ 	/* Check for existing entry in hash table for given cb_type */
+-	hash_for_each_possible(reg_driver_map, eve_data, hentry, cb_type) {
++	rcu_read_lock();
++	hash_for_each_possible_rcu(reg_driver_map, eve_data, hentry, cb_type) {
+ 		if (eve_data->cb_type == cb_type) {
+-			list_for_each_entry_safe(cb_pos, cb_next, &eve_data->cb_list_head, list) {
++			list_for_each_entry_rcu(cb_pos, &eve_data->cb_list_head, list) {
+ 				cb_pos->eve_cb(&payload[0], cb_pos->agent_data);
+ 				is_callback_found = true;
+ 			}
+ 		}
+ 	}
++	rcu_read_unlock();
+ 	if (!is_callback_found)
+ 		pr_warn("Didn't find any registered callback for suspend event\n");
  }
+@@ -467,12 +507,18 @@ static void xlnx_call_notify_cb_handler(const u32 *payload)
+ 	u64 key = ((u64)payload[1] << 32U) | (u64)payload[2];
+ 	int ret;
+ 	struct agent_cb *cb_pos;
+-	struct agent_cb *cb_next;
+ 
++	/*
++	 * Registration may run on another CPU while this SGI is handled. The
++	 * table and the callback lists are walked under RCU; the writers
++	 * publish entries with hash_add_rcu()/list_add_rcu() and free them
++	 * after a grace period, so an entry is never seen before its fields.
++	 */
++	rcu_read_lock();
+ 	/* Check for existing entry in hash table for given key id */
+-	hash_for_each_possible(reg_driver_map, eve_data, hentry, key) {
++	hash_for_each_possible_rcu(reg_driver_map, eve_data, hentry, key) {
+ 		if (eve_data->key == key) {
+-			list_for_each_entry_safe(cb_pos, cb_next, &eve_data->cb_list_head, list) {
++			list_for_each_entry_rcu(cb_pos, &eve_data->cb_list_head, list) {
+ 				cb_pos->eve_cb(&payload[0], cb_pos->agent_data);
+ 				is_callback_found = true;
+ 			}
+@@ -483,8 +529,7 @@ static void xlnx_call_notify_cb_handler(const u32 *payload)
+ 			if (ret) {
+ 				pr_err("%s() failed for 0x%x and 0x%x: %d\r\n", __func__,
+ 				       payload[1], payload[2], ret);
+-				list_for_each_entry_safe(cb_pos, cb_next, &eve_data->cb_list_head,
+-							 list) {
++				list_for_each_entry_rcu(cb_pos, &eve_data->cb_list_head, list) {
+ 					/* Remove already registered event from hash table */
+ 					xlnx_remove_cb_for_notify_event(payload[1], payload[2],
+ 									cb_pos->eve_cb,
+@@ -493,6 +538,7 @@ static void xlnx_call_notify_cb_handler(const u32 *payload)
+ 			}
+ 		}
+ 	}
++	rcu_read_unlock();
+ 	if (!is_callback_found)
+ 		pr_warn("Unhandled SGI node 0x%x event 0x%x. Expected with Xen hypervisor\n",
+ 			payload[1], payload[2]);
+@@ -690,15 +736,18 @@ static void xlnx_event_manager_remove(struct platform_device *pdev)
+ 	int ret;
+ 	struct agent_cb *cb_pos;
+ 	struct agent_cb *cb_next;
++	unsigned long flags;
+ 
++	spin_lock_irqsave(&reg_driver_map_lock, flags);
+ 	hash_for_each_safe(reg_driver_map, i, tmp, eve_data, hentry) {
+ 		list_for_each_entry_safe(cb_pos, cb_next, &eve_data->cb_list_head, list) {
+-			list_del_init(&cb_pos->list);
+-			kfree(cb_pos);
++			list_del_rcu(&cb_pos->list);
++			kfree_rcu(cb_pos, rcu);
+ 		}
+-		hash_del(&eve_data->hentry);
+-		kfree(eve_data);
++		hash_del_rcu(&eve_data->hentry);
++		kfree_rcu(eve_data, rcu);
+ 	}
++	spin_unlock_irqrestore(&reg_driver_map_lock, flags);
+ 
+ 	ret = zynqmp_pm_register_sgi(0, 1);
+ 	if (ret)
 
 ---
 base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20260921-mb-zynqmp-fw-0b430526dada
+change-id: 20260921-mb-xlnx-event-8e2b4b380bb9
 
 Best regards,
 --  
