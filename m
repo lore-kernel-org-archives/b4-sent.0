@@ -1,157 +1,113 @@
-From: Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
-Date: Tue, 22 Sep 2026 15:46:46 +0000
-Subject: [PATCH] scsi: ch: Do not keep references to data transfer element
- devices
+From: David Heidelberg <david@ixit.cz>
+Date: Wed, 23 Sep 2026 00:38:35 +0200
+Subject: [PATCH] misc: fastrpc: Don't fail probe when the SDSP memory
+ assign fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-ch-dt-leak-v1-1-2b2e40bf1624@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAOWismoC/yXMQQ5AMBBA0avIrE2isxBcRSyqHQyCtIikcXfF8
- i3+D+DZCXuokgCOT/GyLhEqTcAMeukZxUYDZZRnJRGaAe2OM+sJDalCtbntrC4gBpvjTq5vVje
- //dGObPb3APf9AEgl7kZuAAAA
-X-Change-ID: 20260922-ch-dt-leak-c2181b6dfda8
-To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <mkp@kernel.org>
-Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Yang Hao <yanghao_ht@163.com>, stable@vger.kernel.org, 
- Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790092005; l=4470;
- i=ahmedhal@gmail.com; s=20260922; h=from:subject:message-id;
- bh=iZVNPPB7mUfBqJBncawixvxcm8hSCLkSxjGpPuZxEew=;
- b=2UeofKhw6wI3aDTyud1oM5f9gWPbzV/lXmlrRTDrU5Zin6Goi0XrWOYBjoukeqmobkRtEamLV
- Q4zxzAKCxGeAIi45BP/0CXWSByCib97cq3Wj7wrIAU2JschKSHZPQU6
-X-Developer-Key: i=ahmedhal@gmail.com; a=ed25519;
- pk=UEFWTgykG696wvaHZw+52zx9UkpJCW3L3hvdRay28Fo=
-X-Endpoint-Received: by B4 Relay for ahmedhal@gmail.com/20260922 with auth_id=1049
+Message-Id: <20260923-fastrpc-fail-slow-v1-1-f3f6fabba6e3@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSw5AQBBF0a1IjXVC+wRbEQNKoUSQrvZJxN41R
+ i9n8O4FQoZJoPAuMLSz8DI7hL4HONRzT4pbZ9CBToNcR6qrxZoV3fKkZFoOFbeYRTmGaZYguN9
+ qqOPza5bVb9makdC+IbjvB2r/TIt1AAAA
+X-Change-ID: 20260923-fastrpc-fail-slow-4dc839c1685c
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>, Arnd Bergmann <arnd@arndb.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Xingjing Deng <micro6947@gmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ stable@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2927; i=david@ixit.cz;
+ h=from:subject:message-id; bh=LVflJZ/2wlziXXcgkjmUlvyrIA4JxMm8+0Fb6m1yJ2E=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqswN4Ww4Isn3b4+WGISIldgE1WYUqWK/0/8UBi
+ M1hUa64M8eJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarMDeAAKCRBgAj/E00kg
+ cp2GD/9xpT04KcafxxzzzuuUOJgWk8Dnw017e+ML+4eNZ+x96udDkrJ26VRQ1lqKDPFSdP42hvq
+ DgNVELWCJuJJ5l3F3vTfxDCzCicDK9d6lTYEw4RKO0UNgcXIEWxGadAAlmBZZT1V0P06eSCCqSE
+ YqqIgcAduy0/GxU4M+cxUrmQ0TWf1eSPT2pTdEwCod6NqoDQ0D5vEWzfro8lAsunNTwDmgMwknO
+ S8K+CDjufT1hgQy0ivffOW9IttgJy7Y5kdmuInnuJFZxQoxdYvuh7wzBFTfPXMOZYDyHG7xwO6U
+ cdcaqYCqvsnLhpLiNps6PeX2Vgcz1ViuTxKLC868vOpikeML6yZPMnaJVd+rOnsTm55S+101J8x
+ umLUQCiVFMhdOL9Pr0dQlOmAP9h9ML3/BaMuiR6CXsneIX4OYPhdggHikBRfGDqNXrbWIawmab2
+ nQxixDbyzWBYEcbngxE5XVGSSD5s6P14hiiAwModMGE5ZDfyTa4gZwf4J1T7G2xS6tLvYDFN6IC
+ nPj+e4wvyJVFFgRdf9HhuH6QqdTnvutEKoaUfO0iZkDi+kfvpVaLoxqqY2FQ7X8H5IuPKy3JF1I
+ hp8JnhKU0rnCifDri+E9poYZhSRLKZP+EuQwp8DI9kuoKadNnsKMxeDlORXdgBcvudyqej0k+MV
+ N3R0Vi7dj8ywbOA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ch_readconfig() looks up the scsi_device of every data transfer element
-whose SCSI id the changer reports in READ ELEMENT STATUS, and stores it
-in ch->dt[]. scsi_device_lookup() takes a reference, and nothing ever
-drops it: ch_destroy() frees the array with kfree(). ch->dt[] is read
-nowhere else - it only supplies the vendor, model and revision printed
-in the same loop.
+A failed qcom_scm_assign_mem() aborts fastrpc_rpmsg_probe(). On SDM845 this
+turns every SLPI subsystem restart into an endless probe failure loop:
 
-Once such a drive is removed, its scsi_device can never be released. It
-stays on the host's device list at its address, so a new device there is
-refused by anything that walks the list - target_core_pscsi reports
-"scsi_device_get() failed for H:C:T:L" - and the low-level driver's
-module can no longer be unloaded. Only a reboot recovers.
+ remoteproc3: crash detected in slpi: type fatal error
+ remoteproc3: remote processor slpi is now up
+ qcom_scm firmware:scm: Assign memory protection call failed -22
+ qcom,fastrpc 5c00000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: probe with driver qcom,fastrpc failed with error -22
+ qcom,fastrpc 5c00000.remoteproc:glink-edge.fastrpcglink-apps-dsp.-1.-1: rpmsg_dev_probe: failed: -22
 
-It shows with any changer that reports its drives' ids; with the mhvtl
-virtual library (IBM 3573-TL personality), each create and remove of a
-library with four drives leaves four references behind, counted by the
-module's use count in lsmod. With ch not bound the count is unchanged,
-and with this patch applied it is unchanged too.
+The first assign succeeds and hands the reserved region to the VMIDs
+described in qcom,vmids. qcom_scm_assign_mem() reports the resulting
+owner set back through @srcvm, but the driver discards it, and nothing
+reverses the assignment in fastrpc_rpmsg_remove(). When the glink
+channel is re-announced after a subsystem restart, probe passes
+src_perms = BIT(QCOM_SCM_VMID_HLOS) again, which no longer describes the
+region, and the firmware rejects the call with -EINVAL.
 
-Drop the reference as soon as the name has been printed, and remove the
-now unused dt[] array. That also removes the array leaked when
-ch_probe() fails after ch_readconfig().
+At that point the region is already assigned, and HLOS is part of the
+destination VMID list, so both the host and the DSP keep access. Failing
+the probe only removes /dev/fastrpc-sdsp and makes the remote reopen the
+channel, repeating the cycle indefinitely. Warn and continue instead
 
-The same leak was reported with an RFC patch in 2022, which was not
-merged.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Assisted-by: LLM
 Cc: stable@vger.kernel.org
-Link: https://lore.kernel.org/linux-scsi/20220719075442.6215-1-yanghao_ht@163.com/
-Signed-off-by: Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
+Fixes: 6a502776f4a4 ("misc: fastrpc: check qcom_scm_assign_mem() return in rpmsg_probe")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Reproduced and tested on RHEL 9 (5.14.0-687.47.1.el9_8) with mhvtl,
-IBM 3573-TL personality, four ULT3580-HHA drives, library created and
-removed; mhvtl module use count leaked:
+Tracking the current owner set so the re-assign is issued with the
+correct source VMIDs is a separate fix, but I assume it would make sense
+to keep that to someone with more knowledge of fastrpc.
 
-  stock ch.ko:                          4
-  ch.ko with this fix:                  0
-  ch.ko with this fix, changer daemon
-  restarted twice while it existed:     0
+I aim here to reverting into usable state again which can be also
+backported.
 
-Build-tested on mkp/scsi.git for-next.
+Tested on Pixel 3 and 3 XL.
 ---
- drivers/scsi/ch.c | 29 +++++++++--------------------
- 1 file changed, 9 insertions(+), 20 deletions(-)
+ drivers/misc/fastrpc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/scsi/ch.c b/drivers/scsi/ch.c
-index 87e51e50a..b2c9fb71c 100644
---- a/drivers/scsi/ch.c
-+++ b/drivers/scsi/ch.c
-@@ -112,7 +112,6 @@ typedef struct {
- 	int                 minor;
- 	char                name[8];
- 	struct scsi_device  *device;
--	struct scsi_device  **dt;        /* ptrs to data transfer elements */
- 	u_int               firsts[CH_TYPES];
- 	u_int               counts[CH_TYPES];
- 	u_int		    voltags;
-@@ -354,15 +353,10 @@ ch_readconfig(scsi_changer *ch)
- 			vendor_labels[i]);
+diff --git a/drivers/misc/fastrpc.c b/drivers/misc/fastrpc.c
+index 90fd669636ec1..41943a3d496af 100644
+--- a/drivers/misc/fastrpc.c
++++ b/drivers/misc/fastrpc.c
+@@ -2590,17 +2590,19 @@ static int fastrpc_rpmsg_probe(struct rpmsg_device *rpdev)
+ 
+ 		err = of_reserved_mem_region_to_resource(rdev->of_node, 0, &res);
+ 		if (!err) {
+ 			src_perms = BIT(QCOM_SCM_VMID_HLOS);
+ 
+ 			err = qcom_scm_assign_mem(res.start, resource_size(&res), &src_perms,
+ 				    data->vmperms, data->vmcount);
+ 			if (err)
+-				goto err_free_data;
++				dev_warn(rdev,
++					 "assign memory to SDSP failed: %d\n",
++					 err);
+ 		}
+ 
  	}
  
--	/* look up the devices of the data transfer elements */
--	ch->dt = kzalloc_objs(*ch->dt, ch->counts[CHET_DT]);
--
--	if (!ch->dt) {
--		kfree(buffer);
--		return -ENOMEM;
--	}
--
-+	/* report the devices of the data transfer elements */
- 	for (elem = 0; elem < ch->counts[CHET_DT]; elem++) {
-+		struct scsi_device *sdev;
-+
- 		id  = -1;
- 		lun = 0;
- 		if (elem < CH_DT_MAX  &&  -1 != dt_id[elem]) {
-@@ -378,10 +372,8 @@ ch_readconfig(scsi_changer *ch)
- 			VPRINTK(KERN_INFO, "dt 0x%x: ",elem+ch->firsts[CHET_DT]);
- 			if (data[6] & 0x80) {
- 				VPRINTK(KERN_CONT, "not this SCSI bus\n");
--				ch->dt[elem] = NULL;
- 			} else if (0 == (data[6] & 0x30)) {
- 				VPRINTK(KERN_CONT, "ID/LUN unknown\n");
--				ch->dt[elem] = NULL;
- 			} else {
- 				id  = ch->device->id;
- 				lun = 0;
-@@ -391,18 +383,16 @@ ch_readconfig(scsi_changer *ch)
- 		}
- 		if (-1 != id) {
- 			VPRINTK(KERN_CONT, "ID %i, LUN %i, ",id,lun);
--			ch->dt[elem] =
--				scsi_device_lookup(ch->device->host,
--						   ch->device->channel,
--						   id,lun);
--			if (!ch->dt[elem]) {
-+			sdev = scsi_device_lookup(ch->device->host,
-+						  ch->device->channel,
-+						  id, lun);
-+			if (!sdev) {
- 				/* should not happen */
- 				VPRINTK(KERN_CONT, "Huh? device not found!\n");
- 			} else {
- 				VPRINTK(KERN_CONT, "name: %8.8s %16.16s %4.4s\n",
--					ch->dt[elem]->vendor,
--					ch->dt[elem]->model,
--					ch->dt[elem]->rev);
-+					sdev->vendor, sdev->model, sdev->rev);
-+				scsi_device_put(sdev);
- 			}
- 		}
- 	}
-@@ -566,7 +556,6 @@ static void ch_destroy(struct kref *ref)
- 	scsi_changer *ch = container_of(ref, scsi_changer, ref);
- 
- 	ch->device = NULL;
--	kfree(ch->dt);
- 	kfree(ch);
- }
- 
+ 	secure_dsp = !(of_property_read_bool(rdev->of_node, "qcom,non-secure-domain"));
+ 	data->secure = secure_dsp;
+ 	data->soc_data = soc_data;
+ 	data->poll_mode_supported = soc_data->poll_mode_supported ||
 
 ---
-base-commit: c3cff7fac01638ab58e85fe7df41a04fa25c5bae
-change-id: 20260922-ch-dt-leak-c2181b6dfda8
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260923-fastrpc-fail-slow-4dc839c1685c
 
 Best regards,
 --  
-Ahmed Abdelhaleem Ahmed <ahmedhal@gmail.com>
+David Heidelberg <david@ixit.cz>
 
