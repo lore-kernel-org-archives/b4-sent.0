@@ -1,114 +1,154 @@
 From: Jaidev Shastri <jaidevshastri@vt.edu>
-Date: Mon, 21 Sep 2026 20:50:07 -0400
-Subject: [PATCH] soc: fsl: dpio: publish the dpaa2_io object only after it
- is initialised
+Date: Mon, 21 Sep 2026 20:51:35 -0400
+Subject: [PATCH] firmware: imx: scu: publish the SCU IPC handles with
+ release semantics
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-mb-dpio-v1-1-9e24539059c1@vt.edu>
-X-B4-Tracking: v=1; b=H4sIAL7QsWoC/yXMzQqDMBAE4FeRPXdLEqXSvkrpIT8b3UKjZK0Ux
- HdvosdvmJkNhDKTwKPZINPKwlMq0JcG/GjTQMihGIwyN3U3Gj8Ow8wTxjb2wUdFsdNQ2nOmyL/
- j6fk6LV/3Jr/UeW04K4Qu2+THGh1c+2uL2Xew738AeU/5iwAAAA==
-X-Change-ID: 20260921-mb-dpio-f3f7dcf0ef41
-To: Ioana Ciornei <ioana.ciornei@nxp.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-arm-kernel@lists.infradead.org, Jaidev Shastri <jaidevshastri@vt.edu>
+Message-Id: <20260921-mb-imx-scu-v1-1-2e2eae4246dd@vt.edu>
+X-B4-Tracking: v=1; b=H4sIABbRsWoC/yXMwQ6CMBAE0F8he3YNLUqDv0I8tMsqa0I1XSEkh
+ H+3xeObzMwGyklY4VZtkHgRlXfMMKcKaPTxyShDNtjatnVnDU4BZVpRaUYeXNe0xnpnr5AHn8Q
+ PWY+z/v63zuHF9C0PpRG8MobkI40lOri4c4OJLrDvPx8cMMGOAAAA
+X-Change-ID: 20260921-mb-imx-scu-ed793612a725
+To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Jaidev Shastri <jaidevshastri@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790038209; l=3325;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790038296; l=4658;
  i=jaidevshastri@vt.edu; s=20260921; h=from:subject:message-id;
- bh=wQTHCaf4jEy7NfQ0KFHxtOmt2diC3tsR4u0sPVS95G0=;
- b=EYwNFa/Y9LJO+l8U8Qu5Ve+uOVx+7ScthfwXG/thxilxOOhjz+LUF7h93j94QS/dHFtb8psGJ
- HKatJQwCKkeBDVb57JSN788q3+DIRuGUGlOgN7bvgpgyAFpcFCvDFYm
+ bh=0RORvg2PXLot2bwSJtUZCYO8QEXAWE0X1XX02gJE4Rc=;
+ b=5B0OQ62kUCr6hzg4bQqVlmfOATttk1UYAXWkEske9/yWnUbQhqgjPXSDLgw9da8Q6JzILEn/v
+ Z5LqaULjNDHD5N38U9jhSWj37uA7QYbPqurec/7H5tiAxmtfOm7QaUV
 X-Developer-Key: i=jaidevshastri@vt.edu; a=ed25519;
  pk=J7+xYJRlTPds+pv5hbqFFRqGCpDeJDzmZT1ggRwj7/0=
 X-Endpoint-Received: by B4 Relay for jaidevshastri@vt.edu/20260921 with auth_id=1044
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dpaa2_io_create() adds the new object to dpio_list and dpio_by_cpu[]
-under dpio_list_lock, but service_select_by_cpu() reads dpio_by_cpu[]
-without the lock on behalf of dpaa2_io_service_select() and
-dpaa2_io_service_register().
+imx_scu_probe() fills struct imx_sc_ipc with the mailbox channels, the
+fast_ipc flag, the mutex and the completion, then stores its address to
+imx_sc_ipc_handle with a plain store. The clk, pinctrl, nvmem, rtc,
+thermal, gpio, reset, pmdomain, remoteproc, fec, flexcan and SOF drivers
+fetch it through imx_scu_get_handle() from their own probe and pass it
+to imx_scu_call_rpc(). Most are not children of the SCU node, so they
+probe from the deferred probe worker or a module load on another CPU
+while imx_scu_probe() is still running.
 
-obj->dev is assigned after the lock is dropped, so a reader can pick the
-object up and pass a NULL supplier to device_link_add(), which fails
-with -EINVAL and fails the consumer's probe. The publication is a plain
-store, so a reader that does not take the lock is also not ordered
-against the stores that set obj->swp, the notification list and the
-object's spinlocks.
+The publication store is not ordered after the stores that built the
+object, so a consumer that passes the NULL check can dereference
+uninitialised channel pointers. The address dependency on the consumer
+side orders its own loads but says nothing about the producer.
 
-dpaa2-eth probes from the deferred probe worker and retries whenever
-another device binds, so it runs while the remaining DPIO objects are
-still being created on multi-core LS2 and LX2 parts.
+imx_sc_irq_ipc_handle has the same shape:
+imx_scu_enable_general_irq_channel() publishes it with a plain store and
+imx_scu_irq_group_enable() uses it as an -EPROBE_DEFER gate for the rtc,
+key and watchdog drivers.
 
-Finish the object before publishing it and store dpio_by_cpu[] with
-smp_store_release(), paired with smp_load_acquire() in
-service_select_by_cpu(). service_select() takes the lock and is
-unchanged.
+Publish both handles with smp_store_release() and read them with
+smp_load_acquire().
 
 Found with MBCheck, a static herd7-based memory consistency checker.
 
 Signed-off-by: Jaidev Shastri <jaidevshastri@vt.edu>
 ---
- drivers/soc/fsl/dpio/dpio-service.c | 27 +++++++++++++++++++--------
- 1 file changed, 19 insertions(+), 8 deletions(-)
+ drivers/firmware/imx/imx-scu-irq.c | 18 +++++++++++++++---
+ drivers/firmware/imx/imx-scu.c     | 14 +++++++++++---
+ 2 files changed, 26 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/soc/fsl/dpio/dpio-service.c b/drivers/soc/fsl/dpio/dpio-service.c
-index 317ca50b0..2dbd14aed 100644
---- a/drivers/soc/fsl/dpio/dpio-service.c
-+++ b/drivers/soc/fsl/dpio/dpio-service.c
-@@ -70,8 +70,12 @@ static inline struct dpaa2_io *service_select_by_cpu(struct dpaa2_io *d,
- 	if (cpu < 0)
- 		cpu = raw_smp_processor_id();
+diff --git a/drivers/firmware/imx/imx-scu-irq.c b/drivers/firmware/imx/imx-scu-irq.c
+index a68d38f89..4f24e3c08 100644
+--- a/drivers/firmware/imx/imx-scu-irq.c
++++ b/drivers/firmware/imx/imx-scu-irq.c
+@@ -143,9 +143,12 @@ int imx_scu_irq_group_enable(u8 group, u32 mask, u8 enable)
+ {
+ 	struct imx_sc_msg_irq_enable msg;
+ 	struct imx_sc_rpc_msg *hdr = &msg.hdr;
++	struct imx_sc_ipc *ipc;
+ 	int ret;
  
--	/* If a specific cpu was requested, pick it up immediately */
--	return dpio_by_cpu[cpu];
+-	if (!imx_sc_irq_ipc_handle)
++	/* Pairs with the smp_store_release() in imx_scu_enable_general_irq_channel(). */
++	ipc = smp_load_acquire(&imx_sc_irq_ipc_handle);
++	if (!ipc)
+ 		return -EPROBE_DEFER;
+ 
+ 	hdr->ver = IMX_SC_RPC_VERSION;
+@@ -158,7 +161,7 @@ int imx_scu_irq_group_enable(u8 group, u32 mask, u8 enable)
+ 	msg.mask = mask;
+ 	msg.enable = enable;
+ 
+-	ret = imx_scu_call_rpc(imx_sc_irq_ipc_handle, &msg, true);
++	ret = imx_scu_call_rpc(ipc, &msg, true);
+ 	if (ret)
+ 		pr_err("enable irq failed, group %d, mask %d, ret %d\n",
+ 			group, mask, ret);
+@@ -201,6 +204,7 @@ int imx_scu_enable_general_irq_channel(struct device *dev)
+ 	struct of_phandle_args spec;
+ 	struct mbox_client *cl;
+ 	struct mbox_chan *ch;
++	struct imx_sc_ipc *ipc;
+ 	int ret = 0, i = 0;
+ 
+ 	if (!of_parse_phandle_with_args(dev->of_node, "mboxes",
+@@ -215,10 +219,18 @@ int imx_scu_enable_general_irq_channel(struct device *dev)
+ 
+ 	mu_resource_id = IMX_SC_R_MU_0A + i;
+ 
+-	ret = imx_scu_get_handle(&imx_sc_irq_ipc_handle);
++	ret = imx_scu_get_handle(&ipc);
+ 	if (ret)
+ 		return ret;
+ 
 +	/*
-+	 * If a specific cpu was requested, pick it up immediately. Pairs with
-+	 * the smp_store_release() in dpaa2_io_create(): the object is only
-+	 * used once every field written before the publication is visible.
++	 * imx_scu_irq_group_enable() tests imx_sc_irq_ipc_handle from other
++	 * drivers' probe paths and then passes it to imx_scu_call_rpc().
++	 * Publish it with release semantics so that the SCU state it points
++	 * to is visible to them.
 +	 */
-+	return smp_load_acquire(&dpio_by_cpu[cpu]);
- }
- 
- static inline struct dpaa2_io *service_select(struct dpaa2_io *d)
-@@ -177,12 +181,6 @@ struct dpaa2_io *dpaa2_io_create(const struct dpaa2_io_desc *desc,
- 	if (obj->dpio_desc.receives_notifications)
- 		qbman_swp_push_set(obj->swp, 0, 1);
- 
--	spin_lock(&dpio_list_lock);
--	list_add_tail(&obj->node, &dpio_list);
--	if (desc->cpu >= 0 && !dpio_by_cpu[desc->cpu])
--		dpio_by_cpu[desc->cpu] = obj;
--	spin_unlock(&dpio_list_lock);
--
- 	obj->dev = dev;
- 
- 	memset(&obj->rx_dim, 0, sizeof(obj->rx_dim));
-@@ -191,6 +189,19 @@ struct dpaa2_io *dpaa2_io_create(const struct dpaa2_io_desc *desc,
- 	obj->bytes = 0;
- 	obj->frames = 0;
- 
-+	/*
-+	 * dpaa2_io_service_select() reads dpio_by_cpu[] without taking
-+	 * dpio_list_lock, so the object must be complete before it is
-+	 * published and the publication needs release semantics.
-+	 */
-+	spin_lock(&dpio_list_lock);
-+	list_add_tail(&obj->node, &dpio_list);
-+	if (desc->cpu >= 0 && !dpio_by_cpu[desc->cpu]) {
-+		/* Pairs with the smp_load_acquire() in service_select_by_cpu(). */
-+		smp_store_release(&dpio_by_cpu[desc->cpu], obj);
-+	}
-+	spin_unlock(&dpio_list_lock);
++	smp_store_release(&imx_sc_irq_ipc_handle, ipc);
 +
- 	return obj;
- }
+ 	cl = devm_kzalloc(dev, sizeof(*cl), GFP_KERNEL);
+ 	if (!cl)
+ 		return -ENOMEM;
+diff --git a/drivers/firmware/imx/imx-scu.c b/drivers/firmware/imx/imx-scu.c
+index 203aac421..e1b9d51a5 100644
+--- a/drivers/firmware/imx/imx-scu.c
++++ b/drivers/firmware/imx/imx-scu.c
+@@ -105,10 +105,13 @@ static inline int imx_sc_to_linux_errno(int errno)
+  */
+ int imx_scu_get_handle(struct imx_sc_ipc **ipc)
+ {
+-	if (!imx_sc_ipc_handle)
++	/* Pairs with the smp_store_release() in imx_scu_probe(). */
++	struct imx_sc_ipc *sc_ipc = smp_load_acquire(&imx_sc_ipc_handle);
++
++	if (!sc_ipc)
+ 		return -EPROBE_DEFER;
  
+-	*ipc = imx_sc_ipc_handle;
++	*ipc = sc_ipc;
+ 	return 0;
+ }
+ EXPORT_SYMBOL(imx_scu_get_handle);
+@@ -345,7 +348,12 @@ static int imx_scu_probe(struct platform_device *pdev)
+ 		return ret;
+ 	init_completion(&sc_ipc->done);
+ 
+-	imx_sc_ipc_handle = sc_ipc;
++	/*
++	 * Consumers fetch the handle from their own probe, possibly on
++	 * another CPU, and then use the channels, the mutex and the completion
++	 * initialised above. Publish it with release semantics.
++	 */
++	smp_store_release(&imx_sc_ipc_handle, sc_ipc);
+ 	ret = devm_add_action_or_reset(dev, imx_scu_clear_handle, sc_ipc);
+ 	if (ret)
+ 		return ret;
 
 ---
 base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20260921-mb-dpio-f3f7dcf0ef41
+change-id: 20260921-mb-imx-scu-ed793612a725
 
 Best regards,
 --  
