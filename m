@@ -1,256 +1,162 @@
 From: Jaidev Shastri <jaidevshastri@vt.edu>
-Date: Mon, 21 Sep 2026 20:28:17 -0400
-Subject: [PATCH] firmware: imx: sm: publish the protocol handle after the
- ops pointer
+Date: Mon, 21 Sep 2026 20:47:08 -0400
+Subject: [PATCH] soc: fsl: qbman: order the probed flags with
+ release/acquire
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-mb-imx-sm-v1-1-39f17526d253@vt.edu>
-X-B4-Tracking: v=1; b=H4sIAKDLsWoC/yXMywrCMBCF4Vcps3YkSY23VxEXSRztCIkyo6VQ+
- u4mdfkdDv8MSsKkcO5mEBpZ+VUq7KaDNITyIORbNTjj9ubkLOaInCfUjNH0R0rkvfUO6v8tdOd
- pbV2uf+s3Pil9WqA9YlDCKKGkoU0rx8O2R0k7WJYfL32Z2Y0AAAA=
-X-Change-ID: 20260921-mb-imx-sm-b038ece55152
-To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+Message-Id: <20260921-mb-qbman-v1-1-35f3321aa330@vt.edu>
+X-B4-Tracking: v=1; b=H4sIAAvQsWoC/yXMQQ7CMAwEwK9UPmOUhlAKX0Ec4uBQIzWAAxVS1
+ b+TlOOsdneGzCqc4dTMoDxJlkcqaDcNhMGnG6Nci8Ea25mjbXEkfNHoE/Yu7juOJvYuQKk/laN
+ 816vz5e/8oTuHd93XBvnMSOpTGGq0cjpsd6jBwbL8APRh8cuMAAAA
+X-Change-ID: 20260921-mb-qbman-84f56ef0f84c
+To: "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Jaidev Shastri <jaidevshastri@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790036919; l=7699;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790038031; l=5060;
  i=jaidevshastri@vt.edu; s=20260921; h=from:subject:message-id;
- bh=MVi9AlTKi2qUQtZyArCJT4Gbtet0T4epZvMQSbFRRLc=;
- b=+HX5ho3X6G6TKmcmVBZqXdSKnvD/ZBoZe11QNj4rKhZp1o9Gt9MLVR53YC6JnddxMrPp+KFMa
- 4bHBzgek/MABfU/R5+nDtB/2NNSaS7rt7j3JJIdrYX7G8iCKFEasN94
+ bh=fT0InRMlMFbZ9CKVfdOgEtwLmnpvFnvqHzVcYJmm3RA=;
+ b=dfSMjLLaNzAGsFr3S0RP9Qjbm7gVRjFVsP27ngUULTv6uXzFilh88P58W/+zlBX4bIuxmW63r
+ m/PPbt94y/+BJ1+VKHc5/9AurqvVnFu/NlOkiHhF/JBjoaZ+uOYOS8F
 X-Developer-Key: i=jaidevshastri@vt.edu; a=ed25519;
  pk=J7+xYJRlTPds+pv5hbqFFRqGCpDeJDzmZT1ggRwj7/0=
 X-Endpoint-Received: by B4 Relay for jaidevshastri@vt.edu/20260921 with auth_id=1044
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sm-cpu, sm-lmm and sm-misc export helpers such as scmi_imx_cpu_start()
-and scmi_imx_lmm_info() to imx_rproc, fsl_sai and the i.MX SOF driver.
-Each helper gates on the file-scope protocol handle:
+dpaa_eth, caam and the portal drivers poll qman_is_probed(),
+bman_is_probed(), qman_portals_probed() and bman_portals_probed() before
+they touch the state the probe functions set up: qman_ip_rev, the CCSR
+and portal register maps, the FQD and PFDR bases, affine_portals and the
+pool allocators.
 
-	if (!ph)
-		return -EPROBE_DEFER;
-	return imx_cpu_ops->cpu_start(ph, ...);
+Each flag is set with a plain store at the end of its probe function and
+read with a plain load in the exported accessor. The stores that build
+the state are not ordered before the store to the flag, and the
+consumer's load of the flag is not ordered before its loads of the
+state. A consumer probing on another CPU can see the flag set and then
+read state that is still stale or zeroed, and program the hardware with
+it.
 
-The probe functions set both globals in one statement:
-
-	imx_cpu_ops = handle->devm_protocol_get(sdev, ..., &ph);
-
-scmi_devm_protocol_get() stores *ph before it returns, so the gate
-becomes non-NULL before the ops pointer it guards is written. A consumer
-that passes the gate in that window dereferences imx_cpu_ops == NULL.
-Nothing orders the two stores for a reader either: the writer has no
-release, the reader has no acquire, and the load of imx_cpu_ops does not
-depend on the value of ph.
-
-Take the handle into a local, assign the ops pointer first and publish
-the handle with smp_store_release(). Read it with smp_load_acquire() in
-the exported helpers.
+Set the flags with smp_store_release() and read them with
+smp_load_acquire(). The error paths storing -1 keep their plain stores:
+a consumer that sees -1 fails its own probe without touching the state.
 
 Found with MBCheck, a static herd7-based memory consistency checker.
 
 Signed-off-by: Jaidev Shastri <jaidevshastri@vt.edu>
 ---
- drivers/firmware/imx/sm-cpu.c  | 24 ++++++++++++++++++------
- drivers/firmware/imx/sm-lmm.c  | 24 ++++++++++++++++++------
- drivers/firmware/imx/sm-misc.c | 24 ++++++++++++++++++------
- 3 files changed, 54 insertions(+), 18 deletions(-)
+ drivers/soc/fsl/qbman/bman_ccsr.c   |  6 ++++--
+ drivers/soc/fsl/qbman/bman_portal.c |  6 ++++--
+ drivers/soc/fsl/qbman/qman_ccsr.c   | 11 +++++++++--
+ drivers/soc/fsl/qbman/qman_portal.c |  6 ++++--
+ 4 files changed, 21 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/firmware/imx/sm-cpu.c b/drivers/firmware/imx/sm-cpu.c
-index 091b014f7..60ba700d0 100644
---- a/drivers/firmware/imx/sm-cpu.c
-+++ b/drivers/firmware/imx/sm-cpu.c
-@@ -16,7 +16,8 @@ static struct scmi_protocol_handle *ph;
- int scmi_imx_cpu_reset_vector_set(u32 cpuid, u64 vector, bool start, bool boot,
- 				  bool resume)
+diff --git a/drivers/soc/fsl/qbman/bman_ccsr.c b/drivers/soc/fsl/qbman/bman_ccsr.c
+index b0f26f6f7..c5be35aba 100644
+--- a/drivers/soc/fsl/qbman/bman_ccsr.c
++++ b/drivers/soc/fsl/qbman/bman_ccsr.c
+@@ -180,7 +180,8 @@ static irqreturn_t bman_isr(int irq, void *ptr)
+ 
+ int bman_is_probed(void)
  {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
+-	return __bman_probed;
++	/* Pairs with smp_store_release() in fsl_bman_probe(). */
++	return smp_load_acquire(&__bman_probed);
+ }
+ EXPORT_SYMBOL_GPL(bman_is_probed);
  
- 	return imx_cpu_ops->cpu_reset_vector_set(ph, cpuid, vector, start,
-@@ -26,7 +27,8 @@ EXPORT_SYMBOL(scmi_imx_cpu_reset_vector_set);
- 
- int scmi_imx_cpu_start(u32 cpuid, bool start)
- {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	if (start)
-@@ -38,7 +40,8 @@ EXPORT_SYMBOL(scmi_imx_cpu_start);
- 
- int scmi_imx_cpu_started(u32 cpuid, bool *started)
- {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	if (!started)
-@@ -51,6 +54,8 @@ EXPORT_SYMBOL(scmi_imx_cpu_started);
- static int scmi_imx_cpu_probe(struct scmi_device *sdev)
- {
- 	const struct scmi_handle *handle = sdev->handle;
-+	const struct scmi_imx_cpu_proto_ops *ops;
-+	struct scmi_protocol_handle *cpu_ph;
- 
- 	if (!handle)
- 		return -ENODEV;
-@@ -60,9 +65,16 @@ static int scmi_imx_cpu_probe(struct scmi_device *sdev)
- 		return -EEXIST;
+@@ -279,7 +280,8 @@ static int fsl_bman_probe(struct platform_device *pdev)
+ 		return ret;
  	}
  
--	imx_cpu_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_CPU, &ph);
--	if (IS_ERR(imx_cpu_ops))
--		return PTR_ERR(imx_cpu_ops);
-+	ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_CPU, &cpu_ph);
-+	if (IS_ERR(ops))
-+		return PTR_ERR(ops);
-+
-+	imx_cpu_ops = ops;
+-	__bman_probed = 1;
++	/* Order bm_ccsr_start, bman_ip_rev and the pool allocator before the flag. */
++	smp_store_release(&__bman_probed, 1);
+ 
+ 	return 0;
+ };
+diff --git a/drivers/soc/fsl/qbman/bman_portal.c b/drivers/soc/fsl/qbman/bman_portal.c
+index 4d7b9caee..056fe3fbb 100644
+--- a/drivers/soc/fsl/qbman/bman_portal.c
++++ b/drivers/soc/fsl/qbman/bman_portal.c
+@@ -90,7 +90,8 @@ static int bman_online_cpu(unsigned int cpu)
+ 
+ int bman_portals_probed(void)
+ {
+-	return __bman_portals_probed;
++	/* Pairs with smp_store_release() in bman_portal_probe(). */
++	return smp_load_acquire(&__bman_portals_probed);
+ }
+ EXPORT_SYMBOL_GPL(bman_portals_probed);
+ 
+@@ -157,7 +158,8 @@ static int bman_portal_probe(struct platform_device *pdev)
+ 	spin_lock(&bman_lock);
+ 	cpu = cpumask_first_zero(&portal_cpus);
+ 	if (cpu >= nr_cpu_ids) {
+-		__bman_portals_probed = 1;
++		/* All CPU-bound portals are initialised and in affine_bportals. */
++		smp_store_release(&__bman_portals_probed, 1);
+ 		/* unassigned portal, skip init */
+ 		spin_unlock(&bman_lock);
+ 		goto check_cleanup;
+diff --git a/drivers/soc/fsl/qbman/qman_ccsr.c b/drivers/soc/fsl/qbman/qman_ccsr.c
+index aa5348f49..b46cfb964 100644
+--- a/drivers/soc/fsl/qbman/qman_ccsr.c
++++ b/drivers/soc/fsl/qbman/qman_ccsr.c
+@@ -711,7 +711,8 @@ static int qman_resource_init(struct device *dev)
+ 
+ int qman_is_probed(void)
+ {
+-	return __qman_probed;
++	/* Pairs with smp_store_release() in fsl_qman_probe(). */
++	return smp_load_acquire(&__qman_probed);
+ }
+ EXPORT_SYMBOL_GPL(qman_is_probed);
+ 
+@@ -864,7 +865,13 @@ static int fsl_qman_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	__qman_probed = 1;
 +	/*
-+	 * ph is the gate the exported helpers test. Publish it only after
-+	 * imx_cpu_ops is set, and pair with the smp_load_acquire() there.
++	 * Publish the flag only after every store made above (qman_ip_rev,
++	 * qm_ccsr_start, the FQD/PFDR bases, the work queue) is visible to
++	 * the consumers that poll qman_is_probed() and then call into
++	 * qman_set_sdest(), qman_liodn_fixup(), qman_alloc_*().
 +	 */
-+	smp_store_release(&ph, cpu_ph);
++	smp_store_release(&__qman_probed, 1);
  
  	return 0;
  }
-diff --git a/drivers/firmware/imx/sm-lmm.c b/drivers/firmware/imx/sm-lmm.c
-index 6807bf563..0e2cc7153 100644
---- a/drivers/firmware/imx/sm-lmm.c
-+++ b/drivers/firmware/imx/sm-lmm.c
-@@ -15,7 +15,8 @@ static struct scmi_protocol_handle *ph;
+diff --git a/drivers/soc/fsl/qbman/qman_portal.c b/drivers/soc/fsl/qbman/qman_portal.c
+index 456ef5d5c..181c0f373 100644
+--- a/drivers/soc/fsl/qbman/qman_portal.c
++++ b/drivers/soc/fsl/qbman/qman_portal.c
+@@ -175,7 +175,8 @@ static int qman_online_cpu(unsigned int cpu)
  
- int scmi_imx_lmm_info(u32 lmid, struct scmi_imx_lmm_info *info)
+ int qman_portals_probed(void)
  {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	if (!info)
-@@ -27,7 +28,8 @@ EXPORT_SYMBOL(scmi_imx_lmm_info);
- 
- int scmi_imx_lmm_reset_vector_set(u32 lmid, u32 cpuid, u32 flags, u64 vector)
- {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	return imx_lmm_ops->lmm_reset_vector_set(ph, lmid, cpuid, flags, vector);
-@@ -36,7 +38,8 @@ EXPORT_SYMBOL(scmi_imx_lmm_reset_vector_set);
- 
- int scmi_imx_lmm_operation(u32 lmid, enum scmi_imx_lmm_op op, u32 flags)
- {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	switch (op) {
-@@ -57,6 +60,8 @@ EXPORT_SYMBOL(scmi_imx_lmm_operation);
- static int scmi_imx_lmm_probe(struct scmi_device *sdev)
- {
- 	const struct scmi_handle *handle = sdev->handle;
-+	const struct scmi_imx_lmm_proto_ops *ops;
-+	struct scmi_protocol_handle *lmm_ph;
- 
- 	if (!handle)
- 		return -ENODEV;
-@@ -66,9 +71,16 @@ static int scmi_imx_lmm_probe(struct scmi_device *sdev)
- 		return -EEXIST;
- 	}
- 
--	imx_lmm_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_LMM, &ph);
--	if (IS_ERR(imx_lmm_ops))
--		return PTR_ERR(imx_lmm_ops);
-+	ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_LMM, &lmm_ph);
-+	if (IS_ERR(ops))
-+		return PTR_ERR(ops);
-+
-+	imx_lmm_ops = ops;
-+	/*
-+	 * ph is the gate the exported helpers test. Publish it only after
-+	 * imx_lmm_ops is set, and pair with the smp_load_acquire() there.
-+	 */
-+	smp_store_release(&ph, lmm_ph);
- 
- 	return 0;
+-	return __qman_portals_probed;
++	/* Pairs with smp_store_release() in qman_portal_probe(). */
++	return smp_load_acquire(&__qman_portals_probed);
  }
-diff --git a/drivers/firmware/imx/sm-misc.c b/drivers/firmware/imx/sm-misc.c
-index fb8d7bdb5..178a3f748 100644
---- a/drivers/firmware/imx/sm-misc.c
-+++ b/drivers/firmware/imx/sm-misc.c
-@@ -43,7 +43,8 @@ static const struct of_device_id allowlist[] = {
+ EXPORT_SYMBOL_GPL(qman_portals_probed);
  
- int scmi_imx_misc_ctrl_set(u32 id, u32 val)
- {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	return imx_misc_ctrl_ops->misc_ctrl_set(ph, id, 1, &val);
-@@ -52,7 +53,8 @@ EXPORT_SYMBOL(scmi_imx_misc_ctrl_set);
- 
- int scmi_imx_misc_ctrl_get(u32 id, u32 *num, u32 *val)
- {
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -EPROBE_DEFER;
- 
- 	return imx_misc_ctrl_ops->misc_ctrl_get(ph, id, num, val);
-@@ -82,7 +84,8 @@ static int syslog_show(struct seq_file *file, void *priv)
- 	if (!syslog)
- 		return -ENOMEM;
- 
--	if (!ph)
-+	/* Pairs with the smp_store_release() in the probe function. */
-+	if (!smp_load_acquire(&ph))
- 		return -ENODEV;
- 
- 	ret = imx_misc_ctrl_ops->misc_syslog(ph, &size, syslog);
-@@ -153,6 +156,8 @@ static int scmi_imx_misc_ctrl_probe(struct scmi_device *sdev)
- {
- 	const struct scmi_handle *handle = sdev->handle;
- 	struct device_node *np = sdev->dev.of_node;
-+	const struct scmi_imx_misc_proto_ops *ops;
-+	struct scmi_protocol_handle *misc_ph;
- 	struct dentry *scmi_imx_dentry;
- 	u32 src_id, flags;
- 	int ret, i, num;
-@@ -165,9 +170,16 @@ static int scmi_imx_misc_ctrl_probe(struct scmi_device *sdev)
- 		return -EEXIST;
- 	}
- 
--	imx_misc_ctrl_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_MISC, &ph);
--	if (IS_ERR(imx_misc_ctrl_ops))
--		return PTR_ERR(imx_misc_ctrl_ops);
-+	ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_IMX_MISC, &misc_ph);
-+	if (IS_ERR(ops))
-+		return PTR_ERR(ops);
-+
-+	imx_misc_ctrl_ops = ops;
-+	/*
-+	 * ph is the gate the exported helpers test. Publish it only after
-+	 * imx_misc_ctrl_ops is set, and pair with the smp_load_acquire() there.
-+	 */
-+	smp_store_release(&ph, misc_ph);
- 
- 	num = of_property_count_u32_elems(np, "nxp,ctrl-ids");
- 	if (num % 2) {
+@@ -251,7 +252,8 @@ static int qman_portal_probe(struct platform_device *pdev)
+ 	spin_lock(&qman_lock);
+ 	cpu = cpumask_first_zero(&portal_cpus);
+ 	if (cpu >= nr_cpu_ids) {
+-		__qman_portals_probed = 1;
++		/* All CPU-bound portals are initialised and in affine_portals. */
++		smp_store_release(&__qman_portals_probed, 1);
+ 		/* unassigned portal, skip init */
+ 		spin_unlock(&qman_lock);
+ 		goto check_cleanup;
 
 ---
 base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20260921-mb-imx-sm-b038ece55152
+change-id: 20260921-mb-qbman-84f56ef0f84c
 
 Best regards,
 --  
