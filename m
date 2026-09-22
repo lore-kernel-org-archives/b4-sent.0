@@ -1,71 +1,76 @@
-From: Kim Wooseok <5mghybrid@khu.ac.kr>
-Date: Tue, 22 Sep 2026 18:10:52 +0900
-Subject: [PATCH net-next 4/4] net: macb: Clear SRTSM outside PTPv2 receive
- filters
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH v2 0/3] usb: mtu3: add mt6595 support
+Date: Tue, 22 Sep 2026 13:36:39 +0300
+Message-Id: <20260922-6595-mtu3-v2-0-71203a362b36@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260922-codex-macb-hwtstamp-submit-v1-4-9d1abaa53296@khu.ac.kr>
-References: <20260922-codex-macb-hwtstamp-submit-v1-0-9d1abaa53296@khu.ac.kr>
-In-Reply-To: <20260922-codex-macb-hwtstamp-submit-v1-0-9d1abaa53296@khu.ac.kr>
-To: netdev@vger.kernel.org, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Rafal Ozieblo <rafalo@cadence.com>
-Cc: Conor Dooley <conor.dooley@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Nicolai Buchwitz <nb@tipi-net.de>, linux-kernel@vger.kernel.org, 
- Kim Wooseok <5mghybrid@khu.ac.kr>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790068248; l=1561;
- i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
- bh=JVParaFvYlI5ctrTvZ9cMHt5duuXvX87rDYRzFSFD6M=;
- b=yDHkKLNMdhwfr3PA1TyM75Ir9TcFgbgFsB/o4BCDOc8MqWYVha0PilBgnXwLJns4E73h94EX3
- +fjSqn/T49bCh9oXBIX5oEgOWeyZ0FngClcGGVDyamGc+VRMngrpppe
-X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
- pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
-X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02NSwqDMBQAryJv3ZQkxu+q9yguYnytr1QjSZQW8
+ e41lkKXA8PMCh4doYc6WcHhQp7suIM8JWB6Pd6RUbczSC5zXgnF8qzK2BDmlJWyTbkqUQnUsPu
+ Twxu9jta1+bKf2weaEAPR6MkH697HbBHR+3WLv+4iGGdatrowMuVdXl4mZ4MdB03Ps7EDNNu2f
+ QD9ZHESuQAAAA==
+X-Change-ID: 20260914-6595-mtu3-82b3048e41ea
+To: Chunfeng Yun <chunfeng.yun@mediatek.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: linux-usb@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790073400; l=1822;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=XebCtYDXuoeTQItvr9tTkpbN8O4ztzoOG5eWaY6dSNg=;
+ b=PVlzxA/nJQVDJMcS5/bXyZczb92MQbRfoA5S715QQ1oDDBYHcsuMEjsJ+VCAJFykdYysL9sP3
+ F2x3PmMEdL3CoRinaUzEAqY2tym6VYl1ePfylSede39esbDYAeVtfXc
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A PTPv2 receive filter sets NCR.SRTSM, but switching to NONE, ALL or a
-PTPv1 filter leaves it set. As a result, selecting the same filter can
-produce a different register setting depending on whether PTPv2 was
-used before.
+This patch series adds mt6595 SoC support to the mtu3 driver.
 
-Update SRTSM whenever the RX filter changes, setting it only for PTPv2.
-Switching away from PTPv2 then clears the old setting, so the bit follows
-the currently selected filter.
+Unlike the mt8173 and newer controllers, the 6595 uses older IP revision
+that can handle only one FIFO slot. Without this series, the current
+driver implementation results in 2 to 4 lost bytes on USB transfers.
 
-Assisted-by: GPT-6 Astra
-Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
+In mediatek sources, mt6595 is sometimes called 6795. Most of their
+clocks/pins are also compatible. It's not clear if 6795 has the same
+issue or simply lacks T-PHY patch. Other (rare) mobile SoCs with mtu3,
+like mt6757 or 6771, don't need this series.
+
+Another thing worth mentioning, this series is not enough for the USB on
+6595. The other T-PHY patch is required to get the link up. This issue
+has been observed on some 65xx and most 67xx SoCs. Though this is a
+subject for the separate discussion.
+
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/net/ethernet/cadence/macb_ptp.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Changes in v2:
+- Reword patch 2 commit title
+- single_slot -> fifo_single_slot naming
+- Drop redundant platform data check
+- Link to v1: https://patch.msgid.link/20260917-6595-mtu3-v1-0-a2ba7c230d68@protonmail.com
 
-diff --git a/drivers/net/ethernet/cadence/macb_ptp.c b/drivers/net/ethernet/cadence/macb_ptp.c
-index 6376b6631..637d0da32 100644
---- a/drivers/net/ethernet/cadence/macb_ptp.c
-+++ b/drivers/net/ethernet/cadence/macb_ptp.c
-@@ -390,7 +390,7 @@ int gem_set_hwtst(struct net_device *netdev,
- 		  struct kernel_hwtstamp_config *tstamp_config,
- 		  struct netlink_ext_ack *extack)
- {
--	u32 ncr_mask = MACB_BIT(OSSMODE);
-+	u32 ncr_mask = MACB_BIT(OSSMODE) | MACB_BIT(SRTSM);
- 	enum macb_bd_control tx_bd_control = TSTAMP_DISABLED;
- 	enum macb_bd_control rx_bd_control = TSTAMP_DISABLED;
- 	int rx_filter = tstamp_config->rx_filter;
-@@ -429,7 +429,6 @@ int gem_set_hwtst(struct net_device *netdev,
- 	case HWTSTAMP_FILTER_PTP_V2_L4_DELAY_REQ:
- 		rx_bd_control = TSTAMP_ALL_PTP_FRAMES;
- 		rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
--		ncr_mask |= MACB_BIT(SRTSM);
- 		ncr_bits |= MACB_BIT(SRTSM);
- 		break;
- 	case HWTSTAMP_FILTER_PTP_V1_L4_SYNC:
+---
+Roman Vivchar (3):
+      dt-bindings: usb: mtu3: add mt6595
+      usb: mtu3: add SoC platform data for FIFO quirk handling
+      usb: mtu3: add mt6595 support
 
--- 
-2.53.0
+ Documentation/devicetree/bindings/usb/mediatek,mtu3.yaml |  1 +
+ drivers/usb/mtu3/mtu3.h                                  |  9 +++++++++
+ drivers/usb/mtu3/mtu3_core.c                             |  3 +++
+ drivers/usb/mtu3/mtu3_gadget.c                           |  8 ++++++--
+ drivers/usb/mtu3/mtu3_plat.c                             | 13 +++++++++++--
+ 5 files changed, 30 insertions(+), 4 deletions(-)
+---
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+change-id: 20260914-6595-mtu3-82b3048e41ea
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
