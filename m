@@ -1,70 +1,54 @@
 From: Jaidev Shastri <jaidevshastri@vt.edu>
-Date: Mon, 21 Sep 2026 21:23:43 -0400
-Subject: [PATCH] timekeeping: publish suspend_timing_needed with release
- semantics
+Subject: [PATCH 0/2] PM: sleep: make the async callback state explicit
+Date: Mon, 21 Sep 2026 21:24:41 -0400
+Message-Id: <20260921-mb-pm-main-v1-0-1d4cbd9d2b2c@vt.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260921-mb-timekeeping-v1-1-282f1f4121ed@vt.edu>
-X-B4-Tracking: v=1; b=H4sIAJ7YsWoC/yXMzQ6CMBAE4Fche3ZNW//QVzEe2jrAaiikRWJCe
- HdbPH6TmVkoIQoS3aqFImZJMoQMvavIdza0YHlmk1HmrK5Gc+94kh5vYJTQsnV1g5OptYKnPBo
- jGvluh/fH3+njXvBTeSkNZxPYRRt8V6KN82V/4OiPtK4/eyVLVJIAAAA=
-X-Change-ID: 20260921-mb-timekeeping-ab8fe52810ec
-To: John Stultz <jstultz@google.com>, Thomas Gleixner <tglx@kernel.org>, 
- Stephen Boyd <sboyd@kernel.org>, Miroslav Lichvar <mlichvar@redhat.com>
-Cc: linux-kernel@vger.kernel.org, Jaidev Shastri <jaidevshastri@vt.edu>
+X-B4-Tracking: v=1; b=H4sIANnYsWoC/yXMwQrCMBAE0F8pe3YljcGivyIeNunGrpBYslqE0
+ n83qcc3zMwKykVY4dqtUHgRlVeu6A8dhInyg1HGarDGns3F9pg8zgkTSUYebTQUiQbnoA7mwlG
+ ++9nt/rd+/JPDuz20hidl9IVymFq0cxmOJyzBwbb9AKT0AlOOAAAA
+X-Change-ID: 20260921-mb-pm-main-ed2f0afaa744
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, Len Brown <lenb@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Danilo Krummrich <dakr@kernel.org>
+Cc: linux-pm@vger.kernel.org, driver-core@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Jaidev Shastri <jaidevshastri@vt.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790040224; l=1568;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790040284; l=1062;
  i=jaidevshastri@vt.edu; s=20260921; h=from:subject:message-id;
- bh=cFvsdCri+WSttL45t1gLuvPcu/++U/qXQAilyA7gKyA=;
- b=XsfM9ZYumY0npb7drz9mhmdcbVQsWkgjIVxLDsQgPI6ECxkHMcIuF7OPgNWn8CvdOC7Iet4E7
- eKkWzMB1GQVCmuioJ9SQfOt/hqqSQMYRUzAM5PuyPGMc0nDTKRh6YSj
+ bh=iS/eUwwMdVFzfK8MlyhjnMq/tM9U1dbxJyRgPvGt1xw=;
+ b=m/1p/8Kw0cKXFUUNs6T0+gIF2NOs8aKH948moy2ip0ShkNJVF2oq3YzqmemITIKbPS4Cg1llE
+ 49XebTnZxW9CWy5AvwVktstFbt5GfZjIikARkMYnuX3iQGDpcLRzY8a
 X-Developer-Key: i=jaidevshastri@vt.edu; a=ed25519;
  pk=J7+xYJRlTPds+pv5hbqFFRqGCpDeJDzmZT1ggRwj7/0=
 X-Endpoint-Received: by B4 Relay for jaidevshastri@vt.edu/20260921 with auth_id=1044
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-timekeeping_suspend() sets suspend_timing_needed with a plain store
-after it has read the persistent clock. timekeeping_rtc_skipresume()
-reads it with a plain load on behalf of the RTC class during resume.
+The dpm_*() phase functions publish pm_transition and reset async_error
+before scheduling the asynchronous device callbacks, which read both from
+other CPUs.
 
-Set it with smp_store_release() and read it with smp_load_acquire().
+async_schedule_dev() contains full barriers, so neither patch changes
+behaviour. The first states the publication with a release/acquire pair on
+pm_transition.event. The second uses WRITE_ONCE() for the async_error reset,
+so that every access to that variable follows the convention its readers and
+the failure paths already use.
 
 Found with MBCheck, a static herd7-based memory consistency checker.
+Compile-tested on arm64 with W=1, no new warnings.
 
-Signed-off-by: Jaidev Shastri <jaidevshastri@vt.edu>
 ---
- kernel/time/timekeeping.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Jaidev Shastri (2):
+      PM: sleep: publish pm_transition with release semantics
+      PM: sleep: reset async_error with WRITE_ONCE()
 
-diff --git a/kernel/time/timekeeping.c b/kernel/time/timekeeping.c
-index ea2e6e55f..2b15268c3 100644
---- a/kernel/time/timekeeping.c
-+++ b/kernel/time/timekeeping.c
-@@ -2141,7 +2141,8 @@ static void __timekeeping_inject_sleeptime(struct timekeeper *tk,
-  */
- bool timekeeping_rtc_skipresume(void)
- {
--	return !suspend_timing_needed;
-+	/* Pairs with the smp_store_release() in timekeeping_suspend(). */
-+	return !smp_load_acquire(&suspend_timing_needed);
- }
- 
- /*
-@@ -2272,7 +2273,8 @@ int timekeeping_suspend(void)
- 	if (timekeeping_suspend_time.tv_sec || timekeeping_suspend_time.tv_nsec)
- 		persistent_clock_exists = true;
- 
--	suspend_timing_needed = true;
-+	/* Pairs with the smp_load_acquire() in timekeeping_rtc_skipresume(). */
-+	smp_store_release(&suspend_timing_needed, true);
- 
- 	raw_spin_lock_irqsave(&tk_core.lock, flags);
- 	timekeeping_forward_now(tks);
-
+ drivers/base/power/main.c | 40 +++++++++++++++++++++++++---------------
+ 1 file changed, 25 insertions(+), 15 deletions(-)
 ---
 base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20260921-mb-timekeeping-ab8fe52810ec
+change-id: 20260921-mb-pm-main-ed2f0afaa744
 
 Best regards,
 --  
