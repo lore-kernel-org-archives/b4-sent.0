@@ -1,90 +1,111 @@
-From: Kim Wooseok <5mghybrid@khu.ac.kr>
-Date: Wed, 23 Sep 2026 18:13:27 +0900
-Subject: [PATCH net-next v2 3/3] net: macb: Clear SRTSM outside PTPv2
- receive filters
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Wed, 23 Sep 2026 03:52:11 -0700
+Subject: [PATCH] RDMA/rtrs-clt: Validate peer-supplied IO completion msg_id
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260923-macb-hwtstamp-rework-v2-3-75c909b2676d@khu.ac.kr>
-References: <20260923-macb-hwtstamp-rework-v2-0-75c909b2676d@khu.ac.kr>
-In-Reply-To: <20260923-macb-hwtstamp-rework-v2-0-75c909b2676d@khu.ac.kr>
-To: netdev@vger.kernel.org, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Rafal Ozieblo <rafalo@cadence.com>
-Cc: Conor Dooley <conor.dooley@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Nicolai Buchwitz <nb@tipi-net.de>, linux-kernel@vger.kernel.org, 
- Kim Wooseok <5mghybrid@khu.ac.kr>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790154804; l=2127;
- i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
- bh=WiaT0nCaU15dA1T8GkP2fmhDBGDx/aNqNtDuGkweupA=;
- b=0N7PocSRbYgU05JIYfAPz0pnVoXtFrYkAN3zVWXha3BIC3O+1hbZZA4+qI4C8YWab9iOVP7j1
- YTZqNNYyCEkAoHtH8nPgJTcqrNTndP/jGaGOY1ELzsAnHZgiMKua6vE
-X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
- pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
-X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260923-rtrs-warning-inrtrs-clt-rdma-done-v1-1-0827a9a77c0b@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNwQrCMAyA4VcZORvoWubQVxEPXRtnRDNJOhXG3
+ t06j9/l/xcwUiaDY7OA0ouNJ6lodw2ka5SRkHM1eOf37uADalHDd1RhGZFlY7oX1PyImCchDLH
+ 3uQ9d54YWauepdOHP9jid/7Z5uFEqvzCs6xcvlyFBhQAAAA==
+X-Change-ID: 20260923-rtrs-warning-inrtrs-clt-rdma-done-3a72d73550b1
+To: "Md. Haris Iqbal" <haris.iqbal@ionos.com>, 
+ Jack Wang <jinpu.wang@ionos.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Leon Romanovsky <leon@kernel.org>, 
+ Danil Kipnis <danil.kipnis@cloud.ionos.com>
+Cc: Jack Wang <jinpu.wang@cloud.ionos.com>, linux-rdma@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Farhad Alemi <farhad.alemi@berkeley.edu>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790160731; l=3239;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=GDXHINJv2vDuvTX9EdmF1T8Ljuh5MUi1ez80LQxqrxY=;
+ b=iSVJPsFdC0q9D4T0Sr5eEF7iq1+y6QVBvdXATXMYmK/mTcjNAtyIEBS4NuO6K4YLSu6oPMf/o
+ 5H/+dAd/CyZD/UMA+ipyjDhb6QCaZpP2ovLgfQpfcYG68ItJ9GIPob5
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A PTPv2 receive filter sets NCR.SRTSM, but switching to NONE, ALL or a
-PTPv1 filter leaves it set. As a result, selecting the same filter can
-produce a different register setting depending on whether PTPv2 was
-used before.
+process_io_rsp() indexes clt_path->reqs[] with the 19-bit msg_id
+taken from a WRITE_WITH_IMM immediate. That value is chosen by the
+peer. The only check was WARN_ON(msg_id >= queue_depth), which still
+lets a completion run after free_path_reqs() has set reqs to NULL,
+or against a slot whose FRWR is already gone. Either path
+dereferences req->mr and can GPF; KASAN reports a null-ptr-deref at
+offsetof(struct rtrs_clt_io_req, mr).
 
-Update SRTSM whenever the RX filter changes, setting it only for PTPv2.
-Switching away from PTPv2 then clears the old setting, so the bit follows
-the currently selected filter.
+Treat a missing reqs array, an out-of-range msg_id, or a req
+without an MR as a protocol error and recover the connection.
 
-Reviewed-by: Nicolai Buchwitz <nb@tipi-net.de>
-Reviewed-by: Théo Lebrun <theo.lebrun@bootlin.com>
-Tested-by: Nicolai Buchwitz <nb@tipi-net.de>
-Assisted-by: GPT-6 Astra
-Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
+Reported-by: Farhad Alemi <farhad.alemi@berkeley.edu>
+Link: https://lore.kernel.org/r/CA+0ovCiJZz6O8LzsS9Dq1-JE1OE1L_OTA6Mr-WratpUE6jczHw@mail.gmail.com
+Fixes: 6a98d71daea1 ("RDMA/rtrs: client: main functionality")
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- drivers/net/ethernet/cadence/macb_ptp.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ drivers/infiniband/ulp/rtrs/rtrs-clt.c | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/net/ethernet/cadence/macb_ptp.c b/drivers/net/ethernet/cadence/macb_ptp.c
-index af2e36f81..2fd063394 100644
---- a/drivers/net/ethernet/cadence/macb_ptp.c
-+++ b/drivers/net/ethernet/cadence/macb_ptp.c
-@@ -394,8 +394,8 @@ int gem_set_hwtst(struct net_device *netdev,
- 	enum macb_bd_control rx_bd_control = TSTAMP_DISABLED;
- 	int rx_filter = tstamp_config->rx_filter;
- 	struct macb *bp = netdev_priv(netdev);
-+	u32 ncr_mask = MACB_BIT(SRTSM);
- 	unsigned long flags;
--	u32 ncr_mask = 0;
- 	u32 ncr_bits = 0;
- 	u32 regval;
+diff --git a/drivers/infiniband/ulp/rtrs/rtrs-clt.c b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
+index eac38b57b00d..f8d3c6f37e3e 100644
+--- a/drivers/infiniband/ulp/rtrs/rtrs-clt.c
++++ b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
+@@ -489,18 +489,22 @@ static int rtrs_post_send_rdma(struct rtrs_clt_con *con,
+ 					    imm, flags, wr, NULL);
+ }
  
-@@ -432,7 +432,6 @@ int gem_set_hwtst(struct net_device *netdev,
- 	case HWTSTAMP_FILTER_PTP_V2_L4_DELAY_REQ:
- 		rx_bd_control = TSTAMP_ALL_PTP_FRAMES;
- 		rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
--		ncr_mask |= MACB_BIT(SRTSM);
- 		ncr_bits |= MACB_BIT(SRTSM);
- 		break;
- 	case HWTSTAMP_FILTER_PTP_V1_L4_SYNC:
-@@ -447,11 +446,9 @@ int gem_set_hwtst(struct net_device *netdev,
+-static void process_io_rsp(struct rtrs_clt_path *clt_path, u32 msg_id,
++static bool process_io_rsp(struct rtrs_clt_path *clt_path, u32 msg_id,
+ 			   s16 errno, bool w_inval)
+ {
+ 	struct rtrs_clt_io_req *req;
+ 
+-	if (WARN_ON(msg_id >= clt_path->queue_depth))
+-		return;
++	if (!clt_path->reqs || msg_id >= clt_path->queue_depth)
++		return false;
+ 
+ 	req = &clt_path->reqs[msg_id];
++	if (!req->mr)
++		return false;
++
+ 	/* Drop need_inv if server responded with send with invalidation */
+ 	req->mr->need_inval &= !w_inval;
+ 	complete_rdma_req(req, errno, true, false);
++	return true;
+ }
+ 
+ static void rtrs_clt_recv_done(struct rtrs_clt_con *con, struct ib_wc *wc)
+@@ -562,7 +566,8 @@ static void rtrs_clt_rkey_rsp_done(struct rtrs_clt_con *con, struct ib_wc *wc)
+ 		if (WARN_ON(buf_id != msg_id))
+ 			goto out;
+ 		clt_path->rbufs[buf_id].rkey = le32_to_cpu(msg->rkey);
+-		process_io_rsp(clt_path, msg_id, err, w_inval);
++		if (!process_io_rsp(clt_path, msg_id, err, w_inval))
++			goto out;
  	}
+ 	ib_dma_sync_single_for_device(clt_path->s.dev->ib_dev, iu->dma_addr,
+ 				      iu->size, DMA_FROM_DEVICE);
+@@ -634,7 +639,13 @@ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
+ 			w_inval = (imm_type == RTRS_IO_RSP_W_INV_IMM);
+ 			rtrs_from_io_rsp_imm(imm_payload, &msg_id, &err);
  
- 	spin_lock_irqsave(&bp->lock, flags);
--	if (ncr_mask) {
--		regval = macb_readl(bp, NCR);
--		regval = (regval & ~ncr_mask) | ncr_bits;
--		macb_writel(bp, NCR, regval);
--	}
-+	regval = macb_readl(bp, NCR);
-+	regval = (regval & ~ncr_mask) | ncr_bits;
-+	macb_writel(bp, NCR, regval);
- 
- 	gem_writel(bp, TXBDCTRL, GEM_BF(TXTSMODE, tx_bd_control));
- 	gem_writel(bp, RXBDCTRL, GEM_BF(RXTSMODE, rx_bd_control));
+-			process_io_rsp(clt_path, msg_id, err, w_inval);
++			if (!process_io_rsp(clt_path, msg_id, err, w_inval)) {
++				rtrs_err(clt_path->clt,
++					 "Invalid IO rsp: msg_id %u queue_depth %zu\n",
++					 msg_id, clt_path->queue_depth);
++				rtrs_rdma_error_recovery(con);
++				return;
++			}
+ 		} else if (imm_type == RTRS_HB_MSG_IMM) {
+ 			WARN_ON(con->c.cid);
+ 			rtrs_send_hb_ack(&clt_path->s);
 
--- 
-2.53.0
+---
+base-commit: 93f51579e7df248780214094418f205253383cc5
+change-id: 20260923-rtrs-warning-inrtrs-clt-rdma-done-3a72d73550b1
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
