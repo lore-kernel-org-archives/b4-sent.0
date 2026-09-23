@@ -1,106 +1,64 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 23 Sep 2026 16:05:22 +0400
-Subject: [PATCH ath-next 16/16] wifi: ath11k: add QCN6122 device support
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH net-next 0/2] dpaa2-eth: devlink port number from the DPMAC
+Date: Wed, 23 Sep 2026 14:57:59 +0200
+Message-Id: <20260923-for-upstream-dpaa2_ports-v1-0-b59c865edd00@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-16-86729521a75c@outlook.com>
-References: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
-In-Reply-To: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
-To: Johannes Berg <johannes@sipsolutions.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jeff Johnson <jjohnson@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org, 
- ath11k@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Vignesh Viswanathan <vignesh.viswanathan@oss.qualcomm.com>, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=2721;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=N0lWRlkViy66JiabYe3wnlNpM0tjJSjRzUVdOXoZ9Gs=;
- b=ToSFrdMAsPUqm34M8ORvBROXcmsCcULlAR9RBecaTVXwiXWOjpr9vkoHJZdK+tfkF0OdSXTgR
- 8mBh+8gPFSZDoPSuVKzWN20Nk8CGHwe/JuaZ7Nci5MMz30OhGbHNugr
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIANfMs2oC/x3MQQqDMBBA0avIrDuQJqK2VymlJHWis2gSZtIii
+ Hc3dPkW/++gJEwK924HoR8r59RwvXTwXn1aCHluBmvsYG7WYcyC36JVyH9wLt7bV8lSFU1vpjE
+ 4F8IUoeVFKPL2Xz8gUcVEW4XncZyrmw4TdAAAAA==
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Ioana Ciornei <ioana.ciornei@nxp.com>, 
+ Vladimir Oltean <vladimir.oltean@nxp.com>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790168286; l=1396;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=5pNfbU4tVij2R4/+mEJuS3A2gb4SCB4DZw+rw+oOaCs=;
+ b=NSSeihn4C6BNXOpN2tdySGlRBWLAWLBfPs/0a/WW6inrzYeEoFahCHQSv6CdoIp5QJRHWVMYo
+ YFO3N5ya4cVDaLYkaVl7OFbKyUE7ebm0pbOQGAfiufzmSqLt3ccNF5t
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-QCN6122 is a 2x2 11AX PCIe based chipset, but it is attached to the WPSS
-(Wireless Processor SubSystem) Q6 processor, hence it is enumerated
-by the Q6 processor. It is registered to the APSS processor as a
-platform device (AHB).
+dpaa2-eth registers every DPNI as a physical devlink port without a
+port number, so all the DPAA2 interfaces report the same
+phys_port_name "p0", including the DPNIs that have no DPMAC behind
+them.
 
-Q6 firmware segments for QCN6122 are contained within the multi-PD
-version of the shared firmware package for IPQ5018. Each (up to 2)
-QCN6122 radio present runs in its own user PD which the ath11k driver
-manages to power it up or down.
+Patch 1 uses the DPMAC id as the physical port number. The attributes
+of a registered devlink port cannot change, so when the DPNI endpoint
+changes at runtime a warning says the number is stale until the DPNI
+is rebound.
 
-Also, device information like BAR and its size is not known to the APSS
-processor as the chip is enumerated by WPSS Q6. These details are
-fetched over QMI.
+Patch 2 registers the DPNIs without a DPMAC as virtual ports. They
+have no phys_port_name, so "p<dpmac id>" is unique.
 
-The QCN6122 chip supports STA, AP, and MESH modes.
+With both patches, udev can name an interface using its DPMAC, for
+instance:
 
-Tested on: Linksys MX2000 and GLiNET B3000 wireless access points for
-prolonged duration tests spanning multiple days with multiple clients
-connected with firmware WLAN.HK.2.7.0.1-01744-QCAHKSWPL_SILICONZ-1
+  SUBSYSTEM=="net", ACTION=="add", DRIVERS=="fsl_dpaa2_eth", \
+    ATTR{phys_port_name}=="p3", NAME="dpmac3"
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/net/wireless/ath/ath11k/ahb.c  | 7 +++++++
- drivers/net/wireless/ath/ath11k/pcic.c | 9 +++++++++
- 2 files changed, 16 insertions(+)
+Vincent Jardin (2):
+      dpaa2-eth: use the DPMAC id as the devlink physical port number
+      dpaa2-eth: DPNIs without a DPMAC should be virtual devlink ports
 
-diff --git a/drivers/net/wireless/ath/ath11k/ahb.c b/drivers/net/wireless/ath/ath11k/ahb.c
-index 26110c927577..51908e779b7c 100644
---- a/drivers/net/wireless/ath/ath11k/ahb.c
-+++ b/drivers/net/wireless/ath/ath11k/ahb.c
-@@ -46,6 +46,9 @@ static const struct of_device_id ath11k_ahb_of_match[] = {
- 	{ .compatible = "qcom,ipq5018-wifi",
- 	  .data = (void *)ATH11K_HW_IPQ5018_HW10,
- 	},
-+	{ .compatible = "qcom,qcn6122-wifi",
-+	  .data = (void *)ATH11K_HW_QCN6122_HW10,
-+	},
- 	{ }
- };
- 
-@@ -1395,6 +1398,10 @@ static int ath11k_ahb_setup_msi_resources(struct ath11k_base *ab)
- 	ab->pci.msi.addr_hi = upper_32_bits(msi_addr_iova);
- 
- 	ret = of_property_read_u32_index(ab->dev->of_node, "interrupts", 1, &int_prop);
-+	if (ret == -EINVAL)
-+		ret = of_property_read_u32_index(ab->dev->of_node,
-+						 "interrupts-extended", 2,
-+						 &int_prop);
- 	if (ret)
- 		return ret;
- 
-diff --git a/drivers/net/wireless/ath/ath11k/pcic.c b/drivers/net/wireless/ath/ath11k/pcic.c
-index 2259adc3bbdc..cdcf3df26438 100644
---- a/drivers/net/wireless/ath/ath11k/pcic.c
-+++ b/drivers/net/wireless/ath/ath11k/pcic.c
-@@ -138,6 +138,15 @@ static const struct ath11k_msi_config ath11k_msi_config[] = {
- 		},
- 		.hw_rev = ATH11K_HW_QCA6698AQ_HW21,
- 	},
-+	{
-+		.total_vectors = 13,
-+		.total_users = 2,
-+		.users = (struct ath11k_msi_user[]) {
-+			{ .name = "CE", .num_vectors = 5, .base_vector = 0 },
-+			{ .name = "DP", .num_vectors = 8, .base_vector = 5 },
-+		},
-+		.hw_rev = ATH11K_HW_QCN6122_HW10,
-+	},
- };
- 
- int ath11k_pcic_init_msi_config(struct ath11k_base *ab)
+ .../ethernet/freescale/dpaa2/dpaa2-eth-devlink.c   | 35 +++++++++++++++++++++-
+ drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c   |  2 ++
+ drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.h   |  1 +
+ 3 files changed, 37 insertions(+), 1 deletion(-)
+---
+base-commit: 944ae66642b726bd6b25ae71b1e9ff88a0e0bdb0
+change-id: 20260923-for-upstream-dpaa2_ports-04087b33bb8f
 
+Best regards,
 -- 
-2.53.0
+Vincent Jardin <vjardin@free.fr>
 
