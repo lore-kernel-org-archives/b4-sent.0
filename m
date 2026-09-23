@@ -1,10 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 23 Sep 2026 16:05:21 +0400
-Subject: [PATCH ath-next 15/16] wifi: ath11k: define userPDs for QCN6122
+Date: Wed, 23 Sep 2026 16:05:22 +0400
+Subject: [PATCH ath-next 16/16] wifi: ath11k: add QCN6122 device support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-15-86729521a75c@outlook.com>
+Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-16-86729521a75c@outlook.com>
 References: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 In-Reply-To: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 To: Johannes Berg <johannes@sipsolutions.net>, 
@@ -19,69 +19,87 @@ Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=1850;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=2721;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=FFy8ewtv5YTf5rGwmTdQsDE8baSwiwHWuB1HJc5LmDg=;
- b=eb9JZnJKMBo5WqcPLeJRSCtyF0njk0iSiffFtlOIYYT01K7J5kdS4ogRDIMaEHD5UQ24RFBzR
- tTweDJTOMvWD05gXR7sMdywUriNHUgh/mQMdn3JOBDttGONvOeuiyLH
+ bh=N0lWRlkViy66JiabYe3wnlNpM0tjJSjRzUVdOXoZ9Gs=;
+ b=ToSFrdMAsPUqm34M8ORvBROXcmsCcULlAR9RBecaTVXwiXWOjpr9vkoHJZdK+tfkF0OdSXTgR
+ 8mBh+8gPFSZDoPSuVKzWN20Nk8CGHwe/JuaZ7Nci5MMz30OhGbHNugr
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The IPQ5018 platform can come with one or two optional QCN6122 wifi
-cards. To differentiate the two, the user PD instance number (1 or 2) is
-added to the QMI service instance ID so the QCN6122 firmware knows which
-radio instance to use and on what PCIe rail it is on.
+QCN6122 is a 2x2 11AX PCIe based chipset, but it is attached to the WPSS
+(Wireless Processor SubSystem) Q6 processor, hence it is enumerated
+by the Q6 processor. It is registered to the APSS processor as a
+platform device (AHB).
 
-On IPQ5018/QCN6122 boards, the default mapping is as follows:
+Q6 firmware segments for QCN6122 are contained within the multi-PD
+version of the shared firmware package for IPQ5018. Each (up to 2)
+QCN6122 radio present runs in its own user PD which the ath11k driver
+manages to power it up or down.
 
-          +-> User PD 1 ----> IPQ5018 Internal 2.4G Radio
-         /
-        /
-Root PD +---> User PD 2 ----> QCN6122 5G/6G Radio on PCIe rail 1
-        \
-         \
-          +-> User PD 3 ----> QCN6122 5G/6G Radio on PCIe rail 0
+Also, device information like BAR and its size is not known to the APSS
+processor as the chip is enumerated by WPSS Q6. These details are
+fetched over QMI.
+
+The QCN6122 chip supports STA, AP, and MESH modes.
+
+Tested on: Linksys MX2000 and GLiNET B3000 wireless access points for
+prolonged duration tests spanning multiple days with multiple clients
+connected with firmware WLAN.HK.2.7.0.1-01744-QCAHKSWPL_SILICONZ-1
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/net/wireless/ath/ath11k/ahb.c | 8 ++++++++
- drivers/net/wireless/ath/ath11k/ahb.h | 2 ++
- 2 files changed, 10 insertions(+)
+ drivers/net/wireless/ath/ath11k/ahb.c  | 7 +++++++
+ drivers/net/wireless/ath/ath11k/pcic.c | 9 +++++++++
+ 2 files changed, 16 insertions(+)
 
 diff --git a/drivers/net/wireless/ath/ath11k/ahb.c b/drivers/net/wireless/ath/ath11k/ahb.c
-index 03936f574c8d..26110c927577 100644
+index 26110c927577..51908e779b7c 100644
 --- a/drivers/net/wireless/ath/ath11k/ahb.c
 +++ b/drivers/net/wireless/ath/ath11k/ahb.c
-@@ -969,6 +969,14 @@ static int ath11k_ahb_init_userpd(struct ath11k_base *ab, int userpd_id)
- 
- 		ab_ahb->userpd_id = userpd_id;
- 		break;
-+	case ATH11K_HW_QCN6122_HW10:
-+		if (userpd_id != ATH11K_AHB_USERPD_ID_2 &&
-+		    userpd_id != ATH11K_AHB_USERPD_ID_3)
-+			return -EINVAL;
-+
-+		ab_ahb->userpd_id = userpd_id;
-+		ab->qmi.service_ins_id += (ab_ahb->userpd_id - 1);
-+		break;
- 	default:
- 		return -EINVAL;
- 	}
-diff --git a/drivers/net/wireless/ath/ath11k/ahb.h b/drivers/net/wireless/ath/ath11k/ahb.h
-index 0647bdb9ea62..ec89e0e89ca0 100644
---- a/drivers/net/wireless/ath/ath11k/ahb.h
-+++ b/drivers/net/wireless/ath/ath11k/ahb.h
-@@ -28,6 +28,8 @@
- 
- enum ath11k_ahb_userpd_id {
- 	ATH11K_AHB_USERPD_ID_1 = 1,
-+	ATH11K_AHB_USERPD_ID_2,
-+	ATH11K_AHB_USERPD_ID_3,
- 	ATH11K_AHB_USERPD_ID_MAX,
+@@ -46,6 +46,9 @@ static const struct of_device_id ath11k_ahb_of_match[] = {
+ 	{ .compatible = "qcom,ipq5018-wifi",
+ 	  .data = (void *)ATH11K_HW_IPQ5018_HW10,
+ 	},
++	{ .compatible = "qcom,qcn6122-wifi",
++	  .data = (void *)ATH11K_HW_QCN6122_HW10,
++	},
+ 	{ }
  };
  
+@@ -1395,6 +1398,10 @@ static int ath11k_ahb_setup_msi_resources(struct ath11k_base *ab)
+ 	ab->pci.msi.addr_hi = upper_32_bits(msi_addr_iova);
+ 
+ 	ret = of_property_read_u32_index(ab->dev->of_node, "interrupts", 1, &int_prop);
++	if (ret == -EINVAL)
++		ret = of_property_read_u32_index(ab->dev->of_node,
++						 "interrupts-extended", 2,
++						 &int_prop);
+ 	if (ret)
+ 		return ret;
+ 
+diff --git a/drivers/net/wireless/ath/ath11k/pcic.c b/drivers/net/wireless/ath/ath11k/pcic.c
+index 2259adc3bbdc..cdcf3df26438 100644
+--- a/drivers/net/wireless/ath/ath11k/pcic.c
++++ b/drivers/net/wireless/ath/ath11k/pcic.c
+@@ -138,6 +138,15 @@ static const struct ath11k_msi_config ath11k_msi_config[] = {
+ 		},
+ 		.hw_rev = ATH11K_HW_QCA6698AQ_HW21,
+ 	},
++	{
++		.total_vectors = 13,
++		.total_users = 2,
++		.users = (struct ath11k_msi_user[]) {
++			{ .name = "CE", .num_vectors = 5, .base_vector = 0 },
++			{ .name = "DP", .num_vectors = 8, .base_vector = 5 },
++		},
++		.hw_rev = ATH11K_HW_QCN6122_HW10,
++	},
+ };
+ 
+ int ath11k_pcic_init_msi_config(struct ath11k_base *ab)
 
 -- 
 2.53.0
