@@ -1,10 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 23 Sep 2026 16:05:18 +0400
-Subject: [PATCH ath-next 12/16] wifi: ath11k: add hal regs for QCN6122
+Date: Wed, 23 Sep 2026 16:05:19 +0400
+Subject: [PATCH ath-next 13/16] wifi: ath11k: add hw ring mask for QCN6122
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-12-86729521a75c@outlook.com>
+Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-13-86729521a75c@outlook.com>
 References: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 In-Reply-To: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 To: Johannes Berg <johannes@sipsolutions.net>, 
@@ -19,138 +19,97 @@ Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=4921;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=2926;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=BNVxrxCvphr2PbaY3QLCfMXAa89mIJNLaIy4fyfiBB0=;
- b=CyIsVjJsILDCihgmPBFEa8x1E/e4/uO3WqMYyXCmeOHB6ipTjw7ii0YjhmtSz2AbRWThG2u00
- w1VU9u3YWSKAgo/WYatWR/amSb/0pTU3ELNMKnl0l0J45jY/ye8TWgw
+ bh=ZS+ghizA2JnJORyhUeyzkT6PiFQkDEnAqkqpPDbBCt4=;
+ b=oc8KKCzLEqR8y0YejgVoqOfzgsPd1UyzJB67HNuqi3DnHAhkRQIBLSDVrtLi/DS0KcxMFmfNa
+ TamHpCY+jhXAcFEXohGRlgRkT3YCLTi/HayF26SEjdylq2gKXl9JolP
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add HAL changes required to support QCN6122. While offsets for QCN6122
-are similar to those of WCN6750, QCN6122 does not support shadow regs
-and the PCIE PCS/Serdes tuning register offsets do not apply to QCN6122.
-So add its own HAL register offsets.
+Add ring mask for QCN6122 and register them in hw params.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
  drivers/net/wireless/ath/ath11k/core.c |  1 +
- drivers/net/wireless/ath/ath11k/hw.c   | 75 ++++++++++++++++++++++++++++++++++
+ drivers/net/wireless/ath/ath11k/hw.c   | 37 ++++++++++++++++++++++++++++++++++
  drivers/net/wireless/ath/ath11k/hw.h   |  1 +
- 3 files changed, 77 insertions(+)
+ 3 files changed, 39 insertions(+)
 
 diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
-index 0a38db1ee175..cf37975fa4cf 100644
+index cf37975fa4cf..8fa1171b6bdd 100644
 --- a/drivers/net/wireless/ath/ath11k/core.c
 +++ b/drivers/net/wireless/ath/ath11k/core.c
-@@ -949,6 +949,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+@@ -948,6 +948,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 		.max_radios = MAX_RADIOS_5018,
  		.bdf_addr = 0x4D200000,
  		.hw_ops = &ipq5018_ops,
++		.ring_mask = &ath11k_hw_ring_mask_qcn6122,
  		.internal_sleep_clock = false,
-+		.regs = &qcn6122_regs,
+ 		.regs = &qcn6122_regs,
  		.qmi_service_ins_id = ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_QCN6122,
- 		.host_ce_config = ath11k_host_ce_config_qcn9074,
- 		.ce_count = CE_CNT_5018,
 diff --git a/drivers/net/wireless/ath/ath11k/hw.c b/drivers/net/wireless/ath/ath11k/hw.c
-index 93f9a03c48dc..8442fbeb9c58 100644
+index 8442fbeb9c58..bb375efd50fe 100644
 --- a/drivers/net/wireless/ath/ath11k/hw.c
 +++ b/drivers/net/wireless/ath/ath11k/hw.c
-@@ -2836,6 +2836,81 @@ const struct ath11k_hw_hal_params ath11k_hw_hal_params_ipq5018 = {
- 	.num_tx_rings = ARRAY_SIZE(ath11k_hw_tcl2wbm_rbm_map_ipq5018),
+@@ -2070,6 +2070,43 @@ const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_wcn6750 = {
+ 	},
  };
  
-+const struct ath11k_hw_regs qcn6122_regs = {
-+	/* SW2TCL(x) R0 ring configuration address */
-+	.hal_tcl1_ring_base_lsb = 0x00000694,
-+	.hal_tcl1_ring_base_msb = 0x00000698,
-+	.hal_tcl1_ring_id = 0x0000069c,
-+	.hal_tcl1_ring_misc = 0x000006a4,
-+	.hal_tcl1_ring_tp_addr_lsb = 0x000006b0,
-+	.hal_tcl1_ring_tp_addr_msb = 0x000006b4,
-+	.hal_tcl1_ring_consumer_int_setup_ix0 = 0x000006c4,
-+	.hal_tcl1_ring_consumer_int_setup_ix1 = 0x000006c8,
-+	.hal_tcl1_ring_msi1_base_lsb = 0x000006dc,
-+	.hal_tcl1_ring_msi1_base_msb = 0x000006e0,
-+	.hal_tcl1_ring_msi1_data = 0x000006e4,
-+	.hal_tcl2_ring_base_lsb = 0x000006ec,
-+	.hal_tcl_ring_base_lsb = 0x0000079c,
-+
-+	/* TCL STATUS ring address */
-+	.hal_tcl_status_ring_base_lsb = 0x000008a4,
-+
-+	/* REO2SW(x) R0 ring configuration address */
-+	.hal_reo1_ring_base_lsb = 0x000001ec,
-+	.hal_reo1_ring_base_msb = 0x000001f0,
-+	.hal_reo1_ring_id = 0x000001f4,
-+	.hal_reo1_ring_misc = 0x000001fc,
-+	.hal_reo1_ring_hp_addr_lsb = 0x00000200,
-+	.hal_reo1_ring_hp_addr_msb = 0x00000204,
-+	.hal_reo1_ring_producer_int_setup = 0x00000210,
-+	.hal_reo1_ring_msi1_base_lsb = 0x00000234,
-+	.hal_reo1_ring_msi1_base_msb = 0x00000238,
-+	.hal_reo1_ring_msi1_data = 0x0000023c,
-+	.hal_reo2_ring_base_lsb = 0x00000244,
-+	.hal_reo1_aging_thresh_ix_0 = 0x00000564,
-+	.hal_reo1_aging_thresh_ix_1 = 0x00000568,
-+	.hal_reo1_aging_thresh_ix_2 = 0x0000056c,
-+	.hal_reo1_aging_thresh_ix_3 = 0x00000570,
-+
-+	/* REO2SW(x) R2 ring pointers (head/tail) address */
-+	.hal_reo1_ring_hp = 0x00003028,
-+	.hal_reo1_ring_tp = 0x0000302c,
-+	.hal_reo2_ring_hp = 0x00003030,
-+
-+	/* REO2TCL R0 ring configuration address */
-+	.hal_reo_tcl_ring_base_lsb = 0x000003fc,
-+	.hal_reo_tcl_ring_hp = 0x00003058,
-+
-+	/* SW2REO ring address */
-+	.hal_sw2reo_ring_base_lsb = 0x0000013c,
-+	.hal_sw2reo_ring_hp = 0x00003018,
-+
-+	/* REO CMD ring address */
-+	.hal_reo_cmd_ring_base_lsb = 0x000000e4,
-+	.hal_reo_cmd_ring_hp = 0x00003010,
-+
-+	/* REO status address */
-+	.hal_reo_status_ring_base_lsb = 0x00000504,
-+	.hal_reo_status_hp = 0x00003070,
-+
-+	/* WCSS relative address */
-+	.hal_seq_wcss_umac_ce0_src_reg = 0x01b80000,
-+	.hal_seq_wcss_umac_ce0_dst_reg = 0x01b81000,
-+	.hal_seq_wcss_umac_ce1_src_reg = 0x01b82000,
-+	.hal_seq_wcss_umac_ce1_dst_reg = 0x01b83000,
-+
-+	/* WBM Idle address */
-+	.hal_wbm_idle_link_ring_base_lsb = 0x00000874,
-+	.hal_wbm_idle_link_ring_misc = 0x00000884,
-+
-+	/* SW2WBM release address */
-+	.hal_wbm_release_ring_base_lsb = 0x000001ec,
-+
-+	/* WBM2SW release address */
-+	.hal_wbm0_release_ring_base_lsb = 0x00000924,
-+	.hal_wbm1_release_ring_base_lsb = 0x0000097c,
++const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qcn6122 = {
++	.tx  = {
++		ATH11K_TX_RING_MASK_0,
++		ATH11K_TX_RING_MASK_1,
++		ATH11K_TX_RING_MASK_2,
++	},
++	.rx_mon_status = {
++		0, 0, 0,
++		ATH11K_RX_MON_STATUS_RING_MASK_0,
++	},
++	.rx = {
++		0, 0, 0, 0,
++		ATH11K_RX_RING_MASK_0,
++		ATH11K_RX_RING_MASK_1,
++		ATH11K_RX_RING_MASK_2,
++		ATH11K_RX_RING_MASK_3,
++	},
++	.rx_err = {
++		0, 0, 0, 0, 0, 0, 0, 0,
++		ATH11K_RX_ERR_RING_MASK_0,
++	},
++	.rx_wbm_rel = {
++		0, 0, 0, 0, 0, 0, 0, 0, 0,
++		ATH11K_RX_WBM_REL_RING_MASK_0,
++	},
++	.reo_status = {
++		0, 0, 0,
++		ATH11K_REO_STATUS_RING_MASK_0,
++	},
++	.rxdma2host = {
++		ATH11K_RXDMA2HOST_RING_MASK_0,
++	},
++	.host2rxdma = {
++		ATH11K_HOST2RXDMA_RING_MASK_0,
++	},
 +};
 +
- const struct ath11k_hw_hal_params ath11k_hw_hal_params_ipq8074 = {
- 	.rx_buf_rbm = HAL_RX_BUF_RBM_SW3_BM,
- 	.tcl2wbm_rbm_map = ath11k_hw_tcl2wbm_rbm_map_ipq8074,
+ /* Target firmware's Copy Engine configuration for IPQ5018 */
+ const struct ce_pipe_config ath11k_target_ce_config_wlan_ipq5018[] = {
+ 	/* CE0: host->target HTC control and raw streams */
 diff --git a/drivers/net/wireless/ath/ath11k/hw.h b/drivers/net/wireless/ath/ath11k/hw.h
-index 5a1100ceb895..d9646a491808 100644
+index d9646a491808..2bcfdae9519b 100644
 --- a/drivers/net/wireless/ath/ath11k/hw.h
 +++ b/drivers/net/wireless/ath/ath11k/hw.h
-@@ -433,6 +433,7 @@ extern const struct ath11k_hw_regs qcn9074_regs;
- extern const struct ath11k_hw_regs wcn6855_regs;
- extern const struct ath11k_hw_regs wcn6750_regs;
- extern const struct ath11k_hw_regs ipq5018_regs;
-+extern const struct ath11k_hw_regs qcn6122_regs;
+@@ -296,6 +296,7 @@ extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_ipq8074;
+ extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qca6390;
+ extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qcn9074;
+ extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_wcn6750;
++extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qcn6122;
  
- static inline const char *ath11k_bd_ie_type_str(enum ath11k_bd_ie_type type)
- {
+ extern const struct ce_ie_addr ath11k_ce_ie_addr_ipq8074;
+ extern const struct ce_ie_addr ath11k_ce_ie_addr_ipq5018;
 
 -- 
 2.53.0
