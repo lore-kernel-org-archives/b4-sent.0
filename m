@@ -1,11 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 23 Sep 2026 16:05:16 +0400
-Subject: [PATCH ath-next 10/16] dt-bindings: net: wireless: ath11k: Add
- bindings for QCN6122
+Date: Wed, 23 Sep 2026 16:05:17 +0400
+Subject: [PATCH ath-next 11/16] wifi: ath11k: add hw params for QCN6122
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-10-86729521a75c@outlook.com>
+Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-11-86729521a75c@outlook.com>
 References: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 In-Reply-To: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 To: Johannes Berg <johannes@sipsolutions.net>, 
@@ -20,244 +19,163 @@ Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=9542;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=5214;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=AMmUM3ppUAEMYWiKIHUzMgENqvh58tpVmet+RfpQRGA=;
- b=KddqHTm2dhPWaE2pvLI3lphALP/XjHvwb66YiQi0ATFRsAwBVw1o7rW8eU8f7RMsko7i5Qy4G
- VPH400sOf2dBPijM66rmtkG3yrwzaGbdnlvpuaVMpkxXkPSWR3QMIsr
+ bh=5ALmRWICK/brup6W9KBxCblyg88vPuQc4jQzYS+ockc=;
+ b=IBzg1u3iKo1e45bVN9ORNakmMv0xLJe8QmrypwwVwuhFdN93+tomR3RI3AkfSn/JbhgI4LHwL
+ Unx2FNE4r4fB9kQmUBctK/oD+TYh2DIxObBXv+FSGpmbdnlkgmU/ws+
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for QCN6122, which is a companion chip to IPQ5018. The
-QCN6122 is a 5G/6G WiFi chip that is used in conjunction with the
-IPQ5018 SoC in a multi-PD (MPD) configuration.
+Add QCN6122 platform support.
 
-WiFi on IPQ5018 boards come in one of the following configurations:
-1. IPQ5018 (standalone) + optional 5G/6G WiFi card (such as QCN9074)
-2. IPQ5018 (MPD) + one or two 5G/6G QCN6122 WiFi chips.
+QCN6122 is a PCIe based solution that is attached to and enumerated
+by the WPSS (Wireless Processor SubSystem) Q6 processor.
 
-IPQ5018 implements the multi-PD architecture as follows:
+Though it is a PCIe device, since it is not attached to APSS processor,
+APSS will be unaware of such a decice and hence it is registered to the
+APSS processor as a platform AHB device.
 
-                     +-----------------------------+
-                     |     Q6 Remote Processor     |
-                     |            RootPD           |
-                     +--------------+--------------+
-                                    |
-                                    |
-                                    |
-              +---------------------+---------------------+
-              |                     |                     |
-        +-----v-----+         +-----v-----+         +-----v-----+
-        |  UserPD1  |         |  UserPD2  |         |  UserPD3  |
-        |  IPQ5018  |         | QCN6122 #1|         | QCN6122 #2|
-        |  (Radio)  |         |  (Radio)  |         |  (Radio)  |
-        +-----------+         +-----------+         +-----------+
+As such, QCN6122 is a hybrid bus type device and follows the same
+codepath as for WCN6750.
 
-The rootPD is responsible for managing the lifecycle of the UserPD and
-shared resources and providing SSR notifiers. There are different
-firmware blobs that include either the rootPD and userPD binaries for
-IPQ5018-only which auto-spawns the userPD for IPQ5018 WiFi, or for
-IPQ5018 and QCN6122 for which the userPDs for each radio must be spawned
-by the ath11k driver.
-
-SMP2P is used for signaling between the host and the Q6 remote processor
-to manage the lifecycle of the userPDs, so add the required interrupts
-and smem-states for incoming and outgoing interrupts in the case of the
-IPQ5018 + QCN6122 MPD configuration. Otherwise, the SMP2P interrupts and
-smem-states are not required for the IPQ5018-only configuration.
-
-In addition, document the memory regions needed for loading the BDF and
-M3 firmware as well as for assigning the M3 dump memory block.
-
-It's worth noting that QCN6122 does not have its own Q6 firmware blobs.
-Instead, the firmware segments for QCN6122 are included in the IPQ5018
-MPD firmware blob(s). In addition, the QCN6122 M3 firmware which does
-come separately is loaded into the Q6 memory carveout of IPQ5018, hence
-the need for a dedicated "m3-region" reserved memory region.
+This is a heavily simplified version of below downstream patch:
+Link: https://git.codelinaro.org/clo/qsdk/oss/system/feeds/wlan-open/-/blob/NHSS.QSDK.12.4.5.r2/mac80211/patches/232-ath11k-qcn6122-support.patch
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- .../bindings/net/wireless/qcom,ath11k.yaml         | 144 ++++++++++++++++++++-
- 1 file changed, 142 insertions(+), 2 deletions(-)
+ drivers/net/wireless/ath/ath11k/core.c | 85 ++++++++++++++++++++++++++++++++++
+ drivers/net/wireless/ath/ath11k/core.h |  1 +
+ drivers/net/wireless/ath/ath11k/qmi.h  |  3 +-
+ 3 files changed, 88 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml b/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml
-index 621ad6d4ddad..10102b5ea8c8 100644
---- a/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml
-+++ b/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml
-@@ -20,6 +20,7 @@ properties:
-       - qcom,ipq5018-wifi
-       - qcom,ipq6018-wifi
-       - qcom,ipq8074-wifi
-+      - qcom,qcn6122-wifi
-       - qcom,wcn6750-wifi
- 
-   reg:
-@@ -30,11 +31,11 @@ properties:
-     maxItems: 52
- 
-   interrupts-extended:
--    minItems: 56
-+    minItems: 17
-     maxItems: 56
- 
-   interrupt-names:
--    minItems: 32
-+    minItems: 17
-     maxItems: 56
- 
-   qcom,rproc:
-@@ -459,6 +460,93 @@ allOf:
-       required:
-         - interrupt-names
- 
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - qcom,qcn6122-wifi
-+    then:
-+      properties:
-+        interrupts-extended:
-+          items:
-+            - description: interrupt event for ring CE1
-+            - description: interrupt event for ring CE2
-+            - description: interrupt event for ring CE3
-+            - description: interrupt event for ring CE4
-+            - description: interrupt event for ring CE5
-+            - description: interrupt event for ring DP1
-+            - description: interrupt event for ring DP2
-+            - description: interrupt event for ring DP3
-+            - description: interrupt event for ring DP4
-+            - description: interrupt event for ring DP5
-+            - description: interrupt event for ring DP6
-+            - description: interrupt event for ring DP7
-+            - description: interrupt event for ring DP8
-+            - description: Q6 firmware user PD fatal interrupt event
-+            - description: Q6 firmware user PD ready interrupt event
-+            - description: Q6 firmware user PD spawn interrupt event
-+            - description: Q6 firmware user PD stop ack interrupt event
-+        interrupt-names:
-+          minItems: 17
-+          items:
-+            - const: ce1
-+            - const: ce2
-+            - const: ce3
-+            - const: ce4
-+            - const: ce5
-+            - const: dp1
-+            - const: dp2
-+            - const: dp3
-+            - const: dp4
-+            - const: dp5
-+            - const: dp6
-+            - const: dp7
-+            - const: dp8
-+            - const: fatal
-+            - const: ready
-+            - const: spawn
-+            - const: stop-ack
-+        memory-region:
-+          minItems: 1
-+          items:
-+            - description: memory region for Q6 firmware
-+            - description: memory region for M3 firmware
-+            - description: memory region for M3 dump
-+        memory-region-names:
-+          minItems: 1
-+          items:
-+            - const: q6-region
-+            - const: m3-region
-+            - const: m3-dump
-+        qcom,smem-states:
-+          items:
-+            - description: Signal bit used to shutdown Q6 user PD
-+              items:
-+                - description: Phandle to the Shared Memory Point 2 Point device
-+                - description: Single bit index to toggle in the value sent to the remote processor
-+                  maximum: 32
-+            - description: Signal bit used to stop Q6 user PD
-+              items:
-+                - description: Phandle to the Shared Memory Point 2 Point device
-+                - description: Single bit index to toggle in the value sent to the remote processor
-+                  maximum: 32
-+            - description: Signal bit used to spawn Q6 user PD
-+              items:
-+                - description: Phandle to the Shared Memory Point 2 Point device
-+                - description: Single bit index to toggle in the value sent to the remote processor
-+                  maximum: 32
-+        qcom,smem-state-names:
-+          items:
-+            - const: shutdown
-+            - const: stop
-+            - const: spawn
-+      required:
-+        - interrupts-extended
-+        - interrupt-names
-+        - qcom,smem-states
-+        - qcom,smem-state-names
+diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
+index 428f382e74a9..0a38db1ee175 100644
+--- a/drivers/net/wireless/ath/ath11k/core.c
++++ b/drivers/net/wireless/ath/ath11k/core.c
+@@ -936,6 +936,91 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 		.cfr_num_stream_bufs = 255,
+ 		.cfr_stream_buf_size = 8200,
+ 	},
++	{
++		.hw_rev = ATH11K_HW_QCN6122_HW10,
++		.name = "qcn6122 hw1.0",
++		.fw = {
++			.dir = "QCN6122/hw1.0",
++			.board_size = 256 * 1024,
++			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_ahb,
++		},
++		.max_radios = MAX_RADIOS_5018,
++		.bdf_addr = 0x4D200000,
++		.hw_ops = &ipq5018_ops,
++		.internal_sleep_clock = false,
++		.qmi_service_ins_id = ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_QCN6122,
++		.host_ce_config = ath11k_host_ce_config_qcn9074,
++		.ce_count = CE_CNT_5018,
++		.target_ce_config = ath11k_target_ce_config_wlan_ipq5018,
++		.target_ce_count = TARGET_CE_CNT_5018,
++		.svc_to_ce_map = ath11k_target_service_to_ce_map_wlan_ipq5018,
++		.svc_to_ce_map_len = SVC_CE_MAP_LEN_5018,
++		.single_pdev_only = false,
++		.rxdma1_enable = true,
++		.num_rxdma_per_pdev = RXDMA_PER_PDEV_5018,
++		.rx_mac_buf_ring = false,
++		.vdev_start_delay = false,
++		.htt_peer_map_v2 = true,
 +
-   - if:
-       properties:
-         compatible:
-@@ -861,3 +949,55 @@ examples:
++		.spectral = {
++			.fft_sz = 2,
++			.fft_pad_sz = 0,
++			.summary_pad_sz = 16,
++			.fft_hdr_len = 24,
++			.max_fft_bins = 1024,
++			.fragment_160mhz = false,
++		},
++
++		.interface_modes = BIT(NL80211_IFTYPE_STATION) |
++					BIT(NL80211_IFTYPE_AP) |
++					BIT(NL80211_IFTYPE_MESH_POINT),
++		.supports_monitor = true,
++		.full_monitor_mode = false,
++		.supports_shadow_regs = false,
++		.idle_ps = false,
++		.supports_sta_ps = false,
++		.coldboot_cal_mm = false,
++		.coldboot_cal_ftm = false,
++		.cbcal_restart_fw = true,
++		.fw_mem_mode = 1,
++		.num_vdevs = 16 + 1,
++		.num_peers = 512,
++		.supports_suspend = false,
++		.hal_desc_sz = sizeof(struct hal_rx_desc_qcn9074),
++		.supports_regdb = false,
++		.fix_l1ss = true,
++		.credit_flow = false,
++		.hal_params = &ath11k_hw_hal_params_ipq5018,
++		.supports_dynamic_smps_6ghz = false,
++		.alloc_cacheable_memory = false,
++		.supports_rssi_stats = false,
++		.fw_wmi_diag_event = false,
++		.current_cc_support = false,
++		.dbr_debug_support = true,
++		.global_reset = false,
++		.bios_sar_capa = NULL,
++		.m3_fw_support = true,
++		.fixed_bdf_addr = true,
++		.fixed_mem_region = true,
++		.static_window_map = true,
++		.hybrid_bus_type = true,
++		.fixed_fw_mem = false,
++		.support_off_channel_tx = false,
++		.supports_multi_bssid = false,
++
++		.sram_dump = {},
++
++		.tcl_ring_retry = true,
++		.tx_ring_size = DP_TCL_DATA_RING_SIZE,
++		.smp2p_wow_exit = false,
++		.support_fw_mac_sequence = false,
++		.support_dual_stations = false,
++		.pdev_suspend = false,
++		.cfr_support = false,
++		.cfr_num_stream_bufs = 0,
++		.cfr_stream_buf_size = 0,
++	},
+ };
  
-         qcom,rproc = <&q6v5_wcss>;
-     };
-+
-+    wifi1: wifi@b00a040 {
-+        reg = <0x0b00a040 0x0>;
-+        compatible = "qcom,qcn6122-wifi";
-+
-+        interrupts-extended = <&intc GIC_SPI 416 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 417 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 418 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 419 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 420 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 421 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 422 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 423 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 424 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 425 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 426 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 427 IRQ_TYPE_EDGE_RISING>,
-+                              <&intc GIC_SPI 428 IRQ_TYPE_EDGE_RISING>,
-+                              <&wcss_smp2p_in 16 IRQ_TYPE_NONE>,
-+                              <&wcss_smp2p_in 17 IRQ_TYPE_NONE>,
-+                              <&wcss_smp2p_in 20 IRQ_TYPE_NONE>,
-+                              <&wcss_smp2p_in 19 IRQ_TYPE_NONE>;
-+        interrupt-names = "ce1",
-+                          "ce2",
-+                          "ce3",
-+                          "ce4",
-+                          "ce5",
-+                          "dp1",
-+                          "dp2",
-+                          "dp3",
-+                          "dp4",
-+                          "dp5",
-+                          "dp6",
-+                          "dp7",
-+                          "dp8",
-+                          "fatal",
-+                          "ready",
-+                          "spawn",
-+                          "stop-ack";
-+
-+        qcom,smem-states = <&wcss_smp2p_out 16>,
-+                           <&wcss_smp2p_out 17>,
-+                           <&wcss_smp2p_out 18>;
-+        qcom,smem-state-names = "shutdown",
-+                                "stop",
-+                                "spawn";
-+
-+        memory-region = <&q6_region_qcn6122_1>, <&q6_region_ipq5018>, <&m3_dump_qcn6122_1>;
-+        memory-region-names = "q6-region", "m3-region", "m3-dump";
-+
-+        status = "disabled";
-+    };
+ static const struct dmi_system_id ath11k_pm_quirk_table[] = {
+diff --git a/drivers/net/wireless/ath/ath11k/core.h b/drivers/net/wireless/ath/ath11k/core.h
+index a0d725923ef2..e92ec95dd384 100644
+--- a/drivers/net/wireless/ath/ath11k/core.h
++++ b/drivers/net/wireless/ath/ath11k/core.h
+@@ -153,6 +153,7 @@ enum ath11k_hw_rev {
+ 	ATH11K_HW_IPQ5018_HW10,
+ 	ATH11K_HW_QCA2066_HW21,
+ 	ATH11K_HW_QCA6698AQ_HW21,
++	ATH11K_HW_QCN6122_HW10,
+ };
+ 
+ enum ath11k_firmware_mode {
+diff --git a/drivers/net/wireless/ath/ath11k/qmi.h b/drivers/net/wireless/ath/ath11k/qmi.h
+index 350816c81ee5..f5442a04f079 100644
+--- a/drivers/net/wireless/ath/ath11k/qmi.h
++++ b/drivers/net/wireless/ath/ath11k/qmi.h
+@@ -21,10 +21,11 @@
+ #define ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_IPQ8074	0x02
+ #define ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_QCN9074	0x07
+ #define ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_WCN6750	0x03
++#define ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_QCN6122	0x40
+ #define ATH11K_QMI_WLANFW_MAX_TIMESTAMP_LEN_V01	32
+ #define ATH11K_QMI_RESP_LEN_MAX			8192
+ #define ATH11K_QMI_WLANFW_MAX_NUM_MEM_SEG_V01	52
+-#define ATH11K_QMI_CALDB_SIZE			0x480000
++#define ATH11K_QMI_CALDB_SIZE			0x500000
+ #define ATH11K_QMI_BDF_EXT_STR_LENGTH		0x20
+ #define ATH11K_QMI_FW_MEM_REQ_SEGMENT_CNT	5
+ 
 
 -- 
 2.53.0
