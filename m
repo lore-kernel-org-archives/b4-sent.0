@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 23 Sep 2026 16:05:09 +0400
-Subject: [PATCH ath-next 03/16] wifi: ath11k: Register root PD rproc
- notifier
+Date: Wed, 23 Sep 2026 16:05:10 +0400
+Subject: [PATCH ath-next 04/16] wifi: ath11k: Add support for loading m3
+ mbn firmware
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-3-86729521a75c@outlook.com>
+Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-4-86729521a75c@outlook.com>
 References: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 In-Reply-To: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 To: Johannes Berg <johannes@sipsolutions.net>, 
@@ -20,394 +20,312 @@ Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=10638;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=10329;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=BRJQEz5ssMrbFgr7AS2Nj48GPRPE0J8WJdw2HxrtAY4=;
- b=Shr0bbucP6Re7V/ZVcrJ62SI5KVjjf8uYOu+y5UF7QH69Ww/uTtj6kkgJ4SZJsXUVouLGOoWE
- 6q9Jgb7cmoBDgJiAKkKIHkHEKUoESjectW7Y2vro2wR/pcKO++DBarH
+ bh=b8Zwusm7H6v4vsfbn9Gmvu7jm5Rc6Udk2jN5W6UTq0I=;
+ b=YwAx/XlVOYQPqU/hTQeqMwskJ+PKx0sZif1StO+0evCwNHHNbk6Ag7aQrgNoCN9WPRWdvWs7j
+ 6IZc8YupXZ0A0AawVfBGohNsQ0/GyIMfPwpAA9+or1VksU6/SJpRIHp
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In preparation for multi-PD support, register the rproc notifier for the
-Q6 rootPD to monitor its state about power up/down and crash events.
+Add support for loading m3 firmware in MDT file format which is
+different from the m3.bin file format. This is required for several
+ath11k wifi chips such as IPQ5018.
 
-In non-MPD configurations such as IPQ8074, the rootPD directly provides
-WiFi operation.
+The rproc driver is used to load the Q6 firmware binaries / MDT segments
+into memory for the root PD and user PDs if present. However, the m3
+firmware blob is not. The m3 firmware in MBN (MDT) format is loaded by
+ath11k as part of the root PD boot sequence for AHB platform chips.
 
-In a multi-PD configuration, the rootPD provides resources and services
-to other one or multiple userPDs that provide WiFi operation.
-The rproc driver handles loading and authenticating the firmware image
-of the rootPD, while the ath11k driver boots the rootPD and the userPDs.
+For chips for which the m3 firmware is outside of the Q6 memory
+carveout, obtain the memory region from the device tree and load the m3
+firmware into that region. Otherwise, fall back to the Q6 memory region
+of the rproc node itself.
 
-The root PD must be booted first, so power up the rootPD and wait
-for a power-up notification from the notifier callback before powering
-up the userPDs. Add global driver-level locking to avoid multiple
-threads racing to power up the rootPD.
+Keep track of whether m3 firmware has been loaded in the global
+rproc_info struct using a bitmap. In a configuration with multiple
+wifi chips of the same hardware revision, the m3 firmware requires to be
+loaded only once.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/net/wireless/ath/ath11k/ahb.c | 218 +++++++++++++++++++++++++++++++---
- drivers/net/wireless/ath/ath11k/ahb.h |  17 ++-
- 2 files changed, 215 insertions(+), 20 deletions(-)
+ drivers/net/wireless/ath/ath11k/ahb.c  | 65 ++++++++++++++++++++++++++++++++++
+ drivers/net/wireless/ath/ath11k/ahb.h  |  3 ++
+ drivers/net/wireless/ath/ath11k/core.c | 12 ++++++-
+ drivers/net/wireless/ath/ath11k/hw.h   |  8 +++++
+ drivers/net/wireless/ath/ath11k/qmi.c  |  6 ++--
+ 5 files changed, 91 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/net/wireless/ath/ath11k/ahb.c b/drivers/net/wireless/ath/ath11k/ahb.c
-index 27d01411b6e9..86723a2eb3d2 100644
+index 86723a2eb3d2..9fe2e112dfb8 100644
 --- a/drivers/net/wireless/ath/ath11k/ahb.c
 +++ b/drivers/net/wireless/ath/ath11k/ahb.c
-@@ -44,6 +44,13 @@ MODULE_DEVICE_TABLE(of, ath11k_ahb_of_match);
+@@ -18,6 +18,7 @@
+ #include "qmi.h"
+ #include <linux/remoteproc.h>
+ #include "pcic.h"
++#include <linux/soc/qcom/mdt_loader.h>
+ #include <linux/soc/qcom/smem.h>
+ #include <linux/soc/qcom/smem_state.h>
  
- #define ATH11K_IRQ_CE0_OFFSET 4
+@@ -890,6 +891,7 @@ static struct ath11k_ahb_rproc_info *ath11k_ahb_rproc_info_alloc(struct ath11k_b
+ 		return NULL;
  
-+/*
-+ * Global Driver-level Locking:
-+ *  - ath11k_rproc_info_lock: Protects rproc_info allocation/free
-+ */
-+static struct ath11k_ahb_rproc_info *g_rproc_info;
-+static DEFINE_MUTEX(ath11k_rproc_info_lock);
-+
- static const char *irq_name[ATH11K_IRQ_NUM_MAX] = {
- 	"misc-pulse1",
- 	"misc-latch",
-@@ -408,21 +415,12 @@ static void ath11k_ahb_stop(struct ath11k_base *ab)
+ 	rproc_info->root_pd_booted = false;
++	rproc_info->m3_loaded = 0;
+ 	init_completion(&rproc_info->rootpd_ready);
+ 	ab_ahb->rproc_info = rproc_info;
  
- static int ath11k_ahb_power_up(struct ath11k_base *ab)
- {
--	struct ath11k_ahb *ab_ahb = ath11k_ahb_priv(ab);
--	int ret;
--
--	ret = rproc_boot(ab_ahb->tgt_rproc);
--	if (ret)
--		ath11k_err(ab, "failed to boot the remote processor Q6\n");
--
--	return ret;
-+	return 0;
+@@ -962,6 +964,58 @@ static int ath11k_ahb_boot_root_pd(struct ath11k_base *ab)
+ 	return 0;
  }
  
- static void ath11k_ahb_power_down(struct ath11k_base *ab, bool is_suspend)
- {
--	struct ath11k_ahb *ab_ahb = ath11k_ahb_priv(ab);
--
--	rproc_shutdown(ab_ahb->tgt_rproc);
-+	return;
- }
- 
- static void ath11k_ahb_init_qmi_ce_config(struct ath11k_base *ab)
-@@ -832,24 +830,200 @@ static const struct ath11k_hif_ops ath11k_ahb_hif_ops_wcn6750 = {
- 	.ce_irq_disable = ath11k_pci_disable_ce_irqs_except_wake_irq,
- };
- 
-+static int ath11k_ahb_root_pd_state_notifier(struct notifier_block *nb,
-+					     const unsigned long event, void *data)
++static int ath11k_ahb_load_m3_firmware(struct ath11k_base *ab)
 +{
-+	struct ath11k_ahb_rproc_info *rproc_info =
-+		container_of(nb, struct ath11k_ahb_rproc_info, root_pd_nb);
-+
-+	if (event == ATH11K_RPROC_AFTER_POWERUP) {
-+		ath11k_dbg(NULL, ATH11K_DBG_AHB, "Root PD is UP\n");
-+		complete(&rproc_info->rootpd_ready);
-+	}
-+
-+	return 0;
-+}
-+
-+static int ath11k_ahb_register_rproc_notifier(void)
-+{
++	char m3_fw_name[ATH11K_FW_NAME_LEN];
++	const struct firmware *m3_fw = NULL;
++	struct device_node *node;
++	struct resource res = {};
++	phys_addr_t mem_phys;
++	void *mem_region;
++	size_t mem_size;
 +	int ret;
 +
-+	lockdep_assert_held(&ath11k_rproc_info_lock);
-+
-+	if (g_rproc_info->root_pd_notifier)
-+		return 0;
-+
-+	g_rproc_info->root_pd_nb.notifier_call = ath11k_ahb_root_pd_state_notifier;
-+
-+	g_rproc_info->root_pd_notifier = qcom_register_ssr_notifier(g_rproc_info->tgt_rproc->name,
-+								    &g_rproc_info->root_pd_nb);
-+	if (IS_ERR(g_rproc_info->root_pd_notifier)) {
-+		ret = PTR_ERR(g_rproc_info->root_pd_notifier);
-+		g_rproc_info->root_pd_notifier = NULL;
++	ret = of_reserved_mem_region_to_resource_byname(ab->dev->of_node,
++							"m3-region", &res);
++	/* If m3 region isn't found, fall back to the mem region of the rproc */
++	if (ret && ret == -EINVAL) {
++		node = g_rproc_info->tgt_rproc->dev.parent->of_node;
++		ret = of_reserved_mem_region_to_resource(node, 0, &res);
++	}
++	if (ret) {
++		ath11k_err(ab, "Failed to get m3 memory resource: %d\n", ret);
 +		return ret;
 +	}
 +
-+	return 0;
-+}
++	mem_phys = res.start;
++	mem_size = resource_size(&res);
++	mem_region = devm_memremap(ab->dev, mem_phys, mem_size, MEMREMAP_WC);
 +
-+static void ath11k_ahb_unregister_rproc_notifier(void)
-+{
-+	lockdep_assert_held(&ath11k_rproc_info_lock);
++	snprintf(m3_fw_name, sizeof(m3_fw_name), "%s/%s/%s",
++		 ATH11K_FW_DIR, ab->hw_params.fw.dir, ATH11K_M3_MBN_FILE);
 +
-+	if (!g_rproc_info->root_pd_notifier)
-+		return;
-+
-+	qcom_unregister_ssr_notifier(g_rproc_info->root_pd_notifier,
-+				     &g_rproc_info->root_pd_nb);
-+	g_rproc_info->root_pd_notifier = NULL;
-+}
-+
-+static struct ath11k_ahb_rproc_info *ath11k_ahb_rproc_info_alloc(struct ath11k_base *ab)
-+{
-+	struct ath11k_ahb *ab_ahb = ath11k_ahb_priv(ab);
-+	struct ath11k_ahb_rproc_info *rproc_info;
-+
-+	lockdep_assert_held(&ath11k_rproc_info_lock);
-+
-+	rproc_info = kzalloc_obj(*rproc_info);
-+	if (!rproc_info)
-+		return NULL;
-+
-+	rproc_info->root_pd_booted = false;
-+	init_completion(&rproc_info->rootpd_ready);
-+	ab_ahb->rproc_info = rproc_info;
-+
-+	return rproc_info;
-+}
-+
- static int ath11k_core_get_rproc(struct ath11k_base *ab)
- {
- 	struct ath11k_ahb *ab_ahb = ath11k_ahb_priv(ab);
- 	struct device *dev = ab->dev;
- 	struct rproc *prproc;
- 	phandle rproc_phandle;
-+	int ret;
-+
-+	lockdep_assert_held(&ath11k_rproc_info_lock);
-+
-+	if (g_rproc_info) {
-+		ab_ahb->rproc_info = g_rproc_info;
-+		return 0;
++	ret = request_firmware(&m3_fw, m3_fw_name, ab->dev);
++	if (ret < 0) {
++		ath11k_err(ab, "Failed to request firmware: %d\n", ret);
++		return ret;
 +	}
 +
-+	g_rproc_info = ath11k_ahb_rproc_info_alloc(ab);
-+	if (!g_rproc_info)
-+		return -ENOMEM;
- 
- 	if (of_property_read_u32(dev->of_node, "qcom,rproc", &rproc_phandle)) {
- 		ath11k_err(ab, "failed to get q6_rproc handle\n");
--		return -ENOENT;
-+		ret = -ENOENT;
-+		goto err_free_rproc_info;
- 	}
- 
- 	prproc = rproc_get_by_phandle(rproc_phandle);
--	if (!prproc)
--		return dev_err_probe(&ab->pdev->dev, -EPROBE_DEFER, "failed to get rproc\n");
--	ab_ahb->tgt_rproc = prproc;
-+	if (!prproc) {
-+		ret = dev_err_probe(dev, -EPROBE_DEFER,
-+				    "failed to get rproc\n");
-+		goto err_free_rproc_info;
++	if (!m3_fw->size || m3_fw->size > mem_size) {
++		ath11k_err(ab, "Invalid firmware size\n");
++		release_firmware(m3_fw);
++		return -EINVAL;
 +	}
-+	g_rproc_info->tgt_rproc = prproc;
- 
- 	return 0;
 +
-+err_free_rproc_info:
-+	ab_ahb->rproc_info = NULL;
-+	kfree(g_rproc_info);
-+	g_rproc_info = NULL;
++	ret = qcom_mdt_load_no_init(ab->dev, m3_fw, m3_fw_name, mem_region,
++				    mem_phys, mem_size, &mem_phys);
++	if (ret)
++		ath11k_err(ab, "Failed to load MDT segments: %d\n", ret);
++
++	release_firmware(m3_fw);
++
 +	return ret;
 +}
 +
-+static int ath11k_ahb_boot_root_pd(struct ath11k_base *ab)
-+{
-+	unsigned long time_left;
-+	int ret;
-+
-+	lockdep_assert_held(&ath11k_rproc_info_lock);
-+	reinit_completion(&g_rproc_info->rootpd_ready);
-+
-+	ret = rproc_boot(g_rproc_info->tgt_rproc);
-+	if (ret < 0) {
-+		ath11k_err(ab, "RootPD boot failed\n");
-+		return ret;
-+	}
-+
-+	time_left = wait_for_completion_timeout(&g_rproc_info->rootpd_ready,
-+						ATH11K_ROOTPD_READY_TIMEOUT);
-+	if (!time_left) {
-+		ath11k_err(ab, "RootPD ready wait timed out\n");
-+		return -ETIMEDOUT;
-+	}
-+
-+	return 0;
-+}
-+
-+static int ath11k_ahb_configure_rproc(struct ath11k_base *ab)
-+{
-+	int ret;
-+
-+	mutex_lock(&ath11k_rproc_info_lock);
-+
-+	ret = ath11k_core_get_rproc(ab);
-+	if (ret < 0) {
-+		mutex_unlock(&ath11k_rproc_info_lock);
-+		return ret;
-+	}
-+
-+	ret = ath11k_ahb_register_rproc_notifier();
-+	if (ret < 0) {
-+		ret = dev_err_probe(&ab->pdev->dev, ret,
-+				    "failed to register rproc notifier\n");
-+		goto err_put_rproc;
-+	}
-+
-+	if (g_rproc_info->tgt_rproc->state != RPROC_RUNNING) {
-+		ret = ath11k_ahb_boot_root_pd(ab);
+ static int ath11k_ahb_configure_rproc(struct ath11k_base *ab)
+ {
+ 	int ret;
+@@ -981,6 +1035,17 @@ static int ath11k_ahb_configure_rproc(struct ath11k_base *ab)
+ 		goto err_put_rproc;
+ 	}
+ 
++	if (ab->hw_params.m3_fw_support &&
++	    ab->hw_params.fw.m3_loader == ath11k_m3_fw_loader_ahb &&
++	    !(g_rproc_info->m3_loaded & BIT(ab->hw_params.hw_rev))) {
++		ret = ath11k_ahb_load_m3_firmware(ab);
 +		if (ret) {
-+			ath11k_err(ab, "failed to boot the remote processor Q6\n");
++			ath11k_err(ab, "failed to load m3 firmware: %d\n", ret);
 +			goto err_unreg_notifier;
 +		}
++		g_rproc_info->m3_loaded |= BIT(ab->hw_params.hw_rev);
 +	}
-+	g_rproc_info->root_pd_booted = true;
 +
-+	mutex_unlock(&ath11k_rproc_info_lock);
-+
-+	return 0;
-+
-+err_unreg_notifier:
-+	ath11k_ahb_unregister_rproc_notifier();
-+
-+err_put_rproc:
-+	rproc_put(g_rproc_info->tgt_rproc);
-+	mutex_unlock(&ath11k_rproc_info_lock);
-+	return ret;
-+}
-+
-+static void ath11k_ahb_deconfigure_rproc(struct ath11k_base *ab)
-+{
-+	struct ath11k_ahb *ab_ahb = ath11k_ahb_priv(ab);
-+	struct ath11k_ahb_rproc_info *rproc_info = ab_ahb->rproc_info;
-+
-+	if (!rproc_info || !g_rproc_info)
-+		return;
-+
-+	mutex_lock(&ath11k_rproc_info_lock);
-+
-+	ath11k_ahb_unregister_rproc_notifier();
-+
-+	if (g_rproc_info->root_pd_booted &&
-+	    g_rproc_info->tgt_rproc->state == RPROC_RUNNING)
-+		rproc_shutdown(g_rproc_info->tgt_rproc);
-+
-+	rproc_put(g_rproc_info->tgt_rproc);
-+	kfree(g_rproc_info);
-+	g_rproc_info = NULL;
-+
-+	mutex_unlock(&ath11k_rproc_info_lock);
- }
- 
- static int ath11k_ahb_setup_msi_resources(struct ath11k_base *ab)
-@@ -1148,6 +1322,7 @@ static int ath11k_ahb_probe(struct platform_device *pdev)
- 	struct ath11k_base *ab;
- 	const struct ath11k_hif_ops *hif_ops;
- 	const struct ath11k_pci_ops *pci_ops;
-+	struct ath11k_ahb *ab_ahb;
- 	enum ath11k_hw_rev hw_rev;
- 	int ret;
- 
-@@ -1187,6 +1362,8 @@ static int ath11k_ahb_probe(struct platform_device *pdev)
- 	ab->hw_rev = hw_rev;
- 	ab->fw_mode = ATH11K_FIRMWARE_MODE_NORMAL;
- 	platform_set_drvdata(pdev, ab);
-+	ab_ahb = ath11k_ahb_priv(ab);
-+	ab_ahb->ab = ab;
- 
- 	ret = ath11k_pcic_register_pci_ops(ab, pci_ops);
- 	if (ret) {
-@@ -1226,26 +1403,29 @@ static int ath11k_ahb_probe(struct platform_device *pdev)
- 
- 	ath11k_ahb_init_qmi_ce_config(ab);
- 
--	ret = ath11k_core_get_rproc(ab);
-+	ret = ath11k_ahb_configure_rproc(ab);
- 	if (ret)
- 		goto err_ce_free;
- 
- 	ret = ath11k_core_init(ab);
- 	if (ret) {
- 		ath11k_err(ab, "failed to init core: %d\n", ret);
--		goto err_ce_free;
-+		goto err_rproc_deconfigure;
- 	}
- 
- 	ret = ath11k_ahb_config_irq(ab);
- 	if (ret) {
- 		ath11k_err(ab, "failed to configure irq: %d\n", ret);
--		goto err_ce_free;
-+		goto err_rproc_deconfigure;
- 	}
- 
- 	ath11k_qmi_fwreset_from_cold_boot(ab);
- 
- 	return 0;
- 
-+err_rproc_deconfigure:
-+	ath11k_ahb_deconfigure_rproc(ab);
-+
- err_ce_free:
- 	ath11k_ce_free_pipes(ab);
- 
-@@ -1294,7 +1474,7 @@ static void ath11k_ahb_free_resources(struct ath11k_base *ab)
- 	ath11k_ahb_fw_resource_deinit(ab);
- 	ath11k_ce_free_pipes(ab);
- 	ath11k_ahb_ce_unmap(ab);
--
-+	ath11k_ahb_deconfigure_rproc(ab);
- 	ath11k_core_free(ab);
- 	platform_set_drvdata(pdev, NULL);
- }
+ 	if (g_rproc_info->tgt_rproc->state != RPROC_RUNNING) {
+ 		ret = ath11k_ahb_boot_root_pd(ab);
+ 		if (ret) {
 diff --git a/drivers/net/wireless/ath/ath11k/ahb.h b/drivers/net/wireless/ath/ath11k/ahb.h
-index 8c1eb1e8e6b1..99a361e0091f 100644
+index 99a361e0091f..033d6223494b 100644
 --- a/drivers/net/wireless/ath/ath11k/ahb.h
 +++ b/drivers/net/wireless/ath/ath11k/ahb.h
-@@ -6,6 +6,8 @@
- #ifndef ATH11K_AHB_H
- #define ATH11K_AHB_H
- 
-+#include <linux/remoteproc/qcom_rproc.h>
+@@ -33,6 +33,9 @@ struct ath11k_ahb_rproc_info {
+ 	struct notifier_block root_pd_nb;
+ 	void *root_pd_notifier;
+ 	bool root_pd_booted;
 +
- #include "core.h"
- 
- #define ATH11K_AHB_RECOVERY_TIMEOUT (3 * HZ)
-@@ -14,6 +16,9 @@
- #define ATH11K_AHB_SMP2P_SMEM_SEQ_NO		GENMASK(31, 16)
- #define ATH11K_AHB_SMP2P_SMEM_VALUE_MASK	0xFFFFFFFF
- 
-+#define ATH11K_ROOTPD_READY_TIMEOUT		(5 * HZ)
-+#define ATH11K_RPROC_AFTER_POWERUP		QCOM_SSR_AFTER_POWERUP
-+
- enum ath11k_ahb_smp2p_msg_id {
- 	ATH11K_AHB_POWER_SAVE_ENTER = 1,
- 	ATH11K_AHB_POWER_SAVE_EXIT,
-@@ -21,8 +26,17 @@ enum ath11k_ahb_smp2p_msg_id {
- 
- struct ath11k_base;
- 
--struct ath11k_ahb {
-+struct ath11k_ahb_rproc_info {
- 	struct rproc *tgt_rproc;
-+
-+	struct completion rootpd_ready;
-+	struct notifier_block root_pd_nb;
-+	void *root_pd_notifier;
-+	bool root_pd_booted;
-+};
-+
-+struct ath11k_ahb {
-+	struct ath11k_base *ab;
- 	struct {
- 		struct device *dev;
- 		struct iommu_domain *iommu_domain;
-@@ -37,6 +51,7 @@ struct ath11k_ahb {
- 		unsigned int smem_bit;
- 		struct qcom_smem_state *smem_state;
- 	} smp2p_info;
-+	struct ath11k_ahb_rproc_info *rproc_info;
++	/* Bitmap of loaded M3 firmwares indexed by hardware revision */
++	u32 m3_loaded;
  };
  
- static inline struct ath11k_ahb *ath11k_ahb_priv(struct ath11k_base *ab)
+ struct ath11k_ahb {
+diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
+index d2ed6a0ea7e3..428f382e74a9 100644
+--- a/drivers/net/wireless/ath/ath11k/core.c
++++ b/drivers/net/wireless/ath/ath11k/core.c
+@@ -46,6 +46,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "IPQ8074/hw2.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_ahb,
+ 		},
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
+@@ -135,6 +136,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "IPQ6018/hw1.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_ahb,
+ 		},
+ 		.max_radios = 2,
+ 		.bdf_addr = 0x4ABC0000,
+@@ -222,6 +224,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "QCA6390/hw2.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
+@@ -314,6 +317,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "QCN9074/hw1.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 1,
+ 		.single_pdev_only = false,
+@@ -400,6 +404,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "WCN6855/hw2.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
+@@ -492,6 +497,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "WCN6855/hw2.1",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
+@@ -582,6 +588,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "WCN6750/hw1.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 1,
+ 		.bdf_addr = 0x4B0C0000,
+@@ -667,6 +674,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "IPQ5018/hw1.0",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_ahb,
+ 		},
+ 		.max_radios = MAX_RADIOS_5018,
+ 		.bdf_addr = 0x4BA00000,
+@@ -724,7 +732,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 		.dbr_debug_support = true,
+ 		.global_reset = false,
+ 		.bios_sar_capa = NULL,
+-		.m3_fw_support = false,
++		.m3_fw_support = true,
+ 		.fixed_bdf_addr = true,
+ 		.fixed_mem_region = true,
+ 		.static_window_map = false,
+@@ -752,6 +760,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "QCA2066/hw2.1",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
+@@ -843,6 +852,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 			.dir = "QCA6698AQ/hw2.1",
+ 			.board_size = 256 * 1024,
+ 			.cal_offset = 128 * 1024,
++			.m3_loader = ath11k_m3_fw_loader_qmi,
+ 		},
+ 		.max_radios = 3,
+ 		.bdf_addr = 0x4B0C0000,
+diff --git a/drivers/net/wireless/ath/ath11k/hw.h b/drivers/net/wireless/ath/ath11k/hw.h
+index 4996536fbd14..5a1100ceb895 100644
+--- a/drivers/net/wireless/ath/ath11k/hw.h
++++ b/drivers/net/wireless/ath/ath11k/hw.h
+@@ -72,6 +72,7 @@
+ #define ATH11k_HW_RATECODE_CCK_SHORT_PREAM_MASK  0x4
+ 
+ #define ATH11K_FW_DIR			"ath11k"
++#define ATH11K_FW_NAME_LEN		35
+ 
+ #define ATH11K_BOARD_MAGIC		"QCA-ATH11K-BOARD"
+ #define ATH11K_BOARD_API2_FILE		"board-2.bin"
+@@ -79,6 +80,7 @@
+ #define ATH11K_DEFAULT_CAL_FILE		"caldata.bin"
+ #define ATH11K_AMSS_FILE		"amss.bin"
+ #define ATH11K_M3_FILE			"m3.bin"
++#define ATH11K_M3_MBN_FILE		"m3_fw.mbn"
+ #define ATH11K_REGDB_FILE_NAME		"regdb.bin"
+ 
+ #define ATH11K_CE_OFFSET(ab)	(ab->mem_ce - ab->mem)
+@@ -137,6 +139,11 @@ struct ath11k_hw_hal_params {
+ 	size_t num_tx_rings;
+ };
+ 
++enum ath11k_m3_fw_loaders {
++	ath11k_m3_fw_loader_ahb,
++	ath11k_m3_fw_loader_qmi,
++};
++
+ struct ath11k_hw_params {
+ 	const char *name;
+ 	u16 hw_rev;
+@@ -147,6 +154,7 @@ struct ath11k_hw_params {
+ 		const char *dir;
+ 		size_t board_size;
+ 		size_t cal_offset;
++		enum ath11k_m3_fw_loaders m3_loader;
+ 	} fw;
+ 
+ 	const struct ath11k_hw_ops *hw_ops;
+diff --git a/drivers/net/wireless/ath/ath11k/qmi.c b/drivers/net/wireless/ath/ath11k/qmi.c
+index 7dc07339b957..bd81e8d3d5f7 100644
+--- a/drivers/net/wireless/ath/ath11k/qmi.c
++++ b/drivers/net/wireless/ath/ath11k/qmi.c
+@@ -1724,7 +1724,8 @@ int ath11k_qmi_host_cap_send(struct ath11k_base *ab)
+ 	req.bdf_support_valid = 1;
+ 	req.bdf_support = 1;
+ 
+-	if (ab->hw_params.m3_fw_support) {
++	if (ab->hw_params.m3_fw_support &&
++	    ab->hw_params.fw.m3_loader == ath11k_m3_fw_loader_qmi) {
+ 		req.m3_support_valid = 1;
+ 		req.m3_support = 1;
+ 		req.m3_cache_support_valid = 1;
+@@ -2589,7 +2590,8 @@ int ath11k_qmi_wlanfw_m3_info_send(struct ath11k_base *ab)
+ 	memset(&req, 0, sizeof(req));
+ 	memset(&resp, 0, sizeof(resp));
+ 
+-	if (ab->hw_params.m3_fw_support) {
++	if (ab->hw_params.m3_fw_support &&
++	    ab->hw_params.fw.m3_loader == ath11k_m3_fw_loader_qmi) {
+ 		ret = ath11k_qmi_m3_load(ab);
+ 		if (ret) {
+ 			ath11k_err(ab, "failed to load m3 firmware: %d", ret);
 
 -- 
 2.53.0
