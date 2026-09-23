@@ -1,106 +1,77 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 23 Sep 2026 15:27:06 +0200
-Subject: [PATCH] Input: s6sy761 - fix resume ordering and restore sensing
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v2 0/2] Add bus clock for t7-thermal sensor
+Date: Wed, 23 Sep 2026 16:37:49 +0200
+Message-Id: <20260923-fix-t7-thermal-clock-v2-0-bff7a09eb487@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-s6sy761-suspend-v1-1-6fff96e71cb0@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAxA0asgz7UUAiRtr4IYEjDUHVIUE9QKc
- XdSGN/w/wZCkUngWWwQaWXhT8gobwX0LxcmQh6yQStt1ENXKEZ+1pQoSWYKA+ra2Nqre2O9g1z
- NkUb+nse2uyzJv6lf/hvY9wO+yPrUcwAAAA==
-X-Change-ID: 20260923-s6sy761-suspend-24674b0857ba
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Andi Shyti <andi@etezian.org>, Rob Herring <robh@kernel.org>, 
- Marco Mattiolo <marco.mattiolo@hotmail.it>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, stable@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2316; i=david@ixit.cz;
- h=from:subject:message-id; bh=2egtGbKgJE5/CltCrUVj0shGecXcgN246NO7tAqGS1k=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqs9Ow6ZfUciwK2ClUZoSOMbs50o34eBjqLyVD7
- WuYjzDPwGiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarPTsAAKCRBgAj/E00kg
- cjhpEADH0aV6ANCnG1fYUyzT3YX4F719uv6Tvu5H7tMkmRZH/LKsGd+UJSCT0L/PacXI8spI2Hd
- cSC42TiaY+zI+Moe59onVyFQdLX3B644Kaa7AEGcVdPJXxTeW38Gj4vpMEW+7+frU945hy4F026
- TwzuCAzTPaqEho9df7Ujzm6hU01b2r5Jw1FghGVMI7YgOzs/Tf7xzVxQI2kHINS6uZr9hZQKl25
- /wONlvTHeKyLHX/t1mB5GNylYGBouHnF0OxjnAsvTwWhYLwM+QQmX5P/MBzBeLIPWt72TpX7qJB
- R+3oYYUT+rPXgYG+MaIYcA3wqkFZ2Ni+VVzAN9brsQvJJWvUffwstKHhExHGf7qg6hgIMi3uyn6
- MKhOONSxcv1Zp/BBKITmwdn5tEEfe7wbsFIpgqssDeAf3Fzi/mgu/DXbMUQDf+uvdgQjthEV1To
- AR6XbmtikA5xaoRjkhZb8SB5FOwA+5DbD531FePRV8tHeItUlsKq3naOqZqLDA6+3l6LFCd7QvE
- u0z3NT1Zy5t9N9dZzDYFHLMsOeNvAZIoGKQZ1zzEWs8jtpZGu8619nt2Ukre2iYqkz9yzpXNJpv
- /3FhSMlJEqCqA+KVHrKjkXgqujLf4P6e9dvGbwhkxiwEfRCHGSJi9lRlXF5DewDINWk34Pzx2os
- a29tmGOUrQexMxg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NwQ6CMBBEf4Xs2TXtWgE5+R+GQy1b2VjBtIRoC
+ P9uJfHm8U1m3iyQOAonaIoFIs+SZBwy0K4A19vhxihdZiBFpToRoZcXThVOPceHDejC6O6oj9q
+ qqzeVKRny9Bk59zbtpc3cS5rG+N5eZv1Nf8LDf+GsUWHVGWfKmryu6WyDcNj7CO26rh8EHeEqt
+ wAAAA==
+X-Change-ID: 20260922-fix-t7-thermal-clock-151a0bf4746e
+To: Guillaume La Roque <glaroque@baylibre.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>
+Cc: Conor Dooley <conor.dooley@microchip.com>, linux-pm@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ronald Claveau <linux-kernel-dev@aliel.fr>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1800;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=Y3h9ArEWxXcDcNW3RYT0QJFPRTqLKdurS6G4EidafJU=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9bmJyEctuu2dqfnFzqvZN2sWn44N1h4mSj/3ZNv9Dhfz
+ dv0Uk2ro5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZjIrXyG/5XHvwmcyOXX4Gc5
+ dOlmx//kLje14NkXpO7lZny0Vcldc5DhfzDr4xmlD82+6HTqvVhV7lTdsYjfaf/9NYvK18nuE2l
+ w5gMA
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-System suspend powers the controller off and resume powers it back on,
-but the resume path enables the interrupt before s6sy761_power_on()
-checks the boot. The firmware raises its boot-complete event on the
-interrupt line, the threaded handler consumes it, s6sy761_power_on()
-then reads an empty event and resume fails with -ENODEV, skipping the
-touch function setup:
+The t7 thermal sensor requires a bus clock, gating register access to
+the sensor, in addition to the functional clock that is already
+described and shared between sensors on other Amlogic SoCs.
 
-  s6sy761 2-0048: PM: dpm_run_callback(): s6sy761_resume [s6sy761] returns -19
+This series first extends the devicetree binding to describe this
+second clock, making it mandatory only for the t7-thermal compatible
+so other SoCs are unaffected, then updates the driver to use the
+clk_bulk API instead of a single struct clk, so it can transparently
+handle however many clocks a given compatible declares.
 
-Power the chip on first and only then unmask the interrupt. Once resume
-completes the boot handshake the chip comes back with sensing off, as
-at probe where input_open() turns it on, so the touchscreen stays dead
-after resume. Send SENSE_ON again when the input device is open.
+`dt_binding_check DT_SCHEMA_FILES=amlogic,thermal.yaml` is ok
 
-Tested on a Pixel 3 XL over several s2idle cycles: resume succeeds and
-the touch function and sense status match the pre-suspend state.
+  CHKDT   ./Documentation/devicetree/bindings
+warning: python package 'yamllint' not installed, skipping
+  STYLE   ./Documentation/devicetree/bindings
+  DTEX    Documentation/devicetree/bindings/thermal/amlogic,thermal.example.dts
+  DTC [C] Documentation/devicetree/bindings/thermal/amlogic,thermal.example.dtb
 
-Assisted-by: LLM
-Cc: stable@vger.kernel.org
-Fixes: 0145a7141e59 ("Input: add support for the Samsung S6SY761 touchscreen")
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/input/touchscreen/s6sy761.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/input/touchscreen/s6sy761.c b/drivers/input/touchscreen/s6sy761.c
-index 0f24a9b730635..c52c45a7d1029 100644
---- a/drivers/input/touchscreen/s6sy761.c
-+++ b/drivers/input/touchscreen/s6sy761.c
-@@ -495,20 +495,29 @@ static int s6sy761_suspend(struct device *dev)
- 	s6sy761_power_off(sdata);
- 
- 	return 0;
- }
- 
- static int s6sy761_resume(struct device *dev)
- {
- 	struct s6sy761_data *sdata = dev_get_drvdata(dev);
-+	int err;
- 
-+	err = s6sy761_power_on(sdata);
- 	enable_irq(sdata->client->irq);
-+	if (err)
-+		return err;
- 
--	return s6sy761_power_on(sdata);
-+	guard(mutex)(&sdata->input->mutex);
-+
-+	if (!input_device_enabled(sdata->input))
-+		return 0;
-+
-+	return i2c_smbus_write_byte(sdata->client, S6SY761_SENSE_ON);
- }
- 
- static const struct dev_pm_ops s6sy761_pm_ops = {
- 	SYSTEM_SLEEP_PM_OPS(s6sy761_suspend, s6sy761_resume)
- 	RUNTIME_PM_OPS(s6sy761_runtime_suspend, s6sy761_runtime_resume, NULL)
- };
- 
- #ifdef CONFIG_OF
+Changes in v2:
+- PATCH 1: Fix commit message. Thanks to Krzysztof review.
+- PATCH 2: Return an error when no clock provided. Thanks to sashiko's review.
+- Link to v1: https://lore.kernel.org/r/20260923-fix-t7-thermal-clock-v1-0-7d4c4682f182@aliel.fr
 
 ---
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260923-s6sy761-suspend-24674b0857ba
+Ronald Claveau (2):
+      dt-bindings: thermal: amlogic: describe bus clock for t7-thermal
+      thermal/drivers/amlogic: switch to clk_bulk API to support multiple clocks
+
+ .../bindings/thermal/amlogic,thermal.yaml          | 29 ++++++++++++++++++++--
+ drivers/thermal/amlogic_thermal.c                  | 14 ++++++-----
+ 2 files changed, 35 insertions(+), 8 deletions(-)
+---
+base-commit: a8c591ed6b672915e0be57843f943a2a723aff40
+change-id: 20260922-fix-t7-thermal-clock-151a0bf4746e
 
 Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
