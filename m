@@ -1,98 +1,127 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 23 Sep 2026 13:51:03 +0200
-Subject: [PATCH 2/2] thermal/drivers/amlogic: switch to clk_bulk API to
- support multiple clocks
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH ath-next 00/16] wifi: ath11k: add MultiPD support for AHB
+ platforms
+Date: Wed, 23 Sep 2026 16:05:06 +0400
+Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-fix-t7-thermal-clock-v1-2-7d4c4682f182@aliel.fr>
-References: <20260923-fix-t7-thermal-clock-v1-0-7d4c4682f182@aliel.fr>
-In-Reply-To: <20260923-fix-t7-thermal-clock-v1-0-7d4c4682f182@aliel.fr>
-To: Guillaume La Roque <glaroque@baylibre.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>
-Cc: Conor Dooley <conor.dooley@microchip.com>, linux-pm@vger.kernel.org, 
- linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MMQ6DMAxA0asgz1iK3RI1vQpigGDAQ9OQRBUS4
+ u5EHd/w/wlZkkqGd3NCkp9m/YYKahvw2xhWQZ2rgQ1b48igxr0z9MLdB0vM+IkzPi131j9ock6
+ gljHJosf/2sNYNgxyFBiu6wZ5C1dabwAAAA==
+X-Change-ID: 20260910-ipq5018-qcn6122-mpd-46256c31b99e
+To: Johannes Berg <johannes@sipsolutions.net>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jeff Johnson <jjohnson@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org, 
+ ath11k@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Vignesh Viswanathan <vignesh.viswanathan@oss.qualcomm.com>, 
+ Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2477;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=ioP7fZ0RSW6MezWCgPIvZyXQs7PdrAR6YY8F77TqFTw=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9bmvdVmCr+z0k/9klS7ePj31Q+N6fOTrqxxahfjiLd6z
- CiouOF3RykLgxgXg6yYIkv/XMsT7y4fPfN1j3oKzBxWJpAhDFycAjARTTmG/2UPshqv86sluNfm
- NPx5fC+CRbTpZEbBjPD/6tolEl5+fowME8602/lPYTFks0uYfMviZ/P6af1uT3ttrx89YvFBbNI
- yRgA=
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=4766;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=DP7ZakM0RfG18wmgJmMLdmBWCDvPQiNf/lyndgVxw7o=;
+ b=6n/qkdAoTe9c56sFXBkMQiIhMPZANlM6ClgA6cmMYrO+R24jrQ8EGwTec/yEhk+Bxot49e/bC
+ h7Yu4a8MouHAdM5V5e2nmXjk7/IEiUYt82kbAHCiVCl1gIRvz+JDaly
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The t7-thermal variant now exposes two clocks (bus and core) in its
-devicetree binding, but the driver only knows how to get and manage
-a single struct clk. Using devm_clk_get() would silently ignore the
-second clock, so switch to devm_clk_bulk_get_all() and the matching
-clk_bulk_prepare_enable()/clk_bulk_disable_unprepare() calls. This
-lets the driver transparently handle however many clocks a given
-compatible declares, without needing per-variant clock-handling code,
-and keeps working for existing SoCs that only have one.
+Add multiPD support for AHB platforms following the approach for ath12k:
+link: https://lore.kernel.org/linux-wireless/20250321-ath12k-ahb-v12-0-bb389ed76ae5@quicinc.com/
+link: https://lore.kernel.org/linux-wireless/20260721065038.126046-1-aaradhana.sahu@oss.qualcomm.com/
 
-Fixes: 18d65de8157c ("thermal/drivers/amlogic: Add support for secure monitor calibration readout")
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+The IPQ5018 platform is a multiPD platform and the current ath11k driver
+supports standalone IPQ5018 WiFi only. However, IPQ5018 boards come with
+up to two optional SoC-specific QCN6122 WiFi companion chips for 5G/6G
+WiFi.
+
+IPQ5018 implements the multi-PD architecture as follows:
+
+                     +-----------------------------+
+                     |     Q6 Remote Processor     |
+                     |            RootPD           |
+                     +--------------+--------------+
+                                    |
+                                    |
+                                    |
+              +---------------------+---------------------+
+              |                     |                     |
+        +-----v-----+         +-----v-----+         +-----v-----+
+        |  UserPD1  |         |  UserPD2  |         |  UserPD3  |
+        |  IPQ5018  |         | QCN6122 #1|         | QCN6122 #2|
+        |  (Radio)  |         |  (Radio)  |         |  (Radio)  |
+        +-----------+         +-----------+         +-----------+
+
+The rootPD is responsible for managing the lifecycle of the UserPD and
+shared resources and providing SSR notifiers. There are different
+firmware blobs that include either the rootPD and userPD binaries for
+IPQ5018-only which auto-spawns the userPD for IPQ5018 WiFi, or for
+IPQ5018 and QCN6122 for which the userPDs for each radio must be spawned
+by the ath11k driver.
+
+It's worth noting that QCN6122 does not have its own Q6 firmware blobs.
+Instead, the firmware segments for QCN6122 are included in the MPD
+version of the IPQ5018 firmware blob(s). The QCN6122 M3 firmware does
+come separately and is loaded into the Q6 memory carveout of IPQ5018.
+
+In high-level, the path series covers:
+- Addition of multiPD IPQ5018 binding definition
+- Updates to the ath11k driver to register handle standalone vs multiPD
+  remoteproc boot sequence with required notifiers.
+- Support for loading M3 firmware files during remoteproc boot sequence
+- Ability to set required memory carveouts for Q6, BDF, and M3 firmware
+  segments.
+- Addition of SCM call to manage power state of the internal IPQ5018
+  WiFi radio
+- Driver support for resource acquisition and power up/down of userPDs
+- Binding definition and AHB driver support for QCN6122
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/thermal/amlogic_thermal.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+George Moussalem (16):
+      dt-bindings: net: wireless: ath11k: Sort compatible names alphabetically
+      dt-bindings: net: wireless: ath11k: Add bindings for IPQ5018
+      wifi: ath11k: Register root PD rproc notifier
+      wifi: ath11k: Add support for loading m3 mbn firmware
+      wifi: ath11k: Add ability to set BDF and M3 dump memory addresses
+      firmware: qcom: scm: Add support for setting internal WiFi power mode
+      wifi: ath11k: Register userPD interrupts and SMEM entries
+      wifi: ath11k: Power up userPD
+      wifi: ath11k: Power down userPD
+      dt-bindings: net: wireless: ath11k: Add bindings for QCN6122
+      wifi: ath11k: add hw params for QCN6122
+      wifi: ath11k: add hal regs for QCN6122
+      wifi: ath11k: add hw ring mask for QCN6122
+      wifi: ath11k: update hif and pci ops for QCN6122
+      wifi: ath11k: define userPDs for QCN6122
+      wifi: ath11k: add QCN6122 device support
 
-diff --git a/drivers/thermal/amlogic_thermal.c b/drivers/thermal/amlogic_thermal.c
-index a0b530624b60c..2e8d042067079 100644
---- a/drivers/thermal/amlogic_thermal.c
-+++ b/drivers/thermal/amlogic_thermal.c
-@@ -100,7 +100,8 @@ struct amlogic_thermal {
- 	const struct amlogic_thermal_data *data;
- 	struct regmap *regmap;
- 	struct regmap *sec_ao_map;
--	struct clk *clk;
-+	struct clk_bulk_data *clks;
-+	int num_clks;
- 	struct thermal_zone_device *tzd;
- 	u32 trim_info;
- 	struct meson_sm_firmware *sm_fw;
-@@ -142,7 +143,7 @@ static int amlogic_thermal_enable(struct amlogic_thermal *data)
- {
- 	int ret;
- 
--	ret = clk_prepare_enable(data->clk);
-+	ret = clk_bulk_prepare_enable(data->num_clks, data->clks);
- 	if (ret)
- 		return ret;
- 
-@@ -156,7 +157,7 @@ static void amlogic_thermal_disable(struct amlogic_thermal *data)
- {
- 	regmap_update_bits(data->regmap, TSENSOR_CFG_REG1,
- 			   TSENSOR_CFG_REG1_ENABLE, 0);
--	clk_disable_unprepare(data->clk);
-+	clk_bulk_disable_unprepare(data->num_clks, data->clks);
- }
- 
- static int amlogic_thermal_get_temp(struct thermal_zone_device *tz, int *temp)
-@@ -323,9 +324,10 @@ static int amlogic_thermal_probe(struct platform_device *pdev)
- 	if (IS_ERR(pdata->regmap))
- 		return PTR_ERR(pdata->regmap);
- 
--	pdata->clk = devm_clk_get(dev, NULL);
--	if (IS_ERR(pdata->clk))
--		return dev_err_probe(dev, PTR_ERR(pdata->clk), "failed to get clock\n");
-+	ret = devm_clk_bulk_get_all(dev, &pdata->clks);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to get clocks\n");
-+	pdata->num_clks = ret;
- 
- 	if (pdata->data->use_sm)
- 		ret = amlogic_thermal_probe_sm(pdev, pdata);
+ .../bindings/net/wireless/qcom,ath11k.yaml         | 569 ++++++++++++++++++++-
+ drivers/firmware/qcom/qcom_scm.c                   |  43 ++
+ drivers/firmware/qcom/qcom_scm.h                   |   2 +
+ drivers/net/wireless/ath/ath11k/ahb.c              | 555 +++++++++++++++++++-
+ drivers/net/wireless/ath/ath11k/ahb.h              |  54 +-
+ drivers/net/wireless/ath/ath11k/core.c             |  99 +++-
+ drivers/net/wireless/ath/ath11k/core.h             |   1 +
+ drivers/net/wireless/ath/ath11k/hif.h              |   9 +
+ drivers/net/wireless/ath/ath11k/hw.c               | 112 ++++
+ drivers/net/wireless/ath/ath11k/hw.h               |  10 +
+ drivers/net/wireless/ath/ath11k/pcic.c             |   9 +
+ drivers/net/wireless/ath/ath11k/qmi.c              |  70 ++-
+ drivers/net/wireless/ath/ath11k/qmi.h              |   3 +-
+ include/linux/firmware/qcom/qcom_scm.h             |   1 +
+ 14 files changed, 1501 insertions(+), 36 deletions(-)
+---
+base-commit: 10cfa109c880092df32e396647b4afdca9be8350
+change-id: 20260910-ipq5018-qcn6122-mpd-46256c31b99e
 
+Best regards,
 -- 
-2.49.0
+George Moussalem <george.moussalem@outlook.com>
 
