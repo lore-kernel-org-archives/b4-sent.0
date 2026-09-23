@@ -1,98 +1,66 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 23 Sep 2026 16:37:51 +0200
-Subject: [PATCH v2 2/2] thermal/drivers/amlogic: switch to clk_bulk API to
- support multiple clocks
+From: Norbert Szetei <norbert@doyensec.com>
+Subject: [PATCH v3 0/2] RDMA/rxe: fix ADVISE_MR prefetch on non-ODP MRs
+Date: Wed, 23 Sep 2026 16:40:48 +0200
+Message-Id: <20260923-rxe-advise-mr-v3-v3-0-95e1a4077e4d@doyensec.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-fix-t7-thermal-clock-v2-2-bff7a09eb487@aliel.fr>
-References: <20260923-fix-t7-thermal-clock-v2-0-bff7a09eb487@aliel.fr>
-In-Reply-To: <20260923-fix-t7-thermal-clock-v2-0-bff7a09eb487@aliel.fr>
-To: Guillaume La Roque <glaroque@baylibre.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>
-Cc: Conor Dooley <conor.dooley@microchip.com>, linux-pm@vger.kernel.org, 
- linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ronald Claveau <linux-kernel-dev@aliel.fr>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2489;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=d3X7NjHQSZTVQAEva268K6UvycI2mQfSqEccqomqrNU=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9bmJ7HPb1p8btvjlPvoXNjC7e8YnrUx5W5pqDwfua7rS
- OnJDau/dpSyMIhxMciKKbL0z7U88e7y0TNf96inwMxhZQIZwsDFKQATOanDyDB/j4efWe4T5wlm
- Uq0RB2RXbg40Ndlz+ULDKWduZ8N2WVdGhjvr5rxQ4e46tPZrBceLTsGNj837jiTo/dUWZZ/9dtX
- ZdB4A
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMUQrCMBCE4auUfXYhJkSiVyk+xGaqK9iWjZZCy
+ d1N28cPZv6VMlSQ6daspJglyzhUuFND3SsOT7CkarLGXszVOtYFHFMdgj/Ks2PnfQwmIPhzT/U
+ 2KXpZ9mR7P5x/jze679ahUv62/cTIdAAAAA==
+X-Change-ID: 20260923-rxe-advise-mr-v3-355a808e851f
+To: Zhu Yanjun <zyjzyj2000@gmail.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Leon Romanovsky <leon@kernel.org>, Bob Pearson <rpearsonhpe@gmail.com>, 
+ Daisuke Matsuda <dskmtsd@gmail.com>
+Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Zhu Yanjun <yanjun.zhu@linux.dev>, stable@vger.kernel.org, 
+ Norbert Szetei <norbert@doyensec.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790174657; l=1582;
+ i=norbert@doyensec.com; s=20260913; h=from:subject:message-id;
+ bh=mikozMaNBzqjOG66MSgnLM0I8SxLEQRRfu0yIks795g=;
+ b=kCBAAm0NwJRgHGHCrOi500SN2mG6f8WxujQo3QKTKGfYEdueaEXnP7xf403Y3kAvcYVK740kG
+ VQZX4OVn8C6C1oUQ+h8Td+5ebdwNPdKm8t3kZWNtjraESP8d5ILVHbI
+X-Developer-Key: i=norbert@doyensec.com; a=ed25519;
+ pk=c6ZqJ+mhvi5FloJOiMJUcIPPjT7tczbglx5gruwpVi8=
+X-Endpoint-Received: by B4 Relay for norbert@doyensec.com/20260913 with auth_id=1029
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The t7-thermal variant now exposes two clocks (bus and core) in its
-devicetree binding, but the driver only knows how to get and manage
-a single struct clk. Using devm_clk_get() would silently ignore the
-second clock, so switch to devm_clk_bulk_get_all() and the matching
-clk_bulk_prepare_enable()/clk_bulk_disable_unprepare() calls. This
-lets the driver transparently handle however many clocks a given
-compatible declares, without needing per-variant clock-handling code,
-and keeps working for existing SoCs that only have one.
+ADVISE_MR prefetch on a plain MR runs to_ib_umem_odp() on a struct
+ib_umem, giving a KASAN slab-out-of-bounds read in
+ib_umem_odp_map_dma_and_lock() (splat in patch 2).
 
-Fixes: 18d65de8157c ("thermal/drivers/amlogic: Add support for secure monitor calibration readout")
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+v1 checked is_odp_mr() after lookup_mr(). Leon asked for lookup_mr() to
+do the check itself, off mr->access. That only holds once mr->access
+cannot disagree with the umem, so patch 1 stops the two paths that
+assign mr->access after registration from touching IB_ACCESS_ON_DEMAND,
+and patch 2 passes the flag to lookup_mr() in both prefetch arms.
+
+Based on for-next. In rxe_rereg_user_mr() the new check rejects the
+access flags before the mr->ibmr.pd swap, where for-rc's ae36a5b609ae
+("RDMA/rxe: validate access flags before swapping the MR's PD") also
+moved the existing validation.
+
+v2 -> v3:
+ - rebased on for-next, no functional change
+v2: https://lore.kernel.org/all/20260913-rxe-advise-mr-v2-v2-0-b806c789871c@doyensec.com/
+v1: https://lore.kernel.org/all/521D5E74-89E3-43C0-81C7-AC0BE52591E7@doyensec.com/
+
+Signed-off-by: Norbert Szetei <norbert@doyensec.com>
 ---
- drivers/thermal/amlogic_thermal.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+Norbert Szetei (2):
+      RDMA/rxe: Reject IB_ACCESS_ON_DEMAND changes after MR creation
+      RDMA/rxe: Reject prefetch of a non-ODP MR
 
-diff --git a/drivers/thermal/amlogic_thermal.c b/drivers/thermal/amlogic_thermal.c
-index a0b530624b60c..60728de6968ac 100644
---- a/drivers/thermal/amlogic_thermal.c
-+++ b/drivers/thermal/amlogic_thermal.c
-@@ -100,7 +100,8 @@ struct amlogic_thermal {
- 	const struct amlogic_thermal_data *data;
- 	struct regmap *regmap;
- 	struct regmap *sec_ao_map;
--	struct clk *clk;
-+	struct clk_bulk_data *clks;
-+	int num_clks;
- 	struct thermal_zone_device *tzd;
- 	u32 trim_info;
- 	struct meson_sm_firmware *sm_fw;
-@@ -142,7 +143,7 @@ static int amlogic_thermal_enable(struct amlogic_thermal *data)
- {
- 	int ret;
- 
--	ret = clk_prepare_enable(data->clk);
-+	ret = clk_bulk_prepare_enable(data->num_clks, data->clks);
- 	if (ret)
- 		return ret;
- 
-@@ -156,7 +157,7 @@ static void amlogic_thermal_disable(struct amlogic_thermal *data)
- {
- 	regmap_update_bits(data->regmap, TSENSOR_CFG_REG1,
- 			   TSENSOR_CFG_REG1_ENABLE, 0);
--	clk_disable_unprepare(data->clk);
-+	clk_bulk_disable_unprepare(data->num_clks, data->clks);
- }
- 
- static int amlogic_thermal_get_temp(struct thermal_zone_device *tz, int *temp)
-@@ -323,9 +324,10 @@ static int amlogic_thermal_probe(struct platform_device *pdev)
- 	if (IS_ERR(pdata->regmap))
- 		return PTR_ERR(pdata->regmap);
- 
--	pdata->clk = devm_clk_get(dev, NULL);
--	if (IS_ERR(pdata->clk))
--		return dev_err_probe(dev, PTR_ERR(pdata->clk), "failed to get clock\n");
-+	ret = devm_clk_bulk_get_all(dev, &pdata->clks);
-+	if (ret <= 0)
-+		return dev_err_probe(dev, ret ?: -ENOENT, "failed to get clocks\n");
-+	pdata->num_clks = ret;
- 
- 	if (pdata->data->use_sm)
- 		ret = amlogic_thermal_probe_sm(pdev, pdata);
+ drivers/infiniband/sw/rxe/rxe_mr.c    | 6 ++++++
+ drivers/infiniband/sw/rxe/rxe_odp.c   | 4 ++--
+ drivers/infiniband/sw/rxe/rxe_verbs.c | 6 ++++++
+ 3 files changed, 14 insertions(+), 2 deletions(-)
+---
+base-commit: 9dcacdc41083cccff74292851bf9fde999e0731a
+change-id: 20260923-rxe-advise-mr-v3-355a808e851f
 
--- 
-2.49.0
+Best regards,
+--  
+Norbert Szetei <norbert@doyensec.com>
 
