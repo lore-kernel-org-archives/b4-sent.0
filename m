@@ -1,90 +1,79 @@
-From: Norbert Szetei <norbert@doyensec.com>
-Date: Wed, 23 Sep 2026 16:40:50 +0200
-Subject: [PATCH v3 2/2] RDMA/rxe: Reject prefetch of a non-ODP MR
+From: Armandas Kvietkus <armandas.kvietkus@proton.me>
+Subject: [PATCH v2 0/2] media: i2c: Samsung S5K3T2 image sensor
+Date: Wed, 23 Sep 2026 17:18:30 +0200
+Message-Id: <20260923-upstream-s5k3t2-v2-0-04ffda3350c1@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-rxe-advise-mr-v3-v3-2-95e1a4077e4d@doyensec.com>
-References: <20260923-rxe-advise-mr-v3-v3-0-95e1a4077e4d@doyensec.com>
-In-Reply-To: <20260923-rxe-advise-mr-v3-v3-0-95e1a4077e4d@doyensec.com>
-To: Zhu Yanjun <zyjzyj2000@gmail.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
- Leon Romanovsky <leon@kernel.org>, Bob Pearson <rpearsonhpe@gmail.com>, 
- Daisuke Matsuda <dskmtsd@gmail.com>
-Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Zhu Yanjun <yanjun.zhu@linux.dev>, stable@vger.kernel.org, 
- Norbert Szetei <norbert@doyensec.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790174657; l=2646;
- i=norbert@doyensec.com; s=20260913; h=from:subject:message-id;
- bh=cfYNjNX25gHhCbVjC9M+4NI38O7i/5dxSGK9KDS3KKw=;
- b=0RklZrJRnMkEocD5BNy4CQohSSJnFN+1Xpy84302tD7CFu9c+DFUdofFA+2o4VuzZQk8ipS3v
- ftUDGOQBWa9DDfRDWApGP3CxkTcye1f7BkC8JIGAj7CGxcN2zNWNfxh
-X-Developer-Key: i=norbert@doyensec.com; a=ed25519;
- pk=c6ZqJ+mhvi5FloJOiMJUcIPPjT7tczbglx5gruwpVi8=
-X-Endpoint-Received: by B4 Relay for norbert@doyensec.com/20260913 with auth_id=1029
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ6CMBBFr0Jmbc20BYyuuIdhUWCQaqBNpxAN4
+ e4WXLt8yfvvr8AULDHcshUCLZatmxKoUwbtYKYHCdslBoWqxKtCMXuOgcwouHjpqITSjdadaVD
+ LAtLKB+rt+yje6x/z3DypjXtmNwbL0YXPcbnI3ftfX6RA0ZU5XnLsc5S68sFFN51Hgnrbti+ZT
+ vSowAAAAA==
+X-Change-ID: 20260920-upstream-s5k3t2-23b33dab0315
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Armandas Kvietkus <armandas.kvietkus@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790176710; l=2089;
+ i=armandas.kvietkus@proton.me; h=from:subject:message-id;
+ bh=TlV97CFzCy+zHgSgBmv0VZ2aS6sqcxAu7F6eX2JccVc=;
+ b=MD8XgFMfa+kJpxPIZKSc0hDijOqamjpBQzVrIwT65kd5VCKkVKeUOo6U81Nh4i9/MCvaRx/MX
+ Nd4DM2xfoOjBGpi+rbjKUWmRemjpZ70o+M9ddnuNDiI1tmR9Y8plImP
+X-Developer-Key: i=armandas.kvietkus@proton.me; a=ed25519;
+ pk=wuqmImJ9sKlDVcwALOvfGhjj7G8EBjjM4TpCdmlrAf8=
+X-Endpoint-Received: by B4 Relay for armandas.kvietkus@proton.me/default with auth_id=974
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rxe_ib_advise_mr_prefetch() and rxe_ib_prefetch_sg_list() look up the MR
-by lkey and hand it to rxe_odp_do_pagefault_and_lock() without checking
-that it is an ODP MR. That path runs to_ib_umem_odp() on mr->umem, and
-for a non-ODP MR mr->umem is a plain struct ib_umem from ib_umem_get(),
-so the container_of() in to_ib_umem_odp() lands past the end of the
-object and ib_umem_odp_map_dma_and_lock() reads its ib_umem_odp fields
-out of bounds.
+This series adds a binding and a driver for the Samsung S5K3T2, a
+20 Mpixel CMOS image sensor with four MIPI D-PHY lanes.
 
-lookup_mr() validates the lkey, PD, access and state but not the MR
-type, and IB_UVERBS_ADVISE_MR_ADVICE_PREFETCH is accepted for any MR.
+The sensor is the front camera of the Xiaomi POCO F3. That phone has no
+device tree in mainline, so this series adds no user for the binding.
+The driver was written and tested on the phone with the Qualcomm CAMSS
+driver.
 
- BUG: KASAN: slab-out-of-bounds in ib_umem_odp_map_dma_and_lock+0x884/0x8a0
- Read of size 8 at addr ffff88810a3ebcf0 by task advi/921
-  ib_umem_odp_map_dma_and_lock+0x884/0x8a0
-  rxe_ib_advise_mr+0x543/0xad0
-  ib_uverbs_handler_UVERBS_METHOD_ADVISE_MR+0x446/0x530
-  ib_uverbs_cmd_verbs+0x2b3c/0x3b20
-  ib_uverbs_ioctl+0x1e3/0x310
- Allocated by task 921:
-  __ib_umem_get_va+0x13e/0xae0
-  rxe_mr_init_user+0x2ae/0xb00
-  rxe_reg_user_mr+0x337/0x510
- The buggy address belongs to the object at ffff88810a3ebc80
-  which belongs to the cache kmalloc-96 of size 96
+Tested:
 
-Ask lookup_mr() for IB_ACCESS_ON_DEMAND in both the synchronous and
-the asynchronous prefetch arm. mr->access carries that flag only for
-an MR registered as ODP, so the existing
-(access & mr->access) != access test rejects a plain MR and the
-prefetch fails with -EINVAL.
+  v4l2-compliance on the sensor sub-device, 46 tests, 46 passed
+  capture in all three modes, eleven runs, no kernel error
+  the sensor returns to runtime suspend after every run
+  exposure and gain sweeps checked on the captured frames
+  Bayer order checked for both flips
 
-Fixes: 3576b0df1588 ("RDMA/rxe: Implement synchronous prefetch for ODP MRs")
-Cc: stable@vger.kernel.org
-Signed-off-by: Norbert Szetei <norbert@doyensec.com>
+Signed-off-by: Armandas Kvietkus <armandas.kvietkus@proton.me>
 ---
- drivers/infiniband/sw/rxe/rxe_odp.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v2:
+- set_pad_format() now stores the new mode before it updates the
+  controls. The VBLANK handler reads the mode, so it used to program the
+  frame length from the mode that was active before the call.
+- A negative return from pm_runtime_get_if_active() is no longer read as
+  active. Runtime PM can be disabled for the device, and in that case the
+  usage count is not taken, so the old code could drop a count it never
+  took.
+- The PM ops use RUNTIME_PM_OPS() with pm_ptr(), so the ops and the power
+  callbacks are dropped when CONFIG_PM is not set.
+- Link to v1: https://patch.msgid.link/20260920-upstream-s5k3t2-v1-0-d640740f4013@proton.me
 
-diff --git a/drivers/infiniband/sw/rxe/rxe_odp.c b/drivers/infiniband/sw/rxe/rxe_odp.c
-index e870efa7a0a3..f8ffd6a3219a 100644
---- a/drivers/infiniband/sw/rxe/rxe_odp.c
-+++ b/drivers/infiniband/sw/rxe/rxe_odp.c
-@@ -463,7 +463,7 @@ static int rxe_ib_prefetch_sg_list(struct ib_pd *ibpd,
- 		struct rxe_mr *mr;
- 		struct ib_umem_odp *umem_odp;
- 
--		mr = lookup_mr(pd, IB_ACCESS_LOCAL_WRITE,
-+		mr = lookup_mr(pd, IB_ACCESS_LOCAL_WRITE | IB_ACCESS_ON_DEMAND,
- 			       sg_list[i].lkey, RXE_LOOKUP_LOCAL);
- 
- 		if (!mr) {
-@@ -529,7 +529,7 @@ static int rxe_ib_advise_mr_prefetch(struct ib_pd *ibpd,
- 
- 	for (i = 0; i < num_sge; ++i) {
- 		/* Takes a reference, which will be released in the queued work */
--		mr = lookup_mr(pd, IB_ACCESS_LOCAL_WRITE,
-+		mr = lookup_mr(pd, IB_ACCESS_LOCAL_WRITE | IB_ACCESS_ON_DEMAND,
- 			       sg_list[i].lkey, RXE_LOOKUP_LOCAL);
- 		if (!mr) {
- 			mr = ERR_PTR(-EINVAL);
+---
+Armandas Kvietkus (2):
+      dt-bindings: media: i2c: Add Samsung S5K3T2 image sensor
+      media: i2c: Add Samsung S5K3T2 image sensor driver
 
--- 
-2.55.0
+ .../bindings/media/i2c/samsung,s5k3t2.yaml         |  101 ++
+ MAINTAINERS                                        |    8 +
+ drivers/media/i2c/Kconfig                          |   10 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/s5k3t2.c                         | 1360 ++++++++++++++++++++
+ 5 files changed, 1480 insertions(+)
+---
+base-commit: 518e5b794c06c0f0eb40df3e202274a66202c137
+change-id: 20260920-upstream-s5k3t2-23b33dab0315
+
+Best regards,
+--  
+Armandas Kvietkus <armandas.kvietkus@proton.me>
 
