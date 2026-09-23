@@ -1,10 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Wed, 23 Sep 2026 16:05:19 +0400
-Subject: [PATCH ath-next 13/16] wifi: ath11k: add hw ring mask for QCN6122
+Date: Wed, 23 Sep 2026 16:05:20 +0400
+Subject: [PATCH ath-next 14/16] wifi: ath11k: update hif and pci ops for
+ QCN6122
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-13-86729521a75c@outlook.com>
+Message-Id: <20260923-ipq5018-qcn6122-mpd-v1-14-86729521a75c@outlook.com>
 References: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 In-Reply-To: <20260923-ipq5018-qcn6122-mpd-v1-0-86729521a75c@outlook.com>
 To: Johannes Berg <johannes@sipsolutions.net>, 
@@ -19,97 +20,125 @@ Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=2926;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790165117; l=4286;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=ZS+ghizA2JnJORyhUeyzkT6PiFQkDEnAqkqpPDbBCt4=;
- b=oc8KKCzLEqR8y0YejgVoqOfzgsPd1UyzJB67HNuqi3DnHAhkRQIBLSDVrtLi/DS0KcxMFmfNa
- TamHpCY+jhXAcFEXohGRlgRkT3YCLTi/HayF26SEjdylq2gKXl9JolP
+ bh=KAfYNiJSlBqkx5nRUcT0tjr+2gqae9Hk9UcR8v+Y2kU=;
+ b=tWmSWuokIX04sHQ/skHZfIGfbroeqBvobVRWhObbpfO2LDTFZnARd1W4ShuaoSn+DuIEIo2Gg
+ 0cmybhN6UJAA23f5a9T1hcSvLmUfA0+fR5KsqeXpXa93YAkgxWis5Ui
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add ring mask for QCN6122 and register them in hw params.
+Add HIF and PCI ops for QCN6122. QCN6122 by default uses DP window 3.
+However, this is configurable, so let's introduce a function to do that and
+follow the existing register access code for (hybrid)AHB devices and use
+DP window 1.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/net/wireless/ath/ath11k/core.c |  1 +
- drivers/net/wireless/ath/ath11k/hw.c   | 37 ++++++++++++++++++++++++++++++++++
- drivers/net/wireless/ath/ath11k/hw.h   |  1 +
- 3 files changed, 39 insertions(+)
+ drivers/net/wireless/ath/ath11k/ahb.c | 34 ++++++++++++++++++++++++++++++++++
+ drivers/net/wireless/ath/ath11k/hif.h |  9 +++++++++
+ drivers/net/wireless/ath/ath11k/qmi.c |  2 ++
+ 3 files changed, 45 insertions(+)
 
-diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
-index cf37975fa4cf..8fa1171b6bdd 100644
---- a/drivers/net/wireless/ath/ath11k/core.c
-+++ b/drivers/net/wireless/ath/ath11k/core.c
-@@ -948,6 +948,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
- 		.max_radios = MAX_RADIOS_5018,
- 		.bdf_addr = 0x4D200000,
- 		.hw_ops = &ipq5018_ops,
-+		.ring_mask = &ath11k_hw_ring_mask_qcn6122,
- 		.internal_sleep_clock = false,
- 		.regs = &qcn6122_regs,
- 		.qmi_service_ins_id = ATH11K_QMI_WLFW_SERVICE_INS_ID_V01_QCN6122,
-diff --git a/drivers/net/wireless/ath/ath11k/hw.c b/drivers/net/wireless/ath/ath11k/hw.c
-index 8442fbeb9c58..bb375efd50fe 100644
---- a/drivers/net/wireless/ath/ath11k/hw.c
-+++ b/drivers/net/wireless/ath/ath11k/hw.c
-@@ -2070,6 +2070,43 @@ const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_wcn6750 = {
- 	},
+diff --git a/drivers/net/wireless/ath/ath11k/ahb.c b/drivers/net/wireless/ath/ath11k/ahb.c
+index 1b9115311bed..03936f574c8d 100644
+--- a/drivers/net/wireless/ath/ath11k/ahb.c
++++ b/drivers/net/wireless/ath/ath11k/ahb.c
+@@ -892,6 +892,18 @@ static int ath11k_ahb_hif_resume(struct ath11k_base *ab)
+ 	return 0;
+ }
+ 
++static void ath11k_ahb_config_static_window_qcn6122(struct ath11k_base *ab)
++{
++	u32 umac_window = FIELD_GET(ATH11K_PCI_WINDOW_VALUE_MASK, HAL_SEQ_WCSS_UMAC_OFFSET);
++	u32 ce_window = FIELD_GET(ATH11K_PCI_WINDOW_VALUE_MASK, HAL_CE_WFSS_CE_REG_BASE);
++	u32 window;
++
++	window = (umac_window) | (ce_window << 6);
++
++	iowrite32(ATH11K_PCI_WINDOW_ENABLE_BIT | window,
++		  ab->mem + ATH11K_PCI_WINDOW_REG_ADDRESS);
++}
++
+ static const struct ath11k_hif_ops ath11k_ahb_hif_ops_ipq8074 = {
+ 	.start = ath11k_ahb_start,
+ 	.stop = ath11k_ahb_stop,
+@@ -907,6 +919,24 @@ static const struct ath11k_hif_ops ath11k_ahb_hif_ops_ipq8074 = {
+ 	.ce_irq_disable = ath11k_ahb_ce_irq_disable_sync,
  };
  
-+const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qcn6122 = {
-+	.tx  = {
-+		ATH11K_TX_RING_MASK_0,
-+		ATH11K_TX_RING_MASK_1,
-+		ATH11K_TX_RING_MASK_2,
-+	},
-+	.rx_mon_status = {
-+		0, 0, 0,
-+		ATH11K_RX_MON_STATUS_RING_MASK_0,
-+	},
-+	.rx = {
-+		0, 0, 0, 0,
-+		ATH11K_RX_RING_MASK_0,
-+		ATH11K_RX_RING_MASK_1,
-+		ATH11K_RX_RING_MASK_2,
-+		ATH11K_RX_RING_MASK_3,
-+	},
-+	.rx_err = {
-+		0, 0, 0, 0, 0, 0, 0, 0,
-+		ATH11K_RX_ERR_RING_MASK_0,
-+	},
-+	.rx_wbm_rel = {
-+		0, 0, 0, 0, 0, 0, 0, 0, 0,
-+		ATH11K_RX_WBM_REL_RING_MASK_0,
-+	},
-+	.reo_status = {
-+		0, 0, 0,
-+		ATH11K_REO_STATUS_RING_MASK_0,
-+	},
-+	.rxdma2host = {
-+		ATH11K_RXDMA2HOST_RING_MASK_0,
-+	},
-+	.host2rxdma = {
-+		ATH11K_HOST2RXDMA_RING_MASK_0,
-+	},
++static const struct ath11k_hif_ops ath11k_ahb_hif_ops_qcn6122 = {
++	.start = ath11k_pcic_start,
++	.stop = ath11k_pcic_stop,
++	.read32 = ath11k_pcic_read32,
++	.write32 = ath11k_pcic_write32,
++	.read = NULL,
++	.irq_enable = ath11k_pcic_ext_irq_enable,
++	.irq_disable = ath11k_pcic_ext_irq_disable,
++	.get_msi_address =  ath11k_pcic_get_msi_address,
++	.get_user_msi_vector = ath11k_pcic_get_user_msi_assignment,
++	.map_service_to_pipe = ath11k_pcic_map_service_to_pipe,
++	.power_down = ath11k_ahb_power_down,
++	.power_up = ath11k_ahb_power_up,
++	.ce_irq_enable = ath11k_pci_enable_ce_irqs_except_wake_irq,
++	.ce_irq_disable = ath11k_pci_disable_ce_irqs_except_wake_irq,
++	.config_static_window = ath11k_ahb_config_static_window_qcn6122,
 +};
 +
- /* Target firmware's Copy Engine configuration for IPQ5018 */
- const struct ce_pipe_config ath11k_target_ce_config_wlan_ipq5018[] = {
- 	/* CE0: host->target HTC control and raw streams */
-diff --git a/drivers/net/wireless/ath/ath11k/hw.h b/drivers/net/wireless/ath/ath11k/hw.h
-index d9646a491808..2bcfdae9519b 100644
---- a/drivers/net/wireless/ath/ath11k/hw.h
-+++ b/drivers/net/wireless/ath/ath11k/hw.h
-@@ -296,6 +296,7 @@ extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_ipq8074;
- extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qca6390;
- extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qcn9074;
- extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_wcn6750;
-+extern const struct ath11k_hw_ring_mask ath11k_hw_ring_mask_qcn6122;
+ static const struct ath11k_hif_ops ath11k_ahb_hif_ops_wcn6750 = {
+ 	.start = ath11k_pcic_start,
+ 	.stop = ath11k_pcic_stop,
+@@ -1638,6 +1668,10 @@ static int ath11k_ahb_probe(struct platform_device *pdev)
+ 		hif_ops = &ath11k_ahb_hif_ops_wcn6750;
+ 		pci_ops = &ath11k_ahb_pci_ops_wcn6750;
+ 		break;
++	case ATH11K_HW_QCN6122_HW10:
++		hif_ops = &ath11k_ahb_hif_ops_qcn6122;
++		pci_ops = &ath11k_ahb_pci_ops_wcn6750;
++		break;
+ 	default:
+ 		dev_err(&pdev->dev, "unsupported device type %d\n", hw_rev);
+ 		return -EOPNOTSUPP;
+diff --git a/drivers/net/wireless/ath/ath11k/hif.h b/drivers/net/wireless/ath/ath11k/hif.h
+index 017fed1b4bd1..2e1a4fedf139 100644
+--- a/drivers/net/wireless/ath/ath11k/hif.h
++++ b/drivers/net/wireless/ath/ath11k/hif.h
+@@ -32,6 +32,7 @@ struct ath11k_hif_ops {
+ 	void (*ce_irq_disable)(struct ath11k_base *ab);
+ 	void (*get_ce_msi_idx)(struct ath11k_base *ab, u32 ce_id, u32 *msi_idx);
+ 	void (*coredump_download)(struct ath11k_base *ab);
++	void (*config_static_window)(struct ath11k_base *ab);
+ };
  
- extern const struct ce_ie_addr ath11k_ce_ie_addr_ipq8074;
- extern const struct ce_ie_addr ath11k_ce_ie_addr_ipq5018;
+ static inline void ath11k_hif_ce_irq_enable(struct ath11k_base *ab)
+@@ -159,4 +160,12 @@ static inline void ath11k_hif_coredump_download(struct ath11k_base *ab)
+ 		ab->hif.ops->coredump_download(ab);
+ }
+ 
++static inline void ath11k_hif_config_static_window(struct ath11k_base *ab)
++{
++	if (!ab->hw_params.static_window_map || !ab->hif.ops->config_static_window)
++		return;
++
++	ab->hif.ops->config_static_window(ab);
++}
++
+ #endif /* _HIF_H_ */
+diff --git a/drivers/net/wireless/ath/ath11k/qmi.c b/drivers/net/wireless/ath/ath11k/qmi.c
+index 771ef9b5304f..7d77f5c8c609 100644
+--- a/drivers/net/wireless/ath/ath11k/qmi.c
++++ b/drivers/net/wireless/ath/ath11k/qmi.c
+@@ -2243,6 +2243,8 @@ static int ath11k_qmi_request_device_info(struct ath11k_base *ab)
+ 	if (!ab->hw_params.ce_remap)
+ 		ab->mem_ce = ab->mem;
+ 
++	ath11k_hif_config_static_window(ab);
++
+ 	return 0;
+ out:
+ 	return ret;
 
 -- 
 2.53.0
