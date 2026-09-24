@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 24 Sep 2026 15:24:12 +0200
-Subject: [PATCH v4 7/8] slimbus: qcom-ngd-ctrl: Remove data channels on
- stream disable
+Date: Thu, 24 Sep 2026 15:24:13 +0200
+Subject: [PATCH v4 8/8] arm64: dts: qcom: sdm845-google: Add WCD9340 codec
+ and microphone capture
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-pixel3-audio-v4-7-85b5d133aa5e@ixit.cz>
+Message-Id: <20260924-pixel3-audio-v4-8-85b5d133aa5e@ixit.cz>
 References: <20260924-pixel3-audio-v4-0-85b5d133aa5e@ixit.cz>
 In-Reply-To: <20260924-pixel3-audio-v4-0-85b5d133aa5e@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -23,166 +23,198 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4926; i=david@ixit.cz;
- h=from:subject:message-id; bh=gvUkLwOYnZ0Pe5d6qwvy5Djs6Ao1xatrmVvIiYn7vco=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtSR5YJy+Ykuv7fyU0Ce8qvLjbjfY8Wb9wgpUm
- rbNE8vBWCaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUkeQAKCRBgAj/E00kg
- cigQD/9m1wVvsMbIUNMU+DILXG5a7MXtWlYiyGHLurvRqDA3HlShj7aYFD0v9i0CEBzJiFo9SbU
- wwt7LBxyYY2KoNeISKe6ORp39dIfyCv+dC6B3EqoI+O78lLuR43Aaj+XHDAPSDED74eDpyoWiyO
- F1HNR3NGai4WjAwH2O0gWpjJVNhaC/f4Gi0N1Z6CU1D3EpJKLT0XtBrEWrVXvRgjDY0j6nhBNfU
- tdIFCJZBR66pqXczW1N0K4G2eq2yxVnMw6GMBkwwFoUBWPHD6w3UTL85UY/6quMepLVMZ3Z2rnM
- y9ktRsTi8+D6cq3s1D31U1MaqBlrHzgk+B4ZVEJ4mYljZyQKwV3j+c1Ap7ZHGUBB2NYt+QRDDSh
- v+GDA82Ls58usxnlEFPF7GzeW1fEg3IJkyI0QpLG3aVx/vfYUhjsFW1ke1NhBb1viIWW2k1LMIR
- /118Jr1f9J+Pe0/P+0y6rBo4bPKQxoQDGm9f5BzXPBZsKT3W4gnt8i7F2RDlAzAGER5HSLaKMSP
- aC4WWxW1FYyUpmV2GGSKV2KLjD0m26lq4qH+LGiHY/+jNN5gYoGgGGbtV3fUFEwYBXOGoKlhrPU
- gcgucOd/WfoVhvlNhFNfKVMq+cYQwxCArrGCGcBUO4MdQbitf5VNoZCKBtIFFsrrMZ+kdmTIcVV
- U7bHBKzwHSRnEmA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4449; i=david@ixit.cz;
+ h=from:subject:message-id; bh=nbrH1t92jHfWppnVh1CzV5L+VSGiY477xlctoTpElqs=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtSR5jrcyq49VtewDuEWFFhvKNUKV588A3rvGG
+ n9Mrmg9+IuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUkeQAKCRBgAj/E00kg
+ cqmWEADAdvorgaQm0CyB+5itIATT8MiYnaK3WnzW7lG2pOy4QqgnHmkN83BV/YRDDwDIPjidK5h
+ y9D5tLCvS5Pysr4Hsk+PYh2+ITo6e8d5IjRJxapmiJHpqAC5+r2ZNIhHCZ9cGqrnGU7qNBNau9G
+ YdnmBBMkNRxOOHItUFadCspyIrrFtHOXWB/03YW+p7vJ6N4LiT0Yhqs1pAq+wY1Dck8a7f19OVj
+ HLASuPM3evBjK6/15AYRpMOYMQVvqP/NxBiQFXLRWW041QWdHDts/7G0/FY3HY/a7XGLS0RyzO/
+ Zfxe0kVVZD0JGRpHCc52e4t5GJ6MbCYHb6D42aCEaq2MNTr6HAbUavnr5ZN3Xq9SNMxCAl696L3
+ jtzi6Zm+gKFGQdktDvLwtifJWajhqNaxl6kHA0bvbpnN1GwgAgiwHGWDQRdPEmyGnT0+HXYPq2s
+ z31OK6Xo2NSV6UuoVQdDYKtKHgQNfoZ2kB0pxY6k+Dk/+cWrwG3pb0BcpOLnUH9moGOzYQv8DMN
+ v5bYQuHe7N08UjXc32vlqbvit0o9iXefo7m4KTrdO86En9rlyRji2RkrB+zrscb7RSPRbdTUSj9
+ Gj6H3FCVe7d9pl5Hm0OBvR9EsjKHC4qMlNZdiZib2e2dYOt75+PMZkcT4jrA9Ru5yt446MXvQn5
+ kwbWl1s5qFdorEA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-qcom_slim_ngd_xfer_msg() silently returns success for every core
-reconfiguration message, so the generic channel removal done by
-slim_stream_disable() never reaches the ADSP SLIMbus master. The
-master therefore keeps the channels of a closed stream. When the next
-stream defines the same channel numbers again, the WCD9340 capture
-completes without any error but records only zeros; removing the
-channels explicitly when the stream is disabled makes it work again.
-
-Implement the disable_stream controller op with the sequence the
-downstream NGD driver sends for channel removal, CHAN_CTRL(REMOVE)
-listing the stream's channels followed by RECONFIG_NOW. Like
-downstream, treat -EREMOTEIO from the removal as success: it means the
-controller is being restarted and the channels are gone anyway.
+The Pixel 3 sound card so far only drove the two CS35L36 speaker
+amplifiers. Wire in the WCD9340 codec , add a SLIMbus capture link
+for it and route the three digital microphones
 
 Based on work done by Casey Tunturi.
 
 Assisted-by: Claude:claude-fable-5-1
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/slimbus/qcom-ngd-ctrl.c | 81 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 81 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 63 ++++++++++++++++++++++
+ 1 file changed, 63 insertions(+)
 
-diff --git a/drivers/slimbus/qcom-ngd-ctrl.c b/drivers/slimbus/qcom-ngd-ctrl.c
-index eb0ccb31e9074..0a4859466c82d 100644
---- a/drivers/slimbus/qcom-ngd-ctrl.c
-+++ b/drivers/slimbus/qcom-ngd-ctrl.c
-@@ -1081,16 +1081,96 @@ static int qcom_slim_ngd_enable_stream(struct slim_stream_runtime *rt)
- 		slim_free_txn_tid(ctrl, &txn);
- 		dev_err(&sdev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn.mc,
- 				txn.mt);
- 	}
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+index bc826d211e4a7..47ed525acb55e 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+@@ -4,18 +4,20 @@
  
- 	return ret;
- }
+ #include <dt-bindings/arm/qcom,ids.h>
+ #include <dt-bindings/dma/qcom-gpi.h>
+ #include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+ #include <dt-bindings/sound/qcom,q6afe.h>
+ #include <dt-bindings/sound/qcom,q6asm.h>
++#include <dt-bindings/sound/qcom,wcd934x.h>
  
-+/* CHAN_CTRL operation, bits [7:6] of the first payload byte */
-+#define SLIM_USR_CHAN_CTRL_REMOVE	2
+ #include "sdm845.dtsi"
++#include "sdm845-wcd9340.dtsi"
+ #include "pm8998.dtsi"
+ #include "pmi8998.dtsi"
+ 
+ /delete-node/ &mpss_region;
+ /delete-node/ &venus_mem;
+ /delete-node/ &cdsp_mem;
+ /delete-node/ &mba_region;
+ /delete-node/ &slpi_mem;
+@@ -512,16 +514,20 @@ dai@72 {
+ 		qcom,tdm-data-align = <0>;
+ 	};
+ };
+ 
+ &q6asmdai {
+ 	dai@0 {
+ 		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
+ 	};
 +
-+static int qcom_slim_ngd_disable_stream(struct slim_stream_runtime *rt)
-+{
-+	struct slim_device *sdev = rt->dev;
-+	struct slim_controller *ctrl = sdev->ctrl;
-+	struct slim_val_inf msg =  {0};
-+	u8 wbuf[SLIM_MSGQ_BUF_LEN];
-+	u8 rbuf[SLIM_MSGQ_BUF_LEN];
-+	struct slim_msg_txn txn = {0,};
-+	int i, ret;
++	dai@1 {
++		reg = <MSM_FRONTEND_DAI_MULTIMEDIA2>;
++	};
+ };
+ 
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
+ 
+ &qupv3_id_1 {
+ 	status = "okay";
+@@ -539,40 +545,81 @@ &qup_uart9_tx {
+ 
+ &sound {
+ 	compatible = "qcom,sdm845-sndcard";
+ 	model = "blueline";
+ 	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
+ 		    <&quat_mi2s_sd1_active>;
+ 	pinctrl-names = "default";
+ 
++	audio-routing = "DMIC0", "MCLK", /* Top mic */
++			"DMIC0", "MIC BIAS1",
++			"DMIC3", "MCLK", /* Top-edge mic */
++			"DMIC3", "MIC BIAS3",
++			"DMIC4", "MCLK", /* Bottom mic */
++			"DMIC4", "MIC BIAS4";
 +
-+	txn.mt = SLIM_MSG_MT_DEST_REFERRED_USER;
-+	txn.dt = SLIM_MSG_DEST_LOGICALADDR;
-+	txn.la = SLIM_LA_MGR;
-+	txn.ec = 0;
-+	txn.msg = &msg;
-+	txn.msg->num_bytes = 0;
-+	txn.msg->wbuf = wbuf;
-+	txn.msg->rbuf = rbuf;
+ 	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
+ 	mm1-dai-link {
+ 		link-name = "MultiMedia1";
+ 
+ 		cpu {
+ 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+ 		};
+ 	};
+ 
++	mm2-dai-link {
++		link-name = "MultiMedia2";
 +
++		cpu {
++			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA2>;
++		};
++	};
++
+ 	cs35l36-dai-link {
+ 		link-name = "Speaker Playback";
+ 
+ 		codec {
+ 			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
+ 		};
+ 
+ 		cpu {
+ 			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
+ 		};
+ 
+ 		platform {
+ 			sound-dai = <&q6routing>;
+ 		};
+ 	};
++
++	slimcap-dai-link {
++		link-name = "SLIM Capture 1";
++
++		codec {
++			sound-dai = <&wcd9340 AIF1_CAP>;
++		};
++
++		cpu {
++			sound-dai = <&q6afedai SLIMBUS_0_TX>;
++		};
++
++		platform {
++			sound-dai = <&q6routing>;
++		};
++	};
++};
++
++&swm {
 +	/*
-+	 * The NGD drops the core reconfiguration messages that
-+	 * slim_stream_disable() uses to remove channels, so ask the master
-+	 * to remove them the way the downstream NGD driver does:
-+	 * CHAN_CTRL(REMOVE) listing every channel, then RECONFIG_NOW.
-+	 * Without this the master keeps the channels active and a later
-+	 * DEF_ACT_CHAN with the same channel numbers is a no-op, so the
-+	 * data path is never re-armed and a reopened stream moves no data.
++	 * Nothing hangs off the codec's SoundWire bus on this board: the
++	 * speakers are CS35L36 amplifiers on QUAT_TDM. With an empty bus the
++	 * controller reports port mismatches and frame-generator timeouts on
++	 * every boot.
 +	 */
-+	/* 5-bit client number, operation in bits [7:6] */
-+	wbuf[txn.msg->num_bytes++] = (SLIM_USR_CHAN_CTRL_REMOVE << 6) |
-+				     (sdev->laddr & 0x1f);
-+
-+	ret = slim_alloc_txn_tid(ctrl, &txn);
-+	if (ret) {
-+		dev_err(&sdev->dev, "Fail to allocate TID\n");
-+		return ret;
-+	}
-+	wbuf[txn.msg->num_bytes++] = txn.tid;
-+
-+	for (i = 0; i < rt->num_ports; i++)
-+		wbuf[txn.msg->num_bytes++] = rt->ports[i].ch.id;
-+
-+	txn.mc = SLIM_USR_MC_CHAN_CTRL;
-+	txn.rl = txn.msg->num_bytes + 4;
-+	ret = qcom_slim_ngd_xfer_msg_sync(ctrl, &txn);
-+	if (ret) {
-+		slim_free_txn_tid(ctrl, &txn);
-+		/* Controller restarting, the channels are gone anyway */
-+		if (ret == -EREMOTEIO)
-+			return 0;
-+		dev_err(&sdev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn.mc,
-+				txn.mt);
-+		return ret;
-+	}
-+
-+	txn.mc = SLIM_USR_MC_RECONFIG_NOW;
-+	txn.msg->num_bytes = 2;
-+	wbuf[1] = sdev->laddr;
-+	txn.rl = txn.msg->num_bytes + 4;
-+
-+	ret = slim_alloc_txn_tid(ctrl, &txn);
-+	if (ret) {
-+		dev_err(ctrl->dev, "Fail to allocate TID\n");
-+		return ret;
-+	}
-+
-+	wbuf[0] = txn.tid;
-+	ret = qcom_slim_ngd_xfer_msg_sync(ctrl, &txn);
-+	if (ret) {
-+		slim_free_txn_tid(ctrl, &txn);
-+		dev_err(&sdev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn.mc,
-+				txn.mt);
-+	}
-+
-+	return ret;
-+}
-+
- static int qcom_slim_ngd_get_laddr(struct slim_controller *ctrl,
- 				   struct slim_eaddr *ea, u8 *laddr)
- {
- 	struct slim_val_inf msg =  {0};
- 	u8 failed_ea[6] = {0, 0, 0, 0, 0, 0};
- 	struct slim_msg_txn txn;
- 	u8 wbuf[10] = {0};
- 	u8 rbuf[10] = {0};
-@@ -1620,16 +1700,17 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
- 	ctrl->framer.rootfreq = SLIM_ROOT_FREQ >> 3;
- 	ctrl->framer.superfreq =
- 		ctrl->framer.rootfreq / SLIM_CL_PER_SUPERFRAME_DIV8;
++	status = "disabled";
+ };
  
- 	ctrl->ctrl.a_framer = &ctrl->framer;
- 	ctrl->ctrl.clkgear = SLIM_MAX_CLK_GEAR;
- 	ctrl->ctrl.get_laddr = qcom_slim_ngd_get_laddr;
- 	ctrl->ctrl.enable_stream = qcom_slim_ngd_enable_stream;
-+	ctrl->ctrl.disable_stream = qcom_slim_ngd_disable_stream;
- 	ctrl->ctrl.xfer_msg = qcom_slim_ngd_xfer_msg;
- 	ctrl->ctrl.wakeup = NULL;
- 	ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
+ &tlmm {
+ 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
+ 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
  
- 	mutex_init(&ctrl->tx_lock);
- 	mutex_init(&ctrl->ssr_lock);
- 	spin_lock_init(&ctrl->tx_buf_lock);
- 	init_completion(&ctrl->reconf);
+ 	nfc_default: nfc-default-state {
+ 		enable-pins {
+@@ -718,16 +765,32 @@ &usb_1_qmpphy {
+ };
+ 
+ &venus {
+ 	firmware-name = "qcom/sdm845/Google/blueline/venus.mbn";
+ 
+ 	status = "okay";
+ };
+ 
++&wcd9340 {
++	/*
++	 * PM8998 LN_BB_CLK2 feeds the Pixel Visual Core on this board; the
++	 * codec MCLK comes from LN_BB_CLK3. With the wrong buffer the codec
++	 * never sees 19.2 MHz: eFuse sensing times out and every capture
++	 * path reads zeros while SLIMbus control traffic still works.
++	 */
++	clocks = <&rpmhcc RPMH_LN_BB_CLK3>;
++	reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
++	vdd-buck-supply = <&vreg_s4a_1p8>;
++	vdd-buck-sido-supply = <&vreg_s4a_1p8>;
++	vdd-tx-supply = <&vreg_s4a_1p8>;
++	vdd-rx-supply = <&vreg_s4a_1p8>;
++	vdd-io-supply = <&vreg_s4a_1p8>;
++};
++
+ &wifi {
+ 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
+ 	vdd-1.8-xo-supply = <&vreg_pmu_xo>;
+ 	vdd-1.3-rfa-supply = <&vreg_pmu_rf>;
+ 	vdd-3.3-ch0-supply = <&vreg_pmu_ch0>;
+ 
+ 	qcom,snoc-host-cap-8bit-quirk;
+ 
 
 -- 
 2.55.0
