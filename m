@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 24 Sep 2026 14:46:47 +0200
-Subject: [PATCH v3 3/8] ASoC: qcom: sdm845: Use per-speaker RX masks for
- TDM slot assignment
+Date: Thu, 24 Sep 2026 14:46:48 +0200
+Subject: [PATCH v3 4/8] ASoC: qcom: sdm845: Set codec dai and component
+ sysclk during startup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-pixel3-audio-v3-3-5d06460fc8a9@ixit.cz>
+Message-Id: <20260924-pixel3-audio-v3-4-5d06460fc8a9@ixit.cz>
 References: <20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz>
 In-Reply-To: <20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -23,78 +23,80 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1658; i=david@ixit.cz;
- h=from:subject:message-id; bh=VW92RXiOO5nv27+E+RkT/N6Yp/7ZgcRQKzeb8agg9FI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtRu45pd3UVRz3zIwCFACP7fuikkG4GNk8sBEB
- 01zcGp+vfGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUbuAAKCRBgAj/E00kg
- ctjrD/9/Ms11sbeTjATKbqB4Iw3zaN+IjlMf3lxnEqpM/AfFooO+F1JPHCvQIvvTl08HR+ixwCC
- O8kHJ+DOO/6CRRXOa0josy91Yc/6jxtaoAmdVU341rHeLs99PQk+BEjwsfvVxzT+pZq/hI1tbDP
- 5tPr9I18C8XBqiof+rn4tHjhOK9+J27OUSj8AJ5Au+NsV0h6gEL+2602QfxFD/09Y/z5Slo0G1F
- SkWmObGWeH1Ezji9MC4OdU7EE+9uZbhCVgUZgMX29Daxz9WgU64kD85Ru4PwVCYS3ze9xKTn090
- bQevp1tGdooVRc0xvuQ8ULYQION7Iy9g+tS/APM3XyWdlR4cu0SmP/lxroVGXiPl4NkLrm9JJyp
- itfc06VcWoesvwHrwtfbhJqyNPKpKbTBRYmbTHQj6ylmsUgNl8mZuSW4h5PrnfWz1wNIozx7f+S
- 2MWPegWKiw2eg3DR5tzGK7zl3fbgRXBe4+Gk7huIQ9tQnt1D5ErA4U9CrAJgiXXYG1aEXyQT94k
- d6NLgKGpHNATIxTcQDFod+BnahT0cgCdO+lo8VJoj+6L29GdvIRvH+jemA4zuenu2jODH96kz6v
- 9BpEcXFQEHGLj7fFQZFcuM59YlnsOrZPao7bc0fJSwYftuADTGsKzqsHLpLGosMzwxQCu6Ez14I
- DEXz58llmgpgF/Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1661; i=david@ixit.cz;
+ h=from:subject:message-id; bh=sf3oRG8KF1GI0iFA9IGZLcdnFZs9OCe5HnE3apZFGXM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtRu4cZHlSWv0fUFP4h4HtRLuwZJr3M7bAfJ1B
+ MZf8XaDTG6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUbuAAKCRBgAj/E00kg
+ csbgEACeikmiq4LGZavywoHHpt1ZCrtE5z45f/Om90w0Tx92nRQsXQUFVPPYHZOwU7nWVka2leh
+ DvXj4tpxdc0Cy75YqxJGAZWgVdXNBqRJ+wtmlJ54UMs8kIywsbCo3X8jGovXTaWZV1INr/sS9GP
+ p8PUxCKuTiTZP9cM+6HohzA6MlgRFf5/3Xm5/ld0eblAHz1VWXAlRkUmvA1w1hdXjzwJ4Lu2crW
+ 8BstwAFWKyTezV07je2b+pYFgZ2Y0gvrkh8ZU3b5DQCLzhPGpC/JiDIpbAo2jdhGwx6292ivbwp
+ EINQIlA4aWJaeS7L4sOdvlp7iCiyXuMbMAsTvlhgL8hmrD32QMniYTH49MqEpGhv0SFMdexnz6B
+ nYb/TLqUcxrVCF7TIg8cE7NLutylcj5u9kGlcrR+jofNIzv9NbKwEPxGcstUKjLde9W7V6lcOwz
+ PksrsLBJe+YXlBoLpMfhVzYTSSsAFZDYIyhpd+5/E9UVtydQCE8OQCs1Uu8ht1hbdz2oJPx7riw
+ cyWa/Tq1Sfh9O7UOl3YY+ma44ESPY5Z6ylxW9RBXGsON8HNe3jTjR0/8ja/Se5napoy1yrnt/wz
+ fihB5BUBYtM3UHmKRvEkumDxfM59NOdp5c5j7qjqYNOOAyaqqK+4FWgxbJBuB9p0agFJsQBZRAu
+ rAcqLUDxTqFHL0A==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both Left and Right codec DAIs were passing the same SPK_TDM_RX_MASK,
-both speakers ended up on slot 0, breaking the one speaker in
-configuration such as on Pixel 3.
+The cs35l36 codec needs the codec dai and component sysclk to be set
+during TDM startup. Set these for all codec DAIs on the QUATERNARY_TDM
+path, gracefully handling codecs that don't support sysclk by ignoring
+-ENOTSUPP returns.
 
-Split SPK_TDM_RX_MASK into per-speaker masks so that the Left codec
-gets slot 0 (rx_mask=0x01) and the Right codec gets slot 1
-(rx_mask=0x02).
+Based on work of Joel Selvaraj.
 
-This commit is here, so later CS35L36 receives correct slot for right
-and left speakers.
-
-Assisted-by: Claude:claude-4.6-opus
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- sound/soc/qcom/sdm845.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ sound/soc/qcom/sdm845.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
 diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
-index d1cc825fc5cdc..59cfa3b26cd4d 100644
+index 59cfa3b26cd4d..f0fbec9c8df25 100644
 --- a/sound/soc/qcom/sdm845.c
 +++ b/sound/soc/qcom/sdm845.c
-@@ -152,29 +152,29 @@ static int sdm845_tdm_snd_hw_params(struct snd_pcm_substream *substream,
- 		}
- 	}
- 
- 	for_each_rtd_codec_dais(rtd, j, codec_dai) {
- 
- 		if (!strcmp(codec_dai->component->name_prefix, "Left")) {
- 			ret = snd_soc_dai_set_tdm_slot(
- 					codec_dai, LEFT_SPK_TDM_TX_MASK,
--					SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
-+					LEFT_SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
- 					slot_width);
- 			if (ret < 0) {
- 				dev_err(rtd->dev,
- 					"DEV0 TDM slot err:%d\n", ret);
- 				return ret;
+@@ -407,16 +407,38 @@ static int sdm845_snd_startup(struct snd_pcm_substream *substream)
+ 				ret = snd_soc_dai_set_fmt(
+ 						codec_dai, codec_dai_fmt);
+ 				if (ret < 0) {
+ 					dev_err(rtd->dev,
+ 						"Right TDM slot err:%d\n", ret);
+ 					return ret;
+ 				}
  			}
++
++			/* Set codec sysclk needed by codecs like cs35l36. */
++			ret = snd_soc_dai_set_sysclk(codec_dai, 0,
++						     TDM_BCLK_RATE,
++						     SND_SOC_CLOCK_IN);
++			if (ret < 0 && ret != -ENOTSUPP) {
++				dev_err(codec_dai->dev,
++					"Failed to set codec dai sysclk: %d\n",
++					ret);
++				return ret;
++			}
++
++			ret = snd_soc_component_set_sysclk(codec_dai->component,
++							   0, 0,
++							   TDM_BCLK_RATE,
++							   SND_SOC_CLOCK_IN);
++			if (ret < 0 && ret != -ENOTSUPP) {
++				dev_err(codec_dai->dev,
++					"Failed to set codec component sysclk: %d\n",
++					ret);
++				return ret;
++			}
  		}
+ 		break;
+ 	case SLIMBUS_0_RX...SLIMBUS_6_TX:
+ 		break;
  
- 		if (!strcmp(codec_dai->component->name_prefix, "Right")) {
- 			ret = snd_soc_dai_set_tdm_slot(
- 					codec_dai, RIGHT_SPK_TDM_TX_MASK,
--					SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
-+					RIGHT_SPK_TDM_RX_MASK, NUM_TDM_SLOTS,
- 					slot_width);
- 			if (ret < 0) {
- 				dev_err(rtd->dev,
- 					"DEV1 TDM slot err:%d\n", ret);
- 				return ret;
- 			}
- 		}
- 	}
+ 	default:
+ 		pr_err("%s: invalid dai id 0x%x\n", __func__, cpu_dai->id);
+ 		break;
 
 -- 
 2.55.0
