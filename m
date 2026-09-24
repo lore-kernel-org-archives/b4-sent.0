@@ -1,140 +1,104 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 24 Sep 2026 16:01:39 +0200
-Subject: [PATCH v2 11/11] arm64: dts: qcom: sdm845-google-crosshatch: Add
- display panel
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH RFC 0/4] sysctl: add a registration context to share
+ ctl_table arrays
+Date: Thu, 24 Sep 2026 16:34:08 +0200
+Message-Id: <20260924-lklm-sysctl-headerctx-template-v1-0-b25e51c66ba7@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-crosshatch-panel-v2-11-08d5c7bf72fc@ixit.cz>
-References: <20260924-crosshatch-panel-v2-0-08d5c7bf72fc@ixit.cz>
-In-Reply-To: <20260924-crosshatch-panel-v2-0-08d5c7bf72fc@ixit.cz>
-To: Dzmitry Sankouski <dsankouski@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: Petr Vorel <petr.vorel@gmail.com>, dri-devel@lists.freedesktop.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2261; i=david@ixit.cz;
- h=from:subject:message-id; bh=YKxaEQ83IRvBzliLWTENjXhw/HISL/i0Wy+mkQdH9Sw=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtS09CRw4AjnBWLNaZGzHG49mTtgKP+bP2PN+j
- BNOfZS6CaaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUtPQAKCRBgAj/E00kg
- cgCQEACNSghX2ofl/jTgz22pX0CXScL5o0+ueuo3F8JyXYZfnOcjaUMF2vU8VdZ2KRA8mZozcVi
- fS50qZZ58SBVKq378CbVeB6IbkXHm9ih7CsMAYKSSpTXkErcEZqQheYNQUM0d2w3SE8e4g/lzba
- AjBRWHKOlH7vsuo7W0NsCz+ninOQ7GuDQx5m4kGmZmzcNiPJ68/YyigsDF4zTzdCpmhNzKc17GN
- H7ftgVW64HxCg2dB4NcfYetPonPB6DmU4MKT3QlVZMgTH7SHchE1kilsHSDpH1qY1xl89mRQ8Fv
- Ml/NiX5Ih17vo4uDidMCdSVRTD/7bgrwGlkxmGS3vIcebeZB9xPyZjRYfy2fDYDlQrfEHgLIX2/
- XvskJuSUmkXXLf/81zmdqsYHnrqrLYebbVH65r0MbxmuX0BDmrPvYUSGAhQpBgHtPSxUvHJXz8J
- 9xYZeMgzS5G4JTQolmDDCA8Oxjr9MldfrvmrQFSjd8JboJ0IlBzCo13Y8lfz5k3xy+hQ72PaIqK
- HYcim5Sl1A5o5fZGQwg3WIGUnChhy8rHY3MyoFcnyZ6uPaKFx7U6fEgnqIe7cTkt90FCzGs6N6e
- fsU6oVe5eyucd/Ov7U74UXC6phFk6COHChE55GR8KwGq3KNpdnEUMqZLAC5avDuX41hql4hh3BL
- L/yATMYeCw1zxNA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAOA0tWoC/x3NQQrCMBBG4auUWTsQQyjoVvAAbsVFTP7YwbSWT
+ JBK6d0bXH6b91ZSFIHSuVup4Csqn6nheOgoDH56gSU2kzW2NyfrOL/zyPrTUDMP8BEl1IUrxjn
+ 7Ck7W4OlSSM5FapG5IMnyH9zpdr3QY9t2NvaAvXUAAAA=
+X-Change-ID: 20260924-lklm-sysctl-headerctx-template-f20eb4fcf44d
+To: Kees Cook <kees@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ =?utf-8?q?Ondrej_Mosn=C3=A1=C4=8Dek?= <omosnacek@gmail.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Ryan Roberts <ryan.roberts@arm.com>, Serge Hallyn <serge@hallyn.com>, 
+ "Eric W . Biederman" <ebiederm@xmission.com>, 
+ Alexey Gladkov <legion@kernel.org>, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2648;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=h2zuKv01W2GBHhhSPUoJkC8Y2+NacqkljzX7RT/fQr0=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGq1NOQcxJriZEBqHv6XbeWhxKf+F6iCAI5fI
+ yQymRMUkli6BIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqtTTkAAoJELqXzVK3
+ lkFPjHoL/2JfFLokO82nj0ToZf68vDui9OHHxBd8b8icYvOFcNOrjJBroYcBLe1CRg+wcBI93cK
+ RRq01tjdqCw8SBnZRgri/Zfhde6CNEA6lx/42tGex/o0IJIohASBotJx6Kpx//2mHa6mFABt0+r
+ gnBokfmhdKI6s3ahk9U68WfsoTs67deaK9DBe8QMYXcKL48A/GN1uilkuH+zEiYnApnNegedbqR
+ ETy7HbL5hyta6jAoat+Dp3dohap7xNtS+VUC5NZkInyJTBwNbF7b1y1Bgr5n9i65TgWzZLrGq90
+ 0UwirAikj7PL4RaEZsYFot4Zv6SwZRZiqWkDo9VCvps0RKDHA+uK/O2qqtdzfyJgLhkcam0Kcbm
+ qVDmtO02vaQnlZp4XARAvmXhlhF2aCVJxXoup/U1rQTYbQicgg8mOG57PmGUehEL2Sa6jKwoyX/
+ 95H1cgsuHkf9EGQhEZTtSfJUW5hepR+ygHkheeHxtG5OBL/cKD8M7wvzjFZayuqSKUD/Fk7Rrk4
+ qI=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wire up the Samsung AMB630QY01 AMOLED panel on the Pixel 3 XL and drop
-the MDSS/DISPCC disables that kept simple-framebuffer alive.
+What
+====
+This series adds a context (containing a template and an instance
+struct) to the ctl_table_header. When ctl_table entries are flagged, the
+context is used to update .data against the instance given at
+registration time. This is done on a stack copy just before proc_handler
+and before ->permissions, so handlers keep using container_of() on .data
+as they do today. The table stays const and shared, and the only change
+to an entry is one .flags line.
 
-Assisted-by: LLM
-Signed-off-by: David Heidelberg <david@ixit.cz>
+The first two patches add the context and the resolution to the sysctl
+core. The last two convert ipc and mqueue. They are an example of the
+interface and show the kmemdup() going away.
+
+Why
+===
+To avoid the duplication of ctl_table arrays for every namespace just to
+change the ".data" member in ctl_table.
+
+Comment on void* inside ctx
+===========================
+I use void pointers inside the context because I want to avoid having
+non-sysctl types within sysctl. However, I do a compiler time check with
+SYSCTL_CTX(_inst, _tmpl) to make sure that they are both the same time
+(we can add further checks in that macro as we need them)
+
+Comment on Alexey's series
+==========================
+Alexey posted a series for the same problem [1]. This RFC tries to do
+the same, but with a smaller change. Both keep a struct sysctl_context
+in the header. This RFC covers .data only, not the limits in
+extra1/extra2, and it needs a template with a constant address, so
+objects only reachable through a pointer would need an offset variant
+that is not here.
+
+Comments are greatly appreciated
+
+Best
+
+[1] https://lore.kernel.org/cover.1789987960.git.legion@kernel.org
+
+PS : its always difficult for me to know who wants to be CCed in these
+mails. please let me know if you want to be removed from the cc.
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- .../boot/dts/qcom/sdm845-google-crosshatch.dts     | 60 +++++++++++++++++++---
- 1 file changed, 52 insertions(+), 8 deletions(-)
+Joel Granados (4):
+      sysctl: add a registration context to ctl_table_header
+      sysctl: Apply sysctl context when flag is active
+      ipc: Use sysctl context to register ipc namespaces
+      mqueue: Use sysctl context to register mq_sysctls
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts b/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts
-index 2a81ca1d00b1b..3b788757b7303 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-crosshatch.dts
-@@ -10,27 +10,71 @@ / {
- };
- 
- &battery {
- 	charge-full-design-microamp-hours = <3480000>;
- 	voltage-min-design-microvolt = <3600000>;
- 	voltage-max-design-microvolt = <4400000>;
- };
- 
--&dispcc {
--	/* Disable for now so simple-framebuffer continues working */
--	status = "disabled";
--};
--
- &framebuffer0 {
- 	width = <1440>;
- 	height = <2960>;
- 	stride = <(1440 * 4)>;
- };
- 
--&mdss {
--	/* Disable for now so simple-framebuffer continues working */
--	status = "disabled";
-+&ibb {
-+	regulator-min-microvolt = <4600000>;
-+	regulator-max-microvolt = <6000000>;
-+	regulator-over-current-protection;
-+	regulator-pull-down;
-+	regulator-soft-start;
-+};
-+
-+&lab {
-+	regulator-min-microvolt = <4600000>;
-+	regulator-max-microvolt = <6000000>;
-+	regulator-soft-start;
-+	regulator-pull-down;
-+};
-+
-+&mdss_dsi0 {
-+	vdda-supply = <&vdda_mipi_dsi0_1p2>;
-+
-+	status = "okay";
-+
-+	panel@0 {
-+		compatible = "samsung,s6e3ha8-amb630qy01";
-+		reg = <0>;
-+
-+		vdd3-supply = <&vreg_l14a_1p8>;
-+		vci-supply = <&vreg_l28a_3p0>;
-+		vddpos-supply = <&lab>;
-+		vddneg-supply = <&ibb>;
-+
-+		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
-+
-+		pinctrl-0 = <&panel_default>;
-+		pinctrl-names = "default";
-+
-+		port {
-+			panel_in: endpoint {
-+				remote-endpoint = <&mdss_dsi0_out>;
-+			};
-+		};
-+	};
-+};
-+
-+&mdss_dsi0_out {
-+	data-lanes = <0 1 2 3>;
-+	remote-endpoint = <&panel_in>;
-+	qcom,te-source = "mdp_vsync_e";
-+};
-+
-+&mdss_dsi0_phy {
-+	vdds-supply = <&vdda_mipi_dsi0_pll>;
-+
-+	status = "okay";
- };
- 
- &wifi {
- 	qcom,calibration-variant = "Google_crosshatch";
- };
+ fs/proc/proc_sysctl.c  | 56 +++++++++++++++++++++++++++++++++++++----
+ include/linux/sysctl.h | 55 ++++++++++++++++++++++++++++++++++++++--
+ ipc/ipc_sysctl.c       | 68 ++++++++++++--------------------------------------
+ ipc/mq_sysctl.c        | 44 ++++++++------------------------
+ 4 files changed, 130 insertions(+), 93 deletions(-)
+---
+base-commit: 93f51579e7df248780214094418f205253383cc5
+change-id: 20260924-lklm-sysctl-headerctx-template-f20eb4fcf44d
 
+Best regards,
 -- 
-2.55.0
+Joel Granados <joel.granados@kernel.org>
 
