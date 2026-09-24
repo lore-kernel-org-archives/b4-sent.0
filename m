@@ -1,109 +1,86 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Wed, 23 Sep 2026 23:32:48 +0200
-Subject: [PATCH v6 17/17] mm/huge_memory: drop the redundant mapping
- argument of __split_frozen_folio
+From: Nikolay Plastinin <plaztininikolai@gmail.com>
+Date: Thu, 24 Sep 2026 13:34:41 +0800
+Subject: [PATCH] HID: asus: report the airplane mode key on ROG Flow X13
+ GV302X
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260923-swap-thp-cleanup-v6-17-ba1b4ba72c6f@tencent.com>
-References: <20260923-swap-thp-cleanup-v6-0-ba1b4ba72c6f@tencent.com>
-In-Reply-To: <20260923-swap-thp-cleanup-v6-0-ba1b4ba72c6f@tencent.com>
-To: linux-mm@kvack.org
-Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- Zi Yan <ziy@nvidia.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- "Liam R. Howlett" <liam@infradead.org>, Nico Pache <nico.pache@linux.dev>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- Chris Li <chrisl@kernel.org>, Kemeng Shi <shikemeng@huaweicloud.com>, 
- Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
- Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
- Yeoreum Yun <yeoreum.yun@arm.com>, 
- "Kiryl Shutsemau (Meta)" <kas@kernel.org>, 
- Shivam Kalra <shivamkalra98@zohomail.in>, Kairui Song <kasong@tencent.com>, 
- Kairui Song <ryncsn@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790199160; l=2842;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=oJuA6piE3d7PEesJP/+7GrdrNMc/XlosPlQGEaGrc3Y=;
- b=qsTJuWfxYYH4Yerg2qYGzB6xSXXLGUpTM1l3XsXyLjIutCI2Os1FniHyi8KQqPuloo8hkH7zF
- 4bHfDxkVElLCEJtHufe36HFJzFEk2gsuIO21CqpgJmP7yRZRyk7wCmT
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Message-Id: <20260924-gv302x-airplane-key-v1-1-f05192f55ec5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSw5AMBRG4a3IHbtJ1SPYihhU/bghJW0iROxdY
+ /gNznkowAsCtclDHqcE2V1EliZkF+NmsIzRpJWuVKMLns9c6YuN+GMzDrzi5mwaLOrSKlhDsTw
+ 8Jrn+a9e/7wfusWV/ZQAAAA==
+X-Change-ID: 20260924-gv302x-airplane-key-1fbce85c0eca
+To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nikolay Plastinin <plaztininikolai@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790228080; l=2177;
+ i=plaztininikolai@gmail.com; s=20260924; h=from:subject:message-id;
+ bh=mJdKPQatGowY1qY91BwxCcA//J2IOAjSEGPrBaT1nCo=;
+ b=sd4+LVrV3OzwpJyu9AV/5TZBiLYlImtYXkdWKlYvHT13RBSOl/92G0NGXTXxFLMFI34ogI5wO
+ d8kbX9LdzxuAk30nV53WcRc84TyskXmuIjVvmfANGffKuuDnkeTi2bR
+X-Developer-Key: i=plaztininikolai@gmail.com; a=ed25519;
+ pk=bmHrETa14IbiLNkJSoiLqUMni+IeSFwhOSDM4vVFN4s=
+X-Endpoint-Received: by B4 Relay for plaztininikolai@gmail.com/20260924 with auth_id=1052
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mapping parameter only served as a non-NULL check to detect
-whether page cache entries need updating.  The xa_state pointer
-conveys exactly the same information: the anon split helper passes
-NULL and the file split helper passes &xas, which is non-NULL iff
-the folio is in the page cache.
+On the ROG Flow X13 GV302X (N-KEY keyboard 0b05:19b6), Fn+F12 (airplane
+mode) sends report 0x03, which the report descriptor declares as a
+Wireless Radio Controls collection with a single Wireless Radio Button
+bit followed by 7 bits of padding. The keyboard however sends the ASUS
+keycode 0x88 in that byte ("03 88 00 00 00 00"), so the button bit is 0
+and hid-input never reports KEY_RFKILL. The key release comes as an
+empty 0x5a report.
 
-Use the xas pointer instead and drop the parameter, along with its
-kerneldoc entry.
+Replace 0x88 with the button bit in reports of the Wireless Radio
+Controls collection on ROG N-KEY keyboards, so that hid-input reports
+KEY_RFKILL (it already simulates the release for this usage).
 
-Reviewed-by: Zi Yan <ziy@nvidia.com>
-Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
-Reviewed-by: Kiryl Shutsemau (Meta) <kas@kernel.org>
-Acked-by: David Hildenbrand (Arm) <david@kernel.org>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Tested on a GV302XV with 7.2.7: every Fn+F12 press now reports
+KEY_RFKILL, and Plasma toggles airplane mode.
+
+Assisted-by: LLM
+Signed-off-by: Nikolay Plastinin <plaztininikolai@gmail.com>
 ---
- mm/huge_memory.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ drivers/hid/hid-asus.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index d31c1d3d1f8e..16b142de5008 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -3833,7 +3833,6 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
-  * @split_at: in buddy allocator like split, the folio containing @split_at
-  *            will be split until its order becomes @new_order.
-  * @xas: xa_state pointing to folio->mapping->i_pages and locked by caller
-- * @mapping: @folio->mapping
-  * @split_type: if the split is uniform or not (buddy allocator like split)
-  *
-  *
-@@ -3866,7 +3865,7 @@ static void __split_folio_to_order(struct folio *folio, int old_order,
-  */
- static int __split_frozen_folio(struct folio *folio, int new_order,
- 		struct page *split_at, struct xa_state *xas,
--		struct address_space *mapping, enum split_type split_type)
-+		enum split_type split_type)
- {
- 	const bool is_anon = folio_test_anon(folio);
- 	int old_order = folio_order(folio);
-@@ -3890,7 +3889,7 @@ static int __split_frozen_folio(struct folio *folio, int new_order,
- 		if (is_anon && split_order == 1)
- 			continue;
+diff --git a/drivers/hid/hid-asus.c b/drivers/hid/hid-asus.c
+index 7dc6417fe..cee7d9a1f 100644
+--- a/drivers/hid/hid-asus.c
++++ b/drivers/hid/hid-asus.c
+@@ -51,6 +51,8 @@ MODULE_DESCRIPTION("Asus HID Keyboard and TouchPad");
+ #define FEATURE_KBD_LED_REPORT_ID1 0x5d
+ #define FEATURE_KBD_LED_REPORT_ID2 0x5e
  
--		if (mapping) {
-+		if (xas) {
- 			/*
- 			 * uniform split has xas_split_alloc() called before
- 			 * irq is disabled to allocate enough memory, whereas
-@@ -4089,8 +4088,7 @@ static int __folio_freeze_split_anon(struct folio *folio,
- 	if (do_lru)
- 		lruvec = folio_lruvec_lock(folio);
++#define ASUS_AIRPLANE_KEY_CODE 0x88
++
+ #define ROG_ALLY_REPORT_SIZE 64
+ #define ROG_ALLY_X_MIN_MCU 313
+ #define ROG_ALLY_MIN_MCU 319
+@@ -549,6 +551,16 @@ static int asus_raw_event(struct hid_device *hdev,
+ 		 */
+ 		if (data[0] == 0x02 && data[1] == 0x30)
+ 			return -1;
++
++		/*
++		 * Some ROG laptops (e.g. ROG Flow X13 GV302X) send the airplane
++		 * mode keycode 0x88 in the Wireless Radio Controls report instead
++		 * of setting its Wireless Radio Button bit, so the key press is
++		 * lost. Report the button press instead.
++		 */
++		if (report->application == HID_GD_WIRELESS_RADIO_CTLS &&
++		    data[1] == ASUS_AIRPLANE_KEY_CODE)
++			data[1] = 0x01;
+ 	}
  
--	ret = __split_frozen_folio(folio, new_order, split_at, NULL,
--				   NULL, split_type);
-+	ret = __split_frozen_folio(folio, new_order, split_at, NULL, split_type);
- 
- 	/*
- 	 * Unfreeze the after-split folios and put them back to the right
-@@ -4226,8 +4224,7 @@ static int __folio_freeze_split_file(struct folio *folio,
- 
- 	/* lock lru list/PageCompound, ref frozen by page_ref_freeze */
- 	lruvec = folio_lruvec_lock(folio);
--	ret = __split_frozen_folio(folio, new_order, split_at, &xas,
--				   mapping, split_type);
-+	ret = __split_frozen_folio(folio, new_order, split_at, &xas, split_type);
- 
- 	/*
- 	 * Unfreeze after-split folios and put them back to the right
+ 	if (drvdata->quirks & QUIRK_ROG_CLAYMORE_II_KEYBOARD) {
 
+---
+base-commit: d72f75f1d9c038ead2588b42de6c2531e3b80bea
+change-id: 20260924-gv302x-airplane-key-1fbce85c0eca
+
+Best regards,
 -- 
-2.55.0
+Nikolay Plastinin <plaztininikolai@gmail.com>
 
