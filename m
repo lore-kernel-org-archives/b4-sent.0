@@ -1,104 +1,103 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Thu, 24 Sep 2026 16:22:11 +0400
-Subject: [PATCH] pinctrl: qcom: ipq5018: add required gpios and missing PWM
- functions
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/8] Speakers for Pixel 3 / 3 XL
+Date: Thu, 24 Sep 2026 14:46:44 +0200
+Message-Id: <20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-ipq5018-pwm-functions-v1-1-8990a4e85b2f@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQ5FMBBA0V+RWZukM0HwK2IhNZiFqtZ7JOLfN
- ZZ3ce4NUYJKhDa7Ichfo24uBeUZ2GVws6COqYENV6bhAtXvpaEa/bni9HP2SCAiizVMNFalJUj
- WB5n0+r5d/zwvMhTZo2cAAAA=
-X-Change-ID: 20260924-ipq5018-pwm-functions-2ec0211d65c1
-To: Bartosz Golaszewski <brgl@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, Linus Walleij <linusw@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790252534; l=3386;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=FCX8QU8cgCFtMwn95hhkJ8nA0NaX4isbuKSBdSUSSME=;
- b=ipKmPUjyRRYjYNfcp1cI8uSg5mp3lxE5My9Z10KKCYIONhmvlxiZpbojY3CIljTzXbILtMuYD
- 3ueUc+Wfc1tARYxMEaAob7irKyuJydrQeWWxc+moimbMKFNpHVlQO3m
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12Oyw6CMBBFf8V0bU0fUqgr/8O4oHQqkxjAFhqU8
+ O8WWaAu752cc2ciATxCIKfdRDxEDNg2Kcj9jlR12dyAok2ZCCYUU1zSDke4S1oOFltqrHHmqKF
+ gMicJ6Ty4dF90l+uaPTyGZO23ssbQt/75mYx8aVd7zrJfe+SUUWmUclIWmXb8jCP2h+pFFk0UG
+ 6rZ32NRJDSvhACreSb0FzrP8xveBPUs9gAAAA==
+X-Change-ID: 20260613-pixel3-audio-bdbfb49e8037
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ David Rhodes <david.rhodes@cirrus.com>, 
+ Richard Fitzgerald <rf@opensource.cirrus.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ David Rhodes <drhodes@opensource.cirrus.com>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, patches@opensource.cirrus.com, 
+ devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>, 
+ Charles Keepax <ckeepax@opensource.cirrus.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2368; i=david@ixit.cz;
+ h=from:subject:message-id; bh=WCww17Nbz5msM318Y+YiigiK/lae/kU3t0OrPKXBYxA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtRu33V70vGPgoK9kRrmF2zP8lixWUhtWMOIjj
+ QJMDZckuYqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUbtwAKCRBgAj/E00kg
+ csAxEAC2My1jTW1COPi529iCest+b+a27uNQ3d8MeloVj0nrXvwqgpr3nAGkGivckem3Mdet8Sa
+ r77/Vy4C77CGHjL/LJp/t2rDg3J0rKk1bltL8M7Grrmbng6NuQadd1MxVhwKo+/7gJH+UQOz+v+
+ LXzKf0Aod8+BlwK+ZTWKm/jYyoKz75yLJUOvgeYUcCAfz/WsqX30THqSr+uFc/kzP/H1igtGto6
+ Caeq4tj0Wm7v9y6TWEPpfdjvI6o+NCWwHl29K5fDP/LwvJcYPjOWJ8w/306C/EJYnzGHihTwOmi
+ op/7tUxtHEHXTfgKeYS2wny2elDUyapRfXvHrMrqv/FLDLVb/yHF9rHYygtevti86TM2B1tKhD6
+ okd13WI5/WwJR7pE0NCvDIHaXq9XMvQ7h3jhiDa6kOOx1CxVm9RXL6NmKIauN1fJ+vh0QFgvyCD
+ AIvUpd+sxxY4LO9Rdc9hbhzdZmWlrOmGTK+ryoTpqJhBo/wSrGAXRBPQEZwfZM4NXZcQtI3cjoz
+ LeF+a96vKlumc3Ol6SmhRo8d8qg+T9u35M8F7kRmYfkxxcnfXXp3gDtNni+zfgOq5VjldjpVKtO
+ Nk4W2nD3EVJQ8TBryNGGAjuPxuKvEVZjBTRzAyWVN24EG1BFbe6kmhLtnTimGBrQ6ejL8gp9fg1
+ t/Gn1A0qp4i+svQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On multiple Linksys routers, GPIO 1, 30, and 46 are used to drive the
-PWM led on PWM1, PWM3, and PWM0 channels respectively, so let's update
-the pwm# and pingroups accordingly.
+This series address:
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+0. demistify the hex to BIT() macro and add left/right rx spk
+1. most likely wrongly set DSP_B in sdm845.c
+   my guess this is because TDM was never used in the mainline with
+   sdm845
+2. applying correct mask to left/right speaker for the TDM in sdm845.c,
+   so both speakers can work simultaneusly
+3. setting sysclk at startups, which some codecs need (such as cs35l36)
+4. setting proper tdm slot in the cs35l36 driver
+5. device-tree wiring for Pixel 3 / 3 XL
+
+As per previous discussion not seding patch removing the "Input Mux"
+which now interferes with TDM callback. If wanted, I can send it as a
+follow-up.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/pinctrl/qcom/pinctrl-ipq5018.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+Changes in v3:
+- De-RFC, applied Reviewed-by tag.
+- Link to v2: https://patch.msgid.link/20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz
 
-diff --git a/drivers/pinctrl/qcom/pinctrl-ipq5018.c b/drivers/pinctrl/qcom/pinctrl-ipq5018.c
-index 84392fe258c9..74fccdd5146a 100644
---- a/drivers/pinctrl/qcom/pinctrl-ipq5018.c
-+++ b/drivers/pinctrl/qcom/pinctrl-ipq5018.c
-@@ -539,7 +539,7 @@ static const char * const qdss_tracectl_b_groups[] = {
- };
- 
- static const char * const pwm0_groups[] = {
--	"gpio42",
-+	"gpio42", "gpio46",
- };
- 
- static const char * const qdss_cti_trig_out_b0_groups[] = {
-@@ -547,7 +547,7 @@ static const char * const qdss_cti_trig_out_b0_groups[] = {
- };
- 
- static const char * const pwm1_groups[] = {
--	"gpio43",
-+	"gpio43", "gpio1",
- };
- 
- static const char * const qdss_cti_trig_in_b0_groups[] = {
-@@ -563,7 +563,7 @@ static const char * const qdss_cti_trig_out_b1_groups[] = {
- };
- 
- static const char * const pwm3_groups[] = {
--	"gpio45", "gpio13",
-+	"gpio45", "gpio30", "gpio13",
- };
- 
- static const char * const qdss_cti_trig_in_b1_groups[] = {
-@@ -677,7 +677,7 @@ static const struct pinfunction ipq5018_functions[] = {
- 
- static const struct msm_pingroup ipq5018_groups[] = {
- 	PINGROUP(0, atest_char, _, qdss_cti_trig_out_a0, wci_txd, wci_rxd, xfem, _, _, _),
--	PINGROUP(1, atest_char, _, qdss_cti_trig_in_a0, wci_txd, wci_rxd, xfem, _, _, _),
-+	PINGROUP(1, atest_char, pwm1, qdss_cti_trig_in_a0, wci_txd, wci_rxd, xfem, _, _, _),
- 	PINGROUP(2, atest_char, _, qdss_cti_trig_out_a1, wci_txd, wci_rxd, xfem, _, _, _),
- 	PINGROUP(3, atest_char, _, qdss_cti_trig_in_a1, wci_txd, wci_rxd, xfem, _, _, _),
- 	PINGROUP(4, sdc1_data, qspi_data, blsp1_spi1, btss, dbg_out, qdss_traceclk_a, _, burn0, _),
-@@ -706,7 +706,7 @@ static const struct msm_pingroup ipq5018_groups[] = {
- 	PINGROUP(27, audio_txmclk, wsa_swrm, audio_txmclk, blsp2_spi, btss, _, qdss_tracedata_b, _, _),
- 	PINGROUP(28, audio_txbclk, wsa_swrm, blsp0_uart1, btss, qdss_tracedata_b, _, _, _, _),
- 	PINGROUP(29, audio_txfsync, _, blsp0_uart1, _, qdss_tracedata_b, _, _, _, _),
--	PINGROUP(30, audio_txd, led2, led0, _, _, _, _, _, _),
-+	PINGROUP(30, audio_txd, led2, led0, pwm3, _, _, _, _, _),
- 	PINGROUP(31, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _, _),
- 	PINGROUP(32, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _, _),
- 	PINGROUP(33, blsp2_i2c0, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _),
-@@ -722,7 +722,7 @@ static const struct msm_pingroup ipq5018_groups[] = {
- 	PINGROUP(43, pwm1, qdss_cti_trig_in_b0, wci_txd, wci_rxd, xfem, _, _, _, _),
- 	PINGROUP(44, pwm2, qdss_cti_trig_out_b1, wci_txd, wci_rxd, xfem, _, _, _, _),
- 	PINGROUP(45, pwm3, qdss_cti_trig_in_b1, wci_txd, wci_rxd, xfem, _, _, _, _),
--	PINGROUP(46, led0, _, _, _, _, _, _, _, _),
-+	PINGROUP(46, led0, pwm0, _, _, _, _, _, _, _),
- };
- 
- static const struct msm_pinctrl_soc_data ipq5018_pinctrl = {
+Changes in v2:
+- Device-tree name sorting, with exception keeping mm1-dai-link in it's
+  place. (Konrad)
+- Make set_tdm_slot cleaner and less leveled. (Konrad)
+- Added TDM MIC defines in sdm845.c.
+  Should we in capture use speaker mask?
+- Renamed model from 'Google Pixel 3' to 'blueline', I would love to
+  hear feedback on this one.
+- Link to v1: https://lore.kernel.org/r/20260705-pixel3-audio-v1-0-3b66f33859f1@ixit.cz
 
 ---
-base-commit: 3d7783543c2646af69ad65825e810060494bea21
-change-id: 20260924-ipq5018-pwm-functions-2ec0211d65c1
+David Heidelberg (8):
+      ASoC: qcom: sdm845: Demystify TDM masks a bit
+      ASoC: qcom: sdm845: use DSP_A format for TDM codec DAIs
+      ASoC: qcom: sdm845: Use per-speaker RX masks for TDM slot assignment
+      ASoC: qcom: sdm845: Set codec dai and component sysclk during startup
+      ASoC: cs35l36: Implement set_tdm_slot to program RX and TX slots
+      arm64: dts: qcom: sdm845-google: Add basic audio support
+      slimbus: qcom-ngd-ctrl: Remove data channels on stream disable
+      arm64: dts: qcom: sdm845-google: Add WCD9340 codec and microphone capture
+
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 195 ++++++++++++++++++++-
+ drivers/slimbus/qcom-ngd-ctrl.c                    |  81 +++++++++
+ sound/soc/codecs/cs35l36.c                         |  44 +++++
+ sound/soc/qcom/sdm845.c                            |  49 ++++--
+ 4 files changed, 357 insertions(+), 12 deletions(-)
+---
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260613-pixel3-audio-bdbfb49e8037
 
 Best regards,
--- 
-George Moussalem <george.moussalem@outlook.com>
+--  
+David Heidelberg <david@ixit.cz>
 
