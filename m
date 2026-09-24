@@ -1,10 +1,10 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Thu, 24 Sep 2026 17:14:28 +0200
-Subject: [PATCH 1/3] dt-bindings: pwm: amlogic: Add core clock for T7
+Date: Thu, 24 Sep 2026 17:14:29 +0200
+Subject: [PATCH 2/3] pwm: meson: Add optional core clock for S4 PWM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-add-t7-sys-pwm-clk-v1-1-05b91e87f0a9@aliel.fr>
+Message-Id: <20260924-add-t7-sys-pwm-clk-v1-2-05b91e87f0a9@aliel.fr>
 References: <20260924-add-t7-sys-pwm-clk-v1-0-05b91e87f0a9@aliel.fr>
 In-Reply-To: <20260924-add-t7-sys-pwm-clk-v1-0-05b91e87f0a9@aliel.fr>
 To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
@@ -18,98 +18,49 @@ Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-amlogic@lists.infradead.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2506;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1224;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=OnCP0bAi6s6lcclaZx+bp76WGWFDL4G9lrIRokcYtRo=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZWu8oHL7rtNW2Wzchcu9uQp30tT43As6vON7ulfh76O
- XuB9BbrjlIWBjEuBlkxRZb+uZYn3l0+eubrHvUUmDmsTCBDGLg4BWAi3B8YGdqa3/m+yb8vsPKC
- pfqerIKi0uoK1RSVtexfc3zPGPz94MfIMGe7FGdNeuNL/YXdE25v4xE75v647sGqzfMzPGW3bzz
- HywMA
+ bh=38T10zBYHuRS2HPS8ZW7iUWdDAPvTmkAaZ2SgSI77jU=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZWu6pT15LsDn55aiS9828tt1ONuOfjKCMHl1x+waIF6
+ Sptohs7SlkYxLgYZMUUWfrnWp54d/noma971FNg5rAygQxh4OIUgInwnmf4K7ORZY3ewcW6e59X
+ vrBM4dPxuiEtHrcxcdOHBUEqk/XDrjIy9J2ov5QxPThz4/Gn0yfd2MU4/0imuY5F9fGYj7tucZl
+ Z8wEA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The T7 PWM controller has a system clock (the register access clock)
-in addition to the two input clocks of channels A and B. Add it as a
-third clock, named "core", for the amlogic,t7-pwm compatible, and
-require clock-names for this SoC for clarity.
+On some SoCs (e.g. T7), the PWM controller has a system clock that must
+be enabled to access its registers, in addition to the per-channel
+input clocks.
 
-The other compatibles are left unchanged. Add an example showing the
-T7 usage with its fallback to amlogic,meson-s4-pwm.
+Get and enable it with devm_clk_get_optional_enabled() using the
+"core" name. The clock is optional, so existing SoCs and device trees
+that do not provide it keep working unchanged.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- .../devicetree/bindings/pwm/pwm-amlogic.yaml       | 37 +++++++++++++++++++---
- 1 file changed, 33 insertions(+), 4 deletions(-)
+ drivers/pwm/pwm-meson.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml b/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
-index c337d85da40f1..9212a40d9fe48 100644
---- a/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
-+++ b/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
-@@ -62,7 +62,7 @@ properties:
+diff --git a/drivers/pwm/pwm-meson.c b/drivers/pwm/pwm-meson.c
+index 20e6cd07127c4..5ab07322e8d15 100644
+--- a/drivers/pwm/pwm-meson.c
++++ b/drivers/pwm/pwm-meson.c
+@@ -508,8 +508,13 @@ static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
+ 	struct device *dev = pwmchip_parent(chip);
+ 	struct device_node *np = dev->of_node;
+ 	struct meson_pwm *meson = to_meson_pwm(chip);
++	struct clk *core_clk;
+ 	int i, ret;
  
-   clock-names:
-     minItems: 1
--    maxItems: 2
-+    maxItems: 3
- 
-   power-domains:
-     maxItems: 1
-@@ -135,17 +135,38 @@ allOf:
-       properties:
-         compatible:
-           contains:
--            enum:
--              - amlogic,meson-s4-pwm
-+            const: amlogic,t7-pwm
-     then:
-       properties:
-         clocks:
-           items:
-             - description: input clock of PWM channel A
-             - description: input clock of PWM channel B
--        clock-names: false
-+            - description: gate clock for the PWM controller
-+        clock-names:
-+          items:
-+            - const: clk_a
-+            - const: clk_b
-+            - const: core
-       required:
-         - clocks
-+        - clock-names
-+    else:
-+      if:
-+        properties:
-+          compatible:
-+            contains:
-+              enum:
-+                - amlogic,meson-s4-pwm
-+      then:
-+        properties:
-+          clocks:
-+            items:
-+              - description: input clock of PWM channel A
-+              - description: input clock of PWM channel B
-+          clock-names: false
-+        required:
-+          - clocks
- 
-   - if:
-       properties:
-@@ -182,3 +203,11 @@ examples:
-       clocks = <&pwm_src_a>, <&pwm_src_b>;
-       #pwm-cells = <3>;
-     };
-+  - |
-+    pwm@60000 {
-+      compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
-+      reg = <0x60000 0x24>;
-+      clocks = <&clk_a>, <&clk_b>, <&core>;
-+      clock-names = "clk_a", "clk_b", "core";
-+      #pwm-cells = <3>;
-+    };
++	core_clk = devm_clk_get_optional_enabled(dev, "core");
++	if (IS_ERR(core_clk))
++		return dev_err_probe(dev, PTR_ERR(core_clk), "Failed to get core clock\n");
++
+ 	for (i = 0; i < MESON_NUM_PWMS; i++) {
+ 		meson->channels[i].clk = of_clk_get(np, i);
+ 		if (IS_ERR(meson->channels[i].clk))
 
 -- 
 2.49.0
