@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 24 Sep 2026 14:46:50 +0200
-Subject: [PATCH v3 6/8] arm64: dts: qcom: sdm845-google: Add basic audio
- support
+Date: Thu, 24 Sep 2026 14:46:51 +0200
+Subject: [PATCH v3 7/8] slimbus: qcom-ngd-ctrl: Remove data channels on
+ stream disable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-pixel3-audio-v3-6-5d06460fc8a9@ixit.cz>
+Message-Id: <20260924-pixel3-audio-v3-7-5d06460fc8a9@ixit.cz>
 References: <20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz>
 In-Reply-To: <20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -23,257 +23,166 @@ Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5540; i=david@ixit.cz;
- h=from:subject:message-id; bh=kcOJuw/9+ohJx6Qaeb4TQNVMUEcnU0DSvegSZd7bX2g=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtRu4pgWbGkyQQ7bv8Axc8fYZHECCPzbB7kI0/
- PlALchkGBaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUbuAAKCRBgAj/E00kg
- cqI1D/4xcs9nHc4M8/zYv6e5HayzuadgVhsAVIxoWA3zwOYZ2nh6WqbmnJA5TYXs9inYT53vgiD
- lmzEnTdO5zFEWn1/Ar3Fapgdszfvb2ZS9BodAsXBZqRTYqb6hJ0XJll8iK/oevq5sWw3GruRNl2
- KRrCvCGE73qe6UPtF6DTCyHWZiMKvIitIWcw4QFJ6paBL0VQ4bg4K75995p79SGijNBEWT3kFnE
- lRfPpBi4/QUfZFH1I+BT1z9yPzzEXhhHShHqTCtc7SVEZFum3DYTnA4SYtkFY78XXjlI+xeazZu
- s4vICP7RrZGtrckeKVus2Elx/nKwjhA9kp4iKxM9NoH0XF6+HAawR6s4XRU0LWS92PWRtKHX/aj
- btAw8BDEbxBlwH6AExcVASc4+UMZf8RM/N/lEwbUAdSjocCCUewLFUsKkM29BgIhxA2X6bYlGXa
- kzdtP8Vi5sAUkdys8q+CDcN2BbnEKBeMIllvWPkSJRwlvlADm/HtzpHdBvjumX4YWtZmbBUAMgn
- kePeiagmaXIKD6pO/mj+A7UabkMUPt3CA9eDK7YC1YPt+rRCwdaFZNoWYcxaofo7LkDX6RUt3DX
- an1s4DS4ZAZMg+2e6bmWbE16dX+93LM+qF4C9XE/23x/Fezl0eSXfr/bJb3m5V97oC6eY7LfVcM
- kC0xAo4xSj2vb6Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4926; i=david@ixit.cz;
+ h=from:subject:message-id; bh=L1zZgtGEouYGzKgRZLVxO9EXpSlpZurV4JACrcU/HQI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtRu4+QTbcZHOnBlR7xwF3SE+KknAz7FJPPKFE
+ DXTWA8J8gyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUbuAAKCRBgAj/E00kg
+ cvR6EADED+5bZiFOKpq2r2N3R48F7+/fGlxFAbHT0knkdDqR8M1/+BYdFeSgGH/N+/oK3toPvpd
+ dUam1+CHPv9dUUaG6CuwkiTqIDw23wJgbLtapXV9KqfZw2MhBGV3CjLHkibk8cHTI4UeqqS7UFh
+ 3kGdppFpGBs0npR7RuaOHU7h3vbsyBuAe/thGXEpBMdt342zzSHmKz53cj1nk9Fg4Pp0kQKjj2l
+ 1lB/G/q+2sotI+yy581UFKk1M8BNT7kDUw5DrY8kSc48JEltllGeSPRMUAbMZHUvJN+Xb78/G5T
+ NWMtDMjDrGEU4E4I04WvMF31sWrIQch4UNqpf4zE/I07EiQK1yppGD/Wz1gtEEuhld2hEphgjWo
+ RUetDmnq3Msge3zXOrSgwVhGQcud18JFUsKM1RIq/HiCvwTXCR+hwHQsIMqfKHP2/yYbDQUpkRe
+ 5IWtQz9hKJYaRHir2aWBhdWUzd0L0xnC+oNNFU2VbABpBBzehKn54Y7bW0OGP0qwa0sJcvVdEFT
+ B2PaTwUeorUmH5u5Yj3rL/Y4v+76K5l5QtFLmjH0Foo+HOYImzKQQ9Q+odBP6BqbfppcKkB61oS
+ hs9hwfRddV32TcC7eRVVCEduKTP6xFRrVsbVwAbYZ4NbgX0tT/s3wmUa4PTzBmNBDLzVb0l2lI0
+ xhQok0HIde1YI6A==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce support for sound card and wire two CS35L36 audio codecs for
-top and bottom speakers.
+qcom_slim_ngd_xfer_msg() silently returns success for every core
+reconfiguration message, so the generic channel removal done by
+slim_stream_disable() never reaches the ADSP SLIMbus master. The
+master therefore keeps the channels of a closed stream. When the next
+stream defines the same channel numbers again, the WCD9340 capture
+completes without any error but records only zeros; removing the
+channels explicitly when the stream is disabled makes it work again.
 
-Inspired by commit from Joel Selvaraj.
+Implement the disable_stream controller op with the sequence the
+downstream NGD driver sends for channel removal, CHAN_CTRL(REMOVE)
+listing the stream's channels followed by RECONFIG_NOW. Like
+downstream, treat -EREMOTEIO from the removal as success: it means the
+controller is being restarted and the channels are gone anyway.
 
+Based on work done by Casey Tunturi.
+
+Assisted-by: Claude:claude-fable-5-1
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 132 ++++++++++++++++++++-
- 1 file changed, 130 insertions(+), 2 deletions(-)
+ drivers/slimbus/qcom-ngd-ctrl.c | 81 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 81 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 9e952f9862f24..cf87b582e3997 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -2,16 +2,18 @@
+diff --git a/drivers/slimbus/qcom-ngd-ctrl.c b/drivers/slimbus/qcom-ngd-ctrl.c
+index 934c44c5bc1a9..c91f55036dd55 100644
+--- a/drivers/slimbus/qcom-ngd-ctrl.c
++++ b/drivers/slimbus/qcom-ngd-ctrl.c
+@@ -1080,16 +1080,96 @@ static int qcom_slim_ngd_enable_stream(struct slim_stream_runtime *rt)
+ 		slim_free_txn_tid(ctrl, &txn);
+ 		dev_err(&sdev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn.mc,
+ 				txn.mt);
+ 	}
  
- /dts-v1/;
+ 	return ret;
+ }
  
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include <dt-bindings/sound/qcom,q6afe.h>
-+#include <dt-bindings/sound/qcom,q6asm.h>
- 
- #include "sdm845.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
- 
- /delete-node/ &mpss_region;
- /delete-node/ &venus_mem;
- /delete-node/ &cdsp_mem;
-@@ -404,19 +406,61 @@ nfc@28 {
- 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
- 
- 		pinctrl-0 = <&nfc_int_default &nfc_enable_default>;
- 		pinctrl-names = "default";
- 	};
- };
- 
- &i2c12 {
--	/* Bottom spkr (right) CS35L36 @ 40 */
-+	status = "okay";
++/* CHAN_CTRL operation, bits [7:6] of the first payload byte */
++#define SLIM_USR_CHAN_CTRL_REMOVE	2
 +
-+	cs35l36_bottom: audio-codec@40 {
-+		compatible = "cirrus,cs35l36";
-+		reg = <0x40>;
-+		reset-gpios = <&tlmm 112 GPIO_ACTIVE_HIGH>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "Right"; /* Bottom */
-+		VA-supply = <&vreg_s4a_1p8>;
-+		interrupts-extended = <&tlmm 115 IRQ_TYPE_LEVEL_LOW>;
++static int qcom_slim_ngd_disable_stream(struct slim_stream_runtime *rt)
++{
++	struct slim_device *sdev = rt->dev;
++	struct slim_controller *ctrl = sdev->ctrl;
++	struct slim_val_inf msg =  {0};
++	u8 wbuf[SLIM_MSGQ_BUF_LEN];
++	u8 rbuf[SLIM_MSGQ_BUF_LEN];
++	struct slim_msg_txn txn = {0,};
++	int i, ret;
 +
-+		pinctrl-0 = <&cs35l36_bottom_default_state>;
-+		pinctrl-names = "default";
++	txn.mt = SLIM_MSG_MT_DEST_REFERRED_USER;
++	txn.dt = SLIM_MSG_DEST_LOGICALADDR;
++	txn.la = SLIM_LA_MGR;
++	txn.ec = 0;
++	txn.msg = &msg;
++	txn.msg->num_bytes = 0;
++	txn.msg->wbuf = wbuf;
++	txn.msg->rbuf = rbuf;
 +
-+		cirrus,boost-ind-nanohenry = <1000>;
-+		cirrus,boost-ctl-select = <1>;
-+		cirrus,boost-ctl-millivolt = <10000>;
-+		cirrus,boost-peak-milliamp = <3700>;
-+		cirrus,temp-warn-threshold = <1>;
-+		cirrus,multi-amp-mode;
-+		cirrus,irq-drive-select = <0>;
-+		cirrus,irq-gpio-select = <0>;
-+	};
++	/*
++	 * The NGD drops the core reconfiguration messages that
++	 * slim_stream_disable() uses to remove channels, so ask the master
++	 * to remove them the way the downstream NGD driver does:
++	 * CHAN_CTRL(REMOVE) listing every channel, then RECONFIG_NOW.
++	 * Without this the master keeps the channels active and a later
++	 * DEF_ACT_CHAN with the same channel numbers is a no-op, so the
++	 * data path is never re-armed and a reopened stream moves no data.
++	 */
++	/* 5-bit client number, operation in bits [7:6] */
++	wbuf[txn.msg->num_bytes++] = (SLIM_USR_CHAN_CTRL_REMOVE << 6) |
++				     (sdev->laddr & 0x1f);
++
++	ret = slim_alloc_txn_tid(ctrl, &txn);
++	if (ret) {
++		dev_err(&sdev->dev, "Fail to allocate TID\n");
++		return ret;
++	}
++	wbuf[txn.msg->num_bytes++] = txn.tid;
++
++	for (i = 0; i < rt->num_ports; i++)
++		wbuf[txn.msg->num_bytes++] = rt->ports[i].ch.id;
++
++	txn.mc = SLIM_USR_MC_CHAN_CTRL;
++	txn.rl = txn.msg->num_bytes + 4;
++	ret = qcom_slim_ngd_xfer_msg_sync(ctrl, &txn);
++	if (ret) {
++		slim_free_txn_tid(ctrl, &txn);
++		/* Controller restarting, the channels are gone anyway */
++		if (ret == -EREMOTEIO)
++			return 0;
++		dev_err(&sdev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn.mc,
++				txn.mt);
++		return ret;
++	}
++
++	txn.mc = SLIM_USR_MC_RECONFIG_NOW;
++	txn.msg->num_bytes = 2;
++	wbuf[1] = sdev->laddr;
++	txn.rl = txn.msg->num_bytes + 4;
++
++	ret = slim_alloc_txn_tid(ctrl, &txn);
++	if (ret) {
++		dev_err(ctrl->dev, "Fail to allocate TID\n");
++		return ret;
++	}
++
++	wbuf[0] = txn.tid;
++	ret = qcom_slim_ngd_xfer_msg_sync(ctrl, &txn);
++	if (ret) {
++		slim_free_txn_tid(ctrl, &txn);
++		dev_err(&sdev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn.mc,
++				txn.mt);
++	}
++
++	return ret;
++}
++
+ static int qcom_slim_ngd_get_laddr(struct slim_controller *ctrl,
+ 				   struct slim_eaddr *ea, u8 *laddr)
+ {
+ 	struct slim_val_inf msg =  {0};
+ 	u8 failed_ea[6] = {0, 0, 0, 0, 0, 0};
+ 	struct slim_msg_txn txn;
+ 	u8 wbuf[10] = {0};
+ 	u8 rbuf[10] = {0};
+@@ -1619,16 +1699,17 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
+ 	ctrl->framer.rootfreq = SLIM_ROOT_FREQ >> 3;
+ 	ctrl->framer.superfreq =
+ 		ctrl->framer.rootfreq / SLIM_CL_PER_SUPERFRAME_DIV8;
  
--	/* Top spkr (left) CS35L36 @ 41 */
-+	cs35l36_top: audio-codec@41 {
-+		compatible = "cirrus,cs35l36";
-+		reg = <0x41>;
-+		reset-gpios = <&tlmm 75 GPIO_ACTIVE_HIGH>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "Left"; /* Top */
-+		VA-supply = <&vreg_s4a_1p8>;
-+		interrupts-extended = <&tlmm 40 IRQ_TYPE_LEVEL_LOW>;
-+
-+		pinctrl-0 = <&cs35l36_top_default_state>;
-+		pinctrl-names = "default";
-+
-+		cirrus,boost-ind-nanohenry = <1000>;
-+		cirrus,boost-ctl-select = <0x01>;
-+		cirrus,boost-ctl-millivolt = <10000>;
-+		cirrus,boost-peak-milliamp = <3700>;
-+		cirrus,temp-warn-threshold = <1>;
-+		cirrus,multi-amp-mode;
-+		cirrus,irq-drive-select = <0>;
-+		cirrus,irq-gpio-select = <0>;
-+	};
- };
+ 	ctrl->ctrl.a_framer = &ctrl->framer;
+ 	ctrl->ctrl.clkgear = SLIM_MAX_CLK_GEAR;
+ 	ctrl->ctrl.get_laddr = qcom_slim_ngd_get_laddr;
+ 	ctrl->ctrl.enable_stream = qcom_slim_ngd_enable_stream;
++	ctrl->ctrl.disable_stream = qcom_slim_ngd_disable_stream;
+ 	ctrl->ctrl.xfer_msg = qcom_slim_ngd_xfer_msg;
+ 	ctrl->ctrl.wakeup = NULL;
+ 	ctrl->state = QCOM_SLIM_NGD_CTRL_DOWN;
  
- &ipa {
- 	firmware-name = "qcom/sdm845/Google/blueline/ipa_fws.mbn";
- 	memory-region = <&ipa_fw_mem>;
- 
- 	status = "okay";
- };
-@@ -449,16 +493,35 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&q6afedai {
-+	dai@72 {
-+		reg = <QUATERNARY_TDM_RX_0>;
-+
-+		qcom,tdm-sync-mode = <0>;
-+		qcom,tdm-sync-src = <1>;
-+		qcom,tdm-data-out = <0>;
-+		qcom,tdm-invert-sync = <0>;
-+		qcom,tdm-data-delay = <1>;
-+		qcom,tdm-data-align = <0>;
-+	};
-+};
-+
-+&q6asmdai {
-+	dai@0 {
-+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
- };
- 
-@@ -467,16 +530,49 @@ &qup_uart9_rx {
- 	bias-pull-up;
- };
- 
- &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
- };
- 
-+&sound {
-+	compatible = "qcom,sdm845-sndcard";
-+	model = "blueline";
-+	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
-+		    <&quat_mi2s_sd1_active>;
-+	pinctrl-names = "default";
-+
-+	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
-+	mm1-dai-link {
-+		link-name = "MultiMedia1";
-+
-+		cpu {
-+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
-+		};
-+	};
-+
-+	cs35l36-dai-link {
-+		link-name = "Speaker Playback";
-+
-+		codec {
-+			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
-+		};
-+
-+		cpu {
-+			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
-+		};
-+
-+		platform {
-+			sound-dai = <&q6routing>;
-+		};
-+	};
-+};
-+
- &tlmm {
- 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
- 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
- 
- 	nfc_int_default: nfc-int-default-state {
- 		pins = "gpio63";
- 		function = "gpio";
- 		drive-strength = <2>;
-@@ -505,16 +601,48 @@ touchscreen_pins: ts-pins-gpio-state {
- 	};
- 
- 	touchscreen_i2c_pins: qup-i2c2-gpio-state {
- 		pins = "gpio27", "gpio28";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
- 	};
-+
-+	cs35l36_bottom_default_state: cs35l36-bottom-default-state {
-+		reset-pins {
-+			pins = "gpio112";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+
-+		irq-pins {
-+			pins = "gpio115";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+	};
-+
-+	cs35l36_top_default_state: cs35l36-top-default-state {
-+		irq-pins {
-+			pins = "gpio40";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+
-+		reset-pins {
-+			pins = "gpio75";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+	};
- };
- 
- &uart6 {
- 	pinctrl-0 = <&qup_uart6_4pin>;
- 
- 	status = "okay";
- 
- 	bluetooth {
+ 	mutex_init(&ctrl->tx_lock);
+ 	mutex_init(&ctrl->ssr_lock);
+ 	spin_lock_init(&ctrl->tx_buf_lock);
+ 	init_completion(&ctrl->reconf);
 
 -- 
 2.55.0
