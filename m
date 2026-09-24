@@ -1,77 +1,104 @@
-From: Rouven Czerwinski <rouven.czerwinski@linaro.org>
-Date: Thu, 24 Sep 2026 12:48:18 +0200
-Subject: [PATCH net-next v2] net: phy: mxl-gpy: add 2.5G for MXL86211C
+From: George Moussalem <george.moussalem@outlook.com>
+Date: Thu, 24 Sep 2026 16:22:11 +0400
+Subject: [PATCH] pinctrl: qcom: ipq5018: add required gpios and missing PWM
+ functions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-mainline-rouven-mxl2g5-v2-1-fc8367a4c3ad@linaro.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOQQ6DIBREr2L+ujTwDVq76j0aF6hfpVFoAImN8
- e5Fe4AuJzNvZjbw5DR5uGcbOIraa2uSwEsG7ajMQEx3SQNyLHiFyGalzaQNMWeXSIbN64SDZCU
- 2rRQd3qqSQ4Lfjnq9nsVPMBSYoTVA/XP80ryoDUfvkR21D9Z9zg9RnMS/uSiYYIpTJ/MiF0r2j
- xRSzl6tG6De9/0LFfjFg9kAAAA=
-X-Change-ID: 20260922-mainline-rouven-mxl2g5-72bc51d28970
-To: Xu Liang <lxu@maxlinear.com>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Daniel Golle <daniel@makrotopia.org>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Rouven Czerwinski <rouven.czerwinski@linaro.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790246899; l=1635;
- i=rouven.czerwinski@linaro.org; s=20260126; h=from:subject:message-id;
- bh=pedhSXhCXKROiJuybTwA78NJnL4APYoFo51G1JpeoQo=;
- b=cmQqF/rb11o7qo13y20RyMgHjULPMyxDxiVftIoo7m1LhqkubyIySVl3QbD7rnu4cuDOV222w
- 2ggwoUnUR4zBriij6Wy5+NnrDe4lhGd6wt2Un88nLTHUq/F42xyn8FH
-X-Developer-Key: i=rouven.czerwinski@linaro.org; a=ed25519;
- pk=/5pmUK/XIAIIo8JA0axgfy1k8NRhRTQkxVwZYa1ga7U=
-X-Endpoint-Received: by B4 Relay for rouven.czerwinski@linaro.org/20260126 with auth_id=616
+Message-Id: <20260924-ipq5018-pwm-functions-v1-1-8990a4e85b2f@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQ5FMBBA0V+RWZukM0HwK2IhNZiFqtZ7JOLfN
+ ZZ3ce4NUYJKhDa7Ichfo24uBeUZ2GVws6COqYENV6bhAtXvpaEa/bni9HP2SCAiizVMNFalJUj
+ WB5n0+r5d/zwvMhTZo2cAAAA=
+X-Change-ID: 20260924-ipq5018-pwm-functions-2ec0211d65c1
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, Linus Walleij <linusw@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790252534; l=3386;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=FCX8QU8cgCFtMwn95hhkJ8nA0NaX4isbuKSBdSUSSME=;
+ b=ipKmPUjyRRYjYNfcp1cI8uSg5mp3lxE5My9Z10KKCYIONhmvlxiZpbojY3CIljTzXbILtMuYD
+ 3ueUc+Wfc1tARYxMEaAob7irKyuJydrQeWWxc+moimbMKFNpHVlQO3m
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MXL86211C also supports 2.5G via 2500BASEX, switch the config init
-to indicate support for that mode. Datasheet checks indicate that the
-2.5G speed indication is the same between GPY211 & MXL86211C.
+On multiple Linksys routers, GPIO 1, 30, and 46 are used to drive the
+PWM led on PWM1, PWM3, and PWM0 channels respectively, so let's update
+the pwm# and pingroups accordingly.
 
-The same should be true for MXL86252 & MXL86282, those are not modified
-for a lack of testing hardware.
-
-With this change 2.5G negotiates correctly with a Mikrotik
-CRS310-8G+2S+IN.
-
-Fixes: 9d844da693d6 ("net: phy: mxl-gpy: add support for MxL86211C")
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
-Signed-off-by: Rouven Czerwinski <rouven.czerwinski@linaro.org>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-Changes in v2:
-- Fix typos: Fix Typo swaps of *68*211 to *86211*
-- add Fixes: trailer
-both suggested by Sashiko
-- Link to v1: https://patch.msgid.link/20260922-mainline-rouven-mxl2g5-v1-1-a0ed53631a5f@linaro.org
----
- drivers/net/phy/mxl-gpy.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/pinctrl/qcom/pinctrl-ipq5018.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/net/phy/mxl-gpy.c b/drivers/net/phy/mxl-gpy.c
-index 0da2d4e9d8548..089a1a9e5bc61 100644
---- a/drivers/net/phy/mxl-gpy.c
-+++ b/drivers/net/phy/mxl-gpy.c
-@@ -1405,7 +1405,7 @@ static struct phy_driver gpy_drivers[] = {
- 		PHY_ID_MATCH_MODEL(PHY_ID_MXL86211C),
- 		.name		= "Maxlinear Ethernet MxL86211C",
- 		.get_features	= genphy_c45_pma_read_abilities,
--		.config_init	= gpy_config_init,
-+		.config_init	= gpy21x_config_init,
- 		.probe		= gpy_probe,
- 		.inband_caps	= gpy_inband_caps,
- 		.config_inband	= gpy_config_inband,
+diff --git a/drivers/pinctrl/qcom/pinctrl-ipq5018.c b/drivers/pinctrl/qcom/pinctrl-ipq5018.c
+index 84392fe258c9..74fccdd5146a 100644
+--- a/drivers/pinctrl/qcom/pinctrl-ipq5018.c
++++ b/drivers/pinctrl/qcom/pinctrl-ipq5018.c
+@@ -539,7 +539,7 @@ static const char * const qdss_tracectl_b_groups[] = {
+ };
+ 
+ static const char * const pwm0_groups[] = {
+-	"gpio42",
++	"gpio42", "gpio46",
+ };
+ 
+ static const char * const qdss_cti_trig_out_b0_groups[] = {
+@@ -547,7 +547,7 @@ static const char * const qdss_cti_trig_out_b0_groups[] = {
+ };
+ 
+ static const char * const pwm1_groups[] = {
+-	"gpio43",
++	"gpio43", "gpio1",
+ };
+ 
+ static const char * const qdss_cti_trig_in_b0_groups[] = {
+@@ -563,7 +563,7 @@ static const char * const qdss_cti_trig_out_b1_groups[] = {
+ };
+ 
+ static const char * const pwm3_groups[] = {
+-	"gpio45", "gpio13",
++	"gpio45", "gpio30", "gpio13",
+ };
+ 
+ static const char * const qdss_cti_trig_in_b1_groups[] = {
+@@ -677,7 +677,7 @@ static const struct pinfunction ipq5018_functions[] = {
+ 
+ static const struct msm_pingroup ipq5018_groups[] = {
+ 	PINGROUP(0, atest_char, _, qdss_cti_trig_out_a0, wci_txd, wci_rxd, xfem, _, _, _),
+-	PINGROUP(1, atest_char, _, qdss_cti_trig_in_a0, wci_txd, wci_rxd, xfem, _, _, _),
++	PINGROUP(1, atest_char, pwm1, qdss_cti_trig_in_a0, wci_txd, wci_rxd, xfem, _, _, _),
+ 	PINGROUP(2, atest_char, _, qdss_cti_trig_out_a1, wci_txd, wci_rxd, xfem, _, _, _),
+ 	PINGROUP(3, atest_char, _, qdss_cti_trig_in_a1, wci_txd, wci_rxd, xfem, _, _, _),
+ 	PINGROUP(4, sdc1_data, qspi_data, blsp1_spi1, btss, dbg_out, qdss_traceclk_a, _, burn0, _),
+@@ -706,7 +706,7 @@ static const struct msm_pingroup ipq5018_groups[] = {
+ 	PINGROUP(27, audio_txmclk, wsa_swrm, audio_txmclk, blsp2_spi, btss, _, qdss_tracedata_b, _, _),
+ 	PINGROUP(28, audio_txbclk, wsa_swrm, blsp0_uart1, btss, qdss_tracedata_b, _, _, _, _),
+ 	PINGROUP(29, audio_txfsync, _, blsp0_uart1, _, qdss_tracedata_b, _, _, _, _),
+-	PINGROUP(30, audio_txd, led2, led0, _, _, _, _, _, _),
++	PINGROUP(30, audio_txd, led2, led0, pwm3, _, _, _, _, _),
+ 	PINGROUP(31, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _, _),
+ 	PINGROUP(32, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _, _),
+ 	PINGROUP(33, blsp2_i2c0, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _),
+@@ -722,7 +722,7 @@ static const struct msm_pingroup ipq5018_groups[] = {
+ 	PINGROUP(43, pwm1, qdss_cti_trig_in_b0, wci_txd, wci_rxd, xfem, _, _, _, _),
+ 	PINGROUP(44, pwm2, qdss_cti_trig_out_b1, wci_txd, wci_rxd, xfem, _, _, _, _),
+ 	PINGROUP(45, pwm3, qdss_cti_trig_in_b1, wci_txd, wci_rxd, xfem, _, _, _, _),
+-	PINGROUP(46, led0, _, _, _, _, _, _, _, _),
++	PINGROUP(46, led0, pwm0, _, _, _, _, _, _, _),
+ };
+ 
+ static const struct msm_pinctrl_soc_data ipq5018_pinctrl = {
 
 ---
-base-commit: 2d7341a020a57b30c1826db38f81bbc257ae3bbc
-change-id: 20260922-mainline-rouven-mxl2g5-72bc51d28970
+base-commit: 3d7783543c2646af69ad65825e810060494bea21
+change-id: 20260924-ipq5018-pwm-functions-2ec0211d65c1
 
 Best regards,
---  
-Rouven Czerwinski <rouven.czerwinski@linaro.org>
+-- 
+George Moussalem <george.moussalem@outlook.com>
 
