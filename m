@@ -1,461 +1,107 @@
-From: Alireza Asgari <alireza@asgari.net>
-Date: Thu, 24 Sep 2026 13:00:25 +0000
-Subject: [PATCH net 2/2] selftests: net: cover UDP splice checksum fragment
- alignment
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v4 0/8] Speakers for Pixel 3 / 3 XL
+Date: Thu, 24 Sep 2026 15:24:05 +0200
+Message-Id: <20260924-pixel3-audio-v4-0-85b5d133aa5e@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-fix-udp-splice-checksum-v1-2-fe61d65447a8@asgari.net>
-References: <20260924-fix-udp-splice-checksum-v1-0-fe61d65447a8@asgari.net>
-In-Reply-To: <20260924-fix-udp-splice-checksum-v1-0-fe61d65447a8@asgari.net>
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- David Howells <dhowells@redhat.com>, Shuah Khan <shuah@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Alireza Asgari <alireza@asgari.net>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790254849; l=12806;
- i=alireza@asgari.net; s=alireza-kernel; h=from:subject:message-id;
- bh=3WgZtjdGhpyGxXoJGzwfMeILWbCWZIJDIha+kdwRhbE=;
- b=eDUmMk6UCV4/tnQd/Og/OPP2nF/rl22EyU60LP0jIrTIJ6OC9+8tstvkRGhUZC5uSrU/308TU
- XCz5mvZGheaD8WgDq8MNqkhvfUSSYuO2QlNAQ3/aHKH2m2UqVodI0rp
-X-Developer-Key: i=alireza@asgari.net; a=ed25519;
- pk=wuQ0/M69FqoVnrCMUJ13EQCwrCwVjCrtz75k15vW8tw=
-X-Endpoint-Received: by B4 Relay for alireza@asgari.net/alireza-kernel with auth_id=1055
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12Oyw6CMBBFf8V0bU0fUKgr/8O4oHQqkxjAAg1K+
+ HeLLFCW907OuTORDjxCR86HiXgI2GFTx5AcD6SsivoOFG3MRDChmOKStjjCQ9JisNhQY40ziYa
+ cyYxEpPXg4n3RXW9r9vAcorXfygq7vvGv72TgS7vaM5b+2wOnjEqjlJMyT7XjFxyxP5VvsmiC2
+ FDNdo8FEdGsFAKs5qnQO1T+oCLZoTKiqWUqUcyVeaE3dJ7nDx1G0sAxAQAA
+X-Change-ID: 20260613-pixel3-audio-bdbfb49e8037
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ David Rhodes <david.rhodes@cirrus.com>, 
+ Richard Fitzgerald <rf@opensource.cirrus.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ David Rhodes <drhodes@opensource.cirrus.com>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, patches@opensource.cirrus.com, 
+ devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>, 
+ Charles Keepax <ckeepax@opensource.cirrus.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2569; i=david@ixit.cz;
+ h=from:subject:message-id; bh=yiFJJpfxAOUSXtMXv/1T/r3LQB/vNcSfkYlLVDmONI8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqtSR4W455qy2Owgl/D3Vwdcno3oKxnkcfY2als
+ JwxGx4LJu6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarUkeAAKCRBgAj/E00kg
+ clS8EACiBSbeXFCoOQapy9QtgKWyLfmfQTY9jRkEsHqYXP/7OZOCv0MBBJe+6Cm+JcPrPYAfcZL
+ 66EwCnfjIg+Mg1/tTgktBD6PyiC2SObX+P2Otv1uiMg+Tqu74UHN2XElYWycJbqmnNN3f13DLFH
+ 7uEAmVu17M0MuSKd1ipvkd9HdSEuZrC8IwSLAWb6sPSVkFK5oBobC/SPEdNEkl99nnHNGquw4uX
+ fmY13oABE80Yev+zfcsDy7cXsvYr5CBzYg7i3bHwJXP4URc47dyjNRWPcI+pecIc5dnTn3jtmrY
+ /zqPodcJr7ir8zdFS/aVllrq3y45MsKnH5lu/8H3c8td0ezFmxKC8sJhHDHFv7GJwPtQZWhhWm8
+ 15rwWrztxrClBZ2r/cGiMocj/27zApjZpi1O8xvz8XMXR5Gr8yA/MIo9r64TETrqsKl3sFXgz1v
+ nPa+m0frSJGWHv5DO4B3PPrrwPrL2xlinmdZPGfoRCgNOin4epNvNvEK4vEZyMovPMUzUuSVwMn
+ EEX7h7NQHzCth0Blzw9lJFsTdsWg5AI48avBNxzWJjNIRVMcUd0Qwa/XJc7LX0PwmADneM2OzJi
+ bYUd9ej9pq7Tw1FAAWFaKjy00DrJwoFm/Tztgz+1L2qLCrtjOU+aU/Uy6b7w/LowJH9PumJd6fG
+ H4H03W5DfgNSXPw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Exercise software UDP checksums when splice() transfers multiple pipe
-fragments into a corked datagram. Use separate source pipes so short writes
-cannot merge, and use odd fragment lengths to expose checksum-position
-errors between fragments.
+This series address:
 
-Cover IPv4, IPv6 and IPv4-mapped destinations, connected and unconnected
-sockets, resident prefixes, even and odd fragment lengths, and a fragment
-starting near a page boundary. Ordinary sends provide a control. Check the
-complete payload and reject extra datagrams after a successful send.
+0. demistify the hex to BIT() macro and add left/right rx spk
+1. most likely wrongly set DSP_B in sdm845.c
+   my guess this is because TDM was never used in the mainline with
+   sdm845
+2. applying correct mask to left/right speaker for the TDM in sdm845.c,
+   so both speakers can work simultaneusly
+3. setting sysclk at startups, which some codecs need (such as cs35l36)
+4. setting proper tdm slot in the cs35l36 driver
+5. device-tree wiring for Pixel 3 / 3 XL
 
-Keep receive waits bounded and skip unavailable address families or pipe
-capacities. The test uses only loopback sockets with ephemeral ports and
-has no dependency on the application that exposed the regression.
+As per previous discussion not seding patch removing the "Input Mux"
+which now interferes with TDM callback. If wanted, I can send it as a
+follow-up.
 
-Assisted-by: LLM
-Signed-off-by: Alireza Asgari <alireza@asgari.net>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- tools/testing/selftests/net/.gitignore            |   1 +
- tools/testing/selftests/net/Makefile              |   1 +
- tools/testing/selftests/net/udp_splice_checksum.c | 378 ++++++++++++++++++++++
- 3 files changed, 380 insertions(+)
+Changes in v4:
+- Rebase on top of d4d1619ebd55 ("ASoC: codecs: cs35l*: use .auto_selectable_formats") (Mark)
+- Link to v3: https://patch.msgid.link/20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz
 
-diff --git a/tools/testing/selftests/net/.gitignore b/tools/testing/selftests/net/.gitignore
-index c9f46031ac..dacd36ed84 100644
---- a/tools/testing/selftests/net/.gitignore
-+++ b/tools/testing/selftests/net/.gitignore
-@@ -55,6 +55,7 @@ tools
- tun
- txring_overwrite
- txtimestamp
-+udp_splice_checksum
- udpgso
- udpgso_bench_rx
- udpgso_bench_tx
-diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
-index 3ee3378f8b..590b33e16d 100644
---- a/tools/testing/selftests/net/Makefile
-+++ b/tools/testing/selftests/net/Makefile
-@@ -199,6 +199,7 @@ TEST_GEN_PROGS := \
- 	tap \
- 	tcp_port_share \
- 	tls \
-+	udp_splice_checksum \
- # end of TEST_GEN_PROGS
- 
- TEST_FILES := \
-diff --git a/tools/testing/selftests/net/udp_splice_checksum.c b/tools/testing/selftests/net/udp_splice_checksum.c
-new file mode 100644
-index 0000000000..dc61444e64
---- /dev/null
-+++ b/tools/testing/selftests/net/udp_splice_checksum.c
-@@ -0,0 +1,378 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Exercise UDP software checksums over multiple spliced pipe fragments.
-+ * All traffic stays on loopback; no privileges or external services are needed.
-+ * Exit status: 0 = pass, 1 = failure, 4 = all cases skipped.
-+ */
-+#define _GNU_SOURCE
-+
-+#include <arpa/inet.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <poll.h>
-+#include <stdbool.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <sys/socket.h>
-+#include <time.h>
-+#include <unistd.h>
-+
-+#include "kselftest.h"
-+
-+#define TIMEOUT_MS 200
-+
-+struct test_case {
-+	const char *name;
-+	const char *body;
-+	const char *prefix;
-+	size_t fragments[3];
-+	bool ordinary;
-+	bool page_tail;
-+};
-+
-+static const struct test_case cases[] = {
-+	{ "ordinary-control", "abcDEFGH", "", { 3, 5 }, true, false },
-+	{ "uniform-odd-fragments", "BBBBBBBB", "", { 3, 5 }, false, false },
-+	{ "even-fragments", "abcdEFGH", "", { 4, 4 }, false, false },
-+	{ "odd-fragments", "abcDEFGH", "", { 3, 5 }, false, false },
-+	{ "odd-prefix-odd-fragments", "abcDEFGH", "P", { 3, 5 }, false, false },
-+	{ "even-prefix-odd-fragments", "abcDEFGH", "PQ", { 3, 5 }, false, false },
-+	{ "page-tail-odd-fragments", "abcDEFGH", "", { 3, 5 }, false, true },
-+	{ "three-fragments", "abcDEFGhijkl", "", { 3, 4, 5 }, false, false },
-+	{ "odd-prefix-three-fragments",
-+	  "abcDEFGhijkl",
-+	  "P",
-+	  { 3, 4, 5 },
-+	  false,
-+	  false },
-+};
-+
-+static const char *const families[] = { "IPv4", "IPv6", "IPv4-mapped" };
-+
-+static int error(const char *what)
-+{
-+	ksft_perror(what);
-+	return 1;
-+}
-+
-+static bool unavailable(void)
-+{
-+	return errno == EAFNOSUPPORT || errno == EPROTONOSUPPORT ||
-+	       errno == EADDRNOTAVAIL;
-+}
-+
-+static long long now_ms(void)
-+{
-+	struct timespec ts;
-+
-+	if (clock_gettime(CLOCK_MONOTONIC, &ts))
-+		ksft_exit_fail_perror("clock_gettime");
-+	return (long long)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-+}
-+
-+static int receive_one(int fd, const char *expected, size_t length)
-+{
-+	struct pollfd pfd = { .fd = fd, .events = POLLIN };
-+	long long deadline = now_ms() + TIMEOUT_MS;
-+	int remaining, ret;
-+	char received[64];
-+	ssize_t count;
-+
-+	for (;;) {
-+		remaining = deadline - now_ms();
-+		if (remaining < 0)
-+			remaining = 0;
-+		ret = poll(&pfd, 1, remaining);
-+		if (ret < 0) {
-+			if (errno == EINTR)
-+				continue;
-+			return error("poll");
-+		}
-+		if (!ret) {
-+			ksft_print_msg("no datagram within %d ms after send\n",
-+				       TIMEOUT_MS);
-+			return 1;
-+		}
-+		count = recv(fd, received, sizeof(received),
-+			     MSG_DONTWAIT | MSG_TRUNC);
-+		if (count < 0) {
-+			if (errno == EINTR || errno == EAGAIN)
-+				continue;
-+			return error("recv");
-+		}
-+		break;
-+	}
-+	if (count != (ssize_t)length || memcmp(received, expected, length)) {
-+		ksft_print_msg("received %zd bytes; expected %zu matching\n",
-+			       count, length);
-+		return 1;
-+	}
-+	count = recv(fd, received, sizeof(received), MSG_DONTWAIT | MSG_TRUNC);
-+	if (count >= 0) {
-+		ksft_print_msg("unexpected extra datagram (%zd bytes)\n",
-+			       count);
-+		return 1;
-+	}
-+	if (errno != EAGAIN)
-+		return error("extra-datagram check");
-+	return 0;
-+}
-+
-+/* Separate source pipes prevent adjacent small writes merging into one buffer. */
-+static int append_fragment(int dest, const char *data, size_t length)
-+{
-+	int source[2], ret = 1;
-+
-+	if (pipe2(source, O_NONBLOCK | O_CLOEXEC))
-+		return error("source pipe");
-+	if (write(source[1], data, length) != (ssize_t)length) {
-+		error("source write");
-+		goto out;
-+	}
-+	if (splice(source[0], NULL, dest, NULL, length, SPLICE_F_NONBLOCK) !=
-+	    (ssize_t)length) {
-+		error("pipe-to-pipe splice");
-+		goto out;
-+	}
-+	ret = 0;
-+out:
-+	close(source[0]);
-+	close(source[1]);
-+	return ret;
-+}
-+
-+static int pipe_capacity(int fd, unsigned int slots, const char **skip_reason)
-+{
-+	long required = slots * sysconf(_SC_PAGESIZE);
-+	int capacity = fcntl(fd, F_GETPIPE_SZ);
-+
-+	if (capacity < 0)
-+		return error("query pipe capacity");
-+	if (capacity >= required ||
-+	    fcntl(fd, F_SETPIPE_SZ, required) >= required)
-+		return 0;
-+	ksft_print_msg("cannot reserve %u pipe slots: %s\n", slots,
-+		       strerror(errno));
-+	*skip_reason = "required pipe capacity unavailable";
-+	return KSFT_SKIP;
-+}
-+
-+/* Leave three bytes at a page's end, followed by five bytes on the next page. */
-+static int append_page_tail(int dest, const char *body,
-+			    const char **skip_reason)
-+{
-+	long page = sysconf(_SC_PAGESIZE);
-+	int source[2], ret = 1;
-+	char *data;
-+
-+	if (page < 8) {
-+		ksft_print_msg("invalid page size %ld\n", page);
-+		return 1;
-+	}
-+	data = malloc(page + 5);
-+	if (!data)
-+		return error("malloc");
-+	memset(data, 'x', page - 3);
-+	memcpy(data + page - 3, body, 8);
-+	if (pipe2(source, O_NONBLOCK | O_CLOEXEC)) {
-+		error("page-tail source pipe");
-+		goto free_data;
-+	}
-+	ret = pipe_capacity(source[1], 2, skip_reason);
-+	if (ret)
-+		goto out;
-+	ret = 1;
-+	if (write(source[1], data, page + 5) != page + 5) {
-+		error("page-tail write");
-+		goto out;
-+	}
-+	if (read(source[0], data, page - 3) != page - 3) {
-+		error("page-tail discard");
-+		goto out;
-+	}
-+	if (splice(source[0], NULL, dest, NULL, 8, SPLICE_F_NONBLOCK) != 8) {
-+		error("page-tail pipe-to-pipe splice");
-+		goto out;
-+	}
-+	ret = 0;
-+out:
-+	close(source[0]);
-+	close(source[1]);
-+free_data:
-+	free(data);
-+	return ret;
-+}
-+
-+static int run_case(unsigned int family, bool connected,
-+		    const struct test_case *test, const char **skip_reason)
-+{
-+	size_t body_length = strlen(test->body), offset = 0;
-+	int tx_family = family == 0 ? AF_INET : AF_INET6;
-+	int rx_family = family == 1 ? AF_INET6 : AF_INET;
-+	int rx = -1, tx = -1, pipefd[2] = { -1, -1 };
-+	size_t prefix_length = strlen(test->prefix);
-+	struct sockaddr_storage address = { 0 };
-+	socklen_t address_length;
-+	struct sockaddr_in6 *v6;
-+	struct sockaddr_in *v4;
-+	int ret = 1, zero = 0;
-+	char expected[64];
-+	unsigned int i;
-+	ssize_t count;
-+
-+	v4 = (struct sockaddr_in *)&address;
-+	v6 = (struct sockaddr_in6 *)&address;
-+	*skip_reason = "address family unavailable";
-+	memcpy(expected, test->prefix, prefix_length);
-+	memcpy(expected + prefix_length, test->body, body_length);
-+	rx = socket(rx_family, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-+	if (rx < 0) {
-+		ret = unavailable() ? KSFT_SKIP : error("receive socket");
-+		goto out;
-+	}
-+	if (rx_family == AF_INET) {
-+		v4->sin_family = AF_INET;
-+		v4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-+		address_length = sizeof(*v4);
-+	} else {
-+		v6->sin6_family = AF_INET6;
-+		v6->sin6_addr = in6addr_loopback;
-+		address_length = sizeof(*v6);
-+	}
-+	if (bind(rx, (struct sockaddr *)&address, address_length)) {
-+		ret = unavailable() ? KSFT_SKIP : error("bind loopback");
-+		goto out;
-+	}
-+	if (getsockname(rx, (struct sockaddr *)&address, &address_length)) {
-+		error("getsockname");
-+		goto out;
-+	}
-+	if (family == 2) {
-+		unsigned short port = v4->sin_port;
-+
-+		memset(&address, 0, sizeof(address));
-+		v6->sin6_family = AF_INET6;
-+		v6->sin6_port = port;
-+		inet_pton(AF_INET6, "::ffff:127.0.0.1", &v6->sin6_addr);
-+		address_length = sizeof(*v6);
-+	}
-+	tx = socket(tx_family, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-+	if (tx < 0) {
-+		ret = unavailable() ? KSFT_SKIP : error("send socket");
-+		goto out;
-+	}
-+	if (family == 2 &&
-+	    setsockopt(tx, IPPROTO_IPV6, IPV6_V6ONLY, &zero, sizeof(zero))) {
-+		error("disable IPV6_V6ONLY");
-+		goto out;
-+	}
-+	if (connected &&
-+	    connect(tx, (struct sockaddr *)&address, address_length)) {
-+		error("connect");
-+		goto out;
-+	}
-+	if (test->ordinary) {
-+		count = sendto(tx, expected, prefix_length + body_length, 0,
-+			       (struct sockaddr *)&address, address_length);
-+		if (count != (ssize_t)(prefix_length + body_length)) {
-+			error("ordinary sendto");
-+			goto out;
-+		}
-+	} else {
-+		if (pipe2(pipefd, O_NONBLOCK | O_CLOEXEC)) {
-+			error("assembled pipe");
-+			goto out;
-+		}
-+		ret = pipe_capacity(pipefd[1], test->fragments[2] ? 3 : 2,
-+				    skip_reason);
-+		if (ret)
-+			goto out;
-+		ret = 1;
-+		if (test->page_tail) {
-+			ret = append_page_tail(pipefd[1], test->body,
-+					       skip_reason);
-+			if (ret)
-+				goto out;
-+			ret = 1;
-+		} else {
-+			for (i = 0; i < ARRAY_SIZE(test->fragments); i++) {
-+				if (!test->fragments[i])
-+					break;
-+				if (append_fragment(pipefd[1],
-+						    test->body + offset,
-+						    test->fragments[i]))
-+					goto out;
-+				offset += test->fragments[i];
-+			}
-+		}
-+		/* Even an empty prefix establishes the destination and UDP cork. */
-+		count = sendto(tx, test->prefix, prefix_length, MSG_MORE,
-+			       (struct sockaddr *)&address, address_length);
-+		if (count != (ssize_t)prefix_length) {
-+			error("prime sendto(MSG_MORE)");
-+			goto out;
-+		}
-+		count = splice(pipefd[0], NULL, tx, NULL, body_length,
-+			       SPLICE_F_NONBLOCK | SPLICE_F_MORE);
-+		if (count != (ssize_t)body_length) {
-+			ksft_print_msg("socket splice: %zd, expected %zu: %s\n",
-+				       count, body_length,
-+				       count < 0 ? strerror(errno) :
-+						   "short transfer");
-+			goto out;
-+		}
-+		if (sendto(tx, "", 0, 0, (struct sockaddr *)&address,
-+			   address_length)) {
-+			error("commit sendto");
-+			goto out;
-+		}
-+	}
-+	ret = receive_one(rx, expected, prefix_length + body_length);
-+out:
-+	if (pipefd[0] >= 0) {
-+		close(pipefd[0]);
-+		close(pipefd[1]);
-+	}
-+	if (tx >= 0)
-+		close(tx);
-+	if (rx >= 0)
-+		close(rx);
-+	return ret;
-+}
-+
-+int main(void)
-+{
-+	unsigned int family, connected, i;
-+	const char *connection, *skip;
-+	int ret;
-+
-+	ksft_print_header();
-+	ksft_set_plan(ARRAY_SIZE(families) * 2 * ARRAY_SIZE(cases));
-+	for (family = 0; family < ARRAY_SIZE(families); family++) {
-+		for (connected = 0; connected < 2; connected++) {
-+			connection = connected ? "connected" : "unconnected";
-+			for (i = 0; i < ARRAY_SIZE(cases); i++) {
-+				ret = run_case(family, connected, &cases[i],
-+					       &skip);
-+				if (ret == KSFT_SKIP)
-+					ksft_test_result_skip("%s %s %s: %s\n",
-+							      families[family],
-+							      connection,
-+							      cases[i].name,
-+							      skip);
-+				else
-+					ksft_test_result(!ret, "%s %s %s\n",
-+							 families[family],
-+							 connection,
-+							 cases[i].name);
-+			}
-+		}
-+	}
-+	if (!ksft_get_pass_cnt() && !ksft_get_fail_cnt()) {
-+		/* ksft_exit_skip() would add a result beyond the plan. */
-+		ksft_print_cnts();
-+		return KSFT_SKIP;
-+	}
-+	ksft_finished();
-+}
+Changes in v3:
+- De-RFC, applied Reviewed-by tag.
+- Link to v2: https://patch.msgid.link/20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz
 
--- 
-2.34.1
+Changes in v2:
+- Device-tree name sorting, with exception keeping mm1-dai-link in it's
+  place. (Konrad)
+- Make set_tdm_slot cleaner and less leveled. (Konrad)
+- Added TDM MIC defines in sdm845.c.
+  Should we in capture use speaker mask?
+- Renamed model from 'Google Pixel 3' to 'blueline', I would love to
+  hear feedback on this one.
+- Link to v1: https://lore.kernel.org/r/20260705-pixel3-audio-v1-0-3b66f33859f1@ixit.cz
+
+---
+David Heidelberg (8):
+      ASoC: qcom: sdm845: Demystify TDM masks a bit
+      ASoC: qcom: sdm845: use DSP_A format for TDM codec DAIs
+      ASoC: qcom: sdm845: Use per-speaker RX masks for TDM slot assignment
+      ASoC: qcom: sdm845: Set codec dai and component sysclk during startup
+      ASoC: cs35l36: Implement set_tdm_slot to program RX and TX slots
+      arm64: dts: qcom: sdm845-google: Add basic audio support
+      slimbus: qcom-ngd-ctrl: Remove data channels on stream disable
+      arm64: dts: qcom: sdm845-google: Add WCD9340 codec and microphone capture
+
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 195 ++++++++++++++++++++-
+ drivers/slimbus/qcom-ngd-ctrl.c                    |  81 +++++++++
+ sound/soc/codecs/cs35l36.c                         |  44 +++++
+ sound/soc/qcom/sdm845.c                            |  49 ++++--
+ 4 files changed, 357 insertions(+), 12 deletions(-)
+---
+base-commit: 3d7783543c2646af69ad65825e810060494bea21
+change-id: 20260613-pixel3-audio-bdbfb49e8037
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
