@@ -1,14 +1,13 @@
 From: Alireza Asgari <alireza@asgari.net>
-Subject: [PATCH net 0/2] Fix UDP splice checksum alignment across fragments
-Date: Thu, 24 Sep 2026 13:00:23 +0000
-Message-Id: <20260924-fix-udp-splice-checksum-v1-0-fe61d65447a8@asgari.net>
+Date: Thu, 24 Sep 2026 13:00:24 +0000
+Subject: [PATCH net 1/2] net: fix checksum offsets in
+ skb_splice_from_iter()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOcetWoC/02MSw4CIRBErzLptZ0gflCvYlxAT4/ghyH0YEwmc
- 3dBNy6r6tWbQTgHFjh1M2R+BQljrGG96oC8jVfG0NcMWum9OuotDuGNpU8o6RGIkTzTXcoTzWD
- cbmP0gRRDfafMFf2azxB5gsuvlOJuTFNzNsxZYXTZRvKt+jO3BZblA5XUjOeiAAAA
-X-Change-ID: 20260924-fix-udp-splice-checksum-7f7b53728c0e
+Message-Id: <20260924-fix-udp-splice-checksum-v1-1-fe61d65447a8@asgari.net>
+References: <20260924-fix-udp-splice-checksum-v1-0-fe61d65447a8@asgari.net>
+In-Reply-To: <20260924-fix-udp-splice-checksum-v1-0-fe61d65447a8@asgari.net>
 To: "David S. Miller" <davem@davemloft.net>, 
  Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
  Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
@@ -16,78 +15,74 @@ To: "David S. Miller" <davem@davemloft.net>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Alireza Asgari <alireza@asgari.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790254849; l=3414;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790254849; l=2218;
  i=alireza@asgari.net; s=alireza-kernel; h=from:subject:message-id;
- bh=Dp12ffDQvZe2JNuqrIWDdlcnmCileR+T4ECkbmUDTTo=;
- b=tA6tvWeFe6XaDsVtaPWEplgDShCKNTRQbLNJ+PUHQig/yXCuke4r8Ju9YUr+Wy4X/zUiMuFw1
- 9+4g54CkjMqDVR85dONGMklYBvP9vLP1tFjw+1Ckq+PsLIIe6Li41fw
+ bh=10aQjP+oz2coB4vcqJcDFDEfRRP5f98Xv2+8tCwyCi0=;
+ b=8NR5L/W06Aj8/yjz7hVEj6ADVyibkr2aTYt0eJphxQ91qw1jWWZMr+3Nh+mtaDUaJSWXgexDO
+ AJ7KA2lDCjdCv88GE8f7DIhQ2ZBk5mbl+igEgcTtyM/A+G9zJsiQpzz
 X-Developer-Key: i=alireza@asgari.net; a=ed25519;
  pk=wuQ0/M69FqoVnrCMUJ13EQCwrCwVjCrtz75k15vW8tw=
 X-Endpoint-Received: by B4 Relay for alireza@asgari.net/alireza-kernel with auth_id=1055
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When skb_splice_from_iter() appends several pipe fragments, it updates
-skb->len only after the loop. The software-checksum helper nevertheless
-uses that unchanged length as the checksum position for each fragment.
-An odd number of bytes already appended during the call therefore gives
-later fragments the wrong checksum alignment.
+skb_splice_from_iter() appends multiple page fragments before updating
+skb->len. However, skb_splice_csum_page() uses that unchanged length as the
+offset for every fragment checksum. If bytes already appended during the
+call have an odd total length, a later fragment's checksum is combined
+with the wrong parity.
 
-A standalone reproducer primes a UDP socket with sendto(MSG_MORE), splices
-distinct pipe buffers, then uncorks the datagram. The send succeeds, but
-the receiver drops the packet and increments its checksum-error counter.
+For example, prime a UDP socket with sendto(MSG_MORE) and splice two
+distinct pipe buffers containing "abc" and "DEFGH". Uncorking reports
+success, but the receiver discards the packet for a bad checksum.
+This also affects IPv6 and fragments beginning near a page boundary.
 
-Patch 1 passes the actual cumulative offset to the checksum helper without
-changing the final length update or partial-progress handling. Patch 2
-adds a loopback selftest covering IPv4, IPv6, IPv4-mapped destinations,
-connected and unconnected sockets, prefixes and fragment boundaries.
+Pass the initial skb length plus the bytes already spliced to the checksum
+helper. Keep the existing final length update and partial-progress error
+handling unchanged. CHECKSUM_PARTIAL does not use this helper and remains
+unaffected.
 
-Based on net/main at e47a1958e12abc3a17b5231a4f21c8f1bf662e08.
-Validation on x86-64 with GCC 11.4.0:
-
-  - Unmodified net kernel: 12 passes, 42 failures; 28 IPv4 and 14 IPv6
-    checksum errors. Patched kernel: all 54 pass, zero checksum errors.
-  - Ubuntu 6.8.0-138-generic reproduces the same failures. The host's
-    5.15.0-187-generic kernel passes all cases.
-  - Patched kernel with restricted pipe growth: 42 passes, 12 expected
-    skips, no failures or checksum errors.
-  - Complete small runtime kernels built and boot-tested before and after
-    the fix. net/core/skbuff.o built under allmodconfig and allyesconfig.
-  - Full x86-64 allmodconfig build and link completed with W=1 and
-    CONFIG_WERROR disabled. The initial strict builds encountered unrelated
-    warnings also reproduced on the unpatched base. No warning was emitted
-    for the changed kernel object.
-  - The full allyesconfig build was interrupted and I chose not to complete
-    it because of the additional build time. Only the changed object has
-    completed that configuration; no full allyesconfig pass is claimed.
-  - Standalone and kernel-Makefile selftest builds pass. Checkpatch finds
-    only the generic new-file MAINTAINERS warning for the selftest;
-    existing networking/selftest ownership covers it.
-  - After converting the selftest to kselftest result helpers, rebuilt it
-    separately and repeated the host and before/after VM runs using the
-    existing kernels, with unchanged case outcomes. Also checked mixed
-    pass/skip and all-skipped runs in isolated network namespaces; the
-    latter reports exactly 54 skips and exits with status 4.
-
-AI assistance: Codex and Astra were used during investigation,
-implementation, selftest development, validation, and preparation of the
-submission text. I reviewed the resulting changes and take responsibility
-for the submission.
-
+Fixes: 2e910b95329c ("net: Add a function to splice pages into an skbuff for MSG_SPLICE_PAGES")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM
+Signed-off-by: Alireza Asgari <alireza@asgari.net>
 ---
-Alireza Asgari (2):
-      net: fix checksum offsets in skb_splice_from_iter()
-      selftests: net: cover UDP splice checksum fragment alignment
+ net/core/skbuff.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
- net/core/skbuff.c                                 |   8 +-
- tools/testing/selftests/net/.gitignore            |   1 +
- tools/testing/selftests/net/Makefile              |   1 +
- tools/testing/selftests/net/udp_splice_checksum.c | 378 ++++++++++++++++++++++
- 4 files changed, 385 insertions(+), 3 deletions(-)
----
-base-commit: e47a1958e12abc3a17b5231a4f21c8f1bf662e08
-change-id: 20260924-fix-udp-splice-checksum-7f7b53728c0e
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index b4edbd0665..38783953db 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -7403,7 +7403,8 @@ nodefer:	kfree_skb_napi_cache(skb);
+ }
+ 
+ static void skb_splice_csum_page(struct sk_buff *skb, struct page *page,
+-				 size_t offset, size_t len)
++				 size_t offset, size_t len,
++				 unsigned int csum_offset)
+ {
+ 	const char *kaddr;
+ 	__wsum csum;
+@@ -7411,7 +7412,7 @@ static void skb_splice_csum_page(struct sk_buff *skb, struct page *page,
+ 	kaddr = kmap_local_page(page);
+ 	csum = csum_partial(kaddr + offset, len, 0);
+ 	kunmap_local(kaddr);
+-	skb->csum = csum_block_add(skb->csum, csum, skb->len);
++	skb->csum = csum_block_add(skb->csum, csum, csum_offset);
+ }
+ 
+ /**
+@@ -7471,7 +7472,8 @@ ssize_t skb_splice_from_iter(struct sk_buff *skb, struct iov_iter *iter,
+ 			}
+ 
+ 			if (skb->ip_summed == CHECKSUM_NONE)
+-				skb_splice_csum_page(skb, page, off, part);
++				skb_splice_csum_page(skb, page, off, part,
++						     skb->len + spliced);
+ 
+ 			off = 0;
+ 			spliced += part;
 
-Best regards,
---  
-Alireza Asgari <alireza@asgari.net>
+-- 
+2.34.1
 
