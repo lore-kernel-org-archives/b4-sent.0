@@ -1,11 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Thu, 24 Sep 2026 16:34:09 +0200
-Subject: [PATCH RFC 1/4] sysctl: add a registration context to
- ctl_table_header
+Date: Thu, 24 Sep 2026 16:34:10 +0200
+Subject: [PATCH RFC 2/4] sysctl: Apply sysctl context when flag is active
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-lklm-sysctl-headerctx-template-v1-1-b25e51c66ba7@kernel.org>
+Message-Id: <20260924-lklm-sysctl-headerctx-template-v1-2-b25e51c66ba7@kernel.org>
 References: <20260924-lklm-sysctl-headerctx-template-v1-0-b25e51c66ba7@kernel.org>
 In-Reply-To: <20260924-lklm-sysctl-headerctx-template-v1-0-b25e51c66ba7@kernel.org>
 To: Kees Cook <kees@kernel.org>
@@ -17,235 +16,99 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  Alexey Gladkov <legion@kernel.org>, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8723;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2730;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=mnIQb1Yug/ZKrL0ezOFkoOsvh5aZpqvlnrOmEwE7vMc=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGq1NORtLkytfrO8kdQmGphH+AeiVJ9pb10K0
- ZQZxK0Hura+fokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqtTTkAAoJELqXzVK3
- lkFP0TYL/jDhyu7JScUlj8eRfIz1Fb7pZXIKigFdfWXdIsC/g+G99++mhoy4kWLiyGF5h9aBjdz
- gnK3fWpq1u5M9cvk3SoZ2l0ooIEpel8IOwSDh+6V/06OmGgCRG23+9dFjGGziBg+ehofIe8urRB
- OqrMAZjl4RJQWtsrfSSadnXZxGhdA0q1mxkMKh5+LjgtDSo1lK8Y61XqtRAoY0xnCuKI5jdaOHu
- bI5LCEFHbn5MDtF9gM/oiu5JD2/VN+HloYk95ZpvDSGY1SkxpRKOakUHibfYQwSN3PoZtmNStZd
- moWdCLuojvtxEHRd0L/mPi8wal9jmTeOFPKnSr+B7vjLDg55GdRzITnw8TE7Q0yIxT6GRy/L6Zv
- qRrdTgMGfR4SsxD4dyM2n9DJs87JsMfN8GCJR9+O9VkkZ6qtVxg8e9oXGO26yCquLrMwIANL8Sk
- SROpD0gw5Js0EkvVkyfuTP6j+Dnuto2nm5IeltUI3ncE8tGecqv8B1IEQT3w9uE1LdiLqb3OAo7
- yY=
+ bh=I5CKmhNtTnWeuzjiQtc94qyADu0YXow+af+CzKqUVMc=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGq1NOXd5c0dJfW3SBiNoI1dPmuYeuj9U2c8S
+ tTl/ZYcVMuHiokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqtTTlAAoJELqXzVK3
+ lkFPQSwL+gMJstW2nqQmHrOX+SDossmZOHPV5GBDoHYK1RjArd8v/8QuPILsP33zPYyzPAE0gLU
+ n6L5Sf5b8KIdQpthCdlmtai56LrUWNZY5pkyE56qYUYyZ7OHKX7QzKOqcLbsSonPDmJn+sgJKvR
+ pLUAycJiLWnMeogMNJ1flpD9OQ7b4VAWDLM+j8BLI0S/OnKWwnogX4cNr4bG8cdkyLfHlDbMiPV
+ wfcJPKIqG0tIWhFjMg3i/Q7s2Y92OxYodwOAyOCjyxgYnJjV7RTi4GAbxuDfy6AE/tZmXfrGE1c
+ WTONmfzMTKjikZjVK/VgZpA0vW3PwiBc6n8eeShbWVP8rm5q38Pir9wokG0zhCbpu6aqssKu33/
+ 9GDnNFtcBAi6dtJTCcuqwUn/zpOBzHHEgYJEW0NVQ7aTlq6F5FWSzeNOw92oil1FESLqPQEVeTv
+ 7JpxrD9GwJr9CWUsqg6We2T9vSQFRslJZlsoKlbQ+1YVdgItxDLyE8z4+K5RHjtdGhTh7nZe7C8
+ Ak=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The sysctl context holds a pointer where the actual data (per-namespace
-or per-device) is located. When an entry is marked CTL_TABLE_F_CTX_DATA
-it is replaced just before calling proc_handler. Add flags to
-each ctl_table entry to pass along CTL_TABLE_F_CTX_DATA.
-
-SYSCTL_CTX() builds the context and fails the build unless the instance
-and the template point at the same type.
-
-This is a prep commit, no functional changes intended.
+Whenever CTL_TABLE_F_CTX_DATA is set on the entry, overlay the ->data
+entry contained in inst on the entry to be passed to proc_handlers. No
+table sets the flags yet, so there is no functional change.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- fs/proc/proc_sysctl.c  | 29 ++++++++++++++++++++++----
- include/linux/sysctl.h | 55 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 78 insertions(+), 6 deletions(-)
+ fs/proc/proc_sysctl.c | 27 ++++++++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
 
 diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index 04a382178c657b5af201a838fa15703d9eea9c7b..fe32337892f9badc897a29e9176e66790003fb05 100644
+index fe32337892f9badc897a29e9176e66790003fb05..1ed9f4e1a17e28c5db1d07356390cbee968cb91f 100644
 --- a/fs/proc/proc_sysctl.c
 +++ b/fs/proc/proc_sysctl.c
-@@ -1143,10 +1143,18 @@ static int sysctl_check_table_array(const char *path, const struct ctl_table *ta
- static int sysctl_check_table(const char *path, struct ctl_table_header *header)
- {
- 	const struct ctl_table *entry;
-+	u8 flagged = 0;
- 	int err = 0;
- 	list_for_each_table_entry(entry, header) {
- 		if (!entry->procname)
- 			err |= sysctl_err(path, entry, "procname is null");
-+		if (entry->flags & CTL_TABLE_F_CTX_DATA) {
-+			if (!entry->data)
-+				err |= sysctl_err(path, entry, "No data to resolve");
-+			if (!header->ctx.inst || !header->ctx.tmpl)
-+				err |= sysctl_err(path, entry, "No context to resolve against");
-+		}
-+		flagged |= entry->flags & CTL_TABLE_F_CTX;
- 		if ((entry->proc_handler == proc_dostring) ||
- 		    (entry->proc_handler == proc_dobool) ||
- 		    (entry->proc_handler == proc_dointvec) ||
-@@ -1173,6 +1181,12 @@ static int sysctl_check_table(const char *path, struct ctl_table_header *header)
- 			err |= sysctl_err(path, entry, "bogus .mode 0%o",
- 				entry->mode);
- 	}
-+	/* A context nobody resolves against is a forgotten flag. */
-+	if (!flagged && (header->ctx.inst || header->ctx.tmpl)) {
-+		pr_err("sysctl table check failed: %s context given but no entry is flagged\n",
-+		       path);
-+		err = -EINVAL;
-+	}
+@@ -550,12 +550,31 @@ static struct dentry *proc_sys_lookup(struct inode *dir, struct dentry *dentry,
  	return err;
  }
  
-@@ -1324,7 +1338,7 @@ static struct ctl_dir *sysctl_mkdir_p(struct ctl_dir *dir, const char *path)
- }
- 
- /**
-- * __register_sysctl_table - register a leaf sysctl table
-+ * __register_sysctl_table_ctx - register a leaf sysctl table
-  * @set: Sysctl tree to register on
-  * @path: The path to the directory the sysctl table is in.
-  *
-@@ -1333,6 +1347,9 @@ static struct ctl_dir *sysctl_mkdir_p(struct ctl_dir *dir, const char *path)
-  *         be a global or dynamically allocated by the caller and free'd later
-  *         after sysctl unregistration.
-  * @table_size : The number of elements in table
-+ * @ctx: instances that entries flagged CTL_TABLE_F_CTX_* resolve against, see
-+ *       struct sysctl_context.  Copied, so it may be on stack.  %NULL when no
-+ *       entry is flagged.
-  *
-  * Register a sysctl table hierarchy. @table should be a filled in ctl_table
-  * array.
-@@ -1343,6 +1360,7 @@ static struct ctl_dir *sysctl_mkdir_p(struct ctl_dir *dir, const char *path)
-  * data     - a pointer to data for use by proc_handler
-  * maxlen   - the maximum size in bytes of the data
-  * mode     - the file permissions for the /proc/sys file
-+ * flags    - CTL_TABLE_F_* bits naming members to resolve against @ctx
-  * type     - Defines the target type (described in struct definition)
-  * proc_handler - the text handler routine (described below)
-  *
-@@ -1366,9 +1384,10 @@ static struct ctl_dir *sysctl_mkdir_p(struct ctl_dir *dir, const char *path)
-  * This routine returns %NULL on a failure to register, and a pointer
-  * to the table header on success.
-  */
--struct ctl_table_header *__register_sysctl_table(
-+struct ctl_table_header *__register_sysctl_table_ctx(
- 	struct ctl_table_set *set,
--	const char *path, const struct ctl_table *table, size_t table_size)
-+	const char *path, const struct ctl_table *table, size_t table_size,
-+	const struct sysctl_context *ctx)
- {
- 	struct ctl_table_root *root = set->dir.header.root;
- 	struct ctl_table_header *header;
-@@ -1382,6 +1401,8 @@ struct ctl_table_header *__register_sysctl_table(
- 
- 	node = (struct ctl_node *)(header + 1);
- 	init_header(header, root, set, node, table, table_size);
-+	if (ctx)
-+		header->ctx = *ctx;
- 	if (sysctl_check_table(path, header))
- 		goto fail;
- 
-@@ -1427,7 +1448,7 @@ struct ctl_table_header *__register_sysctl_table(
-  * Register a sysctl table. @table should be a filled in ctl_table
-  * array. A completely 0 filled entry terminates the table.
-  *
-- * See __register_sysctl_table for more details.
-+ * See __register_sysctl_table_ctx for more details.
-  */
- struct ctl_table_header *register_sysctl_sz(const char *path, const struct ctl_table *table,
- 					    size_t table_size)
-diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-index e5d7226ab6f5af34a33829883ad5d1b405e19c86..b2c57c530bdc9b3542375b761fec3e02ab38bc7f 100644
---- a/include/linux/sysctl.h
-+++ b/include/linux/sysctl.h
-@@ -22,6 +22,8 @@
- #ifndef _LINUX_SYSCTL_H
- #define _LINUX_SYSCTL_H
- 
-+#include <linux/bits.h>
-+#include <linux/build_bug.h>
- #include <linux/list.h>
- #include <linux/rcupdate.h>
- #include <linux/wait.h>
-@@ -224,12 +226,50 @@ struct ctl_table {
- 	void *data;
- 	int maxlen;
- 	umode_t mode;
-+	u8 flags;			/* CTL_TABLE_F_* */
- 	proc_handler *proc_handler;	/* Callback for text formatting */
- 	struct ctl_table_poll *poll;
- 	void *extra1;
- 	void *extra2;
- } __randomize_layout;
- 
-+/*
-+ * ctl_table::flags.  Resolve the corresponding member against the
-+ * registration context instead of using it as it stands.
-+ */
-+#define CTL_TABLE_F_CTX_DATA	BIT(0)
-+#define CTL_TABLE_F_CTX		CTL_TABLE_F_CTX_DATA
-+
-+/**
-+ * struct sysctl_context - ctl_table specific context
-+ * @inst: entry location
-+ * @tmpl: struct template (used to calculate offset into @inst)
-+ *
-+ * @inst/@tmpl pair is used to overlay the ctl_table entry before calling
-+ * proc_handler. This is relevant when struct members (like ->data) are
-+ * somewhere different than the const static ctl_table array (think
-+ * namespaces).  Build it with SYSCTL_CTX() so the compiler checks that
-+ * both point at the same type.
-+ */
-+struct sysctl_context {
-+	void *inst;
-+	const void *tmpl;
-+};
-+
-+/**
-+ * SYSCTL_CTX - build a struct sysctl_context
-+ * @_inst: the instance this registration describes
-+ * @_tmpl: the instance the table's data members name
-+ *
-+ * Fails to build unless @_inst and @_tmpl point at the same type.
-+ */
-+#define SYSCTL_CTX(_inst, _tmpl)					\
-+	((struct sysctl_context){					\
-+		.inst = (_inst) +					\
-+			BUILD_BUG_ON_ZERO(!__same_type(*(_inst), *(_tmpl))), \
-+		.tmpl = (_tmpl),					\
-+	})
-+
- struct ctl_node {
- 	struct rb_node node;
- 	struct ctl_table_header *header;
-@@ -244,6 +284,7 @@ struct ctl_node {
-  *         something is removed from inodes
-  * @nreg: When nreg drops to 0 the ctl_table_header will be unregistered.
-  * @rcu: Delays the freeing of the inode. Introduced with "unfuck proc_sysctl ->d_compare()"
-+ * @ctx: instances given to __register_sysctl_table_ctx(), see struct sysctl_context
-  *
-  * @type: Enumeration to differentiate between ctl target types:
-  * type.SYSCTL_TABLE_TYPE_DEFAULT: ctl target with no special considerations
-@@ -268,6 +309,7 @@ struct ctl_table_header {
- 	struct ctl_dir *parent;
- 	struct ctl_node *node;
- 	struct hlist_head inodes; /* head for proc_inode->sysctl_inodes */
-+	struct sysctl_context ctx;
- 	enum {
- 		SYSCTL_TABLE_TYPE_DEFAULT,
- 		SYSCTL_TABLE_TYPE_PERMANENTLY_EMPTY,
-@@ -305,9 +347,18 @@ extern void setup_sysctl_set(struct ctl_table_set *p,
- 	int (*is_seen)(struct ctl_table_set *));
- extern void retire_sysctl_set(struct ctl_table_set *set);
- 
--struct ctl_table_header *__register_sysctl_table(
-+struct ctl_table_header *__register_sysctl_table_ctx(
- 	struct ctl_table_set *set,
--	const char *path, const struct ctl_table *table, size_t table_size);
-+	const char *path, const struct ctl_table *table, size_t table_size,
-+	const struct sysctl_context *ctx);
-+
-+static inline struct ctl_table_header *__register_sysctl_table(
-+	struct ctl_table_set *set,
-+	const char *path, const struct ctl_table *table, size_t table_size)
++/* Returns @entry itself when it is not flagged, else a resolved copy in @buf. */
++static const struct ctl_table *sysctl_apply_ctx(struct ctl_table_header *head,
++						const struct ctl_table *entry,
++						struct ctl_table *buf)
 +{
-+	return __register_sysctl_table_ctx(set, path, table, table_size, NULL);
++	ptrdiff_t off;
++
++	if (!(entry->flags & CTL_TABLE_F_CTX_DATA))
++		return entry;
++
++	off = (const char *)entry->data - (const char *)head->ctx.tmpl;
++
++	*buf = *entry;
++	buf->data = (char *)head->ctx.inst + off;
++
++	return buf;
 +}
 +
- struct ctl_table_header *register_sysctl_sz(const char *path, const struct ctl_table *table,
- 					    size_t table_size);
- void unregister_sysctl_table(struct ctl_table_header * table);
+ static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
+ 		int write)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	struct ctl_table_header *head = grab_header(inode);
+ 	const struct ctl_table *table = PROC_I(inode)->sysctl_entry;
++	struct ctl_table ctx_entry;
+ 	size_t count = iov_iter_count(iter);
+ 	char *kbuf;
+ 	ssize_t error;
+@@ -567,6 +586,8 @@ static ssize_t proc_sys_call_handler(struct kiocb *iocb, struct iov_iter *iter,
+ 	 * At this point we know that the sysctl was not unregistered
+ 	 * and won't be until we finish.
+ 	 */
++	table = sysctl_apply_ctx(head, table, &ctx_entry);
++
+ 	error = -EPERM;
+ 	if (sysctl_perm(head, table, write ? MAY_WRITE : MAY_READ))
+ 		goto out;
+@@ -797,6 +818,7 @@ static int proc_sys_permission(struct mnt_idmap *idmap,
+ 	 */
+ 	struct ctl_table_header *head;
+ 	const struct ctl_table *table;
++	struct ctl_table ctx_entry;
+ 	int error;
+ 
+ 	/* Executable files are not allowed under /proc/sys/ */
+@@ -810,8 +832,11 @@ static int proc_sys_permission(struct mnt_idmap *idmap,
+ 	table = PROC_I(inode)->sysctl_entry;
+ 	if (!table) /* global root - r-xr-xr-x */
+ 		error = mask & MAY_WRITE ? -EACCES : 0;
+-	else /* Use the permissions on the sysctl table entry */
++	else {
++		/* ->permissions may inspect the entry, so resolve it first. */
++		table = sysctl_apply_ctx(head, table, &ctx_entry);
+ 		error = sysctl_perm(head, table, mask & ~MAY_NOT_BLOCK);
++	}
+ 
+ 	sysctl_head_finish(head);
+ 	return error;
 
 -- 
 2.50.1
