@@ -1,11 +1,10 @@
 From: Zhentao Guo <zhentao.guo@amlogic.com>
-Date: Thu, 24 Sep 2026 15:55:12 +0800
-Subject: [PATCH v10 5/6] arm64: dts: amlogic: Add video decoder driver
- support for S4 SOCs
+Date: Thu, 24 Sep 2026 15:55:13 +0800
+Subject: [PATCH v10 6/6] arm64: defconfig: Enable CONFIG_VIDEO_AMLOGIC_VDEC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-b4-s4-vdec-upstream-v10-5-1289303a58a4@amlogic.com>
+Message-Id: <20260924-b4-s4-vdec-upstream-v10-6-1289303a58a4@amlogic.com>
 References: <20260924-b4-s4-vdec-upstream-v10-0-1289303a58a4@amlogic.com>
 In-Reply-To: <20260924-b4-s4-vdec-upstream-v10-0-1289303a58a4@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -18,75 +17,38 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
  devicetree@vger.kernel.org, Zhentao Guo <zhentao.guo@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790236515; l=1805;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790236515; l=804;
  i=zhentao.guo@amlogic.com; s=20251024; h=from:subject:message-id;
- bh=6mvln4gF/Xr6GIzNj9H9+pGxV5CsOeJcJGZ1vZicQxY=;
- b=faBz9U3pQ3gGMhcO6UDvCnuCBusZ+3DrvKrGcCQ10HES5y5h1GFXUm0EjHNcZlwKk1q1maxdK
- niCyYZcD/oxCoMztV7guvSswihBOsokNYeRxbdrNKST9o4gGXEBgc+1
+ bh=pkxh5YjN/46und6BilAFWFBEvRqbE1Z6teriyhXV5cA=;
+ b=dVF1ml1MzdrmuJ15YfefdqwsNvDB9ya4fUXYnke2jnpsD9/CLSgPdIO7KUqUKPVZNGhnCIEQy
+ trJYtDoieZDBF2ZBLD7VYWyMdLFEj/VtbTQEQHXnGalVMyhlXj+kymn
 X-Developer-Key: i=zhentao.guo@amlogic.com; a=ed25519;
  pk=5yfDKrjreXwcAoEUsdtWafy6YN500upXp/CgtnXjLVU=
 X-Endpoint-Received: by B4 Relay for zhentao.guo@amlogic.com/20251024 with auth_id=555
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add vdec node to enable Amlogic V4L2 stateless video decoder
-support. Since the video fw needs to be loaded via TEE helpers,
-enable the optee node in this patch.
+Enable the Amlogic V4L2 stateless video decoder driver as a module
+in the arm64 defconfig to support stateless video decoder on Amlogic
+SoCs. The driver is used by Amlogic S4 platform, such as S805X2
+board.
 
 Signed-off-by: Zhentao Guo <zhentao.guo@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 33 +++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ arch/arm64/configs/defconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 2a6fbd530836..7a1dcb3951c8 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -80,6 +80,11 @@ pwrc: power-controller {
- 				#power-domain-cells = <1>;
- 			};
- 		};
-+
-+		optee {
-+			compatible = "linaro,optee-tz";
-+			method = "smc";
-+		};
- 	};
- 
- 	saradc: adc@fe026000 {
-@@ -907,5 +912,33 @@ emmc: mmc@fe08c000 {
- 			assigned-clocks = <&clkc_periphs CLKID_SD_EMMC_C>;
- 			assigned-clock-rates = <24000000>;
- 		};
-+
-+		canvas: video-lut@fe036048 {
-+			compatible = "amlogic,canvas";
-+			reg = <0x0 0xfe036048 0x0 0x14>;
-+		};
-+
-+		video-codec@fe320000 {
-+			compatible = "amlogic,s4-vdec";
-+			reg = <0x0 0xfe320000 0x0 0x10000>,
-+			      <0x0 0xfe036000 0x0 0x20>;
-+			reg-names = "dos",
-+				    "dmc";
-+			interrupts = <GIC_SPI 91 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 92 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&clkc_periphs CLKID_DOS>,
-+				 <&clkc_periphs CLKID_VDEC_SEL>,
-+				 <&clkc_periphs CLKID_HEVCF_SEL>;
-+			clock-names = "dos",
-+				      "vdec",
-+				      "hvdec";
-+			power-domains = <&pwrc PWRC_S4_DOS_VDEC_ID>,
-+					<&pwrc PWRC_S4_DOS_HEVC_ID>;
-+			power-domain-names = "vdec",
-+					     "hvdec";
-+			resets = <&reset RESET_DOS>;
-+			amlogic,canvas = <&canvas>;
-+			amlogic,secure-monitor = <&sm>;
-+		};
- 	};
- };
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index f0947c8176a1..d29e7bf5769f 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -919,6 +919,7 @@ CONFIG_USB_VIDEO_CLASS=m
+ CONFIG_V4L_PLATFORM_DRIVERS=y
+ CONFIG_SDR_PLATFORM_DRIVERS=y
+ CONFIG_V4L_MEM2MEM_DRIVERS=y
++CONFIG_VIDEO_AMLOGIC_VDEC=m
+ CONFIG_VIDEO_AMPHION_VPU=m
+ CONFIG_VIDEO_CADENCE_CSI2RX=m
+ CONFIG_VIDEO_WAVE_VPU=m
 
 -- 
 2.42.0
