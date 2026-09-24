@@ -1,112 +1,77 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Thu, 24 Sep 2026 12:38:32 +0300
-Subject: [PATCH v3 3/3] soc: mediatek: pwrap: add mt6572 support
+From: Rouven Czerwinski <rouven.czerwinski@linaro.org>
+Date: Thu, 24 Sep 2026 12:48:18 +0200
+Subject: [PATCH net-next v2] net: phy: mxl-gpy: add 2.5G for MXL86211C
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260924-6572-pwrap-v3-3-64769b6446ac@protonmail.com>
-References: <20260924-6572-pwrap-v3-0-64769b6446ac@protonmail.com>
-In-Reply-To: <20260924-6572-pwrap-v3-0-64769b6446ac@protonmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Flora Fu <flora.fu@mediatek.com>, Alexandre Mergnat <amergnat@baylibre.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- Roman Vivchar <rva333@protonmail.com>
+Message-Id: <20260924-mainline-rouven-mxl2g5-v2-1-fc8367a4c3ad@linaro.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WOQQ6DIBREr2L+ujTwDVq76j0aF6hfpVFoAImN8
+ e5Fe4AuJzNvZjbw5DR5uGcbOIraa2uSwEsG7ajMQEx3SQNyLHiFyGalzaQNMWeXSIbN64SDZCU
+ 2rRQd3qqSQ4Lfjnq9nsVPMBSYoTVA/XP80ryoDUfvkR21D9Z9zg9RnMS/uSiYYIpTJ/MiF0r2j
+ xRSzl6tG6De9/0LFfjFg9kAAAA=
+X-Change-ID: 20260922-mainline-rouven-mxl2g5-72bc51d28970
+To: Xu Liang <lxu@maxlinear.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Daniel Golle <daniel@makrotopia.org>, 
+ Maxime Chevallier <maxime.chevallier@bootlin.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Rouven Czerwinski <rouven.czerwinski@linaro.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790242752; l=3136;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=5/Rr8S3k+cl5buopSAZz/51dHnX8PxgtHV+UdekTJuQ=;
- b=3zna0fCsAZGuoEu6X45tKEbLaKOi8CmV2a1/9jAYSfRoPrJiPoGh8AMeJthOLkL6WItLm4gk5
- F2X2Og9coxQAeuyxSgaO8HM62n25DBavqHKp+Zo5QRb2KOtLK2r4TxM
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790246899; l=1635;
+ i=rouven.czerwinski@linaro.org; s=20260126; h=from:subject:message-id;
+ bh=pedhSXhCXKROiJuybTwA78NJnL4APYoFo51G1JpeoQo=;
+ b=cmQqF/rb11o7qo13y20RyMgHjULPMyxDxiVftIoo7m1LhqkubyIySVl3QbD7rnu4cuDOV222w
+ 2ggwoUnUR4zBriij6Wy5+NnrDe4lhGd6wt2Un88nLTHUq/F42xyn8FH
+X-Developer-Key: i=rouven.czerwinski@linaro.org; a=ed25519;
+ pk=/5pmUK/XIAIIo8JA0axgfy1k8NRhRTQkxVwZYa1ga7U=
+X-Endpoint-Received: by B4 Relay for rouven.czerwinski@linaro.org/20260126 with auth_id=616
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add mt6572 registers and platform data for the pmic wrapper.
+The MXL86211C also supports 2.5G via 2500BASEX, switch the config init
+to indicate support for that mode. Datasheet checks indicate that the
+2.5G speed indication is the same between GPY211 & MXL86211C.
 
-While vendor kernel source code suggests that mt6572 can be paired with
-the mt6320 PMIC, no such devices have been found yet. Hence, registers
-that not included in the mt2701 array are omitted.
+The same should be true for MXL86252 & MXL86282, those are not modified
+for a lack of testing hardware.
 
-The mt2701 SoC-specific initialization function is used because they
-share the same GPS_INTF settings.
+With this change 2.5G negotiates correctly with a Mikrotik
+CRS310-8G+2S+IN.
 
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+Fixes: 9d844da693d6 ("net: phy: mxl-gpy: add support for MxL86211C")
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+Signed-off-by: Rouven Czerwinski <rouven.czerwinski@linaro.org>
 ---
- drivers/soc/mediatek/mtk-pmic-wrap.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+Changes in v2:
+- Fix typos: Fix Typo swaps of *68*211 to *86211*
+- add Fixes: trailer
+both suggested by Sashiko
+- Link to v1: https://patch.msgid.link/20260922-mainline-rouven-mxl2g5-v1-1-a0ed53631a5f@linaro.org
+---
+ drivers/net/phy/mxl-gpy.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/soc/mediatek/mtk-pmic-wrap.c b/drivers/soc/mediatek/mtk-pmic-wrap.c
-index a4b10b0a97cb..3f05fc724e15 100644
---- a/drivers/soc/mediatek/mtk-pmic-wrap.c
-+++ b/drivers/soc/mediatek/mtk-pmic-wrap.c
-@@ -1314,6 +1314,7 @@ enum pmic_type {
- 
- enum pwrap_type {
- 	PWRAP_MT2701,
-+	PWRAP_MT6572,
- 	PWRAP_MT6765,
- 	PWRAP_MT6779,
- 	PWRAP_MT6795,
-@@ -1733,6 +1734,11 @@ static void pwrap_init_chip_select_ext(struct pmic_wrapper *wrp, u8 hext_write,
- static int pwrap_common_init_reg_clock(struct pmic_wrapper *wrp)
- {
- 	switch (wrp->master->type) {
-+	case PWRAP_MT6572:
-+		pwrap_writel(wrp, 0x8, PWRAP_RDDMY);
-+		pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_RDDMY_NO], 0x8);
-+		pwrap_init_chip_select_ext(wrp, 5, 0, 0, 0);
-+		break;
- 	case PWRAP_MT6795:
- 		if (wrp->slave->type == PMIC_MT6331) {
- 			const u32 *dew_regs = wrp->slave->dew_regs;
-@@ -1839,6 +1845,7 @@ static int pwrap_init_cipher(struct pmic_wrapper *wrp)
- 		pwrap_writel(wrp, 1, PWRAP_CIPHER_START);
- 		break;
- 	case PWRAP_MT2701:
-+	case PWRAP_MT6572:
- 	case PWRAP_MT6765:
- 	case PWRAP_MT6779:
- 	case PWRAP_MT6795:
-@@ -2277,6 +2284,24 @@ static const struct pmic_wrapper_type pwrap_mt2701 = {
- 	.init_soc_specific = pwrap_mt2701_init_soc_specific,
- };
- 
-+/*
-+ * MT6572 register map is a superset of the MT2701. It has additional registers
-+ * OP_TYPE (0x10), MSB_FIRST (0x14), GPS_STA (0x40) and SW_RST (0x180),
-+ * which were omitted because the driver doesn't use them.
-+ */
-+static const struct pmic_wrapper_type pwrap_mt6572 = {
-+	.regs = mt2701_regs,
-+	.type = PWRAP_MT6572,
-+	.arb_en_all = 0x1ff,
-+	.int_en_all = 0x7ffffffd,
-+	.int1_en_all = 0,
-+	.spi_w = PWRAP_MAN_CMD_SPI_WRITE,
-+	.wdt_src = PWRAP_WDT_SRC_MASK_ALL,
-+	.caps = PWRAP_CAP_RESET | PWRAP_CAP_DCM,
-+	.init_reg_clock = pwrap_common_init_reg_clock,
-+	.init_soc_specific = pwrap_mt2701_init_soc_specific,
-+};
-+
- static const struct pmic_wrapper_type pwrap_mt6765 = {
- 	.regs = mt6765_regs,
- 	.type = PWRAP_MT6765,
-@@ -2446,6 +2471,7 @@ static const struct pmic_wrapper_type pwrap_mt8186 = {
- 
- static const struct of_device_id of_pwrap_match_tbl[] = {
- 	{ .compatible = "mediatek,mt2701-pwrap", .data = &pwrap_mt2701 },
-+	{ .compatible = "mediatek,mt6572-pwrap", .data = &pwrap_mt6572 },
- 	{ .compatible = "mediatek,mt6765-pwrap", .data = &pwrap_mt6765 },
- 	{ .compatible = "mediatek,mt6779-pwrap", .data = &pwrap_mt6779 },
- 	{ .compatible = "mediatek,mt6795-pwrap", .data = &pwrap_mt6795 },
+diff --git a/drivers/net/phy/mxl-gpy.c b/drivers/net/phy/mxl-gpy.c
+index 0da2d4e9d8548..089a1a9e5bc61 100644
+--- a/drivers/net/phy/mxl-gpy.c
++++ b/drivers/net/phy/mxl-gpy.c
+@@ -1405,7 +1405,7 @@ static struct phy_driver gpy_drivers[] = {
+ 		PHY_ID_MATCH_MODEL(PHY_ID_MXL86211C),
+ 		.name		= "Maxlinear Ethernet MxL86211C",
+ 		.get_features	= genphy_c45_pma_read_abilities,
+-		.config_init	= gpy_config_init,
++		.config_init	= gpy21x_config_init,
+ 		.probe		= gpy_probe,
+ 		.inband_caps	= gpy_inband_caps,
+ 		.config_inband	= gpy_config_inband,
 
--- 
-2.55.0
+---
+base-commit: 2d7341a020a57b30c1826db38f81bbc257ae3bbc
+change-id: 20260922-mainline-rouven-mxl2g5-72bc51d28970
+
+Best regards,
+--  
+Rouven Czerwinski <rouven.czerwinski@linaro.org>
 
