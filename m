@@ -1,14 +1,13 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Subject: [PATCH 00/13] wifi: brcmfmac: Add BCM4388 support
-Date: Fri, 25 Sep 2026 23:43:35 +1000
-Message-Id: <20260925-brcm4388-submit-v1-0-b5cbc2cde2fb@gmail.com>
+Date: Fri, 25 Sep 2026 23:43:36 +1000
+Subject: [PATCH 01/13] wifi: brcmfmac: pcie: Report the detected chip ID to
+ the bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSw7CMAwA0atUXmNRUhIFrlKxyMdQS8SguEClq
- ncnsHyLmRWUKpPCuVuh0puVH9Jw2HWQpiA3Qs7NYHrj+pOxGGsqx8F71FcsPKNN0eeBXHbBQqu
- ela68/I/jpTkGpRYFSdPv8+FKd1JFoWXel8AC2/YFSIfTIIYAAAA=
-X-Change-ID: 20260925-brcm4388-submit-5cb8d3e6d6a5
+Message-Id: <20260925-brcm4388-submit-v1-1-b5cbc2cde2fb@gmail.com>
+References: <20260925-brcm4388-submit-v1-0-b5cbc2cde2fb@gmail.com>
+In-Reply-To: <20260925-brcm4388-submit-v1-0-b5cbc2cde2fb@gmail.com>
 To: Arend van Spriel <arend.vanspriel@broadcom.com>, 
  Pieter-Paul Giesberts <pieterpg@broadcom.com>, 
  "Franky Lin (Zhenhui)" <frankyl@broadcom.com>, 
@@ -21,88 +20,47 @@ Cc: linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev,
  Hante Meuleman <meuleman@broadcom.com>, linux-hardening@vger.kernel.org, 
  Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790343821; l=3446;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790343821; l=1357;
  i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=5hnr3fAyqdNNH4Z/RHXKEByNtheCTZZ0q+ta1pJAZc4=;
- b=2zb9vdF2U2FJDxFeenmSGQAJOSIzHQXiK9t30lcN+L0v6QhVIQgtkg/RsJbZaTxd71l0QYYey
- HZ5HraR1EVYAaQ5L1OGgep2DC+ENDJ2b9Vbhh0AKYyNALZBZZrGOt0r
+ bh=xo79Yb7vk30hMCoIaipAzSFT9Tjr7JBPILevEoBadDU=;
+ b=SI7IoQQUeVjnhBrbBG/gkpR9+TXFKTA/GE1/rM/SO/XsXOA7LZeYRdy2pdC+o6DqLeLar+8HQ
+ QM3bJxTSuorC+WRkUr3fUPqgPddJ/j6WDSn5YvrObRzBwLaS2UgIi5f
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Broadcom BCM4388 chipset requires new PCIe initialization and
-firmware interfaces. Add support for these interfaces to brcmfmac to
-enable basic station operation.
+The devinfo->coreid field is never assigned, so bus->chip remains zero
+and chip-specific feature checks cannot match. Assign bus->chip from
+devinfo->ci->chip, which contains the detected chip ID.
 
-This series adds:
-- Signed firmware loading and mailbox transport
-- Fixes for chip identification and firmware capability matching
-- Versioned scan and join requests, and extended PMK payloads
-- Updated event mask handling
-
-These changes include work by Hector Martin and Daniel Berlin from Asahi
-Linux, refactored where needed for upstream inclusion.
-
-The series provides basic station support only. 6 GHz support is planned
-for a follow-up patchset after this lands. The driver retains legacy
-interfaces for older firmware.
-
-Tested on an Apple M3 MacBook Air (J613):
-- Device boot and network scanning
-- 5 GHz WPA2-PSK association and DHCP
-- Bidirectional TCP traffic
-
-Testing required separate Apple PCIe and devicetree patches, as well as
-Janne Grunau's port-authorization fix [1].
-
-[1] https://lore.kernel.org/linux-wireless/20260915-brcmfmac-4way-handshake-offload-authenticated-event-v2-1-fbb9cc7ac177@jannau.net/
-
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
-Daniel Berlin (1):
-      wifi: brcmfmac: Support versioned scan parameter layouts
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-Hector Martin (6):
-      wifi: brcmfmac: Support newer PCIe core startup and interrupts
-      wifi: brcmfmac: Negotiate PCIe mailbox transport with firmware
-      wifi: brcmfmac: Load signed PCIe firmware images
-      wifi: brcmfmac: Accept newer BSS information versions
-      wifi: brcmfmac: Support versioned join requests
-      wifi: brcmfmac: Add BCM4388 support
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+index 55f4d7b970..5d84526c96 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
+@@ -342,7 +342,6 @@ struct brcmf_pciedev_info {
+ 	u32 ram_base;
+ 	u32 ram_size;
+ 	struct brcmf_chip *ci;
+-	u32 coreid;
+ 	struct brcmf_pcie_shared_info shared;
+ 	wait_queue_head_t mbdata_resp_wait;
+ 	bool mbdata_completed;
+@@ -2518,7 +2517,7 @@ brcmf_pcie_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 	bus->bus_priv.pcie = pcie_bus_dev;
+ 	bus->ops = &brcmf_pcie_bus_ops;
+ 	bus->proto_type = BRCMF_PROTO_MSGBUF;
+-	bus->chip = devinfo->coreid;
++	bus->chip = devinfo->ci->chip;
+ 	bus->wowl_supported = pci_pme_capable(pdev, PCI_D3hot);
+ 	bus->fwvid = drvdata[id->driver_data].vendor;
+ 	devinfo->fwseed = drvdata[id->driver_data].fw_seed;
 
-Michael Reeves (6):
-      wifi: brcmfmac: pcie: Report the detected chip ID to the bus
-      wifi: brcmfmac: Match complete firmware capability names
-      wifi: brcmfmac: Fall back to RSSI-only default join preferences
-      wifi: brcmfmac: Use event_msgs_ext for event masks
-      wifi: brcmfmac: Handle larger firmware band lists
-      wifi: brcmfmac: Handle extended PMK command payloads
-
- .../wireless/broadcom/brcm80211/brcmfmac/Makefile  |   1 +
- .../net/wireless/broadcom/brcm80211/brcmfmac/bus.h |   9 +
- .../broadcom/brcm80211/brcmfmac/cfg80211.c         | 368 +++++++-------
- .../wireless/broadcom/brcm80211/brcmfmac/chip.c    |  36 +-
- .../wireless/broadcom/brcm80211/brcmfmac/common.c  |  27 +-
- .../wireless/broadcom/brcm80211/brcmfmac/core.c    |   5 +-
- .../wireless/broadcom/brcm80211/brcmfmac/core.h    |  18 +
- .../wireless/broadcom/brcm80211/brcmfmac/feature.c | 124 ++++-
- .../wireless/broadcom/brcm80211/brcmfmac/feature.h |   2 +
- .../wireless/broadcom/brcm80211/brcmfmac/fweh.c    | 130 ++++-
- .../wireless/broadcom/brcm80211/brcmfmac/fweh.h    |   1 +
- .../broadcom/brcm80211/brcmfmac/fwil_types.h       | 141 +++++-
- .../wireless/broadcom/brcm80211/brcmfmac/msgbuf.c  |  65 ++-
- .../wireless/broadcom/brcm80211/brcmfmac/msgbuf.h  |   9 +-
- .../wireless/broadcom/brcm80211/brcmfmac/pcie.c    | 560 +++++++++++++++++----
- .../broadcom/brcm80211/brcmfmac/scan_param.c       | 416 +++++++++++++++
- .../broadcom/brcm80211/brcmfmac/scan_param.h       |  13 +
- .../broadcom/brcm80211/include/brcm_hw_ids.h       |   2 +
- .../broadcom/brcm80211/include/chipcommon.h        |   5 +
- 19 files changed, 1593 insertions(+), 339 deletions(-)
----
-base-commit: 42a9fb3382fc2573e92f41d203b095d9a372cfc9
-change-id: 20260925-brcm4388-submit-5cb8d3e6d6a5
-
-Best regards,
 -- 
-Michael Reeves <michael.reeves077@gmail.com>
+2.55.0
 
