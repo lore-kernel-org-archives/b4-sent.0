@@ -1,11 +1,11 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Fri, 25 Sep 2026 23:43:36 +1000
-Subject: [PATCH 01/13] wifi: brcmfmac: pcie: Report the detected chip ID to
- the bus
+Date: Fri, 25 Sep 2026 23:43:37 +1000
+Subject: [PATCH 02/13] wifi: brcmfmac: Match complete firmware capability
+ names
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-brcm4388-submit-v1-1-b5cbc2cde2fb@gmail.com>
+Message-Id: <20260925-brcm4388-submit-v1-2-b5cbc2cde2fb@gmail.com>
 References: <20260925-brcm4388-submit-v1-0-b5cbc2cde2fb@gmail.com>
 In-Reply-To: <20260925-brcm4388-submit-v1-0-b5cbc2cde2fb@gmail.com>
 To: Arend van Spriel <arend.vanspriel@broadcom.com>, 
@@ -20,46 +20,83 @@ Cc: linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev,
  Hante Meuleman <meuleman@broadcom.com>, linux-hardening@vger.kernel.org, 
  Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790343821; l=1357;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790343821; l=2691;
  i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=xo79Yb7vk30hMCoIaipAzSFT9Tjr7JBPILevEoBadDU=;
- b=SI7IoQQUeVjnhBrbBG/gkpR9+TXFKTA/GE1/rM/SO/XsXOA7LZeYRdy2pdC+o6DqLeLar+8HQ
- QM3bJxTSuorC+WRkUr3fUPqgPddJ/j6WDSn5YvrObRzBwLaS2UgIi5f
+ bh=ojaYvXnNYenVOK36eQmvCXQ5ydFrksNHV7R9HDG7B0Q=;
+ b=9FD4dwS6T4jrXBt5RpuCtKAEU2ez77wgnSNVXr/7nn33KNrnBNQZrCCQuyRNbXKbGiOh9UWsK
+ orYkFDfXn1mBH1C1qJak2a522yrhAL6RV6C0QAFFhl5GbZ1I81wPnuy
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The devinfo->coreid field is never assigned, so bus->chip remains zero
-and chip-specific feature checks cannot match. Assign bus->chip from
-devinfo->ci->chip, which contains the detected chip ID.
+BCM4388 firmware advertises "hp2p" without advertising "p2p". Substring
+matching incorrectly treats "hp2p" as P2P support, causing userspace to
+attempt Wi-Fi Direct interface creation that the firmware rejects.
 
+Match complete whitespace-separated capability names instead. Remove the
+trailing-space workarounds for SAE and FBT and reserve a terminating
+byte outside the firmware response buffer.
+
+Fixes: ec64241c9fd2 ("brcmfmac: obtain feature info using 'cap' firmware command")
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.c   | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-index 55f4d7b970..5d84526c96 100644
---- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-+++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/pcie.c
-@@ -342,7 +342,6 @@ struct brcmf_pciedev_info {
- 	u32 ram_base;
- 	u32 ram_size;
- 	struct brcmf_chip *ci;
--	u32 coreid;
- 	struct brcmf_pcie_shared_info shared;
- 	wait_queue_head_t mbdata_resp_wait;
- 	bool mbdata_completed;
-@@ -2518,7 +2517,7 @@ brcmf_pcie_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	bus->bus_priv.pcie = pcie_bus_dev;
- 	bus->ops = &brcmf_pcie_bus_ops;
- 	bus->proto_type = BRCMF_PROTO_MSGBUF;
--	bus->chip = devinfo->coreid;
-+	bus->chip = devinfo->ci->chip;
- 	bus->wowl_supported = pci_pme_capable(pdev, PCI_D3hot);
- 	bus->fwvid = drvdata[id->driver_data].vendor;
- 	devinfo->fwseed = drvdata[id->driver_data].fw_seed;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
+index cc19e5e7eb..a3c221117d 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/feature.c
+@@ -42,10 +42,10 @@ static const struct brcmf_feat_fwcap brcmf_fwcap_map[] = {
+ 	{ BRCMF_FEAT_MONITOR_FLAG, "rtap" },
+ 	{ BRCMF_FEAT_MONITOR_FMT_RADIOTAP, "rtap" },
+ 	{ BRCMF_FEAT_DOT11H, "802.11h" },
+-	{ BRCMF_FEAT_SAE, "sae " },
++	{ BRCMF_FEAT_SAE, "sae" },
+ 	{ BRCMF_FEAT_FWAUTH, "idauth" },
+ 	{ BRCMF_FEAT_SAE_EXT, "sae_ext" },
+-	{ BRCMF_FEAT_FBT, "fbt " },
++	{ BRCMF_FEAT_FBT, "fbt" },
+ 	{ BRCMF_FEAT_OKC, "okc" },
+ };
+ 
+@@ -230,11 +230,12 @@ static void brcmf_feat_iovar_data_set(struct brcmf_if *ifp,
+ static void brcmf_feat_firmware_capabilities(struct brcmf_if *ifp)
+ {
+ 	struct brcmf_pub *drvr = ifp->drvr;
+-	char caps[MAX_CAPS_BUFFER_SIZE];
++	char caps[MAX_CAPS_BUFFER_SIZE + 1] = {};
++	char *cap, *next = caps;
+ 	enum brcmf_feat_id id;
+ 	int i, err;
+ 
+-	err = brcmf_fil_iovar_data_get(ifp, "cap", caps, sizeof(caps));
++	err = brcmf_fil_iovar_data_get(ifp, "cap", caps, sizeof(caps) - 1);
+ 	if (err) {
+ 		bphy_err(drvr, "could not get firmware cap (%d)\n", err);
+ 		return;
+@@ -242,12 +243,17 @@ static void brcmf_feat_firmware_capabilities(struct brcmf_if *ifp)
+ 
+ 	brcmf_dbg(INFO, "[ %s]\n", caps);
+ 
+-	for (i = 0; i < ARRAY_SIZE(brcmf_fwcap_map); i++) {
+-		if (strnstr(caps, brcmf_fwcap_map[i].fwcap_id, sizeof(caps))) {
++	while ((cap = strsep(&next, " \t\r\n")) != NULL) {
++		if (!*cap)
++			continue;
++
++		for (i = 0; i < ARRAY_SIZE(brcmf_fwcap_map); i++) {
++			if (strcmp(cap, brcmf_fwcap_map[i].fwcap_id))
++				continue;
+ 			id = brcmf_fwcap_map[i].feature;
+ 			brcmf_dbg(INFO, "enabling feature: %s\n",
+ 				  brcmf_feat_names[id]);
+-			ifp->drvr->feat_flags |= BIT(id);
++			drvr->feat_flags |= BIT(id);
+ 		}
+ 	}
+ }
 
 -- 
 2.55.0
