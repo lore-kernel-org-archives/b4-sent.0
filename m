@@ -1,115 +1,117 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Fri, 25 Sep 2026 05:47:57 -0700
-Subject: [PATCH net-next v5 2/2] mptcp: annotate lockless access to
- sk->sk_err
+From: Jasper Firth <jasper.m.f@hotmail.com>
+Date: Fri, 25 Sep 2026 23:06:25 +1000
+Subject: [PATCH] ASoC: Intel: bytcr_rt5651: Add quirk for Chuwi Hi8 with
+ generic DMI strings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-mptcp-sk-err-net-v5-2-0cac04d6ea48@proton.me>
-References: <20260925-mptcp-sk-err-net-v5-0-0cac04d6ea48@proton.me>
-In-Reply-To: <20260925-mptcp-sk-err-net-v5-0-0cac04d6ea48@proton.me>
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
- Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <20260925-hi8-quirk-v1-1-ffd00b0447f9@hotmail.com>
+X-B4-Tracking: v=1; b=H4sIANFxtmoC/yXMWwqAIBBA0a3EfCeYPai2En2oTTUFPTQjkPae1
+ eeBy/Vg0RBaqCMPBk+ytC4BSRyBHuUyIKMuGAQXBa9EzkYq2e7IzIxzLVOZVSoVPYR+M9jT9b2
+ a9rd1akJ9vAO47wepQeBNbQAAAA==
+X-Change-ID: 20260925-hi8-quirk-00ca3a49b32f
+To: Cezary Rojewski <cezary.rojewski@intel.com>, 
+ Liam Girdwood <liam.r.girdwood@linux.intel.com>, 
+ Peter Ujfalusi <peter.ujfalusi@linux.intel.com>, 
+ Bard Liao <yung-chuan.liao@linux.intel.com>, 
+ Kai Vehmanen <kai.vehmanen@linux.intel.com>, 
+ Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>, 
+ Mark Brown <broonie@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>
+Cc: Hans de Goede <hansg@kernel.org>, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jasper Firth <jasper.m.f@hotmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790340527; l=2847;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=MYYGmpLCYlWB4PjQJ+2gmFy11ZXQGpGk+UmDvXVc1xs=;
- b=PSelBSjLNL/6R29LWg3MMaIU1/FhF2hnG/6jI86RRD+MBgVheh88kPBgUIQPcKLsrRbQHKf3G
- xn1oEsmSpl3A0Ra36e13CQ5sjppwrWa2welXcd2acIGwV5im+Dp1qis
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790341648; l=3490;
+ i=jasper.m.f@hotmail.com; s=20260925; h=from:subject:message-id;
+ bh=mVuuiZeMiCOfjjhkSmnqCkiKnAlFV1xhXjQv+TkP8dQ=;
+ b=KPRQOkiY9hSmG+TYJ4uNXM+8Da92UEEp/KMWfN58sOkzKlNKgS7Bm6T0Rc4Fxxd/EDEuu9S7V
+ LR0GO5nKO43DCPQgZ+lxNxFDXNHH6tUBC/rlD0zecd8sjljmIisBbVp
+X-Developer-Key: i=jasper.m.f@hotmail.com; a=ed25519;
+ pk=gjHZSqrU/BpOtVkMh341rjfZSeJ3PsQ3Sk/n8bax4jo=
+X-Endpoint-Received: by B4 Relay for jasper.m.f@hotmail.com/20260925 with auth_id=1062
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sock_error() can clear sk_err with xchg() without the socket lock.
+Some Chuwi Hi8 tablets with model number CWI513 ship with a BIOS
+(American Megatrends 5.11, dated 05/21/2016) whose DMI sys_vendor and
+product_name are both "Default string". The tested unit is labelled
+just "Hi8", but its model number is the same as the existing "Chuwi Hi8
+Pro (CWI513)" entry, and it needs the same quirks. That entry matches on
+sys_vendor "Hampoo" and product_name "X1D3_C806N", so it never applies
+to these units.
 
-On the no-data msk recv and splice paths, call sock_error() once and
-only stop when it returns a non-zero error. Annotate the remaining
-msk send and subflow error-report peeks with READ_ONCE().
+Without its quirks the internal speaker, whose amplifier has a
+differential input wired across LOUT left and right, cancels to a faint
+distorted residual for any centred (L == R) content, and the headphone
+channels are swapped.
 
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Add an entry matching board_vendor "Hampoo" and board_name "Cherry Trail
+CR", plus the BIOS date since those two are too generic on their own.
+drivers/platform/x86/touchscreen_dmi.c already matches the Chuwi HiBook
+the same way.
+
+The quirks are those of the existing Hi8 Pro entry, except for the
+over-current detection scale factor: 1.0 instead of the 0.75 from
+BYT_RT5651_DEFAULT_QUIRKS. With 0.75 and a CTIA headset (inline mic and
+one button), loud speech into the mic, and headphone playback coupling
+onto the mic line, were reported as spurious KEY_PLAYPAUSE presses, one
+of them held for a whole 8 second speech window. With 1.0 the same test
+gave no spurious events, and 3 real button presses were reported as
+exactly 3 press/release pairs.
+
+Tested on a unit with the generic DMI strings, with a module built from
+this patch and no quirk module parameter. The quirks were applied via
+the new entry, the card components read "cfg-spk:1 cfg-mic:in2
+cfg-hp:lrswap", and the following all work: speaker, headphone left/right
+order, jack and headset-mic detection, headset button, and the internal
+and headset mics.
+
+The problem was diagnosed with the help of an AI coding assistant, which
+also drafted this changelog.
+
+Assisted-by: Claude Opus 5.5
+Signed-off-by: Jasper Firth <jasper.m.f@hotmail.com>
 ---
- net/mptcp/protocol.c | 14 ++++++--------
- net/mptcp/subflow.c  |  4 ++--
- 2 files changed, 8 insertions(+), 10 deletions(-)
+I don't have the Hi8 Pro (X1D3_C806N) covered by the existing entry, so
+I've left that entry alone. It may see the same spurious headset-button
+presses with OVCD_SF_0P75.
+---
+ sound/soc/intel/boards/bytcr_rt5651.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
-index e1f08f71cdb1..e37a8642a4b0 100644
---- a/net/mptcp/protocol.c
-+++ b/net/mptcp/protocol.c
-@@ -969,7 +969,7 @@ static bool move_skbs_to_msk(struct mptcp_sock *msk, struct sock *ssk)
- 
- 	moved = __mptcp_move_skbs_from_subflow(msk, ssk, true);
- 	__mptcp_ofo_queue(msk);
--	if (unlikely(ssk->sk_err))
-+	if (unlikely(READ_ONCE(ssk->sk_err)))
- 		__mptcp_subflow_error_report(sk, ssk);
- 
- 	/* If the moves have caught up with the DATA_FIN sequence number
-@@ -2028,7 +2028,7 @@ static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- 	}
- 
- 	ret = -EPIPE;
--	if (unlikely(sk->sk_err || (sk->sk_shutdown & SEND_SHUTDOWN)))
-+	if (unlikely(READ_ONCE(sk->sk_err) || (sk->sk_shutdown & SEND_SHUTDOWN)))
- 		goto do_error;
- 
- 	pfrag = sk_page_frag(sk);
-@@ -2429,10 +2429,9 @@ static int mptcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 			    !timeo)
- 				break;
- 		} else {
--			if (sk->sk_err) {
--				copied = sock_error(sk);
-+			copied = sock_error(sk);
-+			if (copied)
- 				break;
--			}
- 
- 			if (sk->sk_shutdown & RCV_SHUTDOWN)
- 				break;
-@@ -4655,10 +4654,9 @@ static ssize_t mptcp_splice_read(struct socket *sock, loff_t *ppos,
- 				break;
- 			if (sock_flag(sk, SOCK_DONE))
- 				break;
--			if (sk->sk_err) {
--				ret = sock_error(sk);
-+			ret = sock_error(sk);
-+			if (ret)
- 				break;
--			}
- 			if (sk->sk_shutdown & RCV_SHUTDOWN)
- 				break;
- 			if (sk->sk_state == TCP_CLOSE) {
-diff --git a/net/mptcp/subflow.c b/net/mptcp/subflow.c
-index af81ad5e699d..ec9668fe8d5b 100644
---- a/net/mptcp/subflow.c
-+++ b/net/mptcp/subflow.c
-@@ -1541,7 +1541,7 @@ static void subflow_data_ready(struct sock *sk)
- 		if (mptcp_data_avail(msk) < parent->sk_rcvlowat &&
- 		    (tcp_sk(sk)->rcv_nxt - tcp_sk(sk)->rcv_wup) > inet_csk(sk)->icsk_ack.rcv_mss)
- 			inet_csk(sk)->icsk_ack.pending |= ICSK_ACK_NOW;
--	} else if (unlikely(sk->sk_err)) {
-+	} else if (unlikely(READ_ONCE(sk->sk_err))) {
- 		subflow_error_report(sk);
- 	}
- }
-@@ -1889,7 +1889,7 @@ static void subflow_state_change(struct sock *sk)
- 	 */
- 	if (mptcp_subflow_data_available(sk))
- 		mptcp_data_ready(parent, sk);
--	else if (unlikely(sk->sk_err))
-+	else if (unlikely(READ_ONCE(sk->sk_err)))
- 		subflow_error_report(sk);
- 
- 	subflow_sched_work_if_closed(mptcp_sk(parent), sk);
+diff --git a/sound/soc/intel/boards/bytcr_rt5651.c b/sound/soc/intel/boards/bytcr_rt5651.c
+index 62cb4856c..c9b105320 100644
+--- a/sound/soc/intel/boards/bytcr_rt5651.c
++++ b/sound/soc/intel/boards/bytcr_rt5651.c
+@@ -410,6 +410,23 @@ static const struct dmi_system_id byt_rt5651_quirk_table[] = {
+ 					BYT_RT5651_HP_LR_SWAPPED |
+ 					BYT_RT5651_MONO_SPEAKER),
+ 	},
++	{
++		/* Chuwi Hi8 (CWI513) with a BIOS using generic DMI strings */
++		.callback = byt_rt5651_quirk_cb,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "Hampoo"),
++			DMI_MATCH(DMI_BOARD_NAME, "Cherry Trail CR"),
++			/* Above matches are too generic, add bios-date match */
++			DMI_MATCH(DMI_BIOS_DATE, "05/21/2016"),
++		},
++		.driver_data = (void *)(BYT_RT5651_MCLK_EN |
++					BYT_RT5651_JD1_1 |
++					BYT_RT5651_OVCD_TH_2000UA |
++					BYT_RT5651_OVCD_SF_1P0 |
++					BYT_RT5651_IN2_MAP |
++					BYT_RT5651_HP_LR_SWAPPED |
++					BYT_RT5651_MONO_SPEAKER),
++	},
+ 	{
+ 		/* Chuwi Vi8 Plus (CWI519) */
+ 		.callback = byt_rt5651_quirk_cb,
 
--- 
-2.55.0
+---
+base-commit: c82b61455a76c9ca3ee37ac67f0f4a34a4dbdb04
+change-id: 20260925-hi8-quirk-00ca3a49b32f
+
+Best regards,
+--  
+Jasper Firth <jasper.m.f@hotmail.com>
 
