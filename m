@@ -1,11 +1,11 @@
 From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Fri, 25 Sep 2026 12:09:42 -0700
-Subject: [PATCH v3 5/6] perf script: Add --lazy-load-symbols for lazy
- symbol loading
+Date: Fri, 25 Sep 2026 12:09:43 -0700
+Subject: [PATCH v3 6/6] perf test: Test lazy symbol loading and symbol
+ memory limits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-perf-symbol-memory-send-v3-5-3e4e234c363b@uber.com>
+Message-Id: <20260925-perf-symbol-memory-send-v3-6-3e4e234c363b@uber.com>
 References: <20260925-perf-symbol-memory-send-v3-0-3e4e234c363b@uber.com>
 In-Reply-To: <20260925-perf-symbol-memory-send-v3-0-3e4e234c363b@uber.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -19,1070 +19,1031 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=32727; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=s4Wr76ePfIJnC4jl7Q6SXqvyJWjs0/xgyfJgEEP18Sg=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBqtshED2Pt8Hd8CDIwxCzjlnUSUJ/CBBIaUdJCD
- Gu5xZ7PKeOJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCarbIRBsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAthb5g//TMOl3TgCXpuH9sJzS7Xx3UgWpn/e9pX
- ErjLd0CXzT8XxRLQ+llA1doSyiVj0SdbVYW+H3OuIJCL0q7RgUbqAmC76/uSiM9qEiJv8FS3w2v
- tqePZ6aYwdtwyaYo7Jo6tPFUXMOlM54r5QMiFRvKhKanQGp8YndWn2QQdoTam9XTuesrQCArGpw
- Ph4jG0lLBPx1KYanCWr4lRCTgvfJAh6TLkUEwmsDnOqKBsWuMz6Sx2S/tbg6rYhFlx+Vs788OQ9
- 1NFprE7esdDfiI6bqHF2GkqWSW1gnFXupO3YcUjZpwsko4MWQKDIGfw9Z9TtHXPPe1rFua028F1
- igvh6zECeygDwYrHFFBG0e5/WMRvp8VuhUblQiJI74Lz/X7C+V1EUVK8nQgkMPry+jkv+i1TafL
- 91H2cVXVDU8WjpGszxG8/Wd/mBzc5Zk5qUw7a0ktxojW3ya7C5Zk9fbUJa7ZDMQPppRFcvk5UaZ
- +fvYjbzQUY2mbkrLHb4p46Mo6XweEB3HEaos4HysrCBueXcIrN12yRWQdpzLSnH+ScdJtqmzXoy
- f/9V6M2fC+Z22Y8RmhoTq1zoj/E1t5aqWz+59gLwWp0beZbo/h4QIfTrwqzjwyHGoPdaYkeu+g8
- 2bSxNFRrcfH873wc4EF1Pzn5Cv2xHynghNaMtOr64Z22fQzNA8wQ=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=29667; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=ub9sV1S3/GfdrmBsPpJG3/8wswdAu70FqyVJD6pDjtY=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBqtshES/8TfyfNId/N7+HDGjQiVvem2UbePgpwI
+ 8EtzLH9BSKJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCarbIRBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtgDcg//f8fJCFccToTW3CAia7fCiFIKmg0RAzm
+ DOS41UlK4SDmpXlgMig17iTLm5mwKBdxUjs5izB1DfAaJiuNcixZe+Mcf15RnXkqegofwEhVZ4g
+ RYcbQJOfosVBxEzzhYi+XA0e+Ga3kvMop/5o2HQa9DrG2etWe0dEf23Bvxezorwc8VjJeNIk0Xs
+ VxW/kCS1slic9hTGo6R/EFOkq0WrR1227YRO75UrXSdkE+UtST3YNd25Hq9gZyAHJsKr1JALgxr
+ fDDmkOZ0b4a+ubjHbRITk9PjawAuiAtxysL7HxfSLVMhmrb7/82PtB6Xr09TvudRnPcrFnXNWQk
+ pBbrqEAU2LK7jYDT4IZe2stTxYEODaoLQFAyZiFXrVgzVQA0LMdf+Qpb0Vd9892Z73dD5PDO2kc
+ Ifx3/W3NqIwvtMgfRwc4wYm9+6sfy0/sd7wC86SIrZYP8n3FhTtrR1X5MDyNgGFGvLn2cEaTgPj
+ POzfKr/FL13mSEOrj/Q8GQfbafuavoJsocRKX2zuQZtpF3by5t90ab0qvXfeljjXmqBxbdNdfut
+ 1U5bZSSj1iOiqQ6gpL1duvkjVjMpo9Pvf5tcpDTw9KyJQ9IpndjlmFKfAv5OqrJyi3zXIvPZziu
+ AsPUuqrPjMLht+1VpPwKdw1F2Qa3XYDWoOOAT+YpAoWw0ghGMa0E=
 X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
  fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
 X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-perf script eagerly materializes eligible symbols from every DSO
-encountered in samples. On a production fixture, it loaded about 765k
-symbols to resolve about 45k distinct (DSO, symbol) frames, exceeding the
-memory available in a memory-constrained cgroup.
+Add a perf script shell test for --lazy-load-symbols and
+--max-symbol-bytes.
 
-This patch adds --lazy-load-symbols for userspace ELF DSOs. It builds a
-compact sorted index, resolves sampled addresses by binary search, reads
-symbol names through a private data-source DSO, and caches resolved symbols
-in the existing rb-tree. The private DSO uses the normal DSO data cache, so
-the exact split-debuginfo source can be reopened after descriptor eviction.
-If the source cannot be read during preflight, perf discards the index and
-eagerly loads that DSO instead.
+Record a small callchain fixture, require evidence that the controlled
+perf DSO built an on-demand index, and compare only extracted occurrences
+of the controlled test_loop symbol. This avoids coupling the test to
+addresses, diagnostics, or architecture-specific symbols for which the
+eager and lazy loaders have documented differences.
 
-On the same fixture, peak RssAnon drops from 265 MiB to 39 MiB and wall
-time from 3.1 seconds to 1.85 seconds. Memory optimizations usually cost
-time; this one does not because lazy loading skips many unnecessary
-calloc() calls and demangling operations.
+Derive the constrained lazy budget from the unlimited run's
+index-reservation peak. This gives a deterministic boundary where the
+index fits and later materialization reaches the limit. Also verify eager
+limiting, malformed size rejection, and one-time warning behavior.
 
-Lazy loading is most effective when samples reference only a small
-fraction of the available symbols, such as profiles spanning many large
-DSOs. It still builds an index proportional to the total symbol count.
-Eager loading remains available for dense symbol coverage or cases
-requiring its broader ELF and architecture support.
+Report unsupported recording, missing controlled output, unavailable
+libelf, and unavailable dependent data as skips without replacing a prior
+failure. Keep helper returns safe under set -e, and cover skip-status
+preservation separately.
 
-This does not claim full parity with the eager loader. Lazy loading
-supports the common userspace ELF symtab/dynsym case; .gnu_debugdata and
-PPC64 .opd continue through the eager loader.
+Add unit tests for the shared duplicate-selection policy, truncated
+string-table reads, lazy address and name lookup across a closed data
+descriptor, and address lookups racing name lookups while the symbol
+budget truncates materialization. The last test also checks that a DSO
+does not change once its name-sorted array has been built.
 
-Materialization is serialized with the DSO lock. Name lookups materialize
-the remaining index before constructing the name-sorted array. Lazy loading
-shares eager duplicate and IFUNC selection, and clips ranges that cross
-.plt before synthesizing PLT symbols.
-
-In lazy mode, address lookups always take the DSO lock. Name lookups also
-free the index before the name-sorted array is built, even when the
-symbol budget stops materialization early, so a DSO with a name array
-never changes again. When no PT_LOAD covers a symbol, it falls back to
-the section header as the eager loader does, using the runtime section
-for NOBITS sections of a debuginfo file.
+Add a unit test that loads a DSO (perf itself, or the one given with
+--dso) eagerly and lazily and compares every symbol address and name.
+Run it from a shell test on a hand-built split-debuginfo binary whose
+function section is NOBITS in the debug file and has no PT_LOAD in the
+runtime file, so both loaders must fall back to the runtime section
+header.
 
 Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
- tools/perf/Documentation/perf-script.txt |  16 +
- tools/perf/builtin-script.c              |   2 +
- tools/perf/util/dso.c                    |  17 +
- tools/perf/util/dso.h                    |  45 +++
- tools/perf/util/map.c                    |  19 +-
- tools/perf/util/symbol-elf.c             | 662 +++++++++++++++++++++++++++++++
- tools/perf/util/symbol-minimal.c         |  16 +
- tools/perf/util/symbol.c                 |   9 +
- tools/perf/util/symbol_conf.h            |   1 +
- 9 files changed, 786 insertions(+), 1 deletion(-)
+ .../tests/shell/lazy_load_symbols_split_debug.sh   | 113 +++++
+ tools/perf/tests/shell/script_lazy_load_symbols.sh | 278 ++++++++++++
+ .../tests/shell/script_lazy_load_symbols_skip.sh   |  26 ++
+ tools/perf/tests/symbol-bytes.c                    | 505 +++++++++++++++++++++
+ 4 files changed, 922 insertions(+)
 
-diff --git a/tools/perf/Documentation/perf-script.txt b/tools/perf/Documentation/perf-script.txt
-index 217167a2e56b..615c3ba1aab6 100644
---- a/tools/perf/Documentation/perf-script.txt
-+++ b/tools/perf/Documentation/perf-script.txt
-@@ -412,6 +412,21 @@ include::itrace.txt[]
- 
-         Default: 127
- 
-+--lazy-load-symbols::
-+	Resolve symbols lazily instead of eagerly loading the full
-+	symbol table of every DSO that appears in a sample. A compact
-+	sorted index is built per DSO and only the addresses that appear
-+	in samples are materialized into symbols, with names read from the
-+	file's string table through the DSO data cache at lookup time. This
-+	sharply reduces memory (and usually time) for profiles of large
-+	binaries where only a small fraction of the symbol table is
-+	referenced. This applies only to userspace ELF DSOs; kernel DSOs and
-+	modules always load eagerly. Operations that look up a symbol by name
-+	materialize the remainder of that DSO's index first to preserve
-+	name-lookup behavior.
-+	Output may differ from the default loader for some targets
-+	(e.g. PPC64 .opd or .gnu_debugdata). Default: off.
+diff --git a/tools/perf/tests/shell/lazy_load_symbols_split_debug.sh b/tools/perf/tests/shell/lazy_load_symbols_split_debug.sh
+new file mode 100755
+index 000000000000..4e6335d88377
+--- /dev/null
++++ b/tools/perf/tests/shell/lazy_load_symbols_split_debug.sh
+@@ -0,0 +1,113 @@
++#!/bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# lazy symbol loading with split debuginfo
 +
- --max-symbol-bytes::
- 	Limit the bytes held in struct symbol allocations for DSOs on the
- 	libelf symbol-loader path: userspace DSOs, vmlinux-as-ELF, and kernel
-@@ -420,6 +435,7 @@ include::itrace.txt[]
- 	size with a B/K/M/G suffix (e.g. 128M). When the budget is exceeded,
- 	the ELF loader stops adding symbols; addresses not covered by symbols
- 	already loaded are then printed as [unknown]. A warning is printed.
-+	With --lazy-load-symbols, the lazy symbol index is also counted.
- 	Default: 0 (unlimited).
- 
- --ns::
-diff --git a/tools/perf/builtin-script.c b/tools/perf/builtin-script.c
-index 6c459ce6f433..f7b8b5f03ef4 100644
---- a/tools/perf/builtin-script.c
-+++ b/tools/perf/builtin-script.c
-@@ -4252,6 +4252,8 @@ int cmd_script(int argc, const char **argv)
- 	OPT_CALLBACK(0, "max-symbol-bytes", &symbol_conf.max_symbol_bytes,
- 		     "size", "Limit bytes for ELF struct symbol (e.g. 128M; 0=unlimited)",
- 		     parse_max_symbol_bytes),
-+	OPT_BOOLEAN(0, "lazy-load-symbols", &symbol_conf.lazy_load_symbols,
-+		    "Resolve symbols lazily instead of loading full symtabs"),
- 	OPT_BOOLEAN(0, "reltime", &reltime, "Show time stamps relative to start"),
- 	OPT_BOOLEAN(0, "deltatime", &deltatime, "Show time stamps relative to previous event"),
- 	OPT_BOOLEAN('I', "show-info", &show_full_info,
-diff --git a/tools/perf/util/dso.c b/tools/perf/util/dso.c
-index c88b2a771832..9cbde0a7977e 100644
---- a/tools/perf/util/dso.c
-+++ b/tools/perf/util/dso.c
-@@ -1704,6 +1704,20 @@ void dso__set_sorted_by_name(struct dso *dso)
- 	RC_CHK_ACCESS(dso)->sorted_by_name = true;
- }
- 
-+void dso__free_ondemand(struct dso *dso)
-+{
-+	struct dso_ondemand *od = RC_CHK_ACCESS(dso)->ondemand;
++# Build a stripped binary whose symbols live in a --only-keep-debug file,
++# where a function's section is NOBITS (with a different sh_offset) and has
++# no PT_LOAD in the runtime ELF. Lazy and eager loading must then both fall
++# back to the runtime section header and agree on the symbol addresses.
 +
-+	if (!od)
-+		return;
-+	RC_CHK_ACCESS(dso)->ondemand = NULL;
-+	free(od->sorted);
-+	symbol__unaccount_bytes(od->nr_alloc * sizeof(*od->sorted));
-+	dso__data_close(od->data_dso);
-+	dso__put(od->data_dso);
-+	free(od);
++set -e
++
++err=0
++tmpdir=$(mktemp -d /tmp/__perf_test.lazy_split_debug.XXXXX)
++
++cleanup() {
++	rm -rf "${tmpdir}"
++	trap - EXIT TERM INT
 +}
 +
- struct dso *dso__new_id(const char *name, const struct dso_id *id)
- {
- 	RC_STRUCT(dso) *dso = zalloc(sizeof(*dso) + strlen(name) + 1);
-@@ -1785,6 +1799,9 @@ void dso__delete(struct dso *dso)
- 
- 	dso__data_close(dso);
- 	auxtrace_cache__free(RC_CHK_ACCESS(dso)->auxtrace_cache);
-+	mutex_lock(dso__lock(dso));
-+	dso__free_ondemand(dso);
-+	mutex_unlock(dso__lock(dso));
- 	dso_cache__free(dso);
- 	zfree(&RC_CHK_ACCESS(dso)->data.path);
- 	dso__free_a2l(dso);
-diff --git a/tools/perf/util/dso.h b/tools/perf/util/dso.h
-index ff2c91e9a2b9..6e6c2c7f13a8 100644
---- a/tools/perf/util/dso.h
-+++ b/tools/perf/util/dso.h
-@@ -283,6 +283,27 @@ struct dso_bpf_prog {
- 	struct perf_env	*env;
- };
- 
-+struct sym_idx {
-+	u64	start;
-+	u64	end;
-+	u32	name_off;
-+	u8	binding;
-+	u8	type;
-+	u8	flags;
-+};
++trap_cleanup() {
++	echo "Unexpected signal in ${FUNCNAME[1]}"
++	cleanup
++	exit 1
++}
++trap trap_cleanup EXIT TERM INT
 +
-+#define SYM_IDX_FLAG_IFUNC_ALIAS	(1 << 0)
-+#define SYM_IDX_FLAG_MATERIALIZED	(1 << 1)
-+
-+struct dso_ondemand {
-+	struct dso	*data_dso;
-+	u64		 strtab_offset;
-+	u64		 strtab_size;
-+	struct sym_idx	*sorted;
-+	u32		 nr_sorted;
-+	u32		 nr_alloc;
-+};
-+
- struct auxtrace_cache;
- 
- DECLARE_RC_STRUCT(dso) {
-@@ -314,6 +335,7 @@ DECLARE_RC_STRUCT(dso) {
- 	char		 *symsrc_filename;
- 	struct nsinfo	*nsinfo;
- 	struct auxtrace_cache *auxtrace_cache;
-+	struct dso_ondemand *ondemand;
- 	union { /* Tool specific area */
- 		void	 *priv;
- 		u64	 db_id;
-@@ -466,6 +488,16 @@ static inline void dso__set_auxtrace_cache(struct dso *dso, struct auxtrace_cach
- 	RC_CHK_ACCESS(dso)->auxtrace_cache = cache;
- }
- 
-+static inline struct dso_ondemand *dso__ondemand(struct dso *dso)
-+{
-+	return RC_CHK_ACCESS(dso)->ondemand;
++skip() {
++	echo "Lazy-load split debuginfo [Skipped: $1]"
++	cleanup
++	exit 2
 +}
 +
-+static inline void dso__set_ondemand(struct dso *dso, struct dso_ondemand *od)
++if ! perf check feature -q libelf; then
++	skip "no libelf support"
++fi
++
++for tool in cc objcopy strip readelf dd; do
++	if ! command -v "${tool}" > /dev/null; then
++		skip "${tool} not found"
++	fi
++done
++
++cat > "${tmpdir}/prog.c" << EOF
++__attribute__((section("splittext"), noinline, used))
++int split_func(int x)
 +{
-+	RC_CHK_ACCESS(dso)->ondemand = od;
++	return x * 3 + 1;
 +}
 +
- static inline struct dso_bpf_prog *dso__bpf_prog(struct dso *dso)
- {
- 	return &RC_CHK_ACCESS(dso)->bpf_prog;
-@@ -838,6 +870,19 @@ int dso__read_binary_type_filename(const struct dso *dso, enum dso_binary_type t
- 				   const char *root_dir, char *filename, size_t size);
- bool is_kernel_module(const char *pathname, int cpumode);
- bool dso__needs_decompress(struct dso *dso);
-+struct symbol *dso__find_symbol_ondemand(struct dso *dso, u64 addr)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso));
-+struct symbol *dso__find_symbol_ondemand_exact(struct dso *dso, u64 addr)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso));
-+void dso__materialize_symbols_ondemand(struct dso *dso)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso));
-+const char *dso__read_ondemand_symbol_name(struct dso *data_dso,
-+					   u64 strtab_offset, u64 strtab_size,
-+					   u64 name_off, char *buf,
-+					   size_t buflen, char **to_free,
-+					   unsigned int *nr_reads);
-+void dso__free_ondemand(struct dso *dso)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso));
- int dso__decompress_kmodule_fd(struct dso *dso, const char *name);
- int dso__decompress_kmodule_path(struct dso *dso, const char *name,
- 				 char *pathname, size_t len);
-diff --git a/tools/perf/util/map.c b/tools/perf/util/map.c
-index 41cdddc987ee..d0fff55eab92 100644
---- a/tools/perf/util/map.c
-+++ b/tools/perf/util/map.c
-@@ -382,10 +382,27 @@ int map__load(struct map *map)
- 
- struct symbol *map__find_symbol(struct map *map, u64 addr)
- {
-+	struct dso *dso;
-+	struct symbol *sym;
++int main(int argc, char **argv)
++{
++	(void)argv;
++	return split_func(argc);
++}
++EOF
 +
- 	if (map__load(map) < 0)
- 		return NULL;
- 
--	return dso__find_symbol(map__dso(map), addr);
-+	dso = map__dso(map);
-+	if (!symbol_conf.lazy_load_symbols)
-+		return dso__find_symbol(dso, addr);
++prog="${tmpdir}/prog"
++if ! cc -O1 -g -o "${prog}" "${tmpdir}/prog.c" \
++	-Wl,--section-start=splittext=0x800000 2> /dev/null; then
++	skip "cannot build test program"
++fi
++objcopy --only-keep-debug "${prog}" "${prog}.debug"
++strip -s "${prog}"
++objcopy --add-gnu-debuglink="${prog}.debug" "${prog}"
 +
-+	/*
-+	 * A lazily loaded DSO inserts symbols into its rb-tree on lookup and
-+	 * drops its index once fully materialized. Look up and materialize
-+	 * under the DSO lock so readers never race with either change.
-+	 */
-+	mutex_lock(dso__lock(dso));
-+	sym = dso__find_symbol(dso, addr);
-+	if (!sym)
-+		sym = dso__find_symbol_ondemand(dso, addr);
-+	mutex_unlock(dso__lock(dso));
-+	return sym;
- }
++# The debug file must keep splittext as NOBITS at a stale offset.
++debug_sec=$(readelf -SW "${prog}.debug" | grep ' splittext ' || true)
++run_sec=$(readelf -SW "${prog}" | grep ' splittext ' || true)
++if ! echo "${debug_sec}" | grep -q NOBITS; then
++	skip "splittext is not NOBITS in the debug file"
++fi
++debug_off=$(echo "${debug_sec}" | sed 's/.*splittext *//' | awk '{print $3}')
++run_off=$(echo "${run_sec}" | sed 's/.*splittext *//' | awk '{print $3}')
++if [ -z "${run_off}" ] || [ "${debug_off}" = "${run_off}" ]; then
++	skip "splittext offsets do not differ"
++fi
++
++# Drop the PT_LOAD covering splittext so program header lookup fails.
++phoff=$(readelf -hW "${prog}" | awk '/Start of program headers/ {print $5}')
++phentsize=$(readelf -hW "${prog}" | awk '/Size of program headers/ {print $5}')
++idx=$(readelf -lW "${prog}" | awk '
++	/^Program Headers:/ { in_ph = 1; next }
++	in_ph && /^  Type/ { next }
++	in_ph && /^ *$/ { exit }
++	in_ph && /^  [A-Z]/ {
++		if ($1 == "LOAD" && $3 ~ /^0x0*800000$/) { print n; exit }
++		n++
++	}')
++if [ -z "${phoff}" ] || [ -z "${phentsize}" ] || [ -z "${idx}" ]; then
++	skip "no PT_LOAD for splittext"
++fi
++dd if=/dev/zero of="${prog}" bs=1 seek=$((phoff + idx * phentsize)) count=4 \
++	conv=notrunc 2> /dev/null
++if readelf -lW "${prog}" 2> /dev/null | grep -q 'LOAD .*0x0*800000 '; then
++	echo "Lazy-load split debuginfo [Failed to drop PT_LOAD]"
++	err=1
++fi
++
++if [ "${err}" -eq 0 ]; then
++	export PERF_BUILDID_DIR="${tmpdir}/buildid"
++	if ! perf test --dso "${prog}" "Lazy and eager symbol parity" 2>&1 | \
++		grep -q ': Ok$'; then
++		perf test --dso "${prog}" -vv "Lazy and eager symbol parity" 2>&1 | \
++			grep -E 'symbols$|mismatch|no symbols|no lazy' || true
++		echo "Lazy-load split debuginfo [Failed parity]"
++		err=1
++	else
++		echo "Lazy-load split debuginfo [Success]"
++	fi
++fi
++
++cleanup
++exit ${err}
+diff --git a/tools/perf/tests/shell/script_lazy_load_symbols.sh b/tools/perf/tests/shell/script_lazy_load_symbols.sh
+new file mode 100755
+index 000000000000..7e193c1c3d1f
+--- /dev/null
++++ b/tools/perf/tests/shell/script_lazy_load_symbols.sh
+@@ -0,0 +1,278 @@
++#!/bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# perf script lazy symbol loading tests (exclusive)
++#
++# Verifies that --lazy-load-symbols matches the default eager loader for a
++# controlled symbol, and that --max-symbol-bytes caps symbol allocations
++# (emitting [unknown] plus a warning) without crashing.
++
++mark_skip() {
++	if [ "${err}" -eq 0 ]; then
++		err=2
++	fi
++	return 0
++}
++
++if [ "${PERF_LAZY_LOAD_SYMBOLS_TEST_HELPERS:-}" = 1 ]; then
++	return 0
++fi
++
++set -e
++
++shelldir=$(dirname "$0")
++# shellcheck source=lib/perf_has_symbol.sh
++. "${shelldir}"/lib/perf_has_symbol.sh
++
++testsym="test_loop"
++perf_path=$(readlink -f "$(command -v perf)")
++lazy_index_budget=
++
++skip_test_missing_symbol ${testsym}
++
++if ! perf check feature -q libelf
++then
++	echo "Lazy symbol loading [Skipped no libelf support]"
++	exit 2
++fi
++
++err=0
++temp_dir=$(mktemp -d /tmp/__perf_test.lazy_load.XXXXX)
++perfdata="${temp_dir}/perf.data"
++eager_out="${temp_dir}/eager.out"
++lazy_out="${temp_dir}/lazy.out"
++lazy_err="${temp_dir}/lazy.err"
++eager_sym_out="${temp_dir}/eager.sym.out"
++lazy_sym_out="${temp_dir}/lazy.sym.out"
++
++cleanup() {
++	rm -rf "${temp_dir}"
++	trap - EXIT TERM INT
++}
++
++trap_cleanup() {
++	echo "Unexpected signal in ${FUNCNAME[1]}"
++	cleanup
++	exit 1
++}
++trap trap_cleanup EXIT TERM INT
++
++test_lazy_load_identical() {
++	echo "Lazy-load output matches eager loader"
++
++	# Record a small profile with callchains so symbol resolution runs.
++	if ! perf record -o "${perfdata}" -g -- perf test -w thloop 2> /dev/null
++	then
++		echo "Lazy-load identical [Skipped record not supported]"
++		mark_skip
++		return 0
++	fi
++
++	if ! perf script -i "${perfdata}" 2> /dev/null > "${eager_out}" || \
++	   ! perf script -v --lazy-load-symbols -i "${perfdata}" \
++		2> "${lazy_err}" > "${lazy_out}"
++	then
++		echo "Lazy-load identical [Failed perf script error]"
++		err=1
++		return
++	fi
++	if ! grep -q "on-demand index:" "${lazy_err}"
++	then
++		echo "Lazy-load identical [Failed lazy loader fell back to eager]"
++		err=1
++		return
++	fi
++	lazy_index_budget=$(awk -v dso="${perf_path}: on-demand index:" \
++		'index($0, dso) { sub(/^.* budget=/, ""); print; exit }' \
++		"${lazy_err}")
++	case "${lazy_index_budget}" in
++	''|*[!0-9]*)
++		echo "Lazy-load identical [Failed controlled DSO has no index]"
++		err=1
++		return
++		;;
++	esac
++
++	# The comparison is only meaningful if something actually resolved;
++	# two all-[unknown] outputs would also match.
++	if ! grep -q "${testsym}" "${eager_out}"
++	then
++		echo "Lazy-load identical [Skipped no ${testsym} resolved]"
++		mark_skip
++		return 0
++	fi
++
++	grep -w -o "${testsym}" "${eager_out}" > "${eager_sym_out}"
++	if ! grep -w -o "${testsym}" "${lazy_out}" > "${lazy_sym_out}"
++	then
++		echo "Lazy-load identical [Failed no lazy ${testsym} resolved]"
++		err=1
++		return
++	fi
++
++	if ! cmp -s "${eager_sym_out}" "${lazy_sym_out}"
++	then
++		echo "Lazy-load identical [Failed ${testsym} output differs]"
++		err=1
++		return
++	fi
++	echo "Lazy-load identical [Success]"
++}
++
++test_max_symbol_bytes() {
++	echo "--max-symbol-bytes budget enforcement"
++
++	# Depends on ${perfdata} from test_lazy_load_identical.
++	if [ ! -s "${perfdata}" ]
++	then
++		echo "--max-symbol-bytes budget [Skipped record not supported]"
++		mark_skip
++		return 0
++	fi
++
++	# A tiny budget forces most symbols to be dropped as [unknown],
++	# with a single warning, and must not crash.
++	if ! perf script --max-symbol-bytes=1K -i "${perfdata}" > /dev/null \
++		2> "${temp_dir}/budget.err"
++	then
++		echo "--max-symbol-bytes budget [Failed nonzero exit]"
++		err=1
++		return
++	fi
++	if ! grep -q "symbol memory budget exceeded" "${temp_dir}/budget.err"
++	then
++		echo "--max-symbol-bytes budget [Failed missing warning]"
++		err=1
++		return
++	fi
++	if perf script --max-symbol-bytes=1Kjunk -i "${perfdata}" \
++		> /dev/null 2>&1
++	then
++		echo "--max-symbol-bytes budget [Failed malformed size accepted]"
++		err=1
++		return
++	fi
++	if ! perf script --max-symbol-bytes=0 -i "${perfdata}" \
++		> /dev/null 2>&1
++	then
++		echo "--max-symbol-bytes budget [Failed zero not accepted]"
++		err=1
++		return
++	fi
++
++	# The unlimited run logged the peak accounted bytes at the controlled
++	# DSO's index reservation, before alias dedup may have released bytes.
++	# Reuse that peak as the budget: deterministic index construction fits,
++	# while subsequent materialization must hit the limit.
++	if ! perf script -v --lazy-load-symbols \
++		--max-symbol-bytes="${lazy_index_budget}B" \
++		-i "${perfdata}" > /dev/null 2> "${temp_dir}/lazy-budget.err"
++	then
++		echo "--max-symbol-bytes lazy budget [Failed nonzero exit]"
++		err=1
++		return
++	fi
++	if ! grep -Fq "${perf_path}: on-demand index:" \
++		"${temp_dir}/lazy-budget.err" ||
++	   ! grep -q "symbol memory budget exceeded" "${temp_dir}/lazy-budget.err"
++	then
++		echo "--max-symbol-bytes lazy budget [Failed no indexed budget case]"
++		err=1
++		return
++	fi
++	warnings=$(grep -c "symbol memory budget exceeded" \
++		"${temp_dir}/lazy-budget.err" || true)
++	if [ "${warnings}" -ne 1 ]
++	then
++		echo "--max-symbol-bytes lazy budget [Failed warning count: ${warnings}]"
++		err=1
++		return
++	fi
++	echo "--max-symbol-bytes budget [Success]"
++}
++
++test_budget_truncation_range() {
++	local longsym
++	local first_symbol
++	local trunc_source="${temp_dir}/truncation.S"
++	local trunc_binary="${temp_dir}/truncation"
++	local trunc_data="${temp_dir}/truncation.data"
++	local trunc_out="${temp_dir}/truncation.out"
++	local trunc_err="${temp_dir}/truncation.err"
++
++	echo "--max-symbol-bytes truncation range"
++
++	if [ "$(uname -m)" != x86_64 ]; then
++		echo "--max-symbol-bytes truncation range [Skipped x86_64 only]"
++		mark_skip
++		return 0
++	fi
++
++	longsym=$(printf 's%.0s' {1..900})
++	cat > "${trunc_source}" <<EOF
++	.text
++	.globl ${longsym}
++	.type ${longsym}, @function
++${longsym}:
++	call omitted_symbol
++	mov \$60, %eax
++	xor %edi, %edi
++	syscall
++
++	.globl omitted_symbol
++	.type omitted_symbol, @function
++omitted_symbol:
++	mov \$500000000, %ecx
++1:
++	dec %ecx
++	jnz 1b
++	ret
++	.size omitted_symbol, .-omitted_symbol
++EOF
++	if ! cc -nostdlib -no-pie -Wl,--build-id=none -Wl,-e,"${longsym}" \
++		-o "${trunc_binary}" "${trunc_source}"
++	then
++		echo "--max-symbol-bytes truncation range [Skipped compiler unsupported]"
++		mark_skip
++		return 0
++	fi
++
++	first_symbol=$(readelf -W -s "${trunc_binary}" |
++		awk '$4 == "FUNC" && $7 != "UND" { print $8; exit }')
++	if [ "${first_symbol}" != "${longsym}" ]; then
++		echo "--max-symbol-bytes truncation range [Skipped unexpected symbol order]"
++		mark_skip
++		return 0
++	fi
++
++	if ! perf record -o "${trunc_data}" -e cycles:u -F 1000 -- \
++		"${trunc_binary}" 2> /dev/null
++	then
++		echo "--max-symbol-bytes truncation range [Skipped record not supported]"
++		mark_skip
++		return 0
++	fi
++	if ! perf script --max-symbol-bytes=1K -i "${trunc_data}" -F ip,sym,dso \
++		> "${trunc_out}" 2> "${trunc_err}"
++	then
++		echo "--max-symbol-bytes truncation range [Failed perf script error]"
++		err=1
++		return
++	fi
++
++	if ! grep -q "symbol memory budget exceeded" "${trunc_err}" ||
++	   ! grep -F "${trunc_binary}" "${trunc_out}" | grep -q '\[unknown\]' ||
++	   grep -Fq "${longsym}" "${trunc_out}"
++	then
++		echo "--max-symbol-bytes truncation range [Failed omitted range resolved]"
++		err=1
++		return
++	fi
++	echo "--max-symbol-bytes truncation range [Success]"
++}
++
++test_lazy_load_identical
++test_max_symbol_bytes
++test_budget_truncation_range
++
++cleanup
++exit $err
+diff --git a/tools/perf/tests/shell/script_lazy_load_symbols_skip.sh b/tools/perf/tests/shell/script_lazy_load_symbols_skip.sh
+new file mode 100755
+index 000000000000..136503863fdd
+--- /dev/null
++++ b/tools/perf/tests/shell/script_lazy_load_symbols_skip.sh
+@@ -0,0 +1,26 @@
++#!/bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# perf script lazy symbol loading skip status
++
++set -e
++
++shelldir=$(dirname "$0")
++PERF_LAZY_LOAD_SYMBOLS_TEST_HELPERS=1
++. "${shelldir}"/script_lazy_load_symbols.sh
++unset PERF_LAZY_LOAD_SYMBOLS_TEST_HELPERS
++
++err=0
++mark_skip
++if [ "${err}" -ne 2 ]; then
++	echo "Lazy-load skip status [Failed expected 2, got ${err}]"
++	exit 1
++fi
++
++err=1
++mark_skip
++if [ "${err}" -ne 1 ]; then
++	echo "Lazy-load skip status [Failed skip overwrote failure: ${err}]"
++	exit 1
++fi
++
++echo "Lazy-load skip status [Success]"
+diff --git a/tools/perf/tests/symbol-bytes.c b/tools/perf/tests/symbol-bytes.c
+index d3055f5ed321..eef14e6e573b 100644
+--- a/tools/perf/tests/symbol-bytes.c
++++ b/tools/perf/tests/symbol-bytes.c
+@@ -1,12 +1,27 @@
+ // SPDX-License-Identifier: GPL-2.0
++#include <fcntl.h>
++#include <inttypes.h>
+ #include <limits.h>
+ #include <pthread.h>
+ #include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <unistd.h>
++#include <linux/kernel.h>
++#include <linux/zalloc.h>
  
- struct symbol *map__find_symbol_by_name_idx(struct map *map, const char *name, size_t *idx)
-diff --git a/tools/perf/util/symbol-elf.c b/tools/perf/util/symbol-elf.c
-index 2f7ea1499cbf..bb859bafece1 100644
---- a/tools/perf/util/symbol-elf.c
-+++ b/tools/perf/util/symbol-elf.c
-@@ -2,6 +2,7 @@
- #include <fcntl.h>
- #include <stdio.h>
- #include <errno.h>
-+#include <stdint.h>
- #include <stdlib.h>
- #include <string.h>
- #include <unistd.h>
-@@ -12,6 +13,7 @@
- #include "libbfd.h"
- #include "map.h"
- #include "maps.h"
-+#include "namespaces.h"
+ #include "debug.h"
++#include "dso.h"
++#include "env.h"
++#include "machine.h"
++#include "map.h"
  #include "symbol.h"
- #include "symsrc.h"
- #include "machine.h"
-@@ -334,6 +336,7 @@ static bool addend_may_be_ifunc(GElf_Ehdr *ehdr, struct rel_info *ri)
+ #include "symbol_conf.h"
+ #include "tests.h"
++#include "thread.h"
++#include "util.h"
  
- static bool get_ifunc_name(Elf *elf, struct dso *dso, GElf_Ehdr *ehdr,
- 			   struct rel_info *ri, char *buf, size_t buf_sz)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso))
- {
- 	u64 addr = ri->rela.r_addend;
- 	struct symbol *sym;
-@@ -348,6 +351,8 @@ static bool get_ifunc_name(Elf *elf, struct dso *dso, GElf_Ehdr *ehdr,
- 	addr -= phdr.p_vaddr - phdr.p_offset;
- 
- 	sym = dso__find_symbol_nocache(dso, addr);
-+	if (!sym && dso__ondemand(dso))
-+		sym = dso__find_symbol_ondemand_exact(dso, addr);
- 
- 	/* Expecting the address to be an IFUNC or IFUNC alias */
- 	if (!sym || sym->start != addr ||
-@@ -608,6 +613,26 @@ static int dso__synthesize_plt_got_symbols(struct dso *dso, Elf *elf,
- 	return err;
+ struct reserve_arg {
+ 	size_t bytes;
+@@ -83,8 +98,498 @@ static int test__symbol_bytes_reservation(struct test_suite *test __maybe_unused
+ 	return ret;
  }
  
-+static u32 sym_idx__lower_bound(const struct dso_ondemand *od, u64 addr);
-+
-+static void dso__clip_ondemand_symbols_at(struct dso *dso, u64 addr)
++static int test__symbol_bytes_duplicate_selection(struct test_suite *test __maybe_unused,
++						  int subtest __maybe_unused)
 +{
-+	struct dso_ondemand *od = dso__ondemand(dso);
-+	u32 lo, i;
++	struct duplicate_case {
++		struct symbol_candidate a, b;
++		int expected;
++	} cases[] = {
++		{ { 1, "a", STT_FUNC, STB_GLOBAL }, { 0, "b", STT_FUNC, STB_GLOBAL }, SYMBOL_A },
++		{ { 1, "a", STT_NOTYPE, STB_GLOBAL }, { 1, "b", STT_FUNC, STB_GLOBAL }, SYMBOL_B },
++		{ { 1, "a", STT_FUNC, STB_WEAK }, { 1, "b", STT_FUNC, STB_GLOBAL }, SYMBOL_B },
++		{ { 1, "a", STT_FUNC, STB_GLOBAL }, { 1, "b", STT_FUNC, STB_LOCAL }, SYMBOL_A },
++		{ { 1, "name", STT_FUNC, STB_GLOBAL },
++		  { 1, "_name", STT_FUNC, STB_GLOBAL }, SYMBOL_A },
++		{ { 1, "a", STT_FUNC, STB_GLOBAL }, { 1, "long", STT_FUNC, STB_GLOBAL }, SYMBOL_B },
++	};
++	size_t i;
 +
-+	if (!od)
-+		return;
-+
-+	lo = sym_idx__lower_bound(od, addr);
-+	if (!lo)
-+		return;
-+
-+	for (i = 0; i < lo; i++) {
-+		if (od->sorted[i].end > addr)
-+			od->sorted[i].end = addr;
++	for (i = 0; i < ARRAY_SIZE(cases); i++) {
++		if (symbol__choose_best(&cases[i].a, &cases[i].b) != cases[i].expected)
++			return TEST_FAIL;
 +	}
++	return TEST_OK;
 +}
 +
- /*
-  * We need to check if we have a .dynsym, so that we can handle the
-  * .plt, synthesizing its symbols, that aren't on the symtabs (be it
-@@ -616,6 +641,7 @@ static int dso__synthesize_plt_got_symbols(struct dso *dso, Elf *elf,
-  * have the PLT data stripped out (shdr_rel_plt.sh_type == SHT_NOBITS).
-  */
- int dso__synthesize_plt_symbols(struct dso *dso, struct symsrc *ss)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso))
- {
- 	uint32_t idx;
- 	GElf_Sym sym;
-@@ -639,6 +665,13 @@ int dso__synthesize_plt_symbols(struct dso *dso, struct symsrc *ss)
- 	if (!elf_section_by_name(elf, &ehdr, &shdr_plt, ".plt", NULL))
- 		return 0;
- 
-+	/*
-+	 * Zero-sized or oversized ELF symbols can have been extended across
-+	 * .plt. Clip the index first so lookups cannot attribute PLT addresses
-+	 * to a preceding symbol before the synthesized PLT symbols are added.
-+	 */
-+	dso__clip_ondemand_symbols_at(dso, shdr_plt.sh_offset);
-+
- 	/*
- 	 * A symbol from a previous section (e.g. .init) can have been expanded
- 	 * by symbols__fixup_end() to overlap .plt. Truncate it before adding
-@@ -1544,6 +1577,607 @@ static int dso__process_kernel_symbol(struct dso *dso, struct map *map,
- 	return 0;
- }
- 
-+static int cmp_sym_idx(const void *a, const void *b)
++#ifdef HAVE_LIBELF_SUPPORT
++static int truncated_name_case(size_t file_size, unsigned int expected_reads)
 +{
-+	const struct sym_idx *sa = a, *sb = b;
++	char path[] = "/tmp/perf-lazy-truncated-XXXXXX";
++	struct dso *data_dso = NULL;
++	char *contents = NULL;
++	char *name_heap = NULL;
++	char namebuf[1024];
++	const char *name;
++	unsigned int nr_reads;
++	int ret = TEST_FAIL;
++	int fd = -1;
++
++	contents = malloc(file_size);
++	if (!contents)
++		goto out;
++	memset(contents, 'a', file_size);
++
++	fd = mkstemp(path);
++	if (fd < 0 || write(fd, contents, file_size) != (ssize_t)file_size)
++		goto out;
++	close(fd);
++	fd = -1;
++
++	data_dso = dso__new(path);
++	if (!data_dso || dso__data_set_path(data_dso, path) < 0)
++		goto out;
++	dso__set_binary_type(data_dso, DSO_BINARY_TYPE__SYSTEM_PATH_DSO);
++	name = dso__read_ondemand_symbol_name(data_dso, 0, 8192, 0,
++					      namebuf, sizeof(namebuf),
++					      &name_heap, &nr_reads);
++	if (name || name_heap || nr_reads != expected_reads)
++		goto out;
++	ret = TEST_OK;
++out:
++	if (fd >= 0)
++		close(fd);
++	if (data_dso)
++		dso__put(data_dso);
++	unlink(path);
++	free(name_heap);
++	free(contents);
++	return ret;
++}
++
++static int test__symbol_bytes_truncated_name(struct test_suite *test __maybe_unused,
++					     int subtest __maybe_unused)
++{
++	/*
++	 * One byte is short in the stack-buffer read.  1023 bytes fills it
++	 * exactly, so the following read exercises the heap-buffer path.
++	 */
++	if (truncated_name_case(1, 1) != TEST_OK ||
++	    truncated_name_case(1023, 2) != TEST_OK)
++		return TEST_FAIL;
++	return TEST_OK;
++}
++
++#define LAZY_SYM_START	0x1000
++#define LAZY_SYM_SIZE	0x10
++#define LAZY_NAME_FMT	"lazy_sym_%03u"
++#define LAZY_NAME_LEN	sizeof("lazy_sym_000")
++
++static void lazy_name(char *buf, u32 i)
++{
++	snprintf(buf, LAZY_NAME_LEN, LAZY_NAME_FMT, i % 1000);
++}
++
++struct lazy_fixture {
++	char		path[32];
++	struct dso	*dso;
++	struct map	*map;
++	u32		nr;
++};
++
++/*
++ * Build a DSO whose symbols exist only in a lazy index: @nr adjacent
++ * functions named lazy_sym_NNN, with names in a string-table file read
++ * through a private data DSO.
++ */
++static int lazy_fixture__init(struct lazy_fixture *f, u32 nr)
++{
++	struct dso_ondemand *od = NULL;
++	char *strtab;
++	int fd, ret = -1;
++	u32 i;
++
++	memset(f, 0, sizeof(*f));
++	f->nr = nr;
++	strcpy(f->path, "/tmp/perf-lazy-names-XXXXXX");
++
++	strtab = malloc(nr * LAZY_NAME_LEN);
++	if (!strtab)
++		return -1;
++	for (i = 0; i < nr; i++)
++		lazy_name(strtab + i * LAZY_NAME_LEN, i);
++
++	fd = mkstemp(f->path);
++	if (fd < 0) {
++		f->path[0] = '\0';
++		goto out;
++	}
++	if (write(fd, strtab, nr * LAZY_NAME_LEN) != (ssize_t)(nr * LAZY_NAME_LEN)) {
++		close(fd);
++		goto out;
++	}
++	close(fd);
++
++	f->dso = dso__new("/not/the/symbol/source");
++	od = zalloc(sizeof(*od));
++	if (!f->dso || !od)
++		goto out;
++	od->sorted = calloc(nr, sizeof(*od->sorted));
++	od->data_dso = dso__new(f->path);
++	if (!od->sorted || !od->data_dso ||
++	    dso__data_set_path(od->data_dso, f->path) < 0)
++		goto out;
++	dso__set_binary_type(od->data_dso, DSO_BINARY_TYPE__SYSTEM_PATH_DSO);
++	od->strtab_size = nr * LAZY_NAME_LEN;
++	od->nr_sorted = nr;
++	od->nr_alloc = nr;
++	for (i = 0; i < nr; i++) {
++		od->sorted[i] = (struct sym_idx) {
++			.start = LAZY_SYM_START + i * LAZY_SYM_SIZE,
++			.end = LAZY_SYM_START + (i + 1) * LAZY_SYM_SIZE,
++			.name_off = i * LAZY_NAME_LEN,
++			.binding = STB_GLOBAL,
++			.type = STT_FUNC,
++		};
++	}
++	if (!symbol__try_account_bytes(od->nr_alloc * sizeof(*od->sorted)))
++		goto out;
++	dso__set_ondemand(f->dso, od);
++	od = NULL;
++	dso__set_loaded(f->dso);
++	f->map = map__new2(0, f->dso);
++	if (f->map)
++		ret = 0;
++out:
++	if (od) {
++		if (od->data_dso)
++			dso__put(od->data_dso);
++		free(od->sorted);
++		free(od);
++	}
++	free(strtab);
++	return ret;
++}
++
++static void lazy_fixture__exit(struct lazy_fixture *f)
++{
++	map__put(f->map);
++	dso__put(f->dso);
++	if (f->path[0])
++		unlink(f->path);
++}
++
++static bool lazy_symbol_ok(const struct symbol *sym, u32 i)
++{
++	char name[LAZY_NAME_LEN];
++
++	lazy_name(name, i);
++	return sym->start == LAZY_SYM_START + i * LAZY_SYM_SIZE && !strcmp(sym->name, name);
++}
++
++static int lazy_nr_symbols(struct dso *dso)
++{
++	struct rb_node *node;
++	int nr = 0;
++
++	for (node = rb_first_cached(dso__symbols(dso)); node; node = rb_next(node))
++		nr++;
++	return nr;
++}
++
++static int test__symbol_bytes_lazy_name_lookup(struct test_suite *test __maybe_unused,
++					       int subtest __maybe_unused)
++{
++	unsigned long saved_max = symbol_conf.max_symbol_bytes;
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	size_t baseline = symbol__bytes_used();
++	struct lazy_fixture f;
++	struct symbol *sym;
++	int ret = TEST_FAIL;
++
++	symbol_conf.max_symbol_bytes = 0;
++	symbol_conf.lazy_load_symbols = true;
++	if (lazy_fixture__init(&f, 2))
++		goto out;
++
++	sym = map__find_symbol(f.map, LAZY_SYM_START + 1);
++	if (!sym || !lazy_symbol_ok(sym, 0))
++		goto out;
++
++	/* Name lookup must still work after the data descriptor is closed. */
++	dso__data_close(dso__ondemand(f.dso)->data_dso);
++	sym = map__find_symbol_by_name(f.map, "lazy_sym_001");
++	if (!sym || !lazy_symbol_ok(sym, 1) || dso__ondemand(f.dso))
++		goto out;
++	if (lazy_nr_symbols(f.dso) != 2)
++		goto out;
++	ret = TEST_OK;
++out:
++	lazy_fixture__exit(&f);
++	symbol_conf.max_symbol_bytes = saved_max;
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	if (symbol__bytes_used() != baseline)
++		ret = TEST_FAIL;
++	return ret;
++}
++
++struct lazy_lookup_arg {
++	struct lazy_fixture	*f;
++	bool			by_name;
++	bool			failed;
++};
++
++static void *lazy_lookup(void *data)
++{
++	struct lazy_lookup_arg *arg = data;
++	struct lazy_fixture *f = arg->f;
++	u32 i, round;
++
++	for (round = 0; round < 16; round++) {
++		for (i = 0; i < f->nr; i++) {
++			struct symbol *sym;
++
++			if (arg->by_name) {
++				char name[LAZY_NAME_LEN];
++
++				lazy_name(name, i);
++				sym = map__find_symbol_by_name(f->map, name);
++			} else {
++				sym = map__find_symbol(f->map, LAZY_SYM_START +
++						       i * LAZY_SYM_SIZE + 1);
++			}
++			if (sym && !lazy_symbol_ok(sym, i))
++				arg->failed = true;
++		}
++	}
++	return NULL;
++}
++
++/*
++ * Address lookups race with name lookups while the symbol budget stops
++ * materialization part way. Once a name lookup has run, the DSO must no
++ * longer grow, even after budget becomes available again.
++ */
++static int test__symbol_bytes_lazy_budget_race(struct test_suite *test __maybe_unused,
++					       int subtest __maybe_unused)
++{
++	enum { NR_SYMS = 256, NR_ADDR_THREADS = 4, NR_THREADS = NR_ADDR_THREADS + 2 };
++	unsigned long saved_max = symbol_conf.max_symbol_bytes;
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	size_t baseline = symbol__bytes_used();
++	size_t charge = symbol_conf.priv_size + sizeof(struct symbol) + LAZY_NAME_LEN;
++	struct lazy_lookup_arg args[NR_THREADS];
++	pthread_t threads[NR_THREADS];
++	struct lazy_fixture f;
++	int created = 0, nr_symbols, i;
++	int ret = TEST_FAIL;
++
++	symbol_conf.max_symbol_bytes = 0;
++	symbol_conf.lazy_load_symbols = true;
++	if (lazy_fixture__init(&f, NR_SYMS))
++		goto out;
++	symbol_conf.max_symbol_bytes = symbol__bytes_used() + NR_SYMS / 4 * charge;
++
++	for (i = 0; i < NR_THREADS; i++) {
++		args[i] = (struct lazy_lookup_arg) {
++			.f = &f,
++			.by_name = i >= NR_ADDR_THREADS,
++		};
++		if (pthread_create(&threads[i], NULL, lazy_lookup, &args[i]))
++			break;
++		created++;
++	}
++	for (i = 0; i < created; i++)
++		pthread_join(threads[i], NULL);
++	if (created != NR_THREADS)
++		goto out;
++	for (i = 0; i < NR_THREADS; i++) {
++		if (args[i].failed) {
++			pr_debug("lazy lookup returned a wrong symbol\n");
++			goto out;
++		}
++	}
++
++	nr_symbols = lazy_nr_symbols(f.dso);
++	if (dso__ondemand(f.dso) || nr_symbols == 0 || nr_symbols > NR_SYMS / 4) {
++		pr_debug("unexpected lazy state: index %p, %d symbols\n",
++			 dso__ondemand(f.dso), nr_symbols);
++		goto out;
++	}
++
++	symbol_conf.max_symbol_bytes = 0;
++	for (i = 0; i < NR_SYMS; i++)
++		map__find_symbol(f.map, LAZY_SYM_START + i * LAZY_SYM_SIZE + 1);
++	if (lazy_nr_symbols(f.dso) != nr_symbols) {
++		pr_debug("DSO changed after its name array was built\n");
++		goto out;
++	}
++	ret = TEST_OK;
++out:
++	lazy_fixture__exit(&f);
++	symbol_conf.max_symbol_bytes = saved_max;
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	if (symbol__bytes_used() != baseline)
++		ret = TEST_FAIL;
++	return ret;
++}
++struct sym_entry {
++	u64	start;
++	char	*name;
++};
++
++static int cmp_sym_entry(const void *a, const void *b)
++{
++	const struct sym_entry *sa = a, *sb = b;
 +
 +	if (sa->start != sb->start)
 +		return sa->start < sb->start ? -1 : 1;
-+	/*
-+	 * qsort is not stable. During sorting name_off temporarily holds
-+	 * the fill ordinal, preserving eager's symtab insertion order for
-+	 * equal-start aliases. It is restored to st_name afterwards.
-+	 */
-+	if (sa->name_off != sb->name_off)
-+		return sa->name_off < sb->name_off ? -1 : 1;
-+	return 0;
++	return strcmp(sa->name, sb->name);
++}
++
++static void free_sym_entries(struct sym_entry *entries, size_t nr)
++{
++	size_t i;
++
++	for (i = 0; i < nr; i++)
++		free(entries[i].name);
++	free(entries);
 +}
 +
 +/*
-+ * Return the first entry whose start is not less than @addr. ISO C bsearch()
-+ * does not provide an insertion point or guarantee the first equal entry, so
-+ * clipping and exact-start alias lookup use this helper.
++ * Load @filename on a fresh host machine and return the start and name of
++ * every symbol, sorted. In lazy mode, building the name-sorted array
++ * materializes the whole index.
 + */
-+static u32 sym_idx__lower_bound(const struct dso_ondemand *od, u64 addr)
++static int load_sym_entries(const char *filename, bool lazy,
++			    struct sym_entry **entries_p, size_t *nr_p)
 +{
-+	u32 lo = 0, hi = od->nr_sorted;
++	struct sym_entry *entries = NULL;
++	struct machine *machine = NULL;
++	struct thread *thread = NULL;
++	struct map *map = NULL;
++	struct perf_env env;
++	struct rb_node *nd;
++	struct dso *dso;
++	size_t nr = 0, alloc = 0;
++	int ret = TEST_FAIL;
 +
-+	while (lo < hi) {
-+		u32 mid = lo + (hi - lo) / 2;
++	perf_env__init(&env);
++	symbol_conf.lazy_load_symbols = lazy;
++	machine = machine__new_host(&env);
++	if (!machine)
++		goto out;
++	thread = machine__findnew_thread(machine, 100, 100);
++	if (!thread)
++		goto out;
++	map = map__new(machine, 0x100000, 0xffffffff, 0, &dso_id_empty,
++		       PROT_EXEC, /*flags=*/0, (char *)filename, thread);
++	if (!map)
++		goto out;
 +
-+		if (od->sorted[mid].start < addr)
-+			lo = mid + 1;
-+		else
-+			hi = mid;
++	dso = map__dso(map);
++	if (dso__load(dso, map) <= 0) {
++		pr_debug("%s: no symbols loaded\n", filename);
++		ret = TEST_SKIP;
++		goto out;
 +	}
-+	return lo;
-+}
-+
-+static int cmp_addr_to_sym_idx(const void *key, const void *entry)
-+{
-+	u64 addr = *(const u64 *)key;
-+	const struct sym_idx *idx = entry;
-+
-+	if (addr < idx->start)
-+		return -1;
-+	if (addr >= idx->end)
-+		return 1;
-+	return 0;
-+}
-+
-+static bool ondemand_sym_ok(Elf *elf, Elf_Data *secstrs,
-+			    const GElf_Sym *sym, u32 sh_link,
-+			    uint16_t e_machine)
-+{
-+	Elf_Scn *sym_sec;
-+	GElf_Shdr sym_shdr;
-+	int is_label = elf_sym__is_label(sym);
-+	const char *name;
-+
-+	if (!is_label && !elf_sym__filter((GElf_Sym *)sym))
-+		return false;
-+
-+	if (sym->st_shndx == SHN_ABS)
-+		return false;
-+
-+	sym_sec = elf_getscn(elf, sym->st_shndx);
-+	if (!sym_sec)
-+		return false;
-+	if (!gelf_getshdr(sym_sec, &sym_shdr))
-+		return false;
-+	if (!(sym_shdr.sh_flags & SHF_ALLOC))
-+		return false;
-+
-+	if (is_label && (!secstrs || !elf_sec__filter(&sym_shdr, secstrs)))
-+		return false;
-+
-+	name = elf_strptr(elf, sh_link, sym->st_name);
-+	if (!name)
-+		return false;
-+
-+	/*
-+	 * Reject ARM/AArch64/RISC-V "mapping symbols" ($a/$d/$t/$x), as
-+	 * the eager loop does.  They are zero-size STT_NOTYPE labels in
-+	 * allocated sections that would otherwise be indexed and fill
-+	 * forward over real functions, misattributing everything after
-+	 * them.
-+	 */
-+	if (e_machine == EM_ARM || e_machine == EM_AARCH64) {
-+		if (name[0] == '$' && strchr("adtx", name[1]) &&
-+		    (name[2] == '\0' || name[2] == '.'))
-+			return false;
++	if (lazy && !dso__ondemand(dso)) {
++		pr_debug("%s: no lazy index was built\n", filename);
++		ret = TEST_SKIP;
++		goto out;
 +	}
-+	if (e_machine == EM_RISCV) {
-+		if (name[0] == '$' && strchr("dx", name[1]))
-+			return false;
++	dso__sort_by_name(dso);
++
++	for (nd = rb_first_cached(dso__symbols(dso)); nd; nd = rb_next(nd)) {
++		struct symbol *sym = rb_entry(nd, struct symbol, rb_node);
++
++		if (nr == alloc) {
++			struct sym_entry *tmp;
++
++			alloc = alloc ? alloc * 2 : 1024;
++			tmp = realloc(entries, alloc * sizeof(*entries));
++			if (!tmp)
++				goto out;
++			entries = tmp;
++		}
++		entries[nr].start = sym->start;
++		entries[nr].name = strdup(sym->name);
++		if (!entries[nr].name)
++			goto out;
++		nr++;
 +	}
-+
-+	return true;
-+}
-+
-+static void sym_idx__candidate(const struct sym_idx *idx, const char *name,
-+			       struct symbol_candidate *c)
-+{
-+	c->size = idx->end - idx->start;
-+	c->name = name;
-+	c->type = idx->type;
-+	c->binding = idx->binding;
++	qsort(entries, nr, sizeof(*entries), cmp_sym_entry);
++	*entries_p = entries;
++	*nr_p = nr;
++	entries = NULL;
++	ret = TEST_OK;
++out:
++	if (entries)
++		free_sym_entries(entries, nr);
++	map__put(map);
++	thread__put(thread);
++	machine__delete(machine);
++	perf_env__exit(&env);
++	return ret;
 +}
 +
 +/*
-+ * Keep one index entry per start address, choosing among aliases with the
-+ * same policy as symbols__fixup_duplicate(). Mark a survivor whose group
-+ * contained an IFUNC, then shrink the index. Returns the new entry count.
++ * Compare the symbols of a DSO (perf itself, or --dso) loaded eagerly and
++ * lazily. Addresses and names must match.
 + */
-+static u32 dso_ondemand__dedup_aliases(struct dso *dso, struct dso_ondemand *od,
-+				       Elf *elf, size_t strtab_idx, u32 count)
++static int test__symbol_bytes_lazy_parity(struct test_suite *test __maybe_unused,
++					  int subtest __maybe_unused)
 +{
-+	struct sym_idx *sorted = od->sorted, *shrunk;
-+	u32 i, j, out = 0;
++	unsigned long saved_max = symbol_conf.max_symbol_bytes;
++	bool saved_lazy = symbol_conf.lazy_load_symbols;
++	struct sym_entry *eager = NULL, *lazy = NULL;
++	size_t nr_eager = 0, nr_lazy = 0, i;
++	char filename[PATH_MAX];
++	int ret;
 +
-+	for (i = 0; i < count; i = j) {
-+		struct symbol_candidate best, cand;
-+		bool has_ifunc = sorted[i].type == STT_GNU_IFUNC;
-+		char *best_demangled = NULL, *demangled;
-+		const char *name;
-+		u32 best_idx = i;
-+
-+		name = elf_strptr(elf, strtab_idx, sorted[i].name_off);
-+		if (name) {
-+			best_demangled = dso__demangle_sym(dso, 0, name);
-+			if (best_demangled)
-+				name = best_demangled;
-+		}
-+		sym_idx__candidate(&sorted[i], name, &best);
-+
-+		for (j = i + 1; j < count && sorted[j].start == sorted[i].start; j++) {
-+			has_ifunc |= sorted[j].type == STT_GNU_IFUNC;
-+			name = elf_strptr(elf, strtab_idx, sorted[j].name_off);
-+			if (!best.name || !name)
-+				continue;
-+
-+			demangled = dso__demangle_sym(dso, 0, name);
-+			if (demangled)
-+				name = demangled;
-+			sym_idx__candidate(&sorted[j], name, &cand);
-+
-+			if (symbol__choose_best(&best, &cand) == SYMBOL_B) {
-+				free(best_demangled);
-+				best_demangled = demangled;
-+				best = cand;
-+				best_idx = j;
-+			} else {
-+				free(demangled);
-+			}
-+		}
-+		free(best_demangled);
-+
-+		sorted[out] = sorted[best_idx];
-+		if (has_ifunc && sorted[out].type != STT_GNU_IFUNC)
-+			sorted[out].flags |= SYM_IDX_FLAG_IFUNC_ALIAS;
-+		out++;
-+	}
-+
-+	if (out < count) {
-+		shrunk = realloc(sorted, out * sizeof(*sorted));
-+		if (shrunk) {
-+			od->sorted = shrunk;
-+			symbol__unaccount_bytes((od->nr_alloc - out) * sizeof(*sorted));
-+			od->nr_alloc = out;
-+		}
-+	}
-+	return out;
-+}
-+
-+static int dso__build_ondemand_index(struct dso *dso, struct symsrc *syms_ss,
-+				     struct symsrc *runtime_ss,
-+				     int dynsym)
-+{
-+	struct dso_ondemand *od;
-+	Elf *elf = syms_ss->elf;
-+	GElf_Ehdr ehdr = syms_ss->ehdr;
-+	GElf_Shdr shdr;
-+	GElf_Shdr strshdr;
-+	Elf_Scn *strscn, *sec_strndx;
-+	Elf_Data *syms;
-+	GElf_Sym sym;
-+	Elf_Data *secstrs = NULL;
-+	size_t i, index_bytes, reservation_peak;
-+	u32 count = 0, j;
-+	u32 *name_offsets;
-+	u64 nr_entries, strtab_offset;
-+	u64 probe_off;
-+	u8 probe;
-+
-+	/*
-+	 * GNU debugdata is backed by a temporary decompressed fd rather than a
-+	 * reopenable source path. Keep using the eager loader for that case.
-+	 */
-+	if (syms_ss->type == DSO_BINARY_TYPE__GNU_DEBUGDATA)
-+		return 0;
-+
-+	if (dynsym)
-+		shdr = syms_ss->dynshdr;
++	if (dso_to_test)
++		strlcpy(filename, dso_to_test, sizeof(filename));
 +	else
-+		shdr = syms_ss->symshdr;
++		perf_exe(filename, sizeof(filename));
 +
-+	syms = elf_getdata(dynsym ? syms_ss->dynsym : syms_ss->symtab, NULL);
-+	if (!syms)
-+		return -1;
++	symbol_conf.max_symbol_bytes = 0;
++	ret = load_sym_entries(filename, false, &eager, &nr_eager);
++	if (ret == TEST_OK)
++		ret = load_sym_entries(filename, true, &lazy, &nr_lazy);
++	if (ret != TEST_OK)
++		goto out;
 +
-+	if (!shdr.sh_entsize)
-+		return 0;
-+
-+	nr_entries = shdr.sh_size / shdr.sh_entsize;
-+	if (nr_entries > UINT32_MAX)
-+		return -EOVERFLOW;
-+
-+	strscn = elf_getscn(elf, shdr.sh_link);
-+	if (!strscn || !gelf_getshdr(strscn, &strshdr))
-+		return -1;
-+	strtab_offset = strshdr.sh_offset;
-+
-+	/*
-+	 * Section name string table, used to match the eager path's
-+	 * elf_sec__filter() (text/data section check for STT_NOTYPE labels).
-+	 */
-+	sec_strndx = elf_getscn(elf, ehdr.e_shstrndx);
-+	if (sec_strndx)
-+		secstrs = elf_getdata(sec_strndx, NULL);
-+
-+	for (i = 0; i < nr_entries; i++) {
-+		if (!gelf_getsym(syms, i, &sym))
-+			continue;
-+		if (ondemand_sym_ok(elf, secstrs, &sym, shdr.sh_link,
-+				    ehdr.e_machine))
-+			count++;
-+	}
-+
-+	if (!count)
-+		return 0;
-+	if (check_mul_overflow((size_t)count, sizeof(*od->sorted),
-+			       &index_bytes))
-+		return -EOVERFLOW;
-+
-+	/*
-+	 * Account the index against the symbol memory budget: at 24
-+	 * bytes/symbol it is the dominant on-demand cost and must count
-+	 * toward --max-symbol-bytes just like struct symbol allocations do.
-+	 */
-+	if (!symbol__try_account_bytes(index_bytes)) {
-+		symbol_budget_warning();
-+		return 0;
-+	}
-+	reservation_peak = symbol__bytes_used();
-+
-+	od = zalloc(sizeof(*od));
-+	if (!od) {
-+		symbol__unaccount_bytes(index_bytes);
-+		return -1;
-+	}
-+
-+	od->sorted = zalloc(index_bytes);
-+	if (!od->sorted) {
-+		symbol__unaccount_bytes(index_bytes);
-+		free(od);
-+		return -1;
-+	}
-+	od->nr_alloc = count;
-+	name_offsets = malloc(count * sizeof(*name_offsets));
-+	if (!name_offsets) {
-+		symbol__unaccount_bytes(index_bytes);
-+		free(od->sorted);
-+		free(od);
-+		return -1;
-+	}
-+
-+	j = 0;
-+	for (i = 0; i < nr_entries; i++) {
-+		u64 adjusted;
-+		GElf_Phdr phdr;
-+
-+		if (!gelf_getsym(syms, i, &sym))
-+			continue;
-+		if (!ondemand_sym_ok(elf, secstrs, &sym, shdr.sh_link,
-+				     ehdr.e_machine))
-+			continue;
-+
-+		adjusted = sym.st_value;
-+
-+		if ((ehdr.e_machine == EM_ARM) &&
-+		    (GELF_ST_TYPE(sym.st_info) == STT_FUNC) &&
-+		    (adjusted & 1))
-+			--adjusted;
-+
-+		if (elf_read_program_header(runtime_ss->elf, adjusted,
-+					    &phdr) == 0) {
-+			adjusted -= phdr.p_vaddr - phdr.p_offset;
-+		} else {
-+			Elf_Scn *sym_sec = elf_getscn(elf, sym.st_shndx);
-+			GElf_Shdr sym_shdr;
-+
-+			if (sym_sec && gelf_getshdr(sym_sec, &sym_shdr)) {
-+				/*
-+				 * A NOBITS section in a debuginfo file has an
-+				 * invalid sh_offset; use the runtime section.
-+				 */
-+				if (sym_shdr.sh_type == SHT_NOBITS) {
-+					sym_sec = elf_getscn(runtime_ss->elf,
-+							     sym.st_shndx);
-+					if (!sym_sec ||
-+					    !gelf_getshdr(sym_sec, &sym_shdr))
-+						continue;
-+				}
-+				adjusted -= sym_shdr.sh_addr - sym_shdr.sh_offset;
-+			}
-+		}
-+
-+		od->sorted[j].start = adjusted;
-+		od->sorted[j].end = sym.st_size;
-+		name_offsets[j] = sym.st_name;
-+		od->sorted[j].name_off = j;
-+		od->sorted[j].binding = GELF_ST_BIND(sym.st_info);
-+		od->sorted[j].type = GELF_ST_TYPE(sym.st_info);
-+		j++;
-+	}
-+	count = j;
-+	if (!count) {
-+		symbol__unaccount_bytes(index_bytes);
-+		free(name_offsets);
-+		free(od->sorted);
-+		free(od);
-+		return 0;
-+	}
-+
-+	qsort(od->sorted, count, sizeof(*od->sorted), cmp_sym_idx);
-+	for (i = 0; i < count; i++)
-+		od->sorted[i].name_off = name_offsets[od->sorted[i].name_off];
-+	free(name_offsets);
-+
-+	for (i = 0; i < count; i++) {
-+		u64 size = od->sorted[i].end;
-+
-+		if (size > 0)
-+			od->sorted[i].end = od->sorted[i].start + size;
-+		else if (i + 1 < count)
-+			od->sorted[i].end = od->sorted[i + 1].start;
-+		else
-+			od->sorted[i].end = roundup(od->sorted[i].start, 4096) + 4096;
-+	}
-+
-+	if (!symbol_conf.allow_aliases)
-+		count = dso_ondemand__dedup_aliases(dso, od, elf, shdr.sh_link, count);
-+
-+	if (!symbol_conf.allow_aliases) {
-+		for (i = 0; i + 1 < count; i++) {
-+			if (od->sorted[i].end > od->sorted[i + 1].start)
-+				od->sorted[i].end = od->sorted[i + 1].start;
++	pr_debug("%s: %zu eager and %zu lazy symbols\n", filename, nr_eager, nr_lazy);
++	for (i = 0; i < nr_eager && i < nr_lazy; i++) {
++		if (cmp_sym_entry(&eager[i], &lazy[i])) {
++			pr_debug("mismatch: eager %#" PRIx64 " %s, lazy %#" PRIx64 " %s\n",
++				 eager[i].start, eager[i].name, lazy[i].start, lazy[i].name);
++			ret = TEST_FAIL;
++			goto out;
 +		}
 +	}
-+
-+	od->data_dso = dso__new(syms_ss->name);
-+	if (!od->data_dso ||
-+	    dso__data_set_path(od->data_dso, syms_ss->name) < 0)
-+		goto out_decline_source;
-+	dso__set_binary_type(od->data_dso, DSO_BINARY_TYPE__SYSTEM_PATH_DSO);
-+	dso__set_nsinfo(od->data_dso, nsinfo__get(dso__nsinfo(dso)));
-+
-+	if (od->sorted[0].name_off >= strshdr.sh_size)
-+		goto out_decline_source;
-+	if (check_add_overflow(strtab_offset,
-+			       (u64)od->sorted[0].name_off, &probe_off))
-+		goto out_decline_source;
-+	if (dso__data_read_offset(od->data_dso, NULL, probe_off, &probe, 1) != 1)
-+		goto out_decline_source;
-+
-+	od->strtab_offset = strtab_offset;
-+	od->strtab_size = strshdr.sh_size;
-+	od->nr_sorted = count;
-+
-+	dso__set_ondemand(dso, od);
-+
-+	pr_debug("%s: on-demand index: %u symbols (%zu bytes, %zu bytes total) budget=%zu\n",
-+		 dso__long_name(dso), count,
-+		 od->nr_alloc * sizeof(*od->sorted), symbol__bytes_used(),
-+		 reservation_peak);
-+
-+	return 1;
-+
-+out_decline_source:
-+	if (od->data_dso) {
-+		dso__data_close(od->data_dso);
-+		dso__put(od->data_dso);
-+	}
-+	symbol__unaccount_bytes(od->nr_alloc * sizeof(*od->sorted));
-+	free(od->sorted);
-+	free(od);
-+	return 0;
++	if (nr_eager != nr_lazy)
++		ret = TEST_FAIL;
++out:
++	if (eager)
++		free_sym_entries(eager, nr_eager);
++	if (lazy)
++		free_sym_entries(lazy, nr_lazy);
++	symbol_conf.max_symbol_bytes = saved_max;
++	symbol_conf.lazy_load_symbols = saved_lazy;
++	return ret;
 +}
++#endif
 +
-+const char *dso__read_ondemand_symbol_name(struct dso *data_dso,
-+					   u64 strtab_offset, u64 strtab_size,
-+					   u64 name_off, char *buf,
-+					   size_t buflen, char **to_free,
-+					   unsigned int *nr_reads)
-+{
-+	ssize_t n;
-+	u64 remain;
-+	u64 file_off;
-+	size_t cap, want;
-+
-+	*to_free = NULL;
-+
-+	if (name_off >= strtab_size)
-+		return NULL;
-+	if (check_add_overflow(strtab_offset, name_off, &file_off))
-+		return NULL;
-+	remain = strtab_size - name_off;
-+	if (nr_reads)
-+		*nr_reads = 0;
-+
-+	want = min((u64)(buflen - 1), remain);
-+	if (nr_reads)
-+		(*nr_reads)++;
-+	n = dso__data_read_offset(data_dso, NULL, file_off, (u8 *)buf, want);
-+	if (n <= 0)
-+		return NULL;
-+	buf[n] = '\0';
-+	if (memchr(buf, '\0', n))
-+		return buf;
-+	if ((size_t)n < want)
-+		return NULL;
-+
-+	cap = 4096;
-+	for (;;) {
-+		char *tmp;
-+
-+		want = cap;
-+		if (want > remain)
-+			want = remain;
-+		if (want == 0)
-+			break;
-+
-+		tmp = *to_free ? realloc(*to_free, want + 1) : malloc(want + 1);
-+		if (!tmp) {
-+			free(*to_free);
-+			*to_free = NULL;
-+			return NULL;
-+		}
-+		*to_free = tmp;
-+
-+		if (nr_reads)
-+			(*nr_reads)++;
-+		n = dso__data_read_offset(data_dso, NULL, file_off,
-+					  (u8 *)*to_free, want);
-+		if (n <= 0) {
-+			free(*to_free);
-+			*to_free = NULL;
-+			return NULL;
-+		}
-+		(*to_free)[n] = '\0';
-+
-+		if (memchr(*to_free, '\0', n))
-+			return *to_free;
-+		if ((size_t)n < want)
-+			break;
-+
-+		if (want >= remain || (u64)n >= remain)
-+			break;
-+
-+		if (cap > SIZE_MAX / 2)
-+			break;
-+		cap *= 2;
-+	}
-+
-+	free(*to_free);
-+	*to_free = NULL;
-+	return NULL;
-+}
-+
-+static struct symbol *dso__materialize_symbol_ondemand(struct dso *dso, u32 pos,
-+						       bool *budget_exceeded)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso))
-+{
-+	struct dso_ondemand *od = dso__ondemand(dso);
-+	struct sym_idx *idx = &od->sorted[pos];
-+	const char *name;
-+	char namebuf[1024];
-+	char *name_heap = NULL;
-+	char *demangled;
-+	struct symbol *s = NULL;
-+
-+	*budget_exceeded = false;
-+
-+	if (symbol_conf.max_symbol_bytes &&
-+	    symbol__bytes_used() >= symbol_conf.max_symbol_bytes) {
-+		symbol_budget_warning();
-+		*budget_exceeded = true;
-+		return NULL;
-+	}
-+
-+	name = dso__read_ondemand_symbol_name(od->data_dso, od->strtab_offset,
-+					      od->strtab_size, idx->name_off,
-+					      namebuf, sizeof(namebuf),
-+					      &name_heap, NULL);
-+	if (!name)
-+		return NULL;
-+
-+	demangled = dso__demangle_sym(dso, 0, name);
-+	if (demangled)
-+		name = demangled;
-+
-+	s = symbol__new_bounded(idx->start, idx->end - idx->start,
-+				idx->binding, idx->type, name, budget_exceeded);
-+	free(demangled);
-+	free(name_heap);
-+	if (!s) {
-+		if (*budget_exceeded)
-+			symbol_budget_warning();
-+		return NULL;
-+	}
-+
-+	if (idx->flags & SYM_IDX_FLAG_IFUNC_ALIAS)
-+		symbol__set_ifunc_alias(s, true);
-+	__symbols__insert(dso__symbols(dso), s);
-+	idx->flags |= SYM_IDX_FLAG_MATERIALIZED;
-+	return s;
-+}
-+
-+static struct symbol *dso__lookup_symbol_ondemand(struct dso *dso, u32 pos)
-+	EXCLUSIVE_LOCKS_REQUIRED(dso__lock(dso))
-+{
-+	bool budget_exceeded;
-+
-+	return dso__materialize_symbol_ondemand(dso, pos, &budget_exceeded);
-+}
-+
-+void dso__materialize_symbols_ondemand(struct dso *dso)
-+{
-+	struct dso_ondemand *od = dso__ondemand(dso);
-+	bool budget_exceeded;
-+	u32 i;
-+
-+	if (!od)
-+		return;
-+	for (i = 0; i < od->nr_sorted; i++) {
-+		if (od->sorted[i].flags & SYM_IDX_FLAG_MATERIALIZED)
-+			continue;
-+		if (!dso__materialize_symbol_ondemand(dso, i, &budget_exceeded) &&
-+		    budget_exceeded)
-+			break;
-+	}
-+	dso__free_ondemand(dso);
-+}
-+
-+struct symbol *dso__find_symbol_ondemand(struct dso *dso, u64 addr)
-+{
-+	struct dso_ondemand *od = dso__ondemand(dso);
-+	const struct sym_idx *idx;
-+	u32 lo, hi, mid;
-+
-+	if (!od || !od->sorted || !od->data_dso)
-+		return NULL;
-+
-+	if (!symbol_conf.allow_aliases) {
-+		idx = bsearch(&addr, od->sorted, od->nr_sorted,
-+			      sizeof(*od->sorted), cmp_addr_to_sym_idx);
-+		return idx ? dso__lookup_symbol_ondemand(dso, idx - od->sorted) : NULL;
-+	}
-+
-+	lo = 0;
-+	hi = od->nr_sorted;
-+	while (lo < hi) {
-+		mid = (lo + hi) / 2;
-+		if (addr < od->sorted[mid].start)
-+			hi = mid;
-+		else if (addr >= od->sorted[mid].end)
-+			lo = mid + 1;
-+		else
-+			return dso__lookup_symbol_ondemand(dso, mid);
-+	}
-+	return NULL;
-+}
-+
-+struct symbol *dso__find_symbol_ondemand_exact(struct dso *dso, u64 addr)
-+{
-+	struct dso_ondemand *od = dso__ondemand(dso);
-+	u32 lo, mid;
-+
-+	if (!od || !od->sorted || !od->data_dso)
-+		return NULL;
-+
-+	lo = sym_idx__lower_bound(od, addr);
-+	if (lo >= od->nr_sorted || od->sorted[lo].start != addr)
-+		return NULL;
-+	for (mid = lo; mid < od->nr_sorted &&
-+	     od->sorted[mid].start == addr; mid++) {
-+		if (od->sorted[mid].type == STT_GNU_IFUNC ||
-+		    od->sorted[mid].flags & SYM_IDX_FLAG_IFUNC_ALIAS)
-+			return dso__lookup_symbol_ondemand(dso, mid);
-+	}
-+	return dso__lookup_symbol_ondemand(dso, lo);
-+}
-+
- static int
- dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
- 		       struct symsrc *runtime_ss, int kmodule, int dynsym)
-@@ -1656,6 +2290,34 @@ dso__load_sym_internal(struct dso *dso, struct map *map, struct symsrc *syms_ss,
- 	if (kmodule && adjust_kernel_syms)
- 		max_text_sh_offset = max_text_section(runtime_ss->elf, &runtime_ss->ehdr);
- 
-+	/*
-+	 * PPC64 ELFv1 function symbols need the eager loop's .opd descriptor
-+	 * translation. For symtabs, the selected and runtime sources can differ.
-+	 */
-+	if (symbol_conf.lazy_load_symbols && !dso__kernel(dso) && !kmodule &&
-+	    !syms_ss->opdsec && (dynsym || !runtime_ss->opdsec)) {
-+		int oret = 0;
-+
-+		if (!dynsym && syms_ss->symtab)
-+			oret = dso__build_ondemand_index(dso, syms_ss,
-+							 runtime_ss, 0);
-+		else if (dynsym && !dso__ondemand(dso) && syms_ss->dynsym)
-+			oret = dso__build_ondemand_index(dso, syms_ss,
-+							 runtime_ss, 1);
-+
-+		/*
-+		 * On hard error, propagate it.  If an index was built, the
-+		 * DSO resolves on demand; skip the eager loop below.  If the
-+		 * build declined (oret == 0, no index -- e.g. no usable
-+		 * symbols, or no reopenable data source), continue with the eager
-+		 * loop so the DSO still gets symbols.
-+		 */
-+		if (oret < 0)
-+			return oret;
-+		if (dso__ondemand(dso))
-+			return 1;
-+	}
-+
- 	curr_dso = dso__get(dso);
- 	elf_symtab__for_each_symbol(syms, nr_syms, idx, sym) {
- 		struct symbol *f;
-diff --git a/tools/perf/util/symbol-minimal.c b/tools/perf/util/symbol-minimal.c
-index 0a71d1463952..b932ced5f878 100644
---- a/tools/perf/util/symbol-minimal.c
-+++ b/tools/perf/util/symbol-minimal.c
-@@ -373,6 +373,22 @@ void symbol__elf_init(void)
- {
- }
- 
-+struct symbol *dso__find_symbol_ondemand(struct dso *dso __maybe_unused,
-+					 u64 addr __maybe_unused)
-+{
-+	return NULL;
-+}
-+
-+struct symbol *dso__find_symbol_ondemand_exact(struct dso *dso __maybe_unused,
-+					       u64 addr __maybe_unused)
-+{
-+	return NULL;
-+}
-+
-+void dso__materialize_symbols_ondemand(struct dso *dso __maybe_unused)
-+{
-+}
-+
- bool filename__has_section(const char *filename __maybe_unused, const char *sec __maybe_unused)
- {
- 	return false;
-diff --git a/tools/perf/util/symbol.c b/tools/perf/util/symbol.c
-index cf92a7604a67..d234f7c29cb2 100644
---- a/tools/perf/util/symbol.c
-+++ b/tools/perf/util/symbol.c
-@@ -773,6 +773,7 @@ void dso__sort_by_name(struct dso *dso)
- 	if (!dso__sorted_by_name(dso)) {
- 		size_t len = 0;
- 
-+		dso__materialize_symbols_ondemand(dso);
- 		dso__set_symbol_names(dso, symbols__sort_by_name(dso__symbols(dso), &len));
- 		if (dso__symbol_names(dso)) {
- 			dso__set_symbol_names_len(dso, len);
-@@ -2019,11 +2020,19 @@ int dso__load(struct dso *dso, struct map *map)
- 		}
- 
- #ifdef HAVE_LIBBFD_SUPPORT
+ static struct test_case tests__symbol_bytes[] = {
+ 	TEST_CASE("Concurrent strict reservations", symbol_bytes_reservation),
++	TEST_CASE("Shared duplicate selection", symbol_bytes_duplicate_selection),
 +#ifdef HAVE_LIBELF_SUPPORT
-+		if (is_reg && !symbol_conf.lazy_load_symbols)
-+#else
- 		if (is_reg)
++	TEST_CASE("Truncated lazy symbol names", symbol_bytes_truncated_name),
++	TEST_CASE("Lazy address and name lookup", symbol_bytes_lazy_name_lookup),
++	TEST_CASE("Lazy lookups racing a truncated name lookup", symbol_bytes_lazy_budget_race),
++	TEST_CASE("Lazy and eager symbol parity", symbol_bytes_lazy_parity),
 +#endif
- 			bfdrc = dso__load_bfd_symbols(dso, name);
- #endif
- 		if (is_reg && bfdrc < 0)
- 			sirc = symsrc__init(ss, dso, name, symtab_type);
-+#if defined(HAVE_LIBBFD_SUPPORT) && defined(HAVE_LIBELF_SUPPORT)
-+		if (is_reg && symbol_conf.lazy_load_symbols && sirc < 0)
-+			bfdrc = dso__load_bfd_symbols(dso, name);
-+#endif
+ 	{ .name = NULL, }
+ };
  
- 		if (nsexit)
- 			nsinfo__mountns_enter(dso__nsinfo(dso), &nsc);
-diff --git a/tools/perf/util/symbol_conf.h b/tools/perf/util/symbol_conf.h
-index 30cbc53cbcd0..763d158bc611 100644
---- a/tools/perf/util/symbol_conf.h
-+++ b/tools/perf/util/symbol_conf.h
-@@ -77,6 +77,7 @@ struct symbol_conf {
- 			no_buildid_mmap2,
- 			guest_code,
- 			lazy_load_kernel_maps,
-+			lazy_load_symbols,
- 			keep_exited_threads,
- 			annotate_data_member,
- 			annotate_data_sample,
 
 -- 
 Git-157)
