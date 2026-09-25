@@ -1,392 +1,87 @@
-From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Fri, 25 Sep 2026 22:09:37 +1000
-Subject: [PATCH v4 10/10] arm64: dts: apple: Enable DockChannel HID on M2
- and M3 laptops
+From: Quanye Yang <quanyeyang@proton.me>
+Subject: [PATCH net-next v5 0/2] tcp: annotate lockless access to
+ sk->sk_err
+Date: Fri, 25 Sep 2026 05:47:55 -0700
+Message-Id: <20260925-mptcp-sk-err-net-v5-0-0cac04d6ea48@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-apple-mtp-keyboard-final-v4-10-304c267518f4@gmail.com>
-References: <20260925-apple-mtp-keyboard-final-v4-0-304c267518f4@gmail.com>
-In-Reply-To: <20260925-apple-mtp-keyboard-final-v4-0-304c267518f4@gmail.com>
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>, Jassi Brar <jassisinghbrar@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Hector Martin <marcan@marcan.st>, 
- Michael Reeves <michael.reeves077@gmail.com>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- iommu@lists.linux.dev, linux-input@vger.kernel.org, 
- Yureka Lilian <yureka@cyberchaos.dev>, Julian Braha <julianbraha@gmail.com>, 
- Sasha Finkelstein <k@chaosmail.tech>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790338174; l=7273;
- i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=78kUfdeWKUeiEf4dX7SZ0qB0VILZ/K/tdCVxq/uYAb0=;
- b=ql9b1OpCgKfu67ylj2k8zetQeCfYcC6Vpmvh2QhbqF+cpxXdXncshFDHpVSiDQPzPgZoEwBQw
- HZG5Zi/+UUuD7XirlcCk1oyY+PElWJlNFz/ZfHdU3uuQi1czsVv8DEJ
-X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
- pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
-X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOQQ6CMBAF0KuQrh3TliLFlfcwLkqZajUU0laCM
+ dzdghticPkzM+/PmwT0FgM5Zm/icbDBdi6FYpcRfVPuimCblAmn/EArKqHto+4hPAC9B4cRSmO
+ kREMLKgRJZ71HY8eFPJN5weEYyeU7Cc/6jjrO4rx7syF2/rW0D2y5+F80MGDQqJIphbpSpjn1v
+ oud27e48ANfA9UGwBMwv6lq1EpX9BfIVwDjG0CeAC1YLnNZyrrBX0CsgXIDEECBGSpMwQ0vDmw
+ NTNP0ATbphJ+PAQAA
+X-Change-ID: 20260908-mptcp-sk-err-net-7ff88ef05044
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ "Matthieu Baerts (NGI0)" <matttbe@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790340527; l=2016;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=yzTFT5eQV1N0hhk6LRnlE8otFg7jvGAPkT6VYEZMNPs=;
+ b=0ecpuS0VbDnnDSJOQFSDqe8rw7eLXRYGHFCxZPctJXRC8+Z0JlcHL+juPNO3Yf+a7SaNI7SFN
+ ZWerm32oUT5C9AeI8Q4qq+994bzSwJvJR6Iy4OjwY7Ub0KHJWyzXidY
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the MTP mailbox, DART, DockChannel mailbox, and HID transport on
-the M2 and M3 laptop device trees using this internal input path.
+do_recvmmsg() and getsockopt(SO_ERROR) call sock_error() without the
+socket lock and clear sk_err with xchg().
 
-Add a keyboard alias and keyboard child node for each machine so the
-transport can expose the internal keyboard.
+Patch 1 covers TCP. Peek-only sites use READ_ONCE(). On the no-data
+recv and splice paths, call sock_error() once and only stop when it
+returns a non-zero error. tcp_bpf_sendmsg() folds two unmarked loads
+into one READ_ONCE() and uses that value as the returned errno.
 
-Co-developed-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+Patch 2 does the same for MPTCP and annotates the remaining subflow
+error-report peeks.
+
 ---
- arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi | 29 ++++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi | 24 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j413.dts       | 24 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j415.dts       | 24 +++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts       | 26 ++++++++++++++++++++++-
- arch/arm64/boot/dts/apple/t8122-j504.dts       | 26 +++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j613.dts       | 27 ++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j615.dts       | 27 ++++++++++++++++++++++++
- 8 files changed, 206 insertions(+), 1 deletion(-)
+Changes in v5:
+- recv/splice: call sock_error() once instead of peek-then-consume
+- mention the tcp_bpf_sendmsg() READ_ONCE fold in the TCP commit
+- Link to v4: https://patch.msgid.link/20260917-mptcp-sk-err-net-v4-0-1f04f52f2561@proton.me
 
-diff --git a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-index 0e806d8dd..91fda44d9 100644
---- a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-+++ b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-@@ -16,6 +16,12 @@
- 
- #include "t600x-j314-j316.dtsi"
- 
-+/ {
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+};
-+
- &framebuffer0 {
- 	power-domains = <&ps_disp0_cpu0>, <&ps_dptx_phy_ps>;
- };
-@@ -43,3 +49,26 @@ &wifi0 {
- &bluetooth0 {
- 	compatible = "pci14e4,5f72";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi b/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-index 517b84c18..f6fe382de 100644
---- a/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-+++ b/arch/arm64/boot/dts/apple/t603x-j514-j516.dtsi
-@@ -21,6 +21,7 @@ / {
- 	chassis-type = "laptop";
- 
- 	aliases {
-+		keyboard = &keyboard;
- 		serial0 = &serial0;
- 	};
- 
-@@ -64,3 +65,26 @@ &serial0 {
- &fpwm0 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j413.dts b/arch/arm64/boot/dts/apple/t8112-j413.dts
-index 7ccfceb08..5b9bdad3d 100644
---- a/arch/arm64/boot/dts/apple/t8112-j413.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j413.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -93,3 +94,26 @@ &fpwm1 {
- };
- 
- #include "hwmon-laptop.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j415.dts b/arch/arm64/boot/dts/apple/t8112-j415.dts
-index fdc3409d2..3da132eeb 100644
---- a/arch/arm64/boot/dts/apple/t8112-j415.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j415.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -93,3 +94,26 @@ &fpwm1 {
- };
- 
- #include "hwmon-laptop.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index 7cea5c594..ecc057929 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0+ OR MIT
- /*
-- * Apple MacBook Pro (13-inch, M1, 2022)
-+ * Apple MacBook Pro (13-inch, M2, 2022)
-  *
-  * target-type: J493
-  *
-@@ -24,6 +24,7 @@ / {
- 	 */
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		touchbar0 = &touchbar0;
- 		wifi0 = &wifi0;
- 	};
-@@ -149,3 +150,26 @@ touchbar0: touchbar@0 {
- 
- #include "hwmon-laptop.dtsi"
- #include "hwmon-fan.dtsi"
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j504.dts b/arch/arm64/boot/dts/apple/t8122-j504.dts
-index 464491b55..a08a130be 100644
---- a/arch/arm64/boot/dts/apple/t8122-j504.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j504.dts
-@@ -18,6 +18,10 @@ / {
- 	compatible = "apple,j504", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Pro (14-inch, M3, 2023)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -35,3 +39,25 @@ &fpwm1 {
- 	status = "okay";
- };
- 
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j613.dts b/arch/arm64/boot/dts/apple/t8122-j613.dts
-index 51894ea70..a81326cd5 100644
---- a/arch/arm64/boot/dts/apple/t8122-j613.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j613.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j613", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (13-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -33,3 +37,26 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j615.dts b/arch/arm64/boot/dts/apple/t8122-j615.dts
-index 2a1970c1b..21bcacb6f 100644
---- a/arch/arm64/boot/dts/apple/t8122-j615.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j615.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j615", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (15-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -33,3 +37,26 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+		hid-country-code = <0>;
-+	};
-+
-+	stm {
-+	};
-+};
+Changes in v4:
+- split the annotation change, one points to tcp and another points to
+  mptcp.
+- annotate the remaining unmarked MPTCP sk_err peeks on the
+  subflow error-report path.
+- Link to v3: https://patch.msgid.link/20260912-mptcp-sk-err-net-v3-1-c41383878bde@proton.me
 
--- 
-2.55.0
+Changes in v3:
+- drop the Fixes tag and retarget to net-next
+- annotate the remaining unmarked sk_err peeks on the TCP/MPTCP
+  send, recv and splice paths
+- Link to v2: https://patch.msgid.link/20260909-mptcp-sk-err-net-v2-1-5044abecac90@proton.me
+
+Changes in v2:
+- add Reported-by and Closes for the MPTCP syzkaller report
+- Link to v1: https://patch.msgid.link/20260908-mptcp-sk-err-net-v1-1-da71aaec9afd@proton.me
+
+---
+Quanye Yang (2):
+      tcp: annotate lockless access to sk->sk_err
+      mptcp: annotate lockless access to sk->sk_err
+
+ include/net/tcp.h    |  2 +-
+ net/core/stream.c    |  2 +-
+ net/ipv4/tcp.c       | 12 +++++-------
+ net/ipv4/tcp_bpf.c   | 10 ++++------
+ net/mptcp/protocol.c | 14 ++++++--------
+ net/mptcp/subflow.c  |  4 ++--
+ 6 files changed, 19 insertions(+), 25 deletions(-)
+---
+base-commit: 211f2a875f6f447745d80d5762d6d614503ac84a
+change-id: 20260908-mptcp-sk-err-net-7ff88ef05044
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
