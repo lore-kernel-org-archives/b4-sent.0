@@ -1,11 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 25 Sep 2026 02:47:32 -0500
-Subject: [PATCH 4/6] ASoC: codecs: aw88166: remove fade in/out on
- start/stop
+Date: Fri, 25 Sep 2026 02:47:33 -0500
+Subject: [PATCH 5/6] ASoC: codecs: aw88166: remove async start
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-aw88166-cleanup-v1-4-11f74cb5fe28@gmail.com>
+Message-Id: <20260925-aw88166-cleanup-v1-5-11f74cb5fe28@gmail.com>
 References: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
 In-Reply-To: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
 To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
@@ -14,249 +13,130 @@ To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>,
 Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Val Packett <val@packett.cool>, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=7814;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=3699;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=KMVJyBO5ts0AVLaE2Gkn9rHugXaRsqSgphCz6QG+Aco=;
- b=+Cn3xExpi9StFSctBQMLvjxPVTSb91Yjf9QzNveFoLPcYKSVlgVmD1GLYAbv1A0N5nj3Cx46/
- mGrH6aMXVs1CzoTifv7bG3mCWa7BM3uXn8PpKAI6UbZXiHpV0SY+2yN
+ bh=sDCJAoLxamcNTNiYmxQouA2118oXIyIUYJcx7v+00z8=;
+ b=X4Zw/RPuhxCpYJYgCkIIn08Vy+tOeeBoniuFNxXLPEhEIE5A9mYSl0LiDrzGPzNwQpIDXGuT7
+ ho0OJLNk0ZjCo1/QrexWX3h45zlwpb3C0AZPIwFag8C2HaCTqO31sPL
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This "feature" was copied from downstream, but it does not belong in
-the kernel at all. Remove it to simplify the driver.
+Codec drivers are not supposed to do anything like this. The result was
+that the first second or so of playback was essentially inaudible, and
+very short alert sounds could be missed entirely. Let's not do this.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- sound/soc/codecs/aw88166.c | 157 +--------------------------------------------
- sound/soc/codecs/aw88166.h |   2 -
- 2 files changed, 2 insertions(+), 157 deletions(-)
+ sound/soc/codecs/aw88166.c | 33 ++++-----------------------------
+ sound/soc/codecs/aw88166.h |  5 -----
+ 2 files changed, 4 insertions(+), 34 deletions(-)
 
 diff --git a/sound/soc/codecs/aw88166.c b/sound/soc/codecs/aw88166.c
-index c8b8c70aaf356..ab7af3eaceb28 100644
+index ab7af3eaceb28..6b98864de81a9 100644
 --- a/sound/soc/codecs/aw88166.c
 +++ b/sound/soc/codecs/aw88166.c
-@@ -668,59 +668,16 @@ static int aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
+@@ -24,7 +24,6 @@ struct aw88166 {
+ 	struct aw_device *aw_pa;
+ 	struct mutex lock;
+ 	struct gpio_desc *reset_gpio;
+-	struct delayed_work start_work;
+ 	struct regmap *regmap;
+ 	struct aw_container *aw_cfg;
+ 
+@@ -1148,16 +1147,7 @@ static void aw88166_start_pa(struct aw88166 *aw88166)
+ 		dev_err(aw88166->aw_pa->dev, "start failure (%d)\n", ret);
+ }
+ 
+-static void aw88166_startup_work(struct work_struct *work)
+-{
+-	struct aw88166 *aw88166 =
+-		container_of(work, struct aw88166, start_work.work);
+-
+-	guard(mutex)(&aw88166->lock);
+-	aw88166_start_pa(aw88166);
+-}
+-
+-static void aw88166_start(struct aw88166 *aw88166, bool sync_start)
++static void aw88166_start(struct aw88166 *aw88166)
+ {
+ 	int ret;
+ 
+@@ -1173,12 +1163,7 @@ static void aw88166_start(struct aw88166 *aw88166, bool sync_start)
+ 		return;
+ 	}
+ 
+-	if (sync_start == AW88166_SYNC_START)
+-		aw88166_start_pa(aw88166);
+-	else
+-		queue_delayed_work(system_dfl_wq,
+-			&aw88166->start_work,
+-			AW88166_START_WORK_DELAY_MS);
++	aw88166_start_pa(aw88166);
+ }
+ 
+ static int aw_dev_check_sysint(struct aw_device *aw_dev)
+@@ -1550,7 +1535,7 @@ static int aw88166_profile_set(struct snd_kcontrol *kcontrol,
+ 
+ 	if (aw88166->aw_pa->status) {
+ 		aw88166_stop(aw88166->aw_pa);
+-		aw88166_start(aw88166, AW88166_SYNC_START);
++		aw88166_start(aw88166);
+ 	}
+ 
+ 	return 1;
+@@ -1725,7 +1710,7 @@ static int aw88166_playback_event(struct snd_soc_dapm_widget *w,
+ 	guard(mutex)(&aw88166->lock);
+ 	switch (event) {
+ 	case SND_SOC_DAPM_PRE_PMU:
+-		aw88166_start(aw88166, AW88166_ASYNC_START);
++		aw88166_start(aw88166);
+ 		break;
+ 	case SND_SOC_DAPM_POST_PMD:
+ 		aw88166_stop(aw88166->aw_pa);
+@@ -1759,8 +1744,6 @@ static int aw88166_codec_probe(struct snd_soc_component *component)
+ 	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
+ 	int ret;
+ 
+-	INIT_DELAYED_WORK(&aw88166->start_work, aw88166_startup_work);
+-
+ 	ret = aw88166_request_firmware_file(aw88166);
+ 	if (ret)
+ 		dev_err(aw88166->aw_pa->dev, "%s failed\n", __func__);
+@@ -1768,16 +1751,8 @@ static int aw88166_codec_probe(struct snd_soc_component *component)
  	return ret;
  }
  
--static void aw_dev_fade_in(struct aw_device *aw_dev)
+-static void aw88166_codec_remove(struct snd_soc_component *aw_codec)
 -{
--	struct aw_volume_desc *desc = &aw_dev->volume_desc;
--	u16 fade_in_vol = desc->ctl_volume;
--	int fade_step = aw_dev->fade_step;
--	int i;
+-	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(aw_codec);
 -
--	if (fade_step == 0 || aw_dev->fade_in_time == 0) {
--		aw_dev_set_volume(aw_dev, fade_in_vol);
--		return;
--	}
--
--	for (i = AW88166_MUTE_VOL; i >= fade_in_vol; i -= fade_step) {
--		aw_dev_set_volume(aw_dev, i);
--		usleep_range(aw_dev->fade_in_time, aw_dev->fade_in_time + 10);
--	}
--
--	if (i != fade_in_vol)
--		aw_dev_set_volume(aw_dev, fade_in_vol);
+-	cancel_delayed_work_sync(&aw88166->start_work);
 -}
 -
--static void aw_dev_fade_out(struct aw_device *aw_dev)
--{
--	struct aw_volume_desc *desc = &aw_dev->volume_desc;
--	int fade_step = aw_dev->fade_step;
--	int i;
--
--	if (fade_step == 0 || aw_dev->fade_out_time == 0) {
--		aw_dev_set_volume(aw_dev, AW88166_MUTE_VOL);
--		return;
--	}
--
--	for (i = desc->ctl_volume; i <= AW88166_MUTE_VOL; i += fade_step) {
--		aw_dev_set_volume(aw_dev, i);
--		usleep_range(aw_dev->fade_out_time, aw_dev->fade_out_time + 10);
--	}
--
--	if (i != AW88166_MUTE_VOL) {
--		aw_dev_set_volume(aw_dev, AW88166_MUTE_VOL);
--		usleep_range(aw_dev->fade_out_time, aw_dev->fade_out_time + 10);
--	}
--}
--
- static void aw88166_dev_mute(struct aw_device *aw_dev, bool is_mute)
- {
- 	if (is_mute) {
--		aw_dev_fade_out(aw_dev);
-+		aw_dev_set_volume(aw_dev, AW88166_MUTE_VOL);
- 		regmap_update_bits(aw_dev->regmap, AW88166_SYSCTRL_REG,
- 				~AW88166_HMUTE_MASK, AW88166_HMUTE_ENABLE_VALUE);
- 	} else {
- 		regmap_update_bits(aw_dev->regmap, AW88166_SYSCTRL_REG,
- 				~AW88166_HMUTE_MASK, AW88166_HMUTE_DISABLE_VALUE);
--		aw_dev_fade_in(aw_dev);
-+		aw_dev_set_volume(aw_dev, aw_dev->volume_desc.ctl_volume);
- 	}
- }
- 
-@@ -1515,75 +1472,6 @@ static struct snd_soc_dai_driver aw88166_dai[] = {
- 	},
- };
- 
--static int aw88166_get_fade_in_time(struct snd_kcontrol *kcontrol,
--	struct snd_ctl_elem_value *ucontrol)
--{
--	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
--	struct aw_device *aw_dev = aw88166->aw_pa;
--
--	ucontrol->value.integer.value[0] = aw_dev->fade_in_time;
--
--	return 0;
--}
--
--static int aw88166_set_fade_in_time(struct snd_kcontrol *kcontrol,
--	struct snd_ctl_elem_value *ucontrol)
--{
--	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
--	struct soc_mixer_control *mc =
--		(struct soc_mixer_control *)kcontrol->private_value;
--	struct aw_device *aw_dev = aw88166->aw_pa;
--	int time;
--
--	time = ucontrol->value.integer.value[0];
--
--	if (time < mc->min || time > mc->max)
--		return -EINVAL;
--
--	if (time != aw_dev->fade_in_time) {
--		aw_dev->fade_in_time = time;
--		return 1;
--	}
--
--	return 0;
--}
--
--static int aw88166_get_fade_out_time(struct snd_kcontrol *kcontrol,
--	struct snd_ctl_elem_value *ucontrol)
--{
--	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
--	struct aw_device *aw_dev = aw88166->aw_pa;
--
--	ucontrol->value.integer.value[0] = aw_dev->fade_out_time;
--
--	return 0;
--}
--
--static int aw88166_set_fade_out_time(struct snd_kcontrol *kcontrol,
--	struct snd_ctl_elem_value *ucontrol)
--{
--	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
--	struct soc_mixer_control *mc =
--		(struct soc_mixer_control *)kcontrol->private_value;
--	struct aw_device *aw_dev = aw88166->aw_pa;
--	int time;
--
--	time = ucontrol->value.integer.value[0];
--	if (time < mc->min || time > mc->max)
--		return -EINVAL;
--
--	if (time != aw_dev->fade_out_time) {
--		aw_dev->fade_out_time = time;
--		return 1;
--	}
--
--	return 0;
--}
--
- static int aw88166_dev_set_profile_index(struct aw_device *aw_dev, int index)
- {
- 	/* check the index whether is valid */
-@@ -1704,38 +1592,6 @@ static int aw88166_volume_set(struct snd_kcontrol *kcontrol,
- 	return 0;
- }
- 
--static int aw88166_get_fade_step(struct snd_kcontrol *kcontrol,
--				struct snd_ctl_elem_value *ucontrol)
--{
--	struct snd_soc_component *codec = snd_kcontrol_chip(kcontrol);
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(codec);
--
--	ucontrol->value.integer.value[0] = aw88166->aw_pa->fade_step;
--
--	return 0;
--}
--
--static int aw88166_set_fade_step(struct snd_kcontrol *kcontrol,
--				struct snd_ctl_elem_value *ucontrol)
--{
--	struct snd_soc_component *codec = snd_kcontrol_chip(kcontrol);
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(codec);
--	struct soc_mixer_control *mc =
--		(struct soc_mixer_control *)kcontrol->private_value;
--	int value;
--
--	value = ucontrol->value.integer.value[0];
--	if (value < mc->min || value > mc->max)
--		return -EINVAL;
--
--	if (aw88166->aw_pa->fade_step != value) {
--		aw88166->aw_pa->fade_step = value;
--		return 1;
--	}
--
--	return 0;
--}
--
- static int aw88166_re_get(struct snd_kcontrol *kcontrol,
- 				struct snd_ctl_elem_value *ucontrol)
- {
-@@ -1780,8 +1636,6 @@ static int aw88166_dev_init(struct aw88166 *aw88166, struct aw_container *aw_cfg
- 		dev_err(aw_dev->dev, "aw_dev acf parse failed\n");
- 		return -EINVAL;
- 	}
--	aw_dev->fade_in_time = AW88166_1000_US / 10;
--	aw_dev->fade_out_time = AW88166_1000_US >> 1;
- 	aw_dev->prof_cur = aw_dev->prof_info.prof_desc[0].id;
- 	aw_dev->prof_index = aw_dev->prof_info.prof_desc[0].id;
- 
-@@ -1856,12 +1710,6 @@ static const struct snd_kcontrol_new aw88166_controls[] = {
- 	SOC_SINGLE_EXT("PCM Playback Volume", AW88166_SYSCTRL2_REG,
- 		6, AW88166_MUTE_VOL, 0, aw88166_volume_get,
- 		aw88166_volume_set),
--	SOC_SINGLE_EXT("Fade Step", 0, 0, AW88166_MUTE_VOL, 0,
--		aw88166_get_fade_step, aw88166_set_fade_step),
--	SOC_SINGLE_EXT("Volume Ramp Up Step", 0, 0, FADE_TIME_MAX, FADE_TIME_MIN,
--		aw88166_get_fade_in_time, aw88166_set_fade_in_time),
--	SOC_SINGLE_EXT("Volume Ramp Down Step", 0, 0, FADE_TIME_MAX, FADE_TIME_MIN,
--		aw88166_get_fade_out_time, aw88166_set_fade_out_time),
- 	SOC_SINGLE_EXT("Calib", 0, 0, AW88166_CALI_RE_MAX, 0,
- 		aw88166_re_get, aw88166_re_set),
- 	AW88166_PROFILE_EXT("AW88166 Profile Set", aw88166_profile_info,
-@@ -1989,7 +1837,6 @@ static int aw88166_init(struct aw88166 *aw88166, struct i2c_client *i2c, struct
- 	aw_dev->channel = AW88166_DEV_DEFAULT_CH;
- 	aw_dev->fw_status = AW88166_DEV_FW_FAILED;
- 
--	aw_dev->fade_step = AW88166_VOLUME_STEP_DB;
- 	aw_dev->volume_desc.ctl_volume = AW88166_VOL_DEFAULT_VALUE;
- 
- 	aw88166_parse_channel_dt(aw88166);
+ static const struct snd_soc_component_driver soc_codec_dev_aw88166 = {
+ 	.probe = aw88166_codec_probe,
+-	.remove = aw88166_codec_remove,
+ 	.dapm_widgets = aw88166_dapm_widgets,
+ 	.num_dapm_widgets = ARRAY_SIZE(aw88166_dapm_widgets),
+ 	.dapm_routes = aw88166_audio_map,
 diff --git a/sound/soc/codecs/aw88166.h b/sound/soc/codecs/aw88166.h
-index 377a733447e70..1a61e56f607c9 100644
+index 1a61e56f607c9..b8dbfe0f307c4 100644
 --- a/sound/soc/codecs/aw88166.h
 +++ b/sound/soc/codecs/aw88166.h
-@@ -607,8 +607,6 @@
- #define AW88166_DEV_SYSST_CHECK_MAX		(10)
- #define AW88166_START_RETRIES			(5)
- #define AW88166_START_WORK_DELAY_MS		(0)
--#define FADE_TIME_MAX				100000
--#define FADE_TIME_MIN				0
- #define AW88166_CHIP_ID			(0x2066)
- #define AW88166_I2C_NAME			"aw88166"
- #define AW88166_ACF_FILE			"aw88166_acf.bin"
+@@ -670,11 +670,6 @@ enum AW88166_DEV_DSP_CFG {
+ 	AW88166_DEV_DSP_BYPASS = 1,
+ };
+ 
+-enum {
+-	AW88166_SYNC_START = 0,
+-	AW88166_ASYNC_START,
+-};
+-
+ enum {
+ 	AW88166_RECORD_SEC_DATA = 0,
+ 	AW88166_RECOVERY_SEC_DATA = 1,
 
 -- 
 2.54.0
