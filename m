@@ -1,11 +1,11 @@
 From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Fri, 25 Sep 2026 08:12:06 -0700
-Subject: [PATCH net-next 1/2] net: pcs: rzn1-miic: Make usage of
- miic_port_max consistent
+Date: Fri, 25 Sep 2026 08:12:07 -0700
+Subject: [PATCH net-next 2/2] net: pcs: rzn1-miic: Validate dtb
+ configuration values
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-miic-validate-dtb-v1-1-3a6db9bb75ec@reliablecontrols.com>
+Message-Id: <20260925-miic-validate-dtb-v1-2-3a6db9bb75ec@reliablecontrols.com>
 References: <20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com>
 In-Reply-To: <20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com>
 To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
@@ -17,75 +17,62 @@ To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>,
 Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790349149; l=2489;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790349149; l=1491;
  i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=kvL1f5GVpqLzRlzo0o6CBQ0Ou83R1bL1u9WQLESMN3w=;
- b=HkxCxzdNNWrW5svA3g4awk78ysGQVdbr4fpTAY6DusU5Vn1JG3V+IasCG0PU9Kb8OuOgO/uU+
- 2cURayirJKdDDpSKLpf6D5R1qm1sliJeLIpdwW6YNN6N4xd8dtJW//T
+ bh=roPhZwydaFDUeHZvGOS4KnGtlVh4c4JmiPDOvguDH8M=;
+ b=gWbzQTZ6lLElV7ND2eSJh+7hDwl751c0+N4kJBheMX1CFrEJPgimgpaS8ca9bkhkrm8n8xbEg
+ NLM3smLzYxkAZdqEXO4Q7Ltr1IbOvJZ1cj7X5UQWmq9x8j+gjmAg4p3
 X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
  pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
 X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-miic_port_max is used both as the last port number and the port count
-which can be different depending on SoC numbering. Use compile time
-information to always set this as count and fix logic that was expecting
-the last port number.
+Bad configuration values from the dtb could result in out of bounds array
+access. Verify that parsed values are within range for the SoC and fail the
+probe if they are invalid.
 
 Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
- drivers/net/pcs/pcs-rzn1-miic.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/net/pcs/pcs-rzn1-miic.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
-index cb74861e823c..62daaf76e052 100644
+index 62daaf76e052..30ac2d407005 100644
 --- a/drivers/net/pcs/pcs-rzn1-miic.c
 +++ b/drivers/net/pcs/pcs-rzn1-miic.c
-@@ -59,6 +59,8 @@
+@@ -695,9 +695,24 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
+ 		if (of_property_read_u32(conv, "reg", &port))
+ 			continue;
  
- #define MIIC_MAX_NUM_RSTS		2
- 
-+#define MIIC_PORT_END(x) ((x)->miic_port_start + (x)->miic_port_max - 1)
++		if (port < miic->of_data->miic_port_start ||
++		    port > MIIC_PORT_END(miic->of_data)) {
++			dev_err(miic->dev, "Port number out of range: %d\n", port);
++			of_node_put(conv);
++			ret = -EINVAL;
++			goto err;
++		}
 +
- /**
-  * struct modctrl_match - Matching table entry for  convctrl configuration
-  *			  See section 8.2.1 of manual.
-@@ -222,7 +224,7 @@ enum miic_type {
-  * @index_to_string: String representations of the index values
-  * @index_to_string_count: Number of entries in the index_to_string array
-  * @miic_port_start: MIIC port start number
-- * @miic_port_max: Maximum MIIC supported
-+ * @miic_port_max: Count of total MIIC ports supported
-  * @sw_mode_mask: Switch mode mask
-  * @reset_ids: Reset names array
-  * @reset_count: Number of entries in the reset_ids array
-@@ -482,7 +484,7 @@ struct phylink_pcs *miic_create(struct device *dev, struct device_node *np)
+ 		if (of_property_read_u32(conv, "renesas,miic-input", &conf))
+ 			continue;
  
- 	miic = platform_get_drvdata(pdev);
- 	of_data = miic->of_data;
--	if (port > of_data->miic_port_max || port < of_data->miic_port_start) {
-+	if (port > MIIC_PORT_END(of_data) || port < of_data->miic_port_start) {
- 		put_device(&pdev->dev);
- 		return ERR_PTR(-EINVAL);
++		if (conf >= miic->of_data->conf_to_string_count) {
++			dev_err(miic->dev, "Port configuration out of range: %d\n", conf);
++			of_node_put(conv);
++			ret = -EINVAL;
++			goto err;
++			}
++
+ 		/* Adjust for 0 based index */
+ 		dt_val[port + !miic->of_data->miic_port_start] = conf;
+ 
+@@ -707,6 +722,7 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
  	}
-@@ -822,7 +824,7 @@ static struct miic_of_data rzn1_miic_of_data = {
- 	.index_to_string = index_to_string,
- 	.index_to_string_count = ARRAY_SIZE(index_to_string),
- 	.miic_port_start = 1,
--	.miic_port_max = 5,
-+	.miic_port_max = ARRAY_SIZE(index_to_string) - 1,
- 	.sw_mode_mask = GENMASK(4, 0),
- 	.init_unlock_lock_regs = true,
- 	.miic_write = miic_reg_writel_unlocked,
-@@ -838,7 +840,7 @@ static struct miic_of_data rzt2h_miic_of_data = {
- 	.index_to_string = rzt2h_index_to_string,
- 	.index_to_string_count = ARRAY_SIZE(rzt2h_index_to_string),
- 	.miic_port_start = 0,
--	.miic_port_max = 4,
-+	.miic_port_max = ARRAY_SIZE(rzt2h_index_to_string) - 1,
- 	.sw_mode_mask = GENMASK(2, 0),
- 	.reset_ids = rzt2h_reset_ids,
- 	.reset_count = ARRAY_SIZE(rzt2h_reset_ids),
+ 
+ 	ret = miic_match_dt_conf(miic, dt_val, mode_cfg);
++err:
+ 	kfree(dt_val);
+ 
+ 	return ret;
 
 -- 
 2.43.0
