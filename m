@@ -1,69 +1,87 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 25 Sep 2026 01:52:50 -0500
-Subject: [PATCH v2] Bluetooth: btbcm: Add entry for BCM4356A3 UART
- bluetooth
+Subject: [PATCH v2 0/4] drm/panel: Support Retroid Pocket 6 panel
+Date: Fri, 25 Sep 2026 02:08:18 -0500
+Message-Id: <20260925-rp6-panel-v2-0-19c425e523de@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-bcm4356a3-bt-v2-1-42098aca235b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMSwrDIBSF4a2EO67FR6Kho+6jZGB8JBdqLBqkJ
- bj32sw7/A+c74DsEroMt+6A5ApmjFsLfunArHpbHEHbGjjlkiqmyGxCLwapBZl3YqwajaG+526
- Ednkl5/F9co+p9Yp5j+lz6oX91j9QYYQR7zW3AxdCSHpfgsbn1cQAU631C4lyC7aoAAAA
-X-Change-ID: 20260717-bcm4356a3-bt-cd78cc0f42e8
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22QzY6DMAyEXwXlvFnlDxM49T1WPQTjtJHKTxMWt
+ ap49waQVj3scSzP+Bu/WKIYKLGmeLFIS0hhHLJQXwXDqxsuxEOXNVNCgdDS8jgBn9xAN25BWiN
+ KI0ACy/tTJB8ee9bP+dCR7r85cj6GrHWJOI59H+amMKhK7dC0qm4tAiL4jrz1teqMd9gRKALd1
+ uwTJZNtIEpW3D0Hfsdky1JwCSiqFnRHCprlX4sVG/ufw5ZoTQXCg9fNotkGfA1pHuNz/8Uid+L
+ DKs1H7UXyfFBKlI4QvfCnS+/C7Tv3Yud1Xd+ovq1vUwEAAA==
+X-Change-ID: 20260318-rp6-panel-861840540616
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790319184; l=1578;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790320100; l=2722;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=AD/eIUQbbqFcpJLnIHNzJvShs6PAafOnSxMSfdwR5aY=;
- b=hvB9VnfWyCfk/orBFrRCxM7ya3Prs06AZUE6g+o4iJ9UT+/QQ5vydsb3zumvsc7KNQhCG/lEZ
- rlBMHG/mB3GBinuH8/l/nFTEppldRBTlQzdwUNHmNfR4xec4AvesYvt
+ bh=ZsKpam8KLtPpmS+Ar91k9r3ouuN+Nzl8+6PUy68plf4=;
+ b=7pb5Lha82dm5y2lRwcuZPI1ZtEVwqZLB79LeQPRJT/DI0OJqFEhBoxqxmYNUxwbvq0J+lLzeb
+ w9OW7lHlSgxDWGyR86bdLUQ4TBuciIa0rtfuJuSJViaIm/3pumxEbGT
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds the device ID for the bluetooth chip used in the
-Nvidia specific Broadcom BCM4356 PCI-E WiFi / UART BT chip.
+This panel uses a Visionox VTDR6130 DDIC. There is an existing driver
+for this ddic, however it is currently hardcoded for a panel used on
+several Qualcomm devkits. This series sets up the driver to support
+multiple panels, then adds the RP6 panel. It also adds support for
+rotation as the RP6 panel is mounted sideways.
 
-Startup log:
-
-  Bluetooth: hci0: BCM: chip id 122
-  Bluetooth: hci0: BCM: features 0x0f
-  Bluetooth: hci0: BCM4356A3
-  Bluetooth: hci0: BCM4356A3 (001.004.009) build 0000
-  Bluetooth: hci0: BCM4356A3 'brcm/BCM4356A3.nvidia,p2894-2551-b00.hcd' Patch
-  Bluetooth: hci0: BCM: features 0x0f
-  Bluetooth: hci0: BCM4356A3 37.4MHz Class 1.5 Nvidia mDarcy-0108
-  Bluetooth: hci0: BCM4356A3 (001.004.009) build 0109
+This depends on the Retroid Pocket dt series [0] for the vendor prefix
+patch. That series depends on the AYN dt series [1] to apply cleanly.
+    
+[0] https://lore.kernel.org/linux-arm-msm/20260808-rp-qcs8550-v1-0-a5a365ba3dc5@gmail.com/
+[1] https://lore.kernel.org/linux-arm-msm/20260727-ayn-qcs8550-v9-0-e3db456e10e5@gmail.com/
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
 Changes in v2:
-- Add startup log to commit message
-- Link to v1: https://lore.kernel.org/r/20260717-bcm4356a3-bt-v1-1-ffa2d5233360@gmail.com
+- Drop unused struct member in patch 3
+- Undo width/height changes in patch 3
+- Link to v1: https://lore.kernel.org/r/20260814-rp6-panel-v1-0-111c1aeccf0f@gmail.com
+
 ---
- drivers/bluetooth/btbcm.c | 1 +
- 1 file changed, 1 insertion(+)
+Aaron Kling (4):
+      dt-bindings: display: visionox,vtdr6130: Add Retroid Pocket 6 panel
+      drm/panel: visionox-vtdr6130: Add panel orientation support
+      drm/panel: visionox-vtdr6130: Modularize panel config
+      drm/panel: visionox-vtdr6130: Add Retroid Pocket 6 panel
 
-diff --git a/drivers/bluetooth/btbcm.c b/drivers/bluetooth/btbcm.c
-index 63c4c788d9c48..065536d4ec762 100644
---- a/drivers/bluetooth/btbcm.c
-+++ b/drivers/bluetooth/btbcm.c
-@@ -508,6 +508,7 @@ static const struct bcm_subver_table bcm_uart_subver_table[] = {
- 	{ 0x6606, "BCM4345C5"	},	/* 003.006.006 */
- 	{ 0x230f, "BCM4356A2"	},	/* 001.003.015 */
- 	{ 0x2310, "BCM4343A2"	},	/* 001.003.016 */
-+	{ 0x2409, "BCM4356A3"	},	/* 001.004.009 */
- 	{ 0x220e, "BCM20702A1"  },	/* 001.002.014 */
- 	{ 0x420d, "BCM4349B1"	},	/* 002.002.013 */
- 	{ 0x420e, "BCM4349B1"	},	/* 002.002.014 */
-
+ .../bindings/display/panel/visionox,vtdr6130.yaml  |   8 +-
+ drivers/gpu/drm/panel/panel-visionox-vtdr6130.c    | 221 ++++++++++++++++++---
+ 2 files changed, 197 insertions(+), 32 deletions(-)
 ---
 base-commit: 4c253ac4b29b8c6cc6fdef8f92d4facde62e63b9
-change-id: 20260717-bcm4356a3-bt-cd78cc0f42e8
+change-id: 20260318-rp6-panel-861840540616
+prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v9
+prerequisite-patch-id: 17ba304f7a8a08cc78f98e198db9c51f4786a22c
+prerequisite-patch-id: 21873631f5dcdb9bbbdb5c20c3f5e9816cc405f9
+prerequisite-patch-id: bf7b5dea0097cbbdf04929a4246d1fc65c607ea8
+prerequisite-patch-id: d7f546eddc96a4f31a1e681abddbc96bd68abb32
+prerequisite-patch-id: d40d784ad8efbb1204c024408be2067725a06cf2
+prerequisite-patch-id: 25bbd55199a8250a912ef542b31f43dd5ccdbc90
+prerequisite-change-id: 20260808-rp-qcs8550-85c84760f6f3:v3
+prerequisite-patch-id: 17ba304f7a8a08cc78f98e198db9c51f4786a22c
+prerequisite-patch-id: 21873631f5dcdb9bbbdb5c20c3f5e9816cc405f9
+prerequisite-patch-id: bf7b5dea0097cbbdf04929a4246d1fc65c607ea8
+prerequisite-patch-id: d7f546eddc96a4f31a1e681abddbc96bd68abb32
+prerequisite-patch-id: d40d784ad8efbb1204c024408be2067725a06cf2
+prerequisite-patch-id: 25bbd55199a8250a912ef542b31f43dd5ccdbc90
+prerequisite-patch-id: c79dacb2a8ca1298387bc9bc4a543de97c670a50
+prerequisite-patch-id: 471c39ef6ce532e349e1f787b67ef1286b51f683
+prerequisite-patch-id: 08107f621a4feffc1e5d644f714159a2d4b1f794
+prerequisite-patch-id: 7e40351a859141256b0aa30afe259be3c03ec487
 
 Best regards,
 -- 
