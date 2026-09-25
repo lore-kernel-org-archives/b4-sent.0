@@ -1,11 +1,11 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 25 Sep 2026 02:08:21 -0500
-Subject: [PATCH v2 3/4] drm/panel: visionox-vtdr6130: Modularize panel
- config
+Date: Fri, 25 Sep 2026 02:08:22 -0500
+Subject: [PATCH v2 4/4] drm/panel: visionox-vtdr6130: Add Retroid Pocket 6
+ panel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-rp6-panel-v2-3-19c425e523de@gmail.com>
+Message-Id: <20260925-rp6-panel-v2-4-19c425e523de@gmail.com>
 References: <20260925-rp6-panel-v2-0-19c425e523de@gmail.com>
 In-Reply-To: <20260925-rp6-panel-v2-0-19c425e523de@gmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -18,168 +18,163 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790320100; l=5035;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790320100; l=6014;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=oRgQFG+Me9dofHYSw/NC9OmBO4cg+QFRt96qK9Xmzh0=;
- b=BSv/bLFo8oSvDcDHQa9j91sG03LuCGd824UrK8gCRTp9mDI3SBPycLwD7zP05SWo2VCu57tT3
- Zlb6ggdc7IOAMLqq486JROppBFel7RkhSdkJ8jDw5eA+cUtC3kXpSi2
+ bh=KK2X91MsaixtTJvsZhX3AF+6Xf7FsHhTOW13xw4bzA0=;
+ b=n9gro6KbuHIq9LRGBxSsfQnTdP577N5Y5RXJjt7mTqOO/1RjkJmQpigYn3aYRBkAf+t2S2bB3
+ HdgDwMduGpFBQU1U3iENE8tOeqO07IwlG50kRABLqLYlj1ufqWSPu+v
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The vtdr6130 is a DDIC, a common chip that is used by multiple panels.
-Prepare the driver for more panels.
+Add support for the 1080x1920 panel used in the Retroid Pocket 6.
 
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/gpu/drm/panel/panel-visionox-vtdr6130.c | 91 +++++++++++++++++--------
- 1 file changed, 61 insertions(+), 30 deletions(-)
+ drivers/gpu/drm/panel/panel-visionox-vtdr6130.c | 114 ++++++++++++++++++++++++
+ 1 file changed, 114 insertions(+)
 
 diff --git a/drivers/gpu/drm/panel/panel-visionox-vtdr6130.c b/drivers/gpu/drm/panel/panel-visionox-vtdr6130.c
-index b66d6c7128c75..278f5acc2d661 100644
+index 278f5acc2d661..d0db128cda819 100644
 --- a/drivers/gpu/drm/panel/panel-visionox-vtdr6130.c
 +++ b/drivers/gpu/drm/panel/panel-visionox-vtdr6130.c
-@@ -19,11 +19,24 @@
+@@ -60,6 +60,82 @@ static void visionox_vtdr6130_reset(struct visionox_vtdr6130 *ctx)
+ 	usleep_range(10000, 11000);
+ }
  
- struct visionox_vtdr6130 {
- 	struct drm_panel panel;
--	struct drm_dsc_config dsc;
- 	struct mipi_dsi_device *dsi;
- 	struct gpio_desc *reset_gpio;
- 	struct regulator_bulk_data *supplies;
- 	enum drm_panel_orientation orientation;
-+	struct visionox_vtdr6130_desc *desc;
-+};
++static int retroidpocket_rp6_on(struct visionox_vtdr6130 *ctx)
++{
++	struct mipi_dsi_device *dsi = ctx->dsi;
++	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
++	struct drm_dsc_picture_parameter_set pps;
 +
-+struct visionox_vtdr6130_desc {
-+	unsigned int bpc;
-+	unsigned int lanes;
-+	unsigned long mode_flags;
-+	enum mipi_dsi_pixel_format format;
++	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 +
-+	const struct drm_display_mode *modes;
-+	unsigned int num_modes;
-+	int (*init_sequence)(struct visionox_vtdr6130 *ctx);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x03, 0x01);
++	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx,
++				     MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x20);
++	mipi_dsi_dcs_set_display_brightness_multi(&dsi_ctx, 0xff07);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x6f, 0x02);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_SET_ADDRESS_MODE, 0x02);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x59, 0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x6c, 0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x6d, 0x00);
 +
-+	struct drm_dsc_config dsc;
- };
- 
- static const struct regulator_bulk_data visionox_vtdr6130_supplies[] = {
-@@ -162,7 +175,7 @@ static int visionox_vtdr6130_prepare(struct drm_panel *panel)
- 
- 	visionox_vtdr6130_reset(ctx);
- 
--	ret = visionox_vtdr6130_on(ctx);
-+	ret = ctx->desc->init_sequence(ctx);
- 	if (ret < 0) {
- 		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
- 		regulator_bulk_disable(ARRAY_SIZE(visionox_vtdr6130_supplies),
-@@ -187,26 +200,50 @@ static int visionox_vtdr6130_unprepare(struct drm_panel *panel)
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x70, 0x11, 0x00, 0x00, 0x89,
++				     0x30, 0x80, 0x07, 0x80, 0x04, 0x38, 0x00,
++				     0x14, 0x02, 0x1c, 0x02, 0x1c, 0x02, 0x00,
++				     0x02, 0x25, 0x00, 0x20, 0x01, 0xd5, 0x00,
++				     0x07, 0x00, 0x0d, 0x05, 0x7a, 0x05, 0x16,
++				     0x18, 0x00, 0x10, 0xf0, 0x03, 0x0c, 0x20,
++				     0x00, 0x06, 0x0b, 0x0b, 0x33, 0x0e, 0x1c,
++				     0x2a, 0x38, 0x46, 0x54, 0x62, 0x69, 0x70,
++				     0x77, 0x79, 0x7b, 0x7d, 0x7e, 0x01, 0x02,
++				     0x01, 0x00, 0x09, 0x40, 0x09, 0xbe, 0x19,
++				     0xfc, 0x19, 0xfa, 0x19, 0xf8, 0x1a, 0x38,
++				     0x1a, 0x78, 0x1a, 0xb6, 0x2a, 0xb6, 0x2a,
++				     0xf4, 0x2a, 0xf4, 0x4b, 0x34, 0x63, 0x74,
++				     0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
++
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0xaa, 0x10);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb1, 0x02, 0x15, 0x00, 0x14,
++				     0x00, 0x20, 0x00, 0x02, 0x16, 0x00, 0x14,
++				     0x07, 0xb4, 0x00, 0x02, 0x16, 0x00, 0x14,
++				     0x00, 0x10, 0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0xaa, 0x14);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb2, 0x03, 0x33);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb4, 0x0a, 0x72, 0x00, 0x00,
++				     0x0a, 0x72, 0x00, 0x00, 0x0a, 0x72, 0x00,
++				     0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb5, 0x00, 0x1e, 0x1e, 0x1e,
++				     0x1e, 0x1e, 0x1e, 0x06, 0x01);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb9, 0x00, 0x00, 0x08, 0x1e,
++				     0x1e, 0x1e);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xbc, 0x10, 0x00, 0x00, 0x08,
++				     0x11, 0x1e, 0x7c, 0x1e, 0x7c, 0x1e, 0x7c);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xbe, 0x10, 0x10, 0x00, 0x0c,
++				     0x22, 0x1e, 0x62, 0x1e, 0x62, 0x1e, 0x62);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xff, 0x5a, 0x80);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x65, 0x13);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xfd, 0x01);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xff, 0x5a, 0x81);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf9, 0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xff, 0x5a, 0x83);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x65, 0x04);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf8, 0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0xaa, 0x00);
++	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xff, 0x5a, 0x00);
++
++	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
++	mipi_dsi_msleep(&dsi_ctx, 150);
++
++	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
++	mipi_dsi_msleep(&dsi_ctx, 50);
++
++	drm_dsc_pps_payload_pack(&pps, dsi->dsc);
++	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
++	mipi_dsi_compression_mode_multi(&dsi_ctx, true);
++
++	return dsi_ctx.accum_err;
++}
++
+ static int visionox_vtdr6130_on(struct visionox_vtdr6130 *ctx)
+ {
+ 	struct mipi_dsi_device *dsi = ctx->dsi;
+@@ -200,6 +276,43 @@ static int visionox_vtdr6130_unprepare(struct drm_panel *panel)
  	return 0;
  }
  
--static const struct drm_display_mode visionox_vtdr6130_mode = {
--	.clock = (1080 + 20 + 2 + 20) * (2400 + 20 + 2 + 18) * 144 / 1000,
--	.hdisplay = 1080,
--	.hsync_start = 1080 + 20,
--	.hsync_end = 1080 + 20 + 2,
--	.htotal = 1080 + 20 + 2 + 20,
--	.vdisplay = 2400,
--	.vsync_start = 2400 + 20,
--	.vsync_end = 2400 + 20 + 2,
--	.vtotal = 2400 + 20 + 2 + 18,
--	.width_mm = 71,
--	.height_mm = 157,
-+static const struct drm_display_mode visionox_vtdr6130_modes[] = {
++static const struct drm_display_mode retroidpocket_rp6_modes[] = {
 +	{
-+		.clock = (1080 + 20 + 2 + 20) * (2400 + 20 + 2 + 18) * 144 / 1000,
++		.clock = (1080 + 22 + 2 + 16) * (1920 + 16 + 2 + 20) * 120 / 1000,
 +		.hdisplay = 1080,
-+		.hsync_start = 1080 + 20,
-+		.hsync_end = 1080 + 20 + 2,
-+		.htotal = 1080 + 20 + 2 + 20,
-+		.vdisplay = 2400,
-+		.vsync_start = 2400 + 20,
-+		.vsync_end = 2400 + 20 + 2,
-+		.vtotal = 2400 + 20 + 2 + 18,
-+		.width_mm = 71,
-+		.height_mm = 157,
++		.hsync_start = 1080 + 22,
++		.hsync_end = 1080 + 22 + 2,
++		.htotal = 1080 + 22 + 2 + 16,
++		.vdisplay = 1920,
++		.vsync_start = 1920 + 16,
++		.vsync_end = 1920 + 16 + 2,
++		.vtotal = 1920 + 16 + 2 + 20,
++		.width_mm = 69,
++		.height_mm = 122,
 +	},
 +};
 +
-+static struct visionox_vtdr6130_desc visionox_vtdr6130_panel_desc = {
-+	.modes = visionox_vtdr6130_modes,
-+	.num_modes = ARRAY_SIZE(visionox_vtdr6130_modes),
++static struct visionox_vtdr6130_desc retroidpocket_rp6_panel_desc = {
++	.modes = retroidpocket_rp6_modes,
++	.num_modes = ARRAY_SIZE(retroidpocket_rp6_modes),
 +	.bpc = 8,
 +	.lanes = 4,
 +	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_NO_EOT_PACKET |
++	.mode_flags = MIPI_DSI_MODE_NO_EOT_PACKET |
 +		      MIPI_DSI_CLOCK_NON_CONTINUOUS,
-+	.init_sequence = visionox_vtdr6130_on,
++	.init_sequence = retroidpocket_rp6_on,
 +	.dsc = {
 +		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x2,
-+		.slice_height = 40,
++		.dsc_version_minor = 0x1,
++		.slice_height = 12,
 +		.slice_width = 540,
 +		.slice_count = 2,
 +		.bits_per_component = 8,
 +		.bits_per_pixel = 8 << 4,
 +		.block_pred_enable = true,
 +	},
- };
- 
- static int visionox_vtdr6130_get_modes(struct drm_panel *panel,
- 				       struct drm_connector *connector)
- {
-+	struct visionox_vtdr6130 *ctx = to_visionox_vtdr6130(panel);
- 	struct drm_display_mode *mode;
- 
--	mode = drm_mode_duplicate(connector->dev, &visionox_vtdr6130_mode);
-+	mode = drm_mode_duplicate(connector->dev, ctx->desc->modes);
- 	if (!mode)
- 		return -ENOMEM;
- 
-@@ -284,23 +321,17 @@ static int visionox_vtdr6130_probe(struct mipi_dsi_device *dsi)
- 		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
- 				     "Failed to get reset-gpios\n");
- 
-+	ctx->desc = (struct visionox_vtdr6130_desc *)of_device_get_match_data(dev);
-+	if (!ctx->desc)
-+		return -ENODEV;
++};
 +
- 	ctx->dsi = dsi;
- 	mipi_dsi_set_drvdata(dsi, ctx);
- 
--	ctx->dsc.dsc_version_major = 0x1;
--	ctx->dsc.dsc_version_minor = 0x2;
--	ctx->dsc.slice_height = 40;
--	ctx->dsc.slice_width = 540;
--	ctx->dsc.slice_count = 2;
--	ctx->dsc.bits_per_component = 8;
--	ctx->dsc.bits_per_pixel = 8 << 4;
--	ctx->dsc.block_pred_enable = true;
--
--	dsi->dsc = &ctx->dsc;
--	dsi->lanes = 4;
--	dsi->format = MIPI_DSI_FMT_RGB888;
--	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_NO_EOT_PACKET |
--			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
-+	dsi->dsc = &ctx->desc->dsc;
-+	dsi->lanes = ctx->desc->lanes;
-+	dsi->format = ctx->desc->format;
-+	dsi->mode_flags = ctx->desc->mode_flags;
- 	ctx->panel.prepare_prev_first = true;
- 
- 	ret = drm_of_get_panel_orientation(dev->of_node, &ctx->orientation);
-@@ -322,7 +353,7 @@ static int visionox_vtdr6130_probe(struct mipi_dsi_device *dsi)
+ static const struct drm_display_mode visionox_vtdr6130_modes[] = {
+ 	{
+ 		.clock = (1080 + 20 + 2 + 20) * (2400 + 20 + 2 + 18) * 144 / 1000,
+@@ -353,6 +466,7 @@ static int visionox_vtdr6130_probe(struct mipi_dsi_device *dsi)
  }
  
  static const struct of_device_id visionox_vtdr6130_of_match[] = {
--	{ .compatible = "visionox,vtdr6130" },
-+	{ .compatible = "visionox,vtdr6130", .data = &visionox_vtdr6130_panel_desc },
++	{ .compatible = "retroidpocket,rp6-panel", .data = &retroidpocket_rp6_panel_desc },
+ 	{ .compatible = "visionox,vtdr6130", .data = &visionox_vtdr6130_panel_desc },
  	{ /* sentinel */ }
  };
- MODULE_DEVICE_TABLE(of, visionox_vtdr6130_of_match);
 
 -- 
 2.54.0
