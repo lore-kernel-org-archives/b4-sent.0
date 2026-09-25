@@ -1,11 +1,11 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Fri, 25 Sep 2026 22:09:29 +1000
-Subject: [PATCH v4 02/10] dt-bindings: mailbox: apple: Add DockChannel
- mailbox
+Date: Fri, 25 Sep 2026 22:09:30 +1000
+Subject: [PATCH v4 03/10] dt-bindings: iommu: apple,dart: Add M3
+ compatibles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-apple-mtp-keyboard-final-v4-2-304c267518f4@gmail.com>
+Message-Id: <20260925-apple-mtp-keyboard-final-v4-3-304c267518f4@gmail.com>
 References: <20260925-apple-mtp-keyboard-final-v4-0-304c267518f4@gmail.com>
 In-Reply-To: <20260925-apple-mtp-keyboard-final-v4-0-304c267518f4@gmail.com>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -21,142 +21,45 @@ Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  iommu@lists.linux.dev, linux-input@vger.kernel.org, 
  Yureka Lilian <yureka@cyberchaos.dev>, Julian Braha <julianbraha@gmail.com>, 
- Sasha Finkelstein <k@chaosmail.tech>
+ Sasha Finkelstein <k@chaosmail.tech>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790338174; l=4166;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790338174; l=1038;
  i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=wjuQxiC5MrfndsNZKrsbL/Dah8aA7f3onm2i59wCOVU=;
- b=VAYTSP6K0OKOMzv+cyPoo938TMLqzJBtlKtq6tqC0BYzoSiLhfVXE337qS+z9c6Dr7+xJQ0DM
- LOEqe92zLGqBMFs4C9fcaiVPVplBj3XRAphaVMC16eZk4lZgrDgS8is
+ bh=eobqpYoOQsgGWNW9L5TA1i/2YQsYWCHpu2/7P/SVNyI=;
+ b=ioTQIm0EYLBTFlBRu4MzWV+HAV+mDzEq51dsp5PfG2k3KkG4dYWTIMxUf2NqA8XsyIk1BP3qD
+ NBso0HsBhrnCjlkKytJCdK0w1Di8qdQDu+atiHWRZhhfFGJRtA0yPwc
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DockChannel is a FIFO and interrupt block used by Apple coprocessors
-to exchange byte-stream traffic with the AP.
+Add the t8122, t6030 and t6031 DART compatibles used by the MTP
+coprocessor on M3, M3 Pro and M3 Max SoCs, with the t8110 fallback.
 
-Describe it as a mailbox provider for HID and serial clients. The FIFO
-interrupt pair is configurable because MTP and DebugUSB use different
-pairs.
-
-Suggested-by: Yureka Lilian <yureka@cyberchaos.dev>
 Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
-
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
-Conor's v3 Reviewed-by is not carried forward because this version adds
-the apple,irq-index property.
----
- .../bindings/mailbox/apple,t8112-dockchannel.yaml  | 88 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 89 insertions(+)
+ Documentation/devicetree/bindings/iommu/apple,dart.yaml | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml b/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
-new file mode 100644
-index 000000000..9afd58613
---- /dev/null
-+++ b/Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
-@@ -0,0 +1,88 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/mailbox/apple,t8112-dockchannel.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Apple DockChannel FIFO Mailbox
-+
-+maintainers:
-+  - Michael Reeves <michael.reeves077@gmail.com>
-+
-+description:
-+  DockChannel is a hardware FIFO and interrupt block used on Apple SoCs for
-+  low-latency byte stream communication with co-processors.
-+
-+properties:
-+  compatible:
-+    oneOf:
-+      - items:
-+          - const: apple,t8112-dockchannel
-+      - items:
+diff --git a/Documentation/devicetree/bindings/iommu/apple,dart.yaml b/Documentation/devicetree/bindings/iommu/apple,dart.yaml
+index 47ec7fa52..efadec786 100644
+--- a/Documentation/devicetree/bindings/iommu/apple,dart.yaml
++++ b/Documentation/devicetree/bindings/iommu/apple,dart.yaml
+@@ -29,7 +29,11 @@ properties:
+           - apple,t8110-dart
+           - apple,t6000-dart
+       - items:
+-          - const: apple,t6020-dart
 +          - enum:
-+              - apple,t6020-dockchannel
-+              - apple,t6030-dockchannel
-+              - apple,t6031-dockchannel
-+              - apple,t8122-dockchannel
-+          - const: apple,t8112-dockchannel
-+
-+  reg:
-+    items:
-+      - description: Interrupt control registers
-+      - description: FIFO configuration registers
-+      - description: FIFO data registers
-+
-+  reg-names:
-+    items:
-+      - const: irq
-+      - const: config
-+      - const: data
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  "#mbox-cells":
-+    const: 0
-+
-+  apple,irq-index:
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    maximum: 15
-+    default: 1
-+    description: |
-+      Index of the FIFO interrupt pair in the interrupt control registers.
-+      TX uses bit (2 * index) and RX uses bit (2 * index + 1). The configuration
-+      and data register resources must describe the corresponding FIFO.
-+      If absent, pair 1 is used for compatibility with older keyboard nodes.
-+
-+  nonposted-mmio: true
-+
-+required:
-+  - compatible
-+  - reg
-+  - reg-names
-+  - interrupts
-+  - "#mbox-cells"
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/apple-aic.h>
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
-+    soc {
-+        #address-cells = <2>;
-+        #size-cells = <2>;
-+
-+        mailbox@24eb14000 {
-+            compatible = "apple,t8112-dockchannel";
-+            reg = <0x2 0x4eb14000 0x0 0x4000>,
-+                  <0x2 0x4eb30000 0x0 0x4000>,
-+                  <0x2 0x4eb34000 0x0 0x4000>;
-+            reg-names = "irq", "config", "data";
-+            interrupt-parent = <&aic>;
-+            interrupts = <AIC_IRQ 850 IRQ_TYPE_LEVEL_HIGH>;
-+            #mbox-cells = <0>;
-+            apple,irq-index = <1>;
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 3b2eb2a7a..0183c3e1c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2643,6 +2643,7 @@ F:	Documentation/devicetree/bindings/iommu/apple,dart.yaml
- F:	Documentation/devicetree/bindings/iommu/apple,sart.yaml
- F:	Documentation/devicetree/bindings/leds/backlight/apple,dwi-bl.yaml
- F:	Documentation/devicetree/bindings/mailbox/apple,mailbox.yaml
-+F:	Documentation/devicetree/bindings/mailbox/apple,t8112-dockchannel.yaml
- F:	Documentation/devicetree/bindings/mfd/apple,smc.yaml
- F:	Documentation/devicetree/bindings/net/bluetooth/brcm,bcm4377-bluetooth.yaml
- F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
++              - apple,t6020-dart
++              - apple,t6030-dart
++              - apple,t6031-dart
++              - apple,t8122-dart
+           - const: apple,t8110-dart
+ 
+   reg:
 
 -- 
 2.55.0
