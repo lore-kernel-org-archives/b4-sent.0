@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 25 Sep 2026 02:47:33 -0500
-Subject: [PATCH 5/6] ASoC: codecs: aw88166: remove async start
+Date: Fri, 25 Sep 2026 02:47:34 -0500
+Subject: [PATCH 6/6] ASoC: codecs: aw88166: make volume control usable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-aw88166-cleanup-v1-5-11f74cb5fe28@gmail.com>
+Message-Id: <20260925-aw88166-cleanup-v1-6-11f74cb5fe28@gmail.com>
 References: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
 In-Reply-To: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
 To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
@@ -13,130 +13,176 @@ To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>,
 Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Val Packett <val@packett.cool>, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=3699;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=6241;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=sDCJAoLxamcNTNiYmxQouA2118oXIyIUYJcx7v+00z8=;
- b=X4Zw/RPuhxCpYJYgCkIIn08Vy+tOeeBoniuFNxXLPEhEIE5A9mYSl0LiDrzGPzNwQpIDXGuT7
- ho0OJLNk0ZjCo1/QrexWX3h45zlwpb3C0AZPIwFag8C2HaCTqO31sPL
+ bh=hlFleUeou8JhECaow+haiTbL5j1iHTRlPX7dYMh42WA=;
+ b=8ei86rGmq+NZcEtDxPG8PHDuKVhtWPjchY7VYOZCzjJhD47hY3R5WFh2pvF/6jeoxT45d1lso
+ +6pKmnCIcGGB1HBZEOyROlRvEMB2ordB1euWsSYnMLtxz5Ko+9wh1ev
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Codec drivers are not supposed to do anything like this. The result was
-that the first second or so of playback was essentially inaudible, and
-very short alert sounds could be missed entirely. Let's not do this.
+- Invert the value to match userspace expectations (in the hardware,
+  positive numbers represent negative dB attenuation)
+- Provide TLV metadata for the dB scale (and divide the raw values by 2
+  as the excessive precision used by HW is not representable in TLV)
+- Do not unnecessarily reset the volume while switching profiles
+- Simplify aw88166_dev_set_volume using regmap_update_bits
+- Do not add the initial volume from the profile to the requested volume
+  as that would throw off the dB mapping (if a lower max limit is
+  desired, it can be set in the UCM profile in userspace)
 
+With this change, it's actually possible to use this hardware volume
+control as PlaybackVolume in an ALSA UCM profile.
+
+Fixes: 94e412c28e61 ("ASoC: codecs: Add aw88166 amplifier driver")
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- sound/soc/codecs/aw88166.c | 33 ++++-----------------------------
- sound/soc/codecs/aw88166.h |  5 -----
- 2 files changed, 4 insertions(+), 34 deletions(-)
+ sound/soc/codecs/aw88166.c | 47 ++++++++++++++++++++++------------------------
+ sound/soc/codecs/aw88166.h | 15 ++++++++++++++-
+ 2 files changed, 36 insertions(+), 26 deletions(-)
 
 diff --git a/sound/soc/codecs/aw88166.c b/sound/soc/codecs/aw88166.c
-index ab7af3eaceb28..6b98864de81a9 100644
+index 6b98864de81a9..3e87be33f4908 100644
 --- a/sound/soc/codecs/aw88166.c
 +++ b/sound/soc/codecs/aw88166.c
-@@ -24,7 +24,6 @@ struct aw88166 {
- 	struct aw_device *aw_pa;
- 	struct mutex lock;
- 	struct gpio_desc *reset_gpio;
--	struct delayed_work start_work;
- 	struct regmap *regmap;
- 	struct aw_container *aw_cfg;
+@@ -17,6 +17,7 @@
+ #include <linux/regmap.h>
+ #include <sound/soc.h>
+ #include <sound/pcm_params.h>
++#include <sound/tlv.h>
+ #include "aw88166.h"
+ #include "aw88395/aw88395_device.h"
  
-@@ -1148,16 +1147,7 @@ static void aw88166_start_pa(struct aw88166 *aw88166)
- 		dev_err(aw88166->aw_pa->dev, "start failure (%d)\n", ret);
- }
- 
--static void aw88166_startup_work(struct work_struct *work)
--{
--	struct aw88166 *aw88166 =
--		container_of(work, struct aw88166, start_work.work);
--
--	guard(mutex)(&aw88166->lock);
--	aw88166_start_pa(aw88166);
--}
--
--static void aw88166_start(struct aw88166 *aw88166, bool sync_start)
-+static void aw88166_start(struct aw88166 *aw88166)
- {
- 	int ret;
- 
-@@ -1173,12 +1163,7 @@ static void aw88166_start(struct aw88166 *aw88166, bool sync_start)
- 		return;
- 	}
- 
--	if (sync_start == AW88166_SYNC_START)
--		aw88166_start_pa(aw88166);
--	else
--		queue_delayed_work(system_dfl_wq,
--			&aw88166->start_work,
--			AW88166_START_WORK_DELAY_MS);
-+	aw88166_start_pa(aw88166);
- }
- 
- static int aw_dev_check_sysint(struct aw_device *aw_dev)
-@@ -1550,7 +1535,7 @@ static int aw88166_profile_set(struct snd_kcontrol *kcontrol,
- 
- 	if (aw88166->aw_pa->status) {
- 		aw88166_stop(aw88166->aw_pa);
--		aw88166_start(aw88166, AW88166_SYNC_START);
-+		aw88166_start(aw88166);
- 	}
- 
- 	return 1;
-@@ -1725,7 +1710,7 @@ static int aw88166_playback_event(struct snd_soc_dapm_widget *w,
- 	guard(mutex)(&aw88166->lock);
- 	switch (event) {
- 	case SND_SOC_DAPM_PRE_PMU:
--		aw88166_start(aw88166, AW88166_ASYNC_START);
-+		aw88166_start(aw88166);
- 		break;
- 	case SND_SOC_DAPM_POST_PMD:
- 		aw88166_stop(aw88166->aw_pa);
-@@ -1759,8 +1744,6 @@ static int aw88166_codec_probe(struct snd_soc_component *component)
- 	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
- 	int ret;
- 
--	INIT_DELAYED_WORK(&aw88166->start_work, aw88166_startup_work);
--
- 	ret = aw88166_request_firmware_file(aw88166);
- 	if (ret)
- 		dev_err(aw88166->aw_pa->dev, "%s failed\n", __func__);
-@@ -1768,16 +1751,8 @@ static int aw88166_codec_probe(struct snd_soc_component *component)
+@@ -645,26 +646,12 @@ static int aw_dev_dsp_check(struct aw_device *aw_dev)
  	return ret;
  }
  
--static void aw88166_codec_remove(struct snd_soc_component *aw_codec)
--{
--	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(aw_codec);
+-static int aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
++static void aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
+ {
+-	struct aw_volume_desc *vol_desc = &aw_dev->volume_desc;
+-	unsigned int reg_value;
+-	u16 real_value;
+-	int ret;
 -
--	cancel_delayed_work_sync(&aw88166->start_work);
--}
+-	real_value = min((value + vol_desc->init_volume), (unsigned int)AW88166_MUTE_VOL);
 -
- static const struct snd_soc_component_driver soc_codec_dev_aw88166 = {
- 	.probe = aw88166_codec_probe,
--	.remove = aw88166_codec_remove,
- 	.dapm_widgets = aw88166_dapm_widgets,
- 	.num_dapm_widgets = ARRAY_SIZE(aw88166_dapm_widgets),
- 	.dapm_routes = aw88166_audio_map,
+-	ret = regmap_read(aw_dev->regmap, AW88166_SYSCTRL2_REG, &reg_value);
+-	if (ret)
+-		return ret;
+-
+-	dev_dbg(aw_dev->dev, "value 0x%x , reg:0x%x", value, real_value);
++	unsigned int volume = min(value, (unsigned int)AW88166_MUTE_VOL);
+ 
+-	real_value = (real_value << AW88166_VOL_START_BIT) | (reg_value & AW88166_VOL_MASK);
+-
+-	ret = regmap_write(aw_dev->regmap, AW88166_SYSCTRL2_REG, real_value);
+-
+-	return ret;
++	regmap_update_bits(aw_dev->regmap, AW88166_SYSCTRL2_REG,
++		~AW88166_VOL_MASK, DB_TO_REG_VAL(volume));
+ }
+ 
+ static void aw88166_dev_mute(struct aw_device *aw_dev, bool is_mute)
+@@ -1548,7 +1535,8 @@ static int aw88166_volume_get(struct snd_kcontrol *kcontrol,
+ 	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(codec);
+ 	struct aw_volume_desc *vol_desc = &aw88166->aw_pa->volume_desc;
+ 
+-	ucontrol->value.integer.value[0] = vol_desc->ctl_volume;
++	ucontrol->value.integer.value[0] =
++		(AW88166_MUTE_VOL - vol_desc->ctl_volume) / 2;
+ 
+ 	return 0;
+ }
+@@ -1561,12 +1549,13 @@ static int aw88166_volume_set(struct snd_kcontrol *kcontrol,
+ 	struct aw_volume_desc *vol_desc = &aw88166->aw_pa->volume_desc;
+ 	struct soc_mixer_control *mc =
+ 		(struct soc_mixer_control *)kcontrol->private_value;
+-	int value;
++	int value = ucontrol->value.integer.value[0];
+ 
+-	value = ucontrol->value.integer.value[0];
+ 	if (value < mc->min || value > mc->max)
+ 		return -EINVAL;
+ 
++	value = AW88166_MUTE_VOL - (value * 2);
++
+ 	if (vol_desc->ctl_volume != value) {
+ 		vol_desc->ctl_volume = value;
+ 		aw_dev_set_volume(aw88166->aw_pa, vol_desc->ctl_volume);
+@@ -1691,10 +1680,18 @@ static int aw88166_request_firmware_file(struct aw88166 *aw88166)
+ 	return ret;
+ }
+ 
++/*
++ * The field contains 4 bits in units of 6dB + 6 bits in units of 0.125dB
++ * which is too precise for TLV (!) so we have to multiply the scale by 2.
++ *
++ * The range is clamped at -90dB to prevent overflowing the 4-bit part.
++ */
++static const DECLARE_TLV_DB_SCALE(volume_tlv, -9000, 25, 0);
++
+ static const struct snd_kcontrol_new aw88166_controls[] = {
+-	SOC_SINGLE_EXT("PCM Playback Volume", AW88166_SYSCTRL2_REG,
+-		6, AW88166_MUTE_VOL, 0, aw88166_volume_get,
+-		aw88166_volume_set),
++	SOC_SINGLE_EXT_TLV("PCM Playback Volume", AW88166_SYSCTRL2_REG,
++		6, AW88166_CTL_MAX_VOL, 1,
++		aw88166_volume_get, aw88166_volume_set, volume_tlv),
+ 	SOC_SINGLE_EXT("Calib", 0, 0, AW88166_CALI_RE_MAX, 0,
+ 		aw88166_re_get, aw88166_re_set),
+ 	AW88166_PROFILE_EXT("AW88166 Profile Set", aw88166_profile_info,
+@@ -1812,7 +1809,7 @@ static int aw88166_init(struct aw88166 *aw88166, struct i2c_client *i2c, struct
+ 	aw_dev->channel = AW88166_DEV_DEFAULT_CH;
+ 	aw_dev->fw_status = AW88166_DEV_FW_FAILED;
+ 
+-	aw_dev->volume_desc.ctl_volume = AW88166_VOL_DEFAULT_VALUE;
++	aw_dev->volume_desc.ctl_volume = AW88166_CTL_DEFAULT_VOL;
+ 
+ 	aw88166_parse_channel_dt(aw88166);
+ 
 diff --git a/sound/soc/codecs/aw88166.h b/sound/soc/codecs/aw88166.h
-index 1a61e56f607c9..b8dbfe0f307c4 100644
+index b8dbfe0f307c4..c0303340812cf 100644
 --- a/sound/soc/codecs/aw88166.h
 +++ b/sound/soc/codecs/aw88166.h
-@@ -670,11 +670,6 @@ enum AW88166_DEV_DSP_CFG {
- 	AW88166_DEV_DSP_BYPASS = 1,
- };
+@@ -112,6 +112,9 @@
+ #define AW88166_REG_MAX		(0x7E)
+ #define AW88166_MUTE_VOL		(1023)
  
--enum {
--	AW88166_SYNC_START = 0,
--	AW88166_ASYNC_START,
--};
--
- enum {
- 	AW88166_RECORD_SEC_DATA = 0,
- 	AW88166_RECOVERY_SEC_DATA = 1,
++#define AW88166_VOL_6DB_START		(6)
++
++
+ #define AW88166_DSP_CFG_ADDR		(0x9B00)
+ #define AW88166_DSP_REG_CFG_ADPZ_RA	(0x9B68)
+ #define AW88166_DSP_FW_ADDR		(0x8980)
+@@ -590,7 +593,8 @@
+ #define AW88166_CALI_RE_MAX			(15000)
+ #define AW88166_CALI_RE_MIN			(4000)
+ #define AW88166_VOLUME_STEP_DB			(64)
+-#define AW88166_VOL_DEFAULT_VALUE		(0)
++#define AW88166_CTL_MAX_VOL			(AW88166_MUTE_VOL / 2)
++#define AW88166_CTL_DEFAULT_VOL			(AW88166_CTL_MAX_VOL / 2)
+ #define AW88166_DSP_RE_TO_SHOW_RE(re, shift)	(((re) * (1000)) >> (shift))
+ #define AW88166_SHOW_RE_TO_DSP_RE(re, shift)	(((re) << shift) / (1000))
+ 
+@@ -619,6 +623,15 @@
+ 			SNDRV_PCM_FMTBIT_S24_LE | \
+ 			SNDRV_PCM_FMTBIT_S32_LE)
+ 
++#define AW88166_REG_TO_DB		(0x3f)
++
++#define REG_VAL_TO_DB(value)		((((value) >> AW88166_VOL_6DB_START) * \
++					AW88166_VOLUME_STEP_DB) + \
++					((value) & AW88166_REG_TO_DB))
++#define DB_TO_REG_VAL(value)		((((value) / AW88166_VOLUME_STEP_DB) << \
++					AW88166_VOL_6DB_START) + \
++					((value) % AW88166_VOLUME_STEP_DB))
++
+ #define AW88166_PROFILE_EXT(xname, profile_info, profile_get, profile_set) \
+ { \
+ 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
 
 -- 
 2.54.0
