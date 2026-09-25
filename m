@@ -1,117 +1,108 @@
-From: Jasper Firth <jasper.m.f@hotmail.com>
-Date: Fri, 25 Sep 2026 23:06:25 +1000
-Subject: [PATCH] ASoC: Intel: bytcr_rt5651: Add quirk for Chuwi Hi8 with
- generic DMI strings
+From: Michael Reeves <michael.reeves077@gmail.com>
+Subject: [PATCH 00/13] wifi: brcmfmac: Add BCM4388 support
+Date: Fri, 25 Sep 2026 23:43:35 +1000
+Message-Id: <20260925-brcm4388-submit-v1-0-b5cbc2cde2fb@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-hi8-quirk-v1-1-ffd00b0447f9@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIANFxtmoC/yXMWwqAIBBA0a3EfCeYPai2En2oTTUFPTQjkPae1
- eeBy/Vg0RBaqCMPBk+ytC4BSRyBHuUyIKMuGAQXBa9EzkYq2e7IzIxzLVOZVSoVPYR+M9jT9b2
- a9rd1akJ9vAO47wepQeBNbQAAAA==
-X-Change-ID: 20260925-hi8-quirk-00ca3a49b32f
-To: Cezary Rojewski <cezary.rojewski@intel.com>, 
- Liam Girdwood <liam.r.girdwood@linux.intel.com>, 
- Peter Ujfalusi <peter.ujfalusi@linux.intel.com>, 
- Bard Liao <yung-chuan.liao@linux.intel.com>, 
- Kai Vehmanen <kai.vehmanen@linux.intel.com>, 
- Pierre-Louis Bossart <pierre-louis.bossart@linux.dev>, 
- Mark Brown <broonie@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>
-Cc: Hans de Goede <hansg@kernel.org>, linux-sound@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jasper Firth <jasper.m.f@hotmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790341648; l=3490;
- i=jasper.m.f@hotmail.com; s=20260925; h=from:subject:message-id;
- bh=mVuuiZeMiCOfjjhkSmnqCkiKnAlFV1xhXjQv+TkP8dQ=;
- b=KPRQOkiY9hSmG+TYJ4uNXM+8Da92UEEp/KMWfN58sOkzKlNKgS7Bm6T0Rc4Fxxd/EDEuu9S7V
- LR0GO5nKO43DCPQgZ+lxNxFDXNHH6tUBC/rlD0zecd8sjljmIisBbVp
-X-Developer-Key: i=jasper.m.f@hotmail.com; a=ed25519;
- pk=gjHZSqrU/BpOtVkMh341rjfZSeJ3PsQ3Sk/n8bax4jo=
-X-Endpoint-Received: by B4 Relay for jasper.m.f@hotmail.com/20260925 with auth_id=1062
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSw7CMAwA0atUXmNRUhIFrlKxyMdQS8SguEClq
+ ncnsHyLmRWUKpPCuVuh0puVH9Jw2HWQpiA3Qs7NYHrj+pOxGGsqx8F71FcsPKNN0eeBXHbBQqu
+ ela68/I/jpTkGpRYFSdPv8+FKd1JFoWXel8AC2/YFSIfTIIYAAAA=
+X-Change-ID: 20260925-brcm4388-submit-5cb8d3e6d6a5
+To: Arend van Spriel <arend.vanspriel@broadcom.com>, 
+ Pieter-Paul Giesberts <pieterpg@broadcom.com>, 
+ "Franky Lin (Zhenhui)" <frankyl@broadcom.com>, 
+ Mathy Vanhoef <vanhoefm@gmail.com>, Kalle Valo <kvalo@kernel.org>, 
+ Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc: linux-wireless@vger.kernel.org, brcm80211@lists.linux.dev, 
+ brcm80211-dev-list.pdl@broadcom.com, asahi@lists.linux.dev, 
+ Hector Martin <marcan@marcan.st>, Daniel Berlin <dberlin@dberlin.org>, 
+ Janne Grunau <j@jannau.net>, linux-kernel@vger.kernel.org, 
+ Hante Meuleman <meuleman@broadcom.com>, linux-hardening@vger.kernel.org, 
+ Michael Reeves <michael.reeves077@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790343821; l=3446;
+ i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
+ bh=5hnr3fAyqdNNH4Z/RHXKEByNtheCTZZ0q+ta1pJAZc4=;
+ b=2zb9vdF2U2FJDxFeenmSGQAJOSIzHQXiK9t30lcN+L0v6QhVIQgtkg/RsJbZaTxd71l0QYYey
+ HZ5HraR1EVYAaQ5L1OGgep2DC+ENDJ2b9Vbhh0AKYyNALZBZZrGOt0r
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some Chuwi Hi8 tablets with model number CWI513 ship with a BIOS
-(American Megatrends 5.11, dated 05/21/2016) whose DMI sys_vendor and
-product_name are both "Default string". The tested unit is labelled
-just "Hi8", but its model number is the same as the existing "Chuwi Hi8
-Pro (CWI513)" entry, and it needs the same quirks. That entry matches on
-sys_vendor "Hampoo" and product_name "X1D3_C806N", so it never applies
-to these units.
+The Broadcom BCM4388 chipset requires new PCIe initialization and
+firmware interfaces. Add support for these interfaces to brcmfmac to
+enable basic station operation.
 
-Without its quirks the internal speaker, whose amplifier has a
-differential input wired across LOUT left and right, cancels to a faint
-distorted residual for any centred (L == R) content, and the headphone
-channels are swapped.
+This series adds:
+- Signed firmware loading and mailbox transport
+- Fixes for chip identification and firmware capability matching
+- Versioned scan and join requests, and extended PMK payloads
+- Updated event mask handling
 
-Add an entry matching board_vendor "Hampoo" and board_name "Cherry Trail
-CR", plus the BIOS date since those two are too generic on their own.
-drivers/platform/x86/touchscreen_dmi.c already matches the Chuwi HiBook
-the same way.
+These changes include work by Hector Martin and Daniel Berlin from Asahi
+Linux, refactored where needed for upstream inclusion.
 
-The quirks are those of the existing Hi8 Pro entry, except for the
-over-current detection scale factor: 1.0 instead of the 0.75 from
-BYT_RT5651_DEFAULT_QUIRKS. With 0.75 and a CTIA headset (inline mic and
-one button), loud speech into the mic, and headphone playback coupling
-onto the mic line, were reported as spurious KEY_PLAYPAUSE presses, one
-of them held for a whole 8 second speech window. With 1.0 the same test
-gave no spurious events, and 3 real button presses were reported as
-exactly 3 press/release pairs.
+The series provides basic station support only. 6 GHz support is planned
+for a follow-up patchset after this lands. The driver retains legacy
+interfaces for older firmware.
 
-Tested on a unit with the generic DMI strings, with a module built from
-this patch and no quirk module parameter. The quirks were applied via
-the new entry, the card components read "cfg-spk:1 cfg-mic:in2
-cfg-hp:lrswap", and the following all work: speaker, headphone left/right
-order, jack and headset-mic detection, headset button, and the internal
-and headset mics.
+Tested on an Apple M3 MacBook Air (J613):
+- Device boot and network scanning
+- 5 GHz WPA2-PSK association and DHCP
+- Bidirectional TCP traffic
 
-The problem was diagnosed with the help of an AI coding assistant, which
-also drafted this changelog.
+Testing required separate Apple PCIe and devicetree patches, as well as
+Janne Grunau's port-authorization fix [1].
 
-Assisted-by: Claude Opus 5.5
-Signed-off-by: Jasper Firth <jasper.m.f@hotmail.com>
----
-I don't have the Hi8 Pro (X1D3_C806N) covered by the existing entry, so
-I've left that entry alone. It may see the same spurious headset-button
-presses with OVCD_SF_0P75.
----
- sound/soc/intel/boards/bytcr_rt5651.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
-
-diff --git a/sound/soc/intel/boards/bytcr_rt5651.c b/sound/soc/intel/boards/bytcr_rt5651.c
-index 62cb4856c..c9b105320 100644
---- a/sound/soc/intel/boards/bytcr_rt5651.c
-+++ b/sound/soc/intel/boards/bytcr_rt5651.c
-@@ -410,6 +410,23 @@ static const struct dmi_system_id byt_rt5651_quirk_table[] = {
- 					BYT_RT5651_HP_LR_SWAPPED |
- 					BYT_RT5651_MONO_SPEAKER),
- 	},
-+	{
-+		/* Chuwi Hi8 (CWI513) with a BIOS using generic DMI strings */
-+		.callback = byt_rt5651_quirk_cb,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_VENDOR, "Hampoo"),
-+			DMI_MATCH(DMI_BOARD_NAME, "Cherry Trail CR"),
-+			/* Above matches are too generic, add bios-date match */
-+			DMI_MATCH(DMI_BIOS_DATE, "05/21/2016"),
-+		},
-+		.driver_data = (void *)(BYT_RT5651_MCLK_EN |
-+					BYT_RT5651_JD1_1 |
-+					BYT_RT5651_OVCD_TH_2000UA |
-+					BYT_RT5651_OVCD_SF_1P0 |
-+					BYT_RT5651_IN2_MAP |
-+					BYT_RT5651_HP_LR_SWAPPED |
-+					BYT_RT5651_MONO_SPEAKER),
-+	},
- 	{
- 		/* Chuwi Vi8 Plus (CWI519) */
- 		.callback = byt_rt5651_quirk_cb,
+[1] https://lore.kernel.org/linux-wireless/20260915-brcmfmac-4way-handshake-offload-authenticated-event-v2-1-fbb9cc7ac177@jannau.net/
 
 ---
-base-commit: c82b61455a76c9ca3ee37ac67f0f4a34a4dbdb04
-change-id: 20260925-hi8-quirk-00ca3a49b32f
+Daniel Berlin (1):
+      wifi: brcmfmac: Support versioned scan parameter layouts
+
+Hector Martin (6):
+      wifi: brcmfmac: Support newer PCIe core startup and interrupts
+      wifi: brcmfmac: Negotiate PCIe mailbox transport with firmware
+      wifi: brcmfmac: Load signed PCIe firmware images
+      wifi: brcmfmac: Accept newer BSS information versions
+      wifi: brcmfmac: Support versioned join requests
+      wifi: brcmfmac: Add BCM4388 support
+
+Michael Reeves (6):
+      wifi: brcmfmac: pcie: Report the detected chip ID to the bus
+      wifi: brcmfmac: Match complete firmware capability names
+      wifi: brcmfmac: Fall back to RSSI-only default join preferences
+      wifi: brcmfmac: Use event_msgs_ext for event masks
+      wifi: brcmfmac: Handle larger firmware band lists
+      wifi: brcmfmac: Handle extended PMK command payloads
+
+ .../wireless/broadcom/brcm80211/brcmfmac/Makefile  |   1 +
+ .../net/wireless/broadcom/brcm80211/brcmfmac/bus.h |   9 +
+ .../broadcom/brcm80211/brcmfmac/cfg80211.c         | 368 +++++++-------
+ .../wireless/broadcom/brcm80211/brcmfmac/chip.c    |  36 +-
+ .../wireless/broadcom/brcm80211/brcmfmac/common.c  |  27 +-
+ .../wireless/broadcom/brcm80211/brcmfmac/core.c    |   5 +-
+ .../wireless/broadcom/brcm80211/brcmfmac/core.h    |  18 +
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.c | 124 ++++-
+ .../wireless/broadcom/brcm80211/brcmfmac/feature.h |   2 +
+ .../wireless/broadcom/brcm80211/brcmfmac/fweh.c    | 130 ++++-
+ .../wireless/broadcom/brcm80211/brcmfmac/fweh.h    |   1 +
+ .../broadcom/brcm80211/brcmfmac/fwil_types.h       | 141 +++++-
+ .../wireless/broadcom/brcm80211/brcmfmac/msgbuf.c  |  65 ++-
+ .../wireless/broadcom/brcm80211/brcmfmac/msgbuf.h  |   9 +-
+ .../wireless/broadcom/brcm80211/brcmfmac/pcie.c    | 560 +++++++++++++++++----
+ .../broadcom/brcm80211/brcmfmac/scan_param.c       | 416 +++++++++++++++
+ .../broadcom/brcm80211/brcmfmac/scan_param.h       |  13 +
+ .../broadcom/brcm80211/include/brcm_hw_ids.h       |   2 +
+ .../broadcom/brcm80211/include/chipcommon.h        |   5 +
+ 19 files changed, 1593 insertions(+), 339 deletions(-)
+---
+base-commit: 42a9fb3382fc2573e92f41d203b095d9a372cfc9
+change-id: 20260925-brcm4388-submit-5cb8d3e6d6a5
 
 Best regards,
---  
-Jasper Firth <jasper.m.f@hotmail.com>
+-- 
+Michael Reeves <michael.reeves077@gmail.com>
 
