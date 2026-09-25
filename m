@@ -1,189 +1,115 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 25 Sep 2026 02:47:34 -0500
-Subject: [PATCH 6/6] ASoC: codecs: aw88166: make volume control usable
+From: Michael Reeves <michael.reeves077@gmail.com>
+Date: Fri, 25 Sep 2026 20:43:22 +1000
+Subject: [PATCH] regmap: Drop map lock during cache init and exit
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-aw88166-cleanup-v1-6-11f74cb5fe28@gmail.com>
-References: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
-In-Reply-To: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
-To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Weidong Wang <wangweidong.a@awinic.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Val Packett <val@packett.cool>, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20260925-regcache-lifecycle-submit-v1-1-83b75ca79d96@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQrCMBBG4auUWRuIVSN6FXGRjH+agTbKTBWl9
+ O5Gl9/ivYUMKjA6dwspXmJyrw3bTUdcYh3g5NZMve+DP/UHpxg4coEbJYM/PMLZM00yu+M+70J
+ I8Dkxtf6hyPL+vy/X5hQNLmmsXH7HKdoMpXX9AqTUvreEAAAA
+X-Change-ID: 20260925-regcache-lifecycle-submit-74f366be0fbc
+To: Mark Brown <broonie@kernel.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ linux-kernel@vger.kernel.org, driver-core@lists.linux.dev, 
+ asahi@lists.linux.dev, Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=6241;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=hlFleUeou8JhECaow+haiTbL5j1iHTRlPX7dYMh42WA=;
- b=8ei86rGmq+NZcEtDxPG8PHDuKVhtWPjchY7VYOZCzjJhD47hY3R5WFh2pvF/6jeoxT45d1lso
- +6pKmnCIcGGB1HBZEOyROlRvEMB2ordB1euWsSYnMLtxz5Ko+9wh1ev
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790333007; l=3198;
+ i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
+ bh=bhjdNcpqzJyQqu6KoQ8twHsi4wLo39lzrrDM3q6SV2U=;
+ b=dUG6HMWKRqJlIop9DgRJPb3yaHf2oRN1ulewe0RSquIucnpgEeaD4QYiU0nCrYihnyo2OHmbE
+ ZqaWLU/lz7nCNl5ztbqyWdqV8WQL4Uud5DiTfVkChm4nrPoRdWuzwbm
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- Invert the value to match userspace expectations (in the hardware,
-  positive numbers represent negative dB attenuation)
-- Provide TLV metadata for the dB scale (and divide the raw values by 2
-  as the excessive precision used by HW is not representable in TLV)
-- Do not unnecessarily reset the volume while switching profiles
-- Simplify aw88166_dev_set_volume using regmap_update_bits
-- Do not add the initial volume from the profile to the requested volume
-  as that would throw off the dB mapping (if a lower max limit is
-  desired, it can be set in the UCM profile in userspace)
+On systems with CONFIG_PROVE_RAW_LOCK_NESTING enabled, Apple GPIO probe
+triggers an "Invalid wait context" lockdep warning.
 
-With this change, it's actually possible to use this hardware volume
-control as PlaybackVolume in an ALSA UCM profile.
+The driver uses a regmap with a raw spinlock and REGCACHE_FLAT. During
+regcache_init(), regcache_flat_init() allocates memory while holding the
+raw spinlock. The memory allocator can acquire a non-raw spinlock, which
+causes an invalid raw-to-non-raw lock nesting error. The abbreviated call
+chain is:
 
-Fixes: 94e412c28e61 ("ASoC: codecs: Add aw88166 amplifier driver")
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+  apple_gpio_pinctrl_probe
+    regcache_init
+      regcache_flat_init
+        __kmalloc_noprof
+          __pcs_replace_empty_main
+            refill_objects
+              _raw_spin_lock_irqsave
+
+GFP_ATOMIC does not make this lock nesting valid.
+
+Holding the map lock during cache allocation and exit is not needed:
+
+- Cache allocation occurs before the regmap is published.
+- Cache destruction occurs only after all users stop access.
+- regmap_reinit_cache() requires callers to prevent concurrent access.
+
+Commit fd4ebc07b4df ("regmap: Hold the regmap lock when allocating and
+freeing the cache") added the lock for Maple tree lockdep validation.
+The current Maple tree backend uses internal locking, and cache
+population is now separate from cache allocation.
+
+Remove map locking from the cache init and exit callbacks. Keep map
+locking for cache population and normal register access.
+
+Fixes: fd4ebc07b4df ("regmap: Hold the regmap lock when allocating and freeing the cache")
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- sound/soc/codecs/aw88166.c | 47 ++++++++++++++++++++++------------------------
- sound/soc/codecs/aw88166.h | 15 ++++++++++++++-
- 2 files changed, 36 insertions(+), 26 deletions(-)
+Tested on Apple M3 MacBook Air (T8122):
 
-diff --git a/sound/soc/codecs/aw88166.c b/sound/soc/codecs/aw88166.c
-index 6b98864de81a9..3e87be33f4908 100644
---- a/sound/soc/codecs/aw88166.c
-+++ b/sound/soc/codecs/aw88166.c
-@@ -17,6 +17,7 @@
- #include <linux/regmap.h>
- #include <sound/soc.h>
- #include <sound/pcm_params.h>
-+#include <sound/tlv.h>
- #include "aw88166.h"
- #include "aw88395/aw88395_device.h"
- 
-@@ -645,26 +646,12 @@ static int aw_dev_dsp_check(struct aw_device *aw_dev)
- 	return ret;
- }
- 
--static int aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
-+static void aw_dev_set_volume(struct aw_device *aw_dev, unsigned int value)
- {
--	struct aw_volume_desc *vol_desc = &aw_dev->volume_desc;
--	unsigned int reg_value;
--	u16 real_value;
--	int ret;
--
--	real_value = min((value + vol_desc->init_volume), (unsigned int)AW88166_MUTE_VOL);
--
--	ret = regmap_read(aw_dev->regmap, AW88166_SYSCTRL2_REG, &reg_value);
--	if (ret)
--		return ret;
--
--	dev_dbg(aw_dev->dev, "value 0x%x , reg:0x%x", value, real_value);
-+	unsigned int volume = min(value, (unsigned int)AW88166_MUTE_VOL);
- 
--	real_value = (real_value << AW88166_VOL_START_BIT) | (reg_value & AW88166_VOL_MASK);
--
--	ret = regmap_write(aw_dev->regmap, AW88166_SYSCTRL2_REG, real_value);
--
--	return ret;
-+	regmap_update_bits(aw_dev->regmap, AW88166_SYSCTRL2_REG,
-+		~AW88166_VOL_MASK, DB_TO_REG_VAL(volume));
- }
- 
- static void aw88166_dev_mute(struct aw_device *aw_dev, bool is_mute)
-@@ -1548,7 +1535,8 @@ static int aw88166_volume_get(struct snd_kcontrol *kcontrol,
- 	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(codec);
- 	struct aw_volume_desc *vol_desc = &aw88166->aw_pa->volume_desc;
- 
--	ucontrol->value.integer.value[0] = vol_desc->ctl_volume;
-+	ucontrol->value.integer.value[0] =
-+		(AW88166_MUTE_VOL - vol_desc->ctl_volume) / 2;
- 
- 	return 0;
- }
-@@ -1561,12 +1549,13 @@ static int aw88166_volume_set(struct snd_kcontrol *kcontrol,
- 	struct aw_volume_desc *vol_desc = &aw88166->aw_pa->volume_desc;
- 	struct soc_mixer_control *mc =
- 		(struct soc_mixer_control *)kcontrol->private_value;
--	int value;
-+	int value = ucontrol->value.integer.value[0];
- 
--	value = ucontrol->value.integer.value[0];
- 	if (value < mc->min || value > mc->max)
- 		return -EINVAL;
- 
-+	value = AW88166_MUTE_VOL - (value * 2);
-+
- 	if (vol_desc->ctl_volume != value) {
- 		vol_desc->ctl_volume = value;
- 		aw_dev_set_volume(aw88166->aw_pa, vol_desc->ctl_volume);
-@@ -1691,10 +1680,18 @@ static int aw88166_request_firmware_file(struct aw88166 *aw88166)
- 	return ret;
- }
- 
-+/*
-+ * The field contains 4 bits in units of 6dB + 6 bits in units of 0.125dB
-+ * which is too precise for TLV (!) so we have to multiply the scale by 2.
-+ *
-+ * The range is clamped at -90dB to prevent overflowing the 4-bit part.
-+ */
-+static const DECLARE_TLV_DB_SCALE(volume_tlv, -9000, 25, 0);
-+
- static const struct snd_kcontrol_new aw88166_controls[] = {
--	SOC_SINGLE_EXT("PCM Playback Volume", AW88166_SYSCTRL2_REG,
--		6, AW88166_MUTE_VOL, 0, aw88166_volume_get,
--		aw88166_volume_set),
-+	SOC_SINGLE_EXT_TLV("PCM Playback Volume", AW88166_SYSCTRL2_REG,
-+		6, AW88166_CTL_MAX_VOL, 1,
-+		aw88166_volume_get, aw88166_volume_set, volume_tlv),
- 	SOC_SINGLE_EXT("Calib", 0, 0, AW88166_CALI_RE_MAX, 0,
- 		aw88166_re_get, aw88166_re_set),
- 	AW88166_PROFILE_EXT("AW88166 Profile Set", aw88166_profile_info,
-@@ -1812,7 +1809,7 @@ static int aw88166_init(struct aw88166 *aw88166, struct i2c_client *i2c, struct
- 	aw_dev->channel = AW88166_DEV_DEFAULT_CH;
- 	aw_dev->fw_status = AW88166_DEV_FW_FAILED;
- 
--	aw_dev->volume_desc.ctl_volume = AW88166_VOL_DEFAULT_VALUE;
-+	aw_dev->volume_desc.ctl_volume = AW88166_CTL_DEFAULT_VOL;
- 
- 	aw88166_parse_channel_dt(aw88166);
- 
-diff --git a/sound/soc/codecs/aw88166.h b/sound/soc/codecs/aw88166.h
-index b8dbfe0f307c4..c0303340812cf 100644
---- a/sound/soc/codecs/aw88166.h
-+++ b/sound/soc/codecs/aw88166.h
-@@ -112,6 +112,9 @@
- #define AW88166_REG_MAX		(0x7E)
- #define AW88166_MUTE_VOL		(1023)
- 
-+#define AW88166_VOL_6DB_START		(6)
-+
-+
- #define AW88166_DSP_CFG_ADDR		(0x9B00)
- #define AW88166_DSP_REG_CFG_ADPZ_RA	(0x9B68)
- #define AW88166_DSP_FW_ADDR		(0x8980)
-@@ -590,7 +593,8 @@
- #define AW88166_CALI_RE_MAX			(15000)
- #define AW88166_CALI_RE_MIN			(4000)
- #define AW88166_VOLUME_STEP_DB			(64)
--#define AW88166_VOL_DEFAULT_VALUE		(0)
-+#define AW88166_CTL_MAX_VOL			(AW88166_MUTE_VOL / 2)
-+#define AW88166_CTL_DEFAULT_VOL			(AW88166_CTL_MAX_VOL / 2)
- #define AW88166_DSP_RE_TO_SHOW_RE(re, shift)	(((re) * (1000)) >> (shift))
- #define AW88166_SHOW_RE_TO_DSP_RE(re, shift)	(((re) << shift) / (1000))
- 
-@@ -619,6 +623,15 @@
- 			SNDRV_PCM_FMTBIT_S24_LE | \
- 			SNDRV_PCM_FMTBIT_S32_LE)
- 
-+#define AW88166_REG_TO_DB		(0x3f)
-+
-+#define REG_VAL_TO_DB(value)		((((value) >> AW88166_VOL_6DB_START) * \
-+					AW88166_VOLUME_STEP_DB) + \
-+					((value) & AW88166_REG_TO_DB))
-+#define DB_TO_REG_VAL(value)		((((value) / AW88166_VOLUME_STEP_DB) << \
-+					AW88166_VOL_6DB_START) + \
-+					((value) % AW88166_VOLUME_STEP_DB))
-+
- #define AW88166_PROFILE_EXT(xname, profile_info, profile_get, profile_set) \
- { \
- 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, \
+- All 4 GPIO controllers probe successfully with lockdep enabled.
+- The "Invalid wait context" warning no longer occurs.
+- All 549 regmap KUnit tests pass (38 test groups).
+---
+ drivers/base/regmap/regcache.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
+diff --git a/drivers/base/regmap/regcache.c b/drivers/base/regmap/regcache.c
+index 0d58d900a..b137ded7f 100644
+--- a/drivers/base/regmap/regcache.c
++++ b/drivers/base/regmap/regcache.c
+@@ -225,9 +225,7 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
+ 	if (map->cache_ops->init) {
+ 		dev_dbg(map->dev, "Initializing %s cache\n",
+ 			map->cache_ops->name);
+-		map->lock(map->lock_arg);
+ 		ret = map->cache_ops->init(map);
+-		map->unlock(map->lock_arg);
+ 		if (ret)
+ 			goto err_free_reg_defaults;
+ 	}
+@@ -259,9 +257,7 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
+ err_exit:
+ 	if (map->cache_ops->exit) {
+ 		dev_dbg(map->dev, "Destroying %s cache\n", map->cache_ops->name);
+-		map->lock(map->lock_arg);
+ 		map->cache_ops->exit(map);
+-		map->unlock(map->lock_arg);
+ 	}
+ err_free_reg_defaults:
+ 	kfree(map->reg_defaults);
+@@ -281,9 +277,7 @@ void regcache_exit(struct regmap *map)
+ 	if (map->cache_ops->exit) {
+ 		dev_dbg(map->dev, "Destroying %s cache\n",
+ 			map->cache_ops->name);
+-		map->lock(map->lock_arg);
+ 		map->cache_ops->exit(map);
+-		map->unlock(map->lock_arg);
+ 	}
+ 
+ 	kfree(map->reg_defaults);
+
+---
+base-commit: 5dd1818b15d98d4a20806cd00b1b40320b06004f
+change-id: 20260925-regcache-lifecycle-submit-74f366be0fbc
+
+Best regards,
 -- 
-2.54.0
+Michael Reeves <michael.reeves077@gmail.com>
 
