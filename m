@@ -1,15 +1,13 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Subject: [PATCH v5 0/3] kallsyms: Accelerate symbol name lookups by ~7x
-Date: Fri, 25 Sep 2026 15:16:35 -0600
-Message-Id: <20260925-ksyms-tune-v5-0-1f75ad0c321c@gmail.com>
+Date: Fri, 25 Sep 2026 15:16:36 -0600
+Subject: [PATCH v5 1/3] kallsyms: Match compressed tokens on the fly during
+ binary search
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNTQ6CMBCG4auQrq2h0/JTV97DuBjbERoFDEUiI
- dzdwgqJLL9JnndG5ql15NkpGllLvfOuqcNIDhEzJdYFcWfDZhBDGmuh+cMPlefduyZOAKjA5ig
- FsgBeLd3dZ4ldrmGXzndNOyztXszXv5le8JjbPDE6syhQwrmo0D2PpqnYnOlhRQF+KASKUkoiK
- QhNtqVyn8pA0zz8U4RxYvWWqn2qAtWAhjBXNy3Emk7T9AXGLBa3VQEAAA==
-X-Change-ID: 20260919-ksyms-tune-e22a42d8a31a
+Message-Id: <20260925-ksyms-tune-v5-1-1f75ad0c321c@gmail.com>
+References: <20260925-ksyms-tune-v5-0-1f75ad0c321c@gmail.com>
+In-Reply-To: <20260925-ksyms-tune-v5-0-1f75ad0c321c@gmail.com>
 To: Andrew Morton <akpm@linux-foundation.org>
 Cc: Lorenzo Stoakes <ljs@kernel.org>, Kees Cook <kees@kernel.org>, 
  David Laight <david.laight.linux@gmail.com>, 
@@ -17,189 +15,217 @@ Cc: Lorenzo Stoakes <ljs@kernel.org>, Kees Cook <kees@kernel.org>,
  linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
  bpf@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790370996; l=9194;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790370996; l=6596;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=gUiMkOcEBxUU9LS1teUE6jeukMIc+96YYXQX0CViWrc=;
- b=ro4e2ZD/NU/xYaI689YiwePmybVZSf0UlscHthOqUxK6v9lDvcH2jAz6jJw3cv/0UdYaZsC3J
- PbIxMv7t8BBDN5ezYraVTOCXnPaHPpiwOes6DytSXxLZJWR6u77lIcj
+ bh=uSwF8oSlv0A6TNXHp0b7ZlXImXaVRQqeD6cloMWgLIg=;
+ b=VnXboYnWLe5gA0KHhcZAMLqPbG/1fXCAWADkauYx5FRtgv8Po1NVIHSOJwu54jhPx4wyj0NEU
+ nSRSlekQL/eAATEBAd1DdkU4j+rqiMZWmObGVLqyx/Q6xSBLplwmFVS
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kallsyms_lookup_names() resolves symbol names to addresses using a
-17-step binary search over kallsyms_names[] (~184k symbols on x86_64).
-At each step of the search, two bottlenecks compound to create
-substantial lookup latency:
+kallsyms_lookup_names() runs a binary search across kallsyms_names[],
+a packed array of ~130k encoded kernel symbols.  For each of the ~17
+comparisons in the search, it currently decompresses the candidate
+symbol into a temporary buffer on the stack before calling strcmp().
 
-0. Redundant string expansion: kallsyms_expand_symbol() decompresses
-   the entire candidate symbol into a 512-byte stack buffer (namebuf)
-   before calling strcmp(), even though ~94% of binary search probes
-   mismatch on the first 1-2 characters (~580 ns per lookup).
+Comparing raw tokens directly in compressed space is impossible.  The
+BPE token table assigns values by frequency, not alphabetical order
+(e.g. token 0x05 might expand to "zebra" while 0x42 expands to "apple"),
+so comparing raw token values scrambles lexicographical order.
 
-1. Marker scanning: get_symbol_offset() scans sequentially from the
-   nearest 256-symbol marker in kallsyms_names[], decoding an average
-   of ~128 ULEB128 record headers per probe (~2,176 header decodes,
-   consuming ~3,230 ns to ~5,200 ns per lookup).
+However, full string expansion is equally wasteful: roughly 16 of the
+17 binary search steps fail within the first two characters.
 
-Together, these bottlenecks impose a substantial latency penalty during
-symbol lookup (~3.8 us to ~6.1 us per probe).  During bulk workloads
-such as BPF multi-trampoline attach (e.g. tracing across 64,021 kernel
-functions in serial_test_tracing_multi_bench_attach), this compounds
-into multiple seconds of attach stall time.
+Introduce kallsyms_strcmp_symbol() to compare ASCII queries against
+compressed tokens on the fly.  It walks kallsyms_token_index and
+kallsyms_token_table incrementally, matching characters directly and
+bailing out on the first character mismatch without expanding subsequent
+tokens.
 
-David Laight suggested rounding binary search probes down to multiples
-of 256, but kallsyms_names[] is ordered by symbol address while the
-binary search operates alphabetically over kallsyms_seqs_of_names[].
-Address sequence numbers jump pseudo-randomly across address space on
-every probe, meaning address markers cannot be pre-rounded during
-alphabetical binary search.
+This optimization:
 
-Instead, this 3-patch series addresses both bottlenecks directly in
-a clean progression:
+0. Avoids decompressing non-matching tokens, short-circuiting ~94% of
+   binary search character expansions without adding any tables in
+   .rodata.
 
-0. Patch 1 introduces kallsyms_strcmp_symbol() to compare ASCII queries
-   against compressed tokens on the fly, bailing out on the first
-   mismatched character without expanding subsequent tokens.  This drops
-   the 512-byte namebuf buffer from the kernel stack and saves ~530 ns
-   per lookup on unmodified marker infrastructure.
+1. Drops the 512-byte namebuf buffer from the kernel stack in
+   kallsyms_lookup_names().
 
-1. Patch 2 increases the static marker density from 256:1 down to 16:1
-   (1 marker every 16 symbols) via KALLSYMS_MARKER_SHIFT 4 shared
-   between scripts/kallsyms.c and kernel/kallsyms_internal.h.  This cuts
-   average marker scan distance by 17x (from 127.5 down to 7.5 hops) and
-   drops lookup latency from 6,102 ns to 866 ns (a 7.0x speedup) for
-   only +42.2 KiB of write-protected .rodata (0.002% of vmlinux).
-
-2. Patch 3 inlines and unrolls get_symbol_seq() 24-bit sequence index
-   reconstruction into direct byte shifts, eliminating loop overhead
-   on inner binary search probes.
-
-In-Tree Selftest Progression (virtme-ng, kernel/kallsyms_selftest):
-- Baseline (256:1 markers):   6,102 ns / lookup
-- 16:1 markers (Patch 2):       866 ns / lookup (7.0x speedup, -85.8%)
-- Dynamic 1:1 batch table:      728 ns / lookup (only 138 ns delta)
-- Break-even vs 256:1 base:   1,194 queries (6,419 us / 5,374 ns)
-- Break-even vs 16:1 markers: 46,514 queries (6,419 us / 138 ns)
-
-What's Unchanged:
-0. Address-ordered layout of kallsyms_names[] remains identical.
-1. Address-to-name resolution (sprint_symbol, sprint_symbol_no_offset)
-   and sequential table iteration (kallsyms_on_each_symbol,
-   /proc/kallsyms) remain untouched, maintaining full L1/L2 prefetching.
-2. Kernel symbol table encapsulation is preserved with 0 new exported
-   symbols, 0 new batch APIs, and 0 Kconfig options.
-
-Memory footprint: +42.2 KiB .rodata added to kernel image (0.002% of
-vmlinux).  0 bytes dynamic RAM.
+2. Cuts unindexed lookup latency by ~530 ns (~14% faster) while leaving
+   sequential address ordering and kallsyms_expand_symbol() streaming
+   invariants intact for /proc/kallsyms and table walks.
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-Changes in v5:
-- Dismiss dynamic 1:1 batch table as unnecessary:
-  In v2-v4, a dynamic u32 lookup index allocated in transient RAM was
-  explored.  While dynamic 1:1 breaks even against baseline 256:1 after
-  ~1,200 queries, comparing dynamic 1:1 against static 16:1 markers
-  dismisses the dynamic approach entirely:
-  * Static 16:1 markers achieve 866 ns, capturing 97.4% of the maximum
-    latency savings of a 1:1 table (an 85.8% reduction from baseline).
-  * Dynamic 1:1 gains only an incremental 138 ns (the remaining 2.6%),
-    while paying ~6,419 us in allocation setup and synchronize_rcu()
-    teardown.
-  * Amortizing 6,419 us at 138 ns saved requires 46,514 queries just to
-    break even against 16:1 markers.  For any workload under 46k
-    queries, dynamic allocation is slower overall.
-  * Drop kallsyms_lookup_batch_start/end APIs, mutexes, refcounts,
-    transient kvmalloc RAM allocations, and RCU synchronization.
-- Drop lib/test_kallsyms_perf benchmark module and
-  CONFIG_TEST_KALLSYMS_PERF; existing in-tree CONFIG_KALLSYMS_SELFTEST
-  already benchmarks standard kallsyms_lookup_name() without adding
-  unmaintained test files in lib/.
-- In patch 2, increase marker density to 16:1 via
-  KALLSYMS_MARKER_SHIFT 4 shared between scripts/kallsyms.c and
-  kernel/kallsyms_internal.h, and drop all references to dynamic tables
-  from the patch body.
-- Link to v4: https://lore.kernel.org/r/20260922-ksyms-tune-v4-0-92acea84b911@gmail.com
-
-Changes in v4:
-- In patch 1, ignore early boot invocations in param_set_trigger() when
-  system_state < SYSTEM_RUNNING to prevent NULL pointer dereference in
-  ktime_get_ns() prior to timekeeping_init() (addresses Sashiko review).
-- In patch 1, prevent sysfs TOCTOU divide-by-zero panic: reject
-  num_iters == 0 in param setter, snapshot iters locally via READ_ONCE,
-  and serialize runs with bench_lock mutex (addresses Sashiko review).
-- In patch 1, eliminate multi-second boot stall: add run_on_boot
-  parameter (default false) so late_initcall only runs benchmark when
-  explicitly requested (addresses Sashiko review).
-- In patch 1, chunk lookup loops in 4096-iter batches with
-  cond_resched() outside the timing bracket to prevent preemption sleep
-  time from inflating reported latency (addresses Sashiko review).
-- In patch 3, annotate dyn_kallsyms_offsets declaration with __rcu to
-  satisfy sparse type checking and prevent address-space warnings across
-  rcu_assign_pointer() and rcu_dereference() (addresses Sashiko review).
-- In patch 3, use rcu_replace_pointer() with lockdep_is_held() during
-  batch teardown to atomically read and clear the pointer while
-  satisfying sparse address-space constraints (addresses Sashiko
-  review).
-- Link to v3: https://lore.kernel.org/r/20260922-ksyms-tune-v3-0-681a34ea05d9@gmail.com
-
 Changes in v3:
-- Reorder series: place on-the-fly token matching ahead of marker
-  density optimization, establishing an active proof of incremental
-  performance deltas across all steps (addresses David Laight review).
-- Add inlined and unrolled get_symbol_seq() 24-bit sequence index
-  reconstruction into direct byte shifts (addresses David Laight
-  review).
-- In test_kallsyms_perf, configure as a built-in test (bool) rather
-  than a module (tristate) and drop kallsyms iterator EXPORT_SYMBOL_GPL
-  exports to avoid exposing internal kernel symbol data (addresses
-  Sashiko review).
-- In patch 1, optimize kallsyms_strcmp_symbol() by dropping
-  skipped_first tracking and checking len at the bottom of the token
-  loop (addresses David Laight review).
-- Drop 'default m' from lib/Kconfig.debug.
-- Fix soft lockup risks by adding cond_resched() every 16k iterations in
-  test_kallsyms_perf loops.
-- Replace direct 64-bit integer divisions with div_u64() to fix 32-bit
-  builds.
-- Guard against divide-by-zero when num_iters=0.
-- Replace tcp_v4_rcv with panic in hit_symbols to prevent failures wo
-  CONFIG_INET.
-- Move David Laight to series-wide Cc on cover letter, dropping trailer
-  from patch 3.
-- Link to v2: https://lore.kernel.org/r/20260922-ksyms-tune-v2-0-a333ee31eac7@gmail.com
+- Reorder patch ahead of dynamic batch index in series, establishing an
+  active proof of string matching savings on unindexed baseline
+  (addresses David Laight review).
+- Optimize kallsyms_strcmp_symbol(): drop skipped_first tracking and
+  test len at loop bottom (addresses David Laight review).
+- Guard first token with while (*tptr) to handle 1-byte type tokens.
+- Introduce get_symbol_data() helper in this patch for reuse in later
+  subsystems.
 
 Changes in v2:
-- Replaced static build-time 3-byte offset table with a dynamic u32
-  index bracketed by kallsyms_lookup_batch_start() and
-  kallsyms_lookup_batch_end().
-- Dropped .rodata image footprint addition from +573 KiB to 0 KiB,
-  addressing Kees Cook's memory footprint objection.
-- Native u32 loads in transient RAM eliminate 24-bit big-endian shifts
-  and unaligned loads, addressing David Laight's endianness critique.
-- Direct O(1) table indexing provides 0 hops for all symbol lookups
-  without remainder logic or odd/even branching.
-- Restored scripts/kallsyms.c and kernel/kallsyms_internal.h to pristine
-  state, leaving legacy kallsyms_markers[] as safety fallback.
-- Rebased out Lorenzo Stoakes' kbuild series; this series is now
-  completely decoupled and applies cleanly directly onto mainline.
-- Link to v1: https://lore.kernel.org/r/20260919-ksyms-tune-v1-0-d85c97da1a32@gmail.com
-
+- Rebase onto mainline v7.3-rc4, removing external dependencies on
+  Lorenzo Stoakes' kbuild series.
 ---
-Jim Cromie (3):
-      kallsyms: Match compressed tokens on the fly during binary search
-      kallsyms: Increase marker density to 16:1 to accelerate lookups
-      kallsyms: Unroll 24-bit sequence reconstruction in get_symbol_seq()
+ kernel/kallsyms.c | 94 ++++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 59 insertions(+), 35 deletions(-)
 
- kernel/kallsyms.c          | 111 +++++++++++++++++++++++++++------------------
- kernel/kallsyms_internal.h |   5 ++
- scripts/kallsyms.c         |  14 ++++--
- 3 files changed, 80 insertions(+), 50 deletions(-)
----
-base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20260919-ksyms-tune-e22a42d8a31a
+diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
+index aec2f06858af..d18d78e626db 100644
+--- a/kernel/kallsyms.c
++++ b/kernel/kallsyms.c
+@@ -34,6 +34,21 @@
+ 
+ #include "kallsyms_internal.h"
+ 
++/*
++ * Get the compressed symbol length and data pointer.
++ */
++static inline const u8 *get_symbol_data(unsigned int off, unsigned int *len)
++{
++	const u8 *p = &kallsyms_names[off];
++	unsigned int l = *p++;
++
++	if (unlikely(l & 0x80))
++		l = (l & 0x7F) | (*p++ << 7);
++	*len = l;
++
++	return p;
++}
++
+ /*
+  * Expand a compressed symbol data into the resulting uncompressed string,
+  * if uncompressed string is too long (>= maxlen), it will be truncated,
+@@ -42,28 +57,12 @@
+ static unsigned int kallsyms_expand_symbol(unsigned int off,
+ 					   char *result, size_t maxlen)
+ {
+-	int len, skipped_first = 0;
++	int skipped_first = 0;
+ 	const char *tptr;
+-	const u8 *data;
++	unsigned int len;
++	const u8 *data = get_symbol_data(off, &len);
+ 
+-	/* Get the compressed symbol length from the first symbol byte. */
+-	data = &kallsyms_names[off];
+-	len = *data;
+-	data++;
+-	off++;
+-
+-	/* If MSB is 1, it is a "big" symbol, so needs an additional byte. */
+-	if ((len & 0x80) != 0) {
+-		len = (len & 0x7F) | (*data << 7);
+-		data++;
+-		off++;
+-	}
+-
+-	/*
+-	 * Update the offset to return the offset for the next symbol on
+-	 * the compressed stream.
+-	 */
+-	off += len;
++	off = (data - kallsyms_names) + len;
+ 
+ 	/*
+ 	 * For every byte on the compressed symbol data, copy the table
+@@ -101,14 +100,43 @@ static unsigned int kallsyms_expand_symbol(unsigned int off,
+  */
+ static char kallsyms_get_symbol_type(unsigned int off)
+ {
+-	/*
+-	 * Get just the first code, look it up in the token table,
+-	 * and return the first char from this token. If MSB of length
+-	 * is 1, it is a "big" symbol, so needs an additional byte.
+-	 */
+-	if (kallsyms_names[off] & 0x80)
+-		off++;
+-	return kallsyms_token_table[kallsyms_token_index[kallsyms_names[off + 1]]];
++	unsigned int len;
++	const u8 *data = get_symbol_data(off, &len);
++
++	return kallsyms_token_table[kallsyms_token_index[*data]];
++}
++
++/*
++ * Compare an uncompressed ASCII string against a compressed symbol table entry.
++ * Returns negative if name < sym, positive if name > sym, 0 if equal.
++ * Exits immediately on the first mismatched character without decompressing
++ * the rest of the symbol name.
++ */
++static int kallsyms_strcmp_symbol(unsigned int off, const char *name)
++{
++	const char *tptr;
++	unsigned int len;
++	const u8 *data = get_symbol_data(off, &len);
++
++	tptr = &kallsyms_token_table[kallsyms_token_index[*data++]] + 1;
++	while (*tptr) {
++		int diff = (unsigned char)*name++ - (unsigned char)*tptr++;
++
++		if (diff)
++			return diff;
++	}
++
++	while (--len) {
++		tptr = &kallsyms_token_table[kallsyms_token_index[*data++]];
++		do {
++			int diff = (unsigned char)*name++ - (unsigned char)*tptr++;
++
++			if (diff)
++				return diff;
++		} while (*tptr);
++	}
++
++	return (unsigned char)*name;
+ }
+ 
+ 
+@@ -174,7 +202,6 @@ static int kallsyms_lookup_names(const char *name,
+ 	int ret;
+ 	int low, mid, high;
+ 	unsigned int seq, off;
+-	char namebuf[KSYM_NAME_LEN];
+ 
+ 	low = 0;
+ 	high = kallsyms_num_syms - 1;
+@@ -183,8 +210,7 @@ static int kallsyms_lookup_names(const char *name,
+ 		mid = low + (high - low) / 2;
+ 		seq = get_symbol_seq(mid);
+ 		off = get_symbol_offset(seq);
+-		kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
+-		ret = strcmp(name, namebuf);
++		ret = kallsyms_strcmp_symbol(off, name);
+ 		if (ret > 0)
+ 			low = mid + 1;
+ 		else if (ret < 0)
+@@ -200,8 +226,7 @@ static int kallsyms_lookup_names(const char *name,
+ 	while (low) {
+ 		seq = get_symbol_seq(low - 1);
+ 		off = get_symbol_offset(seq);
+-		kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
+-		if (strcmp(name, namebuf))
++		if (kallsyms_strcmp_symbol(off, name) != 0)
+ 			break;
+ 		low--;
+ 	}
+@@ -212,8 +237,7 @@ static int kallsyms_lookup_names(const char *name,
+ 		while (high < kallsyms_num_syms - 1) {
+ 			seq = get_symbol_seq(high + 1);
+ 			off = get_symbol_offset(seq);
+-			kallsyms_expand_symbol(off, namebuf, ARRAY_SIZE(namebuf));
+-			if (strcmp(name, namebuf))
++			if (kallsyms_strcmp_symbol(off, name) != 0)
+ 				break;
+ 			high++;
+ 		}
 
-Best regards,
 -- 
-Jim Cromie <jim.cromie@gmail.com>
+2.55.0
 
