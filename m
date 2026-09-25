@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 25 Sep 2026 02:47:30 -0500
-Subject: [PATCH 2/6] ASoC: codecs: aw88166: add TDM support
+Date: Fri, 25 Sep 2026 02:47:31 -0500
+Subject: [PATCH 3/6] ASoC: codecs: aw88166: reduce log spam
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-aw88166-cleanup-v1-2-11f74cb5fe28@gmail.com>
+Message-Id: <20260925-aw88166-cleanup-v1-3-11f74cb5fe28@gmail.com>
 References: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
 In-Reply-To: <20260925-aw88166-cleanup-v1-0-11f74cb5fe28@gmail.com>
 To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
@@ -13,287 +13,97 @@ To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>,
 Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Val Packett <val@packett.cool>, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=8987;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790322449; l=3193;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=tfGg+gbmR1wTDH3bnClADh1N75XgFSpxuSsHm9PykiU=;
- b=s8nWKJY4hWsKU4XbV0D9rOkJ0+jhkE5O1+vKuEcUBlXiG9e4frUKR3et5sxDGn7dE+lXej2l8
- dajXH6qIaWJCHXo/2BKm4DmbAfADBmvwycVxB6kSZZWRl+yNJ2P4csu
+ bh=06CCnQwpf2cLwzkmShv7cYeY0TUnVK2djZoAk9gCKNY=;
+ b=tU1vmXqjtE1HIHlzJ77jF4MvN28kJshUvwgRIKmYP+Xx7Si2SOeQ4BS7ax+BOiM2bl2lbXbLg
+ orFDQ6FN/9VDiGSk5sBJ9PRc2E3oVYRSnt6BJYFTb999+/uwLLZkEx9
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This amp supports TDM mode, so implement the set_tdm_slot operation to
-let the SoC driver configure the TDM slot number, width, and masks.
+This driver would create a wall of logspam during initialization due to
+e.g. the PLL not being ready while waiting for it to stabilize. Change
+intermediate dev_err() calls to dev_dbg() to reduce the noise.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- sound/soc/codecs/aw88166.c | 123 ++++++++++++++++++++++++++++++++++++++++++++-
- sound/soc/codecs/aw88166.h |  50 ++++++++++++++++++
- 2 files changed, 171 insertions(+), 2 deletions(-)
+ sound/soc/codecs/aw88166.c | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
 diff --git a/sound/soc/codecs/aw88166.c b/sound/soc/codecs/aw88166.c
-index 89608118cac6c..cd8773e316b90 100644
+index cd8773e316b90..c8b8c70aaf356 100644
 --- a/sound/soc/codecs/aw88166.c
 +++ b/sound/soc/codecs/aw88166.c
-@@ -7,6 +7,7 @@
- // Author: Weidong Wang <wangweidong.a@awinic.com>
- //
- 
-+#include <linux/bitops.h>
- #include <linux/cleanup.h>
- #include <linux/crc32.h>
- #include <linux/firmware.h>
-@@ -38,8 +39,14 @@ struct aw88166 {
- 	unsigned int fs_value;
- 	unsigned int bck_value;
- 	unsigned int bck_inv_value;
-+	unsigned int tdm_bck_value;
- 	unsigned int md_value;
- 
-+	unsigned int slot_num_value;
-+	unsigned int tx_slotvld_mask;
-+	unsigned int rxl_slotvld_mask;
-+	unsigned int rxr_slotvld_mask;
-+
- 	bool phase_sync;
- };
- 
-@@ -125,11 +132,35 @@ static int aw88166_dev_check_pll(struct aw_device *aw_dev)
- 	return -EPERM;
- }
- 
--static int aw88166_dev_configure_syspll(struct aw88166 *aw88261)
-+static int aw88166_dev_configure_syspll(struct aw88166 *aw88166)
- {
- 	struct aw_device *aw_dev = aw88166->aw_pa;
- 	int ret;
- 
-+	/* Configure TDM slots (I2S is represented as no slots) */
-+	ret = regmap_update_bits(aw_dev->regmap, AW88166_I2SCTRL2_REG,
-+			~AW88166_SLOT_NUM_MASK, aw88166->slot_num_value);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(aw_dev->regmap, AW88166_I2SCTRL2_REG,
-+			~AW88166_I2S_TX_SLOTVLD_MASK,
-+			aw88166->tx_slotvld_mask);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(aw_dev->regmap, AW88166_I2SCTRL2_REG,
-+			~AW88166_I2S_RXL_SLOTVLD_MASK,
-+			aw88166->rxl_slotvld_mask);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(aw_dev->regmap, AW88166_I2SCTRL2_REG,
-+			~AW88166_I2S_RXR_SLOTVLD_MASK,
-+			aw88166->rxr_slotvld_mask);
-+	if (ret)
-+		return ret;
-+
- 	/* PLL divider must be used for 8/16/32 kHz modes */
- 	ret = regmap_update_bits(aw_dev->regmap, AW88166_PLLCTRL1_REG,
- 			~AW88166_CCO_MUX_MASK, aw88166->cco_mux_value);
-@@ -144,7 +175,9 @@ static int aw88166_dev_configure_syspll(struct aw88166 *aw88261)
- 
- 	/* The bit clock (BCK) defines the length of a frame */
- 	ret = regmap_update_bits(aw_dev->regmap, AW88166_I2SCTRL1_REG,
--			~AW88166_I2SBCK_MASK, aw88166->bck_value);
-+			~AW88166_I2SBCK_MASK,
-+			(aw88166->tdm_bck_value != AW88166_TDM_BCK_UNSET)
-+			? aw88166->tdm_bck_value : aw88166->bck_value);
+@@ -108,7 +108,7 @@ static int aw_dev_get_iis_status(struct aw_device *aw_dev)
  	if (ret)
  		return ret;
+ 	if ((reg_val & AW88166_BIT_PLL_CHECK) != AW88166_BIT_PLL_CHECK) {
+-		dev_err(aw_dev->dev, "check pll lock fail, reg_val:0x%04x", reg_val);
++		dev_dbg(aw_dev->dev, "check pll lock fail, reg_val:0x%04x", reg_val);
+ 		return -EINVAL;
+ 	}
  
-@@ -1260,9 +1293,11 @@ static int aw88166_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+@@ -122,7 +122,7 @@ static int aw88166_dev_check_pll(struct aw_device *aw_dev)
+ 	for (i = 0; i < AW88166_DEV_SYSST_CHECK_MAX; i++) {
+ 		ret = aw_dev_get_iis_status(aw_dev);
+ 		if (ret) {
+-			dev_err(aw_dev->dev, "mode1 iis signal check error");
++			dev_dbg(aw_dev->dev, "mode1 iis signal check error");
+ 			usleep_range(AW88166_2000_US, AW88166_2000_US + 10);
+ 		} else {
+ 			return 0;
+@@ -223,7 +223,7 @@ static int aw_dev_check_sysst(struct aw_device *aw_dev)
+ 			return ret;
  
- 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
- 	case SND_SOC_DAIFMT_I2S:
-+	case SND_SOC_DAIFMT_DSP_A:
- 		aw88166->md_value = AW88166_I2SMD_PHILIPS_STANDARD_VALUE;
- 		break;
- 	case SND_SOC_DAIFMT_MSB:
-+	case SND_SOC_DAIFMT_DSP_B:
- 		aw88166->md_value = AW88166_I2SMD_MSB_JUSTIFIED_VALUE;
- 		break;
- 	case SND_SOC_DAIFMT_LSB:
-@@ -1369,9 +1404,90 @@ static int aw88166_hw_params(struct snd_pcm_substream *substream,
- 	return 0;
+ 		if ((reg_val & (~AW88166_BIT_SYSST_CHECK_MASK) & check_val) != check_val) {
+-			dev_err(aw_dev->dev, "check sysst fail, cnt=%d, reg_val=0x%04x, check:0x%x",
++			dev_dbg(aw_dev->dev, "check sysst fail, cnt=%d, reg_val=0x%04x, check:0x%x",
+ 				i, reg_val, AW88166_BIT_SYSST_NOSWS_CHECK);
+ 			usleep_range(AW88166_2000_US, AW88166_2000_US + 10);
+ 		} else {
+@@ -754,7 +754,7 @@ static int aw88166_dev_start(struct aw88166 *aw88166)
+ 
+ 	ret = aw88166_dev_configure_syspll(aw88166);
+ 	if (ret) {
+-		dev_err(aw_dev->dev, "pll check failed cannot start\n");
++		dev_dbg(aw_dev->dev, "pll check failed\n");
+ 		goto pll_check_fail;
+ 	}
+ 
+@@ -765,7 +765,7 @@ static int aw88166_dev_start(struct aw88166 *aw88166)
+ 	/* check i2s status */
+ 	ret = aw_dev_check_sysst(aw_dev);
+ 	if (ret) {
+-		dev_err(aw_dev->dev, "sysst check failed\n");
++		dev_dbg(aw_dev->dev, "sysst check failed\n");
+ 		goto sysst_check_fail;
+ 	}
+ 
+@@ -1175,10 +1175,11 @@ static void aw88166_start_pa(struct aw88166 *aw88166)
+ 	for (i = 0; i < AW88166_START_RETRIES; i++) {
+ 		ret = aw88166_dev_start(aw88166);
+ 		if (ret) {
+-			dev_err(aw88166->aw_pa->dev, "aw88166 device start failed. retry = %d", i);
++			dev_dbg(aw88166->aw_pa->dev,
++				"aw88166 device start failed. cnt:%d, ret:%d", i, ret);
+ 			ret = aw88166_dev_fw_update(aw88166, AW88166_DSP_FW_UPDATE_ON, true);
+ 			if (ret) {
+-				dev_err(aw88166->aw_pa->dev, "fw update failed");
++				dev_dbg(aw88166->aw_pa->dev, "fw update failed");
+ 				continue;
+ 			}
+ 		} else {
+@@ -1186,6 +1187,8 @@ static void aw88166_start_pa(struct aw88166 *aw88166)
+ 			break;
+ 		}
+ 	}
++	if (ret != 0)
++		dev_err(aw88166->aw_pa->dev, "start failure (%d)\n", ret);
  }
  
-+static int aw88166_set_tdm_slot(struct snd_soc_dai *dai,
-+	unsigned int tx_mask, unsigned int rx_mask, int slots, int slot_width)
-+{
-+	struct snd_soc_component *component = dai->component;
-+	struct aw88166 *aw88166 = snd_soc_component_get_drvdata(component);
-+	int chan;
-+
-+	switch (slots) {
-+	case 0:
-+		/* Just reset everything TDM related to I2S values */
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_I2S_MODE_VALUE;
-+		aw88166->tdm_bck_value = AW88166_TDM_BCK_UNSET;
-+		aw88166->tx_slotvld_mask = 0 << AW88166_I2S_TX_SLOTVLD_START_BIT;
-+		aw88166->rxl_slotvld_mask = 0 << AW88166_I2S_RXL_SLOTVLD_START_BIT;
-+		aw88166->rxr_slotvld_mask = 1 << AW88166_I2S_RXR_SLOTVLD_START_BIT;
-+		return 0;
-+	case 1:
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_TDM1S_VALUE;
-+		break;
-+	case 2:
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_TDM2S_VALUE;
-+		break;
-+	case 4:
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_TDM4S_VALUE;
-+		break;
-+	case 6:
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_TDM6S_VALUE;
-+		break;
-+	case 8:
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_TDM8S_VALUE;
-+		break;
-+	case 16:
-+		aw88166->slot_num_value = AW88166_SLOT_NUM_TDM16S_VALUE;
-+		break;
-+	default:
-+		dev_err(aw88166->aw_pa->dev, "unsupported slot count %d\n", slots);
-+		return -EINVAL;
-+	}
-+
-+	switch (slot_width) {
-+	case 16:
-+		aw88166->tdm_bck_value = AW88166_I2SBCK_32FS_VALUE;
-+		break;
-+	case 20:
-+	case 24:
-+		aw88166->tdm_bck_value = AW88166_I2SBCK_48FS_VALUE;
-+		break;
-+	case 32:
-+		aw88166->tdm_bck_value = AW88166_I2SBCK_64FS_VALUE;
-+		break;
-+	default:
-+		dev_err(aw88166->aw_pa->dev, "unsupported slot width %d\n",
-+			slot_width);
-+		return -EINVAL;
-+	}
-+
-+	if (tx_mask != 0) {
-+		if ((chan = __ffs(tx_mask)) > 16)
-+			return -EINVAL;
-+
-+		aw88166->tx_slotvld_mask = chan << AW88166_I2S_TX_SLOTVLD_START_BIT;
-+	}
-+
-+	if (rx_mask != 0) {
-+		if ((chan = __ffs(rx_mask)) > 16)
-+			return -EINVAL;
-+
-+		aw88166->rxl_slotvld_mask = chan << AW88166_I2S_RXL_SLOTVLD_START_BIT;
-+	}
-+
-+	if ((rx_mask & ~BIT(chan)) != 0) {
-+		if ((chan = __ffs(rx_mask & ~BIT(chan))) > 16)
-+			return -EINVAL;
-+
-+		aw88166->rxr_slotvld_mask = chan << AW88166_I2S_RXR_SLOTVLD_START_BIT;
-+	}
-+
-+	return 0;
-+}
-+
- static const struct snd_soc_dai_ops aw88166_dai_ops = {
- 	.set_fmt = aw88166_set_fmt,
- 	.hw_params = aw88166_hw_params,
-+	.set_tdm_slot = aw88166_set_tdm_slot,
- };
- 
- static struct snd_soc_dai_driver aw88166_dai[] = {
-@@ -1891,12 +2007,15 @@ static int aw88166_i2c_probe(struct i2c_client *i2c)
- 		return -ENOMEM;
- 
- 	/* set defaults */
-+	aw88166->slot_num_value = AW88166_SLOT_NUM_I2S_MODE_VALUE;
- 	aw88166->sr_value = AW88166_I2SSR_48KHZ_VALUE;
- 	aw88166->cco_mux_value = AW88166_CCO_MUX_BYPASS_VALUE;
- 	aw88166->fs_value = AW88166_I2SFS_24_BITS_VALUE;
- 	aw88166->bck_value = AW88166_I2SBCK_64FS_VALUE;
- 	aw88166->bck_inv_value = AW88166_BCKINV_NOT_INVERT_VALUE;
-+	aw88166->tdm_bck_value = AW88166_TDM_BCK_UNSET;
- 	aw88166->md_value = AW88166_I2SMD_PHILIPS_STANDARD_VALUE;
-+	aw88166->rxr_slotvld_mask = 1 << AW88166_I2S_RXR_SLOTVLD_START_BIT;
- 
- 	mutex_init(&aw88166->lock);
- 
-diff --git a/sound/soc/codecs/aw88166.h b/sound/soc/codecs/aw88166.h
-index 0aa92b3b6c3b8..377a733447e70 100644
---- a/sound/soc/codecs/aw88166.h
-+++ b/sound/soc/codecs/aw88166.h
-@@ -437,6 +437,8 @@
- #define AW88166_I2SBCK_64FS_VALUE	\
- 	(AW88166_I2SBCK_64FS << AW88166_I2SBCK_START_BIT)
- 
-+#define AW88166_TDM_BCK_UNSET			UINT_MAX
-+
- #define AW88166_I2SSR_START_BIT			(0)
- #define AW88166_I2SSR_BITS_LEN			(4)
- #define AW88166_I2SSR_MASK				\
-@@ -476,6 +478,54 @@
- #define AW88166_I2SSR_192KHZ_VALUE		\
- 	(AW88166_I2SSR_192KHZ << AW88166_I2SSR_START_BIT)
- 
-+#define AW88166_SLOT_NUM_START_BIT	(12)
-+#define AW88166_SLOT_NUM_BITS_LEN	(3)
-+#define AW88166_SLOT_NUM_MASK	\
-+	(~(((1<<AW88166_SLOT_NUM_BITS_LEN)-1) << AW88166_SLOT_NUM_START_BIT))
-+
-+#define AW88166_SLOT_NUM_I2S_MODE	(0)
-+#define AW88166_SLOT_NUM_I2S_MODE_VALUE	\
-+	(AW88166_SLOT_NUM_I2S_MODE << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_SLOT_NUM_TDM1S	(1)
-+#define AW88166_SLOT_NUM_TDM1S_VALUE	\
-+	(AW88166_SLOT_NUM_TDM1S << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_SLOT_NUM_TDM2S	(2)
-+#define AW88166_SLOT_NUM_TDM2S_VALUE	\
-+	(AW88166_SLOT_NUM_TDM2S << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_SLOT_NUM_TDM4S	(3)
-+#define AW88166_SLOT_NUM_TDM4S_VALUE	\
-+	(AW88166_SLOT_NUM_TDM4S << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_SLOT_NUM_TDM6S	(4)
-+#define AW88166_SLOT_NUM_TDM6S_VALUE	\
-+	(AW88166_SLOT_NUM_TDM6S << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_SLOT_NUM_TDM8S	(5)
-+#define AW88166_SLOT_NUM_TDM8S_VALUE	\
-+	(AW88166_SLOT_NUM_TDM8S << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_SLOT_NUM_TDM16S	(6)
-+#define AW88166_SLOT_NUM_TDM16S_VALUE	\
-+	(AW88166_SLOT_NUM_TDM16S << AW88166_SLOT_NUM_START_BIT)
-+
-+#define AW88166_I2S_TX_SLOTVLD_START_BIT	(8)
-+#define AW88166_I2S_TX_SLOTVLD_BITS_LEN	(4)
-+#define AW88166_I2S_TX_SLOTVLD_MASK	\
-+	(~(((1<<AW88166_I2S_TX_SLOTVLD_BITS_LEN)-1) << AW88166_I2S_TX_SLOTVLD_START_BIT))
-+
-+#define AW88166_I2S_RXR_SLOTVLD_START_BIT	(4)
-+#define AW88166_I2S_RXR_SLOTVLD_BITS_LEN	(4)
-+#define AW88166_I2S_RXR_SLOTVLD_MASK	\
-+	(~(((1<<AW88166_I2S_RXR_SLOTVLD_BITS_LEN)-1) << AW88166_I2S_RXR_SLOTVLD_START_BIT))
-+
-+#define AW88166_I2S_RXL_SLOTVLD_START_BIT	(0)
-+#define AW88166_I2S_RXL_SLOTVLD_BITS_LEN	(4)
-+#define AW88166_I2S_RXL_SLOTVLD_MASK	\
-+	(~(((1<<AW88166_I2S_RXL_SLOTVLD_BITS_LEN)-1) << AW88166_I2S_RXL_SLOTVLD_START_BIT))
-+
- #define AW88166_CCO_MUX_START_BIT	(8)
- #define AW88166_CCO_MUX_BITS_LEN	(1)
- #define AW88166_CCO_MUX_MASK		\
+ static void aw88166_startup_work(struct work_struct *work)
 
 -- 
 2.54.0
