@@ -1,79 +1,84 @@
-From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Fri, 25 Sep 2026 08:12:07 -0700
-Subject: [PATCH net-next 2/2] net: pcs: rzn1-miic: Validate dtb
- configuration values
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v2 0/3] Add T7 PWM core clock support
+Date: Fri, 25 Sep 2026 17:13:27 +0200
+Message-Id: <20260925-add-t7-sys-pwm-clk-v2-0-f23a22b71a5c@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-miic-validate-dtb-v1-2-3a6db9bb75ec@reliablecontrols.com>
-References: <20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com>
-In-Reply-To: <20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com>
-To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
-Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790349149; l=1491;
- i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=roPhZwydaFDUeHZvGOS4KnGtlVh4c4JmiPDOvguDH8M=;
- b=gWbzQTZ6lLElV7ND2eSJh+7hDwl751c0+N4kJBheMX1CFrEJPgimgpaS8ca9bkhkrm8n8xbEg
- NLM3smLzYxkAZdqEXO4Q7Ltr1IbOvJZ1cj7X5UQWmq9x8j+gjmAg4p3
-X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
- pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
-X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7Zi2UaGuvIdhUehUJlYgLakS0
+ rtbOYDL95L//gaRAlOEa7VBoMSRp7GAOlTQD2Z8ELItDEqoi9DqhMZaXGqMa8T5/cLeP9EJcq6
+ RHZGSUIZzIMefPXpvCw8clyms+0eSP/s3lyQKFOdOS2pqJ4y+Gc/kjy5Am3P+AkX83omzAAAA
+X-Change-ID: 20260924-add-t7-sys-pwm-clk-f0eff81bee21
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2113;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=BvV2GQqzvOzgjsW3tDmxKxPUarEcjrPWBP2eqzE21fM=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9a2/l2i6w8dObVVRbIk5sXWuS//fDL1KMnwNvgg+Nppg
+ 8mzr3t8O0pZGMS4GGTFFFn651qeeHf56Jmve9RTYOawMoEMYeDiFICJeKcxMhzofRLKF3mzWUP3
+ 6iQV97xpf3bvcxA7fktmUcQ883mNfEUM/2P/RN7w3ty3Nf/rlZwv9+Y9CklbxLbw27Vqnj+HGzb
+ ceMMOAA==
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Bad configuration values from the dtb could result in out of bounds array
-access. Verify that parsed values are within range for the SoC and fail the
-probe if they are invalid.
+The PWM controllers on the Amlogic T7 SoC have a system clock that
+controls access to the controller, in addition to the two input
+clocks of channels A and B.
 
-Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
+It is currently not described in the device tree, so it is neither
+referenced nor enabled by the driver.
+
+This series adds support for it:
+
+  - patch 1 extends the binding with a third "core" clock for
+    amlogic,t7-pwm, and makes clocks/clock-names required for it;
+  - patch 2 makes the driver get and enable the optional "core"
+    clock, leaving other SoCs unaffected;
+  - patch 3 describes the system clock (CLKID_SYS_PWM_*) in the T7
+    device tree for all the PWM controllers.
+
+`dt_binding_check DT_SCHEMA_FILES=pwm-amlogic.yaml` test is ok
+
+  CHKDT   ./Documentation/devicetree/bindings
+warning: python package 'yamllint' not installed, skipping
+  STYLE   ./Documentation/devicetree/bindings
+  DTEX    Documentation/devicetree/bindings/pwm/pwm-amlogic.example.dts
+  DTC [C] Documentation/devicetree/bindings/pwm/pwm-amlogic.example.dtb
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/net/pcs/pcs-rzn1-miic.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v2:
+- PATCH 1: Permits to use "core" clock on S4 SoC and all the ones that fallback to it.
+           Rename "clk_a" and "clk_b" to "channel-a" and "channel-b". Thx to Conor's feedback.
+- PATCH 3: Rename channel clock-names as done on patch 1.
+- Link to v1: https://lore.kernel.org/r/20260924-add-t7-sys-pwm-clk-v1-0-05b91e87f0a9@aliel.fr
 
-diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
-index 62daaf76e052..30ac2d407005 100644
---- a/drivers/net/pcs/pcs-rzn1-miic.c
-+++ b/drivers/net/pcs/pcs-rzn1-miic.c
-@@ -695,9 +695,24 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
- 		if (of_property_read_u32(conv, "reg", &port))
- 			continue;
- 
-+		if (port < miic->of_data->miic_port_start ||
-+		    port > MIIC_PORT_END(miic->of_data)) {
-+			dev_err(miic->dev, "Port number out of range: %d\n", port);
-+			of_node_put(conv);
-+			ret = -EINVAL;
-+			goto err;
-+		}
-+
- 		if (of_property_read_u32(conv, "renesas,miic-input", &conf))
- 			continue;
- 
-+		if (conf >= miic->of_data->conf_to_string_count) {
-+			dev_err(miic->dev, "Port configuration out of range: %d\n", conf);
-+			of_node_put(conv);
-+			ret = -EINVAL;
-+			goto err;
-+			}
-+
- 		/* Adjust for 0 based index */
- 		dt_val[port + !miic->of_data->miic_port_start] = conf;
- 
-@@ -707,6 +722,7 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
- 	}
- 
- 	ret = miic_match_dt_conf(miic, dt_val, mode_cfg);
-+err:
- 	kfree(dt_val);
- 
- 	return ret;
+---
+Ronald Claveau (3):
+      dt-bindings: pwm: amlogic: Add core clock for T7
+      pwm: meson: Add optional core clock for S4 PWM
+      arm64: dts: amlogic: t7: Add core clock to PWM controller nodes
 
+ .../devicetree/bindings/pwm/pwm-amlogic.yaml       | 33 ++++++++++++++++++++--
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        | 28 +++++++++++++-----
+ drivers/pwm/pwm-meson.c                            |  5 ++++
+ 3 files changed, 57 insertions(+), 9 deletions(-)
+---
+base-commit: a8c591ed6b672915e0be57843f943a2a723aff40
+change-id: 20260924-add-t7-sys-pwm-clk-f0eff81bee21
+
+Best regards,
 -- 
-2.43.0
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
