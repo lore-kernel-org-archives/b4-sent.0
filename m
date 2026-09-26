@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 26 Sep 2026 14:40:20 +0200
-Subject: [PATCH RFC 01/12] usb: typec: tcpm: qcom: Release the connector
- fwnode reference
+Date: Sat, 26 Sep 2026 14:40:21 +0200
+Subject: [PATCH RFC 02/12] dt-bindings: usb: qcom,pmic-typec: Update
+ example with vbus-supply
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260926-typec-v1-1-31adc19f32c6@ixit.cz>
+Message-Id: <20260926-typec-v1-2-31adc19f32c6@ixit.cz>
 References: <20260926-typec-v1-0-31adc19f32c6@ixit.cz>
 In-Reply-To: <20260926-typec-v1-0-31adc19f32c6@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -25,76 +25,70 @@ Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org,
  phone-devel@vger.kernel.org, mfd@lists.linux.dev, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1915; i=david@ixit.cz;
- h=from:subject:message-id; bh=22jx8Je1oP+cSCrbfrUS4MrSfcA6caRWGdeZuml3fJs=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqt709qm2CM8rlvlYjeHgjttYvncP5LGHE4UVfp
- 0le9TwMS8GJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCare9PQAKCRBgAj/E00kg
- covmD/91dII+0d3mG6Rh9eecL3hmADWuOqoOY6jnNuvevQ85iyRM7ef0uZHQ7GPOR/p4GU4fK24
- f1J5yw86lLpCzy5voipaf5579rByui4r/RC5fS6x4NfyTYV5uLhnS4HzgZzpkZBVM6or0nDHP+i
- n8WmIjWl8ErpyX3GjRm11gG0/SHjdtHpotIt29rUrsN+2E9CD8G6x4iulBEhRZqklphX4f7fCba
- g6t7jjZSTNL2hLwolVl7duIa7HWv29uTWkkdkKh02ZbNPdhL3k52mdTt7VZHIZceI4ZuO+/v+wq
- H2Uv0QJkMG4Ox5brnG2szJ157Aq0SLTX5JQnR50AMEc6zd/HaOyXCB1bc/isK6epMYVJpEHIhww
- FCyBX/WMyitfHGI3vVM+8HZJKMlA6TJ70uSodFV8JKpuZVt7WiF2I8ASwgtKtdRmYeTNJb5zyj2
- oDhUepZRWO74W0g4eSlPepn0FbKBESvKAGPUzgjE70/ue3xBlYSO7IweWdRpLZWMhDDt5VZFk62
- CKchhsY0w8Cd7f2EPmOqHyiY3nWN/p93aX7tfIRCdY/p2wmJv0LtwLdxciVu0ywCVkUv+ZREErD
- Y7IkPl03xLeZ9SyzfZMkrgB+EYWXJ3EYsh3E28Oa5hUUPg3zeRI/mkIbwQ1JtsR+JkP4/0TEUOc
- M518ylOwa1Jl+MA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1765; i=david@ixit.cz;
+ h=from:subject:message-id; bh=7QxiOjoeKoKXk9E1eYNDmLj4wCbThDkI+aQOFIPL5J4=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqt70+CmH8mks/No9E70DNtIUe2Oyb2BRrsAJrO
+ zIOZWkLvYuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCare9PgAKCRBgAj/E00kg
+ cj9oD/45Iu4qrkMFD6bJMFFFI+9sFnJQItwzRXrXXjDhtFmPmkTbBGk2laRKDf8SoADb+9svKar
+ tkwt14EQTr/yQ8WW8J+yj7BRma48NuFHbq9B3qnRMHgP+ajfzkmkOTRhsH6G/k1w3epSzf/w280
+ OgATA0T5SKEeaYDBsSWppMR5nFHdtjfcLBEaXRTOCTiUFsQvIevKrc+5GE7565G3OgbKqVVo25F
+ VN/PdYZCpYyC4PzYIKRvuEyl2kNJBIs88pAsGlfVJ/UgFa/YFhdheGSBvDZ/AReYW5ey9Cke0Yy
+ UZtQr1sM/OYF8O1WyOzH78xvUGPQrwqkuTT2/sviRXR2uaIMnRUn6hHY5XZYSFdUzEhUhNKc1kS
+ XX4703ejTpsvJjc283T/nfQxb+/iTlFrPqts4vLjsHyfIccc4F1UPsGUMFEc9ruBAwxzUbqJbDx
+ xZw803J/P7SHHE8JeMgGA8LTdPVmRNmc3uMeQ2Jv7mSbdem2krrO2ggxQYtS4DWIEqJ2+mHWQEl
+ +L/C3JMilG96SXWNB6WRWyA5J6rm3XPmf7X1PLlYBx1fN6LytJusruQ3DczH3VotFQANZnPmDk0
+ Ev9Ih0rc8Mix+txBeZTEyxS+oYcfDh2JVWhjpRnUa0nN7dCPDi8gfrbphIAktfAyl/Uhc06Ln4e
+ YfmTlKkhb70RslQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-device_get_named_child_node() returns the connector node with its
-reference count incremented, but the port probe never drops it. The node
-is only needed for the VBUS regulator lookup, so release it right after.
+The vdd-vbus-supply is deprecated, thus don't suggest deprecated usage in
+example.
 
 Assisted-by: LLM
-Fixes: 506927b6bf29 ("usb: typec: tcpm: qcom: prefer VBUS supply from the connector node")
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_port.c | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/usb/qcom,pmic-typec.yaml | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_port.c b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_port.c
-index bf985efe1cd6b..f8308d66b9d67 100644
---- a/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_port.c
-+++ b/drivers/usb/typec/tcpm/qcom/qcom_pmic_typec_port.c
-@@ -5,16 +5,17 @@
+diff --git a/Documentation/devicetree/bindings/usb/qcom,pmic-typec.yaml b/Documentation/devicetree/bindings/usb/qcom,pmic-typec.yaml
+index ba790c4488b76..2c8b11e92fb28 100644
+--- a/Documentation/devicetree/bindings/usb/qcom,pmic-typec.yaml
++++ b/Documentation/devicetree/bindings/usb/qcom,pmic-typec.yaml
+@@ -163,29 +163,30 @@ examples:
+                               "sig-rx",
+                               "msg-tx",
+                               "msg-rx",
+                               "msg-tx-failed",
+                               "msg-tx-discarded",
+                               "msg-rx-discarded",
+                               "fr-swap";
  
- #include <linux/delay.h>
- #include <linux/err.h>
- #include <linux/interrupt.h>
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/of.h>
- #include <linux/platform_device.h>
-+#include <linux/property.h>
- #include <linux/regmap.h>
- #include <linux/regulator/consumer.h>
- #include <linux/slab.h>
- #include <linux/string_choices.h>
- #include <linux/usb/tcpm.h>
- #include <linux/usb/typec_mux.h>
- #include <linux/workqueue.h>
+-            vdd-vbus-supply = <&pm8150b_vbus>;
+             vdd-pdphy-supply = <&vreg_l2a_3p1>;
  
-@@ -723,16 +724,17 @@ int qcom_pmic_typec_port_probe(struct platform_device *pdev,
+             connector {
+                 compatible = "usb-c-connector";
  
- 	connector = device_get_named_child_node(dev, "connector");
- 	if (!connector)
- 		return -EINVAL;
+                 power-role = "source";
+                 data-role = "dual";
+                 self-powered;
  
- 	pmic_typec_port->vdd_vbus = devm_of_regulator_get_optional(dev,
- 								   to_of_node(connector),
- 								   "vbus");
-+	fwnode_handle_put(connector);
- 	if (pmic_typec_port->vdd_vbus == ERR_PTR(-ENODEV))
- 		pmic_typec_port->vdd_vbus = devm_regulator_get(dev, "vdd-vbus");
- 	if (IS_ERR(pmic_typec_port->vdd_vbus))
- 		return PTR_ERR(pmic_typec_port->vdd_vbus);
+                 source-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_DUAL_ROLE |
+                                PDO_FIXED_USB_COMM | PDO_FIXED_DATA_SWAP)>;
  
- 	pmic_typec_port->dev = dev;
- 	pmic_typec_port->base = base;
- 	pmic_typec_port->regmap = regmap;
++                vbus-supply = <&pm8150b_vbus>;
++
+                 ports {
+                     #address-cells = <1>;
+                     #size-cells = <0>;
+ 
+                     port@0 {
+                         reg = <0>;
+                         pmic_typec_hs_in: endpoint {
+                             remote-endpoint = <&usb_hs_out>;
 
 -- 
 2.55.0
