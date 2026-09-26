@@ -1,91 +1,68 @@
-From: Sam Day <me@samcday.com>
-Date: Sat, 26 Sep 2026 16:17:13 +1000
-Subject: [PATCH] drm/msm/a3xx: fix VBIF halt mask for A306/A306A
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Sat, 26 Sep 2026 02:24:19 -0500
+Subject: [PATCH] ALSA: hda/tegra: Re-enable SDO workaround for Tegra194
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260926-a306-vbif-mask-v1-1-2bae5e81c05a@samcday.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MWwqDMBAF0K0M99uBmNpUs5XSj9hM7CA+SECE4
- N4LngWciiJZpcBTRZZDi24rPLUN4fsL6ySsEZ5gjXVmsB2Hh3F8jJp4CWXmZ59eg3HJdi6iIex
- Zkp53+P5c1x90ppU2YAAAAA==
-X-Change-ID: 20260924-a306-vbif-mask-58f7906f246d
-To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Alexandre MINETTE <contact@alex-min.fr>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Sam Day <me@samcday.com>
+Message-Id: <20260926-tegra194-hda-sdo-v1-1-f7a636a07a58@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avIrBtQKdGuEi1Ep5qNhkYE4d2Tl
+ m/x/wuVClOFWbxQ6ObKOXWoQUA4fNoJOXaDltpIpw1etBev3IhH9FhjRhXtGIy0k3IWenYW2vj
+ 5l8va2gf4fpxUYgAAAA==
+X-Change-ID: 20260926-tegra194-hda-sdo-1d84c6085198
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: Thierry Reding <treding@nvidia.com>, linux-sound@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790403440; l=2199;
- i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=oDYwGKGyfEkOHM+q+3q3tiYEXIpdYfuD7sbODF+IpJk=;
- b=P7wMnjbjN9vUTSd526bE/GsU+zAk9jbwq6ub1Lx30B47NQO4CXDtBYqViJyRqDCt3l1wtulhK
- NoKQEdFjxt6BW1Ct6DdfRTqUY5I3gYpcBggYA1+RfxzrqcGYXPri2C+
-X-Developer-Key: i=me@samcday.com; a=ed25519;
- pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
-X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790407469; l=1584;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=8rAycl98UAJVNpg4nxLeFSEwU8WePutSW40I7utV8vY=;
+ b=jpT6mRhj6kFaT03vLb78Ga/cCq4a5oFDhA6+ifoHcGRLo0Q1WygeZdjkILrQ2wRqTUOIgSoJj
+ ur/C6Ic/N/jCoPadVejJRrh2MNXBWbwY9PtMqbgCOK/Yg6KbL8H5cHw
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A306 and A306A implement only three VBIF XIN halt request bits.
-Consequently, waiting for the full 6-bit A3xx mask times out and
-prevents runtime suspend.
+This workaround was originally added for Tegra194, but no longer gets
+applied for it. Commit 615d43540043 ("ALSA: hda/tegra: fix tegra-hda on
+tegra30 soc") changed the guard to tegra30-hda, which worked because all
+affected archs had the fallback compatible. However, commit 7f0ea5acfc19
+("arm64: tegra: Use correct compatible string for Tegra194 HDA") removed
+the fallback compatible for Tegra194, causing this to break.
 
-This issue was reproduced on a DragonBoard 410c: the request reads back
-as 0x7 and the acknowledgment as 0x00070007 - the poll eventually
-returns -ETIMEDOUT, and a3xx_pm_suspend fails with -EBUSY.
-
-The downstream kgsl driver corroborates this (see link). Since the
-single-character difference between A3XX_VBIF_XIN_HALT_CTRL0_MASK and
-A30X_VBIF_XIN_HALT_CTRL0_MASK could be confusing to read, the narrowed
-GENMASK is instead defined inline in a3xx_vbif_halt().
-
-Fixes: be0e82b8e0c9 ("drm/msm/a3xx: Drain VBIF before GPU suspend")
-Link: https://android.googlesource.com/kernel/msm/+/c90c7feeca2f5839ad6824f816c0bd207602a2f4/drivers/gpu/msm/adreno_a3xx.c#637
+Fixes: 7f0ea5acfc19 ("arm64: tegra: Use correct compatible string for Tegra194 HDA")
+Cc: stable@vger.kernel.org
 Assisted-by: LLM
-Signed-off-by: Sam Day <me@samcday.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/gpu/drm/msm/adreno/a3xx_gpu.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ALSA: hda/tegra: Re-enable SDO workaround for Tegra194
+---
+ sound/hda/controllers/tegra.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/msm/adreno/a3xx_gpu.c b/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
-index 0259e60b80115..f672abd5e15e4 100644
---- a/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
-+++ b/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
-@@ -500,14 +500,18 @@ static u64 a3xx_gpu_busy(struct msm_gpu *gpu, unsigned long *out_sample_rate)
+diff --git a/sound/hda/controllers/tegra.c b/sound/hda/controllers/tegra.c
+index 31c14c4bbe683..674cc0f79c3c8 100644
+--- a/sound/hda/controllers/tegra.c
++++ b/sound/hda/controllers/tegra.c
+@@ -374,7 +374,8 @@ static int hda_tegra_first_init(struct azx *chip, struct platform_device *pdev)
+ 	 * in powers of 2, next available ratio is 16 which can be
+ 	 * used as a limiting factor here.
+ 	 */
+-	if (of_device_is_compatible(np, "nvidia,tegra30-hda"))
++	if (of_device_is_compatible(np, "nvidia,tegra30-hda") ||
++	    of_device_is_compatible(np, "nvidia,tegra194-hda"))
+ 		chip->bus.core.sdo_limit = 16;
  
- static int a3xx_vbif_halt(struct msm_gpu *gpu)
- {
-+	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
-+	u32 mask = A3XX_VBIF_XIN_HALT_CTRL0_MASK;
- 	u32 ack;
- 	int ret;
- 
--	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0,
--		  A3XX_VBIF_XIN_HALT_CTRL0_MASK);
-+	/* A306(A) only have three VBIF XIN ports. */
-+	if (adreno_is_a306(adreno_gpu) || adreno_is_a306a(adreno_gpu))
-+		mask = GENMASK(2, 0);
-+
-+	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0, mask);
- 	ret = spin_until(((ack = gpu_read(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL1)) &
--			  A3XX_VBIF_XIN_HALT_CTRL0_MASK) ==
--			 A3XX_VBIF_XIN_HALT_CTRL0_MASK);
-+			  mask) == mask);
- 	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0, 0);
- 
- 	if (ret)
+ 	/* codec detection */
 
 ---
-base-commit: a15fac810c76397ec9f62a6fc26c4d7ab6e238a7
-change-id: 20260924-a306-vbif-mask-58f7906f246d
+base-commit: 4c253ac4b29b8c6cc6fdef8f92d4facde62e63b9
+change-id: 20260926-tegra194-hda-sdo-1d84c6085198
 
 Best regards,
 -- 
-Sam Day <me@samcday.com>
+Aaron Kling <webgeek1234@gmail.com>
 
