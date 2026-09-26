@@ -1,71 +1,91 @@
-From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 25 Sep 2026 17:51:04 -0700
-Subject: [PATCH RFC 17/17] KVM: selftests: Document testing TODOs
+From: Sam Day <me@samcday.com>
+Date: Sat, 26 Sep 2026 16:17:13 +1000
+Subject: [PATCH] drm/msm/a3xx: fix VBIF halt mask for A306/A306A
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-gmem-tmpfs-backend-v1-17-d36159822d18@google.com>
-References: <20260925-gmem-tmpfs-backend-v1-0-d36159822d18@google.com>
-In-Reply-To: <20260925-gmem-tmpfs-backend-v1-0-d36159822d18@google.com>
-To: Hugh Dickins <hughd@google.com>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Sean Christopherson <seanjc@google.com>, 
- Paolo Bonzini <pbonzini@redhat.com>, David Hildenbrand <david@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, Shuah Khan <shuah@kernel.org>, 
- vannapurve@google.com, erdemaktas@google.com, jxgao@google.com, 
- rientjes@google.com, fvdl@google.com, jthoughton@google.com, 
- tarunsahu@google.com, pratyush@kernel.org, fuad.tabba@linux.dev, 
- Gregory Price <gourry@gourry.net>, David Woodhouse <dwmw2@infradead.org>, 
- yan.y.zhao@intel.com, michael.roth@amd.com, suzuki.poulose@arm.com, 
- Christian Brauner <brauner@kernel.org>, Jason Gunthorpe <jgg@ziepe.ca>, 
- Nicolin Chen <nicolinc@nvidia.com>, Xu Yilun <yilun.xu@linux.intel.com>, 
- aik@amd.com, aneesh.kumar@kernel.org, Vlastimil Babka <vbabka@kernel.org>
-Cc: kernel-team@android.com, kernel-team@meta.com, 
- linux-kernel@vger.kernel.org, linux-mm@kvack.org, kvm@vger.kernel.org, 
- linux-doc@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- Ackerley Tng <ackerleytng@google.com>
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790383850; l=1099;
- i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=zKFuTq3Amq3TlVl+Ae6LwDfBtexGkdVicUSVbrDs3Rw=;
- b=D5SgQu2KvK/CN8bmAnbeQJqiDr8hZKAUtYrBjvO7ze+1Wl1dU9raEmcyKScXL3hs51t3QYlt9
- k3mic0lnyeeA1v9aJ7kZuFyx/opXA3gFDc8InOKEYvCNEcaPlQDJKRu
-X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
- pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
-X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
+Message-Id: <20260926-a306-vbif-mask-v1-1-2bae5e81c05a@samcday.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MWwqDMBAF0K0M99uBmNpUs5XSj9hM7CA+SECE4
+ N4LngWciiJZpcBTRZZDi24rPLUN4fsL6ySsEZ5gjXVmsB2Hh3F8jJp4CWXmZ59eg3HJdi6iIex
+ Zkp53+P5c1x90ppU2YAAAAA==
+X-Change-ID: 20260924-a306-vbif-mask-58f7906f246d
+To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Alexandre MINETTE <contact@alex-min.fr>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Sam Day <me@samcday.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790403440; l=2199;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=oDYwGKGyfEkOHM+q+3q3tiYEXIpdYfuD7sbODF+IpJk=;
+ b=P7wMnjbjN9vUTSd526bE/GsU+zAk9jbwq6ub1Lx30B47NQO4CXDtBYqViJyRqDCt3l1wtulhK
+ NoKQEdFjxt6BW1Ct6DdfRTqUY5I3gYpcBggYA1+RfxzrqcGYXPri2C+
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remind myself about all the tests (A)I did not write.
+A306 and A306A implement only three VBIF XIN halt request bits.
+Consequently, waiting for the full 6-bit A3xx mask times out and
+prevents runtime suspend.
 
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+This issue was reproduced on a DragonBoard 410c: the request reads back
+as 0x7 and the acknowledgment as 0x00070007 - the poll eventually
+returns -ETIMEDOUT, and a3xx_pm_suspend fails with -EBUSY.
+
+The downstream kgsl driver corroborates this (see link). Since the
+single-character difference between A3XX_VBIF_XIN_HALT_CTRL0_MASK and
+A30X_VBIF_XIN_HALT_CTRL0_MASK could be confusing to read, the narrowed
+GENMASK is instead defined inline in a3xx_vbif_halt().
+
+Fixes: be0e82b8e0c9 ("drm/msm/a3xx: Drain VBIF before GPU suspend")
+Link: https://android.googlesource.com/kernel/msm/+/c90c7feeca2f5839ad6824f816c0bd207602a2f4/drivers/gpu/msm/adreno_a3xx.c#637
+Assisted-by: LLM
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- tools/testing/selftests/kvm/guest_memfd_test.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/gpu/drm/msm/adreno/a3xx_gpu.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index bf369874f2647..4e5d00df899a6 100644
---- a/tools/testing/selftests/kvm/guest_memfd_test.c
-+++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -721,6 +721,16 @@ static void test_guest_memfd(unsigned long vm_type)
+diff --git a/drivers/gpu/drm/msm/adreno/a3xx_gpu.c b/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
+index 0259e60b80115..f672abd5e15e4 100644
+--- a/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
++++ b/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
+@@ -500,14 +500,18 @@ static u64 a3xx_gpu_busy(struct msm_gpu *gpu, unsigned long *out_sample_rate)
  
- 	test_guest_memfd_flags(vm);
+ static int a3xx_vbif_halt(struct msm_gpu *gpu)
+ {
++	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
++	u32 mask = A3XX_VBIF_XIN_HALT_CTRL0_MASK;
+ 	u32 ack;
+ 	int ret;
  
-+	/*
-+	 * TODO: Test that guest_memfd creation rejects a read-only tmpfs mount
-+	 * (e.g. MOUNT_ATTR_RDONLY) with EROFS.
-+	 *
-+	 * TODO: Test that guest_memfd creation rejects an ID-mapped tmpfs mount
-+	 * (e.g. MOUNT_ATTR_IDMAP) lacking write or execute/search permissions
-+	 * with EACCES.
-+	 *
-+	 * TODO: Test mpol fallback to mount config.
-+	 */
- 	test_resource_fd_invalid(vm);
- 	test_resource_fd_unsupported_fs(vm);
- 	test_resource_fd_tmpfs_file(vm);
+-	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0,
+-		  A3XX_VBIF_XIN_HALT_CTRL0_MASK);
++	/* A306(A) only have three VBIF XIN ports. */
++	if (adreno_is_a306(adreno_gpu) || adreno_is_a306a(adreno_gpu))
++		mask = GENMASK(2, 0);
++
++	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0, mask);
+ 	ret = spin_until(((ack = gpu_read(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL1)) &
+-			  A3XX_VBIF_XIN_HALT_CTRL0_MASK) ==
+-			 A3XX_VBIF_XIN_HALT_CTRL0_MASK);
++			  mask) == mask);
+ 	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0, 0);
+ 
+ 	if (ret)
 
+---
+base-commit: a15fac810c76397ec9f62a6fc26c4d7ab6e238a7
+change-id: 20260924-a306-vbif-mask-58f7906f246d
+
+Best regards,
 -- 
-2.56.0.rc1.315.gc6ed9934b7-goog
+Sam Day <me@samcday.com>
 
