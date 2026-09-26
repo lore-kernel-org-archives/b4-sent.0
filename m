@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 25 Sep 2026 17:51:01 -0700
-Subject: [PATCH RFC 14/17] KVM: selftests: Test memory allocation against
- shared tmpfs resource pool
+Date: Fri, 25 Sep 2026 17:51:02 -0700
+Subject: [PATCH RFC 15/17] KVM: selftests: Test that shared tmpfs resource
+ pool size limit is respected
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260925-gmem-tmpfs-backend-v1-14-d36159822d18@google.com>
+Message-Id: <20260925-gmem-tmpfs-backend-v1-15-d36159822d18@google.com>
 References: <20260925-gmem-tmpfs-backend-v1-0-d36159822d18@google.com>
 In-Reply-To: <20260925-gmem-tmpfs-backend-v1-0-d36159822d18@google.com>
 To: Hugh Dickins <hughd@google.com>, 
@@ -28,62 +28,36 @@ Cc: kernel-team@android.com, kernel-team@meta.com,
  linux-doc@vger.kernel.org, linux-kselftest@vger.kernel.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790383850; l=1937;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790383850; l=1071;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=e5T0d60S1RJIK+yOTmGq9i0vT2WW1I1oApGjOS3UiOo=;
- b=9FIMY/6EtN+BUMK9CipyVOXFBib9h5+8+GiXMOwHojyWfqXUItP+KcJF14AQK4ZJmIOmh91rJ
- ZO/6zjGODO0B0t6LgIt14X3vvd4keOV4Nh9d0fwsEHcMg4dK1F0E3fr
+ bh=LYaWdpJzCkqMc0cwd4SOwmT9cG2Uo3iISC2Ej6mccuI=;
+ b=v+92DC6DUz9lNIvijcxuMoxkfc5r4UqB10ZU3FgF47IUvXWKQgYCrNJ0XKHWwuTdC3dPvdnG6
+ 4hdrV4A7wTyCiqSPEQCx+DYbg1gp+gVq9h06KzPVPQuzQCx/iv6FIN1
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Verify that allocating folios in multiple guest_memfd instances sharing
-the same tmpfs resource pool consumes blocks from the underlying pool as
-reported by filesystem statistics.
+Verify that allocating memory across guest_memfd instances sharing a
+tmpfs resource pool fails with ENOSPC when the total allocation exceeds
+the pool capacity.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/testing/selftests/kvm/guest_memfd_test.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ tools/testing/selftests/kvm/guest_memfd_test.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index 81311be059923..4610eeab39be6 100644
+index 4610eeab39be6..345b41c912a18 100644
 --- a/tools/testing/selftests/kvm/guest_memfd_test.c
 +++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -19,6 +19,7 @@
- #include <sys/mount.h>
- #include <sys/types.h>
- #include <sys/stat.h>
-+#include <sys/statvfs.h>
+@@ -587,6 +587,10 @@ static void test_resource_fd_tmpfs_shared_pool(struct kvm_vm *vm)
+ 	TEST_ASSERT(!fstatvfs(pool_fd, &svfs), "fstatvfs on pool_fd should succeed");
+ 	TEST_ASSERT_EQ(svfs.f_blocks - svfs.f_bfree, 2);
  
- #include "kvm_syscalls.h"
- #include "kvm_util.h"
-@@ -545,7 +546,8 @@ static void test_resource_fd_tmpfs_huge(struct kvm_vm *vm)
- 
- static void test_resource_fd_tmpfs_shared_pool(struct kvm_vm *vm)
- {
--	int pool_fd, fd1, fd2;
-+	int pool_fd, fd1, fd2, ret;
-+	struct statvfs svfs;
- 	struct stat st1, st2;
- 
- 	pool_fd = create_tmpfs_pool_fd("never", true, page_size * 2);
-@@ -573,6 +575,18 @@ static void test_resource_fd_tmpfs_shared_pool(struct kvm_vm *vm)
- 	TEST_ASSERT(st1.st_ino != st2.st_ino,
- 		    "different guest_memfd instances should have distinct inodes");
- 
-+	ret = fallocate(fd1, FALLOC_FL_KEEP_SIZE, 0, page_size);
-+	TEST_ASSERT(!ret, "fallocate on fd1 should succeed");
-+
-+	TEST_ASSERT(!fstatvfs(pool_fd, &svfs), "fstatvfs on pool_fd should succeed");
-+	TEST_ASSERT_EQ(svfs.f_blocks - svfs.f_bfree, 1);
-+
-+	ret = fallocate(fd2, FALLOC_FL_KEEP_SIZE, 0, page_size);
-+	TEST_ASSERT(!ret, "fallocate on fd2 should succeed");
-+
-+	TEST_ASSERT(!fstatvfs(pool_fd, &svfs), "fstatvfs on pool_fd should succeed");
-+	TEST_ASSERT_EQ(svfs.f_blocks - svfs.f_bfree, 2);
++	ret = fallocate(fd2, FALLOC_FL_KEEP_SIZE, page_size, page_size);
++	TEST_ASSERT(ret < 0, "fallocate exceeding pool capacity should fail");
++	TEST_ASSERT_EQ(errno, ENOSPC);
 +
  	close(fd2);
  	close(fd1);
