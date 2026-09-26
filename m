@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 26 Sep 2026 14:40:30 +0200
-Subject: [PATCH RFC 11/12] arm64: dts: qcom: sdm845-oneplus-common: Enable
+Date: Sat, 26 Sep 2026 14:40:31 +0200
+Subject: [PATCH RFC 12/12] arm64: dts: qcom: sdm845-shift-axolotl: Enable
  USB Type-C port controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260926-typec-v1-11-31adc19f32c6@ixit.cz>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260926-typec-v1-12-31adc19f32c6@ixit.cz>
 References: <20260926-typec-v1-0-31adc19f32c6@ixit.cz>
 In-Reply-To: <20260926-typec-v1-0-31adc19f32c6@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -25,82 +25,83 @@ Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org,
  phone-devel@vger.kernel.org, mfd@lists.linux.dev, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3902; i=david@ixit.cz;
- h=from:subject:message-id; bh=Q1RD32QhsfxNI1Wlv483ruSgZWvd115eJ5gP4RSA0iE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqt70+v6f/M2Qj8ltENV4iwMzqcasimqGnn5e5E
- 5zxolskc52JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCare9PgAKCRBgAj/E00kg
- cqxVD/4l1wTZ2Lq7JJMm2k/arBVdhyPUOYk+tBbFIslfgAxpAGHI5urwUgDiEt+7/DSSEPwFBAT
- 6Q4FEC49JxWcuBrN8+q7g6EIZ6B0jkbQ4hGVBx7ahkx37ljvkOe2vHIR1kR4F2DQThQtxsxlKBz
- Nx5WYVwVt94W1h3iSSQjojfgJ95QAxdjBT6vbQGqacvMBoy8dOpizcG4Hmavd6XXoxgeVBgADSE
- eKzp5mMSX6NrAC5IzHgTTBXv8Qxrjt3nPkrWTZ6kCn2DLSSJvMJhOxhRkCy0BJJWOzLi7cN4F3Y
- H6J12Fz4MPq0jg73yDu3wDBRD4M+Z3QCONw6IVhcI7BceJsdC/hYx5FRuqFkuOCQ+rgTPBz1gqA
- hu/QKAGblOCcJqP0Qz+AkKF6Lppn+T9EHeptVKxizbKeapEeBCD7A26iHLsv23ntOFPsncEN/GD
- zM8cKlgTjrc4K9DNy5cQcGV/P3xkYZah+Ha1WgXkyinA8IH+pscnLiqvwHtuRymg4inRTBVwaIn
- yoomcq0Bv6t1rMA10EsUog0MsL6V/ny4dCr00/HR1qU7F8nwBtzecbKWNzgAXNSV9Pfc8rp9ThT
- ZXMFaYxVYU4xRPkdeeObdzR9vFiO0arzgDuPvf0F+nlEQu0tLFNka2PeYqDqnEf4c2HlE5CjeYm
- b2mqkWg78EZGSUw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4218; i=david@ixit.cz;
+ h=from:subject:message-id; bh=x32COcG8Butqrlw/fff8Lfo8b61ySUHbjR8/5yIgBUw=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqt70+D9ld9Gu1iU4YWKZL3BfGDTzOC2I5j0XtG
+ MZVW8YLmNSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCare9PgAKCRBgAj/E00kg
+ ctTpEACDKiK7HntwbRh9oZMsTQl2VLJx030TyTKvQKkMLV8xfAZzVCr5NtbggSwgcW0cuAvvmOf
+ a/eC3re114t2mQqz5sFmPuwQMndQPdUwdyB83yUpq/FG8jOD6b6H/qSFdeI3AmmAi2I5LPlbnXD
+ q3sYf74UJo0aHBXbWzgluM5ucCqIOqFILfIVKCRF0spodPSY5IJO4GgJ3WTb4wDJWfjCdHWXRnd
+ veQXKjLYzes/VLbdZbAPCx+SDuBG52lLqgFJjvu1aTLNK+24x29Xv9fnqFIjTyy+lMS1TB1fhVO
+ hE+rbWoQQ3mkFIgo1XjLO0x3hKmV5GdNKbQeSSPJ/xXUZUcAdTmrXUnslz/Cq692xxWAW47QW3M
+ OxKKwsda304QmybzA0WNQWQ2D4B28rcbirGgirSEzqkL1H3izI8hEzz1X6IN+D8FDxeqACkHg49
+ 66PoG3U5OwiONfiXCGgqq09ZYEqxTPxTISJmArCt9Ic8XvTBceLpuWADxTooDzcqh03j/tHDNW5
+ xaGN43A/RRotu2VPLYwRtTM0Yq4xqx5WT2RbEo8o7QqtvG29uVbaWS8XPVnFFk5ZJVft4YefF3H
+ X3xrniO/S5/tjmegs/I3vFYYM59GcJcalPPBN1kFmO7nI3pQ9Q3EywU8Qcbm1d63FhhHVzdiETq
+ K5u4gTq0aPACfNg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Enable the PMI8998 Type-C port controller with a USB-C connector
-description for the OnePlus 6 (enchilada) and OnePlus 6T (fajita),
-which share the same USB-C hardware via this common dtsi.
+description for the SHIFT6mq:
 
-The connector is configured as:
   - Sink-only power role with a 5V/3A sink PDO
   - Dual-role data with USB role switching
 
 The VBUS output of the charger is not supported yet, so the port can't
 act as a power source. Describe it as sink-only until VBUS support lands,
-USB host mode is still reachable through a PD data role swap.
+USB host mode is still reachable through a PD data role swap. Higher
+voltage PDOs are left out until the charger driver programs the allowed
+USBIN adapter voltage.
 
-Only the HS endpoint (port@0) is wired to the DWC3 controller since
-these devices use USB 2.0 only — the QMP USB3+DP combo PHY is not
-connected in the OnePlus 6/6T hardware design. Consequently, no
-DisplayPort Alt Mode is advertised and no SS orientation switching is
-needed.
+Wire the USB-C connector port graph:
+  - port@0: DWC3 HS endpoint for USB role switching
+  - port@1: QMP combo PHY for SS lane orientation
 
 Switch the DWC3 controller from peripheral-only to OTG mode with
 usb-role-switch to allow the TCPM framework to control USB host/device
 role based on CC pin detection.
 
+DisplayPort Alt Mode is not advertised yet, it will be added together
+with enabling the DP controller (mdss_dp).
+
 Assisted-by: LLM
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 48 +++++++++++++++++++++-
- 1 file changed, 46 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 62 ++++++++++++++++++++++-
+ 1 file changed, 61 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 439779f308e38..c71cbd1effe91 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index 1b0eaeafbd517..2ddbe732961a2 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
 @@ -6,16 +6,17 @@
   */
  
  /dts-v1/;
  
  #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/gpio/gpio.h>
  #include <dt-bindings/leds/common.h>
  #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 +#include <dt-bindings/usb/pd.h>
- #include <dt-bindings/sound/qcom,q6afe.h>
- #include <dt-bindings/sound/qcom,q6asm.h>
- 
  #include "sdm845.dtsi"
- #include "sdm845-wcd9340.dtsi"
  #include "pm8998.dtsi"
  #include "pmi8998.dtsi"
  
-@@ -639,16 +640,53 @@ pinconf {
- 		};
+ / {
+ 	model = "SHIFT SHIFT6mq";
+ 	compatible = "shift,axolotl", "qcom,sdm845";
+ 	chassis-type = "handset";
+@@ -654,16 +655,66 @@ led-1 {
+ 		color = <LED_COLOR_ID_YELLOW>;
+ 		led-sources = <2>;
+ 		led-max-microamp = <100000>;
+ 		flash-max-microamp = <1100000>;
+ 		flash-max-timeout-us = <1280000>;
  	};
- };
- 
- &pmi8998_charger {
- 	status = "okay";
  };
  
 +&pmi8998_typec {
@@ -116,6 +117,12 @@ index 439779f308e38..c71cbd1effe91 100644
 +		 * the VBUS output yet. Switch to the dual power role with
 +		 * source PDOs, try-power-role and vbus-supply once it is
 +		 * supported.
++		 *
++		 * Higher voltage sink PDOs will be added once the charger
++		 * driver programs the allowed USBIN adapter voltage.
++		 *
++		 * DisplayPort Alt Mode will be added together with enabling
++		 * the DP controller (mdss_dp).
 +		 */
 +		power-role = "sink";
 +		data-role = "dual";
@@ -136,55 +143,70 @@ index 439779f308e38..c71cbd1effe91 100644
 +					remote-endpoint = <&usb_1_dwc3_hs>;
 +				};
 +			};
++
++			port@1 {
++				reg = <1>;
++				pmi8998_typec_mux_in: endpoint {
++					remote-endpoint = <&usb_1_qmpphy_out>;
++				};
++			};
 +		};
 +	};
 +};
 +
- &pmi8998_flash {
- 	status = "okay";
+ &qup_uart9_rx {
+ 	drive-strength = <2>;
+ 	bias-pull-up;
+ };
  
- 	led-0 {
- 		function = LED_FUNCTION_FLASH;
- 		color = <LED_COLOR_ID_WHITE>;
- 		led-sources = <1>;
- 		led-max-microamp = <500000>;
-@@ -929,28 +967,34 @@ &usb_1 {
- 	 * disable USB3 clock requirement as the device only supports
- 	 * USB2.
- 	 */
- 	qcom,select-utmi-as-pipe-clk;
+ &qup_uart9_tx {
+ 	drive-strength = <2>;
+ 	bias-disable;
+@@ -855,17 +906,22 @@ &ufs_mem_phy {
+ 	vdda-pll-supply = <&vdda_ufs1_1p2>;
+ };
+ 
+ &usb_1 {
+ 	status = "okay";
  };
  
  &usb_1_dwc3 {
- 	/*
--	 * We don't have the capability to switch modes yet.
-+	 * The USB-C role is managed by the pmi8998 Type-C port controller
-+	 * via usb-role-switch.
- 	 */
 -	dr_mode = "peripheral";
 +	dr_mode = "otg";
 +	usb-role-switch;
- 
- 	/* fastest mode for USB 2 */
- 	maximum-speed = "high-speed";
- 
- 	/* Remove USB3 phy as it's unused on this device. */
- 	phys = <&usb_1_hsphy>;
- 	phy-names = "usb2-phy";
- };
- 
-+&usb_1_dwc3_hs {
-+	remote-endpoint = <&pmi8998_hs_in>;
 +};
 +
++&usb_1_dwc3_hs {
++	remote-endpoint = <&pmi8998_hs_in>;
+ };
+ 
  &usb_1_hsphy {
  	status = "okay";
  
- 	vdd-supply = <&vdda_usb1_ss_core>;
- 	vdda-pll-supply = <&vdda_qusb_hs0_1p8>;
- 	vdda-phy-dpdm-supply = <&vdda_qusb_hs0_3p1>;
+ 	vdd-supply = <&vreg_l1a_0p875>;
+ 	vdda-phy-dpdm-supply = <&vreg_l24a_3p075>;
+ 	vdda-pll-supply = <&vreg_l12a_1p8>;
+@@ -873,16 +929,20 @@ &usb_1_hsphy {
  
- 	qcom,imp-res-offset-value = <8>;
+ &usb_1_qmpphy {
+ 	status = "okay";
+ 
+ 	vdda-phy-supply = <&vreg_l1a_0p875>;
+ 	vdda-pll-supply = <&vreg_l26a_1p2>;
+ };
+ 
++&usb_1_qmpphy_out {
++	remote-endpoint = <&pmi8998_typec_mux_in>;
++};
++
+ &venus {
+ 	firmware-name = "qcom/sdm845/SHIFT/axolotl/venus.mbn";
+ 
+ 	status = "okay";
+ };
+ 
+ &wifi {
+ 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
 
 -- 
 2.55.0
