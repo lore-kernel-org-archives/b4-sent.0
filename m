@@ -1,16 +1,13 @@
 From: Alexei Solcanu <alexei.solcanu@pm.me>
-Subject: [PATCH v2 0/2] hwmon: (gpd-fan) Fix the second fan on duo boards,
- split Win 5 fans
-Date: Sat, 26 Sep 2026 16:11:19 -0400
-Message-Id: <20260926-gpd-fan-duo-auto-v2-0-0a2ea41ee3b5@pm.me>
+Date: Sat, 26 Sep 2026 16:11:20 -0400
+Subject: [PATCH v2 1/2] hwmon: (gpd-fan) Reset both fans to automatic on
+ duo boards
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQ6DIBAFf8XsudsAplp78j8aDyCr0kQhIKSN8
- d+L9t7jJPPmbRDIGwrwKDbwlEwwdskgLgX0k1xGQqMzg2CiYo244eg0DnJBHS3KuFq811xTQ4x
- Vuoc8c54G8z6Tz+7HIaoX9evROYzJhNX6z/mZ+OH9ySeOHEWjVFUzVZYlb918nQm6fd+/g6xiK
- r4AAAA=
-X-Change-ID: 20260925-gpd-fan-duo-auto-871de9e006dc
+Message-Id: <20260926-gpd-fan-duo-auto-v2-1-0a2ea41ee3b5@pm.me>
+References: <20260926-gpd-fan-duo-auto-v2-0-0a2ea41ee3b5@pm.me>
+In-Reply-To: <20260926-gpd-fan-duo-auto-v2-0-0a2ea41ee3b5@pm.me>
 To: Guenter Roeck <linux@roeck-us.net>, 
  Cryolitia PukNgae <cryolitia@uniontech.com>, 
  Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
@@ -19,45 +16,47 @@ Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, Antheas Kapenekakis <lkml@antheas.dev>, 
  Alexei Solcanu <alexei.solcanu@pm.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790453516; l=1175;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790453516; l=1200;
  i=alexei.solcanu@pm.me; s=20260925; h=from:subject:message-id;
- bh=U2vXcoyjbuEDV1rN+WkLDvhuZNVs8UnNjX/eoGFhfT8=;
- b=4aUxpQwyWgzTqwd4eqmjPV5XEXt9JCitYLUqqz1SAZzYTHKuuDLGftdMCe97DUrL2SlsnqvRY
- 2RmvIBAaOgTCTlgJru7O2AkB5KMMgoZWkAmKFZRF4r3Nncd+bbziO/w
+ bh=+nlB/lxvtjXsfgj7z4lKurSGOTzHgxp5QbIYzM1esmM=;
+ b=BhXSljpP2xwOAsQEnbESNsa5OZQFvdnSpt1nURScxoiYUMOe5KmDAtno8YRgIpFc2L8lq1iH9
+ +nhY+MRZYzVCK7aAyvsBSRjBHY7mvkjiHEUc7ohh/dNsykIBTmygVUH
 X-Developer-Key: i=alexei.solcanu@pm.me; a=ed25519;
  pk=iK6ervbccknflfirBb6E4x7TaOyCpnoGd33gzfiNEeo=
 X-Endpoint-Received: by B4 Relay for alexei.solcanu@pm.me/20260925 with auth_id=1064
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Patch 1 fixes pwm1_enable=2 leaving the second fan at its last manual
-duty cycle on boards using gpd_duo_drvdata. It is unchanged from v1 and
-is still needed on the GPD Duo, and on kernels where the Win 5 uses the
-Duo settings.
+On boards using gpd_duo_drvdata (GPD Duo, GPD Win 5), writing
+pwm1_enable=2 only returns the first fan to EC control. The second fan
+keeps its last manual duty cycle, e.g. full speed after pwm1=255, so a
+fan control tool that exits leaves it running at that speed.
 
-Patch 2 gives the GPD Win 5 its own board data, with one fan and pwm
-channel per fan. The Win 5 had one channel because it was added using
-the Duo's settings, which treat both fans as one.
+gpd_duo_write_pwm() writes both fan registers (pwm_write and
+pwm_write + 1), but switching to automatic only clears pwm_write.
+Also clear pwm_write + 1, so both fans return to EC control.
 
 Tested on a GPD Win 5 (G1618-05). Not tested on the GPD Duo.
 
+Fixes: 0ab88e239439 ("hwmon: add GPD devices sensor driver")
+Assisted-by: LLM
+Signed-off-by: Alexei Solcanu <alexei.solcanu@pm.me>
 ---
-Changes in v2:
-- Add patch 2: register both fans on the GPD Win 5 (Guenter)
-- Link to v1: https://patch.msgid.link/20260925-gpd-fan-duo-auto-v1-1-29bb670b3331@pm.me
+ drivers/hwmon/gpd-fan.c | 1 +
+ 1 file changed, 1 insertion(+)
 
----
-Alexei Solcanu (2):
-      hwmon: (gpd-fan) Reset both fans to automatic on duo boards
-      hwmon: (gpd-fan) Register both fans on the GPD Win 5
+diff --git a/drivers/hwmon/gpd-fan.c b/drivers/hwmon/gpd-fan.c
+index ed212615b2f..b3b75f99f58 100644
+--- a/drivers/hwmon/gpd-fan.c
++++ b/drivers/hwmon/gpd-fan.c
+@@ -444,6 +444,7 @@ static void gpd_duo_set_pwm_enable(struct gpd_fan_data *data, enum FAN_PWM_ENABL
+ 		break;
+ 	case AUTOMATIC:
+ 		gpd_ecram_write(data->drvdata, data->drvdata->pwm_write, 0);
++		gpd_ecram_write(data->drvdata, data->drvdata->pwm_write + 1, 0);
+ 		break;
+ 	}
+ }
 
- Documentation/hwmon/gpd-fan.rst |  14 ++--
- drivers/hwmon/gpd-fan.c         | 147 +++++++++++++++++++++++++++-------------
- 2 files changed, 108 insertions(+), 53 deletions(-)
----
-base-commit: 3cbb5f15e464583e59c8501a7085ec12b53e23ac
-change-id: 20260925-gpd-fan-duo-auto-871de9e006dc
-
-Best regards,
---  
-Alexei Solcanu <alexei.solcanu@pm.me>
+-- 
+2.55.0
 
