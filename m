@@ -1,68 +1,99 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 26 Sep 2026 02:24:19 -0500
-Subject: [PATCH] ALSA: hda/tegra: Re-enable SDO workaround for Tegra194
+From: Sam Day <me@samcday.com>
+Subject: [PATCH v5 0/3] Add support and enable the debug UART in the Pixel
+ 3a and Pixel 3a XL
+Date: Sat, 26 Sep 2026 18:41:31 +1000
+Message-Id: <20260926-pabloyoyoista-debug-uart-on-rdacayan-next-v5-0-db74ff64a7e7@samcday.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260926-tegra194-hda-sdo-v1-1-f7a636a07a58@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avIrBtQKdGuEi1Ep5qNhkYE4d2Tl
- m/x/wuVClOFWbxQ6ObKOXWoQUA4fNoJOXaDltpIpw1etBev3IhH9FhjRhXtGIy0k3IWenYW2vj
- 5l8va2gf4fpxUYgAAAA==
-X-Change-ID: 20260926-tegra194-hda-sdo-1d84c6085198
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: Thierry Reding <treding@nvidia.com>, linux-sound@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/53OzW6DMBAE4FdBPmcr478Cp75H1cPaXhK3Daa2Q
+ UER716RVsqlOZTjjEb65soypUCZddWVJZpDDnFgXaUPFXMnHI4EwbOuYoILw6VoYET7GZe4xJA
+ Lgic7HWHCVCAOkDw6XHCAgS4FTCueldSNo16xQ8XGRH243KzXt5+cJ/tOrmzA7yLR1xRyKPfZK
+ eQS03J7ONdbu+fMXAMHbtH2ulHovH0ZYy5nTB9UYn6K6cg2bBa7AQEctETrW2+bnuMDQN4Bw+v
+ /ABI4mN47b0wrjaIHgNoNKODgtNe1961xyP8A1nX9BpuTjkMzAgAA
+X-Change-ID: 20260328-pabloyoyoista-debug-uart-on-rdacayan-next-69274358cef4
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Richard Acayan <mailingradian@gmail.com>, 
+ =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790407469; l=1584;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=8rAycl98UAJVNpg4nxLeFSEwU8WePutSW40I7utV8vY=;
- b=jpT6mRhj6kFaT03vLb78Ga/cCq4a5oFDhA6+ifoHcGRLo0Q1WygeZdjkILrQ2wRqTUOIgSoJj
- ur/C6Ic/N/jCoPadVejJRrh2MNXBWbwY9PtMqbgCOK/Yg6KbL8H5cHw
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790412092; l=2823;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=kbNYB6AwQiVWj7uPymDdVKanxCUYoEDfo1zBkhPJMiE=;
+ b=iCOLr0tjFHaWSubRSaoEj589H/CFuDCD/wqMSSWqEYsvnpeCT39UtpELc3Re2MhDFgVvdh3tI
+ NHLM8r9r+R/BrjrEIhCQMWwyvEexHzVmWtjM2iCFVjlWKb2U6f2izey
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This workaround was originally added for Tegra194, but no longer gets
-applied for it. Commit 615d43540043 ("ALSA: hda/tegra: fix tegra-hda on
-tegra30 soc") changed the guard to tegra30-hda, which worked because all
-affected archs had the fallback compatible. However, commit 7f0ea5acfc19
-("arm64: tegra: Use correct compatible string for Tegra194 HDA") removed
-the fallback compatible for Tegra194, causing this to break.
+In order to get logs through the SBU pins in Google Pixel devices, it is
+necessary to add support to the devicetree, and enable the corresponding
+UART. With this code and an USB-Cereal board, I was able to get full kernel
+logs through serial.
 
-Fixes: 7f0ea5acfc19 ("arm64: tegra: Use correct compatible string for Tegra194 HDA")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
----
-ALSA: hda/tegra: Re-enable SDO workaround for Tegra194
----
- sound/hda/controllers/tegra.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+The previous paragraph is Pablo's original cover letter. I (Sam) decided
+to pick this series up and send this v5, since v4 has been sitting on
+the list for a while now.
 
-diff --git a/sound/hda/controllers/tegra.c b/sound/hda/controllers/tegra.c
-index 31c14c4bbe683..674cc0f79c3c8 100644
---- a/sound/hda/controllers/tegra.c
-+++ b/sound/hda/controllers/tegra.c
-@@ -374,7 +374,8 @@ static int hda_tegra_first_init(struct azx *chip, struct platform_device *pdev)
- 	 * in powers of 2, next available ratio is 16 which can be
- 	 * used as a limiting factor here.
- 	 */
--	if (of_device_is_compatible(np, "nvidia,tegra30-hda"))
-+	if (of_device_is_compatible(np, "nvidia,tegra30-hda") ||
-+	    of_device_is_compatible(np, "nvidia,tegra194-hda"))
- 		chip->bus.core.sdo_limit = 16;
- 
- 	/* codec detection */
+I've been using the v4 series on my Pixel 3a for a few months now. It
+works fine, and the unnecessary RX pull-up didn't seem to cause any
+issues in practice.
+
+The v5 changes to patch 1 and 3 were authored and verified on device by
+an LLM, hence the Assisted-by tag on those two.
+
+The changes were validated with a USB-C breakout and a typical FT232R
+USB-TTL dongle wired up to the SBU+GND pins.
+
+The console was tested with and without the RX pull-up and no difference
+was observed. However, I did not test a floating RX with nothing
+connected. As Konrad pointed out in v4, the downstream sources do not
+specify a pull-up (see link), so it was removed.
+
+Link: https://android.googlesource.com/kernel/msm/+/ab4493f31457eea175568b18b8300d4d12aaeea8/arch/arm64/boot/dts/qcom/sdm670-pinctrl.dtsi#963
+Signed-off-by: Sam Day <me@samcday.com>
+---
+Changes in v5:
+- Picked up by Sam Day, retaining Pablo's authorship.
+- 1/3: Drop the unused qup_uartN_tx/qup_uartN_rx subnode labels
+- 1/3: Move default pin config to sdm670.dtsi
+- 3/3: Drop board-level TX/RX pinconf, RX pull-up, stale Depends
+  link, and v4 R-b tags.
+- Link to v4: https://lore.kernel.org/r/20260601-pabloyoyoista-debug-uart-on-rdacayan-next-v4-0-c5d51dd96ca0@postmarketos.org
+
+Changes in v4:
+- Picked Reviewed-by tags
+- Link to v3: https://patch.msgid.link/20260601-pabloyoyoista-debug-uart-on-rdacayan-next-v3-0-6fdcd669364e@postmarketos.org
+
+Changes in v3:
+- Drop dependency on already-picked patches
+- Link to v2: https://patch.msgid.link/20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-0-53abd9db8f0a@postmarketos.org
+
+Changes in v2:
+- Fix typo in (3/3) commit message
+- Link to v1: https://patch.msgid.link/20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-0-0babf584acdb@postmarketos.org
 
 ---
-base-commit: 4c253ac4b29b8c6cc6fdef8f92d4facde62e63b9
-change-id: 20260926-tegra194-hda-sdo-1d84c6085198
+Pablo Correa Gómez (3):
+      arm64: dts: qcom: sdm670: add default uart pinctrl nodes
+      arm64: dts: qcom: sdm670: add debug uart soc node
+      arm64: dts: qcom: sdm670-google-common: enable debug uart
+
+ arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi |   8 +-
+ arch/arm64/boot/dts/qcom/sdm670.dtsi               | 271 +++++++++++++++++++++
+ 2 files changed, 278 insertions(+), 1 deletion(-)
+---
+base-commit: fe2ec83746e501645709761605c2464a44fd2929
+change-id: 20260328-pabloyoyoista-debug-uart-on-rdacayan-next-69274358cef4
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Sam Day <me@samcday.com>
 
