@@ -1,87 +1,118 @@
-From: Ali <aliresool567@gmail.com>
-Date: Sun, 27 Sep 2026 18:54:01 +0300
-Subject: [PATCH] USB: quirks: add USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE for
- GameSir G7 SE
+From: Brian Ellis <brianellis@gotenna.com>
+Date: Sun, 27 Sep 2026 10:35:45 -0600
+Subject: [PATCH v2] usb: gadget: u_serial: fix NULL deref in gs_close()
+ after failed open
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-master-v1-1-96ff85291b25@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QpAMBTG8VfRubaaiTWvIhfGwVFGO0gt7264/
- NX/+wIwekKGKgng8SSm1UVkaQLd1LoRBfXRoKQqpVFaLC3v6IU2xurC5rnEEmK8eRzo+o7q5jc
- fdsZuf9dw3w/KLEKzagAAAA==
-X-Change-ID: 20260927-master-799b75b330e6
+Message-Id: <20260927-u_serial-gs-close-null-v2-1-bdedf57fe96f@gotenna.com>
+X-B4-Tracking: v=1; b=H4sIAOBFuWoC/4WNQQ6DIBREr2L+ur8Bag121Xs0pkH9IgmFBpS0M
+ dy96AU6uzfJm9kgUjAU4VZtECiZaLwrIE4VDLNymtCMhUEw0bCWM1yfu6Es6oiD9ZHQrdaikkz
+ Vl6aEJBT5HWgyn2P40RWeTVx8+B4/ie/t38nEkWOrriRr2fNx6u/aL+ScOg/+BV3O+QcaJtuEv
+ gAAAA==
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Ali <aliresool567@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790524451; l=2586;
- i=aliresool567@gmail.com; s=20260927; h=from:subject:message-id;
- bh=FeFiKgZTUo9MnK6Okaqk4RcBEvF7GaYA8aXucYh/6SM=;
- b=VNtAduVk2LRlJGNV6nQCF/dxCdQjn9UlSx637pBBZ2Z0RDLc2CXCmlTPSWmAjNFBUc17C78b0
- 2316GCmxa+SBmZGfEBmjaeC0pb1XFJh1awY4YJQkKwY4SPHA9Bb/4uT
-X-Developer-Key: i=aliresool567@gmail.com; a=ed25519;
- pk=s/zyZoG6z3JyJokqs9ZIcSAb8PgriZ1QW+mgffBV90w=
-X-Endpoint-Received: by B4 Relay for aliresool567@gmail.com/20260927 with auth_id=1071
+ Kuen-Han Tsai <khtsai@google.com>, 
+ Prashanth K <prashanth.k@oss.qualcomm.com>, stable@vger.kernel.org, 
+ Brian Ellis <brianellis@gotenna.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790526944; l=3198;
+ i=brianellis@gotenna.com; s=20260910; h=from:subject:message-id;
+ bh=zsIlMAuOeo/QnHXqKOHJz0TaS0Y3etnOytR55Awk234=;
+ b=UbZHsXI/07D4SVkdfqO4AceRih61lDgprVhAzuVohFqBwIu/HErZdHfTUTj+AcSf+1L7324TZ
+ ePzkmRDf0ZDCzp6lQvskMcXKgpTsdt6TaA2MpIAiJB0E2nXHjR9DCJH
+X-Developer-Key: i=brianellis@gotenna.com; a=ed25519;
+ pk=JciDR8ctfMqvKeRCDP8VPwNLUDULxCAqDum6H+/ByBY=
+X-Endpoint-Received: by B4 Relay for brianellis@gotenna.com/20260910 with auth_id=1022
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The GameSir G7 SE wired controller first enumerates as 3537:10a0 and
-then re-enumerates in a mode it picks from how the host enumerated it.
+gs_close() dereferences tty->driver_data without checking it:
 
-When the configuration descriptor is fetched the Linux way, 9 bytes
-followed by the full 80, the controller disconnects about 1 ms after
-its string descriptors have been read, before SET_CONFIGURATION, and
-comes back as 3537:1082, a generic HID gamepad without force feedback.
+	struct gs_port *port = tty->driver_data;
+	struct gserial	*gser;
 
-When the configuration descriptor is fetched in one 255-byte request,
-as Windows does, it comes back as 3537:1010 in Xbox One (GIP) mode,
-which xpad already supports, including rumble.
+	spin_lock_irq(&port->port_lock);
 
-Skipping the device qualifier requests (USB_QUIRK_DEVICE_QUALIFIER)
-makes no difference; the configuration descriptor request size alone
-decides the mode. Add USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE for the 10a0
-identity, as is already done for the ShanWan Wireless Gamepad.
+but gs_open() assigns tty->driver_data only after two error returns:
 
+	if (!port) {
+		status = -ENODEV;
+		goto out;
+	}
+	...
+		status = kfifo_alloc(&port->port_write_buf,
+				     WRITE_BUF_SIZE, GFP_KERNEL);
+		if (status) {
+			...
+			goto out;
+		}
+	...
+	tty->driver_data = port;
+
+and when ->open() returns an error the tty core calls ->close() anyway:
+
+	if (tty->ops->open)
+		retval = tty->ops->open(tty, filp);
+	...
+	if (retval) {
+		tty_debug_hangup(tty, "open error %d, releasing\n", retval);
+		tty_unlock(tty); /* need to call tty_release without BTM */
+		tty_release(inode, filp);
+
+So opening /dev/ttyGS<n> for a port that has already been freed, or when
+the write-buffer allocation fails, oopses in gs_close().
+
+This is not the situation commit ffd603f21423 ("usb: gadget: u_serial: Add
+null pointer check in gs_start_io") was reverted for. That check was
+redundant because gs_start_io()'s callers are required to hold port_lock
+with port.tty and port_usb non-NULL, and the dereference it hid was a race.
+Here the NULL is not a race: the tty core deliberately calls ->close() for
+an ->open() that failed, as its own debug message says, so driver_data is
+legitimately unset on that path and every tty driver has to tolerate it.
+
+Fixes: c1dca562be8a ("usb gadget: split out serial core")
 Cc: stable@vger.kernel.org
-Assisted-by: claude-opus-5-5
-Signed-off-by: Ali <aliresool567@gmail.com>
+Signed-off-by: Brian Ellis <brianellis@gotenna.com>
 ---
-Tested on 7.2.7 (x86_64, xHCI) by setting usbcore.quirks=3537:10a0:r at
-runtime. With it, the controller settles as 3537:1010 on every plug-in,
-is bound by xpad as "GameSir G7 SE", and rumble works through xpad's
-force feedback. Without it, it settles as 3537:1082 every time. The
-patch itself is against v7.3-rc5.
+Found on a downstream 6.6-adi BSP kernel, then confirmed present in usb-linus
+by inspection: gs_close() still dereferences tty->driver_data unguarded, and
+gs_open() still assigns it only after its error returns.
 
-usbmon of the 3537:10a0 enumeration without the quirk: GET_DESCRIPTOR
-(CONFIGURATION) with wLength 9, then 80, then string descriptors 0, 2,
-1 and 3. The port reports a disconnect about 1 ms after the serial
-number string, and the SET_CONFIGURATION that follows fails with
--EPROTO. With the quirk, the only difference is a single wLength 255
-configuration request, after which the device re-enumerates as
-3537:1010.
+Compile-tested against usb-linus with allmodconfig (CONFIG_USB_U_SERIAL=m).
+Not boot-tested on mainline: the board it was found on needs a vendor BSP
+device tree to boot, so the argument here is from source, with both halves
+quoted in the commit message.
 ---
- drivers/usb/core/quirks.c | 3 +++
+Changes in v2:
+- Remove the comment above the check, rather than reword it as Prashanth
+  suggested. The commit message already explains the path that leaves
+  tty->driver_data NULL, so the comment only restated it. Happy to add a
+  reworded one instead if that is preferred.
+- Link to v1: https://lore.kernel.org/r/20260910-u_serial-gs-close-null-v1-1-9a5e848b1dfb@gotenna.com
+---
+ drivers/usb/gadget/function/u_serial.c | 3 +++
  1 file changed, 3 insertions(+)
 
-diff --git a/drivers/usb/core/quirks.c b/drivers/usb/core/quirks.c
-index b5b577f..a4bcbe9 100644
---- a/drivers/usb/core/quirks.c
-+++ b/drivers/usb/core/quirks.c
-@@ -612,6 +612,9 @@ static const struct usb_device_id usb_quirk_list[] = {
- 	/* ezcap401 - BOS descriptor fetch hangs at SuperSpeed Plus */
- 	{ USB_DEVICE(0x32ed, 0x0401), .driver_info = USB_QUIRK_NO_BOS },
+diff --git a/drivers/usb/gadget/function/u_serial.c b/drivers/usb/gadget/function/u_serial.c
+index cdd1dfc66..892d2673e 100644
+--- a/drivers/usb/gadget/function/u_serial.c
++++ b/drivers/usb/gadget/function/u_serial.c
+@@ -695,6 +695,9 @@ static void gs_close(struct tty_struct *tty, struct file *file)
+ 	struct gs_port *port = tty->driver_data;
+ 	struct gserial	*gser;
  
-+	/* GameSir G7 SE */
-+	{ USB_DEVICE(0x3537, 0x10a0), .driver_info = USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE },
++	if (!port)
++		return;
 +
- 	/* DELL USB GEN2 */
- 	{ USB_DEVICE(0x413c, 0xb062), .driver_info = USB_QUIRK_NO_LPM | USB_QUIRK_RESET_RESUME },
+ 	spin_lock_irq(&port->port_lock);
  
+ 	if (port->port.count != 1) {
 
 ---
-base-commit: fd179f8a05be3ccae366b9b96e176b51fbe54aab
-change-id: 20260927-master-799b75b330e6
+base-commit: be4219dd98608736e13e0b790ef742b76a13254d
+change-id: 20260910-u_serial-gs-close-null-a80a436666e8
 
 Best regards,
---  
-Ali <aliresool567@gmail.com>
+-- 
+Brian Ellis <brianellis@gotenna.com>
 
