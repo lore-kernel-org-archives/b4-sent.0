@@ -1,307 +1,104 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Sun, 27 Sep 2026 16:28:17 +0200
-Subject: [PATCH v3 3/3] arm64: dts: amlogic: a1-c3-s4-t7: Add core clock to
- PWM controller nodes
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v8 0/2] A proposal to add a gpio-locked clock driver.
+Date: Sun, 27 Sep 2026 14:59:06 +0000
+Message-Id: <20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-add-t7-sys-pwm-clk-v3-3-18d66abea4d1@aliel.fr>
-References: <20260927-add-t7-sys-pwm-clk-v3-0-18d66abea4d1@aliel.fr>
-In-Reply-To: <20260927-add-t7-sys-pwm-clk-v3-0-18d66abea4d1@aliel.fr>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-B4-Tracking: v=1; b=H4sIADovuWoC/43PTU7DMBAF4KtUXmNkj/9ZcQ/EYjx2WqvQIKeJQ
+ FXujtNNQIkQyzfSfG/mxoZcSx7Y0+HGap7KUPpLC/7hwOiEl2PmJbXMQIAVSnreZbyONXN66+n
+ MjyPWxDsQCKRMDNawtvlRc1c+7+rLa8unMlz7+nUvmeQy/dubJBfcSuUoauF1dM+xjudcH6l/Z
+ ws4wYoYKfYRWBACo41PRmmxQdSKtFv2EdUQIYlQIAqNZoPoFXFg9xHdkBzIR+UgOkkbxKxIkGY
+ fMQ3RgNEkUmgRN4j9gYDbR+zyjnDBqyhVJtgg7h+Ia4hPSQZjfQr4G5nn+Rskt7IkVQIAAA==
+X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Jyri Sarha <jsarha@ti.com>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10330;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=C3NO3PtCg00JImmbX1tfG8UCVQEaYYnaSJ0e3MaOdYs=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZODYNjV2Jnf1i+IOqT5uab5r0uj+9fYI098UVL3J/96
- ivf+V57OkpZGMS4GGTFFFn651qeeHf56Jmve9RTYOawMoEMYeDiFICJTApn+M2SfOn2uhnhtavm
- bgq1atT9NO28EHNi9T7Z1UHrzi1lDH7DyPDu3ifxW4y/XP9s3aJ+54LO/tUKErNlgng6Tp7b/oh
- rtREXAA==
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790521150; l=3080;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=YmGxEJFzXbTFWzE7ulh7aHe3IiKiro4uJZWRmXMUOd0=;
+ b=8jdU/HvfBCRhKNpwUXhkVNz2Z1Nq5LWDI9YNTvgw1uO3VoBeFZGUgSDoEveJs6yWg8gx7UyDs
+ AL+9oQytxlyCn0qaJAbwor0IKt7aCDTTAUG0Tu+GSlovK2g4EbvyXaJ
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the system clock of each PWM controller as a third clock,
-and add the clock-names property expected by the updated binding:
-"channel-a", "channel-b" and "core".
+A gpio-locked clock represents an input clock, which state is determined
+by a GPIO signal. It's similar to a gated-fixed-clock, but GPIO direction
+is inverted. Consumers can use the output clock to wait until all input
+clocks are locked and only then initialize / access dependent peripherals.
 
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+The usage example for such a driver is when peripherals depend on PLLs in
+a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
+to check whether clock is actually usable. E.g. some of the IPs might not
+have a proper split between registers and IP core, which means that if an
+external clock and/or PLL lock is missing and one tries to access the 
+registers, the response never comes, thus the CPU stalls.
+
+Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi | 28 +++++++++++++++++++++-------
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 28 +++++++++++++++++++++-------
- arch/arm64/boot/dts/amlogic/meson-a1.dtsi   | 12 +++++++++---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi   | 20 +++++++++++++++-----
- 4 files changed, 66 insertions(+), 22 deletions(-)
+Changes in v8:
+- Fix return value of clk_gpio_locked_prepare()
+- Link to v7: https://lore.kernel.org/r/20260927-feature-clock-guard-v7-0-8dd19568d9a2@bruker.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-index 4e6757a57fb9a..a27e9bba22e5d 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi
-@@ -824,7 +824,9 @@ pwm_mn: pwm@54000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x54000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_M>,
--					 <&clkc_periphs CLKID_PWM_N>;
-+					 <&clkc_periphs CLKID_PWM_N>,
-+					 <&clkc_periphs CLKID_SYS_PWM_MN>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -843,7 +845,9 @@ pwm_ab: pwm@58000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x58000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_A>,
--					 <&clkc_periphs CLKID_PWM_B>;
-+					 <&clkc_periphs CLKID_PWM_B>,
-+					 <&clkc_periphs CLKID_SYS_PWM_AB>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -853,7 +857,9 @@ pwm_cd: pwm@5a000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5a000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_C>,
--					 <&clkc_periphs CLKID_PWM_D>;
-+					 <&clkc_periphs CLKID_PWM_D>,
-+					 <&clkc_periphs CLKID_SYS_PWM_CD>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -863,7 +869,9 @@ pwm_ef: pwm@5c000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5c000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_E>,
--					 <&clkc_periphs CLKID_PWM_F>;
-+					 <&clkc_periphs CLKID_PWM_F>,
-+					 <&clkc_periphs CLKID_SYS_PWM_EF>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -873,7 +881,9 @@ pwm_gh: pwm@5e000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5e000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_G>,
--					 <&clkc_periphs CLKID_PWM_H>;
-+					 <&clkc_periphs CLKID_PWM_H>,
-+					 <&clkc_periphs CLKID_SYS_PWM_GH>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -883,7 +893,9 @@ pwm_ij: pwm@60000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x60000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_I>,
--					 <&clkc_periphs CLKID_PWM_J>;
-+					 <&clkc_periphs CLKID_PWM_J>,
-+					 <&clkc_periphs CLKID_SYS_PWM_IJ>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -893,7 +905,9 @@ pwm_kl: pwm@62000 {
- 					     "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x62000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_K>,
--					 <&clkc_periphs CLKID_PWM_L>;
-+					 <&clkc_periphs CLKID_PWM_L>,
-+					 <&clkc_periphs CLKID_SYS_PWM_KL>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-index 8f3f1c0579a0f..8a148af5ed442 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-@@ -692,7 +692,9 @@ pwm_ao_ef: pwm@30000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x30000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_AO_E>,
--					 <&clkc_periphs CLKID_PWM_AO_F>;
-+					 <&clkc_periphs CLKID_PWM_AO_F>,
-+					 <&clkc_periphs CLKID_SYS_PWM_AO_EF>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -701,7 +703,9 @@ pwm_ao_gh: pwm@32000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x32000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_AO_G>,
--					 <&clkc_periphs CLKID_PWM_AO_H>;
-+					 <&clkc_periphs CLKID_PWM_AO_H>,
-+					 <&clkc_periphs CLKID_SYS_PWM_AO_GH>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -715,7 +719,9 @@ pwm_ab: pwm@58000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x58000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_A>,
--					 <&clkc_periphs CLKID_PWM_B>;
-+					 <&clkc_periphs CLKID_PWM_B>,
-+					 <&clkc_periphs CLKID_SYS_PWM_AB>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -724,7 +730,9 @@ pwm_cd: pwm@5a000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5a000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_C>,
--					 <&clkc_periphs CLKID_PWM_D>;
-+					 <&clkc_periphs CLKID_PWM_D>,
-+					 <&clkc_periphs CLKID_SYS_PWM_CD>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -733,7 +741,9 @@ pwm_ef: pwm@5c000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5c000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_E>,
--					 <&clkc_periphs CLKID_PWM_F>;
-+					 <&clkc_periphs CLKID_PWM_F>,
-+					 <&clkc_periphs CLKID_SYS_PWM_EF>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -742,7 +752,9 @@ pwm_ao_ab: pwm@5e000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5e000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_AO_A>,
--					 <&clkc_periphs CLKID_PWM_AO_B>;
-+					 <&clkc_periphs CLKID_PWM_AO_B>,
-+					 <&clkc_periphs CLKID_SYS_PWM_AO_AB>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -751,7 +763,9 @@ pwm_ao_cd: pwm@60000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x60000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_AO_C>,
--					 <&clkc_periphs CLKID_PWM_AO_D>;
-+					 <&clkc_periphs CLKID_PWM_AO_D>,
-+					 <&clkc_periphs CLKID_SYS_PWM_AO_CD>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-diff --git a/arch/arm64/boot/dts/amlogic/meson-a1.dtsi b/arch/arm64/boot/dts/amlogic/meson-a1.dtsi
-index 6f6a6145cba12..b9761893c666d 100644
---- a/arch/arm64/boot/dts/amlogic/meson-a1.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-a1.dtsi
-@@ -544,7 +544,9 @@ pwm_ab: pwm@2400 {
- 				reg = <0x0 0x2400 0x0 0x24>;
- 				#pwm-cells = <3>;
- 				clocks = <&clkc_periphs CLKID_PWM_A>,
--					 <&clkc_periphs CLKID_PWM_B>;
-+					 <&clkc_periphs CLKID_PWM_B>,
-+					 <&clkc_periphs CLKID_PWM_AB>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				power-domains = <&pwrc PWRC_I2C_ID>;
- 				status = "disabled";
- 			};
-@@ -555,7 +557,9 @@ pwm_cd: pwm@2800 {
- 				reg = <0x0 0x2800 0x0 0x24>;
- 				#pwm-cells = <3>;
- 				clocks = <&clkc_periphs CLKID_PWM_C>,
--					 <&clkc_periphs CLKID_PWM_D>;
-+					 <&clkc_periphs CLKID_PWM_D>,
-+					 <&clkc_periphs CLKID_PWM_CD>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				power-domains = <&pwrc PWRC_I2C_ID>;
- 				status = "disabled";
- 			};
-@@ -655,7 +659,9 @@ pwm_ef: pwm@5400 {
- 				reg = <0x0 0x5400 0x0 0x24>;
- 				#pwm-cells = <3>;
- 				clocks = <&clkc_periphs CLKID_PWM_E>,
--					 <&clkc_periphs CLKID_PWM_F>;
-+					 <&clkc_periphs CLKID_PWM_F>,
-+					 <&clkc_periphs CLKID_PWM_EF>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				power-domains = <&pwrc PWRC_I2C_ID>;
- 				status = "disabled";
- 			};
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 2a6fbd5308362..ca9abbf857178 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -685,7 +685,9 @@ pwm_ab: pwm@58000 {
- 				compatible = "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x58000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_A>,
--					 <&clkc_periphs CLKID_PWM_B>;
-+					 <&clkc_periphs CLKID_PWM_B>,
-+					 <&clkc_periphs CLKID_PWM_AB>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -694,7 +696,9 @@ pwm_cd: pwm@5a000 {
- 				compatible = "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5a000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_C>,
--					 <&clkc_periphs CLKID_PWM_D>;
-+					 <&clkc_periphs CLKID_PWM_D>,
-+					 <&clkc_periphs CLKID_PWM_CD>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -703,7 +707,9 @@ pwm_ef: pwm@5c000 {
- 				compatible = "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5c000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_E>,
--					 <&clkc_periphs CLKID_PWM_F>;
-+					 <&clkc_periphs CLKID_PWM_F>,
-+					 <&clkc_periphs CLKID_PWM_EF>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -712,7 +718,9 @@ pwm_gh: pwm@5e000 {
- 				compatible = "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x5e000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_G>,
--					 <&clkc_periphs CLKID_PWM_H>;
-+					 <&clkc_periphs CLKID_PWM_H>,
-+					 <&clkc_periphs CLKID_PWM_GH>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
-@@ -721,7 +729,9 @@ pwm_ij: pwm@60000 {
- 				compatible = "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x60000 0x0 0x24>;
- 				clocks = <&clkc_periphs CLKID_PWM_I>,
--					 <&clkc_periphs CLKID_PWM_J>;
-+					 <&clkc_periphs CLKID_PWM_J>,
-+					 <&clkc_periphs CLKID_PWM_IJ>;
-+				clock-names = "channel-a", "channel-b", "core";
- 				#pwm-cells = <3>;
- 				status = "disabled";
- 			};
+Changes in v7:
+- Fix compatibility strings and schema errors.
+- Update GPIO pin name
+- Link to v6: https://lore.kernel.org/r/20260927-feature-clock-guard-v6-0-007983b13ec2@bruker.com
 
+Changes in v6:
+- Debug messages dropped.
+- The new driver is now an extension of exising clk-gpio drivers.
+- The controller doesn't enable the parent clock, the consumer is
+  supposed to do that instead.
+- Link to v5: https://lore.kernel.org/r/20260915-feature-clock-guard-v5-0-42ab5dc3a6aa@bruker.com
+
+Changes in v5:
+- Use existing DT binding with an additional property instead of adding
+  a new one
+- The driver is simplified in a way that it represents the actual HW
+  desgin without additional unrelated constructs
+- Aggregation is removed, now it's one clock input, one clock output
+- Link to v4: https://lore.kernel.org/r/20260726-feature-clock-guard-v4-0-e9c8b372b71c@bruker.com
+
+Changes in v4:
+- Removed driver specifics from DT binding
+- Link to v3: https://lore.kernel.org/r/20260603-feature-clock-guard-v3-0-01cca0aa04a5@bruker.com
+
+Changes in v3:
+- Removed unnecessary dt bindings
+- Improved HW description and commit messages
+- Link to v2: https://lore.kernel.org/r/20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com
+
+Changes in v2:
+- Renamed to clk-gpio-locked to express intent.
+- Provide enable() / is_enabled() operations so the clock behaves as
+  expected
+- Fixed DTS errors / warnings
+- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
+
+---
+Vyacheslav Yurkov (2):
+      dt-bindings: clock: gpio-gate-clock: Add a new compatible string
+      clk: Add gpio-locked clock driver
+
+ .../devicetree/bindings/clock/gpio-gate-clock.yaml | 32 +++++++++++++-
+ drivers/clk/clk-gpio.c                             | 50 ++++++++++++++++++++--
+ 2 files changed, 77 insertions(+), 5 deletions(-)
+---
+base-commit: fd179f8a05be3ccae366b9b96e176b51fbe54aab
+change-id: 20260318-feature-clock-guard-f20a2c35b965
+
+Best regards,
 -- 
-2.49.0
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
