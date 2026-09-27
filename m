@@ -1,123 +1,190 @@
 From: Henrik Ma Johansson <dahankzter@gmail.com>
-Subject: [PATCH RFC] io_uring: add IORING_OP_COPY_FILE_RANGE
-Date: Sun, 27 Sep 2026 11:48:56 +0200
-Message-Id: <20260927-cfr-rfc-v1-0-5b9ddbe0490f@gmail.com>
+Date: Sun, 27 Sep 2026 11:48:57 +0200
+Subject: [PATCH RFC] io_uring: add support for copy_file_range
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDSyNz3eS0It2itGRd41RDY7PE5MQ0M5NUJaDqgqLUtMwKsEnRSkFuzkq
- xEMHi0qSs1OQSkBlKtbUAphQPf3AAAAA=
-X-Change-ID: 20260927-cfr-rfc-3e136acaf64e
+Message-Id: <20260927-cfr-rfc-v1-1-5b9ddbe0490f@gmail.com>
+References: <20260927-cfr-rfc-v1-0-5b9ddbe0490f@gmail.com>
+In-Reply-To: <20260927-cfr-rfc-v1-0-5b9ddbe0490f@gmail.com>
 To: Jens Axboe <axboe@kernel.dk>, io-uring@vger.kernel.org
 Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Henrik Ma Johansson <dahankzter@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4464; i=dahankzter@gmail.com;
- h=from:subject:message-id; bh=0N09YfjQnytfrMmqji3ExZ4+D2Biz5G2uK3SgMkwFnI=;
- b=owGbwMvMwCXG83nVLZlv8sKMp9WSGLJ2POt4o3KH8QV/mvbRZTFcFw6aCWq6XFtS69Ancfv2h
- 4iHi67XdZSyMIhxMciKKbJcqnFdeI7hRq5jyocEmDmsTCBDGLg4BWAi/cYM/93M/p6NSuZmWRvu
- wHSkLmUe9zunf81fmoTmbIuSZFaaLMLwP1/voLGa6OIfj60OcpUkMHTdMlqxkS+tb7OM1yfWPVP
- msQIA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5989; i=dahankzter@gmail.com;
+ h=from:subject:message-id; bh=Y6Qn2ejRW03ZlzzYwHZEwXGGECb9VUTiKUeZHr12C64=;
+ b=kA0DAAoWDPOq2hz2HxMByyZiAGq45ojIJ1Ago3XO71ITlZp47priYq3soRwBsopgd/bXNrMrF
+ Yh1BAAWCgAdFiEE0nxFoc4A2G1BZPBgDPOq2hz2HxMFAmq45ogACgkQDPOq2hz2HxMA+AD9HKtC
+ EBKpaw9I1OxRog5R5yRt05ZCll14okDK9ncq7xwBALEnPkPzjEKz0e+NFjkLOnBqGgXOGmZBuNT
+ LMcCmU90J
 X-Developer-Key: i=dahankzter@gmail.com; a=openpgp;
  fpr=D27C45A1CE00D86D4164F0600CF3AADA1CF61F13
 X-Endpoint-Received: by B4 Relay for dahankzter@gmail.com/default with auth_id=1067
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+copy_file_range(2) lets the filesystem decide how to copy: XFS, Btrfs and
+OCFS2 share extents instead of copying data (reflink), and NFS, CIFS and
+Ceph can have the server copy without data crossing the network. Neither
+is reachable through io_uring today. IORING_OP_SPLICE requires one end to
+be a pipe, so the only io_uring alternative is two linked splices through
+a pipe, which always copies bytes.
 
-This adds IORING_OP_COPY_FILE_RANGE, a thin io_uring front end for
-vfs_copy_file_range(). A liburing helper, man page and test follow
-separately.
+Add IORING_OP_COPY_FILE_RANGE, eliminating the need for applications to
+keep a thread pool or offload mechanism just to issue copy_file_range
+without blocking. The SQE is packed like splice: fd_out in fd, off_out in
+off, off_in in splice_off_in and fd_in in splice_fd_in, where
+SPLICE_F_FD_IN_FIXED selects a registered file. An offset of -1 uses and
+advances the file position, like a NULL offset to the syscall. No
+copy_file_range flags exist, so splice_flags accepts only
+SPLICE_F_FD_IN_FIXED.
 
-Why not splice: copy_file_range lets the filesystem choose how to copy.
-XFS and Btrfs share extents (reflink); NFS, CIFS and Ceph copy server
-side. IORING_OP_SPLICE needs a pipe on one end, so today's io_uring
-alternative is two linked splices through a pipe, which always moves
-every byte. It has been asked for in liburing issues #831 and #1383.
+There is no nonblocking path for copy_file_range, so the request is
+always punted to io-wq, like splice, fallocate and ftruncate. Writes to
+the same output file are serialized through hash_reg_file, as for those
+ops. As with other data transfer opcodes, auditing is skipped; the
+copy_file_range syscall is in no audit class either.
 
-4 GiB copy + fsync, virtme-ng guest (relative numbers only):
+The length is clamped to MAX_RW_COUNT, as the CQE result is 32 bits and
+->copy_file_range() and ->remap_file_range() may otherwise return more
+than INT_MAX. A short copy is allowed by copy_file_range semantics;
+callers loop, as they do for the syscall. As for other transfer
+opcodes, a result that doesn't match the (clamped) requested length
+fails the request for the purpose of links. A zero length is passed
+through, as vfs_copy_file_range() does its checks before returning 0,
+so errors match the syscall.
 
-                  this op            two linked splices
-  xfs             0.010 s, 0 MiB     3.17 s, 4+ GiB written
-  btrfs           0.010 s, 0 MiB     2.29 s, 4.0 GiB written
-  ext4            3.27 s             3.22 s   (no reflink; both copy)
+As in the networking opcodes, -ERESTARTSYS is turned into -EINTR, as the
+request cannot be restarted like a syscall. NFS returns it when an
+in-flight server-side copy is interrupted by cancellation.
 
-On loopback NFSv4.2 the copies show up as nfsd COPY operations.
-
-Semantics are the syscall's: the SQE is packed like splice, -1 offsets
-use and advance f_pos, and all checks are vfs_copy_file_range()'s, so
-there are no fs/ changes. The length is clamped to MAX_RW_COUNT since
-cqe->res is 32 bits.
-
-There's no nonblocking path, so it's always punted to io-wq, like
-splice, fallocate and ftruncate. This is not a throughput win: for
-cheap reflinks it is 1.6x (xfs) and 1.2x (btrfs) slower than a
-synchronous call in my runs, because of the punt.
-
-The point is what the punt buys a userspace runtime. Thread-per-core
-runtimes (I'm working on glommio) keep a per-shard blocking thread for
-syscalls the ring can't express, and copy_file_range is one of the last
-runtime-internal users of it, so user work queues behind runtime copies.
-Modelling that with 30 queued 16 MiB copies and a probe task:
-
-                  probe wait, p50     p90
-  thread pool     51-83 ms            52-87 ms
-  this op         28-40 us            45 us - 0.6 ms
-
-Userspace could split its queues instead (Seastar did), but on the ring
-the copy also links with open/fsync/close, completes on the same CQ,
-works with fixed files and can be cancelled: queued copies get
--ECANCELED, a running byte copy stops early with a short count. One
-caveat: io-wq workers inherit a pinned submitter's CPU mask, which shows
-up as ~3 ms tails, so pinned runtimes want IORING_REGISTER_IOWQ_AFF.
-
-Questions I'd like opinions on:
-
- 1. Should a short copy break an IOSQE_IO_LINK chain (as read/write/
-    splice do, and as this patch does), or only errors? EOF on the
-    source gives a short count in normal use.
- 2. audit_skip: set as for the other data transfer ops, since the
-    syscall is in no audit class. Right for an op that can allocate
-    blocks?
- 3. How should this fit with the thread identity handoff RFC? The issue
-    path works inline or from io-wq unchanged; cheap reflinks look like
-    a good fit for blocking inline issue, long byte copies less so.
- 4. Only -ERESTARTSYS is mapped to -EINTR (as in net.c). Would you
-    rather reuse rw.c's io_fixup_restart_res()?
-
-Testing: the liburing test passes on xfs, btrfs, ext4, tmpfs and
-NFSv4.2, on release and KASAN+lockdep kernels, and checks error parity
-with copy_file_range(2). No new failures in the liburing suite. Base:
-for-7.4/io_uring at 8dc68de64261.
-
-AI assistance (Documentation/process/generated-content.rst): the patch,
-test, man page, benchmarks and this letter were drafted with an LLM
-(Claude) in a long interactive session: prior-art research, design,
-implementation, and running the tests and benchmarks above. I reviewed
-all of it, and I'm responsible for it.
-
-This is my first time submitting a patch to the kernel and while I have
-been coding a long time this is still a major milestone. I got the idea
-to implement copy_file_range when I was working on glommio that uses
-io_uring heavily. We are currently using a thread pool for this and it
-works but it kept nagging me in the back of my head until finally I
-decided to give it a try.
-
+Assisted-by: LLM sparse
+Signed-off-by: Henrik Ma Johansson <dahankzter@gmail.com>
 ---
-Henrik Ma Johansson (1):
-      io_uring: add support for copy_file_range
-
  include/uapi/linux/io_uring.h |  1 +
  io_uring/opdef.c              | 11 ++++++++
  io_uring/splice.c             | 58 +++++++++++++++++++++++++++++++++++++++++++
  io_uring/splice.h             |  3 +++
  4 files changed, 73 insertions(+)
----
-base-commit: 8dc68de64261e599631aa7ed6cdf3aec07c7ae3d
-change-id: 20260927-cfr-rfc-3e136acaf64e
 
-Best regards,
---  
-Henrik Ma Johansson <dahankzter@gmail.com>
+diff --git a/include/uapi/linux/io_uring.h b/include/uapi/linux/io_uring.h
+index 909fb7aea638..a6bda05ed1e0 100644
+--- a/include/uapi/linux/io_uring.h
++++ b/include/uapi/linux/io_uring.h
+@@ -318,6 +318,7 @@ enum io_uring_op {
+ 	IORING_OP_PIPE,
+ 	IORING_OP_NOP128,
+ 	IORING_OP_URING_CMD128,
++	IORING_OP_COPY_FILE_RANGE,
+ 
+ 	/* this goes last, obviously */
+ 	IORING_OP_LAST,
+diff --git a/io_uring/opdef.c b/io_uring/opdef.c
+index cf3aa2242cd7..2f4c869993b1 100644
+--- a/io_uring/opdef.c
++++ b/io_uring/opdef.c
+@@ -591,6 +591,13 @@ const struct io_issue_def io_issue_defs[] = {
+ 		.prep			= io_uring_cmd_prep,
+ 		.issue			= io_uring_cmd,
+ 	},
++	[IORING_OP_COPY_FILE_RANGE] = {
++		.needs_file		= 1,
++		.hash_reg_file		= 1,
++		.audit_skip		= 1,
++		.prep			= io_copy_file_range_prep,
++		.issue			= io_copy_file_range,
++	},
+ };
+ 
+ const struct io_cold_def io_cold_defs[] = {
+@@ -849,6 +856,10 @@ const struct io_cold_def io_cold_defs[] = {
+ 		.sqe_copy		= io_uring_cmd_sqe_copy,
+ 		.cleanup		= io_uring_cmd_cleanup,
+ 	},
++	[IORING_OP_COPY_FILE_RANGE] = {
++		.name			= "COPY_FILE_RANGE",
++		.cleanup		= io_splice_cleanup,
++	},
+ };
+ 
+ const char *io_uring_get_opcode(u8 opcode)
+diff --git a/io_uring/splice.c b/io_uring/splice.c
+index e81ebbb91925..740f759a683b 100644
+--- a/io_uring/splice.c
++++ b/io_uring/splice.c
+@@ -147,3 +147,61 @@ int io_splice(struct io_kiocb *req, unsigned int issue_flags)
+ 	io_req_set_res(req, ret, 0);
+ 	return IOU_COMPLETE;
+ }
++
++int io_copy_file_range_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
++{
++	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
++
++	if (READ_ONCE(sqe->addr3) || READ_ONCE(sqe->buf_index))
++		return -EINVAL;
++
++	sp->off_in = READ_ONCE(sqe->splice_off_in);
++	sp->off_out = READ_ONCE(sqe->off);
++	sp->len = min_t(u32, READ_ONCE(sqe->len), MAX_RW_COUNT);
++	sp->flags = READ_ONCE(sqe->splice_flags);
++	if (unlikely(sp->flags & ~SPLICE_F_FD_IN_FIXED))
++		return -EINVAL;
++	sp->splice_fd_in = READ_ONCE(sqe->splice_fd_in);
++	sp->rsrc_node = NULL;
++	req->flags |= REQ_F_FORCE_ASYNC;
++	return 0;
++}
++
++int io_copy_file_range(struct io_kiocb *req, unsigned int issue_flags)
++{
++	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
++	struct file *out = sp->file_out;
++	loff_t pos_in, pos_out;
++	struct file *in;
++	ssize_t ret;
++
++	WARN_ON_ONCE(issue_flags & IO_URING_F_NONBLOCK);
++
++	in = io_splice_get_file(req, issue_flags);
++	if (!in) {
++		ret = -EBADF;
++		goto done;
++	}
++
++	pos_in = (sp->off_in == -1) ? in->f_pos : sp->off_in;
++	pos_out = (sp->off_out == -1) ? out->f_pos : sp->off_out;
++
++	ret = vfs_copy_file_range(in, pos_in, out, pos_out, sp->len, 0);
++	if (ret == -ERESTARTSYS)
++		ret = -EINTR;
++
++	if (ret > 0) {
++		if (sp->off_in == -1)
++			in->f_pos = pos_in + ret;
++		if (sp->off_out == -1)
++			out->f_pos = pos_out + ret;
++	}
++
++	if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
++		fput(in);
++done:
++	if (ret != sp->len)
++		req_set_fail(req);
++	io_req_set_res(req, ret, 0);
++	return IOU_COMPLETE;
++}
+diff --git a/io_uring/splice.h b/io_uring/splice.h
+index b9b2848327fb..83138fab8fe8 100644
+--- a/io_uring/splice.h
++++ b/io_uring/splice.h
+@@ -6,3 +6,6 @@ int io_tee(struct io_kiocb *req, unsigned int issue_flags);
+ void io_splice_cleanup(struct io_kiocb *req);
+ int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
+ int io_splice(struct io_kiocb *req, unsigned int issue_flags);
++
++int io_copy_file_range_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
++int io_copy_file_range(struct io_kiocb *req, unsigned int issue_flags);
+
+-- 
+2.55.0
 
