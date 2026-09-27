@@ -1,16 +1,13 @@
 From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
-Subject: [PATCH v8 0/2] A proposal to add a gpio-locked clock driver.
-Date: Sun, 27 Sep 2026 14:59:06 +0000
-Message-Id: <20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com>
+Date: Sun, 27 Sep 2026 14:59:07 +0000
+Subject: [PATCH v8 1/2] dt-bindings: clock: gpio-gate-clock: Add a new
+ compatible string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADovuWoC/43PTU7DMBAF4KtUXmNkj/9ZcQ/EYjx2WqvQIKeJQ
- FXujtNNQIkQyzfSfG/mxoZcSx7Y0+HGap7KUPpLC/7hwOiEl2PmJbXMQIAVSnreZbyONXN66+n
- MjyPWxDsQCKRMDNawtvlRc1c+7+rLa8unMlz7+nUvmeQy/dubJBfcSuUoauF1dM+xjudcH6l/Z
- ws4wYoYKfYRWBACo41PRmmxQdSKtFv2EdUQIYlQIAqNZoPoFXFg9xHdkBzIR+UgOkkbxKxIkGY
- fMQ3RgNEkUmgRN4j9gYDbR+zyjnDBqyhVJtgg7h+Ia4hPSQZjfQr4G5nn+Rskt7IkVQIAAA==
-X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+Message-Id: <20260927-feature-clock-guard-v8-1-630938e302a1@bruker.com>
+References: <20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com>
+In-Reply-To: <20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -21,84 +18,88 @@ Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
  Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790521150; l=3080;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790521150; l=2141;
  i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
- bh=YmGxEJFzXbTFWzE7ulh7aHe3IiKiro4uJZWRmXMUOd0=;
- b=8jdU/HvfBCRhKNpwUXhkVNz2Z1Nq5LWDI9YNTvgw1uO3VoBeFZGUgSDoEveJs6yWg8gx7UyDs
- AL+9oQytxlyCn0qaJAbwor0IKt7aCDTTAUG0Tu+GSlovK2g4EbvyXaJ
+ bh=T/neAsVK3rkcpUxN8yoWulkpuO6b91ByHi9mx326cdY=;
+ b=bwz+I4X4pa883WWftCeffgFoMJ8Xyp9Q6sIWvL73by2MM9eCj3GTQfD/lx4sCs8+ZjMyKtsWD
+ QUyVSqISiUKAHzteKxqyAKAPq80L58pd7O/DUYzdvLK0TAk6cGLKkQX
 X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
  pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
 X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A gpio-locked clock represents an input clock, which state is determined
-by a GPIO signal. It's similar to a gated-fixed-clock, but GPIO direction
-is inverted. Consumers can use the output clock to wait until all input
-clocks are locked and only then initialize / access dependent peripherals.
+Extend the binding to be used also for gpio-locked-fixed-clock.
+A GPIO-locked fixed clock provider exposes a fixed-rate clock whose
+availability depends on one or more GPIO lock-status signals.
 
-The usage example for such a driver is when peripherals depend on PLLs in
-a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
-to check whether clock is actually usable. E.g. some of the IPs might not
-have a proper split between registers and IP core, which means that if an
-external clock and/or PLL lock is missing and one tries to access the 
-registers, the response never comes, thus the CPU stalls.
+Some hardware designs provide fixed-frequency clocks generated outside
+software control, such as by FPGA-resident PLLs. While the clock rate is
+fixed, a separate GPIO signal indicates whether the clock source is
+locked and producing a valid output.
 
-Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
 Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
-Changes in v8:
-- Fix return value of clk_gpio_locked_prepare()
-- Link to v7: https://lore.kernel.org/r/20260927-feature-clock-guard-v7-0-8dd19568d9a2@bruker.com
+ .../devicetree/bindings/clock/gpio-gate-clock.yaml | 32 ++++++++++++++++++++--
+ 1 file changed, 30 insertions(+), 2 deletions(-)
 
-Changes in v7:
-- Fix compatibility strings and schema errors.
-- Update GPIO pin name
-- Link to v6: https://lore.kernel.org/r/20260927-feature-clock-guard-v6-0-007983b13ec2@bruker.com
+diff --git a/Documentation/devicetree/bindings/clock/gpio-gate-clock.yaml b/Documentation/devicetree/bindings/clock/gpio-gate-clock.yaml
+index d09d0e3f0c6e..1ad87c8b36b9 100644
+--- a/Documentation/devicetree/bindings/clock/gpio-gate-clock.yaml
++++ b/Documentation/devicetree/bindings/clock/gpio-gate-clock.yaml
+@@ -11,7 +11,9 @@ maintainers:
+ 
+ properties:
+   compatible:
+-    const: gpio-gate-clock
++    enum:
++      - gpio-gate-clock
++      - gpio-locked-clock
+ 
+   clocks:
+     maxItems: 1
+@@ -23,10 +25,29 @@ properties:
+     description: GPIO reference for enabling and disabling the clock.
+     maxItems: 1
+ 
++  enabled-gpios:
++    description: GPIO that indicates whether the clock is enabled or disabled.
++    maxItems: 1
++
+ required:
+   - compatible
+   - '#clock-cells'
+-  - enable-gpios
++
++allOf:
++  - if:
++      properties:
++        compatible:
++          const: gpio-gate-clock
++    then:
++      required:
++        - enable-gpios
++  - if:
++      properties:
++        compatible:
++          const: gpio-locked-clock
++    then:
++      required:
++        - enabled-gpios
+ 
+ additionalProperties: false
+ 
+@@ -40,3 +61,10 @@ examples:
+         #clock-cells = <0>;
+         enable-gpios = <&gpio 1 GPIO_ACTIVE_HIGH>;
+     };
++
++    clk_gpio_locked {
++        compatible = "gpio-locked-clock";
++        #clock-cells = <0>;
++        clocks = <&pll>;
++        enabled-gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
++    };
 
-Changes in v6:
-- Debug messages dropped.
-- The new driver is now an extension of exising clk-gpio drivers.
-- The controller doesn't enable the parent clock, the consumer is
-  supposed to do that instead.
-- Link to v5: https://lore.kernel.org/r/20260915-feature-clock-guard-v5-0-42ab5dc3a6aa@bruker.com
-
-Changes in v5:
-- Use existing DT binding with an additional property instead of adding
-  a new one
-- The driver is simplified in a way that it represents the actual HW
-  desgin without additional unrelated constructs
-- Aggregation is removed, now it's one clock input, one clock output
-- Link to v4: https://lore.kernel.org/r/20260726-feature-clock-guard-v4-0-e9c8b372b71c@bruker.com
-
-Changes in v4:
-- Removed driver specifics from DT binding
-- Link to v3: https://lore.kernel.org/r/20260603-feature-clock-guard-v3-0-01cca0aa04a5@bruker.com
-
-Changes in v3:
-- Removed unnecessary dt bindings
-- Improved HW description and commit messages
-- Link to v2: https://lore.kernel.org/r/20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com
-
-Changes in v2:
-- Renamed to clk-gpio-locked to express intent.
-- Provide enable() / is_enabled() operations so the clock behaves as
-  expected
-- Fixed DTS errors / warnings
-- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
-
----
-Vyacheslav Yurkov (2):
-      dt-bindings: clock: gpio-gate-clock: Add a new compatible string
-      clk: Add gpio-locked clock driver
-
- .../devicetree/bindings/clock/gpio-gate-clock.yaml | 32 +++++++++++++-
- drivers/clk/clk-gpio.c                             | 50 ++++++++++++++++++++--
- 2 files changed, 77 insertions(+), 5 deletions(-)
----
-base-commit: fd179f8a05be3ccae366b9b96e176b51fbe54aab
-change-id: 20260318-feature-clock-guard-f20a2c35b965
-
-Best regards,
 -- 
-Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+2.34.1
 
