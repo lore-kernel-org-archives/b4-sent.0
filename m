@@ -1,116 +1,180 @@
-From: Shunsuke Nagashima <shunsuke@nagashi.ma>
-Date: Sun, 27 Sep 2026 21:10:53 +0900
-Subject: [PATCH ath-next] wifi: ath10k: fix status of bundled mgmt tx
- completions
+From: Daniel Drake <dan@reactivated.net>
+Subject: [PATCH v7 0/6] Add support for Broadcom BCM2712 IOMMU driver
+ (Raspberry Pi 5)
+Date: Sun, 27 Sep 2026 14:08:59 +0100
+Message-Id: <20260927-bcm2712-iommu-submit-v7-0-dfa2b975cbc9@reactivated.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-ath10k-bundle-status-v1-1-a1eea048ada9@nagashi.ma>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMAwAf2Xk2UDTyab+iuyh3aKLSpUmlcHYv
- 1v18TjuVlDOwgqnZoXMb1F5pgq0a2CcQ7oyylQZvPOdO/oeg83k7hhLmh6MasGKot8TtUR97A4
- t1PSV+SLLb3uGWmDixWD4Gy3xxqN9r7BtH49IqaaCAAAA
-X-Change-ID: 20260927-ath10k-bundle-status-24113117b683
-To: Jeff Johnson <jjohnson@kernel.org>
-Cc: Kalle Valo <kvalo@kernel.org>, linux-wireless@vger.kernel.org, 
- ath10k@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Shunsuke Nagashima <shunsuke@nagashi.ma>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790511053; l=4037;
- i=shunsuke@nagashi.ma; s=20260927; h=from:subject:message-id;
- bh=QVBqzIPmQp3OWeyU/QcVzxRKR56mMIsg5DYITxXG7a0=;
- b=Xh9i1dtS2Uvv2kkPH5bVj24nVno/K5pjBuHO5R5bjTsNGn3jtXkxMz5Ub6h8qHADFnMhUw8tt
- gtPPLvNDl8gABQCrDEXZowB+aHiKTWfUjrIxiX/hSsVvGcS1LYXmIfm
-X-Developer-Key: i=shunsuke@nagashi.ma; a=ed25519;
- pk=5WP8Bzifiy3DFoCeQ1lLy2osPmlNAkq71Un7ly9lbpk=
-X-Endpoint-Received: by B4 Relay for shunsuke@nagashi.ma/20260927 with auth_id=1069
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XPO27DMAwG4KsEmqtWpt6deo+igx5MrMF2IDlGi
+ 8B3r5QlBmqjE/ED5EfyTgrmhIW8n+4k45JKmsYa9MuJhN6NF6Qp1kyAgWK6A+rDAK2maRhutNz
+ 8kGYKyKyxFpUMgtTRa8Zz+n6wn181e1eQ+uzG0DdsyumSxrfBlRlz6+9Tmaf887hi6drUPwuXj
+ jJqGHYsxIiA7iOjC3Na3IzxdcSZtLULbCjQBxRUioHQXgbGI5p9ij8pA/KA4pXS505w1GCsV/u
+ UeFKWHT0oKmWj90pqqU3o9im5pewBJSsFktsgwYOwuE+pDQXigFLtQc+DC2iU1fwvta7rL1DEg
+ rpVAgAA
+X-Change-ID: 20260712-bcm2712-iommu-submit-2e09899e65c4
+To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
+ Robin Murphy <robin.murphy@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Florian Fainelli <florian.fainelli@broadcom.com>, 
+ Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>, 
+ Daniel Drake <dan@reactivated.net>
+Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-rpi-kernel@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, nick.hollinghurst@raspberrypi.com, 
+ james.quinlan@broadcom.com, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6705; i=dan@reactivated.net;
+ h=from:subject:message-id; bh=/satiGAup3MvwEQuGuW7WPwdFMZuAWo3ppOawHGJOmc=;
+ b=owEBbQKS/ZANAwAKAcPmj7FTFEe7AcsmYgBquRWEh9z9/iyDIBx+HAzEEJ1yd1M1AVJqAulys
+ 8n+HKLL8nCJAjMEAAEKAB0WIQQ6Rf0sUP1iEhXfVfjD5o+xUxRHuwUCarkVhAAKCRDD5o+xUxRH
+ uxXED/9ELkBTzi0FS9uWC69lXIKCenidL0fc9VO64NIrebRYQjhHU6U1hNx/m5aahMpBqoXUUQx
+ K1IktWVsMKNUgwTWG+9oMdHeyVwY6grkJ+Li4c+vZt7pHLNsd19LHUokbnVusgrUrkt1KtJ4Y/D
+ VbIdT/1PumNtPRu45CXtdeWfdYE+F6VC+eZCVeCjZ5wcLjOT+jehsvFZTYnQ8fOBEROWMqNWSZr
+ M0ccFvJ2TyLkX+o+265mKvZA7Prvejadskmi0Nqc5nZtX73SnhmjV8C+X6YA4xhbCT8ECSRqZ2F
+ DNxSbp4K4wz/3nEZHIv3YFJn91oYOIDnODZxAbLG4BZ2fISQDBok1cB9NtC95yTBpPRvetnp0IX
+ THvRjDZcAYJ5nTgvUyuGiYzIj2bUTqGJNcCzpaN5tIYfi6j+g/9lzUEDPOCz3ot6q92dVF0RcMO
+ NutN1lybkd0xwFVCXNgWkFPlc5JBM4OhMjkVRcZv4RNMmpmiXyhqbEub9u8LdKiq5yAecYCP8wy
+ rs69POXXWi/JWEvxjMS+BHPKc29/AJ+nBqe1kfS92exrt1Q36hssQEjmbjLVWGiQFKaZ90s4Y6X
+ HYMSZ6O1ASUWQfqvcdt3wOrm5avJ2PauXZt7SZWPNvwQad6XbDwy3A/X5QccybfHusUAUxERzhk
+ cHBUU66l59gChxg==
+X-Developer-Key: i=dan@reactivated.net; a=openpgp;
+ fpr=3A45FD2C50FD621215DF55F8C3E68FB1531447BB
+X-Endpoint-Received: by B4 Relay for dan@reactivated.net/default with auth_id=1070
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath10k_wmi_event_mgmt_tx_bundle_compl() takes the completion status of
-each report from desc_ids[i] instead of status[i]. Any non-zero status
-is handled as "not acked", so a bundled report is marked as acked if
-and only if its descriptor id is 0, whatever status the firmware
-returned.
+Hi,
 
-The bundle handler read status[i] when it was added in
-commit cc123fac978f ("ath10k: Handle bundled tx completion for
-management frames"). The commit named in the Fixes tag replaced it
-with desc_ids[i].
-
-Seen on WCN3990 in station mode with a WPA3-SAE AP. This firmware
-advertises mgmt-tx-by-reference and completes some management frames
-in bundles. A debug build printed status[] for each bundled report and
-could switch between the old and the fixed line. A sniffer watched the
-AP channel. The firmware status[] matched the capture in all 39
-bundled reports (15 with the old line, 24 with the fixed one): the 30
-frames with status[] 1 were never seen on that channel, and the 9
-frames with status[] 0 were acked.
-
-With the old line, 6 of the 15 reports gave mac80211 the wrong ack
-result:
-
- - 4 frames that were never seen on the air were reported as acked.
-   Each report arrived after mac80211 had already timed out the
-   authentication, so they had no visible effect in these runs.
- - 2 SAE commit frames that were acked on the air were reported as not
-   acked. They were the second and third of three tries. mac80211 gave
-   up on the authentication 239 us after the last report, although the
-   AP's SAE replies came about 5 to 8 ms later, so that connection
-   attempt failed.
-
-Take the status from status[i].
-
-Tested-on: WCN3990 hw1.0 SNOC WLAN.HL.2.0.c10-00459-QCAHLSWMTPLZ-1
-
-Fixes: 4b816f170b1f ("ath10k: add support for ack rssi value of management tx packets")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM sparse
-Signed-off-by: Shunsuke Nagashima <shunsuke@nagashi.ma>
----
-Tested on a comma four (WCN3990) with a v7.2-based kernel
-(7.2.0-vamos-7626c37). It also carries three out-of-tree ath10k
-patches (MAC address, in-order rx A-MSDU, SET_KEY wait); none of
-them touch wmi.c or wmi-tlv.c.
-
-- Debug build that prints status[] per bundled report and can switch
-  between the old and the fixed line, with a sniffer on the AP
-  channel: 6 connect/reconnect runs (5 WPA3-SAE, 1 WPA2-PSK),
-  39 bundled reports.
-- Build with only this patch: 6 connect/reconnect runs (5 WPA3-SAE,
-  1 WPA2-PSK), no debug output. No warnings, no firmware crashes.
-  One first connect failed and one reconnect was slow, for a
-  different reason that was also seen with the old line: the AP did
-  not ack, and the firmware held back some Auth frames.
-
-Not tested: status 2 or 3 inside a bundle (only 0 and 1 were seen),
-AP mode, other chips and firmware versions.
-
-I worked on this with Claude (claude-opus-5-5) and Codex
-(gpt-6-astra). They helped go through the logs and sniffer captures,
-write the debug build, and write the English of this changelog. I ran
-the tests on the device and reviewed the change myself.
----
- drivers/net/wireless/ath/ath10k/wmi.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/net/wireless/ath/ath10k/wmi.c b/drivers/net/wireless/ath/ath10k/wmi.c
-index e57588c19..67be6e817 100644
---- a/drivers/net/wireless/ath/ath10k/wmi.c
-+++ b/drivers/net/wireless/ath/ath10k/wmi.c
-@@ -2512,7 +2512,7 @@ int ath10k_wmi_event_mgmt_tx_bundle_compl(struct ath10k *ar, struct sk_buff *skb
- 	for (i = 0; i < num_reports; i++) {
- 		memset(&param, 0, sizeof(struct mgmt_tx_compl_params));
- 		param.desc_id = __le32_to_cpu(arg.desc_ids[i]);
--		param.status = __le32_to_cpu(arg.desc_ids[i]);
-+		param.status = __le32_to_cpu(arg.status[i]);
+This series adds a driver for the Broadcom BCM2712 IOMMU found on
+Raspberry Pi 5, and hooks up the display controller IOMMU for efficient
+management of graphics memory. This is adapted from the downstream driver
+from Raspberry Pi (original author Nick Hollinghurst), with main changes:
+ - In page mapping mode, operate the translation aperture from address 0,
+   with no bypass window. More like a IOMMU and less like a GART.
+ - Implement the page table management using generic_pt
+ - Support 4MB hugepage mapping in top level page table
+ - Implement brcm,iommu-cache as standards-compliant DT property
+ - Drop the dma-iova-offset hack, used to work around some issue seen with
+   dma-ranges. This will need to be investigated separately and solved
+   properly. (It's not needed for display controller iommu support included
+   here.)
+ - Misc simplifications/standardisations/cleanups
  
- 		if (test_bit(WMI_SERVICE_TX_DATA_ACK_RSSI, ar->wmi.svc_map))
- 			param.ack_rssi = __le32_to_cpu(arg.ack_rssi[i]);
+The IOMMU works strictly with 4KB pages. This means that unfortunately
+when the kernel is compiled with PAGE_SIZE=16KB (the Raspberry Pi 5
+kernel default), 12KB is wasted in each page that is allocated for page
+tables. I plan to address this in followup work.
+
+It has been tested on Raspberry Pi 5 using a 3D-accelerated graphical
+environment which causes plenty of IOMMU maps & unmaps.
+
+Thanks for the review comments and discussion. Further feedback and
+testing welcome!
+
+Changes in v7:
+- Add latest Reviewed-by / Acked-by 
+- Otherwise no changes, resending due to email delivery issue
+- Link to v6: https://lore.kernel.org/r/20260924-bcm2712-iommu-submit-v6-0-7b3cace86973@reactivated.net
+
+Changes in v6:
+- Add MAINTAINERS entry
+- Drop unnecessary vc4 iommus property (it only needs to sit on the
+  underlying hvs device)
+- Add dt-bindings doc for hvs iommus property
+- Link to v5: https://lore.kernel.org/r/20260909-bcm2712-iommu-submit-v5-0-2539c52b249e@reactivated.net
+
+Changes in v5:
+- Drop blocked_domain support as hardware always translates a minimum
+  256MB aperture when enabled
+- Restrict Kconfig dependency to ARCH_BCM2835, matching other RPi drivers
+- Improved error handling in device attach
+- Add missing iommu_put_pages_list() in iotlb sync
+- Minor readability improvements
+- Link to v4: https://lore.kernel.org/r/20260902-bcm2712-iommu-submit-v4-0-9dbb657578c1@reactivated.net
+
+Changes in v4:
+- Add Jim Quinlan and Florian Fainelli as bindings maintainers
+- Replace MMU register access macros with static inline functions
+- Clear illegal address register and flush caches on blocking domain attach
+- Add __must_hold annotations in TLB helpers
+- Use BIT() macro for MMUC_CONTROL definitions
+- Link to v3: https://lore.kernel.org/r/20260825-bcm2712-iommu-submit-v3-0-7f143e7289b6@reactivated.net
+
+Changes in v3:
+- Switch from a aperture and bypass window GART-like approach
+  to IOMMU-like 0-based translation
+- Add 3 SW bits which seem unused (per the chipset docs); drop patch
+  for NO_SW_BIT handling. This reduces the claimed address space, so I had
+  to tweak a iommu_pt test accordingly.
+- Disallow domain sharing across multiple hardware IOMMU instances
+- Clear and flush local MMU TLB during domain attach
+- Handle unattached domains safely during TLB sync
+- Set cache platform driver data late during probe to prevent race condition
+- Improved handling of cache flush timeouts
+- Use format string for device name in iommu_device_sysfs_add()
+- Use cleanup.h helpers for scope management
+- Expand DT binding descriptions for IOMMU and IOMMUC
+- Add iommus property to HVS display node in DT
+- Drop iommuc back-compat with current RPi DT
+- Link to v2: https://lore.kernel.org/r/20260727-bcm2712-iommu-submit-v2-0-0247b5c03de8@reactivated.net
+
+Changes in v2:
+- Use iommu_fwspec in xlate & probe_device
+- Add blocked_domain support
+- Simplify page size configuration between iommu driver and format
+- Introduce PT_FEAT_NO_SW_BIT flag to allow formats to explicitly opt-in to
+  a defensive flushing algorithm when no sw bit is available
+- Implement 4MB pages at Level 1; this is more efficient and means the
+  "allow full-table contiguous leaves in unit tests" commit has been
+  dropped because it is no longer needed.
+- Hardcode the aperture in an unused part of the address space, removing
+  it from DT (it's a software-specific decision, not an attribute of the
+  hardware), adding more explanatory comments
+- Use pt_full_va_prefix to have the PT format operate within the aperture
+  space, enabling use of IOMMU_PT_DOMAIN_OPS
+- Add more dt-bindings explanation to brcm,iommu-cache and drop docs
+  around the cache property used in RPi firmware (the driver still supports
+  this however, for fw compat reasons)
+- Correct iommu device address in bcm2712.dtsi
+- Link to v1: https://lore.kernel.org/r/20260712-bcm2712-iommu-submit-v1-0-80e10cdde2ea@reactivated.net
 
 ---
-base-commit: 753baa59527f8e606c49eac25692b8b08918a3a9
-change-id: 20260927-ath10k-bundle-status-24113117b683
+Daniel Drake (6):
+      iommu_pt: Fix test_pgsize_boundary() failure on narrow-OA formats
+      dt-bindings: iommu: Add Broadcom BCM2712 IOMMU
+      dt-bindings: display: brcm,bcm2835-hvs: Document iommus property
+      iommu/generic_pt: Add Broadcom BCM2712 page table format
+      iommu: Add Broadcom BCM2712 IOMMU driver
+      arm64: dts: broadcom: bcm2712: Add GPU IOMMU and IOMMU cache nodes
+
+ .../bindings/display/brcm,bcm2835-hvs.yaml         |   3 +
+ .../bindings/iommu/brcm,bcm2712-iommu.yaml         |  54 ++
+ .../bindings/iommu/brcm,bcm2712-iommuc.yaml        |  40 ++
+ MAINTAINERS                                        |  12 +
+ arch/arm64/boot/dts/broadcom/bcm2712.dtsi          |  14 +
+ drivers/iommu/Kconfig                              |  15 +
+ drivers/iommu/Makefile                             |   1 +
+ drivers/iommu/bcm2712-iommu-cache.c                |  84 ++++
+ drivers/iommu/bcm2712-iommu-cache.h                |   9 +
+ drivers/iommu/bcm2712-iommu.c                      | 550 +++++++++++++++++++++
+ drivers/iommu/generic_pt/.kunitconfig              |   1 +
+ drivers/iommu/generic_pt/Kconfig                   |  10 +
+ drivers/iommu/generic_pt/fmt/Makefile              |   2 +
+ drivers/iommu/generic_pt/fmt/bcm2712.h             | 288 +++++++++++
+ drivers/iommu/generic_pt/fmt/defs_bcm2712.h        |  18 +
+ drivers/iommu/generic_pt/fmt/iommu_bcm2712.c       |   6 +
+ drivers/iommu/generic_pt/kunit_iommu_pt.h          |   2 +-
+ include/linux/generic_pt/common.h                  |   6 +
+ include/linux/generic_pt/iommu.h                   |  12 +
+ 19 files changed, 1126 insertions(+), 1 deletion(-)
+---
+base-commit: 28924df2a08f440c73991b83028032c901de2ae4
+change-id: 20260712-bcm2712-iommu-submit-2e09899e65c4
 
 Best regards,
---  
-Shunsuke Nagashima <shunsuke@nagashi.ma>
+-- 
+Daniel Drake <dan@reactivated.net>
 
