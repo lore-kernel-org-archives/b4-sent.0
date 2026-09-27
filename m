@@ -1,160 +1,116 @@
-From: Adis Veletanlic <adisveletanlic@proton.me>
-Date: Sun, 27 Sep 2026 13:37:39 +0200
-Subject: [PATCH wireless] wifi: iwlwifi: mvm: fix self-deadlock in WoWLAN
- key programming
+From: Shunsuke Nagashima <shunsuke@nagashi.ma>
+Date: Sun, 27 Sep 2026 21:10:53 +0900
+Subject: [PATCH ath-next] wifi: ath10k: fix status of bundled mgmt tx
+ completions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-main-v1-1-660ffbc9837c@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBQFr0Le2iZQBINXMSxKeeo3Wkg/Cgnh7
- hZdTmYyK5RRqDhnKyI/ojKEBMUhg7+7cKORPjFsbuu8sSfzchJMV7uqZH8sG18gpWPkVZbf5oJ
- ZIp9URfs3+u4e9NN+wbZ9ARgwkoVyAAAA
-X-Change-ID: 20260927-main-b6a53ed439c1
-To: Miri Korenblit <miriam.rachel.korenblit@intel.com>
-Cc: Johannes Berg <johannes@sipsolutions.net>, 
- linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Adis Veletanlic <adisveletanlic@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4811;
- i=adisveletanlic@proton.me; h=from:subject:message-id;
- bh=Py9OOavcJWfI54ATz2gHGBtGP+FmEcLIVCbnQwjgG+Q=;
- b=owEBCQL2/ZANAwAIAWBVJ/vOa9TGAcsmYgBquQAFuN4tLOk/dAqHS73q3b/S6KKnGNfF6xdSo
- iUlBDQZt/+JAc8EAAEIADkWIQSbWhJPTsnk/hC9Y9tgVSf7zmvUxgUCarkABRsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwyLDIACgkQYFUn+85r1MaDgwwAox5GpNoIuIA3e+XNv/RMB8O+NGX06Aq
- 5yY4RQRvympDZCsQPUCGuw4WjubUuUGR1eAcit203du0A3NzDHHq/qSoZJ2ey9N+hIMeaxAa2eN
- OLmx+yQAZ4GeQhwPPTIZE7Uy8bAJjuNTs57E2nQhf2+qXwNhp22lFZ8ERKzWuV5DUYJ9NVUXSL1
- TfxAsI4su9qsfDyyQxBdmcJOkwPafy4Cl0R4g3C7y5+rK+dvWJXl6zD85zIYZMzb2GOCRiKRt7A
- XWXATTt695qzhzrx2Z1YhJ5sEtV7Q+LMdqLlZRSxOhPojHmwZ2KX7Ui8kooWpCPTMQP4q7AhTIc
- V3wBHtGihVjvbEmXpvzAglw2Qf4Ga57pdQeA8HvdMeHQdkujp0yaHgjltXmXHukcKw1nNlaKHqL
- GOaCPhYTOAWDr8s1vDxX8E4Ew4cX3rPICVmygP0fJUuBV110ACUDAxv+2GK1VVfg49WWc1hJsOY
- 40sp3VAq0UIqBSEHAARUzIm0nVAPcF3
-X-Developer-Key: i=adisveletanlic@proton.me; a=openpgp;
- fpr=9B5A124F4EC9E4FE10BD63DB605527FBCE6BD4C6
-X-Endpoint-Received: by B4 Relay for adisveletanlic@proton.me/default with auth_id=1068
+Message-Id: <20260927-ath10k-bundle-status-v1-1-a1eea048ada9@nagashi.ma>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMAwAf2Xk2UDTyab+iuyh3aKLSpUmlcHYv
+ 1v18TjuVlDOwgqnZoXMb1F5pgq0a2CcQ7oyylQZvPOdO/oeg83k7hhLmh6MasGKot8TtUR97A4
+ t1PSV+SLLb3uGWmDixWD4Gy3xxqN9r7BtH49IqaaCAAAA
+X-Change-ID: 20260927-ath10k-bundle-status-24113117b683
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: Kalle Valo <kvalo@kernel.org>, linux-wireless@vger.kernel.org, 
+ ath10k@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Shunsuke Nagashima <shunsuke@nagashi.ma>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790511053; l=4037;
+ i=shunsuke@nagashi.ma; s=20260927; h=from:subject:message-id;
+ bh=QVBqzIPmQp3OWeyU/QcVzxRKR56mMIsg5DYITxXG7a0=;
+ b=Xh9i1dtS2Uvv2kkPH5bVj24nVno/K5pjBuHO5R5bjTsNGn3jtXkxMz5Ub6h8qHADFnMhUw8tt
+ gtPPLvNDl8gABQCrDEXZowB+aHiKTWfUjrIxiX/hSsVvGcS1LYXmIfm
+X-Developer-Key: i=shunsuke@nagashi.ma; a=ed25519;
+ pk=5WP8Bzifiy3DFoCeQ1lLy2osPmlNAkq71Un7ly9lbpk=
+X-Endpoint-Received: by B4 Relay for shunsuke@nagashi.ma/20260927 with auth_id=1069
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__iwl_mvm_suspend() takes mvm->mutex and holds it for the whole WoWLAN
-configuration. But on devices with firmware that has no unified D3/D0
-image iwl_mvm_wowlan_config_key_params() then calls
-ieee80211_iter_keys() with iwl_mvm_wowlan_program_keys() as the
-iterator, and that iterator then takes mvm->mutex again. This causes the
-suspend thread to block on a mutex it is already holding and system
-suspend never completes.
+ath10k_wmi_event_mgmt_tx_bundle_compl() takes the completion status of
+each report from desc_ids[i] instead of status[i]. Any non-zero status
+is handled as "not acked", so a bundled report is marked as acked if
+and only if its descriptor id is 0, whatever status the firmware
+returned.
 
-This was seen on an Intel Wireless-AC 3168 (firmware 29.0bd893f3.0)
-while associated with WoWLAN enabled. With CONFIG_DPM_WATCHDOG the stuck
-task is:
+The bundle handler read status[i] when it was added in
+commit cc123fac978f ("ath10k: Handle bundled tx completion for
+management frames"). The commit named in the Fixes tag replaced it
+with desc_ids[i].
 
- ieee80211 phy0: PM: **** DPM device timeout after 30 seconds; 30 seconds until panic ****
- Call Trace:
-  <TASK>
-  __schedule+0x2cb/0x740
-  schedule+0x27/0xa0
-  schedule_preempt_disabled+0x15/0x30
-  __mutex_lock.constprop.0+0x53a/0xa50
-  iwl_mvm_wowlan_program_keys+0x1a1/0x220 [iwlmvm]
-  ieee80211_iter_keys+0x77/0x160 [mac80211]
-  iwl_mvm_wowlan_config_key_params+0x5f/0x390 [iwlmvm]
-  iwl_mvm_wowlan_config.isra.0+0x9b/0x190 [iwlmvm]
-  __iwl_mvm_suspend.isra.0+0x1c7/0x340 [iwlmvm]
-  drv_suspend+0x25/0xc0 [mac80211]
-  __ieee80211_suspend+0x1d2/0x300 [mac80211]
-  rdev_suspend+0x25/0xe0 [cfg80211]
-  wiphy_suspend+0x95/0x180 [cfg80211]
-  dpm_run_callback+0x4a/0x140
-  device_suspend+0x212/0x530
-  async_suspend+0x21/0x30
-  async_run_entry_fn+0x34/0x130
-  process_one_work+0x192/0x350
-  worker_thread+0x196/0x300
-  kthread+0xfc/0x240
-  ret_from_fork+0x153/0x170
-  ret_from_fork_asm+0x1a/0x30
-  </TASK>
+Seen on WCN3990 in station mode with a WPA3-SAE AP. This firmware
+advertises mgmt-tx-by-reference and completes some management frames
+in bundles. A debug build printed status[] for each bundled report and
+could switch between the old and the fixed line. A sniffer watched the
+AP channel. The firmware status[] matched the capture in all 39
+bundled reports (15 with the old line, 24 with the fixed one): the 30
+frames with status[] 1 were never seen on that channel, and the 9
+frames with status[] 0 were acked.
 
-Any other devices taking rtnl_lock in their suspend callback block
-behind it as well. The iterator is only called from this path, and the
-mutex is always held there. Remove the inner lock/unlock pairs and
-assert that the mutex is held instead. The other key iterators used for
-D3 don't take the mutex, so resume is not affected.
+With the old line, 6 of the 15 reports gave mac80211 the wrong ack
+result:
 
-Commit 6ba40cd3a99b ("wifi: iwlwifi: mvm: d3: avoid intermediate/early
-mutex unlock") removed the unlock/relock around
-iwl_mvm_wowlan_config_key_params() but left the locking inside the iterator.
+ - 4 frames that were never seen on the air were reported as acked.
+   Each report arrived after mac80211 had already timed out the
+   authentication, so they had no visible effect in these runs.
+ - 2 SAE commit frames that were acked on the air were reported as not
+   acked. They were the second and third of three tries. mac80211 gave
+   up on the authentication 239 us after the last report, although the
+   AP's SAE replies came about 5 to 8 ms later, so that connection
+   attempt failed.
 
-This was tested on the 3168 with WoWLAN enabled: pm_test=devices and a
-real S3 suspend/resume cycle both complete, and the connection comes
-back after resume.
+Take the status from status[i].
 
-Fixes: 6ba40cd3a99b ("wifi: iwlwifi: mvm: d3: avoid intermediate/early mutex unlock")
+Tested-on: WCN3990 hw1.0 SNOC WLAN.HL.2.0.c10-00459-QCAHLSWMTPLZ-1
+
+Fixes: 4b816f170b1f ("ath10k: add support for ack rssi value of management tx packets")
 Cc: stable@vger.kernel.org
-Signed-off-by: Adis Veletanlic <adisveletanlic@proton.me>
+Assisted-by: LLM sparse
+Signed-off-by: Shunsuke Nagashima <shunsuke@nagashi.ma>
 ---
- drivers/net/wireless/intel/iwlwifi/mvm/d3.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+Tested on a comma four (WCN3990) with a v7.2-based kernel
+(7.2.0-vamos-7626c37). It also carries three out-of-tree ath10k
+patches (MAC address, in-order rx A-MSDU, SET_KEY wait); none of
+them touch wmi.c or wmi-tlv.c.
 
-diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/d3.c b/drivers/net/wireless/intel/iwlwifi/mvm/d3.c
-index 6b11fa32ea5c..02b3abb47253 100644
---- a/drivers/net/wireless/intel/iwlwifi/mvm/d3.c
-+++ b/drivers/net/wireless/intel/iwlwifi/mvm/d3.c
-@@ -117,6 +117,8 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
- 	struct wowlan_key_reprogram_data *data = _data;
- 	int ret;
+- Debug build that prints status[] per bundled report and can switch
+  between the old and the fixed line, with a sniffer on the AP
+  channel: 6 connect/reconnect runs (5 WPA3-SAE, 1 WPA2-PSK),
+  39 bundled reports.
+- Build with only this patch: 6 connect/reconnect runs (5 WPA3-SAE,
+  1 WPA2-PSK), no debug output. No warnings, no firmware crashes.
+  One first connect failed and one reconnect was slow, for a
+  different reason that was also seen with the old line: the AP did
+  not ack, and the firmware held back some Auth frames.
+
+Not tested: status 2 or 3 inside a bundle (only 0 and 1 were seen),
+AP mode, other chips and firmware versions.
+
+I worked on this with Claude (claude-opus-5-5) and Codex
+(gpt-6-astra). They helped go through the logs and sniffer captures,
+write the debug build, and write the English of this changelog. I ran
+the tests on the device and reviewed the change myself.
+---
+ drivers/net/wireless/ath/ath10k/wmi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/ath/ath10k/wmi.c b/drivers/net/wireless/ath/ath10k/wmi.c
+index e57588c19..67be6e817 100644
+--- a/drivers/net/wireless/ath/ath10k/wmi.c
++++ b/drivers/net/wireless/ath/ath10k/wmi.c
+@@ -2512,7 +2512,7 @@ int ath10k_wmi_event_mgmt_tx_bundle_compl(struct ath10k *ar, struct sk_buff *skb
+ 	for (i = 0; i < num_reports; i++) {
+ 		memset(&param, 0, sizeof(struct mgmt_tx_compl_params));
+ 		param.desc_id = __le32_to_cpu(arg.desc_ids[i]);
+-		param.status = __le32_to_cpu(arg.desc_ids[i]);
++		param.status = __le32_to_cpu(arg.status[i]);
  
-+	lockdep_assert_held(&mvm->mutex);
-+
- 	switch (key->cipher) {
- 	case WLAN_CIPHER_SUITE_WEP40:
- 	case WLAN_CIPHER_SUITE_WEP104: { /* hack it for now */
-@@ -150,7 +152,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
- 			wep_key->key_offset = data->wep_key_idx;
- 		}
- 
--		mutex_lock(&mvm->mutex);
- 		ret = iwl_mvm_send_cmd_pdu(mvm, WEP_KEY, 0,
- 					   __struct_size(wkc), wkc);
- 		data->error = ret != 0;
-@@ -159,7 +160,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
- 		mvm->ptk_icvlen = key->icv_len;
- 		mvm->gtk_ivlen = key->iv_len;
- 		mvm->gtk_icvlen = key->icv_len;
--		mutex_unlock(&mvm->mutex);
- 
- 		/* don't upload key again */
- 		return;
-@@ -186,7 +186,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
- 		break;
- 	}
- 
--	mutex_lock(&mvm->mutex);
- 	/*
- 	 * The D3 firmware hardcodes the key offset 0 as the key it
- 	 * uses to transmit packets to the AP, i.e. the PTK.
-@@ -206,7 +205,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
- 		mvm->gtk_icvlen = key->icv_len;
- 		ret = iwl_mvm_set_sta_key(mvm, vif, sta, key, 1);
- 	}
--	mutex_unlock(&mvm->mutex);
- 	data->error = ret != 0;
- }
- 
-@@ -1012,8 +1010,8 @@ static int iwl_mvm_wowlan_config_key_params(struct iwl_mvm *mvm,
- 		/*
- 		 * Note that currently we don't use CMD_ASYNC in the iterator.
- 		 * In case of key_data.configure_keys, all the configured
--		 * commands are SYNC, and iwl_mvm_wowlan_program_keys() will
--		 * take care of locking/unlocking mvm->mutex.
-+		 * commands are SYNC and run under mvm->mutex, which the
-+		 * caller holds.
- 		 */
- 		ieee80211_iter_keys(mvm->hw, vif, iwl_mvm_wowlan_program_keys,
- 				    &key_data);
+ 		if (test_bit(WMI_SERVICE_TX_DATA_ACK_RSSI, ar->wmi.svc_map))
+ 			param.ack_rssi = __le32_to_cpu(arg.ack_rssi[i]);
 
 ---
-base-commit: 2445e83a434a1964e574f792bd4b8e921cb9d54d
-change-id: 20260927-main-b6a53ed439c1
+base-commit: 753baa59527f8e606c49eac25692b8b08918a3a9
+change-id: 20260927-ath10k-bundle-status-24113117b683
 
 Best regards,
 --  
-Adis Veletanlic <adisveletanlic@proton.me>
+Shunsuke Nagashima <shunsuke@nagashi.ma>
 
