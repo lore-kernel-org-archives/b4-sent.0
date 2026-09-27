@@ -1,85 +1,95 @@
-From: Daniel Drake <dan@reactivated.net>
-Date: Sun, 27 Sep 2026 14:09:05 +0100
-Subject: [PATCH v7 6/6] arm64: dts: broadcom: bcm2712: Add GPU IOMMU and
- IOMMU cache nodes
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v6 0/2] A proposal to add a gpio-locked clock driver.
+Date: Sun, 27 Sep 2026 13:34:09 +0000
+Message-Id: <20260927-feature-clock-guard-v6-0-007983b13ec2@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-bcm2712-iommu-submit-v7-6-dfa2b975cbc9@reactivated.net>
-References: <20260927-bcm2712-iommu-submit-v7-0-dfa2b975cbc9@reactivated.net>
-In-Reply-To: <20260927-bcm2712-iommu-submit-v7-0-dfa2b975cbc9@reactivated.net>
-To: "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAFIbuWoC/33OwW6DMAyA4Vepcl4mx4kD7LT3mHpwTGijbmUKB
+ XWqePeFXtAE2vG35M9+qCHmFAf1dnioHKc0pP5awr8clJz5eoo6taUVAnqwptZd5NuYo5bPXi7
+ 6NHJudYfAKJZC40mVze8cu3R/qh/H0uc03Pr88zwymWX6vzcZDdobW0lwULtQvYc8XmJ+lf5LL
+ eCEK0IG9hFcEEFyVLdkHWwQuyLll33EFgSMCAMzOKYN4lakQr+PuILERupgKwyVkQ1CK9IY2ke
+ oIA45UCuWPfMfZJ7nX3Uw7hbLAQAA
+X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Florian Fainelli <florian.fainelli@broadcom.com>, 
- Broadcom internal kernel review list <bcm-kernel-feedback-list@broadcom.com>, 
- Daniel Drake <dan@reactivated.net>
-Cc: iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-rpi-kernel@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, nick.hollinghurst@raspberrypi.com, 
- james.quinlan@broadcom.com, Jason Gunthorpe <jgg@ziepe.ca>
+ Conor Dooley <conor+dt@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Jyri Sarha <jsarha@ti.com>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1369; i=dan@reactivated.net;
- h=from:subject:message-id; bh=XBvii0RwgTrT6cNpYro0FFGvRHg/uhSq0N5Er7AlhA0=;
- b=owEBbQKS/ZANAwAKAcPmj7FTFEe7AcsmYgBquRWFPaa7eS2gaq7AaVkTNnJd3emegf2BGGFmh
- DbZWcB33gKJAjMEAAEKAB0WIQQ6Rf0sUP1iEhXfVfjD5o+xUxRHuwUCarkVhQAKCRDD5o+xUxRH
- u1NeD/9L4Ly19FTjEUwHyNtmNCGMek+IcasBl2ei3pQ7W+9n+d3K+vxo+T1AbiIhbNf1R9ete+s
- HppNG1FouO3OgwNaCj+TEuR1bVk6bJvS+3hotqwZ2O10QYk1/asgVEadpFBSk5khKBp0DqUwv+m
- kvQgplx/pY1lIgDH0cer18bnpByb13Cw6e2/C93Tf4UmWuEm4grYsz1mG3EreJzVOFntwXD5g/L
- YJVAc5nVreB2RiuSzQnGK7r/yHN83+QTrwM5vzXHLTsoUpxGHVphIZY86LYSqpzgzqvQdUDowjJ
- I5srYJlaawFcwVDkKCqeVSurf95/51YmcG2N4KvbW6iHDme29UoOFIeywhX2RlkIwo+KNWo1b8C
- fnAtNT0NvGFcTDOHmRayRQfK6/rx6dYML0RivLrN5FMSGUvTShrCvM1C3ps0OfpVKR6Wx7JP3BL
- ef5O6li/p6PfUwdoJSq7dhX11m9T66gfWGNa5EClRY9kHOH0iCPnKgTn/U87pf89COQfevljPG1
- T7NbCbZ7U05Y4la2IKOfIvEUyuLSfFKBLrWYXgfWyqJuSjBDt7pKT1ZvXKt3UytC1CbeI1rw0gc
- wC0N1AtlwFIfhdYpGsPJyBssCVCud5aB5tl4KVFqe954JCR+nfmfL9fNZzmOXWapuGjK0hsxJfl
- Dd6icagzsN5qV6Q==
-X-Developer-Key: i=dan@reactivated.net; a=openpgp;
- fpr=3A45FD2C50FD621215DF55F8C3E68FB1531447BB
-X-Endpoint-Received: by B4 Relay for dan@reactivated.net/default with auth_id=1070
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790516073; l=2727;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=sn5chmuPwtIXwrbs8pNP2cmuS0jdkGjdtgKSe76bkEI=;
+ b=drG3NjrEeb74mSepUCo/HUMLxRSEaf5XDDY8x80zRZwiuwC3IQpgSt8sIgCzYh/4c7yJ0sGXu
+ +O7LLIu/ld0B3y52iFwib0Db9JrhDz9xu0zFXGqbwcVhBYPhqrdQHHC
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Define the IOMMU and IOMMUC nodes for the Broadcom BCM2712 SoC found in
-the Raspberry Pi 5. Enable use of the IOMMU for the HVS device
-that handles memory allocations for the display block.
+A gpio-locked clock represents an input clock, which state is determined
+by a GPIO signal. It's similar to a gated-fixed-clock, but GPIO direction
+is inverted. Consumers can use the output clock to wait until all input
+clocks are locked and only then initialize / access dependent peripherals.
 
-Signed-off-by: Daniel Drake <dan@reactivated.net>
+The usage example for such a driver is when peripherals depend on PLLs in
+a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
+to check whether clock is actually usable. E.g. some of the IPs might not
+have a proper split between registers and IP core, which means that if an
+external clock and/or PLL lock is missing and one tries to access the 
+registers, the response never comes, thus the CPU stalls.
+
+Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
- arch/arm64/boot/dts/broadcom/bcm2712.dtsi | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Changes in v6:
+- Debug messages dropped.
+- The new driver is now an extension of exising clk-gpio drivers.
+- The controller doesn't enable the parent clock, the consumer is
+  supposed to do that instead.
+- Link to v5: https://lore.kernel.org/r/20260915-feature-clock-guard-v5-0-42ab5dc3a6aa@bruker.com
 
-diff --git a/arch/arm64/boot/dts/broadcom/bcm2712.dtsi b/arch/arm64/boot/dts/broadcom/bcm2712.dtsi
-index 45aa8ec5e2b1..aca9e0e3a874 100644
---- a/arch/arm64/boot/dts/broadcom/bcm2712.dtsi
-+++ b/arch/arm64/boot/dts/broadcom/bcm2712.dtsi
-@@ -626,6 +626,19 @@ pcie2: pcie@1000120000 {
- 			status = "disabled";
- 		};
- 
-+		iommu4: iommu@1000005200 {
-+			/* IOMMU for VC4 (HVS & MPL/TXP), Unicam, PISP-FE, MiniBVN */
-+			compatible = "brcm,bcm2712-iommu";
-+			reg = <0x10 0x5200 0x0 0x80>;
-+			#iommu-cells = <0>;
-+			brcm,iommu-cache = <&iommuc>;
-+		};
-+
-+		iommuc: iommuc@1000005b00 {
-+			compatible = "brcm,bcm2712-iommuc";
-+			reg = <0x10 0x5b00 0x0 0x80>;
-+		};
-+
- 		mip0: msi-controller@1000130000 {
- 			compatible = "brcm,bcm2712-mip";
- 			reg = <0x10 0x00130000 0x00 0xc0>,
-@@ -701,5 +714,6 @@ hvs: hvs@107c580000 {
- 		interrupt-parent = <&disp_intr>;
- 		interrupts = <2>, <9>, <16>;
- 		interrupt-names = "ch0-eof", "ch1-eof", "ch2-eof";
-+		iommus = <&iommu4>;
- 	};
- };
+Changes in v5:
+- Use existing DT binding with an additional property instead of adding
+  a new one
+- The driver is simplified in a way that it represents the actual HW
+  desgin without additional unrelated constructs
+- Aggregation is removed, now it's one clock input, one clock output
+- Link to v4: https://lore.kernel.org/r/20260726-feature-clock-guard-v4-0-e9c8b372b71c@bruker.com
 
+Changes in v4:
+- Removed driver specifics from DT binding
+- Link to v3: https://lore.kernel.org/r/20260603-feature-clock-guard-v3-0-01cca0aa04a5@bruker.com
+
+Changes in v3:
+- Removed unnecessary dt bindings
+- Improved HW description and commit messages
+- Link to v2: https://lore.kernel.org/r/20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com
+
+Changes in v2:
+- Renamed to clk-gpio-locked to express intent.
+- Provide enable() / is_enabled() operations so the clock behaves as
+  expected
+- Fixed DTS errors / warnings
+- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
+
+---
+Vyacheslav Yurkov (2):
+      dt-bindings: clock: gpio-gate-clock: Add a new compatible string
+      clk: Add gpio-locked clock driver
+
+ .../devicetree/bindings/clock/gpio-gate-clock.yaml | 32 +++++++++++++++-
+ drivers/clk/clk-gpio.c                             | 44 ++++++++++++++++++++--
+ 2 files changed, 71 insertions(+), 5 deletions(-)
+---
+base-commit: fd179f8a05be3ccae366b9b96e176b51fbe54aab
+change-id: 20260318-feature-clock-guard-f20a2c35b965
+
+Best regards,
 -- 
-2.55.0
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
