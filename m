@@ -1,54 +1,61 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Sat, 26 Sep 2026 16:33:33 -0600
-Subject: [PATCH 2/2] drm: Fix incorrect ccflags-y spelling inside Makefile
+From: George Moussalem <george.moussalem@outlook.com>
+Date: Sun, 27 Sep 2026 08:42:56 +0400
+Subject: [PATCH] arm64: dts: qcom: ipq5018: add label to PCIe1 port node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260926-rd-mostly-v1-2-28b7d714ed2c@gmail.com>
-References: <20260926-rd-mostly-v1-0-28b7d714ed2c@gmail.com>
-In-Reply-To: <20260926-rd-mostly-v1-0-28b7d714ed2c@gmail.com>
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Jim Cromie <jim.cromie@gmail.com>
+Message-Id: <20260927-ipq5018-pcie1-label-v1-1-41f7d42f9a7b@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBtQqayuEi1MxxqIMoUIwrsnL
+ d/i/xcSRaYEY/VCpJsTn0eBrCuwmzlWQnbFoITqxKA0crhaIXsMlknibhba0WnXiNYar3oPpQy
+ RPD//dZpz/gASTcSSZQAAAA==
+X-Change-ID: 20260927-ipq5018-pcie1-label-d7d405caf28f
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790462033; l=1146;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=k/p3/mF4PjoGAd1p0WbIzbzTATt0GlWd9hAVgx/C8sg=;
- b=bsI2eblwopjRAJO9Q6o7zYYZ/Kl0joBNGfqKkrxAZc//Sxa+h9iENDsnV5jfIDaqARyTd1QOv
- U97OkhBUfhbA0PXGax8ZzT7KTdN6cBxedw9fm2RbrswYs2s/1ZVNYAa
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790484176; l=1071;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=HNZl3Aso7KY3/rmD1u9y6FFgvwtYVcoDQZoiHKmM2AM=;
+ b=ikHgmUVE3MQ8T0uEHdvr3Kvn0mVtTALISk/rbJhf/noKsJdYIT+aTLveg+c7YpC0WCtwDBT3Y
+ Cw0+cUSG4rRCfBAzuhSK2CIXSPiLW/giSbVojs0RGj03x5CmcRoQlSI
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix a longstanding spelling error in the DRM Makefile by changing
-'CFLAGS-y' to 'ccflags-y'. This fixes CONFIG_DRM_USE_DYNAMIC_DEBUG=y
-dependent addition of -DDYNAMIC_DEBUG_MODULE, which is needed to
-enable dyndbg-under-drm-debug when only CONFIG_DYNAMIC_DEBUG_CORE is
-enabled (and not CONFIG_DYNAMIC_DEBUG itself).
+Commit a95758e9718a ("arm64: dts: qcom: ipq5018: move PCIe phys and
+PERST# to port node") added a label to the PCIe0 port node but not to
+that of PCIe1. Boards that have a device connected over PCIe1 need to
+reference the port node in the board dts files, so add a label for it.
 
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/gpu/drm/Makefile | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/gpu/drm/Makefile b/drivers/gpu/drm/Makefile
-index e635fcffd379..c42884d84ad1 100644
---- a/drivers/gpu/drm/Makefile
-+++ b/drivers/gpu/drm/Makefile
-@@ -3,7 +3,8 @@
- # Makefile for the drm device driver.  This driver provides support for the
- # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index fe1ed240de59..2f3bcfa888a9 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -838,7 +838,7 @@ pcie1: pcie@80000000 {
  
--CFLAGS-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)	+= -DDYNAMIC_DEBUG_MODULE
-+ccflags-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)		+= -DDYNAMIC_DEBUG_MODULE
-+subdir-ccflags-$(CONFIG_DRM_USE_DYNAMIC_DEBUG)	+= -DDYNAMIC_DEBUG_MODULE
+ 			status = "disabled";
  
- # Unconditionally enable W=1 warnings locally
- # --- begin copy-paste W=1 warnings from scripts/Makefile.warn
+-			pcie@0 {
++			pcie1_port0: pcie@0 {
+ 				device_type = "pci";
+ 				reg = <0x0 0x0 0x0 0x0 0x0>;
+ 				bus-range = <0x01 0xff>;
 
+---
+base-commit: f5f84daefcd92d7a630066635ecea1433ed5eac7
+change-id: 20260927-ipq5018-pcie1-label-d7d405caf28f
+
+Best regards,
 -- 
-2.55.0
+George Moussalem <george.moussalem@outlook.com>
 
