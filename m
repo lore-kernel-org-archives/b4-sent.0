@@ -1,190 +1,160 @@
-From: Henrik Ma Johansson <dahankzter@gmail.com>
-Date: Sun, 27 Sep 2026 11:48:57 +0200
-Subject: [PATCH RFC] io_uring: add support for copy_file_range
+From: Adis Veletanlic <adisveletanlic@proton.me>
+Date: Sun, 27 Sep 2026 13:37:39 +0200
+Subject: [PATCH wireless] wifi: iwlwifi: mvm: fix self-deadlock in WoWLAN
+ key programming
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-cfr-rfc-v1-1-5b9ddbe0490f@gmail.com>
-References: <20260927-cfr-rfc-v1-0-5b9ddbe0490f@gmail.com>
-In-Reply-To: <20260927-cfr-rfc-v1-0-5b9ddbe0490f@gmail.com>
-To: Jens Axboe <axboe@kernel.dk>, io-uring@vger.kernel.org
-Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Henrik Ma Johansson <dahankzter@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5989; i=dahankzter@gmail.com;
- h=from:subject:message-id; bh=Y6Qn2ejRW03ZlzzYwHZEwXGGECb9VUTiKUeZHr12C64=;
- b=kA0DAAoWDPOq2hz2HxMByyZiAGq45ojIJ1Ago3XO71ITlZp47priYq3soRwBsopgd/bXNrMrF
- Yh1BAAWCgAdFiEE0nxFoc4A2G1BZPBgDPOq2hz2HxMFAmq45ogACgkQDPOq2hz2HxMA+AD9HKtC
- EBKpaw9I1OxRog5R5yRt05ZCll14okDK9ncq7xwBALEnPkPzjEKz0e+NFjkLOnBqGgXOGmZBuNT
- LMcCmU90J
-X-Developer-Key: i=dahankzter@gmail.com; a=openpgp;
- fpr=D27C45A1CE00D86D4164F0600CF3AADA1CF61F13
-X-Endpoint-Received: by B4 Relay for dahankzter@gmail.com/default with auth_id=1067
+Message-Id: <20260927-main-v1-1-660ffbc9837c@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBQFr0Le2iZQBINXMSxKeeo3Wkg/Cgnh7
+ hZdTmYyK5RRqDhnKyI/ojKEBMUhg7+7cKORPjFsbuu8sSfzchJMV7uqZH8sG18gpWPkVZbf5oJ
+ ZIp9URfs3+u4e9NN+wbZ9ARgwkoVyAAAA
+X-Change-ID: 20260927-main-b6a53ed439c1
+To: Miri Korenblit <miriam.rachel.korenblit@intel.com>
+Cc: Johannes Berg <johannes@sipsolutions.net>, 
+ linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Adis Veletanlic <adisveletanlic@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4811;
+ i=adisveletanlic@proton.me; h=from:subject:message-id;
+ bh=Py9OOavcJWfI54ATz2gHGBtGP+FmEcLIVCbnQwjgG+Q=;
+ b=owEBCQL2/ZANAwAIAWBVJ/vOa9TGAcsmYgBquQAFuN4tLOk/dAqHS73q3b/S6KKnGNfF6xdSo
+ iUlBDQZt/+JAc8EAAEIADkWIQSbWhJPTsnk/hC9Y9tgVSf7zmvUxgUCarkABRsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQYFUn+85r1MaDgwwAox5GpNoIuIA3e+XNv/RMB8O+NGX06Aq
+ 5yY4RQRvympDZCsQPUCGuw4WjubUuUGR1eAcit203du0A3NzDHHq/qSoZJ2ey9N+hIMeaxAa2eN
+ OLmx+yQAZ4GeQhwPPTIZE7Uy8bAJjuNTs57E2nQhf2+qXwNhp22lFZ8ERKzWuV5DUYJ9NVUXSL1
+ TfxAsI4su9qsfDyyQxBdmcJOkwPafy4Cl0R4g3C7y5+rK+dvWJXl6zD85zIYZMzb2GOCRiKRt7A
+ XWXATTt695qzhzrx2Z1YhJ5sEtV7Q+LMdqLlZRSxOhPojHmwZ2KX7Ui8kooWpCPTMQP4q7AhTIc
+ V3wBHtGihVjvbEmXpvzAglw2Qf4Ga57pdQeA8HvdMeHQdkujp0yaHgjltXmXHukcKw1nNlaKHqL
+ GOaCPhYTOAWDr8s1vDxX8E4Ew4cX3rPICVmygP0fJUuBV110ACUDAxv+2GK1VVfg49WWc1hJsOY
+ 40sp3VAq0UIqBSEHAARUzIm0nVAPcF3
+X-Developer-Key: i=adisveletanlic@proton.me; a=openpgp;
+ fpr=9B5A124F4EC9E4FE10BD63DB605527FBCE6BD4C6
+X-Endpoint-Received: by B4 Relay for adisveletanlic@proton.me/default with auth_id=1068
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-copy_file_range(2) lets the filesystem decide how to copy: XFS, Btrfs and
-OCFS2 share extents instead of copying data (reflink), and NFS, CIFS and
-Ceph can have the server copy without data crossing the network. Neither
-is reachable through io_uring today. IORING_OP_SPLICE requires one end to
-be a pipe, so the only io_uring alternative is two linked splices through
-a pipe, which always copies bytes.
+__iwl_mvm_suspend() takes mvm->mutex and holds it for the whole WoWLAN
+configuration. But on devices with firmware that has no unified D3/D0
+image iwl_mvm_wowlan_config_key_params() then calls
+ieee80211_iter_keys() with iwl_mvm_wowlan_program_keys() as the
+iterator, and that iterator then takes mvm->mutex again. This causes the
+suspend thread to block on a mutex it is already holding and system
+suspend never completes.
 
-Add IORING_OP_COPY_FILE_RANGE, eliminating the need for applications to
-keep a thread pool or offload mechanism just to issue copy_file_range
-without blocking. The SQE is packed like splice: fd_out in fd, off_out in
-off, off_in in splice_off_in and fd_in in splice_fd_in, where
-SPLICE_F_FD_IN_FIXED selects a registered file. An offset of -1 uses and
-advances the file position, like a NULL offset to the syscall. No
-copy_file_range flags exist, so splice_flags accepts only
-SPLICE_F_FD_IN_FIXED.
+This was seen on an Intel Wireless-AC 3168 (firmware 29.0bd893f3.0)
+while associated with WoWLAN enabled. With CONFIG_DPM_WATCHDOG the stuck
+task is:
 
-There is no nonblocking path for copy_file_range, so the request is
-always punted to io-wq, like splice, fallocate and ftruncate. Writes to
-the same output file are serialized through hash_reg_file, as for those
-ops. As with other data transfer opcodes, auditing is skipped; the
-copy_file_range syscall is in no audit class either.
+ ieee80211 phy0: PM: **** DPM device timeout after 30 seconds; 30 seconds until panic ****
+ Call Trace:
+  <TASK>
+  __schedule+0x2cb/0x740
+  schedule+0x27/0xa0
+  schedule_preempt_disabled+0x15/0x30
+  __mutex_lock.constprop.0+0x53a/0xa50
+  iwl_mvm_wowlan_program_keys+0x1a1/0x220 [iwlmvm]
+  ieee80211_iter_keys+0x77/0x160 [mac80211]
+  iwl_mvm_wowlan_config_key_params+0x5f/0x390 [iwlmvm]
+  iwl_mvm_wowlan_config.isra.0+0x9b/0x190 [iwlmvm]
+  __iwl_mvm_suspend.isra.0+0x1c7/0x340 [iwlmvm]
+  drv_suspend+0x25/0xc0 [mac80211]
+  __ieee80211_suspend+0x1d2/0x300 [mac80211]
+  rdev_suspend+0x25/0xe0 [cfg80211]
+  wiphy_suspend+0x95/0x180 [cfg80211]
+  dpm_run_callback+0x4a/0x140
+  device_suspend+0x212/0x530
+  async_suspend+0x21/0x30
+  async_run_entry_fn+0x34/0x130
+  process_one_work+0x192/0x350
+  worker_thread+0x196/0x300
+  kthread+0xfc/0x240
+  ret_from_fork+0x153/0x170
+  ret_from_fork_asm+0x1a/0x30
+  </TASK>
 
-The length is clamped to MAX_RW_COUNT, as the CQE result is 32 bits and
-->copy_file_range() and ->remap_file_range() may otherwise return more
-than INT_MAX. A short copy is allowed by copy_file_range semantics;
-callers loop, as they do for the syscall. As for other transfer
-opcodes, a result that doesn't match the (clamped) requested length
-fails the request for the purpose of links. A zero length is passed
-through, as vfs_copy_file_range() does its checks before returning 0,
-so errors match the syscall.
+Any other devices taking rtnl_lock in their suspend callback block
+behind it as well. The iterator is only called from this path, and the
+mutex is always held there. Remove the inner lock/unlock pairs and
+assert that the mutex is held instead. The other key iterators used for
+D3 don't take the mutex, so resume is not affected.
 
-As in the networking opcodes, -ERESTARTSYS is turned into -EINTR, as the
-request cannot be restarted like a syscall. NFS returns it when an
-in-flight server-side copy is interrupted by cancellation.
+Commit 6ba40cd3a99b ("wifi: iwlwifi: mvm: d3: avoid intermediate/early
+mutex unlock") removed the unlock/relock around
+iwl_mvm_wowlan_config_key_params() but left the locking inside the iterator.
 
-Assisted-by: LLM sparse
-Signed-off-by: Henrik Ma Johansson <dahankzter@gmail.com>
+This was tested on the 3168 with WoWLAN enabled: pm_test=devices and a
+real S3 suspend/resume cycle both complete, and the connection comes
+back after resume.
+
+Fixes: 6ba40cd3a99b ("wifi: iwlwifi: mvm: d3: avoid intermediate/early mutex unlock")
+Cc: stable@vger.kernel.org
+Signed-off-by: Adis Veletanlic <adisveletanlic@proton.me>
 ---
- include/uapi/linux/io_uring.h |  1 +
- io_uring/opdef.c              | 11 ++++++++
- io_uring/splice.c             | 58 +++++++++++++++++++++++++++++++++++++++++++
- io_uring/splice.h             |  3 +++
- 4 files changed, 73 insertions(+)
+ drivers/net/wireless/intel/iwlwifi/mvm/d3.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/include/uapi/linux/io_uring.h b/include/uapi/linux/io_uring.h
-index 909fb7aea638..a6bda05ed1e0 100644
---- a/include/uapi/linux/io_uring.h
-+++ b/include/uapi/linux/io_uring.h
-@@ -318,6 +318,7 @@ enum io_uring_op {
- 	IORING_OP_PIPE,
- 	IORING_OP_NOP128,
- 	IORING_OP_URING_CMD128,
-+	IORING_OP_COPY_FILE_RANGE,
+diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/d3.c b/drivers/net/wireless/intel/iwlwifi/mvm/d3.c
+index 6b11fa32ea5c..02b3abb47253 100644
+--- a/drivers/net/wireless/intel/iwlwifi/mvm/d3.c
++++ b/drivers/net/wireless/intel/iwlwifi/mvm/d3.c
+@@ -117,6 +117,8 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
+ 	struct wowlan_key_reprogram_data *data = _data;
+ 	int ret;
  
- 	/* this goes last, obviously */
- 	IORING_OP_LAST,
-diff --git a/io_uring/opdef.c b/io_uring/opdef.c
-index cf3aa2242cd7..2f4c869993b1 100644
---- a/io_uring/opdef.c
-+++ b/io_uring/opdef.c
-@@ -591,6 +591,13 @@ const struct io_issue_def io_issue_defs[] = {
- 		.prep			= io_uring_cmd_prep,
- 		.issue			= io_uring_cmd,
- 	},
-+	[IORING_OP_COPY_FILE_RANGE] = {
-+		.needs_file		= 1,
-+		.hash_reg_file		= 1,
-+		.audit_skip		= 1,
-+		.prep			= io_copy_file_range_prep,
-+		.issue			= io_copy_file_range,
-+	},
- };
++	lockdep_assert_held(&mvm->mutex);
++
+ 	switch (key->cipher) {
+ 	case WLAN_CIPHER_SUITE_WEP40:
+ 	case WLAN_CIPHER_SUITE_WEP104: { /* hack it for now */
+@@ -150,7 +152,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
+ 			wep_key->key_offset = data->wep_key_idx;
+ 		}
  
- const struct io_cold_def io_cold_defs[] = {
-@@ -849,6 +856,10 @@ const struct io_cold_def io_cold_defs[] = {
- 		.sqe_copy		= io_uring_cmd_sqe_copy,
- 		.cleanup		= io_uring_cmd_cleanup,
- 	},
-+	[IORING_OP_COPY_FILE_RANGE] = {
-+		.name			= "COPY_FILE_RANGE",
-+		.cleanup		= io_splice_cleanup,
-+	},
- };
+-		mutex_lock(&mvm->mutex);
+ 		ret = iwl_mvm_send_cmd_pdu(mvm, WEP_KEY, 0,
+ 					   __struct_size(wkc), wkc);
+ 		data->error = ret != 0;
+@@ -159,7 +160,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
+ 		mvm->ptk_icvlen = key->icv_len;
+ 		mvm->gtk_ivlen = key->iv_len;
+ 		mvm->gtk_icvlen = key->icv_len;
+-		mutex_unlock(&mvm->mutex);
  
- const char *io_uring_get_opcode(u8 opcode)
-diff --git a/io_uring/splice.c b/io_uring/splice.c
-index e81ebbb91925..740f759a683b 100644
---- a/io_uring/splice.c
-+++ b/io_uring/splice.c
-@@ -147,3 +147,61 @@ int io_splice(struct io_kiocb *req, unsigned int issue_flags)
- 	io_req_set_res(req, ret, 0);
- 	return IOU_COMPLETE;
+ 		/* don't upload key again */
+ 		return;
+@@ -186,7 +186,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
+ 		break;
+ 	}
+ 
+-	mutex_lock(&mvm->mutex);
+ 	/*
+ 	 * The D3 firmware hardcodes the key offset 0 as the key it
+ 	 * uses to transmit packets to the AP, i.e. the PTK.
+@@ -206,7 +205,6 @@ static void iwl_mvm_wowlan_program_keys(struct ieee80211_hw *hw,
+ 		mvm->gtk_icvlen = key->icv_len;
+ 		ret = iwl_mvm_set_sta_key(mvm, vif, sta, key, 1);
+ 	}
+-	mutex_unlock(&mvm->mutex);
+ 	data->error = ret != 0;
  }
-+
-+int io_copy_file_range_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
-+{
-+	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
-+
-+	if (READ_ONCE(sqe->addr3) || READ_ONCE(sqe->buf_index))
-+		return -EINVAL;
-+
-+	sp->off_in = READ_ONCE(sqe->splice_off_in);
-+	sp->off_out = READ_ONCE(sqe->off);
-+	sp->len = min_t(u32, READ_ONCE(sqe->len), MAX_RW_COUNT);
-+	sp->flags = READ_ONCE(sqe->splice_flags);
-+	if (unlikely(sp->flags & ~SPLICE_F_FD_IN_FIXED))
-+		return -EINVAL;
-+	sp->splice_fd_in = READ_ONCE(sqe->splice_fd_in);
-+	sp->rsrc_node = NULL;
-+	req->flags |= REQ_F_FORCE_ASYNC;
-+	return 0;
-+}
-+
-+int io_copy_file_range(struct io_kiocb *req, unsigned int issue_flags)
-+{
-+	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
-+	struct file *out = sp->file_out;
-+	loff_t pos_in, pos_out;
-+	struct file *in;
-+	ssize_t ret;
-+
-+	WARN_ON_ONCE(issue_flags & IO_URING_F_NONBLOCK);
-+
-+	in = io_splice_get_file(req, issue_flags);
-+	if (!in) {
-+		ret = -EBADF;
-+		goto done;
-+	}
-+
-+	pos_in = (sp->off_in == -1) ? in->f_pos : sp->off_in;
-+	pos_out = (sp->off_out == -1) ? out->f_pos : sp->off_out;
-+
-+	ret = vfs_copy_file_range(in, pos_in, out, pos_out, sp->len, 0);
-+	if (ret == -ERESTARTSYS)
-+		ret = -EINTR;
-+
-+	if (ret > 0) {
-+		if (sp->off_in == -1)
-+			in->f_pos = pos_in + ret;
-+		if (sp->off_out == -1)
-+			out->f_pos = pos_out + ret;
-+	}
-+
-+	if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
-+		fput(in);
-+done:
-+	if (ret != sp->len)
-+		req_set_fail(req);
-+	io_req_set_res(req, ret, 0);
-+	return IOU_COMPLETE;
-+}
-diff --git a/io_uring/splice.h b/io_uring/splice.h
-index b9b2848327fb..83138fab8fe8 100644
---- a/io_uring/splice.h
-+++ b/io_uring/splice.h
-@@ -6,3 +6,6 @@ int io_tee(struct io_kiocb *req, unsigned int issue_flags);
- void io_splice_cleanup(struct io_kiocb *req);
- int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
- int io_splice(struct io_kiocb *req, unsigned int issue_flags);
-+
-+int io_copy_file_range_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
-+int io_copy_file_range(struct io_kiocb *req, unsigned int issue_flags);
+ 
+@@ -1012,8 +1010,8 @@ static int iwl_mvm_wowlan_config_key_params(struct iwl_mvm *mvm,
+ 		/*
+ 		 * Note that currently we don't use CMD_ASYNC in the iterator.
+ 		 * In case of key_data.configure_keys, all the configured
+-		 * commands are SYNC, and iwl_mvm_wowlan_program_keys() will
+-		 * take care of locking/unlocking mvm->mutex.
++		 * commands are SYNC and run under mvm->mutex, which the
++		 * caller holds.
+ 		 */
+ 		ieee80211_iter_keys(mvm->hw, vif, iwl_mvm_wowlan_program_keys,
+ 				    &key_data);
 
--- 
-2.55.0
+---
+base-commit: 2445e83a434a1964e574f792bd4b8e921cb9d54d
+change-id: 20260927-main-b6a53ed439c1
+
+Best regards,
+--  
+Adis Veletanlic <adisveletanlic@proton.me>
 
