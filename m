@@ -1,15 +1,13 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Subject: [PATCH v3 0/3] Add T7 PWM core clock support
-Date: Sun, 27 Sep 2026 16:28:14 +0200
-Message-Id: <20260927-add-t7-sys-pwm-clk-v3-0-18d66abea4d1@aliel.fr>
+Date: Sun, 27 Sep 2026 16:28:15 +0200
+Subject: [PATCH v3 1/3] dt-bindings: pwm: amlogic: Add core clock for S4
+ like
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6CMBCF4auQrh3TDiLgynsYF6VMZSICaUmVE
- O5uYcXCuPxfMt/MwpNj8uKSzMJRYM99FyM9JMI0unsQcB1boMSzLPEEuq5hzMFPHob3C0z7BCv
- J2kJVRKhEPBwcWf5s6O0eu2E/9m7afgS1rn+5oECCzKpSUZFbqcurbpnao3Vi1QLuheyngFGwm
- GrEKlc6MzthWZYvcuDbJvUAAAA=
-X-Change-ID: 20260924-add-t7-sys-pwm-clk-f0eff81bee21
+Message-Id: <20260927-add-t7-sys-pwm-clk-v3-1-18d66abea4d1@aliel.fr>
+References: <20260927-add-t7-sys-pwm-clk-v3-0-18d66abea4d1@aliel.fr>
+In-Reply-To: <20260927-add-t7-sys-pwm-clk-v3-0-18d66abea4d1@aliel.fr>
 To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -21,74 +19,85 @@ Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-amlogic@lists.infradead.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2647;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2223;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=Bm6KfZ7u9ug9v+paHUFif7W0StQp/b1CbFmbCFUeJx8=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZODbmtX2uurLDrK6qa5DL/+woWsymnbTZKrGjS/fRzj
- W7Wnn8nO0pZGMS4GGTFFFn651qeeHf56Jmve9RTYOawMoEMYeDiFICJXChl+B9b9MC+esHT1y8+
- XdK1spzyfvOSzTvXvHq5QbDIxzZB13c9w3/fZX1es8sYnEJXrDsgEPnH7UK0ydknKc1rNwmmz2S
- S8+UHAA==
+ bh=ocfAHBxwQh4nneVCIVvdqenheD8RusX+bkEk3wRZMOY=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZODbVS60nc1qt+uhw9c+XHjH1HP8zOuP7u1qkp7q95/
+ B7EbP20u6OUhUGMi0FWTJGlf67liXeXj575ukc9BWYOKxPIEAYuTgGYSKo2I8OqrvAHN1oY5t9Y
+ 5C++5U9CUZF7w6wn2qdj/qzMnmX88KYhI8P6v1uVs3QOL2vumnNsYflKL7HNlgKzN8sJcoveZ1C
+ 9mMoCAA==
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PWM controllers on the Amlogic S4 SoC have a system clock that
-controls access to the controller, in addition to the two input
-clocks of channels A and B. The A1,C3,T7 which fallback to S4 have
-this third clock too.
+The T7, A1, C3, and S4 PWM controllers have a system clock in
+addition to the two input clocks of channels A and B.
 
-It is currently not described in the device tree, so it is neither
-referenced nor enabled by the driver.
+The channel clocks are acquired by index in the pwm driver,
+where the core clock is fetched by name, with optional get
+which is silent when not provided.
 
-This series adds support for it:
+Require clock-names and minimum 3 items for S4, and devices
+which fallback to S4, where the PWM devices do not work
+without all 3 clocks.
 
-  - patch 1 extends the binding with a third "core" clock for
-    amlogic,meson-s4-pwm, and makes clock-names required for it;
-  - patch 2 makes the driver get and enable the optional "core"
-    clock, leaving existing DTS' unaffected;
-  - patch 3 describes the system clock in the A1-C3-S4-T7
-    device tree for all the PWM controllers.
-
-`dt_binding_check DT_SCHEMA_FILES=pwm-amlogic.yaml` test is ok
-
-  CHKDT   ./Documentation/devicetree/bindings
-warning: python package 'yamllint' not installed, skipping
-  STYLE   ./Documentation/devicetree/bindings
-  DTEX    Documentation/devicetree/bindings/pwm/pwm-amlogic.example.dts
-  DTC [C] Documentation/devicetree/bindings/pwm/pwm-amlogic.example.dtb
+Add an example showing T7 usage with its fallback to
+amlogic,meson-s4-pwm.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-Changes in v3:
-- PATCH 1: Require the third clock for S4 and all SoC which fallback to it.
-- PATCH 3: Add the third clock to A1, C3 and S4.
-- Link to v2: https://lore.kernel.org/r/20260925-add-t7-sys-pwm-clk-v2-0-f23a22b71a5c@aliel.fr
+ .../devicetree/bindings/pwm/pwm-amlogic.yaml        | 21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
 
-Changes in v2:
-- PATCH 1: Permits to use "core" clock on S4 SoC and all the ones that fallback to it.
-           Rename "clk_a" and "clk_b" to "channel-a" and "channel-b". Thx to Conor's feedback.
-- PATCH 3: Rename channel clock-names as done on patch 1.
-- Link to v1: https://lore.kernel.org/r/20260924-add-t7-sys-pwm-clk-v1-0-05b91e87f0a9@aliel.fr
+diff --git a/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml b/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
+index c337d85da40f1..e9cd5f1fdf264 100644
+--- a/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
++++ b/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
+@@ -62,7 +62,7 @@ properties:
+ 
+   clock-names:
+     minItems: 1
+-    maxItems: 2
++    maxItems: 3
+ 
+   power-domains:
+     maxItems: 1
+@@ -143,9 +143,15 @@ allOf:
+           items:
+             - description: input clock of PWM channel A
+             - description: input clock of PWM channel B
+-        clock-names: false
++            - description: gate clock for the PWM controller
++        clock-names:
++          items:
++            - const: channel-a
++            - const: channel-b
++            - const: core
+       required:
+         - clocks
++        - clock-names
+ 
+   - if:
+       properties:
+@@ -179,6 +185,15 @@ examples:
+     pwm@1000 {
+       compatible = "amlogic,meson-s4-pwm";
+       reg = <0x1000 0x10>;
+-      clocks = <&pwm_src_a>, <&pwm_src_b>;
++      clocks = <&pwm_src_a>, <&pwm_src_b>, <&pwm_src_core>;
++      clock-names = "channel-a", "channel-b", "core";
++      #pwm-cells = <3>;
++    };
++  - |
++    pwm@60000 {
++      compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
++      reg = <0x60000 0x24>;
++      clocks = <&channel_a>, <&channel_b>, <&core>;
++      clock-names = "channel-a", "channel-b", "core";
+       #pwm-cells = <3>;
+     };
 
----
-Ronald Claveau (3):
-      dt-bindings: pwm: amlogic: Add core clock for S4 like
-      pwm: meson: Add optional core clock for S4 PWM
-      arm64: dts: amlogic: a1-c3-s4-t7: Add core clock to PWM controller nodes
-
- .../devicetree/bindings/pwm/pwm-amlogic.yaml       | 21 +++++++++++++---
- arch/arm64/boot/dts/amlogic/amlogic-c3.dtsi        | 28 ++++++++++++++++------
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        | 28 ++++++++++++++++------
- arch/arm64/boot/dts/amlogic/meson-a1.dtsi          | 12 +++++++---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 20 ++++++++++++----
- drivers/pwm/pwm-meson.c                            |  5 ++++
- 6 files changed, 89 insertions(+), 25 deletions(-)
----
-base-commit: f5f84daefcd92d7a630066635ecea1433ed5eac7
-change-id: 20260924-add-t7-sys-pwm-clk-f0eff81bee21
-
-Best regards,
 -- 
-Ronald Claveau <linux-kernel-dev@aliel.fr>
+2.49.0
 
