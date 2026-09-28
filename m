@@ -1,80 +1,75 @@
-From: Kyle Hendry <khendry@reliablecontrols.com>
-Date: Mon, 28 Sep 2026 14:19:05 -0700
-Subject: [PATCH net-next v2 3/3] net: pcs: rzn1-miic: Validate dtb
- configuration values
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/2] media: venus: vdec: fix drain and restart on SDM845
+Date: Mon, 28 Sep 2026 23:40:13 +0200
+Message-Id: <20260928-venus-vdec-eos-v1-0-6e9eb3ce9849@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-miic-validate-dtb-v2-3-1ee3d33748e9@reliablecontrols.com>
-References: <20260928-miic-validate-dtb-v2-0-1ee3d33748e9@reliablecontrols.com>
-In-Reply-To: <20260928-miic-validate-dtb-v2-0-1ee3d33748e9@reliablecontrols.com>
-To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
- Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
-Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790630370; l=1492;
- i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=clQZX/3JFDNrGYwhzOKSNQpXnXVFJYWjpbM5PuE95UU=;
- b=y8v1uZmr9LuXEgzQYhC8g8vTHmbAKBAwptdnvlbdZNniLR7rF8LdPiIdge+qTMo/cgyJTmm85
- G3gBUpu9tJoAN1TOWBFnJh+p6tAL1cNtRqUor386OhlMjSbBVxamGeg
-X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
- pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
-X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBG4avIrDuQBJXqVUoXMf5tx0UsmRoE8
+ e7GuvwW722kSAKlvtooIYvKHAvsraLw8fENlrGYnHGt6dydM+KinEcExqzc+bqxvg6maS2V6Jv
+ wkvU/fDwv6zJMCL/zQvt+AAvQkOVyAAAA
+X-Change-ID: 20260928-venus-vdec-eos-9a451a4c0561
+To: Vikash Garodia <vikash.garodia@oss.qualcomm.com>, 
+ Dikshita Agarwal <dikshita.agarwal@oss.qualcomm.com>, 
+ Bryan O'Donoghue <bod@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Stanimir Varbanov <stanimir.varbanov@linaro.org>
+Cc: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>, 
+ linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1464; i=david@ixit.cz;
+ h=from:subject:message-id; bh=3ZDzdFxYbJYm7xzCv+PHC/iaTeit9v8RwfIAsE0clT4=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqut7D4EvnI7g1BCftzqiI5Jzk00BNd6j49Exb7
+ P1488/HvAWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarrewwAKCRBgAj/E00kg
+ ck8yD/48gW59S9RsF7T7X7Avvxe6iBcrg9a+24rm6hk3cqEXLnBpAKpnn1dK070foZ/GVZJrQki
+ V6H7PQAKpRT293v4LwbJHpuBlm+XqAs7i5loe/omqzTM2vB2alQLoxUCOibggDzBSCQACQ//BGB
+ t0RdT+T/gGWL3LMcPRqN9c6KnRWhg2a/gp1x9L43F4XsFSceofUAsIgvjS1/61w+0Lj6gqa3Nm4
+ I+5s2aaQce4T+FLdK5yppFkqlmMzIzH9He/kmvKVsSUhMzzM1wVjhK8eUR1nCTMDI/hrklEJuwh
+ nm39GBAQX9RzhGRZPfsuJvR2E4VG93szgi+pJH5aJymSZHDTG+9flXdfGBpO1AKxeT28xW8CVzI
+ JRvhlbfx00XtEBgoXxQGRxdpFjOMTfAoFDrBDKu+pjnuld7kCufJ1cX7+OAjgZQOhkZDLqF2DO/
+ ZrBL65hifpSOa3gO+Wuq4FU40WWQPJqPoRHOC16SHqJnCPCwwOxW9eCngNOnyiS/7o7VDPQiWFf
+ vtgHVHwRLldzbeZ/TZbDd9wz5g+iOFxtLG73OFJ1uQq1aw0HB9hNDbbsr1TmBeCqk1WTVs5+Awu
+ uLQju7vfvOMfUl84LD45/bYsoNOe+Y5BpM/bCwYFKEgntrtDfB862kbRmWoayt1CWnAdqhQF/br
+ EzTiiDelUd6LhEg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Bad configuration values from the dtb could result in out of bounds array
-access. Verify parsed values are within range for the SoC and fail the
-probe if invalid.
+Please consider this more as a bug-report than the proper fix.
 
-Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
+On SDM845 (Venus v4) every V4L2_DEC_CMD_STOP kills the decoder
+session: the firmware rejects the dummy 0xdeadb000 address of
+the EOS buffer with HFI_ERR_SESSION_FATAL, both queues go into error
+and userspace sees poll() fail at the end of every stream.
+
+Patch 1 hands the firmware a real, mapped buffer for EOS, after which
+the drain completes as designed: every frame is returned and the last
+capture buffer is flagged.
+
+Patch 2 fixes restarting after a seek when CAPTURE is streamed on before
+OUTPUT, which left the decoder without any capture or DPB buffers.
+
+Tested on Pixel 3 (blueline) with H.264: output is bit-exact against
+ffmpeg's software decoder including the final frames, and drain,
+DEC_CMD_START, seek with either queue order, and mid-stream seek all
+return every frame followed by a LAST buffer.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/net/pcs/pcs-rzn1-miic.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+David Heidelberg (2):
+      media: venus: vdec: signal EOS with a real buffer
+      media: venus: vdec: Start capture after a seek that streams CAPTURE first
 
-diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
-index 9e830932ce49..9a4c6d3b7d42 100644
---- a/drivers/net/pcs/pcs-rzn1-miic.c
-+++ b/drivers/net/pcs/pcs-rzn1-miic.c
-@@ -697,9 +697,25 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
- 		if (of_property_read_u32(conv, "reg", &port))
- 			continue;
- 
-+		if (port < miic->of_data->miic_port_start ||
-+		    port > miic->of_data->miic_port_max) {
-+			dev_err(miic->dev, "Port number out of range: %d\n", port);
-+			of_node_put(conv);
-+			ret = -EINVAL;
-+			goto err;
-+		}
-+
- 		if (of_property_read_u32(conv, "renesas,miic-input", &conf))
- 			continue;
- 
-+		if (conf >= miic->of_data->conf_to_string_count) {
-+			dev_err(miic->dev, "Port %d configuration out of range: %d\n",
-+				port, conf);
-+			of_node_put(conv);
-+			ret = -EINVAL;
-+			goto err;
-+		}
-+
- 		/* Adjust for 0 based index */
- 		dt_val[port + !miic->of_data->miic_port_start] = conf;
- 
-@@ -709,6 +725,7 @@ static int miic_parse_dt(struct miic *miic, u32 *mode_cfg)
- 	}
- 
- 	ret = miic_match_dt_conf(miic, dt_val, mode_cfg);
-+err:
- 	kfree(dt_val);
- 
- 	return ret;
+ drivers/media/platform/qcom/venus/core.h |  4 +++
+ drivers/media/platform/qcom/venus/vdec.c | 51 +++++++++++++++++++++++++++++---
+ 2 files changed, 51 insertions(+), 4 deletions(-)
+---
+base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
+change-id: 20260928-venus-vdec-eos-9a451a4c0561
 
--- 
-2.43.0
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
