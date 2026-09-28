@@ -1,59 +1,96 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 28 Sep 2026 15:49:49 +0200
-Subject: [PATCH] arm64: dts: lx2160a: set #pinctrl-cells on the pinmux node
+Date: Mon, 28 Sep 2026 15:52:07 +0200
+Subject: [PATCH] bus: fsl-mc: drop the fwnode links of the dpmacs nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-for-upstream-lx2160a-pinctrl-cells-v1-1-4faa8a341cdd@free.fr>
-X-B4-Tracking: v=1; b=H4sIAHxwumoC/x3NwQrCMAyA4VcZORtoMzY7X0U81JppoHYlmTIYe
- 3eLx+/y/zsYq7DBpdtB+SsmS2nwpw7SK5YnozyagRyNbqKA86L4qbYqxzfmjfzoIlYpadWMiXM
- 2PNM09L0PdA8DtFBVnmX7T6634/gBemrjAXQAAAA=
-To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+Message-Id: <20260928-for-upstream-fsl-mc-dpmac-fwnode-links-v1-1-b8976244b38b@free.fr>
+X-B4-Tracking: v=1; b=H4sIAAZxumoC/x3NPQ7CMAxA4atUnrFUPFQpV0EMaeKARfMjmwJS1
+ bsTMX7LezsYq7DBZdhB+S0mtXScTwOEhy93RondQCNN40wOU1Xcmr2UfcZkK+aAsWUfMH1KjYy
+ rlKfhRLQ49nGZnYcea8pJvv/R9XYcPyxG4uV4AAAA
+To: Ioana Ciornei <ioana.ciornei@nxp.com>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
  Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790603391; l=1124;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790603532; l=2306;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=F0blJHgPfcv2wZhfmtzs3uZ/BwHnx9s7GUCpxGKKE58=;
- b=irunWbeaCOH99oscPjVx+F1HEvnbOdO2seB4xYU9BDCB3RpM5+MKE0iparZordCaXVEHrSPhv
- 6zGF3LvVep2Bpkr1OqmwgSdKeL9pdVIwYWpV8D1vQJ/p3nUBcRWYG5M
+ bh=1JT8cCZAXY4kQa0R2Q4UFo1Xst/5Or/QNRjHLJIMOVA=;
+ b=6Hz8SIymAGcIVfMH4oZSYHZ103fey0tK7MYzBai9ppIO2uluoOJzO6yewQfRpQBAyxrygqkgz
+ TDNOlCcKT5rBaW58LEjaXZdheScWhs3KHGR6mXq1OB7YR9lXMDcdhCt
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, we have this message at boot time:
-  pinctrl-single 70010012c.pinmux: please update dts to use #pinctrl-cells = <2>
+A DPMAC node under dpmacs/ is never the fwnode of any device:
+  the fsl-mc bus creates dpmac.N objects without one,
+  then dpaa2-mac finds its node in dpmacs/ at connect time.
 
-Let's declare it in the DT instead, the value is the one the
-driver already uses, so nothing else changes.
+fw_devlink therefore attaches the supplier links of those nodes (phys, ...)
+to the nearest ancestor device, the fsl-mc bus, as SYNC_STATE_ONLY proxies.
+
+device_link_add() refuses such a link once the consumer has probed, and
+fw_devlink logs the refusal as an error.
+
+On an LX2160A board with 4x25G DPMACs for which phys = <&serdes_1 N>,
+the Serdes PHY binds after the bus and then at every boot it shows:
+
+  fsl_mc_bus 80c000000.fsl-mc: Failed to create device link (0x180) with supplier 1ea0000.phy for /soc/fsl-mc@80c000000/dpmacs/ethernet@3
+
+once per port!
 
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/bus/fsl-mc/fsl-mc-bus.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-index bccf2d673023..2085362ab0ea 100644
---- a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-@@ -1536,6 +1536,7 @@ pinmux_i2crv: pinmux@70010012c {
- 			reg = <0x00000007 0x0010012c 0x0 0xc>;
- 			#address-cells = <1>;
- 			#size-cells = <0>;
-+			#pinctrl-cells = <2>;
- 			pinctrl-single,bit-per-mux;
- 			pinctrl-single,register-width = <32>;
- 			pinctrl-single,function-mask = <0x7>;
+diff --git a/drivers/bus/fsl-mc/fsl-mc-bus.c b/drivers/bus/fsl-mc/fsl-mc-bus.c
+index 5878eafd8d44..0c37b6780c84 100644
+--- a/drivers/bus/fsl-mc/fsl-mc-bus.c
++++ b/drivers/bus/fsl-mc/fsl-mc-bus.c
+@@ -11,6 +11,7 @@
+ #define pr_fmt(fmt) "fsl-mc: " fmt
+ 
+ #include <linux/module.h>
++#include <linux/fwnode.h>
+ #include <linux/of_device.h>
+ #include <linux/of_address.h>
+ #include <linux/ioport.h>
+@@ -1033,6 +1034,20 @@ static int fsl_mc_firmware_check(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static void fsl_mc_purge_dpmac_fwnode_links(struct device *dev)
++{
++	struct device_node *dpmacs, *child;
++
++	dpmacs = of_get_child_by_name(dev->of_node, "dpmacs");
++	if (!dpmacs)
++		return;
++
++	for_each_child_of_node(dpmacs, child)
++		fwnode_links_purge(of_fwnode_handle(child));
++
++	of_node_put(dpmacs);
++}
++
+ /*
+  * fsl_mc_bus_probe - callback invoked when the root MC bus is being
+  * added
+@@ -1134,6 +1149,8 @@ static int fsl_mc_bus_probe(struct platform_device *pdev)
+ 						&mc->num_translation_ranges);
+ 		if (error < 0)
+ 			goto error_cleanup_mc_io;
++
++		fsl_mc_purge_dpmac_fwnode_links(&pdev->dev);
+ 	}
+ 
+ 	error = dprc_get_container_id(mc_io, 0, &container_id);
 
 ---
-base-commit: bf184a29ad1b33bd8922029eb0ca3f2866007258
-change-id: 20260928-for-upstream-lx2160a-pinctrl-cells-729533182b85
+base-commit: 7b3b0598c00e67f2df85d0b4cd99eaa3be6c9bfd
+change-id: 20260928-for-upstream-fsl-mc-dpmac-fwnode-links-622b8eadb98a
 
 Best regards,
 -- 
