@@ -1,66 +1,129 @@
-From: Christian Berry <christiankbberry@gmail.com>
-Date: Sun, 27 Sep 2026 19:03:49 -0400
-Subject: [PATCH] nvme: check for readiness more quickly to speed up boot
+From: Sam Day <me@samcday.com>
+Date: Mon, 28 Sep 2026 14:33:26 +1000
+Subject: [PATCH] drm/msm: vmalloc fall back for msm_gem_submits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260927-nvme-ready-poll-v1-1-6a3f63b0ea3e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBswC6WuEi00pxooCwUpwrsnL
- d/i/xciBaYIQ/VCoMSRT1/Q1BXMm/ErIbtikEIq0UuNPh2EgYx78Dr3HTvrVCdara2xUKor0ML
- 3fxynnD+hX8CDYQAAAA==
-X-Change-ID: 20260927-nvme-ready-poll-4bd640377bab
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Christian Berry <christiankbberry@gmail.com>
+Message-Id: <20260928-msmdrm-submit-vmalloc-v1-1-8b24b1325855@samcday.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQrCQAwF0KuEv25gDDjYuYq4GNuogaaViS1C6
+ d0F3wHejtBmGii0o+lmYcuMQqeOMLzq/FS2EYUgSXLq5cIePjbnWO9uH968TtMycJJz7jWLVM3
+ oCO+mD/v+3+vtOH6S71DOZwAAAA==
+X-Change-ID: 20260928-msmdrm-submit-vmalloc-02569e622ae6
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790550238; l=1373;
- i=christiankbberry@gmail.com; s=20260927; h=from:subject:message-id;
- bh=l8Ulibs93iyPd5xJMD4r29EG9Ft858b6i/ATurkctCc=;
- b=qY1NGMDH2pukCyk9JNIs6w8MUSuo7otKu4VfoYh7MPDMpJuNbT2wBOh6JL3liKJilLlZT03pS
- phbajqBqrA6B4jtU3jDlVfYG+tgg+hozpGnUtU0Y60j5RipQzI6F7Is
-X-Developer-Key: i=christiankbberry@gmail.com; a=ed25519;
- pk=mIiHYdE/qfTZkSzWp7S7P0suIaXgOgQIn4nfjIhg9+c=
-X-Endpoint-Received: by B4 Relay for christiankbberry@gmail.com/20260927 with auth_id=1073
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790570015; l=3464;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=4To87PoB5Gy7rINqfb6PWjdKecVIeYCcY9gOzBdSoHg=;
+ b=cS5sp8BtOVWAHABMobEZSHj7WaVmRb2cpyvVR+lCff9hhAouttlFUkpO9bW6IUBerMJquE2XB
+ mHQ3OnCMf3/CkdWzxZyvtvNOKl3W2jst3Y101Kq680ELxAIo8mD6wec
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nvme_wait_ready() polls the controller status every 100ms, although
-the controller may become ready much sooner. Every probe then waits
-at least 100ms longer than needed, and possibly twice, since both
-nvme_disable_ctrl() and nvme_enable_ctrl() wait for readiness.
+On low memory boards like the DragonBoard410c (1GiB), if memory
+fragmentation is severe enough, large submits will fail when allocating
+the msm_gem_submit bookkeeping struct.
 
-Poll every millisecond instead, as Linux does since commit
-3e98c2443f5c ("nvme: Check for readiness more quickly, to speed up
-boot time"). The overall timeout is still based on elapsed time, so
-it is unaffected.
+Mesa was consistently triggering this issue when running its full piglit
+suite on the DB410c - the vbo-subdata-many drawrangeelements test
+submits ~32k BOs, which results in submit_create() attempting to
+allocate ~1.05MB, which requires an order-9 (2MiB) allocation. When
+fragmentation is severe enough, this fails.
 
-Tested on an Arm64 SoC with a Samsung 980 SSD in a Gen3 x4
-configuration, where PCIe + NVMe probe time dropped from 165 ms to
-65 ms.
+Switch allocation to kvzalloc() so that larger submits can fall back to
+virtually contiguous memory. The msm_gem_submit struct is only used on
+the CPU side for bookkeeping that submit.
 
-Signed-off-by: Christian Berry <christiankbberry@gmail.com>
+Since submits are implicitly limited to KMALLOC_MAX_SIZE with the
+current kzalloc() path, we make this limit explicit with the switch to
+kvzalloc().
+
+Link: https://gitlab.freedesktop.org/mesa/mesa/-/work_items/16414
+Assisted-by: LLM
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/nvme/host/core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The kvzalloc switch was tested and validated on my DB410c, the explicit
+bounds check was added later and compile-tested only. Performance has
+not been benchmarked.
 
-diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 345707ecfe..9686268d44 100644
---- a/drivers/nvme/host/core.c
-+++ b/drivers/nvme/host/core.c
-@@ -173,7 +173,7 @@ static int nvme_wait_ready(struct nvme_ctrl *ctrl, u64 cap, bool enabled)
- 		if ((csts & NVME_CSTS_RDY) == bit)
- 			break;
+To: Rob Clark <robin.clark@oss.qualcomm.com>
+To: Dmitry Baryshkov <lumag@kernel.org>
+To: Abhinav Kumar <abhinav.kumar@linux.dev>
+To: Jessica Zhang <jesszhan0024@gmail.com>
+To: Sean Paul <sean@poorly.run>
+To: Marijn Suijten <marijn.suijten@somainline.org>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: freedreno@lists.freedesktop.org
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Sam Day <me@samcday.com>
+---
+ drivers/gpu/drm/msm/msm_gem_submit.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/msm_gem_submit.c b/drivers/gpu/drm/msm/msm_gem_submit.c
+index 5862db05297a7..1631bdeb64b20 100644
+--- a/drivers/gpu/drm/msm/msm_gem_submit.c
++++ b/drivers/gpu/drm/msm/msm_gem_submit.c
+@@ -42,14 +42,21 @@ static struct msm_gem_submit *submit_create(struct drm_device *dev,
+ 	sz = size_add(struct_size(submit, bos, nr_bos),
+ 		      array_size(sizeof(submit->cmd[0]), nr_cmds));
  
--		mdelay(100);
-+		udelay(1000);
+-	submit = kzalloc(sz, GFP_KERNEL | __GFP_NOWARN);
++	/* We previously allocated submit with kmalloc(), but that's
++	 * problematic on low-memory boards with high fragmentation. Now
++	 * vmalloc can be used so we retain the previous implicit sz limit.
++	 */
++	if (sz > KMALLOC_MAX_SIZE)
++		return ERR_PTR(-ENOMEM);
++
++	submit = kvzalloc(sz, GFP_KERNEL | __GFP_NOWARN);
+ 	if (!submit)
+ 		return ERR_PTR(-ENOMEM);
  
- 		if (is_timeout(start, timeout)) {
- 			dev_err(ctrl->dev,
+ 	submit->hw_fence = msm_fence_alloc();
+ 	if (IS_ERR(submit->hw_fence)) {
+ 		ret = PTR_ERR(submit->hw_fence);
+-		kfree(submit);
++		kvfree(submit);
+ 		return ERR_PTR(ret);
+ 	}
+ 
+@@ -57,7 +64,7 @@ static struct msm_gem_submit *submit_create(struct drm_device *dev,
+ 				 drm_client_id);
+ 	if (ret) {
+ 		kfree(submit->hw_fence);
+-		kfree(submit);
++		kvfree(submit);
+ 		return ERR_PTR(ret);
+ 	}
+ 
+@@ -121,7 +128,7 @@ void __msm_gem_submit_destroy(struct kref *kref)
+ 	for (i = 0; i < submit->nr_cmds; i++)
+ 		kfree(submit->cmd[i].relocs);
+ 
+-	kfree(submit);
++	kvfree(submit);
+ }
+ 
+ static int submit_lookup_objects(struct msm_gem_submit *submit,
 
 ---
-base-commit: 983608b439b803f72f12d56d0ab10bd6ba29e536
-change-id: 20260927-nvme-ready-poll-4bd640377bab
+base-commit: 72d3fcf802c45d00b300f25b848a93c3a2bd7c7e
+change-id: 20260928-msmdrm-submit-vmalloc-02569e622ae6
 
 Best regards,
 -- 
-Christian Berry <christiankbberry@gmail.com>
+Sam Day <me@samcday.com>
 
