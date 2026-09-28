@@ -1,67 +1,60 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 28 Sep 2026 23:08:28 +0200
-Subject: [PATCH v2] arm64: dts: lx2160a: set #pinctrl-cells on the pinmux
- node
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Subject: [PATCH net-next v2 0/3] net: pcs: rzn1-miic: Validate dtb
+ configuration values
+Date: Mon, 28 Sep 2026 14:19:02 -0700
+Message-Id: <20260928-miic-validate-dtb-v2-0-1ee3d33748e9@reliablecontrols.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-for-upstream-lx2160a-pinctrl-cells-v2-1-1227b2e897d3@free.fr>
-X-B4-Tracking: v=1; b=H4sIAEvXumoC/5WNSw6CMBBAr0K6dgwdPhZX3sOwqGUqk1QgUyQYw
- t2t3MDle4v3NhVJmKK6ZpsSWjjyOCTAU6Zcb4cnAXeJFeZY5w0a8KPAe4qzkH1BWFHXuYWJBzd
- LAEchRLhgUxWFNvgwlUqhScjzekzubeKe4zzK53gu+mf/yi8aNJTeWmOLUruuu3khOntR7b7vX
- ySey0bSAAAA
-To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vincent Jardin <vjardin@free.fr>
+X-B4-Tracking: v=1; b=H4sIAMbZumoC/22NywrCMBBFf6XM2khM3678D+kij6kdSBNJQqiU/
+ ruhuHR5ONxzd4gYCCPcqx0CZorkXQFxqUAv0r2QkSkMgouOj6JhK5FmWVoyMiEzSTE160bVA1f
+ 9IKDs3gFn2s7mExwm5nBLMBWzUEw+fM6zfDv9r9v+6eYb46yWnVGjUn2L+hHQklQWtXcpeBuv2
+ q8wHcfxBbi7mR/HAAAA
+To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790629711; l=1258;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=MLG+A3X72Uzk7Ufcvox/+HKIq9Wjjn1mtqOgeCdt28M=;
- b=Kg5Dd4el+o3eMbJo2GVlTwYzVEDdR0ZdS9fQGXKBUZ0xTpYc1C8lDtrgVM07nHcjhgFnBKUlJ
- +PQXpdJPPEPCf6JomddSRVqbGzuQO4hkdwxruh1kqSVsU6J4+eG2jIl
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790630370; l=1083;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=iRVAveAkN4lPEVWRQS+tEuxrYtH4+i3EDxsR7o9RjZ0=;
+ b=qrz/MSsI7PE74TwbQ6TijW5nwDtWRzcnZRvgr5mo+Exqx+4rRNYoXk7QWy/Rd5ir6lFE1HiHu
+ Lx8lvFSv3kxACdeqXc1IIEA3N6GJ7/thkUHQprN9KOKU5W9OaiV0pFo
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The below message shows at boot time:
-  pinctrl-single 70010012c.pinmux: please update dts to use #pinctrl-cells = <2>
+This series addresses issues found when reviewing another fix:
+https://lore.kernel.org/netdev/20260915-rzn1-miic-fix-array-v5-1-b7173fd5b97d@reliablecontrols.com/
 
-Add missing #pinctrl-cells = <2> to fix it.
+Invalid values from the dtb could cause out of bounds array access. Checking
+the values as they're parsed should prevent this.
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
 Changes in v2:
-- Reword the commit message (thanks Frank Li)
-- Rebased on imx/for-next
-- Link to v1: https://lore.kernel.org/r/20260928-for-upstream-lx2160a-pinctrl-cells-v1-1-4faa8a341cdd@free.fr
----
- arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-index bccf2d673023..2085362ab0ea 100644
---- a/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx216x.dtsi
-@@ -1536,6 +1536,7 @@ pinmux_i2crv: pinmux@70010012c {
- 			reg = <0x00000007 0x0010012c 0x0 0xc>;
- 			#address-cells = <1>;
- 			#size-cells = <0>;
-+			#pinctrl-cells = <2>;
- 			pinctrl-single,bit-per-mux;
- 			pinctrl-single,register-width = <32>;
- 			pinctrl-single,function-mask = <0x7>;
+- Simplify fixes by making miic_port_max the last documented port number
+- Add fixes tags
+- Link to v1: https://lore.kernel.org/r/20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com
 
 ---
-base-commit: 5d034f17b24642b2a764c0e3a68b4c6937c9ba75
-change-id: 20260928-for-upstream-lx2160a-pinctrl-cells-729533182b85
+Kyle Hendry (3):
+      net: pcs: rzn1-miic: Fix port numbering on RZ/T2H
+      net: pcs: rzn1-miic: Fix miic register initialization loop
+      net: pcs: rzn1-miic: Validate dtb configuration values
+
+ drivers/net/pcs/pcs-rzn1-miic.c | 25 +++++++++++++++++++++++--
+ 1 file changed, 23 insertions(+), 2 deletions(-)
+---
+base-commit: 014d795c73837ea2339a4ea8e8f82c6e959b845d
+change-id: 20260924-miic-validate-dtb-bfc4b380b782
 
 Best regards,
 -- 
-Vincent Jardin <vjardin@free.fr>
+Kyle Hendry <khendry@reliablecontrols.com>
 
