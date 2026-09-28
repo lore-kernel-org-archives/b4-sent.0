@@ -1,98 +1,115 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 28 Sep 2026 15:52:07 +0200
-Subject: [PATCH] bus: fsl-mc: drop the fwnode links of the dpmacs nodes
+From: Brian Ellis <brianellis@gotenna.com>
+Date: Mon, 28 Sep 2026 07:59:44 -0600
+Subject: [PATCH v3] usb: gadget: u_serial: fix NULL deref in gs_close()
+ after failed open
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-for-upstream-fsl-mc-dpmac-fwnode-links-v1-1-b8976244b38b@free.fr>
-X-B4-Tracking: v=1; b=H4sIAAZxumoC/x3NPQ7CMAxA4atUnrFUPFQpV0EMaeKARfMjmwJS1
- bsTMX7LezsYq7DBZdhB+S0mtXScTwOEhy93RondQCNN40wOU1Xcmr2UfcZkK+aAsWUfMH1KjYy
- rlKfhRLQ49nGZnYcea8pJvv/R9XYcPyxG4uV4AAAA
-To: Ioana Ciornei <ioana.ciornei@nxp.com>
-Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
- Vincent Jardin <vjardin@free.fr>
+Message-Id: <20260928-u_serial-gs-close-null-v3-1-c688d93b4c49@gotenna.com>
+X-B4-Tracking: v=1; b=H4sIAM9yumoC/4XNTQ7CIBAF4Ks0rB0D9I+68h7GGFqGlqSCgZZom
+ t5d2pUujLN7L3nfLCSgNxjIKVuIx2iCcTaF/JCRbpC2RzAqZcIpr2jDKMy3bSFH6AN0owsIdh5
+ HkILKIq/SoSBp/PCozXOHL9eUBxMm51/7n8i29i8ZGTBoZImiEC1Tuj33bkJr5bFzd7KhkX9Av
+ P4J8QS1CpUua41Npb+hdV3fFR+/WQcBAAA=
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Kuen-Han Tsai <khtsai@google.com>, 
+ Prashanth K <prashanth.k@oss.qualcomm.com>, 
+ syzbot+97aa71f55869d71bc94a@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, Brian Ellis <brianellis@gotenna.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790603532; l=2306;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=1JT8cCZAXY4kQa0R2Q4UFo1Xst/5Or/QNRjHLJIMOVA=;
- b=6Hz8SIymAGcIVfMH4oZSYHZ103fey0tK7MYzBai9ppIO2uluoOJzO6yewQfRpQBAyxrygqkgz
- TDNOlCcKT5rBaW58LEjaXZdheScWhs3KHGR6mXq1OB7YR9lXMDcdhCt
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790603983; l=3583;
+ i=brianellis@gotenna.com; s=20260910; h=from:subject:message-id;
+ bh=nr2XdxRa87a7C3jXAfs1qnHiC4oajvF4Zv7whfXEp2I=;
+ b=oKEpgUrb7WdSJkn86FX4RSIJG9R8343giM8IgMStYsDjHMhKgDLamU5C6ftPzv5J6BZELP1Xu
+ IEiJ4vNdg8rDIrRtDYWvA4A5bZ3kTM2srfH0O8zB97UKE8JroeJp73l
+X-Developer-Key: i=brianellis@gotenna.com; a=ed25519;
+ pk=JciDR8ctfMqvKeRCDP8VPwNLUDULxCAqDum6H+/ByBY=
+X-Endpoint-Received: by B4 Relay for brianellis@gotenna.com/20260910 with auth_id=1022
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A DPMAC node under dpmacs/ is never the fwnode of any device:
-  the fsl-mc bus creates dpmac.N objects without one,
-  then dpaa2-mac finds its node in dpmacs/ at connect time.
+gs_close() opens with
 
-fw_devlink therefore attaches the supplier links of those nodes (phys, ...)
-to the nearest ancestor device, the fsl-mc bus, as SYNC_STATE_ONLY proxies.
+	struct gs_port *port = tty->driver_data;
+	...
+	spin_lock_irq(&port->port_lock);
 
-device_link_add() refuses such a link once the consumer has probed, and
-fw_devlink logs the refusal as an error.
+and never checks port.  gs_open() assigns tty->driver_data only on the
+port.count 0 -> 1 edge, so any failure earlier in gs_open() leaves it NULL,
+and tty_open() calls tty_release(), and hence ->close(), when ->open()
+fails.  Acquiring the spinlock is a write, so this faults outright rather
+than reading garbage.
 
-On an LX2160A board with 4x25G DPMACs for which phys = <&serdes_1 N>,
-the Serdes PHY binds after the bus and then at every boot it shows:
+syzbot reproduces it on arm64 as a KASAN null-ptr-deref write at offset
+0x74, which is port_lock within struct gs_port:
 
-  fsl_mc_bus 80c000000.fsl-mc: Failed to create device link (0x180) with supplier 1ea0000.phy for /soc/fsl-mc@80c000000/dpmacs/ethernet@3
+  BUG: unable to handle kernel paging request in gs_close
+  KASAN: null-ptr-deref Write in gs_close
+  Call trace:
+   gs_close+0xac/0x65c      drivers/usb/gadget/function/u_serial.c:698
+   tty_release+0x2c4/0xffc  drivers/tty/tty_io.c:1745
+   tty_open+0x46c/0x89c     drivers/tty/tty_io.c:2146
 
-once per port!
+Return early instead.  There is nothing to release when the open never got
+far enough to claim the port.
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Unlike the check reverted by commit f6c7bc4a6823 ("Revert "usb: gadget:
+u_serial: Add null pointer check in gs_start_io""), this is not hiding a
+race: the tty core calls ->close() for an ->open() that failed by design,
+so driver_data is legitimately unset on that path.
+
+Fixes: c1dca562be8a ("usb gadget: split out serial core")
+Reported-by: syzbot+97aa71f55869d71bc94a@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=97aa71f55869d71bc94a
+Cc: stable@vger.kernel.org
+Signed-off-by: Brian Ellis <brianellis@gotenna.com>
 ---
- drivers/bus/fsl-mc/fsl-mc-bus.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+Reported by syzbot (still open, with C and syz reproducers) and hit
+independently on a downstream 6.6-adi BSP kernel, where gserial_free_line()
+clearing ports[n].port makes the same path reachable.
 
-diff --git a/drivers/bus/fsl-mc/fsl-mc-bus.c b/drivers/bus/fsl-mc/fsl-mc-bus.c
-index 5878eafd8d44..0c37b6780c84 100644
---- a/drivers/bus/fsl-mc/fsl-mc-bus.c
-+++ b/drivers/bus/fsl-mc/fsl-mc-bus.c
-@@ -11,6 +11,7 @@
- #define pr_fmt(fmt) "fsl-mc: " fmt
+Compile-tested against usb-linus with allmodconfig (CONFIG_USB_U_SERIAL=m).
+Not boot-tested on mainline and the syzbot reproducer has not been run here:
+the board this was hit on needs a vendor BSP device tree to boot.
+---
+Changes in v3:
+- Restore the Reported-by:/Closes: syzbot tags and the KASAN trace. They were
+  dropped from v1 and v2 in error when the commit message was rewritten. The
+  report is still open, and without Closes: syzbot cannot associate this fix
+  with it.
+- Say why this differs from the check reverted in f6c7bc4a6823, since that
+  revert's reasoning is the obvious objection here.
+- Link to v2: https://lore.kernel.org/r/20260927-u_serial-gs-close-null-v2-1-bdedf57fe96f@gotenna.com
+
+Changes in v2:
+- Remove the comment above the check, rather than reword it as Prashanth
+  suggested. The commit message already explains the path that leaves
+  tty->driver_data NULL, so the comment only restated it. Happy to add a
+  reworded one instead if that is preferred.
+- Link to v1: https://lore.kernel.org/r/20260910-u_serial-gs-close-null-v1-1-9a5e848b1dfb@gotenna.com
+---
+ drivers/usb/gadget/function/u_serial.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/usb/gadget/function/u_serial.c b/drivers/usb/gadget/function/u_serial.c
+index cdd1dfc66..892d2673e 100644
+--- a/drivers/usb/gadget/function/u_serial.c
++++ b/drivers/usb/gadget/function/u_serial.c
+@@ -695,6 +695,9 @@ static void gs_close(struct tty_struct *tty, struct file *file)
+ 	struct gs_port *port = tty->driver_data;
+ 	struct gserial	*gser;
  
- #include <linux/module.h>
-+#include <linux/fwnode.h>
- #include <linux/of_device.h>
- #include <linux/of_address.h>
- #include <linux/ioport.h>
-@@ -1033,6 +1034,20 @@ static int fsl_mc_firmware_check(struct platform_device *pdev)
- 	return 0;
- }
- 
-+static void fsl_mc_purge_dpmac_fwnode_links(struct device *dev)
-+{
-+	struct device_node *dpmacs, *child;
-+
-+	dpmacs = of_get_child_by_name(dev->of_node, "dpmacs");
-+	if (!dpmacs)
++	if (!port)
 +		return;
 +
-+	for_each_child_of_node(dpmacs, child)
-+		fwnode_links_purge(of_fwnode_handle(child));
-+
-+	of_node_put(dpmacs);
-+}
-+
- /*
-  * fsl_mc_bus_probe - callback invoked when the root MC bus is being
-  * added
-@@ -1134,6 +1149,8 @@ static int fsl_mc_bus_probe(struct platform_device *pdev)
- 						&mc->num_translation_ranges);
- 		if (error < 0)
- 			goto error_cleanup_mc_io;
-+
-+		fsl_mc_purge_dpmac_fwnode_links(&pdev->dev);
- 	}
+ 	spin_lock_irq(&port->port_lock);
  
- 	error = dprc_get_container_id(mc_io, 0, &container_id);
+ 	if (port->port.count != 1) {
 
 ---
-base-commit: 7b3b0598c00e67f2df85d0b4cd99eaa3be6c9bfd
-change-id: 20260928-for-upstream-fsl-mc-dpmac-fwnode-links-622b8eadb98a
+base-commit: be4219dd98608736e13e0b790ef742b76a13254d
+change-id: 20260910-u_serial-gs-close-null-a80a436666e8
 
 Best regards,
 -- 
-Vincent Jardin <vjardin@free.fr>
+Brian Ellis <brianellis@gotenna.com>
 
