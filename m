@@ -1,86 +1,82 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 28 Sep 2026 16:06:56 +0200
-Subject: [PATCH] crypto: caam/qi2 - reset the DPSECI at probe only when
- enabled
+Date: Mon, 28 Sep 2026 16:09:16 +0200
+Subject: [PATCH] crypto: caam/qi,qi2 - set plain_keylen for skcipher
+ descriptors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-for-upstream-caam-qi2-dpseci-reset-v1-1-042be6c05472@free.fr>
-X-B4-Tracking: v=1; b=H4sIAH90umoC/x2NwQ6CMBAFf4XsmU2gIgK/YjzU9hX3INRdNCaEf
- 7fxMslcZnYyqMBoqnZSfMRkXYq0dUXh4ZcZLLE4ucb1zegGTqvyO9um8E8OvuAljmM2BGGFYeP
- zeGnjcErdvUtUQlmR5PufXG/H8QOy3DuhdAAAAA==
+Message-Id: <20260928-for-upstream-caam-qi-plain-keylen-v1-1-6edb56649cf9@free.fr>
+X-B4-Tracking: v=1; b=H4sIAAt1umoC/x2NwQ6CMBAFf4Xs2U1oD7T4K8ZDgYduwFK3YCSEf
+ 7fxMslcZg7KUEGma3WQ4iNZlljEXCrqnyE+wDIUJ1vbpm6t53FR3lJeFeHFfSh4C6c5SOQJ+4z
+ IzsJ3jTFw3lHpJMUo3//jdj/PH/OaIRBzAAAA
 To: =?utf-8?q?Horia_Geant=C4=83?= <horia.geanta@nxp.com>, 
- Pankaj Gupta <pankaj.gupta@nxp.com>, 
- Sahil Malhotra <sahil.malhotra@nxp.com>, 
+ Pankaj Gupta <pankaj.gupta@nxp.com>, Gaurav Jain <gaurav.jain@nxp.com>, 
  Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>
+ "David S. Miller" <davem@davemloft.net>, 
+ Meenakshi Aggarwal <meenakshi.aggarwal@nxp.com>
 Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790604419; l=1994;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790604557; l=2087;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=64VY4tkbF5YIprmJtGNmeGjNbSHu8M2PhnkG7m0FjNk=;
- b=CBnORxWR3872L1eaK2z5NVlQtTdwHgCmKeIvcfWveQzvlrEYka2Fl5j+x6gHK9eLxwfMa1iiL
- aqdGIkdTNQKBoNesJ+hoIHvMP10jChPM6DLySTAWTEVf6XF2i8mNMng
+ bh=QDDTvtj++xXIso5yDNVOmdUEzAvrdil+dSqHLZL9pTY=;
+ b=5putLZlLd+7hbZ9ZnG1Ls3k50acyXFDRr9A7KEm1OAwn7pwd9DHiGP8GDfNw3DHUvScB1xS4M
+ X+1Hgp5PC9HApzvzZJto6dtdGBUgzIxLA9RdowDebMWf49Hw0KkJ/od
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since the commit
-  060ce5037d5f ("crypto: caam/qi2 - add support for dpseci_reset()")
-probe resets every DPSECI.
+Since the commit 66b9a095f7f9
+  ("crypto: caam - Add support of paes algorithm")
 
-On a DPSECI the MC has just created from the DPL, never enabled,
-MC 10.40.x then logs for each of its queues:
+The shared descriptor then loads a zero-length key and the SEC decodes
+the inlined key bytes as commands.
 
-  [E, qbman_rec_isr:396, QBMAN]  QBMAN recoverable event 0x1000000
-  [E, dpmng_dump_rerr_fqid:1335, QBMAN]  REL_FQ (FQ[0]) has 1 messages, dumping up to 16:
-  [W, DPSECI]  DPSECI ID[0]: Flush on queue 43 not confirmed
+Test: with CONFIG_CRYPTO_SELFTESTS on LX2160A every skcipher but xts fails:
 
-That is 16 error lines for an 8-queue DPSECI, at every boot, although
-there is nothing to flush: a disabled DPSECI has no request in flight.
+  dpaa2_caam dpseci.0: 40000307: DECO: desc idx 3: Invalid LOAD Command
+  alg: skcipher: ctr-aes-caam-qi2 encryption failed on test vector 0; expected_error=0, actual_error=-22, cfg="in-place (one sglist)"
 
-The reset at remove is unchanged.
+caamalg_qi.c is compile-tested only.
 
+Fixes: 66b9a095f7f9 ("crypto: caam - Add support of paes algorithm")
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/crypto/caam/caamalg_qi2.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ drivers/crypto/caam/caamalg_qi.c  | 2 ++
+ drivers/crypto/caam/caamalg_qi2.c | 2 ++
+ 2 files changed, 4 insertions(+)
 
+diff --git a/drivers/crypto/caam/caamalg_qi.c b/drivers/crypto/caam/caamalg_qi.c
+index aa779caacfe5..2f2682c8bcd8 100644
+--- a/drivers/crypto/caam/caamalg_qi.c
++++ b/drivers/crypto/caam/caamalg_qi.c
+@@ -637,6 +637,8 @@ static int skcipher_setkey(struct crypto_skcipher *skcipher, const u8 *key,
+ 	ctx->cdata.keylen = keylen;
+ 	ctx->cdata.key_virt = key;
+ 	ctx->cdata.key_inline = true;
++	ctx->cdata.plain_keylen = keylen;
++	ctx->cdata.key_cmd_opt = 0;
+ 
+ 	/* skcipher encrypt, decrypt shared descriptors */
+ 	cnstr_shdsc_skcipher_encap(ctx->sh_desc_enc, &ctx->cdata, ivsize,
 diff --git a/drivers/crypto/caam/caamalg_qi2.c b/drivers/crypto/caam/caamalg_qi2.c
-index 6b47bcc16a50..6dccbd3b27a3 100644
+index 6b47bcc16a50..d52706931285 100644
 --- a/drivers/crypto/caam/caamalg_qi2.c
 +++ b/drivers/crypto/caam/caamalg_qi2.c
-@@ -5041,11 +5041,22 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
- 	dev_info(dev, "dpseci v%d.%d\n", priv->major_ver, priv->minor_ver);
+@@ -961,6 +961,8 @@ static int skcipher_setkey(struct crypto_skcipher *skcipher, const u8 *key,
+ 	ctx->cdata.keylen = keylen;
+ 	ctx->cdata.key_virt = key;
+ 	ctx->cdata.key_inline = true;
++	ctx->cdata.plain_keylen = keylen;
++	ctx->cdata.key_cmd_opt = 0;
  
- 	if (DPSECI_VER(priv->major_ver, priv->minor_ver) > DPSECI_VER(5, 3)) {
--		err = dpseci_reset(priv->mc_io, 0, ls_dev->mc_handle);
-+		int enabled;
-+
-+		err = dpseci_is_enabled(priv->mc_io, 0, ls_dev->mc_handle,
-+					&enabled);
- 		if (err) {
--			dev_err(dev, "dpseci_reset() failed\n");
-+			dev_err(dev, "dpseci_is_enabled() failed\n");
- 			goto err_get_vers;
- 		}
-+
-+		if (enabled) {
-+			err = dpseci_reset(priv->mc_io, 0, ls_dev->mc_handle);
-+			if (err) {
-+				dev_err(dev, "dpseci_reset() failed\n");
-+				goto err_get_vers;
-+			}
-+		}
- 	}
- 
- 	err = dpseci_get_attributes(priv->mc_io, 0, ls_dev->mc_handle,
+ 	/* skcipher_encrypt shared descriptor */
+ 	flc = &ctx->flc[ENCRYPT];
 
 ---
-base-commit: 67aefeccc4101a93627f36abbd049f191b54f903
-change-id: 20260928-for-upstream-caam-qi2-dpseci-reset-5971d83f4b4f
+base-commit: 10396a2d6d41d594975b6ece712278570c3c970c
+change-id: 20260928-for-upstream-caam-qi-plain-keylen-72e8b611e787
 
 Best regards,
 -- 
