@@ -1,115 +1,56 @@
-From: Brian Ellis <brianellis@gotenna.com>
-Date: Mon, 28 Sep 2026 07:59:44 -0600
-Subject: [PATCH v3] usb: gadget: u_serial: fix NULL deref in gs_close()
- after failed open
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH 0/3] crypto: caam/qi2 - algorithm priority configurable
+Date: Mon, 28 Sep 2026 16:01:02 +0200
+Message-Id: <20260928-for-upstream-caam-qi2-priority-v1-0-e4a8e5f01dbc@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-u_serial-gs-close-null-v3-1-c688d93b4c49@gotenna.com>
-X-B4-Tracking: v=1; b=H4sIAM9yumoC/4XNTQ7CIBAF4Ks0rB0D9I+68h7GGFqGlqSCgZZom
- t5d2pUujLN7L3nfLCSgNxjIKVuIx2iCcTaF/JCRbpC2RzAqZcIpr2jDKMy3bSFH6AN0owsIdh5
- HkILKIq/SoSBp/PCozXOHL9eUBxMm51/7n8i29i8ZGTBoZImiEC1Tuj33bkJr5bFzd7KhkX9Av
- P4J8QS1CpUua41Npb+hdV3fFR+/WQcBAAA=
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Kuen-Han Tsai <khtsai@google.com>, 
- Prashanth K <prashanth.k@oss.qualcomm.com>, 
- syzbot+97aa71f55869d71bc94a@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, Brian Ellis <brianellis@gotenna.com>
+X-B4-Tracking: v=1; b=H4sIAB5zumoC/x2Nyw5AMBAAf0X2bJOqpB6/Ig7FYg+0tggR/65xm
+ WQuMw8EEqYAdfKA0MmB3RolSxPoZ7tOhDxEB620UZUucXSChw+7kF2wtxEba/TCTni/sTC5yrq
+ SutwaiBEvNPL1D5r2fT8//3uZcAAAAA==
+To: =?utf-8?q?Horia_Geant=C4=83?= <horia.geanta@nxp.com>, 
+ Pankaj Gupta <pankaj.gupta@nxp.com>, 
+ Sahil Malhotra <sahil.malhotra@nxp.com>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Gaurav Jain <gaurav.jain@nxp.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790603983; l=3583;
- i=brianellis@gotenna.com; s=20260910; h=from:subject:message-id;
- bh=nr2XdxRa87a7C3jXAfs1qnHiC4oajvF4Zv7whfXEp2I=;
- b=oKEpgUrb7WdSJkn86FX4RSIJG9R8343giM8IgMStYsDjHMhKgDLamU5C6ftPzv5J6BZELP1Xu
- IEiJ4vNdg8rDIrRtDYWvA4A5bZ3kTM2srfH0O8zB97UKE8JroeJp73l
-X-Developer-Key: i=brianellis@gotenna.com; a=ed25519;
- pk=JciDR8ctfMqvKeRCDP8VPwNLUDULxCAqDum6H+/ByBY=
-X-Endpoint-Received: by B4 Relay for brianellis@gotenna.com/20260910 with auth_id=1022
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790604073; l=1011;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=XYrNlKJfrj2ruygfi45wHsY8oQRCp3XANErbO8AegLA=;
+ b=SdkmtfGZjjyyX3oa2lSJEBtFOAmanXuPOAaDp1mtzN1RuMUa+Y52jJu05K55rB8zeuLMLG36R
+ eRyBKiGjGwnBrpEwXp7KE9npVKRbFJnvsBrIOWJ+3VOJmvS3LRsHF61
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gs_close() opens with
+dpaa2_caam registers its skcipher, aead and ahash algorithms at a fixed
+priority above the ARMv8 Crypto Extensions, so on DPAA2 SoCs
+every in-kernel consumers of AES, SHA or GCM use the SEC.
 
-	struct gs_port *port = tty->driver_data;
-	...
-	spin_lock_irq(&port->port_lock);
+Patch 1 adds dpaa2_caam.priority module parameter
+Patch 2 doc fsl,qi2-crypto-priority property on the SEC node
+Patch 3 reads it at probe, the module parameter takes precedence
 
-and never checks port.  gs_open() assigns tty->driver_data only on the
-port.count 0 -> 1 edge, so any failure earlier in gs_open() leaves it NULL,
-and tty_open() calls tty_release(), and hence ->close(), when ->open()
-fails.  Acquiring the spinlock is a write, so this faults outright rather
-than reading garbage.
-
-syzbot reproduces it on arm64 as a KASAN null-ptr-deref write at offset
-0x74, which is port_lock within struct gs_port:
-
-  BUG: unable to handle kernel paging request in gs_close
-  KASAN: null-ptr-deref Write in gs_close
-  Call trace:
-   gs_close+0xac/0x65c      drivers/usb/gadget/function/u_serial.c:698
-   tty_release+0x2c4/0xffc  drivers/tty/tty_io.c:1745
-   tty_open+0x46c/0x89c     drivers/tty/tty_io.c:2146
-
-Return early instead.  There is nothing to release when the open never got
-far enough to claim the port.
-
-Unlike the check reverted by commit f6c7bc4a6823 ("Revert "usb: gadget:
-u_serial: Add null pointer check in gs_start_io""), this is not hiding a
-race: the tty core calls ->close() for an ->open() that failed by design,
-so driver_data is legitimately unset on that path.
-
-Fixes: c1dca562be8a ("usb gadget: split out serial core")
-Reported-by: syzbot+97aa71f55869d71bc94a@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=97aa71f55869d71bc94a
-Cc: stable@vger.kernel.org
-Signed-off-by: Brian Ellis <brianellis@gotenna.com>
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
-Reported by syzbot (still open, with C and syz reproducers) and hit
-independently on a downstream 6.6-adi BSP kernel, where gserial_free_line()
-clearing ports[n].port makes the same path reachable.
+Vincent Jardin (3):
+      crypto: caam/qi2 - algorithm priority be a parameter
+      dt-bindings: crypto: fsl,sec-v4.0: add fsl,qi2-crypto-priority
+      crypto: caam/qi2 - priority from the DTS
 
-Compile-tested against usb-linus with allmodconfig (CONFIG_USB_U_SERIAL=m).
-Not boot-tested on mainline and the syzbot reproducer has not been run here:
-the board this was hit on needs a vendor BSP device tree to boot.
+ .../devicetree/bindings/crypto/fsl,sec-v4.0.yaml   |  9 ++++++
+ drivers/crypto/caam/caamalg_qi2.c                  | 35 ++++++++++++++++++++--
+ 2 files changed, 41 insertions(+), 3 deletions(-)
 ---
-Changes in v3:
-- Restore the Reported-by:/Closes: syzbot tags and the KASAN trace. They were
-  dropped from v1 and v2 in error when the commit message was rewritten. The
-  report is still open, and without Closes: syzbot cannot associate this fix
-  with it.
-- Say why this differs from the check reverted in f6c7bc4a6823, since that
-  revert's reasoning is the obvious objection here.
-- Link to v2: https://lore.kernel.org/r/20260927-u_serial-gs-close-null-v2-1-bdedf57fe96f@gotenna.com
-
-Changes in v2:
-- Remove the comment above the check, rather than reword it as Prashanth
-  suggested. The commit message already explains the path that leaves
-  tty->driver_data NULL, so the comment only restated it. Happy to add a
-  reworded one instead if that is preferred.
-- Link to v1: https://lore.kernel.org/r/20260910-u_serial-gs-close-null-v1-1-9a5e848b1dfb@gotenna.com
----
- drivers/usb/gadget/function/u_serial.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/drivers/usb/gadget/function/u_serial.c b/drivers/usb/gadget/function/u_serial.c
-index cdd1dfc66..892d2673e 100644
---- a/drivers/usb/gadget/function/u_serial.c
-+++ b/drivers/usb/gadget/function/u_serial.c
-@@ -695,6 +695,9 @@ static void gs_close(struct tty_struct *tty, struct file *file)
- 	struct gs_port *port = tty->driver_data;
- 	struct gserial	*gser;
- 
-+	if (!port)
-+		return;
-+
- 	spin_lock_irq(&port->port_lock);
- 
- 	if (port->port.count != 1) {
-
----
-base-commit: be4219dd98608736e13e0b790ef742b76a13254d
-change-id: 20260910-u_serial-gs-close-null-a80a436666e8
+base-commit: 67aefeccc4101a93627f36abbd049f191b54f903
+change-id: 20260928-for-upstream-caam-qi2-priority-76301b8eb3a6
 
 Best regards,
 -- 
-Brian Ellis <brianellis@gotenna.com>
+Vincent Jardin <vjardin@free.fr>
 
