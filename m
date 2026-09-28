@@ -1,10 +1,10 @@
 From: Dinesh kumar v <dinesh.v@adlinktech.com>
-Date: Mon, 28 Sep 2026 13:08:59 +0530
-Subject: [PATCH 3/4] configs: Add ADLINK LEC-iMX95 defconfig
+Date: Mon, 28 Sep 2026 13:09:00 +0530
+Subject: [PATCH 4/4] doc: board: Add ADLINK LEC-iMX95 documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-lec-imx95-v1-v1-3-9e0c9b94ccbe@adlinktech.com>
+Message-Id: <20260928-lec-imx95-v1-v1-4-9e0c9b94ccbe@adlinktech.com>
 References: <20260928-lec-imx95-v1-v1-0-9e0c9b94ccbe@adlinktech.com>
 In-Reply-To: <20260928-lec-imx95-v1-v1-0-9e0c9b94ccbe@adlinktech.com>
 To: "NXP i.MX U-Boot Team" <uboot-imx@nxp.com>, 
@@ -19,182 +19,213 @@ Cc: Tom Rini <trini@konsulko.com>,
  Francesco Dolcini <francesco.dolcini@toradex.com>, 
  Dinesh kumar v <dinesh.v@adlinktech.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790581138; l=4398;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790581138; l=6098;
  i=dinesh.v@adlinktech.com; s=20260928; h=from:subject:message-id;
- bh=SgDjtjn4IYBxcFmiRPrCaf0rh7y5H7TxtnEED03wWa8=;
- b=MaDlNjPCU9nkz4v/my47UBB4rT0imuXlNG7I7OgraA2+J7XXipAZ+HKbuFnREYnynKoz4IdO8
- 3jiAIN3Tpb1BgMRzR7VkFRilV18eTagjeetnINBvspFTm4aWcvZ36jN
+ bh=D+6NvNmIm0LJXudZ7/tH+ziEcMPon/ZUEWt4pu5Yg7M=;
+ b=IKKZbcSIOnoOALbxS+UI6z8J8HHpbw1EMqCal1vexaLheZtPdt1lAgHfBJW9nLfx0Bo4blCCE
+ +aDpIgqS45UAgb9hF8gJJf7aOxbXfZ8fQ+CpYkUFIj+GZQ4hcYolAno
 X-Developer-Key: i=dinesh.v@adlinktech.com; a=ed25519;
  pk=2+xm2aDQjQT68aPFzfLMgdZrQGpCMUU3Qp1CwWoRlus=
 X-Endpoint-Received: by B4 Relay for dinesh.v@adlinktech.com/20260928 with auth_id=1074
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the defconfig for the ADLINK LEC-iMX95 board.
+Document how to build and boot U-Boot on the ADLINK
+LEC-iMX95 SMARC module.
 
 Signed-off-by: Dinesh kumar v <dinesh.v@adlinktech.com>
 ---
- configs/lec-imx95_defconfig | 153 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 153 insertions(+)
+ doc/board/adlink/lec-imx95.rst | 183 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
 
-diff --git a/configs/lec-imx95_defconfig b/configs/lec-imx95_defconfig
+diff --git a/doc/board/adlink/lec-imx95.rst b/doc/board/adlink/lec-imx95.rst
 new file mode 100644
-index 00000000000..2c329483bc5
+index 00000000000..eab759d04df
 --- /dev/null
-+++ b/configs/lec-imx95_defconfig
-@@ -0,0 +1,153 @@
-+CONFIG_ARM=y
-+CONFIG_ARCH_IMX9=y
-+CONFIG_TEXT_BASE=0x90200000
-+CONFIG_SYS_MALLOC_LEN=0x2000000
-+CONFIG_SYS_MALLOC_F_LEN=0x10000
-+CONFIG_SPL_GPIO=y
-+CONFIG_SPL_LIBCOMMON_SUPPORT=y
-+CONFIG_SPL_LIBGENERIC_SUPPORT=y
-+CONFIG_ENV_SOURCE_FILE="lec_imx95"
-+CONFIG_NR_DRAM_BANKS=3
-+CONFIG_SF_DEFAULT_SPEED=200000000
-+CONFIG_ENV_SIZE=0x4000
-+CONFIG_ENV_OFFSET=0x700000
-+CONFIG_DM_GPIO=y
-+CONFIG_DEFAULT_DEVICE_TREE="lec-imx95"
-+CONFIG_TARGET_LEC_IMX95=y
-+CONFIG_OF_LIBFDT_OVERLAY=y
-+CONFIG_SYS_MONITOR_LEN=524288
-+CONFIG_SPL_MMC=y
-+CONFIG_SPL_SERIAL=y
-+CONFIG_SPL_DRIVERS_MISC=y
-+CONFIG_SPL_TEXT_BASE=0x20480000
-+CONFIG_SPL_HAS_BSS_LINKER_SECTION=y
-+CONFIG_SPL_BSS_START_ADDR=0x204d6000
-+CONFIG_SPL_BSS_MAX_SIZE=0x2000
-+CONFIG_SYS_LOAD_ADDR=0x90400000
-+# CONFIG_SPL_SHARES_INIT_SP_ADDR is not set
-+CONFIG_SPL=y
-+CONFIG_SPL_RECOVER_DATA_SECTION=y
-+CONFIG_PCI=y
-+CONFIG_SYS_MEMTEST_START=0x90000000
-+CONFIG_SYS_MEMTEST_END=0xA0000000
-+CONFIG_REMAKE_ELF=y
-+CONFIG_FIT=y
-+CONFIG_FIT_VERBOSE=y
-+CONFIG_OF_SYSTEM_SETUP=y
-+CONFIG_BOOTCOMMAND="bootflow scan -l; run bsp_bootcmd"
-+CONFIG_DEFAULT_FDT_FILE="lec-imx95-lt9611.dtb"
-+CONFIG_SYS_CBSIZE=2048
-+CONFIG_SYS_PBSIZE=2074
-+CONFIG_BOARD_LATE_INIT=y
-+CONFIG_PCI_INIT_R=y
-+CONFIG_SPL_MAX_SIZE=0x30000
-+CONFIG_SPL_BOARD_INIT=y
-+CONFIG_SPL_LOAD_IMX_CONTAINER=y
-+CONFIG_SPL_SYS_MALLOC=y
-+CONFIG_SPL_HAS_CUSTOM_MALLOC_START=y
-+CONFIG_SPL_CUSTOM_SYS_MALLOC_ADDR=0x93200000
-+CONFIG_SPL_SYS_MALLOC_SIZE=0x80000
-+CONFIG_SPL_SYS_MMCSD_RAW_MODE=y
-+CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR=0x1040
-+CONFIG_SPL_I2C=y
-+CONFIG_SPL_DM_MAILBOX=y
-+CONFIG_SPL_POWER=y
-+CONFIG_SPL_WATCHDOG=y
-+CONFIG_SYS_PROMPT="u-boot=> "
-+CONFIG_CMD_ERASEENV=y
-+CONFIG_CMD_NVEDIT_EFI=y
-+CONFIG_CRC32_VERIFY=y
-+CONFIG_CMD_MEMTEST=y
-+CONFIG_CMD_CLK=y
-+CONFIG_CMD_DFU=y
-+CONFIG_CMD_FUSE=y
-+CONFIG_CMD_GPIO=y
-+CONFIG_CMD_GPT=y
-+CONFIG_CMD_I2C=y
-+CONFIG_CMD_MMC=y
-+CONFIG_CMD_PCI=y
-+CONFIG_CMD_POWEROFF=y
-+CONFIG_CMD_REMOTEPROC=y
-+CONFIG_CMD_SNTP=y
-+CONFIG_CMD_CACHE=y
-+CONFIG_CMD_EFIDEBUG=y
-+CONFIG_CMD_RTC=y
-+CONFIG_CMD_TIME=y
-+CONFIG_CMD_GETTIME=y
-+CONFIG_CMD_TIMER=y
-+CONFIG_CMD_REGULATOR=y
-+CONFIG_CMD_HASH=y
-+CONFIG_CMD_EXT4_WRITE=y
-+CONFIG_OF_CONTROL=y
-+CONFIG_SPL_OF_CONTROL=y
-+CONFIG_ENV_OVERWRITE=y
-+CONFIG_ENV_IS_NOWHERE=y
-+CONFIG_ENV_IS_IN_MMC=y
-+CONFIG_ENV_RELOC_GD_ENV_ADDR=y
-+CONFIG_ENV_MMC_DEVICE_INDEX=1
-+CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
-+CONFIG_USE_ETHPRIME=y
-+CONFIG_ETHPRIME="eth0"
-+CONFIG_NET_RANDOM_ETHADDR=y
-+CONFIG_SPL_DM=y
-+CONFIG_SYSCON=y
-+CONFIG_SPL_OF_TRANSLATE=y
-+CONFIG_CLK=y
-+CONFIG_SPL_CLK=y
-+CONFIG_SPL_CLK_CCF=y
-+CONFIG_CLK_CCF=y
-+CONFIG_CLK_SCMI=y
-+CONFIG_SPL_CLK_SCMI=y
-+CONFIG_DFU_MMC=y
-+CONFIG_DFU_RAM=y
-+CONFIG_SPL_FIRMWARE=y
-+# CONFIG_SCMI_AGENT_SMCCC is not set
-+CONFIG_IMX_SM_CPU=y
-+CONFIG_IMX_SM_LMM=y
-+CONFIG_IMX_RGPIO2P=y
-+CONFIG_DM_PCA953X=y
-+CONFIG_ADP5585_GPIO=y
-+CONFIG_DM_I2C=y
-+CONFIG_SYS_I2C_IMX_LPI2C=y
-+CONFIG_IMX_MU_MBOX=y
-+CONFIG_SUPPORT_EMMC_RPMB=y
-+CONFIG_SUPPORT_EMMC_BOOT=y
-+CONFIG_MMC_IO_VOLTAGE=y
-+CONFIG_MMC_UHS_SUPPORT=y
-+CONFIG_MMC_HS400_ES_SUPPORT=y
-+CONFIG_MMC_HS400_SUPPORT=y
-+CONFIG_FSL_USDHC=y
-+CONFIG_MTD=y
-+CONFIG_DM_SPI_FLASH=y
-+CONFIG_SPI_FLASH_SFDP_SUPPORT=y
-+CONFIG_SPI_FLASH_STMICRO=y
-+CONFIG_SPI_FLASH_MT35XU=y
-+CONFIG_DM_MDIO=y
-+CONFIG_MII=y
-+CONFIG_FSL_ENETC=y
-+CONFIG_PHYLIB=y
-+CONFIG_PHY_AQUANTIA=y
-+CONFIG_PHY_REALTEK=y
-+CONFIG_PCIE_ECAM_GENERIC=y
-+CONFIG_PHY=y
-+CONFIG_PINCTRL=y
-+CONFIG_SPL_PINCTRL=y
-+CONFIG_PINCTRL_IMX_SCMI=y
-+CONFIG_POWER_DOMAIN=y
-+CONFIG_SCMI_POWER_DOMAIN=y
-+CONFIG_DM_REGULATOR=y
-+CONFIG_SPL_DM_REGULATOR=y
-+CONFIG_DM_REGULATOR_FIXED=y
-+CONFIG_SPL_DM_REGULATOR_FIXED=y
-+CONFIG_DM_REGULATOR_GPIO=y
-+CONFIG_REMOTEPROC_IMX=y
-+CONFIG_DM_RTC=y
-+CONFIG_DM_SERIAL=y
-+CONFIG_FSL_LPUART=y
-+CONFIG_SPI=y
-+CONFIG_DM_SPI=y
-+CONFIG_NXP_FSPI=y
-+CONFIG_ULP_WATCHDOG=y
-+CONFIG_WDT=y
-+CONFIG_LZO=y
-+CONFIG_BZIP2=y
++++ b/doc/board/adlink/lec-imx95.rst
+@@ -0,0 +1,183 @@
++.. SPDX-License-Identifier: GPL-2.0-or-later
++
++Adlink SMARC iMX95 Module
++==========================
++
++ SoM: https://www.adlinktech.com/products/Computer_on_Modules/SMARC/LEC-IMX95
++ Carrier: https://www.adlinktech.com/products/computer_on_modules/SMARCStarterKits/I-Pi_SMARC_IMX95
++
++Quick Start
++-----------
++
++- Setup environment
++- Get ahab-container.img
++- Get DDR PHY Firmware Images
++- Get and Build OEI Images
++- Get and Build System Manager Image
++- Get and Build the ARM Trusted Firmware
++- Build the Bootloader Image
++- Boot
++
++Setup environment
++-----------------
++
++Suggested current toolchains are ARM 15.2 (https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads):
++
++- https://gitlab.arm.com/api/v4/projects/tooling%2Fgnu-toolchains-for-arm/packages/generic/gnu-toolchain/15.2.rel1/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi.tar.xz
++
++.. code-block:: console
++
++    $ export TOOLS=<path/to/directory/with/toolchains>
++
++    # Update your package list
++	$ sudo apt update
++
++	# Install the aarch64 cross-compiler toolchain
++	$ sudo apt install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
++
++Get ahab-container.img
++----------------------
++
++Note: `$srctree` is the U-Boot source directory
++
++.. code-block:: console
++
++    $ wget https://www.nxp.com/lgfiles/NMG/MAD/YOCTO/firmware-ele-imx-2.0.2-89161a8.bin
++    $ sh firmware-ele-imx-2.0.2-89161a8.bin --auto-accept
++    $ cp firmware-ele-imx-2.0.2-89161a8/mx95b0-ahab-container.img $(srctree)
++
++Get DDR PHY Firmware Images
++---------------------------
++
++Note: `$srctree` is the U-Boot source directory
++
++.. code-block:: console
++
++    $ wget https://www.nxp.com/lgfiles/NMG/MAD/YOCTO/firmware-imx-8.28-994fa14.bin
++    $ sh firmware-imx-8.28-994fa14.bin --auto-accept
++    $ cp firmware-imx-8.28-994fa14/firmware/ddr/synopsys/lpddr5*v202409.bin $(srctree)
++
++Get and Build OEI Images
++------------------------
++
++Note: `$srctree` is the U-Boot source directory
++Get OEI from: https://github.com/ADLINK/imx-oei.git
++branch: main
++
++.. code-block:: console
++
++    $ git clone -b main https://github.com/ADLINK/imx-oei.git
++    $ cd imx-oei
++
++    $ make board=mx95lp5 oei=ddr DEBUG=1 r=B0 all
++    $ cp build/mx95lp5/ddr/oei-m33-ddr.bin $(srctree)
++
++    $ make board=mx95lp5 oei=tcm DEBUG=1 r=B0 all
++    $ cp build/mx95lp5/tcm/oei-m33-tcm.bin $(srctree)
++
++    $ make board=mx95lp5 oei=dat DEBUG=1 r=B0 all
++    $ cp build/mx95lp5/dat/oei-m33-dat.bin $(srctree)
++
++
++Get and Build the System Manager Image
++--------------------------------------
++
++Note: `$srctree` is the U-Boot source directory
++Get System Manager from: https://github.com/ADLINK/imx-sm.git
++branch: main
++
++.. code-block:: console
++
++    $ git clone -b main https://github.com/ADLINK/imx-sm.git
++    $ cd imx-sm
++    $ make config=mx95lec all
++    $ cp build/mx95lec/m33_image.bin $(srctree)
++
++Get and Build the ARM Trusted Firmware
++--------------------------------------
++
++Note: `$srctree` is the U-Boot source directory
++Get ATF from: https://github.com/nxp-imx/imx-atf/
++branch: lf_v2.14
++
++.. code-block:: console
++
++    $ export CROSS_COMPILE=aarch64-linux-gnu-
++    $ unset LDFLAGS
++    $ unset AS
++    $ git clone -b lf_v2.14 https://github.com/nxp-imx/imx-atf.git
++    $ cd imx-atf
++    $ make PLAT=imx95 bl31
++    $ cp build/imx95/release/bl31.bin $(srctree)
++
++Build the Bootloader Image
++--------------------------
++
++.. code-block:: console
++
++    $ export CROSS_COMPILE=aarch64-linux-gnu-
++    $ make lec-imx95_defconfig
++    $ make
++
++Flash to SD card
++-------------
++
++.. code-block:: console
++
++	$ sudo dd if=flash.bin of=/dev/sd[x] bs=1k seek=32 conv=fsync
++
++
++Boot
++----
++
++Boot sequence is:
++
++* SPL ---> ATF (TF-A) ---> U-Boot proper
++
++Output:
++
++.. code-block:: console
++        U-Boot SPL 2026.10-rc5-00542-g2b8902913c19-dirty (Sep 28 2026 - 10:58:03 +0530)
++        SYS Boot reason: por
++        Normal Boot
++        Trying to boot from MMC2
++        Parse v2x container failed -14
++        Load image from MMC/SD 0x136c00
++        NOTICE:  BL31: v2.14.1(release):lf-6.18.20-2.0.0
++        NOTICE:  BL31: Built : 17:41:10, Sep  2 2026
++
++
++        U-Boot 2026.10-rc5-00542-g2b8902913c19-dirty (Sep 28 2026 - 10:58:03 +0530)
++
++        CPU:   NXP i.MX9596 Rev2.0 A55 at 1800 MHz
++        CPU:   Extended Industrial temperature grade (-40C to 125C)
++        Model: Adlink LEC iMX95 on I-Pi SMARC Development Board
++        DRAM:  3.8 GiB
++        Core:  270 devices, 23 uclasses, devicetree: separate
++        MMC:   FSL_SDHC: 0, FSL_SDHC: 1
++        Reading from MMC(1)... *** Warning - bad CRC, using default environment
++
++        In:    serial@44380000
++        Out:   serial@44380000
++        Err:   serial@44380000
++
++        BuildInfo:
++        - ELE firmware not included
++
++        switch to partitions #0, OK
++        mmc1 is current device
++        Net:   WARNING: no MAC address assigned for MAC0
++        imx_get_mac_from_fuse: fuse read err: 0
++
++        Warning: enetc-0 (eth0) using random MAC address - 1e:2c:49:99:cc:07
++        eth0: enetc-0 [PRIME]WARNING: no MAC address assigned for MAC1
++        imx_get_mac_from_fuse: fuse read err: 0
++
++        Warning: enetc-1 (eth1) using random MAC address - 86:60:fa:e7:ef:59
++        , eth1: enetc-1
++        Hit any key to stop autoboot: 0
++        u-boot=> net list
++        eth0 : enetc-0 1e:2c:49:99:cc:07 active
++        eth1 : enetc-1 86:60:fa:e7:ef:59
++        u-boot=>
++```
 
 -- 
 2.25.1
