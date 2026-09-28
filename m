@@ -1,92 +1,88 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 28 Sep 2026 16:01:05 +0200
-Subject: [PATCH 3/3] crypto: caam/qi2 - priority from the DTS
+Date: Mon, 28 Sep 2026 16:06:56 +0200
+Subject: [PATCH] crypto: caam/qi2 - reset the DPSECI at probe only when
+ enabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-for-upstream-caam-qi2-priority-v1-3-e4a8e5f01dbc@free.fr>
-References: <20260928-for-upstream-caam-qi2-priority-v1-0-e4a8e5f01dbc@free.fr>
-In-Reply-To: <20260928-for-upstream-caam-qi2-priority-v1-0-e4a8e5f01dbc@free.fr>
+Message-Id: <20260928-for-upstream-caam-qi2-dpseci-reset-v1-1-042be6c05472@free.fr>
+X-B4-Tracking: v=1; b=H4sIAH90umoC/x2NwQ6CMBAFf4XsmU2gIgK/YjzU9hX3INRdNCaEf
+ 7fxMslcZnYyqMBoqnZSfMRkXYq0dUXh4ZcZLLE4ucb1zegGTqvyO9um8E8OvuAljmM2BGGFYeP
+ zeGnjcErdvUtUQlmR5PufXG/H8QOy3DuhdAAAAA==
 To: =?utf-8?q?Horia_Geant=C4=83?= <horia.geanta@nxp.com>, 
  Pankaj Gupta <pankaj.gupta@nxp.com>, 
  Sahil Malhotra <sahil.malhotra@nxp.com>, 
  Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Gaurav Jain <gaurav.jain@nxp.com>
+ "David S. Miller" <davem@davemloft.net>
 Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+ Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790604073; l=1782;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790604419; l=1994;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=iq3+PxFNmYgXB61bU9JaS64+yNKmnFhKP0HR8tcxDG8=;
- b=J9qxMrWMVHlBWp4AOfdZ7RQ4U0ivmsSMx8YCLJF2ihntA1MShcyS4XdkdjDVUGWF6AEUk/7ML
- NRgRksUz4gcBgjMmJho67RJ8cmqDL6KAF4ZUgz+Z6/1/XKpkag+vVxd
+ bh=64VY4tkbF5YIprmJtGNmeGjNbSHu8M2PhnkG7m0FjNk=;
+ b=CBnORxWR3872L1eaK2z5NVlQtTdwHgCmKeIvcfWveQzvlrEYka2Fl5j+x6gHK9eLxwfMa1iiL
+ aqdGIkdTNQKBoNesJ+hoIHvMP10jChPM6DLySTAWTEVf6XF2i8mNMng
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Read fsl,qi2-crypto-priority from the SEC node when dpaa2_caam probes,
-so the board's DTS sets the priority its algorithms register with.
+Since the commit
+  060ce5037d5f ("crypto: caam/qi2 - add support for dpseci_reset()")
+probe resets every DPSECI.
 
-The dpaa2_caam.priority parameter has precedence when it is set.
-When they are not set, we keep the default behaviour.
+On a DPSECI the MC has just created from the DPL, never enabled,
+MC 10.40.x then logs for each of its queues:
+
+  [E, qbman_rec_isr:396, QBMAN]  QBMAN recoverable event 0x1000000
+  [E, dpmng_dump_rerr_fqid:1335, QBMAN]  REL_FQ (FQ[0]) has 1 messages, dumping up to 16:
+  [W, DPSECI]  DPSECI ID[0]: Flush on queue 43 not confirmed
+
+That is 16 error lines for an 8-queue DPSECI, at every boot, although
+there is nothing to flush: a disabled DPSECI has no request in flight.
+
+The reset at remove is unchanged.
 
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/crypto/caam/caamalg_qi2.c | 23 +++++++++++++++++++++--
- 1 file changed, 21 insertions(+), 2 deletions(-)
+ drivers/crypto/caam/caamalg_qi2.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/crypto/caam/caamalg_qi2.c b/drivers/crypto/caam/caamalg_qi2.c
-index dbb84a6996a2..7d6a5e4ee86e 100644
+index 6b47bcc16a50..6dccbd3b27a3 100644
 --- a/drivers/crypto/caam/caamalg_qi2.c
 +++ b/drivers/crypto/caam/caamalg_qi2.c
-@@ -19,6 +19,7 @@
- #include <linux/dma-mapping.h>
- #include <linux/fsl/mc.h>
- #include <linux/kernel.h>
-+#include <linux/of.h>
- #include <linux/string.h>
- #include <linux/string_choices.h>
- #include <soc/fsl/dpaa2-io.h>
-@@ -35,6 +36,25 @@ MODULE_PARM_DESC(priority,
+@@ -5041,11 +5041,22 @@ static int __cold dpaa2_dpseci_setup(struct fsl_mc_device *ls_dev)
+ 	dev_info(dev, "dpseci v%d.%d\n", priv->major_ver, priv->minor_ver);
  
- static int cra_priority = CAAM_CRA_PRIORITY;
- 
-+static int dpaa2_caam_cra_priority(void)
-+{
-+	struct device_node *np;
-+	u32 prio;
-+	int err;
+ 	if (DPSECI_VER(priv->major_ver, priv->minor_ver) > DPSECI_VER(5, 3)) {
+-		err = dpseci_reset(priv->mc_io, 0, ls_dev->mc_handle);
++		int enabled;
 +
-+	if (priority)
-+		return priority;
++		err = dpseci_is_enabled(priv->mc_io, 0, ls_dev->mc_handle,
++					&enabled);
+ 		if (err) {
+-			dev_err(dev, "dpseci_reset() failed\n");
++			dev_err(dev, "dpseci_is_enabled() failed\n");
+ 			goto err_get_vers;
+ 		}
 +
-+	np = of_find_compatible_node(NULL, NULL, "fsl,sec-v4.0");
-+	if (!np)
-+		return CAAM_CRA_PRIORITY;
-+
-+	err = of_property_read_u32(np, "fsl,qi2-crypto-priority", &prio);
-+	of_node_put(np);
-+
-+	return err ? CAAM_CRA_PRIORITY : prio;
-+}
-+
- /* max key is sum of AES_MAX_KEY_SIZE, max split key size */
- #define CAAM_MAX_KEY_SIZE	(AES_MAX_KEY_SIZE + CTR_RFC3686_NONCE_SIZE + \
- 				 SHA512_DIGEST_SIZE * 2)
-@@ -5215,8 +5235,7 @@ static int dpaa2_caam_probe(struct fsl_mc_device *dpseci_dev)
++		if (enabled) {
++			err = dpseci_reset(priv->mc_io, 0, ls_dev->mc_handle);
++			if (err) {
++				dev_err(dev, "dpseci_reset() failed\n");
++				goto err_get_vers;
++			}
++		}
+ 	}
  
- 	caam_imx = false;
- 
--	if (priority)
--		cra_priority = priority;
-+	cra_priority = dpaa2_caam_cra_priority();
- 
- 	dev = &dpseci_dev->dev;
- 
+ 	err = dpseci_get_attributes(priv->mc_io, 0, ls_dev->mc_handle,
 
+---
+base-commit: 67aefeccc4101a93627f36abbd049f191b54f903
+change-id: 20260928-for-upstream-caam-qi2-dpseci-reset-5971d83f4b4f
+
+Best regards,
 -- 
-2.43.0
+Vincent Jardin <vjardin@free.fr>
 
