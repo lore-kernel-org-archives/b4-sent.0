@@ -1,10 +1,10 @@
 From: Dinesh kumar v <dinesh.v@adlinktech.com>
-Date: Mon, 28 Sep 2026 13:08:57 +0530
-Subject: [PATCH 1/4] arm: imx9: Add ADLINK LEC-iMX95 board support
+Date: Mon, 28 Sep 2026 13:08:58 +0530
+Subject: [PATCH 2/4] arm: dts: imx95: Add ADLINK LEC-iMX95 device tree
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-lec-imx95-v1-v1-1-9e0c9b94ccbe@adlinktech.com>
+Message-Id: <20260928-lec-imx95-v1-v1-2-9e0c9b94ccbe@adlinktech.com>
 References: <20260928-lec-imx95-v1-v1-0-9e0c9b94ccbe@adlinktech.com>
 In-Reply-To: <20260928-lec-imx95-v1-v1-0-9e0c9b94ccbe@adlinktech.com>
 To: "NXP i.MX U-Boot Team" <uboot-imx@nxp.com>, 
@@ -19,506 +19,857 @@ Cc: Tom Rini <trini@konsulko.com>,
  Francesco Dolcini <francesco.dolcini@toradex.com>, 
  Dinesh kumar v <dinesh.v@adlinktech.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790581138; l=11734;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790581138; l=20452;
  i=dinesh.v@adlinktech.com; s=20260928; h=from:subject:message-id;
- bh=qAQl2H2wr6JBFeH5/ykf13jVWFJT9XT1cyCSVHIqgfw=;
- b=qJc67zTrsokUnYTAilu/H0PgxEzcutaS8YXQjLbngjF1JljrsKFI+InT9NtPZeORz1feTiFKY
- i5c4QX7bcHQBiBmAK/sQY5aqJu7q5jZWLiJBUPuGJvVZt7ngV4usNdi
+ bh=P+J0tY8uFNvoV78V5IwJ5N1LAHOPTFKc8nV4yR2kjkM=;
+ b=w861GAhuHTC81x5ftC42td2Z2peKMwKs0GFZst4p5VJdFciR5LFMzk8PonRIX8iuPEBFmw23F
+ GxMpSPAvLXkC+2iZJc7mDMQUHYIlUL7s63EdY3wtQWGA5wBiPk0a+2s
 X-Developer-Key: i=dinesh.v@adlinktech.com; a=ed25519;
  pk=2+xm2aDQjQT68aPFzfLMgdZrQGpCMUU3Qp1CwWoRlus=
 X-Endpoint-Received: by B4 Relay for dinesh.v@adlinktech.com/20260928 with auth_id=1074
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add U-Boot support for the ADLINK LEC-iMX95 SMARC module
-based on the NXP i.MX95 processor.
-
-Add board initialization, SPL support, DDR size detection,
-MMC environment handling and board configuration.
+Add the device tree description for the ADLINK LEC-iMX95
+SMARC module and its U-Boot-specific configuration.
 
 Signed-off-by: Dinesh kumar v <dinesh.v@adlinktech.com>
 ---
- arch/arm/mach-imx/imx9/Kconfig       | 10 +++-
- board/adlink/common/Makefile         | 26 ++++++++++
- board/adlink/common/mmc.c            | 49 ++++++++++++++++++
- board/adlink/lec_imx95/Kconfig       | 20 ++++++++
- board/adlink/lec_imx95/MAINTAINERS   |  7 +++
- board/adlink/lec_imx95/Makefile      | 11 +++++
- board/adlink/lec_imx95/lec_imx95.c   | 96 ++++++++++++++++++++++++++++++++++++
- board/adlink/lec_imx95/lec_imx95.env | 75 ++++++++++++++++++++++++++++
- board/adlink/lec_imx95/spl.c         | 79 +++++++++++++++++++++++++++++
- include/configs/lec_imx95.h          | 27 ++++++++++
- 10 files changed, 399 insertions(+), 1 deletion(-)
+ arch/arm/dts/lec-imx95-u-boot.dtsi |  73 ++++++
+ arch/arm/dts/lec-imx95.dts         | 216 +++++++++++++++
+ arch/arm/dts/lec-imx95.dtsi        | 524 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 813 insertions(+)
 
-diff --git a/arch/arm/mach-imx/imx9/Kconfig b/arch/arm/mach-imx/imx9/Kconfig
-index f95cecb6976..e13b74435f8 100644
---- a/arch/arm/mach-imx/imx9/Kconfig
-+++ b/arch/arm/mach-imx/imx9/Kconfig
-@@ -220,6 +220,14 @@ config TARGET_IMX952_EVK
- 	imply BOOTSTD_FULL
- 	imply OF_UPSTREAM
- 
-+config TARGET_LEC_IMX95
-+	bool "ADLINK LEC-iMX95"
-+	select IMX95
-+	imply BOOTSTD_BOOTCOMMAND
-+	imply BOOTSTD_FULL
-+	help
-+	Support for the ADLINK LEC-iMX95 board
-+	NXP i.MX95 Processor
- endchoice
- 
- source "board/nxp/imx91_evk/Kconfig"
-@@ -237,5 +245,5 @@ source "board/toradex/aquila-imx95/Kconfig"
- source "board/toradex/smarc-imx95/Kconfig"
- source "board/toradex/verdin-imx95/Kconfig"
- source "board/nxp/imx952_evk/Kconfig"
--
-+source "board/adlink/lec_imx95/Kconfig"
- endif
-diff --git a/board/adlink/common/Makefile b/board/adlink/common/Makefile
+diff --git a/arch/arm/dts/lec-imx95-u-boot.dtsi b/arch/arm/dts/lec-imx95-u-boot.dtsi
 new file mode 100644
-index 00000000000..43a382431ef
+index 00000000000..93fbd670000
 --- /dev/null
-+++ b/board/adlink/common/Makefile
-@@ -0,0 +1,26 @@
-+#
-+# (C) Copyright 2006
-+# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-+#
-+# SPDX-License-Identifier:	GPL-2.0+
-+#
-+
-+MINIMAL=
-+
-+ifdef CONFIG_XPL_BUILD
-+ifndef CONFIG_TPL_BUILD
-+ifdef CONFIG_SPL_INIT_MINIMAL
-+MINIMAL=y
-+endif
-+endif
-+endif
-+
-+ifdef MINIMAL
-+# necessary to create built-in.a
-+obj- := __dummy__.a
-+else
-+
-+obj-y += mmc.o
-+
-+
-+endif
-diff --git a/board/adlink/common/mmc.c b/board/adlink/common/mmc.c
-new file mode 100644
-index 00000000000..00e4f3675fe
---- /dev/null
-+++ b/board/adlink/common/mmc.c
-@@ -0,0 +1,49 @@
++++ b/arch/arm/dts/lec-imx95-u-boot.dtsi
+@@ -0,0 +1,73 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
-+ * Copyright 2016 Freescale Semiconductor, Inc.
-+ * Copyright 2018-2022 NXP
++ * ADLINK LEC-iMX95 U-Boot specific configuration
 + */
 +
-+#include <command.h>
-+#include <vsprintf.h>
-+#include <asm/arch/sys_proto.h>
-+#include <linux/errno.h>
-+#include <asm/io.h>
-+#include <stdbool.h>
-+#include <mmc.h>
-+#include <env.h>
++/ {
++	binman {
++		m33-oei-ddrfw {
++		};
 +
-+static int check_mmc_autodetect(void)
-+{
-+	char *autodetect_str = env_get("mmcautodetect");
++		imx-boot {
++			spl {
++				container;
++				image = "m33", "oei-m33-dat.bin", "0x4aa80000";
++			};
++		};
++	};
 +
-+	if (autodetect_str && !strcmp(autodetect_str, "yes"))
-+		return 1;
-+
-+	return 0;
-+}
-+
-+/* This should be defined for each board */
-+__weak int mmc_map_to_kernel_blk(int dev_no)
-+{
-+	return dev_no;
-+}
-+
-+void board_late_mmc_env_init(void)
-+{
-+	char cmd[32];
-+	char mmcblk[32];
-+	u32 dev_no = mmc_get_env_dev();
-+
-+	if (!check_mmc_autodetect())
-+		return;
-+
-+	env_set_ulong("mmcdev", dev_no);
-+
-+	/* Set mmcblk env */
-+	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw", mmc_map_to_kernel_blk(dev_no));
-+	env_set("mmcroot", mmcblk);
-+
-+	sprintf(cmd, "mmc dev %d", dev_no);
-+	run_command(cmd, 0);
-+}
-diff --git a/board/adlink/lec_imx95/Kconfig b/board/adlink/lec_imx95/Kconfig
-new file mode 100644
-index 00000000000..a23ad3cba0d
---- /dev/null
-+++ b/board/adlink/lec_imx95/Kconfig
-@@ -0,0 +1,20 @@
-+if TARGET_LEC_IMX95
-+
-+config SYS_BOARD
-+	default "lec_imx95"
-+
-+config SYS_VENDOR
-+	default "adlink"
-+
-+config SYS_CONFIG_NAME
-+	default "lec_imx95"
-+
-+endif
-+
-+if TARGET_LEC_IMX95
-+
-+config SKUGPIO
-+	bool
-+	default y
-+
-+endif
-diff --git a/board/adlink/lec_imx95/MAINTAINERS b/board/adlink/lec_imx95/MAINTAINERS
-new file mode 100644
-index 00000000000..b526f047e12
---- /dev/null
-+++ b/board/adlink/lec_imx95/MAINTAINERS
-@@ -0,0 +1,7 @@
-+LEC-i.MX95 Module
-+M:	Dinesh kumar V <dinesh.v@adlinktech.com>
-+S:	Maintained
-+F:	board/adlink/
-+F:	include/configs/lec_imx95.h
-+F:	configs/lec-imx95_defconfig
-+F:	doc/board/adlink/lec-imx95.rst
-diff --git a/board/adlink/lec_imx95/Makefile b/board/adlink/lec_imx95/Makefile
-new file mode 100644
-index 00000000000..c0a042e5b1b
---- /dev/null
-+++ b/board/adlink/lec_imx95/Makefile
-@@ -0,0 +1,11 @@
-+#
-+# Copyright 2026 ADLINK
-+#
-+# SPDX-License-Identifier:      GPL-2.0+
-+#
-+
-+obj-y += lec_imx95.o
-+
-+ifdef CONFIG_SPL_BUILD
-+obj-y += spl.o
-+endif
-diff --git a/board/adlink/lec_imx95/lec_imx95.c b/board/adlink/lec_imx95/lec_imx95.c
-new file mode 100644
-index 00000000000..fdb1635ce40
---- /dev/null
-+++ b/board/adlink/lec_imx95/lec_imx95.c
-@@ -0,0 +1,96 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Copyright 2026 ADLINK
-+ */
-+
-+#include <env.h>
-+#include <init.h>
-+#include <asm/gpio.h>
-+#include <asm/arch/clock.h>
-+#include <linux/bitops.h>
-+#include <asm/arch/sys_proto.h>
-+#include <dm/uclass.h>
-+
-+#define SKU_CFG_DDR_2G 0
-+#define SKU_CFG_DDR_4G 1
-+#define SKU_CFG_DDR_8G 2
-+#define SKU_CFG_DDR_16G 3
-+#define PDIR 0x50
-+
-+struct lec_imx95_ddr_size {
-+	phys_size_t bank0;
-+	phys_size_t bank1;
 +};
 +
-+/*
-+ * DDR bank sizes according to the LEC-iMX95 physical memory map.
-+ */
-+static const struct lec_imx95_ddr_size ddr_cfg[] = {
-+	[SKU_CFG_DDR_2G] = {
-+		.bank0 = 0x70000000ULL,
-+		.bank1 = 0x00000000ULL,
-+	},
-+	[SKU_CFG_DDR_4G] = {
-+		.bank0 = 0x70000000ULL,
-+		.bank1 = 0x80000000ULL,
-+	},
-+	[SKU_CFG_DDR_8G] = {
-+		.bank0 = 0x70000000ULL,
-+		.bank1 = 0x180000000ULL,
-+	},
-+	[SKU_CFG_DDR_16G] = {
-+		.bank0 = 0x70000000ULL,
-+		.bank1 = 0x380000000ULL,
-+	},
++#include "imx95-u-boot.dtsi"
++
++&lpuart1 {
++	bootph-pre-ram;
 +};
 +
-+int board_late_init(void)
-+{
-+	if (IS_ENABLED(CONFIG_ENV_IS_IN_MMC))
-+		board_late_mmc_env_init();
++&reg_usdhc2_vmmc {
++	bootph-pre-ram;
++};
 +
-+	return 0;
-+}
++&usdhc1 {
++	bootph-pre-ram;
++};
 +
-+static int lec_imx95_get_sku(void)
-+{
-+	u32 skucfg;
++&usdhc2 {
++	bootph-pre-ram;
++};
 +
-+	u32 gpio;
++&pinctrl_uart1 {
++	bootph-pre-ram;
++};
 +
-+	gpio = ((readl(GPIO5_BASE_ADDR + PDIR) & 0x70) >> 4);
-+	switch (gpio) {
-+	case 0:
-+	case 2:
-+	case 4:
-+	case 6:
-+		skucfg = gpio >> 1;
-+		break;
-+	default:
-+		skucfg = SKU_CFG_DDR_2G;
-+	}
++&pinctrl_usdhc1 {
++	bootph-pre-ram;
++};
 +
-+	return skucfg;
-+}
++&pinctrl_usdhc1_100mhz {
++	bootph-pre-ram;
++};
 +
-+int board_phys_sdram_size(phys_size_t *size)
-+{
-+	int sku;
++&pinctrl_usdhc1_200mhz {
++	bootph-pre-ram;
++};
 +
-+	if (!size)
-+		return -EINVAL;
++&pinctrl_usdhc2 {
++	bootph-pre-ram;
++};
 +
-+	sku = lec_imx95_get_sku();
++&pinctrl_usdhc2_100mhz {
++	bootph-pre-ram;
++};
 +
-+	if (sku < 0 || sku >= ARRAY_SIZE(ddr_cfg))
-+		sku = SKU_CFG_DDR_2G;
++&pinctrl_usdhc2_200mhz {
++	bootph-pre-ram;
++};
 +
-+	*size = ddr_cfg[sku].bank0 + ddr_cfg[sku].bank1;
++&pinctrl_usdhc2_gpio {
++	bootph-pre-ram;
++};
 +
-+	return 0;
-+}
-+
-+int board_init(void)
-+{
-+	return 0;
-+}
-diff --git a/board/adlink/lec_imx95/lec_imx95.env b/board/adlink/lec_imx95/lec_imx95.env
++&pinctrl_reg_usdhc2_vmmc {
++	bootph-pre-ram;
++};
+diff --git a/arch/arm/dts/lec-imx95.dts b/arch/arm/dts/lec-imx95.dts
 new file mode 100644
-index 00000000000..56a71618d5f
+index 00000000000..8e83f9b5e94
 --- /dev/null
-+++ b/board/adlink/lec_imx95/lec_imx95.env
-@@ -0,0 +1,75 @@
-+sec_boot=no
-+emmc_dev=0
-+sd_dev=1
-+scriptaddr=0x93500000
-+image=Image
-+kernel_addr_r=CONFIG_SYS_LOAD_ADDR
-+kernel_comp_addr_r=0xC0000000
-+kernel_comp_size=0x2000000
-+console=ttyLP0,115200 earlycon
-+fdt_addr_r=0x93000000
-+fdt_addr=0x93000000
-+
-+fdtfile=CONFIG_DEFAULT_FDT_FILE
-+bootm_size=0x10000000
-+mmcdev=CONFIG_ENV_MMC_DEVICE_INDEX
-+mmcpart=1
-+mmcroot=/dev/mmcblk1p2 rootwait rw
-+mmcautodetect=yes
-+mmcargs=setenv bootargs ${jh_clk} ${mcore_args} console=${console} root=${mmcroot}
-+prepare_mcore=setenv mcore_args pd_ignore_unused;
-+loadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};
-+bootscript=echo Running bootscript from mmc ...; source
-+loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}
-+loadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr_r} ${fdtfile}
-+boot_os=booti ${loadaddr} - ${fdt_addr_r};
-+mmcboot=echo Booting from mmc ...;
-+	run mmcargs;
-+	if test ${sec_boot} = yes; then
-+		run auth_os;
-+	else
-+		if test ${boot_fit} = yes || test ${boot_fit} = try; then
-+			bootm ${loadaddr};
-+		else
-+			if run loadfdt; then
-+				run boot_os;
-+			else
-+				echo WARN: Cannot load the DT;
-+			fi;
-+		fi;
-+	fi;
-+bsp_bootcmd=echo Running BSP bootcmd ...;
-+	mmc dev ${mmcdev}; if mmc rescan; then
-+		if run loadbootscript; then
-+			run bootscript;
-+		else
-+			if test ${sec_boot} = yes; then
-+				if run loadcntr; then
-+					run mmcboot;
-+				else echo WARN: Secure container not found on MMC;
-+				fi;
-+			else
-+				if run loadimage; then
-+					run mmcboot;
-+				else
-+					if test ${mmcdev} = 1; then
-+						setenv mmcdev 0;
-+						setenv mmcroot /dev/mmcblk0p2 rootwait rw;
-+						saveenv;
-+						mmc dev ${mmcdev};
-+					else
-+						setenv mmcdev 1;
-+						setenv mmcroot /dev/mmcblk1p2 rootwait rw;
-+						saveenv;
-+						mmc dev ${mmcdev};
-+					fi;
-+					if run loadimage; then
-+						run mmcboot;
-+					else echo WARN: Kernel image not found on fallback MMC;
-+					fi;
-+				fi;
-+			fi;
-+		fi;
-+	fi;
-+boot_fit=no
-+boot_targets=mmc0 mmc1
-diff --git a/board/adlink/lec_imx95/spl.c b/board/adlink/lec_imx95/spl.c
-new file mode 100644
-index 00000000000..72f5c8ab6f0
---- /dev/null
-+++ b/board/adlink/lec_imx95/spl.c
-@@ -0,0 +1,79 @@
-+// SPDX-License-Identifier: GPL-2.0+
++++ b/arch/arm/dts/lec-imx95.dts
+@@ -0,0 +1,216 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 +/*
-+ * Copyright 2026-2027 ADLINK
++ * Copyright (C) 2026 Adlink
++ *
++ * https://www.adlinktech.com/products/Computer_on_Modules/SMARC/LEC-IMX95
++ * https://www.adlinktech.com/products/computer_on_modules/SMARCStarterKits/I-Pi_SMARC_IMX95
 + */
 +
-+#include <hang.h>
-+#include <init.h>
-+#include <spl.h>
-+#include <asm/global_data.h>
-+#include <asm/sections.h>
-+#include <asm/arch/clock.h>
-+#include <asm/arch/mu.h>
-+#include <asm/arch/sys_proto.h>
-+#include <asm/mach-imx/boot_mode.h>
-+#include <asm/mach-imx/ele_api.h>
++/dts-v1/;
 +
-+DECLARE_GLOBAL_DATA_PTR;
++#include <dt-bindings/pwm/pwm.h>
++#include <dt-bindings/usb/pd.h>
++#include "lec-imx95.dtsi"
 +
-+int spl_board_boot_device(enum boot_device boot_dev_spl)
-+{
-+	switch (boot_dev_spl) {
-+	case SD1_BOOT:
-+	case MMC1_BOOT:
-+		return BOOT_DEVICE_MMC1;
-+	case SD2_BOOT:
-+	case MMC2_BOOT:
-+		return BOOT_DEVICE_MMC2;
-+	case USB_BOOT:
-+	case USB2_BOOT:
-+		return BOOT_DEVICE_BOARD;
-+	default:
-+		return BOOT_DEVICE_NONE;
-+	}
-+}
++/ {
++	model = "Adlink LEC iMX95 on I-Pi SMARC Development Board";
++	compatible = "adlink,lec-imx95",
++		     "fsl,imx95";
 +
-+void spl_board_init(void)
-+{
-+	int ret;
++	reg_pcie0: regulator-pcie0 {
++		compatible = "regulator-fixed";
++		regulator-name = "PCIE_WLAN_EN";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		//gpio = <&i2c2_gpio_expander_71 3 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++		regulator-always-on;
++	};
 +
-+	puts("Normal Boot\n");
++};
 +
-+	ret = ele_start_rng();
-+	if (ret)
-+		printf("Fail to start RNG: %d\n", ret);
-+}
++/* eMMC */
++&usdhc2 {
++	status = "okay";
++	bus-width = <8>;
++	non-removable;
++};
 +
-+void board_init_f(ulong dummy)
-+{
-+	int ret;
++/* SD Card */
++&usdhc1 {
++	status = "okay";
++	bus-width = <4>;
++};
 +
-+	/* Clear the BSS. */
-+	memset(__bss_start, 0, __bss_end - __bss_start);
++&lpi2c1 {
++	status = "okay";
++};
 +
-+#if IS_ENABLED(CONFIG_SPL_RECOVER_DATA_SECTION)
-+	if (IS_ENABLED(CONFIG_SPL_BUILD))
-+		spl_save_restore_data();
-+#endif
++&lpi2c2 {
++	clock-frequency = <400000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_lpi2c2>;
++	status = "okay";
++};
 +
-+	timer_init();
++&lpi2c3 {
++	status = "okay";
 +
-+	/* Need dm_init() to run before any SCMI calls can be made. */
-+	spl_early_init();
++	/* NXP PCF8563B RTC */
++	rtc: rtc@51 {
++		compatible = "nxp,pcf8563";
++		reg = <0x51>;
 +
-+	/* Need enable SCMI drivers and ELE driver before enabling console */
-+	ret = imx9_probe_mu();
-+	if (ret)
-+		hang(); /* if MU not probed, nothing can output, just hang here */
++		status = "okay";
++	};
++};
 +
-+	arch_cpu_init();
++&lpi2c4 {
++	status = "okay";
++};
 +
-+	preloader_console_init();
++&lpi2c5 {
++	status = "okay";
++};
 +
-+	debug("SOC: 0x%x\n", gd->arch.soc_rev);
-+	debug("LC: 0x%x\n", gd->arch.lifecycle);
++&lpi2c6 {
++	status = "okay";
++};
 +
-+	get_reset_reason(true, false);
++&lpi2c7 {
++	status = "okay";
++};
 +
-+	board_init_r(NULL, 0);
-+}
-diff --git a/include/configs/lec_imx95.h b/include/configs/lec_imx95.h
++&lpi2c8 {
++	status = "okay";
++};
++
++/* Ethernet SMARC GBE0*/
++&enetc_port0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_enetc0>;
++	phy-handle = <&ethphy0>;
++	phy-mode = "rgmii-id";
++	status = "okay";
++
++};
++
++/* Ethernet SMARC GBE1 */
++&enetc_port1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_enetc1>;
++	phy-handle = <&ethphy1>;
++	phy-mode = "rgmii-id";
++	status = "okay";
++};
++
++&netc_emdio {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_emdio>;
++	status = "okay";
++
++	ethphy0: ethernet-phy@1 {
++		reg = <1>;
++		eee-broken-1000t;
++		reset-assert-us = <10000>;
++		reset-deassert-us = <80000>;
++	};
++
++	ethphy1: ethernet-phy@4 {
++		reg = <4>;
++		eee-broken-1000t;
++		reset-assert-us = <10000>;
++		reset-deassert-us = <80000>;
++	};
++
++	ethphy2: ethernet-phy@8 {
++		compatible = "ethernet-phy-ieee802.3-c45";
++		reg = <8>;
++	};
++};
++
++&netcmix_blk_ctrl {
++	status = "okay";
++};
++
++&netc_blk_ctrl {
++	status = "okay";
++};
++
++&netc_timer {
++	status = "okay";
++};
++
++/* SMARC SPI0 */
++&lpspi6 {
++	status = "okay";
++};
++
++/* SMARC SER1, used as the Linux Console */
++&lpuart1 {
++	/* console */
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart1>;
++	status = "okay";
++};
++
++/* SMARC SER0, RS485 */
++&lpuart2 {
++	status = "okay";
++};
++
++/* SMARC SER3, RS232 */
++&lpuart3 {
++	status = "okay";
++};
++
++/* SMARC PCIE_A / M2 Key B */
++&pcie0 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pcie0>;
++	reset-gpio = <&gpio2 0 GPIO_ACTIVE_LOW>;
++	vpcie-supply = <&reg_pcie0>;
++	status = "okay";
++};
++
++/* SMARC PCIE_B /  M2 Key E */
++&pcie1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pcie1>;
++	reset-gpio = <&gpio2 0 GPIO_ACTIVE_LOW>;
++	status = "okay";
++};
++
++/* SMARC USB0 */
++&usb2 {
++	dr_mode = "host";
++	hnp-disable;
++	srp-disable;
++	adp-disable;
++	disable-over-current;
++	status = "okay";
++};
++
++&usb3 {
++	status = "okay";
++};
++
++&usb3_phy {
++	status = "okay";
++};
++
++&usb3_dwc3 {
++	dr_mode = "host";
++	hnp-disable;
++	srp-disable;
++	adp-disable;
++	usb-role-switch;
++	snps,dis-u1-entry-quirk;
++	snps,dis-u2-entry-quirk;
++	status = "okay";
++};
++
++/* SMARC SDIO */
++&usdhc2 {
++	status = "okay";
++};
+diff --git a/arch/arm/dts/lec-imx95.dtsi b/arch/arm/dts/lec-imx95.dtsi
 new file mode 100644
-index 00000000000..64e03f9c185
+index 00000000000..b787a083672
 --- /dev/null
-+++ b/include/configs/lec_imx95.h
-@@ -0,0 +1,27 @@
-+/* SPDX-License-Identifier: GPL-2.0+ */
++++ b/arch/arm/dts/lec-imx95.dtsi
+@@ -0,0 +1,524 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
 +/*
-+ * Copyright 2025 NXP
++ * Copyright (C) 2026 Adlink
++ * https://www.adlinktech.com/products/Computer_on_Modules/SMARC/LEC-IMX95
++ * https://www.adlinktech.com/products/computer_on_modules/SMARCStarterKits/I-Pi_SMARC_IMX95
 + */
 +
-+#ifndef __LEC_IMX95_H
-+#define __LEC_IMX95_H
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/net/ti-dp83867.h>
++#include "imx95.dtsi"
 +
-+#include <linux/sizes.h>
-+#include <linux/stringify.h>
-+#include <asm/arch/imx-regs.h>
++/ {
 +
-+#define CFG_SYS_INIT_RAM_ADDR	0x90000000
-+#define CFG_SYS_INIT_RAM_SIZE	0x200000
++	aliases {
++		ethernet0 = &enetc_port0;
++		ethernet1 = &enetc_port1;
++		gpio0 = &gpio1;
++		gpio1 = &gpio2;
++		gpio2 = &gpio3;
++		gpio3 = &gpio4;
++		gpio4 = &gpio5;
++		i2c0 = &lpi2c1;
++		i2c1 = &lpi2c2;
++		i2c2 = &lpi2c3;
++		i2c3 = &lpi2c4;
++		i2c4 = &lpi2c5;
++		i2c5 = &lpi2c6;
++		i2c6 = &lpi2c7;
++		i2c7 = &lpi2c8;
++		mmc0 = &usdhc1;
++		mmc1 = &usdhc2;
++		serial0 = &lpuart1;
++		serial4 = &lpuart5;
++		spi0 = &flexspi1;
++		usb0 = &usb3_dwc3;
++		usb1 = &usb2;
++	};
 +
-+#define CFG_SYS_SDRAM_BASE		0x90000000
-+#define PHYS_SDRAM				0x90000000
++	chosen {
++		stdout-path = &lpuart1;
++	};
 +
-+#define PHYS_SDRAM_SIZE			0x70000000 /* 2GB - 256MB DDR */
++	memory@80000000 {
++		device_type = "memory";
++		reg = <0x0 0x80000000 0 0x80000000>;
++	};
 +
-+#define CFG_SYS_SECURE_SDRAM_BASE	0x8A000000
-+					/* Secure DDR region for A55, SPL could use first 2MB */
-+#define CFG_SYS_SECURE_SDRAM_SIZE	0x06000000
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
 +
-+#define WDOG_BASE_ADDR			WDG3_BASE_ADDR
++		linux_cma: linux,cma {
++			compatible = "shared-dma-pool";
++			alloc-ranges = <0 0x80000000 0 0x7f000000>;
++			size = <0 0x3c000000>;
++			linux,cma-default;
++			reusable;
++		};
++	};
 +
-+#endif
++	reg_vref_1v8: regulator-1p8v {
++		compatible = "regulator-fixed";
++		regulator-max-microvolt = <1800000>;
++		regulator-min-microvolt = <1800000>;
++		regulator-name = "+V1.8_SW";
++	};
++
++	reg_3p3v: regulator-3p3v {
++		compatible = "regulator-fixed";
++		regulator-max-microvolt = <3300000>;
++		regulator-min-microvolt = <3300000>;
++		regulator-name = "+V3.3_SW";
++	};
++
++	chosen {
++		bootargs = "console=ttyLP0,115200 earlycon";
++	};
++
++	reg_m2_pwr: regulator-m2-pwr {
++		compatible = "regulator-fixed";
++		regulator-name = "M.2-power";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		enable-active-high;
++		/*
++		 * M.2 device only can be enabled(W_DISABLE1#) after all Power
++		 * Rails reach their minimum operating voltage (PCI Express M.2
++		 * Specification r5.1 3.1.4 Power-up Timing).
++		 * Set a delay equal to the max value of Tsettle here.
++		 */
++		startup-delay-us = <5000>;
++	};
++
++	reg_slot_pwr: regulator-slot-pwr {
++		compatible = "regulator-fixed";
++		regulator-name = "PCIe slot-power";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		enable-active-high;
++	};
++
++	reg_usdhc2_vmmc: regulator-usdhc2 {
++		compatible = "regulator-fixed";
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_reg_usdhc2_vmmc>;
++		regulator-name = "VDD_SD2_3V3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		enable-active-high;
++		gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
++		off-on-delay-us = <12000>;
++	};
++
++	reg_usb_vbus: regulator-vbus {
++		compatible = "regulator-fixed";
++		regulator-name = "USB_VBUS";
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++		enable-active-high;
++	};
++
++};
++
++&usdhc1 {
++	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
++	pinctrl-0 = <&pinctrl_usdhc1>;
++	pinctrl-1 = <&pinctrl_usdhc1_100mhz>;
++	pinctrl-2 = <&pinctrl_usdhc1_200mhz>;
++	pinctrl-3 = <&pinctrl_usdhc1>;
++	bus-width = <8>;
++	non-removable;
++	no-sdio;
++	no-sd;
++	status = "okay";
++};
++
++&usdhc2 {
++	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
++	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
++	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
++	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
++	pinctrl-3 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
++	cd-gpios = <&gpio3 0 GPIO_ACTIVE_LOW>;
++	vmmc-supply = <&reg_usdhc2_vmmc>;
++	bus-width = <4>;
++	status = "okay";
++};
++
++&gpio2 {
++	gpio-line-names =
++		"SMARC_SPI0_CS0#",      /* 0  - GPIO_IO00 */
++		"SMARC_SPI0_DIN",       /* 1  - GPIO_IO01 */
++		"SMARC_SPI0_DO",        /* 2  - GPIO_IO02 */
++		"SMARC_SPI0_CK",        /* 3  - GPIO_IO03 */
++		"SMARC_SPI1_CS0#",      /* 4  - GPIO_IO04 */
++		"SMARC_SPI1_DIN",       /* 5  - GPIO_IO05 */
++		"SMARC_SPI1_DO",        /* 6  - GPIO_IO06 */
++		"SMARC_SPI1_CK",        /* 7  - GPIO_IO07 */
++		"SMARC_UART0_TXD",      /* 8  - GPIO_IO08 */
++		"SMARC_UART0_RXD",      /* 9  - GPIO_IO09 */
++		"SMARC_UART0_CTS_B",    /* 10 - GPIO_IO10 */
++		"SMARC_UART0_RTS_B",    /* 11 - GPIO_IO11 */
++		"SMARC_I2C_GP_DAT",     /* 12 - GPIO_IO12 */
++		"SMARC_I2C_GP_CK",      /* 13 - GPIO_IO13 */
++		"UART3_TXD_1V8",        /* 14 - GPIO_IO14 */
++		"UART3_RXD_1V8",        /* 15 - GPIO_IO15 */
++		"SAI3_TXC_1V8",         /* 16 - GPIO_IO16 */
++		"SAI3_MCLK_1V8",        /* 17 - GPIO_IO17 */
++		"SMB_INT_B_1V8",        /* 18 - GPIO_IO18 */
++		"LVDS0_BKLT_PWM_1V8",   /* 19 - GPIO_IO19 */
++		"SAI3_RXD_1V8",         /* 20 - GPIO_IO20 */
++		"SAI3_TXD_1V8",         /* 21 - GPIO_IO21 */
++		"FAN_PWM_1V8",          /* 22 - GPIO_IO22 */
++		"LVDS1_BKLT_PWM_1V8",   /* 23 - GPIO_IO23 */
++		"SPI6_SS1_1V8",         /* 24 - GPIO_IO24 */
++		"SPI7_SS1_1V8",         /* 25 - GPIO_IO25 */
++		"SAI3_TXFS_1V8",        /* 26 - GPIO_IO26 */
++		"TPM_INT_N_1V8",        /* 27 - GPIO_IO27 */
++		"SMARC_I2C_PM_DAT",     /* 28 - GPIO_IO28 */
++		"SMARC_I2C_PM_CK",      /* 29 - GPIO_IO29 */
++		"SMARC_CAN1_TX",        /* 30 - GPIO_IO30 (SMARC CAN1_H via transceiver) */
++		"SMARC_CAN1_RX";        /* 31 - GPIO_IO31 (SMARC CAN1_L via transceiver) */
++	status = "okay";
++};
++
++&gpio3 {
++	gpio-line-names =
++		"SD2_CD_B",
++		"SD2_CLK",
++		"SD2_CMD",
++		"SD2_DATA0",
++		"SD2_DATA1",
++		"SD2_DATA2",
++		"SD2_DATA3",
++		"SD2_RST_B_1V8A3V",
++		"SD1_CLK",
++		"SD1_CMD",
++		"SD1_DATA0",
++		"SD1_DATA1",
++		"SD1_DATA2",
++		"SD1_DATA3",
++		"SD1_DATA4",
++		"SD1_DATA5",
++		"SD1_DATA6",
++		"SD1_DATA7",
++		"SD1_STROBE",
++		"SD2_VSEL_1V8",
++		"SD3_CLK",
++		"SD3_CMD",
++		"SD3_DATA0",
++		"SD3_DATA1",
++		"SD3_DATA2",
++		"SD3_DATA3",
++		"CCM_CLKO1",
++		"CCM_CLKO2",
++		"DAP_TDI",
++		"DAP_TMS_SWDIO",
++		"DAP_TCLK_SWCLK",
++		"DAP_TDO_TRACESWO";
++	status = "okay";
++};
++
++&gpio4 {
++	gpio-line-names =
++		"ENET1_MDC",
++		"ENET1_MDIO",
++		"ENET1_TD3",
++		"ENET1_TD2",
++		"ENET1_TD1",
++		"ENET1_TD0",
++		"ENET1_TX_CTL",
++		"ENET1_TXC",
++		"ENET1_RX_CTL",
++		"ENET1_RXC",
++		"ENET1_RD0",
++		"ENET1_RD1",
++		"ENET1_RD2",
++		"ENET1_RD3",
++		"RTC_INT#_1V8",
++		"IOEXP2_INT#_1V8",
++		"ENET2_TD3",
++		"ENET2_TD2",
++		"ENET2_TD1",
++		"ENET2_TD0",
++		"ENET2_TX_CTL",
++		"ENET2_TXC",
++		"ENET2_RX_CTL",
++		"ENET2_RXC",
++		"ENET2_RD0",
++		"ENET2_RD1",
++		"ENET2_RD2",
++		"ENET2_RD3",
++		"CCM_CLKO3",
++		"CCM_CLKO4";
++	status = "okay";
++};
++
++&gpio5 {
++	gpio-line-names =
++		"QSPIA_DATA0",
++		"QSPIA_DATA1",
++		"QSPIA_DATA2",
++		"QSPIA_DATA3",
++		"SKU_CONFIG1_1V8",
++		"SKU_CONFIG2_1V8",
++		"SKU_CONFIG3_1V8",
++		"SYS_STATUS_1V8",
++		"SD2_WP_1V8",
++		"QSPIA_SCLK",
++		"QSPIA_nSS0",
++		"SYS_RST#_1V8",
++		"PCIE1_IMX_CLKREQ#_1V8",
++		"MCU_INTB1_1V8",
++		"MCU_INTB2_1V8",
++		"PCIE2_IMX_CLKREQ#_1V8",
++		"ENET1_INT_B_1V8",
++		"ENET2_INT_B_1V8";
++	status = "okay";
++};
++
++&scmi_iomuxc {
++	pinctrl_emdio: emdiogrp {
++		fsl,pins = <
++			IMX95_PAD_ENET1_MDC__NETCMIX_TOP_NETC_MDC		0x50e
++			IMX95_PAD_ENET1_MDIO__NETCMIX_TOP_NETC_MDIO		0x90e
++		>;
++	};
++
++	pinctrl_enetc0: enetc0grp {
++		fsl,pins = <
++			IMX95_PAD_ENET1_TD3__NETCMIX_TOP_ETH0_RGMII_TD3		0x50e
++			IMX95_PAD_ENET1_TD2__NETCMIX_TOP_ETH0_RGMII_TD2		0x50e
++			IMX95_PAD_ENET1_TD1__NETCMIX_TOP_ETH0_RGMII_TD1		0x50e
++			IMX95_PAD_ENET1_TD0__NETCMIX_TOP_ETH0_RGMII_TD0		0x50e
++			IMX95_PAD_ENET1_TX_CTL__NETCMIX_TOP_ETH0_RGMII_TX_CTL	0x57e
++			IMX95_PAD_ENET1_TXC__NETCMIX_TOP_ETH0_RGMII_TX_CLK	0x58e
++			IMX95_PAD_ENET1_RX_CTL__NETCMIX_TOP_ETH0_RGMII_RX_CTL	0x57e
++			IMX95_PAD_ENET1_RXC__NETCMIX_TOP_ETH0_RGMII_RX_CLK	0x58e
++			IMX95_PAD_ENET1_RD0__NETCMIX_TOP_ETH0_RGMII_RD0		0x57e
++			IMX95_PAD_ENET1_RD1__NETCMIX_TOP_ETH0_RGMII_RD1		0x57e
++			IMX95_PAD_ENET1_RD2__NETCMIX_TOP_ETH0_RGMII_RD2		0x57e
++			IMX95_PAD_ENET1_RD3__NETCMIX_TOP_ETH0_RGMII_RD3		0x57e
++		>;
++	};
++
++	pinctrl_enetc1: enetc1grp {
++		fsl,pins = <
++			IMX95_PAD_ENET2_TD3__NETCMIX_TOP_ETH1_RGMII_TD3		0x57e
++			IMX95_PAD_ENET2_TD2__NETCMIX_TOP_ETH1_RGMII_TD2		0x57e
++			IMX95_PAD_ENET2_TD1__NETCMIX_TOP_ETH1_RGMII_TD1		0x57e
++			IMX95_PAD_ENET2_TD0__NETCMIX_TOP_ETH1_RGMII_TD0		0x57e
++			IMX95_PAD_ENET2_TX_CTL__NETCMIX_TOP_ETH1_RGMII_TX_CTL	0x57e
++			IMX95_PAD_ENET2_TXC__NETCMIX_TOP_ETH1_RGMII_TX_CLK	0x5fe
++			IMX95_PAD_ENET2_RX_CTL__NETCMIX_TOP_ETH1_RGMII_RX_CTL	0x57e
++			IMX95_PAD_ENET2_RXC__NETCMIX_TOP_ETH1_RGMII_RX_CLK	0x5fe
++			IMX95_PAD_ENET2_RD0__NETCMIX_TOP_ETH1_RGMII_RD0		0x57e
++			IMX95_PAD_ENET2_RD1__NETCMIX_TOP_ETH1_RGMII_RD1		0x57e
++			IMX95_PAD_ENET2_RD2__NETCMIX_TOP_ETH1_RGMII_RD2		0x57e
++			IMX95_PAD_ENET2_RD3__NETCMIX_TOP_ETH1_RGMII_RD3		0x57e
++		>;
++	};
++
++	pinctrl_hp: hpgrp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO11__GPIO2_IO_BIT11		0x31e
++		>;
++	};
++
++	pinctrl_lpi2c1: lpi2c1grp {
++		fsl,pins = <
++			IMX95_PAD_I2C1_SCL__AONMIX_TOP_LPI2C1_SCL		0x40000b9e
++			IMX95_PAD_I2C1_SDA__AONMIX_TOP_LPI2C1_SDA		0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c2: lpi2c2grp {
++		fsl,pins = <
++			IMX95_PAD_I2C2_SCL__AONMIX_TOP_LPI2C2_SCL		0x40000b9e
++			IMX95_PAD_I2C2_SDA__AONMIX_TOP_LPI2C2_SDA		0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c3: lpi2c3grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO28__LPI2C3_SDA			0x40000b9e
++			IMX95_PAD_GPIO_IO29__LPI2C3_SCL			0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c4: lpi2c4grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO30__LPI2C4_SDA			0x40000b9e
++			IMX95_PAD_GPIO_IO31__LPI2C4_SCL			0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c5: lpi2c5grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO22__LPI2C5_SDA			0x40000b9e
++			IMX95_PAD_GPIO_IO23__LPI2C5_SCL			0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c6: lpi2c6grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO02__LPI2C6_SDA			0x40000b9e
++			IMX95_PAD_GPIO_IO03__LPI2C6_SCL			0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c7: lpi2c7grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO08__LPI2C7_SDA			0x40000b9e
++			IMX95_PAD_GPIO_IO09__LPI2C7_SCL			0x40000b9e
++		>;
++	};
++
++	pinctrl_lpi2c8: lpi2c8grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO13__LPI2C8_SCL		0x4000007e
++			IMX95_PAD_GPIO_IO12__LPI2C8_SDA		0x4000007e
++		>;
++	};
++
++	pinctrl_lpspi7: lpspi7grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO04__GPIO2_IO_BIT4		0x3fe
++			IMX95_PAD_GPIO_IO05__LPSPI7_SIN			0x3fe
++			IMX95_PAD_GPIO_IO06__LPSPI7_SOUT		0x3fe
++			IMX95_PAD_GPIO_IO07__LPSPI7_SCK			0x3fe
++		>;
++	};
++
++	pinctrl_pcie0: pcie0grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO32__HSIOMIX_TOP_PCIE1_CLKREQ_B		0x4000031e
++		>;
++	};
++
++	pinctrl_pcie1: pcie1grp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO35__HSIOMIX_TOP_PCIE2_CLKREQ_B		0x4000031e
++		>;
++	};
++
++	pinctrl_uart1: uart1grp {
++		fsl,pins = <
++			IMX95_PAD_UART1_RXD__AONMIX_TOP_LPUART1_RX      0x31e
++			IMX95_PAD_UART1_TXD__AONMIX_TOP_LPUART1_TX      0x31e
++		>;
++	};
++
++	pinctrl_uart5: uart5grp {
++		fsl,pins = <
++			IMX95_PAD_DAP_TDO_TRACESWO__LPUART5_TX		0x31e
++			IMX95_PAD_DAP_TDI__LPUART5_RX			0x31e
++			IMX95_PAD_DAP_TMS_SWDIO__LPUART5_RTS_B		0x31e
++			IMX95_PAD_DAP_TCLK_SWCLK__LPUART5_CTS_B		0x31e
++		>;
++	};
++
++	pinctrl_usdhc1: usdhc1grp {
++		fsl,pins = <
++			IMX95_PAD_SD1_CLK__USDHC1_CLK			0x158e
++			IMX95_PAD_SD1_CMD__USDHC1_CMD			0x138e
++			IMX95_PAD_SD1_DATA0__USDHC1_DATA0		0x138e
++			IMX95_PAD_SD1_DATA1__USDHC1_DATA1		0x138e
++			IMX95_PAD_SD1_DATA2__USDHC1_DATA2		0x138e
++			IMX95_PAD_SD1_DATA3__USDHC1_DATA3		0x138e
++			IMX95_PAD_SD1_DATA4__USDHC1_DATA4		0x138e
++			IMX95_PAD_SD1_DATA5__USDHC1_DATA5		0x138e
++			IMX95_PAD_SD1_DATA6__USDHC1_DATA6		0x138e
++			IMX95_PAD_SD1_DATA7__USDHC1_DATA7		0x138e
++			IMX95_PAD_SD1_STROBE__USDHC1_STROBE		0x158e
++		>;
++	};
++
++	pinctrl_usdhc1_100mhz: usdhc1-100mhzgrp {
++		fsl,pins = <
++			IMX95_PAD_SD1_CLK__USDHC1_CLK			0x158e
++			IMX95_PAD_SD1_CMD__USDHC1_CMD			0x138e
++			IMX95_PAD_SD1_DATA0__USDHC1_DATA0		0x138e
++			IMX95_PAD_SD1_DATA1__USDHC1_DATA1		0x138e
++			IMX95_PAD_SD1_DATA2__USDHC1_DATA2		0x138e
++			IMX95_PAD_SD1_DATA3__USDHC1_DATA3		0x138e
++			IMX95_PAD_SD1_DATA4__USDHC1_DATA4		0x138e
++			IMX95_PAD_SD1_DATA5__USDHC1_DATA5		0x138e
++			IMX95_PAD_SD1_DATA6__USDHC1_DATA6		0x138e
++			IMX95_PAD_SD1_DATA7__USDHC1_DATA7		0x138e
++			IMX95_PAD_SD1_STROBE__USDHC1_STROBE		0x158e
++		>;
++	};
++
++	pinctrl_usdhc1_200mhz: usdhc1-200mhzgrp {
++		fsl,pins = <
++			IMX95_PAD_SD1_CLK__USDHC1_CLK			0x15fe
++			IMX95_PAD_SD1_CMD__USDHC1_CMD			0x13fe
++			IMX95_PAD_SD1_DATA0__USDHC1_DATA0		0x13fe
++			IMX95_PAD_SD1_DATA1__USDHC1_DATA1		0x13fe
++			IMX95_PAD_SD1_DATA2__USDHC1_DATA2		0x13fe
++			IMX95_PAD_SD1_DATA3__USDHC1_DATA3		0x13fe
++			IMX95_PAD_SD1_DATA4__USDHC1_DATA4		0x13fe
++			IMX95_PAD_SD1_DATA5__USDHC1_DATA5		0x13fe
++			IMX95_PAD_SD1_DATA6__USDHC1_DATA6		0x13fe
++			IMX95_PAD_SD1_DATA7__USDHC1_DATA7		0x13fe
++			IMX95_PAD_SD1_STROBE__USDHC1_STROBE		0x15fe
++		>;
++	};
++
++	pinctrl_reg_usdhc2_vmmc: regusdhc2vmmcgrp {
++		fsl,pins = <
++			IMX95_PAD_SD2_RESET_B__GPIO3_IO_BIT7		0x31e
++		>;
++	};
++
++	pinctrl_typec: typecgrp {
++		fsl,pins = <
++			IMX95_PAD_GPIO_IO34__GPIO5_IO_BIT14			0x31e
++		>;
++	};
++
++	pinctrl_usdhc2_gpio: usdhc2gpiogrp {
++		fsl,pins = <
++			IMX95_PAD_SD2_CD_B__GPIO3_IO_BIT0		0x31e
++		>;
++	};
++
++	pinctrl_usdhc2: usdhc2grp {
++		fsl,pins = <
++			IMX95_PAD_SD2_CLK__USDHC2_CLK			0x158e
++			IMX95_PAD_SD2_CMD__USDHC2_CMD			0x138e
++			IMX95_PAD_SD2_DATA0__USDHC2_DATA0		0x138e
++			IMX95_PAD_SD2_DATA1__USDHC2_DATA1		0x138e
++			IMX95_PAD_SD2_DATA2__USDHC2_DATA2		0x138e
++			IMX95_PAD_SD2_DATA3__USDHC2_DATA3		0x138e
++			IMX95_PAD_SD2_VSELECT__USDHC2_VSELECT		0x51e
++		>;
++	};
++
++	pinctrl_usdhc2_100mhz: usdhc2-100mhzgrp {
++		fsl,pins = <
++			IMX95_PAD_SD2_CLK__USDHC2_CLK			0x158e
++			IMX95_PAD_SD2_CMD__USDHC2_CMD			0x138e
++			IMX95_PAD_SD2_DATA0__USDHC2_DATA0		0x138e
++			IMX95_PAD_SD2_DATA1__USDHC2_DATA1		0x138e
++			IMX95_PAD_SD2_DATA2__USDHC2_DATA2		0x138e
++			IMX95_PAD_SD2_DATA3__USDHC2_DATA3		0x138e
++			IMX95_PAD_SD2_VSELECT__USDHC2_VSELECT		0x51e
++		>;
++	};
++
++	pinctrl_usdhc2_200mhz: usdhc2-200mhzgrp {
++		fsl,pins = <
++			IMX95_PAD_SD2_CLK__USDHC2_CLK			0x158e
++			IMX95_PAD_SD2_CMD__USDHC2_CMD			0x138e
++			IMX95_PAD_SD2_DATA0__USDHC2_DATA0		0x138e
++			IMX95_PAD_SD2_DATA1__USDHC2_DATA1		0x138e
++			IMX95_PAD_SD2_DATA2__USDHC2_DATA2		0x138e
++			IMX95_PAD_SD2_DATA3__USDHC2_DATA3		0x138e
++			IMX95_PAD_SD2_VSELECT__USDHC2_VSELECT		0x51e
++		>;
++	};
++};
 
 -- 
 2.25.1
