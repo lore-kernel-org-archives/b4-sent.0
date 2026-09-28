@@ -1,10 +1,10 @@
 From: Dinesh kumar v <dinesh.v@adlinktech.com>
-Date: Mon, 28 Sep 2026 13:08:58 +0530
-Subject: [PATCH 2/4] arm: dts: imx95: Add ADLINK LEC-iMX95 device tree
+Date: Mon, 28 Sep 2026 13:08:59 +0530
+Subject: [PATCH 3/4] configs: Add ADLINK LEC-iMX95 defconfig
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-lec-imx95-v1-v1-2-9e0c9b94ccbe@adlinktech.com>
+Message-Id: <20260928-lec-imx95-v1-v1-3-9e0c9b94ccbe@adlinktech.com>
 References: <20260928-lec-imx95-v1-v1-0-9e0c9b94ccbe@adlinktech.com>
 In-Reply-To: <20260928-lec-imx95-v1-v1-0-9e0c9b94ccbe@adlinktech.com>
 To: "NXP i.MX U-Boot Team" <uboot-imx@nxp.com>, 
@@ -19,857 +19,182 @@ Cc: Tom Rini <trini@konsulko.com>,
  Francesco Dolcini <francesco.dolcini@toradex.com>, 
  Dinesh kumar v <dinesh.v@adlinktech.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790581138; l=20452;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790581138; l=4398;
  i=dinesh.v@adlinktech.com; s=20260928; h=from:subject:message-id;
- bh=P+J0tY8uFNvoV78V5IwJ5N1LAHOPTFKc8nV4yR2kjkM=;
- b=w861GAhuHTC81x5ftC42td2Z2peKMwKs0GFZst4p5VJdFciR5LFMzk8PonRIX8iuPEBFmw23F
- GxMpSPAvLXkC+2iZJc7mDMQUHYIlUL7s63EdY3wtQWGA5wBiPk0a+2s
+ bh=SgDjtjn4IYBxcFmiRPrCaf0rh7y5H7TxtnEED03wWa8=;
+ b=MaDlNjPCU9nkz4v/my47UBB4rT0imuXlNG7I7OgraA2+J7XXipAZ+HKbuFnREYnynKoz4IdO8
+ 3jiAIN3Tpb1BgMRzR7VkFRilV18eTagjeetnINBvspFTm4aWcvZ36jN
 X-Developer-Key: i=dinesh.v@adlinktech.com; a=ed25519;
  pk=2+xm2aDQjQT68aPFzfLMgdZrQGpCMUU3Qp1CwWoRlus=
 X-Endpoint-Received: by B4 Relay for dinesh.v@adlinktech.com/20260928 with auth_id=1074
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the device tree description for the ADLINK LEC-iMX95
-SMARC module and its U-Boot-specific configuration.
+Add the defconfig for the ADLINK LEC-iMX95 board.
 
 Signed-off-by: Dinesh kumar v <dinesh.v@adlinktech.com>
 ---
- arch/arm/dts/lec-imx95-u-boot.dtsi |  73 ++++++
- arch/arm/dts/lec-imx95.dts         | 216 +++++++++++++++
- arch/arm/dts/lec-imx95.dtsi        | 524 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 813 insertions(+)
+ configs/lec-imx95_defconfig | 153 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 153 insertions(+)
 
-diff --git a/arch/arm/dts/lec-imx95-u-boot.dtsi b/arch/arm/dts/lec-imx95-u-boot.dtsi
+diff --git a/configs/lec-imx95_defconfig b/configs/lec-imx95_defconfig
 new file mode 100644
-index 00000000000..93fbd670000
+index 00000000000..2c329483bc5
 --- /dev/null
-+++ b/arch/arm/dts/lec-imx95-u-boot.dtsi
-@@ -0,0 +1,73 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * ADLINK LEC-iMX95 U-Boot specific configuration
-+ */
-+
-+/ {
-+	binman {
-+		m33-oei-ddrfw {
-+		};
-+
-+		imx-boot {
-+			spl {
-+				container;
-+				image = "m33", "oei-m33-dat.bin", "0x4aa80000";
-+			};
-+		};
-+	};
-+
-+};
-+
-+#include "imx95-u-boot.dtsi"
-+
-+&lpuart1 {
-+	bootph-pre-ram;
-+};
-+
-+&reg_usdhc2_vmmc {
-+	bootph-pre-ram;
-+};
-+
-+&usdhc1 {
-+	bootph-pre-ram;
-+};
-+
-+&usdhc2 {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_uart1 {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc1 {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc1_100mhz {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc1_200mhz {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc2 {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc2_100mhz {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc2_200mhz {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_usdhc2_gpio {
-+	bootph-pre-ram;
-+};
-+
-+&pinctrl_reg_usdhc2_vmmc {
-+	bootph-pre-ram;
-+};
-diff --git a/arch/arm/dts/lec-imx95.dts b/arch/arm/dts/lec-imx95.dts
-new file mode 100644
-index 00000000000..8e83f9b5e94
---- /dev/null
-+++ b/arch/arm/dts/lec-imx95.dts
-@@ -0,0 +1,216 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-+/*
-+ * Copyright (C) 2026 Adlink
-+ *
-+ * https://www.adlinktech.com/products/Computer_on_Modules/SMARC/LEC-IMX95
-+ * https://www.adlinktech.com/products/computer_on_modules/SMARCStarterKits/I-Pi_SMARC_IMX95
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/pwm/pwm.h>
-+#include <dt-bindings/usb/pd.h>
-+#include "lec-imx95.dtsi"
-+
-+/ {
-+	model = "Adlink LEC iMX95 on I-Pi SMARC Development Board";
-+	compatible = "adlink,lec-imx95",
-+		     "fsl,imx95";
-+
-+	reg_pcie0: regulator-pcie0 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "PCIE_WLAN_EN";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		//gpio = <&i2c2_gpio_expander_71 3 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		regulator-always-on;
-+	};
-+
-+};
-+
-+/* eMMC */
-+&usdhc2 {
-+	status = "okay";
-+	bus-width = <8>;
-+	non-removable;
-+};
-+
-+/* SD Card */
-+&usdhc1 {
-+	status = "okay";
-+	bus-width = <4>;
-+};
-+
-+&lpi2c1 {
-+	status = "okay";
-+};
-+
-+&lpi2c2 {
-+	clock-frequency = <400000>;
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_lpi2c2>;
-+	status = "okay";
-+};
-+
-+&lpi2c3 {
-+	status = "okay";
-+
-+	/* NXP PCF8563B RTC */
-+	rtc: rtc@51 {
-+		compatible = "nxp,pcf8563";
-+		reg = <0x51>;
-+
-+		status = "okay";
-+	};
-+};
-+
-+&lpi2c4 {
-+	status = "okay";
-+};
-+
-+&lpi2c5 {
-+	status = "okay";
-+};
-+
-+&lpi2c6 {
-+	status = "okay";
-+};
-+
-+&lpi2c7 {
-+	status = "okay";
-+};
-+
-+&lpi2c8 {
-+	status = "okay";
-+};
-+
-+/* Ethernet SMARC GBE0*/
-+&enetc_port0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_enetc0>;
-+	phy-handle = <&ethphy0>;
-+	phy-mode = "rgmii-id";
-+	status = "okay";
-+
-+};
-+
-+/* Ethernet SMARC GBE1 */
-+&enetc_port1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_enetc1>;
-+	phy-handle = <&ethphy1>;
-+	phy-mode = "rgmii-id";
-+	status = "okay";
-+};
-+
-+&netc_emdio {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_emdio>;
-+	status = "okay";
-+
-+	ethphy0: ethernet-phy@1 {
-+		reg = <1>;
-+		eee-broken-1000t;
-+		reset-assert-us = <10000>;
-+		reset-deassert-us = <80000>;
-+	};
-+
-+	ethphy1: ethernet-phy@4 {
-+		reg = <4>;
-+		eee-broken-1000t;
-+		reset-assert-us = <10000>;
-+		reset-deassert-us = <80000>;
-+	};
-+
-+	ethphy2: ethernet-phy@8 {
-+		compatible = "ethernet-phy-ieee802.3-c45";
-+		reg = <8>;
-+	};
-+};
-+
-+&netcmix_blk_ctrl {
-+	status = "okay";
-+};
-+
-+&netc_blk_ctrl {
-+	status = "okay";
-+};
-+
-+&netc_timer {
-+	status = "okay";
-+};
-+
-+/* SMARC SPI0 */
-+&lpspi6 {
-+	status = "okay";
-+};
-+
-+/* SMARC SER1, used as the Linux Console */
-+&lpuart1 {
-+	/* console */
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_uart1>;
-+	status = "okay";
-+};
-+
-+/* SMARC SER0, RS485 */
-+&lpuart2 {
-+	status = "okay";
-+};
-+
-+/* SMARC SER3, RS232 */
-+&lpuart3 {
-+	status = "okay";
-+};
-+
-+/* SMARC PCIE_A / M2 Key B */
-+&pcie0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_pcie0>;
-+	reset-gpio = <&gpio2 0 GPIO_ACTIVE_LOW>;
-+	vpcie-supply = <&reg_pcie0>;
-+	status = "okay";
-+};
-+
-+/* SMARC PCIE_B /  M2 Key E */
-+&pcie1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&pinctrl_pcie1>;
-+	reset-gpio = <&gpio2 0 GPIO_ACTIVE_LOW>;
-+	status = "okay";
-+};
-+
-+/* SMARC USB0 */
-+&usb2 {
-+	dr_mode = "host";
-+	hnp-disable;
-+	srp-disable;
-+	adp-disable;
-+	disable-over-current;
-+	status = "okay";
-+};
-+
-+&usb3 {
-+	status = "okay";
-+};
-+
-+&usb3_phy {
-+	status = "okay";
-+};
-+
-+&usb3_dwc3 {
-+	dr_mode = "host";
-+	hnp-disable;
-+	srp-disable;
-+	adp-disable;
-+	usb-role-switch;
-+	snps,dis-u1-entry-quirk;
-+	snps,dis-u2-entry-quirk;
-+	status = "okay";
-+};
-+
-+/* SMARC SDIO */
-+&usdhc2 {
-+	status = "okay";
-+};
-diff --git a/arch/arm/dts/lec-imx95.dtsi b/arch/arm/dts/lec-imx95.dtsi
-new file mode 100644
-index 00000000000..b787a083672
---- /dev/null
-+++ b/arch/arm/dts/lec-imx95.dtsi
-@@ -0,0 +1,524 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
-+/*
-+ * Copyright (C) 2026 Adlink
-+ * https://www.adlinktech.com/products/Computer_on_Modules/SMARC/LEC-IMX95
-+ * https://www.adlinktech.com/products/computer_on_modules/SMARCStarterKits/I-Pi_SMARC_IMX95
-+ */
-+
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/net/ti-dp83867.h>
-+#include "imx95.dtsi"
-+
-+/ {
-+
-+	aliases {
-+		ethernet0 = &enetc_port0;
-+		ethernet1 = &enetc_port1;
-+		gpio0 = &gpio1;
-+		gpio1 = &gpio2;
-+		gpio2 = &gpio3;
-+		gpio3 = &gpio4;
-+		gpio4 = &gpio5;
-+		i2c0 = &lpi2c1;
-+		i2c1 = &lpi2c2;
-+		i2c2 = &lpi2c3;
-+		i2c3 = &lpi2c4;
-+		i2c4 = &lpi2c5;
-+		i2c5 = &lpi2c6;
-+		i2c6 = &lpi2c7;
-+		i2c7 = &lpi2c8;
-+		mmc0 = &usdhc1;
-+		mmc1 = &usdhc2;
-+		serial0 = &lpuart1;
-+		serial4 = &lpuart5;
-+		spi0 = &flexspi1;
-+		usb0 = &usb3_dwc3;
-+		usb1 = &usb2;
-+	};
-+
-+	chosen {
-+		stdout-path = &lpuart1;
-+	};
-+
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0x0 0x80000000 0 0x80000000>;
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		linux_cma: linux,cma {
-+			compatible = "shared-dma-pool";
-+			alloc-ranges = <0 0x80000000 0 0x7f000000>;
-+			size = <0 0x3c000000>;
-+			linux,cma-default;
-+			reusable;
-+		};
-+	};
-+
-+	reg_vref_1v8: regulator-1p8v {
-+		compatible = "regulator-fixed";
-+		regulator-max-microvolt = <1800000>;
-+		regulator-min-microvolt = <1800000>;
-+		regulator-name = "+V1.8_SW";
-+	};
-+
-+	reg_3p3v: regulator-3p3v {
-+		compatible = "regulator-fixed";
-+		regulator-max-microvolt = <3300000>;
-+		regulator-min-microvolt = <3300000>;
-+		regulator-name = "+V3.3_SW";
-+	};
-+
-+	chosen {
-+		bootargs = "console=ttyLP0,115200 earlycon";
-+	};
-+
-+	reg_m2_pwr: regulator-m2-pwr {
-+		compatible = "regulator-fixed";
-+		regulator-name = "M.2-power";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		enable-active-high;
-+		/*
-+		 * M.2 device only can be enabled(W_DISABLE1#) after all Power
-+		 * Rails reach their minimum operating voltage (PCI Express M.2
-+		 * Specification r5.1 3.1.4 Power-up Timing).
-+		 * Set a delay equal to the max value of Tsettle here.
-+		 */
-+		startup-delay-us = <5000>;
-+	};
-+
-+	reg_slot_pwr: regulator-slot-pwr {
-+		compatible = "regulator-fixed";
-+		regulator-name = "PCIe slot-power";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		enable-active-high;
-+	};
-+
-+	reg_usdhc2_vmmc: regulator-usdhc2 {
-+		compatible = "regulator-fixed";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_reg_usdhc2_vmmc>;
-+		regulator-name = "VDD_SD2_3V3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		enable-active-high;
-+		gpio = <&gpio3 7 GPIO_ACTIVE_HIGH>;
-+		off-on-delay-us = <12000>;
-+	};
-+
-+	reg_usb_vbus: regulator-vbus {
-+		compatible = "regulator-fixed";
-+		regulator-name = "USB_VBUS";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		enable-active-high;
-+	};
-+
-+};
-+
-+&usdhc1 {
-+	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
-+	pinctrl-0 = <&pinctrl_usdhc1>;
-+	pinctrl-1 = <&pinctrl_usdhc1_100mhz>;
-+	pinctrl-2 = <&pinctrl_usdhc1_200mhz>;
-+	pinctrl-3 = <&pinctrl_usdhc1>;
-+	bus-width = <8>;
-+	non-removable;
-+	no-sdio;
-+	no-sd;
-+	status = "okay";
-+};
-+
-+&usdhc2 {
-+	pinctrl-names = "default", "state_100mhz", "state_200mhz", "sleep";
-+	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
-+	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
-+	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
-+	pinctrl-3 = <&pinctrl_usdhc2>, <&pinctrl_usdhc2_gpio>;
-+	cd-gpios = <&gpio3 0 GPIO_ACTIVE_LOW>;
-+	vmmc-supply = <&reg_usdhc2_vmmc>;
-+	bus-width = <4>;
-+	status = "okay";
-+};
-+
-+&gpio2 {
-+	gpio-line-names =
-+		"SMARC_SPI0_CS0#",      /* 0  - GPIO_IO00 */
-+		"SMARC_SPI0_DIN",       /* 1  - GPIO_IO01 */
-+		"SMARC_SPI0_DO",        /* 2  - GPIO_IO02 */
-+		"SMARC_SPI0_CK",        /* 3  - GPIO_IO03 */
-+		"SMARC_SPI1_CS0#",      /* 4  - GPIO_IO04 */
-+		"SMARC_SPI1_DIN",       /* 5  - GPIO_IO05 */
-+		"SMARC_SPI1_DO",        /* 6  - GPIO_IO06 */
-+		"SMARC_SPI1_CK",        /* 7  - GPIO_IO07 */
-+		"SMARC_UART0_TXD",      /* 8  - GPIO_IO08 */
-+		"SMARC_UART0_RXD",      /* 9  - GPIO_IO09 */
-+		"SMARC_UART0_CTS_B",    /* 10 - GPIO_IO10 */
-+		"SMARC_UART0_RTS_B",    /* 11 - GPIO_IO11 */
-+		"SMARC_I2C_GP_DAT",     /* 12 - GPIO_IO12 */
-+		"SMARC_I2C_GP_CK",      /* 13 - GPIO_IO13 */
-+		"UART3_TXD_1V8",        /* 14 - GPIO_IO14 */
-+		"UART3_RXD_1V8",        /* 15 - GPIO_IO15 */
-+		"SAI3_TXC_1V8",         /* 16 - GPIO_IO16 */
-+		"SAI3_MCLK_1V8",        /* 17 - GPIO_IO17 */
-+		"SMB_INT_B_1V8",        /* 18 - GPIO_IO18 */
-+		"LVDS0_BKLT_PWM_1V8",   /* 19 - GPIO_IO19 */
-+		"SAI3_RXD_1V8",         /* 20 - GPIO_IO20 */
-+		"SAI3_TXD_1V8",         /* 21 - GPIO_IO21 */
-+		"FAN_PWM_1V8",          /* 22 - GPIO_IO22 */
-+		"LVDS1_BKLT_PWM_1V8",   /* 23 - GPIO_IO23 */
-+		"SPI6_SS1_1V8",         /* 24 - GPIO_IO24 */
-+		"SPI7_SS1_1V8",         /* 25 - GPIO_IO25 */
-+		"SAI3_TXFS_1V8",        /* 26 - GPIO_IO26 */
-+		"TPM_INT_N_1V8",        /* 27 - GPIO_IO27 */
-+		"SMARC_I2C_PM_DAT",     /* 28 - GPIO_IO28 */
-+		"SMARC_I2C_PM_CK",      /* 29 - GPIO_IO29 */
-+		"SMARC_CAN1_TX",        /* 30 - GPIO_IO30 (SMARC CAN1_H via transceiver) */
-+		"SMARC_CAN1_RX";        /* 31 - GPIO_IO31 (SMARC CAN1_L via transceiver) */
-+	status = "okay";
-+};
-+
-+&gpio3 {
-+	gpio-line-names =
-+		"SD2_CD_B",
-+		"SD2_CLK",
-+		"SD2_CMD",
-+		"SD2_DATA0",
-+		"SD2_DATA1",
-+		"SD2_DATA2",
-+		"SD2_DATA3",
-+		"SD2_RST_B_1V8A3V",
-+		"SD1_CLK",
-+		"SD1_CMD",
-+		"SD1_DATA0",
-+		"SD1_DATA1",
-+		"SD1_DATA2",
-+		"SD1_DATA3",
-+		"SD1_DATA4",
-+		"SD1_DATA5",
-+		"SD1_DATA6",
-+		"SD1_DATA7",
-+		"SD1_STROBE",
-+		"SD2_VSEL_1V8",
-+		"SD3_CLK",
-+		"SD3_CMD",
-+		"SD3_DATA0",
-+		"SD3_DATA1",
-+		"SD3_DATA2",
-+		"SD3_DATA3",
-+		"CCM_CLKO1",
-+		"CCM_CLKO2",
-+		"DAP_TDI",
-+		"DAP_TMS_SWDIO",
-+		"DAP_TCLK_SWCLK",
-+		"DAP_TDO_TRACESWO";
-+	status = "okay";
-+};
-+
-+&gpio4 {
-+	gpio-line-names =
-+		"ENET1_MDC",
-+		"ENET1_MDIO",
-+		"ENET1_TD3",
-+		"ENET1_TD2",
-+		"ENET1_TD1",
-+		"ENET1_TD0",
-+		"ENET1_TX_CTL",
-+		"ENET1_TXC",
-+		"ENET1_RX_CTL",
-+		"ENET1_RXC",
-+		"ENET1_RD0",
-+		"ENET1_RD1",
-+		"ENET1_RD2",
-+		"ENET1_RD3",
-+		"RTC_INT#_1V8",
-+		"IOEXP2_INT#_1V8",
-+		"ENET2_TD3",
-+		"ENET2_TD2",
-+		"ENET2_TD1",
-+		"ENET2_TD0",
-+		"ENET2_TX_CTL",
-+		"ENET2_TXC",
-+		"ENET2_RX_CTL",
-+		"ENET2_RXC",
-+		"ENET2_RD0",
-+		"ENET2_RD1",
-+		"ENET2_RD2",
-+		"ENET2_RD3",
-+		"CCM_CLKO3",
-+		"CCM_CLKO4";
-+	status = "okay";
-+};
-+
-+&gpio5 {
-+	gpio-line-names =
-+		"QSPIA_DATA0",
-+		"QSPIA_DATA1",
-+		"QSPIA_DATA2",
-+		"QSPIA_DATA3",
-+		"SKU_CONFIG1_1V8",
-+		"SKU_CONFIG2_1V8",
-+		"SKU_CONFIG3_1V8",
-+		"SYS_STATUS_1V8",
-+		"SD2_WP_1V8",
-+		"QSPIA_SCLK",
-+		"QSPIA_nSS0",
-+		"SYS_RST#_1V8",
-+		"PCIE1_IMX_CLKREQ#_1V8",
-+		"MCU_INTB1_1V8",
-+		"MCU_INTB2_1V8",
-+		"PCIE2_IMX_CLKREQ#_1V8",
-+		"ENET1_INT_B_1V8",
-+		"ENET2_INT_B_1V8";
-+	status = "okay";
-+};
-+
-+&scmi_iomuxc {
-+	pinctrl_emdio: emdiogrp {
-+		fsl,pins = <
-+			IMX95_PAD_ENET1_MDC__NETCMIX_TOP_NETC_MDC		0x50e
-+			IMX95_PAD_ENET1_MDIO__NETCMIX_TOP_NETC_MDIO		0x90e
-+		>;
-+	};
-+
-+	pinctrl_enetc0: enetc0grp {
-+		fsl,pins = <
-+			IMX95_PAD_ENET1_TD3__NETCMIX_TOP_ETH0_RGMII_TD3		0x50e
-+			IMX95_PAD_ENET1_TD2__NETCMIX_TOP_ETH0_RGMII_TD2		0x50e
-+			IMX95_PAD_ENET1_TD1__NETCMIX_TOP_ETH0_RGMII_TD1		0x50e
-+			IMX95_PAD_ENET1_TD0__NETCMIX_TOP_ETH0_RGMII_TD0		0x50e
-+			IMX95_PAD_ENET1_TX_CTL__NETCMIX_TOP_ETH0_RGMII_TX_CTL	0x57e
-+			IMX95_PAD_ENET1_TXC__NETCMIX_TOP_ETH0_RGMII_TX_CLK	0x58e
-+			IMX95_PAD_ENET1_RX_CTL__NETCMIX_TOP_ETH0_RGMII_RX_CTL	0x57e
-+			IMX95_PAD_ENET1_RXC__NETCMIX_TOP_ETH0_RGMII_RX_CLK	0x58e
-+			IMX95_PAD_ENET1_RD0__NETCMIX_TOP_ETH0_RGMII_RD0		0x57e
-+			IMX95_PAD_ENET1_RD1__NETCMIX_TOP_ETH0_RGMII_RD1		0x57e
-+			IMX95_PAD_ENET1_RD2__NETCMIX_TOP_ETH0_RGMII_RD2		0x57e
-+			IMX95_PAD_ENET1_RD3__NETCMIX_TOP_ETH0_RGMII_RD3		0x57e
-+		>;
-+	};
-+
-+	pinctrl_enetc1: enetc1grp {
-+		fsl,pins = <
-+			IMX95_PAD_ENET2_TD3__NETCMIX_TOP_ETH1_RGMII_TD3		0x57e
-+			IMX95_PAD_ENET2_TD2__NETCMIX_TOP_ETH1_RGMII_TD2		0x57e
-+			IMX95_PAD_ENET2_TD1__NETCMIX_TOP_ETH1_RGMII_TD1		0x57e
-+			IMX95_PAD_ENET2_TD0__NETCMIX_TOP_ETH1_RGMII_TD0		0x57e
-+			IMX95_PAD_ENET2_TX_CTL__NETCMIX_TOP_ETH1_RGMII_TX_CTL	0x57e
-+			IMX95_PAD_ENET2_TXC__NETCMIX_TOP_ETH1_RGMII_TX_CLK	0x5fe
-+			IMX95_PAD_ENET2_RX_CTL__NETCMIX_TOP_ETH1_RGMII_RX_CTL	0x57e
-+			IMX95_PAD_ENET2_RXC__NETCMIX_TOP_ETH1_RGMII_RX_CLK	0x5fe
-+			IMX95_PAD_ENET2_RD0__NETCMIX_TOP_ETH1_RGMII_RD0		0x57e
-+			IMX95_PAD_ENET2_RD1__NETCMIX_TOP_ETH1_RGMII_RD1		0x57e
-+			IMX95_PAD_ENET2_RD2__NETCMIX_TOP_ETH1_RGMII_RD2		0x57e
-+			IMX95_PAD_ENET2_RD3__NETCMIX_TOP_ETH1_RGMII_RD3		0x57e
-+		>;
-+	};
-+
-+	pinctrl_hp: hpgrp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO11__GPIO2_IO_BIT11		0x31e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c1: lpi2c1grp {
-+		fsl,pins = <
-+			IMX95_PAD_I2C1_SCL__AONMIX_TOP_LPI2C1_SCL		0x40000b9e
-+			IMX95_PAD_I2C1_SDA__AONMIX_TOP_LPI2C1_SDA		0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c2: lpi2c2grp {
-+		fsl,pins = <
-+			IMX95_PAD_I2C2_SCL__AONMIX_TOP_LPI2C2_SCL		0x40000b9e
-+			IMX95_PAD_I2C2_SDA__AONMIX_TOP_LPI2C2_SDA		0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c3: lpi2c3grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO28__LPI2C3_SDA			0x40000b9e
-+			IMX95_PAD_GPIO_IO29__LPI2C3_SCL			0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c4: lpi2c4grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO30__LPI2C4_SDA			0x40000b9e
-+			IMX95_PAD_GPIO_IO31__LPI2C4_SCL			0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c5: lpi2c5grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO22__LPI2C5_SDA			0x40000b9e
-+			IMX95_PAD_GPIO_IO23__LPI2C5_SCL			0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c6: lpi2c6grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO02__LPI2C6_SDA			0x40000b9e
-+			IMX95_PAD_GPIO_IO03__LPI2C6_SCL			0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c7: lpi2c7grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO08__LPI2C7_SDA			0x40000b9e
-+			IMX95_PAD_GPIO_IO09__LPI2C7_SCL			0x40000b9e
-+		>;
-+	};
-+
-+	pinctrl_lpi2c8: lpi2c8grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO13__LPI2C8_SCL		0x4000007e
-+			IMX95_PAD_GPIO_IO12__LPI2C8_SDA		0x4000007e
-+		>;
-+	};
-+
-+	pinctrl_lpspi7: lpspi7grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO04__GPIO2_IO_BIT4		0x3fe
-+			IMX95_PAD_GPIO_IO05__LPSPI7_SIN			0x3fe
-+			IMX95_PAD_GPIO_IO06__LPSPI7_SOUT		0x3fe
-+			IMX95_PAD_GPIO_IO07__LPSPI7_SCK			0x3fe
-+		>;
-+	};
-+
-+	pinctrl_pcie0: pcie0grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO32__HSIOMIX_TOP_PCIE1_CLKREQ_B		0x4000031e
-+		>;
-+	};
-+
-+	pinctrl_pcie1: pcie1grp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO35__HSIOMIX_TOP_PCIE2_CLKREQ_B		0x4000031e
-+		>;
-+	};
-+
-+	pinctrl_uart1: uart1grp {
-+		fsl,pins = <
-+			IMX95_PAD_UART1_RXD__AONMIX_TOP_LPUART1_RX      0x31e
-+			IMX95_PAD_UART1_TXD__AONMIX_TOP_LPUART1_TX      0x31e
-+		>;
-+	};
-+
-+	pinctrl_uart5: uart5grp {
-+		fsl,pins = <
-+			IMX95_PAD_DAP_TDO_TRACESWO__LPUART5_TX		0x31e
-+			IMX95_PAD_DAP_TDI__LPUART5_RX			0x31e
-+			IMX95_PAD_DAP_TMS_SWDIO__LPUART5_RTS_B		0x31e
-+			IMX95_PAD_DAP_TCLK_SWCLK__LPUART5_CTS_B		0x31e
-+		>;
-+	};
-+
-+	pinctrl_usdhc1: usdhc1grp {
-+		fsl,pins = <
-+			IMX95_PAD_SD1_CLK__USDHC1_CLK			0x158e
-+			IMX95_PAD_SD1_CMD__USDHC1_CMD			0x138e
-+			IMX95_PAD_SD1_DATA0__USDHC1_DATA0		0x138e
-+			IMX95_PAD_SD1_DATA1__USDHC1_DATA1		0x138e
-+			IMX95_PAD_SD1_DATA2__USDHC1_DATA2		0x138e
-+			IMX95_PAD_SD1_DATA3__USDHC1_DATA3		0x138e
-+			IMX95_PAD_SD1_DATA4__USDHC1_DATA4		0x138e
-+			IMX95_PAD_SD1_DATA5__USDHC1_DATA5		0x138e
-+			IMX95_PAD_SD1_DATA6__USDHC1_DATA6		0x138e
-+			IMX95_PAD_SD1_DATA7__USDHC1_DATA7		0x138e
-+			IMX95_PAD_SD1_STROBE__USDHC1_STROBE		0x158e
-+		>;
-+	};
-+
-+	pinctrl_usdhc1_100mhz: usdhc1-100mhzgrp {
-+		fsl,pins = <
-+			IMX95_PAD_SD1_CLK__USDHC1_CLK			0x158e
-+			IMX95_PAD_SD1_CMD__USDHC1_CMD			0x138e
-+			IMX95_PAD_SD1_DATA0__USDHC1_DATA0		0x138e
-+			IMX95_PAD_SD1_DATA1__USDHC1_DATA1		0x138e
-+			IMX95_PAD_SD1_DATA2__USDHC1_DATA2		0x138e
-+			IMX95_PAD_SD1_DATA3__USDHC1_DATA3		0x138e
-+			IMX95_PAD_SD1_DATA4__USDHC1_DATA4		0x138e
-+			IMX95_PAD_SD1_DATA5__USDHC1_DATA5		0x138e
-+			IMX95_PAD_SD1_DATA6__USDHC1_DATA6		0x138e
-+			IMX95_PAD_SD1_DATA7__USDHC1_DATA7		0x138e
-+			IMX95_PAD_SD1_STROBE__USDHC1_STROBE		0x158e
-+		>;
-+	};
-+
-+	pinctrl_usdhc1_200mhz: usdhc1-200mhzgrp {
-+		fsl,pins = <
-+			IMX95_PAD_SD1_CLK__USDHC1_CLK			0x15fe
-+			IMX95_PAD_SD1_CMD__USDHC1_CMD			0x13fe
-+			IMX95_PAD_SD1_DATA0__USDHC1_DATA0		0x13fe
-+			IMX95_PAD_SD1_DATA1__USDHC1_DATA1		0x13fe
-+			IMX95_PAD_SD1_DATA2__USDHC1_DATA2		0x13fe
-+			IMX95_PAD_SD1_DATA3__USDHC1_DATA3		0x13fe
-+			IMX95_PAD_SD1_DATA4__USDHC1_DATA4		0x13fe
-+			IMX95_PAD_SD1_DATA5__USDHC1_DATA5		0x13fe
-+			IMX95_PAD_SD1_DATA6__USDHC1_DATA6		0x13fe
-+			IMX95_PAD_SD1_DATA7__USDHC1_DATA7		0x13fe
-+			IMX95_PAD_SD1_STROBE__USDHC1_STROBE		0x15fe
-+		>;
-+	};
-+
-+	pinctrl_reg_usdhc2_vmmc: regusdhc2vmmcgrp {
-+		fsl,pins = <
-+			IMX95_PAD_SD2_RESET_B__GPIO3_IO_BIT7		0x31e
-+		>;
-+	};
-+
-+	pinctrl_typec: typecgrp {
-+		fsl,pins = <
-+			IMX95_PAD_GPIO_IO34__GPIO5_IO_BIT14			0x31e
-+		>;
-+	};
-+
-+	pinctrl_usdhc2_gpio: usdhc2gpiogrp {
-+		fsl,pins = <
-+			IMX95_PAD_SD2_CD_B__GPIO3_IO_BIT0		0x31e
-+		>;
-+	};
-+
-+	pinctrl_usdhc2: usdhc2grp {
-+		fsl,pins = <
-+			IMX95_PAD_SD2_CLK__USDHC2_CLK			0x158e
-+			IMX95_PAD_SD2_CMD__USDHC2_CMD			0x138e
-+			IMX95_PAD_SD2_DATA0__USDHC2_DATA0		0x138e
-+			IMX95_PAD_SD2_DATA1__USDHC2_DATA1		0x138e
-+			IMX95_PAD_SD2_DATA2__USDHC2_DATA2		0x138e
-+			IMX95_PAD_SD2_DATA3__USDHC2_DATA3		0x138e
-+			IMX95_PAD_SD2_VSELECT__USDHC2_VSELECT		0x51e
-+		>;
-+	};
-+
-+	pinctrl_usdhc2_100mhz: usdhc2-100mhzgrp {
-+		fsl,pins = <
-+			IMX95_PAD_SD2_CLK__USDHC2_CLK			0x158e
-+			IMX95_PAD_SD2_CMD__USDHC2_CMD			0x138e
-+			IMX95_PAD_SD2_DATA0__USDHC2_DATA0		0x138e
-+			IMX95_PAD_SD2_DATA1__USDHC2_DATA1		0x138e
-+			IMX95_PAD_SD2_DATA2__USDHC2_DATA2		0x138e
-+			IMX95_PAD_SD2_DATA3__USDHC2_DATA3		0x138e
-+			IMX95_PAD_SD2_VSELECT__USDHC2_VSELECT		0x51e
-+		>;
-+	};
-+
-+	pinctrl_usdhc2_200mhz: usdhc2-200mhzgrp {
-+		fsl,pins = <
-+			IMX95_PAD_SD2_CLK__USDHC2_CLK			0x158e
-+			IMX95_PAD_SD2_CMD__USDHC2_CMD			0x138e
-+			IMX95_PAD_SD2_DATA0__USDHC2_DATA0		0x138e
-+			IMX95_PAD_SD2_DATA1__USDHC2_DATA1		0x138e
-+			IMX95_PAD_SD2_DATA2__USDHC2_DATA2		0x138e
-+			IMX95_PAD_SD2_DATA3__USDHC2_DATA3		0x138e
-+			IMX95_PAD_SD2_VSELECT__USDHC2_VSELECT		0x51e
-+		>;
-+	};
-+};
++++ b/configs/lec-imx95_defconfig
+@@ -0,0 +1,153 @@
++CONFIG_ARM=y
++CONFIG_ARCH_IMX9=y
++CONFIG_TEXT_BASE=0x90200000
++CONFIG_SYS_MALLOC_LEN=0x2000000
++CONFIG_SYS_MALLOC_F_LEN=0x10000
++CONFIG_SPL_GPIO=y
++CONFIG_SPL_LIBCOMMON_SUPPORT=y
++CONFIG_SPL_LIBGENERIC_SUPPORT=y
++CONFIG_ENV_SOURCE_FILE="lec_imx95"
++CONFIG_NR_DRAM_BANKS=3
++CONFIG_SF_DEFAULT_SPEED=200000000
++CONFIG_ENV_SIZE=0x4000
++CONFIG_ENV_OFFSET=0x700000
++CONFIG_DM_GPIO=y
++CONFIG_DEFAULT_DEVICE_TREE="lec-imx95"
++CONFIG_TARGET_LEC_IMX95=y
++CONFIG_OF_LIBFDT_OVERLAY=y
++CONFIG_SYS_MONITOR_LEN=524288
++CONFIG_SPL_MMC=y
++CONFIG_SPL_SERIAL=y
++CONFIG_SPL_DRIVERS_MISC=y
++CONFIG_SPL_TEXT_BASE=0x20480000
++CONFIG_SPL_HAS_BSS_LINKER_SECTION=y
++CONFIG_SPL_BSS_START_ADDR=0x204d6000
++CONFIG_SPL_BSS_MAX_SIZE=0x2000
++CONFIG_SYS_LOAD_ADDR=0x90400000
++# CONFIG_SPL_SHARES_INIT_SP_ADDR is not set
++CONFIG_SPL=y
++CONFIG_SPL_RECOVER_DATA_SECTION=y
++CONFIG_PCI=y
++CONFIG_SYS_MEMTEST_START=0x90000000
++CONFIG_SYS_MEMTEST_END=0xA0000000
++CONFIG_REMAKE_ELF=y
++CONFIG_FIT=y
++CONFIG_FIT_VERBOSE=y
++CONFIG_OF_SYSTEM_SETUP=y
++CONFIG_BOOTCOMMAND="bootflow scan -l; run bsp_bootcmd"
++CONFIG_DEFAULT_FDT_FILE="lec-imx95-lt9611.dtb"
++CONFIG_SYS_CBSIZE=2048
++CONFIG_SYS_PBSIZE=2074
++CONFIG_BOARD_LATE_INIT=y
++CONFIG_PCI_INIT_R=y
++CONFIG_SPL_MAX_SIZE=0x30000
++CONFIG_SPL_BOARD_INIT=y
++CONFIG_SPL_LOAD_IMX_CONTAINER=y
++CONFIG_SPL_SYS_MALLOC=y
++CONFIG_SPL_HAS_CUSTOM_MALLOC_START=y
++CONFIG_SPL_CUSTOM_SYS_MALLOC_ADDR=0x93200000
++CONFIG_SPL_SYS_MALLOC_SIZE=0x80000
++CONFIG_SPL_SYS_MMCSD_RAW_MODE=y
++CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR=0x1040
++CONFIG_SPL_I2C=y
++CONFIG_SPL_DM_MAILBOX=y
++CONFIG_SPL_POWER=y
++CONFIG_SPL_WATCHDOG=y
++CONFIG_SYS_PROMPT="u-boot=> "
++CONFIG_CMD_ERASEENV=y
++CONFIG_CMD_NVEDIT_EFI=y
++CONFIG_CRC32_VERIFY=y
++CONFIG_CMD_MEMTEST=y
++CONFIG_CMD_CLK=y
++CONFIG_CMD_DFU=y
++CONFIG_CMD_FUSE=y
++CONFIG_CMD_GPIO=y
++CONFIG_CMD_GPT=y
++CONFIG_CMD_I2C=y
++CONFIG_CMD_MMC=y
++CONFIG_CMD_PCI=y
++CONFIG_CMD_POWEROFF=y
++CONFIG_CMD_REMOTEPROC=y
++CONFIG_CMD_SNTP=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_EFIDEBUG=y
++CONFIG_CMD_RTC=y
++CONFIG_CMD_TIME=y
++CONFIG_CMD_GETTIME=y
++CONFIG_CMD_TIMER=y
++CONFIG_CMD_REGULATOR=y
++CONFIG_CMD_HASH=y
++CONFIG_CMD_EXT4_WRITE=y
++CONFIG_OF_CONTROL=y
++CONFIG_SPL_OF_CONTROL=y
++CONFIG_ENV_OVERWRITE=y
++CONFIG_ENV_IS_NOWHERE=y
++CONFIG_ENV_IS_IN_MMC=y
++CONFIG_ENV_RELOC_GD_ENV_ADDR=y
++CONFIG_ENV_MMC_DEVICE_INDEX=1
++CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG=y
++CONFIG_USE_ETHPRIME=y
++CONFIG_ETHPRIME="eth0"
++CONFIG_NET_RANDOM_ETHADDR=y
++CONFIG_SPL_DM=y
++CONFIG_SYSCON=y
++CONFIG_SPL_OF_TRANSLATE=y
++CONFIG_CLK=y
++CONFIG_SPL_CLK=y
++CONFIG_SPL_CLK_CCF=y
++CONFIG_CLK_CCF=y
++CONFIG_CLK_SCMI=y
++CONFIG_SPL_CLK_SCMI=y
++CONFIG_DFU_MMC=y
++CONFIG_DFU_RAM=y
++CONFIG_SPL_FIRMWARE=y
++# CONFIG_SCMI_AGENT_SMCCC is not set
++CONFIG_IMX_SM_CPU=y
++CONFIG_IMX_SM_LMM=y
++CONFIG_IMX_RGPIO2P=y
++CONFIG_DM_PCA953X=y
++CONFIG_ADP5585_GPIO=y
++CONFIG_DM_I2C=y
++CONFIG_SYS_I2C_IMX_LPI2C=y
++CONFIG_IMX_MU_MBOX=y
++CONFIG_SUPPORT_EMMC_RPMB=y
++CONFIG_SUPPORT_EMMC_BOOT=y
++CONFIG_MMC_IO_VOLTAGE=y
++CONFIG_MMC_UHS_SUPPORT=y
++CONFIG_MMC_HS400_ES_SUPPORT=y
++CONFIG_MMC_HS400_SUPPORT=y
++CONFIG_FSL_USDHC=y
++CONFIG_MTD=y
++CONFIG_DM_SPI_FLASH=y
++CONFIG_SPI_FLASH_SFDP_SUPPORT=y
++CONFIG_SPI_FLASH_STMICRO=y
++CONFIG_SPI_FLASH_MT35XU=y
++CONFIG_DM_MDIO=y
++CONFIG_MII=y
++CONFIG_FSL_ENETC=y
++CONFIG_PHYLIB=y
++CONFIG_PHY_AQUANTIA=y
++CONFIG_PHY_REALTEK=y
++CONFIG_PCIE_ECAM_GENERIC=y
++CONFIG_PHY=y
++CONFIG_PINCTRL=y
++CONFIG_SPL_PINCTRL=y
++CONFIG_PINCTRL_IMX_SCMI=y
++CONFIG_POWER_DOMAIN=y
++CONFIG_SCMI_POWER_DOMAIN=y
++CONFIG_DM_REGULATOR=y
++CONFIG_SPL_DM_REGULATOR=y
++CONFIG_DM_REGULATOR_FIXED=y
++CONFIG_SPL_DM_REGULATOR_FIXED=y
++CONFIG_DM_REGULATOR_GPIO=y
++CONFIG_REMOTEPROC_IMX=y
++CONFIG_DM_RTC=y
++CONFIG_DM_SERIAL=y
++CONFIG_FSL_LPUART=y
++CONFIG_SPI=y
++CONFIG_DM_SPI=y
++CONFIG_NXP_FSPI=y
++CONFIG_ULP_WATCHDOG=y
++CONFIG_WDT=y
++CONFIG_LZO=y
++CONFIG_BZIP2=y
 
 -- 
 2.25.1
