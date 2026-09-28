@@ -1,117 +1,198 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 28 Sep 2026 23:42:39 +0200
-Subject: [PATCH] media: venus: core: look up static codec nodes among
- children only
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net-next v8 00/11] Support for onsemi's S2500 10Base-T1S
+ MAC-PHY
+Date: Mon, 28 Sep 2026 15:25:07 -0700
+Message-Id: <20260928-s2500-mac-phy-support-v8-0-7e011aacc309@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-venus-of-node-ref-v1-1-7579fb84445a@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqEMAyF4VeRrCegUby9yuBCazrGRSuNiiC+u
- 9VZfgfOf4JyEFZokxMC76LiXUT2ScBMvfsxyhgNlFKZNlTjzm5T9BadHxkDWxzKpirI2p5MDvG
- 3xFGOt/nt/tZtmNmsTwiu6wZ1+qSNdQAAAA==
-X-Change-ID: 20260928-venus-of-node-ref-b69742ffa2c3
-To: Vikash Garodia <vikash.garodia@oss.qualcomm.com>, 
- Dikshita Agarwal <dikshita.agarwal@oss.qualcomm.com>, 
- Bryan O'Donoghue <bod@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Stanimir Varbanov <stanimir.k.varbanov@gmail.com>, 
- Hans Verkuil <hverkuil@kernel.org>, Dan Carpenter <error27@gmail.com>
-Cc: Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2898; i=david@ixit.cz;
- h=from:subject:message-id; bh=RcEQpaG3qjApty1CwkPYZ1bGIKgYZo3g8YmCYVk3/4g=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqut9PZoi6wYMcLOhfMI1e5kaNX46iKGzyTx1nP
- /n41g8T/veJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCarrfTwAKCRBgAj/E00kg
- cpIfD/9JrB03HWtW4Pd/RAJ2kwg5SKWnrlnqaHQI0mzpYp1J5FWrh+/c2hXbsgOVsdErI/zBmhL
- hhYx4dpZ6wzxj2bHf7w/1NxxCoYavZL2ghxwFT9Qpo6b9qCA0uwARacGTn2Lx9qzEthgnc07I3m
- 5MGKYnZp9zDvTlWFf3tN6WtPrNkOoPoAQonOdcI3SsBPvOMq+Qlj6Sj3chZCG/pu436lbwSKGiV
- e1Bc9VVxEJd/FJDz1C4SsLWDvod4EKgb98nz9HAaFvBwdP+cMDjQv1tUxMl7+nzqvqZP4mjqDCX
- 2nk3iKR4BQFX0PwDZlEAtC5nu3GLWoPlZLFNDCetVxsIA1z/DkRVxgeHxLNa3vxs2/H+s6bv9G7
- 7aM3ziOiBt/OaC55UW+SaA5qluyvbkMOW46q02GebeCZGNrDpuuGl+ph2l5F66XzBEqihyXynyT
- 2t4zIU8jRg4QT9OpTNht2U9r2qYip4TiDvyP6bP8uu1etzn86pmV6iXoFFf56RrC2OqAIfntn/7
- jwRX1jN47BrdUe5Pu6aNYlIpFATh349Y5aTOEzAMc5royKIcVJDinwlB+FpR+Uyr4sxH32OUzUm
- QdRVyOihfNK5iyBGYEOZi6kLMjvxEH5M2Qt4VYRE5Ro3ApooRp28mZaii9YI8IGKH5h4sojBb9t
- xq+UNf3NU4IryNA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAETpumoC/3XOQW7DIBAF0KtErEsFGBjIqveossB4XFPJxgJiJ
+ Yp89xC3UlNFXo5m/vtzIxlTwEyOhxtJuIQc4lQH83YgfnDTF9LQ1ZkIJjTTjNMsFGN0dJ7Ow5X
+ m8zzHVKjsG4dWsL6FhtTsnLAPl839JBMWOuGlkNPPJp/bb/TlwT5uh5BLTNfthUVuid82tdO2S
+ Mpoh7XN88brznzEKeMY3n0ct5JFPTFc7jGqMsYakC2IHoR6YfQTI+weoyvDjUewdd0Af2HgjwF
+ m9hiojATjDYBz3Nl/zLqud+IRRgusAQAA
+To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Piergiorgio Beruto <pier.beruto@onsemi.com>, 
+ Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>, 
+ netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Jerry Ray <jerry.ray@microchip.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790634319; l=7343;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=HpAtu+Uu1G28gcAvxis3+zp2rYzH8YHQG1YoXSH96cU=;
+ b=B1+61qDvpUTsBDBUxt5BtliF10m6v4djcVlWqcj7Fnd/LfG6uJcxQzvImldVZ4VXh0COnvX6Q
+ jFgghCIUuT9DCGjOFF3EqybwICn1NffpmjGnCrj5LgvU3sWqIKQM/WN
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-venus_add_video_core() checks whether the decoder or encoder node is
-already present in the device tree with of_find_node_by_name(). That
-function drops a reference on the node it starts from and searches the
-rest of the whole tree rather than the children of that node, so every
-probe drops two references on the video-codec node that the driver
-never took.
+This patch series brings support for onsemi's S2500 that iss
+IEEE 802.3cg compliant Ethernet transceiver with an integrated
+Media Access Controller (MAC-PHY)
 
-Once the node's refcount reaches zero, which on SDM845 happens on the
-first unload of venus_core, of_node_release() complains about a bad
-of_node_put() and the node's sysfs directory is gone; the next probe
-then crashes while attaching the dynamic child nodes:
+Driver implementation is compatible and works with OA TC6
+framework that is already present. S2500 driver supports
+hardware timestamping. Along with this driver, OA TC6
+frame work is also changed to add hardware timestamping
+support.
 
-  OF: ERROR: of_node_release() detected bad of_node_put() on /soc@0/video-codec@aa00000
-  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000008
-  ...
-  kernfs_find_and_get_ns+0x24/0x80
-  safe_name+0x48/0xd8
-  __of_attach_node_sysfs+0x58/0x118
-  __of_attach_node+0x8c/0x170
-  __of_changeset_entry_apply+0xe8/0x178
-  __of_changeset_apply_entries+0x50/0x1e0
-  of_changeset_apply+0x54/0xc0
-  venus_add_dynamic_nodes+0xb4/0xe0 [venus_core]
-  venus_probe+0x2f4/0x3c0 [venus_core]
+Driver has support for running selftest and loopback tests.
+Through ethtool, it can provide traffic stats, rmon stats,
+and timestamping related traffic stats.
 
-Use of_get_child_by_name(), which only looks at the direct children,
-where static codec nodes live, and leaves the parent's refcount alone.
+As S2500 has an internal PHY, changes have been added
+to onsemi's PHY driver to support this device.
 
-Assisted-by: LLM
-Fixes: 687bfbba5a1c ("media: venus: Add support for static video encoder/decoder declarations")
-Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
-Closes: https://lore.kernel.org/all/aAuqgiSxrh24-L-D@stanley.mountain/
-Signed-off-by: David Heidelberg <david@ixit.cz>
+To: Andrew Lunn <andrew@lunn.ch>
+To: Piergiorgio Beruto <pier.beruto@onsemi.com>
+To: Heiner Kallweit <hkallweit1@gmail.com>
+To: Russell King <linux@armlinux.org.uk>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
+To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>
+To: Richard Cochran <richardcochran@gmail.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Simon Horman <horms@kernel.org>
+To: Jonathan Corbet <corbet@lwn.net>
+To: Shuah Khan <skhan@linuxfoundation.org>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-doc@vger.kernel.org
+Cc: Jerry Ray <jerry.ray@microchip.com>
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+
+Changes in v8:
+- Modified to use newer MMD based read/write APIs
+- clean up by removing unused definitions/initializations
+- Better handling of timestamp capture events by using
+  bit fields so that we don't lose any event
+- timestamp skb queue is protected with spinlock
+- added reset-gpio in YAML file as support is recently added
+- removed ioctl from OA TC6 framework as it is not needed.
+
+Changes in v7:
+- Fixed compiler warning due to prototype mismatch
+- Moved the order of patches to ensure dt-bindings comes first
+  before it is being used
+- Added missing review tag
+- Added missing MODULE_DEVICE_TABLE
+- OA_TC6 framework enables 64 bit timestamping mode by default.
+
+- Compiler related warnings fixed.
+- Link to v6: https://lore.kernel.org/r/20260629-s2500-mac-phy-support-v6-0-18ce79500371@onsemi.com
+
+Changes in v6:
+- Changes to ensure onsemi code stay within 80 columns.
+- Fixed the error of "not described in comments section"
+  in comments section.
+
+- Fixed compiler warnings.
+- Link to v5: https://patch.msgid.link/20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com
+
+Changes in v5:
+ - kernel doc related changes in oa_tc.c, onsemi driver files and
+  oa tc6 rst file
+- Link to v4: https://lore.kernel.org/r/20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com
+
+Changes in v4:
+ - Added return value comment for genphy_read/write_phy_mmd functions
+ - Added genphy_loopback_fixed_speed helper function to be used in
+   set_loopback callbacks
+ - Updated networking documentation for OA TC6 framework to elaborate
+   on what is expected in the ptp_clock_info structure for registration.
+ - added spi-max-frequency in YAML file based on alert from sashiko-bot
+ - Removed model/version from the onsemi driver's private structure as
+   they were useful as "information-only" data.
+ - Replaced the non-standard selftest with Linux's standard selftest
+   and made it as a separate patch
+ - Changed bit manipulation, shift operations to use macros so that
+   it is clean and readable.
+ - added new read_register and write_register apis with _mms postfix
+   so that MMS (memory map selector) can be given as a parameter.
+ - Fixed the wrong condition check with NETIF_F_RXFCS to subtract
+   FCS size from the length of the frame.
+ - Link to v3: https://lore.kernel.org/r/CY8PR02MB92499C9080614FA3CEB8CD0483162@CY8PR02MB9249.namprd02.prod.outlook.com
+
+Changes in v3:
+ - Moved OA TC6 framework to its own directory.
+ - Split changes to smaller patches based on feedback.
+ - Added PHY loopback support as a separate patch.
+ - New, read and write register APIs with extra parameter MMS
+ - Link to v2: https://lore.kernel.org/r/CY8PR02MB924920C8825C7AE5D22EFA4483382@CY8PR02MB9249.namprd02.prod.outlook.com
+
+Changes in v2:
+ - API to add vendor specific MMS to mdio device map.
+ - Link to v1: https://lore.kernel.org/r/CY8PR02MB9249D083B637477C254F9B0583322@CY8PR02MB9249.namprd02.prod.outlook.com
+
 ---
-Unloading and reloading venus_core crashes on SDM845: every probe drops
-two references on the video-codec node through of_find_node_by_name().
+Selvamani Rajagopal (11):
+      dt-bindings: net: add onsemi's S2500
+      Documentation: networking: Add timestamp related APIs to OA TC6 framework
+      net: ethernet: oa_tc6: Move oa_tc6.c to its own directory
+      net: ethernet: oa_tc6: Move constant definitions to header file
+      net: ethernet: oa_tc6: Support for hardware timestamp
+      net: ethernet: oa_tc6: Support for vendor specific MMS
+      net: phy: ncn26000: Support for onsemi's S2500 internal phy
+      net: phy: ncn26000: Enable enhanced noise immunity
+      net: phy: ncn26000: Support for loopback
+      onsemi: s2500: Add driver support for S2500 MAC-PHY
+      onsemi: s2500: Added selftest support to onsemi's S2500 driver
 
-Tested on Pixel 3 (SDM845) with ten unload/reload cycles, decoding after
-each one.
+ .../devicetree/bindings/net/onnn,s2500.yaml        |  72 +++
+ Documentation/networking/oa-tc6-framework.rst      |  59 +++
+ MAINTAINERS                                        |  13 +-
+ drivers/net/ethernet/Kconfig                       |  13 +-
+ drivers/net/ethernet/Makefile                      |   3 +-
+ drivers/net/ethernet/adi/Kconfig                   |   1 +
+ drivers/net/ethernet/microchip/lan865x/Kconfig     |   1 +
+ drivers/net/ethernet/oa_tc6/Kconfig                |  17 +
+ drivers/net/ethernet/oa_tc6/Makefile               |   7 +
+ drivers/net/ethernet/{ => oa_tc6}/oa_tc6.c         | 433 ++++++++++++-----
+ drivers/net/ethernet/oa_tc6/oa_tc6_ptp.c           |  65 +++
+ drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h       | 161 +++++++
+ drivers/net/ethernet/oa_tc6/oa_tc6_tstamp.c        | 224 +++++++++
+ drivers/net/ethernet/onsemi/Kconfig                |  22 +
+ drivers/net/ethernet/onsemi/Makefile               |   7 +
+ drivers/net/ethernet/onsemi/s2500/Kconfig          |  21 +
+ drivers/net/ethernet/onsemi/s2500/Makefile         |   7 +
+ drivers/net/ethernet/onsemi/s2500/s2500_ethtool.c  | 375 +++++++++++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_hw_def.h   | 160 +++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_main.c     | 523 +++++++++++++++++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_ptp.c      | 174 +++++++
+ drivers/net/phy/dp83867.c                          |  11 +-
+ drivers/net/phy/ncn26000.c                         |  63 ++-
+ drivers/net/phy/phy_device.c                       |  20 +
+ include/linux/oa_tc6.h                             |  25 +
+ include/linux/phy.h                                |   2 +
+ 26 files changed, 2331 insertions(+), 148 deletions(-)
 ---
- drivers/media/platform/qcom/venus/core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/media/platform/qcom/venus/core.c b/drivers/media/platform/qcom/venus/core.c
-index 243e342b0ae75..3e69fc7ea3c79 100644
---- a/drivers/media/platform/qcom/venus/core.c
-+++ b/drivers/media/platform/qcom/venus/core.c
-@@ -301,17 +301,17 @@ static int venus_add_video_core(struct venus_core *core, const char *node_name,
- 	struct of_changeset *ocs = core->ocs;
- 	struct device *dev = core->dev;
- 	struct device_node *np, *enp;
- 	int ret;
- 
- 	if (!node_name)
- 		return 0;
- 
--	enp = of_find_node_by_name(dev->of_node, node_name);
-+	enp = of_get_child_by_name(dev->of_node, node_name);
- 	if (enp) {
- 		of_node_put(enp);
- 		return 0;
- 	}
- 
- 	np = of_changeset_create_node(ocs, dev->of_node, node_name);
- 	if (!np) {
- 		dev_err(dev, "Unable to create new node\n");
-
----
-base-commit: 7079a12d7506b07fb53b54a664bfad5fa9b16d70
-change-id: 20260928-venus-of-node-ref-b69742ffa2c3
+base-commit: 014d795c73837ea2339a4ea8e8f82c6e959b845d
+change-id: 20260601-s2500-mac-phy-support-4f3ae920fb73
 
 Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
