@@ -1,116 +1,119 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 28 Sep 2026 13:48:47 +0400
-Subject: [PATCH v2] pinctrl: qcom: ipq5018: update PWM groups and
- corresponding pin functions
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH v2 00/14] libfuse: Add mount service safety checks and
+ tests
+Date: Mon, 28 Sep 2026 13:02:02 +0200
+Message-Id: <20260928-mount-service-bound-open-v2-0-0f9f501d05ce@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-ipq5018-pwm-functions-v2-1-87bbcd706bc6@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CQAxFr0K6tmbaAAFX3sOwwKFIozA4A6gh3
- N2RC7h8P3nvrxDEqwQ4JSt4WTSoGyLwIQHb1cNNUJvIwIZzU3KKOj4zQwWOrx7bebBTFAKyWMN
- ETZ5ZguiOXlp9791LFbnTMDn/2W8W+q3/igshYVGWpk6lyK7cnt08PZy7H63rodq27QuFtTu5v
- AAAAA==
-X-Change-ID: 20260924-ipq5018-pwm-functions-2ec0211d65c1
-To: Bartosz Golaszewski <brgl@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, Linus Walleij <linusw@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790588929; l=3984;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=bdNTTmgNNZzHtCyMcXaP+/5YczTyR2tEZAgMtevFbFU=;
- b=2UCGNtGW7pfm1fEyAW1VzrN5fppGbdd/7aXd8LKKnjNStfGN3AzMNmGl6cGKbbbfO6sv9iHQy
- CDhB4z9wOhABY1h/5rWh3fNVzyrQbzzzUytbjqjqWxoeYKQufvBwy1J
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBBFf4V07RhaXtaV/2FYMGWQmtCStjQaw
+ r9bMC5dnuTec1bmyWny7JqtzFHUXluTQJwypsbOPAh0n5iJXNS5FCVMdjEB0itqRYCJerAzGWg
+ KibwWRY1Dx9J9djTo16G+t1/2Cz5Jhd23L0btg3Xvox35vvtlqv+ZyCEHxIF3l1I1UlY39EjO9
+ GdlJ9Zu2/YBzCy/1tQAAAA=
+X-Change-ID: 20260924-mount-service-bound-open-739b16236bfa
+To: fuse-devel@lists.linux.dev
+Cc: "Darrick J. Wong" <djwong@kernel.org>, neal@gompa.dev, 
+ Bernd Schubert <bernd@bsbernd.com>, 
+ Keerthana KT <keerthana@labs.digiscrypt.com>
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4201; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=ckHVGJEFaGVJTiLCGSLa28EbEN474uZYgSizuxnSUwk=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLJ2eVptfHy2/qv1cQ71Bceib5//0Z5TUPbC8rX1tjexL
+ H4XWqcZd5SyMIhxMMiKKbJ0SeyxnfKPT1bt6/rrMHNYmUCGMHBxCsBEtB8xMrybJni9Z4nuOxGH
+ ZGnTIv5VZrMe8nM0hGyZxjdT8X/1QWVGhllnQ2pXLnz48+28PyX7XoXqMyhIK9XKifeffB3Ke+k
+ fNw8A
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On multiple Linksys routers, GPIOs 1, 30, and 46 drive the PWM LED on
-the PWM1, PWM3, and PWM0 channels, respectively.
-Update the corresponding PWM groups to include these GPIOs and allocate
-the PWM functions to empty slots in the relevant pin groups.
+That was noticed by AI on comparison to systemd storage provider
+and fuse service mount tests were missing as well.
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+To: fuse-devel@lists.linux.dev
+Cc: Darrick J. Wong <djwong@kernel.org>
+Cc: neal@gompa.dev
+
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
 Changes in v2:
-- Updated the commit title and message to reflect this isn't a fix for a
-  regression but rather an update for specific IPQ5018 boards.
-- Link to v1: https://lore.kernel.org/r/20260924-ipq5018-pwm-functions-v1-1-8990a4e85b2f@outlook.com
----
-Changes in v2:
-- Updated the commit title and message to reflect this isn't a fix for a
-  regression but rather an update for specific IPQ5018 boards.
-- Link to v1: https://lore.kernel.org/r/20260924-ipq5018-pwm-functions-v1-1-8990a4e85b2f@outlook.com
----
- drivers/pinctrl/qcom/pinctrl-ipq5018.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/pinctrl/qcom/pinctrl-ipq5018.c b/drivers/pinctrl/qcom/pinctrl-ipq5018.c
-index 84392fe258c9..74fccdd5146a 100644
---- a/drivers/pinctrl/qcom/pinctrl-ipq5018.c
-+++ b/drivers/pinctrl/qcom/pinctrl-ipq5018.c
-@@ -539,7 +539,7 @@ static const char * const qdss_tracectl_b_groups[] = {
- };
- 
- static const char * const pwm0_groups[] = {
--	"gpio42",
-+	"gpio42", "gpio46",
- };
- 
- static const char * const qdss_cti_trig_out_b0_groups[] = {
-@@ -547,7 +547,7 @@ static const char * const qdss_cti_trig_out_b0_groups[] = {
- };
- 
- static const char * const pwm1_groups[] = {
--	"gpio43",
-+	"gpio43", "gpio1",
- };
- 
- static const char * const qdss_cti_trig_in_b0_groups[] = {
-@@ -563,7 +563,7 @@ static const char * const qdss_cti_trig_out_b1_groups[] = {
- };
- 
- static const char * const pwm3_groups[] = {
--	"gpio45", "gpio13",
-+	"gpio45", "gpio30", "gpio13",
- };
- 
- static const char * const qdss_cti_trig_in_b1_groups[] = {
-@@ -677,7 +677,7 @@ static const struct pinfunction ipq5018_functions[] = {
- 
- static const struct msm_pingroup ipq5018_groups[] = {
- 	PINGROUP(0, atest_char, _, qdss_cti_trig_out_a0, wci_txd, wci_rxd, xfem, _, _, _),
--	PINGROUP(1, atest_char, _, qdss_cti_trig_in_a0, wci_txd, wci_rxd, xfem, _, _, _),
-+	PINGROUP(1, atest_char, pwm1, qdss_cti_trig_in_a0, wci_txd, wci_rxd, xfem, _, _, _),
- 	PINGROUP(2, atest_char, _, qdss_cti_trig_out_a1, wci_txd, wci_rxd, xfem, _, _, _),
- 	PINGROUP(3, atest_char, _, qdss_cti_trig_in_a1, wci_txd, wci_rxd, xfem, _, _, _),
- 	PINGROUP(4, sdc1_data, qspi_data, blsp1_spi1, btss, dbg_out, qdss_traceclk_a, _, burn0, _),
-@@ -706,7 +706,7 @@ static const struct msm_pingroup ipq5018_groups[] = {
- 	PINGROUP(27, audio_txmclk, wsa_swrm, audio_txmclk, blsp2_spi, btss, _, qdss_tracedata_b, _, _),
- 	PINGROUP(28, audio_txbclk, wsa_swrm, blsp0_uart1, btss, qdss_tracedata_b, _, _, _, _),
- 	PINGROUP(29, audio_txfsync, _, blsp0_uart1, _, qdss_tracedata_b, _, _, _, _),
--	PINGROUP(30, audio_txd, led2, led0, _, _, _, _, _, _),
-+	PINGROUP(30, audio_txd, led2, led0, pwm3, _, _, _, _, _),
- 	PINGROUP(31, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _, _),
- 	PINGROUP(32, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _, _),
- 	PINGROUP(33, blsp2_i2c0, blsp2_spi0, blsp1_uart1, _, qdss_tracedata_b, eud_gpio, _, _, _),
-@@ -722,7 +722,7 @@ static const struct msm_pingroup ipq5018_groups[] = {
- 	PINGROUP(43, pwm1, qdss_cti_trig_in_b0, wci_txd, wci_rxd, xfem, _, _, _, _),
- 	PINGROUP(44, pwm2, qdss_cti_trig_out_b1, wci_txd, wci_rxd, xfem, _, _, _, _),
- 	PINGROUP(45, pwm3, qdss_cti_trig_in_b1, wci_txd, wci_rxd, xfem, _, _, _, _),
--	PINGROUP(46, led0, _, _, _, _, _, _, _, _),
-+	PINGROUP(46, led0, pwm0, _, _, _, _, _, _, _),
- };
- 
- static const struct msm_pinctrl_soc_data ipq5018_pinctrl = {
+- Add more parsing logic to detect files to open from the command
+  line and add admin overrides if the logic failed
+- Allow open after mount, but use openat(), which avoids that
+  files from the mount point are taken
+- Add in '-d path' for mkfs.ext4 to copy in files for improved
+  testing
+- Add another sanity commit to limit max arg comand size
+  (previously https://github.com/libfuse/libfuse/pull/1552)
+- Change path to /run/fuse
+- Add the documention patch
+  (previously https://github.com/libfuse/libfuse/pull/1530)
+- libfuse PR: https://github.com/libfuse/libfuse/pull/1638
+- Link to v1: https://patch.msgid.link/20260925-mount-service-bound-open-v1-0-bbf1a84c7995@bsbernd.com
 
 ---
-base-commit: 3d7783543c2646af69ad65825e810060494bea21
-change-id: 20260924-ipq5018-pwm-functions-2ec0211d65c1
+Bernd Schubert (13):
+      mount_service: move the command line check into arg_in_cmdline()
+      mount_service: warn about paths not named on the command line
+      mount_service: refuse paths the user did not name
+      mount_service: use openat to OPEN paths
+      util: give fuservicemount3 an absolute build-tree runpath
+      mount.fuse: free the options on the service mount return path
+      example/single_file: take no sector size from a regular backing file
+      test: check which files fuservicemount3 opens for the server
+      test: check what fuservicemount3 refuses
+      test: mount the service examples through fuservicemount3
+      test: run mkfs.ext4 through the service examples
+      build: move the default service socket directory to /run/fuse
+      Improve documentation for fuse service mount
+
+Keerthana KT (1):
+      fuse_service: bound argc and arg len read from the args memfd
+
+ .gitignore                              |   1 +
+ doc/README.service-mount                | 312 ++++++++++++++++++++++
+ doc/README.service-mount-dev            | 456 ++++++++++++++++++++++++++++++++
+ doc/README.service-mount-flow           | 201 ++++++++++++++
+ doc/fuservicemount3.8                   | 164 +++++++++++-
+ doc/mainpage.dox                        |  13 +
+ doc/mount.fuse3.8                       |  25 ++
+ example/service_ll.c                    |   5 +
+ example/single_file.c                   |   3 +-
+ include/fuse_service.h                  |   4 +-
+ include/fuse_service_priv.h             |  10 +
+ lib/fuse_service.c                      |  43 +++
+ meson.build                             |   2 +-
+ meson_options.txt                       |   2 +-
+ test/cases/lib/service-example.sh       | 112 ++++++++
+ test/cases/lib/service.sh               |  95 +++++++
+ test/cases/lib/socket_activate.py       |  42 +++
+ test/cases/mount/service-caps.sh        |  20 ++
+ test/cases/mount/service-check.sh       |  38 +++
+ test/cases/mount/service-hl-mkfs.sh     |   8 +
+ test/cases/mount/service-hl.sh          |   7 +
+ test/cases/mount/service-ll-mkfs.sh     |   8 +
+ test/cases/mount/service-ll.sh          |   7 +
+ test/cases/mount/service-mount-fuse.sh  |  31 +++
+ test/cases/mount/service-mountpoint.sh  |  36 +++
+ test/cases/mount/service-nonroot.sh     |  54 ++++
+ test/cases/mount/service-null.sh        |  33 +++
+ test/cases/mount/service-open-bound.sh  |  61 +++++
+ test/cases/mount/service-server-exit.sh |  22 ++
+ test/meson.build                        |   6 +
+ test/test_fuser_conf.c                  |  55 ++++
+ test/test_service.c                     | 232 ++++++++++++++++
+ util/fuse.conf                          |  11 +
+ util/fuser_conf.c                       |  99 +++++++
+ util/fuser_conf.h                       |   3 +
+ util/meson.build                        |   2 +
+ util/mount.fuse.c                       |  42 +--
+ util/mount_service.c                    | 128 +++++++--
+ 38 files changed, 2351 insertions(+), 42 deletions(-)
+---
+base-commit: e001ea32a977933236bcd928692c2c022594a41d
+change-id: 20260924-mount-service-bound-open-739b16236bfa
 
 Best regards,
--- 
-George Moussalem <george.moussalem@outlook.com>
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
