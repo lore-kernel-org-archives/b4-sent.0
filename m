@@ -1,78 +1,75 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Tue, 29 Sep 2026 12:07:32 -0600
-Subject: [PATCH v7 3/3] kallsyms: Unroll 24-bit sequence reconstruction in
- get_symbol_seq()
+From: Vincent Jardin <vjardin@free.fr>
+Date: Tue, 29 Sep 2026 22:29:04 +0200
+Subject: [PATCH v2] crypto: caam/qi2 - lower the algorithm priority
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260929-ksyms-tune-v7-3-be568ceef41e@gmail.com>
-References: <20260929-ksyms-tune-v7-0-be568ceef41e@gmail.com>
-In-Reply-To: <20260929-ksyms-tune-v7-0-be568ceef41e@gmail.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Petr Mladek <pmladek@suse.com>, Zhen Lei <thunder.leizhen@huawei.com>, 
- Luis Chamberlain <mcgrof@kernel.org>, 
- Andrey Grodzovsky <andrey.grodzovsky@crowdstrike.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- Kees Cook <kees@kernel.org>, David Laight <david.laight.linux@gmail.com>, 
- Masahiro Yamada <masahiroy@kernel.org>, Jiri Olsa <olsajiri@gmail.com>, 
- linux-kernel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
- bpf@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790705250; l=1647;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=LVYPylbZu3M6VrXkQZcoyGu2621tAs/rWNxgexduWm0=;
- b=18zIC0MoLg6SshbdQ2c6r2UbPDpfoY7JKrPcWeWmYJcT5UL6KV9dbk+P1GtGJuztBH/8RyOEv
- lWDE0w8lYjiAVxFNU2x6cj9HT2SlwLd6EljjuRzFQK0LZpyrCiDFu7f
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+Message-Id: <20260929-for-upstream-caam-qi2-priority-v2-1-bf0559ebf574@free.fr>
+X-B4-Tracking: v=1; b=H4sIAI8fvGoC/42NQQ6CMBBFr0Jm7Zi2KKIr72FYtGUqs5DCFImEc
+ HcrJ3Dzk/cX762QSJgS3IoVhGZOHPsM5lCA72z/JOQ2MxhlKnU1NYYo+B7SJGRf6G2ekQ0OwlF
+ 4WvBSlUq7mlxpK8iSQSjwZw88mswdpynKsvdm/Xv/Vs8aFdLJ1nQOSrfO34MQHYNAs23bF5JcH
+ UTKAAAA
+To: =?utf-8?q?Horia_Geant=C4=83?= <horia.geanta@nxp.com>, 
+ Pankaj Gupta <pankaj.gupta@nxp.com>, 
+ Sahil Malhotra <sahil.malhotra@nxp.com>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, Gaurav Jain <gaurav.jain@nxp.com>
+Cc: Eric Biggers <ebiggers@kernel.org>, linux-crypto@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790713748; l=1690;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=v2jbJT9sn3iczfB+b+TBO4PuJmCjQ6+uYBnlDjvWIVA=;
+ b=oJ93oGUfFGXWLM3SIPI1o1aNpDaGvy2MEtcxuQjfNTM5ZgAl1XZzlfffYVvkcEzLnkVAIMBiH
+ JWlG4FVetQMBDmsw/NCUXgxtFhAeIdaaD+X6QMQ22MbKz2Cupo9C1kr
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kallsyms_seqs_of_names[] stores 3-byte big-endian sequence indices that
-map alphabetical symbol positions to address-ordered symbol records.
-Currently, get_symbol_seq() reconstructs each 24-bit integer using a
-3-iteration for-loop that shifts and bitwise-ORs each byte sequentially.
-During binary search in kallsyms_lookup_names() and duplicate boundary
-scans, this loop introduces branch and loop overhead on the hot lookup
-path.
+Lower the priority to 100, as done for QAT in commit
+  8024774190a5 ("crypto: qat - lower priority for skcipher and aead algorithms").
 
-Mark get_symbol_seq() as static inline and unroll the 3-byte extraction
-into direct byte shifts: (p[0] << 16) | (p[1] << 8) | p[2]. This
-eliminates loop induction variable maintenance and allows the compiler
-to generate direct loads and constant shifts.
+The SEC stays reachable by driver name, and user space can raise its
+priority through the crypto_user interface.
 
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Suggested-by: Herbert Xu <herbert@gondor.apana.org.au>
+Link: https://lore.kernel.org/r/aruvJECCDNdguMdw@gondor.apana.org.au
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
-Changes in v3:
-- Added as a standalone micro-optimization patch (addresses David
-  Laight review).
+v2 lowers the priority to 100, as was done for QAT, and leaves the
+choice to user space through crypto_user.
 ---
- kernel/kallsyms.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+Changes in v2:
+- Drop both the dpaa2_caam.priority module parameter and the
+  fsl,qi2-crypto-priority DT property
+- Lower the default priority to 100, user space adjust it with
+  crypto_user (Herbert).
+- No policy in the device tree (Krzysztof, Eric).
+- Link to v1: https://lore.kernel.org/r/20260928-for-upstream-caam-qi2-priority-v1-0-e4a8e5f01dbc@free.fr
+---
+ drivers/crypto/caam/caamalg_qi2.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
-index 91ced7aa797e..52e41879c24b 100644
---- a/kernel/kallsyms.c
-+++ b/kernel/kallsyms.c
-@@ -185,14 +185,11 @@ unsigned long kallsyms_sym_address(int idx)
- 	return (unsigned long)offset_to_ptr(kallsyms_offsets + idx);
- }
+diff --git a/drivers/crypto/caam/caamalg_qi2.c b/drivers/crypto/caam/caamalg_qi2.c
+index 6b47bcc16a50..d3cb2bd5c41d 100644
+--- a/drivers/crypto/caam/caamalg_qi2.c
++++ b/drivers/crypto/caam/caamalg_qi2.c
+@@ -26,7 +26,7 @@
+ #include <crypto/xts.h>
+ #include <linux/unaligned.h>
  
--static unsigned int get_symbol_seq(int index)
-+static inline unsigned int get_symbol_seq(int index)
- {
--	unsigned int i, seq = 0;
-+	const u8 *p = &kallsyms_seqs_of_names[3 * index];
+-#define CAAM_CRA_PRIORITY	2000
++#define CAAM_CRA_PRIORITY	100
  
--	for (i = 0; i < 3; i++)
--		seq = (seq << 8) | kallsyms_seqs_of_names[3 * index + i];
--
--	return seq;
-+	return (p[0] << 16) | (p[1] << 8) | p[2];
- }
- 
- static int kallsyms_lookup_names(const char *name,
+ /* max key is sum of AES_MAX_KEY_SIZE, max split key size */
+ #define CAAM_MAX_KEY_SIZE	(AES_MAX_KEY_SIZE + CTR_RFC3686_NONCE_SIZE + \
 
+---
+base-commit: 67aefeccc4101a93627f36abbd049f191b54f903
+change-id: 20260928-for-upstream-caam-qi2-priority-76301b8eb3a6
+
+Best regards,
 -- 
-2.55.0
+Vincent Jardin <vjardin@free.fr>
 
