@@ -1,99 +1,131 @@
-From: Jerome Mohm <jrmmhm.kernel@eldare.de>
-Date: Tue, 29 Sep 2026 18:33:04 +0200
-Subject: [PATCH net] vsock/bpf: release sock lock while waiting for data in
- recvmsg
+From: Carlos Casadiego <cdcp206@gmail.com>
+Date: Tue, 29 Sep 2026 12:38:22 -0500
+Subject: [PATCH] iio: temperature: ltc2983: avoid string comparison for
+ leak detector
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260929-kbh3-1-022-fix-v1-1-cc97cc95d269@eldare.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swubjVjqr4iHtN3YVYiStCKU/
- nujHmdgZkXRbFpwblZkfVuxZ6rgDg2GKaSbko2VISwn7qSjRz95csQiFO1D/sgh+NhGbh1q9Mp
- a9W94QdIZ178sS3/XYf6usG07HflYVHcAAAA=
-X-Change-ID: 20260929-kbh3-1-022-fix-340aa3f7f071
-To: Stefano Garzarella <sgarzare@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, 
- Bobby Eshleman <bobby.eshleman@bytedance.com>, 
- "Michael S. Tsirkin" <mst@redhat.com>
-Cc: virtualization@lists.linux.dev, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, bpf@vger.kernel.org, stable@vger.kernel.org, 
- Jerome Mohm <jrmmhm.kernel@eldare.de>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260929-iio-ltc2983-fix-string-compare-v1-1-d67d612d6ddd@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXN0QrCMAyF4VcZuTbQZkOMryJezC6bEW1H08lg7
+ N2tevnB4T8bmGQVg3OzQZa3mqZY4Q8NhHsfJ0EdqoEcHR0To2rCZwnEpxZHXdFK1jhhSK+5z4K
+ BPVPXjc7zADUyZ6mr38Hl+rctt4eE8q3Cvn8AqxZ174IAAAA=
+X-Change-ID: 20260929-iio-ltc2983-fix-string-compare-c919244f019d
+To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Liviu Stan <liviu.stan@analog.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ kernel test robot <lkp@intel.com>, Carlos Casadiego <cdcp206@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790699585; l=2593;
- i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
- bh=4IPBHLtgo8ghTbbKAwJ8yZ9NmPZQTYBQyUYCEEc51UE=;
- b=a5k/85Mme7ztf5MTcaik5O/66KyvJ3vqg/NckJwjUvqqNN5AX0f09Nk7mbJKtmd2bED+s22s3
- o2QNttsa+atCbSNoqOIKaMTU4xeuiPQ5/JHuHN5r0C3z65nhuT8jNyQ
-X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
- pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
-X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790703503; l=4275;
+ i=cdcp206@gmail.com; s=20260921; h=from:subject:message-id;
+ bh=G0+7tjtYsflXUSLc/hf+Ph6Z2L4WPo5focGqFfSm1I0=;
+ b=u6Vb3uaqDe7bj8N0bag9hXiDjh5foAxNtCjfTcxIQwqe/V6Nca8gutrb1beateQ3aonxX/nTM
+ V0h7jrwdVBhCCeBDUQu0Du/z1Es0OO7mub4Iym8imR2UQaFsZidL9Nd
+X-Developer-Key: i=cdcp206@gmail.com; a=ed25519;
+ pk=Vr3c2AUi1oYbgVkQtRSsWin33frZn0vGGq5g04VWmH8=
+X-Endpoint-Received: by B4 Relay for cdcp206@gmail.com/20260921 with auth_id=1041
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vsock_bpf_recvmsg() takes lock_sock(sk) and holds it across the whole
-receive loop, including vsock_msg_wait_data(), which sleeps in
-wait_woken() without dropping the lock. When data arrives, the
-transport's delivery context (the vsock-loopback worker, or the
-virtio/vhost rx path) calls virtio_transport_recv_pkt() -> lock_sock()
-on the same socket and blocks. That context is the only one that would
-queue the skb and call sk_data_ready() to wake the reader, so neither
-side makes progress. A blocking recv() hangs until a signal arrives (a
-finite SO_RCVTIMEO also breaks it); while it lasts the shared delivery
-worker is stalled, so all vsock rx on that transport stops, not only
-the affected socket. The hung-task watchdog reports the worker blocked
-in D state:
+GCC can determine at compile time that propname cannot match
+"adi,custom-leak-detector" when __ltc2983_custom_sensor_new() is
+inlined for some callers, triggering a -Wstring-compare warning.
 
-  INFO: task kworker/1:3:107 blocked for more than 5 seconds.
-  task:kworker/1:3 state:D Workqueue: vsock-loopback vsock_loopback_work
-  Call Trace:
-   __schedule
-   schedule
-   __lock_sock
-   lock_sock_nested
-   virtio_transport_recv_pkt
-   vsock_loopback_work
+Pass an explicit flag for leak detectors instead of deriving the sensor
+type from the firmware property name. This preserves the existing
+conversion behavior and avoids the constant string comparison.
 
-The reader holds the same sk_lock-AF_VSOCK it is waiting on, taken in
-vsock_bpf_recvmsg().
-
-This code is based on net/unix/unix_bpf.c, whose unix_msg_wait_data()
-drops u->iolock around wait_woken() and re-takes it afterwards. The
-vsock port substituted lock_sock() for that serialisation lock but
-omitted the unlock and relock. tcp_bpf and the native
-vsock_connectible_wait_data() both drop the lock across the wait;
-vsock_bpf is the only one that does not.
-
-Release the socket lock around the wait and re-acquire it before
-re-checking for data, so the caller's locking is unchanged.
-
-Fixes: 634f1a7110b4 ("vsock: support sockmap")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
+Fixes: 3dd0c048409e ("iio: temperature: ltc2983: Add support for ADT7604")
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202609120045.OxEsKLIn-lkp@intel.com/
+Signed-off-by: Carlos Casadiego <cdcp206@gmail.com>
 ---
- net/vmw_vsock/vsock_bpf.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/iio/temperature/ltc2983.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
-index 9049d2648646..bb7d81a95baa 100644
---- a/net/vmw_vsock/vsock_bpf.c
-+++ b/net/vmw_vsock/vsock_bpf.c
-@@ -50,7 +50,9 @@ static bool vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long ti
- 	sk_set_bit(SOCKWQ_ASYNC_WAITDATA, sk);
- 	ret = vsock_has_data(sk, psock);
- 	if (!ret) {
-+		release_sock(sk);
- 		wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
-+		lock_sock(sk);
- 		ret = vsock_has_data(sk, psock);
+diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
+index 6efb5252a773..38c5e81f5f88 100644
+--- a/drivers/iio/temperature/ltc2983.c
++++ b/drivers/iio/temperature/ltc2983.c
+@@ -472,7 +472,8 @@ static int __ltc2983_chan_custom_sensor_assign(struct ltc2983_data *st,
+ static struct ltc2983_custom_sensor *
+ __ltc2983_custom_sensor_new(struct ltc2983_data *st, const struct fwnode_handle *fn,
+ 			    const char *propname, const bool is_steinhart,
+-			    const u32 resolution, const bool has_signed)
++			    const u32 resolution, const bool has_signed,
++			    const bool is_leak_detector)
+ {
+ 	struct ltc2983_custom_sensor *new_custom;
+ 	struct device *dev = &st->spi->dev;
+@@ -545,7 +546,7 @@ __ltc2983_custom_sensor_new(struct ltc2983_data *st, const struct fwnode_handle
+ 			 * to µK so __convert_to_raw() produces the correct hardware
+ 			 * encoding: P + 273.15 K.
+ 			 */
+-			if ((index % 2) != 0 && !strcmp(propname, "adi,custom-leak-detector"))
++			if ((index % 2) != 0 && is_leak_detector)
+ 				temp = temp * 1000000 + 273150000;
+ 
+ 			if ((index % 2) != 0)
+@@ -836,7 +837,7 @@ ltc2983_thermocouple_new(const struct fwnode_handle *child, struct ltc2983_data
+ 
+ 		thermo->custom = __ltc2983_custom_sensor_new(st, child,
+ 							     propname, false,
+-							     16384, true);
++							     16384, true, false);
+ 		if (IS_ERR(thermo->custom))
+ 			return ERR_CAST(thermo->custom);
  	}
- 	sk_clear_bit(SOCKWQ_ASYNC_WAITDATA, sk);
+@@ -950,7 +951,8 @@ ltc2983_rtd_new(const struct fwnode_handle *child, struct ltc2983_data *st,
+ 	if (sensor->type == LTC2983_SENSOR_RTD_CUSTOM) {
+ 		rtd->custom = __ltc2983_custom_sensor_new(st, child,
+ 							  "adi,custom-rtd",
+-							  false, 2048, false);
++							  false, 2048, false,
++							  false);
+ 		if (IS_ERR(rtd->custom))
+ 			return ERR_CAST(rtd->custom);
+ 	}
+@@ -1068,7 +1070,7 @@ ltc2983_thermistor_new(const struct fwnode_handle *child, struct ltc2983_data *s
+ 		thermistor->custom = __ltc2983_custom_sensor_new(st, child,
+ 								 propname,
+ 								 steinhart,
+-								 64, false);
++								 64, false, false);
+ 		if (IS_ERR(thermistor->custom))
+ 			return ERR_CAST(thermistor->custom);
+ 	}
+@@ -1184,7 +1186,7 @@ ltc2983_copper_trace_new(const struct fwnode_handle *child, struct ltc2983_data
+ 						 "adi,custom-copper-trace is required for >1 ohm copper trace\n");
+ 
+ 		ct->custom = __ltc2983_custom_sensor_new(st, child, "adi,custom-copper-trace",
+-							 false, 2048, false);
++							 false, 2048, false, false);
+ 		if (IS_ERR(ct->custom))
+ 			return ERR_CAST(ct->custom);
+ 
+@@ -1275,7 +1277,7 @@ ltc2983_leak_detector_new(const struct fwnode_handle *child, struct ltc2983_data
+ 					 "adi,custom-leak-detector is required for leak detectors\n");
+ 
+ 	ld->custom = __ltc2983_custom_sensor_new(st, child, "adi,custom-leak-detector",
+-						 false, 16, false);
++						 false, 16, false, true);
+ 	if (IS_ERR(ld->custom))
+ 		return ERR_CAST(ld->custom);
+ 
+@@ -1488,7 +1490,7 @@ static struct ltc2983_sensor *ltc2983_temp_new(struct fwnode_handle *child,
+ 					 sensor->chan);
+ 
+ 	temp->custom = __ltc2983_custom_sensor_new(st, child, "adi,custom-temp",
+-						   false, 4096, true);
++						   false, 4096, true, false);
+ 	if (IS_ERR(temp->custom))
+ 		return ERR_CAST(temp->custom);
+ 
 
 ---
-base-commit: 72d3fcf802c45d00b300f25b848a93c3a2bd7c7e
-change-id: 20260929-kbh3-1-022-fix-340aa3f7f071
+base-commit: d2f2868d2f487b418f68db2ef5bd7cf41722ee68
+change-id: 20260929-iio-ltc2983-fix-string-compare-c919244f019d
 
 Best regards,
 --  
-Jerome Mohm <jrmmhm.kernel@eldare.de>
+Carlos Casadiego <cdcp206@gmail.com>
 
