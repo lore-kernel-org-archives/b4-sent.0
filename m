@@ -1,192 +1,99 @@
-From: Simon Sudarushkin <simonsudarushkin@gmail.com>
-Date: Tue, 29 Sep 2026 20:50:32 +0500
-Subject: [PATCH] kunit: tool: report executor errors when listing tests
+From: Jerome Mohm <jrmmhm.kernel@eldare.de>
+Date: Tue, 29 Sep 2026 18:33:04 +0200
+Subject: [PATCH net] vsock/bpf: release sock lock while waiting for data in
+ recvmsg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260929-kunit-list-errors-v1-1-16bf855e2ec3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB1IIoTqVYoLjWM7tcQyE0UQ7
- 26qy7f4fwclYVJoih2EVlaeY4YtCwjvLr4IecgGZ5w3tatxWiIn/LImJJFZFH0VbF8Z7x/WQe5
- +QiNv1/PZ3tal/1BI/xEcxwmVASRgdQAAAA==
-X-Change-ID: 20260929-kunit-list-errors-63c1b3066812
-To: Brendan Higgins <brendan.higgins@linux.dev>, 
- David Gow <david@davidgow.net>, Rae Moar <raemoar63@gmail.com>, 
- Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com, 
- linux-kernel@vger.kernel.org, 
- Simon Sudarushkin <simonsudarushkin@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790697071; l=6951;
- i=simonsudarushkin@gmail.com; s=20260929; h=from:subject:message-id;
- bh=WISOKMy68itHiwuQRD0Fmjjiui3rz30qfn+eKl1cbEg=;
- b=2hMvzP9MHwfL3ht8v7Ws1fJh00YzKB+GZ4aNPMQ1ISqxKx64d4UVbVckhrceLlFRU2LbpB8oC
- HFNoguCEPH/AY1vr10POZLabd8eQEMQTxLWKAj3qU6s90J3QxIC41Qq
-X-Developer-Key: i=simonsudarushkin@gmail.com; a=ed25519;
- pk=yr+Zf16IVZZq8kE1LwDB48Z/iOOIAkvBRA07CDmvH2M=
-X-Endpoint-Received: by B4 Relay for simonsudarushkin@gmail.com/20260929 with auth_id=1081
+Message-Id: <20260929-kbh3-1-022-fix-v1-1-cc97cc95d269@eldare.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swubjVjqr4iHtN3YVYiStCKU/
+ nujHmdgZkXRbFpwblZkfVuxZ6rgDg2GKaSbko2VISwn7qSjRz95csQiFO1D/sgh+NhGbh1q9Mp
+ a9W94QdIZ178sS3/XYf6usG07HflYVHcAAAA=
+X-Change-ID: 20260929-kbh3-1-022-fix-340aa3f7f071
+To: Stefano Garzarella <sgarzare@redhat.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, 
+ Bobby Eshleman <bobby.eshleman@bytedance.com>, 
+ "Michael S. Tsirkin" <mst@redhat.com>
+Cc: virtualization@lists.linux.dev, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, bpf@vger.kernel.org, stable@vger.kernel.org, 
+ Jerome Mohm <jrmmhm.kernel@eldare.de>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790699585; l=2593;
+ i=jrmmhm.kernel@eldare.de; s=20260928; h=from:subject:message-id;
+ bh=4IPBHLtgo8ghTbbKAwJ8yZ9NmPZQTYBQyUYCEEc51UE=;
+ b=a5k/85Mme7ztf5MTcaik5O/66KyvJ3vqg/NckJwjUvqqNN5AX0f09Nk7mbJKtmd2bED+s22s3
+ o2QNttsa+atCbSNoqOIKaMTU4xeuiPQ5/JHuHN5r0C3z65nhuT8jNyQ
+X-Developer-Key: i=jrmmhm.kernel@eldare.de; a=ed25519;
+ pk=xRCxNXbnNottaHpmvPDAOC9NuMJxqKo24abkehKRVlo=
+X-Endpoint-Received: by B4 Relay for jrmmhm.kernel@eldare.de/20260928 with auth_id=1075
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
---list_tests, --list_suites, --list_tests_attr and --run_isolated first
-ask the kernel for the list of tests. extract_tap_lines() keeps the
-"kunit executor:" lines printed before the KTAP header, but the list
-code then drops the first line as the dummy header and filters the rest
-by name, so an executor error is silently lost:
+vsock_bpf_recvmsg() takes lock_sock(sk) and holds it across the whole
+receive loop, including vsock_msg_wait_data(), which sleeps in
+wait_woken() without dropping the lock. When data arrives, the
+transport's delivery context (the vsock-loopback worker, or the
+virtio/vhost rx path) calls virtio_transport_recv_pkt() -> lock_sock()
+on the same socket and blocks. That context is the only one that would
+queue the skb and call sk_data_ready() to wake the reader, so neither
+side makes progress. A blocking recv() hangs until a signal arrives (a
+finite SO_RCVTIMEO also breaks it); while it lasts the shared delivery
+worker is stalled, so all vsock rx on that transport stops, not only
+the affected socket. The hung-task watchdog reports the worker blocked
+in D state:
 
-  $ ./tools/testing/kunit/kunit.py run --list_tests --filter 'nosuchattr=1'
-  ...
-  $ echo $?
-  0
+  INFO: task kworker/1:3:107 blocked for more than 5 seconds.
+  task:kworker/1:3 state:D Workqueue: vsock-loopback vsock_loopback_work
+  Call Trace:
+   __schedule
+   schedule
+   __lock_sock
+   lock_sock_nested
+   virtio_transport_recv_pkt
+   vsock_loopback_work
 
-The kernel log has "attribute not found: nosuchattr=1" and "error
-filtering suites: -22", while a normal run with the same filter reports
-the error and exits with 1. If the kernel prints no KTAP output at all,
-the same pop() raises ValueError and kunit.py exits with a traceback.
+The reader holds the same sk_lock-AF_VSOCK it is waiting on, taken in
+vsock_bpf_recvmsg().
 
-Move the code shared by _list_tests() and _list_tests_attr() into
-_run_list_action(), which raises ListError on executor errors or when
-there is no KTAP output. exec_tests() prints the error and returns
-TEST_FAILURE, as a normal run does.
+This code is based on net/unix/unix_bpf.c, whose unix_msg_wait_data()
+drops u->iolock around wait_woken() and re-takes it afterwards. The
+vsock port substituted lock_sock() for that serialisation lock but
+omitted the unlock and relock. tcp_bpf and the native
+vsock_connectible_wait_data() both drop the lock across the wait;
+vsock_bpf is the only one that does not.
 
-Fixes: ff9e09a3762f ("kunit: tool: support running each suite/test separately")
-Fixes: 723c8258c8fe ("kunit: tool: Add command line interface to filter and report attributes")
+Release the socket lock around the wait and re-acquire it before
+re-checking for data, so the caller's locking is unchanged.
+
+Fixes: 634f1a7110b4 ("vsock: support sockmap")
+Cc: stable@vger.kernel.org
 Assisted-by: LLM
-Signed-off-by: Simon Sudarushkin <simonsudarushkin@gmail.com>
+Signed-off-by: Jerome Mohm <jrmmhm.kernel@eldare.de>
 ---
-Tested with kunit.py on arm64 (QEMU with KVM): a bad --filter now prints
-both executor errors and exits with 1 for --list_tests and
---run_isolated, while normal listing, --list_suites, --list_tests_attr
-and --run_isolated=suite behave as before. In run_checks.py,
-kunit_tool_test.py and mypy pass; the UML smoke test could not be run,
-as UML does not build on this arm64 host (it fails the same way
-without this patch).
----
- tools/testing/kunit/kunit.py           | 57 +++++++++++++++++++++-------------
- tools/testing/kunit/kunit_tool_test.py | 18 +++++++++++
- 2 files changed, 54 insertions(+), 21 deletions(-)
+ net/vmw_vsock/vsock_bpf.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/tools/testing/kunit/kunit.py b/tools/testing/kunit/kunit.py
-index 91d234ac3b579..6db09144d7cfc 100755
---- a/tools/testing/kunit/kunit.py
-+++ b/tools/testing/kunit/kunit.py
-@@ -109,8 +109,12 @@ def config_and_build_tests(linux: kunit_kernel.LinuxSourceTree,
- 
- 	return build_tests(linux, request)
- 
--def _list_tests(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest) -> List[str]:
--	args = ['kunit.action=list']
-+class ListError(Exception):
-+	"""Represents an error from the kernel while listing tests."""
-+
-+
-+def _run_list_action(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest, action: str) -> List[str]:
-+	args = ['kunit.action=' + action]
- 
- 	if request.kernel_args:
- 		args.extend(request.kernel_args)
-@@ -121,31 +125,34 @@ def _list_tests(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest)
- 			   filter=request.filter,
- 			   filter_action=request.filter_action,
- 			   build_dir=request.build_dir)
--	lines = kunit_parser.extract_tap_lines(output)
-+	stream = kunit_parser.extract_tap_lines(output)
-+	lines = []  # type: List[str]
-+	errors = []  # type: List[str]
-+	while stream:
-+		line = stream.pop()
-+		match = kunit_parser.EXECUTOR_ERROR.search(line)
-+		if match:
-+			errors.append(match.group(0).strip())
-+		else:
-+			lines.append(line)
-+
-+	# The executor reports a bad filter or action instead of listing.
-+	if errors:
-+		raise ListError('\n'.join(errors))
-+	if not lines:
-+		raise ListError('Could not find any KTAP output. Did any KUnit tests run?')
-+
- 	# Hack! Drop the dummy TAP version header that the executor prints out.
--	lines.pop()
-+	return lines[1:]
-+
-+def _list_tests(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest) -> List[str]:
-+	lines = _run_list_action(linux, request, 'list')
- 
- 	# Filter out any extraneous non-test output that might have gotten mixed in.
- 	return [l for l in lines if re.match(r'^[^\s.]+\.[^\s.]+$', l)]
- 
- def _list_tests_attr(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest) -> Iterable[str]:
--	args = ['kunit.action=list_attr']
--
--	if request.kernel_args:
--		args.extend(request.kernel_args)
--
--	output = linux.run_kernel(args=args,
--			   timeout=request.timeout,
--			   filter_glob=request.filter_glob,
--			   filter=request.filter,
--			   filter_action=request.filter_action,
--			   build_dir=request.build_dir)
--	lines = kunit_parser.extract_tap_lines(output)
--	# Hack! Drop the dummy TAP version header that the executor prints out.
--	lines.pop()
--
--	# Filter out any extraneous non-test output that might have gotten mixed in.
--	return lines
-+	return _run_list_action(linux, request, 'list_attr')
- 
- def _suites_from_test_list(tests: List[str]) -> List[str]:
- 	"""Extracts all the suites from an ordered list of tests."""
-@@ -160,6 +167,14 @@ def _suites_from_test_list(tests: List[str]) -> List[str]:
- 	return suites
- 
- def exec_tests(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest) -> KunitResult:
-+	try:
-+		return _exec_tests(linux, request)
-+	except ListError as e:
-+		for line in str(e).splitlines():
-+			stdout.print_with_timestamp(stdout.red('[ERROR] ') + line)
-+		return KunitResult(status=KunitStatus.TEST_FAILURE, elapsed_time=0.0)
-+
-+def _exec_tests(linux: kunit_kernel.LinuxSourceTree, request: KunitExecRequest) -> KunitResult:
- 	filter_globs = [request.filter_glob]
- 	if request.list_tests:
- 		output = _list_tests(linux, request)
-diff --git a/tools/testing/kunit/kunit_tool_test.py b/tools/testing/kunit/kunit_tool_test.py
-index 85ae21754bdf9..d0cb3340a328d 100755
---- a/tools/testing/kunit/kunit_tool_test.py
-+++ b/tools/testing/kunit/kunit_tool_test.py
-@@ -991,6 +991,24 @@ class KUnitMainTest(unittest.TestCase):
- 				     kunit.KunitExecRequest(None, None, None, False, False, '.kunit', 300, 'suite*', '', None, None, 'suite', False, False, False))
- 		self.assertEqual(got, want)
- 
-+	def test_list_tests_executor_error(self):
-+		self.linux_source_mock.run_kernel.return_value = [
-+			'[    0.100000] kunit executor: attribute not found: nosuchattr=1',
-+			'[    0.100000] kunit executor: error filtering suites: -22']
-+
-+		with self.assertRaises(SystemExit) as e:
-+			kunit.main(['exec', '--list_tests'])
-+		self.assertEqual(e.exception.code, 1)
-+		self.print_mock.assert_any_call(StrContains('attribute not found: nosuchattr=1'))
-+
-+	def test_list_tests_no_output(self):
-+		self.linux_source_mock.run_kernel.return_value = []
-+
-+		with self.assertRaises(SystemExit) as e:
-+			kunit.main(['exec', '--list_suites'])
-+		self.assertEqual(e.exception.code, 1)
-+		self.print_mock.assert_any_call(StrContains('Could not find any KTAP output'))
-+
- 	@mock.patch.object(kunit, '_list_tests')
- 	def test_run_isolated_by_suite(self, mock_tests):
- 		mock_tests.return_value = ['suite.test1', 'suite.test2', 'suite2.test1']
+diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
+index 9049d2648646..bb7d81a95baa 100644
+--- a/net/vmw_vsock/vsock_bpf.c
++++ b/net/vmw_vsock/vsock_bpf.c
+@@ -50,7 +50,9 @@ static bool vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long ti
+ 	sk_set_bit(SOCKWQ_ASYNC_WAITDATA, sk);
+ 	ret = vsock_has_data(sk, psock);
+ 	if (!ret) {
++		release_sock(sk);
+ 		wait_woken(&wait, TASK_INTERRUPTIBLE, timeo);
++		lock_sock(sk);
+ 		ret = vsock_has_data(sk, psock);
+ 	}
+ 	sk_clear_bit(SOCKWQ_ASYNC_WAITDATA, sk);
 
 ---
-base-commit: e38f53f0482468efd04397f66bda4648b70ac9fa
-change-id: 20260929-kunit-list-errors-63c1b3066812
+base-commit: 72d3fcf802c45d00b300f25b848a93c3a2bd7c7e
+change-id: 20260929-kbh3-1-022-fix-340aa3f7f071
 
 Best regards,
 --  
-Simon Sudarushkin <simonsudarushkin@gmail.com>
+Jerome Mohm <jrmmhm.kernel@eldare.de>
 
