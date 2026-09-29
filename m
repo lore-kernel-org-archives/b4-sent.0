@@ -1,204 +1,119 @@
-From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Mon, 28 Sep 2026 16:32:27 -0700
-Subject: [PATCH] perf symbols: Don't let a module's last symbol overlap the
- next module
+From: Ke Sun <sunke@kylinos.cn>
+Subject: [PATCH v3 00/11] drm/tyr: add VM and BO ioctl support
+Date: Tue, 29 Sep 2026 10:15:50 +0800
+Message-Id: <20260929-tyr-ioctls-v3-0-26955fb111d5@kylinos.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260928-haghdoost-perf-symbols-fixup-module-end-v1-1-0a70d1edd401@uber.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNQQrDIBCF4auEWXdApQ22VyldJDpGS6LixNASc
- vfadvnB4387MJVADLduh0Jb4JBigzx1YPwQJ8Jgm0EJ1Yur0uiHyduUeMVMxSG/lzHNjC68asY
- l2ToTUrQopaFeX7QT5gytlgu1ze/p/vib6/gks37zcBwflWA28YsAAAA=
-X-Change-ID: 20260928-haghdoost-perf-symbols-fixup-module-end-11ce6858f0c4
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>, Leo Yan <leo.yan@linux.dev>
-Cc: Arnaldo Carvalho de Melo <acme@redhat.com>, 
- linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alireza Haghdoost <haghdoost@uber.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5404; i=haghdoost@uber.com;
- s=default; h=from:subject:message-id;
- bh=hia/nfZ1zuUJnWSPH+AZ1ROrZNOW1F7P2g4qzsbVvN0=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBquvkXzsNtM9CIYz+V1Yn3HJxo/5h3utZP6pi1j
- fNM2cH9GXqJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCarr5FxsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtid9RAAnguw0wHX6y31vnGEDIWYcGS/nP0eHeC
- u9LwcRJYGAKG9Be2Dm8gZGWJxE72l8xaXldTh4eHGk8YjDAC+AlqMQHhzS+zShOq0Kw7SOKgHAi
- fWjLkPtBdc3hKY5lIQnv2+CxYWHX3z1mCvR+I3WIC0Mrce7W90XAbeACN/KjHGTL6PFs85IMu6B
- N4IWCiTHRKrmZeIG8R2Jg5yqJes3/MLjF8OGl60+QwqwrKtu48Q0l0rYIkXKfEnL0/Lbc7yso68
- T75JFI8BaGjo//lSaM58fvKsTP0IW8yZw/pjTFR70z96EXDwHVcZ2hA9BaXx989GVGnMMWex08F
- TFeTNiTJOnHcQYqVivPXRQuj1pgXVcoD7FrbrQgIIS2s1GenkBaYiRA1fVTBm30dYCkzVA7QF4l
- 5h+kZOXOXPiTPAlJX5H6UEOT3HlPs6RArzN8qKJrguwrd3GQiz+1GqWZsF3Y1Rl76kzySXDAC6A
- aIv1xm/ZUNGUHZ4MUeFxoS7o2khc81+a4dG5JzMUl4t0/b0lrZYiMuOuLG6U9z1KhdLwrxHvnfL
- KqXBRmjNr9fQJifsoRhLi0Tclm5unpjcqLjHa3v2yUOmFNs3dqIZ0igEDSA2awfJlo5pittxwo7
- Ls5g0jIR/uBdB9URtR4eArl//IVvpyjuGPLeDk/bPgb0I7qoU3jk=
-X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
- fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
-X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
+X-B4-Tracking: v=1; b=H4sIAFYfu2oC/x2NywqDQAwAf0VybiAqCO2vFA/7yNZAu5ZkFUX89
+ 649DsMwBxirsMGjOUB5FZM5V+hvDYTJ5RejxMrQUTfQnVosu6LMobwNU0ucKAaf3AA18M4Yvbo
+ cpiuJ+kFdrGDmrVz+q5xk+8+e43n+AIzm6x18AAAA
+X-Change-ID: 20260901-tyr-ioctls-f10ef0dcbfa6
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <liam@infradead.org>, 
+ Lyude Paul <lyude@redhat.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>
+Cc: Sami Tolvanen <samitolvanen@google.com>, rust-for-linux@vger.kernel.org, 
+ linux-mm@kvack.org, dri-devel@lists.freedesktop.org, 
+ driver-core@lists.linux.dev, Ke Sun <sunke@kylinos.cn>, 
+ Alvin Sun <alvin.sun@linux.dev>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790648153; l=3204;
+ i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
+ bh=ooYC+l4SrJN6bGPugVtyHBohZ+NNQhJkNOGOM/4tdY4=;
+ b=vG8aN2wX4mjFn++VavBwQib+q2XRrZvaXLL2g4PG7RtZcyiIFBKfO2eDxKaRvjQzq+49q5D5x
+ W20uRDli1WMDBWciO4UHODesw3H7R8PRE5v/6xseI7lpGx9E7dhoRnz
+X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-symbols__fixup_end() extends a zero-size symbol that is the last one in
-the kernel or in a module to the end of the next page. On x86 the next
-module can start in that page, so the stretched symbol overlaps it, and
-a lookup can return the wrong symbol. For example:
+Add the VM and BO ioctls to the Tyr driver, aligning its userspace
+interface with panthor.
 
-  ffffffffc0c4aa50 t dca_sysfs_exit    [dca]
-  ffffffffc0c4b000 t __nft_trace_packet [nf_tables]
-  ffffffffc0c4b0b0 t nft_do_chain      [nf_tables]
+The series is based on Danilo's `drm-file` series on
+`drm-rust-next`. It also carries Sami Tolvanen's buffer
+cache-management patches from
+https://gitlab.freedesktop.org/panfrost/linux sami/tyr/7.3/dev.
 
-dca_sysfs_exit gets end 0xffffffffc0c4c000, and samples in nft_do_chain
-are reported as dca_sysfs_exit.
+The panthor IGT tests pass on an RK3588S device.
 
-This patch clamps the end to the next symbol's start. The ARM case this
-code was added for, where the next module is far away, is unchanged.
+A branch with the full series and all prerequisites applied is
+available at:
+https://gitlab.freedesktop.org/alvinsun039/linux.git tyr-ioctls
 
-Add a "Kallsyms symbol ends" test case to the Symbols suite that covers
-the kernel/module boundary, adjacent modules and a distant module.
-
-Fixes: 8799ebce84d6 ("perf symbol: Update symbols__fixup_end()")
-Fixes: bacefe0c7b77 ("perf tools: Fixup module symbol end address properly")
-Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/merge_requests/64
+Signed-off-by: Ke Sun <sunke@kylinos.cn>
 ---
- tools/perf/util/symbol.c   |  4 ++
- tools/perf/tests/symbols.c | 96 +++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 99 insertions(+), 1 deletion(-)
+Changes in v3:
+- Drop the VmOwner wrapper and kill VMs explicitly on destroy and
+  file close (Deborah).
+- Add Sami Tolvanen's buffer cache-management patches: coherent
+  devices map buffers cached, write-combine buffers flush at
+  creation, and BO_CREATE accepts WB_MMAP.
+- Drop the new_dummy_object refactor; the dummy object stays a direct
+  Bo::new since new_object now fetches the sgtable for write-combine
+  buffers.
+- Document the LargeSizeConstants trait in the sizes patch (Miguel).
+- Misc commit message and comment cleanups.
+- Link to v2: https://lore.kernel.org/r/20260908-tyr-ioctls-v2-0-88bea777df67@kylinos.cn
 
-diff --git a/tools/perf/util/symbol.c b/tools/perf/util/symbol.c
-index 163652f071c6f..f0a7f5a30e696 100644
---- a/tools/perf/util/symbol.c
-+++ b/tools/perf/util/symbol.c
-@@ -302,6 +302,10 @@ void symbols__fixup_end(struct rb_root_cached *symbols, bool is_kallsyms)
- 			else
- 				prev->end = curr->start;
- 
-+			/* The next module can start within that page */
-+			if (prev->end > curr->start)
-+				prev->end = curr->start;
-+
- 			pr_debug4("%s sym:%s end:%#" PRIx64 "\n",
- 				  __func__, prev->name, prev->end);
- 		}
-diff --git a/tools/perf/tests/symbols.c b/tools/perf/tests/symbols.c
-index c09e04f36035a..b644d95c6be9a 100644
---- a/tools/perf/tests/symbols.c
-+++ b/tools/perf/tests/symbols.c
-@@ -2,6 +2,7 @@
- #include <linux/compiler.h>
- #include <linux/string.h>
- #include <sys/mman.h>
-+#include <inttypes.h>
- #include <limits.h>
- #include "debug.h"
- #include "dso.h"
-@@ -223,4 +224,97 @@ static int test__symbols(struct test_suite *test __maybe_unused, int subtest __m
- 	return ret;
- }
- 
--DEFINE_SUITE("Symbols", symbols);
-+struct kallsyms_sym {
-+	u64 start;
-+	const char *name;
-+};
-+
-+/*
-+ * kallsyms from an x86 host where nf_tables was loaded in the page right
-+ * after the last symbol of dca, plus a kernel symbol followed closely by a
-+ * module and a module far away from the others.
-+ */
-+static const struct kallsyms_sym kallsyms_syms[] = {
-+	{ 0xffffffff81000000, "_stext" },
-+	{ 0xffffffff81000ff0, "last_kernel_symbol" },
-+	{ 0xffffffff81001000, "near_module_symbol\t[near]" },
-+	{ 0xffffffffc0c4aa40, "dca_exit\t[dca]" },
-+	{ 0xffffffffc0c4aa50, "dca_sysfs_exit\t[dca]" },
-+	{ 0xffffffffc0c4b000, "__nft_trace_packet\t[nf_tables]" },
-+	{ 0xffffffffc0c4b0b0, "nft_do_chain\t[nf_tables]" },
-+	{ 0xffffffffc0c4b4e0, "nf_tables_core_module_exit\t[nf_tables]" },
-+	{ 0xffffffffc2000000, "far_module_symbol\t[far]" },
-+};
-+
-+static int check_symbol(struct dso *dso, u64 addr, const char *name, u64 end)
-+{
-+	struct symbol *sym = dso__find_symbol_nocache(dso, addr);
-+
-+	if (!sym || strcmp(sym->name, name)) {
-+		pr_debug("%#" PRIx64 ": expected %s, got %s\n", addr, name,
-+			 sym ? sym->name : "no symbol");
-+		return TEST_FAIL;
-+	}
-+	if (sym->end != end) {
-+		pr_debug("%s: expected end %#" PRIx64 ", got %#" PRIx64 "\n",
-+			 name, end, sym->end);
-+		return TEST_FAIL;
-+	}
-+	return TEST_OK;
-+}
-+
-+static int test__kallsyms_fixup_end(struct test_suite *test __maybe_unused,
-+				    int subtest __maybe_unused)
-+{
-+	struct dso *dso = dso__new("[kernel.kallsyms]");
-+	int ret = TEST_FAIL;
-+
-+	if (!dso)
-+		return TEST_FAIL;
-+
-+	for (unsigned int i = 0; i < ARRAY_SIZE(kallsyms_syms); i++) {
-+		struct symbol *sym = symbol__new(kallsyms_syms[i].start, 0, 0, 0,
-+						 kallsyms_syms[i].name);
-+
-+		if (!sym)
-+			goto out;
-+		symbols__insert(dso__symbols(dso), sym);
-+	}
-+
-+	symbols__fixup_end(dso__symbols(dso), true);
-+
-+	ret = TEST_OK;
-+	/* The next symbol is too close for the end of the page. */
-+	if (check_symbol(dso, 0xffffffff81000ff8, "last_kernel_symbol",
-+			 0xffffffff81001000))
-+		ret = TEST_FAIL;
-+	if (check_symbol(dso, 0xffffffffc0c4aa58, "dca_sysfs_exit\t[dca]",
-+			 0xffffffffc0c4b000))
-+		ret = TEST_FAIL;
-+	if (check_symbol(dso, 0xffffffffc0c4b280, "nft_do_chain\t[nf_tables]",
-+			 0xffffffffc0c4b4e0))
-+		ret = TEST_FAIL;
-+
-+	/* Far from the next module, the end of the page is still used. */
-+	if (check_symbol(dso, 0xffffffffc0c4b4f0,
-+			 "nf_tables_core_module_exit\t[nf_tables]",
-+			 0xffffffffc0c4d000))
-+		ret = TEST_FAIL;
-+	if (check_symbol(dso, 0xffffffff81001008, "near_module_symbol\t[near]",
-+			 0xffffffff81002000))
-+		ret = TEST_FAIL;
-+out:
-+	dso__put(dso);
-+	return ret;
-+}
-+
-+static struct test_case tests__symbols[] = {
-+	TEST_CASE("Symbols", symbols),
-+	TEST_CASE("Kallsyms symbol ends", kallsyms_fixup_end),
-+	{ .name = NULL, }
-+};
-+
-+struct test_suite suite__symbols = {
-+	.desc = "Symbols",
-+	.test_cases = tests__symbols,
-+};
+Changes in v2:
+- Fold the VM pool into vm.rs and cap it at 32 VMs per file (Deborah).
+- Add VmOwner so a VM is killed exactly once on drop, regardless of
+  remaining references (Daniel).
+- Replace the VmSpec enum with new_for_fw()/new_for_user()
+  constructors (Daniel).
+- Parse VM_BIND op types via VmBindOpType and use the kernel
+  Atomic<bool> for the unusable flag (Daniel).
+- Use PAGE_SIZE for the dummy object size (Daniel).
+- Rename BoData::create_flags() to flags() (Daniel).
+- Report VA-split failures with dev_err! at the caller (Deborah).
+- Link to v1: https://lore.kernel.org/r/20260902-tyr-ioctls-v1-0-e0fdbf8bd108@kylinos.cn
 
 ---
-base-commit: 0ae6fc78c5ce0dfd18d8712a50f0fd4602eff103
-change-id: 20260928-haghdoost-perf-symbols-fixup-module-end-11ce6858f0c4
+Alvin Sun (8):
+      rust: sizes: add SZ_4G constant
+      rust: mm: add `task_size` helper
+      rust: sync: arc: relax `ForeignOwnable` for `Arc<T>`
+      drm/tyr: add per-file VM pool
+      drm/tyr: add user and MCU VM specifications
+      drm/tyr: add BO creation and lookup helpers
+      drm/tyr: add VM-related ioctls
+      drm/tyr: add BO-related ioctls
+
+Sami Tolvanen (3):
+      rust: device: expose dma_coherent()
+      drm/tyr: gem: flush write-combine BOs from probe-time coherence
+      drm/tyr: gem: map cached BOs for DRM_PANTHOR_BO_WB_MMAP
+
+ drivers/gpu/drm/tyr/driver.rs   |  24 ++-
+ drivers/gpu/drm/tyr/file.rs     | 405 +++++++++++++++++++++++++++++++++++++++-
+ drivers/gpu/drm/tyr/fw.rs       |  21 ++-
+ drivers/gpu/drm/tyr/gem.rs      |  78 +++++++-
+ drivers/gpu/drm/tyr/vm.rs       | 325 ++++++++++++++++++++++++++++++--
+ rust/bindings/bindings_helper.h |   1 +
+ rust/kernel/device.rs           |  16 ++
+ rust/kernel/mm.rs               |   7 +
+ rust/kernel/sizes.rs            |  12 ++
+ rust/kernel/sync/arc.rs         |  12 +-
+ 10 files changed, 851 insertions(+), 50 deletions(-)
+---
+base-commit: 47cba9eeecd9a046ee5d211b86aae3e84d2e0b53
+change-id: 20260901-tyr-ioctls-f10ef0dcbfa6
 
 Best regards,
 --  
-Alireza Haghdoost <haghdoost@uber.com>
+Ke Sun <sunke@kylinos.cn>
 
