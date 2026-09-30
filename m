@@ -1,144 +1,145 @@
-From: =?utf-8?q?Nguy=E1=BB=85n_V=C4=83n_Cao_Nguy=C3=AAn?= <nguyennvc@greennode.ai>
-Date: Wed, 30 Sep 2026 14:51:42 +0700
-Subject: [PATCH rdma-rc] RDMA/irdma: Do not move a fresh RoCE QP to ERROR
- on RESET
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v10 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Wed, 30 Sep 2026 15:21:06 +0530
+Message-Id: <20260930-master-v10-0-105207bc5275@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260930-irdma-reset-fresh-qp-v1-1-065327274e2b@greennode.ai>
-X-B4-Tracking: v=1; b=H4sIAI2/vGoC/yWMuwqAMAwAf0UyG4gtFfRXxKG0UTP4SkUE8d8tO
- h033N2QWIUTtMUNyqckWZcsVVlAmPwyMkrMDoZMTY0lFI2zR+XEBw4ZE+4bBm+DI0fRGwc53ZQ
- Hub5tB38QoH+eFwU3w5FvAAAA
-To: Tatyana Nikolova <tatyana.e.nikolova@intel.com>, 
- Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>, 
- Mustafa Ismail <mustafa.ismail@intel.com>, 
- Shiraz Saleem <shiraz.saleem@intel.com>
-Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Nguy=E1=BB=85n_V=C4=83n_Cao_Nguy=C3=AAn?= <nguyennvc@greennode.ai>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790754706; l=5208;
- i=nguyennvc@greennode.ai; s=20260930; h=from:subject:message-id;
- bh=pUE5++VACMAhAd/B/N8p6SNGcTyho6T0u18DfMJ9e8c=;
- b=MLszr+tiHZjO7nMpJnFB1NebNcFIp/nLvyNLgLgHasmznmeBmZOyoUUErj3z/tgw2DBpqtBnC
- AZXmGr882NbDCkNIk14NLs2AOBREwEOIWEpp0LEWLWYTxHZYeoo/IcP
-X-Developer-Key: i=nguyennvc@greennode.ai; a=ed25519;
- pk=hD0bkhMDmCDDJQqc7LPqtK8Z3nB2eAmgkZt+R9cGcDY=
-X-Endpoint-Received: by B4 Relay for nguyennvc@greennode.ai/20260930 with auth_id=1084
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIrbvGoC/22OQQrCMBBFr1KyNmUaaZO48h7iIqaJjdhGM21QS
+ u9uUkEE3Qz84b0/MxM0wRkku2ImwUSHzg8pVLApiO7UcDbUtWlBGLAGZMVpr3A0gTaacS5szZV
+ UJMG3YKx7rE2H4zvjdLoYPWY7E53D0YfneiqKzP2URkGBCrZtma5bkKD2HrG8T+qqfd+XaZDcH
+ eWXzcTHlslm6S0L0koF8o+9LMsLwuxtdPQAAAA=
+X-Change-ID: 20260917-master-6c2778f57a9a
+To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
+ bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
+ krzk+dt@kernel.org, conor+dt@kernel.org, 
+ srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790761867; l=5241;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=zJLnzgzaviiLRIv1GHcdcURcIMZZC3VugTG8rUz1nIY=;
+ b=As6L0bBqcDdAedMc3V1oiRnVLQCEyMFz1hWOQTlYghv8T5mBVyDRW1YmCcwTTh8UgpRwdjd/T
+ jo83hIxF4JZB/UlLJrYppkn4tF+SsZfjiKANO3yYPPYf25KFd4KSDk9
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-irdma_modify_qp_roce() handles IB_QPS_RESET like IB_QPS_ERR and moves
-the QP to ERROR. On a QP that was never moved to INIT, this makes the
-following RESET->INIT fail with -EINVAL, while ibv_query_qp() still
-reports RESET.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-RESET->RESET is a valid transition. The Mooncake transfer engine
-resets every new QP before INIT, so it cannot connect over an E810,
-while mlx5 accepts the same sequence:
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
 
-  ibv_create_qp(RC)        -> RESET
-  ibv_modify_qp(RESET)     -> 0
-  ibv_modify_qp(INIT, ...) -> -EINVAL
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
 
-Skip the hardware modify when the QP has not been moved to INIT yet
-(iwarp_state is IRDMA_QP_STATE_INVALID), as there is nothing to flush.
-RESET after INIT still goes to ERROR.
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
 
-Fixes: b48c24c2d710 ("RDMA/irdma: Implement device supported verb APIs")
-Assisted-by: LLM
-Signed-off-by: Nguyễn Văn Cao Nguyên <nguyennvc@greennode.ai>
+Changes in v10:
+- Rebase the series on linux-next next-20260929.
+- Add clk_is_enabled_regmap() to report the heartbeat gate state for
+  clk_disable_unused() (Sashiko).
+- Add Rob's Reviewed-by tag to the binding patch.
+- Link to v9: https://patch.msgid.link/20260928-master-v9-0-2277f09f9a09@oss.qualcomm.com
+
+Changes in v9:
+- Rebase the series on linux-next next-20260928.
+- Add runtime PM callbacks so the LPASS LPR and audio vote clocks are
+  enabled by pm_runtime_resume_and_get() before touching VA CSR
+  registers.
+- Keep the LPASS vote clocks enabled across heartbeat clock
+  enable/disable register accesses by taking a runtime PM reference from
+  the heartbeat clock prepare path.
+- Use synchronous runtime PM put on probe success and error paths.
+- Drop the one-use runtime PM error label while keeping synchronous puts (Konrad).
+- Wrap the runtime PM ops with pm_ptr() from HTML review.
+- Link to v8: https://patch.msgid.link/20260917-master-v8-0-823d2c5d090a@oss.qualcomm.com
+
+Changes in v8:
+- Rebase the series on linux-next next-20260916.
+- Require the LPASS LPR and audio vote clocks to access VA CSR
+  register space safely.
+- Attach the DT vote clocks to runtime PM and resume the device before
+  programming the rate generator registers.
+- Program the counter and delay registers once during probe.
+- Use qcom's simple regmap gate ops for the enable bit (Srinivas).
+- Drop the unreachable of_device_get_match_data() NULL check (Srinivas).
+- Drop stale Reviewed-by/Tested-by tags after the binding and driver
+  changes.
+- Link to v7: https://patch.msgid.link/20260831-heartbeat-v7-next-20260828-v7-0-e3ffeac46a51@oss.qualcomm.com
+
+Changes in v7:
+- Rebase the series on linux-next next-20260828.
+- Add Prasad's Reviewed-by and Tested-by tags to patch 2.
+- Link to v6: https://patch.msgid.link/20260821-heartbeat-v6-next-20260821-send-v6-0-62c5df84ce21@oss.qualcomm.com
+
+Changes in v6:
+- Rebase the series on linux-next next-20260821.
+- Capitalize Hawi in binding text (Bjorn).
+- Simplify the binding example by removing the soc wrapper and
+  two-cell address/size setup (Bjorn).
+- Keep the full VA CSR register window in the binding and describe it
+  as the VA CSR register block after Konrad clarified the earlier
+  register-range concern (Bjorn, Konrad).
+- Link to v5: https://patch.msgid.link/20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries.
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Changes in v4:
+- Rename the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml (Krzysztof).
+- Rename Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE (Konrad).
+- Add devm_pm_runtime_enable() in the lpass-va-csr probe path.
+- Drop the qcom,lpass-va-macro binding extension patch; it will be
+  resubmitted with the Hawi DTSI changes.
+- Drop sound/soc/codecs/Kconfig select wiring to keep this series
+  clock-only (Konrad).
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Changes in v3:
+- Move the qcom,lpass-va-csr binding under
+  Documentation/devicetree/bindings/clock/ (Krzysztof).
+- Move the driver under drivers/clk/qcom/ (Krzysztof).
+- Improve the schema description and use generic clock-controller node
+  naming (Krzysztof).
+- Use additionalProperties: false and keep compatibles sorted.
+
+Changes in v2:
+- Split the qcom,lpass-va-csr and qcom,lpass-va-macro bindings into
+  separate patches.
+
+Changes in v1:
+- Initial version
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
-Tested on an E810 (firmware 1.74, RoCEv2), backported to Ubuntu
-6.8.0-142 as a module. RESET (once or twice) on a fresh QP, then
-INIT->RTR->RTS and an RDMA WRITE+READ: stock fails INIT with EINVAL,
-patched round-trips the data, over loopback and to a second host.
-RESET after INIT, RTS or ERR fails INIT with EINVAL on both drivers,
-unchanged. No irdma messages in dmesg. A ConnectX-6 Dx (mlx5) passes
-unpatched. Builds with W=1 on for-rc (7.3-rc5). Not tested on a for-rc
-kernel.
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-Not changed: the iWARP path, and RESET after INIT, so INIT->RESET->INIT
-and ERROR->RESET->INIT still fail. A QP in INIT may already have
-receive WQEs posted, and irdma does not clear its queues on RESET, so
-skipping ERROR there is not safe. A real reset would need the hardware
-QP to be rebuilt. Is that worth a follow-up?
-
-Reproducer (userspace, libibverbs):
-
-  // gcc -o reset_then_init reset_then_init.c -libverbs && ./reset_then_init <rdma device>
-  #include <stdio.h>
-  #include <string.h>
-  #include <infiniband/verbs.h>
-
-  static const char *st(int s) {
-      static const char *n[] = {"RESET", "INIT", "RTR", "RTS", "SQD", "SQE", "ERR"};
-      return s >= 0 && s < 7 ? n[s] : "?";
-  }
-
-  static int state(struct ibv_qp *qp) {
-      struct ibv_qp_attr a; struct ibv_qp_init_attr i;
-      return ibv_query_qp(qp, &a, IBV_QP_STATE, &i) ? -1 : (int)a.qp_state;
-  }
-
-  int main(int argc, char **argv) {
-      if (argc != 2) { fprintf(stderr, "usage: %s <rdma device>\n", argv[0]); return 2; }
-      int n; struct ibv_device **l = ibv_get_device_list(&n), *d = NULL;
-      for (int i = 0; i < n; i++) if (!strcmp(ibv_get_device_name(l[i]), argv[1])) d = l[i];
-      if (!d) { fprintf(stderr, "%s: no such device\n", argv[1]); return 2; }
-
-      struct ibv_context *c = ibv_open_device(d);
-      struct ibv_pd *pd = c ? ibv_alloc_pd(c) : NULL;
-      struct ibv_cq *cq = pd ? ibv_create_cq(c, 16, NULL, NULL, 0) : NULL;
-      struct ibv_qp_init_attr qa = { .send_cq = cq, .recv_cq = cq, .qp_type = IBV_QPT_RC,
-                                     .cap = { .max_send_wr = 16, .max_recv_wr = 16, .max_send_sge = 1, .max_recv_sge = 1 } };
-      struct ibv_qp *qp = cq ? ibv_create_qp(pd, &qa) : NULL;
-      if (!qp) { perror("setup"); return 2; }
-      printf("%s (%s): created QP %u, state %s\n", argv[1], d->name, qp->qp_num, st(state(qp)));
-
-      struct ibv_qp_attr r = { .qp_state = IBV_QPS_RESET };
-      int rc = ibv_modify_qp(qp, &r, IBV_QP_STATE);
-      printf("modify -> RESET: rc=%d (%s), state now %s\n", rc, rc ? strerror(rc) : "ok", st(state(qp)));
-
-      struct ibv_qp_attr a = { .qp_state = IBV_QPS_INIT, .port_num = 1, .pkey_index = 0,
-                               .qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE };
-      rc = ibv_modify_qp(qp, &a, IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS);
-      printf("modify -> INIT:  rc=%d (%s), state now %s\n", rc, rc ? strerror(rc) : "ok", st(state(qp)));
-
-ibv_destroy_qp(qp); ibv_destroy_cq(cq); ibv_dealloc_pd(pd); ibv_close_device(c); ibv_free_device_list(l);
-      return rc ? 1 : 0;
-  }
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  62 ++++++++
+ drivers/clk/qcom/Kconfig                           |  14 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 175 +++++++++++++++++++++
+ 4 files changed, 252 insertions(+)
 ---
- drivers/infiniband/hw/irdma/verbs.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/infiniband/hw/irdma/verbs.c b/drivers/infiniband/hw/irdma/verbs.c
-index 5d71300da0ff..646fddd022b1 100644
---- a/drivers/infiniband/hw/irdma/verbs.c
-+++ b/drivers/infiniband/hw/irdma/verbs.c
-@@ -1576,9 +1576,17 @@ int irdma_modify_qp_roce(struct ib_qp *ibqp, struct ib_qp_attr *attr,
- 			issue_modify_qp = 1;
- 			iwqp->suspend_pending = true;
- 			break;
-+		case IB_QPS_RESET:
-+			/*
-+			 * A QP that was never moved to INIT has nothing to
-+			 * flush, so skip the hardware modify. Moving it to
-+			 * ERROR would make the following INIT fail.
-+			 */
-+			if (iwqp->iwarp_state == IRDMA_QP_STATE_INVALID)
-+				break;
-+			fallthrough;
- 		case IB_QPS_SQE:
- 		case IB_QPS_ERR:
--		case IB_QPS_RESET:
- 			if (iwqp->iwarp_state == IRDMA_QP_STATE_ERROR) {
- 				iwqp->ibqp_state = attr->qp_state;
- 				spin_unlock_irqrestore(&iwqp->lock, flags);
-
----
-base-commit: 72d3fcf802c45d00b300f25b848a93c3a2bd7c7e
-change-id: 20260930-irdma-reset-fresh-qp-ca3c5050da25
+base-commit: 6474fa070f2b8013b4b87350b775b8c3be6e8aac
+change-id: 20260917-master-6c2778f57a9a
 
 Best regards,
--- 
-Nguyễn Văn Cao Nguyên <nguyennvc@greennode.ai>
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
