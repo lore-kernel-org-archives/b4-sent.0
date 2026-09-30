@@ -1,129 +1,88 @@
 From: Bernd Schubert <bernd@bsbernd.com>
-Subject: [PATCH v3 00/15] libfuse: Add mount service safety checks and
- tests
-Date: Wed, 30 Sep 2026 15:10:54 +0200
-Message-Id: <20260930-mount-service-bound-open-v3-0-e26c5e4eca4c@bsbernd.com>
+Date: Wed, 30 Sep 2026 15:10:55 +0200
+Subject: [PATCH v3 01/15] mount_service: move the command line check into
+ arg_in_cmdline()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32N0Q6CIBhGX6VxHQ1QVLrqPVoXgj9Jm+BAWc357
- oGtrS7q8mzfd86CAngDAR13C/IQTTDOJij2O6T61l4Bmy4xYoRVRLASD262E06vaBRgmajDbgS
- L60JIWrGikrpF6T560Oa+qc+XF4dZ3kBN2ZcXvQmT84+tHWnevTP8dyZSTLCUmrZNqWoh+EkGC
- d52B+UGlEORfaqaPyqWVEQLzQntCFfwrVrX9Qm40cf/HwEAAA==
-X-Change-ID: 20260924-mount-service-bound-open-739b16236bfa
+Message-Id: <20260930-mount-service-bound-open-v3-1-e26c5e4eca4c@bsbernd.com>
+References: <20260930-mount-service-bound-open-v3-0-e26c5e4eca4c@bsbernd.com>
+In-Reply-To: <20260930-mount-service-bound-open-v3-0-e26c5e4eca4c@bsbernd.com>
 To: fuse-devel@lists.linux.dev
 Cc: "Darrick J. Wong" <djwong@kernel.org>, neal@gompa.dev, 
- Bernd Schubert <bernd@bsbernd.com>, 
- Keerthana KT <keerthana@labs.digiscrypt.com>
+ Bernd Schubert <bernd@bsbernd.com>
 X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4665; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=FoXEEtMhDrRmY6HlpOqpQDGSeYoe5RzNo2MwXJ4eHMc=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL2ciXuM3fP4SlXs9hVFq9zYYrO3PK45ki/yanvfnZHs
- 6QwXXrWUcrCIMbBICumyNIlscd2yj8+WbWv66/DzGFlAhnCwMUpABP5FMrI8H/PTnU3TvV9YR/N
- daReP7OxuLFAtHL/quOPPyR9nbZn93uGf/b+9U85NFu/HjyW2r2Zj++bmfJuWfHPwa/DE1IcjuR
- uZgQA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1974; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=O/RxCQuoY0O5A1zN31WQ0hqU59Wsq0EeUlzrFOg765A=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL2cmV2Ze3c99k15Zbcpy5BuYV1qy1OVRWk/pzZ8y/S7
+ du5vg6WjlIWBjEOBlkxRZYuiT22U/7xyap9XX8dZg4rE8gQBi5OAZhIeAnD/7A/KeG/5T9eZVJ+
+ I9g1/anV0+pFIa+0CgyvuOZctv2+bRIjw9Z3N8t5u/ge3nI/Us+a6CP30sv7bbL+wd0em1pkuoX
+ UmAE=
 X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
  fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
 X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-That was noticed by AI on comparison to systemd storage provider
-and fuse service mount tests were missing as well.
+mount_service_handle_mountpoint_cmd() compared the mount point with
+each argument of fuservicemount3 in its own loop. The next patch makes
+the same check for OPEN requests, so the loop moves into
+arg_in_cmdline(). There is no change in behaviour.
 
-To: fuse-devel@lists.linux.dev
-Cc: Darrick J. Wong <djwong@kernel.org>
-Cc: neal@gompa.dev
-
+Assisted-by: LLM
 Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+Reviewed-by: "Darrick J. Wong" <djwong@kernel.org>
 ---
-Changes in v3:
-- Address all Darricks review comments
-	- Allow "*" as subtype for service_open_path config option
-	- Use sysconf(_SC_ARG_MAX)
-	- Also check that pos + len do not exceed memdfd file size
-	- Slight documentation wording improvement
-- Move fuse_service_priv.h from include/ to lib/
-- Link to v2: https://patch.msgid.link/20260928-mount-service-bound-open-v2-0-0f9f501d05ce@bsbernd.com
+ util/mount_service.c | 22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
-Changes in v2:
-- Add more parsing logic to detect files to open from the command
-  line and add admin overrides if the logic failed
-- Allow open after mount, but use openat(), which avoids that
-  files from the mount point are taken
-- Add in '-d path' for mkfs.ext4 to copy in files for improved
-  testing
-- Add another sanity commit to limit max arg comand size
-  (previously https://github.com/libfuse/libfuse/pull/1552)
-- Change path to /run/fuse
-- Add the documention patch
-  (previously https://github.com/libfuse/libfuse/pull/1530)
-- libfuse PR: https://github.com/libfuse/libfuse/pull/1638
-- Link to v1: https://patch.msgid.link/20260925-mount-service-bound-open-v1-0-bbf1a84c7995@bsbernd.com
+diff --git a/util/mount_service.c b/util/mount_service.c
+index 0b3266309a8a..7549e0b5024f 100644
+--- a/util/mount_service.c
++++ b/util/mount_service.c
+@@ -758,6 +758,18 @@ static int prepare_bdev(const struct mount_service *mo,
+ 	return 0;
+ }
+ 
++static bool arg_in_cmdline(int argc, const char * const argv[],
++			   const char *value)
++{
++	int i;
++
++	for (i = 0; i < argc; i++)
++		if (!strcmp(argv[i], value))
++			return true;
++
++	return false;
++}
++
+ static int mount_service_open_path(const struct mount_service *mo,
+ 				   mode_t expected_fmt,
+ 				   struct fuse_service_packet *p, size_t psz)
+@@ -1248,8 +1260,6 @@ static int mount_service_handle_mountpoint_cmd(struct mount_service *mo,
+ 			container_of(p, struct fuse_service_mountpoint_command, p);
+ 	char *mntpt;
+ 	mode_t expected_fmt;
+-	bool foundit = false;
+-	int i;
+ 
+ 	if (psz < sizeof_fuse_service_mountpoint_command(1)) {
+ 		fprintf(stderr, "%s: mount point command too small\n",
+@@ -1289,13 +1299,7 @@ static int mount_service_handle_mountpoint_cmd(struct mount_service *mo,
+ 	}
+ 
+ 	/* Mountpoint must be mentioned in the caller's argument list */
+-	for (i = 0; i < argc; i++) {
+-		if (!strcmp(argv[i], oc->value)) {
+-			foundit = true;
+-			break;
+-		}
+-	}
+-	if (!foundit) {
++	if (!arg_in_cmdline(argc, argv, oc->value)) {
+ 		fprintf(stderr, "%s: mount point must be in command line arguments\n",
+ 			mo->msgtag);
+ 		return mount_service_send_reply(mo, EINVAL);
 
----
-Bernd Schubert (14):
-      mount_service: move the command line check into arg_in_cmdline()
-      mount_service: warn about paths not named on the command line
-      mount_service: refuse paths the user did not name
-      mount_service: use openat to OPEN paths
-      util: give fuservicemount3 an absolute build-tree runpath
-      mount.fuse: free the options on the service mount return path
-      example/single_file: take no sector size from a regular backing file
-      test: check which files fuservicemount3 opens for the server
-      test: check what fuservicemount3 refuses
-      test: mount the service examples through fuservicemount3
-      test: run mkfs.ext4 through the service examples
-      build: move the default service socket directory to /run/fuse
-      Improve documentation for fuse service mount
-      move fuse_service_priv.h from include/ to lib/
-
-Keerthana KT (1):
-      fuse_service: bound argc and arg len read from the args memfd
-
- .gitignore                              |   1 +
- doc/README.service-mount                | 312 ++++++++++++++++++++++
- doc/README.service-mount-dev            | 456 ++++++++++++++++++++++++++++++++
- doc/README.service-mount-flow           | 201 ++++++++++++++
- doc/fuservicemount3.8                   | 164 +++++++++++-
- doc/mainpage.dox                        |  13 +
- doc/mount.fuse3.8                       |  25 ++
- example/service_ll.c                    |   5 +
- example/single_file.c                   |   3 +-
- include/fuse_service.h                  |   4 +-
- lib/fuse_service.c                      |  40 +++
- {include => lib}/fuse_service_priv.h    |  10 +
- meson.build                             |   2 +-
- meson_options.txt                       |   2 +-
- test/cases/lib/service-example.sh       | 112 ++++++++
- test/cases/lib/service.sh               |  95 +++++++
- test/cases/lib/socket_activate.py       |  42 +++
- test/cases/mount/service-caps.sh        |  20 ++
- test/cases/mount/service-check.sh       |  38 +++
- test/cases/mount/service-hl-mkfs.sh     |   8 +
- test/cases/mount/service-hl.sh          |   7 +
- test/cases/mount/service-ll-mkfs.sh     |   8 +
- test/cases/mount/service-ll.sh          |   7 +
- test/cases/mount/service-mount-fuse.sh  |  31 +++
- test/cases/mount/service-mountpoint.sh  |  36 +++
- test/cases/mount/service-nonroot.sh     |  54 ++++
- test/cases/mount/service-null.sh        |  33 +++
- test/cases/mount/service-open-bound.sh  |  61 +++++
- test/cases/mount/service-server-exit.sh |  22 ++
- test/meson.build                        |   6 +
- test/test_fuser_conf.c                  |  59 +++++
- test/test_service.c                     | 232 ++++++++++++++++
- util/fuse.conf                          |  12 +
- util/fuser_conf.c                       | 106 ++++++++
- util/fuser_conf.h                       |   3 +
- util/meson.build                        |   2 +
- util/mount.fuse.c                       |  42 +--
- util/mount_service.c                    | 128 +++++++--
- 38 files changed, 2360 insertions(+), 42 deletions(-)
----
-base-commit: bf4fdf9df8e2d33393894d0789f89e17520944f0
-change-id: 20260924-mount-service-bound-open-739b16236bfa
-
-Best regards,
---  
-Bernd Schubert <bernd@bsbernd.com>
+-- 
+2.53.0
 
