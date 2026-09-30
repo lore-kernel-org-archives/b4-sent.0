@@ -1,169 +1,163 @@
-From: Nikolay Plastinin <plaztininikolai@gmail.com>
-Date: Wed, 30 Sep 2026 14:54:11 +0800
-Subject: [PATCH v2 2/2] leds: trigger: input-events: Restore previous
- brightness on input
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Subject: [PATCH RFC 00/10] ARM: Add support for Cortina Systems CS75xx and
+ Securifi Almond+
+Date: Wed, 30 Sep 2026 09:59:59 +0300
+Message-Id: <20260930-b4-cs75xx-v1-0-4617c4463529@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-leds-input-events-brightness-v2-2-3948d3cddd83@gmail.com>
-References: <20260930-leds-input-events-brightness-v2-0-3948d3cddd83@gmail.com>
-In-Reply-To: <20260930-leds-input-events-brightness-v2-0-3948d3cddd83@gmail.com>
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
-Cc: Hans de Goede <hansg@kernel.org>, linux-leds@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Nikolay Plastinin <plaztininikolai@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790751252; l=5127;
- i=plaztininikolai@gmail.com; s=20260924; h=from:subject:message-id;
- bh=RbEc1eykxaPKru4rDNPhpEDfg4rgI5yqVZMbBLxRd/A=;
- b=yOfvNNWyk+IyDLaSa8dhkLhtUga/TXDjXpPx8ksJu+c0hIEo0l0o2kmdDFX5/a0luiVfOWkLE
- Qu2RUEUcIuYAaraEapejvIDBt7YX5BW5cU3gQKMPtR6TImFGum6F/V9
-X-Developer-Key: i=plaztininikolai@gmail.com; a=ed25519;
- pk=bmHrETa14IbiLNkJSoiLqUMni+IeSFwhOSDM4vVFN4s=
-X-Endpoint-Received: by B4 Relay for plaztininikolai@gmail.com/20260924 with auth_id=1052
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDS2MD3SQT3eRic9OKCl0DY+NEo2QDE3NTAwsloPqCotS0zAqwWdFKQW7
+ OSrEQweLSpKzU5BKQKUq1tQA2xhxwcgAAAA==
+X-Change-ID: 20260930-b4-cs75xx-033a2c047508
+To: Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linusw@kernel.org>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Russell King <linux@armlinux.org.uk>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Drew Fustini <fustini@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ Fil Dunsky <filipp.dunsky@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790751600; l=6712;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=7DhulBMpXGR6AGUdHNDQbA3GT04ytNlSDk0UK+c+gMs=;
+ b=gxlQWbY6dvgymQfSWLmwH7edvCzlN20UBOpOmbMX/SyRq182qzv3/2+mcayvuJRItbiQrkMxZ
+ SgF80pRrnb+B3YMPchpflmICanuxDVWwJgeam1KxLMrc18Bn/amPZWs
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The trigger turns the LEDs back on with LED_FULL, which the LED core
-clamps to max_brightness. For keyboard backlights with several levels,
-such as asus::kbd_backlight, this means the backlight always comes back
-at maximum after being idle instead of at the level the user picked.
+This series adds initial support for the Cortina Systems CS75xx
+("Goldengate G2") network processors and the first board using one, the
+Securifi Almond+ touchscreen Wi-Fi router (CS7542, 2x Cortex-A9 r2p1,
+PL310 r3p2, 512 MiB DDR3, 512 MiB NAND).
 
-Remember the brightness per LED before turning it off and restore it on
-the next input event. The level is kept in a small per-LED state struct
-allocated in activate() and freed in deactivate(), so the trigger is
-converted from the simple trigger API to a regular trigger. Brightness
-changes made while the trigger is active, for example with the keyboard
-brightness hotkeys, are picked up too. The LEDs are walked with the new
-led_trigger_walk_leds() helper instead of the trigger touching
-trig->led_cdevs itself.
+There is no public documentation for the SoC. The register information
+comes from the GPL vendor kernels (Linux 2.6.36 for the Almond+, Linux
+4.9 for the Verizon FiOS G1100 which uses the same SoC) and from
+disassembly of the stock U-Boot 2009.11. A full out-of-tree port
+(clock, irqchip, GPIO, I2C, RTC, NAND, PCIe, MDIO and the packet engine)
+runs on Linux 6.18 in OpenWrt; this series is the first, minimal step to
+get the platform into mainline:
 
-Tested on an ASUS ROG Flow X13 GV302XV: with the keyboard backlight at
-level 1, it now comes back at level 1 after going idle instead of at 3.
-A level changed with the brightness hotkeys while the trigger is active
-is restored after the next idle period as well.
+  - bindings: vendor prefix, SoC/board compatibles, an SMP enable method
+    and the UART,
+  - the platform Kconfig and SMP bring-up (the generic DT machine is
+    used, there is no DT_MACHINE_START),
+  - DEBUG_LL for UART0,
+  - a UART driver with console and earlycon support,
+  - SoC dtsi and board dts describing the CPUs, GIC, SCU, timers, L2,
+    UARTs and memory,
+  - multi_v7_defconfig and MAINTAINERS updates.
 
-Assisted-by: LLM
-Signed-off-by: Nikolay Plastinin <plaztininikolai@gmail.com>
+Patches 6-7 (serial binding and driver) do not depend on the rest and
+can go through the tty tree.
+
+Testing: build tested with multi_v7_defconfig (GCC 14 and Clang 21,
+W=1) and checked with dt_binding_check/dtbs_check. On a Securifi
+Almond+ this series boots next-20260929 to an initramfs shell with
+both CPUs online ("smp: Brought up 1 node, 2 CPUs"; IPIs and the TWD
+timer tick on both cores); the L2C-310, the global and TWD timers and
+the UART driver (ttyCS0) come up. The kernel was started from a
+running OpenWrt system with a small kexec-style loader rather than
+from the stock U-Boot, because U-Boot enters the kernel with the MMU
+on (see 2 below).
+
+Things I would like feedback on, hence the RFC:
+
+1. The stock U-Boot arms the CPU0 private (TWD) watchdog before
+   starting the kernel; without a driver the board resets after ~300
+   seconds. The OpenWrt port disarms it in init_early, which I did not
+   want to propose here. Instead, a driver for "arm,cortex-a9-twd-wdt"
+   (the binding exists, but there is currently no driver for it) that
+   takes over the running watchdog on all CPUs is written and tested
+   on this board; I will post it with the follow-up series. Until
+   then, this series on its own boots but resets after ~5 minutes.
+   Is a TWD watchdog driver the preferred way to deal with this?
+
+2. The same U-Boot enters the kernel with the MMU and data cache
+   enabled (identity map with XN set, dirty lines left in the D-cache),
+   which breaks the decompressor. The OpenWrt port carries a small
+   workaround at the start of arch/arm/boot/compressed/head.S that
+   cleans the cache and turns the MMU off. It is not part of this series.
+   Replacing the bootloader is possible but risky for users of this
+   (discontinued) device. Would a quirk of that kind be acceptable in
+   head.S at all, or should this be solved outside the kernel (e.g. a
+   chain-loaded bootloader)? For the tests below the kernel was started
+   from a running Linux with the MMU off, so this was not an issue.
+
+3. The APB clock is 100, 150 or 170 MHz depending on the boot strap pins.
+   It is modelled as a fixed-clock with the rate set in the board dts.
+   A clock driver for the global control block, which also contains the
+   strap, pinmux and reset registers, will follow and replace it.
+
+4. The Cortex-A9 r2p1 is also affected by errata 742230, 742231, 743622
+   and 751472, whose workarounds are not available on multiplatform
+   kernels because they are expected to be applied by the bootloader.
+   The stock U-Boot does not apply them. Is there a preferred way to
+   deal with this?
+
+5. The UART ports are named ttyCS to avoid clashing with the 8250 driver
+   in multi_v7_defconfig, and PORT_GENERIC is used instead of a new port
+   type. The FIFO depth is not documented; the driver assumes 16.
+
+6. The top 64 MiB of RAM are reserved: the vendor firmware gives them to
+   the packet engine queue manager and the stock kernel is booted with
+   mem=448M. The reservation will be referenced by the network driver
+   later; I kept it now so that the memory is not handed out and later
+   claimed.
+
+Planned follow-ups, as separate series: the regbus interrupt
+controller, GPIO, I2C and TWD watchdog (ready, tested on this board),
+then the global control block/clock, RTC, NAND,
+PCIe (DesignWare glue), MDIO, the Ethernet/packet engine and a fix for
+the SX8650 touchscreen.
+
 ---
- drivers/leds/trigger/ledtrig-input-events.c | 74 ++++++++++++++++++++++++++---
- 1 file changed, 68 insertions(+), 6 deletions(-)
+Fil Dunsky (10):
+      dt-bindings: vendor-prefixes: Add Securifi
+      dt-bindings: arm: Add Cortina Systems CS7542 and Securifi Almond+
+      dt-bindings: arm: cpus: Add Cortina Systems CS7542 enable method
+      ARM: cortina: Add support for the CS75xx SoC family
+      ARM: debug: Add Cortina Systems CS75xx UART0 support
+      dt-bindings: serial: Add Cortina Systems CS7542 UART
+      tty: serial: Add Cortina Systems CS75xx UART driver
+      ARM: dts: cortina: Add CS7542 SoC and Securifi Almond+ board
+      ARM: multi_v7_defconfig: Enable Cortina Systems CS75xx support
+      MAINTAINERS: Add entry for Cortina Systems CS75xx
 
-diff --git a/drivers/leds/trigger/ledtrig-input-events.c b/drivers/leds/trigger/ledtrig-input-events.c
-index d057b2a23..4729c8507 100644
---- a/drivers/leds/trigger/ledtrig-input-events.c
-+++ b/drivers/leds/trigger/ledtrig-input-events.c
-@@ -28,7 +28,67 @@ static struct input_events_data {
- 	unsigned long led_off_time;
- } input_events_data;
- 
--static struct led_trigger *input_events_led_trigger;
-+struct input_events_led {
-+	/* Brightness to restore on the next input event */
-+	int brightness;
-+};
-+
-+static int input_events_activate(struct led_classdev *led_cdev)
-+{
-+	struct input_events_data *data = &input_events_data;
-+	struct input_events_led *led;
-+	unsigned long flags;
-+
-+	led = kzalloc_obj(*led);
-+	if (!led)
-+		return -ENOMEM;
-+
-+	/* Start with the current brightness, or full if the LED is off */
-+	led->brightness = led_cdev->brightness ?: led_cdev->max_brightness;
-+
-+	spin_lock_irqsave(&data->lock, flags);
-+	led_set_trigger_data(led_cdev, led);
-+	led_set_brightness(led_cdev, data->led_on ? led->brightness : LED_OFF);
-+	spin_unlock_irqrestore(&data->lock, flags);
-+
-+	return 0;
-+}
-+
-+static void input_events_deactivate(struct led_classdev *led_cdev)
-+{
-+	kfree(led_get_trigger_data(led_cdev));
-+}
-+
-+static struct led_trigger input_events_led_trigger = {
-+	.name = "input-events",
-+	.activate = input_events_activate,
-+	.deactivate = input_events_deactivate,
-+};
-+
-+static void input_events_set_led(struct led_classdev *led_cdev, void *arg)
-+{
-+	struct input_events_led *led = led_get_trigger_data(led_cdev);
-+	bool on = *(bool *)arg;
-+
-+	/* Added to the trigger, but activate() has not run yet */
-+	if (!led)
-+		return;
-+
-+	/*
-+	 * Remember the brightness the LED was last set to, e.g. by a hotkey
-+	 * while it was on, so that it is restored instead of max brightness.
-+	 */
-+	if (led_cdev->brightness)
-+		led->brightness = led_cdev->brightness;
-+
-+	led_set_brightness(led_cdev, on ? led->brightness : LED_OFF);
-+}
-+
-+/* Must be called with input_events_data.lock held */
-+static void input_events_set_leds(bool on)
-+{
-+	led_trigger_walk_leds(&input_events_led_trigger, input_events_set_led, &on);
-+}
- 
- static void led_input_events_work(struct work_struct *work)
- {
-@@ -42,7 +102,7 @@ static void led_input_events_work(struct work_struct *work)
- 	 * running before a new event pushed led_off_time back.
- 	 */
- 	if (time_after_eq(jiffies, data->led_off_time)) {
--		led_trigger_event(input_events_led_trigger, LED_OFF);
-+		input_events_set_leds(false);
- 		data->led_on = false;
- 	}
- 
-@@ -59,7 +119,7 @@ static void input_events_event(struct input_handle *handle, unsigned int type,
- 	spin_lock_irqsave(&data->lock, flags);
- 
- 	if (!data->led_on) {
--		led_trigger_event(input_events_led_trigger, LED_FULL);
-+		input_events_set_leds(true);
- 		data->led_on = true;
- 	}
- 	data->led_off_time = jiffies + led_off_delay;
-@@ -138,11 +198,13 @@ static int __init input_events_init(void)
- 	INIT_DELAYED_WORK(&input_events_data.work, led_input_events_work);
- 	spin_lock_init(&input_events_data.lock);
- 
--	led_trigger_register_simple("input-events", &input_events_led_trigger);
-+	ret = led_trigger_register(&input_events_led_trigger);
-+	if (ret)
-+		return ret;
- 
- 	ret = input_register_handler(&input_events_handler);
- 	if (ret) {
--		led_trigger_unregister_simple(input_events_led_trigger);
-+		led_trigger_unregister(&input_events_led_trigger);
- 		return ret;
- 	}
- 
-@@ -153,7 +215,7 @@ static void __exit input_events_exit(void)
- {
- 	input_unregister_handler(&input_events_handler);
- 	cancel_delayed_work_sync(&input_events_data.work);
--	led_trigger_unregister_simple(input_events_led_trigger);
-+	led_trigger_unregister(&input_events_led_trigger);
- }
- 
- module_init(input_events_init);
+ Documentation/devicetree/bindings/arm/cortina.yaml |  31 ++
+ Documentation/devicetree/bindings/arm/cpus.yaml    |   2 +
+ .../bindings/serial/cortina,cs7542-uart.yaml       |  50 ++
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |  11 +
+ arch/arm/Kconfig                                   |   2 +
+ arch/arm/Kconfig.debug                             |  16 +-
+ arch/arm/Makefile                                  |   1 +
+ arch/arm/boot/dts/Makefile                         |   1 +
+ arch/arm/boot/dts/cortina/Makefile                 |   3 +
+ .../dts/cortina/cs7542-securifi-almondplus.dts     |  55 +++
+ arch/arm/boot/dts/cortina/cs7542.dtsi              | 127 +++++
+ arch/arm/configs/multi_v7_defconfig                |   3 +
+ arch/arm/include/debug/cs75xx.S                    |  36 ++
+ arch/arm/mach-cortina/Kconfig                      |  18 +
+ arch/arm/mach-cortina/Makefile                     |   2 +
+ arch/arm/mach-cortina/platsmp.c                    |  71 +++
+ drivers/tty/serial/Kconfig                         |  24 +
+ drivers/tty/serial/Makefile                        |   1 +
+ drivers/tty/serial/cs75xx-uart.c                   | 546 +++++++++++++++++++++
+ 20 files changed, 1000 insertions(+), 2 deletions(-)
+---
+base-commit: 6474fa070f2b8013b4b87350b775b8c3be6e8aac
+change-id: 20260930-b4-cs75xx-033a2c047508
 
--- 
-2.55.0
+Best regards,
+--  
+Fil Dunsky <filipp.dunsky@gmail.com>
 
