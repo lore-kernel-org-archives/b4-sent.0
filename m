@@ -1,109 +1,114 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Wed, 30 Sep 2026 19:34:45 +0000
-Subject: [PATCH net] net: stmmac: dwmac-rk: keep the GMAC powered when the
- PHY wakes the system
+From: Vincent Jardin <vjardin@free.fr>
+Date: Wed, 30 Sep 2026 22:15:48 +0200
+Subject: [PATCH v2] bus: fsl-mc: drop the fwnode links of the dpmacs nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-dwmac-rk-phy-wol-v1-1-9fdc50bd9ae4@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAFRkvWoC/x3MQQ5AMBBA0avIrE1SJJNwFbEohk5Q0oqSxt01l
- m/xfwTPTthDk0VwfImX3SYUeQaD0XZmlDEZSlWSqiuFY9j0gG7BwzwY9hV7LliTJkXUQ8oOx5P
- c/7IFyyd07/sBjY2M0WcAAAA=
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Heiko Stuebner <heiko@sntech.de>, 
- Eric Dumazet <edumazet@kernel.org>
-Cc: "Russell King (Oracle)" <rmk+kernel@armlinux.org.uk>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, netdev@vger.kernel.org, 
- linux-rockchip@lists.infradead.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
+Message-Id: <20260930-for-upstream-fsl-mc-dpmac-fwnode-links-v2-1-13f7b6ef000f@free.fr>
+X-B4-Tracking: v=1; b=H4sIAPNtvWoC/5XNQQ6CMBCF4auQrh0DI8HiynsYFi2dSiO0zRRRQ
+ 7i7lRu4/N/ifatIxI6SuBSrYFpccsHnwEMh+kH5O4EzuQWW2JQtSrCB4RnTzKQmsGmEqQcTJ9W
+ DfflgCEbnHwkaRC1JGd1KJfJZZLLuvUO3Lvfg0hz4s7tL9Vv/JpYKKtCyPTdY1/ok9dUy0dGy6
+ LZt+wJ+p8jc2gAAAA==
+To: Ioana Ciornei <ioana.ciornei@nxp.com>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2718; i=iav@iav.lv;
- h=from:subject:message-id; bh=v2FMuWUABRc83FaiGNq51H6LZX+xOp9sURDtyb+WJCs=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFl7U8JcJqjtMr1SfGhbwq86VaVL/1MuRUq7PIqVaL2io
- GEjv0y3o5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAEzkTg8jwzmJwFPGq3ZeYFsS
- VPt7jdRjNfmM5R/j5KKmbAtOF7U142dkmPtLeZd1f+6e3RFn/2wsXTBTxan4v5GWQnXAL3sDvfP
- HOAE=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790799351; l=3039;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=MLGDYZOw45UD6Di3KCAHNR0GWLFDDhooxe3jcyGjVtM=;
+ b=MM/lP60BsIy9mdVuQDHAoaw5n5UB2wX0fYSiZT9X2/SO1doHHOsw8KBr4mk0W0WxUN/RwWgnt
+ XPjF0wbsqdrCNK2c8DdY1ToyPJSotDqmJmdS1dxPNgjVIqJetBVrmD6
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 6911308d7d11 ("net: stmmac: convert to phylink-managed
-Wake-on-Lan"), the MAC device gets its wakeup flag only when the MAC
-handles Wake-on-LAN itself. When the PHY handles it, device_may_wakeup()
-is false for the MAC, and rk_gmac_suspend() powers the GMAC down: its
-clocks stop and phy-supply is released.
+A DPMAC node under dpmacs/ is never the fwnode of any device:
+  the fsl-mc bus creates dpmac.N objects without one,
+  then dpaa2-mac finds its node in dpmacs/ at connect time.
 
-On Helios64 (RTL8211F, Wake-on-LAN in the PHY) the board then hangs on
-the first or second suspend with a magic-packet wake.
+fw_devlink therefore attaches the supplier links of those nodes (phys, ...)
+to the nearest ancestor device, the fsl-mc bus, as SYNC_STATE_ONLY proxies.
 
-Also keep the GMAC powered when phy_may_wakeup() is true, and remember
-the decision for resume.
+device_link_add() refuses such a link once the consumer has probed, and
+fw_devlink logs the refusal as an error.
 
-Fixes: 6911308d7d11 ("net: stmmac: convert to phylink-managed Wake-on-Lan")
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
+On an LX2160A board with 4x25G DPMACs for which phys = <&serdes_1 N>,
+the Serdes PHY binds after the bus and then at every boot it shows:
+
+  fsl_mc_bus 80c000000.fsl-mc: Failed to create device link (0x180) with supplier 1ea0000.phy for /soc/fsl-mc@80c000000/dpmacs/ethernet@3
+
+once per port!
+
+To fix it, when the root MC bus probes, purge the fwnode links of every
+child of its dpmacs node, so fw_devlink has no supplier link left to
+proxy to the bus and no longer tries to create those device links.
+
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Reviewed-by: Ioana Ciornei <ioana.ciornei@nxp.com>
+Tested-by: Ioana Ciornei <ioana.ciornei@nxp.com> # LX2160ARDB
 ---
-Tested on Helios64 with 7.3-rc5: 20 of 20 suspends woke on a magic
-packet. The mainline Helios64 DT has no PHY node, so the test used a
-DT that describes the PHY with its interrupt and wakeup-source (a DT
-patch will follow), together with [1], which fixes an interrupt storm
-on resume.
+The dpmacs node is the documented child of the
+fsl-mc node: Documentation/devicetree/bindings/misc/fsl,qoriq-mc.yaml
+(and bindings/net/fsl,qoriq-mc-dpmac.yaml for its DPMAC subnodes).
 
-[1] https://lore.kernel.org/r/20260930-stmmac-irq-shut-v1-1-104d1a1dcb28@iav.lv
+Changes in v2:
+- Improve commit log (Christophe)
+- Collect Ioana's Reviewed-by and Tested-by
+- Link to v1: https://lore.kernel.org/r/20260928-for-upstream-fsl-mc-dpmac-fwnode-links-v1-1-b8976244b38b@free.fr
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ drivers/bus/fsl-mc/fsl-mc-bus.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-index 72bdbcb5e863..06faeb156b97 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c
-@@ -98,6 +98,7 @@ struct rk_priv_data {
- 	bool integrated_phy;
- 	bool supports_rgmii;
- 	bool supports_rmii;
-+	bool suspend_powerdown;
+diff --git a/drivers/bus/fsl-mc/fsl-mc-bus.c b/drivers/bus/fsl-mc/fsl-mc-bus.c
+index 5878eafd8d44..0c37b6780c84 100644
+--- a/drivers/bus/fsl-mc/fsl-mc-bus.c
++++ b/drivers/bus/fsl-mc/fsl-mc-bus.c
+@@ -11,6 +11,7 @@
+ #define pr_fmt(fmt) "fsl-mc: " fmt
  
- 	struct clk_bulk_data *clks;
- 	int num_clks;
-@@ -1530,10 +1531,13 @@ static int rk_set_clk_tx_rate(void *bsp_priv_, struct clk *clk_tx_i,
- 
- static int rk_gmac_suspend(struct device *dev, void *bsp_priv_)
- {
-+	struct net_device *ndev = dev_get_drvdata(dev);
- 	struct rk_priv_data *bsp_priv = bsp_priv_;
- 
--	/* Keep the PHY up if we use Wake-on-Lan. */
--	if (!device_may_wakeup(dev))
-+	/* Keep the MAC and PHY powered if either of them wakes the system. */
-+	bsp_priv->suspend_powerdown = !device_may_wakeup(dev) &&
-+		!(ndev->phydev && phy_may_wakeup(ndev->phydev));
-+	if (bsp_priv->suspend_powerdown)
- 		rk_gmac_powerdown(bsp_priv);
- 
+ #include <linux/module.h>
++#include <linux/fwnode.h>
+ #include <linux/of_device.h>
+ #include <linux/of_address.h>
+ #include <linux/ioport.h>
+@@ -1033,6 +1034,20 @@ static int fsl_mc_firmware_check(struct platform_device *pdev)
  	return 0;
-@@ -1543,8 +1547,7 @@ static int rk_gmac_resume(struct device *dev, void *bsp_priv_)
- {
- 	struct rk_priv_data *bsp_priv = bsp_priv_;
+ }
  
--	/* The PHY was up for Wake-on-Lan. */
--	if (!device_may_wakeup(dev))
-+	if (bsp_priv->suspend_powerdown)
- 		rk_gmac_powerup(bsp_priv);
++static void fsl_mc_purge_dpmac_fwnode_links(struct device *dev)
++{
++	struct device_node *dpmacs, *child;
++
++	dpmacs = of_get_child_by_name(dev->of_node, "dpmacs");
++	if (!dpmacs)
++		return;
++
++	for_each_child_of_node(dpmacs, child)
++		fwnode_links_purge(of_fwnode_handle(child));
++
++	of_node_put(dpmacs);
++}
++
+ /*
+  * fsl_mc_bus_probe - callback invoked when the root MC bus is being
+  * added
+@@ -1134,6 +1149,8 @@ static int fsl_mc_bus_probe(struct platform_device *pdev)
+ 						&mc->num_translation_ranges);
+ 		if (error < 0)
+ 			goto error_cleanup_mc_io;
++
++		fsl_mc_purge_dpmac_fwnode_links(&pdev->dev);
+ 	}
  
- 	return 0;
+ 	error = dprc_get_container_id(mc_io, 0, &container_id);
 
 ---
-base-commit: 99b43ede9e355ba35244cc9470bf1819774ce39d
-change-id: 20260930-dwmac-rk-phy-wol-be1ea6a6066b
+base-commit: 7b3b0598c00e67f2df85d0b4cd99eaa3be6c9bfd
+change-id: 20260928-for-upstream-fsl-mc-dpmac-fwnode-links-622b8eadb98a
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Vincent Jardin <vjardin@free.fr>
 
