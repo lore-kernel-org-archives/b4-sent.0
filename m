@@ -1,107 +1,66 @@
-From: =?utf-8?q?Nicol=C3=A1s_Antinori?= <nico.antinori.7@gmail.com>
-Date: Wed, 30 Sep 2026 10:23:30 -0300
-Subject: [PATCH 3/3] rust: bitmap: kunit: uncomment
- owned_bitmap_out_of_bounds panic case
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH 0/4] libfuse: Avoid mount API code dup between
+ mount-service and libfuse
+Date: Wed, 30 Sep 2026 15:44:32 +0200
+Message-Id: <20260930-mount-service-use-mount-fsmount-v1-0-d585598896ee@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260930-rust_kunit_v4-v1-3-e3b0d45311dd@gmail.com>
-References: <20260930-rust_kunit_v4-v1-0-e3b0d45311dd@gmail.com>
-In-Reply-To: <20260930-rust_kunit_v4-v1-0-e3b0d45311dd@gmail.com>
-To: Alice Ryhl <aliceryhl@google.com>, Burak Emir <burak.emir@gmail.com>, 
- Brendan Higgins <brendan.higgins@linux.dev>, David Gow <david@davidgow.net>, 
- Miguel Ojeda <ojeda@kernel.org>
-Cc: =?utf-8?q?Nicol=C3=A1s_Antinori?= <nico.antinori.7@gmail.com>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Benno Lossin <lossin@kernel.org>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn1_gh@protonmail.com>, 
- Boqun Feng <boqun@kernel.org>, Brigham Campbell <me@brighamcampbell.com>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Danilo Krummrich <dakr@kernel.org>, Gary Guo <gary@garyguo.net>, 
- Jori Koolstra <jkoolstra@xs4all.nl>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Rae Moar <raemoar63@gmail.com>, Shuah Khan <skhan@linuxfoundation.org>, 
- Tamir Duberstein <tamird@kernel.org>, Trevor Gross <tmgross@umich.edu>, 
- Yury Norov <yury.norov@gmail.com>, linux-kernel@vger.kernel.org, 
- rust-for-linux@vger.kernel.org, linux-kernel-mentees@lists.linux.dev
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2339;
- i=nico.antinori.7@gmail.com; h=from:subject:message-id;
- bh=s6VeCuzis2IJcLMPOzgr0J64uvSAp4KLvVLQ8SXTshM=;
- b=owGbwMvMwCV2QdXfwqNJ1YjxtFoSQ9Ze3mSHM4VvSs+fub5T79K116Z6u+MPbt5ZcOiJZmaO4
- VtlzudzO0pZGMS4GGTFFFnmcr7/bGxrXlEuvSkIZg4rE8gQBi5OAZiIqD8jw4qkZ3scIx+uFT3X
- I5T7SWbTN8V1ykF6fssFFgY83CYutYnhr9gahvLOhbFNUx4n8aj+uzjrjdn3a9faWBrbH2b9Eb2
- 3hx8A
-X-Developer-Key: i=nico.antinori.7@gmail.com; a=openpgp;
- fpr=9D09EFF3333D3778771BB252D0254F3848822532
-X-Endpoint-Received: by B4 Relay for nico.antinori.7@gmail.com/default with auth_id=1086
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2NQQqDMBREryJ/bSBVkbZXERcxGdtfMEq+EUG8u
+ 1G7Gt7AvNlIEBhC72yjgIWFR5/gkWdkv8Z/oNglpkIXtX6VWg1j9LNKq4UtVBT8m17u7FwNo6u
+ nKZ2hZJkCel6vh6a9WWL3g51PLe37AZIx0hiDAAAA
+X-Change-ID: 20260930-mount-service-use-mount-fsmount-bd6ea048a3da
+To: "Darrick J. Wong" <djwong@kernel.org>
+Cc: neal@gompa.dev, fuse-devel@lists.linux.dev, 
+ Bernd Schubert <bernd@bsbernd.com>
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1676; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=TNSMJrU1G/yJHKD98KVP4AYmmvbI8f+DqKzWUNwzRPA=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL2Cnmk9e89MD9c+b90z4ZvfIz1ujt+zr3W3ibBHFzrV
+ fnyUkhERykLgxgHg6yYIkuXxB7bKf/4ZNW+rr8OM4eVCWQIAxenAExEK4zhf3i/50XFv4tjTnHM
+ u7j9eJe59Ls1RyIuM8r5pM98/eKNsycjw5XJ1eevb1q4bfYzj50fgj+6XTnn3nRY7MGLHfPZbPI
+ Pb2EDAA==
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Rust KUnit tests now support `#[should_panic]` attribute. Uncomment the
-test so it can be run when CONFIG_RUST_BITMAP_HARDENED=y.
+fuse service mount was written in parallel to libfuse additions of
+the new mount API. Service mounts support the new mount API as well,
+which results in code dup. In the mean time libfuse also supports
+the new mount API through syscalls without glibc wrappers, as some
+distros have a sufficiently recent kernel, but a too old glibc.
+Those wrappers were mssing for service mounts so far.
+Easiest fix is to avoid the code and to redirect service mounts
+to what libfuse already has.
 
-Signed-off-by: Nicolás Antinori <nico.antinori.7@gmail.com>
+To: Darrick J. Wong <djwong@kernel.org>
+Cc: neal@gompa.dev
+Cc: fuse-devel@lists.linux.dev
+
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- rust/kernel/bitmap.rs | 40 ++++++++++++++++++----------------------
- 1 file changed, 18 insertions(+), 22 deletions(-)
+Bernd Schubert (4):
+      mount_fsmount: split superblock creation and move_mount into a helper
+      mount_service: mount via the shared fsmount helper
+      mount_util: share the mtab flag-option builder
+      mount/fuse_service: share the service socket helpers
 
-diff --git a/rust/kernel/bitmap.rs b/rust/kernel/bitmap.rs
-index b27e0ec80d643da5d5510ee79e24493323e61b72..a9935b2be8c54d1b66d1c1cade1eba1fb06b6cd3 100644
---- a/rust/kernel/bitmap.rs
-+++ b/rust/kernel/bitmap.rs
-@@ -571,33 +571,29 @@ fn bitmap_set_clear_find() -> Result<(), AllocError> {
-         Ok(())
-     }
- 
-+    #[cfg(not(CONFIG_RUST_BITMAP_HARDENED))]
-     #[test]
-     fn owned_bitmap_out_of_bounds() -> Result<(), AllocError> {
--        // TODO: Kunit #[test]s do not support `cfg` yet,
--        // so we add it here in the body.
--        #[cfg(not(CONFIG_RUST_BITMAP_HARDENED))]
--        {
--            let mut b = BitmapVec::new(128, GFP_KERNEL)?;
--            b.set_bit(2048);
--            b.set_bit_atomic(2048);
--            b.clear_bit(2048);
--            b.clear_bit_atomic(2048);
--            assert_eq!(None, b.next_bit(2048));
--            assert_eq!(None, b.next_zero_bit(2048));
--            assert_eq!(None, b.last_bit());
--        }
-+        let mut b = BitmapVec::new(128, GFP_KERNEL)?;
-+        b.set_bit(2048);
-+        b.set_bit_atomic(2048);
-+        b.clear_bit(2048);
-+        b.clear_bit_atomic(2048);
-+        assert_eq!(None, b.next_bit(2048));
-+        assert_eq!(None, b.next_zero_bit(2048));
-+        assert_eq!(None, b.last_bit());
-         Ok(())
-     }
- 
--    // TODO: uncomment once kunit supports [should_panic] and `cfg`.
--    // #[cfg(CONFIG_RUST_BITMAP_HARDENED)]
--    // #[test]
--    // #[should_panic]
--    // fn owned_bitmap_out_of_bounds() -> Result<(), AllocError> {
--    //     let mut b = BitmapVec::new(128, GFP_KERNEL)?;
--    //
--    //     b.set_bit(2048);
--    // }
-+    #[cfg(CONFIG_RUST_BITMAP_HARDENED)]
-+    #[test]
-+    #[should_panic]
-+    fn owned_bitmap_out_of_bounds() -> Result<(), AllocError> {
-+        let mut b = BitmapVec::new(128, GFP_KERNEL)?;
-+
-+        b.set_bit(2048);
-+        Ok(())
-+    }
- 
-     #[test]
-     fn bitmap_copy_and_extend() -> Result<(), AllocError> {
+ include/fuse_service_priv.h |  59 ++++++++++++++++++++++++
+ lib/fuse_service.c          |  72 ++++++-----------------------
+ lib/mount.c                 |  21 +--------
+ lib/mount_fsmount.c         |  98 ++++++++++++++++++++++------------------
+ lib/mount_i_linux.h         |  18 ++++++++
+ lib/mount_util.c            |  33 ++++++++++++++
+ lib/mount_util.h            |  20 ++++++++
+ util/fusermount.c           |  33 ++------------
+ util/mount_service.c        | 108 +++++++++-----------------------------------
+ 9 files changed, 223 insertions(+), 239 deletions(-)
+---
+base-commit: 5f8a64b0835620ab88afd8a59a713d5b6a9e99f4
+change-id: 20260930-mount-service-use-mount-fsmount-bd6ea048a3da
 
--- 
-2.47.3
+Best regards,
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
