@@ -1,198 +1,147 @@
 From: Bernd Schubert <bernd@bsbernd.com>
-Date: Wed, 30 Sep 2026 15:44:33 +0200
-Subject: [PATCH 1/4] mount_fsmount: split superblock creation and
- move_mount into a helper
+Date: Wed, 30 Sep 2026 15:44:34 +0200
+Subject: [PATCH 2/4] mount_service: mount via the shared fsmount helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-mount-service-use-mount-fsmount-v1-1-d585598896ee@bsbernd.com>
+Message-Id: <20260930-mount-service-use-mount-fsmount-v1-2-d585598896ee@bsbernd.com>
 References: <20260930-mount-service-use-mount-fsmount-v1-0-d585598896ee@bsbernd.com>
 In-Reply-To: <20260930-mount-service-use-mount-fsmount-v1-0-d585598896ee@bsbernd.com>
 To: "Darrick J. Wong" <djwong@kernel.org>
 Cc: neal@gompa.dev, fuse-devel@lists.linux.dev, 
  Bernd Schubert <bernd@bsbernd.com>
 X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5634; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=xzRxuwa63Vh0hWGAVlL/J9Afa2FZo54hNpLnXTUqna0=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL2Cvnw/1Ps434x0aYkw/iARm5WYZLw8qWFMeZ/Nb6k/
- Qsp2xPfUcrCIMbBICumyNIlscd2yj8+WbWv66/DzGFlAhnCwMUpABNRM2T4p7PF75REwgvpp3H5
- D+8/YshneikcK9+X7hYmz3jxUnvhG4a/cvfkNWNkLV8qzFp91aD14ZV0RXcRhi9Keqr8T1XzvJL
- ZAQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3629; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=gfyNbXvKRw52UA8okVviA6cTtinT36ncLu1xhr7uXT0=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL2CvlsZ/j0fD6j+OtS3lYp8Tcuv//vXbTMdV3Q5stxD
+ KLfRXuTOkpZGMQ4GGTFFFm6JPbYTvnHJ6v2df11mDmsTCBDGLg4BWAi7wUYGe4UrsheJuRppa9q
+ qM3drT5lyn7r3L2s39cWeKwJPsHCV8LwP+7KrVOnL92Tkw9V2pWamDQ9ZV1srNPWdfWXmLdc3Za
+ XzwQA
 X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
  fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
 X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is a preparation patch. fuse_kern_fsmount() ran fsconfig
-CREATE, fsmount() and move_mount() inline. A later commit will make
-mount_service.c call the same three calls after it has run FSOPEN,
-SOURCE and MNTOPTS itself, so this moves them into
-fuse_fsmount_create_and_move(). The fsopen fd stays owned by the
-caller, because mount_service.c will close mo->fsopenfd itself
-later.
+util/mount_service.c issued FSCONFIG_CMD_CREATE, fsmount() and
+move_mount() itself, with the same FSMOUNT_CLOEXEC and
+MOVE_MOUNT_*_EMPTY_PATH flags as lib/mount_fsmount.c. Both mount the
+same filesystem, so a flag changed in one copy silently diverges.
 
-fuse_kern_fsmount() now converts MS_* flags before calling the
-helper, so unsupported flags are caught before the superblock is
-created, not after.
+mount_service.c also called the libc names fsconfig(), fsmount() and
+move_mount() directly. HAVE_NEW_MOUNT_API only checks that the headers
+declare these functions, not that libc exports them. On a system where
+NEED_NEW_MOUNT_API_SYSCALL_WRAPPERS is also set (glibc older than
+2.36), lib/mount_fsmount.c works around the missing symbols through
+its fuse_-prefixed static inline wrappers, which mount_service.c had
+no access to; calling the bare libc names left it with a declaration
+to compile against but no symbol to link against.
 
 Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- lib/mount_fsmount.c | 86 +++++++++++++++++++++++++++++++----------------------
- lib/mount_i_linux.h | 18 +++++++++++
- 2 files changed, 69 insertions(+), 35 deletions(-)
+ util/mount_service.c | 49 ++++++++++++-------------------------------------
+ 1 file changed, 12 insertions(+), 37 deletions(-)
 
-diff --git a/lib/mount_fsmount.c b/lib/mount_fsmount.c
-index b2d0453e5c93..0b1fd4300d2d 100644
---- a/lib/mount_fsmount.c
-+++ b/lib/mount_fsmount.c
-@@ -489,6 +489,53 @@ void fuse_kern_umount_mountfd(int mountfd)
+diff --git a/util/mount_service.c b/util/mount_service.c
+index 0b3266309a8a..dcdc26df1db4 100644
+--- a/util/mount_service.c
++++ b/util/mount_service.c
+@@ -28,11 +28,6 @@
+ #include <sys/ioctl.h>
+ #include <linux/fs.h>
+ 
+-#ifdef HAVE_NEW_MOUNT_API
+-#include <sys/mount.h>
+-#include <linux/mount.h>
+-#endif
+-
+ #include "mount_util.h"
+ #include "util.h"
+ #include "fuse_i.h"
+@@ -1439,63 +1434,45 @@ static int mount_service_fsopen_mount(struct mount_service *mo,
+ 			return FUSE_MOUNT_FALLBACK_NEEDED;
+ 
+ 		error = -ret;
+-		goto fail_fsconfig;
++		goto fail_mount;
  	}
+ 
+ 	snprintf(tmp, sizeof(tmp), "%i", mo->fusedevfd);
+ 	ret = apply_fsconfig_opt_fd(mo->fsopenfd, tmp);
+ 	if (ret < 0) {
+ 		error = -ret;
+-		goto fail_fsconfig;
++		goto fail_mount;
+ 	}
+ 
+ 	snprintf(tmp, sizeof(tmp), "%o", stbuf->st_mode & S_IFMT);
+ 	ret = apply_fsconfig_opt_string(mo->fsopenfd, "rootmode", tmp);
+ 	if (ret < 0) {
+ 		error = -ret;
+-		goto fail_fsconfig;
++		goto fail_mount;
+ 	}
+ 
+ 	snprintf(tmp, sizeof(tmp), "%u", getuid());
+ 	ret = apply_fsconfig_opt_string(mo->fsopenfd, "user_id", tmp);
+ 	if (ret < 0) {
+ 		error = -ret;
+-		goto fail_fsconfig;
++		goto fail_mount;
+ 	}
+ 
+ 	snprintf(tmp, sizeof(tmp), "%u", getgid());
+ 	ret = apply_fsconfig_opt_string(mo->fsopenfd, "group_id", tmp);
+ 	if (ret < 0) {
+ 		error = -ret;
+-		goto fail_fsconfig;
+-	}
+-
+-	ret = fsconfig(mo->fsopenfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
+-	if (ret) {
+-		error = errno;
+-		fprintf(stderr, "%s: creating filesystem: %s\n",
+-			mo->msgtag, strerror(error));
+-		goto fail_fsconfig;
+-	}
+-
+-	mfd = fsmount(mo->fsopenfd, FSMOUNT_CLOEXEC, attr_flags);
+-	if (mfd < 0) {
+-		error = errno;
+-		fprintf(stderr, "%s: fsmount: %s\n",
+-			mo->msgtag, strerror(error));
+-		goto fail_fsconfig;
+-	}
+-
+-	ret = move_mount(mfd, "", mo->mountfd, "",
+-			 MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
+-	close(mfd);
+-	if (ret) {
+-		error = errno;
+-		fprintf(stderr, "%s: move_mount: %s\n",
+-			mo->msgtag, strerror(error));
+ 		goto fail_mount;
+ 	}
+ 
++	ret = fuse_fsmount_create_and_move(mo->fsopenfd, attr_flags,
++					   mo->mountfd, NULL, &mfd);
++	if (ret < 0) {
++		error = -ret;
++		goto fail_mount;
++	}
++	close(mfd);
++
+ 	/*
+ 	 * The mount succeeded, so we send a positive reply even if the mtab
+ 	 * update fails.
+@@ -1515,8 +1492,6 @@ static int mount_service_fsopen_mount(struct mount_service *mo,
+ 	mo->mounted = true;
+ 	return mount_service_send_reply(mo, 0);
+ 
+-fail_fsconfig:
+-	log_fsconfig_kmsg(mo->fsopenfd);
+ fail_mount:
+ 	return mount_service_send_reply(mo, error);
  }
- 
-+int fuse_fsmount_create_and_move(int fsfd, unsigned int mount_attrs,
-+				 int dest_mnt_fd, const char *dest_path,
-+				 int *mountfd_out)
-+{
-+	int mountfd;
-+	int res;
-+
-+	res = fuse_fsconfig(fsfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
-+	if (res == -1) {
-+		int save_errno = errno;
-+
-+		log_fsconfig_kmsg(fsfd);
-+		fuse_log(FUSE_LOG_ERR, "fuse: fsconfig CREATE failed: %s\n",
-+			 strerror(save_errno));
-+		return -save_errno;
-+	}
-+
-+	mountfd = fuse_fsmount(fsfd, FSMOUNT_CLOEXEC, mount_attrs);
-+	if (mountfd == -1) {
-+		int save_errno = errno;
-+
-+		log_fsconfig_kmsg(fsfd);
-+		fuse_log(FUSE_LOG_ERR, "fuse: fsmount failed: %s\n",
-+			 strerror(save_errno));
-+		return -save_errno;
-+	}
-+
-+	if (dest_mnt_fd >= 0)
-+		res = fuse_move_mount(mountfd, "", dest_mnt_fd, "",
-+				      MOVE_MOUNT_F_EMPTY_PATH |
-+					      MOVE_MOUNT_T_EMPTY_PATH);
-+	else
-+		res = fuse_move_mount(mountfd, "", AT_FDCWD, dest_path,
-+				      MOVE_MOUNT_F_EMPTY_PATH);
-+	if (res == -1) {
-+		int save_errno = errno;
-+
-+		fuse_log(FUSE_LOG_ERR, "fuse: move_mount failed: %s\n",
-+			 strerror(save_errno));
-+		close(mountfd);
-+		return -save_errno;
-+	}
-+
-+	*mountfd_out = mountfd;
-+	return 0;
-+}
-+
- int fuse_kern_fsmount(const char *mnt, int dest_mnt_fd, unsigned long flags,
- 		      int blkdev, const char *fsname, const char *subtype,
- 		      const char *source_dev, const char *kernel_opts,
-@@ -584,16 +631,6 @@ int fuse_kern_fsmount(const char *mnt, int dest_mnt_fd, unsigned long flags,
- 		goto out_free;
- 	}
- 
--	/* Create the filesystem instance */
--	res = fuse_fsconfig(fsfd, FSCONFIG_CMD_CREATE, NULL, NULL, 0);
--	if (res == -1) {
--		err = -errno;
--		log_fsconfig_kmsg(fsfd);
--		fuse_log(FUSE_LOG_ERR, "fuse: fsconfig CREATE failed: %s\n",
--			 strerror(errno));
--		goto out_free;
--	}
--
- 	/* Convert MS_* flags to MOUNT_ATTR_* for fsmount() */
- 	flags = ms_flags_to_mount_attrs(flags, &mount_attrs);
- 	if (flags != 0) {
-@@ -602,33 +639,14 @@ int fuse_kern_fsmount(const char *mnt, int dest_mnt_fd, unsigned long flags,
- 		goto out_free;
- 	}
- 
--	/* Create mount object with mount attributes */
--	mountfd = fuse_fsmount(fsfd, FSMOUNT_CLOEXEC, mount_attrs);
--	if (mountfd == -1) {
--		err = -errno;
--		log_fsconfig_kmsg(fsfd);
--		fuse_log(FUSE_LOG_ERR, "fuse: fsmount failed: %s\n",
--			 strerror(errno));
-+	err = fuse_fsmount_create_and_move(fsfd, mount_attrs, dest_mnt_fd, mnt,
-+					   &mountfd);
-+	if (err)
- 		goto out_free;
--	}
- 
- 	close(fsfd);
- 	fsfd = -1;
- 
--	if (dest_mnt_fd >= 0)
--		res = fuse_move_mount(mountfd, "", dest_mnt_fd, "",
--				 MOVE_MOUNT_F_EMPTY_PATH |
--					 MOVE_MOUNT_T_EMPTY_PATH);
--	else
--		res = fuse_move_mount(mountfd, "", AT_FDCWD, mnt,
--				 MOVE_MOUNT_F_EMPTY_PATH);
--	if (res == -1) {
--		err = -errno;
--		fuse_log(FUSE_LOG_ERR, "fuse: move_mount failed: %s\n",
--			 strerror(errno));
--		goto out_close_mntfd;
--	}
--
- 	res = fuse_mnt_add_mount_helper(mnt, source, type, mtab_opts);
- 	if (res == -1) {
- 		err = -EIO;
-@@ -645,9 +663,7 @@ int fuse_kern_fsmount(const char *mnt, int dest_mnt_fd, unsigned long flags,
- 
- out_umount:
- 	fuse_kern_umount_mountfd(mountfd);
--out_close_mntfd:
--	if (mountfd != -1)
--		close(mountfd);
-+	close(mountfd);
- out_free:
- 	free(source);
- 	free(type);
-diff --git a/lib/mount_i_linux.h b/lib/mount_i_linux.h
-index 8cf7ff4532c6..35bb54c82236 100644
---- a/lib/mount_i_linux.h
-+++ b/lib/mount_i_linux.h
-@@ -86,6 +86,24 @@ int fuse_kern_fsmount(const char *mnt, int mnt_fd, unsigned long flags,
- int fuse_kern_fsmount_mo(const char *mnt, const struct mount_opts *mo,
- 			 const char *mtab_opts, int *mountfd_out);
- 
-+/**
-+ * Create the superblock and attach the resulting mount to a destination.
-+ *
-+ * The fsopen fd stays owned by the caller - a caller that keeps it in
-+ * long-lived state must not be left with a descriptor closed behind its back.
-+ *
-+ * @fsfd fsopen fd, fully configured
-+ * @mount_attrs MOUNT_ATTR_* flags, from ms_flags_to_mount_attrs()
-+ * @dest_mnt_fd pre-resolved destination fd, or -1 to use @dest_path
-+ * @dest_path destination path, used only when @dest_mnt_fd is -1
-+ * @mountfd_out on success receives the fsmount() fd, to be closed by the
-+ *              caller and usable for fuse_kern_umount_mountfd()
-+ * @return 0 on success, negative error code on failure
-+ */
-+int fuse_fsmount_create_and_move(int fsfd, unsigned int mount_attrs,
-+				 int dest_mnt_fd, const char *dest_path,
-+				 int *mountfd_out);
-+
- /**
-  * Unmount (lazily) the mount @mountfd was created for, without a path lookup.
-  *
 
 -- 
 2.53.0
