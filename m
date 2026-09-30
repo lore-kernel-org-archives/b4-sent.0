@@ -1,167 +1,148 @@
-From: Waqar Gulzar <iamwaqargulzar@gmail.com>
-Date: Wed, 30 Sep 2026 11:22:49 +0500
-Subject: [PATCH] HID: i2c-hid-acpi: restore touchscreen IRQ routing on HP
- OmniBook X Flip 16
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v2 00/21] media: i2c: it6625: address review feedback and
+ adopt subdev state
+Date: Wed, 30 Sep 2026 14:41:18 +0800
+Message-Id: <20260930-upstream-it6625-follow-up-patch-v2-0-e353f887e7fa@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-b4-elan2514-irq-route-v1-1-44671bf01d05@gmail.com>
-X-B4-Tracking: v=1; b=H4sIALiqvGoC/yXMQQqDMBBA0avIrDsQY7TaqxQXJk7siEQ7URHEu
- zdtl2/x/wmRhCnCIztBaOfIc0jIbxm4VxcGQu6TQStdqaZQaA3S1AVd5gZZ3ijzthL2tb4b73y
- tSgupXYQ8H7/vs/07bnYkt35ncF0fk1cS8nkAAAA=
-X-Change-ID: 20260930-b4-elan2514-irq-route-d8274fcf805b
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-acpi@vger.kernel.org, stable@vger.kernel.org, 
- Waqar Gulzar <iamwaqargulzar@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790749371; l=5531;
- i=iamwaqargulzar@gmail.com; s=20260930; h=from:subject:message-id;
- bh=i/kcWiyvC9sOaZJ1/0neMN3dO4OBwcexqs5ODF8WpnE=;
- b=587x1mpxQN0x62TTKWKXtPdtKnrhddDQKiq2/8MFrl7x+g6GrAgLnUMYhz2h4sdOnNmRDDYel
- 8PYX7GrgiGMDHCTLbK1KdvQrU2RjE1InqS+UeAijEHn1IxH/SdGfWKW
-X-Developer-Key: i=iamwaqargulzar@gmail.com; a=ed25519;
- pk=SaQhB3EnN6qioo4wuu0rBv6REy1Nx9hz3QOh3Qp9xtk=
-X-Endpoint-Received: by B4 Relay for iamwaqargulzar@gmail.com/20260930 with auth_id=1083
+X-B4-Tracking: v=1; b=H4sIAA6vvGoC/4WNQQ6CMBAAv2L27BJaoK2e/IfhUEqRTYCStoKG8
+ HcriWePM4eZDYL1ZANcTxt4u1AgNyXg5xOYXk8Pi9QmBp5zkV+YxOccord6RIpC8Ao7NwxuTRp
+ nHU2PjWJNUXIhTFlAqszedvQ6Dvc6cU8hOv8+hgv72l9b/W0vDHOUqpW8lUoJXd0o2sy4MYsr1
+ Pu+fwDT9oCxzwAAAA==
+X-Change-ID: 20260917-upstream-it6625-follow-up-patch-b81b34266c43
+To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Hans Verkuil <hverkuil+cisco@kernel.org>
+Cc: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790750567; l=6541;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=oJxGDCqRUINuvrYZS1ZvOMtenx0yHNEZBIYLB9kWHlM=;
+ b=7fvmbobX2xqTjmTHlOY3kIpDIDWzYiRoj0oelp6mygZIL11/8udP8kfAnpeUEPiraCj2RPC2I
+ 2jCqXYid+aRDIMVrxpGP8ekqhMEe4ah6lfsnRZA//mcSp9ocaBNpQW/
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the HP OmniBook X Flip 16 the ELAN2514 touchscreen interrupt is a
-GPIO pad (GPP_E_18) routed directly to the IO-APIC. The firmware's
-touchscreen power resource does
+Review feedback came in on "[PATCH v10 2/2] media: i2c: add driver for
+ITE IT6625/IT6626" and, separately, on "[PATCH v1 1/2]" (the dt-bindings
+patch), after both had already been merged into next. This series
+addresses that feedback as a follow-up, since the original commits can
+no longer be amended.
 
-    PTPL._ON:  \_SB.SGRA (TPI2, TPIP)        // TPIP = T0IP = 0
-    PTPL._OFF: \_SB.SGRA (TPI2, TPIP ^ 1)
+Scope of this series:
+ - one dt-bindings fix documenting the CSI-2 bus-type default;
+ - one control-update error-handling fix;
+ - mechanical and style cleanups (declaration ordering, unsigned loop
+   indices, redundant boilerplate, unaligned-access helpers, an early
+   return conversion);
+ - a link-frequency reporting fix for one-/two-trio C-PHY configurations,
+   found while implementing a related style request;
+ - tightening DT endpoint parsing to require the documented endpoint
+   instead of silently defaulting;
+ - folding subdev initialization into probe() for explicit error
+   handling;
+ - adopting the subdev active-state model: moving the current format
+   out of driver-private fields and into the pad format, sharing the
+   control handler's own lock as the subdev state lock instead of
+   introducing another private mutex for it, keeping the existing
+   it6625_lock independent as the lock for serialized hardware/register
+   operations and driver-private timing state (kept separate chiefly
+   for the MCU host interface's own multi-step transactions), and
+   calling v4l2_subdev_init_finalize()/v4l2_subdev_cleanup();
+ - converting from the deprecated s_stream video op to the
+   enable_streams/disable_streams pad ops, keeping
+   v4l2_subdev_s_stream_helper for legacy callers.
 
-while the device's _INI enables routing with SGRA (GPLI, T0IP ^ 1).
-So _ON clears PADCFG0.GPIROUTIOXAPIC and disconnects the pad from the
-IO-APIC. Linux evaluates _ON at probe and on every D3->D0 transition
-(Windows apparently does not while _STA already reports the resource
-on), after which the level-triggered IRQ never deasserts:
+The locking-model change is the one part of this series most likely to
+need another look: it changes what the driver's own mutex protects and
+who else already holds it by the time driver code runs. It was refined
+during v1's review -- see patch 20's and patch 21's commit messages in
+this revision for the current design (the control handler's own lock
+shared as the subdev state lock, it6625_lock kept independent for
+serialized hardware/register operations and driver-private timing
+state), isolated to those two commits and kept separate from the
+mechanical/bug-fix commits that precede them.
 
-  - ~630 interrupts/s while idle, nearly every read returns 0xffff
-  - frames shifted by a leading 0xff, "incomplete report (67/7167)"
-  - stylus reports arrive at ~25 Hz instead of the native ~268 Hz
-  - touch stalls and false stylus proximity
-
-Re-enable the routing through the firmware's own \_SB.SGRA helper from
-the power_up hook, which runs at probe and on resume before the HID
-reset.
-
-Tested on board 8DA1 (BIOS F.20): idle interrupts drop from ~630/s to
-0 after boot and after s2idle resume, and pen and touch behave as on
-Windows. Board 8DA0 is the other board ID of this model and is reported
-to have the same firmware code, so it is included, but it has not been
-tested because I do not have access to one.
-
-Link: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2142384
-Link: https://github.com/testyfishy/hp-omnibook-flip16-touchscreen-fix
-Link: https://github.com/iamwaqargulzar/hp-omnibook-x-flip-16-linux-touchscreen-pen-fix
-Cc: stable@vger.kernel.org
-Signed-off-by: Waqar Gulzar <iamwaqargulzar@gmail.com>
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
-The HP OmniBook X Flip 16 firmware disconnects the ELAN2514 touchscreen
-interrupt from the IO-APIC in its power resource _ON method, which Linux
-runs at probe and resume. This patch re-enables the routing through the
-firmware's own helper from i2c-hid-acpi's power_up hook.
-
-Tested on board 8DA1 with BIOS F.20 on Linux 7.2.8, including s2idle
-resume. The 8DA0 entry is untested (I do not have that board).
-
-Full analysis, ACPI excerpts, and Windows/Linux traces:
-https://github.com/iamwaqargulzar/hp-omnibook-x-flip-16-linux-touchscreen-pen-fix
----
- drivers/hid/i2c-hid/i2c-hid-acpi.c | 58 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 58 insertions(+)
-
-diff --git a/drivers/hid/i2c-hid/i2c-hid-acpi.c b/drivers/hid/i2c-hid/i2c-hid-acpi.c
-index 9371db200..b6348ee3d 100644
---- a/drivers/hid/i2c-hid/i2c-hid-acpi.c
-+++ b/drivers/hid/i2c-hid/i2c-hid-acpi.c
-@@ -21,6 +21,7 @@
- 
- #include <linux/acpi.h>
- #include <linux/device.h>
-+#include <linux/dmi.h>
- #include <linux/i2c.h>
- #include <linux/kernel.h>
- #include <linux/module.h>
-@@ -55,6 +56,60 @@ static void i2c_hid_acpi_restore_sequence(struct i2chid_ops *ops)
- 	i2c_hid_acpi_get_descriptor(ihid_acpi->adev);
- }
- 
-+/*
-+ * HP OmniBook X Flip 16 (boards 8DA0/8DA1): the touchscreen power resource
-+ * \_SB.PC00.I2C4.PTPL._ON writes the wrong value to the GPIROUTIOXAPIC bit
-+ * of the touchscreen interrupt pad, disconnecting it from the IO-APIC. The
-+ * level-triggered interrupt then never deasserts, the controller is read
-+ * continuously (~630 reads/s while idle) and it cannot deliver pen reports
-+ * at its native rate. Windows does not run _ON while the resource already
-+ * reports on, so it is not affected. Linux runs _ON at probe and on every
-+ * resume, so re-enable the routing with the firmware's own helper before
-+ * the HID reset.
-+ */
-+static const struct dmi_system_id i2c_hid_acpi_irq_route_dmi[] = {
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+			DMI_EXACT_MATCH(DMI_BOARD_NAME, "8DA0"),
-+		},
-+	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+			DMI_EXACT_MATCH(DMI_BOARD_NAME, "8DA1"),
-+		},
-+	},
-+	{ }
-+};
-+
-+static int i2c_hid_acpi_restore_irq_route(struct i2chid_ops *ops)
-+{
-+	struct i2c_hid_acpi *ihid_acpi = container_of(ops, struct i2c_hid_acpi, ops);
-+	union acpi_object args[2];
-+	struct acpi_object_list arg_list = { ARRAY_SIZE(args), args };
-+	unsigned long long pad;
-+	acpi_status status;
-+
-+	status = acpi_evaluate_integer(NULL, "\\GPLI", NULL, &pad);
-+	if (ACPI_FAILURE(status))
-+		return 0;
-+
-+	args[0].type = ACPI_TYPE_INTEGER;
-+	args[0].integer.value = pad;
-+	args[1].type = ACPI_TYPE_INTEGER;
-+	args[1].integer.value = 1;
-+
-+	status = acpi_evaluate_object(NULL, "\\_SB.SGRA", &arg_list, NULL);
-+	if (ACPI_FAILURE(status))
-+		acpi_handle_warn(acpi_device_handle(ihid_acpi->adev),
-+				 "failed to restore interrupt routing: %s\n",
-+				 acpi_format_exception(status));
-+
-+	/* Never fail probe or resume because of this workaround */
-+	return 0;
-+}
-+
- static void i2c_hid_acpi_shutdown_tail(struct i2chid_ops *ops)
- {
- 	struct i2c_hid_acpi *ihid_acpi = container_of(ops, struct i2c_hid_acpi, ops);
-@@ -85,6 +140,9 @@ static int i2c_hid_acpi_probe(struct i2c_client *client)
- 	ihid_acpi->adev = adev;
- 	ihid_acpi->ops.shutdown_tail = i2c_hid_acpi_shutdown_tail;
- 	ihid_acpi->ops.restore_sequence = i2c_hid_acpi_restore_sequence;
-+	if (acpi_dev_hid_uid_match(ihid_acpi->adev, "ELAN2514", NULL) &&
-+	    dmi_check_system(i2c_hid_acpi_irq_route_dmi))
-+		ihid_acpi->ops.power_up = i2c_hid_acpi_restore_irq_route;
- 
- 	acpi_device_fix_up_power(adev);
- 
+Changes in v2:
+- Patch 02: propagate it6625_initial_setup()'s register-write errors
+  and it6625_v4l2_sd_ctrl_update()'s control errors out of probe()
+  instead of discarding them; probe() now fails via dev_err_probe() on
+  either
+- Patch 12: use HZ_PER_KHZ (kHz to Hz) instead of the wrongly-named
+  KHZ_PER_MHZ -- both are numerically 1000, so this has no functional
+  effect (found by sashiko.dev)
+- Patch 13: define the detected-timings register-layout structs at file
+  scope, immediately above the function that uses them, instead of as
+  local variables
+- Patch 17: demote -EPROBE_DEFER to dev_dbg() with dev_err_probe()
+  instead of logging it as an error on every retried probe (found by
+  sashiko.dev)
+- Patch 19: add an err_clean_ctrl_handler label instead of freeing the
+  control handler inline on a media_entity_pads_init() failure
+- Patch 20: share the control handler's own lock as the subdev state lock
+  (sd->state_lock = sd->ctrl_handler->lock) instead of a separate shared
+  mutex for both, keep it6625_lock as an independent
+  MCU/register-transaction lock, and take the active state's lock
+  explicitly at every call site that reaches it outside a core-locked
+  path (probe-time setup, an IRQ callback, and the two ioctls the core
+  doesn't pre-lock a state for). Make it6625_init_state() seed every
+  state -- active and TRY alike -- from the current it6625->timings and
+  the default format index (so a TRY state opened after signal detection
+  still reflects live detected timings, not frozen boot defaults) instead
+  of branching on whether the active state exists yet, and unify the
+  TRY/ACTIVE commit tail in it6625_set_fmt(). Trim the commit message and
+  move the lock-interleaving trace out of it.
+- Patch 21: take it6625_lock explicitly in it6625_enable_streams()/
+  it6625_disable_streams(), since the core-held state lock is no longer
+  the same mutex after patch 20's locking-model change.
+- Rebased onto current origin/next (b38d06ad1e1 -> 2dcdfb625c3);
+  it6625_set_fmt() now takes the unused const struct
+  v4l2_subdev_client_info *ci parameter added by commit 7eef49c16461
+  ("media: v4l2-subdev: Add struct v4l2_subdev_client_info pointer to
+  pad ops")
+- Link to v1: https://lore.kernel.org/r/20260918-upstream-it6625-follow-up-patch-v1-0-78d72d7886a5@ite.com.tw
 
 ---
-base-commit: 145c2b2e9a5c0f794fb4009bcb072ab19f8ccfcd
-change-id: 20260930-b4-elan2514-irq-route-d8274fcf805b
+Hermes Wu (21):
+      dt-bindings: media: ite,it6625: document the default CSI-2 bus type
+      media: i2c: it6625: propagate initial-setup and control-update errors
+      media: i2c: it6625: default the debug module parameter to 0
+      media: i2c: it6625: drop unused bus field from struct it6625
+      media: i2c: it6625: drop stale GCC < 4.4.6 workaround
+      media: i2c: it6625: use unsigned int loop indices in table lookups
+      media: i2c: it6625: drop redundant parentheses in status helpers
+      media: i2c: it6625: make the audio sampling-rate table static const
+      media: i2c: it6625: tidy CEC buffer init and a continuation line
+      media: i2c: it6625: clean up it6625_wait_for_status()
+      media: i2c: it6625: use unsigned int indices in EDID read/write
+      media: i2c: it6625: use unaligned/units helpers to decode pixel clock
+      media: i2c: it6625: decode detected timings via typed register structs
+      media: i2c: it6625: fix link-frequency reporting for one-/two-trio C-PHY
+      media: i2c: it6625: use early returns in it6625_update_timings_if_changed()
+      media: i2c: it6625: drop the private CSI-format name table
+      media: i2c: it6625: require a DT endpoint and simplify endpoint parsing
+      media: i2c: it6625: finish reverse fir-tree declaration order
+      media: i2c: it6625: fold subdev initialization into probe
+      media: i2c: it6625: use centrally managed active state
+      media: i2c: it6625: use enable_streams and disable_streams
+
+ .../devicetree/bindings/media/i2c/ite,it6625.yaml  |   2 +
+ drivers/media/i2c/it6625.c                         | 567 ++++++++++++---------
+ 2 files changed, 318 insertions(+), 251 deletions(-)
+---
+base-commit: 2dcdfb625c3b8fe87454e19dfbc54b3e3f0ad70e
+change-id: 20260917-upstream-it6625-follow-up-patch-b81b34266c43
 
 Best regards,
---  
-Waqar Gulzar <iamwaqargulzar@gmail.com>
+-- 
+Hermes Wu <Hermes.wu@ite.com.tw>
 
