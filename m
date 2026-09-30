@@ -1,269 +1,109 @@
-From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Date: Wed, 30 Sep 2026 15:21:08 +0530
-Subject: [PATCH v10 2/2] clk: qcom: Add LPASS VA CSR heartbeat pulse clock
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH v5 0/4] nvmem: mtk-efuse: mt6572 support
+Date: Wed, 30 Sep 2026 13:14:26 +0300
+Message-Id: <20260930-6572-nvmem-v5-0-384d2a3a1770@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-master-v10-2-105207bc5275@oss.qualcomm.com>
-References: <20260930-master-v10-0-105207bc5275@oss.qualcomm.com>
-In-Reply-To: <20260930-master-v10-0-105207bc5275@oss.qualcomm.com>
-To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
- bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
- krzk+dt@kernel.org, conor+dt@kernel.org, 
- srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- prasad.kumpatla@oss.qualcomm.com
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23P0U7EIBAF0F/Z8CyGAQYWn/wP4wOlo4uxZQOVa
+ Db9d2GNsY37eJM592YurFCOVNjD4cIy1VhimlvAuwMLJz+/Eo9jy0wKaYQFwQ1ayec60cRpcMd
+ gvVUKgTVwzvQSP69lT88/uXwMbxSW3tAvTrEsKX9d1yr0u99i3BZX4IK7AGog50Zh7eM5pyXNk
+ 4/v9yFNrLdXufFS77xsnvA4gvHSGQk3vfrzTridV80HEbQGg0ar215vvISd132/PaABDaLz//y
+ 6rt84kxgVewEAAA==
+X-Change-ID: 20260710-6572-nvmem-eb98c7a73351
+To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Andrew-CT Chen <andrew-ct.chen@mediatek.com>, 
+ Lala Lin <lala.lin@mediatek.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790761867; l=7259;
- i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=xGu20dl6/jTujI0CVxBI2m7u0wAFehwZKK5zqarKyvg=;
- b=zg+uJ1Op2vGFND5bTFAGSkMDnDx4J+E/vVJFvAgVxwujpuLvzEAI5i361Lj3idVP3ot7wYM3+
- GwCWHuJUQG9CcCmoRKMOCYZrA6SjnrQB9I3LZGv4SX4thhe2uCHmC1d
-X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
- pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
-X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790763284; l=2587;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=EnPC0MkyPeQLIOqxxFuO23cppPFxmbMyC7PlLES2/fA=;
+ b=bRlMBM1TZ3bh3rAbS25EkIrZN/j+LuUc4hBKVr6b5eGAWzD/RQ1gs5lpfqORvgTBRytTye5C+
+ a5E+PBrdmM9CGkx2Eb6eiNl1Pt10ZCBo8+sl2XqUpPlYHsx63nP7uVJ
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HeartBeat Pulse, also known as RateGen Pulse, synchronizes the
-start of DMAs and Codec Interfaces for the audio usecases and can
-serve as a periodic wakeup source for the DSP.
+This patch series adds MediaTek mt6572 efuse support. Unlike newer SoCs,
+its efuse controller doesn't work properly with 8-bit reads, leading to
+invalid data with current mtk-efuse driver implementation.
 
-Add the LPASS VA CSR driver that models the rate generator as a clock
-provider so consumers can enable and disable it through the common
-clock framework.
+This behavior can be observed with devmem (0x10009174 and 0x10009178 are
+thermal calibration cells):
+~ # devmem 0x10009174 32
+0x00CDD4CD
+~ # devmem 0x10009178 32
+0x0F76865D
+~ # devmem 0x10009174 8
+0xCD
+~ # devmem 0x10009175 8
+0x00
+~ # devmem 0x10009176 8
+0x00
+~ # devmem 0x10009177 8
+0x00
+~ # devmem 0x10009178 8
+0x5D
+~ # devmem 0x10009179 8
+0x00
+~ # devmem 0x1000917a 8
+0x00
+~ # devmem 0x1000917b 8
+0x00
 
-Attach the DT vote clocks to runtime PM and resume the device before
-programming the rate generator registers in probe. Also take a runtime
-PM reference from the clock prepare path so later enable and disable
-register accesses happen only while the LPASS votes are active.
+Patch 1 adds dt-bindings compatible for the mt6572,
+Patch 2 adds platform data option to use aligned 32-bit reads instead
+of plain readb().
+Patch 3 adds cpu speedbin fixup.
+Patch 4 adds platform data for mt6572 SoC.
 
-Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/clk/qcom/Kconfig        |  14 ++++
- drivers/clk/qcom/Makefile       |   1 +
- drivers/clk/qcom/lpass-va-csr.c | 175 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 190 insertions(+)
+Changes in v5:
+- Add new patch for CPU speedbin post-processing
+- Set uses_post_processing to true in the mt6572 platform data
+- Drop r-b tag on the patch 4 due to uses_post_processing changes
+- Link to v4: https://patch.msgid.link/20260921-6572-nvmem-v4-0-e9c14156559a@protonmail.com
 
-diff --git a/drivers/clk/qcom/Kconfig b/drivers/clk/qcom/Kconfig
-index 27d0ab24d50a..da2e8005d075 100644
---- a/drivers/clk/qcom/Kconfig
-+++ b/drivers/clk/qcom/Kconfig
-@@ -2137,6 +2137,20 @@ config CLK_GFM_LPASS_SM8250
- 	  Support for the Glitch Free Mux (GFM) Low power audio
-           subsystem (LPASS) clocks found on SM8250 SoCs.
- 
-+config QCOM_CLK_LPASS_HEARTBEAT_PULSE
-+	tristate "Qualcomm LPASS VA CSR heartbeat pulse clock provider"
-+	depends on COMMON_CLK
-+	depends on ARM64 || COMPILE_TEST
-+	select REGMAP_MMIO
-+	default m if ARCH_QCOM
-+	help
-+	  Qualcomm LPASS VA CSR block contains the rate generator hardware
-+	  that produces the HeartBeat Pulse (also known as RateGen Pulse).
-+	  This driver models the rate generator as a clock provider so
-+	  that consumers can enable or disable it via the common clock
-+	  framework, and it can be used to synchronize the start of DMAs
-+	  and Codec Interfaces or as a periodic wakeup source for the DSP.
-+
- config SM_VIDEOCC_8450
- 	tristate "SM8450 Video Clock Controller"
- 	depends on ARM64 || COMPILE_TEST
-diff --git a/drivers/clk/qcom/Makefile b/drivers/clk/qcom/Makefile
-index 6affb5073f26..787a3761af3b 100644
---- a/drivers/clk/qcom/Makefile
-+++ b/drivers/clk/qcom/Makefile
-@@ -28,6 +28,7 @@ obj-$(CONFIG_CLK_ELIZA_GPUCC) += gpucc-eliza.o
- obj-$(CONFIG_CLK_ELIZA_TCSRCC) += tcsrcc-eliza.o
- obj-$(CONFIG_CLK_ELIZA_VIDEOCC) += videocc-eliza.o
- obj-$(CONFIG_CLK_GFM_LPASS_SM8250) += lpass-gfm-sm8250.o
-+obj-$(CONFIG_QCOM_CLK_LPASS_HEARTBEAT_PULSE) += lpass-va-csr.o
- obj-$(CONFIG_CLK_GLYMUR_CAMCC) += camcc-glymur.o
- obj-$(CONFIG_CLK_GLYMUR_DISPCC) += dispcc-glymur.o
- obj-$(CONFIG_CLK_GLYMUR_EVACC) += evacc-glymur.o
-diff --git a/drivers/clk/qcom/lpass-va-csr.c b/drivers/clk/qcom/lpass-va-csr.c
-new file mode 100644
-index 000000000000..b4c0f88187eb
---- /dev/null
-+++ b/drivers/clk/qcom/lpass-va-csr.c
-@@ -0,0 +1,175 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-+ */
-+
-+#include <linux/clk-provider.h>
-+#include <linux/device.h>
-+#include <linux/module.h>
-+#include <linux/of_clk.h>
-+#include <linux/pm_clock.h>
-+#include <linux/platform_device.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/regmap.h>
-+
-+#include "clk-regmap.h"
-+
-+#define LPASS_RATE_GEN_CTRL		0xd000
-+#define LPASS_RATE_GEN_COUNTER_0	0xd004
-+#define LPASS_RATE_GEN_DELAY		0xd010
-+
-+#define LPASS_RATE_GEN_MAX_REG		LPASS_RATE_GEN_DELAY
-+
-+#define LPASS_RG_CTRL_EN		BIT(0)
-+
-+struct lpass_va_csr_data {
-+	u32 counter_0;
-+	u32 delay;
-+};
-+
-+static const struct lpass_va_csr_data hawi_csr_data = {
-+	.counter_0 = 0x960,
-+	.delay = 0x16,
-+};
-+
-+static const struct regmap_config lpass_rate_gen_regmap_config = {
-+	.name = "lpass_rate_gen",
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = LPASS_RATE_GEN_MAX_REG,
-+	.cache_type = REGCACHE_MAPLE,
-+};
-+
-+struct lpass_va_csr {
-+	struct device *dev;
-+	struct clk_regmap hb;
-+};
-+
-+#define to_lpass_va_csr(_hw) \
-+	container_of(to_clk_regmap(_hw), struct lpass_va_csr, hb)
-+
-+static int lpass_va_csr_hb_prepare(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
-+
-+	return pm_runtime_resume_and_get(csr->dev);
-+}
-+
-+static void lpass_va_csr_hb_unprepare(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
-+
-+	pm_runtime_put_sync(csr->dev);
-+}
-+
-+static const struct clk_ops lpass_va_csr_hb_ops = {
-+	.prepare = lpass_va_csr_hb_prepare,
-+	.unprepare = lpass_va_csr_hb_unprepare,
-+	.enable = clk_enable_regmap,
-+	.disable = clk_disable_regmap,
-+	.is_enabled = clk_is_enabled_regmap,
-+};
-+
-+static int lpass_va_csr_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct lpass_va_csr_data *data = of_device_get_match_data(dev);
-+	struct lpass_va_csr *csr;
-+	struct clk_init_data init = {
-+		.name = "lpass_heartbeat_pulse",
-+		.ops = &lpass_va_csr_hb_ops,
-+	};
-+	struct regmap *regmap;
-+	void __iomem *base;
-+	int ret;
-+
-+	csr = devm_kzalloc(dev, sizeof(*csr), GFP_KERNEL);
-+	if (!csr)
-+		return -ENOMEM;
-+
-+	csr->dev = dev;
-+
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	regmap = devm_regmap_init_mmio(dev, base,
-+				       &lpass_rate_gen_regmap_config);
-+	if (IS_ERR(regmap))
-+		return dev_err_probe(dev, PTR_ERR(regmap),
-+				     "failed to init regmap\n");
-+
-+	ret = devm_pm_runtime_enable(dev);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable PM runtime\n");
-+
-+	ret = devm_pm_clk_create(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = of_pm_clk_add_clks(dev);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to get vote clocks\n");
-+
-+	ret = pm_runtime_resume_and_get(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(regmap, LPASS_RATE_GEN_COUNTER_0, data->counter_0);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	ret = regmap_write(regmap, LPASS_RATE_GEN_DELAY, data->delay);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	csr->hb.regmap = regmap;
-+	csr->hb.enable_reg = LPASS_RATE_GEN_CTRL;
-+	csr->hb.enable_mask = LPASS_RG_CTRL_EN;
-+	csr->hb.hw.init = &init;
-+
-+	ret = devm_clk_register_regmap(dev, &csr->hb);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &csr->hb.hw);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	pm_runtime_put_sync(dev);
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id lpass_va_csr_dt_match[] = {
-+	{ .compatible = "qcom,hawi-lpass-va-csr", .data = &hawi_csr_data },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lpass_va_csr_dt_match);
-+
-+static const struct dev_pm_ops lpass_va_csr_pm_ops = {
-+	SET_RUNTIME_PM_OPS(pm_clk_suspend, pm_clk_resume, NULL)
-+};
-+
-+static struct platform_driver lpass_va_csr_driver = {
-+	.driver = {
-+		.name = "qcom-lpass-va-csr",
-+		.of_match_table = lpass_va_csr_dt_match,
-+		.pm = pm_ptr(&lpass_va_csr_pm_ops),
-+	},
-+	.probe = lpass_va_csr_probe,
-+};
-+
-+module_platform_driver(lpass_va_csr_driver);
-+
-+MODULE_DESCRIPTION("Qualcomm LPASS VA CSR heartbeat pulse clock provider");
-+MODULE_LICENSE("GPL");
+Changes in v4:
+- Pick up Angelo's tags
+- Rebase onto nvmem/for-next (2eda8d2a45ca ("Merge branches 'nvmem-fixes' and 'nvmem-for-v7.4' into nvnem-for-next"))
+- Link to v3: https://patch.msgid.link/20260909-6572-nvmem-v3-0-c0c441656431@protonmail.com
 
--- 
-2.34.1
+Changes in v3:
+- Pick up Rob's r-b tag for dt-bindings
+- Patch 2 and 3 unchanged, for some reason cover letter and patch 1 were
+missing on the web mirror...
+- Link to v2: https://patch.msgid.link/20260724-6572-nvmem-v2-0-e58d16a29621@protonmail.com
+
+Changes in v2:
+- dt-bindings: make mediatek,mt6572-efuse standalone compatible
+- Driver: add 'mtk_reg_read_aligned' helper instead of modifying 'mtk_reg_read'
+- Link to v1: https://patch.msgid.link/20260715-6572-nvmem-v1-0-9c13be99d077@protonmail.com
+
+---
+Roman Vivchar (4):
+      dt-bindings: nvmem: mediatek: efuse: add mt6572
+      nvmem: mtk-efuse: add support for 32-bit aligned reads
+      nvmem: mtk-efuse: add CPU speedbin post-processing
+      nvmem: mtk-efuse: add mt6572 support
+
+ .../devicetree/bindings/nvmem/mediatek,efuse.yaml  |  5 +-
+ drivers/nvmem/mtk-efuse.c                          | 60 +++++++++++++++++++++-
+ 2 files changed, 63 insertions(+), 2 deletions(-)
+---
+base-commit: 2eda8d2a45caa955a5cb1d897bf6024d22041995
+change-id: 20260710-6572-nvmem-eb98c7a73351
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
