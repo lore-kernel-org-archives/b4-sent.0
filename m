@@ -1,10 +1,10 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Wed, 30 Sep 2026 13:14:29 +0300
-Subject: [PATCH v5 3/4] nvmem: mtk-efuse: add CPU speedbin post-processing
+Date: Wed, 30 Sep 2026 13:14:30 +0300
+Subject: [PATCH v5 4/4] nvmem: mtk-efuse: add mt6572 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-6572-nvmem-v5-3-384d2a3a1770@protonmail.com>
+Message-Id: <20260930-6572-nvmem-v5-4-384d2a3a1770@protonmail.com>
 References: <20260930-6572-nvmem-v5-0-384d2a3a1770@protonmail.com>
 In-Reply-To: <20260930-6572-nvmem-v5-0-384d2a3a1770@protonmail.com>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -18,65 +18,47 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790763284; l=1737;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790763284; l=1186;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=obcdDbJPC+bJJB8ejmXjnP6/QmD/06/XozyzFUcNY2c=;
- b=5GShSUHPJqiXvrqHRiSZTcESxZC/UG33Tn9SrBVmHk6NKDWSNpSL7fN2RH+escj9ogsV9oqRy
- D6v3trKnWGYDiKD6tLp28Pl4bnfDCjc+XuZwZ15pENMehY6uHxmfM/l
+ bh=BLO02wNqFKS1dVneAe1BJFH56sutKZjWvs0KKjgRQ34=;
+ b=L0qyOqmqCZmDGJhG809E2bv0npQJLXGEFnqQ74W50W9pGBhzXn7ZOL7uwojtTCmXsBsT/jcd1
+ nCAjMxdZ4mOC7lpPhW/fhamdY5VorAYR/QoZHwHfoCdHwZ9S+sQWhGf
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MediaTek SoCs are often released under the same marketing name, but with
-different suffix for the speedbin. For example, mt6572m has 1 GHz limit,
-mt6572a - 1.2 GHz, mt6572w - 1.4 GHz.
-
-Since the speedbin is stored as a number in the efuse, add support for
-converting it to the bitmask for opp-supported-hw usage in the DT.
+Add a platform data struct for the efuse controller.
 
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/nvmem/mtk-efuse.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ drivers/nvmem/mtk-efuse.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/drivers/nvmem/mtk-efuse.c b/drivers/nvmem/mtk-efuse.c
-index 980c29d01337..d2e5c69c580e 100644
+index d2e5c69c580e..24d302a15528 100644
 --- a/drivers/nvmem/mtk-efuse.c
 +++ b/drivers/nvmem/mtk-efuse.c
-@@ -70,6 +70,18 @@ static int mtk_efuse_gpu_speedbin_pp(void *context, const char *id, int index,
+@@ -150,6 +150,11 @@ static int mtk_efuse_probe(struct platform_device *pdev)
  	return 0;
  }
  
-+static int mtk_efuse_cpu_speedbin_pp(void *context, const char *id, int index,
-+				     unsigned int offset, void *data, size_t bytes)
-+{
-+	u8 *val = data;
++static const struct mtk_efuse_pdata mtk_mt6572_efuse_pdata = {
++	.uses_post_processing = true,
++	.needs_aligned_read = true,
++};
 +
-+	if (val[0] >= 8)
-+		return -EINVAL;
-+
-+	val[0] = BIT(val[0]);
-+	return 0;
-+}
-+
- static void mtk_efuse_fixup_dt_cell_info(struct nvmem_device *nvmem,
- 					 struct nvmem_cell_info *cell)
- {
-@@ -83,6 +95,13 @@ static void mtk_efuse_fixup_dt_cell_info(struct nvmem_device *nvmem,
- 	if (cell->nbits <= 3 &&
- 	    strncmp(cell->name, "gpu-speedbin", min(sz, strlen("gpu-speedbin"))) == 0)
- 		cell->read_post_process = mtk_efuse_gpu_speedbin_pp;
-+
-+	/*
-+	 * On mobile SoCs, the CPU speedbin is a number. Convert it to
-+	 * a bitmask for supported-hw usage.
-+	 */
-+	if (strncmp(cell->name, "cpu-speedbin", min(sz, strlen("cpu-speedbin"))) == 0)
-+		cell->read_post_process = mtk_efuse_cpu_speedbin_pp;
- }
+ static const struct mtk_efuse_pdata mtk_mt8186_efuse_pdata = {
+ 	.uses_post_processing = true,
+ 	.needs_aligned_read = false,
+@@ -161,6 +166,7 @@ static const struct mtk_efuse_pdata mtk_efuse_pdata = {
+ };
  
- static int mtk_efuse_probe(struct platform_device *pdev)
+ static const struct of_device_id mtk_efuse_of_match[] = {
++	{ .compatible = "mediatek,mt6572-efuse", .data = &mtk_mt6572_efuse_pdata },
+ 	{ .compatible = "mediatek,mt8173-efuse", .data = &mtk_efuse_pdata },
+ 	{ .compatible = "mediatek,mt8186-efuse", .data = &mtk_mt8186_efuse_pdata },
+ 	{ .compatible = "mediatek,efuse", .data = &mtk_efuse_pdata },
 
 -- 
 2.55.0
