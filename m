@@ -1,69 +1,59 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Wed, 30 Sep 2026 15:56:41 +0200
-Subject: [PATCH] dt-bindings: hwmon: pmbus: mps,mpq8785: add
- #thermal-sensor-cells
+From: Armandas Kvietkus <armandas.kvietkus@proton.me>
+Subject: [PATCH 0/2] Input: Add Awinic AW8697 haptics driver
+Date: Wed, 30 Sep 2026 18:08:02 +0200
+Message-Id: <20260930-mainlining-v1-0-c303cbdb00c8@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-for-upstream-dt-mpq8785-thermal-sensor-cells-v1-1-6573c765eef8@free.fr>
-X-B4-Tracking: v=1; b=H4sIABgVvWoC/x2NQQrDIBAAvxL23AWbNpr2K6EH0bUR1NhdWwohf
- 6/0ODDM7CDEkQTuww5MnyhxKx3OpwHcasuTMPrOMKpRq9tFYdgY31Uak83oG+b6ms08YVuJs00
- oVKQrjlISdMYEq72drkpDT1amEL//3fI4jh+/nZ1xfgAAAA==
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Charles Hsu <ythsu0511@gmail.com>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790776603; l=1384;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=fJu0E0lhwn4WY7ROYdjtoIwXJWiiVnoOzna2Uqs/R6o=;
- b=S6v23x2y4mhv6bbX+x4IkpdMvC+sfYk/SsxbSh62xvhhP49+cA/mPtYtXG3oOUdxwc9xlsLEg
- FzUHhNvdjjuBPWNJvP58qKCee6m7m+bpvh1PnxlI9q7Ox5FR/tu4T07
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDUp4vcqYtHWYIQhLSIRd1csv
+ 8V7Fzi0hA6q4AKLBzla2CMKAzCD4h4Ftd4QyziTZSLFrIgnYuJeSN0WOtepUZkBH6wWOzq/Wd3
+ 8drse0WzvAe77Ac557Q5uAAAA
+X-Change-ID: 20260930-mainlining-0bd8b7b5ca6c
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Griffin Kroah-Hartman <griffin.kroah@fairphone.com>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Armandas Kvietkus <armandas.kvietkus@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790784482; l=1161;
+ i=armandas.kvietkus@proton.me; h=from:subject:message-id;
+ bh=i/nl+2/ftfJQdEEeUWjYhOBTqNBkCsF47VtX9GXuLpU=;
+ b=A2JRVmR0dxoD+z/IKhCWstkdllfASWFoGHAeektW123uL5V2saBbgtQX1hcW5qqx+7+o2ratu
+ YKRgU+bre0lAhy+oP2I45YabkFTsAOTsuc9KOIOQ8DTcTEz0HMVZjxQ
+X-Developer-Key: i=armandas.kvietkus@proton.me; a=ed25519;
+ pk=wuqmImJ9sKlDVcwALOvfGhjj7G8EBjjM4TpCdmlrAf8=
+X-Endpoint-Received: by B4 Relay for armandas.kvietkus@proton.me/default with auth_id=974
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit
-  3aa74796cfd0 ("hwmon: (pmbus) Register with thermal for PSC_TEMPERATURE")
-the PMBus core calls devm_thermal_of_zone_register() for every
-temperature input, so the devices of this binding can be referenced as
-thermal sensors.
+This series adds a driver for the Awinic AW8697 LRA haptic driver IC.
+It is the vibrator in the Xiaomi POCO F3.
 
-By code review, it should work for the MPQ and MPM device bindings.
-They register a single page with PMBUS_HAVE_TEMP through
-pmbus_do_probe(), it means that one device has one
-temperature input, temp1.
+The AW8697 is an older generation than the AW86927. The register map
+is different, so it gets its own driver. The binding reuses
+awinic,aw86927.yaml.
 
-The sensor id is the hwmon index of the input (temp1 is 1), so one cell
-is needed.
+Tested on the phone: rumble at several strengths, 72 effects in a row,
+stop on close, driver rebind and module reload.
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Signed-off-by: Armandas Kvietkus <armandas.kvietkus@proton.me>
 ---
- Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml | 3 +++
- 1 file changed, 3 insertions(+)
+Armandas Kvietkus (2):
+      dt-bindings: input: awinic,aw86927: Add Awinic AW8697
+      Input: aw8697 - Add Awinic AW8697 haptics driver
 
-diff --git a/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml b/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml
-index d7a32fb3b7af..36760d89f665 100644
---- a/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml
-+++ b/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml
-@@ -34,6 +34,9 @@ properties:
-     maximum: 4095
-     default: 706
- 
-+  "#thermal-sensor-cells":
-+    const: 1
-+
- required:
-   - compatible
-   - reg
-
+ .../devicetree/bindings/input/awinic,aw86927.yaml  |   4 +-
+ MAINTAINERS                                        |   6 +
+ drivers/input/misc/Kconfig                         |  14 +
+ drivers/input/misc/Makefile                        |   1 +
+ drivers/input/misc/aw8697.c                        | 725 +++++++++++++++++++++
+ 5 files changed, 749 insertions(+), 1 deletion(-)
 ---
-base-commit: 4781ca52761e666cf18b591e6bb0478396c90320
-change-id: 20260930-for-upstream-dt-mpq8785-thermal-sensor-cells-c77fa6da5406
+base-commit: 165768bb70265b5c38cf0b73fafd75be235f8b14
+change-id: 20260930-mainlining-0bd8b7b5ca6c
 
 Best regards,
--- 
-Vincent Jardin <vjardin@free.fr>
+--  
+Armandas Kvietkus <armandas.kvietkus@proton.me>
 
