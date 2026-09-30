@@ -1,11 +1,11 @@
 From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Wed, 30 Sep 2026 14:41:21 +0800
-Subject: [PATCH v2 03/21] media: i2c: it6625: default the debug module
- parameter to 0
+Date: Wed, 30 Sep 2026 14:41:22 +0800
+Subject: [PATCH v2 04/21] media: i2c: it6625: drop unused bus field from
+ struct it6625
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-upstream-it6625-follow-up-patch-v2-3-e353f887e7fa@ite.com.tw>
+Message-Id: <20260930-upstream-it6625-follow-up-patch-v2-4-e353f887e7fa@ite.com.tw>
 References: <20260930-upstream-it6625-follow-up-patch-v2-0-e353f887e7fa@ite.com.tw>
 In-Reply-To: <20260930-upstream-it6625-follow-up-patch-v2-0-e353f887e7fa@ite.com.tw>
 To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
@@ -17,37 +17,37 @@ Cc: Sakari Ailus <sakari.ailus@linux.intel.com>,
  linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790750567; l=753;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790750567; l=822;
  i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=EUFs+ILfJcYIHmr8K1T8VQMnWY4I+fmmYf8PhLutHNM=;
- b=7bWIWv6HLQplAyTCRWS21VFjgJ0y4LieE4LLGvJNsTpZ3Wepjyr/mViRfjOCdKNAlO10jKJbl
- +b39dQmUsxSBXfdpEKSDYgXHfAmJUxK7xJ/9YkD0MXuppjorDh/0W9M
+ bh=k9VvBoEJz+7QdNYx+hA2cckZ/HnZLYyg1rBLK+vgdfw=;
+ b=wgLsMrnlSl+sYJw4cmLITLHha8AGuLbpeQRc7YMd9NoYfBF424NF1JC79opzpp+uEWvhVzd6w
+ LAq5K16QzolB89y9y0/oD1+Pl0xs97goYqjgNsEBNPuSId9M8xigM+d
 X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
  pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
 X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Printing all debug information by default is noisy for a normal boot;
-default debug to 0 like the module parameter's own description implies.
+struct it6625::bus has no reader anywhere in the driver -- the mipi_csi2
+configuration is produced fresh in it6625_get_mbus_config() and parsed
+locally in it6625_parse_endpoint(), neither of which touches this field.
 
 Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/media/i2c/it6625.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/media/i2c/it6625.c | 1 -
+ 1 file changed, 1 deletion(-)
 
 diff --git a/drivers/media/i2c/it6625.c b/drivers/media/i2c/it6625.c
-index 485e1667c7bea34b152ff3dde09a928f334d71aa..7cc2ba0d26b8dbc439807e350434137f102d9d9f 100644
+index 7cc2ba0d26b8dbc439807e350434137f102d9d9f..b09b331b20364a8e169429bb309d1112ec83d919 100644
 --- a/drivers/media/i2c/it6625.c
 +++ b/drivers/media/i2c/it6625.c
-@@ -29,7 +29,7 @@
- #include <media/v4l2-fwnode.h>
- #include <uapi/linux/it6625.h>
+@@ -268,7 +268,6 @@ struct it6625 {
+ 	struct mutex if_state_lock;
  
--static int debug = 3;
-+static int debug;
- module_param(debug, int, 0644);
- MODULE_PARM_DESC(debug, "debug level (0-3)");
- 
+ 	struct v4l2_subdev sd;
+-	struct v4l2_mbus_config_mipi_csi2 bus;
+ 	struct video_device *vdev;
+ 	struct media_pad pad;
+ 	struct v4l2_ctrl_handler hdl;
 
 -- 
 2.34.1
