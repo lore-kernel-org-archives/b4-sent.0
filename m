@@ -1,120 +1,137 @@
 From: Igor Velkov <iav@iav.lv>
-Date: Wed, 30 Sep 2026 18:33:24 +0000
-Subject: [PATCH] spi: Probe a device tree device at the requested speed
+Date: Wed, 30 Sep 2026 19:28:13 +0000
+Subject: [PATCH net-next] net: stmmac: mask the MAC interrupt while resume
+ resets the MAC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-spi-probe-speed-v1-1-ff9aebfebdf9@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAPRVvWoC/x2MQQqAIBQFryJ/naAmYl0lWpS+6m9SFCKI7p60m
- 1nMPFRRGJVG8VDBxZXT2UR3gsKxnDskx+ZklHFq6JWsmWUuaUUjIErtjA/OWzhjqVW5YOP7P07
- z+37j3n31YQAAAA==
-To: Tom Rini <trini@konsulko.com>
-Cc: Simon Glass <sjg@chromium.org>, Marek Vasut <marek.vasut@mailbox.org>, 
- Dario Binacchi <dario.binacchi@amarulasolutions.com>, 
- u-boot@lists.u-boot-project.org, Igor Velkov <iav@iav.lv>
+Message-Id: <20260930-stmmac-irq-shut-v1-1-104d1a1dcb28@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAMxivWoC/x3MQQqEMAxA0atI1gYyFkf0KuKirXHMwjo2VQTx7
+ haXb/H/BcpRWKErLoh8iMoaMj5lAX624ccoYzZUVH2pNYSalsV6lLihzntCMs76urFMzkGu/pE
+ nOd9jD4ETBj4TDPf9AOnjI59rAAAA
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Russell King <linux@armlinux.org.uk>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, netdev@vger.kernel.org, 
+ linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3232; i=iav@iav.lv;
- h=from:subject:message-id; bh=ucldvmMd2tUcQ8A+jI6CtdvI+UNcNOU6CDWXM4CU9To=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFl7Q78EbO5Zt+TArxuF9praThEH2D/6KliciGiu2mNfd
- 3P3zQVPO0pZGMS4GGTFFFkmHNK4lbHk6l9/D/MHMHNYmUCGMHBxCsBE3NQZGd4GKv173mN1QJrz
- 1Js7TG6KW1mb2I1Wbrhv7HN5cUTq/zCGP7yffO5P/a7a35fL2+VlGdN93D7ZLDOwsPjGZ+MEZbN
- TbAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3397; i=iav@iav.lv;
+ h=from:subject:message-id; bh=SA1F6OtzfhBrFw1324lwOQ8HhPxeVaEiK1QpSXhngao=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFl7k849vZl5NLE0Q+mFXo3h9+WRRaGN8nOlfxrqrdCtm
+ PWyXMWvo5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAExEVYHhr7xEkcHDOV/viFfM
+ Pmo8dWlLooxw7szz+rNWp/QKHHEIjmBkeKsQ3GyfbRS3zyvFst5+suVGnrP/Dk+81JzKppkzf1U
+ zHwA=
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-`sf probe <bus>:<cs> <speed>` ignores the speed for a flash that has a
-device tree node. _spi_get_bus_and_cs() probes the device, and with it
-the flash reads its JEDEC ID, at spi-max-frequency from the device tree.
-The requested speed is set only after the probe, and the slave keeps
-max_hz from the device tree, so the next claim of the bus goes back to
-that frequency.
+stmmac_resume() resets the MAC in stmmac_hw_setup(). On dwmac1000 the
+reset clears the interrupt mask, and all core interrupts stay unmasked
+until dwmac1000_core_init() writes it again. A link change in that
+window raises an RGMII interrupt, and no handler clears it since
+commit 2e2c878a3141 ("net: stmmac: remove SGMII/RGMII/SMII interrupt handling").
+The line storms:
 
-A device bound without a device tree node already gets the requested
-speed and mode before the probe. Do the same for a device from the
-device tree, for the duration of the probe.
+  dwmac_dma_interrupt: unexpected status 04000000
 
-On ROCK Pi 4A the device tree sets spi-max-frequency = <108000000> and
-the flash does not answer at the resulting clock, at any requested
-speed:
+The message repeats every few milliseconds and the network stays down
+until a power cycle or a watchdog reset. A register dump at the first
+message on ODROID-HC4 showed the pending link change with a zero mask:
 
-  => sf probe 1:0 1000000
-  jedec_spi_nor flash@0: unrecognized JEDEC id bytes: ff, ff, ff
+  core int_status 00000001 int_mask 00000000 pmt 00000000 rgsmiiis 0000000d
 
-With this change:
+Disable the interrupt line for the whole resume and enable it again on
+every exit path. The line is IRQF_SHARED, so leave it enabled during
+suspend, where another user of the line may wake the system.
 
-  => sf probe 1:0 1000000
-  SF: Detected xt25f32 with page size 256 Bytes, erase size 4 KiB, total 4 MiB
+Wake-on-LAN resume on two boards:
+- ODROID-HC4 (dwmac-meson8b, 7.2): the storm on resume, none in 5
+  resumes with this patch.
+- Helios64 (dwmac-rk, 7.3-rc5): the storm in 2 of 3 resumes, none in
+  26 resumes with this patch.
 
-Add a sandbox test for it.
-
+Assisted-by: LLM
 Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Tested in sandbox (the new test fails without the change) and on
-ROCK Pi 4A with U-Boot proper chainloaded from the running one.
+Ported to net-next, where stmmac_resume() gained error labels. Tested
+on hardware with 7.2 and 7.3-rc5; build-tested on net-next.
 ---
- drivers/spi/spi-uclass.c |  9 +++++++++
- test/dm/spi.c            | 20 ++++++++++++++++++++
- 2 files changed, 29 insertions(+)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 24 ++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/spi/spi-uclass.c b/drivers/spi/spi-uclass.c
-index 120565df149..097c1ae665e 100644
---- a/drivers/spi/spi-uclass.c
-+++ b/drivers/spi/spi-uclass.c
-@@ -517,8 +517,17 @@ int _spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index 3ad9252bf6ae..6e0415538327 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -8356,16 +8356,26 @@ int stmmac_resume(struct device *dev)
+ {
+ 	struct net_device *ndev = dev_get_drvdata(dev);
+ 	struct stmmac_priv *priv = netdev_priv(ndev);
++	bool irq_off;
+ 	int ret;
  
- 	if (!device_active(dev)) {
- 		struct spi_slave *slave;
-+		uint dt_max_hz = plat->max_hz;
-+		uint dt_mode = plat->mode;
- 
-+		/* Probe at the caller's speed and mode: a flash reads its ID here */
-+		if (speed && !created) {
-+			plat->max_hz = speed;
-+			plat->mode = mode;
-+		}
- 		ret = device_probe(dev);
-+		plat->max_hz = dt_max_hz;
-+		plat->mode = dt_mode;
++	/* Resume resets the MAC, leaving every core interrupt unmasked until
++	 * the mask is written again: a link change in that window would storm.
++	 */
++	irq_off = netif_running(ndev);
++	if (irq_off)
++		disable_irq(ndev->irq);
++
+ 	if (priv->plat->resume) {
+ 		ret = priv->plat->resume(dev, priv->plat->bsp_priv);
  		if (ret)
- 			goto err;
- 		slave = dev_get_parent_priv(dev);
-diff --git a/test/dm/spi.c b/test/dm/spi.c
-index a89ba06274f..4ea4bcd1196 100644
---- a/test/dm/spi.c
-+++ b/test/dm/spi.c
-@@ -91,6 +91,26 @@ static int dm_test_spi_find(struct unit_test_state *uts)
- }
- DM_TEST(dm_test_spi_find, UTF_SCAN_PDATA | UTF_SCAN_FDT);
+-			return ret;
++			goto out;
+ 	}
  
-+/* Test that the first probe of a device from the DT uses the caller's speed */
-+static int dm_test_spi_probe_speed(struct unit_test_state *uts)
-+{
-+	const int busnum = 0, cs = 0, mode = 0, speed = 1000000;
-+	struct spi_slave *slave;
-+	struct udevice *bus;
-+
-+	/* spi.bin@0 has spi-max-frequency = <40000000> */
-+	ut_assertok(_spi_get_bus_and_cs(busnum, cs, speed, mode, NULL, NULL,
-+					&bus, &slave));
-+	ut_asserteq(speed, slave->max_hz);
-+
-+	ut_assertok(spi_claim_bus(slave));
-+	ut_asserteq(speed, sandbox_spi_get_speed(bus));
-+	spi_release_bus(slave);
-+
-+	return 0;
-+}
-+DM_TEST(dm_test_spi_probe_speed, UTF_SCAN_PDATA | UTF_SCAN_FDT);
-+
- /* dm_test_spi_switch_slaves - Helper function to check whether spi_claim_bus
-  *                             operates correctly with two spi slaves.
-  *
+-	if (!netif_running(ndev))
+-		return 0;
++	if (!netif_running(ndev)) {
++		ret = 0;
++		goto out;
++	}
+ 
+ 	/* Power Down bit, into the PM register, is cleared
+ 	 * automatically as soon as a magic packet or a Wake-up frame
+@@ -8388,7 +8398,7 @@ int stmmac_resume(struct device *dev)
+ 	if (!(priv->plat->flags & STMMAC_FLAG_SERDES_UP_AFTER_PHY_LINKUP)) {
+ 		ret = stmmac_legacy_serdes_power_up(priv);
+ 		if (ret < 0)
+-			return ret;
++			goto out;
+ 	}
+ 
+ 	rtnl_lock();
+@@ -8442,7 +8452,8 @@ int stmmac_resume(struct device *dev)
+ 
+ 	netif_device_attach(ndev);
+ 
+-	return 0;
++	ret = 0;
++	goto out;
+ 
+ error_stop_dma:
+ 	stmmac_stop_all_dma(priv);
+@@ -8451,6 +8462,9 @@ int stmmac_resume(struct device *dev)
+ 	stmmac_legacy_serdes_power_down(priv);
+ 	mutex_unlock(&priv->lock);
+ 	rtnl_unlock();
++out:
++	if (irq_off)
++		enable_irq(ndev->irq);
+ 
+ 	return ret;
+ }
 
 ---
-base-commit: f8eb3469e1a17c79b047b3fd38ae820e8816a115
-change-id: 20260930-spi-probe-speed-1628c684e624
+base-commit: 47a1446725732cd3996edf607e8739334bbf4d78
+change-id: 20260930-stmmac-irq-shut-03bac57ae0bb
 
 Best regards,
 -- 
