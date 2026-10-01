@@ -1,77 +1,99 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Thu, 01 Oct 2026 20:41:04 +0800
-Subject: [PATCH v9 15/15] MAINTAINERS: add ARM/AMBARELLA SoC support
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH RFC 0/3] Add E notation support to kstrtodec64() and IIO
+ sysfs writes
+Date: Thu, 01 Oct 2026 12:34:55 -0300
+Message-Id: <20261001-e-notation-v1-0-75187bf06c10@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261001-cv75-v5-v9-15-486cc289a4b8@ambarella.com>
-References: <20261001-cv75-v5-v9-0-486cc289a4b8@ambarella.com>
-In-Reply-To: <20261001-cv75-v5-v9-0-486cc289a4b8@ambarella.com>
-To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, soc@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org
-Cc: Long Zhao <longzhao@ambarella.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Jerome Brunet <jbrunet@baylibre.com>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
- Michael Walle <mwalle@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Long Zhao <zl020895@163.com>, Lee Jones <lee@kernel.org>, 
- mfd@lists.linux.dev, devicetree@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-gpio@vger.kernel.org, linux-serial@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790858457; l=1241;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=66/FpPmSuU75AtQewU8cj7mu+Qa/5qamx4Km8ySoeYo=;
- b=UQEl4EIWvylxjuSUeW+DDd+fd5g+2eGGqIKwhHMf9YI70cTL6LbHVpa5wqSiKPNpe6eKu2mWu
- eHXXcsemHpjA4uicqb+wmHcy8JyKaRCF4Qi4Uzwzc1fUxslGyxbvNAm
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+X-B4-Tracking: v=1; b=H4sIAJ99vmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwND3VTdvPySxBKgMl2DNANzc1NzS0ODVFMloIaCotS0zAqwYdFKQW7
+ OSrEQweLSpKzU5BKQMUq1tQDcTrO9cwAAAA==
+X-Change-ID: 20261001-e-notation-0f07757910e5
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790868966; l=3248;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=hl5SNynqRKSEbsuJCrx+Ql4cWB3bAeMxxmKi0ACdAiY=;
+ b=ljHTM2iJc3dLa2XmllaihB4mzrVICVACtuuzkNTnaRsID5vnLNR4oeTGQW49tGe55O7h0US9W
+ ZXOGyjuMjsZDPwbNPnSMbkotcnhX0WXklBMXmPG0PLFvF4KBTl1HOar
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a maintainer entry covering Ambarella CV75 bindings, DTS and
-related drivers.
+This series lets kstrtoudec64() and kstrtodec64() accept numbers in E
+notation (scientific notation), such as "2.7e9", "1.5E-3" or "1e+16".
+It then moves the IIO core fixed-point parser over to kstrtodec64(), so
+every IIO channel attribute written through iio_write_channel_info()
+accepts that format as well.
 
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
+There are two main motivations:
+
+1. Shell usage of sysfs attributes
+
+   Some IIO devices take values that are long to type and easy to get
+   wrong in plain decimal. A frequency synthesizer or DDS might be
+   programmed in the GHz range, and a scale might be a tiny fraction.
+   With this series one can write:
+
+     echo 2.7e9 > out_altvoltage0_frequency
+     echo 1.5e-6 > in_voltage0_scale
+
+   instead of counting zeros in "2700000000" or "0.0000015". It also
+   works with shell tools that print in E notation by default, such as
+   printf's %g conversion ("printf '%g' 2700000000" prints "2.7e+09")
+   and awk, whose default output format ("%.6g") prints
+   non-integral values like 1234567.5 as "1.23457e+06".
+
+2. Userspace software that formats numbers automatically
+
+   Many languages and libraries switch to E notation when converting
+   floating point numbers to strings, without the caller asking for it:
+
+   - Python: str() and repr() of a float use E notation for exponents
+     below -4 or from 16 up, e.g. str(0.00001) == '1e-05' and
+     str(1e16) == '1e+16'. Writing such a value straight to an attribute
+     with open(...).write(str(value)) currently fails with -EINVAL.
+     The same applies to NumPy scalars and to f-strings with the 'g'
+     format spec (f"{2.7e9:g}" == '2.7e+09').
+   - JavaScript/Node.js: Number.prototype.toString() uses E notation
+     for magnitudes from 1e21 up or below 1e-6, e.g. String(1e-7)
+     gives '1e-7'.
+   - C/C++ applications and bindings that use printf("%g") or
+     std::to_chars() with general formatting, as well as MATLAB/Octave
+     and other numeric environments that print in a "short" form.
+
+   Today these values have to be reformatted by the application, or are
+   rejected by the kernel without warning. Accepting E notation in the
+   kernel makes the IIO sysfs ABI more robust to this common
+   behaviour.
+
+The exponent is folded into the requested decimal scale, so no floating
+point arithmetic is involved. Digits beyond the resulting precision are
+truncated, matching the existing kstrtodec64() behaviour. Overflow is
+reported as -ERANGE and a malformed exponent ("1e", "1e+") as -EINVAL.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- MAINTAINERS | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Rodrigo Alencar (3):
+      lib: kstrtox: support E notation in kstrtoudec64() and kstrtodec64()
+      lib: test-kstrtox: add E notation tests for kstrto[u]dec64()
+      iio: core: use kstrtodec64() to parse fixed-point values
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 803b60ad628f..59e5b32d7a02 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2502,6 +2502,20 @@ F:	drivers/clocksource/asm9260_timer.c
- F:	drivers/rtc/rtc-asm9260.c
- F:	drivers/watchdog/asm9260_wdt.c
- 
-+ARM/AMBARELLA SOC SUPPORT
-+M:	Long Zhao <longzhao@ambarella.com>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+L:	devicetree@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/arm/ambarella.yaml
-+F:	Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-+F:	Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
-+F:	arch/arm64/boot/dts/ambarella/
-+F:	drivers/clk/ambarella/
-+F:	drivers/pinctrl/pinctrl-ambarella*
-+F:	include/dt-bindings/clock/ambarella,cv75-rct.h
-+N:	ambarella
-+
- ARM/AMD PENSANDO ARM64 ARCHITECTURE
- M:	Brad Larson <blarson@amd.com>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+ drivers/iio/industrialio-core.c | 155 ++++++++++++++++++++--------------------
+ lib/kstrtox.c                   |  64 +++++++++++------
+ lib/test-kstrtox.c              |  52 ++++++++++++++
+ 3 files changed, 170 insertions(+), 101 deletions(-)
+---
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261001-e-notation-0f07757910e5
 
--- 
-2.34.1
+Best regards,
+--  
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
