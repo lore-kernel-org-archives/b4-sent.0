@@ -1,246 +1,158 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 01 Oct 2026 12:34:58 -0300
-Subject: [PATCH RFC 3/3] iio: core: use kstrtodec64() to parse fixed-point
- values
+From: Hitesh Murali <hitesh.murali@imperva.com>
+Date: Thu, 01 Oct 2026 19:12:27 +0300
+Subject: [PATCH] x86/mm/fault: Test _PAGE_RW, not pte_write(), in
+ spurious_kernel_fault_check()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261001-e-notation-v1-3-75187bf06c10@analog.com>
-References: <20261001-e-notation-v1-0-75187bf06c10@analog.com>
-In-Reply-To: <20261001-e-notation-v1-0-75187bf06c10@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790868966; l=6669;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=vZlhPBlHph5MJsiQtE5ZSwDyo8lXzlfhWg5+fE85ugo=;
- b=IQeCPjeRiRS1K2bo9DZOGkuJr3y0JQ+79PdAV6wxq+8+lbPTTw8IM5B4p0x8WKhPoXpbaDbiJ
- fdD6pFClZS/BLY8fuq3vRYxeFIiaGS+YaxSG8JoUdv3qqgHIi+/MN7p
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+Message-Id: <20261001-x86-fault-spurious-rw-v1-1-7fe1189b5efd@imperva.com>
+X-B4-Tracking: v=1; b=H4sIAGqGvmoC/yXMQQqDQAxA0atI1g1MjQzqVUoXU41tiqgkM1YQ7
+ +60Xb7F/zsYq7BBW+ygvIrJPGVcLwV0rzA9GaXPhtKV3jXkcKs9DiGNEW1JKnMy1A/WDREFJue
+ rCnK7KA+y/b63+9+WHm/u4ncGx3EC3BK0f3kAAAA=
+X-Change-ID: 20260930-x86-fault-spurious-rw-89333ae30644
+To: Dave Hansen <dave.hansen@linux.intel.com>, 
+ Andy Lutomirski <luto@kernel.org>, Peter Zijlstra <peterz@infradead.org>, 
+ Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
+ Borislav Petkov <bp@alien8.de>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>, 
+ Rick Edgecombe <rick.p.edgecombe@intel.com>, 
+ Yu-cheng Yu <yu-cheng.yu@intel.com>, 
+ "Mike Rapoport (IBM)" <rppt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, Hitesh Murali <hitesh.murali@imperva.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790871153; l=5905;
+ i=hitesh.murali@imperva.com; s=20260930; h=from:subject:message-id;
+ bh=um02QXKjfD4K0WAcPvJgtdQiY6QeH6ENFD+z7x2HjO8=;
+ b=O3rQogz/th5dWZgydip8gFEwBPtx0I47HzqQspG98+NaYrpDuiF0bBJrR7oQdeMa4abhgK7lf
+ nOACEzbtFq4Dk9708HLbzX8X7wvag0cwlUhpwc0ZhQ0Jvv8SdwUDtjp
+X-Developer-Key: i=hitesh.murali@imperva.com; a=ed25519;
+ pk=u+EU1sWLTi0JU+w6N94rfNf+D0ev1cH486lE6MBQTak=
+X-Endpoint-Received: by B4 Relay for hitesh.murali@imperva.com/20260930 with auth_id=1088
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the open-coded __iio_str_to_fixpoint() parser with
-kstrtodec64(), so sysfs writes of fixed-point values also accept E
-notation. The scale passed to kstrtodec64() comes from fract_mult, which
-is a power of ten, 10^n, so ffs(10^n) = n + 1. The fractional part only
-keeps the sign when the integer part is zero, as before.
+spurious_kernel_fault() only considers faults whose error code is exactly
+X86_PF_WRITE | X86_PF_PROT or X86_PF_INSTR | X86_PF_PROT. A write fault
+that reaches spurious_kernel_fault_check() is therefore a normal store,
+never a shadow stack access, and with CR0.WP set, which the kernel pins,
+the hardware permits a normal store only if _PAGE_RW is set. The check is
+applied to 4K, 2M and 1G leaves and to the PMD table entry, and _PAGE_RW
+means the same at each of these levels.
 
-The dB suffix for scale attributes is now handled by a separate
-iio_str_to_fixpoint_units() helper. It strips an optional trailing
-newline and the "dB" or " dB" suffix before parsing.
+Commit bb3aadf7d446 ("x86/mm: Start actually marking _PAGE_SAVED_DIRTY")
+made pte_write() return true for Write=0,Dirty=1 entries, the encoding of
+shadow stack memory, so that core mm treats shadow stacks as writable.
+pte_shstk() decides this from X86_FEATURE_SHSTK alone, so it applies on
+every shadow stack capable CPU, also with CONFIG_X86_USER_SHADOW_STACK=n.
+For a kernel mapping the hardware does not agree: the kernel never sets
+IA32_S_CET.SH_STK_EN, so a supervisor Write=0,Dirty=1 entry is an
+ordinary read-only entry.
 
-When there is no fractional part (fract_mult == 0, or dec_scale == 0 for
-64-bit values), try base-autodetecting kstrtoll() first so hexadecimal
-and octal input keeps its meaning ("010" is still 8). Fall back to
-kstrtodec64() on -EINVAL to accept E notation.
+Kernel read-only mappings are created without Dirty since commit
+f788b71768ff ("x86/mm: Remove _PAGE_DIRTY from kernel RO pages"), but a
+store made while _PAGE_RW is temporarily set leaves Dirty behind, and the
+kernel does not clear it again. A later normal store to such an entry
+raises a protection fault, which is then classified as spurious. The
+store is restarted, faults again, and the CPU makes no progress.
 
-As a side effect, inputs that used to be rejected for integer-only
-attributes are now accepted. An invalid octal number such as "08" is
-parsed as decimal 8, and a fractional value such as "1.5" is truncated
-to 1, matching how kstrtodec64() drops digits beyond the requested
-scale.
+When the soft lockup watchdog reports it, it reports a stuck CPU at the
+store, which reads as a long running loop rather than as a write to a
+read-only page. This was found with an out-of-tree module that writes to
+.rodata; on a distribution kernel carrying bb3aadf7d446, on Sapphire
+Rapids, one CPU looped on the store for days.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Test _PAGE_RW directly. The fault then takes the regular
+bad_area_nosemaphore() path: an exception table fixup where the access
+has one, as for any other read-only page, and otherwise an oops that
+reports the faulting address and the page table entry.
+
+Fixes: bb3aadf7d446 ("x86/mm: Start actually marking _PAGE_SAVED_DIRTY")
+Assisted-by: LLM
+Signed-off-by: Hitesh Murali <hitesh.murali@imperva.com>
+Cc: stable@vger.kernel.org
 ---
- drivers/iio/industrialio-core.c | 155 ++++++++++++++++++++--------------------
- 1 file changed, 76 insertions(+), 79 deletions(-)
+Observed on a distribution kernel carrying bb3aadf7d446 (RHEL 9.8,
+5.14.0-687.10.1.el9_8) on Sapphire Rapids, with a proprietary out-of-tree
+module storing into sys_call_table:
 
-diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index d73f2541375f..b22d2f427bbd 100644
---- a/drivers/iio/industrialio-core.c
-+++ b/drivers/iio/industrialio-core.c
-@@ -994,77 +994,6 @@ static ssize_t iio_read_channel_info_avail(struct device *dev,
- 	}
- }
+  watchdog: BUG: soft lockup - CPU#53 stuck for 23s! [<task>:5016]
+  RIP: 0010:<module store function>+0x1d/0x30 [<out-of-tree module>]
+    faulting insn: mov %r8,(%rsi,%rdx,8)       (plain store, not WRSS)
+  CR0: 0000000080050033   (WP=1)
+  CR2: ffffffff96c02250   (= sys_call_table + 0x2a * 8)
+  CR4: 0000000000f73ef0   (CET=1)
+  Kernel panic - not syncing: softlockup: hung tasks
+                                  (softlockup_panic=1 on this host)
+
+  vmcore page table walk of CR2:
+  PMD: 8000004af5e001e1 -> 2MB page, PRESENT|ACCESSED|DIRTY|PSE|GLOBAL|NX
+
+Reproduced on mainline v7.3-rc5-37-g551c722f4080 without this patch, on
+an Amazon EC2 m7i.metal-24xl (Xeon Platinum 8488C, user shadow stack
+enabled, CR4.CET=1). Only two small GPL test modules were loaded
+(taint O, E). They are available on request.
+
+1) A test module sets _PAGE_RW on the live leaf that maps sys_call_table,
+   stores an entry's own value back, and clears _PAGE_RW again. As read
+   back through lookup_address():
+
+     before: level=2M flags=0x80000000000001a1 RW=0 DIRTY=0 pte_write()=0
+     after:  level=2M flags=0x80000000000001e1 RW=0 DIRTY=1 pte_write()=1
+
+2) A second module stores sys_call_table[39]'s own value back (a plain
+   MOV; sys_call_table is no longer used for x86-64 dispatch, so the
+   store would be harmless if it completed). It never completes. Nine
+   minutes later the task was still running, with CPU time equal to wall
+   time, and the leaf was unchanged. An NMI backtrace (sysrq-l), trimmed:
+
+     RIP: 0010:sct_store_init+0xaa/0xff0 [sct_store]
+     Code: ... <48> 89 83 38 01 00 00     mov %rax,0x138(%rbx)
+     RBX: ffffffffa2a029c0 (sys_call_table)
+     CR0: 0000000080050033 (WP=1)  CR2: ffffffffa2a02af8  CR4: 0000000000f73ef0 (CET=1)
+     Call Trace:
+      do_one_initcall
+      do_init_module
+      init_module_from_file
+      __x64_sys_finit_module
+
+   CR2 is sys_call_table + 39 * 8, the slot being written: the same
+   leaf state, the same kind of store, and the same fault address as on
+   the distribution kernel.
+
+Testing:
+ - W=1 build of arch/x86/mm/fault.o on v7.3-rc5-37-g551c722f4080, no
+   warnings. The patched kernel was built from the same tree and config.
+ - The patched kernel has not been boot or runtime tested yet. The
+   expected result is an oops at the store ("supervisor write access in
+   kernel mode", "permissions violation") instead of the loop.
+---
+ arch/x86/mm/fault.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
+index aa88370ce739..84298cb38fae 100644
+--- a/arch/x86/mm/fault.c
++++ b/arch/x86/mm/fault.c
+@@ -955,7 +955,13 @@ do_sigbus(struct pt_regs *regs, unsigned long error_code, unsigned long address,
  
--/**
-- * __iio_str_to_fixpoint() - Parse a fixed-point number from a string
-- * @str: The string to parse
-- * @fract_mult: Multiplier for the first decimal place, should be a power of 10
-- * @integer: The integer part of the number
-- * @fract: The fractional part of the number
-- * @scale_db: True if this should parse as dB
-- *
-- * Returns:
-- * 0 on success, or a negative error code if the string could not be parsed.
-- */
--static int __iio_str_to_fixpoint(const char *str, int fract_mult,
--				 int *integer, int *fract, bool scale_db)
--{
--	int i = 0, f = 0;
--	bool integer_part = true, negative = false;
--
--	if (fract_mult == 0) {
--		*fract = 0;
--
--		return kstrtoint(str, 0, integer);
--	}
--
--	if (str[0] == '-') {
--		negative = true;
--		str++;
--	} else if (str[0] == '+') {
--		str++;
--	}
--
--	while (*str) {
--		if ('0' <= *str && *str <= '9') {
--			if (integer_part) {
--				i = i * 10 + *str - '0';
--			} else {
--				f += fract_mult * (*str - '0');
--				fract_mult /= 10;
--			}
--		} else if (*str == '\n') {
--			if (*(str + 1) == '\0')
--				break;
--			return -EINVAL;
--		} else if (!strncmp(str, " dB", sizeof(" dB") - 1) && scale_db) {
--			/* Ignore the dB suffix */
--			str += sizeof(" dB") - 1;
--			continue;
--		} else if (!strncmp(str, "dB", sizeof("dB") - 1) && scale_db) {
--			/* Ignore the dB suffix */
--			str += sizeof("dB") - 1;
--			continue;
--		} else if (*str == '.' && integer_part) {
--			integer_part = false;
--		} else {
--			return -EINVAL;
--		}
--		str++;
--	}
--
--	if (negative) {
--		if (i)
--			i = -i;
--		else
--			f = -f;
--	}
--
--	*integer = i;
--	*fract = f;
--
--	return 0;
--}
--
- /**
-  * iio_str_to_fixpoint() - Parse a fixed-point number from a string
-  * @str: The string to parse
-@@ -1075,13 +1004,76 @@ static int __iio_str_to_fixpoint(const char *str, int fract_mult,
-  * Returns:
-  * 0 on success, or a negative error code if the string could not be parsed.
-  */
--int iio_str_to_fixpoint(const char *str, int fract_mult,
--			int *integer, int *fract)
-+int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
-+			int *fract)
+ static int spurious_kernel_fault_check(unsigned long error_code, pte_t *pte)
  {
--	return __iio_str_to_fixpoint(str, fract_mult, integer, fract, false);
-+	/* fract_mult = 10^n, so ffs(10^n) = ffs(2^n * 5^n) = n + 1 */
-+	unsigned int scale = ffs(fract_mult);
-+	s64 dec64;
-+	int ret;
-+
-+	ret = -EINVAL;
-+	if (!fract_mult) /* keep hex/octal support for integers */
-+		ret = kstrtoll(str, 0, &dec64);
-+	if (ret == -EINVAL)
-+		ret = kstrtodec64(str, scale, &dec64);
-+	if (ret)
-+		return ret;
-+
-+	if (fract_mult > 0)
-+		dec64 = div_s64_rem(dec64, fract_mult * 10, fract);
-+	else
-+		*fract = 0;
-+
-+	if (dec64 > INT_MAX || dec64 < INT_MIN)
-+		return -ERANGE;
-+
-+	*integer = (int)dec64;
-+	/* only carry the sign in the fractional part if the integer is zero */
-+	if (*integer)
-+		*fract = abs(*fract);
-+
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(iio_str_to_fixpoint);
+-	if ((error_code & X86_PF_WRITE) && !pte_write(*pte))
++	/*
++	 * Only normal stores get here: the caller's exact error code match
++	 * filters out shadow stack accesses, and a normal store requires
++	 * _PAGE_RW. Do not use pte_write(), which also reports
++	 * Write=0,Dirty=1 as writable.
++	 */
++	if ((error_code & X86_PF_WRITE) && !(pte_flags(*pte) & _PAGE_RW))
+ 		return 0;
  
-+/**
-+ * iio_str_to_fixpoint_units() - Parse a fixed-point number with units from a string
-+ * @str: The string to parse
-+ * @units: The units to expect at the end of the string
-+ * @fract_mult: Multiplier for the first decimal place, should be a power of 10
-+ * @integer: The integer part of the number
-+ * @fract: The fractional part of the number
-+ *
-+ * Returns:
-+ * 0 on success, or a negative error code if the string could not be parsed.
-+ */
-+static int iio_str_to_fixpoint_units(const char *str, const char *units,
-+				     int fract_mult, int *integer, int *fract)
-+{
-+	size_t units_len = strlen(units);
-+	size_t num_len = strlen(str);
-+	const char *dec_str = str;
-+	char buf[64];
-+
-+	if (num_len && str[num_len - 1] == '\n')
-+		num_len--;
-+
-+	if (num_len > units_len &&
-+	    !strncmp(str + num_len - units_len, units, units_len)) {
-+		num_len -= units_len;
-+		if (str[num_len - 1] == ' ')
-+			num_len--;
-+		if (num_len >= sizeof(buf))
-+			return -EINVAL;
-+		memcpy(buf, str, num_len);
-+		buf[num_len] = '\0';
-+		dec_str = buf;
-+	}
-+
-+	return iio_str_to_fixpoint(dec_str, fract_mult, integer, fract);
-+}
-+
- static ssize_t iio_write_channel_info(struct device *dev,
- 				      struct device_attribute *attr,
- 				      const char *buf,
-@@ -1143,17 +1135,22 @@ static ssize_t iio_write_channel_info(struct device *dev,
- 			return -EINVAL;
- 		integer = ch;
- 	} else if (is_64bit) {
--		if (dec_scale)
--			ret = kstrtodec64(buf, dec_scale, &integer64);
--		else
-+		ret = -EINVAL;
-+		if (!dec_scale) /* keep hex/octal support for integers */
- 			ret = kstrtoll(buf, 0, &integer64);
-+		if (ret == -EINVAL)
-+			ret = kstrtodec64(buf, dec_scale, &integer64);
- 		if (ret)
- 			return ret;
- 
- 		iio_val_s64_decompose(integer64, &integer, &fract);
- 	} else {
--		ret = __iio_str_to_fixpoint(buf, fract_mult, &integer, &fract,
--					    scale_db);
-+		if (scale_db)
-+			ret = iio_str_to_fixpoint_units(buf, "dB", fract_mult,
-+							&integer, &fract);
-+		else
-+			ret = iio_str_to_fixpoint(buf, fract_mult, &integer,
-+						  &fract);
- 		if (ret)
- 			return ret;
- 	}
+ 	if ((error_code & X86_PF_INSTR) && !pte_exec(*pte))
 
--- 
-2.43.0
+---
+base-commit: 551c722f40809618230001baccf219193e22fc5a
+change-id: 20260930-x86-fault-spurious-rw-89333ae30644
+
+Best regards,
+--  
+Hitesh Murali <hitesh.murali@imperva.com>
 
