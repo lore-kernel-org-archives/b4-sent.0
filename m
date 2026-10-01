@@ -1,10 +1,11 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Thu, 01 Oct 2026 20:40:52 +0800
-Subject: [PATCH v9 03/15] dt-bindings: clock: add Ambarella CV75 RCT
+Date: Thu, 01 Oct 2026 20:40:53 +0800
+Subject: [PATCH v9 04/15] dt-bindings: gpio: pl061: add Ambarella CV75
+ variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261001-cv75-v5-v9-3-486cc289a4b8@ambarella.com>
+Message-Id: <20261001-cv75-v5-v9-4-486cc289a4b8@ambarella.com>
 References: <20261001-cv75-v5-v9-0-486cc289a4b8@ambarella.com>
 In-Reply-To: <20261001-cv75-v5-v9-0-486cc289a4b8@ambarella.com>
 To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
@@ -25,123 +26,84 @@ Cc: Long Zhao <longzhao@ambarella.com>, Rob Herring <robh@kernel.org>,
  Long Zhao <zl020895@163.com>, Lee Jones <lee@kernel.org>, 
  mfd@lists.linux.dev, devicetree@vger.kernel.org, linux-clk@vger.kernel.org, 
  linux-gpio@vger.kernel.org, linux-serial@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790858457; l=2969;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790858457; l=2025;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=gEKr05f9YAOrNVHJfKB47io9QNiMkJyDyO/ZJBUGYg0=;
- b=u7dATT7wovn/IzB7hOxdMtQfu2TUxzRgNkKQ39Z1EcHYb35bAClImZoJ8ho3BL/DMU+yHDbEA
- CPIgGMCt6wNBF6lEORnSXvvSdijqmTcbHfSanh6jfTOQUvRI8WcsCxC
+ bh=GVEIXtfx8rpLQa9TzFd09VjRop28rVpySsmXjUcyqZs=;
+ b=Y8pd3ddXl8IoS7dP8eJy1gqZI5BES85+71MExgOd+u1qD/1c0VXaLRMz8aW0dqWVexEzuiblT
+ +wWPeAhuRbtBRapWsXfa0VADQa2yri6b17o/4w5jcXuoxYe3FLk7NFG
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the CV75 RCT clock controller and the clock ID header used by
-DT consumers.
+The CV75 GPIO banks sit on the AMBA PrimeCell bus but are not
+register-compatible with the ARM PL061. Each bank is 32-bit and 32
+lines, with extra mask/enable registers, so arm,pl061 must not be used
+as a fallback compatible.
 
-Document #reset-cells for the RCT reset-provider role. Soft-reset line
-IDs and the reset provider driver are deferred; this series has no
-resets= consumers.
+The AMBA core matches the PL061 driver by PrimeCell ID, not by the DT
+compatible string. These blocks do not implement the standard PL061 ID
+(0x00041061) in the ID registers, so arm,primecell-periphid is required
+and is fixed to 0x000e8061; the driver uses that ID to select the
+Ambarella layout. gpio-ranges is required because each bank is a slice
+of the SoC pinctrl pin space.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- .../bindings/clock/ambarella,cv75-rct.yaml         | 64 ++++++++++++++++++++++
- include/dt-bindings/clock/ambarella,cv75-rct.h     | 14 +++++
- 2 files changed, 78 insertions(+)
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       | 25 +++++++++++++++++++---
+ 1 file changed, 22 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml b/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-new file mode 100644
-index 000000000000..be89bd75f9e2
---- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-@@ -0,0 +1,64 @@
-+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/clock/ambarella,cv75-rct.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml b/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml
+index 4d970e55104b..c22dd8a1d2c1 100644
+--- a/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml
++++ b/Documentation/devicetree/bindings/gpio/pl061-gpio.yaml
+@@ -15,7 +15,9 @@ select:
+   properties:
+     compatible:
+       contains:
+-        const: arm,pl061
++        enum:
++          - arm,pl061
++          - ambarella,cv75-gpio
+   required:
+     - compatible
+ 
+@@ -25,7 +27,9 @@ properties:
+ 
+   compatible:
+     items:
+-      - const: arm,pl061
++      - enum:
++          - ambarella,cv75-gpio
++          - arm,pl061
+       - const: arm,primecell
+ 
+   reg:
+@@ -64,6 +68,21 @@ required:
+   - "#gpio-cells"
+   - gpio-controller
+ 
+-additionalProperties: false
++allOf:
++  - $ref: /schemas/arm/primecell.yaml#
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: ambarella,cv75-gpio
++    then:
++      properties:
++        arm,primecell-periphid:
++          const: 0x000e8061
++      required:
++        - arm,primecell-periphid
++        - gpio-ranges
 +
-+title: Ambarella CV75 RCT Clock Controller
-+
-+maintainers:
-+  - Long Zhao <longzhao@ambarella.com>
-+
-+description: |
-+  The RCT (Reset and Clock Tree) block on the Ambarella CV75 SoC provides
-+  PLLs, clock muxes, dividers and soft-reset controls for on-chip
-+  peripherals.
-+
-+  The same register region is also exposed as a syscon for other SoC
-+  blocks (e.g. pin drive-strength), hence the "syscon" compatible.
-+
-+  Clock indices are defined in include/dt-bindings/clock/ambarella,cv75-rct.h.
-+
-+properties:
-+
-+  compatible:
-+    items:
-+      - const: ambarella,cv75-rct
-+      - const: syscon
-+
-+  reg:
-+    maxItems: 1
-+
-+  clocks:
-+    description: Reference crystal oscillator (typically 24 MHz)
-+    maxItems: 1
-+
-+  clock-names:
-+    const: osc
-+
-+  "#clock-cells":
-+    const: 1
-+
-+  "#reset-cells":
-+    const: 1
-+
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+  - clock-names
-+  - "#clock-cells"
-+  - "#reset-cells"
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    clock-controller@ed080000 {
-+        compatible = "ambarella,cv75-rct", "syscon";
-+        reg = <0xed080000 0x1000>;
-+        clocks = <&osc>;
-+        clock-names = "osc";
-+        #clock-cells = <1>;
-+        #reset-cells = <1>;
-+    };
-diff --git a/include/dt-bindings/clock/ambarella,cv75-rct.h b/include/dt-bindings/clock/ambarella,cv75-rct.h
-new file mode 100644
-index 000000000000..b3e965b4ff2e
---- /dev/null
-+++ b/include/dt-bindings/clock/ambarella,cv75-rct.h
-@@ -0,0 +1,14 @@
-+/* SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause */
-+/*
-+ * Copyright (C) 2026 Ambarella, Inc.
-+ */
-+
-+#ifndef _DT_BINDINGS_CLOCK_AMBARELLA_CV75_RCT_H
-+#define _DT_BINDINGS_CLOCK_AMBARELLA_CV75_RCT_H
-+
-+#define CV75_GCLK_UART0		0
-+#define CV75_GCLK_CORE		1
-+#define CV75_GCLK_AHB		2
-+#define CV75_GCLK_APB		3
-+
-+#endif
++unevaluatedProperties: false
+ 
+ ...
 
 -- 
 2.34.1
