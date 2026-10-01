@@ -1,100 +1,153 @@
-From: "Josh Lafleur (Zipline)" <josh.lafleur@outlook.com>
-Date: Wed, 30 Sep 2026 13:29:45 -0700
-Subject: [PATCH] hte: Dont queue work on line being released
+From: David Medina <b2amedina@gmail.com>
+Date: Wed, 30 Sep 2026 22:13:36 -0400
+Subject: [PATCH RFC] drm/amd/display: Disable CRTC on MST connector
+ unregister
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260930-hte-crash-v1-1-baf61530800a@outlook.com>
-X-B4-Tracking: v=1; b=H4sIADhxvWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDCwMj3YySVN3kosTiDF1Ls+TkxLTkZMsUIwsloPqCotS0zAqwWdGxtbU
- AG7bhwVsAAAA=
-To: Dipen Patel <dipenp@nvidia.com>, Thierry Reding <treding@nvidia.com>
-Cc: timestamp@lists.linux.dev, linux-kernel@vger.kernel.org, 
- "Jafet Garcia (RidgeRun)" <ridgerun-linux@flyzipline.com>, 
- "Josh Lafleur (Zipline)" <josh.lafleur@outlook.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790800206; l=2557;
- i=josh.lafleur@outlook.com; s=20260930; h=from:subject:message-id;
- bh=bRDDy0i27/YJcTeNUr0wPapEBzqq1hItrkyQnzulKxE=;
- b=1chzITqd6fPgQ6upaSLk8wzlb8T+eeamrb8joI1988vSkHY1pXIgsYNZmi0Dnt3JBkSK/qpCg
- e/BXH9mvvn9AehWIYjsiGj9R/jb6rFFQjCk6HkBVUOLHGZA79aPNIR0
-X-Developer-Key: i=josh.lafleur@outlook.com; a=ed25519;
- pk=slf3cskRg11vRnFROP6D9bMBKyvvRNsP2Msvm4/qpmM=
-X-Endpoint-Received: by B4 Relay for josh.lafleur@outlook.com/20260930 with auth_id=1090
+Message-Id: <20260930-amd-mst-teardown-v1-1-16a39ebdd4de@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDS2MD3cTcFN3c4hLdktTEopT88jzd5MQki0Rjc2NDU0szJaC2gqLUtMw
+ KsJHRSkFuzkqxEMHi0qSs1OQSkGFKtbUAKYzzU3kAAAA=
+X-Change-ID: 20260930-amd-mst-teardown-cab8a3731596
+To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
+ Rodrigo Siqueira <siqueira@igalia.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Nicholas Kazlauskas <nicholas.kazlauskas@amd.com>
+Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, David Medina <b2amedina@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790820815; l=4851;
+ i=b2amedina@gmail.com; s=20261001; h=from:subject:message-id;
+ bh=ACruRfV2/ag5NwIsG5RQC9W31bSPTFkiXG9HJmO8Xf8=;
+ b=GyBptfxYhz4vHnlsYJz54kDnkBdXkCtlEy9z0/PHR5jo03HeDgHd/gVGXvEa1EZE6OuOD+8s/
+ FD0RCaUs2NIDTi65kZnyA2obdEkkGAh5ujUtJ6QQ+NWA7hvi2G9MfkX
+X-Developer-Key: i=b2amedina@gmail.com; a=ed25519;
+ pk=6kajg3wsf4T4/+F2W+hj7g5W4lTch1OgfXS+6o1FsFY=
+X-Endpoint-Received: by B4 Relay for b2amedina@gmail.com/20261001 with auth_id=1091
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Correct the race condition by adding the HTE_TS_RELEASING flag which
-will serialize the application consumer with the hardware producers
-under the slock. If the consumer is releasing the line, the producer
-shall not queue anymore work as they do not expect to see any more
-edges.
+amdgpu_dm_mst_connector_early_unregister() releases the connector's
+sink but leaves the CRTC it was driving active and its MST encoder
+assigned. Because the connector is unregistered in the same step,
+userspace has no chance to disable the CRTC before it is gone. When the
+same display is re-plugged a new MST connector is created, and the
+re-commit fails in drm_atomic_helper_check_modeset() because the stale
+connector still owns the encoder (handle_conflicting_encoders), leaving
+the display dark until a full modeset (e.g. a session restart) tears
+everything down.
 
-Fixes: 31ab09b "drivers: Add hardware timestamp engine (HTE) subsystem"
-Suggested-by: Jafet Garcia (RidgeRun) <ridgerun-linux@flyzipline.com>
-Signed-off-by: Josh Lafleur (Zipline) <josh.lafleur@outlook.com>
+Disable the CRTC from the driver when the connector is torn down, so the
+MST encoder is released and the DC stream dropped. Reuse the
+drm_atomic_helper_disable_all() pattern: deactivate the CRTC, clear the
+mode, and disconnect the connector.
+
+Reproduced 100% of the time by unplugging and re-plugging the Thunderbolt
+dock driving the LG ULTRAWIDE: on re-plug the display stays dark and
+dmesg shows drm_atomic_helper_check_modeset() failing with an encoder
+conflict (handle_conflicting_encoders). Verified over four unplug/replug
+cycles with this patch applied.
+
+I am not certain that forcing a modeset from early_unregister() is the
+right approach, and the disable here is intentionally minimal: it
+deactivates the CRTC and disconnects the connector but does not
+add/detach the CRTC's affected planes the way
+drm_atomic_helper_disable_all() does. The minimal version resolves the
+failure in testing; I would welcome guidance on whether the full
+affected-planes teardown (or a different location) is required.
+
+Fixes: a1b27e99229a ("drm/amd/display: Implement MST Aux device registration")
+Signed-off-by: David Medina <b2amedina@gmail.com>
 ---
-A race condition exists where call back work can be cleared by a line
-release inbetween the IRQ queueing work and the workqueue handler
-completing execution which have identified to be the root cause of
-crashed kernels.
+ .../amd/display/amdgpu_dm/amdgpu_dm_mst_types.c    | 53 ++++++++++++++++++++++
+ 1 file changed, 53 insertions(+)
 
-A repro case was successfully completed wherein an application
-continuously registering and releasing HTE lines can trigger a list_add
-failure on the queue_work() and subsequent Oops in the kworker during
-the hte_do_cb_work.
-
-CPU0                        CPU1                         CPU2
-
-hte_ts_put()
-hte_push_ts_ns()
-  flush_work()
-                                                           queue_work()
-  ei->cb = NULL             hte_do_cb_work()
-  ei->tcb = NULL              racy ei->tcb(ei->cl_data)
-  ei->cl_data = NULL
----
- drivers/hte/hte.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/hte/hte.c b/drivers/hte/hte.c
-index a423503482132..ae4b2093d58b7 100644
---- a/drivers/hte/hte.c
-+++ b/drivers/hte/hte.c
-@@ -26,6 +26,7 @@ enum {
- 	HTE_TS_REQ,
- 	HTE_TS_DISABLE,
- 	HTE_TS_QUEUE_WK,
-+	HTE_TS_RELEASING,
- };
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c
+index 045a7f88b754..24b146068739 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm_mst_types.c
+@@ -29,6 +29,7 @@
+ #include <drm/display/drm_dp_mst_helper.h>
+ #include <drm/drm_atomic.h>
+ #include <drm/drm_atomic_helper.h>
++#include <drm/drm_atomic_uapi.h>
+ #include <drm/drm_fixed.h>
+ #include <drm/drm_edid.h>
+ #include "dm_services.h"
+@@ -227,6 +228,7 @@ amdgpu_dm_mst_connector_early_unregister(struct drm_connector *connector)
+ 	struct amdgpu_dm_connector *root = aconnector->mst_root;
+ 	struct dc_link *dc_link = aconnector->dc_link;
+ 	struct dc_sink *dc_sink = aconnector->dc_sink;
++	struct drm_crtc *crtc = connector->state ? connector->state->crtc : NULL;
  
- /**
-@@ -190,6 +191,10 @@ int hte_ts_put(struct hte_ts_desc *desc)
- 		goto mod_put;
- 	}
+ 	drm_dp_mst_connector_early_unregister(connector, port);
  
-+	spin_lock_irqsave(&ei->slock, flag);
-+	set_bit(HTE_TS_RELEASING, &ei->flags);
-+	spin_unlock_irqrestore(&ei->slock, flag);
+@@ -250,6 +252,57 @@ amdgpu_dm_mst_connector_early_unregister(struct drm_connector *connector)
+ 
+ 	aconnector->mst_status = MST_STATUS_DEFAULT;
+ 	drm_modeset_unlock(&root->mst_mgr.base.lock);
 +
- 	ret = gdev->chip->ops->release(gdev->chip, desc, ei->xlated_id);
- 	if (ret) {
- 		dev_err(gdev->sdev, "id: %d free failed\n",
-@@ -817,7 +822,8 @@ int hte_push_ts_ns(const struct hte_chip *chip, u32 xlated_id,
- 	data->seq = ei->seq++;
++	/*
++	 * The connector is being removed from the MST topology. If a CRTC is
++	 * still driving it, force a modeset that disables the CRTC so that the
++	 * MST encoder is released and the DC stream dropped. Otherwise, on a
++	 * subsequent re-plug the stale CRTC/encoder assignment triggers an
++	 * encoder conflict in drm_atomic_helper_check_modeset() and the display
++	 * stays dark.
++	 */
++	if (crtc) {
++		struct drm_atomic_commit *state;
++		struct drm_connector_state *conn_state;
++		struct drm_crtc_state *crtc_state;
++		struct drm_modeset_acquire_ctx ctx;
++		int ret;
++
++		drm_modeset_acquire_init(&ctx, 0);
++retry:
++		state = drm_atomic_commit_alloc(connector->dev);
++		if (!state)
++			goto out;
++		state->acquire_ctx = &ctx;
++
++		crtc_state = drm_atomic_get_crtc_state(state, crtc);
++		ret = PTR_ERR_OR_ZERO(crtc_state);
++		if (!ret)
++			crtc_state->active = false;
++		if (!ret)
++			ret = drm_atomic_set_mode_prop_for_crtc(crtc_state, NULL);
++		if (!ret) {
++			conn_state = drm_atomic_get_connector_state(state, connector);
++			ret = PTR_ERR_OR_ZERO(conn_state);
++		}
++		if (!ret)
++			ret = drm_atomic_set_crtc_for_connector(conn_state, NULL);
++		if (!ret)
++			ret = drm_atomic_commit(state);
++
++		drm_atomic_commit_put(state);
++		if (ret == -EDEADLK) {
++			drm_modeset_backoff(&ctx);
++			goto retry;
++		}
++		if (ret)
++			drm_err(connector->dev,
++				"DM_MST: failed to disable CRTC for removed connector %s (%d)\n",
++				connector->name, ret);
++out:
++		drm_modeset_drop_locks(&ctx);
++		drm_modeset_acquire_fini(&ctx);
++	}
+ }
  
- 	if (!test_bit(HTE_TS_REGISTERED, &ei->flags) ||
--	    test_bit(HTE_TS_DISABLE, &ei->flags)) {
-+	    test_bit(HTE_TS_DISABLE, &ei->flags) ||
-+	    test_bit(HTE_TS_RELEASING, &ei->flags)) {
- 		dev_dbg(chip->dev, "Unknown timestamp push\n");
- 		atomic_inc(&ei->dropped_ts);
- 		st = -EINVAL;
+ static const struct drm_connector_funcs dm_dp_mst_connector_funcs = {
 
 ---
-base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
-change-id: 20260802-hte-crash-96ccafcc9d28
+base-commit: 551c722f40809618230001baccf219193e22fc5a
+change-id: 20260930-amd-mst-teardown-cab8a3731596
 
 Best regards,
--- 
-Josh Lafleur (Zipline) <josh.lafleur@outlook.com>
+--  
+David Medina <b2amedina@gmail.com>
 
