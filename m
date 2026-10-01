@@ -1,86 +1,75 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Fri, 02 Oct 2026 02:13:22 +0800
-Subject: [PATCH RFC v2 4/4] gpio: loongson-64bit: remove gpio_to_irq()
- handler
+From: Austin <austin.schlegel@arthrex.com>
+Subject: [PATCH 0/2] serial: tegra: fix RX/TX DMA descriptor use-after-free
+Date: Thu, 01 Oct 2026 15:04:00 -0400
+Message-Id: <20261001-tty-linus-v1-0-ecb8576c802d@arthrex.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-loongsongpio-v2-4-6e3eb150a4ef@gmail.com>
-References: <20261002-loongsongpio-v2-0-6e3eb150a4ef@gmail.com>
-In-Reply-To: <20261002-loongsongpio-v2-0-6e3eb150a4ef@gmail.com>
-To: Yinbo Zhu <zhuyinbo@loongson.cn>, Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>
-Cc: Jiaxun Yang <jiaxun.yang@flygoat.com>, linux-gpio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1990;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=sOxZDjuak2otTPg7s201cfEhwPgcvSVkWzQzISyXx+0=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqvqL051MJZjWbgpRLaG3qnkIH7q0Je6cF5Kcgi
- Dajz6BQqrSJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCar6i9AAKCRCwMePKe/7Z
- bjsKD/43DDfSficR85QAF3BrkHy6vjoQBnSVl2F+9Zi5Hctoktc0PcRJoy26zv+4wC4Ac3I451O
- +4HD/xVi3a4up/tNiOhPE8APQ5xRDyfVwswsQo4DU47iwaabOsvO0fd47utsEULnZn+CZDeOvTR
- HtZpLkZccrjbDZ/7By3hn4dTdcMpIhEga8q5DZ3kIu2aF4DeQArJZceV2BOnguA4FDU7st48PBT
- jvSf5EHG2wRc8Md8+Q4j+XOTSuArdeqpGG2Oo7hn40P+PdC25nqrlRizUKSszZ0yuJSB6NRINYo
- NGxrWAHfl+k9PgRWVYoDGbWbb+Knrtgh51MlI3BAVZz870qE3+ngn+6/plRZHGB/gX5dpm05e06
- W1N2e/+rokAdL4czd2MHJ8YnmnCKCndQk9uk1n6+Fh5WlMErkkKI6jzuZ12x4wkpE1pAgM8uJ95
- XrpZf82ji6CG7CCHeA0+hz6lvoEiOoXxhMeiMi9L7Smi9QHxpqpnOn5wb1wBLDNLhLcAq4Ft553
- +R/6GoKq1kjZFjk+ZLYIeTAj7AzJLm7blx0rg6AXS1wHdWmWAYQVKmx7HiZkk662H6uEYsQg7nN
- is6DUnFaX/Oy/+n1tEAVwQFImmAKWpRvv6K66FKJielAcWMO+ll5/aYXlum6pPG4rMeUziJ49g4
- GdnRp+24FJZKnig==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwND3ZKSSt2czLzSYt3EVEuDtGQzEyMz0xQloPqCotS0zAqwWdGxtbU
+ AWKl+6FsAAAA=
+X-Change-ID: 20261001-tty-linus-ae90fc64265d
+To: Laxman Dewangan <ldewangan@nvidia.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, Austin <austin.schlegel@arthrex.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790881447; l=2014;
+ i=austin.schlegel@arthrex.com; s=20261001; h=from:subject:message-id;
+ bh=nu58vtSvUFtVj0def8uNAfaQ+uA23d3NYZGZbgH3CY4=;
+ b=8smowaQK42MKFK9oqcmXIZpFA6hpDFf1vZDYNC+BzjWTgmOGY5fdhRYoUif6O4quRKLssCLEm
+ QuUT55D1PYpC7VwD/bfHEtrGOvCe6ayYJ9m5i/OYloOE95mX3ECT59e
+X-Developer-Key: i=austin.schlegel@arthrex.com; a=ed25519;
+ pk=IGtNH5dFuS24wm8/+OsmhjREhHB9V7zR8eOgh3sZo3s=
+X-Endpoint-Received: by B4 Relay for austin.schlegel@arthrex.com/20261001 with auth_id=1096
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As pointed out in the previous commit, gpio_to_irq() should not be used
-because it should not be used to manipulate the registers to enable
-interrupts.
+Both patches in this series fix the same bug pattern in
+drivers/tty/serial/serial-tegra.c: dmaengine_terminate_all() is called
+before async_tx_ack() on the DMA descriptor it just terminated. With
+the GPC DMA driver (tegra186-gpc-dma.c, used on Tegra194/Tegra234),
+terminating a channel frees the active descriptor synchronously via
+vchan_dma_desc_free_list(), so the subsequent ack touches freed
+memory. dmaengine clients are not allowed to touch a descriptor once
+it has been terminated.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Patch 1/2 (RX) was found via a KFENCE use-after-free report on a
+Jetson AGX Orin (Tegra234) under UART loopback traffic, and the fix
+has since been soak tested for 24+ hours with
+kfence.sample_interval=1 with zero further reports.
+
+Patch 2/2 (TX) is the same ordering bug in the analogous TX path
+(tegra_uart_stop_tx()), found by code inspection once the RX bug was
+understood. It has not been reproduced on hardware - triggering it
+requires stopping an in-flight TX DMA transfer at the right moment,
+which did not occur during RX testing - but it is the identical
+dmaengine_terminate_all()-then-ack pattern in the same driver against
+the same DMA engine, so I'm sending it alongside the RX fix rather
+than leaving it unfixed.
+
+Both patches keep the pre-existing descriptor-leak fix from commit
+b31245b94207 ("serial: tegra: ack the rx dma desc after transfer
+terminated") intact: the ack still happens for every terminated
+transfer, just before the descriptor is freed instead of after.
+
+Testing was done on Tegra234 (Jetson AGX Orin) only.
+
+Signed-off-by: Austin <austin.schlegel@arthrex.com>
 ---
- drivers/gpio/gpio-loongson-64bit.c | 20 --------------------
- 1 file changed, 20 deletions(-)
+Austin (2):
+      serial: tegra: fix RX DMA descriptor use-after-free
+      serial: tegra: fix TX DMA descriptor use-after-free
 
-diff --git a/drivers/gpio/gpio-loongson-64bit.c b/drivers/gpio/gpio-loongson-64bit.c
-index 40ff845e21db18fa513d2d3b328bcb7ad16baf6a..4e6a490d524ef107e51729abd26cc4d2cbb00c41 100644
---- a/drivers/gpio/gpio-loongson-64bit.c
-+++ b/drivers/gpio/gpio-loongson-64bit.c
-@@ -141,24 +141,6 @@ static int loongson_gpio_set(struct gpio_chip *chip, unsigned int pin, int value
- 	return 0;
- }
- 
--static int loongson_gpio_to_irq(struct gpio_chip *chip, unsigned int offset)
--{
--	unsigned int u;
--	struct platform_device *pdev = to_platform_device(chip->parent);
--	struct loongson_gpio_chip *lgpio = to_loongson_gpio_chip(chip);
--
--	if (lgpio->chip_data->mode == BIT_CTRL_MODE) {
--		/* Get the register index from offset then multiply by bytes per register */
--		u = readl(lgpio->reg_base + lgpio->chip_data->inten_offset + (offset / 32) * 4);
--		u |= BIT(offset % 32);
--		writel(u, lgpio->reg_base + lgpio->chip_data->inten_offset + (offset / 32) * 4);
--	} else {
--		writeb(1, lgpio->reg_base + lgpio->chip_data->inten_offset + offset);
--	}
--
--	return platform_get_irq(pdev, offset);
--}
--
- static void loongson_gpio_irq_ack(struct irq_data *data)
- {
- 	struct gpio_chip *chip = irq_data_get_irq_chip_data(data);
-@@ -943,8 +925,6 @@ static int loongson_gpio_init(struct platform_device *pdev, struct loongson_gpio
- 			dev_warn(&pdev->dev, "no parent IRQs ha been found, GPIO IRQs will not be available\n");
- 			gpio_irq_chip_set_chip(&lgpio->chip.gc.irq, NULL);
- 		}
--	} else if (lgpio->chip_data->inten_offset) {
--		lgpio->chip.gc.to_irq = loongson_gpio_to_irq;
- 	}
- 
- 	return devm_gpiochip_add_data(&pdev->dev, &lgpio->chip.gc, lgpio);
+ drivers/tty/serial/serial-tegra.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+---
+base-commit: 5dad87615c9861cfa366ca984b52f581e861df20
+change-id: 20261001-tty-linus-ae90fc64265d
 
+Best regards,
 -- 
-2.55.0
+Austin <austin.schlegel@arthrex.com>
 
