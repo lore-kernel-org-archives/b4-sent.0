@@ -1,72 +1,69 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Thu, 01 Oct 2026 23:58:14 +0200
-Subject: [PATCH v2] dt-bindings: hwmon: jedec,jc42: add
- #thermal-sensor-cells
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH 0/3] usb: typec: report a current limit for non-PD Rp-def
+ sources
+Date: Thu, 01 Oct 2026 22:51:12 +0000
+Message-Id: <20261001-max77759-icl-typec-v1-0-99ada1f65ced@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261001-for-upstream-dt-jc42-thermal-sensor-cells-v2-1-6edd30b082f3@free.fr>
-X-B4-Tracking: v=1; b=H4sIAHXXvmoC/52NSwrCMBRFt1Iy9kmS2oCO3Id0ENIbG+lH3otFK
- d27sUtweO6Fc1Yl4ARRl2pVjCVJmqcC9lCp0PvpDkpdYWW1dfpca4oz0+spmeFH6jI9wslS7sG
- jH0gwSfkDhkHIdyZAN8Y5E1TxPRkxvffWrS3cJ8kzf/b0Yn7rP5XFkCFEV7smeNga18jAMbJqt
- 237AgxynOHgAAAA
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jean Delvare <jdelvare@suse.com>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790891894; l=1440;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=8mjDlcGI3Cj4EQONFKljx6GXc0o6W4X1o0EOPy1FmU4=;
- b=tKsE662/gABLgXKroy1YEXHqY5YCQC7VXTP/I3yUuywSdQriE/UBFNhmEBRoVb/pKmW/i2UfI
- orl/JKz0dw/BoIgFBXa8GdxIaJ5qVpRoS27HfBG/mQeH0AWhgOv6S62
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+X-B4-Tracking: v=1; b=H4sIAODjvmoC/x3MTQqAIBBA4avErBtIo9SuEi1KxxroD40oorsnL
+ b/Few9ECkwRmuyBQCdH3tYEkWdgp34dCdklgyxkXRihcekvpVRlkO2Mx72TRe38YLwunRISUrg
+ H8nz907Z73w94IQwyZAAAAA==
+X-Change-ID: 20260918-max77759-icl-typec-8dfb9f83d712
+To: Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790895080; l=1851;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=YrfD6f4Lo82zURUGW6cJqr7xJNdH6s6PlN+VnuALevU=;
+ b=yXhA0wxE+WnbapdtWpIVV+HwjH2Rn8Z15JsA6cQFWRZXwr33/yEtJI06ux2bl3YHrNanqHmq9
+ oCNCN0Ew9/yCv+0259VaG4lUJevSYjmLqC2cT0jdphCwpFkDtuNfUbt
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 032c1623c9de ("hwmon: (jc42) add HWMON_C_TZ_REGISTER") the
-driver sets HWMON_C_REGISTER_TZ, so the hwmon core calls
-devm_thermal_of_zone_register() for its temperature channel and the
-device can be referenced as a thermal sensor.
+As per Sec. 4.6.2.1 of the Type-C cable & connector spec when the
+source advertises Rp-default, the current limit is set as per the
+USB 2.0/USB 3.2 specification, BC1.2 specification as applicable or the
+PD negotiation.
 
-The chip has a single temperature channel, registered as sensor 0, so
-no cell is needed.
+Reset value for the Input Current Limit register for the MAX77759
+charger is 500 mA. Prior to the max77759_charger driver, the battery
+would always charge at that limit since it wasn't re-programmed. Since
+the driver was introduced, for any non-PD source advertising Rp-default,
+the charger turns off as tcpm reports the current limit to be 0. The
+max77759_charger driver reads POWER_SUPPLY_PROP_CURRENT_MAX from the
+"tcpm-source" power supply that tcpm_set_current_limit() updates, and
+programs its input current limit from it. The limit is 0 because the
+tcpm doesn't have visibility on the USB data speed or BC1.2 detection.
+As a workaround for the Rp-default case, let the Type-C stack report a
+USB 2.0 current limit of 500 mA so that the behavior is at parity with
+what was before. This is until we implement a conduit for USB core to
+communicate with the Type-C stack.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-Changes in v2:
-- fix sentence format (Krzysztof)
-- record Krzysztof's Reviewed-by
-- Link to v1: https://lore.kernel.org/r/20260930-for-upstream-dt-jc42-thermal-sensor-cells-v1-1-ef6365cae23e@free.fr
----
- Documentation/devicetree/bindings/hwmon/jedec,jc42.yaml | 3 +++
- 1 file changed, 3 insertions(+)
+Amit Sunil Dhamne (3):
+      usb: typec: tcpm: only call get_current_limit() for cc=Rp-def
+      usb: typec: tcpci: implement get_current_limit
+      usb: typec: tcpci_maxim: implement get_current_limit
 
-diff --git a/Documentation/devicetree/bindings/hwmon/jedec,jc42.yaml b/Documentation/devicetree/bindings/hwmon/jedec,jc42.yaml
-index bf3332153ad8..d835664a926b 100644
---- a/Documentation/devicetree/bindings/hwmon/jedec,jc42.yaml
-+++ b/Documentation/devicetree/bindings/hwmon/jedec,jc42.yaml
-@@ -59,6 +59,9 @@ properties:
-       supported on all chips.
-     type: boolean
- 
-+  "#thermal-sensor-cells":
-+    const: 0
-+
- required:
-   - compatible
-   - reg
-
+ drivers/usb/typec/tcpm/tcpci.c            | 14 ++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c | 15 +++++++++++++++
+ drivers/usb/typec/tcpm/tcpm.c             |  7 +++----
+ include/linux/usb/tcpci.h                 |  6 ++++++
+ 4 files changed, 38 insertions(+), 4 deletions(-)
 ---
-base-commit: 4781ca52761e666cf18b591e6bb0478396c90320
-change-id: 20260930-for-upstream-dt-jc42-thermal-sensor-cells-ad1ce051661c
+base-commit: 551c722f40809618230001baccf219193e22fc5a
+change-id: 20260918-max77759-icl-typec-8dfb9f83d712
 
 Best regards,
 -- 
-Vincent Jardin <vjardin@free.fr>
+Amit Sunil Dhamne <amitsd@google.com>
 
