@@ -1,147 +1,80 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Thu, 01 Oct 2026 11:53:51 +0400
-Subject: [PATCH v4 8/8] arm64: dts: qcom: ipq9574: Flatten usb controller
- node
+From: Radu Sabau <radu.sabau@analog.com>
+Subject: [PATCH 0/2] iio: imu: Add support for the ADI ADIS16607
+Date: Thu, 01 Oct 2026 12:11:48 +0300
+Message-Id: <20261001-adis16607-v1-0-9c89cee35d56@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261001-ipq-flatten-usb-v4-8-486a4d5ede30@outlook.com>
-References: <20261001-ipq-flatten-usb-v4-0-486a4d5ede30@outlook.com>
-In-Reply-To: <20261001-ipq-flatten-usb-v4-0-486a4d5ede30@outlook.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Wesley Cheng <quic_wcheng@quicinc.com>, 
- Thinh Nguyen <Thinh.Nguyen@synopsys.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-usb@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
- Kathiravan Thirumoorthy <kathiravan.thirumoorthy@oss.qualcomm.com>, 
- George Moussalem <george.moussalem@outlook.com>, 
- Abel Vesa <abel.vesa@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790841224; l=3497;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=ucCSCJLM3gwrUrksnvID3hZqnjd/cUHQ0F1NihiTB4s=;
- b=r12iJl/TNEBN8kmCbcMeV2xJFX839qpMTZn0BmXYoXJ/bxWNjw5/fta0gYq0PmLXFrsGjQajt
- bfY9S2ij/DmACBzEjTXhkwscE1eNrfZsbgB9hDhbuZEgzOwqPKIJcLC
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIANQjvmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDM0Nz3cSUzGJDMzMDc10DC8u0tGQzU9Pk1CQloPqCotS0zAqwWdGxtbU
+ Aje0QmVsAAAA=
+To: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Radu Sabau <radu.sabau@analog.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790845909; l=2098;
+ i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
+ bh=gMp7R5zJn7U5a8P3NC4uUcNkoLWJcHWT+xzoy9wVpLQ=;
+ b=UCdKmxVu7xaeC3v+v77WnEQZqCJ5oyXeBkeJ6KjcYAo4qS/62FM2dAaSSG82BAG3uoTK/pC9T
+ u1QeFeqcuH0A91QOImhSF/dE/mNIJzQoSMEFNdZIMj5wjNjR33d6FwJ
+X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
+ pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
+X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Flatten usb controller nodes and update to using latest bindings and
-flattened driver approach.
+This series adds support for the Analog Devices ADIS16607, a precision
+MEMS IMU with triaxial gyroscope, triaxial accelerometer, and
+temperature sensor, communicating over a non-standard SPI Half-Duplex
+protocol.
 
-In addition, swap interrupts for dp_hs_phy_irq and dm_hs_phy_irq as
-per order in updated binding.
+Patch 1 adds the devicetree binding.
 
-Reviewed-by: Abel Vesa <abel.vesa@oss.qualcomm.com>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Patch 2 adds the driver, built on top of the existing ADIS IIO library
+(drivers/iio/imu/adis.c). Notable points for reviewers:
+
+ - The device does not implement the standard ADIS SPI protocol used
+   by other parts in the family; reads/writes are done over a custom
+   Half-Duplex sequence (see adis16607_spi_read()/adis16607_spi_write()
+   and the adis_ops overrides).
+
+ - An optional external clock (clocks property) selects between
+   SYNC_DIRECT and SYNC_SCALED modes depending on the supplied
+   frequency, with the internal 8 kHz clock used as the default when
+   no clock is provided (adis16607_config_sync()).
+
+ - An optional hardware FIFO mode (adi,fifo-enable) is supported as an
+   alternative to the default single-sample burst-read trigger path.
+
+ - Sensor self-test forces a settle delay (self_test_ms) between
+   enabling and forcing the test before comparing before/after deltas
+   against per-axis thresholds (adis16607_sensor_self_test()).
+
+This has been tested on a Raspberry Pi 4 (arm64) with the device wired
+over SPI, exercising both the default burst-read path and FIFO mode.
+
+Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
- arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi |  6 +--
- arch/arm64/boot/dts/qcom/ipq9574.dtsi            | 48 +++++++++++-------------
- 2 files changed, 23 insertions(+), 31 deletions(-)
+Radu Sabau (2):
+      dt-bindings: iio: imu: Add bindings for ADI ADIS16607
+      iio: imu: Add driver for the ADI ADIS16607
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi b/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
-index 86138529ba77..68616590815b 100644
---- a/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq9574-rdp-common.dtsi
-@@ -254,10 +254,6 @@ flash@0 {
- 	};
- };
- 
--&usb_0_dwc3 {
--	dr_mode = "host";
--};
--
- &usb_0_qmpphy {
- 	vdda-pll-supply = <&mp5496_l5>;
- 	vdda-phy-supply = <&regulator_fixed_0p925>;
-@@ -274,6 +270,8 @@ &usb_0_qusbphy {
- };
- 
- &usb3 {
-+	dr_mode = "host";
-+
- 	status = "okay";
- };
- 
-diff --git a/arch/arm64/boot/dts/qcom/ipq9574.dtsi b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
-index 771a59585645..abb7a8391b46 100644
---- a/arch/arm64/boot/dts/qcom/ipq9574.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq9574.dtsi
-@@ -757,12 +757,9 @@ usb_0_qmpphy: phy@7d000 {
- 			status = "disabled";
- 		};
- 
--		usb3: usb@8af8800 {
--			compatible = "qcom,ipq9574-dwc3", "qcom,dwc3";
--			reg = <0x08af8800 0x400>;
--			#address-cells = <1>;
--			#size-cells = <1>;
--			ranges;
-+		usb3: usb@8a00000 {
-+			compatible = "qcom,ipq9574-dwc3", "qcom,snps-dwc3";
-+			reg = <0x08a00000 0xfc100>;
- 
- 			clocks = <&gcc GCC_SNOC_USB_CLK>,
- 				 <&gcc GCC_USB0_MASTER_CLK>,
-@@ -781,32 +778,29 @@ usb3: usb@8af8800 {
- 			assigned-clock-rates = <200000000>,
- 					       <24000000>;
- 
--			interrupts-extended = <&intc GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
-+			interrupts-extended = <&intc GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>,
-+					      <&intc GIC_SPI 134 IRQ_TYPE_LEVEL_HIGH>,
- 					      <&intc GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
--					      <&intc GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>,
--					      <&intc GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "pwr_event",
-+					      <&intc GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
-+					      <&intc GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "dwc_usb3",
-+					  "pwr_event",
- 					  "qusb2_phy",
--					  "dm_hs_phy_irq",
--					  "dp_hs_phy_irq";
-+					  "dp_hs_phy_irq",
-+					  "dm_hs_phy_irq";
- 
- 			resets = <&gcc GCC_USB_BCR>;
--			status = "disabled";
- 
--			usb_0_dwc3: usb@8a00000 {
--				compatible = "snps,dwc3";
--				reg = <0x8a00000 0xcd00>;
--				clocks = <&gcc GCC_USB0_MOCK_UTMI_CLK>;
--				clock-names = "ref";
--				interrupts = <GIC_SPI 140 IRQ_TYPE_LEVEL_HIGH>;
--				phys = <&usb_0_qusbphy>, <&usb_0_qmpphy>;
--				phy-names = "usb2-phy", "usb3-phy";
--				tx-fifo-resize;
--				snps,is-utmi-l1-suspend;
--				snps,hird-threshold = /bits/ 8 <0x0>;
--				snps,dis_u2_susphy_quirk;
--				snps,dis_u3_susphy_quirk;
--			};
-+			phys = <&usb_0_qusbphy>, <&usb_0_qmpphy>;
-+			phy-names = "usb2-phy", "usb3-phy";
-+
-+			tx-fifo-resize;
-+			snps,is-utmi-l1-suspend;
-+			snps,hird-threshold = /bits/ 8 <0x0>;
-+			snps,dis_u2_susphy_quirk;
-+			snps,dis_u3_susphy_quirk;
-+
-+			status = "disabled";
- 		};
- 
- 		intc: interrupt-controller@b000000 {
+ .../devicetree/bindings/iio/imu/adi,adis16607.yaml |   91 ++
+ MAINTAINERS                                        |    8 +
+ drivers/iio/imu/Kconfig                            |   13 +
+ drivers/iio/imu/Makefile                           |    1 +
+ drivers/iio/imu/adis16607.c                        | 1513 ++++++++++++++++++++
+ 5 files changed, 1626 insertions(+)
+---
+base-commit: 9c87e61e3c5797277407ba5eae4eac8a52be3fa3
+change-id: 20260617-adis16607-089ffc655ceb
 
+Best regards,
 -- 
-2.53.0
+Radu Sabau <radu.sabau@analog.com>
 
