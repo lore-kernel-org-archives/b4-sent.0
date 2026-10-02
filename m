@@ -1,11 +1,11 @@
 From: Maurizio Casciano <mauriziocasciano7@gmail.com>
-Date: Fri, 02 Oct 2026 10:57:47 +0200
-Subject: [PATCH v10 09/15] media: intel: ipu-bridge: select OV2740
- frequency by IPU ID
+Date: Fri, 02 Oct 2026 10:57:48 +0200
+Subject: [PATCH v10 10/15] media: atomisp: derive CSI-2 timing from sensor
+ link frequency
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-submission-media-yogabook-v10-b4-final-v10-9-817ec765b257@gmail.com>
+Message-Id: <20261002-submission-media-yogabook-v10-b4-final-v10-10-817ec765b257@gmail.com>
 References: <20261002-submission-media-yogabook-v10-b4-final-v10-0-817ec765b257@gmail.com>
 In-Reply-To: <20261002-submission-media-yogabook-v10-b4-final-v10-0-817ec765b257@gmail.com>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -19,65 +19,89 @@ Cc: Andy Shevchenko <andriy.shevchenko@intel.com>,
  linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-staging@lists.linux.dev
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790931470; l=1755;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790931470; l=2918;
  i=mauriziocasciano7@gmail.com; s=yogabook-kernel-20261002;
- h=from:subject:message-id; bh=ue/b0XTG/PvSekybROAgfBd9qT5GItC9FQ1t+m15SPs=;
- b=UtaMLLCfyxOYO2/6LBwCHX9XSiv3e9+RM6M8ch+dwP0NXrdovvniufucRoQDuxaw/F+UFhr8x
- /FAZlma5zjYDmgHUysGYMLgAmqUb333bqINEWj/Tks9SQc4Kn5LVDu8
+ h=from:subject:message-id; bh=cBvzGnpb1R/GrB51aSVmRmya/MKjYDDZIxRjbiTyn7Q=;
+ b=db5hV4iBqfHiklq9vn84oxcWJB8RAthkyTIddcp2H03Ur4vlhdEI4NV0sCqlky/Cw7zRHotK1
+ YkpUEKL6gkoB0fBlgJTjVzEJAYl93hgr3K2RH0FrSOBUa0NKn207shl
 X-Developer-Key: i=mauriziocasciano7@gmail.com; a=ed25519;
  pk=ODC2oSPBqt7ukC3AEDZNS7LIE21D8ke8TEHoNlxniNM=
 X-Endpoint-Received: by B4 Relay for mauriziocasciano7@gmail.com/yogabook-kernel-20261002 with auth_id=1099
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The OV2740 connected to the Cherry Trail AtomISP uses a 288 MHz link,
-while the generic OVTI2740 configuration uses 360 MHz.
+The ISP2401 CSI-2 receiver timing depends on the sensor link frequency.
+Query it through v4l2_get_link_freq() instead of reading a 32-bit
+control value directly.
 
-Use the bridge's existing PCI-device matching mechanism to add a
-Cherry Trail-specific OVTI2740 entry before the generic fallback. This
-keeps the platform distinction in the bridge and avoids adding a second
-per-sensor link-frequency override path.
+Keep the frequency as s64 throughout the calculation so valid link
+frequencies do not require an arbitrary S32_MAX limit. Fall back to the
+existing default timings when the frequency query fails.
 
-Suggested-by: Sakari Ailus <sakari.ailus@linux.intel.com>
 Signed-off-by: Maurizio Casciano <mauriziocasciano7@gmail.com>
-Assisted-by: LLM
+Assisted-by: LLM sparse
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 ---
- drivers/media/pci/intel/ipu-bridge.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ drivers/staging/media/atomisp/pci/atomisp_csi2.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/media/pci/intel/ipu-bridge.c b/drivers/media/pci/intel/ipu-bridge.c
-index 62852fe1a406..1a133194cbc0 100644
---- a/drivers/media/pci/intel/ipu-bridge.c
-+++ b/drivers/media/pci/intel/ipu-bridge.c
-@@ -21,6 +21,8 @@
+diff --git a/drivers/staging/media/atomisp/pci/atomisp_csi2.c b/drivers/staging/media/atomisp/pci/atomisp_csi2.c
+index 71df4ef629c2..cbdeac32f6f3 100644
+--- a/drivers/staging/media/atomisp/pci/atomisp_csi2.c
++++ b/drivers/staging/media/atomisp/pci/atomisp_csi2.c
+@@ -5,6 +5,7 @@
+  * Copyright (c) 2010 Intel Corporation. All Rights Reserved.
+  */
  
- #define ADEV_DEV(adev) ACPI_PTR(&((adev)->dev))
++#include <media/v4l2-common.h>
+ #include <media/v4l2-event.h>
+ #include <media/v4l2-mediabus.h>
+ #include "atomisp_cmd.h"
+@@ -210,7 +211,7 @@ int atomisp_mipi_csi2_register_entities(struct atomisp_mipi_csi2_device *csi2,
+ static const int LIMIT_SHIFT = 6;	/* Limit numeric range into 31 bits */
  
-+#define PCI_DEVICE_ID_INTEL_ATOMISP_CHT	0x22b8
+ static int
+-atomisp_csi2_configure_calc(const short int coeffs[2], int mipi_freq, int def)
++atomisp_csi2_configure_calc(const short int coeffs[2], s64 mipi_freq, int def)
+ {
+ 	/* Delay counter accuracy, 1/0.0625 for ANN/CHT, 1/0.125 for BXT */
+ 	static const int accinv = 16;		/* 1 / COUNT_ACC */
+@@ -289,18 +290,18 @@ static void atomisp_csi2_configure_isp2401(struct atomisp_sub_device *asd)
+ 	int dat_termen;
+ 	int dat_settle;
+ 
+-	struct v4l2_control ctrl;
+ 	struct atomisp_device *isp = asd->isp;
+-	int mipi_freq = 0;
+ 	enum atomisp_camera_port port;
++	struct v4l2_subdev *sensor;
++	s64 mipi_freq;
+ 	int n;
+ 
+ 	port = isp->inputs[asd->input_curr].port;
+ 
+-	ctrl.id = V4L2_CID_LINK_FREQ;
+-	if (v4l2_g_ctrl
+-	    (isp->inputs[asd->input_curr].sensor->ctrl_handler, &ctrl) == 0)
+-		mipi_freq = ctrl.value;
++	sensor = isp->inputs[asd->input_curr].sensor;
++	mipi_freq = v4l2_get_link_freq(&sensor->entity.pads[0], 0, 0);
++	if (mipi_freq < 0)
++		mipi_freq = 0;
+ 
+ 	clk_termen = atomisp_csi2_configure_calc(coeff_clk_termen, mipi_freq,
+ 						 TERMEN_DEFAULT);
+@@ -311,6 +312,11 @@ static void atomisp_csi2_configure_isp2401(struct atomisp_sub_device *asd)
+ 	dat_settle = atomisp_csi2_configure_calc(coeff_dat_settle, mipi_freq,
+ 						 SETTLE_DEFAULT);
+ 
++	dev_dbg(isp->dev,
++		"CSI port %u link frequency %lld Hz, clk timing %d/%d, data timing %d/%d\n",
++		port, mipi_freq, clk_termen, clk_settle,
++		dat_termen, dat_settle);
 +
- /*
-  * 92335fcf-3203-4472-af93-7b4453ac29da
-  *
-@@ -58,6 +60,11 @@ static const u16 ipu6_ov5693_ncont_clk[] = {
- 	0
- };
+ 	for (n = 0; n < csi2_port_lanes[port] + 1; n++) {
+ 		hrt_address base = csi2_port_base[port] + csi2_lane_base[n];
  
-+static const u16 atomisp_cht_pci_ids[] = {
-+	PCI_DEVICE_ID_INTEL_ATOMISP_CHT,
-+	0
-+};
-+
- static const struct ipu_sensor_config ipu_supported_sensors[] = {
- 	/* Himax HM1092 */
- 	IPU_SENSOR_CONFIG("HIMX1092", 2, 180000000, 180480000),
-@@ -112,6 +119,8 @@ static const struct ipu_sensor_config ipu_supported_sensors[] = {
- 	/* Omnivision OV2680 */
- 	IPU_SENSOR_CONFIG("OVTI2680", 1, 331200000),
- 	/* Omnivision OV2740 */
-+	IPU_SENSOR_CONFIG_MATCH_FL("OVTI2740", atomisp_cht_pci_ids, 0,
-+				   1, 288000000),
- 	IPU_SENSOR_CONFIG("OVTI2740", 1, 360000000),
- 	/* Omnivision OV5675 */
- 	IPU_SENSOR_CONFIG("OVTI5675", 1, 450000000),
 
 -- 
 2.53.0
