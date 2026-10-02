@@ -1,58 +1,111 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 02 Oct 2026 19:49:20 +0000
-Subject: [PATCH] arm: mvebu: helios4_defconfig: enable device tree overlays
+From: Petr Hodina <petr.hodina@protonmail.com>
+Date: Fri, 02 Oct 2026 22:52:57 +0200
+Subject: [PATCH] fastboot: scale download progress dots to video console
+ width
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-helios4-overlays-v1-1-2e03eb306e38@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAL8KwGoC/x3MQQqAIBBA0avIrBN00IiuEi0kpxoIDQekiO6et
- HyL/x8QKkwCo3qgUGXhnBpsp2DZQ9pIc2wGNNhbY1DvdHAWp3OlcoRb9ICEMVpvXfTQsrPQyte
- /nOb3/QB8ehiSYgAAAA==
-To: Stefan Roese <stefan.roese@mailbox.org>, 
- Dennis Gilmore <dgilmore@redhat.com>
-Cc: Tom Rini <trini@konsulko.com>, u-boot@lists.u-boot-project.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=998; i=iav@iav.lv;
- h=from:subject:message-id; bh=wEpmrk9QbEB6mk+TlnWcyRteT/tXf6DXqjhPx4OuQZg=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkHuA7u3Nd6Y1FD1p3qfQn1yqlTbx5eKBGmaLj2ypK/2
- Tc4VcKmdpSyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJvJvPyDB7T4ps2i/mvMLc
- Raq89rVcR79lVoV9Lgpdd8jnjGNz6HdGhtesFo9nLRHvjLH/Y7s1K9faTvdOyp5Ef5maAIP5Lxo
- jOQA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261002-b4-fastboot-dot-width-v1-1-93bb3cb13179@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAyF4asgz7WUpBCpvQrqQIgDZiAoTgsS4
+ u4NMLzhG96/g1BiEnhXOyT6sXCcC/Sjgn7s5oGQfTEYZaxWyqCrMXSSXYwZfdnKPo8YGksv/dT
+ WNgrKd0kUeLu67ee2fN1EfT5jcBx/nH9OcXkAAAA=
+X-Change-ID: 20261002-b4-fastboot-dot-width-f56e91316650
+To: u-boot@lists.u-boot-project.org
+Cc: Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Tom Rini <trini@konsulko.com>, David Heidelberg <david@ixit.cz>, 
+ Petr Hodina <petr.hodina@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790974378; l=2407;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=DqDiwDLDrHJFHp1VXxDk67SMOKbkDAfKJjs+UpfW8CU=;
+ b=aFjAEP+qoXRyRJj/zpy7ayg5D/jsIbGybeMA5HDOEzHQxcKu1Eo3Irt8NUH5z/y6mWq53je+3
+ k0xe8j+FZD/A03HUYnojFnCJBxdvSD102Fgd6hYMe71Nrfp2zoaVeg1
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable OF_LIBFDT_OVERLAY so that "fdt apply" is available and boot
-scripts can apply device tree overlays on Helios4.
+The download progress indicator wraps to a new line every 74 dots.
+On boards with a video console the row is usually a different width,
+so query the active video console's column count and use that instead,
+falling back to the old default when no video console is probed.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
-Tested on Helios4: with this option "fdt apply" merges an overlay into a
-device tree in RAM; without it fdt has no apply subcommand.
+Found while testing fastboot flashing on a device using the on-screen
+video console. The fixed 74-column dot-wrap assumed a serial terminal
+and looked broken on the panel's actual row width.
 ---
- configs/helios4_defconfig | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/fastboot/fb_command.c | 26 +++++++++++++++++++++++++-
+ 1 file changed, 25 insertions(+), 1 deletion(-)
 
-diff --git a/configs/helios4_defconfig b/configs/helios4_defconfig
-index d218949e307..9b56d87ea29 100644
---- a/configs/helios4_defconfig
-+++ b/configs/helios4_defconfig
-@@ -11,6 +11,7 @@ CONFIG_CUSTOM_SYS_INIT_SP_ADDR=0xff0000
- CONFIG_TARGET_HELIOS4=y
- CONFIG_MVEBU_SPL_BOOT_DEVICE_MMC=y
- CONFIG_DEFAULT_DEVICE_TREE="armada-388-helios4"
-+CONFIG_OF_LIBFDT_OVERLAY=y
- CONFIG_SPL_SERIAL=y
- CONFIG_SPL_STACK=0x4002c000
- CONFIG_SPL_TEXT_BASE=0x40000030
+diff --git a/drivers/fastboot/fb_command.c b/drivers/fastboot/fb_command.c
+index 18d86988f4c..e6a5f9b840c 100644
+--- a/drivers/fastboot/fb_command.c
++++ b/drivers/fastboot/fb_command.c
+@@ -5,6 +5,7 @@
+ 
+ #include <command.h>
+ #include <console.h>
++#include <dm.h>
+ #include <env.h>
+ #include <fastboot.h>
+ #include <fastboot-internal.h>
+@@ -14,9 +15,12 @@
+ #include <fb_spi_flash.h>
+ #include <part.h>
+ #include <stdlib.h>
++#include <video_console.h>
+ #include <vsprintf.h>
+ #include <linux/printk.h>
+ 
++#define FASTBOOT_DOT_LINE_WIDTH_DEFAULT	74
++
+ /**
+  * image_size - final fastboot image size
+  */
+@@ -266,6 +270,26 @@ u32 fastboot_data_remaining(void)
+ 	return fastboot_bytes_expected - fastboot_bytes_received;
+ }
+ 
++/**
++ * fastboot_dot_line_width() - number of dot columns to print per line
++ *
++ * Return: number of dot columns per line
++ */
++static int fastboot_dot_line_width(void)
++{
++	struct udevice *dev;
++	struct vidconsole_priv *priv;
++
++	if (IS_ENABLED(CONFIG_VIDEO) &&
++	    !uclass_first_device_err(UCLASS_VIDEO_CONSOLE, &dev)) {
++		priv = dev_get_uclass_priv(dev);
++		if (priv->cols > 0)
++			return priv->cols;
++	}
++
++	return FASTBOOT_DOT_LINE_WIDTH_DEFAULT;
++}
++
+ /**
+  * fastboot_data_download() - Copy image data to fastboot_buf_addr.
+  *
+@@ -304,7 +328,7 @@ void fastboot_data_download(const void *fastboot_data,
+ 
+ 	if (pre_dot_num != now_dot_num) {
+ 		putc('.');
+-		if (!(now_dot_num % 74))
++		if (!(now_dot_num % fastboot_dot_line_width()))
+ 			putc('\n');
+ 	}
+ 	*response = '\0';
 
 ---
-base-commit: a6ab6a66146ed0bf1420db0ee858b49005783222
-change-id: 20261002-helios4-overlays-82e2dd1514d5
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20261002-b4-fastboot-dot-width-f56e91316650
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
