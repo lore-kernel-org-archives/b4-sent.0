@@ -1,11 +1,11 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Fri, 02 Oct 2026 12:09:13 -0600
-Subject: [PATCH 2/3] drm/nouveau: Fix NULL pointer dereference in
- GET_ZCULL_INFO ioctl
+Date: Fri, 02 Oct 2026 12:09:14 -0600
+Subject: [PATCH 3/3] drm/nouveau/gsp: Fix NULL dereference in
+ nvkm_gsp_gcx_ready()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-my-fixups-v1-2-a83d20f9d3fe@gmail.com>
+Message-Id: <20261002-my-fixups-v1-3-a83d20f9d3fe@gmail.com>
 References: <20261002-my-fixups-v1-0-a83d20f9d3fe@gmail.com>
 In-Reply-To: <20261002-my-fixups-v1-0-a83d20f9d3fe@gmail.com>
 To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
@@ -16,57 +16,79 @@ To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>,
 Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
  linux-kernel@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790964559; l=2253;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790964559; l=2861;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=L2BiCR5h7zbMn466+3toqqoccEcp+N08ZHOKB4ykJHg=;
- b=4trrWqnFSWvbtlBEh0oeA1WGLJkQkvPLNvZc26k6fM08kA0otSAlnbpbG5LmUZQ7LKRjpMoKS
- yTaR7AD+jH5AmyNRrVZet8zuAASC1MLXOz6wePMPQG8dMyAhbdGHRK5
+ bh=2M9dEq49i0aD+XeaJ6avEiyZMMSw/YZ4lgbD6+NZKCg=;
+ b=kH526DYovITBtZAg3q9UHXTnXfSCO9eGG6JfkQ3j7V4TQMnLPlDc5Y7BkzXsm1Qn3VmfBHDPU
+ cA/QFTTRIYtBPr8vE2YpS4xvYAFPodPQJlB+JLn5GI0QlLEb4WIaRVq
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When graphics engine firmware fails to load or initialization aborts
-early, nvxx_gr(drm) returns NULL. Calling DRM_IOCTL_NOUVEAU_GET_ZCULL_INFO
-causes nouveau_abi16_ioctl_get_zcull_info() to dereference gr at offset
-0xf0 without checking for NULL, triggering a kernel page fault.
+Commit cb4c7603678c ("drm/nouveau/gsp/r570: Add support for
+INTERNAL_GCX_ENTRY_PREREQUISITE") hooked nvif_device_gcx_ready() into
+nouveau_pmops_runtime_suspend() to consult GSP before runtime suspend.
 
-Validate that gr is non-NULL before inspecting gr->has_zcull_info.
+On GPUs running without GSP-RM (e.g. Volta GV100, NvGspRm=0, or missing
+GSP firmware blobs), device->gsp is instantiated but gsp->rm remains
+NULL. nvkm_udevice_gcx_ready() checked "!gsp" instead of verifying
+nvkm_gsp_rm(gsp), allowing non-RM instances to invoke
+nvkm_gsp_gcx_ready(). nvkm_gsp_gcx_ready() then unconditionally
+dereferenced gsp->rm->api, causing a kernel oops:
 
+  RIP: 0010:nvkm_gsp_gcx_ready+0x10/0x30 [nouveau]
+  Code: ... 48 8b 87 70 0e 00 00 <48> 8b 40 18 ...
+  RAX: 0000000000000000 RDI: ffff8c9555fca000
+  Call Trace:
+   nvkm_udevice_mthd+0xa5/0x150 [nouveau]
+   nvkm_ioctl+0xcc/0x1d0 [nouveau]
+   nvif_object_mthd+0x110/0x1e0 [nouveau]
+   nvif_device_gcx_ready+0x36/0x60 [nouveau]
+   nouveau_pmops_runtime_suspend+0x39/0x140 [nouveau]
+
+Instruction decode shows `mov rax, [rdi+0xe70]` loads gsp->rm (0x0),
+and `<48> 8b 40 18` (`mov rax, [rax+0x18]`) faults accessing rm->api.
+
+Fix by:
+0. Checking !nvkm_gsp_rm(gsp) in nvkm_udevice_gcx_ready() so non-RM
+   devices report GC6/GcOff ready and bypass the GSP call entirely.
+1. Guarding gsp and gsp->rm in nvkm_gsp_gcx_ready() before inspecting
+   gsp->rm->api->gsp->gcx_ready.
+
+Fixes: cb4c7603678c ("drm/nouveau/gsp/r570: Add support for INTERNAL_GCX_ENTRY_PREREQUISITE")
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-Aug 14 09:21:52 frodo kernel: BUG: kernel NULL pointer dereference, address: 00000000000000f0
-Aug 14 09:21:52 frodo kernel: #PF: error_code(0x0000) - not-present page
-Aug 14 09:21:52 frodo kernel: Oops: Oops: 0000 [#1] SMP NOPTI
-Aug 14 09:21:52 frodo kernel: RIP: 0010:nouveau_abi16_ioctl_get_zcull_info+0x17/0xa0 [nouveau]
-Aug 14 09:21:52 frodo kernel: Code: 00 00 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 0f 1f 44 00 00 48 8b 47 40 48 8b 00 48 8b 80 70 02 00 00 <80> b8 f0 00 00 00 00 74 72 8b 90 c0 00 00 00 89 16 8b 90 c4 00 00
-Aug 14 09:21:52 frodo kernel: Call Trace:
-Aug 14 09:21:52 frodo kernel:  <TASK>
-Aug 14 09:21:52 frodo kernel:  drm_ioctl_kernel+0xae/0x100
-Aug 14 09:21:52 frodo kernel:  drm_ioctl+0x2e0/0x560
-Aug 14 09:21:52 frodo kernel:  ? __pfx_nouveau_abi16_ioctl_get_zcull_info+0x10/0x10 [nouveau]
-Aug 14 09:21:52 frodo kernel:  nouveau_drm_ioctl+0x58/0xc0 [nouveau]
-Aug 14 09:21:52 frodo kernel:  __x64_sys_ioctl+0xb9/0x100
-Aug 14 09:21:52 frodo kernel:  do_syscall_64+0xe2/0x560
-Aug 14 09:21:52 frodo kernel:  entry_SYSCALL_64_after_hwframe+0x76/0x7e
-Aug 14 09:21:52 frodo kernel:  </TASK>
----
- drivers/gpu/drm/nouveau/nouveau_abi16.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpu/drm/nouveau/nvkm/engine/device/user.c | 2 +-
+ drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/nouveau/nouveau_abi16.c b/drivers/gpu/drm/nouveau/nouveau_abi16.c
-index cb1810dee8e5..0871ac025ace 100644
---- a/drivers/gpu/drm/nouveau/nouveau_abi16.c
-+++ b/drivers/gpu/drm/nouveau/nouveau_abi16.c
-@@ -357,7 +357,7 @@ nouveau_abi16_ioctl_get_zcull_info(ABI16_IOCTL_ARGS)
- 	struct nvkm_gr *gr = nvxx_gr(drm);
- 	struct drm_nouveau_get_zcull_info *out = data;
+diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
+index f78e6b9b4292..d469437eb991 100644
+--- a/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
++++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
+@@ -201,7 +201,7 @@ nvkm_udevice_gcx_ready(struct nvkm_udevice *udev, void *data, u32 size)
+ 	} *args = data;
+ 	int ret = -ENOSYS;
  
--	if (gr->has_zcull_info) {
-+	if (gr && gr->has_zcull_info) {
- 		const struct nvkm_gr_zcull_info *i = &gr->zcull_info;
+-	if (!gsp) {
++	if (!nvkm_gsp_rm(gsp)) {
+ 		args->v0.ready = NV_DEVICE_GC6_READY | NV_DEVICE_GCOFF_READY;
+ 		return 0;
+ 	}
+diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
+index e475d0e8fa7b..9e07d67dcb0f 100644
+--- a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
++++ b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
+@@ -51,7 +51,7 @@ nvkm_gsp_intr_stall(struct nvkm_gsp *gsp, enum nvkm_subdev_type type, int inst)
+ int
+ nvkm_gsp_gcx_ready(struct nvkm_gsp *gsp)
+ {
+-	if (!gsp->rm->api->gsp->gcx_ready)
++	if (!gsp || !gsp->rm || !gsp->rm->api->gsp->gcx_ready)
+ 		return NV_DEVICE_GC6_READY | NV_DEVICE_GCOFF_READY;
  
- 		out->width_align_pixels = i->width_align_pixels;
+ 	return gsp->rm->api->gsp->gcx_ready(gsp);
 
 -- 
 2.55.0
