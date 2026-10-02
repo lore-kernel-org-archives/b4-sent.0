@@ -1,100 +1,153 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Fri, 02 Oct 2026 00:29:27 -0700
-Subject: [PATCH net-next 2/2] net: annotate lockless writes to sk->sk_err
+From: Maurizio Casciano <mauriziocasciano7@gmail.com>
+Subject: [PATCH v10 00/15] media: Add Lenovo Yoga Book camera support
+Date: Fri, 02 Oct 2026 10:57:38 +0200
+Message-Id: <20261002-submission-media-yogabook-v10-b4-final-v10-0-817ec765b257@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-tls-fix-sk-kcsan-err-v1-2-baa0ba056323@proton.me>
-References: <20261002-tls-fix-sk-kcsan-err-v1-0-baa0ba056323@proton.me>
-In-Reply-To: <20261002-tls-fix-sk-kcsan-err-v1-0-baa0ba056323@proton.me>
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jakub Sitnicki <jakub@cloudflare.com>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- bpf@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790926169; l=2416;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=K/co0bqQ7iNM1L5ByfBSbB0henAPROl+oW+6On5Cxro=;
- b=dQHbhXpU4+Ri8VKOLtG8MZRuAYJWnpw1xzkB6Gs9Q3S/0oYbbfNSPVeql98336UcAvgBt1QzY
- FYvNvzht9KfAlN9uONodQwNZyRd1w2ZMz2Gk/yrU1X3xL2eDNprKaXx
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2N0QrCMAxFf2Xk2UBaq4K/Ij6kNp1B10rDhjL27
+ 1Yf7+Fw7gomTcXgPKzQZFHTWvpwtBvgducyCmrqADz5oyPyaHOc1H4eTpKU8VNHjrU+cHGEMWD
+ Wwk/c+5CTHMJJmKHHXk2yvv9Pl+u2fQFqRK6aeQAAAA==
+X-Change-ID: 20261002-submission-media-yogabook-v10-b4-final-324fde547eaa
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Jacopo Mondi <jacopo.mondi@ideasonboard.com>, 
+ Nicholas Roth <nicholas@rothemail.net>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Bingbu Cao <bingbu.cao@amd.com>, 
+ Dan Scally <dan.scally@ideasonboard.com>, Hans de Goede <hansg@kernel.org>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-staging@lists.linux.dev
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790931470; l=6164;
+ i=mauriziocasciano7@gmail.com; s=yogabook-kernel-20261002;
+ h=from:subject:message-id; bh=2eJ1mchBfXwSxiTCzU9Q2DA9MfTAG55bJ6IJZIdcGKc=;
+ b=CbT/xFIrrWRcJIIKV8lO15FLCS2miTT+8CB4/Eo9C/0acTanWZcwXfaDVZniNfN210Qola6Sg
+ /UrbM2PxhK8BeU3+fwaTMtctT3rqohd7nfzlDDTl02f9LLPZvjWYr70
+X-Developer-Key: i=mauriziocasciano7@gmail.com; a=ed25519;
+ pk=ODC2oSPBqt7ukC3AEDZNS7LIE21D8ke8TEHoNlxniNM=
+X-Endpoint-Received: by B4 Relay for mauriziocasciano7@gmail.com/yogabook-kernel-20261002 with auth_id=1099
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-do_recvmmsg() and getsockopt(SO_ERROR) clear sk_err with xchg()
-without the socket lock. TCP, MPTCP and kTLS already peek the same
-field with READ_ONCE() or consume it via sock_error().
+Add camera support for the Lenovo Yoga Book YB1-X91L. The tablet uses
+an AtomISP ISP2401 with an OV2740 front sensor, an OV8858 rear sensor
+and a WV517S rear-camera lens actuator.
 
-sock_dequeue_err_skb() still uses plain stores. tcp_recvmsg() can
-call it via MSG_ERRQUEUE before lock_sock(), so those writes race
-with the annotated readers and with sock_error(). The same unmarked
-stores exist in strp_abort_strp() and sk_psock_report_error(), which
-run on the TCP/TLS socket.
+The series adds the missing ACPI and bridge configuration, selects the
+OV2740 link frequency through the existing IPU PCI-ID mechanism, derives
+AtomISP CSI-2 timing from the sensor link frequency, enables raw Bayer
+capture and adds the sensor controls and actuator driver needed by the
+hardware.
 
-Annotate those writers with WRITE_ONCE(). No extra ordering is
-needed; this does not change who wins when ICMP error-queue entries
-overwrite sk_err.
+Runtime validation used the same functional 15-patch content on the
+2026-10-01 media_stage.git master. The final media-committers.git next
+rebase and review edits only change source formatting and equivalent
+frequency notation:
 
-Link: https://lore.kernel.org/netdev/3d9d442f-f168-43da-87b0-010ad5a78365@redhat.com/
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+- W=1 builds and sparse builds of all eight affected objects passed after
+  the rebase. The OV8858 object passed both again after the v10 review
+  edits.
+- A full x86_64 Debian binary package build passed and produced kernel
+  7.3.0-rc1-yogabook-media-v8-20261002-001605.
+- The kernel booted on a Lenovo Yoga Book YB1-X91L with AtomISP PCI ID
+  8086:22b8. OV2740 negotiated 288 MHz and OV8858 negotiated 360 MHz;
+  both sensors bound and AtomISP registered two cameras.
+- OV8858 digital, red and blue gains were changed during streaming and
+  read back correctly. Continuous raw capture produced changing frames
+  from both sensors (6/8 unique rear samples and 8/8 unique front
+  samples), including front-to-rear-to-front switching without OV8858,
+  I2C or CSI errors.
+- Both front and rear cameras were also exercised successfully with
+  Cheese.
+- v4l2-compliance 1.32.0 completed 47 tests on the AtomISP capture node:
+  40 succeeded and 7 failed in invalid-ioctl, multiple-open, input,
+  control enumeration, stream-parameter and buffer tests. These failures
+  remain a validation limitation; this series does not claim to make the
+  staging AtomISP driver fully compliant.
+
+Only the Yoga Book 19.2 MHz OV8858 path was hardware-tested; the existing
+24 MHz paths received build and static-analysis coverage but were not
+tested on separate hardware.
+
+Changes in v10:
+
+- Express both OV8858 input-clock rates with HZ_PER_KHZ.
+- Drop trailing commas from the terminators of all four new OV8858 clock
+  register tables.
+- Use the b4 kernel web-submission workflow after Gmail corrupted the v8
+  series and the incomplete v9 retry. Media CI confirmed v8 patch 1 was
+  corrupt at line 10. There are no functional changes from v8.
+
+Changes in v8:
+
+- Keep patch 2's commit message focused on the implementation, remove the
+  invalid review Link and move runtime results to this cover letter.
+- Express OV8858 frequencies with HZ_PER_MHZ/HZ_PER_KHZ, name clock
+  tables by their input and link frequencies, and remove platform names
+  from the sensor driver.
+- Explain that V4L2 exposes standard red and blue balance controls but no
+  standard green-balance control, so green remains the unity reference.
+- Replace the per-sensor link-frequency override with the IPU bridge's
+  existing PCI-ID matching mechanism. Add an 8086:22b8-specific OV2740
+  288 MHz entry before the generic 360 MHz fallback. This removes the
+  associated AtomISP hand-off patch and reduces the series to 15 patches.
+- Add the introducing commit to the OV2740 group-hold fix and mark it for
+  stable backporting.
+- Use the documented Assisted-by tag syntax.
+- Keep the padding helper as a normal static function and avoid a
+  single-use raw-format descriptor structure.
+- Retain Andy's Reviewed-by tags only where the corresponding patches did
+  not change materially. In particular, drop the tag from the redesigned
+  IPU bridge frequency patch.
+
+v9 (incomplete and transport-corrupted):
+https://lore.kernel.org/linux-media/CAO7O_xjhrLNFu6sKEFWp8z+UCkcHu9kr9KfxtEQ=T9yKHCQT-w@mail.gmail.com/
+
+v8 (transport-corrupted):
+https://lore.kernel.org/linux-media/CAO7O_xi61=0kUtYkYFKonaSEJRC_KiXKvgMLSwRbnDTVfmQsPg@mail.gmail.com/
+
+v7:
+https://lore.kernel.org/linux-media/cover.1788360629.git.mauriziocasciano7@gmail.com/
+
+Signed-off-by: Maurizio Casciano <mauriziocasciano7@gmail.com>
 ---
- include/linux/skmsg.h     | 2 +-
- net/core/skbuff.c         | 5 +++--
- net/strparser/strparser.c | 2 +-
- 3 files changed, 5 insertions(+), 4 deletions(-)
+Maurizio Casciano (15):
+      media: ov8858: Extract digital gain programming
+      media: ov8858: support 19.2 MHz clock and manual white balance
+      media: ov2740: Use C99 initializers for ACPI IDs
+      media: ov2740: Add OVTI2740 ACPI ID
+      media: ov8858: Add INT3477 ACPI ID
+      media: intel: ipu-bridge: Add Yoga Book camera sensors
+      media: atomisp: Add Yoga Book camera configuration
+      media: ov2740: support 288 MHz link frequency
+      media: intel: ipu-bridge: select OV2740 frequency by IPU ID
+      media: atomisp: derive CSI-2 timing from sensor link frequency
+      media: ov2740: release group hold after gain write errors
+      media: ov2740: add manual white balance controls
+      media: atomisp: Use struct v4l2_area for padding
+      media: atomisp: allow raw Bayer capture
+      media: i2c: Add WV517S lens actuator driver
 
-diff --git a/include/linux/skmsg.h b/include/linux/skmsg.h
-index d5e35f24738d..52ce45f25f5a 100644
---- a/include/linux/skmsg.h
-+++ b/include/linux/skmsg.h
-@@ -429,7 +429,7 @@ static inline void sk_psock_report_error(struct sk_psock *psock, int err)
- {
- 	struct sock *sk = psock->sk;
- 
--	sk->sk_err = err;
-+	WRITE_ONCE(sk->sk_err, err);
- 	sk_error_report(sk);
- }
- 
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 5c4024a03e10..51e3cf1ea985 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -5535,12 +5535,13 @@ struct sk_buff *sock_dequeue_err_skb(struct sock *sk)
- 	if (skb && (skb_next = skb_peek(q))) {
- 		icmp_next = is_icmp_err_skb(skb_next);
- 		if (icmp_next)
--			sk->sk_err = SKB_EXT_ERR(skb_next)->ee.ee_errno;
-+			WRITE_ONCE(sk->sk_err,
-+				   SKB_EXT_ERR(skb_next)->ee.ee_errno);
- 	}
- 	spin_unlock_irqrestore(&q->lock, flags);
- 
- 	if (is_icmp_err_skb(skb) && !icmp_next)
--		sk->sk_err = 0;
-+		WRITE_ONCE(sk->sk_err, 0);
- 
- 	if (skb_next)
- 		sk_error_report(sk);
-diff --git a/net/strparser/strparser.c b/net/strparser/strparser.c
-index a23f4b4dfc67..e5d5d755e532 100644
---- a/net/strparser/strparser.c
-+++ b/net/strparser/strparser.c
-@@ -57,7 +57,7 @@ static void strp_abort_strp(struct strparser *strp, int err)
- 		struct sock *sk = strp->sk;
- 
- 		/* Report an error on the lower socket */
--		sk->sk_err = -err;
-+		WRITE_ONCE(sk->sk_err, -err);
- 		sk_error_report(sk);
- 	}
- }
+ MAINTAINERS                                        |   1 +
+ drivers/media/i2c/Kconfig                          |  11 +
+ drivers/media/i2c/Makefile                         |   1 +
+ drivers/media/i2c/ov2740.c                         | 114 ++++++++---
+ drivers/media/i2c/ov8858.c                         | 221 ++++++++++++++++-----
+ drivers/media/i2c/wv517s.c                         | 208 +++++++++++++++++++
+ drivers/media/pci/intel/ipu-bridge.c               |  13 ++
+ drivers/staging/media/atomisp/pci/atomisp_cmd.c    |  81 +++++---
+ drivers/staging/media/atomisp/pci/atomisp_cmd.h    |   6 +-
+ drivers/staging/media/atomisp/pci/atomisp_csi2.c   |  20 +-
+ .../media/atomisp/pci/atomisp_csi2_bridge.c        |  19 +-
+ drivers/staging/media/atomisp/pci/atomisp_ioctl.c  |  32 ++-
+ drivers/staging/media/atomisp/pci/atomisp_subdev.c |   4 +-
+ drivers/staging/media/atomisp/pci/atomisp_subdev.h |   3 +-
+ 14 files changed, 605 insertions(+), 129 deletions(-)
+---
+base-commit: 4a069a763e8a86821edac4159f7c59a20015631b
+change-id: 20261002-submission-media-yogabook-v10-b4-final-324fde547eaa
 
--- 
-2.55.0
+With Best Regards,
+Maurizio Casciano
 
