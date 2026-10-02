@@ -1,80 +1,111 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Thu, 01 Oct 2026 22:51:15 +0000
-Subject: [PATCH 3/3] usb: typec: tcpci_maxim: implement get_current_limit
+From: Haseeb Malik <haseebulhaq55@gmail.com>
+Date: Thu, 01 Oct 2026 22:33:57 -0400
+Subject: [PATCH net v3 1/2] macsec: check the resolved SCI for duplicates
 MIME-Version: 1.0
+Message-Id: <20261001-fix-macsec-duplicate-sci-v3-1-0f179fbe1f2d@gmail.com>
+To: Sabrina Dubroca <sd@queasysnail.net>, netdev@vger.kernel.org
+Cc: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Shuah Khan <shuah@kernel.org>, 
+ Hannes Frederic Sowa <hannes@stressinduktion.org>, 
+ linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Haseeb Malik <haseebulhaq55@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABQYv2oC/32OzQ6CMBCEX4X07Gp/BMST72E8lGWFTaSQFomG8
+ O4WYowXPc5k5puZRCDPFMQxmYSnkQN3LgqzSQQ21tUEXEUttNSZLHQGV35AazEQQnXvb4x2IAj
+ IQFWemdSiQpOKWO89xeyKPgtHg7hEs7SBoPTWYbNQo71rLbsl33AYOv9cn4xqbb1H89+jowIF8
+ pCWVb7XeKDiVEfebYtdu+6N+gNSUqo/IB1BxkijlC0pJfwGzfP8AolHw7UpAQAA
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261001-max77759-icl-typec-v1-3-99ada1f65ced@google.com>
-References: <20261001-max77759-icl-typec-v1-0-99ada1f65ced@google.com>
-In-Reply-To: <20261001-max77759-icl-typec-v1-0-99ada1f65ced@google.com>
-To: Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790895080; l=2322;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=7qeeCvXtFRf3WmpFvhjh8F5jWTclSh7rgAjyQGiNnfI=;
- b=UDlpoIXEOV2fULuFNRPQofhM5w54ukHfkDfB90u/8qYFuXISRrHltS1+jU9cbdWSfe8s0Xdij
- Ov9ciHXmbvTCAdL+OiNoQh0BaiSQvc7aYJxIkRmBZXIyIdoxnvD7aj5
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+Content-Transfer-Encoding: 8bit
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790909457; l=3065;
+ i=haseebulhaq55@gmail.com; s=default; h=from:subject:message-id;
+ bh=c6QwTcnpUox928USSR3h8dDrqJk1wvgqABJGc0txQwM=;
+ b=grqWsEPnoUJNbfIXd1V8nyHxG30ssY1yiYAabKUoXY4zuUE6biTAGpDDfKn211MJ0qxS2rSL3
+ ie8OgC2a0VCBFn/Zrj1I23MHThAT0nkhLJTfhayseXygpwDqToiofKE
+X-Developer-Key: i=haseebulhaq55@gmail.com; a=ed25519;
+ pk=U/yCVc6cTsqDqxWLzvoONZ7DUA3EfRU+rfO9Xxo4p2w=
+X-Endpoint-Received: by B4 Relay for haseebulhaq55@gmail.com/default with auth_id=1026
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement tcpci_data::get_current_limit for tcpci_maxim driver to report
-a value of 500 mA unconditionally. This is the max current a configured
-USB 2.0 device may draw per the USB Type-C Cable and Connector
-Specification r2.2, Sec. 4.6.2.1. This helps set a current limit and
-thus enable charging for the cases when a port is connected to a non-PD
-Type-C port partner advertising Rp-def. This is until a mechanism for
-USB core to communicate the current limit to the TCPC driver is
-implemented.
+An all-ones IFLA_MACSEC_SCI selects the default SCI derived from the
+MACsec device's MAC address and port 1. macsec_init_secy() resolves this
+value and stores the result in secy.sci, but macsec_newlink() checks for
+duplicates using the unchanged local sci argument.
 
+Consequently, an all-ones request can create a second MACsec device with
+the same transmit SCI on the same lower device, while requesting that
+SCI explicitly returns -EBUSY.
+
+Resolve an undefined SCI in macsec_newlink() before initializing the
+SecY, so initialization and duplicate detection use the same value.
+Preserve the all-ones fallback when the resulting SCI is available.
+
+The duplicate acceptance was flagged by Sashiko, an LLM review bot,
+during review of an earlier MACsec initialization fix. Source and history
+inspection, followed by raw-netlink checks and selftests on the unfixed
+kernel, confirmed the issue.
+
+Fixes: c09440f7dcb3 ("macsec: introduce IEEE 802.1AE driver")
+Link: https://lists.openwall.net/netdev/2026/09/16/11
 Assisted-by: LLM
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Signed-off-by: Haseeb Malik <haseebulhaq55@gmail.com>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+Changes in v3:
+- Split the driver fix and selftests into separate patches, as Jakub requested.
+- Explain how the issue was discovered, as the submission-info bot requested.
+- No code changes from v2.
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 998693a618393..e6f825931ba0b 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -482,6 +482,20 @@ static bool max_tcpci_attempt_vconn_swap_discovery(struct tcpci *tcpci, struct t
- 	return true;
- }
+Changes in v2:
+- Resolve undefined SCI in macsec_newlink(), as suggested by Sabrina.
+
+Link to v2: https://lore.kernel.org/netdev/20261001-fix-macsec-duplicate-sci-v2-1-330311abe5ec@gmail.com/
+
+Tested on arm64/virtme with KASAN and lockdep: the regression tests
+in patch 2 go from 5 pass/2 fail to 7 pass/0 fail. The full MACsec
+selftest passes all 15 cases without skips.
+
+ drivers/net/macsec.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
+index 78a19b134632..69686f22eda8 100644
+--- a/drivers/net/macsec.c
++++ b/drivers/net/macsec.c
+@@ -4143,9 +4143,6 @@ static void macsec_init_secy(struct net_device *dev, sci_t sci, u8 icv_len)
+ 	struct macsec_dev *macsec = macsec_priv(dev);
+ 	struct macsec_secy *secy = &macsec->secy;
  
-+/*
-+ * This callback is used by the TCPM to determine the current limit to set when
-+ * Rp-def is advertised on the CC pins. The actual current limit comes from
-+ * other subsystems such as the USB gadget/host stack (USB 2.0/USB 3.2) and
-+ * BC1.2. As a workaround, report the USB 2.0 current limit of 500 mA to enable
-+ * charging when the device is connected to a non-PD source advertising Rp-def.
-+ * This can be removed once a mechanism for the USB core to communicate the
-+ * current limit to this driver is implemented.
-+ */
-+static int max_tcpci_get_current_limit(struct tcpci *tcpci, struct tcpci_data *tdata)
-+{
-+	return 500;
-+}
+-	if (sci == MACSEC_UNDEF_SCI)
+-		sci = dev_to_sci(dev, MACSEC_PORT_ES);
+-
+ 	secy->netdev = dev;
+ 	secy->operational = true;
+ 	secy->key_len = DEFAULT_SAK_LEN;
+@@ -4178,7 +4175,7 @@ static int macsec_newlink(struct net_device *dev,
+ 	u8 icv_len = MACSEC_DEFAULT_ICV_LEN;
+ 	struct net_device *real_dev;
+ 	int err, mtu;
+-	sci_t sci;
++	sci_t sci = MACSEC_UNDEF_SCI;
+ 
+ 	if (!tb[IFLA_LINK])
+ 		return -EINVAL;
+@@ -4231,7 +4228,8 @@ static int macsec_newlink(struct net_device *dev,
+ 		sci = nla_get_sci(data[IFLA_MACSEC_SCI]);
+ 	else if (data && data[IFLA_MACSEC_PORT])
+ 		sci = dev_to_sci(dev, nla_get_be16(data[IFLA_MACSEC_PORT]));
+-	else
 +
- static void max_tcpci_unregister_tcpci_port(void *tcpci)
- {
- 	tcpci_unregister_port(tcpci);
-@@ -523,6 +537,7 @@ static int max_tcpci_probe(struct i2c_client *client)
- 	chip->data.check_contaminant = max_tcpci_check_contaminant;
- 	chip->data.cable_comm_capable = true;
- 	chip->data.attempt_vconn_swap_discovery = max_tcpci_attempt_vconn_swap_discovery;
-+	chip->data.get_current_limit = max_tcpci_get_current_limit;
++	if (sci == MACSEC_UNDEF_SCI)
+ 		sci = dev_to_sci(dev, MACSEC_PORT_ES);
  
- 	max_tcpci_init_regs(chip);
- 	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
+ 	/* Registration can notify listeners before returning. */
+
+
+base-commit: 11536ee3d3e0b1bd35b6f3f8df55a6053eb0c71d
+change-id: 20260926-fix-macsec-duplicate-sci-ed7635ac1c35
 
 -- 
-2.56.0.rc1.315.gc6ed9934b7-goog
+2.43.0
 
