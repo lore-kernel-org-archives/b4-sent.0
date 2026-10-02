@@ -1,95 +1,61 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Fri, 02 Oct 2026 12:09:14 -0600
-Subject: [PATCH 3/3] drm/nouveau/gsp: Fix NULL dereference in
- nvkm_gsp_gcx_ready()
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH v2 0/2] arm64: dts: amlogic: meson-sm1-odroid-hc4: fix the
+ SPI NOR
+Date: Fri, 02 Oct 2026 21:36:45 +0300
+Message-Id: <20261002-hc4-spi-nor-v2-0-8366a4f91049@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-my-fixups-v1-3-a83d20f9d3fe@gmail.com>
-References: <20261002-my-fixups-v1-0-a83d20f9d3fe@gmail.com>
-In-Reply-To: <20261002-my-fixups-v1-0-a83d20f9d3fe@gmail.com>
-To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Dave Airlie <airlied@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Jim Cromie <jim.cromie@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790964559; l=2861;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=2M9dEq49i0aD+XeaJ6avEiyZMMSw/YZ4lgbD6+NZKCg=;
- b=kH526DYovITBtZAg3q9UHXTnXfSCO9eGG6JfkQ3j7V4TQMnLPlDc5Y7BkzXsm1Qn3VmfBHDPU
- cA/QFTTRIYtBPr8vE2YpS4xvYAFPodPQJlB+JLn5GI0QlLEb4WIaRVq
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+X-B4-Tracking: v=1; b=H4sIAL35v2oC/23MQQrCMBCF4auUWTsySVppXHkP6SLU0QxIUhIJl
+ pK7N3bt8n/wvg0yJ+EM126DxEWyxNBCnzqYvQsvRnm0Bk36QtYQ+rnHvAiGmNCNpAbNhtgpaI8
+ l8VO+h3afWnvJn5jWAy/qt/53ikJC64wZFGs79nwTV87vAlOtdQfMm6CfowAAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Christian Hewitt <christianshewitt@gmail.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1092; i=iav@iav.lv;
+ h=from:subject:message-id; bh=b1yPZi82g5YJjfiKmfE3necw60fkrcFAPcinKeqKRUs=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn7f+4N1HnAzNsq2ufuFNnO8HmGxIMWXVHutOxnZT6yQ
+ ietzuZ1lLIwiHExyIopskw4pHErY8nVv/4e5g9g5rAygQxh4OIUgIncTmf4X2Ha9crFovxM0lWX
+ lX9qDv35fcD/REMti3+LrbDwn/MWtYwMK/u33irZ21L6sMJk1oQtlQUym7cFMt9vtp1qUCN361k
+ wBwA=
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit cb4c7603678c ("drm/nouveau/gsp/r570: Add support for
-INTERNAL_GCX_ENTRY_PREREQUISITE") hooked nvif_device_gcx_ready() into
-nouveau_pmops_runtime_suspend() to consult GSP before runtime suspend.
+Two fixes for the SPI NOR flash on ODROID-HC4. Patch 1 lets the flash
+probe after a boot from SD that bypasses the SPI flash. Patch 2 lowers
+the clock to 40 MHz, where reads stop returning corrupted data.
 
-On GPUs running without GSP-RM (e.g. Volta GV100, NvGspRm=0, or missing
-GSP firmware blobs), device->gsp is instantiated but gsp->rm remains
-NULL. nvkm_udevice_gcx_ready() checked "!gsp" instead of verifying
-nvkm_gsp_rm(gsp), allowing non-RM instances to invoke
-nvkm_gsp_gcx_ready(). nvkm_gsp_gcx_ready() then unconditionally
-dereferenced gsp->rm->api, causing a kernel oops:
+U-Boot takes this device tree from dts/upstream and gets the fixes with
+the next sync.
 
-  RIP: 0010:nvkm_gsp_gcx_ready+0x10/0x30 [nouveau]
-  Code: ... 48 8b 87 70 0e 00 00 <48> 8b 40 18 ...
-  RAX: 0000000000000000 RDI: ffff8c9555fca000
-  Call Trace:
-   nvkm_udevice_mthd+0xa5/0x150 [nouveau]
-   nvkm_ioctl+0xcc/0x1d0 [nouveau]
-   nvif_object_mthd+0x110/0x1e0 [nouveau]
-   nvif_device_gcx_ready+0x36/0x60 [nouveau]
-   nouveau_pmops_runtime_suspend+0x39/0x140 [nouveau]
-
-Instruction decode shows `mov rax, [rdi+0xe70]` loads gsp->rm (0x0),
-and `<48> 8b 40 18` (`mov rax, [rax+0x18]`) faults accessing rm->api.
-
-Fix by:
-0. Checking !nvkm_gsp_rm(gsp) in nvkm_udevice_gcx_ready() so non-RM
-   devices report GC6/GcOff ready and bypass the GSP call entirely.
-1. Guarding gsp and gsp->rm in nvkm_gsp_gcx_ready() before inspecting
-   gsp->rm->api->gsp->gcx_ready.
-
-Fixes: cb4c7603678c ("drm/nouveau/gsp/r570: Add support for INTERNAL_GCX_ENTRY_PREREQUISITE")
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/gpu/drm/nouveau/nvkm/engine/device/user.c | 2 +-
- drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c    | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+Changes in v2:
+- Patch 1: move the HOLD#/WP# group to meson-g12-common.dtsi (Neil).
+  The HC4 dtb decompiles identically to v1.
+- Link to v1: https://lore.kernel.org/r/20260930-hc4-spi-nor-v1-0-9a3351e2984e@iav.lv
 
-diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
-index f78e6b9b4292..d469437eb991 100644
---- a/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
-@@ -201,7 +201,7 @@ nvkm_udevice_gcx_ready(struct nvkm_udevice *udev, void *data, u32 size)
- 	} *args = data;
- 	int ret = -ENOSYS;
- 
--	if (!gsp) {
-+	if (!nvkm_gsp_rm(gsp)) {
- 		args->v0.ready = NV_DEVICE_GC6_READY | NV_DEVICE_GCOFF_READY;
- 		return 0;
- 	}
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
-index e475d0e8fa7b..9e07d67dcb0f 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
-@@ -51,7 +51,7 @@ nvkm_gsp_intr_stall(struct nvkm_gsp *gsp, enum nvkm_subdev_type type, int inst)
- int
- nvkm_gsp_gcx_ready(struct nvkm_gsp *gsp)
- {
--	if (!gsp->rm->api->gsp->gcx_ready)
-+	if (!gsp || !gsp->rm || !gsp->rm->api->gsp->gcx_ready)
- 		return NV_DEVICE_GC6_READY | NV_DEVICE_GCOFF_READY;
- 
- 	return gsp->rm->api->gsp->gcx_ready(gsp);
+---
+Igor Velkov (2):
+      arm64: dts: amlogic: meson-sm1-odroid-hc4: mux the SPI NOR HOLD# and WP# pins
+      arm64: dts: amlogic: meson-sm1-odroid-hc4: run the SPI NOR at 40 MHz
 
+ arch/arm64/boot/dts/amlogic/meson-g12-common.dtsi    | 9 +++++++++
+ arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts | 4 ++--
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+---
+base-commit: 065957517880dc7053e0723cc9532b6e78c8855c
+change-id: 20260930-hc4-spi-nor-a80152e30ea1
+
+Best regards,
 -- 
-2.55.0
+Igor Velkov <iav@iav.lv>
 
