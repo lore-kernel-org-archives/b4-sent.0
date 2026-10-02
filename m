@@ -1,101 +1,92 @@
-From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Fri, 02 Oct 2026 13:46:24 -0300
-Subject: [PATCH v2] clk: qcom: mmcc-sdm660: enable the parents of the pixel
- clock sources
+From: Ali Resool Tuama <aliresool567@gmail.com>
+Date: Fri, 02 Oct 2026 20:42:12 +0300
+Subject: [PATCH v2] USB: quirks: add USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE for
+ GameSir G7 SE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-sdm660-pclk0-parent-enable-v2-1-b07f6c33e96f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NQQ6CMBBFr0K6dkxbSS2uuIdhUdoBRqGQFomGc
- HcLXsDNT17y897KIgbCyG7ZygIuFGn0CeQpY7YzvkUgl5hJLpXgXEJ0g1IcJts/05qAfgb0pu4
- RtJAXWxh7FU6zJJgCNvQ+5Pfqx/FVP9DOu3F/dBTnMXyO+iL231+hRYAAp5pG60LkOeZlOxjqz
- 3YcWLVt2xcB8Ktl1gAAAA==
-X-Change-ID: 20261002-sdm660-pclk0-parent-enable-8123c9ac71d8
-To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@somainline.org>, 
- Martin Botka <martin.botka@somainline.org>
-Cc: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Fabricio Akio <fabricioakio@gmail.com>
+Message-Id: <20261002-master-v2-1-24b05d8792b5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNwQ7CIBAFf6XZs5hCUxBP/ofpAXDbrpFioDaah
+ n+X1qPHSebNWyFhJExwrlaIuFCiMBUQhwrcaKYBGd0Kg6iFrLVQzJs0Y2RKa6ta2zQ1SijyM2J
+ P7z107X6cXvaObt7WmzFSmkP87E8L37y/6MIZZ1r2/akVmlvRXgZv6HF0wUOXc/4CMf+HZ64AA
+ AA=
+X-Change-ID: 20260927-master-799b75b330e6
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Ali Resool Tuama <aliresool567@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790959583; l=2766;
- i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=kzflGE+GMBXQHBY1TxBvdSXGEj0HNva0A5hK970gsxc=;
- b=ECK3P/V4x7sPrl9k06Vf1H+RcCFyHC7n6CRe9OlexbcWZOBxAMKBQW6jtvmStk7uOi43lfn2i
- aabiJIUzT12CSU0CUeLW4/0ogpT+kyqFrQ25qt6zr3IztmDPudDAT/D
-X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
- pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
-X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790962931; l=2770;
+ i=aliresool567@gmail.com; s=20260927; h=from:subject:message-id;
+ bh=9ZSSjiM2avTu7kQAcgRfCkpowkxycBnoAQrsblaGhXc=;
+ b=k4ZzvnKVBJx+wQg4up7zVG4XrzjB7zf8daV7By0ZeG++iAwrbvWyOA5SianTEDJbYPDJh0VMx
+ QroLNjUkNBaDQJCMe30Qo4yDmZJFmklciKHLCtlNWrb+OnaMAhA0Uwj
+X-Developer-Key: i=aliresool567@gmail.com; a=ed25519;
+ pk=s/zyZoG6z3JyJokqs9ZIcSAb8PgriZ1QW+mgffBV90w=
+X-Endpoint-Received: by B4 Relay for aliresool567@gmail.com/20260927 with auth_id=1071
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pclk0_clk_src and pclk1_clk_src are fed by the DSI PHY PLLs, which
-dsi_pll_14nm_vco_set_rate() resets and only clk_prepare() restarts. The
-DSI host sets the link rates before it prepares the PLL, so the RCG is
-updated against a stopped source, and if it is enabled at that point
-the update times out:
+The GameSir G7 SE wired controller first enumerates as 3537:10a0 and
+then re-enumerates in a mode it picks from how the host enumerated it.
 
-  pclk0_clk_src: rcg didn't update its configuration.
+When the configuration descriptor is fetched the Linux way, 9 bytes
+followed by the full 80, the controller disconnects about 1 ms after
+its string descriptors have been read, before SET_CONFIGURATION, and
+comes back as 3537:1082, a generic HID gamepad without force feedback.
 
-Seen on a board whose simple-framebuffer node lists the pixel clock:
-the RCG then reads enabled at msm's first modeset.
+When the configuration descriptor is fetched in one 255-byte request,
+as Windows does, it comes back as 3537:1010 in Xbox One (GIP) mode,
+which xpad already supports, including rumble.
 
-Set CLK_OPS_PARENT_ENABLE on both so the core prepares the PLL around
-the rate change, as dispcc-sm8250 does for its pixel clock sources since
-commit acf7a91d0b0e ("clk: qcom: dispcc-sm8250: Enable parents for pixel
-clocks").
+Skipping the device qualifier requests (USB_QUIRK_DEVICE_QUALIFIER)
+makes no difference; the configuration descriptor request size alone
+decides the mode. Add USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE for the 10a0
+identity, as is already done for the ShanWan Wireless Gamepad.
 
-Fixes: 5db3ae8b33de ("clk: qcom: Add SDM660 Multimedia Clock Controller (MMCC) driver")
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
+Cc: stable@vger.kernel.org
+Assisted-by: claude-opus-5-5
+Signed-off-by: Ali Resool Tuama <aliresool567@gmail.com>
 ---
-Tested on the Motorola Moto X4 (SDM630, payton) with the sdm660-mainline
-7.2.y tree, sdm660_defconfig, DRM_MSM=m: without the flag the
-pclk0_clk_src warning fires in most boots, with it never. At the stall
-the RCG reads root-on and the PLL stopped. pclk1_clk_src is not
-exercised here, nothing on this board drives DSI1. With the display
-built in, clk_disable_unused() also prepares the PLL under this flag,
-and some boots then log "DSI PLL lock failed".
+Tested on 7.2.7 (x86_64, xHCI) by setting usbcore.quirks=3537:10a0:r at
+runtime. With it, the controller settles as 3537:1010 on every plug-in,
+is bound by xpad as "GameSir G7 SE", and rumble works through xpad's
+force feedback. Without it, it settles as 3537:1082 every time. The
+patch itself is against v7.3-rc5.
+
+usbmon of the 3537:10a0 enumeration without the quirk: GET_DESCRIPTOR
+(CONFIGURATION) with wLength 9, then 80, then string descriptors 0, 2,
+1 and 3. The port reports a disconnect about 1 ms after the serial
+number string, and the SET_CONFIGURATION that follows fails with
+-EPROTO. With the quirk, the only difference is a single wLength 255
+configuration request, after which the device re-enumerates as
+3537:1010.
 ---
 Changes in v2:
-- Set the flag on pclk1_clk_src as well, as Dmitry asked. v1 left it
-  out because this board has nothing on DSI1 to test it with.
-- Link to v1: https://patch.msgid.link/20261002-sdm660-pclk0-parent-enable-v1-1-d6ff889144e4@gmail.com
+- Use my full real name in From: and Signed-off-by:
+- Link to v1: https://patch.msgid.link/20260927-master-v1-1-96ff85291b25@gmail.com
 ---
- drivers/clk/qcom/mmcc-sdm660.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/usb/core/quirks.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/clk/qcom/mmcc-sdm660.c b/drivers/clk/qcom/mmcc-sdm660.c
-index 9f8b8e29fa0f..827741229dd7 100644
---- a/drivers/clk/qcom/mmcc-sdm660.c
-+++ b/drivers/clk/qcom/mmcc-sdm660.c
-@@ -984,7 +984,8 @@ static struct clk_rcg2 pclk0_clk_src = {
- 		.parent_data = mmcc_xo_dsi0pll_dsi1pll,
- 		.num_parents = ARRAY_SIZE(mmcc_xo_dsi0pll_dsi1pll),
- 		.ops = &clk_pixel_ops,
--		.flags = CLK_SET_RATE_PARENT | CLK_GET_RATE_NOCACHE,
-+		.flags = CLK_SET_RATE_PARENT | CLK_GET_RATE_NOCACHE |
-+			 CLK_OPS_PARENT_ENABLE,
- 	},
- };
+diff --git a/drivers/usb/core/quirks.c b/drivers/usb/core/quirks.c
+index b5b577f..a4bcbe9 100644
+--- a/drivers/usb/core/quirks.c
++++ b/drivers/usb/core/quirks.c
+@@ -612,6 +612,9 @@ static const struct usb_device_id usb_quirk_list[] = {
+ 	/* ezcap401 - BOS descriptor fetch hangs at SuperSpeed Plus */
+ 	{ USB_DEVICE(0x32ed, 0x0401), .driver_info = USB_QUIRK_NO_BOS },
  
-@@ -998,7 +999,8 @@ static struct clk_rcg2 pclk1_clk_src = {
- 		.parent_data = mmcc_xo_dsi0pll_dsi1pll,
- 		.num_parents = ARRAY_SIZE(mmcc_xo_dsi0pll_dsi1pll),
- 		.ops = &clk_pixel_ops,
--		.flags = CLK_SET_RATE_PARENT | CLK_GET_RATE_NOCACHE,
-+		.flags = CLK_SET_RATE_PARENT | CLK_GET_RATE_NOCACHE |
-+			 CLK_OPS_PARENT_ENABLE,
- 	},
- };
++	/* GameSir G7 SE */
++	{ USB_DEVICE(0x3537, 0x10a0), .driver_info = USB_QUIRK_WINDOWS_CONFIG_REQ_SIZE },
++
+ 	/* DELL USB GEN2 */
+ 	{ USB_DEVICE(0x413c, 0xb062), .driver_info = USB_QUIRK_NO_LPM | USB_QUIRK_RESET_RESUME },
  
 
 ---
-base-commit: 9f24d789f03b22941b905ded43cb5ff8eea9ce62
-change-id: 20261002-sdm660-pclk0-parent-enable-8123c9ac71d8
+base-commit: fd179f8a05be3ccae366b9b96e176b51fbe54aab
+change-id: 20260927-master-799b75b330e6
 
 Best regards,
 --  
-Fabricio Akio <fabricioakio@gmail.com>
+Ali Resool Tuama <aliresool567@gmail.com>
 
