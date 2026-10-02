@@ -1,121 +1,154 @@
-From: Miguel Garcia <miguelgarciaroman8@gmail.com>
-Date: Fri, 02 Oct 2026 17:00:58 +0200
-Subject: [PATCH v3] wifi: mwifiex: replace deprecated strcpy() with
- strscpy()
-To: Brian Norris <briannorris@chromium.org>
-Cc: Francesco Dolcini <francesco@dolcini.it>, 
- linux-wireless@vger.kernel.org, 
- Miguel Garcia <miguelgarciaroman8@gmail.com>
-Message-ID: <179095325825.1998848.2691205243435840007.mwifiex-strscpy-v3@gmail.com>
-X-Mailer: b4 0.13.0
+From: Carlos Casadiego <cdcp206@gmail.com>
+Date: Fri, 02 Oct 2026 11:44:50 -0500
+Subject: [PATCH v2] iio: temperature: ltc2983: pass leak detector type
+ explicitly
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790953258; l=3986;
- i=miguelgarciaroman8@gmail.com; s=default; h=from:subject:message-id;
- bh=IVwajOKSRUqDnlhmPDEYuZeAEQwdQ6oxaUangjNedkw=;
- b=wOxWhwS9HYD3T3A7PwS6u0CV8Mf95VIxWy/iX1Dg7i0bq5WwhyY+lxCbcR/Iu/CuubGSHfDc/
- 1BhfiLIS35sCVU5HkeQ//qi/A+SLQGjaoOkOTdiZfQSjaXrKu4vF/pz
-X-Developer-Key: i=miguelgarciaroman8@gmail.com; a=ed25519;
- pk=EtrxRdQ/icT1qmJwjNNAVoBUhKKWwrhU2m6QT/xu6bM=
-X-Endpoint-Received: by B4 Relay for miguelgarciaroman8@gmail.com/default with auth_id=1101
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261002-iio-ltc2983-fix-string-compare-v2-1-b0a5ba847790@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ6CMBBFr0Jm7RhaSbWuvIdhgZ0CY4CSthIN6
+ d0teAGXL//l/79CsJ5tgGuxgrcLB3ZTBnkowPTN1FlkygyylKrUUiOzwyEaqS8nbPmNIXqeOjR
+ unBtv0WihZVW1pdAEuWT2Nlv7wL3+cXg9ntbErXUzeg7R+c/+YBGb9/fYIlAgqTMpIUkR0a0bG
+ x6OOYc6pfQFIaEJKd4AAAA=
+X-Change-ID: 20260929-iio-ltc2983-fix-string-compare-c919244f019d
+To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Liviu Stan <liviu.stan@analog.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ kernel test robot <lkp@intel.com>, Carlos Casadiego <cdcp206@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790959498; l=5099;
+ i=cdcp206@gmail.com; s=20260921; h=from:subject:message-id;
+ bh=K5qv3NJffI5Efos2hZ/Q+vPtuV6gqDi8mJgL6HUEpEo=;
+ b=daUXcj6Gz0VWXbfgnPvN0sOa1XmPau/xaD2OnRPJYSWDB7yi0VLXtPLZ7eVvHDNZrM7QnhVnx
+ XkXy6OuNBS5CYSAXta0li8Pg0AUlAWILEbM5a9HTpbBHGHmGLc6Kp9B
+X-Developer-Key: i=cdcp206@gmail.com; a=ed25519;
+ pk=Vr3c2AUi1oYbgVkQtRSsWin33frZn0vGGq5g04VWmH8=
+X-Endpoint-Received: by B4 Relay for cdcp206@gmail.com/20260921 with auth_id=1041
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the six strcpy() calls in mwifiex_pcie_get_fw_name() with
-strscpy(), using sizeof(adapter->fw_name) as the destination size.
+__ltc2983_custom_sensor_new() uses propname both to select the firmware
+property to read and to determine whether the custom sensor is a leak
+detector.
 
-All six firmware names, including their terminating NUL bytes, fit in
-the 32-byte array, so the selected firmware names remain unchanged.
-Also simplify the function comment.
+Pass this information explicitly from the caller instead of deriving
+the sensor type from the firmware property name. This keeps propname
+limited to identifying the property and preserves the existing
+conversion behavior.
 
-Assisted-by: LLM
-Signed-off-by: Miguel Garcia <miguelgarciaroman8@gmail.com>
+As a side effect, this also avoids the -Wstring-compare warning reported
+by the kernel test robot for callers where GCC can determine that the
+property name cannot match "adi,custom-leak-detector".
+
+Fixes: 3dd0c048409e ("iio: temperature: ltc2983: Add support for ADT7604")
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202609120045.OxEsKLIn-lkp@intel.com/
+Signed-off-by: Carlos Casadiego <cdcp206@gmail.com>
 ---
-v3:
-- New standalone thread, with no In-Reply-To. v2 was a reply and
-  Patchwork stored it as a comment rather than as a patch.
-- Subject prefix is "wifi: mwifiex:". v1 omitted "wifi:" and v2 used
-  "wifi: pcie:".
-- adapter->fw_name is a 32-byte array. v1 described it as 64 bytes.
-- Keep the comment accepted by Brian Norris. Do not add a sentence
-  about strscpy(), realign the version/magic masks, or insert the
-  blank lines v2 added between cases.
-- No Reviewed-by tag is carried forward from v1.
+Changes in v2:
+- Reframe the change around passing the leak detector type explicitly,
+  with the compiler warning as a side effect.
+- Drop const qualifiers from bool parameters as suggested by Andy
+  Shevchenko.
+- Link to v1: https://patch.msgid.link/20260929-iio-ltc2983-fix-string-compare-v1-1-d67d612d6ddd@gmail.com
 
-v1: https://lore.kernel.org/linux-wireless/20250705133600.186441-1-miguelgarciaroman8@gmail.com/
-v2: https://lore.kernel.org/linux-wireless/20250723151718.367623-1-miguelgarciaroman8@gmail.com/
-Brian Norris: https://lore.kernel.org/linux-wireless/aG1lcWYjk9GARp1P@google.com/
-Johannes Berg: https://lore.kernel.org/linux-wireless/294d5e91279556b59586f0812eee4ac809d7b011.camel@sipsolutions.net/
+To: Nuno Sá <nuno.sa@analog.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Andy Shevchenko <andy@kernel.org>
+To: Liviu Stan <liviu.stan@analog.com>
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/iio/temperature/ltc2983.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
 
-AI assistance: Grok (xAI, grok-4.7) prepared this v3 from the reviewed
-thread, edited these six call sites, and ran checkpatch.pl --strict,
-git diff --check, git apply --check, and the targeted pcie.o build.
-Codex reviewed the diff and refined the commit message. No device was tested.
-
-
- drivers/net/wireless/marvell/mwifiex/pcie.c | 22 ++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
-
-diff --git a/drivers/net/wireless/marvell/mwifiex/pcie.c b/drivers/net/wireless/marvell/mwifiex/pcie.c
-index a9425e9a94f4..7ad193841c2e 100644
---- a/drivers/net/wireless/marvell/mwifiex/pcie.c
-+++ b/drivers/net/wireless/marvell/mwifiex/pcie.c
-@@ -3098,9 +3098,7 @@ static int mwifiex_pcie_request_irq(struct mwifiex_adapter *adapter)
- }
+diff --git a/drivers/iio/temperature/ltc2983.c b/drivers/iio/temperature/ltc2983.c
+index 6efb5252a773..6abaf64c8498 100644
+--- a/drivers/iio/temperature/ltc2983.c
++++ b/drivers/iio/temperature/ltc2983.c
+@@ -471,8 +471,9 @@ static int __ltc2983_chan_custom_sensor_assign(struct ltc2983_data *st,
  
- /*
-- * This function gets the firmware name for downloading by revision id
-- *
-- * Read revision id register to get revision id
-+ * Get firmware name for download by revision ID
-  */
- static void mwifiex_pcie_get_fw_name(struct mwifiex_adapter *adapter)
+ static struct ltc2983_custom_sensor *
+ __ltc2983_custom_sensor_new(struct ltc2983_data *st, const struct fwnode_handle *fn,
+-			    const char *propname, const bool is_steinhart,
+-			    const u32 resolution, const bool has_signed)
++			    const char *propname, bool is_steinhart,
++			    const u32 resolution, bool has_signed,
++			    bool is_leak_detector)
  {
-@@ -3110,7 +3108,8 @@ static void mwifiex_pcie_get_fw_name(struct mwifiex_adapter *adapter)
+ 	struct ltc2983_custom_sensor *new_custom;
+ 	struct device *dev = &st->spi->dev;
+@@ -545,7 +546,7 @@ __ltc2983_custom_sensor_new(struct ltc2983_data *st, const struct fwnode_handle
+ 			 * to µK so __convert_to_raw() produces the correct hardware
+ 			 * encoding: P + 273.15 K.
+ 			 */
+-			if ((index % 2) != 0 && !strcmp(propname, "adi,custom-leak-detector"))
++			if ((index % 2) != 0 && is_leak_detector)
+ 				temp = temp * 1000000 + 273150000;
  
- 	switch (card->dev->device) {
- 	case PCIE_DEVICE_ID_MARVELL_88W8766P:
--		strcpy(adapter->fw_name, PCIE8766_DEFAULT_FW_NAME);
-+		strscpy(adapter->fw_name, PCIE8766_DEFAULT_FW_NAME,
-+			sizeof(adapter->fw_name));
- 		break;
- 	case PCIE_DEVICE_ID_MARVELL_88W8897:
- 		mwifiex_write_reg(adapter, 0x0c58, 0x80c00000);
-@@ -3118,13 +3117,16 @@ static void mwifiex_pcie_get_fw_name(struct mwifiex_adapter *adapter)
- 		revision_id &= 0xff00;
- 		switch (revision_id) {
- 		case PCIE8897_A0:
--			strcpy(adapter->fw_name, PCIE8897_A0_FW_NAME);
-+			strscpy(adapter->fw_name, PCIE8897_A0_FW_NAME,
-+				sizeof(adapter->fw_name));
- 			break;
- 		case PCIE8897_B0:
--			strcpy(adapter->fw_name, PCIE8897_B0_FW_NAME);
-+			strscpy(adapter->fw_name, PCIE8897_B0_FW_NAME,
-+				sizeof(adapter->fw_name));
- 			break;
- 		default:
--			strcpy(adapter->fw_name, PCIE8897_DEFAULT_FW_NAME);
-+			strscpy(adapter->fw_name, PCIE8897_DEFAULT_FW_NAME,
-+				sizeof(adapter->fw_name));
+ 			if ((index % 2) != 0)
+@@ -836,7 +837,7 @@ ltc2983_thermocouple_new(const struct fwnode_handle *child, struct ltc2983_data
  
- 			break;
- 		}
-@@ -3139,9 +3141,11 @@ static void mwifiex_pcie_get_fw_name(struct mwifiex_adapter *adapter)
- 		if (revision_id == PCIE8997_A1 &&
- 		    magic == CHIP_MAGIC_VALUE &&
- 		    version == CHIP_VER_PCIEUART)
--			strcpy(adapter->fw_name, PCIEUART8997_FW_NAME_V4);
-+			strscpy(adapter->fw_name, PCIEUART8997_FW_NAME_V4,
-+				sizeof(adapter->fw_name));
- 		else
--			strcpy(adapter->fw_name, PCIEUSB8997_FW_NAME_V4);
-+			strscpy(adapter->fw_name, PCIEUSB8997_FW_NAME_V4,
-+				sizeof(adapter->fw_name));
- 		break;
- 	default:
- 		break;
--- 
-2.43.0
+ 		thermo->custom = __ltc2983_custom_sensor_new(st, child,
+ 							     propname, false,
+-							     16384, true);
++							     16384, true, false);
+ 		if (IS_ERR(thermo->custom))
+ 			return ERR_CAST(thermo->custom);
+ 	}
+@@ -950,7 +951,8 @@ ltc2983_rtd_new(const struct fwnode_handle *child, struct ltc2983_data *st,
+ 	if (sensor->type == LTC2983_SENSOR_RTD_CUSTOM) {
+ 		rtd->custom = __ltc2983_custom_sensor_new(st, child,
+ 							  "adi,custom-rtd",
+-							  false, 2048, false);
++							  false, 2048, false,
++							  false);
+ 		if (IS_ERR(rtd->custom))
+ 			return ERR_CAST(rtd->custom);
+ 	}
+@@ -1068,7 +1070,7 @@ ltc2983_thermistor_new(const struct fwnode_handle *child, struct ltc2983_data *s
+ 		thermistor->custom = __ltc2983_custom_sensor_new(st, child,
+ 								 propname,
+ 								 steinhart,
+-								 64, false);
++								 64, false, false);
+ 		if (IS_ERR(thermistor->custom))
+ 			return ERR_CAST(thermistor->custom);
+ 	}
+@@ -1184,7 +1186,7 @@ ltc2983_copper_trace_new(const struct fwnode_handle *child, struct ltc2983_data
+ 						 "adi,custom-copper-trace is required for >1 ohm copper trace\n");
+ 
+ 		ct->custom = __ltc2983_custom_sensor_new(st, child, "adi,custom-copper-trace",
+-							 false, 2048, false);
++							 false, 2048, false, false);
+ 		if (IS_ERR(ct->custom))
+ 			return ERR_CAST(ct->custom);
+ 
+@@ -1275,7 +1277,7 @@ ltc2983_leak_detector_new(const struct fwnode_handle *child, struct ltc2983_data
+ 					 "adi,custom-leak-detector is required for leak detectors\n");
+ 
+ 	ld->custom = __ltc2983_custom_sensor_new(st, child, "adi,custom-leak-detector",
+-						 false, 16, false);
++						 false, 16, false, true);
+ 	if (IS_ERR(ld->custom))
+ 		return ERR_CAST(ld->custom);
+ 
+@@ -1488,7 +1490,7 @@ static struct ltc2983_sensor *ltc2983_temp_new(struct fwnode_handle *child,
+ 					 sensor->chan);
+ 
+ 	temp->custom = __ltc2983_custom_sensor_new(st, child, "adi,custom-temp",
+-						   false, 4096, true);
++						   false, 4096, true, false);
+ 	if (IS_ERR(temp->custom))
+ 		return ERR_CAST(temp->custom);
+ 
 
+---
+base-commit: d2f2868d2f487b418f68db2ef5bd7cf41722ee68
+change-id: 20260929-iio-ltc2983-fix-string-compare-c919244f019d
+
+Best regards,
+--  
+Carlos Casadiego <cdcp206@gmail.com>
 
