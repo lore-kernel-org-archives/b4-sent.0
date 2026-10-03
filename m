@@ -1,104 +1,96 @@
-From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Fri, 02 Oct 2026 23:36:12 +0200
-Subject: [PATCH] spmi: msm: bound the CMD_DONE poll with a timeout
+From: Fabricio Akio <fabricioakio@gmail.com>
+Date: Fri, 02 Oct 2026 22:29:32 -0300
+Subject: [PATCH] power: supply: qcom_smbx: set the charge enable after
+ software control
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-b4-qcom-spmi-v1-1-33fbd16ee559@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqEMAxA4atI1hOotQrOVYZZ1Bg1gn/NjAji3
- a26/Bbv7aAchBXeyQ6BV1GZxoj0lQB1fmwZpY4Ga2yRGmOxcrjQNKDOg6DPyDnyeV3mFmIyB25
- ku3ef72P9Vz3T73rAcZzNJIjNcAAAAA==
-X-Change-ID: 20261002-b4-qcom-spmi-a3c44ca5d952
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.u-boot-project.org
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- David Heidelberg <david@ixit.cz>, 
- Mateusz Kulikowski <mateusz.kulikowski@gmail.com>, 
- Aswin Murugan <aswin.murugan@oss.qualcomm.com>, Peng Fan <peng.fan@nxp.com>, 
- Yao Zi <me@ziyao.cc>, Patrice Chotard <patrice.chotard@foss.st.com>, 
- Petr Hodina <petr.hodina@protonmail.com>
+Message-Id: <20261002-qcom-smbx-enable-order-v1-1-7df92bd809db@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTtJW5LSeBXjgpZBx0irM2hIC
+ Hen6PIt/l9BSZgUzs0KQl9WLrnCnhpI9z7fCHmoBmect8Y4fKcyoU5xQcp9fBIWGUgwWN+F0Lb
+ d6DzU+CU08vIbX65/6yc+KM3HDbZtBx/XLcV6AAAA
+X-Change-ID: 20261002-qcom-smbx-enable-order-816788337f26
+To: Casey Connolly <casey.connolly@linaro.org>, 
+ Sebastian Reichel <sre@kernel.org>
+Cc: Robin Snyders <robin@snyders.xyz>, David Heidelberg <david@ixit.cz>, 
+ phone-devel@vger.kernel.org, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Fabricio Akio <fabricioakio@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790976984; l=2461;
- i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=XhcZAlmJfd1XOgfLGQ5RB4F4aui0FVa7ft96ZW0ZEi0=;
- b=o/JC8t6vYtNO64vaEK3kT7VtVYTm8RR3MYxug3HIW1NgdYlQEWxgdKCa9o4pOpGWlPltvCnXb
- WKbq4Gv0l4rCoqeUhxa52+5ggRgzlSrSV8Zn69yCc4cR5gAEMh/TeXy
-X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
- pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
-X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790990971; l=2731;
+ i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
+ bh=KF/MJVvh/TX0FU51WaZ1SUC1yakDAzVQ6C7beULA/UI=;
+ b=l5oD2SkijJfDZhB9ybMIQSXgbIlnwBVRejdsrj36b5XFz1cfy43ct74UAces2MqLqa/OT0LS9
+ 6qqirKakBFvC8D3viGO/N5tGXO2WfCmREh6GDnZu5R0ykEPNrgyoiLS
+X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
+ pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
+X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-msm_spmi_write()/msm_spmi_read() busy-wait in inifinte loop.
-Bound the wait with readl_poll_timeout() and return -ETIMEDOUT on
-failure when the PMIC peripheral does not respond.
+The init sequence sets CHARGING_ENABLE_CMD before CHGR_CFG2 selects
+software control of the charge enable.
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+The Motorola Moto X4's bootloader leaves the charger watchdog armed to
+disable charging when it bites, which it does after a few minutes in
+fastboot. Charging then stays disabled in the next boot until the cable
+is replugged. Setting the command after CHGR_CFG2 re-enables it.
+
+Fixes: 8648aeb5d7b7 ("power: supply: add Qualcomm PMI8998 SMB2 Charger driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
 ---
-Tested on Xiaomi Pad 5 (nabu) hardware: pm8150l's WLED node
-on usid 5 never returns CMD_DONE.
+Tested on a Motorola Moto X4 (XT1900-6, SDM630 with PM660) with the
+sdm660-mainline 7.2.3 tree. After the bootloader's charger watchdog had
+bitten, in a boot without this driver or after three to five minutes in
+fastboot, the charger stayed in DISABLE_CHARGE without this patch. With
+it, charging resumed with no cable replug: 0.7 A into the battery at
+89%. Other boards are untested.
 
-msm_spmi_write()/msm_spmi_read() busy-wait on CMD_DONE with no
-timeout. Therefore one unresponsive PMIC peripheral hangs boot
-indefinitely.
-
-Bound the wait with readl_poll_timeout() so DM can fail that one
-device's probe instead of halting the whole boot.
+Robin Snyders' pending SMB5 series renames smb_init_seq[], so whichever
+of the two lands second needs a trivial rebase. Applies unchanged to
+next-20261001.
 ---
- drivers/spmi/spmi-msm.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ drivers/power/supply/qcom_smbx.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/spmi/spmi-msm.c b/drivers/spmi/spmi-msm.c
-index b89dd0b406b..92cd42d8627 100644
---- a/drivers/spmi/spmi-msm.c
-+++ b/drivers/spmi/spmi-msm.c
-@@ -12,8 +12,11 @@
- #include <fdtdec.h>
- #include <asm/io.h>
- #include <dm/device_compat.h>
-+#include <linux/iopoll.h>
- #include <spmi/spmi.h>
- 
-+#define SPMI_CMD_DONE_TIMEOUT_US 100000
-+
- /* PMIC Arbiter configuration registers */
- #define PMIC_ARB_VERSION 0x0000
- #define PMIC_ARB_VERSION_V2_MIN 0x20010000
-@@ -161,10 +164,10 @@ static int msm_spmi_write(struct udevice *dev, int usid, int pid, int off,
- 	writel(reg, priv->spmi_chnls + ch_offset + SPMI_REG_CMD0);
- 
- 	/* Wait till CMD DONE status */
--	reg = 0;
--	while (!reg) {
--		reg = readl(priv->spmi_chnls + ch_offset +
--			    SPMI_REG_STATUS);
-+	if (readl_poll_timeout(priv->spmi_chnls + ch_offset + SPMI_REG_STATUS,
-+			       reg, reg, SPMI_CMD_DONE_TIMEOUT_US)) {
-+		printf("SPMI write timeout (channel %#x).\n", ch_offset);
-+		return -ETIMEDOUT;
- 	}
- 
- 	if (reg ^ SPMI_STATUS_DONE) {
-@@ -231,9 +234,10 @@ static int msm_spmi_read(struct udevice *dev, int usid, int pid, int off)
- 	writel(reg, priv->spmi_obs + ch_offset + SPMI_REG_CMD0);
- 
- 	/* Wait till CMD DONE status */
--	reg = 0;
--	while (!reg) {
--		reg = readl(priv->spmi_obs + ch_offset + SPMI_REG_STATUS);
-+	if (readl_poll_timeout(priv->spmi_obs + ch_offset + SPMI_REG_STATUS,
-+			       reg, reg, SPMI_CMD_DONE_TIMEOUT_US)) {
-+		printf("SPMI read timeout (channel %#x).\n", ch_offset);
-+		return -ETIMEDOUT;
- 	}
- 
- 	if (reg ^ SPMI_STATUS_DONE) {
+diff --git a/drivers/power/supply/qcom_smbx.c b/drivers/power/supply/qcom_smbx.c
+index f5557b8cc92a..8c6b7c46b85f 100644
+--- a/drivers/power/supply/qcom_smbx.c
++++ b/drivers/power/supply/qcom_smbx.c
+@@ -819,11 +819,7 @@ static const struct smb_init_register smb_init_seq[] = {
+ 	  .mask = SOC_LT_CHG_RECHARGE_THRESH_SEL_BIT |
+ 		  VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT,
+ 	  .val = VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT },
+-	/* Enable charging */
+ 	{ .addr = USBIN_OPTIONS_1_CFG, .mask = HVDCP_EN_BIT, .val = 0 },
+-	{ .addr = CHARGING_ENABLE_CMD,
+-	  .mask = CHARGING_ENABLE_CMD_BIT,
+-	  .val = CHARGING_ENABLE_CMD_BIT },
+ 	/*
+ 	 * Match downstream defaults
+ 	 * CHG_EN_SRC_BIT - charger enable is controlled by software
+@@ -844,6 +840,13 @@ static const struct smb_init_register smb_init_seq[] = {
+ 		  AUTO_RECHG_BIT | EN_ANALOG_DROP_IN_VBATT_BIT |
+ 		  CHARGER_INHIBIT_BIT,
+ 	  .val = CHARGER_INHIBIT_BIT },
++	/*
++	 * Set the enable command only once CHGR_CFG2 has selected software
++	 * control, or a charger its watchdog has disabled stays disabled.
++	 */
++	{ .addr = CHARGING_ENABLE_CMD,
++	  .mask = CHARGING_ENABLE_CMD_BIT,
++	  .val = CHARGING_ENABLE_CMD_BIT },
+ 	/* STAT pin software override, match downstream. Parallel charging? */
+ 	{ .addr = STAT_CFG,
+ 	  .mask = STAT_SW_OVERRIDE_CFG_BIT,
 
 ---
-base-commit: ece349ade2973e220f524ce59e59711cc919263f
-change-id: 20261002-b4-qcom-spmi-a3c44ca5d952
+base-commit: 9f24d789f03b22941b905ded43cb5ff8eea9ce62
+change-id: 20261002-qcom-smbx-enable-order-816788337f26
 
 Best regards,
 --  
-Petr Hodina <petr.hodina@protonmail.com>
+Fabricio Akio <fabricioakio@gmail.com>
 
