@@ -1,427 +1,276 @@
-From: Henrik Enquist <henrik.enquist@gmail.com>
-Date: Sat, 03 Oct 2026 15:26:12 +0200
-Subject: [PATCH 2/2] selftests/alsa: Add a test for snd-aloop notify mode
+From: Lawrence Lin <deduce@gmail.com>
+Date: Sat, 03 Oct 2026 11:27:10 -0500
+Subject: [PATCH] ftrace: Avoid quadratic symbol lookups in
+ ftrace_module_enable()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261003-aloop-notify-fix-v1-2-ba5dfb831bf5@gmail.com>
-References: <20261003-aloop-notify-fix-v1-0-ba5dfb831bf5@gmail.com>
-In-Reply-To: <20261003-aloop-notify-fix-v1-0-ba5dfb831bf5@gmail.com>
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Mark Brown <broonie@kernel.org>, Shuah Khan <shuah@kernel.org>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Henrik Enquist <henrik.enquist@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791033970; l=13753;
- i=henrik.enquist@gmail.com; s=20261003; h=from:subject:message-id;
- bh=jZBuh2FRtI+xH74mkukS3m34JH4GQs/m1SB9d0U9RPc=;
- b=Gg7zrphMJkohQa4QfE1CiG2ptXXA4kYT/w8umOf/HnnM0YLLJj6XK+wAk6YI7/EsqOmsuWd8v
- Bv1/cvVirfNBpc4U5IlACwhSKiQN/s4vnIfYOkpNxr5UQ4Rz4ZnX9ii
-X-Developer-Key: i=henrik.enquist@gmail.com; a=ed25519;
- pk=ctrSXwtuuiWIZbc1qNzu+n+1PkhB/a+2nlRyXd5j2pg=
-X-Endpoint-Received: by B4 Relay for henrik.enquist@gmail.com/20261003 with auth_id=1105
+Message-Id: <20261003-ftrace-mod-bsearch-v1-1-92e2fd2d80ff@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJKRaMVzEuSvmBIRHMDBoTw
+ t2tsvwW721kUIHRtdhI8RaTZc4oTwWlMc4DWLps8s7XpXMV96vGBH4sHbeGqGnkUJ3jpQ6+AQL
+ l8Kno5fOf3u6H7dVOSOvvRPv+BYB4eHF2AAAA
+X-Change-ID: 20261003-ftrace-mod-bsearch-534a86527ee5
+To: Steven Rostedt <rostedt@goodmis.org>, 
+ Masami Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: Petr Pavlu <petr.pavlu@suse.com>, linux-modules@vger.kernel.org, 
+ Stanislaw Gruszka <stf_xl@wp.pl>, linux-kernel@vger.kernel.org, 
+ linux-trace-kernel@vger.kernel.org, Lawrence Lin <deduce@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791044829; l=8694;
+ i=deduce@gmail.com; s=default; h=from:subject:message-id;
+ bh=VNnLgJUKJ7lFwhFtPA6FsMT52qOV2kVtmjhNwuYT/s8=;
+ b=wvDOC5G4qKnZQ0Cra34A94gJ0jvk3ihF7MC1BfYbIznaE9dXPzf0gFoS0528q80WOovPMwTJu
+ 4sgLAqR3dh2A3n1S20dmM+/pWZbIYozoQGsjY87Dm7/Aw7966u1lUhQ
+X-Developer-Key: i=deduce@gmail.com; a=ed25519;
+ pk=Ws6hmG/zoco3lMoykbeaYjo9S7a6sDddQY8EALjp9cM=
+X-Endpoint-Received: by B4 Relay for deduce@gmail.com/default with auth_id=1106
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a test for the hw constraints between the playback and capture
-devices of an snd-aloop cable, and for the "PCM Slave" controls that
-report the playback side's parameters to the capture application.
+Since commit b39181f7c690 ("ftrace: Add FTRACE_MCOUNT_MAX_OFFSET to avoid
+adding weak function"), ftrace_module_enable() calls test_for_valid_rec()
+for every ftrace record of a module being loaded. test_for_valid_rec()
+resolves the record address with kallsyms_lookup(), and for a module
+address find_kallsyms_symbol() scans the whole symbol table of the module.
+Loading a module therefore costs O(records * symbols), all of it under
+ftrace_lock.
 
-With notify disabled, a playback opened while a capture is set up must
-be pinned to the capture's parameters. With notify enabled, it may pick
-others. Starting it stops the running capture, and the "PCM Slave
-Format", "Rate", "Channels" and "Access Mode" controls report the new
-parameters, each with a value event. A capture opened second is pinned
-to the playback either way.
+For large drivers this dominates module load time. amdgpu.ko has 16821
+ftrace records and about 67000 defined symbols. On a Ryzen 3 3200U
+(x86_64, v7.2.5, amdgpu loaded from the initramfs), amdgpu finishes
+initializing 6.2 s into boot without this patch and 1.8 s with it, and
+the kernel part of boot reported by systemd-analyze drops from 6.87 s to
+2.47 s (four boots each). Loading radeon and nouveau, which have no
+hardware on that machine, goes from 170 ms to 87 ms and from 520 ms to
+145 ms. Commit 4099b98203d6 ("ftrace: Fix softlockup in
+ftrace_module_enable") already had to add a cond_resched() to this loop
+because of amdgpu.
 
-The tests only check hw_refine results, stream states and control
-values, so they don't depend on timing. They skip if snd-aloop isn't
-loaded or the devices are in use.
+Instead of one lookup per record, collect the addresses of the module's
+symbols once, using the same filters as find_kallsyms_symbol(), sort them
+into a temporary array, and binary search it for each record. A record is
+valid when the closest symbol at or below its address lies in the same
+module memory region and no more than FTRACE_MCOUNT_MAX_OFFSET below it,
+which is exactly what test_for_valid_rec() checks. If the array cannot be
+allocated, the per-record lookup is used as before.
 
-Without "ALSA: aloop: Don't constrain playback params in notify mode",
-the two notify mode tests fail.
+An earlier attempt [1] sorted the module symbol table itself to speed up
+every lookup. Its review pointed out that livepatch relocations index into
+that table, that the sort is not stable for aliases, and that data
+symbols and weak functions need care. This change leaves the symbol table
+untouched and only compares addresses, applying the same filters as
+find_kallsyms_symbol(), so none of these apply.
 
+[1] https://lore.kernel.org/all/20260327110005.16499-2-stf_xl@wp.pl/
+
+Fixes: b39181f7c690 ("ftrace: Add FTRACE_MCOUNT_MAX_OFFSET to avoid adding weak function")
 Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Henrik Enquist <henrik.enquist@gmail.com>
+Signed-off-by: Lawrence Lin <deduce@gmail.com>
 ---
- tools/testing/selftests/alsa/.gitignore   |   1 +
- tools/testing/selftests/alsa/Makefile     |   2 +-
- tools/testing/selftests/alsa/aloop-test.c | 345 ++++++++++++++++++++++++++++++
- 3 files changed, 347 insertions(+), 1 deletion(-)
+Tested on x86_64 (Ryzen 3 3200U, amdgpu):
 
-diff --git a/tools/testing/selftests/alsa/.gitignore b/tools/testing/selftests/alsa/.gitignore
-index 3dd8e1176b..7b0e1e9ebf 100644
---- a/tools/testing/selftests/alsa/.gitignore
-+++ b/tools/testing/selftests/alsa/.gitignore
-@@ -1,3 +1,4 @@
-+aloop-test
- global-timer
- mixer-test
- pcm-test
-diff --git a/tools/testing/selftests/alsa/Makefile b/tools/testing/selftests/alsa/Makefile
-index 8dab90ad22..afd64a679d 100644
---- a/tools/testing/selftests/alsa/Makefile
-+++ b/tools/testing/selftests/alsa/Makefile
-@@ -16,7 +16,7 @@ LDLIBS+=-lpthread
+- v7.2.5, with and without the patch, same config: the boot numbers
+  above, and an identical available_filter_functions (85769 entries,
+  16821 of them in amdgpu).
+- v7.3-rc5 with a debug build that runs test_for_valid_rec() and the new
+  check side by side for every record: 141 modules loaded at boot plus
+  the selftest modules, and no record on which the two disagree.
+- v7.3-rc5, with and without the patch: the ftrace selftests (159
+  passed, 0 failed, the same unresolved and xfail cases on both), all
+  eight livepatch selftests, samples/livepatch loaded, disabled and
+  unloaded, and FTRACE_STARTUP_TEST.
+- ftrace.o builds without warnings at W=1 for x86_64 (KALLSYMS_ALL=y
+  and =n, MODULES=n, LIVEPATCH=y), ppc64le, and arm64, which does not
+  define FTRACE_MCOUNT_MAX_OFFSET and keeps the existing path.
+
+Not tested: running on powerpc, the other architecture that defines
+FTRACE_MCOUNT_MAX_OFFSET, and building 32-bit powerpc (the cross
+toolchain used here could not enable the function tracer).
+
+This follows Petr's suggestion of a separate sorted array from the
+review of [1], kept local to ftrace. Stanislaw, Cc'd as the author of
+that series.
+---
+ kernel/trace/ftrace.c | 127 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 126 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/trace/ftrace.c b/kernel/trace/ftrace.c
+index 673a54fdf392..36c97c605fb5 100644
+--- a/kernel/trace/ftrace.c
++++ b/kernel/trace/ftrace.c
+@@ -18,6 +18,7 @@
+ #include <linux/clocksource.h>
+ #include <linux/sched/task.h>
+ #include <linux/kallsyms.h>
++#include <linux/module_symbol.h>
+ #include <linux/security.h>
+ #include <linux/seq_file.h>
+ #include <linux/tracefs.h>
+@@ -4385,6 +4386,109 @@ static int test_for_valid_rec(struct dyn_ftrace *rec)
+ 	return 1;
+ }
  
- OVERRIDE_TARGETS = 1
- 
--TEST_GEN_PROGS := mixer-test pcm-test test-pcmtest-driver utimer-test
-+TEST_GEN_PROGS := aloop-test mixer-test pcm-test test-pcmtest-driver utimer-test
- 
- TEST_GEN_PROGS_EXTENDED := libatest.so global-timer
- 
-diff --git a/tools/testing/selftests/alsa/aloop-test.c b/tools/testing/selftests/alsa/aloop-test.c
-new file mode 100644
-index 0000000000..a58b9fdbdc
---- /dev/null
-+++ b/tools/testing/selftests/alsa/aloop-test.c
-@@ -0,0 +1,345 @@
-+// SPDX-License-Identifier: GPL-2.0
++#if defined(CONFIG_MODULES) && defined(CONFIG_KALLSYMS)
++#define FTRACE_MOD_SYMS
 +/*
-+ * Tests for the hw constraints between the two ends of an snd-aloop cable,
-+ * with and without the "PCM Notify" control, and for the "PCM Slave"
-+ * controls that report the playback side's parameters.
-+ *
-+ * Needs snd-aloop loaded with the default card id "Loopback". The tests use
-+ * the cable between hw:Loopback,0,0 (playback) and hw:Loopback,1,0 (capture).
++ * test_for_valid_rec() resolves an address with kallsyms_lookup(), which
++ * scans the whole symbol table of a module. Calling it for every record of
++ * a module being loaded costs O(records * symbols): several seconds for a
++ * driver as large as amdgpu, all of it under ftrace_lock. Sort the symbol
++ * addresses of the module once instead and binary search them. The module
++ * symbol table itself is left untouched, as livepatch relies on its order.
 + */
-+#include <errno.h>
-+#include <stdbool.h>
-+#include <stdio.h>
-+#include <string.h>
-+#include <alsa/asoundlib.h>
-+#include "kselftest_harness.h"
-+
-+#define FRAMES		1024
-+#define MAX_CHANNELS	4
-+
-+struct stream_params {
-+	snd_pcm_access_t access;
-+	snd_pcm_format_t format;
-+	unsigned int channels;
-+	unsigned int rate;
++struct ftrace_mod_syms {
++	unsigned long *addrs;
++	unsigned int nr;
 +};
 +
-+/* The playback params differ from the capture params in every field. */
-+static const struct stream_params capture_params = {
-+	SND_PCM_ACCESS_RW_INTERLEAVED, SND_PCM_FORMAT_S16_LE, 2, 44100
-+};
-+
-+static const struct stream_params playback_params = {
-+	SND_PCM_ACCESS_RW_NONINTERLEAVED, SND_PCM_FORMAT_S32_LE, 4, 96000
-+};
-+
-+struct probe_result {
-+	unsigned int rate_min, rate_max;
-+	unsigned int channels_min, channels_max;
-+	bool format_ok;
-+};
-+
-+/* Value events seen on the cable's controls */
-+enum {
-+	EV_ACTIVE	= 1 << 0,
-+	EV_FORMAT	= 1 << 1,
-+	EV_RATE		= 1 << 2,
-+	EV_CHANNELS	= 1 << 3,
-+	EV_ACCESS	= 1 << 4,
-+};
-+
-+FIXTURE(aloop) {
-+	char play_name[32];
-+	char capt_name[32];
-+	snd_ctl_t *ctl;
-+	bool saved_notify;
-+	bool notify_saved;
-+};
-+
-+/* The cable's controls are on the capture side device. */
-+static void cable_ctl_id(snd_ctl_elem_value_t *value, const char *name)
++static int ftrace_cmp_addr(const void *a, const void *b)
 +{
-+	snd_ctl_elem_value_set_interface(value, SND_CTL_ELEM_IFACE_PCM);
-+	snd_ctl_elem_value_set_name(value, name);
-+	snd_ctl_elem_value_set_device(value, 1);
-+	snd_ctl_elem_value_set_subdevice(value, 0);
++	unsigned long x = *(const unsigned long *)a;
++	unsigned long y = *(const unsigned long *)b;
++
++	return x < y ? -1 : x > y;
 +}
 +
-+static long cable_ctl_get(snd_ctl_t *ctl, const char *name)
++/* Collect the symbols find_kallsyms_symbol() would consider. */
++static void ftrace_mod_syms_init(struct ftrace_mod_syms *syms,
++				 struct module *mod)
 +{
-+	snd_ctl_elem_value_t *value;
-+
-+	snd_ctl_elem_value_alloca(&value);
-+	cable_ctl_id(value, name);
-+	if (snd_ctl_elem_read(ctl, value) < 0)
-+		return -1;
-+	if (!strcmp(name, "PCM Slave Access Mode"))
-+		return snd_ctl_elem_value_get_enumerated(value, 0);
-+	return snd_ctl_elem_value_get_integer(value, 0);
-+}
-+
-+static int set_notify(snd_ctl_t *ctl, bool on)
-+{
-+	snd_ctl_elem_value_t *value;
-+
-+	snd_ctl_elem_value_alloca(&value);
-+	cable_ctl_id(value, "PCM Notify");
-+	snd_ctl_elem_value_set_boolean(value, 0, on);
-+	return snd_ctl_elem_write(ctl, value);
-+}
-+
-+/* Read all pending control events and return the EV_* bits for the cable's controls. */
-+static unsigned int read_events(snd_ctl_t *ctl)
-+{
-+	static const struct {
-+		const char *name;
-+		unsigned int bit;
-+	} names[] = {
-+		{ "PCM Slave Active", EV_ACTIVE },
-+		{ "PCM Slave Format", EV_FORMAT },
-+		{ "PCM Slave Rate", EV_RATE },
-+		{ "PCM Slave Channels", EV_CHANNELS },
-+		{ "PCM Slave Access Mode", EV_ACCESS },
-+	};
-+	snd_ctl_event_t *event;
-+	unsigned int seen = 0;
-+	int i;
-+
-+	snd_ctl_event_alloca(&event);
-+	while (snd_ctl_read(ctl, event) > 0) {
-+		if (snd_ctl_event_get_type(event) != SND_CTL_EVENT_ELEM ||
-+		    !(snd_ctl_event_elem_get_mask(event) & SND_CTL_EVENT_MASK_VALUE) ||
-+		    snd_ctl_event_elem_get_device(event) != 1 ||
-+		    snd_ctl_event_elem_get_subdevice(event) != 0)
-+			continue;
-+		for (i = 0; i < ARRAY_SIZE(names); i++)
-+			if (!strcmp(snd_ctl_event_elem_get_name(event), names[i].name))
-+				seen |= names[i].bit;
-+	}
-+	return seen;
-+}
-+
-+/* Open and configure a stream. snd_pcm_hw_params() also prepares it. */
-+static int open_pcm(snd_pcm_t **pcm, const char *name, snd_pcm_stream_t stream,
-+		    const struct stream_params *p)
-+{
-+	unsigned int buffer_time = 100000;
-+	snd_pcm_hw_params_t *hw;
-+	int err;
-+
-+	snd_pcm_hw_params_alloca(&hw);
-+	err = snd_pcm_open(pcm, name, stream, 0);
-+	if (err < 0)
-+		return err;
-+	err = snd_pcm_hw_params_any(*pcm, hw);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_set_access(*pcm, hw, p->access);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_set_format(*pcm, hw, p->format);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_set_channels(*pcm, hw, p->channels);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_set_rate(*pcm, hw, p->rate, 0);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_set_buffer_time_near(*pcm, hw, &buffer_time, NULL);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params(*pcm, hw);
-+	if (err < 0) {
-+		snd_pcm_close(*pcm);
-+		*pcm = NULL;
-+	}
-+	return err;
-+}
-+
-+/* What a client probing the device sees, and whether it may use the given format */
-+static int probe_pcm(const char *name, snd_pcm_stream_t stream, snd_pcm_format_t format,
-+		     struct probe_result *res)
-+{
-+	snd_pcm_hw_params_t *hw;
-+	snd_pcm_t *pcm;
-+	int err;
-+
-+	snd_pcm_hw_params_alloca(&hw);
-+	err = snd_pcm_open(&pcm, name, stream, 0);
-+	if (err < 0)
-+		return err;
-+	err = snd_pcm_hw_params_any(pcm, hw);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_get_rate_min(hw, &res->rate_min, NULL);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_get_rate_max(hw, &res->rate_max, NULL);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_get_channels_min(hw, &res->channels_min);
-+	if (err >= 0)
-+		err = snd_pcm_hw_params_get_channels_max(hw, &res->channels_max);
-+	if (err >= 0)
-+		res->format_ok = !snd_pcm_hw_params_test_format(pcm, hw, format);
-+	snd_pcm_close(pcm);
-+	return err;
-+}
-+
-+static int start_playback(snd_pcm_t *pcm, const struct stream_params *p)
-+{
-+	static char silence[FRAMES * MAX_CHANNELS * 4];
-+	void *bufs[MAX_CHANNELS];
-+	snd_pcm_sframes_t written;
++	/* A coming module cannot have its kallsyms replaced under us. */
++	struct mod_kallsyms *kallsyms = rcu_dereference_raw(mod->kallsyms);
 +	unsigned int i;
 +
-+	if (p->access == SND_PCM_ACCESS_RW_NONINTERLEAVED) {
-+		for (i = 0; i < p->channels; i++)
-+			bufs[i] = silence + i * FRAMES * 4;
-+		written = snd_pcm_writen(pcm, bufs, FRAMES);
-+	} else {
-+		written = snd_pcm_writei(pcm, silence, FRAMES);
++	syms->nr = 0;
++	syms->addrs = kvmalloc_array(kallsyms->num_symtab,
++				     sizeof(*syms->addrs), GFP_KERNEL);
++	if (!syms->addrs)
++		return;
++
++	for (i = 1; i < kallsyms->num_symtab; i++) {
++		const Elf_Sym *sym = &kallsyms->symtab[i];
++		const char *name = kallsyms->strtab + sym->st_name;
++
++		if (sym->st_shndx == SHN_UNDEF || *name == '\0' ||
++		    is_mapping_symbol(name))
++			continue;
++		syms->addrs[syms->nr++] = kallsyms_symbol_value(sym);
 +	}
-+	if (written < 0)
-+		return written;
-+	if (snd_pcm_state(pcm) == SND_PCM_STATE_PREPARED)
-+		return snd_pcm_start(pcm);
++
++	sort(syms->addrs, syms->nr, sizeof(*syms->addrs), ftrace_cmp_addr, NULL);
++}
++
++/* Same answer as test_for_valid_rec(), using the sorted addresses. */
++static int test_for_valid_mod_rec(struct ftrace_mod_syms *syms,
++				  struct module *mod, struct dyn_ftrace *rec)
++{
++	unsigned long ip = rec->ip, base, best;
++	unsigned int lo = 0, hi = syms->nr, mid;
++	struct module_memory *mod_mem = NULL;
++
++	if (!syms->addrs)
++		return test_for_valid_rec(rec);
++
++	for_each_mod_mem_type(type) {
++#ifndef CONFIG_KALLSYMS_ALL
++		if (!mod_mem_type_is_text(type))
++			continue;
++#endif
++		if (within_module_mem_type(ip, mod, type)) {
++			mod_mem = &mod->mem[type];
++			break;
++		}
++	}
++	if (!mod_mem)
++		goto invalid;
++	base = (unsigned long)mod_mem->base;
++
++	/* Find the last symbol at or below ip. */
++	while (lo < hi) {
++		mid = lo + (hi - lo) / 2;
++		if (syms->addrs[mid] <= ip)
++			lo = mid + 1;
++		else
++			hi = mid;
++	}
++	if (!lo)
++		goto invalid;
++	best = syms->addrs[lo - 1];
++
++	/* Weak functions can cause invalid addresses */
++	if (best < base || ip - best > FTRACE_MCOUNT_MAX_OFFSET)
++		goto invalid;
++	return 1;
++
++invalid:
++	rec->flags |= FTRACE_FL_DISABLED;
 +	return 0;
 +}
 +
-+FIXTURE_SETUP(aloop) {
-+	char ctl_name[32];
-+	snd_pcm_t *pcm;
-+	int card, err;
++static void ftrace_mod_syms_free(struct ftrace_mod_syms *syms)
++{
++	kvfree(syms->addrs);
++}
++#endif
 +
-+	card = snd_card_get_index("Loopback");
-+	if (card < 0)
-+		SKIP(return, "No Loopback card, snd-aloop is probably not loaded");
+ static struct workqueue_struct *ftrace_check_wq __initdata;
+ static struct work_struct ftrace_check_work __initdata;
+ 
+@@ -8010,11 +8114,30 @@ void ftrace_release_mod(struct module *mod)
+ 	}
+ }
+ 
++#ifndef FTRACE_MOD_SYMS
++struct ftrace_mod_syms { };
 +
-+	sprintf(ctl_name, "hw:%d", card);
-+	sprintf(self->play_name, "hw:%d,0,0", card);
-+	sprintf(self->capt_name, "hw:%d,1,0", card);
++static inline void ftrace_mod_syms_init(struct ftrace_mod_syms *syms,
++					struct module *mod) { }
 +
-+	err = snd_pcm_open(&pcm, self->capt_name, SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
-+	if (err == -EBUSY)
-+		SKIP(return, "%s is in use", self->capt_name);
-+	ASSERT_EQ(err, 0);
-+	snd_pcm_close(pcm);
-+	err = snd_pcm_open(&pcm, self->play_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
-+	if (err == -EBUSY)
-+		SKIP(return, "%s is in use", self->play_name);
-+	ASSERT_EQ(err, 0);
-+	snd_pcm_close(pcm);
-+
-+	ASSERT_EQ(snd_ctl_open(&self->ctl, ctl_name, SND_CTL_NONBLOCK), 0);
-+	ASSERT_EQ(snd_ctl_subscribe_events(self->ctl, 1), 0);
-+	self->saved_notify = cable_ctl_get(self->ctl, "PCM Notify");
-+	self->notify_saved = true;
++static inline int test_for_valid_mod_rec(struct ftrace_mod_syms *syms,
++					 struct module *mod,
++					 struct dyn_ftrace *rec)
++{
++	return test_for_valid_rec(rec);
 +}
 +
-+FIXTURE_TEARDOWN(aloop) {
-+	if (self->notify_saved)
-+		set_notify(self->ctl, self->saved_notify);
-+	if (self->ctl)
-+		snd_ctl_close(self->ctl);
-+}
++static inline void ftrace_mod_syms_free(struct ftrace_mod_syms *syms) { }
++#endif
 +
-+/* Without notify, a playback opened while a capture is set up is pinned to its parameters. */
-+TEST_F(aloop, playback_constrained_without_notify) {
-+	struct probe_result res;
-+	snd_pcm_t *capt;
+ void ftrace_module_enable(struct module *mod)
+ {
++	struct ftrace_mod_syms syms;
+ 	struct dyn_ftrace *rec;
+ 	struct ftrace_page *pg;
+ 
++	ftrace_mod_syms_init(&syms, mod);
 +
-+	ASSERT_EQ(set_notify(self->ctl, false), 0);
-+	ASSERT_EQ(open_pcm(&capt, self->capt_name, SND_PCM_STREAM_CAPTURE, &capture_params), 0);
+ 	mutex_lock(&ftrace_lock);
+ 
+ 	if (ftrace_disabled)
+@@ -8050,7 +8173,7 @@ void ftrace_module_enable(struct module *mod)
+ 		cond_resched();
+ 
+ 		/* Weak functions should still be ignored */
+-		if (!test_for_valid_rec(rec)) {
++		if (!test_for_valid_mod_rec(&syms, mod, rec)) {
+ 			/* Clear all other flags. Should not be enabled anyway */
+ 			rec->flags = FTRACE_FL_DISABLED;
+ 			continue;
+@@ -8087,6 +8210,8 @@ void ftrace_module_enable(struct module *mod)
+  out_unlock:
+ 	mutex_unlock(&ftrace_lock);
+ 
++	ftrace_mod_syms_free(&syms);
 +
-+	ASSERT_EQ(probe_pcm(self->play_name, SND_PCM_STREAM_PLAYBACK, playback_params.format,
-+			    &res), 0);
-+	EXPECT_EQ(res.rate_min, capture_params.rate);
-+	EXPECT_EQ(res.rate_max, capture_params.rate);
-+	EXPECT_EQ(res.channels_min, capture_params.channels);
-+	EXPECT_EQ(res.channels_max, capture_params.channels);
-+	EXPECT_FALSE(res.format_ok);
-+
-+	snd_pcm_close(capt);
-+}
-+
-+/* With notify, the playback side is free to pick other parameters. */
-+TEST_F(aloop, playback_unconstrained_with_notify) {
-+	struct probe_result res;
-+	snd_pcm_t *capt;
-+
-+	ASSERT_EQ(set_notify(self->ctl, true), 0);
-+	ASSERT_EQ(open_pcm(&capt, self->capt_name, SND_PCM_STREAM_CAPTURE, &capture_params), 0);
-+
-+	ASSERT_EQ(probe_pcm(self->play_name, SND_PCM_STREAM_PLAYBACK, playback_params.format,
-+			    &res), 0);
-+	EXPECT_LE(res.rate_min, capture_params.rate);
-+	EXPECT_GE(res.rate_max, playback_params.rate);
-+	EXPECT_LE(res.channels_min, capture_params.channels);
-+	EXPECT_GE(res.channels_max, playback_params.channels);
-+	EXPECT_TRUE(res.format_ok);
-+
-+	snd_pcm_close(capt);
-+}
-+
-+/*
-+ * With notify, starting a playback with different parameters stops the
-+ * running capture, and the "PCM Slave" controls report the new parameters
-+ * with a value event for each one that changed.
-+ */
-+TEST_F(aloop, params_change_stops_capture_with_notify) {
-+	snd_pcm_t *capt, *play;
-+	unsigned int events;
-+
-+	/*
-+	 * The controls keep the last playback's parameters, and only notify on
-+	 * a change. Start a playback with the capture's parameters while no
-+	 * capture is open, so that every control changes below.
-+	 */
-+	ASSERT_EQ(open_pcm(&play, self->play_name, SND_PCM_STREAM_PLAYBACK, &capture_params), 0);
-+	ASSERT_EQ(start_playback(play, &capture_params), 0);
-+	snd_pcm_close(play);
-+
-+	ASSERT_EQ(set_notify(self->ctl, true), 0);
-+	ASSERT_EQ(open_pcm(&capt, self->capt_name, SND_PCM_STREAM_CAPTURE, &capture_params), 0);
-+	ASSERT_EQ(snd_pcm_start(capt), 0);
-+	ASSERT_EQ(snd_pcm_state(capt), SND_PCM_STATE_RUNNING);
-+	EXPECT_EQ(cable_ctl_get(self->ctl, "PCM Slave Active"), 0);
-+	read_events(self->ctl);
-+
-+	ASSERT_EQ(open_pcm(&play, self->play_name, SND_PCM_STREAM_PLAYBACK, &playback_params), 0)
-+		TH_LOG("Playback refused other parameters while the capture is running");
-+	ASSERT_EQ(start_playback(play, &playback_params), 0);
-+
-+	/* loopback_check_format() stops the capture from the playback's start trigger. */
-+	EXPECT_NE(snd_pcm_state(capt), SND_PCM_STATE_RUNNING);
-+
-+	EXPECT_EQ(cable_ctl_get(self->ctl, "PCM Slave Active"), 1);
-+	EXPECT_EQ(cable_ctl_get(self->ctl, "PCM Slave Format"), playback_params.format);
-+	EXPECT_EQ(cable_ctl_get(self->ctl, "PCM Slave Rate"), playback_params.rate);
-+	EXPECT_EQ(cable_ctl_get(self->ctl, "PCM Slave Channels"), playback_params.channels);
-+	EXPECT_EQ(cable_ctl_get(self->ctl, "PCM Slave Access Mode"), 1);
-+
-+	events = read_events(self->ctl);
-+	EXPECT_TRUE(events & EV_ACTIVE);
-+	EXPECT_TRUE(events & EV_FORMAT);
-+	EXPECT_TRUE(events & EV_RATE);
-+	EXPECT_TRUE(events & EV_CHANNELS);
-+	EXPECT_TRUE(events & EV_ACCESS);
-+
-+	snd_pcm_close(play);
-+	snd_pcm_close(capt);
-+}
-+
-+/* With notify, a capture opened second is still pinned to the playback's parameters. */
-+TEST_F(aloop, capture_constrained_with_notify) {
-+	struct probe_result res;
-+	snd_pcm_t *play;
-+
-+	ASSERT_EQ(set_notify(self->ctl, true), 0);
-+	ASSERT_EQ(open_pcm(&play, self->play_name, SND_PCM_STREAM_PLAYBACK, &playback_params), 0);
-+
-+	ASSERT_EQ(probe_pcm(self->capt_name, SND_PCM_STREAM_CAPTURE, capture_params.format,
-+			    &res), 0);
-+	EXPECT_EQ(res.rate_min, playback_params.rate);
-+	EXPECT_EQ(res.rate_max, playback_params.rate);
-+	EXPECT_EQ(res.channels_min, playback_params.channels);
-+	EXPECT_EQ(res.channels_max, playback_params.channels);
-+	EXPECT_FALSE(res.format_ok);
-+
-+	snd_pcm_close(play);
-+}
-+
-+TEST_HARNESS_MAIN
+ 	process_cached_mods(mod->name);
+ }
+ 
 
--- 
-2.53.0
+---
+base-commit: e767a4ea70a3992c37ed604157d32f0dfbf9b1e3
+change-id: 20261003-ftrace-mod-bsearch-534a86527ee5
+
+Best regards,
+--  
+Lawrence Lin <deduce@gmail.com>
 
