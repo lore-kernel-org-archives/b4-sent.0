@@ -1,81 +1,139 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sat, 03 Oct 2026 06:15:05 +0300
-Subject: [PATCH] arm64: dts: amlogic: meson-sm1-odroid: let the SD card be
- powered down
+From: Petr Hodina <petr.hodina@protonmail.com>
+Date: Sat, 03 Oct 2026 05:44:03 +0200
+Subject: [PATCH] cmd: button: add live monitor subcommand
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261003-hc4-sd-power-off-v1-1-f7ffba01b348@iav.lv>
-X-B4-Tracking: v=1; b=H4sIADhzwGoC/x3MTQqAIBBA4avErBvQ7I+uEi1CZ2o2KgoVSHdPW
- n6L9wpkSkIZlqZAokuyBF+h2wbsufuDUFw1dKobtVIGT9tjdhjDTQkDM46TMzzMrI3qoWYxEcv
- zL9ftfT8AAcz0YgAAAA==
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Christian Hewitt <christianshewitt@gmail.com>, 
- Dongjin Kim <tobetter@gmail.com>, 
- Eric Neulight <Eric.Neulight@linuxdev.slmail.me>, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1814; i=iav@iav.lv;
- h=from:subject:message-id; bh=DXX3IOmUgvr4GKV8MwPySwGHNkc4UtI5AabTLkv0Z0E=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkHii1ZN5pd3bp57Xa/9BMGS0Q/Nyxizfx87ucKy5m/h
- LYd9XL63VHKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAm8siT4RdTE0fb5E2HJZm/
- t+actL/EXKd+772c6JWvkemOi7mL+psZ/hmbnPd+9vHr6sPOBx/57bo4Rb5yZufzaUxCu65zPav
- lTGEHAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261003-b4-button-live-monitor-v1-1-6a2934e71fbd@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDsQg0TxKuKiE6d1RJOSHxHEu
+ ze1y2/x3gmRg3CEvjoh8C5RvCuoHxXY+enejDIVg1ba1EpppAYpp+QdrrIzbt5J8gG7lnQ7daa
+ xZKDEn8AvOe7xMP4dMy1s0+8G1/UFKeA08noAAAA=
+X-Change-ID: 20261002-b4-button-live-monitor-87b27d864cb6
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, David Heidelberg <david@ixit.cz>, 
+ Petr Hodina <petr.hodina@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1790999049; l=3218;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=W5lumvEdK05TMwElbKPNBeEZv+2cTckmdk6q6jk7ySM=;
+ b=R88UJhta9UgsW6RCKbh6SZTYvMM4+o7UOpgUc2+ly9gAXEdC4g6+oudVNeddAldVVt5Hujfd4
+ TeXtbAblrbPBCBmZKXynhNv3hSVEKA2uus4Gpj6BoCpKA7q8BMstntr
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A warm reboot leaves the ODROID-HC4 in the bootloader: the card is still
-detected - CID and CSD read fine - but data transfers fail, and both
-U-Boot and the boot ROM give up on CMD18. A cold power cycle always
-recovers it.
+`button list` prints state once and exits. The new subcommand `monitor`
+loops the input states with default timeout 5s so live verification
+on the device is easier.
 
-The card is left in UHS mode at 1.8 V, and nothing after Linux brings it
-back to 3.3 V: the bootloader resets the controller, not the card. The
-kernel does try to cut the power on the way out - mmc_bus_shutdown() ends
-in _mmc_sd_suspend(), which calls mmc_power_off(), and meson-gx-mmc then
-disables the vmmc regulator - but TFLASH_VDD is marked
-regulator-always-on, so the regulator core keeps it enabled and the card
-keeps its supply.
-
-Drop the property. The regulator has a consumer that manages it, and
-regulator-boot-on already describes the state it comes up in.
-
-Tested on ODROID-HC4 with a card that reproduces the failure. Not tested
-on ODROID-C4, which shares this file.
-
-Fixes: 326e57518b0d ("arm64: dts: meson-sm1: add support for Hardkernel ODROID-C4")
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi | 1 -
- 1 file changed, 1 deletion(-)
+`button list` only prints state once and exits so verifying a
+button mapping on a mobile device is not practical. Therefore 
+the new subcommand loops the input states and prints it live.
+---
+ cmd/button.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 57 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
-index e6f02d738a21..7dbc75bfaea2 100644
---- a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
-@@ -38,7 +38,6 @@ tflash_vdd: regulator-tflash-vdd {
- 		gpio = <&gpio_ao GPIOAO_3 GPIO_OPEN_DRAIN>;
- 		enable-active-high;
- 		regulator-boot-on;
--		regulator-always-on;
- 	};
+diff --git a/cmd/button.c b/cmd/button.c
+index 3e6db3f5b8e..daab7b6fb6c 100644
+--- a/cmd/button.c
++++ b/cmd/button.c
+@@ -8,7 +8,11 @@
+ #include <command.h>
+ #include <dm.h>
+ #include <button.h>
++#include <stdio.h>
++#include <time.h>
++#include <vsprintf.h>
+ #include <dm/uclass-internal.h>
++#include <linux/delay.h>
  
- 	tf_io: gpio-regulator-tf-io {
+ static const char *const state_label[] = {
+ 	[BUTTON_OFF]	= "off",
+@@ -53,6 +57,48 @@ static int list_buttons(void)
+ 	return 0;
+ }
+ 
++static int monitor_buttons(unsigned long timeout_ms)
++{
++	ulong start = get_timer(0);
++	ulong elapsed;
++
++	/* Clear screen and move cursor to row 1, column 1 */
++	puts("\x1b[2J\x1b[H");
++	puts("Button monitor\r\n\r\n");
++
++	for (;;) {
++		struct udevice *dev;
++
++		elapsed = get_timer(start);
++		if (elapsed >= timeout_ms)
++			break;
++
++		puts("\x1b[3;1H");
++		printf("%lu.%lus left\x1b[K\r\n",
++		       (timeout_ms - elapsed) / 1000,
++		       ((timeout_ms - elapsed) % 1000) / 100);
++		puts("--------------------\r\n");
++
++		for (uclass_first_device(UCLASS_BUTTON, &dev);
++		     dev;
++		     uclass_next_device(&dev)) {
++			struct button_uc_plat *plat = dev_get_uclass_plat(dev);
++			int state;
++
++			if (!plat->label)
++				continue;
++			state = button_get_state(dev);
++
++			printf("%-15s %-3s\x1b[K\r\n", plat->label,
++			       (state == BUTTON_ON) ? "ON" : "off");
++		}
++
++		mdelay(100);
++	}
++
++	return 0;
++}
++
+ int do_button(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+ {
+ 	const char *button_label;
+@@ -65,6 +111,13 @@ int do_button(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+ 	button_label = argv[1];
+ 	if (strncmp(button_label, "list", 4) == 0)
+ 		return list_buttons();
++	if (strncmp(button_label, "monitor", 7) == 0) {
++		unsigned long timeout_ms = 5000;
++
++		if (argc >= 3)
++			timeout_ms = dectoul(argv[2], NULL);
++		return monitor_buttons(timeout_ms);
++	}
+ 
+ 	ret = button_get_by_label(button_label, &dev);
+ 	if (ret) {
+@@ -78,8 +131,10 @@ int do_button(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+ }
+ 
+ U_BOOT_CMD(
+-	button, 2, 1, do_button,
++	button, 3, 1, do_button,
+ 	"manage buttons",
+ 	"<button_label> \tGet button state\n"
+-	"button list\t\tShow a list of buttons"
++	"button list\t\tShow a list of buttons\n"
++	"button monitor [timeout_ms]\tLive table, updates every 100ms,\n"
++	"                             \tquits on timeout (default 5000ms)"
+ );
 
 ---
-base-commit: b44e2be772f866985cafdf90355285069ea68495
-change-id: 20261003-hc4-sd-power-off-67d3f58f1304
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20261002-b4-button-live-monitor-87b27d864cb6
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
