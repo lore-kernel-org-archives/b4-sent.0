@@ -1,15 +1,12 @@
 From: Sven Peter <sven@kernel.org>
-Subject: [PATCH v3 0/3] Apple SoC CIO (USB4/Thunderbolt) reset controller
-Date: Sat, 03 Oct 2026 22:50:59 +0200
-Message-Id: <20261003-b4-cio-reset-v3-0-e605f9e5c8a4@kernel.org>
+Date: Sat, 03 Oct 2026 22:51:00 +0200
+Subject: [PATCH v3 1/3] dt-bindings: reset: Add Apple SoC CIO reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw7CIBQFf6W5azEU0D5W/odxAeXSoqYYqETT9
- N+FulETl5OcmTNDQG8xQFvM4DHaYN2YgG8K6AY59kisTgyMsj2taUOUIJ11xGPAiUjJjaJCSd0
- gJOXm0djHmjue3hzu6ozdlBt5MdgwOf9c/2KZd3/SsSSUCMN5VVW6UUIdLuhHvG6d7yG3I/uwW
- fljs2QzTcXO1FQKJr7sZVleF1r3CvkAAAA=
-X-Change-ID: 20260809-b4-cio-reset-aa3fb04bad9e
+Message-Id: <20261003-b4-cio-reset-v3-1-e605f9e5c8a4@kernel.org>
+References: <20261003-b4-cio-reset-v3-0-e605f9e5c8a4@kernel.org>
+In-Reply-To: <20261003-b4-cio-reset-v3-0-e605f9e5c8a4@kernel.org>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
  Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,85 +15,142 @@ Cc: Joshua Peisach <jpeisach@ubuntu.com>, asahi@lists.linux.dev,
  linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2831; i=sven@kernel.org;
- h=from:subject:message-id; bh=hjkUgIJ1jqk8Ay62xKb0orLgoJe2KP9bpAbBa0mAAYE=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bBrO2bZjMG3T4YOf17Q6aB2F/ufR6MlzqEptfv0pOJn
- h15pbOqo4SFQYyLQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCRgEMMX0VPvOXVCzp40+LR
- 44/Hr9ZNL/no/DqySOjM6xgpHoHPnAz/vSS+Wr71z3/+cRrnGQlpC53pn2S7P8dfOdfRtuGW3/u
- dHAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4557; i=sven@kernel.org;
+ h=from:subject:message-id; bh=hAswI+y+di4O0xhi0HD2U6PW8nbMtrMfOI7QENBDFcA=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bBrB1ymcLGT3gEXz933nHli6XPMbXYBftns6h982Hpy
+ uH992pyRykLgxgXg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAitrmMDK+myh8o6TOZV63b
+ 97Fm2+tbG/ZOfbBOPXjjvQrzut+9p5gZGWZOWcGaskllm0vGygW/Gf5tPFb7oPyplpmNaeT7j5N
+ Mi9gA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+The CIO (USB4/Thunderbolt) blocks on Apple Silicon SoCs have a reset
+inside the power manager that has to be deasserted before their
+co-processor can be booted. On t8103 each port comes with a dedicated
+register page, represented as a standalone node. On t600x a single
+register shared by all ports of a die is located in the middle of the
+PMGR MMIO region instead, represented as a sub-node of the PMGR syscon.
 
-The CIO blocks used for USB4/Thunderbolt on Apple Silicon SoCs have a
-reset inside the power manager that has to be deasserted before their
-co-processor can be booted. On t8103 and t8112 each port comes with a
-dedicated register page while t600x and t602x use a single register
-with one request bit per port shared by all ports of a die in the
-middle of the PMGR MMIO region.
-
-The first patch adds the dt-binding, the second one the driver and the
-last one the device tree nodes for all SoCs. This will be used by the
-upcoming USB4/Thunderbolt series to start the host routers before
-booting their co-processors.
-
-Best,
-
-Sven
-
+Reviewed-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
-Changes in v3:
-- rebased on -rc1
-- Link to v2: https://patch.msgid.link/20260821-b4-cio-reset-v2-0-2d045f80a424@kernel.org
+ .../devicetree/bindings/arm/apple/apple,pmgr.yaml  | 12 +++++
+ .../bindings/reset/apple,t8103-cio-reset.yaml      | 61 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 3 files changed, 74 insertions(+)
 
-Changes in v2:
-- dt-bindings: move the t600x example with the PMGR sub-node over to the
-  PMGR binding itself where it can use the correct number of address
-  cells such that the unit address matches reg again (Conor)
-- bail out of probe when no match data is available (Joshua, sashiko)
-- explain why neither a read-modify-write nor a delay before polling
-  is required for the shared t600x register (sashiko)
-- fix a copy/paste error for the M2 MMIO region in the dts change
-- Link to v1: https://patch.msgid.link/20260809-b4-cio-reset-v1-0-4f33777d9b4b@kernel.org
+diff --git a/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml b/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml
+index 1d2001836eb4..6429ca685b9d 100644
+--- a/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml
++++ b/Documentation/devicetree/bindings/arm/apple/apple,pmgr.yaml
+@@ -61,6 +61,12 @@ patternProperties:
+     type: object
+     $ref: /schemas/power/apple,pmgr-pwrstate.yaml#
+ 
++  "reset-controller@[0-9a-f]+$":
++    description:
++      Reset controller for the CIO (USB4/Thunderbolt) blocks
++    type: object
++    $ref: /schemas/reset/apple,t8103-cio-reset.yaml#
++
+ required:
+   - compatible
+   - reg
+@@ -105,6 +111,12 @@ examples:
+                 label = "uart0";
+                 power-domains = <&ps_uart_p>;
+             };
++
++            reset-controller@13034 {
++                compatible = "apple,t6000-cio-reset";
++                reg = <0x13034 0x4>;
++                #reset-cells = <1>;
++            };
+         };
+ 
+         power-management@23d280000 {
+diff --git a/Documentation/devicetree/bindings/reset/apple,t8103-cio-reset.yaml b/Documentation/devicetree/bindings/reset/apple,t8103-cio-reset.yaml
+new file mode 100644
+index 000000000000..6f602669d242
+--- /dev/null
++++ b/Documentation/devicetree/bindings/reset/apple,t8103-cio-reset.yaml
+@@ -0,0 +1,61 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/reset/apple,t8103-cio-reset.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Apple SoC CIO (USB4/Thunderbolt) block reset controller
++
++maintainers:
++  - Sven Peter <sven@kernel.org>
++
++description: |
++  The CIO (Converged I/O) blocks on Apple Silicon SoCs have a reset
++  inside the power manager (PMGR) that has to be deasserted before
++  their co-processor can be booted. On t8103 each port comes with a
++  dedicated register page, represented as a standalone node. On t600x a
++  single register shared by all ports of a die with one request bit per
++  port is used instead. Since this register is located in the middle of
++  the PMGR MMIO region it is represented as a sub-node of the PMGR
++  syscon with reg used as an offset into it.
++
++  In both cases the reset id is the CIO port index on the die.
++
++properties:
++  compatible:
++    oneOf:
++      - enum:
++          - apple,t8103-cio-reset
++          - apple,t6000-cio-reset
++      - items:
++          - const: apple,t8112-cio-reset
++          - const: apple,t8103-cio-reset
++      - items:
++          - const: apple,t6020-cio-reset
++          - const: apple,t6000-cio-reset
++
++  reg:
++    maxItems: 1
++
++  '#reset-cells':
++    const: 1
++
++required:
++  - compatible
++  - reg
++  - '#reset-cells'
++
++additionalProperties: false
++
++examples:
++  - |
++    soc {
++        #address-cells = <2>;
++        #size-cells = <2>;
++
++        reset-controller@23b784000 {
++            compatible = "apple,t8103-cio-reset";
++            reg = <0x2 0x3b784000 0x0 0x8000>;
++            #reset-cells = <1>;
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 3a19da74d00c..e333c7863460 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2654,6 +2654,7 @@ F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
+ F:	Documentation/devicetree/bindings/power/apple*
+ F:	Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
+ F:	Documentation/devicetree/bindings/pwm/apple,s5l-fpwm.yaml
++F:	Documentation/devicetree/bindings/reset/apple,t8103-cio-reset.yaml
+ F:	Documentation/devicetree/bindings/rtc/apple,smc-rtc.yaml
+ F:	Documentation/devicetree/bindings/soc/apple/apple,t6000-pmgr-misc.yaml
+ F:	Documentation/devicetree/bindings/spi/apple,spi.yaml
 
-To: Sven Peter <sven@kernel.org>
-To: Janne Grunau <j@jannau.net>
-To: Neal Gompa <neal@gompa.dev>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Philipp Zabel <p.zabel@pengutronix.de>
-Cc: Joshua Peisach <jpeisach@ubuntu.com>
-Cc: asahi@lists.linux.dev
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-
----
-Sven Peter (3):
-      dt-bindings: reset: Add Apple SoC CIO reset
-      reset: Add Apple SoC CIO reset driver
-      arm64: dts: apple: Add CIO reset controllers
-
- .../devicetree/bindings/arm/apple/apple,pmgr.yaml  |  12 ++
- .../bindings/reset/apple,t8103-cio-reset.yaml      |  61 +++++++
- MAINTAINERS                                        |   2 +
- arch/arm64/boot/dts/apple/t600x-dieX.dtsi          |   8 +-
- arch/arm64/boot/dts/apple/t602x-dieX.dtsi          |   8 +-
- arch/arm64/boot/dts/apple/t8103.dtsi               |   6 +
- arch/arm64/boot/dts/apple/t8112.dtsi               |   6 +
- drivers/reset/Kconfig                              |  10 ++
- drivers/reset/Makefile                             |   1 +
- drivers/reset/reset-apple-cio.c                    | 200 +++++++++++++++++++++
- 10 files changed, 312 insertions(+), 2 deletions(-)
----
-base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
-change-id: 20260809-b4-cio-reset-aa3fb04bad9e
-
-Best regards,
---  
-Sven Peter <sven@kernel.org>
+-- 
+2.55.0
 
