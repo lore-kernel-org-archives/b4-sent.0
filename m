@@ -1,301 +1,102 @@
-From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
-Date: Sat, 03 Oct 2026 20:19:20 +0000
-Subject: [PATCH 2/2] bus: add Altera timeout bridge driver
+From: Sven Peter <sven@kernel.org>
+Subject: [PATCH v3 0/3] Apple SoC CIO (USB4/Thunderbolt) reset controller
+Date: Sat, 03 Oct 2026 22:50:59 +0200
+Message-Id: <20261003-b4-cio-reset-v3-0-e605f9e5c8a4@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261003-feature-timeout-ip-v1-2-8837c311d571@bruker.com>
-References: <20261003-feature-timeout-ip-v1-0-8837c311d571@bruker.com>
-In-Reply-To: <20261003-feature-timeout-ip-v1-0-8837c311d571@bruker.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>, 
- Vyacheslav Yurkov <uvv.mail@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791058772; l=8394;
- i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
- bh=ay/MZFMkkNGZ3NCHm6d4sqZeF0z/c4FtI8+IFU78nM0=;
- b=XD5b3Dk7Mh11dDpSeHJHWE1//VOK2tdVJQZPZZQXwRmp2OkDHfYBil9JyJ5wfOnNlwy+C5FuJ
- oQOOZeiqCyPBYsHpzvQ5BGTm045FLcErW1tiChoP54Kjv4mBAMYGZBJ
-X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
- pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
-X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw7CIBQFf6W5azEU0D5W/odxAeXSoqYYqETT9
+ N+FulETl5OcmTNDQG8xQFvM4DHaYN2YgG8K6AY59kisTgyMsj2taUOUIJ11xGPAiUjJjaJCSd0
+ gJOXm0djHmjue3hzu6ozdlBt5MdgwOf9c/2KZd3/SsSSUCMN5VVW6UUIdLuhHvG6d7yG3I/uwW
+ fljs2QzTcXO1FQKJr7sZVleF1r3CvkAAAA=
+X-Change-ID: 20260809-b4-cio-reset-aa3fb04bad9e
+To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
+ Neal Gompa <neal@gompa.dev>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Joshua Peisach <jpeisach@ubuntu.com>, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2831; i=sven@kernel.org;
+ h=from:subject:message-id; bh=hjkUgIJ1jqk8Ay62xKb0orLgoJe2KP9bpAbBa0mAAYE=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ9bBrO2bZjMG3T4YOf17Q6aB2F/ufR6MlzqEptfv0pOJn
+ h15pbOqo4SFQYyLQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCRgEMMX0VPvOXVCzp40+LR
+ 44/Hr9ZNL/no/DqySOjM6xgpHoHPnAz/vSS+Wr71z3/+cRrnGQlpC53pn2S7P8dfOdfRtuGW3/u
+ dHAA=
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Altera timeout bridge IP.
+Hi,
 
-The bridge connects an Avalon bus to the HPS and monitors accesses for
-timeouts. When a timeout occurs the interrupt communicates the event via
-sysfs, which user space can monitor to handle it accordingly. The
-address with the timeout is reported as well.
+The CIO blocks used for USB4/Thunderbolt on Apple Silicon SoCs have a
+reset inside the power manager that has to be deasserted before their
+co-processor can be booted. On t8103 and t8112 each port comes with a
+dedicated register page while t600x and t602x use a single register
+with one request bit per port shared by all ports of a die in the
+middle of the PMGR MMIO region.
 
-Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+The first patch adds the dt-binding, the second one the driver and the
+last one the device tree nodes for all SoCs. This will be used by the
+upcoming USB4/Thunderbolt series to start the host routers before
+booting their co-processors.
+
+Best,
+
+Sven
+
 ---
- drivers/bus/Kconfig                 |  10 ++
- drivers/bus/Makefile                |   1 +
- drivers/bus/altera-timeout-bridge.c | 219 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 230 insertions(+)
+Changes in v3:
+- rebased on -rc1
+- Link to v2: https://patch.msgid.link/20260821-b4-cio-reset-v2-0-2d045f80a424@kernel.org
 
-diff --git a/drivers/bus/Kconfig b/drivers/bus/Kconfig
-index e4b1db809187..8a4ad96742e5 100644
---- a/drivers/bus/Kconfig
-+++ b/drivers/bus/Kconfig
-@@ -247,6 +247,16 @@ config DA8XX_MSTPRI
- 	  configuration. Allows to adjust the priorities of all master
- 	  peripherals.
- 
-+config ALTERA_TIMEOUT_BRIDGE
-+	tristate "Altera AXI Timeout Bridge bus"
-+	depends on OF
-+	default n
-+	help
-+	  Driver for Altera AXI Timeout Bridge, which can be used a bus.
-+	  The subordinate devices can be connected to the bridge, which
-+	  detects frozen read/write requests and notifies user space by
-+	  means of a sysfs interrupt flag.
-+
- source "drivers/bus/fsl-mc/Kconfig"
- source "drivers/bus/mhi/Kconfig"
- 
-diff --git a/drivers/bus/Makefile b/drivers/bus/Makefile
-index a01f97fef3e8..ad4e6d7b1e49 100644
---- a/drivers/bus/Makefile
-+++ b/drivers/bus/Makefile
-@@ -39,6 +39,7 @@ obj-$(CONFIG_UNIPHIER_SYSTEM_BUS)	+= uniphier-system-bus.o
- obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o
- 
- obj-$(CONFIG_DA8XX_MSTPRI)	+= da8xx-mstpri.o
-+obj-$(CONFIG_ALTERA_TIMEOUT_BRIDGE)	+= altera-timeout-bridge.o
- 
- # MHI
- obj-y				+= mhi/
-diff --git a/drivers/bus/altera-timeout-bridge.c b/drivers/bus/altera-timeout-bridge.c
-new file mode 100644
-index 000000000000..bb44ff4a7591
---- /dev/null
-+++ b/drivers/bus/altera-timeout-bridge.c
-@@ -0,0 +1,219 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Altera Timeout Bridge Bus Driver
-+ *
-+ * Copyright (C) 2026 Bruker Corporation
-+ */
-+
-+#include <linux/interrupt.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/of_device.h>
-+#include <linux/of_platform.h>
-+#include <linux/platform_device.h>
-+
-+#define ALTERA_TIMEOUT_BRIDGE_REG_TIMED_OUT_ADDRESS 0x08
-+#define ALTERA_TIMEOUT_BRIDGE_REG_IRQ_STATUS_RESET 0x00
-+
-+struct altera_timeout_bridge_data {
-+	struct device *dev;
-+	struct resource *bridge_register_resource;
-+	void __iomem *bridge_registers;
-+	atomic_t irq_count;
-+	struct kernfs_node *irq_node;
-+};
-+
-+static ssize_t timeout_irq_show(struct device *dev, struct device_attribute *attr,
-+			char *buf)
-+{
-+	return 0;
-+}
-+
-+static ssize_t irq_count_show(struct device *dev,
-+			      struct device_attribute *attr,
-+			      char *buf)
-+{
-+	struct altera_timeout_bridge_data *driver_data = dev_get_drvdata(dev);
-+
-+	return sysfs_emit(buf, "%d\n", atomic_read(&driver_data->irq_count));
-+}
-+
-+static DEVICE_ATTR_RO(timeout_irq);
-+static DEVICE_ATTR_RO(irq_count);
-+
-+static struct attribute *altera_timeout_bridge_sysfs_attrs[] = {
-+	&dev_attr_timeout_irq.attr,
-+	&dev_attr_irq_count.attr,
-+	NULL /* sentinel */
-+};
-+
-+static const struct attribute_group altera_timeout_bridge_sysfs_group = {
-+	.attrs = altera_timeout_bridge_sysfs_attrs,
-+};
-+
-+static u32
-+bridge_reg_read(struct altera_timeout_bridge_data *driver_data,
-+		u32 offset)
-+{
-+	u32 result;
-+
-+	result = readl(driver_data->bridge_registers + offset);
-+
-+	return result;
-+}
-+
-+static void bridge_reg_write(
-+	struct altera_timeout_bridge_data *driver_data,
-+	int offset, u32 value)
-+{
-+	writel(value, driver_data->bridge_registers + offset);
-+}
-+
-+static irqreturn_t altera_timeout_bridge_isr(int irq, void *data)
-+{
-+	struct altera_timeout_bridge_data *driver_data = data;
-+	u32 timed_out_address;
-+	resource_size_t effective_base_address;
-+	resource_size_t effective_timed_out_address;
-+
-+	atomic_inc(&driver_data->irq_count);
-+
-+	// Read and print the timed-out address (encoded in the lower nibble
-+	// 0x8..0xF according to AXI Timeout Bridge IP (CSR Interrupt Status Information)
-+	timed_out_address = bridge_reg_read(
-+		driver_data,
-+		ALTERA_TIMEOUT_BRIDGE_REG_TIMED_OUT_ADDRESS);
-+	effective_base_address = driver_data->bridge_register_resource->start;
-+	effective_timed_out_address = effective_base_address + timed_out_address;
-+	pr_err("%s: timeout at address 0x%llx\n",
-+		__func__, (unsigned long long)effective_timed_out_address);
-+
-+	// Reset IRQ status in the bridge
-+	bridge_reg_write(
-+		driver_data,
-+		ALTERA_TIMEOUT_BRIDGE_REG_IRQ_STATUS_RESET,
-+		0x1);
-+	// notify the user space
-+	sysfs_notify_dirent(driver_data->irq_node);
-+
-+	return IRQ_HANDLED;
-+}
-+static int altera_timeout_bridge_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct of_device_id *match;
-+	const struct of_dev_auxdata *lookup = dev_get_platdata(dev);
-+	struct device_node *np = dev->of_node;
-+	struct altera_timeout_bridge_data *driver_data;
-+	int ret = 0;
-+	int irq = -1;
-+
-+	/*
-+	 * Allow user to use driver_override to bind this driver to a
-+	 * transparent bus device which has a different compatible string
-+	 * that's not listed in simple_pm_bus_of_match. We don't want to do any
-+	 * of the simple-pm-bus tasks for these devices, so return early.
-+	 */
-+	if (device_has_driver_override(&pdev->dev))
-+		return 0;
-+
-+	match = of_match_device(dev->driver->of_match_table, dev);
-+
-+	/* Use a fall back logic like in simple-pm-bus */
-+	if (match && match->data) {
-+		if (of_property_match_string(np, "compatible", match->compatible) == 0)
-+			return 0;
-+		else
-+			return -ENODEV;
-+	}
-+
-+	driver_data =
-+		devm_kzalloc(&pdev->dev, sizeof(*driver_data), GFP_KERNEL);
-+	if (!driver_data) {
-+		dev_err(&pdev->dev,
-+			"%s: kzalloc failed: no memory for the driver's data, returning ENOMEM\n",
-+			__func__);
-+		return -ENOMEM;
-+	}
-+
-+	driver_data->dev = dev;
-+	platform_set_drvdata(pdev, driver_data);
-+
-+	driver_data->bridge_register_resource =
-+		platform_get_resource(pdev, IORESOURCE_MEM, 0);
-+	if (!driver_data->bridge_register_resource) {
-+		dev_err(dev,
-+			"%s: missing required reg binding\n",
-+			__func__);
-+		return -ENOENT;
-+	}
-+	driver_data->bridge_registers =
-+		devm_ioremap_resource(dev,
-+				     driver_data->bridge_register_resource);
-+	if (IS_ERR(driver_data->bridge_registers)) {
-+		dev_err(dev,
-+			"%s: ioremap_resource failed for bridge-status MMIO, returning PTR_ERR(%ld)\n",
-+			__func__, PTR_ERR(driver_data->bridge_registers));
-+		return PTR_ERR(driver_data->bridge_registers);
-+	}
-+
-+	irq = platform_get_irq(pdev, 0);
-+	if (irq < 0) {
-+		dev_err(dev,
-+			"%s: platform_get_irq failed: %d\n", __func__, irq);
-+		return irq;
-+	}
-+
-+	ret = devm_request_irq(dev, irq,
-+			       altera_timeout_bridge_isr,
-+			       0,
-+			       dev_name(dev),
-+			       driver_data);
-+	if (ret) {
-+		dev_err(dev,
-+			"%s: devm_request_irq failed for IRQ %d: %d\n",
-+			__func__, irq, ret);
-+		return ret;
-+	}
-+
-+	ret = devm_device_add_group(dev, &altera_timeout_bridge_sysfs_group);
-+	if (ret)
-+		return ret;
-+
-+	driver_data->irq_node = sysfs_get_dirent(dev->kobj.sd, "timeout_irq");
-+	if (!driver_data->irq_node)
-+		return -ENOENT;
-+
-+	ret = devm_add_action_or_reset(dev, (void (*)(void *))sysfs_put, driver_data->irq_node);
-+	if (ret)
-+		return ret;
-+
-+	if (np)
-+		of_platform_populate(np, NULL, lookup, &pdev->dev);
-+
-+	return 0;
-+}
-+
-+#define ONLY_BUS	((void *) 1) /* Match if the device is only a bus. */
-+
-+static const struct of_device_id altera_timeout_bridge_of_match[] = {
-+	{ .compatible = "altera-timeout-bridge", },
-+	{ .compatible = "simple-bus",	.data = ONLY_BUS },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, altera_timeout_bridge_of_match);
-+
-+static struct platform_driver altera_timeout_bridge_driver = {
-+	.probe = altera_timeout_bridge_probe,
-+	.driver = {
-+		.name = "altera-timeout-bridge",
-+		.of_match_table = altera_timeout_bridge_of_match,
-+	},
-+};
-+
-+module_platform_driver(altera_timeout_bridge_driver);
-+
-+MODULE_LICENSE("GPL");
-+MODULE_DESCRIPTION("Avalon Timeout Bridge Bus");
-+MODULE_AUTHOR("Vyacheslav Yurkov (V.Yurkov.EXT@bruker.com)");
-+
+Changes in v2:
+- dt-bindings: move the t600x example with the PMGR sub-node over to the
+  PMGR binding itself where it can use the correct number of address
+  cells such that the unit address matches reg again (Conor)
+- bail out of probe when no match data is available (Joshua, sashiko)
+- explain why neither a read-modify-write nor a delay before polling
+  is required for the shared t600x register (sashiko)
+- fix a copy/paste error for the M2 MMIO region in the dts change
+- Link to v1: https://patch.msgid.link/20260809-b4-cio-reset-v1-0-4f33777d9b4b@kernel.org
 
--- 
-2.34.1
+To: Sven Peter <sven@kernel.org>
+To: Janne Grunau <j@jannau.net>
+To: Neal Gompa <neal@gompa.dev>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+Cc: Joshua Peisach <jpeisach@ubuntu.com>
+Cc: asahi@lists.linux.dev
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Sven Peter (3):
+      dt-bindings: reset: Add Apple SoC CIO reset
+      reset: Add Apple SoC CIO reset driver
+      arm64: dts: apple: Add CIO reset controllers
+
+ .../devicetree/bindings/arm/apple/apple,pmgr.yaml  |  12 ++
+ .../bindings/reset/apple,t8103-cio-reset.yaml      |  61 +++++++
+ MAINTAINERS                                        |   2 +
+ arch/arm64/boot/dts/apple/t600x-dieX.dtsi          |   8 +-
+ arch/arm64/boot/dts/apple/t602x-dieX.dtsi          |   8 +-
+ arch/arm64/boot/dts/apple/t8103.dtsi               |   6 +
+ arch/arm64/boot/dts/apple/t8112.dtsi               |   6 +
+ drivers/reset/Kconfig                              |  10 ++
+ drivers/reset/Makefile                             |   1 +
+ drivers/reset/reset-apple-cio.c                    | 200 +++++++++++++++++++++
+ 10 files changed, 312 insertions(+), 2 deletions(-)
+---
+base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
+change-id: 20260809-b4-cio-reset-aa3fb04bad9e
+
+Best regards,
+--  
+Sven Peter <sven@kernel.org>
 
