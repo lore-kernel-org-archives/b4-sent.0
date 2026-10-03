@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 03 Oct 2026 20:55:25 +0800
-Subject: [PATCH RFC v3 14/17] mm/mglru: reparent folios from all
- generations
+Date: Sat, 03 Oct 2026 20:55:26 +0800
+Subject: [PATCH RFC v3 15/17] mm/khugepaged: check folio referenced state
+ via LRU refs under MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261003-mglru-fg-v3-14-cbd4546a5bd9@tencent.com>
+Message-Id: <20261003-mglru-fg-v3-15-cbd4546a5bd9@tencent.com>
 References: <20261003-mglru-fg-v3-0-cbd4546a5bd9@tencent.com>
 In-Reply-To: <20261003-mglru-fg-v3-0-cbd4546a5bd9@tencent.com>
 To: linux-mm@kvack.org
@@ -38,46 +38,45 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791032114; l=1313;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791032114; l=1294;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=SSFKxw+1JpTaEsw62vhOq7gyElbyAMh0m4zwnBqF5GM=;
- b=q/9LD6c8gvmYPxhU9rc4D78+Qn6i7gyt4FS5TgMbJyWibJ6FDwhn5CpOgRWjUSFIXWaya3eLk
- IpKqXPrIu6BBt4SlTOlR8kUzCIcqRDOVwI9FL2gt71dDdlXy/BvzPBn
+ bh=34PwfKs9OBNdti/LpG7ACAK3kbx7iRvKh8mLMU2xWsQ=;
+ b=V+2o5HJsg+eqUnnEKRTFJ8z0QmeRB4cs9huLBv4bXJmW+rvOy4ITmRSAP24ty5RlHuLxsf6rS
+ Ixh0ujwFDAsAhI/P/mDhVvz0fCOCZPS9A6O3HAmJmWynqnNdRQEoK6r
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A lockless promotion racing with aging can reuse a generation index,
-see folio_inc_lru_refs().  The retry repairs the folio flags, but
-sort_folio() may have already moved the folio to the list of a
-generation outside the [min_seq, max_seq] window.
+For MGLRU, PG_referenced is only the lowest bit of the folio LRU refs
+count, so folios with a higher refs count no longer have the bit set.
+folio_pte_referenced() testing the raw bit misses hot folios at
+refs >= 2, under-counting the referenced folios of a candidate range
+and aborting otherwise good collapses with SCAN_LACK_REFERENCED_PAGE.
 
-__lru_gen_reparent_memcg() only splices the lists inside the child's
-window, so such a folio would be left on a list of the dying memcg.
-Splice the lists and move the counters of all MAX_NR_GENS generations
-instead.  Those outside the window are empty in the common case.
+Test the refs count directly when MGLRU is enabled, mirroring the
+smaps conversion.  The classical LRU keeps the plain bit test.
 
-Assisted-by: LLM
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ mm/khugepaged.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 9cc06a95d931..1bc8e5056265 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -4947,7 +4947,8 @@ static void __lru_gen_reparent_memcg(struct lruvec *child_lruvec, struct lruvec
- 	child_lrugen = &child_lruvec->lrugen;
- 	parent_lrugen = &parent_lruvec->lrugen;
- 
--	for (i = 0; i < get_nr_gens(child_lruvec, type); i++) {
-+	/* Lockless promotion may leave folios outside the child's window */
-+	for (i = 0; i < MAX_NR_GENS; i++) {
- 		int gen = lru_gen_from_seq(child_lrugen->max_seq - i);
- 		long nr_pages = atomic_long_read(&child_lrugen->nr_pages[gen][type][zone]);
- 
+diff --git a/mm/khugepaged.c b/mm/khugepaged.c
+index 913086eaf17b..be18381c6efd 100644
+--- a/mm/khugepaged.c
++++ b/mm/khugepaged.c
+@@ -586,7 +586,9 @@ static bool folio_pte_referenced(struct folio *folio,
+ 		struct vm_area_struct *vma, unsigned long addr, pte_t pteval)
+ {
+ 	/* The folio was referenced previously ... */
+-	if (folio_test_young(folio) || folio_test_referenced(folio))
++	if (folio_test_young(folio))
++		return true;
++	if (lru_gen_enabled() ? folio_lru_refs(folio) : folio_test_referenced(folio))
+ 		return true;
+ 	/* ... or the PTE mapping was recently used */
+ 	return pte_young(pteval) || mmu_notifier_test_young(vma->vm_mm, addr);
 
 -- 
 2.55.0
