@@ -1,96 +1,81 @@
-From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Fri, 02 Oct 2026 22:29:32 -0300
-Subject: [PATCH] power: supply: qcom_smbx: set the charge enable after
- software control
+From: Igor Velkov <iav@iav.lv>
+Date: Sat, 03 Oct 2026 06:15:05 +0300
+Subject: [PATCH] arm64: dts: amlogic: meson-sm1-odroid: let the SD card be
+ powered down
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261002-qcom-smbx-enable-order-v1-1-7df92bd809db@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTtJW5LSeBXjgpZBx0irM2hIC
- Hen6PIt/l9BSZgUzs0KQl9WLrnCnhpI9z7fCHmoBmect8Y4fKcyoU5xQcp9fBIWGUgwWN+F0Lb
- d6DzU+CU08vIbX65/6yc+KM3HDbZtBx/XLcV6AAAA
-X-Change-ID: 20261002-qcom-smbx-enable-order-816788337f26
-To: Casey Connolly <casey.connolly@linaro.org>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: Robin Snyders <robin@snyders.xyz>, David Heidelberg <david@ixit.cz>, 
- phone-devel@vger.kernel.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Fabricio Akio <fabricioakio@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1790990971; l=2731;
- i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=KF/MJVvh/TX0FU51WaZ1SUC1yakDAzVQ6C7beULA/UI=;
- b=l5oD2SkijJfDZhB9ybMIQSXgbIlnwBVRejdsrj36b5XFz1cfy43ct74UAces2MqLqa/OT0LS9
- 6qqirKakBFvC8D3viGO/N5tGXO2WfCmREh6GDnZu5R0ykEPNrgyoiLS
-X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
- pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
-X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
+Message-Id: <20261003-hc4-sd-power-off-v1-1-f7ffba01b348@iav.lv>
+X-B4-Tracking: v=1; b=H4sIADhzwGoC/x3MTQqAIBBA4avErBvQ7I+uEi1CZ2o2KgoVSHdPW
+ n6L9wpkSkIZlqZAokuyBF+h2wbsufuDUFw1dKobtVIGT9tjdhjDTQkDM46TMzzMrI3qoWYxEcv
+ zL9ftfT8AAcz0YgAAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Christian Hewitt <christianshewitt@gmail.com>, 
+ Dongjin Kim <tobetter@gmail.com>, 
+ Eric Neulight <Eric.Neulight@linuxdev.slmail.me>, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1814; i=iav@iav.lv;
+ h=from:subject:message-id; bh=DXX3IOmUgvr4GKV8MwPySwGHNkc4UtI5AabTLkv0Z0E=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkHii1ZN5pd3bp57Xa/9BMGS0Q/Nyxizfx87ucKy5m/h
+ LYd9XL63VHKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAm8siT4RdTE0fb5E2HJZm/
+ t+actL/EXKd+772c6JWvkemOi7mL+psZ/hmbnPd+9vHr6sPOBx/57bo4Rb5yZufzaUxCu65zPav
+ lTGEHAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The init sequence sets CHARGING_ENABLE_CMD before CHGR_CFG2 selects
-software control of the charge enable.
+A warm reboot leaves the ODROID-HC4 in the bootloader: the card is still
+detected - CID and CSD read fine - but data transfers fail, and both
+U-Boot and the boot ROM give up on CMD18. A cold power cycle always
+recovers it.
 
-The Motorola Moto X4's bootloader leaves the charger watchdog armed to
-disable charging when it bites, which it does after a few minutes in
-fastboot. Charging then stays disabled in the next boot until the cable
-is replugged. Setting the command after CHGR_CFG2 re-enables it.
+The card is left in UHS mode at 1.8 V, and nothing after Linux brings it
+back to 3.3 V: the bootloader resets the controller, not the card. The
+kernel does try to cut the power on the way out - mmc_bus_shutdown() ends
+in _mmc_sd_suspend(), which calls mmc_power_off(), and meson-gx-mmc then
+disables the vmmc regulator - but TFLASH_VDD is marked
+regulator-always-on, so the regulator core keeps it enabled and the card
+keeps its supply.
 
-Fixes: 8648aeb5d7b7 ("power: supply: add Qualcomm PMI8998 SMB2 Charger driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
+Drop the property. The regulator has a consumer that manages it, and
+regulator-boot-on already describes the state it comes up in.
+
+Tested on ODROID-HC4 with a card that reproduces the failure. Not tested
+on ODROID-C4, which shares this file.
+
+Fixes: 326e57518b0d ("arm64: dts: meson-sm1: add support for Hardkernel ODROID-C4")
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Tested on a Motorola Moto X4 (XT1900-6, SDM630 with PM660) with the
-sdm660-mainline 7.2.3 tree. After the bootloader's charger watchdog had
-bitten, in a boot without this driver or after three to five minutes in
-fastboot, the charger stayed in DISABLE_CHARGE without this patch. With
-it, charging resumed with no cable replug: 0.7 A into the battery at
-89%. Other boards are untested.
+ arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi | 1 -
+ 1 file changed, 1 deletion(-)
 
-Robin Snyders' pending SMB5 series renames smb_init_seq[], so whichever
-of the two lands second needs a trivial rebase. Applies unchanged to
-next-20261001.
----
- drivers/power/supply/qcom_smbx.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/power/supply/qcom_smbx.c b/drivers/power/supply/qcom_smbx.c
-index f5557b8cc92a..8c6b7c46b85f 100644
---- a/drivers/power/supply/qcom_smbx.c
-+++ b/drivers/power/supply/qcom_smbx.c
-@@ -819,11 +819,7 @@ static const struct smb_init_register smb_init_seq[] = {
- 	  .mask = SOC_LT_CHG_RECHARGE_THRESH_SEL_BIT |
- 		  VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT,
- 	  .val = VBT_LT_CHG_RECHARGE_THRESH_SEL_BIT },
--	/* Enable charging */
- 	{ .addr = USBIN_OPTIONS_1_CFG, .mask = HVDCP_EN_BIT, .val = 0 },
--	{ .addr = CHARGING_ENABLE_CMD,
--	  .mask = CHARGING_ENABLE_CMD_BIT,
--	  .val = CHARGING_ENABLE_CMD_BIT },
- 	/*
- 	 * Match downstream defaults
- 	 * CHG_EN_SRC_BIT - charger enable is controlled by software
-@@ -844,6 +840,13 @@ static const struct smb_init_register smb_init_seq[] = {
- 		  AUTO_RECHG_BIT | EN_ANALOG_DROP_IN_VBATT_BIT |
- 		  CHARGER_INHIBIT_BIT,
- 	  .val = CHARGER_INHIBIT_BIT },
-+	/*
-+	 * Set the enable command only once CHGR_CFG2 has selected software
-+	 * control, or a charger its watchdog has disabled stays disabled.
-+	 */
-+	{ .addr = CHARGING_ENABLE_CMD,
-+	  .mask = CHARGING_ENABLE_CMD_BIT,
-+	  .val = CHARGING_ENABLE_CMD_BIT },
- 	/* STAT pin software override, match downstream. Parallel charging? */
- 	{ .addr = STAT_CFG,
- 	  .mask = STAT_SW_OVERRIDE_CFG_BIT,
+diff --git a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
+index e6f02d738a21..7dbc75bfaea2 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
++++ b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid.dtsi
+@@ -38,7 +38,6 @@ tflash_vdd: regulator-tflash-vdd {
+ 		gpio = <&gpio_ao GPIOAO_3 GPIO_OPEN_DRAIN>;
+ 		enable-active-high;
+ 		regulator-boot-on;
+-		regulator-always-on;
+ 	};
+ 
+ 	tf_io: gpio-regulator-tf-io {
 
 ---
-base-commit: 9f24d789f03b22941b905ded43cb5ff8eea9ce62
-change-id: 20261002-qcom-smbx-enable-order-816788337f26
+base-commit: b44e2be772f866985cafdf90355285069ea68495
+change-id: 20261003-hc4-sd-power-off-67d3f58f1304
 
 Best regards,
---  
-Fabricio Akio <fabricioakio@gmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
