@@ -1,745 +1,150 @@
-From: nacht20-de <nacht@dxdmail.cc>
-Date: Sun, 04 Oct 2026 18:47:22 +0200
-Subject: [PATCH 2/2] arm64: dts: qcom: sm8550: Add support for Samsung
- Galaxy Tab S9 Wi-Fi
+From: Petr Hodina <petr.hodina@protonmail.com>
+Subject: [PATCH u-boot 0/8] ufs: Sony Yoshino/Tama (MSM8998 / SDM845) UFS
+ bring-up
+Date: Sun, 04 Oct 2026 21:22:32 +0200
+Message-Id: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-gts9wifi-dts-v1-2-1f0d7dd47e4a@dxdmail.cc>
-References: <20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc>
-In-Reply-To: <20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Abel Vesa <abelvesa@kernel.org>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- nacht20-de <nacht@dxdmail.cc>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791132457; l=18079;
- i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=M9RIMojGOgqV+k6Y6be5dy4tCYWaR55eJjDZZIEL6dI=;
- b=svuIXBVldKt0rg7XDvfC9GBzQHbbcTe1/fkQH8983JQVI097zva63WGIYBueGILV8dgS9vgpL
- 8ssTjylF1caDpEKaehIEiuKSNkJf68A62JuCvRrUvxJNqSR9ZPSM8Nc
-X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
- pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
-X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBAAv0L27Ca0lhr9ivFAcRfWQ2u61EgIf
+ 6fKcSaZWUEpCyncmhUyfUQlxQrm1MAw9XEklGdlsK31rTcGg8PCiprigperO9uOPbueoRbvTCz
+ f/+0OBUNKMzwOryW8aJh/K9i2HTD3Si53AAAA
+X-Change-ID: 20260611-b4-ufs-sony-794325f6f4af
+To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
+ u-boot-qcom@groups.io
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Bhupesh Sharma <bhupesh.linux@gmail.com>, 
+ Neha Malcom Francis <n-francis@ti.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, Tom Rini <trini@konsulko.com>, 
+ Angelo Gioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ David Heidelberg <david@ixit.cz>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Padmarao Begari <padmarao.begari@amd.com>, 
+ Macpaul Lin <macpaul.lin@mediatek.com>, 
+ Julien Stephan <jstephan@baylibre.com>, 
+ Kunihiko Hayashi <hayashi.kunihiko@socionext.com>, 
+ Shawn Lin <shawn.lin@rock-chips.com>, Jared McArthur <j-mcarthur@ti.com>, 
+ Michal Simek <michal.simek@amd.com>, Udit Kumar <u-kumar1@ti.com>, 
+ Igor Belwon <igor.belwon@mentallysanemainliners.org>, 
+ Tuyen Dang <tuyen.dang.xa@renesas.com>, Alexey Charkov <alchark@gmail.com>, 
+ Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
+ Simon Glass <sjg@chromium.org>, 
+ Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
+ Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marek.vasut@mailbox.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Kory Maincent <kory.maincent@bootlin.com>, Peng Fan <peng.fan@nxp.com>, 
+ Kuan-Wei Chiu <visitorckw@gmail.com>, Janne Grunau <j@jannau.net>, 
+ Julien Masson <jmasson@baylibre.com>, 
+ Raymond Mao <raymond.mao@riscstar.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Philip Molloy <philip.molloy@analog.com>, 
+ Jerome Forissier <jerome.forissier@arm.com>, 
+ Markus Niebel <Markus.Niebel@ew.tq-group.com>, Petr Pavlata <petr@acrux.cz>, 
+ Petr Hodina <petr.hodina@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141779; l=3712;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=PZPtEbRvlRqs18hXbbpx4eRshX2dFv2BkECdsBwGBVk=;
+ b=LyQFKS/S38L27SLZ/ZhevTqJQCn74peIL5+5fGabM1YTVtgk/dq1swnAJ0zvzmgmM8Svfp5NR
+ A39VfrHccReD/fPqba/gqfgUwS0zBg48NshmQRKvrPgywbmjhJlC7Ii
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Samsung Galaxy Tab S9 Wi-Fi (SM-X710, codename
-gts9wifi) tablet, based on the SM8550 SoC. This is the Wi-Fi SKU, so the
-modem memory regions are removed and no modem firmware is referenced.
+This series brings up UFS on the Sony Xperia "Yoshino" (MSM8998) and
+"Tama" (SDM845) families.
 
-Described hardware: UFS storage, the microSD slot, USB 2.0 peripheral
-mode over the eUSB2 PHY with an NXP PTN3222 repeater, the
-bootloader-provided framebuffer console, power and volume keys, the
-book-cover switch, GPU, video decoder, ADSP with the internal audio path
-(four CS35L45 speaker amplifiers and the VA-macro digital microphones).
+The work falls into four layers:
 
-Tested on hardware: booted via U-Boot on top of linux-next
-next-20261002, with the default kernel command line (no
-clk_ignore_unused, pd_ignore_unused or regulator_ignore_unused).
-Verified: UFS storage enumeration, USB 2.0 gadget, framebuffer console,
-power and volume keys, the book-cover switch, CPU frequency scaling, GPU
-(firmware loads, render node present), video decoder (device opens),
-ADSP booting at startup with the sound card registered and all four
-amplifiers and the VA macro probing. The microSD slot is described but
-not yet tested; audio playback and capture were not exercised.
+1. A small refactor that extends ufs_dev_desc with the product revision
+   string and the UFS spec version (patch 1). No behaviour change.
 
-The display panel, touch, pen digitizer, cameras, battery/charging and
-the wireless module are not described here; the latter needs additional
-power sequencing and follows as a separate series.
+2. A device-quirk infrastructure (patches 2-4) that lets us match
+   per-device link / power-mode workarounds against manufacturer id,
+   model and fw revision:
 
-Assisted-by: LLM
-Signed-off-by: nacht20-de <nacht@dxdmail.cc>
+     - patch 2: generic ufs_fixups[] table and ufshcd_fixup_dev_quirks(),
+       called from ufs_start() before power-mode negotiation
+     - patch 3: UFS_DEVICE_QUIRK_EXTEND_SYNC_LENGTH for SK Hynix devices
+       that need PA_TxHsG{1,2,3}SyncLength programmed to 0x48
+     - patch 4: CONFIG_UFS_RESTRICT_TX_LANES build-time knob for boards
+       with only a single reliable TX lane. Defaults to N so nothing
+       else is affected.
+
+3. The NO_PURGE quirk for devices that brick if issued PURGE / UNMAP
+   (patches 5-7):
+
+     - patch 5: refuse erase/UNMAP in the SCSI uclass when NO_PURGE
+       is set on the underlying UFS device
+     - patch 6: print device identification (vendor / model / rev /
+       spec version) at probe so quirk matching is observable on the
+       console
+     - patch 7: a platform gate that auto-enables NO_PURGE on Sony
+       Yoshino/Tama compatibles because per-UFS-chip rows can't see
+       blank string descriptors on some affected boards.
+
+4. Akatsuki DTS enablement (patch 8): re-enable the UFS controller node.
+
+Background on NO_PURGE: on the affected Sony platforms the SCSI ERASE /
+UNMAP / WRITE_BUFFER PURGE operation overwrites the bootloader region
+and permanently bricks the device.
+
+Based on the linux patches by Angelo:
+https://github.com/kholk/kernel/commit/2e7a9ee1c91a016baa0b826a7752ec45663a0561
+
+Tested on Sony XZ3 (akatsuki, SDM845) where U-Boot enumerates UFS LUN0
+and exposes the GPT.
+
+```
+UFS Device Information (ufshc@1d84000)
+  Manufacturer:    Samsung (0x01ce)
+  Model:           (unset)
+  Revision:        (unset)
+  Spec Version:    0x0210
+  Gear  - RX: 3, TX: 3
+  Lane  - RX: 2, TX: 2
+  Power - RX: 1, TX: 1, HS rate: 2
+  Device Quirks:   0x00000001
+  NO_PURGE Quirk:  Yes
+
+...
+
+=> scsi erase 0 1
+
+scsi erase: device 0 block # 0, count 1 ... scsi_erase: erase not supported on this device
+0 blocks erased: ERROR
+=> 
+```
+
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 664 +++++++++++++++++++++
- 2 files changed, 665 insertions(+)
+Petr Hodina (8):
+      ufs: read product revision and spec version into ufs_dev_desc
+      ufs: add device-quirk infrastructure
+      ufs: program extended HS sync length for SK Hynix devices
+      ufs: add CONFIG_UFS_RESTRICT_TX_LANES
+      scsi: ufs: refuse erase/UNMAP on NO_PURGE devices
+      ufs: print device information at probe
+      ufs: gate NO_PURGE on Sony Yoshino/Tama platform compatible
+      arm: dts: qcom: akatsuki: re-enable the UFS controller node
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 88230c4e00ea..9372ec7b57b6 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -438,6 +438,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-rear-camera-card.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-mtp.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-qrd.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-gts9wifi.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-q5q.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-sony-xperia-yodo-pdx234.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-ayaneo-pocket-s2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-new file mode 100644
-index 000000000000..4601fca9ecc6
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-@@ -0,0 +1,664 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2024, Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
-+ * Copyright (c) 2024, David Wronek <david@mainlining.org>
-+ * Copyright (c) 2022, Linaro Limited
-+ * Copyright (c) 2026, nacht20-de <nacht@dxdmail.cc>
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include "sm8550.dtsi"
-+#include "pm8550.dtsi"
-+#include "pm8550vs.dtsi"
-+#include "pmk8550.dtsi"
-+
-+/* This is the Wi-Fi SKU: no modem firmware is shipped. */
-+/delete-node/ &ipa_fw_mem;
-+/delete-node/ &ipa_gsi_mem;
-+/delete-node/ &mpss_dsm_mem;
-+/delete-node/ &mpss_mem;
-+/delete-node/ &q6_mpss_dtb_mem;
-+/delete-node/ &rmtfs_mem;
-+/delete-node/ &spu_modem_shared_mem;
-+
-+/ {
-+	model = "Samsung Galaxy Tab S9 Wi-Fi";
-+	compatible = "samsung,gts9wifi", "qcom,sm8550";
-+	chassis-type = "tablet";
-+
-+	aliases {
-+		serial0 = &uart7;
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer@b8000000 {
-+			compatible = "simple-framebuffer";
-+			reg = <0x0 0xb8000000 0x0 0xfa0000>;
-+			width = <2560>;
-+			height = <1600>;
-+			stride = <(2560 * 4)>;
-+			format = "a8r8g8b8";
-+			clocks = <&gcc GCC_DISP_HF_AXI_CLK>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-0 = <&volume_up_n>, <&hall_cover_n>;
-+		pinctrl-names = "default";
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			linux,code = <KEY_VOLUMEUP>;
-+			gpios = <&pm8550_gpios 6 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+
-+		switch-lid {
-+			label = "Book Cover";
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			gpios = <&tlmm 107 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <50>;
-+			wakeup-source;
-+		};
-+	};
-+
-+	speaker_vdd: regulator-speaker-vdd {
-+		compatible = "regulator-fixed";
-+		regulator-name = "speaker_vdd";
-+		gpio = <&tlmm 19 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		regulator-boot-on;
-+	};
-+
-+	reserved-memory {
-+		chipinfo_mem: chipinfo@81cf4000 {
-+			reg = <0x0 0x81cf4000 0x0 0x1000>;
-+			no-map;
-+		};
-+
-+		kaslr_mem: kaslr@b01ff000 {
-+			reg = <0x0 0xb01ff000 0x0 0x1000>;
-+			no-map;
-+		};
-+
-+		uh_heap_mem: uh-heap@b0200000 {
-+			reg = <0x0 0xb0200000 0x0 0x40000>;
-+			no-map;
-+		};
-+
-+		uh_guest_mem: uh-guest@b1000000 {
-+			reg = <0x0 0xb1000000 0x0 0x3000000>;
-+			no-map;
-+		};
-+
-+		splash-region@b8000000 {
-+			reg = <0x0 0xb8000000 0x0 0x2b00000>;
-+			no-map;
-+		};
-+
-+		llcc_lpi_mem: llcc-lpi@ff800000 {
-+			reg = <0x0 0xff800000 0x0 0x600000>;
-+			no-map;
-+		};
-+	};
-+
-+	sound {
-+		compatible = "qcom,sm8550-sndcard", "qcom,sm8450-sndcard";
-+		model = "Samsung-Galaxy-Tab-S9";
-+
-+		pinctrl-0 = <&tdm0_clk_active>, <&tdm0_ws_active>,
-+			    <&tdm0_din_active>, <&tdm0_dout_active>;
-+		pinctrl-names = "default";
-+
-+		speaker-playback-dai-link {
-+			link-name = "CS35L45 Speaker Playback";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai PRIMARY_MI2S_RX>;
-+			};
-+
-+			codec {
-+				sound-dai = <&cs35l45_fl 0>, <&cs35l45_fr 0>,
-+					    <&cs35l45_rl 0>, <&cs35l45_rr 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+
-+		va-capture-dai-link {
-+			link-name = "Internal DMIC Capture";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
-+			};
-+
-+			codec {
-+				sound-dai = <&lpass_vamacro 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+	};
-+};
-+
-+/* Samsung's ADSP/SLPI firmware needs a larger carveout than the reference. */
-+&adspslpi_mem {
-+	reg = <0x0 0x9ea00000 0x0 0x59b4000>;
-+};
-+
-+&apps_rsc {
-+	regulators-0 {
-+		compatible = "qcom,pm8550-rpmh-regulators";
-+		qcom,pmic-id = "b";
-+
-+		/* Sensor VDD; the ADSP firmware expects it to be on. */
-+		vreg_l1b_1p8: ldo1 {
-+			regulator-name = "vreg_l1b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l5b_3p104: ldo5 {
-+			regulator-name = "vreg_l5b_3p104";
-+			regulator-min-microvolt = <3104000>;
-+			regulator-max-microvolt = <3104000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l8b_1p8: ldo8 {
-+			regulator-name = "vreg_l8b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l9b_2p9: ldo9 {
-+			regulator-name = "vreg_l9b_2p9";
-+			regulator-min-microvolt = <2960000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		/* DMIC bias, not switched by the VA macro driver. */
-+		vreg_l10b_1p8: ldo10 {
-+			regulator-name = "vreg_l10b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l15b_1p8: ldo15 {
-+			regulator-name = "vreg_l15b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		/* Sensor VDDIO; the ADSP firmware expects it to be on. */
-+		vreg_l16b_3p0: ldo16 {
-+			regulator-name = "vreg_l16b_3p0";
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l17b_2p5: ldo17 {
-+			regulator-name = "vreg_l17b_2p5";
-+			regulator-min-microvolt = <2504000>;
-+			regulator-max-microvolt = <2504000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-1 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "e";
-+
-+		vreg_l1e_0p88: ldo1 {
-+			regulator-name = "vreg_l1e_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <880000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3e_1p2: ldo3 {
-+			regulator-name = "vreg_l3e_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-2 {
-+		compatible = "qcom,pm8550ve-rpmh-regulators";
-+		qcom,pmic-id = "f";
-+
-+		vreg_l3f_0p88: ldo3 {
-+			regulator-name = "vreg_l3f_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <912000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-3 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "g";
-+
-+		vreg_l1g_1p2: ldo1 {
-+			regulator-name = "vreg_l1g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3g_1p2: ldo3 {
-+			regulator-name = "vreg_l3g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+};
-+
-+/* Keep the bootloader-initialised display clocks for simple-framebuffer. */
-+&dispcc {
-+	status = "disabled";
-+};
-+
-+&gpi_dma1 {
-+	status = "okay";
-+};
-+
-+&gpu {
-+	status = "okay";
-+
-+	zap-shader {
-+		firmware-name = "qcom/sm8550/Samsung/gts9wifi/a740_zap.mbn";
-+	};
-+};
-+
-+&hub_i2c6_data_clk {
-+	drive-strength = <8>;
-+};
-+
-+/* The SM-X710 firmware reserves a slightly larger HW-fence window than MTP. */
-+&hwfence_shbuf {
-+	reg = <0x0 0xe6440000 0x0 0x2dd000>;
-+};
-+
-+&i2c6 {
-+	clock-frequency = <400000>;
-+	status = "okay";
-+
-+	eusb2_repeater: redriver@4f {
-+		compatible = "nxp,ptn3222";
-+		reg = <0x4f>;
-+		#phy-cells = <0>;
-+
-+		vdd3v3-supply = <&vreg_l5b_3p104>;
-+		vdd1v8-supply = <&vreg_l15b_1p8>;
-+		reset-gpios = <&pm8550vs_d_gpios 4 GPIO_ACTIVE_LOW>;
-+
-+		pinctrl-0 = <&eusb2_reset_default>;
-+		pinctrl-names = "default";
-+	};
-+};
-+
-+&i2c_hub_6 {
-+	clock-frequency = <400000>;
-+	status = "okay";
-+
-+	cs35l45_rl: amplifier@30 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x30>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Rear Left";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+
-+	cs35l45_fl: amplifier@31 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x31>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Front Left";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+
-+	cs35l45_rr: amplifier@32 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x32>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Rear Right";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+
-+	cs35l45_fr: amplifier@33 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x33>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Front Right";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+};
-+
-+&i2c_master_hub_0 {
-+	status = "okay";
-+};
-+
-+&ipa {
-+	/delete-property/ memory-region;
-+};
-+
-+&iris {
-+	firmware-name = "qcom/sm8550/Samsung/gts9wifi/vpu30_4v.mbn";
-+	status = "okay";
-+};
-+
-+&lpass_tlmm {
-+	dmic45_default: dmic45-default-state {
-+		clk-pins {
-+			pins = "gpio12";
-+			function = "dmic3_clk";
-+			drive-strength = <8>;
-+			output-high;
-+		};
-+
-+		data-pins {
-+			pins = "gpio13";
-+			function = "dmic3_data";
-+			drive-strength = <8>;
-+			input-enable;
-+		};
-+	};
-+
-+	dmic67_default: dmic67-default-state {
-+		clk-pins {
-+			pins = "gpio17";
-+			function = "dmic4_clk";
-+			drive-strength = <8>;
-+			output-high;
-+		};
-+
-+		data-pins {
-+			pins = "gpio18";
-+			function = "dmic4_data";
-+			drive-strength = <8>;
-+			input-enable;
-+		};
-+	};
-+};
-+
-+&lpass_vamacro {
-+	pinctrl-0 = <&dmic01_default>, <&dmic23_default>,
-+		    <&dmic45_default>, <&dmic67_default>;
-+	pinctrl-names = "default";
-+	qcom,dmic-sample-rate = <4800000>;
-+	vdd-micb-supply = <&vreg_l10b_1p8>;
-+	status = "okay";
-+};
-+
-+&pm8550_gpios {
-+	sdc2_card_det_n: sdc2-card-det-state {
-+		pins = "gpio12";
-+		function = "normal";
-+		input-enable;
-+		output-disable;
-+		bias-pull-up;
-+		power-source = <1>;
-+	};
-+
-+	volume_up_n: volume-up-n-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		power-source = <1>;
-+		bias-pull-up;
-+		input-enable;
-+	};
-+};
-+
-+&pm8550vs_d {
-+	status = "okay";
-+};
-+
-+&pm8550vs_d_gpios {
-+	eusb2_reset_default: eusb2-reset-state {
-+		pins = "gpio4";
-+		function = "normal";
-+		power-source = <1>;
-+		input-enable;
-+		output-enable;
-+		drive-push-pull;
-+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_MED>;
-+		bias-disable;
-+	};
-+};
-+
-+&pm8550vs_e {
-+	status = "okay";
-+};
-+
-+&pm8550vs_g {
-+	status = "okay";
-+};
-+
-+&pon_pwrkey {
-+	status = "okay";
-+};
-+
-+&pon_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
-+&qupv3_id_0 {
-+	status = "okay";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/Samsung/gts9wifi/adsp.mbn",
-+			"qcom/sm8550/Samsung/gts9wifi/adsp_dtb.mbn";
-+	status = "okay";
-+};
-+
-+&remoteproc_mpss {
-+	/delete-property/ memory-region;
-+};
-+
-+&sdhc_2 {
-+	cd-gpios = <&pm8550_gpios 12 GPIO_ACTIVE_LOW>;
-+	pinctrl-0 = <&sdc2_default>, <&sdc2_card_det_n>;
-+	pinctrl-1 = <&sdc2_sleep>, <&sdc2_card_det_n>;
-+	pinctrl-names = "default", "sleep";
-+	vmmc-supply = <&vreg_l9b_2p9>;
-+	vqmmc-supply = <&vreg_l8b_1p8>;
-+	bus-width = <4>;
-+	no-sdio;
-+	no-mmc;
-+	status = "okay";
-+};
-+
-+&sleep_clk {
-+	clock-frequency = <32764>;
-+};
-+
-+&tlmm {
-+	/* GPIO36..39 are owned by TrustZone. */
-+	gpio-reserved-ranges = <36 4>;
-+
-+	cs35l45_gpio_default: cs35l45-gpio-default-state {
-+		pins = "gpio14", "gpio42";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	hall_cover_n: hall-cover-n-state {
-+		pins = "gpio107";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_clk_active: tdm0-clk-active-state {
-+		pins = "gpio126";
-+		function = "i2s0_sck";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_din_active: tdm0-din-active-state {
-+		pins = "gpio127";
-+		function = "i2s0_data0";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_dout_active: tdm0-dout-active-state {
-+		pins = "gpio128";
-+		function = "i2s0_data1";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_ws_active: tdm0-ws-active-state {
-+		pins = "gpio129";
-+		function = "i2s0_ws";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+};
-+
-+&uart7 {
-+	status = "okay";
-+};
-+
-+&ufs_mem_hc {
-+	reset-gpios = <&tlmm 210 GPIO_ACTIVE_LOW>;
-+	vcc-supply = <&vreg_l17b_2p5>;
-+	vcc-max-microamp = <1300000>;
-+	vccq-supply = <&vreg_l1g_1p2>;
-+	vccq-max-microamp = <1200000>;
-+	vdd-hba-supply = <&vreg_l3g_1p2>;
-+	status = "okay";
-+};
-+
-+&ufs_mem_phy {
-+	vdda-phy-supply = <&vreg_l1e_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
-+	status = "okay";
-+};
-+
-+/* Without a Type-C controller driver, keep the DWC3 in peripheral mode. */
-+&usb_1 {
-+	dr_mode = "peripheral";
-+	status = "okay";
-+};
-+
-+&usb_1_hsphy {
-+	vdd-supply = <&vreg_l1e_0p88>;
-+	vdda12-supply = <&vreg_l3e_1p2>;
-+	phys = <&eusb2_repeater>;
-+	status = "okay";
-+};
-+
-+/* Referenced by usb_1 as its USB3 PHY. */
-+&usb_dp_qmpphy {
-+	vdda-phy-supply = <&vreg_l3f_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
-+	status = "okay";
-+};
-+
-+&xo_board {
-+	clock-frequency = <76800000>;
-+};
+ MAINTAINERS                                        |   1 +
+ .../sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi   |   9 +
+ drivers/scsi/scsi.c                                |   5 +
+ drivers/ufs/Kconfig                                |  14 ++
+ drivers/ufs/ufs-uclass.c                           | 197 +++++++++++++++++++++
+ drivers/ufs/ufs.h                                  |   7 +
+ drivers/ufs/ufs_quirks.h                           |  94 ++++++++++
+ drivers/ufs/unipro.h                               |   3 +
+ include/scsi.h                                     |   5 +
+ 9 files changed, 335 insertions(+)
+---
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20260611-b4-ufs-sony-794325f6f4af
 
--- 
-2.55.0
+Best regards,
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
