@@ -1,123 +1,80 @@
-From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Sun, 04 Oct 2026 23:38:43 +1100
-Subject: [PATCH v2 2/2] regmap: Drop map lock during cache init and exit
+From: Matt Layher <mdlayher@gmail.com>
+Date: Sun, 04 Oct 2026 10:26:27 -0400
+Subject: [PATCH] hwmon: (asus-ec-sensors) add CPU_Opt fan for ROG STRIX
+ X570-E GAMING
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-regcache-lifecycle-submit-v2-2-976d405e89a7@gmail.com>
-References: <20261004-regcache-lifecycle-submit-v2-0-976d405e89a7@gmail.com>
-In-Reply-To: <20261004-regcache-lifecycle-submit-v2-0-976d405e89a7@gmail.com>
-To: Mark Brown <broonie@kernel.org>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, linux-kernel@vger.kernel.org, 
- driver-core@lists.linux.dev, maple-tree@lists.infradead.org, 
- asahi@lists.linux.dev, Michael Reeves <michael.reeves077@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791117521; l=3467;
- i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=zvpCev1OcFqijOyG7vtnR5Nx239kVlRoXAF9NZ7PjIY=;
- b=kfCOCpZ3IVQaT/GRKTiufdV47V8aaFOG8VELtL2P9tUyQH6IFf1sE/0th6nFG3zBvqs7RTJeP
- TxEbHRVExQXC5ibFY7HtwNJ+jpLqD206UI7K8I489budoBFNPxE56MH
-X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
- pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
-X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
+Message-Id: <20261004-asus-ec-x570e-cpu-opt-v1-1-d9ea371c30d5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTvJtEKJXsW4qHWAYQFNpzUkh
+ LtTdfkW/++gnIQV7s0OiT+isi4V5tJAmPwyMsq7GixZZ4ha9FoUOeDW9cQYYsE1ZnT26qzxA/U
+ 3gtrGxINsv+/j+beW18whf2dwHCcRgOQSeQAAAA==
+X-Change-ID: 20261004-asus-ec-x570e-cpu-opt-623621af0790
+To: Eugene Shalygin <eugene.shalygin@gmail.com>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Matt Layher <mdlayher@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791124002; l=2211;
+ i=mdlayher@gmail.com; s=linuxdev; h=from:subject:message-id;
+ bh=HEHb7pz+5CIVTAUXjsxnncxE0oQGAoREpSaAebUx9AQ=;
+ b=lH+GY7hQhCIRrlVSwJEabDbMMuuSttNbGlGKto0goC43sa7ced/zA6BldftpntEozBMDear3u
+ 374btCATaKDBmZqbkFcVxUwTjxw+zVZyahe44B4ZuLzAzq5fosBTLGC
+X-Developer-Key: i=mdlayher@gmail.com; a=ed25519;
+ pk=jO44g3WNw2T0EoKPeB+RUgDmyrZpA5Pmr830ITlwhaA=
+X-Endpoint-Received: by B4 Relay for mdlayher@gmail.com/linuxdev with auth_id=1109
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On systems with CONFIG_PROVE_RAW_LOCK_NESTING enabled, Apple GPIO probe
-triggers an "Invalid wait context" lockdep warning.
+Enable the CPU_Opt fan sensor for ROG STRIX X570-E GAMING.
 
-The driver uses a regmap with a raw spinlock and REGCACHE_FLAT. During
-regcache_init(), regcache_flat_init() allocates memory while holding the
-raw spinlock. The memory allocator can acquire a non-raw spinlock, which
-causes an invalid raw-to-non-raw lock nesting error. The abbreviated call
-chain is:
+The board has a CPU_OPT fan header, and its UEFI hardware monitor shows a
+fan connected to it spinning at about 2000 RPM, but the driver does not
+expose the sensor and the board's NCT6798D does not report it either.
 
-  apple_gpio_pinctrl_probe
-    regcache_init
-      regcache_flat_init
-        __kmalloc_noprof
-          __pcs_replace_empty_main
-            refill_objects
-              _raw_spin_lock_irqsave
+Reading the EC directly through ec_sys on this board (BIOS 4408), the
+CPU_Opt register used by the rest of the AMD 500 series family (bank 0,
+0xb0) returns 0x0580, 1408 RPM under the operating system's fan curve,
+while the chipset fan register at 0xb4 returns 0, matching what the
+driver already reports for that fan.
 
-Cache allocation occurs before the regmap is published, cache destruction
-occurs after users have stopped accessing it, and regmap_reinit_cache()
-requires callers to prevent concurrent access. Remove the outer map lock
-from cache initialization and destruction. Keep it for cache population
-and normal register access.
-
-The Maple cache still uses its internal spinlock during teardown. That
-lock can also be acquired from hard IRQ context during register access, so
-use spin_lock_irqsave() during teardown to preserve its IRQ-safe lockdep
-state.
-
-Fixes: fd4ebc07b4df ("regmap: Hold the regmap lock when allocating and freeing the cache")
-Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+Assisted-by: LLM sparse
+Signed-off-by: Matt Layher <mdlayher@gmail.com>
 ---
- drivers/base/regmap/regcache-maple.c | 5 +++--
- drivers/base/regmap/regcache.c       | 6 ------
- 2 files changed, 3 insertions(+), 8 deletions(-)
+An LLM coding assistant did most of the work on this patch: it found the
+missing sensor while auditing this machine's monitoring, compared the
+driver's board table with the BIOS hardware monitor, worked out which EC
+register to read, and drafted the change and this changelog. I
+reviewed both, and every test below ran on my own machines.
 
-diff --git a/drivers/base/regmap/regcache-maple.c b/drivers/base/regmap/regcache-maple.c
-index e46fe5c32b..9419dc1be9 100644
---- a/drivers/base/regmap/regcache-maple.c
-+++ b/drivers/base/regmap/regcache-maple.c
-@@ -312,16 +312,17 @@ static void regcache_maple_exit(struct regmap *map)
- 	struct maple_tree *mt = map->cache;
- 	MA_STATE(mas, mt, 0, UINT_MAX);
- 	unsigned int *entry;
-+	unsigned long flags;
- 
- 	/* if we've already been called then just return */
- 	if (!mt)
- 		return;
- 
--	mas_lock(&mas);
-+	spin_lock_irqsave(&mt->ma_lock, flags);
- 	mas_for_each(&mas, entry, UINT_MAX)
- 		kfree(entry);
- 	__mt_destroy(mt);
--	mas_unlock(&mas);
-+	spin_unlock_irqrestore(&mt->ma_lock, flags);
- 
- 	kfree(mt);
- 	map->cache = NULL;
-diff --git a/drivers/base/regmap/regcache.c b/drivers/base/regmap/regcache.c
-index 0d58d900a2..b137ded7fd 100644
---- a/drivers/base/regmap/regcache.c
-+++ b/drivers/base/regmap/regcache.c
-@@ -225,9 +225,7 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
- 	if (map->cache_ops->init) {
- 		dev_dbg(map->dev, "Initializing %s cache\n",
- 			map->cache_ops->name);
--		map->lock(map->lock_arg);
- 		ret = map->cache_ops->init(map);
--		map->unlock(map->lock_arg);
- 		if (ret)
- 			goto err_free_reg_defaults;
- 	}
-@@ -259,9 +257,7 @@ int regcache_init(struct regmap *map, const struct regmap_config *config)
- err_exit:
- 	if (map->cache_ops->exit) {
- 		dev_dbg(map->dev, "Destroying %s cache\n", map->cache_ops->name);
--		map->lock(map->lock_arg);
- 		map->cache_ops->exit(map);
--		map->unlock(map->lock_arg);
- 	}
- err_free_reg_defaults:
- 	kfree(map->reg_defaults);
-@@ -281,9 +277,7 @@ void regcache_exit(struct regmap *map)
- 	if (map->cache_ops->exit) {
- 		dev_dbg(map->dev, "Destroying %s cache\n",
- 			map->cache_ops->name);
--		map->lock(map->lock_arg);
- 		map->cache_ops->exit(map);
--		map->unlock(map->lock_arg);
- 	}
- 
- 	kfree(map->reg_defaults);
+Testing:
+- Runtime: the same one-line change applied to the driver in v6.18.54,
+  loaded on the board in place of the stock module; CPU_Opt read
+  1454-1463 RPM and the chipset fan 0.
+- Build: hwmon-next with W=1 and sparse (C=1), no warnings;
+  checkpatch --strict reports no errors, warnings or checks.
+---
+ drivers/hwmon/asus-ec-sensors.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
--- 
-2.55.0
+diff --git a/drivers/hwmon/asus-ec-sensors.c b/drivers/hwmon/asus-ec-sensors.c
+index 19f423e45ce5..8261ddd00653 100644
+--- a/drivers/hwmon/asus-ec-sensors.c
++++ b/drivers/hwmon/asus-ec-sensors.c
+@@ -721,7 +721,7 @@ static const struct ec_board_info board_info_strix_x470_i_gaming = {
+ 
+ static const struct ec_board_info board_info_strix_x570_e_gaming = {
+ 	.sensors = SENSOR_SET_TEMP_CHIPSET_CPU_MB |
+-		SENSOR_TEMP_T_SENSOR |
++		SENSOR_TEMP_T_SENSOR | SENSOR_FAN_CPU_OPT |
+ 		SENSOR_FAN_CHIPSET | SENSOR_CURR_CPU |
+ 		SENSOR_IN_CPU_CORE,
+ 	.mutex_path = ASUS_HW_ACCESS_MUTEX_ASMX,
+
+---
+base-commit: 4781ca52761e666cf18b591e6bb0478396c90320
+change-id: 20261004-asus-ec-x570e-cpu-opt-623621af0790
+
+Best regards,
+--  
+Matt Layher <mdlayher@gmail.com>
 
