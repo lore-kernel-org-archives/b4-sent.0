@@ -1,58 +1,97 @@
-From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 22:48:26 +0200
-Subject: [PATCH 2/2] arm: snapdragon: export kernel_addr_r_size
+From: Igor Velkov <iav@iav.lv>
+Date: Sun, 04 Oct 2026 22:39:58 +0000
+Subject: [PATCH] arm64: dts: rockchip: Add the battery charger to Kobol
+ Helios64
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-dfu-alt-info-env-expand-v1-2-700eb0e54b61@protonmail.com>
-References: <20261004-b4-dfu-alt-info-env-expand-v1-0-700eb0e54b61@protonmail.com>
-In-Reply-To: <20261004-b4-dfu-alt-info-env-expand-v1-0-700eb0e54b61@protonmail.com>
-To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
- u-boot-qcom@groups.io
-Cc: Lukasz Majewski <lukma@denx.de>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Tom Rini <trini@konsulko.com>, Sean Anderson <sean.anderson@linux.dev>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Antony Kurniawan Soemardi <linux@smankusors.com>, 
- Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
- Petr Hodina <petr.hodina@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791146915; l=969;
- i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=TMcEEwctAcjfWgy4s8/8EISXg1ISob5U7HUdIo1r3o0=;
- b=Dg2ORcCwT3X/WK8jTdxgt1L4rPPpbA5pYpRaZw8WPaGe3t+zt8b3jGGksuZDLbiy13INSSMbP
- 1yu/JRYsTFJD7BYFGp+8O7nmnoed1qjaMpp0Fmk4BzZgFm83EboVJMs
-X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
- pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
-X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
+Message-Id: <20261004-helios64-dc-charger-v1-1-0eabf0274d47@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAL3VwmoC/x2MQQqAMAwEv1JyNtAWrehXxIO0sQZEJQURpH83C
+ HMZmN0XCglTgdG8IHRz4fNQcY2BuC1HJuSkDt764KztcKOdzxJaTBG1kEyClGI7KEO0PejyElr
+ 5+V+nudYPz9yeUGUAAAA=
+To: Heiko Stuebner <heiko@sntech.de>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2197; i=iav@iav.lv;
+ h=from:subject:message-id; bh=DAhlfIUWqvGqD77K4GZRu5rOeDoaIBCJ6zw/SQS3zzI=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmHru7Lig//2vTZPf/F63ncxZ1qTC/Md11Zp3Lm0+k0w
+ w++ArWWHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiLsoM/7OWJcyrnVq08Nm1
+ lR9ZUift6rt/PSTI0cU++PmWY/8r36xiZNjWXfb2yb+pVWrX365/6X253ThbzUxTYn1y6QbRO7c
+ fcbACAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-board_late_init() allocates SZ_128M for kernel_addr_r but never
-exported the size, only the address.
+Helios64 has a battery backup built around a BQ24133 charger. The
+charger works on its own; the SoC only sees two status lines:
 
-kernel_addr_r_size mirrors the existing kernel_comp_addr_r /
-kernel_comp_size pairing already done for the compressed-kernel
-buffer.
+- VCC12V_DCIN_GOOD on GPIO0_A2, a divider from the 12 V input, high
+  while the mains adapter powers the board;
+- CHARGER_STATUS# on GPIO2_D3, the inverted STAT output of the charger,
+  high while the battery is charging.
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+Describe them as a gpio-charger. Both lines have external resistors, so
+the pins get no pull.
+
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- arch/arm/mach-snapdragon/board.c | 1 +
- 1 file changed, 1 insertion(+)
+Tested on 7.3-rc5: online follows the mains adapter, status reads
+Charging while the battery recharges and Not charging once it is full.
 
-diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
-index 829a0109ac7..70d53a30329 100644
---- a/arch/arm/mach-snapdragon/board.c
-+++ b/arch/arm/mach-snapdragon/board.c
-@@ -530,6 +530,7 @@ int board_late_init(void)
- 	status |= !lmb_alloc(SZ_128M, &addr) ?
- 		env_set_hex("loadaddr", addr) : 1;
- 	status |= env_set_hex("kernel_addr_r", addr);
-+	status |= env_set_hex("kernel_addr_r_size", SZ_128M);
- 	status |= !lmb_alloc(SZ_128M, &addr) ?
- 		env_set_hex("ramdisk_addr_r", addr) : 1;
- 	status |= !lmb_alloc(KERNEL_COMP_SIZE, &addr) ?
+Schematic, sheets 9, 15 and 29:
+https://wiki.kobol.io/helios64/files/schematics/Helios64_Schematics_Rev1.2.pdf
+---
+ .../arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
+index d146e5075b4f..813a39964357 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
+@@ -62,6 +62,15 @@ chosen {
+ 		stdout-path = "serial2:1500000n8";
+ 	};
+ 
++	dc-charger {
++		compatible = "gpio-charger";
++		charger-type = "mains";
++		gpios = <&gpio0 RK_PA2 GPIO_ACTIVE_HIGH>;
++		charge-status-gpios = <&gpio2 RK_PD3 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&dcin_good>, <&charger_status>;
++	};
++
+ 	clkin_gmac: external-gmac-clock {
+ 		compatible = "fixed-clock";
+ 		clock-frequency = <125000000>;
+@@ -493,6 +502,16 @@ user1_btn: user1-btn {
+ 		};
+ 	};
+ 
++	charger {
++		charger_status: charger-status {
++			rockchip,pins = <2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		dcin_good: dcin-good {
++			rockchip,pins = <0 RK_PA2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++
+ 	gmac {
+ 		gphy_reset: gphy-reset {
+ 			rockchip,pins = <3 RK_PB7 RK_FUNC_GPIO &pcfg_output_low>;
+
+---
+base-commit: 36bd12104f6e9462f6e97989fd8ef9eb1609623f
+change-id: 20261005-helios64-dc-charger-edc49c499c07
+
+Best regards,
 -- 
-2.55.0
+Igor Velkov <iav@iav.lv>
 
