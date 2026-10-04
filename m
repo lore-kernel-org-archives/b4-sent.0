@@ -1,81 +1,78 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Sun, 04 Oct 2026 03:41:01 +0000
-Subject: [PATCH v2 3/3] usb: typec: tcpci_maxim: implement
- get_current_limit
+From: Quanye Yang <quanyeyang@proton.me>
+Subject: [PATCH net-next v2 0/2] net: annotate remaining lockless
+ sk->sk_err accesses
+Date: Sat, 03 Oct 2026 21:44:27 -0700
+Message-Id: <20261003-tls-fix-sk-kcsan-err-v2-0-e939a2ebdd56@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-max77759-icl-typec-v2-3-866caf9e7d9a@google.com>
-References: <20261004-max77759-icl-typec-v2-0-866caf9e7d9a@google.com>
-In-Reply-To: <20261004-max77759-icl-typec-v2-0-866caf9e7d9a@google.com>
-To: Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791085272; l=2320;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=yMUi/gUZfH42/zMSQVOA/fWV4tfGMcFNCeY/cfMzQYo=;
- b=UGFcTCDafrY65XWH2jvhhFQPU0Lvgum1krcDP5N7we1X1s40tn2q4kqj7W8DWCZvljfx51m1v
- 9bcyBVU5xafDcWPjDUtyO6jNkBrdUe8u6uvdw9kFm3ym+oHIBzCvzDS
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OzQ6CMBCEX4Xs2TX9AUw8+R6GQ8GtVLQl3Uowh
+ He34N3jZOabmQWYoiOGc7FApMmxCz4LdSig642/E7pb1qCEqqUQCtOT0boZecChY+ORYsTaktX
+ qVJZWVpDRMVLO7LVX8JTQ05yg+Tn8bh/Upa11y/aOU4if/cEkd+L/2CRRYGuMaI2oaq30ZYwhB
+ X98ETTrun4BSirMrdQAAAA=
+X-Change-ID: 20261002-tls-fix-sk-kcsan-err-6fef32744f15
+To: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jakub Sitnicki <jakub@cloudflare.com>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ bpf@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791089073; l=1777;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=mgCVQ9OkUN6to+zuCrllhKnShEsYYFKs+dhxVzDXexc=;
+ b=P7tWP0I1kn+S0QmhhhpR7E8umLZbnmB+G60n3pK7u8OMYxu2/1OP8qO5IX9Gec1UUcpvHol8g
+ YpIblb39Ua7CPbbQr9XNEJiv/cfw/WruUgGOOjtMF/Q6TZ2496+2yXY
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement tcpci_data::get_current_limit for tcpci_maxim driver to report
-a value of 500 mA unconditionally. This is the max current a configured
-USB 2.0 device may draw per the USB Type-C Cable and Connector
-Specification r2.2, Sec. 4.6.2.1. This helps set a current limit and
-thus enable charging for the cases when a port is connected to a non-PD
-Type-C port partner advertising Rp-def. This is until a mechanism for
-USB core to communicate the current limit to the TCPC driver is
-implemented.
+The TCP/MPTCP series that annotated lockless sk_err peeks and
+consumes is in net-next. Paolo asked for the same treatment on
+kTLS and on the unmarked writers that still race those readers.
 
-Assisted-by: LLM
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+do_recvmmsg() and getsockopt(SO_ERROR) still call sock_error()
+without the socket lock. kTLS is a ULP on that same struct sock,
+so tls_rx_rec_wait() has the same peek-versus-consume split, and
+the send path still does a double unmarked load.
+
+sock_dequeue_err_skb() can store sk_err from MSG_ERRQUEUE before
+lock_sock(). strp_abort_strp() and sk_psock_report_error() write
+the same field on the TCP/TLS and sockmap paths.
+
+Patch 1 annotates the TLS readers and consumes sk_err once on the
+no-data path. Patch 2 pairs the remaining writers with WRITE_ONCE().
+No extra ordering is added; ICMP error-queue overwrite semantics
+are unchanged.
+
+Link: https://lore.kernel.org/netdev/3d9d442f-f168-43da-87b0-010ad5a78365@redhat.com/
+
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+Changes in v2:
+- tls_encrypt_done(): fold the three unmarked sk_err loads into one
+  READ_ONCE()
+- Link to v1: https://patch.msgid.link/20261002-tls-fix-sk-kcsan-err-v1-0-baa0ba056323@proton.me
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 998693a61839..e6f825931ba0 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -482,6 +482,20 @@ static bool max_tcpci_attempt_vconn_swap_discovery(struct tcpci *tcpci, struct t
- 	return true;
- }
- 
-+/*
-+ * This callback is used by the TCPM to determine the current limit to set when
-+ * Rp-def is advertised on the CC pins. The actual current limit comes from
-+ * other subsystems such as the USB gadget/host stack (USB 2.0/USB 3.2) and
-+ * BC1.2. As a workaround, report the USB 2.0 current limit of 500 mA to enable
-+ * charging when the device is connected to a non-PD source advertising Rp-def.
-+ * This can be removed once a mechanism for the USB core to communicate the
-+ * current limit to this driver is implemented.
-+ */
-+static int max_tcpci_get_current_limit(struct tcpci *tcpci, struct tcpci_data *tdata)
-+{
-+	return 500;
-+}
-+
- static void max_tcpci_unregister_tcpci_port(void *tcpci)
- {
- 	tcpci_unregister_port(tcpci);
-@@ -523,6 +537,7 @@ static int max_tcpci_probe(struct i2c_client *client)
- 	chip->data.check_contaminant = max_tcpci_check_contaminant;
- 	chip->data.cable_comm_capable = true;
- 	chip->data.attempt_vconn_swap_discovery = max_tcpci_attempt_vconn_swap_discovery;
-+	chip->data.get_current_limit = max_tcpci_get_current_limit;
- 
- 	max_tcpci_init_regs(chip);
- 	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
+---
+Quanye Yang (2):
+      tls: annotate lockless access to sk->sk_err
+      net: annotate lockless writes to sk->sk_err
 
--- 
-2.56.0.rc1.315.gc6ed9934b7-goog
+ include/linux/skmsg.h     |  2 +-
+ net/core/skbuff.c         |  5 +++--
+ net/strparser/strparser.c |  2 +-
+ net/tls/tls_device.c      |  5 +++--
+ net/tls/tls_sw.c          | 54 +++++++++++++++++++++++++++++++----------------
+ 5 files changed, 44 insertions(+), 24 deletions(-)
+---
+base-commit: 071876fd50482a68603a9460d80dd6dd58827ee1
+change-id: 20261002-tls-fix-sk-kcsan-err-6fef32744f15
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
