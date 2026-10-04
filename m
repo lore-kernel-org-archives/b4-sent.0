@@ -1,14 +1,13 @@
 From: nacht20-de <nacht@dxdmail.cc>
-Subject: [PATCH 0/2] Add Samsung Galaxy Tab S9 Wi-Fi (SM-X710) support
-Date: Sun, 04 Oct 2026 18:47:20 +0200
-Message-Id: <20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc>
+Date: Sun, 04 Oct 2026 18:47:21 +0200
+Subject: [PATCH 1/2] dt-bindings: arm: qcom: Add Samsung Galaxy Tab S9
+ Wi-Fi
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAwMT3fSSYsvyzLRM3ZSSYt0UIxNzo1QLS1MjYxMloJaCotS0zAqwcdG
- xtbUAcToC8F4AAAA=
-X-Change-ID: 20261004-gts9wifi-dts-d2472e895234
+Message-Id: <20261004-gts9wifi-dts-v1-1-1f0d7dd47e4a@dxdmail.cc>
+References: <20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc>
+In-Reply-To: <20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,44 +16,38 @@ Cc: Abel Vesa <abelvesa@kernel.org>, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  nacht20-de <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791132457; l=1335;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791132457; l=793;
  i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=VGH68o1So4n95en4Q1zcMapfjEJZnTyyYoRL4fIbGRQ=;
- b=6mQ0qrTNApStm+7dynyIUGjjMJgeMCxnMeNdDF2gArGe43lf82/eiJV6+ATy3WB4PNGQMvK6n
- iDm8x19cSIPDKYegmBBVtv4MA3bmg0RQcgnZ43tlgFNvnFn9PJ5mt4e
+ bh=dhb9/CYWJRP1ErIsELAmuFRlF70WvgeelXRbRrXljkU=;
+ b=RBruufLvwrH74bfWhOgOf+gIJvxy87vGe1TbY8g9xOxe1Xj8XfeJMy5+CBA7mbtOdMWVTrf5k
+ mZo5UoHXZSpBHYn1K/F3Sm5nB901ufJxHD5uoeHoCOe5zJt5Vl0Q3RO
 X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
  pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
 X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add devicetree support for the Samsung Galaxy Tab S9 Wi-Fi (SM-X710),
-an SM8550 tablet. Two patches: the qcom.yaml board entry and the board
-DTS describing UFS, microSD, USB 2.0 peripheral via eUSB2 with an NXP
-PTN3222 repeater, keys, GPU, video decoder, ADSP and the CS35L45/VA-macro
-audio path.
+Document the Samsung Galaxy Tab S9 Wi-Fi (SM-X710), a tablet based on
+the SM8550 SoC.
 
-Tested on hardware on top of linux-next next-20261002 (boots to a shell
-through U-Boot): storage, USB gadget, framebuffer console, keys including
-the book-cover switch, CPU frequency scaling, GPU firmware and render
-node, video decoder node, and the ADSP/audio probe chain. The microSD
-slot is described but not yet tested, and audio playback/capture was not
-exercised. The wireless module needs additional power sequencing and
-follows as a separate series.
-
+Assisted-by: LLM
+Signed-off-by: nacht20-de <nacht@dxdmail.cc>
 ---
-nacht20-de (2):
-      dt-bindings: arm: qcom: Add Samsung Galaxy Tab S9 Wi-Fi
-      arm64: dts: qcom: sm8550: Add support for Samsung Galaxy Tab S9 Wi-Fi
+ Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
- Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 664 +++++++++++++++++++++
- 3 files changed, 666 insertions(+)
----
-base-commit: f0406245cb9855e6318335a8a223551354291a46
-change-id: 20261004-gts9wifi-dts-d2472e895234
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index 121ca557ce1e..5e560f523d32 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -1173,6 +1173,7 @@ properties:
+               - qcom,sm8550-hdk
+               - qcom,sm8550-mtp
+               - qcom,sm8550-qrd
++              - samsung,gts9wifi
+               - samsung,q5q
+               - sony,pdx234
+           - const: qcom,sm8550
 
-Best regards,
 -- 
-nacht20-de <nacht@dxdmail.cc>
+2.55.0
 
