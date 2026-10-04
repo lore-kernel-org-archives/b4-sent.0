@@ -1,100 +1,141 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 21:22:40 +0200
-Subject: [PATCH u-boot 8/8] arm: dts: qcom: akatsuki: re-enable the UFS
- controller node
+Date: Sun, 04 Oct 2026 21:47:24 +0200
+Subject: [PATCH v2] video: console: clear rows stride-aware in set_row
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-ufs-sony-v1-8-54e71c95ba62@protonmail.com>
-References: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
-In-Reply-To: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
-To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
- u-boot-qcom@groups.io
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Bhupesh Sharma <bhupesh.linux@gmail.com>, 
- Neha Malcom Francis <n-francis@ti.com>, 
- Casey Connolly <casey.connolly@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Angelo Gioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- David Heidelberg <david@ixit.cz>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Padmarao Begari <padmarao.begari@amd.com>, 
- Macpaul Lin <macpaul.lin@mediatek.com>, 
- Julien Stephan <jstephan@baylibre.com>, 
- Kunihiko Hayashi <hayashi.kunihiko@socionext.com>, 
- Shawn Lin <shawn.lin@rock-chips.com>, Jared McArthur <j-mcarthur@ti.com>, 
- Michal Simek <michal.simek@amd.com>, Udit Kumar <u-kumar1@ti.com>, 
- Igor Belwon <igor.belwon@mentallysanemainliners.org>, 
- Tuyen Dang <tuyen.dang.xa@renesas.com>, Alexey Charkov <alchark@gmail.com>, 
- Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
- Simon Glass <sjg@chromium.org>, 
- Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
- Bin Meng <bmeng.cn@gmail.com>, Marek Vasut <marek.vasut@mailbox.org>, 
- David Lechner <dlechner@baylibre.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Kory Maincent <kory.maincent@bootlin.com>, Peng Fan <peng.fan@nxp.com>, 
- Kuan-Wei Chiu <visitorckw@gmail.com>, Janne Grunau <j@jannau.net>, 
- Julien Masson <jmasson@baylibre.com>, 
- Raymond Mao <raymond.mao@riscstar.com>, 
- Quentin Schulz <quentin.schulz@cherry.de>, 
- Philip Molloy <philip.molloy@analog.com>, 
- Jerome Forissier <jerome.forissier@arm.com>, 
- Markus Niebel <Markus.Niebel@ew.tq-group.com>, Petr Pavlata <petr@acrux.cz>, 
- Petr Hodina <petr.hodina@protonmail.com>
+Message-Id: <20261004-b4-framebuffer-stride-fix-v2-1-923af6708491@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NSw6CMBRFt2I69pm+puHjyH0YBv28So1Q0haiI
+ ezdghtweG7uvWdliaKnxK6nlUVafPJhLCDOJ2Z6NT4IvC3MBBcVci5AS3BRDaRn5yhCytFbAuf
+ fUNUGbW3bBqllZT9FKvHxfe9+nGb9JJP3w73R+5RD/BzyBffeP54FAUGqRraNxEpzvE0x5DAOy
+ r8uJgys27btC6jm23vZAAAA
+X-Change-ID: 20261002-b4-framebuffer-stride-fix-67c1d7d981e9
+To: u-boot@lists.u-boot-project.org
+Cc: Anatolij Gustschin <ag.dev.uboot@gmail.com>, 
+ Tom Rini <trini@konsulko.com>, David Heidelberg <david@ixit.cz>, 
+ Petr Hodina <petr.hodina@protonmail.com>, Simon Glass <sjg@chromium.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=1485;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791143248; l=3984;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=QVlhZ7MAT+TeLV7gQeOnoExu28XTr702eo6kVaytxCs=;
- b=0cJS2YcECbh/9q131AEAOs2knpLx8EUVSKgQqR0xf+H0QMBcRigu8G/+Xl1FWPZyWk930YUQG
- 3YXk8/2TUEjCT1dTbR+G8OPHhxyxEUO9Ava/S3BGll/M3EYgB2eoej9
+ bh=HwbrIMmhKvc7bUtP00b6jwcxMskb4BSruE7UiQCRNDI=;
+ b=z3CzFSZNnK/Vp+PMAMMjRtTIdi1qJmIY5/y3j2QzoS2ballZ2JRhxnXPVFoPyrwVzrsX9+/Ai
+ Bgotq5JW9xtABh5BAeputI0u38mg3bq84wFS1+Jmxv1/6JcjVjwrSKL
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Upstream Linux explicitly disables ufs_mem_hc/ufs_mem_phy for all Tama
-devices (sdm845-sony-xperia-tama.dtsi):
+console_set_row() and console_set_row_2() clear a row with a single
+contiguous fill assuming line_length == xsize * pbytes. A stride-padded
+framebuffer inherited from a prior boot stage (e.g. via
+simple-framebuffer) breaks that assumption leaving stale pixels after
+scroll.
 
-    /* BIG WARNING! DO NOT TOUCH UFS, YOUR DEVICE WILL DIE! */
-    &ufs_mem_hc { status = "disabled"; };
-    &ufs_mem_phy { status = "disabled"; };
-
-PURGE/UNMAP command issued to these devices' UFS erases the bootloader
-and permanently bricks the device.
+Use video_fill_part() which already steps per scanline by
+line_length.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- MAINTAINERS                                               | 1 +
- arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi | 9 +++++++++
- 2 files changed, 10 insertions(+)
+Found while testing the scrollback viewer against a stride-padded
+splash framebuffer inherited via simple-framebuffer.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 45e9076de67..9d6aa8126b7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -687,6 +687,7 @@ R:	Sumit Garg <sumit.garg@kernel.org>
- L:	u-boot-qcom@groups.io
- S:	Maintained
- T:	git https://source.denx.de/u-boot/custodians/u-boot-snapdragon.git
-+F:	arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi
- F:	configs/qcm6490_defconfig
- F:	configs/qcs9100_defconfig
- F:	drivers/*/*/pm8???-*
-diff --git a/arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi b/arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi
-new file mode 100644
-index 00000000000..a6e7ba45e92
---- /dev/null
-+++ b/arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi
-@@ -0,0 +1,9 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+&ufs_mem_hc {
-+	status = "okay";
-+};
-+
-+&ufs_mem_phy {
-+	status = "okay";
-+};
+console_set_row() and console_set_row_2() clear rows assuming
+line_length == xsize * pbytes. Fix them to step per scanline by
+line_length instead.
+---
+Changes in v2:
+- Switch to video_fill_part() which already handles stride
+- Link to v1: https://patch.msgid.link/20261002-b4-framebuffer-stride-fix-v1-1-4a8498416b01@protonmail.com
 
--- 
-2.55.0
+To: u-boot@lists.u-boot-project.org
+Cc: Anatolij Gustschin <ag.dev.uboot@gmail.com>
+Cc: Simon Glass <sjg@chromium.org>
+Cc: Tom Rini <trini@konsulko.com>
+Cc: Petr Hodina <petr.hodina@protonmail.com>
+---
+ drivers/video/console_normal.c | 26 +++-----------------------
+ drivers/video/console_rotate.c | 23 ++++-------------------
+ 2 files changed, 7 insertions(+), 42 deletions(-)
+
+diff --git a/drivers/video/console_normal.c b/drivers/video/console_normal.c
+index 07db613ac53..9a3d08aad02 100644
+--- a/drivers/video/console_normal.c
++++ b/drivers/video/console_normal.c
+@@ -18,30 +18,10 @@ static int console_set_row(struct udevice *dev, uint row, int clr)
+ 	struct video_priv *vid_priv = dev_get_uclass_priv(dev->parent);
+ 	struct console_simple_priv *priv = dev_get_priv(dev);
+ 	struct video_fontdata *fontdata = priv->fontdata;
+-	void *line, *dst, *end;
+-	int pixels = fontdata->height * vid_priv->xsize;
+-	int ret;
+-	int i;
+-	int pbytes;
+ 
+-	ret = check_bpix_support(vid_priv->bpix);
+-	if (ret)
+-		return ret;
+-
+-	line = vid_priv->fb + row * fontdata->height * vid_priv->line_length;
+-	dst = line;
+-	pbytes = VNBYTES(vid_priv->bpix);
+-	for (i = 0; i < pixels; i++)
+-		fill_pixel_and_goto_next(&dst, clr, pbytes, pbytes);
+-	end = dst;
+-
+-	video_damage(dev->parent,
+-		     0,
+-		     fontdata->height * row,
+-		     vid_priv->xsize,
+-		     fontdata->height);
+-
+-	return 0;
++	return video_fill_part(dev->parent, 0, row * fontdata->height,
++				vid_priv->xsize,
++				(row + 1) * fontdata->height, clr);
+ }
+ 
+ static int console_move_rows(struct udevice *dev, uint rowdst,
+diff --git a/drivers/video/console_rotate.c b/drivers/video/console_rotate.c
+index 886b25dcfaf..6feacd43b6c 100644
+--- a/drivers/video/console_rotate.c
++++ b/drivers/video/console_rotate.c
+@@ -112,26 +112,11 @@ static int console_set_row_2(struct udevice *dev, uint row, int clr)
+ 	struct video_priv *vid_priv = dev_get_uclass_priv(dev->parent);
+ 	struct console_simple_priv *priv = dev_get_priv(dev);
+ 	struct video_fontdata *fontdata = priv->fontdata;
+-	void *start, *line, *dst, *end;
+-	int pixels = fontdata->height * vid_priv->xsize;
+-	int i;
+-	int pbytes = VNBYTES(vid_priv->bpix);
+-
+-	start = vid_priv->fb + vid_priv->ysize * vid_priv->line_length -
+-		(row + 1) * fontdata->height * vid_priv->line_length;
+-	line = start;
+-	dst = line;
+-	for (i = 0; i < pixels; i++)
+-		fill_pixel_and_goto_next(&dst, clr, pbytes, pbytes);
+-	end = dst;
+ 
+-	video_damage(dev->parent,
+-		     0,
+-		     vid_priv->ysize - (row + 1) * fontdata->height,
+-		     vid_priv->xsize,
+-		     fontdata->height);
+-
+-	return 0;
++	return video_fill_part(dev->parent, 0,
++				vid_priv->ysize - (row + 1) * fontdata->height,
++				vid_priv->xsize,
++				vid_priv->ysize - row * fontdata->height, clr);
+ }
+ 
+ static int console_move_rows_2(struct udevice *dev, uint rowdst, uint rowsrc,
+
+---
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20261002-b4-framebuffer-stride-fix-67c1d7d981e9
+
+Best regards,
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
