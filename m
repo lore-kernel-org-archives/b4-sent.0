@@ -1,11 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 21:22:37 +0200
-Subject: [PATCH u-boot 5/8] scsi: ufs: refuse erase/UNMAP on NO_PURGE
- devices
+Date: Sun, 04 Oct 2026 21:22:38 +0200
+Subject: [PATCH u-boot 6/8] ufs: print device information at probe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-ufs-sony-v1-5-54e71c95ba62@protonmail.com>
+Message-Id: <20261004-b4-ufs-sony-v1-6-54e71c95ba62@protonmail.com>
 References: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 In-Reply-To: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
@@ -41,83 +40,97 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Markus Niebel <Markus.Niebel@ew.tq-group.com>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=2283;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=2712;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=6DAUFUAuX1kh2EGKP1zZL/kXMWnZ7K3mF+wCJzqM3dU=;
- b=Ut927M9BiT1NPo6Nh2l1okrMvskxdhzJMVL35MAcgfIyhwmuwG+cruu4TVWm1yBKApEJ+adE1
- SWVhUXsQT9HBtikSNFSeBYALm289PVEJUAExxBGyYMkKYl1LCTLlR8p
+ bh=QupSv/OYoIZpSqpoakOWBMqt+riZ+H1acPCcpQ7fYWU=;
+ b=8TDvnoydVNdNrlVekS+dkYI73k3h6e08pzwHj3ozFFdFGngrUHAEyZbLVaB4gyppVQNcA/jQA
+ +y+wAf6zCmeAd7BnTvYuPw5EF28WIkxo+rAwJwkJQLKBG8Em0ljoxDS
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enforce the UFS_DEVICE_QUIRK_NO_PURGE quirk on U-Boot's only path that
-can reach a UFS device with a destructive UNMAP: the block-device erase
-op (scsi_erase() -> SCSI_UNMAP). On Sony Yoshino/Tama a PURGE/UNMAP
-erases the bootloader and permanently bricks the device.
+Dump the key UFS device properties (manufacturer, model, fw revision,
+spec version, negotiated gear/lane/power, and the applied device quirks)
+at the end of ufs_start().
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/scsi/scsi.c      |  5 +++++
- drivers/ufs/ufs-uclass.c | 12 ++++++++++++
- include/scsi.h           |  5 +++++
- 3 files changed, 22 insertions(+)
+ drivers/ufs/ufs-uclass.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
 
-diff --git a/drivers/scsi/scsi.c b/drivers/scsi/scsi.c
-index 50e7d749921..ba7834ea035 100644
---- a/drivers/scsi/scsi.c
-+++ b/drivers/scsi/scsi.c
-@@ -300,6 +300,11 @@ static ulong scsi_erase(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt)
- 	lbaint_t start, blks, max_blks, blocks;
- 	struct scsi_cmd *pccb = (struct scsi_cmd *)&tempccb;
- 
-+	if (uc_plat->no_erase) {
-+		printf("%s: erase not supported on this device\n", __func__);
-+		return 0;
-+	}
-+
- 	/* Setup device */
- 	pccb->target = block_dev->target;
- 	pccb->lun = block_dev->lun;
 diff --git a/drivers/ufs/ufs-uclass.c b/drivers/ufs/ufs-uclass.c
-index 977ffebc21f..7dfba3ac1ac 100644
+index 7dfba3ac1ac..3cc4fd6bde3 100644
 --- a/drivers/ufs/ufs-uclass.c
 +++ b/drivers/ufs/ufs-uclass.c
-@@ -2366,6 +2366,18 @@ int ufshcd_probe(struct udevice *ufs_dev, struct ufs_hba_ops *hba_ops)
- 	if (err)
- 		return err;
+@@ -2218,6 +2218,58 @@ static void ufshcd_def_desc_sizes(struct ufs_hba *hba)
+ 	hba->desc_size.hlth_desc = QUERY_DESC_HEALTH_DEF_SIZE;
+ }
  
-+	/*
-+	 * Some devices must never receive a PURGE / UNMAP (secure erase): on
-+	 * the affected platforms it erases the bootloader and permanently
-+	 * bricks the device. Disable the SCSI erase op for the whole UFS
-+	 * device in that case.
-+	 */
-+	if (hba->dev_quirks & UFS_DEVICE_QUIRK_NO_PURGE) {
-+		scsi_plat->no_erase = true;
-+		dev_info(hba->dev,
-+			 "NO_PURGE quirk active: SCSI erase/UNMAP disabled\n");
++/* Map a JEDEC UFS manufacturer id to a human-readable vendor name */
++static const char *ufshcd_vendor_name(u16 mid)
++{
++	switch (mid) {
++	case UFS_VENDOR_TOSHIBA:	return "Toshiba/Kioxia";
++	case UFS_VENDOR_SAMSUNG:	return "Samsung";
++	case UFS_VENDOR_SKHYNIX:	return "SK Hynix";
++	case UFS_VENDOR_MICRON:		return "Micron";
++	case UFS_VENDOR_WDC:		return "Western Digital";
++	default:			return NULL;
 +	}
++}
++
++static void ufshcd_rtrim(char *s)
++{
++	size_t n = strlen(s);
++
++	while (n && s[n - 1] == ' ')
++		s[--n] = '\0';
++}
++
++static void ufshcd_print_dev_info(struct ufs_hba *hba,
++				  struct ufs_dev_desc *card)
++{
++	const char *vendor = ufshcd_vendor_name(card->wmanufacturerid);
++
++	ufshcd_rtrim(card->model);
++	ufshcd_rtrim(card->revision);
++
++	printf("UFS Device Information (%s)\n", hba->dev->name);
++	if (vendor)
++		printf("  Manufacturer:    %s (0x%04x)\n", vendor,
++		       card->wmanufacturerid);
++	else
++		printf("  Manufacturer ID: 0x%04x\n", card->wmanufacturerid);
++	printf("  Model:           %s\n",
++	       card->model[0] ? card->model : "(unset)");
++	printf("  Revision:        %s\n",
++	       card->revision[0] ? card->revision : "(unset)");
++	printf("  Spec Version:    0x%04x\n", card->wspecversion);
++	printf("  Gear  - RX: %u, TX: %u\n",
++	       hba->pwr_info.gear_rx, hba->pwr_info.gear_tx);
++	printf("  Lane  - RX: %u, TX: %u\n",
++	       hba->pwr_info.lane_rx, hba->pwr_info.lane_tx);
++	printf("  Power - RX: %u, TX: %u, HS rate: %u\n",
++	       hba->pwr_info.pwr_rx, hba->pwr_info.pwr_tx,
++	       hba->pwr_info.hs_rate);
++	printf("  Device Quirks:   0x%08x\n", hba->dev_quirks);
++	printf("  NO_PURGE Quirk:  %s\n",
++	       (hba->dev_quirks & UFS_DEVICE_QUIRK_NO_PURGE) ? "Yes" : "No");
++}
++
+ static int ufs_start(struct ufs_hba *hba)
+ {
+ 	struct ufs_dev_desc card = {0};
+@@ -2268,6 +2320,8 @@ static int ufs_start(struct ufs_hba *hba)
+ 		ufshcd_print_pwr_info(hba);
+ 	}
+ 
++	ufshcd_print_dev_info(hba, &card);
 +
  	return 0;
  }
  
-diff --git a/include/scsi.h b/include/scsi.h
-index 2520a8b8fe6..fc296285dd5 100644
---- a/include/scsi.h
-+++ b/include/scsi.h
-@@ -275,6 +275,11 @@ struct scsi_plat {
- 	unsigned long max_lun;
- 	unsigned long max_id;
- 	unsigned long max_bytes_per_req;
-+	/*
-+	 * Set by the controller driver to forbid the erase (UNMAP) operation,
-+	 * e.g. for UFS devices whose PURGE/UNMAP would erase the bootloader.
-+	 */
-+	bool no_erase;
- };
- 
- /* Operations for SCSI */
 
 -- 
 2.55.0
