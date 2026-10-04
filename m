@@ -1,101 +1,63 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Sat, 03 Oct 2026 21:44:29 -0700
-Subject: [PATCH net-next v2 2/2] net: annotate lockless writes to
- sk->sk_err
+From: Ben Kuo <ben.kuo.tw@proton.me>
+Date: Sun, 04 Oct 2026 16:49:17 +0800
+Subject: [PATCH] man/man7/mount_namespaces.7: Add missing 'filesystemtype'
+ argument to mount(2)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261003-tls-fix-sk-kcsan-err-v2-2-e939a2ebdd56@proton.me>
-References: <20261003-tls-fix-sk-kcsan-err-v2-0-e939a2ebdd56@proton.me>
-In-Reply-To: <20261003-tls-fix-sk-kcsan-err-v2-0-e939a2ebdd56@proton.me>
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jakub Sitnicki <jakub@cloudflare.com>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- bpf@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791089073; l=2416;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=K/co0bqQ7iNM1L5ByfBSbB0henAPROl+oW+6On5Cxro=;
- b=A918iZ/GkqvFJsd6CLaHO6BlPpFlnFTyUu7uyAoBu6+rWKFSe5aXg6Tz3OsJuR56EnN0VetcR
- YBb3oq+cWQDDmKvi2gQXElleeuMkG8fvlUPd/Hjxn314OfWqVIvUpZG
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+Message-Id: <20261004-mount-ns-mount-args-v1-1-a344b18c0c22@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAwTwmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwMT3dz80rwS3bxiKCOxKL1Y19LC0tIgLSUxyczSUgmos6AoNS2zAmx
+ qdGxtLQCarbFsZQAAAA==
+X-Change-ID: 20261004-mount-ns-mount-args-98990fdab699
+To: Alejandro Colomar <alx@kernel.org>
+Cc: linux-man@vger.kernel.org, Ben Kuo <ben.kuo.tw@proton.me>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791103793; l=1247;
+ i=ben.kuo.tw@proton.me; s=20261004; h=from:subject:message-id;
+ bh=0hTM8yyVZi7R4ypo1hfKJWwCiZ9rEiA1Wk0lIvHRdeY=;
+ b=jUYOYgGdNl3mLrxOG8sZfgNgw24FpfcqrKVh8wA86pxJMm0/Q9KhlbJx94BHtYdUBT1A6ksus
+ oZdRFmRjEizANa/BT6qLVcaoMbuSJvbO+cSz4ZlG2zCbekKMJE4z3Xk
+X-Developer-Key: i=ben.kuo.tw@proton.me; a=ed25519;
+ pk=gXi9Dh9ncDWJiQmei79Ms5wulBAOhOVhaWE+qzS5nXY=
+X-Endpoint-Received: by B4 Relay for ben.kuo.tw@proton.me/20261004 with auth_id=1107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-do_recvmmsg() and getsockopt(SO_ERROR) clear sk_err with xchg()
-without the socket lock. TCP, MPTCP and kTLS already peek the same
-field with READ_ONCE() or consume it via sock_error().
+The example call omits the 'filesystemtype' argument, so it passes
+four arguments to mount(2), which takes five.  As written, it fails
+to compile:
 
-sock_dequeue_err_skb() still uses plain stores. tcp_recvmsg() can
-call it via MSG_ERRQUEUE before lock_sock(), so those writes race
-with the annotated readers and with sock_error(). The same unmarked
-stores exist in strp_abort_strp() and sk_psock_report_error(), which
-run on the TCP/TLS socket.
+	error: too few arguments to function 'mount'
 
-Annotate those writers with WRITE_ONCE(). No extra ordering is
-needed; this does not change who wins when ICMP error-queue entries
-overwrite sk_err.
+Tested by compiling the corrected call with gcc 14.2.0 and running
+it after unshare(CLONE_NEWNS) on Linux 6.12 (Debian 13, arm64);
+findmnt(8) shows '/' with slave propagation.
 
-Link: https://lore.kernel.org/netdev/3d9d442f-f168-43da-87b0-010ad5a78365@redhat.com/
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Fixes: a2fc45a9f (2019-10-07; "mount_namespaces.7: It may be desirable to disable propagation after creating a namespace")
+Signed-off-by: Ben Kuo <ben.kuo.tw@proton.me>
 ---
- include/linux/skmsg.h     | 2 +-
- net/core/skbuff.c         | 5 +++--
- net/strparser/strparser.c | 2 +-
- 3 files changed, 5 insertions(+), 4 deletions(-)
+ man/man7/mount_namespaces.7 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/skmsg.h b/include/linux/skmsg.h
-index d5e35f24738d..52ce45f25f5a 100644
---- a/include/linux/skmsg.h
-+++ b/include/linux/skmsg.h
-@@ -429,7 +429,7 @@ static inline void sk_psock_report_error(struct sk_psock *psock, int err)
- {
- 	struct sock *sk = psock->sk;
- 
--	sk->sk_err = err;
-+	WRITE_ONCE(sk->sk_err, err);
- 	sk_error_report(sk);
- }
- 
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 5c4024a03e10..51e3cf1ea985 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -5535,12 +5535,13 @@ struct sk_buff *sock_dequeue_err_skb(struct sock *sk)
- 	if (skb && (skb_next = skb_peek(q))) {
- 		icmp_next = is_icmp_err_skb(skb_next);
- 		if (icmp_next)
--			sk->sk_err = SKB_EXT_ERR(skb_next)->ee.ee_errno;
-+			WRITE_ONCE(sk->sk_err,
-+				   SKB_EXT_ERR(skb_next)->ee.ee_errno);
- 	}
- 	spin_unlock_irqrestore(&q->lock, flags);
- 
- 	if (is_icmp_err_skb(skb) && !icmp_next)
--		sk->sk_err = 0;
-+		WRITE_ONCE(sk->sk_err, 0);
- 
- 	if (skb_next)
- 		sk_error_report(sk);
-diff --git a/net/strparser/strparser.c b/net/strparser/strparser.c
-index a23f4b4dfc67..e5d5d755e532 100644
---- a/net/strparser/strparser.c
-+++ b/net/strparser/strparser.c
-@@ -57,7 +57,7 @@ static void strp_abort_strp(struct strparser *strp, int err)
- 		struct sock *sk = strp->sk;
- 
- 		/* Report an error on the lower socket */
--		sk->sk_err = -err;
-+		WRITE_ONCE(sk->sk_err, -err);
- 		sk_error_report(sk);
- 	}
- }
+diff --git a/man/man7/mount_namespaces.7 b/man/man7/mount_namespaces.7
+index 8ed43a34623310f5c0b6b2071815340b287415aa..8f9c8e6e147a42b85d9d2cc2c691037ef82395f5 100644
+--- a/man/man7/mount_namespaces.7
++++ b/man/man7/mount_namespaces.7
+@@ -1051,7 +1051,7 @@ using a call such as the following:
+ .P
+ .in +4n
+ .EX
+-mount(NULL, "/", MS_SLAVE | MS_REC, NULL);
++mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
+ .EE
+ .in
+ .P
 
+---
+base-commit: 31d36870d5f239d485772f1dbf17948bc35bee80
+change-id: 20261004-mount-ns-mount-args-98990fdab699
+
+Best regards,
 -- 
-2.55.0
+Ben Kuo <ben.kuo.tw@proton.me>
 
