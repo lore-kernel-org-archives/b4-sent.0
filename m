@@ -1,100 +1,60 @@
-From: Shigeaki Asai <y-asai.0816@docomonet.jp>
-Date: Sun, 04 Oct 2026 23:50:17 +0900
-Subject: [PATCH] drm/meson: encoder_dsi: load ENCL gamma table while ENCL
- is disabled
+From: nacht20-de <nacht@dxdmail.cc>
+Subject: [PATCH 0/2] Add Samsung Galaxy Tab S9 Wi-Fi (SM-X710) support
+Date: Sun, 04 Oct 2026 18:47:20 +0200
+Message-Id: <20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-meson-gamma-v1-1-6347558e2bb3@docomonet.jp>
-X-B4-Tracking: v=1; b=H4sIAKhnwmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAwMT3dzU4vw83fTE3NxEXWNjAzMjU/NkgxQjCyWgjoKi1LTMCrBp0bE
- QfnFpUlZqcgnICKXaWgDtxUAKbwAAAA==
-X-Change-ID: 20261004-meson-gamma-3306257c0d28
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Nicolas Belin <nbelin@baylibre.com>, 
- Jagan Teki <jagan@amarulasolutions.com>
-Cc: dri-devel@lists.freedesktop.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, John Williams <porschemad911@gmail.com>, 
- Shigeaki Asai <y-asai.0816@docomonet.jp>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791125418; l=2799;
- i=y-asai.0816@docomonet.jp; s=20261004; h=from:subject:message-id;
- bh=epdsIAmy9JIKhg6OxImAsy/RAjs7ztCfGy7gPcYMgNE=;
- b=h1/oYAEa0HS+pqwwtr8ShKjfVW0AjgRlYY9z53yxUQUK0hbzAlVR8WNCPGetlPDMDGiY6cTF2
- en6s7mGAgp2D8IBtRWbfgNkpTT4Jym6j+2p7MFWctL/CZY5Yu0idK3I
-X-Developer-Key: i=y-asai.0816@docomonet.jp; a=ed25519;
- pk=jkd95ViSn8i/X3oPMHYG1A8mae8IOwOKGE64kzLqC5c=
-X-Endpoint-Received: by B4 Relay for y-asai.0816@docomonet.jp/20261004 with auth_id=1110
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwMT3fSSYsvyzLRM3ZSSYt0UIxNzo1QLS1MjYxMloJaCotS0zAqwcdG
+ xtbUAcToC8F4AAAA=
+X-Change-ID: 20261004-gts9wifi-dts-d2472e895234
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Abel Vesa <abelvesa@kernel.org>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ nacht20-de <nacht@dxdmail.cc>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791132457; l=1335;
+ i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
+ bh=VGH68o1So4n95en4Q1zcMapfjEJZnTyyYoRL4fIbGRQ=;
+ b=6mQ0qrTNApStm+7dynyIUGjjMJgeMCxnMeNdDF2gArGe43lf82/eiJV6+ATy3WB4PNGQMvK6n
+ iDm8x19cSIPDKYegmBBVtv4MA3bmg0RQcgnZ43tlgFNvnFn9PJ5mt4e
+X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
+ pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
+X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-meson_encoder_dsi_atomic_enable() programmed the ENCL gamma LUT right
-after meson_venc_mipi_dsi_mode_set(), i.e. while the ENCL timing
-generator was already running (ENCL_VIDEO_EN=1). Writing the LUT
-during active video stalls the hardware: L_GAMMA_CNTL_PORT
-WR_RDY/ADR_RDY deassert and the ENCL line counter (ENCL_INFO_READ)
-freezes, so every remaining write times out (~8s total at boot) and
-the panel ends up with a corrupted gamma table (wrong colors).
+Add devicetree support for the Samsung Galaxy Tab S9 Wi-Fi (SM-X710),
+an SM8550 tablet. Two patches: the qcom.yaml board entry and the board
+DTS describing UFS, microSD, USB 2.0 peripheral via eUSB2 with an NXP
+PTN3222 repeater, keys, GPU, video decoder, ADSP and the CS35L45/VA-macro
+audio path.
 
-Instrumented boots on the ODROID-GO Ultra (S922X) show:
-
-  failing:  start: VIDEO_EN=1 INFO 0000001a->002d0000 GAMMA_CNTL=00000030
-            stall: INFO 002d0000->002d0000 GAMMA_CNTL=00000000
-            (VID_CLK_CNTL2 / VIID_CLK_CNTL / VIID_CLK_DIV unchanged,
-             i.e. the ENCL clock is still running)
-  fixed:    start: VIDEO_EN=0 INFO 00000000->00000000 GAMMA_CNTL=00000030
-            no stall, no timeout
-
-Whether it failed depended only on timing, which is why enabling
-lock debugging (LOCKDEP etc.) appeared to "fix" it most of the time.
-It happens regardless of the bootloader (mainline or Hardkernel vendor
-U-Boot).
-
-The function already writes ENCL_VIDEO_EN=0 right afterwards before
-re-enabling the encoder, so simply move meson_encl_load_gamma() after
-that write. This matches the order used by the vendor U-Boot's own LCD
-driver, which never times out.
-
-Tested on the ODROID-GO Ultra with mainline U-Boot: 5 cold boots +
-3 warm reboots, no timeouts, correct colors, LOCKDEP disabled.
-
-Fixes: 42dcf15f901c ("drm/meson: add DSI encoder")
-Cc: stable@vger.kernel.org
-Tested-by: John Williams <porschemad911@gmail.com>
-Signed-off-by: Shigeaki Asai <y-asai.0816@docomonet.jp>
----
-This was found on the ODROID-GO Ultra while bringing it up on
-Lakka / ROCKNIX. Happy to test any alternative approach.
----
- drivers/gpu/drm/meson/meson_encoder_dsi.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/meson/meson_encoder_dsi.c b/drivers/gpu/drm/meson/meson_encoder_dsi.c
-index faa309cb97a6..912cd676bbe2 100644
---- a/drivers/gpu/drm/meson/meson_encoder_dsi.c
-+++ b/drivers/gpu/drm/meson/meson_encoder_dsi.c
-@@ -65,9 +65,9 @@ static void meson_encoder_dsi_atomic_enable(struct drm_bridge *bridge,
- 	/* ENCL clock setup is handled by CCF */
- 
- 	meson_venc_mipi_dsi_mode_set(priv, &crtc_state->adjusted_mode);
--	meson_encl_load_gamma(priv);
- 
- 	writel_relaxed(0, priv->io_base + _REG(ENCL_VIDEO_EN));
-+	meson_encl_load_gamma(priv);
- 
- 	writel_bits_relaxed(ENCL_VIDEO_MODE_ADV_VFIFO_EN, ENCL_VIDEO_MODE_ADV_VFIFO_EN,
- 			    priv->io_base + _REG(ENCL_VIDEO_MODE_ADV));
+Tested on hardware on top of linux-next next-20261002 (boots to a shell
+through U-Boot): storage, USB gadget, framebuffer console, keys including
+the book-cover switch, CPU frequency scaling, GPU firmware and render
+node, video decoder node, and the ADSP/audio probe chain. The microSD
+slot is described but not yet tested, and audio playback/capture was not
+exercised. The wireless module needs additional power sequencing and
+follows as a separate series.
 
 ---
-base-commit: 70456f05d4b6396b22048c4b8cd3cb98ecf9f9e3
-change-id: 20261004-meson-gamma-3306257c0d28
+nacht20-de (2):
+      dt-bindings: arm: qcom: Add Samsung Galaxy Tab S9 Wi-Fi
+      arm64: dts: qcom: sm8550: Add support for Samsung Galaxy Tab S9 Wi-Fi
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 664 +++++++++++++++++++++
+ 3 files changed, 666 insertions(+)
+---
+base-commit: f0406245cb9855e6318335a8a223551354291a46
+change-id: 20261004-gts9wifi-dts-d2472e895234
 
 Best regards,
---  
-Shigeaki Asai <y-asai.0816@docomonet.jp>
+-- 
+nacht20-de <nacht@dxdmail.cc>
 
