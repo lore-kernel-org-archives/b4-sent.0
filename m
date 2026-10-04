@@ -1,10 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 21:22:36 +0200
-Subject: [PATCH u-boot 4/8] ufs: add CONFIG_UFS_RESTRICT_TX_LANES
+Date: Sun, 04 Oct 2026 21:22:37 +0200
+Subject: [PATCH u-boot 5/8] scsi: ufs: refuse erase/UNMAP on NO_PURGE
+ devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-ufs-sony-v1-4-54e71c95ba62@protonmail.com>
+Message-Id: <20261004-b4-ufs-sony-v1-5-54e71c95ba62@protonmail.com>
 References: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 In-Reply-To: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
@@ -40,77 +41,83 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Markus Niebel <Markus.Niebel@ew.tq-group.com>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=2153;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=2283;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=FTI5xYw1z/BewAVGIYfLfALDiWPTsnJhZaaKA4sllzY=;
- b=O/YEMpqMSysfNs3B88QX1ZmllpqFahoApTXj+hxJBbtBmAFH9OeaICcWC6NMbKRhCYaLTLO75
- N2hMWUUTuYxCo0xpxwJnxXwSVKP640NvHle0T6CZd5t4ymGU1nBNRX1
+ bh=6DAUFUAuX1kh2EGKP1zZL/kXMWnZ7K3mF+wCJzqM3dU=;
+ b=Ut927M9BiT1NPo6Nh2l1okrMvskxdhzJMVL35MAcgfIyhwmuwG+cruu4TVWm1yBKApEJ+adE1
+ SWVhUXsQT9HBtikSNFSeBYALm289PVEJUAExxBGyYMkKYl1LCTLlR8p
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add CONFIG_UFS_RESTRICT_TX_LANES, to restrict the amount
-PA_AVAILTXDATALANES = 1 at the start of ufshcd_link_startup().
-
-Some platforms (notably the Sony Yoshino/Tama families on MSM8998 /
-SDM845) have only a single reliably-usable UFS TX lane.
+Enforce the UFS_DEVICE_QUIRK_NO_PURGE quirk on U-Boot's only path that
+can reach a UFS device with a destructive UNMAP: the block-device erase
+op (scsi_erase() -> SCSI_UNMAP). On Sony Yoshino/Tama a PURGE/UNMAP
+erases the bootloader and permanently bricks the device.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/ufs/Kconfig      | 14 ++++++++++++++
- drivers/ufs/ufs-uclass.c | 13 +++++++++++++
- 2 files changed, 27 insertions(+)
+ drivers/scsi/scsi.c      |  5 +++++
+ drivers/ufs/ufs-uclass.c | 12 ++++++++++++
+ include/scsi.h           |  5 +++++
+ 3 files changed, 22 insertions(+)
 
-diff --git a/drivers/ufs/Kconfig b/drivers/ufs/Kconfig
-index 49472933de3..266e7180152 100644
---- a/drivers/ufs/Kconfig
-+++ b/drivers/ufs/Kconfig
-@@ -8,6 +8,20 @@ config UFS
- 	  This selects support for Universal Flash Subsystem (UFS).
- 	  Say Y here if you want UFS Support.
+diff --git a/drivers/scsi/scsi.c b/drivers/scsi/scsi.c
+index 50e7d749921..ba7834ea035 100644
+--- a/drivers/scsi/scsi.c
++++ b/drivers/scsi/scsi.c
+@@ -300,6 +300,11 @@ static ulong scsi_erase(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt)
+ 	lbaint_t start, blks, max_blks, blocks;
+ 	struct scsi_cmd *pccb = (struct scsi_cmd *)&tempccb;
  
-+config UFS_RESTRICT_TX_LANES
-+	bool "Restrict the number of UFS TX lanes to 1"
-+	depends on UFS
-+	default n
-+	help
-+	  Say Y here to restrict the number of UFS TX lanes to 1. This saves
-+	  power at the cost of write performance.
-+
-+	  This is useful (and on some devices required) for platforms such as
-+	  the Sony Yoshino/Tama families where only a single TX lane is
-+	  reliably usable.
-+
-+	  If unsure, say N.
-+
- config UFS_AMD_VERSAL2
- 	bool "AMD Versal Gen 2 UFS controller platform driver"
- 	depends on UFS && ZYNQMP_FIRMWARE
-diff --git a/drivers/ufs/ufs-uclass.c b/drivers/ufs/ufs-uclass.c
-index fdf62a69c02..977ffebc21f 100644
---- a/drivers/ufs/ufs-uclass.c
-+++ b/drivers/ufs/ufs-uclass.c
-@@ -508,6 +508,19 @@ static int ufshcd_link_startup(struct ufs_hba *hba)
- 	int ret;
- 	int retries = DME_LINKSTARTUP_RETRIES;
- 
-+	if (IS_ENABLED(CONFIG_UFS_RESTRICT_TX_LANES)) {
-+		/*
-+		 * Restrict the number of available TX lanes to 1. This saves
-+		 * power at the cost of write performance and is required on
-+		 * some platforms (e.g. Sony Yoshino/Tama) where only a single
-+		 * TX lane is reliably usable.
-+		 */
-+		ret = ufshcd_dme_set(hba, UIC_ARG_MIB(PA_AVAILTXDATALANES), 1);
-+		if (ret)
-+			dev_warn(hba->dev, "%s: failed to restrict TX lanes: %d\n",
-+				 __func__, ret);
++	if (uc_plat->no_erase) {
++		printf("%s: erase not supported on this device\n", __func__);
++		return 0;
 +	}
 +
- 	do {
- 		ret = ufshcd_ops_link_startup_notify(hba, PRE_CHANGE);
- 		if (ret)
+ 	/* Setup device */
+ 	pccb->target = block_dev->target;
+ 	pccb->lun = block_dev->lun;
+diff --git a/drivers/ufs/ufs-uclass.c b/drivers/ufs/ufs-uclass.c
+index 977ffebc21f..7dfba3ac1ac 100644
+--- a/drivers/ufs/ufs-uclass.c
++++ b/drivers/ufs/ufs-uclass.c
+@@ -2366,6 +2366,18 @@ int ufshcd_probe(struct udevice *ufs_dev, struct ufs_hba_ops *hba_ops)
+ 	if (err)
+ 		return err;
+ 
++	/*
++	 * Some devices must never receive a PURGE / UNMAP (secure erase): on
++	 * the affected platforms it erases the bootloader and permanently
++	 * bricks the device. Disable the SCSI erase op for the whole UFS
++	 * device in that case.
++	 */
++	if (hba->dev_quirks & UFS_DEVICE_QUIRK_NO_PURGE) {
++		scsi_plat->no_erase = true;
++		dev_info(hba->dev,
++			 "NO_PURGE quirk active: SCSI erase/UNMAP disabled\n");
++	}
++
+ 	return 0;
+ }
+ 
+diff --git a/include/scsi.h b/include/scsi.h
+index 2520a8b8fe6..fc296285dd5 100644
+--- a/include/scsi.h
++++ b/include/scsi.h
+@@ -275,6 +275,11 @@ struct scsi_plat {
+ 	unsigned long max_lun;
+ 	unsigned long max_id;
+ 	unsigned long max_bytes_per_req;
++	/*
++	 * Set by the controller driver to forbid the erase (UNMAP) operation,
++	 * e.g. for UFS devices whose PURGE/UNMAP would erase the bootloader.
++	 */
++	bool no_erase;
+ };
+ 
+ /* Operations for SCSI */
 
 -- 
 2.55.0
