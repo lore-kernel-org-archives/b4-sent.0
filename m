@@ -1,57 +1,63 @@
-From: Harinn <prinn.dev@pm.me>
-Date: Sun, 04 Oct 2026 17:59:53 +0700
-Subject: [PATCH] i2c: acpi: Force ASUE140D touchpads to 100 kHz
+From: Michael Reeves <michael.reeves077@gmail.com>
+Subject: [PATCH v2 0/2] regmap: Fix cache lifecycle locking and teardown
+Date: Sun, 04 Oct 2026 23:38:41 +1100
+Message-Id: <20261004-regcache-lifecycle-submit-v2-0-976d405e89a7@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-i2c-acpi-asue140d-100khz-v1-1-cc2dbad00470@pm.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QqDMAyF4VeRXC/QlkxhryJedDHVbOCkmWNMf
- PdVvfwOnH8Fk6xicKtWyPJR09dU4C8V8BinQVD7Yggu1N45Qg2MkWfFaIt4cj2W+Tn+kKipSTi
- lJlyh3OcsSb9Huu1O23J/CL/3HmzbH8l2jN98AAAA
-X-Change-ID: 20261004-i2c-acpi-asue140d-100khz-44764ecff725
-To: Andi Shyti <andi.shyti@kernel.org>, 
- Mika Westerberg <westeri@kernel.org>
-Cc: linux-i2c@vger.kernel.org, linux-acpi@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Harinn <prinn.dev@pm.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791111594; l=1034;
- i=prinn.dev@pm.me; s=20261004; h=from:subject:message-id;
- bh=CuXYtEQhbQqdDDViBlDQYIFq8WwTJxIz9o0H7TCHD1M=;
- b=adT3U/tce9xAsjL3NVTi1vLNYJ4orkdv3gjXD70QK0+cucyBy8YyVOuHoVzPS/zEjAArKHG9m
- ZudNy/K2OAgCiMfhUcIy1nAWBhJXz0YMKT6tLkY/teQpF9wf2gNe/5E
-X-Developer-Key: i=prinn.dev@pm.me; a=ed25519;
- pk=3q9t6SnPdJf3aRWfM5pwBvkSsRbrWSjKlcZ7e9U+UZU=
-X-Endpoint-Received: by B4 Relay for prinn.dev@pm.me/20261004 with auth_id=1108
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ6DIBBFr9KwLq1ixdpV79G4gHGQSUQNoKkx3
+ r3oCbp8i/f+31hATxjY67IxjwsFGocE4nphYNXQIac2MROZkFktSu6xAwUWeU8GYYUeeZi1o8i
+ rhymk1JgZDSz5k0dD37P9aRJrFZBrrwawR3GeQvSo3N2pENEfhqUQR7+eZ5b88P7ZXXKe82ehq
+ xJUVbe1fHdOUX+D0bFm3/cfTg4YbOQAAAA=
+X-Change-ID: 20260925-regcache-lifecycle-submit-74f366be0fbc
+To: Mark Brown <broonie@kernel.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, linux-kernel@vger.kernel.org, 
+ driver-core@lists.linux.dev, maple-tree@lists.infradead.org, 
+ asahi@lists.linux.dev, Michael Reeves <michael.reeves077@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791117521; l=1215;
+ i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
+ bh=zxQ062qio0+lCxbspHzHxGXHzh0Zgd+ekU5PisbC9JQ=;
+ b=aLvjZRQXFqeKgA0yST2S/OUk8DNVjfWJFwjV5j8/bOuOphkj3zNmFFut2iFCF/P3FDUZE314x
+ 2mh/RakN5dQBdoHNu5Upl21ifeebKRCndbCmmsYg3ej1ylXGMtgrwT0
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ASUE140D touchpad on the ASUS Zenbook UX3404VC (BIOS UX3404VC.303)
-starts lagging shortly after boot when the bus runs at the 400 kHz the
-DSDT asks for, and only recovers after rebinding i2c-hid. Forcing
-100 kHz fixes it.
+Fix an "Invalid wait context" lockdep warning during Apple GPIO probe and
+correct debugfs ordering during cache teardown.
 
-Signed-off-by: Harinn <prinn.dev@pm.me>
+Tested on Apple M3 MacBook Air (T8122):
+
+- All 4 GPIO controllers probe successfully with lockdep enabled.
+- The "Invalid wait context" warning no longer occurs.
+- The regmap KUnit suite passes and lockdep remains enabled.
+
 ---
- drivers/i2c/i2c-core-acpi.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v2:
+- Link to v1: https://lore.kernel.org/r/20260925-regcache-lifecycle-submit-v1-1-83b75ca79d96@gmail.com
+- Make Maple cache teardown IRQ-safe.
+- Fix debugfs ordering during cache teardown and reinitialization.
+- Rebase onto the latest upstream tree.
 
-diff --git a/drivers/i2c/i2c-core-acpi.c b/drivers/i2c/i2c-core-acpi.c
-index 8f3bdd50186e..e5b27375af31 100644
---- a/drivers/i2c/i2c-core-acpi.c
-+++ b/drivers/i2c/i2c-core-acpi.c
-@@ -371,6 +371,7 @@ static const struct acpi_device_id i2c_acpi_force_100khz_device_ids[] = {
- 	 * the device works without issues on Windows at what is expected to be
- 	 * a 400KHz frequency. The root cause of the issue is not known.
- 	 */
-+	{ "ASUE140D", 0 },
- 	{ "DLL0945", 0 },
- 	{ "ELAN0678", 0 },
- 	{ "ELAN06FA", 0 },
+---
+Michael Reeves (2):
+      regmap: Remove debugfs before cache teardown
+      regmap: Drop map lock during cache init and exit
 
+ drivers/base/regmap/regcache-maple.c |  5 +++--
+ drivers/base/regmap/regcache.c       |  6 ------
+ drivers/base/regmap/regmap-debugfs.c |  1 +
+ drivers/base/regmap/regmap.c         | 15 +++++++++------
+ 4 files changed, 13 insertions(+), 14 deletions(-)
 ---
 base-commit: 6addb4f385570ebc11c4eb499a4f1c149f313e84
-change-id: 20261004-i2c-acpi-asue140d-100khz-44764ecff725
+change-id: 20260925-regcache-lifecycle-submit-74f366be0fbc
 
 Best regards,
---  
-Harinn <prinn.dev@pm.me>
+-- 
+Michael Reeves <michael.reeves077@gmail.com>
 
