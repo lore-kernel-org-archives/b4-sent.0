@@ -1,15 +1,12 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Subject: [PATCH v2 0/2] regmap: Fix cache lifecycle locking and teardown
-Date: Sun, 04 Oct 2026 23:38:41 +1100
-Message-Id: <20261004-regcache-lifecycle-submit-v2-0-976d405e89a7@gmail.com>
+Date: Sun, 04 Oct 2026 23:38:42 +1100
+Subject: [PATCH v2 1/2] regmap: Remove debugfs before cache teardown
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ6DIBBFr9KwLq1ixdpV79G4gHGQSUQNoKkx3
- r3oCbp8i/f+31hATxjY67IxjwsFGocE4nphYNXQIac2MROZkFktSu6xAwUWeU8GYYUeeZi1o8i
- rhymk1JgZDSz5k0dD37P9aRJrFZBrrwawR3GeQvSo3N2pENEfhqUQR7+eZ5b88P7ZXXKe82ehq
- xJUVbe1fHdOUX+D0bFm3/cfTg4YbOQAAAA=
-X-Change-ID: 20260925-regcache-lifecycle-submit-74f366be0fbc
+Message-Id: <20261004-regcache-lifecycle-submit-v2-1-976d405e89a7@gmail.com>
+References: <20261004-regcache-lifecycle-submit-v2-0-976d405e89a7@gmail.com>
+In-Reply-To: <20261004-regcache-lifecycle-submit-v2-0-976d405e89a7@gmail.com>
 To: Mark Brown <broonie@kernel.org>
 Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
@@ -17,47 +14,88 @@ Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
  driver-core@lists.linux.dev, maple-tree@lists.infradead.org, 
  asahi@lists.linux.dev, Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791117521; l=1215;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791117521; l=2394;
  i=michael.reeves077@gmail.com; s=fedora-20260918; h=from:subject:message-id;
- bh=zxQ062qio0+lCxbspHzHxGXHzh0Zgd+ekU5PisbC9JQ=;
- b=aLvjZRQXFqeKgA0yST2S/OUk8DNVjfWJFwjV5j8/bOuOphkj3zNmFFut2iFCF/P3FDUZE314x
- 2mh/RakN5dQBdoHNu5Upl21ifeebKRCndbCmmsYg3ej1ylXGMtgrwT0
+ bh=zFAOzXLct8D+NOZeYw7b3fI/ausJUSmG186K8w5WDHA=;
+ b=t8H4GIz5lx+KnixSmRTsDLehoSK7Qb4FFR5kLNP++meiwFM9+MgOsSXmnCDXkmsz8nh0+J+Pk
+ Jy1y97CbKQCBRYFXdrdAqOfWqo6QimiLnTI/yBvjJkybv56A2xwqUVt
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=VJ0TvyQ9TvfzYZa908YSE9kpkjFLLD5luv0bERu+boc=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/fedora-20260918 with auth_id=1035
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix an "Invalid wait context" lockdep warning during Apple GPIO probe and
-correct debugfs ordering during cache teardown.
+regmap_exit() and regmap_reinit_cache() destroy the register cache before
+removing debugfs. A concurrent debugfs cache operation can therefore
+access cache state after the backend exit callback starts freeing it.
 
-Tested on Apple M3 MacBook Air (T8122):
+Remove debugfs before cache teardown, and clear the debugfs pointer after
+removal. During cache reinitialization, recreate debugfs only after the
+new cache initializes successfully.
 
-- All 4 GPIO controllers probe successfully with lockdep enabled.
-- The "Invalid wait context" warning no longer occurs.
-- The regmap KUnit suite passes and lockdep remains enabled.
-
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
-Changes in v2:
-- Link to v1: https://lore.kernel.org/r/20260925-regcache-lifecycle-submit-v1-1-83b75ca79d96@gmail.com
-- Make Maple cache teardown IRQ-safe.
-- Fix debugfs ordering during cache teardown and reinitialization.
-- Rebase onto the latest upstream tree.
-
----
-Michael Reeves (2):
-      regmap: Remove debugfs before cache teardown
-      regmap: Drop map lock during cache init and exit
-
- drivers/base/regmap/regcache-maple.c |  5 +++--
- drivers/base/regmap/regcache.c       |  6 ------
  drivers/base/regmap/regmap-debugfs.c |  1 +
  drivers/base/regmap/regmap.c         | 15 +++++++++------
- 4 files changed, 13 insertions(+), 14 deletions(-)
----
-base-commit: 6addb4f385570ebc11c4eb499a4f1c149f313e84
-change-id: 20260925-regcache-lifecycle-submit-74f366be0fbc
+ 2 files changed, 10 insertions(+), 6 deletions(-)
 
-Best regards,
+diff --git a/drivers/base/regmap/regmap-debugfs.c b/drivers/base/regmap/regmap-debugfs.c
+index 18f1c60749..9a09df2ba8 100644
+--- a/drivers/base/regmap/regmap-debugfs.c
++++ b/drivers/base/regmap/regmap-debugfs.c
+@@ -664,6 +664,7 @@ void regmap_debugfs_exit(struct regmap *map)
+ {
+ 	if (map->debugfs) {
+ 		debugfs_remove_recursive(map->debugfs);
++		map->debugfs = NULL;
+ 		mutex_lock(&map->cache_lock);
+ 		regmap_debugfs_free_dump_cache(map);
+ 		mutex_unlock(&map->cache_lock);
+diff --git a/drivers/base/regmap/regmap.c b/drivers/base/regmap/regmap.c
+index e6e022b026..8e50a05ff0 100644
+--- a/drivers/base/regmap/regmap.c
++++ b/drivers/base/regmap/regmap.c
+@@ -1422,8 +1422,8 @@ int regmap_reinit_cache(struct regmap *map, const struct regmap_config *config)
+ {
+ 	int ret;
+ 
+-	regcache_exit(map);
+ 	regmap_debugfs_exit(map);
++	regcache_exit(map);
+ 
+ 	map->max_register = config->max_register;
+ 	map->max_register_is_set = map->max_register ?: config->max_register_is_0;
+@@ -1440,12 +1440,16 @@ int regmap_reinit_cache(struct regmap *map, const struct regmap_config *config)
+ 	if (ret)
+ 		return ret;
+ 
+-	regmap_debugfs_init(map);
+-
+ 	map->cache_bypass = false;
+ 	map->cache_only = false;
+ 
+-	return regcache_init(map, config);
++	ret = regcache_init(map, config);
++	if (ret)
++		return ret;
++
++	regmap_debugfs_init(map);
++
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(regmap_reinit_cache);
+ 
+@@ -1459,9 +1463,8 @@ void regmap_exit(struct regmap *map)
+ 	struct regmap_async *async;
+ 
+ 	regmap_detach_dev(map->dev, map);
+-	regcache_exit(map);
+-
+ 	regmap_debugfs_exit(map);
++	regcache_exit(map);
+ 	regmap_range_exit(map);
+ 	if (map->bus && map->bus->free_context)
+ 		map->bus->free_context(map->bus_context);
+
 -- 
-Michael Reeves <michael.reeves077@gmail.com>
+2.55.0
 
