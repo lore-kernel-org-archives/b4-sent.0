@@ -1,63 +1,57 @@
-From: Ben Kuo <ben.kuo.tw@proton.me>
-Date: Sun, 04 Oct 2026 16:49:17 +0800
-Subject: [PATCH] man/man7/mount_namespaces.7: Add missing 'filesystemtype'
- argument to mount(2)
+From: Harinn <prinn.dev@pm.me>
+Date: Sun, 04 Oct 2026 17:59:53 +0700
+Subject: [PATCH] i2c: acpi: Force ASUE140D touchpads to 100 kHz
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-mount-ns-mount-args-v1-1-a344b18c0c22@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAwTwmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAwMT3dz80rwS3bxiKCOxKL1Y19LC0tIgLSUxyczSUgmos6AoNS2zAmx
- qdGxtLQCarbFsZQAAAA==
-X-Change-ID: 20261004-mount-ns-mount-args-98990fdab699
-To: Alejandro Colomar <alx@kernel.org>
-Cc: linux-man@vger.kernel.org, Ben Kuo <ben.kuo.tw@proton.me>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791103793; l=1247;
- i=ben.kuo.tw@proton.me; s=20261004; h=from:subject:message-id;
- bh=0hTM8yyVZi7R4ypo1hfKJWwCiZ9rEiA1Wk0lIvHRdeY=;
- b=jUYOYgGdNl3mLrxOG8sZfgNgw24FpfcqrKVh8wA86pxJMm0/Q9KhlbJx94BHtYdUBT1A6ksus
- oZdRFmRjEizANa/BT6qLVcaoMbuSJvbO+cSz4ZlG2zCbekKMJE4z3Xk
-X-Developer-Key: i=ben.kuo.tw@proton.me; a=ed25519;
- pk=gXi9Dh9ncDWJiQmei79Ms5wulBAOhOVhaWE+qzS5nXY=
-X-Endpoint-Received: by B4 Relay for ben.kuo.tw@proton.me/20261004 with auth_id=1107
+Message-Id: <20261004-i2c-acpi-asue140d-100khz-v1-1-cc2dbad00470@pm.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QqDMAyF4VeRXC/QlkxhryJedDHVbOCkmWNMf
+ PdVvfwOnH8Fk6xicKtWyPJR09dU4C8V8BinQVD7Yggu1N45Qg2MkWfFaIt4cj2W+Tn+kKipSTi
+ lJlyh3OcsSb9Huu1O23J/CL/3HmzbH8l2jN98AAAA
+X-Change-ID: 20261004-i2c-acpi-asue140d-100khz-44764ecff725
+To: Andi Shyti <andi.shyti@kernel.org>, 
+ Mika Westerberg <westeri@kernel.org>
+Cc: linux-i2c@vger.kernel.org, linux-acpi@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Harinn <prinn.dev@pm.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791111594; l=1034;
+ i=prinn.dev@pm.me; s=20261004; h=from:subject:message-id;
+ bh=CuXYtEQhbQqdDDViBlDQYIFq8WwTJxIz9o0H7TCHD1M=;
+ b=adT3U/tce9xAsjL3NVTi1vLNYJ4orkdv3gjXD70QK0+cucyBy8YyVOuHoVzPS/zEjAArKHG9m
+ ZudNy/K2OAgCiMfhUcIy1nAWBhJXz0YMKT6tLkY/teQpF9wf2gNe/5E
+X-Developer-Key: i=prinn.dev@pm.me; a=ed25519;
+ pk=3q9t6SnPdJf3aRWfM5pwBvkSsRbrWSjKlcZ7e9U+UZU=
+X-Endpoint-Received: by B4 Relay for prinn.dev@pm.me/20261004 with auth_id=1108
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The example call omits the 'filesystemtype' argument, so it passes
-four arguments to mount(2), which takes five.  As written, it fails
-to compile:
+The ASUE140D touchpad on the ASUS Zenbook UX3404VC (BIOS UX3404VC.303)
+starts lagging shortly after boot when the bus runs at the 400 kHz the
+DSDT asks for, and only recovers after rebinding i2c-hid. Forcing
+100 kHz fixes it.
 
-	error: too few arguments to function 'mount'
-
-Tested by compiling the corrected call with gcc 14.2.0 and running
-it after unshare(CLONE_NEWNS) on Linux 6.12 (Debian 13, arm64);
-findmnt(8) shows '/' with slave propagation.
-
-Fixes: a2fc45a9f (2019-10-07; "mount_namespaces.7: It may be desirable to disable propagation after creating a namespace")
-Signed-off-by: Ben Kuo <ben.kuo.tw@proton.me>
+Signed-off-by: Harinn <prinn.dev@pm.me>
 ---
- man/man7/mount_namespaces.7 | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/i2c/i2c-core-acpi.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/man/man7/mount_namespaces.7 b/man/man7/mount_namespaces.7
-index 8ed43a34623310f5c0b6b2071815340b287415aa..8f9c8e6e147a42b85d9d2cc2c691037ef82395f5 100644
---- a/man/man7/mount_namespaces.7
-+++ b/man/man7/mount_namespaces.7
-@@ -1051,7 +1051,7 @@ using a call such as the following:
- .P
- .in +4n
- .EX
--mount(NULL, "/", MS_SLAVE | MS_REC, NULL);
-+mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL);
- .EE
- .in
- .P
+diff --git a/drivers/i2c/i2c-core-acpi.c b/drivers/i2c/i2c-core-acpi.c
+index 8f3bdd50186e..e5b27375af31 100644
+--- a/drivers/i2c/i2c-core-acpi.c
++++ b/drivers/i2c/i2c-core-acpi.c
+@@ -371,6 +371,7 @@ static const struct acpi_device_id i2c_acpi_force_100khz_device_ids[] = {
+ 	 * the device works without issues on Windows at what is expected to be
+ 	 * a 400KHz frequency. The root cause of the issue is not known.
+ 	 */
++	{ "ASUE140D", 0 },
+ 	{ "DLL0945", 0 },
+ 	{ "ELAN0678", 0 },
+ 	{ "ELAN06FA", 0 },
 
 ---
-base-commit: 31d36870d5f239d485772f1dbf17948bc35bee80
-change-id: 20261004-mount-ns-mount-args-98990fdab699
+base-commit: 6addb4f385570ebc11c4eb499a4f1c149f313e84
+change-id: 20261004-i2c-acpi-asue140d-100khz-44764ecff725
 
 Best regards,
--- 
-Ben Kuo <ben.kuo.tw@proton.me>
+--  
+Harinn <prinn.dev@pm.me>
 
