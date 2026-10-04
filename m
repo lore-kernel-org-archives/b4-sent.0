@@ -1,11 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 22:48:25 +0200
-Subject: [PATCH 1/2] dfu: expand ${...} env references in dfu_alt_info
- before parsing
+Date: Sun, 04 Oct 2026 22:48:26 +0200
+Subject: [PATCH 2/2] arm: snapdragon: export kernel_addr_r_size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-dfu-alt-info-env-expand-v1-1-700eb0e54b61@protonmail.com>
+Message-Id: <20261004-b4-dfu-alt-info-env-expand-v1-2-700eb0e54b61@protonmail.com>
 References: <20261004-b4-dfu-alt-info-env-expand-v1-0-700eb0e54b61@protonmail.com>
 In-Reply-To: <20261004-b4-dfu-alt-info-env-expand-v1-0-700eb0e54b61@protonmail.com>
 To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
@@ -19,58 +18,40 @@ Cc: Lukasz Majewski <lukma@denx.de>,
  Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791146915; l=1237;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791146915; l=969;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=zHNicPZo8C+Jci1O2ZgaLbRZF4h4ywq5+c81LYRcock=;
- b=TETMBfYEt56Vd2zQjwpcELzYtRy61nrRJ/aSWbTyfYizo3hUW7e5g23jRkhOEk3lMAKB8PrUR
- ksRjtjaPbF6Bez4vU4fbyAoi8rHKxbXZYkLHaKHB25cNujI0kwmjSaI
+ bh=TMcEEwctAcjfWgy4s8/8EISXg1ISob5U7HUdIo1r3o0=;
+ b=Dg2ORcCwT3X/WK8jTdxgt1L4rPPpbA5pYpRaZw8WPaGe3t+zt8b3jGGksuZDLbiy13INSSMbP
+ 1yu/JRYsTFJD7BYFGp+8O7nmnoed1qjaMpp0Fmk4BzZgFm83EboVJMs
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As dfu_alt_info is read via env_get() it needs to expand the ${var}
-references using cli_simple_process_macros.
+board_late_init() allocates SZ_128M for kernel_addr_r but never
+exported the size, only the address.
+
+kernel_addr_r_size mirrors the existing kernel_comp_addr_r /
+kernel_comp_size pairing already done for the compressed-kernel
+buffer.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/dfu/dfu.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ arch/arm/mach-snapdragon/board.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/dfu/dfu.c b/drivers/dfu/dfu.c
-index 90d8b45ce8a..fa074db242c 100644
---- a/drivers/dfu/dfu.c
-+++ b/drivers/dfu/dfu.c
-@@ -6,6 +6,7 @@
-  * author: Lukasz Majewski <l.majewski@samsung.com>
-  */
- 
-+#include <cli.h>
- #include <env.h>
- #include <errno.h>
- #include <log.h>
-@@ -178,7 +179,20 @@ int dfu_init_env_entities(char *interface, char *devstr)
- 		return -EINVAL;
- 	}
- 
--	env_bkp = strdup(str_env);
-+	/*
-+	 * Expand the dfu_alt_info here as it's read via env_get() which
-+	 * does not expand references the way hush does for a command line
-+	 */
-+	env_bkp = malloc(strlen(str_env) * 2 + 1);
-+	if (!env_bkp)
-+		return -ENOMEM;
-+
-+	if (cli_simple_process_macros(str_env, env_bkp,
-+				      strlen(str_env) * 2 + 1)) {
-+		pr_err("\"dfu_alt_info\" expansion ran out of space!\n");
-+		free(env_bkp);
-+		return -ENOSPC;
-+	}
- 	if (!interface && !devstr)
- 		ret = dfu_config_interfaces(env_bkp);
- 	else
+diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
+index 829a0109ac7..70d53a30329 100644
+--- a/arch/arm/mach-snapdragon/board.c
++++ b/arch/arm/mach-snapdragon/board.c
+@@ -530,6 +530,7 @@ int board_late_init(void)
+ 	status |= !lmb_alloc(SZ_128M, &addr) ?
+ 		env_set_hex("loadaddr", addr) : 1;
+ 	status |= env_set_hex("kernel_addr_r", addr);
++	status |= env_set_hex("kernel_addr_r_size", SZ_128M);
+ 	status |= !lmb_alloc(SZ_128M, &addr) ?
+ 		env_set_hex("ramdisk_addr_r", addr) : 1;
+ 	status |= !lmb_alloc(KERNEL_COMP_SIZE, &addr) ?
 
 -- 
 2.55.0
