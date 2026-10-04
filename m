@@ -1,11 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 21:22:39 +0200
-Subject: [PATCH u-boot 7/8] ufs: gate NO_PURGE on Sony Yoshino/Tama
- platform compatible
+Date: Sun, 04 Oct 2026 21:22:40 +0200
+Subject: [PATCH u-boot 8/8] arm: dts: qcom: akatsuki: re-enable the UFS
+ controller node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-ufs-sony-v1-7-54e71c95ba62@protonmail.com>
+Message-Id: <20261004-b4-ufs-sony-v1-8-54e71c95ba62@protonmail.com>
 References: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 In-Reply-To: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
@@ -41,88 +41,59 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Markus Niebel <Markus.Niebel@ew.tq-group.com>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=2690;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=1485;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=RB+h74HV+WqM4nRvm4AQQuePTYX+eLSW/xgpEIOW0KE=;
- b=Hkv8P2UET3iMnZtpXLd+EXZSqmiysMauD7utCRNOUlq+PURmTtwSs/fL4uCuxTwwWLGA+7R1E
- Ir/zsn/4a/UBmoo7JR0g5sRYtonJlzWOEjYi14LBSd3mH9kN9v9fxaC
+ bh=QVlhZ7MAT+TeLV7gQeOnoExu28XTr702eo6kVaytxCs=;
+ b=0cJS2YcECbh/9q131AEAOs2knpLx8EUVSKgQqR0xf+H0QMBcRigu8G/+Xl1FWPZyWk930YUQG
+ 3YXk8/2TUEjCT1dTbR+G8OPHhxyxEUO9Ava/S3BGll/M3EYgB2eoej9
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Apply NO_PURGE unconditionally on Sony Yoshino (msm8998) and Tama
-(sdm845) phones, regardless of which UFS chip is fitted:
+Upstream Linux explicitly disables ufs_mem_hc/ufs_mem_phy for all Tama
+devices (sdm845-sony-xperia-tama.dtsi):
 
-- Units across batches ship with a mix of Samsung, SK Hynix, and
-  Toshiba UFS parts, so a single per-model quirk-table row can't
-  cover the whole population.
-- Those chips consistently leave iProductName and
-  iProductRevisionLevel blank in the UFS device descriptor, which
-  defeats the model/revision string match the quirk table relies on.
-- The spec-version fallback (wspecversion < 0x210) has an off-by-one
-  gap for these devices: they report UFS spec version 0x210 (UFS 2.1)
-  exactly, which the strict "<" comparison doesn't catch.
+    /* BIG WARNING! DO NOT TOUCH UFS, YOUR DEVICE WILL DIE! */
+    &ufs_mem_hc { status = "disabled"; };
+    &ufs_mem_phy { status = "disabled"; };
 
-Gate NO_PURGE on the DT root compatible instead, which is reliable
-regardless of which UFS chip a given unit shipped with.
+PURGE/UNMAP command issued to these devices' UFS erases the bootloader
+and permanently bricks the device.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/ufs/ufs-uclass.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ MAINTAINERS                                               | 1 +
+ arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi | 9 +++++++++
+ 2 files changed, 10 insertions(+)
 
-diff --git a/drivers/ufs/ufs-uclass.c b/drivers/ufs/ufs-uclass.c
-index 3cc4fd6bde3..f88949bffd3 100644
---- a/drivers/ufs/ufs-uclass.c
-+++ b/drivers/ufs/ufs-uclass.c
-@@ -1880,6 +1880,35 @@ out:
- 	return err;
- }
- 
-+/*
-+ * Platforms whose bootloader / RPMB layout overlaps the UFS LUN0
-+ * provisioning region and cannot tolerate UNMAP/PURGE.
-+ * Any erase command issued against the boot LU bricks the device. The quirk
-+ * has to apply regardless of which UFS supplier is fitted (Samsung, SK Hynix
-+ * or Toshiba)
-+ */
-+static const char * const ufs_no_purge_platforms[] = {
-+	/* Sony Yoshino (msm8998): XZ1 / XZ1 Compact / XZ Premium */
-+	"sony,xperia-lilac",
-+	"sony,xperia-maple",
-+	"sony,xperia-poplar",
-+	/* Sony Tama (sdm845): XZ2 / XZ2 Compact / XZ3 */
-+	"sony,akari-row",
-+	"sony,akatsuki-row",
-+	"sony,apollo-row",
-+	NULL,
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 45e9076de67..9d6aa8126b7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -687,6 +687,7 @@ R:	Sumit Garg <sumit.garg@kernel.org>
+ L:	u-boot-qcom@groups.io
+ S:	Maintained
+ T:	git https://source.denx.de/u-boot/custodians/u-boot-snapdragon.git
++F:	arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi
+ F:	configs/qcm6490_defconfig
+ F:	configs/qcs9100_defconfig
+ F:	drivers/*/*/pm8???-*
+diff --git a/arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi b/arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi
+new file mode 100644
+index 00000000000..a6e7ba45e92
+--- /dev/null
++++ b/arch/arm/dts/sdm845-sony-xperia-tama-akatsuki-u-boot.dtsi
+@@ -0,0 +1,9 @@
++// SPDX-License-Identifier: GPL-2.0
++
++&ufs_mem_hc {
++	status = "okay";
 +};
 +
-+static bool ufshcd_platform_needs_no_purge(void)
-+{
-+	const char * const *p;
-+
-+	for (p = ufs_no_purge_platforms; *p; p++)
-+		if (of_machine_is_compatible(*p))
-+			return true;
-+	return false;
-+}
-+
- /*
-  * UFS device quirk table. Entries are matched by manufacturer id, model and
-  * fw revision; UFS_ANY_VENDOR / UFS_ANY_MODEL / UFS_ANY_VER act as wildcards.
-@@ -1916,6 +1945,10 @@ static void ufshcd_fixup_dev_quirks(struct ufs_hba *hba,
- 	if (dev_desc->wspecversion < UFS_PURGE_SPEC_VER)
- 		hba->dev_quirks |= UFS_DEVICE_QUIRK_NO_PURGE;
- 
-+	/* Platform-driven NO_PURGE */
-+	if (ufshcd_platform_needs_no_purge())
-+		hba->dev_quirks |= UFS_DEVICE_QUIRK_NO_PURGE;
-+
- 	for (f = ufs_fixups; f->quirk; f++) {
- 		if ((f->wmanufacturerid == dev_desc->wmanufacturerid ||
- 		     f->wmanufacturerid == UFS_ANY_VENDOR) &&
++&ufs_mem_phy {
++	status = "okay";
++};
 
 -- 
 2.55.0
