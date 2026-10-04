@@ -1,10 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 04 Oct 2026 21:22:34 +0200
-Subject: [PATCH u-boot 2/8] ufs: add device-quirk infrastructure
+Date: Sun, 04 Oct 2026 21:22:35 +0200
+Subject: [PATCH u-boot 3/8] ufs: program extended HS sync length for SK
+ Hynix devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-b4-ufs-sony-v1-2-54e71c95ba62@protonmail.com>
+Message-Id: <20261004-b4-ufs-sony-v1-3-54e71c95ba62@protonmail.com>
 References: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 In-Reply-To: <20261004-b4-ufs-sony-v1-0-54e71c95ba62@protonmail.com>
 To: u-boot@lists.u-boot-project.org, Sumit Garg <sumit.garg@kernel.org>, 
@@ -40,214 +41,86 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Markus Niebel <Markus.Niebel@ew.tq-group.com>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=6445;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791141780; l=2751;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=1Lha72qJKrT8yi3f7UMplATT3CjbB55Lsc65hh24lgs=;
- b=uu+dq7vpUwSeeBFeuYjTMQPHfOegDQSNGyE+IcVr/iGxTQdm96gI9FCWv2UmDVdVdT84vSTxd
- cgPw6kOtpkvAVVUXNwjMRfr16ZUX/QJEhV6CRPZuhSib8tAm3qIlcbx
+ bh=+Ga7wnGJh3+7X1gT9+waTxAF3OMEBshDXzDZErbQz4g=;
+ b=oX5AGAFhQmEhQ0p3R0VPx14L7h0507nFTUQXiq26KoalvcC0E2xcH71eThgvMacydnFgBnmqJ
+ R5KEQu1E43fBUcRvxguLk9kp8jWk3ty4TXDUF35VYeJDAjixMymgDDa
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Infrastructure (ufs_quirks.h):
- - struct ufs_dev_quirk plus UFS_FIX()/UFS_FIX_REVISION() helpers.
- - ufshcd_fixup_dev_quirks() applies the table (and sets NO_PURGE for
-   devices older than UFS_PURGE_SPEC_VER) from ufs_start(), before power
-   mode negotiation so link quirks take effect.
- - hba gains a dev_quirks field, distinct from the host controller
-   quirks (hba->quirks).
+Add the UFS_DEVICE_QUIRK_EXTEND_SYNC_LENGTH bit. SK Hynix UFS devices
+on the Sony Yoshino/Tama (MSM8998 / SDM845) family need
+PA_TxHsG{1,2,3}SyncLength programmed to 0x48 before the power-mode
+change for a reliable HS link; without it link bring-up fails or the
+device falls back to a slow PWM mode.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/ufs/ufs-uclass.c | 52 +++++++++++++++++++++++++++++
- drivers/ufs/ufs.h        |  2 ++
- drivers/ufs/ufs_quirks.h | 87 ++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 141 insertions(+)
+ drivers/ufs/ufs-uclass.c | 9 +++++++++
+ drivers/ufs/ufs_quirks.h | 7 +++++++
+ drivers/ufs/unipro.h     | 3 +++
+ 3 files changed, 19 insertions(+)
 
 diff --git a/drivers/ufs/ufs-uclass.c b/drivers/ufs/ufs-uclass.c
-index 56118a0ee46..05b95c510b4 100644
+index 05b95c510b4..fdf62a69c02 100644
 --- a/drivers/ufs/ufs-uclass.c
 +++ b/drivers/ufs/ufs-uclass.c
-@@ -29,6 +29,7 @@
- #include <linux/dma-mapping.h>
+@@ -1872,6 +1872,9 @@ out:
+  * fw revision; UFS_ANY_VENDOR / UFS_ANY_MODEL / UFS_ANY_VER act as wildcards.
+  */
+ static const struct ufs_dev_quirk ufs_fixups[] = {
++	/* SK Hynix devices need an extended HS sync length */
++	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL,
++		UFS_DEVICE_QUIRK_EXTEND_SYNC_LENGTH),
+ 	/* Sony Yoshino/Tama: block PURGE/UNMAP to avoid bricking */
+ 	UFS_FIX_REVISION(UFS_VENDOR_SKHYNIX, UFS_MODEL_HYNIX_32GB,
+ 			 UFS_REVISION_HYNIX, UFS_DEVICE_QUIRK_NO_PURGE),
+@@ -2108,6 +2111,12 @@ static int ufshcd_change_power_mode(struct ufs_hba *hba,
+ 		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_HSSERIES),
+ 			       pwr_mode->hs_rate);
  
- #include "ufs.h"
-+#include "ufs_quirks.h"
- 
- #define UFSHCD_ENABLE_INTRS	(UTP_TRANSFER_REQ_COMPL |\
- 				 UTP_TASK_REQ_COMPL |\
-@@ -1866,6 +1867,54 @@ out:
- 	return err;
- }
- 
-+/*
-+ * UFS device quirk table. Entries are matched by manufacturer id, model and
-+ * fw revision; UFS_ANY_VENDOR / UFS_ANY_MODEL / UFS_ANY_VER act as wildcards.
-+ */
-+static const struct ufs_dev_quirk ufs_fixups[] = {
-+	/* Sony Yoshino/Tama: block PURGE/UNMAP to avoid bricking */
-+	UFS_FIX_REVISION(UFS_VENDOR_SKHYNIX, UFS_MODEL_HYNIX_32GB,
-+			 UFS_REVISION_HYNIX, UFS_DEVICE_QUIRK_NO_PURGE),
-+	UFS_FIX_REVISION(UFS_VENDOR_SKHYNIX, UFS_MODEL_HYNIX_64GB,
-+			 UFS_REVISION_HYNIX, UFS_DEVICE_QUIRK_NO_PURGE),
-+	UFS_FIX_REVISION(UFS_VENDOR_SAMSUNG, UFS_MODEL_SAMSUNG_64GB,
-+			 UFS_REVISION_SAMSUNG, UFS_DEVICE_QUIRK_NO_PURGE),
-+	END_FIX
-+};
-+
-+/**
-+ * ufshcd_fixup_dev_quirks - apply device-specific quirks
-+ *
-+ * Sets hba->dev_quirks based on the UFS spec version and the per-device
-+ * fixup table above.
-+ */
-+static void ufshcd_fixup_dev_quirks(struct ufs_hba *hba,
-+				    struct ufs_dev_desc *dev_desc)
-+{
-+	const struct ufs_dev_quirk *f;
-+
-+	/*
-+	 * Devices implementing an older UFS spec must not be issued PURGE /
-+	 * UNMAP, doing so erases the bootloader on affected platforms.
-+	 */
-+	if (dev_desc->wspecversion < UFS_PURGE_SPEC_VER)
-+		hba->dev_quirks |= UFS_DEVICE_QUIRK_NO_PURGE;
-+
-+	for (f = ufs_fixups; f->quirk; f++) {
-+		if ((f->wmanufacturerid == dev_desc->wmanufacturerid ||
-+		     f->wmanufacturerid == UFS_ANY_VENDOR) &&
-+		    (str_prfx_equal(f->model, dev_desc->model) ||
-+		     !strcmp(f->model, UFS_ANY_MODEL)) &&
-+		    (str_prfx_equal(f->revision, dev_desc->revision) ||
-+		     !strcmp(f->revision, UFS_ANY_VER)))
-+			hba->dev_quirks |= f->quirk;
++	if (hba->dev_quirks & UFS_DEVICE_QUIRK_EXTEND_SYNC_LENGTH) {
++		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TxHsG1SyncLength), 0x48);
++		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TxHsG2SyncLength), 0x48);
++		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TxHsG3SyncLength), 0x48);
 +	}
 +
-+	if (hba->dev_quirks)
-+		dev_dbg(hba->dev, "%s: applied device quirks 0x%08x\n",
-+			__func__, hba->dev_quirks);
-+}
-+
- struct ufs_ref_clk {
- 	unsigned long freq_hz;
- 	enum ufs_ref_clk_freq val;
-@@ -2175,6 +2224,9 @@ static int ufs_start(struct ufs_hba *hba)
- 		return ret;
- 	}
+ 	ret = ufshcd_uic_change_pwr_mode(hba, pwr_mode->pwr_rx << 4 |
+ 					 pwr_mode->pwr_tx);
  
-+	/* Apply device-specific quirks before negotiating the power mode */
-+	ufshcd_fixup_dev_quirks(hba, &card);
-+
- 	ufshcd_set_dev_ref_clk(hba);
- 
- 	if (ufshcd_get_max_pwr_mode(hba)) {
-diff --git a/drivers/ufs/ufs.h b/drivers/ufs/ufs.h
-index e3368a516e4..d4bcb7a1773 100644
---- a/drivers/ufs/ufs.h
-+++ b/drivers/ufs/ufs.h
-@@ -707,6 +707,8 @@ struct ufs_hba {
- 	u32			version;
- 	u32			intr_mask;
- 	enum ufshcd_quirks	quirks;
-+	/* UFS device (not host controller) quirks, see ufs_quirks.h */
-+	u32			dev_quirks;
- 
- 	/* Virtual memory reference */
- 	struct utp_transfer_cmd_desc *ucdl;
 diff --git a/drivers/ufs/ufs_quirks.h b/drivers/ufs/ufs_quirks.h
-new file mode 100644
-index 00000000000..f5aa47722db
---- /dev/null
+index f5aa47722db..822315cb06d 100644
+--- a/drivers/ufs/ufs_quirks.h
 +++ b/drivers/ufs/ufs_quirks.h
-@@ -0,0 +1,87 @@
-+/* SPDX-License-Identifier: GPL-2.0+ */
+@@ -84,4 +84,11 @@ struct ufs_dev_quirk {
+  */
+ #define UFS_DEVICE_QUIRK_NO_PURGE		BIT(0)
+ 
 +/*
-+ * UFS device quirks
-+ *
-+ * Ported from the Linux kernel (include/ufs/ufs_quirks.h) and the
-+ * Sony Yoshino/Tama downstream UFS quirks/hacks.
++ * Some SK Hynix devices on Sony Yoshino/Tama need an extended HS sync length
++ * (PA_TxHsG{1,2,3}SyncLength) programmed before the power-mode change for a
++ * reliable HS link.
 + */
-+#ifndef _UFS_QUIRKS_H
-+#define _UFS_QUIRKS_H
++#define UFS_DEVICE_QUIRK_EXTEND_SYNC_LENGTH	BIT(1)
 +
-+#include <linux/bitops.h>
-+#include <linux/string.h>
-+
-+/* true if s1 (the fixup pattern) is a prefix of s2 (the device value) */
-+static inline bool str_prfx_equal(const char *s1, const char *s2)
-+{
-+	return strncmp(s1, s2, strlen(s1)) == 0;
-+}
-+
-+#define UFS_ANY_VENDOR		0xFFFF
-+#define UFS_ANY_MODEL		"ANY_MODEL"
-+#define UFS_ANY_VER		"ANY_VER"
-+
-+#define UFS_VENDOR_TOSHIBA	0x198
-+#define UFS_VENDOR_SAMSUNG	0x1CE
-+#define UFS_VENDOR_SKHYNIX	0x1AD
-+#define UFS_VENDOR_MICRON	0x12C
-+#define UFS_VENDOR_WDC		0x145
-+
-+/* UFS Samsung models */
-+#define UFS_MODEL_SAMSUNG_64GB	"KLUDG4U1EA-B0C1"
-+#define UFS_REVISION_SAMSUNG	"0100"
-+
-+/* UFS SK Hynix models */
-+#define UFS_MODEL_HYNIX_32GB	"hB8aL1"
-+#define UFS_MODEL_HYNIX_64GB	"hC8aL1"
-+#define UFS_REVISION_HYNIX	"D001"
-+
-+/*
-+ * Devices with a UFS spec version older than this must not be issued PURGE /
-+ * UNMAP (secure erase) operations: on the Sony Yoshino/Tama platforms doing so
-+ * erases the bootloader and permanently bricks the device.
-+ */
-+#define UFS_PURGE_SPEC_VER	0x210
-+
-+/**
-+ * struct ufs_dev_quirk - ufs device quirk info
-+ * @wmanufacturerid: card details (UFS_ANY_VENDOR matches any vendor)
-+ * @model: card model (UFS_ANY_MODEL matches any model)
-+ * @revision: card fw revision (UFS_ANY_VER matches any revision)
-+ * @quirk: device quirk bitmask
-+ */
-+struct ufs_dev_quirk {
-+	u16 wmanufacturerid;
-+	const char *model;
-+	const char *revision;
-+	unsigned int quirk;
-+};
-+
-+/* terminator for the fixup table */
-+#define END_FIX { 0, NULL, NULL, 0 }
-+
-+/* add a quirk for any revision of a specific model */
-+#define UFS_FIX(_vendor, _model, _quirk) {	\
-+	.wmanufacturerid = (_vendor),		\
-+	.model = (_model),			\
-+	.revision = (UFS_ANY_VER),		\
-+	.quirk = (_quirk),			\
-+}
-+
-+/* add a quirk for a specific model and fw revision */
-+#define UFS_FIX_REVISION(_vendor, _model, _revision, _quirk) {	\
-+	.wmanufacturerid = (_vendor),				\
-+	.model = (_model),					\
-+	.revision = (_revision),				\
-+	.quirk = (_quirk),					\
-+}
-+
-+/*
-+ * Some Sony UFS devices must not use the PURGE / UNMAP (secure erase)
-+ * operation as it would erase the bootloader and permanently brick the
-+ * device. This quirk disables PURGE-related functionality for affected
-+ * devices.
-+ */
-+#define UFS_DEVICE_QUIRK_NO_PURGE		BIT(0)
-+
-+#endif /* _UFS_QUIRKS_H */
+ #endif /* _UFS_QUIRKS_H */
+diff --git a/drivers/ufs/unipro.h b/drivers/ufs/unipro.h
+index bde1490397c..4e163da0736 100644
+--- a/drivers/ufs/unipro.h
++++ b/drivers/ufs/unipro.h
+@@ -118,6 +118,9 @@
+ #define PA_TXGEAR		0x1568
+ #define PA_TXTERMINATION	0x1569
+ #define PA_HSSERIES		0x156A
++#define PA_TxHsG1SyncLength	0x1552
++#define PA_TxHsG2SyncLength	0x1554
++#define PA_TxHsG3SyncLength	0x1556
+ #define PA_LEGACYDPHYESCDL	0x1570
+ #define PA_PWRMODE		0x1571
+ #define PA_ACTIVERXDATALANES	0x1580
 
 -- 
 2.55.0
