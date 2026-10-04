@@ -1,80 +1,100 @@
-From: Matt Layher <mdlayher@gmail.com>
-Date: Sun, 04 Oct 2026 10:26:27 -0400
-Subject: [PATCH] hwmon: (asus-ec-sensors) add CPU_Opt fan for ROG STRIX
- X570-E GAMING
+From: Shigeaki Asai <y-asai.0816@docomonet.jp>
+Date: Sun, 04 Oct 2026 23:50:17 +0900
+Subject: [PATCH] drm/meson: encoder_dsi: load ENCL gamma table while ENCL
+ is disabled
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261004-asus-ec-x570e-cpu-opt-v1-1-d9ea371c30d5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTvJtEKJXsW4qHWAYQFNpzUkh
- LtTdfkW/++gnIQV7s0OiT+isi4V5tJAmPwyMsq7GixZZ4ha9FoUOeDW9cQYYsE1ZnT26qzxA/U
- 3gtrGxINsv+/j+beW18whf2dwHCcRgOQSeQAAAA==
-X-Change-ID: 20261004-asus-ec-x570e-cpu-opt-623621af0790
-To: Eugene Shalygin <eugene.shalygin@gmail.com>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Matt Layher <mdlayher@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791124002; l=2211;
- i=mdlayher@gmail.com; s=linuxdev; h=from:subject:message-id;
- bh=HEHb7pz+5CIVTAUXjsxnncxE0oQGAoREpSaAebUx9AQ=;
- b=lH+GY7hQhCIRrlVSwJEabDbMMuuSttNbGlGKto0goC43sa7ced/zA6BldftpntEozBMDear3u
- 374btCATaKDBmZqbkFcVxUwTjxw+zVZyahe44B4ZuLzAzq5fosBTLGC
-X-Developer-Key: i=mdlayher@gmail.com; a=ed25519;
- pk=jO44g3WNw2T0EoKPeB+RUgDmyrZpA5Pmr830ITlwhaA=
-X-Endpoint-Received: by B4 Relay for mdlayher@gmail.com/linuxdev with auth_id=1109
+Message-Id: <20261004-meson-gamma-v1-1-6347558e2bb3@docomonet.jp>
+X-B4-Tracking: v=1; b=H4sIAKhnwmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwMT3dzU4vw83fTE3NxEXWNjAzMjU/NkgxQjCyWgjoKi1LTMCrBp0bE
+ QfnFpUlZqcgnICKXaWgDtxUAKbwAAAA==
+X-Change-ID: 20261004-meson-gamma-3306257c0d28
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Nicolas Belin <nbelin@baylibre.com>, 
+ Jagan Teki <jagan@amarulasolutions.com>
+Cc: dri-devel@lists.freedesktop.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, John Williams <porschemad911@gmail.com>, 
+ Shigeaki Asai <y-asai.0816@docomonet.jp>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791125418; l=2799;
+ i=y-asai.0816@docomonet.jp; s=20261004; h=from:subject:message-id;
+ bh=epdsIAmy9JIKhg6OxImAsy/RAjs7ztCfGy7gPcYMgNE=;
+ b=h1/oYAEa0HS+pqwwtr8ShKjfVW0AjgRlYY9z53yxUQUK0hbzAlVR8WNCPGetlPDMDGiY6cTF2
+ en6s7mGAgp2D8IBtRWbfgNkpTT4Jym6j+2p7MFWctL/CZY5Yu0idK3I
+X-Developer-Key: i=y-asai.0816@docomonet.jp; a=ed25519;
+ pk=jkd95ViSn8i/X3oPMHYG1A8mae8IOwOKGE64kzLqC5c=
+X-Endpoint-Received: by B4 Relay for y-asai.0816@docomonet.jp/20261004 with auth_id=1110
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the CPU_Opt fan sensor for ROG STRIX X570-E GAMING.
+meson_encoder_dsi_atomic_enable() programmed the ENCL gamma LUT right
+after meson_venc_mipi_dsi_mode_set(), i.e. while the ENCL timing
+generator was already running (ENCL_VIDEO_EN=1). Writing the LUT
+during active video stalls the hardware: L_GAMMA_CNTL_PORT
+WR_RDY/ADR_RDY deassert and the ENCL line counter (ENCL_INFO_READ)
+freezes, so every remaining write times out (~8s total at boot) and
+the panel ends up with a corrupted gamma table (wrong colors).
 
-The board has a CPU_OPT fan header, and its UEFI hardware monitor shows a
-fan connected to it spinning at about 2000 RPM, but the driver does not
-expose the sensor and the board's NCT6798D does not report it either.
+Instrumented boots on the ODROID-GO Ultra (S922X) show:
 
-Reading the EC directly through ec_sys on this board (BIOS 4408), the
-CPU_Opt register used by the rest of the AMD 500 series family (bank 0,
-0xb0) returns 0x0580, 1408 RPM under the operating system's fan curve,
-while the chipset fan register at 0xb4 returns 0, matching what the
-driver already reports for that fan.
+  failing:  start: VIDEO_EN=1 INFO 0000001a->002d0000 GAMMA_CNTL=00000030
+            stall: INFO 002d0000->002d0000 GAMMA_CNTL=00000000
+            (VID_CLK_CNTL2 / VIID_CLK_CNTL / VIID_CLK_DIV unchanged,
+             i.e. the ENCL clock is still running)
+  fixed:    start: VIDEO_EN=0 INFO 00000000->00000000 GAMMA_CNTL=00000030
+            no stall, no timeout
 
-Assisted-by: LLM sparse
-Signed-off-by: Matt Layher <mdlayher@gmail.com>
+Whether it failed depended only on timing, which is why enabling
+lock debugging (LOCKDEP etc.) appeared to "fix" it most of the time.
+It happens regardless of the bootloader (mainline or Hardkernel vendor
+U-Boot).
+
+The function already writes ENCL_VIDEO_EN=0 right afterwards before
+re-enabling the encoder, so simply move meson_encl_load_gamma() after
+that write. This matches the order used by the vendor U-Boot's own LCD
+driver, which never times out.
+
+Tested on the ODROID-GO Ultra with mainline U-Boot: 5 cold boots +
+3 warm reboots, no timeouts, correct colors, LOCKDEP disabled.
+
+Fixes: 42dcf15f901c ("drm/meson: add DSI encoder")
+Cc: stable@vger.kernel.org
+Tested-by: John Williams <porschemad911@gmail.com>
+Signed-off-by: Shigeaki Asai <y-asai.0816@docomonet.jp>
 ---
-An LLM coding assistant did most of the work on this patch: it found the
-missing sensor while auditing this machine's monitoring, compared the
-driver's board table with the BIOS hardware monitor, worked out which EC
-register to read, and drafted the change and this changelog. I
-reviewed both, and every test below ran on my own machines.
-
-Testing:
-- Runtime: the same one-line change applied to the driver in v6.18.54,
-  loaded on the board in place of the stock module; CPU_Opt read
-  1454-1463 RPM and the chipset fan 0.
-- Build: hwmon-next with W=1 and sparse (C=1), no warnings;
-  checkpatch --strict reports no errors, warnings or checks.
+This was found on the ODROID-GO Ultra while bringing it up on
+Lakka / ROCKNIX. Happy to test any alternative approach.
 ---
- drivers/hwmon/asus-ec-sensors.c | 2 +-
+ drivers/gpu/drm/meson/meson_encoder_dsi.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/hwmon/asus-ec-sensors.c b/drivers/hwmon/asus-ec-sensors.c
-index 19f423e45ce5..8261ddd00653 100644
---- a/drivers/hwmon/asus-ec-sensors.c
-+++ b/drivers/hwmon/asus-ec-sensors.c
-@@ -721,7 +721,7 @@ static const struct ec_board_info board_info_strix_x470_i_gaming = {
+diff --git a/drivers/gpu/drm/meson/meson_encoder_dsi.c b/drivers/gpu/drm/meson/meson_encoder_dsi.c
+index faa309cb97a6..912cd676bbe2 100644
+--- a/drivers/gpu/drm/meson/meson_encoder_dsi.c
++++ b/drivers/gpu/drm/meson/meson_encoder_dsi.c
+@@ -65,9 +65,9 @@ static void meson_encoder_dsi_atomic_enable(struct drm_bridge *bridge,
+ 	/* ENCL clock setup is handled by CCF */
  
- static const struct ec_board_info board_info_strix_x570_e_gaming = {
- 	.sensors = SENSOR_SET_TEMP_CHIPSET_CPU_MB |
--		SENSOR_TEMP_T_SENSOR |
-+		SENSOR_TEMP_T_SENSOR | SENSOR_FAN_CPU_OPT |
- 		SENSOR_FAN_CHIPSET | SENSOR_CURR_CPU |
- 		SENSOR_IN_CPU_CORE,
- 	.mutex_path = ASUS_HW_ACCESS_MUTEX_ASMX,
+ 	meson_venc_mipi_dsi_mode_set(priv, &crtc_state->adjusted_mode);
+-	meson_encl_load_gamma(priv);
+ 
+ 	writel_relaxed(0, priv->io_base + _REG(ENCL_VIDEO_EN));
++	meson_encl_load_gamma(priv);
+ 
+ 	writel_bits_relaxed(ENCL_VIDEO_MODE_ADV_VFIFO_EN, ENCL_VIDEO_MODE_ADV_VFIFO_EN,
+ 			    priv->io_base + _REG(ENCL_VIDEO_MODE_ADV));
 
 ---
-base-commit: 4781ca52761e666cf18b591e6bb0478396c90320
-change-id: 20261004-asus-ec-x570e-cpu-opt-623621af0790
+base-commit: 70456f05d4b6396b22048c4b8cd3cb98ecf9f9e3
+change-id: 20261004-meson-gamma-3306257c0d28
 
 Best regards,
 --  
-Matt Layher <mdlayher@gmail.com>
+Shigeaki Asai <y-asai.0816@docomonet.jp>
 
