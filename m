@@ -1,74 +1,134 @@
-From: Michael Garland <minimelkav@gmail.com>
-Date: Mon, 05 Oct 2026 01:10:32 -0600
-Subject: [PATCH] ASoC: amd: yc: Add DMI quirk for Acer Aspire Go 15
- (AG15-21P)
+From: Pawel Laszczak <pawell@cadence.com>
+Subject: [PATCH v3 0/3] usb: Add support for eUSB2v2 1024-byte Bulk
+ MaxPacketSize
+Date: Mon, 05 Oct 2026 10:18:23 +0200
+Message-Id: <20261005-eusb2v2-packet-size-v3-0-fde610a3c47a@cadence.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261005-acp6x-herbag2-quirk-v1-1-a1f2683d758f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDuQCak/vUpxEeOo04LaiYog3
- r1pXX6L9w6IrMIRHtkByptEmcYEumUQBj/2jNImgzU2J2Pu6MOc7ziwNr63+FlF3+gckQtFWVH
- rIZWzcif7//qsL8e1eXFYfis4zy9UYpbSdwAAAA==
-X-Change-ID: 20261005-acp6x-herbag2-quirk-44114c7891da
-To: Vijendar Mukunda <Vijendar.Mukunda@amd.com>, 
- Venkata Prasad Potturu <venkataprasad.potturu@amd.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Michael Garland <minimelkav@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791184246; l=1417;
- i=minimelkav@gmail.com; s=20261005; h=from:subject:message-id;
- bh=Rc372Nll5VxRtwlHdHYkmK+PKfsdL8c4K22pmtyJb7E=;
- b=Q7WbuefFzM3v8XRdrT7tEayQ3HnLgqisFG8NVVaLcVLDclOEm1h6lmzaqqryhtlNflI/Bq7dN
- Wx0jHN9JUqMDMqgjKfrJBBkKhvEZyFHspRvzcOQx+3ZIZeo4ZQX0vHK
-X-Developer-Key: i=minimelkav@gmail.com; a=ed25519;
- pk=YgP8zoqOpwmElHd5xoqUtKJTkGSY9Jg/LavDAoXazjs=
-X-Endpoint-Received: by B4 Relay for minimelkav@gmail.com/20261005 with auth_id=1113
+X-B4-Tracking: v=1; b=H4sIAE9dw2oC/22NQQ6CMBQFr0K6tqYttIAr72Fc0M+vVCMQCo1Ku
+ LstLIwJy0nem5mJw8GiI6dkJgN662zXBkgPCYGmam9IbR2YCCYUU6ykODktvKB9BQ8cqbMfpBl
+ opYpMykxJEp79gMa+VuvlurGb9B1hjKq4aKwbu+G9Zj2Pu62Q83y34DllVOWgONc1A6nPUNXYA
+ h6he5LY8OJnKYTat4hgKSUzvDRpgYb9W5Zl+QLyLe87EAEAAA==
+X-Change-ID: 20260609-eusb2v2-packet-size-4cb668455465
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Mathias Nyman <mathias.nyman@intel.com>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Pawel Laszczak <pawell@cadence.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791188311; l=5323;
+ i=pawell@cadence.com; h=from:subject:message-id;
+ bh=XJ43BI9VFUSRx8MVKu/7AuJD4tr7EI9+wQIfvS3p4JE=;
+ b=ggmN0eyLfU/Ud+FiOZJYPCcgjkuaINQnqs9BVCwnn3ePycjSTIx80pzlbRcqxuUfMztwtqNXx
+ bwtwdfAKt5ICZ42TwYaoBrXHu2yewJ9kQSUp06IPLLRrx273Fop+MW6
+X-Developer-Key: i=pawell@cadence.com; a=ed25519;
+ pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
+X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Acer Aspire Go 15 (AG15-21P, board MDC Herbag2_MDU) has two PDM
-DMICs connected to the ACP. The BIOS does not set the AcpDmicConnected
-_DSD property, so the acp6x machine driver never registers the DMIC
-card. The existing Herbag_MDU entry does not match this board name, so
-add a DMI quirk for it.
+The Embedded USB2 (eUSB2) v2 specification (bcdUSB 0x0230) introduces a
+mechanism that allows High-Speed Bulk endpoints to support a maximum
+packet size (MPS) of 1024 bytes, expanding it from the traditional
+512-byte limit defined in the standard USB 2.0 specification.
+This capability is highly beneficial for Mass Storage Class (MSC)
+devices, significantly improving overall throughput.
 
-Tested on BIOS V1.11: the acp6x DMIC capture device is registered and
-records audio on both channels.
+Per the eUSB2v2 specification, a peripheral device will revert its
+internal Bulk MPS back to 512 bytes after major bus events, including a
+bus reset, disconnect, or deconfiguration. To establish and maintain
+the 1024-byte mode, the host controller must explicitly issue
+a device-recipient SET_FEATURE request called
+USB_DEVICE_BULK_MAX_PACKET_UPDATE. This must occur after the device enters
+the ADDRESSED state, but strictly before it transitions to the CONFIGURED
+state.
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Michael Garland <minimelkav@gmail.com>
+This patch series implements the required infrastructure on both the host
+and gadget sides, and enables it for the Cadence (cdnsp) controller.
+
+Structure of the series:
+- Patch 1: Introduces host-side core support in usb_set_configuration() to
+  detect eUSB2v2 devices and issue the SET_FEATURE update request prior to
+  activating the device configuration. Adds eusb2v2_mps_active flag to
+  struct usb_device to track negotiation state. Extends hub.c to re-issue
+  SET_FEATURE after bus reset in usb_reset_and_verify_device(); on failure
+  triggers re-enumeration to prevent driver from operating with
+  inconsistent MPS state. Also updates xHCI endpoint initialization
+  to allow 1024-byte packets for High-Speed Bulk endpoints when HCC2_E2V2C
+  is present.
+
+- Patch 2: Extends the USB Gadget Composite framework to advertise bcdUSB
+  0x0230 when eUSB2v2 is supported, intercept the incoming feature
+  request, and dynamically update the wMaxPacketSize fields across all
+  High-Speed Bulk descriptors before configuration is completed.
+  
+- Patch 3: Implements peripheral-specific handling in the Cadence (cdnsp)
+  driver, reading HCCPARAMS2 to discover the hardware capability and
+  adapting cdnsp_endpoint_init() boundaries to allow for the larger
+  packet size.
+
+Testing:
+The flow has been validated using the Cadence eUSB2v2 Host and Device
+controllers, ensuring seamless transition to 1024-byte mode during early
+enumeration stages and successful verification under USB-IF Compliance
+Verification (CV) tooling.
+
+Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
-The board name differs from the existing Herbag_MDU entry by one
-character, so DMI_MATCH() does not cover it.
----
- sound/soc/amd/yc/acp6x-mach.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- message.c: Add check for bulk endpoint existence before sending
+  BULK_MAX_PACKET_UPDATE. This avoids sending the request to devices that
+  only use isochronous endpoints, as they do not support it.
+- host & gadget: Do not overwrite ep->desc.wMaxPacketSize to 1024.
+  According to eUSB2v2 spec section 5.2, the endpoint descriptor must
+  always report 512 bytes regardless of the current operating mode.
+- host: Rely on the eusb2v2_mps_active flag in xhci_usb_endpoint_maxp()
+  to dynamically return 1024 for HS bulk endpoints when the 1KB mode
+  is active.
+- gadget: Introduce gadget->eusb2v2_mps_active flag to let the composite
+  framework report 512 bytes while the UDC dynamically sets 1KB max packet
+  size in hardware.
+- Link to v2: https://patch.msgid.link/20260826-eusb2v2-packet-size-v2-0-950f19f38ef0@cadence.com
 
-diff --git a/sound/soc/amd/yc/acp6x-mach.c b/sound/soc/amd/yc/acp6x-mach.c
-index e798bf6a9cd0..1be8504571ad 100644
---- a/sound/soc/amd/yc/acp6x-mach.c
-+++ b/sound/soc/amd/yc/acp6x-mach.c
-@@ -787,6 +787,13 @@ static const struct dmi_system_id yc_acp_quirk_table[] = {
- 			DMI_MATCH(DMI_BOARD_NAME, "Herbag_MDU"),
- 		}
- 	},
-+	{
-+		.driver_data = &acp6x_card,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_VENDOR, "MDC"),
-+			DMI_MATCH(DMI_BOARD_NAME, "Herbag2_MDU"),
-+		}
-+	},
- 	{
- 		.driver_data = &acp6x_card,
- 		.matches = {
+Changes in v2:
+- Removed config.c change: per eUSB2v2 spec section 5.2, conformant devices
+  always report wMaxPacketSize=512 in their descriptor regardless of operating
+  mode, so the warning suppression was unnecessary.
+- eusb_update_max_packet(): changed from void to int; added error propagation
+  and eusb2v2_mps_active state tracking.
+- Added hub.c handling to restore 1KB mode after bus reset, with re-enumeration
+  on failure (addresses Oliver Neukum's review comments).
+- xhci-mem.c: simplified HS bulk clamp logic.
+- xhci.c: moved is_eusb2v2 assignment into xhci_hcd_init_usb2_data().
+- composite.c: stall CLEAR_FEATURE(BULK_MAX_PACKET_UPDATE) as it is not
+  defined by the eUSB2v2 spec.
+- cdnsp-mem.c: simplified HS bulk clamp logic, consistent with xhci-mem.c.
+- Link to v1: https://patch.msgid.link/20260717-eusb2v2-packet-size-v1-0-67c611bd0c5b@cadence.com
 
 ---
-base-commit: 695f659d296fb05a76f03967733e79b6c2085bae
-change-id: 20261005-acp6x-herbag2-quirk-44114c7891da
+Pawel Laszczak (3):
+      usb: xhci: Add support for eUSB2v2 1024-byte bulk packet size
+      usb: gadget: composite: Support eUSB2v2 bulk MPS update
+      usb: cdns3: cdnsp: Enable eUSB2v2 1KB bulk packet capability
+
+ drivers/usb/cdns3/cdnsp-ep0.c    |  2 ++
+ drivers/usb/cdns3/cdnsp-gadget.c |  4 +++
+ drivers/usb/cdns3/cdnsp-gadget.h |  8 +++++
+ drivers/usb/cdns3/cdnsp-mem.c    |  9 +++--
+ drivers/usb/common/debug.c       |  2 ++
+ drivers/usb/core/hub.c           | 16 +++++++++
+ drivers/usb/core/message.c       | 74 ++++++++++++++++++++++++++++++++++++++++
+ drivers/usb/core/usb.h           |  2 ++
+ drivers/usb/gadget/composite.c   | 28 +++++++++++----
+ drivers/usb/host/xhci-mem.c      | 15 ++++++--
+ drivers/usb/host/xhci.c          | 10 ++++++
+ include/linux/usb.h              |  7 ++++
+ include/linux/usb/gadget.h       |  4 +++
+ 13 files changed, 169 insertions(+), 12 deletions(-)
+---
+base-commit: 1d52b92ce8748624f84eca7eaea3ac31ed7b09a5
+change-id: 20260609-eusb2v2-packet-size-4cb668455465
 
 Best regards,
 --  
-Michael Garland <minimelkav@gmail.com>
+Pawel Laszczak <pawell@cadence.com>
 
