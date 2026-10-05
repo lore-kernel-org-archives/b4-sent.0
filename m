@@ -1,745 +1,108 @@
-From: Nizat Mikayilli <nacht@dxdmail.cc>
-Date: Mon, 05 Oct 2026 21:47:37 +0200
-Subject: [PATCH v2 2/2] arm64: dts: qcom: sm8550: Add support for Samsung
- Galaxy Tab S9 Wi-Fi
+From: Angel Lindo <angellindo@gmail.com>
+Date: Mon, 05 Oct 2026 15:00:34 -0500
+Subject: [PATCH] platform/x86/intel/pmc: Add Sunrise Point-H support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261005-gts9wifi-dts-v2-2-c3ac9b0f9ceb@dxdmail.cc>
-References: <20261005-gts9wifi-dts-v2-0-c3ac9b0f9ceb@dxdmail.cc>
-In-Reply-To: <20261005-gts9wifi-dts-v2-0-c3ac9b0f9ceb@dxdmail.cc>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Abel Vesa <abelvesa@kernel.org>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Nizat Mikayilli <nacht@dxdmail.cc>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791229689; l=18089;
- i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=wa4VwR3q90qCnQND907chWiXwQg1g9zhB/7+n8JaHKI=;
- b=aQGnCi++w/HfOZXAbD5jMQNdT9gHIovU8EPkE/MJuZk6NepJW7FHi2VFipXK9KrwLPKgEor0K
- e6ocXNyifdRBBU0x5+6+5hQoTyGYBrR5K6A6L+/uRDpJiFIbmsNvRdF
-X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
- pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
-X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
+Message-Id: <20261005-intel-pmc-spt-h-v1-1-78c98e4f4620@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJKcjCqxgXtvzIEKxNpxgTw
+ t2psPwW762kSAKlW7VSwldUPqGgvlTkx2d4gaUvJmtsVxtzZQkZM8e3Z42ZR27g0Da9Nd3gqFQ
+ xYZDfcbw/TuviJvj839C27T9c/ndzAAAA
+X-Change-ID: 20261005-intel-pmc-spt-h-3ebe43d206fb
+To: Rajneesh Bhardwaj <irenic.rajneesh@gmail.com>, 
+ Xi Pardee <xi.pardee@linux.intel.com>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Angel Lindo <angellindo@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791230443; l=3591;
+ i=angellindo@gmail.com; s=20261005; h=from:subject:message-id;
+ bh=bkKXvh7aruVV5KEgO6BGxb8rhWigF7LQcSCkmGAYupQ=;
+ b=Lmmyyyso6og4rMut9WJnDkBoMcqiPmiSQlWtpoF8GlGuuw2gg7G09tWdGwHt3BAfuNkPwfQcL
+ OV2NEw9qYaIAP97jnpGMsGhp8CDtJ8Ya+Ni47csJT0UDafM/SMzlnYD
+X-Developer-Key: i=angellindo@gmail.com; a=ed25519;
+ pk=9aX9KrUZRFEbzPyCQvHssDnZU0zZ34gcfSUJXYeuIto=
+X-Endpoint-Received: by B4 Relay for angellindo@gmail.com/20261005 with auth_id=1118
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Samsung Galaxy Tab S9 Wi-Fi (SM-X710, codename
-gts9wifi) tablet, based on the SM8550 SoC. This is the Wi-Fi SKU, so the
-modem memory regions are removed and no modem firmware is referenced.
+spt_core_init() decides between the Sunrise Point and Cannon Point
+register maps by looking for the Sunrise Point PMC PCI device, but only
+the SPT-LP ID (0x9d21) is listed. On Skylake-H/Kaby Lake-H systems with
+a Sunrise Point-H PCH (PMC 8086:a121), pci_dev_present() fails and the
+driver takes the Coffee Lake path, using cnp_pmc_dev. That map does not
+describe this PCH, so the debugfs output is wrong.
 
-Described hardware: UFS storage, the microSD slot, USB 2.0 peripheral
-mode over the eUSB2 PHY with an NXP PTN3222 repeater, the
-bootloader-provided framebuffer console, power and volume keys, the
-book-cover switch, GPU, video decoder, ADSP with the internal audio path
-(four CS35L45 speaker amplifiers and the VA-macro digital microphones).
+Seen on a MacBookPro14,3 (i7-7820HQ, PCH-H, PMC 8086:a121). With the
+stock driver, ltr_show lists Cannon Point IP names (SOUTHPORT_A, CNV,
+EVA, ...) and every entry reads RAW 0xffffffff. I was debugging why
+the package never goes deeper than PC3 on this machine, and without a
+working PMC map there is no way to see which PCH IP blocks it.
 
-Tested on hardware: booted via U-Boot on top of linux-next
-next-20261002, with the default kernel command line (no
-clk_ignore_unused, pd_ignore_unused or regulator_ignore_unused).
-Verified: UFS storage enumeration, USB 2.0 gadget, framebuffer console,
-power and volume keys, the book-cover switch, CPU frequency scaling, GPU
-(firmware loads, render node present), video decoder (device opens),
-ADSP booting at startup with the sound card registered and all four
-amplifiers and the VA macro probing. The microSD slot is described but
-not yet tested; audio playback and capture were not exercised.
+Add the SPT-H PMC ID to spt_pmc_pci_id[] so these systems use the
+Sunrise Point map.
 
-The display panel, touch, pen digitizer, cameras, battery/charging and
-the wireless module are not described here; the latter needs additional
-power sequencing and follows as a separate series.
+Tested on MacBookPro14,3 (Apple firmware 529.140.2.0.0), kernel 7.2.5,
+with the module built with this ID:
+- ltr_show lists the Sunrise Point IP names, and the values match a
+  direct read of the PWRMBASE registers through /dev/mem bit for bit.
+- pch_ip_power_gating_status follows device state: LPSS reads On while
+  the Bluetooth UART (00:1e.0) is bound and turns Off once it is
+  unbound and the UART enters D3hot.
+- No warnings on load.
 
-Assisted-by: LLM
-Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
+Limitations:
+- spt_pfear_map is the SPT-LP layout and is reused as is. SPT-H has
+  two more PCIe controllers (SPD and SPE). Bits 13 and 21 are RSVD in
+  the SPT map but SPD/SPE in the Cannon Point map; I could not verify
+  this on PCH-H, so the map is left unchanged.
+- slp_s0_residency_usec reads 0 on this machine.
+
+Fixes: 661405bd817b ("platform/x86: intel_pmc_core: Special case for Coffeelake")
+Assisted-by: claude-opus-5-5
+Signed-off-by: Angel Lindo <angellindo@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 664 +++++++++++++++++++++
- 2 files changed, 665 insertions(+)
+On the same machine and firmware, macOS reaches PC10 (~81%) at idle,
+while Linux never goes deeper than PC3. This patch only fixes the PMC
+detection so pch_ip_power_gating_status and ltr_show become usable for
+that investigation. With it, the PCH IPs report gating states consistent
+with device state (LPSS confirmed by toggling the Bluetooth UART); PC6
+and SLP_S0 residency are still 0.
+I plan to send a separate report on the PC3 limit to linux-pm.
+---
+ drivers/platform/x86/intel/pmc/core.h | 1 +
+ drivers/platform/x86/intel/pmc/spt.c  | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 88230c4e00ea..9372ec7b57b6 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -438,6 +438,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-rear-camera-card.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-mtp.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-qrd.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-gts9wifi.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-q5q.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-sony-xperia-yodo-pdx234.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= sm8650-ayaneo-pocket-s2.dtb
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-new file mode 100644
-index 000000000000..369cd921bc04
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/sm8550-samsung-gts9wifi.dts
-@@ -0,0 +1,664 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2024, Alexandru Marc Serdeliuc <serdeliuk@yahoo.com>
-+ * Copyright (c) 2024, David Wronek <david@mainlining.org>
-+ * Copyright (c) 2022, Linaro Limited
-+ * Copyright (c) 2026, Nizat Mikayilli <nacht@dxdmail.cc>
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include "sm8550.dtsi"
-+#include "pm8550.dtsi"
-+#include "pm8550vs.dtsi"
-+#include "pmk8550.dtsi"
-+
-+/* This is the Wi-Fi SKU: no modem firmware is shipped. */
-+/delete-node/ &ipa_fw_mem;
-+/delete-node/ &ipa_gsi_mem;
-+/delete-node/ &mpss_dsm_mem;
-+/delete-node/ &mpss_mem;
-+/delete-node/ &q6_mpss_dtb_mem;
-+/delete-node/ &rmtfs_mem;
-+/delete-node/ &spu_modem_shared_mem;
-+
-+/ {
-+	model = "Samsung Galaxy Tab S9 Wi-Fi";
-+	compatible = "samsung,gts9wifi", "qcom,sm8550";
-+	chassis-type = "tablet";
-+
-+	aliases {
-+		serial0 = &uart7;
-+	};
-+
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
-+		framebuffer@b8000000 {
-+			compatible = "simple-framebuffer";
-+			reg = <0x0 0xb8000000 0x0 0xfa0000>;
-+			width = <2560>;
-+			height = <1600>;
-+			stride = <(2560 * 4)>;
-+			format = "a8r8g8b8";
-+			clocks = <&gcc GCC_DISP_HF_AXI_CLK>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-0 = <&volume_up_n>, <&hall_cover_n>;
-+		pinctrl-names = "default";
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			linux,code = <KEY_VOLUMEUP>;
-+			gpios = <&pm8550_gpios 6 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+
-+		switch-lid {
-+			label = "Book Cover";
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			gpios = <&tlmm 107 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <50>;
-+			wakeup-source;
-+		};
-+	};
-+
-+	speaker_vdd: regulator-speaker-vdd {
-+		compatible = "regulator-fixed";
-+		regulator-name = "speaker_vdd";
-+		gpio = <&tlmm 19 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		regulator-boot-on;
-+	};
-+
-+	reserved-memory {
-+		chipinfo_mem: chipinfo@81cf4000 {
-+			reg = <0x0 0x81cf4000 0x0 0x1000>;
-+			no-map;
-+		};
-+
-+		kaslr_mem: kaslr@b01ff000 {
-+			reg = <0x0 0xb01ff000 0x0 0x1000>;
-+			no-map;
-+		};
-+
-+		uh_heap_mem: uh-heap@b0200000 {
-+			reg = <0x0 0xb0200000 0x0 0x40000>;
-+			no-map;
-+		};
-+
-+		uh_guest_mem: uh-guest@b1000000 {
-+			reg = <0x0 0xb1000000 0x0 0x3000000>;
-+			no-map;
-+		};
-+
-+		splash-region@b8000000 {
-+			reg = <0x0 0xb8000000 0x0 0x2b00000>;
-+			no-map;
-+		};
-+
-+		llcc_lpi_mem: llcc-lpi@ff800000 {
-+			reg = <0x0 0xff800000 0x0 0x600000>;
-+			no-map;
-+		};
-+	};
-+
-+	sound {
-+		compatible = "qcom,sm8550-sndcard", "qcom,sm8450-sndcard";
-+		model = "Samsung-Galaxy-Tab-S9";
-+
-+		pinctrl-0 = <&tdm0_clk_active>, <&tdm0_ws_active>,
-+			    <&tdm0_din_active>, <&tdm0_dout_active>;
-+		pinctrl-names = "default";
-+
-+		speaker-playback-dai-link {
-+			link-name = "CS35L45 Speaker Playback";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai PRIMARY_MI2S_RX>;
-+			};
-+
-+			codec {
-+				sound-dai = <&cs35l45_fl 0>, <&cs35l45_fr 0>,
-+					    <&cs35l45_rl 0>, <&cs35l45_rr 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+
-+		va-capture-dai-link {
-+			link-name = "Internal DMIC Capture";
-+
-+			cpu {
-+				sound-dai = <&q6apmbedai VA_CODEC_DMA_TX_0>;
-+			};
-+
-+			codec {
-+				sound-dai = <&lpass_vamacro 0>;
-+			};
-+
-+			platform {
-+				sound-dai = <&q6apm>;
-+			};
-+		};
-+	};
-+};
-+
-+/* Samsung's ADSP/SLPI firmware needs a larger carveout than the reference. */
-+&adspslpi_mem {
-+	reg = <0x0 0x9ea00000 0x0 0x59b4000>;
-+};
-+
-+&apps_rsc {
-+	regulators-0 {
-+		compatible = "qcom,pm8550-rpmh-regulators";
-+		qcom,pmic-id = "b";
-+
-+		/* Sensor VDD; the ADSP firmware expects it to be on. */
-+		vreg_l1b_1p8: ldo1 {
-+			regulator-name = "vreg_l1b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l5b_3p104: ldo5 {
-+			regulator-name = "vreg_l5b_3p104";
-+			regulator-min-microvolt = <3104000>;
-+			regulator-max-microvolt = <3104000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l8b_1p8: ldo8 {
-+			regulator-name = "vreg_l8b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l9b_2p9: ldo9 {
-+			regulator-name = "vreg_l9b_2p9";
-+			regulator-min-microvolt = <2960000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		/* DMIC bias, not switched by the VA macro driver. */
-+		vreg_l10b_1p8: ldo10 {
-+			regulator-name = "vreg_l10b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l15b_1p8: ldo15 {
-+			regulator-name = "vreg_l15b_1p8";
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		/* Sensor VDDIO; the ADSP firmware expects it to be on. */
-+		vreg_l16b_3p0: ldo16 {
-+			regulator-name = "vreg_l16b_3p0";
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3000000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-always-on;
-+		};
-+
-+		vreg_l17b_2p5: ldo17 {
-+			regulator-name = "vreg_l17b_2p5";
-+			regulator-min-microvolt = <2504000>;
-+			regulator-max-microvolt = <2504000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-1 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "e";
-+
-+		vreg_l1e_0p88: ldo1 {
-+			regulator-name = "vreg_l1e_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <880000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3e_1p2: ldo3 {
-+			regulator-name = "vreg_l3e_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-2 {
-+		compatible = "qcom,pm8550ve-rpmh-regulators";
-+		qcom,pmic-id = "f";
-+
-+		vreg_l3f_0p88: ldo3 {
-+			regulator-name = "vreg_l3f_0p88";
-+			regulator-min-microvolt = <880000>;
-+			regulator-max-microvolt = <912000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+
-+	regulators-3 {
-+		compatible = "qcom,pm8550vs-rpmh-regulators";
-+		qcom,pmic-id = "g";
-+
-+		vreg_l1g_1p2: ldo1 {
-+			regulator-name = "vreg_l1g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-allow-set-load;
-+			regulator-allowed-modes = <RPMH_REGULATOR_MODE_LPM
-+						   RPMH_REGULATOR_MODE_HPM>;
-+		};
-+
-+		vreg_l3g_1p2: ldo3 {
-+			regulator-name = "vreg_l3g_1p2";
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+		};
-+	};
-+};
-+
-+/* Keep the bootloader-initialised display clocks for simple-framebuffer. */
-+&dispcc {
-+	status = "disabled";
-+};
-+
-+&gpi_dma1 {
-+	status = "okay";
-+};
-+
-+&gpu {
-+	status = "okay";
-+
-+	zap-shader {
-+		firmware-name = "qcom/sm8550/Samsung/gts9wifi/a740_zap.mbn";
-+	};
-+};
-+
-+&hub_i2c6_data_clk {
-+	drive-strength = <8>;
-+};
-+
-+/* The SM-X710 firmware reserves a slightly larger HW-fence window than MTP. */
-+&hwfence_shbuf {
-+	reg = <0x0 0xe6440000 0x0 0x2dd000>;
-+};
-+
-+&i2c6 {
-+	clock-frequency = <400000>;
-+	status = "okay";
-+
-+	eusb2_repeater: redriver@4f {
-+		compatible = "nxp,ptn3222";
-+		reg = <0x4f>;
-+		#phy-cells = <0>;
-+
-+		vdd3v3-supply = <&vreg_l5b_3p104>;
-+		vdd1v8-supply = <&vreg_l15b_1p8>;
-+		reset-gpios = <&pm8550vs_d_gpios 4 GPIO_ACTIVE_LOW>;
-+
-+		pinctrl-0 = <&eusb2_reset_default>;
-+		pinctrl-names = "default";
-+	};
-+};
-+
-+&i2c_hub_6 {
-+	clock-frequency = <400000>;
-+	status = "okay";
-+
-+	cs35l45_rl: amplifier@30 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x30>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Rear Left";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+
-+	cs35l45_fl: amplifier@31 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x31>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Front Left";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+
-+	cs35l45_rr: amplifier@32 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x32>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Rear Right";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+
-+	cs35l45_fr: amplifier@33 {
-+		compatible = "cirrus,cs35l45";
-+		reg = <0x33>;
-+		#sound-dai-cells = <1>;
-+		interrupts-extended = <&tlmm 14 IRQ_TYPE_LEVEL_LOW>;
-+		reset-gpios = <&tlmm 42 GPIO_ACTIVE_HIGH>;
-+		vdd-a-supply = <&speaker_vdd>;
-+		vdd-batt-supply = <&speaker_vdd>;
-+		pinctrl-0 = <&cs35l45_gpio_default>;
-+		pinctrl-names = "default";
-+		sound-name-prefix = "Front Right";
-+		cirrus,asp-sdout-hiz-ctrl = <3>;
-+
-+		cirrus,gpio-ctrl1 {
-+			gpio-ctrl = <2>;
-+		};
-+
-+		cirrus,gpio-ctrl2 {
-+			gpio-ctrl = <2>;
-+		};
-+	};
-+};
-+
-+&i2c_master_hub_0 {
-+	status = "okay";
-+};
-+
-+&ipa {
-+	/delete-property/ memory-region;
-+};
-+
-+&iris {
-+	firmware-name = "qcom/sm8550/Samsung/gts9wifi/vpu30_4v.mbn";
-+	status = "okay";
-+};
-+
-+&lpass_tlmm {
-+	dmic45_default: dmic45-default-state {
-+		clk-pins {
-+			pins = "gpio12";
-+			function = "dmic3_clk";
-+			drive-strength = <8>;
-+			output-high;
-+		};
-+
-+		data-pins {
-+			pins = "gpio13";
-+			function = "dmic3_data";
-+			drive-strength = <8>;
-+			input-enable;
-+		};
-+	};
-+
-+	dmic67_default: dmic67-default-state {
-+		clk-pins {
-+			pins = "gpio17";
-+			function = "dmic4_clk";
-+			drive-strength = <8>;
-+			output-high;
-+		};
-+
-+		data-pins {
-+			pins = "gpio18";
-+			function = "dmic4_data";
-+			drive-strength = <8>;
-+			input-enable;
-+		};
-+	};
-+};
-+
-+&lpass_vamacro {
-+	pinctrl-0 = <&dmic01_default>, <&dmic23_default>,
-+		    <&dmic45_default>, <&dmic67_default>;
-+	pinctrl-names = "default";
-+	qcom,dmic-sample-rate = <4800000>;
-+	vdd-micb-supply = <&vreg_l10b_1p8>;
-+	status = "okay";
-+};
-+
-+&pm8550_gpios {
-+	sdc2_card_det_n: sdc2-card-det-state {
-+		pins = "gpio12";
-+		function = "normal";
-+		input-enable;
-+		output-disable;
-+		bias-pull-up;
-+		power-source = <1>;
-+	};
-+
-+	volume_up_n: volume-up-n-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		power-source = <1>;
-+		bias-pull-up;
-+		input-enable;
-+	};
-+};
-+
-+&pm8550vs_d {
-+	status = "okay";
-+};
-+
-+&pm8550vs_d_gpios {
-+	eusb2_reset_default: eusb2-reset-state {
-+		pins = "gpio4";
-+		function = "normal";
-+		power-source = <1>;
-+		input-enable;
-+		output-enable;
-+		drive-push-pull;
-+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_MED>;
-+		bias-disable;
-+	};
-+};
-+
-+&pm8550vs_e {
-+	status = "okay";
-+};
-+
-+&pm8550vs_g {
-+	status = "okay";
-+};
-+
-+&pon_pwrkey {
-+	status = "okay";
-+};
-+
-+&pon_resin {
-+	linux,code = <KEY_VOLUMEDOWN>;
-+	status = "okay";
-+};
-+
-+&qupv3_id_0 {
-+	status = "okay";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/Samsung/gts9wifi/adsp.mbn",
-+			"qcom/sm8550/Samsung/gts9wifi/adsp_dtb.mbn";
-+	status = "okay";
-+};
-+
-+&remoteproc_mpss {
-+	/delete-property/ memory-region;
-+};
-+
-+&sdhc_2 {
-+	cd-gpios = <&pm8550_gpios 12 GPIO_ACTIVE_LOW>;
-+	pinctrl-0 = <&sdc2_default>, <&sdc2_card_det_n>;
-+	pinctrl-1 = <&sdc2_sleep>, <&sdc2_card_det_n>;
-+	pinctrl-names = "default", "sleep";
-+	vmmc-supply = <&vreg_l9b_2p9>;
-+	vqmmc-supply = <&vreg_l8b_1p8>;
-+	bus-width = <4>;
-+	no-sdio;
-+	no-mmc;
-+	status = "okay";
-+};
-+
-+&sleep_clk {
-+	clock-frequency = <32764>;
-+};
-+
-+&tlmm {
-+	/* GPIO36..39 are owned by TrustZone. */
-+	gpio-reserved-ranges = <36 4>;
-+
-+	cs35l45_gpio_default: cs35l45-gpio-default-state {
-+		pins = "gpio14", "gpio42";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	hall_cover_n: hall-cover-n-state {
-+		pins = "gpio107";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_clk_active: tdm0-clk-active-state {
-+		pins = "gpio126";
-+		function = "i2s0_sck";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_din_active: tdm0-din-active-state {
-+		pins = "gpio127";
-+		function = "i2s0_data0";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_dout_active: tdm0-dout-active-state {
-+		pins = "gpio128";
-+		function = "i2s0_data1";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	tdm0_ws_active: tdm0-ws-active-state {
-+		pins = "gpio129";
-+		function = "i2s0_ws";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+};
-+
-+&uart7 {
-+	status = "okay";
-+};
-+
-+&ufs_mem_hc {
-+	reset-gpios = <&tlmm 210 GPIO_ACTIVE_LOW>;
-+	vcc-supply = <&vreg_l17b_2p5>;
-+	vcc-max-microamp = <1300000>;
-+	vccq-supply = <&vreg_l1g_1p2>;
-+	vccq-max-microamp = <1200000>;
-+	vdd-hba-supply = <&vreg_l3g_1p2>;
-+	status = "okay";
-+};
-+
-+&ufs_mem_phy {
-+	vdda-phy-supply = <&vreg_l1e_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
-+	status = "okay";
-+};
-+
-+/* Without a Type-C controller driver, keep the DWC3 in peripheral mode. */
-+&usb_1 {
-+	dr_mode = "peripheral";
-+	status = "okay";
-+};
-+
-+&usb_1_hsphy {
-+	vdd-supply = <&vreg_l1e_0p88>;
-+	vdda12-supply = <&vreg_l3e_1p2>;
-+	phys = <&eusb2_repeater>;
-+	status = "okay";
-+};
-+
-+/* Referenced by usb_1 as its USB3 PHY. */
-+&usb_dp_qmpphy {
-+	vdda-phy-supply = <&vreg_l3f_0p88>;
-+	vdda-pll-supply = <&vreg_l3e_1p2>;
-+	status = "okay";
-+};
-+
-+&xo_board {
-+	clock-frequency = <76800000>;
-+};
+diff --git a/drivers/platform/x86/intel/pmc/core.h b/drivers/platform/x86/intel/pmc/core.h
+index b4c7399f8..5822dbbda 100644
+--- a/drivers/platform/x86/intel/pmc/core.h
++++ b/drivers/platform/x86/intel/pmc/core.h
+@@ -36,6 +36,7 @@ DEFINE_FREE(pmc_acpi_free, void *, if (_T) ACPI_FREE(_T))
+ 
+ /* Sunrise Point Power Management Controller PCI Device ID */
+ #define SPT_PMC_PCI_DEVICE_ID			0x9d21
++#define SPT_H_PMC_PCI_DEVICE_ID			0xa121
+ #define SPT_PMC_BASE_ADDR_OFFSET		0x48
+ #define SPT_PMC_SLP_S0_RES_COUNTER_OFFSET	0x13c
+ #define SPT_PMC_PM_CFG_OFFSET			0x18
+diff --git a/drivers/platform/x86/intel/pmc/spt.c b/drivers/platform/x86/intel/pmc/spt.c
+index b50534aa2..5c4b8d536 100644
+--- a/drivers/platform/x86/intel/pmc/spt.c
++++ b/drivers/platform/x86/intel/pmc/spt.c
+@@ -138,6 +138,7 @@ static const struct pmc_reg_map spt_reg_map = {
+ 
+ static const struct pci_device_id spt_pmc_pci_id[] = {
+ 	{ PCI_VDEVICE(INTEL, SPT_PMC_PCI_DEVICE_ID) },
++	{ PCI_VDEVICE(INTEL, SPT_H_PMC_PCI_DEVICE_ID) },
+ 	{ }
+ };
+ 
 
--- 
-2.55.0
+---
+base-commit: cf963c9359dd6c5d0bc6af16df5cf1f691bba4f3
+change-id: 20261005-intel-pmc-spt-h-3ebe43d206fb
+
+Best regards,
+--  
+Angel Lindo <angellindo@gmail.com>
 
