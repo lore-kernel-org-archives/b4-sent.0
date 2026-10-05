@@ -1,155 +1,159 @@
-From: Pawel Laszczak <pawell@cadence.com>
-Date: Mon, 05 Oct 2026 10:18:26 +0200
-Subject: [PATCH v3 3/3] usb: cdns3: cdnsp: Enable eUSB2v2 1KB bulk packet
- capability
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Mon, 05 Oct 2026 02:01:15 -0700
+Subject: [PATCH v2] RDMA/rtrs-clt: Fix recv repost to satisfy ib_drain_rq
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261005-eusb2v2-packet-size-v3-3-fde610a3c47a@cadence.com>
-References: <20261005-eusb2v2-packet-size-v3-0-fde610a3c47a@cadence.com>
-In-Reply-To: <20261005-eusb2v2-packet-size-v3-0-fde610a3c47a@cadence.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Mathias Nyman <mathias.nyman@intel.com>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Pawel Laszczak <pawell@cadence.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791188311; l=5055;
- i=pawell@cadence.com; h=from:subject:message-id;
- bh=6jGovsvbqiFGTEWUTII7/biTmDWSjNJ9MeWDacnN6RA=;
- b=UkrYWXFSZHkMhYAIbZoSR7gf6bi8C6rKkY2/ebIyevlLZhws/sfBRNN3EdTQRDiBxcN+lxtkm
- XqFKSIGVSnzBaw2IlyXSJP8mOCZ4w5dbfsq01yMJF+Ij+WpgdZ7JTG9
-X-Developer-Key: i=pawell@cadence.com; a=ed25519;
- pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
-X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
+Message-Id: <20261005-rtrs-fix-ib-drain-rq-v2-1-35535a3ed115@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBCFr0Jm7Rhaw58r72FYUDrKmNjCtBIN4
+ e4WPIB5qy/53nsLBBKmAOdsAaGZA3uXQB8y6IfO3QnZJgad6zJvtEKJEvDGb2SDVjp2KBOWyvZ
+ 1YXNbFQ2k6iiUlH322v44vMyD+rhtbcbAIXr57L+z2rw/F7PCFGVUeaqaojbdZRQfvTs+Cdp1X
+ b/NAPqdygAAAA==
+X-Change-ID: 20260921-rtrs-fix-ib-drain-rq-61dc85d0d759
+To: "Md. Haris Iqbal" <haris.iqbal@ionos.com>, 
+ Jack Wang <jinpu.wang@ionos.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+ Leon Romanovsky <leon@kernel.org>, 
+ Danil Kipnis <danil.kipnis@cloud.ionos.com>
+Cc: Jack Wang <jinpu.wang@cloud.ionos.com>, linux-rdma@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Farhad Alemi <farhad.alemi@berkeley.edu>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791190875; l=4740;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=xU+26zGQuGnnIb4mC2wtzqOPeTks7lJXdQP6Vxpm7X8=;
+ b=rql2JJN5fsfN2QEm5/l7NTEG6bzD+Ix26rD5VDgHTKuXSC6mwdT+7Wq7oqz5wav2fmzIz+gOC
+ kTY4jX1EfNTDPzQPEwPQv6M5f+GMpe6pKdBh28ONDIzJpShE77h7d1w
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement peripheral-side changes in the Cadence (cdnsp) driver
-to support eUSB2v2 1024-byte Bulk MaxPacketSize.
+On disconnect the client error recovery path calls ib_drain_qp(), which
+requires one free RQ slot and that no recv WQEs are posted while the
+queue is being drained.
 
-Check the HCC2_E2V2C bit in HCCPARAMS2 during setup and set
-'pdev->gadget.is_eusb2v2 = 1' if supported. Delegate the incoming
-USB_DEVICE_BULK_MAX_PACKET_UPDATE setup request from ep0 to the
-composite layer.
+When the server is loaded with always_invalidate=N, the path does not
+advertise RTRS_MSG_NEW_RKEY_F.  A client-requested invalidation is then
+a standalone SEND_WITH_INV.  The recv completion path did not repost
+that WQE; it posted two empty recv WQEs later, when the RDMA-with-IMM
+response carried RTRS_IO_RSP_W_INV_IMM.  If the invalidate receive
+never arrived, each such response increased RQ occupancy by one until
+ib_post_recv() started returning -ENOMEM and __ib_drain_rq() failed
+with:
 
-Update cdnsp_endpoint_init() to check the 'eusb2v2_mps_active' flag
-set by the gadget framework. If active, dynamically configure the
-hardware endpoint for 1024-byte maximum packet size, overriding
-the 512-byte value reported in the endpoint descriptor.
+  failed to drain recv queue: -12
 
-Signed-off-by: Pawel Laszczak <pawell@cadence.com>
+Repost one empty recv WQE for every receive completion, including
+SEND_WITH_INV completions on the always_invalidate=N path, and only
+while the path is still connected so CQ polling cannot race with
+ib_drain_qp().  Size IO connection RQs to 2 * queue_depth + 1 to match
+the posted recv count and leave the drain slot.
+
+Tested with a synthetic RTRS client flooding unpaired
+RTRS_IO_RSP_W_INV_IMM messages; error recovery no longer triggers
+__ib_drain_rq() warnings.
+
+Fixes: 6a98d71daea1 ("RDMA/rtrs: client: main functionality")
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Tested-by: Quanye Yang <quanyeyang@proton.me>
+Reported-by: Farhad Alemi <farhad.alemi@berkeley.edu>
+Link: https://lore.kernel.org/linux-rdma/CA+0ovCihE2_pxLimjmmR8NMz4g-ie8dvvq1jmAj-Om33y3Vzfg@mail.gmail.com
+Acked-by: Jack Wang <jinpu.wang@cloud.ionos.com>
 ---
-Changes in v3:
-- cdnsp-mem.c: Use the new gadget->eusb2v2_mps_active flag instead of modifying
-  ep->desc.wMaxPacketSize. This allows the UDC to determine the correct HS bulk
-  maximum packet size while letting the composite framework report 512 bytes in
-  the endpoint descriptor per eUSB2v2 spec section 5.2.
-
 Changes in v2:
-- cdnsp-mem.c: simplified HS bulk clamp logic to: if (max_packet != 1024)
-  max_packet = 512, consistent with xhci-mem.c.
+- Clarify that the broken recv-repost path is always_invalidate=N
+  (no RTRS_MSG_NEW_RKEY_F).
+- Collect Acked-by from Jack Wang.
+- Link to v1: https://patch.msgid.link/20260921-rtrs-fix-ib-drain-rq-v1-1-11b1637958ba@proton.me
 ---
- drivers/usb/cdns3/cdnsp-ep0.c    | 2 ++
- drivers/usb/cdns3/cdnsp-gadget.c | 4 ++++
- drivers/usb/cdns3/cdnsp-gadget.h | 8 ++++++++
- drivers/usb/cdns3/cdnsp-mem.c    | 9 +++++++--
- drivers/usb/common/debug.c       | 2 ++
- 5 files changed, 23 insertions(+), 2 deletions(-)
+ drivers/infiniband/ulp/rtrs/rtrs-clt.c | 45 ++++++++++++----------------------
+ 1 file changed, 15 insertions(+), 30 deletions(-)
 
-diff --git a/drivers/usb/cdns3/cdnsp-ep0.c b/drivers/usb/cdns3/cdnsp-ep0.c
-index 5cd9b898ce97..090d20b307ee 100644
---- a/drivers/usb/cdns3/cdnsp-ep0.c
-+++ b/drivers/usb/cdns3/cdnsp-ep0.c
-@@ -253,6 +253,8 @@ static int cdnsp_ep0_handle_feature_device(struct cdnsp_device *pdev,
- 		 */
- 		cdnsp_enter_test_mode(pdev);
- 		break;
-+	case USB_DEVICE_BULK_MAX_PACKET_UPDATE:
-+		return cdnsp_ep0_delegate_req(pdev, ctrl);
- 	default:
- 		return -EINVAL;
- 	}
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.c b/drivers/usb/cdns3/cdnsp-gadget.c
-index a5275c2fb43b..ac1dde43ce1d 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.c
-+++ b/drivers/usb/cdns3/cdnsp-gadget.c
-@@ -1853,6 +1853,10 @@ static int cdnsp_gen_setup(struct cdnsp_device *pdev)
- 	pdev->hcc_params = readl(&pdev->cap_regs->hc_capbase);
- 	pdev->hci_version = HC_VERSION(pdev->hcc_params);
- 	pdev->hcc_params = readl(&pdev->cap_regs->hcc_params);
-+	pdev->hcc_params2 = readl(&pdev->cap_regs->hcc_params2);
-+
-+	if (pdev->hcc_params2 & HCC2_E2V2C)
-+		pdev->gadget.is_eusb2v2 = 1;
+diff --git a/drivers/infiniband/ulp/rtrs/rtrs-clt.c b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
+index eac38b57b00d..ee6d5c3de16c 100644
+--- a/drivers/infiniband/ulp/rtrs/rtrs-clt.c
++++ b/drivers/infiniband/ulp/rtrs/rtrs-clt.c
+@@ -577,25 +577,21 @@ static struct ib_cqe io_comp_cqe = {
+ 	.done = rtrs_clt_rdma_done
+ };
  
- 	/*
- 	 * Override the APB timeout value to give the controller more time for
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.h b/drivers/usb/cdns3/cdnsp-gadget.h
-index c44bca348a41..75bc3f15bde5 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.h
-+++ b/drivers/usb/cdns3/cdnsp-gadget.h
-@@ -89,6 +89,12 @@ struct cdnsp_cap_regs {
+-/*
+- * Post x2 empty WRs: first is for this RDMA with IMM,
+- * second is for RECV with INV, which happened earlier.
+- */
+-static int rtrs_post_recv_empty_x2(struct rtrs_con *con, struct ib_cqe *cqe)
++static int rtrs_clt_repost_recv(struct rtrs_clt_con *con)
+ {
+-	struct ib_recv_wr wr_arr[2], *wr;
+-	int i;
++	struct rtrs_clt_path *clt_path = to_clt_path(con->c.path);
++	int err;
  
- #define CTX_SIZE(_hcc)		(HCC_64BYTE_CONTEXT(_hcc) ? 64 : 32)
+-	memset(wr_arr, 0, sizeof(wr_arr));
+-	for (i = 0; i < ARRAY_SIZE(wr_arr); i++) {
+-		wr = &wr_arr[i];
+-		wr->wr_cqe  = cqe;
+-		if (i)
+-			/* Chain backwards */
+-			wr->next = &wr_arr[i - 1];
+-	}
++	if (READ_ONCE(clt_path->state) != RTRS_CLT_CONNECTED)
++		return 0;
  
-+/* HCCPARAMS2 - hcc_params2 - bitmasks */
-+/* bit 11 - DC support Double BW on a eUSB2 HS ISOC EP */
-+#define HCC2_EUSB2_DIC		BIT(11)
-+/* bit 12 - DC support eUSB2V2 capability */
-+#define HCC2_E2V2C		BIT(12)
-+
- /* db_off bitmask - bits 0:1 reserved. */
- #define DBOFF_MASK	GENMASK(31, 2)
- 
-@@ -1370,6 +1376,7 @@ struct cdnsp_port {
-  * @rev_cap: Controller Capabilities Registers.
-  * @hcs_params1: Cached register copies of read-only HCSPARAMS1
-  * @hcc_params: Cached register copies of read-only HCCPARAMS1
-+ * @hcc_params2: Cached register copies of read-only HCCPARAMS2
-  * @rtl_revision: Cached controller rtl revision.
-  * @setup: Temporary buffer for setup packet.
-  * @ep0_preq: Internal allocated request used during enumeration.
-@@ -1425,6 +1432,7 @@ struct cdnsp_device {
- 	__u32 hcs_params1;
- 	__u32 hcs_params3;
- 	__u32 hcc_params;
-+	__u32 hcc_params2;
- 	#define RTL_REVISION_NEW_LPM 0x2700
- 	__u32 rtl_revision;
- 	/* Lock used in interrupt thread context. */
-diff --git a/drivers/usb/cdns3/cdnsp-mem.c b/drivers/usb/cdns3/cdnsp-mem.c
-index 5d8cdc91927d..8892767942a7 100644
---- a/drivers/usb/cdns3/cdnsp-mem.c
-+++ b/drivers/usb/cdns3/cdnsp-mem.c
-@@ -978,8 +978,13 @@ int cdnsp_endpoint_init(struct cdnsp_device *pdev,
- 	if (!usb_endpoint_xfer_isoc(pep->endpoint.desc))
- 		err_count = 3;
- 	if (usb_endpoint_xfer_bulk(pep->endpoint.desc) &&
--	    pdev->gadget.speed == USB_SPEED_HIGH)
--		max_packet = 512;
-+	    pdev->gadget.speed == USB_SPEED_HIGH) {
-+		if (pdev->gadget.eusb2v2_mps_active)
-+			max_packet = 1024;
-+		else
-+			max_packet = 512;
+-	return ib_post_recv(con->qp, wr, NULL);
++	err = rtrs_post_recv_empty(&con->c, &io_comp_cqe);
++	if (err) {
++		rtrs_err(con->c.path, "rtrs_post_recv_empty(): %pe\n",
++			 ERR_PTR(err));
++		rtrs_rdma_error_recovery(con);
 +	}
-+
- 	/* Controller spec indicates that ctrl ep avg TRB Length should be 8. */
- 	if (usb_endpoint_xfer_control(pep->endpoint.desc))
- 		avg_trb_len = 8;
-diff --git a/drivers/usb/common/debug.c b/drivers/usb/common/debug.c
-index f204cec8d380..b9696fae7ef5 100644
---- a/drivers/usb/common/debug.c
-+++ b/drivers/usb/common/debug.c
-@@ -46,6 +46,8 @@ static const char *usb_decode_device_feature(u16 wValue)
- 		return "U2 Enable";
- 	case USB_DEVICE_LTM_ENABLE:
- 		return "LTM Enable";
-+	case USB_DEVICE_BULK_MAX_PACKET_UPDATE:
-+		return "Bulk mps update";
- 	default:
- 		return "UNKNOWN";
++	return err;
+ }
+ 
+ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
+@@ -650,19 +646,7 @@ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
+ 			rtrs_wrn(con->c.path, "Unknown IMM type %u\n",
+ 				  imm_type);
+ 		}
+-		if (w_inval)
+-			/*
+-			 * Post x2 empty WRs: first is for this RDMA with IMM,
+-			 * second is for RECV with INV, which happened earlier.
+-			 */
+-			err = rtrs_post_recv_empty_x2(&con->c, &io_comp_cqe);
+-		else
+-			err = rtrs_post_recv_empty(&con->c, &io_comp_cqe);
+-		if (err) {
+-			rtrs_err(con->c.path, "rtrs_post_recv_empty(): %pe\n",
+-				 ERR_PTR(err));
+-			rtrs_rdma_error_recovery(con);
+-		}
++		rtrs_clt_repost_recv(con);
+ 		break;
+ 	case IB_WC_RECV:
+ 		/*
+@@ -678,6 +662,7 @@ static void rtrs_clt_rdma_done(struct ib_cq *cq, struct ib_wc *wc)
+ 
+ 			return  rtrs_clt_rkey_rsp_done(con, wc);
+ 		}
++		rtrs_clt_repost_recv(con);
+ 		break;
+ 	case IB_WC_RDMA_WRITE:
+ 		/*
+@@ -1693,7 +1678,7 @@ static int create_con_cq_qp(struct rtrs_clt_con *con)
+ 		clt_path->s.dev_ref++;
+ 		/* QD * (REQ + RSP + FR REGS or INVS) + drain */
+ 		max_send_wr = min(wr_limit, clt_path->queue_depth * 4 + 1);
+-		max_recv_wr = min(wr_limit, clt_path->queue_depth * 3 + 1);
++		max_recv_wr = min(wr_limit, clt_path->queue_depth * 2 + 1);
+ 		max_send_sge = 2;
  	}
+ 	atomic_set(&con->c.sq_wr_avail, max_send_wr);
 
--- 
-2.43.0
+---
+base-commit: 93f51579e7df248780214094418f205253383cc5
+change-id: 20260921-rtrs-fix-ib-drain-rq-61dc85d0d759
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
