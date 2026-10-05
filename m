@@ -1,127 +1,65 @@
-From: Siddarth Chilukuri <siddarth@nexthop.ai>
-Date: Mon, 05 Oct 2026 18:50:57 +0000
-Subject: [PATCH] i2c: xiic: don't fail a read whose data is already in the
- RX FIFO
+From: Nizat Mikayilli <nacht@dxdmail.cc>
+Subject: [PATCH v2 0/2] Add Samsung Galaxy Tab S9 Wi-Fi (SM-X710) support
+Date: Mon, 05 Oct 2026 21:47:35 +0200
+Message-Id: <20261005-gts9wifi-dts-v2-0-c3ac9b0f9ceb@dxdmail.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261005-i2c-xiic-rx-fifo-v1-1-0177ac5f72d7@nexthop.ai>
-X-B4-Tracking: v=1; b=H4sIAJDxw2oC/yXMQQ6DIBBG4auYWTsJQmxMr2JcCAzt34UaUENiu
- HupXX6L9y5KEiGJns1FUU4krEtF1zbk3vPyEoavJq30o1OqZ2jHGXAcMweElY0xNgx+9nawVLM
- tSkC+l+P0dzrsR9z++1ApXykwNPZ0AAAA
-X-Change-ID: 20261005-i2c-xiic-rx-fifo-333bf8dadb8b
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Siddarth Chilukuri <siddarth@nexthop.ai>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791226262; l=3974;
- i=siddarth@nexthop.ai; s=20261005; h=from:subject:message-id;
- bh=+OMLHRv9yGnRH1ltNBvfAy2ZGPv/CunRdqkdVFB3ta4=;
- b=fRMJFO9GuGN1sByoQ3O+tITvMHEb87DpmbBz/kSKqiCXKGR0xFvy7Cu/78q8cQeHEANs8ySrl
- 9e7sjYJ3fR+Bb9YTlpfxfO6Of53gcBwmKoea1n5iPAVPsWioHPVgFW3
-X-Developer-Key: i=siddarth@nexthop.ai; a=ed25519;
- pk=mqZgV5HLHwCtP2hfnYLQEnd3V9s5LQLC664snM9/mlQ=
-X-Endpoint-Received: by B4 Relay for siddarth@nexthop.ai/20261005 with auth_id=1116
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMQQ7CIBCF4as0sxYDiNa68h6mC8IM7STaNkCwp
+ uHuYvcu/5e8b4NIgSnCrdkgUObI81RDHxpwo50GEoy1QUt9UVIaMaTYvdmzwBQFatNqunZnfTJ
+ QL0sgz+vOPfraI8c0h8+uZ/Vb/0BZCSmUl9gimpaMveOKL8vPo3PQl1K+u7rgSKkAAAA=
+X-Change-ID: 20261004-gts9wifi-dts-d2472e895234
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Abel Vesa <abelvesa@kernel.org>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nizat Mikayilli <nacht@dxdmail.cc>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791229689; l=1512;
+ i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
+ bh=yM4g8grKQbeO3RP64WLPxJBmi2Bcmyi/gzRWrchE2d8=;
+ b=JWS8jJS2/tuKNZM8ZZOC/XFPwHDGD6EbzVJ1Vm76f3YmL7hZqhdgl6o4yS4iyd6Z2rJ6FpBEl
+ UOhZaJIj420ALmRtGoCMWlDigulxPgEb6e8BYP3Za4xDnVzQPfJi+cH
+X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
+ pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
+X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the controller is the master receiver, TX_ERROR is set once the
-core has NACKed the last byte ("transmit complete" in PG090). We have
-seen xiic_process() run with TX_ERROR set but RX_FULL not yet set,
-while the RX FIFO already holds all of the remaining bytes of the
-message.
+Add devicetree support for the Samsung Galaxy Tab S9 Wi-Fi (SM-X710),
+an SM8550 tablet. Two patches: the qcom.yaml board entry and the board
+DTS describing UFS, microSD, USB 2.0 peripheral via eUSB2 with an NXP
+PTN3222 repeater, keys, GPU, video decoder, ADSP and the CS35L45/VA-macro
+audio path.
 
-xiic_process() treats TX_ERROR without RX_FULL as an error, so in this
-case it reinitializes the core, the data in the FIFO is lost, and the
-read returns -EIO even though it finished on the bus. The next read on
-the same adapter can also return stale data without reporting an error.
-
-Fix this by checking the RX FIFO in the error path. If the message is
-a read, there was no arbitration loss, and the FIFO has all of the
-remaining bytes, handle it the same way as RX_FULL and complete the
-message. Since IISR is toggle-on-write, only clear RX_FULL if it was
-actually set.
-
-We found this on a system with several AXI IIC controllers in one PCIe
-FPGA that share an interrupt. It only happens when at least two
-controllers are busy at the same time. With 12 QSFP-DD modules being
-read in parallel for 480 seconds, the failures went from 2083 -EIO and
-1158 reads with wrong data (out of 11.2M reads) to none.
-
-Fixes: e1d5b6598cdc ("i2c: Add support for Xilinx XPS IIC Bus Interface")
-Cc: stable@vger.kernel.org
-Signed-off-by: Siddarth Chilukuri <siddarth@nexthop.ai>
----
-I tested this on hardware with the 6.11 kernel we found the problem
-on. On mainline it is compile-tested only.
----
- drivers/i2c/busses/i2c-xiic.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
-
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 5e397a7e6..11319ac09 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -755,6 +755,7 @@ static irqreturn_t xiic_process(int irq, void *dev_id)
- 	int wakeup_req = 0;
- 	enum xilinx_i2c_state wakeup_code = STATE_DONE;
- 	int ret;
-+	bool rx_done_no_rx_full = false;
- 
- 	/* Get the interrupt Status from the IPIF. There is no clearing of
- 	 * interrupts in the IPIF. Interrupts must be cleared at the source.
-@@ -787,6 +788,27 @@ static irqreturn_t xiic_process(int irq, void *dev_id)
- 
- 		dev_dbg(i2c->adap.dev.parent, "%s error\n", __func__);
- 
-+		/*
-+		 * For a master receiver TX_ERROR also means "transfer complete" and
-+		 * can be seen before RX_FULL. If the FIFO already holds the rest of
-+		 * the message, finish the read instead of resetting the core.
-+		 */
-+		if (i2c->rx_msg && !(pend & XIIC_INTR_ARB_LOST_MASK) &&
-+		    !(xiic_getreg8(i2c, XIIC_SR_REG_OFFSET) &
-+		      XIIC_SR_RX_FIFO_EMPTY_MASK)) {
-+			unsigned int in_fifo =
-+				xiic_getreg8(i2c, XIIC_RFO_REG_OFFSET) + 1;
-+			unsigned int space = xiic_rx_space(i2c);
-+
-+			if (space && in_fifo >= space) {
-+				rx_done_no_rx_full =
-+					!(isr & XIIC_INTR_RX_FULL_MASK);
-+				pend |= XIIC_INTR_RX_FULL_MASK;
-+				clr |= XIIC_INTR_TX_ERROR_MASK;
-+				goto rx_complete;
-+			}
-+		}
-+
- 		/* dynamic mode seem to suffer from problems if we just flushes
- 		 * fifos and the next message is a TX with len 0 (only addr)
- 		 * reset the IP instead of just flush fifos
-@@ -806,6 +828,7 @@ static irqreturn_t xiic_process(int irq, void *dev_id)
- 		/* don't try to handle other events */
- 		goto out;
- 	}
-+rx_complete:
- 	if (pend & XIIC_INTR_RX_FULL_MASK) {
- 		/* Receive register/FIFO is full */
- 
-@@ -911,6 +934,9 @@ static irqreturn_t xiic_process(int irq, void *dev_id)
- out:
- 	dev_dbg(i2c->adap.dev.parent, "%s clr: 0x%x\n", __func__, clr);
- 
-+	/* IISR is toggle-on-write: don't toggle an RX_FULL bit that wasn't set */
-+	if (rx_done_no_rx_full)
-+		clr &= ~XIIC_INTR_RX_FULL_MASK;
- 	xiic_setreg32(i2c, XIIC_IISR_OFFSET, clr);
- 	if (xfer_more)
- 		__xiic_start_xfer(i2c);
+Tested on hardware on top of linux-next next-20261002 (boots to a shell
+through U-Boot): storage, USB gadget, framebuffer console, keys including
+the book-cover switch, CPU frequency scaling, GPU firmware and render
+node, video decoder node, and the ADSP/audio probe chain. The microSD
+slot is described but not yet tested, and audio playback/capture was not
+exercised. The wireless module needs additional power sequencing and
+follows as a separate series.
 
 ---
-base-commit: 67f0943b394d920b6c142aad8c6af94340342ae7
-change-id: 20261005-i2c-xiic-rx-fifo-333bf8dadb8b
+Changes in v2:
+- Use my name for author and Signed-off-by (Conor)
+- Link to v1: https://lore.kernel.org/r/20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc
+
+---
+Nizat Mikayilli (2):
+      dt-bindings: arm: qcom: Add Samsung Galaxy Tab S9 Wi-Fi
+      arm64: dts: qcom: sm8550: Add support for Samsung Galaxy Tab S9 Wi-Fi
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   1 +
+ .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 664 +++++++++++++++++++++
+ 3 files changed, 666 insertions(+)
+---
+base-commit: f0406245cb9855e6318335a8a223551354291a46
+change-id: 20261004-gts9wifi-dts-d2472e895234
 
 Best regards,
---  
-Siddarth Chilukuri <siddarth@nexthop.ai>
+-- 
+Nizat Mikayilli <nacht@dxdmail.cc>
 
