@@ -1,11 +1,10 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Tue, 06 Oct 2026 15:15:09 +0300
-Subject: [PATCH v4 2/7] dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU
- to SMMUv2 compatibles
+Date: Tue, 06 Oct 2026 15:15:10 +0300
+Subject: [PATCH v4 3/7] dt-bindings: thermal: tsens: Add MSM8952
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-msm8952-initial-support-v4-2-ecdcc1ac620c@mainlining.org>
+Message-Id: <20261006-msm8952-initial-support-v4-3-ecdcc1ac620c@mainlining.org>
 References: <20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org>
 In-Reply-To: <20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -28,38 +27,36 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791288938; l=969;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791288938; l=867;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=ITO15xkGcBa687Mp0TLRvjwHoI0S0V/a2UgW08TP0cI=;
- b=aR9iJLeo1zn3F93QVjjTRCrpBuq2h2NParpPyp9IuREEWoYQ4URPKzNc19opyDaCKUd7bBm0W
- +zcGnI42ws3C2QPlYWQ/1tY9Iw+b2PTXWUWlhQTQm3nU1zUUA+TdUUx
+ bh=3ZgUceNunaKIIu3OLKt6YNZfU8fyIjpBkrf/ZfEKkk0=;
+ b=Ku7Xi+h+sOKY92lyokw72gpoxhdr8MZCesChNbXfzXAlB8ptRuhOykoT8LF/8i5S7nVOFh2E+
+ WD/3zdmaIlPACEO7qbP1IQyKME2MCVFNdWGja6z+XmLHAB9Ta3daZax
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MSM8952 compatible string with "qcom,msm-iommu-v2" as fallback
-for the MSM8952 IOMMU which is compatible with Qualcomm's secure
-fw "SMMU v2" implementation.
+Add compatible string for tsens block found in MSM8952.
 
 Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/iommu/qcom,iommu.yaml | 1 +
+ Documentation/devicetree/bindings/thermal/qcom-tsens.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
-index 93a489025317..9952b9da9a6a 100644
---- a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
-+++ b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
-@@ -27,6 +27,7 @@ properties:
-           - const: qcom,msm-iommu-v1
-       - items:
+diff --git a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+index 5a8f7673e730..c78074fbcecf 100644
+--- a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
++++ b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+@@ -46,6 +46,7 @@ properties:
+         items:
            - enum:
-+              - qcom,msm8952-iommu
-               - qcom,msm8953-iommu
-               - qcom,msm8976-iommu
-           - const: qcom,msm-iommu-v2
+               - qcom,msm8937-tsens
++              - qcom,msm8952-tsens
+               - qcom,msm8956-tsens
+               - qcom,msm8976-tsens
+               - qcom,qcs404-tsens
 
 -- 
 2.55.0
