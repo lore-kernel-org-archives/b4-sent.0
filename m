@@ -1,81 +1,54 @@
-From: Gleb Pesin <dormancygrace@gmail.com>
-Date: Tue, 06 Oct 2026 03:35:56 +0300
-Subject: [PATCH 3/3] riscv: Disable the xtheadvector unit on kernel entry
+From: Roland Dreier <rolanddreier@rivian.com>
+Subject: [PATCH 0/3] dmaengine: dw-axi-dmac: Fix LLP search, error
+ reporting, and error dump
+Date: Tue, 06 Oct 2026 01:03:06 +0000
+Message-Id: <20261006-dw-axi-fixes-v1-0-3b319e456d93@rivian.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-riscv-xtheadvector-vs-v1-3-b00e5abc9f7a@gmail.com>
-References: <20261006-riscv-xtheadvector-vs-v1-0-b00e5abc9f7a@gmail.com>
-In-Reply-To: <20261006-riscv-xtheadvector-vs-v1-0-b00e5abc9f7a@gmail.com>
-To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
-Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Andy Chiu <tchiu@tenstorrent.com>, 
- Charlie Jenkins <thecharlesjenkins@gmail.com>, stable@vger.kernel.org, 
- Gleb Pesin <dormancygrace@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMtIxGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwMz3ZRy3cSKTN20zIrUYl2TNAMzs0TzFEtzIwMloJaColSwBFBHdCy
+ EX1yalJWaXAIyQ6m2FgAWORWdcAAAAA==
+X-Change-ID: 20261006-dw-axi-fixes-4f066a7d9720
+To: Eugeniy Paltsev <Eugeniy.Paltsev@synopsys.com>, 
+ Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
+Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Roland Dreier <rolanddreier@rivian.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791246959; l=2161;
- i=dormancygrace@gmail.com; s=20261006; h=from:subject:message-id;
- bh=QQB545Y5GthJc3aps7t7217QNuC1lzUjs760uVslRWU=;
- b=pBklWC8ABOaDr3+tT9E9nKkIEvVnsrT62W428b1i7o5ARYAGv/Qe9xtflZQYjkx7ZnqLgS6kj
- feKzM8Be0AkBfMmsEnLSuVlAt0QHg1W7ulhLorjvdn86iEBSThdjL2B
-X-Developer-Key: i=dormancygrace@gmail.com; a=ed25519;
- pk=Ha8pk6XE0bhPh/mNtu1MKWgYqiX+CxZdhLyDR1rgD/M=
-X-Endpoint-Received: by B4 Relay for dormancygrace@gmail.com/20261006 with auth_id=1121
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791248589; l=1092;
+ i=rolanddreier@rivian.com; s=20260814; h=from:subject:message-id;
+ bh=q6zvfoT0mR5ksyINAvycpPFkrs7j+4lxE76e66R9NgU=;
+ b=D2nI8YN73HxcoAkFzmSupL94iDZ3YwKRINbA3myVuu6EOuIAxhOXmoI8OiZQOgv1tjiF36bNQ
+ bsnVnpbtRhmDzJwq0X/qdleZ4jF1hjLXKRmvi0QuUjMn8PYfN/Yrktx
+X-Developer-Key: i=rolanddreier@rivian.com; a=ed25519;
+ pk=C7SBXsDIlarq7BpINqyDL67XV/AGNqNt09NCCpFcExk=
+X-Endpoint-Received: by B4 Relay for rolanddreier@rivian.com/20260814 with auth_id=952
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-handle_exception clears SR_FS_VS on entry so that stray floating-point
-or vector instructions in the kernel raise an illegal-instruction
-exception. xtheadvector keeps its vector status in SR_VS_THEAD
-(sstatus bits 24:23), which that mask does not cover. On 64-bit kernels
-bit 23 happens to be cleared as SR_SPELP, so the T-Head field is only
-partly reset: DIRTY becomes CLEAN, and the vector unit stays enabled in
-the kernel after a trap from a context that used it.
+One patch that build's on Jia Wang's fix for error-path LLI dump: the
+same bug is present in axi_chan_block_xfer_complete(), although it's
+not clear that it could ever be hit in practice, because the llp being
+searched for should always be found.
 
-Clear the whole SR_VS_THEAD field on cores with xtheadvector. The status
-saved in pt_regs still holds the interrupted value, so the vector state
-is restored on return exactly as before. Other cores keep the current
-mask, because bit 24 is not part of the vector status there.
+Then two fixes for failed transfer handling: one to report status in
+tx_result so that clients can know when a transfer hit an error, and
+another to make log messages more informative than "Bad descriptor
+submitted".
 
-Fixes: d863910eabaf ("riscv: vector: Support xtheadvector save/restore")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Gleb Pesin <dormancygrace@gmail.com>
+Signed-off-by: Roland Dreier <rolanddreier@rivian.com>
 ---
- arch/riscv/kernel/entry.S | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+Roland Dreier (3):
+      dmaengine: dw-axi-dmac: Bound the cyclic LLP search to the descriptor
+      dmaengine: dw-axi-dmac: Report failed transfers in the descriptor result
+      dmaengine: dw-axi-dmac: Decode errors in the transfer failure log
 
-diff --git a/arch/riscv/kernel/entry.S b/arch/riscv/kernel/entry.S
-index d799c4e56..aeb99c20b 100644
---- a/arch/riscv/kernel/entry.S
-+++ b/arch/riscv/kernel/entry.S
-@@ -16,6 +16,8 @@
- #include <asm/thread_info.h>
- #include <asm/asm-offsets.h>
- #include <asm/errata_list.h>
-+#include <asm/vendor_extensions.h>
-+#include <asm/vendor_extensions/thead.h>
- #include <linux/sizes.h>
- 
- 	.section .irqentry.text, "ax"
-@@ -176,9 +178,14 @@ SYM_CODE_START(handle_exception)
- 	 * actual user copy routines.
- 	 *
- 	 * Disable the FPU/Vector to detect illegal usage of floating point
--	 * or vector in kernel space.
-+	 * or vector in kernel space. xtheadvector keeps its vector status in
-+	 * a different sstatus field; those bits are reserved elsewhere.
- 	 */
--	li t0, SR_SUM | SR_FS_VS
-+	ALTERNATIVE(__stringify(li t0, SR_SUM | SR_FS_VS),
-+		    __stringify(li t0, SR_SUM | SR_FS_VS | SR_VS_THEAD),
-+		    THEAD_VENDOR_ID,
-+		    RISCV_VENDOR_EXT_ALTERNATIVES_BASE + RISCV_ISA_VENDOR_EXT_XTHEADVECTOR,
-+		    CONFIG_RISCV_ISA_XTHEADVECTOR)
- #ifdef CONFIG_64BIT
- 	li t1, SR_ELP
- 	or t0, t0, t1
+ drivers/dma/dw-axi-dmac/dw-axi-dmac-platform.c | 56 +++++++++++++++++++++++---
+ 1 file changed, 50 insertions(+), 6 deletions(-)
+---
+base-commit: 67f0943b394d920b6c142aad8c6af94340342ae7
+change-id: 20261006-dw-axi-fixes-4f066a7d9720
 
--- 
-2.53.0
+Best regards,
+--  
+Roland Dreier <rolanddreier@rivian.com>
 
