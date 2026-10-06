@@ -1,14 +1,13 @@
 From: Kyle Hendry <khendry@reliablecontrols.com>
-Subject: [PATCH net-next v3 0/2] net: pcs: rzn1-miic: Validate dtb
- configuration values
-Date: Tue, 06 Oct 2026 09:48:10 -0700
-Message-Id: <20261006-miic-validate-dtb-v3-v3-0-68617b3dca5c@reliablecontrols.com>
+Date: Tue, 06 Oct 2026 09:48:11 -0700
+Subject: [PATCH net-next v3 1/2] net: pcs: rzn1-miic: Update port numbering
+ for RZ/T2H
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEomxWoC/x3MSwqDMBRG4a3IHfdCHihttyIdxORXL7SpJCEI4
- t4NDr/BOQdlJEGmd3dQQpUs/9hgHx351cUFLKGZjDKDVqrnn4jn6r4SXAGHMnG17Gern0b5SeN
- FLd0SZtnv7UgRhSP2Qp/zvACslybCcAAAAA==
+Message-Id: <20261006-miic-validate-dtb-v3-v3-1-68617b3dca5c@reliablecontrols.com>
+References: <20261006-miic-validate-dtb-v3-v3-0-68617b3dca5c@reliablecontrols.com>
+In-Reply-To: <20261006-miic-validate-dtb-v3-v3-0-68617b3dca5c@reliablecontrols.com>
 To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
  Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
  Russell King <linux@armlinux.org.uk>, 
@@ -20,47 +19,97 @@ To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>,
 Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791305291; l=1340;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791305291; l=3304;
  i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
- bh=zXSXQbCwcrgf1rnHXh1JMPBFTzcV1b9TDrQgc1cAtkQ=;
- b=+gvUdgGmUhXtWwCRIbXud22BVaXjP4blOyp0hcOw5wX7yqK/y3BIbqys32ea3CA7CiOWi9Q9j
- gOySn5oEgfSCeKdjy/BBUM1hP5HrgABZ9r7kzPLgTGaY6a0VhAy/Xmv
+ bh=s6/3RKxk6IiiYAhYfZef0zPZJb+mPc2/vcFTV9MLxXQ=;
+ b=wq5r3+EzGS8MksyQQvg+AARMJS0wr4tSQhISxB17uBqM/hkhjTWx3Zl3229cRPHAKr6ki3/pr
+ 4Psmtqv+ysAAVRkUt5HuJ35uFdiRvAj1GHs9Uu2v0VDn4nl8/jiwjSg
 X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
  pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
 X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series addresses issues found when reviewing another fix:
-https://lore.kernel.org/netdev/20260915-rzn1-miic-fix-array-v5-1-b7173fd5b97d@reliablecontrols.com/
+The port numbers on the RZ/T2H are documented as 0 to 3. Update the info
+structure and change the member name to miic_port_last to be more accurate.
 
-Invalid values from the dtb could cause out of bounds array access. Checking
-the values as they're parsed should prevent this.
-
-Changes in v3:
-- Squash patches changing miic_port_max
-- Change name of miic_port_max to miic_port_last
-- Remove fixes tags
-- Add another check for configuration value of miic-switch-portin
-- Link to v2: https://lore.kernel.org/r/20260928-miic-validate-dtb-v2-0-1ee3d33748e9@reliablecontrols.com/
-
-Changes in v2:
-- Simplify fixes by making miic_port_max the last documented port number
-- Add fixes tags
-- Link to v1: https://lore.kernel.org/r/20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com
+This value was being used as the number of miic registers when setting
+default values. Add logic to get the total port count and loop over that.
 
 Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
-Kyle Hendry (2):
-      net: pcs: rzn1-miic: Update port numbering for RZ/T2H
-      net: pcs: rzn1-miic: Validate dtb configuration values
+ drivers/net/pcs/pcs-rzn1-miic.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
 
- drivers/net/pcs/pcs-rzn1-miic.c | 45 +++++++++++++++++++++++++++++++++--------
- 1 file changed, 37 insertions(+), 8 deletions(-)
----
-base-commit: a5e7d8e446af9803e37a3b6a4d416fb41178348f
-change-id: 20261005-miic-validate-dtb-v3-cf31820cb1e9
+diff --git a/drivers/net/pcs/pcs-rzn1-miic.c b/drivers/net/pcs/pcs-rzn1-miic.c
+index 3aa513467060..31716241b58f 100644
+--- a/drivers/net/pcs/pcs-rzn1-miic.c
++++ b/drivers/net/pcs/pcs-rzn1-miic.c
+@@ -222,7 +222,7 @@ enum miic_type {
+  * @index_to_string: String representations of the index values
+  * @index_to_string_count: Number of entries in the index_to_string array
+  * @miic_port_start: MIIC port start number
+- * @miic_port_max: Maximum MIIC supported
++ * @miic_port_last: MIIC port last number
+  * @sw_mode_mask: Switch mode mask
+  * @reset_ids: Reset names array
+  * @reset_count: Number of entries in the reset_ids array
+@@ -240,7 +240,7 @@ struct miic_of_data {
+ 	const char * const *index_to_string;
+ 	u8 index_to_string_count;
+ 	u8 miic_port_start;
+-	u8 miic_port_max;
++	u8 miic_port_last;
+ 	u8 sw_mode_mask;
+ 	const char * const *reset_ids;
+ 	u8 reset_count;
+@@ -485,7 +485,7 @@ struct phylink_pcs *miic_create(struct device *dev, struct device_node *np)
+ 
+ 	miic = platform_get_drvdata(pdev);
+ 	of_data = miic->of_data;
+-	if (port > of_data->miic_port_max || port < of_data->miic_port_start) {
++	if (port > of_data->miic_port_last || port < of_data->miic_port_start) {
+ 		put_device(&pdev->dev);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+@@ -523,6 +523,7 @@ EXPORT_SYMBOL(miic_destroy);
+ static int miic_init_hw(struct miic *miic, u32 cfg_mode)
+ {
+ 	u8 sw_mode_mask = miic->of_data->sw_mode_mask;
++	int num_ports;
+ 	int port;
+ 
+ 	/* Unlock write access to accessory registers (cf datasheet). If this
+@@ -538,7 +539,10 @@ static int miic_init_hw(struct miic *miic, u32 cfg_mode)
+ 	miic_reg_writel(miic, MIIC_MODCTRL,
+ 			((cfg_mode << __ffs(sw_mode_mask)) & sw_mode_mask));
+ 
+-	for (port = 0; port < miic->of_data->miic_port_max; port++) {
++	num_ports = miic->of_data->miic_port_last -
++		miic->of_data->miic_port_start + 1;
++
++	for (port = 0; port < num_ports; port++) {
+ 		miic_converter_enable(miic, port, 0);
+ 		/* Disable speed/duplex control from these registers, datasheet
+ 		 * says switch registers should be used to setup switch port
+@@ -825,7 +829,7 @@ static struct miic_of_data rzn1_miic_of_data = {
+ 	.index_to_string = index_to_string,
+ 	.index_to_string_count = ARRAY_SIZE(index_to_string),
+ 	.miic_port_start = 1,
+-	.miic_port_max = 5,
++	.miic_port_last = 5,
+ 	.sw_mode_mask = GENMASK(4, 0),
+ 	.init_unlock_lock_regs = true,
+ 	.miic_write = miic_reg_writel_unlocked,
+@@ -841,7 +845,7 @@ static struct miic_of_data rzt2h_miic_of_data = {
+ 	.index_to_string = rzt2h_index_to_string,
+ 	.index_to_string_count = ARRAY_SIZE(rzt2h_index_to_string),
+ 	.miic_port_start = 0,
+-	.miic_port_max = 4,
++	.miic_port_last = 3,
+ 	.sw_mode_mask = GENMASK(2, 0),
+ 	.reset_ids = rzt2h_reset_ids,
+ 	.reset_count = ARRAY_SIZE(rzt2h_reset_ids),
 
-Best regards,
 -- 
-Kyle Hendry <khendry@reliablecontrols.com>
+2.43.0
 
