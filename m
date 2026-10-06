@@ -1,94 +1,66 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Tue, 06 Oct 2026 19:36:17 +0300
-Subject: [PATCH v2] arm64: dts: amlogic: meson-sm1-odroid-hc4: add the fan
- tachometer
+From: Kyle Hendry <khendry@reliablecontrols.com>
+Subject: [PATCH net-next v3 0/2] net: pcs: rzn1-miic: Validate dtb
+ configuration values
+Date: Tue, 06 Oct 2026 09:48:10 -0700
+Message-Id: <20261006-miic-validate-dtb-v3-v3-0-68617b3dca5c@reliablecontrols.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-hc4-fan-tach-v2-1-e27ad96e92a2@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAIAjxWoC/3XMQQrCMBCF4auUWTuShLEVV95DukjixAxIKkkJS
- sndjd27/B+8b4PCWbjAZdggc5UiS+phDgP4aNODUe69wSgzaqVGjJ4w2ISr9RGJlNfuPJFVBP3
- yyhzkvXO3uXeUsi75s+tV/9Y/UNWokXjy7INydHJXsfX4rDC31r7ydyCepQAAAA==
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Christian Hewitt <christianshewitt@gmail.com>, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAEomxWoC/x3MSwqDMBRG4a3IHfdCHihttyIdxORXL7SpJCEI4
+ t4NDr/BOQdlJEGmd3dQQpUs/9hgHx351cUFLKGZjDKDVqrnn4jn6r4SXAGHMnG17Gern0b5SeN
+ FLd0SZtnv7UgRhSP2Qp/zvACslybCcAAAAA==
+To: =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
+ Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Geert Uytterhoeven <geert+renesas@glider.be>, 
+ Magnus Damm <magnus.damm@gmail.com>, 
+ Lad Prabhakar <prabhakar.mahadev-lad.rj@bp.renesas.com>
+Cc: linux-renesas-soc@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Kyle Hendry <khendry@reliablecontrols.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1903; i=iav@iav.lv;
- h=from:subject:message-id; bh=oCCjURBullL5W0mILbeZieiLJNm1TbubemMG4u+TG88=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFlHlRstbGxiiph3/Kw9cOHIVRn/f54PGueqNV7/VGX0o
- ujmBvHjHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiGvGMDHt0Tl09MkWVr2l9
- VML6MxfLNk7eVLPNWqb0y6d36hor/EoYGWapOG2dFPZ41g6Tq7tfbTsaNbsgXWrrqVl/Dot84/r
- Nkc4CAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791305291; l=1340;
+ i=khendry@reliablecontrols.com; s=20260813; h=from:subject:message-id;
+ bh=zXSXQbCwcrgf1rnHXh1JMPBFTzcV1b9TDrQgc1cAtkQ=;
+ b=+gvUdgGmUhXtWwCRIbXud22BVaXjP4blOyp0hcOw5wX7yqK/y3BIbqys32ea3CA7CiOWi9Q9j
+ gOySn5oEgfSCeKdjy/BBUM1hP5HrgABZ9r7kzPLgTGaY6a0VhAy/Xmv
+X-Developer-Key: i=khendry@reliablecontrols.com; a=ed25519;
+ pk=gbK6oghz3qBlBiaGCsEzALLOtj5VklmsuolHQNhDV5M=
+X-Endpoint-Received: by B4 Relay for khendry@reliablecontrols.com/20260813 with auth_id=946
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The fan connector routes the fan's tachometer output to GPIOX_7, but
-the fan node does not describe it. pwm-fan therefore registers no
-fan1_input, and the fan speed cannot be read.
+This series addresses issues found when reviewing another fix:
+https://lore.kernel.org/netdev/20260915-rzn1-miic-fix-array-v5-1-b7173fd5b97d@reliablecontrols.com/
 
-Describe the line as the fan's interrupt, and mux the pin as a GPIO
-input without bias: R109 on the board pulls the line up to VDDAO_3V3
-(schematic rev1.0, sheet 31).
+Invalid values from the dtb could cause out of bounds array access. Checking
+the values as they're parsed should prevent this.
 
-Tested on ODROID-HC4: fan1_input reads 0 with the fan stopped and
-rises with the duty cycle, to about 4200 rpm at full speed.
+Changes in v3:
+- Squash patches changing miic_port_max
+- Change name of miic_port_max to miic_port_last
+- Remove fixes tags
+- Add another check for configuration value of miic-switch-portin
+- Link to v2: https://lore.kernel.org/r/20260928-miic-validate-dtb-v2-0-1ee3d33748e9@reliablecontrols.com/
 
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
----
 Changes in v2:
-- Mux GPIOX_7 as a GPIO input without bias (Neil).
-- Link to v1: https://lore.kernel.org/r/20261006-hc4-fan-tach-v1-1-4e7cecf0b45b@iav.lv
----
- arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+- Simplify fixes by making miic_port_max the last documented port number
+- Add fixes tags
+- Link to v1: https://lore.kernel.org/r/20260925-miic-validate-dtb-v1-0-3a6db9bb75ec@reliablecontrols.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts
-index 5f15c2299509..64602aff1d81 100644
---- a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts
-@@ -21,6 +21,10 @@ fan0: pwm-fan {
- 		#cooling-cells = <2>;
- 		cooling-levels = <0 120 170 220>;
- 		pwms = <&pwm_cd 1 40000 0>;
-+		interrupt-parent = <&gpio_intc>;
-+		interrupts = <IRQID_GPIOX_7 IRQ_TYPE_EDGE_FALLING>;
-+		pinctrl-0 = <&fan_tach_pins>;
-+		pinctrl-names = "default";
- 	};
- 
- 	leds {
-@@ -114,6 +118,17 @@ &pcie {
- 	reset-gpios = <&gpio GPIOH_4 GPIO_ACTIVE_LOW>;
- };
- 
-+&periphs_pinctrl {
-+	fan_tach_pins: fan-tach {
-+		mux {
-+			groups = "GPIOX_7";
-+			function = "gpio_periphs";
-+			bias-disable;
-+			output-disable;
-+		};
-+	};
-+};
-+
- &pwm_cd {
- 	status = "okay";
- 	pinctrl-names = "default";
-
+Signed-off-by: Kyle Hendry <khendry@reliablecontrols.com>
 ---
-base-commit: b44e2be772f866985cafdf90355285069ea68495
-change-id: 20261006-hc4-fan-tach-440c1b874a04
+Kyle Hendry (2):
+      net: pcs: rzn1-miic: Update port numbering for RZ/T2H
+      net: pcs: rzn1-miic: Validate dtb configuration values
+
+ drivers/net/pcs/pcs-rzn1-miic.c | 45 +++++++++++++++++++++++++++++++++--------
+ 1 file changed, 37 insertions(+), 8 deletions(-)
+---
+base-commit: a5e7d8e446af9803e37a3b6a4d416fb41178348f
+change-id: 20261005-miic-validate-dtb-v3-cf31820cb1e9
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Kyle Hendry <khendry@reliablecontrols.com>
 
