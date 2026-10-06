@@ -1,128 +1,191 @@
-From: Viorel Cernateanu <vrilutza@gmail.com>
-Date: Tue, 06 Oct 2026 21:10:23 +0300
-Subject: [PATCH 2/2] x86/kmsan: Don't call instrumented code from
- kmsan_virt_addr_valid()
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Subject: [PATCH RFC v2 00/10] ARM: Add support for Cortina Systems CS75xx
+ and Securifi Almond+
+Date: Tue, 06 Oct 2026 21:17:38 +0300
+Message-Id: <20261006-b4-cs75xx-v2-0-b7d6e1e24d44@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-kmsan-serie-v1-2-07fa860ef3de@gmail.com>
-References: <20261006-kmsan-serie-v1-0-07fa860ef3de@gmail.com>
-In-Reply-To: <20261006-kmsan-serie-v1-0-07fa860ef3de@gmail.com>
-To: Alexander Potapenko <glider@google.com>, Marco Elver <elver@google.com>, 
- Dmitry Vyukov <dvyukov@google.com>, Thomas Gleixner <tglx@kernel.org>, 
- Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
- Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
- "H. Peter Anvin" <hpa@zytor.com>, Andrew Morton <akpm@linux-foundation.org>, 
- Peter Zijlstra <peterz@infradead.org>, Kees Cook <kees@kernel.org>
-Cc: Borislav Petkov <bp@suse.de>, kasan-dev@googlegroups.com, 
- linux-kernel@vger.kernel.org, Viorel Cernateanu <vrilutza@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22Nyw6CMBBFf4XM2prpAxBXJiZ+gFvDotQKQwRMi
+ wRD+HdL3bo8NyfnLuCtI+vhmCzg7ESehj6A2CVgGt3XltE9MAgUGRYSWaWY8Xk6zwyl1MKgylM
+ 8QPBfzj5ojq0bXC9nKH+jf1etNeNW2bSG/Di4T3yceJT/xCfOkKmM50apTKaiONWdpufeDB2U6
+ 7p+AT2foEy5AAAA
+X-Change-ID: 20260930-b4-cs75xx-033a2c047508
+To: Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linusw@kernel.org>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Russell King <linux@armlinux.org.uk>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Drew Fustini <fustini@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ Jason Li <jason.li@cortina-access.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Fil Dunsky <filipp.dunsky@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791310225; l=3558;
- i=vrilutza@gmail.com; s=lenovo-20261005; h=from:subject:message-id;
- bh=F/6GUjkmsEc44iwXpibyU3cTQT3QQPi2x9clp1QmJzo=;
- b=y51UBSnmJzZIEzHgGtVEXtakgvcDvS200jITenXhWf3+S/ur2nvwf6xfTDURpod1nh+DcsgEQ
- spuh+Rn93yHCbI7GnTqs8yx/subE5qMz3otCzEy1YPIk9UViXDmEKfr
-X-Developer-Key: i=vrilutza@gmail.com; a=ed25519;
- pk=HttZd2ffphVYTK/pvlflateaij8E4SdPd6Y+xDQMqDU=
-X-Endpoint-Received: by B4 Relay for vrilutza@gmail.com/lenovo-20261005 with auth_id=1115
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791310659; l=8233;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=sb9YuDTzRbk9n8xKHhHPDXHVOs7B7ScVGPuLVHivXiQ=;
+ b=kptVPVSlY6SUNjy+9TvdNzJhP+93xKLqvi86dgyfTB0BXSESQukFIbMgHuAWPWBtVLQdlwBt0
+ JTdh6vzy84AAEkAgT2eEOlCUS61TKaXs39AuteIsEZwT+2k61rWAlH+
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With CONFIG_DEBUG_PREEMPT, a KMSAN kernel hangs silently right after
-KMSAN is enabled during boot.
+This series adds initial support for the Cortina Systems CS75xx
+("Goldengate G2") network processors and the first board using one, the
+Securifi Almond+ touchscreen Wi-Fi router (CS7542, 2x Cortex-A9 r2p1,
+PL310 r3p2, 512 MiB DDR3, 512 MiB NAND).
 
-kmsan_virt_addr_valid() calls preempt_disable() and pfn_valid(), and
-pfn_valid() calls rcu_read_lock_sched(). With CONFIG_DEBUG_PREEMPT both
-end up in preempt_count_add(), which is instrumented. Its instrumentation
-looks up metadata, which calls kmsan_virt_addr_valid() again, and so on
-until the boot stack overflows.
+There is no public documentation for the SoC. The register information
+comes from the GPL vendor kernels (Linux 2.6.36 for the Almond+, Linux
+4.9 for the Verizon FiOS G1100 which uses the same SoC) and from
+disassembly of the stock U-Boot 2009.11. A full out-of-tree port
+(clock, irqchip, GPIO, I2C, RTC, NAND, PCIe, MDIO and the packet engine)
+runs on Linux 6.18 in OpenWrt; this series is the first, minimal step to
+get the platform into mainline:
 
-Use a copy of pfn_valid() that disables preemption with the notrace
-helpers instead. It is still an RCU-sched read-side critical section,
-and it avoids the instrumented preemption and RCU/lockdep helpers on
-this path.
+  - bindings: vendor prefix, SoC/board compatibles, an SMP enable method
+    and the UART,
+  - the platform Kconfig and SMP bring-up (the generic DT machine is
+    used, there is no DT_MACHINE_START),
+  - DEBUG_LL for UART0,
+  - a UART driver with console and earlycon support,
+  - SoC dtsi and board dts describing the CPUs, GIC, SCU, timers, L2,
+    UARTs and memory,
+  - multi_v7_defconfig and MAINTAINERS updates.
 
-Fixes: f6564fce256a ("mm, kmsan: fix infinite recursion due to RCU critical section")
-Signed-off-by: Viorel Cernateanu <vrilutza@gmail.com>
-Link: https://lore.kernel.org/20240308043448.masllzeqwht45d4j@M910t
+Patches 6-7 (serial binding and driver) do not depend on the rest and
+can go through the tty tree.
+
+Testing: build tested with multi_v7_defconfig (GCC 14 and Clang 21,
+W=1) and checked with dt_binding_check/dtbs_check. On a Securifi
+Almond+ this series boots next-20260929 to an initramfs shell with
+both CPUs online ("smp: Brought up 1 node, 2 CPUs"; IPIs and the TWD
+timer tick on both cores); the L2C-310, the global and TWD timers and
+the UART driver (ttyCS0) come up. The kernel was started from a
+running OpenWrt system with a small kexec-style loader rather than
+from the stock U-Boot, because U-Boot enters the kernel with the MMU
+on (see 2 below).
+
+Things I would like feedback on, hence the RFC:
+
+1. The stock U-Boot arms the CPU0 private (TWD) watchdog before
+   starting the kernel; without a driver the board resets after ~300
+   seconds. The OpenWrt port disarms it in init_early, which I did not
+   want to propose here. Instead, a driver for "arm,cortex-a9-twd-wdt"
+   (the binding exists, but there is currently no driver for it) that
+   takes over the running watchdog on all CPUs is written and tested
+   on this board; I will post it with the follow-up series. Until
+   then, this series on its own boots but resets after ~5 minutes.
+   Is a TWD watchdog driver the preferred way to deal with this?
+
+2. The same U-Boot enters the kernel with the MMU and data cache
+   enabled (identity map with XN set, dirty lines left in the D-cache),
+   which breaks the decompressor. The OpenWrt port carries a small
+   workaround at the start of arch/arm/boot/compressed/head.S that
+   cleans the cache and turns the MMU off. It is not part of this series.
+   Replacing the bootloader is possible but risky for users of this
+   (discontinued) device. Would a quirk of that kind be acceptable in
+   head.S at all, or should this be solved outside the kernel (e.g. a
+   chain-loaded bootloader)? For the tests below the kernel was started
+   from a running Linux with the MMU off, so this was not an issue.
+
+3. The APB clock is 100, 150 or 170 MHz depending on the boot strap pins.
+   It is modelled as a fixed-clock with the rate set in the board dts.
+   A clock driver for the global control block, which also contains the
+   strap, pinmux and reset registers, will follow and replace it.
+
+4. The Cortex-A9 r2p1 is also affected by errata 742230, 742231, 743622
+   and 751472, whose workarounds are not available on multiplatform
+   kernels because they are expected to be applied by the bootloader.
+   The stock U-Boot does not apply them. Is there a preferred way to
+   deal with this?
+
+5. The UART ports are named ttyCS to avoid clashing with the 8250 driver
+   in multi_v7_defconfig, and PORT_GENERIC is used instead of a new port
+   type. The FIFO depth is not documented; the driver assumes 16.
+
+6. The top 64 MiB of RAM are reserved: the vendor firmware gives them to
+   the packet engine queue manager and the stock kernel is booted with
+   mem=448M. The reservation will be referenced by the network driver
+   later; I kept it now so that the memory is not handed out and later
+   claimed.
+
+Planned follow-ups, as separate series: the regbus interrupt
+controller, GPIO, I2C and TWD watchdog (ready, tested on this board),
+then the global control block/clock, RTC, NAND,
+PCIe (DesignWare glue), MDIO, the Ethernet/packet engine and a fix for
+the SX8650 touchscreen.
+
 ---
- arch/x86/include/asm/kmsan.h | 49 +++++++++++++++++++++++++++++---------------
- 1 file changed, 33 insertions(+), 16 deletions(-)
+Changes in v2:
+- serial: drop the empty break_ctl, request_port and release_port
+  callbacks, comment why set_mctrl stays, add a copyright line (Greg)
+- serial: take the port lock around all IE accesses in startup, flush
+  stale RX data on startup and disable the receiver on shutdown
+- serial: bound the RX loop per interrupt, check RXDAT_VALID in
+  poll_get_char, scale the console TX drain timeout with the frame time
+- serial: serialise port index allocation, reject too low clock rates
+- serial: name the driver after the vendor (cortina-uart.c,
+  SERIAL_CORTINA), as the same block is used in the Cortina Access SoCs
+  (Linus Walleij, Arnd Bergmann); the binding and the help text name
+  the Cortina Systems CS75xx and Cortina Access parts (Jason Li)
+- serial binding: describe the CS7542 only; other SoCs get their own
+  compatible with "cortina,cs7542-uart" as fallback (Conor Dooley)
+- debug: keep the character register intact on BE8 in senduart
+- platform: move arch/arm/mach-cortina to arch/arm/mach-goldengate, as
+  mach-gemini is a Cortina SoC too, and use one ARCH_CORTINA_ACCESS
+  symbol for the whole family, as for the 64-bit Cortina Access parts,
+  with the rationale in the commit message (Linus Walleij, Krzysztof
+  Kozlowski, Arnd Bergmann); mach-goldengate vs. mach-cortina is still
+  open, I am happy to rename the directory if mach-cortina is preferred
+- collect Reviewed-by and Acked-by tags
+- Link to v1: https://patch.msgid.link/20260930-b4-cs75xx-v1-0-4617c4463529@gmail.com
 
-diff --git a/arch/x86/include/asm/kmsan.h b/arch/x86/include/asm/kmsan.h
-index a71e84d6abab..17effe8be642 100644
---- a/arch/x86/include/asm/kmsan.h
-+++ b/arch/x86/include/asm/kmsan.h
-@@ -68,6 +68,38 @@ static inline bool kmsan_phys_addr_valid(unsigned long addr)
- 		return true;
- }
- 
-+/*
-+ * Same as pfn_valid(), but without rcu_read_lock_sched(). That one calls into
-+ * instrumented code: preempt_count_add() with CONFIG_DEBUG_PREEMPT or
-+ * CONFIG_TRACE_PREEMPT_TOGGLE, lock_acquire() with CONFIG_DEBUG_LOCK_ALLOC.
-+ * Instrumented code looks up metadata itself, so calling it from the metadata
-+ * lookup can recurse; with CONFIG_DEBUG_PREEMPT it does, until the stack
-+ * overflows.
-+ *
-+ * Disabling preemption still makes this an RCU-sched read-side critical
-+ * section. Preemption is re-enabled without a reschedule, as before, to
-+ * avoid entering the scheduler from the metadata lookup.
-+ */
-+static inline bool kmsan_pfn_valid(unsigned long pfn)
-+{
-+	struct mem_section *ms;
-+	bool ret;
-+
-+	if (PHYS_PFN(PFN_PHYS(pfn)) != pfn)
-+		return false;
-+
-+	if (pfn_to_section_nr(pfn) >= NR_MEM_SECTIONS)
-+		return false;
-+	ms = __pfn_to_section(pfn);
-+
-+	preempt_disable_notrace();
-+	ret = valid_section(ms) &&
-+	      (early_section(ms) || pfn_section_valid(ms, pfn));
-+	preempt_enable_no_resched_notrace();
-+
-+	return ret;
-+}
-+
- /*
-  * Taken from arch/x86/mm/physaddr.c to avoid using an instrumented version.
-  */
-@@ -75,7 +107,6 @@ static inline bool kmsan_virt_addr_valid(void *addr)
- {
- 	unsigned long x = (unsigned long)addr;
- 	unsigned long y = x - __START_KERNEL_map;
--	bool ret;
- 
- 	/* use the carry flag to determine if x was < __START_KERNEL_map */
- 	if (unlikely(x > y)) {
-@@ -91,21 +122,7 @@ static inline bool kmsan_virt_addr_valid(void *addr)
- 			return false;
- 	}
- 
--	/*
--	 * pfn_valid() relies on RCU, and may call into the scheduler on exiting
--	 * the critical section. However, this would result in recursion with
--	 * KMSAN. Therefore, disable preemption here, and re-enable preemption
--	 * below while suppressing reschedules to avoid recursion.
--	 *
--	 * Note, this sacrifices occasionally breaking scheduling guarantees.
--	 * Although, a kernel compiled with KMSAN has already given up on any
--	 * performance guarantees due to being heavily instrumented.
--	 */
--	preempt_disable();
--	ret = pfn_valid(x >> PAGE_SHIFT);
--	preempt_enable_no_resched();
--
--	return ret;
-+	return kmsan_pfn_valid(x >> PAGE_SHIFT);
- }
- 
- #endif /* !MODULE */
+---
+Fil Dunsky (10):
+      dt-bindings: vendor-prefixes: Add Securifi
+      dt-bindings: arm: Add Cortina Systems CS7542 and Securifi Almond+
+      dt-bindings: arm: cpus: Add Cortina Systems CS7542 enable method
+      ARM: goldengate: Add support for the CS75xx SoC family
+      ARM: debug: Add Cortina Systems CS75xx UART0 support
+      dt-bindings: serial: Add Cortina Systems CS7542 UART
+      tty: serial: Add Cortina UART driver
+      ARM: dts: cortina: Add CS7542 SoC and Securifi Almond+ board
+      ARM: multi_v7_defconfig: Enable Cortina Systems CS75xx support
+      MAINTAINERS: Add entry for Cortina Systems CS75xx
 
--- 
-2.53.0
+ Documentation/devicetree/bindings/arm/cortina.yaml |  31 ++
+ Documentation/devicetree/bindings/arm/cpus.yaml    |   2 +
+ .../bindings/serial/cortina,cs7542-uart.yaml       |  52 ++
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |  11 +
+ arch/arm/Kconfig                                   |   2 +
+ arch/arm/Kconfig.debug                             |  16 +-
+ arch/arm/Makefile                                  |   1 +
+ arch/arm/boot/dts/Makefile                         |   1 +
+ arch/arm/boot/dts/cortina/Makefile                 |   3 +
+ .../dts/cortina/cs7542-securifi-almondplus.dts     |  55 ++
+ arch/arm/boot/dts/cortina/cs7542.dtsi              | 127 +++++
+ arch/arm/configs/multi_v7_defconfig                |   3 +
+ arch/arm/include/debug/cs75xx.S                    |  37 ++
+ arch/arm/mach-goldengate/Kconfig                   |  18 +
+ arch/arm/mach-goldengate/Makefile                  |   2 +
+ arch/arm/mach-goldengate/platsmp.c                 |  71 +++
+ drivers/tty/serial/Kconfig                         |  24 +
+ drivers/tty/serial/Makefile                        |   1 +
+ drivers/tty/serial/cortina-uart.c                  | 583 +++++++++++++++++++++
+ 20 files changed, 1040 insertions(+), 2 deletions(-)
+---
+base-commit: 6474fa070f2b8013b4b87350b775b8c3be6e8aac
+change-id: 20260930-b4-cs75xx-033a2c047508
+
+Best regards,
+--  
+Fil Dunsky <filipp.dunsky@gmail.com>
 
