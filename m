@@ -1,101 +1,128 @@
-From: Hans van Essen <hans@kilurion.com>
-Date: Tue, 06 Oct 2026 12:39:22 +0200
-Subject: [PATCH] HID: asus: Resume the device before sending feature
- reports
+From: Muzaffer Kadir <muzafferkadir@mainlining.org>
+Subject: [PATCH v4 0/7] Add Initial Support For MSM8952, Add General Mobile
+ Shamrock
+Date: Tue, 06 Oct 2026 15:15:07 +0300
+Message-Id: <20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-hid-asus-autosuspend-v1-1-0c3df3121063@kilurion.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqEMAyF4atI1gZqwSpzlcFFbaPGRZXGilC8u
- 3Vm9fgW788gFJkEPlWGSCcLb6GgqStwiw0zIfti0EqbRimDC3u0kgRtOrayOwWPhrSZ2r7rO+u
- gXPdIE1+/7Hf4W9K4kjveFtz3A+Kq7Ol4AAAA
-X-Change-ID: 20261006-hid-asus-autosuspend-6e26f58787ac
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Hans van Essen <hans@kilurion.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791283169; l=2846;
- i=hans@kilurion.com; s=20261006; h=from:subject:message-id;
- bh=9QfnflIXuuK4jOk4CkZW1MI0rh7BoL+EnE3PHnQPEZM=;
- b=AtXjKp1O0PfU//ZOMoRQLAoKgYF+1v+nFH4i6vT9zEu/0ReaRSS2l8K2cioWMYldKx2pdbT2d
- AZ3MqtBhpVuCYDdCtLWNKfKwzmGZGR9KGHF5K17Nteae9IbLd5CArc8
-X-Developer-Key: i=hans@kilurion.com; a=ed25519;
- pk=1Qqd7FQOGBgV4kpJP4kZLbjH4wFg7+EdQaxwe+dr7Bs=
-X-Endpoint-Received: by B4 Relay for hans@kilurion.com/20261006 with auth_id=1123
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNTQ6CMBAF4KuQrq1pBwrUlfcwLvgZYBJpSYtEQ
+ 7i7hbggUZZv8t43M/PoCD27RDNzOJEna0JIThGrusK0yKkOmYGAVGihee/7XCvgZGik4sH9cxi
+ sG3kqCqF0BSgVsrAeHDb02uTbPeSO/Gjde3s0yfX6NSUcmpPkggvMElBZXipIrn1B5hFqpj1b1
+ 7IVnmCPpccYBCzTeRV6UNco/2LxDgN5jMUBK3Xa1HGDoPPyB1uW5QNfLoJSXQEAAA==
+X-Change-ID: 20260909-msm8952-initial-support-60a059c2e15e
+To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
+ Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Amit Kucheria <amitk@kernel.org>, 
+ Thara Gopinath <thara.gopinath@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Bjorn Andersson <andersson@kernel.org>, 
+ Abel Vesa <abelvesa@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
+ linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
+ Muzaffer Kadir <muzafferkadir@mainlining.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791288938; l=3733;
+ i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
+ bh=rYCBbrg6VaozSAt8qT2CvuJdZ2GptJZIPsnjcyJQKUE=;
+ b=CizsLT+23ueq94HTcVvhJxrkLy7dnhL+aXcQ77BQ3VrL2ubqpS9ezdLtcYgQ0Vph6KvqZOL7I
+ oeb3Go0K5dODlkyC1pvpp+CnnZw0VQousR/V3UNs4egDm+6lx80rRTB
+X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
+ pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
+X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-asus_kbd_set_report() sends a SET_REPORT control request through
-hid_hw_raw_request(). usbhid does not take a runtime PM reference for
-raw requests, so the request fails while the keyboard is runtime
-suspended. On a ROG Zephyrus G16 (GU605CW, N-KEY 0b05:19b6) with
-power/control set to auto, every deferred backlight change from
-asus_work() is lost:
+MSM8952 is a SoC with 8 core cpu and Adreno 405 gpu.
 
-  asus 0003:0B05:19B6.0002: Asus failed to set keyboard backlight: -108
+Ported without uart connection. ramoops and usb
+mainly used to debug.
+USB is not enabled in this series because it
+depends on the not yet upstreamed (and not developed by me)
+pmi8950_smbcharger.
 
-Wrap the request in hid_hw_power(), as hidraw does, so the device is
-resumed for the write and can autosuspend again afterwards.
+General Mobile shamrock display panel driver
+is generated using MSM8916's mdss dsi panel
+driver generator and tested with it. I didn't
+include it.
 
-Assisted-by: LLM
-Signed-off-by: Hans van Essen <hans@kilurion.com>
+Pinctrl driver was submitted and merged here:
+https://lore.kernel.org/all/20260907-msm8952-pinctrl-v5-0-9a2d8d72ffdb@mainlining.org/
+
+Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
-Tested on an ASUS ROG Zephyrus G16 (GU605CW) with v7.3-rc5: with
-power/control=auto and usbhid.ignoreled=1 the N-KEY keyboard
-autosuspends. Backlight changes via asus::kbd_backlight now resume it,
-apply, and the device suspends again after autosuspend_delay_ms. Before
-this patch every change failed with -108.
+Changes in v4:
+- Dropped 1651200000 freq on cluster 1 because it depends on speedbin 3
+  and speedbin is not included in this patch series
+- Dropped applied patches
+- Changed mdss_dsi0 power-domain to MDSS_GDSC
+- Reformatted SoC dtsi file
+- Added the remaining reserved-memory entries for not added parts
+- Rename adsp_mem to adsp_fw_mem
+- Drop the "ts-" prefix of touchscreen pinctrl in device dts.
+- Link to v3: https://patch.msgid.link/20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org
 
-Taking an autopm reference in usbhid's raw request path would fix this
-for every driver, but hidraw, hiddev and several HID drivers
-(hid-cp2112, hid-steelseries, hid-google-hammer, ...) already call
-hid_hw_power() themselves, so this keeps the fix local to hid-asus.
+Changes in v3:
+- Improved GCC driver, also rewrote resets part
+- Rewrote the dt-binding side of gcc
+- Reformatted Device tree files with dt-check-style tool
+- Added reset to sdhci1 and sdhci2
+- Added cx regulator to gcc
+- Added gcc commit messages that it is a derived driver
+- Dropped adsp_mem, renamed lpass_mem to adsp_mem
+- Changed tusb320 interrupt from rising to falling as downstream uses
+- Link to v2: https://patch.msgid.link/20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org
 
-No Fixes: tag: the write path never handled runtime suspend, it only
-shows once autosuspend is enabled for the keyboard.
-
-The fix was developed with an AI coding assistant (GitHub Copilot);
-I reviewed the change and tested it on the hardware above.
----
- drivers/hid/hid-asus.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/hid/hid-asus.c b/drivers/hid/hid-asus.c
-index 7dc6417fe..bdb2c8b64 100644
---- a/drivers/hid/hid-asus.c
-+++ b/drivers/hid/hid-asus.c
-@@ -576,16 +576,24 @@ static int asus_raw_event(struct hid_device *hdev,
- 
- static int asus_kbd_set_report(struct hid_device *hdev, const u8 *buf, size_t buf_size)
- {
-+	int ret;
- 	u8 *dmabuf __free(kfree) = kmemdup(buf, buf_size, GFP_KERNEL);
- 	if (!dmabuf)
- 		return -ENOMEM;
- 
-+	/* The device may be runtime suspended, e.g. for a deferred backlight change */
-+	ret = hid_hw_power(hdev, PM_HINT_FULLON);
-+	if (ret < 0)
-+		return ret;
-+
- 	/*
- 	 * The report ID should be set from the incoming buffer due to LED and key
- 	 * interfaces having different pages
- 	 */
--	return hid_hw_raw_request(hdev, buf[0], dmabuf, buf_size, HID_FEATURE_REPORT,
--				  HID_REQ_SET_REPORT);
-+	ret = hid_hw_raw_request(hdev, buf[0], dmabuf, buf_size, HID_FEATURE_REPORT,
-+				 HID_REQ_SET_REPORT);
-+	hid_hw_power(hdev, PM_HINT_NORMAL);
-+	return ret;
- }
- 
- static int asus_kbd_init(struct hid_device *hdev, u8 report_id)
+Changes in v2:
+- Changed device dts file as David's and Konrad's suggestions
+- Removed accidental duplicated clock assigments and fixed wrong gcc gp1,gp2
+  and gp3 parent_maps
+- Updated commit messages to make it wrapped at 72 character.
+- Fixed spi1 tlmm node naming
+- Added remaining spi and i2c nodes
+- Wired up mpm
+- Add mmio-sram to rpm_msg_ram
+- Reformatted msm8952.dtsi
+- Removed rpmcc-msm8952 driver entry and replaced it with rpmcc-msm8976
+- Merged sdhci tlmm pins to single nodes, now it is similar to existing SoCs
+- Rebased to latest linux-next, now storage works
+- Removed polling-delay properties from tsens
+- Link to v1: https://lore.kernel.org/r/20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org
 
 ---
-base-commit: 145c2b2e9a5c0f794fb4009bcb072ab19f8ccfcd
-change-id: 20261006-hid-asus-autosuspend-6e26f58787ac
+Muzaffer Kadir (7):
+      dt-bindings: nvmem: Add compatible for MSM8952
+      dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU to SMMUv2 compatibles
+      dt-bindings: thermal: tsens: Add MSM8952
+      thermal: qcom: tsens: Add support for MSM8952 tsens
+      arm64: dts: qcom: Add initial support for MSM8952
+      dt-bindings: input: touchscreen: goodix: Add binding for GT970
+      arm64: dts: qcom: generalmobile-shamrock: new device
+
+ .../bindings/input/touchscreen/goodix.yaml         |   35 +-
+ .../devicetree/bindings/iommu/qcom,iommu.yaml      |    1 +
+ .../devicetree/bindings/nvmem/qcom,qfprom.yaml     |    1 +
+ .../devicetree/bindings/thermal/qcom-tsens.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../dts/qcom/msm8952-generalmobile-shamrock.dts    |  435 ++++
+ arch/arm64/boot/dts/qcom/msm8952.dtsi              | 2720 ++++++++++++++++++++
+ drivers/thermal/qcom/tsens-v1.c                    |   44 +
+ drivers/thermal/qcom/tsens.c                       |    3 +
+ drivers/thermal/qcom/tsens.h                       |    2 +-
+ 10 files changed, 3227 insertions(+), 16 deletions(-)
+---
+base-commit: bf1ee2bd5c2da8992f33c8950ef194aaff74ed6c
+change-id: 20260909-msm8952-initial-support-60a059c2e15e
 
 Best regards,
 --  
-Hans van Essen <hans@kilurion.com>
+Muzaffer Kadir <muzafferkadir@mainlining.org>
 
