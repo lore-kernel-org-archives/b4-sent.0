@@ -1,16 +1,12 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Subject: [PATCH v4 0/7] Add Initial Support For MSM8952, Add General Mobile
- Shamrock
-Date: Tue, 06 Oct 2026 15:15:07 +0300
-Message-Id: <20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org>
+Date: Tue, 06 Oct 2026 15:15:08 +0300
+Subject: [PATCH v4 1/7] dt-bindings: nvmem: Add compatible for MSM8952
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNTQ6CMBAF4KuQrq1pBwrUlfcwLvgZYBJpSYtEQ
- 7i7hbggUZZv8t43M/PoCD27RDNzOJEna0JIThGrusK0yKkOmYGAVGihee/7XCvgZGik4sH9cxi
- sG3kqCqF0BSgVsrAeHDb02uTbPeSO/Gjde3s0yfX6NSUcmpPkggvMElBZXipIrn1B5hFqpj1b1
- 7IVnmCPpccYBCzTeRV6UNco/2LxDgN5jMUBK3Xa1HGDoPPyB1uW5QNfLoJSXQEAAA==
-X-Change-ID: 20260909-msm8952-initial-support-60a059c2e15e
+Message-Id: <20261006-msm8952-initial-support-v4-1-ecdcc1ac620c@mainlining.org>
+References: <20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org>
+In-Reply-To: <20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
@@ -31,98 +27,37 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791288938; l=3733;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791288938; l=867;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=rYCBbrg6VaozSAt8qT2CvuJdZ2GptJZIPsnjcyJQKUE=;
- b=CizsLT+23ueq94HTcVvhJxrkLy7dnhL+aXcQ77BQ3VrL2ubqpS9ezdLtcYgQ0Vph6KvqZOL7I
- oeb3Go0K5dODlkyC1pvpp+CnnZw0VQousR/V3UNs4egDm+6lx80rRTB
+ bh=6JMvRgvxX2he4PG9Fo4mqxxQVXCwNkBZtmdxWuS+a1o=;
+ b=ouklt+iwE6o9nsLIUAQgB9iEEYplHi/tr4MD/pww+XopGrZ6VZMY8KL8FK6SrhZtjaewDN71Q
+ 0mQunLAN1+oCf9IR1Tp4He1wP0MJEW53wAJLlHKP6gUcNVqyZ/O2S7a
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MSM8952 is a SoC with 8 core cpu and Adreno 405 gpu.
+Document the QFPROM block found on MSM8952.
 
-Ported without uart connection. ramoops and usb
-mainly used to debug.
-USB is not enabled in this series because it
-depends on the not yet upstreamed (and not developed by me)
-pmi8950_smbcharger.
-
-General Mobile shamrock display panel driver
-is generated using MSM8916's mdss dsi panel
-driver generator and tested with it. I didn't
-include it.
-
-Pinctrl driver was submitted and merged here:
-https://lore.kernel.org/all/20260907-msm8952-pinctrl-v5-0-9a2d8d72ffdb@mainlining.org/
-
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
-Changes in v4:
-- Dropped 1651200000 freq on cluster 1 because it depends on speedbin 3
-  and speedbin is not included in this patch series
-- Dropped applied patches
-- Changed mdss_dsi0 power-domain to MDSS_GDSC
-- Reformatted SoC dtsi file
-- Added the remaining reserved-memory entries for not added parts
-- Rename adsp_mem to adsp_fw_mem
-- Drop the "ts-" prefix of touchscreen pinctrl in device dts.
-- Link to v3: https://patch.msgid.link/20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org
+ Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Changes in v3:
-- Improved GCC driver, also rewrote resets part
-- Rewrote the dt-binding side of gcc
-- Reformatted Device tree files with dt-check-style tool
-- Added reset to sdhci1 and sdhci2
-- Added cx regulator to gcc
-- Added gcc commit messages that it is a derived driver
-- Dropped adsp_mem, renamed lpass_mem to adsp_mem
-- Changed tusb320 interrupt from rising to falling as downstream uses
-- Link to v2: https://patch.msgid.link/20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org
+diff --git a/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml b/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
+index 566304ed4c78..646f2e8dcf4d 100644
+--- a/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
++++ b/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
+@@ -37,6 +37,7 @@ properties:
+           - qcom,msm8916-qfprom
+           - qcom,msm8917-qfprom
+           - qcom,msm8937-qfprom
++          - qcom,msm8952-qfprom
+           - qcom,msm8960-qfprom
+           - qcom,msm8974-qfprom
+           - qcom,msm8976-qfprom
 
-Changes in v2:
-- Changed device dts file as David's and Konrad's suggestions
-- Removed accidental duplicated clock assigments and fixed wrong gcc gp1,gp2
-  and gp3 parent_maps
-- Updated commit messages to make it wrapped at 72 character.
-- Fixed spi1 tlmm node naming
-- Added remaining spi and i2c nodes
-- Wired up mpm
-- Add mmio-sram to rpm_msg_ram
-- Reformatted msm8952.dtsi
-- Removed rpmcc-msm8952 driver entry and replaced it with rpmcc-msm8976
-- Merged sdhci tlmm pins to single nodes, now it is similar to existing SoCs
-- Rebased to latest linux-next, now storage works
-- Removed polling-delay properties from tsens
-- Link to v1: https://lore.kernel.org/r/20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org
-
----
-Muzaffer Kadir (7):
-      dt-bindings: nvmem: Add compatible for MSM8952
-      dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU to SMMUv2 compatibles
-      dt-bindings: thermal: tsens: Add MSM8952
-      thermal: qcom: tsens: Add support for MSM8952 tsens
-      arm64: dts: qcom: Add initial support for MSM8952
-      dt-bindings: input: touchscreen: goodix: Add binding for GT970
-      arm64: dts: qcom: generalmobile-shamrock: new device
-
- .../bindings/input/touchscreen/goodix.yaml         |   35 +-
- .../devicetree/bindings/iommu/qcom,iommu.yaml      |    1 +
- .../devicetree/bindings/nvmem/qcom,qfprom.yaml     |    1 +
- .../devicetree/bindings/thermal/qcom-tsens.yaml    |    1 +
- arch/arm64/boot/dts/qcom/Makefile                  |    1 +
- .../dts/qcom/msm8952-generalmobile-shamrock.dts    |  435 ++++
- arch/arm64/boot/dts/qcom/msm8952.dtsi              | 2720 ++++++++++++++++++++
- drivers/thermal/qcom/tsens-v1.c                    |   44 +
- drivers/thermal/qcom/tsens.c                       |    3 +
- drivers/thermal/qcom/tsens.h                       |    2 +-
- 10 files changed, 3227 insertions(+), 16 deletions(-)
----
-base-commit: bf1ee2bd5c2da8992f33c8950ef194aaff74ed6c
-change-id: 20260909-msm8952-initial-support-60a059c2e15e
-
-Best regards,
---  
-Muzaffer Kadir <muzafferkadir@mainlining.org>
+-- 
+2.55.0
 
