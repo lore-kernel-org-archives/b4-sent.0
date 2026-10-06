@@ -1,11 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Tue, 06 Oct 2026 21:17:43 +0300
-Subject: [PATCH RFC v2 05/10] ARM: debug: Add Cortina Systems CS75xx UART0
- support
+Date: Tue, 06 Oct 2026 21:17:44 +0300
+Subject: [PATCH RFC v2 06/10] dt-bindings: serial: Add Cortina Systems
+ CS7542 UART
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-b4-cs75xx-v2-5-b7d6e1e24d44@gmail.com>
+Message-Id: <20261006-b4-cs75xx-v2-6-b7d6e1e24d44@gmail.com>
 References: <20261006-b4-cs75xx-v2-0-b7d6e1e24d44@gmail.com>
 In-Reply-To: <20261006-b4-cs75xx-v2-0-b7d6e1e24d44@gmail.com>
 To: Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linusw@kernel.org>, 
@@ -22,132 +22,82 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Jason Li <jason.li@cortina-access.com>, 
  Fil Dunsky <filipp.dunsky@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791310660; l=4427;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791310660; l=1890;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=Zo/6T8SKoOQQ0VdBYBvVe6/uEblGio9R9J0RksxWl1A=;
- b=57P8DUUB2CKtTxHhNyjw6mPJNPx/hQpcLVUVjPMVMm3RXtxcOMya2uqCo1Z0SrCSo9DAOnPQj
- gMVxmWbYCCAB5H/ur1OwsXSHmdVxKwOvqAQE5E5bngjk8F7QU3ct55f
+ bh=4Qnd5hU6nYpWLf8p72pf9zEqJE/ZzNEkSxcjdVAuD/0=;
+ b=dNTePXr3aEYYYQiOieN/1qT5DbFot7ei5urziL0WHdrrCqPc/0PeLyYzNXNBEEjobAvPX+I6u
+ lX2P1NT0poPAAPkbA84Bw5lj990bOxKcSF+5XfFsRA3sErKUpZA5/z6
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add low-level debug output through UART0 of the Cortina Systems CS75xx
-SoCs. The UART is mapped at a fixed virtual address by the generic
-debug_ll_io_init(), so no platform map_io is needed.
+Add the binding for the UART found in the Cortina Systems CS75xx
+(Goldengate G2) SoCs such as the CS7542.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
-Reviewed-by: Linus Walleij <linusw@kernel.org>
 ---
- arch/arm/Kconfig.debug          | 16 ++++++++++++++--
- arch/arm/include/debug/cs75xx.S | 37 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 51 insertions(+), 2 deletions(-)
+ .../bindings/serial/cortina,cs7542-uart.yaml       | 52 ++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
 
-diff --git a/arch/arm/Kconfig.debug b/arch/arm/Kconfig.debug
-index abcf14f1027..c43fe288b98 100644
---- a/arch/arm/Kconfig.debug
-+++ b/arch/arm/Kconfig.debug
-@@ -308,6 +308,15 @@ choice
- 		  Say Y here if you want the debug print routines to direct
- 		  their output to the second serial port on these devices.
- 
-+	config DEBUG_CS75XX_UART0
-+		bool "Kernel low-level debugging messages via CS75xx UART0"
-+		depends on ARCH_CORTINA_ACCESS
-+		help
-+		  Say Y here if you want the debug print routines to direct
-+		  their output to UART0 of Cortina Systems CS75xx SoCs. This
-+		  is the console port on the Securifi Almond+. The UART is
-+		  expected to be set up by the bootloader.
-+
- 	config DEBUG_DAVINCI_DA8XX_UART1
- 		bool "Kernel low-level debugging on DaVinci DA8XX using UART1"
- 		depends on ARCH_DAVINCI_DA8XX
-@@ -1531,6 +1540,7 @@ config DEBUG_LL_INCLUDE
- 	default "debug/vt8500.S" if DEBUG_VT8500_UART0
- 	default "debug/zynq.S" if DEBUG_ZYNQ_UART0 || DEBUG_ZYNQ_UART1
- 	default "debug/bcm63xx.S" if DEBUG_BCM63XX_UART || DEBUG_BCMBCA
-+	default "debug/cs75xx.S" if DEBUG_CS75XX_UART0
- 	default "debug/digicolor.S" if DEBUG_DIGICOLOR_UA0
- 	default "debug/brcmstb.S" if DEBUG_BRCMSTB_UART
- 	default "mach/debug-macro.S"
-@@ -1632,6 +1642,7 @@ config DEBUG_UART_PHYS
- 	default 0xe8008000 if DEBUG_R7S72100_SCIF2 || DEBUG_R7S9210_SCIF2
- 	default 0xe8009000 if DEBUG_R7S9210_SCIF4
- 	default 0xf0000000 if DEBUG_DIGICOLOR_UA0
-+	default 0xf0070110 if DEBUG_CS75XX_UART0
- 	default 0xf1012000 if DEBUG_MVEBU_UART0_ALTERNATE
- 	default 0xf1012100 if DEBUG_MVEBU_UART1_ALTERNATE
- 	default 0xf7fc9000 if DEBUG_BERLIN_UART
-@@ -1670,7 +1681,7 @@ config DEBUG_UART_PHYS
- 		DEBUG_RMOBILE_SCIFA4 || \
- 		DEBUG_S3C64XX_UART || \
- 		DEBUG_BCM63XX_UART || DEBUG_BCMBCA || DEBUG_ASM9260_UART || \
--		DEBUG_DIGICOLOR_UA0 || \
-+		DEBUG_CS75XX_UART0 || DEBUG_DIGICOLOR_UA0 || \
- 		DEBUG_AT91_UART || DEBUG_STM32_UART || \
- 		DEBUG_STIH41X_ASC2 || DEBUG_STIH41X_SBC_ASC1 || \
- 		DEBUG_STIH418_SBC_ASC0
-@@ -1708,6 +1719,7 @@ config DEBUG_UART_VIRT
- 	default 0xf7000800 if DEBUG_S3C64XX_UART && DEBUG_S3C_UART2
- 	default 0xf7000c00 if DEBUG_S3C64XX_UART && DEBUG_S3C_UART3
- 	default 0xf7020000 if DEBUG_AT91_SAMA5D2_UART1
-+	default 0xf7070110 if DEBUG_CS75XX_UART0
- 	default 0xf7fc9000 if DEBUG_BERLIN_UART
- 	default 0xf8007000 if DEBUG_HIP04_UART
- 	default 0xf8009000 if DEBUG_VEXPRESS_UART0_CA9
-@@ -1772,7 +1784,7 @@ config DEBUG_UART_VIRT
- 		DEBUG_QCOM_UARTDM || \
- 		DEBUG_S3C64XX_UART || \
- 		DEBUG_BCM63XX_UART || DEBUG_BCMBCA || DEBUG_ASM9260_UART || \
--		DEBUG_DIGICOLOR_UA0 || \
-+		DEBUG_CS75XX_UART0 || DEBUG_DIGICOLOR_UA0 || \
- 		DEBUG_AT91_UART || DEBUG_STM32_UART || \
- 		DEBUG_STIH41X_ASC2 || DEBUG_STIH41X_SBC_ASC1 || \
- 		DEBUG_STIH418_SBC_ASC0
-diff --git a/arch/arm/include/debug/cs75xx.S b/arch/arm/include/debug/cs75xx.S
+diff --git a/Documentation/devicetree/bindings/serial/cortina,cs7542-uart.yaml b/Documentation/devicetree/bindings/serial/cortina,cs7542-uart.yaml
 new file mode 100644
-index 00000000000..967821add0c
+index 00000000000..2879a718802
 --- /dev/null
-+++ b/arch/arm/include/debug/cs75xx.S
-@@ -0,0 +1,37 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/*
-+ * Debugging macro include header for the Cortina Systems CS75xx UART
-+ */
++++ b/Documentation/devicetree/bindings/serial/cortina,cs7542-uart.yaml
+@@ -0,0 +1,52 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/serial/cortina,cs7542-uart.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+#define CS75XX_UART_TXDAT		0x10
-+#define CS75XX_UART_INFO		0x18
-+#define CS75XX_UART_INFO_TX_FULL	(1 << 2)
-+#define CS75XX_UART_INFO_TX_EMPTY	(1 << 3)
++title: Cortina UART
 +
-+		.macro	addruart, rp, rv, tmp
-+		ldr	\rp, =CONFIG_DEBUG_UART_PHYS
-+		ldr	\rv, =CONFIG_DEBUG_UART_VIRT
-+		.endm
++maintainers:
++  - Fil Dunsky <filipp.dunsky@gmail.com>
 +
-+		.macro	senduart, rd, rx
-+		ARM_BE8(rev \rd, \rd)
-+		str	\rd, [\rx, #CS75XX_UART_TXDAT]
-+		ARM_BE8(rev \rd, \rd)
-+		.endm
++description:
++  The UART found in the Cortina Systems CS7542 (Goldengate G2) SoC. It has
++  transmit and receive FIFOs and a 24-bit baud rate divider running from the
++  peripheral (APB) clock. Other SoCs with the same block, the rest of the
++  CS75xx family and the Cortina Access parts, are to be added with their own
++  compatible string and "cortina,cs7542-uart" as the fallback.
 +
-+		.macro	waituartcts, rd, rx
-+		.endm
++allOf:
++  - $ref: serial.yaml#
 +
-+		.macro	waituarttxrdy, rd, rx
-+1001:		ldr	\rd, [\rx, #CS75XX_UART_INFO]
-+		ARM_BE8(rev \rd, \rd)
-+		tst	\rd, #CS75XX_UART_INFO_TX_FULL
-+		bne	1001b
-+		.endm
++properties:
++  compatible:
++    const: cortina,cs7542-uart
 +
-+		.macro	busyuart, rd, rx
-+1002:		ldr	\rd, [\rx, #CS75XX_UART_INFO]
-+		ARM_BE8(rev \rd, \rd)
-+		tst	\rd, #CS75XX_UART_INFO_TX_EMPTY
-+		beq	1002b
-+		.endm
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++
++    serial@f0070110 {
++        compatible = "cortina,cs7542-uart";
++        reg = <0xf0070110 0x30>;
++        interrupts = <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>;
++        clocks = <&apb_clk>;
++    };
 
 -- 
 2.53.0
