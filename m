@@ -1,96 +1,94 @@
-From: Shashikirana H K <shashikiranah@chromium.org>
-Date: Tue, 06 Oct 2026 15:06:59 +0000
-Subject: [PATCH] HID: vivaldi: Validate Report ID and length in feature
- mapping
+From: Igor Velkov <iav@iav.lv>
+Date: Tue, 06 Oct 2026 19:36:17 +0300
+Subject: [PATCH v2] arm64: dts: amlogic: meson-sm1-odroid-hc4: add the fan
+ tachometer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-upstream-vivaldi-fix-v1-1-bbc9a7f14ea6@chromium.org>
-X-B4-Tracking: v=1; b=H4sIAJIOxWoC/x2MWwqAIBAAryL73YIJSXaV6MN0q4UeoiVBdPekz
- xmYeSBRZErQiQciZU587AXqSoBb7D4Tsi8MSipdS6nxCumMZDfMnO3qGSe+0TRyVMaZVrUaSho
- iFf1v++F9P2ZpSF9mAAAA
-X-Change-ID: 20261006-upstream-vivaldi-fix-950b29c98286
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Stephen Boyd <swboyd@chromium.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Tzung-Bi Shih <tzungbi@chromium.org>, Sean O'Brien <seobrien@chromium.org>, 
- Shashikirana H K <shashikiranah@chromium.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791299229; l=2360;
- i=shashikiranah@chromium.org; s=20261006; h=from:subject:message-id;
- bh=uAkI2tjfGATd6F6F8iPXHLDEZi+ZRl+aVUmYMofx0kI=;
- b=ueu7dpcwaxS7DUKnNMIqB9NbKhf3V7YFPhuMO2Cr41iJS0zivr3GaHpR8KorQ6XDKYpMI6Rum
- HpvsCMrqL7IB3Jh0y7GnPTGMMQ64vgnty9Y8O4sbDBvqhzUlNvS2c3t
-X-Developer-Key: i=shashikiranah@chromium.org; a=ed25519;
- pk=bCw+8sjBcORxp4WEsvVPTz+Jb/+irkV4RK/8uR5xsYI=
-X-Endpoint-Received: by B4 Relay for shashikiranah@chromium.org/20261006 with auth_id=1124
+Message-Id: <20261006-hc4-fan-tach-v2-1-e27ad96e92a2@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAIAjxWoC/3XMQQrCMBCF4auUWTuShLEVV95DukjixAxIKkkJS
+ sndjd27/B+8b4PCWbjAZdggc5UiS+phDgP4aNODUe69wSgzaqVGjJ4w2ISr9RGJlNfuPJFVBP3
+ yyhzkvXO3uXeUsi75s+tV/9Y/UNWokXjy7INydHJXsfX4rDC31r7ydyCepQAAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Christian Hewitt <christianshewitt@gmail.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1903; i=iav@iav.lv;
+ h=from:subject:message-id; bh=oCCjURBullL5W0mILbeZieiLJNm1TbubemMG4u+TG88=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFlHlRstbGxiiph3/Kw9cOHIVRn/f54PGueqNV7/VGX0o
+ ujmBvHjHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiGvGMDHt0Tl09MkWVr2l9
+ VML6MxfLNk7eVLPNWqb0y6d36hor/EoYGWapOG2dFPZ41g6Tq7tfbTsaNbsgXWrrqVl/Dot84/r
+ Nkc4CAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vivaldi_feature_mapping() currently passes the descriptor-declared
-report_len as the received data size to hid_report_raw_event() instead
-of the actual number of bytes returned by hid_hw_raw_request(). It also
-does not verify that the returned Report ID matches the requested
-report->id, or handle a zero-byte return before decrementing the length
-for unnumbered reports.
+The fan connector routes the fan's tachometer output to GPIOX_7, but
+the fan node does not describe it. pwm-fan therefore registers no
+fan1_input, and the fan speed cannot be read.
 
-Validate that hid_hw_raw_request() returns at least one byte and that
-the returned Report ID matches report->id, and pass the actual received
-byte count (ret) to hid_report_raw_event().
+Describe the line as the fan's interrupt, and mux the pin as a GPIO
+input without bias: R109 on the board pulls the line up to VDDAO_3V3
+(schematic rev1.0, sheet 31).
 
-Fixes: 33bbe04a15f2 ("HID: google: extract Vivaldi hid feature mapping for use in hid-hammer")
-Cc: Tzung-Bi Shih <tzungbi@chromium.org>
-Cc: Sean O'Brien <seobrien@chromium.org>
-Signed-off-by: Shashikirana H K <shashikiranah@chromium.org>
+Tested on ODROID-HC4: fan1_input reads 0 with the fan stopped and
+rises with the duty cycle, to about 4200 rpm at full speed.
+
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Change-Id: I3cf03bd2457f44c6ed47835f3d603f235f5993de
+Changes in v2:
+- Mux GPIOX_7 as a GPIO input without bias (Neil).
+- Link to v1: https://lore.kernel.org/r/20261006-hc4-fan-tach-v1-1-4e7cecf0b45b@iav.lv
 ---
- drivers/hid/hid-vivaldi-common.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/drivers/hid/hid-vivaldi-common.c b/drivers/hid/hid-vivaldi-common.c
-index b12bb5cc091aa..ea2c661e623d1 100644
---- a/drivers/hid/hid-vivaldi-common.c
-+++ b/drivers/hid/hid-vivaldi-common.c
-@@ -69,12 +69,18 @@ void vivaldi_feature_mapping(struct hid_device *hdev,
- 	ret = hid_hw_raw_request(hdev, report->id, report_data,
- 				 report_len, HID_FEATURE_REPORT,
- 				 HID_REQ_GET_REPORT);
--	if (ret < 0) {
-+	if (ret <= 0) {
- 		dev_warn(&hdev->dev, "failed to fetch feature %d\n",
- 			 field->report->id);
- 		goto out;
- 	}
+diff --git a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts
+index 5f15c2299509..64602aff1d81 100644
+--- a/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts
++++ b/arch/arm64/boot/dts/amlogic/meson-sm1-odroid-hc4.dts
+@@ -21,6 +21,10 @@ fan0: pwm-fan {
+ 		#cooling-cells = <2>;
+ 		cooling-levels = <0 120 170 220>;
+ 		pwms = <&pwm_cd 1 40000 0>;
++		interrupt-parent = <&gpio_intc>;
++		interrupts = <IRQID_GPIOX_7 IRQ_TYPE_EDGE_FALLING>;
++		pinctrl-0 = <&fan_tach_pins>;
++		pinctrl-names = "default";
+ 	};
  
-+	if (report->id && report_data[0] != report->id) {
-+		dev_warn(&hdev->dev, "report ID mismatch: expected %d got %d\n",
-+			 report->id, report_data[0]);
-+		goto out;
-+	}
+ 	leds {
+@@ -114,6 +118,17 @@ &pcie {
+ 	reset-gpios = <&gpio GPIOH_4 GPIO_ACTIVE_LOW>;
+ };
+ 
++&periphs_pinctrl {
++	fan_tach_pins: fan-tach {
++		mux {
++			groups = "GPIOX_7";
++			function = "gpio_periphs";
++			bias-disable;
++			output-disable;
++		};
++	};
++};
 +
- 	if (!report->id) {
- 		/*
- 		 * Undo the damage from hid_hw_raw_request() for unnumbered
-@@ -82,10 +88,11 @@ void vivaldi_feature_mapping(struct hid_device *hdev,
- 		 */
- 		report_data++;
- 		report_len--;
-+		ret--;
- 	}
- 
- 	ret = hid_report_raw_event(hdev, HID_FEATURE_REPORT, report_data,
--				   report_len, report_len, 0);
-+				   report_len, ret, 0);
- 	if (ret) {
- 		dev_warn(&hdev->dev, "failed to report feature %d\n",
- 			 field->report->id);
+ &pwm_cd {
+ 	status = "okay";
+ 	pinctrl-names = "default";
 
 ---
-base-commit: 388b607d107c07aaade04c7f22f344cab6bdccd3
-change-id: 20261006-upstream-vivaldi-fix-950b29c98286
+base-commit: b44e2be772f866985cafdf90355285069ea68495
+change-id: 20261006-hc4-fan-tach-440c1b874a04
 
 Best regards,
 -- 
-Shashikirana H K <shashikiranah@chromium.org>
+Igor Velkov <iav@iav.lv>
 
