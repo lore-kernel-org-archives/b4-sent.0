@@ -1,14 +1,12 @@
 From: Viorel Cernateanu <vrilutza@gmail.com>
-Subject: [PATCH 0/2] x86/kmsan: Fix two bugs in the metadata lookup
-Date: Tue, 06 Oct 2026 21:10:21 +0300
-Message-Id: <20261006-kmsan-serie-v1-0-07fa860ef3de@gmail.com>
+Date: Tue, 06 Oct 2026 21:10:22 +0300
+Subject: [PATCH 1/2] x86/kmsan: Fix CPU entry area metadata lookup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCQAxFr1KyNpBpoVCvIi6SMW2jOMpERSy9u
- zPt8n3+ewu4ZlOHY7NA1o+5PVKBcGggzpwmRbsUhpbaPhD1eLs7J9ws1K4jIgnDEBWK8cw62ne
- rnc47+1uuGl81UR/CriiZU5zrtGeEfwzr+gcPNXc9jAAAAA==
-X-Change-ID: 20261006-kmsan-serie-e33000b199ce
+Message-Id: <20261006-kmsan-serie-v1-1-07fa860ef3de@gmail.com>
+References: <20261006-kmsan-serie-v1-0-07fa860ef3de@gmail.com>
+In-Reply-To: <20261006-kmsan-serie-v1-0-07fa860ef3de@gmail.com>
 To: Alexander Potapenko <glider@google.com>, Marco Elver <elver@google.com>, 
  Dmitry Vyukov <dvyukov@google.com>, Thomas Gleixner <tglx@kernel.org>, 
  Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
@@ -18,59 +16,102 @@ To: Alexander Potapenko <glider@google.com>, Marco Elver <elver@google.com>,
 Cc: Borislav Petkov <bp@suse.de>, kasan-dev@googlegroups.com, 
  linux-kernel@vger.kernel.org, Viorel Cernateanu <vrilutza@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791310224; l=2125;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791310224; l=3306;
  i=vrilutza@gmail.com; s=lenovo-20261005; h=from:subject:message-id;
- bh=WbGqaRbHtRgJ7moLMo1R8LVauqCNwfX6lnHlo7d/wis=;
- b=9a6NKEvMM7PCqPWjHR2uysMAJTSxRxcLisc4RrF/odFeZH8WJ8orNUKVDt+pfdzOii8EJVrSU
- Bw3gv4UegMPBYc7kV1UcSddHYndcrDwFHaX75IRcczp6yErXUPTGGHZ
+ bh=N3m+fbIk2kyGBiXGLaUfAlrCuXw8P3s3ub1NW70+ovA=;
+ b=1d5VwNUI08730DhFWPH7pVs9PezgdqBniw1njuhfTs/jjT4ogVN29LeE28Fp3J2dpG5Z8b02s
+ cBM+4N4ukB/Di87lpPLlsQOFvAJwK5xsgR3lNX6kSodGh5EHb7S+gzx
 X-Developer-Key: i=vrilutza@gmail.com; a=ed25519;
  pk=HttZd2ffphVYTK/pvlflateaij8E4SdPd6Y+xDQMqDU=
 X-Endpoint-Received: by B4 Relay for vrilutza@gmail.com/lenovo-20261005 with auth_id=1115
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Two fixes in arch/x86/include/asm/kmsan.h, found while running KMSAN
-kernels with KASLR and with CONFIG_DEBUG_PREEMPT.
+arch_kmsan_get_meta_or_null() works out which CPU owns an address in the
+CPU entry area as (addr - CPU_ENTRY_AREA_BASE) / CPU_ENTRY_AREA_SIZE.
+That is wrong in two ways:
 
-Patch 1 fixes the CPU lookup for addresses in the CPU entry area, which
-is wrong with KASLR, and for the last page of each area without it.
+ - With KASLR, init_cea_offsets() puts each CPU's area in a random slot,
+   so the result is a slot number, usually far above NR_CPUS, and
+   get_cpu_entry_area() reads past the end of __per_cpu_offset[].
 
-Patch 2 fixes a recursion with CONFIG_DEBUG_PREEMPT: the metadata lookup
-ends up in the instrumented preempt_count_add(), and the kernel hangs
-right after KMSAN is enabled.
+ - The per-CPU areas start one page higher, at CPU_ENTRY_AREA_PER_CPU.
+   Even without KASLR, the last page of each area is attributed to the
+   next CPU, so KMSAN loses that page, and for the last CPU the lookup
+   uses a CPU that does not exist.
 
-Both were tested on v7.3-rc6 in QEMU/KVM, with x86_64_defconfig plus
-x86_debug.config (without LOCK_STAT, LOCKDEP, PROVE_LOCKING, GCOV and
-DWARF), KMSAN and UBSAN_BOUNDS, and with a module that poisons and then
-checks the KMSAN metadata at the start and at the end of the current
-CPU's entry area, so a KMSAN report means the metadata was found.
+On an Ivy Bridge laptop, a KMSAN kernel with KASLR oopses at boot when
+the hard lockup detector sets up its perf event. In QEMU, a module that
+reads one byte of the current CPU's GDT alias hits the same bug:
 
-Patch 1: without it, the end of the area is missed without KASLR, and
-the lookup oopses with KASLR. With it, both are found, with and without
-KASLR (three boots each). On an Ivy Bridge laptop, v7.3-rc6 with this
-patch and KASLR gets past the hard lockup detector setup, and the same
-check finds the metadata on all four CPUs. The lookup now scans up to
-nr_cpu_ids entries for addresses in the CPU entry area; I have not
-measured the cost on machines with many CPUs.
+  UBSAN: array-index-out-of-bounds in arch/x86/mm/cpu_entry_area.c:25:9
+  index 2100006 is out of range for type 'unsigned long[64]'
+  Oops: general protection fault, probably for non-canonical address
+  RIP: 0010:get_cpu_entry_area+0x14/0x50
+  Call Trace:
+   kmsan_get_metadata+0xb2/0x150
+   kmsan_get_shadow_origin_ptr+0x31/0xa0
+   __msan_metadata_ptr_for_load_1+0x22/0x40
+   init_module+0x139/0xff0 [cea_repro]
 
-Patch 2, with CONFIG_DEBUG_PREEMPT added: without it, three boots out of
-three with KASLR stop after the "ATTENTION: KMSAN is a debugging tool!"
-banner and never reach init. With both patches, six boots out of six
-reach init, with and without KASLR, and the module above still gets its
-KMSAN reports. Not tested with lockdep, PROVE_RCU or
-TRACE_PREEMPT_TOGGLE, and not on hardware.
+Find the CPU whose entry area contains the address instead.
 
+Fixes: ce732a7520b0 ("x86: kmsan: handle CPU entry area")
+Fixes: 97e3d26b5e5f ("x86/mm: Randomize per-cpu entry area")
+Signed-off-by: Viorel Cernateanu <vrilutza@gmail.com>
 ---
-Viorel Cernateanu (2):
-      x86/kmsan: Fix CPU entry area metadata lookup
-      x86/kmsan: Don't call instrumented code from kmsan_virt_addr_valid()
+ arch/x86/include/asm/kmsan.h | 27 +++++++++++++++++++--------
+ 1 file changed, 19 insertions(+), 8 deletions(-)
 
- arch/x86/include/asm/kmsan.h | 76 ++++++++++++++++++++++++++++++--------------
- 1 file changed, 52 insertions(+), 24 deletions(-)
----
-base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
-change-id: 20261006-kmsan-serie-e33000b199ce
+diff --git a/arch/x86/include/asm/kmsan.h b/arch/x86/include/asm/kmsan.h
+index d91b37f5b4bb..a71e84d6abab 100644
+--- a/arch/x86/include/asm/kmsan.h
++++ b/arch/x86/include/asm/kmsan.h
+@@ -13,6 +13,7 @@
+ 
+ #include <asm/cpu_entry_area.h>
+ #include <asm/processor.h>
++#include <linux/cpumask.h>
+ #include <linux/mmzone.h>
+ 
+ DECLARE_PER_CPU(char[CPU_ENTRY_AREA_SIZE], cpu_entry_area_shadow);
+@@ -32,18 +33,28 @@ static inline void *arch_kmsan_get_meta_or_null(void *addr, bool is_origin)
+ 	unsigned long addr64 = (unsigned long)addr;
+ 	char *metadata_array;
+ 	unsigned long off;
+-	int cpu;
++	unsigned int cpu;
+ 
+ 	if ((addr64 < CPU_ENTRY_AREA_BASE) ||
+ 	    (addr64 >= (CPU_ENTRY_AREA_BASE + CPU_ENTRY_AREA_MAP_SIZE)))
+ 		return NULL;
+-	cpu = (addr64 - CPU_ENTRY_AREA_BASE) / CPU_ENTRY_AREA_SIZE;
+-	off = addr64 - (unsigned long)get_cpu_entry_area(cpu);
+-	if ((off < 0) || (off >= CPU_ENTRY_AREA_SIZE))
+-		return NULL;
+-	metadata_array = is_origin ? cpu_entry_area_origin :
+-				     cpu_entry_area_shadow;
+-	return &per_cpu(metadata_array[off], cpu);
++
++	/*
++	 * The per-CPU entry areas are not necessarily laid out in CPU order
++	 * (see init_cea_offsets()), so find the area containing @addr instead
++	 * of computing the CPU from the offset.
++	 */
++	for (cpu = 0; cpu < nr_cpu_ids; cpu++) {
++		if (!cpu_possible(cpu))
++			continue;
++		off = addr64 - (unsigned long)get_cpu_entry_area(cpu);
++		if (off >= CPU_ENTRY_AREA_SIZE)
++			continue;
++		metadata_array = is_origin ? cpu_entry_area_origin :
++					     cpu_entry_area_shadow;
++		return &per_cpu(metadata_array[off], cpu);
++	}
++	return NULL;
+ }
+ 
+ /*
 
-Best regards,
---  
-Viorel Cernateanu <vrilutza@gmail.com>
+-- 
+2.53.0
 
