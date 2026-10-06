@@ -1,51 +1,96 @@
-From: Matt Layher <mdlayher@gmail.com>
-Date: Tue, 06 Oct 2026 10:35:37 -0400
-Subject: [PATCH v3] hwmon: (asus-ec-sensors) add CPU_Opt fan for ROG STRIX
- X570-E GAMING
+From: Shashikirana H K <shashikiranah@chromium.org>
+Date: Tue, 06 Oct 2026 15:06:59 +0000
+Subject: [PATCH] HID: vivaldi: Validate Report ID and length in feature
+ mapping
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-asus-ec-x570e-cpu-opt-v3-1-62672edc18b3@gmail.com>
-References: <20261006-asus-ec-x570e-cpu-opt-v3-0-62672edc18b3@gmail.com>
-In-Reply-To: <20261006-asus-ec-x570e-cpu-opt-v3-0-62672edc18b3@gmail.com>
-To: Eugene Shalygin <eugene.shalygin@gmail.com>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Matt Layher <mdlayher@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791297407; l=925;
- i=mdlayher@gmail.com; s=linuxdev; h=from:subject:message-id;
- bh=neFRa9yM7J68Bw3LwyksLxTmfSCixK0ZjZK4PIQ+vwQ=;
- b=92bFwaGWqtmre0ZZLPS7D0+Dx/NO02LV9yiDy6orwsV6q0MTns/Kl42E/HO6e3fOVA2Wz9K8x
- +gTyc4ZfC5XCxacY5RmmPsb0Oh3Fq7UW3sDqVk/rh3hX1snRPWh0v9y
-X-Developer-Key: i=mdlayher@gmail.com; a=ed25519;
- pk=jO44g3WNw2T0EoKPeB+RUgDmyrZpA5Pmr830ITlwhaA=
-X-Endpoint-Received: by B4 Relay for mdlayher@gmail.com/linuxdev with auth_id=1109
+Message-Id: <20261006-upstream-vivaldi-fix-v1-1-bbc9a7f14ea6@chromium.org>
+X-B4-Tracking: v=1; b=H4sIAJIOxWoC/x2MWwqAIBAAryL73YIJSXaV6MN0q4UeoiVBdPekz
+ xmYeSBRZErQiQciZU587AXqSoBb7D4Tsi8MSipdS6nxCumMZDfMnO3qGSe+0TRyVMaZVrUaSho
+ iFf1v++F9P2ZpSF9mAAAA
+X-Change-ID: 20261006-upstream-vivaldi-fix-950b29c98286
+To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Stephen Boyd <swboyd@chromium.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Tzung-Bi Shih <tzungbi@chromium.org>, Sean O'Brien <seobrien@chromium.org>, 
+ Shashikirana H K <shashikiranah@chromium.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791299229; l=2360;
+ i=shashikiranah@chromium.org; s=20261006; h=from:subject:message-id;
+ bh=uAkI2tjfGATd6F6F8iPXHLDEZi+ZRl+aVUmYMofx0kI=;
+ b=ueu7dpcwaxS7DUKnNMIqB9NbKhf3V7YFPhuMO2Cr41iJS0zivr3GaHpR8KorQ6XDKYpMI6Rum
+ HpvsCMrqL7IB3Jh0y7GnPTGMMQ64vgnty9Y8O4sbDBvqhzUlNvS2c3t
+X-Developer-Key: i=shashikiranah@chromium.org; a=ed25519;
+ pk=bCw+8sjBcORxp4WEsvVPTz+Jb/+irkV4RK/8uR5xsYI=
+X-Endpoint-Received: by B4 Relay for shashikiranah@chromium.org/20261006 with auth_id=1124
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The board has a CPU_OPT fan header, which the EC reports at the same
-register (bank 0, 0xb0) as the other AMD 500 series boards. Enable it.
+vivaldi_feature_mapping() currently passes the descriptor-declared
+report_len as the received data size to hid_report_raw_event() instead
+of the actual number of bytes returned by hid_hw_raw_request(). It also
+does not verify that the returned Report ID matches the requested
+report->id, or handle a zero-byte return before decrementing the length
+for unnumbered reports.
 
-Assisted-by: LLM sparse
-Signed-off-by: Matt Layher <mdlayher@gmail.com>
+Validate that hid_hw_raw_request() returns at least one byte and that
+the returned Report ID matches report->id, and pass the actual received
+byte count (ret) to hid_report_raw_event().
+
+Fixes: 33bbe04a15f2 ("HID: google: extract Vivaldi hid feature mapping for use in hid-hammer")
+Cc: Tzung-Bi Shih <tzungbi@chromium.org>
+Cc: Sean O'Brien <seobrien@chromium.org>
+Signed-off-by: Shashikirana H K <shashikiranah@chromium.org>
 ---
- drivers/hwmon/asus-ec-sensors.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Change-Id: I3cf03bd2457f44c6ed47835f3d603f235f5993de
+---
+ drivers/hid/hid-vivaldi-common.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/hwmon/asus-ec-sensors.c b/drivers/hwmon/asus-ec-sensors.c
-index 19f423e45ce5..8261ddd00653 100644
---- a/drivers/hwmon/asus-ec-sensors.c
-+++ b/drivers/hwmon/asus-ec-sensors.c
-@@ -721,7 +721,7 @@ static const struct ec_board_info board_info_strix_x470_i_gaming = {
+diff --git a/drivers/hid/hid-vivaldi-common.c b/drivers/hid/hid-vivaldi-common.c
+index b12bb5cc091aa..ea2c661e623d1 100644
+--- a/drivers/hid/hid-vivaldi-common.c
++++ b/drivers/hid/hid-vivaldi-common.c
+@@ -69,12 +69,18 @@ void vivaldi_feature_mapping(struct hid_device *hdev,
+ 	ret = hid_hw_raw_request(hdev, report->id, report_data,
+ 				 report_len, HID_FEATURE_REPORT,
+ 				 HID_REQ_GET_REPORT);
+-	if (ret < 0) {
++	if (ret <= 0) {
+ 		dev_warn(&hdev->dev, "failed to fetch feature %d\n",
+ 			 field->report->id);
+ 		goto out;
+ 	}
  
- static const struct ec_board_info board_info_strix_x570_e_gaming = {
- 	.sensors = SENSOR_SET_TEMP_CHIPSET_CPU_MB |
--		SENSOR_TEMP_T_SENSOR |
-+		SENSOR_TEMP_T_SENSOR | SENSOR_FAN_CPU_OPT |
- 		SENSOR_FAN_CHIPSET | SENSOR_CURR_CPU |
- 		SENSOR_IN_CPU_CORE,
- 	.mutex_path = ASUS_HW_ACCESS_MUTEX_ASMX,
++	if (report->id && report_data[0] != report->id) {
++		dev_warn(&hdev->dev, "report ID mismatch: expected %d got %d\n",
++			 report->id, report_data[0]);
++		goto out;
++	}
++
+ 	if (!report->id) {
+ 		/*
+ 		 * Undo the damage from hid_hw_raw_request() for unnumbered
+@@ -82,10 +88,11 @@ void vivaldi_feature_mapping(struct hid_device *hdev,
+ 		 */
+ 		report_data++;
+ 		report_len--;
++		ret--;
+ 	}
+ 
+ 	ret = hid_report_raw_event(hdev, HID_FEATURE_REPORT, report_data,
+-				   report_len, report_len, 0);
++				   report_len, ret, 0);
+ 	if (ret) {
+ 		dev_warn(&hdev->dev, "failed to report feature %d\n",
+ 			 field->report->id);
 
+---
+base-commit: 388b607d107c07aaade04c7f22f344cab6bdccd3
+change-id: 20261006-upstream-vivaldi-fix-950b29c98286
+
+Best regards,
 -- 
-2.54.0
+Shashikirana H K <shashikiranah@chromium.org>
 
