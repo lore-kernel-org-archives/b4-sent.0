@@ -1,11 +1,11 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 06 Oct 2026 13:29:46 +0900
-Subject: [PATCH 4/6] nfsd: fail a LAYOUTGET in progress when the layout
- lease is broken
+Date: Tue, 06 Oct 2026 13:29:47 +0900
+Subject: [PATCH 5/6] nfsd: poll a layout recall with a new seqid when the
+ client is past it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-nfsd-layout-recall-v1-4-b59b31caf342@samsung.com>
+Message-Id: <20261006-nfsd-layout-recall-v1-5-b59b31caf342@samsung.com>
 References: <20261006-nfsd-layout-recall-v1-0-b59b31caf342@samsung.com>
 In-Reply-To: <20261006-nfsd-layout-recall-v1-0-b59b31caf342@samsung.com>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -17,186 +17,145 @@ Cc: Christoph Hellwig <hch@lst.de>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791260982; l=6838;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791260982; l=5823;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=7f9ITAOikWRbtOMoLGo7YDTKy1S9+l4nlC9NSOuBx84=;
- b=te15T75xTKa7A7hzUWM93hc0jzeDaNtTpQQLEBeTjYqtqgRf2SwgtKzfpZhFlvKVxck05yKaO
- fUeTJmqJMWkDsm0h/osve8A/7in4O20uCC4tDT4LJRkyVfi6LdiHXfO
+ bh=IGletPNKnOjSG4vyFldCHDro8K0vh082o4ksy2O+QTM=;
+ b=3YJBhDhmAdcloCxlePctn3lkaO81PgbkIuYinArpzAqgW8w4XQs4YXKdAujsEiH5nav14CE5P
+ MYD4YEdAVuCBV9UgcSGYNggkTexpzY6qlA6n/T9EVcgjuclQIfzW9VB
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A layout stateid takes its FL_LAYOUT lease when it is allocated, before
-the first layout is added to it.  When the lease is broken in between,
-nfsd4_recall_file_layout() finds no layouts and does nothing.  The
-LAYOUTGET then hands out a layout that is not recalled: the lease is
-already marked as breaking, so ->lm_break() is not called for it again.
-The breaker waits until the client gives the layout up by itself or the
-lease break time is over; with the SCSI layout the client is then
-fenced although it was never sent a recall.  While the breaker waits,
-kernel_setlease() fails for new layout stateids and the LAYOUTGETs of
-other clients get NFS4ERR_DELAY.
+nfsd4_cb_layout_done() polls a client that answers a CB_LAYOUTRECALL
+with NFS4ERR_OLD_STATEID, as "nfsd: keep polling a layout recall
+answered with NFS4ERR_OLD_STATEID" has it do, and each poll repeats the
+seqid that ->prepare gave the recall.  NFS4ERR_OLD_STATEID says that
+the client is at or past that seqid.  A client that has answered
+NFS4_OK to the recall is returning its layouts, and the polls end when
+it has.  A client that has not is past the seqid without having taken
+the recall up.  A LAYOUTRETURN that returns some layouts and leaves
+others gets a new seqid; if nfsd processes it after ->prepare, the
+client takes in a seqid above the recall's from its reply.  Such a
+client answers every poll with NFS4ERR_OLD_STATEID.  The recall goes on
+for two lease periods, a LAYOUTGET for the file from another client
+gets NFS4ERR_RECALLCONFLICT meanwhile, and the client is then fenced,
+although it was never asked for the layouts it still holds.
 
-Commit c5c707f96fc9 ("nfsd: implement pNFS layout recalls") marked such
-a layout stateid as recalled, and since nothing kept the LAYOUTGET from
-adding its layout afterwards, that layout was never recalled.  Commit
-fb610c4dbc99 ("nfsd: fix race to check ls_layouts") therefore made the
-recall skip a layout stateid without layouts, which left the case
-above.
+RFC 8881 section 12.5.3 has a new seqid for each CB_LAYOUTRECALL
+request.  When a client that has not answered NFS4_OK answers
+NFS4ERR_OLD_STATEID, give the next poll a new seqid, which the client
+takes up.  ->prepare clears ls_recall_accepted, and ->done sets it when
+the client answers NFS4_OK.  The new seqid is traced as
+nfsd_layout_recall_new_seqid.
 
-Let the lease break mark such a layout stateid as recalled again, and
-make nfsd4_insert_layout() refuse to add layouts to a recalled layout
-stateid, which is what was missing the first time.  The LAYOUTGET fails
-with NFS4ERR_RECALLCONFLICT, the layout stateid is freed and the lease
-goes away.  No callback is sent for it; the new
-nfsd_layout_recall_empty tracepoint shows where fi_lo_recalls was
-raised without one.  NFS4ERR_RECALLCONFLICT is what nfsd already answers
-to a LAYOUTGET for a file with a recall in progress, also when the
-recall went to another client (RFC 8881 section 15.1.14.3: "a
-conflicting recall operation that is currently in progress for that
-object").  The check in nfsd4_insert_layout() also covers a
-layout stateid with layouts that is recalled between the checks in
-nfsd4_layoutget() and nfsd4_insert_layout().
+->done runs in rpciod and does not take ls_mutex, which could block it.
+While a recall is out, only a LAYOUTRETURN changes the seqid besides,
+since "nfsd: fail a LAYOUTGET in progress when the layout lease is
+broken" keeps LAYOUTGET from adding layouts to a recalled layout
+stateid, and nfsd4_preprocess_layout_stateid() only checks that the
+seqid a client presents is not above the current one.
 
-Only a lease break does this.  A LAYOUTGET that finds a layout stateid
-without layouts of another client leaves it alone, as before.
+A pynfs client that holds a layout answers a recall whose seqid is not
+above the first seqid of the recall with NFS4ERR_OLD_STATEID, and
+returns the layout on a later one.  Without this patch, nfsd sent the
+recall 501 times in six seconds, all with the first seqid, and a
+LAYOUTGET of another client still got NFS4ERR_RECALLCONFLICT.  With it,
+the second recall carried a new seqid, 10 ms later, the client returned
+the layout, and the LAYOUTGET succeeded.  The block layout runs of the
+earlier patches give the same results with this one and the next: no
+recall failed, and every block written to a new file was found.
 
-The window is the time a LAYOUTGET needs from allocating the layout
-stateid to inserting the layout.
-
-Two clients writing to one file while the server writes 4 KiB to it
-every 50 ms, for 30 seconds, block layout.  Without this patch one
-write on the server took 9.7 seconds in one run and 13.9 seconds in
-another, in both until the clients were done; in a third run it did not
-happen.  With this patch the longest write on the server took 56 ms.
-
-To see the new path at work, a delay of 100 ms was added to LAYOUTGET
-between the two steps for one pair of runs.  Without the patch the
-second write on the server took 30 seconds, the whole run.  With it the
-longest write took 108 ms and nfsd_layout_recall_empty fired 16 times.
-(With that delay every LAYOUTGET meets a write on the server, so the
-clients got no layout in that run.  It shows the path and nothing else.)
+This builds on "nfsd: keep polling a layout recall answered with
+NFS4ERR_OLD_STATEID" and "nfsd: fail a LAYOUTGET in progress when the
+layout lease is broken", earlier in this series, and should go to
+stable kernels with them.
 
 Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
 
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/nfsd/nfs4layouts.c | 49 +++++++++++++++++++++++++++++++++++++++++++------
+ fs/nfsd/nfs4layouts.c | 29 ++++++++++++++++++++++++++---
+ fs/nfsd/state.h       |  2 ++
  fs/nfsd/trace.h       |  1 +
- 2 files changed, 44 insertions(+), 6 deletions(-)
+ 3 files changed, 29 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 3d288649c..66f79e4e4 100644
+index 66f79e4e4..c140c9bde 100644
 --- a/fs/nfsd/nfs4layouts.c
 +++ b/fs/nfsd/nfs4layouts.c
-@@ -337,14 +337,15 @@ nfsd4_preprocess_layout_stateid(struct svc_rqst *rqstp,
+@@ -727,6 +727,7 @@ nfsd4_cb_layout_prepare(struct nfsd4_callback *cb)
+ 	mutex_lock(&ls->ls_mutex);
+ 	nfs4_inc_and_copy_stateid(&ls->ls_recall_sid, &ls->ls_stid);
+ 	mutex_unlock(&ls->ls_mutex);
++	ls->ls_recall_accepted = false;
+ 	return true;
  }
  
- static void
--nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
-+nfsd4_recall_file_layout_locked(struct nfs4_layout_stateid *ls)
- {
--	spin_lock(&ls->ls_lock);
-+	lockdep_assert_held(&ls->ls_lock);
-+
- 	if (ls->ls_recalled)
--		goto out_unlock;
-+		return;
+@@ -742,13 +743,35 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
  
- 	if (list_empty(&ls->ls_layouts))
--		goto out_unlock;
-+		return;
- 
- 	ls->ls_recalled = true;
- 	atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
-@@ -354,7 +355,34 @@ nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
- 		refcount_inc(&ls->ls_stid.sc_count);
- 		nfsd4_run_cb(&ls->ls_recall);
- 	}
--out_unlock:
-+}
-+
-+static void
-+nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
-+{
-+	spin_lock(&ls->ls_lock);
-+	nfsd4_recall_file_layout_locked(ls);
-+	spin_unlock(&ls->ls_lock);
-+}
-+
-+/*
-+ * A lease break also has to stop a LAYOUTGET that is in progress.  Its
-+ * layout stateid has the lease and no layouts yet, so there is nothing to
-+ * recall, and the breaker goes on once that layout stateid is gone.  Mark it
-+ * as recalled without sending a callback: nfsd4_insert_layout() then fails
-+ * the LAYOUTGET instead of handing out a layout after the break.
-+ */
-+static void
-+nfsd4_break_file_layout(struct nfs4_layout_stateid *ls)
-+{
-+	spin_lock(&ls->ls_lock);
-+	if (!ls->ls_recalled && list_empty(&ls->ls_layouts)) {
-+		ls->ls_recalled = true;
-+		atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
-+		trace_nfsd_layout_recall_empty(&ls->ls_stid.sc_stateid);
-+	} else {
-+		nfsd4_recall_file_layout_locked(ls);
-+	}
- 	spin_unlock(&ls->ls_lock);
- }
- 
-@@ -433,6 +461,10 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	if (nfserr)
- 		goto out;
- 	spin_lock(&ls->ls_lock);
-+	if (ls->ls_recalled) {
-+		nfserr = nfserr_recallconflict;
-+		goto out_unlock_ls;
-+	}
- 	list_for_each_entry(lp, &ls->ls_layouts, lo_perstate) {
- 		if (layouts_try_merge(&lp->lo_seg, seg))
- 			goto done;
-@@ -451,6 +483,10 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	if (nfserr)
- 		goto out;
- 	spin_lock(&ls->ls_lock);
-+	if (ls->ls_recalled) {
-+		nfserr = nfserr_recallconflict;
-+		goto out_unlock_ls;
-+	}
- 	list_for_each_entry(lp, &ls->ls_layouts, lo_perstate) {
- 		if (layouts_try_merge(&lp->lo_seg, seg))
- 			goto done;
-@@ -461,6 +497,7 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	new = NULL;
- done:
- 	nfs4_inc_and_copy_stateid(&lgp->lg_sid, &ls->ls_stid);
-+out_unlock_ls:
- 	spin_unlock(&ls->ls_lock);
- out:
- 	spin_unlock(&fp->fi_lock);
-@@ -794,7 +831,7 @@ nfsd4_layout_lm_break(struct file_lease *fl)
- 	 * Enforce break lease timeout to prevent NFSD
- 	 * thread from hanging in __break_lease.
- 	 */
--	nfsd4_recall_file_layout(fl->c.flc_owner);
-+	nfsd4_break_file_layout(fl->c.flc_owner);
- 	return false;
- }
+ 	trace_nfsd_cb_layout_done(&ls->ls_stid.sc_stateid, task);
+ 	switch (task->tk_status) {
+-	case 0:
+-	case -NFS4ERR_DELAY:
+ 	case -NFS4ERR_OLD_STATEID:
++		/*
++		 * The client is at or past the seqid of the request.  Unless
++		 * it has answered NFS4_OK to this recall and is returning
++		 * layouts, it has not taken the recall up, for instance
++		 * because a LAYOUTRETURN moved it past the seqid.  Poll with a
++		 * new seqid then (RFC 8881 section 12.5.3), which such a
++		 * client answers afresh.
++		 *
++		 * ->done runs in rpciod and does not take ls_mutex, which
++		 * could block it.  While the recall is out, only a
++		 * LAYOUTRETURN changes the seqid besides, and the check of the
++		 * seqid a client presents only asks whether it is above the
++		 * current one.
++		 */
++		if (!ls->ls_recall_accepted) {
++			nfs4_inc_and_copy_stateid(&ls->ls_recall_sid,
++						  &ls->ls_stid);
++			trace_nfsd_layout_recall_new_seqid(&ls->ls_recall_sid);
++		}
++		fallthrough;
++	case -NFS4ERR_DELAY:
++	case 0:
++		if (!task->tk_status)
++			ls->ls_recall_accepted = true;
+ 		/*
+ 		 * RFC 8881 section 12.5.3 wants a new seqid in each
+ 		 * CB_LAYOUTRECALL request.  The poll below sends the request
+-		 * again with the seqid of the first one.  A client that has
++		 * again with the seqid it last had.  A client that has
+ 		 * processed that one is at its seqid or past it, and the
+ 		 * Linux client answers the repeat with NFS4ERR_OLD_STATEID
+ 		 * while it is returning the layouts.
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index ff840a311..3ad87c85a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -853,6 +853,8 @@ struct nfs4_layout_stateid {
+ 	struct nfsd4_callback		ls_recall;
+ 	stateid_t			ls_recall_sid;
+ 	ktime_t				ls_recall_start;
++	/* The client has answered NFS4_OK to the recall */
++	bool				ls_recall_accepted;
+ 	bool				ls_recalled;
+ 	struct mutex			ls_mutex;
  
 diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index ad106d627..78f682bfd 100644
+index 78f682bfd..f6bdf69d4 100644
 --- a/fs/nfsd/trace.h
 +++ b/fs/nfsd/trace.h
-@@ -679,6 +679,7 @@ DEFINE_STATEID_EVENT(layout_get_lookup_fail);
- DEFINE_STATEID_EVENT(layout_commit_lookup_fail);
- DEFINE_STATEID_EVENT(layout_return_lookup_fail);
+@@ -681,6 +681,7 @@ DEFINE_STATEID_EVENT(layout_return_lookup_fail);
  DEFINE_STATEID_EVENT(layout_recall);
-+DEFINE_STATEID_EVENT(layout_recall_empty);
+ DEFINE_STATEID_EVENT(layout_recall_empty);
  DEFINE_STATEID_EVENT(layout_recall_done);
++DEFINE_STATEID_EVENT(layout_recall_new_seqid);
  DEFINE_STATEID_EVENT(layout_recall_fail);
  DEFINE_STATEID_EVENT(layout_recall_release);
+ 
 
 -- 
 2.43.0
