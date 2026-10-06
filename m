@@ -1,67 +1,76 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Tue, 06 Oct 2026 15:34:52 +0200
-Subject: [PATCH net 3/3] ptp: qoriq: fix support for PTP_EXTTS_REQUEST2
- ioctl
+From: Matt Layher <mdlayher@gmail.com>
+Date: Tue, 06 Oct 2026 10:14:54 -0400
+Subject: [PATCH v2] hwmon: (asus-ec-sensors) add CPU_Opt fan for ROG STRIX
+ X570-E GAMING
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261006-for-upstream-qoriq-ptp-extts-flags-v1-3-b4a161b92832@free.fr>
-References: <20261006-for-upstream-qoriq-ptp-extts-flags-v1-0-b4a161b92832@free.fr>
-In-Reply-To: <20261006-for-upstream-qoriq-ptp-extts-flags-v1-0-b4a161b92832@free.fr>
-To: Yangbo Lu <yangbo.lu@nxp.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Jacob Keller <jacob.e.keller@intel.com>, 
- Kory Maincent <kory.maincent@bootlin.com>, 
- Claudiu Manoil <claudiu.manoil@nxp.com>, 
- Vladimir Oltean <vladimir.oltean@nxp.com>, Wei Fang <wei.fang@nxp.com>, 
- Clark Wang <xiaoning.wang@nxp.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, Ioana Ciornei <ioana.ciornei@nxp.com>, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791293703; l=1341;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=bI02Z3k7XT254gwi64zNOv+zUT6wunV7tGvU62lzDZo=;
- b=z/FaeWp4UPCP8KJOLLZEahYoJuYfBopSJnSUbYl8Q479lSWpuToWVzswUuSd3zxahwBvO8kMN
- xuhPw3+AoFKCltg4/nvgeCGCtiZAXa2l4b+g/sRf/h+BmQmLIAEyr4m
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Message-Id: <20261006-asus-ec-x570e-cpu-opt-v2-1-74df23c22f04@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zi2CARX3MOwqGWAMUJJBwiGc
+ HcBD+DyJe+/v4JQYBK4RysEmlnY9zuYSwSutX1DyNXOYJRJtVI3tDIJksMlyRShGyb0w4ipiVO
+ jba2yXMG+HQLVvJzdR/ljmZ4vcuMRO4yWZfThcx7P+vD+fcwaNVY52TjTLlZVUjSd5ffV+Q7Kb
+ du+u6AgncwAAAA=
+X-Change-ID: 20261004-asus-ec-x570e-cpu-opt-623621af0790
+To: Eugene Shalygin <eugene.shalygin@gmail.com>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Matt Layher <mdlayher@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791296119; l=1907;
+ i=mdlayher@gmail.com; s=linuxdev; h=from:subject:message-id;
+ bh=r9Kqq/TD7jU/KmlKjk1tFe7tewjCRtaP4rus01J8hTU=;
+ b=GGvYsehoIJvqAAzsP+p3srKlR+N6wM8pOzlAXoFNVOiKx5jxa1SOSWuorMz1fNtJiM8hsjdvq
+ Yk60l8CIqG0DwYeGQqAsXEMpf80JY3w450CyGQmTrWZjWK/pVl0hSrz
+X-Developer-Key: i=mdlayher@gmail.com; a=ed25519;
+ pk=jO44g3WNw2T0EoKPeB+RUgDmyrZpA5Pmr830ITlwhaA=
+X-Endpoint-Received: by B4 Relay for mdlayher@gmail.com/linuxdev with auth_id=1109
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 7c571ac57d9d ("net: ptp: introduce .supported_extts_flags to
-ptp_clock_info") moved the validation of the external timestamp request
-flags into the PTP core. A driver that does not set
-.supported_extts_flags still accepts the legacy PTP_EXTTS_REQUEST ioctl,
-but every PTP_EXTTS_REQUEST2 request is rejected with -EOPNOTSUPP, since
-the core always adds PTP_STRICT_FLAGS to it
+The board has a CPU_OPT fan header, which the EC reports at the same
+register (bank 0, 0xb0) as the other AMD 500 series boards. Enable it.
 
-ptp_qoriq_init() programs TMR_CTRL with ETEP1 and ETEP2 cleared, so the
-timer timestamps the rising edge of its external trigger inputs. Declare
-that, with PTP_STRICT_FLAGS, so that a falling edge request is rejected
-instead of being timestamped on the rising edge.
-
-Fixes: 7c571ac57d9d ("net: ptp: introduce .supported_extts_flags to ptp_clock_info")
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+Assisted-by: LLM sparse
+Signed-off-by: Matt Layher <mdlayher@gmail.com>
 ---
- drivers/ptp/ptp_qoriq.c | 1 +
- 1 file changed, 1 insertion(+)
+An LLM coding assistant did most of the work on this patch: it found the
+missing sensor while auditing this machine's monitoring, compared the
+driver's board table with the BIOS hardware monitor, worked out which EC
+register to read, and drafted the change and this changelog. I
+reviewed both, and every test below ran on my own machines.
 
-diff --git a/drivers/ptp/ptp_qoriq.c b/drivers/ptp/ptp_qoriq.c
-index 76272e5ac5b8..bcd29104effe 100644
---- a/drivers/ptp/ptp_qoriq.c
-+++ b/drivers/ptp/ptp_qoriq.c
-@@ -355,6 +355,7 @@ static const struct ptp_clock_info ptp_qoriq_caps = {
- 	.n_per_out	= 0,
- 	.n_pins		= 0,
- 	.pps		= 1,
-+	.supported_extts_flags = PTP_RISING_EDGE | PTP_STRICT_FLAGS,
- 	.adjfine	= ptp_qoriq_adjfine,
- 	.adjtime	= ptp_qoriq_adjtime,
- 	.gettime64	= ptp_qoriq_gettime,
+Testing:
+- Runtime: the same one-line change applied to the driver in v6.18.54,
+  loaded on the board in place of the stock module; CPU_Opt read
+  1454-1463 RPM and the chipset fan 0.
+- Build: hwmon-next with W=1 and sparse (C=1), no warnings;
+  checkpatch --strict reports no errors, warnings or checks.
+---
+Changes in v2:
+- Shorten the commit message (Eugene).
+- Link to v1: https://patch.msgid.link/20261004-asus-ec-x570e-cpu-opt-v1-1-d9ea371c30d5@gmail.com
+---
+ drivers/hwmon/asus-ec-sensors.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
--- 
-2.43.0
+diff --git a/drivers/hwmon/asus-ec-sensors.c b/drivers/hwmon/asus-ec-sensors.c
+index 19f423e45ce5..8261ddd00653 100644
+--- a/drivers/hwmon/asus-ec-sensors.c
++++ b/drivers/hwmon/asus-ec-sensors.c
+@@ -721,7 +721,7 @@ static const struct ec_board_info board_info_strix_x470_i_gaming = {
+ 
+ static const struct ec_board_info board_info_strix_x570_e_gaming = {
+ 	.sensors = SENSOR_SET_TEMP_CHIPSET_CPU_MB |
+-		SENSOR_TEMP_T_SENSOR |
++		SENSOR_TEMP_T_SENSOR | SENSOR_FAN_CPU_OPT |
+ 		SENSOR_FAN_CHIPSET | SENSOR_CURR_CPU |
+ 		SENSOR_IN_CPU_CORE,
+ 	.mutex_path = ASUS_HW_ACCESS_MUTEX_ASMX,
+
+---
+base-commit: 4781ca52761e666cf18b591e6bb0478396c90320
+change-id: 20261004-asus-ec-x570e-cpu-opt-623621af0790
+
+Best regards,
+--  
+Matt Layher <mdlayher@gmail.com>
 
