@@ -1,119 +1,266 @@
-From: Sadman Fahmid <sadmanf@meta.com>
-Date: Wed, 07 Oct 2026 15:15:26 -0400
-Subject: [PATCH v2] erofs-utils: lib: fail instead of hanging on short
- reads in erofs_io_xcopy()
+From: Dave Marquardt <davemarq@linux.ibm.com>
+Subject: [PATCH v13 00/11] scsi: ibmvfc: make ibmvfc support FPIN messages
+Date: Wed, 07 Oct 2026 14:25:44 -0500
+Message-Id: <20261007-ibmvfc-fpin-support-v13-0-b816abfa4fcc@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261007-round1-v2-1-3ffc17bb9028@meta.com>
-X-B4-Tracking: v=1; b=H4sIAE2axmoC/2XMQQ7CIBCF4as0sxbDoCJx1XuYLigMdhYtBirRN
- Nxd7Nbl//LybZApMWW4dRskKpw5Li3UoQM32eVBgn1rUFJplFKLFF+LR2HJGKNGRcFdoZ2fiQK
- /d+g+tJ44rzF9drfgb/0jCgopwlmPeCJET5d+ptUeXZxhqLV+AR8zXUubAAAA
-In-Reply-To: <20261006-round1-v1-0-f46b13e11de5@meta.com>
-References: <20261006-round1-v1-0-f46b13e11de5@meta.com>
-To: linux-erofs@lists.ozlabs.org
-Cc: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, 
- Sadman Fahmid <sadmanf@meta.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791400527; l=2792;
- i=sadmanf@meta.com; s=20261006; h=from:subject:message-id;
- bh=TGlOZrYN1BFG0KcNzoiID2GMDIUwqHE0DArnbupBDYs=;
- b=KU3kb7pUkikuqdy3RGrl90IRL5z9+/Rk9Hr/k+Col/wwAuO8UWIjjVTc+JHssjtdiO7QFdPqD
- dDJpYpoY7aQAPYr9uvDk6MrtAI5hAICFBPzdxYfEV/KfkhW/jd0rNs5
-X-Developer-Key: i=sadmanf@meta.com; a=ed25519;
- pk=Pc/arXJpm1RPef8qImFuHROn1p3XNX5MWSUxjZWNTa4=
-X-Endpoint-Received: by B4 Relay for sadmanf@meta.com/20261006 with auth_id=1125
+X-B4-Tracking: v=1; b=H4sIALicxmoC/22OwQ6CMBBEf8X07JKlLaKe/A/jgcJW1gglbSEaw
+ 79b1IvG40xm3sxDBPJMQexXD+Fp4sCuTyJX65Wo26o/E3CTDCFRbnAnC2DTTbYGO3APYRwG5yM
+ QmUo3uDVaFiI1B0+Wby/s8fTWYTQXquOCWhLWuw5i66n6oqPWO8RM51pphBzi3dO1OVy5H29ZW
+ s5q1y31lkN0/v66PeVy2fkwFP59mEKAUKhKWWvLpizND/Q0z/MTmZ87nw4BAAA=
+X-Change-ID: 20260925-ibmvfc-fpin-support-eeba4d08b425
+To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <mkp@kernel.org>, 
+ Tyrel Datwyler <tyreld@linux.ibm.com>
+Cc: linux-scsi@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-kernel@vger.kernel.org, Dave Marquardt <davemarq@linux.ibm.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791401146; l=11509;
+ i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
+ bh=ZxGxcG6fiMx7RIkrBFqWLFNCkZ+Evh0/21S7eO3nM4Y=;
+ b=lw28Q1lB9FxtzFwZkvEAr4Pv9diFN09nsUO6+oA6f34fFMqhqxzcDX9cPx7RSRzv71wh3eYms
+ AOlz9OsZPd9AZIFVU5gPBvrgc5QceB1gJMG0qfwMiDNi+wMYzwhH0PP
+X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
+ pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
+X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-erofs_io_xcopy() falls back to a read/pwrite loop for whatever
-copy_file_range() and sendfile() did not copy.  If the source reaches
-EOF before `len` bytes have been copied, erofs_io_read() returns 0,
-`len` never shrinks and mkfs spins forever instead of reporting the
-error.
+This patch series adds FPIN (fabric performance impact notification)
+support to the ibmvfc (IBM Virtual Fibre Channel) driver. This comes
+in three flavors:
 
-This is easy to hit with a damaged source, e.g. rebuilding with
-`mkfs.erofs --clean=data out.img src.img` where src.img is truncated
-in the middle of a file's data, or when a source file shrinks while
-mkfs runs.  Return -EIO instead.
+- basic, to recognize existing FPIN messages from the virtual I/O
+  server (VIOS) (patch 4)
+- full, supporting additional FPIN information and using its own
+  asynchronous sub-queue and interrupt (patches 6-10)
+- extended, supporting FC-LS-5 (patch 11)
 
-While at it, keep calling copy_file_range() until it has copied the
-whole range or fails.  A single call may copy less than requested
-(e.g. the kernel caps each call at MAX_RW_COUNT, just under 2 GiB,
-while callers pass chunks of up to 4 GiB), and the remainder was
-previously copied by sendfile() instead of being reflinked.
+Full and extended FPIN support requires a new asynchronous sub-queue
+with its own interrupt. The asynchronous sub-queue support requires
+ibmvfc to also support a new IBMVFC_NOOP command, which the driver
+recognizes and ignores (patch 5).
 
-Signed-off-by: Sadman Fahmid <sadmanf@meta.com>
----
-Changes in v2:
-- Use min_t(s64, len, sizeof(buf)) and int read/write result
-  variables, as suggested by Gao Xiang. Each request is bounded
-  to 32 KiB.
-- Resend only the short-read fix. Gao Xiang already applied
-  the fd-leak fix (patch 2 from v1).
-- Link to v1:
-  https://lore.kernel.org/r/20261006-round1-v1-0-f46b13e11de5@meta.com
----
- lib/io.c | 29 ++++++++++++++++-------------
- 1 file changed, 16 insertions(+), 13 deletions(-)
+The asynchronous sub-queue work is split across five patches: patch 6
+defines the necessary data structures, patches 7 and 8 add the
+interrupt and drain routines for the queue, patch 9 extends channel
+registration and deregistration to accommodate the new queue, and
+patches 1-3 fix IRQ cleanup and error handling bugs exposed during
+that work. Patch 10 wires everything together, registering the async
+sub-queue during channel initialization and advertising support to
+VIOS during NPIV login.
 
-diff --git a/lib/io.c b/lib/io.c
-index 5c5449f..ea3bcbf 100644
---- a/lib/io.c
-+++ b/lib/io.c
-@@ -642,9 +642,13 @@ int erofs_io_xcopy(struct erofs_vfile *vout, off_t pos,
- 		off_t ret __maybe_unused;
- 
- #ifdef HAVE_COPY_FILE_RANGE
--		ret = copy_file_range(vin->fd, NULL, vout->fd, &pos, len, 0);
--		if (ret > 0)
-+		while (len) {
-+			ret = copy_file_range(vin->fd, NULL, vout->fd, &pos,
-+					      len, 0);
-+			if (ret <= 0)
-+				break;
- 			len -= ret;
-+		}
- #endif
- #if defined(HAVE_SYS_SENDFILE_H) && defined(HAVE_SENDFILE)
- 		if (len && !noseek) {
-@@ -660,21 +664,20 @@ int erofs_io_xcopy(struct erofs_vfile *vout, off_t pos,
- #endif
- 	}
- 
--	do {
-+	while (len) {
- 		char buf[32768];
--		int ret = min_t(unsigned int, len, sizeof(buf));
-+		int nread = min_t(s64, len, sizeof(buf));
-+		int ret;
- 
--		ret = erofs_io_read(vin, buf, ret);
-+		nread = erofs_io_read(vin, buf, nread);
-+		if (nread <= 0)
-+			return nread < 0 ? nread : -EIO;
-+		ret = erofs_io_pwrite(vout, buf, pos, nread);
- 		if (ret < 0)
- 			return ret;
--		if (ret > 0) {
--			ret = erofs_io_pwrite(vout, buf, pos, ret);
--			if (ret < 0)
--				return ret;
--			pos += ret;
--		}
--		len -= ret;
--	} while (len);
-+		pos += nread;
-+		len -= nread;
-+	}
- 	return 0;
- }
- 
+All three modes convert an incoming FPIN message from VIOS to an FC
+extended link service message, in some cases using default values for
+information not provided by the VIOS FPIN message but expected in the
+FC ELS message. This FC ELS message is passed to fc_host_fpin_rcv for
+updating statistics and sending the information upstream by netlink
+multicast, where it may be read by listeners including the DM
+multipath daemon "multipathd."
+
+Signed-off-by: Tyrel Datwyler <tyreld@linux.ibm.com>
+Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 
 ---
-base-commit: 1c230a485f25837cb51d6fc79332f30758d9006c
-change-id: 20261006-round1-ae8882b2efc7
+Changes in v13:
+- Updated to 7.4/scsi-staging base
+- Extend ibmvfc_common_fpin_to_desc() with a severity parameter;
+  ibmvfc_ext_fpin_to_desc() now honours IBMVFC_FPIN_SEVERITY_VALID
+  and propagates the severity from the VIOS rather than always
+  defaulting to FPIN_CONGN_SEVERITY_WARNING (patch 11)
+- Handle scsi_host_get() failure in ibmvfc_get_first_vhost() (patch 4)
+- Add kernel-doc comment to ibmvfc_get_first_vhost() (patch 4)
+- Use list_for_each_entry to find an online FCP/NVMe target rport in
+  KUnit tests rather than taking the first list entry unconditionally
+  (patches 4, 7, 11)
+- Link to v12: https://patch.msgid.link/20260930-ibmvfc-fpin-support-v12-0-53a3fff7d77b@linux.ibm.com
+
+Changes in v12:
+- Wrap ibmvfc_handle_async() invocations in KUnit tests with host_lock to
+  prevent races with workqueue destruction on concurrent device removal
+  (patches 4, 7, 11)
+- Add missing scsi_host_put() in success exit path of ibmvfc_async_fpin_test()
+  (patch 4)
+- Pass resolved tgt->wwpn into ibmvfc_full_fpin_to_desc() instead of subq->wwpn
+  so FPIN descriptors are correctly populated when subq->wwpn is 0 (patch 7)
+- Fix kernel-doc comments in ibmvfc_register_channel() and
+  ibmvfc_deregister_channel() that incorrectly directed passing a negative index
+  (patch 9)
+- Fix double registration of scsi_scrqs in ibmvfc_reenable_crq_queue() by
+  registering async_scrqs instead (patch 10)
+- Link to v11: https://lore.kernel.org/linux-scsi/20260925044900.414340-1-tyreld@linux.ibm.com/
+
+Changes in v11:
+- Split the IRQ cleanup and NULL-pointer fixes out of the "register and
+  use" patch into two dedicated bug-fix patches (patches 1-2 and 1-3),
+  making the series 11 patches instead of 9
+- Replaced the single ibmvfc_queue async_sub_crq field in ibmvfc_host with
+  an ibmvfc_channels async_scrqs field, reusing the existing channel
+  infrastructure for allocation, registration, and teardown (patches 6, 9, 10)
+- Added IBMVFC_PROTO_ASYNC to enum ibmvfc_protocol; ibmvfc_register_channel()
+  and ibmvfc_deregister_channel() now dispatch on protocol rather than a
+  negative-index sentinel (patch 9)
+- Added IBMVFC_ASYNC_SUB_CRQ_FMT format enum value and corresponding
+  async_scrq pointer in union ibmvfc_msgs (patch 6)
+- ibmvfc_alloc_channels() selects IBMVFC_ASYNC_SUB_CRQ_FMT for async
+  protocol channels so queues are sized for ibmvfc_async_sub_crq entries
+  (patch 10)
+- Link to v10: https://lore.kernel.org/linux-scsi/20260911021910.1038128-1-tyreld@linux.ibm.com/
+
+Changes in v10:
+- Fix ibmvfc_find_target() to use logical and (&&) instead of logical or (||)
+  when checking whether fc and nvme remote ports are NULL (patch 4)
+- Fix build issues due to missing & operator when referencing the host lock
+  during irqsave/restore calls (patch 4, patch 7, patch 8, patch 11)
+- Fix kunit build issues caused by inclusion of code meant for later patches
+  (patch 4, patch 7, patch 11)
+- Link to v9: https://lore.kernel.org/linux-scsi/20260911021910.1038128-1-tyreld@linux.ibm.com/
+
+Changes in v9:
+- Fix ibmvfc_find_target() to check for either a valid rport or nvme_remote_port
+  so nvme targets are not silently dropped (patch 4)
+- Restore xxx_host_remove() ordering and destroy async work queue prior to these
+  calls. Check that the host is not offline prior to enqueuing new async work
+  (patch 4)
+- Link to v8: https://lore.kernel.org/linux-scsi/20260909-ibmvfc-fpin-support-v8-0-b27183b055af@linux.ibm.com
+
+Changes in v8:
+- Split patch 6 into two patches: extend channel registration/deregistration
+  for async subq (patch 9), and clear sub-CRQ IRQ on registration failure
+  and guard teardown (patch 1)
+- Fixed NULL dereference in ibmvfc_deregister_channel() when called on
+  an unallocated queue: guard memset() behind scrq->msgs.handle check
+- Fixed variable-shadowing bug in ibmvfc_register_channel() error path
+  where H_FREE_SUB_CRQ hcall result clobbered the return code
+- Deregister and re-register async sub-CRQ in ibmvfc_reenable_crq_queue()
+  and ibmvfc_reset_crq() alongside SCSI channel queues
+- Link to v7: https://patch.msgid.link/20260831-ibmvfc-fpin-support-v7-0-77d0b9809080@linux.ibm.com
+
+Changes in v7:
+- Removed CRQ valid bit clearing to callers of ibmvfc_handle_async in
+  all cases
+- Added validity checks that IBMVFC_ASYNC_ID_IS_ASSOC_ID is clear
+  before using node_name
+- Fixed error path cleanup in ibmvfc_init_sub_crqs
+- Deregister and reregister async sub-CRQ in CRQ reset and reenable
+  code.
+- Moved work queue destruction after sub CRQs teardown in ibmvfc_remove
+- Modified async event handling code to use a tagged union rather than
+  void *.
+- Use WQ_UNBOUND rather than WQ_PERCPU for fpin workqueue, as FPIN
+  events should be rare. Hold q_lock only in
+  ibmvfc_drain_async_subq(), like ibmvfc_drain_sub_crq().
+- Hardened KUnit tests to use host_lock and kref.
+- Link to v6: https://patch.msgid.link/20260817-ibmvfc-fpin-support-v6-0-62a2d525e70d@linux.ibm.com
+
+Changes in v6:
+- Use alloc_workqueue rather than devm_alloc_workqueue, and add
+  explicit destroy_workqueue calls
+- Moved ibmvfc_find_target into patch 4
+- Link to v5: https://patch.msgid.link/20260806-ibmvfc-fpin-support-v5-0-13fd6f8a8f8b@linux.ibm.com
+
+Changes in v5:
+- Incorporate changes for NVME-over-FC.
+- Removed now redundant fabric login patch.
+- Link to v4: https://patch.msgid.link/20260710-ibmvfc-fpin-support-v4-0-ef031ac19520@linux.ibm.com
+
+Changes in v4:
+- Refactored channel registration
+- Check whether async work queue is allocated before using or freeing
+- Fixed work queue allocation/destruction
+- Skip basic KUnit test when there are no ibmvfc devices available
+- Fix target not found condition in ibmvfc_process_async_work
+- Link to v3: https://patch.msgid.link/20260702-ibmvfc-fpin-support-v3-0-d95b9747cf88@linux.ibm.com
+
+Changes in v3:
+- Fixed latent bug, exposed by VFC_NOOP, related to dataless CRQs and events
+- Fixed FPIN TLV descriptor length calculations
+- Use safe list walker to walk targets in ibmvfc_process_async_work
+- Added write memory barriers after clearing CRQ valid field
+- Use per-vhost work queue for FPIN work
+- Link to v2: https://patch.msgid.link/20260608-ibmvfc-fpin-support-v2-0-d41f540fba5c@linux.ibm.com
+
+Highlights of changes in v2:
+- Refactored mostly common FPIN conversion routines and async event
+  processing into single routines with wrappers for differences.
+- Moved FPIN processing to a work queue to avoid conflicts with
+  fc_host_fpin_rcv and memory allocation
+- Set descriptor sizes correctly
+- Use target WWPN for basic FPIN descriptor
+- Split patch 4 into 3 patches, for definition, allocation, and use of
+  the asynchronous sub-queue for events
+- Link to v1: https://patch.msgid.link/20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com
+
+To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>
+To: "Martin K. Petersen" <mkp@kernel.org>
+To: Madhavan Srinivasan <maddy@linux.ibm.com>
+To: Michael Ellerman <mpe@ellerman.id.au>
+To: Nicholas Piggin <npiggin@gmail.com>
+To: "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
+To: Tyrel Datwyler <tyreld@linux.ibm.com>
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-scsi@vger.kernel.org
+Cc: linuxppc-dev@lists.ozlabs.org
+
+---
+
+Dave Marquardt (9):
+  scsi: ibmvfc: fix IRQ leak and guard deregister on channel reg failure
+  scsi: ibmvfc: add basic FPIN support
+  scsi: ibmvfc: add NOOP command support
+  scsi: ibmvfc: add FPIN extended flag and async sub-CRQ queue handle
+  scsi: ibmvfc: extend async event handlers for async sub-CRQ events
+  scsi: ibmvfc: add interrupt routine for asynchronous sub CRQ
+  scsi: ibmvfc: extend channel reg/dereg helpers for async sub-CRQ
+  scsi: ibmvfc: register and use asynchronous sub CRQ for events
+  scsi: ibmvfc: handle extended FPIN events
+
+Tyrel Datwyler (2):
+  scsi: ibmvfc: fix potential clobbering of rc after failed irq setup
+  scsi: ibmvfc: fix potential NULL pointer dereference on failed queue
+    allocation
+
+ drivers/scsi/Kconfig                 |  10 +
+ drivers/scsi/ibmvscsi/Makefile       |   1 +
+ drivers/scsi/ibmvscsi/ibmvfc-core.c  | 720 ++++++++++++++++++++++++---
+ drivers/scsi/ibmvscsi/ibmvfc.h       |  66 +++
+ drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 409 +++++++++++++++
+ 5 files changed, 1141 insertions(+), 65 deletions(-)
+ create mode 100644 drivers/scsi/ibmvscsi/ibmvfc_kunit.c
+
+--
+2.55.0
+
+---
+Dave Marquardt (9):
+      scsi: ibmvfc: fix IRQ leak and guard deregister on channel reg failure
+      scsi: ibmvfc: add basic FPIN support
+      scsi: ibmvfc: add NOOP command support
+      scsi: ibmvfc: add FPIN extended flag and async sub-CRQ queue handle
+      scsi: ibmvfc: extend async event handlers for async sub-CRQ events
+      scsi: ibmvfc: add interrupt routine for asynchronous sub CRQ
+      scsi: ibmvfc: extend channel reg/dereg helpers for async sub-CRQ
+      scsi: ibmvfc: register and use asynchronous sub CRQ for events
+      scsi: ibmvfc: handle extended FPIN events
+
+Tyrel Datwyler (2):
+      scsi: ibmvfc: fix potential clobbering of rc after failed irq setup
+      scsi: ibmvfc: fix potential NULL pointer dereference on failed queue allocation
+
+ drivers/scsi/Kconfig                 |  10 +
+ drivers/scsi/ibmvscsi/Makefile       |   1 +
+ drivers/scsi/ibmvscsi/ibmvfc-core.c  | 743 ++++++++++++++++++++++++++++++++---
+ drivers/scsi/ibmvscsi/ibmvfc.h       |  67 ++++
+ drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 444 +++++++++++++++++++++
+ 5 files changed, 1200 insertions(+), 65 deletions(-)
+---
+base-commit: c3cff7fac01638ab58e85fe7df41a04fa25c5bae
+change-id: 20260925-ibmvfc-fpin-support-eeba4d08b425
 
 Best regards,
--- 
-Sadman Fahmid <sadmanf@meta.com>
+--  
+Dave Marquardt <davemarq@linux.ibm.com>
 
