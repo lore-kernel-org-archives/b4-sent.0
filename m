@@ -1,97 +1,70 @@
-From: =?utf-8?q?Mert_Erdo=C4=9Fan?= <mrterdo75@gmail.com>
-Date: Wed, 07 Oct 2026 23:35:03 +0300
-Subject: [PATCH] platform/x86: hp-wmi: Add Victus 16-d1xxx board 8A26
- support
+From: Igor Velkov <iav@iav.lv>
+Date: Thu, 08 Oct 2026 00:55:29 +0300
+Subject: [PATCH] irqchip/meson-gpio: Allow the GPIO interrupts to wake the
+ system
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261007-hp-wmi-victus-8a26-v1-1-8a256ac14908@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMMQ6DMAxA0asgz1hyMgToVRADpKYxUgHFQCuh3
- L2Bjm/4/wTlKKzwKE6IfIjKMmeYsgAf+vnFKM9ssGSdIaowrPh5Cx7it12x7q1DYxomIj9w7SC
- Ha+RRvve07f7WfZjYb9cJUvoBh3CvX3YAAAA=
-X-Change-ID: 20261007-hp-wmi-victus-8a26-119e000cbe86
-To: Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Mert_Erdo=C4=9Fan?= <mrterdo75@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791405341; l=2869;
- i=mrterdo75@gmail.com; s=20261007; h=from:subject:message-id;
- bh=dLoxRrqavWxvmS0maWbHvPatI1qsUwE9imsXIYBNjdw=;
- b=ywgIXX4bRkk1nCLlF3MAIcXwJ2UzYUbj024tGzKFE15SyMuSSZjrprCNZoEnBP+gq/6dDzrbf
- JGXWLats0JvBUYP1ES8XmxIt28AFszM9DURrRT3EZhF/y4nnoRxjWgi
-X-Developer-Key: i=mrterdo75@gmail.com; a=ed25519;
- pk=bUOfewdT6wnBK6cWdxYDgGaI8ee0+BwtzPbg982vJP8=
-X-Endpoint-Received: by B4 Relay for mrterdo75@gmail.com/20261007 with auth_id=1127
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261008-meson-gpio-wake-v1-1-b0af1598d469@iav.lv>
+X-B4-Tracking: v=1; b=H4sIANG/xmoC/x3MQQqAIBBA0avIrBswo4iuEi3GGmuIVBQqiO6et
+ HyL/x/InIQzDOqBxKdkCb6grhTMG/mVUZZiMNp0tdY9HpyDxzVKwIt2RtdYR421hluCUsXETu7
+ /OE7v+wFOugp4YQAAAA==
+To: Thomas Gleixner <tglx@kernel.org>
+Cc: Radu Rendec <radu@rendec.net>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1395; i=iav@iav.lv;
+ h=from:subject:message-id; bh=HcsigEkp72ihfLJvHs4V//Nip0TbJcUATNxrvhUqbWw=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnH9l+apeY931DihQ7Xu415qeIblhlLWrwI2dnDb/OFV
+ UZe+F98RykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZhIVArDf4fUj2pHdd156xuD
+ Lyq5Xqv+lalXu0faTC08KDis/PbiRwx/Rc+5bVc/wa3b29O2wi5/hVP/afYFC+K+ZN3uvCgSOiG
+ BHQA=
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Victus 16-d1xxx ships with at least two DMI board names. 8A25 is
-already listed in victus_thermal_profile_boards, but 8A26 is not, so
-on those machines the driver falls back to the generic thermal policy.
-Selecting a platform profile then never issues the Victus performance
-mode WMI call (HPWMI_SET_PERFORMANCE_MODE via HPWMI_GM), and the
-firmware keeps the GPU's +15 W configurable TGP offset disabled.
+meson_gpio_irq_chip has neither .irq_set_wake nor IRQCHIP_SKIP_SET_WAKE,
+so enable_irq_wake() fails with -ENXIO for every interrupt routed through
+it. Such an interrupt cannot wake the system from suspend.
 
-Add 8A26 to the list so these machines use the same Victus thermal
-profile path as 8A25.
+Set IRQCHIP_SKIP_SET_WAKE, like the other hierarchical irqchips with a
+GIC parent. The GIC sets the same flag, so irq_chip_set_wake_parent()
+would end there anyway.
 
-Before this change I enabled the cTGP offset on this machine with a
-userspace workaround that issues the same WMI call through acpi_call
-whenever power-profiles-daemon switches profile, and I still use that
-workaround on my daily kernel until this is merged.
+Tested on ODROID-HC4 with the PCF8563 alarm interrupt routed through this
+controller: the alarm wakes the board from s2idle 4/4, and 0/1 without
+this change.
 
-Tested on a Victus by HP Laptop 16-d1xxx (board 8A26, BIOS F.22,
-RTX 3050 Laptop GPU) running 7.2.9, with the patched hp-wmi module
-built out of tree, the acpi_call workaround stopped and AC connected.
-The GPU power limit reported by nvidia-smi follows the selected
-profile, with the same values the acpi_call workaround produces:
-
-  performance  75 W
-  balanced     60 W
-  quiet        30 W
-
-Unplugging and replugging AC with the performance profile selected
-gives 20 W on battery and 75 W again on AC, again matching the
-workaround. The power source event handler reads the profile back
-from the EC without errors on both transitions.
-
-With the unpatched module and the workaround stopped, switching
-between performance and balanced leaves the limit at 60 W, so the
-change in behaviour comes from this patch.
-
-victus_thermal_profile_boards is identical in for-next and in 7.2.9,
-so the tested change is the same one-line change as below.
-
-This patch was prepared with an AI coding agent (Claude Code, using
-Claude Opus 5.5). It traced the driver's Victus code path and found
-it sends the same WMI call as my acpi_call workaround, wrote the
-change and this changelog, built the module and wrote the test
-script. I ran the test on the hardware and checked the results.
-
-Assisted-by: claude-opus-5-5
-Signed-off-by: Mert Erdoğan <mrterdo75@gmail.com>
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/platform/x86/hp/hp-wmi.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/irqchip/irq-meson-gpio.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/platform/x86/hp/hp-wmi.c b/drivers/platform/x86/hp/hp-wmi.c
-index 387f60e88..15f1e9f63 100644
---- a/drivers/platform/x86/hp/hp-wmi.c
-+++ b/drivers/platform/x86/hp/hp-wmi.c
-@@ -234,6 +234,7 @@ static const char * const omen_timed_thermal_profile_boards[] = {
- static const char * const victus_thermal_profile_boards[] = {
- 	"88F8",
- 	"8A25",
-+	"8A26",
+diff --git a/drivers/irqchip/irq-meson-gpio.c b/drivers/irqchip/irq-meson-gpio.c
+index 91a9c337fe6d..e0329ef5e4a2 100644
+--- a/drivers/irqchip/irq-meson-gpio.c
++++ b/drivers/irqchip/irq-meson-gpio.c
+@@ -538,7 +538,7 @@ static struct irq_chip meson_gpio_irq_chip = {
+ #ifdef CONFIG_SMP
+ 	.irq_set_affinity	= irq_chip_set_affinity_parent,
+ #endif
+-	.flags			= IRQCHIP_SET_TYPE_MASKED,
++	.flags			= IRQCHIP_SET_TYPE_MASKED | IRQCHIP_SKIP_SET_WAKE,
  };
  
- /* DMI board-specific feature data for Omen and Victus laptops. */
+ static int meson_gpio_irq_domain_translate(struct irq_domain *domain,
 
 ---
-base-commit: 98f039265e580291d5e76a11b2072541fbb1c393
-change-id: 20261007-hp-wmi-victus-8a26-119e000cbe86
+base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
+change-id: 20261008-meson-gpio-wake-f3bfa3bb2e5a
 
 Best regards,
---  
-Mert Erdoğan <mrterdo75@gmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
