@@ -1,13 +1,14 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Wed, 07 Oct 2026 09:41:21 +0900
-Subject: [PATCH 2/2] ext4: track zeroed out blocks of unwritten extents for
- fast commit
+Date: Wed, 07 Oct 2026 09:41:31 +0900
+Subject: [PATCH] ext4: skip holes when shrinking the extent tree in fast
+ commit replay
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261007-ext4-fc-zeroout-v1-2-b86de6439431@samsung.com>
-References: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
-In-Reply-To: <20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com>
+Message-Id: <20261007-ext4-fc-replay-shrink-v1-1-0e45fc03030d@samsung.com>
+X-B4-Tracking: v=1; b=H4sIADqVxWoC/x3MQQqEMAxA0atI1hNog5bqVWQW0kltmKFKKqKId
+ 7fM8i3+v6CwChcYmguUdymy5Ar7aiCkKc+M8qkGMuSsMQ752FqMAZXX33RiSSr5i6Gl3ntPZDs
+ HtV2Voxz/7/i+7wftP2+UZwAAAA==
 To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>, 
  Baokun Li <libaokun@linux.alibaba.com>, 
@@ -18,113 +19,80 @@ Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791333679; l=4004;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791333690; l=3028;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=d9SheBZRfYCrMhVNszvP5FRUiKvPyhSXBHKUCm3sE90=;
- b=Oe6J+czpj47YiaLfNZjCZv0tPnykP9GJOHM9ggfO02ilZpNnHomn97vqUrbkn5Hzqa6NXBtc3
- bW0jcDov+XrD0dth0L+cWJBb+DawZSQNDhxwUNKrh/L37CHjfyhAOyl
+ bh=9d0ePU+Z2uVyA8ZMCH2z+JohIkqRKRBLCKpFRrYMEkk=;
+ b=uWk7CtWrwT45KwH64V76BnKJKrIrm5YwsyJfQn+gDU9NDiYld9yipQob6eDY+B1Tr4smMo4N2
+ VG9HSFKxMWtCYvcLzIVVIyQKowYdqmp8vTjWYPxFQvUDDXQcgDurOkj
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When ext4_ext_convert_to_initialized() converts part of an unwritten
-extent, it may zero out the blocks before and after that range (a side
-only if it fits together with the range in s_extent_max_zeroout_kb,
-32 KiB by default, and the extent lies within i_size) and convert them
-to written together with it, instead of splitting them off.
-ext4_split_extent() zeroes out and converts the whole extent when a
-split fails with -ENOSPC, -EDQUOT or -ENOMEM. In both cases
-ext4_map_blocks() reports only the mapped range to fast commit, so the
-other converted blocks are not tracked.
+ext4_ext_replay_shrink_inode() walks the extents of an inode from block
+0 up to the given end and tries to merge each one with its neighbours.
+When the walk is in a hole that follows an extent, ext4_find_extent()
+returns that extent, and the walk moves on by a single block. Replay
+calls it up to i_size after every ADD_RANGE and DEL_RANGE tag, so the
+time recovery takes is proportional to the number of tags times the
+number of hole blocks below i_size.
 
-A later write to one of those blocks overwrites a written block in
-place. That changes no mapping and is not tracked either, so the next
-fsync is a fast commit that logs the inode but no range for the block.
-After a crash, replay starts from the last full commit, where the block
-is still part of an unwritten extent, and the fsynced data reads back
-as zeroes. Fast commit tracks one [min, max] range per inode, so this
-shows only when no other block beyond the zeroed ones was tracked in
-the same commit, which makes it easy to miss.
+After a crash, mount can be busy for minutes. Replaying a single
+ADD_RANGE tag, for one block written and fsynced in a sparse file with
+a 1 TiB i_size, kept mount busy for 157 seconds. Replaying four fast
+commits of a sparse file with 512 written regions (2048 ADD_RANGE tags,
+and 2044 DEL_RANGE tags for the gaps between them) took 44 seconds when
+the file was 64 MiB and 177 seconds when it was 256 MiB. With this
+change the 1 TiB case takes less than 0.1 seconds, and the other two 3
+seconds each.
 
-The first conversion runs when writes allocate through ext4_map_blocks()
-with EXT4_GET_BLOCKS_CREATE, for example with -o nodelalloc,
--o dioread_lock or DAX. On a 4 KiB block file system made with
--O fast_commit and mounted with -o nodelalloc,commit=60:
+When the walk is in such a hole, continue at the next extent, as
+returned by ext4_ext_next_allocated_block(), or stop if there is none.
+For each block skipped this way, the old walk found the same extent
+again and retried the same merges, so the resulting tree is the same.
 
-  fallocate -l 32k f; sync      # blocks 0-7 unwritten
-  write block 0; fsync f        # zeroes out 1-7, tracks only 0
-  write block 2; fsync f        # in place, nothing tracked
-  crash (kill the VM), mount    # fast commit replay
-  block 2 reads back as zeroes
-
-Track the zeroed out blocks in ext4_zeroout_es(), and the whole extent
-in ext4_split_extent_zeroout() when it converts one to written. Both run
-under i_data_sem, as fast commit tracking already does when
-ext4_ext_dirty() changes an extent kept in the inode (through
-ext4_mark_inode_dirty()).
-
-Fixes: aa75f4d3daae ("ext4: main fast-commit commit path")
-Cc: stable@vger.kernel.org # 7.0.x
+Fixes: 8016e29f4362 ("ext4: fast commit recovery path")
+Cc: stable@vger.kernel.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/ext4/extents.c | 21 ++++++++++++++++++---
- 1 file changed, 18 insertions(+), 3 deletions(-)
+Tested in QEMU on ext4 dev 9091c97be340 with a 2 GiB file-backed virtio
+disk and 4 KiB blocks, crashing by killing QEMU and timing mount(8).
+Every fsynced block was verified and e2fsck -fn was clean in each run.
+A 1 GiB file with 40 such fast commits (20480 ADD_RANGE and 20440
+DEL_RANGE tags) took 31.5 seconds with this change. xfstests ext4/044
+ext4/045 generic/455 generic/456 generic/482 with -O fast_commit give
+the same results as without it (generic/455 fails on both, at different
+marks).
+
+The walk still visits every extent from block 0 for each tag. Bounding
+it to the extents around the tag's range, or shrinking once per inode at
+the end of replay, could be a follow-up.
+---
+ fs/ext4/extents.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d65e30f3c1..3b45b55931 100644
+index 836396ea79..df7e1ccb94 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -3149,7 +3149,8 @@ void ext4_ext_release(struct super_block *sb)
- #endif
- }
- 
--static void ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
-+static void ext4_zeroout_es(handle_t *handle, struct inode *inode,
-+			    struct ext4_extent *ex)
- {
- 	ext4_lblk_t  ee_block;
- 	ext4_fsblk_t ee_pblock;
-@@ -3164,6 +3165,12 @@ static void ext4_zeroout_es(struct inode *inode, struct ext4_extent *ex)
- 
- 	ext4_es_insert_extent(inode, ee_block, ee_len, ee_pblock,
- 			      EXTENT_STATUS_WRITTEN, false);
-+	/*
-+	 * The zeroed out blocks became written together with the mapped
-+	 * range, but ext4_map_blocks() reports only the mapped range to fast
-+	 * commit.
-+	 */
-+	ext4_fc_track_range(handle, inode, ee_block, ee_block + ee_len - 1);
- }
- 
- /* FIXME!! we need to try to merge to left or right after zero-out  */
-@@ -3400,6 +3407,14 @@ static int ext4_split_extent_zeroout(handle_t *handle, struct inode *inode,
- 	if (err)
- 		return err;
- 
-+	/*
-+	 * The whole extent is written now, not only the range in @map that
-+	 * ext4_map_blocks() reports to fast commit.
-+	 */
-+	if (flags & EXT4_GET_BLOCKS_CONVERT)
-+		ext4_fc_track_range(handle, inode, ee_block,
-+				    ee_block + ee_len - 1);
-+
- 	return 0;
- }
- 
-@@ -3790,8 +3805,8 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
- 		return path;
- out:
- 	/* If we have gotten a failure, don't zero out status tree */
--	ext4_zeroout_es(inode, &zero_ex1);
--	ext4_zeroout_es(inode, &zero_ex2);
-+	ext4_zeroout_es(handle, inode, &zero_ex1);
-+	ext4_zeroout_es(handle, inode, &zero_ex2);
- 	return path;
- 
- errout:
+@@ -6217,8 +6217,10 @@ void ext4_ext_replay_shrink_inode(struct inode *inode, ext4_lblk_t end)
+ 		}
+ 		old_cur = cur;
+ 		cur = le32_to_cpu(ex->ee_block) + ext4_ext_get_actual_len(ex);
++		/* ex ends before old_cur, which is in a hole: skip the hole */
+ 		if (cur <= old_cur)
+-			cur = old_cur + 1;
++			cur = max(old_cur + 1,
++				  ext4_ext_next_allocated_block(path));
+ 		ext4_ext_try_to_merge(NULL, inode, path, ex);
+ 		down_write(&EXT4_I(inode)->i_data_sem);
+ 		ext4_ext_dirty(NULL, inode, &path[path->p_depth]);
 
+---
+base-commit: 9091c97be34083587a75db174aab51551d8e8543
+change-id: 20261006-ext4-fc-replay-shrink-c42988822156
+
+Best regards,
 -- 
-2.43.0
+Daejun Park <daejun7.park@samsung.com>
 
