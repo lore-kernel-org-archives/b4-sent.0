@@ -1,12 +1,12 @@
 From: Igor Velkov <iav@iav.lv>
-Date: Thu, 08 Oct 2026 00:55:29 +0300
+Date: Thu, 08 Oct 2026 00:55:32 +0300
 Subject: [PATCH] irqchip/meson-gpio: Allow the GPIO interrupts to wake the
  system
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-meson-gpio-wake-v1-1-b0af1598d469@iav.lv>
-X-B4-Tracking: v=1; b=H4sIANG/xmoC/x3MQQqAIBBA0avIrBswo4iuEi3GGmuIVBQqiO6et
+Message-Id: <20261008-meson-gpio-wake-v1-1-fec8a1f5d830@iav.lv>
+X-B4-Tracking: v=1; b=H4sIANO/xmoC/x3MQQqAIBBA0avIrBswo4iuEi3GGmuIVBQqiO6et
  HyL/x/InIQzDOqBxKdkCb6grhTMG/mVUZZiMNp0tdY9HpyDxzVKwIt2RtdYR421hluCUsXETu7
  /OE7v+wFOugp4YQAAAA==
 To: Thomas Gleixner <tglx@kernel.org>
@@ -19,10 +19,10 @@ Cc: Radu Rendec <radu@rendec.net>,
 X-Mailer: b4 0.13.0
 X-Developer-Signature: v=1; a=openpgp-sha256; l=1395; i=iav@iav.lv;
  h=from:subject:message-id; bh=HcsigEkp72ihfLJvHs4V//Nip0TbJcUATNxrvhUqbWw=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnH9l+apeY931DihQ7Xu415qeIblhlLWrwI2dnDb/OFV
- UZe+F98RykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZhIVArDf4fUj2pHdd156xuD
- Lyq5Xqv+lalXu0faTC08KDis/PbiRwx/Rc+5bVc/wa3b29O2wi5/hVP/afYFC+K+ZN3uvCgSOiG
- BHQA=
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnH9l/pZ85tm2nLyu50TOLVtKnaz3tEPY70ltbM+qZpI
+ G+b73y8o5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAEzkYCjDf/d/t1oNFjL82nnr
+ j23GvtndbQwHt6mkNZfs/CZ3MPv/xBcM/4wmNt1m03hw8uOFju43ef4LLzStXt9Qv1fLaO+EppJ
+ psswA
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
