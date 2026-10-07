@@ -1,75 +1,119 @@
-From: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
-Date: Wed, 07 Oct 2026 09:34:16 -0500
-Subject: [PATCH] iio: accel: adxl345: select IIO_BUFFER and IIO_KFIFO_BUF
+From: Sadman Fahmid <sadmanf@meta.com>
+Date: Wed, 07 Oct 2026 15:15:26 -0400
+Subject: [PATCH v2] erofs-utils: lib: fail instead of hanging on short
+ reads in erofs_io_xcopy()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261007-fix-adxl345-buffer-deps-review-v1-1-0c94c8d0443a@JohnDeere.com>
-X-B4-Tracking: v=1; b=H4sIAGdYxmoC/x2Nyw6CMBAAf4Xs2Y1tBYz+ivGwbbewiRay9UFC+
- HeLxznMzAqFVbjAtVlB+SNFplzBHhoII+WBUWJlcMb11pgzJlmQ4vI4tR36d0qsGHkuuMv8xf5
- CzrZsuhgIamRWrsZ/cLtX9lQYvVIO456dVAbJxyeVFyts2w8mY0JckAAAAA==
-To: Jonathan Cameron <jic23@kernel.org>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Michael Hennerich <Michael.Hennerich@analog.com>
-Cc: David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Lothar Rubusch <l.rubusch@gmail.com>, 
- linux@analog.com, linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+Message-Id: <20261007-round1-v2-1-3ffc17bb9028@meta.com>
+X-B4-Tracking: v=1; b=H4sIAE2axmoC/2XMQQ7CIBCF4as0sxbDoCJx1XuYLigMdhYtBirRN
+ Nxd7Nbl//LybZApMWW4dRskKpw5Li3UoQM32eVBgn1rUFJplFKLFF+LR2HJGKNGRcFdoZ2fiQK
+ /d+g+tJ44rzF9drfgb/0jCgopwlmPeCJET5d+ptUeXZxhqLV+AR8zXUubAAAA
+In-Reply-To: <20261006-round1-v1-0-f46b13e11de5@meta.com>
+References: <20261006-round1-v1-0-f46b13e11de5@meta.com>
+To: linux-erofs@lists.ozlabs.org
+Cc: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, 
+ Sadman Fahmid <sadmanf@meta.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791383655; l=1713;
- i=BouziguesAlexis@JohnDeere.com; s=20260527; h=from:subject:message-id;
- bh=s/yXKM6ln4x9Rm+hNY2FnXFaP1MQgX8qNBneutc4oYU=;
- b=aKlLVve0fWP0+XrcqwgW4kxbyVmfM7iWxiONstwX/yYmAoM9Vnsb6im4zKzYpqzsY7/1IodZR
- ew04scKnQPeBoJlKi9+E3W8zZHbppfifc9IefWhq9uJNUqbYHG4ePB5
-X-Developer-Key: i=BouziguesAlexis@JohnDeere.com; a=ed25519;
- pk=5KJ7ArL00x5flpPhi9zRLC2p88V1rZXDQ5SXhpRvTDk=
-X-Endpoint-Received: by B4 Relay for BouziguesAlexis@JohnDeere.com/20260527 with auth_id=797
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791400527; l=2792;
+ i=sadmanf@meta.com; s=20261006; h=from:subject:message-id;
+ bh=TGlOZrYN1BFG0KcNzoiID2GMDIUwqHE0DArnbupBDYs=;
+ b=KU3kb7pUkikuqdy3RGrl90IRL5z9+/Rk9Hr/k+Col/wwAuO8UWIjjVTc+JHssjtdiO7QFdPqD
+ dDJpYpoY7aQAPYr9uvDk6MrtAI5hAICFBPzdxYfEV/KfkhW/jd0rNs5
+X-Developer-Key: i=sadmanf@meta.com; a=ed25519;
+ pk=Pc/arXJpm1RPef8qImFuHROn1p3XNX5MWSUxjZWNTa4=
+X-Endpoint-Received: by B4 Relay for sadmanf@meta.com/20261006 with auth_id=1125
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since the addition of FIFO watermark support, adxl345_core.c calls
-devm_iio_kfifo_buffer_setup() and iio_push_to_buffers(), but the
-ADXL345 Kconfig entry does not select IIO_BUFFER and IIO_KFIFO_BUF.
-Building with CONFIG_ADXL345_I2C=y and CONFIG_IIO_BUFFER=n fails to
-link:
+erofs_io_xcopy() falls back to a read/pwrite loop for whatever
+copy_file_range() and sendfile() did not copy.  If the source reaches
+EOF before `len` bytes have been copied, erofs_io_read() returns 0,
+`len` never shrinks and mkfs spins forever instead of reporting the
+error.
 
-  ld: drivers/iio/accel/adxl345_core.o: in function `adxl345_irq_handler':
-  adxl345_core.c:(.text+0x145c): undefined reference to `iio_push_to_buffers'
-  ld: drivers/iio/accel/adxl345_core.o: in function `adxl345_core_probe':
-  adxl345_core.c:(.text+0x1db6): undefined reference to `devm_iio_kfifo_buffer_setup_ext'
+This is easy to hit with a damaged source, e.g. rebuilding with
+`mkfs.erofs --clean=data out.img src.img` where src.img is truncated
+in the middle of a file's data, or when a source file shrinks while
+mkfs runs.  Return -EIO instead.
 
-Add the missing selects on the hidden ADXL345 core symbol, as done for
-ADXL367, ADXL372 and ADXL380, so both the I2C and SPI front-ends are
-covered.
+While at it, keep calling copy_file_range() until it has copied the
+whole range or fails.  A single call may copy less than requested
+(e.g. the kernel caps each call at MAX_RW_COUNT, just under 2 GiB,
+while callers pass chunks of up to 4 GiB), and the remainder was
+previously copied by sendfile() instead of being reflinked.
 
-Fixes: cf04212d1fe7 ("iio: accel: adxl345: add FIFO with watermark events")
-Assisted-by: LLM
-Signed-off-by: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+Signed-off-by: Sadman Fahmid <sadmanf@meta.com>
 ---
-Add the buffer selections required by the ADXL345 FIFO support.
-The shared core symbol covers both I2C and SPI frontends.
+Changes in v2:
+- Use min_t(s64, len, sizeof(buf)) and int read/write result
+  variables, as suggested by Gao Xiang. Each request is bounded
+  to 32 KiB.
+- Resend only the short-read fix. Gao Xiang already applied
+  the fd-leak fix (patch 2 from v1).
+- Link to v1:
+  https://lore.kernel.org/r/20261006-round1-v1-0-f46b13e11de5@meta.com
 ---
- drivers/iio/accel/Kconfig | 2 ++
- 1 file changed, 2 insertions(+)
+ lib/io.c | 29 ++++++++++++++++-------------
+ 1 file changed, 16 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/iio/accel/Kconfig b/drivers/iio/accel/Kconfig
-index 4094299e2ed8..fc130854af71 100644
---- a/drivers/iio/accel/Kconfig
-+++ b/drivers/iio/accel/Kconfig
-@@ -61,6 +61,8 @@ config ADXL313_SPI
+diff --git a/lib/io.c b/lib/io.c
+index 5c5449f..ea3bcbf 100644
+--- a/lib/io.c
++++ b/lib/io.c
+@@ -642,9 +642,13 @@ int erofs_io_xcopy(struct erofs_vfile *vout, off_t pos,
+ 		off_t ret __maybe_unused;
  
- config ADXL345
- 	tristate
-+	select IIO_BUFFER
-+	select IIO_KFIFO_BUF
+ #ifdef HAVE_COPY_FILE_RANGE
+-		ret = copy_file_range(vin->fd, NULL, vout->fd, &pos, len, 0);
+-		if (ret > 0)
++		while (len) {
++			ret = copy_file_range(vin->fd, NULL, vout->fd, &pos,
++					      len, 0);
++			if (ret <= 0)
++				break;
+ 			len -= ret;
++		}
+ #endif
+ #if defined(HAVE_SYS_SENDFILE_H) && defined(HAVE_SENDFILE)
+ 		if (len && !noseek) {
+@@ -660,21 +664,20 @@ int erofs_io_xcopy(struct erofs_vfile *vout, off_t pos,
+ #endif
+ 	}
  
- config ADXL345_I2C
- 	tristate "Analog Devices ADXL345 3-Axis Digital Accelerometer I2C Driver"
+-	do {
++	while (len) {
+ 		char buf[32768];
+-		int ret = min_t(unsigned int, len, sizeof(buf));
++		int nread = min_t(s64, len, sizeof(buf));
++		int ret;
+ 
+-		ret = erofs_io_read(vin, buf, ret);
++		nread = erofs_io_read(vin, buf, nread);
++		if (nread <= 0)
++			return nread < 0 ? nread : -EIO;
++		ret = erofs_io_pwrite(vout, buf, pos, nread);
+ 		if (ret < 0)
+ 			return ret;
+-		if (ret > 0) {
+-			ret = erofs_io_pwrite(vout, buf, pos, ret);
+-			if (ret < 0)
+-				return ret;
+-			pos += ret;
+-		}
+-		len -= ret;
+-	} while (len);
++		pos += nread;
++		len -= nread;
++	}
+ 	return 0;
+ }
+ 
 
 ---
-base-commit: 7b63ef2d55f24519e7e9e5f4d15dbea03f126e40
-change-id: 20261007-fix-adxl345-buffer-deps-review-69a214e05dca
+base-commit: 1c230a485f25837cb51d6fc79332f30758d9006c
+change-id: 20261006-round1-ae8882b2efc7
 
 Best regards,
 -- 
-Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+Sadman Fahmid <sadmanf@meta.com>
 
