@@ -1,113 +1,75 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Wed, 07 Oct 2026 18:31:53 +0800
-Subject: [PATCH v2 2/2] media: i2c: it6625: allow 250 ms for host control
- requests to complete
+From: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+Date: Wed, 07 Oct 2026 09:34:16 -0500
+Subject: [PATCH] iio: accel: adxl345: select IIO_BUFFER and IIO_KFIFO_BUF
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261007-upstream-it6625-reset-delay-v2-2-c5d6b2522bbe@ite.com.tw>
-References: <20261007-upstream-it6625-reset-delay-v2-0-c5d6b2522bbe@ite.com.tw>
-In-Reply-To: <20261007-upstream-it6625-reset-delay-v2-0-c5d6b2522bbe@ite.com.tw>
-To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Hans Verkuil <hverkuil+cisco@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Hermes Wu <Hermes.wu@ite.com.tw>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791369112; l=3513;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=6uZOr3QVwYGOfofYdEgdRcxELwJIKpUkYV2QbBd6d48=;
- b=bqKrhecQLEwwIE6XQiugP6/gPcnbzw9SsE73/P2ecneCcgotJEhTtBBdD9BKkeQQxYbz/Evic
- a6HwHrCHEksABpg9+LWPRYNtdR+DV6qrLeHbKW36+Cla0hCseP/Gw+l
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+Message-Id: <20261007-fix-adxl345-buffer-deps-review-v1-1-0c94c8d0443a@JohnDeere.com>
+X-B4-Tracking: v=1; b=H4sIAGdYxmoC/x2Nyw6CMBAAf4Xs2Y1tBYz+ivGwbbewiRay9UFC+
+ HeLxznMzAqFVbjAtVlB+SNFplzBHhoII+WBUWJlcMb11pgzJlmQ4vI4tR36d0qsGHkuuMv8xf5
+ CzrZsuhgIamRWrsZ/cLtX9lQYvVIO456dVAbJxyeVFyts2w8mY0JckAAAAA==
+To: Jonathan Cameron <jic23@kernel.org>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>
+Cc: David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Lothar Rubusch <l.rubusch@gmail.com>, 
+ linux@analog.com, linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791383655; l=1713;
+ i=BouziguesAlexis@JohnDeere.com; s=20260527; h=from:subject:message-id;
+ bh=s/yXKM6ln4x9Rm+hNY2FnXFaP1MQgX8qNBneutc4oYU=;
+ b=aKlLVve0fWP0+XrcqwgW4kxbyVmfM7iWxiONstwX/yYmAoM9Vnsb6im4zKzYpqzsY7/1IodZR
+ ew04scKnQPeBoJlKi9+E3W8zZHbppfifc9IefWhq9uJNUqbYHG4ePB5
+X-Developer-Key: i=BouziguesAlexis@JohnDeere.com; a=ed25519;
+ pk=5KJ7ArL00x5flpPhi9zRLC2p88V1rZXDQ5SXhpRvTDk=
+X-Endpoint-Received: by B4 Relay for BouziguesAlexis@JohnDeere.com/20260527 with auth_id=797
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Host requests to the on-chip MCU (commands, config updates, info-block
-bank switches, CEC transmits) are acknowledged by the MCU clearing
-REG_HOST_CTRL_INT. While the MCU is busy handling the HDMI input, this
-can take up to 150 ms, but the driver only polls for 25 ms. The request
-then times out even though the MCU completes it shortly after, and the
-caller fails or continues with stale state.
+Since the addition of FIFO watermark support, adxl345_core.c calls
+devm_iio_kfifo_buffer_setup() and iio_push_to_buffers(), but the
+ADXL345 Kconfig entry does not select IIO_BUFFER and IIO_KFIFO_BUF.
+Building with CONFIG_ADXL345_I2C=y and CONFIG_IIO_BUFFER=n fails to
+link:
 
-Raise the timeout for all host control requests to 250 ms, which
-covers the worst case with some margin, using a single named constant
-instead of the open-coded value.
+  ld: drivers/iio/accel/adxl345_core.o: in function `adxl345_irq_handler':
+  adxl345_core.c:(.text+0x145c): undefined reference to `iio_push_to_buffers'
+  ld: drivers/iio/accel/adxl345_core.o: in function `adxl345_core_probe':
+  adxl345_core.c:(.text+0x1db6): undefined reference to `devm_iio_kfifo_buffer_setup_ext'
 
-Fixes: 142e5f00bd57 ("media: i2c: add driver for ITE IT6625/IT6626")
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+Add the missing selects on the hidden ADXL345 core symbol, as done for
+ADXL367, ADXL372 and ADXL380, so both the I2C and SPI front-ends are
+covered.
+
+Fixes: cf04212d1fe7 ("iio: accel: adxl345: add FIFO with watermark events")
+Assisted-by: LLM
+Signed-off-by: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
 ---
- drivers/media/i2c/it6625.c | 20 +++++++++++++++-----
- 1 file changed, 15 insertions(+), 5 deletions(-)
+Add the buffer selections required by the ADXL345 FIFO support.
+The shared core symbol covers both I2C and SPI frontends.
+---
+ drivers/iio/accel/Kconfig | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/media/i2c/it6625.c b/drivers/media/i2c/it6625.c
-index fc8b22cc1c9ba3612f9c55bea1de61fa9a9c0e84..58d58d40035547e85a7f868777b57276a90a9d93 100644
---- a/drivers/media/i2c/it6625.c
-+++ b/drivers/media/i2c/it6625.c
-@@ -212,6 +212,11 @@ MODULE_PARM_DESC(debug, "debug level (0-3)");
- #define B_CEC_SEND_DATA BIT(5)
- #define B_CONFIG_UPDATE BIT(6)
- #define B_IF_BANK BIT(7)
-+/*
-+ * The MCU can take up to 150 ms to clear REG_HOST_CTRL_INT while it is
-+ * busy handling the HDMI input; allow 250 ms to leave some margin.
-+ */
-+#define IT6625_HOST_CTRL_TIMEOUT_MS 250
+diff --git a/drivers/iio/accel/Kconfig b/drivers/iio/accel/Kconfig
+index 4094299e2ed8..fc130854af71 100644
+--- a/drivers/iio/accel/Kconfig
++++ b/drivers/iio/accel/Kconfig
+@@ -61,6 +61,8 @@ config ADXL313_SPI
  
- #define REG_MCU_INTERRUPT 0xFF
- #define B_SYS_INT_ACTIVE BIT(0)
-@@ -530,7 +535,8 @@ static void it6625_write_command(struct it6625 *it6625, u8 *cmds, int cmd_len)
- {
- 	it6625_write_bytes(it6625, REG_CMD_SET, cmds, cmd_len);
- 	it6625_write_byte(it6625, REG_HOST_CTRL_INT, B_CMD_SET);
--	it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00, 25);
-+	it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00,
-+			       IT6625_HOST_CTRL_TIMEOUT_MS);
- }
+ config ADXL345
+ 	tristate
++	select IIO_BUFFER
++	select IIO_KFIFO_BUF
  
- static int it6625_update_config(struct it6625 *it6625)
-@@ -542,7 +548,8 @@ static int it6625_update_config(struct it6625 *it6625)
- 	if (err < 0)
- 		return err;
- 
--	return it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00, 25);
-+	return it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00,
-+				      IT6625_HOST_CTRL_TIMEOUT_MS);
- }
- 
- static int it6625_set_bank(struct it6625 *it6625, u8 bank)
-@@ -557,7 +564,8 @@ static int it6625_set_bank(struct it6625 *it6625, u8 bank)
- 	if (err < 0)
- 		return err;
- 
--	return it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00, 25);
-+	return it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00,
-+				      IT6625_HOST_CTRL_TIMEOUT_MS);
- }
- 
- static inline bool is_hdmi(struct it6625 *it6625)
-@@ -1027,7 +1035,8 @@ static int it6625_initial_setup(struct it6625 *it6625)
- 	if (err)
- 		return err;
- 
--	return it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00, 25);
-+	return it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00,
-+				      IT6625_HOST_CTRL_TIMEOUT_MS);
- }
- 
- static int it6625_cec_adap_enable(struct cec_adapter *adap, bool enable)
-@@ -1084,7 +1093,8 @@ static int it6625_cec_adap_transmit(struct cec_adapter *adap, u8 attempts,
- 	it6625_write_bytes(it6625, REG_CEC_TX_DATA, msg->msg, msg->len);
- 	it6625_write_byte(it6625, REG_CEC_TX_DATA_LEN, msg->len);
- 	it6625_set_bits(it6625, REG_HOST_CTRL_INT, B_CEC_SEND_DATA, B_CEC_SEND_DATA);
--	it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00, 25);
-+	it6625_wait_for_status(it6625, REG_HOST_CTRL_INT, 0x00,
-+			       IT6625_HOST_CTRL_TIMEOUT_MS);
- 
- 	return 0;
- }
+ config ADXL345_I2C
+ 	tristate "Analog Devices ADXL345 3-Axis Digital Accelerometer I2C Driver"
 
+---
+base-commit: 7b63ef2d55f24519e7e9e5f4d15dbea03f126e40
+change-id: 20261007-fix-adxl345-buffer-deps-review-69a214e05dca
+
+Best regards,
 -- 
-2.34.1
+Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
 
