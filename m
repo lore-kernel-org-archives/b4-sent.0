@@ -1,14 +1,12 @@
 From: Michael Reeves <michael.reeves077@gmail.com>
-Subject: [PATCH 0/2] arm64: Add support for Apple M3 and M4 CPUs in KVM
-Date: Thu, 08 Oct 2026 23:15:39 +1100
-Message-Id: <20261008-apple-m3-m4-kvm-v1-0-7bb4cbf3d63b@gmail.com>
+Date: Thu, 08 Oct 2026 23:15:40 +1100
+Subject: [PATCH 1/2] arm64: Add Apple M3 and M4 CPU part numbers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGuJx2oC/yWMyw6DIBBFf8XMupMiGvv4laYLBsZKW5CANU2M/
- y7o8tzHWSBxtJzgXi0QebbJjj5DfapAD8q/GK3JDFLIrhbiiiqEL6Nr0LX4mR3ShW4kuWlJG8i
- vELm3/934eB6cfvRmPRVNWZBKjBSV10OJTFT9dD60uzDXsK4bk1jkupoAAAA=
-X-Change-ID: 20261008-apple-m3-m4-kvm-b7b9b2e34bcd
+Message-Id: <20261008-apple-m3-m4-kvm-v1-1-7bb4cbf3d63b@gmail.com>
+References: <20261008-apple-m3-m4-kvm-v1-0-7bb4cbf3d63b@gmail.com>
+In-Reply-To: <20261008-apple-m3-m4-kvm-v1-0-7bb4cbf3d63b@gmail.com>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>, 
  Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
  Mark Rutland <mark.rutland@arm.com>
@@ -22,47 +20,65 @@ Cc: Myria Sarvay <myrialsarvay@gmail.com>,
  asahi@lists.linux.dev, linux-kernel@vger.kernel.org, 
  Michael Reeves <michael.reeves077@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791461739; l=982;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791461740; l=2684;
  i=michael.reeves077@gmail.com; s=20261008-m3-m4-kvm;
- h=from:subject:message-id; bh=4ODUPMV03VdBemqJmmhvAVMXz/2NymhIvG+Z8fEazdk=;
- b=k9godCQ6k6IjLO6XtMj7BaWGkvsuz4j44cDDnNlgk3dwYIILYaqrFQ97KPhtRllK9LFE+rJd8
- 0aEIs/00G9xCt0t6+sdBFeJJ0xjg+9U/gDMEq966ZXDfR7WTihdCdDr
+ h=from:subject:message-id; bh=PEdWG9ncjIcAyWnZOURiTkm/6ky2y2vMSIKvBUKuJzk=;
+ b=cmRFNqs17RvnRnCr7VfpE/rtJU8SOHUN/kqOC8PGveztbckVISV2jz1woxdxz6iL7lF+i2/6x
+ eaXweQ+BZRiBOjN4iboqPrHRG9JyfT9bHQEBHADO2bdLppMOxGrykcL
 X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
  pk=oi7WuppQ1A+qFZp9DdfIwDnpC3WZ+XY6fJK1upV/CSY=
 X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20261008-m3-m4-kvm with auth_id=1131
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+From: Myria Sarvay <myrialsarvay@gmail.com>
 
-This series enables KVM support on Apple Silicon M3 series and base M4
-CPUs.
+Add CPU part numbers and MIDR definitions for M3, M3 Pro, M3 Max and
+base M4 so CPU workarounds can identify these cores.
 
-The first patch adds the part numbers and MIDR definitions for M3
-(base, Pro and Max) and base M4 CPU cores.
+Separate M4 core codenames are not known, so use the SoC codename with
+ECORE and PCORE suffixes.
 
-The second patch adds these CPUs to the existing Apple CPU workarounds
-list, which is required for KVM to function correctly.
-
-This series was developed from testing on:
-- Apple M3 and M3 Pro by Michael Reeves
-- Apple M3 Max by Myria Sarvay and Yureka Lilian
-- Apple M4 by Yureka Lilian
-
+Signed-off-by: Myria Sarvay <myrialsarvay@gmail.com>
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
-Michael Reeves (1):
-      arm64: Apply existing Apple CPU workarounds to M3 and M4
-
-Myria Sarvay (1):
-      arm64: Add Apple M3 and M4 CPU part numbers
-
  arch/arm64/include/asm/cputype.h | 16 ++++++++++++++++
- arch/arm64/kernel/cpu_errata.c   |  8 ++++++++
- 2 files changed, 24 insertions(+)
----
-base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
-change-id: 20261008-apple-m3-m4-kvm-b7b9b2e34bcd
+ 1 file changed, 16 insertions(+)
 
-Best regards,
---  
-Michael Reeves <michael.reeves077@gmail.com>
+diff --git a/arch/arm64/include/asm/cputype.h b/arch/arm64/include/asm/cputype.h
+index 1fa29616e..ca44c354c 100644
+--- a/arch/arm64/include/asm/cputype.h
++++ b/arch/arm64/include/asm/cputype.h
+@@ -155,6 +155,14 @@
+ #define APPLE_CPU_PART_M2_AVALANCHE_PRO	0x035
+ #define APPLE_CPU_PART_M2_BLIZZARD_MAX	0x038
+ #define APPLE_CPU_PART_M2_AVALANCHE_MAX	0x039
++#define APPLE_CPU_PART_M3_SAWTOOTH	0x042
++#define APPLE_CPU_PART_M3_EVEREST	0x043
++#define APPLE_CPU_PART_M3_SAWTOOTH_PRO	0x044
++#define APPLE_CPU_PART_M3_EVEREST_PRO	0x045
++#define APPLE_CPU_PART_M3_SAWTOOTH_MAX	0x048
++#define APPLE_CPU_PART_M3_EVEREST_MAX	0x049
++#define APPLE_CPU_PART_M4_DONAN_ECORE	0x052
++#define APPLE_CPU_PART_M4_DONAN_PCORE	0x053
+ 
+ #define AMPERE_CPU_PART_AMPERE1		0xAC3
+ #define AMPERE_CPU_PART_AMPERE1A	0xAC4
+@@ -250,6 +258,14 @@
+ #define MIDR_APPLE_M2_AVALANCHE_PRO MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M2_AVALANCHE_PRO)
+ #define MIDR_APPLE_M2_BLIZZARD_MAX MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M2_BLIZZARD_MAX)
+ #define MIDR_APPLE_M2_AVALANCHE_MAX MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M2_AVALANCHE_MAX)
++#define MIDR_APPLE_M3_SAWTOOTH MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M3_SAWTOOTH)
++#define MIDR_APPLE_M3_EVEREST MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M3_EVEREST)
++#define MIDR_APPLE_M3_SAWTOOTH_PRO MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M3_SAWTOOTH_PRO)
++#define MIDR_APPLE_M3_EVEREST_PRO MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M3_EVEREST_PRO)
++#define MIDR_APPLE_M3_SAWTOOTH_MAX MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M3_SAWTOOTH_MAX)
++#define MIDR_APPLE_M3_EVEREST_MAX MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M3_EVEREST_MAX)
++#define MIDR_APPLE_M4_DONAN_ECORE MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M4_DONAN_ECORE)
++#define MIDR_APPLE_M4_DONAN_PCORE MIDR_CPU_MODEL(ARM_CPU_IMP_APPLE, APPLE_CPU_PART_M4_DONAN_PCORE)
+ #define MIDR_AMPERE1 MIDR_CPU_MODEL(ARM_CPU_IMP_AMPERE, AMPERE_CPU_PART_AMPERE1)
+ #define MIDR_AMPERE1A MIDR_CPU_MODEL(ARM_CPU_IMP_AMPERE, AMPERE_CPU_PART_AMPERE1A)
+ #define MIDR_MICROSOFT_AZURE_COBALT_100 MIDR_CPU_MODEL(ARM_CPU_IMP_MICROSOFT, MICROSOFT_CPU_PART_AZURE_COBALT_100)
+
+-- 
+2.56.0
 
