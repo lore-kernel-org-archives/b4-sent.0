@@ -1,171 +1,189 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 08 Oct 2026 16:39:33 +0900
-Subject: [PATCH] ext4: test reads after a failed zeroout of an unwritten
- extent
+From: Radu Sabau <radu.sabau@analog.com>
+Subject: [PATCH v2 0/6] iio: imu: Add support for the ADI ADIS16607
+Date: Thu, 08 Oct 2026 11:31:52 +0300
+Message-Id: <20261008-adis16607-v2-0-7c94df80878a@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-ext4-zeroout-eio-test-v1-1-9bb66deaf646@samsung.com>
-X-B4-Tracking: v=1; b=H4sIALRIx2oC/x2MTQ5AMBQGryJv7SWt+IuriEXx4W1U2pKGuLvGb
- mYx85CHE3jqsoccLvFi9yQ6z2jazL6CZU5OhSpqrVTLiKHkG87aMzDEcoBPgKYeYZSpdEOpPRw
- Wif+3H973AyG9aZpnAAAA
-To: fstests@vger.kernel.org
-Cc: linux-ext4@vger.kernel.org, Zorro Lang <zlang@kernel.org>, 
- Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
- Theodore Ts'o <tytso@mit.edu>, Daejun Park <daejun7.park@samsung.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAPhUx2oC/03MQQrCMBCF4auUWRuZRJK2rryHdBGn03ZAG0mkK
+ CV3N2bl8n88vh0SR+EE52aHyJskCWsJc2iAFr/OrGQsDQaNQ6db5UdJ2jlsFXb9NJGzlvgG5f+
+ MPMm7Wteh9CLpFeKn0pv+rVXRiPpP2bRC1VPXE/PJjtZd/OrvYT5SeMCQc/4CNtbCZ6MAAAA=
+To: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Alexandru Ardelean <alexandru.ardelean@analog.com>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Radu Sabau <radu.sabau@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791445172; l=5273;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=q6mMATYv2ME98koxg+DZiicKe/k0E2HaDFj4GdEIBcM=;
- b=9mN9Mmc+vUiM2AX1wNHA5KSYYHDaXJMJRcHJucyz2+FajjDU7cJ3Wx+LQ4skO4W5scpchnQXo
- ireUp4ZwBmiAIOLazd1rrVxCGT6G9G/vQsGqyr9Jc8finYibUPnEeqS
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791448342; l=7980;
+ i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
+ bh=wgExskAdbglgz31ok+x5vWdb//tIQQPa12UByAAFggY=;
+ b=vslH2gi+d4Z3F/W2fWQUsTIWfBXc3VwRdLMT3iGwnoWATrxIZ1NqB7DfnVJ7a7+HnfxsJhhm1
+ ByMVjlzErBHC/bvwFOy3CnNX3jlmzc06iINwA8g314vnHKzgzqfTYVe
+X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
+ pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
+X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a write converts part of a small unwritten extent, ext4 may zero
-out the rest of the extent and convert all of it to written. If that
-zeroout fails, ext4 falls back to splitting the extent, but it cached
-the blocks it failed to zero out as written in the extent status tree,
-so reads of those blocks returned the old contents of the disk.
+This series adds support for the Analog Devices ADIS16607, a precision
+MEMS IMU with triaxial gyroscope, triaxial accelerometer, and
+temperature sensor, communicating over a non-standard SPI Half-Duplex
+protocol.
 
-Make the zeroout fail with dm-error and check that those blocks still
-read back as zeroes. The test mounts with dioread_lock and nodelalloc:
-with the default dioread_nolock, the extent stays unwritten until the
-I/O completes and is converted then, without this zeroout. generic/250
-and generic/252 do not hit it either, as they write with direct I/O
-while dm-error is loaded, which also leaves the extent unwritten.
+Patch 1 adds two small adislib (drivers/iio/imu/adis.c) extensions
+this series needs:
+ - An optional self_test callback for devices whose self-test sequence
+   doesn't fit the generic mask-write/sleep/check-status pattern.
+ - An optional post_reset_setup callback for devices that need extra
+   device-specific bring-up between reset and self-test (SPI mode
+   locking, status/bootloader checks, pin or burst-mode configuration,
+   etc.) - not all ADIS devices need this, so it's only called when
+   set, same as self_test.
+Plus a fix to __adis_initial_startup()'s reset fallback, which was
+calling __adis_reset() directly instead of dispatching through
+adis->ops->reset(). That bug is invisible for every existing adislib
+driver (adis_default_ops.reset is __adis_reset() itself), but silently
+breaks a driver with fully custom ops - like this one - on any board
+without a reset-gpios property. Carries a Fixes tag for the commit
+that introduced the hardcoded call; no stable backport is needed since
+the bug only manifests for a custom-ops driver, and this is the first
+one.
 
-The kernel fix is "ext4: don't cache unzeroed blocks as written after a
-failed zeroout".
+Patch 2 adds the devicetree binding.
 
-Link: https://lore.kernel.org/r/20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com
-Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-The kernel fix is 1/2 of the series in the Link: and is not merged yet,
-hence xxxxxxxxxxxx in _fixed_by_kernel_commit. The test number may need
-to change.
+Patches 3-6 add the driver in functional groupings, as requested in
+v1 review:
+ - Patch 3: base driver - probe, raw channel reads, decimation/sample
+   frequency, startup and self-test via adislib, debugfs identity
+   entries. No buffered capture yet.
+ - Patch 4: buffered capture via the device's hardware FIFO.
+ - Patch 5: external clock sync support.
+ - Patch 6: calibration bias support for gyro/accel.
 
-Tested in QEMU on ext4 dev 9091c97be340. Without the fix, blocks 1-7
-read back as 0x53 with 1k, 4k and 64k blocks. With the fix, alone or
-with the rest of the series, the test passes, also with -O fast_commit.
----
- tests/ext4/309     | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/309.out |  5 ++++
- 2 files changed, 92 insertions(+)
+Notable points for reviewers:
 
-diff --git a/tests/ext4/309 b/tests/ext4/309
-new file mode 100755
-index 0000000..1fafd58
---- /dev/null
-+++ b/tests/ext4/309
-@@ -0,0 +1,87 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 Samsung Electronics Co., Ltd. All Rights Reserved.
-+#
-+# FS QA Test No. 309
-+#
-+# When a write converts part of a small unwritten extent, ext4 may zero out
-+# the rest of the extent and convert all of it to written. If that zeroout
-+# fails, it falls back to splitting the extent, but it used to cache the
-+# blocks it failed to zero out as written in the extent status tree, so
-+# reading them returned the old contents of the disk. Fail the zeroout with
-+# dm-error and check that those blocks still read back as zeroes.
-+#
-+. ./common/preamble
-+_begin_fstest auto quick rw prealloc eio
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+	_dmerror_cleanup
-+}
-+
-+. ./common/dmerror
-+
-+_require_scratch
-+_require_dm_target error
-+_require_xfs_io_command "falloc"
-+_require_xfs_io_command "fiemap"
-+_require_scratch_ext4_feature_enabled "extent"
-+
-+_fixed_by_kernel_commit xxxxxxxxxxxx \
-+	"ext4: don't cache unzeroed blocks as written after a failed zeroout"
-+
-+# The zeroout is done when a write converts the extent itself. With the
-+# default dioread_nolock, the extent stays unwritten until the I/O completes,
-+# so mount with dioread_lock, and with nodelalloc to convert the extent at
-+# write time.
-+mount_dioread_lock()
-+{
-+	_dmerror_mount -o nodelalloc,dioread_lock >> $seqres.full 2>&1 || \
-+		_fail "mount failed"
-+}
-+
-+_scratch_mkfs >> $seqres.full 2>&1
-+_dmerror_init
-+mount_dioread_lock
-+
-+nblks=8
-+blksz=$(_get_file_block_size $SCRATCH_MNT)
-+sects_per_blk=$((blksz / 512))
-+file=$SCRATCH_MNT/file
-+
-+$XFS_IO_PROG -f -c "falloc 0 $((nblks * blksz))" -c fsync $file >> $seqres.full
-+extent="$($XFS_IO_PROG -c "fiemap -v" $file | grep "^[[:space:]]*0:")"
-+echo "$extent" >> $seqres.full
-+phys=$(echo "$extent" | $AWK_PROG '{print $3}' | sed -e 's/\.\..*//')
-+len=$(echo "$extent" | $AWK_PROG '{print $4}')
-+flags=$(echo "$extent" | $AWK_PROG '{print $5}')
-+flags=${flags:-0}
-+test "$len" = $((nblks * sects_per_blk)) -a $((flags & 0x800)) -ne 0 || \
-+	_notrun "could not allocate one unwritten extent of $nblks blocks"
-+
-+# Put something other than zeroes in the unwritten blocks
-+_dmerror_unmount
-+$XFS_IO_PROG -d \
-+	-c "pwrite -S 0x53 -b $blksz $((phys * 512)) $((nblks * blksz))" \
-+	$DMERROR_DEV >> $seqres.full
-+mount_dioread_lock
-+
-+# Writing block 0 zeroes out the rest of the extent if the whole extent fits
-+# in extent_max_zeroout_kb, which mount resets; make that zeroout fail.
-+_set_fs_sysfs_attr $DMERROR_DEV extent_max_zeroout_kb $((nblks * blksz / 1024))
-+_dmerror_reset_table
-+_dmerror_mark_range_bad $((phys + sects_per_blk)) \
-+	$(((nblks - 1) * sects_per_blk))
-+_dmerror_load_error_table
-+$XFS_IO_PROG -c "pwrite -S 0x41 0 $blksz" -c fsync $file >> $seqres.full
-+_dmerror_load_working_table
-+
-+echo "block 0:"
-+od -An -v -tx1 -N $blksz $file | sort -u
-+echo "blocks 1-$((nblks - 1)):"
-+od -An -v -tx1 -j $blksz $file | sort -u
-+
-+# success, all done
-+_exit 0
-diff --git a/tests/ext4/309.out b/tests/ext4/309.out
-new file mode 100644
-index 0000000..19ed3d6
---- /dev/null
-+++ b/tests/ext4/309.out
-@@ -0,0 +1,5 @@
-+QA output created by 309
-+block 0:
-+ 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41
-+blocks 1-7:
-+ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ - The device does not implement the standard ADIS SPI protocol used
+   by other parts in the family; reads/writes are done over a custom
+   Half-Duplex sequence (see adis16607_spi_read()/adis16607_spi_write()
+   and the adis_ops overrides).
+
+ - Startup is split across the two new adislib callbacks rather than a
+   driver-private initial_startup(): adis16607_post_reset_setup() does
+   SPI Half-Duplex locking, dev_id verification, the bootloader-busy
+   check, an optional reset-status GPIO output, and (once FIFO is
+   wired up in patch 4) burst-mode and interrupt-pin configuration;
+   adis16607_self_test() does only the actual per-axis delta-check.
+
+ - The optional reset-status GPIO output (RESET_GPIO_MASK, part of
+   "optional hardware reset via GPIO") is configured in patch 3's
+   post_reset_setup, independent of FIFO. Patch 4 later adds the
+   DR/DEV_NOK pins to the same USER_GPIO_CFG register via a
+   read-modify-write, so it cannot clobber what patch 3 already set.
+
+ - The hardware FIFO is the *only* buffered capture path - there is no
+   single-sample direct burst-read trigger mode. The FIFO-pop command
+   and the regular burst-read command are genuinely different
+   protocols on this device (different payload shapes, no checksum on
+   the FIFO side), so this stays driver-private rather than going
+   through adislib's generic burst-read helpers.
+
+ - The FIFO-threshold interrupt is signaled via DEV_NOK on the
+   device's one physically-wired interrupt pin, which stays asserted
+   (level-triggered) until DIAG_STAT is read and cleared - this sets
+   has_fifo on adis_data and requests the IRQ through adislib's
+   threaded/level path, matching adislib's actual contract for that
+   flag.
+
+ - An optional external clock (clocks property) selects between
+   SYNC_DIRECT and SYNC_SCALED modes depending on the supplied
+   frequency, with the internal 8 kHz clock used as the default when
+   no clock is provided (adis16607_config_clk()).
+
+ - spi-max-frequency is corrected to 10 MHz (datasheet maximum), down
+   from 15 MHz in v1.
+
+This has been tested on a Raspberry Pi 4 (arm64) with the device wired
+over SPI, exercising the FIFO buffered-capture path with the updated
+DEV_NOK/level-triggered interrupt wiring.
+
+To: Lars-Peter Clausen <lars@metafoo.de>
+To: Michael Hennerich <Michael.Hennerich@analog.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Alexandru Ardelean <alexandru.ardelean@analog.com>
+Cc: linux-iio@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+
+Changes in v2:
+- Split the driver commit into functional groupings per review:
+  base, FIFO, external clock sync, calibration bias (Nuno).
+- Added adis_data.self_test and adis_data.post_reset_setup callbacks
+  to adislib instead of duplicating startup/self-test logic in the
+  driver (Nuno). post_reset_setup is a second, honestly-named hook
+  added after review feedback that overloading self_test to also mean
+  "everything else the device needs at startup" was misleading.
+- Fixed __adis_initial_startup()'s reset fallback to dispatch through
+  adis->ops->reset() instead of a hardcoded __adis_reset() call -
+  found while wiring up this driver's custom reset op. Added a Fixes
+  tag for the originating commit.
+- Removed the direct single-sample burst-read capture path entirely;
+  the hardware FIFO is now the only buffered capture mode. Dropped
+  adi,fifo-enable from the binding accordingly.
+- Fixed FIFO-threshold interrupt wiring: set has_fifo on adis_data and
+  switch the DT interrupt type from edge to level, matching the
+  DEV_NOK signal this now uses (previously only the data-ready pulse
+  was wired, which never actually generated a FIFO interrupt).
+- Moved the optional reset-status GPIO output into the base driver
+  patch (where it conceptually belongs) instead of bundling it into
+  the FIFO patch's USER_GPIO_CFG write; the FIFO patch now updates
+  that register with a read-modify-write instead of a blind write.
+- Fixed cover letter: "Three compatible variants (-1, -2, -3)" was
+  wrong, there are only two (-2, -3); "configurable data-ready
+  interrupt pin (DIO1-4)" was wrong, there's a single fixed pin.
+- Corrected spi-max-frequency to 10 MHz (datasheet maximum), from
+  15 MHz.
+- Renamed ADIS16607_REG_SW_RES to ADIS16607_REG_SOFT_RESET to match
+  the datasheet's register name; renamed burst_buf to fifo_buf and
+  dropped the redundant "fifo_" prefix from the buffer postenable/
+  postdisable/ops names, since FIFO is the only capture mode and
+  "burst" no longer described what that scratch buffer is used for.
+- Link to v1: https://lore.kernel.org/r/20261001-adis16607-v1-0-9c89cee35d56@analog.com
 
 ---
-base-commit: 22348afe338c0f6d540c0d7ef0db749eaa51b218
-change-id: 20261008-ext4-zeroout-eio-test-ee76bea0a517
+Radu Sabau (6):
+      iio: imu: adis: Add optional self_test callback and fix custom reset dispatch
+      dt-bindings: iio: imu: Add bindings for ADI ADIS16607
+      iio: imu: Add driver for the ADI ADIS16607
+      iio: imu: adis16607: Add FIFO-based buffered/triggered capture
+      iio: imu: adis16607: Add external clock sync support
+      iio: imu: adis16607: Add calibration bias support for gyro/accel
+
+ .../devicetree/bindings/iio/imu/adi,adis16607.yaml |   83 ++
+ MAINTAINERS                                        |    8 +
+ drivers/iio/imu/Kconfig                            |   13 +
+ drivers/iio/imu/Makefile                           |    1 +
+ drivers/iio/imu/adis.c                             |   30 +-
+ drivers/iio/imu/adis16607.c                        | 1373 ++++++++++++++++++++
+ include/linux/iio/imu/adis.h                       |   14 +
+ 7 files changed, 1515 insertions(+), 7 deletions(-)
+---
+base-commit: 9c87e61e3c5797277407ba5eae4eac8a52be3fa3
+change-id: 20260617-adis16607-089ffc655ceb
 
 Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+Radu Sabau <radu.sabau@analog.com>
 
