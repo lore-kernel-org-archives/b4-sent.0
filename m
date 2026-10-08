@@ -1,261 +1,171 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Thu, 08 Oct 2026 03:28:02 +0200
-Subject: [PATCH] ceph: check the caps of a closed file after
- caps_wanted_delay_min
+From: Daejun Park <daejun7.park@samsung.com>
+Subject: [PATCH 0/8] xfs, nfsd: map a whole pNFS block layout in one
+ ->map_blocks call
+Date: Thu, 08 Oct 2026 10:39:29 +0900
+Message-Id: <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-ceph-cap-idle-release-v1-1-86e7a8bf36d0@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QqCQBCF4VeRuW5glcjoVcSLcTybE2LLTkogv
- ntbXX4Hzr+TIxucbtVOGZu5PZeC+lSRTrLcwTYWUxOaSx3ClRVpYpVU9hmcMUMcLGOM57aNqgI
- q35QR7f3rdv3fvg4P6Osbo+P4ACg/dn95AAAA
-X-Change-ID: 20261008-ceph-cap-idle-release-adff477fccae
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791422960; l=9360;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=OclocnO6rE4KxWh+A36R6LcdaImZDTRAwTsJ6wxrIfc=;
- b=nEN2CbtzibM0U71oKuytrfYFNCuRvwdWj1ZxLT6YnFFctRMuyjLSzO/OM/XtrgNdB0DkdUz9e
- SLxXlgiwPLLBSNwbB05rSb9EftWKIgyiCSnLDpFSVlztDVb4e0393ZW
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-B4-Tracking: v=1; b=H4sIAFH0xmoC/x3MTQqAIBBA4avErBtQsR+6SrSwHGuoLByIILp70
+ vJbvPeAUGIS6IoHEl0sfMQMXRYwLS7OhOyzwShTa6VavINgDOJxdyeO2zGtglY3vhpr58gayOW
+ ZKPD9X/vhfT8mSRkAZQAAAA==
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>, 
+ Amir Goldstein <amir73il@gmail.com>
+Cc: "Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, 
+ Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org, 
+ linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791423569; l=7438;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=kP0JJQRwP0kNOX5s7X+UWUSB0zcc0qher0tSsqFRWKw=;
+ b=lrFrEp5QgOiMYXYb/d1JOtyxiu/wqdG0GoRLJODoSCxZGx7HOoaBjy9nT610jBvSfnZ2459rK
+ xx6ttYEwjQbBcOHKx8Ureevc8DCXHDLXWei5W7KXHOgjxDExfBquw4K
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__ceph_caps_file_wanted() stops wanting the caps of a closed file once
-its last read or write is caps_wanted_delay_min (5s) old, but nothing
-checks its caps again before caps_wanted_delay_max (60s): closing does
-not call ceph_check_caps(), and the inode waits on cap_delay_list,
-whose check has always come at caps_wanted_delay_max.
+nfsd calls ->map_blocks once per extent of a block layout. XFS takes
+the iolock, flushes and invalidates the page cache, maps one extent
+and, if it allocated blocks for a write layout, updates the inode and
+forces the log, all again for each extent, and the mapping of the file
+can change between the calls. Christoph asked for ->map_blocks to
+return several mappings instead [1], as Darrick had suggested [2].
 
-Meanwhile the MDS keeps us the loner, so each stat from another client
-of a file we created first waits for the MDS to revoke our exclusive
-caps.  This is what makes mdtest-easy-stat in IO500 on kernel clients
-swing between 3.6k and 100k stats/s from run to run.
+Patch 1 is "xfs: map pNFS layouts to the end of the extent again" [3],
+posted on its own and reviewed by Darrick, but not in a tree yet. It
+changes the same function, so it is included here unchanged.
 
-Queue a regular file that still holds exclusive or write caps for a cap
-check caps_wanted_delay_min after its last close, on a list of its own,
-as cap_delay_list is in caps_wanted_delay_max order.  The check gives
-back what it already gives back at caps_wanted_delay_max (shared caps
-and the page cache caps stay), only earlier.  Directories and open
-files are not affected.
+Patches 2 and 3 fix the ranges that xfs_fs_map_blocks() gets from a
+client. An RW LAYOUTGET at offset 0 of an empty file for 16 TiB shuts
+the filesystem down, because xfs_iomap_write_direct() keeps the block
+reservation in an unsigned int; patch 2 refuses a count that does not
+fit with -ENOSPC. A LAYOUTGET for NFS4_UINT64_MAX bytes, or at an offset
+of 2^63, makes the range check wrap and maps nothing; patch 3 fixes the
+check, which the rest of the series relies on. Both are fixes for stable
+kernels as well, and leave a range that fits the free space as it was.
+Patch 3 needs patch 2 there: alone, it turns the NFS4ERR_IO of an RW
+layout to the end of the file into a shutdown.
 
-Two noshare kernel mounts on one VM, 1 MDS: 20000 empty files created
-on A, statted by path on B after a wait.  Caps messages are the ones A
-sends, revokes are the ones the MDS sends A:
+Patch 4 lets ->map_blocks fill an array of mappings, without a change
+in behavior. Patches 5 to 7 make XFS map the whole range one extent
+after the other, under the iolock and, as Darrick also pointed out in
+[2], the invalidate lock, so that each mapping starts where the one
+before it ends, with one flush and at most one log force. Patch 8 makes
+nfsd ask for all extents at once and check that they fit together,
+instead of trimming them.
 
-  +--------+------+---------------+---------------+---------------+
-  |        |      | in the wait   | in the stat                   |
-  | kernel | wait | caps msgs     | stats/s       | revokes       |
-  +--------+------+---------------+---------------+---------------+
-  | before |  15s |             0 |     374 - 435 | 11164 - 11730 |
-  | after  |  15s |         20000 | 18680 - 24027 |             0 |
-  | before |   3s |             0 |     328 - 342 | 13727 - 14538 |
-  | after  |   3s |      0 - 3010 |   2238 - 3216 |     963 - 996 |
-  +--------+------+---------------+---------------+---------------+
+The series is on top of nfsd-testing 214e388464bf ("nfsd: do not return
+overlapping extents in a block layout"). Patches 4 and 8 depend on that
+commit, which added the comment that patch 4 changes and the trim that
+patch 8 replaces. Darrick's comment on that commit [5] came after it was
+applied: patch 4 documents that a mapping may end past the range, and
+patch 8 removes the comment he asked to fix. exportfs_block.h is
+maintained with nfsd, so I would suggest the nfsd tree, with acks from
+XFS for patches 1 to 3 and 5 to 7. Patches 1 to 3 could also go through
+XFS first; they apply to XFS for-next 197f678cccba as they are, and
+patches 5 to 7 do not apply without them.
 
-The caps go back in the background before the stat instead of one
-revoke per file during it; with a 3s wait most of them still go back
-while the stat runs.
+Tests. QEMU VMs, the server exports a 32 GiB XFS on an NVMe/TCP
+namespace, pynfs or the Linux client, KASAN and lockdep unless noted.
+"before" is the base with patch 1, "after" the whole series.
 
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
----
-Tested on 7.2 against a vstart cluster with two noshare kernel mounts,
-see the numbers in the commit message.  The same stall shows up in the
-IO500 mdtest-easy-stat phase on kernel clients.
----
- fs/ceph/caps.c       | 95 ++++++++++++++++++++++++++++++++++++++++++++++------
- fs/ceph/mds_client.c |  2 ++
- fs/ceph/mds_client.h |  3 +-
- 3 files changed, 88 insertions(+), 12 deletions(-)
+LAYOUTGETs for the first 256 KiB of a file in which 32 blocks of 4 KiB
+written with O_DIRECT are each followed by a 4 KiB hole, 64 extents,
+20 LAYOUTGETs each, KASAN and lockdep off, time from a kprobe on
+nfsd4_block_proc_layoutget():
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index 8e582cbcfc6b..b1e29e92920f 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -537,6 +537,42 @@ static void __cap_delay_requeue(struct ceph_mds_client *mdsc,
- 	}
- }
- 
-+/*
-+ * Queue the inode of a file that was just closed for a cap check
-+ * caps_wanted_delay_min seconds from now, when __ceph_caps_file_wanted()
-+ * stops wanting the caps it was opened for.  These inodes go on a list of
-+ * their own, as cap_delay_list is in caps_wanted_delay_max order.
-+ *
-+ * Caller holds i_ceph_lock
-+ *    -> we take mdsc->cap_delay_lock
-+ */
-+static void __cap_delay_requeue_idle(struct ceph_mds_client *mdsc,
-+				     struct ceph_inode_info *ci)
-+{
-+	struct inode *inode = &ci->netfs.inode;
-+	struct ceph_mount_options *opt = mdsc->fsc->mount_options;
-+
-+	if (mdsc->stopping)
-+		return;
-+	spin_lock(&mdsc->cap_delay_lock);
-+	if (!list_empty(&ci->i_cap_delay_list)) {
-+		if (ci->i_ceph_flags & CEPH_I_FLUSH)
-+			goto no_change;
-+		list_del_init(&ci->i_cap_delay_list);
-+	}
-+	/*
-+	 * Round up, so that the check does not come before the last
-+	 * read or write is caps_wanted_delay_min seconds old.
-+	 */
-+	ci->i_hold_caps_max = round_jiffies_up(jiffies +
-+					       opt->caps_wanted_delay_min * HZ);
-+	doutc(mdsc->fsc->client, "%p %llx.%llx at %lu\n", inode,
-+	      ceph_vinop(inode), ci->i_hold_caps_max);
-+	list_add_tail(&ci->i_cap_delay_list, &mdsc->cap_idle_delay_list);
-+no_change:
-+	spin_unlock(&mdsc->cap_delay_lock);
-+}
-+
- /*
-  * Queue an inode for immediate writeback.  Mark inode with I_FLUSH,
-  * indicating we should send a cap message to flush dirty metadata
-@@ -4720,29 +4756,28 @@ void ceph_handle_caps(struct ceph_mds_session *session,
- }
- 
- /*
-- * Delayed work handler to process end of delayed cap release LRU list.
-+ * Process the expired end of one delayed cap list, whose entries were
-+ * queued @hold jiffies before they expire.
-  *
-  * If new caps are added to the list while processing it, these won't get
-  * processed in this run.  In this case, the ci->i_hold_caps_max will be
-  * returned so that the work can be scheduled accordingly.
-  */
--unsigned long ceph_check_delayed_caps(struct ceph_mds_client *mdsc)
-+static unsigned long check_delayed_caps_list(struct ceph_mds_client *mdsc,
-+					     struct list_head *list,
-+					     unsigned long hold,
-+					     unsigned long loop_start)
- {
- 	struct ceph_client *cl = mdsc->fsc->client;
- 	struct inode *inode;
- 	struct ceph_inode_info *ci;
--	struct ceph_mount_options *opt = mdsc->fsc->mount_options;
--	unsigned long delay_max = opt->caps_wanted_delay_max * HZ;
--	unsigned long loop_start = jiffies;
- 	unsigned long delay = 0;
- 
--	doutc(cl, "begin\n");
- 	spin_lock(&mdsc->cap_delay_lock);
--	while (!list_empty(&mdsc->cap_delay_list)) {
--		ci = list_first_entry(&mdsc->cap_delay_list,
--				      struct ceph_inode_info,
-+	while (!list_empty(list)) {
-+		ci = list_first_entry(list, struct ceph_inode_info,
- 				      i_cap_delay_list);
--		if (time_before(loop_start, ci->i_hold_caps_max - delay_max)) {
-+		if (time_before(loop_start, ci->i_hold_caps_max - hold)) {
- 			doutc(cl, "caps added recently.  Exiting loop");
- 			delay = ci->i_hold_caps_max;
- 			break;
-@@ -4771,8 +4806,33 @@ unsigned long ceph_check_delayed_caps(struct ceph_mds_client *mdsc)
- 			break;
- 	}
- 	spin_unlock(&mdsc->cap_delay_lock);
-+
-+	return delay;
-+}
-+
-+/*
-+ * Delayed work handler to process end of delayed cap release LRU lists:
-+ * the closed files waiting for caps_wanted_delay_min, then the inodes
-+ * waiting for caps_wanted_delay_max.
-+ */
-+unsigned long ceph_check_delayed_caps(struct ceph_mds_client *mdsc)
-+{
-+	struct ceph_client *cl = mdsc->fsc->client;
-+	struct ceph_mount_options *opt = mdsc->fsc->mount_options;
-+	unsigned long loop_start = jiffies;
-+	unsigned long delay, idle_delay;
-+
-+	doutc(cl, "begin\n");
-+	idle_delay = check_delayed_caps_list(mdsc, &mdsc->cap_idle_delay_list,
-+					     opt->caps_wanted_delay_min * HZ,
-+					     loop_start);
-+	delay = check_delayed_caps_list(mdsc, &mdsc->cap_delay_list,
-+					opt->caps_wanted_delay_max * HZ,
-+					loop_start);
- 	doutc(cl, "done\n");
- 
-+	if (idle_delay && (!delay || time_before(idle_delay, delay)))
-+		delay = idle_delay;
- 	return delay;
- }
- 
-@@ -4906,8 +4966,21 @@ void ceph_put_fmode(struct ceph_inode_info *ci, int fmode, int count)
- 			is_closed = false;
- 	}
- 
--	if (is_closed)
-+	if (is_closed) {
- 		percpu_counter_dec(&mdsc->metric.opened_inodes);
-+		/*
-+		 * A closed file stops wanting its caps once its last read
-+		 * or write is caps_wanted_delay_min old, but nothing checks
-+		 * its caps again before caps_wanted_delay_max runs out.
-+		 * Until then the MDS keeps it the loner and has to revoke
-+		 * the exclusive caps from us first when another client
-+		 * looks at the file, e.g. stats a file we just created.
-+		 * Check again after caps_wanted_delay_min instead.
-+		 */
-+		if (S_ISREG(ci->netfs.inode.i_mode) &&
-+		    (__ceph_caps_issued(ci, NULL) & CEPH_CAP_ANY_WR))
-+			__cap_delay_requeue_idle(mdsc, ci);
-+	}
- 	spin_unlock(&ci->i_ceph_lock);
- }
- 
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index baa9e4ad38c5..a1feae6bd9b6 100644
---- a/fs/ceph/mds_client.c
-+++ b/fs/ceph/mds_client.c
-@@ -6406,6 +6406,7 @@ int ceph_mdsc_init(struct ceph_fs_client *fsc)
- 	INIT_DELAYED_WORK(&mdsc->delayed_work, delayed_work);
- 	mdsc->last_renew_caps = jiffies;
- 	INIT_LIST_HEAD(&mdsc->cap_delay_list);
-+	INIT_LIST_HEAD(&mdsc->cap_idle_delay_list);
- #ifdef CONFIG_DEBUG_FS
- 	INIT_LIST_HEAD(&mdsc->cap_wait_list);
- #endif
-@@ -6879,6 +6880,7 @@ void ceph_mdsc_close_sessions(struct ceph_mds_client *mdsc)
- 		}
- 	}
- 	WARN_ON(!list_empty(&mdsc->cap_delay_list));
-+	WARN_ON(!list_empty(&mdsc->cap_idle_delay_list));
- 	mutex_unlock(&mdsc->mutex);
- 
- 	ceph_cleanup_snapid_map(mdsc);
-diff --git a/fs/ceph/mds_client.h b/fs/ceph/mds_client.h
-index d4d620fb8417..863cdb8d588a 100644
---- a/fs/ceph/mds_client.h
-+++ b/fs/ceph/mds_client.h
-@@ -540,8 +540,9 @@ struct ceph_mds_client {
- 	struct delayed_work    delayed_work;  /* delayed work */
- 	unsigned long    last_renew_caps;  /* last time we renewed our caps */
- 	struct list_head cap_delay_list;   /* caps with delayed release */
-+	struct list_head cap_idle_delay_list;  /* caps of closed files */
- 	struct list_head cap_unlink_delay_list;  /* caps with delayed release for unlink */
--	spinlock_t       cap_delay_lock;   /* protects cap_delay_list and cap_unlink_delay_list */
-+	spinlock_t       cap_delay_lock;   /* protects the three lists above */
- 	struct list_head snap_flush_list;  /* cap_snaps ready to flush */
- 	spinlock_t       snap_flush_lock;
- 
+                                            before      after
+  READ: ->map_blocks calls                  64          1
+        median time                         26 us       9 us
+  RW, 32 holes allocated:
+        ->map_blocks calls                  64          1
+        log forces                          32          1
+        median time                         166 ms      2.2 ms
+
+RW LAYOUTGETs for large ranges, minimum length 4 KiB unless noted,
+each on its own boot:
+
+                            before       patches 2, 3   after
+  empty file, 16 TiB        shutdown     NOSPC          NOSPC
+  empty file, to the end    IO, WARN     NOSPC          NOSPC
+  64 KiB allocated, then
+  a hole, to the end        IO, WARN     NOSPC          NOSPC
+  empty file, 100 GiB       NOSPC        NOSPC          NOSPC
+  empty file, 16 GiB,
+  minimum length 16 GiB     16 GiB       16 GiB         16 GiB
+
+NOSPC is answered before anything is allocated. WARN is nfsd's warning
+about the non-standard errno -63.
+
+pynfs, with BLOCK5 from [6] and the empty lou_body of BLOCK3 passed as
+bytes (as shipped, BLOCK3 fails with a TypeError in pynfs before
+anything is sent): BLOCK1, BLOCK2, BLOCK4 and BLOCK5 pass before and
+after, five and three runs, and BLOCK3 fails in both with
+NFS4ERR_BADXDR, as a zero-length lou_body has no extent count.
+GETLAYOUT1, a READ LAYOUTGET for NFS4_UINT64_MAX bytes, gets NFS4ERR_IO
+before, NFS4ERR_INVAL with patches 2 and 3, and a layout to 2^63 after,
+also with XFS_DEBUG. LAYOUTRET1 and LAYOUTRET3 then run and fail as they
+would on any kernel (a TypeError in pynfs, and no current filehandle),
+as do CSID7 and GETDLIST1 before and after. On a test kernel whose XFS
+does not trim a mapping to the offset asked for, BLOCK5 gets
+NFS4ERR_LAYOUTUNAVAILABLE and nfsd warns, instead of handing out
+overlapping extents. With a process on the server that writes a shared
+mapping of another file in a loop, the pynfs run gives no lockdep
+report.
+
+fstests generic/075, 091 and 263 over the block and the SCSI layout
+give the same results before and after (075 fails with an fsx size
+error in both), and the client's bl_alloc_lseg() returns no error.
+With XFS_DEBUG, of generic/013, 075, 091, 112, 127 and 263 only 075,
+112 and 127 fail, which also fail without this series on nfsd-testing,
+and XFS logs no assertion.
+
+Clients writing new files through their layouts, four cases, read back
+on the server: no block is lost before or after. This test runs on top
+of the nfsd layout recall series [4] as revised for a v2 that is not
+posted yet; this series applies to it without conflicts. Without it,
+nfsd-testing loses blocks when a layout recall fails.
+
+Not in this series: Darrick's third point in [2], that the reflink and
+realtime checks are made before the locks are taken, and the window
+between ->map_blocks and nfsd4_insert_layout() that Christoph mentioned
+in the same thread, which this series narrows but does not close.
+
+[1] https://lore.kernel.org/r/20261007131133.GB30647@lst.de
+[2] https://lore.kernel.org/r/20260519145949.GH9555@frogsfrogsfrogs
+[3] https://lore.kernel.org/r/20261006003425epcms2p586728e55ff5f9bbabc506b672fc4a421@epcms2p5
+[4] https://lore.kernel.org/r/20261006-nfsd-layout-recall-v1-0-b59b31caf342@samsung.com
+[5] https://lore.kernel.org/r/20261007165101.GD2705364@frogsfrogsfrogs
+[6] https://lore.kernel.org/r/20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3
 
 ---
-base-commit: c3112e7db4e561edeba02de2dca0ca620e44e84b
-change-id: 20261008-ceph-cap-idle-release-adff477fccae
+Daejun Park (8):
+      xfs: map pNFS layouts to the end of the extent again
+      xfs: refuse a direct allocation whose block reservation would wrap
+      xfs: clamp the pNFS layout range to the maximum file size
+      exportfs: let ->map_blocks return more than one mapping
+      xfs: factor the mapping of one pNFS extent out of xfs_fs_map_blocks()
+      xfs: take the invalidate lock while mapping a pNFS layout
+      xfs: map the whole range of a pNFS layout in one ->map_blocks call
+      nfsd: get all extents of a block layout in one ->map_blocks call
+
+ fs/nfsd/blocklayout.c          | 134 +++++++++++++++++++++-------------------
+ fs/xfs/xfs_iomap.c             |   7 +++
+ fs/xfs/xfs_pnfs.c              | 136 +++++++++++++++++++++++++++++------------
+ include/linux/exportfs_block.h |  14 +++--
+ 4 files changed, 185 insertions(+), 106 deletions(-)
+---
+base-commit: 214e388464bf850fcdc5d656fd39909f0a1ee83d
+change-id: 20261008-xfs-nfsd-map-blocks-417d5b6aae42
 
 Best regards,
---  
-Xiubo Li <xiubo.li@clyso.com>
+-- 
+Daejun Park <daejun7.park@samsung.com>
 
