@@ -1,83 +1,76 @@
-From: =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
-Date: Thu, 08 Oct 2026 22:10:49 +0000
-Subject: [PATCH net] ipv4: fib_trie: prevent speculative out-of-bounds
- child access
+From: Aleksei Berezin <8967858b87@gmail.com>
+Date: Fri, 09 Oct 2026 02:41:19 +0400
+Subject: [PATCH] usb: typec: ucsi: acpi: Add quirk for ASUS ROG Zephyrus
+ Duo 16 GX650PI
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261008-fib-trie-nospec-v1-1-fa18726d485e@nvidia.com>
-X-B4-Tracking: v=1; b=H4sIAOgUyGoC/yWMwQqDMBAFf0XeuQsxoIb+SvFQ17XdHqJkowjiv
- ze2xxmYOWCSVAz36kCSTU3nWKC+VeD3M76EdCwM73xbOxdo0oFySSjOtghTw13rfOAgHaNUS5J
- J99/xgSgZ/V/aOnyE8/XCeX4BztmtWHgAAAA=
-X-Change-ID: 20261008-fib-trie-nospec-5c76028c8e7c
-To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, 
- Alexander Duyck <alexander.h.duyck@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261009-usb-next-v1-1-95a2288ad9b2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBCF4avIrDVpuyh1FbHQdjAWJR1EIu6uW
+ H7J/94FjImQoSkuSHgQ0xIzVFmAn/o4oqCQDVpqo6S0YmcnIp6bsHWllPMmmFpDzteEA53fVdv
+ 95t3N6Ld3D/f9AGN/umRsAAAA
+X-Change-ID: 20261009-usb-next-98711bc6d682
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aleksei Berezin <8967858b87@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791497449; l=1811;
- i=datrujillo@nvidia.com; s=20261008; h=from:subject:message-id;
- bh=xnFr+ktZBjHYJMb2dgrr672XmryMDvsweL3LbYJlrKI=;
- b=QAIQxu04rBsFZ4Fxj+43aqwMG1AkLo/JzAr74GzYjH648cOjifagKJGv9Z2KIMVti4++R5V3l
- /eM9rxWRIKUBvPsm4W0RllZ8H1X8B5SEr9fTvgVPZmfC0wq1gOJB7EE
-X-Developer-Key: i=datrujillo@nvidia.com; a=ed25519;
- pk=AP24zUwENFy2geglpKJAA8oaT41tkteCL9hTWGd88rs=
-X-Endpoint-Received: by B4 Relay for datrujillo@nvidia.com/20261008 with auth_id=1128
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791499288; l=1846;
+ i=8967858b87@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=ZUe/15qN0Mxppoewg6G+nswhtqP0+uFLTWd6xRy/srQ=;
+ b=aFGDFPYr/q9xe/9xPwSfFaRdQg99nHoip7c4m6WlX0hbAwKQubuYB6n+t/UGnYeLj6fARomJb
+ oE9OETqmDJZDEArjhlb/kBmG49xbG0nPBWUoXYm+DL6Kjzgf5GKM8z7
+X-Developer-Key: i=8967858b87@gmail.com; a=ed25519;
+ pk=njtzBWPS2xf9KvwkMcmThxWGBoNdXiBOrAswIsycbXg=
+X-Endpoint-Received: by B4 Relay for 8967858b87@gmail.com/20261008 with auth_id=1137
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-fib_table_lookup() checks the child index against the bounds before
-passing it to get_child_rcu().
+On the ASUS ROG Zephyrus Duo 16 (GX650PI, BIOS GX650PI.314) the firmware
+loads the EC-based variant of the AMD CPM UCSI SSDT ("CPMUCSI"). Its _DSM
+read function only copies MESSAGE_IN and CCI from the EC into the shared
+mailbox and never fills in the VERSION field. The only code that sets the
+version (M31F) lives in the "UCSIPLT" SSDT of the I2C-based variant, which
+is present in the firmware image but not loaded on this machine.
 
-The index is derived from the lookup key, which in turn is derived from
-flp->daddr. A userspace process can therefore influence the index by
-triggering lookups for chosen destination IPv4 addresses.
+As a result ucsi_register() reads a zero version and the probe fails
+silently with -ENODEV, so neither Type-C port is registered and no
+typec, usb_power_delivery or ucsi-source-psy devices are created.
 
-If this bounds check is mispredicted as in-bounds, an out-of-bounds index
-can be transiently passed to get_child_rcu(). The value loaded beyond the
-child array is then treated as a node pointer. The next loop iteration
-dereferences that transient pointer through get_cindex(), causing a
-page-table walk whose cache footprint can leak (parts of) the pointer.
+Reuse the existing zero-version workaround from the Acer Nitro ANV15-41
+quirk and assume UCSI 1.2 on this machine. With this change both ports,
+the PD partner and the UCSI power supplies are registered and report the
+connected USB PD charger correctly.
 
-Sanitize the index with array_index_nospec() before accessing the child
-array.
-
-Fixes: 9f9e636d4f89 ("fib_trie: Optimize fib_table_lookup to avoid wasting time on loops/variables")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daniël Trujillo <datrujillo@nvidia.com>
+Assisted-by: Claude Opus 5.5 iasl
+Signed-off-by: Aleksei Berezin <8967858b87@gmail.com>
 ---
- net/ipv4/fib_trie.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/usb/typec/ucsi/ucsi_acpi.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/net/ipv4/fib_trie.c b/net/ipv4/fib_trie.c
-index 248514dce0cd..bd8a368c5502 100644
---- a/net/ipv4/fib_trie.c
-+++ b/net/ipv4/fib_trie.c
-@@ -61,6 +61,7 @@
- #include <linux/export.h>
- #include <linux/vmalloc.h>
- #include <linux/notifier.h>
-+#include <linux/nospec.h>
- #include <net/net_namespace.h>
- #include <net/inet_dscp.h>
- #include <net/ip.h>
-@@ -1474,6 +1475,7 @@ int fib_table_lookup(struct fib_table *tb, const struct flowi4 *flp,
- 			cindex = index;
- 		}
- 
-+		index = array_index_nospec(index, 1ul << n->bits);
- 		n = get_child_rcu(n, index);
- 		if (unlikely(!n))
- 			goto backtrace;
+diff --git a/drivers/usb/typec/ucsi/ucsi_acpi.c b/drivers/usb/typec/ucsi/ucsi_acpi.c
+index 5697ccc24..c8e6efdba 100644
+--- a/drivers/usb/typec/ucsi/ucsi_acpi.c
++++ b/drivers/usb/typec/ucsi/ucsi_acpi.c
+@@ -196,6 +196,13 @@ static const struct dmi_system_id ucsi_acpi_quirks[] = {
+ 		},
+ 		.driver_data = (void *)&ucsi_acer_ops,
+ 	},
++	{
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
++			DMI_MATCH(DMI_BOARD_NAME, "GX650PI"),
++		},
++		.driver_data = (void *)&ucsi_acer_ops,
++	},
+ 	{
+ 		.matches = {
+ 			DMI_MATCH(DMI_SYS_VENDOR, "LG Electronics"),
 
 ---
-base-commit: 37f12441f557468a56c1e27790413aa78c82afa2
-change-id: 20261008-fib-trie-nospec-5c76028c8e7c
+base-commit: 42bcac323cc3b16566fed8c5b250318ad02a0de0
+change-id: 20261009-usb-next-98711bc6d682
 
 Best regards,
 --  
-Daniël Trujillo <datrujillo@nvidia.com>
+Aleksei Berezin <8967858b87@gmail.com>
 
