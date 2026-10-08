@@ -1,113 +1,206 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 08 Oct 2026 04:21:57 -0500
-Subject: [PATCH net v2] net/iucv: take a private, writable frame before
- rewriting it in place
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Thu, 08 Oct 2026 19:18:24 +0900
+Subject: [PATCH v2] generic: test that preallocated blocks still read
+ zeroes after I/O errors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-b4-disp-bf46f1ba-v2-1-46ff1ea9c40b@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCQAwAv1JyNpCuaxG/Ih6aNNF4WMumilD6d
- 1c9zsDMCqHVNeDUrVD15eGP0iDtOpDbWK6KPjWGRGnoiY7IGSePGdnyYD2PSHZg2ZtQkgwtm6u
- av3/LMxRd4PKX8eS7yvKdwbZ9AFQV4aV5AAAA
-X-Change-ID: 20261008-b4-disp-bf46f1ba-0f5bc3fc02c4
-To: Alexandra Winter <wintera@linux.ibm.com>, 
- Thorsten Winkler <twinkler@linux.ibm.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Eric Dumazet <edumazet@kernel.org>
-Cc: linux-s390@vger.kernel.org, Ursula Braun <ursula.braun@de.ibm.com>, 
- netdev@vger.kernel.org, Simon Horman <horms@kernel.org>, 
- Hidayath Khan <hidayath@linux.ibm.com>, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791451316; l=3692;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=R6y/vNgxdBH4QyJ1cYdPY08lmNL7AuKT8aaHPnJEsq8=;
- b=xpNt1dGFAdwuich/Pe6XUVJvlL3e7zIYfVIOLpdfUCVyEfqmWnrR6n8c83KGbesDTFyUT9nK8
- xA5EGqn1C0OCy1Dm8bpHt4djxW6CzuRjskkAZtVYEGYmHzhaEtbmszP
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+Message-Id: <20261008-ext4-zeroout-eio-test-v2-1-883ac28de4cf@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAO9tx2oC/4WNQQ6CMBBFr0Jm7ZiWYFFX3sOwaGGAWUBNpzQo4
+ e5WLuDuv5/89zcQCkwC92KDQImF/ZyhPBXQjnYeCLnLDKUqjVbqirTGCj8UvF8iEnuMJDlQbRx
+ ZZS+6hrx9Bep5PbzPJvPIEn14HzdJ/9p/xqRR4805YzqyvanMQ+wkyzycWz9Bs+/7F//tTZ+8A
+ AAA
+To: fstests@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zorro Lang <zlang@kernel.org>, 
+ Christoph Hellwig <hch@infradead.org>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
+ Theodore Ts'o <tytso@mit.edu>, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791454703; l=6468;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=bQ9R3OIOFgPENEMm5FZziQo5b0dVQOH5X5ABnSjdIRU=;
+ b=4yudI3ooTojxPcpGuXzftjwu0HiF+LVdly7MhZ4z4WRwXqssiC6zC+vvjXDbhTbZaQb5nWrWz
+ 3QgG7ZBfJ3PCd6p/Hd0y3czUV8LO20C5eAZZUrg3tQotFXRelON4tRw
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-afiucv_hs_rcv() rewrites the frame in place -- EBCASC() on four name
-fields, then afiucv_swap_src_dest() swaps them and pushes an Ethernet
-header -- and can hand the same skb to dev_queue_xmit(), without making
-it private first, so a packet socket that also gets the frame reads the
-rewritten names. An ETH_P_ALL tap runs first and leaves af_iucv a
-cloned skb; a socket opened for ETH_P_AF_IUCV sits on a ptype_specific
-list, walked after ptype_base[], so deliver_skb() takes a reference and
-af_iucv runs on an skb that is shared but not cloned.
+Write one block of a preallocated range while I/O to the rest of the
+range fails, and check that the rest still reads back as zeroes rather
+than the old contents of the disk.
 
-Unshare, then cow the head, in that order: skb_cow_head() can reach
-pskb_expand_head(), which has BUG_ON(skb_shared()). Asking for ETH_HLEN
-also covers the unchecked push in afiucv_swap_src_dest(); on the ordinary
-path eth_type_trans() has already pulled that much, so it only compares.
+ext4 got this wrong. When a write converts part of a small unwritten
+extent, ext4 may zero out the rest of the extent and convert all of it
+to written. If that zeroout fails, ext4 falls back to splitting the
+extent, but it cached the blocks it failed to zero out as written in the
+extent status tree, so reads of those blocks returned the old contents
+of the disk.
 
-Fixes: 3881ac441f64 ("af_iucv: add HiperSockets transport")
-Closes: https://sashiko.dev/#/patchset/20260813-b4-disp-60433a46-v1-1-509e1200533e@proton.me?part=1
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
-Reviewed-by: Alexandra Winter <wintera@linux.ibm.com>
+On ext4 the test mounts with dioread_lock and nodelalloc and sets
+extent_max_zeroout_kb to get into that path: with the default
+dioread_nolock, the extent stays unwritten until the I/O completes and
+is converted then, without this zeroout. generic/250 and generic/252 do
+not hit it either, as they write with direct I/O while dm-error is
+loaded, which also leaves the extent unwritten. btrfs is excluded, as
+fiemap does not report device offsets there.
+
+The ext4 fix is "ext4: don't cache unzeroed blocks as written after a
+failed zeroout".
+
+Link: https://lore.kernel.org/r/20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com
+Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Sorry for the long silence since August: a major earthquake hit where I
-live, and I was finishing a postgrad program. Back now.
+The ext4 fix is 1/2 of the series in the Link: and is not merged yet,
+hence xxxxxxxxxxxx in _fixed_by_fs_commit. The test number may need to
+change.
 
-v2: the old 2/2 alone. 1/2 is dropped; Alexandra's 80230a18c164
-    ("net/iucv: filter frames in afiucv_hs_rcv() by ingress device")
-    replaced it and is in mainline. Rebased on net, no code change,
-    carries Alexandra's R-b. Kept on net; Alexandra agreed on v1 to
-    treat it as a fix. The commit message now covers both cases: v1
-    described the ETH_P_ALL tap, where af_iucv gets a cloned skb, and
-    the v1 thread added the ETH_P_AF_IUCV socket, where it gets a shared
-    one. My reply there said v1 had the delivery order backwards. It
-    didn't; both cases are real, and the A/B below shows each call is
-    needed.
-
-v1: https://lore.kernel.org/all/20260815-b4-disp-dc82fde4-v1-0-e83b10b22ce9@proton.me/
-
-Tested on s390x under QEMU TCG, KASAN and lockdep on. No z/VM there, so
-af_iucv gets its frames from lo (80230a18c164 filters after the
-EBCASC(), so lo frames still hit the rewrite), and a packet socket
-reads each one back. Unpatched, the tap and the ETH_P_AF_IUCV socket
-both get the 48 name bytes already in ASCII, and a SYN with no listener
-never reaches that socket as a 0xfbfb frame. Patched, every frame
-arrives as sent. Drop skb_share_check() and the ETH_P_AF_IUCV socket is
-broken again; drop skb_cow_head() and both are. FWIW no splat in any
-boot, patched or not -- on lo the damage is in what the other receivers
-read. Builds clean for s390 with W=1. Repro and logs on request.
+Tested in QEMU. On ext4 dev 9091c97be340 without the fix, blocks 1-7
+read back as 0x53. With the fix, alone or with the rest of the series,
+the test passes with 1k and 4k blocks. It passes on xfs with 1k and 4k
+blocks.
 ---
- net/iucv/af_iucv.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Changes in v2:
+- Make it a generic test (Christoph). The ext4 mount options and
+  extent_max_zeroout_kb are set only on ext4. btrfs is excluded, as
+  fiemap does not report device offsets there, and xfs gets the zoned
+  and realtime handling of generic/791.
+- Link to v1: https://lore.kernel.org/r/20261008-ext4-zeroout-eio-test-v1-1-9bb66deaf646@samsung.com
+---
+ tests/generic/806     | 106 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/806.out |   5 +++
+ 2 files changed, 111 insertions(+)
 
-diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
-index db261ecd19af..493dc156e9f5 100644
---- a/net/iucv/af_iucv.c
-+++ b/net/iucv/af_iucv.c
-@@ -2072,11 +2072,20 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
- 	int err = NET_RX_SUCCESS;
- 	char nullstring[8];
- 
-+	skb = skb_share_check(skb, GFP_ATOMIC);
-+	if (!skb)
-+		return NET_RX_SUCCESS;
+diff --git a/tests/generic/806 b/tests/generic/806
+new file mode 100755
+index 0000000..8991b6e
+--- /dev/null
++++ b/tests/generic/806
+@@ -0,0 +1,106 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Samsung Electronics Co., Ltd. All Rights Reserved.
++#
++# FS QA Test No. 806
++#
++# Write one block of a preallocated range while I/O to the rest of the range
++# fails, then check that the rest still reads back as zeroes, not as the old
++# contents of the disk.
++#
++# ext4 zeroes out the rest of a small unwritten extent when a write converts
++# part of it. When that zeroout failed, it fell back to splitting the extent,
++# but it cached the blocks it failed to zero out as written in the extent
++# status tree, so reading them returned the old contents of the disk.
++#
++. ./common/preamble
++_begin_fstest auto quick rw prealloc eio
 +
- 	if (!pskb_may_pull(skb, sizeof(*trans_hdr))) {
- 		kfree_skb(skb);
- 		return NET_RX_SUCCESS;
- 	}
- 
-+	if (skb_cow_head(skb, ETH_HLEN)) {
-+		kfree_skb(skb);
-+		return NET_RX_SUCCESS;
-+	}
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++	_dmerror_cleanup
++}
 +
- 	trans_hdr = iucv_trans_hdr(skb);
- 	EBCASC(trans_hdr->destAppName, sizeof(trans_hdr->destAppName));
- 	EBCASC(trans_hdr->destUserID, sizeof(trans_hdr->destUserID));
++. ./common/dmerror
++
++# The test writes to the device at the offsets fiemap reports, which are not
++# device offsets on btrfs.
++_exclude_fs btrfs
++
++_require_scratch
++_require_dm_target error
++_require_xfs_io_command "falloc"
++_require_xfs_io_command "fiemap"
++test $FSTYP = ext4 && _require_scratch_ext4_feature_enabled "extent"
++
++_fixed_by_fs_commit ext4 xxxxxxxxxxxx \
++	"ext4: don't cache unzeroed blocks as written after a failed zeroout"
++
++_scratch_mkfs >> $seqres.full 2>&1
++
++# dm-error table sizes need zone alignment on zoned devices, and the check
++# needs a mounted file system.
++_scratch_mount
++test $FSTYP = xfs && _require_xfs_scratch_non_zoned
++_scratch_unmount
++
++# ext4 does the zeroout when a write converts the extent itself. With the
++# default dioread_nolock, the extent stays unwritten until the I/O completes,
++# so mount with dioread_lock, and with nodelalloc to convert the extent at
++# write time.
++mount_opts=
++test $FSTYP = ext4 && mount_opts="-o nodelalloc,dioread_lock"
++
++do_mount()
++{
++	_dmerror_mount $mount_opts >> $seqres.full 2>&1 || _fail "mount failed"
++	test $FSTYP = xfs && _xfs_force_bdev data $SCRATCH_MNT
++}
++
++_dmerror_init
++do_mount
++
++nblks=8
++blksz=$(_get_file_block_size $SCRATCH_MNT)
++sects_per_blk=$((blksz / 512))
++file=$SCRATCH_MNT/file
++
++$XFS_IO_PROG -f -c "falloc 0 $((nblks * blksz))" -c fsync $file >> $seqres.full
++extent="$($XFS_IO_PROG -c "fiemap -v" $file | grep "^[[:space:]]*0:")"
++echo "$extent" >> $seqres.full
++phys=$(echo "$extent" | $AWK_PROG '{print $3}' | sed -e 's/\.\..*//')
++len=$(echo "$extent" | $AWK_PROG '{print $4}')
++flags=$(echo "$extent" | $AWK_PROG '{print $5}')
++flags=${flags:-0}
++test "$len" = $((nblks * sects_per_blk)) -a $((flags & 0x800)) -ne 0 || \
++	_notrun "could not allocate one unwritten extent of $nblks blocks"
++
++# Put something other than zeroes in the preallocated blocks
++_dmerror_unmount
++$XFS_IO_PROG -d \
++	-c "pwrite -S 0x53 -b $blksz $((phys * 512)) $((nblks * blksz))" \
++	$DMERROR_DEV >> $seqres.full
++do_mount
++
++# ext4 zeroes out the rest of the extent if the whole extent fits in
++# extent_max_zeroout_kb, which mount resets.
++test $FSTYP = ext4 && _set_fs_sysfs_attr $DMERROR_DEV \
++	extent_max_zeroout_kb $((nblks * blksz / 1024))
++
++# Fail I/O to blocks 1 to the end of the range and write block 0
++_dmerror_reset_table
++_dmerror_mark_range_bad $((phys + sects_per_blk)) \
++	$(((nblks - 1) * sects_per_blk))
++_dmerror_load_error_table
++$XFS_IO_PROG -c "pwrite -S 0x41 0 $blksz" -c fsync $file >> $seqres.full
++_dmerror_load_working_table
++
++echo "block 0:"
++od -An -v -tx1 -N $blksz $file | sort -u
++echo "blocks 1-$((nblks - 1)):"
++od -An -v -tx1 -j $blksz $file | sort -u
++
++# success, all done
++_exit 0
+diff --git a/tests/generic/806.out b/tests/generic/806.out
+new file mode 100644
+index 0000000..84b3a35
+--- /dev/null
++++ b/tests/generic/806.out
+@@ -0,0 +1,5 @@
++QA output created by 806
++block 0:
++ 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41
++blocks 1-7:
++ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 
 ---
-base-commit: 6d25ffca055a77787c21a36b66c253f76239411b
-change-id: 20261008-b4-disp-bf46f1ba-0f5bc3fc02c4
+base-commit: 22348afe338c0f6d540c0d7ef0db749eaa51b218
+change-id: 20261008-ext4-zeroout-eio-test-ee76bea0a517
 
 Best regards,
---  
-Bryam Vargas <hexlabsecurity@proton.me>
+-- 
+Daejun Park <daejun7.park@samsung.com>
 
