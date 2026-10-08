@@ -1,122 +1,126 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Thu, 08 Oct 2026 07:26:56 +0300
-Subject: [PATCH] mmc: meson-gx: honour the busy timeout for R1b commands
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH net v6 0/3] net/smc: bound wire-controlled CDC cursors
+ against the local buffers
+Date: Thu, 08 Oct 2026 01:12:40 -0500
+Message-Id: <20261008-b4-disp-f7cd3d96-v6-0-fba616c0920c@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-meson-gx-busy-timeout-v1-1-d92f3c68c409@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAI8bx2oC/x3MSwqEMBBF0a1IjS2IhtamtyIO/Dy1BiaSMqKIe
- +/g8AzuvUkRBEq/7KaAQ1S8SyjyjIalczNYxmQqTVkVxnx4hXrH88l91It3WeHjzjW+sNM49Ba
- WUrsFTHK+36Z9nj8F1fTsZwAAAA==
-To: Ulf Hansson <ulfh@kernel.org>
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- linux-mmc@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3870; i=iav@iav.lv;
- h=from:subject:message-id; bh=T7oobr9NpP0BRx9jjcdEGQ9sD4psJISkXHbN62KiO2U=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnHpSe9NV/Q+DxiwluPyffc47acXirLP3tx2Rl21gdl6
- TPWBr237ShlYRDjYpAVU2SZcEjjVsaSq3/9PcwfwMxhZQIZwsDFKQATufaAkeFG2p0pt2wvqLDX
- LL+q6Ne3cYG+pnV6ecrBjpcvpDwmRnMw/A9nsoy8N+dx0Dpukd91x6dIz9w7hdvgxC4rxU32+84
- 9duEEAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBAAv0L2zCZtkQp8xXiQ7laXQyFdNCaEv
+ 1vwOJPMbKCchRWGaoPMH1GZUwFfVxBej/RkFCoMzjhvjelwvCCJLhivgRrqPcbYup661jaWoWR
+ L5ijfc3mDxCvc/1Lf48RhPWaw7z8FPJpueQAAAA==
+X-Change-ID: 20261008-b4-disp-f7cd3d96-ff529d85131e
+To: Sidraya Jayagond <sidraya@linux.ibm.com>, 
+ "D. Wythe" <alibuda@linux.alibaba.com>, Eric Dumazet <edumazet@kernel.org>, 
+ Mahanta Jambigi <mjambigi@linux.ibm.com>, 
+ Dust Li <dust.li@linux.alibaba.com>, 
+ "David S. Miller" <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, 
+ Jakub Kicinski <kuba@kernel.org>
+Cc: Stefan Raspl <raspl@linux.ibm.com>, Tony Lu <tonylu@linux.alibaba.com>, 
+ Hidayath Khan <hidayath@linux.ibm.com>, Ursula Braun <ubraun@linux.ibm.com>, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Simon Horman <horms@kernel.org>, linux-s390@vger.kernel.org, 
+ linux-rdma@vger.kernel.org, Wen Gu <guwen@linux.alibaba.com>, 
+ Wenjia Zhang <wenjia@linux.ibm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791439960; l=5161;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=b2D7UJOTp4Q381AzAEMvlY/m317vHpKUmpUbQgiil+4=;
+ b=68DKpAK+BCbBE6JN7kTHEbxjPGknZWilTbmtkIOOy6hekDjXwa+0zMW8WNMjyR8B8rp7ZiKc/
+ FfUpE1/6mdRBCQAcrODQuHj/GbaMXqrpUG5qIf+QwHnP9EaTr3OHwgL
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For a command without data the driver programs a fixed 1024 ms into the
-CMD_CFG timeout field, and for R1b the controller waits for the card to
-release busy within that time. The driver does not set max_busy_timeout,
-so the core sends erase and cache flush as R1b with busy timeouts of up
-to 60 s and 30 s, and the controller gives up after one second:
+A peer's CDC producer/consumer cursors are copied from the wire and used,
+without an upper bound against the local buffers, as (a) a raw index into the
+RMB on the urgent path, (b) the receive length in smc_rx_recvmsg(), and (c) the
+send length in smc_tx_sendmsg() on the SMC-D DMB-merge path. A malicious or
+buggy peer can forge a cursor so each runs past the relevant buffer: on the
+rx/urgent side an OOB read of adjacent kernel memory, returned to the
+receiving process; on the tx side an OOB write whose length the peer
+controls and whose overflowing bytes are the local sender's own outbound
+data.
 
-  mmc_erase: erase error -110, status 0x0
-  mmc1: cache flush error -110
+This series bounds each length where it is consumed. Each clamp checks the
+local copy of the counter that the copy length is then taken from, so the
+tasklet advancing the counter cannot get between the check and the use.
 
-Program the timeout from cmd->busy_timeout, rounded up to a power of
-two and kept within 1024..32768 ms, and report 32768 ms, the largest
-value the field holds, as max_busy_timeout. The core then sizes discards
-to fit and, for a longer wait, sends R1 and polls for busy itself.
-sdhci takes its command timeout from cmd->busy_timeout in the same way.
+The clamp is not subsumed by validating each cursor at the input boundary. A
+peer that only increments prod.wrap with count == 0 hits the differing-wrap
+branch of smc_curs_diff(), which returns (len - 0) + 0 == len every CDC, so
+bytes_to_rcv (and sndbuf_space on the send side) accumulates past the buffer
+while every per-cursor bound sees count == 0 and accepts the message. IOW the
+overflow lives in the accumulator, not the cursor. Hidayath Khan's "net/smc:
+abort the connection when the peer overruns the RMB" rejects that accumulation
+on the receive side at the CDC boundary; these clamps bound each consumer and
+do not depend on it.
 
-Fixes: 51c5d8447bd7 ("MMC: meson: initial support for GX platforms")
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
+The nearby readable >= rmb_desc->len / len > sndbuf_desc->len tests only feed
+stats counters (SMC_STAT_RMB_RX_FULL / SMC_STAT_RMB_TX_SIZE_SMALL) on an
+earlier, separate read; they do not bound the copy.
+
+A/B (in-kernel KASAN replaying the sink arithmetic over a real rmb_desc->len /
+sndbuf_desc->len slab; kasan.fault=report kasan_multi_shot, 2026-07-05):
+  - urgent index (1/3):  count = len+1        -> slab-out-of-bounds Read;  clamped -> clean
+  - recv length  (2/3):  bytes_to_rcv = 5*len via wrap++/count=0 -> OOB Read; clamped -> clean
+  - send length  (3/3):  sndbuf_space inflated -> slab-out-of-bounds Write; clamped -> clean
+  - signed overflow:     readable = -1 -> v1 ">len" misses -> OOB; "<0 || >len" -> clean
+  - concurrent TOCTOU race: a producer-side clamp is racy (OOB in a racing consumer
+    kthread on another CPU); the consumer-side clamp: 0 hits in 5,000,000 reads.
+  - every in-bounds / honest-peer arm: clean.
+End to end over SMC-D loopback, re-run 2026-10-08 on v7.3-rc6 with this
+series applied (two AF_SMC sockets, the sender forging wrap++/count=0,
+rmb_desc->len 65504; the bound comes from 2/3 itself, not a modeled clamp):
+bytes_to_rcv reaches 6*len in both arms. Unpatched, recv() returns 393024
+and the second chunk is a 327520-byte read from ring offset 0 whose last
+262016 bytes lie past the RMB; KASAN reports it from smc_rx_recvmsg as
+use-after-free in _copy_to_iter (the 2026-07-11 run on 7.2-rc1 read the
+same bytes and was labelled slab-use-after-free -- the label follows
+whatever sits after the RMB). Patched, recv() returns 65504 and KASAN
+stays quiet; an honest transfer is clean.
+
+Changes since v5:
+  - repost only: rebased on net (v7.3-rc6), no functional change. Carries Sidraya
+    Jayagond's Reviewed-by on all three patches, alongside Dust Li's.
+  - 2/3 commit message: the over-read is returned to the receiving process,
+    not disclosed to the peer as v5 said. Commit message only.
+  - end-to-end A/B re-run on v7.3-rc6 with the v6 patches themselves as the
+    fixed arm (above).
+  - cover: the receive-side accumulator abort is Hidayath Khan's patch, linked
+    below; the v5 cover described it as a separate series of mine.
+  v5: https://lore.kernel.org/all/20260723-b4-disp-0d07164f-v5-0-6a9e235dbc4e@proton.me/
+  abort: https://lore.kernel.org/all/20260804141109.542202-1-hidayath@linux.ibm.com/
+
+Changes since v4:
+  - repost only: the netdev patch queue overflowed, so v5 reposted the v4
+    series unchanged, carrying Dust Li's Reviewed-by on all three patches.
+  v4: https://lore.kernel.org/all/20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me/
+
+Changes since v3:
+  - split into this stable-bound clamp series and a separate validate/abort
+    change, per Dust Li's review;
+  - tightened the commit messages; noted that the nearby SMC_STAT_* tests are not
+    bounds; no functional change to the three clamps.
+  v3: https://lore.kernel.org/all/20260614-b4-disp-edd64be9-v3-0-551fa514257e@proton.me/
+
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Tested on ODROID-N2+ (S922X), 256 GB eMMC, btrfs root with discard=async, Armbian builds in docker as load.
-Without the patch (7.3-rc6): 262 errors in 3 h and 68 in 2.5 h in two runs; the first came 4 and 43 min into the build.
-With the patch (7.3-rc6): 0 in 2.4 h.
-On 7.1 with the previous eMMC module, a synthetic test (20 GiB write + fstrim) gave 48 errors without the patch, 0 and 0 with it.
+Bryam Vargas (3):
+      net/smc: bound the wire-controlled producer cursor to the RMB
+      net/smc: bound the receive length to the RMB in smc_rx_recvmsg()
+      net/smc: bound the send length to the send buffer in smc_tx_sendmsg()
 
-The timeout is rounded up to a power of two: the field holds powers of two only, and the timeout is a lower bound.
-MMC_CAP_WAIT_WHILE_BUSY is not set: I have not checked that the controller waits for busy on every R1b command, HS400 switches included.
+ net/smc/smc_cdc.h | 27 ++++++++++++++++++++++++---
+ net/smc/smc_rx.c  | 12 ++++++++++++
+ net/smc/smc_tx.c  | 13 +++++++++++++
+ 3 files changed, 49 insertions(+), 3 deletions(-)
 ---
- drivers/mmc/host/meson-gx-mmc.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/mmc/host/meson-gx-mmc.c b/drivers/mmc/host/meson-gx-mmc.c
-index 7ef16d7c03cb..8de3eb65ccb0 100644
---- a/drivers/mmc/host/meson-gx-mmc.c
-+++ b/drivers/mmc/host/meson-gx-mmc.c
-@@ -125,6 +125,7 @@
- #define SD_EMMC_CFG_RESP_TIMEOUT 256 /* in clock cycles */
- #define SD_EMMC_CMD_TIMEOUT 1024 /* in ms */
- #define SD_EMMC_CMD_TIMEOUT_DATA 4096 /* in ms */
-+#define SD_EMMC_CMD_TIMEOUT_MAX 32768 /* in ms, 2^15: limit of CMD_CFG_TIMEOUT_MASK */
- #define SD_EMMC_CFG_CMD_GAP 16 /* in clock cycles */
- #define SD_EMMC_DESC_BUF_LEN PAGE_SIZE
- 
-@@ -212,7 +213,21 @@ static unsigned int meson_mmc_get_timeout_msecs(struct mmc_data *data)
- 
- 	timeout = roundup_pow_of_two(timeout);
- 
--	return min(timeout, 32768U); /* max. 2^15 ms */
-+	return min_t(unsigned int, timeout, SD_EMMC_CMD_TIMEOUT_MAX);
-+}
-+
-+/* For R1b the controller waits for busy to be released within this timeout. */
-+static unsigned int meson_mmc_get_cmd_timeout_msecs(struct mmc_command *cmd)
-+{
-+	unsigned int timeout = cmd->busy_timeout;
-+
-+	if (!timeout)
-+		return SD_EMMC_CMD_TIMEOUT;
-+
-+	timeout = roundup_pow_of_two(timeout);
-+
-+	return clamp_t(unsigned int, timeout, SD_EMMC_CMD_TIMEOUT,
-+		       SD_EMMC_CMD_TIMEOUT_MAX);
- }
- 
- static struct mmc_command *meson_mmc_get_next_command(struct mmc_command *cmd)
-@@ -841,7 +856,7 @@ static void meson_mmc_start_cmd(struct mmc_host *mmc, struct mmc_command *cmd)
- 		cmd_data = host->bounce_dma_addr & CMD_DATA_MASK;
- 	} else {
- 		cmd_cfg |= FIELD_PREP(CMD_CFG_TIMEOUT_MASK,
--				      ilog2(SD_EMMC_CMD_TIMEOUT));
-+				      ilog2(meson_mmc_get_cmd_timeout_msecs(cmd)));
- 	}
- 
- 	/* Last descriptor */
-@@ -1168,6 +1183,9 @@ static int meson_mmc_probe(struct platform_device *pdev)
- 
- 	mmc->caps |= MMC_CAP_CMD23;
- 
-+	/* The longest busy wait the CMD_CFG timeout field can hold. */
-+	mmc->max_busy_timeout = SD_EMMC_CMD_TIMEOUT_MAX;
-+
- 	if (mmc->caps & MMC_CAP_SDIO_IRQ)
- 		mmc->caps2 |= MMC_CAP2_SDIO_IRQ_NOTHREAD;
- 
-
----
-base-commit: fd9af27f6c2319713bb23832066585f8a59a1771
-change-id: 20261005-meson-gx-busy-timeout-7e8e3fdcb3e3
+base-commit: 6d25ffca055a77787c21a36b66c253f76239411b
+change-id: 20261008-b4-disp-f7cd3d96-ff529d85131e
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
