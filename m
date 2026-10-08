@@ -1,77 +1,56 @@
-From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Thu, 08 Oct 2026 17:56:18 -0300
-Subject: [PATCH] power: supply: qcom_smbx: read the charging status without
- the power supply
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/2] drm/tegra: Support YVU420
+Date: Thu, 08 Oct 2026 15:57:20 -0500
+Message-Id: <20261008-tegra-drm-yvu420-v1-0-dc1c443c00f3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-qcom-smbx-psy-race-v1-1-cb49fe7b4336@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDuQBBTrVaQLM07aKfjTjIoi3
- t1Yl9/ivR2Uo7BCle0QeRGVoU+wjwzo0/RvRmmTwRlXWGNK/NHQoXZ+xVE3jA0x5s7mRRmeFFq
- GFI6Rg6z/af26rbP/Mk3XCY7jBI+mD852AAAA
-X-Change-ID: 20261008-qcom-smbx-psy-race-521568f9cfde
-To: Casey Connolly <casey.connolly@linaro.org>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: Robin Snyders <robin@snyders.xyz>, David Heidelberg <david@ixit.cz>, 
- phone-devel@vger.kernel.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Fabricio Akio <fabricioakio@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791492989; l=1791;
- i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=O+EdbHvwdTw5M/tHqymi+DAtgrlmZpJcZQoDpxK8xm4=;
- b=lzrFbO7ZYW/uyflmgDKxwI3wZl4APBpTUjgSm5J397NKEwrzL4kQjYeLuu46J9VqTW0F3z3bH
- 6YAjHnRfeGmBA1/joWaPTJKng02GLKxuv2oW8IviBrMvplzXbyBVVwa
-X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
- pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
-X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwML3ZLU9KJE3ZSiXN3KslITIwNdw5SkJHNDE4NUU5NEJaC2gqLUtMw
+ KsJHRsbW1AMB0Ij5iAAAA
+X-Change-ID: 20261008-tegra-drm-yvu420-1dbb7140e54a
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
+Cc: dri-devel@lists.freedesktop.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791493050; l=1112;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=X2R3fkt9RuPxE9JCSn7LtflkpjPza9Wh3xPjFZ5Z2W4=;
+ b=A9F57GabAMH26MMYQWQKBrdO32IjHhYRWZ1SjhAhc5gvhOt812wLq3GDzyrlKIm8xNjEb3+LB
+ XUrmuNmU+ByAd80p3rZ0BcOTISlPIeyAFsS6ijdxqrp3FR20C11NDPd
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smb_get_iio_chan() reads the charging status through
-power_supply_get_property(chip->chg_psy), but chip->chg_psy is assigned
-only when devm_power_supply_register() returns, and the power supply
-core already calls get_property() from inside the registration, for its
-uevents. If another driver has taken a reference to the supply by then,
-as a fuel gauge naming the charger in power-supplies does, the core lets
-the call through, and reading CURRENT_NOW or VOLTAGE_NOW dereferences
-the NULL chg_psy.
+This is not directly supported by the display controller hardware.
+However, this can be handled efficiently by just passing the chroma
+planes to the hardware backwards and reporting it as yuv420.
 
-Read the status from the hardware with smb_get_prop_status(), as the
-STATUS property itself does.
+The format is required by AOSP for software decoded video playback among
+other things. An attempt was made to handle this in gralloc by swapping
+the chroma planes there, but it wasn't working. This kernel
+implementation is working and is more generic anyways. This has been
+verified on a SHIELD TV 2019 Pro for the tegradc path and a Jetson TX2
+NX for the nvdisplay path.
 
-Fixes: 8648aeb5d7b7 ("power: supply: add Qualcomm PMI8998 SMB2 Charger driver")
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
 ---
- drivers/power/supply/qcom_smbx.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+Aaron Kling (2):
+      drm/tegra: Support swapping chroma planes
+      drm/tegra: Support YVU420
 
-diff --git a/drivers/power/supply/qcom_smbx.c b/drivers/power/supply/qcom_smbx.c
-index 3951326f488f..6e0796730c59 100644
---- a/drivers/power/supply/qcom_smbx.c
-+++ b/drivers/power/supply/qcom_smbx.c
-@@ -607,12 +607,10 @@ static void smb_status_change_work(struct work_struct *work)
- static int smb_get_iio_chan(struct smb_chip *chip, struct iio_channel *chan,
- 			     int *val)
- {
--	int rc;
--	union power_supply_propval status;
-+	int rc, status;
- 
--	rc = power_supply_get_property(chip->chg_psy, POWER_SUPPLY_PROP_STATUS,
--				       &status);
--	if (rc < 0 || status.intval != POWER_SUPPLY_STATUS_CHARGING) {
-+	rc = smb_get_prop_status(chip, &status);
-+	if (rc < 0 || status != POWER_SUPPLY_STATUS_CHARGING) {
- 		*val = 0;
- 		return 0;
- 	}
-
+ drivers/gpu/drm/tegra/dc.c    | 19 ++++++++++++++-----
+ drivers/gpu/drm/tegra/hub.c   | 15 ++++++++++-----
+ drivers/gpu/drm/tegra/plane.c | 12 +++++++++++-
+ drivers/gpu/drm/tegra/plane.h |  3 ++-
+ 4 files changed, 37 insertions(+), 12 deletions(-)
 ---
 base-commit: aac26bee2287c88af5be5a5ff96d783b19a28790
-change-id: 20261008-qcom-smbx-psy-race-521568f9cfde
+change-id: 20261008-tegra-drm-yvu420-1dbb7140e54a
 
 Best regards,
---  
-Fabricio Akio <fabricioakio@gmail.com>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
