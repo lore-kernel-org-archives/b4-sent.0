@@ -1,28 +1,26 @@
 From: Lucas Frendorf <lucasfrendorf@proton.me>
-Date: Thu, 08 Oct 2026 13:39:47 +0200
-Subject: [PATCH] drm/ttm: Skip GPU MM stats for DMA-allocated pool pages
+Date: Thu, 08 Oct 2026 13:55:20 +0200
+Subject: [PATCH RESEND] drm/ttm: Skip GPU MM stats for DMA-allocated pool
+ pages
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-ttm-gpu-stats-dma-v1-1-2922ae4d372d@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqEMAxA4atI1hOoxYrOVWQWtUaN4A9NHAbEu
- 9vR5bd47wChyCTwzg6I9GXhdUnIXxmE0S8DIXfJYI0tc2MqVJ1x2HYU9SrYzR7rPjiqnfWFayF
- 1W6Sef/ez+TyWvZ0o6H8E53kBXUj42XUAAAA=
-X-Change-ID: 20261008-ttm-gpu-stats-dma-9fc5e952a45b
-To: Thomas Zimmermann <tzimmermann@suse.de>, 
- Simona Vetter <simona@ffwll.ch>, 
+Message-Id: <20261008-ttm-gpu-stats-dma-v1-1-8660b659fe52@proton.me>
+To: Arun Pravin <arunpravin.paneerselvam@amd.com>, 
+ Natalie Vock <nat@pixelcluster.dev>
+Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Matthew Brost <matthew.brost@intel.com>, Maxime Ripard <mripard@kernel.org>, 
  Christian Koenig <christian.koenig@amd.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Matthew Auld <matthew.auld@intel.com>, 
- Huang Rui <ray.huang@amd.com>, David Airlie <airlied@gmail.com>, 
- Matthew Brost <matthew.brost@intel.com>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ Thomas Zimmermann <tzimmermann@suse.de>, Simona Vetter <simona@ffwll.ch>, 
+ linux-kernel@vger.kernel.org, Matthew Auld <matthew.auld@intel.com>, 
+ dri-devel@lists.freedesktop.org, David Airlie <airlied@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791459605; l=3687;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791460570; l=3732;
  i=lucasfrendorf@proton.me; s=20261008; h=from:subject:message-id;
- bh=kWINnrTxPf/UJdWXQRq0OxWFpdRLdVyF8aeGd93+1n0=;
- b=ilFnetDJSPqDknQvJ919aZlejSr87t9O54w92Cfcc8VqOAuRqF1298dwSMo3RUkV1OnHUtrrt
- jy92MERfoVPDJPjtAqzI20WP7bl6eMXMNJNR7USE7rbEHiw9cuXHmX0
+ bh=hyaFv4vc1TDrPFFu8kZEtFpbp4jfnGBU2CeqvxC7h3U=;
+ b=yn2Z9plYH7C+tt+85/t2791dD127a4PIX7UwSbGVY6GZij4lE0Le1s7UCgposXfKR6RBzT98o
+ FySL0XcrJFAAhi+4K6w+vnA189H0S3CtH43QD+G3utJImcPl94iAFzN
 X-Developer-Key: i=lucasfrendorf@proton.me; a=ed25519;
  pk=v8K8GS0xRvfhhVxjq0t7VICeqma8piHxgNSzSM4Uytg=
 X-Endpoint-Received: by B4 Relay for lucasfrendorf@proton.me/20261008 with auth_id=1129
@@ -112,6 +110,8 @@ base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
 change-id: 20261008-ttm-gpu-stats-dma-9fc5e952a45b
 
 Best regards,
---  
+--
+Lucas Frendorf <lucasfrendorf@proton.me>
+-- 
 Lucas Frendorf <lucasfrendorf@proton.me>
 
