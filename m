@@ -1,15 +1,13 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Subject: [PATCH v2 0/2] ext4: fix fast commit and extent status after
- unwritten extent zero-out
-Date: Thu, 08 Oct 2026 10:25:35 +0900
-Message-Id: <20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
+Date: Thu, 08 Oct 2026 10:25:36 +0900
+Subject: [PATCH v2 1/2] ext4: don't cache unzeroed blocks as written after
+ a failed zeroout
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAA/xxmoC/2WNQQ6CMBBFr0Jm7ZhpaYq48h6GRS0DdAE1LRCU9
- O5WElcu30v++ztEDo4jXIsdAq8uOj9lkKcC7GCmntG1mUGS1IJII2+zws7im4P3y4ysZE1U2Uo
- agrx6Bu7cdhTvTebBxdmH13Gwiq/9taq/1iqQ8HHRLWtV1qoUt2jGuEz92foRmpTSB/rZQsGwA
- AAA
+Message-Id: <20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com>
+References: <20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
+In-Reply-To: <20261008-ext4-fc-zeroout-v2-0-55cab1e24fa3@samsung.com>
 To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>, 
  Baokun Li <libaokun@linux.alibaba.com>, 
@@ -20,84 +18,73 @@ Cc: Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791422735; l=3514;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791422735; l=2376;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=yeOwUTqDuR+LFpSQg6FwfpWjLvYhNN1K8QqDI9SipC4=;
- b=1B4IoWNTfYaCByl2DEVxmy/yc2PDq1y6JqQY5QZXeouf76hDv2Iw4qMtvlwOLZ65G30StjvQU
- yd5NiqY/ryND8T1EP6Nh9uLH8OgPacJ1HSmOamSzldMJaAQ8Zzxwrx5
+ bh=ZXBsp2KR944OJd1cOp2rHhViwJH53RZyyfzB8Lb5lOM=;
+ b=GDJnH07QqjNoAu+2nxXwxkkuy5IX8dRKw2LIXDCwLRfywNwSc+sG5IEV4ex3BbpnS41pRdFRh
+ hZ5PRtiOEs1Dyex3sWHq7d2CVb63lJHBldHFXIxHJQyBnZNKoQD5/XV
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When ext4_ext_convert_to_initialized() converts part of an unwritten
-extent, it may zero out the blocks around the range and convert them
-too, and ext4_split_extent() does the same with a whole extent when a
-split fails. Two things go wrong around that.
+ext4_ext_convert_to_initialized() may zero out the blocks before and
+after the range being written and convert them to written together with
+it, instead of splitting them off the unwritten extent. If
+ext4_ext_zeroout() fails for one side, it falls back to splitting the
+extent, so the blocks on that side stay unwritten in the extent tree.
+But zero_ex1 or zero_ex2 keeps its length, and ext4_zeroout_es() still
+inserts those blocks into the extent status tree as written.
 
-1/2: if the zeroout fails, the blocks on that side stay unwritten in the
-extent tree, but the extent status tree caches them as written. Reads
-return old disk contents, and writes go in place without converting the
-extent, so they read back as zeroes once the entry is dropped.
+Until that entry goes away, a read of those blocks returns whatever was
+on the disk before the extent was allocated. A write to them is mapped
+from the cache and goes in place without converting the extent, so its
+data would read back as zeroes once the entry is dropped. To reproduce
+on 4 KiB blocks with -o nodelalloc: fallocate 32 KiB, map the last seven
+blocks of that extent to dm-error, write the first block, restore the
+mapping and read the second block. It returns the old disk contents
+instead of zeroes.
 
-2/2: when the zeroout succeeds, fast commit is told only about the range
-that was written. A later in-place overwrite of a zeroed block is not
-tracked either, and after a crash the fsynced data reads back as zeroes.
+Clear the length of an extent that could not be zeroed out, so that
+ext4_zeroout_es() skips it, as the comment at the out label intends.
 
-Tested in QEMU on ext4 dev 9091c97be340 plus this series:
- - the reproducer described in 2/2, with -o nodelalloc and with
-   -o dioread_lock, also on a PROVE_LOCKING and DEBUG_ATOMIC_SLEEP kernel
-   (no report), and the dm-error reproducer described in 1/2;
- - FALLOC_FL_WRITE_ZEROES on scsi_debug (lbpws=1 lbprz=1) over a whole
-   unwritten extent, over one block in the middle of one, and over a
-   hole, each followed by an in-place write, fsync and
-   EXT4_IOC_SHUTDOWN: the written block survives replay, with and
-   without the series;
- - xfstests ext4/044 ext4/045 generic/455 generic/456 generic/482 with
-   -O fast_commit, with and without -o nodelalloc: the same results as
-   without the series. generic/455 fails on both, at different marks.
-   generic/482 fails now and then on both (base 3 of 53 runs, with the
-   series 2 of 46), with e2fsck reporting i_blocks one block short after
-   replay;
- - the ext4 KUnit tests, 72 of 72. They are the only ones to reach the
-   zeroout after a failed split, with the zeroout stubbed and without
-   fast commit, so the tracking there is covered by review only.
-
-For stable: the fast commit part goes back to 5.10. 2/2 applies as is
-from 7.3-rc1 on, and I will send backports for older trees.
-
+Fixes: 308c57ccf431 ("ext4: if zeroout fails fall back to splitting the extent node")
+Cc: stable@vger.kernel.org
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Changes in v2:
-- 2/2: track the range in ext4_issue_zeroout(), once the zeroout has
-  succeeded, instead of in ext4_zeroout_es() and
-  ext4_split_extent_zeroout() (Jan). ext4_issue_zeroout() and
-  ext4_ext_zeroout() take the handle for that.
-  ext4_alloc_file_blocks() zeroes out without a handle and passes NULL.
-  The ext4_convert_unwritten_extents() call after it tracks the blocks
-  it converts through ext4_map_blocks(), blocks that were already
-  written keep their mapping, and the FALLOC_FL_WRITE_ZEROES test above
-  keeps the block on the base kernel too, so I found no gap there.
-- 1/2: add Jan's Reviewed-by.
-- 2/2: Cc stable without "# 7.0.x"; the fix is in ext4_issue_zeroout()
-  now, which older trees have as well.
-- Link to v1: https://lore.kernel.org/r/20261007-ext4-fc-zeroout-v1-0-b86de6439431@samsung.com
+ fs/ext4/extents.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
----
-Daejun Park (2):
-      ext4: don't cache unzeroed blocks as written after a failed zeroout
-      ext4: track zeroed out blocks of unwritten extents for fast commit
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 836396ea79..d65e30f3c1 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3755,8 +3755,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+ 				ext4_ext_pblock(ex) + split_map.m_lblk +
+ 				split_map.m_len - ee_block);
+ 			err = ext4_ext_zeroout(inode, &zero_ex1);
+-			if (err)
++			if (err) {
++				zero_ex1.ee_len = 0;
+ 				goto fallback;
++			}
+ 			split_map.m_len = *allocated;
+ 		}
+ 		if (split_map.m_lblk - ee_block + split_map.m_len <
+@@ -3769,8 +3771,10 @@ ext4_ext_convert_to_initialized(handle_t *handle, struct inode *inode,
+ 				ext4_ext_store_pblock(&zero_ex2,
+ 						      ext4_ext_pblock(ex));
+ 				err = ext4_ext_zeroout(inode, &zero_ex2);
+-				if (err)
++				if (err) {
++					zero_ex2.ee_len = 0;
+ 					goto fallback;
++				}
+ 			}
+ 
+ 			split_map.m_len += split_map.m_lblk - ee_block;
 
- fs/ext4/ext4.h         |  5 +++--
- fs/ext4/ext4_extents.h |  3 ++-
- fs/ext4/extents-test.c |  8 +++++---
- fs/ext4/extents.c      | 39 ++++++++++++++++++++++++++-------------
- fs/ext4/inode.c        | 25 +++++++++++++++++--------
- 5 files changed, 53 insertions(+), 27 deletions(-)
----
-base-commit: 9091c97be34083587a75db174aab51551d8e8543
-change-id: 20261006-ext4-fc-zeroout-e429007c72a0
-
-Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+2.43.0
 
