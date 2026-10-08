@@ -1,96 +1,61 @@
-From: Praveen Puglia <praveenpuglia@gmail.com>
-Date: Thu, 08 Oct 2026 20:39:37 +0530
-Subject: [PATCH] media: i2c: cvs: Leave the privacy LED to firmware on
- Synaptics SVP7xxx
+From: Sadman Fahmid <sadmanf@meta.com>
+Date: Thu, 08 Oct 2026 11:37:32 -0400
+Subject: [PATCH] erofs-utils: tar: fix source path leak
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-cvs-privacy-led-v1-1-b78d5c512cba@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBtQg4yuEi1CxxoIkxGkkO6et
- HyL/ytkEqYMc1dBqHDmKzbovgN3bHEnZN8MRplRKzWhKxmTcNncgyd5tF4FMxjrBh2gVUko8P0
- fl/V9P+1l4LBhAAAA
-X-Change-ID: 20261008-cvs-privacy-led-7d0f2327c31f
-To: Miguel Vadillo <miguel.vadillo@intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mehdi Djait <mehdi.djait@linux.intel.com>
-Cc: Marco Nenciarini <mnencia@kcore.it>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Praveen Puglia <praveenpuglia@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2309;
- i=praveenpuglia@gmail.com; h=from:subject:message-id;
- bh=HkOKW4kz9V77Mdvv3KELVLj5WUPOFOQXjEg6NNQFd4c=;
- b=owEBbQKS/ZANAwAKAY+nnsgxDLtBAcsmYgBqx7I0EjPpdtqo3fOlsDpQ/25VU/sHYrU9C62GA
- d9yuk5KIjyJAjMEAAEKAB0WIQQFOQz1fOStysPMknmPp57IMQy7QQUCaseyNAAKCRCPp57IMQy7
- QeZ7D/9A0UIBEfVNj5qNGFmEqbgQ3jjVB+0DkgqHFJ/mGb2ytLTE2vhZRdOcaKquBL8U3KzV3Sd
- pmst/g/+KIAWtPBJbQz40P7TsZtToOsZ9pwMJQtgI++BSBdhQ9dg6rCcEAevDxiqgHcmuB5JDst
- jsr6LMZCtcx9Vmzn4Wmj5bZIIRbXirGuK6yBx/bl6xoYSlBr8t5BAB9g9NTTqRmbTlAEBUZdmRZ
- tXZkUOIrBzfqQbjVVtXzsz3XGopcIXCeZ3efwsNH/KDboHONlhtgPCcvOuNnKXbfjXxdwo+cmcU
- DPWpP1KcuIOcrM/6bR+nZQQ/VwcF9g8KiC92Ae+YpI83jKSL8xRxWZGWHKC6zKcLJNVTLcNfUmq
- /2SO3Ip7bTDGaG8cYGvw5x+nWOSu2V8F/yIkwln002qwaUdBl8Q0FnCFmvEHmpcboG8nw8DcJw2
- XCBqHvc1AhxhgrHuqLhgPqiaNmoSww3F+HmSlPzsbNeuvs+pwKdS8TyZEVPsUYYhP4gjTK+mx1a
- iEOJM3UxAfFM9CzmsEl8/GxuiwrPZTUkU902VDWulWmQNxurlbA1UbTIFEURLQ6IiEApASVDZAv
- ZQgoDyWdsY8LT+aAez3PB86TZc3hXLRmt45ODdg005q0IfYZVokqzC4+C7RoEr6QlCbP8oRRXVb
- be9diTGXhgKLQKg==
-X-Developer-Key: i=praveenpuglia@gmail.com; a=openpgp;
- fpr=05390CF57CE4ADCAC3CC92798FA79EC8310CBB41
-X-Endpoint-Received: by B4 Relay for praveenpuglia@gmail.com/default with auth_id=1134
+Message-Id: <20261008-chunking-tar-srcpath-v1-v1-1-0d79d76a1593@meta.com>
+X-B4-Tracking: v=1; b=H4sIALu4x2oC/x3NQQ6CMBCF4auQWTuxECXGqxgX0zK0E3VopkBIC
+ He3uvwW7387FDbhAvdmB+NVikxa0Z4aCIk0MspQDZ3r+ta5G4a06Es04kyGxUKmOeHaohsH7j1
+ drm70UNfZeJTtX348qz0VRm+kIf16k0kUPfOW6/+HdaY3HMcX7g2PwY8AAAA=
+To: linux-erofs@lists.ozlabs.org
+Cc: xiang@kernel.org, jefflexu@linux.alibaba.com, 
+ Sadman Fahmid <sadmanf@meta.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791473853; l=1125;
+ i=sadmanf@meta.com; s=20261006; h=from:subject:message-id;
+ bh=WbKflU4BUacdGyvko5EelvmAxg0hh/Mo+mElmyPInfw=;
+ b=cYrFBGBHj7wbAKZvupATfm1OoFa0PO2VSydBO6mOp/yK5oC44JNNJeueq2Kz0qlZaML28AzdK
+ Acuu7apVXBSCFNZycMuEW2dMO16sECZApgYQyBsxIkj0M3syPXdfezX
+X-Developer-Key: i=sadmanf@meta.com; a=ed25519;
+ pk=Pc/arXJpm1RPef8qImFuHROn1p3XNX5MWSUxjZWNTa4=
+X-Endpoint-Received: by B4 Relay for sadmanf@meta.com/20261006 with auth_id=1125
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Synaptics SVP7xxx (06cb:0701) quirk sets ICVS_HOST_PRIV_CTRL, so
-SET_DEV_HOST_ID tells the CVS firmware that the host owns the privacy
-LED. Nothing in the driver drives it, though: V4L2_CID_PRIVACY is a
-read-only placeholder. The firmware then never turns the LED on and the
-camera streams with the LED off.
+Tar import leaks the previous `i_srcpath` allocation when updating
+an existing directory or root inode. Free the old string before
+assigning the new path.
 
-The host has no way to drive it on these machines either. On the Dell
-Pro Max 16 Premium (MA16250) the only camera LED that INT3472 exposes
-is the IR flood LED. The out-of-tree Intel vision driver sends
-privacy_led_host = 0 for this bridge, and the LED works there.
-
-Drop ICVS_HOST_PRIV_CTRL from the quirk (quirks 0x7a -> 0x3a). The LED
-now turns on while streaming and the stream is unaffected.
-
-Tested on a Dell Pro Max 16 Premium (MA16250) with v7.2.8.
-
-Fixes: 8e2b43d2c10b ("media: i2c: cvs: Add driver of Intel Computer Vision Sensing Controller(CVS)")
-Cc: stable@vger.kernel.org
-Link: https://github.com/intel/ipu6-drivers/issues/417
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Praveen Puglia <praveenpuglia@gmail.com>
+Fixes: 95d315fd7958 ("erofs-utils: introduce tarerofs")
+Signed-off-by: Sadman Fahmid <sadmanf@meta.com>
 ---
-This is my first kernel patch. I found and debugged this with an AI
-assistant (Claude), then verified it myself on the laptop: quirks read
-0x3a, the LED turns on and off with streaming, and the stream is
-unchanged. Tested as a rebuilt module on Fedora's v7.2.8, not on
-v7.3-rc.
-
-Marco Nenciarini reproduced this on the same laptop with Debian and
-v7.2.6, and found no host-controlled privacy LED pin in the DSDT/SSDTs:
-https://github.com/intel/ipu6-drivers/issues/417#issuecomment-5996738346
+Tested with Clang 21 ASan/UBSan and LeakSanitizer enabled. A tar
+containing explicit root and directory headers, a child file, and
+repeated root/directory headers leaks 14 bytes on the baseline.
+With this patch the import exits successfully without a leak report
+and produces an identical EROFS image.
 ---
- drivers/media/i2c/cvs/core.c | 1 -
- 1 file changed, 1 deletion(-)
+ lib/tar.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/media/i2c/cvs/core.c b/drivers/media/i2c/cvs/core.c
-index d4a3b9c3ba..3520325717 100644
---- a/drivers/media/i2c/cvs/core.c
-+++ b/drivers/media/i2c/cvs/core.c
-@@ -72,7 +72,6 @@ static const struct icvs_device_quirk cvs_quirk_table[] = {
- 	},	/* Lattice NX33 */
- 	{ 0x06CB, 0x0701, ICVS_SKIP_FW_RESET |
- 			  ICVS_HOST_SENSOR_PWR_CTRL |
--			  ICVS_HOST_PRIV_CTRL |
- 			  ICVS_FW_BUF_SIZE_256 |
- 			  ICVS_FW_HEADER_SIZE_256
- 	},	/* Synaptics SVP7xxx */
+diff --git a/lib/tar.c b/lib/tar.c
+index f24ad95..c99ce3c 100644
+--- a/lib/tar.c
++++ b/lib/tar.c
+@@ -1165,6 +1165,7 @@ new_inode:
+ 			inode->u.i_rdev = erofs_new_encode_dev(st.st_rdev);
+ 	}
+ 
++	free(inode->i_srcpath);
+ 	inode->i_srcpath = strdup(eh.path);
+ 	if (!inode->i_srcpath) {
+ 		ret = -ENOMEM;
 
 ---
-base-commit: 47324d3a5b3abd781295044d01d92d09f184e872
-change-id: 20261008-cvs-privacy-led-7d0f2327c31f
+base-commit: 50c29ee8d0f88fcec28d492d01eb7ca8715f5961
+change-id: 20261008-chunking-tar-srcpath-v1-0fde6ba450fb
 
 Best regards,
 -- 
-Praveen Puglia <praveenpuglia@gmail.com>
+Sadman Fahmid <sadmanf@meta.com>
 
