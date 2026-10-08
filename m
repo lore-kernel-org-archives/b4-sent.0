@@ -1,286 +1,122 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 08 Oct 2026 10:39:37 +0900
-Subject: [PATCH 8/8] nfsd: get all extents of a block layout in one
- ->map_blocks call
+From: Igor Velkov <iav@iav.lv>
+Date: Thu, 08 Oct 2026 07:26:56 +0300
+Subject: [PATCH] mmc: meson-gx: honour the busy timeout for R1b commands
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-xfs-nfsd-map-blocks-v1-8-560026cdccb6@samsung.com>
-References: <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
-In-Reply-To: <20261008-xfs-nfsd-map-blocks-v1-0-560026cdccb6@samsung.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>, 
- Amir Goldstein <amir73il@gmail.com>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, 
- Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org, 
- linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261008-meson-gx-busy-timeout-v1-1-d92f3c68c409@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAI8bx2oC/x3MSwqEMBBF0a1IjS2IhtamtyIO/Dy1BiaSMqKIe
+ +/g8AzuvUkRBEq/7KaAQ1S8SyjyjIalczNYxmQqTVkVxnx4hXrH88l91It3WeHjzjW+sNM49Ba
+ WUrsFTHK+36Z9nj8F1fTsZwAAAA==
+To: Ulf Hansson <ulfh@kernel.org>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ linux-mmc@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791423569; l=9338;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=/MwS2SK4X2+xmp7sF7HJdcpW7r0rc3YDZufktlkfIR0=;
- b=CiK/fKJjDabu5DKUGb7ak1EUKpsW2bUw5xAfLrHQrA/1nXo20pigWZVY+Wt6r4hhre2vS+2pO
- IslYFISOxRXBvyVsvq1qcImhI4VeMYtwa5Lmw5p/tO0HNPES/DpOe+C
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3870; i=iav@iav.lv;
+ h=from:subject:message-id; bh=T7oobr9NpP0BRx9jjcdEGQ9sD4psJISkXHbN62KiO2U=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnHpSe9NV/Q+DxiwluPyffc47acXirLP3tx2Rl21gdl6
+ TPWBr237ShlYRDjYpAVU2SZcEjjVsaSq3/9PcwfwMxhZQIZwsDFKQATufaAkeFG2p0pt2wvqLDX
+ LL+q6Ne3cYG+pnV6ecrBjpcvpDwmRnMw/A9nsoy8N+dx0Dpukd91x6dIz9w7hdvgxC4rxU32+84
+ 9duEEAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nfsd4_block_proc_layoutget() calls ->map_blocks once per extent, each
-time for the range left after the extent before, and trims each extent
-so that it starts where the one before it ended, as the mapping can
-change between the calls.
+For a command without data the driver programs a fixed 1024 ms into the
+CMD_CFG timeout field, and for R1b the controller waits for the card to
+release busy within that time. The driver does not set max_busy_timeout,
+so the core sends erase and cache flush as R1b with busy timeouts of up
+to 60 s and 30 s, and the controller gives up after one second:
 
-Ask for all extents in one call, which ->map_blocks now allows, so that
-the filesystem maps them together. The array of mappings is bounded by
-the same loga_maxcount limit as the layout. Instead of trimming, check
-that the first extent contains the offset asked for and that each one
-after it starts where the one before it ends, and warn and answer
-NFS4ERR_LAYOUTUNAVAILABLE if not, as nfsd already does for a first
-extent that does not contain the offset: with the whole range mapped
-under one lock, a mapping that does not fit is a filesystem bug, which
-trimming would hide. nfsd also warns if the filesystem returns no
-mapping, or more than it has room for. nfsd4_block_map_extent() becomes
-nfsd4_block_iomap_to_extent(), which only converts a mapping, and the
-device ID is set up once per layout instead of once per extent.
+  mmc_erase: erase error -110, status 0x0
+  mmc1: cache flush error -110
 
-With XFS, a READ LAYOUTGET for the first 256 KiB of a file in which 32
-blocks of 4 KiB are each followed by a 4 KiB hole calls ->map_blocks
-once instead of 64 times, gets the same 64 extents, and
-nfsd4_block_proc_layoutget() takes 9 us instead of 26 us (median of 20
-LAYOUTGETs each; QEMU VMs, XFS on an NVMe/TCP namespace, pynfs as the
-client, time from a kprobe, KASAN and lockdep off). A READ LAYOUTGET for
-NFS4_UINT64_MAX bytes, which got NFS4ERR_INVAL when nfsd asked again
-from the maximum file size on, now gets a layout to 2^63. An RW
-LAYOUTGET with a loga_minlength of zero, which nfsd refuses once it
-meets an unwritten extent, now has all holes in its range allocated
-before it is refused, instead of only the first one; the Linux client
-asks for at least one page.
+Program the timeout from cmd->busy_timeout, rounded up to a power of
+two and kept within 1024..32768 ms, and report 32768 ms, the largest
+value the field holds, as max_busy_timeout. The core then sizes discards
+to fit and, for a longer wait, sends R1 and polls for busy itself.
+sdhci takes its command timeout from cmd->busy_timeout in the same way.
 
-pynfs BLOCK1, BLOCK2, BLOCK4 and BLOCK5 pass as before (five runs
-before, three after, with KASAN and lockdep). On a test kernel whose XFS
-does not trim a mapping to the offset asked for, BLOCK5 gets
-NFS4ERR_LAYOUTUNAVAILABLE and nfsd warns that the filesystem "returned
-extent 0+12288 for offset 8192", where nfsd used to trim that extent
-instead. fstests generic/075, 091 and 263 over the block and the SCSI
-layout give the same results as before: 075 fails with the fsx size
-error that it also gets without this series, and bl_alloc_lseg() on the
-client returns no error.
-
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Fixes: 51c5d8447bd7 ("MMC: meson: initial support for GX platforms")
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- fs/nfsd/blocklayout.c | 136 ++++++++++++++++++++++++++------------------------
- 1 file changed, 70 insertions(+), 66 deletions(-)
+Tested on ODROID-N2+ (S922X), 256 GB eMMC, btrfs root with discard=async, Armbian builds in docker as load.
+Without the patch (7.3-rc6): 262 errors in 3 h and 68 in 2.5 h in two runs; the first came 4 and 43 min into the build.
+With the patch (7.3-rc6): 0 in 2.4 h.
+On 7.1 with the previous eMMC module, a synthetic test (20 GiB write + fstrim) gave 48 errors without the patch, 0 and 0 with it.
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index cedaf0e15d..e5e0a43ade 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -20,43 +20,19 @@
+The timeout is rounded up to a power of two: the field holds powers of two only, and the timeout is a lower bound.
+MMC_CAP_WAIT_WHILE_BUSY is not set: I have not checked that the controller waits for busy on every R1b command, HS400 switches included.
+---
+ drivers/mmc/host/meson-gx-mmc.c | 22 ++++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/host/meson-gx-mmc.c b/drivers/mmc/host/meson-gx-mmc.c
+index 7ef16d7c03cb..8de3eb65ccb0 100644
+--- a/drivers/mmc/host/meson-gx-mmc.c
++++ b/drivers/mmc/host/meson-gx-mmc.c
+@@ -125,6 +125,7 @@
+ #define SD_EMMC_CFG_RESP_TIMEOUT 256 /* in clock cycles */
+ #define SD_EMMC_CMD_TIMEOUT 1024 /* in ms */
+ #define SD_EMMC_CMD_TIMEOUT_DATA 4096 /* in ms */
++#define SD_EMMC_CMD_TIMEOUT_MAX 32768 /* in ms, 2^15: limit of CMD_CFG_TIMEOUT_MASK */
+ #define SD_EMMC_CFG_CMD_GAP 16 /* in clock cycles */
+ #define SD_EMMC_DESC_BUF_LEN PAGE_SIZE
  
+@@ -212,7 +213,21 @@ static unsigned int meson_mmc_get_timeout_msecs(struct mmc_data *data)
  
- /*
-- * Get an extent from the file system that contains offset. It may start
-- * below offset and may be shorter than the requested length.
-+ * Turn a mapping from the filesystem into an extent of the layout.
-  */
- static __be32
--nfsd4_block_map_extent(struct inode *inode, const struct svc_fh *fhp,
--		u64 offset, u64 length, u32 iomode, u64 minlength,
--		struct pnfs_block_extent *bex)
-+nfsd4_block_iomap_to_extent(const struct iomap *iomap, u32 iomode,
-+		u64 minlength, struct pnfs_block_extent *bex)
- {
--	struct super_block *sb = inode->i_sb;
--	struct iomap iomap;
--	unsigned int nr_iomaps = 1;
--	u32 device_generation = 0;
--	int error;
--
--	error = sb->s_export_op->block_ops->map_blocks(inode, offset, length,
--			&iomap, &nr_iomaps, iomode != IOMODE_READ,
--			&device_generation);
--	if (error) {
--		if (error == -ENXIO)
--			return nfserr_layoutunavailable;
--		return nfserrno(error);
--	}
--
--	if (WARN_ONCE(iomap.offset > offset ||
--		      offset - iomap.offset >= iomap.length,
--		      "pnfsd: %s ino %llu: filesystem returned extent %lld+%llu for offset %llu\n",
--		      sb->s_id, inode->i_ino, iomap.offset, iomap.length,
--		      offset))
--		return nfserr_layoutunavailable;
--
--	switch (iomap.type) {
-+	switch (iomap->type) {
- 	case IOMAP_MAPPED:
- 		if (iomode == IOMODE_READ)
- 			bex->es = PNFS_BLOCK_READ_DATA;
- 		else
- 			bex->es = PNFS_BLOCK_READWRITE_DATA;
--		bex->soff = iomap.addr;
-+		bex->soff = iomap->addr;
- 		break;
- 	case IOMAP_UNWRITTEN:
- 		if (iomode & IOMODE_RW) {
-@@ -69,7 +45,7 @@ nfsd4_block_map_extent(struct inode *inode, const struct svc_fh *fhp,
- 			}
+ 	timeout = roundup_pow_of_two(timeout);
  
- 			bex->es = PNFS_BLOCK_INVALID_DATA;
--			bex->soff = iomap.addr;
-+			bex->soff = iomap->addr;
- 			break;
- 		}
- 		fallthrough;
-@@ -81,16 +57,12 @@ nfsd4_block_map_extent(struct inode *inode, const struct svc_fh *fhp,
- 		fallthrough;
- 	case IOMAP_DELALLOC:
- 	default:
--		WARN(1, "pnfsd: filesystem returned %d extent\n", iomap.type);
-+		WARN(1, "pnfsd: filesystem returned %d extent\n", iomap->type);
- 		return nfserr_layoutunavailable;
- 	}
- 
--	error = nfsd4_set_deviceid(&bex->vol_id, fhp, device_generation);
--	if (error)
--		return nfserrno(error);
--
--	bex->foff = iomap.offset;
--	bex->len = iomap.length;
-+	bex->foff = iomap->offset;
-+	bex->len = iomap->length;
- 	return nfs_ok;
+-	return min(timeout, 32768U); /* max. 2^15 ms */
++	return min_t(unsigned int, timeout, SD_EMMC_CMD_TIMEOUT_MAX);
++}
++
++/* For R1b the controller waits for busy to be released within this timeout. */
++static unsigned int meson_mmc_get_cmd_timeout_msecs(struct mmc_command *cmd)
++{
++	unsigned int timeout = cmd->busy_timeout;
++
++	if (!timeout)
++		return SD_EMMC_CMD_TIMEOUT;
++
++	timeout = roundup_pow_of_two(timeout);
++
++	return clamp_t(unsigned int, timeout, SD_EMMC_CMD_TIMEOUT,
++		       SD_EMMC_CMD_TIMEOUT_MAX);
  }
  
-@@ -99,11 +71,17 @@ nfsd4_block_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
- 		const struct svc_fh *fhp, struct nfsd4_layoutget *args)
- {
- 	struct nfsd4_layout_seg *seg = &args->lg_seg;
-+	struct super_block *sb = inode->i_sb;
- 	struct pnfs_block_layout *bl;
- 	struct pnfs_block_extent *first_bex, *last_bex;
-+	struct nfsd4_deviceid vol_id;
-+	struct iomap *iomaps = NULL;
- 	u64 offset = seg->offset, length = seg->length;
- 	u32 i, nr_extents_max, block_size = i_blocksize(inode);
-+	u32 device_generation = 0;
-+	unsigned int nr_iomaps;
- 	__be32 nfserr;
-+	int error;
- 
- 	if (locks_in_grace(SVC_NET(rqstp)))
- 		return nfserr_grace;
-@@ -146,42 +124,67 @@ nfsd4_block_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
- 		goto out_error;
- 	bl->nr_extents = nr_extents_max;
- 	args->lg_content = bl;
-+	iomaps = kmalloc_array(nr_extents_max, sizeof(*iomaps), GFP_KERNEL);
-+	if (!iomaps)
-+		goto out_error;
- 
--	for (i = 0; i < bl->nr_extents; i++) {
--		struct pnfs_block_extent *bex = bl->extents + i;
--		u64 bex_length;
-+	/*
-+	 * Get all extents in one call, so that the filesystem maps them
-+	 * together and they fit.
-+	 */
-+	nr_iomaps = nr_extents_max;
-+	error = sb->s_export_op->block_ops->map_blocks(inode, offset, length,
-+			iomaps, &nr_iomaps, seg->iomode != IOMODE_READ,
-+			&device_generation);
-+	if (error) {
-+		if (error == -ENXIO)
-+			nfserr = nfserr_layoutunavailable;
-+		else
-+			nfserr = nfserrno(error);
-+		goto out_error;
-+	}
- 
--		nfserr = nfsd4_block_map_extent(inode, fhp, offset, length,
--				seg->iomode, args->lg_minlength, bex);
--		if (nfserr != nfs_ok)
--			goto out_error;
-+	nfserr = nfserr_layoutunavailable;
-+	if (WARN_ONCE(!nr_iomaps || nr_iomaps > nr_extents_max,
-+		      "pnfsd: %s ino %llu: filesystem returned %u extents for %u\n",
-+		      sb->s_id, inode->i_ino, nr_iomaps, nr_extents_max))
-+		goto out_error;
- 
--		/*
--		 * Each extent after the first was mapped for the range that
--		 * starts where the previous extent ends, but the filesystem
--		 * may return a mapping that starts below that point. Trim
--		 * it, as RFC 5663 section 2.3.1 does not allow extents to
--		 * overlap. nfsd4_block_map_extent() made sure the mapping
--		 * contains offset. NONE_DATA extents have no volume offset.
--		 */
--		if (i > 0 && bex->foff < offset) {
--			u64 skip = offset - bex->foff;
-+	error = nfsd4_set_deviceid(&vol_id, fhp, device_generation);
-+	if (error) {
-+		nfserr = nfserrno(error);
-+		goto out_error;
-+	}
- 
--			bex->foff = offset;
--			bex->len -= skip;
--			if (bex->es != PNFS_BLOCK_NONE_DATA)
--				bex->soff += skip;
--		}
-+	for (i = 0; i < nr_iomaps; i++) {
-+		const struct iomap *iomap = iomaps + i;
-+		struct pnfs_block_extent *bex = bl->extents + i;
- 
--		bex_length = bex->len - (offset - bex->foff);
--		if (bex_length >= length) {
--			bl->nr_extents = i + 1;
--			break;
--		}
-+		/*
-+		 * The first extent contains the offset asked for, and each
-+		 * extent after it starts where the one before it ends: RFC
-+		 * 5663 section 2.3.1 requires the extents to be logically
-+		 * contiguous.
-+		 */
-+		nfserr = nfserr_layoutunavailable;
-+		if (WARN_ONCE(iomap->offset > offset ||
-+			      offset - iomap->offset >= iomap->length ||
-+			      (i > 0 && iomap->offset != offset),
-+			      "pnfsd: %s ino %llu: filesystem returned extent %lld+%llu for offset %llu\n",
-+			      sb->s_id, inode->i_ino, iomap->offset,
-+			      iomap->length, offset))
-+			goto out_error;
- 
--		offset = bex->foff + bex->len;
--		length -= bex_length;
-+		nfserr = nfsd4_block_iomap_to_extent(iomap, seg->iomode,
-+				args->lg_minlength, bex);
-+		if (nfserr != nfs_ok)
-+			goto out_error;
-+		bex->vol_id = vol_id;
-+		offset = iomap->offset + iomap->length;
+ static struct mmc_command *meson_mmc_get_next_command(struct mmc_command *cmd)
+@@ -841,7 +856,7 @@ static void meson_mmc_start_cmd(struct mmc_host *mmc, struct mmc_command *cmd)
+ 		cmd_data = host->bounce_dma_addr & CMD_DATA_MASK;
+ 	} else {
+ 		cmd_cfg |= FIELD_PREP(CMD_CFG_TIMEOUT_MASK,
+-				      ilog2(SD_EMMC_CMD_TIMEOUT));
++				      ilog2(meson_mmc_get_cmd_timeout_msecs(cmd)));
  	}
-+	bl->nr_extents = nr_iomaps;
-+	kfree(iomaps);
-+	iomaps = NULL;
  
- 	first_bex = bl->extents;
- 	last_bex = bl->extents + bl->nr_extents - 1;
-@@ -198,6 +201,7 @@ nfsd4_block_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
- 	return nfs_ok;
+ 	/* Last descriptor */
+@@ -1168,6 +1183,9 @@ static int meson_mmc_probe(struct platform_device *pdev)
  
- out_error:
-+	kfree(iomaps);
- 	seg->length = 0;
- 	return nfserr;
- }
+ 	mmc->caps |= MMC_CAP_CMD23;
+ 
++	/* The longest busy wait the CMD_CFG timeout field can hold. */
++	mmc->max_busy_timeout = SD_EMMC_CMD_TIMEOUT_MAX;
++
+ 	if (mmc->caps & MMC_CAP_SDIO_IRQ)
+ 		mmc->caps2 |= MMC_CAP2_SDIO_IRQ_NOTHREAD;
+ 
 
+---
+base-commit: fd9af27f6c2319713bb23832066585f8a59a1771
+change-id: 20261005-meson-gx-busy-timeout-7e8e3fdcb3e3
+
+Best regards,
 -- 
-2.43.0
+Igor Velkov <iav@iav.lv>
 
