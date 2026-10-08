@@ -1,15 +1,13 @@
 From: Igor Velkov <iav@iav.lv>
-Subject: [PATCH v2 0/3] mmc: meson-gx: honour the busy timeout for R1b
- commands
-Date: Thu, 08 Oct 2026 14:27:58 +0000
-Message-Id: <20261008-meson-gx-busy-timeout-v2-0-8bde1adfb5b4@iav.lv>
+Date: Thu, 08 Oct 2026 14:27:59 +0000
+Subject: [PATCH v2 1/3] mmc: meson-gx: name the limit of the CMD_CFG
+ timeout field
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAG6ox2oC/3WNyw6CMBBFf4XM2jF9KIIr/8OwgDLAJEJNWxoI4
- d+tJC5dnpPcczfw5Jg83LMNHEX2bKcE6pSBGeqpJ+Q2MSihcinEFUfydsJ+wWb2KwYeyc4Bb1S
- Q7lrTaNKQtm9HHS9H91klHtgH69bjJsqv/RWLP8UoUWJbqk6bvDAXUT64judXhGrf9w+yu03Zt
- wAAAA==
+Message-Id: <20261008-meson-gx-busy-timeout-v2-1-8bde1adfb5b4@iav.lv>
+References: <20261008-meson-gx-busy-timeout-v2-0-8bde1adfb5b4@iav.lv>
+In-Reply-To: <20261008-meson-gx-busy-timeout-v2-0-8bde1adfb5b4@iav.lv>
 To: Ulf Hansson <ulfh@kernel.org>
 Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
  Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
@@ -18,53 +16,48 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1673; i=iav@iav.lv;
- h=from:subject:message-id; bh=XXv4CjnLsE/u9Me7mkTlw60K2Njx2d7DLdS4d2h8YEk=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnHVxTvt9+wJ/f5porj+RKPPrsVFjXvZSw+YBL0w/Ok2
- u03ycrxHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAi72YzMswt51abeH67T/N7
- lS+/trDK+h1azJ63cMY85zDTuhLXcy8Y/vCWJSkUnQ/PN7U1vM5492uc+/oiaX++W1wr4xO/b79
- mxgYA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1222; i=iav@iav.lv;
+ h=from:subject:message-id; bh=8VC1yXn3jZKERenMCKphBxv2rNREe/7oQ7Z39r7TC8Y=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnHVxS/lpXrZpr3YWW7AsfU2PN3bn/w/x3R8aCpNEchf
+ loU87SmjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCRlVMY/sfIHk3XMp7l/c/m
+ uPSdA3+jNK28/YN2NvFKrXhzOGKpjAgjw+G1fHwT0ooXXucSUK3O4b/1Nzf6oodyS6PPAyVhGSY
+ 9LgA=
 X-Developer-Key: i=iav@iav.lv; a=openpgp;
  fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
 X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For a command without data the driver programs a fixed 1024 ms into the
-CMD_CFG timeout field and does not tell the core how long the controller
-can wait for busy. Erase and cache flush then fail with -110 on eMMC.
+The data timeout is capped at a literal 32768 ms with a comment next to
+it. Give the limit a name beside the other timeout constants.
 
-Tested on ODROID-N2+ (S922X), 256 GB eMMC, btrfs root with discard=async,
-Armbian builds in docker as load. Without the patches (7.3-rc6): 262
-errors in 3 h and 68 in 2.5 h in two runs; the first came 4 and 43 min
-into the build. With the patches (7.3-rc6): 0 in 2.4 h. On 7.1 with the
-previous eMMC module a synthetic test (20 GiB write + fstrim) gave 48
-errors without the patches, 0 and 0 with them.
-
-The timeout is rounded up to a power of two: the field holds powers of
-two only, and the timeout is a lower bound. MMC_CAP_WAIT_WHILE_BUSY is
-not set: I have not checked that the controller waits for busy on every
-R1b command, HS400 switches included.
-
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-Changes in v2:
-- Split into three patches, as Neil asked: name the limit of the
-  timeout field, program the R1b timeout from cmd->busy_timeout, report
-  max_busy_timeout.
-- Link to v1: https://lore.kernel.org/r/20261008-meson-gx-busy-timeout-v1-1-d92f3c68c409@iav.lv
+ drivers/mmc/host/meson-gx-mmc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
----
-Igor Velkov (3):
-      mmc: meson-gx: name the limit of the CMD_CFG timeout field
-      mmc: meson-gx: honour the busy timeout for R1b commands
-      mmc: meson-gx: report the longest busy wait the controller can do
+diff --git a/drivers/mmc/host/meson-gx-mmc.c b/drivers/mmc/host/meson-gx-mmc.c
+index 7ef16d7c03cb..06479ba38525 100644
+--- a/drivers/mmc/host/meson-gx-mmc.c
++++ b/drivers/mmc/host/meson-gx-mmc.c
+@@ -125,6 +125,7 @@
+ #define SD_EMMC_CFG_RESP_TIMEOUT 256 /* in clock cycles */
+ #define SD_EMMC_CMD_TIMEOUT 1024 /* in ms */
+ #define SD_EMMC_CMD_TIMEOUT_DATA 4096 /* in ms */
++#define SD_EMMC_CMD_TIMEOUT_MAX 32768 /* in ms, 2^15: limit of CMD_CFG_TIMEOUT_MASK */
+ #define SD_EMMC_CFG_CMD_GAP 16 /* in clock cycles */
+ #define SD_EMMC_DESC_BUF_LEN PAGE_SIZE
+ 
+@@ -212,7 +213,7 @@ static unsigned int meson_mmc_get_timeout_msecs(struct mmc_data *data)
+ 
+ 	timeout = roundup_pow_of_two(timeout);
+ 
+-	return min(timeout, 32768U); /* max. 2^15 ms */
++	return min_t(unsigned int, timeout, SD_EMMC_CMD_TIMEOUT_MAX);
+ }
+ 
+ static struct mmc_command *meson_mmc_get_next_command(struct mmc_command *cmd)
 
- drivers/mmc/host/meson-gx-mmc.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
----
-base-commit: fd9af27f6c2319713bb23832066585f8a59a1771
-change-id: 20261005-meson-gx-busy-timeout-7e8e3fdcb3e3
-
-Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+2.43.0
 
