@@ -1,194 +1,171 @@
-From: Waqar Gulzar <iamwaqargulzar@gmail.com>
-Date: Thu, 08 Oct 2026 12:15:01 +0500
-Subject: [PATCH v2] HID: i2c-hid-acpi: restore touchscreen IRQ routing on
- HP OmniBook Flip laptops
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Thu, 08 Oct 2026 16:39:33 +0900
+Subject: [PATCH] ext4: test reads after a failed zeroout of an unwritten
+ extent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-b4-elan2514-irq-route-v2-1-432d95eb7348@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPRCx2oC/4WNTQ6CMBBGr0Jm7Zi2lh9deQ/DgpYpjEGqLRAN4
- e4CHsDlS973vhkiBaYIl2SGQBNH9v0K6pCAbau+IeR6ZVBCZeJ8Emg0Ulf1KpUaObww+HEgrAu
- Va2ddIVID6/YZyPF7797KH8fR3MkOW2wzWo6DD5/9eJKb9+9jkihR6yyXxglZi/TaPCrujtY/o
- FyW5QtMscxuzAAAAA==
-X-Change-ID: 20260930-b4-elan2514-irq-route-d8274fcf805b
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-acpi@vger.kernel.org, stable@vger.kernel.org, 
- Waqar Gulzar <iamwaqargulzar@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791443700; l=6715;
- i=iamwaqargulzar@gmail.com; s=20260930; h=from:subject:message-id;
- bh=7Fnwx/BOp4ha3EW9HMMdAzjRcB5AydGK0F0fLjOu1CU=;
- b=PM15xATBt61NyYOs5vyUNiNgedZHChppMgjYDCQc+2vuLIJjemu3nDFSjFXEem7kwPishGYp9
- eMSBF7lD8caBwo3dXJ1+EoEMrsc8lUyl0o/Z8X+5EU30AA5WQc7O8/9
-X-Developer-Key: i=iamwaqargulzar@gmail.com; a=ed25519;
- pk=SaQhB3EnN6qioo4wuu0rBv6REy1Nx9hz3QOh3Qp9xtk=
-X-Endpoint-Received: by B4 Relay for iamwaqargulzar@gmail.com/20260930 with auth_id=1083
+Message-Id: <20261008-ext4-zeroout-eio-test-v1-1-9bb66deaf646@samsung.com>
+X-B4-Tracking: v=1; b=H4sIALRIx2oC/x2MTQ5AMBQGryJv7SWt+IuriEXx4W1U2pKGuLvGb
+ mYx85CHE3jqsoccLvFi9yQ6z2jazL6CZU5OhSpqrVTLiKHkG87aMzDEcoBPgKYeYZSpdEOpPRw
+ Wif+3H973AyG9aZpnAAAA
+To: fstests@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, Zorro Lang <zlang@kernel.org>, 
+ Ojaswin Mujoo <ojaswin@linux.ibm.com>, Jan Kara <jack@suse.cz>, 
+ Theodore Ts'o <tytso@mit.edu>, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791445172; l=5273;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=q6mMATYv2ME98koxg+DZiicKe/k0E2HaDFj4GdEIBcM=;
+ b=9mN9Mmc+vUiM2AX1wNHA5KSYYHDaXJMJRcHJucyz2+FajjDU7cJ3Wx+LQ4skO4W5scpchnQXo
+ ireUp4ZwBmiAIOLazd1rrVxCGT6G9G/vQsGqyr9Jc8finYibUPnEeqS
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the HP OmniBook X Flip 16, OmniBook 7 Flip 16 and OmniBook X Flip 14
-the ELAN2514 touchscreen interrupt is a GPIO pad (GPP_E_18) routed
-directly to the IO-APIC. The firmware's touchscreen power resource does
+When a write converts part of a small unwritten extent, ext4 may zero
+out the rest of the extent and convert all of it to written. If that
+zeroout fails, ext4 falls back to splitting the extent, but it cached
+the blocks it failed to zero out as written in the extent status tree,
+so reads of those blocks returned the old contents of the disk.
 
-    PTPL._ON:  \_SB.SGRA (TPI2, TPIP)        // TPIP = T0IP = 0
-    PTPL._OFF: \_SB.SGRA (TPI2, TPIP ^ 1)
+Make the zeroout fail with dm-error and check that those blocks still
+read back as zeroes. The test mounts with dioread_lock and nodelalloc:
+with the default dioread_nolock, the extent stays unwritten until the
+I/O completes and is converted then, without this zeroout. generic/250
+and generic/252 do not hit it either, as they write with direct I/O
+while dm-error is loaded, which also leaves the extent unwritten.
 
-while the device's _INI enables routing with SGRA (GPLI, T0IP ^ 1).
-So _ON clears PADCFG0.GPIROUTIOXAPIC and disconnects the pad from the
-IO-APIC. Linux evaluates _ON at probe and on every D3->D0 transition
-(Windows apparently does not while _STA already reports the resource
-on), after which the level-triggered IRQ never deasserts:
+The kernel fix is "ext4: don't cache unzeroed blocks as written after a
+failed zeroout".
 
-  - ~630 interrupts/s while idle, nearly every read returns 0xffff
-  - frames shifted by a leading 0xff, "incomplete report (67/7167)"
-  - stylus reports arrive at ~25 Hz instead of the native ~268 Hz
-  - touch stalls and false stylus proximity
-
-Re-enable the routing through the firmware's own \_SB.SGRA helper from
-the power_up hook, which runs at probe and on resume before the HID
-reset.
-
-Tested with this patch on the OmniBook X Flip 16 (board 8DA1, BIOS
-F.20): idle interrupts drop from ~630/s to 0 after boot and after
-s2idle resume, and pen and touch behave as on Windows.
-
-The same faulty _ON, the same pad and the same ~630/s storm were
-confirmed by other owners on the OmniBook 7 Flip 16 (board 8DA0, BIOS
-F.08) and the OmniBook X Flip 14 (board 8D9F, BIOS F.08). On both,
-correcting the _ON value through an ACPI table override stops the storm
-(routing bit set, 0 interrupts/s idle, also after s2idle), which is the
-same correction this patch applies at runtime.
-
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=220854
-Link: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2142384
-Link: https://github.com/testyfishy/hp-omnibook-flip16-touchscreen-fix
-Link: https://github.com/iamwaqargulzar/hp-omnibook-x-flip-16-linux-touchscreen-pen-fix
-Cc: stable@vger.kernel.org
-Signed-off-by: Waqar Gulzar <iamwaqargulzar@gmail.com>
+Link: https://lore.kernel.org/r/20261008-ext4-fc-zeroout-v2-1-55cab1e24fa3@samsung.com
+Suggested-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-The firmware of the HP OmniBook X Flip 16, OmniBook 7 Flip 16 and
-OmniBook X Flip 14 disconnects the ELAN2514 touchscreen interrupt from
-the IO-APIC in its power resource _ON method, which Linux runs at probe
-and resume. This patch re-enables the routing through the firmware's own
-helper from i2c-hid-acpi's power_up hook.
+The kernel fix is 1/2 of the series in the Link: and is not merged yet,
+hence xxxxxxxxxxxx in _fixed_by_kernel_commit. The test number may need
+to change.
 
-Tested with the patch on board 8DA1 (BIOS F.20), Linux 7.2.8,
-including s2idle resume. Boards 8DA0 and 8D9F were confirmed by their
-owners to have the same faulty _ON and storm, and to be fixed by the
-equivalent ACPI table correction (kernel bugzilla 220854).
-
-Full analysis, ACPI excerpts, and Windows/Linux traces:
-https://github.com/iamwaqargulzar/hp-omnibook-x-flip-16-linux-touchscreen-pen-fix
+Tested in QEMU on ext4 dev 9091c97be340. Without the fix, blocks 1-7
+read back as 0x53 with 1k, 4k and 64k blocks. With the fix, alone or
+with the rest of the series, the test passes, also with -O fast_commit.
 ---
-Changes in v2:
-- Add board 8D9F (OmniBook X Flip 14): same faulty _ON, confirmed by
-  its owner in bugzilla 220854.
-- Fix the description of 8DA0: it is the OmniBook 7 Flip 16, a sibling
-  model, not another board ID of the X Flip 16; now confirmed by its
-  owner as well.
-- Subject and commit message now name all three models; add the
-  bugzilla link.
-- Link to v1: https://patch.msgid.link/20260930-b4-elan2514-irq-route-v1-1-44671bf01d05@gmail.com
----
- drivers/hid/i2c-hid/i2c-hid-acpi.c | 65 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 65 insertions(+)
+ tests/ext4/309     | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/ext4/309.out |  5 ++++
+ 2 files changed, 92 insertions(+)
 
-diff --git a/drivers/hid/i2c-hid/i2c-hid-acpi.c b/drivers/hid/i2c-hid/i2c-hid-acpi.c
-index 9371db200..b307d9a3d 100644
---- a/drivers/hid/i2c-hid/i2c-hid-acpi.c
-+++ b/drivers/hid/i2c-hid/i2c-hid-acpi.c
-@@ -21,6 +21,7 @@
- 
- #include <linux/acpi.h>
- #include <linux/device.h>
-+#include <linux/dmi.h>
- #include <linux/i2c.h>
- #include <linux/kernel.h>
- #include <linux/module.h>
-@@ -55,6 +56,67 @@ static void i2c_hid_acpi_restore_sequence(struct i2chid_ops *ops)
- 	i2c_hid_acpi_get_descriptor(ihid_acpi->adev);
- }
- 
-+/*
-+ * HP OmniBook X Flip 14 (board 8D9F), OmniBook 7 Flip 16 (8DA0) and
-+ * OmniBook X Flip 16 (8DA1): the touchscreen power resource
-+ * \_SB.PC00.I2C4.PTPL._ON writes the wrong value to the GPIROUTIOXAPIC bit
-+ * of the touchscreen interrupt pad, disconnecting it from the IO-APIC. The
-+ * level-triggered interrupt then never deasserts, the controller is read
-+ * continuously (~630 reads/s while idle) and it cannot deliver pen reports
-+ * at its native rate. Windows does not run _ON while the resource already
-+ * reports on, so it is not affected. Linux runs _ON at probe and on every
-+ * resume, so re-enable the routing with the firmware's own helper before
-+ * the HID reset.
-+ */
-+static const struct dmi_system_id i2c_hid_acpi_irq_route_dmi[] = {
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+			DMI_EXACT_MATCH(DMI_BOARD_NAME, "8D9F"),
-+		},
-+	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+			DMI_EXACT_MATCH(DMI_BOARD_NAME, "8DA0"),
-+		},
-+	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+			DMI_EXACT_MATCH(DMI_BOARD_NAME, "8DA1"),
-+		},
-+	},
-+	{ }
-+};
+diff --git a/tests/ext4/309 b/tests/ext4/309
+new file mode 100755
+index 0000000..1fafd58
+--- /dev/null
++++ b/tests/ext4/309
+@@ -0,0 +1,87 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2026 Samsung Electronics Co., Ltd. All Rights Reserved.
++#
++# FS QA Test No. 309
++#
++# When a write converts part of a small unwritten extent, ext4 may zero out
++# the rest of the extent and convert all of it to written. If that zeroout
++# fails, it falls back to splitting the extent, but it used to cache the
++# blocks it failed to zero out as written in the extent status tree, so
++# reading them returned the old contents of the disk. Fail the zeroout with
++# dm-error and check that those blocks still read back as zeroes.
++#
++. ./common/preamble
++_begin_fstest auto quick rw prealloc eio
 +
-+static int i2c_hid_acpi_restore_irq_route(struct i2chid_ops *ops)
++_cleanup()
 +{
-+	struct i2c_hid_acpi *ihid_acpi = container_of(ops, struct i2c_hid_acpi, ops);
-+	union acpi_object args[2];
-+	struct acpi_object_list arg_list = { ARRAY_SIZE(args), args };
-+	unsigned long long pad;
-+	acpi_status status;
-+
-+	status = acpi_evaluate_integer(NULL, "\\GPLI", NULL, &pad);
-+	if (ACPI_FAILURE(status))
-+		return 0;
-+
-+	args[0].type = ACPI_TYPE_INTEGER;
-+	args[0].integer.value = pad;
-+	args[1].type = ACPI_TYPE_INTEGER;
-+	args[1].integer.value = 1;
-+
-+	status = acpi_evaluate_object(NULL, "\\_SB.SGRA", &arg_list, NULL);
-+	if (ACPI_FAILURE(status))
-+		acpi_handle_warn(acpi_device_handle(ihid_acpi->adev),
-+				 "failed to restore interrupt routing: %s\n",
-+				 acpi_format_exception(status));
-+
-+	/* Never fail probe or resume because of this workaround */
-+	return 0;
++	cd /
++	rm -f $tmp.*
++	_dmerror_cleanup
 +}
 +
- static void i2c_hid_acpi_shutdown_tail(struct i2chid_ops *ops)
- {
- 	struct i2c_hid_acpi *ihid_acpi = container_of(ops, struct i2c_hid_acpi, ops);
-@@ -85,6 +147,9 @@ static int i2c_hid_acpi_probe(struct i2c_client *client)
- 	ihid_acpi->adev = adev;
- 	ihid_acpi->ops.shutdown_tail = i2c_hid_acpi_shutdown_tail;
- 	ihid_acpi->ops.restore_sequence = i2c_hid_acpi_restore_sequence;
-+	if (acpi_dev_hid_uid_match(ihid_acpi->adev, "ELAN2514", NULL) &&
-+	    dmi_check_system(i2c_hid_acpi_irq_route_dmi))
-+		ihid_acpi->ops.power_up = i2c_hid_acpi_restore_irq_route;
- 
- 	acpi_device_fix_up_power(adev);
- 
++. ./common/dmerror
++
++_require_scratch
++_require_dm_target error
++_require_xfs_io_command "falloc"
++_require_xfs_io_command "fiemap"
++_require_scratch_ext4_feature_enabled "extent"
++
++_fixed_by_kernel_commit xxxxxxxxxxxx \
++	"ext4: don't cache unzeroed blocks as written after a failed zeroout"
++
++# The zeroout is done when a write converts the extent itself. With the
++# default dioread_nolock, the extent stays unwritten until the I/O completes,
++# so mount with dioread_lock, and with nodelalloc to convert the extent at
++# write time.
++mount_dioread_lock()
++{
++	_dmerror_mount -o nodelalloc,dioread_lock >> $seqres.full 2>&1 || \
++		_fail "mount failed"
++}
++
++_scratch_mkfs >> $seqres.full 2>&1
++_dmerror_init
++mount_dioread_lock
++
++nblks=8
++blksz=$(_get_file_block_size $SCRATCH_MNT)
++sects_per_blk=$((blksz / 512))
++file=$SCRATCH_MNT/file
++
++$XFS_IO_PROG -f -c "falloc 0 $((nblks * blksz))" -c fsync $file >> $seqres.full
++extent="$($XFS_IO_PROG -c "fiemap -v" $file | grep "^[[:space:]]*0:")"
++echo "$extent" >> $seqres.full
++phys=$(echo "$extent" | $AWK_PROG '{print $3}' | sed -e 's/\.\..*//')
++len=$(echo "$extent" | $AWK_PROG '{print $4}')
++flags=$(echo "$extent" | $AWK_PROG '{print $5}')
++flags=${flags:-0}
++test "$len" = $((nblks * sects_per_blk)) -a $((flags & 0x800)) -ne 0 || \
++	_notrun "could not allocate one unwritten extent of $nblks blocks"
++
++# Put something other than zeroes in the unwritten blocks
++_dmerror_unmount
++$XFS_IO_PROG -d \
++	-c "pwrite -S 0x53 -b $blksz $((phys * 512)) $((nblks * blksz))" \
++	$DMERROR_DEV >> $seqres.full
++mount_dioread_lock
++
++# Writing block 0 zeroes out the rest of the extent if the whole extent fits
++# in extent_max_zeroout_kb, which mount resets; make that zeroout fail.
++_set_fs_sysfs_attr $DMERROR_DEV extent_max_zeroout_kb $((nblks * blksz / 1024))
++_dmerror_reset_table
++_dmerror_mark_range_bad $((phys + sects_per_blk)) \
++	$(((nblks - 1) * sects_per_blk))
++_dmerror_load_error_table
++$XFS_IO_PROG -c "pwrite -S 0x41 0 $blksz" -c fsync $file >> $seqres.full
++_dmerror_load_working_table
++
++echo "block 0:"
++od -An -v -tx1 -N $blksz $file | sort -u
++echo "blocks 1-$((nblks - 1)):"
++od -An -v -tx1 -j $blksz $file | sort -u
++
++# success, all done
++_exit 0
+diff --git a/tests/ext4/309.out b/tests/ext4/309.out
+new file mode 100644
+index 0000000..19ed3d6
+--- /dev/null
++++ b/tests/ext4/309.out
+@@ -0,0 +1,5 @@
++QA output created by 309
++block 0:
++ 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41
++blocks 1-7:
++ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 
 ---
-base-commit: 145c2b2e9a5c0f794fb4009bcb072ab19f8ccfcd
-change-id: 20260930-b4-elan2514-irq-route-d8274fcf805b
+base-commit: 22348afe338c0f6d540c0d7ef0db749eaa51b218
+change-id: 20261008-ext4-zeroout-eio-test-ee76bea0a517
 
 Best regards,
---  
-Waqar Gulzar <iamwaqargulzar@gmail.com>
+-- 
+Daejun Park <daejun7.park@samsung.com>
 
