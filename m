@@ -1,82 +1,80 @@
-From: Juerg Haefliger <juerg.haefliger@canonical.com>
-Date: Thu, 08 Oct 2026 20:34:46 +0200
-Subject: [PATCH 2/2] arm64: dts: qcom: hp-elitebook-ultra-g1q: Drop
- omnibook-x14.dts include
+From: Fabio Forni <development@redaril.me>
+Subject: [PATCH v4 0/3] Migrate the multiplexer subsystem to fwnode
+Date: Thu, 08 Oct 2026 22:06:52 +0200
+Message-Id: <20261008-mux_fwnode-v4-0-ba3330e44b2a@redaril.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-dts-qcom-hp-omnibook-x14-cleanup-v1-2-9702f7c6f9a0@canonical.com>
-References: <20261008-dts-qcom-hp-omnibook-x14-cleanup-v1-0-9702f7c6f9a0@canonical.com>
-In-Reply-To: <20261008-dts-qcom-hp-omnibook-x14-cleanup-v1-0-9702f7c6f9a0@canonical.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Juerg Haefliger <juerg.haefliger@canonical.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1423;
- i=juerg.haefliger@canonical.com; s=F9F8B48C; h=from:subject:message-id;
- bh=36Xroda5BgwIhkZde/g7EP2PrCQr/TI7HkISUfuROf4=;
- b=owEBbQKS/ZANAwAKAQ/TiwkLpkK3AcsmYgBqx+K+XCdXfVAjulej4V6gmwDfwDUz7sI6Woj0u
- 3iC0/3asQ+JAjMEAAEKAB0WIQSFl9T3oi6mu+It14sP04sJC6ZCtwUCasfivgAKCRAP04sJC6ZC
- t5GWD/9LFkLKo+6BEYan3hqibByPRyQD/xaLIjARQXfDcQGm/Rvj+bOSiO1k8mWJaEo1EahCGDq
- KVhS9q7em4FxXGBUTSQFoVVprEywK5noURAU5hu3zFntZxlsADveQFbJi2c/Uh3+H7WfWHUCUGr
- bp1vubWGpULCeeHjyWUPSL3AItljrZO367le+6+oV6mJrNQXw+cyOYx3qdxkVGsozTVQWgR2a7Y
- hNfOa5C/80pVYvsWrMb1uFHUN0GRQ0PoHDHpPWz9UUIJPhwMCZnUNUlxaa4GaL4wYL36lzbI8/1
- O6dWQYiqf6NKTKmQ72Dfw3JDBnK/LgG3PFWCSsc6MoWVhEb9LGAhgWSLaqcicgNI2+sH5bvswm7
- rWioLzAh1WdbQpTVOm93ce6FaI046TvMAaWs0KvOYcO6mW7QbvtFMxdF0ZHzMDRTurZwMsdV5NZ
- BGqjDGBCEAOekkYUnGCGmg0T2O3Uqrcsh/e0KBt1XI286lZvu6gLW/xAld9ki72SqGlfbde8WOx
- 6PoUwe6V3RK/TRecx+9FkegJXL5kb7IbP/pH3hZ0NwyZAtHBpZFN60+K+mWplIpYQNCDLqquxgo
- GwRLwK53ZRXYdiPkUoVNPj8NW09q8GYG+ZYzsrm8pMDs63pgToT/Yqcohyji4ojODstTSFFwnKo
- d8eTK11o/vj+5pA==
-X-Developer-Key: i=juerg.haefliger@canonical.com; a=openpgp;
- fpr=52B5BDD2A6EDC76A0FE0AB4A754C3A96F9F8B48C
-X-Endpoint-Received: by B4 Relay for juerg.haefliger@canonical.com/F9F8B48C with auth_id=1135
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MTQ7CIBCG4as0rMUUKKS48h7GGNoZLIn9CSjWN
+ L27tKs2uvxm8rwTCegdBnLKJuIxuuD6Lo3ikJG6Md0dqYO0Cc+5yjWTtH2NN/vuekBqmJJa1EJ
+ bCySBwaN14xq7XNNuXHj2/rO2I1uufzORUUYRpFFQpj8UZ49gvHscWyRLJ/KtVTvLk5WlZVDKS
+ gPgjxUby/XOCppTXYlKG2RCFHs7z/MX/H+f/x0BAAA=
+X-Change-ID: 20260915-mux_fwnode-a16593c39ffd
+To: Peter Rosin <peda@lysator.liu.se>, Linus Walleij <linusw@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jonathan Cameron <jic23@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ xu.yang_2@nxp.com, 
+ =?utf-8?q?Alvin_=C5=A0ipraga?= <alvin.sipraga@analog.com>, 
+ Fabio Forni <development@redaril.me>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2114;
+ i=development@redaril.me; h=from:subject:message-id;
+ bh=IYapMP+y3ZsxKMdqNwQXhS6WWnTZLOKoL/RQz0KBpm4=;
+ b=owGbwMvMwCXWeKho1tqFWemMp9WSGLKOf7/TqW4VdWndkl9Srldm1a5zKeGYt3XXrBQGOZsjS
+ WwfPO/0dZSyMIhxMciKKbL8dzLa1G1mYnSrX6IWZg4rE8gQBi5OAZhIYxvDb7b1SSJz1rUwbz43
+ RcRh+ew19idMT62dP8/QSOO86NvTprEM/0y8TKKvsMbxistvmGSm7H3aX7Zj36+/R8zVDtofn95
+ 2ghEA
+X-Developer-Key: i=development@redaril.me; a=openpgp;
+ fpr=FF4232B28B363432DA8F187D81C2729AADA16A67
+X-Endpoint-Received: by B4 Relay for development@redaril.me/default with auth_id=1033
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The EliteBook Ultra G1q is a different product from the OmniBook X14 that
-happens to reuse the same mainboard, not a variant of it. As such, it
-should not be a child of x1e80100-hp-omnibook-x14 but rather a sibling.
-Include the shared base platform dtsi to match the other OmniBook X14s.
+This patch migrates the multiplexer subsystem from using the of_*          
+family of functions and structs, to the more generic fwnode framework.     
+                                                                           
+It is a rebase of a single commit[1] contained in a old patch series[2]
+submitted by Xu Yang. The original commit plus follow-up comments were
+tested on kernel v6.12 on an arm64-based board, but this current rebase
+isn't tested yet.                                                  
 
-Signed-off-by: Juerg Haefliger <juerg.haefliger@canonical.com>
+While at it, a use-after-free bug was fixed in mux_get(), as suggested by
+Alvin Šipraga.
+                                                                           
+Link: https://lore.kernel.org/all/20220823195429.1243516-3-xu.yang_2@nxp.com [1]
+Link: https://lore.kernel.org/all/20220823195429.1243516-1-xu.yang_2@nxp.com [2]
+
+Signed-off-by: Fabio Forni <development@redaril.me>
 ---
- arch/arm64/boot/dts/qcom/x1e80100-hp-elitebook-ultra-g1q.dts | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Changes in v4:
+- The patch that fixes the use-after-free bug is applied before converting
+  mux to fwnode, so that it can potentially be backported.
+- Link to v3: https://lore.kernel.org/r/20260929-mux_fwnode-v3-0-9b3b9ae1334e@redaril.me
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-hp-elitebook-ultra-g1q.dts b/arch/arm64/boot/dts/qcom/x1e80100-hp-elitebook-ultra-g1q.dts
-index 0b3b6cb23e1a..9327eaa16b92 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-hp-elitebook-ultra-g1q.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-hp-elitebook-ultra-g1q.dts
-@@ -2,7 +2,8 @@
- 
- /dts-v1/;
- 
--#include "x1e80100-hp-omnibook-x14.dts"
-+#include "hamoa.dtsi"
-+#include "x1-hp-omnibook-x14.dtsi"
- 
- / {
- 	model = "HP EliteBook Ultra G1q";
-@@ -16,11 +17,15 @@ &gpu_zap_shader {
- &remoteproc_adsp {
- 	firmware-name = "qcom/x1e80100/hp/elitebook-ultra-g1q/qcadsp8380.mbn",
- 			"qcom/x1e80100/hp/elitebook-ultra-g1q/adsp_dtbs.elf";
-+
-+	status = "okay";
- };
- 
- &remoteproc_cdsp {
- 	firmware-name = "qcom/x1e80100/hp/elitebook-ultra-g1q/qccdsp8380.mbn",
- 			"qcom/x1e80100/hp/elitebook-ultra-g1q/cdsp_dtbs.elf";
-+
-+	status = "okay";
- };
- 
- &sound {
+Changes in v3:
+- Expand documentation of mux_chip_find_by_fwnode().
+- Fix use-after-free bug in mux_get().
+- Link to v2: https://lore.kernel.org/r/20260916-mux_fwnode-v2-1-58f1d85b9dde@redaril.me
 
+Changes in v2:
+- Rename devm_mux_state_get_from_swnode into devm_mux_state_get_from_fwnode
+- Link to v1: https://lore.kernel.org/r/20260915-mux_fwnode-v1-1-ed5a6d8202d4@redaril.me
+
+---
+Fabio Forni (3):
+      mux: Avoid use-after-free of args.np in mux_get()
+      mux: convert to use fwnode interface
+      mux: Document mux_chip_find_by_fwnode()
+
+ drivers/mux/core.c                    | 135 ++++++++++++++++++++--------------
+ drivers/pinctrl/pinctrl-generic-mux.c |   4 +-
+ include/linux/mux/consumer.h          |   6 +-
+ 3 files changed, 87 insertions(+), 58 deletions(-)
+---
+base-commit: 6c377d19d4a5116d9bec5203aa3c6c11523e7898
+change-id: 20260915-mux_fwnode-a16593c39ffd
+
+Best regards,
 -- 
-2.53.0
+Fabio Forni <development@redaril.me>
 
