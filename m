@@ -1,188 +1,64 @@
-From: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
-Date: Fri, 09 Oct 2026 22:13:17 +0200
-Subject: [PATCH v2] board: qemu-arm: Add SPL support
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH 0/2] Add the PCA9655E GPIO expander to Kobol Helios64
+Date: Fri, 09 Oct 2026 20:45:35 +0000
+Message-Id: <20261009-helios64-pca9655-v1-0-673ee4432650@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-spl-for-quemu-arm-v2-1-460427488c17@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7Zi2KLauvIdhUXCAMZRiC0RDu
- LuAe5cvef/9GSIFpgjXZIZAE0f23QrqkEDZ2K4m5MfKoITKpBAGY99i5QO+RnIj2uBQnaQyF1P
- Ys0lh3fWBKn7vzXv+4zgWTyqHLbQZDcfBh89+OsnN+9efJErUZFMjMl1prW+1s9weS+8gX5blC
- xqr8ETEAAAA
-X-Change-ID: 20261009-spl-for-quemu-arm-2412979ba593
-To: u-boot@lists.u-boot-project.org
-Cc: Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Tuomas Tynkkynen <tuomas.tynkkynen@iki.fi>, 
- Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791576832; l=4979;
- i=wadowski.arkadiusz@gmail.com; s=20261009; h=from:subject:message-id;
- bh=JDkQR1jI2dR/+MdscKbdpNDlzhyz0P3/TwaN7s3vVZ4=;
- b=j3UA4W8rEIyYREwUeSyNRITg2Xxycvn/9nLA6oDcUEAcCZ1Ccin5scumdFBSVlV97P9WmgwKp
- XdnmqLlz9+XDeOSYaFbT6iKfBGiCWI89yFdhxTPQIF8DPLiJ4Nbpu/9
-X-Developer-Key: i=wadowski.arkadiusz@gmail.com; a=ed25519;
- pk=HKeMLZz72hO1HTxmFN3fZohsVyICtXJ2xUrbSalR0wQ=
-X-Endpoint-Received: by B4 Relay for wadowski.arkadiusz@gmail.com/20261009 with auth_id=1144
+X-B4-Tracking: v=1; b=H4sIAHBSyWoC/x3MQQqAIBBA0avErBswU8GuEi1kmnIgLBQikO6et
+ HyL/ysUzsIFpq5C5luKnKlh6DugGNLOKGszaKXdoJTHyIecxRm8KHhnLY7emZF0oM2s0LIr8yb
+ Pv5yX9/0AYNOxXWIAAAA=
+To: Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Rosen Penev <rosenp@gmail.com>, 
+ Gregory Clement <gregory.clement@bootlin.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Sebastian Hesselbarth <sebastian.hesselbarth@gmail.com>, 
+ linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1301; i=iav@iav.lv;
+ h=from:subject:message-id; bh=UQ+m+cX3b8a09KtNN9qmo839za4WugcpVesAEN25Y/A=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkng4q0jVm3fLHmSZ6XtP9CnjVPy+yV+xJmp7YomyX7c
+ K63MV3fUcrCIMbFICumyDLhkMatjCVX//p7mD+AmcPKBDKEgYtTACbyq4bhf2RqyCKN1INvJcPa
+ p96bwFmz2nXbDdZ4jpaJO8VVrye+SGBkWPb2ncVBz06jMyIs+9+uXLOr/v2SfVN9y6JW9TyNO9V
+ 5iwEA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an optional SPL boot path for the QEMU ARM64 virt machine,
-allowing the SPL-to-U-Boot boot flow to be explored without
-physical hardware.
+On Rosen's binding v2 Krzysztof quoted the "onnn,pca9655",
+"nxp,pca9555" form [1]. This series documents that form and adds its
+first user, the expander on Kobol Helios64. Patch 1 is for the GPIO
+tree, patch 2 for the Rockchip tree; they only meet in dtbs_check.
 
-Use the existing NOR loader to load u-boot.img from flash into
-RAM at 0x41000000. Generate u-boot-with-spl.bin with the payload
-placed after SPL padding.
+6dfda7947653 ("ARM: dts: marvell: armada-388: use onnn,pca9655
+compatible") in linux-next lists "onnn,pca9655" alone on Clearfog and
+Helios4; with this binding they would need the fallback as well.
 
-Signed-off-by: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
----
-This patch adds an optional SPL boot path for the QEMU ARM64 virt
-machine. It provides an emulated environment for exploring the
-SPL-to-U-Boot boot flow without physical hardware.
+Tested on Helios64 (7.3-rc6 with this DTB): pca953x binds at 2-0020,
+all 16 lines read as inputs, and the interrupt on GPIO0_B1 is
+registered and stays quiet. Interrupt delivery is not tested: nothing
+is connected to the P5 header.
 
-SPL starts at flash address zero and uses the existing NOR loader
-to load U-Boot proper into RAM at 0x41000000. The combined
-u-boot-with-spl.bin image places u-boot.img at flash offset 0x100000.
-
-QEMU provides initialized RAM at reset, so this boot path does
-not require a DRAM initialization sequence.
----
-Changes in v2:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://patch.msgid.link/20261009-spl-for-quemu-arm-v1-1-8ea39068f888@gmail.com
----
- Makefile                             |  2 +-
- arch/arm/mach-qemu/Kconfig           |  1 +
- board/emulation/qemu-arm/Kconfig     |  2 ++
- board/emulation/qemu-arm/Kconfig.spl | 40 ++++++++++++++++++++++++++++++++++++
- board/emulation/qemu-arm/qemu-arm.c  |  8 ++++++++
- include/configs/qemu-arm.h           |  4 ++++
- 6 files changed, 56 insertions(+), 1 deletion(-)
-
-diff --git a/Makefile b/Makefile
-index 6303a0cca6a..49c1da0fb03 100644
---- a/Makefile
-+++ b/Makefile
-@@ -2458,7 +2458,7 @@ spl/u-boot-spl-dtb.bin: spl/u-boot-spl
- spl/u-boot-spl-dtb.hex: spl/u-boot-spl
- 	@:
- 
--spl/u-boot-spl: tools prepare $(if $(CONFIG_SPL_OF_CONTROL),dts/dt.dtb)
-+spl/u-boot-spl: tools prepare $(if $(and $(CONFIG_SPL_OF_CONTROL),$(filter-out y,$(CONFIG_OF_OMIT_DTB))),dts/dt.dtb)
- 	$(Q)$(MAKE) obj=spl -f $(srctree)/scripts/Makefile.xpl all
- 
- spl/sunxi-spl.bin: spl/u-boot-spl
-diff --git a/arch/arm/mach-qemu/Kconfig b/arch/arm/mach-qemu/Kconfig
-index 9c06c6a3a5c..7e8aa62d38c 100644
---- a/arch/arm/mach-qemu/Kconfig
-+++ b/arch/arm/mach-qemu/Kconfig
-@@ -18,6 +18,7 @@ config TARGET_QEMU_ARM_64BIT
- 	bool "ARMv8, 64bit"
- 	select ARM64
- 	select BOARD_LATE_INIT
-+	select SUPPORT_SPL
- 
- config TARGET_QEMU_ARM_SBSA
- 	bool "SBSA Reference"
-diff --git a/board/emulation/qemu-arm/Kconfig b/board/emulation/qemu-arm/Kconfig
-index 447061b25cd..b66b260b292 100644
---- a/board/emulation/qemu-arm/Kconfig
-+++ b/board/emulation/qemu-arm/Kconfig
-@@ -1,3 +1,5 @@
-+source "board/emulation/qemu-arm/Kconfig.spl"
-+
- if TARGET_QEMU_ARM_32BIT || TARGET_QEMU_ARM_64BIT
- 
- config TEXT_BASE
-diff --git a/board/emulation/qemu-arm/Kconfig.spl b/board/emulation/qemu-arm/Kconfig.spl
-new file mode 100644
-index 00000000000..5dd7f478e82
---- /dev/null
-+++ b/board/emulation/qemu-arm/Kconfig.spl
-@@ -0,0 +1,40 @@
-+# SPDX-License-Identifier: GPL-2.0+
-+if TARGET_QEMU_ARM_64BIT && SPL
-+
-+config TEXT_BASE
-+	range 0x41000000 0xffffffff
-+	default 0x41000000
-+
-+config QEMU_ARM64_SPL
-+	def_bool y
-+	select SPL_LIBCOMMON_SUPPORT
-+	select SPL_LIBGENERIC_SUPPORT
-+	select SPL_HAS_BSS_LINKER_SECTION
-+	select SPL_SEPARATE_BSS
-+	select SPL_NOR_SUPPORT
-+	select PANIC_HANG
-+	select SPL_LEGACY_IMAGE_FORMAT
-+	select SPL_DM
-+	select SPL_OF_CONTROL
-+	select SPL_SERIAL
-+	select SPL_DM_SERIAL
-+
-+config SPL_PAYLOAD
-+	default "u-boot.img"
-+
-+config SPL_TARGET
-+	default "u-boot-with-spl.bin"
-+
-+config SPL_BLOBLIST
-+	default n
-+
-+config SPL_MAX_SIZE
-+	default 0x100000
-+
-+config SPL_BSS_START_ADDR
-+	default 0x40400000
-+
-+config SPL_BSS_MAX_SIZE
-+	default 0x100000
-+
-+endif
-diff --git a/board/emulation/qemu-arm/qemu-arm.c b/board/emulation/qemu-arm/qemu-arm.c
-index 38f0ec5f2fb..b0ab31ce793 100644
---- a/board/emulation/qemu-arm/qemu-arm.c
-+++ b/board/emulation/qemu-arm/qemu-arm.c
-@@ -11,6 +11,7 @@
- #include <fdtdec.h>
- #include <init.h>
- #include <log.h>
-+#include <spl.h>
- #include <usb.h>
- #include <virtio_types.h>
- #include <virtio.h>
-@@ -202,3 +203,10 @@ void flash_write32(u32 value, void *addr)
- {
- 	asm("str %" __W "1, %0" : "=m"(*(u32 *)addr) : "r"(value));
- }
-+
-+#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL_BUILD)
-+u32 spl_boot_device(void)
-+{
-+	return BOOT_DEVICE_NOR;
-+}
-+#endif
-diff --git a/include/configs/qemu-arm.h b/include/configs/qemu-arm.h
-index e296f398798..18939dd8fd5 100644
---- a/include/configs/qemu-arm.h
-+++ b/include/configs/qemu-arm.h
-@@ -11,4 +11,8 @@
- 
- /* For timer, QEMU emulates an ARMv7/ARMv8 architected timer */
- 
-+#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL)
-+#define CFG_SYS_UBOOT_BASE CONFIG_SPL_PAD_TO
-+#endif
-+
- #endif /* __CONFIG_H */
+[1] https://lore.kernel.org/r/20261009-venomous-carmine-locust-f788ca@quoll
 
 ---
-base-commit: 0a55b098d6f5f6bafa84fc2f18b433dd167bf729
-change-id: 20261009-spl-for-quemu-arm-2412979ba593
+Igor Velkov (2):
+      dt-bindings: gpio: pca95xx: add onnn,pca9655 with nxp,pca9555 fallback
+      arm64: dts: rockchip: Add the GPIO expander to Kobol Helios64
+
+ .../devicetree/bindings/gpio/gpio-pca95xx.yaml       |  3 +++
+ .../boot/dts/rockchip/rk3399-kobol-helios64.dts      | 20 ++++++++++++++++++++
+ 2 files changed, 23 insertions(+)
+---
+base-commit: 36b190eca882ecd39b5354f7ee995f939dc6d885
+change-id: 20261009-helios64-pca9655-39643c2acf4d
 
 Best regards,
---  
-Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
