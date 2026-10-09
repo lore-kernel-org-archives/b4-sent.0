@@ -1,62 +1,214 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 09 Oct 2026 17:03:00 +0000
-Subject: [PATCH v3 4/4] mmc: meson-gx: report the longest busy wait the
- controller can do
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net-next v9 00/11] Support for onsemi's S2500 10Base-T1S
+ MAC-PHY
+Date: Fri, 09 Oct 2026 10:12:20 -0700
+Message-Id: <20261009-s2500-mac-phy-support-v9-0-dcefe1d0bf0d@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-meson-gx-busy-timeout-v3-4-67d0db3a8328@iav.lv>
-References: <20261009-meson-gx-busy-timeout-v3-0-67d0db3a8328@iav.lv>
-In-Reply-To: <20261009-meson-gx-busy-timeout-v3-0-67d0db3a8328@iav.lv>
-To: Ulf Hansson <ulfh@kernel.org>
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- linux-mmc@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAHUgyWoC/3XOTW7DIBAF4KtErEvFnxnoqveousB4XFPJxgJiJ
+ Yp89xK3UlJZXo5m3vfmRjKmgJm8nW4k4RJyiFMd7MuJ+MFNX0hDV2cimNBMM06zaBijo/N0Hq4
+ 0n+c5pkJVLx1awfoWJKnZOWEfLpv7QSYsdMJLIZ+/m3xuv9GXO3u/HUIuMV23Fxa1Jf7amoO2R
+ VFGO6xtnkuvO/Mep4xjePVx3EqW5onh6ohpKmOsAdWC6EE0O0Y/McIeMboy3HgEW9cS+I6BBwP
+ MHDFQGQXGGwDnuLM7xjwYKw4ZUxlAxrlz3kv2n1nX9Qe0pl/s8wEAAA==
+To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Randy Dunlap <rdunlap@infradead.org>, 
+ Richard Cochran <richardcochran@gmail.com>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, Eric Dumazet <edumazet@kernel.org>, 
+ Piergiorgio Beruto <piergiorgio.beruto@gmail.com>, 
+ Eric Dumazet <edumazet@kernel.org>
+Cc: Selva Rajagopal <Selvamani.Rajagopal@onsemi.com>, 
+ netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Jerry Ray <jerry.ray@microchip.com>, 
+ Ciprian Regus <ciprian.regus@analog.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1174; i=iav@iav.lv;
- h=from:subject:message-id; bh=TPNNS8dR7nsAXzxzryfYbpCXwKfJ5cMjVjbSsbsPxOY=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkn5cJP7UhOvhl3pJC5+q+JlMjNHnf9cjaBTye3+HiX3
- PK5PF24o5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAEzk6B9Ghm36Cqdmbo/T2LWZ
- //H6+Y9mpC1xXH1ukvTRtjRztfV/HiQxMuzR9vGeeOt7c96zj4WrlI16ZQUUF7EFKx9U3CD583n
- vBh4A
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791565943; l=7973;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=o8aP55ckY0Hvu3IMepSl4Cjlxkhhnh/FFNuvCiWZTXw=;
+ b=omP3AdDZhVu0JUuuh2mF6hup9HkRPjaotmsxcHLfQC3vbNWFaVmOCdIZYzS0XeYzdhI1GfF2g
+ 7tLQaI4AOZPAqvddxtHx/kdGb4dAw5Wpgac5Ts0wwPCxsut5RdCBsrd
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver does not set max_busy_timeout, so the core takes the host
-for one that can wait for busy indefinitely and sends erase and cache
-flush as R1b with busy timeouts of up to 60 s and 30 s. The CMD_CFG
-timeout field holds at most 32768 ms, so the controller times out first.
+This patch series brings support for onsemi's S2500 that iss
+IEEE 802.3cg compliant Ethernet transceiver with an integrated
+Media Access Controller (MAC-PHY)
 
-Report 32768 ms as max_busy_timeout. The core then sizes discards to
-fit and, for a longer wait, sends R1 and polls for busy itself.
+Driver implementation is compatible and works with OA TC6
+framework that is already present. S2500 driver supports
+hardware timestamping. Along with this driver, OA TC6
+frame work is also changed to add hardware timestamping
+support.
 
-Fixes: 51c5d8447bd7 ("MMC: meson: initial support for GX platforms")
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Driver has support for running selftest and loopback tests.
+Through ethtool, it can provide traffic stats, rmon stats,
+and timestamping related traffic stats.
+
+As S2500 has an internal PHY, changes have been added
+to onsemi's PHY driver to support this device.
+
+To: Andrew Lunn <andrew@lunn.ch>
+To: Heiner Kallweit <hkallweit1@gmail.com>
+To: Russell King <linux@armlinux.org.uk>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
+To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>
+To: Richard Cochran <richardcochran@gmail.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Simon Horman <horms@kernel.org>
+To: Jonathan Corbet <corbet@lwn.net>
+To: Shuah Khan <skhan@linuxfoundation.org>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-doc@vger.kernel.org
+Cc: Jerry Ray <jerry.ray@microchip.com>
+Cc: Ciprian Regus <ciprian.regus@analog.com>
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+
+Changes in v9:
+- Renamed the new phy API from having "fixed_speed" to "no_speed"
+- Fixed compilation issue due to having changes in the wrong patch
+- Added the MAINTAINERS changes to where files were introduced.
+- Fixed coding style issues reported.
+- Moved the order of patches so that selftest changes goes after
+  s2500 support.
+- Made Pier's email ID consistent across to be consistent across 
+  the codebase.
+
+- Link to v8: https://lore.kernel.org/r/20260928-s2500-mac-phy-support-v8-0-7e011aacc309@onsemi.com
+
+Changes in v8:
+- Modified to use newer MMD based read/write APIs
+- clean up by removing unused definitions/initializations
+- Better handling of timestamp capture events by using
+  bit fields so that we don't lose any event
+- timestamp skb queue is protected with spinlock
+- added reset-gpio in YAML file as support is recently added
+- removed ioctl from OA TC6 framework as it is not needed.
+
+- Link to v7: https://lore.kernel.org/all/20260708-s2500-mac-phy-support-v7-0-478c877aa1a9@onsemi.com
+
+Changes in v7:
+- Fixed compiler warning due to prototype mismatch
+- Moved the order of patches to ensure dt-bindings comes first
+  before it is being used
+- Added missing review tag
+- Added missing MODULE_DEVICE_TABLE
+- OA_TC6 framework enables 64 bit timestamping mode by default.
+
+- Compiler related warnings fixed.
+- Link to v6: https://lore.kernel.org/r/20260629-s2500-mac-phy-support-v6-0-18ce79500371@onsemi.com
+
+Changes in v6:
+- Changes to ensure onsemi code stay within 80 columns.
+- Fixed the error of "not described in comments section"
+  in comments section.
+
+- Fixed compiler warnings.
+- Link to v5: https://patch.msgid.link/20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com
+
+Changes in v5:
+ - kernel doc related changes in oa_tc.c, onsemi driver files and
+  oa tc6 rst file
+- Link to v4: https://lore.kernel.org/r/20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com
+
+Changes in v4:
+ - Added return value comment for genphy_read/write_phy_mmd functions
+ - Added genphy_loopback_fixed_speed helper function to be used in
+   set_loopback callbacks
+ - Updated networking documentation for OA TC6 framework to elaborate
+   on what is expected in the ptp_clock_info structure for registration.
+ - added spi-max-frequency in YAML file based on alert from sashiko-bot
+ - Removed model/version from the onsemi driver's private structure as
+   they were useful as "information-only" data.
+ - Replaced the non-standard selftest with Linux's standard selftest
+   and made it as a separate patch
+ - Changed bit manipulation, shift operations to use macros so that
+   it is clean and readable.
+ - added new read_register and write_register apis with _mms postfix
+   so that MMS (memory map selector) can be given as a parameter.
+ - Fixed the wrong condition check with NETIF_F_RXFCS to subtract
+   FCS size from the length of the frame.
+ - Link to v3: https://lore.kernel.org/r/CY8PR02MB92499C9080614FA3CEB8CD0483162@CY8PR02MB9249.namprd02.prod.outlook.com
+
+Changes in v3:
+ - Moved OA TC6 framework to its own directory.
+ - Split changes to smaller patches based on feedback.
+ - Added PHY loopback support as a separate patch.
+ - New, read and write register APIs with extra parameter MMS
+ - Link to v2: https://lore.kernel.org/r/CY8PR02MB924920C8825C7AE5D22EFA4483382@CY8PR02MB9249.namprd02.prod.outlook.com
+
+Changes in v2:
+ - API to add vendor specific MMS to mdio device map.
+ - Link to v1: https://lore.kernel.org/r/CY8PR02MB9249D083B637477C254F9B0583322@CY8PR02MB9249.namprd02.prod.outlook.com
+
 ---
- drivers/mmc/host/meson-gx-mmc.c | 3 +++
- 1 file changed, 3 insertions(+)
+Selvamani Rajagopal (11):
+      dt-bindings: net: add onsemi's S2500
+      Documentation: networking: Add timestamp related APIs to OA TC6 framework
+      net: ethernet: oa_tc6: Move oa_tc6.c to its own directory
+      net: ethernet: oa_tc6: Move constant definitions to header file
+      net: ethernet: oa_tc6: Support for hardware timestamp
+      net: ethernet: oa_tc6: Support for vendor specific MMS
+      net: phy: ncn26000: Enable enhanced noise immunity
+      onsemi: s2500: Add driver support for S2500 MAC-PHY
+      onsemi: s2500: Added selftest support to onsemi's S2500 driver
+      net: phy: ncn26000: Support for onsemi's S2500 internal phy
+      net: phy: ncn26000: Support for loopback
 
-diff --git a/drivers/mmc/host/meson-gx-mmc.c b/drivers/mmc/host/meson-gx-mmc.c
-index abdb12e5f997..49df33bbd8e5 100644
---- a/drivers/mmc/host/meson-gx-mmc.c
-+++ b/drivers/mmc/host/meson-gx-mmc.c
-@@ -1183,6 +1183,9 @@ static int meson_mmc_probe(struct platform_device *pdev)
- 
- 	mmc->caps |= MMC_CAP_CMD23;
- 
-+	/* The longest busy wait the CMD_CFG timeout field can hold. */
-+	mmc->max_busy_timeout = SD_EMMC_CMD_TIMEOUT_MAX;
-+
- 	if (mmc->caps & MMC_CAP_SDIO_IRQ)
- 		mmc->caps2 |= MMC_CAP2_SDIO_IRQ_NOTHREAD;
- 
+ .../devicetree/bindings/net/onnn,s2500.yaml        |  71 +++
+ Documentation/networking/oa-tc6-framework.rst      |  59 +++
+ MAINTAINERS                                        |  11 +-
+ drivers/net/ethernet/Kconfig                       |  13 +-
+ drivers/net/ethernet/Makefile                      |   3 +-
+ drivers/net/ethernet/adi/Kconfig                   |   1 +
+ drivers/net/ethernet/microchip/lan865x/Kconfig     |   1 +
+ drivers/net/ethernet/oa_tc6/Kconfig                |  17 +
+ drivers/net/ethernet/oa_tc6/Makefile               |   7 +
+ drivers/net/ethernet/{ => oa_tc6}/oa_tc6.c         | 429 ++++++++++++-----
+ drivers/net/ethernet/oa_tc6/oa_tc6_ptp.c           |  65 +++
+ drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h       | 172 +++++++
+ drivers/net/ethernet/oa_tc6/oa_tc6_tstamp.c        | 224 +++++++++
+ drivers/net/ethernet/onsemi/Kconfig                |  22 +
+ drivers/net/ethernet/onsemi/Makefile               |   7 +
+ drivers/net/ethernet/onsemi/s2500/Kconfig          |  21 +
+ drivers/net/ethernet/onsemi/s2500/Makefile         |   7 +
+ drivers/net/ethernet/onsemi/s2500/s2500_ethtool.c  | 383 +++++++++++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_hw_def.h   | 160 +++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_main.c     | 523 +++++++++++++++++++++
+ drivers/net/ethernet/onsemi/s2500/s2500_ptp.c      | 174 +++++++
+ drivers/net/phy/dp83867.c                          |  11 +-
+ drivers/net/phy/ncn26000.c                         |  61 ++-
+ drivers/net/phy/phy_device.c                       |  22 +
+ include/linux/oa_tc6.h                             |  25 +
+ include/linux/phy.h                                |   2 +
+ 26 files changed, 2345 insertions(+), 146 deletions(-)
+---
+base-commit: d8674294aefef02266c4d47ad10131f1bffbe534
+change-id: 20260601-s2500-mac-phy-support-4f3ae920fb73
 
+Best regards,
 -- 
-2.43.0
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
