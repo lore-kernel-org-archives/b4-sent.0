@@ -1,14 +1,12 @@
 From: Long Zhao <longzhao@ambarella.com>
-Subject: [PATCH 0/2] clk: add Ambarella CV75 RCT clock controller
-Date: Fri, 09 Oct 2026 19:00:11 +0800
-Message-Id: <20261009-cv75-clk-v1-0-6959b4da83c5@ambarella.com>
+Date: Fri, 09 Oct 2026 19:00:12 +0800
+Subject: [PATCH 1/2] dt-bindings: clock: add Ambarella CV75 RCT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADvJyGoC/yXM0QpAMBTG8VfRubbaNBavIhczBwehDam1dzdc/
- ur/fR4cWkIHVeLB4kWOtjVCpAmYUa8DMuqiIeNZIThXzFwqZ2aZWa8kClnKXBUaYr5b7On+rur
- mtzvbCc3x7iGEBzbbpUJsAAAA
-X-Change-ID: 20261007-cv75-clk-f74e1494576a
+Message-Id: <20261009-cv75-clk-v1-1-6959b4da83c5@ambarella.com>
+References: <20261009-cv75-clk-v1-0-6959b4da83c5@ambarella.com>
+In-Reply-To: <20261009-cv75-clk-v1-0-6959b4da83c5@ambarella.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, linux-clk@vger.kernel.org
 Cc: Jerome Brunet <jbrunet@baylibre.com>, 
@@ -20,67 +18,121 @@ Cc: Jerome Brunet <jbrunet@baylibre.com>,
  Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791543615; l=2190;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791543615; l=2969;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=nEmNB/P7dMfDzlN97RLQsTVzEKL8hg1jn6EUL8ZG6dA=;
- b=Ccza4jQiFmnUVMomgE3ejHoZTGqwXkTT2Q/8/Zxd0/dF8iYXRd0cbXmE+p6pclf4tqY/HeQRl
- 2r6oZaibcS1BwEF8KJlBKlurGpjzt+ZqaKK3KC/eqrxj5E07v3QyFdT
+ bh=gEKr05f9YAOrNVHJfKB47io9QNiMkJyDyO/ZJBUGYg0=;
+ b=9ifyNGSYZw1hELuTMZVEWpRcl6+nTXyVXuwhzllQpzK0yY0F3xMXR2AkfnNgz597p8+PYMMXV
+ suigFi4KPhZCtOZXg51dnHbmUKX9b8efsRBRodmbh29WkGOwlIKVSiM
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Split from the combined CV75 bring-up series.
+Document the CV75 RCT clock controller and the clock ID header used by
+DT consumers.
 
-CLK_AMBARELLA_CV75 depends on ARCH_AMBARELLA || COMPILE_TEST, so the
-driver still builds with COMPILE_TEST when the SoC symbol is absent.
-The binding uses the ambarella vendor prefix, which is added by the
-SoC series and is not in mainline yet; dt_binding_check needs that
-prefix. The MAINTAINERS entry for these files is in the SoC series.
+Document #reset-cells for the RCT reset-provider role. Soft-reset line
+IDs and the reset provider driver are deferred; this series has no
+resets= consumers.
 
-Changes since the patches in the combined v9:
-- drop the redundant linux/math.h include (Andy)
-- use for (unsigned int i = 0; ...) (Andy)
-- initialize the spinlock after the allocation succeeds (Andy)
-- group the ctrl, frac and ctrl2 offsets in struct cv75_pll_regs (Andy)
-
-Link: https://patch.msgid.link/20261001-cv75-v5-v9-0-486cc289a4b8@ambarella.com
-
-To: Michael Turquette <mturquette@baylibre.com>
-To: Stephen Boyd <sboyd@kernel.org>
-To: linux-clk@vger.kernel.org
-Cc: Jerome Brunet <jbrunet@baylibre.com>
-Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc: Rob Herring <robh@kernel.org>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>
-Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Cc: Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org
-Cc: Long Zhao <longzhao@ambarella.com>
-Cc: Long Zhao <zl020895@163.com>
-Cc: linux-kernel@vger.kernel.org
-
-Assisted-by: LLM
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
-Long Zhao (2):
-      dt-bindings: clock: add Ambarella CV75 RCT
-      clk: ambarella: add CV75 RCT clock controller
+ .../bindings/clock/ambarella,cv75-rct.yaml         | 64 ++++++++++++++++++++++
+ include/dt-bindings/clock/ambarella,cv75-rct.h     | 14 +++++
+ 2 files changed, 78 insertions(+)
 
- .../bindings/clock/ambarella,cv75-rct.yaml         |  64 ++++
- drivers/clk/Kconfig                                |   1 +
- drivers/clk/Makefile                               |   1 +
- drivers/clk/ambarella/Kconfig                      |   9 +
- drivers/clk/ambarella/Makefile                     |   3 +
- drivers/clk/ambarella/clk-cv75.c                   | 361 +++++++++++++++++++++
- include/dt-bindings/clock/ambarella,cv75-rct.h     |  14 +
- 7 files changed, 453 insertions(+)
----
-base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
-change-id: 20261007-cv75-clk-f74e1494576a
+diff --git a/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml b/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
+new file mode 100644
+index 000000000000..be89bd75f9e2
+--- /dev/null
++++ b/Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
+@@ -0,0 +1,64 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/clock/ambarella,cv75-rct.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Ambarella CV75 RCT Clock Controller
++
++maintainers:
++  - Long Zhao <longzhao@ambarella.com>
++
++description: |
++  The RCT (Reset and Clock Tree) block on the Ambarella CV75 SoC provides
++  PLLs, clock muxes, dividers and soft-reset controls for on-chip
++  peripherals.
++
++  The same register region is also exposed as a syscon for other SoC
++  blocks (e.g. pin drive-strength), hence the "syscon" compatible.
++
++  Clock indices are defined in include/dt-bindings/clock/ambarella,cv75-rct.h.
++
++properties:
++
++  compatible:
++    items:
++      - const: ambarella,cv75-rct
++      - const: syscon
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    description: Reference crystal oscillator (typically 24 MHz)
++    maxItems: 1
++
++  clock-names:
++    const: osc
++
++  "#clock-cells":
++    const: 1
++
++  "#reset-cells":
++    const: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - clock-names
++  - "#clock-cells"
++  - "#reset-cells"
++
++additionalProperties: false
++
++examples:
++  - |
++    clock-controller@ed080000 {
++        compatible = "ambarella,cv75-rct", "syscon";
++        reg = <0xed080000 0x1000>;
++        clocks = <&osc>;
++        clock-names = "osc";
++        #clock-cells = <1>;
++        #reset-cells = <1>;
++    };
+diff --git a/include/dt-bindings/clock/ambarella,cv75-rct.h b/include/dt-bindings/clock/ambarella,cv75-rct.h
+new file mode 100644
+index 000000000000..b3e965b4ff2e
+--- /dev/null
++++ b/include/dt-bindings/clock/ambarella,cv75-rct.h
+@@ -0,0 +1,14 @@
++/* SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause */
++/*
++ * Copyright (C) 2026 Ambarella, Inc.
++ */
++
++#ifndef _DT_BINDINGS_CLOCK_AMBARELLA_CV75_RCT_H
++#define _DT_BINDINGS_CLOCK_AMBARELLA_CV75_RCT_H
++
++#define CV75_GCLK_UART0		0
++#define CV75_GCLK_CORE		1
++#define CV75_GCLK_AHB		2
++#define CV75_GCLK_APB		3
++
++#endif
 
-Best regards,
---  
-Long Zhao <longzhao@ambarella.com>
+-- 
+2.34.1
 
