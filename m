@@ -1,173 +1,92 @@
-From: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
-Date: Fri, 09 Oct 2026 18:18:34 +0200
-Subject: [PATCH] board: qemu-arm: Add SPL support
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH v3 0/4] mmc: meson-gx: honour the busy timeout for R1b
+ commands
+Date: Fri, 09 Oct 2026 17:02:56 +0000
+Message-Id: <20261009-meson-gx-busy-timeout-v3-0-67d0db3a8328@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-spl-for-quemu-arm-v1-1-8ea39068f888@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CMBBA4auQWTtJWwVTrmJYFBxkDL8zlpAQ7
- m7R5bd4bwclYVIosx2EVlaexgR7yaDpwvgi5GcyOOMKa4xHnXtsJ8El0hAxyIDuZp2/+zrk/gq
- pm4Va3n7PR/W3xvpNzeccwXF8ATsB3tp1AAAA
-X-Change-ID: 20261009-spl-for-quemu-arm-2412979ba593
-To: u-boot@lists.u-boot-project.org
-Cc: Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Tuomas Tynkkynen <tuomas.tynkkynen@iki.fi>, 
- Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791562720; l=4272;
- i=wadowski.arkadiusz@gmail.com; s=20261009; h=from:subject:message-id;
- bh=Faa0L6PATQopGf7/F0Ko6Anx3zgkNBnJrWZvNbNFVTo=;
- b=YkkH5QI2uLteg9BRKX2HSPjlwix1o6UQVI67ZzCvZ0OjtGy+mJpNcu7sy9BzFtSeOG2OlmDra
- mOmpbEi2N3pDYD+VmvDLK0Ad1vNrCLHfGgFxcC+bxmQPrXGQFe3p690
-X-Developer-Key: i=wadowski.arkadiusz@gmail.com; a=ed25519;
- pk=HKeMLZz72hO1HTxmFN3fZohsVyICtXJ2xUrbSalR0wQ=
-X-Endpoint-Received: by B4 Relay for wadowski.arkadiusz@gmail.com/20261009 with auth_id=1144
+X-B4-Tracking: v=1; b=H4sIAEAeyWoC/43NTQqDMBCG4atI1p2SH7Wxq96jdGGSUQPVlESDI
+ t69UWh3hS7fD+aZlQT0FgO5ZivxGG2wbkghThnRXT20CNakJpzyklFaQI/BDdDOoKawwGh7dNM
+ IF5QoGqOVQEHS7ctjY+fDvT9SdzaMzi/Hm8j29SPKH2JkwMBUvBG6lDqn1c3W8fyMZOci/4vgQ
+ EEqg6w2jSpU/iW2bXsD4Tt9U/oAAAA=
+To: Ulf Hansson <ulfh@kernel.org>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ linux-mmc@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2782; i=iav@iav.lv;
+ h=from:subject:message-id; bh=sLav8eVPxAn6w8jYJTPMsF+9TZLNLRgeAX9kWkuT/Pk=;
+ b=kA0DAAoWMpeVi+pfeQMByyZiAGrJHlagWzI7bo5Nt+cNtDkGkwDWm1o1hF1//qB+AOiI7bqty
+ 4h1BAAWCgAdFiEEkMIo2mik1f1PSDfgMpeVi+pfeQMFAmrJHlYACgkQMpeVi+pfeQM10AD9Fk2Q
+ i6ybpTs0fXmxG8U7wBgxv6DUPPE5GlAwmmM+/bMBAOGy8JM66cY7bKUQyOqzIcqUuHnAR9YJDra
+ 33NnskfwG
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an optional SPL boot path for the QEMU ARM64 virt machine,
-allowing the SPL-to-U-Boot boot flow to be explored without
-physical hardware.
+For a command without data the driver programs a fixed 1024 ms into the
+CMD_CFG timeout field and does not tell the core how long the controller
+can wait for busy. Erase and cache flush then fail with -110 on eMMC.
+Patch 3 fixes card_busy, which reported a busy card free; patch 4 makes
+the core rely on it.
 
-Use the existing NOR loader to load u-boot.img from flash into
-RAM at 0x41000000. Generate u-boot-with-spl.bin with the payload
-placed after SPL padding.
+Tested on ODROID-N2+ (S922X), 256 GB eMMC, btrfs root with discard=async,
+Armbian builds in docker as load. Without the series (7.3-rc6): 262
+errors in 3 h and 68 in 2.5 h in two runs; the first came 4 and 43 min
+into the build. With v1 (7.3-rc6): 0 in 16 h, 2.4 h of it under the
+build. With v3: 0 in a 37 min kernel build and in a 20 GiB write +
+fstrim; a sanitize went out as R1 and the core polled DAT0 for 523 ms
+until the card was back in TRAN. On 7.1 with the previous eMMC module
+a synthetic test (20 GiB write + fstrim) gave 48 errors without the
+patches, 0 and 0 with them.
 
-Signed-off-by: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
----
-This patch adds an optional SPL boot path for the QEMU ARM64 virt
-machine. It provides an emulated environment for exploring the
-SPL-to-U-Boot boot flow without physical hardware.
+ODROID-N2 (S922X), 128 GB Kingston eMMC, 20 GiB write + fstrim:
+without the series an erase hit the 1024 ms limit and failed with -110
+in 3 of 3 runs. With v3, in 3 such runs and a fill of the card to 85 %
+with rm + fstrim, 5 erases took over 1024 ms, up to 1219 ms, and
+completed; 0 errors.
 
-SPL starts at flash address zero and uses the existing NOR loader
-to load U-Boot proper into RAM at 0x41000000. The combined
-u-boot-with-spl.bin image places u-boot.img at flash offset 0x100000.
+ODROID-HC4, SD card in SDR104 at 1.8 V: 0 errors in 5 boots.
 
-QEMU provides initialized RAM at reset, so this boot path does
-not require a DRAM initialization sequence.
----
- arch/arm/mach-qemu/Kconfig           |  1 +
- board/emulation/qemu-arm/Kconfig     |  4 ++++
- board/emulation/qemu-arm/Kconfig.spl | 43 ++++++++++++++++++++++++++++++++++++
- board/emulation/qemu-arm/qemu-arm.c  |  8 +++++++
- include/configs/qemu-arm.h           |  4 ++++
- 5 files changed, 60 insertions(+)
-
-diff --git a/arch/arm/mach-qemu/Kconfig b/arch/arm/mach-qemu/Kconfig
-index 9c06c6a3a5c..7e8aa62d38c 100644
---- a/arch/arm/mach-qemu/Kconfig
-+++ b/arch/arm/mach-qemu/Kconfig
-@@ -18,6 +18,7 @@ config TARGET_QEMU_ARM_64BIT
- 	bool "ARMv8, 64bit"
- 	select ARM64
- 	select BOARD_LATE_INIT
-+	select SUPPORT_SPL
- 
- config TARGET_QEMU_ARM_SBSA
- 	bool "SBSA Reference"
-diff --git a/board/emulation/qemu-arm/Kconfig b/board/emulation/qemu-arm/Kconfig
-index 447061b25cd..c6bfb82e7f3 100644
---- a/board/emulation/qemu-arm/Kconfig
-+++ b/board/emulation/qemu-arm/Kconfig
-@@ -1,3 +1,7 @@
-+if TARGET_QEMU_ARM_64BIT && SPL
-+source "board/emulation/qemu-arm/Kconfig.spl"
-+endif
-+
- if TARGET_QEMU_ARM_32BIT || TARGET_QEMU_ARM_64BIT
- 
- config TEXT_BASE
-diff --git a/board/emulation/qemu-arm/Kconfig.spl b/board/emulation/qemu-arm/Kconfig.spl
-new file mode 100644
-index 00000000000..38002a87b70
---- /dev/null
-+++ b/board/emulation/qemu-arm/Kconfig.spl
-@@ -0,0 +1,43 @@
-+# SPDX-License-Identifier: GPL-2.0+
-+
-+config TEXT_BASE
-+	range 0x41000000 0xffffffff
-+	default 0x41000000
-+
-+config OF_OMIT_DTB
-+	default n
-+
-+config DEFAULT_DEVICE_TREE
-+	default "qemu-arm64"
-+
-+config QEMU_ARM64_SPL
-+	def_bool y
-+	select SPL_LIBCOMMON_SUPPORT
-+	select SPL_LIBGENERIC_SUPPORT
-+	select SPL_HAS_BSS_LINKER_SECTION
-+	select SPL_SEPARATE_BSS
-+	select SPL_NOR_SUPPORT
-+	select PANIC_HANG
-+	select SPL_LEGACY_IMAGE_FORMAT
-+	select SPL_DM
-+	select SPL_OF_CONTROL
-+	select SPL_SERIAL
-+	select SPL_DM_SERIAL
-+
-+config SPL_PAYLOAD
-+	default "u-boot.img"
-+
-+config SPL_TARGET
-+	default "u-boot-with-spl.bin"
-+
-+config SPL_BLOBLIST
-+	default n
-+
-+config SPL_MAX_SIZE
-+	default 0x100000
-+
-+config SPL_BSS_START_ADDR
-+	default 0x40400000
-+
-+config SPL_BSS_MAX_SIZE
-+	default 0x100000
-diff --git a/board/emulation/qemu-arm/qemu-arm.c b/board/emulation/qemu-arm/qemu-arm.c
-index 38f0ec5f2fb..b0ab31ce793 100644
---- a/board/emulation/qemu-arm/qemu-arm.c
-+++ b/board/emulation/qemu-arm/qemu-arm.c
-@@ -11,6 +11,7 @@
- #include <fdtdec.h>
- #include <init.h>
- #include <log.h>
-+#include <spl.h>
- #include <usb.h>
- #include <virtio_types.h>
- #include <virtio.h>
-@@ -202,3 +203,10 @@ void flash_write32(u32 value, void *addr)
- {
- 	asm("str %" __W "1, %0" : "=m"(*(u32 *)addr) : "r"(value));
- }
-+
-+#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL_BUILD)
-+u32 spl_boot_device(void)
-+{
-+	return BOOT_DEVICE_NOR;
-+}
-+#endif
-diff --git a/include/configs/qemu-arm.h b/include/configs/qemu-arm.h
-index e296f398798..18939dd8fd5 100644
---- a/include/configs/qemu-arm.h
-+++ b/include/configs/qemu-arm.h
-@@ -11,4 +11,8 @@
- 
- /* For timer, QEMU emulates an ARMv7/ARMv8 architected timer */
- 
-+#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL)
-+#define CFG_SYS_UBOOT_BASE CONFIG_SPL_PAD_TO
-+#endif
-+
- #endif /* __CONFIG_H */
+The timeout is rounded up to a power of two: the field holds powers of
+two only, and the timeout is a lower bound. MMC_CAP_WAIT_WHILE_BUSY is
+not set: I have not checked that the controller waits for busy on every
+R1b command, HS400 switches included.
 
 ---
-base-commit: 0a55b098d6f5f6bafa84fc2f18b433dd167bf729
-change-id: 20261009-spl-for-quemu-arm-2412979ba593
+Changes in v3:
+- Clamp cmd->busy_timeout to the range of the field before rounding it
+  up to a power of two: the rounding of a value above 2^31 overflowed
+  unsigned int (Sashiko).
+- New patch 3: card_busy reports busy from DAT0 alone. It required
+  DAT0..3 all low and reported a busy card free (Sashiko).
+- Link to v2: https://lore.kernel.org/r/20261008-meson-gx-busy-timeout-v2-0-8bde1adfb5b4@iav.lv
+
+Changes in v2:
+- Split into three patches, as Neil asked: name the limit of the
+  timeout field, program the R1b timeout from cmd->busy_timeout, report
+  max_busy_timeout.
+- Link to v1: https://lore.kernel.org/r/20261008-meson-gx-busy-timeout-v1-1-d92f3c68c409@iav.lv
+
+---
+Igor Velkov (4):
+      mmc: meson-gx: name the limit of the CMD_CFG timeout field
+      mmc: meson-gx: honour the busy timeout for R1b commands
+      mmc: meson-gx: report busy from DAT0 alone
+      mmc: meson-gx: report the longest busy wait the controller can do
+
+ drivers/mmc/host/meson-gx-mmc.c | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
+---
+base-commit: fd9af27f6c2319713bb23832066585f8a59a1771
+change-id: 20261005-meson-gx-busy-timeout-7e8e3fdcb3e3
 
 Best regards,
---  
-Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
