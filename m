@@ -1,102 +1,173 @@
-From: Evgeny Akhtimirov <evgeny@devduty.com>
-Date: Fri, 09 Oct 2026 20:02:37 +0400
-Subject: [PATCH] ALSA: hda/realtek: Enable all four speaker amps on Lenovo
- ThinkBook X G2 IAH
+From: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
+Date: Fri, 09 Oct 2026 18:18:34 +0200
+Subject: [PATCH] board: qemu-arm: Add SPL support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-thinkbook-x-g2-iah-v1-1-56012188aee0@devduty.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBtQo9+rRAvLKQdBQyOC8O5Jy
- 2/x3guJIlOCqXoh0s2Jgy+QdQWb1f4gZFMMSqhOCjHiZdm7NQSHDx4KWVsUrRxbQ7o3zQAlPCP
- t/PzTecn5AxysbhZkAAAA
-X-Change-ID: 20261009-thinkbook-x-g2-iah-05195dea7d38
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- David Rhodes <david.rhodes@cirrus.com>, 
- Richard Fitzgerald <rf@opensource.cirrus.com>, 
- patches@opensource.cirrus.com, stable@vger.kernel.org, 
- Evgeny Akhtimirov <evgeny@devduty.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791561760; l=3156;
- i=evgeny@devduty.com; s=20261009; h=from:subject:message-id;
- bh=BfsbIsaH+xcSaOBuE7I5ho9CDvOnUQL+4DzaitSAqVw=;
- b=c26iBhGWKwg0niARse87EuFaqvUHE1BwImtaSdsGOlGVPdvcFHiGpeddIxAsZI7aAJX9QmdIi
- tGbJjYlNBx0CHaYQL8ThCED8rRBc+JBgvhf3gCDjwnzyzR14lOcCRye
-X-Developer-Key: i=evgeny@devduty.com; a=ed25519;
- pk=3FZbefc8yeIZmuo/7ejP2EM5b4z3JPRLeOgOvhXNloM=
-X-Endpoint-Received: by B4 Relay for evgeny@devduty.com/20261009 with auth_id=1143
+Message-Id: <20261009-spl-for-quemu-arm-v1-1-8ea39068f888@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CMBBA4auQWTtJWwVTrmJYFBxkDL8zlpAQ7
+ m7R5bd4bwclYVIosx2EVlaexgR7yaDpwvgi5GcyOOMKa4xHnXtsJ8El0hAxyIDuZp2/+zrk/gq
+ pm4Va3n7PR/W3xvpNzeccwXF8ATsB3tp1AAAA
+X-Change-ID: 20261009-spl-for-quemu-arm-2412979ba593
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Tuomas Tynkkynen <tuomas.tynkkynen@iki.fi>, 
+ Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791562720; l=4272;
+ i=wadowski.arkadiusz@gmail.com; s=20261009; h=from:subject:message-id;
+ bh=Faa0L6PATQopGf7/F0Ko6Anx3zgkNBnJrWZvNbNFVTo=;
+ b=YkkH5QI2uLteg9BRKX2HSPjlwix1o6UQVI67ZzCvZ0OjtGy+mJpNcu7sy9BzFtSeOG2OlmDra
+ mOmpbEi2N3pDYD+VmvDLK0Ad1vNrCLHfGgFxcC+bxmQPrXGQFe3p690
+X-Developer-Key: i=wadowski.arkadiusz@gmail.com; a=ed25519;
+ pk=HKeMLZz72hO1HTxmFN3fZohsVyICtXJ2xUrbSalR0wQ=
+X-Endpoint-Received: by B4 Relay for wadowski.arkadiusz@gmail.com/20261009 with auth_id=1144
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Lenovo ThinkBook X G2 IAH (MTM 21TU) has an ALC287 codec with four
-CS35L41 amplifiers on I2C (CSC3551). It reports codec SSID 17aa:3929,
-which it shares with the ThinkBook 13x Gen 5, and PCI SSID 17aa:3842.
+Add an optional SPL boot path for the QEMU ARM64 virt machine,
+allowing the SPL-to-U-Boot boot flow to be explored without
+physical hardware.
 
-Since PCI SSID 17aa:3842 has no quirk entry, the codec SSID matches
-ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD. That fixup binds only
-two amps (cs35l41-hda.0 and .1), while the CS35L41 configuration table
-describes four for 17AA3929. Amps .2 and .3 probe and load firmware,
-but they are never bound to the codec, so half of the speakers stay
-silent.
+Use the existing NOR loader to load u-boot.img from flash into
+RAM at 0x41000000. Generate u-boot-with-spl.bin with the payload
+placed after SPL padding.
 
-Add a ThinkPad-style fixup chain that binds four I2C amps, and match the
-laptop by its PCI SSID so the ThinkBook 13x Gen 5 is not affected.
-
-Tested with hda_model=1028:0c4d (alias to ALC287_FIXUP_CS35L41_I2C_4):
-all four amps bind, apply their calibration and are runtime-active
-during playback.
-
-Cc: stable@vger.kernel.org
-Signed-off-by: Evgeny Akhtimirov <evgeny@devduty.com>
+Signed-off-by: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
 ---
- sound/hda/codecs/realtek/alc269.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+This patch adds an optional SPL boot path for the QEMU ARM64 virt
+machine. It provides an emulated environment for exploring the
+SPL-to-U-Boot boot flow without physical hardware.
 
-diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
-index a68b6a9b7..217df4301 100644
---- a/sound/hda/codecs/realtek/alc269.c
-+++ b/sound/hda/codecs/realtek/alc269.c
-@@ -4427,6 +4427,8 @@ enum {
- 	ALC245_FIXUP_HP_X360_MUTE_LEDS,
- 	ALC287_FIXUP_THINKPAD_I2S_SPK,
- 	ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD,
-+	ALC287_FIXUP_CS35L41_I2C_4_THINKPAD_ACPI,
-+	ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_4_THINKPAD,
- 	ALC2XX_FIXUP_HEADSET_MIC,
- 	ALC289_FIXUP_DELL_CS35L41_SPI_2,
- 	ALC256_FIXUP_ACER_SFG16_MICMUTE_LED,
-@@ -7017,6 +7019,18 @@ static const struct hda_fixup alc269_fixups[] = {
- 		.chained = true,
- 		.chain_id = ALC287_FIXUP_CS35L41_I2C_2_THINKPAD_ACPI,
- 	},
-+	[ALC287_FIXUP_CS35L41_I2C_4_THINKPAD_ACPI] = {
-+		.type = HDA_FIXUP_FUNC,
-+		.v.func = cs35l41_fixup_i2c_four,
-+		.chained = true,
-+		.chain_id = ALC285_FIXUP_THINKPAD_NO_BASS_SPK_HEADSET_JACK,
-+	},
-+	[ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_4_THINKPAD] = {
-+		.type = HDA_FIXUP_FUNC,
-+		.v.func = alc287_fixup_tb_vmaster_led,
-+		.chained = true,
-+		.chain_id = ALC287_FIXUP_CS35L41_I2C_4_THINKPAD_ACPI,
-+	},
- 	[ALC2XX_FIXUP_HEADSET_MIC] = {
- 		.type = HDA_FIXUP_FUNC,
- 		.v.func = alc2xx_fixup_headset_mic,
-@@ -8378,6 +8392,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
- 	SND_PCI_QUIRK(0x17aa, 0x3827, "Ideapad S740", ALC285_FIXUP_IDEAPAD_S740_COEF),
- 	SND_PCI_QUIRK(0x17aa, 0x3834, "Lenovo IdeaPad Slim 9i 14ITL5", ALC287_FIXUP_YOGA7_14ITL_SPEAKERS),
- 	SND_PCI_QUIRK(0x17aa, 0x383d, "Legion Y9000X 2019", ALC285_FIXUP_LEGION_Y9000X_SPEAKERS),
-+	SND_PCI_QUIRK(0x17aa, 0x3842, "ThinkBook X G2 IAH", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_4_THINKPAD),
- 	SND_PCI_QUIRK(0x17aa, 0x3843, "Lenovo Yoga 9i / Yoga Book 9i", ALC287_FIXUP_LENOVO_YOGA_BOOK_9I),
- 	/* Yoga Pro 7 14IMH9 shares PCI SSID 17aa:3847 with Legion 7 16ACHG6;
- 	 * use codec SSID to distinguish them
+SPL starts at flash address zero and uses the existing NOR loader
+to load U-Boot proper into RAM at 0x41000000. The combined
+u-boot-with-spl.bin image places u-boot.img at flash offset 0x100000.
+
+QEMU provides initialized RAM at reset, so this boot path does
+not require a DRAM initialization sequence.
+---
+ arch/arm/mach-qemu/Kconfig           |  1 +
+ board/emulation/qemu-arm/Kconfig     |  4 ++++
+ board/emulation/qemu-arm/Kconfig.spl | 43 ++++++++++++++++++++++++++++++++++++
+ board/emulation/qemu-arm/qemu-arm.c  |  8 +++++++
+ include/configs/qemu-arm.h           |  4 ++++
+ 5 files changed, 60 insertions(+)
+
+diff --git a/arch/arm/mach-qemu/Kconfig b/arch/arm/mach-qemu/Kconfig
+index 9c06c6a3a5c..7e8aa62d38c 100644
+--- a/arch/arm/mach-qemu/Kconfig
++++ b/arch/arm/mach-qemu/Kconfig
+@@ -18,6 +18,7 @@ config TARGET_QEMU_ARM_64BIT
+ 	bool "ARMv8, 64bit"
+ 	select ARM64
+ 	select BOARD_LATE_INIT
++	select SUPPORT_SPL
+ 
+ config TARGET_QEMU_ARM_SBSA
+ 	bool "SBSA Reference"
+diff --git a/board/emulation/qemu-arm/Kconfig b/board/emulation/qemu-arm/Kconfig
+index 447061b25cd..c6bfb82e7f3 100644
+--- a/board/emulation/qemu-arm/Kconfig
++++ b/board/emulation/qemu-arm/Kconfig
+@@ -1,3 +1,7 @@
++if TARGET_QEMU_ARM_64BIT && SPL
++source "board/emulation/qemu-arm/Kconfig.spl"
++endif
++
+ if TARGET_QEMU_ARM_32BIT || TARGET_QEMU_ARM_64BIT
+ 
+ config TEXT_BASE
+diff --git a/board/emulation/qemu-arm/Kconfig.spl b/board/emulation/qemu-arm/Kconfig.spl
+new file mode 100644
+index 00000000000..38002a87b70
+--- /dev/null
++++ b/board/emulation/qemu-arm/Kconfig.spl
+@@ -0,0 +1,43 @@
++# SPDX-License-Identifier: GPL-2.0+
++
++config TEXT_BASE
++	range 0x41000000 0xffffffff
++	default 0x41000000
++
++config OF_OMIT_DTB
++	default n
++
++config DEFAULT_DEVICE_TREE
++	default "qemu-arm64"
++
++config QEMU_ARM64_SPL
++	def_bool y
++	select SPL_LIBCOMMON_SUPPORT
++	select SPL_LIBGENERIC_SUPPORT
++	select SPL_HAS_BSS_LINKER_SECTION
++	select SPL_SEPARATE_BSS
++	select SPL_NOR_SUPPORT
++	select PANIC_HANG
++	select SPL_LEGACY_IMAGE_FORMAT
++	select SPL_DM
++	select SPL_OF_CONTROL
++	select SPL_SERIAL
++	select SPL_DM_SERIAL
++
++config SPL_PAYLOAD
++	default "u-boot.img"
++
++config SPL_TARGET
++	default "u-boot-with-spl.bin"
++
++config SPL_BLOBLIST
++	default n
++
++config SPL_MAX_SIZE
++	default 0x100000
++
++config SPL_BSS_START_ADDR
++	default 0x40400000
++
++config SPL_BSS_MAX_SIZE
++	default 0x100000
+diff --git a/board/emulation/qemu-arm/qemu-arm.c b/board/emulation/qemu-arm/qemu-arm.c
+index 38f0ec5f2fb..b0ab31ce793 100644
+--- a/board/emulation/qemu-arm/qemu-arm.c
++++ b/board/emulation/qemu-arm/qemu-arm.c
+@@ -11,6 +11,7 @@
+ #include <fdtdec.h>
+ #include <init.h>
+ #include <log.h>
++#include <spl.h>
+ #include <usb.h>
+ #include <virtio_types.h>
+ #include <virtio.h>
+@@ -202,3 +203,10 @@ void flash_write32(u32 value, void *addr)
+ {
+ 	asm("str %" __W "1, %0" : "=m"(*(u32 *)addr) : "r"(value));
+ }
++
++#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL_BUILD)
++u32 spl_boot_device(void)
++{
++	return BOOT_DEVICE_NOR;
++}
++#endif
+diff --git a/include/configs/qemu-arm.h b/include/configs/qemu-arm.h
+index e296f398798..18939dd8fd5 100644
+--- a/include/configs/qemu-arm.h
++++ b/include/configs/qemu-arm.h
+@@ -11,4 +11,8 @@
+ 
+ /* For timer, QEMU emulates an ARMv7/ARMv8 architected timer */
+ 
++#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL)
++#define CFG_SYS_UBOOT_BASE CONFIG_SPL_PAD_TO
++#endif
++
+ #endif /* __CONFIG_H */
 
 ---
-base-commit: f5e1a9a3fddab8421416b68bb132ae9626d07156
-change-id: 20261009-thinkbook-x-g2-iah-05195dea7d38
+base-commit: 0a55b098d6f5f6bafa84fc2f18b433dd167bf729
+change-id: 20261009-spl-for-quemu-arm-2412979ba593
 
 Best regards,
--- 
-Evgeny Akhtimirov <evgeny@devduty.com>
+--  
+Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
 
