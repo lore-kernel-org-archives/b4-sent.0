@@ -1,110 +1,188 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Fri, 09 Oct 2026 11:44:26 -0600
-Subject: [PATCH v2 3/3] nouveau: Fix NULL dereference in
- nvkm_gsp_gcx_ready()
+From: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
+Date: Fri, 09 Oct 2026 22:13:17 +0200
+Subject: [PATCH v2] board: qemu-arm: Add SPL support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-my-fixups-v2-3-839e2bbe514d@gmail.com>
-References: <20261009-my-fixups-v2-0-839e2bbe514d@gmail.com>
-In-Reply-To: <20261009-my-fixups-v2-0-839e2bbe514d@gmail.com>
-To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Dave Airlie <airlied@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, Daniel Campos Ramos <Capitain_Jack@yahoo.com>, 
- Jim Cromie <jim.cromie@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791567877; l=3425;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=YyKLmo0bEj/hJpRUlDlZOCssFCXNnz2YynMbMOOeOi4=;
- b=UOPAMqmtzEXw0svG2xoRhLf7pa0/9gTca19f8JoK3eLaMt8FPyB6oNGnlVSyxtXKPSpi3IYhZ
- IiR/juE41x5CH1MMejtk/VLRyAgubmV7cjNA/+0qHI5/NXBvF8OzuRL
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+Message-Id: <20261009-spl-for-quemu-arm-v2-1-460427488c17@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7Zi2KLauvIdhUXCAMZRiC0RDu
+ LuAe5cvef/9GSIFpgjXZIZAE0f23QrqkEDZ2K4m5MfKoITKpBAGY99i5QO+RnIj2uBQnaQyF1P
+ Ys0lh3fWBKn7vzXv+4zgWTyqHLbQZDcfBh89+OsnN+9efJErUZFMjMl1prW+1s9weS+8gX5blC
+ xqr8ETEAAAA
+X-Change-ID: 20261009-spl-for-quemu-arm-2412979ba593
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Tuomas Tynkkynen <tuomas.tynkkynen@iki.fi>, 
+ Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791576832; l=4979;
+ i=wadowski.arkadiusz@gmail.com; s=20261009; h=from:subject:message-id;
+ bh=JDkQR1jI2dR/+MdscKbdpNDlzhyz0P3/TwaN7s3vVZ4=;
+ b=j3UA4W8rEIyYREwUeSyNRITg2Xxycvn/9nLA6oDcUEAcCZ1Ccin5scumdFBSVlV97P9WmgwKp
+ XdnmqLlz9+XDeOSYaFbT6iKfBGiCWI89yFdhxTPQIF8DPLiJ4Nbpu/9
+X-Developer-Key: i=wadowski.arkadiusz@gmail.com; a=ed25519;
+ pk=HKeMLZz72hO1HTxmFN3fZohsVyICtXJ2xUrbSalR0wQ=
+X-Endpoint-Received: by B4 Relay for wadowski.arkadiusz@gmail.com/20261009 with auth_id=1144
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit cb4c7603678c ("drm/nouveau/gsp/r570: Add support for
-INTERNAL_GCX_ENTRY_PREREQUISITE") hooked nvif_device_gcx_ready() into
-nouveau_pmops_runtime_suspend() to consult GSP before runtime suspend.
+Add an optional SPL boot path for the QEMU ARM64 virt machine,
+allowing the SPL-to-U-Boot boot flow to be explored without
+physical hardware.
 
-On GPUs running without GSP-RM (e.g. Volta GV100, NvGspRm=0, or missing
-GSP firmware blobs), device->gsp is instantiated but gsp->rm remains
-NULL. nvkm_udevice_gcx_ready() checked "!gsp" instead of verifying
-nvkm_gsp_rm(gsp), allowing non-RM instances to invoke
-nvkm_gsp_gcx_ready(). nvkm_gsp_gcx_ready() then unconditionally
-dereferenced gsp->rm->api, causing a kernel oops:
+Use the existing NOR loader to load u-boot.img from flash into
+RAM at 0x41000000. Generate u-boot-with-spl.bin with the payload
+placed after SPL padding.
 
-  RIP: 0010:nvkm_gsp_gcx_ready+0x10/0x30 [nouveau]
-  Code: ... 48 8b 87 70 0e 00 00 <48> 8b 40 18 ...
-  RAX: 0000000000000000 RDI: ffff8c9555fca000
-  Call Trace:
-   nvkm_udevice_mthd+0xa5/0x150 [nouveau]
-   nvkm_ioctl+0xcc/0x1d0 [nouveau]
-   nvif_object_mthd+0x110/0x1e0 [nouveau]
-   nvif_device_gcx_ready+0x36/0x60 [nouveau]
-   nouveau_pmops_runtime_suspend+0x39/0x140 [nouveau]
-
-Instruction decode shows `mov rax, [rdi+0xe70]` loads gsp->rm (0x0),
-and `<48> 8b 40 18` (`mov rax, [rax+0x18]`) faults accessing rm->api.
-
-Fix by:
-0. Checking !nvkm_gsp_rm(gsp) in nvkm_udevice_gcx_ready() so non-RM
-   devices report GC6/GcOff ready and bypass the GSP call entirely.
-1. Guarding gsp and gsp->rm in nvkm_gsp_gcx_ready() before inspecting
-   gsp->rm->api->gsp->gcx_ready.
-
-Fixes: cb4c7603678c ("drm/nouveau/gsp/r570: Add support for INTERNAL_GCX_ENTRY_PREREQUISITE")
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Signed-off-by: Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
 ---
- drivers/gpu/drm/nouveau/include/nvkm/subdev/gsp.h | 2 +-
- drivers/gpu/drm/nouveau/nvkm/engine/device/user.c | 2 +-
- drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c    | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+This patch adds an optional SPL boot path for the QEMU ARM64 virt
+machine. It provides an emulated environment for exploring the
+SPL-to-U-Boot boot flow without physical hardware.
 
-diff --git a/drivers/gpu/drm/nouveau/include/nvkm/subdev/gsp.h b/drivers/gpu/drm/nouveau/include/nvkm/subdev/gsp.h
-index ed5c6e0e68d3..933f13ed2a50 100644
---- a/drivers/gpu/drm/nouveau/include/nvkm/subdev/gsp.h
-+++ b/drivers/gpu/drm/nouveau/include/nvkm/subdev/gsp.h
-@@ -274,7 +274,7 @@ struct nvkm_gsp {
- static inline bool
- nvkm_gsp_rm(struct nvkm_gsp *gsp)
+SPL starts at flash address zero and uses the existing NOR loader
+to load U-Boot proper into RAM at 0x41000000. The combined
+u-boot-with-spl.bin image places u-boot.img at flash offset 0x100000.
+
+QEMU provides initialized RAM at reset, so this boot path does
+not require a DRAM initialization sequence.
+---
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://patch.msgid.link/20261009-spl-for-quemu-arm-v1-1-8ea39068f888@gmail.com
+---
+ Makefile                             |  2 +-
+ arch/arm/mach-qemu/Kconfig           |  1 +
+ board/emulation/qemu-arm/Kconfig     |  2 ++
+ board/emulation/qemu-arm/Kconfig.spl | 40 ++++++++++++++++++++++++++++++++++++
+ board/emulation/qemu-arm/qemu-arm.c  |  8 ++++++++
+ include/configs/qemu-arm.h           |  4 ++++
+ 6 files changed, 56 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 6303a0cca6a..49c1da0fb03 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2458,7 +2458,7 @@ spl/u-boot-spl-dtb.bin: spl/u-boot-spl
+ spl/u-boot-spl-dtb.hex: spl/u-boot-spl
+ 	@:
+ 
+-spl/u-boot-spl: tools prepare $(if $(CONFIG_SPL_OF_CONTROL),dts/dt.dtb)
++spl/u-boot-spl: tools prepare $(if $(and $(CONFIG_SPL_OF_CONTROL),$(filter-out y,$(CONFIG_OF_OMIT_DTB))),dts/dt.dtb)
+ 	$(Q)$(MAKE) obj=spl -f $(srctree)/scripts/Makefile.xpl all
+ 
+ spl/sunxi-spl.bin: spl/u-boot-spl
+diff --git a/arch/arm/mach-qemu/Kconfig b/arch/arm/mach-qemu/Kconfig
+index 9c06c6a3a5c..7e8aa62d38c 100644
+--- a/arch/arm/mach-qemu/Kconfig
++++ b/arch/arm/mach-qemu/Kconfig
+@@ -18,6 +18,7 @@ config TARGET_QEMU_ARM_64BIT
+ 	bool "ARMv8, 64bit"
+ 	select ARM64
+ 	select BOARD_LATE_INIT
++	select SUPPORT_SPL
+ 
+ config TARGET_QEMU_ARM_SBSA
+ 	bool "SBSA Reference"
+diff --git a/board/emulation/qemu-arm/Kconfig b/board/emulation/qemu-arm/Kconfig
+index 447061b25cd..b66b260b292 100644
+--- a/board/emulation/qemu-arm/Kconfig
++++ b/board/emulation/qemu-arm/Kconfig
+@@ -1,3 +1,5 @@
++source "board/emulation/qemu-arm/Kconfig.spl"
++
+ if TARGET_QEMU_ARM_32BIT || TARGET_QEMU_ARM_64BIT
+ 
+ config TEXT_BASE
+diff --git a/board/emulation/qemu-arm/Kconfig.spl b/board/emulation/qemu-arm/Kconfig.spl
+new file mode 100644
+index 00000000000..5dd7f478e82
+--- /dev/null
++++ b/board/emulation/qemu-arm/Kconfig.spl
+@@ -0,0 +1,40 @@
++# SPDX-License-Identifier: GPL-2.0+
++if TARGET_QEMU_ARM_64BIT && SPL
++
++config TEXT_BASE
++	range 0x41000000 0xffffffff
++	default 0x41000000
++
++config QEMU_ARM64_SPL
++	def_bool y
++	select SPL_LIBCOMMON_SUPPORT
++	select SPL_LIBGENERIC_SUPPORT
++	select SPL_HAS_BSS_LINKER_SECTION
++	select SPL_SEPARATE_BSS
++	select SPL_NOR_SUPPORT
++	select PANIC_HANG
++	select SPL_LEGACY_IMAGE_FORMAT
++	select SPL_DM
++	select SPL_OF_CONTROL
++	select SPL_SERIAL
++	select SPL_DM_SERIAL
++
++config SPL_PAYLOAD
++	default "u-boot.img"
++
++config SPL_TARGET
++	default "u-boot-with-spl.bin"
++
++config SPL_BLOBLIST
++	default n
++
++config SPL_MAX_SIZE
++	default 0x100000
++
++config SPL_BSS_START_ADDR
++	default 0x40400000
++
++config SPL_BSS_MAX_SIZE
++	default 0x100000
++
++endif
+diff --git a/board/emulation/qemu-arm/qemu-arm.c b/board/emulation/qemu-arm/qemu-arm.c
+index 38f0ec5f2fb..b0ab31ce793 100644
+--- a/board/emulation/qemu-arm/qemu-arm.c
++++ b/board/emulation/qemu-arm/qemu-arm.c
+@@ -11,6 +11,7 @@
+ #include <fdtdec.h>
+ #include <init.h>
+ #include <log.h>
++#include <spl.h>
+ #include <usb.h>
+ #include <virtio_types.h>
+ #include <virtio.h>
+@@ -202,3 +203,10 @@ void flash_write32(u32 value, void *addr)
  {
--	return gsp && (gsp->fws.rm || gsp->fw.img);
-+	return gsp && gsp->rm && (gsp->fws.rm || gsp->fw.img);
+ 	asm("str %" __W "1, %0" : "=m"(*(u32 *)addr) : "r"(value));
  }
++
++#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL_BUILD)
++u32 spl_boot_device(void)
++{
++	return BOOT_DEVICE_NOR;
++}
++#endif
+diff --git a/include/configs/qemu-arm.h b/include/configs/qemu-arm.h
+index e296f398798..18939dd8fd5 100644
+--- a/include/configs/qemu-arm.h
++++ b/include/configs/qemu-arm.h
+@@ -11,4 +11,8 @@
  
- #include <rm/rm.h>
-diff --git a/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c b/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
-index f78e6b9b4292..d469437eb991 100644
---- a/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/engine/device/user.c
-@@ -201,7 +201,7 @@ nvkm_udevice_gcx_ready(struct nvkm_udevice *udev, void *data, u32 size)
- 	} *args = data;
- 	int ret = -ENOSYS;
+ /* For timer, QEMU emulates an ARMv7/ARMv8 architected timer */
  
--	if (!gsp) {
-+	if (!nvkm_gsp_rm(gsp)) {
- 		args->v0.ready = NV_DEVICE_GC6_READY | NV_DEVICE_GCOFF_READY;
- 		return 0;
- 	}
-diff --git a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
-index e475d0e8fa7b..ea895f04293a 100644
---- a/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
-+++ b/drivers/gpu/drm/nouveau/nvkm/subdev/gsp/base.c
-@@ -51,7 +51,7 @@ nvkm_gsp_intr_stall(struct nvkm_gsp *gsp, enum nvkm_subdev_type type, int inst)
- int
- nvkm_gsp_gcx_ready(struct nvkm_gsp *gsp)
- {
--	if (!gsp->rm->api->gsp->gcx_ready)
-+	if (!nvkm_gsp_rm(gsp) || !gsp->rm->api->gsp->gcx_ready)
- 		return NV_DEVICE_GC6_READY | NV_DEVICE_GCOFF_READY;
- 
- 	return gsp->rm->api->gsp->gcx_ready(gsp);
++#if defined(CONFIG_TARGET_QEMU_ARM_64BIT) && defined(CONFIG_SPL)
++#define CFG_SYS_UBOOT_BASE CONFIG_SPL_PAD_TO
++#endif
++
+ #endif /* __CONFIG_H */
 
--- 
-2.56.0
+---
+base-commit: 0a55b098d6f5f6bafa84fc2f18b433dd167bf729
+change-id: 20261009-spl-for-quemu-arm-2412979ba593
+
+Best regards,
+--  
+Arkadiusz Wadowski <wadowski.arkadiusz@gmail.com>
 
