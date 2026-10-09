@@ -1,76 +1,102 @@
-From: Krzysztof Furman <krisfur@proton.me>
-Date: Fri, 09 Oct 2026 15:47:10 +0100
-Subject: [PATCH] Input: xpad - add support for Corsair Novablade Pro
+From: Evgeny Akhtimirov <evgeny@devduty.com>
+Date: Fri, 09 Oct 2026 20:02:37 +0400
+Subject: [PATCH] ALSA: hda/realtek: Enable all four speaker amps on Lenovo
+ ThinkBook X G2 IAH
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-xpad-corsair-novablade-v1-1-e58746bef99f@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORtoK6zMVxEPWRs1Iu1IdAzG3
- n2dHr/D/69grMIGl24F5VlMamnwpw7Sk8qDUXIzBBd679yAy0QZU1UjUSx1pvFNmfEcKEQfAw1
- 9hBZPyndZfuPr7W/7ji9On+MG27YDCXq0b3oAAAA=
-X-Change-ID: 20261009-xpad-corsair-novablade-32a27172a967
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Krzysztof Furman <krisfur@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791557242; l=2357;
- i=krisfur@proton.me; s=20261009; h=from:subject:message-id;
- bh=ajmN4wE5ck5/WbQMqQHqcLzqggS+I8lqcfuBpb4LQN4=;
- b=wzJJIbfQiRN5ky9nCpFii1qs1PySNhBwCcTc84sMUoo2+khwff3rbZTzDbC52zM6Y8jB/LR/s
- Cl0Mscxp8TuDiiuhS482ab8w28WJcxQ1TCOB0A1qd17f/NJb+Y1S5Kj
-X-Developer-Key: i=krisfur@proton.me; a=ed25519;
- pk=qWf2loGTQN6F4MMZofmcek16QZYEtENBLRL0vg4m0F0=
-X-Endpoint-Received: by B4 Relay for krisfur@proton.me/20261009 with auth_id=1142
+Message-Id: <20261009-thinkbook-x-g2-iah-v1-1-56012188aee0@devduty.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBtQo9+rRAvLKQdBQyOC8O5Jy
+ 2/x3guJIlOCqXoh0s2Jgy+QdQWb1f4gZFMMSqhOCjHiZdm7NQSHDx4KWVsUrRxbQ7o3zQAlPCP
+ t/PzTecn5AxysbhZkAAAA
+X-Change-ID: 20261009-thinkbook-x-g2-iah-05195dea7d38
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ David Rhodes <david.rhodes@cirrus.com>, 
+ Richard Fitzgerald <rf@opensource.cirrus.com>, 
+ patches@opensource.cirrus.com, stable@vger.kernel.org, 
+ Evgeny Akhtimirov <evgeny@devduty.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791561760; l=3156;
+ i=evgeny@devduty.com; s=20261009; h=from:subject:message-id;
+ bh=BfsbIsaH+xcSaOBuE7I5ho9CDvOnUQL+4DzaitSAqVw=;
+ b=c26iBhGWKwg0niARse87EuFaqvUHE1BwImtaSdsGOlGVPdvcFHiGpeddIxAsZI7aAJX9QmdIi
+ tGbJjYlNBx0CHaYQL8ThCED8rRBc+JBgvhf3gCDjwnzyzR14lOcCRye
+X-Developer-Key: i=evgeny@devduty.com; a=ed25519;
+ pk=3FZbefc8yeIZmuo/7ejP2EM5b4z3JPRLeOgOvhXNloM=
+X-Endpoint-Received: by B4 Relay for evgeny@devduty.com/20261009 with auth_id=1143
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device IDs for the Corsair Novablade Pro leverless fight controller
-in both wired (0x2b1f) and 2.4 GHz receiver (0x2b2b) modes, and add
-Corsair's vendor ID to the Xbox 360 vendor match list.
+The Lenovo ThinkBook X G2 IAH (MTM 21TU) has an ALC287 codec with four
+CS35L41 amplifiers on I2C (CSC3551). It reports codec SSID 17aa:3929,
+which it shares with the ThinkBook 13x Gen 5, and PCI SSID 17aa:3842.
 
-Outside of its PS4/PS5 modes the controller uses the Xbox 360 protocol
-(vendor-specific class, subclass 93, protocol 1) on interface 0, which
-xpad does not currently bind, so no gamepad device is created. The
-PS4/PS5 modes present a standard HID gamepad and already work with
-hid-generic.
+Since PCI SSID 17aa:3842 has no quirk entry, the codec SSID matches
+ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD. That fixup binds only
+two amps (cs35l41-hda.0 and .1), while the CS35L41 configuration table
+describes four for 17AA3929. Amps .2 and .3 probe and load firmware,
+but they are never bound to the codec, so half of the speakers stay
+silent.
 
-Tested on 7.2.5 with the 2.4 GHz receiver and wired.
+Add a ThinkPad-style fixup chain that binds four I2C amps, and match the
+laptop by its PCI SSID so the ThinkBook 13x Gen 5 is not affected.
 
-Assisted-by: Claude Opus 5.5
-Signed-off-by: Krzysztof Furman <krisfur@proton.me>
+Tested with hda_model=1028:0c4d (alias to ALC287_FIXUP_CS35L41_I2C_4):
+all four amps bind, apply their calibration and are runtime-active
+during playback.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Evgeny Akhtimirov <evgeny@devduty.com>
 ---
-The PS5 mode (0x2b27) presents a plain HID gamepad and needs no xpad
-change, so it is not included.
----
- drivers/input/joystick/xpad.c | 3 +++
- 1 file changed, 3 insertions(+)
+ sound/hda/codecs/realtek/alc269.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
-index feb8f368f..51f889389 100644
---- a/drivers/input/joystick/xpad.c
-+++ b/drivers/input/joystick/xpad.c
-@@ -295,6 +295,8 @@ static const struct xpad_device {
- 	{ 0x17ef, 0x6182, "Lenovo Legion Controller for Windows", 0, XTYPE_XBOX360 },
- 	{ 0x1949, 0x041a, "Amazon Game Controller", 0, XTYPE_XBOX360 },
- 	{ 0x1a86, 0xe310, "Legion Go S", 0, XTYPE_XBOX360 },
-+	{ 0x1b1c, 0x2b1f, "Corsair Novablade Pro (Wired)", 0, XTYPE_XBOX360 },
-+	{ 0x1b1c, 0x2b2b, "Corsair Novablade Pro (2.4 GHz Receiver)", 0, XTYPE_XBOX360 },
- 	{ 0x1bad, 0x0002, "Harmonix Rock Band Guitar", 0, XTYPE_XBOX360 },
- 	{ 0x1bad, 0x0003, "Harmonix Rock Band Drumkit", MAP_DPAD_TO_BUTTONS, XTYPE_XBOX360 },
- 	{ 0x1bad, 0x0130, "Ion Drum Rocker", MAP_DPAD_TO_BUTTONS, XTYPE_XBOX360 },
-@@ -536,6 +538,7 @@ static const struct usb_device_id xpad_table[] = {
- 	XPAD_XBOX360_VENDOR(0x17ef),		/* Lenovo */
- 	XPAD_XBOX360_VENDOR(0x1949),		/* Amazon controllers */
- 	XPAD_XBOX360_VENDOR(0x1a86),		/* Nanjing Qinheng Microelectronics (WCH) */
-+	XPAD_XBOX360_VENDOR(0x1b1c),		/* Corsair controllers */
- 	XPAD_XBOX360_VENDOR(0x1bad),		/* Harmonix Rock Band guitar and drums */
- 	XPAD_XBOX360_VENDOR(0x1ee9),		/* ZOTAC Technology Limited */
- 	XPAD_XBOX360_VENDOR(0x20bc),		/* BETOP wireless dongles */
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index a68b6a9b7..217df4301 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -4427,6 +4427,8 @@ enum {
+ 	ALC245_FIXUP_HP_X360_MUTE_LEDS,
+ 	ALC287_FIXUP_THINKPAD_I2S_SPK,
+ 	ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_THINKPAD,
++	ALC287_FIXUP_CS35L41_I2C_4_THINKPAD_ACPI,
++	ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_4_THINKPAD,
+ 	ALC2XX_FIXUP_HEADSET_MIC,
+ 	ALC289_FIXUP_DELL_CS35L41_SPI_2,
+ 	ALC256_FIXUP_ACER_SFG16_MICMUTE_LED,
+@@ -7017,6 +7019,18 @@ static const struct hda_fixup alc269_fixups[] = {
+ 		.chained = true,
+ 		.chain_id = ALC287_FIXUP_CS35L41_I2C_2_THINKPAD_ACPI,
+ 	},
++	[ALC287_FIXUP_CS35L41_I2C_4_THINKPAD_ACPI] = {
++		.type = HDA_FIXUP_FUNC,
++		.v.func = cs35l41_fixup_i2c_four,
++		.chained = true,
++		.chain_id = ALC285_FIXUP_THINKPAD_NO_BASS_SPK_HEADSET_JACK,
++	},
++	[ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_4_THINKPAD] = {
++		.type = HDA_FIXUP_FUNC,
++		.v.func = alc287_fixup_tb_vmaster_led,
++		.chained = true,
++		.chain_id = ALC287_FIXUP_CS35L41_I2C_4_THINKPAD_ACPI,
++	},
+ 	[ALC2XX_FIXUP_HEADSET_MIC] = {
+ 		.type = HDA_FIXUP_FUNC,
+ 		.v.func = alc2xx_fixup_headset_mic,
+@@ -8378,6 +8392,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x17aa, 0x3827, "Ideapad S740", ALC285_FIXUP_IDEAPAD_S740_COEF),
+ 	SND_PCI_QUIRK(0x17aa, 0x3834, "Lenovo IdeaPad Slim 9i 14ITL5", ALC287_FIXUP_YOGA7_14ITL_SPEAKERS),
+ 	SND_PCI_QUIRK(0x17aa, 0x383d, "Legion Y9000X 2019", ALC285_FIXUP_LEGION_Y9000X_SPEAKERS),
++	SND_PCI_QUIRK(0x17aa, 0x3842, "ThinkBook X G2 IAH", ALC287_FIXUP_MG_RTKC_CSAMP_CS35L41_I2C_4_THINKPAD),
+ 	SND_PCI_QUIRK(0x17aa, 0x3843, "Lenovo Yoga 9i / Yoga Book 9i", ALC287_FIXUP_LENOVO_YOGA_BOOK_9I),
+ 	/* Yoga Pro 7 14IMH9 shares PCI SSID 17aa:3847 with Legion 7 16ACHG6;
+ 	 * use codec SSID to distinguish them
 
 ---
-base-commit: 1a3ba2dc2b91d50201a9d4721f166e68f4903eb6
-change-id: 20261009-xpad-corsair-novablade-32a27172a967
+base-commit: f5e1a9a3fddab8421416b68bb132ae9626d07156
+change-id: 20261009-thinkbook-x-g2-iah-05195dea7d38
 
 Best regards,
---  
-Krzysztof Furman <krisfur@proton.me>
+-- 
+Evgeny Akhtimirov <evgeny@devduty.com>
 
