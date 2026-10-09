@@ -1,117 +1,76 @@
-From: Dimitri Wegner <d@zerovolt.org>
-Date: Fri, 09 Oct 2026 13:44:53 +0200
-Subject: [PATCH] ALSA: usb-audio: Add feedback snap quirk for Mayflower ARC
- AMP
+From: Krzysztof Furman <krisfur@proton.me>
+Date: Fri, 09 Oct 2026 15:47:10 +0100
+Subject: [PATCH] Input: xpad - add support for Corsair Novablade Pro
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-mayflower-fb-v1-1-a84e82e05ac9@zerovolt.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAwNL3dzEyrSc/PLUIt20JN1EU0tj48RUS8NUC2MloJaCotS0zAqwcdG
- xtbUAm7JbC14AAAA=
-X-Change-ID: 20261009-mayflower-fb-a5933ae91e83
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dimitri Wegner <d@zerovolt.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791546328; l=3572;
- i=d@zerovolt.org; s=20261009; h=from:subject:message-id;
- bh=CXyZ3NBP8s2rl6b2wgACCQszHWo9Z1js6VRgKjg/Rak=;
- b=AERUawIR4ry5e2wJ0eQNl58+jXIqDwcHd6XiY56WtLxqTSvCv2Roab1Dqv+0jgWcivEUrMlMq
- wMk07YKjcPnCk+n8y97AP5qn/yF96oGX18VHgaeaSRRSQ7uvFE/NxhU
-X-Developer-Key: i=d@zerovolt.org; a=ed25519;
- pk=LvZetug4Pi01dwobr2q7O7RRa6xhnjAzWYqm6yuQZDI=
-X-Endpoint-Received: by B4 Relay for d@zerovolt.org/20261009 with auth_id=1141
+Message-Id: <20261009-xpad-corsair-novablade-v1-1-e58746bef99f@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORtoK6zMVxEPWRs1Iu1IdAzG3
+ n2dHr/D/69grMIGl24F5VlMamnwpw7Sk8qDUXIzBBd679yAy0QZU1UjUSx1pvFNmfEcKEQfAw1
+ 9hBZPyndZfuPr7W/7ji9On+MG27YDCXq0b3oAAAA=
+X-Change-ID: 20261009-xpad-corsair-novablade-32a27172a967
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Krzysztof Furman <krisfur@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791557242; l=2357;
+ i=krisfur@proton.me; s=20261009; h=from:subject:message-id;
+ bh=ajmN4wE5ck5/WbQMqQHqcLzqggS+I8lqcfuBpb4LQN4=;
+ b=wzJJIbfQiRN5ky9nCpFii1qs1PySNhBwCcTc84sMUoo2+khwff3rbZTzDbC52zM6Y8jB/LR/s
+ Cl0Mscxp8TuDiiuhS482ab8w28WJcxQ1TCOB0A1qd17f/NJb+Y1S5Kj
+X-Developer-Key: i=krisfur@proton.me; a=ed25519;
+ pk=qWf2loGTQN6F4MMZofmcek16QZYEtENBLRL0vg4m0F0=
+X-Endpoint-Received: by B4 Relay for krisfur@proton.me/20261009 with auth_id=1142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Mayflower ARC AMP DAC (USB ID 0493:4170, MAG Technology front-end)
-at times gets stuck reporting feedback of nominal+1 sample/frame (97
-instead of 96 at 96 kHz) and does not recover. The driver follows this
-feedback, and audible pops occur every 1-2s until the stream is
-restarted.
+Add device IDs for the Corsair Novablade Pro leverless fight controller
+in both wired (0x2b1f) and 2.4 GHz receiver (0x2b2b) modes, and add
+Corsair's vendor ID to the Xbox 360 vendor match list.
 
-Add a quirk for this device that ignores feedback values more than
-1/128 (~0.8%) away from nominal and uses the nominal rate instead.
-Normal feedback corrections are far smaller than that and pass
-through unchanged. Other devices are not affected.
+Outside of its PS4/PS5 modes the controller uses the Xbox 360 protocol
+(vendor-specific class, subclass 93, protocol 1) on interface 0, which
+xpad does not currently bind, so no gamepad device is created. The
+PS4/PS5 modes present a standard HID gamepad and already work with
+hid-generic.
 
-Signed-off-by: Dimitri Wegner <d@zerovolt.org>
+Tested on 7.2.5 with the 2.4 GHz receiver and wired.
+
+Assisted-by: Claude Opus 5.5
+Signed-off-by: Krzysztof Furman <krisfur@proton.me>
 ---
-Tested on this DAC at 96 kHz for ~10 weeks on kernels 7.1 and 7.2.
-The pops no longer occur. The quirk triggered ~680 times over that
-period, always with feedback 0x61.0000 against nominal 0x60.0000.
+The PS5 mode (0x2b27) presents a plain HID gamepad and needs no xpad
+change, so it is not included.
 ---
- sound/usb/card.h     |  1 +
- sound/usb/endpoint.c | 16 ++++++++++++++++
- sound/usb/quirks.c   | 10 ++++++++++
- 3 files changed, 27 insertions(+)
+ drivers/input/joystick/xpad.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/sound/usb/card.h b/sound/usb/card.h
-index 8299ac241c60..f956bcf00f77 100644
---- a/sound/usb/card.h
-+++ b/sound/usb/card.h
-@@ -123,6 +123,7 @@ struct snd_usb_endpoint {
- 	unsigned int syncmaxsize;	/* sync endpoint packet size */
- 	unsigned int fill_max:1;	/* fill max packet size always */
- 	unsigned int tenor_fb_quirk:1;	/* corrupted feedback data */
-+	unsigned int snap_fb_quirk:1;	/* ignore implausible feedback */
- 	unsigned int datainterval;      /* log_2 of data packet interval */
- 	unsigned int syncinterval;	/* P for adaptive mode, 0 otherwise */
- 	unsigned char silence_value;
-diff --git a/sound/usb/endpoint.c b/sound/usb/endpoint.c
-index 879d0451536e..9c844c55ad3f 100644
---- a/sound/usb/endpoint.c
-+++ b/sound/usb/endpoint.c
-@@ -1908,6 +1908,22 @@ static void snd_usb_handle_sync_urb(struct snd_usb_endpoint *ep,
- 	else
- 		f >>= -ep->freqshift;
- 
-+	if (unlikely(sender->snap_fb_quirk) &&
-+	    (f < ep->freqn - ep->freqn / 128 ||
-+	     f > ep->freqn + ep->freqn / 128)) {
-+		/*
-+		 * Feedback deviates from nominal far beyond what real
-+		 * clock differences can explain.  This firmware can get
-+		 * stuck at nominal+1 sample per frame, causing audible
-+		 * pops.  Trust the nominal rate instead.
-+		 */
-+		dev_warn_ratelimited(&ep->chip->dev->dev,
-+				     "EP 0x%x: ignoring implausible feedback 0x%x.%04x (nominal 0x%x.%04x)\n",
-+				     ep->ep_num, f >> 16, f & 0xffff,
-+				     ep->freqn >> 16, ep->freqn & 0xffff);
-+		f = ep->freqn;
-+	}
-+
- 	if (likely(f >= ep->freqn - ep->freqn / 8 && f <= ep->freqmax)) {
- 		/*
- 		 * If the frequency looks valid, set it.
-diff --git a/sound/usb/quirks.c b/sound/usb/quirks.c
-index 170f68db74fa..fc377b7306f2 100644
---- a/sound/usb/quirks.c
-+++ b/sound/usb/quirks.c
-@@ -2198,6 +2198,16 @@ void snd_usb_endpoint_start_quirk(struct snd_usb_endpoint *ep)
- 	     ep->chip->usb_id == USB_ID(0x1852, 0x5034)) && /* T+A Dac8 */
- 	    ep->syncmaxsize == 4)
- 		ep->tenor_fb_quirk = 1;
-+
-+	/*
-+	 * Mayflower ARC AMP DAC (MAG Technology USB front-end): the
-+	 * feedback can get stuck at nominal+1 sample per frame, causing
-+	 * pops every 1-2 sec until stream restart.  Snap implausible
-+	 * feedback to nominal.
-+	 */
-+	if (ep->chip->usb_id == USB_ID(0x0493, 0x4170) &&
-+	    ep->type == SND_USB_ENDPOINT_TYPE_SYNC)
-+		ep->snap_fb_quirk = 1;
- }
- 
- /* quirk applied after snd_usb_ctl_msg(); not applied during boot quirks */
+diff --git a/drivers/input/joystick/xpad.c b/drivers/input/joystick/xpad.c
+index feb8f368f..51f889389 100644
+--- a/drivers/input/joystick/xpad.c
++++ b/drivers/input/joystick/xpad.c
+@@ -295,6 +295,8 @@ static const struct xpad_device {
+ 	{ 0x17ef, 0x6182, "Lenovo Legion Controller for Windows", 0, XTYPE_XBOX360 },
+ 	{ 0x1949, 0x041a, "Amazon Game Controller", 0, XTYPE_XBOX360 },
+ 	{ 0x1a86, 0xe310, "Legion Go S", 0, XTYPE_XBOX360 },
++	{ 0x1b1c, 0x2b1f, "Corsair Novablade Pro (Wired)", 0, XTYPE_XBOX360 },
++	{ 0x1b1c, 0x2b2b, "Corsair Novablade Pro (2.4 GHz Receiver)", 0, XTYPE_XBOX360 },
+ 	{ 0x1bad, 0x0002, "Harmonix Rock Band Guitar", 0, XTYPE_XBOX360 },
+ 	{ 0x1bad, 0x0003, "Harmonix Rock Band Drumkit", MAP_DPAD_TO_BUTTONS, XTYPE_XBOX360 },
+ 	{ 0x1bad, 0x0130, "Ion Drum Rocker", MAP_DPAD_TO_BUTTONS, XTYPE_XBOX360 },
+@@ -536,6 +538,7 @@ static const struct usb_device_id xpad_table[] = {
+ 	XPAD_XBOX360_VENDOR(0x17ef),		/* Lenovo */
+ 	XPAD_XBOX360_VENDOR(0x1949),		/* Amazon controllers */
+ 	XPAD_XBOX360_VENDOR(0x1a86),		/* Nanjing Qinheng Microelectronics (WCH) */
++	XPAD_XBOX360_VENDOR(0x1b1c),		/* Corsair controllers */
+ 	XPAD_XBOX360_VENDOR(0x1bad),		/* Harmonix Rock Band guitar and drums */
+ 	XPAD_XBOX360_VENDOR(0x1ee9),		/* ZOTAC Technology Limited */
+ 	XPAD_XBOX360_VENDOR(0x20bc),		/* BETOP wireless dongles */
 
 ---
-base-commit: f5e1a9a3fddab8421416b68bb132ae9626d07156
-change-id: 20261009-mayflower-fb-a5933ae91e83
+base-commit: 1a3ba2dc2b91d50201a9d4721f166e68f4903eb6
+change-id: 20261009-xpad-corsair-novablade-32a27172a967
 
 Best regards,
--- 
-Dimitri Wegner <d@zerovolt.org>
+--  
+Krzysztof Furman <krisfur@proton.me>
 
