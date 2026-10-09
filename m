@@ -1,158 +1,88 @@
-From: Pawel Laszczak <pawell@cadence.com>
-Date: Fri, 09 Oct 2026 08:49:13 +0200
-Subject: [PATCH v4 3/3] usb: cdns3: cdnsp: Enable eUSB2v2 1KB bulk packet
- capability
+From: Andrei Stancovici <andrei.stancovici@analog.com>
+Subject: [PATCH 0/6] iio: adc: ltc2497: add LTC2493 support and
+ line-frequency rejection
+Date: Fri, 09 Oct 2026 11:43:33 +0300
+Message-Id: <20261009-submission-ltc2493-support-v1-v1-0-3dad1d4b152a@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-eusb2v2-packet-size-v4-3-a505ee17b460@cadence.com>
-References: <20261009-eusb2v2-packet-size-v4-0-a505ee17b460@cadence.com>
-In-Reply-To: <20261009-eusb2v2-packet-size-v4-0-a505ee17b460@cadence.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Mathias Nyman <mathias.nyman@intel.com>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Pawel Laszczak <pawell@cadence.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791528555; l=5088;
- i=pawell@cadence.com; h=from:subject:message-id;
- bh=tTGzRyUujp3zeeymzyv1wALYMtKFS+pEl0fn1C6cKFM=;
- b=WwsHJ1hNwTwzxZj7c5AAL5Of8fahK+WNZOBai2ns5Nrr88T2W3WqsJqFf1aqwi0rHiV4rFWpg
- 9hW2fQoKl6BBkkomRuw5gnLhKK8KcgLV/tZlQIs6/OIWt71ihSmc3Ds
-X-Developer-Key: i=pawell@cadence.com; a=ed25519;
- pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
-X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
+X-B4-Tracking: v=1; b=H4sIADWpyGoC/yXMywrCMBCF4Vcps3YgN4rxVcRFTUYd0TZk0iKUv
+ rtTXf6Hw7eCUGUSOHUrVFpYeBo17KGD9BjGOyFnbXDG9daYiDJf3yz7DV8tuRC9TqVMteFi8di
+ HEClT8C6DGqXSjT8//3z5twJPSm1HYdu+K87nIYEAAAA=
+X-Change-ID: 20261009-submission-ltc2493-support-v1-86449ede432d
+To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Beguin <liambeguin@gmail.com>
+Cc: linux@analog.com, linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Andrei Stancovici <andrei.stancovici@analog.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791535413; l=2561;
+ i=andrei.stancovici@analog.com; s=20261009; h=from:subject:message-id;
+ bh=qPw/W4uGpNR8YtgkZjRtlirnT4ziZSl3ZtAV1Ca3h1Y=;
+ b=d4Cpeh3cVJHo3gedk3mF1UmNKUS4/0bt9xBrR89d1/04EauA5cuIUyKmZQYnXfXchl6LnoofF
+ YGwc3s04sYFCT+Eqd3JMmojGSUQdnaAlezA/QbrNzm9OkKAj3Hv5RhG
+X-Developer-Key: i=andrei.stancovici@analog.com; a=ed25519;
+ pk=wgT+au+blAhVYxhwNgdx0woNl/1p+OCG484rnTRFrsE=
+X-Endpoint-Received: by B4 Relay for andrei.stancovici@analog.com/20261009 with auth_id=1140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement peripheral-side changes in the Cadence (cdnsp) driver
-to support eUSB2v2 1024-byte Bulk MaxPacketSize.
+This series adds LTC2493 support to the ltc2497 driver, and adds FA/FB
+line-frequency rejection for the LTC2499 and the LTC2493.
 
-Check the HCC2_E2V2C bit in HCCPARAMS2 during setup and set
-'pdev->gadget.is_eusb2v2 = 1' if supported. Delegate the incoming
-USB_DEVICE_BULK_MAX_PACKET_UPDATE setup request from ep0 to the
-composite layer.
+It includes:
+- the LTC2493 device-tree binding,
+- LTC2493 support in the driver: 4 single-ended inputs or 2 differential
+  pairs, 24-bit result, same command format as the LTC2499,
+- the LTC2493 internal PTAT temperature channel,
+- the LTC2493 2x conversion speed mode, exposed via sampling_frequency,
+- FA/FB line-frequency rejection (50Hz, 60Hz, or both) exposed via
+  filter_mode, implemented in the core and enabled for the LTC2499,
+- the same rejection selection enabled for the LTC2493.
 
-Update cdnsp_endpoint_init() to check the 'eusb2v2_mps_active' flag
-set by the gadget framework. If active, dynamically configure the
-hardware endpoint for 1024-byte maximum packet size, overriding
-the 512-byte value reported in the endpoint descriptor.
+The FA/FB patch also widens the conversion-time budget, because 50Hz-only
+rejection takes 163.5 ms at 1x and the previous budget was 150 ms; see
+that patch for the details.
 
-Signed-off-by: Pawel Laszczak <pawell@cadence.com>
+Validated on a Raspberry Pi 4 running 7.3.0-rc4, over an IIO network
+backend, with a DC1010A-A board (LTC2493) and a DC1012A-A board
+(LTC2499):
+- LTC2493 voltage channels, single-ended and differential,
+- LTC2493 temperature raw/scale/offset, with voltage and temperature
+  reads interleaved to confirm no sticky PTAT,
+- sampling_frequency 1x/2x switching on the LTC2493,
+- filter_mode 50Hz/60Hz/both on both parts, with the conversion time
+  honoured in each mode,
+- pyadi-iio hardware test suites: 41/41 on the LTC2493, 36/36 on the
+  LTC2499.
+
+The series was rebased onto the base commit below after those runs. The
+rebase left all four touched files byte-identical, so the code posted
+here is the code that was tested.
+
+Signed-off-by: Andrei Stancovici <andrei.stancovici@analog.com>
 ---
-Changes in v4:
-- No changes.
+Andrei Stancovici (6):
+      dt-bindings: iio: adc: lltc,ltc2497: add LTC2493 support
+      iio: adc: ltc2497: add LTC2493 support
+      iio: adc: ltc2497: add LTC2493 internal temperature channel
+      iio: adc: ltc2497: add 2x speed mode support for the LTC2493
+      iio: adc: ltc2497: add FA/FB line-frequency rejection selection
+      iio: adc: ltc2497: enable line-frequency rejection on LTC2493
 
-Changes in v3:
-- cdnsp-mem.c: Use the new gadget->eusb2v2_mps_active flag instead of modifying
-  ep->desc.wMaxPacketSize. This allows the UDC to determine the correct HS bulk
-  maximum packet size while letting the composite framework report 512 bytes in
-  the endpoint descriptor per eUSB2v2 spec section 5.2.
-
-Changes in v2:
-- cdnsp-mem.c: simplified HS bulk clamp logic to: if (max_packet != 1024)
-  max_packet = 512, consistent with xhci-mem.c.
+ .../devicetree/bindings/iio/adc/lltc,ltc2497.yaml  |   7 +
+ drivers/iio/adc/ltc2497-core.c                     | 199 +++++++++++++++++----
+ drivers/iio/adc/ltc2497.c                          |  61 +++++--
+ drivers/iio/adc/ltc2497.h                          |  45 ++++-
+ 4 files changed, 251 insertions(+), 61 deletions(-)
 ---
- drivers/usb/cdns3/cdnsp-ep0.c    | 2 ++
- drivers/usb/cdns3/cdnsp-gadget.c | 4 ++++
- drivers/usb/cdns3/cdnsp-gadget.h | 8 ++++++++
- drivers/usb/cdns3/cdnsp-mem.c    | 9 +++++++--
- drivers/usb/common/debug.c       | 2 ++
- 5 files changed, 23 insertions(+), 2 deletions(-)
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261009-submission-ltc2493-support-v1-86449ede432d
 
-diff --git a/drivers/usb/cdns3/cdnsp-ep0.c b/drivers/usb/cdns3/cdnsp-ep0.c
-index 5cd9b898ce97..090d20b307ee 100644
---- a/drivers/usb/cdns3/cdnsp-ep0.c
-+++ b/drivers/usb/cdns3/cdnsp-ep0.c
-@@ -253,6 +253,8 @@ static int cdnsp_ep0_handle_feature_device(struct cdnsp_device *pdev,
- 		 */
- 		cdnsp_enter_test_mode(pdev);
- 		break;
-+	case USB_DEVICE_BULK_MAX_PACKET_UPDATE:
-+		return cdnsp_ep0_delegate_req(pdev, ctrl);
- 	default:
- 		return -EINVAL;
- 	}
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.c b/drivers/usb/cdns3/cdnsp-gadget.c
-index a5275c2fb43b..ac1dde43ce1d 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.c
-+++ b/drivers/usb/cdns3/cdnsp-gadget.c
-@@ -1853,6 +1853,10 @@ static int cdnsp_gen_setup(struct cdnsp_device *pdev)
- 	pdev->hcc_params = readl(&pdev->cap_regs->hc_capbase);
- 	pdev->hci_version = HC_VERSION(pdev->hcc_params);
- 	pdev->hcc_params = readl(&pdev->cap_regs->hcc_params);
-+	pdev->hcc_params2 = readl(&pdev->cap_regs->hcc_params2);
-+
-+	if (pdev->hcc_params2 & HCC2_E2V2C)
-+		pdev->gadget.is_eusb2v2 = 1;
- 
- 	/*
- 	 * Override the APB timeout value to give the controller more time for
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.h b/drivers/usb/cdns3/cdnsp-gadget.h
-index c44bca348a41..75bc3f15bde5 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.h
-+++ b/drivers/usb/cdns3/cdnsp-gadget.h
-@@ -89,6 +89,12 @@ struct cdnsp_cap_regs {
- 
- #define CTX_SIZE(_hcc)		(HCC_64BYTE_CONTEXT(_hcc) ? 64 : 32)
- 
-+/* HCCPARAMS2 - hcc_params2 - bitmasks */
-+/* bit 11 - DC support Double BW on a eUSB2 HS ISOC EP */
-+#define HCC2_EUSB2_DIC		BIT(11)
-+/* bit 12 - DC support eUSB2V2 capability */
-+#define HCC2_E2V2C		BIT(12)
-+
- /* db_off bitmask - bits 0:1 reserved. */
- #define DBOFF_MASK	GENMASK(31, 2)
- 
-@@ -1370,6 +1376,7 @@ struct cdnsp_port {
-  * @rev_cap: Controller Capabilities Registers.
-  * @hcs_params1: Cached register copies of read-only HCSPARAMS1
-  * @hcc_params: Cached register copies of read-only HCCPARAMS1
-+ * @hcc_params2: Cached register copies of read-only HCCPARAMS2
-  * @rtl_revision: Cached controller rtl revision.
-  * @setup: Temporary buffer for setup packet.
-  * @ep0_preq: Internal allocated request used during enumeration.
-@@ -1425,6 +1432,7 @@ struct cdnsp_device {
- 	__u32 hcs_params1;
- 	__u32 hcs_params3;
- 	__u32 hcc_params;
-+	__u32 hcc_params2;
- 	#define RTL_REVISION_NEW_LPM 0x2700
- 	__u32 rtl_revision;
- 	/* Lock used in interrupt thread context. */
-diff --git a/drivers/usb/cdns3/cdnsp-mem.c b/drivers/usb/cdns3/cdnsp-mem.c
-index 5d8cdc91927d..8892767942a7 100644
---- a/drivers/usb/cdns3/cdnsp-mem.c
-+++ b/drivers/usb/cdns3/cdnsp-mem.c
-@@ -978,8 +978,13 @@ int cdnsp_endpoint_init(struct cdnsp_device *pdev,
- 	if (!usb_endpoint_xfer_isoc(pep->endpoint.desc))
- 		err_count = 3;
- 	if (usb_endpoint_xfer_bulk(pep->endpoint.desc) &&
--	    pdev->gadget.speed == USB_SPEED_HIGH)
--		max_packet = 512;
-+	    pdev->gadget.speed == USB_SPEED_HIGH) {
-+		if (pdev->gadget.eusb2v2_mps_active)
-+			max_packet = 1024;
-+		else
-+			max_packet = 512;
-+	}
-+
- 	/* Controller spec indicates that ctrl ep avg TRB Length should be 8. */
- 	if (usb_endpoint_xfer_control(pep->endpoint.desc))
- 		avg_trb_len = 8;
-diff --git a/drivers/usb/common/debug.c b/drivers/usb/common/debug.c
-index f204cec8d380..b9696fae7ef5 100644
---- a/drivers/usb/common/debug.c
-+++ b/drivers/usb/common/debug.c
-@@ -46,6 +46,8 @@ static const char *usb_decode_device_feature(u16 wValue)
- 		return "U2 Enable";
- 	case USB_DEVICE_LTM_ENABLE:
- 		return "LTM Enable";
-+	case USB_DEVICE_BULK_MAX_PACKET_UPDATE:
-+		return "Bulk mps update";
- 	default:
- 		return "UNKNOWN";
- 	}
-
--- 
-2.43.0
+Best regards,
+--  
+Andrei Stancovici <andrei.stancovici@analog.com>
 
