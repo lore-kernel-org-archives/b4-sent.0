@@ -1,149 +1,59 @@
-From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Fri, 09 Oct 2026 17:49:30 -0300
-Subject: [PATCH] arm64: dts: qcom: sdm630: Add interconnect paths to the
- BLSP I2C and SPI controllers
+From: Kim Wooseok <5mghybrid@khu.ac.kr>
+Subject: [PATCH rtw-next] wifi: rtl8xxxu: isolate the USB register buffer
+Date: Sat, 10 Oct 2026 07:39:15 +0900
+Message-Id: <20261010-rtl8xxxu-usb-dma-v1-0-e670d9c08fdf@khu.ac.kr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-sdm630-blsp-paths-v1-1-6a86ba193e8e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB0YE1TsVYoLE0cdaW3IaCmId
- zfW5Vv8v4NyFFZ4ZDtE/orKZ0ko8gz81C0jo/TJYMhUBVGD2r8rS+heGjB066TonC3r0lsiayB
- 1IfIgv//z2d7Wzc3s12sEx3EC1O244HUAAAA=
-X-Change-ID: 20261009-sdm630-blsp-paths-bb3575c30032
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Abel Vesa <abelvesa@kernel.org>, 
- Alexey Minnekhanov <alexeymin@postmarketos.org>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Martin Botka <martin.botka@somainline.org>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Fabricio Akio <fabricioakio@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791578991; l=4078;
- i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=98XWULvFlrGsaywNs2+4EVpHMKg2rfljbJphpWqR6lo=;
- b=Ism90WRgddmgiwZX1UP/7b5dUo0Qz3uuoN+deMvUbCRxczEXZlwEOeo9NinTMHkSZmrKjOPsA
- 3z8GX6YneovCXnJ8EKrhHQvVc9zpkkyIBx65quj2KnEXVB4wvl7MJAx
-X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
- pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
-X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/z2MwQ7CIBBEf6XZs5tAQ1r1V4wHoFuLUTS7oCRN/
+ 13QxOPMvHkrCHEggWO3AtMrSHjEGvSuA7/YeCEMU83Qq37QSivkdNuXUjJmcTjdLfqDmc04kFZ
+ mhHp7Ms2hfJUn4PTGSCXB+bdIdlfyqRkb66wQOrbRL63609v2AbDrgCuZAAAA
+X-Change-ID: 20261010-rtl8xxxu-usb-dma-c94f476e1047
+To: linux-wireless@vger.kernel.org
+Cc: Jes Sorensen <Jes.Sorensen@gmail.com>, 
+ Ping-Ke Shih <pkshih@realtek.com>, Kalle Valo <kvalo@kernel.org>, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Kim Wooseok <5mghybrid@khu.ac.kr>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791585555; l=1272;
+ i=5mghybrid@khu.ac.kr; s=kernel-20260913; h=from:subject:message-id;
+ bh=KWpQFquq7avx1bUklcWT3BnzeA5u9h49N5vuVBzTD3k=;
+ b=YCKDuTM5arzlyP5KChB/r3Xqskn7TypP3HRG1TFZaZUbljeb1n2LZ79C27gogbLTxln71VstU
+ HvTbYg4enNeDdWP8kN2+SqY1cfmMUtdjCJgpRfVMTA0NcnizT/goeO1
+X-Developer-Key: i=5mghybrid@khu.ac.kr; a=ed25519;
+ pk=1az/6lC8Tmd6BcvyarPc8FWoSxsV/WRr5NLs1v+kjlE=
+X-Endpoint-Received: by B4 Relay for 5mghybrid@khu.ac.kr/kernel-20260913 with auth_id=1028
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The QUP I2C and SPI controllers move their data through the BLSP BAM
-DMA engines, which reach DDR as the aggregation NoC masters BLSP_1 and
-BLSP_2. No path is described for them, so nothing requests bandwidth for
-those masters while a transfer runs.
+I encountered reconnect failures on four Raspberry Pis in my project.
+While investigating the failure on a Raspberry Pi 5 after an AP power
+cycle, I found that RF_MODE had been corrupted. Restoring its initialized
+value restored reception without reloading the driver.
 
-Describe the path from each controller's BLSP master to DDR, as the
-vendor kernel votes it. On a Motorola Moto X4 (SDM630), with the
-boot-time interconnect votes released and system-level sleep enabled,
-an I2C transfer running as the SoC entered that sleep hung the SoC
-without these paths; with them, 5,000 transfers ran through about 3,000
-sleep entries.
+The USB register buffer shared a cache line with CPU-written mutex state.
+This patch allocates the buffer separately while keeping the existing
+register access and locking.
 
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
----
-Tested on a Motorola Moto X4 (SDM630), whose board file is not in
-mainline yet, on the sdm660-mainline tree. System-level sleep there
-comes from changes not yet posted. The UART nodes get no path: their
-driver requests no bandwidth.
----
- arch/arm64/boot/dts/qcom/sdm630.dtsi | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+I tested the separate-buffer approach on the Pi's Linux 6.18.34 kernel.
+During repeated scan requests, wireless ping traffic kept receiving
+replies and the RF_MODE and HSSI values stayed stable. I also built the
+submission's rtl8xxxu driver for ARM64 with W=1; sparse reported no
+diagnostics in core.c.
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm630.dtsi b/arch/arm64/boot/dts/qcom/sdm630.dtsi
-index 3a1014804fb0..20225732e4a8 100644
---- a/arch/arm64/boot/dts/qcom/sdm630.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm630.dtsi
-@@ -1811,6 +1811,8 @@ blsp_i2c1: i2c@c175000 {
- 			dmas = <&blsp1_dma 4>, <&blsp1_dma 5>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_1 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c1_default>;
- 			pinctrl-1 = <&i2c1_sleep>;
-@@ -1831,6 +1833,8 @@ blsp_i2c2: i2c@c176000 {
- 			dmas = <&blsp1_dma 6>, <&blsp1_dma 7>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_1 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c2_default>;
- 			pinctrl-1 = <&i2c2_sleep>;
-@@ -1851,6 +1855,8 @@ blsp_i2c3: i2c@c177000 {
- 			dmas = <&blsp1_dma 8>, <&blsp1_dma 9>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_1 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c3_default>;
- 			pinctrl-1 = <&i2c3_sleep>;
-@@ -1871,6 +1877,8 @@ blsp_i2c4: i2c@c178000 {
- 			dmas = <&blsp1_dma 10>, <&blsp1_dma 11>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_1 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c4_default>;
- 			pinctrl-1 = <&i2c4_sleep>;
-@@ -1919,6 +1927,8 @@ blsp_i2c5: i2c@c1b5000 {
- 			dmas = <&blsp2_dma 4>, <&blsp2_dma 5>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_2 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c5_default>;
- 			pinctrl-1 = <&i2c5_sleep>;
-@@ -1939,6 +1949,8 @@ blsp_i2c6: i2c@c1b6000 {
- 			dmas = <&blsp2_dma 6>, <&blsp2_dma 7>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_2 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c6_default>;
- 			pinctrl-1 = <&i2c6_sleep>;
-@@ -1959,6 +1971,8 @@ blsp_i2c7: i2c@c1b7000 {
- 			dmas = <&blsp2_dma 8>, <&blsp2_dma 9>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_2 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c7_default>;
- 			pinctrl-1 = <&i2c7_sleep>;
-@@ -1979,6 +1993,8 @@ blsp_spi7: spi@c1b7000 {
- 			dmas = <&blsp2_dma 8>, <&blsp2_dma 9>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_2 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&spi7_default>;
- 			pinctrl-1 = <&spi7_sleep>;
-@@ -1999,6 +2015,8 @@ blsp_i2c8: i2c@c1b8000 {
- 			dmas = <&blsp2_dma 10>, <&blsp2_dma 11>;
- 			dma-names = "tx", "rx";
- 
-+			interconnects = <&a2noc MASTER_BLSP_2 &bimc SLAVE_EBI>;
-+
- 			pinctrl-names = "default", "sleep";
- 			pinctrl-0 = <&i2c8_default>;
- 			pinctrl-1 = <&i2c8_sleep>;
+Signed-off-by: Kim Wooseok <5mghybrid@khu.ac.kr>
 
 ---
-base-commit: aac26bee2287c88af5be5a5ff96d783b19a28790
-change-id: 20261009-sdm630-blsp-paths-bb3575c30032
+Kim Wooseok (1):
+      wifi: rtl8xxxu: isolate the USB register buffer from CPU state
+
+ drivers/net/wireless/realtek/rtl8xxxu/core.c     | 35 ++++++++++++++++--------
+ drivers/net/wireless/realtek/rtl8xxxu/rtl8xxxu.h |  2 +-
+ 2 files changed, 24 insertions(+), 13 deletions(-)
+---
+base-commit: 83de3a16c7b37064a59305040ba9b0f93b832794
+change-id: 20261010-rtl8xxxu-usb-dma-c94f476e1047
 
 Best regards,
 --  
-Fabricio Akio <fabricioakio@gmail.com>
+Kim Wooseok <5mghybrid@khu.ac.kr>
 
