@@ -1,112 +1,80 @@
-From: Jim Cromie <jim.cromie@gmail.com>
-Date: Thu, 08 Oct 2026 17:19:12 -0600
-Subject: [PATCH] kallsyms: copy constants from __KERNEL__ to user, drop the
- inclusion
+From: Vincent Jardin <vjardin@free.fr>
+Subject: [PATCH net v2 0/3] net: freescale: fix PTP_EXTTS_REQUEST2 for
+ QorIQ 1588
+Date: Fri, 09 Oct 2026 02:00:55 +0200
+Message-Id: <20261009-for-upstream-qoriq-ptp-extts-flags-v2-0-0f4eeff2295d@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261008-fix-kallsyms-v1-1-3339fdac2ab3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAwML3bTMCt3sxJyc4srcYl1Di1TTRPO0FINUQ0sloJaColSgPNi46Nj
- aWgDLftQFXgAAAA==
-X-Change-ID: 20261008-fix-kallsyms-18e5a7fd0e19
-To: Nathan Chancellor <nathan@kernel.org>, 
- Denis Benato <denis.benato@linux.dev>, 
- Andrew Morton <akpm@linux-foundation.org>, linux-kbuild@vger.kernel.org, 
- nsc@kernel.org, thomas.weissschuh@linutronix.de, chewi@gentoo.org, 
- abelvesa@kernel.org, linux-kernel@vger.kernel.org, 
- Kees Cook <kees@kernel.org>
-Cc: Jim Cromie <jim.cromie@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791501553; l=2787;
- i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=z/zMb6gglj4i+RtKQgtFQzYsPU9iLgw6hWdsZL1e5CU=;
- b=3rQyAReRHr4iktxRBcBRvu5BizvjCeAWGLqZJ9wA4TRcvlI0ImgnY2xQtump+TtLidfYDSkVr
- 665vA50YLZoBKntKjdPfhSgDoj7T2PRAGX3QjmaVbT/T9a4iVjfWoJU
-X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
- pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
-X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
+X-B4-Tracking: v=1; b=H4sIALcuyGoC/5WNTQ6CMBBGr2Jm7Zi2mPqz8h6GRYEpNFFaZirBE
+ O5uww1cvu9L3ltBiAMJ3A8rMM1BQhwLmOMB2sGNPWHoCoNRxmqlLPrI+EmSmdwbp8hhwpQT0pK
+ zoH+5XlC31neXSnfWeiiixOTDskeeMFKGuoxDkBz5u4dnvV//NGaNCpuz01Y3N3OtzMMz0ckz1
+ Nu2/QBsYeh/1wAAAA==
+To: Yangbo Lu <yangbo.lu@nxp.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Richard Cochran <richardcochran@gmail.com>, 
+ Jacob Keller <jacob.e.keller@intel.com>, 
+ Kory Maincent <kory.maincent@bootlin.com>, 
+ Claudiu Manoil <claudiu.manoil@nxp.com>, 
+ Vladimir Oltean <vladimir.oltean@nxp.com>, Wei Fang <wei.fang@nxp.com>, 
+ Clark Wang <xiaoning.wang@nxp.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, Ioana Ciornei <ioana.ciornei@nxp.com>, 
+ Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791504062; l=1907;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=IY3PIrb5SJKIE9d5KhsV8O7ykEDOUAqs5XBK3USoiqY=;
+ b=KkwUq2d3ZcWm9hy2BGF4b4MLkmKfzptFVn8f9Ano+l1700cImIoEYz4edkquEdLYId/1aVPL9
+ 3eHPsFtocBKAJHsGX+kCj3h3QlIXN5GKY3cmaCwuC2IuEHKfLt44lJf
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-commit 4fafd1165b33 replaced hardcoded values which determine marker
-array size, with new values that accelerate symbol-name lookups.
-These symbols are needed in user-space to generate the lookup tables,
-and in kernel to read the generated table.
+Since commit 7c571ac57d9d ("net: ptp: introduce .supported_extts_flags
+to ptp_clock_info"), the PTP core rejects every PTP_EXTTS_REQUEST2
+request for a driver that does not set .supported_extts_flags. The three
+users of the QorIQ 1588 timer (dpaa2-ptp, enetc, ptp_qoriq) do not set
+it, so linuxptp ts2phc cannot arm their external timestamp inputs.
 
-To avoid 2-defns problem, they were added to a kernel header (with
-ifdef guards) and included by scripts/kallsyms.c.  But that creates
-packaging problems elsewhere, so just add the 2nd defns, with an
-explicit comment about the user-kernel coupling.
+The timer timestamps the rising edge only, since ptp_qoriq_init() clears
+ETEP1 and ETEP2. Each patch declares PTP_RISING_EDGE | PTP_STRICT_FLAGS
+for one driver.
 
-Fixes: 4fafd1165b33 ("kallsyms: increase marker density to 16:1 to accelerate lookups")
+With PTP_STRICT_FLAGS declared, the core checks the edge flags of the
+legacy PTP_EXTTS_REQUEST ioctl too: a legacy request for the falling
+edge, or for both edges, now fails with -EOPNOTSUPP instead of being
+timestamped on the rising edge. Each commit message says so.
 
-Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
+Patch 1 fixes the failure seen on an LX2160A board.
+Patches 2 and 3 are build-tested/code review only.
+
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- kernel/kallsyms_internal.h | 12 +++++-------
- scripts/kallsyms.c         |  9 ++++++++-
- 2 files changed, 13 insertions(+), 8 deletions(-)
-
-diff --git a/kernel/kallsyms_internal.h b/kernel/kallsyms_internal.h
-index 6a781e4cc77f..8311cce21128 100644
---- a/kernel/kallsyms_internal.h
-+++ b/kernel/kallsyms_internal.h
-@@ -2,18 +2,17 @@
- #ifndef LINUX_KALLSYMS_INTERNAL_H_
- #define LINUX_KALLSYMS_INTERNAL_H_
- 
-+#include <linux/types.h>
-+
- /*
-- * Provide compile-constants for scripts/kallsyms.c
-- * so it can build the corresponding kallsyms_marker[] table.
-- * and wrap the rest in __KERNEL__
-+ * These constants determine the size of the kallsyms_markers array
-+ * written by scripts/kallsyms.c during the build.  The symbol values
-+ * must be kept in sync.
-  */
- #define KALLSYMS_MARKER_SHIFT 4
- #define KALLSYMS_MARKER_SIZE  (1U << KALLSYMS_MARKER_SHIFT)
- #define KALLSYMS_MARKER_MASK  (KALLSYMS_MARKER_SIZE - 1U)
- 
--#ifdef __KERNEL__
--#include <linux/types.h>
--
- extern const int kallsyms_offsets[];
- extern const u8 kallsyms_names[];
- 
-@@ -24,6 +23,5 @@ extern const u16 kallsyms_token_index[];
- 
- extern const unsigned int kallsyms_markers[];
- extern const u8 kallsyms_seqs_of_names[];
--#endif /* __KERNEL__ */
- 
- #endif // LINUX_KALLSYMS_INTERNAL_H_
-diff --git a/scripts/kallsyms.c b/scripts/kallsyms.c
-index be42a9111350..d142f040ad92 100644
---- a/scripts/kallsyms.c
-+++ b/scripts/kallsyms.c
-@@ -29,7 +29,14 @@
- 
- #include <xalloc.h>
- 
--#include "../kernel/kallsyms_internal.h"
-+/*
-+ * These constants determine the size of the marker array filled here,
-+ * and they're duplicated in kernel/kallsyms.c, where they're used in
-+ * get_symbol_offset().  They must be kept in agreement.
-+ */
-+#define KALLSYMS_MARKER_SHIFT 4
-+#define KALLSYMS_MARKER_SIZE  (1U << KALLSYMS_MARKER_SHIFT)
-+#define KALLSYMS_MARKER_MASK  (KALLSYMS_MARKER_SIZE - 1U)
- 
- #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
- 
+Changes in v2:
+- add comments about PTP_EXTTS_REQUEST (Sashiko)
+- Name other users of ptp_qoriq_init() in each commit message (Sashiko)
+- Add Reviewed-by tags of Jacob and Kory, the code is unchanged, only
+  commit log improvements.
+- Link to v1: https://lore.kernel.org/r/20261006-for-upstream-qoriq-ptp-extts-flags-v1-0-b4a161b92832@free.fr
 
 ---
-base-commit: b9c9b9eb732aefcd02bbc211b2570a2315a889da
-change-id: 20261008-fix-kallsyms-18e5a7fd0e19
+Vincent Jardin (3):
+      dpaa2-ptp: fix support for PTP_EXTTS_REQUEST2 ioctl
+      net: enetc: fix support for PTP_EXTTS_REQUEST2 ioctl
+      ptp: qoriq: fix support for PTP_EXTTS_REQUEST2 ioctl
+
+ drivers/net/ethernet/freescale/dpaa2/dpaa2-ptp.c | 1 +
+ drivers/net/ethernet/freescale/enetc/enetc_ptp.c | 1 +
+ drivers/ptp/ptp_qoriq.c                          | 1 +
+ 3 files changed, 3 insertions(+)
+---
+base-commit: d5a007b9b457c915ab1a53227e8939e4018aa97a
+change-id: 20261006-for-upstream-qoriq-ptp-extts-flags-1c6fd731d66f
 
 Best regards,
 -- 
-Jim Cromie <jim.cromie@gmail.com>
+Vincent Jardin <vjardin@free.fr>
 
