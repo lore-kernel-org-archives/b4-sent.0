@@ -1,153 +1,95 @@
-From: =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
-Date: Sat, 10 Oct 2026 05:37:31 +0000
-Subject: [PATCH net v2] ipv4: fib_trie: prevent speculative out-of-bounds
- child access
+From: =?utf-8?q?Mert_Erdo=C4=9Fan?= <mrterdo75@gmail.com>
+Date: Sat, 10 Oct 2026 09:38:10 +0300
+Subject: [PATCH] platform/x86: hp-wmi: Add Victus 16-e0xxx board 88EE
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261010-fib-trie-nospec-v2-1-30319b4db8d0@nvidia.com>
-X-B4-Tracking: v=1; b=H4sIABrPyWoC/3WNwQ6CMBBEf4Xs2TVtI9B48j8MB1gWWRNb09ZGQ
- /h3C549zuTNmwUiB+EI52qBwFmieFeCOVRAc+9ujDKWDEaZRitlcZIBU5mg8/HJhDW1jTKWLLc
- EZfUMPMl7N17BcYLuV8bXcGdKm2vDZonJh8/+m/UO/73IGjVOvbatacaTrfnisozSH8k/oFvX9
- QtzVgi6xgAAAA==
-X-Change-ID: 20261008-fib-trie-nospec-5c76028c8e7c
-To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>, 
- Alexander Duyck <alexander.h.duyck@redhat.com>
+Message-Id: <20261010-hp-wmi-victus-88ee-v1-1-e2200686bc2b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12NzU7DMBAGXyXymUVeJ/6LEOI9UA+2s2kX4bbES
+ UCq+u44DSduO9K3MzdRaGIqom9uYqKVC1/OFfCpEekUzkcCHioLJZVBiRJOV/jODCuneSngHBG
+ gHZXr3KA624r6eJ1o5J+H9P2wc1niB6V5M/0tJvpaam3eZyJTKeFR65uXPSbt/1hQBlYE3C5tQ
+ sLOS/d2zIE/n9Mlv27qGApBhcxz33g3ytYro0k7qTwOmqwJiFFJq3SHY4yYWt+Kw/3+C8AFNnU
+ LAQAA
+X-Change-ID: 20261010-hp-wmi-victus-88ee-17f2848d2473
+To: Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Ege_Kundak=C3=A7=C4=B1o=C4=9Flu?= <egekun67@gmail.com>, 
+ =?utf-8?q?Mert_Erdo=C4=9Fan?= <mrterdo75@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791610651; l=4726;
- i=datrujillo@nvidia.com; s=20261008; h=from:subject:message-id;
- bh=uPUNI9Kq4YpKNfBTtH+vsvHA/nWcjMUXLW9WxS1V+UU=;
- b=fPgxJUeP5Uvj7gW1hYqR2cTHVIiRiMhX/53xfA2JJ2ZlCcnpkBBc5nYlv+tAev3S6G2HAKUdi
- Neh+sOmwpJ7AqxvfTf1puPwPidZhG/Os77qQXGqlxbf02Us0Bkz144H
-X-Developer-Key: i=datrujillo@nvidia.com; a=ed25519;
- pk=AP24zUwENFy2geglpKJAA8oaT41tkteCL9hTWGd88rs=
-X-Endpoint-Received: by B4 Relay for datrujillo@nvidia.com/20261008 with auth_id=1128
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791614297; l=2781;
+ i=mrterdo75@gmail.com; s=20261007; h=from:subject:message-id;
+ bh=krMjwVPvW4p6J7pzdTxvOgoD3/uAh2OaFLpfxtDbAN0=;
+ b=i8Bz2jidRj5j39v1cloaOrkqxqI3DRXdZVN9wBBGCS8B2mmdvWNW3YLlwvYnEdaVHhrp4D2N4
+ kOIBIo3qQadC6USbVfi/tcXgvlMKO5QDLMVE7v+7B1KTCan+AKM3iZh
+X-Developer-Key: i=mrterdo75@gmail.com; a=ed25519;
+ pk=bUOfewdT6wnBK6cWdxYDgGaI8ee0+BwtzPbg982vJP8=
+X-Endpoint-Received: by B4 Relay for mrterdo75@gmail.com/20261007 with auth_id=1127
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-fib_table_lookup() checks the child index against the bounds before
-passing it to get_child_rcu().
+The HP Victus 16-e0xxx (board 88EE) is not in any of the Omen or Victus
+board lists, so it falls back to the generic thermal profile handling
+and the GPU cTGP offset is never enabled.
 
-The index is derived from the lookup key, which in turn is derived from
-flp->daddr. A userspace process can therefore influence the index by
-triggering lookups for chosen destination IPv4 addresses.
+Its DSDT handles the 0x20008 type 0x1A query like the 8A26 one: the
+mode is stored in the EC register at offset 0x95, which is what the
+Victus path reads back, and cTGP is enabled in performance mode. Add
+88EE to victus_thermal_profile_boards and update the comment above the
+list, which only mentioned the Victus 16-d.
 
-If this bounds check is mispredicted as in-bounds, an out-of-bounds index
-can be transiently passed to get_child_rcu(). The value loaded beyond the
-child array is then treated as a node pointer. A later transient
-dereference of that pointer can cause a data-dependent cache footprint.
+Ege Kundakçıoğlu tested this on a Victus 16-e0xxx (BIOS F.27, RTX 3060
+Laptop GPU). With the unpatched module the GPU power limit stays at
+80 W in the balanced, performance and quiet profiles. With this patch
+performance gives 95 W, balanced 80 W and quiet 30 W, the EC register
+at 0x95 matches the selected profile, and in performance the limit is
+back at 95 W after unplugging and replugging AC.
 
-This was found during Spectre-v1 research. Leakage was demonstrated with
-instrumentation that delays branch resolution with a CLFLUSH before the
-mispredicted branch and makes the leaked location
-deterministic for reproducible measurement. In that setup, a
-userspace-controlled IPv4 lookup key was able to trigger a transient
-out-of-bounds child access. The transient use of the loaded value as a
-pointer caused a data-dependent cache footprint that was recoverable from
-userspace using Prime+Probe. A real-world attacker would likely
-need to delay branch resolution, which was not demonstrated end-to-end
-without the added CLFLUSH.
+Unlike on 8A26, the 0x1A query only sets cTGP here. Dynamic Boost (the
+NPCF DTGP flag) reads back as 0, as the only WMI query that sets it is
+0x22, which the Victus path does not send. The GPU still reaches its
+95 W maximum, and the tester sees the same maximum on Windows.
 
-Sanitize the index with array_index_nospec() before accessing the child
-array. This removed the observed leakage in the described setup.
+This patch was prepared with an AI coding agent (Claude Code, using
+Claude Opus 5.5). It checked the DSDT, wrote the change and the test
+script. Ege ran the test on the laptop and I checked the results.
 
-Apply the hardening before setting cindex in fib_table_lookup(), because
-cindex can later be used by the backtrace path to load another child
-pointer. fib_find_node() has the same pattern, with the checked index
-derived from a user-provided key in fib_table_insert() and
-fib_table_delete(). leaf_walk_rcu() has a similar checked cindex before
-get_child_rcu(), and the traversed state can be influenced by userspace
-actions. fib_find_node() runs under RTNL and
-leaf_walk_rcu() is not on the packet lookup hot path, so harden those
-analogous accesses in the same way.
-
-Fixes: 9f9e636d4f89 ("fib_trie: Optimize fib_table_lookup to avoid wasting time on loops/variables")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Daniël Trujillo <datrujillo@nvidia.com>
+Tested-by: Ege Kundakçıoğlu <egekun67@gmail.com>
+Assisted-by: claude-opus-5-5
+Signed-off-by: Mert Erdoğan <mrterdo75@gmail.com>
 ---
-Changes in v2:
-- Move array_index_nospec() before cindex is set in
-  fib_table_lookup() so the backtrace path cannot use an out-of-bounds index
-  (Eric Dumazet).
-- Apply the same hardening to fib_find_node() and leaf_walk_rcu()
-  (Eric Dumazet).
-- Add discovery/testing details of the gadget to the changelog.
-- Link to v1: https://patch.msgid.link/20261008-fib-trie-nospec-v1-1-fa18726d485e@nvidia.com
+This applies on top of my pending 8A26 patch for the same board list:
+https://lore.kernel.org/r/20261007-hp-wmi-victus-8a26-v1-1-8a256ac14908@gmail.com
 
-To: David Ahern <dsahern@kernel.org>
-To: Ido Schimmel <idosch@nvidia.com>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@kernel.org>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Simon Horman <horms@kernel.org>
-To: Alexander Duyck <alexander.h.duyck@redhat.com>
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+Before this patch the owner of the laptop enabled cTGP with an
+acpi_call workaround sending the same 0x1A query in performance mode.
 ---
- net/ipv4/fib_trie.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ drivers/platform/x86/hp/hp-wmi.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/ipv4/fib_trie.c b/net/ipv4/fib_trie.c
-index 248514dce0cd..bdffeff58c95 100644
---- a/net/ipv4/fib_trie.c
-+++ b/net/ipv4/fib_trie.c
-@@ -61,6 +61,7 @@
- #include <linux/export.h>
- #include <linux/vmalloc.h>
- #include <linux/notifier.h>
-+#include <linux/nospec.h>
- #include <net/net_namespace.h>
- #include <net/inet_dscp.h>
- #include <net/ip.h>
-@@ -961,6 +962,8 @@ static struct key_vector *fib_find_node(struct trie *t,
- 			break;
- 		}
+diff --git a/drivers/platform/x86/hp/hp-wmi.c b/drivers/platform/x86/hp/hp-wmi.c
+index 15f1e9f63..1c16a0656 100644
+--- a/drivers/platform/x86/hp/hp-wmi.c
++++ b/drivers/platform/x86/hp/hp-wmi.c
+@@ -230,8 +230,9 @@ static const char * const omen_timed_thermal_profile_boards[] = {
+ 	"8BAD",
+ };
  
-+		index = array_index_nospec(index, 1ul << n->bits);
-+
- 		/* keep searching until we find a perfect match leaf or NULL */
- 	} while (IS_TNODE(n));
- 
-@@ -1466,6 +1469,8 @@ int fib_table_lookup(struct fib_table *tb, const struct flowi4 *flp,
- 		if (IS_LEAF(n))
- 			goto found;
- 
-+		index = array_index_nospec(index, 1ul << n->bits);
-+
- 		/* only record pn and cindex if we are going to be chopping
- 		 * bits later.  Otherwise we are just wasting cycles.
- 		 */
-@@ -1766,6 +1771,8 @@ static struct key_vector *leaf_walk_rcu(struct key_vector **tn, t_key key)
- 		if (cindex >> pn->bits)
- 			break;
- 
-+		cindex = array_index_nospec(cindex, 1ul << pn->bits);
-+
- 		/* descend into the next child */
- 		n = get_child_rcu(pn, cindex++);
- 		if (!n)
-@@ -1787,6 +1794,8 @@ static struct key_vector *leaf_walk_rcu(struct key_vector **tn, t_key key)
- 			continue;
- 		}
- 
-+		cindex = array_index_nospec(cindex, 1ul << pn->bits);
-+
- 		/* grab the next available node */
- 		n = get_child_rcu(pn, cindex++);
- 		if (!n)
+-/* DMI Board names of Victus 16-d laptops */
++/* DMI Board names of Victus 16-d and 16-e laptops */
+ static const char * const victus_thermal_profile_boards[] = {
++	"88EE",
+ 	"88F8",
+ 	"8A25",
+ 	"8A26",
 
 ---
-base-commit: af32da41b0327b9c6a37856ba82b6760d6c8d10e
-change-id: 20261008-fib-trie-nospec-5c76028c8e7c
+base-commit: 98f039265e580291d5e76a11b2072541fbb1c393
+change-id: 20261010-hp-wmi-victus-88ee-17f2848d2473
+prerequisite-message-id: <20261007-hp-wmi-victus-8a26-v1-1-8a256ac14908@gmail.com>
+prerequisite-patch-id: 3f4190ae015c5cfc0c87dd8b3f7829a95effb9cb
 
 Best regards,
 --  
-Daniël Trujillo <datrujillo@nvidia.com>
+Mert Erdoğan <mrterdo75@gmail.com>
 
