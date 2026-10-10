@@ -1,198 +1,69 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Sat, 10 Oct 2026 01:37:38 +0000
-Subject: [PATCH v2 2/2] usb: typec: tcpm: Allow configuring tSenderResponse
- via fwnode
+From: benthecarman <benthecarman1@gmail.com>
+Subject: [PATCH 0/2] wifi: iwlwifi: fix legacy-rate injection outside 2.4
+ GHz
+Date: Fri, 09 Oct 2026 21:42:21 -0500
+Message-Id: <20261009-next-v1-0-b370f5302d27@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261010-tcpm-sender-response-time-v2-2-67ea364a21d7@google.com>
-References: <20261010-tcpm-sender-response-time-v2-0-67ea364a21d7@google.com>
-In-Reply-To: <20261010-tcpm-sender-response-time-v2-0-67ea364a21d7@google.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, RD Babiera <rdbabiera@google.com>, 
- Kyle Tso <kyletso@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAwNL3bzUihLdlEQLCxMDE4tUMzNzJaDSgqLUtMwKsDHRsbW1ABJ2MpB
+ WAAAA
+X-Change-ID: 20261009-next-da884048e667
+To: Miri Korenblit <miriam.rachel.korenblit@intel.com>
+Cc: Johannes Berg <johannes@sipsolutions.net>, 
+ linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ benthecarman <benthecarman@live.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791596277; l=6747;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=J+IIiMdzld+kdjQZhEZSnJlXVF3ZcB7U6ACRMnwPORw=;
- b=IuSRKea65JXEzUAlXIU1VZFLnkQZ/1okaHqkZrJ0E1/NIIKSDWvqNcmWuGaSkL9GMig9W1SZS
- 57aI9S7lW7FBruEqaUuFXHL+nU5yOCxDG059ZqCkiKGmEoz7oHNI8LM
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791600143; l=1858;
+ i=benthecarman1@gmail.com; s=20261009; h=from:subject:message-id;
+ bh=S57sgVcE/7Jei4pRIK3BUSdo5UYSccERXm9nve4j2CM=;
+ b=ZmdkOA3SQ9vUOhlhIRrMIcoHuMpaIiWEpQGlAg0RzOVPuAb6Z1mmBQDSttQxOt890+47RbEYD
+ At09DbQ9hVKBXj9B1MBRpWDhyRarTOKX2dOFnDuTtLsywC/E2f5y2J6
+X-Developer-Key: i=benthecarman1@gmail.com; a=ed25519;
+ pk=8RDA9X90+5wKUu3kkgPYpamlxYvX93l7iXqMWrkhvOY=
+X-Endpoint-Received: by B4 Relay for benthecarman1@gmail.com/20261009 with auth_id=1149
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The USB PD specification defines a range of values for tSenderResponse.
-TCPM currently uses a fixed, relaxed value of 60 ms
-(PD_T_SENDER_RESPONSE), which may not suit all platforms.
+Both op modes pass mac80211's legacy rate index for an injected frame
+to the driver's rate conversion unchanged. Outside 2.4 GHz that index
+points into a bitrate table starting at 6 Mbps, so every injected
+legacy rate is shifted down by the four CCK rates: 12 Mbps on 5 GHz
+goes out as 5.5 Mbps CCK, which nothing on that band can receive.
 
-Allow platforms to specify their own tSenderResponse deadline through
-the "sender-response-time-ms" fwnode property. Platforms that do not
-set the property keep the existing 60 ms default.
+I found this bringing up userspace AWDL (OWL) on an AX211: the peer
+heard none of our data frames until the rate was remapped. Patch 1
+(mvm) was tested on that hardware; patch 2 (mld) is the same fix and
+build-tested only, as I have no iwlmld device.
 
-Assisted-by: LLM
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
-Acked-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
+Testing: patch 1 was tested on an Intel AX211 (iwlmvm, firmware
+89.123cf747.0) with the same change applied to Ubuntu's 7.0.0-38
+kernel, injecting AWDL frames at a radiotap rate of 12 Mbps on channel
+44 (5220 MHz). Before, the TX response showed status 0x83 (long retry
+limit) and rate_n_flags 0x8002; after, status 0x1, no retries,
+rate_n_flags 0x8102, and the peer ACKed every frame. Against
+iwlwifi-next both mvm/tx.c and mld/tx.c build without warnings at W=1,
+but I could not boot an iwlwifi-next kernel, and patch 2 is untested
+at runtime.
+
+The bug was found, and the patches written, with help from an AI
+assistant (Claude) during that debugging session; I reviewed and
+tested them as described above.
+
+Signed-off-by: benthecarman <benthecarman@live.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 35 ++++++++++++++++++++++-------------
- 1 file changed, 22 insertions(+), 13 deletions(-)
+benthecarman (2):
+      wifi: iwlwifi: mvm: Fix injected 5 GHz legacy rate
+      wifi: iwlwifi: mld: Fix injected 5 GHz legacy rate
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index 2d6b14aa20856..9f98c87957b1d 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -399,12 +399,14 @@ struct pd_revision_info {
-  * @sink_wait_cap_time: Deadline (in ms) for tTypeCSinkWaitCap timer
-  * @ps_src_wait_off_time: Deadline (in ms) for tPSSourceOff timer
-  * @cc_debounce_time: Deadline (in ms) for tCCDebounce timer
-+ * @sender_response_time: Deadline (in ms) for tSenderResponse timer
-  */
- struct pd_timings {
- 	u32 sink_wait_cap_time;
- 	u32 ps_src_off_time;
- 	u32 cc_debounce_time;
- 	u32 snk_bc12_cmpletion_time;
-+	u32 sender_response_time;
- };
- 
- /* Convert microwatt to watt */
-@@ -4316,7 +4318,7 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 			} else if (port->pwr_role == TYPEC_SOURCE) {
- 				tcpm_ams_finish(port);
- 				tcpm_set_state(port, HARD_RESET_SEND,
--					       PD_T_SENDER_RESPONSE);
-+					       port->timings.sender_response_time);
- 			} else {
- 				tcpm_ams_finish(port);
- 			}
-@@ -5549,7 +5551,7 @@ static void run_state_machine(struct tcpm_port *port)
- 			port->caps_count = 0;
- 			port->pd_capable = true;
- 			tcpm_set_state_cond(port, SRC_SEND_CAPABILITIES_TIMEOUT,
--					    PD_T_SENDER_RESPONSE);
-+					    port->timings.sender_response_time);
- 		}
- 		break;
- 	case SRC_SEND_CAPABILITIES_TIMEOUT:
-@@ -5896,7 +5898,7 @@ static void run_state_machine(struct tcpm_port *port)
- 			tcpm_set_state(port, SNK_WAIT_CAPABILITIES, 0);
- 		} else {
- 			tcpm_set_state_cond(port, hard_reset_state(port),
--					    PD_T_SENDER_RESPONSE);
-+					    port->timings.sender_response_time);
- 		}
- 		break;
- 	case SNK_NEGOTIATE_PPS_CAPABILITIES:
-@@ -5921,7 +5923,7 @@ static void run_state_machine(struct tcpm_port *port)
- 				tcpm_set_state(port, SNK_READY, 0);
- 		} else {
- 			tcpm_set_state_cond(port, hard_reset_state(port),
--					    PD_T_SENDER_RESPONSE);
-+					    port->timings.sender_response_time);
- 		}
- 		break;
- 	case SNK_TRANSITION_SINK:
-@@ -6208,7 +6210,8 @@ static void run_state_machine(struct tcpm_port *port)
- 			port->message_id_prime = 0;
- 			port->rx_msgid_prime = -1;
- 			tcpm_pd_send_control(port, PD_CTRL_SOFT_RESET, TCPC_TX_SOP_PRIME);
--			tcpm_set_state_cond(port, ready_state(port), PD_T_SENDER_RESPONSE);
-+			tcpm_set_state_cond(port, ready_state(port),
-+					    port->timings.sender_response_time);
- 		} else {
- 			port->message_id = 0;
- 			port->rx_msgid = -1;
-@@ -6218,7 +6221,7 @@ static void run_state_machine(struct tcpm_port *port)
- 				tcpm_set_state_cond(port, hard_reset_state(port), 0);
- 			else
- 				tcpm_set_state_cond(port, hard_reset_state(port),
--						    PD_T_SENDER_RESPONSE);
-+						    port->timings.sender_response_time);
- 		}
- 		break;
- 
-@@ -6226,7 +6229,7 @@ static void run_state_machine(struct tcpm_port *port)
- 	case DR_SWAP_SEND:
- 		tcpm_pd_send_control(port, PD_CTRL_DR_SWAP, TCPC_TX_SOP);
- 		tcpm_set_state_cond(port, DR_SWAP_SEND_TIMEOUT,
--				    PD_T_SENDER_RESPONSE);
-+				    port->timings.sender_response_time);
- 		break;
- 	case DR_SWAP_ACCEPT:
- 		tcpm_pd_send_control(port, PD_CTRL_ACCEPT, TCPC_TX_SOP);
-@@ -6256,7 +6259,7 @@ static void run_state_machine(struct tcpm_port *port)
- 			tcpm_set_state(port, ERROR_RECOVERY, 0);
- 			break;
- 		}
--		tcpm_set_state_cond(port, FR_SWAP_SEND_TIMEOUT, PD_T_SENDER_RESPONSE);
-+		tcpm_set_state_cond(port, FR_SWAP_SEND_TIMEOUT, port->timings.sender_response_time);
- 		break;
- 	case FR_SWAP_SEND_TIMEOUT:
- 		tcpm_set_state(port, ERROR_RECOVERY, 0);
-@@ -6288,7 +6291,7 @@ static void run_state_machine(struct tcpm_port *port)
- 	case PR_SWAP_SEND:
- 		tcpm_pd_send_control(port, PD_CTRL_PR_SWAP, TCPC_TX_SOP);
- 		tcpm_set_state_cond(port, PR_SWAP_SEND_TIMEOUT,
--				    PD_T_SENDER_RESPONSE);
-+				    port->timings.sender_response_time);
- 		break;
- 	case PR_SWAP_SEND_TIMEOUT:
- 		tcpm_swap_complete(port, -ETIMEDOUT);
-@@ -6385,7 +6388,7 @@ static void run_state_machine(struct tcpm_port *port)
- 	case VCONN_SWAP_SEND:
- 		tcpm_pd_send_control(port, PD_CTRL_VCONN_SWAP, TCPC_TX_SOP);
- 		tcpm_set_state(port, VCONN_SWAP_SEND_TIMEOUT,
--			       PD_T_SENDER_RESPONSE);
-+			       port->timings.sender_response_time);
- 		break;
- 	case VCONN_SWAP_SEND_TIMEOUT:
- 		tcpm_swap_complete(port, -ETIMEDOUT);
-@@ -6467,7 +6470,7 @@ static void run_state_machine(struct tcpm_port *port)
- 	case GET_STATUS_SEND:
- 		tcpm_pd_send_control(port, PD_CTRL_GET_STATUS, TCPC_TX_SOP);
- 		tcpm_set_state(port, GET_STATUS_SEND_TIMEOUT,
--			       PD_T_SENDER_RESPONSE);
-+			       port->timings.sender_response_time);
- 		break;
- 	case GET_STATUS_SEND_TIMEOUT:
- 		tcpm_set_state(port, ready_state(port), 0);
-@@ -6475,14 +6478,14 @@ static void run_state_machine(struct tcpm_port *port)
- 	case GET_PPS_STATUS_SEND:
- 		tcpm_pd_send_control(port, PD_CTRL_GET_PPS_STATUS, TCPC_TX_SOP);
- 		tcpm_set_state(port, GET_PPS_STATUS_SEND_TIMEOUT,
--			       PD_T_SENDER_RESPONSE);
-+			       port->timings.sender_response_time);
- 		break;
- 	case GET_PPS_STATUS_SEND_TIMEOUT:
- 		tcpm_set_state(port, ready_state(port), 0);
- 		break;
- 	case GET_SINK_CAP:
- 		tcpm_pd_send_control(port, PD_CTRL_GET_SINK_CAP, TCPC_TX_SOP);
--		tcpm_set_state(port, GET_SINK_CAP_TIMEOUT, PD_T_SENDER_RESPONSE);
-+		tcpm_set_state(port, GET_SINK_CAP_TIMEOUT, port->timings.sender_response_time);
- 		break;
- 	case GET_SINK_CAP_TIMEOUT:
- 		port->sink_cap_done = true;
-@@ -8160,6 +8163,12 @@ static void tcpm_fw_get_timings(struct tcpm_port *port, struct fwnode_handle *fw
- 	ret = fwnode_property_read_u32(fwnode, "sink-bc12-completion-time-ms", &val);
- 	if (!ret)
- 		port->timings.snk_bc12_cmpletion_time = val;
-+
-+	ret = fwnode_property_read_u32(fwnode, "sender-response-time-ms", &val);
-+	if (!ret)
-+		port->timings.sender_response_time = val;
-+	else
-+		port->timings.sender_response_time = PD_T_SENDER_RESPONSE;
- }
- 
- static void tcpm_fw_get_pd_ident(struct tcpm_port *port)
+ drivers/net/wireless/intel/iwlwifi/mld/tx.c | 11 ++++++++++-
+ drivers/net/wireless/intel/iwlwifi/mvm/tx.c |  8 ++++++++
+ 2 files changed, 18 insertions(+), 1 deletion(-)
+---
+base-commit: 5d017b30f502e20bfb96ba534b1c36f060a06e98
+change-id: 20261009-next-da884048e667
 
+Best regards,
 -- 
-2.56.0.385.gd3acb90ef8-goog
+benthecarman <benthecarman1@gmail.com>
 
