@@ -1,69 +1,72 @@
 From: benthecarman <benthecarman1@gmail.com>
-Subject: [PATCH 0/2] wifi: iwlwifi: fix legacy-rate injection outside 2.4
- GHz
-Date: Fri, 09 Oct 2026 21:42:21 -0500
-Message-Id: <20261009-next-v1-0-b370f5302d27@gmail.com>
+Date: Fri, 09 Oct 2026 21:42:22 -0500
+Subject: [PATCH 1/2] wifi: iwlwifi: mvm: Fix injected 5 GHz legacy rate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAwNL3bzUihLdlEQLCxMDE4tUMzNzJaDSgqLUtMwKsDHRsbW1ABJ2MpB
- WAAAA
-X-Change-ID: 20261009-next-da884048e667
+Message-Id: <20261009-next-v1-1-b370f5302d27@gmail.com>
+References: <20261009-next-v1-0-b370f5302d27@gmail.com>
+In-Reply-To: <20261009-next-v1-0-b370f5302d27@gmail.com>
 To: Miri Korenblit <miriam.rachel.korenblit@intel.com>
 Cc: Johannes Berg <johannes@sipsolutions.net>, 
  linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
  benthecarman <benthecarman@live.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791600143; l=1858;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791600143; l=1797;
  i=benthecarman1@gmail.com; s=20261009; h=from:subject:message-id;
- bh=S57sgVcE/7Jei4pRIK3BUSdo5UYSccERXm9nve4j2CM=;
- b=ZmdkOA3SQ9vUOhlhIRrMIcoHuMpaIiWEpQGlAg0RzOVPuAb6Z1mmBQDSttQxOt890+47RbEYD
- At09DbQ9hVKBXj9B1MBRpWDhyRarTOKX2dOFnDuTtLsywC/E2f5y2J6
+ bh=P1RM3YW4KpS+4q5w9KhQAa5Z7jbnUcHDOW45kcK15og=;
+ b=OMaeSjn4aSgDqNa+kQSdmrGQL83w9Yy8oyxQiGaO6Pb72e9IuHSQgJ1llIVzIUz4TYBQCAXJO
+ b9aDE2vEwgpAGUGkwqfL9vYYjaxT28Z3pWpXHRYkMlINlEW4Zkb7SNg
 X-Developer-Key: i=benthecarman1@gmail.com; a=ed25519;
  pk=8RDA9X90+5wKUu3kkgPYpamlxYvX93l7iXqMWrkhvOY=
 X-Endpoint-Received: by B4 Relay for benthecarman1@gmail.com/20261009 with auth_id=1149
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both op modes pass mac80211's legacy rate index for an injected frame
-to the driver's rate conversion unchanged. Outside 2.4 GHz that index
-points into a bitrate table starting at 6 Mbps, so every injected
-legacy rate is shifted down by the four CCK rates: 12 Mbps on 5 GHz
-goes out as 5.5 Mbps CCK, which nothing on that band can receive.
+From: benthecarman <benthecarman@live.com>
 
-I found this bringing up userspace AWDL (OWL) on an AX211: the peer
-heard none of our data frames until the rate was remapped. Patch 1
-(mvm) was tested on that hardware; patch 2 (mld) is the same fix and
-build-tested only, as I have no iwlmld device.
+iwl_mvm_get_inject_tx_rate() passes the legacy rate index from
+mac80211 straight to iwl_mvm_convert_rate_idx(). That index points
+into the band's own bitrate table, which outside 2.4 GHz starts at
+6 Mbps (iwl_cfg80211_rates[RATES_52_OFFS]), while the driver's indices
+start with the four CCK rates. A frame injected at 12 Mbps on 5 or
+6 GHz, index 2, therefore goes out as 5.5 Mbps CCK, which no receiver
+on those bands can decode.
 
-Testing: patch 1 was tested on an Intel AX211 (iwlmvm, firmware
-89.123cf747.0) with the same change applied to Ubuntu's 7.0.0-38
-kernel, injecting AWDL frames at a radiotap rate of 12 Mbps on channel
-44 (5220 MHz). Before, the TX response showed status 0x83 (long retry
-limit) and rate_n_flags 0x8002; after, status 0x1, no retries,
-rate_n_flags 0x8102, and the peer ACKed every frame. Against
-iwlwifi-next both mvm/tx.c and mld/tx.c build without warnings at W=1,
-but I could not boot an iwlwifi-next kernel, and patch 2 is untested
-at runtime.
+The non-injected path, iwl_mvm_get_tx_rate(), already adds
+IWL_FIRST_OFDM_RATE outside 2.4 GHz. Do the same for injection.
 
-The bug was found, and the patches written, with help from an AI
-assistant (Claude) during that debugging session; I reviewed and
-tested them as described above.
+Seen on an AX211 injecting data frames at 12 Mbps on channel 44: the
+TX response showed rate_n_flags 0x8002 (CCK) and the peer never ACKed.
+With this change it shows 0x8102 (12 Mbps OFDM) and every unicast
+frame is ACKed on the first attempt.
 
+Fixes: b99c4607973a ("wifi: iwlwifi: mvm: refactor TX rate handling")
+Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: benthecarman <benthecarman@live.com>
 ---
-benthecarman (2):
-      wifi: iwlwifi: mvm: Fix injected 5 GHz legacy rate
-      wifi: iwlwifi: mld: Fix injected 5 GHz legacy rate
+ drivers/net/wireless/intel/iwlwifi/mvm/tx.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
- drivers/net/wireless/intel/iwlwifi/mld/tx.c | 11 ++++++++++-
- drivers/net/wireless/intel/iwlwifi/mvm/tx.c |  8 ++++++++
- 2 files changed, 18 insertions(+), 1 deletion(-)
----
-base-commit: 5d017b30f502e20bfb96ba534b1c36f060a06e98
-change-id: 20261009-next-da884048e667
+diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/tx.c b/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
+index d3c2fe830..fb7e48aa3 100644
+--- a/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
++++ b/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
+@@ -331,6 +331,14 @@ static u32 iwl_mvm_get_inject_tx_rate(struct iwl_mvm *mvm,
+ 	} else {
+ 		int rate_idx = info->control.rates[0].idx;
+ 
++		/*
++		 * mac80211 indexes the band's bitrates, which start at
++		 * 6 Mbps outside 2.4 GHz; remap to our rate indices as
++		 * iwl_mvm_get_tx_rate() does.
++		 */
++		if (info->band != NL80211_BAND_2GHZ)
++			rate_idx += IWL_FIRST_OFDM_RATE;
++
+ 		result = iwl_mvm_convert_rate_idx(mvm, info, rate_idx);
+ 	}
+ 
 
-Best regards,
 -- 
-benthecarman <benthecarman1@gmail.com>
+2.55.0
 
