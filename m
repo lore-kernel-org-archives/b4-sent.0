@@ -1,15 +1,12 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Subject: [PATCH 0/4] binman: fit: compress generated fdt images and use it
- on Rockchip
-Date: Sat, 10 Oct 2026 16:24:44 +0200
-Message-Id: <20261010-b4-binman-fit-fdt-compression-v1-0-4465558758cc@protonmail.com>
+Date: Sat, 10 Oct 2026 16:24:45 +0200
+Subject: [PATCH 1/4] binman: fit: Actually compress generated fdt images
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBCF4auUWTuQqW0WXkVcdJKJjtBUMlGE0
- rs31eXP430rmBQVg0u3QpGPmi65BZ06CI8p3wU1tobe9Z4cOeQBWfM8ZUxaMcWKYZlfRex44pm
- 858CRRh6hGW1I+v3519u/7c1PCfVAYdt23Ar8ZIEAAAA=
-X-Change-ID: 20261010-b4-binman-fit-fdt-compression-3166bcbd15b5
+Message-Id: <20261010-b4-binman-fit-fdt-compression-v1-1-4465558758cc@protonmail.com>
+References: <20261010-b4-binman-fit-fdt-compression-v1-0-4465558758cc@protonmail.com>
+In-Reply-To: <20261010-b4-binman-fit-fdt-compression-v1-0-4465558758cc@protonmail.com>
 To: u-boot@lists.u-boot-project.org
 Cc: Simon Glass <sjg@chromium.org>, 
  Alper Nebi Yasak <alpernebiyasak@gmail.com>, Tom Rini <trini@konsulko.com>, 
@@ -21,48 +18,65 @@ Cc: Simon Glass <sjg@chromium.org>,
  Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791642291; l=1548;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791642291; l=2294;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=qJWDiDovEmfT81HjKbVzJn0ktLPTALKy8ZNdma0jFio=;
- b=B50cU6mk0REWRoQr3ppNbOZpaXEVWMyRDOyzng6LXmnNkWictjRzwgRlE210zOSOykXKZJltb
- Knsglz7zczfA9Kxm9iyxpn18IYgAkXZC9SHLGdrJ4hi22AkMPgipYI7
+ bh=WWCtcfzM04pZoSaC6AMeIgI+OBKsFFnA2qcX3NOlT48=;
+ b=qlDB1U29okYilIdHcZjahhPdltZM9qJU+jzSvtd/kkkAQ2oSpin2MDmEZ4Jn5ZM1wPqoqQpcO
+ 046X/81w6bnCSgEj/mJgdeYGqXct6E2c3VPmfgM8N0ZqRZjBcA4J5TK
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Entry_fit's @fdt-SEQ generator copies the node's "compression" property
-into the FIT. However, it embeds the raw .dtb. A FIT can therefore claim
-"compression = lzma" while holding uncompressed data and SPL will fail
-to decompress it during boot.
-
-The patchset fixes the following:
- - Patch 1 makes the generator act on the property (lzma onl)
- - Patch 2 adds the test device trees
- - Patch 3 adds the tests covering both the lzma round trip
-   and the unsupported-algorithm error.
- - Patch 4 uses it on Rockchip where the shared @fdt-SEQ template gets
-   FIT_FDT_COMP, "lzma" when SPL_LZMA is enabled and "none" otherwise
+Reads the node's "compression" property while generating each fdt
+node and actually compresses the data before writing it when the value
+isn't "none". Only "lzma" is implemented for now.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
-Petr Hodina (4):
-      binman: fit: Actually compress generated fdt images
-      binman: test: Add fit fdt compression device trees
-      binman: test: Check compression of generated fit fdt images
-      rockchip: LZMA-compress the FDT image in the FIT based on FIT_FDT_COMP
+ tools/binman/etype/fit.py | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
- arch/arm/dts/rockchip-u-boot.dtsi      |  8 +++-
- tools/binman/etype/fit.py              | 12 ++++++
- tools/binman/ftest.py                  | 29 ++++++++++++++
- tools/binman/test/fit/fdt_bad_comp.dts | 72 ++++++++++++++++++++++++++++++++++
- tools/binman/test/fit/fdt_lzma.dts     | 72 ++++++++++++++++++++++++++++++++++
- 5 files changed, 192 insertions(+), 1 deletion(-)
----
-base-commit: ece349ade2973e220f524ce59e59711cc919263f
-change-id: 20261010-b4-binman-fit-fdt-compression-3166bcbd15b5
+diff --git a/tools/binman/etype/fit.py b/tools/binman/etype/fit.py
+index f28b1e6b4cb..026a373ff79 100644
+--- a/tools/binman/etype/fit.py
++++ b/tools/binman/etype/fit.py
+@@ -13,6 +13,7 @@ import os
+ 
+ from binman.entry import Entry, EntryArg
+ from binman.etype.section import Entry_section
++from binman import bintool
+ from binman import elf
+ from dtoc import fdt_util
+ from dtoc.fdt import Fdt
+@@ -853,8 +854,11 @@ class Entry_fit(Entry_section):
+                     else:
+                         fname = tools.get_input_filename(fdt_fname + '.dtb')
+                     fdt_phase = None
++                    compression = 'none'
+                     with fsw.add_node(node_name):
+                         for pname, prop in node.props.items():
++                            if pname == 'compression':
++                                compression = fdt_util.GetString(node, pname)
+                             if pname == 'fit,firmware':
+                                 if firmware:
+                                     fsw.property_string('firmware', firmware)
+@@ -892,6 +896,14 @@ class Entry_fit(Entry_section):
+                                 data = tools.read_file(phase_fname)
+                             else:
+                                 data = tools.read_file(fname)
++                            if compression != 'none':
++                                if compression != 'lzma':
++                                    self.Raise(
++                                        "Unsupported fdt compression "
++                                        f"'{compression}' (only 'lzma' is "
++                                        "implemented)")
++                                comp = bintool.Bintool.create('lzma_alone')
++                                data = comp.compress(data)
+                             fsw.property('data', data)
+ 
+                         for subnode in node.subnodes:
 
-Best regards,
---  
-Petr Hodina <petr.hodina@protonmail.com>
+-- 
+2.55.0
 
