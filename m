@@ -1,11 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sat, 10 Oct 2026 16:24:47 +0200
-Subject: [PATCH 3/4] binman: test: Check compression of generated fit fdt
- images
+Date: Sat, 10 Oct 2026 16:24:48 +0200
+Subject: [PATCH 4/4] rockchip: LZMA-compress the FDT image in the FIT based
+ on FIT_FDT_COMP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261010-b4-binman-fit-fdt-compression-v1-3-4465558758cc@protonmail.com>
+Message-Id: <20261010-b4-binman-fit-fdt-compression-v1-4-4465558758cc@protonmail.com>
 References: <20261010-b4-binman-fit-fdt-compression-v1-0-4465558758cc@protonmail.com>
 In-Reply-To: <20261010-b4-binman-fit-fdt-compression-v1-0-4465558758cc@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -19,64 +19,51 @@ Cc: Simon Glass <sjg@chromium.org>,
  Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791642291; l=2355;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791642291; l=1063;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=5uoc82yqjzMue5G0o5xpNb6IgLiTO164mNPRh9g5zeM=;
- b=KyI/u3jzbRSxYnEbc3LMCb1CpnoH3wheqzQ9La/u2aeHO69OahQP3lvhaNvARYGHg6MFAEhU+
- AaIam2IXGpXBXM+laa7Zfi+4O6Jimg18I8V33Sx8wparWp4722Qd4Ff
+ bh=6QI+S+kJkoodlMS9OYGspm8o3lEQmxd0gwRkbK+j1rM=;
+ b=VBvUyzfVswrH+Z1B5zHcLoVSGVGChm+LKZVYAFTR2LuvBSRAl4enL5D/BaqsqaFZceWHIN5ve
+ ZUq7vGnq5m1DbPFCUqQaUCE2LunhxCb68Dp4KdAaWRn0D/WjQwku9N6
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add testFitFdtCompressed, which builds a FIT with lzma-compressed fdt
-images and checks that each embedded image.
+Adds FIT_FDT_COMP alongside the existing FIT_UBOOT_COMP gated on
+CONFIG_SPL_LZMA only. Applies it to the @fdt-SEQ template's compression
+property.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- tools/binman/ftest.py | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+ arch/arm/dts/rockchip-u-boot.dtsi | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/tools/binman/ftest.py b/tools/binman/ftest.py
-index bf98b268ac1..587400ff308 100644
---- a/tools/binman/ftest.py
-+++ b/tools/binman/ftest.py
-@@ -4349,6 +4349,35 @@ class TestFunctional(unittest.TestCase):
-         """Test an image with an FIT with multiple FDT images"""
-         self.CheckFitFdt()
+diff --git a/arch/arm/dts/rockchip-u-boot.dtsi b/arch/arm/dts/rockchip-u-boot.dtsi
+index 4ba6a87e78a..ed082212446 100644
+--- a/arch/arm/dts/rockchip-u-boot.dtsi
++++ b/arch/arm/dts/rockchip-u-boot.dtsi
+@@ -19,6 +19,12 @@
+ #define FIT_UBOOT_COMP		"none"
+ #endif
  
-+    def testFitFdtCompressed(self):
-+        """Test that fdt images are really compressed when asked"""
-+        bintool = self.comp_bintools['lzma_alone']
-+        self._CheckBintool(bintool)
-+        entry_args = {'of-list': 'test-fdt1 test-fdt2',
-+                      'default-dt': 'test-fdt2'}
-+        extra_indirs = [os.path.join(self._indir, TEST_FDT_SUBDIR)]
-+        data = self._DoReadFileDtb('fit/fdt_lzma.dts', entry_args=entry_args,
-+                                   extra_indirs=extra_indirs)[0]
-+        fit_data = data[len(U_BOOT_DATA):-len(U_BOOT_NODTB_DATA)]
-+        dtb = fdt.Fdt.FromData(fit_data)
-+        dtb.Scan()
-+        for seq, expected in ((1, TEST_FDT1_DATA), (2, TEST_FDT2_DATA)):
-+            fnode = dtb.GetNode('/images/fdt-%d' % seq)
-+            self.assertEqual('lzma', fnode.props['compression'].value)
-+            comp = fnode.props['data'].bytes
-+            self.assertNotEqual(expected, comp)
-+            self.assertEqual(expected, bintool.decompress(comp))
++#if defined(CONFIG_SPL_LZMA)
++#define FIT_FDT_COMP		"lzma"
++#else
++#define FIT_FDT_COMP		"none"
++#endif
 +
-+    def testFitFdtBadCompression(self):
-+        """Test an unsupported fdt compression algorithm"""
-+        entry_args = {'of-list': 'test-fdt1 test-fdt2',
-+                      'default-dt': 'test-fdt2'}
-+        extra_indirs = [os.path.join(self._indir, TEST_FDT_SUBDIR)]
-+        with self.assertRaises(ValueError) as e:
-+            self._DoReadFileDtb('fit/fdt_bad_comp.dts', entry_args=entry_args,
-+                                extra_indirs=extra_indirs)
-+        self.assertIn("Unsupported fdt compression 'bzip2'", str(e.exception))
-+
-     def testFitFdtMissingList(self):
-         """Test handling of a missing 'of-list' entry arg"""
-         with self.assertRaises(ValueError) as e:
+ /*
+  * SHA256 should be enabled in SPL when signature validation is involved,
+  * CRC32 should only be used for basic checksum validation of FIT images.
+@@ -136,7 +142,7 @@
+ 
+ 			@fdt-SEQ {
+ 				description = "fdt-NAME";
+-				compression = "none";
++				compression = FIT_FDT_COMP;
+ 				type = "flat_dt";
+ #ifdef FIT_HASH_ALGO
+ 				hash {
 
 -- 
 2.55.0
