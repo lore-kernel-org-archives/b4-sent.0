@@ -1,11 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sat, 10 Oct 2026 23:07:51 +0200
-Subject: [PATCH 03/11] cmd: phonemenu: mirror the menu to byte-stream
- consoles
+Date: Sat, 10 Oct 2026 23:07:52 +0200
+Subject: [PATCH 04/11] boot: android_ab: read the A/B slot from the GPT on
+ Snapdragon
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261010-b4-phonemenu-series-v1-3-bfa23de6eb0b@protonmail.com>
+Message-Id: <20261010-b4-phonemenu-series-v1-4-bfa23de6eb0b@protonmail.com>
 References: <20261010-b4-phonemenu-series-v1-0-bfa23de6eb0b@protonmail.com>
 In-Reply-To: <20261010-b4-phonemenu-series-v1-0-bfa23de6eb0b@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -28,160 +28,83 @@ Cc: Tom Rini <trini@konsulko.com>,
  Alexander Martinz <amartinz@shiftphones.com>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791666485; l=4352;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791666485; l=2142;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=/mKdxYAuxwGadyLKCtPHJTCiuo/hLdKQi7LAU63mz2Y=;
- b=VbnozkMPmOu9ywmvEnEyFZZmSrveQ/JXB4SlrdHd+unag4NBI9CzpFgfy/AiIz8kb4kZRuQpz
- m6kjOaBZMIXBi1mWaw5Tn/F/eOPMV6l4aCGnQ7TSB19aiMB/8kpwfEN
+ bh=//DmpccicaexghVlCBHa4ZEw776XyWUG38BTdmOwT/c=;
+ b=h3jpZxqENsNLkODNvYYzin5PdF1qljqJp5cI93q0YvK/icOhsIiekPzG1fc7O7vxm6rMJktKW
+ 8AiHekXUXlfCDzL7xycKDJ02ccRMeM97NMLrimSaDY7aGHXHQOPRG+U
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The pixel-drawn menu is rendered to serial or USB CDC-ACM.
-Add pm_term_puts()/pm_term_render() to render the same menu as ANSI
-escapes over those byte-stream consoles.
+Qualcomm devices don't use the bootloader_control block in "misc". The
+slot active/unbootable state lives in the attribute flags (top 16 bits)
+of each "boot_a"/"boot_b" GPT partition entry instead.
 
-Wire it into pm_render_all() for initial draw and the up/down navigation
-in pm_run().
+Make ab_select_slot() read those flags on CONFIG_ARCH_SNAPDRAGON.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- cmd/phonemenu.c | 80 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 80 insertions(+)
+ boot/android_ab.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/cmd/phonemenu.c b/cmd/phonemenu.c
-index 30f994bcb64..e83394714c3 100644
---- a/cmd/phonemenu.c
-+++ b/cmd/phonemenu.c
-@@ -1,5 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0+
- 
-+#include <ansi.h>
- #include <cli.h>
- #include <command.h>
- #include <dm.h>
-@@ -9,6 +10,8 @@
- #include <log.h>
- #include <malloc.h>
- #include <menu.h>
-+#include <stdio.h>
-+#include <stdio_dev.h>
- #include <video.h>
- #include <video_console.h>
- #include <version.h>
-@@ -234,6 +237,76 @@ static void pm_draw_frame(struct pm_state *s)
- 		COL_FOOTER, COL_BG, foot);
+diff --git a/boot/android_ab.c b/boot/android_ab.c
+index f2b1110aa24..aedeb1edf28 100644
+--- a/boot/android_ab.c
++++ b/boot/android_ab.c
+@@ -191,9 +191,51 @@ static int ab_compare_slots(const struct slot_metadata *a,
+ 	return 0;
  }
  
-+/* ANSI escape sequences and line ending used on the byte-stream consoles */
-+#define PM_TERM_EOL		"\r\n"
-+#define PM_TERM_CLEAR		ANSI_CLEAR_CONSOLE "\e[H"
-+#define PM_TERM_CURSOR_HIDE	ANSI_CURSOR_HIDE
-+#define PM_TERM_CURSOR_SHOW	ANSI_CURSOR_SHOW
-+#define PM_TERM_REVERSE		ANSI_COLOR_REVERSE
-+#define PM_TERM_RESET		ANSI_COLOR_RESET
++/*
++ * Qualcomm devices don't use the bootloader_control_block in "misc" at all.
++ * Slot active/successful/unbootable state is stored directly in the top 16
++ * bits of each "boot_a"/"boot_b" GPT partition entry's own attribute flags.
++ */
++#define QCOM_AB_ATTR_SLOT_ACTIVE	(0x1 << 2)
++/* Not queried below, that is SBL's call */
++#define QCOM_AB_ATTR_BOOT_SUCCESSFUL	(0x1 << 6)
++#define QCOM_AB_ATTR_UNBOOTABLE		(0x1 << 7)
 +
-+/* Mirror the menu to byte-stream consoles (serial UART, USB CDC ACM) */
-+static void pm_term_puts(const char *str)
++static int qcom_gpt_select_slot(struct blk_desc *dev_desc)
 +{
-+	static const char * const names[] = { "serial", "usbacm" };
-+	struct stdio_dev *d;
-+	size_t i;
++	static const char * const names[] = { "boot_a", "boot_b" };
++	struct disk_partition part;
++	int slot = -1, i;
 +
 +	for (i = 0; i < ARRAY_SIZE(names); i++) {
-+		d = stdio_get_by_name(names[i]);
-+		if (!d || !d->puts)
++		if (part_get_info_by_name(dev_desc, names[i], &part) < 0)
 +			continue;
-+
-+		if (!strcmp(names[i], "usbacm") && !d->priv)
-+			continue;
-+
-+		d->puts(d, str);
-+	}
-+}
-+
-+static void pm_term_render(struct pm_state *s)
-+{
-+	enum pm_section prev = PM_SEC_COUNT;
-+	char buf[160];
-+	int i;
-+
-+	/* Clear screen, cursor home, hide cursor while we paint. */
-+	pm_term_puts(PM_TERM_CLEAR PM_TERM_CURSOR_HIDE);
-+
-+	snprintf(buf, sizeof(buf), "  %s" PM_TERM_EOL, s->title);
-+	pm_term_puts(buf);
-+	if (s->subtitle && *s->subtitle) {
-+		snprintf(buf, sizeof(buf), "  %s" PM_TERM_EOL, s->subtitle);
-+		pm_term_puts(buf);
-+	}
-+	if (s->version && *s->version) {
-+		snprintf(buf, sizeof(buf), "  %s" PM_TERM_EOL, s->version);
-+		pm_term_puts(buf);
-+	}
-+	pm_term_puts(PM_TERM_EOL);
-+
-+	for (i = 0; i < s->count; i++) {
-+		if (s->items[i].section != prev) {
-+			snprintf(buf, sizeof(buf), "  [%s]" PM_TERM_EOL,
-+				 pm_section_label[s->items[i].section]);
-+			pm_term_puts(buf);
-+			prev = s->items[i].section;
++		if (part.type_flags & QCOM_AB_ATTR_SLOT_ACTIVE) {
++			slot = i;
++			break;
 +		}
-+		if (i == s->active)
-+			snprintf(buf, sizeof(buf),
-+				 "    " PM_TERM_REVERSE "> %s" PM_TERM_RESET PM_TERM_EOL,
-+				 s->items[i].label);
-+		else
-+			snprintf(buf, sizeof(buf), "      %s" PM_TERM_EOL,
-+				 s->items[i].label);
-+		pm_term_puts(buf);
 +	}
 +
-+	pm_term_puts(PM_TERM_EOL
-+		     "  Vol up/down or arrows to move    Power or Enter to select"
-+		     PM_TERM_EOL);
++	if (slot < 0) {
++		log_err("qcom A/B: no slot marked active in the GPT\n");
++		return -ENODEV;
++	}
++
++	if (part.type_flags & QCOM_AB_ATTR_UNBOOTABLE) {
++		log_err("qcom A/B: active slot %c is marked unbootable\n",
++			BOOT_SLOT_NAME(slot));
++		return -ENODEV;
++	}
++
++	return slot;
 +}
 +
- static void pm_render_all(struct pm_state *s)
+ int ab_select_slot(struct blk_desc *dev_desc, struct disk_partition *part_info,
+ 		   bool dec_tries)
  {
- 	int i;
-@@ -242,6 +315,8 @@ static void pm_render_all(struct pm_state *s)
- 	for (i = 0; i < s->count; i++)
- 		pm_draw_item(s, i, i == s->active);
- 	video_sync(s->vid, true);
++	if (IS_ENABLED(CONFIG_ARCH_SNAPDRAGON))
++		return qcom_gpt_select_slot(dev_desc);
 +
-+	pm_term_render(s);
- }
- 
- static int pm_run(const struct pm_item *items, int count,
-@@ -290,6 +365,7 @@ static int pm_run(const struct pm_item *items, int count,
- 			pm_draw_item(&s, s.last_active, false);
- 			pm_draw_item(&s, s.active, true);
- 			video_sync(s.vid, true);
-+			pm_term_render(&s);
- 			break;
- 		case BKEY_DOWN:
- 			/* Wrap from the last item back to item 0. */
-@@ -298,6 +374,7 @@ static int pm_run(const struct pm_item *items, int count,
- 			pm_draw_item(&s, s.last_active, false);
- 			pm_draw_item(&s, s.active, true);
- 			video_sync(s.vid, true);
-+			pm_term_render(&s);
- 			break;
- 		case BKEY_SELECT:
- 			running = false;
-@@ -318,6 +395,9 @@ static int pm_run(const struct pm_item *items, int count,
- 	s.vp->colour_bg = COL_BG;
- 	video_sync(s.vid, true);
- 
-+	/* Reset the terminal: clear screen, show cursor, reset colours. */
-+	pm_term_puts(PM_TERM_CLEAR PM_TERM_CURSOR_SHOW PM_TERM_RESET);
-+
- 	cmd = items[s.active].command;
- 	if (cmd && cmd[0])
- 		run_command((char *)cmd, 0);
+ 	struct bootloader_control *abc = NULL;
+ 	struct bootloader_control *backup_abc = NULL;
+ 	u32 crc32_le;
 
 -- 
 2.55.0
