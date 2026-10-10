@@ -1,95 +1,155 @@
-From: =?utf-8?q?Mert_Erdo=C4=9Fan?= <mrterdo75@gmail.com>
-Date: Sat, 10 Oct 2026 09:38:10 +0300
-Subject: [PATCH] platform/x86: hp-wmi: Add Victus 16-e0xxx board 88EE
- support
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH v3 0/4] pidfd: add task path ioctls
+Date: Sat, 10 Oct 2026 18:20:49 +0800
+Message-Id: <20261010-pidfd-get-paths-v3-0-f245440b2b30@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261010-hp-wmi-victus-88ee-v1-1-e2200686bc2b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12NzU7DMBAGXyXymUVeJ/6LEOI9UA+2s2kX4bbES
- UCq+u44DSduO9K3MzdRaGIqom9uYqKVC1/OFfCpEekUzkcCHioLJZVBiRJOV/jODCuneSngHBG
- gHZXr3KA624r6eJ1o5J+H9P2wc1niB6V5M/0tJvpaam3eZyJTKeFR65uXPSbt/1hQBlYE3C5tQ
- sLOS/d2zIE/n9Mlv27qGApBhcxz33g3ytYro0k7qTwOmqwJiFFJq3SHY4yYWt+Kw/3+C8AFNnU
- LAQAA
-X-Change-ID: 20261010-hp-wmi-victus-88ee-17f2848d2473
-To: Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Ege_Kundak=C3=A7=C4=B1o=C4=9Flu?= <egekun67@gmail.com>, 
- =?utf-8?q?Mert_Erdo=C4=9Fan?= <mrterdo75@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIERymoC/2XNTQ6CMBQE4KuQrn2mP4DgynsYF6V9QNUAaWujI
+ dzdFl0YWU4y881MHFqDjhyzmVgMxplxiEHsMqJ6OXQIRsdMOOUlrVgNk9Gthg49TNL3Doq6zKm
+ ulGaIJK4mi615ruL58snu0VxR+cSkRm+cH+1rvQws9b46pxs9MKAglUDEnFKhi1Nzl+oGGt1tr
+ waSHgL/MQTbGjwaqqhRlpKz5sD/jWVZ3uBuq0sIAQAA
+X-Change-ID: 20260819-pidfd-get-paths-59640d8cd1ee
+To: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, Ingo Molnar <mingo@redhat.com>, 
+ Peter Zijlstra <peterz@infradead.org>, Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ K Prateek Nayak <kprateek.nayak@amd.com>, Kees Cook <kees@kernel.org>, 
+ John Johansen <john.johansen@canonical.com>, 
+ Georgia Garcia <georgia.garcia@canonical.com>, 
+ Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
+ "Serge E. Hallyn" <serge@hallyn.com>, Jann Horn <jannh@google.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, apparmor@lists.ubuntu.com, 
+ linux-security-module@vger.kernel.org, linux-api@vger.kernel.org, 
+ Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791614297; l=2781;
- i=mrterdo75@gmail.com; s=20261007; h=from:subject:message-id;
- bh=krMjwVPvW4p6J7pzdTxvOgoD3/uAh2OaFLpfxtDbAN0=;
- b=i8Bz2jidRj5j39v1cloaOrkqxqI3DRXdZVN9wBBGCS8B2mmdvWNW3YLlwvYnEdaVHhrp4D2N4
- kOIBIo3qQadC6USbVfi/tcXgvlMKO5QDLMVE7v+7B1KTCan+AKM3iZh
-X-Developer-Key: i=mrterdo75@gmail.com; a=ed25519;
- pk=bUOfewdT6wnBK6cWdxYDgGaI8ee0+BwtzPbg982vJP8=
-X-Endpoint-Received: by B4 Relay for mrterdo75@gmail.com/20261007 with auth_id=1127
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4362; i=me@black-desk.cn;
+ s=20260831; h=from:subject:message-id;
+ bh=TgTd211oqhG5HGYlI973E8KqCDKc5Oeemvo00Ob4OL8=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqyhGFlEg1oLTbVChctiMxydeM+7PjwrFf6BR74
+ 5jDCIlEhsuJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCasoRhQAKCRB2HuYUOZmu
+ i7vJD/9Hrm25jbDpfUc64kgjy8iRATYE2TMYLB6diuEQCIz7H1iL2mW93MuWwP3X989ErNtXZhk
+ wcdjNkfx5ClKKnS0eJM0n+WBqP2H88p4GLPSk5PfFmg2l1TX6E0S0OkkCKCP8Ks+zewv69+YP+z
+ BGOgltFVJWtyxPIAcXtn2nSby8bLmCDNgqvFzy9+QuvYSVQ7o5SD3XKcRAxX2w/RSRZBf3yvRLj
+ Zci55BEaFRJRWhN6zFoT8IbyPRh2CxCsr0leOa/HFSPxqSFuHB/wWmt9ZDDP7qv4BATDXckxKbt
+ Pv7iF/dYQJxN+rh/7deQ/KEn6lBD3oklYjxgIUMxRkDmVZsvOUZ5TkO0rJefnM5J5MdoFcg/aaV
+ I7GoucITJWlMlX1bkXTzAiBsoCApkZ4B6M7t2ka2vnBNceKiHNowSMnoNgg2z5uDdGCXFZdYqie
+ MxLe0Od2DPXHqKGj4NxoR2rQljt+3yF4h2Vd0Uw2cclXrsU+S17cr78INgv7hHTD9c5AjYjPO8h
+ e0lDzLSxjUh/s93HeXNSkpjvZQRB+kW8oifAQ/dasIFjm3sqWu9LsmHwjK1RrPM5YRGWCuboCoj
+ z16jxKJV5IMOv1xa1w2+oJs3blCF8aDd+X5KC4ig1N282vKrm66q8IjZvQlsPG+RmJ3TAnheECG
+ urAVptAhXAnOCTw==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/20260831 with auth_id=991
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HP Victus 16-e0xxx (board 88EE) is not in any of the Omen or Victus
-board lists, so it falls back to the generic thermal profile handling
-and the GPU cTGP offset is never enabled.
+Obtaining a target task's executable, working directory, or root
+currently requires walking procfs symlinks such as /proc/<pid>/exe,
+/proc/<pid>/cwd, and /proc/<pid>/root.  That makes the operation depend
+on procfs being mounted and visible to the caller, even when it already
+holds a pidfd for the target.
 
-Its DSDT handles the 0x20008 type 0x1A query like the 8A26 one: the
-mode is stored in the EC register at offset 0x95, which is what the
-Victus path reads back, and cTGP is enabled in performance mode. Add
-88EE to victus_thermal_profile_boards and update the comment above the
-list, which only mentioned the Victus 16-d.
+This series adds PIDFD_GET_EXE, PIDFD_GET_CWD, and PIDFD_GET_ROOT. Each
+ioctl takes no argument and returns a close-on-exec O_PATH file
+descriptor referencing the corresponding task path.  The new ioctls use
+the same ptrace permission check and nonzero-argument rejection as the
+existing pidfd namespace ioctls.
 
-Ege Kundakçıoğlu tested this on a Victus 16-e0xxx (BIOS F.27, RTX 3060
-Laptop GPU). With the unpatched module the GPU power limit stays at
-80 W in the balanced, performance and quiet profiles. With this patch
-performance gives 95 W, balanced 80 W and quiet 30 W, the EC register
-at 0x95 matches the selected profile, and in performance the limit is
-back at 95 W after unplugging and replugging AC.
+The target task is sampled while holding its exec_update_lock. This
+keeps the access decision and the task-state read in the same exec
+critical section, preventing a concurrent execve() from changing the
+credentials or target state between the check and the use.
 
-Unlike on 8A26, the 0x1A query only sets cTGP here. Dynamic Boost (the
-NPCF DTGP flag) reads back as 0, as the only WMI query that sets it is
-0x22, which the Victus path does not send. The GPU still reaches its
-95 W maximum, and the tester sees the same maximum on Windows.
-
-This patch was prepared with an AI coding agent (Claude Code, using
-Claude Opus 5.5). It checked the DSDT, wrote the change and the test
-script. Ege ran the test on the laptop and I checked the results.
-
-Tested-by: Ege Kundakçıoğlu <egekun67@gmail.com>
-Assisted-by: claude-opus-5-5
-Signed-off-by: Mert Erdoğan <mrterdo75@gmail.com>
----
-This applies on top of my pending 8A26 patch for the same board list:
-https://lore.kernel.org/r/20261007-hp-wmi-victus-8a26-v1-1-8a256ac14908@gmail.com
-
-Before this patch the owner of the laptop enabled cTGP with an
-acpi_call workaround sending the same 0x1A query in performance mode.
----
- drivers/platform/x86/hp/hp-wmi.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/platform/x86/hp/hp-wmi.c b/drivers/platform/x86/hp/hp-wmi.c
-index 15f1e9f63..1c16a0656 100644
---- a/drivers/platform/x86/hp/hp-wmi.c
-+++ b/drivers/platform/x86/hp/hp-wmi.c
-@@ -230,8 +230,9 @@ static const char * const omen_timed_thermal_profile_boards[] = {
- 	"8BAD",
- };
- 
--/* DMI Board names of Victus 16-d laptops */
-+/* DMI Board names of Victus 16-d and 16-e laptops */
- static const char * const victus_thermal_profile_boards[] = {
-+	"88EE",
- 	"88F8",
- 	"8A25",
- 	"8A26",
+Since pidfds can cross pid namespace boundaries, the first patch
+restricts the existing namespace ioctls to targets visible in the
+caller's active pid namespace, failing with -EREMOTE like
+PIDFD_GET_INFO.  The second patch factors out helpers for acquiring
+referenced task paths and reuses them in procfs and AppArmor.  The
+third patch introduces scoped cleanup for privileged pidfd task
+access, carries the visibility check into the shared task acquisition
+helper, and separates namespace lookup from namespace fd creation.
+The final patch uses these pieces to implement the three new ioctls.
 
 ---
-base-commit: 98f039265e580291d5e76a11b2072541fbb1c393
-change-id: 20261010-hp-wmi-victus-88ee-17f2848d2473
-prerequisite-message-id: <20261007-hp-wmi-victus-8a26-v1-1-8a256ac14908@gmail.com>
-prerequisite-patch-id: 3f4190ae015c5cfc0c87dd8b3f7829a95effb9cb
+Changes in v3:
+- Restrict the pidfd task access ioctls to targets visible in the
+  caller's pid namespace, failing with -EREMOTE consistent with
+  PIDFD_GET_INFO, following review feedback from Jann Horn and
+  Christian Brauner.
+- Document that get_task_exe_path() leaves the output path unchanged
+  on failure, as suggested by Jann Horn.
+- Link to v2: https://patch.msgid.link/20260831-pidfd-get-paths-v2-0-c59ea6a21b72@black-desk.cn
+
+Changes in v2:
+- Make pidfd_get_task_locked() own the task reference until it is
+  transferred to the pidfd_task_locked cleanup class.
+- Link to v1: https://patch.msgid.link/20260820-pidfd-get-paths-v1-0-ac3eee4003d5@black-desk.cn
+
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+To: Christian Brauner <brauner@kernel.org>
+To: Jan Kara <jack@suse.cz>
+To: Andrew Morton <akpm@linux-foundation.org>
+To: David Hildenbrand <david@kernel.org>
+To: Lorenzo Stoakes <ljs@kernel.org>
+To: "Liam R. Howlett" <liam@infradead.org>
+To: Vlastimil Babka <vbabka@kernel.org>
+To: Mike Rapoport <rppt@kernel.org>
+To: Suren Baghdasaryan <surenb@google.com>
+To: Michal Hocko <mhocko@suse.com>
+To: Ingo Molnar <mingo@redhat.com>
+To: Peter Zijlstra <peterz@infradead.org>
+To: Juri Lelli <juri.lelli@redhat.com>
+To: Vincent Guittot <vincent.guittot@linaro.org>
+To: Dietmar Eggemann <dietmar.eggemann@arm.com>
+To: Steven Rostedt <rostedt@goodmis.org>
+To: Ben Segall <bsegall@google.com>
+To: Mel Gorman <mgorman@suse.de>
+To: Valentin Schneider <vschneid@redhat.com>
+To: K Prateek Nayak <kprateek.nayak@amd.com>
+To: Kees Cook <kees@kernel.org>
+To: John Johansen <john.johansen@canonical.com>
+To: Georgia Garcia <georgia.garcia@canonical.com>
+To: Paul Moore <paul@paul-moore.com>
+To: James Morris <jmorris@namei.org>
+To: "Serge E. Hallyn" <serge@hallyn.com>
+To: Jann Horn <jannh@google.com>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-mm@kvack.org
+Cc: apparmor@lists.ubuntu.com
+Cc: linux-security-module@vger.kernel.org
+Cc: linux-api@vger.kernel.org
+
+---
+Chen Linxuan (4):
+      pidfd: restrict task access ioctls to the caller's pid namespace
+      fs: Introduce task path helpers
+      pidfd: Use scoped cleanup for task access
+      pidfd: Add task path ioctls
+
+ fs/fs_struct.c             |  44 +++++++++++++
+ fs/pidfs.c                 | 158 +++++++++++++++++++++++++++++++++------------
+ fs/proc/base.c             |  34 +---------
+ include/linux/fs_struct.h  |   3 +
+ include/linux/mm.h         |   1 +
+ include/uapi/linux/pidfd.h |   7 ++
+ kernel/fork.c              |  22 +++++++
+ security/apparmor/task.c   |  12 +---
+ 8 files changed, 198 insertions(+), 83 deletions(-)
+---
+base-commit: cee9395acd8043be0644b25c34bfa86623f2b935
+change-id: 20260819-pidfd-get-paths-59640d8cd1ee
 
 Best regards,
 --  
-Mert Erdoğan <mrterdo75@gmail.com>
+Chen Linxuan <me@black-desk.cn>
 
