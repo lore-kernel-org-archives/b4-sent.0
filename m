@@ -1,102 +1,85 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Sat, 10 Oct 2026 07:46:29 -0700
-Subject: [PATCH net-next v3 2/2] net: annotate lockless writes to
- sk->sk_err
+From: Igor Velkov <iav@iav.lv>
+Date: Sat, 10 Oct 2026 18:20:30 +0000
+Subject: [PATCH v2] irqchip/meson-gpio: Allow the GPIO interrupts to wake
+ the system
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261010-tls-fix-sk-kcsan-err-v3-2-e28aadeb31ad@proton.me>
-References: <20261010-tls-fix-sk-kcsan-err-v3-0-e28aadeb31ad@proton.me>
-In-Reply-To: <20261010-tls-fix-sk-kcsan-err-v3-0-e28aadeb31ad@proton.me>
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jakub Sitnicki <jakub@cloudflare.com>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- bpf@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791643590; l=2452;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=xhyr/APrQP/DN3UvFtImVGyApw1ErZ/6ymmTvs2y5mo=;
- b=RXyTgZ1n6sPdCnsPGG9dt2sqeO9ID7CGpiC7zAyDMpjM3ZcKsUaM8ufrvG8o0oqZGlcBx5syE
- OrIT4y1rpbkAJBdIdiaVYKrBcjEp4J8T3b3TrfXliWSg9PmO+FXXHvE
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+Message-Id: <20261010-meson-gpio-wake-v2-1-790ecc6df792@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAO6BymoC/3WNQQ6CMBBFr0Jm7Zi2CAFX3MOwaGUKE7Ulraka0
+ rtb2bt8L/nvbxApMEU4VxsEShzZuwLqUMF10W4m5KkwKKFaKUSHD4re4byyx5e+EdraWF0bo6j
+ RUFZrIMvvvXgZCy8cnz589oMkf/Z/K0mUaIS2sum76dT2A+t0vCcYc85fCTMS8qsAAAA=
+To: Thomas Gleixner <tglx@kernel.org>
+Cc: Radu Rendec <radu@rendec.net>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2264; i=iav@iav.lv;
+ h=from:subject:message-id; bh=fZVoG9f36dKIjewDv5ebdz4lu+bdjQGttrwUIvjhrKc=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmnGj9LxAQuU8/rZlmZEzdbce2SpXrqKytf31krzLY7o
+ +5E+ZGbHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAisYIMfzhKL3ycwCTj22+V
+ VCtte5Ff6a3srUyu9s9MEYWPLFpOv2ZkOL523iR5c9aHx5TXntruJMCs863WyzaJRS1NqoGFoy2
+ fBQA=
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-do_recvmmsg() and getsockopt(SO_ERROR) clear sk_err with xchg()
-without the socket lock. TCP, MPTCP and kTLS already peek the same
-field with READ_ONCE() or consume it via sock_error().
+meson_gpio_irq_chip has neither .irq_set_wake nor IRQCHIP_SKIP_SET_WAKE,
+so enable_irq_wake() fails with -ENXIO for every interrupt routed through
+it, and such an interrupt never gets IRQD_WAKEUP_STATE.
 
-sock_dequeue_err_skb() still uses plain stores. tcp_recvmsg() can
-call it via MSG_ERRQUEUE before lock_sock(), so those writes race
-with the annotated readers and with sock_error(). The same unmarked
-stores exist in strp_abort_strp() and sk_psock_report_error(), which
-run on the TCP/TLS socket.
+That matters for suspend-to-idle. suspend_device_irqs() keeps only the
+wakeup interrupts enabled; the rest are suspended and masked by the flow
+handler when they first fire. A GPIO interrupt that fires during s2idle
+therefore brings a CPU out of idle once, gets masked, and the system
+sleeps on. For mem the firmware chooses the wakeup sources, and this
+flag changes nothing there.
 
-Annotate those writers with WRITE_ONCE(). No extra ordering is
-needed; this does not change who wins when ICMP error-queue entries
-overwrite sk_err.
+Set IRQCHIP_SKIP_SET_WAKE, like the other hierarchical irqchips with a
+GIC parent. The GIC sets the same flag, so irq_chip_set_wake_parent()
+would end there anyway.
 
-Link: https://lore.kernel.org/netdev/3d9d442f-f168-43da-87b0-010ad5a78365@redhat.com/
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
-Reviewed-by: Eric Dumazet <edumazet@kernel.org>
+Tested on ODROID-HC4 with the PCF8563 alarm interrupt routed through this
+controller: with the flag the alarm wakes the board from s2idle 4/4, and
+/sys/power/pm_wakeup_irq names it; without the flag the board stayed in
+s2idle past the alarm until a power cycle (0/5).
+
+Assisted-by: LLM
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- include/linux/skmsg.h     | 2 +-
- net/core/skbuff.c         | 5 +++--
- net/strparser/strparser.c | 2 +-
- 3 files changed, 5 insertions(+), 4 deletions(-)
+Changes in v2:
+- Reworded, as Neil asked: say that the test and the effect are for
+  suspend-to-idle, describe how genirq handles the interrupt there, and
+  note that for mem the firmware picks the wakeup sources.
+- Repeated the run without the flag: 0/5 (v1 said 0/1).
+- Link to v1: https://lore.kernel.org/r/20261008-meson-gpio-wake-v1-1-b0af1598d469@iav.lv
+---
+ drivers/irqchip/irq-meson-gpio.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/skmsg.h b/include/linux/skmsg.h
-index d5e35f24738d..52ce45f25f5a 100644
---- a/include/linux/skmsg.h
-+++ b/include/linux/skmsg.h
-@@ -429,7 +429,7 @@ static inline void sk_psock_report_error(struct sk_psock *psock, int err)
- {
- 	struct sock *sk = psock->sk;
+diff --git a/drivers/irqchip/irq-meson-gpio.c b/drivers/irqchip/irq-meson-gpio.c
+index 91a9c337fe6d..e0329ef5e4a2 100644
+--- a/drivers/irqchip/irq-meson-gpio.c
++++ b/drivers/irqchip/irq-meson-gpio.c
+@@ -538,7 +538,7 @@ static struct irq_chip meson_gpio_irq_chip = {
+ #ifdef CONFIG_SMP
+ 	.irq_set_affinity	= irq_chip_set_affinity_parent,
+ #endif
+-	.flags			= IRQCHIP_SET_TYPE_MASKED,
++	.flags			= IRQCHIP_SET_TYPE_MASKED | IRQCHIP_SKIP_SET_WAKE,
+ };
  
--	sk->sk_err = err;
-+	WRITE_ONCE(sk->sk_err, err);
- 	sk_error_report(sk);
- }
- 
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index d56f4f0102f7..a6c9cf57bc3b 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -5539,12 +5539,13 @@ struct sk_buff *sock_dequeue_err_skb(struct sock *sk)
- 	if (skb && (skb_next = skb_peek(q))) {
- 		icmp_next = is_icmp_err_skb(skb_next);
- 		if (icmp_next)
--			sk->sk_err = SKB_EXT_ERR(skb_next)->ee.ee_errno;
-+			WRITE_ONCE(sk->sk_err,
-+				   SKB_EXT_ERR(skb_next)->ee.ee_errno);
- 	}
- 	spin_unlock_irqrestore(&q->lock, flags);
- 
- 	if (is_icmp_err_skb(skb) && !icmp_next)
--		sk->sk_err = 0;
-+		WRITE_ONCE(sk->sk_err, 0);
- 
- 	if (skb_next)
- 		sk_error_report(sk);
-diff --git a/net/strparser/strparser.c b/net/strparser/strparser.c
-index 9c1559d7923f..5f1da32b152f 100644
---- a/net/strparser/strparser.c
-+++ b/net/strparser/strparser.c
-@@ -56,7 +56,7 @@ static void strp_abort_strp(struct strparser *strp, int err)
- 	strp->need_bytes = 0;
- 
- 	/* Report an error on the lower socket */
--	sk->sk_err = -err;
-+	WRITE_ONCE(sk->sk_err, -err);
- 	sk_error_report(sk);
- }
- 
+ static int meson_gpio_irq_domain_translate(struct irq_domain *domain,
 
+---
+base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
+change-id: 20261008-meson-gpio-wake-f3bfa3bb2e5a
+
+Best regards,
 -- 
-2.55.0
+Igor Velkov <iav@iav.lv>
 
