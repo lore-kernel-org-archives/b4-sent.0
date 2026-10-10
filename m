@@ -1,14 +1,13 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Subject: [PATCH 00/11] cmd: phonemenu: phone form factor boot menu
-Date: Sat, 10 Oct 2026 23:07:48 +0200
-Message-Id: <20261010-b4-phonemenu-series-v1-0-bfa23de6eb0b@protonmail.com>
+Date: Sat, 10 Oct 2026 23:07:49 +0200
+Subject: [PATCH 01/11] cmd: phone_util: add poweroff, dfu_pwr and USB
+ Ethernet commands
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrE3SUj9xFbGgBiNR0iIS6d0Vy
- 2/x3g2OLJODKrrB0smOVxMg4wj01JqRkPtgSESSSyEFdgq3aTW0kDnwj1FmQ1aoMi9SpSCUm6W
- Br+9aN7/d0c2k93cF3j9l3iUUdwAAAA==
-X-Change-ID: 20261010-b4-phonemenu-series-15f574867344
+Message-Id: <20261010-b4-phonemenu-series-v1-1-bfa23de6eb0b@protonmail.com>
+References: <20261010-b4-phonemenu-series-v1-0-bfa23de6eb0b@protonmail.com>
+In-Reply-To: <20261010-b4-phonemenu-series-v1-0-bfa23de6eb0b@protonmail.com>
 To: u-boot@lists.u-boot-project.org
 Cc: Tom Rini <trini@konsulko.com>, 
  "Kory Maincent (TI.com)" <kory.maincent@bootlin.com>, 
@@ -29,86 +28,197 @@ Cc: Tom Rini <trini@konsulko.com>,
  Alexander Martinz <amartinz@shiftphones.com>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791666485; l=3116;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791666485; l=5321;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=7APOP7QbN4fzG5Ms4rgUh81UyGymuMvzRWMyCEU7A5Q=;
- b=5alhi/tvg9vdbbCIjVlQiwcTXeft2MDX97az5pU9Fiye2H2atCU2vOxY91xxkk6vn3ftFMCw1
- W00mrR3fpOiDEihjNFJbR7WNSpRaiuA6T8p1oxFHrz4De0P/yakEVGK
+ bh=ipns/rRhdwFduSLrtTa8xA4XHuqDuWoshEjGFZzNTqc=;
+ b=WFSlL3FK83EoBqSQp68T+zXQCw/iQo4o9im0mAQl43aZ9EOyJXY7H35h7GIPYwndvhNXewZYO
+ Ct/+yUCB643D1aRgoYhJEA9DcVdswFTibAqUj2QCDHcMHIizh5zkFyK
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a boot menu for devices with a framebuffer where the only inputs are
-the volume and power buttons. The menu is SoC independent and SoC specific
-parts hook in through weak functions. Qualcomm implementation is provided
-in the patch set.
+Add CONFIG_CMD_PHONEMENU for cmd/phone_util.c which adds two
+commands to be used as menu actions:
 
-1. Add helpers for several commands. dfu_pwr is needed because
-   the stock dfu loop only exits on Ctrl-C which a phone doesn't have.
-
-2. The core for the menu which reuses bootmenu_loop() for navigation
-   so any board that maps its buttons to keys (BUTTON_REMAP_PHONE_KEYS)
-   works unchanged.
-
-3. Phones often have no usable display during bring-up, or are driven
-   from a host so the same menu is also drawn with ANSI escapes.
-
-4. Not specific to the menu: Qualcomm keeps A/B state in the GPT
-   attribute flags, not in "misc", so ab_select_slot() is wrong there.
-
-5. Generic header info for the slot lookup which is a weak hook and
-   the block device comes from the "storage" env var.
-
-6. The Snapdragon override of that hook kept out of the generic file.
-
-7. Shows why the device booted (e.g. recovery, fastboot). Reads the BCB
-   from the "storage" device.
-
-8. PMIC reister layout QPNP-PON specific for PM660 to decode the boot reason.
-
-9. The USB ACM stdio device can be listed before it has been started
-    and puts() then dereferences NULL private data.
-
-10. The weak default picks "mmc" from Kconfig, so on UFS boards
-    "fastboot reboot bootloader" could never write the BCB.
-
-11. Usage documentation for the commands above.
-
-Here's the URL with image of the menu on blueline, sargo and enchilada:
-https://download.ixit.cz/u-boot.png
+- qcom_poweroff: power off via PSCI SYSTEM_OFF
+- usbether: bind and probe the USB Ethernet (RNDIS) gadget on demand
+- dfu_pwr command which handles power button press to exit the DFU mode
+  without board reboot
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
-Petr Hodina (11):
-      cmd: phone_util: add poweroff, dfu_pwr and USB Ethernet commands
-      cmd: phonemenu: pixel drawn boot menu rendering and navigation
-      cmd: phonemenu: mirror the menu to byte-stream consoles
-      boot: android_ab: read the A/B slot from the GPT on Snapdragon
-      cmd: phonemenu: show active A/B slot in the header
-      cmd: phonemenu: read the A/B slot on Snapdragon without "misc"
-      cmd: phonemenu: show Android boot reason in the header
-      cmd: phonemenu: show PMIC PON status in the header
-      usb: gadget: f_acm: check the acm_stdio_puts() against an unstarted device
-      cmd: phone_util: fix "Cannot set reboot flag" on fastboot reboot
-      doc: usage: add phonemenu command documentation
+ MAINTAINERS      |   1 +
+ cmd/Kconfig      |  11 ++++++
+ cmd/Makefile     |   1 +
+ cmd/phone_util.c | 112 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 125 insertions(+)
 
- MAINTAINERS                 |   5 +
- boot/android_ab.c           |  42 ++++
- cmd/Kconfig                 |  11 +
- cmd/Makefile                |   1 +
- cmd/phone_util.c            | 148 ++++++++++++
- cmd/phonemenu.c             | 550 ++++++++++++++++++++++++++++++++++++++++++++
- cmd/phonemenu_qcom.c        | 112 +++++++++
- doc/usage/cmd/phonemenu.rst |  92 ++++++++
- drivers/usb/gadget/f_acm.c  |   3 +
- include/phonemenu.h         |  17 ++
- 10 files changed, 981 insertions(+)
----
-base-commit: ece349ade2973e220f524ce59e59711cc919263f
-change-id: 20261010-b4-phonemenu-series-15f574867344
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 45e9076de67..4b0b0b2f3a5 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -687,6 +687,7 @@ R:	Sumit Garg <sumit.garg@kernel.org>
+ L:	u-boot-qcom@groups.io
+ S:	Maintained
+ T:	git https://source.denx.de/u-boot/custodians/u-boot-snapdragon.git
++F:	cmd/phone_util.c
+ F:	configs/qcm6490_defconfig
+ F:	configs/qcs9100_defconfig
+ F:	drivers/*/*/pm8???-*
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+index c71c6824a19..09dbf73afdc 100644
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -521,6 +521,17 @@ config CMD_BOOTMENU
+ 	help
+ 	  Add an ANSI terminal boot menu command.
+ 
++config CMD_PHONEMENU
++	bool "Boot menu for devices with high resolution display"
++	depends on VIDEO && ARM
++	select MENU
++	select CMD_BOOTMENU
++	help
++	  ANSI-styled boot menu laid out in labelled sections, intended for
++	  devices with high resolution displays. Navigation reuses the bootmenu
++	  key handler, so volume up/down and power work through
++	  BUTTON_REMAP_PHONE_KEYS.
++
+ config CMD_ADTIMG
+ 	bool "adtimg"
+ 	help
+diff --git a/cmd/Makefile b/cmd/Makefile
+index bbbdfcc4ded..762572156cd 100644
+--- a/cmd/Makefile
++++ b/cmd/Makefile
+@@ -36,6 +36,7 @@ obj-$(CONFIG_CMD_BMP) += bmp.o
+ obj-$(CONFIG_CMD_BOOTCOUNT) += bootcount.o
+ obj-$(CONFIG_CMD_BOOTEFI) += bootefi.o
+ obj-$(CONFIG_CMD_BOOTMENU) += bootmenu.o
++obj-$(CONFIG_CMD_PHONEMENU) += phone_util.o
+ obj-$(CONFIG_CMD_BOOTSTAGE) += bootstage.o
+ obj-$(CONFIG_CMD_BOOTZ) += bootz.o
+ obj-$(CONFIG_CMD_BOOTI) += booti.o
+diff --git a/cmd/phone_util.c b/cmd/phone_util.c
+new file mode 100644
+index 00000000000..1389b2ca6cd
+--- /dev/null
++++ b/cmd/phone_util.c
+@@ -0,0 +1,112 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++#include <button.h>
++#include <command.h>
++#include <cyclic.h>
++#include <dfu.h>
++#include <g_dnl.h>
++#include <net-common.h>
++#include <stdio.h>
++#include <asm/system.h>
++#include <linux/delay.h>
++
++#if CONFIG_IS_ENABLED(USB_ETHER)
++static int do_usbether(struct cmd_tbl *cmdtp, int flag, int argc,
++		       char *const argv[])
++{
++	int ret = usb_ether_init();
++
++	if (ret < 0) {
++		printf("usb_ether init failed: %d\n", ret);
++		return CMD_RET_FAILURE;
++	}
++	return CMD_RET_SUCCESS;
++}
++
++U_BOOT_CMD(usbether, 1, 0, do_usbether,
++	   "start USB Ethernet (RNDIS) gadget for tftp/pxe boot",
++	   "\n"
++	   "    - Bind the USB Ethernet gadget driver. After running, set");
++#endif
++
++static int do_phone_poweroff(struct cmd_tbl *cmdtp, int flag, int argc,
++			     char *const argv[])
++{
++	if (!CONFIG_IS_ENABLED(PSCI_RESET)) {
++		printf("PSCI not enabled on this board - cannot power off\n");
++		return CMD_RET_FAILURE;
++	}
++
++	puts("\nPowering off via PSCI SYSTEM_OFF\n");
++	mdelay(50);
++	psci_system_off();
++	return CMD_RET_FAILURE;
++}
++
++U_BOOT_CMD(phone_poweroff, 1, 0, do_phone_poweroff,
++	   "power off the device via PSCI SYSTEM_OFF",
++	   "\n"
++	   "    - Invoke PSCI 0.2 SYSTEM_OFF. TZ handles the PMIC sequencing");
++
++#if CONFIG_IS_ENABLED(CMD_DFU)
++/*
++ * DFU with a power-button exit. The stock DFU loop in common/dfu.c polls
++ * g_dnl_detach() and ctrlc() on every iteration so a call to
++ * g_dnl_trigger_detach() will return us back to the menu.
++ */
++static bool dfu_pwr_pressed;
++static bool dfu_pwr_exit_requested;
++static struct udevice *dfu_pwr_btn;
++static struct cyclic_info dfu_pwr_cyc;
++
++bool dfu_usb_get_reset(void)
++{
++	return !dfu_pwr_exit_requested;
++}
++
++static void dfu_pwr_poll(struct cyclic_info *c)
++{
++	if (dfu_pwr_pressed)
++		return;
++	if (button_get_state(dfu_pwr_btn) == BUTTON_ON) {
++		dfu_pwr_pressed = true;
++		dfu_pwr_exit_requested = true;
++		g_dnl_trigger_detach();
++	}
++}
++
++static int do_dfu_pwr(struct cmd_tbl *cmdtp, int flag, int argc,
++		      char *const argv[])
++{
++	int ret;
++
++	ret = button_get_by_label("Power Button", &dfu_pwr_btn);
++	if (ret) {
++		printf("Power Button not found (err=%d)\n", ret);
++		return CMD_RET_FAILURE;
++	}
++
++	puts("\nDFU mode active. Press the power button to exit.\n");
++
++	dfu_pwr_pressed = false;
++	dfu_pwr_exit_requested = false;
++	cyclic_register(&dfu_pwr_cyc, dfu_pwr_poll,
++			50 * 1000, "dfu_pwr_exit");
++
++	ret = run_command("run dfu", 0);
++
++	cyclic_unregister(&dfu_pwr_cyc);
++
++	/* Debounce release so the press doesn't cascade into the menu. */
++	while (button_get_state(dfu_pwr_btn) == BUTTON_ON)
++		mdelay(20);
++
++	return ret;
++}
++
++U_BOOT_CMD(dfu_pwr, 1, 0, do_dfu_pwr,
++	   "enter DFU mode; exit on power-button press",
++	   "\n"
++	   "    - Run the `dfu` env alias with a cyclic that triggers a\n"
++	   "      gadget detach when the power button is pressed.");
++#endif /* CMD_DFU */
 
-Best regards,
---  
-Petr Hodina <petr.hodina@protonmail.com>
+-- 
+2.55.0
 
