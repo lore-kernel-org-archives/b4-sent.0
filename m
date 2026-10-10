@@ -1,68 +1,153 @@
-From: benthecarman <benthecarman1@gmail.com>
-Date: Fri, 09 Oct 2026 21:42:23 -0500
-Subject: [PATCH 2/2] wifi: iwlwifi: mld: Fix injected 5 GHz legacy rate
+From: =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>
+Date: Sat, 10 Oct 2026 05:37:31 +0000
+Subject: [PATCH net v2] ipv4: fib_trie: prevent speculative out-of-bounds
+ child access
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261009-next-v1-2-b370f5302d27@gmail.com>
-References: <20261009-next-v1-0-b370f5302d27@gmail.com>
-In-Reply-To: <20261009-next-v1-0-b370f5302d27@gmail.com>
-To: Miri Korenblit <miriam.rachel.korenblit@intel.com>
-Cc: Johannes Berg <johannes@sipsolutions.net>, 
- linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
- benthecarman <benthecarman@live.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791600143; l=1532;
- i=benthecarman1@gmail.com; s=20261009; h=from:subject:message-id;
- bh=pSIiTmEuNFIkLVvwgBMZ4Ct5zrF6uVX3C8GZKbTPvWA=;
- b=LIAybz80fCTnZ1BSv6A41an3QQM+78UE2NYejokmHRGdhMv+t4aeX1WlabimIBXQMxuxoxA7i
- VSAF7/aH+wpCCTuHlncsizrXRhnpJUfiPIeeP4dFvRXgRkkv3QWeuRD
-X-Developer-Key: i=benthecarman1@gmail.com; a=ed25519;
- pk=8RDA9X90+5wKUu3kkgPYpamlxYvX93l7iXqMWrkhvOY=
-X-Endpoint-Received: by B4 Relay for benthecarman1@gmail.com/20261009 with auth_id=1149
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261010-fib-trie-nospec-v2-1-30319b4db8d0@nvidia.com>
+X-B4-Tracking: v=1; b=H4sIABrPyWoC/3WNwQ6CMBBEf4Xs2TVtI9B48j8MB1gWWRNb09ZGQ
+ /h3C549zuTNmwUiB+EI52qBwFmieFeCOVRAc+9ujDKWDEaZRitlcZIBU5mg8/HJhDW1jTKWLLc
+ EZfUMPMl7N17BcYLuV8bXcGdKm2vDZonJh8/+m/UO/73IGjVOvbatacaTrfnisozSH8k/oFvX9
+ QtzVgi6xgAAAA==
+X-Change-ID: 20261008-fib-trie-nospec-5c76028c8e7c
+To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ =?utf-8?q?Dani=C3=ABl_Trujillo?= <datrujillo@nvidia.com>, 
+ Alexander Duyck <alexander.h.duyck@redhat.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791610651; l=4726;
+ i=datrujillo@nvidia.com; s=20261008; h=from:subject:message-id;
+ bh=uPUNI9Kq4YpKNfBTtH+vsvHA/nWcjMUXLW9WxS1V+UU=;
+ b=fPgxJUeP5Uvj7gW1hYqR2cTHVIiRiMhX/53xfA2JJ2ZlCcnpkBBc5nYlv+tAev3S6G2HAKUdi
+ Neh+sOmwpJ7AqxvfTf1puPwPidZhG/Os77qQXGqlxbf02Us0Bkz144H
+X-Developer-Key: i=datrujillo@nvidia.com; a=ed25519;
+ pk=AP24zUwENFy2geglpKJAA8oaT41tkteCL9hTWGd88rs=
+X-Endpoint-Received: by B4 Relay for datrujillo@nvidia.com/20261008 with auth_id=1128
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: benthecarman <benthecarman@live.com>
+fib_table_lookup() checks the child index against the bounds before
+passing it to get_child_rcu().
 
-iwl_mld_get_inject_tx_rate() hands the legacy rate index from mac80211
-to iwl_mld_mac80211_rate_idx_to_fw(), which expects the driver's rate
-indices. Outside 2.4 GHz the mac80211 index points into a bitrate
-table that starts at 6 Mbps, so a 12 Mbps injection on 5 or 6 GHz goes
-out as 5.5 Mbps CCK.
+The index is derived from the lookup key, which in turn is derived from
+flp->daddr. A userspace process can therefore influence the index by
+triggering lookups for chosen destination IPv4 addresses.
 
-Add IWL_FIRST_OFDM_RATE outside 2.4 GHz, as mvm does for frames that
-are not injected.
+If this bounds check is mispredicted as in-bounds, an out-of-bounds index
+can be transiently passed to get_child_rcu(). The value loaded beyond the
+child array is then treated as a node pointer. A later transient
+dereference of that pointer can cause a data-dependent cache footprint.
 
-Fixes: d1e879ec600f ("wifi: iwlwifi: add iwlmld sub-driver")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: benthecarman <benthecarman@live.com>
+This was found during Spectre-v1 research. Leakage was demonstrated with
+instrumentation that delays branch resolution with a CLFLUSH before the
+mispredicted branch and makes the leaked location
+deterministic for reproducible measurement. In that setup, a
+userspace-controlled IPv4 lookup key was able to trigger a transient
+out-of-bounds child access. The transient use of the loaded value as a
+pointer caused a data-dependent cache footprint that was recoverable from
+userspace using Prime+Probe. A real-world attacker would likely
+need to delay branch resolution, which was not demonstrated end-to-end
+without the added CLFLUSH.
+
+Sanitize the index with array_index_nospec() before accessing the child
+array. This removed the observed leakage in the described setup.
+
+Apply the hardening before setting cindex in fib_table_lookup(), because
+cindex can later be used by the backtrace path to load another child
+pointer. fib_find_node() has the same pattern, with the checked index
+derived from a user-provided key in fib_table_insert() and
+fib_table_delete(). leaf_walk_rcu() has a similar checked cindex before
+get_child_rcu(), and the traversed state can be influenced by userspace
+actions. fib_find_node() runs under RTNL and
+leaf_walk_rcu() is not on the packet lookup hot path, so harden those
+analogous accesses in the same way.
+
+Fixes: 9f9e636d4f89 ("fib_trie: Optimize fib_table_lookup to avoid wasting time on loops/variables")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM
+Signed-off-by: Daniël Trujillo <datrujillo@nvidia.com>
 ---
- drivers/net/wireless/intel/iwlwifi/mld/tx.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Changes in v2:
+- Move array_index_nospec() before cindex is set in
+  fib_table_lookup() so the backtrace path cannot use an out-of-bounds index
+  (Eric Dumazet).
+- Apply the same hardening to fib_find_node() and leaf_walk_rcu()
+  (Eric Dumazet).
+- Add discovery/testing details of the gadget to the changelog.
+- Link to v1: https://patch.msgid.link/20261008-fib-trie-nospec-v1-1-fa18726d485e@nvidia.com
 
-diff --git a/drivers/net/wireless/intel/iwlwifi/mld/tx.c b/drivers/net/wireless/intel/iwlwifi/mld/tx.c
-index fc501ac0c..317573b5e 100644
---- a/drivers/net/wireless/intel/iwlwifi/mld/tx.c
-+++ b/drivers/net/wireless/intel/iwlwifi/mld/tx.c
-@@ -599,7 +599,16 @@ static u32 iwl_mld_get_inject_tx_rate(struct iwl_mld *mld,
- 		if (u32_get_bits(info->flags, IEEE80211_TX_CTL_STBC))
- 			result |= RATE_MCS_STBC_MSK;
- 	} else {
--		result = iwl_mld_mac80211_rate_idx_to_fw(mld, info, rate->idx);
-+		int rate_idx = rate->idx;
-+
-+		/*
-+		 * mac80211 indexes the band's bitrates, which start at
-+		 * 6 Mbps outside 2.4 GHz; remap to our rate indices.
-+		 */
-+		if (info->band != NL80211_BAND_2GHZ)
-+			rate_idx += IWL_FIRST_OFDM_RATE;
-+
-+		result = iwl_mld_mac80211_rate_idx_to_fw(mld, info, rate_idx);
- 	}
+To: David Ahern <dsahern@kernel.org>
+To: Ido Schimmel <idosch@nvidia.com>
+To: "David S. Miller" <davem@davemloft.net>
+To: Eric Dumazet <edumazet@kernel.org>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Simon Horman <horms@kernel.org>
+To: Alexander Duyck <alexander.h.duyck@redhat.com>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ net/ipv4/fib_trie.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/net/ipv4/fib_trie.c b/net/ipv4/fib_trie.c
+index 248514dce0cd..bdffeff58c95 100644
+--- a/net/ipv4/fib_trie.c
++++ b/net/ipv4/fib_trie.c
+@@ -61,6 +61,7 @@
+ #include <linux/export.h>
+ #include <linux/vmalloc.h>
+ #include <linux/notifier.h>
++#include <linux/nospec.h>
+ #include <net/net_namespace.h>
+ #include <net/inet_dscp.h>
+ #include <net/ip.h>
+@@ -961,6 +962,8 @@ static struct key_vector *fib_find_node(struct trie *t,
+ 			break;
+ 		}
  
- 	if (info->control.antennas)
++		index = array_index_nospec(index, 1ul << n->bits);
++
+ 		/* keep searching until we find a perfect match leaf or NULL */
+ 	} while (IS_TNODE(n));
+ 
+@@ -1466,6 +1469,8 @@ int fib_table_lookup(struct fib_table *tb, const struct flowi4 *flp,
+ 		if (IS_LEAF(n))
+ 			goto found;
+ 
++		index = array_index_nospec(index, 1ul << n->bits);
++
+ 		/* only record pn and cindex if we are going to be chopping
+ 		 * bits later.  Otherwise we are just wasting cycles.
+ 		 */
+@@ -1766,6 +1771,8 @@ static struct key_vector *leaf_walk_rcu(struct key_vector **tn, t_key key)
+ 		if (cindex >> pn->bits)
+ 			break;
+ 
++		cindex = array_index_nospec(cindex, 1ul << pn->bits);
++
+ 		/* descend into the next child */
+ 		n = get_child_rcu(pn, cindex++);
+ 		if (!n)
+@@ -1787,6 +1794,8 @@ static struct key_vector *leaf_walk_rcu(struct key_vector **tn, t_key key)
+ 			continue;
+ 		}
+ 
++		cindex = array_index_nospec(cindex, 1ul << pn->bits);
++
+ 		/* grab the next available node */
+ 		n = get_child_rcu(pn, cindex++);
+ 		if (!n)
 
--- 
-2.55.0
+---
+base-commit: af32da41b0327b9c6a37856ba82b6760d6c8d10e
+change-id: 20261008-fib-trie-nospec-5c76028c8e7c
+
+Best regards,
+--  
+Daniël Trujillo <datrujillo@nvidia.com>
 
