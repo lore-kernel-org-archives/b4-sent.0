@@ -1,231 +1,152 @@
-From: Brad Fitzpatrick <bradfitz@tailscale.com>
-Date: Sun, 11 Oct 2026 01:41:28 +0000
-Subject: [PATCH net 2/2] selftests: net: add a test for GRO of GRE over FOU
- and GUE
+From: Igor Velkov <iav@iav.lv>
+Date: Sun, 11 Oct 2026 05:17:43 +0000
+Subject: [PATCH] arm: mvebu: helios4: derive MAC address from SPI NOR
+ unique ID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261011-bradfitz-gre-fou-gro-b4-v1-2-df713aad1531@tailscale.com>
-References: <20261011-bradfitz-gre-fou-gro-b4-v1-0-df713aad1531@tailscale.com>
-In-Reply-To: <20261011-bradfitz-gre-fou-gro-b4-v1-0-df713aad1531@tailscale.com>
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Shuah Khan <shuah@kernel.org>
-Cc: Antoine Tenart <atenart@kernel.org>, 
- Willem de Bruijn <willemb@google.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- Brad Fitzpatrick <bradfitz@tailscale.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791682889; l=6313;
- i=bradfitz@tailscale.com; s=20261011; h=from:subject:message-id;
- bh=vjzrvcYUSd9pHlNqOyUjxwSHaXeXL6ZpqdPWnkAvhdk=;
- b=RKGXZx8cGy9UYoy8rInsK8UbWDvb5zLMOA16Tu6teqN7bA48J3tU2lqHqpWEOxYrw9GTZMQq0
- bKf0RfWP+1aAg5FQF22iUGbnR64Aqmw/euwf9bCUhOimgjNyoOHFE6r
-X-Developer-Key: i=bradfitz@tailscale.com; a=ed25519;
- pk=RL25YdOUenVJzQaiZDrw/Aqu9ZEwUQBon30yMHGsIKY=
-X-Endpoint-Received: by B4 Relay for bradfitz@tailscale.com/20261011 with auth_id=1152
+Message-Id: <20261011-helios4-flash-uid-mac-v1-1-203cd429f46c@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAPYby2oC/x3MSwqAMAwA0atI1gZMERWvIi5CTW3AHw2KIN7d4
+ vItZh4wSSoGffFAkktN9y2DygJ85G0W1CkbXOUaqogwyqK71RgWtoinTriyRwqOW+o8+44gt0e
+ SoPf/Hcb3/QASykgYZwAAAA==
+To: Stefan Roese <stefan.roese@mailbox.org>, 
+ Dennis Gilmore <dgilmore@redhat.com>
+Cc: Tom Rini <trini@konsulko.com>, u-boot@lists.u-boot-project.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3621; i=iav@iav.lv;
+ h=from:subject:message-id; bh=2niEr8NMC8m66WbZMz5U4o5Kw4aoSUy4WocltDuWjeo=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmnpX9wtHUfKj024ZDMwpYz3eu59u81cmqcXlLOa1lf3
+ 1nM2Pego5SFQYyLQVZMkWXCIY1bGUuu/vX3MH8AM4eVCWQIAxenAEyk2YHhr8DRGKuTOitcNXQ4
+ yg/3lOjf3Dm7enYVB5epDMdaxr8hDxkZJpX+avt2dOYz/cm6udO/exkfzZ/7JyJhZ0vqtUcq+6v
+ /sgIA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Send bulk TCP through GRE tunnels carried over UDP by FOU and by GUE,
-each over IPv4 and IPv6, with GRO on at the receiving veth and
-segmentation off at the sender so the receiver gets wire-sized packets
-to merge. Check that the receiver counts no UDP errors.
+Helios4 has no factory MAC address, so without a saved eth1addr it
+gets a random one on every boot. Derive a stable, locally administered
+address from the SHA-256 of the 64-bit unique ID of the SPI NOR on the
+SoM, the way rockchip_setup_macaddr() does with the CPU ID. A saved
+eth1addr still takes precedence.
 
-Verified under virtme-ng: without the previous patch, all four cases
-fail, with the encapsulation socket counting every merged packet in
-UdpInErrors or Udp6InErrors. With it, they pass in a few seconds.
-
-Assisted-by: LLM
-Signed-off-by: Brad Fitzpatrick <bradfitz@tailscale.com>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- tools/testing/selftests/net/Makefile       |   1 +
- tools/testing/selftests/net/fou_gre_gro.sh | 164 +++++++++++++++++++++++++++++
- 2 files changed, 165 insertions(+)
+Tested on Helios4: two power cycles give the same address and DHCP
+uses it. With the same change on v2026.07, Linux gets the address
+through the device tree and a saved eth1addr is left untouched.
+---
+ board/kobol/helios4/helios4.c | 58 +++++++++++++++++++++++++++++++++++++++++++
+ configs/helios4_defconfig     |  3 +++
+ 2 files changed, 61 insertions(+)
 
-diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
-index 590b33e16d9f..55101ed41c52 100644
---- a/tools/testing/selftests/net/Makefile
-+++ b/tools/testing/selftests/net/Makefile
-@@ -42,6 +42,7 @@ TEST_PROGS := \
- 	fib_rule_tests.sh \
- 	fib_tests.sh \
- 	fin_ack_lat.sh \
-+	fou_gre_gro.sh \
- 	fou_mcast_encap.sh \
- 	fq_band_pktlimit.sh \
- 	gre_gso.sh \
-diff --git a/tools/testing/selftests/net/fou_gre_gro.sh b/tools/testing/selftests/net/fou_gre_gro.sh
-new file mode 100755
-index 000000000000..21ed50f647ae
---- /dev/null
-+++ b/tools/testing/selftests/net/fou_gre_gro.sh
-@@ -0,0 +1,164 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Test that GRE packets carried over UDP (FOU or GUE) get through when the
-+# receiver merges them with GRO.
-+#
-+# Send bulk TCP through such tunnels with GRO on at the receiver, and
-+# segmentation off at the sender so the receiver gets wire-sized packets
-+# to merge, and check that the receiver counts no UDP errors (UdpInErrors
-+# or Udp6InErrors). Also check that GRO really merged packets, by comparing
-+# the UDP datagrams the receiver delivered with the packets its veth
-+# received, so that a setup where GRO doesn't engage skips rather than
-+# passes.
+diff --git a/board/kobol/helios4/helios4.c b/board/kobol/helios4/helios4.c
+index 7714076edf1..342a3cb3c73 100644
+--- a/board/kobol/helios4/helios4.c
++++ b/board/kobol/helios4/helios4.c
+@@ -5,15 +5,21 @@
+  */
+ 
+ #include <config.h>
++#include <env.h>
+ #include <i2c.h>
+ #include <init.h>
+ #include <miiphy.h>
+ #include <net.h>
+ #include <netdev.h>
++#include <spi-mem.h>
++#include <spi_flash.h>
+ #include <asm/global_data.h>
+ #include <asm/io.h>
+ #include <asm/arch/cpu.h>
+ #include <asm/arch/soc.h>
++#include <dm/device.h>
++#include <linux/string.h>
++#include <u-boot/sha256.h>
+ 
+ #include "../drivers/ddr/marvell/a38x/ddr3_init.h"
+ #include <../serdes/a38x/high_speed_env_spec.h>
+@@ -133,3 +139,55 @@ int board_eth_init(struct bd_info *bis)
+ 	cpu_eth_init(bis); /* Built in controller(s) come first */
+ 	return pci_eth_init(bis);
+ }
 +
-+source lib.sh
++#define SPINOR_OP_RDUID		0x4b
++#define SPINOR_UID_LEN		8
 +
-+NSEND=""
-+NRECV=""
++static int helios4_read_flash_uid(u8 *uid)
++{
++	struct spi_mem_op op =
++		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_RDUID, 1),
++			   SPI_MEM_OP_NO_ADDR,
++			   SPI_MEM_OP_DUMMY(4, 1),
++			   SPI_MEM_OP_DATA_IN(SPINOR_UID_LEN, uid, 1));
++	struct spi_flash *flash;
++	struct udevice *dev;
++	int ret;
 +
-+FOU_PORT=5555
-+TCP_PORT=9000
-+SIZE_MB=4
++	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
++				     CONFIG_SF_DEFAULT_CS, &dev);
++	if (ret)
++		return ret;
 +
-+TUN_S=192.168.99.1
-+TUN_R=192.168.99.2
++	flash = dev_get_uclass_priv(dev);
++	ret = spi_mem_exec_op(flash->spi, &op);
++	if (ret)
++		return ret;
 +
-+cleanup() {
-+	cleanup_all_ns
++	if (!memchr_inv(uid, 0x00, SPINOR_UID_LEN) ||
++	    !memchr_inv(uid, 0xff, SPINOR_UID_LEN))
++		return -ENODATA;
++
++	return 0;
 +}
 +
-+trap cleanup EXIT
++/*
++ * The board has no factory MAC address, so derive a stable one from the
++ * unique ID of the SPI NOR on the SoM.
++ */
++int misc_init_r(void)
++{
++	u8 uid[SPINOR_UID_LEN];
++	u8 mac[SHA256_SUM_LEN];
 +
-+# setup_tunnel creates the namespaces, the veth between them and a GRE
-+# tunnel over UDP encapsulation $1 (fou or gue) over IPv$2. It returns
-+# $ksft_skip if the kernel or iproute2 can't set it up.
-+setup_tunnel() {
-+	local encap=$1
-+	local family=$2
-+	local type=gre
-+	local addr_s=10.0.0.1
-+	local addr_r=10.0.0.2
-+	local fou_args="ipproto 47"
++	/* ethernet@70000 is aliased as ethernet1 */
++	if (env_get("eth1addr") || helios4_read_flash_uid(uid))
++		return 0;
 +
-+	if [ "$encap" = gue ]; then
-+		fou_args=gue
-+	fi
-+	if [ "$family" = 6 ]; then
-+		type=ip6gre
-+		addr_s=2001:db8::1
-+		addr_r=2001:db8::2
-+		fou_args="$fou_args -6"
-+	fi
++	sha256_csum_wd(uid, sizeof(uid), mac, CHUNKSZ_SHA256);
++	mac[0] &= 0xfe;	/* unicast */
++	mac[0] |= 0x02;	/* locally administered */
++	eth_env_set_enetaddr("eth1addr", mac);
 +
-+	setup_ns NSEND NRECV || return "$ksft_skip"
-+
-+	ip link add veth_s netns "$NSEND" type veth \
-+		peer name veth_r netns "$NRECV" || return "$ksft_skip"
-+	ip -n "$NSEND" addr add 10.0.0.1/24 dev veth_s
-+	ip -n "$NRECV" addr add 10.0.0.2/24 dev veth_r
-+	ip -n "$NSEND" addr add 2001:db8::1/64 dev veth_s nodad
-+	ip -n "$NRECV" addr add 2001:db8::2/64 dev veth_r nodad
-+	ip -n "$NSEND" link set veth_s up
-+	ip -n "$NRECV" link set veth_r up
-+
-+	ip netns exec "$NRECV" ethtool -K veth_r gro on || return "$ksft_skip"
-+	ip netns exec "$NSEND" ethtool -K veth_s tso off gso off \
-+		tx-gre-segmentation off tx-gre-csum-segmentation off \
-+		tx-udp_tnl-segmentation off tx-udp_tnl-csum-segmentation off ||
-+		return "$ksft_skip"
-+
-+	# shellcheck disable=SC2086 # $fou_args is several arguments
-+	ip netns exec "$NSEND" ip fou add port "$FOU_PORT" $fou_args ||
-+		return "$ksft_skip"
-+	# shellcheck disable=SC2086
-+	ip netns exec "$NRECV" ip fou add port "$FOU_PORT" $fou_args ||
-+		return "$ksft_skip"
-+	ip -n "$NSEND" link add gre_t type "$type" \
-+		local "$addr_s" remote "$addr_r" \
-+		encap "$encap" encap-sport auto encap-dport "$FOU_PORT" ||
-+		return "$ksft_skip"
-+	ip -n "$NRECV" link add gre_t type "$type" \
-+		local "$addr_r" remote "$addr_s" \
-+		encap "$encap" encap-sport auto encap-dport "$FOU_PORT" ||
-+		return "$ksft_skip"
-+
-+	ip -n "$NSEND" addr add "$TUN_S/30" dev gre_t
-+	ip -n "$NRECV" addr add "$TUN_R/30" dev gre_t
-+	ip -n "$NSEND" link set gre_t up
-+	ip -n "$NRECV" link set gre_t up
++	return 0;
 +}
-+
-+# recv_counter prints the sum of the receiver's nstat counters "$@".
-+recv_counter() {
-+	ip netns exec "$NRECV" nstat -az "$@" |
-+		awk '!/^#/ { n += $2 } END { print n + 0 }'
-+}
-+
-+run_test() {
-+	local encap=$1
-+	local family=$2
-+	local name="GRO of GRE in ${encap^^} over IPv$family"
-+	local datagrams
-+	local packets
-+	local errors
-+	local pid
-+	local rc
-+
-+	RET=0
-+
-+	if ! setup_tunnel "$encap" "$family"; then
-+		log_test_skip "$name"
-+		cleanup_all_ns
-+		return
-+	fi
-+
-+	ip netns exec "$NRECV" socat -u \
-+		TCP4-LISTEN:"$TCP_PORT",bind="$TUN_R",reuseaddr OPEN:/dev/null &
-+	pid=$!
-+	wait_local_port_listen "$NRECV" "$TCP_PORT" tcp
-+
-+	# The timeout only bounds failing runs; passing ones take under a second.
-+	dd if=/dev/zero bs=1M count="$SIZE_MB" 2>/dev/null |
-+		ip netns exec "$NSEND" timeout 20 \
-+			socat -u STDIN TCP4:"$TUN_R":"$TCP_PORT"
-+	rc=$?
-+
-+	# Check the UDP error count rather than the duration, which depends
-+	# on the machine.
-+	errors=$(recv_counter UdpInErrors Udp6InErrors)
-+	check_err "$errors" "$errors UDP errors at the receiver"
-+	check_err "$rc" "transfer failed"
-+
-+	# Without errors, a pass only means something if GRO merged packets:
-+	# then the encapsulation socket sees far fewer datagrams than the
-+	# veth received packets.
-+	datagrams=$(recv_counter UdpInDatagrams Udp6InDatagrams)
-+	packets=$(ip netns exec "$NRECV" \
-+		cat /sys/class/net/veth_r/statistics/rx_packets)
-+	if [ "$RET" -eq 0 ] && [ $((datagrams * 2)) -gt "$packets" ]; then
-+		ret_set_ksft_status "$ksft_skip" \
-+			"GRO didn't merge: $datagrams UDP datagrams from $packets packets"
-+	fi
-+
-+	log_test "$name"
-+	kill "$pid" 2>/dev/null
-+	wait "$pid" 2>/dev/null
-+	cleanup_all_ns
-+}
-+
-+require_command socat
-+require_command ethtool
-+require_command nstat
-+
-+modprobe -q fou
-+modprobe -q ip_gre
-+modprobe -q fou6
-+modprobe -q ip6_gre
-+
-+run_test fou 4
-+run_test gue 4
-+run_test fou 6
-+run_test gue 6
-+
-+exit "$EXIT_STATUS"
+diff --git a/configs/helios4_defconfig b/configs/helios4_defconfig
+index c78a41058c8..328e9e92727 100644
+--- a/configs/helios4_defconfig
++++ b/configs/helios4_defconfig
+@@ -33,6 +33,7 @@ CONFIG_USE_PREBOOT=y
+ CONFIG_SYS_CONSOLE_INFO_QUIET=y
+ # CONFIG_DISPLAY_BOARDINFO is not set
+ CONFIG_DISPLAY_BOARDINFO_LATE=y
++CONFIG_MISC_INIT_R=y
+ CONFIG_SPL_MAX_SIZE=0x22fd0
+ CONFIG_SPL_SYS_MALLOC_SIMPLE=y
+ CONFIG_SPL_I2C=y
+@@ -80,3 +81,5 @@ CONFIG_SYS_NS16550=y
+ CONFIG_KIRKWOOD_SPI=y
+ CONFIG_USB=y
+ CONFIG_USB_XHCI_HCD=y
++CONFIG_SHA256=y
++# CONFIG_SPL_SHA256 is not set
 
+---
+base-commit: 5e3b01c8466dbe45cd6a06299f8f4c7e8c1c2363
+change-id: 20261011-helios4-flash-uid-mac-1f2a718cac81
+
+Best regards,
 -- 
-2.43.0
+Igor Velkov <iav@iav.lv>
 
