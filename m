@@ -1,200 +1,74 @@
-From: Linfeng Sun <linfeng.sun.dev@gmail.com>
-Date: Sun, 11 Oct 2026 18:28:24 +0800
-Subject: [PATCH v2] vhost-vdpa: initialize state before publishing cdev
+From: Franck BAUR <franck.baur.67@gmail.com>
+Date: Sun, 11 Oct 2026 14:33:21 +0200
+Subject: [PATCH net] net: jme: keep RX MAC clock enabled for WoL
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261011-fix-null-pointer-in-vhost_vdpa_release-v2-1-66ba929971ce@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/5WOQQqDMBREryJZ9xcTtWhXvUcRSfSrv8REEg0t4
- t0b7Qm6fDDzZjbm0RF6dk825jCQJ2siiEvC2lGaAYG6yEyk4sZTzqGnN5hVa5gtmQUdkIEwWr8
- 0oZtl41Cj9Agqr4pelZWUsmRRNjuMzXPoWf/Yr+qF7XLYj8RIfrHucz4J/Mj9PRo4cMgzVK0QR
- V9l5WOYJOlraydW7/v+BTTre2zuAAAA
-X-Change-ID: 20261011-fix-null-pointer-in-vhost_vdpa_release-b495fb89aaa8
-To: "Michael S. Tsirkin" <mst@redhat.com>, 
- Jason Wang <jasowangio@gmail.com>, 
- =?utf-8?q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>, 
- Tiwei Bie <tiwei.bie@intel.com>
-Cc: kvm@vger.kernel.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Linfeng Sun <linfeng.sun.dev@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791714507; l=6389;
- i=linfeng.sun.dev@gmail.com; s=20261010; h=from:subject:message-id;
- bh=Y4G9d2bUpJtXcpE3Vn6RvUFwVHOuniSMy9HdJebScIo=;
- b=ujctTiK45KYSvbubMxadqYvnoUFlL43mc0BaxQe8wIwi3lAC5E5SpCD4/UTcp3nQuGW+Jfmsq
- a1FIR3+iUQKAea4hf8I+piL/jz3Ki/Z67ApDZOTiRvNgpvI6StCOwMJ
-X-Developer-Key: i=linfeng.sun.dev@gmail.com; a=ed25519;
- pk=IPHLe8L3bTveNcYFP12okRAIWs4eqaVd4jrqSNMj7UU=
-X-Endpoint-Received: by B4 Relay for linfeng.sun.dev@gmail.com/20261010 with auth_id=1150
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261011-jme-wol-submit-v1-1-9cc033e259e4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABCCy2oC/x3MTQ5AMBBA4avIrE2iBKmriAU1GNFWWn+J9O4ay
+ 2/x3gueHJOHJnnB0cWerYkQaQJq6c1MyGM05FleiUwIXDXhbTf056D5QDlOsldKlUVVQ4x2RxM
+ //7AFQwd0IXyO2YvEZQAAAA==
+X-Change-ID: 20261011-jme-wol-submit-9df9accc5367
+To: Guo-Fu Tseng <cooldavid@cooldavid.org>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Franck BAUR <franck.baur.67@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791722003; l=1689;
+ i=franck.baur.67@gmail.com; s=20261011; h=from:subject:message-id;
+ bh=SeoQOmO2eEg732RNb6ToQJ2L/+DWTL9snNuAeoOV8m4=;
+ b=pUZUqe8RJr9IE7ULUKkLVKCCfLZTMEaEsk0YYDHmCA8Fzm9XmN5OcL/qYwDdNWm8jaxFAyDbS
+ yR8OCoroeaOCDBNQIvLd/wV2NpEZgojCkgOcr5qfAvAJI+VfGf1nOAc
+X-Developer-Key: i=franck.baur.67@gmail.com; a=ed25519;
+ pk=4AAmINL6MxJGFmb3HM2Vp734BIHvnGs3+aOTK/FcJ0Y=
+X-Endpoint-Received: by B4 Relay for franck.baur.67@gmail.com/20261011 with auth_id=1158
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Initialize the completion and as hash buckets before cdev_device_add()
-makes the device accessible.
+The suspend path disables the RX engine and resets the MAC before
+jme_powersave_phy() programs PMCS for wake-on-LAN. The MAC reset leaves
+GPREG1_RXCLKOFF set, so the RX MAC clock remains gated when WoL is
+armed.
 
-Fixes: 4c8cf31885f6 ("vhost: introduce vDPA-based backend")
-Assisted-by: OpenAI-Codex:GPT-5.6
-Signed-off-by: Linfeng Sun <linfeng.sun.dev@gmail.com>
+On a JMicron JMC250 [197b:0250] revision 03, PMCS_MFEN is programmed
+correctly but Magic Packet detection does not work while the RX MAC
+clock is gated. Instrumenting JME_PMCS showed that MFDET remained clear
+after receiving Magic Packets.
+
+Re-enabling the RX MAC clock immediately before enabling WoL makes
+MFDET assert and restores wake from ACPI S3. An A/B test without a
+Magic Packet remained suspended until the RTC wake alarm. The wakeup
+was reproduced repeatedly with the patched driver.
+
+Keep the RX MAC clock running while WoL is armed.
+
+Fixes: 854a2e7c331a ("jme: Safer MAC processor reset sequence")
+Cc: stable@vger.kernel.org
+Assisted-by: LLM
+Signed-off-by: Franck BAUR <franck.baur.67@gmail.com>
 ---
-I used // because b4 ignores lines starting with #. Please uncomment those 
-lines before reproducing.
----- reproduce.c ----
-// #include <fcntl.h>
-// #include <pthread.h>
-// #include <stdatomic.h>
-// #include <unistd.h>
+ drivers/net/ethernet/jme.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-// #define THREADS 16
-
-static const char *device_path;
-static const char *sysfs_path;
-static atomic_int stop;
-
-static void *open_close(void *unused)
-{
-	(void)unused;
-
-	while (!atomic_load(&stop)) {
-		int fd;
-
-		if (access(sysfs_path, F_OK))
-			continue;
-		fd = open(device_path, O_RDWR);
-		if (fd >= 0)
-			close(fd);
-	}
-	return NULL;
-}
-
-int main(int argc, char **argv)
-{
-	pthread_t threads[THREADS];
-	int i;
-
-	if (argc != 3)
-		return 1;
-	device_path = argv[1];
-	sysfs_path = argv[2];
-
-	for (i = 0; i < THREADS; i++)
-		if (pthread_create(&threads[i], NULL, open_close, NULL))
-			return 1;
-
-	sleep(45);
-	atomic_store(&stop, 1);
-	for (i = 0; i < THREADS; i++)
-		pthread_join(threads[i], NULL);
-	return 0;
-}
-
----- crash ----
-[   23.959139] BUG: unable to handle page fault for address: fffffffffffffff8
-[   23.959859] #PF: supervisor read access in kernel mode
-[   23.960291] #PF: error_code(0x0000) - not-present page
-[   23.960740] PGD 4869067 P4D 4869067 PUD 486b067 PMD 0 
-[   23.961718] Oops: Oops: 0000 [#1] SMP NOPTI
-[   23.962395] CPU: 1 UID: 0 PID: 126 Comm: poc Not tainted 7.3.0-rc2+ #1 PREEMPT(full) 
-[   23.963059] Hardware name: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
-[   23.963890] RIP: 0010:complete+0x44/0x80
-[   23.964656] Code: 41 d8 01 49 89 c4 8b 03 83 f8 ff 74 05 83 c0 01 89 03 48 8b 53 10 48 8d 43 10 48 39 c2 74 29 48 8b 5b 10 31 d2 be 03 00 00 00 <48> 8b 7b f8 e8 e3 65 fc ff 48 8b 13 48 8b 43 08 48 89 42 08 48 89
-[   23.965679] RSP: 0018:ffffc9000141bc38 EFLAGS: 00000046
-[   23.966109] RAX: ffff888008a678d8 RBX: 0000000000000000 RCX: 0000000000000000
-[   23.966513] RDX: 0000000000000000 RSI: 0000000000000003 RDI: 0000000000000000
-[   23.967005] RBP: ffffc9000141bc50 R08: 0000000000000000 R09: 0000000000000000
-[   23.967483] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000246
-[   23.967896] R13: ffff888008a678d0 R14: 0000000000000000 R15: ffffffff83541780
-[   23.968384] FS:  00007dcd511046c0(0000) GS:ffff8880b94b6000(0000) knlGS:0000000000000000
-[   23.968933] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   23.969398] CR2: fffffffffffffff8 CR3: 0000000009a41000 CR4: 00000000000006f0
-[   23.970091] Call Trace:
-[   23.970735]  <TASK>
-[   23.971266]  vhost_vdpa_release+0x175/0x190
-[   23.971862]  ? __pfx_vhost_vdpa_release+0x10/0x10
-[   23.972298]  __fput+0x1c2/0x520
-[   23.972692]  fput_close_sync+0x6e/0x140
-[   23.973040]  __x64_sys_close+0x51/0xd0
-[   23.973362]  x64_sys_call+0x2680/0x27e0
-[   23.973655]  do_syscall_64+0xbf/0x550
-[   23.973969]  ? restore_fpregs_from_fpstate+0xa1/0x110
-[   23.974322]  ? switch_fpu_return+0xbd/0x190
-[   23.974630]  ? do_syscall_64+0x299/0x550
-[   23.974962]  ? putname+0x7f/0xd0
-[   23.975267]  ? do_faccessat+0x3fe/0x570
-[   23.975583]  ? __sanitizer_cov_trace_cmp4+0x16/0x30
-[   23.975934]  ? fpregs_assert_state_consistent+0x7b/0xc0
-[   23.976272]  ? do_syscall_64+0xfd/0x550
-[   23.976591]  ? __sanitizer_cov_trace_cmp4+0x16/0x30
-[   23.976949]  ? fpregs_assert_state_consistent+0x7b/0xc0
-[   23.977304]  ? do_syscall_64+0xfd/0x550
-[   23.977611]  ? prandom_u32_state+0xd/0x90
-[   23.977933]  ? do_syscall_64+0x31/0x550
-[   23.978248]  entry_SYSCALL_64_after_hwframe+0x76/0x7e
-[   23.978644] RIP: 0033:0x41e94c
-[   23.979296] Code: 0f 05 48 3d 00 f0 ff ff 77 3c c3 0f 1f 00 55 48 89 e5 48 83 ec 10 89 7d fc e8 b0 a5 02 00 8b 7d fc 89 c2 b8 03 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 2c 89 d7 89 45 fc e8 12 a6 02 00 8b 45 fc c9
-[   23.980064] RSP: 002b:00007dcd51104220 EFLAGS: 00000293 ORIG_RAX: 0000000000000003
-[   23.980511] RAX: ffffffffffffffda RBX: 00007dcd51104cdc RCX: 000000000041e94c
-[   23.980887] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
-[   23.981251] RBP: 00007dcd51104230 R08: 0000000000000000 R09: 00007dcd511046c0
-[   23.981604] R10: 0000000000000000 R11: 0000000000000293 R12: 00007dcd511046c0
-[   23.981960] R13: ffffffffffffffb8 R14: 0000000000000000 R15: 00007ffe8c98a0f0
-[   23.982377]  </TASK>
-[   23.982597] Modules linked in:
-[   23.983036] CR2: fffffffffffffff8
-[   23.983847] ---[ end trace 0000000000000000 ]---
----
-Changes in v2:
-- Block opens until probe completes.
-- Link to v1: https://patch.msgid.link/20261011-fix-null-pointer-in-vhost_vdpa_release-v1-1-43ebc225f938@gmail.com
-
-To: "Michael S. Tsirkin" <mst@redhat.com>
-To: Jason Wang <jasowangio@gmail.com>
-To: Eugenio Pérez <eperezma@redhat.com>
-To: Tiwei Bie <tiwei.bie@intel.com>
-Cc: kvm@vger.kernel.org
-Cc: virtualization@lists.linux.dev
-Cc: linux-kernel@vger.kernel.org
----
- drivers/vhost/vdpa.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/vhost/vdpa.c b/drivers/vhost/vdpa.c
-index ff7d90719171..6cff1ed2004e 100644
---- a/drivers/vhost/vdpa.c
-+++ b/drivers/vhost/vdpa.c
-@@ -1655,7 +1655,7 @@ static int vhost_vdpa_probe(struct vdpa_device *vdpa)
- 		return minor;
- 	}
- 
--	atomic_set(&v->opened, 0);
-+	atomic_set(&v->opened, 1);
- 	spin_lock_init(&v->config_lock);
- 	v->minor = minor;
- 	v->vdpa = vdpa;
-@@ -1678,16 +1678,17 @@ static int vhost_vdpa_probe(struct vdpa_device *vdpa)
- 
- 	cdev_init(&v->cdev, &vhost_vdpa_fops);
- 	v->cdev.owner = THIS_MODULE;
-+	init_completion(&v->completion);
-+	for (i = 0; i < VHOST_VDPA_IOTLB_BUCKETS; i++)
-+		INIT_HLIST_HEAD(&v->as[i]);
- 
- 	r = cdev_device_add(&v->cdev, &v->dev);
- 	if (r)
- 		goto err;
- 
--	init_completion(&v->completion);
- 	vdpa_set_drvdata(vdpa, v);
- 
--	for (i = 0; i < VHOST_VDPA_IOTLB_BUCKETS; i++)
--		INIT_HLIST_HEAD(&v->as[i]);
-+	atomic_set_release(&v->opened, 0);
- 
- 	return 0;
- 
+diff --git a/drivers/net/ethernet/jme.c b/drivers/net/ethernet/jme.c
+index 25ec5f757c6828a5f5241340bf3fb01d8e0aa3e9..27ac7405f76fed169d9f1fa84d9875611dcf119c 100644
+--- a/drivers/net/ethernet/jme.c
++++ b/drivers/net/ethernet/jme.c
+@@ -1892,6 +1892,7 @@ jme_powersave_phy(struct jme_adapter *jme)
+ 		jme_set_100m_half(jme);
+ 		if (jme->reg_pmcs & (PMCS_LFEN | PMCS_LREN))
+ 			jme_wait_link(jme);
++		jme_mac_rxclk_on(jme);
+ 		jme_clear_pm_enable_wol(jme);
+ 	} else {
+ 		jme_phy_off(jme);
 
 ---
-base-commit: c69023b5e16e5ffe9368603dca76d85bd544ee57
-change-id: 20261011-fix-null-pointer-in-vhost_vdpa_release-b495fb89aaa8
+base-commit: af32da41b0327b9c6a37856ba82b6760d6c8d10e
+change-id: 20261011-jme-wol-submit-9df9accc5367
 
 Best regards,
---  
-Linfeng Sun <linfeng.sun.dev@gmail.com>
+-- 
+Franck BAUR <franck.baur.67@gmail.com>
 
