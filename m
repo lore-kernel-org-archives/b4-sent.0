@@ -1,93 +1,81 @@
-From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Sun, 11 Oct 2026 18:59:05 -0300
-Subject: [PATCH] wifi: ath10k: don't reset TxBF on disassociation
-MIME-Version: 1.0
+From: Haseeb Malik <haseebulhaq55@gmail.com>
+To: Sabrina Dubroca <sd@queasysnail.net>, netdev@vger.kernel.org
+Cc: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ linux-kernel@vger.kernel.org
+Subject: [PATCH net-next] macsec: check for duplicate SCIs before
+ registering the device
+Date: Sun, 11 Oct 2026 21:57:11 +0000
+Message-ID: <20261011-macsec-early-sci-check-2b1f06af193f@gmail.com>
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261011-ath10k-disassoc-txbf-v1-1-51e09115042e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB3IhJpAr1JcJHHUsaAlE4sg3
- r1pu3yL/09QzsIK9+aEzG9R2dYKahtIc1gnRhmqwRrryBBhKDOZJw6iQXVLWI44InfRe9u55G4
- eavrKPMrx2z76v3WPC6fyfcF1fQDsHsQgeAAAAA==
-X-Change-ID: 20261011-ath10k-disassoc-txbf-e5b77256c647
-To: Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Fabricio Akio <fabricioakio@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791755944; l=2607;
- i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=yedrsdruZNEyyDyVSIF/isrw8Zan8nErgmxmiHmgDL8=;
- b=cew1YosN8FjDoaHqvWa0ZdfMoW2v03LTeceP8lH9yuKAlwlUfTzNqfbbnqqyUzaR4TwKbmhvF
- lfVTE8q2MeUDZRdW5MYxkJijLBIoCrrPwMrydWzTsth7IZQrewfUbLR
-X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
- pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
-X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791756119; l=2042;
+ i=haseebulhaq55@gmail.com; s=default; h=from:subject:message-id;
+ bh=3yrY3KSdmX2Lbj0TP8rJOIrBxb8TNoGAzNCgkYC5p74=;
+ b=L5t3/FxbcRCZzHeu1Bp9cVnk4u93qX8LBwHeRupzFdJL6irVlyKzONIkG1rDbzH+NS7LSCIfl
+ wByRJDDreD2A+fJATZUFNk1vaZng9LpqZUgYgZUPGwOwqDl7RLhyyWo
+X-Developer-Key: i=haseebulhaq55@gmail.com; a=ed25519;
+ pk=U/yCVc6cTsqDqxWLzvoONZ7DUA3EfRU+rfO9Xxo4p2w=
+X-Endpoint-Received: by B4 Relay for haseebulhaq55@gmail.com/default with auth_id=1026
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-WCN3990 firmware WLAN.HL.1.0.1.c2-00498 crashes whenever the vdev's
-TxBF parameter is set while the vdev has no peer for its AP, whatever
-the value. ath10k_bss_disassoc() sets it to 0 once the AP's peer is
-gone. The firmware therefore crashes on every disconnect, including
-the one cfg80211 makes before a suspend without WoWLAN, and whenever
-mac80211 replays the state of an interface that is not associated, as
-on resume from such a suspend and after a firmware restart. Each
-restart replays it again, so the firmware never comes back:
+macsec_newlink() registers and links the device before rejecting a
+duplicate SCI. Registration can emit link notifications for a device
+whose creation ultimately fails with -EBUSY.
 
-  qcom-q6v5-mss 4080000.remoteproc: fatal error received:
-    err_qdi.c:459:EX:wlan_process:1:WLAN RT:107b:PC=b00c8334
+The SCI is already resolved before SecY initialization, so check for a
+duplicate there and return -EBUSY directly. Remove the now-unused unlink
+label while preserving cleanup for failures after registration.
 
-The reset is not needed: ath10k_bss_assoc() sets TxBF again from the
-next AP's capabilities before bringing the vdev up. Drop it.
-
-Fixes: 139e170da98a ("ath10k: add TxBF support")
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
+Suggested-by: Sabrina Dubroca <sd@queasysnail.net>
+Link: https://lore.kernel.org/netdev/ar2KmwhtCMbOKLsG@krikkit/
+Assisted-by: LLM
+Signed-off-by: Haseeb Malik <haseebulhaq55@gmail.com>
 ---
-Tested on a Motorola Moto X4 (SDM630, WCN3990): without this patch a
-disconnect, s2idle without an association and a forced modem restart
-crashed the firmware every time; with it, none of those did, nor
-s2idle while associated.
+Tested on arm64 in virtme with KASAN and lockdep: all 15 MACsec selftests
+and 80 offload/cleanup cycles pass. Rejected-device link notifications
+observed by the diagnostic drop from two to zero.
 
-QCA6174 and QCA9377 also send this command and are untested here.
-Qualcomm's qcacld-3.0, ath11k and ath12k do not send TxBF on
-disassociation. A WCN3990-only hw_params flag was considered, but
-association rewrites the parameter on every chip, so the patch drops
-the reset for all of them.
----
- drivers/net/wireless/ath/ath10k/mac.c | 9 ---------
- 1 file changed, 9 deletions(-)
+ drivers/net/macsec.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath10k/mac.c b/drivers/net/wireless/ath/ath10k/mac.c
-index 8e604697d6c2..30355c598f97 100644
---- a/drivers/net/wireless/ath/ath10k/mac.c
-+++ b/drivers/net/wireless/ath/ath10k/mac.c
-@@ -3190,7 +3190,6 @@ static void ath10k_bss_disassoc(struct ieee80211_hw *hw,
- {
- 	struct ath10k *ar = hw->priv;
- 	struct ath10k_vif *arvif = (void *)vif->drv_priv;
--	struct ieee80211_sta_vht_cap vht_cap = {};
- 	int ret;
+diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
+index 409fd855235ba29125e39bfd80e1c5656aea784f..4e3020586b1e53c5a17f7e31c1f15b87f6443e17 100644
+--- a/drivers/net/macsec.c
++++ b/drivers/net/macsec.c
+@@ -4264,6 +4264,9 @@ static int macsec_newlink(struct net_device *dev,
+ 	if (sci == MACSEC_UNDEF_SCI)
+ 		sci = dev_to_sci(dev, MACSEC_PORT_ES);
  
- 	lockdep_assert_held(&ar->conf_mutex);
-@@ -3204,14 +3203,6 @@ static void ath10k_bss_disassoc(struct ieee80211_hw *hw,
- 			    arvif->vdev_id, ret);
++	if (rx_handler && sci_exists(real_dev, sci))
++		return -EBUSY;
++
+ 	/* Registration can notify listeners before returning. */
+ 	macsec_init_secy(dev, sci, icv_len);
+ 	if (data) {
+@@ -4284,11 +4287,6 @@ static int macsec_newlink(struct net_device *dev,
+ 	if (err < 0)
+ 		goto unregister;
  
- 	arvif->def_wep_key_idx = -1;
--
--	ret = ath10k_mac_vif_recalc_txbf(ar, vif, vht_cap);
--	if (ret) {
--		ath10k_warn(ar, "failed to recalc txbf for vdev %i: %d\n",
--			    arvif->vdev_id, ret);
--		return;
+-	if (rx_handler && sci_exists(real_dev, sci)) {
+-		err = -EBUSY;
+-		goto unlink;
 -	}
 -
- 	arvif->is_up = false;
+ 	/* If h/w offloading is available, propagate to the device */
+ 	if (macsec_is_offloaded(macsec)) {
+ 		const struct macsec_ops *ops;
+@@ -4320,7 +4318,6 @@ static int macsec_newlink(struct net_device *dev,
  
- 	ath10k_mac_txpower_recalc(ar);
+ del_dev:
+ 	macsec_del_dev(macsec);
+-unlink:
+ 	netdev_upper_dev_unlink(real_dev, dev);
+ unregister:
+ 	unregister_netdevice(dev);
 
----
-base-commit: becb95e45ef0dda9ffb35156d909d3da7a2789c3
-change-id: 20261011-ath10k-disassoc-txbf-e5b77256c647
-
-Best regards,
---  
-Fabricio Akio <fabricioakio@gmail.com>
+base-commit: 8df0638138d3e0344fd1fb36cf2d1ca1cf5028f0
 
