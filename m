@@ -1,11 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sun, 11 Oct 2026 21:35:49 +0200
-Subject: [PATCH v2 7/9] arm: dts: rk3399-pinephone-pro-u-boot: drop VOP
- clock assignments
+Date: Sun, 11 Oct 2026 21:35:50 +0200
+Subject: [PATCH v2 8/9] configs: pinephone-pro-rk3399: Update defconfig
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261011-b4-pinephone-pro-defconfig-v2-7-6b7be35fbee7@protonmail.com>
+Message-Id: <20261011-b4-pinephone-pro-defconfig-v2-8-6b7be35fbee7@protonmail.com>
 References: <20261011-b4-pinephone-pro-defconfig-v2-0-6b7be35fbee7@protonmail.com>
 In-Reply-To: <20261011-b4-pinephone-pro-defconfig-v2-0-6b7be35fbee7@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -18,52 +17,81 @@ Cc: Peter Robinson <pbrobinson@gmail.com>, David Heidelberg <david@ixit.cz>,
  Lukasz Majewski <lukma@denx.de>, 
  Anatolij Gustschin <ag.dev.uboot@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791747347; l=1253;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791747347; l=2042;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=gTmDh5AgUAZwjac0+N138NYZiGlNvOgxxIBxbjeW3P4=;
- b=cW8cg1KBub+iU0XYrXW8LrrGPRl+pipEcJhVmZ3KPtGsn/cXlX6pV/+oWDnFllmT2q4rHD1UL
- I0maXnpns5SC7CQJLXD846k4G8zvxlc0QoHngYIzdqmJKwrQ9UjBIqo
+ bh=rQ4wSUTjR+TG1pW9NQEigFLQuEmPwsgkU+YttSHkCC8=;
+ b=gwl9Hg2zf8oX+YIAngmqmQJ3MPnnabS4/vwuOodJ2lg1h/8xRD9QMzuXg6n04b8dO9RixugHv
+ pBilg2gHCLjDmsnUVgpuZGNB59dhYzCOF1/VLP27QR73DpDNWunBQv2
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3399 clock driver cannot handle DCLK_VOP0_DIV, ACLK_VOP0 and
-HCLK_VOP0 parents through clk_set_defaults(). Therefore probing the VOP
-fails with -ENOENT.
-
-Delete the assigned-clock properties on both VOPs and disable vopb.
-Only vopl drives the panel and the driver shares a single PLL between
-the two VOPs anyway.
-
-Based on megi's fd095c54eee ("rockchip: rk3399: DTS video output/menu
-support on Pinephone Pro"), https://codeberg.org/megi/u-boot
+Enable:
+- the ADC volume keys and the keyboard glue with phone key remap
+- the USB gadget stack with DFU (SF/MMC/RAM) and mass storage
+- the watchdog
+- the clk/pause commands
+- replace the eDP display driver with the DW MIPI DSI one which the
+  Himax HX8394 panel needs
+- enable the D-PHY helpers and the video bridge uclass
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- arch/arm/dts/rk3399-pinephone-pro-u-boot.dtsi | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ configs/pinephone-pro-rk3399_defconfig | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm/dts/rk3399-pinephone-pro-u-boot.dtsi b/arch/arm/dts/rk3399-pinephone-pro-u-boot.dtsi
-index 2825d43a9d8..a3a8610d56f 100644
---- a/arch/arm/dts/rk3399-pinephone-pro-u-boot.dtsi
-+++ b/arch/arm/dts/rk3399-pinephone-pro-u-boot.dtsi
-@@ -41,3 +41,15 @@
- 	status = "okay";
- };
- 
-+&vopb {
-+	/delete-property/ assigned-clocks;
-+	/delete-property/ assigned-clock-rates;
-+	/delete-property/ assigned-clock-parents;
-+	status = "disabled";
-+};
-+
-+&vopl {
-+	/delete-property/ assigned-clocks;
-+	/delete-property/ assigned-clock-rates;
-+	/delete-property/ assigned-clock-parents;
-+};
+diff --git a/configs/pinephone-pro-rk3399_defconfig b/configs/pinephone-pro-rk3399_defconfig
+index 81bc6d5400d..54f155abefd 100644
+--- a/configs/pinephone-pro-rk3399_defconfig
++++ b/configs/pinephone-pro-rk3399_defconfig
+@@ -29,21 +29,31 @@ CONFIG_SYS_SPI_U_BOOT_OFFS=0xE0000
+ CONFIG_SPL_ATF_NO_PLATFORM_PARAM=y
+ CONFIG_TPL=y
+ CONFIG_CMD_BOOTZ=y
++CONFIG_CMD_CLK=y
++CONFIG_CMD_DFU=y
+ CONFIG_CMD_GPIO=y
+ CONFIG_CMD_GPT=y
+ CONFIG_CMD_I2C=y
+ CONFIG_CMD_MMC=y
+ CONFIG_CMD_USB=y
++CONFIG_CMD_USB_MASS_STORAGE=y
+ # CONFIG_CMD_SETEXPR is not set
+ CONFIG_CMD_TIME=y
++CONFIG_CMD_PAUSE=y
+ CONFIG_CMD_PMIC=y
+ CONFIG_CMD_REGULATOR=y
+ CONFIG_SPL_OF_CONTROL=y
+ CONFIG_OF_SPL_REMOVE_PROPS="clock-names interrupt-parent assigned-clocks assigned-clock-rates assigned-clock-parents"
+ CONFIG_ENV_IS_IN_SPI_FLASH=y
+ CONFIG_ENV_RELOC_GD_ENV_ADDR=y
++CONFIG_BUTTON_REMAP_PHONE_KEYS=y
++CONFIG_BUTTON_ADC=y
++CONFIG_DFU_MMC=y
++CONFIG_DFU_RAM=y
++CONFIG_DFU_SF=y
+ CONFIG_ROCKCHIP_GPIO=y
+ CONFIG_SYS_I2C_ROCKCHIP=y
++CONFIG_BUTTON_KEYBOARD=y
+ CONFIG_LED=y
+ CONFIG_LED_GPIO=y
+ CONFIG_MMC_DW=y
+@@ -80,8 +90,13 @@ CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE=y
+ CONFIG_USB_HOST_ETHER=y
+ CONFIG_USB_ETHER_ASIX=y
+ CONFIG_USB_ETHER_RTL8152=y
++CONFIG_USB_GADGET=y
+ CONFIG_VIDEO=y
+ CONFIG_DISPLAY=y
+ CONFIG_VIDEO_ROCKCHIP=y
+-CONFIG_DISPLAY_ROCKCHIP_EDP=y
++CONFIG_DISPLAY_ROCKCHIP_DW_MIPI=y
++CONFIG_VIDEO_LCD_HIMAX_HX8394=y
++CONFIG_MIPI_DPHY_HELPERS=y
++CONFIG_VIDEO_BRIDGE=y
++CONFIG_WDT=y
+ CONFIG_ERRNO_STR=y
 
 -- 
 2.55.0
