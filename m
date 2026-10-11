@@ -1,154 +1,93 @@
-From: Alexander Andreev <carzil@yandex.ru>
-Date: Mon, 12 Oct 2026 00:12:40 +0300
-Subject: [PATCH] xfs: return -EIO from xfs_log_force_inode() after a
- shutdown
+From: Fabricio Akio <fabricioakio@gmail.com>
+Date: Sun, 11 Oct 2026 18:59:05 -0300
+Subject: [PATCH] wifi: ath10k: don't reset TxBF on disassociation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-xfs-dir-fsync-shutdown-v1-1-79b5905f5280@yandex.ru>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ6DMAxA4asgz1hKIoTaXgUxQOwUdwgo5leIu
- ze04ze8d4JyElZ4FSckXkVljBm2LMAPXXwzCmWDM662xlrcgyJJwqBH9KjDMtO4Rawr6o17PEP
- lCHI8JQ6y/8ZN+7cu/Yf9fN/gur6M+3R3egAAAA==
-X-Change-ID: 20261011-xfs-dir-fsync-shutdown-64db0289f42d
-To: linux-xfs@vger.kernel.org
-Cc: Carlos Maiolino <cem@kernel.org>, Dave Chinner <david@fromorbit.com>, 
- Christoph Hellwig <hch@lst.de>, linux-kernel@vger.kernel.org, 
- Alexander Andreev <carzil@yandex.ru>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791753183; l=4345;
- i=carzil@yandex.ru; s=20261011; h=from:subject:message-id;
- bh=LURA8bDLkdqfdDM1Pbeo2MYn4rNLssDbzZm/qD+GEZ4=;
- b=tLY4NEd50Ku6Gq1jkSMYdmTvdoMGBpYElx50ZrH34rKJfNi6hjUc8zzHFmuRwL2qanPA+xml+
- +D+6uhpf4VXDHd94T0XoTCbSIG1OEK9L6mEA/LSeFjjmcJekW+Y2HmR
-X-Developer-Key: i=carzil@yandex.ru; a=ed25519;
- pk=sdOm34vmqWa+IJ2OaVfz4PiCxQffyz8vX78oj7ww7F0=
-X-Endpoint-Received: by B4 Relay for carzil@yandex.ru/20261011 with auth_id=1162
+Message-Id: <20261011-ath10k-disassoc-txbf-v1-1-51e09115042e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB3IhJpAr1JcJHHUsaAlE4sg3
+ r1pu3yL/09QzsIK9+aEzG9R2dYKahtIc1gnRhmqwRrryBBhKDOZJw6iQXVLWI44InfRe9u55G4
+ eavrKPMrx2z76v3WPC6fyfcF1fQDsHsQgeAAAAA==
+X-Change-ID: 20261011-ath10k-disassoc-txbf-e5b77256c647
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Fabricio Akio <fabricioakio@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791755944; l=2607;
+ i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
+ bh=yedrsdruZNEyyDyVSIF/isrw8Zan8nErgmxmiHmgDL8=;
+ b=cew1YosN8FjDoaHqvWa0ZdfMoW2v03LTeceP8lH9yuKAlwlUfTzNqfbbnqqyUzaR4TwKbmhvF
+ lfVTE8q2MeUDZRdW5MYxkJijLBIoCrrPwMrydWzTsth7IZQrewfUbLR
+X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
+ pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
+X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-fsync() of a directory can return 0 after a log I/O error has shut the
-filesystem down, although the change it was asked to persist never
-reached the log:
+WCN3990 firmware WLAN.HL.1.0.1.c2-00498 crashes whenever the vdev's
+TxBF parameter is set while the vdev has no peer for its AP, whatever
+the value. ath10k_bss_disassoc() sets it to 0 once the AP's peer is
+gone. The firmware therefore crashes on every disconnect, including
+the one cfg80211 makes before a suspend without WoWLAN, and whenever
+mac80211 replays the state of an interface that is not associated, as
+on resume from such a suspend and after a firmware restart. Each
+restart replays it again, so the firmware never comes back:
 
-  task A                          task B
-  fd = open("dir")
-  rename("dir/a", "dir/b")
-                                  syncfs(fd2) = -EIO
-                                  (log write fails, fs shut down)
-  fsync(fd) = 0
+  qcom-q6v5-mss 4080000.remoteproc: fatal error received:
+    err_qdi.c:459:EX:wlan_process:1:WLAN RT:107b:PC=b00c8334
 
-Task B can be anything that writes the log: syncfs(2), fsync() of
-another file, the background CIL push. Once the device is back and the
-filesystem is mounted again, "dir/b" is gone.
+The reset is not needed: ath10k_bss_assoc() sets TxBF again from the
+next AP's capabilities before bringing the vdev up. Drop it.
 
-xfs_dir_fsync() calls xfs_log_force_inode(), which forces the log only
-if the inode has a commit sequence. The shutdown aborts the CIL and
-unpins the inode, which clears the sequence, so there is nothing to
-force. A sequence read just before the abort ends the same way, as
-xlog_cil_force_seq() then returns NULLCOMMITLSN.
-
-xfs_file_fsync() checks for a shutdown, but xfs_dir_fsync() does not.
-Adding the check was discussed in 2014 [1].
-
-Fix this by checking for a log shutdown in xfs_log_force_inode() after
-the force. That also gives -EIO to its other callers that rely on it for
-durability: NFS ->commit_metadata, fallocate() on synchronous files and
-pNFS block allocation.
-
-Link: https://lore.kernel.org/all/535E8344.2070209@redhat.com/ [1]
-Fixes: 1da2f2dbf2d2 ("xfs: optimize fsync on directories")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Alexander Andreev <carzil@yandex.ru>
+Fixes: 139e170da98a ("ath10k: add TxBF support")
+Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
 ---
-Found with fault injection on a network block device. On v7.3-rc6 the
-reproducer below prints "fsync(dir) = 0" and the rename is gone after
-the remount. With the patch fsync() returns EIO.
-fstests on xfs: the same 13 of 1017 tests fail with and without the
-patch in -g quick, and the same 2 of 127 in -g shutdown,log,recoveryloop.
-If you want a new fstests test for this, I can send it as a separate
-patch.
+Tested on a Motorola Moto X4 (SDM630, WCN3990): without this patch a
+disconnect, s2idle without an association and a forced modem restart
+crashed the firmware every time; with it, none of those did, nor
+s2idle while associated.
 
-I don't know xfs well, so please tell me if this should be done
-differently. An LLM helped trace the code and write the patch. I
-reviewed and tested it.
-
-#!/bin/bash
-# fsync() of a directory returns 0 after a log I/O error, and the rename is lost.
-# Usage: ./repro.sh xfs|ext4  (as root, needs dmsetup and python3)
-set -e
-fs=${1:-xfs}
-img=/tmp/repro.img mnt=/tmp/repro.mnt dev=/dev/mapper/repro
-sectors=$((512 * 2048))
-
-# Swap the dm table under the mounted filesystem without freezing it.
-dm_table() {
-	dmsetup reload repro --table "0 $sectors $1"
-	dmsetup suspend --nolockfs --noflush repro
-	dmsetup resume repro
-}
-
-# A filesystem on dm-linear over a loop device, with "a" on disk.
-rm -f $img && truncate -s 512M $img && mkdir -p $mnt
-loop=$(losetup -f --show $img)
-dmsetup create repro --table "0 $sectors linear $loop 0"
-mkfs.$fs -q $dev && mount $dev $mnt
-echo data > $mnt/a && sync -f $mnt
-
-# Open the directory, rename a -> b, then make the device fail.
-exec 3< $mnt
-mv $mnt/a $mnt/b
-dm_table error
-
-# Something else hits the error first, then fsync() the open directory.
-sync -f $mnt || true
-if python3 -c 'import os; os.fsync(3)' 2>/dev/null; then
-	echo "fsync(dir) = 0"
-else
-	echo "fsync(dir) failed"
-fi
-exec 3<&-
-
-# Bring the device back: if fsync() returned 0, "b" must be there.
-umount $mnt && dm_table "linear $loop 0" && mount $dev $mnt
-ls $mnt
-umount $mnt && dmsetup remove repro && losetup -d $loop
+QCA6174 and QCA9377 also send this command and are untested here.
+Qualcomm's qcacld-3.0, ath11k and ath12k do not send TxBF on
+disassociation. A WCN3990-only hw_params flag was considered, but
+association rewrites the parameter on every chip, so the patch drops
+the reset for all of them.
 ---
- fs/xfs/xfs_inode.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ drivers/net/wireless/ath/ath10k/mac.c | 9 ---------
+ 1 file changed, 9 deletions(-)
 
-diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-index 621513d72..bb3d727f6 100644
---- a/fs/xfs/xfs_inode.c
-+++ b/fs/xfs/xfs_inode.c
-@@ -2677,6 +2677,7 @@ xfs_log_force_inode(
+diff --git a/drivers/net/wireless/ath/ath10k/mac.c b/drivers/net/wireless/ath/ath10k/mac.c
+index 8e604697d6c2..30355c598f97 100644
+--- a/drivers/net/wireless/ath/ath10k/mac.c
++++ b/drivers/net/wireless/ath/ath10k/mac.c
+@@ -3190,7 +3190,6 @@ static void ath10k_bss_disassoc(struct ieee80211_hw *hw,
  {
- 	struct xfs_inode_log_item *iip = ip->i_itemp;
- 	xfs_csn_t		seq = 0;
-+	int			error = 0;
+ 	struct ath10k *ar = hw->priv;
+ 	struct ath10k_vif *arvif = (void *)vif->drv_priv;
+-	struct ieee80211_sta_vht_cap vht_cap = {};
+ 	int ret;
  
- 	if (!iip)
- 		return 0;
-@@ -2685,9 +2686,12 @@ xfs_log_force_inode(
- 	seq = iip->ili_commit_seq;
- 	spin_unlock(&iip->ili_lock);
+ 	lockdep_assert_held(&ar->conf_mutex);
+@@ -3204,14 +3203,6 @@ static void ath10k_bss_disassoc(struct ieee80211_hw *hw,
+ 			    arvif->vdev_id, ret);
  
--	if (!seq)
--		return 0;
--	return xfs_log_force_seq(ip->i_mount, seq, XFS_LOG_SYNC, NULL);
-+	if (seq)
-+		error = xfs_log_force_seq(ip->i_mount, seq, XFS_LOG_SYNC, NULL);
-+
-+	if (!error && xlog_is_shutdown(ip->i_mount->m_log))
-+		error = -EIO;
-+	return error;
- }
+ 	arvif->def_wep_key_idx = -1;
+-
+-	ret = ath10k_mac_vif_recalc_txbf(ar, vif, vht_cap);
+-	if (ret) {
+-		ath10k_warn(ar, "failed to recalc txbf for vdev %i: %d\n",
+-			    arvif->vdev_id, ret);
+-		return;
+-	}
+-
+ 	arvif->is_up = false;
  
- /*
+ 	ath10k_mac_txpower_recalc(ar);
 
 ---
-base-commit: b88c841d11641923fa3a4da011d7202cd89df68a
-change-id: 20261011-xfs-dir-fsync-shutdown-64db0289f42d
+base-commit: becb95e45ef0dda9ffb35156d909d3da7a2789c3
+change-id: 20261011-ath10k-disassoc-txbf-e5b77256c647
 
 Best regards,
 --  
-Alexander Andreev <carzil@yandex.ru>
+Fabricio Akio <fabricioakio@gmail.com>
 
