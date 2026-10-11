@@ -1,74 +1,136 @@
-From: Franck BAUR <franck.baur.67@gmail.com>
-Date: Sun, 11 Oct 2026 14:33:21 +0200
-Subject: [PATCH net] net: jme: keep RX MAC clock enabled for WoL
+From: Muzaffer Kadir <muzafferkadir@mainlining.org>
+Subject: [PATCH v5 0/7] Add Initial Support For MSM8952, Add General Mobile
+ Shamrock
+Date: Sun, 11 Oct 2026 19:51:22 +0300
+Message-Id: <20261011-msm8952-initial-support-v5-0-1857074992ec@mainlining.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261011-jme-wol-submit-v1-1-9cc033e259e4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABCCy2oC/x3MTQ5AMBBA4avIrE2iBKmriAU1GNFWWn+J9O4ay
- 2/x3gueHJOHJnnB0cWerYkQaQJq6c1MyGM05FleiUwIXDXhbTf056D5QDlOsldKlUVVQ4x2RxM
- //7AFQwd0IXyO2YvEZQAAAA==
-X-Change-ID: 20261011-jme-wol-submit-9df9accc5367
-To: Guo-Fu Tseng <cooldavid@cooldavid.org>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Franck BAUR <franck.baur.67@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791722003; l=1689;
- i=franck.baur.67@gmail.com; s=20261011; h=from:subject:message-id;
- bh=SeoQOmO2eEg732RNb6ToQJ2L/+DWTL9snNuAeoOV8m4=;
- b=pUZUqe8RJr9IE7ULUKkLVKCCfLZTMEaEsk0YYDHmCA8Fzm9XmN5OcL/qYwDdNWm8jaxFAyDbS
- yR8OCoroeaOCDBNQIvLd/wV2NpEZgojCkgOcr5qfAvAJI+VfGf1nOAc
-X-Developer-Key: i=franck.baur.67@gmail.com; a=ed25519;
- pk=4AAmINL6MxJGFmb3HM2Vp734BIHvnGs3+aOTK/FcJ0Y=
-X-Endpoint-Received: by B4 Relay for franck.baur.67@gmail.com/20261011 with auth_id=1158
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OwWrDMAwG4FcpPs9DVmIn3mnvMXpwbCUVNE6ws
+ 9BR8u5zyxiFNTv+4tcnXUWmxJTF2+EqEq2ceYol6JeD8CcXB5IcShYIaMCClWMeW6tRcuSF3Vn
+ mz3me0iINONDWIylNomzPiXq+3OWPY8knzsuUvu6HVnWb/pgKd81VSZBATY26aTuN9fvoOJ5LL
+ Q6vUxrEDV7xETP7GBassa0vPQyB1FOsesBQ7WNVwTpr+lD1hLbtnmL1L6YA/vmsLhj54L1y3iD
+ 4P9i2bd88SDqeqgEAAA==
+X-Change-ID: 20260909-msm8952-initial-support-60a059c2e15e
+To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, "Joerg Roedel (AMD)" <joro@8bytes.org>, 
+ Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Amit Kucheria <amitk@kernel.org>, 
+ Thara Gopinath <thara.gopinath@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Bjorn Andersson <andersson@kernel.org>, 
+ Abel Vesa <abelvesa@kernel.org>, Kees Cook <kees@kernel.org>, 
+ Tony Luck <tony.luck@intel.com>, 
+ "Guilherme G. Piccoli" <gpiccoli@igalia.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, iommu@lists.linux.dev, 
+ linux-pm@vger.kernel.org, linux-input@vger.kernel.org, 
+ Muzaffer Kadir <muzafferkadir@mainlining.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791737529; l=3978;
+ i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
+ bh=eeHEV2MkIi+U50B2kClrbSibq1hG+SpbenmXjJHpank=;
+ b=ZsWlzngOwlroEc7ZpShouNNhxpcBcWzhwzhUxDLeErgfcl4r/guv6VNJ1w9jv3ekhoNnfK/4G
+ uWcHV1XlXBwBPo4X3cC91BEAlZ1MkmYcS9NPPscbL5fodjXE+U/UjUz
+X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
+ pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
+X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The suspend path disables the RX engine and resets the MAC before
-jme_powersave_phy() programs PMCS for wake-on-LAN. The MAC reset leaves
-GPREG1_RXCLKOFF set, so the RX MAC clock remains gated when WoL is
-armed.
+MSM8952 is a SoC with 8 core cpu and Adreno 405 gpu.
 
-On a JMicron JMC250 [197b:0250] revision 03, PMCS_MFEN is programmed
-correctly but Magic Packet detection does not work while the RX MAC
-clock is gated. Instrumenting JME_PMCS showed that MFDET remained clear
-after receiving Magic Packets.
+Ported without uart connection. ramoops and usb
+mainly used to debug.
+USB is not enabled in this series because it
+depends on the not yet upstreamed (and not developed by me)
+pmi8950_smbcharger.
 
-Re-enabling the RX MAC clock immediately before enabling WoL makes
-MFDET assert and restores wake from ACPI S3. An A/B test without a
-Magic Packet remained suspended until the RTC wake alarm. The wakeup
-was reproduced repeatedly with the patched driver.
+General Mobile shamrock display panel driver
+is generated using MSM8916's mdss dsi panel
+driver generator and tested with it. I didn't
+include it.
 
-Keep the RX MAC clock running while WoL is armed.
+Pinctrl driver was submitted and merged here:
+https://lore.kernel.org/all/20260907-msm8952-pinctrl-v5-0-9a2d8d72ffdb@mainlining.org/
 
-Fixes: 854a2e7c331a ("jme: Safer MAC processor reset sequence")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Franck BAUR <franck.baur.67@gmail.com>
+Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- drivers/net/ethernet/jme.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v5:
+- Added opp table for spi and uart.
+- Wired all i2c and spi power-domains
+- Dropped default slope from thermal driver.
+- Link to v4: https://patch.msgid.link/20261006-msm8952-initial-support-v4-0-ecdcc1ac620c@mainlining.org
 
-diff --git a/drivers/net/ethernet/jme.c b/drivers/net/ethernet/jme.c
-index 25ec5f757c6828a5f5241340bf3fb01d8e0aa3e9..27ac7405f76fed169d9f1fa84d9875611dcf119c 100644
---- a/drivers/net/ethernet/jme.c
-+++ b/drivers/net/ethernet/jme.c
-@@ -1892,6 +1892,7 @@ jme_powersave_phy(struct jme_adapter *jme)
- 		jme_set_100m_half(jme);
- 		if (jme->reg_pmcs & (PMCS_LFEN | PMCS_LREN))
- 			jme_wait_link(jme);
-+		jme_mac_rxclk_on(jme);
- 		jme_clear_pm_enable_wol(jme);
- 	} else {
- 		jme_phy_off(jme);
+Changes in v4:
+- Dropped 1651200000 freq on cluster 1 because it depends on speedbin 3
+  and speedbin is not included in this patch series
+- Dropped applied patches
+- Changed mdss_dsi0 power-domain to MDSS_GDSC
+- Reformatted SoC dtsi file
+- Added the remaining reserved-memory entries for not added parts
+- Rename adsp_mem to adsp_fw_mem
+- Drop the "ts-" prefix of touchscreen pinctrl in device dts.
+- Link to v3: https://patch.msgid.link/20260921-msm8952-initial-support-v3-0-b96fd3fe298b@mainlining.org
+
+Changes in v3:
+- Improved GCC driver, also rewrote resets part
+- Rewrote the dt-binding side of gcc
+- Reformatted Device tree files with dt-check-style tool
+- Added reset to sdhci1 and sdhci2
+- Added cx regulator to gcc
+- Added gcc commit messages that it is a derived driver
+- Dropped adsp_mem, renamed lpass_mem to adsp_mem
+- Changed tusb320 interrupt from rising to falling as downstream uses
+- Link to v2: https://patch.msgid.link/20260916-msm8952-initial-support-v2-0-798c2602dde1@mainlining.org
+
+Changes in v2:
+- Changed device dts file as David's and Konrad's suggestions
+- Removed accidental duplicated clock assigments and fixed wrong gcc gp1,gp2
+  and gp3 parent_maps
+- Updated commit messages to make it wrapped at 72 character.
+- Fixed spi1 tlmm node naming
+- Added remaining spi and i2c nodes
+- Wired up mpm
+- Add mmio-sram to rpm_msg_ram
+- Reformatted msm8952.dtsi
+- Removed rpmcc-msm8952 driver entry and replaced it with rpmcc-msm8976
+- Merged sdhci tlmm pins to single nodes, now it is similar to existing SoCs
+- Rebased to latest linux-next, now storage works
+- Removed polling-delay properties from tsens
+- Link to v1: https://lore.kernel.org/r/20260912-msm8952-initial-support-v1-0-0e742578b524@mainlining.org
 
 ---
-base-commit: af32da41b0327b9c6a37856ba82b6760d6c8d10e
-change-id: 20261011-jme-wol-submit-9df9accc5367
+Muzaffer Kadir (7):
+      dt-bindings: nvmem: Add compatible for MSM8952
+      dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU to SMMUv2 compatibles
+      dt-bindings: thermal: tsens: Add MSM8952
+      thermal: qcom: tsens: Add support for MSM8952 tsens
+      arm64: dts: qcom: Add initial support for MSM8952
+      dt-bindings: input: touchscreen: goodix: Add binding for GT970
+      arm64: dts: qcom: generalmobile-shamrock: new device
+
+ .../bindings/input/touchscreen/goodix.yaml         |   35 +-
+ .../devicetree/bindings/iommu/qcom,iommu.yaml      |    1 +
+ .../devicetree/bindings/nvmem/qcom,qfprom.yaml     |    1 +
+ .../devicetree/bindings/thermal/qcom-tsens.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../dts/qcom/msm8952-generalmobile-shamrock.dts    |  435 +++
+ arch/arm64/boot/dts/qcom/msm8952.dtsi              | 2784 ++++++++++++++++++++
+ drivers/thermal/qcom/tsens-v1.c                    |   41 +
+ drivers/thermal/qcom/tsens.c                       |    3 +
+ drivers/thermal/qcom/tsens.h                       |    2 +-
+ 10 files changed, 3288 insertions(+), 16 deletions(-)
+---
+base-commit: becb95e45ef0dda9ffb35156d909d3da7a2789c3
+change-id: 20260909-msm8952-initial-support-60a059c2e15e
 
 Best regards,
--- 
-Franck BAUR <franck.baur.67@gmail.com>
+--  
+Muzaffer Kadir <muzafferkadir@mainlining.org>
 
