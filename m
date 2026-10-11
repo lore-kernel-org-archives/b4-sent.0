@@ -1,178 +1,115 @@
-From: Linfeng Sun <linfeng.sun.dev@gmail.com>
-Date: Sun, 11 Oct 2026 16:48:40 +0800
-Subject: [PATCH] vhost-vdpa: initialize state before publishing cdev
+From: Armandas Kvietkus <armandas.kvietkus@proton.me>
+Subject: [PATCH v4 0/2] media: i2c: Samsung S5K3T2 image sensor
+Date: Sun, 11 Oct 2026 11:13:26 +0200
+Message-Id: <20261011-upstream-s5k3t2-v4-0-d33b12fb3263@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261011-fix-null-pointer-in-vhost_vdpa_release-v1-1-43ebc225f938@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNQQrCMBCF4auUWTvQFJXWq4iUSTu1IyEJmTQIp
- Xc36vJbvP/toJyEFW7NDomLqARfYU4NTCv5J6PM1dC13dW0xuAib/SbcxiD+MwJxWNZg+axzJH
- GxI5JGe15uCy2H4iohxqLievyd3R//K2bffGUv3U4jg/HsmXpigAAAA==
-X-Change-ID: 20261011-fix-null-pointer-in-vhost_vdpa_release-b495fb89aaa8
-To: "Michael S. Tsirkin" <mst@redhat.com>, 
- Jason Wang <jasowangio@gmail.com>, 
- =?utf-8?q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>, 
- Tiwei Bie <tiwei.bie@intel.com>
-Cc: kvm@vger.kernel.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Linfeng Sun <linfeng.sun.dev@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791708522; l=5684;
- i=linfeng.sun.dev@gmail.com; s=20261010; h=from:subject:message-id;
- bh=lO63c612f3W01eAQKW8gQ/u7SgviABtFHcPCPVA69xg=;
- b=2SKvFGyQlpWr3kk1AhzwaEfs1Z00KYut0wXx2gI5Q4v/E6groac6bAUK3wS1EdqSxWBAoZWFH
- 4Qf467hFPJgBA/wCB8rsLfMKXYh6XGHOZstGX3A09H7cs4z77LpcCIz
-X-Developer-Key: i=linfeng.sun.dev@gmail.com; a=ed25519;
- pk=IPHLe8L3bTveNcYFP12okRAIWs4eqaVd4jrqSNMj7UU=
-X-Endpoint-Received: by B4 Relay for linfeng.sun.dev@gmail.com/20261010 with auth_id=1150
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNTQ7CIBCG4asY1mIGBurPynsYFxQGRWPbADYa0
+ 7tL66bRuPySed55sUQxUGK7xYtF6kMKbVOGWi6YPZvmRDy4spkEWcFWAr93KUcyN570FbPkEmt
+ EZ2pAoVlRXSQfHlPxcPzsdK8vZPOYGS/OIeU2PqeXvRjv/td7wYG7SsFagVcgcN/FNrfN6kZsr
+ Pdy7vHXy+JBee8MogYrvj3Ovfr1WLzRVm+ct2Tldu6HYXgDcADQxkABAAA=
+X-Change-ID: 20260920-upstream-s5k3t2-23b33dab0315
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Elgin Perumbilly <elgin.perumbilly@siliconsignals.io>, 
+ Armandas Kvietkus <armandas.kvietkus@proton.me>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791710007; l=4010;
+ i=armandas.kvietkus@proton.me; h=from:subject:message-id;
+ bh=3YRk5UGBS0VOOHj9mW933zZqL8ZW8nf7hwX5dyuXdYs=;
+ b=W5H5IXa0Ch1yt7cxdYyWgep0m0D6UNc09Zz9lqF7aCYUokobV+OCC8vdGg3/hg6YcBG6OhJIH
+ fVU3av8iX+wDPguq+/dQocy6nsgdtowJakMpTgHxmN/tIy0J3GhYN1n
+X-Developer-Key: i=armandas.kvietkus@proton.me; a=ed25519;
+ pk=wuqmImJ9sKlDVcwALOvfGhjj7G8EBjjM4TpCdmlrAf8=
+X-Endpoint-Received: by B4 Relay for armandas.kvietkus@proton.me/default with auth_id=974
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Initialize the completion and as hash buckets before cdev_device_add()
-makes the device accessible.
+This series adds a binding and a driver for the Samsung S5K3T2, a
+20 Mpixel CMOS image sensor with four MIPI D-PHY lanes.
 
-Fixes: 4c8cf31885f6 ("vhost: introduce vDPA-based backend")
-Assisted-by: OpenAI-Codex:GPT-5.6
-Signed-off-by: Linfeng Sun <linfeng.sun.dev@gmail.com>
+The sensor is the front camera of the Xiaomi POCO F3. That phone has no
+device tree in mainline, so this series adds no user for the binding.
+The driver was written and tested on the phone with the Qualcomm CAMSS
+driver.
+
+Tested:
+
+  v4l2-compliance on the sensor sub-device, 46 tests, 46 passed
+  capture in all three modes, twelve runs, no kernel error
+  the sensor returns to runtime suspend after every run
+  exposure and gain sweeps checked on the captured frames
+  Bayer order checked for both flips
+
+Signed-off-by: Armandas Kvietkus <armandas.kvietkus@proton.me>
 ---
-I used // because b4 ignores lines starting with #. Please uncomment those 
-lines before reproducing.
----- reproduce.c ----
-// #include <fcntl.h>
-// #include <pthread.h>
-// #include <stdatomic.h>
-// #include <unistd.h>
+Changes in v4:
+- Use ARRAY_SIZE() instead of the S5K3T2_NUM_SUPPLIES macro.
+- The link frequency and pixel rate controls have no ops now, the
+  driver never writes them.
+- HBLANK and VBLANK are written from s_ctrl. The line length and frame
+  length registers are gone from the mode lists. HBLANK is not read only
+  anymore, but its range is still one value per mode.
+- The flips are written from s_ctrl and are clustered.
+- 0x0100 and 0x0101 are written as 8-bit registers.
+- The mode is not kept outside the subdev state anymore. The crop
+  rectangle is kept in the state too.
+- Every control call in set_fmt has its return value checked.
+- The fwnode properties are parsed before the control handler is set
+  up, and the control flags are set after the error check.
+- Dropped the link_validate op, the redundant fwnode and endpoint
+  checks, and the gotos in power_on and set_fmt.
+- The error labels in probe start with err_, and remove calls
+  pm_runtime_dont_use_autosuspend().
+- Small cleanups: container_of_const(), local variable order,
+  s5k3t2_format_from_mode(), and init_state returns the set_fmt result.
+- The link frequency still follows the mode. The question about it on
+  v3 is still open.
+- Dropped the line about hidden modes from the commit message.
+- Link to v3: https://patch.msgid.link/20260924-upstream-s5k3t2-v3-0-a5c58dfcec29@proton.me
 
-// #define THREADS 16
+Changes in v3:
+- The check on pm_runtime_get_if_active() is back to the form used by
+  every other sensor driver. The v2 form skipped the register write when
+  the helper returned an error, so a kernel built without CONFIG_PM never
+  applied exposure, gain, blanking or the test pattern.
+- The binding now requires clocks and the three supplies. The driver does
+  not probe without the clock, and the sensor needs all three rails.
+- Link to v2: https://patch.msgid.link/20260923-upstream-s5k3t2-v2-0-04ffda3350c1@proton.me
 
-static const char *device_path;
-static const char *sysfs_path;
-static atomic_int stop;
-
-static void *open_close(void *unused)
-{
-	(void)unused;
-
-	while (!atomic_load(&stop)) {
-		int fd;
-
-		if (access(sysfs_path, F_OK))
-			continue;
-		fd = open(device_path, O_RDWR);
-		if (fd >= 0)
-			close(fd);
-	}
-	return NULL;
-}
-
-int main(int argc, char **argv)
-{
-	pthread_t threads[THREADS];
-	int i;
-
-	if (argc != 3)
-		return 1;
-	device_path = argv[1];
-	sysfs_path = argv[2];
-
-	for (i = 0; i < THREADS; i++)
-		if (pthread_create(&threads[i], NULL, open_close, NULL))
-			return 1;
-
-	sleep(45);
-	atomic_store(&stop, 1);
-	for (i = 0; i < THREADS; i++)
-		pthread_join(threads[i], NULL);
-	return 0;
-}
-
----- crash ----
-[   23.959139] BUG: unable to handle page fault for address: fffffffffffffff8
-[   23.959859] #PF: supervisor read access in kernel mode
-[   23.960291] #PF: error_code(0x0000) - not-present page
-[   23.960740] PGD 4869067 P4D 4869067 PUD 486b067 PMD 0 
-[   23.961718] Oops: Oops: 0000 [#1] SMP NOPTI
-[   23.962395] CPU: 1 UID: 0 PID: 126 Comm: poc Not tainted 7.3.0-rc2+ #1 PREEMPT(full) 
-[   23.963059] Hardware name: QEMU Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
-[   23.963890] RIP: 0010:complete+0x44/0x80
-[   23.964656] Code: 41 d8 01 49 89 c4 8b 03 83 f8 ff 74 05 83 c0 01 89 03 48 8b 53 10 48 8d 43 10 48 39 c2 74 29 48 8b 5b 10 31 d2 be 03 00 00 00 <48> 8b 7b f8 e8 e3 65 fc ff 48 8b 13 48 8b 43 08 48 89 42 08 48 89
-[   23.965679] RSP: 0018:ffffc9000141bc38 EFLAGS: 00000046
-[   23.966109] RAX: ffff888008a678d8 RBX: 0000000000000000 RCX: 0000000000000000
-[   23.966513] RDX: 0000000000000000 RSI: 0000000000000003 RDI: 0000000000000000
-[   23.967005] RBP: ffffc9000141bc50 R08: 0000000000000000 R09: 0000000000000000
-[   23.967483] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000246
-[   23.967896] R13: ffff888008a678d0 R14: 0000000000000000 R15: ffffffff83541780
-[   23.968384] FS:  00007dcd511046c0(0000) GS:ffff8880b94b6000(0000) knlGS:0000000000000000
-[   23.968933] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   23.969398] CR2: fffffffffffffff8 CR3: 0000000009a41000 CR4: 00000000000006f0
-[   23.970091] Call Trace:
-[   23.970735]  <TASK>
-[   23.971266]  vhost_vdpa_release+0x175/0x190
-[   23.971862]  ? __pfx_vhost_vdpa_release+0x10/0x10
-[   23.972298]  __fput+0x1c2/0x520
-[   23.972692]  fput_close_sync+0x6e/0x140
-[   23.973040]  __x64_sys_close+0x51/0xd0
-[   23.973362]  x64_sys_call+0x2680/0x27e0
-[   23.973655]  do_syscall_64+0xbf/0x550
-[   23.973969]  ? restore_fpregs_from_fpstate+0xa1/0x110
-[   23.974322]  ? switch_fpu_return+0xbd/0x190
-[   23.974630]  ? do_syscall_64+0x299/0x550
-[   23.974962]  ? putname+0x7f/0xd0
-[   23.975267]  ? do_faccessat+0x3fe/0x570
-[   23.975583]  ? __sanitizer_cov_trace_cmp4+0x16/0x30
-[   23.975934]  ? fpregs_assert_state_consistent+0x7b/0xc0
-[   23.976272]  ? do_syscall_64+0xfd/0x550
-[   23.976591]  ? __sanitizer_cov_trace_cmp4+0x16/0x30
-[   23.976949]  ? fpregs_assert_state_consistent+0x7b/0xc0
-[   23.977304]  ? do_syscall_64+0xfd/0x550
-[   23.977611]  ? prandom_u32_state+0xd/0x90
-[   23.977933]  ? do_syscall_64+0x31/0x550
-[   23.978248]  entry_SYSCALL_64_after_hwframe+0x76/0x7e
-[   23.978644] RIP: 0033:0x41e94c
-[   23.979296] Code: 0f 05 48 3d 00 f0 ff ff 77 3c c3 0f 1f 00 55 48 89 e5 48 83 ec 10 89 7d fc e8 b0 a5 02 00 8b 7d fc 89 c2 b8 03 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 2c 89 d7 89 45 fc e8 12 a6 02 00 8b 45 fc c9
-[   23.980064] RSP: 002b:00007dcd51104220 EFLAGS: 00000293 ORIG_RAX: 0000000000000003
-[   23.980511] RAX: ffffffffffffffda RBX: 00007dcd51104cdc RCX: 000000000041e94c
-[   23.980887] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
-[   23.981251] RBP: 00007dcd51104230 R08: 0000000000000000 R09: 00007dcd511046c0
-[   23.981604] R10: 0000000000000000 R11: 0000000000000293 R12: 00007dcd511046c0
-[   23.981960] R13: ffffffffffffffb8 R14: 0000000000000000 R15: 00007ffe8c98a0f0
-[   23.982377]  </TASK>
-[   23.982597] Modules linked in:
-[   23.983036] CR2: fffffffffffffff8
-[   23.983847] ---[ end trace 0000000000000000 ]---
----
- drivers/vhost/vdpa.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/vhost/vdpa.c b/drivers/vhost/vdpa.c
-index ff7d90719171..35e2f5b2293b 100644
---- a/drivers/vhost/vdpa.c
-+++ b/drivers/vhost/vdpa.c
-@@ -1678,17 +1678,16 @@ static int vhost_vdpa_probe(struct vdpa_device *vdpa)
- 
- 	cdev_init(&v->cdev, &vhost_vdpa_fops);
- 	v->cdev.owner = THIS_MODULE;
-+	init_completion(&v->completion);
-+	for (i = 0; i < VHOST_VDPA_IOTLB_BUCKETS; i++)
-+		INIT_HLIST_HEAD(&v->as[i]);
- 
- 	r = cdev_device_add(&v->cdev, &v->dev);
- 	if (r)
- 		goto err;
- 
--	init_completion(&v->completion);
- 	vdpa_set_drvdata(vdpa, v);
- 
--	for (i = 0; i < VHOST_VDPA_IOTLB_BUCKETS; i++)
--		INIT_HLIST_HEAD(&v->as[i]);
--
- 	return 0;
- 
- err:
+Changes in v2:
+- set_pad_format() now stores the new mode before it updates the
+  controls. The VBLANK handler reads the mode, so it used to program the
+  frame length from the mode that was active before the call.
+- A negative return from pm_runtime_get_if_active() is no longer read as
+  active. Runtime PM can be disabled for the device, and in that case the
+  usage count is not taken, so the old code could drop a count it never
+  took.
+- The PM ops use RUNTIME_PM_OPS() with pm_ptr(), so the ops and the power
+  callbacks are dropped when CONFIG_PM is not set.
+- Link to v1: https://patch.msgid.link/20260920-upstream-s5k3t2-v1-0-d640740f4013@proton.me
 
 ---
-base-commit: c69023b5e16e5ffe9368603dca76d85bd544ee57
-change-id: 20261011-fix-null-pointer-in-vhost_vdpa_release-b495fb89aaa8
+Armandas Kvietkus (2):
+      dt-bindings: media: i2c: Add Samsung S5K3T2 image sensor
+      media: i2c: Add Samsung S5K3T2 image sensor driver
+
+ .../bindings/media/i2c/samsung,s5k3t2.yaml         |  105 ++
+ MAINTAINERS                                        |    8 +
+ drivers/media/i2c/Kconfig                          |   10 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/s5k3t2.c                         | 1331 ++++++++++++++++++++
+ 5 files changed, 1455 insertions(+)
+---
+base-commit: 518e5b794c06c0f0eb40df3e202274a66202c137
+change-id: 20260920-upstream-s5k3t2-23b33dab0315
 
 Best regards,
 --  
-Linfeng Sun <linfeng.sun.dev@gmail.com>
+Armandas Kvietkus <armandas.kvietkus@proton.me>
 
