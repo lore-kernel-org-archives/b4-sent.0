@@ -1,15 +1,13 @@
 From: Vladimir Kukharenko <vladimir@genproof.com>
-Subject: [PATCH 0/5] lib/crypto: Handle large lengths in poly1305 and
- chacha20poly1305
-Date: Mon, 12 Oct 2026 21:31:17 +0000
-Message-Id: <20261012-libcrypto-4gib-lengths-v1-0-ea566c129a2e@genproof.com>
+Date: Mon, 12 Oct 2026 21:31:18 +0000
+Subject: [PATCH 1/5] lib/crypto: riscv/poly1305: Fix 32-bit length treated
+ as 64-bit
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKZRzWoC/yXMQQqDMBBA0avIrDsQoyjtVUoXThzjFImSiaKId
- 2/aLt/i/xOUo7DCozgh8iYqc8gobwW4sQueUfpssMY2pTF3nIRcPJY0Y+2FcOLg06joqr5tLNW
- WTAc5XiIPsv/Gz9ffutKbXfre4Lo+98koOXoAAAA=
-X-Change-ID: 20261009-libcrypto-4gib-lengths-c3d762b42b0a
+Message-Id: <20261012-libcrypto-4gib-lengths-v1-1-ea566c129a2e@genproof.com>
+References: <20261012-libcrypto-4gib-lengths-v1-0-ea566c129a2e@genproof.com>
+In-Reply-To: <20261012-libcrypto-4gib-lengths-v1-0-ea566c129a2e@genproof.com>
 To: Herbert Xu <herbert@gondor.apana.org.au>, 
  "David S. Miller" <davem@davemloft.net>, Eric Biggers <ebiggers@kernel.org>, 
  "Jason A. Donenfeld" <Jason@zx2c4.com>, Ard Biesheuvel <ardb@kernel.org>
@@ -20,71 +18,59 @@ Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org,
  Alexandre Ghiti <alex@ghiti.fr>, 
  Vladimir Kukharenko <vladimir@genproof.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791840683; l=2752;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791840683; l=1981;
  i=vladimir@genproof.com; s=20261012; h=from:subject:message-id;
- bh=xNIifAwkZ3zfHyHYKd9B57SvHI2QibtziT5cigfmjhE=;
- b=B2tj45pTmtk9anofHBHKuIunQaJ4YIVf6sAPMRE6NnR+PqTO4gXf5G7YQ6HSQ3nbZwUk52mc6
- urC1etknsSRDRB63j1A5Z3xo93zQm9w3fAKY4uadRO3N3ROLIrvq1nr
+ bh=FUk3igHcdyvJr77P9LhCKrgECrkRv7kXrMD3TWIWkCM=;
+ b=dyyyhEM/gItvT7Fo5HXi8C3uel40Qr+fe+goqtFZzKvMbMv5Ls7+Z/8XLcKwxhlxwqC5KvITd
+ CADJ0jH+RMoCfR/VzHLC0DoHk09yrD44sOW0otUWBXCwpqIsybInjJu
 X-Developer-Key: i=vladimir@genproof.com; a=ed25519;
  pk=EqOzBSKBgFn7ExzKj5f9T8u+1yTrGVlLBwf3fj/sdHM=
 X-Endpoint-Received: by B4 Relay for vladimir@genproof.com/20261012 with auth_id=1169
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series makes the Poly1305 and ChaCha20-Poly1305 library code handle
-large lengths:
+The C code declares the length argument of the assembly function
+poly1305_blocks() as u32.  The assembly comes from OpenSSL/CRYPTOGAMS,
+which declares the length as size_t, and on riscv64 it uses all 64 bits
+of the register.  However, the RISC-V psABI sign-extends 32-bit
+arguments, including unsigned ones, to 64 bits.  So for a length of
+2 GiB or more, the assembly computes an end pointer 4 GiB lower than the
+correct one, below the start of the input, and the loop reads past the
+input until it faults.  poly1305_update() passes all complete blocks to
+poly1305_blocks() in one call, so a single poly1305_update() of 2 GiB to
+4 GiB triggers this.
 
-- poly1305_update() can write past its 16-byte buffer if it holds a
-  partial block and nbytes >= 2^32 - desc->buflen.
-- The chacha20poly1305 functions use only the low 32 bits of their
-  size_t message and associated data lengths.
-- On 64-bit MIPS and RISC-V, the poly1305 assembly reads past its input
-  for lengths of 2 GiB or more: these ABIs sign-extend its u32 length
-  argument, and the assembly uses all 64 bits.  arm64 has the same
-  prototype mismatch, with no known failure.
+Declare the length as size_t, as OpenSSL and the x86_64 code do, rather
+than changing the imported assembly.  On riscv32, size_t is 32 bits
+wide, so nothing changes there.
 
-Patches 1-3 fix the assembly prototypes, one architecture per patch.
-The assembly already treats the length as 64-bit, so they declare it as
-size_t, as commit f3d6cb3dc039 ("lib/crypto: x86/sha1: Migrate
-optimized code into library") did for the x86 SHA-1 assembly.
-Patches 4 and 5 make poly1305_update() and chacha_crypt() take size_t
-lengths.  The patches apply independently, except that on 64-bit MIPS
-and RISC-V patch 4 relies on patches 1 and 2 for inputs of 2 GiB or more.
+This bug was introduced by commit bef9c7559869 ("lib/crypto:
+riscv/poly1305: Import OpenSSL/CRYPTOGAMS implementation").  No in-tree
+caller passes 2 GiB or more in one call, so this is an ABI robustness
+improvement.
 
-No in-tree caller passes inputs this large (WireGuard passes at most one
-packet, big_key at most 1 MiB), so I consider these ABI robustness
-improvements rather than fixes and have not added Fixes or Cc stable tags.
+I reproduced the fault on riscv64 in QEMU with a single 2 GiB
+poly1305_update(), and this patch fixes it.
 
-I tested with the lib/crypto KUnit suite on UML, x86_64, i386, arm64,
-riscv64 and mips64, with a temporary 2 GiB KUnit test on arm64, riscv64
-and mips64 (it oopses on riscv64 and mips64 without patches 1 and 2), and
-in userspace against OpenSSL for inputs above 4 GiB.
-
-I found the bugs fixed by patches 4 and 5 while writing Coq/VST proofs of
-this code with LLM agents, and an LLM review of patch 4 found the one
-fixed by patches 1-3.  I used an LLM-based assistant to write the patches
-and descriptions, and reviewed its work.
-
+Assisted-by: LLM
+Signed-off-by: Vladimir Kukharenko <vladimir@genproof.com>
 ---
-Vladimir Kukharenko (5):
-      lib/crypto: riscv/poly1305: Fix 32-bit length treated as 64-bit
-      lib/crypto: mips/poly1305: Fix 32-bit length treated as 64-bit
-      lib/crypto: arm64/poly1305: Fix 32-bit length treated as 64-bit
-      lib/crypto: poly1305: Take a size_t length in poly1305_update()
-      lib/crypto: chacha: Take a size_t length in chacha_crypt()
+ lib/crypto/riscv/poly1305.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- include/crypto/chacha.h     |  4 ++--
- include/crypto/poly1305.h   |  2 +-
- lib/crypto/arm64/poly1305.h |  4 ++--
- lib/crypto/chacha.c         | 15 ++++++++++++++-
- lib/crypto/mips/poly1305.h  |  2 +-
- lib/crypto/poly1305.c       | 14 +++++++-------
- lib/crypto/riscv/poly1305.h |  2 +-
- 7 files changed, 28 insertions(+), 15 deletions(-)
----
-base-commit: 6a50ce0af5c91fd665d65d357af8ae55db1df7d0
-change-id: 20261009-libcrypto-4gib-lengths-c3d762b42b0a
+diff --git a/lib/crypto/riscv/poly1305.h b/lib/crypto/riscv/poly1305.h
+index 88f3df44e355..aaf24d0f6674 100644
+--- a/lib/crypto/riscv/poly1305.h
++++ b/lib/crypto/riscv/poly1305.h
+@@ -8,7 +8,7 @@
+ asmlinkage void poly1305_block_init(struct poly1305_block_state *state,
+ 				    const u8 raw_key[POLY1305_BLOCK_SIZE]);
+ asmlinkage void poly1305_blocks(struct poly1305_block_state *state,
+-				const u8 *src, u32 len, u32 hibit);
++				const u8 *src, size_t len, u32 hibit);
+ asmlinkage void poly1305_emit(const struct poly1305_state *state,
+ 			      u8 digest[POLY1305_DIGEST_SIZE],
+ 			      const u32 nonce[4]);
 
-Best regards,
---  
-Vladimir Kukharenko <vladimir@genproof.com>
+-- 
+2.43.0
 
