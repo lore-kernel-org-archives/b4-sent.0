@@ -1,112 +1,67 @@
-From: fromdisposition <me@fromdisposition.org>
-Date: Mon, 12 Oct 2026 02:02:44 +0000
-Subject: [PATCH 2/2] arm64: dts: qcom: sm8350: Add CPU dynamic power
- coefficients
+From: Fabricio Akio <fabricioakio@gmail.com>
+Subject: [PATCH 0/2] arm64: dts: qcom: sdm630: Fix the CPU idle states
+Date: Sun, 11 Oct 2026 23:18:06 -0300
+Message-Id: <20261011-sdm630-idle-states-v1-0-3181d488dc0f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-sm8350-cpu-capacity-v1-2-3d141e0099d5@fromdisposition.org>
-References: <20261012-sm8350-cpu-capacity-v1-0-3d141e0099d5@fromdisposition.org>
-In-Reply-To: <20261012-sm8350-cpu-capacity-v1-0-3d141e0099d5@fromdisposition.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywrCMBCF4VcpszaQG0H6KuIiTSY6YtOSSUUIe
+ XejLr8D52/AWAgZ5qlBwRcxbXlAnSYId59vKCgOg5baKamU4Lg6I8f6RMHVV2Rxtsn4YJxddIB
+ x3Asmev+il+vffCwPDPVbgt4/p6mbAnYAAAA=
+X-Change-ID: 20261011-sdm630-idle-states-84f3ac364b2c
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, fromdisposition <me@fromdisposition.org>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791770585; l=2954;
- i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=9YQsAJJ10PCMm3NOvwDq8LDOChng3jMGGzkFZbGKX94=;
- b=jTMFiRafgePd8fwXWjQRx2dh96IVRXVW8Aj+VEPFWMg5pvMxvhPIvBwCfKSD9tSqLn9dxO0GB
- rlzyNnSEA0BAzE3x1ioWADeTW1eoN3zGxKmHdO2g3hRNjZ14MNmIqAo
-X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
- pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
-X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
+Cc: Abel Vesa <abelvesa@kernel.org>, 
+ Alexey Minnekhanov <alexeymin@postmarketos.org>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Martin Botka <martin.botka@somainline.org>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Fabricio Akio <fabricioakio@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791771486; l=1578;
+ i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
+ bh=7MGFQOvs/uHXmXb1V4YxkRGBMRJ2mPeougEEkwVrI9E=;
+ b=K54XIqDzise9CWqfWlth2suD/uFf9KjU3X0TOiVVZkVXubVu+GxcxuDA+tqX/J2uozOrKJXeQ
+ 9pEKNsZoEiJB1zry3Q3gd0W+mqWh98Kc39rdPQgOYsruGY/IaCtrp8D
+X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
+ pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
+X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Without dynamic-power-coefficient no energy model is registered for
-these CPUs, so energy aware scheduling stays off.
+Of the five idle states sdm630.dtsi gives each CPU, four are never
+entered. The three cluster states use PSCI parameters that are not in
+the encoding the vendor kernel uses, and cpuidle records no successful
+entry into them. Because they are the deepest states, an idle CPU
+keeps choosing one, each attempt returns at once, and the CPU spends
+its idle time retrying instead of sleeping. CPU retention sets the bit
+that marks a state as losing context. The first patch drops the cluster
+states, the second fixes the retention parameter.
 
-Take the values from Qualcomm's downstream overlay for v2 silicon
-(lahaina-v2.dtsi in msm-5.4): 100, 499 and 760 for the A55, A78 and X1.
-For the A78 and the X1 it replaces the 515 and 845 of lahaina.dtsi.
+Tested on a Motorola Moto X4 (SDM630), whose board file is not in
+mainline yet, on sdm660-mainline's 7.2 kernel, whose idle states are
+these: with the screen off and the charger input suspended, the
+battery current drops from 277 mA to 117 mA.
 
-Assisted-by: LLM
-Signed-off-by: fromdisposition <me@fromdisposition.org>
+This firmware denies platform-coordinated mode at boot ("psci:
+[Firmware Bug]: failed to set PC mode: -3"), and the vendor kernel
+requests a cluster state only from the last CPU of a cluster.
+Restoring cluster idle that way, with the CPUs described as PSCI
+power domains, is left for a later series.
+
 ---
- arch/arm64/boot/dts/qcom/sm8350.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Fabricio Akio (2):
+      arm64: dts: qcom: sdm630: Drop the cluster idle states
+      arm64: dts: qcom: sdm630: Fix the CPU retention idle state parameter
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8350.dtsi b/arch/arm64/boot/dts/qcom/sm8350.dtsi
-index df6e9d1fa..dcd1fc9c1 100644
---- a/arch/arm64/boot/dts/qcom/sm8350.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8350.dtsi
-@@ -61,6 +61,7 @@ cpu0: cpu@0 {
- 			clocks = <&cpufreq_hw 0>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <512>;
-+			dynamic-power-coefficient = <100>;
- 			next-level-cache = <&l2_0>;
- 			qcom,freq-domain = <&cpufreq_hw 0>;
- 			power-domains = <&cpu_pd0>;
-@@ -86,6 +87,7 @@ cpu1: cpu@100 {
- 			clocks = <&cpufreq_hw 0>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <512>;
-+			dynamic-power-coefficient = <100>;
- 			next-level-cache = <&l2_100>;
- 			qcom,freq-domain = <&cpufreq_hw 0>;
- 			power-domains = <&cpu_pd1>;
-@@ -106,6 +108,7 @@ cpu2: cpu@200 {
- 			clocks = <&cpufreq_hw 0>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <512>;
-+			dynamic-power-coefficient = <100>;
- 			next-level-cache = <&l2_200>;
- 			qcom,freq-domain = <&cpufreq_hw 0>;
- 			power-domains = <&cpu_pd2>;
-@@ -126,6 +129,7 @@ cpu3: cpu@300 {
- 			clocks = <&cpufreq_hw 0>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <512>;
-+			dynamic-power-coefficient = <100>;
- 			next-level-cache = <&l2_300>;
- 			qcom,freq-domain = <&cpufreq_hw 0>;
- 			power-domains = <&cpu_pd3>;
-@@ -146,6 +150,7 @@ cpu4: cpu@400 {
- 			clocks = <&cpufreq_hw 1>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <973>;
-+			dynamic-power-coefficient = <499>;
- 			next-level-cache = <&l2_400>;
- 			qcom,freq-domain = <&cpufreq_hw 1>;
- 			power-domains = <&cpu_pd4>;
-@@ -166,6 +171,7 @@ cpu5: cpu@500 {
- 			clocks = <&cpufreq_hw 1>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <973>;
-+			dynamic-power-coefficient = <499>;
- 			next-level-cache = <&l2_500>;
- 			qcom,freq-domain = <&cpufreq_hw 1>;
- 			power-domains = <&cpu_pd5>;
-@@ -186,6 +192,7 @@ cpu6: cpu@600 {
- 			clocks = <&cpufreq_hw 1>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <973>;
-+			dynamic-power-coefficient = <499>;
- 			next-level-cache = <&l2_600>;
- 			qcom,freq-domain = <&cpufreq_hw 1>;
- 			power-domains = <&cpu_pd6>;
-@@ -206,6 +213,7 @@ cpu7: cpu@700 {
- 			clocks = <&cpufreq_hw 2>;
- 			enable-method = "psci";
- 			capacity-dmips-mhz = <1024>;
-+			dynamic-power-coefficient = <760>;
- 			next-level-cache = <&l2_700>;
- 			qcom,freq-domain = <&cpufreq_hw 2>;
- 			power-domains = <&cpu_pd7>;
+ arch/arm64/boot/dts/qcom/sdm630.dtsi | 112 ++++-------------------------------
+ 1 file changed, 10 insertions(+), 102 deletions(-)
+---
+base-commit: becb95e45ef0dda9ffb35156d909d3da7a2789c3
+change-id: 20261011-sdm630-idle-states-84f3ac364b2c
 
--- 
-2.53.0
+Best regards,
+--  
+Fabricio Akio <fabricioakio@gmail.com>
 
