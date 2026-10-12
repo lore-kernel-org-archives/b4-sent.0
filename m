@@ -1,201 +1,137 @@
-From: Haipeng Lin <jimmie.lin@gmail.com>
-Date: Sun, 11 Oct 2026 22:35:56 -0400
-Subject: [PATCH RFC] bus: mhi: host: pci_generic: Add MBIM-mode config for
- generic SDX65
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Mon, 12 Oct 2026 12:04:42 +0900
+Subject: [PATCH] xfs: mark the inode preallocated for pNFS write layouts
+ past EOF
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261011-mhi-sdx65-mbim-rfc-v1-1-8089b4d33d5b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDA0ND3dyMTN3ilAozU93cpMxc3aK0ZF2LxGSLpESDFHNzi0QloMaCotS
- 0zAqwodFKQW7OSrG1tQCP/ef0aQAAAA==
-X-Change-ID: 20261011-mhi-sdx65-mbim-rfc-8ac8ba0d778a
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- Jeff Hugo <jeff.hugo@oss.qualcomm.com>
-Cc: mhi@lists.linux.dev, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, daleyo@gmail.com, 
- Haipeng Lin <jimmie.lin@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791772564; l=6715;
- i=jimmie.lin@gmail.com; s=20261011; h=from:subject:message-id;
- bh=12BqEQFC2zNFvRylvqVSEtj1UlA8nqo2lwDSkjHX2y0=;
- b=vP1kMRlhSbHPkFTrpYPTwc0Cuzavc6czw63h1+bxHRXfGcF9RgE3cHoZSsvOGG/JtUQP+lUKm
- co1PEGEMi6wAqB9R5UZC/bmtDxuRKJpQxpVqWFWqinFCrFRCciL9bPX
-X-Developer-Key: i=jimmie.lin@gmail.com; a=ed25519;
- pk=3KDRF1RQ/9A7ZUVTdRVEZnVrGltdmq1bRocsOYeXezI=
-X-Endpoint-Received: by B4 Relay for jimmie.lin@gmail.com/20261011 with auth_id=1164
+Message-Id: <20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAElOzGoC/x2MQQqAMAwEvyI5G2iKKPUr4kFqqgFpSwsiSP9u8
+ DIwDLsvVC7CFebuhcK3VElRhfoO/LnFg1F2dbDGjmSMwydUzFHBKWAuvF1X8jhM7Mh7shMR6FZ
+ DkOf/XdbWPqUBh+BnAAAA
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+ Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791774281; l=4661;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=1lCj4zYdx22+I/KvHEXa0Zxtv7fnnOm5ANdbR1aQw+E=;
+ b=JMBEp4xga/9DfvtwfSE7Wqrt674xIinITXKqKMbBNxEqTXYLyPDctpqnqxqg0tsEQTbJX/edS
+ n75S27DmGj+BZcr+9uueMSekz7x+s3KC1QcGussU9BMKodPWCLHEZkm
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Surface Pro 11 5G carries an SDX65 that enumerates with Qualcomm's
-generic IDs (17cb:0308, subsystem 17cb:0308) but runs the MBIM-mode
-firmware it ships with for Windows.
+xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
+allocates blocks for a write layout, so that xfs_free_eofblocks() does
+not free blocks past EOF that a client may write to. But a write layout
+for a range past EOF where blocks are already allocated, such as the
+speculative preallocation of buffered writes, gets those blocks without
+an allocation, and the inode is not marked. blockgc, or the release of
+the file, then frees them without breaking the layout. The client still
+writes to them, and they may belong to another file by then.
 
-Control is MBIM only (the QMI channel never answers), and data on
-channels 100/101 is framed as MBIM NTBs: the modem reports a WDA data
-format of raw IP with MBIM aggregation, up to 32 KiB downlink.
+With pynfs as the client, a file grown to 1 MiB by two buffered writes
+on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
+that range got it as one INVALID_DATA extent, without the inode being
+marked. About 300 seconds later, with the default
+speculative_prealloc_lifetime, blockgc freed those blocks while the
+layout was still held. When the client then wrote through the layout and
+sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
+unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
+it with no blocks reserved:
 
-The generic qcom-sdx65m entry names channels 100/101 "IP_HW0", which
-binds mhi_net. mhi_net expects raw IP, so no data session can work.
-The MBIM-mode modules in this driver name them "IP_HW0_MBIM" instead
-which binds mhi_wwan_mbim.
+  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
+    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
+    Shutting down filesystem.
+  ...
+   xfs_trans_mod_sb+0x817/0x960
+   xfs_alloc_vextent_finish+0x2e7/0x990
+   xfs_alloc_vextent_start_ag+0x25d/0x720
+   xfs_bmap_btalloc+0xdd2/0x1720
+   xfs_bmapi_allocate+0x197/0xf90
+   xfs_bmapi_write+0x4d0/0xb60
+   xfs_iomap_write_unwritten+0x307/0x7e0
+   xfs_fs_commit_blocks+0x1d9/0x630
+   nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
+   nfsd4_layoutcommit+0x4b5/0xa20
 
-Boards with a Qualcomm-ID modem in MBIM mode have so far been told
-apart by subsystem ID, like the SC8280XP CRD's SDX55 (17cb:010c).
-This modem carries the generic subsystem ID, so we select an MBIM
-configuration by machine compatible instead. The channel layout is
-modem_qcom_v1 with data on IP_HW0_MBIM and without the QMI and IP_SW0
-channels. With the stock layout ModemManager spent about 45 s probing
-the silent QMI port and put the bearer on mhi_swip0 (IP_SW0);
-with this layout it does neither.
-The MRU is 32 KiB to match the modem's downlink aggregation size.
+The client got NFS4ERR_IO, in six runs out of six. When small files were
+written on the server after blockgc, with a sync first so that the freed
+extents were no longer busy, they got those blocks, and the client's
+write through the layout replaced 978944 bytes of their data before the
+LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
+blockgc runs, leave the client's data in place.
 
-Tested on a Surface Pro 11 5G (Surface_Pro_with_5G_11th_Edition_2077,
-modem firmware 251216-DE-dc49bb9-00197) on a v7.2.8-based kernel:
-ModemManager registers the modem on wwan0mbim0, uses wwan0 for data and
-connects over 5G NR.
+Mark the inode also when a write mapping ends past EOF and nothing was
+allocated, the same way as for an allocation, before the blocks are
+handed out. With this, the same test keeps the blocks past blockgc, and
+the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
 
-Assisted-by: claude-opus:5.5
-Signed-off-by: Haipeng Lin <jimmie.lin@gmail.com>
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
+Cc: stable@vger.kernel.org
+Reported-by: Chuck Lever <cel@kernel.org>
+Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Hi Mani, maintainers,
+Tested with this patch on nfsd-testing (3af417ce0f30), where xfs_pnfs.c
+differs from xfs for-next only by commit e3c682dd1130 ("xfs: map pNFS
+layouts to the end of the extent again"), with KASAN and lockdep, XFS on
+an NVMe/TCP namespace shared by the server and the client:
 
-I am sending this patch developed to support the Qualcomm SDX65 modem
-in the Surface Pro 5G (LCD, X1P-64-100 variant) for your consideration
-and comments.
+- the reproducer above (a local pynfs test, not posted);
+- pynfs block, blockextent and a local multi-extent test, 2 runs: 15
+  pass, BLOCK3 fails with NFS4ERR_BADXDR for its empty layoutupdate, as
+  without this patch;
+- fstests generic/075, 091 and 263 with the Linux client over the block
+  layout: only 075 fails, as without this patch.
 
-I am sending this as an RFC because I am not sure how you would like
-the MBIM-mode configuration to be selected. The device exposes the
-modem with fully generic PCI IDs (17cb:0308, subsystem 17cb:0308) so
-we cannot tell it apart from QMI-mode SDX65 modules using
-PCI_DEVICE_SUB() entries.
-
-This patch proposes to match the machine compatible. This is a smaller
-change without a new DT ABI but the PCI driver looking at the root
-compatible may be unusual, hence the RFC.
-
-An alternative would be to describe the endpoint in DT (a pci17cb,308
-node under the root port) with a property naming the firmware mode or
-channel layout, similar to ath11k's qcom,calibration-variant, then read
-it from pdev->dev.of_node; this would describe the board instead of the
-machine but needs a new binding.
-
-Additionally we could potentially reuse modem_foxconn_sdx55_config
-instead of adding a channel table, as the SC8280XP CRD entry does but I
-haven't tested that layout on this modem yet.
-
-I would be happy to rework the patch based on your comments.
-
-DTs for Surface Pro 11 LCD are in the process of being upstreamed
-separately and I've submitted patches to Dale Whinham's Surface Pro 11
-tree to enable pcie5 to enumerate the modem. This patch was
-functionally tested on top of that tree based on v7.2.8.
-
-This patch is based on mhi-next and build-tested in arm64 and x86_64
-without CONFIG_OF. mhi-next adds DUN (32/33) to
-modem_qcom_v1_mhi_channels. I left DUN out of the MBIM table because
-I haven't tested it on this modem.
-
-Thank you for your consideration.
-
-Best,
-Haipeng
+Chuck pointed this out in the review of the ->map_blocks series, whose
+patch 7 will carry the same check for all mappings of a call:
+https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
 ---
- drivers/bus/mhi/host/pci_generic.c | 55 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 55 insertions(+)
+ fs/xfs/xfs_pnfs.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/drivers/bus/mhi/host/pci_generic.c b/drivers/bus/mhi/host/pci_generic.c
-index 7193a384cca4..4df5f9962ee7 100644
---- a/drivers/bus/mhi/host/pci_generic.c
-+++ b/drivers/bus/mhi/host/pci_generic.c
-@@ -12,6 +12,7 @@
- #include <linux/device.h>
- #include <linux/mhi.h>
- #include <linux/module.h>
-+#include <linux/of.h>
- #include <linux/pci.h>
- #include <linux/pm_runtime.h>
- #include <linux/timer.h>
-@@ -373,6 +374,33 @@ static const struct mhi_controller_config modem_qcom_v1_mhiv_config = {
- 	.event_cfg = modem_qcom_v1_mhi_events,
- };
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index ab38561700..490b48e2ce 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -235,6 +235,23 @@ xfs_fs_map_blocks(
  
-+/*
-+ * Channel layout of the same modems running MBIM-mode firmware:
-+ * data travels on IP_HW0 as MBIM NTBs,
-+ * and the QMI and IP_SW0 channels go unused.
-+ */
-+static const struct mhi_channel_config modem_qcom_v1_mbim_channels[] = {
-+	MHI_CHANNEL_CONFIG_UL(4, "DIAG", 16, 1),
-+	MHI_CHANNEL_CONFIG_DL(5, "DIAG", 16, 1),
-+	MHI_CHANNEL_CONFIG_UL(12, "MBIM", 4, 0),
-+	MHI_CHANNEL_CONFIG_DL(13, "MBIM", 4, 0),
-+	MHI_CHANNEL_CONFIG_UL(20, "IPCR", 8, 0),
-+	MHI_CHANNEL_CONFIG_DL(21, "IPCR", 8, 0),
-+	MHI_CHANNEL_CONFIG_UL_FP(34, "FIREHOSE", 32, 0),
-+	MHI_CHANNEL_CONFIG_DL_FP(35, "FIREHOSE", 32, 0),
-+	MHI_CHANNEL_CONFIG_HW_UL(100, "IP_HW0_MBIM", 128, 4),
-+	MHI_CHANNEL_CONFIG_HW_DL(101, "IP_HW0_MBIM", 128, 5),
-+};
+ 	} else {
+ 		xfs_iunlock(ip, lock_flags);
 +
-+static const struct mhi_controller_config modem_qcom_v1_mbim_config = {
-+	.max_channels = 128,
-+	.timeout_ms = 8000,
-+	.num_channels = ARRAY_SIZE(modem_qcom_v1_mbim_channels),
-+	.ch_cfg = modem_qcom_v1_mbim_channels,
-+	.num_events = ARRAY_SIZE(modem_qcom_v1_mhi_events),
-+	.event_cfg = modem_qcom_v1_mhi_events,
-+};
-+
- static const struct mhi_pci_dev_info mhi_qcom_sa8775p_info = {
- 	.name = "qcom-sa8775p",
- 	.edl_trigger = false,
-@@ -405,6 +433,29 @@ static const struct mhi_pci_dev_info mhi_qcom_sdx65_info = {
- 	.sideband_wake = false,
- };
++		/*
++		 * Blocks past EOF that were allocated for buffered writes, such
++		 * as speculative preallocation, can be freed by
++		 * xfs_free_eofblocks() without breaking the layout unless the
++		 * inode is marked as preallocated. Mark it before handing them
++		 * out for writing, as for blocks allocated above.
++		 */
++		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
++		    imap.br_startoff + imap.br_blockcount >
++		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) {
++			error = xfs_fs_map_update_inode(ip);
++			if (!error)
++				error = xfs_log_force_inode(ip);
++			if (error)
++				goto out_unlock;
++		}
+ 	}
+ 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
  
-+static const struct mhi_pci_dev_info mhi_qcom_sdx65_mbim_info = {
-+	.name = "qcom-sdx65m-mbim",
-+	.fw = "qcom/sdx65m/xbl.elf",
-+	.edl = "qcom/sdx65m/edl.mbn",
-+	.edl_trigger = true,
-+	.config = &modem_qcom_v1_mbim_config,
-+	.bar_num = MHI_PCI_DEFAULT_BAR_NUM,
-+	.dma_data_width = 32,
-+	.mru_default = 32768,
-+	.sideband_wake = false,
-+};
-+
-+/*
-+ * Machines whose SDX65 carries the generic Qualcomm IDs
-+ * (17cb:0308, subsystem 17cb:0308) but runs the MBIM-mode firmware
-+ * it ships with for Windows.
-+ * The PCI IDs cannot tell these apart from QMI-mode modules, so match the machine.
-+ */
-+static const char *const mhi_qcom_sdx65_mbim_machines[] = {
-+	"microsoft,denali",
-+	NULL
-+};
-+
- static const struct mhi_pci_dev_info mhi_qcom_sdx55_info = {
- 	.name = "qcom-sdx55m",
- 	.fw = "qcom/sdx55m/sbl1.mbn",
-@@ -1389,6 +1440,10 @@ static int mhi_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	unsigned int dma_data_width;
- 	int err;
- 
-+	if (info == &mhi_qcom_sdx65_info &&
-+	    of_machine_compatible_match(mhi_qcom_sdx65_mbim_machines))
-+		info = &mhi_qcom_sdx65_mbim_info;
-+
- 	dev_info(&pdev->dev, "MHI PCI device found: %s\n", info->name);
- 
- 	/* mhi_pdev.mhi_cntrl must be zero-initialized */
 
 ---
-base-commit: 0b1883ca75c0005ab5ca52c7bc1a26329bc39746
-change-id: 20261011-mhi-sdx65-mbim-rfc-8ac8ba0d778a
+base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
+change-id: 20261009-xfs-pnfs-eof-prealloc-47e91cc12711
 
 Best regards,
 -- 
-Haipeng Lin <jimmie.lin@gmail.com>
+Daejun Park <daejun7.park@samsung.com>
 
