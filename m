@@ -1,65 +1,155 @@
-From: Andrea Amer <and.amer@gmail.com>
-Date: Mon, 12 Oct 2026 10:28:53 +0200
-Subject: [PATCH] iio: afe: rescale: always expose offset
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v11 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Mon, 12 Oct 2026 17:22:57 +0530
+Message-Id: <20261012-master-v11-0-15009e3ecac3@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-iio-rescale-offset-v1-1-14ed15979ff2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAESazGoC/x3MQQqAIBBA0avErBtQMxddJVpYjTUQGk5EIN09a
- fkW/xcQykwCQ1Mg083CKVbotoFl93Ej5LUajDJOK22QOWEmWfxBmEIQutBq01vfdbNbHdTwzBT
- 4+afj9L4fl3LXJmQAAAA=
-X-Change-ID: 20261012-iio-rescale-offset-41254a33b6d6
-To: Peter Rosin <peda@lysator.liu.se>, Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Liam Beguin <liambeguin@gmail.com>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <jic23@kernel.org>, Andrea Amer <and.amer@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791793735; l=1309;
- i=and.amer@gmail.com; s=20261012; h=from:subject:message-id;
- bh=Hk6uj82B4NAvd2+YopIwSqouEWeeLPNEDXXoOxHcLoE=;
- b=9wgJsQ5priSB6KspIp9ezCLjdd+eKJ6yEdl0eFIwO5AtSU2ZmmetfbV6Y3AJhL1D6qV5NR610
- 6iWVvx3qAv8CrnogKPRqEWXyCSansGopPr2lvig3sqA4uTG62D6Kgk5
-X-Developer-Key: i=and.amer@gmail.com; a=ed25519;
- pk=TiMK202FvcPM+yKGkAI4hsAZA7QkwyEgru97PAFa4pg=
-X-Endpoint-Received: by B4 Relay for and.amer@gmail.com/20261012 with auth_id=1165
+X-B4-Tracking: v=1; b=H4sIABnKzGoC/3XO0QqCMBQG4FeRXTc5OzK3ddV7RBdzzlxk1qZSi
+ O/eNBChuhmc8X//OSMJ1jsbyD4ZibeDC669xYGxXUJMrW9nS10ZPwgC5qCYoI0OnfU0NyiErLj
+ QSpMYvntbuefSdDx95tAXF2u6Wc+J2oWu9a9l1SDn3FfpIClQiVmJhpegQB/aENJHr6+mbZo0P
+ mTuHtRGo1y1ihrjWRWoSmlQfzSDDc9g5QyiZ8ARRGE4Cv7DT9P0BrgEwiM0AQAA
+X-Change-ID: 20260917-master-6c2778f57a9a
+To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
+ bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
+ krzk+dt@kernel.org, conor+dt@kernel.org, 
+ srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791805978; l=5722;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=tTPrx9tPFF6GXsRW5o15aooqoG1BjmEQXxJsueO1eTA=;
+ b=qLVLKFGBrk2HEafG+rgq3XeCUTSQi2omQbMPqDobGlCBKFI20Ewus+Pga2xv9NehwNt72aJze
+ gX5qHAuVam9DruF9jVbIUNP2JhqSboInfMMz33TyEEOZpjYBHl9Cwvz
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A rescale channel advertises IIO_CHAN_INFO_OFFSET only when its own
-offset is non-zero. A child rescale therefore hides a source offset,
-and consumers apply raw * scale and drop it. rescale_read_raw() already
-folds the source offset in, so expose the attribute in every case.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-Fixes: a29c3283653b ("iio: afe: rescale: add offset support")
-Signed-off-by: Andrea Amer <and.amer@gmail.com>
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
+
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
+
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
+
+Changes in v11:
+- Rebase the series on linux-next next-20261009.
+- Drop the custom heartbeat prepare/unprepare callbacks and rely on CCF
+  provider runtime PM handling (Ajay).
+- Restore the rate generator counter and delay registers from the
+  runtime resume callback after the LPASS vote clocks are enabled
+  (Sashiko).
+- Add an of_device_get_match_data() NULL guard (Sashiko).
+- Link to v10: https://patch.msgid.link/20260930-master-v10-0-105207bc5275@oss.qualcomm.com
+
+Changes in v10:
+- Rebase the series on linux-next next-20260929.
+- Add clk_is_enabled_regmap() to report the heartbeat gate state for
+  clk_disable_unused() (Sashiko).
+- Add Rob's Reviewed-by tag to the binding patch.
+- Link to v9: https://patch.msgid.link/20260928-master-v9-0-2277f09f9a09@oss.qualcomm.com
+
+Changes in v9:
+- Rebase the series on linux-next next-20260928.
+- Add runtime PM callbacks so the LPASS LPR and audio vote clocks are
+  enabled by pm_runtime_resume_and_get() before touching VA CSR
+  registers.
+- Keep the LPASS vote clocks enabled across heartbeat clock
+  enable/disable register accesses by taking a runtime PM reference from
+  the heartbeat clock prepare path.
+- Use synchronous runtime PM put on probe success and error paths.
+- Drop the one-use runtime PM error label while keeping synchronous puts (Konrad).
+- Wrap the runtime PM ops with pm_ptr() from HTML review.
+- Link to v8: https://patch.msgid.link/20260917-master-v8-0-823d2c5d090a@oss.qualcomm.com
+
+Changes in v8:
+- Rebase the series on linux-next next-20260916.
+- Require the LPASS LPR and audio vote clocks to access VA CSR
+  register space safely.
+- Attach the DT vote clocks to runtime PM and resume the device before
+  programming the rate generator registers.
+- Program the counter and delay registers once during probe.
+- Use qcom's simple regmap gate ops for the enable bit (Srinivas).
+- Drop the unreachable of_device_get_match_data() NULL check (Srinivas).
+- Drop stale Reviewed-by/Tested-by tags after the binding and driver
+  changes.
+- Link to v7: https://patch.msgid.link/20260831-heartbeat-v7-next-20260828-v7-0-e3ffeac46a51@oss.qualcomm.com
+
+Changes in v7:
+- Rebase the series on linux-next next-20260828.
+- Add Prasad's Reviewed-by and Tested-by tags to patch 2.
+- Link to v6: https://patch.msgid.link/20260821-heartbeat-v6-next-20260821-send-v6-0-62c5df84ce21@oss.qualcomm.com
+
+Changes in v6:
+- Rebase the series on linux-next next-20260821.
+- Capitalize Hawi in binding text (Bjorn).
+- Simplify the binding example by removing the soc wrapper and
+  two-cell address/size setup (Bjorn).
+- Keep the full VA CSR register window in the binding and describe it
+  as the VA CSR register block after Konrad clarified the earlier
+  register-range concern (Bjorn, Konrad).
+- Link to v5: https://patch.msgid.link/20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries.
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Changes in v4:
+- Rename the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml (Krzysztof).
+- Rename Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE (Konrad).
+- Add devm_pm_runtime_enable() in the lpass-va-csr probe path.
+- Drop the qcom,lpass-va-macro binding extension patch; it will be
+  resubmitted with the Hawi DTSI changes.
+- Drop sound/soc/codecs/Kconfig select wiring to keep this series
+  clock-only (Konrad).
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Changes in v3:
+- Move the qcom,lpass-va-csr binding under
+  Documentation/devicetree/bindings/clock/ (Krzysztof).
+- Move the driver under drivers/clk/qcom/ (Krzysztof).
+- Improve the schema description and use generic clock-controller node
+  naming (Krzysztof).
+- Use additionalProperties: false and keep compatibles sorted.
+
+Changes in v2:
+- Split the qcom,lpass-va-csr and qcom,lpass-va-macro bindings into
+  separate patches.
+
+Changes in v1:
+- Initial version
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- drivers/iio/afe/iio-rescale.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
-index 3a6a09ffa5267ddfd5131fbd04a5df928836589d..52be28cdb0c7e7c16a52329fe5d93459480736e0 100644
---- a/drivers/iio/afe/iio-rescale.c
-+++ b/drivers/iio/afe/iio-rescale.c
-@@ -301,10 +301,9 @@ static int rescale_configure_channel(struct device *dev,
- 	}
- 
- 	chan->info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
--		BIT(IIO_CHAN_INFO_SCALE);
-+		BIT(IIO_CHAN_INFO_SCALE) |
-+		BIT(IIO_CHAN_INFO_OFFSET);
- 
--	if (rescale->offset)
--		chan->info_mask_separate |= BIT(IIO_CHAN_INFO_OFFSET);
- 
- 	/*
- 	 * Using .read_avail() is fringe to begin with and makes no sense
-
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  62 +++++++
+ drivers/clk/qcom/Kconfig                           |  14 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 180 +++++++++++++++++++++
+ 4 files changed, 257 insertions(+)
 ---
-base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
-change-id: 20261012-iio-rescale-offset-41254a33b6d6
+base-commit: becb95e45ef0dda9ffb35156d909d3da7a2789c3
+change-id: 20260917-master-6c2778f57a9a
 
 Best regards,
--- 
-Andrea Amer <and.amer@gmail.com>
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
