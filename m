@@ -1,61 +1,65 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 12 Oct 2026 08:00:20 +0000
-Subject: [PATCH] dma: amlogic: Fix little-endian variable operations issue
+From: Andrea Amer <and.amer@gmail.com>
+Date: Mon, 12 Oct 2026 10:28:53 +0200
+Subject: [PATCH] iio: afe: rescale: always expose offset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-fix-a9-dma-v1-1-2d83008f3e32@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAJOTzGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDA0Mj3bTMCt1ES92U3ERdk6RU81Qzw6REM1NjJaCGgqJUoCzYsOjY2lo
- A/v73G1wAAAA=
-X-Change-ID: 20261012-fix-a9-dma-4be7e61ba653
-To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
- linux-kernel@vger.kernel.org, kernel test robot <lkp@intel.com>, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791792030; l=1209;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=MGtI9iPeIcfHpSdg3DM67l61qmbOpdtXMG6n3gxJRnU=;
- b=A+XdZzGpsG4iQCPdlMLMiPVu8hZGhXnsVB8XSC0u4KWuu7ga0GROb4VG5ZTLNWDfhZwbHUBoC
- BjLSaoVldXKDFRgl7yrxa1fKWbIR/FNBG73mbpSEC2brRf31LP/Nu1v
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Message-Id: <20261012-iio-rescale-offset-v1-1-14ed15979ff2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAESazGoC/x3MQQqAIBBA0avErBtQMxddJVpYjTUQGk5EIN09a
+ fkW/xcQykwCQ1Mg083CKVbotoFl93Ej5LUajDJOK22QOWEmWfxBmEIQutBq01vfdbNbHdTwzBT
+ 4+afj9L4fl3LXJmQAAAA=
+X-Change-ID: 20261012-iio-rescale-offset-41254a33b6d6
+To: Peter Rosin <peda@lysator.liu.se>, Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Liam Beguin <liambeguin@gmail.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <jic23@kernel.org>, Andrea Amer <and.amer@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791793735; l=1309;
+ i=and.amer@gmail.com; s=20261012; h=from:subject:message-id;
+ bh=Hk6uj82B4NAvd2+YopIwSqouEWeeLPNEDXXoOxHcLoE=;
+ b=9wgJsQ5priSB6KspIp9ezCLjdd+eKJ6yEdl0eFIwO5AtSU2ZmmetfbV6Y3AJhL1D6qV5NR610
+ 6iWVvx3qAv8CrnogKPRqEWXyCSansGopPr2lvig3sqA4uTG62D6Kgk5
+X-Developer-Key: i=and.amer@gmail.com; a=ed25519;
+ pk=TiMK202FvcPM+yKGkAI4hsAZA7QkwyEgru97PAFa4pg=
+X-Endpoint-Received: by B4 Relay for and.amer@gmail.com/20261012 with auth_id=1165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In dma_async_tx_descriptor function,fix the situation where the operation
-processing of the little-endian variable requires corresponding conversion.
+A rescale channel advertises IIO_CHAN_INFO_OFFSET only when its own
+offset is non-zero. A child rescale therefore hides a source offset,
+and consumers apply raw * scale and drop it. rescale_read_raw() already
+folds the source offset in, so expose the attribute in every case.
 
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202610060235.PuCxWQdk-lkp@intel.com/
-Fixes: b84b5197e344 ("dmaengine: amlogic: Add general DMA driver for A9")
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Fixes: a29c3283653b ("iio: afe: rescale: add offset support")
+Signed-off-by: Andrea Amer <and.amer@gmail.com>
 ---
-Fix the operation little-endian variable issue.
----
- drivers/dma/amlogic-dma.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/afe/iio-rescale.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/dma/amlogic-dma.c b/drivers/dma/amlogic-dma.c
-index 78ee2337ae71..bbf5ae5ac705 100644
---- a/drivers/dma/amlogic-dma.c
-+++ b/drivers/dma/amlogic-dma.c
-@@ -321,7 +321,7 @@ static struct dma_async_tx_descriptor *aml_dma_prep_slave_sg
+diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
+index 3a6a09ffa5267ddfd5131fbd04a5df928836589d..52be28cdb0c7e7c16a52329fe5d93459480736e0 100644
+--- a/drivers/iio/afe/iio-rescale.c
++++ b/drivers/iio/afe/iio-rescale.c
+@@ -301,10 +301,9 @@ static int rescale_configure_channel(struct device *dev,
+ 	}
  
- 	/* the last sg set eoc flag */
- 	sg_link--;
--	sg_link->ctl |= LINK_EOC;
-+	sg_link->ctl = cpu_to_le32(le32_to_cpu(sg_link->ctl) | LINK_EOC);
+ 	chan->info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
+-		BIT(IIO_CHAN_INFO_SCALE);
++		BIT(IIO_CHAN_INFO_SCALE) |
++		BIT(IIO_CHAN_INFO_OFFSET);
  
- 	return vchan_tx_prep(&aml_chan->vchan, &aml_desc->vd, flags);
- }
+-	if (rescale->offset)
+-		chan->info_mask_separate |= BIT(IIO_CHAN_INFO_OFFSET);
+ 
+ 	/*
+ 	 * Using .read_avail() is fringe to begin with and makes no sense
 
 ---
-base-commit: 42c31fec1ca76b8b5f7759def122d418dff2cd4b
-change-id: 20261012-fix-a9-dma-4be7e61ba653
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261012-iio-rescale-offset-41254a33b6d6
 
 Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+Andrea Amer <and.amer@gmail.com>
 
