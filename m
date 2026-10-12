@@ -1,11 +1,11 @@
 From: Vladimir Kukharenko <vladimir@genproof.com>
-Date: Mon, 12 Oct 2026 21:31:21 +0000
-Subject: [PATCH 4/5] lib/crypto: poly1305: Take a size_t length in
- poly1305_update()
+Date: Mon, 12 Oct 2026 21:31:22 +0000
+Subject: [PATCH 5/5] lib/crypto: chacha: Take a size_t length in
+ chacha_crypt()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-libcrypto-4gib-lengths-v1-4-ea566c129a2e@genproof.com>
+Message-Id: <20261012-libcrypto-4gib-lengths-v1-5-ea566c129a2e@genproof.com>
 References: <20261012-libcrypto-4gib-lengths-v1-0-ea566c129a2e@genproof.com>
 In-Reply-To: <20261012-libcrypto-4gib-lengths-v1-0-ea566c129a2e@genproof.com>
 To: Herbert Xu <herbert@gondor.apana.org.au>, 
@@ -18,103 +18,90 @@ Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org,
  Alexandre Ghiti <alex@ghiti.fr>, 
  Vladimir Kukharenko <vladimir@genproof.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791840683; l=3486;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791840683; l=3015;
  i=vladimir@genproof.com; s=20261012; h=from:subject:message-id;
- bh=irCOLOTna2CXuGsURd0U3lbRTs2zb4VOPdikvUV7L0c=;
- b=jY+PQ0zlS+9OJjn9T3kdcCRBgGV28HNvJjB2ixzkfeUmh+Ma4InANaqzMq+kuvcWyMZO/wWEi
- cx/WIK1ifXcDSrHbzVx5E5Hbcu4s1B8Z2UT5NVvAj72UHqIMj8RKzrI
+ bh=EeWzQrmZlf68OfajrkB+W/t3+tJsiZ8lDU4fkz0igMY=;
+ b=/ZTtirlILLZ+d+u1I7hRscr5gq2jf876h7ZB9XwqO0kZdL3/9zpYE3Jyvj7zgU5YdUH/8YzTT
+ Vtshyrqsd45AR52IOsPPgryK4vOhyYiganDS1gkEOv9pttEVqP2Rb4H
 X-Developer-Key: i=vladimir@genproof.com; a=ed25519;
  pk=EqOzBSKBgFn7ExzKj5f9T8u+1yTrGVlLBwf3fj/sdHM=
 X-Endpoint-Received: by B4 Relay for vladimir@genproof.com/20261012 with auth_id=1169
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-poly1305_update() adds desc->buflen and nbytes as unsigned int values
-to check for a full block.  With 1 to 15 bytes in the buffer and
-nbytes >= 2^32 - desc->buflen, the sum wraps.  The tail path then copies
-nbytes bytes into the 16-byte desc->buf.
+chacha20poly1305_encrypt(), chacha20poly1305_decrypt() and the
+xchacha20poly1305 variants take size_t lengths.  They pass these lengths
+to chacha20_crypt(), which takes an unsigned int.
 
-For example, these calls trigger the bug:
+For a message of 2^32 + k bytes, chacha20_crypt() processes only the
+first k bytes.  In-place encryption leaves the remaining bytes as
+plaintext.  Until poly1305_update() took a size_t, those bytes were not
+authenticated either.  Commit ed20078b7e33 ("crypto: chacha20poly1305 -
+import construction and selftest from Zinc") introduced this behavior.
 
-    poly1305_update(&desc, p, 1);
-    poly1305_update(&desc, p + 1, 0xffffffff);
+Change chacha_crypt() and chacha20_crypt() to take size_t lengths, as
+poly1305_update() and the other library functions do.  The architecture
+code takes an unsigned int length.  Split inputs larger than UINT_MAX
+into chunks of at most UINT_MAX bytes.  Round each non-final chunk down
+to a multiple of CHACHA_BLOCK_SIZE to keep the keystream continuous.
 
-Commit b646b782e522 ("lib/crypto: poly1305: Consolidate into single
-module") introduced this addition.  The previous BLOCK_HASH_UPDATE()
-code used size_t for the addition.
+Lengths up to UINT_MAX make the same single call as before.  The
+RFC 8439 limit of 2^38 - 64 bytes per message still applies.
 
-The unsigned int nbytes parameter also truncates the size_t lengths
-from lib/crypto/chacha20poly1305.c.  For associated data or messages of
-4 GiB or more, poly1305_update() authenticates only the first
-(length mod 2^32) bytes.  Other hash-like library functions, including
-sha256_update() and blake2s_update(), take size_t lengths.
-
-Change nbytes to size_t and compare it with the space left in the
-buffer.  poly1305_blocks() takes an unsigned int length, so pass it at
-most UINT_MAX bytes per call, rounded down to a whole number of blocks.
-On 64-bit MIPS and RISC-V, this relies on the preceding patches, which
-make their assembly handle lengths of 2 GiB or more.
-
-No in-tree caller passes inputs this large, so this is an ABI robustness
-improvement.  I found the bugs while writing a Coq/VST proof of this
-code with LLM agents.  I reproduced the overflow in userspace with
-AddressSanitizer, and the truncation by comparing MACs with OpenSSL.
+No in-tree caller passes messages this large, so this is an ABI
+robustness improvement.  I found the bug while writing a Coq/VST proof
+of this code with LLM agents, and reproduced it in userspace.
 
 Assisted-by: LLM
 Signed-off-by: Vladimir Kukharenko <vladimir@genproof.com>
 ---
- include/crypto/poly1305.h |  2 +-
- lib/crypto/poly1305.c     | 14 +++++++-------
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ include/crypto/chacha.h |  4 ++--
+ lib/crypto/chacha.c     | 15 ++++++++++++++-
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/include/crypto/poly1305.h b/include/crypto/poly1305.h
-index 190beb427c6d..bf53b1df9aa3 100644
---- a/include/crypto/poly1305.h
-+++ b/include/crypto/poly1305.h
-@@ -61,7 +61,7 @@ struct poly1305_desc_ctx {
- void poly1305_init(struct poly1305_desc_ctx *desc,
- 		   const u8 key[at_least POLY1305_KEY_SIZE]);
- void poly1305_update(struct poly1305_desc_ctx *desc,
--		     const u8 *src, unsigned int nbytes);
-+		     const u8 *src, size_t nbytes);
- void poly1305_final(struct poly1305_desc_ctx *desc, u8 *digest);
+diff --git a/include/crypto/chacha.h b/include/crypto/chacha.h
+index 1cc301a48469..4c18e99eb4f7 100644
+--- a/include/crypto/chacha.h
++++ b/include/crypto/chacha.h
+@@ -86,10 +86,10 @@ static inline void chacha_init(struct chacha_state *state,
+ }
  
- #endif
-diff --git a/lib/crypto/poly1305.c b/lib/crypto/poly1305.c
-index f313ccc4b4dd..f04c4cc2f55c 100644
---- a/lib/crypto/poly1305.c
-+++ b/lib/crypto/poly1305.c
-@@ -35,11 +35,9 @@ void poly1305_init(struct poly1305_desc_ctx *desc,
- EXPORT_SYMBOL(poly1305_init);
+ void chacha_crypt(struct chacha_state *state, u8 *dst, const u8 *src,
+-		  unsigned int bytes, int nrounds);
++		  size_t bytes, int nrounds);
  
- void poly1305_update(struct poly1305_desc_ctx *desc,
--		     const u8 *src, unsigned int nbytes)
-+		     const u8 *src, size_t nbytes)
+ static inline void chacha20_crypt(struct chacha_state *state,
+-				  u8 *dst, const u8 *src, unsigned int bytes)
++				  u8 *dst, const u8 *src, size_t bytes)
  {
--	if (desc->buflen + nbytes >= POLY1305_BLOCK_SIZE) {
--		unsigned int bulk_len;
--
-+	if (nbytes >= POLY1305_BLOCK_SIZE - desc->buflen) {
- 		if (desc->buflen) {
- 			unsigned int l = POLY1305_BLOCK_SIZE - desc->buflen;
+ 	chacha_crypt(state, dst, src, bytes, 20);
+ }
+diff --git a/lib/crypto/chacha.c b/lib/crypto/chacha.c
+index 86e5d382a4e0..ffa0c75ce501 100644
+--- a/lib/crypto/chacha.c
++++ b/lib/crypto/chacha.c
+@@ -39,8 +39,21 @@ chacha_crypt_generic(struct chacha_state *state, u8 *dst, const u8 *src,
+ #endif
  
-@@ -52,12 +50,14 @@ void poly1305_update(struct poly1305_desc_ctx *desc,
- 			desc->buflen = 0;
- 		}
- 
--		bulk_len = round_down(nbytes, POLY1305_BLOCK_SIZE);
--		nbytes %= POLY1305_BLOCK_SIZE;
-+		while (nbytes >= POLY1305_BLOCK_SIZE) {
-+			/* poly1305_blocks() takes an unsigned int length. */
-+			unsigned int bulk_len = round_down(min(nbytes, UINT_MAX),
-+							   POLY1305_BLOCK_SIZE);
- 
--		if (bulk_len) {
- 			poly1305_blocks(&desc->state, src, bulk_len, 1);
- 			src += bulk_len;
-+			nbytes -= bulk_len;
- 		}
- 	}
- 	if (nbytes) {
+ void chacha_crypt(struct chacha_state *state, u8 *dst, const u8 *src,
+-		  unsigned int bytes, int nrounds)
++		  size_t bytes, int nrounds)
+ {
++	/*
++	 * chacha_crypt_arch() takes an unsigned int length.  Process longer
++	 * messages in chunks that are a multiple of CHACHA_BLOCK_SIZE, so that
++	 * the keystream continues correctly from one chunk to the next.
++	 */
++	while (bytes > UINT_MAX) {
++		unsigned int l = round_down(UINT_MAX, CHACHA_BLOCK_SIZE);
++
++		chacha_crypt_arch(state, dst, src, l, nrounds);
++		dst += l;
++		src += l;
++		bytes -= l;
++	}
+ 	chacha_crypt_arch(state, dst, src, bytes, nrounds);
+ }
+ EXPORT_SYMBOL_GPL(chacha_crypt);
 
 -- 
 2.43.0
