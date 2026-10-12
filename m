@@ -1,90 +1,64 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Mon, 12 Oct 2026 03:46:57 +0300
-Subject: [PATCH v2 2/2] watchdog: orion_wdt: stop the watchdog during
- system suspend
+From: fromdisposition <me@fromdisposition.org>
+Subject: [PATCH 0/2] arm64: dts: qcom: sm8350: Add CPU capacities and power
+ coefficients
+Date: Mon, 12 Oct 2026 02:02:42 +0000
+Message-Id: <20261012-sm8350-cpu-capacity-v1-0-3d141e0099d5@fromdisposition.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-orion-wdt-suspend-v2-2-f13cf71443ba@iav.lv>
-References: <20261012-orion-wdt-suspend-v2-0-f13cf71443ba@iav.lv>
-In-Reply-To: <20261012-orion-wdt-suspend-v2-0-f13cf71443ba@iav.lv>
-To: Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: Chris Packham <chris.packham@alliedtelesis.co.nz>, 
- Gregory CLEMENT <gregory.clement@bootlin.com>, 
- linux-watchdog@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1912; i=iav@iav.lv;
- h=from:subject:message-id; bh=m0WVQELV++t0yRnZ+K7WZ1EmeGKm+T8Z3+Ko29NWjxU=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFln9Dj8o4y27ZLirOXWYRE658n9V6DD4MUXfdOdGfxT9
- f8Uy1t2lLIwiHExyIopskw4pHErY8nVv/4e5g9g5rAygQxh4OIUgImsCmf4n11+iK0naaZnYdxd
- lvrjOee/W3FYnQzyvSZwf+OarB3ZcQz/k2ODV3Os3uX6q9XbT2/Gh17hDlmXXIHrRvff/X7r+qu
- eDwA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORto2nWoryI7dDFqBGdpNnGMv
+ btVj9/h/1cwKSoGx2aFIi81fY4VtGuAb2m8Cuq5GrzzHTnyaI99iA45z8gpJ9ZpwUBtTJ1QPAw
+ BapmLXPT9u576v20e7sLTdwXb9gE0JqpidwAAAA==
+X-Change-ID: 20261012-sm8350-cpu-capacity-3145a6e159b3
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, fromdisposition <me@fromdisposition.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791770585; l=1537;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=XSz3dyHTqtERnvgwM+cY1AD94ekMbdw0EAqvOmXU5AE=;
+ b=U23YOaR7XK9GzWkuj/cnPh3OoUJIJwH82r9TkwwEFj0m8p6VLsXPuJi0/N6Ipx2Yp4BnbUY6w
+ LppzmtD4EXGCqGnI4kZKZftGRgj6SzHJEhemlWLjTO7CzQ7FStchHDU
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The watchdog timer keeps counting across system suspend while the
-userspace that pings it is frozen, so it expires and resets the system.
-On a Kobol Helios4 (Armada 388) with a 60 s timeout the board resets
-47-61 s into s2idle, whether the watchdog daemon or systemd's
-RuntimeWatchdogSec holds the device.
+Give the SM8350 CPUs their capacities and dynamic power coefficients, so
+that the scheduler sees the three clusters as they are and energy aware
+scheduling gets an energy model. Both come from Qualcomm's downstream
+device trees.
 
-Stop the timer on suspend and restart it on resume when it is active or
-running in hardware, as sp805_wdt does. orion_wdt_start() reloads the
-counter, so userspace gets a full timeout after resume.
+Downstream, the capacities are the same for v1 and v2 silicon, but the
+power coefficients are not: patch 2 takes the v2 ones, which the device
+tested here (v2.1) carries too. I have no v1 part to check them on; if
+v1 boards matter, patch 2 can wait without holding up patch 1.
 
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Tested on a Razer Edge 5G (SM8350 v2.1), whose board support is not
+upstream yet: cpu_capacity reads 308, 785 and 1024 once the kernel has
+scaled the values by each cluster's maximum frequency (1804, 2419 and
+2995 MHz), sched_energy_aware is 1, and the energy model covers all
+three clusters. Compared with the same kernel without these patches, an
+unpinned CPU-bound task now runs mostly on the X1 and a light periodic
+task on the A55s. dtbs_check shows no new warning for the SM8350 boards.
+The values come from Razer's kernel release for this device
+(Nicole-msm-5.4.254-20240515).
+
 ---
- drivers/watchdog/orion_wdt.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+fromdisposition (2):
+      arm64: dts: qcom: sm8350: Add CPU capacities
+      arm64: dts: qcom: sm8350: Add CPU dynamic power coefficients
 
-diff --git a/drivers/watchdog/orion_wdt.c b/drivers/watchdog/orion_wdt.c
-index ef64e3730001..c65042dc2329 100644
---- a/drivers/watchdog/orion_wdt.c
-+++ b/drivers/watchdog/orion_wdt.c
-@@ -671,6 +671,29 @@ static void orion_wdt_shutdown(struct platform_device *pdev)
- 	orion_wdt_stop(wdt_dev);
- }
- 
-+static int orion_wdt_suspend(struct device *dev)
-+{
-+	struct watchdog_device *wdt_dev = dev_get_drvdata(dev);
-+
-+	if (watchdog_active(wdt_dev) || watchdog_hw_running(wdt_dev))
-+		return orion_wdt_stop(wdt_dev);
-+
-+	return 0;
-+}
-+
-+static int orion_wdt_resume(struct device *dev)
-+{
-+	struct watchdog_device *wdt_dev = dev_get_drvdata(dev);
-+
-+	if (watchdog_active(wdt_dev) || watchdog_hw_running(wdt_dev))
-+		return orion_wdt_start(wdt_dev);
-+
-+	return 0;
-+}
-+
-+static DEFINE_SIMPLE_DEV_PM_OPS(orion_wdt_pm_ops, orion_wdt_suspend,
-+				orion_wdt_resume);
-+
- static struct platform_driver orion_wdt_driver = {
- 	.probe		= orion_wdt_probe,
- 	.remove		= orion_wdt_remove,
-@@ -678,6 +701,7 @@ static struct platform_driver orion_wdt_driver = {
- 	.driver		= {
- 		.name	= "orion_wdt",
- 		.of_match_table = orion_wdt_of_match_table,
-+		.pm	= pm_sleep_ptr(&orion_wdt_pm_ops),
- 	},
- };
- 
+ arch/arm64/boot/dts/qcom/sm8350.dtsi | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+---
+base-commit: d053e38e614fb2e383b298ce8fc308a780d7f209
+change-id: 20261012-sm8350-cpu-capacity-3145a6e159b3
 
--- 
-2.43.0
+Best regards,
+--  
+fromdisposition <me@fromdisposition.org>
 
