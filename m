@@ -1,278 +1,96 @@
-From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Date: Mon, 12 Oct 2026 17:22:59 +0530
-Subject: [PATCH v11 2/2] clk: qcom: Add LPASS VA CSR heartbeat pulse clock
+From: =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
+Subject: [PATCH v2 0/3] rockchip: rk3528: Add FriendlyElec NanoPi R28S
+Date: Mon, 12 Oct 2026 21:22:15 +0800
+Message-Id: <20261012-nanopi-r28s-v2-0-3d162759dd3d@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-master-v11-2-15009e3ecac3@oss.qualcomm.com>
-References: <20261012-master-v11-0-15009e3ecac3@oss.qualcomm.com>
-In-Reply-To: <20261012-master-v11-0-15009e3ecac3@oss.qualcomm.com>
-To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
- bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
- krzk+dt@kernel.org, conor+dt@kernel.org, 
- srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- prasad.kumpatla@oss.qualcomm.com
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jmbc10LAisvIdhgTDImNg2LRIN6
+ d0F3Lp8yfvvLxA5CEeoswUCzxLF2RXokEE3tvbOSvqVgZAKjZqUba3zogKVUWHbd4h4GozJYV3
+ 4wIO899q1+XF83R7cTVtiM0aJkwuf/W7Wm/e/PGuFCg31BeXVuaTq4oObnD0+GZqU0hcTlUx1u
+ AAAAA==
+X-Change-ID: 20261012-nanopi-r28s-0adc0003f445
+To: u-boot@lists.u-boot-project.org
+Cc: Kever Yang <kever.yang@rock-chips.com>, 
+ Quentin Schulz <u-boot@0leil.net>, Jonas Karlman <jonas@kwiboo.se>, 
+ Simon Glass <sjg@chromium.org>, Tom Rini <trini@konsulko.com>, 
+ =?utf-8?q?=E5=AE=89=E5=AE=B9?= <HystericalDragons@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791805978; l=7440;
- i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=Be40tqRCaREpt0ACRUayXerE4aw2R7L/eowyK6NM63E=;
- b=HNl8vmBGUXgwhBQF15NmwuMnC+OYL4wSf/o5bEjOcWVdrjLPqTcdOLTTkg4rHTxVXDg9uKQaD
- 9i6fjdNjvyZDCB4WMsOGrN7uJUn57ggHpVVeiicrO9bRhfWtCTGc8Sy
-X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
- pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
-X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3019;
+ i=HystericalDragons@proton.me; h=from:subject:message-id;
+ bh=em4uWzBG5IgjJJuIFVD99J/wvYwEZa2GWIcYh3xj+aY=;
+ b=owGbwMvMwCUmepz3XUtTHjvjabUkhqwz9zm57+/Mv7+VY19AdNN+i80/5Vx7CxovvihrSO++f
+ mD742+tHaUsDGJcDLJiiiyym6ojhVZFzyxikToOM4eVCWQIAxenAEyk/zPD/xzeh2bWC2+vWtTj
+ VFnzyuVwSLz8Pu8M8zaj5Btv7Q2q7jIyrO8uDzrOEd12sMl4w94Js9JTJNr7VFpe7Apznua/4PJ
+ ybgA=
+X-Developer-Key: i=HystericalDragons@proton.me; a=openpgp;
+ fpr=1DB27B5912AA5B9972041AC715C70DEE84826E07
+X-Endpoint-Received: by B4 Relay for HystericalDragons@proton.me/default with auth_id=1004
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HeartBeat Pulse, also known as RateGen Pulse, synchronizes the
-start of DMAs and Codec Interfaces for the audio usecases and can
-serve as a periodic wakeup source for the DSP.
+The FriendlyElec NanoPi R28S is a dual gigabit Ethernet router board
+based on the Rockchip RK3528 SoC. It shares most of its design with the
+NanoPi Zero2.
 
-Add the LPASS VA CSR driver that models the rate generator as a clock
-provider so consumers can enable and disable it through the common
-clock framework.
+The Linux devicetree for the board has been applied to the Rockchip
+tree for v7.4, together with a patch that splits the parts shared with
+the NanoPi Zero2 into a common rk3528-nanopi.dtsi:
 
-Attach the DT vote clocks to runtime PM and program the rate generator
-counter and delay registers from runtime resume after the votes are
-enabled. This restores the state if the LPASS register context is lost
-across runtime suspend.
+  fdb087806e80 ("arm64: dts: rockchip: Split out the common NanoPi RK3528 parts")
+  c1e23f3425c4 ("arm64: dts: rockchip: Add devicetree for the FriendlyElec NanoPi R28S")
 
-Rely on the clock core provider runtime PM handling around clock
-prepare and unprepare to keep the votes active for regmap gate
-accesses.
+These are not yet available in devicetree-rebasing, so this series only
+contains the U-Boot side for review for now. Patch 3 does not build
+until the R28S devicetree is in dts/upstream. Once both commits are in
+devicetree-rebasing, I will pick them into dts/upstream with
+tools/update-subtree.sh and add them at the start of the next version.
 
-Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Patch 1 moves the U-Boot specific parts of the NanoPi Zero2 into a
+common rk3528-nanopi-u-boot.dtsi, following the split in Linux. The
+NanoPi Zero2 u-boot.dtb is identical before and after this patch.
+
+Patch 2 adds a NanoPi RK3528 board target that reads the HW_ID on
+SARADC channel 2 to select the FDT in SPL and set fdtfile, in the same
+way as the Radxa ROCK 2 board target, and moves the NanoPi Zero2 to it.
+
+Patch 3 adds the NanoPi R28S to that board target, so that
+nanopi-zero2-rk3528_defconfig supports both boards.
+
+nanopi-zero2-rk3528 was build-tested with the devicetree files from
+v7.4-armsoc/dts64 copied into dts/upstream; the resulting FIT contains
+both the Zero2 and the R28S FDT.
+
 ---
- drivers/clk/qcom/Kconfig        |  14 ++++
- drivers/clk/qcom/Makefile       |   1 +
- drivers/clk/qcom/lpass-va-csr.c | 180 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 195 insertions(+)
+Changes in v2:
+- Add a common NanoPi RK3528 board target that selects the FDT using
+  the HW_ID on SARADC channel 2, instead of adding a new defconfig for
+  the R28S (Jonas)
+- Add Jonas Karlman as reviewer for the R28S.
+- Link to v1: https://patch.msgid.link/20261012-nanopi-r28s-v1-0-042d62597829@proton.me
 
-diff --git a/drivers/clk/qcom/Kconfig b/drivers/clk/qcom/Kconfig
-index 27d0ab24d50a..da2e8005d075 100644
---- a/drivers/clk/qcom/Kconfig
-+++ b/drivers/clk/qcom/Kconfig
-@@ -2137,6 +2137,20 @@ config CLK_GFM_LPASS_SM8250
- 	  Support for the Glitch Free Mux (GFM) Low power audio
-           subsystem (LPASS) clocks found on SM8250 SoCs.
- 
-+config QCOM_CLK_LPASS_HEARTBEAT_PULSE
-+	tristate "Qualcomm LPASS VA CSR heartbeat pulse clock provider"
-+	depends on COMMON_CLK
-+	depends on ARM64 || COMPILE_TEST
-+	select REGMAP_MMIO
-+	default m if ARCH_QCOM
-+	help
-+	  Qualcomm LPASS VA CSR block contains the rate generator hardware
-+	  that produces the HeartBeat Pulse (also known as RateGen Pulse).
-+	  This driver models the rate generator as a clock provider so
-+	  that consumers can enable or disable it via the common clock
-+	  framework, and it can be used to synchronize the start of DMAs
-+	  and Codec Interfaces or as a periodic wakeup source for the DSP.
-+
- config SM_VIDEOCC_8450
- 	tristate "SM8450 Video Clock Controller"
- 	depends on ARM64 || COMPILE_TEST
-diff --git a/drivers/clk/qcom/Makefile b/drivers/clk/qcom/Makefile
-index 6affb5073f26..787a3761af3b 100644
---- a/drivers/clk/qcom/Makefile
-+++ b/drivers/clk/qcom/Makefile
-@@ -28,6 +28,7 @@ obj-$(CONFIG_CLK_ELIZA_GPUCC) += gpucc-eliza.o
- obj-$(CONFIG_CLK_ELIZA_TCSRCC) += tcsrcc-eliza.o
- obj-$(CONFIG_CLK_ELIZA_VIDEOCC) += videocc-eliza.o
- obj-$(CONFIG_CLK_GFM_LPASS_SM8250) += lpass-gfm-sm8250.o
-+obj-$(CONFIG_QCOM_CLK_LPASS_HEARTBEAT_PULSE) += lpass-va-csr.o
- obj-$(CONFIG_CLK_GLYMUR_CAMCC) += camcc-glymur.o
- obj-$(CONFIG_CLK_GLYMUR_DISPCC) += dispcc-glymur.o
- obj-$(CONFIG_CLK_GLYMUR_EVACC) += evacc-glymur.o
-diff --git a/drivers/clk/qcom/lpass-va-csr.c b/drivers/clk/qcom/lpass-va-csr.c
-new file mode 100644
-index 000000000000..e5fb870aa36d
---- /dev/null
-+++ b/drivers/clk/qcom/lpass-va-csr.c
-@@ -0,0 +1,180 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-+ */
-+
-+#include <linux/clk-provider.h>
-+#include <linux/device.h>
-+#include <linux/module.h>
-+#include <linux/of_clk.h>
-+#include <linux/pm_clock.h>
-+#include <linux/platform_device.h>
-+#include <linux/pm_runtime.h>
-+#include <linux/regmap.h>
-+
-+#include "clk-regmap.h"
-+
-+#define LPASS_RATE_GEN_CTRL		0xd000
-+#define LPASS_RATE_GEN_COUNTER_0	0xd004
-+#define LPASS_RATE_GEN_DELAY		0xd010
-+
-+#define LPASS_RATE_GEN_MAX_REG		LPASS_RATE_GEN_DELAY
-+
-+#define LPASS_RG_CTRL_EN		BIT(0)
-+
-+struct lpass_va_csr_data {
-+	u32 counter_0;
-+	u32 delay;
-+};
-+
-+static const struct lpass_va_csr_data hawi_csr_data = {
-+	.counter_0 = 0x960,
-+	.delay = 0x16,
-+};
-+
-+static const struct regmap_config lpass_rate_gen_regmap_config = {
-+	.name = "lpass_rate_gen",
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = LPASS_RATE_GEN_MAX_REG,
-+	.cache_type = REGCACHE_MAPLE,
-+};
-+
-+struct lpass_va_csr {
-+	const struct lpass_va_csr_data *data;
-+	struct clk_regmap hb;
-+};
-+
-+static const struct clk_ops lpass_va_csr_hb_ops = {
-+	.enable = clk_enable_regmap,
-+	.disable = clk_disable_regmap,
-+	.is_enabled = clk_is_enabled_regmap,
-+};
-+
-+static int lpass_va_csr_runtime_resume(struct device *dev)
-+{
-+	struct lpass_va_csr *csr = dev_get_drvdata(dev);
-+	const struct lpass_va_csr_data *data = csr->data;
-+	int ret;
-+
-+	ret = pm_clk_resume(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(csr->hb.regmap, LPASS_RATE_GEN_COUNTER_0,
-+			   data->counter_0);
-+	if (ret)
-+		goto err_pm_clk_suspend;
-+
-+	ret = regmap_write(csr->hb.regmap, LPASS_RATE_GEN_DELAY, data->delay);
-+	if (ret)
-+		goto err_pm_clk_suspend;
-+
-+	return 0;
-+
-+err_pm_clk_suspend:
-+	pm_clk_suspend(dev);
-+	return ret;
-+}
-+
-+static int lpass_va_csr_runtime_suspend(struct device *dev)
-+{
-+	return pm_clk_suspend(dev);
-+}
-+
-+static int lpass_va_csr_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	const struct lpass_va_csr_data *data = of_device_get_match_data(dev);
-+	struct lpass_va_csr *csr;
-+	struct clk_init_data init = {
-+		.name = "lpass_heartbeat_pulse",
-+		.ops = &lpass_va_csr_hb_ops,
-+	};
-+	struct regmap *regmap;
-+	void __iomem *base;
-+	int ret;
-+
-+	csr = devm_kzalloc(dev, sizeof(*csr), GFP_KERNEL);
-+	if (!csr)
-+		return -ENOMEM;
-+
-+	if (!data)
-+		return dev_err_probe(dev, -EINVAL, "missing match data\n");
-+
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	regmap = devm_regmap_init_mmio(dev, base,
-+				       &lpass_rate_gen_regmap_config);
-+	if (IS_ERR(regmap))
-+		return dev_err_probe(dev, PTR_ERR(regmap),
-+				     "failed to init regmap\n");
-+
-+	csr->data = data;
-+	csr->hb.regmap = regmap;
-+	csr->hb.enable_reg = LPASS_RATE_GEN_CTRL;
-+	csr->hb.enable_mask = LPASS_RG_CTRL_EN;
-+	csr->hb.hw.init = &init;
-+
-+	platform_set_drvdata(pdev, csr);
-+
-+	ret = devm_pm_runtime_enable(dev);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable PM runtime\n");
-+
-+	ret = devm_pm_clk_create(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = of_pm_clk_add_clks(dev);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "failed to get vote clocks\n");
-+
-+	ret = pm_runtime_resume_and_get(dev);
-+	if (ret)
-+		return ret;
-+
-+	ret = devm_clk_register_regmap(dev, &csr->hb);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &csr->hb.hw);
-+	if (ret) {
-+		pm_runtime_put_sync(dev);
-+		return ret;
-+	}
-+
-+	pm_runtime_put_sync(dev);
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id lpass_va_csr_dt_match[] = {
-+	{ .compatible = "qcom,hawi-lpass-va-csr", .data = &hawi_csr_data },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lpass_va_csr_dt_match);
-+
-+static const struct dev_pm_ops lpass_va_csr_pm_ops = {
-+	SET_RUNTIME_PM_OPS(lpass_va_csr_runtime_suspend,
-+			   lpass_va_csr_runtime_resume, NULL)
-+};
-+
-+static struct platform_driver lpass_va_csr_driver = {
-+	.driver = {
-+		.name = "qcom-lpass-va-csr",
-+		.of_match_table = lpass_va_csr_dt_match,
-+		.pm = pm_ptr(&lpass_va_csr_pm_ops),
-+	},
-+	.probe = lpass_va_csr_probe,
-+};
-+
-+module_platform_driver(lpass_va_csr_driver);
-+
-+MODULE_DESCRIPTION("Qualcomm LPASS VA CSR heartbeat pulse clock provider");
-+MODULE_LICENSE("GPL");
+---
+安容 (3):
+      rockchip: rk3528: Split out common NanoPi u-boot.dtsi
+      board: rockchip: Add common NanoPi RK3528 board target
+      board: rockchip: Add FriendlyElec NanoPi R28S
 
--- 
-2.34.1
+ arch/arm/dts/rk3528-nanopi-r28s-u-boot.dtsi      |  3 ++
+ arch/arm/dts/rk3528-nanopi-u-boot.dtsi           | 16 +++++++
+ arch/arm/dts/rk3528-nanopi-zero2-u-boot.dtsi     | 10 +---
+ arch/arm/mach-rockchip/rk3528/Kconfig            |  7 +++
+ arch/arm/mach-rockchip/rk3528/MAINTAINERS        |  6 ---
+ board/friendlyelec/nanopi-rk3528/Kconfig         | 14 ++++++
+ board/friendlyelec/nanopi-rk3528/MAINTAINERS     | 13 ++++++
+ board/friendlyelec/nanopi-rk3528/Makefile        |  3 ++
+ board/friendlyelec/nanopi-rk3528/nanopi-rk3528.c | 59 ++++++++++++++++++++++++
+ configs/nanopi-zero2-rk3528_defconfig            |  3 ++
+ doc/board/rockchip/rockchip.rst                  |  2 +-
+ 11 files changed, 120 insertions(+), 16 deletions(-)
+---
+base-commit: 5e3b01c8466dbe45cd6a06299f8f4c7e8c1c2363
+change-id: 20261012-nanopi-r28s-0adc0003f445
+
+Best regards,
+--  
+安容 <HystericalDragons@proton.me>
 
