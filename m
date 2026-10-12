@@ -1,137 +1,71 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Mon, 12 Oct 2026 12:04:42 +0900
-Subject: [PATCH] xfs: mark the inode preallocated for pNFS write layouts
- past EOF
+From: Demeter Barna <me@fromdisposition.org>
+Subject: [PATCH v2 0/2] arm64: dts: qcom: sm8350: Add CPU capacities and
+ power coefficients
+Date: Mon, 12 Oct 2026 03:56:03 +0000
+Message-Id: <20261012-sm8350-cpu-capacity-v2-0-67ce449becf0@fromdisposition.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAElOzGoC/x2MQQqAMAwEvyI5G2iKKPUr4kFqqgFpSwsiSP9u8
- DIwDLsvVC7CFebuhcK3VElRhfoO/LnFg1F2dbDGjmSMwydUzFHBKWAuvF1X8jhM7Mh7shMR6FZ
- DkOf/XdbWPqUBh+BnAAAA
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791774281; l=4661;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=1lCj4zYdx22+I/KvHEXa0Zxtv7fnnOm5ANdbR1aQw+E=;
- b=JMBEp4xga/9DfvtwfSE7Wqrt674xIinITXKqKMbBNxEqTXYLyPDctpqnqxqg0tsEQTbJX/edS
- n75S27DmGj+BZcr+9uueMSekz7x+s3KC1QcGussU9BMKodPWCLHEZkm
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OQQ6DIBREr2JYl4YPYmpXvUfjAgH1N7EQvpoa4
+ 92Ldt/lS2bezMbIJ/TE7sXGkl+QMLwzyEvB7GDevefoMjMpZAUCJKfxprTgNs7cmmgsTitXUGp
+ TedB1q1huxuQ7/JzWZ/NjmtuXt9OhOhID0hTSes4ucOT+LyzABVcOSvBC1LXTjy6F0SHFQDjlz
+ 9eQetbs+/4FqbB8WNIAAAA=
+X-Change-ID: 20261012-sm8350-cpu-capacity-3145a6e159b3
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Demeter Barna <me@fromdisposition.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791777425; l=1799;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=w9kTsY78JmCrb87bSa72DL2IVDLvj0lnMC2vJKSw2c0=;
+ b=k2+Ld8UrsCCizogtNl53u3PuYAFm8A6fTJLOduMyZPK/L7WU6675kNPPU7JUG0pbXcxzL0EjT
+ QWWMWfgYxdGB9OD8O/46A1LRivjtyJIovScyxbidn7M8BoK5LutjClx
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_fs_map_blocks() marks the inode XFS_DIFLAG_PREALLOC after it
-allocates blocks for a write layout, so that xfs_free_eofblocks() does
-not free blocks past EOF that a client may write to. But a write layout
-for a range past EOF where blocks are already allocated, such as the
-speculative preallocation of buffered writes, gets those blocks without
-an allocation, and the inode is not marked. blockgc, or the release of
-the file, then frees them without breaking the layout. The client still
-writes to them, and they may belong to another file by then.
+Give the SM8350 CPUs their capacities and dynamic power coefficients, so
+that the scheduler sees the three clusters as they are and energy aware
+scheduling gets an energy model. Both come from Qualcomm's downstream
+device trees.
 
-With pynfs as the client, a file grown to 1 MiB by two buffered writes
-on the server had 960 KiB preallocated past EOF, and an RW LAYOUTGET for
-that range got it as one INVALID_DATA extent, without the inode being
-marked. About 300 seconds later, with the default
-speculative_prealloc_lifetime, blockgc freed those blocks while the
-layout was still held. When the client then wrote through the layout and
-sent LAYOUTCOMMIT, xfs_fs_commit_blocks() found a hole where the
-unwritten extent had been, and xfs_iomap_write_unwritten() allocated for
-it with no blocks reserved:
+Downstream, the capacities are the same for v1 and v2 silicon, but the
+power coefficients are not: patch 2 takes the v2 ones, which the device
+tested here (v2.1) carries too. I have no v1 part to check them on; if
+v1 boards matter, patch 2 can wait without holding up patch 1.
 
-  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
-    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
-    Shutting down filesystem.
-  ...
-   xfs_trans_mod_sb+0x817/0x960
-   xfs_alloc_vextent_finish+0x2e7/0x990
-   xfs_alloc_vextent_start_ag+0x25d/0x720
-   xfs_bmap_btalloc+0xdd2/0x1720
-   xfs_bmapi_allocate+0x197/0xf90
-   xfs_bmapi_write+0x4d0/0xb60
-   xfs_iomap_write_unwritten+0x307/0x7e0
-   xfs_fs_commit_blocks+0x1d9/0x630
-   nfsd4_block_proc_layoutcommit+0x5c2/0x7d0
-   nfsd4_layoutcommit+0x4b5/0xa20
-
-The client got NFS4ERR_IO, in six runs out of six. When small files were
-written on the server after blockgc, with a sync first so that the freed
-extents were no longer busy, they got those blocks, and the client's
-write through the layout replaced 978944 bytes of their data before the
-LAYOUTCOMMIT. A LAYOUTGET and LAYOUTCOMMIT 30 seconds apart, before
-blockgc runs, leave the client's data in place.
-
-Mark the inode also when a write mapping ends past EOF and nothing was
-allocated, the same way as for an allocation, before the blocks are
-handed out. With this, the same test keeps the blocks past blockgc, and
-the LAYOUTCOMMIT after 360 seconds succeeds with the data in place.
-
-Fixes: 527851124d10 ("xfs: implement pNFS export operations")
-Cc: stable@vger.kernel.org
-Reported-by: Chuck Lever <cel@kernel.org>
-Link: https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-Tested with this patch on nfsd-testing (3af417ce0f30), where xfs_pnfs.c
-differs from xfs for-next only by commit e3c682dd1130 ("xfs: map pNFS
-layouts to the end of the extent again"), with KASAN and lockdep, XFS on
-an NVMe/TCP namespace shared by the server and the client:
-
-- the reproducer above (a local pynfs test, not posted);
-- pynfs block, blockextent and a local multi-extent test, 2 runs: 15
-  pass, BLOCK3 fails with NFS4ERR_BADXDR for its empty layoutupdate, as
-  without this patch;
-- fstests generic/075, 091 and 263 with the Linux client over the block
-  layout: only 075 fails, as without this patch.
-
-Chuck pointed this out in the review of the ->map_blocks series, whose
-patch 7 will carry the same check for all mappings of a call:
-https://lore.kernel.org/r/4de5356f-bc4d-4f1a-9c81-fce09b1b46fd@slotpi15m67
----
- fs/xfs/xfs_pnfs.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
-
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index ab38561700..490b48e2ce 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -235,6 +235,23 @@ xfs_fs_map_blocks(
- 
- 	} else {
- 		xfs_iunlock(ip, lock_flags);
-+
-+		/*
-+		 * Blocks past EOF that were allocated for buffered writes, such
-+		 * as speculative preallocation, can be freed by
-+		 * xfs_free_eofblocks() without breaking the layout unless the
-+		 * inode is marked as preallocated. Mark it before handing them
-+		 * out for writing, as for blocks allocated above.
-+		 */
-+		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
-+		    imap.br_startoff + imap.br_blockcount >
-+		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) {
-+			error = xfs_fs_map_update_inode(ip);
-+			if (!error)
-+				error = xfs_log_force_inode(ip);
-+			if (error)
-+				goto out_unlock;
-+		}
- 	}
- 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
- 
+Tested on a Razer Edge 5G (SM8350 v2.1), whose board support is not
+upstream yet: cpu_capacity reads 308, 785 and 1024 once the kernel has
+scaled the values by each cluster's maximum frequency (1804, 2419 and
+2995 MHz), sched_energy_aware is 1, and the energy model covers all
+three clusters. Compared with the same kernel without these patches, an
+unpinned CPU-bound task now runs mostly on the X1 and a light periodic
+task on the A55s. dtbs_check shows no new warning for the SM8350 boards.
+The values come from Razer's kernel release for this device
+(Nicole-msm-5.4.254-20240515).
 
 ---
-base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
-change-id: 20261009-xfs-pnfs-eof-prealloc-47e91cc12711
+Changes in v2:
+- From and Signed-off-by now carry my real name instead of the handle
+  "fromdisposition" used for v1 (same author). No code changes.
+- Link to v1: https://patch.msgid.link/20261012-sm8350-cpu-capacity-v1-0-3d141e0099d5@fromdisposition.org
+
+---
+Demeter Barna (2):
+      arm64: dts: qcom: sm8350: Add CPU capacities
+      arm64: dts: qcom: sm8350: Add CPU dynamic power coefficients
+
+ arch/arm64/boot/dts/qcom/sm8350.dtsi | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+---
+base-commit: d053e38e614fb2e383b298ce8fc308a780d7f209
+change-id: 20261012-sm8350-cpu-capacity-3145a6e159b3
 
 Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
+--  
+Demeter Barna <me@fromdisposition.org>
 
