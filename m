@@ -1,54 +1,48 @@
 From: Bishwa Bhusan Saha <contact@bishwasaha.com>
-Subject: [PATCH 0/5] HID: add battery driver for the UNCTRL RAGE Wireless
- Mouse
-Date: Tue, 13 Oct 2026 01:45:22 +0530
-Message-Id: <20261013-b4-unctrl-m1-battery-v1-0-4a50203b7177@bishwasaha.com>
+Date: Tue, 13 Oct 2026 01:45:23 +0530
+Subject: [PATCH 1/5] HID: add IDs for UNCTRL RAGE Mouse
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORto5tjAVxEPaZe6DK2SdqKMv
- fuqHr/D/6+QxVQynJoVTF6a9ZEq6NBAmDhdBXWshta1PTk6ou9wSaHYDe+EnksR+2DH0XOkITh
- hqOnTJOr7tz1f/s6LnyWU7wu2bQch9LbKeAAAAA==
-X-Change-ID: 20261013-b4-unctrl-m1-battery-4afbaf17c0ea
+Message-Id: <20261013-b4-unctrl-m1-battery-v1-1-4a50203b7177@bishwasaha.com>
+References: <20261013-b4-unctrl-m1-battery-v1-0-4a50203b7177@bishwasaha.com>
+In-Reply-To: <20261013-b4-unctrl-m1-battery-v1-0-4a50203b7177@bishwasaha.com>
 To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
 Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Bishwa Bhusan Saha <contact@bishwasaha.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791836132; l=1047;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791836132; l=749;
  i=contact@bishwasaha.com; s=20261012; h=from:subject:message-id;
- bh=ZQd8UAjXxdtjHCZDOWEnDScNlUHYQJBvBegfhdRjMc0=;
- b=b/JBuK54J2z3qKaxtebHMhp51n8aSRuTwwDPzszk9cMJZ8BFDRguCWR1fp5RtOzjDrO4ebk+D
- HXh7V3mDxmqC29iisNP3uELJSzBaD//wzOV2nJAwWhq6NEaSEZFLMI2
+ bh=fIXuct51biCVxZ2lNfnwp7ct6qZ/yUIRAhnNtUxASx0=;
+ b=DR12+yzzMS+n+/FH7MxUmLaiIvcd8nM6TNe7wy7b8xFyaOMicVJCTEfM/NYUdR0rS6Jf/Ot0r
+ dFVtf4egmN2A2ZEg1UBI12+stCwDrbbF6aiPj4zk58w4WDAV/ziGRDO
 X-Developer-Key: i=contact@bishwasaha.com; a=ed25519;
  pk=bW8B6BzX1VU4IIcYagrb5nNRxBho+rTXaQZ8fLx8CoU=
 X-Endpoint-Received: by B4 Relay for contact@bishwasaha.com/20261012 with auth_id=1168
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patchset adds battery reporting for the UNCTRL RAGE Wireless Mouse.
-Parts of the driver are inspired by the Kysona HID driver
-(drivers/hid/hid-kysona.c).
-
-It was tested on an UNCTRL RAGE Wireless Mouse.
+Add the product IDs for both wired and wireless (dongle) mode of
+UNCTRL RAGE mouse (also known as UNCTRL M1).
 
 Signed-off-by: Bishwa Bhusan Saha <contact@bishwasaha.com>
 ---
-Bishwa Bhusan Saha (5):
-      HID: add IDs for UNCTRL RAGE Mouse
-      HID: UNCTRL: add basic battery reporting for UNCTRL RAGE Mouse
-      HID: UNCTRL: add periodic battery reporting using a workqueue
-      HID: UNCTRL: keep a single battery when a mouse has multiple connections
-      HID: UNCTRL: only report to userspace on battery changes
+ drivers/hid/hid-ids.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
- drivers/hid/Kconfig         |   8 +
- drivers/hid/Makefile        |   1 +
- drivers/hid/hid-ids.h       |   2 +
- drivers/hid/hid-unctrl-m1.c | 426 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 437 insertions(+)
----
-base-commit: 145c2b2e9a5c0f794fb4009bcb072ab19f8ccfcd
-change-id: 20261013-b4-unctrl-m1-battery-4afbaf17c0ea
+diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
+index a9537b7bb..fb4c25c71 100644
+--- a/drivers/hid/hid-ids.h
++++ b/drivers/hid/hid-ids.h
+@@ -1008,6 +1008,8 @@
+ #define USB_DEVICE_ID_MADCATZ_RAT5	0x1705
+ #define USB_DEVICE_ID_MADCATZ_RAT9	0x1709
+ #define USB_DEVICE_ID_MADCATZ_MMO7  0x1713
++#define USB_DEVICE_ID_UNCTRL_M1_WIRED	0xA09F
++#define USB_DEVICE_ID_UNCTRL_M1_DONGLE	0xA0AF
+ 
+ #define USB_VENDOR_ID_MCC		0x09db
+ #define USB_DEVICE_ID_MCC_PMD1024LS	0x0076
 
-Best regards,
---  
-Bishwa Bhusan Saha <contact@bishwasaha.com>
+-- 
+2.56.0
 
