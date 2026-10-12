@@ -1,11 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Mon, 12 Oct 2026 09:58:32 +0300
-Subject: [PATCH RFC v3 02/10] dt-bindings: arm: Add Cortina Systems CS7542
- and Securifi Almond+
+Date: Mon, 12 Oct 2026 09:58:33 +0300
+Subject: [PATCH RFC v3 03/10] dt-bindings: arm: cpus: Add Cortina Systems
+ CS7542 enable method
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-b4-cs75xx-v3-2-0e0d17a098cf@gmail.com>
+Message-Id: <20261012-b4-cs75xx-v3-3-0e0d17a098cf@gmail.com>
 References: <20261012-b4-cs75xx-v3-0-0e0d17a098cf@gmail.com>
 In-Reply-To: <20261012-b4-cs75xx-v3-0-0e0d17a098cf@gmail.com>
 To: Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linusw@kernel.org>, 
@@ -20,67 +20,50 @@ Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
  Jason Li <jason.li@cortina-access.com>, 
- Fil Dunsky <filipp.dunsky@gmail.com>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Fil Dunsky <filipp.dunsky@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791788310; l=1646;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791788310; l=1280;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=iqp1aP4N83y9unmltEz85GKl1p1MyHyOFw1KaFYcgAM=;
- b=9GViLMClt1wKk1+q7AdJ9M1fQ7u7z/e0i+UMrZVjQ8gEeRgQjvOV3FvOI5LODtNkiwO8iYN28
- 6oorr1hiNXSCZ1KsJOiNQYbHbEJlGymfETbDWQvM0kh7d/2dyYrKUw1
+ bh=zDmn+esXces7eieK+stPpF5FV5ebbgc0xe7in2CfHQ8=;
+ b=KfHI9qnCfq7zCeyCyYma2HPx6TBdenZzEYtmFjFtsX6QRdEuh6M1ULY/y62HA2/+fQAPMi5oE
+ c/LD7aeSVe5CL1W3GR+m09He6ZuyjgZQNHDoP2L8JEAPzUzlhOjajnU
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the top-level binding for boards built around the Cortina Systems
-CS7542 ("Goldengate G2") network processor, a dual Cortex-A9 SoC, and
-the first such board, the Securifi Almond+ touchscreen router.
+On the CS7542 the bootloader parks the secondary Cortex-A9 core in a loop
+that waits for an event and then jumps to the address found in a global
+software register. Add the "cortina,cs7542-smp" enable method for it and,
+as with the other release-address based methods, require cpu-release-addr
+to point at that register.
 
 Reviewed-by: Linus Walleij <linusw@kernel.org>
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
- Documentation/devicetree/bindings/arm/cortina.yaml | 31 ++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ Documentation/devicetree/bindings/arm/cpus.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/cortina.yaml b/Documentation/devicetree/bindings/arm/cortina.yaml
-new file mode 100644
-index 000000000..1c04b1781
---- /dev/null
-+++ b/Documentation/devicetree/bindings/arm/cortina.yaml
-@@ -0,0 +1,31 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/arm/cortina.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Cortina Systems CS75xx platforms
-+
-+maintainers:
-+  - Fil Dunsky <filipp.dunsky@gmail.com>
-+
-+description:
-+  The CS75xx ("Goldengate G2") family are network processors from Cortina
-+  Systems. The CS7542 has two Cortex-A9 cores with an SCU, GIC, private
-+  timers and a PL310 L2 cache controller, a packet processing engine, three
-+  PCIe root ports, a NAND flash controller and low speed peripherals.
-+
-+properties:
-+  $nodename:
-+    const: '/'
-+  compatible:
-+    oneOf:
-+      - description: CS7542 based boards
-+        items:
-+          - enum:
-+              - securifi,almondplus
-+          - const: cortina,cs7542
-+
-+additionalProperties: true
-+
-+...
+diff --git a/Documentation/devicetree/bindings/arm/cpus.yaml b/Documentation/devicetree/bindings/arm/cpus.yaml
+index 96136b70d..7a394c500 100644
+--- a/Documentation/devicetree/bindings/arm/cpus.yaml
++++ b/Documentation/devicetree/bindings/arm/cpus.yaml
+@@ -269,6 +269,7 @@ properties:
+           - brcm,bcm63138
+           - brcm,bcm-nsp-smp
+           - brcm,brahma-b15
++          - cortina,cs7542-smp
+           - marvell,armada-375-smp
+           - marvell,armada-380-smp
+           - marvell,armada-390-smp
+@@ -484,6 +485,7 @@ allOf:
+         enable-method:
+           enum:
+             - spin-table
++            - cortina,cs7542-smp
+             - renesas,r9a06g032-smp
+       required:
+         - enable-method
 
 -- 
 2.53.0
