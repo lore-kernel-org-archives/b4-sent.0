@@ -1,173 +1,147 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 13 Oct 2026 15:45:17 -0500
-Subject: [PATCH net] net/smc: don't spin in smc_rx_recvmsg() while a pipe
- holds spliced data
+From: Brian Ellis <brianellis@gotenna.com>
+Date: Tue, 13 Oct 2026 14:57:03 -0600
+Subject: [PATCH v4] usb: gadget: u_serial: fix NULL deref in gs_close()
+ after failed open
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-b4-disp-193a2a59-v1-1-ed88ac10a41c@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQ6CMBAFf4Xs2U1oUWj9FeKhhSeuh0q6aEwI/
- 26R40wys5IiC5Su1UoZH1F5pQLmVNHwCGkCy1iYbG1bU5uG45lH0ZmNb4INF88dXHSA64LzVLI
- 54y7f/7KnhIVuh9R3fGJY9hlt2w+yHVz2eQAAAA==
-X-Change-ID: 20261013-b4-disp-193a2a59-7e8b8ee87a89
-To: Sidraya Jayagond <sidraya@linux.ibm.com>, 
- Paolo Abeni <pabeni@redhat.com>, "David S. Miller" <davem@davemloft.net>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Dust Li <dust.li@linux.alibaba.com>, Eric Dumazet <edumazet@kernel.org>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, Jakub Kicinski <kuba@kernel.org>
-Cc: Wen Gu <guwen@linux.alibaba.com>, linux-rdma@vger.kernel.org, 
- Stefan Raspl <raspl@linux.ibm.com>, Hidayath Khan <hidayath@linux.ibm.com>, 
- Wenjia Zhang <wenjia@linux.ibm.com>, Tony Lu <tonylu@linux.alibaba.com>, 
- linux-s390@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, Ursula Braun <ubraun@linux.ibm.com>, 
- Simon Horman <horms@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791924317; l=6151;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=Iy2d1C/Hg2OiJemaCd9uiVk9it4ddmATnR6ptuuaBjQ=;
- b=HaMrotusNTBYx+btMXWAl7LIp8AlN5IFI6Z811T7SebxTu950vZjxLrLRc5iin4o4FW1OyijD
- MglvEOOIWOsAMpW+SbSzqBoUdUvJdd9y/KFWqv+jS5ALTeVF7/zWj8P
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+Message-Id: <20261013-u_serial-gs-close-null-v4-1-9ea038501994@gotenna.com>
+X-B4-Tracking: v=1; b=H4sIAB6bzmoC/4XN0Q6CIBQG4FdpXEcTRIWueo/WGsJB2QwaqKs53
+ z30ytZc5+7/t/87E4oQLER0PkwowGij9S4Fdjwg1UrXALY6ZUQzWmaCZHi4LwvZ4SZi1fkI2A1
+ dhyXPJMvLdMBRGj8DGPta4est5dbG3of3+mckS/uXHAkmWMgCOOM10aa+NL4H5+RJ+Qda0JFuI
+ FrtQjRBtQZtisqAKM0vlG8hvgvlCVIl51rkNVNMfEPzPH8AmhFavlABAAA=
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Kuen-Han Tsai <khtsai@google.com>, 
+ Prashanth K <prashanth.k@oss.qualcomm.com>, 
+ Syed Tayyab Farooq <syedtayyabfarooq08@gmail.com>, 
+ Krystian Kaniewski <krystianmkaniewski@gmail.com>, 
+ syzbot+782b2f1063e38ba8fa6e@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, Brian Ellis <brianellis@gotenna.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791925022; l=4895;
+ i=brianellis@gotenna.com; s=20260910; h=from:subject:message-id;
+ bh=w9DTZeMtZkRd3FXGUqJ8HyiRNMOLz1JAQ9tb8EK17uE=;
+ b=iESdUBqYiTWAx0NzwAsbRuSLsYWTQYTCqqki4XjUH+QXlOWIeGwwgDPXXjga/pYuWuM3SSmew
+ IcjUACmyrhODZ6Wf9l8c3qHqa68PQOIS+k5ZgHK3mXsoX8rv3nvrfZv
+X-Developer-Key: i=brianellis@gotenna.com; a=ed25519;
+ pk=JciDR8ctfMqvKeRCDP8VPwNLUDULxCAqDum6H+/ByBY=
+X-Endpoint-Received: by B4 Relay for brianellis@gotenna.com/20260910 with auth_id=1022
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While bytes spliced off the RMB are still in a pipe, recvmsg() waits
-for the pipe to release them before it copies the data behind them.
-The path to that wait skips the timeout and signal checks, and
-smc_rx_wait() returns at once on RCV_SHUTDOWN. With a signal pending,
-after SHUT_RD, or once the peer closes or shuts down writing,
-recvmsg() spins on a CPU until the pipe is drained, and SIGKILL cannot
-stop it. MSG_DONTWAIT and an expired SO_RCVTIMEO wait there too
-instead of returning -EAGAIN.
+gs_close() opens with
 
-Check the timeout and signals before that wait, and end it when the
-pipe releases the data or the connection is killed, not on RCV_SHUTDOWN.
-A zero-length read returns 0 without waiting for the pipe.
+	struct gs_port *port = tty->driver_data;
+	...
+	spin_lock_irq(&port->port_lock);
 
-Fixes: 9014db202cb7 ("smc: add support for splice()")
+and never checks port.  gs_open() assigns tty->driver_data only on the
+port.count 0 -> 1 edge, so any failure earlier in gs_open() leaves it NULL,
+and tty_open() calls tty_release(), and hence ->close(), when ->open()
+fails.
+
+syzbot hit exactly this on arm64.  Fault injection failed the kfifo_alloc()
+of the write buffer in gs_open():
+
+   __kfifo_alloc_node+0x10c/0x208 lib/kfifo.c:44
+   gs_open+0x144/0x514 drivers/usb/gadget/function/u_serial.c:636
+   tty_open+0x404/0x89c drivers/tty/tty_io.c:2137
+
+and the tty core's close of the failed open then took port_lock through
+the NULL port:
+
+  BUG: unable to handle kernel paging request in gs_close
+  KASAN: null-ptr-deref in range [0x00000000000003a0-0x00000000000003a7]
+  Call trace:
+   spin_lock_irq include/linux/spinlock.h:372 [inline]
+   gs_close+0xac/0x65c drivers/usb/gadget/function/u_serial.c:698
+   tty_release+0x2c4/0xffc drivers/tty/tty_io.c:1745
+   tty_open+0x46c/0x89c drivers/tty/tty_io.c:2146
+
+Return early instead.  There is nothing to release when the open never got
+far enough to claim the port.
+
+Unlike the check reverted by commit f6c7bc4a6823 ("Revert "usb: gadget:
+u_serial: Add null pointer check in gs_start_io""), this is not hiding a
+race: the tty core calls ->close() for an ->open() that failed by design,
+so driver_data is legitimately unset on that path.
+
+Fixes: c1dca562be8a ("usb gadget: split out serial core")
+Reported-by: syzbot+782b2f1063e38ba8fa6e@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=782b2f1063e38ba8fa6e
 Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Assisted-by: LLM
+Signed-off-by: Brian Ellis <brianellis@gotenna.com>
 ---
-Repro on v7.3-rc6 with KASAN (its smc_rx.c is the same as net's),
-SMC-D loopback, conforming peer: the reader splices 4096 bytes into a
-pipe the test drains only after 3 s, the peer has sent more behind
-them, and the reader calls recv(4096).
+Found by reading the code while working on a downstream 6.6-based gadget
+kernel, where gserial_free_line() clearing ports[n].port makes the same
+path reachable, and matched to the syzbot report afterwards.  It has not
+been hit here, and syzbot has no reproducer for it.
 
-Unpatched, with SIGUSR1 pending, after SHUT_RD, after the peer's
-SHUT_WR, or after the peer closed with data of ours unread (an abort,
-sk_err ECONNRESET), recv() spins on a full CPU until the drain, and
-SIGKILL doesn't stop it. MSG_DONTWAIT, a 1 s SO_RCVTIMEO and a
-zero-length recv() don't return until the drain either.
+Compile-tested against usb-linus with allmodconfig (CONFIG_USB_U_SERIAL=m).
+Not boot-tested on mainline, and the failed-open path has not been
+exercised.
 
-Patched:
-  - MSG_DONTWAIT gets -EAGAIN at once, SO_RCVTIMEO after 1042 ms; a
-    signal gives -EINTR, or with SA_RESTART the handler runs and the
-    call goes back to sleep; SIGKILL ends the task within 10 ms;
-    recv(0) returns 0 at once;
-  - after a shutdown or an abort the reader sleeps with no CPU, then
-    gets the next 4096 bytes once the pipe is drained;
-  - a MSG_WAITALL read that had copied 4096 bytes when another thread
-    spliced in front of the rest returns those 4096 at the signal.
+Two lifetime reworks posted for a different syzbot report in this driver
+(fe63e4d633540f230624) add the same check as part of larger changes:
 
-In every case the next recv() gets the rest of the stream intact. A
-second splice(SPLICE_F_NONBLOCK), with the first undrained, still
-returns the next 4096 bytes at once. Over SMC-R on rxe, starting rdma
-link del on the reader's only RDMA device kills the connection
-(SO_ERROR ECONNABORTED) and the reader returns 14 ms later, patched or
-not. The patch gives the same results on top of [2]. No KASAN splat.
-Dropping any one check from the patch makes one of the cases above
-fail, except the !splice_pending condition, whose race no test can hit
-on demand. Logs on request.
+  https://lore.kernel.org/r/20260910105359.12915-1-syedtayyabfarooq08@gmail.com
+  https://lore.kernel.org/r/6941beb7-8cae-4cc5-ba07-e1c8a8753fe1@mail.kernel.org
 
-I checked that condition in a small state model of the reader, the
-pipe release and smc_conn_kill() (atomic steps, sequentially
-consistent, a blocking read): over every interleaving, with the
-release in today's order or with splice_pending dropped under
-lock_sock (2/4 of [2]; Hidayath said in [1] he would do the same),
-the reader returns. In today's order the condition is needed: without
-it the release's decrement and wake can land between the reader's
-check and its add_wait_queue(), and the reader sleeps until something
-else wakes the socket. Under LKMM, today's order allows a lost wake
-even with the condition (no full barrier between add_wait_queue() and
-the condition's read; smc_rx_wait() has the same gap), and the
-reorder in [1] or [2] closes it for both. This patch doesn't depend
-on that reorder.
-
-For stable: in SMC_CLOSED, SMC_PEERFINCLOSEWAIT and SMC_APPFINCLOSEWAIT
-the pipe release drops splice_pending only since c924884743e9
-("net/smc: fix use-after-free in smc_rx_pipe_buf_release()"). Every
-maintained stable from 6.1.y up has it. 5.10.y and 5.15.y don't (the
-backports are posted, not released), and there a reader in those
-states would sleep until a signal, its timeout or a kill instead of
-spinning. The shutdown and abort cases above reach none of those
-states.
-
-[1] https://lore.kernel.org/all/7a174d1f-80d8-4294-ae66-829c9dacd662@linux.ibm.com/
-[2] https://lore.kernel.org/all/20261013-b4-disp-f345196c-v7-0-ef3dddfbfa68@proton.me/
+This is the minimal fix, aimed at stable.  If either of those lands first,
+this one is redundant.
 ---
- net/smc/smc_rx.c | 35 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 34 insertions(+), 1 deletion(-)
+Changes in v4:
+- Reported-by:/Closes: now use the ID from syzbot's public report; v3
+  used the ID from its moderation stage.
+- Quote the trace from the public report, including the injected
+  kfifo_alloc() failure in gs_open().  v3 misread the shadow index 0x74 as
+  the offset (it is 0x3a0) and quoted a "Write" line not in the report.
+- Correct v3's notes: syzbot has no reproducer, and this was found by
+  reading the code, not hit downstream.
+- Mention the two overlapping lifetime reworks.
+- Add Assisted-by: LLM.
+- Link to v3: https://lore.kernel.org/r/20260928-u_serial-gs-close-null-v3-1-c688d93b4c49@gotenna.com
 
-diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
-index 197fddc6271f..6f409bda4c37 100644
---- a/net/smc/smc_rx.c
-+++ b/net/smc/smc_rx.c
-@@ -286,6 +286,22 @@ int smc_rx_wait(struct smc_sock *smc, long *timeo, size_t peeked,
- 	return rc;
- }
+Changes in v3:
+- Restore the Reported-by:/Closes: syzbot tags and the KASAN trace. They were
+  dropped from v1 and v2 in error when the commit message was rewritten. The
+  report is still open, and without Closes: syzbot cannot associate this fix
+  with it.
+- Say why this differs from the check reverted in f6c7bc4a6823, since that
+  revert's reasoning is the obvious objection here.
+- Link to v2: https://lore.kernel.org/r/20260927-u_serial-gs-close-null-v2-1-bdedf57fe96f@gotenna.com
+
+Changes in v2:
+- Remove the comment above the check, rather than reword it as Prashanth
+  suggested. The commit message already explains the path that leaves
+  tty->driver_data NULL, so the comment only restated it. Happy to add a
+  reworded one instead if that is preferred.
+- Link to v1: https://lore.kernel.org/r/20260910-u_serial-gs-close-null-v1-1-9a5e848b1dfb@gotenna.com
+---
+ drivers/usb/gadget/function/u_serial.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/usb/gadget/function/u_serial.c b/drivers/usb/gadget/function/u_serial.c
+index cdd1dfc66..892d2673e 100644
+--- a/drivers/usb/gadget/function/u_serial.c
++++ b/drivers/usb/gadget/function/u_serial.c
+@@ -695,6 +695,9 @@ static void gs_close(struct tty_struct *tty, struct file *file)
+ 	struct gs_port *port = tty->driver_data;
+ 	struct gserial	*gser;
  
-+/* Wait until the pipe releases the spliced data. Unlike smc_rx_wait(),
-+ * this does not end on shutdown or a socket error: the data to read is
-+ * already in the RMB. smc_conn_kill() wakes the socket, and the caller
-+ * checks conn->killed.
-+ */
-+static void smc_rx_wait_splice(struct smc_sock *smc, long *timeo)
-+{
-+	DEFINE_WAIT_FUNC(wait, woken_wake_function);
-+	struct smc_connection *conn = &smc->conn;
-+	struct sock *sk = &smc->sk;
++	if (!port)
++		return;
 +
-+	add_wait_queue(sk_sleep(sk), &wait);
-+	sk_wait_event(sk, timeo, !atomic_read(&conn->splice_pending), &wait);
-+	remove_wait_queue(sk_sleep(sk), &wait);
-+}
-+
- static int smc_rx_recv_urg(struct smc_sock *smc, struct msghdr *msg, int len,
- 			   int flags)
- {
-@@ -443,7 +459,24 @@ int smc_rx_recvmsg(struct smc_sock *smc, struct msghdr *msg,
- 		/* could be just 1 byte, even after waiting on data above */
- 		readable = smc_rx_data_available(conn, peeked_bytes);
- 		splbytes = atomic_read(&conn->splice_pending);
--		if (!readable || (msg && splbytes)) {
-+		if (msg && splbytes) {
-+			/* a pipe still holds bytes ahead of these, and the
-+			 * jumps to copy skip the timeout and signal checks;
-+			 * a zero-length read returns 0 at once
-+			 */
-+			if (!read_remaining)
-+				break;
-+			if (!timeo || signal_pending(current)) {
-+				if (!read_done)
-+					read_done = timeo ?
-+						    sock_intr_errno(timeo) :
-+						    -EAGAIN;
-+				break;
-+			}
-+			smc_rx_wait_splice(smc, &timeo);
-+			continue;
-+		}
-+		if (!readable) {
- 			if (splbytes)
- 				func = smc_rx_data_available_and_no_splice_pend;
- 			else
+ 	spin_lock_irq(&port->port_lock);
+ 
+ 	if (port->port.count != 1) {
 
 ---
-base-commit: 513444cc62e231a11c9b15ea88de0890da9b2b4f
-change-id: 20261013-b4-disp-193a2a59-7e8b8ee87a89
+base-commit: be4219dd98608736e13e0b790ef742b76a13254d
+change-id: 20260910-u_serial-gs-close-null-a80a436666e8
 
 Best regards,
---  
-Bryam Vargas <hexlabsecurity@proton.me>
+-- 
+Brian Ellis <brianellis@gotenna.com>
 
