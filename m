@@ -1,264 +1,173 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 13 Oct 2026 17:54:44 +0900
-Subject: [PATCH] xfs: make pNFS LAYOUTCOMMIT stable the way fdatasync does
+From: Xincheng Ji <jixincheng@ultrarisc.com>
+Subject: [PATCH v3 0/7] riscv: Add device tree support for UltraRISC DP1000
+Date: Tue, 13 Oct 2026 18:21:24 +0800
+Message-Id: <20261013-ultrarisc-dts-v3-0-5ff3ebb2a90d@ultrarisc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-xfs-pnfs-commit-datasync-v1-1-2a12ef89ecd9@samsung.com>
-X-B4-Tracking: v=1; b=H4sIANPxzWoC/x2MMQqAMAwAvyKZDbRRLPgVcSg1agarNCJK8e8Wl
- 4Mb7jIoJ2GFvsqQ+BKVPRaxdQVh9XFhlKk4kKHOGtvgPSsesSDs2yYnTv70+sSAJjhqyTnLnqD
- kR+JZ7n89jO/7ASW/80BqAAAA
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791881683; l=11372;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=ip7Msi6gT+JifFGVdHAmbTCV6iicDIeWhtwUO01WyTw=;
- b=TA86k7XdwKniuuC6WMzrAjfTjtocKO6EijU/YPm4yq/vt6dee0ah0N+08wKOKW/6mYSgNzI/7
- lvloau4g7KpBDIWpKi0jQFBEPc0thCEZYkJnEG0bO4zRnlicg6tYqoU
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIACUGzmoC/2WQ3U4DIRCFX6XhWgwMf0tjjO9hvBhgsBjb6rJdN
+ U3fXZYatXp5MnO+k3OOrNJYqLL16shGmkst+10T6mrF4gZ3j8RLapqBACsMAD88TyOOpUaepsp
+ 9wqAQlLTBsuZ5GSmX9867fzjreghPFKcF8vUx0uuhBU3nN7alWrEHrVc3PccLx9PbFuOvtBm44
+ B6VD3lIQUl19327jvvtbWfjFDedkw3YpCxJ1JiCNR4HCTlpqU2KCGR9kF4bdelyyZAEMRhtWwY
+ qvVC80C5aCMq4PDidvaTFFbASb8HbMjWj0EqLLGMSKVIewFOwkE3QA5I3CJGkCymzZZNNqdN+/
+ OiTz7JP0FsPoP+sO8vW2UoMDimQJ3PZudNm+CEsu/0hLKsZCjp6p52L/win0+kT3TrtogQCAAA
+ =
+X-Change-ID: 20260522-ultrarisc-dts-9dab3a2316b6
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Jia Wang <wangjia@ultrarisc.com>, 
+ Xincheng Ji <jixincheng@ultrarisc.com>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, 
+ Samuel Holland <samuel.holland@sifive.com>, 
+ Anup Patel <anup@brainfault.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
+ linux-riscv@lists.infradead.org, Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.17-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791886887; l=6630;
+ i=jixincheng@ultrarisc.com; s=20260922; h=from:subject:message-id;
+ bh=dFFoT0sSzbe9riLAKq84I+CKVyv+cf0b8B6dj4urwW0=;
+ b=o9apMkQKLGfqaUJ5/zRMiDeMERvxlGehBrgWtfjtqQsGAukbDYOeGpo1ObLeN8dhWI00NBrIm
+ q7m47tevAoeBE8nKq/3LyK0zgPfnOulU013ktiSjIK5HumSrtmrGIu7
+X-Developer-Key: i=jixincheng@ultrarisc.com; a=ed25519;
+ pk=n848dcS5D6g0vLad/rjp4Gf/1eedTe1a3pYUrkt2260=
+X-Endpoint-Received: by B4 Relay for jixincheng@ultrarisc.com/20260922 with auth_id=1046
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_fs_commit_blocks() commits the timestamp update of every
-LAYOUTCOMMIT as a synchronous transaction, so every LAYOUTCOMMIT forces
-the log. When the client only overwrote blocks that were already written
-on disk and the size does not change, the only metadata that this log
-force makes stable for the file is the new timestamps. fdatasync after
-the same overwrite does not force the log: a timestamp-only change does
-not set ili_datasync_seq, and without it xfs_file_fsync() only flushes
-the cache of the device that holds the file data. The comment above
-xfs_fs_commit_blocks() says that it relies on always committing a
-transaction, and that it would otherwise have to flush the cache the way
-fsync does for a datasync.
+Add Devicetree support for the UltraRISC DP1000 RISC-V SoC and two
+DP1000-based motherboards: Shenzhen Rongda M0 and Milk-V Titan.
 
-Do it the way fdatasync does: log the timestamps as XFS_ILOG_TIMESTAMP
-when the size does not change, commit the transaction without
-XFS_TRANS_SYNC, force the log up to ili_datasync_seq, and flush the
-cache of the device that holds the file data unless that log force wrote
-an iclog. The unwritten extent conversions and a new size set
-ili_datasync_seq, so a LAYOUTCOMMIT that converts extents or changes the
-size still forces the log. So does a conversion that was done earlier,
-for example by a direct write on the server: ili_datasync_seq stays set
-until that conversion is on disk, so the log force covers it.
+DP1000 integrates eight UltraRISC CP100 CPU cores.  The SoC description
+includes the CPU and cache topology, CLINT, PLIC, clock controller,
+pinctrl, GPIO, four UARTs, two SPI controllers, four I2C controllers,
+three PCIe root complexes, GMAC, and the DMA controller.
 
-With the block layout on an NVMe/TCP namespace in QEMU, backed by a
-partition of an NVMe SSD with a volatile write cache, one client process
-overwriting a 16 MiB file in 64 KiB writes, each followed by fsync, took
-473 ms instead of 800 ms (median of 5 runs). On average a LAYOUTCOMMIT
-spent 1.1 ms in xfs_fs_commit_blocks() instead of 2.4 ms, and none wrote
-an iclog. With 4 KiB writes to a 4 MiB file it took 1841 ms instead of
-3101 ms. A LAYOUTCOMMIT now issues an empty cache flush instead of a log
-write with REQ_PREFLUSH and REQ_FUA. The guest that ran nvmet reached
-the SSD through virtio-blk, which has no FUA, so there the FUA cost a
-second cache flush. The gain should be smaller with native FUA and on a
-device without a volatile write cache. It is also smaller with several
-writers: 4 threads overwriting 16 MiB files in 64 KiB writes took
-1011 ms instead of 1083 ms. LAYOUTCOMMITs of new files force the log as
-before.
+The Shenzhen Rongda M0 and Milk-V Titan device trees add their
+board-specific pin multiplexing, RTC devices, and Ethernet PHY
+configuration.  Both boards enable the three PCIe root complexes and
+the GMAC described as disabled by default in the SoC DTS.  The Titan
+description also provides its GPIO wakeup keys.
 
-As with fdatasync, the timestamps of a LAYOUTCOMMIT that converts
-nothing and keeps the size, and the change attribute that nfsd derives
-from the ctime, reach the disk with a later log write instead of before
-the reply, at the latest the one that the log worker issues every 30 s
-by default. The Linux client sends LAYOUTCOMMIT from both fsync() and
-fdatasync() (pnfs_generic_sync() ignores datasync), so fsync() on a
-block layout client now gets the timestamp guarantee of fdatasync().
-RFC 8881 section 12.5.4 says that LAYOUTCOMMIT may require committing
-the block list to stable storage, which this keeps, and section 12.5.4.1
-only asks that the updated attributes be visible when it completes.
+The binding patches add the vendor, CPU, board, and peripheral compatible
+strings consumed by the new device trees.  The SPI, I2C, and AXI DMA nodes
+use their respective generic DesignWare compatible strings as fallbacks.
 
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+An earlier version of the DP1000 SoC and board Devicetree support was
+posted as part of a combined Devicetree and pinctrl series. The pinctrl
+binding and driver were subsequently split out and merged separately.
+This series carries the updated Devicetree portion.
+
+Link: https://lore.kernel.org/all/20260515-ultrarisc-pinctrl-v1-0-bf559589ea8a@ultrarisc.com/
+
+The following prerequisites have been applied to their respective
+subsystem trees but are not yet included in the base:
+
+- net: stmmac: Add common internal RGMII delay handling and DP1000 support
+  https://lore.kernel.org/netdev/20260907-dwmac-ultrarisc-v2-0-9a39bf8db313@ultrarisc.com/
+
+- dt-bindings: i2c: dw: Add compatible for UltraRISC DP1000 SoC
+  https://patch.msgid.link/20260907-ultrarisc-dts-v2-6-5eb4c97477c5@ultrarisc.com
+
+- dt-bindings: dma: snps,dw-axi-dmac: Add UltraRISC DP1000 compatible
+  https://patch.msgid.link/20260907-ultrarisc-dts-v2-7-5eb4c97477c5@ultrarisc.com
+
+Testing:
+- Built dp1000-shenrongda-m0.dtb and dp1000-milkv-titan.dtb with
+  ARCH=riscv and W=1.
+- Ran dt_binding_check for the modified and prerequisite bindings.
+- Validated both DTBs against the relevant Devicetree schemas with
+  CHECK_DTBS=y and all prerequisite changes applied.
+- Boot-tested both DTBs on Shenzhen Rongda M0 and Milk-V Titan. Verified
+  the CPU topology and CBO selftests, UART, SPI, I2C/RTC, system memory,
+  and all three PCIe root complexes. The expected PCIe endpoints were
+  enumerated on both boards.
+- With the prerequisite GMAC series applied, ultrarisc-dwmac established
+  1000 Mb/s full-duplex links with the YT8531S PHY on M0 and the RTL8211F
+  PHY on Titan.
+
+Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Signed-off-by: Xincheng Ji <jixincheng@ultrarisc.com>
 ---
-With this, the timestamps of a LAYOUTCOMMIT that converts nothing and
-keeps the size, and the change attribute that nfsd derives from the
-ctime, are not stable when the reply goes out. After a server crash, a
-client that cached the file before the LAYOUTCOMMIT could see the old
-change attribute again and keep its stale cache until the file changes.
-A WRITE with DATA_SYNC4 already leaves the timestamps that way ("persist
-data only" in nfsd_vfs_write(), nfsd4_iocb_flags() in nfsd-testing),
-although there the client asks for it, and the comment above
-nfsd4_change_attribute() assumes a stable change attribute only for
-directories.
+Changes in v3:
+- Drop the DP1000 SPI binding patch, which has been merged, and the I2C
+  and DMA binding patches, which have been applied.
+- Correct the reg property address ranges and sizes for DMA and I2C nodes in the DP1000 base device tree.
+- Link to v2: https://patch.msgid.link/20260907-ultrarisc-dts-v2-0-5eb4c97477c5@ultrarisc.com
 
-On a sync export, nfsd makes most metadata operations stable before it
-replies: commit_metadata() after SETATTR, ALLOCATE, DEALLOCATE, create,
-link, rename and unlink, and a full fsync for CLONE and, as RFC 8881
-section 18.3.4 asks, for COMMIT. With this patch, a LAYOUTCOMMIT on a
-sync export replies before its timestamps are stable, unlike those.
-LAYOUTCOMMIT is not that COMMIT: section 12.5.4 says "The data should be
-written and committed to the appropriate storage devices before the
-LAYOUTCOMMIT occurs", and of durability it says only that for block
-layouts LAYOUTCOMMIT may require committing the block list to stable
-storage, which this patch keeps. If nfsd wants LAYOUTCOMMIT to follow
-the sync export option anyway, ->commit_blocks can take a datasync
-argument as ->fsync does, but sync is the default, so the gain would
-then be limited to async exports.
+Changes in v2:
+- Remove the dependency on the DP1000 clock series, which has since
+  been merged.
+- Drop the generic DWMAC compatible patch; DP1000 GMAC support is handled
+  by a separate prerequisite series.
+- Drop the RISC-V CPU binding yamllint fix, which has been applied.
+- Add DP1000-specific resource constraints and hardware descriptions to
+  the SPI, I2C and DMA bindings.
+- Correct the native chip-select count of SPI1 from three to four.
+- Describe all eight per-channel DMA interrupts.
+- Update the DP1000 GMAC nodes for the separate GMAC support series:
+  remove the generic DWMAC fallback, use "rgmii-id" for both boards, and
+  clarify the fixed MAC-side RGMII delays.
+- Link to v1: https://patch.msgid.link/20260824-ultrarisc-dts-v1-0-61ab7aebe9e5@ultrarisc.com
 
-Tested on nfsd-testing d918c664efd5 with the same change, in QEMU
-guests: nfsd on XFS (mkfs.xfs defaults, internal log, sync export), the
-block layout on an NVMe/TCP namespace exported by nvmet from another
-guest, and the Linux NFSv4.2 client. The patch applies to XFS for-next
-0be6da616ab5 as is.
-
-nfsd-testing does not have commit e3c682dd1130 ("xfs: map pNFS layouts
-to the end of the extent again"), which only changes LAYOUTGET, nor the
-for-next changes to the log cache flushes (xlog_flush_data_caches() and
-XLOG_ICL_NEED_FLUSH_LOG), which only matter with an external log or an
-rt device.
-
- - Overwrites of written files, each write followed by fsync, KASAN
-   and lockdep off. The namespace was backed by a partition of a
-   Samsung 990 PRO (volatile write cache), given to the nvmet guest as
-   virtio-blk with cache=none. virtio-blk has no FUA, so REQ_FUA became
-   a write plus a cache flush there. Medians of 5 runs, with the
-   kernels without and with the patch alternating; "ms each" is the
-   time in xfs_fs_commit_blocks() per LAYOUTCOMMIT:
-
-     threads  file    write   without    with  commits  ms each
-     1        16 MiB  64 KiB   800 ms  473 ms   256   2.4 -> 1.1
-     4        16 MiB  64 KiB  1083 ms 1011 ms  1024   2.6 -> 2.5
-     1         4 MiB   4 KiB  3101 ms 1841 ms  1024   2.6 -> 1.5
-
-   With the patch no LAYOUTCOMMIT forced the log, and the log was
-   written at most once per run. With 4 writers the gain is smaller:
-   without the patch their log forces are partly shared, and with it
-   their cache flushes queue up. Overwrites of 64 MiB files in 4 MiB
-   writes by 4 threads took 1150 ms instead of 1328 ms, medians of 3
-   runs that overlap (1114 to 1214 ms against 1181 to 1424 ms) and did
-   not alternate.
- - New files, 4 threads writing 64 MiB each in 4 MiB writes, each
-   write followed by fsync: every LAYOUTCOMMIT still forced the log, as
-   before.
- - A crash right after a LAYOUTCOMMIT of an extent that the server had
-   just converted with a direct write, before that conversion was
-   written to the log: the server preallocated 4 MiB and wrote it with
-   O_DIRECT, the client overwrote it through the layout and called
-   fsync, and the server VM was killed. After mount, the extent was
-   written and held the client's data, with and without the patch (2
-   runs each). A prototype that only flushed the cache when the range
-   was written in memory and the size did not change lost the data in
-   both runs: the extent came back unwritten.
- - The same crash after the client wrote a new 4 MiB file through the
-   layout and called fsync (allocation, conversion and a new size):
-   size, extent and data were all there, with and without the patch
-   (2 runs each).
- - With a KASAN and lockdep kernel, and no warnings from either: pynfs
-   block and blockextent, same as without the patch (BLOCK3 fails
-   either way, on a bug in the test); fstests generic/075, 091 and 263
-   over the block layout, where 075 fails with an fsx size error as it
-   does without the patch, and none of the 10337 LAYOUTCOMMITs failed.
-   The pynfs tests also passed the same way on an XFS_DEBUG kernel with
-   XFS_ASSERT_FATAL.
- - W=1 builds of fs/xfs/xfs_pnfs.o and fs/xfs/xfs_file.o on XFS
-   for-next 0be6da616ab5 and on nfsd-testing: no warnings.
-
-If preferred, I can factor the end of xfs_file_fsync() into a helper
-that both use, instead of exporting xfs_fsync_flush_log().
----
- fs/xfs/xfs_file.c |  2 +-
- fs/xfs/xfs_file.h |  2 ++
- fs/xfs/xfs_pnfs.c | 22 ++++++++++++++++------
- 3 files changed, 19 insertions(+), 7 deletions(-)
-
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 7d0c8a1975..851c5d830e 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -99,7 +99,7 @@ xfs_dir_fsync(
-  * waiting on sequences that are still in flight to correctly order concurrent
-  * sync operations.
-  */
--static int
-+int
- xfs_fsync_flush_log(
- 	struct xfs_inode	*ip,
- 	bool			datasync,
-diff --git a/fs/xfs/xfs_file.h b/fs/xfs/xfs_file.h
-index 2ad91f755c..a10d684ecb 100644
---- a/fs/xfs/xfs_file.h
-+++ b/fs/xfs/xfs_file.h
-@@ -11,5 +11,7 @@ extern const struct file_operations xfs_dir_file_operations;
- 
- bool xfs_is_falloc_aligned(struct xfs_inode *ip, loff_t pos,
- 		long long int len);
-+int xfs_fsync_flush_log(struct xfs_inode *ip, bool datasync,
-+		int *log_flushed);
- 
- #endif /* __XFS_FILE_H__ */
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index ab38561700..850c07e611 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -13,6 +13,7 @@
- #include "xfs_bmap.h"
- #include "xfs_iomap.h"
- #include "xfs_pnfs.h"
-+#include "xfs_file.h"
- #include <linux/exportfs_block.h>
- 
- /*
-@@ -277,10 +278,12 @@ xfs_pnfs_validate_isize(
-  * converting any unwritten extents, flushing the disk cache and updating the
-  * time stamps.
-  *
-- * Note that we rely on the caller to always send us a timestamp update so that
-- * we always commit a transaction here.  If that stops being true we will have
-- * to manually flush the cache here similar to what the fsync code path does
-- * for datasyncs on files that have no dirty metadata.
-+ * Like fdatasync, a commit that only updates the timestamps does not force the
-+ * log: they are logged as XFS_ILOG_TIMESTAMP and reach the disk with a later
-+ * log write. The log is forced up to the last change that a datasync needs,
-+ * such as the unwritten extent conversions or a new size, and the cache of the
-+ * device holding the file data is flushed if that log force did not write an
-+ * iclog itself.
-  */
- static int
- xfs_fs_commit_blocks(
-@@ -294,6 +297,7 @@ xfs_fs_commit_blocks(
- 	struct xfs_trans	*tp;
- 	struct timespec64	now;
- 	bool			update_isize = false;
-+	int			log_flushed = 0;
- 	int			error, i;
- 	loff_t			size;
- 
-@@ -345,7 +349,8 @@ xfs_fs_commit_blocks(
- 
- 	xfs_ilock(ip, XFS_ILOCK_EXCL);
- 	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
--	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
-+	xfs_trans_log_inode(tp, ip,
-+			update_isize ? XFS_ILOG_CORE : XFS_ILOG_TIMESTAMP);
- 
- 	now = inode_set_ctime_current(inode);
- 	inode_set_atime_to_ts(inode, now);
-@@ -356,8 +361,13 @@ xfs_fs_commit_blocks(
- 		ip->i_disk_size = new_size;
- 	}
- 
--	xfs_trans_set_sync(tp);
- 	error = xfs_trans_commit(tp);
-+	if (error)
-+		goto out_drop_iolock;
-+
-+	error = xfs_fsync_flush_log(ip, true, &log_flushed);
-+	if (!error && !log_flushed)
-+		error = blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
- 
- out_drop_iolock:
- 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Paul Walmsley <pjw@kernel.org>
+To: Palmer Dabbelt <palmer@dabbelt.com>
+To: Albert Ou <aou@eecs.berkeley.edu>
+To: Alexandre Ghiti <alex@ghiti.fr>
+To: Jia Wang <wangjia@ultrarisc.com>
+To: Daniel Lezcano <daniel.lezcano@kernel.org>
+To: Thomas Gleixner <tglx@kernel.org>
+To: Samuel Holland <samuel.holland@sifive.com>
+To: Anup Patel <anup@brainfault.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Paul Walmsley <paul.walmsley@sifive.com>
+Cc: Palmer Dabbelt <palmer@sifive.com>
+Cc: Conor Dooley <conor@kernel.org>
+Cc: linux-riscv@lists.infradead.org
 
 ---
-base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
-change-id: 20261013-xfs-pnfs-commit-datasync-0c7242771ea2
+Jia Wang (7):
+      dt-bindings: vendor-prefixes: Add shenrongda
+      dt-bindings: riscv: cpus: Add UltraRISC CP100 compatible
+      dt-bindings: riscv: Add UltraRISC DP1000 board compatibles
+      dt-bindings: timer: Add UltraRISC DP1000 CLINT
+      riscv: dts: ultrarisc: Add initial device tree for UltraRISC DP1000
+      riscv: dts: ultrarisc: Add Shenzhen Rongda M0 board device tree
+      riscv: dts: ultrarisc: Add Milk-V Titan board device tree
+
+ Documentation/devicetree/bindings/riscv/cpus.yaml  |   1 +
+ .../devicetree/bindings/riscv/ultrarisc.yaml       |  27 +
+ .../devicetree/bindings/timer/sifive,clint.yaml    |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |   8 +
+ arch/riscv/boot/dts/Makefile                       |   1 +
+ arch/riscv/boot/dts/ultrarisc/Makefile             |   3 +
+ .../dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi  | 108 +++
+ .../boot/dts/ultrarisc/dp1000-milkv-titan.dts      | 203 +++++
+ arch/riscv/boot/dts/ultrarisc/dp1000-pinctrl.h     |  63 ++
+ .../ultrarisc/dp1000-shenrongda-m0-pinctrl.dtsi    |  79 ++
+ .../boot/dts/ultrarisc/dp1000-shenrongda-m0.dts    | 113 +++
+ arch/riscv/boot/dts/ultrarisc/dp1000.dtsi          | 899 +++++++++++++++++++++
+ 13 files changed, 1508 insertions(+)
+---
+base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
+change-id: 20260522-ultrarisc-dts-9dab3a2316b6
+prerequisite-message-id: <20260907-dwmac-ultrarisc-v2-0-9a39bf8db313@ultrarisc.com>
+prerequisite-patch-id: 92e6cf1352d54e283d7721dc1542b580b8a41be1
+prerequisite-patch-id: 875c2058e9d8a983d785d7447374758f994dc847
+prerequisite-patch-id: 060a9b129c32c623a52ab1ba66f7a357e54575ff
+prerequisite-patch-id: 9aafbac6d2531a378b2057bf57787c814523f9d3
+prerequisite-patch-id: d75120a112276bd966d37441bd4d631e1539d0e8
+prerequisite-patch-id: f526d36e1a4adb659a812fd4145dca2e69b19453
+prerequisite-patch-id: 7d5e12085468dba34526d9047c62b357f874f91e
 
 Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
+--  
+Xincheng Ji <jixincheng@ultrarisc.com>
 
