@@ -1,70 +1,84 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Wed, 14 Oct 2026 01:46:00 +0800
-Subject: [PATCH] dt-bindings: vendor-prefixes: add Ambarella
+From: Igor Velkov <iav@iav.lv>
+Date: Tue, 13 Oct 2026 20:53:34 +0300
+Subject: [PATCH] arm: dts: meson-sm1-odroid-hc4: power-cycle the SD card at
+ init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-cv75-prefix-v1-1-fe95ed567880@ambarella.com>
-X-B4-Tracking: v=1; b=H4sIAFduzmoC/yWNzQ5AMBCEX0X2rEnb+H8VcaAW64B0ESJ9dy3Hb
- zLzzQOMlpChih6weBLTunhQcQRmapcRBfWeQUudKakSYc48FZvFgS6RYNEpI9u81yX4xR9/trr
- 5mY9uRrMHRWhMxPtq73DnnHsB9JFY7H4AAAA=
-X-Change-ID: 20261014-cv75-prefix-4e8b1c0a7d29
-To: Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, Long Zhao <longzhao@ambarella.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Krzysztof Kozlowski <krzk@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Linus Walleij <linusw@kernel.org>, devicetree@vger.kernel.org, 
- Long Zhao <zl020895@163.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791913588; l=1442;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=/DBR6bJT9D7LQ4feEnzdAHUOtPgBVZpuVoWKIq8de8w=;
- b=HBTRhm1gjTs0qja+wL9IWY5zHWPD46YwsAvZnu/RgayZpaETzqhNCbT/WnJiPVMaJ1ei6l9jB
- fg7IHg6aixqDT7SzNh1RugYBMhIAO1DzAsf8+WUFzXRG3bz2EQtMb2J
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+Message-Id: <20261013-b4-hc4-sd-power-cycle-v1-1-cde760a256a5@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAB1wzmoC/x3MTQqAIBBA4avErBtIM6GuEi1SxxyICoV+kO6et
+ PwW72VIFJkSDFWGSCcn3rcCUVdgw7wthOyKQTZSi0a0aBQGqzA5PPaLItrHroTeSKV170zbd1D
+ aI5Ln+/+O0/t+ToIaRWcAAAA=
+To: Neil Armstrong <neil.armstrong@linaro.org>
+Cc: u-boot-amlogic@groups.io, u-boot@lists.u-boot-project.org, 
+ Tom Rini <trini@konsulko.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2119; i=iav@iav.lv;
+ h=from:subject:message-id; bh=tR/RFYgAqbY87MOye/X3GfkLr/MIhX3x0TK79SL/+gg=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnnCuTebzBRkLR1C+N5XVVhc/bU4ePe07ObuXzd3DYfD
+ hEXkFvTUcrCIMbFICumyDLhkMatjCVX//p7mD+AmcPKBDKEgYtTACbyfB0jw96599raVr42938l
+ /P38ued23S8717Ov2G1X7tM7XyKnaCPDP7WE9T/32Rj0sXgUvgkozkn1C6q3y+M9t+zDFY02/6v
+ 7mAE=
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Ambarella, Inc. vendor prefix so Ambarella DT bindings
-can be applied without waiting for the SoC series.
+mmc_get_op_cond() power-cycles the card, but both SD supplies,
+TFLASH_VDD and TF_IO, are regulator-always-on in the Linux device tree,
+so regulator_set_enable_if_allowed() leaves them on. After a watchdog
+reset a UHS card is still at 1.8 V signalling and U-Boot fails with
+"No partition table - mmc 0".
 
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
----
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Cc: Linus Walleij <linusw@kernel.org>
-Cc: devicetree@vger.kernel.org
-Cc: Long Zhao <longzhao@ambarella.com>
-Cc: Long Zhao <zl020895@163.com>
-Cc: linux-kernel@vger.kernel.org
----
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+Drop regulator-always-on from both supplies for U-Boot, and keep
+TFLASH_VDD off for 100 ms before it is turned back on. Linux has to
+keep regulator-always-on: the boot ROM does not turn the supply back on,
+see Linux commit dc7f2cb218b5 ("arm64: dts: amlogic: odroid-n2: keep SD
+card regulator always on") for the same supply on ODROID-N2. TF_IO
+keeps regulator-boot-on: after a reset a pull-up on the board enables
+it at 3.3 V before U-Boot runs.
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 85a27937832e..f48aa6dabbe9 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -112,6 +112,8 @@ patternProperties:
-     description: Amarula Solutions
-   "^amazon,.*":
-     description: Amazon.com, Inc.
-+  "^ambarella,.*":
-+    description: Ambarella, Inc.
-   "^amcc,.*":
-     description: Applied Micro Circuits Corporation (APM, formally AMCC)
-   "^amd,.*":
+Tested on ODROID-HC4 with a UHS-I SDXC card and U-Boot in SPI flash:
+after a watchdog reset 3/3 boots from SD (v2026.07 without this change:
+0/3); cold boot, reboot and suspend to RAM unaffected.
+
+Signed-off-by: Igor Velkov <iav@iav.lv>
+---
+The card holds a btrfs root, so the main build under test also had
+FS_BTRFS, CMD_BTRFS and ZSTD enabled; odroid-hc4_defconfig has none of
+them.
+---
+ arch/arm/dts/meson-sm1-odroid-hc4-u-boot.dtsi | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/arm/dts/meson-sm1-odroid-hc4-u-boot.dtsi b/arch/arm/dts/meson-sm1-odroid-hc4-u-boot.dtsi
+index 963bf96b256..5f09ecc8f60 100644
+--- a/arch/arm/dts/meson-sm1-odroid-hc4-u-boot.dtsi
++++ b/arch/arm/dts/meson-sm1-odroid-hc4-u-boot.dtsi
+@@ -18,6 +18,16 @@
+ 	vref-supply = <&vddao_1v8>;
+ };
+ 
++/*
++ * Let the MMC core power-cycle the SD card: after a watchdog reset a UHS card
++ * is still powered and at 1.8 V signalling, and U-Boot cannot read it.
++ */
+ &tflash_vdd {
+ 	gpio = <&gpio_ao GPIOAO_3 GPIO_OPEN_DRAIN>;
++	/delete-property/ regulator-always-on;
++	u-boot,off-on-delay-us = <100000>;
++};
++
++&tf_io {
++	/delete-property/ regulator-always-on;
+ };
 
 ---
-base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
-change-id: 20261014-cv75-prefix-4e8b1c0a7d29
+base-commit: b871f72273c183ab557e29f9bc52d9065e0aacf3
+change-id: 20261013-b4-hc4-sd-power-cycle-fb24669db395
 
 Best regards,
---  
-Long Zhao <longzhao@ambarella.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
