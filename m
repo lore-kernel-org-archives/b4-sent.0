@@ -1,11 +1,10 @@
 From: Jim Cromie <jim.cromie@gmail.com>
-Date: Mon, 12 Oct 2026 20:37:05 -0600
-Subject: [PATCH v12 34/40] dyndbg: add epilogue to dynamic_debug/control
- file
+Date: Mon, 12 Oct 2026 20:37:06 -0600
+Subject: [PATCH v12 35/40] dyndbg: fix attempt to modify an RO string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261012-dd-cmap-part2-clean-v12-34-3c8cc5725def@gmail.com>
+Message-Id: <20261012-dd-cmap-part2-clean-v12-35-3c8cc5725def@gmail.com>
 References: <20261012-dd-cmap-part2-clean-v12-0-3c8cc5725def@gmail.com>
 In-Reply-To: <20261012-dd-cmap-part2-clean-v12-0-3c8cc5725def@gmail.com>
 To: Jason Baron <jbaron@akamai.com>, Shuah Khan <shuah@kernel.org>, 
@@ -33,90 +32,50 @@ Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
  linux-kbuild@vger.kernel.org, linux-pm@vger.kernel.org, 
  Jim Cromie <jim.cromie@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791858995; l=2252;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791858995; l=1248;
  i=jim.cromie@gmail.com; s=20260203; h=from:subject:message-id;
- bh=V9XIK1iVmGPQhMBcQ7oh5zL/IVhph4cS5i0ugL5KcBY=;
- b=8iP/LNq7zNltMSUZlq4aqfiX8bvTfNKdQ1A5FalGkdKfJM9MDW6ZED5BLfCa0R69M1ZVMVrVI
- qj4fk+Ysfz4DJUCIOTrZXPBJfogswPhf43y7kkwAL3J5WjUafUJmgGB
+ bh=8R/JnNLwabE40COypqEheAmB4g+drvI/q0k+tJjtJCQ=;
+ b=GBe37Vf4wUzMsGdx+j7lUgOKiiXr268cXRFKywDSx1CQp53zOsAS7VdWoQQtJKJ5Fki2H7yi8
+ UdSHnKSRRHwBj4eFZxWj3so/4V9Pcm0JTA3qllQdSIhPLB2bZEywdRI
 X-Developer-Key: i=jim.cromie@gmail.com; a=ed25519;
  pk=C6E5ODlPQo7ZBynATXH9wg7K6HxP0pIXyf4s38Qw0XE=
 X-Endpoint-Received: by B4 Relay for jim.cromie@gmail.com/20260203 with auth_id=958
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an epilogue to the control-file, to allow display of statistics
-etc, without disturbing the header.
-
-NB: epilogue lines should start with "#: " to distinguish them from
-lines describing pr_debugs (and from the header line).  No new lines
-are added here, only the place to do so.
+ddebug_dyndbg_param_cb() passes an RO flags string "+p" to
+ddebug_exec_queries() when no explicit param value is given, but
+callee may attempt to modify it.  Fix by adding a local mutable var,
+init'd with that value, and passing it instead.
 
 Signed-off-by: Jim Cromie <jim.cromie@gmail.com>
 ---
-v9:
-. update ddebug_proc_start() to return EPILOGUE_TOKEN when seeking directly to epilogue.
----
- lib/dynamic_debug.c | 23 ++++++++++++++++++++---
- 1 file changed, 20 insertions(+), 3 deletions(-)
+ lib/dynamic_debug.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/lib/dynamic_debug.c b/lib/dynamic_debug.c
-index f6e94a2ef346..efde85c7a9c1 100644
+index efde85c7a9c1..023784dcdc80 100644
 --- a/lib/dynamic_debug.c
 +++ b/lib/dynamic_debug.c
-@@ -1182,6 +1182,9 @@ static struct _ddebug *ddebug_iter_next(struct ddebug_iter *iter)
-  * read() call from userspace.  Takes the ddebug_lock and
-  * seeks the seq_file's iterator to the given position.
-  */
-+static char ddebug_epilogue_token;
-+#define EPILOGUE_TOKEN (&ddebug_epilogue_token)
-+
- static void *ddebug_proc_start(struct seq_file *m, loff_t *pos)
+@@ -1634,8 +1634,9 @@ static int ddebug_add_module(struct _ddebug_info *di)
+ 
+ /* helper for ddebug_dyndbg_(boot|module)_param_cb */
+ static int ddebug_dyndbg_param_cb(char *param, char *val,
+-				const char *modname, int on_err)
++				  const char *modname, int on_err)
  {
- 	struct ddebug_iter *iter = m->private;
-@@ -1197,7 +1200,9 @@ static void *ddebug_proc_start(struct seq_file *m, loff_t *pos)
- 	dp = ddebug_iter_first(iter);
- 	while (dp != NULL && --n > 0)
- 		dp = ddebug_iter_next(iter);
--	return dp;
-+	if (dp)
-+		return dp;
-+	return n <= 1 ? EPILOGUE_TOKEN : NULL;
++	char dflt_flags[] = "+p";
+ 	char *sep;
+ 
+ 	sep = strchr(param, '.');
+@@ -1648,7 +1649,7 @@ static int ddebug_dyndbg_param_cb(char *param, char *val,
+ 	if (strcmp(param, "dyndbg"))
+ 		return on_err; /* determined by caller */
+ 
+-	ddebug_exec_queries((val ? val : "+p"), modname);
++	ddebug_exec_queries((val ? val : dflt_flags), modname);
+ 
+ 	return 0; /* query failure shouldn't stop module load */
  }
- 
- /*
-@@ -1210,12 +1215,20 @@ static void *ddebug_proc_next(struct seq_file *m, void *p, loff_t *pos)
- 	struct ddebug_iter *iter = m->private;
- 	struct _ddebug *dp;
- 
-+	(*pos)++;
-+
-+	if (p == EPILOGUE_TOKEN)
-+		return NULL;
-+
- 	if (p == SEQ_START_TOKEN)
- 		dp = ddebug_iter_first(iter);
- 	else
- 		dp = ddebug_iter_next(iter);
--	++*pos;
--	return dp;
-+
-+	if (dp)
-+		return dp;
-+
-+	return EPILOGUE_TOKEN;
- }
- 
- static bool ddebug_class_map_in_range(const int class_id, const struct ddebug_class_map *map)
-@@ -1267,6 +1280,10 @@ static int ddebug_proc_show(struct seq_file *m, void *p)
- 			 "# filename:lineno [module]function flags format\n");
- 		return 0;
- 	}
-+	if (p == EPILOGUE_TOKEN) {
-+		/* use this soon */
-+		return 0;
-+	}
- 
- 	seq_printf(m, "%s:%u [%s]%s =%s \"",
- 		   trim_prefix(dp->filename), dp->lineno,
 
 -- 
 2.56.0
