@@ -1,104 +1,71 @@
-From: Vladyslav Yamkovyi <hex@aleph0.ai>
-Date: Tue, 13 Oct 2026 17:16:07 +0200
-Subject: [PATCH] drm/i915/psr: Send a frame change notification for async
- flips
+From: Juerg Haefliger <juerg.haefliger@canonical.com>
+Date: Tue, 13 Oct 2026 17:29:38 +0200
+Subject: [PATCH] bus: mhi: host: pci_generic: Add HP Snapdragon X72 5G
+ modem support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-fix-psr-async-trans-push-v1-1-ee79bf31b66f@aleph0.ai>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2MwQrCMBBEf6Xs2cUk0hb8FfGQpFsTwRh206KU/
- ruJehreMPM2EOJIAuduA6Y1SnymCvrQgQ823QjjVBmMMoNW+oRzfGEWRivv5LGwTYJ5kYButkP
- fKzMqP0K9Z6a6/aov1x/L4u7kS/O1hbNC6KrBh1ZN/MAS8/GfsO8fv7BJdJ4AAAA=
-X-Change-ID: 20261013-fix-psr-async-trans-push-bfa6550270c7
-To: Jani Nikula <jani.nikula@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, intel-gfx@lists.freedesktop.org
-Cc: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
- Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- =?utf-8?q?Jouni_H=C3=B6gander?= <jouni.hogander@intel.com>, 
- Ankit Nautiyal <ankit.k.nautiyal@intel.com>, intel-xe@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Vladyslav Yamkovyi <hex@aleph0.ai>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791904567; l=3338;
- i=hex@aleph0.ai; s=20261013; h=from:subject:message-id;
- bh=6OzSRSOPWRw5dMbojgR3kH8JziugVnnnlVANwZ+FMbg=;
- b=7JBBQ1l0eVLUQse6LiBcfstEJhvVF2lQK3NJy6s5xem1JCwHHrEd+peS8XqwjpYw5M9wbfkFM
- 7VyRBgJ/a7iBgLXdBJP/CTV1qHiP4Ok2925QSZ6IpSAU6X35x3fOhuz
-X-Developer-Key: i=hex@aleph0.ai; a=ed25519;
- pk=faUPQ+UBdMQ6ZcbVM9ytjGUZvrhV8mzf+ctgaoVsZy0=
-X-Endpoint-Received: by B4 Relay for hex@aleph0.ai/20261013 with auth_id=1170
+Message-Id: <20261013-mhi-add-hp-x72-v1-1-cf26405bf097@canonical.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDtgxqpNryIubDKaKfhDoiKId
+ zfq8lu8t0NgLxzgm+zgeZUg4xChXgkY1wwdo9hooJQKlSrC3gk21qKbcCsJNeXZpzW6LPQbYjR
+ 5bmW7h1X9OCy/P5v5usBxnPb3IbpyAAAA
+X-Change-ID: 20261012-mhi-add-hp-x72-92538fc97694
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Jeff Hugo <jeff.hugo@oss.qualcomm.com>
+Cc: mhi@lists.linux.dev, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Juerg Haefliger <juerg.haefliger@canonical.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1237;
+ i=juerg.haefliger@canonical.com; s=F9F8B48C; h=from:subject:message-id;
+ bh=DZhxHHXBj1Cd5Q5l02eE4hIaNt+qOTIa/0lNai/M90U=;
+ b=owEBbQKS/ZANAwAKAQ/TiwkLpkK3AcsmYgBqzk5tEkSiTimfSrxvDL0UjYzXjJUAPPoXcAtQb
+ /AUP6OlPtSJAjMEAAEKAB0WIQSFl9T3oi6mu+It14sP04sJC6ZCtwUCas5ObQAKCRAP04sJC6ZC
+ tySrD/42xTSv+fEcQfXei/nVAWc9gyN6dkQVi2iGyQt0mcfQ97iVnNNq3MHtF8SQhU/9FYFAY8Q
+ gtaPMw/14RTder6oF263Ss4csMLtZGwsGMxJ18VPR5P8Dv3gCum7AHo29G79pWbAKoc58o4LY22
+ ZmF5WL4TgPtPGQRcE28O2Cx99P2QiHUdMcJ1hCoHhu2zXh+MbJ4ANyuvonaAFaKMWBx9PjpUXDp
+ vEIqXt+kFHEOC7m4E2ve7whK7PpwrFN1ehVcgXskAlR8pkGr1j2rUkFHOXB8HyRJVISh316JfIt
+ BI9j23dMDj0rVsCHK3IoP0sg38Pcn58FmfP99jCh6MXvAD0TCjZFtgAnoe1QvYRbcWU+PxJ3PRg
+ gHGNRbpV7h55Rc9FymgTJ4pSLG+PqvbPNIhlYDQvU59S5hiEPeRdwlLLeB1BP4WeMo2dG4wvOUX
+ TVSlnC4pDNo1ZNGyPcIvaFQg4VGd+rsf6xuSXFdeRxWWcktTAYQ/Jg95Rm3/Y/lp7TlFI9ni8Tg
+ PFI22j9hWctjECbMPWtrGvAow6OrjIUDcOi9iz/dTTMYBeV7W4jRWjcyDqxFgv2CBHfd7SI0Mss
+ RWEbbxDsoTmVq8zq3WuJmOYRKXdlyDAjnfNEI7UeaFd5ST8vOKTQ9j4Cb4WO1jJGTvi63K8Sukk
+ ppy1jHduGMXivyg==
+X-Developer-Key: i=juerg.haefliger@canonical.com; a=openpgp;
+ fpr=52B5BDD2A6EDC76A0FE0AB4A754C3A96F9F8B48C
+X-Endpoint-Received: by B4 Relay for juerg.haefliger@canonical.com/F9F8B48C with auth_id=1135
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On platforms using TRANS_PUSH for PSR frame-change notifications,
-intel_pipe_update_end() exits early for asynchronous flips, before sending
-the push. The register-based notification is disabled on these platforms,
-and an ORIGIN_FLIP frontbuffer flush does not force PSR to exit.
+Add the PCI ID (103c:8e09) for the HP Snapdragon X72 5G MHI modem found
+in HP Snapdragon X laptops such as the HP EliteBook 6 G1q. The modem is
+based on the Qualcomm SDX72/SDX75 baseband and uses mhi_qcom_sdx75_info
+for controller and channel configuration.
 
-This can leave an accepted async flip without a completion event after
-PSR2 enters DEEP_SLEEP. On Panther Lake, scanout freezes and the kernel
-reports "[CRTC:152:pipe A] flip_done timed out". Intel IGT kms_async_flips
-reproduces the failure with the compositor inactive when a 200 ms idle
-interval is inserted before an asynchronous atomic flip.
-
-Send the PSR frame-change notification after plane programming and before
-releasing the existing PSR lock. Restrict the push to CRTC states that use
-TRANS_PUSH for PSR, leaving other async flips and the synchronous and DSB
-paths unchanged.
-
-Closes: https://gitlab.freedesktop.org/drm/xe/kernel/-/work_items/9582
-Fixes: 129a4da11707 ("drm/i915/psr: Use TRANS_PUSH to trigger frame change event")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM sparse smatch
-Signed-off-by: Vladyslav Yamkovyi <hex@aleph0.ai>
+Signed-off-by: Juerg Haefliger <juerg.haefliger@canonical.com>
 ---
-Based on drm-tip (2026-10-13); also applies to v7.3-rc7.
+ drivers/bus/mhi/host/pci_generic.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Runtime-tested on Panther Lake (xe, eDP-1, 2880x1800) with Ubuntu-based
-7.3.0-rc6 kernels, before and after this fix. IGT kms_async_flips,
-async-flip-with-page-flip-events-tiled-atomic, dynamic subtest
-pipe-A-eDP-1-4-rc-ccs, fails with Flip Timeout before the fix and passes
-afterwards. An LD_PRELOAD interposer inserts one 200 ms idle interval
-before the eighth async atomic commit without changing its request or
-flags. Both runs enter PSR2 Early Transport DEEP_SLEEP with selective
-fetch enabled before that commit.
-
-Clang 23.1.2, W=1 builds and Sparse/Smatch checks of the CRTC, PSR and VRR
-translation units for i915 and Xe produced no new diagnostics.
-
-OpenAI Codex (GPT-6-Astra) assisted diagnosis, reproducer and fix
-development, validation and patch preparation, following requests to
-reproduce the freeze independently, trace its driver cause and prepare a
-tested upstream fix. I take direct responsibility for this contribution,
-have carefully reviewed the change and ensured rigorous local testing.
----
- drivers/gpu/drm/i915/display/intel_crtc.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/gpu/drm/i915/display/intel_crtc.c b/drivers/gpu/drm/i915/display/intel_crtc.c
-index 10ed9bdfee76..8ef24cddbaa6 100644
---- a/drivers/gpu/drm/i915/display/intel_crtc.c
-+++ b/drivers/gpu/drm/i915/display/intel_crtc.c
-@@ -736,8 +736,16 @@ void intel_pipe_update_end(struct intel_atomic_state *state,
- 
- 	drm_WARN_ON(display->drm, new_crtc_state->use_dsb);
- 
--	if (new_crtc_state->do_async_flip)
-+	if (new_crtc_state->do_async_flip) {
-+		/*
-+		 * LNL+ uses TRANS_PUSH for PSR frame-change notifications.
-+		 * Async flips skip the vblank path below, but still need to
-+		 * notify PSR after programming the new surface address.
-+		 */
-+		if (intel_psr_use_trans_push(new_crtc_state))
-+			intel_vrr_send_push(NULL, new_crtc_state);
- 		goto out;
-+	}
- 
- 	trace_intel_pipe_update_end(crtc, end_vbl_count, scanline_end);
- 
+diff --git a/drivers/bus/mhi/host/pci_generic.c b/drivers/bus/mhi/host/pci_generic.c
+index b636e2c23b4d..46cafee39f71 100644
+--- a/drivers/bus/mhi/host/pci_generic.c
++++ b/drivers/bus/mhi/host/pci_generic.c
+@@ -1082,6 +1082,9 @@ static const struct pci_device_id mhi_pci_id_table[] = {
+ 	/* NETPRISMA FCUN69 (SDX6X) */
+ 	{ PCI_DEVICE(PCI_VENDOR_ID_NETPRISMA, 0x1001),
+ 		.driver_data = (kernel_ulong_t) &mhi_netprisma_fcun69_info },
++	/* HP Snapdragon X72 5G (sdx75) */
++	{ PCI_DEVICE(PCI_VENDOR_ID_HP, 0x8e09),
++		.driver_data = (kernel_ulong_t) &mhi_qcom_sdx75_info },
+ 	{  }
+ };
+ MODULE_DEVICE_TABLE(pci, mhi_pci_id_table);
 
 ---
-base-commit: eb1bf4700d3b25a1a1e670ef31cc06969fa08019
-change-id: 20261013-fix-psr-async-trans-push-bfa6550270c7
+base-commit: 705529dab1fa872d8b53b09c95e1b03a95573376
+change-id: 20261012-mhi-add-hp-x72-92538fc97694
+
+Best regards,
+-- 
+Juerg Haefliger <juerg.haefliger@canonical.com>
 
