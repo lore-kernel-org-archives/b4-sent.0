@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 13 Oct 2026 15:12:50 -0500
-Subject: [PATCH net v7 3/4] net/smc: bound the send length to the send
- buffer in smc_tx_sendmsg()
+Date: Tue, 13 Oct 2026 15:12:51 -0500
+Subject: [PATCH net v7 4/4] net/smc: bound the link failover cursor advance
+ to the send buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-b4-disp-f345196c-v7-3-ef3dddfbfa68@proton.me>
+Message-Id: <20261013-b4-disp-f345196c-v7-4-ef3dddfbfa68@proton.me>
 References: <20261013-b4-disp-f345196c-v7-0-ef3dddfbfa68@proton.me>
 In-Reply-To: <20261013-b4-disp-f345196c-v7-0-ef3dddfbfa68@proton.me>
 To: "D. Wythe" <alibuda@linux.alibaba.com>, 
@@ -22,66 +22,75 @@ Cc: netdev@vger.kernel.org, Simon Horman <horms@kernel.org>,
  Stefan Raspl <raspl@linux.ibm.com>, Hidayath Khan <hidayath@linux.ibm.com>, 
  Wen Gu <guwen@linux.alibaba.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791922368; l=2633;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791922368; l=2755;
  i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=lUNbhzoLihltUOk3ECDO1KVY6cuHiA2nFGBtBf+62Cw=;
- b=jBsmKMJF65B6v5ECU9jhYs9tNrifsJ6m5nxP3hCM8A6y28WYuNNyFQzcThBMat0T39Q/yDNFJ
- 7T7FooC6YHmDPp8YBC6Ik2CWrgAoBgFK8GJzkoLXJyzuvHurRBoFaAo
+ bh=WmGU8zUppN7BH0rV8o+Estl5Zae56D3SssXqw8plQEU=;
+ b=A3NOyHr0oJ7D6eONfsU+V5uBJSVuv/KU5E1/NhUJkpSNObgkRkpdqMrywMz1DlFzcm+ftTPRW
+ R+LFpRK7IhkD9tDv89mYG47MaUgCRO13Rs+dzCN+JZvvqMuSkxEY/Me
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-conn->sndbuf_space can run past the send buffer. After an SMC-R link
-failover, a late completion from the old link can move tx_curs_fin back,
-and the next completion credits the same bytes again; across the ring
-end, smc_curs_diff() credits the step back itself as more than a whole
-ring, so even with a conforming peer sndbuf_space can reach three times
-the buffer. The failover catch-up and SMC-D DMB merge (only the loopback
-device today) also credit it from the peer's consumer cursor without a
-bound. smc_tx_sendmsg() takes it as the write space, and the second
-chunk of its copy writes past the send buffer.
+On SMC-R link failover, smc_switch_cursor() rewinds the send and
+producer cursors to their values at the last completed CDC send, then
+advances them by however far the peer's consumer cursor is ahead. That
+cursor comes from the wire, so a forged one adds an arbitrary amount to
+sndbuf_space and to the cursors. smc_curs_add() wraps them only once, so
+the next RDMA write can take its source past the send buffer and its
+destination past the peer's RMB.
 
-Clamp writespace, which sizes the copy, to sndbuf_desc->len, negative
-values included, so the copy stays in the send buffer.
+A conforming peer keeps its cursor count inside its RMB and cannot
+consume past the data in the send buffer. Advance only for such a count,
+and no further than tx_curs_prep. The pre-failover tx_curs_sent cannot
+be the bound: an earlier failover may have rewound it below the peer's
+cursor.
 
 Fixes: c6f02ebeea3a ("net/smc: switch connections to alternate link")
-Fixes: cc0ab806fc52 ("net/smc: adapt cursor update when sndbuf and peer DMB are merged")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
-Reviewed-by: Dust Li <dust.li@linux.alibaba.com>
-Reviewed-by: Sidraya Jayagond <sidraya@linux.ibm.com>
 ---
-This keeps the copy inside the send buffer but does not undo the
-over-credit, so after such a failover send() can still overwrite data in
-the buffer that the peer has not received yet (by inspection; not
-tested). Fixing the credit in smc_cdc_tx_handler() needs a cursor
-compare that survives the u16 wrap rollover, which smc_curs_comp() does
-not do, so it is left out here. A negative value maps to len, not 0,
-since 0 would make the send loop spin.
+Bounding the copy in smc_tx_sendmsg() (3/4) does not cover this: the
+RDMA write takes its offsets from the cursors.
 ---
- net/smc/smc_tx.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ net/smc/smc_core.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/net/smc/smc_tx.c b/net/smc/smc_tx.c
-index 3144b4b1fe29..58d9dfdcdf33 100644
---- a/net/smc/smc_tx.c
-+++ b/net/smc/smc_tx.c
-@@ -233,6 +233,14 @@ int smc_tx_sendmsg(struct smc_sock *smc, struct msghdr *msg, size_t len)
- 		/* initialize variables for 1st iteration of subsequent loop */
- 		/* could be just 1 byte, even after smc_tx_wait above */
- 		writespace = atomic_read(&conn->sndbuf_space);
-+		/* sndbuf_space can be out of range: late completions of an
-+		 * old SMC-R link credit it again after a failover, and with
-+		 * SMC-D DMB merge it follows the peer's consumer cursor.
-+		 * Bound writespace, which sizes the copy; a negative value
-+		 * would become huge in the size_t min_t() below.
-+		 */
-+		if (writespace < 0 || writespace > conn->sndbuf_desc->len)
-+			writespace = conn->sndbuf_desc->len;
- 		/* not more than what user space asked for */
- 		copylen = min_t(size_t, send_remaining, writespace);
- 		/* determine start of sndbuf */
+diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
+index 8829517299de..36aee89e5f5f 100644
+--- a/net/smc/smc_core.c
++++ b/net/smc/smc_core.c
+@@ -1034,7 +1034,7 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
+ 			     struct smc_wr_buf *wr_buf)
+ {
+ 	struct smc_connection *conn = &smc->conn;
+-	union smc_host_cursor cons, fin;
++	union smc_host_cursor cons, fin, prep;
+ 	int rc = 0;
+ 	int diff;
+ 
+@@ -1043,12 +1043,18 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
+ 	/* set prod cursor to old state, enforce tx_rdma_writes() */
+ 	smc_curs_copy(&conn->local_tx_ctrl.prod, &fin, conn);
+ 	smc_curs_copy(&cons, &conn->local_rx_ctrl.cons, conn);
++	smc_curs_copy(&prep, &conn->tx_curs_prep, conn);
+ 
+-	if (smc_curs_comp(conn->peer_rmbe_size, &cons, &fin) < 0) {
++	if (cons.count < conn->peer_rmbe_size &&
++	    smc_curs_comp(conn->peer_rmbe_size, &cons, &fin) < 0) {
+ 		/* cons cursor advanced more than fin, and prod was set
+-		 * fin above, so now prod is smaller than cons. Fix that.
++		 * fin above, so now prod is smaller than cons. cons comes
++		 * off the wire: catch up only for a count inside the peer's
++		 * RMB and no further than the data in the send buffer.
+ 		 */
+-		diff = smc_curs_diff(conn->peer_rmbe_size, &fin, &cons);
++		diff = min(smc_curs_diff(conn->peer_rmbe_size, &fin, &cons),
++			   smc_curs_diff(conn->sndbuf_desc->len,
++					 &conn->tx_curs_sent, &prep));
+ 		smc_curs_add(conn->sndbuf_desc->len,
+ 			     &conn->tx_curs_sent, diff);
+ 		smc_curs_add(conn->sndbuf_desc->len,
 
 -- 
 2.56.0
