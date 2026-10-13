@@ -1,10 +1,11 @@
 From: Fil Dunsky <filipp.dunsky@gmail.com>
-Date: Tue, 13 Oct 2026 09:07:14 +0300
-Subject: [PATCH v3 04/11] gpio: Add Cortina Systems CS75xx GPIO driver
+Date: Tue, 13 Oct 2026 09:07:15 +0300
+Subject: [PATCH v3 05/11] dt-bindings: i2c: Add Cortina Systems CS7542 I2C
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-b4-cs75xx-s2-v3-4-181bb0d23f4c@gmail.com>
+Message-Id: <20261013-b4-cs75xx-s2-v3-5-181bb0d23f4c@gmail.com>
 References: <20261013-b4-cs75xx-s2-v3-0-181bb0d23f4c@gmail.com>
 In-Reply-To: <20261013-b4-cs75xx-s2-v3-0-181bb0d23f4c@gmail.com>
 To: Thomas Gleixner <tglx@kernel.org>, Radu Rendec <radu@rendec.net>, 
@@ -19,410 +20,86 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-i2c@vger.kernel.org, linux-watchdog@vger.kernel.org, 
  Fil Dunsky <filipp.dunsky@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791871630; l=11756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791871630; l=1834;
  i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
- bh=U8kbFa+ObMQjf4fVSpDRBdQdY5FQbSMl5bKCiv7JH/g=;
- b=0FcBYOnhwS37Cuj1eYq9gwQB1fr1aVkCg+Tsm7wPgtfqKZSGj7fjQch9/outPw/6B8YsFc8zL
- pu8QTrU1E1ICEcO6OFG43uPnfVoiNZJ/iItprcRNKQvk5f08hZlRUg3
+ bh=aHpVqUhA73R0k52i9jHgHCikRVBzEr4JeY2wk8AHGqM=;
+ b=BvBe0dp7LRyf33W6ob5ftfJITrc53jAxputWPz0/dY/ALoBZtzZEQUxOq/wfgAN/MfeG9x1HV
+ LD5UoLEMK0YCtD8Vn4uTcyElZ1b13DIxPhHA2hE6pk/iZNaWBTp63nP
 X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
  pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
 X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the GPIO banks of the Cortina Systems CS75xx SoCs. The
-data and direction registers are handled by gpio-mmio; each bank has its
-own interrupt with level and edge triggers, both edges are emulated by
-flipping the polarity.
-
-A pin only works as a GPIO when its bit in the bank's GPIO_MUX register
-is set. The driver sets it when a line is requested as a GPIO or as an
-interrupt and restores the value found at probe time when the line is
-released.
+Add a binding for the I2C ("Bi-Wire") controller of the Cortina Systems
+CS75xx SoCs.
 
 Signed-off-by: Fil Dunsky <filipp.dunsky@gmail.com>
 ---
- drivers/gpio/Kconfig       |  12 ++
- drivers/gpio/Makefile      |   1 +
- drivers/gpio/gpio-cs75xx.c | 336 +++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 349 insertions(+)
+ .../bindings/i2c/cortina,cs7542-i2c.yaml           | 56 ++++++++++++++++++++++
+ 1 file changed, 56 insertions(+)
 
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index dfdc9ee1a..6b9524f25 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -300,6 +300,18 @@ config GPIO_CLPS711X
- 	help
- 	  Say yes here to support GPIO on CLPS711X SoCs.
- 
-+config GPIO_CS75XX
-+	tristate "Cortina Systems CS75xx GPIO support"
-+	depends on ARCH_CORTINA_ACCESS || COMPILE_TEST
-+	select GPIO_GENERIC
-+	select GPIOLIB_IRQCHIP
-+	help
-+	  Say yes here to support the GPIO banks of the Cortina Systems
-+	  CS75xx SoCs, including their interrupts.
-+
-+	  Requesting a line switches its pin from the peripheral function
-+	  to GPIO until the line is released.
-+
- config GPIO_DAVINCI
- 	tristate "TI Davinci/Keystone GPIO support"
- 	default y if ARCH_DAVINCI
-diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index 88f748846..a38ad4331 100644
---- a/drivers/gpio/Makefile
-+++ b/drivers/gpio/Makefile
-@@ -59,6 +59,7 @@ obj-$(CONFIG_GPIO_CLPS711X)		+= gpio-clps711x.o
- obj-$(CONFIG_GPIO_SNPS_CREG)		+= gpio-creg-snps.o
- obj-$(CONFIG_GPIO_CROS_EC)		+= gpio-cros-ec.o
- obj-$(CONFIG_GPIO_CRYSTAL_COVE)		+= gpio-crystalcove.o
-+obj-$(CONFIG_GPIO_CS75XX)		+= gpio-cs75xx.o
- obj-$(CONFIG_GPIO_CS5535)		+= gpio-cs5535.o
- obj-$(CONFIG_GPIO_DA9052)		+= gpio-da9052.o
- obj-$(CONFIG_GPIO_DA9055)		+= gpio-da9055.o
-diff --git a/drivers/gpio/gpio-cs75xx.c b/drivers/gpio/gpio-cs75xx.c
+diff --git a/Documentation/devicetree/bindings/i2c/cortina,cs7542-i2c.yaml b/Documentation/devicetree/bindings/i2c/cortina,cs7542-i2c.yaml
 new file mode 100644
-index 000000000..d3e8d3a99
+index 000000000..f70984bd7
 --- /dev/null
-+++ b/drivers/gpio/gpio-cs75xx.c
-@@ -0,0 +1,336 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Cortina Systems CS75xx GPIO controller
-+ *
-+ * Each bank has 32 lines with direction, data and interrupt registers.
-+ * Whether a pin is driven by the GPIO bank or by its peripheral function
-+ * (NAND, Ethernet, UART, ...) is selected by the bank's GPIO_MUX register
-+ * in the global control block. A line is switched to GPIO when it is
-+ * requested as a GPIO or as an interrupt and switched back to its initial
-+ * setting when it is released.
-+ */
++++ b/Documentation/devicetree/bindings/i2c/cortina,cs7542-i2c.yaml
+@@ -0,0 +1,56 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/i2c/cortina,cs7542-i2c.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+#include <linux/bitops.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/gpio/generic.h>
-+#include <linux/interrupt.h>
-+#include <linux/io.h>
-+#include <linux/irq.h>
-+#include <linux/module.h>
-+#include <linux/platform_device.h>
++title: Cortina Systems CS7542 I2C controller
 +
-+#define CS75XX_GPIO_CFG		0x00	/* 1: input, 0: output */
-+#define CS75XX_GPIO_OUT		0x04
-+#define CS75XX_GPIO_IN		0x08
-+#define CS75XX_GPIO_LVL		0x0c	/* 1: high level or rising edge */
-+#define CS75XX_GPIO_EDGE	0x10	/* 1: edge, 0: level */
-+#define CS75XX_GPIO_IE		0x14
-+#define CS75XX_GPIO_INT		0x18	/* write 1 to clear */
++maintainers:
++  - Fil Dunsky <filipp.dunsky@gmail.com>
 +
-+struct cs75xx_gpio {
-+	struct gpio_generic_chip chip;
-+	void __iomem *base;
-+	void __iomem *mux;
-+	u32 mux_init;
-+	u32 gpio_used;
-+	u32 irq_used;
-+	u32 both_edges;
-+};
++description:
++  The I2C ("Bi-Wire") controller of the Cortina Systems CS75xx (Goldengate
++  G2) SoCs. It transfers one byte per command and runs from the peripheral
++  (APB) clock through a 16-bit prescaler.
 +
-+/* Called with the chip lock held */
-+static void cs75xx_gpio_update_mux(struct cs75xx_gpio *g, unsigned int offset)
-+{
-+	u32 mask = BIT(offset);
-+	u32 val = readl(g->mux);
++allOf:
++  - $ref: /schemas/i2c/i2c-controller.yaml#
 +
-+	if ((g->gpio_used | g->irq_used) & mask)
-+		val |= mask;
-+	else
-+		val = (val & ~mask) | (g->mux_init & mask);
++properties:
++  compatible:
++    const: cortina,cs7542-i2c
 +
-+	writel(val, g->mux);
-+}
++  reg:
++    maxItems: 1
 +
-+static int cs75xx_gpio_request(struct gpio_chip *gc, unsigned int offset)
-+{
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
++  interrupts:
++    maxItems: 1
 +
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+	g->gpio_used |= BIT(offset);
-+	cs75xx_gpio_update_mux(g, offset);
++  clocks:
++    maxItems: 1
 +
-+	return 0;
-+}
++  clock-frequency:
++    enum: [100000, 400000]
++    default: 100000
 +
-+static void cs75xx_gpio_free(struct gpio_chip *gc, unsigned int offset)
-+{
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
 +
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+	g->gpio_used &= ~BIT(offset);
-+	cs75xx_gpio_update_mux(g, offset);
-+}
++unevaluatedProperties: false
 +
-+static void cs75xx_gpio_irq_ack(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+
-+	writel(BIT(irqd_to_hwirq(d)), g->base + CS75XX_GPIO_INT);
-+}
-+
-+static void cs75xx_gpio_irq_mask(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+
-+	scoped_guard(gpio_generic_lock_irqsave, &g->chip) {
-+		u32 ie = readl(g->base + CS75XX_GPIO_IE);
-+
-+		writel(ie & ~BIT(hwirq), g->base + CS75XX_GPIO_IE);
-+	}
-+
-+	gpiochip_disable_irq(gc, hwirq);
-+}
-+
-+static void cs75xx_gpio_irq_unmask(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+	u32 ie;
-+
-+	gpiochip_enable_irq(gc, hwirq);
-+
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+	/*
-+	 * The status of a level interrupt is latched while the line is
-+	 * asserted, also after the ack, so it may be stale by now. Clear it,
-+	 * it is set again right away if the line is still asserted.
-+	 */
-+	if (irqd_is_level_type(d))
-+		writel(BIT(hwirq), g->base + CS75XX_GPIO_INT);
-+	ie = readl(g->base + CS75XX_GPIO_IE);
-+	writel(ie | BIT(hwirq), g->base + CS75XX_GPIO_IE);
-+}
-+
-+/* Both edges are emulated by flipping the polarity on every interrupt */
-+static void cs75xx_gpio_set_polarity(struct cs75xx_gpio *g, u32 mask)
-+{
-+	u32 lvl = readl(g->base + CS75XX_GPIO_LVL);
-+
-+	if (readl(g->base + CS75XX_GPIO_IN) & mask)
-+		lvl &= ~mask;
-+	else
-+		lvl |= mask;
-+
-+	writel(lvl, g->base + CS75XX_GPIO_LVL);
-+}
-+
-+static int cs75xx_gpio_irq_set_type(struct irq_data *d, unsigned int type)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	u32 mask = BIT(irqd_to_hwirq(d));
-+	u32 lvl, edge, both_edges;
-+
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+
-+	lvl = readl(g->base + CS75XX_GPIO_LVL);
-+	edge = readl(g->base + CS75XX_GPIO_EDGE);
-+	both_edges = g->both_edges & ~mask;
-+
-+	switch (type & IRQ_TYPE_SENSE_MASK) {
-+	case IRQ_TYPE_LEVEL_LOW:
-+		lvl &= ~mask;
-+		edge &= ~mask;
-+		break;
-+	case IRQ_TYPE_LEVEL_HIGH:
-+		lvl |= mask;
-+		edge &= ~mask;
-+		break;
-+	case IRQ_TYPE_EDGE_FALLING:
-+		lvl &= ~mask;
-+		edge |= mask;
-+		break;
-+	case IRQ_TYPE_EDGE_RISING:
-+		lvl |= mask;
-+		edge |= mask;
-+		break;
-+	case IRQ_TYPE_EDGE_BOTH:
-+		both_edges |= mask;
-+		edge |= mask;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	g->both_edges = both_edges;
-+	writel(lvl, g->base + CS75XX_GPIO_LVL);
-+	writel(edge, g->base + CS75XX_GPIO_EDGE);
-+	if (g->both_edges & mask)
-+		cs75xx_gpio_set_polarity(g, mask);
-+
-+	if (type & IRQ_TYPE_LEVEL_MASK)
-+		irq_set_handler_locked(d, handle_level_irq);
-+	else
-+		irq_set_handler_locked(d, handle_edge_irq);
-+
-+	return 0;
-+}
-+
-+static int cs75xx_gpio_irq_reqres(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+	int ret;
-+
-+	/* The boot loader may leave the line configured as an output */
-+	ret = gc->direction_input(gc, hwirq);
-+	if (ret)
-+		return ret;
-+
-+	ret = gpiochip_reqres_irq(gc, hwirq);
-+	if (ret)
-+		return ret;
-+
-+	guard(gpio_generic_lock_irqsave)(&g->chip);
-+	g->irq_used |= BIT(hwirq);
-+	cs75xx_gpio_update_mux(g, hwirq);
-+
-+	return 0;
-+}
-+
-+static void cs75xx_gpio_irq_relres(struct irq_data *d)
-+{
-+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	irq_hw_number_t hwirq = irqd_to_hwirq(d);
-+
-+	scoped_guard(gpio_generic_lock_irqsave, &g->chip) {
-+		g->irq_used &= ~BIT(hwirq);
-+		cs75xx_gpio_update_mux(g, hwirq);
-+	}
-+
-+	gpiochip_relres_irq(gc, hwirq);
-+}
-+
-+static const struct irq_chip cs75xx_gpio_irq_chip = {
-+	.name			= "cs75xx-gpio",
-+	.irq_ack		= cs75xx_gpio_irq_ack,
-+	.irq_mask		= cs75xx_gpio_irq_mask,
-+	.irq_unmask		= cs75xx_gpio_irq_unmask,
-+	.irq_set_type		= cs75xx_gpio_irq_set_type,
-+	.irq_request_resources	= cs75xx_gpio_irq_reqres,
-+	.irq_release_resources	= cs75xx_gpio_irq_relres,
-+	.flags			= IRQCHIP_IMMUTABLE | IRQCHIP_MASK_ON_SUSPEND,
-+};
-+
-+static void cs75xx_gpio_irq_handler(struct irq_desc *desc)
-+{
-+	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
-+	struct cs75xx_gpio *g = gpiochip_get_data(gc);
-+	struct irq_chip *chip = irq_desc_get_chip(desc);
-+	unsigned long pending;
-+	unsigned int offset;
-+
-+	chained_irq_enter(chip, desc);
-+
-+	pending = readl(g->base + CS75XX_GPIO_INT) &
-+		  readl(g->base + CS75XX_GPIO_IE);
-+
-+	for_each_set_bit(offset, &pending, gc->ngpio) {
-+		scoped_guard(gpio_generic_lock, &g->chip) {
-+			if (g->both_edges & BIT(offset))
-+				cs75xx_gpio_set_polarity(g, BIT(offset));
-+		}
-+		generic_handle_domain_irq(gc->irq.domain, offset);
-+	}
-+
-+	chained_irq_exit(chip, desc);
-+}
-+
-+static int cs75xx_gpio_probe(struct platform_device *pdev)
-+{
-+	struct gpio_generic_chip_config config;
-+	struct device *dev = &pdev->dev;
-+	struct gpio_irq_chip *girq;
-+	struct cs75xx_gpio *g;
-+	int irq, ret;
-+
-+	g = devm_kzalloc(dev, sizeof(*g), GFP_KERNEL);
-+	if (!g)
-+		return -ENOMEM;
-+
-+	g->base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(g->base))
-+		return PTR_ERR(g->base);
-+
-+	g->mux = devm_platform_ioremap_resource(pdev, 1);
-+	if (IS_ERR(g->mux))
-+		return PTR_ERR(g->mux);
-+
-+	irq = platform_get_irq(pdev, 0);
-+	if (irq < 0)
-+		return irq;
-+
-+	g->mux_init = readl(g->mux);
-+
-+	config = (struct gpio_generic_chip_config) {
-+		.dev = dev,
-+		.sz = 4,
-+		.dat = g->base + CS75XX_GPIO_IN,
-+		.set = g->base + CS75XX_GPIO_OUT,
-+		.dirin = g->base + CS75XX_GPIO_CFG,
-+	};
-+
-+	ret = gpio_generic_chip_init(&g->chip, &config);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "unable to init generic GPIO\n");
-+
-+	if (g->chip.gc.ngpio > 32)
-+		return dev_err_probe(dev, -EINVAL, "too many lines: %u\n",
-+				     g->chip.gc.ngpio);
-+
-+	g->chip.gc.request = cs75xx_gpio_request;
-+	g->chip.gc.free = cs75xx_gpio_free;
-+	g->chip.gc.owner = THIS_MODULE;
-+
-+	/* Mask and clear all interrupts before the parent is set up */
-+	writel(0, g->base + CS75XX_GPIO_IE);
-+	writel(~0, g->base + CS75XX_GPIO_INT);
-+
-+	girq = &g->chip.gc.irq;
-+	gpio_irq_chip_set_chip(girq, &cs75xx_gpio_irq_chip);
-+	girq->parent_handler = cs75xx_gpio_irq_handler;
-+	girq->num_parents = 1;
-+	girq->parents = devm_kcalloc(dev, 1, sizeof(*girq->parents),
-+				     GFP_KERNEL);
-+	if (!girq->parents)
-+		return -ENOMEM;
-+	girq->parents[0] = irq;
-+	girq->default_type = IRQ_TYPE_NONE;
-+	girq->handler = handle_bad_irq;
-+
-+	return devm_gpiochip_add_data(dev, &g->chip.gc, g);
-+}
-+
-+static const struct of_device_id cs75xx_gpio_of_match[] = {
-+	{ .compatible = "cortina,cs7542-gpio" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, cs75xx_gpio_of_match);
-+
-+static struct platform_driver cs75xx_gpio_driver = {
-+	.probe = cs75xx_gpio_probe,
-+	.driver = {
-+		.name = "cs75xx-gpio",
-+		.of_match_table = cs75xx_gpio_of_match,
-+	},
-+};
-+module_platform_driver(cs75xx_gpio_driver);
-+
-+MODULE_DESCRIPTION("Cortina Systems CS75xx GPIO driver");
-+MODULE_LICENSE("GPL");
++examples:
++  - |
++    i2c@f00700e8 {
++        compatible = "cortina,cs7542-i2c";
++        reg = <0xf00700e8 0x28>;
++        interrupt-parent = <&intc>;
++        interrupts = <11>;
++        clocks = <&apb_clk>;
++        clock-frequency = <400000>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++    };
 
 -- 
 2.53.0
