@@ -1,238 +1,232 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 13 Oct 2026 15:00:51 +0900
-Subject: [PATCH] xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks
+From: Fil Dunsky <filipp.dunsky@gmail.com>
+Subject: [PATCH v6 00/10] ARM: Add support for Cortina Systems CS75xx and
+ Securifi Almond+
+Date: Tue, 13 Oct 2026 09:06:01 +0300
+Message-Id: <20261013-b4-cs75xx-v6-0-37e8f3969b7c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com>
-X-B4-Tracking: v=1; b=H4sIABLJzWoC/x2MywqAIBAAfyX23IIP6PUr0UFszYXS0IhA+veky
- 8AcZgpkSkwZpqZAopszx1BFtg1Yb8JGyGt1UEJ1UkiFj8t4hgobj4Mv9HEntFoYGo0aeqehpmc
- ix8+/nZf3/QDDdNEmZgAAAA==
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791871250; l=9109;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=Bi4Nh3asVtu3vWZjxDBfgpyfYTuGljO1+XtVfwgnRxg=;
- b=GJqo7QNKAmRq/d9iJKVk3On4jj+V5vkQ+9TS4l7MnfsXzSyF+O8KdRohMmv2I/kKXd7LoHWCA
- Oe2Go/UzGOUDmEBGh8aEPEUs9/OQAC5FynZst6240gEZUDE3YejQomQ
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOTQrCMBAF4KtI1kYmmfy0rryHuEiTVCPaSqOlI
+ r27SQWpossH73szDxJ9F3wk68WDdL4PMbRNCmq5IPZgmr2nwaVMOHAFJQKtBLVRy2GggGi4BaE
+ lFCT1L52vwzBtbXevHG/V0dtrHsiNQ4jXtrtPx3qWe792e0aBCsW0FUKh5OVmfzbhtLLtmeTdH
+ t+SAeNziUmCB8e0gbKw9bcUf6VI0tVcgisBVcG/pZxLnEuZv/WaG4MFOvz4dhzHJ9BoUI1iAQA
+ A
+X-Change-ID: 20260930-b4-cs75xx-033a2c047508
+To: Arnd Bergmann <arnd@arndb.de>, Linus Walleij <linusw@kernel.org>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Russell King <linux@armlinux.org.uk>, 
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Drew Fustini <fustini@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ Jason Li <jason.li@cortina-access.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Fil Dunsky <filipp.dunsky@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791871561; l=10272;
+ i=filipp.dunsky@gmail.com; s=20260930; h=from:subject:message-id;
+ bh=smb9PV/G3a8tOQlb9nB96l7JVNEAZ8xzpVzZb+MZpx4=;
+ b=6TAut7Llye7Tp3LtqlvuyfK+xSTMducMzjgBTcDejBRIhUtJpqqRmdYwb8GB9OcVdljnxsdfL
+ oGgCI3Z/h49B4P7kbSm9uzZ/3HcvQABx8vPNXzcM5TcmdQSNLdJSoJ7
+X-Developer-Key: i=filipp.dunsky@gmail.com; a=ed25519;
+ pk=JAYP8e2rJ54DHOmhNtXud8rl1igAaAXoOHxtJmVXI1g=
+X-Endpoint-Received: by B4 Relay for filipp.dunsky@gmail.com/20260930 with auth_id=1085
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_fs_commit_blocks() passes every range that a pNFS client commits to
-xfs_iomap_write_unwritten(), whatever is mapped there, and the range can
-be a hole. nfsd does not check the extents of a block or SCSI layout
-LAYOUTCOMMIT against the layouts it handed out, and for a reclaim during
-the grace period it has no layouts to check against, so a client can
-commit a range that it never had a layout for. Blocks under a layout can
-also be freed: blockgc frees blocks past EOF that were already allocated
-when a write layout handed them out, and a check in nfsd would not
-notice that.
+This series adds initial support for the Cortina Systems CS75xx
+("Goldengate G2") network processors and the first board using one, the
+Securifi Almond+ touchscreen Wi-Fi router (CS7542, 2x Cortex-A9 r2p1,
+PL310 r3p1, 512 MiB DDR3, 512 MiB NAND).
 
-For a hole, xfs_bmapi_write() with XFS_BMAPI_CONVERT allocates new
-blocks as written extents, while the transaction only reserved blocks
-for bmbt splits. A hole larger than that reservation shuts XFS down:
+There is no public documentation for the SoC. The register information
+comes from the GPL vendor kernels (Linux 2.6.36 for the Almond+, Linux
+4.9 for the Verizon FiOS G1100 which uses the same SoC) and from
+disassembly of the stock U-Boot 2009.11. A full out-of-tree port
+(clock, irqchip, GPIO, I2C, RTC, NAND, PCIe, MDIO and the packet engine)
+runs on Linux 6.18 in OpenWrt; this series is the first, minimal step to
+get the platform into mainline:
 
-  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
-    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
-    Shutting down filesystem.
+  - bindings: vendor prefix, SoC/board compatibles, an SMP enable method
+    and the UART,
+  - the platform Kconfig and SMP bring-up (the generic DT machine is
+    used, there is no DT_MACHINE_START),
+  - DEBUG_LL for UART0,
+  - a UART driver with console and earlycon support,
+  - SoC dtsi and board dts describing the CPUs, GIC, SCU, timers, L2,
+    UARTs and memory,
+  - multi_v7_defconfig and MAINTAINERS updates.
 
-A smaller hole gets blocks that nobody wrote mapped into the file as
-data, so readers see whatever those blocks held, and the LAYOUTCOMMIT
-succeeds.
+Patches 6-7 (serial binding and driver) do not depend on the rest and
+can go through the tty tree.
 
-With pynfs as the client and an RW layout for the first 64 KiB of a
-2 MiB sparse file, a LAYOUTCOMMIT of 64 KiB at offset 1 MiB, which no
-layout covered, got NFS4ERR_IO and shut XFS down. A LAYOUTCOMMIT of
-4 KiB at 1 MiB got NFS4_OK, and the file got a written block there. The
-client wrote nothing to the device in either case.
+Testing: build tested with multi_v7_defconfig (GCC 14 and Clang 21,
+W=1) and checked with dt_binding_check/dtbs_check. On a Securifi
+Almond+ this series boots next-20260929 to an initramfs shell with
+both CPUs online ("smp: Brought up 1 node, 2 CPUs"; IPIs and the TWD
+timer tick on both cores); the L2C-310, the global and TWD timers and
+the UART driver (ttyCS0) come up. The kernel was started from a
+running OpenWrt system with a small kexec-style loader rather than
+from the stock U-Boot, because U-Boot enters the kernel with the MMU
+on (see 2 below). The same patches on Linux 6.18 in OpenWrt, with the
+head.S workaround from 2, also boot from NAND through the stock U-Boot;
+that is how the secondary CPU wake-up fix in v4 was found.
 
-A client may only write to blocks that a layout handed out, and
-xfs_fs_map_blocks() allocates blocks for any hole in a write layout, so
-a committed range without blocks holds nothing that can be committed.
-Check all the ranges before converting any of them, and fail the commit
-with -EIO if one has a hole or a delalloc extent, as
-xfs_pnfs_validate_isize() does when the new size falls into one. A
-commit refused this way converts nothing: LAYOUTCOMMIT has a single
-status, and after a partial conversion the client could not tell which
-of its extents were committed. The iolock, held across the check and
-the conversion, keeps blocks from being removed in between.
+Open questions:
 
-With this, both LAYOUTCOMMITs get NFS4ERR_IO, XFS keeps running and no
-block is allocated. A LAYOUTCOMMIT of the laid-out range together with
-the 64 KiB hole also gets NFS4ERR_IO and converts nothing, so the
-laid-out range stays unwritten.
+1. The stock U-Boot arms the CPU0 private (TWD) watchdog before
+   starting the kernel; without a driver the board resets after ~300
+   seconds. The OpenWrt port disarms it in init_early, which I did not
+   want to propose here. Instead, a driver for "arm,cortex-a9-twd-wdt"
+   (the binding exists, but there is currently no driver for it) that
+   takes over the running watchdog on all CPUs is written and tested
+   on this board and posted as a separate series right after this
+   one, together with a restart handler (this series has no way to
+   restart the SoC). Until then, this series on its own boots but
+   resets after ~5 minutes.
+   Is a TWD watchdog driver the preferred way to deal with this?
 
-Also clamp the client's length to what is left below the size before
-adding it to the offset, instead of clamping the sum. The sum can wrap
-around. A wrapped range would skip the new check, and the conversion
-loop already passes the client's length, unclamped, to
-xfs_iomap_write_unwritten(). xfs_bmapi_write() then fails an assertion
-on XFS_DEBUG kernels, which is a BUG with XFS_ASSERT_FATAL, and
-otherwise returns -ENOSR, which nfsd warns about as a non-standard
-errno. With the clamp, an extent of 2^64 - 4 KiB at 4 KiB in the same
-file is checked only up to the size. It gets NFS4ERR_IO for the hole
-after the laid-out range, without a warning or an assertion.
+2. The same U-Boot enters the kernel with the MMU and data cache
+   enabled (identity map with XN set, dirty lines left in the D-cache),
+   which breaks the decompressor. The OpenWrt port carries a small
+   workaround at the start of arch/arm/boot/compressed/head.S that
+   cleans the cache and turns the MMU off. It is not part of this series.
+   Replacing the bootloader is possible but risky for users of this
+   (discontinued) device. Would a quirk of that kind be acceptable in
+   head.S at all, or should this be solved outside the kernel (e.g. a
+   chain-loaded bootloader)? For the tests below the kernel was started
+   from a running Linux with the MMU off, so this was not an issue.
 
-Fixes: 527851124d10 ("xfs: implement pNFS export operations")
-Cc: stable@vger.kernel.org
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-Tested on nfsd-testing d918c664efd5 with the same change on top, all in
-QEMU guests with KASAN and lockdep. The block layout was on an NVMe/TCP
-namespace exported by nvmet. The client was pynfs, except for fstests,
-which ran on the Linux NFSv4.2 client. XFS_DEBUG kernels were used for
-one run of the pynfs tests with the patch and for the wrap case without
-it. XFS for-next also has commit e3c682dd1130 ("xfs: map pNFS layouts to
-the end of the extent again") in xfs_fs_map_blocks(), which nfsd-testing
-does not have. xfs_fs_commit_blocks() and xfs_iomap_write_unwritten()
-are the same in both trees. The pynfs tests for this are local; I can
-post them if they are wanted.
+3. The APB clock is 100, 150 or 170 MHz depending on the boot strap pins.
+   It is modelled as a fixed-clock with the rate set in the board dts.
+   A clock driver for the global control block, which also contains the
+   strap, pinmux and reset registers, will follow and replace it.
 
- - A LAYOUTCOMMIT of a 64 KiB hole: NFS4ERR_IO and shutdown without the
-   patch. With it, NFS4ERR_IO, no shutdown and nothing allocated, in 5
-   runs.
- - A LAYOUTCOMMIT of a 4 KiB hole: NFS4_OK and a written block in the
-   file without the patch. With it, NFS4ERR_IO and nothing allocated.
- - The laid-out range and the 64 KiB hole in one LAYOUTCOMMIT: shutdown
-   without the patch. With it, NFS4ERR_IO, and fiemap on the server
-   shows the laid-out range still unwritten.
- - An extent at 4 KiB with a length of 2^64 - 4 KiB: NFS4ERR_IO and
-   "nfsd: non-standard errno: -63" without the patch, and with
-   XFS_DEBUG "Assertion failed: bma.nallocs >= *nmap" in
-   xfs_bmapi_write(). With it, NFS4ERR_IO and no warning, also with
-   XFS_DEBUG.
- - Blocks past EOF freed by blockgc under a layout, without "xfs: mark
-   the inode preallocated for pNFS write layouts past EOF" [1]: the
-   LAYOUTCOMMIT after the client's write shut XFS down without this
-   patch and got NFS4ERR_IO with it. The client's data is still lost
-   there; [1] keeps those blocks.
- - pynfs block and blockextent: same as without the patch (BLOCK3 fails
-   either way, on a bug in the test).
- - fstests generic/075, 091 and 263 over the block layout, with and
-   without the patch: 075 fails with an fsx size error either way, and
-   XFS refused none of the 10331 LAYOUTCOMMITs with the patch.
- - W=1 builds of fs/xfs/xfs_pnfs.o with the patch on XFS for-next
-   0be6da616ab5 and on nfsd-testing d918c664efd5: no warnings.
+4. The Cortex-A9 r2p1 is also affected by errata 742230, 742231, 743622
+   and 751472, whose workarounds are not available on multiplatform
+   kernels because they are expected to be applied by the bootloader.
+   The stock U-Boot does not apply them. Is there a preferred way to
+   deal with this?
 
--EIO follows xfs_pnfs_validate_isize() and reaches the client as
-NFS4ERR_IO. No errno maps to NFS4ERR_BADLAYOUT, and the Linux client
-treats NFS4ERR_BADLAYOUT on a LAYOUTCOMMIT as success. For a reclaim,
-RFC 8881 section 18.42.3 requires NFS4ERR_RECLAIM_BAD, which nfsd would
-have to map.
+5. The UART ports are named ttyCS to avoid clashing with the 8250 driver
+   in multi_v7_defconfig, and PORT_GENERIC is used instead of a new port
+   type. The FIFO depth is not documented; the driver assumes 16.
 
-An nfsd check of the extents against the layouts would be a separate
-change, and for the reasons above would not make this one unnecessary.
-The shutdown came up in the review of the ->map_blocks series [2].
+6. The top 64 MiB of RAM are reserved: the vendor firmware gives them to
+   the packet engine queue manager and the stock kernel is booted with
+   mem=448M. The reservation will be referenced by the network driver
+   later; I kept it now so that the memory is not handed out and later
+   claimed.
 
-xfs_pnfs_validate_isize() reads the extents under XFS_ILOCK_SHARED,
-which xfs_iread_extents() does not allow when they are not loaded yet.
-That needs a separate fix.
-
-[1] https://lore.kernel.org/r/20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com
-[2] https://lore.kernel.org/r/20261012024846epcms2p7cccc5c988b2553b3f831070eb17e0455@epcms2p7
----
- fs/xfs/xfs_pnfs.c | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 57 insertions(+), 3 deletions(-)
-
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index ab38561700..da60154198 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -272,6 +272,46 @@ xfs_pnfs_validate_isize(
- 	return 0;
- }
- 
-+/*
-+ * Ensure the committed range is backed by allocated blocks. A client may only
-+ * write to blocks that a layout handed out, xfs_fs_map_blocks() allocates
-+ * blocks for any hole in a write layout, and no layout hands out a delalloc
-+ * extent. A hole or a delalloc extent in the range was either never laid out
-+ * or lost its blocks after the layout was handed out, so nothing the client
-+ * wrote can be committed there. Converting a hole would also allocate blocks
-+ * that the transaction did not reserve.
-+ */
-+static int
-+xfs_pnfs_validate_commit(
-+	struct xfs_inode	*ip,
-+	xfs_off_t		start,
-+	xfs_off_t		end)
-+{
-+	struct xfs_mount	*mp = ip->i_mount;
-+	xfs_fileoff_t		offset_fsb = XFS_B_TO_FSBT(mp, start);
-+	xfs_fileoff_t		end_fsb = XFS_B_TO_FSB(mp, end);
-+	struct xfs_bmbt_irec	imap;
-+	uint			lock_flags;
-+	int			nimaps;
-+	int			error = 0;
-+
-+	lock_flags = xfs_ilock_data_map_shared(ip);
-+	while (offset_fsb < end_fsb) {
-+		nimaps = 1;
-+		error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
-+				&imap, &nimaps, 0);
-+		if (error)
-+			break;
-+		if (!nimaps || !xfs_bmap_is_real_extent(&imap)) {
-+			error = -EIO;
-+			break;
-+		}
-+		offset_fsb = imap.br_startoff + imap.br_blockcount;
-+	}
-+	xfs_iunlock(ip, lock_flags);
-+	return error;
-+}
-+
- /*
-  * Make sure the blocks described by maps are stable on disk.  This includes
-  * converting any unwritten extents, flushing the disk cache and updating the
-@@ -305,6 +345,22 @@ xfs_fs_commit_blocks(
- 		size = new_size;
- 	}
- 
-+	/*
-+	 * Check all of the maps before converting any of them, so that a commit
-+	 * refused for a hole or a delalloc extent converts nothing.
-+	 */
-+	for (i = 0; i < nr_maps; i++) {
-+		u64 start = maps[i].offset;
-+		u64 end;
-+
-+		if (start >= size)
-+			continue;
-+		end = start + min_t(u64, maps[i].length, size - start);
-+		error = xfs_pnfs_validate_commit(ip, start, end);
-+		if (error)
-+			goto out_drop_iolock;
-+	}
-+
- 	for (i = 0; i < nr_maps; i++) {
- 		u64 start, length, end;
- 
-@@ -312,9 +368,7 @@ xfs_fs_commit_blocks(
- 		if (start > size)
- 			continue;
- 
--		end = start + maps[i].length;
--		if (end > size)
--			end = size;
-+		end = start + min_t(u64, maps[i].length, size - start);
- 
- 		length = end - start;
- 		if (!length)
+Planned follow-ups, as separate series: the regbus interrupt
+controller, GPIO, I2C and TWD watchdog (posted separately),
+then the global control block/clock, RTC, NAND,
+PCIe (DesignWare glue), MDIO, the Ethernet/packet engine and a fix for
+the SX8650 touchscreen.
 
 ---
-base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
-change-id: 20261012-xfs-pnfs-commit-hole-c30ae9a287f3
+Changes in v6:
+- serial: also ignore overruns when CREAD is cleared, everything received
+  is dropped then (sashiko-bot)
+- Link to v5: https://patch.msgid.link/20261013-b4-cs75xx-v5-0-4e72aa383d39@gmail.com
+
+Changes in v5:
+- goldengate: select PL310_ERRATA_769419, the PL310 is r3p1-50rel0
+  (CACHE_ID 0x410000c7), not r3p2 as v4 said; fix the revision in the
+  commit message and here
+- serial: scale the TX FIFO wait in putchar with the frame time, 10 ms is
+  shorter than one character below 1200 baud (sashiko-bot)
+- serial: no change for the other two sashiko-bot points on v4:
+  uart_port_tx() checks tx_ready before it sends x_char, and SysRq is
+  reachable through MAGIC_SYSRQ_SERIAL_SEQUENCE; the UART has no break
+  indication that the driver could use
+- Link to v4: https://patch.msgid.link/20261012-b4-cs75xx-v4-0-df250d903682@gmail.com
+
+Changes in v4:
+- serial: use guard()/scoped_guard() for the port lock and the port
+  table mutex (Jiri Slaby)
+- serial: honour INPCK/IGNPAR: report parity and framing errors with
+  TTY_PARITY/TTY_FRAME and insert the overrun marker after the characters
+  still in the FIFO (sashiko-bot)
+- goldengate: also send a wakeup IPI to the secondary core: the stock
+  U-Boot parks it in WFI, SEV alone only worked when it was parked by
+  another kernel (found booting from NAND instead of from RAM); the
+  change is small, I kept Linus' Reviewed-by
+- drop the RFC prefix
+- Link to v3: https://patch.msgid.link/20261012-b4-cs75xx-v3-0-0e0d17a098cf@gmail.com
+
+Changes in v3:
+- serial: do not put the console setup callback in .init.text, it is
+  called from a probe that may be deferred past boot (sashiko-bot)
+- collect Reviewed-by tags
+- Link to v2: https://patch.msgid.link/20261006-b4-cs75xx-v2-0-b7d6e1e24d44@gmail.com
+
+Changes in v2:
+- serial: drop the empty break_ctl, request_port and release_port
+  callbacks, comment why set_mctrl stays, add a copyright line (Greg)
+- serial: take the port lock around all IE accesses in startup, flush
+  stale RX data on startup and disable the receiver on shutdown
+- serial: bound the RX loop per interrupt, check RXDAT_VALID in
+  poll_get_char, scale the console TX drain timeout with the frame time
+- serial: serialise port index allocation, reject too low clock rates
+- serial: name the driver after the vendor (cortina-uart.c,
+  SERIAL_CORTINA), as the same block is used in the Cortina Access SoCs
+  (Linus Walleij, Arnd Bergmann); the binding and the help text name
+  the Cortina Systems CS75xx and Cortina Access parts (Jason Li)
+- serial binding: describe the CS7542 only; other SoCs get their own
+  compatible with "cortina,cs7542-uart" as fallback (Conor Dooley)
+- debug: keep the character register intact on BE8 in senduart
+- platform: move arch/arm/mach-cortina to arch/arm/mach-goldengate, as
+  mach-gemini is a Cortina SoC too, and use one ARCH_CORTINA_ACCESS
+  symbol for the whole family, as for the 64-bit Cortina Access parts,
+  with the rationale in the commit message (Linus Walleij, Krzysztof
+  Kozlowski, Arnd Bergmann); mach-goldengate vs. mach-cortina is still
+  open, I am happy to rename the directory if mach-cortina is preferred
+- collect Reviewed-by and Acked-by tags
+- Link to v1: https://patch.msgid.link/20260930-b4-cs75xx-v1-0-4617c4463529@gmail.com
+
+---
+Fil Dunsky (10):
+      dt-bindings: vendor-prefixes: Add Securifi
+      dt-bindings: arm: Add Cortina Systems CS7542 and Securifi Almond+
+      dt-bindings: arm: cpus: Add Cortina Systems CS7542 enable method
+      ARM: goldengate: Add support for the CS75xx SoC family
+      ARM: debug: Add Cortina Systems CS75xx UART0 support
+      dt-bindings: serial: Add Cortina Systems CS7542 UART
+      tty: serial: Add Cortina UART driver
+      ARM: dts: cortina: Add CS7542 SoC and Securifi Almond+ board
+      ARM: multi_v7_defconfig: Enable Cortina Systems CS75xx support
+      MAINTAINERS: Add entry for Cortina Systems CS75xx
+
+ Documentation/devicetree/bindings/arm/cortina.yaml |  31 ++
+ Documentation/devicetree/bindings/arm/cpus.yaml    |   2 +
+ .../bindings/serial/cortina,cs7542-uart.yaml       |  52 ++
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |  11 +
+ arch/arm/Kconfig                                   |   2 +
+ arch/arm/Kconfig.debug                             |  16 +-
+ arch/arm/Makefile                                  |   1 +
+ arch/arm/boot/dts/Makefile                         |   1 +
+ arch/arm/boot/dts/cortina/Makefile                 |   3 +
+ .../dts/cortina/cs7542-securifi-almondplus.dts     |  55 ++
+ arch/arm/boot/dts/cortina/cs7542.dtsi              | 127 +++++
+ arch/arm/configs/multi_v7_defconfig                |   3 +
+ arch/arm/include/debug/cs75xx.S                    |  37 ++
+ arch/arm/mach-goldengate/Kconfig                   |  19 +
+ arch/arm/mach-goldengate/Makefile                  |   2 +
+ arch/arm/mach-goldengate/platsmp.c                 |  72 +++
+ drivers/tty/serial/Kconfig                         |  24 +
+ drivers/tty/serial/Makefile                        |   1 +
+ drivers/tty/serial/cortina-uart.c                  | 601 +++++++++++++++++++++
+ 20 files changed, 1060 insertions(+), 2 deletions(-)
+---
+base-commit: 6474fa070f2b8013b4b87350b775b8c3be6e8aac
+change-id: 20260930-b4-cs75xx-033a2c047508
 
 Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
+--  
+Fil Dunsky <filipp.dunsky@gmail.com>
 
