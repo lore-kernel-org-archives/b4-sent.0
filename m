@@ -1,94 +1,132 @@
-From: Juerg Haefliger <juerg.haefliger@canonical.com>
-Date: Tue, 13 Oct 2026 17:57:05 +0200
-Subject: [PATCH] drm/panel-edp: Add AUO 0x0db3 panel
+From: Petr Hodina <petr.hodina@protonmail.com>
+Date: Tue, 13 Oct 2026 18:13:23 +0200
+Subject: [PATCH v2] button: adc: implement get_code()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-panel-edp-add-auo-v1-1-c04bfe6cd9ba@canonical.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBG4auUWTuQxFLQq4iLaeavjkgaEluE0
- rsbdfkt3tuoohgqnbuNClarNqcGf+go3iXdwKbNFFwYvPOBsyQ8GZpZVFmWmR1cHHE8aS8DtS4
- XTPb+PS/Xv+syPhBf3xHt+wekAX0IdQAAAA==
-X-Change-ID: 20261012-panel-edp-add-auo-0e0cbe39d4a6
-To: Douglas Anderson <dianders@chromium.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Juerg Haefliger <juerg.haefliger@canonical.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2251;
- i=juerg.haefliger@canonical.com; s=F9F8B48C; h=from:subject:message-id;
- bh=GcOUJ+XVwlNhxpKGThhrQ1L3OjN6SagPdh8JW/dIx84=;
- b=owEBbQKS/ZANAwAKAQ/TiwkLpkK3AcsmYgBqzlTYMY0HJoh6TCS7xqgivi7jVcoAV0widqn/e
- rb3Tqo+oumJAjMEAAEKAB0WIQSFl9T3oi6mu+It14sP04sJC6ZCtwUCas5U2AAKCRAP04sJC6ZC
- t4b+D/9KD0hyLheoUCf1djuvfU5xW6TxD2SmskPKqm4Zwf5xStma+W531yOpwJYxWkDmIGnBikP
- EhAxcnjFJu6hu2gcNJ+MQNnUaFP/g2VUPW5DCm6vl4hxi0IdTNRmY5VfjyLxRdOuVPl7TAKzQeh
- X/tULdZZufSfp+siG6Z9e+mz9mLe4ghbOTgggRU8WMQEamseGm4/tYgHwAGHdF7APqzN51P9c/l
- 7otCmOOEVJ8pXMcKkN0G9ZqNHuKIgp/7MhIqdOH9hlIKR4yyLuHAnIBasYX0ykdFWcRPSpaoJ61
- LojlaPyjppb72/G2GYztEFI5v7oosV3RBL+6j4Pj9+72NEUDdA2Ev6taVpQ3WM0I2ywugEdWdX2
- cP2seuAcECumcpknEDdzCQgmVC5V+78riP+KryQKY0gP6DU2VnPw99/AVyzPrGeL49OmIfABJ4n
- Q7+Sn+XcOnLvWcD4pmyKUd9PAHfil4xDe9qDv2URQxrNVRHXU8oe26wEgUsTIw4e9tdDZPSa4aB
- B5bfJdhAzg+m8zXAUpDljNq8WhQvBTCF1EUEtMJEYASmbCJBKweEMEWTgnHVLF7C0Qe1HAvGOSs
- JiLz0XZ+O+ZZm7jYNGDKU4+qyt8NhrsmSyJMWzrnoqtINZ6iJYss28YTJdL3BQorvXJUo5VjJ4Z
- 9STVmjVNcbfhSOA==
-X-Developer-Key: i=juerg.haefliger@canonical.com; a=openpgp;
- fpr=52B5BDD2A6EDC76A0FE0AB4A754C3A96F9F8B48C
-X-Endpoint-Received: by B4 Relay for juerg.haefliger@canonical.com/F9F8B48C with auth_id=1135
+Message-Id: <20261013-b4-button-adc-get-code-v2-1-72a1352d5965@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6DIBBFr2JYdxpQME1XvYdxgcygNFUMoGljv
+ HvRHqDLl7z//sYiBUeR3YuNBVpddH7KUF4KZgY99QQOM7OSl7XggkMnoVtS8hNoNNBTAuORgKv
+ aViiVQq1ZHs+BrHuf4ab9cVy6J5l01A5jcDH58DmfV3F4f09WAQJuskIurUKL6jEHn61Ru9fV+
+ JG1+75/AfA7oXnTAAAA
+X-Change-ID: 20261010-b4-button-adc-get-code-056f3d455daa
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, David Heidelberg <david@ixit.cz>, 
+ Simon Glass <sjg@chromium.org>, Petr Hodina <petr.hodina@protonmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791908037; l=3672;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=9JePnEKjXiJ/W2mAz2OuQbRVLmFiWrSIiKO5Q6MgnM0=;
+ b=8Ei60eMDseMoth/TDkrO13G6fAyI+8z74Nm81uT7Tm1lR6tktBMC0CtC0Bydw15TWpNDD+xaH
+ N+rhn3GNc3xBaH2dUKUSqLSrMcmm7oaBDzXXQTFi6zEpChv3z6qqdyT
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an entry for the AUO 0x0db3 eDP panel used in the HP EliteBook 6 G1q.
+Implement .get_code in button_adc_ops and add linux_code
+to button_adc_priv.
 
-The EDID does not contain a product name descriptor nor detailed timings,
-so list as "Unknown" and use the standard AUO power sequence delay which
-works fine.
+The consumer in this case is the PinePhone Pro platform with the
+volume up and down keys for selection in bootmenu.
 
-FWIW, this is likely a panel from the B140UAN series.
-
-Raw EDID:
-
-00 ff ff ff ff ff ff 00 06 af b3 0d 01 01 00 00
-1b 22 01 04 a5 1e 13 78 03 f4 75 91 56 58 93 2a
-20 50 54 00 00 00 01 01 01 01 01 01 01 01 01 01
-01 01 01 01 01 01 0e 3d 80 a4 70 b0 32 40 30 20
-35 00 2d bc 10 00 00 18 b4 28 80 a4 70 b0 32 40
-30 20 35 00 2d bc 10 00 00 18 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02
-00 10 3c ff 0f 3c 96 0d 0c 1e 96 00 00 20 01 e8
-
-70 20 79 02 00 22 00 14 8b 62 02 85 7f 07 a3 00
-2f 80 1f 00 af 04 31 00 02 00 04 00 25 01 09 8b
-62 02 8b 62 02 28 3c 80 2b 00 0c 27 00 28 3b 00
-00 27 00 28 3b 00 00 81 00 15 74 1a 00 00 03 01
-28 3c 00 00 53 51 53 51 3c 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 8e 90
-
-Signed-off-by: Juerg Haefliger <juerg.haefliger@canonical.com>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/gpu/drm/panel/panel-edp.c | 1 +
- 1 file changed, 1 insertion(+)
+The keys on PinePhone Pro are not registered as Volume Up and Down
+as the keys are not wired to normal GPIO but to ADC and use different
+resistors to tell them apart.
 
-diff --git a/drivers/gpu/drm/panel/panel-edp.c b/drivers/gpu/drm/panel/panel-edp.c
-index 2b455369ed70..6fb60b2b8894 100644
---- a/drivers/gpu/drm/panel/panel-edp.c
-+++ b/drivers/gpu/drm/panel/panel-edp.c
-@@ -1958,6 +1958,7 @@ static const struct edp_panel_entry edp_panels[] = {
- 	EDP_PANEL_ENTRY('A', 'U', 'O', 0x0290, &delay_200_500_e50, "B140XTN07.5"),
- 	EDP_PANEL_ENTRY('A', 'U', 'O', 0x04a4, &delay_200_500_e50, "B122UAN01.0"),
- 	EDP_PANEL_ENTRY('A', 'U', 'O', 0x0ba4, &delay_200_500_e50, "B140QAX01.H"),
-+	EDP_PANEL_ENTRY('A', 'U', 'O', 0x0db3, &delay_200_500_e50, "Unknown"),
- 	EDP_PANEL_ENTRY('A', 'U', 'O', 0x105c, &delay_200_500_e50, "B116XTN01.0"),
- 	EDP_PANEL_ENTRY('A', 'U', 'O', 0x1062, &delay_200_500_e50, "B120XAN01.0"),
- 	EDP_PANEL_ENTRY('A', 'U', 'O', 0x125c, &delay_200_500_e50, "Unknown"),
+However, button_adc_ops never sets .get_code unlike button-gpio. As a result
+button_get_code() returns -ENOSYS for ADC buttons.
+
+The patch reads linux,code and returns it from .get_code mirroring button-gpio.
+---
+Changes in v2:
+- extended the sandbox test for KEY_F3/F4/F5 in 'test/dm/button.c'
+- switched to dev_read_u32_default() instead of ofnode_read_u32_default()
+- the commit message now lists the PinePhone Pro as consumer
+- Link to v1: https://patch.msgid.link/20261010-b4-button-adc-get-code-v1-1-843d04f5dfd5@protonmail.com
+---
+ drivers/button/button-adc.c | 14 ++++++++++++++
+ test/dm/button.c            |  3 +++
+ 2 files changed, 17 insertions(+)
+
+diff --git a/drivers/button/button-adc.c b/drivers/button/button-adc.c
+index da7ddf2a857..2f33d36238a 100644
+--- a/drivers/button/button-adc.c
++++ b/drivers/button/button-adc.c
+@@ -20,12 +20,14 @@
+  * @channel: channel of the ADC device to probe the button state.
+  * @min: minimal uV value to consider button as pressed.
+  * @max: maximal uV value to consider button as pressed.
++ * @linux_code: linux,code devicetree property for this button, or 0 if unset.
+  */
+ struct button_adc_priv {
+ 	struct udevice *adc;
+ 	int channel;
+ 	int min;
+ 	int max;
++	int linux_code;
+ };
+ 
+ static enum button_state_t button_adc_get_state(struct udevice *dev)
+@@ -49,6 +51,16 @@ static enum button_state_t button_adc_get_state(struct udevice *dev)
+ 	return (uV >= priv->min && uV < priv->max) ? BUTTON_ON : BUTTON_OFF;
+ }
+ 
++static int button_adc_get_code(struct udevice *dev)
++{
++	struct button_adc_priv *priv = dev_get_priv(dev);
++
++	if (!priv->linux_code)
++		return -ENODATA;
++
++	return priv->linux_code;
++}
++
+ static int button_adc_of_to_plat(struct udevice *dev)
+ {
+ 	struct button_uc_plat *uc_plat = dev_get_uclass_plat(dev);
+@@ -93,6 +105,7 @@ static int button_adc_of_to_plat(struct udevice *dev)
+ 	}
+ 
+ 	priv->channel = args.args[0];
++	priv->linux_code = dev_read_u32_default(dev, "linux,code", 0);
+ 
+ 	/*
+ 	 * Define the voltage range such that the button is only pressed
+@@ -138,6 +151,7 @@ static int button_adc_bind(struct udevice *parent)
+ 
+ static const struct button_ops button_adc_ops = {
+ 	.get_state	= button_adc_get_state,
++	.get_code	= button_adc_get_code,
+ };
+ 
+ static const struct udevice_id button_adc_ids[] = {
+diff --git a/test/dm/button.c b/test/dm/button.c
+index f05f4ca27ce..59431c8eb2b 100644
+--- a/test/dm/button.c
++++ b/test/dm/button.c
+@@ -123,10 +123,13 @@ static int dm_test_button_keys_adc(struct unit_test_state *uts)
+ 	 */
+ 	ut_assertok(button_get_by_label("button3", &dev));
+ 	ut_asserteq(BUTTON_OFF, button_get_state(dev));
++	ut_asserteq(KEY_F3, button_get_code(dev));
+ 	ut_assertok(button_get_by_label("button4", &dev));
+ 	ut_asserteq(BUTTON_OFF, button_get_state(dev));
++	ut_asserteq(KEY_F4, button_get_code(dev));
+ 	ut_assertok(button_get_by_label("button5", &dev));
+ 	ut_asserteq(BUTTON_ON, button_get_state(dev));
++	ut_asserteq(KEY_F5, button_get_code(dev));
+ 
+ 	return 0;
+ }
 
 ---
-base-commit: 705529dab1fa872d8b53b09c95e1b03a95573376
-change-id: 20261012-panel-edp-add-auo-0e0cbe39d4a6
+base-commit: ece349ade2973e220f524ce59e59711cc919263f
+change-id: 20261010-b4-button-adc-get-code-056f3d455daa
 
 Best regards,
--- 
-Juerg Haefliger <juerg.haefliger@canonical.com>
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
