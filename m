@@ -1,132 +1,242 @@
-From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Tue, 13 Oct 2026 18:13:23 +0200
-Subject: [PATCH v2] button: adc: implement get_code()
+From: Johan Jonker <jbx6244@gmail.com>
+Date: Tue, 13 Oct 2026 18:20:49 +0200
+Subject: [PATCH v2] ARM: rockchip: smp: enable secondary rk3066a/rk3188
+ CPUs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-b4-button-adc-get-code-v2-1-72a1352d5965@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6DIBBFr2JYdxpQME1XvYdxgcygNFUMoGljv
- HvRHqDLl7z//sYiBUeR3YuNBVpddH7KUF4KZgY99QQOM7OSl7XggkMnoVtS8hNoNNBTAuORgKv
- aViiVQq1ZHs+BrHuf4ab9cVy6J5l01A5jcDH58DmfV3F4f09WAQJuskIurUKL6jEHn61Ru9fV+
- JG1+75/AfA7oXnTAAAA
-X-Change-ID: 20261010-b4-button-adc-get-code-056f3d455daa
-To: u-boot@lists.u-boot-project.org
-Cc: Tom Rini <trini@konsulko.com>, David Heidelberg <david@ixit.cz>, 
- Simon Glass <sjg@chromium.org>, Petr Hodina <petr.hodina@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791908037; l=3672;
- i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=9JePnEKjXiJ/W2mAz2OuQbRVLmFiWrSIiKO5Q6MgnM0=;
- b=8Ei60eMDseMoth/TDkrO13G6fAyI+8z74Nm81uT7Tm1lR6tktBMC0CtC0Bydw15TWpNDD+xaH
- N+rhn3GNc3xBaH2dUKUSqLSrMcmm7oaBDzXXQTFi6zEpChv3z6qqdyT
-X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
- pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
-X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
+Message-Id: <20261013-cpu-v2-v2-1-fe3bbc9edd33@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGBazmoC/x2NQQqDMBAAvyJ7diGJGGq/Ujwk6abuwVR2qwji3
+ xs9DjMwBygJk8KzOUBoY+VvqeDaBtIUyoeQ35XBGeetsR2mZcXNYfRDjtRb/7Ad1DgGJYwSSpq
+ ufA76I7nEIpR5vw+v8Tz/JekG5XEAAAA=
+To: Russell King <linux@armlinux.org.uk>, Heiko Stuebner <heiko@sntech.de>
+Cc: linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Johan Jonker <jbx6244@gmail.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791908467; l=7171;
+ i=jbx6244@gmail.com; s=20260824; h=from:subject:message-id;
+ bh=TOd8kf5U59z0fbWNbtTzfLXZRq7A+S8BMcAJBPeNlig=;
+ b=FIum5UyKRKnfUX7R7ElIVsKMSnUwPji/54UVS1ZPtpJ29ldzfNAHvYJSnat4iF12xUHcV3uHG
+ VFyOkHgKt2oDUNdmfvGh8i+Z2FkGLxGkqfU3TiZrnNkPobYB9ocqqGl
+X-Developer-Key: i=jbx6244@gmail.com; a=ed25519;
+ pk=MK5Flx1ndjAF0uwXdNm8VvvoghD4KWCNd2hQE8QGyl0=
+X-Endpoint-Received: by B4 Relay for jbx6244@gmail.com/20260824 with auth_id=971
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement .get_code in button_adc_ops and add linux_code
-to button_adc_priv.
+Early Rockchip SoCs like rk3066a and rk3188 had boot loaders
+that remapped the boot ROM and the internal memory. Currently
+U-boot makes use of a common board file without remapping
+resulting in the secondary CPUs power up hanging in a wait loop.
 
-The consumer in this case is the PinePhone Pro platform with the
-volume up and down keys for selection in bootmenu.
+Make the various boot loader methods work by:
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+* add code that disables remapping on both rk3066 and rk3188
+* change to use the same boot ROM path for all socs in rockchip_boot_secondary()
+* drop the rockchip_smp_prepare_sram() part
+
+Signed-off-by: Johan Jonker <jbx6244@gmail.com>
 ---
-The keys on PinePhone Pro are not registered as Volume Up and Down
-as the keys are not wired to normal GPIO but to ADC and use different
-resistors to tell them apart.
+ arch/arm/mach-rockchip/Makefile  |   2 +-
+ arch/arm/mach-rockchip/core.h    |  10 ----
+ arch/arm/mach-rockchip/headsmp.S |  16 ------
+ arch/arm/mach-rockchip/platsmp.c | 105 +++++++++++++++------------------------
+ 4 files changed, 42 insertions(+), 91 deletions(-)
 
-However, button_adc_ops never sets .get_code unlike button-gpio. As a result
-button_get_code() returns -ENOSYS for ADC buttons.
-
-The patch reads linux,code and returns it from .get_code mirroring button-gpio.
----
-Changes in v2:
-- extended the sandbox test for KEY_F3/F4/F5 in 'test/dm/button.c'
-- switched to dev_read_u32_default() instead of ofnode_read_u32_default()
-- the commit message now lists the PinePhone Pro as consumer
-- Link to v1: https://patch.msgid.link/20261010-b4-button-adc-get-code-v1-1-843d04f5dfd5@protonmail.com
----
- drivers/button/button-adc.c | 14 ++++++++++++++
- test/dm/button.c            |  3 +++
- 2 files changed, 17 insertions(+)
-
-diff --git a/drivers/button/button-adc.c b/drivers/button/button-adc.c
-index da7ddf2a857..2f33d36238a 100644
---- a/drivers/button/button-adc.c
-+++ b/drivers/button/button-adc.c
-@@ -20,12 +20,14 @@
-  * @channel: channel of the ADC device to probe the button state.
-  * @min: minimal uV value to consider button as pressed.
-  * @max: maximal uV value to consider button as pressed.
-+ * @linux_code: linux,code devicetree property for this button, or 0 if unset.
-  */
- struct button_adc_priv {
- 	struct udevice *adc;
- 	int channel;
- 	int min;
- 	int max;
-+	int linux_code;
- };
+diff --git a/arch/arm/mach-rockchip/Makefile b/arch/arm/mach-rockchip/Makefile
+index 62596d5deb88..d05123a7b711 100644
+--- a/arch/arm/mach-rockchip/Makefile
++++ b/arch/arm/mach-rockchip/Makefile
+@@ -3,4 +3,4 @@ CFLAGS_platsmp.o := -march=armv7-a
  
- static enum button_state_t button_adc_get_state(struct udevice *dev)
-@@ -49,6 +51,16 @@ static enum button_state_t button_adc_get_state(struct udevice *dev)
- 	return (uV >= priv->min && uV < priv->max) ? BUTTON_ON : BUTTON_OFF;
- }
+ obj-$(CONFIG_ARCH_ROCKCHIP) += rockchip.o
+ obj-$(CONFIG_PM_SLEEP) += pm.o sleep.o
+-obj-$(CONFIG_SMP) += headsmp.o platsmp.o
++obj-$(CONFIG_SMP) += platsmp.o
+diff --git a/arch/arm/mach-rockchip/core.h b/arch/arm/mach-rockchip/core.h
+deleted file mode 100644
+index fabcaa66607c..000000000000
+--- a/arch/arm/mach-rockchip/core.h
++++ /dev/null
+@@ -1,10 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0-or-later */
+-/*
+- * Copyright (c) 2013 MundoReader S.L.
+- * Author: Heiko Stuebner <heiko@sntech.de>
+- */
+-
+-extern char rockchip_secondary_trampoline;
+-extern char rockchip_secondary_trampoline_end;
+-
+-extern unsigned long rockchip_boot_fn;
+diff --git a/arch/arm/mach-rockchip/headsmp.S b/arch/arm/mach-rockchip/headsmp.S
+deleted file mode 100644
+index 37a7ea524a16..000000000000
+--- a/arch/arm/mach-rockchip/headsmp.S
++++ /dev/null
+@@ -1,16 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0-or-later */
+-/*
+- * Copyright (c) 2013 MundoReader S.L.
+- * Author: Heiko Stuebner <heiko@sntech.de>
+- */
+-#include <linux/linkage.h>
+-#include <linux/init.h>
+-
+-ENTRY(rockchip_secondary_trampoline)
+-	ldr	pc, 1f
+-ENDPROC(rockchip_secondary_trampoline)
+-	.globl	rockchip_boot_fn
+-rockchip_boot_fn:
+-1:	.space	4
+-
+-ENTRY(rockchip_secondary_trampoline_end)
+diff --git a/arch/arm/mach-rockchip/platsmp.c b/arch/arm/mach-rockchip/platsmp.c
+index f659d894bfae..ece17e9cbaca 100644
+--- a/arch/arm/mach-rockchip/platsmp.c
++++ b/arch/arm/mach-rockchip/platsmp.c
+@@ -21,17 +21,21 @@
+ #include <asm/smp_plat.h>
+ #include <asm/mach/map.h>
  
-+static int button_adc_get_code(struct udevice *dev)
-+{
-+	struct button_adc_priv *priv = dev_get_priv(dev);
+-#include "core.h"
+-
+ static void __iomem *scu_base_addr;
+ static void __iomem *sram_base_addr;
+ static int ncores;
+ 
++#define RK3066_GRF_SOC_CON0	0x0150
++#define RK3188_GRF_SOC_CON0	0x00a0
 +
-+	if (!priv->linux_code)
-+		return -ENODATA;
++#define NOC_REMAP		BIT(12)
 +
-+	return priv->linux_code;
-+}
+ #define PMU_PWRDN_CON		0x08
+ #define PMU_PWRDN_ST		0x0c
+ 
+ #define PMU_PWRDN_SCU		4
+ 
++static struct regmap *grf;
+ static struct regmap *pmu;
+ static int has_pmu = true;
+ static struct reset_control *cpu_rstc[4];
+@@ -133,66 +137,21 @@ static int rockchip_boot_secondary(unsigned int cpu, struct task_struct *idle)
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	if (read_cpuid_part() != ARM_CPU_PART_CORTEX_A9) {
+-		/*
+-		 * We communicate with the bootrom to active the cpus other
+-		 * than cpu0, after a blob of initialize code, they will
+-		 * stay at wfe state, once they are activated, they will check
+-		 * the mailbox:
+-		 * sram_base_addr + 4: 0xdeadbeaf
+-		 * sram_base_addr + 8: start address for pc
+-		 * The cpu0 need to wait the other cpus other than cpu0 entering
+-		 * the wfe state.The wait time is affected by many aspects.
+-		 * (e.g: cpu frequency, bootrom frequency, sram frequency, ...)
+-		 */
+-		mdelay(1); /* ensure the cpus other than cpu0 to startup */
+-
+-		writel(__pa_symbol(secondary_startup), sram_base_addr + 8);
+-		writel(0xDEADBEAF, sram_base_addr + 4);
+-		dsb_sev();
+-	}
+-
+-	return 0;
+-}
+-
+-/**
+- * rockchip_smp_prepare_sram - populate necessary sram block
+- * Starting cores execute the code residing at the start of the on-chip sram
+- * after power-on. Therefore make sure, this sram region is reserved and
+- * big enough. After this check, copy the trampoline code that directs the
+- * core to the real startup code in ram into the sram-region.
+- * @node: mmio-sram device node
+- */
+-static int __init rockchip_smp_prepare_sram(struct device_node *node)
+-{
+-	unsigned int trampoline_sz = &rockchip_secondary_trampoline_end -
+-					    &rockchip_secondary_trampoline;
+-	struct resource res;
+-	unsigned int rsize;
+-	int ret;
+-
+-	ret = of_address_to_resource(node, 0, &res);
+-	if (ret < 0) {
+-		pr_err("%s: could not get address for node %pOF\n",
+-		       __func__, node);
+-		return ret;
+-	}
+-
+-	rsize = resource_size(&res);
+-	if (rsize < trampoline_sz) {
+-		pr_err("%s: reserved block with size 0x%x is too small for trampoline size 0x%x\n",
+-		       __func__, rsize, trampoline_sz);
+-		return -EINVAL;
+-	}
+-
+-	/* set the boot function for the sram code */
+-	rockchip_boot_fn = __pa_symbol(secondary_startup);
+-
+-	/* copy the trampoline to sram, that runs during startup of the core */
+-	memcpy_toio(sram_base_addr, &rockchip_secondary_trampoline, trampoline_sz);
+-	flush_cache_all();
+-	outer_clean_range(0, trampoline_sz);
+-
++	/*
++	* We communicate with the bootrom to active the cpus other
++	* than cpu0, after a blob of initialize code, they will
++	* stay at wfe state, once they are activated, they will check
++	* the mailbox:
++	* sram_base_addr + 4: 0xdeadbeaf
++	* sram_base_addr + 8: start address for pc
++	* The cpu0 need to wait the other cpus other than cpu0 entering
++	* the wfe state.The wait time is affected by many aspects.
++	* (e.g: cpu frequency, bootrom frequency, sram frequency, ...)
++	*/
++	mdelay(1); /* ensure the cpus other than cpu0 to startup */
 +
- static int button_adc_of_to_plat(struct udevice *dev)
- {
- 	struct button_uc_plat *uc_plat = dev_get_uclass_plat(dev);
-@@ -93,6 +105,7 @@ static int button_adc_of_to_plat(struct udevice *dev)
- 	}
- 
- 	priv->channel = args.args[0];
-+	priv->linux_code = dev_read_u32_default(dev, "linux,code", 0);
- 
- 	/*
- 	 * Define the voltage range such that the button is only pressed
-@@ -138,6 +151,7 @@ static int button_adc_bind(struct udevice *parent)
- 
- static const struct button_ops button_adc_ops = {
- 	.get_state	= button_adc_get_state,
-+	.get_code	= button_adc_get_code,
- };
- 
- static const struct udevice_id button_adc_ids[] = {
-diff --git a/test/dm/button.c b/test/dm/button.c
-index f05f4ca27ce..59431c8eb2b 100644
---- a/test/dm/button.c
-+++ b/test/dm/button.c
-@@ -123,10 +123,13 @@ static int dm_test_button_keys_adc(struct unit_test_state *uts)
- 	 */
- 	ut_assertok(button_get_by_label("button3", &dev));
- 	ut_asserteq(BUTTON_OFF, button_get_state(dev));
-+	ut_asserteq(KEY_F3, button_get_code(dev));
- 	ut_assertok(button_get_by_label("button4", &dev));
- 	ut_asserteq(BUTTON_OFF, button_get_state(dev));
-+	ut_asserteq(KEY_F4, button_get_code(dev));
- 	ut_assertok(button_get_by_label("button5", &dev));
- 	ut_asserteq(BUTTON_ON, button_get_state(dev));
-+	ut_asserteq(KEY_F5, button_get_code(dev));
++	writel(__pa_symbol(secondary_startup), sram_base_addr + 8);
++	writel(0xDEADBEAF, sram_base_addr + 4);
+ 	dsb_sev();
  
  	return 0;
- }
+@@ -320,9 +279,27 @@ static void __init rockchip_smp_prepare_cpus(unsigned int max_cpus)
+ 	for (i = 1; i < ncores; i++)
+ 		pmu_set_power_domain(0 + i, false);
+ 
++	/* Make sure that the remap function is disabled */
+ 	if (read_cpuid_part() == ARM_CPU_PART_CORTEX_A9) {
+-		if (rockchip_smp_prepare_sram(node)) {
+-			of_node_put(node);
++		unsigned int reg;
++		int ret;
++
++		if (of_machine_is_compatible("rockchip,rk3066a")) {
++			reg = RK3066_GRF_SOC_CON0;
++			grf = syscon_regmap_lookup_by_compatible("rockchip,rk3066-grf");
++		} else {
++			reg = RK3188_GRF_SOC_CON0;
++			grf = syscon_regmap_lookup_by_compatible("rockchip,rk3188-grf");
++		}
++
++		if (IS_ERR(grf)) {
++			pr_err("%s: could not find grf dt node\n", __func__);
++			return;
++		}
++
++		ret = regmap_update_bits(grf, reg, NOC_REMAP, 0);
++		if (ret < 0) {
++			pr_err("%s: could not update remap function\n", __func__);
+ 			return;
+ 		}
+ 	}
 
 ---
-base-commit: ece349ade2973e220f524ce59e59711cc919263f
-change-id: 20261010-b4-button-adc-get-code-056f3d455daa
+base-commit: 9d80aa4617b32f5054c5aa471d06b66704854935
+change-id: 20261013-cpu-v2-b69fbe516813
 
 Best regards,
---  
-Petr Hodina <petr.hodina@protonmail.com>
+-- 
+Johan Jonker <jbx6244@gmail.com>
 
