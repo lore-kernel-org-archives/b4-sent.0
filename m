@@ -1,381 +1,113 @@
-From: Xincheng Ji <jixincheng@ultrarisc.com>
-Date: Tue, 13 Oct 2026 18:21:31 +0800
-Subject: [PATCH v3 7/7] riscv: dts: ultrarisc: Add Milk-V Titan board
- device tree
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH RFC v2 0/4] Add E notation support to kstrtodec64() and IIO
+ sysfs writes
+Date: Tue, 13 Oct 2026 10:36:43 -0300
+Message-Id: <20261013-e-notation-v2-0-d4adb5e193fc@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261013-ultrarisc-dts-v3-7-5ff3ebb2a90d@ultrarisc.com>
-References: <20261013-ultrarisc-dts-v3-0-5ff3ebb2a90d@ultrarisc.com>
-In-Reply-To: <20261013-ultrarisc-dts-v3-0-5ff3ebb2a90d@ultrarisc.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Jia Wang <wangjia@ultrarisc.com>, 
- Xincheng Ji <jixincheng@ultrarisc.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Thomas Gleixner <tglx@kernel.org>, 
- Samuel Holland <samuel.holland@sifive.com>, 
- Anup Patel <anup@brainfault.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
- linux-riscv@lists.infradead.org
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791886887; l=7334;
- i=jixincheng@ultrarisc.com; s=20260922; h=from:subject:message-id;
- bh=dAtkSFZr6AV1hMUKbe3Hu73EzYFoZ2u8+96QxJOEsCA=;
- b=72SwzpA8D3S38FBHDHVeGL6mLxkfQNpWE1jWyvm8+ZSqoWe9++3ZpAkplMu5QtKf/GSR2x7pR
- FrRPOMPWFwkCyW23GfLSh0o7oRS/oCjZcSWOQS2OZlCHM6a7w1peuxS
-X-Developer-Key: i=jixincheng@ultrarisc.com; a=ed25519;
- pk=n848dcS5D6g0vLad/rjp4Gf/1eedTe1a3pYUrkt2260=
-X-Endpoint-Received: by B4 Relay for jixincheng@ultrarisc.com/20260922 with auth_id=1046
+X-B4-Tracking: v=1; b=H4sIAOszzmoC/22NwQrCMBBEf6Xs2chuoI16EgQ/wKv0kMZtG7GJJ
+ LEopf9uWq8eZ3jzZoLIwXKEQzFB4NFG610OclOA6bXrWNhbziBRVoRIgoXzSaeMCWxRqVLtCbm
+ EPHgGbu17lV3hcj5B/Svjq7mzSYtmwXobkw+f9XKkFf5nH0mgUCXtVNNiZQiP2umH77bGD1DP8
+ /wFEej6bLwAAAA=
+X-Change-ID: 20261001-e-notation-0f07757910e5
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791898614; l=3835;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=zmd0vd1IKyQXpMNynfIqSiL3fU/blbRNFLaY3BhWx8Y=;
+ b=Lw/nSDL5rmQeIQezT0geVjUI9QaKkCirsmtt7nkW6tXFDBFSO/LYvc0BygBgaDF72WC6m/BGW
+ tt6ZBtrTd85DCfmzyMoeTYUq87ae+S2tJDrD53Zf5zAeQhL7OKS4Trv
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Jia Wang <wangjia@ultrarisc.com>
+This series lets kstrtoudec64() and kstrtodec64() accept numbers in E
+notation (scientific notation), such as "2.7e9", "1.5E-3" or "1e+16".
+It then moves the IIO core fixed-point parser over to kstrtodec64(), so
+every IIO channel attribute written through iio_write_channel_info()
+accepts that format as well.
 
-Milk-V Titan is an ITX motherboard based on the UltraRISC DP1000 SoC.
+There are two main motivations:
 
-Link: https://milkv.io/docs/titan/overview
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+1. Shell usage of sysfs attributes
+
+   Some IIO devices take values that are long to type and easy to get
+   wrong in plain decimal. A frequency synthesizer or DDS might be
+   programmed in the GHz range, and a scale might be a tiny fraction.
+   With this series one can write:
+
+     echo 2.7e9 > out_altvoltage0_frequency
+     echo 1.5e-6 > in_voltage0_scale
+
+   instead of counting zeros in "2700000000" or "0.0000015". It also
+   works with shell tools that print in E notation by default, such as
+   printf's %g conversion ("printf '%g' 2700000000" prints "2.7e+09")
+   and awk, whose default output format ("%.6g") prints
+   non-integral values like 1234567.5 as "1.23457e+06".
+
+2. Userspace software that formats numbers automatically
+
+   Many languages and libraries switch to E notation when converting
+   floating point numbers to strings, without the caller asking for it:
+
+   - Python: str() and repr() of a float use E notation for exponents
+     below -4 or from 16 up, e.g. str(0.00001) == '1e-05' and
+     str(1e16) == '1e+16'. Writing such a value straight to an attribute
+     with open(...).write(str(value)) currently fails with -EINVAL.
+     The same applies to NumPy scalars and to f-strings with the 'g'
+     format spec (f"{2.7e9:g}" == '2.7e+09').
+   - JavaScript/Node.js: Number.prototype.toString() uses E notation
+     for magnitudes from 1e21 up or below 1e-6, e.g. String(1e-7)
+     gives '1e-7'.
+   - C/C++ applications and bindings that use printf("%g") or
+     std::to_chars() with general formatting, as well as MATLAB/Octave
+     and other numeric environments that print in a "short" form.
+
+   Today these values have to be reformatted by the application, or are
+   rejected by the kernel without warning. Accepting E notation in the
+   kernel makes the IIO sysfs ABI more robust to this common
+   behaviour.
+
+The exponent is folded into the requested decimal scale, so no floating
+point arithmetic is involved. Digits beyond the resulting precision are
+truncated, matching the existing kstrtodec64() behaviour. Overflow is
+reported as -ERANGE and a malformed exponent ("1e", "1e+") as -EINVAL.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- arch/riscv/boot/dts/ultrarisc/Makefile             |   1 +
- .../dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi  | 108 +++++++++++
- .../boot/dts/ultrarisc/dp1000-milkv-titan.dts      | 203 +++++++++++++++++++++
- 3 files changed, 312 insertions(+)
+Changes in v2:
+- More test cases on test-kstrtox.c.
+- Rework fallback logic when parsing integers.
+- Add iio kunit test cases for iio_write_channel_info()
+- Link to v1: https://patch.msgid.link/20261001-e-notation-v1-0-75187bf06c10@analog.com
 
-diff --git a/arch/riscv/boot/dts/ultrarisc/Makefile b/arch/riscv/boot/dts/ultrarisc/Makefile
-index 454d849a6ce4..dfd15c064d07 100644
---- a/arch/riscv/boot/dts/ultrarisc/Makefile
-+++ b/arch/riscv/boot/dts/ultrarisc/Makefile
-@@ -1,2 +1,3 @@
- # SPDX-License-Identifier: GPL-2.0
-+dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-milkv-titan.dtb
- dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-shenrongda-m0.dtb
-diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi
-new file mode 100644
-index 000000000000..7a812e40a249
---- /dev/null
-+++ b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi
-@@ -0,0 +1,108 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright(C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ */
-+
-+#include "dp1000.dtsi"
-+#include "dp1000-pinctrl.h"
-+
-+&pinctrl {
-+	i2c0_pins: i2c0-pins {
-+		pins = <PA12 PA13>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	i2c1_pins: i2c1-pins {
-+		pins = <PB6 PB7>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	i2c2_pins: i2c2-pins {
-+		pins = <PC0 PC1>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	i2c3_pins: i2c3-pins {
-+		pins = <PC2 PC3>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	io_pins: io-pins {
-+		pins = <PA10 PA15 PB0 PB1 PB2 PD6 PD7>;
-+		function = "gpio";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	gpio_keys_pins: gpio-keys-pins {
-+		pins = <PA4 PA11 PA14>;
-+		function = "gpio";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	mux_dcdc_i2c_pins: mux-dcdc-i2c-pins {
-+		pins = <PA5>;
-+		function = "gpio";
-+	};
-+
-+	mux_i2c3_pins: mux-i2c3-pins {
-+		pins = <PA6>;
-+		function = "gpio";
-+	};
-+
-+	mux_uart0_pins: mux-uart0-pins {
-+		pins = <PA7>;
-+		function = "gpio";
-+	};
-+
-+	spi0_pins: spi0-pins {
-+		pins = <PD0 PD1 PD2 PD3 PD4 PD5>;
-+		function = "spi";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	spi1_pins: spi1-pins {
-+		pins = <PA0 PA1 PA2 PA3>;
-+		function = "spi";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart0_pins: uart0-pins {
-+		pins = <PA8 PA9>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart1_pins: uart1-pins {
-+		pins = <PB4 PB5>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart2_pins: uart2-pins {
-+		pins = <PC4 PC5>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart3_pins: uart3-pins {
-+		pins = <PC6 PC7>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+};
-diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts
-new file mode 100644
-index 000000000000..59edd8157221
---- /dev/null
-+++ b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts
-@@ -0,0 +1,203 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright(C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ */
-+
-+#include "dp1000-milkv-titan-pinctrl.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/input/gpio-keys.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
-+
-+/ {
-+	model = "Milk-V Titan";
-+	compatible = "milkv,titan", "ultrarisc,dp1000";
-+
-+	aliases {
-+		serial0 = &uart0;
-+		serial1 = &uart1;
-+		serial2 = &uart2;
-+		serial3 = &uart3;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio_keys_pins>;
-+
-+		key-wakeup-0 {
-+			label = "Wake-Up";
-+			gpios = <&gpio_a 14 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_WAKEUP>;
-+			linux,input-type = <EV_KEY>;
-+			debounce-interval = <10>;
-+			wakeup-source;
-+			wakeup-event-action = <EV_ACT_ASSERTED>;
-+		};
-+
-+		key-wakeup-1 {
-+			label = "Power";
-+			gpios = <&gpio_a 11 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_POWER>;
-+			linux,input-type = <EV_KEY>;
-+			debounce-interval = <10>;
-+			wakeup-source;
-+			wakeup-event-action = <EV_ACT_ASSERTED>;
-+		};
-+
-+		key-wakeup-2 {
-+			label = "Wake-Up-by-USB";
-+			interrupts-extended = <&gpio_a 4 IRQ_TYPE_EDGE_FALLING>;
-+			linux,code = <KEY_WAKEUP>;
-+			linux,input-type = <EV_KEY>;
-+			debounce-interval = <10>;
-+			wakeup-source;
-+		};
-+	};
-+};
-+
-+&i2c0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c0_pins>;
-+};
-+
-+&i2c1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c1_pins>;
-+};
-+
-+&i2c2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c2_pins>;
-+
-+	rtc@68 {
-+		compatible = "st,m41t11";
-+		reg = <0x68>;
-+	};
-+};
-+
-+&i2c3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c3_pins>;
-+};
-+
-+&spi0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_pins>;
-+};
-+
-+&spi1 {
-+	num-cs = <1>;
-+
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spi1_pins>;
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_pins>;
-+};
-+
-+&uart1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart1_pins>;
-+};
-+
-+&uart2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart2_pins>;
-+};
-+
-+&uart3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart3_pins>;
-+};
-+
-+&pcie_x16 {
-+	status = "okay";
-+};
-+
-+&pcie_x4a {
-+	status = "okay";
-+};
-+
-+&pcie_x4b {
-+	status = "okay";
-+};
-+
-+&gpio {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&io_pins &mux_dcdc_i2c_pins &mux_i2c3_pins &mux_uart0_pins>;
-+};
-+
-+&gpio_a {
-+	dcdc-i2c-mux-hog {
-+		gpio-hog;
-+		gpios = <5 GPIO_ACTIVE_HIGH>;
-+		output-low;
-+		line-name = "dcdc-i2c-mux";
-+	};
-+
-+	i2c3-mux-hog {
-+		gpio-hog;
-+		gpios = <6 GPIO_ACTIVE_HIGH>;
-+		output-low;
-+		line-name = "i2c3-mux";
-+	};
-+
-+	uart0-mux-hog {
-+		gpio-hog;
-+		gpios = <7 GPIO_ACTIVE_HIGH>;
-+		output-high;
-+		line-name = "uart0-mux";
-+	};
-+};
-+
-+&ethernet {
-+	phy-handle = <&phy0>;
-+	/*
-+	 * The PCB does not add RGMII TX or RX clock delays. The DP1000
-+	 * integration adds fixed delays in both directions.
-+	 */
-+	phy-mode = "rgmii-id";
-+
-+	status = "okay";
-+
-+	mdio {
-+		compatible = "snps,dwmac-mdio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		phy0: phy@0 {
-+			reg = <0>;
-+
-+			leds {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				led@1 {
-+					label = "eth-link";
-+					reg = <1>;
-+					color = <LED_COLOR_ID_YELLOW>;
-+					function = LED_FUNCTION_INDICATOR;
-+					default-state = "keep";
-+					linux,default-trigger = "netdev";
-+				};
-+
-+				led@2 {
-+					label = "eth-activity";
-+					reg = <2>;
-+					color = <LED_COLOR_ID_GREEN>;
-+					function = LED_FUNCTION_ACTIVITY;
-+					default-state = "keep";
-+					linux,default-trigger = "netdev";
-+				};
-+			};
-+		};
-+	};
-+};
+---
+Rodrigo Alencar (4):
+      lib: kstrtox: support E notation in kstrtoudec64() and kstrtodec64()
+      lib: test-kstrtox: add E notation tests for kstrto[u]dec64()
+      iio: core: use kstrtodec64() to parse fixed-point values
+      iio: test: add kunit tests for channel info writes
 
--- 
-2.34.1
+ MAINTAINERS                               |   1 +
+ drivers/iio/iio_core.h                    |   3 +
+ drivers/iio/industrialio-core.c           | 168 +++++++-------
+ drivers/iio/test/Kconfig                  |  14 ++
+ drivers/iio/test/Makefile                 |   1 +
+ drivers/iio/test/iio-test-channel-write.c | 352 ++++++++++++++++++++++++++++++
+ lib/kstrtox.c                             |  64 ++++--
+ lib/test-kstrtox.c                        |  58 +++++
+ 8 files changed, 557 insertions(+), 104 deletions(-)
+---
+base-commit: a22dc7ebb21a6bd4c8b63bc2c1dd46a24945aae7
+change-id: 20261001-e-notation-0f07757910e5
+
+Best regards,
+--  
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
