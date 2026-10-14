@@ -1,68 +1,339 @@
-From: =?utf-8?q?Santiago_Mill=C3=A1n?= <santimillang@gmail.com>
-Date: Wed, 14 Oct 2026 12:56:02 +0200
-Subject: [PATCH] drm/tests: bridge: Document struct fmt_tuple members
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 14 Oct 2026 18:58:11 +0800
+Subject: [PATCH BlueZ bluez] hci: add ext adv interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261014-drm-bridge-test-kdoc-v1-1-883f7ec8bcfa@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAMFfz2oC/yXMQQrCMBCF4auUWTuQ1BDFq4iLJhl1FFOZSaVQc
- vemdvnxeP8CSsKkcOkWEPqx8pgb7KGD+Bzyg5BTM/Sm99ZYh0k+GIRTWwppwXcaIw7Ok7PnY/A
- nA+36Fbrz/M9eb7t1Ci+KZWtBrStnu/fJeAAAAA==
-X-Change-ID: 20261014-drm-bridge-test-kdoc-a46e4183b670
-To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Daniel Stone <daniel@fooishbar.org>, 
- Nicolas Frattaroli <nicolas.frattaroli@collabora.com>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- kernel test robot <lkp@intel.com>, 
- =?utf-8?q?Santiago_Mill=C3=A1n?= <santimillang@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791975361; l=1388;
- i=santimillang@gmail.com; s=20261014; h=from:subject:message-id;
- bh=xBhEKNdRFSh2ZCArxhg9+cTIQT8Sm2LYQdWKl1M7dMc=;
- b=bx87YpYiKOgpkhPmHQ9IzqIXl65n38C8Pfnm9Nzvn7+bHii9hlVO9J3QPzSJhyfc/m0WqYEzQ
- 2dlbosQr900DKESl5AVhAnFVjMKzm6LmYjk3x2aSaY5g26FNR3UUz9E
-X-Developer-Key: i=santimillang@gmail.com; a=ed25519;
- pk=53GrtI4i/ZCeWuXdQe6gXlcTQdbMxKlYzTUEI0heuV0=
-X-Endpoint-Received: by B4 Relay for santimillang@gmail.com/20261014 with auth_id=1175
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261014-extend_adv_api-v1-1-6ad07ff280f2@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAEJgz2oC/x3MTQqAIBBA4avIrBOyH5GuEhGaUw2EiVZE0t2Tl
+ t/ivQQRA2GEjiUIeFGk3WWIgsG0arcgJ5sNVVlJUYqG432gs6O216g9cSmMUarWk1It5MgHnOn
+ +hz2Y7cQHhvf9AANHkN9nAAAA
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791975494; l=8890;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=WMUAa/cLymXgVr+hqSOhwpWmetN8h/ciU2P6dUS+h5c=;
+ b=ULgSsdKJ7auitPoC4RZsGqZOyx6N4zqb8Bmt75PNI/Nz3nFcdeX9qZGzeOlzO+bfxxoGOHU8M
+ q4sQ64yQcLOD18k9YtqBVgD8uJPI5bxqMUI3jCPZXhr3OChDN7mPd1N
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The kernel-doc comment for struct fmt_tuple does not describe its
-in_fmt and out_fmt members, so W=1 builds warn:
+Wrap extended advertising HCI command interfaces.
 
-  struct member 'in_fmt' not described in 'fmt_tuple'
-  struct member 'out_fmt' not described in 'fmt_tuple'
-
-Add descriptions for both members.
-
-Fixes: 082fbc179c01 ("drm/tests: bridge: Add KUnit tests for bridge chain format selection")
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202606120201.5E4O2N7N-lkp@intel.com/
-Signed-off-by: Santiago Millán <santimillang@gmail.com>
 ---
- drivers/gpu/drm/tests/drm_bridge_test.c | 2 ++
- 1 file changed, 2 insertions(+)
+Signed-off-by: Yang Li <yang.li@amlogic.com>
+---
+ lib/bluetooth/hci.c     | 193 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/bluetooth/hci.h     |  55 ++++++++++++++
+ lib/bluetooth/hci_lib.h |  16 ++++
+ 3 files changed, 264 insertions(+)
 
-diff --git a/drivers/gpu/drm/tests/drm_bridge_test.c b/drivers/gpu/drm/tests/drm_bridge_test.c
-index 15583ade8494..b79d7b8b2d32 100644
---- a/drivers/gpu/drm/tests/drm_bridge_test.c
-+++ b/drivers/gpu/drm/tests/drm_bridge_test.c
-@@ -123,6 +123,8 @@ static const struct drm_bridge_funcs drm_test_bridge_bus_fmts_funcs = {
+diff --git a/lib/bluetooth/hci.c b/lib/bluetooth/hci.c
+index f50a30c61..646a0fe6f 100644
+--- a/lib/bluetooth/hci.c
++++ b/lib/bluetooth/hci.c
+@@ -3017,6 +3017,199 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable, int to)
+ 	return 0;
+ }
  
- /**
-  * struct fmt_tuple - a tuple of input/output MEDIA_BUS_FMT_*
-+ * @in_fmt: input bus format accepted by the bridge
-+ * @out_fmt: output bus format the bridge can produce from @in_fmt
-  */
- struct fmt_tuple {
- 	u32 in_fmt;
++int hci_le_set_ext_adv_params(int dd, uint8_t handle, uint16_t evt_properties,
++				uint32_t min_interval, uint32_t max_interval,
++				uint8_t channel_map, uint8_t own_addr_type,
++				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
++				uint8_t filter_policy, int8_t tx_power,
++				uint8_t primary_phy, uint8_t secondary_max_skip,
++				uint8_t secondary_phy, uint8_t sid,
++				uint8_t notif_enable, int to)
++{
++	struct hci_request rq;
++	le_set_ext_adv_params_cp cp;
++	struct {
++		uint8_t status;
++		int8_t  tx_power;
++	} rsp;
++
++	memset(&cp, 0, sizeof(cp));
++	cp.handle = handle;
++	cp.evt_properties = evt_properties;
++	cp.min_interval[0] = min_interval & 0xff;
++	cp.min_interval[1] = (min_interval >> 8) & 0xff;
++	cp.min_interval[2] = (min_interval >> 16) & 0xff;
++	cp.max_interval[0] = max_interval & 0xff;
++	cp.max_interval[1] = (max_interval >> 8) & 0xff;
++	cp.max_interval[2] = (max_interval >> 16) & 0xff;
++	cp.channel_map = channel_map;
++	cp.own_addr_type = own_addr_type;
++	cp.peer_addr_type = peer_addr_type;
++	if (peer_addr)
++		memcpy(&cp.peer_addr, peer_addr, sizeof(cp.peer_addr));
++	cp.filter_policy = filter_policy;
++	cp.tx_power = tx_power;
++	cp.primary_phy = primary_phy;
++	cp.secondary_max_skip = secondary_max_skip;
++	cp.secondary_phy = secondary_phy;
++	cp.sid = sid;
++	cp.notif_enable = notif_enable;
++
++	memset(&rq, 0, sizeof(rq));
++	rq.ogf = OGF_LE_CTL;
++	rq.ocf = OCF_LE_SET_EXT_ADV_PARAMS;
++	rq.cparam = &cp;
++	rq.clen = sizeof(cp);
++	rq.rparam = &rsp;
++	rq.rlen = sizeof(rsp);
++
++	if (hci_send_req(dd, &rq, to) < 0)
++		return -1;
++
++	if (rsp.status) {
++		errno = EIO;
++		return -1;
++	}
++
++	return 0;
++}
++
++int hci_le_set_ext_adv_data(int dd, uint8_t handle, uint8_t operation,
++				uint8_t fragment_pref, const uint8_t *data,
++				uint8_t data_len, int to)
++{
++	struct hci_request rq;
++	le_set_ext_adv_data_cp *cp;
++	uint8_t status;
++	size_t plen = sizeof(*cp) + data_len;
++
++	cp = malloc(plen);
++	if (!cp) {
++		errno = ENOMEM;
++		return -1;
++	}
++
++	memset(cp, 0, plen);
++	cp->handle = handle;
++	cp->operation = operation;
++	cp->fragment_preference = fragment_pref;
++	cp->data_len = data_len;
++	if (data && data_len)
++		memcpy(cp->data, data, data_len);
++
++	memset(&rq, 0, sizeof(rq));
++	rq.ogf = OGF_LE_CTL;
++	rq.ocf = OCF_LE_SET_EXT_ADV_DATA;
++	rq.cparam = cp;
++	rq.clen = plen;
++	rq.rparam = &status;
++	rq.rlen = 1;
++
++	if (hci_send_req(dd, &rq, to) < 0) {
++		free(cp);
++		return -1;
++	}
++
++	free(cp);
++
++	if (status) {
++		errno = EIO;
++		return -1;
++	}
++
++	return 0;
++}
++
++int hci_le_set_ext_scan_rsp_data(int dd, uint8_t handle, uint8_t operation,
++				uint8_t fragment_pref, const uint8_t *data,
++				uint8_t data_len, int to)
++{
++	struct hci_request rq;
++	le_set_ext_adv_data_cp *cp;
++	uint8_t status;
++	size_t plen = sizeof(*cp) + data_len;
++
++	cp = malloc(plen);
++	if (!cp) {
++		errno = ENOMEM;
++		return -1;
++	}
++
++	memset(cp, 0, plen);
++	cp->handle = handle;
++	cp->operation = operation;
++	cp->fragment_preference = fragment_pref;
++	cp->data_len = data_len;
++	if (data && data_len)
++		memcpy(cp->data, data, data_len);
++
++	memset(&rq, 0, sizeof(rq));
++	rq.ogf = OGF_LE_CTL;
++	rq.ocf = OCF_LE_SET_EXT_SCAN_RSP_DATA;
++	rq.cparam = cp;
++	rq.clen = plen;
++	rq.rparam = &status;
++	rq.rlen = 1;
++
++	if (hci_send_req(dd, &rq, to) < 0) {
++		free(cp);
++		return -1;
++	}
++
++	free(cp);
++
++	if (status) {
++		errno = EIO;
++		return -1;
++	}
++
++	return 0;
++}
++
++int hci_le_set_ext_adv_enable(int dd, uint8_t enable, uint8_t num_of_sets,
++				const void *sets, int to)
++{
++	struct hci_request rq;
++	le_set_ext_adv_enable_cp *cp;
++	uint8_t status;
++	size_t set_entry_len = 4; /* handle (1) + duration (2) + max_events (1) */
++	size_t plen = sizeof(le_set_ext_adv_enable_cp) + (num_of_sets * set_entry_len);
++
++	cp = malloc(plen);
++	if (!cp) {
++		errno = ENOMEM;
++		return -1;
++	}
++
++	memset(cp, 0, plen);
++	cp->enable = enable;
++	cp->num_of_sets = num_of_sets;
++	if (sets && num_of_sets)
++		memcpy(cp->sets, sets, num_of_sets * set_entry_len);
++
++	memset(&rq, 0, sizeof(rq));
++	rq.ogf = OGF_LE_CTL;
++	rq.ocf = OCF_LE_SET_EXT_ADV_ENABLE;
++	rq.cparam = cp;
++	rq.clen = plen;
++	rq.rparam = &status;
++	rq.rlen = 1;
++
++	if (hci_send_req(dd, &rq, to) < 0) {
++		free(cp);
++		return -1;
++	}
++
++	free(cp);
++
++	if (status) {
++		errno = EIO;
++		return -1;
++	}
++
++	return 0;
++}
++
+ int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
+ 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
+ 		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,
+diff --git a/lib/bluetooth/hci.h b/lib/bluetooth/hci.h
+index 2e4aa394e..7d8b81f2d 100644
+--- a/lib/bluetooth/hci.h
++++ b/lib/bluetooth/hci.h
+@@ -1735,6 +1735,61 @@ typedef struct {
+ } __attribute__ ((packed)) le_set_address_resolution_enable_cp;
+ #define LE_SET_ADDRESS_RESOLUTION_ENABLE_CP_SIZE 1
+ 
++#define OCF_LE_SET_EXT_ADV_PARAMS		0x0036
++typedef struct {
++	uint8_t  handle;
++	uint16_t evt_properties;
++	uint8_t  min_interval[3];
++	uint8_t  max_interval[3];
++	uint8_t  channel_map;
++	uint8_t  own_addr_type;
++	uint8_t  peer_addr_type;
++	bdaddr_t peer_addr;
++	uint8_t  filter_policy;
++	int8_t   tx_power;
++	uint8_t  primary_phy;
++	uint8_t  secondary_max_skip;
++	uint8_t  secondary_phy;
++	uint8_t  sid;
++	uint8_t  notif_enable;
++} __attribute__ ((packed)) le_set_ext_adv_params_cp;
++#define LE_SET_EXT_ADV_PARAMS_CP_SIZE 25
++
++typedef struct {
++	uint8_t status;
++	int8_t  selected_tx_power;
++} __attribute__ ((packed)) le_set_ext_adv_params_rp;
++#define LE_SET_EXT_ADV_PARAMS_RP_SIZE 9
++
++#define OCF_LE_SET_EXT_ADV_DATA			0x0037
++typedef struct {
++	uint8_t handle;
++	uint8_t operation;
++	uint8_t fragment_preference;
++	uint8_t data_len;
++	uint8_t data[0];
++} __attribute__ ((packed)) le_set_ext_adv_data_cp;
++#define LE_SET_EXT_ADV_DATA_CP_MAX_SIZE  (4 + 251)
++
++#define OCF_LE_SET_EXT_SCAN_RSP_DATA		0x0038
++typedef struct {
++	uint8_t advertising_handle;
++	uint8_t operation;
++	uint8_t fragment_preference;
++	uint8_t scan_response_data_length;
++	uint8_t scan_response_data[31];
++} __attribute__((packed)) le_set_ext_scan_rsp_data_cp;
++#define LE_SET_EXT_SCAN_RSP_DATA_CP_SIZE (4 + 31)
++
++#define OCF_LE_SET_EXT_ADV_ENABLE		0x0039
++typedef struct {
++	uint8_t enable;
++	uint8_t num_of_sets;
++	/* followed by ext adv set entries: handle(1), duration(2), max_events(1) */
++	uint8_t sets[0];
++} __attribute__ ((packed)) le_set_ext_adv_enable_cp;
++#define LE_SET_EXT_ADV_ENABLE_CP_SIZE (2 + 4)
++
+ /* Vendor specific commands */
+ #define OGF_VENDOR_CMD		0x3f
+ 
+diff --git a/lib/bluetooth/hci_lib.h b/lib/bluetooth/hci_lib.h
+index eeb51411a..4a06a9383 100644
+--- a/lib/bluetooth/hci_lib.h
++++ b/lib/bluetooth/hci_lib.h
+@@ -112,6 +112,22 @@ int hci_le_set_scan_enable(int dev_id, uint8_t enable, uint8_t filter_dup, int t
+ int hci_le_set_scan_parameters(int dev_id, uint8_t type, uint16_t interval,
+ 					uint16_t window, uint8_t own_type,
+ 					uint8_t filter, int to);
++int hci_le_set_ext_adv_params(int dev_id, uint8_t handle, uint16_t evt_properties,
++				uint32_t min_interval, uint32_t max_interval,
++				uint8_t channel_map, uint8_t own_addr_type,
++				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
++				uint8_t filter_policy, int8_t tx_power,
++				uint8_t primary_phy, uint8_t secondary_max_skip,
++				uint8_t secondary_phy, uint8_t sid,
++				uint8_t notif_enable, int to);
++int hci_le_set_ext_adv_data(int dev_id, uint8_t handle, uint8_t operation,
++				uint8_t fragment_pref, const uint8_t *data,
++				uint8_t data_len, int to);
++int hci_le_set_ext_scan_rsp_data(int dev_id, uint8_t handle, uint8_t operation,
++				uint8_t fragment_pref, const uint8_t *data,
++				uint8_t data_len, int to);
++int hci_le_set_ext_adv_enable(int dev_id, uint8_t enable, uint8_t num_of_sets,
++				const void *sets, int to);
+ int hci_le_set_advertise_enable(int dev_id, uint8_t enable, int to);
+ int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
+ 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
 
 ---
-base-commit: dfc3c7b84d43e7de918686e5cd7dd49196a5f45e
-change-id: 20261014-drm-bridge-test-kdoc-a46e4183b670
+base-commit: 9dc7e40962f11d1d9a5568f8a7633a695288329c
+change-id: 20261014-extend_adv_api-61bb883ac885
 
 Best regards,
---  
-Santiago Millán <santimillang@gmail.com>
+-- 
+Yang Li <yang.li@amlogic.com>
 
