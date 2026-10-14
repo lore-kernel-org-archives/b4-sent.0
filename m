@@ -1,11 +1,11 @@
 From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Wed, 14 Oct 2026 18:33:07 +0200
-Subject: [PATCH 7/9] arm64: dts: rockchip: rk3588s-nanopi: rename gmac1
- reset pin
+Date: Wed, 14 Oct 2026 18:33:08 +0200
+Subject: [PATCH 8/9] arm64: dts: rockchip: rk3588s-nanopi-m6: rename pcie2
+ power pin
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-nanopi-m6-improvements-v1-7-e713f71eb4d3@gmail.com>
+Message-Id: <20261014-nanopi-m6-improvements-v1-8-e713f71eb4d3@gmail.com>
 References: <20261014-nanopi-m6-improvements-v1-0-e713f71eb4d3@gmail.com>
 In-Reply-To: <20261014-nanopi-m6-improvements-v1-0-e713f71eb4d3@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -14,44 +14,44 @@ Cc: Diederik de Haas <diederik@cknow-tech.com>, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  Joachim Eastwood <joachim.eastwood@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791995685; l=1121;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791995685; l=1149;
  i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=WtATwbQABKVY4tLFdbXIynQTMB75uVl3gBt3XPQsrKw=;
- b=y5mvhJ2yoRh9AD4k14R+VjYXo4zI6vfesUROGPLsbB5nNirUtfticeo6qcZRum1dT8Lbf9Cps
- X1qZH/93LJRCbvzaavWw3KVxuumgRToZ1bZH5cCVH+lRv2lxvB3h+6I
+ bh=GfKqko+BDEDT60oHbA0Oxe3Rj0eMd1CHLKLNk3udR1A=;
+ b=Z+r8PqUi76NbwVK8sVcXAQug20g8SdGQ4/NrTN1UApcxjAeBJd8eciHBIVaVullfyosGIHwp/
+ jF3YyjAAfBKAuAh1hQItJf0VcHsWNvNWk0EINVvj0d6tn3WDcw6KaCm
 X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
  pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
 X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gmac1_rstn matches the signal name in the schematics, which simplifies
-cross-referencing.
+pcie20x1_2_con_pwren matches the signal name in the schematics, which
+simplifies cross-referencing.
 
 Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi | 4 ++--
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi
-index 56264ff3b409..2789c3d9bcc4 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi
-@@ -274,7 +274,7 @@ rgmii_phy1: ethernet-phy@1 {
- 		compatible = "ethernet-phy-id001c.c916";
- 		reg = <0x1>;
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi
+index 6205a542cd1a..ca115d8e108a 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi
+@@ -41,7 +41,7 @@ vcc_3v3_pcie: regulator-vcc-3v3-pcie {
+ 		enable-active-high;
+ 		gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
  		pinctrl-names = "default";
--		pinctrl-0 = <&rtl8211f_rst>;
-+		pinctrl-0 = <&gmac1_rstn>;
- 		reset-assert-us = <20000>;
- 		reset-deassert-us = <100000>;
- 		reset-gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
-@@ -346,7 +346,7 @@ usb_host_pwren: usb-host-pwren { /* usb20_host_pwren on M6 */
+-		pinctrl-0 = <&pcie2_2_pwren>;
++		pinctrl-0 = <&pcie20x1_2_con_pwren>;
+ 		regulator-name = "vcc_3v3_pcie";
+ 		regulator-min-microvolt = <3300000>;
+ 		regulator-max-microvolt = <3300000>;
+@@ -116,7 +116,7 @@ hp_det: hp-det {
  	};
  
- 	rtl8211f {
--		rtl8211f_rst: rtl8211f-rst {
-+		gmac1_rstn: gmac1-rstn {
- 			rockchip,pins = <3 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
+ 	pcie {
+-		pcie2_2_pwren: pcie2-2-pwren {
++		pcie20x1_2_con_pwren: pcie20x1-2-con-pwren {
+ 			rockchip,pins = <3 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
  		};
  	};
 
