@@ -1,122 +1,136 @@
-From: Joe Finzel <joe@sudmix.de>
-Date: Wed, 14 Oct 2026 23:01:51 +0200
-Subject: [PATCH v2] usb: core: sysfs: show product, manufacturer and serial
- without the device lock
+From: =?utf-8?q?Burak_G=C3=B6nc=C3=BC?= <burakgon12@gmail.com>
+Date: Thu, 15 Oct 2026 00:36:18 +0300
+Subject: [PATCH] wifi: mac80211: deauthenticate from the old AP when
+ roaming with MFP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-usb-string-attrs-v2-1-c5cacdad7094@sudmix.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7ZhOEUFX3sOwaEuFWVhIpxAM4
- e5WDuDyveS/v4H4yF7gXmwQ/cLCY8igTwW4wYTeI3eZQSt9JUWEs1iUFDn0aFKKgvXFWOcaq+h
- WQZ5N0b94PZLPNvPAksb4OR4W+tk/sYWQsCGnyKqy0mX9kLl783ruPLT7vn8BThVuPbAAAAA=
-X-Change-ID: 20261011-usb-string-attrs-74abcc8b0195
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Alan Stern <stern@rowland.harvard.edu>, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Joe Finzel <joe@sudmix.de>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792011738; l=3955;
- i=joe@sudmix.de; s=default; h=from:subject:message-id;
- bh=xGWgOW0mEnxsmyuuNhzAZkLt1RaYcvKh0xa0wpy+ZCo=;
- b=mjGucgwPap770BF8dUURjavBFA5LzbhiB9LDcGVwrtmQ9LwHiS47pydm0st/SRsqEgeCXex6N
- coCToF/61u4CYUByAMPBdgoNRep9CnA8j6jNdOQ27iMhl1DVm+hAzF3
-X-Developer-Key: i=joe@sudmix.de; a=ed25519;
- pk=vaX11uVm57me/1N8otNmzMMnsE+f0U3/Hi9TCPbnvZM=
-X-Endpoint-Received: by B4 Relay for joe@sudmix.de/default with auth_id=1151
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261015-mac80211-roam-mfp-deauth-v1-1-9ccc69b434fd@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORtoinXqq8gOMUtdhG6j3UQYe
+ 3erHr/D/29QNJsWuDYbZH1ZsWmsoEMDMvD4ULS+GrzzJ3IUMLGcnSfCPHHCFGfslddlwJaPIUT
+ 2rVwEaj5njfb+rW/d32W9P1WW7w/2/QO3kckYfAAAAA==
+X-Change-ID: 20261015-mac80211-roam-mfp-deauth-7a455fa27c9c
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Burak_G=C3=B6nc=C3=BC?= <burakgon12@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792013780; l=4901;
+ i=burakgon12@gmail.com; s=20261006; h=from:subject:message-id;
+ bh=Ul1ZvEqnkBoUEz9VVXngoZ5xKwBtEcW5F7kwW3H4QSw=;
+ b=jbXBl7rWy9/VgeNn3ICHgskkoOItRMi8jvwXHyf+medVTHEbTR/+hXr5/778Sq77m0y74Awxj
+ 6E+DgD4NNYKDWuoj9ZGMuDEgMJLqEEMcs/nXT2UQnWpkyXyWazHTlTG
+X-Developer-Key: i=burakgon12@gmail.com; a=ed25519;
+ pk=qcexQajnoYGkNqFOy3eFqTzvqTOR/P++ksapi6qUbvw=
+X-Endpoint-Received: by B4 Relay for burakgon12@gmail.com/20261006 with auth_id=1126
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reading the product, manufacturer or serial attribute of a USB device
-takes the device lock. A hub holds its lock in hub_event() while it
-enumerates all of its ports, including the debounce and reset delays of
-every child, so a reader of the hub's strings waits until the last port
-is done -- seconds on a hub with several devices.
+When userspace starts authentication with a new AP while we are still
+associated, mac80211 drops the association locally and does not tell
+the AP. With management frame protection the AP still holds a protected
+association with us. An AP in that state has to treat a (re)association
+from us as possibly forged: it refuses it temporarily and first checks
+the old association with an SA Query, which we no longer answer. The new
+association can then only succeed once the SA Query has timed out (1000
+TU by default), but we give up after three (re)association attempts
+100 ms apart.
 
-udev reads these strings for every USB device (the usb_id builtin, run
-from 50-udev-default.rules). Its worker blocks SIGTERM, so when systemd
-stops udevd in the initrd before switching root, it waits for that
-worker. On a desktop with a few hubs this delays every boot:
+This hits every roam to an AP that shares the old AP's state, for
+example between the AP MLDs of an AP that runs one single-link AP MLD
+per band and steers clients between them with BSS transition
+management, and every reassociation with the current AP. With a TP-Link
+Deco BE65/BE85 mesh (Qualcomm) and an Intel BE201 (iwlmld), each of ten
+roams between the 5 GHz and the 6 GHz AP MLD of the same unit over nine
+days timed out: the AP acknowledged all three Reassociation Request
+frames and answered none, then deauthenticated us with reason 9 when we
+fell back to the old AP MLD. Reassociating with the current AP got
+reason 9 right away. A Reassociation Request sent 1 s after the first
+one was accepted at once; one sent after 500 ms was still ignored.
 
-  i7-13700K, ASUS ROG STRIX Z790-F, four hubs with HID devices behind
-  them: udevd took 1.7 s to stop, while the hubs were still enumerating.
+Send the Deauthentication frame when MFP is in use. The AP then drops
+the old association at once, and the same roams completed with the
+first Reassociation Request, answered within 75 ms.
 
-  QEMU, qemu-xhci with 8 usb-hubs of 8 HID devices each, second boot,
-  three runs: udevd stops in 2.55-2.58 s (switch-root at 5.56-5.59 s);
-  with this patch in 11-12 ms (switch-root at 3.02 s). Without usb_id in
-  the udev rules, it stops in 9 ms as well.
-
-  -device qemu-xhci,id=xhci,p2=8,p3=8
-  -device usb-hub,bus=xhci.0,port=N       (N = 1..8)
-  -device usb-kbd,bus=xhci.0,port=N.M   (M = 1..8; also mouse, tablet)
-
-The lock is not needed: usb_enumerate_device() sets the strings once,
-before device_add() makes the attributes visible, and usb_release_dev()
-frees them only after the attributes are gone. Nothing changes them in
-between: authorizing or deauthorizing a device no longer touches them
-since Wireless USB, for which they could appear and disappear, was
-removed.
-
-Andy Whitcroft reported the same boot stall in 2010 ("khubd -- switch
-USB product/manufacturer/serial handling to RCU"); back then the strings
-could still change under Wireless USB.
-
-Reviewed-by: Alan Stern <stern@rowland.harvard.edu>
-Signed-off-by: Joe Finzel <joe@sudmix.de>
+Assisted-by: LLM
+Signed-off-by: Burak Göncü <burakgon12@gmail.com>
 ---
-Found while looking into a 1.7 s stall at the end of the initrd on a
-desktop with several USB hubs; reproducible in QEMU (see the commit
-message). Tested on 7.2.9 with the QEMU reproduction; applies to
-usb-next.
+I ran into this with a TP-Link Deco BE65/BE85 mesh and an Intel BE201
+(iwlmld) on 7.2.9. The Deco has 802.11v enabled and steers clients
+from its 5 GHz to its 6 GHz AP MLD, so after every resume the laptop
+failed that roam and ended up on a distant node for a few minutes.
 
-Changes in v2:
-- Drop the claim that dev_string_attrs_are_visible() reads the strings
-  unlocked from the commit message and the comment; it only reads the
-  pointers (Alan Stern). No functional change.
-- Add Alan's Reviewed-by.
-- Rebase onto current usb-next.
-- Link to v1: https://lore.kernel.org/r/20261011-usb-string-attrs-v1-1-81c01b035237@sudmix.de
+To narrow it down I used a test build of mac80211 with two runtime
+switches: the wait for the response after an acknowledged
+(Re)Association Request, and transmitting the Deauthentication frame.
+All roams below are between the 5 GHz and the 6 GHz AP MLD of one unit:
+
+- stock: Reassociation Requests at 0, 100 and 200 ms, all ACKed, none
+  answered; the fallback to the old AP MLD then got reason 9
+- 500 ms wait: requests at 0, 500 and 1000 ms, only the third answered
+- 3 s wait: the second request, at 3 s, answered within 64 ms
+- Deauthentication sent, stock timing: answered on the first request
+  within 64-74 ms, in both directions (one of them steered by BTM),
+  and the same for roams between units and for reassociations with
+  the current AP
+
+I limited the change to MFP connections, where the AP has to protect
+the old association; without MFP the AP can simply replace it. If you
+prefer to send the frame unconditionally, I can respin.
 ---
- drivers/usb/core/sysfs.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+ net/mac80211/mlme.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/usb/core/sysfs.c b/drivers/usb/core/sysfs.c
-index d22dc78457d..07865eb1f3b 100644
---- a/drivers/usb/core/sysfs.c
-+++ b/drivers/usb/core/sysfs.c
-@@ -120,21 +120,19 @@ static ssize_t devspec_show(struct device *dev, struct device_attribute *attr,
- static DEVICE_ATTR_RO(devspec);
- #endif
+diff --git a/net/mac80211/mlme.c b/net/mac80211/mlme.c
+index 6ec45a9f7..b6e38d210 100644
+--- a/net/mac80211/mlme.c
++++ b/net/mac80211/mlme.c
+@@ -10099,13 +10099,19 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
  
--/* String fields */
-+/*
-+ * String fields. usb_enumerate_device() reads them once, before the device
-+ * is added, and they are freed only when it is released, so showing them
-+ * needs no lock. The device lock would make readers wait while a hub holds
-+ * it to enumerate all of its ports.
-+ */
- #define usb_string_attr(name)						\
- static ssize_t  name##_show(struct device *dev,				\
- 		struct device_attribute *attr, char *buf)		\
- {									\
--	struct usb_device *udev;					\
--	int retval;							\
-+	struct usb_device *udev = to_usb_device(dev);			\
- 									\
--	udev = to_usb_device(dev);					\
--	retval = usb_lock_device_interruptible(udev);			\
--	if (retval < 0)							\
--		return -EINTR;						\
--	retval = sysfs_emit(buf, "%s\n", udev->name);			\
--	usb_unlock_device(udev);					\
--	return retval;							\
-+	return sysfs_emit(buf, "%s\n", udev->name);			\
- }									\
- static DEVICE_ATTR_RO(name)
+ 	if (ifmgd->associated) {
+ 		u8 frame_buf[IEEE80211_DEAUTH_FRAME_LEN];
++		/*
++		 * With MFP the AP protects our association and may not
++		 * accept a new (re)association from us until an SA Query
++		 * on the old one times out, so tell it that we leave.
++		 */
++		bool tx = ifmgd->flags & IEEE80211_STA_MFP_ENABLED;
  
+ 		sdata_info(sdata,
+ 			   "disconnect from AP %pM for new auth to %pM\n",
+ 			   sdata->vif.cfg.ap_addr, auth_data->ap_addr);
+ 		ieee80211_set_disassoc(sdata, IEEE80211_STYPE_DEAUTH,
+ 				       WLAN_REASON_UNSPECIFIED,
+-				       false, frame_buf);
++				       tx, frame_buf);
+ 
+ 		ieee80211_report_disconnect(sdata, frame_buf,
+ 					    sizeof(frame_buf), true,
+@@ -10452,13 +10458,19 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
+ 
+ 	if (ifmgd->associated) {
+ 		u8 frame_buf[IEEE80211_DEAUTH_FRAME_LEN];
++		/*
++		 * With MFP the AP protects our association and may not
++		 * accept a new (re)association from us until an SA Query
++		 * on the old one times out, so tell it that we leave.
++		 */
++		bool tx = ifmgd->flags & IEEE80211_STA_MFP_ENABLED;
+ 
+ 		sdata_info(sdata,
+ 			   "disconnect from AP %pM for new assoc to %pM\n",
+ 			   sdata->vif.cfg.ap_addr, assoc_data->ap_addr);
+ 		ieee80211_set_disassoc(sdata, IEEE80211_STYPE_DEAUTH,
+ 				       WLAN_REASON_UNSPECIFIED,
+-				       false, frame_buf);
++				       tx, frame_buf);
+ 
+ 		ieee80211_report_disconnect(sdata, frame_buf,
+ 					    sizeof(frame_buf), true,
 
 ---
-base-commit: bbf6b99a57b2479bf51c3c8ad0946f4b8c33ed69
-change-id: 20261011-usb-string-attrs-74abcc8b0195
+base-commit: a4190accbf7e05496754004bb701fb3e7d04e57f
+change-id: 20261015-mac80211-roam-mfp-deauth-7a455fa27c9c
 
 Best regards,
--- 
-Joe Finzel <joe@sudmix.de>
+--  
+Burak Göncü <burakgon12@gmail.com>
 
