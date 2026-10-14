@@ -1,301 +1,194 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Wed, 14 Oct 2026 21:24:07 +0800
-Subject: [PATCH net v3 5/5] can: rockchip_canfd: serialize TX with bus-off
- and restart
+From: Johannes Schrimpf <johannes.schrimpf@blueye.no>
+Date: Wed, 14 Oct 2026 17:28:24 +0200
+Subject: [PATCH] media: uvcvideo: Release streaming interfaces at
+ disconnect, not last close
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-rockchip-canfd-restart-close-v3-5-f0eb41090242@qq.com>
-References: <20261014-rockchip-canfd-restart-close-v3-0-f0eb41090242@qq.com>
-In-Reply-To: <20261014-rockchip-canfd-restart-close-v3-0-f0eb41090242@qq.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- "David S. Miller" <davem@davemloft.net>, 
- Wolfgang Grandegger <wg@grandegger.com>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, kernel@pengutronix.de
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- stable@vger.kernel.org, Cunhao Lu <1579567540@qq.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791984254; l=10382;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=uOX1GsOlJq+zkv5WVsHjwJTCn9VI7mrSM6Z2mpy08jQ=;
- b=OMr2Ws3kLqQnjFCzj382kfJY5VcLNNCUzBJab4r6PDP62oagpna6PR/6w2BuGm2Jo9RV9acxJ
- VkauE4erprnC8yRfa/nCUwM5j2k4oXFhA0ih6+NzW1yBib+5VgQMkZT
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+Message-Id: <20261014-uvc-release-intfs-v1-1-18d6e8dfaad8@blueye.no>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yXMUQqDMBCE4avIPjdgtEb0KsUHTSe6IqlkVQTx7
+ qb6+DHMf5AgMITq5KCAjYV/PkK/ErJD63so/kZTlmZGp/qt1s2qgAmtxMkvTpRzVYG8NKbTBcX
+ fHOB4v5uf5rGs3Qi7/EN0nheVwvsjdQAAAA==
+X-Change-ID: 20261014-uvc-release-intfs-ff95e3766b15
+To: laurent.pinchart@ideasonboard.com, hansg@kernel.org
+Cc: linux-media@vger.kernel.org, hverkuil@kernel.org, mchehab@kernel.org, 
+ ribalda@chromium.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Johannes Schrimpf <johannes.schrimpf@blueye.no>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791991739; l=7663;
+ i=johannes.schrimpf@blueye.no; s=20261014; h=from:subject:message-id;
+ bh=vP7V2E0qAI4aNNnmf2u3d9XezDINZxpJYxAsVgid9s4=;
+ b=dOkr7T7NsbBPHvdN0gPdn9whWbWpbp3z4PVEEOBydKxgmDhqBJBM59zTHH1QzN9laslaT4cyA
+ +2isZG+nSQODmvWF6gijIYeK6wUtkHz9etQQqlb9yHHr2ehUY7TVWpq
+X-Developer-Key: i=johannes.schrimpf@blueye.no; a=ed25519;
+ pk=900KgDI7vLhnD9R982XOT47UCm3e4vWxQWBC4jDCUPo=
+X-Endpoint-Received: by B4 Relay for johannes.schrimpf@blueye.no/20261014 with auth_id=1178
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The bus-off path resets the controller without waiting for an active
-ndo_start_xmit(). CAN restart flushes the echo ring before calling the
-driver's set_mode(), and carrier changes do not drain TX. A concurrent
-sender can therefore modify an echo slot during the flush or submit a
-frame that is discarded by restart while leaving its echo slot occupied.
-Disabling TX only in set_mode() is too late to protect the core flush.
+uvc_probe() claims the VideoStreaming interfaces with
+usb_driver_claim_interface(), but they are released by uvc_delete(),
+the kref release of the uvc_device. uvc_delete() runs when the last
+reference to the disconnected device is released, potentially on a
+later file close, long after uvc_disconnect().
 
-Add a private TX lock and an enabled flag. Hold the lock from the enabled
-check through the complete TX submission, including the echo slot, BQL,
-FIFO index, command write and queue stop decisions. Close the gate and
-stop the queue under the same lock before publishing CAN_STATE_BUS_OFF,
-resetting the controller or scheduling recovery. This waits for any
-accepted sender and also covers manual recovery, which becomes possible
-as soon as the bus-off state is visible. A sender arriving after the gate
-closes stops the queue and returns NETDEV_TX_BUSY without consuming its
-SKB or touching the controller or echo ring.
+A USB reset turns this into a bug. uvcvideo has no pre_reset() and
+post_reset() handlers, so usb_reset_device() unbinds it from all the
+interfaces it is bound to and probes it again on the same struct
+usb_interface objects. A process that holds a file handle from before
+the reset keeps the old uvc_device alive. When it closes the handle,
+the old uvc_delete() calls usb_driver_release_interface() on
+interfaces that the new uvc_device has claimed meanwhile.
+usb_driver_release_interface() only checks that the interface is bound
+to the uvcvideo driver, not to which instance, so it unbinds them from
+the new device. usb_unbind_interface() disables the endpoints, the
+URBs of a running stream complete with -ESHUTDOWN, uvc_video_complete()
+marks the queue as disconnected, and every following VIDIOC_QBUF fails
+with -ENODEV. Nothing is logged, and the stream stays dead until the
+device is reset or plugged in again. The release from uvc_delete() also
+runs without the USB device lock that usb_driver_release_interface()
+requires.
 
-Serialize RX-side TX completion and retry with the same gate so that they
-cannot access old echo slots or wake the queue while restart owns the
-ring. After initialization, enable TX, resume IRQ handling, unmask the
-controller and wake the queue in one critical section. Suspend shared IRQ
-handling during open until this final step, so an early bus-off cannot be
-overridden by the final queue wake. Close and failed open also leave TX
-disabled. Keep resets and synchronous IRQ/work draining outside the lock.
+This was found with a Sonix camera (0c45:6366) on an i.MX6Q board,
+where a camera-control process kept a file handle open across a USB
+reset issued by the streaming process. The failure was traced and
+reproduced with the help of an LLM coding assistant. Reproduced on
+Linux 6.18.24 (linux-fslc-imx) as follows:
 
-Restore carrier in the same critical section before resuming IRQ
-handling. A manual restart can observe BUS_OFF and let the CAN core set
-carrier on before the old bus-off IRQ calls can_bus_off() and clears it.
-After synchronize_irq() has drained that IRQ, restore carrier again so
-recovery does not leave the initialized device with carrier off. Keeping
-this before IRQ resumption ensures a new bus-off takes precedence.
+  1. open() a video node of the camera and keep the file handle
+  2. reset the camera with USBDEVFS_RESET
+  3. stream from a video node of the re-probed device
+  4. close() the file handle from step 1
 
-Fixes: b6661d73290c ("can: rockchip_canfd: add TX PATH")
-Cc: stable@vger.kernel.org
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+The stream fails within a few milliseconds of the close(), in 4 of 4
+runs. The kernel emits one KOBJ_UNBIND uevent for each VideoStreaming
+interface; the VideoControl interface stays bound. Holding a node of
+the other streaming interface has the same effect. Without step 1 the
+stream survives.
+
+Release the streaming interfaces where the binding is still ours: in
+uvc_disconnect() for the VideoControl interface, which runs with the
+USB device lock held, and in the probe error path, in the same context
+as the claims in uvc_parse_streaming(). uvc_delete() then no longer
+releases any interface. This is the split usb-serial uses:
+usb_serial_disconnect() releases the sibling interface, and the kref
+release, destroy_serial(), releases no interface; it drops its
+interface reference with usb_put_intf(). With no file handle open,
+uvc_disconnect() already drops the last reference, and uvc_delete()
+runs synchronously from it, so on that path the interfaces are still
+released from within uvc_disconnect(), as before.
+
+Tested with this patch on the same i.MX6Q and kernel: the reproduction
+above with the file handle opened on either streaming interface or
+closed before the stream starts, a USB reset without a held file
+handle, sysfs unbind/bind of the VideoControl interface with and
+without a held file handle, and a second UVC camera (MJPEG and H.264
+at 1080p).
+
+The running stream survives in all four streaming runs, and none of
+the five stale-handle closes unbinds an interface; the close() takes
+0.13-0.23 ms instead of 38-42 ms (86 ms when no stream was running).
+USB-reset recovery and streaming from the second camera pass. Sysfs
+unbind/bind correctly releases and reclaims the streaming interfaces.
+
+Fixes: c0efd232929c ("V4L/DVB (8145a): USB Video Class driver")
+Cc: stable@vger.kernel.org # needs adjustments for <= 6.14: &uvc_driver.driver
+Assisted-by: LLM
+Signed-off-by: Johannes Schrimpf <johannes.schrimpf@blueye.no>
 ---
- drivers/net/can/rockchip/rockchip_canfd-core.c | 51 ++++++++++++++++++++++----
- drivers/net/can/rockchip/rockchip_canfd-rx.c   | 22 +++++++----
- drivers/net/can/rockchip/rockchip_canfd-tx.c   | 16 +++++++-
- drivers/net/can/rockchip/rockchip_canfd.h      |  3 ++
- 4 files changed, 75 insertions(+), 17 deletions(-)
+Hi Laurent, Hans,
 
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-core.c b/drivers/net/can/rockchip/rockchip_canfd-core.c
-index 4b3db07242395..150748c0b6845 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-core.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-core.c
-@@ -326,6 +326,35 @@ static void rkcanfd_chip_start(struct rkcanfd_priv *priv)
- 		   rkcanfd_read(priv, RKCANFD_REG_MODE));
- }
+Ricardo's "media: uvcvideo: Remove refcounted cleanup" (Nov 2024) would
+have moved all device cleanup, including this release, into
+uvc_disconnect(), and was NACKed because it fixed no concrete bug. This
+patch keeps the refcounted cleanup and moves only the release of the
+streaming interfaces, to fix the failure described in the commit
+message, which we hit repeatedly in integration testing.
+
+Tool use: this was developed with an LLM coding assistant, Claude Code
+running Claude Opus 5.5, as well as reviewed by GPT-6 Astra. Starting
+from stream failures in our bench logs, the assistant traced the code
+path, wrote the reproduction scripts, ran them and the tests above on
+the device, surveyed the upstream history and other drivers, built and
+checked the patch on media-committers next, and drafted the patch, the
+changelog and these notes. I reviewed the analysis and the patch.
+
+Test kernel: linux-fslc-imx 6.18.24 with three local uvcvideo patches
+(keep MJPEG frames recovered by MJPEG_NO_EOF, nodrop=0 by default, and a
+coherent_urbs parameter). None of them touches probe, uvc_disconnect(),
+uvc_delete(), the interface claim/release or uvc_video_complete().
+
+Not tested:
+- an unmodified uvcvideo, or any kernel other than linux-fslc-imx
+  6.18.24; on media-committers next this patch is build-tested only
+  (gcc and clang, arm, arm64 and x86_64, W=1, sparse, smatch)
+- a debug kernel: the test kernel is the board's production config
+  (SMP, PREEMPT; no lockdep, DEBUG_ATOMIC_SLEEP, DEBUG_MUTEXES,
+  SLUB_DEBUG, DEBUG_PAGEALLOC or KASAN)
+- unplug and replug, sysfs unbind of a VideoStreaming interface, and
+  the probe error path
+- frame delivery after a sysfs rebind: the Sonix camera delivers no
+  frames after any re-probe that does not follow a USB reset, with and
+  without this patch, so those runs check only the binding; the
+  second camera was not rebound
+- v4l2-compliance
+- any camera other than the two on this board
+---
+ drivers/media/usb/uvc/uvc_driver.c | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/usb/uvc/uvc_driver.c b/drivers/media/usb/uvc/uvc_driver.c
+index cbc1456..f71dfce 100644
+--- a/drivers/media/usb/uvc/uvc_driver.c
++++ b/drivers/media/usb/uvc/uvc_driver.c
+@@ -1976,7 +1976,6 @@ static void uvc_delete(struct kref *kref)
+ 		struct uvc_streaming *streaming;
  
-+static void rkcanfd_tx_disable(struct rkcanfd_priv *priv)
-+{
-+	unsigned long flags;
-+
-+	spin_lock_irqsave(&priv->tx_lock, flags);
-+	priv->tx_enabled = false;
-+	netif_stop_queue(priv->ndev);
-+	spin_unlock_irqrestore(&priv->tx_lock, flags);
-+}
-+
-+static void rkcanfd_chip_start_finish(struct rkcanfd_priv *priv)
-+{
-+	unsigned long flags;
-+
-+	/* Serialize carrier, IRQ enable and queue wake with a new bus-off. */
-+	spin_lock_irqsave(&priv->tx_lock, flags);
-+	/* A manual restart may have raced with the old bus-off IRQ's
-+	 * netif_carrier_off(). That IRQ is now drained; restore carrier
-+	 * before resuming IRQ handling so a new bus-off takes precedence.
-+	 */
-+	netif_carrier_on(priv->ndev);
-+	priv->tx_enabled = true;
-+	/* Publish the initialized state before resuming IRQ handling. */
-+	smp_store_release(&priv->irq_suspended, false);
-+	rkcanfd_chip_interrupts_enable(priv);
-+	netif_wake_queue(priv->ndev);
-+	spin_unlock_irqrestore(&priv->tx_lock, flags);
-+}
-+
- static void __rkcanfd_chip_stop(struct rkcanfd_priv *priv, const enum can_state state)
- {
- 	priv->can.state = state;
-@@ -357,6 +386,7 @@ static int rkcanfd_set_mode(struct net_device *ndev,
- 
- 	switch (mode) {
- 	case CAN_MODE_START:
-+		rkcanfd_tx_disable(priv);
- 		rkcanfd_chip_interrupts_disable(priv);
- 		/* Flush the interrupt mask write before suspending the handler. */
- 		rkcanfd_read(priv, RKCANFD_REG_INT_MASK);
-@@ -367,10 +397,7 @@ static int rkcanfd_set_mode(struct net_device *ndev,
- 		rkcanfd_timestamp_stop_sync(priv);
- 
- 		rkcanfd_chip_start(priv);
--		/* Publish the initialized state before resuming IRQ handling. */
--		smp_store_release(&priv->irq_suspended, false);
--		rkcanfd_chip_interrupts_enable(priv);
--		netif_wake_queue(ndev);
-+		rkcanfd_chip_start_finish(priv);
- 		break;
- 
- 	default:
-@@ -604,6 +631,12 @@ static int rkcanfd_handle_state_error_int(struct rkcanfd_priv *priv)
- 	 * handles cf == NULL.
- 	 */
- 	skb = rkcanfd_alloc_can_err_skb(priv, &cf, &timestamp);
-+	if (new_state == CAN_STATE_BUS_OFF) {
-+		/* Drain TX before publishing BUS_OFF, which permits a manual
-+		 * restart to flush echo SKBs before calling our set_mode().
-+		 */
-+		rkcanfd_tx_disable(priv);
-+	}
- 	can_change_state(ndev, cf, tx_state, rx_state);
- 
- 	if (new_state == CAN_STATE_BUS_OFF) {
-@@ -749,6 +782,8 @@ static int rkcanfd_open(struct net_device *ndev)
- 	if (err)
- 		goto out_close_candev;
- 
-+	/* A shared IRQ may run as soon as request_irq() succeeds. */
-+	WRITE_ONCE(priv->irq_suspended, true);
- 	rkcanfd_chip_start(priv);
- 	can_rx_offload_enable(&priv->offload);
- 
-@@ -756,13 +791,12 @@ static int rkcanfd_open(struct net_device *ndev)
- 	if (err)
- 		goto out_rkcanfd_chip_stop;
- 
--	rkcanfd_chip_interrupts_enable(priv);
--
--	netif_start_queue(ndev);
-+	rkcanfd_chip_start_finish(priv);
- 
- 	return 0;
- 
- out_rkcanfd_chip_stop:
-+	rkcanfd_tx_disable(priv);
- 	can_rx_offload_disable(&priv->offload);
- 	rkcanfd_chip_stop_sync(priv, CAN_STATE_STOPPED);
- 	pm_runtime_put(ndev->dev.parent);
-@@ -776,7 +810,7 @@ static int rkcanfd_stop(struct net_device *ndev)
- 	struct rkcanfd_priv *priv = netdev_priv(ndev);
- 
- 	close_candev_cancel_restart_sync(ndev);
--	netif_stop_queue(ndev);
-+	rkcanfd_tx_disable(priv);
- 
- 	rkcanfd_chip_interrupts_disable(priv);
- 	free_irq(ndev->irq, priv);
-@@ -939,6 +973,7 @@ static int rkcanfd_probe(struct platform_device *pdev)
- 	priv->can.do_set_mode = rkcanfd_set_mode;
- 	priv->can.do_get_berr_counter = rkcanfd_get_berr_counter;
- 	priv->ndev = ndev;
-+	spin_lock_init(&priv->tx_lock);
- 
- 	match = device_get_match_data(&pdev->dev);
- 	if (match) {
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-rx.c b/drivers/net/can/rockchip/rockchip_canfd-rx.c
-index 24e87daa1df00..9b357bb8fc70e 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-rx.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-rx.c
-@@ -91,6 +91,7 @@ rkcanfd_fifo_header_to_cfd_header(const struct rkcanfd_priv *priv,
- 	return len + cfd->len;
- }
- 
-+/* Called with tx_lock held and TX enabled. */
- static int rkcanfd_rxstx_filter(struct rkcanfd_priv *priv,
- 				const struct canfd_frame *cfd_rx, const u32 ts,
- 				bool *tx_done)
-@@ -204,7 +205,9 @@ static int rkcanfd_handle_rx_int_one(struct rkcanfd_priv *priv)
- 	struct canfd_frame cfd[1] = { }, *skb_cfd;
- 	struct rkcanfd_fifo_header header[1] = { };
- 	struct sk_buff *skb;
-+	unsigned long flags;
- 	unsigned int len;
-+	bool tx_done = false;
- 	int err;
- 
- 	/* read header into separate struct and convert it later */
-@@ -237,15 +240,18 @@ static int rkcanfd_handle_rx_int_one(struct rkcanfd_priv *priv)
- 		return 0;
+ 		streaming = list_entry(p, struct uvc_streaming, list);
+-		usb_driver_release_interface(&uvc_driver, streaming->intf);
+ 		uvc_stream_delete(streaming);
  	}
  
--	if (rkcanfd_get_tx_pending(priv)) {
--		bool tx_done = false;
--
-+	/* Do not consume echo SKBs, retry TX or wake the queue after bus-off
-+	 * has handed ownership of the echo ring to the CAN restart path.
-+	 */
-+	spin_lock_irqsave(&priv->tx_lock, flags);
-+	err = 0;
-+	if (priv->tx_enabled && rkcanfd_get_tx_pending(priv))
- 		err = rkcanfd_rxstx_filter(priv, cfd, header->ts, &tx_done);
--		if (err)
--			return err;
--		if (tx_done && !(priv->can.ctrlmode & CAN_CTRLMODE_LOOPBACK))
--			return 0;
--	}
-+	spin_unlock_irqrestore(&priv->tx_lock, flags);
-+	if (err)
-+		return err;
-+	if (tx_done && !(priv->can.ctrlmode & CAN_CTRLMODE_LOOPBACK))
-+		return 0;
- 
- 	/* Manual handling of CAN Bus Error counters. See
- 	 * rkcanfd_get_corrected_berr_counter() for detailed
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-tx.c b/drivers/net/can/rockchip/rockchip_canfd-tx.c
-index 12200dcfd3389..f49ed6d2266d9 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-tx.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-tx.c
-@@ -69,12 +69,19 @@ netdev_tx_t rkcanfd_start_xmit(struct sk_buff *skb, struct net_device *ndev)
- 	u32 reg_frameinfo, reg_id, reg_cmd;
- 	unsigned int tx_head, frame_len;
- 	const struct canfd_frame *cfd;
-+	unsigned long flags;
- 	int err;
- 	u8 i;
- 
- 	if (can_dev_dropped_skb(ndev, skb))
- 		return NETDEV_TX_OK;
- 
-+	spin_lock_irqsave(&priv->tx_lock, flags);
-+	if (unlikely(!priv->tx_enabled)) {
-+		netif_stop_queue(ndev);
-+		goto out_busy;
-+	}
-+
- 	if (!netif_subqueue_maybe_stop(priv->ndev, 0,
- 				       rkcanfd_get_effective_tx_free(priv),
- 				       RKCANFD_TX_STOP_THRESHOLD,
-@@ -85,7 +92,7 @@ netdev_tx_t rkcanfd_start_xmit(struct sk_buff *skb, struct net_device *ndev)
- 				    priv->tx_head, priv->tx_tail,
- 				    rkcanfd_get_tx_pending(priv));
- 
--		return NETDEV_TX_BUSY;
-+		goto out_busy;
- 	}
- 
- 	cfd = (struct canfd_frame *)skb->data;
-@@ -137,7 +144,14 @@ netdev_tx_t rkcanfd_start_xmit(struct sk_buff *skb, struct net_device *ndev)
- 				  RKCANFD_TX_STOP_THRESHOLD,
- 				  RKCANFD_TX_START_THRESHOLD);
- 
-+	spin_unlock_irqrestore(&priv->tx_lock, flags);
-+
- 	return NETDEV_TX_OK;
-+
-+out_busy:
-+	spin_unlock_irqrestore(&priv->tx_lock, flags);
-+
-+	return NETDEV_TX_BUSY;
+@@ -2026,6 +2025,18 @@ static void uvc_unregister_video(struct uvc_device *dev)
+ #endif
  }
  
- void rkcanfd_handle_tx_done_one(struct rkcanfd_priv *priv, const u32 ts,
-diff --git a/drivers/net/can/rockchip/rockchip_canfd.h b/drivers/net/can/rockchip/rockchip_canfd.h
-index 2743c96ed42f0..4a2bdc205296e 100644
---- a/drivers/net/can/rockchip/rockchip_canfd.h
-+++ b/drivers/net/can/rockchip/rockchip_canfd.h
-@@ -476,6 +476,9 @@ struct rkcanfd_priv {
- 	struct net_device *ndev;
++/*
++ * Release the streaming interfaces here, not in uvc_delete(): after a USB
++ * reset, a new uvc_device may already have claimed the same interfaces.
++ */
++static void uvc_release_streaming_intfs(struct uvc_device *dev)
++{
++	struct uvc_streaming *stream;
++
++	list_for_each_entry(stream, &dev->streams, list)
++		usb_driver_release_interface(&uvc_driver, stream->intf);
++}
++
+ int uvc_register_video_device(struct uvc_device *dev,
+ 			      struct uvc_streaming *stream,
+ 			      struct uvc_video_queue *queue,
+@@ -2356,6 +2367,7 @@ static int uvc_probe(struct usb_interface *intf,
  
- 	void __iomem *regs;
-+	/* Serialize TX submission/completion with bus-off and restart. */
-+	spinlock_t tx_lock;
-+	bool tx_enabled;
- 	unsigned int tx_head;
- 	unsigned int tx_tail;
+ error:
+ 	uvc_unregister_video(dev);
++	uvc_release_streaming_intfs(dev);
+ 	kref_put(&dev->ref, uvc_delete);
+ 	return ret;
+ }
+@@ -2375,6 +2387,7 @@ static void uvc_disconnect(struct usb_interface *intf)
+ 		return;
+ 
+ 	uvc_unregister_video(dev);
++	uvc_release_streaming_intfs(dev);
+ 	kref_put(&dev->ref, uvc_delete);
+ }
  
 
--- 
-2.34.1
+---
+base-commit: d7e7bca7169873b46e857c025c10f3336c1258d8
+change-id: 20261014-uvc-release-intfs-ff95e3766b15
+
+Best regards,
+--  
+Johannes Schrimpf <johannes.schrimpf@blueye.no>
 
