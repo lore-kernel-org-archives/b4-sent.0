@@ -1,11 +1,10 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Wed, 14 Oct 2026 08:49:13 +0200
-Subject: [PATCH v2 6/8] media: i2c: ov9282: recalculate strobe span on
- HBLANK change
+Date: Wed, 14 Oct 2026 08:49:14 +0200
+Subject: [PATCH v2 7/8] media: i2c: ov9282: drop redundant vblank field
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-ov9282-fixes-v2-6-3bb376d8b1a9@linux.dev>
+Message-Id: <20261014-ov9282-fixes-v2-7-3bb376d8b1a9@linux.dev>
 References: <20261014-ov9282-fixes-v2-0-3bb376d8b1a9@linux.dev>
 In-Reply-To: <20261014-ov9282-fixes-v2-0-3bb376d8b1a9@linux.dev>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -19,66 +18,87 @@ To: Sakari Ailus <sakari.ailus@linux.intel.com>,
  Jacopo Mondi <jacopo@jmondi.org>
 Cc: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>, 
  Gyula Kelemen <gyula.kelemen@advasolutions.com>, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org
+ linux-media@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791960586; l=2043;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791960586; l=2587;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=/8aCB8InGPf7oWbj3PBJDIqHWuBXL5wzuxlJ0asuDZs=;
- b=JJINLnGzvY7c8vlM95QwHgeq1N+deUVyntB15s6yJykmSD+DO2eIsBYrLVMsOAYAQMRMlKEUp
- rtiRnCqUkYRCg/MYnTtKekOjRl+bjdh5wxp/4tewcS1KtlTY3pdmM2l
+ bh=zPC5moBljhNzlmUtQ7XMjH++BhuNp1h8I5t6WroYep4=;
+ b=V7A7q/wK2hMM3qXOmHKMKtcxHthKnf0bnJpPOPLdGeWd3wZpEpu6xO2I4+U+foDyxg8LnlqsQ
+ 9t8Ixe6bRpSB6F91trlrbuYQL18R3NpOLpS1F3Zu+jR9w48VpwgT2Tk
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When HBLANK changes the line time changes. This means the time base for
-the strobe duration calculation changed. This results in the v4l2
-strobe_duration control value and the strobe_span register value being
-out of sync.
+The ov9282 main struct has a dedicated vblank field which was only used
+to duplicate the value of the vblank v4l2 control.
 
-Fix this by recalculating the strobe_span register value on HBLANK
-writes using the currently configured strobe_duration. This results in
-the strobe_duration configured by userspace being kept, but the
-underlying register value being changed. To ensure the values are
-applied on the same frame guard the writes with OV9282_REG_HOLD.
+Therefore drop this struct field.
 
-Fixes: 84ec7597ae1af ("media: i2c: ov9282: add strobe_duration v4l2 control")
-Cc: stable@vger.kernel.org
+Reviewed-by: Dave Stevenson <dave.stevenson@raspberrypi.com>
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- drivers/media/i2c/ov9282.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ drivers/media/i2c/ov9282.c | 15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
 
 diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index b48c959b9c908..5114fbf28a26c 100644
+index 5114fbf28a26c..f877cb9e78c38 100644
 --- a/drivers/media/i2c/ov9282.c
 +++ b/drivers/media/i2c/ov9282.c
-@@ -625,6 +625,7 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
- 	u32 exposure;
- 	u32 lpfr;
- 	int ret;
-+	int ret_hold;
+@@ -196,7 +196,6 @@ struct ov9282_mode {
+  * @again_ctrl: Pointer to analog gain control
+  * @pixel_rate: Pointer to pixel rate control
+  * @flash_duration: Pointer to flash duration control
+- * @vblank: Vertical blanking in lines
+  * @noncontinuous_clock: Selection of CSI2 noncontinuous clock mode
+  * @cur_mode: Pointer to current selected sensor mode
+  * @code: Mbus code currently selected
+@@ -219,7 +218,6 @@ struct ov9282 {
+ 	};
+ 	struct v4l2_ctrl *pixel_rate;
+ 	struct v4l2_ctrl *flash_duration;
+-	u32 vblank;
+ 	bool noncontinuous_clock;
+ 	const struct ov9282_mode *cur_mode;
+ 	u32 code;
+@@ -629,17 +627,13 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
  
  	switch (ctrl->id) {
  	case V4L2_CID_VBLANK:
-@@ -677,8 +678,14 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
- 				      OV9282_FLIP_BIT, ctrl->val ? OV9282_FLIP_BIT : 0, NULL);
+-		ov9282->vblank = ov9282->vblank_ctrl->val;
+-
++		lpfr = ctrl->val + ov9282->cur_mode->height;
+ 		dev_dbg(ov9282->dev, "Received vblank %u, new lpfr %u",
+-			ov9282->vblank,
+-			ov9282->vblank + ov9282->cur_mode->height);
++			ctrl->val, lpfr);
+ 
+ 		ret = __v4l2_ctrl_modify_range(ov9282->exp_ctrl,
+ 					       OV9282_EXPOSURE_MIN,
+-					       ov9282->vblank +
+-					       ov9282->cur_mode->height -
+-					       OV9282_EXPOSURE_OFFSET,
++					       lpfr - OV9282_EXPOSURE_OFFSET,
+ 					       1, OV9282_EXPOSURE_DEFAULT);
+ 		if (ret)
+ 			return ret;
+@@ -666,7 +660,7 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
+ 		ret = ov9282_update_exp_gain(ov9282, exposure, analog_gain);
  		break;
- 	case V4L2_CID_HBLANK:
--		ret = cci_write(ov9282->regmap, OV9282_REG_TIMING_HTS,
--				(ctrl->val + ov9282->cur_mode->width) >> 1, NULL);
-+		ret = cci_write(ov9282->regmap, OV9282_REG_HOLD, 0x01, NULL);
-+		cci_write(ov9282->regmap, OV9282_REG_TIMING_HTS,
-+			  (ctrl->val + ov9282->cur_mode->width) >> 1, &ret);
-+		cci_write(ov9282->regmap, OV9282_REG_STROBE_FRAME_SPAN,
-+			  ov9282_us_to_lines(ov9282, ov9282->flash_duration->cur.val),
-+			  &ret);
-+		ret_hold = cci_write(ov9282->regmap, OV9282_REG_HOLD, 0, NULL);
-+		ret = ret ? ret : ret_hold;
+ 	case V4L2_CID_VBLANK:
+-		lpfr = ov9282->vblank + ov9282->cur_mode->height;
++		lpfr = ctrl->val + ov9282->cur_mode->height;
+ 		ret = cci_write(ov9282->regmap, OV9282_REG_LPFR, lpfr, NULL);
  		break;
- 	case V4L2_CID_FLASH_STROBE_OE:
- 		ret = cci_update_bits(ov9282->regmap, OV9282_REG_OUTPUT_ENABLE6,
+ 	case V4L2_CID_HFLIP:
+@@ -1382,7 +1376,6 @@ static int ov9282_probe(struct i2c_client *client)
+ 	/* Set default mode to first mode */
+ 	ov9282->cur_mode = &supported_modes[DEFAULT_MODE];
+ 	ov9282->code = MEDIA_BUS_FMT_Y10_1X10;
+-	ov9282->vblank = ov9282->cur_mode->vblank;
+ 
+ 	ret = ov9282_init_controls(ov9282);
+ 	if (ret) {
 
 -- 
 2.53.0
