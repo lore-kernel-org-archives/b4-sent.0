@@ -1,182 +1,161 @@
-From: =?utf-8?q?Burak_G=C3=B6nc=C3=BC?= <burakgon12@gmail.com>
-Date: Thu, 15 Oct 2026 01:26:41 +0300
-Subject: [PATCH v2 2/2] drm/i915/cx0: request TCSS power for the non-TC C20
- PHY on PTL port B
+From: Mizuno Miotsuki <founder@crepuse.com>
+Date: Thu, 15 Oct 2026 07:58:08 +0800
+Subject: [PATCH v3] dmaengine: pl330: Fix unbalanced runtime PM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261015-ptl-port-b-tcss-v2-2-e00ce882402d@gmail.com>
-References: <20261015-ptl-port-b-tcss-v2-0-e00ce882402d@gmail.com>
-In-Reply-To: <20261015-ptl-port-b-tcss-v2-0-e00ce882402d@gmail.com>
-To: intel-gfx@lists.freedesktop.org, intel-xe@lists.freedesktop.org
-Cc: Jani Nikula <jani.nikula@linux.intel.com>, 
- Rodrigo Vivi <rodrigo.vivi@intel.com>, Imre Deak <imre.deak@intel.com>, 
- Mika Kahola <mika.kahola@intel.com>, 
- =?utf-8?q?Burak_G=C3=B6nc=C3=BC?= <burakgon12@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792016806; l=6600;
- i=burakgon12@gmail.com; s=20261006; h=from:subject:message-id;
- bh=LTf+g2efpLrG86I/0jGNQb7VTykjWu5znTamnioz5Lo=;
- b=B1vaJzEXwL+bfrGg911Wqe6oyDezhJdtqdLWxmZl4XHyCIz5rJP3Bp9a+dNefaHr1ZSwWWY+G
- h3oR2hhKqavAbjd5oyP+CP59oGH8qg5b4dpm51k94I9CEhkyXCP5J7L
-X-Developer-Key: i=burakgon12@gmail.com; a=ed25519;
- pk=qcexQajnoYGkNqFOy3eFqTzvqTOR/P++ksapi6qUbvw=
-X-Endpoint-Received: by B4 Relay for burakgon12@gmail.com/20261006 with auth_id=1126
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261015-review-pl330-pm-original-v3-v3-1-5be09f37df77@crepuse.com>
+X-B4-Tracking: v=1; b=H4sIAA8X0GoC/yWP3Q6CMAxGX8Xs2iJjQtQr38N4sY0KVdjIivhDe
+ Hc3SXrzNacn/WbBGAhZnDazCDgRk3cxqO1G2Fa7BoHqmEWRF5XMZQkJwhcMnVI5DD34QA053cG
+ kwODhIOviaJW5iWgYAt7o/bdfrmvmp7mjHZMyEUYzggna2Tatom/179a7SLTEow+f/4NTkUxCV
+ mW+T1OB2qtSgoSGRmB0NWCvqQN+Njpk31TgHLx9gG1p4Mz6XlyXZfkBPzXHsPYAAAA=
+X-Change-ID: 20261015-review-pl330-pm-original-v3-be881d29c3bf
+In-Reply-To: <1650450456-34351-1-git-send-email-sugar.zhang@rock-chips.com>
+References: <1650450456-34351-1-git-send-email-sugar.zhang@rock-chips.com>
+To: vkoul@kernel.org
+Cc: dmaengine@vger.kernel.org, krzk@kernel.org, ulfh@kernel.org, 
+ Frank.Li@kernel.org, m.szyprowski@samsung.com, huibin.hong@rock-chips.com, 
+ rmk+kernel@arm.linux.org.uk, sugar.zhang@rock-chips.com, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5020; i=founder@crepuse.com;
+ s=20261012; h=from:subject:message-id;
+ bh=dH6QyJ7OcZPyaRLWF7m5BqNce6CGMbzXSoeguCrRg3g=;
+ b=owGbwMvMwCUmds2G2fVJ/hLG02pJDFkXxPmvT4r5vMi9vVlylcXDiP86v95xsz35YsA5b5ZnS
+ PqM9eEtHRNZGMS4GCzFFFlmi7KXH2pecW3uhCY7mDmsTCBDpEUaGICAhYEvNzGv1EjHSM9U21DP
+ 0EjHQMeYgYtTAKZaiIWR4YTRbR87czMbOY1eqZalaiKJK+t2CExKrVP2f7Aoun9WA8M/tSeTXty
+ 9z3RSXDVf/OE+Hc7giVV3a+JOHBHXm3hl/fxbHAA=
+X-Developer-Key: i=founder@crepuse.com; a=openpgp;
+ fpr=9B150777C283A8D69D90823E16D63C0345E46FA4
+X-Endpoint-Received: by B4 Relay for founder@crepuse.com/20261012 with auth_id=1166
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On PTL, port B is driven by a C20 PHY that sits in the Type-C subsystem,
-but port B is not a TC port. The TC PHY code is what sets
-XELPDP_TCSS_POWER_REQUEST, so for port B nothing in the driver does.
+From: Sugar Zhang <sugar.zhang@rock-chips.com>
 
-The ASUS Zenbook Duo UX8407AA connects its second internal panel (eDP-2)
-to port B. The firmware lights that panel at power-on only when the
-detachable keyboard is not lying on it. After a power-on with the
-keyboard in place, the first enable of eDP-2 fails:
+This driver use runtime PM autosuspend mechanism to manager clk.
 
-  PHY B failed to request refclk
-  PHY B failed to change powerdown state
-  PHY B failed to bring out of lane reset
-  Failed to bring PHY B to idle.
-  Port B PLL not locked
-  Timeout waiting for DDI BUF B to get active
+  pm_runtime_use_autosuspend(&adev->dev);
+  pm_runtime_set_autosuspend_delay(&adev->dev, PL330_AUTOSUSPEND_DELAY);
 
-and every later commit on pipe B waits for the flip_done timeout, or the
-machine hangs. The state survives warm reboots until a full power cycle.
+So, after ref count reached to zero, it will enter suspend
+after the delay time elapsed.
 
-In that state XELPDP_PORT_BUF_CTL1 of port B reads back with both
-XELPDP_TCSS_POWER_REQUEST and XELPDP_TCSS_POWER_STATE clear, and its
-XELPDP_PORT_CLOCK_CTL stays at 0xa0008400 where port A reaches
-0xf0008400. With the request set, the power state is acknowledged, the
-clock control reaches 0xf0008400 too and the panel comes up.
+The unbalanced PM:
 
-Request TCSS power, including the PTL mailbox handshake the TC code
-uses (Wa_14020908590), before programming the PLL of a non-TC C20 PHY on
-PTL, and release the request once the PLL is disabled. Wait for the
-TCSS power state to follow the request in both directions, as the TC
-PHY code does for TC ports.
+* May cause dmac the next start failed.
+* May cause dmac read unexpected state.
+* May cause dmac stall if power down happen at the middle of the transfer.
+  e.g. may lose ack from AXI bus and stall.
 
-The failure and the TCSS power request as its fix were first identified
-by the zenbook-duo26-Ubuntu26.04 project.
+Considering the following situation:
 
-Closes: https://gitlab.freedesktop.org/drm/xe/kernel/-/issues/9196
-Link: https://github.com/therealarnold666/zenbook-duo26-Ubuntu26.04
-Assisted-by: LLM
-Signed-off-by: Burak Göncü <burakgon12@gmail.com>
+      DMA TERMINATE               TASKLET ROUTINE
+            |                            |
+            |                       issue_pending
+            |                            |
+            |                     pch->active = true
+            |                       pm_runtime_get
+  pm_runtime_put(if active)              |
+    pch->active = false                  |
+            |                      work_list empty
+            |                            |
+            |                     pm_runtime_put(unconditional)
+            |                            |
+
+At this point, it's unbalanced(1 get / 2 put).
+
+After this patch:
+
+      DMA TERMINATE               TASKLET ROUTINE
+            |                            |
+            |                       issue_pending
+            |                            |
+            |                     pch->active = true
+            |                       pm_runtime_get
+  pm_runtime_put(if active)              |
+    pch->active = false                  |
+            |                      work_list empty
+            |                            |
+            |                   pm_runtime_put(if active)
+            |                            |
+
+Now, it's balanced(1 get / 1 put).
+
+Fixes: 5c9e6c2b2ba3 ("dmaengine: pl330: Fix runtime PM support for terminated transfers")
+Fixes: ae43b3289186 ("ARM: 8202/1: dmaengine: pl330: Add runtime Power Management support v12")
+
+Link: https://lore.kernel.org/r/1650450456-34351-1-git-send-email-sugar.zhang@rock-chips.com
+Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
+Signed-off-by: Sugar Zhang <sugar.zhang@rock-chips.com>
+Signed-off-by: Mizuno Miotsuki <founder@crepuse.com>
 ---
- drivers/gpu/drm/i915/display/intel_cx0_phy.c | 37 ++++++++++++++++++++++++++++
- drivers/gpu/drm/i915/display/intel_tc.c      | 23 +++++++++++++++++
- drivers/gpu/drm/i915/display/intel_tc.h      |  1 +
- 3 files changed, 61 insertions(+)
+Hi Vinod, Sugar and Huibin,
 
-diff --git a/drivers/gpu/drm/i915/display/intel_cx0_phy.c b/drivers/gpu/drm/i915/display/intel_cx0_phy.c
-index b83f0afaa..d4a9da843 100644
---- a/drivers/gpu/drm/i915/display/intel_cx0_phy.c
-+++ b/drivers/gpu/drm/i915/display/intel_cx0_phy.c
-@@ -54,6 +54,36 @@ bool intel_encoder_is_c10phy(struct intel_encoder *encoder)
- 	return false;
- }
- 
-+/*
-+ * On PTL, port B is driven by a C20 PHY inside the Type-C subsystem, but
-+ * port B is not a TC port, so the TC PHY code never requests TCSS power
-+ * for it. Unless the firmware has done so while lighting a display on the
-+ * port at boot, the PHY then never acknowledges its refclk and PLL
-+ * requests.
-+ */
-+static bool intel_cx0_needs_tcss_power(struct intel_encoder *encoder)
-+{
-+	struct intel_display *display = to_intel_display(encoder);
-+
-+	return display->platform.pantherlake &&
-+	       !intel_encoder_is_c10phy(encoder) &&
-+	       !intel_encoder_is_tc(encoder);
-+}
-+
-+static void intel_cx0_request_tcss_power(struct intel_encoder *encoder, bool enable)
-+{
-+	struct intel_display *display = to_intel_display(encoder);
-+
-+	intel_tc_request_tcss_power(encoder, enable);
-+
-+	/* Like the TC PHY code, wait for the power state in both directions. */
-+	if (intel_de_wait_ms(display, XELPDP_PORT_BUF_CTL1(display, encoder->port),
-+			     XELPDP_TCSS_POWER_STATE,
-+			     enable ? XELPDP_TCSS_POWER_STATE : 0, 5, NULL))
-+		drm_warn(display->drm, "Port %c: TCSS power %s not acknowledged\n",
-+			 port_name(encoder->port), enable ? "request" : "release");
-+}
-+
- static int lane_mask_to_lane(u8 lane_mask)
- {
- 	if (WARN_ON((lane_mask & ~INTEL_CX0_BOTH_LANES) ||
-@@ -3191,6 +3221,10 @@ static void intel_cx0pll_enable(struct intel_encoder *encoder,
- 	 */
- 	drm_WARN_ON(display->drm, lane_reversal && intel_tc_port_in_dp_alt_mode(dig_port));
- 
-+	/* The PHY must be powered before its clocks are requested. */
-+	if (intel_cx0_needs_tcss_power(encoder))
-+		intel_cx0_request_tcss_power(encoder, true);
-+
- 	/*
- 	 * 1. Program PORT_CLOCK_CTL REGISTER to configure
- 	 * clock muxes, gating and SSC
-@@ -3536,6 +3570,9 @@ static void intel_cx0pll_disable(struct intel_encoder *encoder)
- 	intel_de_rmw(display, XELPDP_PORT_CLOCK_CTL(display, encoder->port),
- 		     XELPDP_FORWARD_CLOCK_UNGATE, 0);
- 
-+	if (intel_cx0_needs_tcss_power(encoder))
-+		intel_cx0_request_tcss_power(encoder, false);
-+
- 	intel_cx0_phy_transaction_end(encoder, wakeref);
- }
- 
-diff --git a/drivers/gpu/drm/i915/display/intel_tc.c b/drivers/gpu/drm/i915/display/intel_tc.c
-index 9285e70ef..baca7dac5 100644
---- a/drivers/gpu/drm/i915/display/intel_tc.c
-+++ b/drivers/gpu/drm/i915/display/intel_tc.c
-@@ -1094,6 +1094,29 @@ static void xelpdp_tc_power_request_wa(struct intel_display *display, bool enabl
- 	mutex_unlock(&display->tc.mailbox_lock);
- }
- 
-+/**
-+ * intel_tc_request_tcss_power - request TCSS power for a non-TC port's PHY
-+ * @encoder: encoder of a non-TC port whose PHY sits in the Type-C subsystem
-+ * @enable: request or release the power
-+ *
-+ * TC ports get TCSS power from the TC PHY code. This is for a non-TC port
-+ * whose PHY nevertheless needs it, like port B's C20 PHY on PTL.
-+ */
-+void intel_tc_request_tcss_power(struct intel_encoder *encoder, bool enable)
-+{
-+	struct intel_display *display = to_intel_display(encoder);
-+	intel_reg_t reg = XELPDP_PORT_BUF_CTL1(display, encoder->port);
-+
-+	if (!!(intel_de_read(display, reg) & XELPDP_TCSS_POWER_REQUEST) == enable)
-+		return;
-+
-+	if (DISPLAY_VER(display) == 30)
-+		xelpdp_tc_power_request_wa(display, enable);
-+
-+	intel_de_rmw(display, reg, XELPDP_TCSS_POWER_REQUEST,
-+		     enable ? XELPDP_TCSS_POWER_REQUEST : 0);
-+}
-+
- static void __xelpdp_tc_phy_enable_tcss_power(struct intel_tc_port *tc, bool enable)
- {
- 	struct intel_display *display = to_intel_display(tc->dig_port);
-diff --git a/drivers/gpu/drm/i915/display/intel_tc.h b/drivers/gpu/drm/i915/display/intel_tc.h
-index 6719aea5b..b49a5b5c5 100644
---- a/drivers/gpu/drm/i915/display/intel_tc.h
-+++ b/drivers/gpu/drm/i915/display/intel_tc.h
-@@ -88,6 +88,7 @@ bool intel_tc_port_in_legacy_mode(struct intel_digital_port *dig_port);
- bool intel_tc_port_handles_hpd_glitches(struct intel_digital_port *dig_port);
- 
- bool intel_tc_port_connected(struct intel_encoder *encoder);
-+void intel_tc_request_tcss_power(struct intel_encoder *encoder, bool enable);
- 
- enum intel_tc_pin_assignment
- intel_tc_port_get_pin_assignment(struct intel_digital_port *dig_port);
+I am forwarding Sugar's April 2022 v2 as v3, with the same one-line
+change, original authorship and original Signed-off-by chain. The
+original submission is linked in the commit message. I found no mainline
+merge or revert of this change; current dmaengine fixes, next and master
+still use the unconditional assignment.
 
--- 
-2.56.0
+Our SaneBSP investigation on an RK3308B UNIHIKER M10 independently
+rediscovered the same accounting issue. The experimental G-only kernel
+logged:
+
+  dma-pl330 ff2c0000.dma-controller: Runtime PM usage count underflow!
+
+The subsequent H kernel, which included this gate, did not report the
+warning during a four-rate 62.625 MiB qualification and a bounded serdev
+regression. H also contains other changes, and G/H were experimental
+kernels. This is additional runtime evidence, not an isolated hardware
+proof of this one-line fix on upstream. None of the experimental cyclic
+DMA modifications is included here.
+
+A source-anchored reference-count model reproduces the extra put after
+termination in the old path and balances the active-gated path, including
+cyclic requeue. That is a model, not a compiled-kernel race reproducer.
+
+Validation of this rebased patch:
+- ARM64 W=1 drivers/dma/pl330.o build on dmaengine/fixes.
+- Strict checkpatch, including the two historical Fixes IDs.
+- Clean application on current dmaengine fixes/next/master and mainline.
+
+Would you reconsider the outstanding patch? Please let us know if there
+was an objection or an alternative fix outside the archived discussion.
+
+Changes in v3:
+- Rebase the unchanged code change onto dmaengine/fixes, Linux 7.3-rc4.
+- Add an archival Link to the original v2.
+- Preserve the original author, commit explanation, Fixes and DCO trailers.
+- Add the bounded new evidence and validation here, outside the commit.
+
+Changes in v2 (Sugar, 2022):
+- Update the commit message following Vinod's suggestions.
+
+Regards,
+Mizuno Miotsuki
+---
+ drivers/dma/pl330.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/dma/pl330.c b/drivers/dma/pl330.c
+index 6214d9000..17264a05d 100644
+--- a/drivers/dma/pl330.c
++++ b/drivers/dma/pl330.c
+@@ -2090,7 +2090,7 @@ static void pl330_tasklet(struct tasklet_struct *t)
+ 		spin_lock(&pch->thread->dmac->lock);
+ 		_stop(pch->thread);
+ 		spin_unlock(&pch->thread->dmac->lock);
+-		power_down = true;
++		power_down = pch->active;
+ 		pch->active = false;
+ 	} else {
+ 		/* Make sure the PL330 Channel thread is active */
+
+---
+base-commit: 93f51579e7df248780214094418f205253383cc5
+change-id: 20261015-review-pl330-pm-original-v3-be881d29c3bf
+
+Best regards,
+--  
+Mizuno Miotsuki <founder@crepuse.com>
 
