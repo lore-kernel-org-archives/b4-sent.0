@@ -1,338 +1,184 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Wed, 14 Oct 2026 01:20:42 +0200
-Subject: [PATCH 3/3] ceph: accumulate subvolume metrics per CPU
+From: Nicholas Velten <nicholasfvelten@gmail.com>
+Date: Tue, 13 Oct 2026 23:00:08 -0300
+Subject: [PATCH bpf-next] bpf: Annotate data races on bpf_lru_node type
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-ceph-metrics-percpu-v1-3-38c5a24fec6e@clyso.com>
-References: <20261014-ceph-metrics-percpu-v1-0-38c5a24fec6e@clyso.com>
-In-Reply-To: <20261014-ceph-metrics-percpu-v1-0-38c5a24fec6e@clyso.com>
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>, 
- Milind Changire <mchangir@redhat.com>, Jeff Layton <jlayton@kernel.org>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Dan van der Ster <dan.vanderster@clyso.com>, Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791933643; l=10988;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=ejyhU/j4h0EfNpY7w3/UC+A/gQ5WXha8Jsf0MYe73u0=;
- b=2iD/Eic2g6JGSJGqJbIkB5PSa16+k9k+MAWZDdwcrb++jfe92xU8G8rtqjgqGLLd7LPa0q5lJ
- 5d3uUCxeiGaDQM+S8vXUc/vCGQmUchCrCujFnjbacHRbocdKkep52ik
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Message-Id: <20261013-fix-lru-node-type-kcsan-v1-1-0b743f5af2f3@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACfizmoC/yWMQQ7CMAwEv1L5jKUkpYD4CuohSV0wIDeKU1RU9
+ e8EOI52Z1ZQykwK52aFTC9WnqSC3TUQb16uhDxUBmfcwRrb4sgLPvOMMg2E5Z0IH1G94N61XTS
+ nLhyDh2qnTPX6K18gpBGFlgL9f9E53CmWbxi27QO54VVRhQAAAA==
+X-Change-ID: 20261013-fix-lru-node-type-kcsan-4235c085b7ba
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>
+Cc: bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+1ea4f564bf6f1f3d1dc4@syzkaller.appspotmail.com, 
+ Nicholas Velten <nicholasfvelten@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791943208; l=5845;
+ i=nicholasfvelten@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=WM3jG1qGFgTy5qrm7atN2qIeOxz8lgQ0gTs8dQ4l6AA=;
+ b=bgMTrFCubT71XavVs+ksvwRRK7NsZFVbtOic7XxImNEoFWp1uJYCmUOnOIW/1StCjeileGEvT
+ wn3Z65qP5X9ASeyGonyR/LHliHmufb2EDmu3MRqTtyPqM5B4EDUSHHG
+X-Developer-Key: i=nicholasfvelten@gmail.com; a=ed25519;
+ pk=WVTZgm6yXQ+XrhULAObg4lwcHPhhxAXrAY+YY6svXzg=
+X-Endpoint-Received: by B4 Relay for nicholasfvelten@gmail.com/20261014 with auth_id=1173
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With subvolume metrics enabled, every OSD read and write completion
-takes the mount-wide tracker->lock and walks the rbtree of subvolumes
-to add one op to its entry.  On a client with many cores doing a
-large bandwidth, the completions of all its CPUs serialize on that
-spinlock and bounce its cache line.
+KCSAN reports a data race on bpf_lru_node::type between the LRU list
+rotation and the free path of the common LRU:
 
-Give each CPU a slot holding the counters of one subvolume.  A
-completion only takes its own slot's lock and adds to it; it goes to
-the tree only when the slot held another subvolume, whose counters it
-then folds into the tree entry the old way.  The metrics sender and
-the debugfs dump fold every slot into the tree before they read it,
-so what they report is unchanged.  A client usually works in one
-subvolume at a time, so the tree is touched once per CPU and snapshot
-instead of once per I/O.
+  BUG: KCSAN: data-race in __bpf_lru_list_rotate / bpf_lru_push_free
 
-The slot is looked up with raw_cpu_ptr() and protected by its own
-lock, so a task that migrates in between just updates another CPU's
-slot.  ceph_subvolume_metrics_init() now allocates the per-CPU slots
-and can fail.
+  write to 0xffff88811b758022 of 1 bytes by task 4756 on cpu 1:
+   __bpf_lru_node_move
+   __bpf_lru_list_rotate_active
+   __bpf_lru_list_rotate
+   bpf_lru_list_pop_free_to_local
+   bpf_common_lru_pop_free
+   bpf_lru_pop_free
+   htab_lru_map_update_elem
 
-Reported-by: Dan van der Ster <dan.vanderster@clyso.com>
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+  read to 0xffff88811b758022 of 1 bytes by task 4752 on cpu 0:
+   bpf_lru_list_push_free
+   bpf_common_lru_push_free
+   bpf_lru_push_free
+   htab_lru_push_free
+   htab_lru_map_update_elem
+
+  value changed: 0x00 -> 0x01
+
+node->type is written under the global l->lock when a node moves between
+the active, inactive and free lists, and under the per-CPU loc_l->lock
+when it moves to or from a local list. It is read in two places that do
+not hold the lock the writer holds:
+
+ - bpf_lru_list_push_free() reads it for a WARN_ON_ONCE() sanity check
+   before taking l->lock.
+ - bpf_common_lru_push_free() re-checks it under loc_l->lock after the
+   lockless READ_ONCE() at function entry, while a concurrent rotation
+   may be changing it under l->lock.
+
+Both races are benign: the type is a single byte, the sanity check only
+feeds a warning, and the re-check exists precisely because the value can
+change concurrently (any change sends the node down the check_lru_list
+path, which revalidates under l->lock). Mark the two reads with
+READ_ONCE() and the runtime writers with WRITE_ONCE(), following
+commit 6df8fb83301d ("bpf_lru_list: Read double-checked variable once
+without lock") and commit ee9fd0ac3017 ("bpf: Address KCSAN report on
+bpf_lru_list"), which did the same for the entry read of node->type and
+for node->ref. The writers in the *_populate() functions run before the
+map is visible and are left alone.
+
+Tested on bpf-next with CONFIG_KCSAN=y in a 4-vCPU virtme-ng guest,
+using a reproducer that runs 8 threads issuing BPF_MAP_UPDATE_BATCH
+on a 64-entry BPF_MAP_TYPE_LRU_HASH with overlapping keys: 110 KCSAN
+reports for this race per run before the change, 0 in two runs after.
+test_lru_map passes before and after.
+
+Fixes: 3a08c2fd7634 ("bpf: LRU List")
+Reported-by: syzbot+1ea4f564bf6f1f3d1dc4@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=1ea4f564bf6f1f3d1dc4
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Nicholas Velten <nicholasfvelten@gmail.com>
 ---
- fs/ceph/mds_client.c        |   6 +-
- fs/ceph/subvolume_metrics.c | 140 +++++++++++++++++++++++++++++++++++++-------
- fs/ceph/subvolume_metrics.h |   5 +-
- 3 files changed, 129 insertions(+), 22 deletions(-)
+The reproducer used for testing is a small userspace program (8 threads
+issuing BPF_MAP_UPDATE_BATCH on a 64-entry BPF_MAP_TYPE_LRU_HASH with
+overlapping keys). I can post it, or turn it into a selftest, if that
+would be useful.
 
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index d4ef8a355a48..649284a2e746 100644
---- a/fs/ceph/mds_client.c
-+++ b/fs/ceph/mds_client.c
-@@ -6501,7 +6501,9 @@ int ceph_mdsc_init(struct ceph_fs_client *fsc)
- 	err = ceph_metric_init(&mdsc->metric);
- 	if (err)
- 		goto err_mdsmap;
--	ceph_subvolume_metrics_init(&mdsc->subvol_metrics);
-+	err = ceph_subvolume_metrics_init(&mdsc->subvol_metrics);
-+	if (err)
-+		goto err_metric;
- 	mutex_init(&mdsc->subvol_metrics_last_mutex);
- 	mdsc->subvol_metrics_last = NULL;
- 	mdsc->subvol_metrics_last_nr = 0;
-@@ -6533,6 +6535,8 @@ int ceph_mdsc_init(struct ceph_fs_client *fsc)
- 	fsc->mdsc = mdsc;
- 	return 0;
+Not tested: architectures other than x86_64, sparse, and the full
+test_maps / test_progs suites (only test_lru_map was run).
+---
+ kernel/bpf/bpf_lru_list.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/kernel/bpf/bpf_lru_list.c b/kernel/bpf/bpf_lru_list.c
+index 5ed7cb4b9..db8051193 100644
+--- a/kernel/bpf/bpf_lru_list.c
++++ b/kernel/bpf/bpf_lru_list.c
+@@ -56,7 +56,7 @@ static void __bpf_lru_node_move_to_free(struct bpf_lru_list *l,
  
-+err_metric:
-+	ceph_metric_destroy(&mdsc->metric);
- err_mdsmap:
- 	kfree(mdsc->mdsmap);
- err_mdsc:
-diff --git a/fs/ceph/subvolume_metrics.c b/fs/ceph/subvolume_metrics.c
-index 895878a49ea7..def26152e5fc 100644
---- a/fs/ceph/subvolume_metrics.c
-+++ b/fs/ceph/subvolume_metrics.c
-@@ -31,14 +31,36 @@ struct ceph_subvol_metric_rb_entry {
- 	u64 write_latency_us;
- };
+ 	bpf_lru_list_count_dec(l, node->type);
  
-+/**
-+ * struct ceph_subvol_metric_pcpu - Per-CPU accumulator in front of the tree
-+ * @lock: Protects @m; only contended when a task migrates mid-update
-+ * @m: Counters of one subvolume (@m.subvolume_id) not yet folded into the tree
-+ *
-+ * I/O completions add to the slot of the CPU they run on and only take
-+ * tracker->lock when the slot holds another subvolume, or when a snapshot
-+ * or a dump folds every slot into the tree.
-+ */
-+struct ceph_subvol_metric_pcpu {
-+	spinlock_t lock;
-+	struct ceph_subvol_metric_snapshot m;
-+};
-+
- static struct kmem_cache *ceph_subvol_metric_entry_cachep;
- 
--void ceph_subvolume_metrics_init(struct ceph_subvolume_metrics_tracker *tracker)
-+int ceph_subvolume_metrics_init(struct ceph_subvolume_metrics_tracker *tracker)
- {
-+	int cpu;
-+
- 	spin_lock_init(&tracker->lock);
- 	tracker->tree = RB_ROOT_CACHED;
- 	tracker->nr_entries = 0;
- 	tracker->enabled = false;
-+	tracker->pcpu = alloc_percpu(struct ceph_subvol_metric_pcpu);
-+	if (!tracker->pcpu)
-+		return -ENOMEM;
-+	for_each_possible_cpu(cpu)
-+		spin_lock_init(&per_cpu_ptr(tracker->pcpu, cpu)->lock);
-+	return 0;
+-	node->type = tgt_free_type;
++	WRITE_ONCE(node->type, tgt_free_type);
+ 	WRITE_ONCE(node->pending_free, 0);
+ 	list_move(&node->list, free_list);
  }
+@@ -71,7 +71,7 @@ static void __bpf_lru_node_move_in(struct bpf_lru_list *l,
+ 		return;
  
- static struct ceph_subvol_metric_rb_entry *
-@@ -109,12 +131,28 @@ static void ceph_subvolume_metrics_clear_locked(
- 	tracker->tree = RB_ROOT_CACHED;
- }
- 
-+static void ceph_subvolume_metrics_clear_pcpu(
-+		struct ceph_subvolume_metrics_tracker *tracker)
-+{
-+	int cpu;
-+
-+	for_each_possible_cpu(cpu) {
-+		struct ceph_subvol_metric_pcpu *pc = per_cpu_ptr(tracker->pcpu, cpu);
-+
-+		spin_lock(&pc->lock);
-+		memset(&pc->m, 0, sizeof(pc->m));
-+		spin_unlock(&pc->lock);
-+	}
-+}
-+
- void ceph_subvolume_metrics_destroy(struct ceph_subvolume_metrics_tracker *tracker)
- {
- 	spin_lock(&tracker->lock);
- 	ceph_subvolume_metrics_clear_locked(tracker);
- 	tracker->enabled = false;
- 	spin_unlock(&tracker->lock);
-+	free_percpu(tracker->pcpu);
-+	tracker->pcpu = NULL;
- }
- 
- void ceph_subvolume_metrics_enable(struct ceph_subvolume_metrics_tracker *tracker,
-@@ -128,20 +166,20 @@ void ceph_subvolume_metrics_enable(struct ceph_subvolume_metrics_tracker *tracke
- 		ceph_subvolume_metrics_clear_locked(tracker);
+ 	bpf_lru_list_count_inc(l, tgt_type);
+-	node->type = tgt_type;
++	WRITE_ONCE(node->type, tgt_type);
+ 	bpf_lru_node_clear_ref(node);
+ 	/* Reset pending_free only when moving to the free list */
+ 	if (tgt_type == BPF_LRU_LIST_T_FREE)
+@@ -94,7 +94,7 @@ static void __bpf_lru_node_move(struct bpf_lru_list *l,
+ 	if (node->type != tgt_type) {
+ 		bpf_lru_list_count_dec(l, node->type);
+ 		bpf_lru_list_count_inc(l, tgt_type);
+-		node->type = tgt_type;
++		WRITE_ONCE(node->type, tgt_type);
  	}
- 	spin_unlock(&tracker->lock);
-+	if (!enable)
-+		ceph_subvolume_metrics_clear_pcpu(tracker);
- }
+ 	bpf_lru_node_clear_ref(node);
  
--void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracker,
--				   u64 subvol_id, bool is_write,
--				   size_t size, u64 latency_us)
-+/*
-+ * Add the counters of one subvolume taken out of a per-CPU slot to its
-+ * entry in the tree.
-+ */
-+static void ceph_subvolume_metrics_fold(struct ceph_subvolume_metrics_tracker *tracker,
-+					const struct ceph_subvol_metric_snapshot *d)
+@@ -298,7 +298,7 @@ static void bpf_lru_list_push_free(struct bpf_lru_list *l,
  {
- 	struct ceph_subvol_metric_rb_entry *entry, *new_entry = NULL;
- 	bool retry = false;
+ 	unsigned long flags;
  
--	/* CEPH_SUBVOLUME_ID_NONE (0) means unknown/unset subvolume */
--	if (!READ_ONCE(tracker->enabled) ||
--	    subvol_id == CEPH_SUBVOLUME_ID_NONE || !size || !latency_us)
--		return;
--
- 	/*
- 	 * Retry loop for lock-free allocation pattern:
- 	 * 1. First iteration: lookup under lock, if miss -> drop lock, alloc, retry
-@@ -158,7 +196,7 @@ void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracke
+-	if (WARN_ON_ONCE(IS_LOCAL_LIST_TYPE(node->type)))
++	if (WARN_ON_ONCE(IS_LOCAL_LIST_TYPE(READ_ONCE(node->type))))
+ 		return;
+ 
+ 	if (raw_res_spin_lock_irqsave(&l->lock, flags)) {
+@@ -357,7 +357,7 @@ static void __local_list_add_pending(struct bpf_lru *lru,
+ {
+ 	*(u32 *)((void *)node + lru->hash_offset) = hash;
+ 	node->cpu = cpu;
+-	node->type = BPF_LRU_LOCAL_LIST_T_PENDING;
++	WRITE_ONCE(node->type, BPF_LRU_LOCAL_LIST_T_PENDING);
+ 	WRITE_ONCE(node->pending_free, 0);
+ 	bpf_lru_node_clear_ref(node);
+ 	list_add(&node->list, &loc_l->pending_list);
+@@ -502,7 +502,7 @@ static struct bpf_lru_node *bpf_common_lru_pop_free(struct bpf_lru *lru,
+ 		 * free_llist instead of orphaning it; the next pop_free on
+ 		 * this CPU will pick it up.
+ 		 */
+-		node->type = BPF_LRU_LOCAL_LIST_T_FREE;
++		WRITE_ONCE(node->type, BPF_LRU_LOCAL_LIST_T_FREE);
+ 		bpf_lru_node_clear_ref(node);
+ 		WRITE_ONCE(node->pending_free, 0);
+ 		llist_add(&node->llist, &loc_l->free_llist);
+@@ -542,13 +542,13 @@ static void bpf_common_lru_push_free(struct bpf_lru *lru,
  			return;
  		}
  
--		entry = __lookup_entry(tracker, subvol_id);
-+		entry = __lookup_entry(tracker, d->subvolume_id);
- 		if (!entry) {
- 			if (!new_entry) {
- 				spin_unlock(&tracker->lock);
-@@ -166,7 +204,7 @@ void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracke
- 						      GFP_NOFS);
- 				if (!new_entry)
- 					return;
--				new_entry->subvolume_id = subvol_id;
-+				new_entry->subvolume_id = d->subvolume_id;
- 				retry = true;
- 				continue;
- 			}
-@@ -182,15 +220,12 @@ void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracke
- 			new_entry = NULL;
+-		if (unlikely(node->type != BPF_LRU_LOCAL_LIST_T_PENDING)) {
++		if (unlikely(READ_ONCE(node->type) != BPF_LRU_LOCAL_LIST_T_PENDING)) {
+ 			raw_res_spin_unlock_irqrestore(&loc_l->lock,
+ 						       flags);
+ 			goto check_lru_list;
  		}
  
--		if (is_write) {
--			entry->write_ops++;
--			entry->write_bytes += size;
--			entry->write_latency_us += latency_us;
--		} else {
--			entry->read_ops++;
--			entry->read_bytes += size;
--			entry->read_latency_us += latency_us;
--		}
-+		entry->read_ops += d->read_ops;
-+		entry->read_bytes += d->read_bytes;
-+		entry->read_latency_us += d->read_latency_us;
-+		entry->write_ops += d->write_ops;
-+		entry->write_bytes += d->write_bytes;
-+		entry->write_latency_us += d->write_latency_us;
- 		spin_unlock(&tracker->lock);
- 		if (new_entry)
- 			kmem_cache_free(ceph_subvol_metric_entry_cachep, new_entry);
-@@ -198,6 +233,66 @@ void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracke
- 	} while (retry);
- }
+-		node->type = BPF_LRU_LOCAL_LIST_T_FREE;
++		WRITE_ONCE(node->type, BPF_LRU_LOCAL_LIST_T_FREE);
+ 		bpf_lru_node_clear_ref(node);
+ 		list_del(&node->list);
  
-+/* Move what every per-CPU slot holds into the tree. */
-+static void ceph_subvolume_metrics_fold_pcpu(
-+		struct ceph_subvolume_metrics_tracker *tracker)
-+{
-+	int cpu;
-+
-+	for_each_possible_cpu(cpu) {
-+		struct ceph_subvol_metric_pcpu *pc = per_cpu_ptr(tracker->pcpu, cpu);
-+		struct ceph_subvol_metric_snapshot d;
-+
-+		spin_lock(&pc->lock);
-+		d = pc->m;
-+		memset(&pc->m, 0, sizeof(pc->m));
-+		pc->m.subvolume_id = d.subvolume_id;
-+		spin_unlock(&pc->lock);
-+
-+		if (d.read_ops || d.write_ops)
-+			ceph_subvolume_metrics_fold(tracker, &d);
-+	}
-+}
-+
-+void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracker,
-+				   u64 subvol_id, bool is_write,
-+				   size_t size, u64 latency_us)
-+{
-+	struct ceph_subvol_metric_snapshot old = {};
-+	struct ceph_subvol_metric_pcpu *pc;
-+
-+	/* CEPH_SUBVOLUME_ID_NONE (0) means unknown/unset subvolume */
-+	if (!READ_ONCE(tracker->enabled) ||
-+	    subvol_id == CEPH_SUBVOLUME_ID_NONE || !size || !latency_us)
-+		return;
-+
-+	/*
-+	 * The slot of the CPU we start on; if we migrate, the lock still
-+	 * keeps the update consistent and it just lands in another slot.
-+	 */
-+	pc = raw_cpu_ptr(tracker->pcpu);
-+	spin_lock(&pc->lock);
-+	if (unlikely(pc->m.subvolume_id != subvol_id)) {
-+		old = pc->m;
-+		memset(&pc->m, 0, sizeof(pc->m));
-+		pc->m.subvolume_id = subvol_id;
-+	}
-+	if (is_write) {
-+		pc->m.write_ops++;
-+		pc->m.write_bytes += size;
-+		pc->m.write_latency_us += latency_us;
-+	} else {
-+		pc->m.read_ops++;
-+		pc->m.read_bytes += size;
-+		pc->m.read_latency_us += latency_us;
-+	}
-+	spin_unlock(&pc->lock);
-+
-+	/* the slot held another subvolume: hand its counters to the tree */
-+	if (old.read_ops || old.write_ops)
-+		ceph_subvolume_metrics_fold(tracker, &old);
-+}
-+
- int ceph_subvolume_metrics_snapshot(struct ceph_subvolume_metrics_tracker *tracker,
- 				    struct ceph_subvol_metric_snapshot **out,
- 				    u32 *nr, bool consume)
-@@ -213,6 +308,8 @@ int ceph_subvolume_metrics_snapshot(struct ceph_subvolume_metrics_tracker *track
- 	if (!READ_ONCE(tracker->enabled))
- 		return 0;
- 
-+	ceph_subvolume_metrics_fold_pcpu(tracker);
-+
- 	spin_lock(&tracker->lock);
- 	for (node = rb_first_cached(&tracker->tree); node; node = rb_next(node)) {
- 		struct ceph_subvol_metric_rb_entry *entry =
-@@ -306,6 +403,9 @@ void ceph_subvolume_metrics_dump(struct ceph_subvolume_metrics_tracker *tracker,
- 	struct rb_node *node;
- 	bool found = false;
- 
-+	if (READ_ONCE(tracker->enabled))
-+		ceph_subvolume_metrics_fold_pcpu(tracker);
-+
- 	spin_lock(&tracker->lock);
- 	if (!tracker->enabled) {
- 		spin_unlock(&tracker->lock);
-diff --git a/fs/ceph/subvolume_metrics.h b/fs/ceph/subvolume_metrics.h
-index 8b901ae05e00..b29d48e9a4f1 100644
---- a/fs/ceph/subvolume_metrics.h
-+++ b/fs/ceph/subvolume_metrics.h
-@@ -10,6 +10,7 @@
- struct seq_file;
- struct ceph_mds_client;
- struct ceph_inode_info;
-+struct ceph_subvol_metric_pcpu;
- 
- /**
-  * struct ceph_subvol_metric_snapshot - Point-in-time snapshot of subvolume metrics
-@@ -37,15 +38,17 @@ struct ceph_subvol_metric_snapshot {
-  * @tree: Red-black tree of per-subvolume entries, keyed by subvolume_id
-  * @nr_entries: Number of entries currently in @tree
-  * @enabled: Whether collection is enabled (requires MDS feature support)
-+ * @pcpu: Per-CPU accumulators that I/O completions update without @lock
-  */
- struct ceph_subvolume_metrics_tracker {
- 	spinlock_t lock;
- 	struct rb_root_cached tree;
- 	u32 nr_entries;
- 	bool enabled;
-+	struct ceph_subvol_metric_pcpu __percpu *pcpu;
- };
- 
--void ceph_subvolume_metrics_init(struct ceph_subvolume_metrics_tracker *tracker);
-+int ceph_subvolume_metrics_init(struct ceph_subvolume_metrics_tracker *tracker);
- void ceph_subvolume_metrics_destroy(struct ceph_subvolume_metrics_tracker *tracker);
- void ceph_subvolume_metrics_enable(struct ceph_subvolume_metrics_tracker *tracker,
- 				   bool enable);
 
--- 
-2.53.0
+---
+base-commit: 763187dbbf83764a57d5811168ef9de7b9a60e2d
+change-id: 20261013-fix-lru-node-type-kcsan-4235c085b7ba
+
+Best regards,
+--  
+Nicholas Velten <nicholasfvelten@gmail.com>
 
