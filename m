@@ -1,131 +1,115 @@
-From: Nicholas Velten <nicholasfvelten@gmail.com>
-Date: Wed, 14 Oct 2026 08:06:38 -0300
-Subject: [PATCH] usb: gadget: u_ether: refuse to re-register a failed
- net_device
+From: Martin Belanger <martin.nvme.dev@gmail.com>
+Date: Wed, 14 Oct 2026 08:02:57 -0400
+Subject: [PATCH v2] nvme: make the DH-HMAC-CHAP secret attributes readable
+ by root only
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-fix-gadget-netdev-reregister-v1-1-0fb91999da06@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAD1iz2oC/yXMQQrCMBBG4auUWTuQlKroVcRFmvyJ4yLKTCxC6
- d2Nuvzg8VYyqMDoPKykWMTkUTv8bqB4C7WAJXXT6MaDd37iLG8uIRU0rmgJCysURaxB+biPeXI
- nFzJm6ounove//eX6t73mO2L7PmnbPufLXnKAAAAA
-X-Change-ID: 20261014-fix-gadget-netdev-reregister-75cf4090afeb
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- syzbot+85ede281798faf736677@syzkaller.appspotmail.com, 
- Nicholas Velten <nicholasfvelten@gmail.com>
+Message-Id: <20261014-nvme-dhchap-secret-mode-v2-1-00f153e9d8de@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMUQqDMBCE4avIPruQBBXbqxQf0mRat2CUrJWCe
+ Pem9vFjmH8nRRYoXaudMjZRmVOBqysKo09PsMRicsZ11tiG0zaB41jGhRUhY+VpjuCLNT36trG
+ +81TeS8ZDPmf5Nvyt7/sLYf3l6Di+N1PvwnsAAAA=
+X-Change-ID: 20261014-nvme-dhchap-secret-mode-9108e8541a6a
+To: linux-nvme@lists.infradead.org
+Cc: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
+ Hannes Reinecke <hare@suse.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Daniel Wagner <wagi@kernel.org>, 
+ Martin Belanger <martin.nvme.dev@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791975997; l=4551;
- i=nicholasfvelten@gmail.com; s=20261014; h=from:subject:message-id;
- bh=R8N/U9EpeodrPP2C8W4xyv5oFcDyRUldfgErXBf/7RE=;
- b=9ZXSnZvhgl4VAmjVXgi0COCcRCK6RUR7/fd0U2D9qtiM2mdmlvSsMVRN4HbiIJp0g3DxStTd8
- 7pMKyTgEQm9D731n6qgT6gqe+EN9/T3Z7dov6GndfdCu2MdQELCXtdu
-X-Developer-Key: i=nicholasfvelten@gmail.com; a=ed25519;
- pk=WVTZgm6yXQ+XrhULAObg4lwcHPhhxAXrAY+YY6svXzg=
-X-Endpoint-Received: by B4 Relay for nicholasfvelten@gmail.com/20261014 with auth_id=1173
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791979381; l=3245;
+ i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=YzbJwanbX41Lark5YtJVe0AVHqjgNwPQp5aKXMjqULc=;
+ b=Ib1ZrDnxDTZUZttiA/j38dYPB1shdfmMLlyzRHHYeQXx39wMBm0oCvjyCGsOWT6Pg9LxNjdEe
+ BPQOfx/SYBSBcZ9lScWoyTQiBHjNkklIXz+JidH/a/XcYrQTafeCu+O
+X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
+ pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
+X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When register_netdevice() fails in or after netdev_register_kobject(),
-it returns an error but leaves the net_device in NETREG_UNREGISTERED.
-Such a device can never be registered again; the only valid thing to do
-with it is free_netdev().
+The dhchap_secret and dhchap_ctrl_secret sysfs attributes have mode
+0644. Their show functions return the secret, so any local user can
+read the DH-HMAC-CHAP secrets of a connected controller.
 
-The configfs Ethernet functions (ECM, EEM, NCM, RNDIS and subset)
-allocate their net_device once per function instance and register it
-from the bind callback, retrying on every bind for as long as the device
-is not registered (formerly tracked by a "bound" flag, now by
-device_is_registered()). After a failed registration the next bind
-therefore calls register_netdev() on an NETREG_UNREGISTERED device and
-hits the BUG_ON() at the top of register_netdevice():
+Define them with DEVICE_ATTR_ADMIN_RW(), which sets mode 0600. The
+macro takes the show and store functions from the attribute name, so
+rename them. Writing the attributes was already limited to root and is
+not changed.
 
-  kernel BUG at net/core/dev.c:11440!
-  Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
-  RIP: 0010:register_netdevice+0xc21/0x1d00
-  Call Trace:
-   register_netdev
-   gether_register_netdev
-   ncm_bind
-   usb_add_function
-   configfs_composite_bind
-   gadget_bind_driver
-   ...
-   gadget_dev_desc_UDC_store
-
-syzbot hits this by binding a gadget from a memory cgroup with a tiny
-limit, which makes the memcg-accounted allocations in
-netdev_register_kobject() fail. That is why its bisection lands on
-commit 425b9c7f51c9 ("memcg: accounting for objects allocated for new
-netdevice"): that commit made the failure reachable that way, while the
-retry itself is much older.
-
-Refuse to register a net_device that is not NETREG_UNINITIALIZED in
-gether_register_netdev(), which all of these functions use, so that the
-bind fails with -EINVAL instead of crashing. The function instance has
-to be recreated to get a usable net_device again.
-
-Reproduced with fail-nth fault injection on the allocations of the
-write() to the gadget's UDC attribute, binding again without injection
-after each failed bind, using a fresh function instance per iteration:
-without this change NCM, ECM and RNDIS hit the BUG_ON() at the 16th
-injected allocation; with it, 400 iterations for NCM and 300 each for
-ECM, EEM, RNDIS and subset complete with no BUG or KASAN report.
-
-Fixes: 40d133d7f542 ("usb: gadget: f_ncm: convert to new function interface with backward compatibility")
-Reported-by: syzbot+85ede281798faf736677@syzkaller.appspotmail.com
-Closes: https://syzkaller.appspot.com/bug?extid=85ede281798faf736677
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Nicholas Velten <nicholasfvelten@gmail.com>
+Fixes: f50fff73d620 ("nvme: implement In-Band authentication")
+Cc: stable@vger.kernel.org
+Cc: Daniel Wagner <wagi@kernel.org>
+Assisted-by: LLM
+Signed-off-by: Martin Belanger <martin.nvme.dev@gmail.com>
 ---
-The syzbot C reproducer did not reach the gadget bind in my virtme-ng
-guest (its sandbox setup appears to fail there), so I reproduced with a
-small fail-nth program instead. I can post it if useful.
-
-Not tested: architectures other than x86_64, and the legacy (non-configfs)
-gadgets that also call gether_register_netdev() (g_ether, g_multi,
-g_ffs); they register once from their bind path and should be unaffected.
-
-f_phonet has the same retry pattern but a different outcome:
-gphonet_register_netdev() calls free_netdev() on failure while
-phonet_opts->net still points at the device and phonet_opts->bound stays
-false, so the next bind uses a freed net_device. I left it out of this
-patch to keep it to one change and because f_phonet is being changed by
-"usb: gadget: f_phonet: fix use-after-free in pn_bind" (v3, not yet
-applied); I can send a separate fix on top of that if wanted.
-
-Also touching gether_register_netdev(), without conflict:
-"usb: gadget: u_ether: Fix NULL pointer deref in debug logging".
+Changes in v2:
+- Use DEVICE_ATTR_ADMIN_RW() instead of DEVICE_ATTR() with 0600 (Greg)
 ---
- drivers/usb/gadget/function/u_ether.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ drivers/nvme/host/sysfs.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/usb/gadget/function/u_ether.c b/drivers/usb/gadget/function/u_ether.c
-index 59d85d6a8..1f4ac7078 100644
---- a/drivers/usb/gadget/function/u_ether.c
-+++ b/drivers/usb/gadget/function/u_ether.c
-@@ -865,6 +865,17 @@ int gether_register_netdev(struct net_device *net)
+diff --git a/drivers/nvme/host/sysfs.c b/drivers/nvme/host/sysfs.c
+index e1e3dcfd084b..c0ecb5df1a30 100644
+--- a/drivers/nvme/host/sysfs.c
++++ b/drivers/nvme/host/sysfs.c
+@@ -809,7 +809,7 @@ static DEVICE_ATTR(io_timeout, S_IRUGO | S_IWUSR,
+ 	nvme_io_timeout_show, nvme_io_timeout_store);
  
- 	if (!net->dev.parent)
- 		return -EINVAL;
-+
-+	/*
-+	 * A register_netdev() that failed after netdev_register_kobject()
-+	 * leaves the device NETREG_UNREGISTERED, and it can never be
-+	 * registered again. The function drivers retry on every bind while
-+	 * the device is not registered, so refuse instead of hitting the
-+	 * BUG_ON() in register_netdevice().
-+	 */
-+	if (net->reg_state != NETREG_UNINITIALIZED)
-+		return -EINVAL;
-+
- 	dev = netdev_priv(net);
- 	g = dev->gadget;
+ #ifdef CONFIG_NVME_HOST_AUTH
+-static ssize_t nvme_ctrl_dhchap_secret_show(struct device *dev,
++static ssize_t dhchap_secret_show(struct device *dev,
+ 		struct device_attribute *attr, char *buf)
+ {
+ 	struct nvme_ctrl *ctrl = dev_get_drvdata(dev);
+@@ -820,7 +820,7 @@ static ssize_t nvme_ctrl_dhchap_secret_show(struct device *dev,
+ 	return sysfs_emit(buf, "%s\n", opts->dhchap_secret);
+ }
  
+-static ssize_t nvme_ctrl_dhchap_secret_store(struct device *dev,
++static ssize_t dhchap_secret_store(struct device *dev,
+ 		struct device_attribute *attr, const char *buf, size_t count)
+ {
+ 	struct nvme_ctrl *ctrl = dev_get_drvdata(dev);
+@@ -864,10 +864,9 @@ static ssize_t nvme_ctrl_dhchap_secret_store(struct device *dev,
+ 	return count;
+ }
+ 
+-static DEVICE_ATTR(dhchap_secret, S_IRUGO | S_IWUSR,
+-	nvme_ctrl_dhchap_secret_show, nvme_ctrl_dhchap_secret_store);
++static DEVICE_ATTR_ADMIN_RW(dhchap_secret);
+ 
+-static ssize_t nvme_ctrl_dhchap_ctrl_secret_show(struct device *dev,
++static ssize_t dhchap_ctrl_secret_show(struct device *dev,
+ 		struct device_attribute *attr, char *buf)
+ {
+ 	struct nvme_ctrl *ctrl = dev_get_drvdata(dev);
+@@ -878,7 +877,7 @@ static ssize_t nvme_ctrl_dhchap_ctrl_secret_show(struct device *dev,
+ 	return sysfs_emit(buf, "%s\n", opts->dhchap_ctrl_secret);
+ }
+ 
+-static ssize_t nvme_ctrl_dhchap_ctrl_secret_store(struct device *dev,
++static ssize_t dhchap_ctrl_secret_store(struct device *dev,
+ 		struct device_attribute *attr, const char *buf, size_t count)
+ {
+ 	struct nvme_ctrl *ctrl = dev_get_drvdata(dev);
+@@ -922,8 +921,7 @@ static ssize_t nvme_ctrl_dhchap_ctrl_secret_store(struct device *dev,
+ 	return count;
+ }
+ 
+-static DEVICE_ATTR(dhchap_ctrl_secret, S_IRUGO | S_IWUSR,
+-	nvme_ctrl_dhchap_ctrl_secret_show, nvme_ctrl_dhchap_ctrl_secret_store);
++static DEVICE_ATTR_ADMIN_RW(dhchap_ctrl_secret);
+ #endif
+ 
+ static struct attribute *nvme_dev_attrs[] = {
 
 ---
-base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
-change-id: 20261014-fix-gadget-netdev-reregister-75cf4090afeb
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+change-id: 20261014-nvme-dhchap-secret-mode-9108e8541a6a
 
 Best regards,
 --  
-Nicholas Velten <nicholasfvelten@gmail.com>
+Martin Belanger <martin.nvme.dev@gmail.com>
 
