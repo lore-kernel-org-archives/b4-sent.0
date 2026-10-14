@@ -1,68 +1,54 @@
 From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Subject: [PATCH 0/9] arm64: dts: rockchip: NanoPi 6 series fixes and
- improvements
-Date: Wed, 14 Oct 2026 18:33:00 +0200
-Message-Id: <20261014-nanopi-m6-improvements-v1-0-e713f71eb4d3@gmail.com>
+Date: Wed, 14 Oct 2026 18:33:01 +0200
+Subject: [PATCH 1/9] arm64: dts: rockchip: rk3588s-nanopi: fix sd min/max
+ voltage
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CQAxA4auQrm0yTORHr2JYQK1Qk+lMpkhMC
- Hd31OW3eG8H4yxscK12yLyJSdSC+lQBLaPOjHIvBu986zp/QR01JsHQooSU48aBdTVs+jNRN7m
- e6gZKnDI/5P0b34a/7TU9mdbvDY7jA1Si6uZ6AAAA
-X-Change-ID: 20260729-nanopi-m6-improvements-584cc7b08c15
+Message-Id: <20261014-nanopi-m6-improvements-v1-1-e713f71eb4d3@gmail.com>
+References: <20261014-nanopi-m6-improvements-v1-0-e713f71eb4d3@gmail.com>
+In-Reply-To: <20261014-nanopi-m6-improvements-v1-0-e713f71eb4d3@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
 Cc: Diederik de Haas <diederik@cknow-tech.com>, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  Joachim Eastwood <joachim.eastwood@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791995685; l=1823;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791995685; l=999;
  i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=M4oiCczvM6va+isk9WjeSYqDXsbuek40oN13boAHt8I=;
- b=xeGKQRKGVzN67jaE0vQ2rOyJewPenDA0ogXBP4ukvIeWddMRTGL61vnp9dk5p0HmKdbZxvORi
- lmfDP60AGfbDqIcrlIFG5lraHthr6513r8hHj9ES9D337D1w3tWZExj
+ bh=ZL0Hzb2jEWUjL2wvU/uKxEAnzsHMxAzmFWNQXvnrLKo=;
+ b=G2CZan4JvljYpymAFg6tQTWMFL8j5loRE3S67B5NyNlSv4GXYdGWQ8Iycbgd6uQFQNZk20w+p
+ D4sUbWZyF0pAgaH4+zwPCWNAhfBeV1G3ZqMHFelarJm9l2BE2z2pTz+
 X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
  pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
 X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series contains a few fixes and miscellaneous improvements
-for the NanoPi 6 series of boards.
+This regulator is only a simple power switch and cannot change the
+output voltage.
 
-Patch 1 fixes the voltage range on the SDMMC regulator.
-Patch 2 enables HS400 mode on eMMC. Tested on my M6 board.
-Patch 3 adds an IIO HWMON device to monitor the input voltage.
-Patch 4 moves a regulator that only exist R6 boards to the correct dtsi.
-Patch 5-9 renames DT names to match the schematics signals/nets.
-
-If patch 5-9 is just considered churn I'll drop them. These are more
-nice to have and just makes it easier to cross-reference DT and
-schematics.
-
-Based on linux-rockchip tag v7.4-rockchip-dts64-3.
-
+Fixes: c08257d642ac ("arm64: dts: rockchip: refactor rk3588s-nanopi-r6 to support M6 boards")
 Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
-Joachim Eastwood (9):
-      arm64: dts: rockchip: rk3588s-nanopi: fix sd min/max voltage
-      arm64: dts: rockchip: rk3588s-nanopi: enable mmc-hs400 and add supplies
-      arm64: dts: rockchip: rk3588s-nanopi: add voltage iio-hwmon device
-      arm64: dts: rockchip: rk3588s-nanopi: move vcc_3v3_s0 to nanopi-r6
-      arm64: dts: rockchip: rk3588s-nanopi: rename sd power pin
-      arm64: dts: rockchip: rk3588s-nanopi: rename usb host power pin
-      arm64: dts: rockchip: rk3588s-nanopi: rename gmac1 reset pin
-      arm64: dts: rockchip: rk3588s-nanopi-m6: rename pcie2 power pin
-      arm64: dts: rockchip: rk3588s-nanopi-m6: rename pcie2 power rail
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- .../arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi | 14 ++++---
- .../arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi | 14 +++++++
- arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi   | 45 ++++++++++++----------
- 3 files changed, 48 insertions(+), 25 deletions(-)
----
-base-commit: ae965b9856f033145e292b0c29082a26bcc45efd
-change-id: 20260729-nanopi-m6-improvements-584cc7b08c15
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi
+index 22b0cdee22b4..8c36268e9876 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi
+@@ -79,8 +79,8 @@ vcc_3v3_sd_s0: regulator-vcc-3v3-sd-s0 {
+ 		pinctrl-0 = <&sd_s0_pwr>;
+ 		regulator-name = "vcc_3v3_sd_s0";
+ 		regulator-boot-on;
+-		regulator-max-microvolt = <3000000>;
+-		regulator-min-microvolt = <3000000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-min-microvolt = <3300000>;
+ 		vin-supply = <&vcc_3v3_s3>;
+ 	};
+ 
 
-Best regards,
---  
-Joachim Eastwood <joachim.eastwood@gmail.com>
+-- 
+2.56.0
 
