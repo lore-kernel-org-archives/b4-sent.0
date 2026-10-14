@@ -1,78 +1,68 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Wed, 14 Oct 2026 16:30:03 +0900
-Subject: [PATCH v2 7/7] nfsd: do not fence a client for a layout recall
- with no layouts left
+From: =?utf-8?q?Santiago_Mill=C3=A1n?= <santimillang@gmail.com>
+Date: Wed, 14 Oct 2026 12:56:02 +0200
+Subject: [PATCH] drm/tests: bridge: Document struct fmt_tuple members
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-nfsd-layout-recall-v2-7-764462bddfd1@samsung.com>
-References: <20261014-nfsd-layout-recall-v2-0-764462bddfd1@samsung.com>
-In-Reply-To: <20261014-nfsd-layout-recall-v2-0-764462bddfd1@samsung.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: Christoph Hellwig <hch@lst.de>, 
- Benjamin Coddington <bcodding@redhat.com>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791962996; l=1852;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=fJWkfHrjhyvPcMpES15/0yb8WW8jmYTA1ewdCgCzzTI=;
- b=EVCcY+Aufz3R/M09NJGKhiZcGv6CotWf/kaFW46PiG4BakFaPacdpRYdum2FJdh9A14R0qJyz
- dKdaYrYzOskCKt7jHZ5WfkjtU04aqlQ/rJjjL3RqHNI5w0wEUsOzCaf
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261014-drm-bridge-test-kdoc-v1-1-883f7ec8bcfa@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMFfz2oC/yXMQQrCMBCF4auUWTuQ1BDFq4iLJhl1FFOZSaVQc
+ vemdvnxeP8CSsKkcOkWEPqx8pgb7KGD+Bzyg5BTM/Sm99ZYh0k+GIRTWwppwXcaIw7Ok7PnY/A
+ nA+36Fbrz/M9eb7t1Ci+KZWtBrStnu/fJeAAAAA==
+X-Change-ID: 20261014-drm-bridge-test-kdoc-a46e4183b670
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Daniel Stone <daniel@fooishbar.org>, 
+ Nicolas Frattaroli <nicolas.frattaroli@collabora.com>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ kernel test robot <lkp@intel.com>, 
+ =?utf-8?q?Santiago_Mill=C3=A1n?= <santimillang@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791975361; l=1388;
+ i=santimillang@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=xBhEKNdRFSh2ZCArxhg9+cTIQT8Sm2LYQdWKl1M7dMc=;
+ b=bx87YpYiKOgpkhPmHQ9IzqIXl65n38C8Pfnm9Nzvn7+bHii9hlVO9J3QPzSJhyfc/m0WqYEzQ
+ 2dlbosQr900DKESl5AVhAnFVjMKzm6LmYjk3x2aSaY5g26FNR3UUz9E
+X-Developer-Key: i=santimillang@gmail.com; a=ed25519;
+ pk=53GrtI4i/ZCeWuXdQe6gXlcTQdbMxKlYzTUEI0heuV0=
+X-Endpoint-Received: by B4 Relay for santimillang@gmail.com/20261014 with auth_id=1175
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nfsd4_cb_layout_done() fences the client for any answer to a
-CB_LAYOUTRECALL that it does not handle, without looking at whether the
-layout stateid still has layouts. A LAYOUTRETURN can return the last
-layout while the recall is still out. The Linux client answers
-NFS4ERR_NOMATCHING_LAYOUT then, which RFC 8881 section 20.3.3 allows
-for a client that holds no layouts for the file. A client that answers
-NFS4ERR_BAD_STATEID is right too, since section 12.5.3 makes a layout
-stateid invalid once the client has no layouts for the file, but it is
-fenced for nothing.
+The kernel-doc comment for struct fmt_tuple does not describe its
+in_fmt and out_fmt members, so W=1 builds warn:
 
-Check for layouts before fencing, as the polls already do before their
-time limit, and end the recall when none are left. This does not depend
-on the earlier patches in this series.
+  struct member 'in_fmt' not described in 'fmt_tuple'
+  struct member 'out_fmt' not described in 'fmt_tuple'
 
-A pynfs client that returns its layout on the recall and then answers
-it NFS4ERR_BAD_STATEID: without this patch, nfsd logged "failed to
-respond to layout recall" and ran the fence for it; with it, the recall
-ended without either.
+Add descriptions for both members.
 
-Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Fixes: 082fbc179c01 ("drm/tests: bridge: Add KUnit tests for bridge chain format selection")
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202606120201.5E4O2N7N-lkp@intel.com/
+Signed-off-by: Santiago Millán <santimillang@gmail.com>
 ---
- fs/nfsd/nfs4layouts.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ drivers/gpu/drm/tests/drm_bridge_test.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index f54515e7f6..e7a4eae51e 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -931,6 +931,15 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 		}
- 		fallthrough;
- 	default:
-+		/*
-+		 * Nothing to fence for once the layouts are gone: a
-+		 * LAYOUTRETURN can return the last one while the recall is
-+		 * still out.
-+		 */
-+		if (list_empty(&ls->ls_layouts)) {
-+			trace_nfsd_layout_recall_done(&ls->ls_stid.sc_stateid);
-+			return 1;
-+		}
- 		/*
- 		 * Unknown error or non-responding client, we'll need to fence.
- 		 */
+diff --git a/drivers/gpu/drm/tests/drm_bridge_test.c b/drivers/gpu/drm/tests/drm_bridge_test.c
+index 15583ade8494..b79d7b8b2d32 100644
+--- a/drivers/gpu/drm/tests/drm_bridge_test.c
++++ b/drivers/gpu/drm/tests/drm_bridge_test.c
+@@ -123,6 +123,8 @@ static const struct drm_bridge_funcs drm_test_bridge_bus_fmts_funcs = {
+ 
+ /**
+  * struct fmt_tuple - a tuple of input/output MEDIA_BUS_FMT_*
++ * @in_fmt: input bus format accepted by the bridge
++ * @out_fmt: output bus format the bridge can produce from @in_fmt
+  */
+ struct fmt_tuple {
+ 	u32 in_fmt;
 
--- 
-2.43.0
+---
+base-commit: dfc3c7b84d43e7de918686e5cd7dd49196a5f45e
+change-id: 20261014-drm-bridge-test-kdoc-a46e4183b670
+
+Best regards,
+--  
+Santiago Millán <santimillang@gmail.com>
 
