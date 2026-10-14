@@ -1,655 +1,139 @@
-From: Jack Wu <jackbb_wu@compal.com>
-Date: Wed, 14 Oct 2026 10:51:04 +0800
-Subject: [PATCH v10 6/6] net: wwan: t9xx: Add AT & MBIM WWAN ports
+From: Daejun Park <daejun7.park@samsung.com>
+Subject: [PATCH v2 0/2] xfs: refuse pNFS LAYOUTCOMMITs of ranges without
+ blocks
+Date: Wed, 14 Oct 2026 12:42:57 +0900
+Message-Id: <20261014-xfs-pnfs-commit-hole-v2-0-d3a02a79ab6c@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-t9xx_driver_v1-v10-6-4d0dde3613f5@compal.com>
-References: <20261014-t9xx_driver_v1-v10-0-4d0dde3613f5@compal.com>
-In-Reply-To: <20261014-t9xx_driver_v1-v10-0-4d0dde3613f5@compal.com>
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Sergey Ryazanov <ryazanov.s.a@gmail.com>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Jack Wu <jackbb_wu@compal.com>, Wen-Zhi Huang <wen-zhi.huang@mediatek.com>, 
- Shi-Wei Yeh <shi-wei.yeh@mediatek.com>, 
- Minano Tseng <Minano.tseng@mediatek.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, Robert Yu <robert_yu@compal.com>, 
- Jeff Chang <Jeff_Chang@compal.com>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- linux-doc@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791946362; l=20338;
- i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=iFjOU2/J/1mAsdmICl2Gi7ns2wNolsb+ST9IgA6i4Pw=;
- b=ZVRh9WtKh+fYa4Qex0WVqWMJVF18Pu2DlM/sQEb/huK0RDOg6rE7JrF0G3Vzp4QtFfeegh2hI
- Eywamigu4YcAtbu2mRuSZMLUGsHAYgNi6J4QNmxPp+zaDqx7yose2FB
-X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
- pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
-X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
+X-B4-Tracking: v=1; b=H4sIAEH6zmoC/22NQQ6CQAxFr0K6tmZajIgr72FYjDBAE5khUyQYw
+ t0dSdy5afJ+/n9dQV0Up3DNVohuFpXgE/Ahg7q3vnMoTWJgw2cyxLi0iqNPpw7DIBP24emwzo1
+ 1peVL0eaQpmN0rSy79l4l7kWnEN/7l5m+6U+Y/xfOhITFyZTEzaMkwze1g758d0wtqLZt+wCbc
+ jrRugAAAA==
+To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
+ Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
+ Andrey Albershteyn <aalbersh@kernel.org>, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791949377; l=5569;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=LHzFOmq/a+lyPtSBjNoJEO3MjrbmhrHhyDkpiPxXg7g=;
+ b=XoR+j2rGgjPTJF4tYYjhWR9C16Nr/Wxic59Lt1AhbYan1sa81jBgNUtwC6ySyHQbR0bfFFpZ1
+ w/vkPNtccwDAIeFP6FGKaMkzHq4C+NRDPGiJ+zWXQS4QKe5ZQHEL7pn
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add AT & MBIM ports to the port infrastructure.
+xfs_fs_commit_blocks() converts whatever range a pNFS client commits.
+For a range without blocks, the conversion allocates blocks that the
+transaction did not reserve and shuts XFS down, or maps blocks that
+nobody wrote into the file. Patch 1 refuses such a commit with a new
+XFS_BMAPI_CONVERT_ONLY flag for xfs_bmapi_write(). Patch 2 clamps the
+committed length before adding it to the offset, as the sum can wrap.
 
-mtk_port_wwan_init() only prepares the port object; wwan_create_port()
-is called from mtk_port_wwan_enable(). enable() runs on FSM_STATE_READY
-through the new mtk_port_enable_by_type(PORT_TBL_MD) hook, which enables
-every MD-table port the device marked enabled, internal ports included.
-CCCI_UART2 and CCCI_MBIM get CLDMA1 TXQ(5)/RXQ(5) and TXQ(2)/RXQ(2) in
-mtk_queue_info[].
+Changes in v2:
+- Refuse the hole in xfs_bmapi_write() with a new
+  XFS_BMAPI_CONVERT_ONLY flag, as Christoph suggested, instead of
+  checking all the ranges first. A range before the hole is now
+  converted before the commit fails; v1 converted nothing.
+- Drop the blockgc case from the message: with "xfs: mark the inode
+  preallocated for pNFS write layouts past EOF" [1], blockgc keeps
+  those blocks.
+- Split the length clamp into patch 2. It fixes a separate bug.
+- Link to v1: https://lore.kernel.org/r/20261013-xfs-pnfs-commit-hole-v1-1-740912db9102@samsung.com
 
-The implemented WWAN port operations are start, stop, tx and
-tx_blocking. The tx path copies with skb_copy_bits(), handling the
-non-linear skb the WWAN core supplies for writes larger than one
-fragment. One write() is capped at MTK_PORT_MAX_TX_PKT CCCI packets
-(SKB_LIST_MAX_LEN, the HIF queue depth) and anything larger is rejected
-with -EMSGSIZE: every packet after the first is submitted with
-force_send, which bypasses the depth check, so without a cap a single
-write could queue an unbounded number of skbs. The same cap bounds the
-second copy of the message the tx path holds and the number of times
-skb_copy_bits() re-walks the source fragment chain.
+XFS_BMAPI_CONVERT_ONLY takes bit 12 of the bmapi flags, which "xfs: add
+XFS_BMAPI_UNWRITTEN to unmap unwritten extents in __xfs_bunmapi()" in
+the fs-verity series [2] also uses. Whichever goes in second needs to
+move to bit 13. The name was used before, by a flag that commit
+26b91c728b2d ("xfs: make COW fork unwritten extent conversions more
+robust") removed. That flag only skipped the allocation and went on to
+map the hole; this one stops before it.
 
-start() publishes the wwan_port under w_priv.w_lock together with
-PORT_S_OPEN, so the receive path can never see an open port with a NULL
-wwan_port and drop the reply to a command that open made possible.
+This series and v2 of "xfs: make pNFS LAYOUTCOMMIT stable the way
+fdatasync does", sent at the same time, both change
+xfs_fs_commit_blocks(). They apply in either order.
 
-TX back-pressure is reported through wwan_port_txon()/txoff() rather
-than a .tx_poll operation: a queue-full submit failure pauses the port
-and a per-port tx_complete hook resumes it from TRB completion, so
-poll() sleeps on the WWAN core's own waitqueue - whose lifetime is
-pinned by the open file - instead of a driver waitqueue that
-wwan_remove_port() can outlive. The pause path drops w_lock before
-querying the HIF for queue occupancy, because HIF teardown holds
-trans->submit_lock while the TRB completions it flushes call back into
-the port under w_lock.
+Tested on nfsd-testing d918c664efd5 with the same two patches on top,
+in QEMU guests with KASAN and lockdep. The block layout was on an
+NVMe/TCP namespace exported by nvmet. The client was pynfs, except for
+fstests, which ran on the Linux NFSv4.2 client. XFS for-next also has
+commit e3c682dd1130 ("xfs: map pNFS layouts to the end of the extent
+again"), which nfsd-testing does not have. xfs_bmapi_write(),
+xfs_iomap_write_unwritten(), xfs_fs_commit_blocks() and
+xfs_dio_write_end_io() are the same in both trees, and so is the
+changed line in xfs_end_ioend_write().
 
-Signed-off-by: Jack Wu <jackbb_wu@compal.com>
+ - A LAYOUTCOMMIT of a 64 KiB hole: NFS4ERR_IO and shutdown without the
+   series. With it, NFS4ERR_IO, no shutdown and nothing allocated, in 5
+   runs.
+ - A LAYOUTCOMMIT of a 4 KiB hole: NFS4_OK and a written block in the
+   file without the series. With it, NFS4ERR_IO and nothing allocated.
+ - The laid-out range and the 64 KiB hole in one LAYOUTCOMMIT: shutdown
+   without the series. With it, NFS4ERR_IO, and fiemap on the server
+   shows the laid-out range written and nothing allocated in the hole.
+ - An extent at 4 KiB with a length of 2^64 - 4 KiB: NFS4ERR_IO and
+   "nfsd: non-standard errno: -63" without the series, and with
+   XFS_DEBUG "Assertion failed: bma.nallocs >= *nmap" in
+   xfs_bmapi_write(). With patch 1 alone, the same nfsd warning. With
+   both, NFS4ERR_IO and no warning, also with XFS_DEBUG.
+ - Blocks past EOF freed by blockgc under a layout, without [1]: the
+   LAYOUTCOMMIT after the client's write shut XFS down without the
+   series and got NFS4ERR_IO with it.
+ - pynfs block and blockextent, also with XFS_DEBUG: same as without
+   the series (BLOCK3 fails either way, on a bug in the test).
+ - fstests generic/075, 091 and 263 over the block layout: 075 fails
+   with an fsx size error with and without the series, and XFS refused
+   none of the 10384 LAYOUTCOMMITs with it.
+ - O_DIRECT and buffered writes into preallocated space on the
+   server's own XFS, the other callers of xfs_iomap_write_unwritten():
+   converted as before, on the XFS_DEBUG kernel.
+ - fstests -g quick on a local XFS (mkfs.xfs defaults from xfsprogs
+   6.6.0, 10 GiB TEST and SCRATCH devices, KASAN and lockdep off),
+   with and without the series: 1017 tests ran, and the same 5 failed
+   either way (generic/453, 454, 563, 794 and xfs/261). Also the same
+   with both series applied.
+ - W=1 builds of the changed files after each patch, on XFS for-next
+   0be6da616ab5 and on nfsd-testing: no warnings.
+
+No test reaches the delalloc case of the new flag. It takes the same
+branch as a hole.
+
+For stable, patch 2 applies to every LTS tree, but should not go in
+without patch 1: on its own, the clamped extent reaches the hole and
+shuts XFS down, as a LAYOUTCOMMIT of a hole already does there. Patch 1
+needs a backport for 7.2 and older, which do not have
+fs/xfs/xfs_ioend.c.
+
+xfs_pnfs_validate_isize() reads the extents under XFS_ILOCK_SHARED,
+which xfs_iread_extents() does not allow when they are not loaded yet.
+That needs a separate fix.
+
+[1] https://lore.kernel.org/r/20261012-xfs-pnfs-eof-prealloc-v1-1-e4864d917a00@samsung.com
+[2] https://lore.kernel.org/r/20261002223705.2175542-14-aalbersh@kernel.org
+
 ---
- drivers/net/wwan/t9xx/mtk_ctrl_plane.h      |   4 +
- drivers/net/wwan/t9xx/mtk_port.c            |  37 +++
- drivers/net/wwan/t9xx/mtk_port.h            |   9 +
- drivers/net/wwan/t9xx/mtk_port_io.c         | 385 ++++++++++++++++++++++++++++
- drivers/net/wwan/t9xx/mtk_port_io.h         |   1 +
- drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c |   8 +
- 6 files changed, 444 insertions(+)
+Daejun Park (2):
+      xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks
+      xfs: clamp a pNFS LAYOUTCOMMIT extent before computing its end
 
-diff --git a/drivers/net/wwan/t9xx/mtk_ctrl_plane.h b/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
-index e2f9f8da19bc..0348872a2745 100644
---- a/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
-+++ b/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
-@@ -22,6 +22,10 @@ enum mtk_ccci_ch {
- 	/* to MD */
- 	CCCI_CONTROL_RX = 0x2000,
- 	CCCI_CONTROL_TX = 0x2001,
-+	CCCI_UART2_RX = 0x200A,
-+	CCCI_UART2_TX = 0x200C,
-+	CCCI_MBIM_RX = 0x20D0,
-+	CCCI_MBIM_TX = 0x20D1,
- };
- 
- enum mtk_trb_cmd_type {
-diff --git a/drivers/net/wwan/t9xx/mtk_port.c b/drivers/net/wwan/t9xx/mtk_port.c
-index 7768a4e0963f..2df2086f49ff 100644
---- a/drivers/net/wwan/t9xx/mtk_port.c
-+++ b/drivers/net/wwan/t9xx/mtk_port.c
-@@ -310,6 +310,13 @@ static int mtk_port_tx_complete(struct sk_buff *skb)
- 			 "Failed to send data: status:%d, port:%s\n",
- 			 trb->status, port->info.name);
- 
-+	/* The hook may sleep, but it also runs from HIF teardown with
-+	 * trans->submit_lock held, so it must not take a lock that is ever
-+	 * held across a call into the HIF.
-+	 */
-+	if (mtk_port_get_ops(port->info.type)->tx_complete)
-+		mtk_port_get_ops(port->info.type)->tx_complete(port);
-+
- 	/* Pairs with the smp_load_acquire() of trb->done in the waiters. */
- 	smp_store_release(&trb->done, true);
- 	wake_up_all(&port->trb_wq);
-@@ -722,6 +729,29 @@ int mtk_port_ch_disable(struct mtk_port *port)
- 	return ret;
- }
- 
-+static int mtk_port_enable_by_type(struct mtk_port_mngr *port_mngr, int tbl_type)
-+{
-+	struct mtk_port **ports;
-+	int ret, idx;
-+
-+	if (tbl_type < 0 || tbl_type >= PORT_TBL_MAX)
-+		return -EINVAL;
-+
-+	ports = kcalloc(port_mngr->port_cnt, sizeof(struct mtk_port *), GFP_KERNEL);
-+	if (!ports)
-+		return -ENOMEM;
-+
-+	ret = radix_tree_gang_lookup(&port_mngr->port_tbl[tbl_type],
-+				     (void **)ports, 0, port_mngr->port_cnt);
-+	for (idx = 0; idx < ret; idx++) {
-+		if (ports[idx]->enable)
-+			mtk_port_get_ops(ports[idx]->info.type)->enable(ports[idx]);
-+	}
-+
-+	kfree(ports);
-+	return 0;
-+}
-+
- static void mtk_port_disable(struct mtk_port_mngr *port_mngr)
- {
- 	struct radix_tree_iter iter;
-@@ -743,6 +773,7 @@ static void mtk_port_disable(struct mtk_port_mngr *port_mngr)
- void mtk_port_mngr_fsm_state_handler(struct mtk_fsm_param *fsm_param, void *arg)
- {
- 	struct mtk_port_mngr *port_mngr;
-+	int ret;
- 
- 	if (!fsm_param || !arg)
- 		return;
-@@ -753,6 +784,12 @@ void mtk_port_mngr_fsm_state_handler(struct mtk_fsm_param *fsm_param, void *arg)
- 	case FSM_STATE_OFF:
- 		mtk_port_disable(port_mngr);
- 		break;
-+	case FSM_STATE_READY:
-+		ret = mtk_port_enable_by_type(port_mngr, PORT_TBL_MD);
-+		if (ret)
-+			dev_err(port_mngr->ctrl_blk->mdev->dev,
-+				"Failed to enable MD ports: %d\n", ret);
-+		break;
- 	default:
- 		break;
- 	}
-diff --git a/drivers/net/wwan/t9xx/mtk_port.h b/drivers/net/wwan/t9xx/mtk_port.h
-index debbe523f012..a9acf2002f3a 100644
---- a/drivers/net/wwan/t9xx/mtk_port.h
-+++ b/drivers/net/wwan/t9xx/mtk_port.h
-@@ -55,6 +55,7 @@ enum mtk_port_tbl {
- 
- enum mtk_port_type {
- 	PORT_TYPE_INTERNAL,
-+	PORT_TYPE_WWAN,
- 	PORT_TYPE_MAX
- };
- 
-@@ -63,6 +64,13 @@ struct mtk_internal_port {
- 	int (*recv_cb)(void *arg, struct sk_buff *skb);
- };
- 
-+struct mtk_wwan_port {
-+	/* w_lock protects wwan_port when recv data and disable port at the same time */
-+	struct mutex w_lock;
-+	int w_type;
-+	void *w_port;
-+};
-+
- struct mtk_port_cfg {
- 	enum mtk_ccci_ch tx_ch;
- 	enum mtk_ccci_ch rx_ch;
-@@ -90,6 +98,7 @@ struct mtk_port {
- 	wait_queue_head_t rx_wq;
- 	struct mtk_port_mngr *port_mngr;
- 	struct mtk_internal_port i_priv;
-+	struct mtk_wwan_port w_priv;
- };
- 
- struct mtk_port_mngr {
-diff --git a/drivers/net/wwan/t9xx/mtk_port_io.c b/drivers/net/wwan/t9xx/mtk_port_io.c
-index 1d6540853b04..90976a246fb3 100644
---- a/drivers/net/wwan/t9xx/mtk_port_io.c
-+++ b/drivers/net/wwan/t9xx/mtk_port_io.c
-@@ -3,8 +3,13 @@
-  * Copyright (c) 2022, MediaTek Inc.
-  */
- #include <linux/netdevice.h>
-+#include <linux/poll.h>
-+#include <linux/slab.h>
-+#include <linux/wait.h>
-+#include <linux/wwan.h>
- 
- #include "mtk_port_io.h"
-+#include "mtk_trans_ctrl.h"
- 
- static void mtk_port_put_locked(struct mtk_port *port)
- {
-@@ -23,6 +28,87 @@ static void mtk_port_struct_init(struct mtk_port *port)
- 	init_waitqueue_head(&port->rx_wq);
- }
- 
-+/* Packets after the first carry force_send, which bypasses the HIF depth
-+ * check, so one write() must not exceed one queue depth.
-+ */
-+#define MTK_PORT_MAX_TX_PKT	SKB_LIST_MAX_LEN
-+
-+/* Every packet is built before any is submitted: the WWAN core turns a
-+ * partial write into a whole-write failure and userspace re-sends the whole
-+ * message, so a submit that fails midway leaves a prefix on the wire.  It
-+ * cannot be retried here - the skb is freed with its trb - so it is logged.
-+ *
-+ * -EINTR means the skb was already submitted, so that packet counts as
-+ * accepted and the remaining ones are still sent.
-+ */
-+static int mtk_port_common_write(struct mtk_port *port, struct sk_buff *src, bool blocking)
-+{
-+	u32 packet_size, left_cnt = src->len, cur_pos;
-+	u32 payload_mtu, sent_len = 0;
-+	struct sk_buff_head list;
-+	bool force_send = blocking;
-+	struct sk_buff *skb;
-+	int ret;
-+
-+	ret = mtk_port_status_check(port);
-+	if (ret)
-+		return ret;
-+
-+	payload_mtu = port->tx_mtu - sizeof(struct mtk_ccci_header);
-+	if (src->len > MTK_PORT_MAX_TX_PKT * payload_mtu)
-+		return -EMSGSIZE;
-+
-+	__skb_queue_head_init(&list);
-+
-+	while (left_cnt) {
-+		skb = __dev_alloc_skb(port->tx_mtu, GFP_KERNEL);
-+		if (!skb) {
-+			ret = -ENOMEM;
-+			goto err_purge;
-+		}
-+
-+		skb_reserve(skb, sizeof(struct mtk_ccci_header));
-+
-+		packet_size = min_t(u32, left_cnt, payload_mtu);
-+		cur_pos = src->len - left_cnt;
-+		ret = skb_copy_bits(src, cur_pos, skb_put(skb, packet_size), packet_size);
-+		if (ret) {
-+			dev_err(port->port_mngr->ctrl_blk->mdev->dev,
-+				"Failed to copy data for port(%s)\n", port->info.name);
-+			dev_kfree_skb_any(skb);
-+			goto err_purge;
-+		}
-+
-+		__skb_queue_tail(&list, skb);
-+		left_cnt -= packet_size;
-+	}
-+
-+	while ((skb = __skb_dequeue(&list))) {
-+		/* mtk_port_send_data() may free the skb, so sample its length
-+		 * while it is still valid.
-+		 */
-+		packet_size = skb->len;
-+
-+		ret = mtk_port_send_data(port, skb, blocking, force_send);
-+		if (ret < 0 && ret != -EINTR)
-+			goto err_submit;
-+
-+		sent_len += packet_size;
-+		force_send = true;
-+	}
-+
-+	return 0;
-+
-+err_submit:
-+	if (sent_len)
-+		dev_err_ratelimited(port->port_mngr->ctrl_blk->mdev->dev,
-+				    "Partial write on port(%s): %u of %u bytes sent, error:%d\n",
-+				    port->info.name, sent_len, src->len, ret);
-+err_purge:
-+	__skb_queue_purge(&list);
-+	return ret;
-+}
-+
- static int mtk_port_internal_init(struct mtk_port *port)
- {
- 	mtk_port_struct_init(port);
-@@ -220,8 +306,307 @@ static const struct mtk_port_ops port_internal_ops = {
- 	.recv = mtk_port_internal_recv,
- };
- 
-+static void mtk_port_get_locked(struct mtk_port *port)
-+{
-+	mutex_lock(&mtk_port_mngr_grp_mtx);
-+	kref_get(&port->kref);
-+	mutex_unlock(&mtk_port_mngr_grp_mtx);
-+}
-+
-+static int mtk_port_wwan_open(struct wwan_port *w_port)
-+{
-+	struct mtk_port *port;
-+	int ret;
-+
-+	port = wwan_port_get_drvdata(w_port);
-+	mtk_port_get_locked(port);
-+
-+	/* mtk_port_common_open() is what sets PORT_S_OPEN, and the RX path
-+	 * tests it together with w_port, so both are published under w_lock.
-+	 */
-+	mutex_lock(&port->w_priv.w_lock);
-+	ret = mtk_port_common_open(port);
-+	if (!ret)
-+		port->w_priv.w_port = w_port;
-+	mutex_unlock(&port->w_priv.w_lock);
-+	if (ret) {
-+		mtk_port_put_locked(port);
-+		return ret;
-+	}
-+
-+	/* WWAN_PORT_TX_OFF persists on the wwan_port across close/open
-+	 * cycles; start every session writable.
-+	 */
-+	wwan_port_txon(w_port);
-+
-+	return 0;
-+}
-+
-+static void mtk_port_wwan_close(struct wwan_port *w_port)
-+{
-+	struct mtk_port *port = wwan_port_get_drvdata(w_port);
-+
-+	/* Clear PORT_S_OPEN under the same lock mtk_port_wwan_recv() holds, so
-+	 * a receive that saw the port open has finished its wwan_port_rx()
-+	 * before stop() returns and the core purges its rx queue.
-+	 */
-+	mutex_lock(&port->w_priv.w_lock);
-+	mtk_port_common_close(port);
-+	mutex_unlock(&port->w_priv.w_lock);
-+
-+	mtk_port_put_locked(port);
-+}
-+
-+/* Pause TX after a queue-full submit failure.  The queue may have drained
-+ * between that failure and the txoff below, and that tx_complete is lost, so
-+ * recheck and undo the txoff if the queue is no longer full.
-+ *
-+ * w_lock is dropped for the recheck to keep it a leaf with respect to
-+ * trans->submit_lock.  A tx_complete landing in the gap can only add a txon,
-+ * so TX is never left off with nothing to wake it.
-+ */
-+static void mtk_port_wwan_tx_pause(struct mtk_port *port)
-+{
-+	union ctrl_hif_cmd_data hif_cmd;
-+	struct mtk_ctrl_blk *ctrl_blk;
-+	int ret;
-+
-+	ctrl_blk = port->port_mngr->ctrl_blk;
-+
-+	mutex_lock(&port->w_priv.w_lock);
-+	if (!port->w_priv.w_port) {
-+		mutex_unlock(&port->w_priv.w_lock);
-+		return;
-+	}
-+
-+	wwan_port_txoff(port->w_priv.w_port);
-+	mutex_unlock(&port->w_priv.w_lock);
-+
-+	hif_cmd.rx_ch = port->info.rx_ch;
-+	ret = mtk_pcie_hif_cmd_func(ctrl_blk->mdev, HIF_CTRL_CMD_CHECK_TX_FULL,
-+				    &hif_cmd);
-+	if (ret > 0)
-+		return;
-+
-+	mutex_lock(&port->w_priv.w_lock);
-+	if (port->w_priv.w_port)
-+		wwan_port_txon(port->w_priv.w_port);
-+	mutex_unlock(&port->w_priv.w_lock);
-+}
-+
-+/* w_lock closes the txoff-after-drain window described in
-+ * mtk_port_wwan_tx_pause().
-+ */
-+static void mtk_port_wwan_tx_complete(struct mtk_port *port)
-+{
-+	mutex_lock(&port->w_priv.w_lock);
-+	if (port->w_priv.w_port)
-+		wwan_port_txon(port->w_priv.w_port);
-+	mutex_unlock(&port->w_priv.w_lock);
-+}
-+
-+static int mtk_port_wwan_tx(struct wwan_port *w_port, struct sk_buff *skb, bool blocking)
-+{
-+	struct mtk_port *port = wwan_port_get_drvdata(w_port);
-+	int ret;
-+
-+	if (unlikely(!skb->len)) {
-+		consume_skb(skb);
-+		return 0;
-+	}
-+
-+	ret = mtk_port_common_write(port, skb, blocking);
-+	if (ret < 0) {
-+		if (ret == -EAGAIN)
-+			mtk_port_wwan_tx_pause(port);
-+		return ret;
-+	}
-+
-+	consume_skb(skb);
-+	return 0;
-+}
-+
-+static int mtk_port_wwan_write(struct wwan_port *w_port, struct sk_buff *skb)
-+{
-+	return mtk_port_wwan_tx(w_port, skb, false);
-+}
-+
-+static int mtk_port_wwan_write_blocking(struct wwan_port *w_port, struct sk_buff *skb)
-+{
-+	return mtk_port_wwan_tx(w_port, skb, true);
-+}
-+
-+/* No .tx_poll: it would poll_wait() on port->trb_wq, which lives in a
-+ * mtk_port that wwan_remove_port() lets go of while the file stays open,
-+ * and wake_up_pollfree() is not available to modules.  TX back-pressure
-+ * reaches poll() through wwan_port_txon()/txoff() on the core's own
-+ * waitqueue instead, whose lifetime is pinned by the open file.
-+ */
-+static const struct wwan_port_ops wwan_ops = {
-+	.start = mtk_port_wwan_open,
-+	.stop = mtk_port_wwan_close,
-+	.tx = mtk_port_wwan_write,
-+	.tx_blocking = mtk_port_wwan_write_blocking,
-+};
-+
-+static int mtk_port_wwan_init(struct mtk_port *port)
-+{
-+	mtk_port_struct_init(port);
-+	port->enable = false;
-+
-+	mutex_init(&port->w_priv.w_lock);
-+
-+	switch (port->info.rx_ch) {
-+	case CCCI_MBIM_RX:
-+		port->w_priv.w_type = WWAN_PORT_MBIM;
-+		break;
-+	case CCCI_UART2_RX:
-+		port->w_priv.w_type = WWAN_PORT_AT;
-+		break;
-+	default:
-+		port->w_priv.w_type = WWAN_PORT_UNKNOWN;
-+		break;
-+	}
-+
-+	return 0;
-+}
-+
-+static void mtk_port_wwan_exit(struct mtk_port *port)
-+{
-+	if (test_bit(PORT_S_ENABLE, &port->status))
-+		mtk_port_get_ops(port->info.type)->disable(port);
-+}
-+
-+static void mtk_port_wwan_enable(struct mtk_port *port)
-+{
-+	struct mtk_port_mngr *port_mngr;
-+	struct wwan_port_caps caps;
-+	struct wwan_port *wp;
-+	int ret;
-+
-+	port_mngr = port->port_mngr;
-+
-+	if (test_bit(PORT_S_ENABLE, &port->status))
-+		return;
-+
-+	ret = mtk_port_ch_enable(port);
-+	if (ret && ret != -EBUSY) {
-+		/* On -ETIMEDOUT the enable's outcome is not yet known: the
-+		 * ENABLE trb may still be queued.  The DISABLE is queued
-+		 * behind it, so the channel cannot stay armed unowned.
-+		 */
-+		mtk_port_ch_disable(port);
-+		return;
-+	}
-+
-+	/* A zero frag_len would make wwan_port_fops_write() loop forever. */
-+	if (!port->tx_mtu) {
-+		dev_err(port_mngr->ctrl_blk->mdev->dev,
-+			"Invalid tx_mtu for port(%s)\n", port->info.name);
-+		mtk_port_ch_disable(port);
-+		return;
-+	}
-+
-+	/* The core allocates frag_len + headroom_len and skb_put()s frag_len,
-+	 * so frag_len is the payload budget: subtract the CCCI header to make
-+	 * one core fragment exactly one CCCI packet.
-+	 */
-+	caps.frag_len = port->tx_mtu - sizeof(struct mtk_ccci_header);
-+	caps.headroom_len = sizeof(struct mtk_ccci_header);
-+
-+	/* These bits must be set before wwan_create_port(): the device node
-+	 * becomes openable inside it and mtk_port_common_open() rejects a
-+	 * port without PORT_S_ENABLE.
-+	 */
-+	set_bit(PORT_S_WR, &port->status);
-+	set_bit(PORT_S_ENABLE, &port->status);
-+
-+	wp = wwan_create_port(port_mngr->ctrl_blk->mdev->dev,
-+			      port->w_priv.w_type,
-+			      &wwan_ops, &caps, port);
-+	if (IS_ERR(wp)) {
-+		dev_warn(port_mngr->ctrl_blk->mdev->dev,
-+			 "Failed to create wwan port for (%s)\n", port->info.name);
-+		clear_bit(PORT_S_ENABLE, &port->status);
-+		clear_bit(PORT_S_WR, &port->status);
-+		mtk_port_ch_disable(port);
-+		return;
-+	}
-+
-+	/* .start publishes w_port for an opened node; this covers the node
-+	 * nobody opened, which still needs w_port to be removed.
-+	 */
-+	mutex_lock(&port->w_priv.w_lock);
-+	port->w_priv.w_port = wp;
-+	mutex_unlock(&port->w_priv.w_lock);
-+}
-+
-+static void mtk_port_wwan_disable(struct mtk_port *port)
-+{
-+	struct wwan_port *w_port;
-+	int ret;
-+
-+	if (!test_and_clear_bit(PORT_S_ENABLE, &port->status))
-+		return;
-+
-+	/* PORT_S_WR is part of the blocking TX wait condition, and the waiter
-+	 * loops back on timeout, so without this wake it only notices at the
-+	 * next trb timeout rather than now.
-+	 */
-+	clear_bit(PORT_S_WR, &port->status);
-+	wake_up_all(&port->trb_wq);
-+
-+	/* w_lock must be dropped before wwan_remove_port(): that takes the
-+	 * core's ops_lock and forces stop(), which is close() taking w_lock.
-+	 */
-+	mutex_lock(&port->w_priv.w_lock);
-+	w_port = port->w_priv.w_port;
-+	port->w_priv.w_port = NULL;
-+	mutex_unlock(&port->w_priv.w_lock);
-+
-+	ret = mtk_port_ch_disable(port);
-+	if (ret)
-+		dev_warn(port->port_mngr->ctrl_blk->mdev->dev,
-+			 "Failed to disable channel for port(%s): %d\n",
-+			 port->info.name, ret);
-+
-+	wwan_remove_port(w_port);
-+}
-+
-+static int mtk_port_wwan_recv(struct mtk_port *port, struct sk_buff *skb)
-+{
-+	/* Drop frames when nobody has the device open: wwan_port_rx() queues
-+	 * without bound and only a reader drains the queue, so accepting
-+	 * unsolicited traffic here would grow the rxq indefinitely.  Both
-+	 * conditions are read under w_lock, which mtk_port_wwan_close() also
-+	 * takes, so a frame accepted here cannot land on a queue the core is
-+	 * about to purge.
-+	 */
-+	mutex_lock(&port->w_priv.w_lock);
-+	if (!test_bit(PORT_S_OPEN, &port->status) || !port->w_priv.w_port) {
-+		mutex_unlock(&port->w_priv.w_lock);
-+		dev_dbg_ratelimited(port->port_mngr->ctrl_blk->mdev->dev,
-+				    "Drop RX for unopened port(%s)\n", port->info.name);
-+		return -ENXIO;
-+	}
-+
-+	wwan_port_rx(port->w_priv.w_port, skb);
-+	mutex_unlock(&port->w_priv.w_lock);
-+	return 0;
-+}
-+
-+static const struct mtk_port_ops port_wwan_ops = {
-+	.init = mtk_port_wwan_init,
-+	.exit = mtk_port_wwan_exit,
-+	.enable = mtk_port_wwan_enable,
-+	.disable = mtk_port_wwan_disable,
-+	.recv = mtk_port_wwan_recv,
-+	.tx_complete = mtk_port_wwan_tx_complete,
-+};
-+
- static const struct mtk_port_ops *mtk_port_ops_tbl[PORT_TYPE_MAX] = {
- 	&port_internal_ops,
-+	&port_wwan_ops,
- };
- 
- const struct mtk_port_ops *mtk_port_get_ops(enum mtk_port_type type)
-diff --git a/drivers/net/wwan/t9xx/mtk_port_io.h b/drivers/net/wwan/t9xx/mtk_port_io.h
-index 6e453c56a487..5932053b2614 100644
---- a/drivers/net/wwan/t9xx/mtk_port_io.h
-+++ b/drivers/net/wwan/t9xx/mtk_port_io.h
-@@ -20,6 +20,7 @@ struct mtk_port_ops {
- 	void (*enable)(struct mtk_port *port);
- 	void (*disable)(struct mtk_port *port);
- 	int (*recv)(struct mtk_port *port, struct sk_buff *skb);
-+	void (*tx_complete)(struct mtk_port *port);
- };
- 
- const struct mtk_port_ops *mtk_port_get_ops(enum mtk_port_type type);
-diff --git a/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c
-index fbf3f35a3f19..dc7bbf231c8d 100644
---- a/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c
-+++ b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c
-@@ -29,6 +29,10 @@ static const int mtk_srv_cfg[NR_CLDMA][HW_QUE_NUM] = {
- 
- /* the number of RX GPDs should be at least two */
- static const struct queue_info mtk_queue_info[] = {
-+	{CCCI_UART2_TX, CCCI_UART2_RX, CLDMA1, TXQ(5), RXQ(5),
-+	 Q_MTU_3_5K, Q_MTU_3_5K, TX_GPD_NUM, RX_GPD_NUM, Q_FRAG_3_5K, Q_FRAG_3_5K, 0},
-+	{CCCI_MBIM_TX, CCCI_MBIM_RX, CLDMA1, TXQ(2), RXQ(2),
-+	 Q_MTU_3_5K, Q_MTU_3_5K, TX_GPD_NUM, RX_GPD_NUM, Q_FRAG_3_5K, Q_FRAG_3_5K, 0},
- 	{CCCI_CONTROL_TX, CCCI_CONTROL_RX, CLDMA1, TXQ(0), RXQ(0),
- 	 Q_MTU_3_5K, Q_MTU_3_5K, TX_GPD_NUM, RX_GPD_NUM, Q_FRAG_3_5K, Q_FRAG_3_5K, 0},
- 	{CCCI_SAP_CONTROL_TX, CCCI_SAP_CONTROL_RX, CLDMA0, TXQ(0), RXQ(0),
-@@ -36,6 +40,10 @@ static const struct queue_info mtk_queue_info[] = {
- };
- 
- static const struct mtk_port_cfg mtk_port_cfg_tbl[] = {
-+	{CCCI_UART2_TX, CCCI_UART2_RX, PORT_TYPE_WWAN, "AT",
-+		PORT_F_DFLT},
-+	{CCCI_MBIM_TX, CCCI_MBIM_RX, PORT_TYPE_WWAN, "MBIM",
-+		PORT_F_DFLT},
- 	{CCCI_CONTROL_TX, CCCI_CONTROL_RX, PORT_TYPE_INTERNAL, "MDCTRL",
- 		PORT_F_DFLT},
- 	{CCCI_SAP_CONTROL_TX, CCCI_SAP_CONTROL_RX, PORT_TYPE_INTERNAL, "SAPCTRL",
+ fs/xfs/libxfs/xfs_bmap.c | 14 ++++++++++++++
+ fs/xfs/libxfs/xfs_bmap.h | 10 +++++++++-
+ fs/xfs/xfs_file.c        |  2 +-
+ fs/xfs/xfs_ioend.c       |  2 +-
+ fs/xfs/xfs_iomap.c       |  7 ++++---
+ fs/xfs/xfs_iomap.h       |  3 ++-
+ fs/xfs/xfs_pnfs.c        | 13 +++++++++----
+ 7 files changed, 40 insertions(+), 11 deletions(-)
+---
+base-commit: 0be6da616ab5031ea6419dc4fe0bf0e378fb6757
+change-id: 20261012-xfs-pnfs-commit-hole-c30ae9a287f3
 
+Best regards,
 -- 
-2.34.1
+Daejun Park <daejun7.park@samsung.com>
 
