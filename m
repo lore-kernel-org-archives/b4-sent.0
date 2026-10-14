@@ -1,11 +1,10 @@
 From: Jack Wu <jackbb_wu@compal.com>
-Date: Wed, 14 Oct 2026 10:51:00 +0800
-Subject: [PATCH v10 2/6] net: wwan: t9xx: Add control plane transaction
- layer framework
+Date: Wed, 14 Oct 2026 10:51:01 +0800
+Subject: [PATCH v10 3/6] net: wwan: t9xx: Add control DMA interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-t9xx_driver_v1-v10-2-4d0dde3613f5@compal.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261014-t9xx_driver_v1-v10-3-4d0dde3613f5@compal.com>
 References: <20261014-t9xx_driver_v1-v10-0-4d0dde3613f5@compal.com>
 In-Reply-To: <20261014-t9xx_driver_v1-v10-0-4d0dde3613f5@compal.com>
 To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
@@ -26,185 +25,3387 @@ Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  linux-doc@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791946362; l=5009;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791946362; l=100196;
  i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=Lzrnn7C9a9Y9E/a8QXchnvLpm0gvt2cHKib9+c/G3dM=;
- b=ZkxvWXrNy9RHFPhO09nFO9Eeq/r66bg+SilozXTSbFiTj2uS9wd0ew4B1K0VPiZhBpOWlQxSa
- OY0JXQYU8glAeHWLlBsn71LRGeUhpU8TI1/ot2E/E6Pvw8NB+9lLNnC
+ bh=s6GrgyKcBizKwNmlptlM2/5Wt92TIleN5W3NzL2QqgI=;
+ b=PYHWhgIfMbcNe29Pk5ZjgUDjV0YxqGS3QSMUlKSynTodeK/vXjlXiLKUfifHnfFHv18+X92am
+ GKhGgFCu1krCPyf0T6uBxIvKNiO1yxwEgHTriCidysJshPOtNw4Cgna
 X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
  pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
 X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce the control plane and transaction layer framework
-for the T9XX WWAN driver. This patch adds the core data
-structures (mtk_ctrl_blk, mtk_ctrl_trans) and initialization
-entry points that subsequent patches build upon.
+Cross Layer Direct Memory Access(CLDMA) is the hardware
+interface used by the control plane and designated to
+translate data between the host and the device. It supports
+8 hardware queues for the device AP and modem respectively.
 
-The control plane block (ctrl_blk) serves as the central
-context for managing the transaction layer, port layer, and
-FSM interactions. The actual DMA engine and TX/RX service
-implementations are added in subsequent patches, and
-mtk_ctrl_init() and mtk_ctrl_exit() get their first callers
-there, in pcie/mtk_trans_ctrl.c.
+CLDMA driver uses General Purpose Descriptor (GPD) to
+describe transaction information that can be recognized by
+CLDMA hardware. Once CLDMA hardware transaction is started,
+it would fetch and parse GPD to transfer data correctly.
+To facilitate the CLDMA transaction, a GPD ring for each
+queue is used. Once the transaction is started, CLDMA
+hardware will traverse the GPD ring to transfer data between
+the host and the device until no GPD is available.
+
+CLDMA TX flow:
+Once a TX service receives the TX data from the port layer,
+it uses APIs exported by the CLDMA driver to configure GPD
+with the DMA address of TX data. After that, the service
+triggers CLDMA to fetch the first available GPD to transfer
+data.
+
+CLDMA RX flow:
+When there is RX data from the MD, CLDMA hardware asserts an
+interrupt to notify the host to fetch data and dispatch it
+to FSM (for handshake messages) or the port layer.
+After CLDMA opening is finished, All RX GPDs are fulfilled
+and ready to receive data from the device.
+
+With this commit, probe registers the transport plane: the
+queue info table for the AP and modem control channels is
+set up and the transaction context is attached to the
+control plane. Nothing is brought up yet - the FSM listener
+that calls mtk_pcie_hif_init(), and with it the CLDMA
+instances and the TRB service thread, arrives with the later
+"Add FSM thread" patch; the userspace-visible port
+interfaces arrive with "Add control port".
 
 Signed-off-by: Jack Wu <jackbb_wu@compal.com>
 ---
- drivers/net/wwan/t9xx/Makefile              |  1 +
- drivers/net/wwan/t9xx/mtk_ctrl_plane.c      | 46 +++++++++++++++++++++++++++++
- drivers/net/wwan/t9xx/mtk_ctrl_plane.h      | 21 +++++++++++++
- drivers/net/wwan/t9xx/mtk_dev.h             |  3 ++
- drivers/net/wwan/t9xx/pcie/mtk_pci.c        |  1 +
- drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h | 20 +++++++++++++
- 6 files changed, 92 insertions(+)
+ drivers/net/wwan/t9xx/Makefile              |    5 +-
+ drivers/net/wwan/t9xx/mtk_ctrl_plane.h      |   47 +
+ drivers/net/wwan/t9xx/pcie/mtk_cldma.c      | 1562 +++++++++++++++++++++++++++
+ drivers/net/wwan/t9xx/pcie/mtk_cldma.h      |  165 +++
+ drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.c  |  566 ++++++++++
+ drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.h  |  135 +++
+ drivers/net/wwan/t9xx/pcie/mtk_pci.c        |   41 +
+ drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h    |    1 +
+ drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c |  614 +++++++++++
+ drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h |   69 ++
+ 10 files changed, 3204 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/net/wwan/t9xx/Makefile b/drivers/net/wwan/t9xx/Makefile
-index bd6063c85c2b..0a07507f1ddf 100644
+index 0a07507f1ddf..74bef150e3a1 100644
 --- a/drivers/net/wwan/t9xx/Makefile
 +++ b/drivers/net/wwan/t9xx/Makefile
-@@ -6,4 +6,5 @@ ccflags-y += -I$(src)
- obj-$(CONFIG_MTK_T9XX) += mtk_t9xx.o
+@@ -7,4 +7,7 @@ obj-$(CONFIG_MTK_T9XX) += mtk_t9xx.o
  
  mtk_t9xx-y := \
-+	mtk_ctrl_plane.o \
- 	pcie/mtk_pci.o
-diff --git a/drivers/net/wwan/t9xx/mtk_ctrl_plane.c b/drivers/net/wwan/t9xx/mtk_ctrl_plane.c
+ 	mtk_ctrl_plane.o \
+-	pcie/mtk_pci.o
++	pcie/mtk_pci.o \
++	pcie/mtk_trans_ctrl.o \
++	pcie/mtk_cldma.o \
++	pcie/mtk_cldma_drv.o
+diff --git a/drivers/net/wwan/t9xx/mtk_ctrl_plane.h b/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
+index 46f1ab9f0551..9a8454806ecd 100644
+--- a/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
++++ b/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
+@@ -10,6 +10,53 @@
+ 
+ #include "mtk_dev.h"
+ 
++#define Q_MTU_3_5K	(0xE00)
++#define Q_FRAG_3_5K	(0xE00)
++
++enum mtk_ccci_ch {
++	/* to sAP */
++	CCCI_SAP_CONTROL_RX = 0x1000,
++	CCCI_SAP_CONTROL_TX = 0x1001,
++	/* to MD */
++	CCCI_CONTROL_RX = 0x2000,
++	CCCI_CONTROL_TX = 0x2001,
++};
++
++enum mtk_trb_cmd_type {
++	TRB_CMD_MIN,
++	TRB_CMD_ENABLE,
++	TRB_CMD_TX,
++	TRB_CMD_DISABLE,
++	TRB_CMD_STOP,
++	TRB_CMD_RECOVER,
++	TRB_CMD_MAX,
++};
++
++enum mtk_hif_dev_ctrl_cmd {
++	HIF_CTRL_CMD_CHECK_TX_FULL,
++};
++
++struct trb_open_priv {
++	u8 log_rg_offset;
++	u32 tx_mtu;
++	u32 rx_mtu;
++	u32 tx_frag_size;
++	u32 rx_frag_size;
++	int (*rx_done)(struct sk_buff *skb, void *priv, bool force_recv);
++};
++
++struct trb {
++	u32 channel_id;
++	enum mtk_trb_cmd_type cmd;
++	int status;
++	void *priv;
++	int (*trb_complete)(struct sk_buff *skb);
++};
++
++union ctrl_hif_cmd_data {
++	u32 rx_ch;
++};
++
+ struct mtk_ctrl_blk {
+ 	struct mtk_md_dev *mdev;
+ 	void *ctrl_hw_priv;
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_cldma.c b/drivers/net/wwan/t9xx/pcie/mtk_cldma.c
 new file mode 100644
-index 000000000000..81f6b3fbc0bd
+index 000000000000..2d17ba1ebdd6
 --- /dev/null
-+++ b/drivers/net/wwan/t9xx/mtk_ctrl_plane.c
-@@ -0,0 +1,46 @@
++++ b/drivers/net/wwan/t9xx/pcie/mtk_cldma.c
+@@ -0,0 +1,1562 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * Copyright (c) 2022, MediaTek Inc.
-+ * Copyright (c) 2022-2023, Intel Corporation.
 + */
 +
++#include <linux/delay.h>
 +#include <linux/device.h>
++#include <linux/dma-mapping.h>
++#include <linux/dmapool.h>
++#include <linux/err.h>
++#include <linux/interrupt.h>
++#include <linux/kdev_t.h>
++#include <linux/kernel.h>
++#include <linux/kthread.h>
++#include <linux/list.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/netdevice.h>
++#include <linux/sched.h>
++#include <linux/skbuff.h>
++#include <linux/slab.h>
++#include <linux/timer.h>
++#include <linux/wait.h>
++#include <linux/workqueue.h>
++#include "mtk_pci.h"
++#include "mtk_cldma.h"
++#include "mtk_cldma_drv.h"
++#include "mtk_dev.h"
 +
-+#include "mtk_ctrl_plane.h"
++#define DMA_POOL_NAME_LEN	(64)
++#define WAIT_HWO_ROUND		(10)
++#define WAIT_HWO_TIME		(5)
++#define NO_BUDGET		(0)
 +
-+/**
-+ * mtk_ctrl_init() - Initialize the control plane block.
-+ * @mdev: Pointer to the MTK modem device.
-+ *
-+ * Allocates and initializes the control plane block
-+ * associated with @mdev.  Runs once per bind; the allocation is
-+ * devres managed and is released at unbind, not by
-+ * mtk_ctrl_exit().
-+ *
-+ * Return: 0 on success, -ENOMEM on allocation failure.
-+ */
-+int mtk_ctrl_init(struct mtk_md_dev *mdev)
++static const int mtk_cldma_hw_id_tbl[NR_CLDMA] = {
++	[CLDMA0] = CLDMA0_HW_ID,
++	[CLDMA1] = CLDMA1_HW_ID,
++};
++
++static void mtk_cldma_clr_bd_dsc(struct cldma_drv_info *drv_info,
++				 struct bd_dsc *bd_dsc_pool, int nr_bds)
 +{
-+	struct mtk_ctrl_blk *ctrl_blk;
++	struct bd_dsc *bd_dsc;
++	int i;
 +
-+	ctrl_blk = devm_kzalloc(mdev->dev, sizeof(*ctrl_blk), GFP_KERNEL);
-+	if (!ctrl_blk)
-+		return -ENOMEM;
++	for (i = 0; i < nr_bds; i++) {
++		bd_dsc = bd_dsc_pool + i;
++		dma_unmap_single(drv_info->mdev->dev, bd_dsc->data_dma_addr,
++				 bd_dsc->data_len, DMA_TO_DEVICE);
++		bd_dsc->data_dma_addr = 0;
++		bd_dsc->data_len = 0;
++		if (bd_dsc->bd->tx_bd.bd_flags & CLDMA_BD_FLAG_EOL) {
++			bd_dsc->bd->tx_bd.bd_flags &= ~CLDMA_BD_FLAG_EOL;
++			break;
++		}
++	}
++}
 +
-+	ctrl_blk->mdev = mdev;
-+	mdev->ctrl_blk = ctrl_blk;
++static void mtk_cldma_tx_done_work(struct work_struct *work)
++{
++	struct txq *txq = container_of(work, struct txq, tx_done_work);
++	struct cldma_drv_info *drv_info;
++	struct mtk_ctrl_trans *trans;
++	struct mtk_md_dev *mdev;
++	struct sk_buff *skb;
++	struct trb_srv *srv;
++	struct tx_req *req;
++	unsigned int state;
++	bool was_starved;
++	struct trb *trb;
++	int i, hif_id;
++	u32 txqno;
++
++	drv_info = txq->drv_info;
++	hif_id = drv_info->hif_id;
++	txqno = txq->txqno;
++	mdev = drv_info->mdev;
++	trans = drv_info->cd->trans;
++
++again:
++	for (i = 0; i < txq->nr_gpds; i++) {
++		spin_lock(&txq->ring_lock);
++
++		req = txq->req_pool + txq->free_idx;
++
++		/* Ownership is decided by the slot alone: an empty slot has no
++		 * skb, and one the hardware still owns has HWO set. The
++		 * producer publishes both under ring_lock, so a slot can never
++		 * be observed half-filled and there is no need to bound the
++		 * walk by wr_idx.
++		 */
++		if (!req->skb || (req->gpd->tx_gpd.gpd_flags & CLDMA_GPD_FLAG_HWO)) {
++			spin_unlock(&txq->ring_lock);
++			break;
++		}
++
++		dma_rmb(); /* read descriptor fields after HWO check */
++
++		if (txq->nr_bds)
++			mtk_cldma_clr_bd_dsc(drv_info, req->bd_dsc_pool, txq->nr_bds);
++		else
++			dma_unmap_single(mdev->dev, req->data_dma_addr,
++					 req->data_len, DMA_TO_DEVICE);
++
++		skb = req->skb;
++		req->data_dma_addr = 0;
++		req->data_len = 0;
++		req->skb = NULL;
++
++		txq->free_idx = (txq->free_idx + 1) % txq->nr_gpds;
++		was_starved = atomic_fetch_inc(&txq->req_budget) == NO_BUDGET;
++
++		spin_unlock(&txq->ring_lock);
++
++		trb = (struct trb *)skb->cb;
++		trb->status = 0;
++		trb->trb_complete(skb);
++
++		/* The service may already have been torn down; completing the
++		 * TRB is still correct, there is just nobody left to wake.
++		 */
++		srv = trans->trb_srv[trans->srv_cfg[hif_id][txqno]];
++		if (was_starved && srv)
++			wake_up(&srv->trb_waitq);
++	}
++
++	state = mtk_cldma_check_intr_status(drv_info, DIR_TX, txqno, QUEUE_XFER_DONE);
++	if (state) {
++		if (unlikely(state == LINK_ERROR_VAL))
++			goto out;
++
++		mtk_cldma_clr_intr_status(drv_info, DIR_TX, txqno, QUEUE_XFER_DONE);
++
++		cond_resched();
++
++		goto again;
++	}
++
++out:
++	mtk_cldma_unmask_intr(drv_info, DIR_TX, txqno, QUEUE_XFER_DONE);
++}
++
++/* data_allow_len is read back from a buffer the device writes, so every length
++ * it reports is clamped against a host-known size - frag_size per BD, req->mtu
++ * for the packet total - before it reaches skb_put().
++ *
++ * Returns -EPROTO when the device over-reports so the caller drops the packet
++ * instead of delivering a malformed skb.
++ */
++static int mtk_cldma_rx_skb_adjust(struct mtk_md_dev *mdev, struct rxq *rxq,
++				   struct rx_req *req)
++{
++	u32 recv_len, allow_len, total_len = 0;
++	struct bd_dsc *bd_dsc;
++	int ret = 0;
++	int i;
++
++	for (i = 0; i < rxq->nr_bds; i++) {
++		bd_dsc = req->bd_dsc_pool + i;
++		if (bd_dsc->data_dma_addr) {
++			dma_unmap_single(mdev->dev, bd_dsc->data_dma_addr,
++					 req->frag_size, DMA_FROM_DEVICE);
++			bd_dsc->data_dma_addr = 0;
++		}
++		recv_len = le16_to_cpu(bd_dsc->bd->rx_bd.data_recv_len);
++		allow_len = min_t(u32, le16_to_cpu(bd_dsc->bd->rx_bd.data_allow_len),
++				  req->frag_size);
++		if (recv_len > allow_len) {
++			ret = -EPROTO;
++			recv_len = allow_len;
++		}
++		total_len += recv_len;
++		if (total_len > req->mtu) {
++			ret = -EPROTO;
++			recv_len -= min(total_len - req->mtu, recv_len);
++			total_len = req->mtu;
++		}
++		bd_dsc->skb->len = 0;
++		skb_reset_tail_pointer(bd_dsc->skb);
++		skb_put(bd_dsc->skb, recv_len);
++		if (req->skb != bd_dsc->skb) {
++			req->skb->len += bd_dsc->skb->len;
++			req->skb->data_len += bd_dsc->skb->len;
++		}
++		bd_dsc->bd->rx_bd.data_recv_len = 0;
++		bd_dsc->skb = NULL;
++	}
++	if (!rxq->nr_bds) {
++		if (req->data_dma_addr) {
++			dma_unmap_single(mdev->dev, req->data_dma_addr,
++					 req->mtu, DMA_FROM_DEVICE);
++			req->data_dma_addr = 0;
++		}
++		recv_len = le16_to_cpu(req->gpd->rx_gpd.data_recv_len);
++		if (recv_len > req->mtu) {
++			ret = -EPROTO;
++			recv_len = req->mtu;
++		}
++		req->skb->len = 0;
++		skb_reset_tail_pointer(req->skb);
++		skb_put(req->skb, recv_len);
++	}
++
++	req->gpd->rx_gpd.data_recv_len = 0;
++
++	return ret;
++}
++
++static int mtk_cldma_reload_rx_skb(struct mtk_md_dev *mdev, struct rxq *rxq,
++				   struct rx_req *req)
++{
++	struct sk_buff *tail = NULL;
++	struct bd_dsc *bd_dsc;
++	int nr_bds;
++	int i, ret;
++
++	nr_bds = rxq->nr_bds;
++
++	for (i = 0; i < nr_bds; i++) {
++		bd_dsc = req->bd_dsc_pool + i;
++		bd_dsc->skb = __dev_alloc_skb(req->frag_size, GFP_KERNEL);
++		if (!bd_dsc->skb) {
++			dev_warn_ratelimited(mdev->dev, "Failed to alloc SKB\n");
++			ret = -ENOMEM;
++			goto err_free_skb;
++		}
++		bd_dsc->skb->next = NULL;
++		bd_dsc->data_dma_addr = dma_map_single(mdev->dev, bd_dsc->skb->data,
++						       req->frag_size, DMA_FROM_DEVICE);
++		ret = dma_mapping_error(mdev->dev, bd_dsc->data_dma_addr);
++		if (unlikely(ret)) {
++			dev_warn_ratelimited(mdev->dev, "Failed to map SKB data\n");
++			ret = -EFAULT;
++			goto err_free_skb;
++		}
++		bd_dsc->bd->rx_bd.data_buff_ptr_h =
++			cpu_to_le32((u64)(bd_dsc->data_dma_addr) >> 32);
++		bd_dsc->bd->rx_bd.data_buff_ptr_l =
++			cpu_to_le32(bd_dsc->data_dma_addr);
++		if (tail) {
++			tail->next = bd_dsc->skb;
++			tail = bd_dsc->skb;
++			continue;
++		}
++		if (!req->skb) {
++			req->skb = bd_dsc->skb;
++		} else {
++			skb_shinfo(req->skb)->frag_list = bd_dsc->skb;
++			tail = bd_dsc->skb;
++		}
++	}
++	if (!nr_bds) {
++		req->skb = __dev_alloc_skb(req->mtu, GFP_KERNEL);
++		if (!req->skb) {
++			ret = -ENOMEM;
++			goto err_free_skb;
++		}
++
++		req->data_dma_addr = dma_map_single(mdev->dev, req->skb->data,
++						    req->mtu, DMA_FROM_DEVICE);
++		ret = dma_mapping_error(mdev->dev, req->data_dma_addr);
++		if (unlikely(ret)) {
++			dev_warn_ratelimited(mdev->dev, "Failed to map SKB data\n");
++			ret = -EFAULT;
++			goto err_free_skb;
++		}
++		req->gpd->rx_gpd.data_buff_ptr_h = cpu_to_le32((u64)req->data_dma_addr >> 32);
++		req->gpd->rx_gpd.data_buff_ptr_l = cpu_to_le32(req->data_dma_addr);
++	}
++	return 0;
++
++err_free_skb:
++	if (nr_bds) {
++		if (req->skb)
++			skb_shinfo(req->skb)->frag_list = NULL;
++		for (i = 0; i < nr_bds; i++) {
++			bd_dsc = req->bd_dsc_pool + i;
++			if (!bd_dsc->skb)
++				break;
++			if (!dma_mapping_error(mdev->dev, bd_dsc->data_dma_addr))
++				dma_unmap_single(mdev->dev, bd_dsc->data_dma_addr,
++						 req->frag_size, DMA_FROM_DEVICE);
++			bd_dsc->data_dma_addr = 0;
++			bd_dsc->skb->next = NULL;
++			dev_kfree_skb_any(bd_dsc->skb);
++			bd_dsc->skb = NULL;
++		}
++	} else {
++		req->data_dma_addr = 0;
++		if (req->skb)
++			dev_kfree_skb_any(req->skb);
++	}
++	req->skb = NULL;
++
++	return ret;
++}
++
++static int mtk_cldma_check_rx_req(struct cldma_drv_info *drv_info, struct rxq *rxq)
++{
++	struct rx_req *req = rxq->req_pool + rxq->free_idx;
++	u64 curr_addr;
++	int i;
++
++	curr_addr = mtk_cldma_get_rx_curr_addr(drv_info, rxq->rxqno);
++	if (unlikely(!curr_addr))
++		return -ENXIO;
++
++	if (req->gpd_dma_addr == curr_addr)
++		return -EAGAIN;
++	for (i = 0; i < WAIT_HWO_ROUND; i++) {
++		udelay(WAIT_HWO_TIME);
++		if (!(READ_ONCE(req->gpd->rx_gpd.gpd_flags) & CLDMA_GPD_FLAG_HWO))
++			break;
++	}
++	if (i == WAIT_HWO_ROUND) {
++		dev_err((drv_info->mdev)->dev, "Failed to check HWO=0\n");
++		return -EAGAIN;
++	}
 +
 +	return 0;
 +}
 +
-+/**
-+ * mtk_ctrl_exit() - Clean up the control plane block.
-+ * @mdev: Pointer to the MTK modem device.
-+ *
-+ * Clears the control plane block pointer. The allocation
-+ * itself is managed by devres and freed on driver detach.
-+ */
-+void mtk_ctrl_exit(struct mtk_md_dev *mdev)
++static bool mtk_cldma_rx_check_again(struct rxq *rxq)
 +{
-+	mdev->ctrl_blk = NULL;
++	struct cldma_drv_info *drv_info;
++	bool need_check_again = false;
++	u32 state;
++	int rxqno;
++
++	drv_info = rxq->drv_info;
++	rxqno = rxq->rxqno;
++
++	do {
++		state = mtk_cldma_check_intr_status(drv_info, DIR_RX,
++						    rxqno, QUEUE_XFER_DONE);
++		if (state) {
++			if (unlikely(state == LINK_ERROR_VAL))
++				break;
++
++			mtk_cldma_clr_intr_status(drv_info, DIR_RX,
++						  rxqno, QUEUE_XFER_DONE);
++			cond_resched();
++			return true;
++		}
++	} while (need_check_again);
++
++	return false;
 +}
-diff --git a/drivers/net/wwan/t9xx/mtk_ctrl_plane.h b/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
-new file mode 100644
-index 000000000000..46f1ab9f0551
---- /dev/null
-+++ b/drivers/net/wwan/t9xx/mtk_ctrl_plane.h
-@@ -0,0 +1,21 @@
-+/* SPDX-License-Identifier: GPL-2.0-only
-+ *
-+ * Copyright (c) 2022, MediaTek Inc.
++
++/* Point the device at the GPD it should fill next and start the queue.
++ * free_idx is owned by mtk_cldma_rx_done_work(), so this may only run
++ * from that worker, at a point where every consumed GPD is re-armed.
 + */
++static void mtk_cldma_rxq_restart(struct cldma_drv_info *drv_info, struct rxq *rxq)
++{
++	mtk_cldma_setup_start_addr(drv_info, DIR_RX, rxq->rxqno,
++				   rxq->req_pool[rxq->free_idx].gpd_dma_addr);
++	mtk_cldma_start_queue(drv_info, DIR_RX, rxq->rxqno);
++}
 +
-+#ifndef __MTK_CTRL_PLANE_H__
-+#define __MTK_CTRL_PLANE_H__
-+
-+#include <linux/skbuff.h>
-+
-+#include "mtk_dev.h"
-+
-+struct mtk_ctrl_blk {
++static void mtk_cldma_rx_done_work(struct work_struct *work)
++{
++	struct rx_req *req = NULL, *pre_req = NULL;
++	struct rxq *rxq = container_of(work, struct rxq, rx_done_work);
++	struct cldma_drv_info *drv_info;
 +	struct mtk_md_dev *mdev;
-+	void *ctrl_hw_priv;
++	struct sk_buff *rx_skb;
++	int i, ret, idx, len_err;
++
++	drv_info = rxq->drv_info;
++	mdev = drv_info->mdev;
++
++again:
++	for (i = 0; i < rxq->nr_gpds; i++) {
++		req = rxq->req_pool + rxq->free_idx;
++		if (!req->skb) {
++			/* An empty slot means an earlier pass could not refill
++			 * it; retry so the queue heals once the allocator does.
++			 */
++			if (mtk_cldma_reload_rx_skb(mdev, rxq, req))
++				goto out;
++			goto arm_slot;
++		}
++
++		if (req->gpd->rx_gpd.gpd_flags & CLDMA_GPD_FLAG_HWO)
++			break;
++
++		dma_rmb(); /* read descriptor fields after HWO check */
++
++		len_err = mtk_cldma_rx_skb_adjust(mdev, rxq, req);
++		rx_skb = req->skb;
++		req->skb = NULL;
++
++		ret = mtk_cldma_reload_rx_skb(mdev, rxq, req);
++		if (ret) {
++			/* Alloc failed — recycle old buffer, drop packet.
++			 * BD mode cannot recycle directly (BDP flag mismatch),
++			 * so leave the slot empty for the retry above.
++			 */
++			if (rxq->nr_bds) {
++				dev_kfree_skb_any(rx_skb);
++				goto out;
++			}
++
++			skb_trim(rx_skb, 0);
++			req->skb = rx_skb;
++			req->data_dma_addr = dma_map_single(mdev->dev,
++							    rx_skb->data,
++							    req->mtu,
++							    DMA_FROM_DEVICE);
++			if (dma_mapping_error(mdev->dev, req->data_dma_addr)) {
++				/* An unmapped skb left in the slot would be
++				 * read back as a completed descriptor.
++				 */
++				dev_kfree_skb_any(rx_skb);
++				req->skb = NULL;
++				req->data_dma_addr = 0;
++				goto out;
++			} else {
++				req->gpd->rx_gpd.data_buff_ptr_h =
++					cpu_to_le32((u64)req->data_dma_addr >> 32);
++				req->gpd->rx_gpd.data_buff_ptr_l =
++					cpu_to_le32(req->data_dma_addr);
++			}
++		} else if (len_err) {
++			dev_err_ratelimited(mdev->dev,
++					    "Drop oversized packet on cldma%d rxq%d\n",
++					    drv_info->hw_id, rxq->rxqno);
++			dev_kfree_skb_any(rx_skb);
++		} else {
++			do {
++				ret = rxq->rx_done(rx_skb, rxq->arg,
++						   atomic_read(&rxq->need_exit) ? true : false);
++				if (ret == -EAGAIN)
++					usleep_range(1000, 2000);
++			} while (ret == -EAGAIN);
++		}
++
++arm_slot:
++		wmb(); /* ensure addr set done before HWO setup done  */
++
++		idx = rxq->free_idx == 0 ? rxq->nr_gpds - 1 : rxq->free_idx - 1;
++		pre_req = rxq->req_pool + idx;
++		pre_req->gpd->rx_gpd.gpd_flags |= CLDMA_GPD_FLAG_HWO;
++		rxq->free_idx = (rxq->free_idx + 1) % rxq->nr_gpds;
++	}
++
++	ret = mtk_cldma_check_rx_req(drv_info, rxq);
++	if (!ret)
++		goto again;
++
++	/* -ENXIO means the queue has no start address programmed, which is
++	 * exactly what a restart installs, so consume need_restart first.
++	 * Only the resume below is skipped in that case.
++	 */
++	if (!atomic_read(&rxq->need_exit)) {
++		if (atomic_xchg(&rxq->need_restart, 0))
++			mtk_cldma_rxq_restart(drv_info, rxq);
++		else if (ret != -ENXIO)
++			mtk_cldma_resume_queue(drv_info, DIR_RX, rxq->rxqno);
++	}
++
++	if (ret == -ENXIO)
++		goto out;
++
++	if (mtk_cldma_rx_check_again(rxq))
++		goto again;
++
++out:
++	mtk_cldma_unmask_intr(drv_info, DIR_RX, rxq->rxqno, QUEUE_XFER_DONE);
++	mtk_cldma_clear_ip_busy(drv_info);
++}
++
++static int mtk_cldma_alloc_tx_bd(struct cldma_drv_info *drv_info, struct txq *txq,
++				 struct tx_req *req)
++{
++	struct bd_dsc *bd_dsc, *last_bd_dsc = NULL;
++	int i;
++
++	req->bd_dsc_pool = kcalloc(txq->nr_bds, sizeof(*bd_dsc),
++				   GFP_KERNEL);
++	if (!req->bd_dsc_pool)
++		return -ENOMEM;
++
++	for (i = 0; i < txq->nr_bds; i++) {
++		bd_dsc = req->bd_dsc_pool + i;
++		bd_dsc->bd = dma_pool_zalloc(drv_info->bd_dma_pool, GFP_KERNEL,
++					     &bd_dsc->bd_dma_addr);
++		if (!bd_dsc->bd)
++			return -ENOMEM;
++		if (!last_bd_dsc) {
++			req->gpd->tx_gpd.data_buff_ptr_h =
++				cpu_to_le32((u64)(bd_dsc->bd_dma_addr) >> 32);
++			req->gpd->tx_gpd.data_buff_ptr_l =
++				cpu_to_le32(bd_dsc->bd_dma_addr);
++		} else {
++			last_bd_dsc->bd->tx_bd.next_bd_ptr_h =
++				cpu_to_le32((u64)(bd_dsc->bd_dma_addr) >> 32);
++			last_bd_dsc->bd->tx_bd.next_bd_ptr_l =
++				cpu_to_le32(bd_dsc->bd_dma_addr);
++		}
++		last_bd_dsc = bd_dsc;
++	}
++	return 0;
++}
++
++static struct txq *mtk_cldma_txq_alloc(struct cldma_drv_info *drv_info, struct queue_info *que)
++{
++	struct mtk_md_dev *mdev;
++	struct bd_dsc *bd_dsc;
++	struct tx_req *next;
++	struct tx_req *req;
++	u16 tx_frag_size;
++	struct txq *txq;
++	int i, j, ret;
++
++	mdev = drv_info->mdev;
++
++	txq = kzalloc_obj(*txq);
++	if (!txq)
++		return NULL;
++
++	txq->que = que;
++	txq->drv_info = drv_info;
++	txq->txqno = txq->que->txqno;
++	txq->nr_gpds = txq->que->tx_nr_gpds;
++	atomic_set(&txq->req_budget, txq->que->tx_nr_gpds);
++	spin_lock_init(&txq->ring_lock);
++	tx_frag_size = txq->que->tx_frag_size;
++	if (txq->que->tx_mtu > tx_frag_size && tx_frag_size)
++		txq->nr_bds = (txq->que->tx_mtu + tx_frag_size - 1) / tx_frag_size;
++
++	txq->req_pool = kcalloc(txq->nr_gpds, sizeof(*req), GFP_KERNEL);
++	if (!txq->req_pool)
++		goto err_free_txq;
++
++	for (i = 0; i < txq->nr_gpds; i++) {
++		req = txq->req_pool + i;
++		req->mtu = txq->que->tx_mtu;
++		req->frag_size = tx_frag_size;
++		req->gpd = dma_pool_zalloc(drv_info->gpd_dma_pool, GFP_KERNEL, &req->gpd_dma_addr);
++		if (!req->gpd)
++			goto err_free_req;
++		if (txq->nr_bds) {
++			ret = mtk_cldma_alloc_tx_bd(drv_info, txq, req);
++			if (ret)
++				goto err_free_req;
++			req->gpd->tx_gpd.gpd_flags |= CLDMA_GPD_FLAG_BDP;
++		}
++	}
++
++	for (i = 0; i < txq->nr_gpds; i++) {
++		req = txq->req_pool + i;
++		next = txq->req_pool + ((i + 1) % txq->nr_gpds);
++		req->gpd->tx_gpd.gpd_flags |= CLDMA_GPD_FLAG_IOC;
++		req->gpd->tx_gpd.next_gpd_ptr_h = cpu_to_le32((u64)(next->gpd_dma_addr) >> 32);
++		req->gpd->tx_gpd.next_gpd_ptr_l = cpu_to_le32(next->gpd_dma_addr);
++	}
++
++	INIT_WORK(&txq->tx_done_work, mtk_cldma_tx_done_work);
++
++	/* Publish the queue before unmasking its interrupts: an interrupt
++	 * that fires in between must find a valid txq, or the sources it
++	 * masks are never unmasked again.  The release pairs with the
++	 * acquire load in the ISR.
++	 */
++	smp_store_release(&drv_info->txq[txq->txqno], txq);
++	ret = mtk_cldma_stop_queue(drv_info, DIR_TX, txq->txqno);
++	if (ret) {
++		dev_warn(mdev->dev, "Failed to stop TX queue %d before alloc\n", txq->txqno);
++		WRITE_ONCE(drv_info->txq[txq->txqno], NULL);
++		goto err_free_req;
++	}
++	txq->tx_started = false;
++	mtk_cldma_setup_start_addr(drv_info, DIR_TX, txq->txqno,
++				   txq->req_pool[0].gpd_dma_addr);
++	mtk_cldma_unmask_intr(drv_info, DIR_TX, txq->txqno, QUEUE_ERROR);
++	mtk_cldma_unmask_intr(drv_info, DIR_TX, txq->txqno, QUEUE_XFER_DONE);
++
++	return txq;
++
++err_free_req:
++	for (i = 0; i < txq->nr_gpds; i++) {
++		req = txq->req_pool + i;
++		if (!req->gpd)
++			break;
++		if (req->bd_dsc_pool) {
++			for (j = 0; j < txq->nr_bds; j++) {
++				bd_dsc = req->bd_dsc_pool + j;
++				if (!bd_dsc->bd)
++					break;
++				dma_pool_free(drv_info->bd_dma_pool, bd_dsc->bd,
++					      bd_dsc->bd_dma_addr);
++			}
++			kfree(req->bd_dsc_pool);
++		}
++		dma_pool_free(drv_info->gpd_dma_pool, req->gpd, req->gpd_dma_addr);
++	}
++	kfree(txq->req_pool);
++err_free_txq:
++	kfree(txq);
++	return NULL;
++}
++
++/* mtk_cldma_drv_init() rewrites IP-global configuration (including the interrupt
++ * mask) and mtk_cldma_drv_reset() wipes every queue of the instance, so all
++ * queues still published in drv_info have to be re-armed, not only the one
++ * that triggered the reset.  A queue already unpublished (NULL slot) is being
++ * torn down and is deliberately left stopped.
++ */
++static void mtk_cldma_rearm_queues(struct cldma_drv_info *drv_info)
++{
++	struct tx_req *req;
++	struct txq *txq;
++	struct rxq *rxq;
++	int i;
++
++	mtk_cldma_drv_init(drv_info);
++
++	for (i = 0; i < HW_QUEUE_NUM; i++) {
++		txq = drv_info->txq[i];
++		if (txq) {
++			spin_lock(&txq->ring_lock);
++			/* The device halts on an HWO=0 descriptor and RESUME
++			 * never moves the cursor past it, so do not restart
++			 * from free_idx - which recovery usually finds behind
++			 * the hardware. Leave the queue stopped and let the
++			 * next start_xfer() issue a fresh START.
++			 */
++			req = txq->req_pool + txq->free_idx;
++			if (READ_ONCE(txq->tx_started) &&
++			    !(req->gpd->tx_gpd.gpd_flags & CLDMA_GPD_FLAG_HWO)) {
++				WRITE_ONCE(txq->tx_started, false);
++				/* Its XFER_DONE may have been lost in the
++				 * reset; without this free_idx never advances.
++				 */
++				queue_work(drv_info->wq, &txq->tx_done_work);
++			} else {
++				mtk_cldma_setup_start_addr(drv_info, DIR_TX, i,
++							   req->gpd_dma_addr);
++			}
++			mtk_cldma_unmask_intr(drv_info, DIR_TX, i, QUEUE_ERROR);
++			mtk_cldma_unmask_intr(drv_info, DIR_TX, i, QUEUE_XFER_DONE);
++			if (READ_ONCE(txq->tx_started))
++				mtk_cldma_start_queue(drv_info, DIR_TX, i);
++			spin_unlock(&txq->ring_lock);
++		}
++
++		rxq = drv_info->rxq[i];
++		if (rxq) {
++			mtk_cldma_unmask_intr(drv_info, DIR_RX, i, QUEUE_ERROR);
++			mtk_cldma_unmask_intr(drv_info, DIR_RX, i, QUEUE_XFER_DONE);
++			/* free_idx belongs to rx_done_work, which may be halfway
++			 * through a packet: let it program the start address
++			 * once it reaches a consistent point.
++			 */
++			atomic_set(&rxq->need_restart, 1);
++			queue_work(drv_info->wq, &rxq->rx_done_work);
++		}
++	}
++}
++
++static void mtk_cldma_txq_free(struct cldma_drv_info *drv_info, u32 txqno)
++{
++	struct mtk_md_dev *mdev;
++	struct bd_dsc *bd_dsc;
++	struct tx_req *req;
++	struct txq *txq;
++	struct trb *trb;
++	int irq_id;
++	int i, j, ret;
++
++	mdev = drv_info->mdev;
++
++	txq = drv_info->txq[txqno];
++	/* Unpublish before teardown; pairs with the acquire loads of this
++	 * slot. No release is needed, there is no prior store to expose.
++	 */
++	WRITE_ONCE(drv_info->txq[txqno], NULL);
++	/* stop HW tx transaction; -ENODEV means the link is dead, so the
++	 * device cannot be walking the ring and the free may proceed.
++	 */
++	ret = mtk_cldma_stop_queue(drv_info, DIR_TX, txqno);
++	if (ret == -ETIMEDOUT) {
++		dev_err(mdev->dev, "TX queue %d stop timed out, resetting CLDMA%d\n",
++			txqno, drv_info->hw_id);
++		mtk_cldma_drv_reset(drv_info);
++		ret = mtk_cldma_stop_queue(drv_info, DIR_TX, txqno);
++		/* the reset took the whole instance down with this queue */
++		mtk_cldma_rearm_queues(drv_info);
++	}
++	txq->tx_started = false;
++
++	irq_id = mtk_pci_get_virq_id(mdev, drv_info->pci_ext_irq_id);
++	synchronize_irq(irq_id);
++	/* flush on-going work */
++	flush_work(&txq->tx_done_work);
++	mtk_cldma_mask_intr(drv_info, DIR_TX, txqno, QUEUE_XFER_DONE);
++	mtk_cldma_mask_intr(drv_info, DIR_TX, txqno, QUEUE_ERROR);
++
++	if (ret == -ETIMEDOUT) {
++		/* Still a live DMA target: leak the ring rather than hand it
++		 * back to the allocator.
++		 */
++		dev_err(mdev->dev, "TX queue %d cannot be stopped, leaking its ring\n",
++			txqno);
++		return;
++	}
++
++	/* Free tx req resource. No ring_lock is taken here: txq was already
++	 * unpublished from drv_info->txq[] above, so no new producer can enter,
++	 * and synchronize_irq() plus flush_work() have retired the consumer.
++	 */
++	for (i = 0; i < txq->nr_gpds; i++) {
++		req = txq->req_pool + txq->free_idx;
++		if (req->skb && req->data_len) {
++			if (!txq->nr_bds)
++				dma_unmap_single(mdev->dev, req->data_dma_addr,
++						 req->data_len, DMA_TO_DEVICE);
++			for (j = 0; j < txq->nr_bds; j++) {
++				bd_dsc = req->bd_dsc_pool + j;
++				if (!bd_dsc->data_dma_addr)
++					continue;
++				dma_unmap_single(mdev->dev, bd_dsc->data_dma_addr,
++						 bd_dsc->data_len, DMA_TO_DEVICE);
++			}
++			trb = (struct trb *)req->skb->cb;
++			trb->status = -EPIPE;
++			trb->trb_complete(req->skb);
++		}
++		for (j = 0; j < txq->nr_bds; j++) {
++			bd_dsc = req->bd_dsc_pool + j;
++			dma_pool_free(drv_info->bd_dma_pool, bd_dsc->bd,
++				      bd_dsc->bd_dma_addr);
++		}
++		kfree(req->bd_dsc_pool);
++		dma_pool_free(drv_info->gpd_dma_pool, req->gpd, req->gpd_dma_addr);
++		txq->free_idx = (txq->free_idx + 1) % txq->nr_gpds;
++	}
++
++	kfree(txq->req_pool);
++	kfree(txq);
++}
++
++static int mtk_cldma_alloc_rx_bd(struct cldma_drv_info *drv_info, struct rx_req *req,
++				 int nr_bds)
++{
++	struct bd_dsc *bd_dsc, *last_bd_dsc = NULL;
++	struct sk_buff *tail = NULL;
++	struct mtk_md_dev *mdev;
++	u32 left_size;
++	int ret;
++	int i;
++
++	mdev = drv_info->mdev;
++	left_size = req->mtu;
++
++	req->bd_dsc_pool = kcalloc(nr_bds, sizeof(*bd_dsc),
++				   GFP_KERNEL);
++	if (!req->bd_dsc_pool)
++		return -ENOMEM;
++	for (i = 0; i < nr_bds; i++) {
++		bd_dsc = req->bd_dsc_pool + i;
++		bd_dsc->bd = dma_pool_zalloc(drv_info->bd_dma_pool, GFP_KERNEL,
++					     &bd_dsc->bd_dma_addr);
++		if (!bd_dsc->bd)
++			return -ENOMEM;
++
++		bd_dsc->skb = __dev_alloc_skb(req->frag_size, GFP_KERNEL);
++		if (!bd_dsc->skb)
++			return -ENOMEM;
++		bd_dsc->skb->next = NULL;
++		bd_dsc->data_dma_addr =
++			dma_map_single(mdev->dev, bd_dsc->skb->data,
++				       req->frag_size, DMA_FROM_DEVICE);
++		ret = dma_mapping_error(mdev->dev, bd_dsc->data_dma_addr);
++		if (unlikely(ret))
++			return -ENOMEM;
++
++		bd_dsc->bd->rx_bd.data_buff_ptr_h =
++			cpu_to_le32((u64)(bd_dsc->data_dma_addr) >> 32);
++		bd_dsc->bd->rx_bd.data_buff_ptr_l =
++			cpu_to_le32(bd_dsc->data_dma_addr);
++		bd_dsc->bd->rx_bd.data_allow_len =
++			cpu_to_le16(min(req->frag_size, left_size));
++		left_size -= min(req->frag_size, left_size);
++		if (!last_bd_dsc) {
++			req->gpd->rx_gpd.data_buff_ptr_h =
++				cpu_to_le32((u64)(bd_dsc->bd_dma_addr) >> 32);
++			req->gpd->rx_gpd.data_buff_ptr_l =
++				cpu_to_le32(bd_dsc->bd_dma_addr);
++		} else {
++			last_bd_dsc->bd->rx_bd.next_bd_ptr_h =
++				cpu_to_le32((u64)(bd_dsc->bd_dma_addr) >> 32);
++			last_bd_dsc->bd->rx_bd.next_bd_ptr_l =
++				cpu_to_le32(bd_dsc->bd_dma_addr);
++		}
++		last_bd_dsc = bd_dsc;
++		if (tail) {
++			tail->next = bd_dsc->skb;
++			tail = bd_dsc->skb;
++			continue;
++		}
++		if (!req->skb) {
++			req->skb = bd_dsc->skb;
++		} else {
++			skb_shinfo(req->skb)->frag_list = bd_dsc->skb;
++			tail = bd_dsc->skb;
++		}
++	}
++	last_bd_dsc->bd->rx_bd.bd_flags |= CLDMA_BD_FLAG_EOL;
++	return 0;
++}
++
++static void mtk_cldma_rxq_alloc_cancel(struct cldma_drv_info *drv_info, struct rx_req *req,
++				       int nr_bds)
++{
++	struct mtk_md_dev *mdev;
++	struct bd_dsc *bd_dsc;
++	int i;
++
++	mdev = drv_info->mdev;
++
++	if (nr_bds) {
++		if (req->skb)
++			skb_shinfo(req->skb)->frag_list = NULL;
++		if (req->bd_dsc_pool) {
++			for (i = 0; i < nr_bds; i++) {
++				bd_dsc = req->bd_dsc_pool + i;
++				if (!bd_dsc->bd)
++					break;
++				if (bd_dsc->skb) {
++					if (!dma_mapping_error(mdev->dev, bd_dsc->data_dma_addr))
++						dma_unmap_single(mdev->dev, bd_dsc->data_dma_addr,
++								 req->frag_size, DMA_FROM_DEVICE);
++					bd_dsc->data_dma_addr = 0;
++					bd_dsc->skb->next = NULL;
++					dev_kfree_skb_any(bd_dsc->skb);
++				}
++				dma_pool_free(drv_info->bd_dma_pool, bd_dsc->bd,
++					      bd_dsc->bd_dma_addr);
++			}
++			kfree(req->bd_dsc_pool);
++		}
++	} else {
++		if (req->skb) {
++			if (!dma_mapping_error(mdev->dev, req->data_dma_addr))
++				dma_unmap_single(mdev->dev, req->data_dma_addr,
++						 req->mtu, DMA_FROM_DEVICE);
++			req->data_dma_addr = 0;
++			dev_kfree_skb_any(req->skb);
++		}
++	}
++	dma_pool_free(drv_info->gpd_dma_pool, req->gpd, req->gpd_dma_addr);
++}
++
++static struct rxq *mtk_cldma_rxq_alloc(struct cldma_drv_info *drv_info, struct queue_info *que,
++				       struct sk_buff *skb)
++{
++	struct trb_open_priv *trb_open_priv = (struct trb_open_priv *)skb->data;
++	struct trb *trb = (struct trb *)skb->cb;
++	struct mtk_md_dev *mdev;
++	struct rx_req *next;
++	struct rx_req *req;
++	u16 rx_frag_size;
++	struct rxq *rxq;
++	int ret;
++	int i;
++
++	mdev = drv_info->mdev;
++
++	rxq = kzalloc_obj(*rxq);
++	if (!rxq)
++		return NULL;
++
++	rxq->que = que;
++	rxq->drv_info = drv_info;
++	rxq->rxqno = rxq->que->rxqno;
++	if (rxq->que->rx_nr_gpds < MIN_GPD_NUM) {
++		dev_err(mdev->dev,
++			"Failed to alloc cldma%d rxq%d due to gpd number < 2\n",
++			drv_info->hw_id, rxq->rxqno);
++		goto err_free_rxq;
++	}
++	rxq->nr_gpds = rxq->que->rx_nr_gpds;
++	rxq->arg = trb->priv;
++	rxq->rx_done = trb_open_priv->rx_done;
++	atomic_set(&rxq->need_exit, 0);
++	atomic_set(&rxq->need_restart, 0);
++	rx_frag_size = rxq->que->rx_frag_size;
++	if (rxq->que->rx_mtu > rx_frag_size && rx_frag_size)
++		rxq->nr_bds = (rxq->que->rx_mtu + rx_frag_size - 1) / rx_frag_size;
++
++	rxq->req_pool = kcalloc(rxq->nr_gpds, sizeof(*req), GFP_KERNEL);
++	if (!rxq->req_pool)
++		goto err_free_rxq;
++
++	/* setup rx request */
++	for (i = 0; i < rxq->nr_gpds; i++) {
++		req = rxq->req_pool + i;
++		req->mtu = rxq->que->rx_mtu;
++		req->frag_size = rx_frag_size;
++		req->gpd = dma_pool_zalloc(drv_info->gpd_dma_pool, GFP_KERNEL, &req->gpd_dma_addr);
++		if (!req->gpd)
++			goto err_free_req;
++		if (rxq->nr_bds) {
++			ret = mtk_cldma_alloc_rx_bd(drv_info, req, rxq->nr_bds);
++			if (ret)
++				goto err_free_req;
++			req->gpd->rx_gpd.gpd_flags |= CLDMA_GPD_FLAG_BDP;
++		} else {
++			req->skb = __dev_alloc_skb(req->mtu, GFP_KERNEL);
++			if (!req->skb)
++				goto err_free_req;
++			req->data_dma_addr = dma_map_single(mdev->dev, req->skb->data,
++							    req->mtu, DMA_FROM_DEVICE);
++			ret = dma_mapping_error(mdev->dev, req->data_dma_addr);
++			if (unlikely(ret))
++				goto err_free_req;
++		}
++	}
++
++	for (i = 0; i < rxq->nr_gpds; i++) {
++		req = rxq->req_pool + i;
++		next = rxq->req_pool + ((i + 1) % rxq->nr_gpds);
++		req->gpd->rx_gpd.gpd_flags |= CLDMA_GPD_FLAG_IOC;
++		req->gpd->rx_gpd.data_allow_len = cpu_to_le16(req->mtu);
++		req->gpd->rx_gpd.next_gpd_ptr_h = cpu_to_le32((u64)(next->gpd_dma_addr) >> 32);
++		req->gpd->rx_gpd.next_gpd_ptr_l = cpu_to_le32(next->gpd_dma_addr);
++		if (!rxq->nr_bds) {
++			req->gpd->rx_gpd.data_buff_ptr_h =
++				cpu_to_le32((u64)(req->data_dma_addr) >> 32);
++			req->gpd->rx_gpd.data_buff_ptr_l = cpu_to_le32(req->data_dma_addr);
++		}
++		if (i != rxq->nr_gpds - 1)
++			req->gpd->rx_gpd.gpd_flags |= CLDMA_GPD_FLAG_HWO;
++	}
++
++	INIT_WORK(&rxq->rx_done_work, mtk_cldma_rx_done_work);
++
++	/* Pairs with the acquire load in the ISR, as for txq above. */
++	smp_store_release(&drv_info->rxq[rxq->rxqno], rxq);
++	ret = mtk_cldma_stop_queue(drv_info, DIR_RX, rxq->rxqno);
++	if (ret) {
++		dev_warn(mdev->dev, "Failed to stop RX queue %d before alloc\n", rxq->rxqno);
++		WRITE_ONCE(drv_info->rxq[rxq->rxqno], NULL);
++		goto err_free_req;
++	}
++	mtk_cldma_setup_start_addr(drv_info, DIR_RX,
++				   rxq->rxqno, rxq->req_pool[0].gpd_dma_addr);
++	mtk_cldma_start_queue(drv_info, DIR_RX, rxq->rxqno);
++	mtk_cldma_unmask_intr(drv_info, DIR_RX, rxq->rxqno, QUEUE_ERROR);
++	mtk_cldma_unmask_intr(drv_info, DIR_RX, rxq->rxqno, QUEUE_XFER_DONE);
++
++	return rxq;
++
++err_free_req:
++	for (i = 0; i < rxq->nr_gpds; i++) {
++		req = rxq->req_pool + i;
++		if (!req->gpd)
++			break;
++		mtk_cldma_rxq_alloc_cancel(drv_info, req, rxq->nr_bds);
++	}
++
++	kfree(rxq->req_pool);
++err_free_rxq:
++	kfree(rxq);
++	return NULL;
++}
++
++static void mtk_cldma_rxq_free(struct cldma_drv_info *drv_info, u32 rxqno)
++{
++	struct mtk_md_dev *mdev;
++	struct bd_dsc *bd_dsc;
++	struct rx_req *req;
++	struct rxq *rxq;
++	int irq_id;
++	int i, j, ret;
++
++	mdev = drv_info->mdev;
++
++	rxq = drv_info->rxq[rxqno];
++	/* Unpublish before teardown; pairs with the acquire loads of this
++	 * slot. No release is needed, there is no prior store to expose.
++	 */
++	WRITE_ONCE(drv_info->rxq[rxqno], NULL);
++
++	/* stop HW rx transaction; -ENODEV means the link is dead, so the
++	 * device cannot be walking the ring and the free may proceed.
++	 */
++	atomic_set(&rxq->need_exit, 1);
++	ret = mtk_cldma_stop_queue(drv_info, DIR_RX, rxqno);
++	if (ret == -ETIMEDOUT) {
++		dev_err(mdev->dev, "RX queue %d stop timed out, resetting CLDMA%d\n",
++			rxqno, drv_info->hw_id);
++		mtk_cldma_drv_reset(drv_info);
++		ret = mtk_cldma_stop_queue(drv_info, DIR_RX, rxqno);
++		/* the reset took the whole instance down with this queue */
++		mtk_cldma_rearm_queues(drv_info);
++	}
++
++	irq_id = mtk_pci_get_virq_id(mdev, drv_info->pci_ext_irq_id);
++	synchronize_irq(irq_id);
++	/* flush on-going work */
++	flush_work(&rxq->rx_done_work);
++	/* mask L2 RX interrupt again to avoid race condition causing use-after-free issue */
++	mtk_cldma_mask_intr(drv_info, DIR_RX, rxqno, QUEUE_XFER_DONE);
++	mtk_cldma_mask_intr(drv_info, DIR_RX, rxqno, QUEUE_ERROR);
++
++	/* The worker can resume or restart the queue between its need_exit
++	 * check and the MMIO write that follows it, so flush_work() does not
++	 * prove the engine was left stopped. Stopping again is idempotent.
++	 */
++	if (ret != -ETIMEDOUT)
++		ret = mtk_cldma_stop_queue(drv_info, DIR_RX, rxqno);
++
++	if (ret == -ETIMEDOUT) {
++		/* Still a live DMA target: leak the ring rather than hand it
++		 * back to the allocator.
++		 */
++		dev_err(mdev->dev, "RX queue %d cannot be stopped, leaking its ring\n",
++			rxqno);
++		return;
++	}
++
++	/* free rx req resource */
++	for (i = 0; i < rxq->nr_gpds; i++) {
++		req = rxq->req_pool + rxq->free_idx;
++		if (!(req->gpd->rx_gpd.gpd_flags & CLDMA_GPD_FLAG_HWO) &&
++		    le16_to_cpu(req->gpd->rx_gpd.data_recv_len)) {
++			if (!mtk_cldma_rx_skb_adjust(mdev, rxq, req)) {
++				rxq->rx_done(req->skb, rxq->arg, true);
++				req->skb = NULL;
++			}
++		}
++		if (req->skb) {
++			if (!rxq->nr_bds) {
++				if (req->data_dma_addr)
++					dma_unmap_single(mdev->dev, req->data_dma_addr,
++							 req->mtu, DMA_FROM_DEVICE);
++				dev_kfree_skb_any(req->skb);
++			} else if (req->bd_dsc_pool[0].skb) {
++				/* The head skb aliases bd_dsc_pool[0].skb and the
++				 * frag_list chain aliases the other BD skbs: break
++				 * the aliases and let the BD walk below free every
++				 * skb exactly once, as rxq_alloc_cancel() does.
++				 */
++				skb_shinfo(req->skb)->frag_list = NULL;
++			} else {
++				/* The BD skbs are already detached, the head owns
++				 * the whole chain through its frag_list.
++				 */
++				dev_kfree_skb_any(req->skb);
++			}
++			req->skb = NULL;
++		}
++		for (j = 0; j < rxq->nr_bds; j++) {
++			bd_dsc = req->bd_dsc_pool + j;
++			if (bd_dsc->skb) {
++				if (bd_dsc->data_dma_addr)
++					dma_unmap_single(mdev->dev, bd_dsc->data_dma_addr,
++							 req->frag_size, DMA_FROM_DEVICE);
++				bd_dsc->skb->next = NULL;
++				dev_kfree_skb_any(bd_dsc->skb);
++			}
++			dma_pool_free(drv_info->bd_dma_pool,
++				      bd_dsc->bd, bd_dsc->bd_dma_addr);
++		}
++		kfree(req->bd_dsc_pool);
++		dma_pool_free(drv_info->gpd_dma_pool, req->gpd, req->gpd_dma_addr);
++		rxq->free_idx = (rxq->free_idx + 1) % rxq->nr_gpds;
++	}
++
++	kfree(rxq->req_pool);
++	kfree(rxq);
++}
++
++/* The device reported a zero TX start address: it lost its queue state. */
++static int mtk_cldma_hw_recovery(struct cldma_drv_info *drv_info, u32 qno)
++{
++	u64 val;
++
++	dev_err(drv_info->mdev->dev,
++		"CLDMA%d lost its queue state, re-initializing\n",
++		drv_info->hw_id);
++
++	mtk_cldma_rearm_queues(drv_info);
++
++	val = mtk_cldma_get_tx_start_addr(drv_info, qno);
++	if (!val || val == U64_MAX)
++		return -EIO;
++
++	return 0;
++}
++
++static int mtk_cldma_start_xfer(struct cldma_drv_info *drv_info, u32 qno)
++{
++	struct txq *txq;
++	u64 val;
++	int ret;
++
++	txq = drv_info->txq[qno];
++
++	val = mtk_cldma_get_tx_start_addr(drv_info, qno);
++	if (unlikely(val == U64_MAX))
++		return -EIO;
++
++	if (unlikely(!val)) {
++		ret = mtk_cldma_hw_recovery(drv_info, qno);
++		if (ret)
++			return ret;
++	}
++
++	/* Hold ring_lock across programming and kicking the queue so the
++	 * start address given to the device is the one free_idx still
++	 * names; tx_done_work advances free_idx under the same lock.
++	 */
++	spin_lock(&txq->ring_lock);
++	if (unlikely(!READ_ONCE(txq->tx_started))) {
++		mtk_cldma_setup_start_addr(drv_info, DIR_TX, qno,
++					   txq->req_pool[txq->free_idx].gpd_dma_addr);
++		mtk_cldma_start_queue(drv_info, DIR_TX, qno);
++		WRITE_ONCE(txq->tx_started, true);
++	} else {
++		mtk_cldma_resume_queue(drv_info, DIR_TX, qno);
++	}
++	spin_unlock(&txq->ring_lock);
++
++	return 0;
++}
++
++int mtk_cldma_init(struct mtk_ctrl_trans *trans)
++{
++	struct cldma_dev *cd;
++
++	cd = kzalloc_obj(*cd);
++	if (!cd)
++		return -ENOMEM;
++
++	cd->trans = trans;
++	trans->dev = cd;
++
++	return 0;
++}
++
++void mtk_cldma_exit(struct mtk_ctrl_trans *trans)
++{
++	if (!trans->dev)
++		return;
++
++	kfree(trans->dev);
++	trans->dev = NULL;
++}
++
++static int mtk_cldma_open(struct cldma_dev *cd, struct sk_buff *skb)
++{
++	struct trb_open_priv *trb_open_priv = (struct trb_open_priv *)skb->data;
++	struct trb *trb = (struct trb *)skb->cb;
++	struct cldma_drv_info *drv_info;
++	struct queue_info *que;
++	struct txq *txq;
++	struct rxq *rxq;
++	int ret = 0;
++
++	que = xa_load(&cd->trans->queue_tbl, trb->channel_id & 0xFFFF);
++	if (unlikely(!que)) {
++		trb->status = -EINVAL;
++		trb->trb_complete(skb);
++		return -EINVAL;
++	}
++	drv_info = cd->cldma_drv_info[que->hif_id];
++	if (!drv_info) {
++		ret = -EIO;
++		goto out;
++	}
++
++	if (que->tx_mtu == 0 || que->rx_mtu == 0) {
++		dev_err((cd->trans->mdev)->dev,
++			"Failed to enable cldma%d txq%d rxq%d due to wrong mtu\n",
++			drv_info->hw_id, que->txqno, que->rxqno);
++		ret = -EINVAL;
++		goto out;
++	}
++
++	trb_open_priv->tx_mtu = que->tx_mtu;
++	trb_open_priv->rx_mtu = que->rx_mtu;
++	trb_open_priv->tx_frag_size = que->tx_frag_size;
++	trb_open_priv->rx_frag_size = que->rx_frag_size;
++
++	if (drv_info->txq[que->txqno] || drv_info->rxq[que->rxqno]) {
++		ret = -EBUSY;
++		goto out;
++	}
++
++	txq = mtk_cldma_txq_alloc(drv_info, que);
++	if (!txq) {
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	rxq = mtk_cldma_rxq_alloc(drv_info, que, skb);
++	if (!rxq) {
++		ret = -ENOMEM;
++		mtk_cldma_txq_free(drv_info, txq->txqno);
++		goto out;
++	}
++
++out:
++	/* -EBUSY leaves the channel open to the submitter, so the count this
++	 * ENABLE added is released by its eventual DISABLE instead.
++	 */
++	if (ret && ret != -EBUSY)
++		cd->trans->usr_cnt[que->hif_id][que->txqno]--;
++
++	/* Pairs with the acquire load of status on the submitting side: the
++	 * payload written to the skb above must be visible with it.
++	 */
++	smp_store_release(&trb->status, ret);
++	trb->trb_complete(skb);
++
++	return ret;
++}
++
++/* Complete every submitted-but-unkicked request with an error so no TRB
++ * is stranded in the ring when the doorbell cannot be rung.
++ */
++static void mtk_cldma_txq_flush(struct cldma_drv_info *drv_info,
++				struct txq *txq, int err)
++{
++	struct mtk_ctrl_trans *trans = drv_info->cd->trans;
++	int hif_id = drv_info->hif_id;
++	u32 txqno = txq->txqno;
++	struct sk_buff *skb;
++	struct trb_srv *srv;
++	struct tx_req *req;
++	bool was_starved;
++	struct trb *trb;
++	int i;
++
++	for (i = 0; i < txq->nr_gpds; i++) {
++		spin_lock(&txq->ring_lock);
++
++		req = txq->req_pool + txq->free_idx;
++		if (!req->skb) {
++			spin_unlock(&txq->ring_lock);
++			break;
++		}
++
++		req->gpd->tx_gpd.gpd_flags &= ~CLDMA_GPD_FLAG_HWO;
++
++		if (txq->nr_bds)
++			mtk_cldma_clr_bd_dsc(drv_info, req->bd_dsc_pool, txq->nr_bds);
++		else
++			dma_unmap_single(drv_info->mdev->dev, req->data_dma_addr,
++					 req->data_len, DMA_TO_DEVICE);
++
++		skb = req->skb;
++		req->data_dma_addr = 0;
++		req->data_len = 0;
++		req->skb = NULL;
++
++		txq->free_idx = (txq->free_idx + 1) % txq->nr_gpds;
++		was_starved = atomic_fetch_inc(&txq->req_budget) == NO_BUDGET;
++
++		spin_unlock(&txq->ring_lock);
++
++		trb = (struct trb *)skb->cb;
++		trb->status = err;
++		trb->trb_complete(skb);
++
++		/* The service may already have been torn down; completing the
++		 * TRB is still correct, there is just nobody left to wake.
++		 */
++		srv = trans->trb_srv[trans->srv_cfg[hif_id][txqno]];
++		if (was_starved && srv)
++			wake_up(&srv->trb_waitq);
++	}
++}
++
++static int mtk_cldma_tx(struct cldma_dev *cd, struct sk_buff *skb)
++{
++	struct trb *trb = (struct trb *)skb->cb;
++	struct cldma_drv_info *drv_info;
++	struct mtk_md_dev *mdev;
++	struct queue_info *que;
++	struct txq *txq;
++	int ret;
++
++	que = xa_load(&cd->trans->queue_tbl, trb->channel_id & 0xFFFF);
++	if (unlikely(!que))
++		return -EPIPE;
++	drv_info = cd->cldma_drv_info[que->hif_id];
++	if (unlikely(!drv_info))
++		return -EPIPE;
++	txq = drv_info->txq[que->txqno];
++	if (unlikely(!txq))
++		return -EPIPE;
++
++	mdev = drv_info->mdev;
++
++	ret = mtk_cldma_start_xfer(drv_info, que->txqno);
++	if (unlikely(ret)) {
++		dev_err(mdev->dev, "Failed to trigger cldma tx\n");
++		/* A failed start does not mean the engine is idle - recovery
++		 * may already have issued UL_START - and the flush below
++		 * unmaps the buffers. If the queue cannot be stopped, leak the
++		 * requests rather than unmap memory the device still owns.
++		 */
++		if (mtk_cldma_stop_queue(drv_info, DIR_TX, que->txqno)) {
++			dev_err(mdev->dev,
++				"TX queue %d stop failed, keeping its requests\n",
++				que->txqno);
++			return ret;
++		}
++
++		spin_lock(&txq->ring_lock);
++		WRITE_ONCE(txq->tx_started, false);
++		spin_unlock(&txq->ring_lock);
++		mtk_cldma_txq_flush(drv_info, txq, ret);
++	}
++
++	return ret;
++}
++
++static int mtk_cldma_close(struct cldma_dev *cd, struct sk_buff *skb)
++{
++	struct trb *trb = (struct trb *)skb->cb;
++	struct cldma_drv_info *drv_info;
++	struct queue_info *que;
++
++	que = xa_load(&cd->trans->queue_tbl, trb->channel_id & 0xFFFF);
++	if (unlikely(!que)) {
++		trb->status = -EPIPE;
++		trb->trb_complete(skb);
++		return -EPIPE;
++	}
++	drv_info = cd->cldma_drv_info[que->hif_id];
++	if (unlikely(!drv_info)) {
++		trb->status = -EPIPE;
++		trb->trb_complete(skb);
++		return -EPIPE;
++	}
++
++	if (drv_info->txq[que->txqno])
++		mtk_cldma_txq_free(drv_info, que->txqno);
++	if (drv_info->rxq[que->rxqno])
++		mtk_cldma_rxq_free(drv_info, que->rxqno);
++
++	trb->status = 0;
++	trb->trb_complete(skb);
++
++	return 0;
++}
++
++static int mtk_cldma_txbuf_set(struct cldma_drv_info *drv_info, struct sk_buff *skb,
++			       struct tx_req *req, int nr_bds)
++{
++	struct sk_buff *curr_skb, *next_skb;
++	struct mtk_md_dev *mdev;
++	struct bd_dsc *bd_dsc;
++	int ret;
++	int i;
++
++	mdev = drv_info->mdev;
++
++	if (nr_bds) {
++		bd_dsc = req->bd_dsc_pool;
++		curr_skb = skb;
++		for (i = 0; i < nr_bds && curr_skb; i++) {
++			bd_dsc = req->bd_dsc_pool + i;
++			if (req->bd_dsc_pool == bd_dsc) {
++				bd_dsc->data_len = skb->len - skb->data_len;
++				next_skb = skb_shinfo(skb)->frag_list;
++			} else {
++				bd_dsc->data_len = curr_skb->len;
++				next_skb = curr_skb->next;
++			}
++			bd_dsc->data_dma_addr = dma_map_single(mdev->dev, curr_skb->data,
++							       bd_dsc->data_len, DMA_TO_DEVICE);
++			ret = dma_mapping_error(mdev->dev, bd_dsc->data_dma_addr);
++			if (unlikely(ret))
++				goto err_unmap_buffer;
++
++			bd_dsc->bd->tx_bd.data_buff_ptr_h =
++				cpu_to_le32((u64)(bd_dsc->data_dma_addr) >> 32);
++			bd_dsc->bd->tx_bd.data_buff_ptr_l = cpu_to_le32(bd_dsc->data_dma_addr);
++			bd_dsc->bd->tx_bd.data_buffer_len = cpu_to_le16(bd_dsc->data_len);
++			curr_skb = next_skb;
++		}
++		bd_dsc->bd->tx_bd.bd_flags = CLDMA_BD_FLAG_EOL;
++	} else {
++		/* Non-BD mode maps only the linear area; a nonlinear SKB
++		 * here would be silently truncated to skb_headlen().
++		 */
++		if (WARN_ON_ONCE(skb_is_nonlinear(skb)))
++			return -EINVAL;
++
++		req->data_dma_addr = dma_map_single(mdev->dev, skb->data,
++						    skb_headlen(skb), DMA_TO_DEVICE);
++		ret = dma_mapping_error(mdev->dev, req->data_dma_addr);
++		if (unlikely(ret)) {
++			req->data_dma_addr = 0;
++			goto err_exit;
++		}
++
++		req->gpd->tx_gpd.data_buff_ptr_h = cpu_to_le32((u64)(req->data_dma_addr) >> 32);
++		req->gpd->tx_gpd.data_buff_ptr_l = cpu_to_le32(req->data_dma_addr);
++	}
++
++	return 0;
++
++err_unmap_buffer:
++	for (i = 0; i < nr_bds; i++) {
++		bd_dsc = req->bd_dsc_pool + i;
++		if (dma_mapping_error(mdev->dev, bd_dsc->data_dma_addr)) {
++			bd_dsc->data_dma_addr = 0;
++			break;
++		}
++		dma_unmap_single(mdev->dev, bd_dsc->data_dma_addr,
++				 bd_dsc->data_len, DMA_TO_DEVICE);
++		bd_dsc->data_dma_addr = 0;
++	}
++err_exit:
++	dev_err_ratelimited(mdev->dev, "Failed to map dma! error:%d\n", ret);
++	return -ENOMEM;
++}
++
++int mtk_cldma_submit_tx(void *dev, struct sk_buff *skb)
++{
++	struct trb *trb = (struct trb *)skb->cb;
++	struct cldma_drv_info *drv_info;
++	struct cldma_dev *cd = dev;
++	struct queue_info *que;
++	struct tx_req *req;
++	struct txq *txq;
++	int ret;
++
++	/* the CLDMA device is unpublished before it is freed, so a submitter
++	 * that raced the teardown lands here with a NULL dev
++	 */
++	if (unlikely(!cd))
++		return -EINVAL;
++
++	que = xa_load(&cd->trans->queue_tbl, trb->channel_id & 0xFFFF);
++	if (unlikely(!que))
++		return -EINVAL;
++	drv_info = cd->cldma_drv_info[que->hif_id];
++	if (unlikely(!drv_info))
++		return -EINVAL;
++
++	txq = drv_info->txq[que->txqno];
++	if (unlikely(!txq))
++		return -EINVAL;
++
++	spin_lock(&txq->ring_lock);
++
++	if (!atomic_read(&txq->req_budget)) {
++		spin_unlock(&txq->ring_lock);
++		return -EAGAIN;
++	}
++
++	req = txq->req_pool + txq->wr_idx;
++	req->gpd->tx_gpd.debug_id = 0x01;
++	ret = mtk_cldma_txbuf_set(drv_info, skb, req, txq->nr_bds);
++	if (ret) {
++		spin_unlock(&txq->ring_lock);
++		return ret;
++	}
++
++	req->gpd->tx_gpd.data_buff_len = cpu_to_le16(skb->len);
++
++	req->data_len = skb->len;
++	req->skb = skb;
++
++	dma_wmb(); /* ensure req and data msg set done before HWO setup */
++
++	req->gpd->tx_gpd.gpd_flags |= CLDMA_GPD_FLAG_HWO;
++
++	txq->wr_idx = (txq->wr_idx + 1) % txq->nr_gpds;
++	atomic_dec(&txq->req_budget);
++
++	spin_unlock(&txq->ring_lock);
++
++	return 0;
++}
++
++int mtk_cldma_get_tx_budget(void *dev, enum mtk_hif_id hif_id, u32 qno)
++{
++	struct cldma_drv_info *drv_info;
++	struct cldma_dev *cd = dev;
++	struct txq *txq;
++
++	if (unlikely(hif_id >= NR_CLDMA || qno >= HW_QUE_NUM || !cd))
++		return -EINVAL;
++
++	drv_info = cd->cldma_drv_info[hif_id];
++	if (!drv_info)
++		return -EINVAL;
++	txq = drv_info->txq[qno];
++	if (!txq)
++		return -EINVAL;
++	return atomic_read(&txq->req_budget);
++}
++
++static int (*trb_act_tbl[TRB_CMD_MAX])(struct cldma_dev *cd, struct sk_buff *skb) = {
++	[TRB_CMD_ENABLE] = mtk_cldma_open,
++	[TRB_CMD_TX] = mtk_cldma_tx,
++	[TRB_CMD_DISABLE] = mtk_cldma_close,
 +};
 +
-+int mtk_ctrl_init(struct mtk_md_dev *mdev);
-+void mtk_ctrl_exit(struct mtk_md_dev *mdev);
++int mtk_cldma_trb_process(void *dev, struct sk_buff *skb)
++{
++	struct cldma_dev *cd;
++	struct trb *trb;
 +
-+#endif /* __MTK_CTRL_PLANE_H__ */
-diff --git a/drivers/net/wwan/t9xx/mtk_dev.h b/drivers/net/wwan/t9xx/mtk_dev.h
-index 329e5e6695df..84fcd980110b 100644
---- a/drivers/net/wwan/t9xx/mtk_dev.h
-+++ b/drivers/net/wwan/t9xx/mtk_dev.h
-@@ -31,12 +31,15 @@ enum mtk_dev_evt_d2h {
- 	DEV_EVT_D2H_ASYNC_HS_NOTIFY_MD	= BIT(6),
- };
- 
-+struct mtk_ctrl_blk;
++	if (!dev || !skb)
++		return -EINVAL;
 +
- /* mtk_md_dev defines the structure of MTK modem device */
- struct mtk_md_dev {
- 	struct device *dev;
- 	void *hw_priv;
- 	u32 hw_ver;
- 	char dev_str[MTK_DEV_STR_LEN];
-+	struct mtk_ctrl_blk *ctrl_blk;
- };
- 
- #endif /* __MTK_DEV_H__ */
-diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci.c b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
-index a3bd1caf470b..9fa61f08174d 100644
---- a/drivers/net/wwan/t9xx/pcie/mtk_pci.c
-+++ b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
-@@ -13,6 +13,7 @@
- #include <linux/module.h>
- 
- #include "mtk_dev.h"
-+#include "mtk_trans_ctrl.h"
- #include "mtk_pci.h"
- #include "mtk_pci_reg.h"
- 
-diff --git a/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h
++	cd = (struct cldma_dev *)dev;
++	trb = (struct trb *)skb->cb;
++
++	if (!(trb->cmd > TRB_CMD_MIN && trb->cmd < TRB_CMD_STOP))
++		return -EINVAL;
++
++	return trb_act_tbl[trb->cmd](cd, skb);
++}
++
++int mtk_cldma_check_ch_cfg(void *dev, struct queue_info *que)
++{
++	struct cldma_drv_info *drv_info;
++	struct cldma_dev *cd = dev;
++	struct mtk_md_dev *mdev;
++	struct txq *txq;
++	struct rxq *rxq;
++
++	mdev = cd->trans->mdev;
++	drv_info = cd->cldma_drv_info[que->hif_id];
++
++	if (!drv_info) {
++		dev_err(mdev->dev, "CLDMA%d has not been initialized\n",
++			mtk_cldma_hw_id_tbl[que->hif_id]);
++		return -EINVAL;
++	}
++
++	txq = drv_info->txq[que->txqno];
++	rxq = drv_info->rxq[que->rxqno];
++	if (!txq || !rxq) {
++		dev_err(mdev->dev,
++			"CLDMA%d txq%d rxq%d has not been enabled\n",
++			mtk_cldma_hw_id_tbl[que->hif_id], que->txqno, que->rxqno);
++		return -EINVAL;
++	}
++
++	if (que->tx_mtu != txq->que->tx_mtu || que->rx_mtu != rxq->que->rx_mtu) {
++		dev_err(mdev->dev,
++			"Channel:%08x tx_mtu:%08x rx_mtu:%08x do not match ch cfg\n",
++			que->tx_chl, que->tx_mtu, que->rx_mtu);
++		return -EINVAL;
++	}
++
++	return 0;
++}
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_cldma.h b/drivers/net/wwan/t9xx/pcie/mtk_cldma.h
 new file mode 100644
-index 000000000000..50b1c366a4c8
+index 000000000000..fa6d79f8b5df
 --- /dev/null
-+++ b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h
-@@ -0,0 +1,20 @@
++++ b/drivers/net/wwan/t9xx/pcie/mtk_cldma.h
+@@ -0,0 +1,165 @@
 +/* SPDX-License-Identifier: GPL-2.0-only
 + *
 + * Copyright (c) 2022, MediaTek Inc.
 + */
 +
-+#ifndef __MTK_TRANS_CTRL_H__
-+#define __MTK_TRANS_CTRL_H__
++#ifndef __MTK_CLDMA_H__
++#define __MTK_CLDMA_H__
 +
++#include <linux/dma-mapping.h>
++#include <linux/dmapool.h>
++#include <linux/interrupt.h>
 +#include <linux/list.h>
-+#include <linux/skbuff.h>
++#include <linux/spinlock.h>
 +#include <linux/types.h>
 +
-+#include "mtk_dev.h"
++#include "mtk_ctrl_plane.h"
++#include "mtk_trans_ctrl.h"
 +
-+struct mtk_ctrl_trans {
-+	struct mtk_ctrl_blk *ctrl_blk;
-+	struct mtk_md_dev *mdev;
++struct mtk_fsm_param;
++
++#define TXQ(N)					(N)
++#define RXQ(N)					(N)
++
++#define CLDMA_GPD_FLAG_HWO			BIT(0)
++#define CLDMA_GPD_FLAG_BDP			BIT(1)
++#define CLDMA_GPD_FLAG_IOC			BIT(7)
++#define CLDMA_BD_FLAG_EOL			BIT(0)
++
++union gpd {
++	struct {
++		u8 gpd_flags;
++		u8 non_used1;
++		__le16 data_allow_len;
++		__le32 next_gpd_ptr_h;
++		__le32 next_gpd_ptr_l;
++		__le32 data_buff_ptr_h;
++		__le32 data_buff_ptr_l;
++		__le16 data_recv_len;
++		u8 non_used2;
++		u8 debug_id;
++	} rx_gpd;
++
++	struct {
++		u8 gpd_flags;
++		u8 non_used1;
++		u8 non_used2;
++		u8 debug_id;
++		__le32 next_gpd_ptr_h;
++		__le32 next_gpd_ptr_l;
++		__le32 data_buff_ptr_h;
++		__le32 data_buff_ptr_l;
++		__le16 data_buff_len;
++		__le16 non_used3;
++	} tx_gpd;
++} __packed;
++
++union bd {
++	struct {
++		u8 bd_flags;
++		u8 non_used1;
++		__le16 data_allow_len;
++		__le32 next_bd_ptr_h;
++		__le32 next_bd_ptr_l;
++		__le32 data_buff_ptr_h;
++		__le32 data_buff_ptr_l;
++		__le16 data_recv_len;
++		__le16 non_used2;
++	} rx_bd;
++
++	struct {
++		u8 bd_flags;
++		u8 non_used1;
++		__le16 non_used2;
++		__le32 next_bd_ptr_h;
++		__le32 next_bd_ptr_l;
++		__le32 data_buff_ptr_h;
++		__le32 data_buff_ptr_l;
++		__le16 data_buffer_len;
++		u8 extension_len;
++		u8 non_used3;
++	} tx_bd;
++} __packed;
++
++struct bd_dsc {
++	union bd *bd;
++	struct sk_buff *skb;
++	dma_addr_t bd_dma_addr;
++	dma_addr_t data_dma_addr;
++	size_t data_len;
 +};
 +
++struct rx_req {
++	union gpd *gpd;
++	u32 mtu;
++	struct sk_buff *skb;
++	size_t data_len;
++	dma_addr_t gpd_dma_addr;
++	dma_addr_t data_dma_addr;
++	u32 frag_size;
++	struct bd_dsc *bd_dsc_pool;
++};
++
++struct rxq {
++	struct cldma_drv_info *drv_info;
++	u32 rxqno;
++	struct queue_info *que;
++	struct work_struct rx_done_work;
++	struct rx_req *req_pool;
++	u32 nr_gpds;
++	u32 free_idx;
++	void *arg;
++	int (*rx_done)(struct sk_buff *skb, void *priv, bool force_recv);
++	u32 nr_bds;
++	atomic_t need_exit;
++	/* set when the queue must be programmed and started again after an IP
++	 * reset; consumed by mtk_cldma_rx_done_work(), the owner of free_idx
++	 */
++	atomic_t need_restart;
++};
++
++struct tx_req {
++	union gpd *gpd;
++	u32 mtu;
++	size_t data_len;
++	dma_addr_t data_dma_addr;
++	dma_addr_t gpd_dma_addr;
++	struct sk_buff *skb;
++	int (*trb_complete)(struct sk_buff *skb);
++	u32 frag_size;
++	struct bd_dsc *bd_dsc_pool;
++};
++
++struct txq {
++	struct cldma_drv_info *drv_info;
++	u32 txqno;
++	struct queue_info *que;
++	struct work_struct tx_done_work;
++	struct tx_req *req_pool;
++	u32 nr_gpds;
++	atomic_t req_budget;
++	/* ring_lock: serializes the producer (TRB service thread) against the
++	 * consumer (tx_done_work) over req_budget, wr_idx, free_idx and the
++	 * tx_req/GPD slots they index.
++	 */
++	spinlock_t ring_lock;
++	u32 wr_idx;
++	u32 free_idx;
++	bool tx_started;
++	u32 nr_bds;
++};
++
++struct cldma_dev {
++	struct cldma_drv_info *cldma_drv_info[NR_CLDMA];
++	struct mtk_ctrl_trans *trans;
++};
++
++int mtk_cldma_init(struct mtk_ctrl_trans *trans);
++void mtk_cldma_exit(struct mtk_ctrl_trans *trans);
++int mtk_cldma_submit_tx(void *dev, struct sk_buff *skb);
++int mtk_cldma_get_tx_budget(void *dev, enum mtk_hif_id hif_id, u32 qno);
++int mtk_cldma_trb_process(void *dev, struct sk_buff *skb);
++void mtk_cldma_fsm_state_listener(struct mtk_fsm_param *param, struct mtk_ctrl_trans *trans);
++int mtk_cldma_check_ch_cfg(void *dev, struct queue_info *que);
++
 +#endif
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.c b/drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.c
+new file mode 100644
+index 000000000000..94c74aca0250
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.c
+@@ -0,0 +1,566 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (c) 2023, MediaTek Inc.
++ */
++
++#include <linux/delay.h>
++#include <linux/device.h>
++#include <linux/iopoll.h>
++#include <linux/dma-mapping.h>
++#include <linux/dmapool.h>
++#include <linux/err.h>
++#include <linux/interrupt.h>
++#include <linux/kdev_t.h>
++#include <linux/kernel.h>
++#include <linux/kthread.h>
++#include <linux/list.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/netdevice.h>
++#include <linux/sched.h>
++#include <linux/skbuff.h>
++#include <linux/slab.h>
++#include <linux/timer.h>
++#include <linux/wait.h>
++#include <linux/workqueue.h>
++
++#include "mtk_cldma_drv.h"
++#include "mtk_dev.h"
++#include "mtk_pci.h"
++#include "mtk_pci_reg.h"
++
++#define WAIT_QUEUE_STOP		(70)
++
++#define CLDMA0_BASE_ADDR				(0x1021C000)
++#define CLDMA1_BASE_ADDR				(0x1021E000)
++
++#define CLDMA_RX_SKB_POOL_MAX_SIZE			(64)
++#define CLDMA_RX_SKB_RELOAD_THRESHOLD			(16)
++
++/* L2TISAR0 */
++#define TQ_ERR_INT_OFFSET				(16)
++#define TQ_ERR_INT_BITMASK				(0x00FF0000)
++#define TQ_ACTIVE_START_ERR_INT_OFFSET			(24)
++#define TQ_ACTIVE_START_ERR_INT_BITMASK			(0xFF000000)
++
++/* L2RISAR0 */
++#define RQ_ERR_INT_OFFSET				(16)
++#define RQ_ERR_INT_BITMASK				(0x00FF0000)
++#define RQ_ACTIVE_START_ERR_INT_OFFSET			(24)
++#define RQ_ACTIVE_START_ERR_INT_BITMASK			(0xFF000000)
++
++/* CLDMA IN(Tx) */
++#define REG_CLDMA_UL_START_ADDRL_0			(0x0004)
++#define REG_CLDMA_UL_START_ADDRH_0			(0x0008)
++#define REG_CLDMA_UL_CURRENT_ADDRL_0			(0x0044)
++#define REG_CLDMA_UL_CURRENT_ADDRH_0			(0x0048)
++#define REG_CLDMA_UL_STATUS				(0x0084)
++#define REG_CLDMA_UL_START_CMD				(0x0088)
++#define REG_CLDMA_UL_RESUME_CMD				(0x008C)
++#define REG_CLDMA_UL_STOP_CMD				(0x0090)
++#define REG_CLDMA_UL_ERROR				(0x0094)
++#define REG_CLDMA_UL_CFG				(0x0098)
++#define REG_CLDMA_UL_DUMMY_0				(0x009C)
++
++/* CLDMA OUT(Rx) */
++#define REG_CLDMA_SO_ERROR				(0x0400 + 0x0100)
++#define REG_CLDMA_SO_START_CMD				(0x0400 + 0x01BC)
++#define REG_CLDMA_SO_RESUME_CMD				(0x0400 + 0x01C0)
++#define REG_CLDMA_SO_STOP_CMD				(0x0400 + 0x01C4)
++#define REG_CLDMA_SO_DUMMY_0				(0x0400 + 0x0108)
++#define REG_CLDMA_SO_CFG				(0x0400 + 0x0004)
++#define REG_CLDMA_SO_START_ADDRL_0			(0x0400 + 0x0078)
++#define REG_CLDMA_SO_START_ADDRH_0			(0x0400 + 0x007C)
++#define REG_CLDMA_SO_CUR_ADDRL_0			(0x0400 + 0x00B8)
++#define REG_CLDMA_SO_CUR_ADDRH_0			(0x0400 + 0x00BC)
++#define REG_CLDMA_SO_STATUS				(0x0400 + 0x00F8)
++#define REG_CLDMA_DEBUG_ID_EN				(0x0400 + 0x00FC)
++#define REG_CLDMA_SO_LAST_UPDATE_ADDRL_0		(0x0400 + 0x01C8)
++#define REG_CLDMA_SO_LAST_UPDATE_ADDRH_0		(0x0400 + 0x01CC)
++
++/* CLDMA MISC */
++#define REG_CLDMA_L2TISAR0				(0x0800 + 0x0010)
++#define REG_CLDMA_L2TISAR1				(0x0800 + 0x0014)
++#define REG_CLDMA_L2TIMR0				(0x0800 + 0x0018)
++#define REG_CLDMA_L2TIMR1				(0x0800 + 0x001C)
++#define REG_CLDMA_L2TIMCR0				(0x0800 + 0x0020)
++#define REG_CLDMA_L2TIMCR1				(0x0800 + 0x0024)
++#define REG_CLDMA_L2TIMSR0				(0x0800 + 0x0028)
++#define REG_CLDMA_L2TIMSR1				(0x0800 + 0x002C)
++#define REG_CLDMA_L3TISAR0				(0x0800 + 0x0030)
++#define REG_CLDMA_L3TISAR1				(0x0800 + 0x0034)
++#define REG_CLDMA_L2RISAR0				(0x0800 + 0x0050)
++#define REG_CLDMA_L2RISAR1				(0x0800 + 0x0054)
++#define REG_CLDMA_L3RISAR0				(0x0800 + 0x0070)
++#define REG_CLDMA_L3RISAR1				(0x0800 + 0x0074)
++#define REG_CLDMA_IP_BUSY				(0x0800 + 0x00B4)
++#define REG_CLDMA_L3TISAR2				(0x0800 + 0x00C0)
++
++#define REG_CLDMA_L2RIMR0				(0x0800 + 0x00E8)
++#define REG_CLDMA_L2RIMR1				(0x0800 + 0x00EC)
++#define REG_CLDMA_L2RIMCR0				(0x0800 + 0x00F0)
++#define REG_CLDMA_L2RIMCR1				(0x0800 + 0x00F4)
++#define REG_CLDMA_L2RIMSR0				(0x0800 + 0x00F8)
++#define REG_CLDMA_L2RIMSR1				(0x0800 + 0x00FC)
++
++#define REG_CLDMA_INT_EAP_USIP_MASK			(0x0800 + 0x011C)
++
++#define REG_CLDMA_IP_BUSY_TO_PCIE_MASK			(0x0800 + 0x0194)
++#define REG_CLDMA_IP_BUSY_TO_PCIE_MASK_SET		(0x0800 + 0x0198)
++#define REG_CLDMA_IP_BUSY_TO_PCIE_MASK_CLR		(0x0800 + 0x019C)
++
++#define REG_CLDMA_IP_BUSY_TO_AP_MASK			(0x0800 + 0x0200)
++#define REG_CLDMA_IP_BUSY_TO_AP_MASK_SET		(0x0800 + 0x0204)
++#define REG_CLDMA_IP_BUSY_TO_AP_MASK_CLR		(0x0800 + 0x0208)
++#define REG_CLDMA_IP_BUSY_TO_MD_MASK_SET		(0x0800 + 0x0210)
++#define REG_CLDMA_RX_WORK_TO_REG_MASK_SET		(0x0800 + 0x021C)
++
++/* CLDMA RESET */
++#define REG_INFRA_RST0_SET				(0x120)
++#define REG_INFRA_RST0_CLR				(0x124)
++#define REG_CLDMA0_RST_SET_BIT				(8)
++#define REG_CLDMA0_RST_CLR_BIT				(8)
++
++struct cldma_hw_regs mtk_cldma_regs_m9xx = {
++	.cldma0_base_addr = CLDMA0_BASE_ADDR,
++	.cldma1_base_addr = CLDMA1_BASE_ADDR,
++	.cldma_rx_skb_pool_max_size = CLDMA_RX_SKB_POOL_MAX_SIZE,
++	.cldma_rx_skb_reload_threshold = CLDMA_RX_SKB_RELOAD_THRESHOLD,
++	.tq_err_int_offset = TQ_ERR_INT_OFFSET,
++	.tq_err_int_bitmask = TQ_ERR_INT_BITMASK,
++	.tq_active_start_err_int_offset = TQ_ACTIVE_START_ERR_INT_OFFSET,
++	.tq_active_start_err_int_bitmask = TQ_ACTIVE_START_ERR_INT_BITMASK,
++	.rq_err_int_offset = RQ_ERR_INT_OFFSET,
++	.rq_err_int_bitmask = RQ_ERR_INT_BITMASK,
++	.rq_active_start_err_int_offset = RQ_ACTIVE_START_ERR_INT_OFFSET,
++	.rq_active_start_err_int_bitmask = RQ_ACTIVE_START_ERR_INT_BITMASK,
++	.reg_cldma_ul_start_addrl_0 = REG_CLDMA_UL_START_ADDRL_0,
++	.reg_cldma_ul_start_addrh_0 = REG_CLDMA_UL_START_ADDRH_0,
++	.reg_cldma_ul_current_addrl_0 = REG_CLDMA_UL_CURRENT_ADDRL_0,
++	.reg_cldma_ul_current_addrh_0 = REG_CLDMA_UL_CURRENT_ADDRH_0,
++	.reg_cldma_ul_status = REG_CLDMA_UL_STATUS,
++	.reg_cldma_ul_start_cmd = REG_CLDMA_UL_START_CMD,
++	.reg_cldma_ul_resume_cmd = REG_CLDMA_UL_RESUME_CMD,
++	.reg_cldma_ul_stop_cmd = REG_CLDMA_UL_STOP_CMD,
++	.reg_cldma_ul_error = REG_CLDMA_UL_ERROR,
++	.reg_cldma_ul_cfg = REG_CLDMA_UL_CFG,
++	.reg_cldma_ul_dummy_0 = REG_CLDMA_UL_DUMMY_0,
++	.reg_cldma_so_error = REG_CLDMA_SO_ERROR,
++	.reg_cldma_so_start_cmd = REG_CLDMA_SO_START_CMD,
++	.reg_cldma_so_resume_cmd = REG_CLDMA_SO_RESUME_CMD,
++	.reg_cldma_so_stop_cmd = REG_CLDMA_SO_STOP_CMD,
++	.reg_cldma_so_dummy_0 = REG_CLDMA_SO_DUMMY_0,
++	.reg_cldma_so_cfg = REG_CLDMA_SO_CFG,
++	.reg_cldma_so_start_addrl_0 = REG_CLDMA_SO_START_ADDRL_0,
++	.reg_cldma_so_start_addrh_0 = REG_CLDMA_SO_START_ADDRH_0,
++	.reg_cldma_so_current_addrl_0 = REG_CLDMA_SO_CUR_ADDRL_0,
++	.reg_cldma_so_current_addrh_0 = REG_CLDMA_SO_CUR_ADDRH_0,
++	.reg_cldma_so_status = REG_CLDMA_SO_STATUS,
++	.reg_cldma_debug_id_en = REG_CLDMA_DEBUG_ID_EN,
++	.reg_cldma_so_last_update_addrl_0 = REG_CLDMA_SO_LAST_UPDATE_ADDRL_0,
++	.reg_cldma_so_last_update_addrh_0 = REG_CLDMA_SO_LAST_UPDATE_ADDRH_0,
++	.reg_cldma_l2tisar0 = REG_CLDMA_L2TISAR0,
++	.reg_cldma_l2tisar1 = REG_CLDMA_L2TISAR1,
++	.reg_cldma_l2timr0 = REG_CLDMA_L2TIMR0,
++	.reg_cldma_l2timr1 = REG_CLDMA_L2TIMR1,
++	.reg_cldma_l2timcr0 = REG_CLDMA_L2TIMCR0,
++	.reg_cldma_l2timcr1 = REG_CLDMA_L2TIMCR1,
++	.reg_cldma_l2timsr0 = REG_CLDMA_L2TIMSR0,
++	.reg_cldma_l2timsr1 = REG_CLDMA_L2TIMSR1,
++	.reg_cldma_l3tisar0 = REG_CLDMA_L3TISAR0,
++	.reg_cldma_l3tisar1 = REG_CLDMA_L3TISAR1,
++	.reg_cldma_l3tisar2 = REG_CLDMA_L3TISAR2,
++	.reg_cldma_l2risar0 = REG_CLDMA_L2RISAR0,
++	.reg_cldma_l2risar1 = REG_CLDMA_L2RISAR1,
++	.reg_cldma_l2rimr0 = REG_CLDMA_L2RIMR0,
++	.reg_cldma_l2rimr1 = REG_CLDMA_L2RIMR1,
++	.reg_cldma_l2rimcr0 = REG_CLDMA_L2RIMCR0,
++	.reg_cldma_l2rimcr1 = REG_CLDMA_L2RIMCR1,
++	.reg_cldma_l2rimsr0 = REG_CLDMA_L2RIMSR0,
++	.reg_cldma_l2rimsr1 = REG_CLDMA_L2RIMSR1,
++	.reg_cldma_l3risar0 = REG_CLDMA_L3RISAR0,
++	.reg_cldma_l3risar1 = REG_CLDMA_L3RISAR1,
++	.reg_cldma_ip_busy = REG_CLDMA_IP_BUSY,
++	.reg_cldma_int_mask = REG_CLDMA_INT_EAP_USIP_MASK,
++	.reg_cldma_ip_busy_to_pcie_mask = REG_CLDMA_IP_BUSY_TO_PCIE_MASK,
++	.reg_cldma_ip_busy_to_pcie_mask_set = REG_CLDMA_IP_BUSY_TO_PCIE_MASK_SET,
++	.reg_cldma_ip_busy_to_pcie_mask_clr = REG_CLDMA_IP_BUSY_TO_PCIE_MASK_CLR,
++	.reg_cldma_ip_busy_to_ap_mask = REG_CLDMA_IP_BUSY_TO_AP_MASK,
++	.reg_cldma_ip_busy_to_ap_mask_set = REG_CLDMA_IP_BUSY_TO_AP_MASK_SET,
++	.reg_cldma_ip_busy_to_ap_mask_clr = REG_CLDMA_IP_BUSY_TO_AP_MASK_CLR,
++	.reg_cldma_ip_busy_to_md_mask_set = REG_CLDMA_IP_BUSY_TO_MD_MASK_SET,
++	.reg_cldma_rx_work_to_reg_mask_set = REG_CLDMA_RX_WORK_TO_REG_MASK_SET,
++	.reg_infra_rst0_set = REG_INFRA_RST0_SET,
++	.reg_infra_rst0_clr = REG_INFRA_RST0_CLR,
++};
++
++void mtk_cldma_drv_reset(struct cldma_drv_info *drv_info)
++{
++	struct cldma_hw_regs *hw_regs;
++	struct mtk_md_dev *mdev;
++	u32 val;
++
++	mdev = drv_info->mdev;
++	hw_regs = drv_info->hw_regs;
++
++	val = 1 << (REG_CLDMA0_RST_SET_BIT + drv_info->hw_id);
++	mtk_pci_write32(mdev, REG_DEV_INFRA_BASE + hw_regs->reg_infra_rst0_set, val);
++
++	/* Read back to flush the posted write, so the reset is in effect at
++	 * the device before the pulse is timed and before it is released.
++	 */
++	mtk_pci_read32(mdev, REG_DEV_INFRA_BASE + hw_regs->reg_infra_rst0_set);
++	udelay(1);
++
++	val = 1 << (REG_CLDMA0_RST_CLR_BIT + drv_info->hw_id);
++	mtk_pci_write32(mdev, REG_DEV_INFRA_BASE + hw_regs->reg_infra_rst0_clr, val);
++	mtk_pci_read32(mdev, REG_DEV_INFRA_BASE + hw_regs->reg_infra_rst0_clr);
++}
++
++void mtk_cldma_drv_init(struct cldma_drv_info *drv_info)
++{
++	struct cldma_hw_regs *hw_regs;
++	struct mtk_md_dev *mdev;
++	int base;
++	u32 val;
++
++	mdev = drv_info->mdev;
++	base = drv_info->base_addr;
++	hw_regs = drv_info->hw_regs;
++
++	/* set CLDMA to 64 bit mode GPD */
++	val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_ul_cfg);
++	val = (val & (~(0x7 << 5))) | ((0x4) << 5);
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_ul_cfg, val);
++
++	val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_so_cfg);
++	val = (val & (~(0x7 << 10))) | ((0x4) << 10) | (1 << 2);
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_so_cfg, val);
++
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_rx_work_to_reg_mask_set, ALLQ);
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_ip_busy_to_pcie_mask_set,
++			ALLQ << 16);
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_ip_busy_to_pcie_mask_clr,
++			ALLQ << 24);
++
++	/* enable interrupt to PCIe */
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_int_mask, 0);
++
++	/* disable illegal memory check */
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_ul_dummy_0, 1);
++	mtk_pci_write32(mdev, base + hw_regs->reg_cldma_so_dummy_0, 1);
++}
++
++void mtk_cldma_setup_start_addr(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++				u32 qno, dma_addr_t addr)
++{
++	struct cldma_hw_regs *hw_regs;
++	unsigned int addr_l;
++	unsigned int addr_h;
++	int base;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX) {
++		addr_l = base + hw_regs->reg_cldma_ul_start_addrl_0 + qno * HW_QUEUE_NUM;
++		addr_h = base + hw_regs->reg_cldma_ul_start_addrh_0 + qno * HW_QUEUE_NUM;
++	} else {
++		addr_l = base + hw_regs->reg_cldma_so_start_addrl_0 + qno * HW_QUEUE_NUM;
++		addr_h = base + hw_regs->reg_cldma_so_start_addrh_0 + qno * HW_QUEUE_NUM;
++	}
++
++	mtk_pci_write32(drv_info->mdev, addr_l, (u32)addr);
++	mtk_pci_write32(drv_info->mdev, addr_h, (u32)((u64)addr >> 32));
++}
++
++void mtk_cldma_mask_intr(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++			 u32 qno, enum mtk_intr_type type)
++{
++	struct cldma_hw_regs *hw_regs;
++	int base;
++	u32 addr;
++	u32 val;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_l2timsr0;
++	else
++		addr = base + hw_regs->reg_cldma_l2rimsr0;
++
++	if (qno == ALLQ)
++		val = qno << type;
++	else
++		val = BIT(qno) << type;
++
++	mtk_pci_write32(drv_info->mdev, addr, val);
++}
++
++void mtk_cldma_unmask_intr(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++			   u32 qno, enum mtk_intr_type type)
++{
++	struct cldma_hw_regs *hw_regs;
++	int base;
++	u32 addr;
++	u32 val;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_l2timcr0;
++	else
++		addr = base + hw_regs->reg_cldma_l2rimcr0;
++
++	if (qno == ALLQ)
++		val = qno << type;
++	else
++		val = BIT(qno) << type;
++
++	mtk_pci_write32(drv_info->mdev, addr, val);
++}
++
++void mtk_cldma_clr_intr_status(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++			       u32 qno, enum mtk_intr_type type)
++{
++	struct cldma_hw_regs *hw_regs;
++	struct mtk_md_dev *mdev;
++	int base;
++	u32 addr;
++	u32 val;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++	mdev = drv_info->mdev;
++
++	if (type == QUEUE_ERROR) {
++		if (dir == DIR_TX) {
++			val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l3tisar0);
++			mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l3tisar0, val);
++			val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l3tisar1);
++			mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l3tisar1, val);
++			val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l3tisar2);
++			mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l3tisar2, val);
++		} else {
++			val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l3risar0);
++			mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l3risar0, val);
++			val = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l3risar1);
++			mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l3risar1, val);
++		}
++	}
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_l2tisar0;
++	else
++		addr = base + hw_regs->reg_cldma_l2risar0;
++
++	if (qno == ALLQ)
++		val = qno << type;
++	else
++		val = BIT(qno) << type;
++
++	mtk_pci_write32(mdev, addr, val);
++	val = mtk_pci_read32(mdev, addr);
++}
++
++u32 mtk_cldma_check_intr_status(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++				u32 qno, enum mtk_intr_type type)
++{
++	struct cldma_hw_regs *hw_regs;
++	u32 addr, val, sta;
++	int base;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_l2tisar0;
++	else
++		addr = base + hw_regs->reg_cldma_l2risar0;
++
++	val = mtk_pci_read32(drv_info->mdev, addr);
++	if (val == LINK_ERROR_VAL)
++		sta = val;
++	else if (qno == ALLQ)
++		sta = (val >> type) & 0xFF;
++	else
++		sta = (val >> type) & BIT(qno);
++
++	return sta;
++}
++
++void mtk_cldma_start_queue(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno)
++{
++	struct cldma_hw_regs *hw_regs;
++	u32 val = BIT(qno);
++	int base;
++	u32 addr;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_ul_start_cmd;
++	else
++		addr = base + hw_regs->reg_cldma_so_start_cmd;
++
++	mtk_pci_write32(drv_info->mdev, addr, val);
++}
++
++void mtk_cldma_resume_queue(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno)
++{
++	struct cldma_hw_regs *hw_regs;
++	u32 val = BIT(qno);
++	int base;
++	u32 addr;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_ul_resume_cmd;
++	else
++		addr = base + hw_regs->reg_cldma_so_resume_cmd;
++
++	mtk_pci_write32(drv_info->mdev, addr, val);
++}
++
++static u32 mtk_cldma_queue_status(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno)
++{
++	struct cldma_hw_regs *hw_regs;
++	int base;
++	u32 addr;
++	u32 val;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_ul_status;
++	else
++		addr = base + hw_regs->reg_cldma_so_status;
++
++	val = mtk_pci_read32(drv_info->mdev, addr);
++
++	if (qno == ALLQ || val == LINK_ERROR_VAL)
++		return val;
++
++	return val & BIT(qno);
++}
++
++int mtk_cldma_stop_queue(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno)
++{
++	u32 val = (qno == ALLQ) ? qno : BIT(qno);
++	struct cldma_hw_regs *hw_regs;
++	unsigned int active;
++	int base;
++	u32 addr;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++
++	if (dir == DIR_TX)
++		addr = base + hw_regs->reg_cldma_ul_stop_cmd;
++	else
++		addr = base + hw_regs->reg_cldma_so_stop_cmd;
++
++	mtk_pci_write32(drv_info->mdev, addr, val);
++
++	if (read_poll_timeout(mtk_cldma_queue_status, active,
++			      active == LINK_ERROR_VAL || !active,
++			      WAIT_QUEUE_STOP, WAIT_QUEUE_STOP * 10, false,
++			      drv_info, dir, qno))
++		return -ETIMEDOUT;
++
++	/* An all-ones read means the link is dead, not that the queue
++	 * stopped; let the caller tell the two apart.
++	 */
++	if (active == LINK_ERROR_VAL)
++		return -ENODEV;
++
++	return 0;
++}
++
++void mtk_cldma_clear_ip_busy(struct cldma_drv_info *drv_info)
++{
++	mtk_pci_write32(drv_info->mdev, drv_info->base_addr +
++			drv_info->hw_regs->reg_cldma_ip_busy, 0x01);
++}
++
++void mtk_cldma_get_intr_status(struct cldma_drv_info *drv_info, u32 *tx_sta, u32 *rx_sta)
++{
++	struct cldma_hw_regs *hw_regs;
++	struct mtk_md_dev *mdev;
++	u32 tx_mask, rx_mask;
++	int base;
++
++	mdev = drv_info->mdev;
++	base = drv_info->base_addr;
++	hw_regs = drv_info->hw_regs;
++
++	*tx_sta = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l2tisar0);
++	tx_mask = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l2timr0);
++	*rx_sta = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l2risar0);
++	rx_mask = mtk_pci_read32(mdev, base + hw_regs->reg_cldma_l2rimr0);
++
++	*tx_sta = (*tx_sta) & (~tx_mask);
++	*rx_sta = (*rx_sta) & (~rx_mask);
++
++	if (*tx_sta) {
++		/* TX XFER_DONE and QUEUE_ERROR mask */
++		mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l2timsr0, *tx_sta);
++		/* TX XFER_DONE clear */
++		mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l2tisar0,
++				(*tx_sta) & (0xFF << QUEUE_XFER_DONE));
++	}
++
++	if (*rx_sta) {
++		/* RX XFER_DONE and QUEUE_ERROR mask */
++		mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l2rimsr0, *rx_sta);
++		/* RX XFER_DONE clear */
++		mtk_pci_write32(mdev, base + hw_regs->reg_cldma_l2risar0,
++				(*rx_sta) & (0xFF << QUEUE_XFER_DONE));
++	}
++}
++
++u64 mtk_cldma_get_tx_start_addr(struct cldma_drv_info *drv_info, u32 qno)
++{
++	struct cldma_hw_regs *hw_regs = drv_info->hw_regs;
++	struct mtk_md_dev *mdev = drv_info->mdev;
++	int base = drv_info->base_addr;
++	u32 addr_h, addr_l;
++
++	addr_l = mtk_pci_read32(mdev,
++				base + hw_regs->reg_cldma_ul_start_addrl_0 + qno * HW_QUEUE_NUM);
++	addr_h = mtk_pci_read32(mdev,
++				base + hw_regs->reg_cldma_ul_start_addrh_0 + qno * HW_QUEUE_NUM);
++
++	return ((u64)addr_h << 32) | addr_l;
++}
++
++u64 mtk_cldma_get_rx_curr_addr(struct cldma_drv_info *drv_info, u32 qno)
++{
++	struct cldma_hw_regs *hw_regs;
++	u32 curr_addr_h, curr_addr_l;
++	struct mtk_md_dev *mdev;
++	u64 curr_addr;
++	int base;
++	u64 addr;
++
++	hw_regs = drv_info->hw_regs;
++	base = drv_info->base_addr;
++	mdev = drv_info->mdev;
++
++	addr = base + hw_regs->reg_cldma_so_current_addrh_0 +
++	       (u64)qno * HW_QUEUE_NUM;
++	curr_addr_h = mtk_pci_read32(mdev, addr);
++	addr = base + hw_regs->reg_cldma_so_current_addrl_0 +
++	       (u64)qno * HW_QUEUE_NUM;
++	curr_addr_l = mtk_pci_read32(mdev, addr);
++	curr_addr = ((u64)curr_addr_h << 32) | curr_addr_l;
++	if (curr_addr_h == LINK_ERROR_VAL && curr_addr_l == LINK_ERROR_VAL)
++		curr_addr = 0;
++	return curr_addr;
++}
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.h b/drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.h
+new file mode 100644
+index 000000000000..d7abf4b48895
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_cldma_drv.h
+@@ -0,0 +1,135 @@
++/* SPDX-License-Identifier: GPL-2.0-only
++ *
++ * Copyright (c) 2023, MediaTek Inc.
++ */
++
++#ifndef __MTK_CLDMA_DRV_H__
++#define __MTK_CLDMA_DRV_H__
++
++#define HW_QUEUE_NUM		(8)
++#define ALLQ			(0xFF)
++#define LINK_ERROR_VAL		(0xFFFFFFFF)
++#define CLDMA0_HW_ID		(0)
++#define CLDMA1_HW_ID		(1)
++
++struct cldma_hw_regs {
++	u8 cldma_rx_skb_pool_max_size;
++	u8 cldma_rx_skb_reload_threshold;
++	u8 tq_err_int_offset;
++	u8 tq_active_start_err_int_offset;
++	u8 rq_err_int_offset;
++	u8 rq_active_start_err_int_offset;
++	u16 reg_cldma_so_cfg;
++	u16 reg_cldma_so_start_addrl_0;
++	u16 reg_cldma_so_start_addrh_0;
++	u16 reg_cldma_so_current_addrl_0;
++	u16 reg_cldma_so_current_addrh_0;
++	u16 reg_cldma_so_status;
++	u16 reg_cldma_debug_id_en;
++	u16 reg_cldma_so_last_update_addrl_0;
++	u16 reg_cldma_so_last_update_addrh_0;
++	u16 reg_cldma_l2rimr0;
++	u16 reg_cldma_l2rimr1;
++	u16 reg_cldma_l2rimcr0;
++	u16 reg_cldma_l2rimcr1;
++	u16 reg_cldma_l2rimsr0;
++	u16 reg_cldma_l2rimsr1;
++	u16 reg_cldma_int_mask;
++	u16 reg_cldma_ip_busy_to_pcie_mask;
++	u16 reg_cldma_ip_busy_to_pcie_mask_set;
++	u16 reg_cldma_ip_busy_to_pcie_mask_clr;
++	u16 reg_cldma_ip_busy_to_ap_mask;
++	u16 reg_cldma_ip_busy_to_ap_mask_set;
++	u16 reg_cldma_ip_busy_to_ap_mask_clr;
++	u16 reg_cldma_ip_busy_to_md_mask_set;
++	u16 reg_cldma_rx_work_to_reg_mask_set;
++	u16 reg_infra_rst0_set;
++	u16 reg_infra_rst0_clr;
++	u32 tq_err_int_bitmask;
++	u32 tq_active_start_err_int_bitmask;
++	u32 rq_err_int_bitmask;
++	u32 cldma0_base_addr;
++	u32 cldma1_base_addr;
++	u32 rq_active_start_err_int_bitmask;
++	u32 reg_cldma_ul_start_addrl_0;
++	u32 reg_cldma_ul_start_addrh_0;
++	u32 reg_cldma_ul_current_addrl_0;
++	u32 reg_cldma_ul_current_addrh_0;
++	u32 reg_cldma_ul_status;
++	u32 reg_cldma_ul_start_cmd;
++	u32 reg_cldma_ul_resume_cmd;
++	u32 reg_cldma_ul_stop_cmd;
++	u32 reg_cldma_ul_error;
++	u32 reg_cldma_ul_cfg;
++	u32 reg_cldma_ul_dummy_0;
++	u32 reg_cldma_so_error;
++	u32 reg_cldma_so_start_cmd;
++	u32 reg_cldma_so_resume_cmd;
++	u32 reg_cldma_so_stop_cmd;
++	u32 reg_cldma_so_dummy_0;
++	u32 reg_cldma_l2tisar0;
++	u32 reg_cldma_l2tisar1;
++	u32 reg_cldma_l2timr0;
++	u32 reg_cldma_l2timr1;
++	u32 reg_cldma_l2timcr0;
++	u32 reg_cldma_l2timcr1;
++	u32 reg_cldma_l2timsr0;
++	u32 reg_cldma_l2timsr1;
++	u32 reg_cldma_l2risar0;
++	u32 reg_cldma_l2risar1;
++	u32 reg_cldma_l3tisar0;
++	u32 reg_cldma_l3tisar1;
++	u32 reg_cldma_l3tisar2;
++	u32 reg_cldma_l3risar0;
++	u32 reg_cldma_l3risar1;
++	u32 reg_cldma_ip_busy;
++};
++
++enum mtk_intr_type {
++	QUEUE_XFER_DONE = 0,
++	QUEUE_ERROR = 16,
++};
++
++enum mtk_tx_rx {
++	DIR_TX,
++	DIR_RX,
++};
++
++struct cldma_drv_info {
++	int hif_id;
++	int hw_id;
++	int base_addr;
++	int pci_ext_irq_id;
++	struct mtk_md_dev *mdev;
++	struct cldma_dev *cd;
++	struct txq *txq[HW_QUEUE_NUM];
++	struct rxq *rxq[HW_QUEUE_NUM];
++	struct dma_pool *gpd_dma_pool;
++	struct dma_pool *bd_dma_pool;
++	struct workqueue_struct *wq;
++	struct cldma_hw_regs *hw_regs;
++};
++
++extern struct cldma_hw_regs mtk_cldma_regs_m9xx;
++
++void mtk_cldma_drv_init(struct cldma_drv_info *drv_info);
++void mtk_cldma_drv_reset(struct cldma_drv_info *drv_info);
++void mtk_cldma_setup_start_addr(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++				u32 qno, dma_addr_t addr);
++void mtk_cldma_mask_intr(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++			 u32 qno, enum mtk_intr_type type);
++void mtk_cldma_unmask_intr(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++			   u32 qno, enum mtk_intr_type type);
++void mtk_cldma_clr_intr_status(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++			       u32 qno, enum mtk_intr_type type);
++u32 mtk_cldma_check_intr_status(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir,
++				u32 qno, enum mtk_intr_type type);
++void mtk_cldma_start_queue(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno);
++void mtk_cldma_resume_queue(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno);
++int mtk_cldma_stop_queue(struct cldma_drv_info *drv_info, enum mtk_tx_rx dir, u32 qno);
++void mtk_cldma_clear_ip_busy(struct cldma_drv_info *drv_info);
++void mtk_cldma_get_intr_status(struct cldma_drv_info *drv_info, u32 *tx_sta, u32 *rx_sta);
++u64 mtk_cldma_get_tx_start_addr(struct cldma_drv_info *drv_info, u32 qno);
++u64 mtk_cldma_get_rx_curr_addr(struct cldma_drv_info *drv_info, u32 qno);
++
++#endif
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci.c b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
+index 9fa61f08174d..7f51098985c9 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_pci.c
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
+@@ -868,6 +868,29 @@ static void mtk_pci_free_irq(struct mtk_md_dev *mdev)
+ 	priv->irq_cnt = 0;
+ }
+ 
++static int mtk_pci_dev_init(struct mtk_md_dev *mdev)
++{
++	int ret;
++
++	ret = mtk_trans_ctrl_init(mdev);
++	if (ret) {
++		dev_err(mdev->dev, "Failed to initialize control plane: %d\n", ret);
++		return ret;
++	}
++
++	return 0;
++}
++
++static void mtk_pci_dev_exit(struct mtk_md_dev *mdev)
++{
++	mtk_trans_ctrl_exit(mdev);
++}
++
++static int mtk_pci_dev_start(struct mtk_md_dev *mdev)
++{
++	return 0;
++}
++
+ static int mtk_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -934,6 +957,12 @@ static int mtk_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 	if (ret)
+ 		goto free_mhccif;
+ 
++	ret = mtk_pci_dev_init(mdev);
++	if (ret) {
++		dev_err(mdev->dev, "Failed to init dev.\n");
++		goto free_irq;
++	}
++
+ 	pci_set_master(pdev);
+ 	mtk_pci_unmask_irq(mdev, priv->mhccif_irq_id);
+ 
+@@ -954,10 +983,20 @@ static int mtk_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 		goto clear_master;
+ 	}
+ 
++	ret = mtk_pci_dev_start(mdev);
++	if (ret) {
++		dev_err(mdev->dev, "Failed to start dev.\n");
++		goto free_saved_state;
++	}
++
+ 	return 0;
+ 
++free_saved_state:
++	pci_load_and_free_saved_state(pdev, &priv->saved_state);
+ clear_master:
+ 	pci_clear_master(pdev);
++	mtk_pci_dev_exit(mdev);
++free_irq:
+ 	mtk_pci_free_irq(mdev);
+ free_mhccif:
+ 	mtk_mhccif_exit(mdev);
+@@ -976,6 +1015,8 @@ static void mtk_pci_remove(struct pci_dev *pdev)
+ 	struct device *dev = &pdev->dev;
+ 	int ret;
+ 
++	mtk_pci_dev_exit(mdev);
++
+ 	/* Silence every source before tearing anything down. */
+ 	mtk_pci_mac_write32(priv, REG_IMASK_HOST_MSIX_CLR_GRP0_0, U32_MAX);
+ 
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h b/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h
+index a97ad6630dcf..f65a8065d945 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci_reg.h
+@@ -16,6 +16,7 @@
+ #define REG_IMASK_HOST_MSIX_SET_GRP0_0		0x3000
+ #define REG_IMASK_HOST_MSIX_CLR_GRP0_0		0x3080
+ #define REG_IMASK_HOST_MSIX_GRP0_0		0x3100
++#define REG_DEV_INFRA_BASE			0x10001000
+ 
+ /* mhccif registers */
+ #define MHCCIF_RC2EP_SW_BSY			0x4
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c
+new file mode 100644
+index 000000000000..b14d8ba54c60
+--- /dev/null
++++ b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.c
+@@ -0,0 +1,614 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (c) 2022, MediaTek Inc.
++ */
++
++#include <linux/device.h>
++#include <linux/freezer.h>
++#include <linux/hashtable.h>
++#include <linux/kthread.h>
++#include <linux/list.h>
++#include <linux/nospec.h>
++#include <linux/sched.h>
++#include <linux/wait.h>
++
++#include "mtk_cldma.h"
++#include "mtk_ctrl_plane.h"
++#include "mtk_dev.h"
++#include "mtk_pci.h"
++#include "mtk_trans_ctrl.h"
++
++#define QUEUE_CHL_MASK	0xFFFF
++#define TRB_SRV_NUM	(1)
++
++static const int mtk_srv_cfg[NR_CLDMA][HW_QUE_NUM] = {
++	{0},
++	{0},
++};
++
++/* the number of RX GPDs should be at least two */
++static const struct queue_info mtk_queue_info[] = {
++	{CCCI_CONTROL_TX, CCCI_CONTROL_RX, CLDMA1, TXQ(0), RXQ(0),
++	 Q_MTU_3_5K, Q_MTU_3_5K, TX_GPD_NUM, RX_GPD_NUM, Q_FRAG_3_5K, Q_FRAG_3_5K, 0},
++	{CCCI_SAP_CONTROL_TX, CCCI_SAP_CONTROL_RX, CLDMA0, TXQ(0), RXQ(0),
++	 Q_MTU_3_5K, Q_MTU_3_5K, TX_GPD_NUM, RX_GPD_NUM, Q_FRAG_3_5K, Q_FRAG_3_5K, 0},
++};
++
++static bool mtk_queue_list_is_full(struct mtk_ctrl_trans *trans, struct queue_info *que)
++{
++	return skb_queue_len_lockless(&trans->trans_list[que->hif_id].skb_list[que->txqno]) >=
++	       SKB_LIST_MAX_LEN;
++}
++
++static bool mtk_ctrl_chs_is_busy_or_empty(struct trb_srv *srv)
++{
++	struct srv_que *srv_que;
++	int i;
++
++	for (i = 0; i < NR_CLDMA; i++) {
++		list_for_each_entry(srv_que, &srv->srv_q_list[i], list) {
++			struct sk_buff *skb;
++			struct trb *trb;
++
++			skb = skb_peek(&srv->trans->trans_list[i].skb_list[srv_que->qno]);
++			if (!skb)
++				continue;
++
++			/* ENABLE and DISABLE are software-only and are queued at
++			 * the head, so gating them on TX budget would make a queue
++			 * that cannot drain impossible to close.
++			 */
++			trb = (struct trb *)skb->cb;
++			if (trb->cmd != TRB_CMD_TX ||
++			    mtk_cldma_get_tx_budget(srv->trans->dev, i, srv_que->qno))
++				return false;
++		}
++	}
++
++	return true;
++}
++
++static void mtk_ctrl_ch_flush(struct sk_buff_head *skb_list)
++{
++	struct sk_buff *skb;
++	struct trb *trb;
++
++	while (!skb_queue_empty(skb_list)) {
++		skb = skb_dequeue(skb_list);
++		trb = (struct trb *)skb->cb;
++		trb->status = -EIO;
++		trb->trb_complete(skb);
++	}
++}
++
++static void mtk_ctrl_chs_flush(struct trb_srv *srv)
++{
++	struct srv_que *srv_que;
++	int i;
++
++	for (i = 0; i < NR_CLDMA; i++)
++		list_for_each_entry(srv_que, &srv->srv_q_list[i], list)
++			mtk_ctrl_ch_flush(&srv->trans->trans_list[i].skb_list[srv_que->qno]);
++}
++
++static int mtk_ch_status_check(struct mtk_ctrl_trans *trans, struct sk_buff *skb)
++{
++	struct trb *trb = (struct trb *)skb->cb;
++	struct trb_open_priv *trb_open_priv;
++	struct queue_info *que;
++	int ret = 0;
++
++	que = xa_load(&trans->queue_tbl, trb->channel_id & QUEUE_CHL_MASK);
++
++	switch (trb->cmd) {
++	case TRB_CMD_ENABLE:
++		trb_open_priv = (struct trb_open_priv *)skb->data;
++		trb_open_priv->log_rg_offset = que->log_rg_offset;
++		/* Balanced by the user's DISABLE request, not here: every
++		 * ENABLE failure except -EBUSY issues one.
++		 */
++		trans->usr_cnt[que->hif_id][que->txqno]++;
++		if (trans->usr_cnt[que->hif_id][que->txqno] == 1)
++			break;
++		trb_open_priv->tx_mtu = que->tx_mtu;
++		trb_open_priv->rx_mtu = que->rx_mtu;
++		trb_open_priv->tx_frag_size = que->tx_frag_size;
++		trb_open_priv->rx_frag_size = que->rx_frag_size;
++		if (mtk_cldma_check_ch_cfg(trans->dev, que)) {
++			trb->status = -EINVAL;
++			ret = -EINVAL;
++		} else {
++			trb->status = -EBUSY;
++			ret = -EBUSY;
++		}
++		trb->trb_complete(skb);
++		break;
++	case TRB_CMD_DISABLE:
++		if (trans->usr_cnt[que->hif_id][que->txqno] > 0) {
++			trans->usr_cnt[que->hif_id][que->txqno]--;
++			if (!trans->usr_cnt[que->hif_id][que->txqno])
++				break;
++		}
++		trb->status = -EBUSY;
++		trb->trb_complete(skb);
++		ret = -EBUSY;
++		break;
++	default:
++		dev_err((trans->mdev)->dev, "Invalid trb command(%d)\n", trb->cmd);
++		ret = -EINVAL;
++		break;
++	}
++	return ret;
++}
++
++/* Single consumer per srv_que — only this kthread dequeues from skb_list.
++ * The list lock is held around every list read (peek, is_last, peek_next,
++ * unlink) so a producer inserting a DISABLE at the head cannot race the
++ * traversal, but it is dropped across submit and dispatch: those paths
++ * may allocate with GFP_KERNEL and thus sleep. Dropping the lock there
++ * is safe because no other consumer can steal the peeked skb.
++ */
++static void mtk_ctrl_trb_handler(struct trb_srv *srv, struct trans_list *trans_list, u32 qno)
++{
++	struct sk_buff_head *skb_list = &trans_list->skb_list[qno];
++	struct mtk_ctrl_trans *trans = srv->trans;
++	struct sk_buff *skb, *skb_next;
++	struct trb *trb, *trb_next;
++	unsigned long flags;
++	bool kick = false;
++	int loop = 0;
++	int err;
++
++	do {
++		spin_lock_irqsave(&skb_list->lock, flags);
++		skb = skb_peek(skb_list);
++		if (!skb) {
++			spin_unlock_irqrestore(&skb_list->lock, flags);
++			break;
++		}
++		trb = (struct trb *)skb->cb;
++
++		switch (trb->cmd) {
++		case TRB_CMD_ENABLE:
++		case TRB_CMD_DISABLE:
++			__skb_unlink(skb, skb_list);
++			spin_unlock_irqrestore(&skb_list->lock, flags);
++			err = mtk_ch_status_check(trans, skb);
++			if (!err) {
++				kick = true;
++				if (trb->cmd == TRB_CMD_DISABLE)
++					mtk_ctrl_ch_flush(skb_list);
++			}
++			break;
++		case TRB_CMD_TX:
++			spin_unlock_irqrestore(&skb_list->lock, flags);
++			err = mtk_cldma_submit_tx(trans->dev, skb);
++			if (err) {
++				if (trans_list->tx_burst_cnt[qno]) {
++					kick = true;
++					break;
++				}
++				if (err == -EAGAIN)
++					return;
++
++				skb_unlink(skb, skb_list);
++				trb->status = err;
++				trb->trb_complete(skb);
++				break;
++			}
++
++			trans_list->tx_burst_cnt[qno]++;
++			spin_lock_irqsave(&skb_list->lock, flags);
++			if (trans_list->tx_burst_cnt[qno] >= TX_BURST_MAX_CNT ||
++			    skb_queue_is_last(skb_list, skb)) {
++				kick = true;
++			} else {
++				skb_next = skb_peek_next(skb, skb_list);
++				trb_next = (struct trb *)skb_next->cb;
++				if (trb_next->cmd != TRB_CMD_TX)
++					kick = true;
++			}
++
++			__skb_unlink(skb, skb_list);
++			spin_unlock_irqrestore(&skb_list->lock, flags);
++			break;
++		default:
++			__skb_unlink(skb, skb_list);
++			spin_unlock_irqrestore(&skb_list->lock, flags);
++			trb->status = -EINVAL;
++			trb->trb_complete(skb);
++			break;
++		}
++
++		if (kick) {
++			err = mtk_cldma_trb_process(trans->dev, skb);
++			if (err)
++				dev_err_ratelimited((trans->mdev)->dev,
++						    "Failed to process trb on queue %u: %d\n",
++						    qno, err);
++			trans_list->tx_burst_cnt[qno] = 0;
++			kick = false;
++		}
++
++		loop++;
++	} while (loop < TRB_NUM_PER_ROUND);
++}
++
++static void mtk_ctrl_trb_process(struct trb_srv *srv)
++{
++	struct mtk_ctrl_trans *trans = srv->trans;
++	struct srv_que *srv_que;
++	int i;
++
++	for (i = 0; i < NR_CLDMA; i++)
++		list_for_each_entry(srv_que, &srv->srv_q_list[i], list)
++			mtk_ctrl_trb_handler(srv, &trans->trans_list[i], srv_que->qno);
++}
++
++static int mtk_ctrl_trb_thread(void *args)
++{
++	struct trb_srv *srv = args;
++
++	for (;;) {
++		wait_event_interruptible(srv->trb_waitq,
++					 !mtk_ctrl_chs_is_busy_or_empty(srv) ||
++					 kthread_should_stop() || kthread_should_park());
++		if (kthread_should_stop())
++			break;
++
++		if (kthread_should_park())
++			kthread_parkme();
++
++		do {
++			mtk_ctrl_trb_process(srv);
++			cond_resched();
++		} while (!mtk_ctrl_chs_is_busy_or_empty(srv) && !kthread_should_stop() &&
++			 !kthread_should_park());
++	}
++	return 0;
++}
++
++static int mtk_ctrl_trb_srv_init(struct mtk_ctrl_trans *trans)
++{
++	struct srv_que *srv_que;
++	struct trb_srv *srv;
++	int i, j;
++	int ret;
++
++	for (i = 0; i < trans->trb_srv_num; i++) {
++		srv = kzalloc_obj(*srv);
++		if (!srv) {
++			ret = -ENOMEM;
++			goto err_free_srv;
++		}
++
++		srv->trans = trans;
++		srv->srv_id = i;
++		trans->trb_srv[i] = srv;
++
++		init_waitqueue_head(&srv->trb_waitq);
++		for (j = 0; j < NR_CLDMA; j++)
++			INIT_LIST_HEAD(&srv->srv_q_list[j]);
++	}
++
++	for (i = 0; i < NR_CLDMA; i++)
++		for (j = 0; j < HW_QUE_NUM; j++) {
++			if (trans->srv_cfg[i][j] < 0 ||
++			    trans->srv_cfg[i][j] >= trans->trb_srv_num)
++				trans->srv_cfg[i][j] = 0;
++			srv_que = kzalloc_obj(*srv_que);
++			if (!srv_que) {
++				ret = -ENOMEM;
++				goto err_free_srv_que;
++			}
++			srv_que->hif_id = i;
++			srv_que->qno = j;
++			list_add_tail(&srv_que->list,
++				      &trans->trb_srv[trans->srv_cfg[i][j]]->srv_q_list[i]);
++		}
++
++	for (i = 0; i < trans->trb_srv_num; i++) {
++		trans->trb_srv[i]->trb_thread = kthread_run(mtk_ctrl_trb_thread, trans->trb_srv[i],
++							    "mtk_trb_srv%d_%s", i,
++							    trans->mdev->dev_str);
++		if (IS_ERR(trans->trb_srv[i]->trb_thread)) {
++			ret = PTR_ERR(trans->trb_srv[i]->trb_thread);
++			trans->trb_srv[i]->trb_thread = NULL;
++			goto err_stop_kthread;
++		}
++	}
++
++	return 0;
++err_stop_kthread:
++	while (--i >= 0)
++		kthread_stop(trans->trb_srv[i]->trb_thread);
++err_free_srv_que:
++	for (i = 0; i < trans->trb_srv_num; i++) {
++		for (j = 0; j < NR_CLDMA; j++) {
++			struct srv_que *next_srv_que;
++
++			list_for_each_entry_safe(srv_que, next_srv_que,
++						 &trans->trb_srv[i]->srv_q_list[j], list) {
++				list_del(&srv_que->list);
++				kfree(srv_que);
++			}
++		}
++	}
++err_free_srv:
++	for (i = 0; i < trans->trb_srv_num; i++) {
++		if (!trans->trb_srv[i])
++			break;
++		kfree(trans->trb_srv[i]);
++		trans->trb_srv[i] = NULL;
++	}
++
++	return ret;
++}
++
++static void mtk_ctrl_trb_srv_exit(struct mtk_ctrl_trans *trans)
++{
++	struct srv_que *srv_que, *next_srv_que;
++	struct trb_srv *srv;
++	int i, j;
++
++	for (i = 0; i < trans->trb_srv_num; i++) {
++		srv = trans->trb_srv[i];
++		if (!srv)
++			continue;
++		kthread_stop(srv->trb_thread);
++		mtk_ctrl_chs_flush(srv);
++		for (j = 0; j < NR_CLDMA; j++) {
++			list_for_each_entry_safe(srv_que, next_srv_que,
++						 &trans->trb_srv[i]->srv_q_list[j], list) {
++				list_del(&srv_que->list);
++				kfree(srv_que);
++			}
++		}
++		kfree(srv);
++		trans->trb_srv[i] = NULL;
++	}
++}
++
++static void mtk_ctrl_remove_queue_tbl(struct mtk_ctrl_trans *trans)
++{
++	struct queue_info *queue;
++	unsigned long index;
++
++	xa_for_each(&trans->queue_tbl, index, queue) {
++		xa_erase(&trans->queue_tbl, index);
++		kfree(queue);
++	}
++	xa_destroy(&trans->queue_tbl);
++}
++
++int mtk_pcie_hif_init(struct mtk_md_dev *mdev)
++{
++	struct mtk_ctrl_blk *ctrl_blk = mdev->ctrl_blk;
++	struct queue_info *queue, *queue_info;
++	struct mtk_ctrl_trans *trans;
++	int i, j;
++	int ret;
++
++	trans = ctrl_blk->ctrl_hw_priv;
++	trans->ctrl_blk = ctrl_blk;
++	queue_info = trans->queue_info;
++
++	xa_init(&trans->queue_tbl);
++	for (i = 0; i < trans->queue_info_num; i++) {
++		queue = kmemdup(queue_info + i, sizeof(*queue), GFP_KERNEL);
++		if (!queue) {
++			ret = -ENOMEM;
++			goto err_free_queue_tbl;
++		}
++		if (queue->txqno >= HW_QUE_NUM || queue->rxqno >= HW_QUE_NUM ||
++		    queue->hif_id >= NR_CLDMA) {
++			dev_err(mdev->dev, "Failed to get correct queue info %x\n",
++				queue->rx_chl);
++			kfree(queue);
++			ret = -EINVAL;
++			goto err_free_queue_tbl;
++		}
++		ret = xa_insert(&trans->queue_tbl, queue->rx_chl & QUEUE_CHL_MASK, queue,
++				GFP_KERNEL);
++		if (ret) {
++			dev_err(mdev->dev, "Insert %x fail, ret: %d", queue->rx_chl, ret);
++			kfree(queue);
++			goto err_free_queue_tbl;
++		}
++	}
++
++	for (i = 0; i < NR_CLDMA; i++) {
++		for (j = 0; j < HW_QUE_NUM; j++) {
++			skb_queue_head_init(&trans->trans_list[i].skb_list[j]);
++			trans->trans_list[i].tx_burst_cnt[j] = 0;
++			/* usr_cnt tracks the queues rebuilt by mtk_cldma_init()
++			 * below, so it must be reset with them. Otherwise a
++			 * count left over from a torn-down cycle makes the
++			 * channel permanently unopenable.
++			 */
++			trans->usr_cnt[i][j] = 0;
++		}
++	}
++	ret = mtk_cldma_init(trans);
++	if (ret)
++		goto err_free_queue_tbl;
++
++	ret = mtk_ctrl_trb_srv_init(trans);
++	if (ret)
++		goto err_cldma_exit;
++
++	atomic_set(&trans->available, 1);
++
++	return 0;
++
++err_cldma_exit:
++	mtk_cldma_exit(trans);
++err_free_queue_tbl:
++	mtk_ctrl_remove_queue_tbl(trans);
++
++	return ret;
++}
++
++int mtk_pcie_hif_exit(struct mtk_md_dev *mdev)
++{
++	struct mtk_ctrl_blk *ctrl_blk = mdev->ctrl_blk;
++	struct mtk_ctrl_trans *trans;
++
++	trans = ctrl_blk->ctrl_hw_priv;
++
++	mutex_lock(&trans->submit_lock);
++	atomic_set(&trans->available, 0);
++	mutex_unlock(&trans->submit_lock);
++
++	/* Join the service threads before freeing what they dereference: they
++	 * read trans->dev without a lock, so clearing it cannot stop a
++	 * consumer that has already loaded the pointer.
++	 */
++	mtk_ctrl_trb_srv_exit(trans);
++	mtk_cldma_exit(trans);
++
++	/* Late submitters may still hold the lock and walk the tree. */
++	mutex_lock(&trans->submit_lock);
++	mtk_ctrl_remove_queue_tbl(trans);
++	mutex_unlock(&trans->submit_lock);
++
++	return 0;
++}
++
++int mtk_pcie_hif_submit_skb(struct mtk_md_dev *mdev, struct sk_buff *skb, bool force_send)
++{
++	struct mtk_ctrl_blk *ctrl_blk = mdev->ctrl_blk;
++	struct mtk_ctrl_trans *trans;
++	struct queue_info *que;
++	struct trb *trb;
++	int ret;
++
++	trans = ctrl_blk->ctrl_hw_priv;
++	trb = (struct trb *)skb->cb;
++
++	if (trb->cmd == TRB_CMD_STOP || trb->cmd == TRB_CMD_RECOVER) {
++		trb->trb_complete(skb);
++		return 0;
++	}
++
++	mutex_lock(&trans->submit_lock);
++
++	if (!atomic_read(&trans->available)) {
++		ret = -EIO;
++		goto unlock;
++	}
++
++	que = xa_load(&trans->queue_tbl, trb->channel_id & QUEUE_CHL_MASK);
++	if (!que) {
++		dev_warn(mdev->dev, "lookup que fail, ch_id: %x\n",
++			 trb->channel_id);
++		ret = -EINVAL;
++		goto unlock;
++	}
++
++	if (mtk_queue_list_is_full(trans, que) && !force_send) {
++		ret = -EAGAIN;
++		goto unlock;
++	}
++
++	if (trb->cmd == TRB_CMD_DISABLE) {
++		struct sk_buff *last_enable = NULL;
++		struct sk_buff_head *list;
++		struct sk_buff *iter;
++		unsigned long flags;
++
++		/* A disable may overtake queued data, so teardown does not
++		 * wait for a TX backlog, but it must never overtake a pending
++		 * ENABLE for the same queue: a DISABLE consumed before its
++		 * ENABLE closes nothing while the ENABLE then arms rings
++		 * nobody owns.
++		 */
++		list = &trans->trans_list[que->hif_id].skb_list[que->txqno];
++		spin_lock_irqsave(&list->lock, flags);
++		skb_queue_walk(list, iter) {
++			if (((struct trb *)iter->cb)->cmd == TRB_CMD_ENABLE)
++				last_enable = iter;
++		}
++		if (last_enable)
++			__skb_queue_after(list, last_enable, skb);
++		else
++			__skb_queue_head(list, skb);
++		spin_unlock_irqrestore(&list->lock, flags);
++	} else {
++		skb_queue_tail(&trans->trans_list[que->hif_id].skb_list[que->txqno], skb);
++	}
++
++	wake_up(&trans->trb_srv[trans->srv_cfg[que->hif_id][que->txqno]]->trb_waitq);
++	ret = 0;
++
++unlock:
++	mutex_unlock(&trans->submit_lock);
++	return ret;
++}
++
++int mtk_pcie_hif_cmd_func(struct mtk_md_dev *mdev, int cmd, void *data)
++{
++	struct mtk_ctrl_blk *ctrl_blk = mdev->ctrl_blk;
++	struct mtk_ctrl_trans *trans;
++	struct queue_info *que;
++	int ret;
++
++	switch (cmd) {
++	case HIF_CTRL_CMD_CHECK_TX_FULL:
++		trans = ctrl_blk->ctrl_hw_priv;
++		mutex_lock(&trans->submit_lock);
++		if (!atomic_read(&trans->available)) {
++			ret = -EIO;
++			break;
++		}
++		que = xa_load(&trans->queue_tbl,
++			      ((union ctrl_hif_cmd_data *)data)->rx_ch & QUEUE_CHL_MASK);
++		if (!que) {
++			dev_warn(mdev->dev, "Failed to find que to check tx full\n");
++			ret = -EINVAL;
++			break;
++		}
++		ret = mtk_queue_list_is_full(trans, que);
++		break;
++	default:
++		return -EINVAL;
++	}
++	mutex_unlock(&trans->submit_lock);
++
++	return ret;
++}
++
++int mtk_trans_ctrl_init(struct mtk_md_dev *mdev)
++{
++	struct mtk_ctrl_trans *trans;
++	struct mtk_ctrl_blk *ctrl_blk;
++	int err;
++
++	trans = devm_kzalloc(mdev->dev, sizeof(*trans), GFP_KERNEL);
++	if (!trans)
++		return -ENOMEM;
++	trans->mdev = mdev;
++	mutex_init(&trans->submit_lock);
++	atomic_set(&trans->available, 0);
++
++	memcpy(trans->srv_cfg, mtk_srv_cfg, sizeof(mtk_srv_cfg));
++	trans->queue_info = (struct queue_info *)mtk_queue_info;
++	trans->queue_info_num = ARRAY_SIZE(mtk_queue_info);
++	trans->trb_srv_num = TRB_SRV_NUM;
++
++	err = mtk_ctrl_init(mdev);
++	if (err)
++		return err;
++
++	ctrl_blk = mdev->ctrl_blk;
++	ctrl_blk->ctrl_hw_priv = trans;
++
++	return 0;
++}
++
++int mtk_trans_ctrl_exit(struct mtk_md_dev *mdev)
++{
++	mtk_ctrl_exit(mdev);
++
++	return 0;
++}
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h
+index 50b1c366a4c8..38048fac5136 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h
++++ b/drivers/net/wwan/t9xx/pcie/mtk_trans_ctrl.h
+@@ -7,14 +7,83 @@
+ #define __MTK_TRANS_CTRL_H__
+ 
+ #include <linux/list.h>
++#include <linux/mutex.h>
+ #include <linux/skbuff.h>
+ #include <linux/types.h>
++#include <linux/xarray.h>
+ 
+ #include "mtk_dev.h"
+ 
++#define TRB_SRV_MAX_NUM			(1)
++#define HW_QUE_NUM			(8)
++#define TX_GPD_NUM			(16)
++#define RX_GPD_NUM			(TX_GPD_NUM)
++#define MIN_GPD_NUM			(2)
++#define SKB_LIST_MAX_LEN		(16)
++#define TRB_NUM_PER_ROUND		(TX_GPD_NUM)
++#define TX_BURST_MAX_CNT		(TX_GPD_NUM / 4 + 1)
++
++enum mtk_hif_id {
++	CLDMA0,
++	CLDMA1,
++	NR_CLDMA
++};
++
++struct queue_info {
++	u32 tx_chl;
++	u32 rx_chl;
++	enum mtk_hif_id hif_id;
++	u32 txqno;
++	u32 rxqno;
++	u32 tx_mtu;
++	u32 rx_mtu;
++	u32 tx_nr_gpds;
++	u32 rx_nr_gpds;
++	u32 tx_frag_size;
++	u32 rx_frag_size;
++	u8 log_rg_offset;
++};
++
++struct trans_list {
++	struct sk_buff_head skb_list[HW_QUE_NUM];
++	u8 tx_burst_cnt[HW_QUE_NUM];
++};
++
+ struct mtk_ctrl_trans {
+ 	struct mtk_ctrl_blk *ctrl_blk;
++	struct trb_srv *trb_srv[TRB_SRV_MAX_NUM];
++	struct trans_list trans_list[NR_CLDMA];
++	void *dev;
++	struct xarray queue_tbl;
+ 	struct mtk_md_dev *mdev;
++	int usr_cnt[NR_CLDMA][HW_QUE_NUM];
++	struct mutex submit_lock; /* protects available flag and submit/exit paths */
++	atomic_t available;
++	int srv_cfg[NR_CLDMA][HW_QUE_NUM];
++	struct queue_info *queue_info;
++	int queue_info_num;
++	int trb_srv_num;
++};
++
++struct srv_que {
++	u32 hif_id;
++	u32 qno;
++	struct list_head list;
+ };
+ 
++struct trb_srv {
++	u32 srv_id;
++	struct list_head srv_q_list[NR_CLDMA];
++	struct mtk_ctrl_trans *trans;
++	wait_queue_head_t trb_waitq;
++	struct task_struct *trb_thread;
++};
++
++int mtk_pcie_hif_init(struct mtk_md_dev *mdev);
++int mtk_pcie_hif_exit(struct mtk_md_dev *mdev);
++int mtk_pcie_hif_submit_skb(struct mtk_md_dev *mdev, struct sk_buff *skb, bool force_send);
++int mtk_pcie_hif_cmd_func(struct mtk_md_dev *mdev, int cmd, void *data);
++int mtk_trans_ctrl_init(struct mtk_md_dev *mdev);
++int mtk_trans_ctrl_exit(struct mtk_md_dev *mdev);
++
+ #endif
 
 -- 
 2.34.1
