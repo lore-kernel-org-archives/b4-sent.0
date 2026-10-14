@@ -1,339 +1,131 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Wed, 14 Oct 2026 18:58:11 +0800
-Subject: [PATCH BlueZ bluez] hci: add ext adv interface
+From: Nicholas Velten <nicholasfvelten@gmail.com>
+Date: Wed, 14 Oct 2026 08:06:38 -0300
+Subject: [PATCH] usb: gadget: u_ether: refuse to re-register a failed
+ net_device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-extend_adv_api-v1-1-6ad07ff280f2@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAEJgz2oC/x3MTQqAIBBA4avIrBOyH5GuEhGaUw2EiVZE0t2Tl
- t/ivQQRA2GEjiUIeFGk3WWIgsG0arcgJ5sNVVlJUYqG432gs6O216g9cSmMUarWk1It5MgHnOn
- +hz2Y7cQHhvf9AANHkN9nAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791975494; l=8890;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=WMUAa/cLymXgVr+hqSOhwpWmetN8h/ciU2P6dUS+h5c=;
- b=ULgSsdKJ7auitPoC4RZsGqZOyx6N4zqb8Bmt75PNI/Nz3nFcdeX9qZGzeOlzO+bfxxoGOHU8M
- q4sQ64yQcLOD18k9YtqBVgD8uJPI5bxqMUI3jCPZXhr3OChDN7mPd1N
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Message-Id: <20261014-fix-gadget-netdev-reregister-v1-1-0fb91999da06@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAD1iz2oC/yXMQQrCMBBG4auUWTuQlKroVcRFmvyJ4yLKTCxC6
+ d2Nuvzg8VYyqMDoPKykWMTkUTv8bqB4C7WAJXXT6MaDd37iLG8uIRU0rmgJCysURaxB+biPeXI
+ nFzJm6ounove//eX6t73mO2L7PmnbPufLXnKAAAAA
+X-Change-ID: 20261014-fix-gadget-netdev-reregister-75cf4090afeb
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ syzbot+85ede281798faf736677@syzkaller.appspotmail.com, 
+ Nicholas Velten <nicholasfvelten@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791975997; l=4551;
+ i=nicholasfvelten@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=R8N/U9EpeodrPP2C8W4xyv5oFcDyRUldfgErXBf/7RE=;
+ b=9ZXSnZvhgl4VAmjVXgi0COCcRCK6RUR7/fd0U2D9qtiM2mdmlvSsMVRN4HbiIJp0g3DxStTd8
+ 7pMKyTgEQm9D731n6qgT6gqe+EN9/T3Z7dov6GndfdCu2MdQELCXtdu
+X-Developer-Key: i=nicholasfvelten@gmail.com; a=ed25519;
+ pk=WVTZgm6yXQ+XrhULAObg4lwcHPhhxAXrAY+YY6svXzg=
+X-Endpoint-Received: by B4 Relay for nicholasfvelten@gmail.com/20261014 with auth_id=1173
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wrap extended advertising HCI command interfaces.
+When register_netdevice() fails in or after netdev_register_kobject(),
+it returns an error but leaves the net_device in NETREG_UNREGISTERED.
+Such a device can never be registered again; the only valid thing to do
+with it is free_netdev().
+
+The configfs Ethernet functions (ECM, EEM, NCM, RNDIS and subset)
+allocate their net_device once per function instance and register it
+from the bind callback, retrying on every bind for as long as the device
+is not registered (formerly tracked by a "bound" flag, now by
+device_is_registered()). After a failed registration the next bind
+therefore calls register_netdev() on an NETREG_UNREGISTERED device and
+hits the BUG_ON() at the top of register_netdevice():
+
+  kernel BUG at net/core/dev.c:11440!
+  Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
+  RIP: 0010:register_netdevice+0xc21/0x1d00
+  Call Trace:
+   register_netdev
+   gether_register_netdev
+   ncm_bind
+   usb_add_function
+   configfs_composite_bind
+   gadget_bind_driver
+   ...
+   gadget_dev_desc_UDC_store
+
+syzbot hits this by binding a gadget from a memory cgroup with a tiny
+limit, which makes the memcg-accounted allocations in
+netdev_register_kobject() fail. That is why its bisection lands on
+commit 425b9c7f51c9 ("memcg: accounting for objects allocated for new
+netdevice"): that commit made the failure reachable that way, while the
+retry itself is much older.
+
+Refuse to register a net_device that is not NETREG_UNINITIALIZED in
+gether_register_netdev(), which all of these functions use, so that the
+bind fails with -EINVAL instead of crashing. The function instance has
+to be recreated to get a usable net_device again.
+
+Reproduced with fail-nth fault injection on the allocations of the
+write() to the gadget's UDC attribute, binding again without injection
+after each failed bind, using a fresh function instance per iteration:
+without this change NCM, ECM and RNDIS hit the BUG_ON() at the 16th
+injected allocation; with it, 400 iterations for NCM and 300 each for
+ECM, EEM, RNDIS and subset complete with no BUG or KASAN report.
+
+Fixes: 40d133d7f542 ("usb: gadget: f_ncm: convert to new function interface with backward compatibility")
+Reported-by: syzbot+85ede281798faf736677@syzkaller.appspotmail.com
+Closes: https://syzkaller.appspot.com/bug?extid=85ede281798faf736677
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Nicholas Velten <nicholasfvelten@gmail.com>
+---
+The syzbot C reproducer did not reach the gadget bind in my virtme-ng
+guest (its sandbox setup appears to fail there), so I reproduced with a
+small fail-nth program instead. I can post it if useful.
+
+Not tested: architectures other than x86_64, and the legacy (non-configfs)
+gadgets that also call gether_register_netdev() (g_ether, g_multi,
+g_ffs); they register once from their bind path and should be unaffected.
+
+f_phonet has the same retry pattern but a different outcome:
+gphonet_register_netdev() calls free_netdev() on failure while
+phonet_opts->net still points at the device and phonet_opts->bound stays
+false, so the next bind uses a freed net_device. I left it out of this
+patch to keep it to one change and because f_phonet is being changed by
+"usb: gadget: f_phonet: fix use-after-free in pn_bind" (v3, not yet
+applied); I can send a separate fix on top of that if wanted.
+
+Also touching gether_register_netdev(), without conflict:
+"usb: gadget: u_ether: Fix NULL pointer deref in debug logging".
+---
+ drivers/usb/gadget/function/u_ether.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/drivers/usb/gadget/function/u_ether.c b/drivers/usb/gadget/function/u_ether.c
+index 59d85d6a8..1f4ac7078 100644
+--- a/drivers/usb/gadget/function/u_ether.c
++++ b/drivers/usb/gadget/function/u_ether.c
+@@ -865,6 +865,17 @@ int gether_register_netdev(struct net_device *net)
+ 
+ 	if (!net->dev.parent)
+ 		return -EINVAL;
++
++	/*
++	 * A register_netdev() that failed after netdev_register_kobject()
++	 * leaves the device NETREG_UNREGISTERED, and it can never be
++	 * registered again. The function drivers retry on every bind while
++	 * the device is not registered, so refuse instead of hitting the
++	 * BUG_ON() in register_netdevice().
++	 */
++	if (net->reg_state != NETREG_UNINITIALIZED)
++		return -EINVAL;
++
+ 	dev = netdev_priv(net);
+ 	g = dev->gadget;
+ 
 
 ---
-Signed-off-by: Yang Li <yang.li@amlogic.com>
----
- lib/bluetooth/hci.c     | 193 ++++++++++++++++++++++++++++++++++++++++++++++++
- lib/bluetooth/hci.h     |  55 ++++++++++++++
- lib/bluetooth/hci_lib.h |  16 ++++
- 3 files changed, 264 insertions(+)
-
-diff --git a/lib/bluetooth/hci.c b/lib/bluetooth/hci.c
-index f50a30c61..646a0fe6f 100644
---- a/lib/bluetooth/hci.c
-+++ b/lib/bluetooth/hci.c
-@@ -3017,6 +3017,199 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable, int to)
- 	return 0;
- }
- 
-+int hci_le_set_ext_adv_params(int dd, uint8_t handle, uint16_t evt_properties,
-+				uint32_t min_interval, uint32_t max_interval,
-+				uint8_t channel_map, uint8_t own_addr_type,
-+				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
-+				uint8_t filter_policy, int8_t tx_power,
-+				uint8_t primary_phy, uint8_t secondary_max_skip,
-+				uint8_t secondary_phy, uint8_t sid,
-+				uint8_t notif_enable, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_params_cp cp;
-+	struct {
-+		uint8_t status;
-+		int8_t  tx_power;
-+	} rsp;
-+
-+	memset(&cp, 0, sizeof(cp));
-+	cp.handle = handle;
-+	cp.evt_properties = evt_properties;
-+	cp.min_interval[0] = min_interval & 0xff;
-+	cp.min_interval[1] = (min_interval >> 8) & 0xff;
-+	cp.min_interval[2] = (min_interval >> 16) & 0xff;
-+	cp.max_interval[0] = max_interval & 0xff;
-+	cp.max_interval[1] = (max_interval >> 8) & 0xff;
-+	cp.max_interval[2] = (max_interval >> 16) & 0xff;
-+	cp.channel_map = channel_map;
-+	cp.own_addr_type = own_addr_type;
-+	cp.peer_addr_type = peer_addr_type;
-+	if (peer_addr)
-+		memcpy(&cp.peer_addr, peer_addr, sizeof(cp.peer_addr));
-+	cp.filter_policy = filter_policy;
-+	cp.tx_power = tx_power;
-+	cp.primary_phy = primary_phy;
-+	cp.secondary_max_skip = secondary_max_skip;
-+	cp.secondary_phy = secondary_phy;
-+	cp.sid = sid;
-+	cp.notif_enable = notif_enable;
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_ADV_PARAMS;
-+	rq.cparam = &cp;
-+	rq.clen = sizeof(cp);
-+	rq.rparam = &rsp;
-+	rq.rlen = sizeof(rsp);
-+
-+	if (hci_send_req(dd, &rq, to) < 0)
-+		return -1;
-+
-+	if (rsp.status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
-+int hci_le_set_ext_adv_data(int dd, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_data_cp *cp;
-+	uint8_t status;
-+	size_t plen = sizeof(*cp) + data_len;
-+
-+	cp = malloc(plen);
-+	if (!cp) {
-+		errno = ENOMEM;
-+		return -1;
-+	}
-+
-+	memset(cp, 0, plen);
-+	cp->handle = handle;
-+	cp->operation = operation;
-+	cp->fragment_preference = fragment_pref;
-+	cp->data_len = data_len;
-+	if (data && data_len)
-+		memcpy(cp->data, data, data_len);
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_ADV_DATA;
-+	rq.cparam = cp;
-+	rq.clen = plen;
-+	rq.rparam = &status;
-+	rq.rlen = 1;
-+
-+	if (hci_send_req(dd, &rq, to) < 0) {
-+		free(cp);
-+		return -1;
-+	}
-+
-+	free(cp);
-+
-+	if (status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
-+int hci_le_set_ext_scan_rsp_data(int dd, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_data_cp *cp;
-+	uint8_t status;
-+	size_t plen = sizeof(*cp) + data_len;
-+
-+	cp = malloc(plen);
-+	if (!cp) {
-+		errno = ENOMEM;
-+		return -1;
-+	}
-+
-+	memset(cp, 0, plen);
-+	cp->handle = handle;
-+	cp->operation = operation;
-+	cp->fragment_preference = fragment_pref;
-+	cp->data_len = data_len;
-+	if (data && data_len)
-+		memcpy(cp->data, data, data_len);
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_SCAN_RSP_DATA;
-+	rq.cparam = cp;
-+	rq.clen = plen;
-+	rq.rparam = &status;
-+	rq.rlen = 1;
-+
-+	if (hci_send_req(dd, &rq, to) < 0) {
-+		free(cp);
-+		return -1;
-+	}
-+
-+	free(cp);
-+
-+	if (status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
-+int hci_le_set_ext_adv_enable(int dd, uint8_t enable, uint8_t num_of_sets,
-+				const void *sets, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_enable_cp *cp;
-+	uint8_t status;
-+	size_t set_entry_len = 4; /* handle (1) + duration (2) + max_events (1) */
-+	size_t plen = sizeof(le_set_ext_adv_enable_cp) + (num_of_sets * set_entry_len);
-+
-+	cp = malloc(plen);
-+	if (!cp) {
-+		errno = ENOMEM;
-+		return -1;
-+	}
-+
-+	memset(cp, 0, plen);
-+	cp->enable = enable;
-+	cp->num_of_sets = num_of_sets;
-+	if (sets && num_of_sets)
-+		memcpy(cp->sets, sets, num_of_sets * set_entry_len);
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_ADV_ENABLE;
-+	rq.cparam = cp;
-+	rq.clen = plen;
-+	rq.rparam = &status;
-+	rq.rlen = 1;
-+
-+	if (hci_send_req(dd, &rq, to) < 0) {
-+		free(cp);
-+		return -1;
-+	}
-+
-+	free(cp);
-+
-+	if (status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
- int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
- 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
- 		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,
-diff --git a/lib/bluetooth/hci.h b/lib/bluetooth/hci.h
-index 2e4aa394e..7d8b81f2d 100644
---- a/lib/bluetooth/hci.h
-+++ b/lib/bluetooth/hci.h
-@@ -1735,6 +1735,61 @@ typedef struct {
- } __attribute__ ((packed)) le_set_address_resolution_enable_cp;
- #define LE_SET_ADDRESS_RESOLUTION_ENABLE_CP_SIZE 1
- 
-+#define OCF_LE_SET_EXT_ADV_PARAMS		0x0036
-+typedef struct {
-+	uint8_t  handle;
-+	uint16_t evt_properties;
-+	uint8_t  min_interval[3];
-+	uint8_t  max_interval[3];
-+	uint8_t  channel_map;
-+	uint8_t  own_addr_type;
-+	uint8_t  peer_addr_type;
-+	bdaddr_t peer_addr;
-+	uint8_t  filter_policy;
-+	int8_t   tx_power;
-+	uint8_t  primary_phy;
-+	uint8_t  secondary_max_skip;
-+	uint8_t  secondary_phy;
-+	uint8_t  sid;
-+	uint8_t  notif_enable;
-+} __attribute__ ((packed)) le_set_ext_adv_params_cp;
-+#define LE_SET_EXT_ADV_PARAMS_CP_SIZE 25
-+
-+typedef struct {
-+	uint8_t status;
-+	int8_t  selected_tx_power;
-+} __attribute__ ((packed)) le_set_ext_adv_params_rp;
-+#define LE_SET_EXT_ADV_PARAMS_RP_SIZE 9
-+
-+#define OCF_LE_SET_EXT_ADV_DATA			0x0037
-+typedef struct {
-+	uint8_t handle;
-+	uint8_t operation;
-+	uint8_t fragment_preference;
-+	uint8_t data_len;
-+	uint8_t data[0];
-+} __attribute__ ((packed)) le_set_ext_adv_data_cp;
-+#define LE_SET_EXT_ADV_DATA_CP_MAX_SIZE  (4 + 251)
-+
-+#define OCF_LE_SET_EXT_SCAN_RSP_DATA		0x0038
-+typedef struct {
-+	uint8_t advertising_handle;
-+	uint8_t operation;
-+	uint8_t fragment_preference;
-+	uint8_t scan_response_data_length;
-+	uint8_t scan_response_data[31];
-+} __attribute__((packed)) le_set_ext_scan_rsp_data_cp;
-+#define LE_SET_EXT_SCAN_RSP_DATA_CP_SIZE (4 + 31)
-+
-+#define OCF_LE_SET_EXT_ADV_ENABLE		0x0039
-+typedef struct {
-+	uint8_t enable;
-+	uint8_t num_of_sets;
-+	/* followed by ext adv set entries: handle(1), duration(2), max_events(1) */
-+	uint8_t sets[0];
-+} __attribute__ ((packed)) le_set_ext_adv_enable_cp;
-+#define LE_SET_EXT_ADV_ENABLE_CP_SIZE (2 + 4)
-+
- /* Vendor specific commands */
- #define OGF_VENDOR_CMD		0x3f
- 
-diff --git a/lib/bluetooth/hci_lib.h b/lib/bluetooth/hci_lib.h
-index eeb51411a..4a06a9383 100644
---- a/lib/bluetooth/hci_lib.h
-+++ b/lib/bluetooth/hci_lib.h
-@@ -112,6 +112,22 @@ int hci_le_set_scan_enable(int dev_id, uint8_t enable, uint8_t filter_dup, int t
- int hci_le_set_scan_parameters(int dev_id, uint8_t type, uint16_t interval,
- 					uint16_t window, uint8_t own_type,
- 					uint8_t filter, int to);
-+int hci_le_set_ext_adv_params(int dev_id, uint8_t handle, uint16_t evt_properties,
-+				uint32_t min_interval, uint32_t max_interval,
-+				uint8_t channel_map, uint8_t own_addr_type,
-+				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
-+				uint8_t filter_policy, int8_t tx_power,
-+				uint8_t primary_phy, uint8_t secondary_max_skip,
-+				uint8_t secondary_phy, uint8_t sid,
-+				uint8_t notif_enable, int to);
-+int hci_le_set_ext_adv_data(int dev_id, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to);
-+int hci_le_set_ext_scan_rsp_data(int dev_id, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to);
-+int hci_le_set_ext_adv_enable(int dev_id, uint8_t enable, uint8_t num_of_sets,
-+				const void *sets, int to);
- int hci_le_set_advertise_enable(int dev_id, uint8_t enable, int to);
- int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
- 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
-
----
-base-commit: 9dc7e40962f11d1d9a5568f8a7633a695288329c
-change-id: 20261014-extend_adv_api-61bb883ac885
+base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
+change-id: 20261014-fix-gadget-netdev-reregister-75cf4090afeb
 
 Best regards,
--- 
-Yang Li <yang.li@amlogic.com>
+--  
+Nicholas Velten <nicholasfvelten@gmail.com>
 
