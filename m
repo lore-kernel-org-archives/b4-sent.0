@@ -1,138 +1,67 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Wed, 14 Oct 2026 12:43:11 +0900
-Subject: [PATCH v2 2/2] xfs: make pNFS LAYOUTCOMMIT stable the way
- fdatasync does
+Subject: [PATCH pynfs 0/3] Block layout tests for LAYOUTCOMMITs of ranges
+ without blocks
+Date: Wed, 14 Oct 2026 13:10:25 +0900
+Message-Id: <20261014-pynfs-block-commit-v1-0-1723979f495f@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-xfs-pnfs-commit-datasync-v2-2-c11341a189b5@samsung.com>
-References: <20261014-xfs-pnfs-commit-datasync-v2-0-c11341a189b5@samsung.com>
-In-Reply-To: <20261014-xfs-pnfs-commit-datasync-v2-0-c11341a189b5@samsung.com>
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-B4-Tracking: v=1; b=H4sIALEAz2oC/x2M0QpAMBRAf0X32a0NjfyKPDB33LBpk0j+3drjq
+ XPOC4E8U4A2e8HTxYGdjSDzDPQy2JmQp8hQiEJJISs8HmsCjpvTK2q373yiroWhsqxH1VQQw8O
+ T4TtNO0g+9N/3A2H/OH9rAAAA
+To: Calum Mackay <calum.mackay@oracle.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+ Dai Ngo <dai.ngo@oracle.com>, Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1791949389; l=5180;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1791951025; l=1794;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=+Nf7BaYQlUDhogslv80flcYXpwmoAl7COff2XfPORsg=;
- b=iiYPenJRJsS2ostEIWbc45t0jiwk+S3oE5i38QLGADK1Jp9/MDn2Dg8/BpBP+tQkcgySRlVHa
- hKuFSvg7pNgCigICosiKpawef2E7wHLKeYiACegwisyDzz7T5qI0zxD
+ bh=3Fp8P4HKTqbNbg3T2GfmaG47HIdB9kMIe1WJy9U0SW4=;
+ b=pJwOE5elA4qDNMpNft7wX+SjhuUYZZG2TfK2shhALNt73Qz+ItwlrkZ85H8pJhYauI+XrUgnh
+ 0R2YaBlZ7csBPcF4Wsc3vrZFZ2GgKc2tamcdvz2rjgMa+Beb1abbTJn
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_fs_commit_blocks() commits the timestamp update of every
-LAYOUTCOMMIT as a synchronous transaction, so every LAYOUTCOMMIT forces
-the log. When the client only overwrote blocks that were already written
-on disk and the size does not change, the only metadata that this log
-force makes stable for the file is the new timestamps. fdatasync after
-the same overwrite does not force the log: a timestamp-only change does
-not set ili_datasync_seq, and without it xfs_file_fsync() only flushes
-the cache of the device that holds the file data. The comment above
-xfs_fs_commit_blocks() says that it relies on always committing a
-transaction, and that it would otherwise have to flush the cache the way
-fsync does for a datasync.
+Patch 1 is "Add a test for contiguous writable extents in a block
+layout", posted on October 6 [1] and unchanged. Patch 2 adds tests for
+LAYOUTCOMMITs of ranges that no layout covered, which shut XFS down or
+committed a block that nobody wrote before the XFS series in [2].
+Patch 3 describes how the block layout tests are run against Linux
+nfsd, as Christoph asked [3].
 
-Do it the way fdatasync does: log the timestamps as XFS_ILOG_TIMESTAMP
-when the size does not change, commit the transaction without
-XFS_TRANS_SYNC, force the log up to ili_datasync_seq, and flush the
-cache of the device that holds the file data unless that log force wrote
-an iclog. The unwritten extent conversions and a new size set
-ili_datasync_seq, so a LAYOUTCOMMIT that converts extents or changes the
-size still forces the log. So does a conversion that was done earlier,
-for example by a direct write on the server: ili_datasync_seq stays set
-until that conversion is on disk, so the log force covers it.
+Tested with Linux nfsd on nfsd-testing d918c664efd5, XFS on an
+NVMe/TCP namespace exported by nvmet, in QEMU guests with KASAN and
+lockdep:
 
-With the block layout on an NVMe/TCP namespace in QEMU, backed by a
-partition of an NVMe SSD with a volatile write cache, one client process
-overwriting a 16 MiB file in 64 KiB writes, each followed by fsync, took
-473 ms instead of 800 ms (median of 5 runs). On average a LAYOUTCOMMIT
-spent 1.1 ms in xfs_fs_commit_blocks() instead of 2.4 ms, and none wrote
-an iclog. With 4 KiB writes to a 4 MiB file it took 1841 ms instead of
-3101 ms. A LAYOUTCOMMIT now issues an empty cache flush instead of a log
-write with REQ_PREFLUSH and REQ_FUA. The guest that ran nvmet reached
-the SSD through virtio-blk, which has no FUA, so there the FUA cost a
-second cache flush. The gain should be smaller with native FUA and on a
-device without a volatile write cache. It is also smaller with several
-writers: 4 threads overwriting 16 MiB files in 64 KiB writes took
-1011 ms instead of 1083 ms. LAYOUTCOMMITs of new files force the log as
-before.
+ - Without [2], BLOCK7 fails at the GETATTR after the LAYOUTCOMMIT, as
+   XFS has shut down, and the tests after it fail for the same reason.
+   With BLOCK7 and BLOCK8 left out, BLOCK9 fails because the server
+   commits the hole. BLOCK10 passes; the server only logs a
+   "non-standard errno" warning for it.
+ - With [2], BLOCK6 to BLOCK10 pass in 5 runs, and also on an
+   XFS_DEBUG kernel.
+ - BLOCK3 fails with and without [2], on a bug in the test.
 
-As with fdatasync, the timestamps of a LAYOUTCOMMIT that converts
-nothing and keeps the size, and the change attribute that nfsd derives
-from the ctime, reach the disk with a later log write instead of before
-the reply, at the latest the one that the log worker issues every 30 s
-by default. The Linux client sends LAYOUTCOMMIT from both fsync() and
-fdatasync() (pnfs_generic_sync() ignores datasync), so fsync() on a
-block layout client now gets the timestamp guarantee of fdatasync().
-RFC 8881 section 12.5.4 says that LAYOUTCOMMIT may require committing
-the block list to stable storage, which this keeps, and section 12.5.4.1
-only asks that the updated attributes be visible when it completes.
+[1] https://lore.kernel.org/r/20261006002622epcms2p38e492aef17fdf79e48b05c9aada2918d@epcms2p3
+[2] https://lore.kernel.org/r/20261014-xfs-pnfs-commit-hole-v2-0-d3a02a79ab6c@samsung.com
+[3] https://lore.kernel.org/r/20261013120359.GB2944@lst.de
 
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/xfs/xfs_pnfs.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+Daejun Park (3):
+      Add a test for contiguous writable extents in a block layout
+      Add tests for LAYOUTCOMMITs of ranges without blocks in a block layout
+      Add README-blocklayout
 
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index ab38561700..45ac98e7c0 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -277,10 +277,12 @@ xfs_pnfs_validate_isize(
-  * converting any unwritten extents, flushing the disk cache and updating the
-  * time stamps.
-  *
-- * Note that we rely on the caller to always send us a timestamp update so that
-- * we always commit a transaction here.  If that stops being true we will have
-- * to manually flush the cache here similar to what the fsync code path does
-- * for datasyncs on files that have no dirty metadata.
-+ * Like fdatasync, a commit that only updates the timestamps does not force the
-+ * log: they are logged as XFS_ILOG_TIMESTAMP and reach the disk with a later
-+ * log write. The log is forced up to the last change that a datasync needs,
-+ * such as the unwritten extent conversions or a new size, and the cache of the
-+ * device holding the file data is flushed if that log force did not write an
-+ * iclog itself.
-  */
- static int
- xfs_fs_commit_blocks(
-@@ -294,6 +296,7 @@ xfs_fs_commit_blocks(
- 	struct xfs_trans	*tp;
- 	struct timespec64	now;
- 	bool			update_isize = false;
-+	int			log_flushed = 0;
- 	int			error, i;
- 	loff_t			size;
- 
-@@ -345,7 +348,8 @@ xfs_fs_commit_blocks(
- 
- 	xfs_ilock(ip, XFS_ILOCK_EXCL);
- 	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
--	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
-+	xfs_trans_log_inode(tp, ip,
-+			update_isize ? XFS_ILOG_CORE : XFS_ILOG_TIMESTAMP);
- 
- 	now = inode_set_ctime_current(inode);
- 	inode_set_atime_to_ts(inode, now);
-@@ -356,8 +360,13 @@ xfs_fs_commit_blocks(
- 		ip->i_disk_size = new_size;
- 	}
- 
--	xfs_trans_set_sync(tp);
- 	error = xfs_trans_commit(tp);
-+	if (error)
-+		goto out_drop_iolock;
-+
-+	error = __xfs_log_force_inode(ip, true, &log_flushed);
-+	if (!error && !log_flushed)
-+		error = blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
- 
- out_drop_iolock:
- 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
+ nfs4.1/README-blocklayout        |  41 +++++++
+ nfs4.1/server41tests/st_block.py | 230 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 268 insertions(+), 3 deletions(-)
+---
+base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
+change-id: 20261014-pynfs-block-commit-c70fe337b684
 
+Best regards,
 -- 
-2.43.0
+Daejun Park <daejun7.park@samsung.com>
 
