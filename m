@@ -1,16 +1,13 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Subject: [PATCH v6 0/4] arm64: amlogic: T7 thermal support
-Date: Thu, 15 Oct 2026 19:54:08 +0200
-Message-Id: <20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr>
+Date: Thu, 15 Oct 2026 19:54:09 +0200
+Subject: [PATCH v6 1/4] arm64: dts: amlogic: t7: Add cooling cells to all
+ CPUs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33QzW6EIBQF4FcxrHubyxV0nFXfo+kC4VpJ/JkiN
- dNMfPeiszHGdnlIzseBh5g4eJ7ENXuIwLOf/DikULxkwrZm+GTwLmVBSAUqiWCcg9hy6E0HsYT
- Z9woQWZeyNs5aKVLzFrjx9019/3jmwF/fCY/PQ1GbicGOfe/jNRv4HmG9QKJUYi20fopj+NlWz
- XJr/DtgloAgq4bqizOlcuWb6Tx3r03YuJn2RH5O0EogkqvQYIF0IPIdQfKcyBNhiEuSmh1ifiD
- UnvhjRfpMcMpKTRenUakDofeEOid0IipUaE1emIb3D1mW5RfMQaoh8gEAAA==
-X-Change-ID: 20260410-add-thermal-t7-vim4-00e571badcc1
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261015-add-thermal-t7-vim4-v6-1-37d1c954390c@aliel.fr>
+References: <20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr>
+In-Reply-To: <20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
  Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
@@ -20,90 +17,96 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3497;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2150;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=OLOxCWkG1uAfbEHQrZsIv+PXDRKyrTYk6AYh4axR+Ek=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZF4UKf6484s8q/x8/Skz9VW2lQ0Mf/07Unkjvz/t7Ds
- yfKtwh0lLIwiHExyIopsvTPtTzx7vLRM1/3qKfAzGFlAhnCwMUpABNxcmdkOFX2sJR17fnIpr/K
- /B/4PPhrfJ9FGusmvzsRrXj+k9Y1oIoZ7yuuc6Rz+TreaflQorXS1qV6L8/pz3rnPrvdmXN9/jt
- GAA==
+ bh=pWfl7HrfY/sohfU3J31MDc3TckJ5tV1lL5L4g5UHqnU=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZF4RL7iPpni/7yLXnJ8ZCf41X2xIIdUtnPH+3S3Sy1N
+ YDFQrG7o5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZjIJSuGf+atK6OEFB7/T3YQ
+ 1997bfG5h5n3ondOPG0UccDw7+5g/8UMv9lnNSvvuvJVbP48k3M3K+tONNwMvpDHwRNy8fDm0Bk
+ H+jgA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds thermal monitoring support for the Amlogic T7 SoC,
-used on the Khadas VIM4 board.
+Add #cooling-cells = <2> to all CPU nodes (both little and big cluster)
+to allow them to be used as cooling devices in thermal zone mappings.
 
-The T7 exposes six thermal sensors (a53, a73, gpu, nna, vpu, hevc),
-each accessible through the secure monitor firmware interface rather
-than a directly mapped eFuse register as on older SoCs.
-
-The series is organized as follows:
-
-- Patch 1 extends the amlogic,t7-thermal DT binding to describe the
-  new amlogic,secure-monitor property.
-- Patches 2-3 extend the Meson secure monitor driver to expose a
-  thermal calibration read command (SMC ID 0x82000047).
-- Patch 4 adds the secure monitor readout path to the amlogic thermal
-  driver and introduces the amlogic,t7-thermal compatible.
-- Patches 5-7 wire up the T7 DTSI with CPU cooling cells, sensor
-  nodes, and thermal zones.
-- Patch 8 extends the Khadas VIM4 DTS to map all thermal zones to the
-  on-board MCU fan controller (states 30–100, corresponding to the
-  FAN_CTRL register range 0x1E–0x64).
-
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-Changes in v6:
-- Rebased on next-20261014 (patches 1/8 to 4/8 already applied, dropped from this series).
-- PATCH 2: Add bus clocks and clock-names to all thermal sensor nodes.
-- PATCH 4: Change cooling device map min and max values from 30-100 to 1-5.
-           The driver maps (0,1,2,3,4,5) to (0,30,40,55,75,100)
-- Link to v5: https://lore.kernel.org/r/20260424-add-thermal-t7-vim4-v5-0-9040ca36afe2@aliel.fr
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-Changes in v5:
-- PATCH 4: Remove unnecessary variable and coding style alignment
-           according to Neil's feedback.
-- Link to v4: https://lore.kernel.org/r/20260423-add-thermal-t7-vim4-v4-0-d4c1528d5044@aliel.fr
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+index 6894c06a836bc..8aa85aab30469 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
+@@ -63,6 +63,7 @@ cpu100: cpu@100 {
+ 			i-cache-size = <0x8000>;
+ 			i-cache-sets = <32>;
+ 			next-level-cache = <&l2_cache_l>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu101: cpu@101 {
+@@ -77,6 +78,7 @@ cpu101: cpu@101 {
+ 			i-cache-size = <0x8000>;
+ 			i-cache-sets = <32>;
+ 			next-level-cache = <&l2_cache_l>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu102: cpu@102 {
+@@ -91,6 +93,7 @@ cpu102: cpu@102 {
+ 			i-cache-size = <0x8000>;
+ 			i-cache-sets = <32>;
+ 			next-level-cache = <&l2_cache_l>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu103: cpu@103 {
+@@ -105,6 +108,7 @@ cpu103: cpu@103 {
+ 			i-cache-size = <0x8000>;
+ 			i-cache-sets = <32>;
+ 			next-level-cache = <&l2_cache_l>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu0: cpu@0 {
+@@ -119,6 +123,7 @@ cpu0: cpu@0 {
+ 			i-cache-size = <0x10000>;
+ 			i-cache-sets = <64>;
+ 			next-level-cache = <&l2_cache_b>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu1: cpu@1 {
+@@ -133,6 +138,7 @@ cpu1: cpu@1 {
+ 			i-cache-size = <0x10000>;
+ 			i-cache-sets = <64>;
+ 			next-level-cache = <&l2_cache_b>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu2: cpu@2 {
+@@ -147,6 +153,7 @@ cpu2: cpu@2 {
+ 			i-cache-size = <0x10000>;
+ 			i-cache-sets = <64>;
+ 			next-level-cache = <&l2_cache_b>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu3: cpu@3 {
+@@ -161,6 +168,7 @@ cpu3: cpu@3 {
+ 			i-cache-size = <0x10000>;
+ 			i-cache-sets = <64>;
+ 			next-level-cache = <&l2_cache_b>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		l2_cache_l: l2-cache-cluster0 {
 
-Changes in v4:
-- PATCH 4: Extract SM and syscon setup into amlogic_thermal_probe_sm() and
-           amlogic_thermal_probe_syscon() removing amlogic_thermal_initialize()
-           from Daniel's feedback.
-           Also fix pre-existing bug: move calibration readout before
-           devm_thermal_of_zone_register() to avoid reading uninitialized
-           trim_info, according to Daniel's feedback.
-- Link to v3: https://lore.kernel.org/r/20260421-add-thermal-t7-vim4-v3-0-a2e7215ed003@aliel.fr
-
-Changes in v3:
-- PATCH 1: Replace second if check by an else statement.
-  Remove unnecessary label in example according to Conor's feedback
-- Link to v2: https://lore.kernel.org/r/20260413-add-thermal-t7-vim4-v2-0-1002d90a0602@aliel.fr
-
-Changes in v2:
-- PATCH 1: change two const entries to enum, explain why sensor index is needed
-  reorder conditional compatible for required, and fallback only according to
-  Krzysztof's feedback.
-- PATCH 3: Add kerneldoc for meson_sm_get_thermal_calib exported function
-  according to Krzysztof's feedback.
-- Link to v1: https://lore.kernel.org/r/20260410-add-thermal-t7-vim4-v1-0-19f2b8da74d7@aliel.fr
-
----
-Ronald Claveau (4):
-      arm64: dts: amlogic: t7: Add cooling cells to all CPUs
-      arm64: dts: amlogic: t7: Add thermal sensor nodes
-      arm64: dts: amlogic: t7: Add thermal zones
-      arm64: dts: amlogic: t7: khadas-vim4: Add fan cooling to thermal zones
-
- .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  | 102 +++++++++
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        | 253 +++++++++++++++++++++
- 2 files changed, 355 insertions(+)
----
-base-commit: ab8eada9868faeee95f25d81d3d6fed0d1c98b78
-change-id: 20260410-add-thermal-t7-vim4-00e571badcc1
-
-Best regards,
 -- 
-Ronald Claveau <linux-kernel-dev@aliel.fr>
+2.49.0
 
