@@ -1,10 +1,10 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Thu, 15 Oct 2026 19:54:10 +0200
-Subject: [PATCH v6 2/4] arm64: dts: amlogic: t7: Add thermal sensor nodes
+Date: Thu, 15 Oct 2026 19:54:11 +0200
+Subject: [PATCH v6 3/4] arm64: dts: amlogic: t7: Add thermal zones
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-add-thermal-t7-vim4-v6-2-37d1c954390c@aliel.fr>
+Message-Id: <20261015-add-thermal-t7-vim4-v6-3-37d1c954390c@aliel.fr>
 References: <20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr>
 In-Reply-To: <20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -16,113 +16,223 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3560;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5141;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=rtWuGUHxUnyMFKCauIYV7dFBkIsewyYeUUnSeGS6n8c=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZF4crr27gbc+/+KZlwe8beud67tyo4//VcolZrevxHj
- H9Bw7YnHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBEFs5nZDjqbx2Z33Ez4fLk
- zEcF1eoapcpfYz+eUitKcD4jLW4xrYORoeVgcI/D5Kv8P0omt81ZprT9b/ulePbXu3J53v5ckX5
- XkBUA
+ bh=wIHFSWTa/ahxGaNhARxAPcmftNjWS1UV0jpS/csXAdE=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZF4bqSi37ZKcwRFt7V+qZXlyzramheri+Rzd565tmm3
+ P4I/YkdpSwMYlwMsmKKLP1zLU+8u3z0zNc96ikwc1iZQIYwcHEKwEScbzIy9Mjs6Nxvtcb7cUm0
+ WQ2bqvWRVJslRWe9qvWal+qWtXS8Z/indvQPy4mFhn/Lwk7MeGKaN/WG2pMJRXI6d+1nlPPePPG
+ XGQA=
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add six temperature sensor nodes using the amlogic,t7-thermal compatible:
-a73, a53, gpu, nna, vpu, and hevc. Each sensor retrieves its calibration
-data from the secure monitor via the amlogic,secure-monitor phandle with
-the corresponding tsensor_id argument.
+Add thermal zones for all six sensors: a53, a73, gpu, nna, vpu, and hevc.
 
 Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 66 +++++++++++++++++++++++++++++
- 1 file changed, 66 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 179 ++++++++++++++++++++++++++++
+ 1 file changed, 179 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-index 8aa85aab30469..c81632d3984e8 100644
+index c81632d3984e8..454a042865a5a 100644
 --- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
 +++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-@@ -696,6 +696,26 @@ sec_ao: ao-secure@10220 {
- 				amlogic,has-chip-id;
- 			};
+@@ -9,6 +9,7 @@
+ #include <dt-bindings/clock/amlogic,t7-scmi.h>
+ #include <dt-bindings/clock/amlogic,t7-pll-clkc.h>
+ #include <dt-bindings/clock/amlogic,t7-peripherals-clkc.h>
++#include <dt-bindings/thermal/thermal.h>
  
-+			a73_tsensor: temperature-sensor@20000 {
-+				compatible = "amlogic,t7-thermal";
-+				reg = <0x0 0x20000 0x0 0x50>;
-+				interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks = <&clkc_periphs CLKID_SYS_TS_A73>, <&clkc_periphs CLKID_TS>;
-+				clock-names = "bus", "core";
-+				#thermal-sensor-cells = <0>;
-+				amlogic,secure-monitor = <&sm 1>;
-+			};
-+
-+			a53_tsensor: temperature-sensor@22000 {
-+				compatible = "amlogic,t7-thermal";
-+				reg = <0x0 0x22000 0x0 0x50>;
-+				interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks = <&clkc_periphs CLKID_SYS_TS_A53>, <&clkc_periphs CLKID_TS>;
-+				clock-names = "bus", "core";
-+				#thermal-sensor-cells = <0>;
-+				amlogic,secure-monitor = <&sm 2>;
-+			};
-+
- 			pwm_ao_ef: pwm@30000 {
- 				compatible = "amlogic,t7-pwm", "amlogic,meson-s4-pwm";
- 				reg = <0x0 0x30000 0x0 0x24>;
-@@ -818,6 +838,52 @@ sd_emmc_c: mmc@8c000 {
- 				assigned-clock-parents = <&xtal>;
- 				status = "disabled";
+ / {
+ 	interrupt-parent = <&gic>;
+@@ -885,6 +886,184 @@ hevc_tsensor: temperature-sensor@9a000 {
+ 				amlogic,secure-monitor = <&sm 5>;
  			};
-+
-+			gpu_tsensor: temperature-sensor@94000 {
-+				compatible = "amlogic,t7-thermal";
-+				reg = <0x0 0x94000 0x0 0x50>;
-+				interrupts = <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks = <&clkc_periphs CLKID_SYS_TS_GPU>, <&clkc_periphs CLKID_TS>;
-+				clock-names = "bus", "core";
-+				power-domains = <&pwrc PWRC_T7_MALI_TOP_ID>;
-+				#thermal-sensor-cells = <0>;
-+				amlogic,secure-monitor = <&sm 3>;
-+			};
-+
-+			nna_tsensor: temperature-sensor@96000 {
-+				compatible = "amlogic,t7-thermal";
-+				reg = <0x0 0x96000 0x0 0x50>;
-+				interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks = <&clkc_periphs CLKID_SYS_TS_NNA>, <&clkc_periphs CLKID_TS>;
-+				clock-names = "bus", "core";
-+				power-domains = <&pwrc PWRC_T7_NNA_TOP_ID>;
-+				#thermal-sensor-cells = <0>;
-+				amlogic,secure-monitor = <&sm 4>;
-+			};
-+
-+			vpu_tsensor: temperature-sensor@98000 {
-+				compatible = "amlogic,t7-thermal";
-+				reg = <0x0 0x98000 0x0 0x50>;
-+				interrupts = <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks = <&clkc_periphs CLKID_SYS_TS_VPU>, <&clkc_periphs CLKID_TS>;
-+				clock-names = "bus", "core";
-+				power-domains = <&pwrc PWRC_T7_VPU_HDMI_ID>;
-+				#thermal-sensor-cells = <0>;
-+				amlogic,secure-monitor = <&sm 6>;
-+			};
-+
-+			hevc_tsensor: temperature-sensor@9a000 {
-+				compatible = "amlogic,t7-thermal";
-+				reg = <0x0 0x9a000 0x0 0x50>;
-+				interrupts = <GIC_SPI 86 IRQ_TYPE_LEVEL_HIGH>;
-+				clocks =
-+					<&clkc_periphs CLKID_SYS_TS_HEVC>,
-+					<&clkc_periphs CLKID_TS>;
-+				clock-names = "bus", "core";
-+				power-domains = <&pwrc PWRC_T7_DOS_HEVC_ID>;
-+				#thermal-sensor-cells = <0>;
-+				amlogic,secure-monitor = <&sm 5>;
-+			};
  		};
++	};
++
++	thermal-zones {
++		a53_thermal: a53-thermal {
++			polling-delay = <1000>;
++			polling-delay-passive = <100>;
++			thermal-sensors = <&a53_tsensor>;
++
++			trips {
++				a53_passive: a53-passive {
++					temperature = <85000>; /* millicelsius */
++					hysteresis = <2000>; /* millicelsius */
++					type = "passive";
++				};
++
++				a53_hot: a53-hot {
++					temperature = <95000>; /* millicelsius */
++					hysteresis = <2000>; /* millicelsius */
++					type = "hot";
++				};
++
++				a53_critical: a53-critical {
++					temperature = <110000>; /* millicelsius */
++					hysteresis = <2000>; /* millicelsius */
++					type = "critical";
++				};
++			};
++
++			cooling-maps {
++				map-a53 {
++					trip = <&a53_passive>;
++					cooling-device =
++						<&cpu100 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++						<&cpu101 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++						<&cpu102 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++						<&cpu103 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
++		};
++
++		a73_thermal: a73-thermal {
++			polling-delay = <1000>;
++			polling-delay-passive = <100>;
++			thermal-sensors = <&a73_tsensor>;
++
++			trips {
++				a73_passive: a73-passive {
++					temperature = <85000>; /* millicelsius */
++					hysteresis = <2000>; /* millicelsius */
++					type = "passive";
++				};
  
++				a73_hot: a73-hot {
++					temperature = <95000>; /* millicelsius */
++					hysteresis = <2000>; /* millicelsius */
++					type = "hot";
++				};
++
++				a73_critical: a73-critical {
++					temperature = <110000>; /* millicelsius */
++					hysteresis = <2000>; /* millicelsius */
++					type = "critical";
++				};
++			};
++
++			cooling-maps {
++				map-a73 {
++					trip = <&a73_passive>;
++					cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu1 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu2 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>,
++							 <&cpu3 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
++		};
++
++		gpu_thermal: gpu-thermal {
++			polling-delay = <1000>;
++			polling-delay-passive = <100>;
++			thermal-sensors = <&gpu_tsensor>;
++
++			trips {
++				gpu_passive: gpu-passive {
++					temperature = <95000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				gpu_hot: gpu-hot {
++					temperature = <105000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				gpu_critical: gpu-critical {
++					temperature = <115000>;
++					hysteresis = <1000>;
++					type = "critical";
++				};
++			};
++		};
++
++		hevc_thermal: hevc-thermal {
++			polling-delay = <1000>;
++			polling-delay-passive = <100>;
++			thermal-sensors = <&hevc_tsensor>;
++
++			trips {
++				hevc_passive: hevc-passive {
++					temperature = <95000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				hevc_hot: hevc-hot {
++					temperature = <105000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				hevc_critical: hevc-critical {
++					temperature = <115000>;
++					hysteresis = <1000>;
++					type = "critical";
++				};
++			};
++		};
++
++		nna_thermal: nna-thermal {
++			polling-delay = <1000>;
++			polling-delay-passive = <100>;
++			thermal-sensors = <&nna_tsensor>;
++
++			trips {
++				nna_passive: nna-passive {
++					temperature = <95000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				nna_hot: nna-hot {
++					temperature = <105000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				nna_critical: nna-critical {
++					temperature = <115000>;
++					hysteresis = <1000>;
++					type = "critical";
++				};
++			};
++		};
++
++		vpu_thermal: vpu-thermal {
++			polling-delay = <1000>;
++			polling-delay-passive = <100>;
++			thermal-sensors = <&vpu_tsensor>;
++
++			trips {
++				vpu_passive: vpu-passive {
++					temperature = <95000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				vpu_hot: vpu-hot {
++					temperature = <105000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
++				vpu_critical: vpu-critical {
++					temperature = <115000>;
++					hysteresis = <1000>;
++					type = "critical";
++				};
++			};
++		};
  	};
+ };
 
 -- 
 2.49.0
