@@ -1,99 +1,75 @@
-From: Antoine Huret <antoine.huret@bull.com>
-Date: Thu, 15 Oct 2026 14:55:56 +0200
-Subject: [PATCH] perf/core: Update cgroup time when rotating multiplexed
- events
+From: Ben Kuo <ben.kuo.tw@proton.me>
+Date: Thu, 15 Oct 2026 21:48:33 +0800
+Subject: [PATCH] man/man7/epoll.7: Note that an edge-triggered listener
+ needs an accept loop
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-perf-cgroup-rotation-time-v1-1-93e177dfee5d@bull.com>
-X-B4-Tracking: v=1; b=H4sIAFvN0GoC/x3MQQqEMAxA0atI1gasThW8iriINWoW2pJWEcS7W
- 2b5F+8/EFmFI/TFA8qXRPFHDlMW4DY6VkaZc0Nd1a2pjMXAuqBb1Z8B1SdKGWCSndFOrpksdb+
- ZCLIPyovc//cwvu8H7YmOAGsAAAA=
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>, Ravi Bangoria <ravi.bangoria@amd.com>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Antoine Huret <antoine.huret@bull.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2339;
- i=antoine.huret@bull.com; h=from:subject:message-id;
- bh=X7lpvPKxkCTOPsqZeaF8a05zl2DLcvYi9kNi4gotLAU=;
- b=owEBbQKS/ZANAwAKAWMOnjplmIryAcsmYgBq0M2vTy8KMWluHcORRg4tu0qi8yEiNAtJORZf5
- UHeKGrI93KJAjMEAAEKAB0WIQSxtbJhhOISBbCx2QNjDp46ZZiK8gUCatDNrwAKCRBjDp46ZZiK
- 8kjfD/98IihVBZxoHPjnYVh20iml/h60ZNgA8PlrLO66uTy4xUtpl5uyFYxgtCv6t/+vu2l93oR
- wYPO90o6rZfmkawFtrkM+lxx3yVEh4twOQGW/6O/57L+9A93RA2FjNlGRDWa+O8//0gifYstakI
- Opkj+K17hhJLyCcqc9ma5Ojqp/IMoUJ0dBLXIc7Mp8EcAwXCmpz8ewpvXjW6wdNH/LC6c3RKDP/
- 4f2feS7nVOiduVysTkc514NV4XRmDzJQyj6ZKMT2XIA6mIsw3cNLInsKQ8x/NF1dejoaV1a8X5d
- 3giuk/+bsVPfiD+lzhxWaCPZRR4wO6a/A7WPMlPTtT1+TyFK/ovy5Z2ExxFInSWKjnk/jr1OOc/
- EhXNUsj88bxr3qPgQX5cpe1PTjntM72+YeLi5nAFNSpy7VuaSGWDKPtvTG/bYP1BHPllZa0RrBs
- sg2RvvNUiDxGKoIEe3MM9s3M1gjuz2OSgfSLIqLXv81QvxXk29pfQhP+jK9pqRw2xJ+vV+toMqO
- xfjvVYW6z7GzRcoaMXz6AVXXMMbZtSZR3ZPB8b32a8/j15W6efHF5fD+xnvYSDM48mG50AFtiG9
- rrl9wx+DYJmDD/6UXqsLg5GDLIsBr2zyHIB96NnRU6YUe06lhpc1cMZv+7r3hlQr9HqpS6qvq+d
- JXWZc2VGuLd5B/w==
-X-Developer-Key: i=antoine.huret@bull.com; a=openpgp;
- fpr=B1B5B26184E21205B0B1D903630E9E3A65988AF2
-X-Endpoint-Received: by B4 Relay for antoine.huret@bull.com/default with auth_id=1191
+Message-Id: <20261015-epoll-et-listener-v1-1-2cc0027b658c@proton.me>
+X-B4-Tracking: v=1; b=H4sIALDZ0GoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA0NT3dSC/Jwc3dQS3ZzM4pLUvNQi3WRLC3Pj5ORUM6OkZCWgvoKi1LT
+ MCrCZ0bG1tQA35FmYYwAAAA==
+X-Change-ID: 20261015-epoll-et-listener-c9873cce62bc
+To: Alejandro Colomar <alx@kernel.org>
+Cc: linux-man@vger.kernel.org, Ben Kuo <ben.kuo.tw@proton.me>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792072148; l=1792;
+ i=ben.kuo.tw@proton.me; s=20261015; h=from:subject:message-id;
+ bh=LJVki2WUPiCCjNBGmHpgB0vFA15C1Cs0d02BFrGChUw=;
+ b=e+Hh17gIpIWqdM1/7kWgO+Ee0CqWlG3r/u9CQJDW8VLdyfg/DXs+gNi9/KwG3U0pO5sCJ03GJ
+ 2VA8smHdI0fD1VC0bjiX/CHihxuQVyBzjrP0CgM8c9gUY6jfEghUz1O
+X-Developer-Key: i=ben.kuo.tw@proton.me; a=ed25519;
+ pk=VCZ2SPSJe/Vhd2Lwi18Oi3ovxGkT+76oncbTcgGW5wI=
+X-Endpoint-Received: by B4 Relay for ben.kuo.tw@proton.me/20261015 with auth_id=1192
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit bd2756811766 ("perf: Rewrite core context handling"),
-perf_rotate_context() only updates the context time before scheduling
-out the flexible events. It no longer updates the cgroup time, which
-ctx_sched_out() used to do.
+The example registers the listening socket as level-triggered and
+calls accept(2) once per event, but doesn't say that this only works
+for a level-triggered listener.  If a reader adds EPOLLET to the
+listening socket in the example, connections are left in the accept
+queue and the server stalls.
 
-Cgroup events take their times from the per-cpu cgroup clock, so
-between two cgroup switches the rotations see a frozen clock. The
-events rotated out lose the running time they accumulated, and the next
-update, usually a read, credits the whole interval to the events that
-happen to be on the PMU at that moment.
+Tested on Linux 6.12 (Debian 13, arm64) with an echo server whose
+listening socket is registered with EPOLLET, and a client that opens
+2000 connections at once.  With one accept4(2) call per listener
+event, the client never finishes: ss(8) shows 1420 connections left
+in the accept queue (Recv-Q), while the server stays blocked in
+epoll_wait(2).  With accept4(2) called in a loop until EAGAIN, all
+connections are echoed.
 
-As a result, the time_running of multiplexed cgroup events is wrong,
-and so are their scaled counts, as long as no other cgroup runs on the
-CPU, e.g. a busy job alone on its CPUs. Counting cycles over one second
-of a busy loop in a cgroup gives from half to several times the max
-frequency of the CPU.
-
-Update the cgroup time before rotating the CPU context, as was done
-before the rewrite.
-
-Fixes: bd2756811766 ("perf: Rewrite core context handling")
-Closes: https://lore.kernel.org/r/PR3PR07MB69223331EED5BEBE150375B7849C2@PR3PR07MB6922.eurprd07.prod.outlook.com/
-Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Antoine Huret <antoine.huret@bull.com>
+Link: <https://github.com/benkuotw/epoll-lab>
+Signed-off-by: Ben Kuo <ben.kuo.tw@proton.me>
 ---
-The reproducer and the results are in the report linked by the Closes:
-tag. Tested on v7.3-rc7: multiplexed cgroup events read correct values
-again. The culprit was confirmed by testing bd2756811766 and its parent
-(v6.1-rc2).
+ man/man7/epoll.7 | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-Peter suggested a cleanup using ctx_time_update() in the rotation, to
-go on top of this minimal fix.
----
- kernel/events/core.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/kernel/events/core.c b/kernel/events/core.c
-index 7846d70be..971cd4b49 100644
---- a/kernel/events/core.c
-+++ b/kernel/events/core.c
-@@ -4639,6 +4639,7 @@ static bool perf_rotate_context(struct perf_cpu_pmu_context *cpc)
- 
- 	if (cpu_event) {
- 		update_context_time(&cpuctx->ctx);
-+		update_cgrp_time_from_cpuctx(cpuctx, false);
- 		__pmu_ctx_sched_out(cpu_epc, EVENT_FLEXIBLE);
- 		rotate_ctx(&cpuctx->ctx, cpu_event);
- 		__pmu_ctx_sched_in(cpu_epc, EVENT_FLEXIBLE);
+diff --git a/man/man7/epoll.7 b/man/man7/epoll.7
+index 2628cbb168b499786e495cf3c614fc5e58217295..aff844a568a5cd6d8eb310ed833266a0ccfd0a4d 100644
+--- a/man/man7/epoll.7
++++ b/man/man7/epoll.7
+@@ -339,6 +339,16 @@ for (;;) {
+ .EE
+ .in
+ .P
++The listening socket in this example is level-triggered.
++If it is registered with
++.BR EPOLLET ,
++.BR accept (2)
++must be called in a loop until it fails with
++.BR EAGAIN :
++a single event may report several pending connections,
++and no further event is reported for those still queued
++until another connection arrives.
++.P
+ When used as an edge-triggered interface, for performance reasons, it is
+ possible to add the file descriptor inside the
+ .B epoll
 
 ---
-base-commit: 357e8a77a501d96c9517f01f4a211eed5e9c9184
-change-id: 20261015-perf-cgroup-rotation-time-5bc3b5a74daa
+base-commit: c6cefe27dd02beaf518bb654493e5f09e62b3225
+change-id: 20261015-epoll-et-listener-c9873cce62bc
 
 Best regards,
 -- 
-Antoine Huret <antoine.huret@bull.com>
+Ben Kuo <ben.kuo.tw@proton.me>
 
