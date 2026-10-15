@@ -1,81 +1,91 @@
-From: Austin Schlegel <schlegelas@outlook.com>
-Date: Wed, 14 Oct 2026 23:30:01 -0400
-Subject: [PATCH v2 2/2] serial: tegra: fix TX DMA descriptor use-after-free
+From: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
+Subject: [PATCH 0/7] Fix probe placement in LLVM lld-linked objects by
+ using file offsets
+Date: Thu, 15 Oct 2026 03:53:40 +0000
+Message-Id: <20261015-bug001-uprobe-file-offset-v1-0-bf4c53af8f39@d-matrix.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261014-serial-tegra-dma-uaf-v2-2-b142b31b67e3@outlook.com>
-References: <20261014-serial-tegra-dma-uaf-v2-0-b142b31b67e3@outlook.com>
-In-Reply-To: <20261014-serial-tegra-dma-uaf-v2-0-b142b31b67e3@outlook.com>
-To: Laxman Dewangan <ldewangan@nvidia.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, 
- Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- linux-tegra@vger.kernel.org, Austin Schlegel <austin.schlegel@arthrex.com>, 
- Austin Schlegel <schlegelas@outlook.com>, stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792035000; l=2167;
- i=schlegelas@outlook.com; s=20261001; h=from:subject:message-id;
- bh=1rmzYHaRgOYHPq/n3d0+QHrr9+Anehm1RKT/x2oyhLw=;
- b=VyrKW3991vxpqEQIG7mJvzxRJF+Hhv7+XFExLgZz8TPd9ZS2XFflhfd/9iyIWYkR3VSfWD3Zg
- ztNHhv2PWxmDQP974e6dPfHfymcRyfsgD3gvSJ4Y0E6AewmDBb8op7G
-X-Developer-Key: i=schlegelas@outlook.com; a=ed25519;
- pk=ddgmH7VQaSWderjJFy4hDyq+P7hdHupPxQvwnGRBzCs=
-X-Endpoint-Received: by B4 Relay for schlegelas@outlook.com/20261001 with auth_id=1098
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBG4auUWTuQFBvRq4iLJvlTR6QpmUaE0
+ rsbdfkt3ttIUQRKl26jgpeo5LnBHjoK93GewBKbqTe9s8YO7OtkjOW6lOzBSZ7gnJJi5XByxyH
+ CxWjO1PqlIMn7977e/tbqHwjrd0j7/gEqIlHvfQAAAA==
+X-Change-ID: 20261015-bug001-uprobe-file-offset-c7645de6dd09
+To: dtrace@lists.linux.dev
+Cc: dtrace-devel@oss.oracle.com, Kris Van Hees <kris.van.hees@oracle.com>, 
+ Alan Maguire <alan.maguire@oracle.com>, 
+ Eslam Almorshdy <ealmorshdy@d-matrix.ai>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792036450; l=3296;
+ i=ealmorshdy@d-matrix.ai; s=20261015; h=from:subject:message-id;
+ bh=jJJvlFGOD7zyaP8PKItehBzxJge5Uh8UV0NujqFwbDI=;
+ b=qors4Uq55z+RzkOZuyb41pQ/lRchGZpTXQfRgBgt20RcKwk7wxw3Y+HoTm+1UHSi18bQZH0JY
+ b6G47lt6p78DEBN0OEH5AFFIvyCXR3NCRD68MFs9/Daofh9X5BcYquL
+X-Developer-Key: i=ealmorshdy@d-matrix.ai; a=ed25519;
+ pk=E4tVAIvp2rvz2CB7Re6YVMP6FiUVSxuq0TUtjGQL5NM=
+X-Endpoint-Received: by B4 Relay for ealmorshdy@d-matrix.ai/20261015 with auth_id=1187
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tegra_uart_stop_tx() calls dmaengine_terminate_all() and then
-async_tx_ack(tup->tx_dma_desc) on the descriptor that was just
-terminated. With the GPC DMA driver, dmaengine_terminate_all() frees
-the active descriptor immediately, so the ack call that follows
-touches freed memory, the same use-after-free pattern fixed for the
-RX path in tegra_uart_terminate_rx_dma() ("serial: tegra: fix RX DMA
-descriptor use-after-free"). dmaengine clients must not touch a
-descriptor once dmaengine_terminate_all() has returned.
+DTrace places uprobes by (inode, file offset), but computes the offset
+of pid, USDT and dtrace provider probes as the address's distance from
+the object's first segment.  The two coincide in GNU ld's default
+layout.  LLVM lld packs segments in the file, so its text segment's
+p_vaddr - p_offset is 0x1000 larger than the first segment's, and on
+lld-linked objects, every such probe is placed 0x1000 bytes past its
+target.  It then never fires, fires in other code, puts a breakpoint
+inside an instruction, or makes enabling fail with ENOTSUPP (currently
+reported as EBADF).  If libdtrace itself is linked by lld (not a
+documented build option), dtrace:::BEGIN never fires and every session
+hangs.
 
-Move the ack before dmaengine_terminate_all(), while the descriptor
-is still owned by the driver. tegra_uart_tx_dma_complete() already
-acks inside the completion callback, where the descriptor is valid,
-and is unaffected.
+Patch 1 keeps each mapping's file offset, which libproc already parses.
+Patches 2, 4 and 6 convert through the containing mapping in the pid,
+USDT and dtrace providers, and patches 3, 5 and 7 add a test for each;
+the three fixes depend only on patch 1.  Offsets in GNU ld objects do
+not change, and dtprobed needs no change for these objects.
 
-Found by code inspection while fixing the analogous RX bug; not
-reproduced on hardware, since triggering it requires stopping an
-in-flight TX DMA transfer at the right moment. The RX and TX
-paths share the same dmaengine_terminate_all()-then-ack structure
-and the same root cause.
+Tested on devel 61fea621, building after each fix, with libdtrace linked
+by GNU ld and by lld: each test fails before its fix and passes after,
+and the tests reject three plausible wrong fixes: subtracting a constant
+0x1000, dropping the file offset, and handling only the main executable.
+The pid/, usdt/, begin/ and end/ tests show no other change.  The whole
+series gives the same results on dev-queue 0e93872f.
 
-Fixes: e9ea096dd225 ("serial: tegra: add serial driver")
-Assisted-by: LLM
-Cc: stable@vger.kernel.org
-Signed-off-by: Austin Schlegel <schlegelas@outlook.com>
+dt_cg_elf_sym_to_offset() in Alan's pending uresolve() series [1]
+computes uprobe offsets as distances from the first segment, like the
+code patch 2 replaces, so it needs the same change if both are applied.
+
+[1] https://lore.kernel.org/dtrace/20260605221217.1211791-5-alan.maguire@oracle.com/
+
 ---
-v2:
- - Reworded commit: Removed inaccurate flush example
- - Switched to personal email (v1 sent from austin.schlegel@arthrex.com)
+Eslam Almorshdy (7):
+      libproc: keep the file offset of each mapping
+      pid: place uprobes by file offset
+      test: add pid probe placement test for lld-linked objects
+      usdt: place uprobes by file offset
+      test: add USDT probe placement test for lld-linked objects
+      dtrace provider: place uprobes by file offset
+      test: add dtrace provider probe placement test for lld-linked objects
 
-v1: https://lore.kernel.org/all/20261001-tty-linus-v1-2-ecb8576c802d@arthrex.com/
+ include/sys/sol_procfs.h                    |   1 +
+ libdtrace/dt_pid.c                          |  49 +++++++++++--
+ libdtrace/dt_prov_dtrace.c                  |  10 +--
+ libproc/Psymtab.c                           |   1 +
+ test/unittest/begin/tst.begin-end-offset.r  |   1 +
+ test/unittest/begin/tst.begin-end-offset.sh |  87 +++++++++++++++++++++++
+ test/unittest/pid/tst.lld-offset.r          |   1 +
+ test/unittest/pid/tst.lld-offset.sh         |  59 ++++++++++++++++
+ test/unittest/pid/tst.lld-offset.x          |  14 ++++
+ test/unittest/usdt/tst.lld-offset.r         |   1 +
+ test/unittest/usdt/tst.lld-offset.sh        | 104 ++++++++++++++++++++++++++++
+ test/unittest/usdt/tst.lld-offset.x         |  14 ++++
+ test/utils/Build                            |   2 +-
+ test/utils/linkers.sh                       |  21 ++++++
+ 14 files changed, 355 insertions(+), 10 deletions(-)
 ---
- drivers/tty/serial/serial-tegra.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+base-commit: 61fea621160ea4b6302874c62a723da105b44883
+change-id: 20261015-bug001-uprobe-file-offset-c7645de6dd09
 
-diff --git a/drivers/tty/serial/serial-tegra.c b/drivers/tty/serial/serial-tegra.c
-index a23a92cebe0d..306a38b2fb1e 100644
---- a/drivers/tty/serial/serial-tegra.c
-+++ b/drivers/tty/serial/serial-tegra.c
-@@ -639,9 +639,9 @@ static void tegra_uart_stop_tx(struct uart_port *u)
- 
- 	dmaengine_pause(tup->tx_dma_chan);
- 	dmaengine_tx_status(tup->tx_dma_chan, tup->tx_cookie, &state);
-+	async_tx_ack(tup->tx_dma_desc);
- 	dmaengine_terminate_all(tup->tx_dma_chan);
- 	count = tup->tx_bytes_requested - state.residue;
--	async_tx_ack(tup->tx_dma_desc);
- 	uart_xmit_advance(&tup->uport, count);
- 	tup->tx_in_progress = 0;
- }
-
--- 
-2.53.0
+Best regards,
+--  
+Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 
