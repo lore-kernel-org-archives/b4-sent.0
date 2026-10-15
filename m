@@ -1,14 +1,12 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH 00/10] iio: frequency: ad9910: add IIO backend support
-Date: Thu, 15 Oct 2026 13:49:40 -0300
-Message-Id: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
+Date: Thu, 15 Oct 2026 13:49:41 -0300
+Subject: [PATCH 01/10] iio: frequency: ad9910: powerdown fix
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACQE0WoC/yXMQQrCMBBA0auUWTswaYMhXkVcpMmoo5CGTCtC6
- d0b6/It/l9BuQorXLoVKn9EZcoN5tRBfIb8YJTUDD31Z/IDYUjeG8IxxDfnhLqUMtUZjQvWJeO
- sHQhaXCrf5XuMr7e/dRlfHOffDbZtByM6BTB6AAAA
-X-Change-ID: 20260930-ad9910-backend-support-17a47d174430
+Message-Id: <20261015-ad9910-backend-support-v1-1-3c21648c8e26@analog.com>
+References: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
+In-Reply-To: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux@analog.com, devicetree@vger.kernel.org, linux-pwm@vger.kernel.org, 
  linux-doc@vger.kernel.org, 
@@ -24,66 +22,70 @@ Cc: Olivier Moysan <olivier.moysan@foss.st.com>,
  Randy Dunlap <rdunlap@infradead.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=2640;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=2033;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=0+HWhSkCpghkOfm79SliF6p8qXrll7DuCOm1mvzp4Gs=;
- b=ymNJ8Ey19sr74mQ8L7kQqU2ubD3ozWIDgnC/+dBWV+57liYowKul7/gFlZbvMUrMXQ2QsRMGg
- h7G4N+upt/VAZ9nV8P1TafnbbkyVfKnoFfVkNAaM+UDSyDtwO4l3pAx
+ bh=z7PqLUz1GS3N66gFTTPD/4sazamj3Ede7ek83iY24FI=;
+ b=v3kIziO3EaoK9N1dW+gWYnAJBcqYdT/6j2lGpDIPLJMxA/OeAZrnJe7PdyQBwxGHRyMoYM4AK
+ mfY6ZmIzvwcBkwwwtsSlJZns0QgAvD2PPvv0cXt0fZCeh3DR1zIiywX
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series extends the AD9910 DDS driver with support for an IIO backend,
-enabling data streaming through the parallel data port, and with control of
-the DRCTL pin, which defines the slope direction of the digital ramp
-generator (DRG).
+Enable the software powerdown on all the applicable CFR1 register bits at
+once with an IO update.
 
-The parallel data port allows modulation of the DDS core parameters
-(amplitude, phase, frequency or polar) at up to the PDCLK rate, which is
-SYSCLK / 4. Such data rates require an FPGA IP core as the data source, so
-an AXI backend driver is added for the AD9910 HDL reference design. Besides
-streaming data from memory via DMA, the IP core also drives the PROFILE[2:0]
-and DRCTL pins. The latter is exposed as a PWM output, so that the frontend
-driver can consume it through the PWM framework without depending on the
-backend being present.
+It turns out that DIGITAL and REFCLK_INPUT powerdown do need an IO update
+when enabling the powerdown, but that is not the case when powering it up
+again. It is an asymmetric behavior, which was observed while profiling
+power consumption in the lab.
 
-The backend is optional: the AD9910 remains functional through the SPI
-control interface alone, hence the new devm_iio_backend_get_optional()
-helper.
-
+Fixes: 22452fe6cd08 ("iio: frequency: ad9910: initial driver implementation")
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Rodrigo Alencar (10):
-      iio: frequency: ad9910: powerdown fix
-      iio: backend: add devm_iio_backend_get_optional()
-      dt-bindings: iio: frequency: add adi,ad9910-axi-backend
-      dt-bindings: iio: frequency: ad9910: add io-backends property
-      iio: frequency: ad9910: move channel indexes into a shared header
-      iio: frequency: ad9910: add axi backend driver
-      iio: frequency: ad9910: support drctl control
-      iio: frequency: ad9910: support iio backend
-      iio: ABI: add integration_time for output channels
-      docs: iio: ad9910: document DRCTL pin control
+ drivers/iio/frequency/ad9910.c | 26 ++++++++------------------
+ 1 file changed, 8 insertions(+), 18 deletions(-)
 
- Documentation/ABI/testing/sysfs-bus-iio            |  17 +
- .../iio/frequency/adi,ad9910-axi-backend.yaml      |  74 ++++
- .../bindings/iio/frequency/adi,ad9910.yaml         |  38 ++
- Documentation/iio/ad9910.rst                       |  90 ++++-
- MAINTAINERS                                        |   3 +
- drivers/iio/frequency/Kconfig                      |  18 +
- drivers/iio/frequency/Makefile                     |   1 +
- drivers/iio/frequency/ad9910-axi-backend.c         | 396 ++++++++++++++++++++
- drivers/iio/frequency/ad9910.c                     | 402 ++++++++++++++++++---
- drivers/iio/frequency/ad9910.h                     |  44 +++
- drivers/iio/industrialio-backend.c                 |  34 +-
- include/linux/iio/backend.h                        |   2 +
- 12 files changed, 1052 insertions(+), 67 deletions(-)
----
-base-commit: a22dc7ebb21a6bd4c8b63bc2c1dd46a24945aae7
-change-id: 20260930-ad9910-backend-support-17a47d174430
+diff --git a/drivers/iio/frequency/ad9910.c b/drivers/iio/frequency/ad9910.c
+index 04a4e184b873..8bc24d0b7442 100644
+--- a/drivers/iio/frequency/ad9910.c
++++ b/drivers/iio/frequency/ad9910.c
+@@ -621,26 +621,16 @@ static int ad9910_sw_powerdown_set(struct ad9910_state *st, bool enable)
+ 	if (ad9910_sw_powerdown_get(st) == enable)
+ 		return 0;
+ 
+-	/*
+-	 * When powering down, the DAC and AUX_DAC (SW1) must be powered down
+-	 * first, as they require an I/O update to take effect. The opposite is
+-	 * true when powering up, the DAC and AUX_DAC must be powered up last,
+-	 * i.e., after the DIGITAL and REFCLK_INPUT (SW0) power up.
+-	 */
+-	if (enable) {
+-		ret = ad9910_reg32_update(st, AD9910_REG_CFR1,
+-					  AD9910_CFR1_SW1_POWER_DOWN_MSK,
+-					  AD9910_CFR1_SW1_POWER_DOWN_MSK,
+-					  true);
+-		if (ret)
+-			return ret;
+-
++	if (enable)
+ 		return ad9910_reg32_update(st, AD9910_REG_CFR1,
+-					   AD9910_CFR1_SW0_POWER_DOWN_MSK,
+-					   AD9910_CFR1_SW0_POWER_DOWN_MSK,
+-					   false);
+-	}
++					   AD9910_CFR1_SW_POWER_DOWN_MSK,
++					   AD9910_CFR1_SW_POWER_DOWN_MSK,
++					   true);
+ 
++	/*
++	 * When powering up, the DIGITAL and REFCLK_INPUT (SW0) must be powered
++	 * up first, as they do not require an I/O update to take effect.
++	 */
+ 	ret = ad9910_reg32_update(st, AD9910_REG_CFR1,
+ 				  AD9910_CFR1_SW0_POWER_DOWN_MSK, 0, false);
+ 	if (ret)
 
-Best regards,
---  
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+-- 
+2.43.0
 
