@@ -1,75 +1,114 @@
-From: Ben Kuo <ben.kuo.tw@proton.me>
-Date: Thu, 15 Oct 2026 21:48:33 +0800
-Subject: [PATCH] man/man7/epoll.7: Note that an edge-triggered listener
- needs an accept loop
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v9 0/2] A proposal to add a gpio-enabled clock driver.
+Date: Thu, 15 Oct 2026 14:22:49 +0000
+Message-Id: <20261015-feature-clock-guard-v9-0-c1c05a498d9a@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-epoll-et-listener-v1-1-2cc0027b658c@proton.me>
-X-B4-Tracking: v=1; b=H4sIALDZ0GoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDA0NT3dSC/Jwc3dQS3ZzM4pLUvNQi3WRLC3Pj5ORUM6OkZCWgvoKi1LT
- MCrCZ0bG1tQA35FmYYwAAAA==
-X-Change-ID: 20261015-epoll-et-listener-c9873cce62bc
-To: Alejandro Colomar <alx@kernel.org>
-Cc: linux-man@vger.kernel.org, Ben Kuo <ben.kuo.tw@proton.me>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792072148; l=1792;
- i=ben.kuo.tw@proton.me; s=20261015; h=from:subject:message-id;
- bh=LJVki2WUPiCCjNBGmHpgB0vFA15C1Cs0d02BFrGChUw=;
- b=e+Hh17gIpIWqdM1/7kWgO+Ee0CqWlG3r/u9CQJDW8VLdyfg/DXs+gNi9/KwG3U0pO5sCJ03GJ
- 2VA8smHdI0fD1VC0bjiX/CHihxuQVyBzjrP0CgM8c9gUY6jfEghUz1O
-X-Developer-Key: i=ben.kuo.tw@proton.me; a=ed25519;
- pk=VCZ2SPSJe/Vhd2Lwi18Oi3ovxGkT+76oncbTcgGW5wI=
-X-Endpoint-Received: by B4 Relay for ben.kuo.tw@proton.me/20261015 with auth_id=1192
+X-B4-Tracking: v=1; b=H4sIALrh0GoC/43RzU7DMAwH8FeZcibIcb534j0QB8fJtmqwonSrQ
+ NPenXSXglqhHf+W/LMtX8VQalcGsd1cRS1jN3T9qYX4tBF8oNO+yC63LBDQgVZB7gqdL7VIfu/
+ 5KPcXqlnuEAhZ2xSdFa3zs5Zd93VXX99aPnTDua/f9yGjmqr/e6OSIJ3SnpOBYJJ/SfVyLPWZ+
+ w8xgSPOiFWwjuCEMFpjQ7bawALRM9J2WUd0Q0AxExCBIbtAzIx4dOuIaUiJHJL2mLziBWJnJCq
+ 7jtiGGKRkM2tyRAvE/ULQryNuOgd8DDopXRgXiH8A8Q0JOatoXciRlkh4AAnTdzREHYoGJPUHu
+ d1uP0YK9K+aAgAA
+X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Jyri Sarha <jsarha@ti.com>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792074172; l=3490;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=U0moA7hG8cZFQMuoS6kww9Ed1c45Em2nKl7I+kC/DQc=;
+ b=+tp+9bGYxNzSkl6RzAruP7+oILQQQasT8aKHZNYCHQI/XL5K4pHrnP/udqFIsCtkyn1pkacQ6
+ +V8n30+3TtJCmcHrqc8OkhKYpJDowZNEr1jXkM3nJxwCvqsOOT4VjSS
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The example registers the listening socket as level-triggered and
-calls accept(2) once per event, but doesn't say that this only works
-for a level-triggered listener.  If a reader adds EPOLLET to the
-listening socket in the example, connections are left in the accept
-queue and the server stalls.
+A gpio-enabled clock represents an input clock, which state is determined
+by a GPIO signal. It's similar to a gated-fixed-clock, but GPIO direction
+is inverted. Consumers can use the output clock to wait until the clock
+is ready and only then initialize / access dependent peripherals.
 
-Tested on Linux 6.12 (Debian 13, arm64) with an echo server whose
-listening socket is registered with EPOLLET, and a client that opens
-2000 connections at once.  With one accept4(2) call per listener
-event, the client never finishes: ss(8) shows 1420 connections left
-in the accept queue (Recv-Q), while the server stays blocked in
-epoll_wait(2).  With accept4(2) called in a loop until EAGAIN, all
-connections are echoed.
+The usage example for such a driver is when peripherals depend on PLLs in
+a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
+to check whether clock is actually usable. E.g. some of the IPs might not
+have a proper split between registers and IP core, which means that if an
+external clock and/or PLL lock is missing and one tries to access the 
+registers, the response never comes, thus the CPU stalls.
 
-Link: <https://github.com/benkuotw/epoll-lab>
-Signed-off-by: Ben Kuo <ben.kuo.tw@proton.me>
+Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
- man/man7/epoll.7 | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Changes in v9:
+- Changed wordking from "locked" to "enabled" to be more generic
+- Use a separate DT schema file similar to other clock drivers
+- Add a timeout for polling in enable()/prepare()
+- Depending on whether GPIO can sleep or not use prepare() or enable()
+  set of ops respectively.
+- Decouple the implementation from exisiting drivers
+- Link to v8: https://lore.kernel.org/r/20260927-feature-clock-guard-v8-0-630938e302a1@bruker.com
 
-diff --git a/man/man7/epoll.7 b/man/man7/epoll.7
-index 2628cbb168b499786e495cf3c614fc5e58217295..aff844a568a5cd6d8eb310ed833266a0ccfd0a4d 100644
---- a/man/man7/epoll.7
-+++ b/man/man7/epoll.7
-@@ -339,6 +339,16 @@ for (;;) {
- .EE
- .in
- .P
-+The listening socket in this example is level-triggered.
-+If it is registered with
-+.BR EPOLLET ,
-+.BR accept (2)
-+must be called in a loop until it fails with
-+.BR EAGAIN :
-+a single event may report several pending connections,
-+and no further event is reported for those still queued
-+until another connection arrives.
-+.P
- When used as an edge-triggered interface, for performance reasons, it is
- possible to add the file descriptor inside the
- .B epoll
+Changes in v8:
+- Fix return value of clk_gpio_locked_prepare()
+- Link to v7: https://lore.kernel.org/r/20260927-feature-clock-guard-v7-0-8dd19568d9a2@bruker.com
+
+Changes in v7:
+- Fix compatibility strings and schema errors.
+- Update GPIO pin name
+- Link to v6: https://lore.kernel.org/r/20260927-feature-clock-guard-v6-0-007983b13ec2@bruker.com
+
+Changes in v6:
+- Debug messages dropped.
+- The new driver is now an extension of exising clk-gpio drivers.
+- The controller doesn't enable the parent clock, the consumer is
+  supposed to do that instead.
+- Link to v5: https://lore.kernel.org/r/20260915-feature-clock-guard-v5-0-42ab5dc3a6aa@bruker.com
+
+Changes in v5:
+- Use existing DT binding with an additional property instead of adding
+  a new one
+- The driver is simplified in a way that it represents the actual HW
+  desgin without additional unrelated constructs
+- Aggregation is removed, now it's one clock input, one clock output
+- Link to v4: https://lore.kernel.org/r/20260726-feature-clock-guard-v4-0-e9c8b372b71c@bruker.com
+
+Changes in v4:
+- Removed driver specifics from DT binding
+- Link to v3: https://lore.kernel.org/r/20260603-feature-clock-guard-v3-0-01cca0aa04a5@bruker.com
+
+Changes in v3:
+- Removed unnecessary dt bindings
+- Improved HW description and commit messages
+- Link to v2: https://lore.kernel.org/r/20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com
+
+Changes in v2:
+- Renamed to clk-gpio-locked to express intent.
+- Provide enable() / is_enabled() operations so the clock behaves as
+  expected
+- Fixed DTS errors / warnings
+- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
 
 ---
-base-commit: c6cefe27dd02beaf518bb654493e5f09e62b3225
-change-id: 20261015-epoll-et-listener-c9873cce62bc
+Vyacheslav Yurkov (2):
+      dt-bindings: gpio-enabled-clock: Add a new binding
+      clk: Add gpio-enabled clock driver
+
+ .../bindings/clock/gpio-enabled-clock.yaml         |  53 +++++++
+ drivers/clk/clk-gpio.c                             | 161 +++++++++++++++++++++
+ 2 files changed, 214 insertions(+)
+---
+base-commit: 0fcb05b72344f40806cbe810de8872f1698bf053
+change-id: 20260318-feature-clock-guard-f20a2c35b965
 
 Best regards,
 -- 
-Ben Kuo <ben.kuo.tw@proton.me>
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
