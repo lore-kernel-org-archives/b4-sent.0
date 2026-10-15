@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 15 Oct 2026 13:49:43 -0300
-Subject: [PATCH 03/10] dt-bindings: iio: frequency: add
- adi,ad9910-axi-backend
+Date: Thu, 15 Oct 2026 13:49:44 -0300
+Subject: [PATCH 04/10] dt-bindings: iio: frequency: ad9910: add io-backends
+ property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-ad9910-backend-support-v1-3-3c21648c8e26@analog.com>
+Message-Id: <20261015-ad9910-backend-support-v1-4-3c21648c8e26@analog.com>
 References: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
 In-Reply-To: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -23,123 +23,84 @@ Cc: Olivier Moysan <olivier.moysan@foss.st.com>,
  Randy Dunlap <rdunlap@infradead.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=3655;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=2527;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=3NhlsAOFJ1QmxON82V1Y+ILA5J9HSbaSpVlBemiZfX8=;
- b=W13EWuyVYCatrPm+Z0YoDTHgCS+/s7VyN4aHRv7FFp/9rVp2CbyDkl5Qfyd4lLfKdZsC/QU1a
- OSmt4rxCx8kBCDCmZqcWIkTOVjManPBMmQfOcbxujpFCzxlkFjXEjuR
+ bh=8jAo3Ub+lq360SLcTWJHf+ffhTCESzkP7WQXUZzi1Yw=;
+ b=5bAk63xs1Vpwrtx+6vqlMosUp8ugrwZu08aBnPmW6Z1DUFERxhVFTj0mIdo8rn5z86y3G+dSy
+ wUJlVgncKG/DcXTXxfDbMk2ztxvOZbq4YQkVtk0xqMvrkZNKZxdgles
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bindings for the AD9910 AXI backend IP core. The FPGA IP core
-interfaces with the data and control pins of the AD9910 DDS, streaming
-data from memory via DMA into the 18-bit parallel data port (F[1:0] and
-D[15:0] pins), which is clocked by the PDCLK output of the device. It
-also drives the PROFILE[2:0] pins and the DRCTL pin, which controls the
-slope direction of the digital ramp generator (DRG). The DRCTL pin is
-driven by a PWM generator, so the IP core is described both as an IIO
-backend and as a PWM provider.
+The AD9910 parallel data port allows high-speed modulation of the DDS
+core parameters, which requires a data source such as an FPGA IP core
+connected to the F[1:0] and D[15:0] pins. Add the io-backends property,
+so that an IIO backend providing such interface can be referenced.
+
+The property is optional as the parallel port is. The device remains
+functional through the SPI control interface only, as other modes can
+be used to drive the DDS core.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- .../iio/frequency/adi,ad9910-axi-backend.yaml      | 74 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 75 insertions(+)
+ .../bindings/iio/frequency/adi,ad9910.yaml         | 38 ++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
-new file mode 100644
-index 000000000000..20b884e8eb10
---- /dev/null
-+++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
-@@ -0,0 +1,74 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/iio/frequency/adi,ad9910-axi-backend.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Analog Devices AD9910 AXI Backend IP core
-+
-+maintainers:
-+  - Rodrigo Alencar <rodrigo.alencar@analog.com>
-+
-+description:
-+  FPGA IP core that interfaces with the data and control pins of the AD9910
-+  Direct Digital Synthesizer. The SPI bus is used as the control interface
-+  of the AD9910 device, while this IP core streams data from memory via DMA
-+  into the 18-bit parallel data port (F[1:0] and D[15:0] pins), which is
-+  clocked by the PDCLK output of the AD9910. The IP core also drives the
-+  PROFILE[2:0] pins for profile selection and provides a PWM generator that
-+  drives the DRCTL pin, controlling the digital ramp generator (DRG) slope
-+  direction.
-+
-+  https://www.analog.com/en/products/ad9910.html
-+
-+properties:
-+  compatible:
-+    const: adi,ad9910-axi-backend
-+
-+  reg:
+diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+index 4eebbd388b27..02fd49db93ff 100644
+--- a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
++++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+@@ -120,6 +120,13 @@ properties:
+     items:
+       - const: drctl
+ 
++  io-backends:
 +    maxItems: 1
-+
-+  clocks:
-+    maxItems: 1
-+    description: AXI bus clock (s_axi_aclk).
-+
-+  dmas:
-+    maxItems: 1
-+
-+  dma-names:
-+    items:
-+      - const: tx
-+
-+  '#io-backend-cells':
-+    const: 0
-+
-+  '#pwm-cells':
-+    const: 3
 +    description:
-+      The first cell must be 0, as only the DRCTL PWM output is available.
-+      The second cell is the PWM period in nanoseconds and the third cell
-+      holds the PWM flags.
++      IIO backend that interfaces with the parallel data port, enabling data
++      streaming into the device. The backend may also drive the PROFILE[2:0]
++      and DRCTL pins, the latter being exposed as a PWM provider.
 +
-+required:
-+  - compatible
-+  - reg
-+  - clocks
-+  - dmas
-+  - dma-names
-+  - '#io-backend-cells'
-+  - '#pwm-cells'
-+
-+additionalProperties: false
-+
-+examples:
+   adi,pll-enable:
+     type: boolean
+     description:
+@@ -206,4 +213,35 @@ examples:
+             adi,refclk-out-drive-strength = "disabled";
+         };
+     };
 +  - |
-+    ad9910_backend: dds-backend@44a00000 {
-+        compatible = "adi,ad9910-axi-backend";
-+        reg = <0x44a00000 0x10000>;
-+        clocks = <&clkc 15>;
-+        dmas = <&tx_dma 0>;
-+        dma-names = "tx";
-+        #io-backend-cells = <0>;
-+        #pwm-cells = <3>;
++    #include <dt-bindings/gpio/gpio.h>
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        dds@0 {
++            compatible = "adi,ad9910";
++            reg = <0>;
++            spi-max-frequency = <1000000>;
++
++            #clock-cells = <1>;
++            clock-output-names = "sync_clk", "pdclk", "sync_out";
++
++            clocks = <&ad9910_refclk>;
++            clock-names = "ref_clk";
++
++            dvdd-io33-supply = <&vdd_io33>;
++            avdd33-supply = <&vdd_a33>;
++            dvdd18-supply = <&vdd_d18>;
++            avdd18-supply = <&vdd_a18>;
++
++            reset-gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
++            io-reset-gpios = <&gpio 1 GPIO_ACTIVE_HIGH>;
++            powerdown-gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
++            update-gpios = <&gpio 3 GPIO_ACTIVE_HIGH>;
++
++            io-backends = <&ad9910_backend>;
++            pwms = <&ad9910_backend 0 1000000 0>;
++            pwm-names = "drctl";
++        };
 +    };
-+...
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 3a2dfd1a4fd8..93ad6a829cb3 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1731,6 +1731,7 @@ S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/ABI/testing/debugfs-iio-ad9910
- F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
-+F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
- F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
- F:	Documentation/iio/ad9910.rst
- F:	drivers/iio/frequency/ad9910.c
+ ...
 
 -- 
 2.43.0
