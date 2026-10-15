@@ -1,10 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 15 Oct 2026 13:49:41 -0300
-Subject: [PATCH 01/10] iio: frequency: ad9910: powerdown fix
+Date: Thu, 15 Oct 2026 13:49:42 -0300
+Subject: [PATCH 02/10] iio: backend: add devm_iio_backend_get_optional()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-ad9910-backend-support-v1-1-3c21648c8e26@analog.com>
+Message-Id: <20261015-ad9910-backend-support-v1-2-3c21648c8e26@analog.com>
 References: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
 In-Reply-To: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -22,69 +22,113 @@ Cc: Olivier Moysan <olivier.moysan@foss.st.com>,
  Randy Dunlap <rdunlap@infradead.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=2033;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=4254;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=z7PqLUz1GS3N66gFTTPD/4sazamj3Ede7ek83iY24FI=;
- b=v3kIziO3EaoK9N1dW+gWYnAJBcqYdT/6j2lGpDIPLJMxA/OeAZrnJe7PdyQBwxGHRyMoYM4AK
- mfY6ZmIzvwcBkwwwtsSlJZns0QgAvD2PPvv0cXt0fZCeh3DR1zIiywX
+ bh=jMGRlIFAVCCUz4CCoYv97h4Bqb1DwkRQZ4omjdnHBPA=;
+ b=rep/gWP6o7g0TuJDFbq5uZXAbtNeavCTcABecjt66g/dm2woALLaNAba8Ug2NM/XoRo2H/5tz
+ jT5VQnTMh+rBpuJryTB+8YUz+Mea9VapIxuo8G5I8dpvie+TTZlLlk7
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the software powerdown on all the applicable CFR1 register bits at
-once with an IO update.
+Frontend devices might not need a backend driver to rely on. An IIO device
+that supports backends can behave differently when they are not available
+and that should be acceptable. Such parts may provide basic functionality
+solely using the control interface (SPI for instance), being able to have
+extended features when a backend is present.
 
-It turns out that DIGITAL and REFCLK_INPUT powerdown do need an IO update
-when enabling the powerdown, but that is not the case when powering it up
-again. It is an asymmetric behavior, which was observed while profiling
-power consumption in the lab.
+Add devm_iio_backend_get_optional(), which returns NULL when the backend
+is not described in firmware, i.e., when the io-backends property is not
+present or, for a named lookup, when the name is not listed in the
+io-backend-names property. Other errors, such as probe deferral, are
+still returned.
 
-Fixes: 22452fe6cd08 ("iio: frequency: ad9910: initial driver implementation")
+To make that possible, a named lookup that does not match any entry of
+io-backend-names now fails with -ENOENT, the same error returned when the
+io-backends reference is missing. Also, the missing reference is no longer
+logged as an error, leaving that to the caller.
+
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/frequency/ad9910.c | 26 ++++++++------------------
- 1 file changed, 8 insertions(+), 18 deletions(-)
+ drivers/iio/industrialio-backend.c | 34 +++++++++++++++++++++++++++++++++-
+ include/linux/iio/backend.h        |  2 ++
+ 2 files changed, 35 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/iio/frequency/ad9910.c b/drivers/iio/frequency/ad9910.c
-index 04a4e184b873..8bc24d0b7442 100644
---- a/drivers/iio/frequency/ad9910.c
-+++ b/drivers/iio/frequency/ad9910.c
-@@ -621,26 +621,16 @@ static int ad9910_sw_powerdown_set(struct ad9910_state *st, bool enable)
- 	if (ad9910_sw_powerdown_get(st) == enable)
- 		return 0;
+diff --git a/drivers/iio/industrialio-backend.c b/drivers/iio/industrialio-backend.c
+index fbf5c39d7655..7af41ba50a65 100644
+--- a/drivers/iio/industrialio-backend.c
++++ b/drivers/iio/industrialio-backend.c
+@@ -1006,9 +1006,14 @@ static struct iio_backend *__devm_iio_backend_fwnode_get_by_index(struct device
  
--	/*
--	 * When powering down, the DAC and AUX_DAC (SW1) must be powered down
--	 * first, as they require an I/O update to take effect. The opposite is
--	 * true when powering up, the DAC and AUX_DAC must be powered up last,
--	 * i.e., after the DIGITAL and REFCLK_INPUT (SW0) power up.
--	 */
--	if (enable) {
--		ret = ad9910_reg32_update(st, AD9910_REG_CFR1,
--					  AD9910_CFR1_SW1_POWER_DOWN_MSK,
--					  AD9910_CFR1_SW1_POWER_DOWN_MSK,
--					  true);
--		if (ret)
--			return ret;
--
-+	if (enable)
- 		return ad9910_reg32_update(st, AD9910_REG_CFR1,
--					   AD9910_CFR1_SW0_POWER_DOWN_MSK,
--					   AD9910_CFR1_SW0_POWER_DOWN_MSK,
--					   false);
--	}
-+					   AD9910_CFR1_SW_POWER_DOWN_MSK,
-+					   AD9910_CFR1_SW_POWER_DOWN_MSK,
-+					   true);
+ 	struct fwnode_handle *fwnode_back __free(fwnode_handle) =
+ 		fwnode_find_reference(fwnode, "io-backends", index);
+-	if (IS_ERR(fwnode_back))
++	if (IS_ERR(fwnode_back)) {
++		/* not described in firmware, let the caller decide what to do */
++		if (PTR_ERR(fwnode_back) == -ENOENT)
++			return ERR_CAST(fwnode_back);
++
+ 		return dev_err_cast_probe(dev, fwnode_back,
+ 					  "Cannot get Firmware reference\n");
++	}
  
-+	/*
-+	 * When powering up, the DIGITAL and REFCLK_INPUT (SW0) must be powered
-+	 * up first, as they do not require an I/O update to take effect.
-+	 */
- 	ret = ad9910_reg32_update(st, AD9910_REG_CFR1,
- 				  AD9910_CFR1_SW0_POWER_DOWN_MSK, 0, false);
- 	if (ret)
+ 	guard(mutex)(&iio_back_lock);
+ 	list_for_each_entry(back, &iio_back_list, entry) {
+@@ -1035,6 +1040,8 @@ static struct iio_backend *__devm_iio_backend_fwnode_get(struct device *dev, con
+ 
+ 	if (name) {
+ 		ret = device_property_match_string(dev, "io-backend-names", name);
++		if (ret == -EINVAL || ret == -ENODATA)
++			return ERR_PTR(-ENOENT);
+ 		if (ret < 0)
+ 			return ERR_PTR(ret);
+ 		index = ret;
+@@ -1061,6 +1068,31 @@ struct iio_backend *devm_iio_backend_get(struct device *dev, const char *name)
+ }
+ EXPORT_SYMBOL_NS_GPL(devm_iio_backend_get, "IIO_BACKEND");
+ 
++/**
++ * devm_iio_backend_get_optional - Optional device managed backend device get
++ * @dev: Consumer device for the backend
++ * @name: Backend name
++ *
++ * Gets the backend associated with @dev. A backend not described in firmware,
++ * i.e., the io-backends property is not present or @name is not listed in
++ * the io-backend-names property, is not treated as an error.
++ *
++ * RETURNS:
++ * A backend pointer, NULL if the backend is not described in firmware,
++ * negative error pointer otherwise.
++ */
++struct iio_backend *devm_iio_backend_get_optional(struct device *dev,
++						  const char *name)
++{
++	struct iio_backend *back = devm_iio_backend_get(dev, name);
++
++	if (IS_ERR(back) && PTR_ERR(back) == -ENOENT)
++		return NULL;
++
++	return back;
++}
++EXPORT_SYMBOL_NS_GPL(devm_iio_backend_get_optional, "IIO_BACKEND");
++
+ /**
+  * devm_iio_backend_get_by_index - Device managed backend device get by index
+  * @dev: Consumer device for the backend
+diff --git a/include/linux/iio/backend.h b/include/linux/iio/backend.h
+index 9c16b695a602..93d5f2073cc3 100644
+--- a/include/linux/iio/backend.h
++++ b/include/linux/iio/backend.h
+@@ -267,6 +267,8 @@ int iio_backend_extend_chan_spec(struct iio_backend *back,
+ bool iio_backend_has_caps(struct iio_backend *back, u32 caps);
+ void *iio_backend_get_priv(const struct iio_backend *conv);
+ struct iio_backend *devm_iio_backend_get(struct device *dev, const char *name);
++struct iio_backend *devm_iio_backend_get_optional(struct device *dev,
++						  const char *name);
+ struct iio_backend *devm_iio_backend_get_by_index(struct device *dev, unsigned int index);
+ struct iio_backend *devm_iio_backend_fwnode_get(struct device *dev,
+ 						const char *name,
 
 -- 
 2.43.0
