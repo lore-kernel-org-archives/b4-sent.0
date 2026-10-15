@@ -1,132 +1,178 @@
-From: Radu Sabau <radu.sabau@analog.com>
-Date: Thu, 15 Oct 2026 12:33:03 +0300
-Subject: [PATCH v3 6/6] iio: imu: adis16607: Add calibration bias support
- for gyro/accel
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH net v5 0/6] can: fix bus-off restart and device close races
+Date: Thu, 15 Oct 2026 17:45:01 +0800
+Message-Id: <20261015-rockchip-canfd-restart-close-v5-0-ae77327037c9@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-adis16607-v3-6-f972d4efee85@analog.com>
-References: <20261015-adis16607-v3-0-f972d4efee85@analog.com>
-In-Reply-To: <20261015-adis16607-v3-0-f972d4efee85@analog.com>
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Nuno Sa <nuno.sa@analog.com>, Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Alexandru Ardelean <alexandru.ardelean@analog.com>, 
- Radu Sabau <radu.sabau@analog.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Jonathan Cameron <jic23@kernel.org>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792056783; l=3217;
- i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
- bh=3lTyIODwK9PMg0XzafoCrDJgnkgJfCh8WNj2MHCE+ng=;
- b=FSqGpLthkWktuGn5ZnGF5TcCwb5f5ZPW5iWSAVgLiQJZUHQ2I3yeKH66Lexl1Yo129Dbef8bj
- YiD13wEqhrrAfhEP4CazDW+qEv1EG8zMOr+2F3s2qfnFubxbHDOHoi6
-X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
- pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
-X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
+X-B4-Tracking: v=1; b=H4sIAJ2g0GoC/5XOS04DMRAE0KtEXtPIXxKz4h6IxbjdzZjPOLHNC
+ BTN3XEGCSWrwLJapVd9FJVKoiruN0dRaE415akHd7MROA7TM0GKPQst9Z2SykDJ+Ipj2gMOE0c
+ oVNtQGuBbrgQUIjnvLKvAohP7Qpw+V/5RTNTE08+xfoQXwnaCT7Ux1ZbL1/rErNby3/ZmBQq2G
+ ge07I1GfjgcbjG/rzuzPpfsFUmDBNxxiDxEtZPmQjL/kUyXWFKwSnqprb6Q7Lnkrki2S/0b65m
+ 33jr5Ky3L8g1uJDbVugEAAA==
+X-Change-ID: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Wolfgang Grandegger <wg@grandegger.com>, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, kernel@pengutronix.de
+Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ stable@vger.kernel.org, Cunhao Lu <1579567540@qq.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792057562; l=7232;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=SaE49nUJpdyW2sxts16Btp7urzlfh/U7nHcUO3p/JXk=;
+ b=QETCn/MIXGzbMnlWURSFolwVCVhnD284ffEPu2Uaes5BNNT1XuOsddwiBtXd1+UItE9iGHu/X
+ T9xQC9GKcu8BcfdN/7uhLIvQNui/dwms/I9qdDGdbvJyTWo2s8FjKk7
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add IIO_CHAN_INFO_CALIBBIAS support for the gyroscope and
-accelerometer axes, backed by the device's per-axis bias registers
-(XA/YA/ZA_BIAS, XG/YG/ZG_BIAS).
+This work started from a real failure on a production robot using a
+LubanCat-5IO with an RK3588. RX continued, but the TX queue remained
+stopped and subsequent sends returned ENOBUFS. The interface still
+reported ERROR-ACTIVE, and the hardware indicated neither a bus-off
+condition nor a pending TX request.
 
-Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+While testing the echo-loss fix with fault injection, I discovered a
+separate race between bus-off restart and device close. This series fixes
+that race; the fix for the original TX stall will follow separately.
+
+Rockchip currently cancels restart_work in close_candev(), after freeing
+the IRQ, disabling RX offload and stopping the controller. A concurrent
+restart can re-enable the controller and interrupts after IRQ teardown,
+and requeue timestamp work that accesses registers after runtime suspend
+has disabled the controller clocks.
+
+The CAN core checks netif_running() before scheduling or starting
+recovery. A new close_candev_cancel_restart_sync() helper lets Rockchip
+wait for any restart already in progress before tearing down resources.
+The final close_candev() call retains cancellation and echo cleanup.
+
+Rockchip restart masks the device's interrupts and drains active IRQ
+handlers without disabling the shared interrupt line. It also drains
+timestamp work before reinitializing the controller and timecounter.
+Shared IRQ handling stays suspended until initialization is complete.
+Timestamp locking prevents workers from rearming after deactivation and
+keeps timestamp conversions consistent with timecounter updates.
+
+The bus-off path drains TX submission and RX-side echo users before
+publishing BUS_OFF, protecting the CAN core's echo flush during manual
+recovery. Consumed RX FIFO entries are dropped while TX is disabled to
+prevent self-transmitted frames from reaching ordinary RX. Startup
+serializes carrier restoration, IRQ resumption and queue wake with a new
+bus-off. The series also fixes RX offload cleanup when request_irq() fails
+during open.
+
+The following issues were also identified during this work:
+
+- Races in the Rockchip bus error counter cache.
+- Incomplete runtime PM clock cleanup in Rockchip during removal or
+  failed registration.
+
+These two issues are outside this series. When I have time,
+I will send separate patches to fix them one by one.
+
+Hardware testing used a LubanCat-5IO running a Linux 6.18 PREEMPT_RT
+kernel with this series backported. Tests covered 2,700 ranging
+request/response exchanges and 630 seconds of continuous traffic,
+including three naturally scheduled timestamp worker runs. RX, TX echo
+and TX completion hardware timestamps were present throughout, with no
+backward or abnormal jumps.
+
+Test-only instrumentation captured 20 close/IRQ interleavings, including
+15 with multiple FIFO entries. In every case, consumed self-transmitted
+frames were dropped after TX was disabled, the FIFO was drained, and
+traffic resumed after reopening.
+
+All 100 classic CAN loopback tests, 20 automatic and 20 manual restarts
+using synthetic bus-off injection, and 20 down/up cycles passed. No
+timestamp worker ran during about 300 seconds after close, and no
+deadlocks or WARN/Oops were observed.
+
 ---
- drivers/iio/imu/adis16607.c | 35 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 34 insertions(+), 1 deletion(-)
+Changes in v5:
+- Drop consumed RX FIFO entries under tx_lock when TX is disabled
+  instead of only skipping echo filtering.
+- Link to v4:
+  https://patch.msgid.link/20261015-rockchip-canfd-restart-close-v4-0-ad149ff79450@qq.com
 
-diff --git a/drivers/iio/imu/adis16607.c b/drivers/iio/imu/adis16607.c
-index c16a33ee773f..3aeca5dfa882 100644
---- a/drivers/iio/imu/adis16607.c
-+++ b/drivers/iio/imu/adis16607.c
-@@ -53,6 +53,12 @@
- #define ADIS16607_REG_SOFT_RESET	0x36
- #define ADIS16607_REG_SELF_TEST		0x39
- #define ADIS16607_REG_DEC_RATE		0x3A
-+#define ADIS16607_REG_XA_BIAS		0x3B
-+#define ADIS16607_REG_YA_BIAS		0x3C
-+#define ADIS16607_REG_ZA_BIAS		0x3D
-+#define ADIS16607_REG_XG_BIAS		0x3E
-+#define ADIS16607_REG_YG_BIAS		0x3F
-+#define ADIS16607_REG_ZG_BIAS		0x40
- #define ADIS16607_REG_DIGITAL_STATUS	0x4E
- 
- /* SPI Half-Duplex lock value */
-@@ -151,6 +157,15 @@ enum {
- 	ADIS16607_SCAN_TEMP,
- };
- 
-+static const u32 adis16607_calib_bias[] = {
-+	[ADIS16607_SCAN_ACCEL_X] = ADIS16607_REG_XA_BIAS,
-+	[ADIS16607_SCAN_ACCEL_Y] = ADIS16607_REG_YA_BIAS,
-+	[ADIS16607_SCAN_ACCEL_Z] = ADIS16607_REG_ZA_BIAS,
-+	[ADIS16607_SCAN_GYRO_X] = ADIS16607_REG_XG_BIAS,
-+	[ADIS16607_SCAN_GYRO_Y] = ADIS16607_REG_YG_BIAS,
-+	[ADIS16607_SCAN_GYRO_Z] = ADIS16607_REG_ZG_BIAS,
-+};
-+
- /*
-  * SPI Half-Duplex read operation for ADIS16607.
-  * Protocol:
-@@ -962,6 +977,7 @@ static int adis16607_read_raw(struct iio_dev *indio_dev,
- 			      int *val, int *val2, long info)
- {
- 	struct adis16607 *st = iio_priv(indio_dev);
-+	const int idx = chan->scan_index;
- 	int ret;
- 	u32 tmp;
- 
-@@ -999,6 +1015,16 @@ static int adis16607_read_raw(struct iio_dev *indio_dev,
- 		*val = 5000;
- 		return IIO_VAL_INT;
- 
-+	case IIO_CHAN_INFO_CALIBBIAS: {
-+		u16 tmp16;
-+
-+		ret = adis_read_reg_16(&st->adis, adis16607_calib_bias[idx], &tmp16);
-+		if (ret)
-+			return ret;
-+		*val = sign_extend32(tmp16, 15);
-+		return IIO_VAL_INT;
-+	}
-+
- 	case IIO_CHAN_INFO_SAMP_FREQ:
- 		ret = adis16607_get_freq(st, &tmp);
- 		if (ret)
-@@ -1017,6 +1043,7 @@ static int adis16607_write_raw(struct iio_dev *indio_dev,
- 			       int val, int val2, long info)
- {
- 	struct adis16607 *st = iio_priv(indio_dev);
-+	const int idx = chan->scan_index;
- 	u32 tmp;
- 
- 	switch (info) {
-@@ -1024,6 +1051,11 @@ static int adis16607_write_raw(struct iio_dev *indio_dev,
- 		tmp = val * 1000 + val2 / 1000;
- 		return adis16607_set_freq(st, tmp);
- 
-+	case IIO_CHAN_INFO_CALIBBIAS:
-+		if (val < S16_MIN || val > S16_MAX)
-+			return -EINVAL;
-+		return adis_write_reg_16(&st->adis, adis16607_calib_bias[idx], val);
-+
- 	default:
- 		return -EINVAL;
- 	}
-@@ -1033,7 +1065,8 @@ static int adis16607_write_raw(struct iio_dev *indio_dev,
- 	.type = (_type), \
- 	.modified = 1, \
- 	.channel2 = (_mod), \
--	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW), \
-+	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) | \
-+			      BIT(IIO_CHAN_INFO_CALIBBIAS), \
- 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE), \
- 	.info_mask_shared_by_all = BIT(IIO_CHAN_INFO_SAMP_FREQ), \
- 	.address = (_address), \
+Changes in v4:
+- Serialize timecounter_cyc2time() with the worker's timecounter_read()
+  and startup's timecounter_init() using timestamp_lock.
+- Update rkcanfd_skb_set_timestamp() to take a non-const private pointer
+  and document the expanded scope of timestamp_lock.
+- Link to v3:
+  https://patch.msgid.link/20261014-rockchip-canfd-restart-close-v3-0-f0eb41090242@qq.com
 
--- 
-2.43.0
+Changes in v3:
+- Replace disable_irq()/enable_irq() in Rockchip restart with device
+  interrupt masking, mask readback, irq_suspended and synchronize_irq().
+- Use release/acquire ordering when resuming the IRQ handler.
+- Initialize timestamp delayed work once at probe and synchronously
+  cancel it before restart reinitializes the timecounter.
+- Balance RX offload enablement when request_irq() fails during open.
+- Prevent timestamp work from reading the counter or rearming after
+  deactivation, with cancellation outside the lock.
+- Drain TX submission and RX-side echo users before publishing BUS_OFF,
+  protecting the core's pre-restart echo flush.
+- Serialize carrier restoration, IRQ enablement and queue wake with a new
+  bus-off; suspend shared IRQ handling during open until startup finishes.
+- Link to v2:
+  https://lore.kernel.org/linux-can/tencent_82C93561D200C84C24608C80049C23EEF80A@qq.com/
+
+Changes in v2:
+- Split the series into the common checks, the cancellation helper, and
+  its use in Rockchip.
+- Check netif_running() after the do_set_mode capability check and before
+  the restart notification, echo cleanup, and carrier update.
+- Only queue automatic recovery for a running interface; keep reporting
+  bus-off and make the log message match the scheduling decision.
+- Add close_candev_cancel_restart_sync() in linux/can/dev.h and use it in
+  close_candev() without changing the existing cleanup order.
+- Replace the Rockchip mutex and closing flag with an early call to the
+  helper. Drop the extra close-path IRQ synchronization and mask readback.
+- Retain IRQ exclusion around hardware reinitialization in the restart
+  callback.
+- Link to v1:
+  https://lore.kernel.org/linux-can/tencent_5802EE88434010229EDF7A53084D994C6106@qq.com/
+
+To: Marc Kleine-Budde <mkl@pengutronix.de>
+To: Vincent Mailhol <mailhol@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+To: "David S. Miller" <davem@davemloft.net>
+To: Wolfgang Grandegger <wg@grandegger.com>
+To: Oliver Hartkopp <socketcan@hartkopp.net>
+To: kernel@pengutronix.de
+Cc: linux-can@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+
+---
+Cunhao Lu (6):
+      can: dev: prevent bus-off recovery when the interface is not running
+      can: dev: add close_candev_cancel_restart_sync()
+      can: rockchip_canfd: cancel bus-off restart before closing the device
+      can: rockchip_canfd: prevent timestamp work from rearming after bus-off
+      can: rockchip_canfd: serialize TX with bus-off and restart
+      can: rockchip_canfd: serialize timecounter timestamp conversion
+
+ drivers/net/can/dev/dev.c                          | 12 ++--
+ drivers/net/can/rockchip/rockchip_canfd-core.c     | 67 ++++++++++++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd-rx.c       | 26 ++++++---
+ .../net/can/rockchip/rockchip_canfd-timestamp.c    | 43 ++++++++++++--
+ drivers/net/can/rockchip/rockchip_canfd-tx.c       | 16 +++++-
+ drivers/net/can/rockchip/rockchip_canfd.h          | 11 +++-
+ include/linux/can/dev.h                            | 12 ++++
+ 7 files changed, 162 insertions(+), 25 deletions(-)
+---
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+change-id: 20261013-rockchip-canfd-restart-close-ebde5954f1bf
+
+Best regards,
+--  
+Cunhao Lu <1579567540@qq.com>
 
