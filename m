@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 16 Oct 2026 02:15:54 +0800
-Subject: [PATCH v4 05/17] mm/mglru: make folio lru referenced times count a
- generic API
+Date: Fri, 16 Oct 2026 02:15:55 +0800
+Subject: [PATCH v4 06/17] mm/mglru: move add/del LRU size accounting out of
+ lru_gen_update_size()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-mglru-fg-v4-5-2106750c0bfa@tencent.com>
+Message-Id: <20261016-mglru-fg-v4-6-2106750c0bfa@tencent.com>
 References: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 In-Reply-To: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 To: linux-mm@kvack.org, "Liam R. Howlett" <liam@infradead.org>, 
@@ -38,150 +38,100 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  damon@lists.linux.dev, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=4691;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=3201;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=pnvvt+TNjTFasMrCaGELLai88pW+DMjr8ivb+8icxYs=;
- b=2pYnsvVBeywNZk/IqxKSwnVGHLJe4YzTLE0xzeBV928nbdHQBo8JVn3nfsIV5SXIAHdB9m5pu
- um1VbmccsnbBUOWooMumSGVyWRDol3yYP5jq8lKdlkvTeYic/0Sa+u4
+ bh=R/1YuK+DuWVnDJLZi3UVamo0/HdrkSNNWuBiwaeVr3w=;
+ b=2XLndrLsif/WtrelNCXSnsafTuNoASKjH8a8Rr0KhO6jbM9NO93sfCEV4tVmH61jPs7137Vv2
+ m5xLqJfCA4/BdxGQmIqtwu86gcbOIJVwUzpuYsoIQ563tkjn20h4A8R
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Pure code shuffle, no behavior change.
+Pure code shuffle, no behavior change.  lru_gen_update_size() now only
+updates the per-generation counters plus the promotion move; the
+addition and deletion active/inactive accounting move to
+lru_gen_add_folio() and lru_gen_del_folio(), which know the generation
+and can apply the active-window test directly.
 
-Make the folio LRU refs helpers available regardless of CONFIG_LRU_GEN.
-Without MGLRU the refs bits are never set, so they are inert.  Move the
-lru_gen_* helpers into the CONFIG_LRU_GEN section.  This prepares for
-unifying the API for checking folio referenced and workingset status.
-
-folio_migrate_lru_refs() now migrates the complete refs count,
-including PG_workingset (bit 1 of the encoding), bitwise identical to
-the direct copy dropped from folio_migrate_flags().
-
-lru_set_refs_flags() skips the nonexistent mask bits when
-LRU_REFS_WIDTH collapses to 0, keeping the generic helpers inert for
-!CONFIG_LRU_GEN builds.
+The unevictable case is untouched: unevictable folios never enter
+lru_gen_add_folio() and keep being accounted by lruvec_add_folio() as
+before.
 
 Tested-by: zhaozhengzhuo <zhaozhengzhuo@uniontech.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 55 ++++++++++++++++++++++++-----------------------
- mm/migrate.c              |  2 --
- 2 files changed, 28 insertions(+), 29 deletions(-)
+ include/linux/mm_inline.h | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
 
 diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 74d1b7a04ca1..cfcbe4a9aa85 100644
+index cfcbe4a9aa85..65415eeac802 100644
 --- a/include/linux/mm_inline.h
 +++ b/include/linux/mm_inline.h
-@@ -183,6 +183,12 @@ static inline int lru_get_gen_flags(unsigned long flags)
- 	return gen;
- }
+@@ -313,21 +313,9 @@ static inline void lru_gen_update_size(struct lruvec *lruvec, struct folio *foli
+ 	if (new_gen >= 0)
+ 		atomic_long_add(delta, &lrugen->nr_pages[new_gen][type][zone]);
  
-+static inline int folio_lru_gen(const struct folio *folio)
-+{
-+	return lru_get_gen_flags(READ_ONCE(*const_folio_flags(folio, 0)));
-+}
-+#endif
+-	/* addition */
+-	if (old_gen < 0) {
+-		if (lru_gen_is_active(lruvec, new_gen))
+-			lru += LRU_ACTIVE;
+-		__update_lru_size(lruvec, lru, zone, delta);
++	/* return now if not a promotion */
++	if (old_gen < 0 || new_gen < 0)
+ 		return;
+-	}
+-
+-	/* deletion */
+-	if (new_gen < 0) {
+-		if (lru_gen_is_active(lruvec, old_gen))
+-			lru += LRU_ACTIVE;
+-		__update_lru_size(lruvec, lru, zone, -delta);
+-		return;
+-	}
+ 
+ 	/* promotion */
+ 	if (!lru_gen_is_active(lruvec, old_gen) && lru_gen_is_active(lruvec, new_gen)) {
+@@ -381,6 +369,8 @@ static inline bool lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio,
+ 	int gen = folio_lru_gen(folio);
+ 	int type = folio_is_file_lru(folio);
+ 	int zone = folio_zonenum(folio);
++	int delta = folio_nr_pages(folio);
++	enum lru_list lru = type * LRU_INACTIVE_FILE;
+ 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
+ 
+ 	BUILD_BUG_ON(BIT(LRU_GEN_WIDTH - 1) != MAX_NR_GENS);
+@@ -396,6 +386,10 @@ static inline bool lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio,
+ 	set_mask_bits(folio_flags(folio, 0), LRU_GEN_MASK | BIT(PG_active), flags);
+ 
+ 	lru_gen_update_size(lruvec, folio, -1, gen);
++	if (lru_gen_is_active(lruvec, gen))
++		lru += LRU_ACTIVE;
++	__update_lru_size(lruvec, lru, zone, delta);
 +
- /**
-  * lru_set_refs_flags - Set the LRU referenced count to folio flags.
-  * @flags: pointer to the folio flags
-@@ -205,7 +211,8 @@ static inline void lru_set_refs_flags(unsigned long *flags, unsigned int refs)
- 		*flags |= BIT(PG_referenced);
- 	if (refs & BIT(1))
- 		*flags |= BIT(PG_workingset);
--	*flags |= ((unsigned long)refs >> 2) << LRU_REFS_PGOFF;
-+	if (LRU_REFS_WIDTH)
-+		*flags |= ((unsigned long)refs >> 2) << LRU_REFS_PGOFF;
- }
- 
- /**
-@@ -240,13 +247,31 @@ static inline void folio_set_lru_refs(struct folio *folio, unsigned int refs)
- 	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
- }
- 
-+#ifdef CONFIG_LRU_GEN
- void folio_inc_lru_refs(struct folio *folio, unsigned int flags);
-+#else
-+static inline void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
-+{
-+	/* Should not be called with !CONFIG_LRU_GEN */
-+	WARN_ON_ONCE(1);
-+}
-+#endif
- 
--static inline int folio_lru_gen(const struct folio *folio)
-+/**
-+ * folio_migrate_lru_refs - copy the reference state to a new folio
-+ * @new: the destination folio
-+ * @old: the source folio
-+ *
-+ * Transfer the reference state to @new during migration: the MGLRU
-+ * refs count, or PG_referenced and PG_workingset (bits 0-1 of the
-+ * encoding) for the active/inactive LRU.
-+ */
-+static inline void folio_migrate_lru_refs(struct folio *new, const struct folio *old)
+ 	/* for folio_rotate_reclaimable() */
+ 	if (reclaiming)
+ 		list_add_tail(&folio->lru, &lrugen->folios[gen][type][zone]);
+@@ -409,6 +403,9 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
  {
--	return lru_get_gen_flags(READ_ONCE(*const_folio_flags(folio, 0)));
-+	folio_set_lru_refs(new, folio_lru_refs(old));
- }
+ 	unsigned long flags;
+ 	int gen = folio_lru_gen(folio);
++	int zone = folio_zonenum(folio);
++	int delta = folio_nr_pages(folio);
++	enum lru_list lru = folio_is_file_lru(folio) * LRU_INACTIVE_FILE;
  
-+#ifdef CONFIG_LRU_GEN
- static inline bool lru_gen_at_tail(struct lruvec *lruvec, int type, int gen)
- {
- 	unsigned long min_seq = READ_ONCE(lruvec->lrugen.min_seq[type]);
-@@ -401,20 +426,6 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
+ 	if (gen < 0)
+ 		return false;
+@@ -422,6 +419,9 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
+ 	gen = ((flags & LRU_GEN_MASK) >> LRU_GEN_PGOFF) - 1;
+ 
+ 	lru_gen_update_size(lruvec, folio, gen, -1);
++	if (lru_gen_is_active(lruvec, gen))
++		lru += LRU_ACTIVE;
++	__update_lru_size(lruvec, lru, zone, -delta);
+ 	list_del(&folio->lru);
  
  	return true;
- }
--
--/**
-- * folio_migrate_lru_refs - copy the reference state to a new folio
-- * @new: the destination folio
-- * @old: the source folio
-- *
-- * Transfer the reference state to @new during migration: the MGLRU
-- * refs count, including PG_referenced, or just PG_referenced for the
-- * active/inactive LRU.
-- */
--static inline void folio_migrate_lru_refs(struct folio *new, const struct folio *old)
--{
--	folio_set_lru_refs(new, folio_lru_refs(old));
--}
- #else /* !CONFIG_LRU_GEN */
- 
- static inline bool lru_gen_enabled(void)
-@@ -441,16 +452,6 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- {
- 	return false;
- }
--
--static inline void folio_inc_lru_refs(struct folio *folio, unsigned int flags)
--{
--}
--
--static inline void folio_migrate_lru_refs(struct folio *new, const struct folio *old)
--{
--	if (folio_test_referenced(old))
--		folio_set_referenced(new);
--}
- #endif /* CONFIG_LRU_GEN */
- 
- static __always_inline
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 7bdcdb57652f..5eefd8547f70 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -786,8 +786,6 @@ void folio_migrate_flags(struct folio *newfolio, struct folio *folio)
- 		folio_set_active(newfolio);
- 	} else if (folio_test_clear_unevictable(folio))
- 		folio_set_unevictable(newfolio);
--	if (folio_test_workingset(folio))
--		folio_set_workingset(newfolio);
- 	if (folio_test_checked(folio))
- 		folio_set_checked(newfolio);
- 	/*
 
 -- 
 2.56.0
