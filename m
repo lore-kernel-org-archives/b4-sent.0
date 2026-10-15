@@ -1,10 +1,10 @@
 From: George Neacsu <geocausa@gmail.com>
-Date: Thu, 15 Oct 2026 22:25:09 +0100
-Subject: [PATCH RFC 1/2] dt-bindings: media: sony,imx681: Allow a C-PHY bus
+Date: Thu, 15 Oct 2026 22:25:10 +0100
+Subject: [PATCH RFC 2/2] media: i2c: imx681: Add C-PHY support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-imx681-x1e-v1-1-fd22f5f3b0c5@gmail.com>
+Message-Id: <20261015-imx681-x1e-v1-2-fd22f5f3b0c5@gmail.com>
 References: <20261015-imx681-x1e-v1-0-fd22f5f3b0c5@gmail.com>
 In-Reply-To: <20261015-imx681-x1e-v1-0-fd22f5f3b0c5@gmail.com>
 To: Sergey Lebedev <lsa.uz@pm.me>, 
@@ -18,79 +18,240 @@ Cc: Sakari Ailus <sakari.ailus@linux.intel.com>,
  linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792099508; l=2232;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792099508; l=8545;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=kOFZyF2sftuWkEwjRC1kUSRJpQArgwBXcX+9V+TFh00=;
- b=GlVhz2vLlBxWU8P/XA69q8ENPtQ/nBkpo2eu7ffi/jd12L2Xm7Ky1FS+lq6kB5gS+7WCgoDmN
- /ZAZa5vxgcfCq68pFkfJPMvNdiVl5ievvf+7YyR/DZALTPNYWt6GP3L
+ bh=EfvEBhMI4cDjJCXBWHch0MxiSg00MDxNZQoomRmocno=;
+ b=bIAglSnyP5q20T7vZrTk5eM1Li42ty2/L40HuDx4QWH6EJIXIFYSFWBEcEn+H8mBbMuXTMf0r
+ fTBsTh/5wscCWbhGUKMB4MU1G4Gk+G8vGasZKin7YnueOjG/Vg4p7gt
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the Surface Pro 11 with a Snapdragon X Elite, the IMX681 reaches the
-CAMSS CSIPHY over one MIPI C-PHY trio rather than over the two D-PHY
-lanes of the Intel model. Let bus-type select C-PHY, and with it a single
-data lane, keeping two D-PHY lanes as the default.
+The IMX681 also drives MIPI C-PHY. On the Surface Pro 11 with a
+Snapdragon X Elite it reaches the CAMSS CSIPHY over one C-PHY trio,
+which Windows runs at 2.4 Gsym/s.
+
+Only the signalling, the lane count and the output PLL differ from the
+two-lane D-PHY set-up of the Intel model. The read-out window and the
+pixel array PLL stay as they are, and so does the pixel rate: Windows on
+the Snapdragon model programs the same video timing PLL, and its line and
+frame lengths give 720 MHz at 30 fps too. Describe each bus by those
+three values and its link frequency, pick the one the endpoint asks for,
+and write them after the register list:
+
+- CSI_SIGNALING_MODE: 2 for D-PHY, 3 for C-PHY, as CCS numbers them;
+- CSI_LANE_MODE: the number of lanes or trios, minus one;
+- OP_PLL_MULTIPLIER: 303 for D-PHY as before, 375 for C-PHY, so
+  19.2 MHz / 3 * 375 = 2400 Msym/s, a 1.2 GHz link frequency by the V4L2
+  convention for C-PHY (half the symbol rate).
+
+CSI_LANE_MODE was not written before. It is now written for D-PHY too,
+with the value two lanes need.
+
+Tested on the Surface Pro 11 (X1E80100), with the endpoint on one C-PHY
+trio at 1.2 GHz and CAMSS capturing raw frames over CSIPHY2, CSID1 and an
+RDI interface: 3844x2640 at 29.99 fps, the colour-bar test pattern
+arrives intact, a scene captures, and VBLANK still sets the frame rate
+(8.19 fps at 9000 lines). The D-PHY path is not tested here.
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- .../devicetree/bindings/media/i2c/sony,imx681.yaml | 26 ++++++++++++++++++++--
- 1 file changed, 24 insertions(+), 2 deletions(-)
+ drivers/media/i2c/imx681.c | 95 +++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 69 insertions(+), 26 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/sony,imx681.yaml b/Documentation/devicetree/bindings/media/i2c/sony,imx681.yaml
-index 62e7eae..51256a7 100644
---- a/Documentation/devicetree/bindings/media/i2c/sony,imx681.yaml
-+++ b/Documentation/devicetree/bindings/media/i2c/sony,imx681.yaml
-@@ -14,8 +14,8 @@ description:
-   The Sony IMX681 is a CMOS active pixel image sensor with a square pixel
-   array, used as the user-facing camera on several Microsoft Surface devices.
-   It operates from analog 2.8 V, digital 1.05 V and interface 1.8 V supplies,
--  is programmable over I2C, and outputs 10-bit Bayer data over a two-lane
--  MIPI CSI-2 D-PHY interface.
-+  is programmable over I2C, and outputs 10-bit Bayer data over MIPI CSI-2,
-+  either on two D-PHY lanes or on one C-PHY trio.
+diff --git a/drivers/media/i2c/imx681.c b/drivers/media/i2c/imx681.c
+index 6c8e4b3..c660f06 100644
+--- a/drivers/media/i2c/imx681.c
++++ b/drivers/media/i2c/imx681.c
+@@ -77,6 +77,9 @@
+ #define IMX681_REG_LINE_LENGTH		CCI_REG16(0x0342)
+ #define IMX681_REG_ORIENTATION		CCI_REG8(0x0101)
+ #define IMX681_REG_CSI_SIGNALING_MODE	CCI_REG8(0x0111)
++#define IMX681_CSI_SIGNALING_DPHY	0x02
++#define IMX681_CSI_SIGNALING_CPHY	0x03
++#define IMX681_REG_CSI_LANE_MODE	CCI_REG8(0x0114)
+ #define IMX681_REG_EXTCLK_FREQ_MHZ	CCI_REG16(0x0136)
+ #define IMX681_REG_PLL_MULTIPLIER	CCI_REG16(0x0306)
+ #define IMX681_REG_OP_PRE_PLL_CLK_DIV	CCI_REG16(0x030c)
+@@ -93,7 +96,6 @@
+ /* PLL, as the Windows traces configure it and the part reads back. */
+ #define IMX681_PLL_MULTIPLIER		225
+ #define IMX681_OP_PRE_PLL_CLK_DIV	3
+-#define IMX681_OP_PLL_MULTIPLIER	303
  
- allOf:
-   - $ref: /schemas/media/video-interface-devices.yaml#
-@@ -54,7 +54,14 @@ properties:
-         unevaluatedProperties: false
+ /*
+  * Where the read-out window sits in the pixel array, and how much array
+@@ -119,16 +121,44 @@
+ #define IMX681_FRAME_LENGTH_LINES	3177	/* 0x0C69 */
+ #define IMX681_FRAME_LENGTH_MAX		0xFFFF	/* 24-bit reg, limit to 16-bit */
  
-         properties:
-+          bus-type:
-+            enum:
-+              - 1 # MEDIA_BUS_TYPE_CSI2_CPHY
-+              - 4 # MEDIA_BUS_TYPE_CSI2_DPHY
-+            default: 4
+-/* MIPI lanes */
+-#define IMX681_NUM_LANES		2
+-
+ /*
+- * Link frequency derived from PLL settings in Windows trace:
+- * EXCK=19.2MHz, PLL2_MUL=303, PLL2_PRE_DIV=3
+- * OP output = 19.2 * 303 / 3 = 1939.2 MHz (MIPI bit rate)
+- * Link freq = 1939.2 / 2 (DDR) = 969.6 MHz
++ * The part drives either bus. Only the signalling, the lane count and the
++ * output PLL differ between them: the pixel array, its PLL and the read-out
++ * window stay as they are, so the pixel rate below holds for both.
+  */
+-#define IMX681_LINK_FREQ		969600000LL
++struct imx681_bus {
++	enum v4l2_mbus_type type;
++	unsigned int lanes;
++	u8 signaling_mode;
++	u16 op_pll_multiplier;
++	s64 link_freq;
++};
 +
-           data-lanes:
-+            minItems: 1
-             items:
-               - const: 1
-               - const: 2
-@@ -63,6 +70,21 @@ properties:
-           - data-lanes
-           - link-frequencies
++static const struct imx681_bus imx681_buses[] = {
++	/*
++	 * D-PHY, two lanes, as on the Surface Pro 11 for Business (Intel):
++	 * 19.2 MHz / 3 * 303 = 1939.2 Mbps per lane, so a 969.6 MHz link.
++	 */
++	{
++		.type = V4L2_MBUS_CSI2_DPHY,
++		.lanes = 2,
++		.signaling_mode = IMX681_CSI_SIGNALING_DPHY,
++		.op_pll_multiplier = 303,
++		.link_freq = 969600000,
++	},
++	/*
++	 * C-PHY, one trio, as on the Surface Pro 11 (Snapdragon X Elite):
++	 * 19.2 MHz / 3 * 375 = 2400 Msym/s, and a C-PHY link frequency is half
++	 * the symbol rate.
++	 */
++	{
++		.type = V4L2_MBUS_CSI2_CPHY,
++		.lanes = 1,
++		.signaling_mode = IMX681_CSI_SIGNALING_CPHY,
++		.op_pll_multiplier = 375,
++		.link_freq = 1200000000,
++	},
++};
  
-+        if:
-+          properties:
-+            bus-type:
-+              const: 1
-+          required:
-+            - bus-type
-+        then:
-+          properties:
-+            data-lanes:
-+              maxItems: 1
-+        else:
-+          properties:
-+            data-lanes:
-+              minItems: 2
+ /*
+  * The pixel rate cannot be derived from the CSI-2 link: this part runs two
+@@ -154,21 +184,15 @@
+ 
+ #define IMAGE_PAD			0
+ 
+-static const s64 imx681_link_frequencies[] = {
+-	IMX681_LINK_FREQ,
+-};
+-
+ /*
+  * Sensor init register sequence, captured from Windows I2C traces.
+  * This configures the sensor for 3844x2640 RAW10 output at ~30fps
+- * with 2-lane MIPI CSI-2, 19.2MHz input clock.
++ * from a 19.2MHz input clock; imx681_start_streaming() adds the bus.
+  */
+ static const struct cci_reg_sequence imx681_init_regs[] = {
+ 	{ IMX681_REG_EXTCLK_FREQ_MHZ, IMX681_XCLK_FREQ_ENC },
+ 	/* Vendor specific configuration */
+ 	{ CCI_REG16(0x002C), 0x0505 },
+-	/* 0x02 is D-PHY, which is the only mode this part offers. */
+-	{ IMX681_REG_CSI_SIGNALING_MODE, 0x02 },
+ 	/* Vendor access unlock sequence */
+ 	{ CCI_REG8(0x30EB),  0x05 },
+ 	{ CCI_REG8(0x30EB),  0x0C },
+@@ -197,11 +221,10 @@ static const struct cci_reg_sequence imx681_init_regs[] = {
+ 	 * low byte of PLL_MULTIPLIER and 0x030d the low byte of
+ 	 * OP_PRE_PLL_CLK_DIV, and each was right only while its high byte
+ 	 * held the reset value. Written whole, and the part reads back
+-	 * 225, 3 and 303 at the operating point either way.
++	 * 225 and 3 at the operating point either way.
+ 	 */
+ 	{ IMX681_REG_PLL_MULTIPLIER, IMX681_PLL_MULTIPLIER },
+ 	{ IMX681_REG_OP_PRE_PLL_CLK_DIV, IMX681_OP_PRE_PLL_CLK_DIV },
+-	{ IMX681_REG_OP_PLL_MULTIPLIER, IMX681_OP_PLL_MULTIPLIER },
+ 	/* Vendor specific registers */
+ 	{ CCI_REG8(0x7E9B),  0x02 },
+ 	{ CCI_REG8(0x0368),  0x00 },
+@@ -259,6 +282,7 @@ struct imx681 {
+ 	struct v4l2_ctrl *hflip;
+ 	struct v4l2_ctrl *vflip;
+ 
++	const struct imx681_bus *bus;
+ 	unsigned long link_freq_bitmap;
+ };
+ 
+@@ -508,6 +532,17 @@ static int imx681_start_streaming(struct imx681 *imx681)
+ 		return ret;
+ 	}
+ 
++	cci_write(imx681->cci, IMX681_REG_CSI_SIGNALING_MODE,
++		  imx681->bus->signaling_mode, &ret);
++	cci_write(imx681->cci, IMX681_REG_CSI_LANE_MODE,
++		  imx681->bus->lanes - 1, &ret);
++	cci_write(imx681->cci, IMX681_REG_OP_PLL_MULTIPLIER,
++		  imx681->bus->op_pll_multiplier, &ret);
++	if (ret) {
++		dev_err(imx681->dev, "failed to configure the bus: %d\n", ret);
++		return ret;
++	}
 +
-     required:
-       - endpoint
+ 	/* Wait for sensor to stabilise after configuration */
+ 	usleep_range(IMX681_INIT_DELAY_US, IMX681_INIT_DELAY_US + 1000);
  
+@@ -711,7 +746,7 @@ static int imx681_init_controls(struct imx681 *imx681)
+ 					   V4L2_CID_LINK_FREQ,
+ 					   __fls(imx681->link_freq_bitmap),
+ 					   __ffs(imx681->link_freq_bitmap),
+-					   imx681_link_frequencies);
++					   &imx681->bus->link_freq);
+ 	if (link_freq)
+ 		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+ 
+@@ -814,9 +849,10 @@ static int imx681_parse_endpoint(struct imx681 *imx681)
+ {
+ 	struct fwnode_handle *fwnode = dev_fwnode(imx681->dev);
+ 	struct v4l2_fwnode_endpoint bus_cfg = {
+-		.bus_type = V4L2_MBUS_CSI2_DPHY,
++		.bus_type = V4L2_MBUS_UNKNOWN,
+ 	};
+ 	struct fwnode_handle *ep;
++	unsigned int lanes;
+ 	int ret;
+ 
+ 	ep = fwnode_graph_get_endpoint_by_id(fwnode, 0, 0, 0);
+@@ -827,19 +863,26 @@ static int imx681_parse_endpoint(struct imx681 *imx681)
+ 		return dev_err_probe(imx681->dev, ret,
+ 				     "failed to parse endpoint\n");
+ 
+-	if (bus_cfg.bus.mipi_csi2.num_data_lanes != IMX681_NUM_LANES) {
++	/* Without a bus-type, an endpoint with data-lanes parses as D-PHY. */
++	lanes = bus_cfg.bus.mipi_csi2.num_data_lanes;
++	for (unsigned int i = 0; i < ARRAY_SIZE(imx681_buses); i++) {
++		if (imx681_buses[i].type == bus_cfg.bus_type &&
++		    imx681_buses[i].lanes == lanes)
++			imx681->bus = &imx681_buses[i];
++	}
++
++	if (!imx681->bus) {
+ 		ret = dev_err_probe(imx681->dev, -EINVAL,
+-				    "expected %d data lanes, got %d\n",
+-				    IMX681_NUM_LANES,
+-				    bus_cfg.bus.mipi_csi2.num_data_lanes);
++				    "unsupported bus: %s with %u lanes\n",
++				    bus_cfg.bus_type == V4L2_MBUS_CSI2_CPHY ?
++				    "C-PHY" : "D-PHY", lanes);
+ 		goto done;
+ 	}
+ 
+ 	ret = v4l2_link_freq_to_bitmap(imx681->dev,
+ 				       bus_cfg.link_frequencies,
+ 				       bus_cfg.nr_of_link_frequencies,
+-				       imx681_link_frequencies,
+-				       ARRAY_SIZE(imx681_link_frequencies),
++				       &imx681->bus->link_freq, 1,
+ 				       &imx681->link_freq_bitmap);
+ 	if (ret)
+ 		ret = dev_err_probe(imx681->dev, ret,
 
 -- 
 2.53.0
