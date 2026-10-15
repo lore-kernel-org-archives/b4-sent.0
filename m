@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 16 Oct 2026 02:16:05 +0800
-Subject: [PATCH v4 16/17] mm/mglru: make folio_test_workingset() work based
- on folio LRU refs
+Date: Fri, 16 Oct 2026 02:16:06 +0800
+Subject: [PATCH v4 17/17] Documentation/mm: multi-gen LRU: update for
+ frequency guided promotion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-mglru-fg-v4-16-2106750c0bfa@tencent.com>
+Message-Id: <20261016-mglru-fg-v4-17-2106750c0bfa@tencent.com>
 References: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 In-Reply-To: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 To: linux-mm@kvack.org, "Liam R. Howlett" <liam@infradead.org>, 
@@ -38,168 +38,120 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  damon@lists.linux.dev, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=5718;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=5953;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=NZRuMZ9DHJqarWmmM6IMbKyXzp6luS4trNdMObpwCLI=;
- b=J/5V4RHF/wLROW7MgcSEu29RNBNNJPH06zH+vQfEGTpFxED4h+RDJibV/v5icelk6NMtSB6tg
- iCohZpXYNmiD81Dr07ISj0ys5x5+g+FdQy/Z62fe2TRmx53BTT8gB4+
+ bh=H9ePyPxQfKEyJG8pjQryA22Bu9URRS7jnmN2RCV298Y=;
+ b=Vb9KmjNNstGoNvaMOwNk7ofyjEq/gP8OVY3K9CwFsX4iWIUxqEgFFz0bvwWvH+Y2p0iByDKlP
+ wZqWyoquQutCr8DLLctzG4RU7bhi8F6VKDcrlaEAi+LHGq3mAiOnAnb
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-folio_test_workingset() currently tests the PG_workingset bit, which
-is only the second lowest access bit of the folio LRU refs count now.
-Folios with a higher refs count carry it in the LRU_REFS_MASK field
-and no longer have PG_workingset set, so the bit test misses them.
+The design doc still describes the old tier and promotion model:
 
-folio_set_workingset() currently sets the PG_workingset bit with a
-plain set_bit(), which also over-promotes folios at a higher refs
-count: e.g. a folio at refs 4 is bumped to refs 6, advancing it
-toward LRU_REFS_MAX and an unintended generation promotion on the
-next access.
+- Tiers are no longer order_base_2() of the file descriptor accesses.
+  A folio's tier is derived from its referenced count, which counts
+  accesses from both page tables and file descriptors.
 
-Move the test into mm_inline.h as an inline helper based on
-folio_lru_refs(), checking refs >= LRU_REFS_WORKINGSET.  The set
-stays a plain PG_workingset bit operation reserved for the
-classical LRU: under MGLRU the refs count is maintained by
-folio_inc_lru_refs(), and now triggers a debug WARN when called
-while MGLRU is fully on (the switching window is exempt, as the
-classical paths legitimately run alongside MGLRU then).  The one
-PageWorkingset() user in erofs is converted to the folio helper.
+- A young PTE no longer always promotes a folio to the newest
+  generation.  The first access only moves a folio one generation
+  forward if it is at the tail of its LRU, i.e., in one of the two
+  oldest generations of its type, a second access promotes it, and
+  executable file folios are promoted on their first access.
 
-Under the classical LRU the refs count is not maintained, so the
-test falls back to the PG_workingset bit test, which is the old
-behavior.
+- The eviction no longer uses the first tier as the only baseline.
+  The type is selected by comparing all tiers of each type, and a tier
+  is protected by comparing it against the tiers below it.
 
-Tested-by: zhaozhengzhuo <zhaozhengzhuo@uniontech.com>
+Update the aging and eviction sections accordingly.
+
+Assisted-by: LLM
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- fs/btrfs/compression.c     |  1 +
- fs/erofs/zdata.c           |  3 ++-
- include/linux/mm_inline.h  | 29 +++++++++++++++++++++++++++++
- include/linux/page-flags.h |  2 --
- mm/filemap.c               |  1 +
- mm/page_io.c               |  1 +
- 6 files changed, 34 insertions(+), 3 deletions(-)
+ Documentation/mm/multigen_lru.rst | 57 ++++++++++++++++++++++-----------------
+ 1 file changed, 33 insertions(+), 24 deletions(-)
 
-diff --git a/fs/btrfs/compression.c b/fs/btrfs/compression.c
-index c62b5148d5ac..57d24413265e 100644
---- a/fs/btrfs/compression.c
-+++ b/fs/btrfs/compression.c
-@@ -8,6 +8,7 @@
- #include <linux/file.h>
- #include <linux/fs.h>
- #include <linux/pagemap.h>
-+#include <linux/mm_inline.h>
- #include <linux/folio_batch.h>
- #include <linux/highmem.h>
- #include <linux/kthread.h>
-diff --git a/fs/erofs/zdata.c b/fs/erofs/zdata.c
-index e981e371d6c2..34ee41e1ccdc 100644
---- a/fs/erofs/zdata.c
-+++ b/fs/erofs/zdata.c
-@@ -6,6 +6,7 @@
-  */
- #include "compress.h"
- #include <linux/psi.h>
-+#include <linux/mm_inline.h>
- #include <linux/cpuhotplug.h>
- #include <trace/events/erofs.h>
+diff --git a/Documentation/mm/multigen_lru.rst b/Documentation/mm/multigen_lru.rst
+index 52ed5092022f..ec8744c1f42c 100644
+--- a/Documentation/mm/multigen_lru.rst
++++ b/Documentation/mm/multigen_lru.rst
+@@ -95,16 +95,19 @@ at most ``MAX_NR_GENS`` generations. The gen counter stores a value
+ within ``[1, MAX_NR_GENS]`` while a page is on one of
+ ``lrugen->folios[]``; otherwise it stores zero.
  
-@@ -1713,7 +1714,7 @@ static void z_erofs_submit_queue(struct z_erofs_frontend *f,
- 				DBG_BUGON(bvec.bv_len < sb->s_blocksize);
- 			}
+-Each generation is divided into multiple tiers. A page accessed ``N``
+-times through file descriptors is in tier ``order_base_2(N)``. Unlike
+-generations, tiers do not have dedicated ``lrugen->folios[]``. In
+-contrast to moving across generations, which requires the LRU lock,
+-moving across tiers only involves atomic operations on
+-``folio->flags`` and therefore has a negligible cost. A feedback loop
+-modeled after the PID controller monitors refaults over all the tiers
+-from anon and file types and decides which tiers from which types to
+-evict or protect. The desired effect is to balance refault percentages
+-between anon and file types proportional to the swappiness level.
++Each generation is divided into multiple tiers. A page's tier is
++derived from its referenced count, which counts the accesses collected
++from both channels above and is capped at ``LRU_REFS_MAX``: pages
++accessed at most once are in the lowest tier, and the tiers above hold
++pages accessed at least twice. Unlike generations, tiers do not have
++dedicated ``lrugen->folios[]``. In contrast to moving across
++generations, which requires the LRU lock, updating the referenced
++count only involves atomic operations on ``folio->flags`` and
++therefore has a negligible cost. A feedback loop modeled after the PID
++controller monitors refaults over all the tiers from anon and file
++types and decides which tiers from which types to evict or protect.
++The desired effect is to balance refault percentages between anon and
++file types proportional to the swappiness level.
  
--			if (unlikely(PageWorkingset(bvec.bv_page)) &&
-+			if (unlikely(folio_test_workingset(page_folio(bvec.bv_page))) &&
- 			    !memstall) {
- 				psi_memstall_enter(&pflags);
- 				memstall = 1;
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index fd77dbfdaf70..ae50f9880da8 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -288,6 +288,23 @@ static inline void folio_migrate_lru_refs(struct folio *new, const struct folio
- 	__folio_set_lru_refs(new, folio_lru_refs(old));
- }
+ There are two conceptually independent procedures: the aging and the
+ eviction. They form a closed-loop system, i.e., the page reclaim.
+@@ -122,25 +125,31 @@ and calls ``walk_page_range()`` with each ``mm_struct`` on this list
+ to scan PTEs, and after each iteration, it increments ``max_seq``. For
+ the latter, when the eviction walks the rmap and finds a young PTE,
+ the aging scans the adjacent PTEs. For both, on finding a young PTE,
+-the aging clears the accessed bit and updates the gen counter of the
+-page mapped by this PTE to ``(max_seq%MAX_NR_GENS)+1``.
++the aging clears the accessed bit and bumps the referenced count of
++the page mapped by this PTE. A second access promotes the page by
++updating its gen counter to ``(max_seq%MAX_NR_GENS)+1``; the first
++access only moves a page one generation forward if it is at the tail
++of its LRU, i.e., in one of the two oldest generations of its type,
++so that the next time it becomes the oldest one, its accessed bit
++reflects whether it has been used again. Executable file pages are
++promoted on their first access, since reclaiming them causes typical
++I/O thrashing.
  
-+/**
-+ * folio_test_workingset - Test if a folio is in the workingset.
-+ * @folio: the folio
-+ *
-+ * A folio is workingset when its LRU refs count reaches
-+ * LRU_REFS_WORKINGSET.  Under the classical LRU the extra refs counter
-+ * are always zero so this is just testing the PG_workingset bit.
-+ * NOTE: folio_set_workingset() must not be used under MGLRU, as the
-+ * folio refs are tracked by folio_inc_lru_refs() with rules.
-+ *
-+ * Return: true if the folio is workingset.
-+ */
-+static __always_inline bool folio_test_workingset(const struct folio *folio)
-+{
-+	return folio_lru_refs(folio) >= LRU_REFS_WORKINGSET;
-+}
-+
- #ifdef CONFIG_LRU_GEN
- static inline bool lru_refs_is_active(unsigned int refs)
- {
-@@ -519,6 +536,18 @@ static inline void folio_clear_lru_refs(struct folio *folio)
- 		folio_clear_referenced(folio);
- }
+ Eviction
+ --------
+ The eviction consumes old generations. Given an ``lruvec``, it
+ increments ``min_seq`` when ``lrugen->folios[]`` indexed by
+-``min_seq%MAX_NR_GENS`` becomes empty. To select a type and a tier to
+-evict from, it first compares ``min_seq[]`` to select the older type.
+-If both types are equally old, it selects the one whose first tier has
+-a lower refault percentage. The first tier contains single-use
+-unmapped clean pages, which are the best bet. The eviction sorts a
+-page according to its gen counter if the aging has found this page
+-accessed through page tables and updated its gen counter. It also
+-moves a page to the next generation, i.e., ``min_seq+1``, if this page
+-was accessed multiple times through file descriptors and the feedback
+-loop has detected outlying refaults from the tier this page is in. To
+-this end, the feedback loop uses the first tier as the baseline, for
+-the reason stated earlier.
++``min_seq%MAX_NR_GENS`` becomes empty. To select a type to evict from,
++it first compares ``min_seq[]`` to select the older type. If both
++types are equally old, it compares the refault percentages of all the
++tiers of each type proportional to the swappiness level. To select a
++tier to protect, it compares the refault percentage of each tier
++against that of the tiers below it. The lowest tier contains pages
++accessed at most once, which are the best bet. The eviction sorts a
++page according to its gen counter if the aging or an access has
++updated its gen counter. It also moves a page to the next generation,
++i.e., ``min_seq+1``, if the feedback loop has detected outlying
++refaults from the tier this page is in.
  
-+/*
-+ * For the classical LRU only: with MGLRU the PG_workingset bit is
-+ * part of the folio refs count maintained by folio_inc_lru_refs(),
-+ * and a raw set would corrupt it.  The switching window is exempt
-+ * because the classical paths legitimately run alongside MGLRU then.
-+ */
-+static __always_inline void folio_set_workingset(struct folio *folio)
-+{
-+	VM_WARN_ON_ONCE(lru_gen_enabled() && !lru_gen_switching());
-+	set_bit(PG_workingset, folio_flags(folio, FOLIO_HEAD_PAGE));
-+}
-+
- static __always_inline
- void lruvec_add_folio(struct lruvec *lruvec, struct folio *folio)
- {
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index b0ddc652e76c..f6625dc042da 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -549,8 +549,6 @@ PAGEFLAG(LRU, lru, PF_HEAD) __CLEARPAGEFLAG(LRU, lru, PF_HEAD)
- FOLIO_FLAG(active, FOLIO_HEAD_PAGE)
- 	__FOLIO_CLEAR_FLAG(active, FOLIO_HEAD_PAGE)
- 	FOLIO_TEST_CLEAR_FLAG(active, FOLIO_HEAD_PAGE)
--PAGEFLAG(Workingset, workingset, PF_HEAD)
--	TESTCLEARFLAG(Workingset, workingset, PF_HEAD)
- PAGEFLAG(Checked, checked, PF_NO_COMPOUND)	   /* Used by some filesystems */
- 
- /* Xen */
-diff --git a/mm/filemap.c b/mm/filemap.c
-index b74bc1e5015c..49e827058e14 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -21,6 +21,7 @@
- #include <linux/gfp.h>
- #include <linux/mm.h>
- #include <linux/swap.h>
-+#include <linux/mm_inline.h>
- #include <linux/leafops.h>
- #include <linux/syscalls.h>
- #include <linux/mman.h>
-diff --git a/mm/page_io.c b/mm/page_io.c
-index c6824fcd483e..540ae8caa932 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -16,6 +16,7 @@
- #include <linux/gfp.h>
- #include <linux/pagemap.h>
- #include <linux/swap.h>
-+#include <linux/mm_inline.h>
- #include <linux/bio.h>
- #include <linux/swapops.h>
- #include <linux/writeback.h>
+ Working set protection
+ ----------------------
 
 -- 
 2.56.0
