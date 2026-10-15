@@ -1,258 +1,162 @@
-From: George Neacsu <geocausa@gmail.com>
-Date: Thu, 15 Oct 2026 22:25:10 +0100
-Subject: [PATCH RFC 2/2] media: i2c: imx681: Add C-PHY support
+From: Vasilij Markin <vasilij.kernel@tototo.si>
+Date: Thu, 15 Oct 2026 23:47:36 +0200
+Subject: [PATCH v3] drm/appletbdrm: Add suspend and resume support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-imx681-x1e-v1-2-fd22f5f3b0c5@gmail.com>
-References: <20261015-imx681-x1e-v1-0-fd22f5f3b0c5@gmail.com>
-In-Reply-To: <20261015-imx681-x1e-v1-0-fd22f5f3b0c5@gmail.com>
-To: Sergey Lebedev <lsa.uz@pm.me>, 
- Andre Gilerson <andre.gilerson@gmail.com>
-Cc: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bryan O'Donoghue <bod@kernel.org>, 
- German Pablo Lindo <germanpapulindez@gmail.com>, 
- linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Neacsu <geocausa@gmail.com>
+Message-Id: <20261015-appletbdrm-pm-v3-1-47377176619a@tototo.si>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WMwQrCMBBEf6Xs2UiyaYN66n9ID41Z7YJtQxKCU
+ vLvpr3LzOUNzNsgUmCKcGs2CJQ58rpU0KcGHtO4vEiwqwwo0cgrtmL0/k3JujALPwtjHaLUl86
+ ShfrxgZ78OXz3ofLEMa3he+iz2td/pqyEEpK6VqOqNapP655zZBhKKT8aGqKFqgAAAA==
+X-Change-ID: 20260924-appletbdrm-pm-6bd220385beb
+To: Aun-Ali Zaidi <admin@kodeit.net>, Aditya Garg <aditya.garg@linux.dev>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: Lukas Wunner <lukas@wunner.de>, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Kerem Karabay <kekrby@gmail.com>, 
+ Atharva Tiwari <evepolonium@gmail.com>, 
+ Atharva Tiwari <atharvatiwarilinuxdev@gmail.com>, 
+ Vasilij Markin <vasilij.kernel@tototo.si>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792099508; l=8545;
- i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=EfvEBhMI4cDjJCXBWHch0MxiSg00MDxNZQoomRmocno=;
- b=bIAglSnyP5q20T7vZrTk5eM1Li42ty2/L40HuDx4QWH6EJIXIFYSFWBEcEn+H8mBbMuXTMf0r
- fTBsTh/5wscCWbhGUKMB4MU1G4Gk+G8vGasZKin7YnueOjG/Vg4p7gt
-X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
- pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
-X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792100875; l=5223;
+ i=vasilij.kernel@tototo.si; s=20260924; h=from:subject:message-id;
+ bh=5WU2l1yPzf1T2QcmJPYERBCb+bsgaXl69kOpDB1ET3A=;
+ b=L8RuW0f7e5ePRHSayGYmLP0GmLimZrmKkQo03AWEkmKWav4xyzZw5ClUTpdEQy8NwefW8Xkk6
+ ILAawydc6GHDHWmpMcpzAQqCV6wJBQ10HkOEaYlnoRffLUWIi0pYoaI
+X-Developer-Key: i=vasilij.kernel@tototo.si; a=ed25519;
+ pk=GBDozjDEYjDf6fxRiVINxMYHaGbpq/11fq4B6pdR7Gs=
+X-Endpoint-Received: by B4 Relay for vasilij.kernel@tototo.si/20260924 with auth_id=1057
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The IMX681 also drives MIPI C-PHY. On the Surface Pro 11 with a
-Snapdragon X Elite it reaches the CAMSS CSIPHY over one C-PHY trio,
-which Windows runs at 2.4 Gsym/s.
+The driver has no USB power management callbacks, so the USB core
+unbinds it before system suspend and binds it again on resume. The DRM
+device is unregistered and registered again on every suspend and resume
+cycle, userspace driving the Touch Bar through it (such as tiny-dfr)
+loses its device, and the Touch Bar stays dark after resume.
 
-Only the signalling, the lane count and the output PLL differ from the
-two-lane D-PHY set-up of the Intel model. The read-out window and the
-pixel array PLL stay as they are, and so does the pixel rate: Windows on
-the Snapdragon model programs the same video timing PLL, and its line and
-frame lengths give 720 MHz at 30 fps too. Describe each bus by those
-three values and its link frequency, pick the one the endpoint asks for,
-and write them after the register list:
+Implement suspend and resume with drm_mode_config_helper_suspend() and
+drm_mode_config_helper_resume(), so the device stays registered and the
+last committed state is restored on resume. If the device was reset
+while suspended, repeat the probe-time handshake first.
 
-- CSI_SIGNALING_MODE: 2 for D-PHY, 3 for C-PHY, as CCS numbers them;
-- CSI_LANE_MODE: the number of lanes or trios, minus one;
-- OP_PLL_MULTIPLIER: 303 for D-PHY as before, 375 for C-PHY, so
-  19.2 MHz / 3 * 375 = 2400 Msym/s, a 1.2 GHz link frequency by the V4L2
-  convention for C-PHY (half the symbol rate).
-
-CSI_LANE_MODE was not written before. It is now written for D-PHY too,
-with the value two lanes need.
-
-Tested on the Surface Pro 11 (X1E80100), with the endpoint on one C-PHY
-trio at 1.2 GHz and CAMSS capturing raw frames over CSIPHY2, CSID1 and an
-RDI interface: 3844x2640 at 29.99 fps, the colour-bar test pattern
-arrives intact, a scene captures, and VBLANK still sets the frame rate
-(8.19 fps at 9000 lines). The D-PHY path is not tested here.
-
+Fixes: 0670c2f56e45 ("drm/tiny: add driver for Apple Touch Bars in x86 Macs")
 Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: George Neacsu <geocausa@gmail.com>
+Signed-off-by: Vasilij Markin <vasilij.kernel@tototo.si>
 ---
- drivers/media/i2c/imx681.c | 95 +++++++++++++++++++++++++++++++++-------------
- 1 file changed, 69 insertions(+), 26 deletions(-)
+Tested on a MacBookPro16,2 with this change backported to the t2linux
+7.2.11 kernel, deep (S3) suspend by closing the lid, tiny-dfr 0.3.7, 7
+suspend/resume cycles. On this kernel the Touch Bar display is reset on
+every resume ("usb 5-6: reset high-speed USB device number 7 using
+t2bce_core"), so reset_resume runs each time: the driver is not probed
+again, tiny-dfr keeps running and the Touch Bar shows its content right
+after resume. Without reset_resume (v2) the same reset makes the USB core
+unbind and probe the driver again, and the Touch Bar stays dark. The error
+path in reset_resume is untested: the handshake never failed.
 
-diff --git a/drivers/media/i2c/imx681.c b/drivers/media/i2c/imx681.c
-index 6c8e4b3..c660f06 100644
---- a/drivers/media/i2c/imx681.c
-+++ b/drivers/media/i2c/imx681.c
-@@ -77,6 +77,9 @@
- #define IMX681_REG_LINE_LENGTH		CCI_REG16(0x0342)
- #define IMX681_REG_ORIENTATION		CCI_REG8(0x0101)
- #define IMX681_REG_CSI_SIGNALING_MODE	CCI_REG8(0x0111)
-+#define IMX681_CSI_SIGNALING_DPHY	0x02
-+#define IMX681_CSI_SIGNALING_CPHY	0x03
-+#define IMX681_REG_CSI_LANE_MODE	CCI_REG8(0x0114)
- #define IMX681_REG_EXTCLK_FREQ_MHZ	CCI_REG16(0x0136)
- #define IMX681_REG_PLL_MULTIPLIER	CCI_REG16(0x0306)
- #define IMX681_REG_OP_PRE_PLL_CLK_DIV	CCI_REG16(0x030c)
-@@ -93,7 +96,6 @@
- /* PLL, as the Windows traces configure it and the part reads back. */
- #define IMX681_PLL_MULTIPLIER		225
- #define IMX681_OP_PRE_PLL_CLK_DIV	3
--#define IMX681_OP_PLL_MULTIPLIER	303
+Kernels before commit 3d95f93b30b8 ("drm/appletbdrm: Convert to atomic_create_state")
+also need the plane reset hook to free the existing state, otherwise
+drm_mode_config_reset() on resume hits WARN_ON(plane->state) in
+appletbdrm_primary_plane_reset() and leaks the old state. 7.2.y is such a
+kernel; the tested backport carries that change as a separate patch.
+
+Built on drm-misc-next (1c01801c3) with W=1 without warnings.
+---
+Changes in v3:
+- Bring back reset_resume: v2 dropped it because the device was not reset
+  on resume, but with the t2bce driver of the t2linux 7.2.11 kernel it is
+  reset on every resume, and without reset_resume the driver is probed
+  again (Sashiko review of v2).
+- In reset_resume, call drm_mode_config_helper_resume() even if the probe
+  handshake fails, so that the state saved on suspend is released
+  (Sashiko review of v1).
+- Rebase on current drm-misc-next.
+- Link to v2: https://lore.kernel.org/all/586d0b39-40c8-4f3d-a786-c1085f87b858@linux.dev/
+
+Changes in v2 (sent by Aditya Garg):
+- Remove reset_resume.
+- Link to v1: https://lore.kernel.org/r/20260924-appletbdrm-pm-v1-1-0e5432132161@tototo.si
+---
+ drivers/gpu/drm/tiny/appletbdrm.c | 46 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+
+diff --git a/drivers/gpu/drm/tiny/appletbdrm.c b/drivers/gpu/drm/tiny/appletbdrm.c
+index 4297d9c11..350dc598c 100644
+--- a/drivers/gpu/drm/tiny/appletbdrm.c
++++ b/drivers/gpu/drm/tiny/appletbdrm.c
+@@ -30,6 +30,7 @@
+ #include <drm/drm_gem_atomic_helper.h>
+ #include <drm/drm_gem_framebuffer_helper.h>
+ #include <drm/drm_gem_shmem_helper.h>
++#include <drm/drm_modeset_helper.h>
+ #include <drm/drm_plane.h>
+ #include <drm/drm_print.h>
+ #include <drm/drm_probe_helper.h>
+@@ -821,6 +822,48 @@ static void appletbdrm_shutdown(struct usb_interface *intf)
+ 	drm_atomic_helper_shutdown(&adev->drm);
+ }
  
- /*
-  * Where the read-out window sits in the pixel array, and how much array
-@@ -119,16 +121,44 @@
- #define IMX681_FRAME_LENGTH_LINES	3177	/* 0x0C69 */
- #define IMX681_FRAME_LENGTH_MAX		0xFFFF	/* 24-bit reg, limit to 16-bit */
- 
--/* MIPI lanes */
--#define IMX681_NUM_LANES		2
--
- /*
-- * Link frequency derived from PLL settings in Windows trace:
-- * EXCK=19.2MHz, PLL2_MUL=303, PLL2_PRE_DIV=3
-- * OP output = 19.2 * 303 / 3 = 1939.2 MHz (MIPI bit rate)
-- * Link freq = 1939.2 / 2 (DDR) = 969.6 MHz
-+ * The part drives either bus. Only the signalling, the lane count and the
-+ * output PLL differ between them: the pixel array, its PLL and the read-out
-+ * window stay as they are, so the pixel rate below holds for both.
-  */
--#define IMX681_LINK_FREQ		969600000LL
-+struct imx681_bus {
-+	enum v4l2_mbus_type type;
-+	unsigned int lanes;
-+	u8 signaling_mode;
-+	u16 op_pll_multiplier;
-+	s64 link_freq;
-+};
++static int appletbdrm_suspend(struct usb_interface *intf, pm_message_t message)
++{
++	struct appletbdrm_device *adev = usb_get_intfdata(intf);
 +
-+static const struct imx681_bus imx681_buses[] = {
++	return drm_mode_config_helper_suspend(&adev->drm);
++}
++
++static int appletbdrm_resume(struct usb_interface *intf)
++{
++	struct appletbdrm_device *adev = usb_get_intfdata(intf);
++
++	return drm_mode_config_helper_resume(&adev->drm);
++}
++
++static int appletbdrm_reset_resume(struct usb_interface *intf)
++{
++	struct appletbdrm_device *adev = usb_get_intfdata(intf);
++	struct drm_device *drm = &adev->drm;
++	int ret, resume_ret;
++
 +	/*
-+	 * D-PHY, two lanes, as on the Surface Pro 11 for Business (Intel):
-+	 * 19.2 MHz / 3 * 303 = 1939.2 Mbps per lane, so a 969.6 MHz link.
++	 * A reset puts the device back into its initial state, where it
++	 * expects the same handshake as during probe. Resume the DRM side
++	 * even if the handshake fails, so that the state saved on suspend
++	 * is released.
 +	 */
-+	{
-+		.type = V4L2_MBUS_CSI2_DPHY,
-+		.lanes = 2,
-+		.signaling_mode = IMX681_CSI_SIGNALING_DPHY,
-+		.op_pll_multiplier = 303,
-+		.link_freq = 969600000,
-+	},
-+	/*
-+	 * C-PHY, one trio, as on the Surface Pro 11 (Snapdragon X Elite):
-+	 * 19.2 MHz / 3 * 375 = 2400 Msym/s, and a C-PHY link frequency is half
-+	 * the symbol rate.
-+	 */
-+	{
-+		.type = V4L2_MBUS_CSI2_CPHY,
-+		.lanes = 1,
-+		.signaling_mode = IMX681_CSI_SIGNALING_CPHY,
-+		.op_pll_multiplier = 375,
-+		.link_freq = 1200000000,
-+	},
-+};
- 
- /*
-  * The pixel rate cannot be derived from the CSI-2 link: this part runs two
-@@ -154,21 +184,15 @@
- 
- #define IMAGE_PAD			0
- 
--static const s64 imx681_link_frequencies[] = {
--	IMX681_LINK_FREQ,
--};
--
- /*
-  * Sensor init register sequence, captured from Windows I2C traces.
-  * This configures the sensor for 3844x2640 RAW10 output at ~30fps
-- * with 2-lane MIPI CSI-2, 19.2MHz input clock.
-+ * from a 19.2MHz input clock; imx681_start_streaming() adds the bus.
-  */
- static const struct cci_reg_sequence imx681_init_regs[] = {
- 	{ IMX681_REG_EXTCLK_FREQ_MHZ, IMX681_XCLK_FREQ_ENC },
- 	/* Vendor specific configuration */
- 	{ CCI_REG16(0x002C), 0x0505 },
--	/* 0x02 is D-PHY, which is the only mode this part offers. */
--	{ IMX681_REG_CSI_SIGNALING_MODE, 0x02 },
- 	/* Vendor access unlock sequence */
- 	{ CCI_REG8(0x30EB),  0x05 },
- 	{ CCI_REG8(0x30EB),  0x0C },
-@@ -197,11 +221,10 @@ static const struct cci_reg_sequence imx681_init_regs[] = {
- 	 * low byte of PLL_MULTIPLIER and 0x030d the low byte of
- 	 * OP_PRE_PLL_CLK_DIV, and each was right only while its high byte
- 	 * held the reset value. Written whole, and the part reads back
--	 * 225, 3 and 303 at the operating point either way.
-+	 * 225 and 3 at the operating point either way.
- 	 */
- 	{ IMX681_REG_PLL_MULTIPLIER, IMX681_PLL_MULTIPLIER },
- 	{ IMX681_REG_OP_PRE_PLL_CLK_DIV, IMX681_OP_PRE_PLL_CLK_DIV },
--	{ IMX681_REG_OP_PLL_MULTIPLIER, IMX681_OP_PLL_MULTIPLIER },
- 	/* Vendor specific registers */
- 	{ CCI_REG8(0x7E9B),  0x02 },
- 	{ CCI_REG8(0x0368),  0x00 },
-@@ -259,6 +282,7 @@ struct imx681 {
- 	struct v4l2_ctrl *hflip;
- 	struct v4l2_ctrl *vflip;
- 
-+	const struct imx681_bus *bus;
- 	unsigned long link_freq_bitmap;
- };
- 
-@@ -508,6 +532,17 @@ static int imx681_start_streaming(struct imx681 *imx681)
- 		return ret;
- 	}
- 
-+	cci_write(imx681->cci, IMX681_REG_CSI_SIGNALING_MODE,
-+		  imx681->bus->signaling_mode, &ret);
-+	cci_write(imx681->cci, IMX681_REG_CSI_LANE_MODE,
-+		  imx681->bus->lanes - 1, &ret);
-+	cci_write(imx681->cci, IMX681_REG_OP_PLL_MULTIPLIER,
-+		  imx681->bus->op_pll_multiplier, &ret);
++	ret = appletbdrm_get_information(adev);
 +	if (ret) {
-+		dev_err(imx681->dev, "failed to configure the bus: %d\n", ret);
-+		return ret;
++		drm_err(drm, "Failed to get display information\n");
++		goto resume;
 +	}
 +
- 	/* Wait for sensor to stabilise after configuration */
- 	usleep_range(IMX681_INIT_DELAY_US, IMX681_INIT_DELAY_US + 1000);
- 
-@@ -711,7 +746,7 @@ static int imx681_init_controls(struct imx681 *imx681)
- 					   V4L2_CID_LINK_FREQ,
- 					   __fls(imx681->link_freq_bitmap),
- 					   __ffs(imx681->link_freq_bitmap),
--					   imx681_link_frequencies);
-+					   &imx681->bus->link_freq);
- 	if (link_freq)
- 		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
- 
-@@ -814,9 +849,10 @@ static int imx681_parse_endpoint(struct imx681 *imx681)
- {
- 	struct fwnode_handle *fwnode = dev_fwnode(imx681->dev);
- 	struct v4l2_fwnode_endpoint bus_cfg = {
--		.bus_type = V4L2_MBUS_CSI2_DPHY,
-+		.bus_type = V4L2_MBUS_UNKNOWN,
- 	};
- 	struct fwnode_handle *ep;
-+	unsigned int lanes;
- 	int ret;
- 
- 	ep = fwnode_graph_get_endpoint_by_id(fwnode, 0, 0, 0);
-@@ -827,19 +863,26 @@ static int imx681_parse_endpoint(struct imx681 *imx681)
- 		return dev_err_probe(imx681->dev, ret,
- 				     "failed to parse endpoint\n");
- 
--	if (bus_cfg.bus.mipi_csi2.num_data_lanes != IMX681_NUM_LANES) {
-+	/* Without a bus-type, an endpoint with data-lanes parses as D-PHY. */
-+	lanes = bus_cfg.bus.mipi_csi2.num_data_lanes;
-+	for (unsigned int i = 0; i < ARRAY_SIZE(imx681_buses); i++) {
-+		if (imx681_buses[i].type == bus_cfg.bus_type &&
-+		    imx681_buses[i].lanes == lanes)
-+			imx681->bus = &imx681_buses[i];
-+	}
++	ret = appletbdrm_signal_readiness(adev);
++	if (ret)
++		drm_err(drm, "Failed to signal readiness\n");
 +
-+	if (!imx681->bus) {
- 		ret = dev_err_probe(imx681->dev, -EINVAL,
--				    "expected %d data lanes, got %d\n",
--				    IMX681_NUM_LANES,
--				    bus_cfg.bus.mipi_csi2.num_data_lanes);
-+				    "unsupported bus: %s with %u lanes\n",
-+				    bus_cfg.bus_type == V4L2_MBUS_CSI2_CPHY ?
-+				    "C-PHY" : "D-PHY", lanes);
- 		goto done;
- 	}
- 
- 	ret = v4l2_link_freq_to_bitmap(imx681->dev,
- 				       bus_cfg.link_frequencies,
- 				       bus_cfg.nr_of_link_frequencies,
--				       imx681_link_frequencies,
--				       ARRAY_SIZE(imx681_link_frequencies),
-+				       &imx681->bus->link_freq, 1,
- 				       &imx681->link_freq_bitmap);
- 	if (ret)
- 		ret = dev_err_probe(imx681->dev, ret,
++resume:
++	resume_ret = drm_mode_config_helper_resume(drm);
++
++	return ret ? ret : resume_ret;
++}
++
+ static const struct usb_device_id appletbdrm_usb_id_table[] = {
+ 	{ USB_DEVICE_INTERFACE_CLASS(0x05ac, 0x8302, USB_CLASS_AUDIO_VIDEO) },
+ 	{}
+@@ -832,6 +875,9 @@ static struct usb_driver appletbdrm_usb_driver = {
+ 	.probe		= appletbdrm_probe,
+ 	.disconnect	= appletbdrm_disconnect,
+ 	.shutdown	= appletbdrm_shutdown,
++	.suspend	= appletbdrm_suspend,
++	.resume		= appletbdrm_resume,
++	.reset_resume	= appletbdrm_reset_resume,
+ 	.id_table	= appletbdrm_usb_id_table,
+ };
+ module_usb_driver(appletbdrm_usb_driver);
 
+---
+base-commit: 1c01801c393ef934286e19f03374999c858e6a20
+change-id: 20260924-appletbdrm-pm-6bd220385beb
+
+Best regards,
 -- 
-2.53.0
+Vasilij Markin <vasilij.kernel@tototo.si>
 
