@@ -1,345 +1,229 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Thu, 15 Oct 2026 17:08:21 +0800
-Subject: [PATCH BlueZ bluez v2] hci: add ext adv interface
+From: Radu Sabau <radu.sabau@analog.com>
+Subject: [PATCH v3 0/6] iio: imu: Add support for the ADI ADIS16607
+Date: Thu, 15 Oct 2026 12:32:57 +0300
+Message-Id: <20261015-adis16607-v3-0-f972d4efee85@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-extend_adv_api-v2-1-8b76d8a1c0ef@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAAWY0GoC/3WNyw6CMBREf4XctTVtVWxc+R+GkD5u4SZASYsNS
- vh3G/Yuz0zmzAYJI2GCR7VBxEyJwlRAniqwvZ46ZOQKg+SyFlxcGa4LTq7VLrd6JlYLY5S6aKv
- UDcpojuhpPYQvMMMbv9CUuKe0hPg5brI4yn/GLJhgtXb87r1U3MunHofQkT3bMEKz7/sPBmYTF
- rUAAAA=
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792055302; l=9022;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=CFVcfoepW0WE78+88YnEyXs9ltTQS4fleF18kRL6/CI=;
- b=d3UimNl8kHcTA8PTg4Znp8HGeHVNCwvUuMmk7nB517yopghqJapwixDuW/YOGK5j7wmXfsZvg
- vUk3GLUpyKAB8gdooKzKaB24rZaNE6Y59xVN28j0xDuioY31kYUlFbT
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAMmd0GoC/1WMyw7CIBQFf6VhLeZC5eXK/zAuEC4tiRYDhmia/
+ ru0q7qckzMzk4I5YiHnbiYZaywxTQ36Q0fcaKcBafSNCQcuQTJFrY+FSQmKgjYhOCmEwztp/1f
+ GED9b63prPMbyTvm7pStb163CANiuUhkFapw2DrEXXsiLnewjDUeXnmTNVL5X9V7lTVXOnHzQo
+ JW2f+qyLD/p4w6J3gAAAA==
+To: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Nuno Sa <nuno.sa@analog.com>, Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Alexandru Ardelean <alexandru.ardelean@analog.com>, 
+ Radu Sabau <radu.sabau@analog.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devicetree@vger.kernel.org, Jonathan Cameron <jic23@kernel.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792056783; l=10599;
+ i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
+ bh=yqD/9+CrvO1EK4sHo+hCa3W2BZSv0Mf4fR9oR/ZR8Mo=;
+ b=1F63EGoSh5V9V838WuFAkVeeoC8vTq3surEqRxp4B/ZX/o3tv928cx5An5k1vZzGUUwxl5p7A
+ VY42VHMrLdqAPbRGfMp10hbej1GbLsFClCMH3VUBt7hWxK0nxP4jPc6
+X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
+ pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
+X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wrap extended advertising HCI command interfaces.
+This series adds support for the Analog Devices ADIS16607, a precision
+MEMS IMU with triaxial gyroscope, triaxial accelerometer, and
+temperature sensor, communicating over a non-standard SPI Half-Duplex
+protocol.
 
----
-Signed-off-by: Yang Li <yang.li@amlogic.com>
----
+Patch 1 adds two small adislib (drivers/iio/imu/adis.c) extensions
+this series needs:
+ - An optional self_test callback for devices whose self-test sequence
+   doesn't fit the generic mask-write/sleep/check-status pattern.
+ - An optional post_reset_setup callback for devices that need extra
+   device-specific bring-up between reset and self-test (SPI mode
+   locking, status/bootloader checks, pin or burst-mode configuration,
+   etc.) - not all ADIS devices need this, so it's only called when
+   set, same as self_test.
+Plus a fix to the reset dispatch: both __adis_initial_startup()'s reset
+fallback and the public adis_reset() wrapper were calling __adis_reset()
+directly instead of dispatching through adis->ops->reset(). That bug is
+invisible for every existing adislib driver (adis_default_ops.reset is
+__adis_reset() itself), but silently breaks a driver with fully custom
+ops - like this one - on any board without a reset-gpios property, or
+any caller of adis_reset() on a device like adis16550 whose custom
+reset op needs a different write size than __adis_reset()'s hardcoded
+8-bit one. Carries a Fixes tag for the commit that introduced the
+hardcoded call; no stable backport is needed since the bug only
+manifests for a custom-ops driver, and this is the first one.
+
+Patch 2 adds the devicetree binding.
+
+Patches 3-6 add the driver in functional groupings, as requested in
+v1 review:
+ - Patch 3: base driver - probe, raw channel reads, decimation/sample
+   frequency, startup and self-test via adislib, debugfs identity
+   entries. No buffered capture yet.
+ - Patch 4: buffered capture via the device's hardware FIFO.
+ - Patch 5: external clock sync support.
+ - Patch 6: calibration bias support for gyro/accel.
+
+Notable points for reviewers:
+
+ - The device does not implement the standard ADIS SPI protocol used
+   by other parts in the family; reads/writes are done over a custom
+   Half-Duplex sequence (see adis16607_spi_read()/adis16607_spi_write()
+   and the adis_ops overrides).
+
+ - Startup is split across the two new adislib callbacks rather than a
+   driver-private initial_startup(): adis16607_post_reset_setup() does
+   SPI Half-Duplex locking, dev_id verification, the bootloader-busy
+   check, an optional reset-status GPIO output, and (once FIFO is
+   wired up in patch 4) burst-mode and interrupt-pin configuration;
+   adis16607_self_test() does only the actual per-axis delta-check.
+
+ - The optional reset-status GPIO output (RESET_GPIO_MASK, part of
+   "optional hardware reset via GPIO") is configured in patch 3's
+   post_reset_setup, independent of FIFO. Patch 4 later adds the
+   DR/DEV_NOK pins to the same USER_GPIO_CFG register via a
+   read-modify-write, so it cannot clobber what patch 3 already set.
+
+ - The hardware FIFO is the *only* buffered capture path - there is no
+   single-sample direct burst-read trigger mode. The FIFO-pop command
+   and the regular burst-read command are genuinely different
+   protocols on this device (different payload shapes, no checksum on
+   the FIFO side), so this stays driver-private rather than going
+   through adislib's generic burst-read helpers.
+
+ - The FIFO-threshold interrupt is signaled via DEV_NOK on the
+   device's one physically-wired interrupt pin, which stays asserted
+   (level-triggered) until DIAG_STAT is read and cleared - this sets
+   has_fifo on adis_data and requests the IRQ through adislib's
+   threaded/level path, matching adislib's actual contract for that
+   flag.
+
+ - An optional external clock (clocks property) selects between
+   SYNC_DIRECT and SYNC_SCALED modes depending on the supplied
+   frequency, with the internal 8 kHz clock used as the default when
+   no clock is provided (adis16607_config_clk()).
+
+This has been tested on a Raspberry Pi 4 (arm64) with the device wired
+over SPI, exercising the FIFO buffered-capture path with the updated
+DEV_NOK/level-triggered interrupt wiring.
+
+To: Lars-Peter Clausen <lars@metafoo.de>
+To: Michael Hennerich <Michael.Hennerich@analog.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Alexandru Ardelean <alexandru.ardelean@analog.com>
+Cc: linux-iio@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+
+Changes in v3:
+- Fixed the public adis_reset() wrapper (adis.h) to also dispatch
+  through adis->ops->reset() instead of hardcoding __adis_reset() -
+  the same bug class as the v2 __adis_initial_startup() fix, just a
+  second call site that was missed. Switched both checks from
+  comparing against adis_default_ops to adis->ops->reset != __adis_reset,
+  which also works from the header, where adis_default_ops isn't
+  visible (Sashiko).
+- Fixed dt-binding wording: dropped "compatible" from the variant
+  description (reads as a DT compatible-string fallback claim, which
+  doesn't exist here - the two variants aren't interchangeable) and
+  dropped a Linux-driver-specific sentence from reset-gpios's
+  description (Conor); removed a stale commit-message bullet claiming
+  a FIFO watermark property that was never in the binding (Sashiko).
+- Dropped a redundant <linux/mod_devicetable.h> include -
+  <linux/spi/spi.h> already provides it (Uwe, Andy); switched
+  adis16607_id[] to named initializers (Uwe).
+- Fixed FIFO sample timestamps: they were projected forward from the
+  IRQ-fire time instead of back-dated, so the newest sample in a batch
+  ended up timestamped in the future. Now back-dated so the newest
+  sample lands on the IRQ-fire time and earlier ones count back from
+  it (Sashiko).
+- Added a comment explaining why disabling the FIFO during drain, and
+  the flush afterward, don't lose in-flight samples - no new samples
+  are enqueued at all while disabled, so nothing can arrive in that
+  window for the flush to drop (Sashiko asked twice, independently).
+- Reworked external clock sync configuration (adis16607_config_clk())
+  so every mode (default/direct/scaled) explicitly writes its own
+  complete SYNC_GPIO_MASK/USER_SYNC state, instead of only writing
+  conditionally when enabling non-default sync (Sashiko x2); switched
+  the sync scale factor from truncating to rounding division (Sashiko);
+  fixed a real bug where SCALED mode's effective clock was hardcoded
+  to the nominal internal rate instead of the actual achieved rate
+  (ext_clk_hz * sync_scale), which would have caused FIFO timestamps
+  to drift whenever the external clock didn't divide the internal
+  clock exactly (Sashiko).
+- Added range validation before writing calibration bias - out-of-
+  range values were silently truncated to 16 bits instead of being
+  rejected (Sashiko).
+- Link to v2: https://lore.kernel.org/r/20261008-adis16607-v2-0-7c94df80878a@analog.com
+
 Changes in v2:
-- Fixed coding style.
-- Link to v1: https://patch.msgid.link/20261014-extend_adv_api-v1-1-6ad07ff280f2@amlogic.com
----
- lib/bluetooth/hci.c     | 194 ++++++++++++++++++++++++++++++++++++++++++++++++
- lib/bluetooth/hci.h     |  55 ++++++++++++++
- lib/bluetooth/hci_lib.h |  16 ++++
- 3 files changed, 265 insertions(+)
-
-diff --git a/lib/bluetooth/hci.c b/lib/bluetooth/hci.c
-index f50a30c61..fe74ba2a5 100644
---- a/lib/bluetooth/hci.c
-+++ b/lib/bluetooth/hci.c
-@@ -3017,6 +3017,200 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable, int to)
- 	return 0;
- }
- 
-+int hci_le_set_ext_adv_params(int dd, uint8_t handle, uint16_t evt_properties,
-+			uint32_t min_interval, uint32_t max_interval,
-+			uint8_t channel_map, uint8_t own_addr_type,
-+			uint8_t peer_addr_type, const bdaddr_t *peer_addr,
-+			uint8_t filter_policy, int8_t tx_power,
-+			uint8_t primary_phy, uint8_t secondary_max_skip,
-+			uint8_t secondary_phy, uint8_t sid,
-+			uint8_t notif_enable, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_params_cp cp;
-+	struct {
-+		uint8_t status;
-+		int8_t  tx_power;
-+	} rsp;
-+
-+	memset(&cp, 0, sizeof(cp));
-+	cp.handle = handle;
-+	cp.evt_properties = evt_properties;
-+	cp.min_interval[0] = min_interval & 0xff;
-+	cp.min_interval[1] = (min_interval >> 8) & 0xff;
-+	cp.min_interval[2] = (min_interval >> 16) & 0xff;
-+	cp.max_interval[0] = max_interval & 0xff;
-+	cp.max_interval[1] = (max_interval >> 8) & 0xff;
-+	cp.max_interval[2] = (max_interval >> 16) & 0xff;
-+	cp.channel_map = channel_map;
-+	cp.own_addr_type = own_addr_type;
-+	cp.peer_addr_type = peer_addr_type;
-+	if (peer_addr)
-+		memcpy(&cp.peer_addr, peer_addr, sizeof(cp.peer_addr));
-+	cp.filter_policy = filter_policy;
-+	cp.tx_power = tx_power;
-+	cp.primary_phy = primary_phy;
-+	cp.secondary_max_skip = secondary_max_skip;
-+	cp.secondary_phy = secondary_phy;
-+	cp.sid = sid;
-+	cp.notif_enable = notif_enable;
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_ADV_PARAMS;
-+	rq.cparam = &cp;
-+	rq.clen = sizeof(cp);
-+	rq.rparam = &rsp;
-+	rq.rlen = sizeof(rsp);
-+
-+	if (hci_send_req(dd, &rq, to) < 0)
-+		return -1;
-+
-+	if (rsp.status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
-+int hci_le_set_ext_adv_data(int dd, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_data_cp *cp;
-+	uint8_t status;
-+	size_t plen = sizeof(*cp) + data_len;
-+
-+	cp = malloc(plen);
-+	if (!cp) {
-+		errno = ENOMEM;
-+		return -1;
-+	}
-+
-+	memset(cp, 0, plen);
-+	cp->handle = handle;
-+	cp->operation = operation;
-+	cp->fragment_preference = fragment_pref;
-+	cp->data_len = data_len;
-+	if (data && data_len)
-+		memcpy(cp->data, data, data_len);
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_ADV_DATA;
-+	rq.cparam = cp;
-+	rq.clen = plen;
-+	rq.rparam = &status;
-+	rq.rlen = 1;
-+
-+	if (hci_send_req(dd, &rq, to) < 0) {
-+		free(cp);
-+		return -1;
-+	}
-+
-+	free(cp);
-+
-+	if (status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
-+int hci_le_set_ext_scan_rsp_data(int dd, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_data_cp *cp;
-+	uint8_t status;
-+	size_t plen = sizeof(*cp) + data_len;
-+
-+	cp = malloc(plen);
-+	if (!cp) {
-+		errno = ENOMEM;
-+		return -1;
-+	}
-+
-+	memset(cp, 0, plen);
-+	cp->handle = handle;
-+	cp->operation = operation;
-+	cp->fragment_preference = fragment_pref;
-+	cp->data_len = data_len;
-+	if (data && data_len)
-+		memcpy(cp->data, data, data_len);
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_SCAN_RSP_DATA;
-+	rq.cparam = cp;
-+	rq.clen = plen;
-+	rq.rparam = &status;
-+	rq.rlen = 1;
-+
-+	if (hci_send_req(dd, &rq, to) < 0) {
-+		free(cp);
-+		return -1;
-+	}
-+
-+	free(cp);
-+
-+	if (status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
-+int hci_le_set_ext_adv_enable(int dd, uint8_t enable, uint8_t num_of_sets,
-+				const void *sets, int to)
-+{
-+	struct hci_request rq;
-+	le_set_ext_adv_enable_cp *cp;
-+	uint8_t status;
-+	size_t set_entry_len = 4; /* handle(1) + duration(2) + max_events(1) */
-+	size_t plen =
-+		sizeof(le_set_ext_adv_enable_cp) + (num_of_sets * set_entry_len);
-+
-+	cp = malloc(plen);
-+	if (!cp) {
-+		errno = ENOMEM;
-+		return -1;
-+	}
-+
-+	memset(cp, 0, plen);
-+	cp->enable = enable;
-+	cp->num_of_sets = num_of_sets;
-+	if (sets && num_of_sets)
-+		memcpy(cp->sets, sets, num_of_sets * set_entry_len);
-+
-+	memset(&rq, 0, sizeof(rq));
-+	rq.ogf = OGF_LE_CTL;
-+	rq.ocf = OCF_LE_SET_EXT_ADV_ENABLE;
-+	rq.cparam = cp;
-+	rq.clen = plen;
-+	rq.rparam = &status;
-+	rq.rlen = 1;
-+
-+	if (hci_send_req(dd, &rq, to) < 0) {
-+		free(cp);
-+		return -1;
-+	}
-+
-+	free(cp);
-+
-+	if (status) {
-+		errno = EIO;
-+		return -1;
-+	}
-+
-+	return 0;
-+}
-+
- int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
- 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
- 		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,
-diff --git a/lib/bluetooth/hci.h b/lib/bluetooth/hci.h
-index 2e4aa394e..7d8b81f2d 100644
---- a/lib/bluetooth/hci.h
-+++ b/lib/bluetooth/hci.h
-@@ -1735,6 +1735,61 @@ typedef struct {
- } __attribute__ ((packed)) le_set_address_resolution_enable_cp;
- #define LE_SET_ADDRESS_RESOLUTION_ENABLE_CP_SIZE 1
- 
-+#define OCF_LE_SET_EXT_ADV_PARAMS		0x0036
-+typedef struct {
-+	uint8_t  handle;
-+	uint16_t evt_properties;
-+	uint8_t  min_interval[3];
-+	uint8_t  max_interval[3];
-+	uint8_t  channel_map;
-+	uint8_t  own_addr_type;
-+	uint8_t  peer_addr_type;
-+	bdaddr_t peer_addr;
-+	uint8_t  filter_policy;
-+	int8_t   tx_power;
-+	uint8_t  primary_phy;
-+	uint8_t  secondary_max_skip;
-+	uint8_t  secondary_phy;
-+	uint8_t  sid;
-+	uint8_t  notif_enable;
-+} __attribute__ ((packed)) le_set_ext_adv_params_cp;
-+#define LE_SET_EXT_ADV_PARAMS_CP_SIZE 25
-+
-+typedef struct {
-+	uint8_t status;
-+	int8_t  selected_tx_power;
-+} __attribute__ ((packed)) le_set_ext_adv_params_rp;
-+#define LE_SET_EXT_ADV_PARAMS_RP_SIZE 9
-+
-+#define OCF_LE_SET_EXT_ADV_DATA			0x0037
-+typedef struct {
-+	uint8_t handle;
-+	uint8_t operation;
-+	uint8_t fragment_preference;
-+	uint8_t data_len;
-+	uint8_t data[0];
-+} __attribute__ ((packed)) le_set_ext_adv_data_cp;
-+#define LE_SET_EXT_ADV_DATA_CP_MAX_SIZE  (4 + 251)
-+
-+#define OCF_LE_SET_EXT_SCAN_RSP_DATA		0x0038
-+typedef struct {
-+	uint8_t advertising_handle;
-+	uint8_t operation;
-+	uint8_t fragment_preference;
-+	uint8_t scan_response_data_length;
-+	uint8_t scan_response_data[31];
-+} __attribute__((packed)) le_set_ext_scan_rsp_data_cp;
-+#define LE_SET_EXT_SCAN_RSP_DATA_CP_SIZE (4 + 31)
-+
-+#define OCF_LE_SET_EXT_ADV_ENABLE		0x0039
-+typedef struct {
-+	uint8_t enable;
-+	uint8_t num_of_sets;
-+	/* followed by ext adv set entries: handle(1), duration(2), max_events(1) */
-+	uint8_t sets[0];
-+} __attribute__ ((packed)) le_set_ext_adv_enable_cp;
-+#define LE_SET_EXT_ADV_ENABLE_CP_SIZE (2 + 4)
-+
- /* Vendor specific commands */
- #define OGF_VENDOR_CMD		0x3f
- 
-diff --git a/lib/bluetooth/hci_lib.h b/lib/bluetooth/hci_lib.h
-index eeb51411a..4a06a9383 100644
---- a/lib/bluetooth/hci_lib.h
-+++ b/lib/bluetooth/hci_lib.h
-@@ -112,6 +112,22 @@ int hci_le_set_scan_enable(int dev_id, uint8_t enable, uint8_t filter_dup, int t
- int hci_le_set_scan_parameters(int dev_id, uint8_t type, uint16_t interval,
- 					uint16_t window, uint8_t own_type,
- 					uint8_t filter, int to);
-+int hci_le_set_ext_adv_params(int dev_id, uint8_t handle, uint16_t evt_properties,
-+				uint32_t min_interval, uint32_t max_interval,
-+				uint8_t channel_map, uint8_t own_addr_type,
-+				uint8_t peer_addr_type, const bdaddr_t *peer_addr,
-+				uint8_t filter_policy, int8_t tx_power,
-+				uint8_t primary_phy, uint8_t secondary_max_skip,
-+				uint8_t secondary_phy, uint8_t sid,
-+				uint8_t notif_enable, int to);
-+int hci_le_set_ext_adv_data(int dev_id, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to);
-+int hci_le_set_ext_scan_rsp_data(int dev_id, uint8_t handle, uint8_t operation,
-+				uint8_t fragment_pref, const uint8_t *data,
-+				uint8_t data_len, int to);
-+int hci_le_set_ext_adv_enable(int dev_id, uint8_t enable, uint8_t num_of_sets,
-+				const void *sets, int to);
- int hci_le_set_advertise_enable(int dev_id, uint8_t enable, int to);
- int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
- 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
+- Split the driver commit into functional groupings per review:
+  base, FIFO, external clock sync, calibration bias (Nuno).
+- Added adis_data.self_test and adis_data.post_reset_setup callbacks
+  to adislib instead of duplicating startup/self-test logic in the
+  driver (Nuno). post_reset_setup is a second, honestly-named hook
+  added after review feedback that overloading self_test to also mean
+  "everything else the device needs at startup" was misleading.
+- Fixed __adis_initial_startup()'s reset fallback to dispatch through
+  adis->ops->reset() instead of a hardcoded __adis_reset() call -
+  found while wiring up this driver's custom reset op. Added a Fixes
+  tag for the originating commit.
+- Removed the direct single-sample burst-read capture path entirely;
+  the hardware FIFO is now the only buffered capture mode. Dropped
+  adi,fifo-enable from the binding accordingly.
+- Fixed FIFO-threshold interrupt wiring: set has_fifo on adis_data and
+  switch the DT interrupt type from edge to level, matching the
+  DEV_NOK signal this now uses (previously only the data-ready pulse
+  was wired, which never actually generated a FIFO interrupt).
+- Moved the optional reset-status GPIO output into the base driver
+  patch (where it conceptually belongs) instead of bundling it into
+  the FIFO patch's USER_GPIO_CFG write; the FIFO patch now updates
+  that register with a read-modify-write instead of a blind write.
+- Fixed cover letter: "Three compatible variants (-1, -2, -3)" was
+  wrong, there are only two (-2, -3); "configurable data-ready
+  interrupt pin (DIO1-4)" was wrong, there's a single fixed pin.
+- Corrected spi-max-frequency to 10 MHz (datasheet maximum), from
+  15 MHz.
+- Renamed ADIS16607_REG_SW_RES to ADIS16607_REG_SOFT_RESET to match
+  the datasheet's register name; renamed burst_buf to fifo_buf and
+  dropped the redundant "fifo_" prefix from the buffer postenable/
+  postdisable/ops names, since FIFO is the only capture mode and
+  "burst" no longer described what that scratch buffer is used for.
+- Link to v1: https://lore.kernel.org/r/20261001-adis16607-v1-0-9c89cee35d56@analog.com
 
 ---
-base-commit: 9dc7e40962f11d1d9a5568f8a7633a695288329c
-change-id: 20261014-extend_adv_api-61bb883ac885
+Radu Sabau (6):
+      iio: imu: adis: Add optional self_test callback and fix custom reset dispatch
+      dt-bindings: iio: imu: Add bindings for ADI ADIS16607
+      iio: imu: Add driver for the ADI ADIS16607
+      iio: imu: adis16607: Add FIFO-based buffered/triggered capture
+      iio: imu: adis16607: Add external clock sync support
+      iio: imu: adis16607: Add calibration bias support for gyro/accel
+
+ .../devicetree/bindings/iio/imu/adi,adis16607.yaml |   82 ++
+ MAINTAINERS                                        |    8 +
+ drivers/iio/imu/Kconfig                            |   13 +
+ drivers/iio/imu/Makefile                           |    1 +
+ drivers/iio/imu/adis.c                             |   30 +-
+ drivers/iio/imu/adis16607.c                        | 1405 ++++++++++++++++++++
+ include/linux/iio/imu/adis.h                       |   32 +-
+ 7 files changed, 1563 insertions(+), 8 deletions(-)
+---
+base-commit: 9c87e61e3c5797277407ba5eae4eac8a52be3fa3
+change-id: 20260617-adis16607-089ffc655ceb
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Radu Sabau <radu.sabau@analog.com>
 
