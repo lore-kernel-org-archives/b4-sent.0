@@ -1,14 +1,12 @@
 From: George Neacsu <geocausa@gmail.com>
-Subject: [PATCH RFC 0/4] phy: qcom-mipi-csi2: C-PHY for X1E80100
-Date: Thu, 15 Oct 2026 23:20:35 +0100
-Message-Id: <20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com>
+Date: Thu, 15 Oct 2026 23:20:36 +0100
+Subject: [PATCH RFC 1/4] phy: Add MIPI C-PHY mode and configuration options
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDA0NT3QrDVN3kgoxK3aK0ZF0jA0MLM4NkCwNL8zQloJaCotS0zAqwcdF
- KQW7OSrG1tQCwerqKYwAAAA==
-X-Change-ID: 20261015-x1e-cphy-rfc-201860c8097f
+Message-Id: <20261015-x1e-cphy-rfc-v1-1-1f3fa9af940a@gmail.com>
+References: <20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com>
+In-Reply-To: <20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com>
 To: Bryan O'Donoghue <bod@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
  David Heidelberg <david@ixit.cz>
 Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -19,82 +17,103 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792102835; l=3102;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792102835; l=2771;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=1PzFHK8pyF9EZhautPJ1LhtB2o3MzeG5L1QZKbwR3b0=;
- b=5S2ojKLUt1u62x+SOIHV7NR4c6jSSpRDw3Q3TZjJvP1NmfK43mWZrammeIFZOIIMIIoZJThcJ
- soBFlIpalhJAGe5cK2sETDtSs7NiMhZZZyVT4HYN6fE64+KKsCQjX/U
+ bh=PqWyhBeoW0s90os2bdiW4A/U8uEEiB9mJlAbmut/HGk=;
+ b=ydTmXfBsXbIYrV2Dt2SO9AwKEcGudILmDUw7lCKdCa6bkdezpzDBaK8t3CZc0VeKgwRZZgGs0
+ T56/tfjcIAoDVu3LNDdRUwwfJMOLYO2hmShglTqzag00/0lHWWvMTHO
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi Bryan, Vinod, David,
+The generic PHY framework has a mode and configuration options for MIPI
+D-PHY but none for C-PHY, so a CSI-2 receiver has no way to ask a PHY
+that does both for C-PHY. Add PHY_MODE_MIPI_CPHY and struct
+phy_configure_opts_mipi_cphy. The options are the two values a receiver
+knows: the symbol rate on each trio and the number of trios.
 
-The Snapdragon Surface Pro 11's front camera, an IMX681, is on CSIPHY2
-over one MIPI C-PHY trio. linux-next has the CSI2 PHY driver and the CAMSS
-PHY API path, and C-PHY is the piece still missing for this camera. This
-series adds it. Before I go further, I would like to know whether this is
-the shape you want:
+The first user is the Qualcomm CSI2 PHY, whose X1E80100 instances carry
+the C-PHY front camera of the Surface Pro 11.
 
-1. PHY_MODE_MIPI_CPHY and C-PHY configuration options in the generic PHY
-   framework, because CAMSS had no way to ask the PHY for C-PHY;
-2. C-PHY in qcom-mipi-csi2, with the X1E80100 sequence taken from
-   Qualcomm's GPL-2.0 downstream header;
-3. the CSID 680 PHY type select, which is defined but never written;
-4. C-PHY in csiphy_stream_on() for PHY API CSIPHYs.
-
-The base is next-20261015 plus David's "media: camss: Add support for
-C-PHY configuration on Qualcomm platforms" v9, which provides phy_cfg,
-the CSID phy_sel and the C-PHY link frequency. I had to port its 8/9 by
-hand onto the PHY API changes:
-https://lore.kernel.org/all/20260617-qcom-cphy-v9-0-83da8a8e4e44@ixit.cz/
-
-Tested on the Surface Pro 11 (X1E80100). Both cameras run together through
-the upstream stack: CSI2 PHY nodes as in Bryan's x1e80100 camera DT v7,
-and CAMSS in PHY API mode, with raw capture over RDI:
-- front IMX681 (Sergey's and Andre's v8 driver plus its C-PHY RFC) on
-  CSIPHY2, one C-PHY trio at 2.4 Gsym/s: 3844x2640 at 30.01 fps, and the
-  sensor's colour bars are byte-identical to the pattern captured with an
-  out-of-tree driver;
-- rear OV13858 on CSIPHY1, four D-PHY lanes: 29.9 fps, as before the
-  series.
-The kernel was 7.1.5, with linux-next's CAMSS and CSI2 PHY built as
-modules; the test build needed shims only for API differences.
-
-Two questions:
-- Is a generic C-PHY mode how you want CAMSS to ask for it, or would you
-  rather the PHY take the mode from its own endpoint alone?
-- Qualcomm's X1E sequence is for 2.5 Gsps, and this sensor runs at
-  2.4 Gsym/s with it. The sa8775p C-PHY series selects settings by data
-  rate. Should X1E do the same?
-
-Patches 1-2 are PHY and 3-4 are CAMSS. They can go separately once the
-approach is agreed.
-
-Thanks,
-George
-
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
-George Neacsu (4):
-      phy: Add MIPI C-PHY mode and configuration options
-      phy: qcom-mipi-csi2: Add C-PHY support for X1E80100
-      media: qcom: camss: csid-680: Select C-PHY in the receiver
-      media: qcom: camss: Configure C-PHY through the PHY API
+ include/linux/phy/phy-mipi-cphy.h | 27 +++++++++++++++++++++++++++
+ include/linux/phy/phy.h           |  5 +++++
+ 2 files changed, 32 insertions(+)
 
- drivers/media/platform/qcom/camss/camss-csid-680.c |   2 +
- drivers/media/platform/qcom/camss/camss-csiphy.c   |  35 +++--
- drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c | 151 ++++++++++++++++++++-
- drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c     |  49 ++++++-
- drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          |   4 +
- include/linux/phy/phy-mipi-cphy.h                  |  27 ++++
- include/linux/phy/phy.h                            |   5 +
- 7 files changed, 252 insertions(+), 21 deletions(-)
----
-base-commit: 4a926a0ea6c65089285eb3ccb84ac6b02b22dee5
-change-id: 20261015-x1e-cphy-rfc-201860c8097f
+diff --git a/include/linux/phy/phy-mipi-cphy.h b/include/linux/phy/phy-mipi-cphy.h
+new file mode 100644
+index 000000000..e3f0a8257
+--- /dev/null
++++ b/include/linux/phy/phy-mipi-cphy.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __PHY_MIPI_CPHY_H_
++#define __PHY_MIPI_CPHY_H_
++
++/**
++ * struct phy_configure_opts_mipi_cphy - MIPI C-PHY configuration set
++ *
++ * This structure is used to represent the configuration state of a
++ * MIPI C-PHY phy.
++ */
++struct phy_configure_opts_mipi_cphy {
++	/**
++	 * @symbol_rate:
++	 *
++	 * Symbol rate on each trio, in symbols per second.
++	 */
++	unsigned long		symbol_rate;
++
++	/**
++	 * @lanes:
++	 *
++	 * Number of active trios.
++	 */
++	unsigned char		lanes;
++};
++
++#endif /* __PHY_MIPI_CPHY_H_ */
+diff --git a/include/linux/phy/phy.h b/include/linux/phy/phy.h
+index c480d6cb4..f12337834 100644
+--- a/include/linux/phy/phy.h
++++ b/include/linux/phy/phy.h
+@@ -19,6 +19,7 @@
+ #include <linux/phy/phy-dp.h>
+ #include <linux/phy/phy-hdmi.h>
+ #include <linux/phy/phy-lvds.h>
++#include <linux/phy/phy-mipi-cphy.h>
+ #include <linux/phy/phy-mipi-dphy.h>
+ #include <linux/phy/phy-thunderbolt.h>
+ 
+@@ -42,6 +43,7 @@ enum phy_mode {
+ 	PHY_MODE_PCIE,
+ 	PHY_MODE_ETHERNET,
+ 	PHY_MODE_MIPI_DPHY,
++	PHY_MODE_MIPI_CPHY,
+ 	PHY_MODE_SATA,
+ 	PHY_MODE_LVDS,
+ 	PHY_MODE_DP,
+@@ -69,6 +71,8 @@ union phy_notify {
+  *
+  * @mipi_dphy:	Configuration set applicable for phys supporting
+  *		the MIPI_DPHY phy mode.
++ * @mipi_cphy:	Configuration set applicable for phys supporting
++ *		the MIPI_CPHY phy mode.
+  * @dp:		Configuration set applicable for phys supporting
+  *		the DisplayPort protocol.
+  * @lvds:	Configuration set applicable for phys supporting
+@@ -78,6 +82,7 @@ union phy_notify {
+  */
+ union phy_configure_opts {
+ 	struct phy_configure_opts_mipi_dphy	mipi_dphy;
++	struct phy_configure_opts_mipi_cphy	mipi_cphy;
+ 	struct phy_configure_opts_dp		dp;
+ 	struct phy_configure_opts_lvds		lvds;
+ 	struct phy_configure_opts_hdmi		hdmi;
 
-Best regards,
 -- 
-George Neacsu <geocausa@gmail.com>
+2.53.0
 
