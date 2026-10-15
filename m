@@ -1,15 +1,12 @@
 From: George Neacsu <geocausa@gmail.com>
-Subject: [PATCH 0/2] media: ov13858: device tree support for the Surface
- Pro 11 (Snapdragon)
-Date: Thu, 15 Oct 2026 22:48:18 +0100
-Message-Id: <20261015-ov13858-x1e-v1-0-acdd918f4fb6@gmail.com>
+Date: Thu, 15 Oct 2026 22:48:19 +0100
+Subject: [PATCH 1/2] dt-bindings: media: i2c: Add OmniVision OV13858
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBMcyxi6SrSoHGs2FQoiiHdPW
- r7F/wUiB+EIc1cgcJIoz92AfQfHtd0nK3HNYLSZUKNVT8KBLKmMrIj87nai0ZOBVryBveT/tqy
- 1fnmlNJFdAAAA
-X-Change-ID: 20261015-ov13858-x1e-88fbdb884f82
+Message-Id: <20261015-ov13858-x1e-v1-1-acdd918f4fb6@gmail.com>
+References: <20261015-ov13858-x1e-v1-0-acdd918f4fb6@gmail.com>
+In-Reply-To: <20261015-ov13858-x1e-v1-0-acdd918f4fb6@gmail.com>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>
 Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,63 +16,163 @@ Cc: Mauro Carvalho Chehab <mchehab@kernel.org>,
  devicetree@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792100898; l=1975;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792100898; l=4043;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=isc08oo5BJNK/t6lxx5OeyuoPKO6tU8zzXxw244V/KM=;
- b=GszMqCIhbFuRrL9l5FrRKO/5JBwQNCV8NmDmFtEOPmlwzM5GMaiyYRZHCb21ALesOCU0t/cOy
- Y2YFvNBGYipBLLxlWRSGZEwuWKFya4rHOQN+p0seLzpVgfaJPzTceE9
+ bh=3FW/YjSDKNEAYkV/4nSih2V8KIzb6+K0p4vWabSPpuA=;
+ b=Hc5JaeeIV80AIOnfkGJtppqVcBdjdBCLmhvhSe07csJBWQEzmaVpmp+BTWnJu9Vz4ftUfJDa2
+ fIbGTbpAK6OAP6slTYnjYjp8F6rC0kkG2dToATGry1t2zVcyeP1plxD
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi Sakari,
+The OV13858 is a 13 megapixel sensor with a four-lane MIPI CSI-2 D-PHY
+output. So far its driver has only been probed through ACPI. The
+Microsoft Surface Pro 11 with a Snapdragon X Elite uses it as the rear
+camera, and that machine describes it in the device tree.
 
-The Surface Pro 11 with a Snapdragon X Elite (X1E80100) has the same
-OV13858 as its rear camera as the Intel model does. There it is wired to
-the Qualcomm CAMSS over four D-PHY lanes and described in the device tree.
-These two patches add the binding and the OF match the driver needs for
-that, and the endpoint checks that come with a DT user.
+The supplies are the three the driver takes, and the reset GPIO drives
+the XSHUTDN pad.
 
-They apply on top of Sergey's "media: i2c: ov13858: add regulator, clock
-and reset GPIO handling" v3. The Snapdragon machine needs it too: nothing
-there powers the sensor for the driver either.
-https://lore.kernel.org/all/20260831130312.26296-1-lsa.uz@pm.me/
-
-Tested on the Surface Pro 11 (X1E80100) with mainline ov13858.c, Sergey's
-v3 and these two, through an out-of-tree CAMSS capturing raw frames over
-CSIPHY1, CSID0 and an RDI interface. The in-tree register lists work
-unchanged at 540 MHz:
-- 4224x3136 at 29.95 fps;
-- the colour-bar test pattern arrives intact;
-- a scene captures;
-- the binding validates with dt-doc-validate, and dt-validate accepts
-  the example and rejects a two-lane endpoint.
-
-Sergey, German: on the Intel machine the IPU bridge entry for OVTID858
-already lists both link frequencies, so the new endpoint check should
-pass there. A quick v4l2-compliance run would confirm it.
-
-The device tree for the Surface Pro 11 cameras will follow once Bryan's
-x1e80100 camera DT series has settled.
-
-Thanks,
-George
-
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
-George Neacsu (2):
-      dt-bindings: media: i2c: Add OmniVision OV13858
-      media: i2c: ov13858: Add device tree support
-
  .../bindings/media/i2c/ovti,ov13858.yaml           | 113 +++++++++++++++++++++
  MAINTAINERS                                        |   1 +
- drivers/media/i2c/ov13858.c                        |  62 +++++++++++
- 3 files changed, 176 insertions(+)
----
-base-commit: ef7407f04f644833b0d1200a2e261c1879597b94
-change-id: 20261015-ov13858-x1e-88fbdb884f82
+ 2 files changed, 114 insertions(+)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/media/i2c/ovti,ov13858.yaml b/Documentation/devicetree/bindings/media/i2c/ovti,ov13858.yaml
+new file mode 100644
+index 0000000..a1cbdb1
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/i2c/ovti,ov13858.yaml
+@@ -0,0 +1,113 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/i2c/ovti,ov13858.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: OmniVision OV13858 CMOS Sensor
++
++maintainers:
++  - George Neacsu <geocausa@gmail.com>
++
++description:
++  The OmniVision OV13858 is a 13 megapixel CMOS image sensor with an I2C
++  control interface. It outputs 10-bit Bayer data over a four-lane MIPI
++  CSI-2 D-PHY interface and takes a 19.2 MHz input clock.
++
++allOf:
++  - $ref: /schemas/media/video-interface-devices.yaml#
++
++properties:
++  compatible:
++    const: ovti,ov13858
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    description: Input clock (19.2 MHz)
++    maxItems: 1
++
++  avdd-supply:
++    description: Analogue circuit voltage supply.
++
++  dovdd-supply:
++    description: I/O circuit voltage supply.
++
++  dvdd-supply:
++    description: Digital circuit voltage supply.
++
++  reset-gpios:
++    description: Active low GPIO connected to the XSHUTDN pad of the sensor.
++    maxItems: 1
++
++  port:
++    $ref: /schemas/graph.yaml#/$defs/port-base
++    additionalProperties: false
++
++    properties:
++      endpoint:
++        $ref: /schemas/media/video-interfaces.yaml#
++        unevaluatedProperties: false
++
++        properties:
++          data-lanes:
++            items:
++              - const: 1
++              - const: 2
++              - const: 3
++              - const: 4
++
++        required:
++          - data-lanes
++          - link-frequencies
++
++    required:
++      - endpoint
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - avdd-supply
++  - dovdd-supply
++  - dvdd-supply
++  - port
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        camera@10 {
++            compatible = "ovti,ov13858";
++            reg = <0x10>;
++
++            clocks = <&cam_mclk>;
++            assigned-clocks = <&cam_mclk>;
++            assigned-clock-rates = <19200000>;
++
++            avdd-supply = <&vreg_cam_2p8>;
++            dovdd-supply = <&vreg_cam_1p8>;
++            dvdd-supply = <&vreg_cam_1p2>;
++
++            reset-gpios = <&tlmm 110 GPIO_ACTIVE_LOW>;
++
++            orientation = <1>;
++            rotation = <0>;
++
++            port {
++                endpoint {
++                    remote-endpoint = <&csiphy1_ep>;
++                    data-lanes = <1 2 3 4>;
++                    link-frequencies = /bits/ 64 <540000000 270000000>;
++                };
++            };
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 5d39ec6..0cbb07e 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -20186,6 +20186,7 @@ M:	Sakari Ailus <sakari.ailus@linux.intel.com>
+ L:	linux-media@vger.kernel.org
+ S:	Maintained
+ T:	git git://linuxtv.org/media.git
++F:	Documentation/devicetree/bindings/media/i2c/ovti,ov13858.yaml
+ F:	drivers/media/i2c/ov13858.c
+ 
+ OMNIVISION OV13B10 SENSOR DRIVER
+
 -- 
-George Neacsu <geocausa@gmail.com>
+2.53.0
 
