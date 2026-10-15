@@ -1,193 +1,109 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 15 Oct 2026 13:49:50 -0300
-Subject: [PATCH 10/10] docs: iio: ad9910: document DRCTL pin control
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v6 0/4] arm64: amlogic: T7 thermal support
+Date: Thu, 15 Oct 2026 19:54:08 +0200
+Message-Id: <20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-ad9910-backend-support-v1-10-3c21648c8e26@analog.com>
-References: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
-In-Reply-To: <20261015-ad9910-backend-support-v1-0-3c21648c8e26@analog.com>
-To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux@analog.com, devicetree@vger.kernel.org, linux-pwm@vger.kernel.org, 
- linux-doc@vger.kernel.org, 
- Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>
-Cc: Olivier Moysan <olivier.moysan@foss.st.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33QzW6EIBQF4FcxrHubyxV0nFXfo+kC4VpJ/JkiN
+ dNMfPeiszHGdnlIzseBh5g4eJ7ENXuIwLOf/DikULxkwrZm+GTwLmVBSAUqiWCcg9hy6E0HsYT
+ Z9woQWZeyNs5aKVLzFrjx9019/3jmwF/fCY/PQ1GbicGOfe/jNRv4HmG9QKJUYi20fopj+NlWz
+ XJr/DtgloAgq4bqizOlcuWb6Tx3r03YuJn2RH5O0EogkqvQYIF0IPIdQfKcyBNhiEuSmh1ifiD
+ UnvhjRfpMcMpKTRenUakDofeEOid0IipUaE1emIb3D1mW5RfMQaoh8gEAAA==
+X-Change-ID: 20260410-add-thermal-t7-vim4-00e571badcc1
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792082993; l=6219;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=9AdEqIZ+bYqk9Lw6P7OuqM0LPTI0z5xHBJLcZX+ImKY=;
- b=iEB0Y0PLticdgwYdAAxIokYTL7YY0uahxuWGbnuUTbq7d067PpbmhYNaQYCaEVqF2iBpSxjO4
- fr0brdPY/RZBnmGlAv1b0geUbVjekTb1BEcpQ6kE81EU8ieL+j0zvgz
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3497;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=OLOxCWkG1uAfbEHQrZsIv+PXDRKyrTYk6AYh4axR+Ek=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9ZF4UKf6484s8q/x8/Skz9VW2lQ0Mf/07Unkjvz/t7Ds
+ yfKtwh0lLIwiHExyIopsvTPtTzx7vLRM1/3qKfAzGFlAhnCwMUpABNxcmdkOFX2sJR17fnIpr/K
+ /B/4PPhrfJ9FGusmvzsRrXj+k9Y1oIoZ7yuuc6Rz+TreaflQorXS1qV6L8/pz3rnPrvdmXN9/jt
+ GAA==
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the integration_time attribute of the digital ramp generator
-(DRG) rising and falling channels, and describe how the DRCTL pin
-waveform is generated from those values according to the dwell_en
-configuration. Add usage examples for triangular and sawtooth sweeps
-driven through the DRCTL pin.
+This series adds thermal monitoring support for the Amlogic T7 SoC,
+used on the Khadas VIM4 board.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+The T7 exposes six thermal sensors (a53, a73, gpu, nna, vpu, hevc),
+each accessible through the secure monitor firmware interface rather
+than a directly mapped eFuse register as on older SoCs.
+
+The series is organized as follows:
+
+- Patch 1 extends the amlogic,t7-thermal DT binding to describe the
+  new amlogic,secure-monitor property.
+- Patches 2-3 extend the Meson secure monitor driver to expose a
+  thermal calibration read command (SMC ID 0x82000047).
+- Patch 4 adds the secure monitor readout path to the amlogic thermal
+  driver and introduces the amlogic,t7-thermal compatible.
+- Patches 5-7 wire up the T7 DTSI with CPU cooling cells, sensor
+  nodes, and thermal zones.
+- Patch 8 extends the Khadas VIM4 DTS to map all thermal zones to the
+  on-board MCU fan controller (states 30–100, corresponding to the
+  FAN_CTRL register range 0x1E–0x64).
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- Documentation/iio/ad9910.rst | 90 +++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 84 insertions(+), 6 deletions(-)
+Changes in v6:
+- Rebased on next-20261014 (patches 1/8 to 4/8 already applied, dropped from this series).
+- PATCH 2: Add bus clocks and clock-names to all thermal sensor nodes.
+- PATCH 4: Change cooling device map min and max values from 30-100 to 1-5.
+           The driver maps (0,1,2,3,4,5) to (0,30,40,55,75,100)
+- Link to v5: https://lore.kernel.org/r/20260424-add-thermal-t7-vim4-v5-0-9040ca36afe2@aliel.fr
 
-diff --git a/Documentation/iio/ad9910.rst b/Documentation/iio/ad9910.rst
-index aab569f561db..bff55cca8c82 100644
---- a/Documentation/iio/ad9910.rst
-+++ b/Documentation/iio/ad9910.rst
-@@ -85,13 +85,13 @@ system clock (SYSCLK) which affects all other channels.
-      - ``drg_rising_frequency``
-      - ``drg_frequency``
-      - DRG frequency rising-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_frequency132``
-      - ``drg_falling_frequency``
-      - ``drg_frequency``
-      - DRG frequency falling-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_phase130``
-      - ``drg_phase``
-@@ -104,13 +104,13 @@ system clock (SYSCLK) which affects all other channels.
-      - ``drg_rising_phase``
-      - ``drg_phase``
-      - DRG phase rising-ramp parameters: limit code, dwell enable, ramp clock,
--       rate of change.
-+       rate of change, integration time.
- 
-    * - ``out_phase132``
-      - ``drg_falling_phase``
-      - ``drg_phase``
-      - DRG phase falling-ramp parameters: limit code, dwell enable, ramp clock,
--       rate of change.
-+       rate of change, integration time.
- 
-    * - ``out_altcurrent130``
-      - ``drg_amplitude``
-@@ -123,13 +123,13 @@ system clock (SYSCLK) which affects all other channels.
-      - ``drg_rising_amplitude``
-      - ``drg_amplitude``
-      - DRG amplitude rising-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_altcurrent132``
-      - ``drg_falling_amplitude``
-      - ``drg_amplitude``
-      - DRG amplitude falling-ramp parameters: limit code, dwell enable,
--       ramp clock, rate of change.
-+       ramp clock, rate of change, integration time.
- 
-    * - ``out_altcurrent140``
-      - ``ram``
-@@ -493,6 +493,60 @@ Ramp channel attributes
-        from the hardware step size and the current ramp clock. Writing
-        requires ``sampling_frequency`` to be configured first.
- 
-+   * - ``integration_time``
-+     - s
-+     - Time interval assigned to the ramp direction, which is used to generate
-+       the DRCTL pin waveform. See `DRCTL pin control`_. Rising and falling
-+       ramp channels of all destinations share the same underlying value for
-+       their respective directions. The written value is adjusted to the
-+       resolution supported by the PWM provider.
-+
-+DRCTL pin control
-+^^^^^^^^^^^^^^^^^
-+
-+The DRCTL pin selects the DRG slope direction: a logic high drives the ramp
-+towards the upper limit and a logic low drives it towards the lower limit.
-+When a PWM is assigned to the DRCTL pin (via the ``pwms`` and ``pwm-names``
-+devicetree properties), the driver generates the DRCTL waveform from the
-+``integration_time`` of the rising and falling ramp channels, according to the
-+``dwell_en`` configuration:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Rising ``dwell_en``
-+     - Falling ``dwell_en``
-+     - DRCTL waveform
-+
-+   * - 1
-+     - 1
-+     - DRCTL is held high for the rising ``integration_time`` and then held
-+       low for the falling ``integration_time``. The PWM period is the sum of
-+       both intervals. If a ramp reaches its limit before its interval
-+       elapses, the output dwells at that limit.
-+
-+   * - 0
-+     - 1
-+     - Sawtooth rising ramp: a new ramp starts at every DRCTL rising edge,
-+       which happens periodically at the rising ``integration_time``. The
-+       falling ``integration_time`` is not used.
-+
-+   * - 1
-+     - 0
-+     - Sawtooth falling ramp: a new ramp starts at every DRCTL falling edge,
-+       which happens periodically at the falling ``integration_time``. The
-+       rising ``integration_time`` is not used.
-+
-+   * - 0
-+     - 0
-+     - Bidirectional continuous ramp. DRCTL is not relevant and it is held
-+       low.
-+
-+The DRCTL output is disabled when the resulting PWM period is zero, e.g., when
-+the relevant ``integration_time`` attributes are set to ``0``. Without a PWM
-+assigned to the DRCTL pin, writing to ``integration_time`` fails with
-+``-EOPNOTSUPP``.
-+
- Usage examples
- ^^^^^^^^^^^^^^
- 
-@@ -525,6 +579,30 @@ Configure a frequency sweep from 40 MHz to 60 MHz with a rate of change of
-   # Enable the DRG with frequency as the destination
-   echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency130_en
- 
-+With the same limits and rate of change, each ramp takes 0.8 ms to complete.
-+Configure a PWM-driven triangular sweep that dwells 0.2 ms at each limit:
-+
-+.. code-block:: bash
-+
-+  # Enable dwell on both limits, so DRCTL controls the ramp direction
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency131_dwell_en
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency132_dwell_en
-+
-+  # DRCTL high for 1 ms (rising ramp) and low for 1 ms (falling ramp)
-+  echo 0.001 > /sys/bus/iio/devices/iio\:device0/out_frequency131_integration_time
-+  echo 0.001 > /sys/bus/iio/devices/iio\:device0/out_frequency132_integration_time
-+
-+Configure a rising sawtooth sweep that restarts every 1 ms:
-+
-+.. code-block:: bash
-+
-+  # No dwell at the upper limit: the ramp returns to the lower limit
-+  echo 0 > /sys/bus/iio/devices/iio\:device0/out_frequency131_dwell_en
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency132_dwell_en
-+
-+  # A new rising ramp starts every 1 ms
-+  echo 0.001 > /sys/bus/iio/devices/iio\:device0/out_frequency131_integration_time
-+
- RAM mode
- --------
- 
+Changes in v5:
+- PATCH 4: Remove unnecessary variable and coding style alignment
+           according to Neil's feedback.
+- Link to v4: https://lore.kernel.org/r/20260423-add-thermal-t7-vim4-v4-0-d4c1528d5044@aliel.fr
 
+Changes in v4:
+- PATCH 4: Extract SM and syscon setup into amlogic_thermal_probe_sm() and
+           amlogic_thermal_probe_syscon() removing amlogic_thermal_initialize()
+           from Daniel's feedback.
+           Also fix pre-existing bug: move calibration readout before
+           devm_thermal_of_zone_register() to avoid reading uninitialized
+           trim_info, according to Daniel's feedback.
+- Link to v3: https://lore.kernel.org/r/20260421-add-thermal-t7-vim4-v3-0-a2e7215ed003@aliel.fr
+
+Changes in v3:
+- PATCH 1: Replace second if check by an else statement.
+  Remove unnecessary label in example according to Conor's feedback
+- Link to v2: https://lore.kernel.org/r/20260413-add-thermal-t7-vim4-v2-0-1002d90a0602@aliel.fr
+
+Changes in v2:
+- PATCH 1: change two const entries to enum, explain why sensor index is needed
+  reorder conditional compatible for required, and fallback only according to
+  Krzysztof's feedback.
+- PATCH 3: Add kerneldoc for meson_sm_get_thermal_calib exported function
+  according to Krzysztof's feedback.
+- Link to v1: https://lore.kernel.org/r/20260410-add-thermal-t7-vim4-v1-0-19f2b8da74d7@aliel.fr
+
+---
+Ronald Claveau (4):
+      arm64: dts: amlogic: t7: Add cooling cells to all CPUs
+      arm64: dts: amlogic: t7: Add thermal sensor nodes
+      arm64: dts: amlogic: t7: Add thermal zones
+      arm64: dts: amlogic: t7: khadas-vim4: Add fan cooling to thermal zones
+
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  | 102 +++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        | 253 +++++++++++++++++++++
+ 2 files changed, 355 insertions(+)
+---
+base-commit: ab8eada9868faeee95f25d81d3d6fed0d1c98b78
+change-id: 20260410-add-thermal-t7-vim4-00e571badcc1
+
+Best regards,
 -- 
-2.43.0
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
