@@ -1,11 +1,11 @@
 From: George Neacsu <geocausa@gmail.com>
-Date: Thu, 15 Oct 2026 23:20:38 +0100
-Subject: [PATCH RFC 3/4] media: qcom: camss: csid-680: Select C-PHY in the
- receiver
+Date: Thu, 15 Oct 2026 23:20:39 +0100
+Subject: [PATCH RFC 4/4] media: qcom: camss: Configure C-PHY through the
+ PHY API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-x1e-cphy-rfc-v1-3-1f3fa9af940a@gmail.com>
+Message-Id: <20261015-x1e-cphy-rfc-v1-4-1f3fa9af940a@gmail.com>
 References: <20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com>
 In-Reply-To: <20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com>
 To: Bryan O'Donoghue <bod@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
@@ -18,39 +18,93 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792102835; l=954;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792102835; l=2783;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=zIA90Rl/gtkLGho4hrUCxdrlhc5niDyVArSGj4xfgdM=;
- b=dxq1mf8fO50sxXqgXje86lxdhpWCCkmpix7jS568ln4jpofHpoSqOKdUHmWuSicEhghudMqwy
- zROe31y06DkCFz0gFQ8ltbPCGY67/Y7Q6MEooCwAXKNVWlTfde6sBz0
+ bh=TrW9HxBrbhZsq4EBR8HwxBI6x1lIFRbaMbGLoCMihE0=;
+ b=mJbdWh87bdTZxwdovvLTqT1YLJZ7GTzTkFuy7n1Fo0lK2PcHmSi6ZNJiatw1CZ1+XFqmUzbnx
+ TMxuPnShS9mAAS0QDBKLz7B0ltv+BOS6zCLMUCYQUZ0NuIBW17icFpD
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CSID 680 has a PHY type select in CSI2_RX_CFG0, next to the PHY number.
-The field is defined but never written, so the receiver always decodes
-D-PHY. Write phy_sel to it, as csid-gen2 does for C-PHY.
+With a PHY API CSIPHY, csiphy_stream_on() always asks for D-PHY. Ask for
+C-PHY when the endpoint is C-PHY, and pass the trio count and the symbol
+rate, which by the V4L2 convention is twice the link frequency.
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss-csid-680.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/media/platform/qcom/camss/camss-csiphy.c | 35 ++++++++++++++----------
+ 1 file changed, 21 insertions(+), 14 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csid-680.c b/drivers/media/platform/qcom/camss/camss-csid-680.c
-index 345a67c8f..16b199f06 100644
---- a/drivers/media/platform/qcom/camss/camss-csid-680.c
-+++ b/drivers/media/platform/qcom/camss/camss-csid-680.c
-@@ -202,6 +202,8 @@ static void __csid_configure_rx(struct csid_device *csid,
- 			<< CSI2_RX_CFG0_PHY_NUM_SEL;
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
+index f44f2aeb9..8e1b4335a 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
+@@ -329,17 +329,15 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
+ 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
+ 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
+ 	struct csiphy_lanes_cfg *lncfg = &csiphy->cfg.csi2->lane_cfg;
+-	struct phy_configure_opts_mipi_dphy *dphy_cfg;
+-	union phy_configure_opts dphy_opts = { 0 };
++	const bool cphy = lncfg->phy_cfg == V4L2_MBUS_CSI2_CPHY;
++	union phy_configure_opts opts = { 0 };
+ 	struct device *dev = csiphy->camss->dev;
+ 	u8 num_lanes = lncfg->num_data;
+ 	s64 link_freq;
+ 	int ret;
+ 
+-	dphy_cfg = &dphy_opts.mipi_dphy;
+-
+ 	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes,
+-					csiphy->cfg.csi2->lane_cfg.phy_cfg == V4L2_MBUS_CSI2_CPHY);
++					cphy);
+ 
+ 	if (link_freq <= 0) {
+ 		dev_err(dev,
+@@ -347,23 +345,32 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
+ 		return -EINVAL;
  	}
  
-+	val |= phy->phy_sel << CSI2_RX_CFG0_PHY_TYPE_SEL;
-+
- 	writel(val, csid->base + CSID_CSI2_RX_CFG0);
+-	ret = phy_mipi_dphy_get_default_config_for_hsclk(link_freq, num_lanes,
+-							 dphy_cfg);
+-	if (ret < 0) {
+-		dev_err(dev, "Invalid config for link frequency %lld\n",
+-			link_freq);
+-		return ret;
++	if (cphy) {
++		/* A C-PHY link frequency is half the symbol rate. */
++		opts.mipi_cphy.symbol_rate = link_freq * 2;
++		opts.mipi_cphy.lanes = num_lanes;
++	} else {
++		ret = phy_mipi_dphy_get_default_config_for_hsclk(link_freq,
++								 num_lanes,
++								 &opts.mipi_dphy);
++		if (ret < 0) {
++			dev_err(dev, "Invalid config for link frequency %lld\n",
++				link_freq);
++			return ret;
++		}
+ 	}
  
- 	val = CSI2_RX_CFG1_PACKET_ECC_CORRECTION_EN;
+-	ret = phy_set_mode(csiphy->phy, PHY_MODE_MIPI_DPHY);
++	ret = phy_set_mode(csiphy->phy,
++			   cphy ? PHY_MODE_MIPI_CPHY : PHY_MODE_MIPI_DPHY);
+ 	if (ret) {
+ 		dev_err(dev, "Failed to set phy mode\n");
+ 		return ret;
+ 	}
+ 
+-	ret = phy_configure(csiphy->phy, &dphy_opts);
++	ret = phy_configure(csiphy->phy, &opts);
+ 	if (ret) {
+-		dev_err(dev, "failed to configure MIPI D-PHY\n");
++		dev_err(dev, "failed to configure MIPI %s\n",
++			cphy ? "C-PHY" : "D-PHY");
+ 		goto error;
+ 	}
+ 
 
 -- 
 2.53.0
