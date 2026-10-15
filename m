@@ -1,146 +1,100 @@
 From: George Neacsu <geocausa@gmail.com>
-Date: Thu, 15 Oct 2026 22:48:20 +0100
-Subject: [PATCH 2/2] media: i2c: ov13858: Add device tree support
+Subject: [PATCH RFC 0/4] phy: qcom-mipi-csi2: C-PHY for X1E80100
+Date: Thu, 15 Oct 2026 23:20:35 +0100
+Message-Id: <20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-ov13858-x1e-v1-2-acdd918f4fb6@gmail.com>
-References: <20261015-ov13858-x1e-v1-0-acdd918f4fb6@gmail.com>
-In-Reply-To: <20261015-ov13858-x1e-v1-0-acdd918f4fb6@gmail.com>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sergey Lebedev <lsa.uz@pm.me>, 
- German Pablo Lindo <germanpapulindez@gmail.com>, 
- Bryan O'Donoghue <bod@kernel.org>, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA0NT3QrDVN3kgoxK3aK0ZF0jA0MLM4NkCwNL8zQloJaCotS0zAqwcdF
+ KQW7OSrG1tQCwerqKYwAAAA==
+X-Change-ID: 20261015-x1e-cphy-rfc-201860c8097f
+To: Bryan O'Donoghue <bod@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ David Heidelberg <david@ixit.cz>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, linux-phy@lists.infradead.org, 
+ linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792100898; l=3992;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792102835; l=3102;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=OUXpTuteW6O6z6fmSZaqFDa8zmph67QuMze6JaQ/PNs=;
- b=YW6OZZ6UCKTH5NC0I/hvoT38dHS1nULqijWt94YmJ33bOvJINTUy6OR+1Qw9RlYL4MUdVFvaY
- 4vH7SFZRq5mAQKx6Yj5pg84i6Jt03rU5knP5vzH4Y+SpoqpLWPrWfBV
+ bh=1PzFHK8pyF9EZhautPJ1LhtB2o3MzeG5L1QZKbwR3b0=;
+ b=5S2ojKLUt1u62x+SOIHV7NR4c6jSSpRDw3Q3TZjJvP1NmfK43mWZrammeIFZOIIMIIoZJThcJ
+ soBFlIpalhJAGe5cK2sETDtSs7NiMhZZZyVT4HYN6fE64+KKsCQjX/U
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The rear camera of the Surface Pro 11 with a Snapdragon X Elite is an
-OV13858 on a four-lane D-PHY link, described in the device tree. Add an
-OF match table.
+Hi Bryan, Vinod, David,
 
-Parse the endpoint as other sensor drivers that serve both ACPI and DT
-do. Wait for the endpoint if a bridge driver has not created it yet,
-require four data lanes, and require both link frequencies, since the
-modes switch between 540 and 270 MHz. The IPU bridge entry for OVTID858
-lists both, so an ACPI machine with that entry probes as before. Without
-the entry the sensor now waits for the bridge instead of probing into an
-empty graph.
+The Snapdragon Surface Pro 11's front camera, an IMX681, is on CSIPHY2
+over one MIPI C-PHY trio. linux-next has the CSI2 PHY driver and the CAMSS
+PHY API path, and C-PHY is the piece still missing for this camera. This
+series adds it. Before I go further, I would like to know whether this is
+the shape you want:
 
-Tested on the Surface Pro 11 (X1E80100), with an out-of-tree CAMSS
-capturing raw frames over CSIPHY1, CSID0 and an RDI interface:
-4224x3136 at 29.95 fps at 540 MHz, the colour-bar test pattern intact,
-and a scene captures.
+1. PHY_MODE_MIPI_CPHY and C-PHY configuration options in the generic PHY
+   framework, because CAMSS had no way to ask the PHY for C-PHY;
+2. C-PHY in qcom-mipi-csi2, with the X1E80100 sequence taken from
+   Qualcomm's GPL-2.0 downstream header;
+3. the CSID 680 PHY type select, which is defined but never written;
+4. C-PHY in csiphy_stream_on() for PHY API CSIPHYs.
 
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: George Neacsu <geocausa@gmail.com>
+The base is next-20261015 plus David's "media: camss: Add support for
+C-PHY configuration on Qualcomm platforms" v9, which provides phy_cfg,
+the CSID phy_sel and the C-PHY link frequency. I had to port its 8/9 by
+hand onto the PHY API changes:
+https://lore.kernel.org/all/20260617-qcom-cphy-v9-0-83da8a8e4e44@ixit.cz/
+
+Tested on the Surface Pro 11 (X1E80100). Both cameras run together through
+the upstream stack: CSI2 PHY nodes as in Bryan's x1e80100 camera DT v7,
+and CAMSS in PHY API mode, with raw capture over RDI:
+- front IMX681 (Sergey's and Andre's v8 driver plus its C-PHY RFC) on
+  CSIPHY2, one C-PHY trio at 2.4 Gsym/s: 3844x2640 at 30.01 fps, and the
+  sensor's colour bars are byte-identical to the pattern captured with an
+  out-of-tree driver;
+- rear OV13858 on CSIPHY1, four D-PHY lanes: 29.9 fps, as before the
+  series.
+The kernel was 7.1.5, with linux-next's CAMSS and CSI2 PHY built as
+modules; the test build needed shims only for API differences.
+
+Two questions:
+- Is a generic C-PHY mode how you want CAMSS to ask for it, or would you
+  rather the PHY take the mode from its own endpoint alone?
+- Qualcomm's X1E sequence is for 2.5 Gsps, and this sensor runs at
+  2.4 Gsym/s with it. The sa8775p C-PHY series selects settings by data
+  rate. Should X1E do the same?
+
+Patches 1-2 are PHY and 3-4 are CAMSS. They can go separately once the
+approach is agreed.
+
+Thanks,
+George
+
 ---
- drivers/media/i2c/ov13858.c | 62 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 62 insertions(+)
+George Neacsu (4):
+      phy: Add MIPI C-PHY mode and configuration options
+      phy: qcom-mipi-csi2: Add C-PHY support for X1E80100
+      media: qcom: camss: csid-680: Select C-PHY in the receiver
+      media: qcom: camss: Configure C-PHY through the PHY API
 
-diff --git a/drivers/media/i2c/ov13858.c b/drivers/media/i2c/ov13858.c
-index 83eefba..587ee38 100644
---- a/drivers/media/i2c/ov13858.c
-+++ b/drivers/media/i2c/ov13858.c
-@@ -1713,6 +1713,57 @@ static int ov13858_power_off(struct device *dev)
- static DEFINE_RUNTIME_DEV_PM_OPS(ov13858_pm_ops, ov13858_power_off,
- 				 ov13858_power_on, NULL);
- 
-+static int ov13858_check_hwcfg(struct device *dev)
-+{
-+	struct v4l2_fwnode_endpoint bus_cfg = {
-+		.bus_type = V4L2_MBUS_CSI2_DPHY
-+	};
-+	unsigned long link_freq_bitmap;
-+	struct fwnode_handle *ep;
-+	int ret;
-+
-+	/*
-+	 * Sometimes the fwnode graph is initialized by the bridge driver.
-+	 * Bridge drivers doing this also add sensor properties, wait for this.
-+	 */
-+	ep = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
-+	if (!ep)
-+		return dev_err_probe(dev, -EPROBE_DEFER,
-+				     "waiting for fwnode graph endpoint\n");
-+
-+	ret = v4l2_fwnode_endpoint_alloc_parse(ep, &bus_cfg);
-+	fwnode_handle_put(ep);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "parsing endpoint failed\n");
-+
-+	if (bus_cfg.bus.mipi_csi2.num_data_lanes != 4) {
-+		ret = dev_err_probe(dev, -EINVAL,
-+				    "%u data lanes are not supported, only 4\n",
-+				    bus_cfg.bus.mipi_csi2.num_data_lanes);
-+		goto out;
-+	}
-+
-+	/* The modes use both link frequencies, so both have to be allowed. */
-+	ret = v4l2_link_freq_to_bitmap(dev, bus_cfg.link_frequencies,
-+				       bus_cfg.nr_of_link_frequencies,
-+				       link_freq_menu_items,
-+				       ARRAY_SIZE(link_freq_menu_items),
-+				       &link_freq_bitmap);
-+	if (ret)
-+		goto out;
-+
-+	if (link_freq_bitmap != GENMASK(ARRAY_SIZE(link_freq_menu_items) - 1, 0))
-+		ret = dev_err_probe(dev, -EINVAL,
-+				    "link frequencies %lld and %lld are both needed\n",
-+				    link_freq_menu_items[0],
-+				    link_freq_menu_items[1]);
-+
-+out:
-+	v4l2_fwnode_endpoint_free(&bus_cfg);
-+
-+	return ret;
-+}
-+
- static int ov13858_probe(struct i2c_client *client)
- {
- 	struct ov13858 *ov13858;
-@@ -1725,6 +1776,10 @@ static int ov13858_probe(struct i2c_client *client)
- 
- 	ov13858->dev = &client->dev;
- 
-+	ret = ov13858_check_hwcfg(ov13858->dev);
-+	if (ret)
-+		return ret;
-+
- 	ov13858->clk = devm_v4l2_sensor_clk_get(ov13858->dev, NULL);
- 	if (IS_ERR(ov13858->clk))
- 		return dev_err_probe(ov13858->dev, PTR_ERR(ov13858->clk),
-@@ -1845,10 +1900,17 @@ static const struct acpi_device_id ov13858_acpi_ids[] = {
- MODULE_DEVICE_TABLE(acpi, ov13858_acpi_ids);
- #endif
- 
-+static const struct of_device_id ov13858_of_match[] = {
-+	{ .compatible = "ovti,ov13858" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ov13858_of_match);
-+
- static struct i2c_driver ov13858_i2c_driver = {
- 	.driver = {
- 		.name = "ov13858",
- 		.acpi_match_table = ACPI_PTR(ov13858_acpi_ids),
-+		.of_match_table = ov13858_of_match,
- 		.pm = pm_ptr(&ov13858_pm_ops),
- 	},
- 	.probe = ov13858_probe,
+ drivers/media/platform/qcom/camss/camss-csid-680.c |   2 +
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |  35 +++--
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c | 151 ++++++++++++++++++++-
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c     |  49 ++++++-
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          |   4 +
+ include/linux/phy/phy-mipi-cphy.h                  |  27 ++++
+ include/linux/phy/phy.h                            |   5 +
+ 7 files changed, 252 insertions(+), 21 deletions(-)
+---
+base-commit: 4a926a0ea6c65089285eb3ccb84ac6b02b22dee5
+change-id: 20261015-x1e-cphy-rfc-201860c8097f
 
+Best regards,
 -- 
-2.53.0
+George Neacsu <geocausa@gmail.com>
 
