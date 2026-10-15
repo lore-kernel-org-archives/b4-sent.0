@@ -1,158 +1,166 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Fri, 16 Oct 2026 02:16:06 +0800
-Subject: [PATCH v4 17/17] Documentation/mm: multi-gen LRU: update for
- frequency guided promotion
+From: Igor Velkov <iav@iav.lv>
+Date: Thu, 15 Oct 2026 21:51:50 +0300
+Subject: [PATCH v2] genirq/kexec: Do not take the bus lock of an interrupt
+ chip on the crash path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-mglru-fg-v4-17-2106750c0bfa@tencent.com>
-References: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
-In-Reply-To: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
-To: linux-mm@kvack.org, "Liam R. Howlett" <liam@infradead.org>, 
- SJ Park <sj@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, Muchun Song <muchun.song@linux.dev>, 
- Qi Zheng <qi.zheng@linux.dev>, Ying Huang <ying.huang@linux.alibaba.com>, 
- Chris Li <chrisl@kernel.org>, Baoquan He <baoquan.he@linux.dev>, 
- Nico Pache <nico.pache@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
- Michal Hocko <mhocko@kernel.org>, Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, David Hildenbrand <david@kernel.org>, 
- Lorenzo Stoakes <ljs@kernel.org>, Barry Song <baohua@kernel.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Vlastimil Babka <vbabka@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
- Youngjun Park <youngjun.park@lge.com>, Zi Yan <ziy@nvidia.com>, 
- Gregory Price <gourry@gourry.net>, 
- "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
- Lance Yang <lance.yang@linux.dev>, Hugh Dickins <hughd@google.com>, 
- David Rientjes <rientjes@google.com>, Yu Zhao <yuzhao@google.com>, 
- Vernon Yang <vernon2gm@gmail.com>, Zicheng Wang <wangzicheng@honor.com>, 
- Chen Ridong <chenridong@xiaomi.com>, Tal Zussman <tz2294@columbia.edu>, 
- Kairui Song <ryncsn@gmail.com>, Xiang Liu <liuxiang.277@bytedance.com>, 
- Ehab Ababneh <ehab.ababneh@intel.com>, 
- zhaozhengzhuo <zhaozhengzhuo@uniontech.com>, 
- Lian Wang <lianux.mm@gmail.com>, Kunwu Chan <kunwu.chan@gmail.com>, 
- linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
- damon@lists.linux.dev, Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=5953;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=H9ePyPxQfKEyJG8pjQryA22Bu9URRS7jnmN2RCV298Y=;
- b=Vb9KmjNNstGoNvaMOwNk7ofyjEq/gP8OVY3K9CwFsX4iWIUxqEgFFz0bvwWvH+Y2p0iByDKlP
- wZqWyoquQutCr8DLLctzG4RU7bhi8F6VKDcrlaEAi+LHGq3mAiOnAnb
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Message-Id: <20261015-kexec-irq-bus-lock-v2-1-2af15f0757b6@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAMUg0WoC/32NQQ6CMBBFr0Jm7Zi2lEZceQ/DAuhUJhDAVhsM6
+ d2tHMDle8l/f4dAninAtdjBU+TAy5xBnQroh3Z+ELLNDEooI4WocKSNemT/xO4dcFr6EZ2+2Ko
+ 2RuvSQh6unhxvR/TeZB44vBb/OT6i/Nm/uShRoqid6apSldqIG7fxPEVoUkpfIn/K67EAAAA=
+To: Thomas Gleixner <tglx@kernel.org>
+Cc: Radu Rendec <radu@rendec.net>, Marc Zyngier <maz@kernel.org>, 
+ Eliav Farber <farbere@amazon.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Mark Rutland <mark.rutland@arm.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Heiko Stuebner <heiko@sntech.de>, kexec@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4880; i=iav@iav.lv;
+ h=from:subject:message-id; bh=WElKsqp4WDpVY7lXmV1kTAIN6zD/+3FmBNHjKTykQeU=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkXFY7N/8PFuXRta+C1bq24OsHXr/0+nHew+X7/qsvLB
+ EXtxtX3OkpZGMS4GGTFFFkmHNK4lbHk6l9/D/MHMHNYmUCGMHBxCsBEQqIZGToOulXNq9tV/mnJ
+ QY0v0l7PFZpXZJiyGopfF2P7qmNV58/wv1ppX4hiS4gID8/X27mvzI/9sGHfvFCtw3TZpd/aKp8
+ WMwIA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The design doc still describes the old tier and promotion model:
+machine_kexec_mask_interrupts() calls irq_set_irqchip_state() for every
+started interrupt. That function takes the bus lock of the chip and
+desc->lock, and syncs the chip when it drops them. On the crash path
+interrupts are off and the other CPUs are stopped, so a chip whose bus
+transfer is completed by an interrupt never returns from the sync.
 
-- Tiers are no longer order_base_2() of the file descriptor accesses.
-  A folio's tier is derived from its referenced count, which counts
-  accesses from both page tables and file descriptors.
+On RK3399 boards with an RK808 PMIC the RTC alarm interrupt belongs to
+the regmap-irq chip of the RK808, which sits on I2C. rk808_irq_chip sets
+init_ack_masked, so regmap_irq_sync_unlock() writes the ack register on
+every unlock, and the I2C controller needs its own interrupt to finish
+the transfer. A panic with a crash kernel loaded prints
 
-- A young PTE no longer always promotes a folio to the newest
-  generation.  The first access only moves a folio one generation
-  forward if it is at the tail of its LRU, i.e., in one of the two
-  oldest generations of its type, a second access promotes it, and
-  executable file folios are promoted on their first access.
+  SMP: stopping secondary CPUs
 
-- The eviction no longer uses the first tier as the only baseline.
-  The type is selected by comparing all tiers of each type, and a tier
-  is protected by comparing it against the tiers below it.
+and then nothing until the watchdog resets the board.
 
-Update the aging and eviction sections accordingly.
+machine_kexec_mask_interrupts() takes neither lock for the other
+operations on the descriptor. Move the search for the chip that
+implements irq_set_irqchip_state() into __irq_set_irqchip_state(), which
+takes no locks, and call it from machine_kexec_mask_interrupts().
 
+Fixes: 78fd584cdec0 ("arm64: kdump: implement machine_crash_shutdown()")
+Suggested-by: Thomas Gleixner <tglx@kernel.org>
 Assisted-by: LLM
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- Documentation/mm/multigen_lru.rst | 57 ++++++++++++++++++++++-----------------
- 1 file changed, 33 insertions(+), 24 deletions(-)
+Tested with sysrq-c and kdump-tools on Kobol Helios64 (RK3399, RK808),
+7.3-rc7: the dump is saved 3 of 3. Without a fix it hangs 3 of 3 (7.3-rc5).
+---
+Changes in v2:
+- Clear the active state through a lockless __irq_set_irqchip_state()
+  instead of skipping chips with irq_bus_lock. The manage.c part is
+  Thomas' proposal from the v1 thread.
+- Link to v1: https://lore.kernel.org/r/20261005-kexec-irq-bus-lock-v1-1-09f6b5323460@iav.lv
+---
+ kernel/irq/internals.h |  1 +
+ kernel/irq/kexec.c     |  2 +-
+ kernel/irq/manage.c    | 43 ++++++++++++++++++++++++-------------------
+ 3 files changed, 26 insertions(+), 20 deletions(-)
 
-diff --git a/Documentation/mm/multigen_lru.rst b/Documentation/mm/multigen_lru.rst
-index 52ed5092022f..ec8744c1f42c 100644
---- a/Documentation/mm/multigen_lru.rst
-+++ b/Documentation/mm/multigen_lru.rst
-@@ -95,16 +95,19 @@ at most ``MAX_NR_GENS`` generations. The gen counter stores a value
- within ``[1, MAX_NR_GENS]`` while a page is on one of
- ``lrugen->folios[]``; otherwise it stores zero.
+diff --git a/kernel/irq/internals.h b/kernel/irq/internals.h
+index 2c30e7537987..703a062be878 100644
+--- a/kernel/irq/internals.h
++++ b/kernel/irq/internals.h
+@@ -83,6 +83,7 @@ enum {
+ #include "settings.h"
  
--Each generation is divided into multiple tiers. A page accessed ``N``
--times through file descriptors is in tier ``order_base_2(N)``. Unlike
--generations, tiers do not have dedicated ``lrugen->folios[]``. In
--contrast to moving across generations, which requires the LRU lock,
--moving across tiers only involves atomic operations on
--``folio->flags`` and therefore has a negligible cost. A feedback loop
--modeled after the PID controller monitors refaults over all the tiers
--from anon and file types and decides which tiers from which types to
--evict or protect. The desired effect is to balance refault percentages
--between anon and file types proportional to the swappiness level.
-+Each generation is divided into multiple tiers. A page's tier is
-+derived from its referenced count, which counts the accesses collected
-+from both channels above and is capped at ``LRU_REFS_MAX``: pages
-+accessed at most once are in the lowest tier, and the tiers above hold
-+pages accessed at least twice. Unlike generations, tiers do not have
-+dedicated ``lrugen->folios[]``. In contrast to moving across
-+generations, which requires the LRU lock, updating the referenced
-+count only involves atomic operations on ``folio->flags`` and
-+therefore has a negligible cost. A feedback loop modeled after the PID
-+controller monitors refaults over all the tiers from anon and file
-+types and decides which tiers from which types to evict or protect.
-+The desired effect is to balance refault percentages between anon and
-+file types proportional to the swappiness level.
+ extern int __irq_set_trigger(struct irq_desc *desc, unsigned long flags);
++extern int __irq_set_irqchip_state(struct irq_desc *desc, enum irqchip_irq_state which, bool val);
+ extern void __disable_irq(struct irq_desc *desc);
+ extern void __enable_irq(struct irq_desc *desc);
  
- There are two conceptually independent procedures: the aging and the
- eviction. They form a closed-loop system, i.e., the page reclaim.
-@@ -122,25 +125,31 @@ and calls ``walk_page_range()`` with each ``mm_struct`` on this list
- to scan PTEs, and after each iteration, it increments ``max_seq``. For
- the latter, when the eviction walks the rmap and finds a young PTE,
- the aging scans the adjacent PTEs. For both, on finding a young PTE,
--the aging clears the accessed bit and updates the gen counter of the
--page mapped by this PTE to ``(max_seq%MAX_NR_GENS)+1``.
-+the aging clears the accessed bit and bumps the referenced count of
-+the page mapped by this PTE. A second access promotes the page by
-+updating its gen counter to ``(max_seq%MAX_NR_GENS)+1``; the first
-+access only moves a page one generation forward if it is at the tail
-+of its LRU, i.e., in one of the two oldest generations of its type,
-+so that the next time it becomes the oldest one, its accessed bit
-+reflects whether it has been used again. Executable file pages are
-+promoted on their first access, since reclaiming them causes typical
-+I/O thrashing.
+diff --git a/kernel/irq/kexec.c b/kernel/irq/kexec.c
+index 1a3deffe6b5b..f245b9876422 100644
+--- a/kernel/irq/kexec.c
++++ b/kernel/irq/kexec.c
+@@ -25,7 +25,7 @@ void machine_kexec_mask_interrupts(void)
+ 			 * First try to remove the active state from an interrupt which is forwarded
+ 			 * to a VM. If the interrupt is not forwarded, try to EOI the interrupt.
+ 			 */
+-			check_eoi = irq_set_irqchip_state(i, IRQCHIP_STATE_ACTIVE, false);
++			check_eoi = __irq_set_irqchip_state(desc, IRQCHIP_STATE_ACTIVE, false);
+ 		}
  
- Eviction
- --------
- The eviction consumes old generations. Given an ``lruvec``, it
- increments ``min_seq`` when ``lrugen->folios[]`` indexed by
--``min_seq%MAX_NR_GENS`` becomes empty. To select a type and a tier to
--evict from, it first compares ``min_seq[]`` to select the older type.
--If both types are equally old, it selects the one whose first tier has
--a lower refault percentage. The first tier contains single-use
--unmapped clean pages, which are the best bet. The eviction sorts a
--page according to its gen counter if the aging has found this page
--accessed through page tables and updated its gen counter. It also
--moves a page to the next generation, i.e., ``min_seq+1``, if this page
--was accessed multiple times through file descriptors and the feedback
--loop has detected outlying refaults from the tier this page is in. To
--this end, the feedback loop uses the first tier as the baseline, for
--the reason stated earlier.
-+``min_seq%MAX_NR_GENS`` becomes empty. To select a type to evict from,
-+it first compares ``min_seq[]`` to select the older type. If both
-+types are equally old, it compares the refault percentages of all the
-+tiers of each type proportional to the swappiness level. To select a
-+tier to protect, it compares the refault percentage of each tier
-+against that of the tiers below it. The lowest tier contains pages
-+accessed at most once, which are the best bet. The eviction sorts a
-+page according to its gen counter if the aging or an access has
-+updated its gen counter. It also moves a page to the next generation,
-+i.e., ``min_seq+1``, if the feedback loop has detected outlying
-+refaults from the tier this page is in.
+ 		if (check_eoi && chip->irq_eoi && irqd_irq_inprogress(&desc->irq_data))
+diff --git a/kernel/irq/manage.c b/kernel/irq/manage.c
+index 4fbb8f960dbf..94c2e13ddf8d 100644
+--- a/kernel/irq/manage.c
++++ b/kernel/irq/manage.c
+@@ -2747,6 +2747,28 @@ int irq_get_irqchip_state(unsigned int irq, enum irqchip_irq_state which, bool *
+ }
+ EXPORT_SYMBOL_GPL(irq_get_irqchip_state);
  
- Working set protection
- ----------------------
++int __irq_set_irqchip_state(struct irq_desc *desc, enum irqchip_irq_state which, bool val)
++{
++	struct irq_data *data = irq_desc_get_irq_data(desc);
++	struct irq_chip *chip;
++
++	do {
++		chip = irq_data_get_irq_chip(data);
++
++		if (WARN_ON_ONCE(!chip))
++			return -ENODEV;
++
++		if (chip->irq_set_irqchip_state)
++			break;
++
++		data = irqd_get_parent_data(data);
++	} while (data);
++
++	if (data)
++		return chip->irq_set_irqchip_state(data, which, val);
++	return -EINVAL;
++}
++
+ /**
+  * irq_set_irqchip_state - set the state of a forwarded interrupt.
+  * @irq:	Interrupt line that is forwarded to a VM
+@@ -2761,25 +2783,8 @@ EXPORT_SYMBOL_GPL(irq_get_irqchip_state);
+  */
+ int irq_set_irqchip_state(unsigned int irq, enum irqchip_irq_state which, bool val)
+ {
+-	scoped_irqdesc_get_and_buslock(irq, 0) {
+-		struct irq_data *data = irq_desc_get_irq_data(scoped_irqdesc);
+-		struct irq_chip *chip;
+-
+-		do {
+-			chip = irq_data_get_irq_chip(data);
+-
+-			if (WARN_ON_ONCE(!chip))
+-				return -ENODEV;
+-
+-			if (chip->irq_set_irqchip_state)
+-				break;
+-
+-			data = irqd_get_parent_data(data);
+-		} while (data);
+-
+-		if (data)
+-			return chip->irq_set_irqchip_state(data, which, val);
+-	}
++	scoped_irqdesc_get_and_buslock(irq, 0)
++		return __irq_set_irqchip_state(scoped_irqdesc, which, val);
+ 	return -EINVAL;
+ }
+ EXPORT_SYMBOL_GPL(irq_set_irqchip_state);
 
+---
+base-commit: 4351cc74202857f5b85b3573c477c9f798f5cd88
+change-id: 20261005-kexec-irq-bus-lock-f48d5966443d
+
+Best regards,
 -- 
-2.56.0
+Igor Velkov <iav@iav.lv>
 
