@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 16 Oct 2026 02:15:55 +0800
-Subject: [PATCH v4 06/17] mm/mglru: move add/del LRU size accounting out of
- lru_gen_update_size()
+Date: Fri, 16 Oct 2026 02:15:56 +0800
+Subject: [PATCH v4 07/17] mm/mglru, gup: mark folios referenced via a fast
+ helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-mglru-fg-v4-6-2106750c0bfa@tencent.com>
+Message-Id: <20261016-mglru-fg-v4-7-2106750c0bfa@tencent.com>
 References: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 In-Reply-To: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 To: linux-mm@kvack.org, "Liam R. Howlett" <liam@infradead.org>, 
@@ -38,100 +38,97 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  damon@lists.linux.dev, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=3201;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=2648;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=R/1YuK+DuWVnDJLZi3UVamo0/HdrkSNNWuBiwaeVr3w=;
- b=2XLndrLsif/WtrelNCXSnsafTuNoASKjH8a8Rr0KhO6jbM9NO93sfCEV4tVmH61jPs7137Vv2
- m5xLqJfCA4/BdxGQmIqtwu86gcbOIJVwUzpuYsoIQ563tkjn20h4A8R
+ bh=ITEZgO0dikHo93wyt9sJ147BaR3AkKEeJae1nLOf4S8=;
+ b=m7t9PG61hS7nPGevrgY2lLxFygT2BRwOkANXUPK9pgm7cjzydaFuFNGer2+HyT8kYNrOODT8f
+ JQDjMBv3q9CBhHyCf1aD5G9FDxDU4iLASn7H87eMqcXifIm9Voax7yj
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Pure code shuffle, no behavior change.  lru_gen_update_size() now only
-updates the per-generation counters plus the promotion move; the
-addition and deletion active/inactive accounting move to
-lru_gen_add_folio() and lru_gen_del_folio(), which know the generation
-and can apply the active-window test directly.
+Introduce folio_inc_lru_refs_fast(): raise refs from 0 to
+LRU_REFS_REFERENCED via cmpxchg, or just set PG_referenced for the
+classical LRU as before. No counter update, promotion, and guarteens
+no other complex operations in following commits.
 
-The unevictable case is untouched: unevictable folios never enter
-lru_gen_add_folio() and keep being accounted by lruvec_add_folio() as
-before.
+Convert the gup fast-path sites. No behavior change for classical LRU.
 
 Tested-by: zhaozhengzhuo <zhaozhengzhuo@uniontech.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h | 28 ++++++++++++++--------------
- 1 file changed, 14 insertions(+), 14 deletions(-)
+ include/linux/mm_inline.h | 25 +++++++++++++++++++++++++
+ mm/gup.c                  |  6 +++---
+ 2 files changed, 28 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index cfcbe4a9aa85..65415eeac802 100644
+index 65415eeac802..effa13c63632 100644
 --- a/include/linux/mm_inline.h
 +++ b/include/linux/mm_inline.h
-@@ -313,21 +313,9 @@ static inline void lru_gen_update_size(struct lruvec *lruvec, struct folio *foli
- 	if (new_gen >= 0)
- 		atomic_long_add(delta, &lrugen->nr_pages[new_gen][type][zone]);
+@@ -454,6 +454,31 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
+ }
+ #endif /* CONFIG_LRU_GEN */
  
--	/* addition */
--	if (old_gen < 0) {
--		if (lru_gen_is_active(lruvec, new_gen))
--			lru += LRU_ACTIVE;
--		__update_lru_size(lruvec, lru, zone, delta);
-+	/* return now if not a promotion */
-+	if (old_gen < 0 || new_gen < 0)
- 		return;
--	}
--
--	/* deletion */
--	if (new_gen < 0) {
--		if (lru_gen_is_active(lruvec, old_gen))
--			lru += LRU_ACTIVE;
--		__update_lru_size(lruvec, lru, zone, -delta);
--		return;
--	}
- 
- 	/* promotion */
- 	if (!lru_gen_is_active(lruvec, old_gen) && lru_gen_is_active(lruvec, new_gen)) {
-@@ -381,6 +369,8 @@ static inline bool lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio,
- 	int gen = folio_lru_gen(folio);
- 	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
-+	int delta = folio_nr_pages(folio);
-+	enum lru_list lru = type * LRU_INACTIVE_FILE;
- 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
- 
- 	BUILD_BUG_ON(BIT(LRU_GEN_WIDTH - 1) != MAX_NR_GENS);
-@@ -396,6 +386,10 @@ static inline bool lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio,
- 	set_mask_bits(folio_flags(folio, 0), LRU_GEN_MASK | BIT(PG_active), flags);
- 
- 	lru_gen_update_size(lruvec, folio, -1, gen);
-+	if (lru_gen_is_active(lruvec, gen))
-+		lru += LRU_ACTIVE;
-+	__update_lru_size(lruvec, lru, zone, delta);
++/**
++ * folio_inc_lru_refs_fast - Bump folio refs count without promotion.
++ * @folio: the folio
++ *
++ * Raise refs from 0 to LRU_REFS_REFERENCED and leave hotter folios
++ * untouched. For the classical LRU, a plain PG_referenced set.
++ */
++static __always_inline void folio_inc_lru_refs_fast(struct folio *folio)
++{
++	unsigned long new_flags, old_flags;
 +
- 	/* for folio_rotate_reclaimable() */
- 	if (reclaiming)
- 		list_add_tail(&folio->lru, &lrugen->folios[gen][type][zone]);
-@@ -409,6 +403,9 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
++	if (!lru_gen_enabled()) {
++		folio_set_referenced(folio);
++		return;
++	}
++
++	old_flags = READ_ONCE(*folio_flags(folio, 0));
++	do {
++		if (lru_get_refs_flags(old_flags))
++			break;
++		new_flags = old_flags;
++		lru_set_refs_flags(&new_flags, LRU_REFS_REFERENCED);
++	} while (!try_cmpxchg(folio_flags(folio, 0), &old_flags, new_flags));
++}
++
+ static __always_inline
+ void lruvec_add_folio(struct lruvec *lruvec, struct folio *folio)
  {
- 	unsigned long flags;
- 	int gen = folio_lru_gen(folio);
-+	int zone = folio_zonenum(folio);
-+	int delta = folio_nr_pages(folio);
-+	enum lru_list lru = folio_is_file_lru(folio) * LRU_INACTIVE_FILE;
+diff --git a/mm/gup.c b/mm/gup.c
+index f166acf794e3..b3f563d41192 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -2896,7 +2896,7 @@ static unsigned long gup_fast_pte_range(pmd_t pmd, pmd_t *pmdp,
+ 			gup_put_folio(folio, 1, flags);
+ 			goto pte_unmap;
+ 		}
+-		folio_set_referenced(folio);
++		folio_inc_lru_refs_fast(folio);
+ 		pages[nr_pages] = page;
+ 		nr_pages++;
+ 	} while (ptep++, addr += PAGE_SIZE, addr != end);
+@@ -2965,7 +2965,7 @@ static unsigned long gup_fast_pmd_leaf(pmd_t orig, pmd_t *pmdp,
  
- 	if (gen < 0)
- 		return false;
-@@ -422,6 +419,9 @@ static inline bool lru_gen_del_folio(struct lruvec *lruvec, struct folio *folio,
- 	gen = ((flags & LRU_GEN_MASK) >> LRU_GEN_PGOFF) - 1;
+ 	for (i = 0; i < nr_pages; i++)
+ 		*(pages++) = page++;
+-	folio_set_referenced(folio);
++	folio_inc_lru_refs_fast(folio);
+ 	return nr_pages;
+ }
  
- 	lru_gen_update_size(lruvec, folio, gen, -1);
-+	if (lru_gen_is_active(lruvec, gen))
-+		lru += LRU_ACTIVE;
-+	__update_lru_size(lruvec, lru, zone, -delta);
- 	list_del(&folio->lru);
+@@ -3007,7 +3007,7 @@ static unsigned long gup_fast_pud_leaf(pud_t orig, pud_t *pudp,
  
- 	return true;
+ 	for (i = 0; i < nr_pages; i++)
+ 		*(pages++) = page++;
+-	folio_set_referenced(folio);
++	folio_inc_lru_refs_fast(folio);
+ 	return nr_pages;
+ }
+ 
 
 -- 
 2.56.0
