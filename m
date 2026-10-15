@@ -1,161 +1,87 @@
-From: Mizuno Miotsuki <founder@crepuse.com>
-Date: Thu, 15 Oct 2026 07:58:08 +0800
-Subject: [PATCH v3] dmaengine: pl330: Fix unbalanced runtime PM
+From: Austin Schlegel <schlegelas@outlook.com>
+Subject: [PATCH v2 0/2] serial: tegra: fix RX/TX DMA descriptor
+ use-after-free
+Date: Wed, 14 Oct 2026 23:29:59 -0400
+Message-Id: <20261014-serial-tegra-dma-uaf-v2-0-b142b31b67e3@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-review-pl330-pm-original-v3-v3-1-5be09f37df77@crepuse.com>
-X-B4-Tracking: v=1; b=H4sIAA8X0GoC/yWP3Q6CMAxGX8Xs2iJjQtQr38N4sY0KVdjIivhDe
- Hc3SXrzNacn/WbBGAhZnDazCDgRk3cxqO1G2Fa7BoHqmEWRF5XMZQkJwhcMnVI5DD34QA053cG
- kwODhIOviaJW5iWgYAt7o/bdfrmvmp7mjHZMyEUYzggna2Tatom/179a7SLTEow+f/4NTkUxCV
- mW+T1OB2qtSgoSGRmB0NWCvqQN+Njpk31TgHLx9gG1p4Mz6XlyXZfkBPzXHsPYAAAA=
-X-Change-ID: 20261015-review-pl330-pm-original-v3-be881d29c3bf
-In-Reply-To: <1650450456-34351-1-git-send-email-sugar.zhang@rock-chips.com>
-References: <1650450456-34351-1-git-send-email-sugar.zhang@rock-chips.com>
-To: vkoul@kernel.org
-Cc: dmaengine@vger.kernel.org, krzk@kernel.org, ulfh@kernel.org, 
- Frank.Li@kernel.org, m.szyprowski@samsung.com, huibin.hong@rock-chips.com, 
- rmk+kernel@arm.linux.org.uk, sugar.zhang@rock-chips.com, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5020; i=founder@crepuse.com;
- s=20261012; h=from:subject:message-id;
- bh=dH6QyJ7OcZPyaRLWF7m5BqNce6CGMbzXSoeguCrRg3g=;
- b=owGbwMvMwCUmds2G2fVJ/hLG02pJDFkXxPmvT4r5vMi9vVlylcXDiP86v95xsz35YsA5b5ZnS
- PqM9eEtHRNZGMS4GCzFFFlmi7KXH2pecW3uhCY7mDmsTCBDpEUaGICAhYEvNzGv1EjHSM9U21DP
- 0EjHQMeYgYtTAKZaiIWR4YTRbR87czMbOY1eqZalaiKJK+t2CExKrVP2f7Aoun9WA8M/tSeTXty
- 9z3RSXDVf/OE+Hc7giVV3a+JOHBHXm3hl/fxbHAA=
-X-Developer-Key: i=founder@crepuse.com; a=openpgp;
- fpr=9B150777C283A8D69D90823E16D63C0345E46FA4
-X-Endpoint-Received: by B4 Relay for founder@crepuse.com/20261012 with auth_id=1166
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MSQqAMAwAvyI5G2irVPQr4iHaqAE3WhVB/LvV4
+ 8DM3BDYCweokhs8nxJkXSKYNIFupGVgFBcZjDJWK53j59OEOw+e0M2EB/WYleysKZSm1kJMN8+
+ 9XP+2bp7nBbKP2WpmAAAA
+X-Change-ID: 20261014-serial-tegra-dma-uaf-39ed62701ab6
+To: Laxman Dewangan <ldewangan@nvidia.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, Austin Schlegel <austin.schlegel@arthrex.com>, 
+ Austin Schlegel <schlegelas@outlook.com>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792035000; l=2548;
+ i=schlegelas@outlook.com; s=20261001; h=from:subject:message-id;
+ bh=IBuh8V/uOu8n3l2k9h8iBPBCSdskQXtHgw9YykzfWQ0=;
+ b=tq2kzMb86aNh7fEUjolwDWbAM6s80eKTE+KUQmtkedKBxM5OpkDMBwNKxaSzeGoEHV+gwoAsx
+ WI6Gr3QFfqsCOl1TwHjBCM9B+6zbsbFFtdM3NNbGfOkVtslxOFBcaJk
+X-Developer-Key: i=schlegelas@outlook.com; a=ed25519;
+ pk=ddgmH7VQaSWderjJFy4hDyq+P7hdHupPxQvwnGRBzCs=
+X-Endpoint-Received: by B4 Relay for schlegelas@outlook.com/20261001 with auth_id=1098
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sugar Zhang <sugar.zhang@rock-chips.com>
+Both patches in this series fix the same bug pattern in
+drivers/tty/serial/serial-tegra.c: dmaengine_terminate_all() is called
+before async_tx_ack() on the DMA descriptor it just terminated. With
+the GPC DMA driver (tegra186-gpc-dma.c, used on Tegra194/Tegra234),
+terminating a channel frees the active descriptor synchronously via
+vchan_dma_desc_free_list(), so the subsequent ack touches freed
+memory. dmaengine clients are not allowed to touch a descriptor once
+it has been terminated.
 
-This driver use runtime PM autosuspend mechanism to manager clk.
+Patch 1/2 (RX) was found via a KFENCE use-after-free report on a
+Jetson AGX Orin (Tegra234) under UART loopback traffic, and the fix
+has since been soak tested for 24+ hours with
+kfence.sample_interval=1 with zero further reports. It keeps the
+descriptor-leak fix from commit b31245b94207 ("serial: tegra: ack
+the rx dma desc after transfer terminated") intact: the ack still
+happens for every terminated RX transfer, just before the descriptor
+is freed instead of after.
 
-  pm_runtime_use_autosuspend(&adev->dev);
-  pm_runtime_set_autosuspend_delay(&adev->dev, PL330_AUTOSUSPEND_DELAY);
+Patch 2/2 (TX) is the same ordering bug in the analogous TX path
+(tegra_uart_stop_tx()), present since the driver was added, and found
+by code inspection once the RX bug was understood. It has not been
+reproduced on hardware - triggering it requires stopping an in-flight
+TX DMA transfer at the right moment, which did not occur during RX
+testing - but it is the identical dmaengine_terminate_all()-then-ack
+pattern in the same driver against the same DMA engine, so I'm sending
+it alongside the RX fix rather than leaving it unfixed.
 
-So, after ref count reached to zero, it will enter suspend
-after the delay time elapsed.
+Testing was done on Tegra234 (Jetson AGX Orin) only.
 
-The unbalanced PM:
-
-* May cause dmac the next start failed.
-* May cause dmac read unexpected state.
-* May cause dmac stall if power down happen at the middle of the transfer.
-  e.g. may lose ack from AXI bus and stall.
-
-Considering the following situation:
-
-      DMA TERMINATE               TASKLET ROUTINE
-            |                            |
-            |                       issue_pending
-            |                            |
-            |                     pch->active = true
-            |                       pm_runtime_get
-  pm_runtime_put(if active)              |
-    pch->active = false                  |
-            |                      work_list empty
-            |                            |
-            |                     pm_runtime_put(unconditional)
-            |                            |
-
-At this point, it's unbalanced(1 get / 2 put).
-
-After this patch:
-
-      DMA TERMINATE               TASKLET ROUTINE
-            |                            |
-            |                       issue_pending
-            |                            |
-            |                     pch->active = true
-            |                       pm_runtime_get
-  pm_runtime_put(if active)              |
-    pch->active = false                  |
-            |                      work_list empty
-            |                            |
-            |                   pm_runtime_put(if active)
-            |                            |
-
-Now, it's balanced(1 get / 1 put).
-
-Fixes: 5c9e6c2b2ba3 ("dmaengine: pl330: Fix runtime PM support for terminated transfers")
-Fixes: ae43b3289186 ("ARM: 8202/1: dmaengine: pl330: Add runtime Power Management support v12")
-
-Link: https://lore.kernel.org/r/1650450456-34351-1-git-send-email-sugar.zhang@rock-chips.com
-Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
-Signed-off-by: Sugar Zhang <sugar.zhang@rock-chips.com>
-Signed-off-by: Mizuno Miotsuki <founder@crepuse.com>
+Signed-off-by: Austin Schlegel <schlegelas@outlook.com>
 ---
-Hi Vinod, Sugar and Huibin,
-
-I am forwarding Sugar's April 2022 v2 as v3, with the same one-line
-change, original authorship and original Signed-off-by chain. The
-original submission is linked in the commit message. I found no mainline
-merge or revert of this change; current dmaengine fixes, next and master
-still use the unconditional assignment.
-
-Our SaneBSP investigation on an RK3308B UNIHIKER M10 independently
-rediscovered the same accounting issue. The experimental G-only kernel
-logged:
-
-  dma-pl330 ff2c0000.dma-controller: Runtime PM usage count underflow!
-
-The subsequent H kernel, which included this gate, did not report the
-warning during a four-rate 62.625 MiB qualification and a bounded serdev
-regression. H also contains other changes, and G/H were experimental
-kernels. This is additional runtime evidence, not an isolated hardware
-proof of this one-line fix on upstream. None of the experimental cyclic
-DMA modifications is included here.
-
-A source-anchored reference-count model reproduces the extra put after
-termination in the old path and balances the active-gated path, including
-cyclic requeue. That is a model, not a compiled-kernel race reproducer.
-
-Validation of this rebased patch:
-- ARM64 W=1 drivers/dma/pl330.o build on dmaengine/fixes.
-- Strict checkpatch, including the two historical Fixes IDs.
-- Clean application on current dmaengine fixes/next/master and mainline.
-
-Would you reconsider the outstanding patch? Please let us know if there
-was an objection or an alternative fix outside the archived discussion.
-
-Changes in v3:
-- Rebase the unchanged code change onto dmaengine/fixes, Linux 7.3-rc4.
-- Add an archival Link to the original v2.
-- Preserve the original author, commit explanation, Fixes and DCO trailers.
-- Add the bounded new evidence and validation here, outside the commit.
-
-Changes in v2 (Sugar, 2022):
-- Update the commit message following Vinod's suggestions.
-
-Regards,
-Mizuno Miotsuki
----
- drivers/dma/pl330.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/dma/pl330.c b/drivers/dma/pl330.c
-index 6214d9000..17264a05d 100644
---- a/drivers/dma/pl330.c
-+++ b/drivers/dma/pl330.c
-@@ -2090,7 +2090,7 @@ static void pl330_tasklet(struct tasklet_struct *t)
- 		spin_lock(&pch->thread->dmac->lock);
- 		_stop(pch->thread);
- 		spin_unlock(&pch->thread->dmac->lock);
--		power_down = true;
-+		power_down = pch->active;
- 		pch->active = false;
- 	} else {
- 		/* Make sure the PL330 Channel thread is active */
+Changes in v2:
+- Commit message updates only; no code changes.
+- Patch 1: removed an inaccurate statement that the freed descriptor
+  is accessed in tegra_uart_rx_dma_complete(); updated the soak test
+  duration to 24+ hours.
+- Patch 2: removed an inaccurate flush example; added Fixes: tag.
+- Switched to my personal email address (v1 was sent from
+  austin.schlegel@arthrex.com).
+- Link to v1: https://lore.kernel.org/r/20261001-tty-linus-v1-0-ecb8576c802d@arthrex.com
 
 ---
-base-commit: 93f51579e7df248780214094418f205253383cc5
-change-id: 20261015-review-pl330-pm-original-v3-be881d29c3bf
+Austin Schlegel (2):
+      serial: tegra: fix RX DMA descriptor use-after-free
+      serial: tegra: fix TX DMA descriptor use-after-free
+
+ drivers/tty/serial/serial-tegra.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+---
+base-commit: a90ee4305c4a5df72c11b31dacfdc76e00fcf78a
+change-id: 20261014-serial-tegra-dma-uaf-39ed62701ab6
 
 Best regards,
---  
-Mizuno Miotsuki <founder@crepuse.com>
+-- 
+Austin Schlegel <schlegelas@outlook.com>
 
