@@ -1,10 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 16 Oct 2026 02:15:51 +0800
-Subject: [PATCH v4 02/17] mm/mglru: make generation page counters atomic
+Date: Fri, 16 Oct 2026 02:15:52 +0800
+Subject: [PATCH v4 03/17] mm/memcg: add folio-based lruvec live helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-mglru-fg-v4-2-2106750c0bfa@tencent.com>
+Message-Id: <20261016-mglru-fg-v4-3-2106750c0bfa@tencent.com>
 References: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 In-Reply-To: <20261016-mglru-fg-v4-0-2106750c0bfa@tencent.com>
 To: linux-mm@kvack.org, "Liam R. Howlett" <liam@infradead.org>, 
@@ -37,140 +37,79 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  damon@lists.linux.dev, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=5705;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792088152; l=2034;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=0WiOWnqNr4HX6xukU5Z7iG/633RjVbvVUBflEj8zKv0=;
- b=GzIQnMCGGFBJ8rRg+psg68PBeye+76F28QDmanvToZ/WFpaDmG5dUrzTfJvb8a4MA/FisZGJH
- oLRudWip/H5CxKK6A0GNSogsnT6xzOKiGpswm4d6g0s+I1LjILlAP9T
+ bh=bqSj6GEUFE1ch4tTEQEPZOkssBWYsWV/WhQc/GCJ0Bs=;
+ b=ade8dgVk/QLtMdvzfHEj3EebA82ilil4wqag8aQYk8TBs2jVnr7PYCpkRECMbBvrjTfV5YSLN
+ PEO3hnbVTjMAeyNrCoshcrvmZa1ho7dU4F2NiVCiQv+mbLQ0DEfSQ5d
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-No feature change, convert them to atomic so we can update them without
-holding the LRU lock. There is no risk of overflow. The reader always
-compares and uses zero instead if the counter values are negative. It
-follows final consistency.
+Add a helper that resolves a stable lruvec for a folio under RCU
+without taking the lruvec lock.  It takes a folio directly so the
+lruvec lookup happens inside the RCU read-side critical section,
+which a lruvec-based interface cannot guarantee.
+
+No functional change.
 
 Tested-by: zhaozhengzhuo <zhaozhengzhuo@uniontech.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mm_inline.h |  6 ++----
- include/linux/mmzone.h    |  2 +-
- mm/vmscan.c               | 27 ++++++++++++---------------
- 3 files changed, 15 insertions(+), 20 deletions(-)
+ include/linux/memcontrol.h | 39 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
-diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
-index 597f013c8e04..f52f02e8e5be 100644
---- a/include/linux/mm_inline.h
-+++ b/include/linux/mm_inline.h
-@@ -265,11 +265,9 @@ static inline void lru_gen_update_size(struct lruvec *lruvec, struct folio *foli
- 	VM_WARN_ON_ONCE(old_gen == -1 && new_gen == -1);
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index 74110a324f9e..829ab776ab44 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -1535,6 +1535,45 @@ static inline void lruvec_lock_irq(struct lruvec *lruvec)
+ 	spin_lock_irq(&lruvec->lru_lock);
+ }
  
- 	if (old_gen >= 0)
--		WRITE_ONCE(lrugen->nr_pages[old_gen][type][zone],
--			   lrugen->nr_pages[old_gen][type][zone] - delta);
-+		atomic_long_sub(delta, &lrugen->nr_pages[old_gen][type][zone]);
- 	if (new_gen >= 0)
--		WRITE_ONCE(lrugen->nr_pages[new_gen][type][zone],
--			   lrugen->nr_pages[new_gen][type][zone] + delta);
-+		atomic_long_add(delta, &lrugen->nr_pages[new_gen][type][zone]);
- 
- 	/* addition */
- 	if (old_gen < 0) {
-diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
-index 3b96d6c7123b..09ce82fa841a 100644
---- a/include/linux/mmzone.h
-+++ b/include/linux/mmzone.h
-@@ -554,7 +554,7 @@ struct lru_gen_folio {
- 	/* the multi-gen LRU lists, lazily sorted on eviction */
- 	struct list_head folios[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
- 	/* the multi-gen LRU sizes, eventually consistent */
--	long nr_pages[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
-+	atomic_long_t nr_pages[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
- 	/* the exponential moving average of refaulted */
- 	unsigned long avg_refaulted[ANON_AND_FILE][MAX_NR_TIERS];
- 	/* the exponential moving average of evicted+protected */
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index daa7e37c2236..cab3ba14d20c 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -3495,8 +3495,7 @@ static void reset_batch_size(struct lru_gen_mm_walk *walk)
- 			continue;
- 
- 		walk->nr_pages[gen][type][zone] = 0;
--		WRITE_ONCE(lrugen->nr_pages[gen][type][zone],
--			   lrugen->nr_pages[gen][type][zone] + delta);
-+		atomic_long_add(delta, &lrugen->nr_pages[gen][type][zone]);
- 
- 		if (lru_gen_is_active(lruvec, gen))
- 			lru += LRU_ACTIVE;
-@@ -4116,11 +4115,8 @@ static bool inc_min_seq(struct lruvec *lruvec, int type, int swappiness)
- 				break;
- 		}
- 		flush_lru_batch(head, &batch_end, target_list);
--
--		WRITE_ONCE(lrugen->nr_pages[old_gen][type][zone],
--			   lrugen->nr_pages[old_gen][type][zone] - delta);
--		WRITE_ONCE(lrugen->nr_pages[target_gen][type][zone],
--			   lrugen->nr_pages[target_gen][type][zone] + delta);
-+		atomic_long_sub(delta, &lrugen->nr_pages[old_gen][type][zone]);
-+		atomic_long_add(delta, &lrugen->nr_pages[target_gen][type][zone]);
- 		if (!remaining)
- 			return false;
- 	}
-@@ -4225,8 +4221,8 @@ static bool inc_max_seq(struct lruvec *lruvec, unsigned long seq, int swappiness
- 	for (type = 0; type < ANON_AND_FILE; type++) {
- 		for (zone = 0; zone < MAX_NR_ZONES; zone++) {
- 			enum lru_list lru = type * LRU_INACTIVE_FILE;
--			long delta = lrugen->nr_pages[prev][type][zone] -
--				     lrugen->nr_pages[next][type][zone];
-+			long delta = atomic_long_read(&lrugen->nr_pages[prev][type][zone]) -
-+				     atomic_long_read(&lrugen->nr_pages[next][type][zone]);
- 
- 			if (!delta)
- 				continue;
-@@ -4344,7 +4340,8 @@ static unsigned long lruvec_evictable_size(struct lruvec *lruvec, int swappiness
- 		for (seq = min_seq[type]; seq <= max_seq; seq++) {
- 			gen = lru_gen_from_seq(seq);
- 			for (zone = 0; zone < MAX_NR_ZONES; zone++)
--				total += max(READ_ONCE(lrugen->nr_pages[gen][type][zone]), 0L);
-+				total += max(atomic_long_read(&lrugen->nr_pages[gen][type][zone]),
-+					     0L);
- 		}
- 	}
- 
-@@ -4764,7 +4761,7 @@ static void __lru_gen_reparent_memcg(struct lruvec *child_lruvec, struct lruvec
- 
- 	for (i = 0; i < get_nr_gens(child_lruvec, type); i++) {
- 		int gen = lru_gen_from_seq(child_lrugen->max_seq - i);
--		long nr_pages = child_lrugen->nr_pages[gen][type][zone];
-+		long nr_pages = atomic_long_read(&child_lrugen->nr_pages[gen][type][zone]);
- 		int child_lru_active = lru_gen_is_active(child_lruvec, gen) ? LRU_ACTIVE : 0;
- 		int parent_lru_active = lru_gen_is_active(parent_lruvec, gen) ? LRU_ACTIVE : 0;
- 
-@@ -4772,9 +4769,8 @@ static void __lru_gen_reparent_memcg(struct lruvec *child_lruvec, struct lruvec
- 		list_splice_tail_init(&child_lrugen->folios[gen][type][zone],
- 				      &parent_lrugen->folios[gen][type][zone]);
- 
--		WRITE_ONCE(child_lrugen->nr_pages[gen][type][zone], 0);
--		WRITE_ONCE(parent_lrugen->nr_pages[gen][type][zone],
--			   parent_lrugen->nr_pages[gen][type][zone] + nr_pages);
-+		atomic_long_set(&child_lrugen->nr_pages[gen][type][zone], 0);
-+		atomic_long_add(nr_pages, &parent_lrugen->nr_pages[gen][type][zone]);
- 
- 		if (lru_gen_is_active(child_lruvec, gen) != lru_gen_is_active(parent_lruvec, gen)) {
- 			__update_lru_size(child_lruvec, lru + child_lru_active, zone, -nr_pages);
-@@ -5859,7 +5855,8 @@ static int lru_gen_seq_show(struct seq_file *m, void *v)
- 			char mark = full && seq < min_seq[type] ? 'x' : ' ';
- 
- 			for (zone = 0; zone < MAX_NR_ZONES; zone++)
--				size += max(READ_ONCE(lrugen->nr_pages[gen][type][zone]), 0L);
-+				size += max(atomic_long_read(&lrugen->nr_pages[gen][type][zone]),
-+					    0L);
- 
- 			seq_printf(m, " %10lu%c", size, mark);
- 		}
++/**
++ * folio_lruvec_live_get - get a live lruvec for a folio under RCU
++ * @folio: the folio
++ *
++ * Computes @folio's lruvec and walks up to the nearest live ancestor
++ * if the folio's memcg is dying.  Paired with folio_lruvec_live_put().
++ * The result may be stale: RCU keeps it alive but does not pin @folio
++ * to it.  That is fine as the counters are fixed up on reparenting.
++ *
++ * Return: the live lruvec, with rcu_read_lock held.
++ */
++static inline struct lruvec *folio_lruvec_live_get(struct folio *folio)
++{
++#ifdef CONFIG_MEMCG
++	struct lruvec *lruvec;
++	struct pglist_data *pgdat;
++	struct mem_cgroup *memcg;
++
++	rcu_read_lock();
++	lruvec = folio_lruvec(folio);
++	pgdat = lruvec_pgdat(lruvec);
++	memcg = lruvec_memcg(lruvec);
++	while (unlikely(memcg && css_is_dying(&memcg->css))) {
++		memcg = parent_mem_cgroup(memcg);
++		lruvec = mem_cgroup_lruvec(memcg, pgdat);
++	}
++	return lruvec;
++#else
++	return folio_lruvec(folio);
++#endif
++}
++
++static inline void folio_lruvec_live_put(struct lruvec *lruvec)
++{
++#ifdef CONFIG_MEMCG
++	rcu_read_unlock();
++#endif
++}
++
+ static inline struct lruvec *lruvec_live_lock_irq(struct lruvec *lruvec)
+ {
+ #ifdef CONFIG_MEMCG
 
 -- 
 2.56.0
