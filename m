@@ -1,757 +1,114 @@
-From: Bruce Tsao <bruce.tsao@analog.com>
-Date: Sat, 17 Oct 2026 03:23:54 +0800
-Subject: [PATCH 2/2] iio: dac: add AD5413 driver
+From: David Heidelberg <david@ixit.cz>
+Date: Fri, 16 Oct 2026 21:37:39 +0200
+Subject: [PATCH] arm64: dts: qcom: sdm845-google: Configure qup_i2c2 pins
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261017-ad5413-upstream-v1-2-61f40c8fef25@analog.com>
-References: <20261017-ad5413-upstream-v1-0-61f40c8fef25@analog.com>
-In-Reply-To: <20261017-ad5413-upstream-v1-0-61f40c8fef25@analog.com>
-To: Jonathan Cameron <jic23@kernel.org>
-Cc: linux-iio@vger.kernel.org, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Bruce Tsao <bruce.tsao@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792178669; l=20982;
- i=bruce.tsao@analog.com; s=20261017; h=from:subject:message-id;
- bh=DRIHuqzWKTftARzoxaMxHCXgZl2g8rCsMeUeBUZJ9ak=;
- b=5STujDbeZGVUIW9WaqOMjBK664YhHd8vJvt6f6eehJlQc+jzifNFUJay5ksfkWLQveeDdotN0
- 54L8K8wxKrUCfOvUk4/YjNa+Wbn/pme0LYwlNBtfcUb9elVlmTsxXF3
-X-Developer-Key: i=bruce.tsao@analog.com; a=ed25519;
- pk=dT7qI1i91oYvnYmY2ljmdZ0ZQoCZIzrQ8hnsyjuBedg=
-X-Endpoint-Received: by B4 Relay for bruce.tsao@analog.com/20261017 with auth_id=1215
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261016-pixel3-i2c2-fix-v1-1-6a527d52c865@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4auEWTuQmUDQXqV0UeOoIyUNSVsE8
+ e7GuvwevH+DIlmlwM1skOWnRd+xghoDYX7GSVCHamDLnix5TLrKy6FyYBx1RWc7ZqG2Jd9DfaU
+ sdf4X74/L5dsvEj5nBvb9ABWz7ENzAAAA
+X-Change-ID: 20261016-pixel3-i2c2-fix-30922e18816b
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Selvaraj <foss@joelselvaraj.com>, 
+ Vinod Koul <vkoul@kernel.org>, Amit Pundir <amit.pundir@linaro.org>
+Cc: Sumit Semwal <sumit.semwal@linaro.org>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Marco Mattiolo <marco.mattiolo@hotmail.it>, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1863; i=david@ixit.cz;
+ h=from:subject:message-id; bh=8F2FDAtyMGjBlCfXnVch0dchQePJ+YFwNeu8d37XgO0=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0n0Ejd6G2KZGoA5pQ/H8YhwgaKY6lt5YR78vk
+ 35DF/EHVAqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatJ9BAAKCRBgAj/E00kg
+ cn8OEACZ5vPBQ90lPLqneAwW0b9lvU/3btUX4VBUkbHDBDHSCoJMZ4yMiTPq9/6EiPT17yg95je
+ VrEkfFZWpmC7s8YUd5uTEgVzFivHDhHGlm/gxhIFKrX1dlEUTsPRGn13m4kztbv6FDrVW5yFge/
+ 9B6iH6WD9+MKCeXZCaAs0acqp5pdyizySj14BA2KGtZyCfdEXdqOAXYDT8RqAbefTBuTc6nXKQZ
+ iU2fpPDBV4G3Rq9QiKS8I3LrNku155wRgWwhBwS5w6neAgm2JqF4UN7egPUA9VrOdkt7zMKnmS1
+ 8zggGXujDwrVf0GzYNyciMO0Nr62aJ4zZbCAg4pEQpwNY0AZUm7bkoKraLLg5rOF/XVtq4CHDvv
+ 5F8SCL8FobVN5yobyE4xJS2CjGMI0QPswjc1AhyyRJ4cMIKP//hh4EmqjLHkXDjHTuhJLwqAS95
+ 9HjlwHfk7LHoQUgpDeAVHlQ/XCAn9WWkFMZ6l8d32mJcsS+skvqCf6OXh5b8VwfTB+Bd3TGcqMX
+ wbk7kqw365OJ0dGvaMJdOz7IOmqQ1waexhAOpT2BcOPw3dHHWq75vinpjEDmi/+l8gGE81kGR8Q
+ VQs+Cu/+hShwwgxUtXv3Z7o12tQIX9TaQ9/x6zHrwVMTeTWrNMRgmhqyKc8u8v+LquHaC0Rc4F2
+ 8h+cKqpenjnJkrg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The AD5413 is a single-channel, 14-bit, voltage and current output
-digital-to-analog converter (DAC) with programmable output ranges,
-slew rate control and on-chip diagnostics.
+From: Marco Mattiolo <marco.mattiolo@hotmail.it>
 
-Add an IIO driver supporting the +-10.5 V voltage range and the
-0-24 mA current range, output enable, slew rate control and device
-reset over the SPI interface.
+Set drive strength and disable the pull on the touchscreen i2c pins by
+amending the qup_i2c2_default state from sdm845.dtsi, as the other QUP
+users on this board do, and drop the unused touchscreen_i2c_pins state
+that duplicated the pins with the gpio function.
 
-The device powers up with the SPI CRC enabled, so every frame carries
-a CRC-8 byte and the interface is configured for SPI mode 1. This lets
-the driver bring the device up directly from a cold boot without any
-pre-conditioning.
-
-Signed-off-by: Bruce Tsao <bruce.tsao@analog.com>
+Fixes: a678adbf2d22 ("arm64: dts: qcom: Add support for Pixel 3 and Pixel 3 XL")
+Suggested-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Marco Mattiolo <marco.mattiolo@hotmail.it>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/iio/dac/Kconfig  |  11 +
- drivers/iio/dac/Makefile |   1 +
- drivers/iio/dac/ad5413.c | 666 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 678 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/iio/dac/Kconfig b/drivers/iio/dac/Kconfig
-index e373885e7c7a..402370c67e87 100644
---- a/drivers/iio/dac/Kconfig
-+++ b/drivers/iio/dac/Kconfig
-@@ -91,6 +91,17 @@ config AD5380
- 	  To compile this driver as module choose M here: the module will be called
- 	  ad5380.
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+index f1379857e2742..b019b57502a1a 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+@@ -459,16 +459,21 @@ &pmi8998_charger {
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
  
-+config AD5413
-+	tristate "Analog Devices AD5413 DAC driver"
-+	depends on SPI_MASTER
-+	select CRC8
-+	help
-+	  Say yes here to build support for Analog Devices AD5413 single channel
-+	  Digital to Analog Converter.
-+
-+	  To compile this driver as a module, choose M here: the
-+	  module will be called ad5413.
-+
- config AD5421
- 	tristate "Analog Devices AD5421 DAC driver"
- 	depends on SPI
-diff --git a/drivers/iio/dac/Makefile b/drivers/iio/dac/Makefile
-index 2cd0fe23db9e..0157face1f67 100644
---- a/drivers/iio/dac/Makefile
-+++ b/drivers/iio/dac/Makefile
-@@ -10,6 +10,7 @@ obj-$(CONFIG_AD3552R_LIB) += ad3552r-common.o
- obj-$(CONFIG_AD3552R) += ad3552r.o
- obj-$(CONFIG_AD5360) += ad5360.o
- obj-$(CONFIG_AD5380) += ad5380.o
-+obj-$(CONFIG_AD5413) += ad5413.o
- obj-$(CONFIG_AD5421) += ad5421.o
- obj-$(CONFIG_AD5624R_SPI) += ad5624r_spi.o
- obj-$(CONFIG_AD5064) += ad5064.o
-diff --git a/drivers/iio/dac/ad5413.c b/drivers/iio/dac/ad5413.c
-new file mode 100644
-index 000000000000..96cce32fc640
---- /dev/null
-+++ b/drivers/iio/dac/ad5413.c
-@@ -0,0 +1,666 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * AD5413 Digital to analog converters driver
-+ *
-+ * Copyright 2026 Analog Devices Inc.
-+ */
-+#include <linux/bitfield.h>
-+#include <linux/crc8.h>
-+#include <linux/delay.h>
-+#include <linux/iio/iio.h>
-+#include <linux/iopoll.h>
-+#include <linux/math64.h>
-+#include <linux/module.h>
-+#include <linux/property.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/reset.h>
-+#include <linux/spi/spi.h>
-+#include <linux/units.h>
-+#include <linux/util_macros.h>
-+
-+/* AD5413 registers definition */
-+#define AD5413_REG_NOP 0x00
-+#define AD5413_REG_DAC_INPUT 0x01
-+#define AD5413_REG_DAC_OUTPUT 0x02
-+#define AD5413_REG_CLEAR_CODE 0x03
-+#define AD5413_REG_USER_GAIN 0x04
-+#define AD5413_REG_USER_OFFSET 0x05
-+#define AD5413_REG_DAC_CONFIG 0x06
-+#define AD5413_REG_DAC_CONFIG_SR_STEP_MSK GENMASK(15, 13)
-+#define AD5413_REG_DAC_CONFIG_SR_CLOCK_MSK GENMASK(12, 9)
-+#define AD5413_REG_DAC_CONFIG_SR_EN_MSK BIT(8)
-+#define AD5413_REG_DAC_CONFIG_RSET_EXT_EN_MSK BIT(7)
-+#define AD5413_REG_DAC_CONFIG_OUT_EN_MSK BIT(6)
-+#define AD5413_REG_DAC_CONFIG_INT_EN_MSK BIT(5)
-+#define AD5413_REG_DAC_CONFIG_OVRNG_EN_MSK BIT(4)
-+#define AD5413_REG_DAC_CONFIG_RANGE_MSK GENMASK(3, 0)
-+#define AD5413_REG_SW_LDAC 0x07
-+#define AD5413_REG_KEY 0x08
-+#define AD5413_REG_KEY_REG_ADDR_MASK GENMASK(20, 16)
-+#define AD5413_REG_KEY_CODE_MASK GENMASK(15, 0)
-+#define AD5413_REG_GP_CONFIG1 0x09
-+#define AD5413_REG_GP_CONFIG2 0x0A
-+#define AD5413_REG_DIGITAL_DIAG_CONFIG 0x10
-+#define AD5413_REG_FAULT_PIN_CONFIG 0x12
-+#define AD5413_REG_TWO_STAGE_READBACK_SELECT 0x13
-+#define AD5413_REG_DIGITAL_DIAG_RESULTS 0x14
-+#define AD5413_REG_DIGITAL_DIAG_CAL_MEM_UNREFRESHED_MSK BIT(15)
-+#define AD5413_REG_DIGITAL_DIAG_SLEW_BUSY_MSK BIT(14)
-+#define AD5413_REG_ANALOG_DIAG_RESULTS 0x15
-+#define AD5413_REG_STATUS 0x16
-+#define AD5413_REG_CHIP_ID 0x17
-+#define AD5413_REG_FREQ_MONITOR 0x18
-+#define AD5413_REG_DEVICE_ID_3 0x1C
-+
-+/* Special Key Codes (bits[15:0]) */
-+#define AD5413_REG_KEY_CODE_RESET_1 0x15FA
-+#define AD5413_REG_KEY_CODE_RESET_2 0xAF51
-+#define AD5413_REG_KEY_CODE_CALIB_MEM_REFRESH 0xFCBA
-+
-+/* DIGITAL_DIAG_RESULTS Register (Addr = 0x14) Busy Flags */
-+
-+#define AD5413_WR_FLAG_MSK(x) (0x80u | ((x) & 0x1F))
-+
-+/* CRC-8 polynomial x^8 + x^2 + x + 1, enabled by default on the device */
-+#define AD5413_CRC8_POLY 0x07
-+
-+#define AD5413_FULL_SCALE_MICRO (16383ULL * MICRO)
-+
-+struct ad5413_range {
-+	int reg;
-+	int min;
-+	int max;
+ &qupv3_id_1 {
+ 	status = "okay";
+ };
+ 
++&qup_i2c2_default {
++	drive-strength = <2>;
++	bias-disable;
 +};
 +
-+struct ad5413_state {
-+	struct spi_device *spi;
-+	struct regulator_bulk_data supplies[3];
-+	struct mutex lock; /* Protects all register access via SPI */
-+	const struct ad5413_range *out_range;
-+	unsigned int slew_time;
-+	bool pwr_down;
-+	u8 crc8_tbl[CRC8_TABLE_SIZE];
-+	__be32 d32[3] __aligned(IIO_DMA_MINALIGN);
-+};
-+
-+/*
-+ * Output ranges corresponding to DAC_CONFIG[3:0] bits.
-+ * Defined by the following symbolic identifiers:
-+ *   AD5413_RANGE_PLUSMINUS_10_5V - ±10.5 V voltage range
-+ *   AD5413_RANGE_0MA_24MA        - 0 mA to 24 mA current range
-+ */
-+enum ad5413_output_range {
-+	AD5413_RANGE_PLUSMINUS_10_5V = 0x3,
-+	AD5413_RANGE_0MA_24MA = 0x9,
-+};
-+
-+static const struct ad5413_range ad5413_voltage_range[] = { {
-+	.reg = AD5413_RANGE_PLUSMINUS_10_5V,
-+	.min = -10500000,
-+	.max = 10500000,
-+} };
-+
-+static const struct ad5413_range ad5413_current_range[] = { {
-+	.reg = AD5413_RANGE_0MA_24MA,
-+	.min = 0,
-+	.max = 24000,
-+} };
-+
-+static const int ad5413_sr_clk[16] = {
-+	240000, 200000, 150000, 128000, 64000, 32000, 16000, 8000,
-+	4000,	2000,	1000,	512,	256,   128,   64,    16,
-+};
-+
-+static const int ad5413_sr_step[8] = {
-+	4, 12, 64, 120, 256, 500, 1820, 2048,
-+};
-+
-+static int ad5413_spi_reg_read(struct ad5413_state *st, unsigned int addr,
-+			       u16 *val)
-+{
-+	struct spi_transfer t[] = {
-+		{
-+			.tx_buf = &st->d32[0],
-+			.len = 4,
-+			.cs_change = 1,
-+		},
-+		{
-+			.tx_buf = &st->d32[1],
-+			.rx_buf = &st->d32[2],
-+			.len = 4,
-+		},
-+	};
-+	u8 sel[3], nop[3];
-+	int ret;
-+
-+	/* Two-stage readback: select the register to read back. */
-+	sel[0] = AD5413_WR_FLAG_MSK(AD5413_REG_TWO_STAGE_READBACK_SELECT);
-+	sel[1] = 0;
-+	sel[2] = addr;
-+	st->d32[0] = cpu_to_be32((sel[0] << 24) | (sel[1] << 16) |
-+				 (sel[2] << 8) |
-+				 crc8(st->crc8_tbl, sel, sizeof(sel), 0));
-+
-+	/* NOP frame clocks the selected register contents out on SDO. */
-+	nop[0] = AD5413_WR_FLAG_MSK(AD5413_REG_NOP);
-+	nop[1] = 0;
-+	nop[2] = 0;
-+	st->d32[1] = cpu_to_be32((nop[0] << 24) | (nop[1] << 16) |
-+				 (nop[2] << 8) |
-+				 crc8(st->crc8_tbl, nop, sizeof(nop), 0));
-+
-+	ret = spi_sync_transfer(st->spi, t, ARRAY_SIZE(t));
-+	if (ret < 0)
-+		return ret;
-+
-+	/*
-+	 * The readback CRC covers the live FAULT pin status bit, which can
-+	 * toggle between capture and clock-out, so it is not validated here.
-+	 */
-+	*val = be32_to_cpu(st->d32[2]) >> 8;
-+
-+	return 0;
-+}
-+
-+static int ad5413_spi_reg_write(struct ad5413_state *st, unsigned int addr,
-+				unsigned int val)
-+{
-+	u8 buf[3] = { };
-+
-+	buf[0] = AD5413_WR_FLAG_MSK(addr);
-+	buf[1] = val >> 8;
-+	buf[2] = val;
-+
-+	st->d32[0] = cpu_to_be32((buf[0] << 24) | (buf[1] << 16) |
-+				 (buf[2] << 8) |
-+				 crc8(st->crc8_tbl, buf, sizeof(buf), 0));
-+
-+	return spi_write(st->spi, &st->d32[0], sizeof(st->d32[0]));
-+}
-+
-+static int ad5413_spi_write_mask(struct ad5413_state *st, unsigned int addr,
-+				 unsigned long mask, unsigned int val)
-+{
-+	u16 regval;
-+	int ret;
-+
-+	ret = ad5413_spi_reg_read(st, addr, &regval);
-+	if (ret)
-+		return ret;
-+
-+	return ad5413_spi_reg_write(st, addr, (regval & ~mask) | val);
-+}
-+
-+static int ad5413_wait_for_task_complete(struct ad5413_state *st,
-+					 unsigned int reg, unsigned int mask)
-+{
-+	u16 val;
-+	int ret, err;
-+
-+	err = read_poll_timeout(ad5413_spi_reg_read, ret,
-+				ret || !(val & mask),
-+				100, 1000, false, st, reg, &val);
-+	if (ret)
-+		return ret;
-+
-+	if (err) {
-+		dev_err(&st->spi->dev,
-+			"Timeout waiting for bit 0x%x to clear in reg 0x%x\n",
-+			mask, reg);
-+		return err;
-+	}
-+
-+	return 0;
-+}
-+
-+static int ad5413_calib_mem_refresh(struct ad5413_state *st)
-+{
-+	int ret;
-+
-+	ret = ad5413_spi_reg_write(st, AD5413_REG_KEY,
-+				   AD5413_REG_KEY_CODE_CALIB_MEM_REFRESH);
-+	if (ret < 0)
-+		return dev_err_probe(&st->spi->dev, ret,
-+				     "Failed to initiate a calibration memory refresh\n");
-+
-+	/* Wait to allow time for the internal calibrations to complete */
-+	return ad5413_wait_for_task_complete(st,
-+					     AD5413_REG_DIGITAL_DIAG_RESULTS,
-+					     AD5413_REG_DIGITAL_DIAG_CAL_MEM_UNREFRESHED_MSK);
-+}
-+
-+static int ad5413_slew_rate_set(struct ad5413_state *st,
-+				unsigned int sr_clk_idx,
-+				unsigned int sr_step_idx)
-+{
-+	unsigned int mode;
-+	unsigned long mask;
-+	int ret;
-+
-+	mask = AD5413_REG_DAC_CONFIG_SR_EN_MSK |
-+	       AD5413_REG_DAC_CONFIG_SR_CLOCK_MSK |
-+	       AD5413_REG_DAC_CONFIG_SR_STEP_MSK;
-+	mode = FIELD_PREP(AD5413_REG_DAC_CONFIG_SR_EN_MSK, 1) |
-+	       FIELD_PREP(AD5413_REG_DAC_CONFIG_SR_STEP_MSK, sr_step_idx) |
-+	       FIELD_PREP(AD5413_REG_DAC_CONFIG_SR_CLOCK_MSK, sr_clk_idx);
-+
-+	ret = ad5413_spi_write_mask(st, AD5413_REG_DAC_CONFIG, mask, mode);
-+	if (ret < 0)
-+		return ret;
-+
-+	/* Wait to allow time for the internal calibrations to complete */
-+	return ad5413_wait_for_task_complete(st,
-+					     AD5413_REG_DIGITAL_DIAG_RESULTS,
-+					     AD5413_REG_DIGITAL_DIAG_SLEW_BUSY_MSK);
-+}
-+
-+static int ad5413_slew_rate_config(struct ad5413_state *st)
-+{
-+	unsigned int sr_clk_idx = 0, sr_step_idx = 0;
-+	int i, res;
-+	s64 diff_new, diff_old = S64_MAX;
-+	u64 sr_step, calc_slew_time;
-+
-+	/*
-+	 * The slew time can be determined by using the formula:
-+	 * Slew Time = (Full Scale Out / (Step Size x Update Clk Freq))
-+	 * where Slew time is expressed in microseconds
-+	 * Given the desired slew time, the following algorithm determines the
-+	 * best match for the step size and the update clock frequency.
-+	 */
-+	for (i = 0; i < ARRAY_SIZE(ad5413_sr_clk); i++) {
-+		/*
-+		 * Go through each valid update clock freq and determine a raw
-+		 * value for the step size by using the formula:
-+		 * Step Size = Full Scale Out / (Update Clk Freq * Slew Time)
-+		 */
-+		sr_step = div64_u64(AD5413_FULL_SCALE_MICRO,
-+				    (u64)ad5413_sr_clk[i] * st->slew_time);
-+		/*
-+		 * After a raw value for step size was determined, find the
-+		 * closest valid match
-+		 */
-+		res = find_closest(sr_step, ad5413_sr_step, ARRAY_SIZE(ad5413_sr_step));
-+
-+		/* Calculate the slew time */
-+		calc_slew_time = div_u64(AD5413_FULL_SCALE_MICRO,
-+					 ad5413_sr_step[res] * ad5413_sr_clk[i]);
-+		/*
-+		 * Determine with how many microseconds the calculated slew time
-+		 * is different from the desired slew time and store the diff
-+		 * for the next iteration
-+		 */
-+		diff_new = abs(st->slew_time - calc_slew_time);
-+		if (diff_new < diff_old) {
-+			diff_old = diff_new;
-+			sr_clk_idx = i;
-+			sr_step_idx = res;
-+		}
-+	}
-+
-+	return ad5413_slew_rate_set(st, sr_clk_idx, sr_step_idx);
-+}
-+
-+static int ad5413_set_out_range(struct ad5413_state *st, int range)
-+{
-+	int ret;
-+
-+	ret = ad5413_spi_write_mask(st,
-+				    AD5413_REG_DAC_CONFIG,
-+				    AD5413_REG_DAC_CONFIG_RANGE_MSK,
-+				    FIELD_PREP(AD5413_REG_DAC_CONFIG_RANGE_MSK,
-+					       range));
-+	if (ret < 0)
-+		return ret;
-+
-+	/* Wait to allow time for the internal calibrations to complete */
-+	return ad5413_wait_for_task_complete(st,
-+					     AD5413_REG_DIGITAL_DIAG_RESULTS,
-+					     AD5413_REG_DIGITAL_DIAG_CAL_MEM_UNREFRESHED_MSK);
-+}
-+
-+static int ad5413_internal_buffers_en(struct ad5413_state *st, bool enable)
-+{
-+	int ret;
-+
-+	ret = ad5413_spi_write_mask(st,
-+				    AD5413_REG_DAC_CONFIG,
-+				    AD5413_REG_DAC_CONFIG_INT_EN_MSK,
-+				    FIELD_PREP(AD5413_REG_DAC_CONFIG_INT_EN_MSK,
-+					       enable));
-+	if (ret < 0)
-+		return ret;
-+
-+	/* Wait to allow time for the internal calibrations to complete */
-+	return ad5413_wait_for_task_complete(st,
-+					     AD5413_REG_DIGITAL_DIAG_RESULTS,
-+					     AD5413_REG_DIGITAL_DIAG_CAL_MEM_UNREFRESHED_MSK);
-+}
-+
-+static int ad5413_reg_access(struct iio_dev *indio_dev, unsigned int reg,
-+			     unsigned int writeval, unsigned int *readval)
-+{
-+	struct ad5413_state *st = iio_priv(indio_dev);
-+	u16 regval;
-+	int ret;
-+
-+	guard(mutex)(&st->lock);
-+	if (readval) {
-+		ret = ad5413_spi_reg_read(st, reg, &regval);
-+		if (ret)
-+			return ret;
-+
-+		*readval = regval;
-+		return 0;
-+	}
-+
-+	return ad5413_spi_reg_write(st, reg, writeval);
-+}
-+
-+static int ad5413_read_raw(struct iio_dev *indio_dev,
-+			   struct iio_chan_spec const *chan, int *val,
-+			   int *val2, long info)
-+{
-+	struct ad5413_state *st = iio_priv(indio_dev);
-+	int max, min, ret;
-+	u16 regval;
-+
-+	switch (info) {
-+	case IIO_CHAN_INFO_RAW: {
-+		guard(mutex)(&st->lock);
-+		ret = ad5413_spi_reg_read(st, AD5413_REG_DAC_INPUT, &regval);
-+		if (ret)
-+			return ret;
-+
-+		/* 14-bit DAC data is in bits [15:2] of the register. */
-+		*val = regval >> 2;
-+		return IIO_VAL_INT;
-+	}
-+	case IIO_CHAN_INFO_SCALE:
-+		min = st->out_range->min;
-+		max = st->out_range->max;
-+		*val = (max - min) / 1000;
-+		*val2 = 14;
-+		return IIO_VAL_FRACTIONAL_LOG2;
-+	case IIO_CHAN_INFO_OFFSET:
-+		min = st->out_range->min;
-+		max = st->out_range->max;
-+		*val = div_s64((s64)min * BIT(14), max - min);
-+		return IIO_VAL_INT;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int ad5413_write_raw(struct iio_dev *indio_dev,
-+			    struct iio_chan_spec const *chan, int val, int val2,
-+			    long info)
-+{
-+	struct ad5413_state *st = iio_priv(indio_dev);
-+	int ret;
-+
-+	switch (info) {
-+	case IIO_CHAN_INFO_RAW: {
-+		guard(mutex)(&st->lock);
-+		/* 14-bit DAC data is in bits [15:2] of the register. */
-+		ret = ad5413_spi_reg_write(st, AD5413_REG_DAC_INPUT, val << 2);
-+		return ret;
-+	}
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static ssize_t ad5413_read_powerdown(struct iio_dev *indio_dev, uintptr_t priv,
-+				     const struct iio_chan_spec *chan,
-+				     char *buf)
-+{
-+	struct ad5413_state *st = iio_priv(indio_dev);
-+
-+	return sysfs_emit(buf, "%d\n", st->pwr_down);
-+}
-+
-+static ssize_t ad5413_write_powerdown(struct iio_dev *indio_dev, uintptr_t priv,
-+				      struct iio_chan_spec const *chan,
-+				      const char *buf, size_t len)
-+{
-+	struct ad5413_state *st = iio_priv(indio_dev);
-+	bool pwr_down;
-+	unsigned int dac_config_mode, val;
-+	unsigned long dac_config_msk;
-+	int ret;
-+
-+	ret = kstrtobool(buf, &pwr_down);
-+	if (ret)
-+		return ret;
-+
-+	val = pwr_down ? 0 : 1;
-+
-+	dac_config_mode = FIELD_PREP(AD5413_REG_DAC_CONFIG_OUT_EN_MSK, (val)) |
-+			  FIELD_PREP(AD5413_REG_DAC_CONFIG_INT_EN_MSK, (val));
-+	dac_config_msk = AD5413_REG_DAC_CONFIG_OUT_EN_MSK |
-+			 AD5413_REG_DAC_CONFIG_INT_EN_MSK;
-+
-+	guard(mutex)(&st->lock);
-+	ret = ad5413_spi_write_mask(st, AD5413_REG_DAC_CONFIG, dac_config_msk,
-+				    dac_config_mode);
-+	if (ret < 0)
-+		return ret;
-+
-+	st->pwr_down = pwr_down;
-+
-+	return len;
-+}
-+
-+static const struct iio_info ad5413_info = {
-+	.read_raw = ad5413_read_raw,
-+	.write_raw = ad5413_write_raw,
-+	.debugfs_reg_access = &ad5413_reg_access,
-+};
-+
-+static const struct iio_chan_spec_ext_info ad5413_ext_info[] = {
-+	{
-+		.name = "powerdown",
-+		.read = ad5413_read_powerdown,
-+		.write = ad5413_write_powerdown,
-+		.shared = IIO_SHARED_BY_TYPE,
-+	},
-+	{ }
-+};
-+
-+#define AD5413_DAC_CHAN(_chan_type)                                    \
-+	{                                                              \
-+		.type = (_chan_type),                                  \
-+		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE) | \
-+					    BIT(IIO_CHAN_INFO_OFFSET), \
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),          \
-+		.indexed = 1,                                          \
-+		.output = 1,                                           \
-+		.ext_info = ad5413_ext_info,                           \
-+	}
-+
-+static const struct iio_chan_spec ad5413_voltage_ch[] = {
-+	AD5413_DAC_CHAN(IIO_VOLTAGE),
-+};
-+
-+static const struct iio_chan_spec ad5413_current_ch[] = {
-+	AD5413_DAC_CHAN(IIO_CURRENT),
-+};
-+
-+static int ad5413_parse_fw(struct ad5413_state *st)
-+{
-+	struct device *dev = &st->spi->dev;
-+	int ret;
-+
-+	if (device_property_read_bool(dev, "adi,chan-current-mode"))
-+		st->out_range = &ad5413_current_range[0];
-+	else
-+		st->out_range = &ad5413_voltage_range[0];
-+
-+	st->slew_time = 0;
-+	if (device_property_present(dev, "adi,slew-time-us")) {
-+		ret = device_property_read_u32(dev,
-+					       "adi,slew-time-us",
-+					       &st->slew_time);
-+		if (ret)
-+			return dev_err_probe(dev, ret, "Failed to read adi,slew-time-us\n");
-+
-+		if (st->slew_time > 1 * MICRO)
-+			return dev_err_probe(dev, -EINVAL, "adi,slew-time-us out of range\n");
-+	}
-+
-+	return 0;
-+}
-+
-+static int ad5413_init(struct ad5413_state *st)
-+{
-+	struct reset_control *reset;
-+	u16 regval;
-+	int ret;
-+
-+	reset = devm_reset_control_get_optional_exclusive(&st->spi->dev, NULL);
-+	if (IS_ERR(reset))
-+		return PTR_ERR(reset);
-+
-+	if (reset) {
-+		/* Hard reset via the reset controller */
-+		ret = reset_control_assert(reset);
-+		if (ret)
-+			return ret;
-+
-+		fsleep(100);
-+
-+		ret = reset_control_deassert(reset);
-+		if (ret)
-+			return ret;
-+
-+		fsleep(100);
-+	} else {
-+		/*
-+		 * CRC is enabled by default after power-on/reset. The SPI
-+		 * helpers always append the CRC byte, so the device accepts
-+		 * these soft-reset key frames without any bootstrap step.
-+		 */
-+		ret = ad5413_spi_reg_write(st, AD5413_REG_KEY,
-+					   AD5413_REG_KEY_CODE_RESET_1);
-+		if (ret)
-+			return ret;
-+
-+		ret = ad5413_spi_reg_write(st, AD5413_REG_KEY,
-+					   AD5413_REG_KEY_CODE_RESET_2);
-+		if (ret)
-+			return ret;
-+
-+		fsleep(100);
-+	}
-+
-+	ret = ad5413_calib_mem_refresh(st);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = ad5413_spi_reg_read(st, AD5413_REG_DIGITAL_DIAG_RESULTS, &regval);
-+	if (ret)
-+		return ret;
-+
-+	ret = ad5413_spi_reg_write(st, AD5413_REG_DIGITAL_DIAG_RESULTS, regval);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = ad5413_set_out_range(st, st->out_range->reg);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (st->slew_time) {
-+		ret = ad5413_slew_rate_config(st);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	ret = ad5413_internal_buffers_en(st, 1);
-+	if (ret < 0)
-+		return ret;
-+
-+	return ad5413_spi_write_mask(st,
-+				    AD5413_REG_DAC_CONFIG,
-+				    AD5413_REG_DAC_CONFIG_OUT_EN_MSK,
-+				    FIELD_PREP(AD5413_REG_DAC_CONFIG_OUT_EN_MSK, 1));
-+}
-+
-+static const char * const ad5413_supply_names[] = {
-+	"avdd",
-+	"dvdd",
-+	"avss",
-+};
-+
-+static int ad5413_probe(struct spi_device *spi)
-+{
-+	struct ad5413_state *st;
-+	struct iio_dev *indio_dev;
-+	int ret;
-+
-+	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
-+	if (!indio_dev)
-+		return -ENOMEM;
-+
-+	st = iio_priv(indio_dev);
-+
-+	st->spi = spi;
-+
-+	ret = devm_mutex_init(&spi->dev, &st->lock);
-+	if (ret)
-+		return ret;
-+
-+	crc8_populate_msb(st->crc8_tbl, AD5413_CRC8_POLY);
-+
-+	indio_dev->name = "ad5413";
-+	indio_dev->info = &ad5413_info;
-+	indio_dev->modes = INDIO_DIRECT_MODE;
-+	indio_dev->num_channels = 1;
-+
-+	ret = ad5413_parse_fw(st);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (st->out_range->reg == AD5413_RANGE_PLUSMINUS_10_5V)
-+		indio_dev->channels = ad5413_voltage_ch;
-+	else
-+		indio_dev->channels = ad5413_current_ch;
-+
-+	ret = devm_regulator_bulk_get_enable(&spi->dev,
-+					     ARRAY_SIZE(ad5413_supply_names),
-+					     ad5413_supply_names);
-+	if (ret)
-+		return dev_err_probe(&spi->dev, ret, "failed to enable supplies\n");
-+
-+	ret = ad5413_init(st);
-+	if (ret < 0)
-+		return dev_err_probe(&spi->dev, ret, "AD5413 init failed\n");
-+
-+	return devm_iio_device_register(&spi->dev, indio_dev);
-+}
-+
-+static const struct spi_device_id ad5413_id[] = {
-+	{ .name = "ad5413" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(spi, ad5413_id);
-+
-+static const struct of_device_id ad5413_of_match[] = {
-+	{ .compatible = "adi,ad5413" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, ad5413_of_match);
-+
-+static struct spi_driver ad5413_driver = {
-+	.driver = {
-+		.name = KBUILD_MODNAME,
-+		.of_match_table = ad5413_of_match,
-+	},
-+	.probe = ad5413_probe,
-+	.id_table = ad5413_id,
-+};
-+module_spi_driver(ad5413_driver);
-+
-+MODULE_AUTHOR("Bruce Tsao <bruce.tsao@analog.com>");
-+MODULE_DESCRIPTION("Analog Devices AD5413 DAC");
-+MODULE_LICENSE("GPL");
+ &qup_uart9_rx {
+ 	drive-strength = <2>;
+ 	bias-pull-up;
+ };
+ 
+ &qup_uart9_tx {
+ 	drive-strength = <2>;
+ 	bias-disable;
+@@ -510,23 +515,16 @@ touchscreen_reset: ts-reset-state {
+ 	};
+ 
+ 	touchscreen_pins: ts-pins-gpio-state {
+ 		pins = "gpio125";
+ 		function = "gpio";
+ 		drive-strength = <2>;
+ 		bias-disable;
+ 	};
+-
+-	touchscreen_i2c_pins: qup-i2c2-gpio-state {
+-		pins = "gpio27", "gpio28";
+-		function = "gpio";
+-		drive-strength = <2>;
+-		bias-disable;
+-	};
+ };
+ 
+ &uart6 {
+ 	pinctrl-0 = <&qup_uart6_4pin>;
+ 
+ 	status = "okay";
+ 
+ 	bluetooth {
 
--- 
-2.53.0
+---
+base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
+change-id: 20261016-pixel3-i2c2-fix-30922e18816b
+
+Best regards,
+--  
+David Heidelberg <david@ixit.cz>
 
