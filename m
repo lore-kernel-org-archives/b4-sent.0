@@ -1,138 +1,125 @@
 From: George Neacsu <geocausa@gmail.com>
-Date: Fri, 16 Oct 2026 11:28:01 +0100
-Subject: [PATCH v2] media: i2c: vd55g1: fix VD55G0 streaming below 900 Mbps
+Subject: [PATCH RFC v2 0/4] phy: qcom-mipi-csi2: C-PHY for X1E80100
+Date: Fri, 16 Oct 2026 11:57:47 +0100
+Message-Id: <20261016-x1e-cphy-rfc-v2-0-377654253193@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-vd55g0-sp11-fix-v2-1-aa08b4b8bbfc@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WS0WqbMQyFXyX81/uHZFu21au9x+iFJEvtD2vTJ
- VnYKHn3OSkMUtilBN859tF5X45+2Py4POzel4Oft+O2f51D+rJb7Flen3zdxpyXBKkiYF3Pg+g
- J1uMb4hrb77WCWi1CrDiWSb0dfK5vit8fP+aD//w1hU8fy+VNTvY8ZR92o5RWgnA0QbAYCJKxu
- iUF5lwLg2KRxjfdfxQANjOqGq2yKIDXpsPAKGFhwilq2rDeU0ySBkd0rN0VGyBQ7qNDFKWSuid
- t2rjfU96weU4uxljNJMyCvQlRMgHIAJ2GSL6neliJRtNSLGdJOAMaWtAw87CcsKvTjO2eoqTDq
- XKB+SAycIpSBqaOGKxcW1XLiHZPGSjnAuw5wyjaW9HcII2ZCTVPVhSmbE731JjuUQmQ+rRViYx
- XOw91n1+bR5WYacQnioxVoRWYZ0nAM7/oSqTK0LtI01RHbvqJQvNSJAcjFHGXkQz7oC5YGgzUg
- eKU8UqpHH21/cvLdnrY1RSlp4iWNbJ47wrWmRFn+q3NZwabBubl2rPn7XjaH/7cinzGW9H+29k
- zrrjOEhSd9x89+renF9l+fJ3Gy+PlcvkLwO3fkhYDAAA=
-X-Change-ID: 20261016-vd55g0-sp11-fix-60bc64a59b1d
-To: sylvain.petinot@foss.st.com, pm@petermarshall.ca, 
- benjamin.mugnier@foss.st.com
-Cc: sakari.ailus@linux.intel.com, linux-kernel@vger.kernel.org, 
- mchehab@kernel.org, linux-media@vger.kernel.org, fqwqf@fqwqf.xyz, 
- lsa.uz@pm.me, George Neacsu <geocausa@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NzQrCMBCEX6Xs2ZXdqLXtSRB8AK/SQ4hJs2B/S
+ KS0lL67IWeP3wzzzQbRBrERmmKDYGeJMg4J1KEA4/XQWZR3YlCkSia+4MIWzeRXDM6gIq5KMhX
+ VVwdpMgXrZMm6Fzwfd2hT6CV+x7Dmi5lz9d82MxKyOzlda1efSd+6XsvnaMYe2n3ff0Lqm8utA
+ AAA
+X-Change-ID: 20261015-x1e-cphy-rfc-201860c8097f
+To: Bryan O'Donoghue <bod@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
+ David Heidelberg <david@ixit.cz>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Nihal Kumar Gupta <nihal.gupta@oss.qualcomm.com>, 
+ Vikram Sharma <vikram.sharma@oss.qualcomm.com>, 
+ Suresh Vankadara <svankada@qti.qualcomm.com>, tjose@qti.qualcomm.com, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, linux-phy@lists.infradead.org, 
+ linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792146480; l=4701;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792148268; l=4310;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=m1dF/plKqq+CFSvKhg0SOvOc3T7aD4+VelQA4735/cg=;
- b=TbZ7Qoi11fjGV4j+vRAi/d6A7Wf1NUBg0naMFVaTcrA43rDuNcaaTb+TNf6qmN7IwKvZ39dMY
- U2eRnG4f0SzBgFhIFRRUNZkjZh0MIkg2nV9tSvcS2pIW1jiqdJITOzq
+ bh=mWY/dYRiPPhwty495pNDEdZSx3UaZ70xbYzKLPFF9Ww=;
+ b=Skn8MgLc4iM3u5UsmP2QoqembU3enfAbjHaSrNH6LcnctfFiIvrFwJzO5Qtumiw9d3HgGGOsg
+ +rpoSP2o0dUCf0+u3k7FYp/PtjnJqZXbXS65PKXG3fpHquK19rSnmqy
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a Surface Pro 11 (Snapdragon X Elite, CAMSS) the VD55G0 IR sensor
-(cut 1, revision 0x1111) runs one D-PHY lane at 840 Mbps. With the
-VD55G0 support as posted, the sensor accepts the start command and
-reports STREAMING, but it never sends a frame and the stop command
-never completes.
+Hi Bryan, Vinod, David,
 
-The minimum line length is the VD55G1 value, 1128 pixels. ST's
-reference vd55g0 driver uses 1200 below 900 Mbps and 1128 above. At
-840 Mbps the sensor stalls with 1128 and streams with 1200, so use 1200
-for the VD55G0 below 900 Mbps.
+The Snapdragon Surface Pro 11's front camera, an IMX681, is on CSIPHY2
+over one MIPI C-PHY trio. linux-next has the CSI2 PHY driver and the CAMSS
+PHY API path, and C-PHY is the piece still missing for this camera. This
+series adds the PHY side:
 
-With this change the sensor streams 644x604 Y10 at 61.6 fps, the
-diagonal grey-scale test pattern comes out correct, and stop completes.
-The built-in 2.11 cut1 patch is used unchanged.
+1. PHY_MODE_MIPI_CPHY and C-PHY configuration options in the generic PHY
+   framework, because CAMSS had no way to ask the PHY for C-PHY;
+2. C-PHY configuration helpers, the analogue of
+   phy_mipi_dphy_get_default_config_for_hsclk();
+3. a rename of the D-PHY init sequence in qcom-mipi-csi2;
+4. C-PHY in qcom-mipi-csi2, with the X1E80100 sequence taken from
+   Qualcomm's GPL-2.0 downstream header.
 
-Link: https://github.com/STMicroelectronics/vd55g0-linux-driver/blob/a05627b0f6d8775aa54b6fa306e91f425f2cbf9e/vd55g0.c
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: George Neacsu <geocausa@gmail.com>
----
-This is an incremental fix for Peter's unmerged VD55G0 support (v2,
-patch 11/11), on top of Jizhou's register-width fix (v2). It does not
-apply to media-next on its own.
+v2 is on next-20261015 and applies there on its own. The two CAMSS
+patches from v1 (the CSID 680 PHY type select, and C-PHY in
+csiphy_stream_on()) build on David's "media: camss: Add support for C-PHY
+configuration on Qualcomm platforms" v9, which is not in linux-next yet,
+so I have left them out and will send them on top of David's series:
+https://lore.kernel.org/all/20260617-qcom-cphy-v9-0-83da8a8e4e44@ixit.cz/
 
-Prerequisites:
-https://lore.kernel.org/all/20260918221705.323510-1-pm@petermarshall.ca/
-(and Jizhou Tong's "[PATCH v2] media: i2c: vd55g1: correct VD55G0
-register access widths", 12 October)
+Tested on the Surface Pro 11 (X1E80100) with David's v9 and those two
+patches on top, through the upstream stack: CSI2 PHY nodes as in Bryan's
+x1e80100 camera DT v7, and CAMSS in PHY API mode, with raw capture over
+RDI:
+- front IMX681 (Sergey's and Andre's v8 driver plus its C-PHY RFC) on
+  CSIPHY2, one C-PHY trio at 2.4 Gsym/s: 3844x2640 at 30 fps, and the
+  sensor's colour bars are byte-identical to the pattern captured with an
+  out-of-tree driver. The settle count is now computed (28 at a 400 MHz
+  timer), and any value from 6 to 48 gives the same frames;
+- rear OV13858 on CSIPHY1, four D-PHY lanes: 29.9 fps with the same
+  settle count as before the series.
+The kernel was 7.1.5, with linux-next's CAMSS and CSI2 PHY built as
+modules; the test build needed shims only for API differences.
 
-Benjamin, I know you'd rather see a separate vd55g0 driver (Sergey's).
-ST's downstream driver also uses a 1200-pixel line below 900 Mbps, so
-this is a data point for that driver too. I can test Sergey's driver on
-the Snapdragon Surface Pro 11 when it is posted.
+Open question, from Nihal: the X1E table is Qualcomm's 2.5 Gsps one, and
+downstream picks C-PHY settings by symbol rate. I would keep a single
+table here and add selection by rate when a second rate is needed,
+unless you would rather have the structure now.
 
-Tested on mainline (62f482ff73bf) with Peter's v2 01 and 04-11 plus
-Jizhou's fix. 02 and 03 did not apply to that tree, and neither touches
-the driver. The receiver is qcom CAMSS (CSIPHY0 -> CSID0 -> VFE0 RDI0)
-with out-of-tree Surface Pro 11 board support.
+Thanks,
+George
+
 ---
 Changes in v2:
-- Drop the ISL_ENABLE (0x0329) change. Sergey found that writing it
-  does not stop the output on the Intel model, and a retest here agrees:
-  with the 1200-pixel line the sensor streams whether 0x0329 is written
-  at stream start, once per power-on, or not at all.
-- Link to v1: https://lore.kernel.org/r/20261016-vd55g0-sp11-fix-v1-1-eb14bd80d8f8@gmail.com
----
- drivers/media/i2c/vd55g1.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/drivers/media/i2c/vd55g1.c b/drivers/media/i2c/vd55g1.c
-index ba70447..4e23e88 100644
---- a/drivers/media/i2c/vd55g1.c
-+++ b/drivers/media/i2c/vd55g1.c
-@@ -76,6 +76,8 @@
- #define VD55G1_XCLK_FREQ_MAX				(27 * HZ_PER_MHZ)
- #define VD55G0_MIPI_RATE_MIN				(750 * MEGA)
- #define VD55G0_MIPI_RATE_MAX				(1200 * MEGA)
-+#define VD55G0_LINE_LENGTH_LOW_RATE			1200
-+#define VD55G0_LOW_MIPI_RATE_LIMIT			(900 * MEGA)
- #define VD55G1_MIPI_RATE_MIN				(250 * MEGA)
- #define VD55G1_MIPI_RATE_MAX				(1200 * MEGA)
- 
-@@ -1245,6 +1247,8 @@ struct vd55g1_model {
- 	u16 num_modes;
- 	u32 mipi_rate_min;
- 	u32 mipi_rate_max;
-+	u32 low_mipi_rate_limit;
-+	u16 line_length_low_rate;
- 	u16 width;
- 	u16 height;
- 	bool bayer;
-@@ -1323,6 +1327,8 @@ static const struct vd55g1_model vd55g0_model = {
- 	.num_modes = ARRAY_SIZE(vd55g0_supported_modes),
- 	.mipi_rate_min = VD55G0_MIPI_RATE_MIN,
- 	.mipi_rate_max = VD55G0_MIPI_RATE_MAX,
-+	.low_mipi_rate_limit = VD55G0_LOW_MIPI_RATE_LIMIT,
-+	.line_length_low_rate = VD55G0_LINE_LENGTH_LOW_RATE,
- 	.width = VD55G0_WIDTH,
- 	.height = VD55G0_HEIGHT,
- 	.bayer = false,
-@@ -1542,6 +1548,8 @@ static unsigned int vd55g1_get_hblank_min(struct vd55g1 *sensor,
- 
- 	/* Absolute time required for ADCs to convert pixels */
- 	min_line_length = VD55G1_LINE_LENGTH_MIN;
-+	if (sensor->mipi_rate < sensor->model->low_mipi_rate_limit)
-+		min_line_length = sensor->model->line_length_low_rate;
- 	if (sensor->model->hdr &&
- 	    sensor->hdr_ctrl->val == VD55G1_HDR_SUB)
- 		min_line_length = VD55G1_LINE_LENGTH_SUB_MIN;
+- Rebase on next-20261015, PHY patches only; the CAMSS patches follow
+  David's series (Bryan)
+- phy: rename lanes to trios (Loic), make symbol_rate unsigned long long
+  so 32-bit can hold rates above 4.29 Gsym/s, and keep Bryan's R-b for
+  that patch
+- phy: new patch with the C-PHY helpers (Bryan, Loic)
+- qcom-mipi-csi2: new patch renaming init_seq/lane_array_size to
+  dphy_init_seq/dphy_lane_array_size (Bryan)
+- qcom-mipi-csi2: rename the C-PHY table to lane_regs_v2_1_2_cphy and
+  shorten its comment (Konrad)
+- qcom-mipi-csi2: no separate bus_type; the endpoint sets phy_mode and
+  set_mode() checks against it (Nihal)
+- qcom-mipi-csi2: if/else instead of the ternaries, one declaration per
+  line, and lanes_enable() split into lane mask and polarity helpers
+  instead of the goto (Bryan, Nihal)
+- qcom-mipi-csi2: configure() uses the helpers and keeps the link
+  frequency, so clocks scale as for D-PHY
+- qcom-mipi-csi2: compute the C-PHY settle count instead of the fixed
+  table value; blank lines between the per-trio blocks; fsleep() for the
+  sequence delays (Nihal)
+- qcom-mipi-csi2: drop the video-interfaces.h include, no longer needed
+- Link to v1: https://lore.kernel.org/r/20261015-x1e-cphy-rfc-v1-0-1f3fa9af940a@gmail.com
 
 ---
-base-commit: 62f482ff73bf3ae88b0c899115527752cf9cbf13
-change-id: 20261016-vd55g0-sp11-fix-60bc64a59b1d
-prerequisite-patch-id: d4474f51d7a10cfd10a316ec2b09936490b14a79
-prerequisite-patch-id: 0017cc56bf769ab00e67bdc0c5214951447cb716
-prerequisite-patch-id: 95a2d9ff8168eb17010538d80f4b5428e2b7b798
-prerequisite-patch-id: e717e32eac916ccafccf9e7a552ca0030085daa3
-prerequisite-patch-id: 8fc4f7595aac33a2164adb41c139dc3218be5bc6
-prerequisite-patch-id: 52bde56940b545c0e5f44d12811f9b9676bc311c
-prerequisite-patch-id: c0b93409e330d4b874b3702d67b57e2c4b0bde32
-prerequisite-patch-id: dbc6f65015852bbaf31e5f4efbee52c60bafb79f
-prerequisite-patch-id: d5c9bb074014a20938df8b55bb9088aa7b26d37b
-prerequisite-patch-id: d1ce44a3f9104aeead2c18d58a1470d1bd1ae531
+George Neacsu (4):
+      phy: Add MIPI C-PHY mode and configuration options
+      phy: Add MIPI C-PHY configuration helpers
+      phy: qcom-mipi-csi2: Rename the D-PHY init sequence
+      phy: qcom-mipi-csi2: Add C-PHY support for X1E80100
+
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c | 220 ++++++++++++++++++---
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-core.c     |  53 ++++-
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          |   6 +-
+ include/linux/phy/phy-mipi-cphy.h                  |  88 +++++++++
+ include/linux/phy/phy.h                            |   5 +
+ 5 files changed, 339 insertions(+), 33 deletions(-)
+---
+base-commit: b810335a0699d1810683796b0e3ffe8827ddfe6c
+change-id: 20261015-x1e-cphy-rfc-201860c8097f
 
 Best regards,
 -- 
