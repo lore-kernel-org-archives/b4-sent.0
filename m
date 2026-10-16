@@ -1,102 +1,54 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Thu, 15 Oct 2026 20:31:37 -0700
-Subject: [PATCH net-next v4 2/2] net: annotate lockless writes to
- sk->sk_err
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH 0/2] arm64: dts: rockchip: Describe more of the power tree
+ on Kobol Helios64
+Date: Fri, 16 Oct 2026 08:34:32 +0300
+Message-Id: <20261016-helios64-power-tree-v1-0-31d6c8dc5092@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-tls-fix-sk-kcsan-err-v4-2-391d788327f3@proton.me>
-References: <20261015-tls-fix-sk-kcsan-err-v4-0-391d788327f3@proton.me>
-In-Reply-To: <20261015-tls-fix-sk-kcsan-err-v4-0-391d788327f3@proton.me>
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jakub Sitnicki <jakub@cloudflare.com>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- bpf@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792121497; l=2452;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=xhyr/APrQP/DN3UvFtImVGyApw1ErZ/6ymmTvs2y5mo=;
- b=CXBCdVyhtyWn/0xpLp3zsnaOxdBxRg2WPxaEYq6Vk+ZZoX/BNlI9IBijWfcr6oI63qPVIj6j4
- ybX52q7LCWQBwrYh1cFLgnUbkD0bZeBINaQUmoOtvACXVyHT+lvduD0
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-B4-Tracking: v=1; b=H4sIAGi30WoC/x3MQQqEMAxG4atI1gZs0SheRVxI5x8NiJVUVBDvP
+ mWW3+K9hxJMkagvHjKcmjRuGa4sKCzTNoP1k02+8uIqJ7xg1Zik5j1eMD4M4Kb1ndQhQBqhXO6
+ Gr97/6zC+7w9qd1zyZQAAAA==
+To: Heiko Stuebner <heiko@sntech.de>
+Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=969; i=iav@iav.lv;
+ h=from:subject:message-id; bh=H0zSGhB8hGAGhGm1ZMMp2gTyzpy32OW6Q5DZrz3Rqmk=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFkXt2fpHD19VvaiXNvJwOvzopMM3lUdafB5HmCY97ykv
+ 2nGV75HHaUsDGJcDLJiiiwTDmncylhy9a+/h/kDmDmsTCBDGLg4BWAiNqsZGdbULbULLJ/cfvP+
+ C+8DynopafyH9xgu3CHWlFfEnbvbw5/hD5/V7MQ7i5c1qVzavtP2+8ydm2LXRd/4vfdfb9KOlWV
+ OegwA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-do_recvmmsg() and getsockopt(SO_ERROR) clear sk_err with xchg()
-without the socket lock. TCP, MPTCP and kTLS already peek the same
-field with READ_ONCE() or consume it via sock_error().
+The Helios64 device tree leaves out some regulators that the board has.
+Patch 1 adds the ones in use. Patch 2 adds the RK808 outputs that the
+schematic marks as unused, so that the kernel switches them off.
 
-sock_dequeue_err_skb() still uses plain stores. tcp_recvmsg() can
-call it via MSG_ERRQUEUE before lock_sock(), so those writes race
-with the annotated readers and with sock_error(). The same unmarked
-stores exist in strp_abort_strp() and sk_psock_report_error(), which
-run on the TCP/TLS socket.
+Schematic:
+https://wiki.kobol.io/helios64/files/schematics/Helios64_Schematics_Rev1.2.pdf
 
-Annotate those writers with WRITE_ONCE(). No extra ordering is
-needed; this does not change who wins when ICMP error-queue entries
-overwrite sk_err.
+Tested on Helios64 with a 7.3-rc7 kernel: the new regulators come up at
+the voltages from the schematic, the regulator core switches off the five
+unused outputs, and the disks and Ethernet work.
 
-Link: https://lore.kernel.org/netdev/3d9d442f-f168-43da-87b0-010ad5a78365@redhat.com/
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
-Reviewed-by: Eric Dumazet <edumazet@kernel.org>
 ---
- include/linux/skmsg.h     | 2 +-
- net/core/skbuff.c         | 5 +++--
- net/strparser/strparser.c | 2 +-
- 3 files changed, 5 insertions(+), 4 deletions(-)
+Igor Velkov (2):
+      arm64: dts: rockchip: Describe more of the power tree on Kobol Helios64
+      arm64: dts: rockchip: Describe the unused RK808 outputs on Kobol Helios64
 
-diff --git a/include/linux/skmsg.h b/include/linux/skmsg.h
-index d5e35f24738d..52ce45f25f5a 100644
---- a/include/linux/skmsg.h
-+++ b/include/linux/skmsg.h
-@@ -429,7 +429,7 @@ static inline void sk_psock_report_error(struct sk_psock *psock, int err)
- {
- 	struct sock *sk = psock->sk;
- 
--	sk->sk_err = err;
-+	WRITE_ONCE(sk->sk_err, err);
- 	sk_error_report(sk);
- }
- 
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index d56f4f0102f7..a6c9cf57bc3b 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -5539,12 +5539,13 @@ struct sk_buff *sock_dequeue_err_skb(struct sock *sk)
- 	if (skb && (skb_next = skb_peek(q))) {
- 		icmp_next = is_icmp_err_skb(skb_next);
- 		if (icmp_next)
--			sk->sk_err = SKB_EXT_ERR(skb_next)->ee.ee_errno;
-+			WRITE_ONCE(sk->sk_err,
-+				   SKB_EXT_ERR(skb_next)->ee.ee_errno);
- 	}
- 	spin_unlock_irqrestore(&q->lock, flags);
- 
- 	if (is_icmp_err_skb(skb) && !icmp_next)
--		sk->sk_err = 0;
-+		WRITE_ONCE(sk->sk_err, 0);
- 
- 	if (skb_next)
- 		sk_error_report(sk);
-diff --git a/net/strparser/strparser.c b/net/strparser/strparser.c
-index 9c1559d7923f..5f1da32b152f 100644
---- a/net/strparser/strparser.c
-+++ b/net/strparser/strparser.c
-@@ -56,7 +56,7 @@ static void strp_abort_strp(struct strparser *strp, int err)
- 	strp->need_bytes = 0;
- 
- 	/* Report an error on the lower socket */
--	sk->sk_err = -err;
-+	WRITE_ONCE(sk->sk_err, -err);
- 	sk_error_report(sk);
- }
- 
+ .../boot/dts/rockchip/rk3399-kobol-helios64.dts    | 83 ++++++++++++++++++++++
+ 1 file changed, 83 insertions(+)
+---
+base-commit: d2abcbb905b0e4b2e06b257fa1e5bcf4faa6dbda
+change-id: 20261016-helios64-power-tree-572864cce656
 
+Best regards,
 -- 
-2.55.0
+Igor Velkov <iav@iav.lv>
 
