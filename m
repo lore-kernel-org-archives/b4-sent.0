@@ -1,14 +1,13 @@
 From: Ishu Brar <patches@brar.si>
-Subject: [PATCH 0/4] drm/msm/adreno: Add Adreno 620
-Date: Fri, 16 Oct 2026 18:23:10 +0530
-Message-Id: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
+Date: Fri, 16 Oct 2026 18:23:11 +0530
+Subject: [PATCH 1/4] dt-bindings: display: msm: Document Adreno 620 and its
+ GMU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ5AMBRF0a3IH2vSVtJgK2JQvPINSlpEIvauG
- J7BvRdFBEakOrso4ODIi09QeUb9ZP0IwUMyaamNksoIOwT4RVijpXAWMFXVFaV2lIo1wPH53Zr
- 2d9y7Gf32Lui+HweWFClvAAAA
-X-Change-ID: 20261016-adreno-a620-faee699b382f
+Message-Id: <20261016-adreno-a620-v1-1-4a7ed6210d7d@brar.si>
+References: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
+In-Reply-To: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
  Dmitry Baryshkov <lumag@kernel.org>, 
  Abhinav Kumar <abhinav.kumar@linux.dev>, 
@@ -24,56 +23,60 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792155300; l=1895;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792155300; l=1758;
  i=patches@brar.si; h=from:subject:message-id;
- bh=7zRdGEYEh1FKjIMGDP8oZedZK5i0r57nIXjdT2GgaNI=;
- b=xsoXU8nt6rPMAkxUpxj135+VGivuWOqEh3SHSNyOwlZeV8TNIlfHByZhWt6DUJMvClCRkHfmn
- XhDdslnT9wFA7jb1Rz6rP31kAzCoiu1YvBe/i2/t5e2O5T9PKYUQHcH
+ bh=8eTnNvhKpEjMR4UE06ag4D//fKmp89dOdFVVH07JhJ0=;
+ b=lCY1uQGiarE2Uo5RWJbJwgfPoMTT+DEl4959T6O/cuNT8183u47wn9n4TMVRYQOfwUkw0cR+Q
+ vd1Jsuf5TvyDJg5SO18Wcgqj2xhStecnYTPm6GiiBjXfRhh32xXlyFK
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This adds Adreno 620 GPU found in Qualcomm SM7250 (Snapdragon
-765/765G/768G) to msm driver. It is A650 derivative using 
-a650 SQE/GMU firmware and a620_zap.mbn. On top of catalog entry it
-needs two A620 specific GMU changes:
-
- - A620 has no PDC setup from AOP, so PDC sequencer is
-   programmed from driver (xo/mx/cx addresses from cmd-db). Without
-   it RSC never acks second power-up and device hangs.
- - A bandwidth table with BCM addresses of this SoC. The generic
-   A630 one does not exist on SM7250, so first GX performance vote
-   times out.
-
-Tested on OnePlus Nord (SM7250) running mainline: the GPU, GMU and
-Vulkan work. This needs the SM7250 SMMU series [1] as well, otherwise
-the device is reset when the first per-process pagetable is created.
-The SoC devicetree nodes are not part of this series; they will be sent
-separately once the SoC dtsi is accepted.
-
-[1] https://lore.kernel.org/all/20261016-smmu-sm7250-v1-0-e11fc0384cfa@brar.si/
+Add the Adreno 620 found in the Qualcomm SM7250 and its GMU. The GMU
+has the same registers, clocks, interrupts and power domains as the
+650.2 one. As on the other A6xx parts, the GPU clocks are defined in
+the GMU node, so the GPU node has none.
 
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
-Ishu Brar (4):
-      dt-bindings: display: msm: Document Adreno 620 and its GMU
-      drm/msm/a6xx: Add a bandwidth table for the Adreno 620 GMU
-      drm/msm/a6xx: Program the PDC sequencer on Adreno 620
-      drm/msm/adreno: Add Adreno 620
+ Documentation/devicetree/bindings/display/msm/gmu.yaml | 2 ++
+ Documentation/devicetree/bindings/display/msm/gpu.yaml | 1 +
+ 2 files changed, 3 insertions(+)
 
- .../devicetree/bindings/display/msm/gmu.yaml       |  2 ++
- .../devicetree/bindings/display/msm/gpu.yaml       |  1 +
- drivers/gpu/drm/msm/adreno/a6xx_catalog.c          | 25 ++++++++++++++++
- drivers/gpu/drm/msm/adreno/a6xx_gmu.c              | 22 +++++++++++----
- drivers/gpu/drm/msm/adreno/a6xx_hfi.c              | 33 ++++++++++++++++++++++
- drivers/gpu/drm/msm/adreno/adreno_gpu.h            |  5 ++++
- 6 files changed, 82 insertions(+), 6 deletions(-)
----
-base-commit: d024361c631b3f020a26c07d683e5103404b0fbf
-change-id: 20261016-adreno-a620-faee699b382f
+diff --git a/Documentation/devicetree/bindings/display/msm/gmu.yaml b/Documentation/devicetree/bindings/display/msm/gmu.yaml
+index 07f0e547b..3478adebd 100644
+--- a/Documentation/devicetree/bindings/display/msm/gmu.yaml
++++ b/Documentation/devicetree/bindings/display/msm/gmu.yaml
+@@ -217,6 +217,7 @@ allOf:
+         compatible:
+           contains:
+             enum:
++              - qcom,adreno-gmu-620.0
+               - qcom,adreno-gmu-650.2
+     then:
+       properties:
+@@ -238,6 +239,7 @@ allOf:
+         compatible:
+           contains:
+             enum:
++              - qcom,adreno-gmu-620.0
+               - qcom,adreno-gmu-640.1
+               - qcom,adreno-gmu-650.2
+     then:
+diff --git a/Documentation/devicetree/bindings/display/msm/gpu.yaml b/Documentation/devicetree/bindings/display/msm/gpu.yaml
+index c30de7feb..cf015fdee 100644
+--- a/Documentation/devicetree/bindings/display/msm/gpu.yaml
++++ b/Documentation/devicetree/bindings/display/msm/gpu.yaml
+@@ -435,6 +435,7 @@ allOf:
+               - qcom,adreno-615.0
+               - qcom,adreno-618.0
+               - qcom,adreno-619.0
++              - qcom,adreno-620.0
+               - qcom,adreno-621.0
+               - qcom,adreno-623.0
+               - qcom,adreno-630.2
 
-Best regards,
---  
-Ishu Brar <patches@brar.si>
+-- 
+2.56.0
 
