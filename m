@@ -1,10 +1,10 @@
 From: Ishu Brar <patches@brar.si>
-Date: Fri, 16 Oct 2026 18:23:13 +0530
-Subject: [PATCH 3/4] drm/msm/a6xx: Program the PDC sequencer on Adreno 620
+Date: Fri, 16 Oct 2026 18:23:14 +0530
+Subject: [PATCH 4/4] drm/msm/adreno: Add Adreno 620
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-adreno-a620-v1-3-4a7ed6210d7d@brar.si>
+Message-Id: <20261016-adreno-a620-v1-4-4a7ed6210d7d@brar.si>
 References: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
 In-Reply-To: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -22,89 +22,68 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792155300; l=3539;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792155300; l=1735;
  i=patches@brar.si; h=from:subject:message-id;
- bh=Ysw8EJ3fjj06d5areFyTNj9oO7rlFN0mqP5y7DWvPYM=;
- b=2wLz7ueVtHuJYtf3X4PO2TO7TcGCaLsgfFcbS63waQlpqkuN5WeC4UK3ikI0Q32Jom1skzupF
- Lhrrnt+n/keAVZpWP5ONtE8s9yc0mHxW6I8lQ1oTmI9nJvnH0BaUxMz
+ bh=TWtFaD6Cu2y3fcwXHfGH+7v1dt6VDV1C2TR+TW/3vM8=;
+ b=tiEY/urZ6uoeNOO8oKnRlwhkiykMQJ/KVboQRNQsKg5GKqdhxUt3deLS1JYZG5AKOQmmi8dK2
+ JWdeYnFUT2pBMOhjtuuR1t5s29KkQkYWwhnMRJDfdBilWKmn5r6LeRL
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Unlike the rest of the A650 family, the A620 does not get its PDC set up
-by AOP (the downstream devicetree has no pdc_in_aop for it). Without the
-sequence, the RSC never acks the second power-up ("Unable to power on
-the GPU RSC") and the device hangs.
+Add the catalog entry for the Adreno 620 (chip id 0x06020000) found in
+the Snapdragon 765/765G/768G (SM7250). It is an A650 derivative and
+uses its SQE and GMU firmware and protect table, together with the A620
+zap shader.
 
-Program the sequence from the driver, taking the xo, mx and cx resource
-addresses from cmd-db instead of the hardcoded ones.
+The speed-bin fuse values map to the OPP bins as in the downstream
+"lito" devicetree: fuse 0 is the default bin and fuse 132 and 115 are
+the two alternate ones.
 
-Assisted-by: Claude
+Tested on a OnePlus Nord (SM7250) with Vulkan.
+
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- drivers/gpu/drm/msm/adreno/a6xx_gmu.c | 22 ++++++++++++++++------
- 1 file changed, 16 insertions(+), 6 deletions(-)
+ drivers/gpu/drm/msm/adreno/a6xx_catalog.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-index 662f09bec..e567e8027 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-@@ -686,6 +686,7 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
- 	u32 seqmem0_drv0_reg = REG_A6XX_RSCC_SEQ_MEM_0_DRV0;
- 	void __iomem *seqptr = NULL;
- 	uint32_t pdc_address_offset;
-+	u32 mx_addr = 0x30010, cx_addr = 0x30000;
- 	void __iomem *pdcptr;
- 	bool pdc_in_aop = false;
- 
-@@ -697,8 +698,17 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
- 	if (IS_ERR(pdcptr))
- 		return;
- 
--	if (adreno_is_a650_family(adreno_gpu) ||
--	    adreno_is_a7xx(adreno_gpu))
-+	/* Unlike the rest of the A650 family, A620 has no PDC setup from AOP */
-+	if (adreno_is_a620(adreno_gpu)) {
-+		pdc_address_offset = cmd_db_read_addr("xo.lvl");
-+		mx_addr = cmd_db_read_addr("mx.lvl");
-+		cx_addr = cmd_db_read_addr("cx.lvl");
-+		if (!pdc_address_offset || !mx_addr || !cx_addr) {
-+			DRM_DEV_ERROR(gmu->dev, "No PDC resource addresses in cmd-db\n");
-+			return;
-+		}
-+	} else if (adreno_is_a650_family(adreno_gpu) ||
-+		 adreno_is_a7xx(adreno_gpu))
- 		pdc_in_aop = true;
- 	else if (adreno_is_a618(adreno_gpu) || adreno_is_a640_family(adreno_gpu))
- 		pdc_address_offset = 0x30090;
-@@ -766,10 +776,10 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD_WAIT_FOR_CMPL_BANK, 0);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CONTROL, 0);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID, 0x10108);
--	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR, 0x30010);
-+	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR, mx_addr);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_DATA, 1);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID + 4, 0x10108);
--	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR + 4, 0x30000);
-+	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR + 4, cx_addr);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_DATA + 4, 0x0);
- 
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID + 8, 0x10108);
-@@ -780,11 +790,11 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD_WAIT_FOR_CMPL_BANK, 0);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CONTROL, 0);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_MSGID, 0x10108);
--	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR, 0x30010);
-+	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR, mx_addr);
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_DATA, 2);
- 
- 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_MSGID + 4, 0x10108);
--	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR + 4, 0x30000);
-+	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR + 4, cx_addr);
- 	if (adreno_is_a618(adreno_gpu) || adreno_is_a619(adreno_gpu) ||
- 			adreno_is_a650_family(adreno_gpu))
- 		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_DATA + 4, 0x2);
+diff --git a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
+index 4ef2bd6e7..45480dbf4 100644
+--- a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
++++ b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
+@@ -943,6 +943,31 @@ static const struct adreno_info a6xx_gpus[] = {
+ 			{ 169, 2 },
+ 			{ 180, 1 },
+ 		),
++	}, {
++		.chip_ids = ADRENO_CHIP_IDS(0x06020000),
++		.family = ADRENO_6XX_GEN3,
++		.fw = {
++			[ADRENO_FW_SQE] = "a650_sqe.fw",
++			[ADRENO_FW_GMU] = "a650_gmu.bin",
++		},
++		.gmem = SZ_512K,
++		.inactive_period = DRM_MSM_INACTIVE_PERIOD,
++		.quirks = ADRENO_QUIRK_HAS_CACHED_COHERENT |
++			  ADRENO_QUIRK_HAS_HW_APRIV,
++		.funcs = &a6xx_gpu_funcs,
++		.zapfw = "a620_zap.mbn",
++		.a6xx = &(const struct a6xx_info) {
++			.hwcg = a620_hwcg,
++			.protect = &a650_protect,
++			.gbif_cx = a640_gbif,
++			.gmu_cgc_mode = 0x00020200,
++			.prim_fifo_threshold = 0x00010000,
++		},
++		.speedbins = ADRENO_SPEEDBINS(
++			{ 0,   0 },
++			{ 132, 1 },
++			{ 115, 3 },
++		),
+ 	}, {
+ 		.chip_ids = ADRENO_CHIP_IDS(0x06020100),
+ 		.family = ADRENO_6XX_GEN3,
 
 -- 
 2.56.0
