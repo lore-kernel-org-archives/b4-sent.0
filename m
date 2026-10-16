@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Fri, 16 Oct 2026 23:52:20 +0200
-Subject: [PATCH v6 1/2] arm64: dts: qcom: sdm845-google: Add basic audio
- support
+Date: Fri, 16 Oct 2026 23:52:21 +0200
+Subject: [PATCH v6 2/2] arm64: dts: qcom: sdm845-google: Add WCD9340 codec
+ and microphone capture
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-pixel3-audio-v6-1-11c88448b3be@ixit.cz>
+Message-Id: <20261016-pixel3-audio-v6-2-11c88448b3be@ixit.cz>
 References: <20261016-pixel3-audio-v6-0-11c88448b3be@ixit.cz>
 In-Reply-To: <20261016-pixel3-audio-v6-0-11c88448b3be@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -25,192 +25,140 @@ Cc: Viken Dadhaniya <viken.dadhaniya@oss.qualcomm.com>,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5501; i=david@ixit.cz;
- h=from:subject:message-id; bh=OPuhAiGiwh1F0hU4jXrVkMpTLkDrYHqdITX3pk25rWU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0pyZjle75JsbIv7W+OlzUEq6KqljH5zwKfmeU
- hQf4j85LpSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatKcmQAKCRBgAj/E00kg
- cgQ7EACxntnWeyRNPzt4VFujSLCUZ6LdUoEy5wtxj/E98hAdwsvGMTIEDt3wvVMVXoXZ6w89dEp
- VHoiokQrq5BM6IaaFtRPTBIsJFcQJ4b6JZteyjc/zLBpJTuCmc+IJW3V58XJM4UCJHuvlkUwH5Q
- lpjoatPrKNlG16KEuVaH8yfczPJg1Idpm0dk4NkzDpISicb7z0Dh1pz58UFZ6EoXivXQpJt1tk2
- pPzHFK0kA2AyCLHuldG/rsq3/SE3XGE+7XRM0DdtxxT3nZnH7dU43ofLShWY7hT9J9No0WrMxGf
- HgP+Q/9cC6aOBzRwYTb9On9kvdEXS8gElf7O9m6/cdZv/ASaxHTYej6GRN8hfz6PxQQ8xRF8225
- qr6PKFlHTHQQXgYGNTRZSXZ/G0O4bik8/JTvE8yxmYRHELfeyP7MXwAZScSwbMAIRunIYSZVCjT
- 7npkTjKSsYPuv6Fhlo+9tKyOmqFT4omSgfSIkoM20+zWlGSTIiI4glpMUlkPKtZn2P7zU8hVPGE
- 3G3wpYgs/5o5GKPS+aBafELR8oNE3JWfujbuWlrfkmmk0z9oKaYAauctisANioaA0vKqzT9ywod
- BQ2/Ti9aReebh6anUo+MFaNG9bp97NXzsXMYwXryBkht8iUVub6jksHwQnx8y91tgE89WhpYsi8
- l4o4TwePRqvjkHQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4188; i=david@ixit.cz;
+ h=from:subject:message-id; bh=fI7A/5RiukFa0xOXY64dBcvV3k0LObsxRG+TKhW69sM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0pya7mNGQmYwuz/Ftu263gZOuTcutmceIt0y7
+ Ca5c92tywCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatKcmgAKCRBgAj/E00kg
+ cjH9EACyuB2RE1aXYBfMTr3qEF7BRp2E8mJ5GB0LswS0VRMqlkgCwEn7wvAVgrzZkSPgOgEJw9S
+ v5AnBQva/ezC0qGMkuOdcypNfLWmxtcOOs5o7LVOEEtRDAwO7bY3znJT7E5iSAzEv0F0XT87shC
+ h02GjlhCMwV/DrKU16ofUoEieGYH+PwpYRyRpwvk97QdsJ720z7TjNU5dp0X4z8HYqdnXQKWPh+
+ WIsZ1LDbo90Iz6jMJqnJ4Ek4BNPl7Wy1GyYttfHObWRgebnxrxolz6WdeAd2CiWQ/m7J408QoPl
+ PyJBFdZpLd34N48VU+8zT46ojiFTvDKpUkLFjGqmpjhwuZiHd71BvkT8SXHv0H5gUWyXFATN8SN
+ 4rno7o2XeHH1sTXC7J6k3atSbyyxahJlH/5i5T7s2c4zXtwf8DApOrL6Oss5gBdgb170mNQa4Gl
+ hX4hkw8MKOFUsJmSuN8cBwRjjEyvxyvBGE79fhCgQ7boj7RVfza7sdO8tppyoorMzvJCMER2rP/
+ ZMnmowkN9mo531ozlEoMOUkhQWfbfMkadQWLkKaSAR+UF9hHiMd7T/1t8wiYnm2DyghNyxEbLXE
+ cMLV8DVkhmD6nMc4VL8peVNvUb2YaTtd84O1kYXGDMofvHifrDHp2XsfytyNbGdXz+aDkV8xApt
+ L/lcU9VGSj2kIpQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce support for sound card and wire two CS35L36 audio codecs for
-top and bottom speakers.
+The Pixel 3 sound card so far only drove the two CS35L36 speaker
+amplifiers. Wire in the WCD9340 codec , add a SLIMbus capture link
+for it and route the three digital microphones
 
-Inspired by commit from Joel Selvaraj.
+Based on work done by Casey Tunturi.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 132 ++++++++++++++++++++-
- 1 file changed, 130 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 58 ++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index f1379857e2742..68d26c1a06d0c 100644
+index 68d26c1a06d0c..8e303a91bfaa2 100644
 --- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -2,16 +2,18 @@
- 
- /dts-v1/;
+@@ -4,18 +4,20 @@
  
  #include <dt-bindings/arm/qcom,ids.h>
  #include <dt-bindings/dma/qcom-gpi.h>
  #include <dt-bindings/input/linux-event-codes.h>
  #include <dt-bindings/interrupt-controller/irq.h>
  #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
-+#include <dt-bindings/sound/qcom,q6afe.h>
-+#include <dt-bindings/sound/qcom,q6asm.h>
+ #include <dt-bindings/sound/qcom,q6afe.h>
+ #include <dt-bindings/sound/qcom,q6asm.h>
++#include <dt-bindings/sound/qcom,wcd934x.h>
  
  #include "sdm845.dtsi"
++#include "sdm845-wcd9340.dtsi"
  #include "pm8998.dtsi"
  #include "pmi8998.dtsi"
  
  /delete-node/ &mpss_region;
  /delete-node/ &venus_mem;
  /delete-node/ &cdsp_mem;
-@@ -406,19 +408,61 @@ nfc@28 {
- 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
- 
- 		pinctrl-0 = <&nfc_default>;
- 		pinctrl-names = "default";
+ /delete-node/ &mba_region;
+ /delete-node/ &slpi_mem;
+@@ -512,16 +514,20 @@ dai@72 {
+ 		qcom,tdm-data-align = <0>;
  	};
  };
  
- &i2c12 {
--	/* Bottom spkr (right) CS35L36 @ 40 */
-+	status = "okay";
+ &q6asmdai {
+ 	dai@0 {
+ 		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
+ 	};
 +
-+	cs35l36_bottom: audio-codec@40 {
-+		compatible = "cirrus,cs35l36";
-+		reg = <0x40>;
-+		reset-gpios = <&tlmm 112 GPIO_ACTIVE_HIGH>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "Right"; /* Bottom */
-+		VA-supply = <&vreg_s4a_1p8>;
-+		interrupts-extended = <&tlmm 115 IRQ_TYPE_LEVEL_LOW>;
-+
-+		pinctrl-0 = <&cs35l36_bottom_default_state>;
-+		pinctrl-names = "default";
-+
-+		cirrus,boost-ind-nanohenry = <1000>;
-+		cirrus,boost-ctl-select = <1>;
-+		cirrus,boost-ctl-millivolt = <10000>;
-+		cirrus,boost-peak-milliamp = <3700>;
-+		cirrus,temp-warn-threshold = <1>;
-+		cirrus,multi-amp-mode;
-+		cirrus,irq-drive-select = <0>;
-+		cirrus,irq-gpio-select = <0>;
-+	};
-+
-+	cs35l36_top: audio-codec@41 {
-+		compatible = "cirrus,cs35l36";
-+		reg = <0x41>;
-+		reset-gpios = <&tlmm 75 GPIO_ACTIVE_HIGH>;
-+		#sound-dai-cells = <0>;
-+		sound-name-prefix = "Left"; /* Top */
-+		VA-supply = <&vreg_s4a_1p8>;
-+		interrupts-extended = <&tlmm 40 IRQ_TYPE_LEVEL_LOW>;
- 
--	/* Top spkr (left) CS35L36 @ 41 */
-+		pinctrl-0 = <&cs35l36_top_default_state>;
-+		pinctrl-names = "default";
-+
-+		cirrus,boost-ind-nanohenry = <1000>;
-+		cirrus,boost-ctl-select = <0x01>;
-+		cirrus,boost-ctl-millivolt = <10000>;
-+		cirrus,boost-peak-milliamp = <3700>;
-+		cirrus,temp-warn-threshold = <1>;
-+		cirrus,multi-amp-mode;
-+		cirrus,irq-drive-select = <0>;
-+		cirrus,irq-gpio-select = <0>;
++	dai@1 {
++		reg = <MSM_FRONTEND_DAI_MULTIMEDIA2>;
 +	};
  };
  
- &ipa {
- 	firmware-name = "qcom/sdm845/Google/blueline/ipa_fws.mbn";
- 	memory-region = <&ipa_fw_mem>;
- 
- 	status = "okay";
- };
-@@ -451,16 +495,35 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&q6afedai {
-+	dai@72 {
-+		reg = <QUATERNARY_TDM_RX_0>;
-+
-+		qcom,tdm-sync-mode = <0>;
-+		qcom,tdm-sync-src = <1>;
-+		qcom,tdm-data-out = <0>;
-+		qcom,tdm-invert-sync = <0>;
-+		qcom,tdm-data-delay = <1>;
-+		qcom,tdm-data-align = <0>;
-+	};
-+};
-+
-+&q6asmdai {
-+	dai@0 {
-+		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
-+	};
-+};
-+
  &qupv3_id_0 {
  	status = "okay";
  };
  
  &qupv3_id_1 {
  	status = "okay";
- };
+@@ -539,40 +545,81 @@ &qup_uart9_tx {
  
-@@ -469,16 +532,49 @@ &qup_uart9_rx {
- 	bias-pull-up;
- };
+ &sound {
+ 	compatible = "qcom,sdm845-sndcard";
+ 	model = "Pixel 3";
+ 	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
+ 		    <&quat_mi2s_sd1_active>;
+ 	pinctrl-names = "default";
  
- &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
- };
- 
-+&sound {
-+	compatible = "qcom,sdm845-sndcard";
-+	model = "Pixel 3";
-+	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
-+		    <&quat_mi2s_sd1_active>;
-+	pinctrl-names = "default";
++	audio-routing = "DMIC0", "MCLK", /* Top mic */
++			"DMIC0", "MIC BIAS1",
++			"DMIC3", "MCLK", /* Top-edge mic */
++			"DMIC3", "MIC BIAS3",
++			"DMIC4", "MCLK", /* Bottom mic */
++			"DMIC4", "MIC BIAS4";
 +
-+	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
-+	mm1-dai-link {
-+		link-name = "MultiMedia1";
+ 	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
+ 	mm1-dai-link {
+ 		link-name = "MultiMedia1";
+ 
+ 		cpu {
+ 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+ 		};
+ 	};
+ 
++	mm2-dai-link {
++		link-name = "MultiMedia2";
 +
 +		cpu {
-+			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
++			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA2>;
 +		};
 +	};
 +
-+	cs35l36-dai-link {
-+		link-name = "Speaker Playback";
+ 	cs35l36-dai-link {
+ 		link-name = "Speaker Playback";
+ 
+ 		codec {
+ 			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
+ 		};
+ 
+ 		cpu {
+ 			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
+ 		};
+ 
+ 		platform {
+ 			sound-dai = <&q6routing>;
+ 		};
+ 	};
++
++	slimcap-dai-link {
++		link-name = "SLIM Capture 1";
 +
 +		codec {
-+			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
++			sound-dai = <&wcd9340 AIF1_CAP>;
 +		};
 +
 +		cpu {
-+			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
++			sound-dai = <&q6afedai SLIMBUS_0_TX>;
 +		};
 +
 +		platform {
@@ -219,63 +167,50 @@ index f1379857e2742..68d26c1a06d0c 100644
 +	};
 +};
 +
++&swm {
++	/*
++	 * Nothing hangs off the codec's SoundWire bus on this board: the
++	 * speakers are CS35L36 amplifiers on QUAT_TDM. With an empty bus the
++	 * controller reports port mismatches and frame-generator timeouts on
++	 * every boot.
++	 */
++	status = "disabled";
+ };
+ 
  &tlmm {
  	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
  			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
  
  	nfc_default: nfc-default-state {
  		enable-pins {
- 			pins = "gpio25";
- 			function = "gpio";
-@@ -517,16 +613,48 @@ touchscreen_pins: ts-pins-gpio-state {
- 	};
- 
- 	touchscreen_i2c_pins: qup-i2c2-gpio-state {
- 		pins = "gpio27", "gpio28";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
- 	};
-+
-+	cs35l36_bottom_default_state: cs35l36-bottom-default-state {
-+		reset-pins {
-+			pins = "gpio112";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+
-+		irq-pins {
-+			pins = "gpio115";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+	};
-+
-+	cs35l36_top_default_state: cs35l36-top-default-state {
-+		irq-pins {
-+			pins = "gpio40";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+
-+		reset-pins {
-+			pins = "gpio75";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+	};
+@@ -718,16 +765,27 @@ &usb_1_qmpphy {
  };
  
- &uart6 {
- 	pinctrl-0 = <&qup_uart6_4pin>;
+ &venus {
+ 	firmware-name = "qcom/sdm845/Google/blueline/venus.mbn";
  
  	status = "okay";
+ };
  
- 	bluetooth {
++&wcd9340 {
++	/* PM8998 LN_BB_CLK2 feeds the Pixel Visual Core on this board */
++	clocks = <&rpmhcc RPMH_LN_BB_CLK3>;
++	reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
++	vdd-buck-supply = <&vreg_s4a_1p8>;
++	vdd-buck-sido-supply = <&vreg_s4a_1p8>;
++	vdd-tx-supply = <&vreg_s4a_1p8>;
++	vdd-rx-supply = <&vreg_s4a_1p8>;
++	vdd-io-supply = <&vreg_s4a_1p8>;
++};
++
+ &wifi {
+ 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
+ 	vdd-1.8-xo-supply = <&vreg_pmu_xo>;
+ 	vdd-1.3-rfa-supply = <&vreg_pmu_rf>;
+ 	vdd-3.3-ch0-supply = <&vreg_pmu_ch0>;
+ 
+ 	qcom,snoc-host-cap-8bit-quirk;
+ 
 
 -- 
 2.55.0
