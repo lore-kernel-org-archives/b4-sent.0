@@ -1,90 +1,69 @@
 From: George Neacsu <geocausa@gmail.com>
-Date: Fri, 16 Oct 2026 07:37:30 +0100
-Subject: [PATCH] leds: flash: leds-qcom-flash: Release all V4L2 flash
- devices
+Date: Fri, 16 Oct 2026 07:37:45 +0100
+Subject: [PATCH] media: i2c: vd55g1: Register as a sensor sub-device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-qcom-flash-v4l2-release-v1-1-0e92aa7c9327@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBtQKaOuEi1EpxywPwciiO6et
- PwW7z0glJkEhuqBTBcL71uBrivw0W0LIYdiMMpYrbTF0+8rzslJxKtJBjMlckLYB9X6vgvaNx2
- U+sg08/2fx+l9Pwh7F4ppAAAA
-X-Change-ID: 20261016-qcom-flash-v4l2-release-9d05c97d1c47
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-leds@vger.kernel.org, stable@vger.kernel.org, 
- George Neacsu <geocausa@gmail.com>
+Message-Id: <20261016-vd55g1-async-sensor-v1-1-cd72f6d68ea4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBtQQ6muEi20ppqNhgNSRHdPW
+ r7F/w8IZSaBsXkgU2HhFCt028By+LgT8loNRhmnlXZYVmt3jV7uuKBQlJTRBlJD71Toeg+1PDN
+ tfP3XaX7fD9Hg0oBlAAAA
+X-Change-ID: 20261016-vd55g1-async-sensor-5be09860b38a
+To: Sylvain Petinot <sylvain.petinot@foss.st.com>, 
+ Benjamin Mugnier <benjamin.mugnier@foss.st.com>
+Cc: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Peter Marshall <pm@petermarshall.ca>, linux-media@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792132649; l=2721;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792132664; l=1573;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=CI6yYCRJ7s3Nt//a396V+HzvBRozRkOc2yI+sV9seYA=;
- b=DE117K+Hxmkt3xq1NNeUAoIn3zCf1lMjMnJNMAANQL01b7nbzwHXfl0Z11u4w79aYj/WJzgHn
- vCp+h0y+s/wDodjhieEW2JemsODWQ23ZCIUI8Eb1lm2RN6QCKkuFsfv
+ bh=HOuIUiiGtrzICJ6LB+4q4TGvU5naELrGEK4lImy36vw=;
+ b=MB5soG0/w+aFpF+5oy7ZTTdO6Vctif3AxNsJen4iBAiIBdEYyrmRQy57hrDUOPbLcr390eGn7
+ C9/GD7PcvLQAUgzDib7GFYgJmmBUyQd/m+Wgma6pt+56Jlh5TqfTyjg
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The probe error path and qcom_flash_led_remove() walk the V4L2 flash
-array like this:
+The binding references video-interface-devices.yaml, so a board can
+link the sensor to its illuminator with flash-leds. The driver
+registers with v4l2_async_register_subdev(), which does not parse that
+property, so the flash sub-device is never bound and never appears in
+the media graph.
 
-	while (flash_data->v4l2_flash[flash_data->leds_count] && flash_data->leds_count)
-		v4l2_flash_release(flash_data->v4l2_flash[flash_data->leds_count--]);
+Use v4l2_async_register_subdev_sensor(), which also handles flash-leds
+and lens-focus. v4l2_async_unregister_subdev() already cleans up the
+sub-notifier it creates.
 
-leds_count is the number of registered LEDs, so the first test reads
-one entry past the last registered one. The array holds exactly one
-entry per LED child node, so after a full probe that read is out of
-bounds. The loop also stops before index 0. With a single LED nothing
-is released at all.
+Tested on a Surface Pro 11 (X1E80100), whose VD55G0 IR sensor (with
+Peter Marshall's VD55G0 support applied) drives the PM8550 flash LED
+in hardware strobe mode: with this change the leds-qcom-flash V4L2
+flash sub-device binds and the IR LED can be armed from userspace.
 
-The V4L2 flash sub-device then stays registered after the driver is
-unbound, still pointing at the driver's freed devm memory. On a Surface
-Pro 11 (X1E80100, PM8550 flash, IR LED linked to a sensor through
-flash-leds), unloading the module and then setting a flash control on
-the sub-device triggered UBSAN shift-out-of-bounds reports and a NULL
-pointer dereference in regmap_field_update_bits_base(), called from
-update_allowed_flash_current().
-
-Release the registered entries from leds_count - 1 down to 0.
-
-Fixes: 96a2e242a5dc ("leds: flash: Add driver to support flash LED module in QCOM PMICs")
-Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- drivers/leds/flash/leds-qcom-flash.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/media/i2c/vd55g1.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/leds/flash/leds-qcom-flash.c b/drivers/leds/flash/leds-qcom-flash.c
-index b03a683..c2fefee 100644
---- a/drivers/leds/flash/leds-qcom-flash.c
-+++ b/drivers/leds/flash/leds-qcom-flash.c
-@@ -953,8 +953,8 @@ static int qcom_flash_led_probe(struct platform_device *pdev)
+diff --git a/drivers/media/i2c/vd55g1.c b/drivers/media/i2c/vd55g1.c
+index 6f458f6..8e050b4 100644
+--- a/drivers/media/i2c/vd55g1.c
++++ b/drivers/media/i2c/vd55g1.c
+@@ -2043,7 +2043,7 @@ static int vd55g1_probe(struct i2c_client *client)
+ 		goto err_power_off;
+ 	}
  
- 	return regmap_field_write(flash_data->r_fields[REG_TORCH_CLAMP], flash_data->torch_clamp);
- release:
--	while (flash_data->v4l2_flash[flash_data->leds_count] && flash_data->leds_count)
--		v4l2_flash_release(flash_data->v4l2_flash[flash_data->leds_count--]);
-+	while (flash_data->leds_count)
-+		v4l2_flash_release(flash_data->v4l2_flash[--flash_data->leds_count]);
- 	return rc;
- }
- 
-@@ -962,8 +962,8 @@ static void qcom_flash_led_remove(struct platform_device *pdev)
- {
- 	struct qcom_flash_data *flash_data = platform_get_drvdata(pdev);
- 
--	while (flash_data->v4l2_flash[flash_data->leds_count] && flash_data->leds_count)
--		v4l2_flash_release(flash_data->v4l2_flash[flash_data->leds_count--]);
-+	while (flash_data->leds_count)
-+		v4l2_flash_release(flash_data->v4l2_flash[--flash_data->leds_count]);
- 
- 	mutex_destroy(&flash_data->lock);
- }
+-	ret = v4l2_async_register_subdev(&sensor->sd);
++	ret = v4l2_async_register_subdev_sensor(&sensor->sd);
+ 	if (ret) {
+ 		dev_err(dev, "async subdev register failed %d\n", ret);
+ 		goto err_subdev;
 
 ---
 base-commit: 62f482ff73bf3ae88b0c899115527752cf9cbf13
-change-id: 20261016-qcom-flash-v4l2-release-9d05c97d1c47
+change-id: 20261016-vd55g1-async-sensor-5be09860b38a
 
 Best regards,
 -- 
