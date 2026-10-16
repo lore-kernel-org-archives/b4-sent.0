@@ -1,65 +1,69 @@
 From: HuskerMinion <mocker-mug-unwoven@duck.com>
-Date: Fri, 16 Oct 2026 02:14:02 -0600
-Subject: [PATCH 2/2] ASoC: mediatek: mt8183: Fix UL1_CH2 I2S0_CH2 routing
- register
+Subject: [PATCH 0/2] iio: light: tcs3472: Add TCS3400 support
+Date: Fri, 16 Oct 2026 02:15:40 -0600
+Message-Id: <20261016-tcs3400-v1-0-3d79d2a7f449@duck.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-mt8183-afe-fixes-v1-2-f0db51e0c073@duck.com>
-References: <20261016-mt8183-afe-fixes-v1-0-f0db51e0c073@duck.com>
-In-Reply-To: <20261016-mt8183-afe-fixes-v1-0-f0db51e0c073@duck.com>
-To: Mark Brown <broonie@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>
-Cc: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- linux-sound@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIACzd0WoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA0NT3ZLkYmMTAwPdVKNUU9NU80QTSwsDJaDqgqLUtMwKsEnRsRB+cWl
+ SVmpyCUi7Um0tAH5knnNrAAAA
+X-Change-ID: 20261015-tcs3400-e2e55e7a4980
+To: Jonathan Cameron <jic23@kernel.org>
+Cc: David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Peter Meerwald-Stadler <pmeerw@pmeerw.net>, 
+ Arka Mondal <arka@arkamondal.net>, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  HuskerMinion <mocker-mug-unwoven@duck.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792138468; l=1450;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792138543; l=1468;
  i=mocker-mug-unwoven@duck.com; s=20261016; h=from:subject:message-id;
- bh=mEWhlclh4rsOZ/4zrF6u9RE5QWi0z/CRm0Rz/ciL1HE=;
- b=6YXlyoF5BZSa8qalNwQEhwPQZX15OAoWl6Cwl3SmMzWojxGvBMbRuyUf4ivpDoMJbSHk0bkXW
- k1493RQj8XmBmDpzzjLmThkLYOaOUD56lijYARzfS8X/I4voQADCpZL
+ bh=5PXqI2wvHJ33gaVZwqw9mkgCl7xLEsI377R7OfghUec=;
+ b=Nhc4hw5+szeJCF+P/ywM7I1pAQOJ8DAOvTHsLYyTVh2Y7J/gZB/Kg8eQVDjTC6n7t6bcVhbR4
+ SwIFQ2X57jqB1xVWAWCIzWNwk+mTw7v9q85gpayCUd6jQqRzoNsHZ+v
 X-Developer-Key: i=mocker-mug-unwoven@duck.com; a=ed25519;
  pk=Q7l9BnP4XnFimCK28K+NVowcECqTaJNXicdBAInot0k=
 X-Endpoint-Received: by B4 Relay for mocker-mug-unwoven@duck.com/20261016 with auth_id=1206
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The "I2S0_CH2" switch of the UL1_CH2 mixer writes AFE_CONN21. That is
-the interconnect register for UL1 channel 1 (O21). Channel 2 is O22,
-which is AFE_CONN22, as the "ADDA_UL_CH2" switch of the same mixer
-already uses.
+This series adds the AMS TCS3400 to the tcs3472 driver. The TCS3400 is
+the ambient light sensor in the Amazon Echo Show 8 (2nd gen). I added
+it while bringing up mainline Linux on that device.
 
-So enabling the switch routes I2S0 channel 2 into UL1 channel 1, mixed
-with channel 1, and UL1 channel 2 gets nothing from I2S0.
+The TCS3400 has the TCS3472 register map, but no command type field,
+other gains, a 2.78 ms time step and its own interrupt clear register.
+The driver picks the variant from the ID register, so nothing changes
+for the TCS3472.
 
-Use AFE_CONN22.
+Patch 1 adds a binding. The TCS3472 had none, so it covers both
+families. I listed myself as its maintainer, since the driver has no
+MAINTAINERS entry.
 
-Found while adding UL1 capture routes for the four microphones of the
-Amazon Echo Show 8 (2nd gen). That board captures from I2S2, so the
-I2S0 path itself is only compile tested.
+Patch 2 adds the driver support.
 
-Fixes: d232591c9482 ("ASoC: Mediatek: MT8183: add I2S2 control path from UL2 and UL3")
-Signed-off-by: HuskerMinion <mocker-mug-unwoven@duck.com>
+On the device, raw reads follow the light. I tested that on a 6.18
+based kernel. The sampling frequency code that is new in togreg now
+uses the 2.78 ms step for WTIME and the init time as well. That part
+and the threshold interrupt are only build tested on the TCS3400.
+
 ---
- sound/soc/mediatek/mt8183/mt8183-afe-pcm.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+HuskerMinion (2):
+      dt-bindings: iio: light: Add AMS TCS3472 and TCS3400
+      iio: light: tcs3472: Add TCS3400 support
 
-diff --git a/sound/soc/mediatek/mt8183/mt8183-afe-pcm.c b/sound/soc/mediatek/mt8183/mt8183-afe-pcm.c
-index d6175da3b..2b2ee0575 100644
---- a/sound/soc/mediatek/mt8183/mt8183-afe-pcm.c
-+++ b/sound/soc/mediatek/mt8183/mt8183-afe-pcm.c
-@@ -301,7 +301,7 @@ static const struct snd_kcontrol_new memif_ul1_ch1_mix[] = {
- static const struct snd_kcontrol_new memif_ul1_ch2_mix[] = {
- 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN22,
- 				    I_ADDA_UL_CH2, 1, 0),
--	SOC_DAPM_SINGLE_AUTODISABLE("I2S0_CH2", AFE_CONN21,
-+	SOC_DAPM_SINGLE_AUTODISABLE("I2S0_CH2", AFE_CONN22,
- 				    I_I2S0_CH2, 1, 0),
- };
- 
+ .../devicetree/bindings/iio/light/ams,tcs3472.yaml |  57 ++++++++
+ drivers/iio/light/Kconfig                          |   7 +-
+ drivers/iio/light/tcs3472.c                        | 162 ++++++++++++++++-----
+ 3 files changed, 189 insertions(+), 37 deletions(-)
+---
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261015-tcs3400-e2e55e7a4980
 
--- 
-2.43.0
+Best regards,
+--  
+HuskerMinion <mocker-mug-unwoven@duck.com>
 
