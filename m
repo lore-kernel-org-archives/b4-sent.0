@@ -1,14 +1,13 @@
 From: Bruce Tsao <bruce.tsao@analog.com>
-Subject: [PATCH 0/2] iio: dac: add support for AD5413
-Date: Sat, 17 Oct 2026 03:23:52 +0800
-Message-Id: <20261017-ad5413-upstream-v1-0-61f40c8fef25@analog.com>
+Date: Sat, 17 Oct 2026 03:23:53 +0800
+Subject: [PATCH 1/2] dt-bindings: iio: dac: Document Analog Devices AD5413
+ single-channel DAC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQ5AMBBA0avIrDVpqRJXEYvSGWahpEUkjbtrL
- N/i/wQRA2OEvkgQ8ObIu89QZQHzav2Cgl02VLIySqpWWNdoVYvriGdAuwnqjNFEpMlNkKsjIPH
- zH4fxfT+j/ii+YQAAAA==
-X-Change-ID: 20261017-ad5413-upstream-f8664fff4fdb
+Message-Id: <20261017-ad5413-upstream-v1-1-61f40c8fef25@analog.com>
+References: <20261017-ad5413-upstream-v1-0-61f40c8fef25@analog.com>
+In-Reply-To: <20261017-ad5413-upstream-v1-0-61f40c8fef25@analog.com>
 To: Jonathan Cameron <jic23@kernel.org>
 Cc: linux-iio@vger.kernel.org, David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -17,42 +16,133 @@ Cc: linux-iio@vger.kernel.org, David Lechner <dlechner@baylibre.com>,
  Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Bruce Tsao <bruce.tsao@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792178669; l=1183;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792178669; l=3103;
  i=bruce.tsao@analog.com; s=20261017; h=from:subject:message-id;
- bh=BGiuguw2nDrUMZhZt/fC2z/TQeWYzLVwuYjJIurNctM=;
- b=67wYDI8ghJZc/4BM1JHb87+Z0LrADI+BD0Z4dwLGt5zWYA8BRkm3upxR1HCfkIytOhgFzZ6KB
- l+gvS4+KK8RC9cYsyFbp8QvtKPHGI3AGgPXjWVqcIyAHK8iUaZko7zH
+ bh=MLPV8sK6YxrCDJ3rbi7e0JiFTKRnM1tj3rvbSW15OFA=;
+ b=quDm8XU1PO9wKKXa4zW6z2ltCpe32WYd7d5NnP8xnp5kYdHA50dl+wSh78dMWOEqcXsHF6tRE
+ qlI1ickDsuWCO8iKl4oi67jqSOa+ujzj4mQsroX1+8nIJmgvs1gA0gI
 X-Developer-Key: i=bruce.tsao@analog.com; a=ed25519;
  pk=dT7qI1i91oYvnYmY2ljmdZ0ZQoCZIzrQ8hnsyjuBedg=
 X-Endpoint-Received: by B4 Relay for bruce.tsao@analog.com/20261017 with auth_id=1215
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the Analog Devices AD5413: a single-channel,
-14-bit, serial-input DAC with software-selectable voltage (+/-10.5 V) and
-current (0-24 mA) outputs. The SPI interface runs in mode 1 and carries a
-CRC-8 on every frame, which the device has enabled out of reset.
-
-Patch 1 documents the device-tree binding; patch 2 adds the IIO driver.
-
-Tested on an EVAL-AD5413SDZ with a Raspberry Pi 5 and an NXP i.MX93 FRDM
-board (probe, voltage- and current-output, scale/offset, powerdown/resume).
+Document the devicetree bindings for the Analog Devices AD5413, a
+single-channel precision DAC controlled via SPI. The device supports
+voltage or current output modes and programmable slew-rate control.
 
 Signed-off-by: Bruce Tsao <bruce.tsao@analog.com>
 ---
-Bruce Tsao (2):
-      dt-bindings: iio: dac: Document Analog Devices AD5413 single-channel DAC
-      iio: dac: add AD5413 driver
+ .../devicetree/bindings/iio/dac/adi,ad5413.yaml    | 101 +++++++++++++++++++++
+ 1 file changed, 101 insertions(+)
 
- .../devicetree/bindings/iio/dac/adi,ad5413.yaml    | 101 ++++
- drivers/iio/dac/Kconfig                            |  11 +
- drivers/iio/dac/Makefile                           |   1 +
- drivers/iio/dac/ad5413.c                           | 666 +++++++++++++++++++++
- 4 files changed, 779 insertions(+)
----
-base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
-change-id: 20261017-ad5413-upstream-f8664fff4fdb
+diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5413.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5413.yaml
+new file mode 100644
+index 000000000000..74e869304aab
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5413.yaml
+@@ -0,0 +1,101 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/dac/adi,ad5413.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices AD5413 DAC
++
++description:
++  Analog Devices AD5413 is a single-channel precision DAC supporting voltage
++  or current output modes with programmable slew-rate control.
++  The output mode is selected via the adi,chan-current-mode property.
++  Optional reset GPIO may be provided.
++
++maintainers:
++  - bruce.tsao@analog.com
++
++properties:
++  compatible:
++    const: adi,ad5413
++
++  spi-max-frequency:
++    maximum: 50000000
++
++  spi-cpha: true
++
++  spi-cpol: false
++
++  reset-gpios:
++    maxItems: 1
++    description: Optional reset GPIO (active low).
++
++  avdd-supply:
++    description: Analog positive supply (AVDD)
++
++  dvdd-supply:
++    description: Digital positive supply (DVDD)
++
++  avss-supply:
++    description: Analog negative supply (AVSS)
++
++  adi,chan-current-mode:
++    type: boolean
++    description: Select current output mode. If absent, voltage mode is used.
++
++  adi,slew-time-us:
++    description: Output digital slew control time in microseconds
++    minimum: 0
++    maximum: 1000000
++    default: 0
++
++required:
++  - compatible
++  - spi-cpha
++  - avdd-supply
++  - dvdd-supply
++  - avss-supply
++
++allOf:
++  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        dac@0 {
++            compatible = "adi,ad5413";
++            reg = <0>;
++            spi-max-frequency = <1000000>;
++            spi-cpha;
++            reset-gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
++            avdd-supply = <&avdd>;
++            dvdd-supply = <&dvdd>;
++            avss-supply = <&avss>;
++            adi,slew-time-us = <125>;
++        };
++    };
++
++  - |
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        dac@0 {
++            compatible = "adi,ad5413";
++            reg = <0>;
++            spi-max-frequency = <1000000>;
++            spi-cpha;
++            avdd-supply = <&avdd>;
++            dvdd-supply = <&dvdd>;
++            avss-supply = <&avss>;
++
++            adi,chan-current-mode;
++        };
++    };
 
-Best regards,
 -- 
-Bruce Tsao <bruce.tsao@analog.com>
+2.53.0
 
