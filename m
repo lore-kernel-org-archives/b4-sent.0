@@ -1,56 +1,140 @@
-From: Ishu Brar <patches@brar.si>
-Date: Fri, 16 Oct 2026 15:16:41 +0530
-Subject: [PATCH 2/2] iommu/arm-smmu-qcom: Skip PRR setup on SM7250 GPU SMMU
+From: George Neacsu <geocausa@gmail.com>
+Date: Fri, 16 Oct 2026 11:28:01 +0100
+Subject: [PATCH v2] media: i2c: vd55g1: fix VD55G0 streaming below 900 Mbps
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-smmu-sm7250-v1-2-e11fc0384cfa@brar.si>
-References: <20261016-smmu-sm7250-v1-0-e11fc0384cfa@brar.si>
-In-Reply-To: <20261016-smmu-sm7250-v1-0-e11fc0384cfa@brar.si>
-To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Rob Clark <robin.clark@oss.qualcomm.com>
-Cc: linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, Ishu Brar <patches@brar.si>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792144002; l=1110;
- i=patches@brar.si; h=from:subject:message-id;
- bh=VF/mGbM1EJsewrS92EWhHwKM9QYUxif31RQPsJ22WkY=;
- b=MgCQW+q+gdFxZtCWsk0t82jYnAc0w2/vWkXnNsoCO55m+Zt6MIUZx590bsXBO94tK74UYRbTg
- nMtTRX6V0tsDmJoW4NKUgkU3htbhLWlIwJGie3sIh3NVX6sdywqjsP2
-X-Developer-Key: i=patches@brar.si; a=ed25519;
- pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
-X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
+Message-Id: <20261016-vd55g0-sp11-fix-v2-1-aa08b4b8bbfc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WS0WqbMQyFXyX81/uHZFu21au9x+iFJEvtD2vTJ
+ VnYKHn3OSkMUtilBN859tF5X45+2Py4POzel4Oft+O2f51D+rJb7Flen3zdxpyXBKkiYF3Pg+g
+ J1uMb4hrb77WCWi1CrDiWSb0dfK5vit8fP+aD//w1hU8fy+VNTvY8ZR92o5RWgnA0QbAYCJKxu
+ iUF5lwLg2KRxjfdfxQANjOqGq2yKIDXpsPAKGFhwilq2rDeU0ySBkd0rN0VGyBQ7qNDFKWSuid
+ t2rjfU96weU4uxljNJMyCvQlRMgHIAJ2GSL6neliJRtNSLGdJOAMaWtAw87CcsKvTjO2eoqTDq
+ XKB+SAycIpSBqaOGKxcW1XLiHZPGSjnAuw5wyjaW9HcII2ZCTVPVhSmbE731JjuUQmQ+rRViYx
+ XOw91n1+bR5WYacQnioxVoRWYZ0nAM7/oSqTK0LtI01RHbvqJQvNSJAcjFHGXkQz7oC5YGgzUg
+ eKU8UqpHH21/cvLdnrY1RSlp4iWNbJ47wrWmRFn+q3NZwabBubl2rPn7XjaH/7cinzGW9H+29k
+ zrrjOEhSd9x89+renF9l+fJ3Gy+PlcvkLwO3fkhYDAAA=
+X-Change-ID: 20261016-vd55g0-sp11-fix-60bc64a59b1d
+To: sylvain.petinot@foss.st.com, pm@petermarshall.ca, 
+ benjamin.mugnier@foss.st.com
+Cc: sakari.ailus@linux.intel.com, linux-kernel@vger.kernel.org, 
+ mchehab@kernel.org, linux-media@vger.kernel.org, fqwqf@fqwqf.xyz, 
+ lsa.uz@pm.me, George Neacsu <geocausa@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792146480; l=4701;
+ i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
+ bh=m1dF/plKqq+CFSvKhg0SOvOc3T7aD4+VelQA4735/cg=;
+ b=TbZ7Qoi11fjGV4j+vRAi/d6A7Wf1NUBg0naMFVaTcrA43rDuNcaaTb+TNf6qmN7IwKvZ39dMY
+ U2eRnG4f0SzBgFhIFRRUNZkjZh0MIkg2nV9tSvcS2pIW1jiqdJITOzq
+X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
+ pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
+X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As on SM8250, the firmware on SM7250 resets the device when the Adreno
-SMMU PRR registers are written. This happened as soon as the first
-per-process GPU pagetable was created. Do not install the PRR
-callbacks for the SM7250 GPU SMMU either.
+On a Surface Pro 11 (Snapdragon X Elite, CAMSS) the VD55G0 IR sensor
+(cut 1, revision 0x1111) runs one D-PHY lane at 840 Mbps. With the
+VD55G0 support as posted, the sensor accepts the start command and
+reports STREAMING, but it never sends a frame and the stop command
+never completes.
 
-Tested on a OnePlus Nord (SM7250) with Vulkan.
+The minimum line length is the VD55G1 value, 1128 pixels. ST's
+reference vd55g0 driver uses 1200 below 900 Mbps and 1128 above. At
+840 Mbps the sensor stalls with 1128 and streams with 1200, so use 1200
+for the VD55G0 below 900 Mbps.
 
-Signed-off-by: Ishu Brar <patches@brar.si>
+With this change the sensor streams 644x604 Y10 at 61.6 fps, the
+diagonal grey-scale test pattern comes out correct, and stop completes.
+The built-in 2.11 cut1 patch is used unchanged.
+
+Link: https://github.com/STMicroelectronics/vd55g0-linux-driver/blob/a05627b0f6d8775aa54b6fa306e91f425f2cbf9e/vd55g0.c
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c | 1 +
- 1 file changed, 1 insertion(+)
+This is an incremental fix for Peter's unmerged VD55G0 support (v2,
+patch 11/11), on top of Jizhou's register-width fix (v2). It does not
+apply to media-next on its own.
 
-diff --git a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
-index 795e8ec7e..55071eb03 100644
---- a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
-+++ b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
-@@ -394,6 +394,7 @@ static int qcom_adreno_smmu_init_context(struct arm_smmu_domain *smmu_domain,
- 	priv->set_prr_addr = NULL;
+Prerequisites:
+https://lore.kernel.org/all/20260918221705.323510-1-pm@petermarshall.ca/
+(and Jizhou Tong's "[PATCH v2] media: i2c: vd55g1: correct VD55G0
+register access widths", 12 October)
+
+Benjamin, I know you'd rather see a separate vd55g0 driver (Sergey's).
+ST's downstream driver also uses a 1200-pixel line below 900 Mbps, so
+this is a data point for that driver too. I can test Sergey's driver on
+the Snapdragon Surface Pro 11 when it is posted.
+
+Tested on mainline (62f482ff73bf) with Peter's v2 01 and 04-11 plus
+Jizhou's fix. 02 and 03 did not apply to that tree, and neither touches
+the driver. The receiver is qcom CAMSS (CSIPHY0 -> CSID0 -> VFE0 RDI0)
+with out-of-tree Surface Pro 11 board support.
+---
+Changes in v2:
+- Drop the ISL_ENABLE (0x0329) change. Sergey found that writing it
+  does not stop the output on the Intel model, and a retest here agrees:
+  with the 1200-pixel line the sensor streams whether 0x0329 is written
+  at stream start, once per power-on, or not at all.
+- Link to v1: https://lore.kernel.org/r/20261016-vd55g0-sp11-fix-v1-1-eb14bd80d8f8@gmail.com
+---
+ drivers/media/i2c/vd55g1.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/media/i2c/vd55g1.c b/drivers/media/i2c/vd55g1.c
+index ba70447..4e23e88 100644
+--- a/drivers/media/i2c/vd55g1.c
++++ b/drivers/media/i2c/vd55g1.c
+@@ -76,6 +76,8 @@
+ #define VD55G1_XCLK_FREQ_MAX				(27 * HZ_PER_MHZ)
+ #define VD55G0_MIPI_RATE_MIN				(750 * MEGA)
+ #define VD55G0_MIPI_RATE_MAX				(1200 * MEGA)
++#define VD55G0_LINE_LENGTH_LOW_RATE			1200
++#define VD55G0_LOW_MIPI_RATE_LIMIT			(900 * MEGA)
+ #define VD55G1_MIPI_RATE_MIN				(250 * MEGA)
+ #define VD55G1_MIPI_RATE_MAX				(1200 * MEGA)
  
- 	if (of_device_is_compatible(np, "qcom,smmu-500") &&
-+	    !of_device_is_compatible(np, "qcom,sm7250-smmu-500") &&
- 	    !of_device_is_compatible(np, "qcom,sm8250-smmu-500") &&
- 	    of_device_is_compatible(np, "qcom,adreno-smmu")) {
- 		priv->set_prr_bit = qcom_adreno_smmu_set_prr_bit;
+@@ -1245,6 +1247,8 @@ struct vd55g1_model {
+ 	u16 num_modes;
+ 	u32 mipi_rate_min;
+ 	u32 mipi_rate_max;
++	u32 low_mipi_rate_limit;
++	u16 line_length_low_rate;
+ 	u16 width;
+ 	u16 height;
+ 	bool bayer;
+@@ -1323,6 +1327,8 @@ static const struct vd55g1_model vd55g0_model = {
+ 	.num_modes = ARRAY_SIZE(vd55g0_supported_modes),
+ 	.mipi_rate_min = VD55G0_MIPI_RATE_MIN,
+ 	.mipi_rate_max = VD55G0_MIPI_RATE_MAX,
++	.low_mipi_rate_limit = VD55G0_LOW_MIPI_RATE_LIMIT,
++	.line_length_low_rate = VD55G0_LINE_LENGTH_LOW_RATE,
+ 	.width = VD55G0_WIDTH,
+ 	.height = VD55G0_HEIGHT,
+ 	.bayer = false,
+@@ -1542,6 +1548,8 @@ static unsigned int vd55g1_get_hblank_min(struct vd55g1 *sensor,
+ 
+ 	/* Absolute time required for ADCs to convert pixels */
+ 	min_line_length = VD55G1_LINE_LENGTH_MIN;
++	if (sensor->mipi_rate < sensor->model->low_mipi_rate_limit)
++		min_line_length = sensor->model->line_length_low_rate;
+ 	if (sensor->model->hdr &&
+ 	    sensor->hdr_ctrl->val == VD55G1_HDR_SUB)
+ 		min_line_length = VD55G1_LINE_LENGTH_SUB_MIN;
 
+---
+base-commit: 62f482ff73bf3ae88b0c899115527752cf9cbf13
+change-id: 20261016-vd55g0-sp11-fix-60bc64a59b1d
+prerequisite-patch-id: d4474f51d7a10cfd10a316ec2b09936490b14a79
+prerequisite-patch-id: 0017cc56bf769ab00e67bdc0c5214951447cb716
+prerequisite-patch-id: 95a2d9ff8168eb17010538d80f4b5428e2b7b798
+prerequisite-patch-id: e717e32eac916ccafccf9e7a552ca0030085daa3
+prerequisite-patch-id: 8fc4f7595aac33a2164adb41c139dc3218be5bc6
+prerequisite-patch-id: 52bde56940b545c0e5f44d12811f9b9676bc311c
+prerequisite-patch-id: c0b93409e330d4b874b3702d67b57e2c4b0bde32
+prerequisite-patch-id: dbc6f65015852bbaf31e5f4efbee52c60bafb79f
+prerequisite-patch-id: d5c9bb074014a20938df8b55bb9088aa7b26d37b
+prerequisite-patch-id: d1ce44a3f9104aeead2c18d58a1470d1bd1ae531
+
+Best regards,
 -- 
-2.56.0
+George Neacsu <geocausa@gmail.com>
 
