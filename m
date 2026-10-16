@@ -1,90 +1,121 @@
-From: Ishu Brar <patches@brar.si>
-Date: Fri, 16 Oct 2026 18:23:14 +0530
-Subject: [PATCH 4/4] drm/msm/adreno: Add Adreno 620
+From: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Date: Fri, 16 Oct 2026 09:08:06 -0400
+Subject: [PATCH net] ice: fix Tx hang dump using stale tx_buf[0].skb
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-adreno-a620-v1-4-4a7ed6210d7d@brar.si>
-References: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
-In-Reply-To: <20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792155300; l=1735;
- i=patches@brar.si; h=from:subject:message-id;
- bh=TWtFaD6Cu2y3fcwXHfGH+7v1dt6VDV1C2TR+TW/3vM8=;
- b=tiEY/urZ6uoeNOO8oKnRlwhkiykMQJ/KVboQRNQsKg5GKqdhxUt3deLS1JYZG5AKOQmmi8dK2
- JWdeYnFUT2pBMOhjtuuR1t5s29KkQkYWwhnMRJDfdBilWKmn5r6LeRL
-X-Developer-Key: i=patches@brar.si; a=ed25519;
- pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
-X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
+Message-Id: <20261016-ice-tx-hang-dump-v1-1-3df0f5979a51@hydroquebec.com>
+X-B4-Tracking: v=1; b=H4sIALUh0moC/yWMQQrCMBREr1Jm7YemhiBeRVzYZFq/YCxJWgqld
+ zfV5ZvhvQ2ZSZlxbTYkLpr1EyuYUwP/fMSRoqEyurZzpjVO1FPKKscnYX5PQut6y2Av5+BQtSl
+ x0PWXvCGy4P4f89y/6MsRw75/AVz2cXJ5AAAA
+X-Change-ID: 20261016-ice-tx-hang-dump-e46b4ed483d6
+To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
+ intel-wired-lan@lists.osuosl.org
+Cc: Aleksandr Loktionov <aleksandr.loktionov@intel.com>, 
+ Michal Kubiak <michal.kubiak@intel.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792156085; l=3665;
+ i=choiniere.vincent@hydroquebec.com; s=20261016; h=from:subject:message-id;
+ bh=kt4dx1VrvDe36KXprpuSVG48M5IH9Jew3kkpwsyl//I=;
+ b=rpz6gaUYmlu/qQeArQzXjGbdt7hmwbh5F2PXicMHbyd04KAmR7m0AivdHwD8NF8xUWPxaCq66
+ vusrlXo13J0B8Xt4KnPmLoDzQSufiqzXYtu2F+evb6a33g6/z8dzX7W
+X-Developer-Key: i=choiniere.vincent@hydroquebec.com; a=ed25519;
+ pk=MctQE067DucsZOaNqb+sjY7aQ+urhztuURanagEW3+8=
+X-Endpoint-Received: by B4 Relay for choiniere.vincent@hydroquebec.com/20261016 with auth_id=1210
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the catalog entry for the Adreno 620 (chip id 0x06020000) found in
-the Snapdragon 765/765G/768G (SM7250). It is an A650 derivative and
-uses its SQE and GMU firmware and protect table, together with the A620
-zap shader.
+ice_tx_hang_reporter_dump() always reads tx_ring->tx_buf[0].skb,
+regardless of next_to_clean. The Tx cleanup path frees the skb and
+marks the buffer empty without clearing the skb pointer, so slot 0 can
+hold a stale pointer. A NULL check alone does not cover this, and
+devlink_fmsg_dump_skb() can fault on the freed skb.
 
-The speed-bin fuse values map to the OPP bins as in the downstream
-"lito" devicetree: fuse 0 is the default bin and fuse 132 and 115 are
-the two alternate ones.
+Read tx_buf[next_to_clean] instead, use its skb only if the buffer type
+is ICE_TX_BUF_SKB, and skip the skb dump otherwise.
 
-Tested on a OnePlus Nord (SM7250) with Vulkan.
+Observed on an E810 PF passed through to a KVM guest (Ubuntu 7.0.0-14,
+PREEMPT_RT, local scheduler patch): a delayed queue IRQ led to a Tx
+timeout and a page fault in devlink_fmsg_dump_skb():
 
-Signed-off-by: Ishu Brar <patches@brar.si>
+ BUG: unable to handle page fault for address: 0000000004cd0c11
+ Workqueue: ice ice_service_task [ice]
+ RIP: devlink_fmsg_dump_skb+0x2d8/0x5d0
+ Call Trace:
+  ice_tx_hang_reporter_dump+0x1ce/0x210 [ice]
+  devlink_health_do_dump+0xcc/0x190
+  devlink_health_report+0x1d7/0x260
+  ice_report_tx_hang+0x7d/0xa0 [ice]
+
+With this change and auto_dump enabled, starving a queue IRQ thread
+reproduced the Tx timeout; the dump contained the test packet, no Oops
+occurred and the PF recovered.
+
+Fixes: 2a82874a3b7b ("ice: add Tx hang devlink health reporter")
+Link: https://lore.kernel.org/all/20260327072332.130320-1-aleksandr.loktionov@intel.com/
+Cc: stable@vger.kernel.org
+Signed-off-by: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
 ---
- drivers/gpu/drm/msm/adreno/a6xx_catalog.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+This complements the NULL check in [1]. With only that check, a non-NULL
+but stale tx_buf[0].skb is still dereferenced by devlink_fmsg_dump_skb().
+I have only reproduced the crash on an Ubuntu 7.0.0-14 kernel with
+PREEMPT_RT and a local scheduler patch, and the skb lifetime against
+concurrent Tx cleanup still needs review. Feedback welcome.
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-index 4ef2bd6e7..45480dbf4 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-@@ -943,6 +943,31 @@ static const struct adreno_info a6xx_gpus[] = {
- 			{ 169, 2 },
- 			{ 180, 1 },
- 		),
-+	}, {
-+		.chip_ids = ADRENO_CHIP_IDS(0x06020000),
-+		.family = ADRENO_6XX_GEN3,
-+		.fw = {
-+			[ADRENO_FW_SQE] = "a650_sqe.fw",
-+			[ADRENO_FW_GMU] = "a650_gmu.bin",
-+		},
-+		.gmem = SZ_512K,
-+		.inactive_period = DRM_MSM_INACTIVE_PERIOD,
-+		.quirks = ADRENO_QUIRK_HAS_CACHED_COHERENT |
-+			  ADRENO_QUIRK_HAS_HW_APRIV,
-+		.funcs = &a6xx_gpu_funcs,
-+		.zapfw = "a620_zap.mbn",
-+		.a6xx = &(const struct a6xx_info) {
-+			.hwcg = a620_hwcg,
-+			.protect = &a650_protect,
-+			.gbif_cx = a640_gbif,
-+			.gmu_cgc_mode = 0x00020200,
-+			.prim_fifo_threshold = 0x00010000,
-+		},
-+		.speedbins = ADRENO_SPEEDBINS(
-+			{ 0,   0 },
-+			{ 132, 1 },
-+			{ 115, 3 },
-+		),
- 	}, {
- 		.chip_ids = ADRENO_CHIP_IDS(0x06020100),
- 		.family = ADRENO_6XX_GEN3,
+In my case next_to_clean was 0xfc while the reporter read slot 0.
+Upstream v7.0, v7.2 and current net main (191aa4154) all read
+tx_buf[0].skb unconditionally. Before this change, recovery stayed
+stuck until reboot.
 
--- 
-2.56.0
+[1] https://lore.kernel.org/all/20260327072332.130320-1-aleksandr.loktionov@intel.com/
+---
+ drivers/net/ethernet/intel/ice/devlink/health.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/intel/ice/devlink/health.c b/drivers/net/ethernet/intel/ice/devlink/health.c
+index 8e9a8a817..059859c36 100644
+--- a/drivers/net/ethernet/intel/ice/devlink/health.c
++++ b/drivers/net/ethernet/intel/ice/devlink/health.c
+@@ -390,12 +390,15 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
+ 				     struct netlink_ext_ack *extack)
+ {
+ 	struct ice_tx_hang_event *event = priv_ctx;
+-	struct sk_buff *skb;
++	struct sk_buff *skb = NULL;
++	struct ice_tx_buf *tx_buf;
+ 
+ 	if (!event)
+ 		return 0;
+ 
+-	skb = event->tx_ring->tx_buf->skb;
++	tx_buf = &event->tx_ring->tx_buf[event->next_to_clean];
++	if (tx_buf->type == ICE_TX_BUF_SKB)
++		skb = tx_buf->skb;
+ 	devlink_fmsg_obj_nest_start(fmsg);
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, head);
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, intr);
+@@ -409,7 +412,8 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
+ 	ice_fmsg_put_ptr(fmsg, "skb-ptr", skb);
+ 	devlink_fmsg_binary_pair_put(fmsg, "desc", event->tx_ring->desc,
+ 				     event->tx_ring->count * sizeof(struct ice_tx_desc));
+-	devlink_fmsg_dump_skb(fmsg, skb);
++	if (skb)
++		devlink_fmsg_dump_skb(fmsg, skb);
+ 	devlink_fmsg_obj_nest_end(fmsg);
+ 
+ 	return 0;
+
+---
+base-commit: 191aa41548b2d2b6af534a6d5cf84a552435c74c
+change-id: 20261016-ice-tx-hang-dump-e46b4ed483d6
+
+Best regards,
+--  
+Vincent Choiniere <choiniere.vincent@hydroquebec.com>
 
