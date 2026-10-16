@@ -1,121 +1,309 @@
-From: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
-Date: Fri, 16 Oct 2026 09:08:06 -0400
-Subject: [PATCH net] ice: fix Tx hang dump using stale tx_buf[0].skb
+From: Demeter Barna <me@fromdisposition.org>
+Date: Fri, 16 Oct 2026 13:57:09 +0000
+Subject: [PATCH] arm64: dts: qcom: sm8350: Flatten USB controller nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-ice-tx-hang-dump-v1-1-3df0f5979a51@hydroquebec.com>
-X-B4-Tracking: v=1; b=H4sIALUh0moC/yWMQQrCMBREr1Jm7YemhiBeRVzYZFq/YCxJWgqld
- zfV5ZvhvQ2ZSZlxbTYkLpr1EyuYUwP/fMSRoqEyurZzpjVO1FPKKscnYX5PQut6y2Av5+BQtSl
- x0PWXvCGy4P4f89y/6MsRw75/AVz2cXJ5AAAA
-X-Change-ID: 20261016-ice-tx-hang-dump-e46b4ed483d6
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- intel-wired-lan@lists.osuosl.org
-Cc: Aleksandr Loktionov <aleksandr.loktionov@intel.com>, 
- Michal Kubiak <michal.kubiak@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Message-Id: <20261016-sm8350-usb-flatten-v1-1-22a2ca3e642f@fromdisposition.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ6CMBBA4auQWTtJh5+KXsWwKDjAGKimU4gJ4
+ e5WWH6L9zZQDsIK92yDwKuovH0CXTLoRucHRnkmQ25yS4Ys6lwXlcFFW+wnFyN7tHVF7lpauhU
+ lpPATuJfvMX00p3VpX9zF/wn2/QfO7r2LdgAAAA==
+X-Change-ID: 20261016-sm8350-usb-flatten-6851a7461934
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krishna Kurapati <krishna.kurapati@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, Demeter Barna <me@fromdisposition.org>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792156085; l=3665;
- i=choiniere.vincent@hydroquebec.com; s=20261016; h=from:subject:message-id;
- bh=kt4dx1VrvDe36KXprpuSVG48M5IH9Jew3kkpwsyl//I=;
- b=rpz6gaUYmlu/qQeArQzXjGbdt7hmwbh5F2PXicMHbyd04KAmR7m0AivdHwD8NF8xUWPxaCq66
- vusrlXo13J0B8Xt4KnPmLoDzQSufiqzXYtu2F+evb6a33g6/z8dzX7W
-X-Developer-Key: i=choiniere.vincent@hydroquebec.com; a=ed25519;
- pk=MctQE067DucsZOaNqb+sjY7aQ+urhztuURanagEW3+8=
-X-Endpoint-Received: by B4 Relay for choiniere.vincent@hydroquebec.com/20261016 with auth_id=1210
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792159042; l=8406;
+ i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
+ bh=4PeNvpz5gpApVBXDzwm7sndi++evymHPK2bxZ29Wsto=;
+ b=0njUvmb7SVmJ422XS7gYC8RsVTfO//QrL1015R5XwLDZZ3I/jscNl+TMiteV7vZPocpG71WXX
+ 1iP76AtG22yCGtWDr1XYSpYjyYjcfnl2QFSRzdMPfSdQh2ST+Iavjvf
+X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
+ pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
+X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ice_tx_hang_reporter_dump() always reads tx_ring->tx_buf[0].skb,
-regardless of next_to_clean. The Tx cleanup path frees the skb and
-marks the buffer empty without clearing the skb pointer, so slot 0 can
-hold a stale pointer. A NULL check alone does not cover this, and
-devlink_fmsg_dump_skb() can fault on the freed skb.
+The USB controllers still use the legacy two-node layout, which binds
+dwc3-qcom-legacy. That driver updates the QSCRATCH VBUS valid override
+only through extcon, so with usb-role-switch the controller does not see
+the cable being pulled and does not enumerate again when it comes back.
 
-Read tx_buf[next_to_clean] instead, use its skb only if the buffer type
-is ICE_TX_BUF_SKB, and skip the skb dump otherwise.
+Flatten both controllers as on SM8450, so that dwc3-qcom updates the
+override with the role, and move the board properties from &usb_N_dwc3
+to &usb_N.
 
-Observed on an E810 PF passed through to a KVM guest (Ubuntu 7.0.0-14,
-PREEMPT_RT, local scheduler patch): a delayed queue IRQ led to a Tx
-timeout and a page fault in devlink_fmsg_dump_skb():
-
- BUG: unable to handle page fault for address: 0000000004cd0c11
- Workqueue: ice ice_service_task [ice]
- RIP: devlink_fmsg_dump_skb+0x2d8/0x5d0
- Call Trace:
-  ice_tx_hang_reporter_dump+0x1ce/0x210 [ice]
-  devlink_health_do_dump+0xcc/0x190
-  devlink_health_report+0x1d7/0x260
-  ice_report_tx_hang+0x7d/0xa0 [ice]
-
-With this change and auto_dump enabled, starving a queue IRQ thread
-reproduced the Tx timeout; the dump contained the test packet, no Oops
-occurred and the PF recovered.
-
-Fixes: 2a82874a3b7b ("ice: add Tx hang devlink health reporter")
-Link: https://lore.kernel.org/all/20260327072332.130320-1-aleksandr.loktionov@intel.com/
-Cc: stable@vger.kernel.org
-Signed-off-by: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Signed-off-by: Demeter Barna <me@fromdisposition.org>
 ---
-This complements the NULL check in [1]. With only that check, a non-NULL
-but stale tx_buf[0].skb is still dereferenced by devlink_fmsg_dump_skb().
-I have only reproduced the crash on an Ubuntu 7.0.0-14 kernel with
-PREEMPT_RT and a local scheduler patch, and the skb lifetime against
-concurrent Tx cleanup still needs review. Feedback welcome.
+Tested on a Razer Edge 5G (SM8350, board not upstream yet; Type-C
+through pmic-glink): without this patch USB does not enumerate again
+after the first unplug; with it, it does on every re-plug, after deep
+sleep (5/5) and across reboots (3/3). The other boards are only
+build-tested; dtbs_check is clean for all.
 
-In my case next_to_clean was 0xfc while the reporter read slot 0.
-Upstream v7.0, v7.2 and current net main (191aa4154) all read
-tx_buf[0].skb unconditionally. Before this change, recovery stayed
-stuck until reboot.
-
-[1] https://lore.kernel.org/all/20260327072332.130320-1-aleksandr.loktionov@intel.com/
+Prepared with an LLM coding assistant; tested on my device.
 ---
- drivers/net/ethernet/intel/ice/devlink/health.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8350-hdk.dts            | 12 +--
+ .../dts/qcom/sm8350-microsoft-surface-duo2.dts     |  6 +-
+ arch/arm64/boot/dts/qcom/sm8350-mtp.dts            |  6 +-
+ .../boot/dts/qcom/sm8350-sony-xperia-sagami.dtsi   |  6 +-
+ arch/arm64/boot/dts/qcom/sm8350.dtsi               | 94 ++++++++++------------
+ 5 files changed, 51 insertions(+), 73 deletions(-)
 
-diff --git a/drivers/net/ethernet/intel/ice/devlink/health.c b/drivers/net/ethernet/intel/ice/devlink/health.c
-index 8e9a8a817..059859c36 100644
---- a/drivers/net/ethernet/intel/ice/devlink/health.c
-+++ b/drivers/net/ethernet/intel/ice/devlink/health.c
-@@ -390,12 +390,15 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
- 				     struct netlink_ext_ack *extack)
- {
- 	struct ice_tx_hang_event *event = priv_ctx;
--	struct sk_buff *skb;
-+	struct sk_buff *skb = NULL;
-+	struct ice_tx_buf *tx_buf;
+diff --git a/arch/arm64/boot/dts/qcom/sm8350-hdk.dts b/arch/arm64/boot/dts/qcom/sm8350-hdk.dts
+index 24ad073b4143..47519654640a 100644
+--- a/arch/arm64/boot/dts/qcom/sm8350-hdk.dts
++++ b/arch/arm64/boot/dts/qcom/sm8350-hdk.dts
+@@ -847,12 +847,10 @@ &ufs_mem_phy {
+ };
  
- 	if (!event)
- 		return 0;
+ &usb_1 {
+-	status = "okay";
+-};
+-
+-&usb_1_dwc3 {
+ 	dr_mode = "otg";
+ 	usb-role-switch;
++
++	status = "okay";
+ };
  
--	skb = event->tx_ring->tx_buf->skb;
-+	tx_buf = &event->tx_ring->tx_buf[event->next_to_clean];
-+	if (tx_buf->type == ICE_TX_BUF_SKB)
-+		skb = tx_buf->skb;
- 	devlink_fmsg_obj_nest_start(fmsg);
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, head);
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, intr);
-@@ -409,7 +412,8 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
- 	ice_fmsg_put_ptr(fmsg, "skb-ptr", skb);
- 	devlink_fmsg_binary_pair_put(fmsg, "desc", event->tx_ring->desc,
- 				     event->tx_ring->count * sizeof(struct ice_tx_desc));
--	devlink_fmsg_dump_skb(fmsg, skb);
-+	if (skb)
-+		devlink_fmsg_dump_skb(fmsg, skb);
- 	devlink_fmsg_obj_nest_end(fmsg);
+ &usb_1_dwc3_hs {
+@@ -879,14 +877,12 @@ &usb_1_qmpphy_out {
+ };
  
- 	return 0;
+ &usb_2 {
+-	status = "okay";
+-};
+-
+-&usb_2_dwc3 {
+ 	dr_mode = "host";
+ 
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&usb_hub_enabled_state>;
++
++	status = "okay";
+ };
+ 
+ &usb_2_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/sm8350-microsoft-surface-duo2.dts b/arch/arm64/boot/dts/qcom/sm8350-microsoft-surface-duo2.dts
+index 442405ba5f6a..01e39565c68f 100644
+--- a/arch/arm64/boot/dts/qcom/sm8350-microsoft-surface-duo2.dts
++++ b/arch/arm64/boot/dts/qcom/sm8350-microsoft-surface-duo2.dts
+@@ -338,11 +338,9 @@ &ufs_mem_phy {
+ };
+ 
+ &usb_1 {
+-	status = "okay";
+-};
+-
+-&usb_1_dwc3 {
+ 	dr_mode = "peripheral";
++
++	status = "okay";
+ };
+ 
+ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/sm8350-mtp.dts b/arch/arm64/boot/dts/qcom/sm8350-mtp.dts
+index 410bb0befeea..a282e6d2007e 100644
+--- a/arch/arm64/boot/dts/qcom/sm8350-mtp.dts
++++ b/arch/arm64/boot/dts/qcom/sm8350-mtp.dts
+@@ -336,11 +336,9 @@ &ufs_mem_phy {
+ };
+ 
+ &usb_1 {
+-	status = "okay";
+-};
+-
+-&usb_1_dwc3 {
+ 	dr_mode = "peripheral";
++
++	status = "okay";
+ };
+ 
+ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/sm8350-sony-xperia-sagami.dtsi b/arch/arm64/boot/dts/qcom/sm8350-sony-xperia-sagami.dtsi
+index 969c8cb31df9..6e26aa3590b5 100644
+--- a/arch/arm64/boot/dts/qcom/sm8350-sony-xperia-sagami.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8350-sony-xperia-sagami.dtsi
+@@ -909,11 +909,9 @@ &ufs_mem_phy {
+ };
+ 
+ &usb_1 {
+-	status = "okay";
+-};
+-
+-&usb_1_dwc3 {
+ 	dr_mode = "peripheral";
++
++	status = "okay";
+ };
+ 
+ &usb_1_hsphy {
+diff --git a/arch/arm64/boot/dts/qcom/sm8350.dtsi b/arch/arm64/boot/dts/qcom/sm8350.dtsi
+index 55b32050ce9c..21863ba00d17 100644
+--- a/arch/arm64/boot/dts/qcom/sm8350.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8350.dtsi
+@@ -2615,13 +2615,10 @@ compute-cb@8 {
+ 			};
+ 		};
+ 
+-		usb_1: usb@a6f8800 {
+-			compatible = "qcom,sm8350-dwc3", "qcom,dwc3";
+-			reg = <0 0x0a6f8800 0 0x400>;
++		usb_1: usb@a600000 {
++			compatible = "qcom,sm8350-dwc3", "qcom,snps-dwc3";
++			reg = <0 0x0a600000 0 0xfc100>;
+ 			status = "disabled";
+-			#address-cells = <2>;
+-			#size-cells = <2>;
+-			ranges;
+ 
+ 			clocks = <&gcc GCC_CFG_NOC_USB3_PRIM_AXI_CLK>,
+ 				 <&gcc GCC_USB30_PRIM_MASTER_CLK>,
+@@ -2638,12 +2635,14 @@ usb_1: usb@a6f8800 {
+ 					  <&gcc GCC_USB30_PRIM_MASTER_CLK>;
+ 			assigned-clock-rates = <19200000>, <200000000>;
+ 
+-			interrupts-extended = <&intc GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
++			interrupts-extended = <&intc GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>,
++					      <&intc GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&intc GIC_SPI 131 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&pdc 14 IRQ_TYPE_EDGE_BOTH>,
+ 					      <&pdc 15 IRQ_TYPE_EDGE_BOTH>,
+ 					      <&pdc 17 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "pwr_event",
++			interrupt-names = "dwc_usb3",
++					  "pwr_event",
+ 					  "hs_phy_irq",
+ 					  "dp_hs_phy_irq",
+ 					  "dm_hs_phy_irq",
+@@ -2657,48 +2656,40 @@ usb_1: usb@a6f8800 {
+ 					<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_USB3_0 0>;
+ 			interconnect-names = "usb-ddr", "apps-usb";
+ 
+-			usb_1_dwc3: usb@a600000 {
+-				compatible = "snps,dwc3";
+-				reg = <0 0x0a600000 0 0xcd00>;
+-				interrupts = <GIC_SPI 133 IRQ_TYPE_LEVEL_HIGH>;
+-				iommus = <&apps_smmu 0x0 0x0>;
+-				snps,dis_u2_susphy_quirk;
+-				snps,dis_u3_susphy_quirk;
+-				snps,dis_enblslpm_quirk;
+-				snps,dis-u1-entry-quirk;
+-				snps,dis-u2-entry-quirk;
+-				phys = <&usb_1_hsphy>, <&usb_1_qmpphy QMP_USB43DP_USB3_PHY>;
+-				phy-names = "usb2-phy", "usb3-phy";
++			iommus = <&apps_smmu 0x0 0x0>;
++			snps,dis_u2_susphy_quirk;
++			snps,dis_u3_susphy_quirk;
++			snps,dis_enblslpm_quirk;
++			snps,dis-u1-entry-quirk;
++			snps,dis-u2-entry-quirk;
++			phys = <&usb_1_hsphy>, <&usb_1_qmpphy QMP_USB43DP_USB3_PHY>;
++			phy-names = "usb2-phy", "usb3-phy";
+ 
+-				ports {
+-					#address-cells = <1>;
+-					#size-cells = <0>;
++			ports {
++				#address-cells = <1>;
++				#size-cells = <0>;
+ 
+-					port@0 {
+-						reg = <0>;
++				port@0 {
++					reg = <0>;
+ 
+-						usb_1_dwc3_hs: endpoint {
+-						};
++					usb_1_dwc3_hs: endpoint {
+ 					};
++				};
+ 
+-					port@1 {
+-						reg = <1>;
++				port@1 {
++					reg = <1>;
+ 
+-						usb_1_dwc3_ss: endpoint {
+-							remote-endpoint = <&usb_1_qmpphy_usb_ss_in>;
+-						};
++					usb_1_dwc3_ss: endpoint {
++						remote-endpoint = <&usb_1_qmpphy_usb_ss_in>;
+ 					};
+ 				};
+ 			};
+ 		};
+ 
+-		usb_2: usb@a8f8800 {
+-			compatible = "qcom,sm8350-dwc3", "qcom,dwc3";
+-			reg = <0 0x0a8f8800 0 0x400>;
++		usb_2: usb@a800000 {
++			compatible = "qcom,sm8350-dwc3", "qcom,snps-dwc3";
++			reg = <0 0x0a800000 0 0xfc100>;
+ 			status = "disabled";
+-			#address-cells = <2>;
+-			#size-cells = <2>;
+-			ranges;
+ 
+ 			clocks = <&gcc GCC_CFG_NOC_USB3_SEC_AXI_CLK>,
+ 				 <&gcc GCC_USB30_SEC_MASTER_CLK>,
+@@ -2717,12 +2708,14 @@ usb_2: usb@a8f8800 {
+ 					  <&gcc GCC_USB30_SEC_MASTER_CLK>;
+ 			assigned-clock-rates = <19200000>, <200000000>;
+ 
+-			interrupts-extended = <&intc GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>,
++			interrupts-extended = <&intc GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>,
++					      <&intc GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&intc GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH>,
+ 					      <&pdc 12 IRQ_TYPE_EDGE_BOTH>,
+ 					      <&pdc 13 IRQ_TYPE_EDGE_BOTH>,
+ 					      <&pdc 16 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "pwr_event",
++			interrupt-names = "dwc_usb3",
++					  "pwr_event",
+ 					  "hs_phy_irq",
+ 					  "dp_hs_phy_irq",
+ 					  "dm_hs_phy_irq",
+@@ -2736,19 +2729,14 @@ usb_2: usb@a8f8800 {
+ 					<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_USB3_1 0>;
+ 			interconnect-names = "usb-ddr", "apps-usb";
+ 
+-			usb_2_dwc3: usb@a800000 {
+-				compatible = "snps,dwc3";
+-				reg = <0 0x0a800000 0 0xcd00>;
+-				interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+-				iommus = <&apps_smmu 0x20 0x0>;
+-				snps,dis_u2_susphy_quirk;
+-				snps,dis_u3_susphy_quirk;
+-				snps,dis_enblslpm_quirk;
+-				snps,dis-u1-entry-quirk;
+-				snps,dis-u2-entry-quirk;
+-				phys = <&usb_2_hsphy>, <&usb_2_qmpphy>;
+-				phy-names = "usb2-phy", "usb3-phy";
+-			};
++			iommus = <&apps_smmu 0x20 0x0>;
++			snps,dis_u2_susphy_quirk;
++			snps,dis_u3_susphy_quirk;
++			snps,dis_enblslpm_quirk;
++			snps,dis-u1-entry-quirk;
++			snps,dis-u2-entry-quirk;
++			phys = <&usb_2_hsphy>, <&usb_2_qmpphy>;
++			phy-names = "usb2-phy", "usb3-phy";
+ 		};
+ 
+ 		iris: video-codec@aa00000 {
 
 ---
-base-commit: 191aa41548b2d2b6af534a6d5cf84a552435c74c
-change-id: 20261016-ice-tx-hang-dump-e46b4ed483d6
+base-commit: 4eb2586bd40db27d77cc5b724ca9386ed0c71d53
+change-id: 20261016-sm8350-usb-flatten-6851a7461934
 
 Best regards,
 --  
-Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Demeter Barna <me@fromdisposition.org>
 
