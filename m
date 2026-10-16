@@ -1,64 +1,90 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Fri, 16 Oct 2026 23:22:40 +0200
-Subject: [PATCH] gpio: qcom_spmi_gpio: add qcom,pm8150l-gpio
+Date: Fri, 16 Oct 2026 23:50:44 +0200
+Subject: [PATCH] mach-snapdragon: fix the serial number taken from the
+ command line
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-b4-pm8150l-gpio-v1-1-be7cfbe7e3b7@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDA0Mz3SQT3YJcC0NTgxzd9ILMfF1Ti2SjZIM0ixRz40QloK6CotS0zAq
- widGxEH5xaVJWanIJyBil2loAsZXVHHMAAAA=
-X-Change-ID: 20261016-b4-pm8150l-gpio-58c2c0f8d73a
+Message-Id: <20261016-b4-snapdragon-serialno-v1-1-9d0aa26d4229@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDQAxA4atI1g04489Ar1K6yGjUlJKRSVsK4
+ t0d2+W3eG8D4yxscK02yPwRk6QF7lLBsJDOjDIWg69972rXY2zRlNYx05wUz5qempA4cNf4ELv
+ QQInXzJN8f+Pb/W97xwcPr/MG+34AWZI5+noAAAA=
+X-Change-ID: 20261016-b4-snapdragon-serialno-ae7e5327b573
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
  u-boot@lists.u-boot-project.org
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Jens Reidel <adrian@mainlining.org>, 
- David Wronek <david.wronek@mainlining.org>, 
- David Heidelberg <david@ixit.cz>, Petr Hodina <petr.hodina@protonmail.com>
+Cc: Tom Rini <trini@konsulko.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Antony Kurniawan Soemardi <linux@smankusors.com>, 
+ Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
+ Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792185763; l=1178;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792187448; l=1780;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=2tV/8TYil6y28jB+wzHKibuaGkO0WDGs0SbuiholmVw=;
- b=uB2xYd67oQKeuMASDCxy7rMO5HiNRbHFj5zQt1WKHENAkUDRCLhB0UGwQzqdJcgk8gqzG4+30
- T/KPe4vrv2JBSiq3J4kpmy75tobOi2GJgp+NhvExePZSV8xG2sCxSgG
+ bh=0CLedReSuo8u1BPyLssJGADja6VBG1fKJ9aup0vJ/RM=;
+ b=9yHLJtPqF2yQCSPsKgIoCpraqVp13MrBy2NY4wsmwkzlVQERgTmO0/ahyoFqBJYfn8mCKHQrw
+ ua1ezF6zqL5CqZXJIfcgEPafWH2ZJRdB82CytwGOx3zqXh6VyXiM2rj
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PM8150L has the same GPIO block as the other PMICs of the family.
+Check the android command line if it contain the 'androidboot.serialno'
+so the qcom_set_serialno() either the return value or skips the value.
 
-The Pixel 4a 5G (bramble) wires its Volume Up key to one of its pins.
+Fix also the helper to parse the value as the last word of the command
+line.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
-The Pixel 4a 5G wires its Volume Up key to a PM8150L GPIO.
+The serial number is currently broken on devices where the command line
+has no androidboot.serialno or passes it as the last word.
 
-Without the compatible the PMIC GPIO block is not bound
-so the key cannot be read in U-Boot.
+Fix it so it does not set the value from uninitialised stack data.
 ---
- drivers/gpio/qcom_spmi_gpio.c | 1 +
- 1 file changed, 1 insertion(+)
+ arch/arm/mach-snapdragon/board.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/gpio/qcom_spmi_gpio.c b/drivers/gpio/qcom_spmi_gpio.c
-index ae75a4e151d..f4b614ee1a6 100644
---- a/drivers/gpio/qcom_spmi_gpio.c
-+++ b/drivers/gpio/qcom_spmi_gpio.c
-@@ -748,6 +748,7 @@ static const struct udevice_id qcom_spmi_pmic_gpio_ids[] = {
- 	{ .compatible = "qcom,pm660l-gpio" },
- 	{ .compatible = "qcom,pm7325-gpio" },
- 	{ .compatible = "qcom,pm7550-gpio" },
-+	{ .compatible = "qcom,pm8150l-gpio" },
- 	{ .compatible = "qcom,pm8550-gpio" },
- 	{ .compatible = "qcom,pm8550b-gpio" },
- 	{ .compatible = "qcom,pm8550ve-gpio" },
+diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
+index 5fb3240acc5..50edcd0f6ce 100644
+--- a/arch/arm/mach-snapdragon/board.c
++++ b/arch/arm/mach-snapdragon/board.c
+@@ -331,15 +331,13 @@ static int get_cmdline_option(const char *cmdline, const char *key, char *out, i
+ 		return -ENOENT;
+ 
+ 	p += strlen(key);
+-	p_end = strstr(p, " ");
+-	if (!p_end)
+-		return -ENOENT;
+ 
+-	len = p_end - p;
+-	if (len > out_len)
+-		len = out_len;
++	p_end = strchr(p, ' ');
++	len = p_end ? p_end - p : strlen(p);
++	if (len >= out_len)
++		len = out_len - 1;
+ 
+-	strncpy(out, p, len);
++	memcpy(out, p, len);
+ 	out[len] = '\0';
+ 
+ 	return 0;
+@@ -373,7 +371,9 @@ void qcom_set_serialno(void)
+ 		return;
+ 	}
+ 
+-	get_cmdline_option(cmdline, "androidboot.serialno=", serial, sizeof(serial));
++	if (get_cmdline_option(cmdline, "androidboot.serialno=", serial, sizeof(serial)))
++		return;
++
+ 	if (serial[0] != '\0')
+ 		env_set("serial#", serial);
+ }
 
 ---
-base-commit: 71433ebf2aed1be5fbd2b1d497eae670ab9b9962
-change-id: 20261016-b4-pm8150l-gpio-58c2c0f8d73a
+base-commit: 1bcb2fe324180d0a8cfbdb0511737eba1d5b8550
+change-id: 20261016-b4-snapdragon-serialno-ae7e5327b573
 
 Best regards,
 --  
