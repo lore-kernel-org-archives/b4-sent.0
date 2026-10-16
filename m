@@ -1,237 +1,114 @@
-From: Pierre-Yves Le Borgne <pylaterreur@gmail.com>
-Date: Fri, 16 Oct 2026 18:10:47 +0100
-Subject: [PATCH net] net: gso: complete partial checksums of fraglist
- segments
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v7 0/4] arm64: amlogic: T7 thermal support
+Date: Fri, 16 Oct 2026 19:16:06 +0200
+Message-Id: <20261016-add-thermal-t7-vim4-v7-0-6eede5450fd4@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-fraglist-csum-v1-1-93945be7bb5d@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJZa0moC/yWMQQqDMBQFryJv3YCJNWivUlzY9Ed/sWnJjyKId
- 2+qyxmY2SAUmQS3YkOkhYU/IYO+FHBjHwZS/MwMUxqrS22Vj/0wsSTlZH6rtqm1r2rjbXVFbr6
- RPK/H745ACd0pZX68yKX/Cfv+A3VL7rV2AAAA
-X-Change-ID: 20261016-fraglist-csum-9851f352f634
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- Steffen Klassert <steffen.klassert@secunet.com>, 
- Willem de Bruijn <willemb@google.com>, Felix Fietkau <nbd@nbd.name>, 
- David Ahern <dsahern@kernel.org>
-Cc: Alice Mikityanska <alice.kernel@fastmail.im>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Pierre-Yves Le Borgne <pylaterreur@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792170647; l=8691;
- i=pylaterreur@gmail.com; s=20261016; h=from:subject:message-id;
- bh=+6s2T+CDmwwAnHYG9GYCPGRzPJ9RBMWkgGA4q3senVk=;
- b=kZzQ4Q7JYQK/iQAX86QuOUaPz9n59cwbCQvw5z16j8UbmaSVTVaLDxCwzAcBN2BDJwUW0C3bn
- h+ruCMlV2a6BIR0Eh5Wb13xnichnsrpVhlyQ+5GOhXeZIE3t1VctYFW
-X-Developer-Key: i=pylaterreur@gmail.com; a=ed25519;
- pk=ji67AkgYQ74oEk6yXWqtaQNCkT8ZDb7Jmi6SF/Neu7g=
-X-Endpoint-Received: by B4 Relay for pylaterreur@gmail.com/20261016 with auth_id=1214
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33Q22qEMBAG4FeRXDdlJgez7lXfo/QiJmMNeGhjK
+ lsW373RhSJie/kH/m8mc2cTxUATuxZ3FmkOUxiHHMxTwVxrh3fiwefMBIgSFAK33vPUUuxtx5P
+ hc+gVByBtsLbeOWS5+RGpCbdNfX175EifXxlPj0dW24m4G/s+pGsx0C3xdQACKrYW2jClMX5vW
+ 824Nf5dYEYOHKtG1BdvjfLmxXaBuucmbtws9oQ8J8RKAAhfgYUSxIGQO0LgOSEzYQUZgZo8gDw
+ Qak/8sUU+JvfKoRYXr0GpA6H3hDondCYqUOCsLG1Dx4+Uv0Q+tz4nykxI49FVWskK3I5YluUH5
+ Y3AmjUCAAA=
+X-Change-ID: 20260410-add-thermal-t7-vim4-00e571badcc1
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3708;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=kQZA6RQBnFlVuvXUdChzKc/fj05CNydeCaEx309sHac=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9al6A9pp+x2B5wKqwgMuLz34XJlw4nsHevzjmlEdpvN7
+ 9Fk3Lm1o5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZiIRg4jw6PiQwlrQ+u97jZ5
+ TNmU8abyRRXfr63HS406bQ9c3BrOZs/wP8+4lM86UHhyN2/c8mjnpBOTQ6yXMMWc8vzgu9zpymN
+ lZgA=
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit f0b8c3034556 ("udp: do not transition UDP GRO fraglist
-partial checksums to unnecessary"), fraglist GRO keeps CHECKSUM_PARTIAL
-on the packets it aggregates, and skb_segment_list() gives every segment
-the ip_summed of the head. Before it, UDP fraglist GRO turned them into
-CHECKSUM_UNNECESSARY, which left their checksums unfinished whatever the
-output device. Packets arrive with CHECKSUM_PARTIAL from veth, or from
-virtio-net when the host sets VIRTIO_NET_HDR_F_NEEDS_CSUM, which it does
-for packets that the host itself or another VM on the same bridge sent
-with checksum offload.
+This series adds thermal monitoring support for the Amlogic T7 SoC,
+used on the Khadas VIM4 board.
 
-validate_xmit_skb() completes CHECKSUM_PARTIAL checksums only for packets
-that need no segmentation, and relies on the GSO callbacks for the
-others: skb_segment() computes the checksums of its segments when the
-device can't. The fraglist path doesn't, so when the output device has no
-checksum offload, e.g. a tun device without TUN_F_CSUM, the segments leave
-with only the pseudo-header sum in their TCP or UDP checksum field and are
-dropped by the receiver. Only the packets that GRO aggregated are hit, so
-sparse traffic gets through while bulk transfers stall.
+The T7 exposes six thermal sensors (a53, a73, gpu, nna, vpu, hevc),
+each accessible through the secure monitor firmware interface rather
+than a directly mapped eFuse register as on older SoCs.
 
-This was seen with OpenWrt running as a VM, as OpenWrt turns rx-gro-list
-on by default: WireGuard packets from the host, which the VM routed into
-a VPN tun device, reached the VPN peer with unfinished UDP checksums, all
-with the same value. TCP is affected the same way.
+The series is organized as follows:
 
-Complete the checksums of the segments once the protocol code has fixed
-their headers up, as validate_xmit_skb() does for unsegmented packets.
-skb_segment_list() itself is too early for UDP, as
-__udp_gso_segment_list() restores the length in the head's UDP header
-only after it. Segments that are GSO packets themselves, which TCP
-fraglist GRO can chain, are left as they were: skb_checksum_help()
-refuses GSO packets.
+- Patch 1 extends the amlogic,t7-thermal DT binding to describe the
+  new amlogic,secure-monitor property.
+- Patches 2-3 extend the Meson secure monitor driver to expose a
+  thermal calibration read command (SMC ID 0x82000047).
+- Patch 4 adds the secure monitor readout path to the amlogic thermal
+  driver and introduces the amlogic,t7-thermal compatible.
+- Patches 5-7 wire up the T7 DTSI with CPU cooling cells, sensor
+  nodes, and thermal zones.
+- Patch 8 extends the Khadas VIM4 DTS to map all thermal zones to the
+  on-board MCU fan controller (states 30–100, corresponding to the
+  FAN_CTRL register range 0x1E–0x64).
 
-Fixes: 9fd1ff5d2ac7 ("udp: Support UDP fraglist GRO/GSO.")
-Fixes: bee88cd5bd83 ("net: add support for segmenting TCP fraglist GSO packets")
-Cc: stable@vger.kernel.org
-Closes: https://github.com/Ysurac/openmptcprouter/issues/4402
-Assisted-by: LLM
-Signed-off-by: Pierre-Yves Le Borgne <pylaterreur@gmail.com>
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-Tested on net/main 191aa41548b2 in UML: frames written with
-VIRTIO_NET_HDR_F_NEEDS_CSUM to a tap opened with IFF_NAPI | IFF_VNET_HDR
-(virtio_net_hdr_to_skb() and napi_gro_receive(), as on virtio-net RX),
-rx-gro-list on, routed with and without SNAT to a tun device read
-without vnet header. Packets that left the tun with the bare
-pseudo-header sum as checksum, with 2000 frames written per case:
+Changes in v7:
+- PATCH 3: Fix four hot thermal zone trip points declared as passive type instead of hot type.
+- Link to v6: https://lore.kernel.org/r/20261015-add-thermal-t7-vim4-v6-0-37d1c954390c@aliel.fr
 
-                    UDPv4  TCPv4  UDPv6  TCPv6
-  without, no NAT    1030    836   1106   1424
-  without, SNAT       250    721    683    196
-  with, either          0      0      0      0
+Changes in v6:
+- Rebased on next-20261014 (patches 1/8 to 4/8 already applied, dropped from this series).
+- PATCH 2: Add bus clocks and clock-names to all thermal sensor nodes.
+- PATCH 4: Change cooling device map min and max values from 30-100 to 1-5.
+           The driver maps (0,1,2,3,4,5) to (0,30,40,55,75,100)
+- Link to v5: https://lore.kernel.org/r/20260424-add-thermal-t7-vim4-v5-0-9040ca36afe2@aliel.fr
 
-With rx-gro-list off, both kernels complete every checksum. TCP from a
-TSO veth sender through a router with rx-gro-list on, out of a veth with
-and without tx checksum offload, still works. The error path was
-exercised by injecting failures into 1 in 8 checksummed segments, under
-KASAN, kmemleak and lockdep. The same reproducer showed the problem, and
-an earlier version of this fix working, on an OpenWrt 6.18 kernel in a
-VM.
+Changes in v5:
+- PATCH 4: Remove unnecessary variable and coding style alignment
+           according to Neil's feedback.
+- Link to v4: https://lore.kernel.org/r/20260423-add-thermal-t7-vim4-v4-0-d4c1528d5044@aliel.fr
 
-Callers of skb_gso_segment() that pass no offload features (xfrm,
-nfnetlink_queue, wireguard, ovpn) now get completed checksums from the
-fraglist path too, as they already do from skb_segment().
+Changes in v4:
+- PATCH 4: Extract SM and syscon setup into amlogic_thermal_probe_sm() and
+           amlogic_thermal_probe_syscon() removing amlogic_thermal_initialize()
+           from Daniel's feedback.
+           Also fix pre-existing bug: move calibration readout before
+           devm_thermal_of_zone_register() to avoid reading uninitialized
+           trim_info, according to Daniel's feedback.
+- Link to v3: https://lore.kernel.org/r/20260421-add-thermal-t7-vim4-v3-0-a2e7215ed003@aliel.fr
 
-Not done: allyesconfig and full allmodconfig builds (not enough disk
-here); the changed objects build without new warnings on x86_64
-allmodconfig with W=1 and sparse (GCC 15). No selftest: the
-reproducer needs a NAPI tap fed with virtio_net_hdr frames and a tun
-reader that checks checksums, about 300 lines of C. I can turn it into
-one under tools/testing/selftests/net if that is wanted.
+Changes in v3:
+- PATCH 1: Replace second if check by an else statement.
+  Remove unnecessary label in example according to Conor's feedback
+- Link to v2: https://lore.kernel.org/r/20260413-add-thermal-t7-vim4-v2-0-1002d90a0602@aliel.fr
 
-This patch was developed with an LLM coding agent (Claude Code). It was
-asked to find out why forwarded WireGuard traffic got bad UDP checksums
-in the OpenMPTCProuter report linked above, then to fix that and test
-the fix; it did the analysis, wrote the fix and this changelog, and ran
-the tests above.
----
- include/linux/skbuff.h   |  2 ++
- net/core/skbuff.c        | 40 ++++++++++++++++++++++++++++++++++++++++
- net/ipv4/tcp_offload.c   |  4 +++-
- net/ipv4/udp_offload.c   |  6 ++++--
- net/ipv6/tcpv6_offload.c |  4 +++-
- 5 files changed, 52 insertions(+), 4 deletions(-)
-
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index a3ff380d43f0..9c3dbbeb1e6e 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -4288,6 +4288,8 @@ void skb_scrub_packet(struct sk_buff *skb, bool xnet);
- struct sk_buff *skb_segment(struct sk_buff *skb, netdev_features_t features);
- struct sk_buff *skb_segment_list(struct sk_buff *skb, netdev_features_t features,
- 				 unsigned int offset);
-+struct sk_buff *skb_segment_list_csum_help(struct sk_buff *segs,
-+					   netdev_features_t features);
- struct sk_buff *skb_vlan_untag(struct sk_buff *skb);
- int skb_ensure_writable(struct sk_buff *skb, unsigned int write_len);
- int skb_ensure_writable_head_tail(struct sk_buff *skb, struct net_device *dev);
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 41beaf625421..be3fa938e1da 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -4782,6 +4782,46 @@ struct sk_buff *skb_segment_list(struct sk_buff *skb,
- }
- EXPORT_SYMBOL_GPL(skb_segment_list);
- 
-+/**
-+ * skb_segment_list_csum_help - finish the checksums of fraglist segments
-+ * @segs: segments built by skb_segment_list(), with their final headers
-+ * @features: features of the output path
-+ *
-+ * The segments built by skb_segment_list() all have the ip_summed of the
-+ * GRO head. If the aggregated packets were CHECKSUM_PARTIAL, e.g. received
-+ * from virtio-net or veth, compute the checksums that the output device
-+ * can't offload, as skb_segment() does for the segments it builds.
-+ * Segments that are GSO packets themselves (TCP fraglist GRO can chain
-+ * those) are left alone, as skb_checksum_help() can't handle them.
-+ *
-+ * Return: @segs, or an error pointer after freeing the segments.
-+ */
-+struct sk_buff *skb_segment_list_csum_help(struct sk_buff *segs,
-+					   netdev_features_t features)
-+{
-+	struct sk_buff *seg;
-+	int err;
-+
-+	if (segs->ip_summed != CHECKSUM_PARTIAL)
-+		return segs;
-+
-+	for (seg = segs; seg; seg = seg->next) {
-+		if (skb_is_gso(seg))
-+			continue;
-+
-+		err = skb_csum_hwoffload_help(seg, features);
-+		if (err) {
-+			kfree_skb_list(segs->next);
-+			segs->next = NULL;
-+			/* drop the extra reference skb_segment_list() took */
-+			kfree_skb(segs);
-+			return ERR_PTR(err);
-+		}
-+	}
-+
-+	return segs;
-+}
-+
- /**
-  *	skb_segment - Perform protocol segmentation on skb.
-  *	@head_skb: buffer to segment
-diff --git a/net/ipv4/tcp_offload.c b/net/ipv4/tcp_offload.c
-index e74d99ca9fac..0bb73e7eeff0 100644
---- a/net/ipv4/tcp_offload.c
-+++ b/net/ipv4/tcp_offload.c
-@@ -92,7 +92,9 @@ static struct sk_buff *__tcp4_gso_segment_list(struct sk_buff *skb,
- 	if (IS_ERR(skb))
- 		return skb;
- 
--	return __tcpv4_gso_segment_list_csum(skb);
-+	skb = __tcpv4_gso_segment_list_csum(skb);
-+
-+	return skb_segment_list_csum_help(skb, features);
- }
- 
- static struct sk_buff *tcp4_gso_segment(struct sk_buff *skb,
-diff --git a/net/ipv4/udp_offload.c b/net/ipv4/udp_offload.c
-index cf07c3c6611a..4a90cdb1a9eb 100644
---- a/net/ipv4/udp_offload.c
-+++ b/net/ipv4/udp_offload.c
-@@ -473,9 +473,11 @@ static struct sk_buff *__udp_gso_segment_list(struct sk_buff *skb,
- 	udp_set_len_short(udp_hdr(skb), sizeof(struct udphdr) + mss);
- 
- 	if (is_ipv6)
--		return __udpv6_gso_segment_list_csum(skb);
-+		skb = __udpv6_gso_segment_list_csum(skb);
- 	else
--		return __udpv4_gso_segment_list_csum(skb);
-+		skb = __udpv4_gso_segment_list_csum(skb);
-+
-+	return skb_segment_list_csum_help(skb, features);
- }
- 
- struct sk_buff *__udp_gso_segment(struct sk_buff *gso_skb,
-diff --git a/net/ipv6/tcpv6_offload.c b/net/ipv6/tcpv6_offload.c
-index eec3778855eb..e664904020e7 100644
---- a/net/ipv6/tcpv6_offload.c
-+++ b/net/ipv6/tcpv6_offload.c
-@@ -162,7 +162,9 @@ static struct sk_buff *__tcp6_gso_segment_list(struct sk_buff *skb,
- 	if (IS_ERR(skb))
- 		return skb;
- 
--	return __tcpv6_gso_segment_list_csum(skb);
-+	skb = __tcpv6_gso_segment_list_csum(skb);
-+
-+	return skb_segment_list_csum_help(skb, features);
- }
- 
- static struct sk_buff *tcp6_gso_segment(struct sk_buff *skb,
+Changes in v2:
+- PATCH 1: change two const entries to enum, explain why sensor index is needed
+  reorder conditional compatible for required, and fallback only according to
+  Krzysztof's feedback.
+- PATCH 3: Add kerneldoc for meson_sm_get_thermal_calib exported function
+  according to Krzysztof's feedback.
+- Link to v1: https://lore.kernel.org/r/20260410-add-thermal-t7-vim4-v1-0-19f2b8da74d7@aliel.fr
 
 ---
-base-commit: 191aa41548b2d2b6af534a6d5cf84a552435c74c
-change-id: 20261016-fraglist-csum-9851f352f634
+Ronald Claveau (4):
+      arm64: dts: amlogic: t7: Add cooling cells to all CPUs
+      arm64: dts: amlogic: t7: Add thermal sensor nodes
+      arm64: dts: amlogic: t7: Add thermal zones
+      arm64: dts: amlogic: t7: khadas-vim4: Add fan cooling to thermal zones
+
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  | 102 +++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        | 253 +++++++++++++++++++++
+ 2 files changed, 355 insertions(+)
+---
+base-commit: ab8eada9868faeee95f25d81d3d6fed0d1c98b78
+change-id: 20260410-add-thermal-t7-vim4-00e571badcc1
 
 Best regards,
---  
-Pierre-Yves Le Borgne <pylaterreur@gmail.com>
+-- 
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
