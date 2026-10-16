@@ -1,114 +1,188 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 16 Oct 2026 21:37:39 +0200
-Subject: [PATCH] arm64: dts: qcom: sdm845-google: Configure qup_i2c2 pins
+From: alex todadze <todadzealexi19@proton.me>
+Date: Fri, 16 Oct 2026 19:40:28 +0000
+Subject: [PATCH net] net: stmmac: fix rx checksum offload with extended
+ descriptors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-pixel3-i2c2-fix-v1-1-6a527d52c865@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4auEWTuQmUDQXqV0UeOoIyUNSVsE8
- e7GuvwevH+DIlmlwM1skOWnRd+xghoDYX7GSVCHamDLnix5TLrKy6FyYBx1RWc7ZqG2Jd9DfaU
- sdf4X74/L5dsvEj5nBvb9ABWz7ENzAAAA
-X-Change-ID: 20261016-pixel3-i2c2-fix-30922e18816b
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Selvaraj <foss@joelselvaraj.com>, 
- Vinod Koul <vkoul@kernel.org>, Amit Pundir <amit.pundir@linaro.org>
-Cc: Sumit Semwal <sumit.semwal@linaro.org>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, Marco Mattiolo <marco.mattiolo@hotmail.it>, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1863; i=david@ixit.cz;
- h=from:subject:message-id; bh=8F2FDAtyMGjBlCfXnVch0dchQePJ+YFwNeu8d37XgO0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0n0Ejd6G2KZGoA5pQ/H8YhwgaKY6lt5YR78vk
- 35DF/EHVAqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatJ9BAAKCRBgAj/E00kg
- cn8OEACZ5vPBQ90lPLqneAwW0b9lvU/3btUX4VBUkbHDBDHSCoJMZ4yMiTPq9/6EiPT17yg95je
- VrEkfFZWpmC7s8YUd5uTEgVzFivHDhHGlm/gxhIFKrX1dlEUTsPRGn13m4kztbv6FDrVW5yFge/
- 9B6iH6WD9+MKCeXZCaAs0acqp5pdyizySj14BA2KGtZyCfdEXdqOAXYDT8RqAbefTBuTc6nXKQZ
- iU2fpPDBV4G3Rq9QiKS8I3LrNku155wRgWwhBwS5w6neAgm2JqF4UN7egPUA9VrOdkt7zMKnmS1
- 8zggGXujDwrVf0GzYNyciMO0Nr62aJ4zZbCAg4pEQpwNY0AZUm7bkoKraLLg5rOF/XVtq4CHDvv
- 5F8SCL8FobVN5yobyE4xJS2CjGMI0QPswjc1AhyyRJ4cMIKP//hh4EmqjLHkXDjHTuhJLwqAS95
- 9HjlwHfk7LHoQUgpDeAVHlQ/XCAn9WWkFMZ6l8d32mJcsS+skvqCf6OXh5b8VwfTB+Bd3TGcqMX
- wbk7kqw365OJ0dGvaMJdOz7IOmqQ1waexhAOpT2BcOPw3dHHWq75vinpjEDmi/+l8gGE81kGR8Q
- VQs+Cu/+hShwwgxUtXv3Z7o12tQIX9TaQ9/x6zHrwVMTeTWrNMRgmhqyKc8u8v+LquHaC0Rc4F2
- 8h+cKqpenjnJkrg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20261016-stmmac-rx-csum-v1-1-986342ec40df@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8cxeaBqP4K9JDjFtdIalk01Io/
+ XdTPc7AzAblLKy4NhsyL6IypQqmbRBePj2Z5FEZfdc70xlHWmL0gfJKQedIzjpv7Xg5ndmjRp/
+ Mo6y/4Q2JC4a/1Pn+5lCOFfb9C3s5FfR3AAAA
+X-Change-ID: 20261016-stmmac-rx-csum-636a33f857ea
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ alex todadze <todadzealexi19@proton.me>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792179669; l=6604;
+ i=todadzealexi19@proton.me; s=20261016; h=from:subject:message-id;
+ bh=14jA977WtCT5IUsuAjwlQ5pv0h0Z3gG4xUUw3unqDZs=;
+ b=eCaOR4JAjZ4DQofNJSQF0/MPYnV6II0DsWU2qs66Huum1f5zQ264OMo409LaOYvUnCIxthZix
+ odHHUE2SqDPDE5qyjHrujQCpOEGphVbFIXt3d+FouUA1peEjZENwcps
+X-Developer-Key: i=todadzealexi19@proton.me; a=ed25519;
+ pk=j+Ld51xwndyrS6RE9s1B4vZjwvTeSSbcKp/mOdWy9PE=
+X-Endpoint-Received: by B4 Relay for todadzealexi19@proton.me/20261016 with auth_id=1216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Marco Mattiolo <marco.mattiolo@hotmail.it>
+With extended descriptors, bit 0 of RDES0 is the Extended Status
+Available flag. enh_desc_get_rx_status() still reads it as the payload
+checksum error bit of the checksum offload table, so every IP frame that
+has extended status is reported as csum_none and its checksum is
+verified again in software.
 
-Set drive strength and disable the pull on the touchscreen i2c pins by
-amending the qup_i2c2_default state from sdm845.dtsi, as the other QUP
-users on this board do, and drop the unused touchscreen_i2c_pins state
-that duplicated the pins with the gpio function.
+When extended status is available, take the result from RDES4 instead.
+A TCP, UDP or ICMP payload with no IP header error, no payload error and
+no checksum bypass is a good frame. Everything else keeps the status
+from RDES0. While at it, fix the IP payload type mask, which covered
+bits 6:2 instead of 2:0 and had no users.
 
-Fixes: a678adbf2d22 ("arm64: dts: qcom: Add support for Pixel 3 and Pixel 3 XL")
-Suggested-by: David Heidelberg <david@ixit.cz>
-Signed-off-by: Marco Mattiolo <marco.mattiolo@hotmail.it>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Tested on a Siflower SF19A2890 (GMAC 3.70) with the board as the iperf3
+endpoint. TCP receive goes from 326 to 378 Mbit/s with one stream and
+from 259 to 329 Mbit/s with four, and CPU use while receiving 200 Mbit/s
+drops from 26.6% to 21.5%. Frames with a bad TCP, UDP or ICMP checksum,
+over IPv4 and IPv6 and including fragmented UDP, are still dropped.
+
+Fixes: c24602ef8664 ("stmmac: support extend descriptors")
+Signed-off-by: alex todadze <todadzealexi19@proton.me>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/descs.h       |  6 +++++-
+ drivers/net/ethernet/stmicro/stmmac/enh_desc.c    | 26 +++++++++++++++++++++--
+ drivers/net/ethernet/stmicro/stmmac/hwif.h        |  6 +++---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c |  9 +++++---
+ 4 files changed, 38 insertions(+), 9 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index f1379857e2742..b019b57502a1a 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -459,16 +459,21 @@ &pmi8998_charger {
- &qupv3_id_0 {
- 	status = "okay";
- };
+diff --git a/drivers/net/ethernet/stmicro/stmmac/descs.h b/drivers/net/ethernet/stmicro/stmmac/descs.h
+index 846007cc2..0af819a98 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/descs.h
++++ b/drivers/net/ethernet/stmicro/stmmac/descs.h
+@@ -116,7 +116,7 @@
+ #define	ETDES1_BUFFER2_SIZE_MASK	GENMASK(28, 16)
  
- &qupv3_id_1 {
- 	status = "okay";
- };
+ /* Extended Receive descriptor definitions */
+-#define	ERDES4_IP_PAYLOAD_TYPE_MASK	GENMASK(6, 2)
++#define	ERDES4_IP_PAYLOAD_TYPE_MASK	GENMASK(2, 0)
+ #define	ERDES4_IP_HDR_ERR		BIT(3)
+ #define	ERDES4_IP_PAYLOAD_ERR		BIT(4)
+ #define	ERDES4_IP_CSUM_BYPASSED		BIT(5)
+@@ -147,6 +147,10 @@
+ #define RDES_PTP_SIGNALING		0xa
+ #define RDES_PTP_PKT_RESERVED_TYPE	0xf
  
-+&qup_i2c2_default {
-+	drive-strength = <2>;
-+	bias-disable;
-+};
++#define RDES_EXT_PAYLOAD_UDP		0x1
++#define RDES_EXT_PAYLOAD_TCP		0x2
++#define RDES_EXT_PAYLOAD_ICMP		0x3
 +
- &qup_uart9_rx {
- 	drive-strength = <2>;
- 	bias-pull-up;
- };
+ /* Basic descriptor structure for normal and alternate descriptors */
+ struct dma_desc {
+ 	__le32 des0;
+diff --git a/drivers/net/ethernet/stmicro/stmmac/enh_desc.c b/drivers/net/ethernet/stmicro/stmmac/enh_desc.c
+index 051253601..7620246f6 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/enh_desc.c
++++ b/drivers/net/ethernet/stmicro/stmmac/enh_desc.c
+@@ -109,8 +109,26 @@ static int enh_desc_coe_rdes0(int ipc_err, int type, int payload_err)
+ 	return ret;
+ }
  
- &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
-@@ -510,23 +515,16 @@ touchscreen_reset: ts-reset-state {
- 	};
+-static void enh_desc_get_ext_status(struct stmmac_extra_stats *x,
+-				    struct dma_extended_desc *p)
++static int enh_desc_ext_rx_csum(u32 rdes0, u32 rdes4, int status)
++{
++	u32 type = FIELD_GET(ERDES4_IP_PAYLOAD_TYPE_MASK, rdes4);
++
++	if (status != csum_none || !(rdes0 & RDES0_FRAME_TYPE) ||
++	    (rdes0 & RDES0_IPC_CSUM_ERROR))
++		return status;
++	if (!(rdes4 & (ERDES4_IPV4_PKT_RCVD | ERDES4_IPV6_PKT_RCVD)) ||
++	    (rdes4 & (ERDES4_IP_HDR_ERR | ERDES4_IP_PAYLOAD_ERR |
++		      ERDES4_IP_CSUM_BYPASSED)))
++		return status;
++	if (type != RDES_EXT_PAYLOAD_UDP && type != RDES_EXT_PAYLOAD_TCP &&
++	    type != RDES_EXT_PAYLOAD_ICMP)
++		return status;
++
++	return good_frame;
++}
++
++static int enh_desc_get_ext_status(struct stmmac_extra_stats *x,
++				   struct dma_extended_desc *p, int status)
+ {
+ 	u32 rdes0 = le32_to_cpu(p->basic.des0);
+ 	u32 rdes4 = le32_to_cpu(p->des4);
+@@ -170,7 +188,11 @@ static void enh_desc_get_ext_status(struct stmmac_extra_stats *x,
+ 			x->l4_filter_match++;
+ 		if (rdes4 & ERDES4_L3_L4_FILT_NO_MATCH_MASK)
+ 			x->l3_l4_filter_no_match++;
++
++		status = enh_desc_ext_rx_csum(rdes0, rdes4, status);
+ 	}
++
++	return status;
+ }
  
- 	touchscreen_pins: ts-pins-gpio-state {
- 		pins = "gpio125";
- 		function = "gpio";
- 		drive-strength = <2>;
- 		bias-disable;
- 	};
--
--	touchscreen_i2c_pins: qup-i2c2-gpio-state {
--		pins = "gpio27", "gpio28";
--		function = "gpio";
--		drive-strength = <2>;
--		bias-disable;
--	};
- };
+ static int enh_desc_get_rx_status(struct stmmac_extra_stats *x,
+diff --git a/drivers/net/ethernet/stmicro/stmmac/hwif.h b/drivers/net/ethernet/stmicro/stmmac/hwif.h
+index 5e2654c91..9925b789b 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/hwif.h
++++ b/drivers/net/ethernet/stmicro/stmmac/hwif.h
+@@ -70,8 +70,8 @@ struct stmmac_desc_ops {
+ 	/* Return the reception status looking at the RDES1 */
+ 	int (*rx_status)(struct stmmac_extra_stats *x,
+ 			 struct dma_desc *p);
+-	void (*rx_extended_status)(struct stmmac_extra_stats *x,
+-				   struct dma_extended_desc *p);
++	int (*rx_extended_status)(struct stmmac_extra_stats *x,
++				  struct dma_extended_desc *p, int status);
+ 	/* Set tx timestamp enable bit */
+ 	void (*enable_tx_timestamp) (struct dma_desc *p);
+ 	/* get tx timestamp status */
+@@ -128,7 +128,7 @@ struct stmmac_desc_ops {
+ #define stmmac_rx_status(__priv, __args...) \
+ 	stmmac_do_callback(__priv, desc, rx_status, __args)
+ #define stmmac_rx_extended_status(__priv, __args...) \
+-	stmmac_do_void_callback(__priv, desc, rx_extended_status, __args)
++	stmmac_do_callback(__priv, desc, rx_extended_status, __args)
+ #define stmmac_enable_tx_timestamp(__priv, __args...) \
+ 	stmmac_do_void_callback(__priv, desc, enable_tx_timestamp, __args)
+ #define stmmac_get_tx_timestamp_status(__priv, __args...) \
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index b837e8e27..efedd0504 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -5605,8 +5605,9 @@ static int stmmac_rx_zc(struct stmmac_priv *priv, int limit, u32 queue)
+ 			break;
  
- &uart6 {
- 	pinctrl-0 = <&qup_uart6_4pin>;
+ 		if (priv->extend_desc)
+-			stmmac_rx_extended_status(priv, &priv->xstats,
+-						  rx_q->dma_erx + entry);
++			status = stmmac_rx_extended_status(priv, &priv->xstats,
++							   rx_q->dma_erx + entry,
++							   status);
+ 		if (unlikely(status == discard_frame)) {
+ 			xsk_buff_free(buf->xdp);
+ 			buf->xdp = NULL;
+@@ -5788,7 +5789,9 @@ static int stmmac_rx(struct stmmac_priv *priv, int limit, u32 queue)
+ 		prefetch(np);
  
- 	status = "okay";
- 
- 	bluetooth {
+ 		if (priv->extend_desc)
+-			stmmac_rx_extended_status(priv, &priv->xstats, rx_q->dma_erx + entry);
++			status = stmmac_rx_extended_status(priv, &priv->xstats,
++							   rx_q->dma_erx + entry,
++							   status);
+ 		if (unlikely(status == discard_frame)) {
+ 			page_pool_put_page(rx_q->page_pool, buf->page, 0, true);
+ 			buf->page = NULL;
 
 ---
-base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
-change-id: 20261016-pixel3-i2c2-fix-30922e18816b
+base-commit: 191aa41548b2d2b6af534a6d5cf84a552435c74c
+change-id: 20261016-stmmac-rx-csum-636a33f857ea
 
 Best regards,
 --  
-David Heidelberg <david@ixit.cz>
+alex todadze <todadzealexi19@proton.me>
 
