@@ -1,10 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Fri, 16 Oct 2026 22:13:50 +0200
-Subject: [PATCH 1/2] pinctrl: qcom: sdm845: select the mux value per pin
+Date: Fri, 16 Oct 2026 22:13:51 +0200
+Subject: [PATCH 2/2] clk: qcom: sdm845: add GCC_QUPV3_WRAP0_S4_CLK case
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-b4-sdm845-qupv3-s4-v1-1-672e9be21fd2@protonmail.com>
+Message-Id: <20261016-b4-sdm845-qupv3-s4-v1-2-672e9be21fd2@protonmail.com>
 References: <20261016-b4-sdm845-qupv3-s4-v1-0-672e9be21fd2@protonmail.com>
 In-Reply-To: <20261016-b4-sdm845-qupv3-s4-v1-0-672e9be21fd2@protonmail.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot@lists.u-boot-project.org, 
@@ -15,95 +15,65 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  David Heidelberg <david@ixit.cz>, Petr Pavlata <petr@acrux.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792181640; l=2300;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792181640; l=1943;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=znIksOWrudNsp9MkPQ32uJ1zn0y6AypLxS2RN7WHhMc=;
- b=CJkvxcQ/ibNPMHY2cM5RN+tECGn8eLSm6TtHncTSb15Wo+jcep6AhfCAB11F+6agBwpRqWUsq
- XNcj74tmonDCbgAclepDhETPZImxdk+pfiYI2boGHMO/IkB3oIX8kDp
+ bh=f/ZVYYX99vkm0yr1LN794ymXRles7Exb/TzmXveMDL4=;
+ b=P+5kD+RjwjaIz9cEd9kCRMdDgRgeCdB8Wh+ypzPKcWxji5XCSQKsSoHxeNsaXgvVXrVHJF3r2
+ PKzrLX2f5NhDVLWIDbPCdqob0A2pOj0/x7Ar2+CfdB2rw/zCrQ6z5sY
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The raw TLMM function value of an alternate function is not the same on
-every pin.
+sdm845_clk_set_rate() handles the UART9 and SDCC2 clocks but not the
+QUP0 SE4 SPI clock.
 
-On GPIO 89 "qup4" sits behind tsif1_clk (value 2), on GPIO 90..92 behind
-two other functions (value 3).
-
-Add a per-pin table for the functions in use and register the "qup4"
-function for the QUP0 SE4 SPI pins (GPIO 89..92) next to "qup9".
+Add a GCC_QUPV3_WRAP0_S4_CLK case using the standard wrap0_s0
+frequency table.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/pinctrl/qcom/pinctrl-sdm845.c | 45 +++++++++++++++++++++++++++++++----
- 1 file changed, 40 insertions(+), 5 deletions(-)
+ drivers/clk/qcom/clock-sdm845.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/pinctrl/qcom/pinctrl-sdm845.c b/drivers/pinctrl/qcom/pinctrl-sdm845.c
-index 24b42e94c7a..bfd412d8e34 100644
---- a/drivers/pinctrl/qcom/pinctrl-sdm845.c
-+++ b/drivers/pinctrl/qcom/pinctrl-sdm845.c
-@@ -18,9 +18,31 @@
- #define MAX_PIN_NAME_LEN 32
- static char pin_name[MAX_PIN_NAME_LEN] __section(".data");
+diff --git a/drivers/clk/qcom/clock-sdm845.c b/drivers/clk/qcom/clock-sdm845.c
+index c9a057cf6f9..b2fb44083bf 100644
+--- a/drivers/clk/qcom/clock-sdm845.c
++++ b/drivers/clk/qcom/clock-sdm845.c
+@@ -18,6 +18,7 @@
  
-+enum {
-+	FUNC_QUP9,
-+	FUNC_QUP4,
-+	FUNC_GPIO,
-+};
-+
- static const struct pinctrl_function msm_pinctrl_functions[] = {
--	{"qup9", 1},
--	{"gpio", 0},
-+	[FUNC_QUP9] = {"qup9", -1},
-+	[FUNC_QUP4] = {"qup4", -1},
-+	[FUNC_GPIO] = {"gpio", 0},
-+};
-+
-+static const struct {
-+	u8 pin;
-+	u8 function;
-+	u8 mux;
-+} sdm845_pin_muxes[] = {
-+	/* GPIO 4..5: UART9 debug console */
-+	{ 4, FUNC_QUP9, 1 },
-+	{ 5, FUNC_QUP9, 1 },
-+	/* GPIO 89..92: GENI QUP0 SE4 SPI */
-+	{ 89, FUNC_QUP4, 2 },
-+	{ 90, FUNC_QUP4, 3 },
-+	{ 91, FUNC_QUP4, 3 },
-+	{ 92, FUNC_QUP4, 3 },
- };
+ #include "clock-qcom.h"
  
- static const unsigned int sdm845_pin_offsets[] = {
-@@ -80,10 +102,23 @@ static const char *sdm845_get_pin_name(struct udevice *dev,
- 	return pin_name;
- }
++#define SE4_SPI_APPS_CMD_RCGR	0x174f4
+ #define SE9_UART_APPS_CMD_RCGR	0x18148
  
--static int sdm845_get_function_mux(__maybe_unused unsigned int pin,
--				   unsigned int selector)
-+static int sdm845_get_function_mux(unsigned int pin, unsigned int selector)
- {
--	return msm_pinctrl_functions[selector].val;
-+	int i;
-+
-+	if (selector >= ARRAY_SIZE(msm_pinctrl_functions))
-+		return -EINVAL;
-+
-+	if (selector == FUNC_GPIO)
-+		return msm_pinctrl_functions[selector].val;
-+
-+	for (i = 0; i < ARRAY_SIZE(sdm845_pin_muxes); i++) {
-+		if (sdm845_pin_muxes[i].pin == pin &&
-+		    sdm845_pin_muxes[i].function == selector)
-+			return sdm845_pin_muxes[i].mux;
-+	}
-+
-+	return -EINVAL;
- }
- 
- static const struct msm_pinctrl_data sdm845_data = {
+ #define USB30_PRIM_MASTER_CLK_CMD_RCGR 0xf018
+@@ -77,7 +78,7 @@ static ulong sdm670_clk_set_rate(struct clk *clk, ulong rate)
+ 	case GCC_SDCC1_APPS_CLK:
+ 		freq = qcom_find_freq(ftbl_gcc_sdcc1_apps_clk_src, rate);
+ 		clk_rcg_set_rate_mnd(priv->base, SDCC1_APPS_CLK_CMD_RCGR,
+-				     freq->pre_div, freq->m, freq->n, freq->src, 8);
++				     freq->pre_div, freq->m, freq->n, freq->src, 16);
+ 		return freq->freq;
+ 	default:
+ 		return 0;
+@@ -95,10 +96,15 @@ static ulong sdm845_clk_set_rate(struct clk *clk, ulong rate)
+ 		clk_rcg_set_rate_mnd(priv->base, SE9_UART_APPS_CMD_RCGR,
+ 				     freq->pre_div, freq->m, freq->n, freq->src, 16);
+ 		return freq->freq;
++	case GCC_QUPV3_WRAP0_S4_CLK: /* QUP0 SE4 SPI */
++		freq = qcom_find_freq(ftbl_gcc_qupv3_wrap0_s0_clk_src, rate);
++		clk_rcg_set_rate_mnd(priv->base, SE4_SPI_APPS_CMD_RCGR,
++				     freq->pre_div, freq->m, freq->n, freq->src, 16);
++		return freq->freq;
+ 	case GCC_SDCC2_APPS_CLK:
+ 		freq = qcom_find_freq(ftbl_gcc_sdcc2_apps_clk_src, rate);
+ 		clk_rcg_set_rate_mnd(priv->base, SDCC2_APPS_CLK_CMD_RCGR,
+-				     freq->pre_div, freq->m, freq->n, freq->src, 8);
++				     freq->pre_div, freq->m, freq->n, freq->src, 16);
+ 		return freq->freq;
+ 	default:
+ 		return 0;
 
 -- 
 2.55.0
