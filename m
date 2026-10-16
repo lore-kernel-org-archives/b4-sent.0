@@ -1,149 +1,84 @@
-From: Amir Atef <amiratefabdallah1122@gmail.com>
-Subject: [PATCH] staging: iio: frequency: ad9834: use guard(mutex)
-Date: Fri, 16 Oct 2026 14:17:12 +0300
-Message-Id: <179214943270.333.5921549521929682753.20261016-ad9834-guard-mutex@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- David Lechner <dlechner@baylibre.com>, Nuno Sa <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-iio@vger.kernel.org, 
- linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.3
+From: George Neacsu <geocausa@gmail.com>
+Date: Fri, 16 Oct 2026 12:33:03 +0100
+Subject: [PATCH] media: i2c: ov13858: Set the colorspace in the pad format
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792149432; l=3644;
- i=amiratefabdallah1122@gmail.com; s=20261016; h=from:subject:message-id;
- bh=b1+SRs3iAPcCs6+33+xk+21acapvMkXoR0sdLd32oT4=;
- b=eTM9ePPa1AzM1Tbm5Ij4l2P8xsth9a3dmtSM+YUgQN+ZqFJFvY7lqeLrd3PmMUxYAIFollqXh
- sRMZsk01lYIAlbISZDi1QbuuKeJmaa16TioawPSa+pP47EwLhwRfyDp
-X-Developer-Key: i=amiratefabdallah1122@gmail.com; a=ed25519;
- pk=FRhtQptjt3GSkQBUg7qfVL8eusorsJqHzciu3+ss11o=
-X-Endpoint-Received: by B4 Relay for amiratefabdallah1122@gmail.com/20261016 with auth_id=1209
+Message-Id: <20261016-ov13858-colorspace-v1-1-51f0379ada0c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBMcLYmuEi1MpxoIFYUIpLsnL
+ d/i/wqFMlOBuauQ6ebCMTRg34E7bThIsG8GJZVBiUbEG/U0TsLFK+aSrCOxoZIDaeul8dDClGn
+ n558u6/t+y7oG+WQAAAA=
+X-Change-ID: 20261016-ov13858-colorspace-b1204e3ad06d
+To: Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Sergey Lebedev <lsa.uz@pm.me>, linux-media@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792150382; l=2395;
+ i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
+ bh=n/sxfBlSOnPixJhhw0pyum+d8qOEAc1WzMKK70SZHtc=;
+ b=Zpn/iF9ypaqtLNPVHcupoCSzFtYcv9OgX0eUmR1g2JE7zMdNqS5BsJExqPy2wvWzdJ9b+lxsf
+ nTpZYk+OOoNCaH5o5EzOz9XfG04/3jj1lX568wpF4bkNbKS6oRpJ2t5
+X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
+ pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
+X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use guard(mutex) to manage the state lock in ad9834_write() and
-ad9834_store_wavetype(). simplifies error handling by allowing
-early returns instead of setting the return code and breaking out of the
-switch statement to manually unlock the mutex.
+ov13858_update_pad_format() and the try format set in open() fill in the
+size, code and field but leave the colorspace fields at zero, so the
+sensor reports V4L2_COLORSPACE_DEFAULT. v4l2-compliance flags that: on
+the Intel Surface Pro 11, Active VIDIOC_SUBDEV_S_FMT fails through the
+media device. Report a raw colorspace, as imx355 and imx219 do.
 
-Signed-off-by: Amir Atef <amiratefabdallah1122@gmail.com>
+Tested on the Snapdragon Surface Pro 11, with this driver built against
+the 7.1 kernel the machine runs: the sensor reports Raw / None / 601 /
+full range, streams 4224x3136 at 29.9 fps, and v4l2-compliance passes
+46 of 46 on the subdev.
+
+Reported-by: Sergey Lebedev <lsa.uz@pm.me>
+Closes: https://lore.kernel.org/all/20261016070018.11932-1-lsa.uz@pm.me/
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- drivers/staging/iio/frequency/ad9834.c | 34 ++++++++++++----------------------
- 1 file changed, 12 insertions(+), 22 deletions(-)
+Sergey found this while testing the ov13858 device tree series on the
+Intel Surface Pro 11. It is independent of that series and applies to
+linux-next on its own.
+---
+ drivers/media/i2c/ov13858.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/drivers/staging/iio/frequency/ad9834.c b/drivers/staging/iio/frequency/ad9834.c
-index 0d20f796e0f0..76a520280f68 100644
---- a/drivers/staging/iio/frequency/ad9834.c
-+++ b/drivers/staging/iio/frequency/ad9834.c
-@@ -8,6 +8,7 @@
-  */
+diff --git a/drivers/media/i2c/ov13858.c b/drivers/media/i2c/ov13858.c
+index 5a49fa0ec..5be3d0888 100644
+--- a/drivers/media/i2c/ov13858.c
++++ b/drivers/media/i2c/ov13858.c
+@@ -1168,6 +1168,10 @@ static int ov13858_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+ 	try_fmt->height = ov13858->cur_mode->height;
+ 	try_fmt->code = MEDIA_BUS_FMT_SGRBG10_1X10;
+ 	try_fmt->field = V4L2_FIELD_NONE;
++	try_fmt->colorspace = V4L2_COLORSPACE_RAW;
++	try_fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;
++	try_fmt->quantization = V4L2_QUANTIZATION_FULL_RANGE;
++	try_fmt->xfer_func = V4L2_XFER_FUNC_NONE;
  
- #include <linux/bits.h>
-+#include <linux/cleanup.h>
- #include <linux/clk.h>
- #include <linux/dev_printk.h>
- #include <linux/err.h>
-@@ -155,7 +156,7 @@ static ssize_t ad9834_write(struct device *dev,
- 	if (ret)
- 		return ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 	switch ((u32)this_attr->address) {
- 	case AD9834_REG_FREQ0:
- 	case AD9834_REG_FREQ1:
-@@ -166,10 +167,8 @@ static ssize_t ad9834_write(struct device *dev,
- 		ret = ad9834_write_phase(st, this_attr->address, val);
- 		break;
- 	case AD9834_OPBITEN:
--		if (st->control & AD9834_MODE) {
--			ret = -EINVAL;  /* AD9834 reserved mode */
--			break;
--		}
-+		if (st->control & AD9834_MODE)
-+			return -EINVAL;  /* AD9834 reserved mode */
- 
- 		if (val)
- 			st->control |= AD9834_OPBITEN;
-@@ -193,8 +192,7 @@ static ssize_t ad9834_write(struct device *dev,
- 			st->control |= this_attr->address;
- 			st->control &= ~AD9834_PIN_SW;
- 		} else {
--			ret = -EINVAL;
--			break;
-+			return -EINVAL;
- 		}
- 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
- 		ret = spi_sync(st->spi, &st->msg);
-@@ -209,9 +207,8 @@ static ssize_t ad9834_write(struct device *dev,
- 		ret = spi_sync(st->spi, &st->msg);
- 		break;
- 	default:
--		ret = -ENODEV;
-+		return -ENODEV;
- 	}
--	mutex_unlock(&st->lock);
- 
- 	return ret ? ret : len;
+ 	/* No crop or compose */
+ 	mutex_unlock(&ov13858->mutex);
+@@ -1348,6 +1352,10 @@ static void ov13858_update_pad_format(const struct ov13858_mode *mode,
+ 	fmt->format.height = mode->height;
+ 	fmt->format.code = MEDIA_BUS_FMT_SGRBG10_1X10;
+ 	fmt->format.field = V4L2_FIELD_NONE;
++	fmt->format.colorspace = V4L2_COLORSPACE_RAW;
++	fmt->format.ycbcr_enc = V4L2_YCBCR_ENC_601;
++	fmt->format.quantization = V4L2_QUANTIZATION_FULL_RANGE;
++	fmt->format.xfer_func = V4L2_XFER_FUNC_NONE;
  }
-@@ -223,11 +220,11 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
- 	struct ad9834_state *st = iio_priv(indio_dev);
- 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
--	int ret = 0;
-+	int ret;
- 	bool is_ad9833_7 = (st->devid == ID_AD9833) || (st->devid == ID_AD9837);
  
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 
- 	switch ((u32)this_attr->address) {
- 	case 0:
-@@ -239,7 +236,7 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 				st->control &= ~AD9834_OPBITEN;
- 				st->control |= AD9834_MODE;
- 			} else if (st->control & AD9834_OPBITEN) {
--				ret = -EINVAL;	/* AD9834 reserved mode */
-+				return -EINVAL;	/* AD9834 reserved mode */
- 			} else {
- 				st->control |= AD9834_MODE;
- 			}
-@@ -247,7 +244,7 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 			st->control &= ~AD9834_MODE;
- 			st->control |= AD9834_OPBITEN;
- 		} else {
--			ret = -EINVAL;
-+			return -EINVAL;
- 		}
- 
- 		break;
-@@ -257,19 +254,15 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 			st->control &= ~AD9834_MODE;
- 			st->control |= AD9834_OPBITEN;
- 		} else {
--			ret = -EINVAL;
-+			return -EINVAL;
- 		}
- 		break;
- 	default:
--		ret = -EINVAL;
--		break;
-+		return -EINVAL;
- 	}
- 
--	if (!ret) {
--		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
--		ret = spi_sync(st->spi, &st->msg);
--	}
--	mutex_unlock(&st->lock);
-+	st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
-+	ret = spi_sync(st->spi, &st->msg);
- 
- 	return ret ? ret : len;
- }
+ static int ov13858_do_get_pad_format(struct ov13858 *ov13858,
+
+---
+base-commit: b810335a0699d1810683796b0e3ffe8827ddfe6c
+change-id: 20261016-ov13858-colorspace-b1204e3ad06d
+
+Best regards,
 -- 
-2.51.0
-
+George Neacsu <geocausa@gmail.com>
 
