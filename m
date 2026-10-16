@@ -1,159 +1,172 @@
-From: George Neacsu <geocausa@gmail.com>
-Date: Fri, 16 Oct 2026 07:37:57 +0100
-Subject: [PATCH] media: i2c: vd55g1: fix VD55G0 streaming below 900 Mbps
+From: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
+Subject: [PATCH RESEND v11 0/3] thermal: imx: Add calibration offset
+ support
+Date: Fri, 16 Oct 2026 15:43:17 +0800
+Message-Id: <20261016-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-0-b80952ad27d6@cn.bosch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-vd55g0-sp11-fix-v1-1-eb14bd80d8f8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12RwU6jMQyEX6X6z/tLdhLHMa+CONiODT0A3baLV
- kK8+waQVirHsfTN2OP37RLnY1y2u8P7do634+X4+rIE/jps/qQvj7Ef59JbgdIRsO9vk+gR9ss
- Jcc/j372DeW9KYji3RZ3OscZfjvcP3/ocv/8s4+v3cDvp1Z+W7d1htsYtCScrgudE0Io9vBiI1
- N4EDJuyfPn+pwCQ3albchc1gOhs08GpYBPCZerG2G8pIS1TMgf2EYYMCFTHHJDNqJURxdhYxi0
- VjBy1hLpgd9d0TwlWouIKUAEGTdV6S430lkwrUr1WLbgKmtbQscr0WnBY0KrtlqJiM6hLg7UQO
- QRlaxPLQEwx6dzNK6LfUg4mtYFErTCbDW5WGcpcnRBH8WawbGu5peZKz06ANFasaVb8jIu0iHX
- aeqrmaiN/UORiBtxgvaWArP5yGJGZwBiqbKXPyvaDQo/WtKYgNI3QWRzHpKHYGCbaRA2q+EmZX
- mL31+fn4/Xu0Eu2UTK5WlaNMQx8iCCu9pnXmiluiXV7+Pj4B2mKXVrJAgAA
-X-Change-ID: 20261016-vd55g0-sp11-fix-60bc64a59b1d
-To: Benjamin Mugnier <benjamin.mugnier@foss.st.com>, 
- Peter Marshall <pm@petermarshall.ca>, 
- Sylvain Petinot <sylvain.petinot@foss.st.com>
-Cc: linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
- Jizhou Tong <fqwqf@fqwqf.xyz>, Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Sergey Lebedev <lsa.uz@pm.me>, 
- George Neacsu <geocausa@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792132676; l=5492;
- i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=GU0MyDBe6lLQUO5Q8auruEMChbN8UFtavHtDbFIx0pM=;
- b=VCHwLg2Rf6FkACPUMLeBsyS5G3PUMZagCUVDsQB1j3d0qZWRm59LIKaDSt47gETEByNaJOjjv
- NPiNgbJDFkCBWsQ9qrHKYtwhI76w9rajExH5DXHeRkjVTlBic8l43Cw
-X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
- pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
-X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
+Content-Transfer-Encoding: 8bit
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Frank Li <Frank.Li@nxp.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792136598; l=7208;
+ i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
+ bh=q8QMU2g/5rxzERHN7LI3nwwsBxoze8z/SfHcGmxNnh0=;
+ b=f8P8IxutGqzvXkCQeSo8Aw7wZw9ob5Wj1VTpJ55ru1Q0rqQjav8jiufy/YhFfGs3JZmj8S1WX
+ QvRJ/QoInmwDjEHlPR0wrce3G1GLWcSoN2AFy1axDLlqaiE4r+sozhA
+X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
+ pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
+X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a Surface Pro 11 (Snapdragon X Elite, CAMSS) the VD55G0 IR sensor
-(cut 1, revision 0x1111) runs one D-PHY lane at 840 Mbps. With the
-VD55G0 support as posted, the sensor accepts the start command and
-reports STREAMING, but it never sends a frame and the stop command
-never completes.
+The TEMPMON sensor reading may deviate from the theoretical SoC
+junction temperature. This series adds an optional DT property to
+specify a calibration offset and implements the corresponding
+support in the imx_thermal driver.
 
-Two settings cause this:
+Patch 1 documents the new fsl,temp-calibration-offset-millicelsius
+property in the i.MX thermal DT binding. The offset is determined
+through thermal characterization by comparing the sensor output
+against the calculated junction temperature, and is limited to
+±20 °C.
 
-- The minimum line length is the VD55G1 value, 1128 pixels. ST's
-  reference vd55g0 driver uses 1200 below 900 Mbps and 1128 above.
-  At 840 Mbps the sensor stalls with 1128 and streams with 1200.
+Patch 2 fixes the i.MX7D alarm temperature conversion to use
+ceiling division (DIV_ROUND_UP() for non-negative, plain /
+for negative) and clamp() to stay within the 9-bit register range.
 
-- Writing 0 to 0x0329, mapped as ISL_ENABLE for the VD55G0, also stops
-  frame output, even with the longer line. The register reads 0x01
-  after boot, and the ST reference driver never writes it. Drop it from
-  the VD55G0 map and only write ISL_ENABLE on models that have it.
+Patch 3 reads this property in the imx_thermal driver and applies
+the offset symmetrically: it is added when reporting temperature to
+the thermal framework and subtracted when programming hardware alarm
+thresholds (to keep trip point semantics consistent). Out-of-range
+values are rejected with -EINVAL at probe time. When the property
+is absent, the default offset is 0.
 
-With both changes the sensor streams 644x604 Y10 at 61.6 fps, the
-diagonal grey-scale test pattern comes out correct, and stop completes.
-The built-in 2.11 cut1 patch is used unchanged.
-
-Link: https://github.com/STMicroelectronics/vd55g0-linux-driver/blob/a05627b0f6d8775aa54b6fa306e91f425f2cbf9e/vd55g0.c
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: George Neacsu <geocausa@gmail.com>
+Signed-off-by: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
 ---
-This is an incremental fix for Peter's unmerged VD55G0 support (v2,
-patch 11/11), on top of Jizhou's register-width fix (v2). It does not
-apply to media-next on its own.
+Changes in v11:
+- Cover letter and patch 3: removed the claim that the TEMPMON sensor
+  deviation exists "at the die level without board influence". The
+  commit messages now describe what the offset does without speculating
+  on the origin of the residual error.
+- No code or binding changes.
+- Link to v10: https://patch.msgid.link/20260720-b4-symana21-11221-imx-thermal-support-upstream-6-18-v10-0-f8c3dcd9a57e@cn.bosch.com
 
-Prerequisites:
-https://lore.kernel.org/all/20260918221705.323510-1-pm@petermarshall.ca/
-(and Jizhou Tong's "[PATCH v2] media: i2c: vd55g1: correct VD55G0
-register access widths", 12 October)
+Changes in v10:
+- Rephrase the series to describe the offset as sensor calibration
+  toward the theoretical junction temperature, reverting the v9
+  terminology that characterized it as a board-specific die-to-package-
+  surface conversion. Hardware characterization confirmed the deviation
+  exists at the die level, independent of board influence.
+- dt-bindings: update the property description to state the offset
+  corrects the TEMPMON sensor reading toward the theoretical junction
+  temperature
+- driver commit message: replace package-surface estimate wording with
+  calibrated correction toward junction temperature
+- Link to v9: https://patch.msgid.link/20260717-b4-symana21-11221-imx-thermal-support-upstream-6-18-v9-0-75f4af8974f4@cn.bosch.com
 
-Benjamin, I know you'd rather see a separate vd55g0 driver (Sergey's).
-ST's downstream driver already uses a 1200-pixel line below 900 Mbps
-and never writes 0x0329, so this is also a data point for that driver:
-these are the two settings this hardware needs. I can test Sergey's
-driver on the Snapdragon Surface Pro 11 when it is posted.
+Changes in v9:
+- Rephrase the series to clarify that the offset converts the internal
+  TEMPMON reading to a package-surface temperature estimate, rather than
+  calibrating the sensor for better die temperature accuracy (Frieder)
+- dt-bindings: update the property description to explicitly state it is
+  a board-specific conversion offset, not a sensor calibration
+- driver commit message: distinguish die temperature from package-surface
+  temperature in the symmetric offset mechanism explanation
+- Pick up Reviewed-by tags from Frank Li (patches 2,3) and Lukasz Luba
+  (patches 1,2,3)
+- Link to v8: https://patch.msgid.link/20260714-b4-symana21-11221-imx-thermal-support-upstream-6-18-v8-0-d54d8690e16e@cn.bosch.com
 
-Tested on mainline (62f482ff73bf) with Peter's v2 01 and 04-11 plus
-Jizhou's fix. 02 and 03 did not apply to that tree, and neither touches
-the driver. The receiver is qcom CAMSS (CSIPHY0 -> CSID0 -> VFE0 RDI0)
-with out-of-tree Surface Pro 11 board support.
+Changes in v8:
+- binding: s/behaviour/behavior/ (Lukasz)
+- New prep patch: use ceiling division (DIV_ROUND_UP() for non-negative, plain /
+  for negative) and clamp() for i.MX7D, extracted into a separate patch (Frank)
+- driver commit message: add offset mechanism explanation with a +3000 m°C calculation example (Lukasz)
+- probe: reject out-of-range offset with -EINVAL instead of silently clamping (Lukasz)
+- prep patch: handle negative alarm_temp with plain division (C rounds toward zero)
+- Link to v7: https://patch.msgid.link/20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v7-0-09b6b7669be1@cn.bosch.com
+
+Changes in v7:
+- Align the author name with the Signed-off-by trailer.
+- Link to v6: https://patch.msgid.link/20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v6-0-88a378faeca5@cn.bosch.com
+
+Changes in v6:
+- Align the author name with the Signed-off-by trailer.
+- Link to v5: https://patch.msgid.link/20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v5-0-69405c306c6b@cn.bosch.com
+
+Changes in v5:
+- Move calibration offset application out of c2 initialization, instead
+  apply it in imx_get_temp(), imx_set_alarm_temp() and imx_set_panic_temp()
+  for consistent style across i.MX6 and i.MX7D
+- Subtract calibration offset from alarm_temp before the if-else block in
+  imx_set_alarm_temp(), simplifying both SoC branches (Frank's suggestion)
+- Link to v4: https://patch.msgid.link/20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v4-0-1fef97d1c750@cn.bosch.com
+
+Changes in v4:
+- dt-bindings: drop maxItems to allow minimum/maximum constraints for
+  temp-calibration-offset-millicelsius
+- Link to v3: https://patch.msgid.link/20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v3-0-db9fc2947c55@cn.bosch.com
+
+Changes in v3:
+- dt-bindings: add minimum/maximum (-28580/+28580) for
+  temp-calibration-offset-millicelsius, as suggested by Conor Dooley
+- Link to v2: https://patch.msgid.link/20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v2-0-00ff72495e24@cn.bosch.com
+
+Changes in v2:
+- dt-bindings: Removed explicit `$ref: /schemas/types.yaml#/definitions/int32`
+  for fsl,temp-calibration-offset-millicelsius; the `-millicelsius` suffix
+  already resolves to int32-array via property-units.yaml (Rob).
+- dt-bindings: Fixed example indentation.
+- driver: Replaced C integer division (/) with DIV_ROUND_CLOSEST() in
+  imx_set_alarm_temp() to prevent off-by-one alarm threshold mismatch that
+  could cause IRQ storms on i.MX7D.
+- driver: Added clamp() bounds check for alarm_value [0, 0x1ff] to avoid
+  corrupting adjacent register fields (PANIC_ALARM).
+- Link to v1: https://patch.msgid.link/20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v1-0-00f88f42930b@cn.bosch.com
+
+To: "Rafael J. Wysocki" <rafael@kernel.org>
+To: Daniel Lezcano <daniel.lezcano@linaro.org>
+To: Zhang Rui <rui.zhang@intel.com>
+To: Lukasz Luba <lukasz.luba@arm.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Shawn Guo <shawnguo@kernel.org>
+To: Sascha Hauer <s.hauer@pengutronix.de>
+To: Pengutronix Kernel Team <kernel@pengutronix.de>
+To: Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: imx@lists.linux.dev
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+
 ---
- drivers/media/i2c/vd55g1.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+Haoning CHENG (3):
+      dt-bindings: thermal: imx: Document calibration offset property
+      thermal/drivers/imx: Fix rounding and clamp for i.MX7D alarm
+      thermal/drivers/imx: Add calibration offset support
 
-diff --git a/drivers/media/i2c/vd55g1.c b/drivers/media/i2c/vd55g1.c
-index ba70447..4471c5a 100644
---- a/drivers/media/i2c/vd55g1.c
-+++ b/drivers/media/i2c/vd55g1.c
-@@ -76,6 +76,8 @@
- #define VD55G1_XCLK_FREQ_MAX				(27 * HZ_PER_MHZ)
- #define VD55G0_MIPI_RATE_MIN				(750 * MEGA)
- #define VD55G0_MIPI_RATE_MAX				(1200 * MEGA)
-+#define VD55G0_LINE_LENGTH_LOW_RATE			1200
-+#define VD55G0_LOW_MIPI_RATE_LIMIT			(900 * MEGA)
- #define VD55G1_MIPI_RATE_MIN				(250 * MEGA)
- #define VD55G1_MIPI_RATE_MAX				(1200 * MEGA)
- 
-@@ -169,7 +171,6 @@ static const int vd55g0_reg_map[REG_MAX_INDEX] = {
- 	[REG_OIF_IMG_CTRL] = CCI_REG8(0x030f),
- 	[REG_MIPI_DATA_RATE] = CCI_REG32_LE(0x0224),
- 	[REG_SYSTEM_FSM] = CCI_REG8(0x002c),
--	[REG_ISL_ENABLE] = CCI_REG8(0x0329),
- 	[REG_FWPATCH_REVISION] = CCI_REG16_LE(0x0022),
- 	[REG_PATGEN_CTRL] = CCI_REG16_LE(0x0400),
- 	[REG_READOUT_CTRL] = CCI_REG8(0x047a),
-@@ -1245,6 +1246,8 @@ struct vd55g1_model {
- 	u16 num_modes;
- 	u32 mipi_rate_min;
- 	u32 mipi_rate_max;
-+	u32 low_mipi_rate_limit;
-+	u16 line_length_low_rate;
- 	u16 width;
- 	u16 height;
- 	bool bayer;
-@@ -1323,6 +1326,8 @@ static const struct vd55g1_model vd55g0_model = {
- 	.num_modes = ARRAY_SIZE(vd55g0_supported_modes),
- 	.mipi_rate_min = VD55G0_MIPI_RATE_MIN,
- 	.mipi_rate_max = VD55G0_MIPI_RATE_MAX,
-+	.low_mipi_rate_limit = VD55G0_LOW_MIPI_RATE_LIMIT,
-+	.line_length_low_rate = VD55G0_LINE_LENGTH_LOW_RATE,
- 	.width = VD55G0_WIDTH,
- 	.height = VD55G0_HEIGHT,
- 	.bayer = false,
-@@ -1542,6 +1547,8 @@ static unsigned int vd55g1_get_hblank_min(struct vd55g1 *sensor,
- 
- 	/* Absolute time required for ADCs to convert pixels */
- 	min_line_length = VD55G1_LINE_LENGTH_MIN;
-+	if (sensor->mipi_rate < sensor->model->low_mipi_rate_limit)
-+		min_line_length = sensor->model->line_length_low_rate;
- 	if (sensor->model->hdr &&
- 	    sensor->hdr_ctrl->val == VD55G1_HDR_SUB)
- 		min_line_length = VD55G1_LINE_LENGTH_SUB_MIN;
-@@ -2117,7 +2124,8 @@ static int vd55g1_enable_streams(struct v4l2_subdev *sd,
- 	/* Configure output */
- 	vd55g1_write(sensor, REG_MIPI_DATA_RATE, sensor->mipi_rate, &ret);
- 	vd55g1_write(sensor, REG_OIF_CTRL, sensor->oif_ctrl, &ret);
--	vd55g1_write(sensor, REG_ISL_ENABLE, 0, &ret);
-+	if (sensor->model->reg_map[REG_ISL_ENABLE])
-+		vd55g1_write(sensor, REG_ISL_ENABLE, 0, &ret);
- 	if (ret)
- 		goto err_rpm_put;
- 
-
+ .../devicetree/bindings/thermal/imx-thermal.yaml   | 12 +++++++
+ drivers/thermal/imx_thermal.c                      | 39 ++++++++++++++++++++--
+ 2 files changed, 48 insertions(+), 3 deletions(-)
 ---
-base-commit: 62f482ff73bf3ae88b0c899115527752cf9cbf13
-change-id: 20261016-vd55g0-sp11-fix-60bc64a59b1d
-prerequisite-patch-id: d4474f51d7a10cfd10a316ec2b09936490b14a79
-prerequisite-patch-id: 0017cc56bf769ab00e67bdc0c5214951447cb716
-prerequisite-patch-id: 95a2d9ff8168eb17010538d80f4b5428e2b7b798
-prerequisite-patch-id: e717e32eac916ccafccf9e7a552ca0030085daa3
-prerequisite-patch-id: 8fc4f7595aac33a2164adb41c139dc3218be5bc6
-prerequisite-patch-id: 52bde56940b545c0e5f44d12811f9b9676bc311c
-prerequisite-patch-id: c0b93409e330d4b874b3702d67b57e2c4b0bde32
-prerequisite-patch-id: dbc6f65015852bbaf31e5f4efbee52c60bafb79f
-prerequisite-patch-id: d5c9bb074014a20938df8b55bb9088aa7b26d37b
-prerequisite-patch-id: d1ce44a3f9104aeead2c18d58a1470d1bd1ae531
+base-commit: c50a940dcde35c647e097e89a9150003abd48329
+change-id: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
 
 Best regards,
+--
+Haoning Cheng <Haoning.CHENG@cn.bosch.com>
 -- 
-George Neacsu <geocausa@gmail.com>
+Haoning Cheng <Haoning.CHENG@cn.bosch.com>
 
