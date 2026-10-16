@@ -1,154 +1,69 @@
-From: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
-Date: Fri, 16 Oct 2026 15:43:20 +0800
-Subject: [PATCH RESEND v11 3/3] thermal/drivers/imx: Add calibration offset
- support
+From: HuskerMinion <mocker-mug-unwoven@duck.com>
+Subject: [PATCH 0/2] ASoC: mediatek: mt8183: Two AFE fixes
+Date: Fri, 16 Oct 2026 02:14:00 -0600
+Message-Id: <20261016-mt8183-afe-fixes-v1-0-f0db51e0c073@duck.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261016-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-3-b80952ad27d6@cn.bosch.com>
-References: <20261016-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-0-b80952ad27d6@cn.bosch.com>
-In-Reply-To: <20261016-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-0-b80952ad27d6@cn.bosch.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
- Frank Li <Frank.Li@nxp.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792136598; l=4319;
- i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
- bh=iGtMCQeZJKH4z5VifCeuyUN93+QX4fy7skn49vUYhis=;
- b=p3ecGX8rpMDwbdviSKFKrfkLVuy9mrWu/aACj07WnLTHEA8l+T/z2d/QNwruJVC6K89YMMICL
- 9IOqPLoEvlADbJxL3v6WXYaXoOBXzmdWGnpfGu4B4uHg5dS+5tFs/Fc
-X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
- pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
-X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAMjc0WoC/yXM0QqCQBCF4VeRuW5gR7fQXiW60PVsjaDFjkUg+
+ +5udflx+M9GhqQwOlcbJbzV9LEUyKGicO+XG1jHYqpdfRInR57XVtqG+wiO+oFx54HOS2ji6Kh
+ kz4TfUKrL9W97DRPC+v2hnHfmLnv1dAAAAA==
+X-Change-ID: 20261015-mt8183-afe-fixes-94ee941c3fd0
+To: Mark Brown <broonie@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>
+Cc: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ linux-sound@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, HuskerMinion <mocker-mug-unwoven@duck.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792138468; l=1641;
+ i=mocker-mug-unwoven@duck.com; s=20261016; h=from:subject:message-id;
+ bh=TIwHNW4PKjIUENLKJlEq6MQ/g15eZ57FFIrXUXpNPNY=;
+ b=0srufWCkTX4PIs/durVAuh0yWhA93Eqq1o4UAZfY1ZVUtyTvHkL7wVZY/k4qH8l0xfn9SYVb9
+ NpxhO4RuS75DMgdhPCeNsf7obXTWW2LoPgWcmwSro8JxE2AezOxRG+u
+X-Developer-Key: i=mocker-mug-unwoven@duck.com; a=ed25519;
+ pk=Q7l9BnP4XnFimCK28K+NVowcECqTaJNXicdBAInot0k=
+X-Endpoint-Received: by B4 Relay for mocker-mug-unwoven@duck.com/20261016 with auth_id=1206
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The TEMPMON sensor reading may deviate from the theoretical SoC
-junction temperature. Hardware characterization shows a measurable
-offset between the sensor output and the calculated junction
-temperature.
+These two fixes came up while bringing up mainline Linux on the Amazon
+Echo Show 8 (2nd gen), an MT8183 board.
 
-Read the optional fsl,temp-calibration-offset-millicelsius property
-from DT and apply it uniformly to the i.MX6/6SX/7D formulas.
+Patch 1 is the important one. On this board the AFE never ran. Runtime
+resume enabled the audiosys clock gates while the regmap was still
+cache-only, so the gate writes were dropped. With the fix, playback and
+capture work on the device.
 
-The offset is applied symmetrically at two points to keep trip point
-semantics consistent:
+Patch 2 fixes a wrong register in the UL1_CH2 mixer. I found it while
+adding capture routes for the device's microphones. The Echo Show does
+not use I2S0, so that path is compile tested only.
 
-1. In imx_set_alarm_temp() and imx_set_panic_temp(): the temperature
-   threshold is *subtracted* by the offset before being converted to a
-   hardware register value. This keeps the hardware IRQ trigger aligned
-   with the physical sensor reading that corresponds to the intended
-   temperature threshold.
+I do not know why MT8183 Chromebooks do not seem to hit this. I have no
+Chromebook to test on. My guess is that something else keeps the gates
+open there, but I have not confirmed it.
 
-2. In imx_get_temp(): after computing the temperature from the hardware
-   register, the offset is *added* to produce the calibrated value.
-   The thermal framework always sees the corrected temperature.
+Patch 1 was tested on the device with a 6.18 based kernel. Both were
+then rebased onto for-next and build tested there.
 
-For example, if DT sets offset = +3000 m°C and the passive trip is 95°C:
+Runtime suspend has the mirror problem. It goes cache-only before
+mt8183_afe_disable_clock(), so those gate writes are dropped as well
+and the gates stay open after the first use. I left that alone because
+I have not tested a change there. I can send a patch if you want it
+handled the same way.
 
-  imx_set_alarm_temp(95000):
-    alarm_temp = 95000 - 3000 = 92000
-    → hardware register programmed for 92°C sensor reading
-
-  Hardware IRQ fires when sensor reads 92°C
-
-  imx_get_temp():
-    reads hardware, computes 92°C
-    *temp = 92000 + 3000 = 95000
-    → thermal framework sees 95°C → correct trip
-
-When the property is not present, the offset defaults to 0, preserving
-the current behavior.
-
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
-Reviewed-by: Lukasz Luba <lukasz.luba@arm.com>
-Signed-off-by: Haoning Cheng <Haoning.CHENG@cn.bosch.com>
 ---
- drivers/thermal/imx_thermal.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+HuskerMinion (2):
+      ASoC: mediatek: mt8183: Leave cache-only mode before enabling clocks
+      ASoC: mediatek: mt8183: Fix UL1_CH2 I2S0_CH2 routing register
 
-diff --git a/drivers/thermal/imx_thermal.c b/drivers/thermal/imx_thermal.c
-index 7f7d1116b9d6..d471acc16bce 100644
---- a/drivers/thermal/imx_thermal.c
-+++ b/drivers/thermal/imx_thermal.c
-@@ -85,6 +85,10 @@ enum imx_thermal_trip {
- #define TEMPMON_IMX6SX			2
- #define TEMPMON_IMX7D			3
- 
-+/* Calibration offset limits (±20 °C in millicelsius) */
-+#define IMX_TEMP_CALIB_OFFSET_MIN	(-20000)
-+#define IMX_TEMP_CALIB_OFFSET_MAX	20000
-+
- struct thermal_soc_data {
- 	u32 version;
- 
-@@ -207,6 +211,7 @@ struct imx_thermal_data {
- 	struct regmap *tempmon;
- 	u32 c1, c2; /* See formula in imx_init_calib() */
- 	int temp_max;
-+	s32 calibration_offset;
- 	int alarm_temp;
- 	int last_temp;
- 	bool irq_enabled;
-@@ -223,6 +228,7 @@ static void imx_set_panic_temp(struct imx_thermal_data *data,
- 	struct regmap *map = data->tempmon;
- 	int critical_value;
- 
-+	panic_temp -= data->calibration_offset;
- 	critical_value = (data->c2 - panic_temp) / data->c1;
- 
- 	regmap_write(map, soc_data->panic_alarm_ctrl + REG_CLR,
-@@ -239,6 +245,7 @@ static void imx_set_alarm_temp(struct imx_thermal_data *data,
- 	int alarm_value;
- 
- 	data->alarm_temp = alarm_temp;
-+	alarm_temp -= data->calibration_offset;
- 
- 	if (data->socdata->version == TEMPMON_IMX7D) {
- 		if (alarm_temp >= 0)
-@@ -283,6 +290,7 @@ static int imx_get_temp(struct thermal_zone_device *tz, int *temp)
- 		*temp = (n_meas - data->c1 + 25) * 1000;
- 	else
- 		*temp = data->c2 - n_meas * data->c1;
-+	*temp += data->calibration_offset;
- 
- 	/* Update alarm value to next higher trip point for TEMPMON_IMX6Q */
- 	if (data->socdata->version == TEMPMON_IMX6Q) {
-@@ -635,6 +643,25 @@ static int imx_thermal_probe(struct platform_device *pdev)
- 
- 	platform_set_drvdata(pdev, data);
- 
-+	if (of_property_present(dev->of_node,
-+				"fsl,temp-calibration-offset-millicelsius")) {
-+		ret = of_property_read_s32(dev->of_node,
-+					   "fsl,temp-calibration-offset-millicelsius",
-+					   &data->calibration_offset);
-+		if (ret)
-+			return dev_err_probe(dev, ret,
-+					     "failed to read calibration offset\n");
-+
-+		if (data->calibration_offset < IMX_TEMP_CALIB_OFFSET_MIN ||
-+		    data->calibration_offset > IMX_TEMP_CALIB_OFFSET_MAX)
-+			return dev_err_probe(dev, -EINVAL,
-+					     "calibration offset %d millicelsius out of range\n",
-+					     data->calibration_offset);
-+
-+		dev_dbg(dev, "calibration offset: %d millicelsius\n",
-+			data->calibration_offset);
-+	}
-+
- 	if (of_property_present(dev->of_node, "nvmem-cells")) {
- 		ret = imx_init_from_nvmem_cells(pdev);
- 		if (ret)
+ sound/soc/mediatek/mt8183/mt8183-afe-pcm.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+---
+base-commit: 764db7a068919c9e3d4618731dd854df43070399
+change-id: 20261015-mt8183-afe-fixes-94ee941c3fd0
 
--- 
-2.43.0
+Best regards,
+--  
+HuskerMinion <mocker-mug-unwoven@duck.com>
 
