@@ -1,66 +1,93 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 16 Oct 2026 03:00:17 +0000
-Subject: [PATCH] dmaengine: amlogic: Fix regmap error check issue
+From: Quanye Yang <quanyeyang@proton.me>
+Subject: [PATCH net-next v4 0/2] net: annotate remaining lockless
+ sk->sk_err accesses
+Date: Thu, 15 Oct 2026 20:31:35 -0700
+Message-Id: <20261015-tls-fix-sk-kcsan-err-v4-0-391d788327f3@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-fix-a9-dma-complier-v1-1-024421d5b3c8@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAECT0WoC/x2MQQqAIBAAvxJ7biELNu0r0cFyq4VKUYgg/HvSc
- WBmXkgchRMM1QuRb0nirwKqrmDZ7bUxiisMbdOSahThKg9ag+60uPgzHMIRVa9nYqLe6A5KGSI
- X7b+OU84f8l1hJWUAAAA=
-X-Change-ID: 20261016-fix-a9-dma-complier-178b6e667983
-To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
- linux-kernel@vger.kernel.org, kernel test robot <lkp@intel.com>, 
- Dan Carpenter <error27@gmail.com>, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792119618; l=1413;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=q70ArngI8F9kaZ0a86j08SCXsqeF7k11fJnEBCve2NM=;
- b=b8gfpJGQQxHZblcSRlbmR0x8knLQCBnlci0XZWs2RwdViFJw9m3CKpHz1TgeXXp0l32aEMgXU
- OP7Nu80bFXUCx/LJjuNHlrhQbpiIIcJgZoXLxE1W51B5c/WyZhuq40T
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OSQ7CMAwF0KugrDFKnLYMK+6BWDiNC2FIURIqE
+ OrdScumQoLll+33/RKRg+MoNrOXCNy56FqfQzGfifpI/sDgbM4CJVZKSoR0idC4B8QznOtIHjg
+ EqBpuNC6LolGlyKe3wHlnZHfCcwLPjyT2n0m8mxPXaVCH3aOLqQ3P8YNOjRf/yzoFEgyRNCTLS
+ qPe3kKbWr+48ljR4RTRPxDMCK/1mpCNtWX1jegJouQPRA8IrogsG63ITpG+798rrVNlXgEAAA=
+ =
+X-Change-ID: 20261002-tls-fix-sk-kcsan-err-6fef32744f15
+To: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jakub Sitnicki <jakub@cloudflare.com>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ bpf@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792121497; l=2335;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=tJxl6szbEu/sixUPfjPjMWFV7t5uJftR95+/Px8Swc8=;
+ b=rfObpSk8GQeJLi5fzl0oFdpqlw6AcSh1a0WtbkL3Jaya4s6iGA/Se9EulONiXZ2ocdERruI/b
+ ZYC37w4PGurBqPVtHWjI/mSuQgpLWcZ7OLzMqAz0no38FoS41TIBVxr
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The func devm_regmap_init_mmio() only returns an error pointer on failure,
-Use IS_ERR() instead to make the intent clearer. And Fix the following
-compilation issue at the same time.
+The TCP/MPTCP series that annotated lockless sk_err peeks and
+consumes is in net-next. Paolo asked for the same treatment on
+kTLS and on the unmarked writers that still race those readers.
 
-Smatch warnings:
-drivers/dma/amlogic-dma.c:636 aml_dma_probe() warn: passing zero to 'PTR_ERR'
+do_recvmmsg() and getsockopt(SO_ERROR) still call sock_error()
+without the socket lock. kTLS is a ULP on that same struct sock,
+so tls_rx_rec_wait() has the same peek-versus-consume split, and
+the send path still does a double unmarked load.
 
-Fixes: b84b5197e344 ("dmaengine: amlogic: Add general DMA driver for A9")
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/r/202610080953.C5TYlCaA-lkp@intel.com/
-Reported-by: Dan Carpenter <error27@gmail.com>
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+sock_dequeue_err_skb() can store sk_err from MSG_ERRQUEUE before
+lock_sock(). strp_abort_strp() and sk_psock_report_error() write
+the same field on the TCP/TLS and sockmap paths.
+
+Patch 1 annotates the TLS readers and consumes sk_err once on the
+no-data path. Patch 2 pairs the remaining writers with WRITE_ONCE().
+No extra ordering is added; ICMP error-queue overwrite semantics
+are unchanged.
+
+Link: https://lore.kernel.org/netdev/3d9d442f-f168-43da-87b0-010ad5a78365@redhat.com/
+
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
-Fix regmap error check issue.
----
- drivers/dma/amlogic-dma.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v4:
+- tls_rx_rec_wait() / bpf_exec_tx_verdict(): declare skerr at function
+  scope (Jakub Kicinski)
+- Patch 2: unchanged
+- Link to v3: https://patch.msgid.link/20261010-tls-fix-sk-kcsan-err-v3-0-e28aadeb31ad@proton.me
 
-diff --git a/drivers/dma/amlogic-dma.c b/drivers/dma/amlogic-dma.c
-index 78ee2337ae71..684121d13fca 100644
---- a/drivers/dma/amlogic-dma.c
-+++ b/drivers/dma/amlogic-dma.c
-@@ -632,7 +632,7 @@ static int aml_dma_probe(struct platform_device *pdev)
- 
- 	aml_dma->regmap = devm_regmap_init_mmio(&pdev->dev, aml_dma->base,
- 						&aml_regmap_config);
--	if (IS_ERR_OR_NULL(aml_dma->regmap))
-+	if (IS_ERR(aml_dma->regmap))
- 		return PTR_ERR(aml_dma->regmap);
- 
- 	aml_dma->clk = devm_clk_get_enabled(&pdev->dev, NULL);
+Changes in v3:
+- rebase on net-next after the net merge
+- refresh WRITE_ONCE() in strp_abort_strp() after the strparser
+  refactor (Jakub Kicinski)
+- Patch 2: carry Reviewed-by from Eric Dumazet
+- Patch 1: unchanged
+- Link to v2: https://patch.msgid.link/20261003-tls-fix-sk-kcsan-err-v2-0-e939a2ebdd56@proton.me
+
+Changes in v2:
+- tls_encrypt_done(): fold the three unmarked sk_err loads into one
+  READ_ONCE()
+- Link to v1: https://patch.msgid.link/20261002-tls-fix-sk-kcsan-err-v1-0-baa0ba056323@proton.me
 
 ---
-base-commit: 42c31fec1ca76b8b5f7759def122d418dff2cd4b
-change-id: 20261016-fix-a9-dma-complier-178b6e667983
+Quanye Yang (2):
+      tls: annotate lockless access to sk->sk_err
+      net: annotate lockless writes to sk->sk_err
+
+ include/linux/skmsg.h     |  2 +-
+ net/core/skbuff.c         |  5 +++--
+ net/strparser/strparser.c |  2 +-
+ net/tls/tls_device.c      |  5 +++--
+ net/tls/tls_sw.c          | 51 ++++++++++++++++++++++++++++++-----------------
+ 5 files changed, 41 insertions(+), 24 deletions(-)
+---
+base-commit: d8674294aefef02266c4d47ad10131f1bffbe534
+change-id: 20261002-tls-fix-sk-kcsan-err-6fef32744f15
 
 Best regards,
--- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+--  
+Quanye Yang <quanyeyang@proton.me>
 
