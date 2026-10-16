@@ -1,139 +1,172 @@
-From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sat, 17 Oct 2026 00:07:56 +0200
-Subject: [PATCH] video: simplefb: add an a8r8g8b8 format with an opaque
- alpha
+From: Amir Atef <amiratefabdallah1122@gmail.com>
+Subject: [PATCH v2] staging: iio: frequency: ad9834: use guard(mutex)
+Date: Sat, 17 Oct 2026 02:45:52 +0300
+Message-Id: <179219435216.322.13409717511306957730.20261017-ad9834-guard-mutex-v2@gmail.com>
+To: Jonathan Cameron <jic23@kernel.org>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ David Lechner <dlechner@baylibre.com>, Nuno Sa <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-iio@vger.kernel.org, 
+ linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.14.3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-b4-simplefb-a8r8g8b8-v1-1-ce7e80682a5c@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQBEmDV5EunDjREauS0VIQ7
- 960Xb7F/ycoZ2GFpjoh80tU1qXA3iqIY7cMjNIXgzPOW2M9Uo0qz23mRNiFHIZAAV0f74bY1yk
- SlHTLnOT927aPv/WgieP+fcF1fQBSdF96eAAAAA==
-X-Change-ID: 20261016-b4-simplefb-a8r8g8b8-2dc70be64fcb
-To: u-boot@lists.u-boot-project.org
-Cc: Anatolij Gustschin <ag.dev.uboot@gmail.com>, 
- Tom Rini <trini@konsulko.com>, 
- Igor Belwon <igor.belwon@mentallysanemainliners.org>, 
- Aelin Reidel <aelin@mainlining.org>, Luca Weiss <luca.weiss@fairphone.com>, 
- Simon Glass <sjg@chromium.org>, Heinrich Schuchardt <xypron.glpk@gmx.de>, 
- Quentin Schulz <quentin.schulz@cherry.de>, David Heidelberg <david@ixit.cz>, 
- Petr Pavlata <petr@acrux.cz>, Petr Hodina <petr.hodina@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792188481; l=3780;
- i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=YOPmvffoCNj7UsY0sY0TJB0H0U4VwmiM/L0E2yVOwww=;
- b=BHw2g3kJGfT4+a2AfHiOvl0I2sdXwnBo9QWLTbuYQ67syAjpm27uoIJRirzU2zIOemtCkKSI6
- VXPQ0CgGXBvA5LqiOCKAHoTAbhoxzrYOcWqGLZP6/rAFInbO5yjz9Xl
-X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
- pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
-X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792194352; l=4410;
+ i=amiratefabdallah1122@gmail.com; s=20261016; h=from:subject:message-id;
+ bh=QC3WjUcRokALSjuAgdPJHx7Z+g92N3srbIAjHSHgWH0=;
+ b=XqlHDjIA8XspS27KHuZUtY1Q9oxs7Yin5t4IjtP4AZgGZvqWRSEuhAIOQZebtLSetiYdydJ5z
+ Bb6H5vmf0WyA2YwWr4yKFsbGkzOgT7Lrx/mkq6UAnVIfyVOpQqWpgmE
+X-Developer-Key: i=amiratefabdallah1122@gmail.com; a=ed25519;
+ pk=FRhtQptjt3GSkQBUg7qfVL8eusorsJqHzciu3+ss11o=
+X-Endpoint-Received: by B4 Relay for amiratefabdallah1122@gmail.com/20261016 with auth_id=1209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Map "a8r8g8b8" to a new VIDEO_A8R8G8B8 format that writes 0xff in the
-alpha byte for the console colours and for the BMP/logo paths.
+Use guard(mutex) to manage the state lock in ad9834_write() and
+ad9834_store_wavetype(). This simplifies error handling by allowing
+early returns instead of setting the return code and breaking out of the
+switch statement to manually unlock the mutex.
 
-Adds support for the framebuffer on Xiaomi Redmi Note 8 Pro (begonia).
-
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+Signed-off-by: Amir Atef <amiratefabdallah1122@gmail.com>
 ---
-Doing bringup on the Xiaomi Xiaomi Redmi Note 8 Pro (begonia) and
-encountered the following frambuffer format.
+Changes in v2:
+- Add blank line after guard(mutex) in ad9834_write().
+- Move 'int ret;' to the end of the variable declaration block in
+  ad9834_store_wavetype().
+- Drop redundant 'else' in ad9834_store_wavetype() case 1 by inverting
+  the condition (kept 'else' in ad9834_write() and case 0 where they are
+  part of if-else-if-else chains).
+- Replace ternary return with explicit 'if (ret) return ret;' in
+  ad9834_store_wavetype().
+- Link to v1: https://lore.kernel.org/r/179214943270.333.5921549521929682753.20261016-ad9834-guard-mutex@gmail.com
 
-For a simple-framebuffer node with format "a8r8g8b8" U-Boot currently writes
-the pixels as x8r8g8b8 leaving the alpha byte zero. Therefore the console
-background and logo are fully transparent and the screen stays black.
----
- drivers/video/simplefb.c     | 6 ++++--
- drivers/video/video-uclass.c | 5 +++++
- drivers/video/video_bmp.c    | 9 ++++++---
- include/video.h              | 1 +
- 4 files changed, 16 insertions(+), 5 deletions(-)
+ drivers/staging/iio/frequency/ad9834.c | 50 ++++++++++++--------------
+ 1 file changed, 22 insertions(+), 28 deletions(-)
 
-diff --git a/drivers/video/simplefb.c b/drivers/video/simplefb.c
-index 8d0772d4e51..3dc073bce9e 100644
---- a/drivers/video/simplefb.c
-+++ b/drivers/video/simplefb.c
-@@ -71,8 +71,10 @@ static int simple_video_probe(struct udevice *dev)
- 		   strcmp(format, "x8b8g8r8") == 0) {
- 		uc_priv->bpix = VIDEO_BPP32;
- 		uc_priv->format = VIDEO_X8B8G8R8;
--	} else if (strcmp(format, "a8r8g8b8") == 0 ||
--		   strcmp(format, "x8r8g8b8") == 0) {
-+	} else if (strcmp(format, "a8r8g8b8") == 0) {
-+		uc_priv->bpix = VIDEO_BPP32;
-+		uc_priv->format = VIDEO_A8R8G8B8;
-+	} else if (strcmp(format, "x8r8g8b8") == 0) {
- 		uc_priv->bpix = VIDEO_BPP32;
- 		uc_priv->format = VIDEO_X8R8G8B8;
- 	} else if (strcmp(format, "a2r10g10b10") == 0 ||
-diff --git a/drivers/video/video-uclass.c b/drivers/video/video-uclass.c
-index 53641fc28b6..68fd9ef38c0 100644
---- a/drivers/video/video-uclass.c
-+++ b/drivers/video/video-uclass.c
-@@ -354,6 +354,11 @@ u32 video_index_to_colour(struct video_priv *priv, enum colour_idx idx)
- 				return (colours[idx].r << 24) |
- 				       (colours[idx].g << 16) |
- 				       (colours[idx].b << 8) | 0xff;
-+			case VIDEO_A8R8G8B8:
-+				return 0xff000000 |
-+				       (colours[idx].r << 16) |
-+				       (colours[idx].g <<  8) |
-+				       (colours[idx].b <<  0);
- 			default:
- 				return (colours[idx].r << 16) |
- 				       (colours[idx].g <<  8) |
-diff --git a/drivers/video/video_bmp.c b/drivers/video/video_bmp.c
-index 1f267d45812..98ed59e275e 100644
---- a/drivers/video/video_bmp.c
-+++ b/drivers/video/video_bmp.c
-@@ -88,7 +88,7 @@ static void write_pix8(u8 *fb, uint bpix, enum video_format eformat,
- 			*fb++ = cte->blue;
- 			*fb++ = cte->green;
- 			*fb++ = cte->red;
--			*fb++ = 0;
-+			*fb++ = eformat == VIDEO_A8R8G8B8 ? 0xff : 0;
- 		}
- 	}
- }
-@@ -409,7 +409,8 @@ int video_bmp_display(struct udevice *dev, ulong bmp_image, int x, int y,
- 						*fb++ = *bmap++;
- 						*fb++ = *bmap++;
- 						*fb++ = *bmap++;
--						*fb++ = 0;
-+						*fb++ = eformat == VIDEO_A8R8G8B8 ?
-+							0xff : 0;
- 					}
- 				}
- 				fb -= priv->line_length + width * (bpix / 8);
-@@ -447,7 +448,9 @@ int video_bmp_display(struct udevice *dev, ulong bmp_image, int x, int y,
- 						*fb++ = *bmap++;
- 						*fb++ = *bmap++;
- 						*fb++ = *bmap++;
--						*fb++ = *bmap++;
-+						/* blend on alpha */
-+						*fb++ = eformat == VIDEO_A8R8G8B8 ?
-+							(bmap++, 0xff) : *bmap++;
- 					}
- 				}
- 				fb -= priv->line_length + width * (bpix / 8);
-diff --git a/include/video.h b/include/video.h
-index 9ea6b676463..71e9558dba1 100644
---- a/include/video.h
-+++ b/include/video.h
-@@ -67,6 +67,7 @@ enum video_format {
- 	VIDEO_X8B8G8R8,
- 	VIDEO_X8R8G8B8,
- 	VIDEO_X2R10G10B10,
-+	VIDEO_A8R8G8B8,
- };
+diff --git a/drivers/staging/iio/frequency/ad9834.c b/drivers/staging/iio/frequency/ad9834.c
+index 0d20f796e0f0..c45bb388c998 100644
+--- a/drivers/staging/iio/frequency/ad9834.c
++++ b/drivers/staging/iio/frequency/ad9834.c
+@@ -6,6 +6,7 @@
+  */
  
- /**
+ #include <linux/bits.h>
++#include <linux/cleanup.h>
+ #include <linux/clk.h>
+ #include <linux/dev_printk.h>
+ #include <linux/err.h>
+@@ -154,7 +155,8 @@ static ssize_t ad9834_write(struct device *dev,
+ 	if (ret)
+ 		return ret;
+ 
+-	mutex_lock(&st->lock);
++	guard(mutex)(&st->lock);
++
+ 	switch ((u32)this_attr->address) {
+ 	case AD9834_REG_FREQ0:
+ 	case AD9834_REG_FREQ1:
+@@ -165,10 +167,8 @@ static ssize_t ad9834_write(struct device *dev,
+ 		ret = ad9834_write_phase(st, this_attr->address, val);
+ 		break;
+ 	case AD9834_OPBITEN:
+-		if (st->control & AD9834_MODE) {
+-			ret = -EINVAL;  /* AD9834 reserved mode */
+-			break;
+-		}
++		if (st->control & AD9834_MODE)
++			return -EINVAL;  /* AD9834 reserved mode */
+ 
+ 		if (val)
+ 			st->control |= AD9834_OPBITEN;
+@@ -194,8 +194,7 @@ static ssize_t ad9834_write(struct device *dev,
+ 			st->control |= this_attr->address;
+ 			st->control &= ~AD9834_PIN_SW;
+ 		} else {
+-			ret = -EINVAL;
+-			break;
++			return -EINVAL;
+ 		}
+ 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+ 		ret = spi_sync(st->spi, &st->msg);
+@@ -210,9 +209,8 @@ static ssize_t ad9834_write(struct device *dev,
+ 		ret = spi_sync(st->spi, &st->msg);
+ 		break;
+ 	default:
+-		ret = -ENODEV;
++		return -ENODEV;
+ 	}
+-	mutex_unlock(&st->lock);
+ 
+ 	return ret ? ret : len;
+ }
+@@ -225,10 +223,10 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
+ 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+ 	struct ad9834_state *st = iio_priv(indio_dev);
+ 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+-	int ret = 0;
+ 	bool is_ad9833_7 = (st->devid == ID_AD9833) || (st->devid == ID_AD9837);
++	int ret;
+ 
+-	mutex_lock(&st->lock);
++	guard(mutex)(&st->lock);
+ 
+ 	switch ((u32)this_attr->address) {
+ 	case 0:
+@@ -241,7 +239,7 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
+ 				st->control &= ~AD9834_OPBITEN;
+ 				st->control |= AD9834_MODE;
+ 			} else if (st->control & AD9834_OPBITEN) {
+-				ret = -EINVAL;	/* AD9834 reserved mode */
++				return -EINVAL;	/* AD9834 reserved mode */
+ 			} else {
+ 				st->control |= AD9834_MODE;
+ 			}
+@@ -249,31 +247,27 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
+ 			st->control &= ~AD9834_MODE;
+ 			st->control |= AD9834_OPBITEN;
+ 		} else {
+-			ret = -EINVAL;
++			return -EINVAL;
+ 		}
+ 
+ 		break;
+ 	case 1:
+-		if (sysfs_streq(buf, "square") &&
+-		    !(st->control & AD9834_MODE)) {
+-			st->control &= ~AD9834_MODE;
+-			st->control |= AD9834_OPBITEN;
+-		} else {
+-			ret = -EINVAL;
+-		}
++		if (!sysfs_streq(buf, "square") || (st->control & AD9834_MODE))
++			return -EINVAL;
++
++		st->control &= ~AD9834_MODE;
++		st->control |= AD9834_OPBITEN;
+ 		break;
+ 	default:
+-		ret = -EINVAL;
+-		break;
++		return -EINVAL;
+ 	}
+ 
+-	if (!ret) {
+-		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+-		ret = spi_sync(st->spi, &st->msg);
+-	}
+-	mutex_unlock(&st->lock);
++	st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
++	ret = spi_sync(st->spi, &st->msg);
++	if (ret)
++		return ret;
+ 
+-	return ret ? ret : len;
++	return len;
+ }
+ 
+ static
+-- 
+2.51.0
 
----
-base-commit: 1bcb2fe324180d0a8cfbdb0511737eba1d5b8550
-change-id: 20261016-b4-simplefb-a8r8g8b8-2dc70be64fcb
-
-Best regards,
---  
-Petr Hodina <petr.hodina@protonmail.com>
 
