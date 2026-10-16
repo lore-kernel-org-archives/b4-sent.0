@@ -1,10 +1,11 @@
 From: George Neacsu <geocausa@gmail.com>
-Date: Fri, 16 Oct 2026 11:57:49 +0100
-Subject: [PATCH RFC v2 2/4] phy: Add MIPI C-PHY configuration helpers
+Date: Fri, 16 Oct 2026 11:57:50 +0100
+Subject: [PATCH RFC v2 3/4] phy: qcom-mipi-csi2: Rename the D-PHY init
+ sequence
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-x1e-cphy-rfc-v2-2-377654253193@gmail.com>
+Message-Id: <20261016-x1e-cphy-rfc-v2-3-377654253193@gmail.com>
 References: <20261016-x1e-cphy-rfc-v2-0-377654253193@gmail.com>
 In-Reply-To: <20261016-x1e-cphy-rfc-v2-0-377654253193@gmail.com>
 To: Bryan O'Donoghue <bod@kernel.org>, Vinod Koul <vkoul@kernel.org>, 
@@ -21,115 +22,71 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792148268; l=3198;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792148268; l=2310;
  i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=QB1gglGzNsXQ0TNRqQoooopMt6sn84f8HGcviHXPMFs=;
- b=CL2zpBWpaF6wUPW0yIED/iA5oKv6Q7iuc1b6VZ/Ct1PvMnez1omuTfHbKiPNoIp9Aua7potDF
- B/KnswxPKTZDyQRuwYjkwx2/lcS2gsKWXYfiGrNpDEFG9g1ABR39L3P
+ bh=SD3slAeSdjPUrTN6ZY+x3rxA6L16Lc3UUAvMwX7PGlM=;
+ b=Y4ilSXLGhBLnUFyTGY+Uk3YsGPvGo5mfUK12wtHunY3kVjHUSpYk2qeydelK65Tds2aDO+LNZ
+ 5/AkO6XvfYDCyhEaxczB7+VydcG3z7hrawFWDDOBq3DsKBffRw9MeHw
 X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
  pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
 X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A CSI-2 receiver knows the link frequency of its transmitter, and by the
-V4L2 convention a C-PHY link frequency is half the symbol rate on each
-trio. Add helpers so that the receiver and the PHY do not each open-code
-that conversion, as phy_mipi_dphy_get_default_config_for_hsclk() does
-for D-PHY:
+The init sequence and its size describe the D-PHY mode only. Call them
+dphy_init_seq and dphy_lane_array_size, so that a C-PHY sequence can sit
+next to them under matching names.
 
-- phy_mipi_cphy_get_default_config_for_link_freq() fills a
-  configuration from a link frequency and a trio count;
-- phy_mipi_cphy_config_validate() checks for a symbol rate and one to
-  three trios;
-- phy_mipi_cphy_link_freq() gives the link frequency of a configuration.
-
-They are small enough to be inline, so no new Kconfig symbol is needed.
+No functional change.
 
 Suggested-by: Bryan O'Donoghue <bod@kernel.org>
-Suggested-by: Loic Poulain <loic.poulain@oss.qualcomm.com>
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- include/linux/phy/phy-mipi-cphy.h | 61 +++++++++++++++++++++++++++++++++++++++
- 1 file changed, 61 insertions(+)
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c | 8 ++++----
+ drivers/phy/qualcomm/phy-qcom-mipi-csi2.h          | 4 ++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/phy/phy-mipi-cphy.h b/include/linux/phy/phy-mipi-cphy.h
-index ef6af61de..f6746dcb0 100644
---- a/include/linux/phy/phy-mipi-cphy.h
-+++ b/include/linux/phy/phy-mipi-cphy.h
-@@ -2,6 +2,10 @@
- #ifndef __PHY_MIPI_CPHY_H_
- #define __PHY_MIPI_CPHY_H_
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
+index 966d79c98..b2d4ec3e8 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2-3ph-dphy.c
+@@ -246,8 +246,8 @@ phy_qcom_mipi_csi2_gen2_config_lanes(struct mipi_csi2phy_device *csi2phy,
+ 				     u8 settle_cnt)
+ {
+ 	const struct mipi_csi2phy_device_regs *regs = csi2phy_dev_to_regs(csi2phy);
+-	const struct mipi_csi2phy_lane_regs *r = regs->init_seq;
+-	int i, array_size = regs->lane_array_size;
++	const struct mipi_csi2phy_lane_regs *r = regs->dphy_init_seq;
++	int i, array_size = regs->dphy_lane_array_size;
+ 	u32 val;
  
-+#include <linux/errno.h>
-+
-+#define PHY_MIPI_CPHY_MAX_TRIOS		3
-+
- /**
-  * struct phy_configure_opts_mipi_cphy - MIPI C-PHY configuration set
-  *
-@@ -24,4 +28,61 @@ struct phy_configure_opts_mipi_cphy {
- 	unsigned char		trios;
+ 	for (i = 0; i < array_size; i++, r++) {
+@@ -372,8 +372,8 @@ static struct mipi_csi2_genpd x1e_genpds[] = {
+ const struct mipi_csi2phy_soc_cfg mipi_csi2_dphy_4nm_x1e = {
+ 	.ops = &phy_qcom_mipi_csi2_ops_3ph_1_0,
+ 	.reg_info = {
+-		.init_seq = lane_regs_x1e80100,
+-		.lane_array_size = ARRAY_SIZE(lane_regs_x1e80100),
++		.dphy_init_seq = lane_regs_x1e80100,
++		.dphy_lane_array_size = ARRAY_SIZE(lane_regs_x1e80100),
+ 		.common_regs_offset = 0x1000,
+ 	},
+ 	.supply_names = (const char **)x1e_supplies,
+diff --git a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
+index 7e55ae007..0d6031a4d 100644
+--- a/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
++++ b/drivers/phy/qualcomm/phy-qcom-mipi-csi2.h
+@@ -48,8 +48,8 @@ struct mipi_csi2phy_lane_regs {
  };
  
-+/**
-+ * phy_mipi_cphy_config_validate() - Validate a MIPI C-PHY configuration
-+ * @cfg: configuration to check
-+ *
-+ * Return: 0 if @cfg has a symbol rate and one to three trios, -EINVAL
-+ * otherwise.
-+ */
-+static inline int
-+phy_mipi_cphy_config_validate(const struct phy_configure_opts_mipi_cphy *cfg)
-+{
-+	if (!cfg->symbol_rate)
-+		return -EINVAL;
-+
-+	if (cfg->trios < 1 || cfg->trios > PHY_MIPI_CPHY_MAX_TRIOS)
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+/**
-+ * phy_mipi_cphy_get_default_config_for_link_freq() - C-PHY configuration
-+ * from a link frequency
-+ * @link_freq: link frequency in Hz
-+ * @trios: number of active trios
-+ * @cfg: configuration to fill
-+ *
-+ * A C-PHY link frequency is half the symbol rate on each trio, the
-+ * convention V4L2 uses for the link frequency of a C-PHY transmitter.
-+ *
-+ * Return: 0 on success, -EINVAL if the resulting configuration is invalid.
-+ */
-+static inline int
-+phy_mipi_cphy_get_default_config_for_link_freq(unsigned long long link_freq,
-+					       unsigned int trios,
-+					       struct phy_configure_opts_mipi_cphy *cfg)
-+{
-+	if (trios > PHY_MIPI_CPHY_MAX_TRIOS)
-+		return -EINVAL;
-+
-+	cfg->symbol_rate = link_freq * 2;
-+	cfg->trios = trios;
-+
-+	return phy_mipi_cphy_config_validate(cfg);
-+}
-+
-+/**
-+ * phy_mipi_cphy_link_freq() - Link frequency of a MIPI C-PHY configuration
-+ * @cfg: configuration
-+ *
-+ * Return: the link frequency in Hz, half the symbol rate on each trio.
-+ */
-+static inline unsigned long long
-+phy_mipi_cphy_link_freq(const struct phy_configure_opts_mipi_cphy *cfg)
-+{
-+	return cfg->symbol_rate / 2;
-+}
-+
- #endif /* __PHY_MIPI_CPHY_H_ */
+ struct mipi_csi2phy_device_regs {
+-	const struct mipi_csi2phy_lane_regs *init_seq;
+-	const int lane_array_size;
++	const struct mipi_csi2phy_lane_regs *dphy_init_seq;
++	const int dphy_lane_array_size;
+ 	const u32 common_regs_offset;
+ };
+ 
 
 -- 
 2.53.0
