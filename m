@@ -1,156 +1,92 @@
-From: Demeter Barna <me@fromdisposition.org>
-Date: Fri, 16 Oct 2026 06:13:52 +0000
-Subject: [PATCH 2/2] arm64: dts: qcom: sm8350: Add CPU and LLCC BWMON
+From: George Neacsu <geocausa@gmail.com>
+Date: Fri, 16 Oct 2026 07:37:30 +0100
+Subject: [PATCH] leds: flash: leds-qcom-flash: Release all V4L2 flash
+ devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-sm8350-bwmon-v1-2-562fe403bf6b@fromdisposition.org>
-References: <20261016-sm8350-bwmon-v1-0-562fe403bf6b@fromdisposition.org>
-In-Reply-To: <20261016-sm8350-bwmon-v1-0-562fe403bf6b@fromdisposition.org>
-To: Krzysztof Kozlowski <krzk@kernel.org>, 
- Georgi Djakov <djakov@kernel.org>, Rob Herring <robh@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Demeter Barna <me@fromdisposition.org>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792131248; l=2940;
- i=me@fromdisposition.org; s=20261012; h=from:subject:message-id;
- bh=nXdAocuEjzj92zdGAtIocuJPoJLdBGkW1hoCnioia2M=;
- b=9EgzFOHoBhmQbprXtUAp+sta5mjcoBmCMdWLdxXjmtRYAjSsRJf1Y9chit2BlcctUBCHI1OeP
- +ow0C6vlsBlBvY8LWcpmdgY56vlY56JLg342bJ4OAELDHdVFWafkp+1
-X-Developer-Key: i=me@fromdisposition.org; a=ed25519;
- pk=S0QFlGq1BQEaAtPPdAH8YKEOXMeRuSkTgctXuvtU+1Y=
-X-Endpoint-Received: by B4 Relay for me@fromdisposition.org/20261012 with auth_id=1163
+Message-Id: <20261016-qcom-flash-v4l2-release-v1-1-0e92aa7c9327@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBtQKaOuEi1EpxywPwciiO6et
+ PwW7z0glJkEhuqBTBcL71uBrivw0W0LIYdiMMpYrbTF0+8rzslJxKtJBjMlckLYB9X6vgvaNx2
+ U+sg08/2fx+l9Pwh7F4ppAAAA
+X-Change-ID: 20261016-qcom-flash-v4l2-release-9d05c97d1c47
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-leds@vger.kernel.org, stable@vger.kernel.org, 
+ George Neacsu <geocausa@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792132649; l=2721;
+ i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
+ bh=CI6yYCRJ7s3Nt//a396V+HzvBRozRkOc2yI+sV9seYA=;
+ b=DE117K+Hxmkt3xq1NNeUAoIn3zCf1lMjMnJNMAANQL01b7nbzwHXfl0Z11u4w79aYj/WJzgHn
+ vCp+h0y+s/wDodjhieEW2JemsODWQ23ZCIUI8Eb1lm2RN6QCKkuFsfv
+X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
+ pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
+X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the CPU-to-LLCC and LLCC-to-DDR bandwidth monitors, so that the
-interconnect votes follow the measured memory traffic.
+The probe error path and qcom_flash_led_remove() walk the V4L2 flash
+array like this:
 
-The levels are those of the downstream llcc-bw-opp-table and
-ddr-bw-opp-table. Downstream limits two DDR levels (5161 and 8136 MB/s)
-to LPDDR4X; leave them out, as was done for SM8250.
+	while (flash_data->v4l2_flash[flash_data->leds_count] && flash_data->leds_count)
+		v4l2_flash_release(flash_data->v4l2_flash[flash_data->leds_count--]);
 
-Assisted-by: LLM
-Signed-off-by: Demeter Barna <me@fromdisposition.org>
+leds_count is the number of registered LEDs, so the first test reads
+one entry past the last registered one. The array holds exactly one
+entry per LED child node, so after a full probe that read is out of
+bounds. The loop also stops before index 0. With a single LED nothing
+is released at all.
+
+The V4L2 flash sub-device then stays registered after the driver is
+unbound, still pointing at the driver's freed devm memory. On a Surface
+Pro 11 (X1E80100, PM8550 flash, IR LED linked to a sensor through
+flash-leds), unloading the module and then setting a flash control on
+the sub-device triggered UBSAN shift-out-of-bounds reports and a NULL
+pointer dereference in regmap_field_update_bits_base(), called from
+update_allowed_flash_current().
+
+Release the registered entries from leds_count - 1 down to 0.
+
+Fixes: 96a2e242a5dc ("leds: flash: Add driver to support flash LED module in QCOM PMICs")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: George Neacsu <geocausa@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sm8350.dtsi | 100 +++++++++++++++++++++++++++++++++++
- 1 file changed, 100 insertions(+)
+ drivers/leds/flash/leds-qcom-flash.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8350.dtsi b/arch/arm64/boot/dts/qcom/sm8350.dtsi
-index 55b32050ce9c..6335c7809d17 100644
---- a/arch/arm64/boot/dts/qcom/sm8350.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8350.dtsi
-@@ -2476,6 +2476,106 @@ usb_2_qmpphy: phy@88eb000 {
- 				      "phy_phy";
- 		};
+diff --git a/drivers/leds/flash/leds-qcom-flash.c b/drivers/leds/flash/leds-qcom-flash.c
+index b03a683..c2fefee 100644
+--- a/drivers/leds/flash/leds-qcom-flash.c
++++ b/drivers/leds/flash/leds-qcom-flash.c
+@@ -953,8 +953,8 @@ static int qcom_flash_led_probe(struct platform_device *pdev)
  
-+		pmu@9091000 {
-+			compatible = "qcom,sm8350-llcc-bwmon", "qcom,sc7280-llcc-bwmon";
-+			reg = <0 0x09091000 0 0x1000>;
-+			interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
-+			interconnects = <&mc_virt MASTER_LLCC QCOM_ICC_TAG_ACTIVE_ONLY
-+					 &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ACTIVE_ONLY>;
-+
-+			operating-points-v2 = <&llcc_bwmon_opp_table>;
-+
-+			llcc_bwmon_opp_table: opp-table {
-+				compatible = "operating-points-v2";
-+
-+				opp-0 {
-+					opp-peak-kBps = <762000>;
-+				};
-+
-+				opp-1 {
-+					opp-peak-kBps = <1720000>;
-+				};
-+
-+				opp-2 {
-+					opp-peak-kBps = <2086000>;
-+				};
-+
-+				opp-3 {
-+					opp-peak-kBps = <2597000>;
-+				};
-+
-+				opp-4 {
-+					opp-peak-kBps = <2929000>;
-+				};
-+
-+				opp-5 {
-+					opp-peak-kBps = <3879000>;
-+				};
-+
-+				opp-6 {
-+					opp-peak-kBps = <5931000>;
-+				};
-+
-+				opp-7 {
-+					opp-peak-kBps = <6515000>;
-+				};
-+
-+				opp-8 {
-+					opp-peak-kBps = <7980000>;
-+				};
-+
-+				opp-9 {
-+					opp-peak-kBps = <10437000>;
-+				};
-+
-+				opp-10 {
-+					opp-peak-kBps = <12191000>;
-+				};
-+			};
-+		};
-+
-+		pmu@90b6400 {
-+			compatible = "qcom,sm8350-cpu-bwmon", "qcom,sdm845-bwmon";
-+			reg = <0 0x090b6400 0 0x600>;
-+			interrupts = <GIC_SPI 581 IRQ_TYPE_LEVEL_HIGH>;
-+			interconnects = <&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
-+					 &gem_noc SLAVE_LLCC QCOM_ICC_TAG_ACTIVE_ONLY>;
-+
-+			operating-points-v2 = <&cpu_bwmon_opp_table>;
-+
-+			cpu_bwmon_opp_table: opp-table {
-+				compatible = "operating-points-v2";
-+
-+				opp-0 {
-+					opp-peak-kBps = <2288000>;
-+				};
-+
-+				opp-1 {
-+					opp-peak-kBps = <4577000>;
-+				};
-+
-+				opp-2 {
-+					opp-peak-kBps = <7110000>;
-+				};
-+
-+				opp-3 {
-+					opp-peak-kBps = <9155000>;
-+				};
-+
-+				opp-4 {
-+					opp-peak-kBps = <12298000>;
-+				};
-+
-+				opp-5 {
-+					opp-peak-kBps = <14236000>;
-+				};
-+
-+				opp-6 {
-+					opp-peak-kBps = <15258000>;
-+				};
-+			};
-+		};
-+
- 		dc_noc: interconnect@90c0000 {
- 			compatible = "qcom,sm8350-dc-noc";
- 			reg = <0 0x090c0000 0 0x4200>;
+ 	return regmap_field_write(flash_data->r_fields[REG_TORCH_CLAMP], flash_data->torch_clamp);
+ release:
+-	while (flash_data->v4l2_flash[flash_data->leds_count] && flash_data->leds_count)
+-		v4l2_flash_release(flash_data->v4l2_flash[flash_data->leds_count--]);
++	while (flash_data->leds_count)
++		v4l2_flash_release(flash_data->v4l2_flash[--flash_data->leds_count]);
+ 	return rc;
+ }
+ 
+@@ -962,8 +962,8 @@ static void qcom_flash_led_remove(struct platform_device *pdev)
+ {
+ 	struct qcom_flash_data *flash_data = platform_get_drvdata(pdev);
+ 
+-	while (flash_data->v4l2_flash[flash_data->leds_count] && flash_data->leds_count)
+-		v4l2_flash_release(flash_data->v4l2_flash[flash_data->leds_count--]);
++	while (flash_data->leds_count)
++		v4l2_flash_release(flash_data->v4l2_flash[--flash_data->leds_count]);
+ 
+ 	mutex_destroy(&flash_data->lock);
+ }
 
+---
+base-commit: 62f482ff73bf3ae88b0c899115527752cf9cbf13
+change-id: 20261016-qcom-flash-v4l2-release-9d05c97d1c47
+
+Best regards,
 -- 
-2.53.0
+George Neacsu <geocausa@gmail.com>
 
