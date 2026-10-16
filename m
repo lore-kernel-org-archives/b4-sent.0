@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v6 0/2] Speakers for Pixel 3 / 3 XL
-Date: Fri, 16 Oct 2026 23:52:19 +0200
-Message-Id: <20261016-pixel3-audio-v6-0-11c88448b3be@ixit.cz>
+Date: Fri, 16 Oct 2026 23:52:20 +0200
+Subject: [PATCH v6 1/2] arm64: dts: qcom: sdm845-google: Add basic audio
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33PTW7DIBAF4KtErEMFDGDoqveouuBnSJCiOMUOS
- hv57sXNwrEXWb5B32PmTgYsGQfyvruTgjUPuT+3oPc7Eo7ufECaY8tEMKGZ5kAv+YYnoO4ac09
- 99MlLi4ZBRxq5FEztfa77/Hrkgt/X1jouw2Mexr78/H9Z+Tx9tHdMrdsrp4yC1zoBGGUT/8i3P
- L6FXzLXVLFQyzaLVdFoF4TAaLkSdkPhiQq5odCoikxLzVIwzq6pfEVlo0Z5FTmAcwrXVD3T7a1
- qXjglDyJYw3xa6DRNf8kI3SanAQAA
-X-Change-ID: 20260613-pixel3-audio-bdbfb49e8037
+Message-Id: <20261016-pixel3-audio-v6-1-11c88448b3be@ixit.cz>
+References: <20261016-pixel3-audio-v6-0-11c88448b3be@ixit.cz>
+In-Reply-To: <20261016-pixel3-audio-v6-0-11c88448b3be@ixit.cz>
 To: Srinivas Kandagatla <srini@kernel.org>, 
  Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>, 
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
@@ -28,109 +25,258 @@ Cc: Viken Dadhaniya <viken.dadhaniya@oss.qualcomm.com>,
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3284; i=david@ixit.cz;
- h=from:subject:message-id; bh=N5mNLmP6Opqmd41Az0BIGbMTx/iM95OTgnym2i3XUVo=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0pyZD6QjgG+z0w2qa5OiqbRXCWyc4YCXu1lIn
- GohGcXuB9WJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatKcmQAKCRBgAj/E00kg
- cqRBEACG5Cl7it/jI7Y8FgWb2hWTWn3dqbXO4dp0rjK3Cd/loY+2RB5RuI0cioNHcQGcWcQc719
- D6ypL0gWaIAojLklzKaqzQyx6NQiD9ILB80japw33kvcqEFlq6eL9XRRF9Qb0xDeYoImucWSGGC
- dvg4Vh23nnh5JUU02avRp2gF3s3T9yvFBYBBecT2yUYQVLUaVNkGMEXwhZ7x0uOMb8clE60G9ml
- hisH+aFumVE7M6nT4gmiT5Dp4dUyKIE7yDmB/Xi3aTLzywTvFGWEC9MSJcEos/sly1TgBkOXmTL
- 4UUPIC+WXtuvLxa8ylvBpmfqDYP/xtytuCodK/z1nxEkx9VUgL/D3IRyRMjOORa/dder4IKiXw3
- AvEhuvqTeEfFrpGyTBY7oOMZKrlvSj4/hJ1e1Qng+BawHo43zz4Gl4spFBmSVbHy1239gZmR8Ef
- 1RbNEHTUKciBS/33X6zR6j3vs2rk9bpJmHc7J+FEM5SIt99nyvSvkpzQSvUa/T2M0DK77e+VdDQ
- vF6I3GQZ0yI3G03sQ4TJipXLW6trImrShlHSzntUvQou2t0wnIQiF7z9PBhjGiTj5YK/VTDlWDk
- JJR2u5/7501uc9b0dnWSLEpXoRR5cj9fcmysE5UCOWlQ7oLvVjTYlQZrO4Vx1iTkqoECjVn2UDT
- VU1nL40tYWFOeLQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5501; i=david@ixit.cz;
+ h=from:subject:message-id; bh=OPuhAiGiwh1F0hU4jXrVkMpTLkDrYHqdITX3pk25rWU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0pyZjle75JsbIv7W+OlzUEq6KqljH5zwKfmeU
+ hQf4j85LpSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatKcmQAKCRBgAj/E00kg
+ cgQ7EACxntnWeyRNPzt4VFujSLCUZ6LdUoEy5wtxj/E98hAdwsvGMTIEDt3wvVMVXoXZ6w89dEp
+ VHoiokQrq5BM6IaaFtRPTBIsJFcQJ4b6JZteyjc/zLBpJTuCmc+IJW3V58XJM4UCJHuvlkUwH5Q
+ lpjoatPrKNlG16KEuVaH8yfczPJg1Idpm0dk4NkzDpISicb7z0Dh1pz58UFZ6EoXivXQpJt1tk2
+ pPzHFK0kA2AyCLHuldG/rsq3/SE3XGE+7XRM0DdtxxT3nZnH7dU43ofLShWY7hT9J9No0WrMxGf
+ HgP+Q/9cC6aOBzRwYTb9On9kvdEXS8gElf7O9m6/cdZv/ASaxHTYej6GRN8hfz6PxQQ8xRF8225
+ qr6PKFlHTHQQXgYGNTRZSXZ/G0O4bik8/JTvE8yxmYRHELfeyP7MXwAZScSwbMAIRunIYSZVCjT
+ 7npkTjKSsYPuv6Fhlo+9tKyOmqFT4omSgfSIkoM20+zWlGSTIiI4glpMUlkPKtZn2P7zU8hVPGE
+ 3G3wpYgs/5o5GKPS+aBafELR8oNE3JWfujbuWlrfkmmk0z9oKaYAauctisANioaA0vKqzT9ywod
+ BQ2/Ti9aReebh6anUo+MFaNG9bp97NXzsXMYwXryBkht8iUVub6jksHwQnx8y91tgE89WhpYsi8
+ l4o4TwePRqvjkHQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series address:
+Introduce support for sound card and wire two CS35L36 audio codecs for
+top and bottom speakers.
 
---- merged
-0. demistify the hex to BIT() macro and add left/right rx spk
-1. most likely wrongly set DSP_B in sdm845.c
-   my guess this is because TDM was never used in the mainline with
-   sdm845
-2. applying correct mask to left/right speaker for the TDM in sdm845.c,
-   so both speakers can work simultaneusly
-3. setting sysclk at startups, which some codecs need (such as cs35l36)
-4. setting proper tdm slot in the cs35l36 driver
---- remains:
-5. device-tree wiring for Pixel 3 / 3 XL speakers
-6. same for microphone.
-
-As per previous discussion not seding patch removing the "Input Mux"
-which now interferes with TDM callback. If wanted, I can send it as a
-follow-up.
+Inspired by commit from Joel Selvaraj.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v6:
-- Everything expect device-tree changes got merged. Rebased on top of
-  latest next-20261016.
-- Link to v5: https://patch.msgid.link/20260925-pixel3-audio-v5-0-7ffb32c980bf@ixit.cz
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 132 ++++++++++++++++++++-
+ 1 file changed, 130 insertions(+), 2 deletions(-)
 
-Changes in v5:
-- Dropped
-  `slimbus: qcom-ngd-ctrl: Remove data channels on stream disable`
-  in favor of now merged
-  `slimbus: qcom-ngd-ctrl: Implement disable_stream callback`
-- Applied R-bs.
-- Small clarifications in the commit messages and comments blocks.
-- Link to v4: https://patch.msgid.link/20260924-pixel3-audio-v4-0-85b5d133aa5e@ixit.cz
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+index f1379857e2742..68d26c1a06d0c 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+@@ -2,16 +2,18 @@
+ 
+ /dts-v1/;
+ 
+ #include <dt-bindings/arm/qcom,ids.h>
+ #include <dt-bindings/dma/qcom-gpi.h>
+ #include <dt-bindings/input/linux-event-codes.h>
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
++#include <dt-bindings/sound/qcom,q6afe.h>
++#include <dt-bindings/sound/qcom,q6asm.h>
+ 
+ #include "sdm845.dtsi"
+ #include "pm8998.dtsi"
+ #include "pmi8998.dtsi"
+ 
+ /delete-node/ &mpss_region;
+ /delete-node/ &venus_mem;
+ /delete-node/ &cdsp_mem;
+@@ -406,19 +408,61 @@ nfc@28 {
+ 		firmware-gpios = <&tlmm 79 GPIO_ACTIVE_HIGH>;
+ 
+ 		pinctrl-0 = <&nfc_default>;
+ 		pinctrl-names = "default";
+ 	};
+ };
+ 
+ &i2c12 {
+-	/* Bottom spkr (right) CS35L36 @ 40 */
++	status = "okay";
++
++	cs35l36_bottom: audio-codec@40 {
++		compatible = "cirrus,cs35l36";
++		reg = <0x40>;
++		reset-gpios = <&tlmm 112 GPIO_ACTIVE_HIGH>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "Right"; /* Bottom */
++		VA-supply = <&vreg_s4a_1p8>;
++		interrupts-extended = <&tlmm 115 IRQ_TYPE_LEVEL_LOW>;
++
++		pinctrl-0 = <&cs35l36_bottom_default_state>;
++		pinctrl-names = "default";
++
++		cirrus,boost-ind-nanohenry = <1000>;
++		cirrus,boost-ctl-select = <1>;
++		cirrus,boost-ctl-millivolt = <10000>;
++		cirrus,boost-peak-milliamp = <3700>;
++		cirrus,temp-warn-threshold = <1>;
++		cirrus,multi-amp-mode;
++		cirrus,irq-drive-select = <0>;
++		cirrus,irq-gpio-select = <0>;
++	};
++
++	cs35l36_top: audio-codec@41 {
++		compatible = "cirrus,cs35l36";
++		reg = <0x41>;
++		reset-gpios = <&tlmm 75 GPIO_ACTIVE_HIGH>;
++		#sound-dai-cells = <0>;
++		sound-name-prefix = "Left"; /* Top */
++		VA-supply = <&vreg_s4a_1p8>;
++		interrupts-extended = <&tlmm 40 IRQ_TYPE_LEVEL_LOW>;
+ 
+-	/* Top spkr (left) CS35L36 @ 41 */
++		pinctrl-0 = <&cs35l36_top_default_state>;
++		pinctrl-names = "default";
++
++		cirrus,boost-ind-nanohenry = <1000>;
++		cirrus,boost-ctl-select = <0x01>;
++		cirrus,boost-ctl-millivolt = <10000>;
++		cirrus,boost-peak-milliamp = <3700>;
++		cirrus,temp-warn-threshold = <1>;
++		cirrus,multi-amp-mode;
++		cirrus,irq-drive-select = <0>;
++		cirrus,irq-gpio-select = <0>;
++	};
+ };
+ 
+ &ipa {
+ 	firmware-name = "qcom/sdm845/Google/blueline/ipa_fws.mbn";
+ 	memory-region = <&ipa_fw_mem>;
+ 
+ 	status = "okay";
+ };
+@@ -451,16 +495,35 @@ &pm8998_resin {
+ };
+ 
+ &pmi8998_charger {
+ 	monitored-battery = <&battery>;
+ 
+ 	status = "okay";
+ };
+ 
++&q6afedai {
++	dai@72 {
++		reg = <QUATERNARY_TDM_RX_0>;
++
++		qcom,tdm-sync-mode = <0>;
++		qcom,tdm-sync-src = <1>;
++		qcom,tdm-data-out = <0>;
++		qcom,tdm-invert-sync = <0>;
++		qcom,tdm-data-delay = <1>;
++		qcom,tdm-data-align = <0>;
++	};
++};
++
++&q6asmdai {
++	dai@0 {
++		reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
++	};
++};
++
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
+ 
+ &qupv3_id_1 {
+ 	status = "okay";
+ };
+ 
+@@ -469,16 +532,49 @@ &qup_uart9_rx {
+ 	bias-pull-up;
+ };
+ 
+ &qup_uart9_tx {
+ 	drive-strength = <2>;
+ 	bias-disable;
+ };
+ 
++&sound {
++	compatible = "qcom,sdm845-sndcard";
++	model = "Pixel 3";
++	pinctrl-0 = <&quat_mi2s_active>, <&quat_mi2s_sd0_active>,
++		    <&quat_mi2s_sd1_active>;
++	pinctrl-names = "default";
++
++	/* mm[0-9]-dai-link nodes must be positioned first regardless of sorting */
++	mm1-dai-link {
++		link-name = "MultiMedia1";
++
++		cpu {
++			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
++		};
++	};
++
++	cs35l36-dai-link {
++		link-name = "Speaker Playback";
++
++		codec {
++			sound-dai = <&cs35l36_bottom>, <&cs35l36_top>;
++		};
++
++		cpu {
++			sound-dai = <&q6afedai QUATERNARY_TDM_RX_0>;
++		};
++
++		platform {
++			sound-dai = <&q6routing>;
++		};
++	};
++};
++
+ &tlmm {
+ 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
+ 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
+ 
+ 	nfc_default: nfc-default-state {
+ 		enable-pins {
+ 			pins = "gpio25";
+ 			function = "gpio";
+@@ -517,16 +613,48 @@ touchscreen_pins: ts-pins-gpio-state {
+ 	};
+ 
+ 	touchscreen_i2c_pins: qup-i2c2-gpio-state {
+ 		pins = "gpio27", "gpio28";
+ 		function = "gpio";
+ 		drive-strength = <2>;
+ 		bias-disable;
+ 	};
++
++	cs35l36_bottom_default_state: cs35l36-bottom-default-state {
++		reset-pins {
++			pins = "gpio112";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-disable;
++		};
++
++		irq-pins {
++			pins = "gpio115";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++	};
++
++	cs35l36_top_default_state: cs35l36-top-default-state {
++		irq-pins {
++			pins = "gpio40";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++
++		reset-pins {
++			pins = "gpio75";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-disable;
++		};
++	};
+ };
+ 
+ &uart6 {
+ 	pinctrl-0 = <&qup_uart6_4pin>;
+ 
+ 	status = "okay";
+ 
+ 	bluetooth {
 
-Changes in v4:
-- Rebase on top of d4d1619ebd55 ("ASoC: codecs: cs35l*: use .auto_selectable_formats") (Mark)
-- Link to v3: https://patch.msgid.link/20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz
-
-Changes in v3:
-- De-RFC, applied Reviewed-by tag.
-- Link to v2: https://patch.msgid.link/20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz
-
-Changes in v2:
-- Device-tree name sorting, with exception keeping mm1-dai-link in it's
-  place. (Konrad)
-- Make set_tdm_slot cleaner and less leveled. (Konrad)
-- Added TDM MIC defines in sdm845.c.
-  Should we in capture use speaker mask?
-- Renamed model from 'Google Pixel 3' to 'blueline', I would love to
-  hear feedback on this one.
-- Link to v1: https://lore.kernel.org/r/20260705-pixel3-audio-v1-0-3b66f33859f1@ixit.cz
-
-To: Srinivas Kandagatla <srini@kernel.org>
-To: Liam Girdwood <lgirdwood@gmail.com>
-To: Mark Brown <broonie@kernel.org>
-To: Jaroslav Kysela <perex@perex.cz>
-To: Takashi Iwai <tiwai@suse.com>
-To: David Rhodes <david.rhodes@cirrus.com>
-To: Richard Fitzgerald <rf@opensource.cirrus.com>
-To: Bjorn Andersson <andersson@kernel.org>
-To: Konrad Dybcio <konradybcio@kernel.org>
-To: Abel Vesa <abelvesa@kernel.org>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-Cc: linux-sound@vger.kernel.org
-Cc: linux-arm-msm@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: patches@opensource.cirrus.com
-Cc: devicetree@vger.kernel.org
-
----
-David Heidelberg (2):
-      arm64: dts: qcom: sdm845-google: Add basic audio support
-      arm64: dts: qcom: sdm845-google: Add WCD9340 codec and microphone capture
-
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 190 ++++++++++++++++++++-
- 1 file changed, 188 insertions(+), 2 deletions(-)
----
-base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
-change-id: 20260613-pixel3-audio-bdbfb49e8037
-
-Best regards,
---  
-David Heidelberg <david@ixit.cz>
+-- 
+2.55.0
 
