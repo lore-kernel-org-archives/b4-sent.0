@@ -1,233 +1,136 @@
-From: Zane <git@turtledev.nz>
-Date: Sat, 17 Oct 2026 10:50:42 +1300
-Subject: [PATCH v3] platform/x86: asus-wmi: fix camera key LED on Zenbook
- S14
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v6 0/2] Speakers for Pixel 3 / 3 XL
+Date: Fri, 16 Oct 2026 23:52:19 +0200
+Message-Id: <20261016-pixel3-audio-v6-0-11c88448b3be@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261017-asus-wmi-camera-led-v3-1-845a82373997@turtledev.nz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCQAxG4auUrA1kRjqCVxEXcfpXI7bKxKpQe
- veOuvwW783kKAanfTNTwcvc7mPFdtNQvuh4BltXTVFiChJ2rD45vwfjrAOK8g0dS9IEaXsJiFT
- LR0Fvn9/1cPzbp9MV+fld0bKsvOpYoXcAAAA=
-X-Change-ID: 20261017-asus-wmi-camera-led-06a6e05f01e2
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- platform-driver-x86@vger.kernel.org
-Cc: =?utf-8?q?Jos=C3=A9_Guilherme_de_Castro_Rodrigues?= <jose.guilherme.cr.bh@gmail.com>, 
- linux-kernel@vger.kernel.org, Zane <git@turtledev.nz>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33PTW7DIBAF4KtErEMFDGDoqveouuBnSJCiOMUOS
+ hv57sXNwrEXWb5B32PmTgYsGQfyvruTgjUPuT+3oPc7Eo7ufECaY8tEMKGZ5kAv+YYnoO4ac09
+ 99MlLi4ZBRxq5FEztfa77/Hrkgt/X1jouw2Mexr78/H9Z+Tx9tHdMrdsrp4yC1zoBGGUT/8i3P
+ L6FXzLXVLFQyzaLVdFoF4TAaLkSdkPhiQq5odCoikxLzVIwzq6pfEVlo0Z5FTmAcwrXVD3T7a1
+ qXjglDyJYw3xa6DRNf8kI3SanAQAA
+X-Change-ID: 20260613-pixel3-audio-bdbfb49e8037
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ David Rhodes <david.rhodes@cirrus.com>, 
+ Richard Fitzgerald <rf@opensource.cirrus.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ David Rhodes <drhodes@opensource.cirrus.com>, 
+ Conor Dooley <conor+dt@kernel.org>, Abel Vesa <abelvesa@kernel.org>
+Cc: Viken Dadhaniya <viken.dadhaniya@oss.qualcomm.com>, 
+ linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, patches@opensource.cirrus.com, 
+ devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792187451; l=8241;
- i=git@turtledev.nz; s=20261016; h=from:subject:message-id;
- bh=DCqIlCnS2PlfrDNjeCfm0AeJ4HsZgHKNKXAP1tABPrM=;
- b=CFDhhTk9PwdpymGUfJkDjwo3VXaULttYZhYs3MPMODYPlaVizr9+FBwRvwf6h28+3QgeVvGLb
- rBiV99Vgt3jDo7ZbFJEVdBu/Tk6D35pifB8r+Umaov4wuLqbpH0mnSz
-X-Developer-Key: i=git@turtledev.nz; a=ed25519;
- pk=7P3HBZD1ukp3nMYpf+9Dcl3ryKIU5pYgOUKe/HOox6c=
-X-Endpoint-Received: by B4 Relay for git@turtledev.nz/20261016 with auth_id=1217
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3284; i=david@ixit.cz;
+ h=from:subject:message-id; bh=N5mNLmP6Opqmd41Az0BIGbMTx/iM95OTgnym2i3XUVo=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq0pyZD6QjgG+z0w2qa5OiqbRXCWyc4YCXu1lIn
+ GohGcXuB9WJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCatKcmQAKCRBgAj/E00kg
+ cqRBEACG5Cl7it/jI7Y8FgWb2hWTWn3dqbXO4dp0rjK3Cd/loY+2RB5RuI0cioNHcQGcWcQc719
+ D6ypL0gWaIAojLklzKaqzQyx6NQiD9ILB80japw33kvcqEFlq6eL9XRRF9Qb0xDeYoImucWSGGC
+ dvg4Vh23nnh5JUU02avRp2gF3s3T9yvFBYBBecT2yUYQVLUaVNkGMEXwhZ7x0uOMb8clE60G9ml
+ hisH+aFumVE7M6nT4gmiT5Dp4dUyKIE7yDmB/Xi3aTLzywTvFGWEC9MSJcEos/sly1TgBkOXmTL
+ 4UUPIC+WXtuvLxa8ylvBpmfqDYP/xtytuCodK/z1nxEkx9VUgL/D3IRyRMjOORa/dder4IKiXw3
+ AvEhuvqTeEfFrpGyTBY7oOMZKrlvSj4/hJ1e1Qng+BawHo43zz4Gl4spFBmSVbHy1239gZmR8Ef
+ 1RbNEHTUKciBS/33X6zR6j3vs2rk9bpJmHc7J+FEM5SIt99nyvSvkpzQSvUa/T2M0DK77e+VdDQ
+ vF6I3GQZ0yI3G03sQ4TJipXLW6trImrShlHSzntUvQou2t0wnIQiF7z9PBhjGiTj5YK/VTDlWDk
+ JJR2u5/7501uc9b0dnWSLEpXoRR5cj9fcmysE5UCOWlQ7oLvVjTYlQZrO4Vx1iTkqoECjVn2UDT
+ VU1nL40tYWFOeLQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On some newer Zenbooks (Zenbook S 14 UX5406SA, Zenbook S 16 UM5606WA) the
-camera key turns the camera off in firmware, but the LED on the key never
-lights up under Linux. These machines don't have
-ASUS_WMI_DEVID_CAMERA_LED, so asus-wmi never registers asus::camera. The
-firmware exposes the state through ASUS_WMI_DEVID_CAMERA_LED_NEG instead.
+This series address:
 
-Reading CAMERA_LED_NEG is what drives the LED: the DSTS handler reads the
-camera state from the EC and writes it to the LED GPIO before returning
-it. The set side can't be used, the firmware only accepts DEVS on this
-device once per boot.
+--- merged
+0. demistify the hex to BIT() macro and add left/right rx spk
+1. most likely wrongly set DSP_B in sdm845.c
+   my guess this is because TDM was never used in the mainline with
+   sdm845
+2. applying correct mask to left/right speaker for the TDM in sdm845.c,
+   so both speakers can work simultaneusly
+3. setting sysclk at startups, which some codecs need (such as cs35l36)
+4. setting proper tdm slot in the cs35l36 driver
+--- remains:
+5. device-tree wiring for Pixel 3 / 3 XL speakers
+6. same for microphone.
 
-So read it at probe, which fixes the LED being dark after a cold boot
-with the camera disabled, and after every camera key event. Also
-register a read-only asus::camera LED on these machines so userspace can
-see the camera state and gets a brightness_hw_changed event on each key
-press.
+As per previous discussion not seding patch removing the "Input Mux"
+which now interferes with TDM callback. If wanted, I can send it as a
+follow-up.
 
-This builds on José Guilherme de Castro Rodrigues' v2, which added the
-read after the camera key event.
-
-Link: https://lore.kernel.org/r/adg6GzkykThAB_4u@djouze-zen
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221752
-Assisted-by: Claude:claude-opus-5-5 iasl
-Signed-off-by: Zane <git@turtledev.nz>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-José, this is a respin of your v2 since it had stalled, I hope that's ok.
-Happy to drop it if you'd rather send v3 yourself, or to add your
-Co-developed-by/Signed-off-by if you want them on it.
+Changes in v6:
+- Everything expect device-tree changes got merged. Rebased on top of
+  latest next-20261016.
+- Link to v5: https://patch.msgid.link/20260925-pixel3-audio-v5-0-7ffb32c980bf@ixit.cz
+
+Changes in v5:
+- Dropped
+  `slimbus: qcom-ngd-ctrl: Remove data channels on stream disable`
+  in favor of now merged
+  `slimbus: qcom-ngd-ctrl: Implement disable_stream callback`
+- Applied R-bs.
+- Small clarifications in the commit messages and comments blocks.
+- Link to v4: https://patch.msgid.link/20260924-pixel3-audio-v4-0-85b5d133aa5e@ixit.cz
+
+Changes in v4:
+- Rebase on top of d4d1619ebd55 ("ASoC: codecs: cs35l*: use .auto_selectable_formats") (Mark)
+- Link to v3: https://patch.msgid.link/20260924-pixel3-audio-v3-0-5d06460fc8a9@ixit.cz
 
 Changes in v3:
-- Rebased on pdx86 for-next
-- Also read CAMERA_LED_NEG at probe, so the LED is right after a cold boot
-- Register a read-only asus::camera LED when only CAMERA_LED_NEG exists,
-  with brightness_hw_changed on key presses (Ilpo's suggestion on v2)
-- Comment on why the read is what updates the LED (also from v2 review)
+- De-RFC, applied Reviewed-by tag.
+- Link to v2: https://patch.msgid.link/20260903-pixel3-audio-v2-0-7c22ed915291@ixit.cz
 
-Tested on a Zenbook S 14 UX5406SA, BIOS 309, on the Fedora 7.2.9 kernel
-with the same change applied to its asus-wmi:
-- Key presses: the LED, asus::camera and the camera output (live picture
-  vs. the firmware's grey "camera disabled" frame) switch together every
-  time, and brightness_hw_changed follows.
-- Cold boot with the camera disabled: the LED is lit and asus::camera
-  reads 1 before anything is pressed. Without the patch the LED stays dark
-  until the next key press.
-- Suspend/resume: the LEDs come back correctly, but that's the firmware
-  restoring them, it does the same without the patch. So nothing is done
-  on resume.
+Changes in v2:
+- Device-tree name sorting, with exception keeping mm1-dai-link in it's
+  place. (Konrad)
+- Make set_tdm_slot cleaner and less leveled. (Konrad)
+- Added TDM MIC defines in sdm845.c.
+  Should we in capture use speaker mask?
+- Renamed model from 'Google Pixel 3' to 'blueline', I would love to
+  hear feedback on this one.
+- Link to v1: https://lore.kernel.org/r/20260705-pixel3-audio-v1-0-3b66f33859f1@ixit.cz
 
-A Zenbook S 16 UM5606WA owner reported on the bug that reading
-CAMERA_LED_NEG after the key event (WMI code 0x85 there) fixes it on that
-machine too. The DSDT details are in the bugzilla entry.
-
-I used Claude (Anthropic's AI assistant) while working on this. It helped
-me read through the DSDT, drafted the changes on top of v2 and wrote the
-test scripts. I went through the patch myself and ran the tests on my
-laptop.
-
-v2: https://lore.kernel.org/r/adg6GzkykThAB_4u@djouze-zen
----
- drivers/platform/x86/asus-wmi.c            | 72 ++++++++++++++++++++++++++++++
- include/linux/platform_data/x86/asus-wmi.h |  2 +-
- 2 files changed, 73 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
-index fb1d4a0..fd2ba8c 100644
---- a/drivers/platform/x86/asus-wmi.c
-+++ b/drivers/platform/x86/asus-wmi.c
-@@ -72,6 +72,8 @@ module_param(fnlock_default, bool, 0444);
- #define NOTIFY_KBD_TTP			0xae
- #define NOTIFY_LID_FLIP			0xfa
- #define NOTIFY_LID_FLIP_ROG		0xbd
-+#define NOTIFY_CAMERA_TOGGLE_1		0x82
-+#define NOTIFY_CAMERA_TOGGLE_2		0x85
- #define NOTIFY_KEYSTONE			0xb4
- 
- #define ASUS_WMI_FNLOCK_BIOS_DISABLED	BIT(0)
-@@ -312,6 +314,7 @@ struct asus_wmi {
- 	u32 kbd_rgb_dev;
- 	bool kbd_rgb_state_available;
- 	bool oobe_state_available;
-+	bool camera_neg_led_available;
- 
- 	u8 throttle_thermal_policy_mode;
- 	u32 throttle_thermal_policy_dev;
-@@ -2096,6 +2099,53 @@ static int camera_led_set(struct led_classdev *led_cdev,
- 	return err < 0 ? err : 0;
- }
- 
-+static bool is_camera_toggle(int code)
-+{
-+	return code == NOTIFY_CAMERA_TOGGLE_1 || code == NOTIFY_CAMERA_TOGGLE_2;
-+}
-+
-+/*
-+ * Some models (e.g. Zenbook S 14 UX5406SA, Zenbook S 16 UM5606WA) have no
-+ * ASUS_WMI_DEVID_CAMERA_LED. The firmware handles the camera key itself and
-+ * only exposes the state through ASUS_WMI_DEVID_CAMERA_LED_NEG, and reading
-+ * that has a side effect: the firmware copies the state to the LED GPIO.
-+ * Nothing else updates the LED, so read it at probe and after every camera
-+ * key event. Setting it is no use, the firmware accepts DEVS on this device
-+ * only once per boot.
-+ *
-+ * Returns 1 if the camera is disabled (LED lit), 0 if enabled, or -errno.
-+ */
-+static int camera_neg_led_sync(struct asus_wmi *asus)
-+{
-+	u32 result;
-+	int err;
-+
-+	err = asus_wmi_get_devstate(asus, ASUS_WMI_DEVID_CAMERA_LED_NEG, &result);
-+	if (err)
-+		return err;
-+
-+	return !(result & ASUS_WMI_DSTS_STATUS_BIT);
-+}
-+
-+static enum led_brightness camera_neg_led_get(struct led_classdev *led_cdev)
-+{
-+	struct asus_wmi *asus = container_of(led_cdev, struct asus_wmi, camera_led);
-+	int state = camera_neg_led_sync(asus);
-+
-+	return state < 0 ? LED_OFF : state;
-+}
-+
-+/* The firmware owns this LED; a write just resyncs it with the camera state. */
-+static int camera_neg_led_set(struct led_classdev *led_cdev,
-+			      enum led_brightness brightness)
-+{
-+	struct asus_wmi *asus = container_of(led_cdev, struct asus_wmi, camera_led);
-+
-+	if (!(led_cdev->flags & LED_UNREGISTERING))
-+		camera_neg_led_sync(asus);
-+	return 0;
-+}
-+
- static void asus_wmi_led_exit(struct asus_wmi *asus)
- {
- 	scoped_guard(spinlock_irqsave, &asus_ref.lock)
-@@ -2233,6 +2283,17 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
- 		asus->camera_led.brightness_get = camera_led_get;
- 		asus->camera_led.brightness_set_blocking = camera_led_set;
- 
-+		rv = led_classdev_register(&asus->platform_device->dev,
-+						&asus->camera_led);
-+		if (rv)
-+			goto error;
-+	} else if (asus->camera_neg_led_available) {
-+		asus->camera_led.name = "asus::camera";
-+		asus->camera_led.max_brightness = 1;
-+		asus->camera_led.flags = LED_BRIGHT_HW_CHANGED;
-+		asus->camera_led.brightness_get = camera_neg_led_get;
-+		asus->camera_led.brightness_set_blocking = camera_neg_led_set;
-+
- 		rv = led_classdev_register(&asus->platform_device->dev,
- 						&asus->camera_led);
- 		if (rv)
-@@ -4733,6 +4794,13 @@ static void asus_wmi_handle_event_code(int code, struct asus_wmi *asus)
- 	if (is_display_toggle(code) && asus->driver->quirks->no_display_toggle)
- 		return;
- 
-+	if (is_camera_toggle(code) && asus->camera_neg_led_available) {
-+		int state = camera_neg_led_sync(asus);
-+
-+		if (state >= 0 && (asus->camera_led.flags & LED_BRIGHT_HW_CHANGED))
-+			led_classdev_notify_brightness_hw_changed(&asus->camera_led, state);
-+	}
-+
- 	if (!sparse_keymap_report_event(asus->inputdev, code,
- 					key_value, autorelease))
- 		pr_info("Unknown key code 0x%x\n", code);
-@@ -5210,6 +5278,10 @@ static int asus_wmi_add(struct platform_device *pdev)
- #endif /* IS_ENABLED(CONFIG_ASUS_WMI_DEPRECATED_ATTRS) */
- 
- 	asus->oobe_state_available = asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_OOBE);
-+	asus->camera_neg_led_available =
-+		asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED_NEG);
-+	if (asus->camera_neg_led_available)
-+		camera_neg_led_sync(asus);
- 
- 	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY))
- 		asus->throttle_thermal_policy_dev = ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY;
-diff --git a/include/linux/platform_data/x86/asus-wmi.h b/include/linux/platform_data/x86/asus-wmi.h
-index 4ea1ccc..5964063 100644
---- a/include/linux/platform_data/x86/asus-wmi.h
-+++ b/include/linux/platform_data/x86/asus-wmi.h
-@@ -57,7 +57,7 @@
- #define ASUS_WMI_DEVID_MUTE_LED	0x0004001C
- 
- /* Disable Camera LED */
--#define ASUS_WMI_DEVID_CAMERA_LED_NEG	0x00060078 /* 0 = on (unused) */
-+#define ASUS_WMI_DEVID_CAMERA_LED_NEG	0x00060078 /* 0 = on */
- #define ASUS_WMI_DEVID_CAMERA_LED	0x00060079 /* 1 = on */
- 
- /* Backlight and Brightness */
+To: Srinivas Kandagatla <srini@kernel.org>
+To: Liam Girdwood <lgirdwood@gmail.com>
+To: Mark Brown <broonie@kernel.org>
+To: Jaroslav Kysela <perex@perex.cz>
+To: Takashi Iwai <tiwai@suse.com>
+To: David Rhodes <david.rhodes@cirrus.com>
+To: Richard Fitzgerald <rf@opensource.cirrus.com>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Abel Vesa <abelvesa@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Cc: linux-sound@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: patches@opensource.cirrus.com
+Cc: devicetree@vger.kernel.org
 
 ---
-base-commit: ea40f1e9f07aab937b9a217633be7a1f66260394
-change-id: 20261017-asus-wmi-camera-led-06a6e05f01e2
+David Heidelberg (2):
+      arm64: dts: qcom: sdm845-google: Add basic audio support
+      arm64: dts: qcom: sdm845-google: Add WCD9340 codec and microphone capture
+
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 190 ++++++++++++++++++++-
+ 1 file changed, 188 insertions(+), 2 deletions(-)
+---
+base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
+change-id: 20260613-pixel3-audio-bdbfb49e8037
 
 Best regards,
 --  
-Zane <git@turtledev.nz>
+David Heidelberg <david@ixit.cz>
 
