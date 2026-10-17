@@ -1,11 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sat, 17 Oct 2026 09:39:04 +0200
-Subject: [PATCH v2 5/6] boot: Add a choice for the compression of the FDT
- in the FIT
+Date: Sat, 17 Oct 2026 09:39:05 +0200
+Subject: [PATCH v2 6/6] rockchip: Allow compression of the FDT in the FIT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-b4-binman-fit-fdt-compression-v2-5-d7e290847543@protonmail.com>
+Message-Id: <20261017-b4-binman-fit-fdt-compression-v2-6-d7e290847543@protonmail.com>
 References: <20261017-b4-binman-fit-fdt-compression-v2-0-d7e290847543@protonmail.com>
 In-Reply-To: <20261017-b4-binman-fit-fdt-compression-v2-0-d7e290847543@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -24,68 +23,63 @@ Cc: Simon Glass <sjg@chromium.org>,
  Daniel Golle <daniel@makrotopia.org>, Johan Jonker <jbx6244@gmail.com>, 
  Quentin Schulz <u-boot@0leil.net>, Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792222776; l=1762;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792222776; l=1504;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=4zYaQ6H7gvea7wuTACDytrlHDVzm52hqn+UVZvLezIA=;
- b=6Z4bW1d5h1MvhOicY7WOFFB1h5sjSdERn/Q4t3unKTQAh5itQ/0zSz1w2l1c6bjXF3sTCjM76
- lbe3GEyKXGACPIwrHZ3ACRWTUs2+tcymEj8NH6yhtPUnMRxcIacWQoO
+ bh=FlQuXoK53s24j1p15W4V8i+V56MKTL/IXnwaSFm7F88=;
+ b=227mYOyAh7ZzgX+0y0U8QgiecUpZ+O/BJxxFaicMrjOAMItj1LqEcdaHdioTNuEuG0MKWPa/8
+ +3tamPutLuwBhfw3khU/SUJkc3ouJSfJZd3Bhb2FTpu7RaO7WGhqDQk
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add SPL_FIT_FDT_COMP so a board can select how binman compresses the
-devicetrees in its FIT (none, LZMA or gzip). LZMA and gzip are the only
-algorithms the SPL FIT loader can decompress. The default is none.
+Compressing the FDT shrinks the FIT at the cost of decompression time
+in SPL.
+
+Define FIT_FDT_COMP from the SPL_FIT_FDT_COMP choice and use it in the
+@fdt-SEQ template via 'fit,compress'.
+
+This has no effect on any current board as no in-tree Rockchip defconfig
+selects a compression.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- boot/Kconfig | 32 ++++++++++++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+ arch/arm/dts/rockchip-u-boot.dtsi | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-diff --git a/boot/Kconfig b/boot/Kconfig
-index 8fcdc36c931..b84a75062b4 100644
---- a/boot/Kconfig
-+++ b/boot/Kconfig
-@@ -236,6 +236,38 @@ config SPL_FIT_FULL_CHECK
- 	  advantage of bugs or omissions in the code. This includes a bad
- 	  structure, multiple root nodes and the like.
+diff --git a/arch/arm/dts/rockchip-u-boot.dtsi b/arch/arm/dts/rockchip-u-boot.dtsi
+index 4ba6a87e78a..3cb571ddddb 100644
+--- a/arch/arm/dts/rockchip-u-boot.dtsi
++++ b/arch/arm/dts/rockchip-u-boot.dtsi
+@@ -19,6 +19,19 @@
+ #define FIT_UBOOT_COMP		"none"
+ #endif
  
-+choice
-+	prompt "Compression of the FDT in the FIT"
-+	depends on SPL_FIT
-+	default SPL_FIT_FDT_COMP_NONE
-+	help
-+	  Select how binman compresses the devicetrees in the FIT. This is
-+	  independent of the compression of U-Boot itself. SPL must be able to
-+	  decompress the chosen algorithm. Only boards whose binman description
-+	  uses the fit,compress property are affected.
++/*
++ * The compression of the FDT is chosen by the SPL_FIT_FDT_COMP choice. It
++ * is independent of FIT_UBOOT_COMP so U-Boot may be gzip-compressed while the
++ * FDT is LZMA-compressed.
++ */
++#if defined(CONFIG_SPL_FIT_FDT_COMP_LZMA)
++#define FIT_FDT_COMP		"lzma"
++#elif defined(CONFIG_SPL_FIT_FDT_COMP_GZIP)
++#define FIT_FDT_COMP		"gzip"
++#else
++#define FIT_FDT_COMP		"none"
++#endif
 +
-+config SPL_FIT_FDT_COMP_NONE
-+	bool "None"
-+	help
-+	  Do not compress the devicetrees. This needs no decompression support
-+	  in SPL but makes the FIT larger.
-+
-+config SPL_FIT_FDT_COMP_LZMA
-+	bool "LZMA"
-+	depends on SPL_LZMA
-+	help
-+	  Compress the devicetrees with LZMA. This gives the smallest FIT but
-+	  needs the most time and memory to decompress in SPL.
-+
-+config SPL_FIT_FDT_COMP_GZIP
-+	bool "gzip"
-+	depends on SPL_GZIP
-+	help
-+	  Compress the devicetrees with gzip. This decompresses faster than
-+	  LZMA in SPL but the FIT is larger.
-+
-+endchoice
-+
- config SPL_FIT_SIGNATURE
- 	bool "Enable signature verification of FIT firmware within SPL"
- 	depends on SPL_DM
+ /*
+  * SHA256 should be enabled in SPL when signature validation is involved,
+  * CRC32 should only be used for basic checksum validation of FIT images.
+@@ -136,7 +149,7 @@
+ 
+ 			@fdt-SEQ {
+ 				description = "fdt-NAME";
+-				compression = "none";
++				fit,compress = FIT_FDT_COMP;
+ 				type = "flat_dt";
+ #ifdef FIT_HASH_ALGO
+ 				hash {
 
 -- 
 2.55.0
