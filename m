@@ -1,69 +1,107 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Fri, 16 Oct 2026 22:33:54 -0700
-Subject: [PATCH mptcp-net v2] selftests: mptcp: sockopt: pass total bytes
- to do_getsockopts
+From: Petr Hodina <petr.hodina@protonmail.com>
+Subject: [PATCH v2 0/6] binman: fit: Compress generated fdt images and use
+ it on Rockchip
+Date: Sat, 17 Oct 2026 09:38:59 +0200
+Message-Id: <20261017-b4-binman-fit-fdt-compression-v2-0-d7e290847543@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261016-fix-mptcp-issue-638-v2-1-cc32774a8b0c@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OTQ6DIBCFr2Jm3WkAoy1d9R6NCwtjpYlAAEkb4
- 92Luu/y5X3vZ4FIwVCEW7VAoGyicbYIcapAjb19ERpdNAgmWs54g4P54OST8mhinAnb+oqkuNY
- 1Gy5CNlCSPlDB9tYHHLClBN1hxfn5JpW21g0eTUwufPcHme+Rv2OZI8dGk5Sy1y3j6u6DS86eJ
- 4JuXdcf2Wr1CdMAAAA=
-X-Change-ID: 20261015-fix-mptcp-issue-638-ec1dd30f7295
-To: MPTCP Linux <mptcp@lists.linux.dev>
-Cc: 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ7CIBAAv9Ls2TVQCzae/IfpoVBq11hoABtNw
+ 9+F+gGPk52d3Q2C8WQCXKoNvFkpkLMZ6kMFeurt3SANmaFmteSMM1QNKrJzb3GkiOMQUbt58Sa
+ UTTxxKZVWAxdKQG7kwUjvvX/rfhxe6mF0LNFiTBSi85/9gZUX799bK0eGTSOFEO1ZtFpfF++iy
+ z49j1mELqX0BencgBjhAAAA
+X-Change-ID: 20261010-b4-binman-fit-fdt-compression-3166bcbd15b5
+To: u-boot@lists.u-boot-project.org
+Cc: Simon Glass <sjg@chromium.org>, 
+ Alper Nebi Yasak <alpernebiyasak@gmail.com>, Tom Rini <trini@konsulko.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, Marek Vasut <marex@nabladev.com>, 
+ Wojciech Dubowik <Wojciech.Dubowik@mt.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Philipp Tomsich <philipp.tomsich@vrull.eu>, 
+ Kever Yang <kever.yang@rock-chips.com>, Jonas Karlman <jonas@kwiboo.se>, 
+ Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
+ Alexey Charkov <alchark@flipper.net>, 
+ James Hilliard <james.hilliard1@gmail.com>, 
+ Aristo Chen <aristo.chen@canonical.com>, 
+ Philippe Reynes <philippe.reynes@softathome.com>, 
+ Daniel Golle <daniel@makrotopia.org>, Johan Jonker <jbx6244@gmail.com>, 
+ Quentin Schulz <u-boot@0leil.net>, Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792215265; l=1730;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=bDtX/TG0Nx3wxWN1lrqFhjE3N6kmDiE8hS4Puy/FOAk=;
- b=vjNMCeKagb08Jo0WPKIqdHp2PfwFCDPgFSMAHeYlimtfTLNzfvNPMMQ1L6FjnCW+kqr7aecOh
- ndy+IePxKh2DHr6xAOZCi++ijmNdOYDgPnU+Jv1TO5vxhnnZdRJ//HF
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792222776; l=3027;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=FF3S2yi58tQ3DFXXoJWH0P5qSrgVFpf7CVY3P6mPwkc=;
+ b=P/m+f1TD9T/sggLrKpIRvGHMPiW/05wqVTC2zGLKpTTl+y09Ih17Kd1Xnj3whHJzdE0Eqz1m4
+ LsAoJUxicQ7BUnJaUPlhKNiO1UiTqFJDWnrBKCUQNw584ypmysPYo3X
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-connect_one_server() reads the echoed payload in a loop because read()
-on a stream socket can return a partial chunk. After the loop, it still
-passed the last read() return value to do_getsockopts() instead of the
-accumulated byte count.
+Entry_fit's @fdt-SEQ generator always embeds the raw .dtb. Add a
+'fit,compress' property so binman can compress it with any algorithm FIT
+defines (xz is rejected) and set 'compression' to match.
 
-do_getsockopts() checks MPTCP_INFO first. The client samples
-mptcpi_write_seq before write(), and write() has already advanced
-msk->write_seq by the full length, so a partial last read() makes
-the write_seq assert fail. Pass the total instead.
+Add a generic SPL_FIT_FDT_COMP choice (none, LZMA, gzip: what the SPL FIT
+loader can currently decompress) and use it on Rockchip.
 
-Fixes: ce9979129a0b ("selftests: mptcp: add mptcp getsockopt test cases")
-Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/638
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+The default is none so no in-tree board changes.
+
 ---
 Changes in v2:
-- fix commit message to describe the write_seq assert, not the TCP_INFO timeout
-- Link to v1: https://patch.msgid.link/20261015-fix-mptcp-issue-638-v1-1-5de999ad601c@proton.me
----
- tools/testing/selftests/net/mptcp/mptcp_sockopt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+- Use a binman-level 'fit,compress' property instead of acting on 'compression'
+- Support all algorithms binman knows via a shared bintool-name helper
+- Register the bintool in AddBintools() and handle a missing tool, reject 'xz'
+- Split the test device trees and tests into their own patches
+- Document the property in the Entry_fit docstring
+- Expand the Rockchip commit message
+- Add a generic SPL_FIT_FDT_COMP choice in boot/Kconfig used by Rockchip
+- Link to v1: https://patch.msgid.link/20261010-b4-binman-fit-fdt-compression-v1-0-4465558758cc@protonmail.com
 
-diff --git a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-index b6e58d936ebe..7b4ccbe10ae1 100644
---- a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-+++ b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-@@ -627,7 +627,7 @@ static void connect_one_server(int fd, int pipefd)
- 	if (s.tcpi_rcv_delta)
- 		assert(s.tcpi_rcv_delta <= total);
- 
--	do_getsockopts(&s, fd, ret, ret);
-+	do_getsockopts(&s, fd, total, total);
- 
- 	if (eof)
- 		total += 1; /* sequence advances due to FIN */
+To: u-boot@lists.u-boot-project.org
+Cc: Simon Glass <sjg@chromium.org>
+Cc: Alper Nebi Yasak <alpernebiyasak@gmail.com>
+Cc: Tom Rini <trini@konsulko.com>
+Cc: Quentin Schulz <quentin.schulz@cherry.de>
+Cc: Marek Vasut <marex@nabladev.com>
+Cc: Wojciech Dubowik <Wojciech.Dubowik@mt.com>
+Cc: Ilias Apalodimas <ilias.apalodimas@linaro.org>
+Cc: Philipp Tomsich <philipp.tomsich@vrull.eu>
+Cc: Kever Yang <kever.yang@rock-chips.com>
+Cc: Jonas Karlman <jonas@kwiboo.se>
+Cc: Petr Pavlata <petr@acrux.cz>
+Cc: David Heidelberg <david@ixit.cz>
+Cc: Alexey Charkov <alchark@flipper.net>
+Cc: James Hilliard <james.hilliard1@gmail.com>
+Cc: Aristo Chen <aristo.chen@canonical.com>
+Cc: Philippe Reynes <philippe.reynes@softathome.com>
+Cc: Daniel Golle <daniel@makrotopia.org>
+Cc: Johan Jonker <jbx6244@gmail.com>
+Cc: Quentin Schulz <u-boot@0leil.net>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 
 ---
-base-commit: a22035be824449c4921ec406f6383089016a628c
-change-id: 20261015-fix-mptcp-issue-638-ec1dd30f7295
+Petr Hodina (6):
+      binman: Factor out the compression bintool lookup
+      binman: fit: Add fit,compress for generated fdt images
+      binman: test: Add fit,compress device trees
+      binman: test: Add tests for fit,compress
+      boot: Add a choice for the compression of the FDT in the FIT
+      rockchip: Allow compression of the FDT in the FIT
+
+ arch/arm/dts/rockchip-u-boot.dtsi          | 15 ++++++-
+ boot/Kconfig                               | 32 ++++++++++++++
+ tools/binman/entry.py                      | 27 +++++++++---
+ tools/binman/etype/fit.py                  | 67 ++++++++++++++++++++++++++++++
+ tools/binman/ftest.py                      | 44 ++++++++++++++++++++
+ tools/binman/test/fit/fdt_compress.dts     | 24 +++++++++++
+ tools/binman/test/fit/fdt_compress_bad.dts | 24 +++++++++++
+ tools/binman/test/fit/fdt_compress_xz.dts  | 24 +++++++++++
+ 8 files changed, 250 insertions(+), 7 deletions(-)
+---
+base-commit: 8d534cec0cc0109a37c0ded8854da03f1526dc0e
+change-id: 20261010-b4-binman-fit-fdt-compression-3166bcbd15b5
 
 Best regards,
 --  
-Quanye Yang <quanyeyang@proton.me>
+Petr Hodina <petr.hodina@protonmail.com>
 
