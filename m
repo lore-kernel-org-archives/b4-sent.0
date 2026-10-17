@@ -1,172 +1,151 @@
-From: Amir Atef <amiratefabdallah1122@gmail.com>
-Subject: [PATCH v2] staging: iio: frequency: ad9834: use guard(mutex)
-Date: Sat, 17 Oct 2026 02:45:52 +0300
-Message-Id: <179219435216.322.13409717511306957730.20261017-ad9834-guard-mutex-v2@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- David Lechner <dlechner@baylibre.com>, Nuno Sa <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-iio@vger.kernel.org, 
- linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.3
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Fri, 16 Oct 2026 22:23:34 -0700
+Subject: [PATCH mptcp-net v2] mptcp: annotate lockless access to
+ msk->scaling_ratio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792194352; l=4410;
- i=amiratefabdallah1122@gmail.com; s=20261016; h=from:subject:message-id;
- bh=QC3WjUcRokALSjuAgdPJHx7Z+g92N3srbIAjHSHgWH0=;
- b=XqlHDjIA8XspS27KHuZUtY1Q9oxs7Yin5t4IjtP4AZgGZvqWRSEuhAIOQZebtLSetiYdydJ5z
- Bb6H5vmf0WyA2YwWr4yKFsbGkzOgT7Lrx/mkq6UAnVIfyVOpQqWpgmE
-X-Developer-Key: i=amiratefabdallah1122@gmail.com; a=ed25519;
- pk=FRhtQptjt3GSkQBUg7qfVL8eusorsJqHzciu3+ss11o=
-X-Endpoint-Received: by B4 Relay for amiratefabdallah1122@gmail.com/20261016 with auth_id=1209
+Message-Id: <20261016-t-mptcp-scaling-ratio-kcsan-v2-1-241d1f92dcf1@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OQQ6CMBREr0L+2m9oY4m68h6GRSkf+Cpt01aiI
+ dzdAhdwOZmZNzNDpMAU4VrMEGjiyM5mIQ8FmEHbnpDbrEGWshKlUJhw9Ml4jEa/2PYYdGKHTxO
+ 1xYvoGtmpKmdbyAQfqOPPRr/DXrOUoN6t+G4eZNJKX8MDx+TCd3syia3y1+gkUGDbiFPVKXUuJ
+ d18cMnZ40hQL8vyAxNNiFbjAAAA
+X-Change-ID: 20261015-t-mptcp-scaling-ratio-kcsan-91fb2f56026d
+To: MPTCP Linux <mptcp@lists.linux.dev>
+Cc: "Matthieu Baerts (NGI0)" <matttbe@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792214616; l=5121;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=yXU9VnKdVKJB0AfOe5oGUZ4r2mM8apoPRCnDoqsgx3A=;
+ b=Yu+VMjL2t0BfJUna3fOgGhi1K+VY1Lpttp2HJbDNt3Xt4fArNO8tQb0DtuvjPjrpSyC7Jut/u
+ U4gUx5V8/yxBpcycB4kh+MS9OfBGud9LJj1oIeyZkfS8SZu2S45BG2f
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use guard(mutex) to manage the state lock in ad9834_write() and
-ad9834_store_wavetype(). This simplifies error handling by allowing
-early returns instead of setting the return code and breaking out of the
-switch statement to manually unlock the mutex.
+mptcp_rcv_rtt_update() writes msk->scaling_ratio from BH while holding
+the msk data lock (sk->sk_lock.slock). mptcp_cleanup_rbuf() reads the
+same byte via mptcp_win_from_space() after mptcp_release_cb() drops
+that lock, so it can run concurrently with the RX path.
 
-Signed-off-by: Amir Atef <amiratefabdallah1122@gmail.com>
+KCSAN reports:
+
+  BUG: KCSAN: data-race in mptcp_cleanup_rbuf / mptcp_data_ready
+
+  write to 0xffff888014978790 of 1 bytes by interrupt on cpu 1:
+   mptcp_rcv_rtt_update net/mptcp/protocol.c:1045 [inline]
+   mptcp_data_ready+0x1c1/0x4d0 net/mptcp/protocol.c:1062
+   subflow_data_ready+0x271/0x350 net/mptcp/subflow.c:1536
+   tcp_data_ready+0x92/0x2c0 net/ipv4/tcp_input.c:5604
+   tcp_data_queue+0x1236/0x26c0 net/ipv4/tcp_input.c:5694
+   tcp_rcv_established+0x695/0x1fb0 net/ipv4/tcp_input.c:6689
+   tcp_v4_do_rcv+0x356/0x6e0 net/ipv4/tcp_ipv4.c:1854
+   tcp_v4_rcv+0x1b04/0x26b0 net/ipv4/tcp_ipv4.c:2248
+
+  read to 0xffff888014978790 of 1 bytes by task 2624 on cpu 0:
+   mptcp_win_from_space net/mptcp/protocol.h:421 [inline]
+   __mptcp_space net/mptcp/protocol.h:431 [inline]
+   mptcp_cleanup_rbuf+0x8a/0x380 net/mptcp/protocol.c:680
+   mptcp_release_cb+0x375/0x900 net/mptcp/protocol.c:3889
+   release_sock+0x100/0x150 net/core/sock.c:3866
+   sk_wait_data+0x141/0x2f0 net/core/sock.c:3314
+   mptcp_recvmsg+0x6cd/0xd50 net/mptcp/protocol.c:2496
+
+  value changed: 0xd0 -> 0xd5
+
+  Reported by Kernel Concurrency Sanitizer on:
+  CPU: 0 UID: 0 PID: 2624 Comm: syz.7.22 Not tainted 7.3.0-rc1-gbaff4b3d06ef #77 PREEMPT(full)
+
+The u8 EWMA is used only to convert sk_rcvbuf occupancy into an
+advertised window. A slightly stale ratio is acceptable, so annotate
+the lockless accesses with READ_ONCE()/WRITE_ONCE() instead of
+widening the data lock. Do the same in mptcp_space_from_win(), which
+reads the same field from DRS and SO_RCVLOWAT.
+
+Fixes: d2000361e4dd ("mptcp: better mptcp-level RTT estimator")
+Reported-by: Matthieu Baerts (NGI0) <matttbe@kernel.org>
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/634
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
 Changes in v2:
-- Add blank line after guard(mutex) in ad9834_write().
-- Move 'int ret;' to the end of the variable declaration block in
-  ad9834_store_wavetype().
-- Drop redundant 'else' in ad9834_store_wavetype() case 1 by inverting
-  the condition (kept 'else' in ad9834_write() and case 0 where they are
-  part of if-else-if-else chains).
-- Replace ternary return with explicit 'if (ret) return ret;' in
-  ad9834_store_wavetype().
-- Link to v1: https://lore.kernel.org/r/179214943270.333.5921549521929682753.20261016-ad9834-guard-mutex@gmail.com
+- add READ_ONCE in trace_mptcp_rcvbuf_grow, missed before
+- Link to v1: https://patch.msgid.link/20261015-t-mptcp-scaling-ratio-kcsan-v1-1-db146f55802e@proton.me
+---
+ include/trace/events/mptcp.h |  2 +-
+ net/mptcp/protocol.c         | 11 ++++++++---
+ net/mptcp/protocol.h         |  6 ++++--
+ 3 files changed, 13 insertions(+), 6 deletions(-)
 
- drivers/staging/iio/frequency/ad9834.c | 50 ++++++++++++--------------
- 1 file changed, 22 insertions(+), 28 deletions(-)
-
-diff --git a/drivers/staging/iio/frequency/ad9834.c b/drivers/staging/iio/frequency/ad9834.c
-index 0d20f796e0f0..c45bb388c998 100644
---- a/drivers/staging/iio/frequency/ad9834.c
-+++ b/drivers/staging/iio/frequency/ad9834.c
-@@ -6,6 +6,7 @@
-  */
+diff --git a/include/trace/events/mptcp.h b/include/trace/events/mptcp.h
+index 22882bd03459..c47fa2672b84 100644
+--- a/include/trace/events/mptcp.h
++++ b/include/trace/events/mptcp.h
+@@ -229,7 +229,7 @@ TRACE_EVENT(mptcp_rcvbuf_grow,
+ 		__entry->rcvbuf = sk->sk_rcvbuf;
+ 		__entry->rcv_wnd = atomic64_read(&msk->rcv_wnd_sent) -
+ 				   msk->ack_seq;
+-		__entry->scaling_ratio = msk->scaling_ratio;
++		__entry->scaling_ratio = READ_ONCE(msk->scaling_ratio);
+ 		__entry->sport = ntohs(inet->inet_sport);
+ 		__entry->dport = ntohs(inet->inet_dport);
+ 		__entry->family = sk->sk_family;
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index 05c38564e8fd..ffd22849b719 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -988,6 +988,7 @@ static void mptcp_rcv_rtt_update(struct mptcp_sock *msk,
+ {
+ 	const struct tcp_sock *tp = tcp_sk(subflow->tcp_sock);
+ 	u32 rtt_us = tp->rcv_rtt_est.rtt_us;
++	u8 scaling_ratio;
+ 	int id;
  
- #include <linux/bits.h>
-+#include <linux/cleanup.h>
- #include <linux/clk.h>
- #include <linux/dev_printk.h>
- #include <linux/err.h>
-@@ -154,7 +155,8 @@ static ssize_t ad9834_write(struct device *dev,
- 	if (ret)
- 		return ret;
+ 	/* Update once per subflow per rcvwnd to avoid touching the msk
+@@ -1004,9 +1005,13 @@ static void mptcp_rcv_rtt_update(struct mptcp_sock *msk,
+ 	if (++msk->rcv_rtt_est.next_sample == MPTCP_RTT_SAMPLES)
+ 		msk->rcv_rtt_est.next_sample = 0;
  
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
-+
- 	switch ((u32)this_attr->address) {
- 	case AD9834_REG_FREQ0:
- 	case AD9834_REG_FREQ1:
-@@ -165,10 +167,8 @@ static ssize_t ad9834_write(struct device *dev,
- 		ret = ad9834_write_phase(st, this_attr->address, val);
- 		break;
- 	case AD9834_OPBITEN:
--		if (st->control & AD9834_MODE) {
--			ret = -EINVAL;  /* AD9834 reserved mode */
--			break;
--		}
-+		if (st->control & AD9834_MODE)
-+			return -EINVAL;  /* AD9834 reserved mode */
- 
- 		if (val)
- 			st->control |= AD9834_OPBITEN;
-@@ -194,8 +194,7 @@ static ssize_t ad9834_write(struct device *dev,
- 			st->control |= this_attr->address;
- 			st->control &= ~AD9834_PIN_SW;
- 		} else {
--			ret = -EINVAL;
--			break;
-+			return -EINVAL;
- 		}
- 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
- 		ret = spi_sync(st->spi, &st->msg);
-@@ -210,9 +209,8 @@ static ssize_t ad9834_write(struct device *dev,
- 		ret = spi_sync(st->spi, &st->msg);
- 		break;
- 	default:
--		ret = -ENODEV;
-+		return -ENODEV;
- 	}
--	mutex_unlock(&st->lock);
- 
- 	return ret ? ret : len;
- }
-@@ -225,10 +223,10 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
- 	struct ad9834_state *st = iio_priv(indio_dev);
- 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
--	int ret = 0;
- 	bool is_ad9833_7 = (st->devid == ID_AD9833) || (st->devid == ID_AD9837);
-+	int ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 
- 	switch ((u32)this_attr->address) {
- 	case 0:
-@@ -241,7 +239,7 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 				st->control &= ~AD9834_OPBITEN;
- 				st->control |= AD9834_MODE;
- 			} else if (st->control & AD9834_OPBITEN) {
--				ret = -EINVAL;	/* AD9834 reserved mode */
-+				return -EINVAL;	/* AD9834 reserved mode */
- 			} else {
- 				st->control |= AD9834_MODE;
- 			}
-@@ -249,31 +247,27 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 			st->control &= ~AD9834_MODE;
- 			st->control |= AD9834_OPBITEN;
- 		} else {
--			ret = -EINVAL;
-+			return -EINVAL;
- 		}
- 
- 		break;
- 	case 1:
--		if (sysfs_streq(buf, "square") &&
--		    !(st->control & AD9834_MODE)) {
--			st->control &= ~AD9834_MODE;
--			st->control |= AD9834_OPBITEN;
--		} else {
--			ret = -EINVAL;
--		}
-+		if (!sysfs_streq(buf, "square") || (st->control & AD9834_MODE))
-+			return -EINVAL;
-+
-+		st->control &= ~AD9834_MODE;
-+		st->control |= AD9834_OPBITEN;
- 		break;
- 	default:
--		ret = -EINVAL;
--		break;
-+		return -EINVAL;
- 	}
- 
--	if (!ret) {
--		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
--		ret = spi_sync(st->spi, &st->msg);
--	}
--	mutex_unlock(&st->lock);
-+	st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
-+	ret = spi_sync(st->spi, &st->msg);
-+	if (ret)
-+		return ret;
- 
--	return ret ? ret : len;
-+	return len;
+-	/* EWMA among the incoming subflows */
+-	msk->scaling_ratio = ((msk->scaling_ratio << 3) - msk->scaling_ratio +
+-			     tp->scaling_ratio) >> 3;
++	/* EWMA among the incoming subflows.
++	 * Pairs with READ_ONCE() in mptcp_win_from_space().
++	 */
++	scaling_ratio = READ_ONCE(msk->scaling_ratio);
++	WRITE_ONCE(msk->scaling_ratio,
++		   ((scaling_ratio << 3) - scaling_ratio +
++		    tp->scaling_ratio) >> 3);
  }
  
- static
--- 
-2.51.0
+ void mptcp_data_ready(struct sock *sk, struct sock *ssk)
+diff --git a/net/mptcp/protocol.h b/net/mptcp/protocol.h
+index 4ed598febbf0..11e3c6db5e53 100644
+--- a/net/mptcp/protocol.h
++++ b/net/mptcp/protocol.h
+@@ -417,12 +417,14 @@ static inline void msk_owned_by_me(const struct mptcp_sock *msk)
+ 
+ static inline int mptcp_win_from_space(const struct sock *sk, int space)
+ {
+-	return __tcp_win_from_space(mptcp_sk(sk)->scaling_ratio, space);
++	return __tcp_win_from_space(READ_ONCE(mptcp_sk(sk)->scaling_ratio),
++				    space);
+ }
+ 
+ static inline int mptcp_space_from_win(const struct sock *sk, int win)
+ {
+-	return __tcp_space_from_win(mptcp_sk(sk)->scaling_ratio, win);
++	return __tcp_space_from_win(READ_ONCE(mptcp_sk(sk)->scaling_ratio),
++				    win);
+ }
+ 
+ static inline int __mptcp_space(const struct sock *sk)
 
+---
+base-commit: a22035be824449c4921ec406f6383089016a628c
+change-id: 20261015-t-mptcp-scaling-ratio-kcsan-91fb2f56026d
+
+Best regards,
+--  
+Quanye Yang <quanyeyang@proton.me>
 
