@@ -1,220 +1,152 @@
-From: Amir Atef <amiratefabdallah1122@gmail.com>
-Subject: [PATCH v3] staging: iio: frequency: ad9834: use guard(mutex)
-Date: Sun, 18 Oct 2026 00:12:54 +0300
-Message-Id: <179227157492.345.14305383480190541762.20261018-ad9834-guard-mutex-v3@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- David Lechner <dlechner@baylibre.com>, Nuno Sa <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-iio@vger.kernel.org, 
- linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.3
+From: Chris Simpson <chris@nilk.net>
+Date: Sat, 17 Oct 2026 16:13:38 -0600
+Subject: [PATCH] media: ipu6: Keep psys out of direct-complete on system
+ suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792271574; l=5594;
- i=amiratefabdallah1122@gmail.com; s=20261016; h=from:subject:message-id;
- bh=cmg3zId0FkdtcWpW+YuNWILFMdxVWIEd84BWrtcT1bk=;
- b=0GBySzvOnw223ToFk3EOc+Ox2oARIexfrRZoYPxfScC9r2vX6o8mAMJwZ7TLIYseBPqk/JSL8
- GYEeCcEgSw5BEFgcTTsrSg9fnOsfoJBbf7DV76+DkrydukzcyVg5tWL
-X-Developer-Key: i=amiratefabdallah1122@gmail.com; a=ed25519;
- pk=FRhtQptjt3GSkQBUg7qfVL8eusorsJqHzciu3+ss11o=
-X-Endpoint-Received: by B4 Relay for amiratefabdallah1122@gmail.com/20261016 with auth_id=1209
+Message-Id: <20261017-psys-ipu6-v1-1-56e333f6ed04@nilk.net>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA0Nz3YLiymLdzIJSM13jRJOkZEOL1DRz8zQloPqCotS0zAqwWdGxtbU
+ AbTAk11sAAAA=
+X-Change-ID: 20261017-psys-ipu6-3a4bc18ef77f
+To: Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: Antti Laakso <antti.laakso@linux.intel.com>, 
+ "Sapre, Sarang" <sarang.sapre@intel.com>, 
+ Divyamani Tripathi <divyamani.tripathi@intel.com>, 
+ Manik Bajpai <manik.bajpai@intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Danilo Krummrich <dakr@kernel.org>, linux-media@vger.kernel.org, 
+ linux-pm@vger.kernel.org, driver-core@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Chris Simpson <chris@nilk.net>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792275242; l=5398;
+ i=chris@nilk.net; s=20261017; h=from:subject:message-id;
+ bh=RpJEa/l3s3LAaSolDKPx/sHpPb3BursxeLOSSpNbLls=;
+ b=Exb1QNu4nWHRU48GmPgf1r/WXUwJNK82Bfaf7uS/0XxOjRKTyes+jHzeluQwoqWtUaj1XxBSh
+ QraG6oNjWXgBlTf4E+YGNKUn1MC1Qug0PFITN1a6q45SuD/skEXTbZO
+X-Developer-Key: i=chris@nilk.net; a=ed25519;
+ pk=bwNSTJdm8iKtfcCRqyaQFQFlAxLuiAxLw4pMXey4Z+o=
+X-Endpoint-Received: by B4 Relay for chris@nilk.net/20261017 with auth_id=1225
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use guard(mutex) to manage the state lock in ad9834_write() and
-ad9834_store_wavetype(). This simplifies error handling by allowing
-early returns instead of setting the return code and breaking out of the
-switch statement to manually unlock the mutex.
+Since commit a1fa010b3c9f ("driver core: auxiliary bus: Drop
+auxiliary_dev_pm_ops"), the auxiliary bus has no dev_pm_ops. The psys
+auxiliary device has no driver in mainline, and its PM domain,
+ipu6_bus_pm_domain, has only runtime PM callbacks. So
+device_pm_check_callbacks() now sets power.no_pm_callbacks for psys,
+and device_prepare() puts it in direct-complete.
 
-Signed-off-by: Amir Atef <amiratefabdallah1122@gmail.com>
+A runtime-suspended psys in direct-complete gets its runtime PM
+disabled in device_suspend(). Runtime PM is enabled again only in
+psys's own device_resume(), which in practice runs after the PCI
+device's. Before, it came back in device_resume_early(). ipu6_resume(),
+the system resume callback of the PCI device, runtime-resumes psys
+before the firmware authentication. That now fails with -EACCES on
+every resume:
+
+  auxiliary intel_ipu6.psys.40: Failed to get runtime PM
+
+and ipu6_resume() returns early, skipping ipu6_buttress_authenticate().
+In secure mode the firmware is then not re-authenticated after resume,
+which matters whenever the IPU has lost power. On s2idle on a Surface
+Pro 9 the cameras still work, and the error is logged on every resume.
+
+Add suspend and resume callbacks to ipu6_bus_pm_domain that forward to
+the driver. That is what the PM core does without them, so isys is
+unaffected, but psys has PM callbacks again and is not left in
+direct-complete. This restores the behaviour from before the auxiliary
+bus change.
+
+The fix is kept local rather than in the auxiliary bus or the PM core:
+it is this driver that runtime-resumes a driverless child from its
+parent's ->resume().
+
+Fixes: a1fa010b3c9f ("driver core: auxiliary bus: Drop auxiliary_dev_pm_ops")
+Cc: stable@vger.kernel.org # v7.1+
+Cc: Rafael J. Wysocki <rafael@kernel.org>
+Cc: linux-pm@vger.kernel.org
+Assisted-by: LLM sparse smatch coccinelle
+Signed-off-by: Chris Simpson <chris@nilk.net>
 ---
-Changes in v3:
-- Check 'ret' and return early at each call site in ad9834_write(), and
-  replace the final ternary return with 'return len;'.
-- Link to v2: https://lore.kernel.org/r/179219435216.322.13409717511306957730.20261017-ad9834-guard-mutex-v2@gmail.com
+Tested on a Surface Pro 9 (IPU6 in secure mode) running a Fedora-based
+7.2.11 kernel with the linux-surface patches (a COPR build), whose only
+changes near this code are in ipu-bridge. The patch applies unchanged to
+media-committers next. Three s2idle cycles before and thirteen after,
+tracing the rpm and power:device_pm_callback_start events for psys:
 
-Changes in v2:
-- Add blank line after guard(mutex) in ad9834_write().
-- Move 'int ret;' to the end of the variable declaration block in
-  ad9834_store_wavetype().
-- Drop redundant 'else' in ad9834_store_wavetype() case 1 by inverting
-  the condition (kept 'else' in ad9834_write() and case 0 where they are
-  part of if-else-if-else chains).
-- Replace ternary return with explicit 'if (ret) return ret;' in
-  ad9834_store_wavetype().
-- Link to v1: https://lore.kernel.org/r/179214943270.333.5921549521929682753.20261016-ad9834-guard-mutex@gmail.com
+  before: "Failed to get runtime PM" on every resume. At ipu6_resume()
+          time rpm_resume() sees disable_depth 1 and returns -EACCES,
+          and psys gets no system sleep callbacks.
+  after:  no message. disable_depth is 0 and rpm_resume() returns 0,
+          and the domain's suspend and resume run for psys. No new
+          kernel warnings, and both cameras capture after resume.
+          psys is runtime-suspended again at the end of every cycle.
 
- drivers/staging/iio/frequency/ad9834.c | 70 +++++++++++++++-----------
- 1 file changed, 41 insertions(+), 29 deletions(-)
+A suspend attempt with a stream open was also tried. isys still
+refuses it with -EBUSY, now through the domain's pm_generic_suspend(),
+and the abort unwinds cleanly: no warnings, psys ends suspended, the
+stream continues with no gap in frame sequence numbers, and the next
+s2idle cycle passes.
 
-diff --git a/drivers/staging/iio/frequency/ad9834.c b/drivers/staging/iio/frequency/ad9834.c
-index 0d20f796e0f0..8686a22f3fc1 100644
---- a/drivers/staging/iio/frequency/ad9834.c
-+++ b/drivers/staging/iio/frequency/ad9834.c
-@@ -6,6 +6,7 @@
-  */
- 
- #include <linux/bits.h>
-+#include <linux/cleanup.h>
- #include <linux/clk.h>
- #include <linux/dev_printk.h>
- #include <linux/err.h>
-@@ -154,21 +155,26 @@ static ssize_t ad9834_write(struct device *dev,
- 	if (ret)
- 		return ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
-+
- 	switch ((u32)this_attr->address) {
- 	case AD9834_REG_FREQ0:
- 	case AD9834_REG_FREQ1:
- 		ret = ad9834_write_frequency(st, this_attr->address, val);
-+		if (ret)
-+			return ret;
-+
- 		break;
- 	case AD9834_REG_PHASE0:
- 	case AD9834_REG_PHASE1:
- 		ret = ad9834_write_phase(st, this_attr->address, val);
-+		if (ret)
-+			return ret;
-+
- 		break;
- 	case AD9834_OPBITEN:
--		if (st->control & AD9834_MODE) {
--			ret = -EINVAL;  /* AD9834 reserved mode */
--			break;
--		}
-+		if (st->control & AD9834_MODE)
-+			return -EINVAL;  /* AD9834 reserved mode */
- 
- 		if (val)
- 			st->control |= AD9834_OPBITEN;
-@@ -177,6 +183,9 @@ static ssize_t ad9834_write(struct device *dev,
- 
- 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
- 		ret = spi_sync(st->spi, &st->msg);
-+		if (ret)
-+			return ret;
-+
- 		break;
- 	case AD9834_PIN_SW:
- 		if (val)
-@@ -185,6 +194,9 @@ static ssize_t ad9834_write(struct device *dev,
- 			st->control &= ~AD9834_PIN_SW;
- 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
- 		ret = spi_sync(st->spi, &st->msg);
-+		if (ret)
-+			return ret;
-+
- 		break;
- 	case AD9834_FSEL:
- 	case AD9834_PSEL:
-@@ -194,11 +206,13 @@ static ssize_t ad9834_write(struct device *dev,
- 			st->control |= this_attr->address;
- 			st->control &= ~AD9834_PIN_SW;
- 		} else {
--			ret = -EINVAL;
--			break;
-+			return -EINVAL;
- 		}
- 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
- 		ret = spi_sync(st->spi, &st->msg);
-+		if (ret)
-+			return ret;
-+
- 		break;
- 	case AD9834_RESET:
- 		if (val)
-@@ -208,13 +222,15 @@ static ssize_t ad9834_write(struct device *dev,
- 
- 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
- 		ret = spi_sync(st->spi, &st->msg);
-+		if (ret)
-+			return ret;
-+
- 		break;
- 	default:
--		ret = -ENODEV;
-+		return -ENODEV;
- 	}
--	mutex_unlock(&st->lock);
- 
--	return ret ? ret : len;
-+	return len;
+Not tested: a resume where the IPU actually loses power, which is where
+the skipped authentication matters (s2idle keeps it powered), and
+IPU7/IPU8 (no hardware).
+
+On next the ipu6 driver also drives IPU7 (by default,
+VIDEO_INTEL_IPU6_IPU7) and IPU8, so this covers those devices there too.
+The staging ipu7 driver has the same pattern in ipu7_bus_pm_domain and
+ipu7_resume(). I can send the same change for it, but I have no IPU7
+hardware to test it on.
+
+Intel's out-of-tree psys driver (intel/ipu6-drivers) has empty
+.suspend/.resume callbacks for the same reason. Its comment says they
+"are needed to enable runtime PM in IPU PCI device resume".
+
+Rafael, Cc'd as the author of a1fa010b3c9f: a driverless auxiliary
+device whose PM domain has only runtime PM callbacks now ends up in
+direct-complete. That is consistent PM-core behaviour, and the fix here
+is local to ipu6. But any other driver that runtime-resumes such a
+child from its parent's ->resume() would see the same failure.
+
+Made with AI assistance. Written by Claude Opus 5.5 (fix, analysis and
+text; reviews by Claude Opus subagents), with testing by Claude Opus
+5.5, under the direction of Chris Simpson <chris@nilk.net>, who reviewed
+and approved it and had it tested on their Surface Pro 9.
+---
+ drivers/media/pci/intel/ipu6/ipu6-bus.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/media/pci/intel/ipu6/ipu6-bus.c b/drivers/media/pci/intel/ipu6/ipu6-bus.c
+index 173616381..1b06e581e 100644
+--- a/drivers/media/pci/intel/ipu6/ipu6-bus.c
++++ b/drivers/media/pci/intel/ipu6/ipu6-bus.c
+@@ -63,8 +63,16 @@ static int bus_pm_runtime_resume(struct device *dev)
+ 	return -EBUSY;
  }
  
- static ssize_t ad9834_store_wavetype(struct device *dev,
-@@ -225,10 +241,10 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
- 	struct ad9834_state *st = iio_priv(indio_dev);
- 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
--	int ret = 0;
- 	bool is_ad9833_7 = (st->devid == ID_AD9833) || (st->devid == ID_AD9837);
-+	int ret;
- 
--	mutex_lock(&st->lock);
-+	guard(mutex)(&st->lock);
- 
- 	switch ((u32)this_attr->address) {
- 	case 0:
-@@ -241,7 +257,7 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 				st->control &= ~AD9834_OPBITEN;
- 				st->control |= AD9834_MODE;
- 			} else if (st->control & AD9834_OPBITEN) {
--				ret = -EINVAL;	/* AD9834 reserved mode */
-+				return -EINVAL;	/* AD9834 reserved mode */
- 			} else {
- 				st->control |= AD9834_MODE;
- 			}
-@@ -249,31 +265,27 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
- 			st->control &= ~AD9834_MODE;
- 			st->control |= AD9834_OPBITEN;
- 		} else {
--			ret = -EINVAL;
-+			return -EINVAL;
- 		}
- 
- 		break;
- 	case 1:
--		if (sysfs_streq(buf, "square") &&
--		    !(st->control & AD9834_MODE)) {
--			st->control &= ~AD9834_MODE;
--			st->control |= AD9834_OPBITEN;
--		} else {
--			ret = -EINVAL;
--		}
-+		if (!sysfs_streq(buf, "square") || (st->control & AD9834_MODE))
-+			return -EINVAL;
-+
-+		st->control &= ~AD9834_MODE;
-+		st->control |= AD9834_OPBITEN;
- 		break;
- 	default:
--		ret = -EINVAL;
--		break;
-+		return -EINVAL;
- 	}
- 
--	if (!ret) {
--		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
--		ret = spi_sync(st->spi, &st->msg);
--	}
--	mutex_unlock(&st->lock);
-+	st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
-+	ret = spi_sync(st->spi, &st->msg);
-+	if (ret)
-+		return ret;
- 
--	return ret ? ret : len;
-+	return len;
- }
- 
- static
++/*
++ * The driverless psys device needs system sleep callbacks, or it is put in
++ * direct-complete and its runtime PM is normally still disabled when
++ * ipu6_resume() tries to runtime-resume it. These only forward to the driver,
++ * as the PM core would do without them.
++ */
+ static struct dev_pm_domain ipu6_bus_pm_domain = {
+ 	.ops = {
++		.suspend = pm_generic_suspend,
++		.resume = pm_generic_resume,
+ 		.runtime_suspend = bus_pm_runtime_suspend,
+ 		.runtime_resume = bus_pm_runtime_resume,
+ 	},
+
+---
+base-commit: d7e7bca7169873b46e857c025c10f3336c1258d8
+change-id: 20261017-psys-ipu6-3a4bc18ef77f
+
+Best regards,
 -- 
-2.51.0
-
+Chris Simpson <chris@nilk.net>
 
