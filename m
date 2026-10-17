@@ -1,10 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sat, 17 Oct 2026 11:10:24 +0200
-Subject: [PATCH 08/14] test: expo: Test setting the background colour
+Date: Sat, 17 Oct 2026 11:10:25 +0200
+Subject: [PATCH 09/14] expo: Allow a box to have its own colour
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-b4-expo-colours-v1-8-479ac06e7642@protonmail.com>
+Message-Id: <20261017-b4-expo-colours-v1-9-479ac06e7642@protonmail.com>
 References: <20261017-b4-expo-colours-v1-0-479ac06e7642@protonmail.com>
 In-Reply-To: <20261017-b4-expo-colours-v1-0-479ac06e7642@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -15,65 +15,103 @@ Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>,
  Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792228225; l=1577;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792228225; l=2696;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=zOT9KuiJwBhCFWl3FN4WtxbXfzlBrDYCsfqOv+hX7X4=;
- b=FD3DSPg005od8XM7M8mgPJS/O/Tr5/B/yWn6PnVxDhzddxza77U5yUv9bu9LDe3oYD6t7OYlF
- Rzr4WuO76LhCG14iS0xuiZbJGuZ+H2ED0l6AvQpI1XljYvdBRbQzKlw
+ bh=9YaaXsdEUmQIItAOT+My/QhEBjL0DWy8CWDfbsYOQvg=;
+ b=8V8U8AvRwcO6E8aFdiN9SYYKBHstR0/wq5yYQVZ833NxK3guZUPKacJbN67rAK6Wf3FhOmJKE
+ iZVE09b6dEDBYpENPrYJD4llfGi22mZ/oqzz5kNs2MUx5QGaPgBwrc5
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add expo_bg_rgb() to check that expo_set_bg_rgb() records the colour and
-that rendering leaves the video device's own background colour as it was.
+Add scene_box_set_rgb() to draw a box in a chosen colour instead of the
+console foreground.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- test/boot/expo.c | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+ boot/scene.c   | 20 +++++++++++++++++++-
+ include/expo.h | 17 +++++++++++++++++
+ 2 files changed, 36 insertions(+), 1 deletion(-)
 
-diff --git a/test/boot/expo.c b/test/boot/expo.c
-index e52de029477..b50c32c0860 100644
---- a/test/boot/expo.c
-+++ b/test/boot/expo.c
-@@ -944,3 +944,36 @@ static int expo_menu_header(struct unit_test_state *uts)
- 	return 0;
+diff --git a/boot/scene.c b/boot/scene.c
+index 6073ab5a9f5..3f63c84a331 100644
+--- a/boot/scene.c
++++ b/boot/scene.c
+@@ -231,6 +231,19 @@ int scene_box(struct scene *scn, const char *name, uint id, uint width,
+ 	return box->obj.id;
  }
- BOOTSTD_TEST(expo_menu_header, UTF_DM | UTF_SCAN_FDT);
-+
-+/* Test setting the background colour */
-+static int expo_bg_rgb(struct unit_test_state *uts)
+ 
++int scene_box_set_rgb(struct scene *scn, uint id, u32 rgb)
 +{
-+	struct video_priv *vid_priv;
-+	struct scene *scn;
-+	struct udevice *dev;
-+	struct expo *exp;
-+	u32 old_bg;
++	struct scene_obj_box *box;
 +
-+	ut_assertok(uclass_first_device_err(UCLASS_VIDEO, &dev));
-+	vid_priv = dev_get_uclass_priv(dev);
-+	old_bg = vid_priv->colour_bg;
-+
-+	ut_assertok(expo_new(EXPO_NAME, NULL, &exp));
-+	ut_assert(scene_new(exp, SCENE_NAME1, SCENE1, &scn) > 0);
-+	ut_assertok(expo_set_display(exp, dev));
-+	ut_assertok(expo_set_scene_id(exp, SCENE1));
-+
-+	ut_assert(!exp->has_bg_rgb);
-+	expo_set_bg_rgb(exp, 0x0d1117);
-+	ut_assert(exp->has_bg_rgb);
-+	ut_asserteq(0x0d1117, exp->bg_rgb);
-+
-+	/* rendering uses the colour but leaves the video device's alone */
-+	ut_assertok(expo_render(exp));
-+	ut_asserteq(old_bg, vid_priv->colour_bg);
-+
-+	expo_destroy(exp);
++	box = scene_obj_find(scn, id, SCENEOBJT_BOX);
++	if (!box)
++		return log_msg_ret("find", -ENOENT);
++	box->has_rgb = true;
++	box->rgb = rgb;
 +
 +	return 0;
 +}
-+BOOTSTD_TEST(expo_bg_rgb, UTF_DM | UTF_SCAN_FDT | UTF_CONSOLE);
++
+ int scene_txt_set_font(struct scene *scn, uint id, const char *font_name,
+ 		       uint font_size)
+ {
+@@ -696,8 +709,13 @@ static int scene_obj_render(struct scene_obj *obj, bool text_mode)
+ 	case SCENEOBJT_BOX: {
+ 		struct scene_obj_box *box = (struct scene_obj_box *)obj;
+ 
++		u32 colour = vid_priv->colour_fg;
++
++		if (box->has_rgb)
++			colour = video_rgb_to_colour(vid_priv, box->rgb >> 16,
++						     box->rgb >> 8, box->rgb);
+ 		video_draw_box(dev, obj->bbox.x0, obj->bbox.y0, obj->bbox.x1,
+-			       obj->bbox.y1, box->width, vid_priv->colour_fg);
++			       obj->bbox.y1, box->width, colour);
+ 		break;
+ 	}
+ 	case SCENEOBJT_TEXTEDIT: {
+diff --git a/include/expo.h b/include/expo.h
+index 61fec3d52c5..995c57e7bad 100644
+--- a/include/expo.h
++++ b/include/expo.h
+@@ -481,10 +481,14 @@ struct scene_obj_textline {
+  *
+  * @obj: Basic object information
+  * @width: Line-width in pixels
++ * @has_rgb: true to draw in @rgb instead of the default foreground colour
++ * @rgb: Colour to draw in as 0xRRGGBB used if @has_rgb
+  */
+ struct scene_obj_box {
+ 	struct scene_obj obj;
+ 	uint width;
++	bool has_rgb;
++	u32 rgb;
+ };
+ 
+ /**
+@@ -790,6 +794,19 @@ int scene_textline(struct scene *scn, const char *name, uint id, uint max_chars,
+ int scene_box(struct scene *scn, const char *name, uint id, uint width,
+ 	      struct scene_obj_box **boxp);
+ 
++/**
++ * scene_box_set_rgb() - Set the colour of a box
++ *
++ * A box with a bounding box no taller than its line-width is a solid line, so
++ * this can be used to draw a horizontal rule.
++ *
++ * @scn: Scene to update
++ * @id: ID of box object to update
++ * @rgb: Colour to draw the box in as 0xRRGGBB
++ * Return: 0 if OK, -ENOENT if @id is not a box
++ */
++int scene_box_set_rgb(struct scene *scn, uint id, u32 rgb);
++
+ /**
+  *  scene_texted() - create a text editor
+  *
 
 -- 
 2.55.0
