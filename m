@@ -1,88 +1,220 @@
-From: Victor Gillholm <victor.gillholm@gmail.com>
-Date: Sat, 17 Oct 2026 20:13:22 +0200
-Subject: [PATCH] platform/x86: asus-nb-wmi: map ScreenPad and Task Swap
- keys
+From: Amir Atef <amiratefabdallah1122@gmail.com>
+Subject: [PATCH v3] staging: iio: frequency: ad9834: use guard(mutex)
+Date: Sun, 18 Oct 2026 00:12:54 +0300
+Message-Id: <179227157492.345.14305383480190541762.20261018-ad9834-guard-mutex-v3@gmail.com>
+To: Jonathan Cameron <jic23@kernel.org>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ David Lechner <dlechner@baylibre.com>, Nuno Sa <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-iio@vger.kernel.org, 
+ linux-staging@lists.linux.dev, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.14.3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-zenbook-duo-keys-v1-1-45f72d3db5ed@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJCwjRqxgXFH5gJGlNR4xAu
- LtVlt/ivY0UUaB0zTaKeItK8An2lFE7Nn4AS5dMuckra2zNK7wLYeJuDjxhUa5hXNFfyuJcNpS
- yZ0Qvn//ydj+ss3ugff0+tO9fcy23MXQAAAA=
-X-Change-ID: 20261017-zenbook-duo-keys-7e0b3f94354a
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Victor Gillholm <victor.gillholm@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792260866; l=2859;
- i=victor.gillholm@gmail.com; s=zenbook; h=from:subject:message-id;
- bh=6M3/+PEfY8fXb3qd10LtNrTk5fn9SKJDEffvIOgCHXs=;
- b=scn521DZ4w8eaVPtdBD2nLMX3gBL/11Zo5At0nSm2J5VHoCgnsTSDI3GLfAB/xQ6wE3KZ6FnN
- ZLWn4aDLt35CZpmPnRqcbQyYGtzSVPAnSN27+zkvtBXpIEWCi2DKyXV
-X-Developer-Key: i=victor.gillholm@gmail.com; a=ed25519;
- pk=eD1INWVbRo2RgAKLHQOmsC14YPzQqjCdECtcWSZ9mg0=
-X-Endpoint-Received: by B4 Relay for victor.gillholm@gmail.com/zenbook with auth_id=1224
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792271574; l=5594;
+ i=amiratefabdallah1122@gmail.com; s=20261016; h=from:subject:message-id;
+ bh=cmg3zId0FkdtcWpW+YuNWILFMdxVWIEd84BWrtcT1bk=;
+ b=0GBySzvOnw223ToFk3EOc+Ox2oARIexfrRZoYPxfScC9r2vX6o8mAMJwZ7TLIYseBPqk/JSL8
+ GYEeCcEgSw5BEFgcTTsrSg9fnOsfoJBbf7DV76+DkrydukzcyVg5tWL
+X-Developer-Key: i=amiratefabdallah1122@gmail.com; a=ed25519;
+ pk=FRhtQptjt3GSkQBUg7qfVL8eusorsJqHzciu3+ss11o=
+X-Endpoint-Received: by B4 Relay for amiratefabdallah1122@gmail.com/20261016 with auth_id=1209
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ASUS Zenbook Duo 14 UX482EG has two keys next to the power button:
-one toggles the ScreenPad Plus, the second screen above the keyboard,
-and one swaps windows between the two screens (Task Swap in ASUS'
-ScreenXpert software). They emit ASUS WMI event codes 0x6a and 0x9c.
-Neither code is in the asus-nb-wmi sparse keymap, so pressing them only
-logs "Unknown key code 0x6a" or "Unknown key code 0x9c", and both keys
-are reported as KEY_UNKNOWN, so ordinary desktop key bindings cannot
-tell them apart.
+Use guard(mutex) to manage the state lock in ad9834_write() and
+ad9834_store_wavetype(). This simplifies error handling by allowing
+early returns instead of setting the return code and breaking out of the
+switch statement to manually unlock the mutex.
 
-Map 0x6a to KEY_F13, the same keycode hid-asus already uses for the
-ScreenPad toggle code 0x6a. No existing keycode describes moving windows
-between screens, so map 0x9c to KEY_F14, following the existing use of
-KEY_F13 and KEY_F14 for other ASUS-specific keys in this keymap. Both
-keys then emit distinct, bindable events.
-
-Tested on an ASUS Zenbook Duo 14 UX482EG: with this change the keys
-arrive in userspace as KEY_F13 and KEY_F14 and the "Unknown key code"
-messages are gone.
-
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Victor Gillholm <victor.gillholm@gmail.com>
+Signed-off-by: Amir Atef <amiratefabdallah1122@gmail.com>
 ---
-Tested by building asus-nb-wmi against 7.2.5 and loading it in place of
-the stock module. The key mapping was checked with wev: before the change
-both keys arrived as keycode 248 with no keysym, after it as XF86Tools
-(KEY_F13) and XF86Launch5 (KEY_F14).
----
- drivers/platform/x86/asus-nb-wmi.c | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v3:
+- Check 'ret' and return early at each call site in ad9834_write(), and
+  replace the final ternary return with 'return len;'.
+- Link to v2: https://lore.kernel.org/r/179219435216.322.13409717511306957730.20261017-ad9834-guard-mutex-v2@gmail.com
 
-diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
-index 3b0f3346d..c6eb525ec 100644
---- a/drivers/platform/x86/asus-nb-wmi.c
-+++ b/drivers/platform/x86/asus-nb-wmi.c
-@@ -641,6 +641,7 @@ static const struct key_entry asus_nb_wmi_keymap[] = {
- 	{ KE_KEY, 0x65, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + TV */
- 	{ KE_KEY, 0x66, { KEY_SWITCHVIDEOMODE } }, /* SDSP CRT + TV */
- 	{ KE_KEY, 0x67, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + CRT + TV */
-+	{ KE_KEY, 0x6A, { KEY_F13 } }, /* ScreenPad toggle on Zenbook Duo */
- 	{ KE_KEY, 0x6B, { KEY_TOUCHPAD_TOGGLE } },
- 	{ KE_IGNORE, 0x6E, },  /* Low Battery notification */
- 	{ KE_KEY, 0x71, { KEY_F13 } }, /* General-purpose button */
-@@ -666,6 +667,7 @@ static const struct key_entry asus_nb_wmi_keymap[] = {
- 	{ KE_KEY, 0x93, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + CRT + TV + DVI */
- 	{ KE_KEY, 0x95, { KEY_MEDIA } },
- 	{ KE_KEY, 0x99, { KEY_PHONE } }, /* Conflicts with fan mode switch */
-+	{ KE_KEY, 0x9C, { KEY_F14 } }, /* Task Swap key on Zenbook Duo */
- 	{ KE_KEY, 0X9D, { KEY_FN_F } },
- 	{ KE_KEY, 0xA0, { KEY_SWITCHVIDEOMODE } }, /* SDSP HDMI only */
- 	{ KE_KEY, 0xA1, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + HDMI */
+Changes in v2:
+- Add blank line after guard(mutex) in ad9834_write().
+- Move 'int ret;' to the end of the variable declaration block in
+  ad9834_store_wavetype().
+- Drop redundant 'else' in ad9834_store_wavetype() case 1 by inverting
+  the condition (kept 'else' in ad9834_write() and case 0 where they are
+  part of if-else-if-else chains).
+- Replace ternary return with explicit 'if (ret) return ret;' in
+  ad9834_store_wavetype().
+- Link to v1: https://lore.kernel.org/r/179214943270.333.5921549521929682753.20261016-ad9834-guard-mutex@gmail.com
 
----
-base-commit: ea40f1e9f07aab937b9a217633be7a1f66260394
-change-id: 20261017-zenbook-duo-keys-7e0b3f94354a
+ drivers/staging/iio/frequency/ad9834.c | 70 +++++++++++++++-----------
+ 1 file changed, 41 insertions(+), 29 deletions(-)
 
-Best regards,
---  
-Victor Gillholm <victor.gillholm@gmail.com>
+diff --git a/drivers/staging/iio/frequency/ad9834.c b/drivers/staging/iio/frequency/ad9834.c
+index 0d20f796e0f0..8686a22f3fc1 100644
+--- a/drivers/staging/iio/frequency/ad9834.c
++++ b/drivers/staging/iio/frequency/ad9834.c
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <linux/bits.h>
++#include <linux/cleanup.h>
+ #include <linux/clk.h>
+ #include <linux/dev_printk.h>
+ #include <linux/err.h>
+@@ -154,21 +155,26 @@ static ssize_t ad9834_write(struct device *dev,
+ 	if (ret)
+ 		return ret;
+ 
+-	mutex_lock(&st->lock);
++	guard(mutex)(&st->lock);
++
+ 	switch ((u32)this_attr->address) {
+ 	case AD9834_REG_FREQ0:
+ 	case AD9834_REG_FREQ1:
+ 		ret = ad9834_write_frequency(st, this_attr->address, val);
++		if (ret)
++			return ret;
++
+ 		break;
+ 	case AD9834_REG_PHASE0:
+ 	case AD9834_REG_PHASE1:
+ 		ret = ad9834_write_phase(st, this_attr->address, val);
++		if (ret)
++			return ret;
++
+ 		break;
+ 	case AD9834_OPBITEN:
+-		if (st->control & AD9834_MODE) {
+-			ret = -EINVAL;  /* AD9834 reserved mode */
+-			break;
+-		}
++		if (st->control & AD9834_MODE)
++			return -EINVAL;  /* AD9834 reserved mode */
+ 
+ 		if (val)
+ 			st->control |= AD9834_OPBITEN;
+@@ -177,6 +183,9 @@ static ssize_t ad9834_write(struct device *dev,
+ 
+ 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+ 		ret = spi_sync(st->spi, &st->msg);
++		if (ret)
++			return ret;
++
+ 		break;
+ 	case AD9834_PIN_SW:
+ 		if (val)
+@@ -185,6 +194,9 @@ static ssize_t ad9834_write(struct device *dev,
+ 			st->control &= ~AD9834_PIN_SW;
+ 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+ 		ret = spi_sync(st->spi, &st->msg);
++		if (ret)
++			return ret;
++
+ 		break;
+ 	case AD9834_FSEL:
+ 	case AD9834_PSEL:
+@@ -194,11 +206,13 @@ static ssize_t ad9834_write(struct device *dev,
+ 			st->control |= this_attr->address;
+ 			st->control &= ~AD9834_PIN_SW;
+ 		} else {
+-			ret = -EINVAL;
+-			break;
++			return -EINVAL;
+ 		}
+ 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+ 		ret = spi_sync(st->spi, &st->msg);
++		if (ret)
++			return ret;
++
+ 		break;
+ 	case AD9834_RESET:
+ 		if (val)
+@@ -208,13 +222,15 @@ static ssize_t ad9834_write(struct device *dev,
+ 
+ 		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+ 		ret = spi_sync(st->spi, &st->msg);
++		if (ret)
++			return ret;
++
+ 		break;
+ 	default:
+-		ret = -ENODEV;
++		return -ENODEV;
+ 	}
+-	mutex_unlock(&st->lock);
+ 
+-	return ret ? ret : len;
++	return len;
+ }
+ 
+ static ssize_t ad9834_store_wavetype(struct device *dev,
+@@ -225,10 +241,10 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
+ 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+ 	struct ad9834_state *st = iio_priv(indio_dev);
+ 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+-	int ret = 0;
+ 	bool is_ad9833_7 = (st->devid == ID_AD9833) || (st->devid == ID_AD9837);
++	int ret;
+ 
+-	mutex_lock(&st->lock);
++	guard(mutex)(&st->lock);
+ 
+ 	switch ((u32)this_attr->address) {
+ 	case 0:
+@@ -241,7 +257,7 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
+ 				st->control &= ~AD9834_OPBITEN;
+ 				st->control |= AD9834_MODE;
+ 			} else if (st->control & AD9834_OPBITEN) {
+-				ret = -EINVAL;	/* AD9834 reserved mode */
++				return -EINVAL;	/* AD9834 reserved mode */
+ 			} else {
+ 				st->control |= AD9834_MODE;
+ 			}
+@@ -249,31 +265,27 @@ static ssize_t ad9834_store_wavetype(struct device *dev,
+ 			st->control &= ~AD9834_MODE;
+ 			st->control |= AD9834_OPBITEN;
+ 		} else {
+-			ret = -EINVAL;
++			return -EINVAL;
+ 		}
+ 
+ 		break;
+ 	case 1:
+-		if (sysfs_streq(buf, "square") &&
+-		    !(st->control & AD9834_MODE)) {
+-			st->control &= ~AD9834_MODE;
+-			st->control |= AD9834_OPBITEN;
+-		} else {
+-			ret = -EINVAL;
+-		}
++		if (!sysfs_streq(buf, "square") || (st->control & AD9834_MODE))
++			return -EINVAL;
++
++		st->control &= ~AD9834_MODE;
++		st->control |= AD9834_OPBITEN;
+ 		break;
+ 	default:
+-		ret = -EINVAL;
+-		break;
++		return -EINVAL;
+ 	}
+ 
+-	if (!ret) {
+-		st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
+-		ret = spi_sync(st->spi, &st->msg);
+-	}
+-	mutex_unlock(&st->lock);
++	st->data = cpu_to_be16(AD9834_REG_CMD | st->control);
++	ret = spi_sync(st->spi, &st->msg);
++	if (ret)
++		return ret;
+ 
+-	return ret ? ret : len;
++	return len;
+ }
+ 
+ static
+-- 
+2.51.0
+
 
