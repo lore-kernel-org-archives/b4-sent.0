@@ -1,105 +1,88 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Sat, 17 Oct 2026 22:50:56 +0800
-Subject: [PATCH net v6 6/6] can: rockchip_canfd: serialize timecounter
- timestamp conversion
+From: Victor Gillholm <victor.gillholm@gmail.com>
+Date: Sat, 17 Oct 2026 20:13:22 +0200
+Subject: [PATCH] platform/x86: asus-nb-wmi: map ScreenPad and Task Swap
+ keys
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-rockchip-canfd-restart-close-v6-6-ed605feb4b6e@qq.com>
-References: <20261017-rockchip-canfd-restart-close-v6-0-ed605feb4b6e@qq.com>
-In-Reply-To: <20261017-rockchip-canfd-restart-close-v6-0-ed605feb4b6e@qq.com>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- "David S. Miller" <davem@davemloft.net>, 
- Wolfgang Grandegger <wg@grandegger.com>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, kernel@pengutronix.de, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- netdev@vger.kernel.org, linux-doc@vger.kernel.org, stable@vger.kernel.org, 
- Cunhao Lu <1579567540@qq.com>
+Message-Id: <20261017-zenbook-duo-keys-v1-1-45f72d3db5ed@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJCwjRqxgXFH5gJGlNR4xAu
+ LtVlt/ivY0UUaB0zTaKeItK8An2lFE7Nn4AS5dMuckra2zNK7wLYeJuDjxhUa5hXNFfyuJcNpS
+ yZ0Qvn//ydj+ss3ugff0+tO9fcy23MXQAAAA=
+X-Change-ID: 20261017-zenbook-duo-keys-7e0b3f94354a
+To: Corentin Chary <corentin.chary@gmail.com>, 
+ "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
+ Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Victor Gillholm <victor.gillholm@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792248654; l=2940;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=PpQslORihJNgfj4mzr9VTzdMu4X2EvQLejo/FRw489Q=;
- b=ePvaeQozhEYsa/ePirwiG2llAcEhxRrpEqR3ehdU7AuYWHAd5VaNp20yypzZH4+YrUsFIHWgZ
- JWbt8OX2FdoDP/5PCcHX9Cm4poP6MxPECQMx3e4fZ5LUQhEs6I2HeWB
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792260866; l=2859;
+ i=victor.gillholm@gmail.com; s=zenbook; h=from:subject:message-id;
+ bh=6M3/+PEfY8fXb3qd10LtNrTk5fn9SKJDEffvIOgCHXs=;
+ b=scn521DZ4w8eaVPtdBD2nLMX3gBL/11Zo5At0nSm2J5VHoCgnsTSDI3GLfAB/xQ6wE3KZ6FnN
+ ZLWn4aDLt35CZpmPnRqcbQyYGtzSVPAnSN27+zkvtBXpIEWCi2DKyXV
+X-Developer-Key: i=victor.gillholm@gmail.com; a=ed25519;
+ pk=eD1INWVbRo2RgAKLHQOmsC14YPzQqjCdECtcWSZ9mg0=
+X-Endpoint-Received: by B4 Relay for victor.gillholm@gmail.com/zenbook with auth_id=1224
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The timestamp worker advances the timecounter with timecounter_read()
-while RX, TX completion and error-frame paths use timecounter_cyc2time()
-to convert hardware timestamps without holding timestamp_lock.
+The ASUS Zenbook Duo 14 UX482EG has two keys next to the power button:
+one toggles the ScreenPad Plus, the second screen above the keyboard,
+and one swaps windows between the two screens (Task Swap in ASUS'
+ScreenXpert software). They emit ASUS WMI event codes 0x6a and 0x9c.
+Neither code is in the asus-nb-wmi sparse keymap, so pressing them only
+logs "Unknown key code 0x6a" or "Unknown key code 0x9c", and both keys
+are reported as KEY_UNKNOWN, so ordinary desktop key bindings cannot
+tell them apart.
 
-timecounter_read() updates frac, cycle_last and nsec in separate steps.
-A concurrent conversion can observe the new cycle_last with the old
-nsec and produce an incorrect timestamp.
+Map 0x6a to KEY_F13, the same keycode hid-asus already uses for the
+ScreenPad toggle code 0x6a. No existing keycode describes moving windows
+between screens, so map 0x9c to KEY_F14, following the existing use of
+KEY_F13 and KEY_F14 for other ASUS-specific keys in this keymap. Both
+keys then emit distinct, bindable events.
 
-Hold timestamp_lock across timecounter_cyc2time(), using the same lock
-as timecounter_read() and timecounter_init(). Keep the SKB timestamp
-assignment outside the critical section.
+Tested on an ASUS Zenbook Duo 14 UX482EG: with this change the keys
+arrive in userspace as KEY_F13 and KEY_F14 and the "Unknown key code"
+messages are gone.
 
-TX completion nests timestamp_lock inside tx_lock; no timestamp-lock
-holder acquires tx_lock.
-
-Fixes: 4e1a18bab124 ("can: rockchip_canfd: add hardware timestamping support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Victor Gillholm <victor.gillholm@gmail.com>
 ---
- drivers/net/can/rockchip/rockchip_canfd-timestamp.c | 5 ++++-
- drivers/net/can/rockchip/rockchip_canfd.h           | 4 ++--
- 2 files changed, 6 insertions(+), 3 deletions(-)
+Tested by building asus-nb-wmi against 7.2.5 and loading it in place of
+the stock module. The key mapping was checked with wev: before the change
+both keys arrived as keycode 248 with no keysym, after it as XF86Tools
+(KEY_F13) and XF86Launch5 (KEY_F14).
+---
+ drivers/platform/x86/asus-nb-wmi.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-index 0fa791849c95..05f1005ee506 100644
---- a/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-+++ b/drivers/net/can/rockchip/rockchip_canfd-timestamp.c
-@@ -15,13 +15,16 @@ static u64 rkcanfd_timestamp_read(struct cyclecounter *cc)
- 	return rkcanfd_get_timestamp(priv);
- }
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp)
- {
- 	struct skb_shared_hwtstamps *hwtstamps = skb_hwtstamps(skb);
-+	unsigned long flags;
- 	u64 ns;
- 
-+	spin_lock_irqsave(&priv->timestamp_lock, flags);
- 	ns = timecounter_cyc2time(&priv->tc, timestamp);
-+	spin_unlock_irqrestore(&priv->timestamp_lock, flags);
- 
- 	hwtstamps->hwtstamp = ns_to_ktime(ns);
- }
-diff --git a/drivers/net/can/rockchip/rockchip_canfd.h b/drivers/net/can/rockchip/rockchip_canfd.h
-index 4a2bdc205296..63f146ff8e6b 100644
---- a/drivers/net/can/rockchip/rockchip_canfd.h
-+++ b/drivers/net/can/rockchip/rockchip_canfd.h
-@@ -489,7 +489,7 @@ struct rkcanfd_priv {
- 
- 	struct cyclecounter cc;
- 	struct timecounter tc;
--	/* Protects timestamp_active and worker reads/requeueing. */
-+	/* Protects tc, timestamp_active and worker requeueing. */
- 	spinlock_t timestamp_lock;
- 	struct delayed_work timestamp;
- 	unsigned long work_delay_jiffies;
-@@ -557,7 +557,7 @@ void rkcanfd_ethtool_init(struct rkcanfd_priv *priv);
- 
- int rkcanfd_handle_rx_int(struct rkcanfd_priv *priv);
- 
--void rkcanfd_skb_set_timestamp(const struct rkcanfd_priv *priv,
-+void rkcanfd_skb_set_timestamp(struct rkcanfd_priv *priv,
- 			       struct sk_buff *skb, const u32 timestamp);
- void rkcanfd_timestamp_work_init(struct rkcanfd_priv *priv);
- void rkcanfd_timestamp_init(struct rkcanfd_priv *priv);
+diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
+index 3b0f3346d..c6eb525ec 100644
+--- a/drivers/platform/x86/asus-nb-wmi.c
++++ b/drivers/platform/x86/asus-nb-wmi.c
+@@ -641,6 +641,7 @@ static const struct key_entry asus_nb_wmi_keymap[] = {
+ 	{ KE_KEY, 0x65, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + TV */
+ 	{ KE_KEY, 0x66, { KEY_SWITCHVIDEOMODE } }, /* SDSP CRT + TV */
+ 	{ KE_KEY, 0x67, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + CRT + TV */
++	{ KE_KEY, 0x6A, { KEY_F13 } }, /* ScreenPad toggle on Zenbook Duo */
+ 	{ KE_KEY, 0x6B, { KEY_TOUCHPAD_TOGGLE } },
+ 	{ KE_IGNORE, 0x6E, },  /* Low Battery notification */
+ 	{ KE_KEY, 0x71, { KEY_F13 } }, /* General-purpose button */
+@@ -666,6 +667,7 @@ static const struct key_entry asus_nb_wmi_keymap[] = {
+ 	{ KE_KEY, 0x93, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + CRT + TV + DVI */
+ 	{ KE_KEY, 0x95, { KEY_MEDIA } },
+ 	{ KE_KEY, 0x99, { KEY_PHONE } }, /* Conflicts with fan mode switch */
++	{ KE_KEY, 0x9C, { KEY_F14 } }, /* Task Swap key on Zenbook Duo */
+ 	{ KE_KEY, 0X9D, { KEY_FN_F } },
+ 	{ KE_KEY, 0xA0, { KEY_SWITCHVIDEOMODE } }, /* SDSP HDMI only */
+ 	{ KE_KEY, 0xA1, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + HDMI */
 
--- 
-2.34.1
+---
+base-commit: ea40f1e9f07aab937b9a217633be7a1f66260394
+change-id: 20261017-zenbook-duo-keys-7e0b3f94354a
+
+Best regards,
+--  
+Victor Gillholm <victor.gillholm@gmail.com>
 
