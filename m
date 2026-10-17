@@ -1,10 +1,10 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Sat, 17 Oct 2026 11:10:19 +0200
-Subject: [PATCH 03/14] expo: Allow a text object to have its own colour
+Date: Sat, 17 Oct 2026 11:10:20 +0200
+Subject: [PATCH 04/14] expo: Allow menus to wrap around
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-b4-expo-colours-v1-3-479ac06e7642@protonmail.com>
+Message-Id: <20261017-b4-expo-colours-v1-4-479ac06e7642@protonmail.com>
 References: <20261017-b4-expo-colours-v1-0-479ac06e7642@protonmail.com>
 In-Reply-To: <20261017-b4-expo-colours-v1-0-479ac06e7642@protonmail.com>
 To: u-boot@lists.u-boot-project.org
@@ -15,147 +15,168 @@ Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>,
  Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792228225; l=4372;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792228225; l=4945;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=UPB0LHVZw5Jb28TCAoxQMD5l5dcBNqsaNcayOVg/y+U=;
- b=ObGaBB2Zl5z90ccG51eijn73KEWv26yRQYsruCZx0UNiIKvpZCSJndzoJyc2lqCCYeL9YjEXH
- abUffo5JBQTBk9kU8SFZ5no2ol4sQzUhZIRqliy5/aNDpVFO3vCudrh
+ bh=aFSwbOJj+Rnn0fSwerqsVz5zwUFs6TBz4jMuEhr+ojU=;
+ b=eiQxeRYYI4T1tcP71XgfpN3GJDf5nUr7OMdv8W0MNXJTxfFJptaiB1rK1Pckk1LZTrrlaK4jU
+ Xl5djhYrEouD0NxZxeLiHDA93KsDRnRSSjIWWTeODjUmBihn44vZNs+
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add scene_txt_set_colour() to draw a text object in a chosen foreground
-colour, on the normal background.
+Add scene_menu_set_wrap() so that pressing down on the last selectable
+item moves to the first and up on the first moves to the last.
 
-The colour is not used while the object is highlighted which keeps
-the reverse-video bar.
+Move the search for the next item into a helper which also skips
+section headers.
+
+This is off by default so existing menus behave as before.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- boot/scene.c     | 22 +++++++++++++++++++++-
- include/expo.h   | 17 +++++++++++++++++
- test/boot/expo.c |  4 ++++
- 3 files changed, 42 insertions(+), 1 deletion(-)
+ boot/scene_menu.c    | 53 +++++++++++++++++++++++++++++++++++++++-------------
+ doc/develop/expo.rst |  3 +++
+ include/expo.h       | 14 ++++++++++++++
+ 3 files changed, 57 insertions(+), 13 deletions(-)
 
-diff --git a/boot/scene.c b/boot/scene.c
-index fa8f540bfb0..6073ab5a9f5 100644
---- a/boot/scene.c
-+++ b/boot/scene.c
-@@ -245,6 +245,19 @@ int scene_txt_set_font(struct scene *scn, uint id, const char *font_name,
- 	return 0;
+diff --git a/boot/scene_menu.c b/boot/scene_menu.c
+index 77d25f34da3..8ec2155e75c 100644
+--- a/boot/scene_menu.c
++++ b/boot/scene_menu.c
+@@ -379,6 +379,29 @@ static struct scene_menitem *scene_menu_find_key(struct scene *scn,
+ 	return NULL;
  }
  
-+int scene_txt_set_colour(struct scene *scn, uint id, enum colour_idx colour)
++static struct scene_menitem *menu_step(const struct scene_obj_menu *menu,
++				       const struct scene_menitem *cur, bool down)
 +{
-+	struct scene_obj_txt *txt;
++	const struct list_head *head = &menu->item_head;
++	const struct list_head *pos = &cur->sibling;
 +
-+	txt = scene_obj_find(scn, id, SCENEOBJT_TEXT);
-+	if (!txt)
-+		return log_msg_ret("find", -ENOENT);
-+	txt->gen.has_colour = true;
-+	txt->gen.colour = colour;
++	for (;;) {
++		struct scene_menitem *item;
++
++		pos = down ? pos->next : pos->prev;
++		if (pos == head) {
++			if (!menu->wrap)
++				return NULL;
++			pos = down ? head->next : head->prev;
++		}
++		item = list_entry(pos, struct scene_menitem, sibling);
++		if (item == cur)
++			return NULL;
++		if (!(item->flags & SCENEMIF_HEADER))
++			return item;
++	}
++}
++
+ int scene_menu_send_key(struct scene *scn, struct scene_obj_menu *menu, int key,
+ 			struct expo_action *event)
+ {
+@@ -403,28 +426,19 @@ int scene_menu_send_key(struct scene *scn, struct scene_obj_menu *menu, int key,
+ 
+ 	switch (key) {
+ 	case BKEY_UP:
+-		while (item != list_first_entry(&menu->item_head,
+-						struct scene_menitem, sibling)) {
+-			item = list_entry(item->sibling.prev,
+-					  struct scene_menitem, sibling);
+-			if (item->flags & SCENEMIF_HEADER)
+-				continue;
++		item = menu_step(menu, cur, false);
++		if (item) {
+ 			event->type = EXPOACT_POINT_ITEM;
+ 			event->select.id = item->id;
+ 			log_debug("up to item %d\n", event->select.id);
+-			break;
+ 		}
+ 		break;
+ 	case BKEY_DOWN:
+-		while (!list_is_last(&item->sibling, &menu->item_head)) {
+-			item = list_entry(item->sibling.next,
+-					  struct scene_menitem, sibling);
+-			if (item->flags & SCENEMIF_HEADER)
+-				continue;
++		item = menu_step(menu, cur, true);
++		if (item) {
+ 			event->type = EXPOACT_POINT_ITEM;
+ 			event->select.id = item->id;
+ 			log_debug("down to item %d\n", event->select.id);
+-			break;
+ 		}
+ 		break;
+ 	case BKEY_SELECT:
+@@ -635,3 +649,16 @@ int scene_menu_render_deps(struct scene *scn, struct scene_obj_menu *menu)
+ 
+ 	return 0;
+ }
++
++int scene_menu_set_wrap(struct scene *scn, uint id, bool wrap)
++{
++	struct scene_obj_menu *menu;
++
++	menu = scene_obj_find(scn, id, SCENEOBJT_MENU);
++	if (!menu)
++		return log_msg_ret("menu", -ENOENT);
++
++	menu->wrap = wrap;
 +
 +	return 0;
 +}
+diff --git a/doc/develop/expo.rst b/doc/develop/expo.rst
+index 9c33284c9aa..40adc049d02 100644
+--- a/doc/develop/expo.rst
++++ b/doc/develop/expo.rst
+@@ -67,6 +67,9 @@ A menu item flagged `SCENEMIF_HEADER` is a section header. It is laid out and
+ shown like any other item, however, it is never highlighted or selected so the
+ user can only move between the items around it.
+ 
++By default the highlight stops at the first and last selectable item. Call
++`scene_menu_set_wrap()` to make up/down wrap around instead.
 +
- int scene_obj_set_pos(struct scene *scn, uint id, int x, int y)
- {
- 	struct scene_obj *obj;
-@@ -526,6 +539,7 @@ static int scene_txt_render(struct expo *exp, struct udevice *dev,
- 	enum colour_idx fore, back;
- 	struct scene_obj_dims dims;
- 	struct scene_obj_bbox bbox;
-+	bool tinted = false;
- 	const char *str;
- 	int ret;
+ A `textline object` contains a label and an editable string.
  
-@@ -561,6 +575,12 @@ static int scene_txt_render(struct expo *exp, struct udevice *dev,
- 		video_fill_part(dev, x - inset, y,
- 				obj->bbox.x1, obj->bbox.y1,
- 				vid_priv->colour_bg);
-+	} else if (gen->has_colour) {
-+		tinted = true;
-+		old.colour_fg = vid_priv->colour_fg;
-+		old.colour_bg = vid_priv->colour_bg;
-+		vid_priv->colour_fg = video_index_to_colour(vid_priv,
-+							    gen->colour);
- 	}
- 
- 	mline = alist_get(&gen->lines, 0, typeof(*mline));
-@@ -592,7 +612,7 @@ static int scene_txt_render(struct expo *exp, struct udevice *dev,
- 		vidconsole_set_cursor_pos(cons, x, y);
- 		vidconsole_put_stringn(cons, str + mline->start, mline->len);
- 	}
--	if (obj->flags & SCENEOF_POINT)
-+	if ((obj->flags & SCENEOF_POINT) || tinted)
- 		vidconsole_pop_colour(cons, &old);
- 
- 	return 0;
+ A `box object` is a rectangle with a given line width. It is not filled.
 diff --git a/include/expo.h b/include/expo.h
-index 3127b4fd5f2..ac7644d8392 100644
+index ac7644d8392..fe20c68750e 100644
 --- a/include/expo.h
 +++ b/include/expo.h
-@@ -12,6 +12,7 @@
- #include <dm/ofnode_decl.h>
- #include <linux/bitops.h>
- #include <linux/list.h>
-+#include <video.h>
- 
- struct udevice;
- 
-@@ -352,6 +353,8 @@ struct scene_obj_img {
-  * @str_id: ID of the text string to display
-  * @font_name: Name of font (allocated by caller)
-  * @font_size: Nominal size of font in pixels
-+ * @has_colour: true to draw the text in @colour instead of the default
-+ * @colour: Foreground colour to use if @has_colour
-  * @lines: alist of struct vidconsole_mline with a separate record for each
-  *	line of text
+@@ -396,6 +396,7 @@ struct scene_obj_txt {
+  * @title_id: ID of the title text, or 0 if none
+  * @cur_item_id: ID of the current menu item, or 0 if none
+  * @pointer_id: ID of the object pointing to the current selection
++ * @wrap: true to move from the last item to the first, and back, on up/down
+  * @item_head: List of items in the menu
   */
-@@ -359,6 +362,8 @@ struct scene_txt_generic {
- 	uint str_id;
- 	const char *font_name;
- 	uint font_size;
-+	bool has_colour;
-+	enum colour_idx colour;
- 	struct alist lines;
+ struct scene_obj_menu {
+@@ -403,6 +404,7 @@ struct scene_obj_menu {
+ 	uint title_id;
+ 	uint cur_item_id;
+ 	uint pointer_id;
++	bool wrap;
+ 	struct list_head item_head;
  };
  
-@@ -803,6 +808,18 @@ int scene_txt_set_font(struct scene *scn, uint id, const char *font_name,
- int scene_txted_set_font(struct scene *scn, uint id, const char *font_name,
- 			 uint font_size);
+@@ -943,6 +945,18 @@ int scene_menu_select_item(struct scene *scn, uint id, uint sel_id);
+  */
+ int scene_menu_get_cur_item(struct scene *scn, uint id);
  
 +/**
-+ * scene_txt_set_colour() - Set the foreground colour of a text object
++ * scene_menu_set_wrap() - set whether up/down wrap around the ends of a menu
 + *
-+ * The colour is ignored while the object is highlighted.
++ * By default the highlight stops at the first and last selectable item.
 + *
 + * @scn: Scene to update
-+ * @id: ID of text object to update
-+ * @colour: Foreground colour to use
-+ * Return: 0 if OK, -ENOENT if @id is not a text object
++ * @id: ID of menu object to update
++ * @wrap: true to wrap around
++ * Return: 0 if OK, -ENOENT if @id is not a menu
 + */
-+int scene_txt_set_colour(struct scene *scn, uint id, enum colour_idx colour);
++int scene_menu_set_wrap(struct scene *scn, uint id, bool wrap);
 +
  /**
-  * scene_obj_set_pos() - Set the postion of an object
+  * scene_obj_get_hw() - Get width and height of an object in a scene
   *
-diff --git a/test/boot/expo.c b/test/boot/expo.c
-index 5ea8c016706..19148a8892e 100644
---- a/test/boot/expo.c
-+++ b/test/boot/expo.c
-@@ -898,6 +898,10 @@ static int expo_menu_header(struct unit_test_state *uts)
- 	ut_assert(scene_menuitem(scn, OBJ_MENU, "item4", ITEM4, 0, ITEM4_LABEL,
- 				 0, 0, 0, NULL) > 0);
- 
-+	/* a header can be tinted; other IDs are not text objects */
-+	ut_assertok(scene_txt_set_colour(scn, ITEM1_LABEL, VID_LIGHT_BLUE));
-+	ut_asserteq(-ENOENT, scene_txt_set_colour(scn, OBJ_MENU, VID_RED));
-+
- 	/* the first selectable item is current, not the header before it */
- 	ut_assertok(scene_arrange(scn));
- 	ut_asserteq(ITEM2, menu->cur_item_id);
 
 -- 
 2.55.0
