@@ -1,96 +1,81 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Sat, 17 Oct 2026 01:53:38 -0700
-Subject: [PATCH mptcp-net] selftests: mptcp: sockopt: drop unreachable FIN
- accounting
+From: Petr Hodina <petr.hodina@protonmail.com>
+Subject: [PATCH 00/14] expo: Add menu section headers, wrap-around and
+ colour control
+Date: Sat, 17 Oct 2026 11:10:16 +0200
+Message-Id: <20261017-b4-expo-colours-v1-0-479ac06e7642@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261017-fix-mptcp-issue-637-v1-1-cda9bf1c79de@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBBFryKz7kBGrSm9SnFh4lSn0DRkohTEu
- zfV5eO//zZQTsIK92qDxKuofEIBulTg5yFMjDIWhtrUHRmy+JQvvmP2EUV1Yewai8ZRa6kd3PX
- moDxj4qId1QeccuAM/Tnp4l7s878K+/4D6FUn3IIAAAA=
-X-Change-ID: 20261017-fix-mptcp-issue-637-0b14714ab58b
-To: MPTCP Linux <mptcp@lists.linux.dev>
-Cc: 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM2wpAQBCA4VfRXJuyciivIhd7GIxktYOUvLvF5
+ Xfx/xcIBSaBJrkg0MHCfolQaQJ21MtAyC4a8iyvVKZqNAXSuXq0fvZ7ECRrtCt7Z5zWEKs1UM/
+ nd2y737Kbiez2buC+H3s+rThzAAAA
+X-Change-ID: 20261017-b4-expo-colours-ecbad5fdbdaa
+To: u-boot@lists.u-boot-project.org
+Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
+ Anatolij Gustschin <ag.dev.uboot@gmail.com>, 
+ Alexander Martinz <amartinz@shiftphones.com>, 
+ =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>, 
+ Petr Pavlata <petr@acrux.cz>, David Heidelberg <david@ixit.cz>, 
+ Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792227218; l=2417;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=ZpuiPIB1QPb3VfM2ymJIY8rzST/1xBmMmukn2oZWteo=;
- b=BeOP1DqZ/SubdQM53wLwhMHTnd1mlQTstUn+9MPvSbF0jX+bNF7zd/uVgzLYP4ZvDB/rl49Nj
- dwcljeOQjNLCLEkztvsAZ+YC69voT55zw1APHdJCscUHDKCwl949tv8
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792228224; l=2171;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=KvnEcU++M0WzotxiHADNi7rccPpE6AA8Gp3jbsNAXL0=;
+ b=UhvnoVOeR96qVBGLchiLukAJyYgel1HvFmyClcXQOfjCn18ea3nXacPQAfB2U5kbAfWUpXt4M
+ zAgf+L/iWjyDrih0oV0iKPB6J24dTlwoVCkqUTLe5xAFTPj8w6mb++k
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-connect_one_server() sets eof when read() returns 0, then immediately
-checks total != len. The receive loop only observes EOF while total is
-still below len, so that check always fires and xerror() terminates the
-process. The later if (eof) block that increments total for DATA_FIN is
-therefore unreachable.
+This series extends expo with a few things a menu-driven UI needs:
+- section headers in menus
+- optional wrap-around when moving past the first or last item
+- control over colours
 
-The client also does not wait for the peer to close: process_one_client()
-blocks on hangup first, so a peer DATA_FIN cannot arrive before this
-assertion. DATA_FIN sequence advancement is already checked on the server
-after EOF. Treat an early EOF as a hard error and drop the dead
-adjustment.
+Colours can be set for the background, the highlight, boxes and text objects
+including RGB values via a new video_rgb_to_colour() helper.
 
-Fixes: ce9979129a0b ("selftests: mptcp: add mptcp getsockopt test cases")
-Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/637
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Each change is opt-in and leaves existing behaviour unchanged and each
+comes with a unit test in test/boot/expo.c.
+
+These are prerequisites for the phone boot menu which I sent earlier and 
+currently refactoring using the expo. So it's split out here to ease review:
+
+https://lore.kernel.org/all/NlOWu7YfEood1y_dXWzpWRLsMbAPbeVaGxRJ2tfzoYVnA_cNMxZgfBlUX3nZMgiuOPjZanYAWFkYQjn14S487oMfoRpmTcAaiNKg7jcWf08=@protonmail.com/
+
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- tools/testing/selftests/net/mptcp/mptcp_sockopt.c | 13 ++++---------
- 1 file changed, 4 insertions(+), 9 deletions(-)
+Petr Hodina (14):
+      expo: Add section headers to menus
+      test: expo: Add a test for menu section headers
+      expo: Allow a text object to have its own colour
+      expo: Allow menus to wrap around
+      test: expo: Test menu wrap-around
+      video: Add video_rgb_to_colour()
+      expo: Allow the background colour to be set
+      test: expo: Test setting the background colour
+      expo: Allow a box to have its own colour
+      test: expo: Test a box with its own colour
+      expo: Allow the highlight colours to be set
+      test: expo: Test setting the highlight colours
+      expo: Allow a text object to have an RGB colour
+      test: expo: Test a text object with an RGB colour
 
-diff --git a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-index b6e58d936ebe..20e0050e7cd7 100644
---- a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-+++ b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-@@ -572,7 +572,6 @@ static void connect_one_server(int fd, int pipefd)
- 	char buf[4096], buf2[4096];
- 	size_t len, i, total;
- 	struct so_state s;
--	bool eof = false;
- 	ssize_t ret;
- 
- 	memset(&s, 0, sizeof(s));
-@@ -610,16 +609,15 @@ static void connect_one_server(int fd, int pipefd)
- 		ret = read(fd, buf2 + total, sizeof(buf2) - total);
- 		if (ret < 0)
- 			die_perror("read");
--		if (ret == 0) {
--			eof = true;
--			break;
--		}
-+		if (ret == 0)
-+			xerror("unexpected EOF, total %lu, len %lu\n",
-+			       total, len);
- 
- 		total += ret;
- 	} while (total < len);
- 
- 	if (total != len)
--		xerror("total %lu, len %lu eof %d\n", total, len, eof);
-+		xerror("total %lu, len %lu\n", total, len);
- 
- 	if (memcmp(buf, buf2, len))
- 		xerror("data corruption");
-@@ -629,9 +627,6 @@ static void connect_one_server(int fd, int pipefd)
- 
- 	do_getsockopts(&s, fd, ret, ret);
- 
--	if (eof)
--		total += 1; /* sequence advances due to FIN */
--
- 	assert(s.mptcpi_rcv_delta == (uint64_t)total);
- 	close(fd);
- }
-
+ boot/expo.c                  |  49 +++++++--
+ boot/scene.c                 |  73 ++++++++++++-
+ boot/scene_menu.c            |  56 ++++++++--
+ doc/develop/expo.rst         |   7 ++
+ drivers/video/video-uclass.c |  27 +++--
+ include/expo.h               | 102 ++++++++++++++++++
+ include/video.h              |  13 +++
+ test/boot/expo.c             | 241 +++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 534 insertions(+), 34 deletions(-)
 ---
-base-commit: a22035be824449c4921ec406f6383089016a628c
-change-id: 20261017-fix-mptcp-issue-637-0b14714ab58b
+base-commit: 8d534cec0cc0109a37c0ded8854da03f1526dc0e
+change-id: 20261017-b4-expo-colours-ecbad5fdbdaa
 
 Best regards,
 --  
-Quanye Yang <quanyeyang@proton.me>
+Petr Hodina <petr.hodina@protonmail.com>
 
