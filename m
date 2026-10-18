@@ -1,131 +1,167 @@
-From: Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
-Date: Sun, 18 Oct 2026 21:29:32 +0300
-Subject: [PATCH] drm/msm/a6xx: Don't set GPU freq before the GMU freq table
- is built
+From: Mike Anderson <mwwa919@gmail.com>
+Date: Sun, 18 Oct 2026 16:12:40 -0400
+Subject: [PATCH] drm/i915/dsi: Use owned panel/backlight GPIOs in VLV MIPI
+ sequences
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261018-msm-gmu-freq-guard-v1-1-dd92dcccee86@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgLJHQq5QuYpzEEWJ1pikF8
- e5N6/It/t9BSZgUbs0OQm9Wfi4V5tJAmPySCHmshq7tetMah1kzplwwCm2YipcRyfrgrtaZOFi
- o4SoU+fOf3h+ntQwzhdfvBMfxBbuZL5F2AAAA
-X-Change-ID: 20261018-msm-gmu-freq-guard-e5ac83581fb5
-To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+Message-Id: <20261018-vlv-dsi-owned-gpios-v1-1-3ca18bcda670@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADco1WoC/yXMQQqDMBBA0avIrDvgpNBIr1JcaDLVkZJIpkZBv
+ HtTXb7F/zsoJ2GFZ7VD4iwqMRTQrQI3dmFgFF8MpjYPqqnB/MnoVTCugT0Os0RF58nYvqO7ZQu
+ lnBO/ZTuvr/ayLv3E7vtfwXH8ANQqkXx3AAAA
+X-Change-ID: 20261018-vlv-dsi-owned-gpios-cd127ba137e7
+To: Jani Nikula <jani.nikula@linux.intel.com>, 
+ Rodrigo Vivi <rodrigo.vivi@intel.com>, intel-gfx@lists.freedesktop.org
+Cc: Joonas Lahtinen <joonas.lahtinen@linux.intel.com>, 
+ Tvrtko Ursulin <tursulin@ursulin.net>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Hans de Goede <hansg@kernel.org>, intel-xe@lists.freedesktop.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Mike Anderson <mwwa919@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792348172; l=4160;
- i=eng.m7mdhashim.1@gmail.com; s=20261018; h=from:subject:message-id;
- bh=4u668IecDd1UekaSTwsKFOC3XIkk1vPT8fcmnCTf8Hk=;
- b=uJCnknCpmYyjxARyh20Jf9ipZVqQKQNP+stUYUqzspq+FIqGyzszrghTb9KDeTefvvSRYScFW
- VXemMVvY6b6DlN7D6aTi9gM9Fk9gPikey3/VkBcBwpEeO/37UyQtp+U
-X-Developer-Key: i=eng.m7mdhashim.1@gmail.com; a=ed25519;
- pk=nadicxm5lJrpr6u2tkxbYV+wi8bWOYqheGU3HolXoXA=
-X-Endpoint-Received: by B4 Relay for eng.m7mdhashim.1@gmail.com/20261018 with auth_id=1228
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792354368; l=5805;
+ i=mwwa919@gmail.com; s=20261018; h=from:subject:message-id;
+ bh=fqIda2quYt/iS4PsHXKJtfdrABxMHpRCeHK2kOAm+9k=;
+ b=YPHI4gGMlKh/kb6yUfYInfnPvCZcDfrreT+IUEzcqj8yDTmMeypyE/LvfsSY7CklhtFaRTt2Q
+ HYf2EATZ1JuCKiR8aNZuOhkZcMZnQCuOATJ0osAE1n4myfVScnPlcDL
+X-Developer-Key: i=mwwa919@gmail.com; a=ed25519;
+ pk=r8JyAI3thBa7smjCwoiNX+4TLbge6jj5Swldychd7nE=
+X-Endpoint-Received: by B4 Relay for mwwa919@gmail.com/20261018 with auth_id=1231
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-a6xx_gpu_init() registers devfreq through adreno_gpu_init() ->
-msm_gpu_init() -> msm_devfreq_init(), and only afterwards calls
-a6xx_gmu_init(), which fills gmu->gpu_freqs[] and sets
-gmu->nr_gpu_freqs. The devfreq sysfs node is visible in that window,
-so a write to min_freq or max_freq can reach a6xx_gmu_set_freq() while
-nr_gpu_freqs is still 0.
+On VLV with PPS_BLC_SOC, intel_dsi_vbt_gpio_init() requests the
+backlight and panel enable GPIOs (INT33FC:01 pins 10 and 11) for i915
+itself. Since commit 8241b55f1ded ("drm/i915/dsi: Replace poking of VLV
+GPIOs behind the driver's back") the GPIO elements of the VBT MIPI
+sequences also request their pin through gpiolib, so when a sequence
+toggles one of these two pins the request fails and the toggle is
+dropped:
 
-The lookup loop then compares a u32 perf_index against
-gmu->nr_gpu_freqs - 1. With a count of 0 the bound converts to
-UINT_MAX, so the loop reads past the end of gpu_freqs[] until it hits
-unmapped memory. It faults with devfreq's lock held, so every later
-GPU user blocks and the machine hangs.
+  i915 0000:00:02.0: [drm] *ERROR* GPIO index 10 request failed (-EBUSY)
 
-This was hit at boot on an X1P42100 (Adreno X1-45) laptop, where a udev
-rule wrote min_freq as soon as the devfreq device appeared:
+Before that commit the pad registers were written directly, so the
+sequences could still drive the pins i915 owned.
 
-  Unable to handle kernel paging request at virtual address ffff000b80000000
-  Internal error: Oops: 0000000096000005 [#1]  SMP
-  CPU: 0 UID: 0 PID: 487 Comm: (udev-worker) Tainted: G        W  O
-  Hardware name: SAMSUNG ELECTRONICS CO., LTD. Galaxy Book4 Edge/NP750XQA-KB2US
-  pc : a6xx_gmu_set_freq+0x74/0x2a0 [msm]
-  lr : a6xx_gmu_set_freq+0x3c/0x2a0 [msm]
-  ...
-  x4 : 00000000ffffffff ...
+The Toshiba Encore 2 WT8-B (Bay Trail, DSI panel) uses pin 10 as the
+panel reset line: MIPI_SEQ_ASSERT_RESET drives it low and
+MIPI_SEQ_DEASSERT_RESET pulses it high-low-high. With every toggle
+failing, the panel is never reset after i915 sends MIPI_SEQ_DISPLAY_OFF
+during takeover and stays black, even though the backlight PWM and both
+enable GPIOs read back as on. The tablet only has a usable display
+with nomodeset.
 
-x4 holds the wrapped loop bound. The faulting address is 1 GiB
-aligned, which matches a linear read running off the end of the
-linear map.
+When a VLV MIPI sequence targets pin 10 or 11 and i915 holds the
+corresponding descriptor, set it through that descriptor instead of
+requesting the pin a second time.
 
-Return early while the table is empty. The request is not lost: the
-limit is kept as a PM QoS request, and devfreq applies it the next time
-it re-evaluates its target, for example when the GPU resumes. The root
-cause is the init ordering, and registering devfreq after
-a6xx_gmu_init() would also close the window. This guard is the smaller
-change and is easy to backport.
-
-Fixes: a2c3c0a54d4c ("drm/msm/a6xx: Add devfreq support for a6xx")
+Fixes: 8241b55f1ded ("drm/i915/dsi: Replace poking of VLV GPIOs behind the driver's back")
 Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+Assisted-by: LLM sparse
+Signed-off-by: Mike Anderson <mwwa919@gmail.com>
 ---
-How this was found and tested:
+This patch was developed with an AI coding assistant (Claude Code,
+Claude Opus 5.5): it ran the debugging session on the tablet (drm.debug
+log, gpio/pwm debugfs), traced the -EBUSY to 8241b55f1ded, and wrote the
+change and the changelog; I reviewed it and tested it on the hardware.
 
-- Seen twice at boot (2026-10-03 and 2026-10-05) on a Samsung Galaxy
-  Book4 Edge 15" (NP750XQA, X1P42100 / Adreno X1-45) running a
-  downstream 7.2.7 tree with an out-of-tree device tree. Both oopses
-  were at a6xx_gmu_set_freq+0x74, about 9 s after power-on, from a udev
-  rule writing min_freq when the devfreq device appeared. The log ends
-  at "Call trace:" because the machine hung.
-- With this guard applied to the same downstream tree, the laptop has
-  booted 20 times since 2026-10-14 with no oops. That shows the guard
-  does no harm. It does not prove it closes the race, because the udev
-  rule was moved to a delayed systemd unit on 2026-10-06 and the window
-  is narrow.
-- On v7.3-rc7 the change is only build-tested (arm64 defconfig, W=1).
-  It has not been run on mainline or msm-next. The function is
-  identical in v7.3-rc7, msm-next and msm-fixes, so it should apply to
-  any of them.
+Testing, Toshiba Encore 2 WT8-B (Atom Z3735F, BIOS 2.10, VBT MIPI
+sequence block v2, PPS_BLC_SOC):
+- Arch Linux v7.2.11-arch1 with this patch backported (applies as is):
+  the panel lights up at i915 takeover and the Xorg login screen shows;
+  no "GPIO index ... request failed" errors; gpio-10/11 stay owned as
+  "backlight"/"panel". Unpatched v7.2.11 and v6.18.57 give a black
+  panel with five -EBUSY errors during boot.
+- drm-intel-next: built intel_dsi_vbt.o for i915 (=m and =y) and for
+  xe (=m) with W=1 and sparse (C=2, sparse v0.6.5-rc1): no new
+  warnings.
 
-If you'd rather fix the ordering, so devfreq is registered after
-a6xx_gmu_init(), I'm happy to rework it that way.
-
-AI disclosure: an LLM coding assistant helped read the oops, trace the
-init ordering and draft this commit message. I reviewed the result,
-tested it as described above, and take responsibility for it.
+Not tested: other VLV machines with PPS_BLC_SOC. Their behaviour only
+changes when their VBT sequences touch pin 10 or 11, which currently
+fails with -EBUSY anyway.
 ---
- drivers/gpu/drm/msm/adreno/a6xx_gmu.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/gpu/drm/i915/display/intel_dsi_vbt.c | 32 +++++++++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-index 6d49c51df..b1cbe5d34 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
-@@ -164,6 +164,14 @@ void a6xx_gmu_set_freq(struct msm_gpu *gpu, struct dev_pm_opp *opp,
- 	unsigned long gpu_freq;
- 	int ret = 0;
+diff --git a/drivers/gpu/drm/i915/display/intel_dsi_vbt.c b/drivers/gpu/drm/i915/display/intel_dsi_vbt.c
+index fe12041e9..85d1cdc6e 100644
+--- a/drivers/gpu/drm/i915/display/intel_dsi_vbt.c
++++ b/drivers/gpu/drm/i915/display/intel_dsi_vbt.c
+@@ -54,6 +54,10 @@
+ #define MIPI_VIRTUAL_CHANNEL_SHIFT	1
+ #define MIPI_PORT_SHIFT			3
+ 
++/* VLV NC pins of the backlight and panel enable GPIOs, see soc_panel_gpio_table */
++#define VLV_GPIO_NC_BACKLIGHT		10
++#define VLV_GPIO_NC_PANEL		11
++
+ struct i2c_adapter_lookup {
+ 	u16 target_addr;
+ 	struct intel_dsi *intel_dsi;
+@@ -247,10 +251,12 @@ static void soc_opaque_gpio_set_value(struct intel_connector *connector,
+ 	kfree(lookup);
+ }
+ 
+-static void vlv_gpio_set_value(struct intel_connector *connector,
++static void vlv_gpio_set_value(struct intel_dsi *intel_dsi,
+ 			       u8 gpio_source, u8 gpio_index, bool value)
+ {
+-	struct intel_display *display = to_intel_display(connector);
++	struct intel_display *display = to_intel_display(&intel_dsi->base);
++	struct intel_connector *connector = intel_dsi->attached_connector;
++	struct gpio_desc *gpio_desc = NULL;
+ 
+ 	/* XXX: this assumes vlv_gpio_table only has NC GPIOs. */
+ 	if (connector->panel.vbt.dsi.seq_version < 3) {
+@@ -265,6 +271,22 @@ static void vlv_gpio_set_value(struct intel_connector *connector,
+ 		}
+ 	}
  
 +	/*
-+	 * devfreq is registered before a6xx_gmu_init() builds the freq table,
-+	 * so a min_freq write can land here with nr_gpu_freqs == 0. The u32
-+	 * bound below would then wrap to UINT_MAX and walk off gpu_freqs[].
++	 * With PPS_BLC_SOC, intel_dsi_vbt_gpio_init() already owns these pins,
++	 * so requesting them again fails with -EBUSY. Some VBTs still toggle
++	 * them in their MIPI sequences, e.g. as the panel reset line, so drive
++	 * them through the descriptors we hold.
 +	 */
-+	if (!gmu->nr_gpu_freqs)
-+		return;
++	if (gpio_index == VLV_GPIO_NC_BACKLIGHT)
++		gpio_desc = intel_dsi->gpio_backlight;
++	else if (gpio_index == VLV_GPIO_NC_PANEL)
++		gpio_desc = intel_dsi->gpio_panel;
 +
- 	gpu_freq = dev_pm_opp_get_freq(opp);
++	if (gpio_desc && connector->panel.vbt.dsi.config->pwm_blc == PPS_BLC_SOC) {
++		gpiod_set_value_cansleep(gpio_desc, value);
++		return;
++	}
++
+ 	soc_opaque_gpio_set_value(connector, gpio_index,
+ 				  "INT33FC:01", "Panel N", gpio_index, value);
+ }
+@@ -430,7 +452,7 @@ static const u8 *mipi_exec_gpio(struct intel_dsi *intel_dsi, const u8 *data)
+ 	else if (DISPLAY_VER(display) >= 9)
+ 		bxt_gpio_set_value(connector, gpio_index, value);
+ 	else if (display->platform.valleyview)
+-		vlv_gpio_set_value(connector, gpio_source, gpio_number, value);
++		vlv_gpio_set_value(intel_dsi, gpio_source, gpio_number, value);
+ 	else if (display->platform.cherryview)
+ 		chv_gpio_set_value(connector, gpio_source, gpio_number, value);
  
- 	if (gpu_freq == gmu->freq)
+@@ -886,8 +908,8 @@ static struct gpiod_lookup_table pmic_panel_gpio_table = {
+ static struct gpiod_lookup_table soc_panel_gpio_table = {
+ 	.dev_id = "0000:00:02.0",
+ 	.table = {
+-		GPIO_LOOKUP("INT33FC:01", 10, "backlight", GPIO_ACTIVE_HIGH),
+-		GPIO_LOOKUP("INT33FC:01", 11, "panel", GPIO_ACTIVE_HIGH),
++		GPIO_LOOKUP("INT33FC:01", VLV_GPIO_NC_BACKLIGHT, "backlight", GPIO_ACTIVE_HIGH),
++		GPIO_LOOKUP("INT33FC:01", VLV_GPIO_NC_PANEL, "panel", GPIO_ACTIVE_HIGH),
+ 		{ }
+ 	},
+ };
 
 ---
-base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
-change-id: 20261018-msm-gmu-freq-guard-e5ac83581fb5
+base-commit: 0507cc5a476af0b6d037b19248bdd20dbe27487d
+change-id: 20261018-vlv-dsi-owned-gpios-cd127ba137e7
 
 Best regards,
 --  
-Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+Mike Anderson <mwwa919@gmail.com>
 
