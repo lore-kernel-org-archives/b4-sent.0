@@ -1,131 +1,72 @@
-From: George Neacsu <geocausa@gmail.com>
-Date: Sun, 18 Oct 2026 22:10:22 +0100
-Subject: [PATCH v2 2/2] media: i2c: ov13858: Add device tree support
+From: Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>
+Subject: [PATCH v6] bq27xxx: support interchangeable OnePlus 6/6T fuel
+ gauges
+Date: Mon, 19 Oct 2026 00:15:53 +0300
+Message-Id: <20261019-master-v6-0-c4b36129721e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261018-ov13858-x1e-v2-2-cd35434cfcfe@gmail.com>
-References: <20261018-ov13858-x1e-v2-0-cd35434cfcfe@gmail.com>
-In-Reply-To: <20261018-ov13858-x1e-v2-0-cd35434cfcfe@gmail.com>
-To: Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sergey Lebedev <lsa.uz@pm.me>, 
- German Pablo Lindo <germanpapulindez@gmail.com>, 
- Bryan O'Donoghue <bod@kernel.org>, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, George Neacsu <geocausa@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792357821; l=3307;
- i=geocausa@gmail.com; s=20261015; h=from:subject:message-id;
- bh=gs3CtGFwDnGrLbCfT8MlpVJ7PkVcHqMOwjwlmQ7RH0g=;
- b=kQvUD4ZxywitktIv51sXrhoqX0ylp34HwqwKT1g0IuVrh1kAUzwo+ba8+qKwbPLwQo2sMH9KG
- N5W021SfAIuBzNLKilOQ/LumJxvWUIPnmS0uQeoXn7YkV1DrtSFYpTd
-X-Developer-Key: i=geocausa@gmail.com; a=ed25519;
- pk=KyQk/iWbxsikewDBh0SwlHI51RvAqahD3loqmRp9DVI=
-X-Endpoint-Received: by B4 Relay for geocausa@gmail.com/20261015 with auth_id=1199
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02OzQ6CMBCEX8X0bLXFUsST72E89GeBNVJMi42G8
+ O5SCOpxduebmYEE8AiBnDYD8RAxYOcmIbcbYhrlaqBoJ00ylklWZgVtVejBU22ZqmwpSwkVmcw
+ PDxW+5qDLddHhqW9g+kQnh1YBqPbKmSadOo81uv0Sl/4Nhr7z73lJFClnLT2upVFQTlmemeIAh
+ heyONetwvvOdC1JpTH/YpzxH5ZTRpkGLoXgxlr+j43j+AFKnswsBQEAAA==
+X-Change-ID: 20260927-master-bd0afd9696ef
+To: linux-pm@vger.kernel.org
+Cc: pali@kernel.org, sre@kernel.org, afd@ti.com, 
+ konrad.dybcio@oss.qualcomm.com, david@ixit.cz, krzk@kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792358153; l=1717;
+ i=rinat.muhamedgaliev@gmail.com; s=default; h=from:subject:message-id;
+ bh=SHrvdvbxCKtRIdlifie6qEUHDb0k2UQIfxEZWKPC62g=;
+ b=iBOg7Z4TxpAdOSuJt3HRuvXtiybtz8yJk/g8EgW9pH067j+70MW//oHEMpOPbET61hTGpcari
+ fupeyxW2YSBDXaSd2NhcrcOHELpDkXKTUhgjVPUNG7ihFQDA1DvrXhp
+X-Developer-Key: i=rinat.muhamedgaliev@gmail.com; a=ed25519;
+ pk=qkYQO8LRlRErWiLzlpK8jHbRIxv8+7v06+ytcxX8mec=
+X-Endpoint-Received: by B4 Relay for rinat.muhamedgaliev@gmail.com/default with auth_id=1072
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an OF match table for OV13858 and parse its firmware endpoint at
-probe time. Require a four-lane D-PHY endpoint and both link frequencies
-used by the existing sensor modes.
+OnePlus 6 and 6T replacement battery packs can contain either a bq27411 or a
+bq27541 fuel gauge. The latter requires a different register map and produces
+invalid battery readings when interpreted as a bq27411.
 
-v4l2_fwnode_endpoint_alloc_parse() returns -EPROBE_DEFER if a software
-node endpoint has not been instantiated yet, preserving bridge-created
-endpoint probe ordering.
+The I2C driver reads DeviceType while probing either of those compatible
+devices and selects the matching profile.
 
-Tested-by: Sergey Lebedev <lsa.uz@pm.me> # Surface Pro 11 (Intel)
-Assisted-by: Claude:claude-opus-5-5
-Assisted-by: ChatGPT:gpt-5.6-sol
-Signed-off-by: George Neacsu <geocausa@gmail.com>
+The bq27541 path was tested on a OnePlus 6T with DeviceType 0x0541. It
+reported 4.338 V, 100% capacity, 27.8 C, and Full/Good battery status.
+Testing on an OnePlus 6 or 6T whose fuel gauge reports DeviceType 0x0421
+(bq27411) would be appreciated.
+
+Changes in v6:
+- Compare the detected model with the compatible-selected model.
+- Support both BQ27411-to-BQ27541 and BQ27541-to-BQ27411 detection.
+- Document the pair of models checked at probe time.
+- Link to v5: https://patch.msgid.link/20261018-master-v5-0-0be16441cdd1@gmail.com
+
+Changes in v5:
+- Report detected and expected DeviceType values instead of hard-coding chip names.
+- Describe an unknown DeviceType as unrecognized.
+- Link to v4: https://patch.msgid.link/20260928-master-v4-1-052c73ec1767@gmail.com
+
+Changes in v4:
+- Drop the generic compatible and binding update.
+- Keep the established OnePlus DTS unchanged.
+- Detect bq27541 from DeviceType in the bq27411 probe path.
+- Send as a new thread.
+
 ---
- drivers/media/i2c/ov13858.c | 54 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 54 insertions(+)
+Rinat Muhamedgaliev (1):
+      power: supply: bq27xxx: detect bq27541 behind bq27411 compatible
 
-diff --git a/drivers/media/i2c/ov13858.c b/drivers/media/i2c/ov13858.c
-index 5d7b3c335d..2957124404 100644
---- a/drivers/media/i2c/ov13858.c
-+++ b/drivers/media/i2c/ov13858.c
-@@ -1765,6 +1765,49 @@ static const struct dev_pm_ops ov13858_pm_ops = {
- 	RUNTIME_PM_OPS(ov13858_power_off, ov13858_power_on, NULL)
- };
- 
-+static int ov13858_check_hwcfg(struct device *dev)
-+{
-+	struct v4l2_fwnode_endpoint bus_cfg = {
-+		.bus_type = V4L2_MBUS_CSI2_DPHY
-+	};
-+	unsigned long link_freq_bitmap;
-+	struct fwnode_handle *ep;
-+	int ret;
-+
-+	ep = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
-+	ret = v4l2_fwnode_endpoint_alloc_parse(ep, &bus_cfg);
-+	fwnode_handle_put(ep);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "parsing endpoint failed\n");
-+
-+	if (bus_cfg.bus.mipi_csi2.num_data_lanes != 4) {
-+		ret = dev_err_probe(dev, -EINVAL,
-+				    "%u data lanes are not supported, only 4\n",
-+				    bus_cfg.bus.mipi_csi2.num_data_lanes);
-+		goto out;
-+	}
-+
-+	/* The modes use both link frequencies, so both have to be allowed. */
-+	ret = v4l2_link_freq_to_bitmap(dev, bus_cfg.link_frequencies,
-+				       bus_cfg.nr_of_link_frequencies,
-+				       link_freq_menu_items,
-+				       ARRAY_SIZE(link_freq_menu_items),
-+				       &link_freq_bitmap);
-+	if (ret)
-+		goto out;
-+
-+	if (link_freq_bitmap != GENMASK(ARRAY_SIZE(link_freq_menu_items) - 1, 0))
-+		ret = dev_err_probe(dev, -EINVAL,
-+				    "link frequencies %lld and %lld are both needed\n",
-+				    link_freq_menu_items[0],
-+				    link_freq_menu_items[1]);
-+
-+out:
-+	v4l2_fwnode_endpoint_free(&bus_cfg);
-+
-+	return ret;
-+}
-+
- static int ov13858_probe(struct i2c_client *client)
- {
- 	struct ov13858 *ov13858;
-@@ -1777,6 +1820,10 @@ static int ov13858_probe(struct i2c_client *client)
- 
- 	ov13858->dev = &client->dev;
- 
-+	ret = ov13858_check_hwcfg(ov13858->dev);
-+	if (ret)
-+		return ret;
-+
- 	ov13858->clk = devm_v4l2_sensor_clk_get(ov13858->dev, NULL);
- 	if (IS_ERR(ov13858->clk))
- 		return dev_err_probe(ov13858->dev, PTR_ERR(ov13858->clk),
-@@ -1897,10 +1944,17 @@ static const struct acpi_device_id ov13858_acpi_ids[] = {
- MODULE_DEVICE_TABLE(acpi, ov13858_acpi_ids);
- #endif
- 
-+static const struct of_device_id ov13858_of_match[] = {
-+	{ .compatible = "ovti,ov13858" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ov13858_of_match);
-+
- static struct i2c_driver ov13858_i2c_driver = {
- 	.driver = {
- 		.name = "ov13858",
- 		.acpi_match_table = ACPI_PTR(ov13858_acpi_ids),
-+		.of_match_table = ov13858_of_match,
- 		.pm = pm_ptr(&ov13858_pm_ops),
- 	},
- 	.probe = ov13858_probe,
+ drivers/power/supply/bq27xxx_battery_i2c.c | 57 ++++++++++++++++++++++++++++++
+ 1 file changed, 57 insertions(+)
+---
+base-commit: 830b3c68c1fb1e9176028d02ef86f3cf76aa2476
+change-id: 20260927-master-bd0afd9696ef
 
--- 
-2.53.0
+Best regards,
+--  
+Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>
 
