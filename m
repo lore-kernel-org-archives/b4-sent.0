@@ -1,103 +1,153 @@
 From: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
-Subject: [PATCH 0/2] Fix pid probes on noninvasively grabbed processes
-Date: Sun, 18 Oct 2026 07:46:08 +0000
-Message-Id: <20261018-bug005-pid-noninvasive-names-v1-0-417b0f34f0b8@d-matrix.ai>
+Date: Sun, 18 Oct 2026 07:46:09 +0000
+Subject: [PATCH 1/2] libproc: name objects by their mapped file when there
+ is no link map
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMAwA0F+RnBdoRa3uV4aHVqPLYFEaLQPx3
- 9fN47u8A5Qik8K9OCBSYuVFMuytgOHpZSbkMRtKUzbW2BbDPhtT48ojyiIsySsnQvFvUvRdF5r
- atc7ZCnKxRpr48+8f/WXdw4uG7XfCeX4Bt41IkIAAAAA=
-X-Change-ID: 20261018-bug005-pid-noninvasive-names-a99b65787714
+Message-Id: <20261018-bug005-pid-noninvasive-names-v1-1-417b0f34f0b8@d-matrix.ai>
+References: <20261018-bug005-pid-noninvasive-names-v1-0-417b0f34f0b8@d-matrix.ai>
+In-Reply-To: <20261018-bug005-pid-noninvasive-names-v1-0-417b0f34f0b8@d-matrix.ai>
 To: dtrace@lists.linux.dev
 Cc: Alan Maguire <alan.maguire@oracle.com>, 
  Kris Van Hees <kris.van.hees@oracle.com>, dtrace-devel@oss.oracle.com, 
  Eugene Loh <eugene.loh@oracle.com>, Nick Alcock <nick.alcock@oracle.com>, 
  Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792309584; l=3627;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792309584; l=4573;
  i=ealmorshdy@d-matrix.ai; s=20261015; h=from:subject:message-id;
- bh=FcZjG2HNtyipcTIPLZJGgL9G/BFD+VtBrIFLos6SK5s=;
- b=XwUTStXMm8WtuegwoKHYAKCgl5fEisVAVbCA+QUHNyWMfkLfOAXpj2neXhCB9NLeyhNv0M8hL
- QTs2v+VVwdDB6OLFL4UQhgBt60s8NC6O/LTy4e5/Sg+65XaY2fLzptg
+ bh=jLsuKRfbKhhAPOyJ+pdcKtwqpJa+0ZQwndUx8MoPuyI=;
+ b=myyenk1krHapSrZTciGklBmTHcwVWStUYqq/oYQt/CKeKP7hvARMb6xIZkhRxygzxLbhmu3mm
+ RgE48H0DZ8YByWN8DBvMZAC+yMR8V59+1V1WptkP4JU1CkpDKx92ysd
 X-Developer-Key: i=ealmorshdy@d-matrix.ai; a=ed25519;
  pk=E4tVAIvp2rvz2CB7Re6YVMP6FiUVSxuq0TUtjGQL5NM=
 X-Endpoint-Received: by B4 Relay for ealmorshdy@d-matrix.ai/20261015 with auth_id=1187
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dtrace cannot create pid probes on a running process when it runs as
-root in a container without systemd and the process has no terminal:
-
-  # dtrace -ln 'pid4242:a.out:main:entry'
-  dtrace: invalid probe specifier pid4242:a.out:main:entry: failed to lookup 'main' in module 'a.out'
-
 Since commit 4aec5c99 ("dt_pid: pid grabs should be shortlived"),
-dtrace grabs a running process only briefly to create its pid probes,
-and grabs it noninvasively, without ptrace(), if:
+dtrace creates pid probes on a running process through a short-lived
+grab, which is noninvasive if the process is a system daemon, is
+already being traced or may not be ptrace()d.  pid$pid probes then
+fail.  For example, pid4242:a.out:main:entry fails with "failed to
+lookup 'main' in module 'a.out'" when dtrace runs as root in a
+container without systemd and process 4242 has no terminal.
 
- - it is a system daemon.  Without systemd, Psystem_daemon() counts
-   every root process without a terminal as one, as in the case above;
- - it is already being traced; or
- - dtrace may not ptrace() it.
+A noninvasive grab has no rtld_db, so libproc never learns ld.so's
+names for the objects in the process, and it looks objects up only by
+those names:
 
-On all such processes, pid$pid probes fail as above.  For system
-daemons this is a regression: before 4aec5c99 they were grabbed
-invasively, and the probes worked.
+ - Pobject_iter() passes "" as every object's name, so an empty or
+   globbed module matches nothing;
+ - object_to_map() matches base names only against ld.so's names, so
+   neither a.out (which dt_pid_fix_mod() turns into the executable's
+   base name) nor a library's base name is found;
+ - Plmid() fails, so the module is named LMffffffffffffffff`main
+   rather than main.
 
-Naming the process ID in the probe, as above, is how the tutorial
-lists a process's probes
-(doc/tutorial/3.TracingUserSpaceApplications.md).  dtrace -p 4242
-avoids the bug, because it grabs the process invasively for the whole
-session, but only if dtrace may ptrace() the process.  For example, in
-a container without CAP_SYS_PTRACE (Docker's default) on a host with
-Yama ptrace_scope 1 (Ubuntu's default), dtrace may ptrace() only the
-processes it starts.  There, -p fails on any process dtrace did not
-start, and pid$pid probes work only with patch 1.
+Name each object by the file it is mapped from, as map_iter() already
+does for the executable and Pobjname() for any object without a
+link-map name, and put every object on the base link map when there is
+no rtld_db.  Invasive grabs are unaffected: the new branches are taken
+only when the link-map name or rtld_db is missing.
 
-The cause is in libproc.  A noninvasive grab gets no object names from
-ld.so, and libproc looks objects up only by those names.  Patch 1 falls
-back to the file each object is mapped from; patch 2 adds a test.
-
-This is likely the cause of the dozen failing pid tests that led Eugene
-to propose reverting 4aec5c99 [1].  Nick traced them to the systemd
-detection [2], fixed by commit 936f7e5a ("libproc: make
-Psystem_daemon() detect modern systemd properly"), but they still fail
-in the case above, where the harness's processes count as system
-daemons.
-
-Tested on devel 61fea621, as root in a container without systemd:
-
- - Twelve pid/ tests go from FAIL to PASS (args1, coverage, emptystack,
-   float, fork, manypids, probemod, ret1, ret2, vfork, weak1, weak2),
-   and pid/tst.gcc.d XPASSes.  pid/, proc/, ustack/ and profile-n/ show
-   no other change, apart from proc/tst.*self-grab.sh, which time out
-   intermittently on both builds.
- - The new test fails before patch 1 and passes after, also on
-   dev-queue 0e93872f.  It also fails with only the object_to_map()
-   change, or with only the Pobject_iter() and Plmid() ones.
- - With patch 1, a noninvasive grab lists the same 2137 pid$pid:::entry
-   probes of a test program as an invasive one.
- - Invasive grabs (-c, -p, and pid$pid on a process that is not a
-   daemon) list the same probes with and without patch 1.
-
-[1] https://lore.kernel.org/dtrace/20250522181016.27661-1-eugene.loh@oracle.com/
-[2] https://lore.kernel.org/dtrace/87wm9fd8km.fsf@esperi.org.uk/
-
+Assisted-by: Claude Code:claude-opus-5-5
+Signed-off-by: Eslam Almorshdy <ealmorshdy@d-matrix.ai>
 ---
-Eslam Almorshdy (2):
-      libproc: name objects by their mapped file when there is no link map
-      test: add pid probe test for noninvasively grabbed processes
+ libproc/Psymtab.c | 43 +++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 39 insertions(+), 4 deletions(-)
 
- libproc/Psymtab.c                    |  43 +++++++++++--
- test/unittest/pid/tst.noninvasive.r  |   1 +
- test/unittest/pid/tst.noninvasive.sh | 119 +++++++++++++++++++++++++++++++++++
- test/unittest/pid/tst.noninvasive.x  |  15 +++++
- 4 files changed, 174 insertions(+), 4 deletions(-)
----
-base-commit: 61fea621160ea4b6302874c62a723da105b44883
-change-id: 20261018-bug005-pid-noninvasive-names-a99b65787714
+diff --git a/libproc/Psymtab.c b/libproc/Psymtab.c
+index e648c5aa..06bbcaef 100644
+--- a/libproc/Psymtab.c
++++ b/libproc/Psymtab.c
+@@ -1673,6 +1673,25 @@ Paddr2mptr(struct ps_prochandle *P, uintptr_t addr)
+ 	return &P->mappings[mpidx];
+ }
+ 
++/*
++ * The base name of an object: ld.so's name for it if we have the link map,
++ * else the base name of the file it is mapped from (e.g. after a noninvasive
++ * grab, which has no rtld_db).
++ */
++static const char *
++file_basename(const file_info_t *fp)
++{
++	const char *p;
++
++	if (fp->file_lbase != NULL)
++		return fp->file_lbase;
++	if (fp->file_pname == NULL)
++		return NULL;
++	if ((p = strrchr(fp->file_pname, '/')) != NULL)
++		return p + 1;
++	return fp->file_pname;
++}
++
+ /*
+  * Given a shared object name, return the map_info_t for it.  If no matching
+  * object is found, return NULL.  Normally, the link maps contain the full
+@@ -1696,6 +1715,7 @@ object_to_map(struct ps_prochandle *P, Lmid_t lmid, const char *objname)
+ {
+ 	map_info_t *mp;
+ 	file_info_t *fp;
++	const char *base;
+ 	size_t objlen;
+ 	uint_t i;
+ 
+@@ -1725,7 +1745,7 @@ object_to_map(struct ps_prochandle *P, Lmid_t lmid, const char *objname)
+ 		 * one; if none (unlikely), just return the mapping we matched.
+ 		 */
+ 		if ((fp->file_pname && strcmp(fp->file_pname, objname) == 0) ||
+-		    (fp->file_lbase && strcmp(fp->file_lbase, objname) == 0) ||
++		    ((base = file_basename(fp)) && strcmp(base, objname) == 0) ||
+ 		    (fp->file_lname && strcmp(fp->file_lname, objname) == 0))
+ 			return fp->file_map != -1 ? &P->mappings[fp->file_map] : mp;
+ 	}
+@@ -1749,9 +1769,9 @@ object_to_map(struct ps_prochandle *P, Lmid_t lmid, const char *objname)
+ 		 * If we match, return the primary text mapping, if there is
+ 		 * one; if none (unlikely), just return the mapping we matched.
+ 		 */
+-		if (fp->file_lbase &&
+-		    (strncmp(fp->file_lbase, objname, objlen) == 0) &&
+-		    (fp->file_lbase[objlen] == '.'))
++		if ((base = file_basename(fp)) != NULL &&
++		    (strncmp(base, objname, objlen) == 0) &&
++		    (base[objlen] == '.'))
+ 			return fp->file_map != -1 ? &P->mappings[fp->file_map] : mp;
+ 	}
+ 
+@@ -2252,8 +2272,14 @@ Pobject_iter(struct ps_prochandle *P, proc_map_f *func, void *cd)
+ 	    cnt; cnt--, fptr = dt_list_next(fptr)) {
+ 		const char *lname;
+ 
++		/*
++		 * Without the link map (noninvasive grab), name the object by
++		 * the file it is mapped from.
++		 */
+ 		if (fptr->file_lname != NULL)
+ 			lname = fptr->file_lname;
++		else if (fptr->file_pname != NULL)
++			lname = fptr->file_pname;
+ 		else
+ 			lname = "";
+ 
+@@ -2331,6 +2357,15 @@ Plmid(struct ps_prochandle *P, uintptr_t addr, Lmid_t *lmidp)
+ 		return 0;
+ 	}
+ 
++	/*
++	 * Without rtld_db (a noninvasive grab, or no dynamic linker) there is
++	 * no link map: every mapped object is on the base link map.
++	 */
++	if (mptr != NULL && P->rap == NULL) {
++		*lmidp = LM_ID_BASE;
++		return 0;
++	}
++
+ 	return -1;
+ }
+ 
 
-Best regards,
---  
-Eslam Almorshdy <ealmorshdy@d-matrix.ai>
+-- 
+2.55.0
 
