@@ -1,253 +1,120 @@
-From: Wenqiang Zhao <berringtoni36@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, Nuno =?utf-8?q?S=C3=A1?= <nuno.sa@analog.com>, Michael Hennerich <Michael.Hennerich@analog.com>
-Cc: David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, Lothar Rubusch <l.rubusch@gmail.com>, Joshua Crofts <joshua.crofts1@gmail.com>, linux@analog.com, linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v3] iio: accel: adxl345: separate event state from query errors
-Date: Sun, 18 Oct 2026 21:42:00 +0800
-Message-ID: <20261018-adxl345-event-state-v3-1@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+From: Bochao Cao <bochaolucky@gmail.com>
+Subject: [PATCH net-next v6 0/5] selftests: Fix and migrate the XDP feature
+ test
+Date: Sun, 18 Oct 2026 22:05:49 +0800
+Message-Id: <20261018-xdp-v5-send-20261008-v6-0-7336e1282ca3@gmail.com>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792330908; l=7577;
- i=berringtoni36@gmail.com; s=review-20261018; h=from:subject:message-id;
- bh=TeZ8xpWHy5fDJf8bSND3EmgpNE1AN8KsOt8raqa5NgE=;
- b=ljX+SgEXS8ukZSO6TyTB/XT6YgoSJaMhQaZyvK1wrqaNubbPN9IgM+dwANzY3CHMrnULVMHdf
- kZtn/9FEQuaB8Wt3jP3dCF/EBF5OTyiYTBoEHv+3K5/+N8CYQ3AHmoi
-X-Developer-Key: i=berringtoni36@gmail.com; a=ed25519;
- pk=rRiAvRvS4MMqogNnloZgVnqWliVWNDq+PcP6vMYXOvs=
-X-Endpoint-Received: by B4 Relay for berringtoni36@gmail.com/review-20261018 with auth_id=1226
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22OQQ6CMBBFr0JmbU0LUogr72FY0HaEGimkrQRDu
+ LttUVcu//t/XmYFh1ajg3O2gsVZOz2aEPghA9m3pkOiVciQ05wzSmuyqInMJXFoFPnBgjJFkam
+ C8RLC6WTxppekvYJBTwwuHpq9cU9xR+mjNW5F65AI2xrZR/TxJ/r1x1mvnR/tKz06l0m814z+/
+ ykAShTyupKCV/JEL93Q6sdRjgM027a9AaS+voX7AAAA
+X-Change-ID: 20261008-xdp-v5-send-20261008-301d0e1d3165
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, Shuah Khan <shuah@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Jesper Dangaard Brouer <hawk@kernel.org>, 
+ John Fastabend <john.fastabend@gmail.com>, 
+ Stanislav Fomichev <sdf@fomichev.me>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ Eric Dumazet <edumazet@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, netdev@vger.kernel.org, 
+ =?utf-8?q?Alexis_Lothor=C3=A9?= <alexis.lothore@bootlin.com>, 
+ Lorenzo Bianconi <lorenzo@kernel.org>, 
+ Tiezhu Yang <tiozhang@didiglobal.com>, Bochao Cao <bochaolucky@gmail.com>, 
+ Willem de Bruijn <willemdebruijn.kernel@gmail.com>, 
+ Petr Machata <petrm@nvidia.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792332371; l=3816;
+ i=bochaolucky@gmail.com; s=default; h=from:subject:message-id;
+ bh=6zfVRO0wUkIX0trYTHFUHGIOQjYjRYp9mcAVET69qKc=;
+ b=VEZVqT1rfhQPPNsBAbSVqpiKSeZrkvkyD1+KxVRRNWTFS1XQO0FbQcuRXdSv9d9pCTjp42CIt
+ PI7f8E3W/obD9ZLY5jEh0U5lkf8I0n4JEtsgRglpEvVNSyz1Vu9x2fU
+X-Developer-Key: i=bochaolucky@gmail.com; a=ed25519;
+ pk=ZYp7O2eXSIrJ9YmKrl0iHDoulPYSG+1lzICsicAvld0=
+X-Endpoint-Received: by B4 Relay for bochaolucky@gmail.com/default with auth_id=1042
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The activity/inactivity query helpers return either a boolean result or a
-negative regmap error. adxl345_read_mag_config() converts the latter to 1
-with !!, reporting a failed read as an enabled event. The disable path
-also turns a coupling query error into a successful write.
+This series fixes the XDP feature test and moves it to drivers/net/hw.
+The tester uses AF_PACKET, so the remote host does not need native XDP.
+Existing remote XDP programs and offload settings are left unchanged.
 
-Return query status separately from the boolean result by passing bool
-output parameters to both helpers. Rename them from is_* to get_* and
-update the event read, disable and link-bit callers to check the status
-before using the result. Preserve the successful coupling-mismatch
-no-op when disabling an event.
+Changes since v5:
+- Fix control EOF handling and preserve existing XDP programs on attach
+  failure in the initial cleanup patch.
+- Bound shell readiness, fix signal cleanup and namespace ownership,
+  isolate tracepoint counters, and fail on capability mismatches.
+- Support a separate control network, use an atomic signal flag, return
+  failure on interruption, and query capabilities after attachment.
+- Fix inherited source paths, host-tool selection and installed-header
+  priority in the shared BPF build rules.
+- Use argv lists for local commands and SSH deployment. Remove the old
+  ignore entry and fix the README heading.
+- Run veth XDP_TX when peer GRO is enabled without native XDP. Skip only
+  when the peer has neither. This covers the case addressed by [1].
 
-Fixes: 66a1af6d8a63 ("iio: accel: adxl345: add activity event feature")
-Fixes: 31f7679bb69a ("iio: accel: adxl345: add coupling detection for activity/inactivity")
-Assisted-by: LLM
-Signed-off-by: Wenqiang Zhao <berringtoni36@gmail.com>
+Tested on x86_64 Ubuntu with Linux 6.8.0-124-generic:
+- Normal and separate-output builds, relative inherited srctree, host
+  bootstrap with target CC/LD disabled, and conflicting source headers.
+- Earlier baseline across three veth configurations: 17 PASS and
+  1 expected XDP_TX SKIP.
+- All six features with separate IPv4 and IPv6 control networks: 12 PASS.
+- Nine error/cleanup checks, six protocol/isolation checks, and DUT/tester
+  attach-failure preservation checks passed.
+- Patch 2: two concurrent six-case runs and three repeated-TERM runs
+  left no helper processes or namespaces.
+- SSH deployment and execution from a path containing spaces and a quote.
+- GRO-only XDP_TX: isolated veth modules with and without the one-line
+  fix reproduce failure and success for both IPv4 and IPv6. The runner
+  also passes the expected skip/failure/success checks with ethtool 5.16.
+- GCC -fanalyzer reported no diagnostics. Clang diagnostics were checked;
+  the unused assignment was removed and model false positives documented.
+
+Tests used veth devices; physical-NIC testing remains unverified.
+
+[1] https://lists.openwall.net/netdev/2026/10/16/565
+
+Previous version:
+https://lore.kernel.org/all/20261010-xdp-v5-send-20261008-v5-0-de687cb67c40@gmail.com/
+
+Signed-off-by: Bochao Cao <bochaolucky@gmail.com>
+
 ---
-v3:
-- Use bool output parameters for query results, as Jonathan suggested.
-- Apply the same convention to the coupling helper and all callers.
-- Combine the two previous patches because both paths share these helpers.
-- Submitted via b4 web submission to avoid delivery-time wrapping.
+Bochao Cao (5):
+      selftests/bpf: Fix XDP feature test setup and teardown
+      selftests/bpf: Track XDP test processes and isolate namespaces
+      selftests/bpf: Send XDP feature probes with AF_PACKET
+      selftests/net: Add a shared BPF skeleton rule
+      selftests/net: Move the XDP feature test to drivers/net/hw
 
-Validation: 534 host function-chain cases pass with UBSan, including
-register-read fault injection, link-bit updates and free-fall queries.
-No full kernel build or sensor hardware test was performed. ASan could
-not start on this macOS host; it hung during runtime initialization.
+ tools/testing/selftests/bpf/.gitignore             |    1 -
+ tools/testing/selftests/bpf/Makefile               |   11 +-
+ tools/testing/selftests/bpf/test_xdp_features.sh   |  107 --
+ tools/testing/selftests/bpf/xdp_features.c         |  719 --------------
+ tools/testing/selftests/drivers/net/README.rst     |   19 +
+ tools/testing/selftests/drivers/net/hw/.gitignore  |    3 +
+ tools/testing/selftests/drivers/net/hw/Makefile    |   15 +-
+ tools/testing/selftests/drivers/net/hw/config      |    3 +
+ .../net/hw/xdp_features.bpf.c}                     |   60 +-
+ .../selftests/drivers/net/hw/xdp_features.c        | 1023 ++++++++++++++++++++
+ .../{bpf => drivers/net/hw}/xdp_features.h         |    1 +
+ .../selftests/drivers/net/hw/xdp_features.py       |  146 +++
+ .../selftests/drivers/net/lib/py/remote_ssh.py     |    2 +-
+ tools/testing/selftests/net/bpf.mk                 |   33 +-
+ 14 files changed, 1266 insertions(+), 877 deletions(-)
+---
+base-commit: 8df0638138d3e0344fd1fb36cf2d1ca1cf5028f0
+change-id: 20261008-xdp-v5-send-20261008-301d0e1d3165
 
- drivers/iio/accel/adxl345_core.c | 94 ++++++++++++++++++++++++----------------
- 1 file changed, 57 insertions(+), 37 deletions(-)
+Best regards,
+--  
+Bochao Cao <bochaolucky@gmail.com>
 
-diff --git a/drivers/iio/accel/adxl345_core.c b/drivers/iio/accel/adxl345_core.c
-index 6c9080d88..51fbcc218 100644
---- a/drivers/iio/accel/adxl345_core.c
-+++ b/drivers/iio/accel/adxl345_core.c
-@@ -463,27 +463,25 @@ static int adxl345_set_inact_time(struct adxl345_state *st, u32 val_int,
- }
- 
- /**
-- * adxl345_is_act_inact_ac() - Verify if AC or DC coupling is currently enabled.
-- *
-+ * adxl345_get_act_inact_ac() - Check the configured coupling.
-  * @st: The device data.
-  * @type: The activity or inactivity type.
-+ * @matches: Whether the configured coupling matches the provided type.
-  *
-- * Given a type of activity / inactivity combined with either AC coupling set or
-- * default to DC, this function verifies if the combination is currently
-- * configured, hence enabled or not.
-- *
-- * Return: true if configured coupling matches the provided type, else a negative
-- *         error value.
-+ * Return: 0 on success, or a negative error value.
-  */
--static int adxl345_is_act_inact_ac(struct adxl345_state *st,
--				   enum adxl345_activity_type type)
-+static int adxl345_get_act_inact_ac(struct adxl345_state *st,
-+				    enum adxl345_activity_type type,
-+				    bool *matches)
- {
- 	unsigned int regval;
- 	bool coupling;
- 	int ret;
- 
--	if (type == ADXL345_INACTIVITY_FF)
--		return true;
-+	if (type == ADXL345_INACTIVITY_FF) {
-+		*matches = true;
-+		return 0;
-+	}
- 
- 	ret = regmap_read(st->regmap, ADXL345_REG_ACT_INACT_CTRL, &regval);
- 	if (ret)
-@@ -494,13 +492,17 @@ static int adxl345_is_act_inact_ac(struct adxl345_state *st,
- 	switch (type) {
- 	case ADXL345_ACTIVITY:
- 	case ADXL345_INACTIVITY:
--		return coupling == ADXL345_COUPLING_DC;
-+		*matches = coupling == ADXL345_COUPLING_DC;
-+		break;
- 	case ADXL345_ACTIVITY_AC:
- 	case ADXL345_INACTIVITY_AC:
--		return coupling == ADXL345_COUPLING_AC;
-+		*matches = coupling == ADXL345_COUPLING_AC;
-+		break;
- 	default:
- 		return -EINVAL;
- 	}
-+
-+	return 0;
- }
- 
- /**
-@@ -567,14 +569,17 @@ static int adxl345_set_act_inact_ac(struct adxl345_state *st,
- 				  adxl345_act_acdc_msk[type], act_inact_ac);
- }
- 
--static int adxl345_is_act_inact_en(struct adxl345_state *st,
--				   enum adxl345_activity_type type)
-+static int adxl345_get_act_inact_en(struct adxl345_state *st,
-+				    enum adxl345_activity_type type,
-+				    bool *enabled)
- {
- 	unsigned int axis_ctrl;
- 	unsigned int regval;
- 	bool int_en, en;
- 	int ret;
- 
-+	*enabled = false;
-+
- 	ret = regmap_read(st->regmap, ADXL345_REG_ACT_INACT_CTRL, &axis_ctrl);
- 	if (ret)
- 		return ret;
-@@ -585,13 +590,13 @@ static int adxl345_is_act_inact_en(struct adxl345_state *st,
- 	case ADXL345_ACTIVITY_AC:
- 		en = FIELD_GET(ADXL345_ACT_XYZ_EN, axis_ctrl);
- 		if (!en)
--			return false;
-+			return 0;
- 		break;
- 	case ADXL345_INACTIVITY:
- 	case ADXL345_INACTIVITY_AC:
- 		en = FIELD_GET(ADXL345_INACT_XYZ_EN, axis_ctrl);
- 		if (!en)
--			return false;
-+			return 0;
- 		break;
- 	case ADXL345_INACTIVITY_FF:
- 		en = true;
-@@ -607,37 +612,39 @@ static int adxl345_is_act_inact_en(struct adxl345_state *st,
- 
- 	int_en = adxl345_act_int_reg[type] & regval;
- 	if (!int_en)
--		return false;
-+		return 0;
- 
- 	/* Check if configured coupling matches provided type */
--	return adxl345_is_act_inact_ac(st, type);
-+	return adxl345_get_act_inact_ac(st, type, enabled);
- }
- 
- static int adxl345_set_act_inact_linkbit(struct adxl345_state *st,
- 					 enum adxl345_activity_type type,
- 					 bool en)
- {
--	int act_ac_en, inact_ac_en;
--	int act_en, inact_en;
-+	bool act_ac_en, inact_ac_en;
-+	bool act_en, inact_en;
-+	int ret;
- 
--	act_en = adxl345_is_act_inact_en(st, ADXL345_ACTIVITY);
--	if (act_en < 0)
--		return act_en;
-+	ret = adxl345_get_act_inact_en(st, ADXL345_ACTIVITY, &act_en);
-+	if (ret)
-+		return ret;
- 
--	act_ac_en = adxl345_is_act_inact_en(st, ADXL345_ACTIVITY_AC);
--	if (act_ac_en < 0)
--		return act_ac_en;
-+	ret = adxl345_get_act_inact_en(st, ADXL345_ACTIVITY_AC, &act_ac_en);
-+	if (ret)
-+		return ret;
- 
- 	if (type == ADXL345_INACTIVITY_FF) {
- 		inact_en = false;
- 	} else {
--		inact_en = adxl345_is_act_inact_en(st, ADXL345_INACTIVITY);
--		if (inact_en < 0)
--			return inact_en;
-+		ret = adxl345_get_act_inact_en(st, ADXL345_INACTIVITY, &inact_en);
-+		if (ret)
-+			return ret;
- 
--		inact_ac_en = adxl345_is_act_inact_en(st, ADXL345_INACTIVITY_AC);
--		if (inact_ac_en < 0)
--			return inact_ac_en;
-+		ret = adxl345_get_act_inact_en(st, ADXL345_INACTIVITY_AC,
-+					       &inact_ac_en);
-+		if (ret)
-+			return ret;
- 
- 		inact_en = inact_en || inact_ac_en;
- 	}
-@@ -656,6 +663,7 @@ static int adxl345_set_act_inact_en(struct adxl345_state *st,
- 	unsigned int axis_ctrl;
- 	unsigned int threshold;
- 	unsigned int period;
-+	bool matches;
- 	int ret;
- 
- 	if (cmd_en) {
-@@ -692,7 +700,10 @@ static int adxl345_set_act_inact_en(struct adxl345_state *st,
- 		 * current call attempts to turn off a DC-coupled activity, this
- 		 * inconsistency should be detected here.
- 		 */
--		ret = adxl345_get_act_inact_ac(st, type, &matches);
-+		ret = adxl345_get_act_inact_ac(st, type, &matches);
- 		if (ret)
- 			return ret;
- 		if (!matches)
- 			return 0;
- 	}
- 
-@@ -1174,14 +1185,23 @@ static int adxl345_read_mag_config(struct adxl345_state *st,
- 				   enum adxl345_activity_type type_act,
- 				   enum adxl345_activity_type type_inact)
- {
-+	bool enabled;
-+	int ret;
-+
- 	switch (dir) {
- 	case IIO_EV_DIR_RISING:
--		ret = adxl345_get_act_inact_en(st, type_act, &enabled);
-+		ret = adxl345_get_act_inact_en(st, type_act, &enabled);
- 		break;
- 	case IIO_EV_DIR_FALLING:
--		ret = adxl345_get_act_inact_en(st, type_inact, &enabled);
-+		ret = adxl345_get_act_inact_en(st, type_inact, &enabled);
- 		break;
- 	default:
- 		return -EINVAL;
- 	}
-+	if (ret)
-+		return ret;
-+
- 	return enabled;
- }
- 
- static int adxl345_write_mag_config(struct adxl345_state *st,
-
-base-commit: 28691515f54f03f23636cbf1ee2cd60fc31e2353
--- 
-2.50.1 (Apple Git-155)
