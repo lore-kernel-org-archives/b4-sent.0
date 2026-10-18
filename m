@@ -1,60 +1,131 @@
-From: George Christidis <gxristidis@gmail.com>
-Date: Sun, 18 Oct 2026 18:56:31 +0200
-Subject: [PATCH] ALSA: hda/realtek: Fix headset mic on ASUS Zenbook 14
- UX3402VA
+From: Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+Date: Sun, 18 Oct 2026 21:29:32 +0300
+Subject: [PATCH] drm/msm/a6xx: Don't set GPU freq before the GMU freq table
+ is built
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261018-for-linus-v1-1-4d8e9ff27d89@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QpAMBSA4VfRubbaVkZeRS6MM4402jEpeXfD5
- Vd//wWMgZChzi4IeBDT6hNUnkE/dX5EQUMyaKmNkqoSbg1iIR9ZaGt1aWRnC2cg9VtAR+f3atr
- fHO2M/f4O4L4f5zB/zG0AAAA=
-X-Change-ID: 20261018-for-linus-2bb2760ab5f6
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, George Christidis <gxristidis@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792342594; l=1568;
- i=gxristidis@gmail.com; s=20261018; h=from:subject:message-id;
- bh=WO42s5RZ6hbZHX1anwLnUs6RiGT8aq0KXyrmR3Fn9vI=;
- b=QgWJrj9Qpp1fCpRoh16U+axun5rMtlsLJ/obgxrMZptprt+QU8kMl0U/dMuYYg3D9Y0nsg0hy
- p0h9w83tomhAJA7xDeWYteWFx+8QV5fZZetdGYyjRhH+OnU7W0ftD9Q
-X-Developer-Key: i=gxristidis@gmail.com; a=ed25519;
- pk=LWp/LBe13KlT/70ZpW3a73MV3ESP4a0DmOo2Zrz0Dhg=
-X-Endpoint-Received: by B4 Relay for gxristidis@gmail.com/20261018 with auth_id=1227
+Message-Id: <20261018-msm-gmu-freq-guard-v1-1-dd92dcccee86@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgLJHQq5QuYpzEEWJ1pikF8
+ e5N6/It/t9BSZgUbs0OQm9Wfi4V5tJAmPySCHmshq7tetMah1kzplwwCm2YipcRyfrgrtaZOFi
+ o4SoU+fOf3h+ntQwzhdfvBMfxBbuZL5F2AAAA
+X-Change-ID: 20261018-msm-gmu-freq-guard-e5ac83581fb5
+To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792348172; l=4160;
+ i=eng.m7mdhashim.1@gmail.com; s=20261018; h=from:subject:message-id;
+ bh=4u668IecDd1UekaSTwsKFOC3XIkk1vPT8fcmnCTf8Hk=;
+ b=uJCnknCpmYyjxARyh20Jf9ipZVqQKQNP+stUYUqzspq+FIqGyzszrghTb9KDeTefvvSRYScFW
+ VXemMVvY6b6DlN7D6aTi9gM9Fk9gPikey3/VkBcBwpEeO/37UyQtp+U
+X-Developer-Key: i=eng.m7mdhashim.1@gmail.com; a=ed25519;
+ pk=nadicxm5lJrpr6u2tkxbYV+wi8bWOYqheGU3HolXoXA=
+X-Endpoint-Received: by B4 Relay for eng.m7mdhashim.1@gmail.com/20261018 with auth_id=1228
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The UX3402VA (1043:16a3) BIOS leaves pin 0x19 unconfigured, so the
-headset mic does not work. Use ALC294_FIXUP_ASUS_SPI_HEADSET_MIC like
-the UX3405MA, it sets up the mic and keeps the CS35L41 speaker fixup.
+a6xx_gpu_init() registers devfreq through adreno_gpu_init() ->
+msm_gpu_init() -> msm_devfreq_init(), and only afterwards calls
+a6xx_gmu_init(), which fills gmu->gpu_freqs[] and sets
+gmu->nr_gpu_freqs. The devfreq sysfs node is visible in that window,
+so a write to min_freq or max_freq can reach a6xx_gmu_set_freq() while
+nr_gpu_freqs is still 0.
 
-Tested on a UX3402VA: headset mic, internal mic and speakers work.
+The lookup loop then compares a u32 perf_index against
+gmu->nr_gpu_freqs - 1. With a count of 0 the bound converts to
+UINT_MAX, so the loop reads past the end of gpu_freqs[] until it hits
+unmapped memory. It faults with devfreq's lock held, so every later
+GPU user blocks and the machine hangs.
 
+This was hit at boot on an X1P42100 (Adreno X1-45) laptop, where a udev
+rule wrote min_freq as soon as the devfreq device appeared:
+
+  Unable to handle kernel paging request at virtual address ffff000b80000000
+  Internal error: Oops: 0000000096000005 [#1]  SMP
+  CPU: 0 UID: 0 PID: 487 Comm: (udev-worker) Tainted: G        W  O
+  Hardware name: SAMSUNG ELECTRONICS CO., LTD. Galaxy Book4 Edge/NP750XQA-KB2US
+  pc : a6xx_gmu_set_freq+0x74/0x2a0 [msm]
+  lr : a6xx_gmu_set_freq+0x3c/0x2a0 [msm]
+  ...
+  x4 : 00000000ffffffff ...
+
+x4 holds the wrapped loop bound. The faulting address is 1 GiB
+aligned, which matches a linear read running off the end of the
+linear map.
+
+Return early while the table is empty. The request is not lost: the
+limit is kept as a PM QoS request, and devfreq applies it the next time
+it re-evaluates its target, for example when the GPU resumes. The root
+cause is the init ordering, and registering devfreq after
+a6xx_gmu_init() would also close the window. This guard is the smaller
+change and is easy to backport.
+
+Fixes: a2c3c0a54d4c ("drm/msm/a6xx: Add devfreq support for a6xx")
 Cc: stable@vger.kernel.org
-Signed-off-by: George Christidis <gxristidis@gmail.com>
+Assisted-by: LLM
+Signed-off-by: Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
 ---
- sound/hda/codecs/realtek/alc269.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+How this was found and tested:
 
-diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
-index 1623cf926..cea8c7091 100644
---- a/sound/hda/codecs/realtek/alc269.c
-+++ b/sound/hda/codecs/realtek/alc269.c
-@@ -7867,7 +7867,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
- 	SND_PCI_QUIRK(0x1043, 0x1663, "ASUS GU603ZI/ZJ/ZQ/ZU/ZV", ALC285_FIXUP_ASUS_HEADSET_MIC),
- 	SND_PCI_QUIRK(0x1043, 0x1664, "ASUS ExpertBook PM3406CHA", ALC256_FIXUP_ASUS_PM3406CHA),
- 	SND_PCI_QUIRK(0x1043, 0x1683, "ASUS UM3402YAR", ALC287_FIXUP_CS35L41_I2C_2),
--	SND_PCI_QUIRK(0x1043, 0x16a3, "ASUS UX3402VA", ALC245_FIXUP_CS35L41_SPI_2),
-+	SND_PCI_QUIRK(0x1043, 0x16a3, "ASUS UX3402VA", ALC294_FIXUP_ASUS_SPI_HEADSET_MIC),
- 	SND_PCI_QUIRK(0x1043, 0x16b2, "ASUS GU603", ALC289_FIXUP_ASUS_GA401),
- 	SND_PCI_QUIRK(0x1043, 0x16d3, "ASUS UX5304VA", ALC245_FIXUP_CS35L41_SPI_2),
- 	SND_PCI_QUIRK(0x1043, 0x16e3, "ASUS UX50", ALC269_FIXUP_STEREO_DMIC),
+- Seen twice at boot (2026-10-03 and 2026-10-05) on a Samsung Galaxy
+  Book4 Edge 15" (NP750XQA, X1P42100 / Adreno X1-45) running a
+  downstream 7.2.7 tree with an out-of-tree device tree. Both oopses
+  were at a6xx_gmu_set_freq+0x74, about 9 s after power-on, from a udev
+  rule writing min_freq when the devfreq device appeared. The log ends
+  at "Call trace:" because the machine hung.
+- With this guard applied to the same downstream tree, the laptop has
+  booted 20 times since 2026-10-14 with no oops. That shows the guard
+  does no harm. It does not prove it closes the race, because the udev
+  rule was moved to a delayed systemd unit on 2026-10-06 and the window
+  is narrow.
+- On v7.3-rc7 the change is only build-tested (arm64 defconfig, W=1).
+  It has not been run on mainline or msm-next. The function is
+  identical in v7.3-rc7, msm-next and msm-fixes, so it should apply to
+  any of them.
+
+If you'd rather fix the ordering, so devfreq is registered after
+a6xx_gmu_init(), I'm happy to rework it that way.
+
+AI disclosure: an LLM coding assistant helped read the oops, trace the
+init ordering and draft this commit message. I reviewed the result,
+tested it as described above, and take responsibility for it.
+---
+ drivers/gpu/drm/msm/adreno/a6xx_gmu.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
+index 6d49c51df..b1cbe5d34 100644
+--- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
++++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
+@@ -164,6 +164,14 @@ void a6xx_gmu_set_freq(struct msm_gpu *gpu, struct dev_pm_opp *opp,
+ 	unsigned long gpu_freq;
+ 	int ret = 0;
+ 
++	/*
++	 * devfreq is registered before a6xx_gmu_init() builds the freq table,
++	 * so a min_freq write can land here with nr_gpu_freqs == 0. The u32
++	 * bound below would then wrap to UINT_MAX and walk off gpu_freqs[].
++	 */
++	if (!gmu->nr_gpu_freqs)
++		return;
++
+ 	gpu_freq = dev_pm_opp_get_freq(opp);
+ 
+ 	if (gpu_freq == gmu->freq)
 
 ---
-base-commit: 8e8cd9a4c6dc006e9bd51b8ad0079fb4576b48d3
-change-id: 20261018-for-linus-2bb2760ab5f6
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+change-id: 20261018-msm-gmu-freq-guard-e5ac83581fb5
 
 Best regards,
 --  
-George Christidis <gxristidis@gmail.com>
+Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
 
