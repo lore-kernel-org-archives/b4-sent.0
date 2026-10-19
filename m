@@ -1,136 +1,113 @@
-From: Ben Grisdale <bengris32@protonmail.ch>
-Date: Mon, 19 Oct 2026 01:40:04 +0100
-Subject: [PATCH 8/8] arm64: dts: mediatek: Add Amazon Echo Dot (2016)
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Sun, 18 Oct 2026 21:16:31 -0500
+Subject: [PATCH] ALSA: hda/hdmi: Enable HBR capability
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-arm64-initial-support-for-mediatek-mt8163-soc-v1-8-f2462b2d2437@protonmail.ch>
-References: <20261019-arm64-initial-support-for-mediatek-mt8163-soc-v1-0-f2462b2d2437@protonmail.ch>
-In-Reply-To: <20261019-arm64-initial-support-for-mediatek-mt8163-soc-v1-0-f2462b2d2437@protonmail.ch>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Sean Wang <sean.wang@mediatek.com>, Thomas Gleixner <tglx@kernel.org>, 
- Radu Rendec <radu@rendec.net>, Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- linux-serial@vger.kernel.org, linux-watchdog@vger.kernel.org, 
- Ben Grisdale <bengris32@protonmail.ch>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792370441; l=2808;
- i=bengris32@protonmail.ch; s=20261018; h=from:subject:message-id;
- bh=lMdVcco71nADP8HucTPUNLICr3LWil3QPPZ2t6j8t8U=;
- b=p4XX5KEds0C6IcSEby9uWvdCn4txfVKinsxi/2DQ5ZRLYb9RgT70XEdkOHdcYivkPI4/n9b7y
- 3p1qPTT6D03AMCILGR/WhFqofuQ/WbM9Q2F+58kZ03UcMaOrEkHGi4P
-X-Developer-Key: i=bengris32@protonmail.ch; a=ed25519;
- pk=4ewFRC2yNph/tXokHVzIDlgOA9Hxecf1AlBuD4eOnaU=
-X-Endpoint-Received: by B4 Relay for bengris32@protonmail.ch/20261018 with auth_id=1233
+Message-Id: <20261018-tegra-hda-hbr-v1-1-b8bb1f1d8d15@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA0ML3ZLU9KJE3YwUIE4q0jU2NTQwNzK2SDIzslQC6ikoSk3LrACbFx1
+ bWwsAJ3XdHV8AAAA=
+X-Change-ID: 20261018-tegra-hda-hbr-35107238b629
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-sound@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792376192; l=2810;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=qFmrnBw4EOakmFV/4lcw6Dgrh0QXmQvGG5R48W8S4OE=;
+ b=MCd4DdasK9WMbWfwoGf3K0UTwFYxA5dmqIglrh3xsaWwgcbDGBNU2Ad7l+/GenQhjuaP//OIq
+ pukPE9DL1XFCKu3MBao0W0SYbLXq+zsQxA4wMx78qJxSeNcmkaGlxn4
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a device tree for the Amazon Echo Dot (2nd generation, 2016),
-codenamed "biscuit", which is based on the MediaTek MT8163 SoC.
+Tegra HDA does not set the HBR capability bit, however every SoC since
+Tegra114 does support HBR. Override the hbr setup function for these
+SoCs to unconditionally enable the feature. Since Tegra30 does not
+support HBR, this function will report invalid on that SoC.
 
-This is enough to boot to a shell over UART0. The UART pins are assumed
-to be configured by the bootloader, as there is no pinctrl support yet.
-
-Signed-off-by: Ben Grisdale <bengris32@protonmail.ch>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/mediatek/Makefile              |  1 +
- .../boot/dts/mediatek/mt8163-amazon-biscuit.dts    | 68 ++++++++++++++++++++++
- 2 files changed, 69 insertions(+)
+Before this, any attempt to open an hbr stream resulted in a rejection
+on Tegra hardware. Looking at the downstream support, that just bypassed
+the capbility check for all supported Tegra hardware in the common code.
+This replicates that in a driver specific hook.
 
-diff --git a/arch/arm64/boot/dts/mediatek/Makefile b/arch/arm64/boot/dts/mediatek/Makefile
-index a86fb313b1a9..adf02b9f234b 100644
---- a/arch/arm64/boot/dts/mediatek/Makefile
-+++ b/arch/arm64/boot/dts/mediatek/Makefile
-@@ -92,6 +92,7 @@ mt7988a-bananapi-bpi-r4-pro-8x-sd-cn18-dtbs := \
- 	mt7988a-bananapi-bpi-r4-pro-cn13.dtbo \
- 	mt7988a-bananapi-bpi-r4-pro-cn18.dtbo
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt7988a-bananapi-bpi-r4-pro-8x-sd-cn18.dtb
-+dtb-$(CONFIG_ARCH_MEDIATEK) += mt8163-amazon-biscuit.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt8167-pumpkin.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt8173-elm.dtb
- dtb-$(CONFIG_ARCH_MEDIATEK) += mt8173-elm-hana.dtb
-diff --git a/arch/arm64/boot/dts/mediatek/mt8163-amazon-biscuit.dts b/arch/arm64/boot/dts/mediatek/mt8163-amazon-biscuit.dts
-new file mode 100644
-index 000000000000..5fb5d59e4ed2
---- /dev/null
-+++ b/arch/arm64/boot/dts/mediatek/mt8163-amazon-biscuit.dts
-@@ -0,0 +1,68 @@
-+// SPDX-License-Identifier: GPL-2.0-only OR MIT
-+/*
-+ * Copyright (c) 2026 Ben Grisdale <bengris32@protonmail.ch>
-+ */
-+
-+/dts-v1/;
-+#include "mt8163.dtsi"
-+
-+/ {
-+	model = "Amazon Echo Dot (2016)";
-+	compatible = "amazon,biscuit", "mediatek,mt8163";
-+	chassis-type = "embedded";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:921600n8";
-+	};
-+
-+	firmware {
-+		optee {
-+			compatible = "linaro,optee-tz";
-+			method = "smc";
-+		};
-+	};
-+
-+	memory@40000000 {
-+		device_type = "memory";
-+		reg = <0 0x40000000 0 0x20000000>;
-+	};
-+
-+	reserved-memory {
-+		ranges;
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+
-+		/* 192 KiB reserved for ARM Trusted Firmware (BL31) */
-+		secmon@43000000 {
-+			reg = <0 0x43000000 0 0x30000>;
-+			no-map;
-+		};
-+
-+		/* 16 KiB reserved for SPM firmware */
-+		spm-pcm@43030000 {
-+			reg = <0 0x43030000 0 0x4000>;
-+			no-map;
-+		};
-+
-+		/*
-+		 * 6 MiB reserved for OP-TEE (BL32)
-+		 * +-----------------------+ 0x4380_0000
-+		 * |      SHMEM 2MiB       |
-+		 * +-----------------------+ 0x4360_0000
-+		 * |     TZDRAM 4MiB       |
-+		 * +-----------------------+ 0x4320_0000
-+		 */
-+		optee@43200000 {
-+			reg = <0 0x43200000 0 0x600000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
+This has been tested on a SHIELD TV 2019 Pro trying to bitstream an
+Atmos demo video. It attempts to play, but mostly just underruns the
+entire time, with a few spurts of correct noise. My expectation is that
+issue is userspace, since that is a WIP android audio hal. But even if
+there are more kernel problems, this should be correct as a standalone
+change.
+---
+ sound/hda/codecs/hdmi/tegrahdmi.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
+diff --git a/sound/hda/codecs/hdmi/tegrahdmi.c b/sound/hda/codecs/hdmi/tegrahdmi.c
+index ebb6410a48313..c4d8d8a570542 100644
+--- a/sound/hda/codecs/hdmi/tegrahdmi.c
++++ b/sound/hda/codecs/hdmi/tegrahdmi.c
+@@ -227,6 +227,41 @@ static int nvhdmi_chmap_validate(struct hdac_chmap *chmap,
+ 	return 0;
+ }
+ 
++static int tegrahdmi_pin_hbr_setup(struct hda_codec *codec, hda_nid_t pin_nid,
++				   int dev_id, bool hbr)
++{
++	int pinctl, new_pinctl;
++
++	// Tegra 3 does not support HBR
++	if (codec->core.vendor_id == 0x10de0020)
++		return -EINVAL;
++
++	snd_hda_set_dev_select(codec, pin_nid, dev_id);
++	pinctl = snd_hda_codec_read(codec, pin_nid, 0,
++				    AC_VERB_GET_PIN_WIDGET_CONTROL, 0);
++
++	if (pinctl < 0)
++		return hbr ? -EINVAL : 0;
++
++	new_pinctl = pinctl & ~AC_PINCTL_EPT;
++	if (hbr)
++		new_pinctl |= AC_PINCTL_EPT_HBR;
++	else
++		new_pinctl |= AC_PINCTL_EPT_NATIVE;
++
++	codec_dbg(codec, "%s: NID=0x%x, %spinctl=0x%x\n",
++		    __func__, pin_nid,
++		    pinctl == new_pinctl ? "" : "new-",
++		    new_pinctl);
++
++	if (pinctl != new_pinctl)
++		snd_hda_codec_write(codec, pin_nid, 0,
++				    AC_VERB_SET_PIN_WIDGET_CONTROL,
++				    new_pinctl);
++
++	return 0;
++}
++
+ static int tegra_hdmi_init(struct hda_codec *codec)
+ {
+ 	struct hdmi_spec *spec = codec->spec;
+@@ -255,6 +290,8 @@ static int tegra_hdmi_init(struct hda_codec *codec)
+ 	spec->chmap.ops.chmap_validate = nvhdmi_chmap_validate;
+ 	spec->nv_dp_workaround = true;
+ 
++	spec->ops.pin_hbr_setup = tegrahdmi_pin_hbr_setup;
++
+ 	return 0;
+ }
+ 
+
+---
+base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
+change-id: 20261018-tegra-hda-hbr-35107238b629
+
+Best regards,
 -- 
-2.56.0
+Aaron Kling <webgeek1234@gmail.com>
 
