@@ -1,143 +1,80 @@
-From: Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>
-Date: Mon, 19 Oct 2026 22:08:16 +0300
-Subject: [PATCH v8] power: supply: bq27xxx: detect bq27541 behind bq27411
- compatible
+From: Travis Howard <thoward@lafayetteinstrument.com>
+Date: Mon, 19 Oct 2026 20:03:10 +0000
+Subject: [PATCH net] tg3: Add Datto SIRIS 5 1U Server to restart AER quirk
+ table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261019-master-v8-1-2517e41c8992@gmail.com>
-References: <20261019-master-v8-0-2517e41c8992@gmail.com>
-In-Reply-To: <20261019-master-v8-0-2517e41c8992@gmail.com>
-To: linux-pm@vger.kernel.org
-Cc: pali@kernel.org, sre@kernel.org, afd@ti.com, 
- konrad.dybcio@oss.qualcomm.com, david@ixit.cz, krzk@kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792436896; l=3577;
- i=rinat.muhamedgaliev@gmail.com; s=default; h=from:subject:message-id;
- bh=3741MIanP4eFbNiDO101+hIyxN0viS5/BgzVbL3dkKk=;
- b=icd4FdYOvvtF0nDiVUfRgQBEguyYF8F9b5Li4YWGRUthZ7ALJJFjXznzxol7XHQlLHKx8W53k
- DDTMgr8NLuHBV/sv1jZ9mFJxxduTgrMkGtwkC3aEAB46LBD+NKs6k5L
-X-Developer-Key: i=rinat.muhamedgaliev@gmail.com; a=ed25519;
- pk=qkYQO8LRlRErWiLzlpK8jHbRIxv8+7v06+ytcxX8mec=
-X-Endpoint-Received: by B4 Relay for rinat.muhamedgaliev@gmail.com/default with auth_id=1072
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261019-tg3-datto-aer-quirk-v1-1-f0eccfb2ab5d@lafayetteinstrument.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBG4avIrB1IDEjtVUoXIfm1QyHqJEohe
+ PcGl9/ivUoZKsj07CopTsmypgbbdxQ+Pi1gic00mGG0xk5cFsfRl7Kyh/J+iH7ZBvcwcJNDGKm
+ Vm2KW3319UUKh93X9AT5jtKFqAAAA
+X-Change-ID: 20261019-tg3-datto-aer-quirk-1c380e393ec6
+To: Pavan Chebbi <pavan.chebbi@broadcom.com>, 
+ Michael Chan <mchan@broadcom.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Lenny Szubowicz <lszubowi@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Travis Howard <thoward@lafayetteinstrument.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792440210; l=1864;
+ i=thoward@lafayetteinstrument.com; s=20261019; h=from:subject:message-id;
+ bh=FQAa09JcOMIFgEiW9Oki1Yij0dC7wNyid9KU2wn2HgE=;
+ b=kwubS8wgB9x8wOWlt3wML8AyxENUtJiqe2UyVQnlXbOrY99ByBcGu4WttrdIZ+yg0sKqXNGYI
+ VHordkMzvsNCM2L7ye3M719/4m6Svo+lIqNrBAuESWBWz8/CxWsqvcY
+X-Developer-Key: i=thoward@lafayetteinstrument.com; a=ed25519;
+ pk=rtL9URAe9ViV6WvIEtBEMb/2i9C1CKXa5RwTxC6I6Vw=
+X-Endpoint-Received: by B4 Relay for thoward@lafayetteinstrument.com/20261019 with auth_id=1243
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-OnePlus 6 and 6T replacement battery packs may contain either a bq27411
-or a bq27541 fuel gauge at I2C address 0x55. The device tree currently
-identifies the gauge as bq27411, but a bq27541 uses a different register
-map and then reports invalid battery values.
+The Datto SIRIS 5 1U Server is a Dell OEMR XL R640 (Dell's OEM-ready
+variant of the PowerEdge R640) sold under Datto's identity. Its DMI
+strings report sys_vendor "datto" and product_name "SIRIS 5 1U Server",
+so it does not match the existing "PowerEdge R640" entry in
+tg3_restart_aer_quirk_table.
 
-During setup, query the DeviceType control subcommand for bq27411 and
-bq27541. Keep the profile whose DeviceType matches the compatible, or
-switch to the profile returned by the fuel gauge. This retains the
-established DT ABI and supports replacement packs without introducing a
-generic compatible.
+As on the PowerEdge R640, a system restart triggers a fatal PCIe AER
+on the BCM5720 during ACPI _PTS for S5, which the iDRAC logs as
+PCI1318 and which hangs the reboot. Power off is unaffected.
 
-Keep this logic in the bus-neutral core so it uses the existing register
-maps and control-register access helpers.
+Clearing the same PCI_EXP_DEVCTL error-reporting bits on both BCM5720
+functions from userspace immediately before restart allows the system
+to reboot normally, confirming the quirk applies to this platform.
 
-Tested on OnePlus 6T (fajita) with DeviceType 0x0541: voltage, state of
-charge, and temperature were reported correctly. Testing on hardware with
-DeviceType 0x0421 would be appreciated.
-
-Signed-off-by: Rinat Muhamedgaliev <rinat.muhamedgaliev@gmail.com>
+Fixes: e0efe83ed325 ("tg3: Disable tg3 PCIe AER on system reboot")
+Signed-off-by: Travis Howard <thoward@lafayetteinstrument.com>
 ---
- drivers/power/supply/bq27xxx_battery.c | 61 ++++++++++++++++++++++++++++++++++
- 1 file changed, 61 insertions(+)
+Tested on the affected system (Ubuntu 26.04, 7.0.0-38-generic) with
+this change applied to tg3: reboot completes and no PCI1318 is logged.
+Without it, every restart hangs with PCI1318 logged against the BCM5720.
+---
+ drivers/net/ethernet/broadcom/tg3.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/power/supply/bq27xxx_battery.c b/drivers/power/supply/bq27xxx_battery.c
-index 8bf048fbd36a..57b51348ff2b 100644
---- a/drivers/power/supply/bq27xxx_battery.c
-+++ b/drivers/power/supply/bq27xxx_battery.c
-@@ -86,6 +86,10 @@
- #define BQ27XXX_SET_CFGUPDATE		0x13
- #define BQ27XXX_SOFT_RESET		0x42
- #define BQ27XXX_RESET			0x41
-+#define BQ27XXX_DEVICE_TYPE		0x0001
-+
-+#define BQ27411_DEVICE_TYPE		0x0421
-+#define BQ27541_DEVICE_TYPE		0x0541
+diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
+index 8b6806a79edf..b6aa10f2bdf7 100644
+--- a/drivers/net/ethernet/broadcom/tg3.c
++++ b/drivers/net/ethernet/broadcom/tg3.c
+@@ -18229,6 +18229,12 @@ static const struct dmi_system_id tg3_restart_aer_quirk_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "PowerEdge R750"),
+ 		},
+ 	},
++	{
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "datto"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "SIRIS 5 1U Server"),
++		},
++	},
+ 	{}
+ };
  
- #define BQ27XXX_RS			(20) /* Resistor sense mOhm */
- #define BQ27XXX_POWER_CONSTANT		(29200) /* 29.2 µV^2 * 1000 */
-@@ -1141,6 +1145,56 @@ static inline int bq27xxx_write(struct bq27xxx_device_info *di, int reg_index,
- 	return ret;
- }
- 
-+static int bq27xxx_battery_check_device_type(struct bq27xxx_device_info *di)
-+{
-+	enum bq27xxx_chip detected_chip;
-+	int expected_type;
-+	int ret;
-+
-+	/* Add fuel gauges with supported DeviceType reporting to this list. */
-+	switch (di->chip) {
-+	case BQ27411:
-+		expected_type = BQ27411_DEVICE_TYPE;
-+		break;
-+	case BQ27541:
-+		expected_type = BQ27541_DEVICE_TYPE;
-+		break;
-+	default:
-+		return 0;
-+	}
-+
-+	ret = bq27xxx_write(di, BQ27XXX_REG_CTRL, BQ27XXX_DEVICE_TYPE,
-+			    false);
-+	if (ret < 0)
-+		return ret;
-+
-+	ret = bq27xxx_read(di, BQ27XXX_REG_CTRL, false);
-+	if (ret < 0)
-+		return ret;
-+
-+	switch (ret) {
-+	case BQ27411_DEVICE_TYPE:
-+		detected_chip = BQ27411;
-+		break;
-+	case BQ27541_DEVICE_TYPE:
-+		detected_chip = BQ27541;
-+		break;
-+	default:
-+		dev_err(di->dev, "unrecognized DeviceType 0x%04x\n", ret);
-+		return -ENODEV;
-+	}
-+
-+	if (detected_chip == di->chip)
-+		return 0;
-+
-+	dev_warn(di->dev,
-+		 "detected DeviceType 0x%04x instead of expected 0x%04x\n",
-+		 ret, expected_type);
-+	di->chip = detected_chip;
-+
-+	return 0;
-+}
-+
- static inline int bq27xxx_read_block(struct bq27xxx_device_info *di, int reg_index,
- 				     u8 *data, int len)
- {
-@@ -2089,10 +2143,17 @@ int bq27xxx_battery_setup(struct bq27xxx_device_info *di)
- 		.of_node = di->dev->of_node,
- 		.drv_data = di,
- 	};
-+	int ret;
- 
- 	INIT_DELAYED_WORK(&di->work, bq27xxx_battery_poll);
- 	mutex_init(&di->lock);
- 
-+	di->regs       = bq27xxx_chip_data[di->chip].regs;
-+
-+	ret = bq27xxx_battery_check_device_type(di);
-+	if (ret)
-+		return ret;
-+
- 	di->regs       = bq27xxx_chip_data[di->chip].regs;
- 	di->unseal_key = bq27xxx_chip_data[di->chip].unseal_key;
- 	di->dm_regs    = bq27xxx_chip_data[di->chip].dm_regs;
 
+---
+base-commit: 78731b46967e3e7102b5cd5062bef185f3404b5c
+change-id: 20261019-tg3-datto-aer-quirk-1c380e393ec6
+
+Best regards,
 -- 
-2.56.0
+Travis Howard <thoward@lafayetteinstrument.com>
 
