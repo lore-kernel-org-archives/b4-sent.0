@@ -1,11 +1,11 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Date: Mon, 19 Oct 2026 13:33:27 +0200
-Subject: [PATCH v2 1/4] ceph: report the requested length in the netfs read
- metrics
+Date: Mon, 19 Oct 2026 13:33:28 +0200
+Subject: [PATCH v2 2/4] ceph: drop the unused subvolume metrics debug
+ counters
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-ceph-metrics-percpu-v2-1-1fa5229b00b8@clyso.com>
+Message-Id: <20261019-ceph-metrics-percpu-v2-2-1fa5229b00b8@clyso.com>
 References: <20261019-ceph-metrics-percpu-v2-0-1fa5229b00b8@clyso.com>
 In-Reply-To: <20261019-ceph-metrics-percpu-v2-0-1fa5229b00b8@clyso.com>
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
@@ -13,48 +13,167 @@ To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>,
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Dan van der Ster <dan.vanderster@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792409634; l=1451;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792409634; l=5945;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=CzKRsfVGnXiWaBtWsr/Fqsu917e+WRvEXbKXVxY/rmA=;
- b=D3IIpAx4UkwduCGz3ETWsaXRSCBl5gQQhmehxEGZPmscvAXWF54I4egX4BD6RYhtZl/Yl4o7E
- DQr1eqvFAwjAwSt2SP8/dxB9PrxOujPBhmF9g3JIV1/exL8pF61gBVZ
+ bh=gaWMTABAxeJ++HgckwUw1lcVL3j/VBtD0PVyKfJakCQ=;
+ b=iIpCd8pEENMzR8g3SHkRuHKGWS5Iji/5zVWosP5r5VCifYSuhssu1mwJgvYWWj68Zrp4EbxPE
+ 4zSOkDHUmL/ANWbeTkjxDL/aaqfjFpjTdheb2qAmhuLU5u7NIWNiNen
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-finish_netfs_read() passes osd_data->length to
-ceph_update_read_metrics(), but a buffered read of an unencrypted
-file attaches its data as CEPH_OSD_DATA_TYPE_ITER, and
-ceph_osd_iter_init() only sets the type and the iov_iter.  length
-shares a union with the iov_iter, so the read size metrics record
-some unrelated iov_iter field, which is normally 0, for every page
-cache read, and metrics/size is useless for buffered reads.
+ceph_subvolume_metrics_record_io() bumps tracker->record_calls on
+every OSD read and write completion, plus record_disabled or
+record_no_subvol when it bails out, and ceph_subvolume_metrics_record()
+adds to the total_read/write_ops/bytes counters on top of its own
+per-subvolume ones.  All of them are atomic64_t shared by every CPU
+of the mount, so even with subvolume metrics disabled each I/O
+completion dirties a cache line that every other completion on the
+client also writes.
 
-Report op->extent.length, the length the OSD read asked for, which is
-set for every data type and equals osd_data->length for the page
-vector that encrypted files still use.
+Nothing ever reads these counters, nor the snapshot_* ones: debugfs
+prints the per-subvolume entries and the totals kept under
+subvol_metrics_last_mutex.  Remove them.
 
-Fixes: 4de77f25fd85 ("ceph: use osd_req_op_extent_osd_iter for netfs reads")
+Fixes: b1137e0b3d4b ("ceph: add subvolume metrics collection and reporting")
 Reported-by: Dan van der Ster <dan.vanderster@clyso.com>
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- fs/ceph/addr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ceph/subvolume_metrics.c | 34 ++++------------------------------
+ fs/ceph/subvolume_metrics.h | 21 ---------------------
+ 2 files changed, 4 insertions(+), 51 deletions(-)
 
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index dd2bd8ed2424..8500d72702d6 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -236,7 +236,7 @@ static void finish_netfs_read(struct ceph_osd_request *req)
- 	ceph_blog_enter_gfp(fsc, &__ji, GFP_ATOMIC);
+diff --git a/fs/ceph/subvolume_metrics.c b/fs/ceph/subvolume_metrics.c
+index 03fda1f9257b..895878a49ea7 100644
+--- a/fs/ceph/subvolume_metrics.c
++++ b/fs/ceph/subvolume_metrics.c
+@@ -39,16 +39,6 @@ void ceph_subvolume_metrics_init(struct ceph_subvolume_metrics_tracker *tracker)
+ 	tracker->tree = RB_ROOT_CACHED;
+ 	tracker->nr_entries = 0;
+ 	tracker->enabled = false;
+-	atomic64_set(&tracker->snapshot_attempts, 0);
+-	atomic64_set(&tracker->snapshot_empty, 0);
+-	atomic64_set(&tracker->snapshot_failures, 0);
+-	atomic64_set(&tracker->record_calls, 0);
+-	atomic64_set(&tracker->record_disabled, 0);
+-	atomic64_set(&tracker->record_no_subvol, 0);
+-	atomic64_set(&tracker->total_read_ops, 0);
+-	atomic64_set(&tracker->total_read_bytes, 0);
+-	atomic64_set(&tracker->total_write_ops, 0);
+-	atomic64_set(&tracker->total_write_bytes, 0);
+ }
  
- 	ceph_update_read_metrics(&fsc->mdsc->metric, req->r_start_latency,
--				 req->r_end_latency, osd_data->length, err);
-+				 req->r_end_latency, op->extent.length, err);
+ static struct ceph_subvol_metric_rb_entry *
+@@ -196,14 +186,10 @@ void ceph_subvolume_metrics_record(struct ceph_subvolume_metrics_tracker *tracke
+ 			entry->write_ops++;
+ 			entry->write_bytes += size;
+ 			entry->write_latency_us += latency_us;
+-			atomic64_inc(&tracker->total_write_ops);
+-			atomic64_add(size, &tracker->total_write_bytes);
+ 		} else {
+ 			entry->read_ops++;
+ 			entry->read_bytes += size;
+ 			entry->read_latency_us += latency_us;
+-			atomic64_inc(&tracker->total_read_ops);
+-			atomic64_add(size, &tracker->total_read_bytes);
+ 		}
+ 		spin_unlock(&tracker->lock);
+ 		if (new_entry)
+@@ -227,8 +213,6 @@ int ceph_subvolume_metrics_snapshot(struct ceph_subvolume_metrics_tracker *track
+ 	if (!READ_ONCE(tracker->enabled))
+ 		return 0;
  
- 	boutc(cl, "result %d subreq->len=%zu i_size=%lld\n", req->r_result,
- 	      subreq->len, i_size_read(req->r_inode));
+-	atomic64_inc(&tracker->snapshot_attempts);
+-
+ 	spin_lock(&tracker->lock);
+ 	for (node = rb_first_cached(&tracker->tree); node; node = rb_next(node)) {
+ 		struct ceph_subvol_metric_rb_entry *entry =
+@@ -240,16 +224,12 @@ int ceph_subvolume_metrics_snapshot(struct ceph_subvolume_metrics_tracker *track
+ 	}
+ 	spin_unlock(&tracker->lock);
+ 
+-	if (!count) {
+-		atomic64_inc(&tracker->snapshot_empty);
++	if (!count)
+ 		return 0;
+-	}
+ 
+ 	snap = kcalloc(count, sizeof(*snap), GFP_NOFS);
+-	if (!snap) {
+-		atomic64_inc(&tracker->snapshot_failures);
++	if (!snap)
+ 		return -ENOMEM;
+-	}
+ 
+ 	spin_lock(&tracker->lock);
+ 	node = rb_first_cached(&tracker->tree);
+@@ -380,18 +360,12 @@ void ceph_subvolume_metrics_record_io(struct ceph_mds_client *mdsc,
+ 		return;
+ 
+ 	tracker = &mdsc->subvol_metrics;
+-	atomic64_inc(&tracker->record_calls);
+-
+-	if (!ceph_subvolume_metrics_enabled(tracker)) {
+-		atomic64_inc(&tracker->record_disabled);
++	if (!ceph_subvolume_metrics_enabled(tracker))
+ 		return;
+-	}
+ 
+ 	subvol_id = READ_ONCE(ci->i_subvolume_id);
+-	if (subvol_id == CEPH_SUBVOLUME_ID_NONE) {
+-		atomic64_inc(&tracker->record_no_subvol);
++	if (subvol_id == CEPH_SUBVOLUME_ID_NONE)
+ 		return;
+-	}
+ 
+ 	delta_us = ktime_to_us(ktime_sub(end, start));
+ 	if (delta_us <= 0)
+diff --git a/fs/ceph/subvolume_metrics.h b/fs/ceph/subvolume_metrics.h
+index 6f53ff726c75..8b901ae05e00 100644
+--- a/fs/ceph/subvolume_metrics.h
++++ b/fs/ceph/subvolume_metrics.h
+@@ -6,7 +6,6 @@
+ #include <linux/rbtree.h>
+ #include <linux/spinlock.h>
+ #include <linux/ktime.h>
+-#include <linux/atomic.h>
+ 
+ struct seq_file;
+ struct ceph_mds_client;
+@@ -38,32 +37,12 @@ struct ceph_subvol_metric_snapshot {
+  * @tree: Red-black tree of per-subvolume entries, keyed by subvolume_id
+  * @nr_entries: Number of entries currently in @tree
+  * @enabled: Whether collection is enabled (requires MDS feature support)
+- * @snapshot_attempts: Debug counter: total ceph_subvolume_metrics_snapshot() calls
+- * @snapshot_empty: Debug counter: snapshots that found no data to report
+- * @snapshot_failures: Debug counter: snapshots that failed to allocate memory
+- * @record_calls: Debug counter: total ceph_subvolume_metrics_record() calls
+- * @record_disabled: Debug counter: record calls skipped because disabled
+- * @record_no_subvol: Debug counter: record calls skipped (no subvolume_id)
+- * @total_read_ops: Cumulative read ops across all snapshots (never reset)
+- * @total_read_bytes: Cumulative bytes read across all snapshots (never reset)
+- * @total_write_ops: Cumulative write ops across all snapshots (never reset)
+- * @total_write_bytes: Cumulative bytes written across all snapshots (never reset)
+  */
+ struct ceph_subvolume_metrics_tracker {
+ 	spinlock_t lock;
+ 	struct rb_root_cached tree;
+ 	u32 nr_entries;
+ 	bool enabled;
+-	atomic64_t snapshot_attempts;
+-	atomic64_t snapshot_empty;
+-	atomic64_t snapshot_failures;
+-	atomic64_t record_calls;
+-	atomic64_t record_disabled;
+-	atomic64_t record_no_subvol;
+-	atomic64_t total_read_ops;
+-	atomic64_t total_read_bytes;
+-	atomic64_t total_write_ops;
+-	atomic64_t total_write_bytes;
+ };
+ 
+ void ceph_subvolume_metrics_init(struct ceph_subvolume_metrics_tracker *tracker);
 
 -- 
 2.53.0
