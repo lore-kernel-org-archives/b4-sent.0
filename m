@@ -1,81 +1,74 @@
-From: Ben Grisdale <bengris32@protonmail.ch>
-Date: Mon, 19 Oct 2026 15:18:35 +0100
-Subject: [PATCH] drm/mediatek: dsi: Fix handling of long packet reads
+From: Aiden Isik <aidenisik@member.fsf.org>
+Subject: [PATCH 0/3] Introduce Exynos5515 pinctrl support
+Date: Mon, 19 Oct 2026 15:41:29 +0100
+Message-Id: <20261019-for-next-lucky7-pinctrl-v1-0-0f77e94c70bc@member.fsf.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-mtk-dsi-long-read-v1-1-9bddcac1def5@protonmail.ch>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDuQiIp6ldKFSUYdf6JkbBHEu
- 5vq8lu8d4BQYBKokwMC/Vh48RH6lYDtG98RsouGVKWFVrrCeRvRCeO0+A4DNQ6z3NiSssqp0kD
- s1kAt7/fz/XksXzOQ3f4jOM8LrCgPOXUAAAA=
-X-Change-ID: 20261019-mtk-dsi-long-read-45bc8e49d08b
-To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- CK Hu <ck.hu@mediatek.com>, shaoming chen <shaoming.chen@mediatek.com>
-Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- stable@vger.kernel.org, Ben Grisdale <bengris32@protonmail.ch>
+X-B4-Tracking: v=1; b=H4sIABks1moC/yXMQQqDMBBA0avIrB0wwVj1KuKixkk7VaJMYrGId
+ 29sl2/x/wGBhClAmx0g9ObAi09QeQb2efcPQh6TQRe6UoVq0C2CnvaI82anzw1X9jbKjFU5OFO
+ aum60gVSvQo7337nr/w7b8CIbrx2c5xcZmt0LewAAAA==
+X-Change-ID: 20261019-for-next-lucky7-pinctrl-64bf54588925
+To: Krzysztof Kozlowski <krzk@kernel.org>, 
+ Sylwester Nawrocki <s.nawrocki@samsung.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Linus Walleij <linusw@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
+ Tomasz Figa <tomasz.figa@gmail.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aiden Isik <aidenisik@member.fsf.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792419545; l=1720;
- i=bengris32@protonmail.ch; s=20261018; h=from:subject:message-id;
- bh=utZT4oI0+pnVMGUZYDb6g2+lkw+nMH2Vwu5HGoj/nEc=;
- b=UZfIFZ6FmaVoqnOm2wvWHsyQ6MhVLAPWmfmeo+EP9rxXaQKQ7Ua0xrmAJYM6XA0NDsMoO4A7e
- UD47LZefiDVCzyt+xu5j2Xr/kOEfbS0kRlSJ7eMSRPbqlWl4NybXCd1
-X-Developer-Key: i=bengris32@protonmail.ch; a=ed25519;
- pk=4ewFRC2yNph/tXokHVzIDlgOA9Hxecf1AlBuD4eOnaU=
-X-Endpoint-Received: by B4 Relay for bengris32@protonmail.ch/20261018 with auth_id=1233
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1181;
+ i=aidenisik@member.fsf.org; h=from:subject:message-id;
+ bh=6kpynfd1XwdzrYVYTdeaXZTq3IwSFC6OGWqTXpdz3k8=;
+ b=owEBiQJ2/ZANAwAIAUknAbLEetfrAcsmYgBq1iwavoG8bk1Ptimk9zQV0SQe2ytajaJBH/G2P
+ ibOACjdA/uJAk8EAAEIADkWIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCatYsGhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQSScBssR61+th1w//Ro7tCNpouTquWY0eo4khNMPeKlmjBWX
+ djR4Lt+9Dn8nepSQFtyeoVeBJ0kAjaLVllt11cXsPGXGBrJx0UAGorrlLiAKv1bkNtE0gJqQch4
+ StnVw/3eGkjKyWKJy+LW3UgaRwV8xJdVt27559IR/mlPYzZRfE6BElnM5fEyrGIrTECGHstNsL7
+ Cs2PVzUqdtDuhFdLvLICJcXLV6CHXMd3JC67yb4POh28LXxs5cfhFe13ILHTh4NKVg7Kh71kZe5
+ I4Wzqm6u0RzgEEZjcv0w9vSoPVLbp6st05ywdTW1XtLNHpUSNwF3EEScUV3eLjipEN7dY5GwM7x
+ LEiAV4aLFX2r7s2oSfOrpO0cwztGE4c56tCs+pXmbzFkRsHMb3dztSY9flHd3K++3KMwUy8ypl6
+ 3jEzMLyygJJqxSIA1r88GUyXccavN98fW3rsz9XZnZxLF6jmamsOula2mc3vxcm8BxHLaS6xzXc
+ P7y4utUQYbsgJ7VpfVEQiMgJxTeK9UmC0mUd6lHpSKppGd3XZpqDrbcoJSQwHyiJv1jgW9CFgwq
+ u4KwJsl8Mh9KdQHrfPFQQJFH7txOKN7QLqpGy1UGf5FKRAR5NchpyWl4Rr37qE0GJu4veBTwBUY
+ MRV+CZxH5BDYCYZFSV8RzXiKoUKEXQ8TrcMgPeegQhJ8BQIkQaFM=
+X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
+ fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
+X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mtk_dsi_host_transfer() decides where the payload starts in the
-received data based on the byte count returned by mtk_dsi_recv_cnt(),
-treating anything longer than 2 bytes as a long packet.
+Hi there,
 
-This breaks long read responses with a 1 or 2 byte payload: they are
-treated as short packets, so the word count from the packet header is
-copied into rx_buf instead of the payload.
+This patchset introduces pinctrl support for the Exynos5515 SoC.
 
-Fix this by checking the packet's data type instead of inferring it
-from the length.
+It is very similar to the other Exynos SoCs, therefore we reuse the driver
+and for the most part the pinctrl bank macros. A couple
+Exynos5515-specific macros are also added.
 
-Fixes: 21898816831f ("drm/mediatek: add dsi transfer function")
-Cc: stable@vger.kernel.org
-Signed-off-by: Ben Grisdale <bengris32@protonmail.ch>
+Kind regards,
+- Aiden Isik
+
+Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
- drivers/gpu/drm/mediatek/mtk_dsi.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Aiden Isik (3):
+      dt-bindings: pinctrl: samsung: Add compatible for Exynos5515
+      dt-bindings: pinctrl: samsung: add exynos5515-wakeup-eint compatible
+      pinctrl: samsung: Add Exynos5515 pinctrl configuration
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_dsi.c b/drivers/gpu/drm/mediatek/mtk_dsi.c
-index f82506e10fd5..de4414b51abb 100644
---- a/drivers/gpu/drm/mediatek/mtk_dsi.c
-+++ b/drivers/gpu/drm/mediatek/mtk_dsi.c
-@@ -165,6 +165,10 @@
- 	(type == MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM) || \
- 	(type == MIPI_DSI_DCS_READ))
- 
-+#define MTK_DSI_IS_LONG_RESP(type) \
-+	(((type) == MIPI_DSI_RX_GENERIC_LONG_READ_RESPONSE) || \
-+	((type) == MIPI_DSI_RX_DCS_LONG_READ_RESPONSE))
-+
- struct mtk_phy_timing {
- 	u32 lpx;
- 	u32 da_hs_prepare;
-@@ -1171,7 +1175,7 @@ static ssize_t mtk_dsi_host_transfer(struct mipi_dsi_host *host,
- 
- 	recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
- 
--	if (recv_cnt > 2)
-+	if (MTK_DSI_IS_LONG_RESP(read_data[0]))
- 		src_addr = &read_data[4];
- 	else
- 		src_addr = &read_data[1];
-
+ .../pinctrl/samsung,pinctrl-wakeup-interrupt.yaml  |   1 +
+ .../bindings/pinctrl/samsung,pinctrl.yaml          |   1 +
+ drivers/pinctrl/samsung/pinctrl-exynos-arm64.c     | 123 +++++++++++++++++++++
+ drivers/pinctrl/samsung/pinctrl-exynos.h           |  20 ++++
+ drivers/pinctrl/samsung/pinctrl-samsung.c          |   2 +
+ drivers/pinctrl/samsung/pinctrl-samsung.h          |   1 +
+ 6 files changed, 148 insertions(+)
 ---
-base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
-change-id: 20261019-mtk-dsi-long-read-45bc8e49d08b
+base-commit: 993e1bec85faedf90c5d27480793084e54357c09
+change-id: 20261019-for-next-lucky7-pinctrl-64bf54588925
 
 Best regards,
 --  
-Ben Grisdale <bengris32@protonmail.ch>
+Aiden Isik <aidenisik@member.fsf.org>
 
