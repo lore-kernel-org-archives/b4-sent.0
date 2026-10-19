@@ -1,96 +1,246 @@
-From: Wenqiang Zhao <berringtoni36@gmail.com>
-Date: Mon, 19 Oct 2026 14:22:08 +0800
-Subject: [PATCH] syscalls/select: use kernel timeval for _newselect
+From: Zane Hunt <git@turtledev.nz>
+Date: Mon, 19 Oct 2026 19:35:18 +1300
+Subject: [PATCH v4] platform/x86: asus-wmi: fix camera key LED on Zenbook
+ S14
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-research-select-time64-rk3576-v1-1-a65d6b72e21f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABC31WoC/yWMQQ6CQAxFr0K6thEGB6NXMS46Q4WqDKRFY0K4u
- 4Mu389/bwFjFTY4Fwsov8VkTBmqXQGxp9QxSpsZXOmaqqxOqGxMGns0fnKccZaBmwPqo/bHBr0
- nosC1L10LuTEp3+Tz61+uf7ZXuGdxi26PQMYYlFLst2lU6STtB7KZFdb1C0zQRAChAAAA
-X-Change-ID: 20261019-research-select-time64-rk3576-55aaabe3502d
-To: Linux Test Project <ltp@lists.linux.it>
-Cc: Wenqiang Zhao <berringtoni36@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792390928; l=2457;
- i=berringtoni36@gmail.com; s=ltp-20261019; h=from:subject:message-id;
- bh=SIoimnh8+2U5EXodlYXh0YMeysiNIjwnnrmbsPWjNZY=;
- b=59JfaGd0PGhEhjdENijlxH/Q9Vwg/nIEjSzsg7hbKGTYIjsqtP/NQxtkWjw+88FiQEEGjZ6Bv
- /hRGySrbbN2Cq3l7kE4cokNAg5TYq2eDfSZQNfo7NLEwdTy+Sdn1OKe
-X-Developer-Key: i=berringtoni36@gmail.com; a=ed25519;
- pk=+YVmSxpz14KiDkWu3zCQ25HCYntxcdWyEAOBmZ859K0=
-X-Endpoint-Received: by B4 Relay for berringtoni36@gmail.com/ltp-20261019 with auth_id=1236
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261019-asus-wmi-camera-led-v4-1-7744c125bcc9@turtledev.nz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NyQ6CMBCGX4XM2TFdWD35HoZDhVFqBEyn1IXw7
+ ha8e/zyL98MTM4SwyGZwVGwbMchQrpLoOnMcCW0bWRQQuVSyAINT4zP3mJjenIG79SiyE1OIrs
+ ISQri8uHoYl/b66n+MU/nGzV+vVobnWU/uvemDXrt/TcEjRLLNDOl0oWuquLoJ+djQmE/fKBel
+ uULk+Yk58sAAAA=
+X-Change-ID: 20261017-asus-wmi-camera-led-06a6e05f01e2
+To: Corentin Chary <corentin.chary@gmail.com>, 
+ "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
+ Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ platform-driver-x86@vger.kernel.org
+Cc: =?utf-8?q?Jos=C3=A9_Guilherme_de_Castro_Rodrigues?= <jose.guilherme.cr.bh@gmail.com>, 
+ linux-kernel@vger.kernel.org, Zane Hunt <git@turtledev.nz>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792391727; l=8814;
+ i=git@turtledev.nz; s=20261016; h=from:subject:message-id;
+ bh=AyQeJsVv3Fvj/hhwEjxbvqi52N6/K7t7CxQK2jV7yZQ=;
+ b=iVahtRUtnbKMAQhxGYCqHy1eS/Zhk1sFZazzgBTEw12G4fRTcs0QsAh/EMXAV95Mw5otTmCf3
+ RHl7AxV6KVQB7NOsccV0s/aPvOTfidH5nBV9K+/x9jMqDZTq/wePimu
+X-Developer-Key: i=git@turtledev.nz; a=ed25519;
+ pk=7P3HBZD1ukp3nMYpf+9Dcl3ryKIU5pYgOUKe/HOox6c=
+X-Endpoint-Received: by B4 Relay for git@turtledev.nz/20261016 with auth_id=1217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With _TIME_BITS=64, struct timeval has 64-bit fields on 32-bit ARM,
-but _newselect still expects the old kernel timeval layout. Passing
-the libc structure directly makes a subsecond timeout appear as zero.
+On some newer Zenbooks (Zenbook S 14 UX5406SA, Zenbook S 16 UM5606WA) the
+camera key turns the camera off in firmware, but the LED on the key never
+lights up under Linux. These machines don't have
+ASUS_WMI_DEVID_CAMERA_LED, so asus-wmi never registers asus::camera. The
+firmware exposes the state through ASUS_WMI_DEVID_CAMERA_LED_NEG instead.
 
-Convert valid timeouts to struct __kernel_old_timeval before the syscall
-and copy the remaining time back afterwards. Pass NULL and deliberately
-faulty timeout pointers through unchanged.
+Reading CAMERA_LED_NEG is what drives the LED: the DSTS handler reads the
+camera state from the EC and writes it to the LED GPIO before returning
+it. The set side can't be used, the firmware only accepts DEVS on this
+device once per boot.
 
-On an RK3576 running a 6.1.118-rt36 aarch64 kernel with CONFIG_COMPAT=y,
-the unmodified ARM32 time64 select02 reports 22 passes and 6 failures.
-With this change it reports 28 passes and no failures. Both runs skip
-the unsupported SYS_select variant.
+When CAMERA_LED is missing but CAMERA_LED_NEG is there, register
+asus::camera as a read-only LED backed by CAMERA_LED_NEG, and read it
+after every camera key event, sending a brightness_hw_changed event.
+Registering the LED reads it as well, which fixes the LED being dark after
+a cold boot with the camera disabled.
 
-Tested select01-select04 on the same board with ARM32 time32, ARM32
-time64 and AArch64 static builds: 250 passes, 55 configuration skips,
-no failures or broken tests. Additional local checks cover timeout
-copy-back, ready fds, NULL, EFAULT, EINVAL and EINTR.
+While at it, include <linux/container_of.h>, which this file already
+relied on.
 
-Closes: https://github.com/linux-test-project/ltp/issues/1314
-Signed-off-by: Wenqiang Zhao <berringtoni36@gmail.com>
+Link: https://lore.kernel.org/r/adg6GzkykThAB_4u@djouze-zen
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221752
+Assisted-by: Claude:claude-opus-5-5 iasl
+Co-developed-by: José Guilherme de Castro Rodrigues <jose.guilherme.cr.bh@gmail.com>
+Signed-off-by: José Guilherme de Castro Rodrigues <jose.guilherme.cr.bh@gmail.com>
+Signed-off-by: Zane Hunt <git@turtledev.nz>
 ---
-syscalls/select: use kernel timeval for _newselect
----
- testcases/kernel/syscalls/select/select_var.h | 20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
+Changes in v4:
+- Keep José's Signed-off-by from v2 and add his Co-developed-by
+- Use my full name in the tags
+- Include <linux/container_of.h>
+- Reuse the existing asus::camera registration block, only the
+  handlers and flags differ
+- camera_neg_led_available is now only set when CAMERA_LED is missing,
+  so asus::camera is always the CAMERA_LED_NEG one when it's set. That
+  makes the LED_BRIGHT_HW_CHANGED check in the event handler unneeded,
+  so it's gone
+- Drop the explicit read at probe, led_classdev_register() already
+  reads the state through brightness_get
+- Link to v3: https://patch.msgid.link/20261017-asus-wmi-camera-led-v3-1-845a82373997@turtledev.nz
 
-diff --git a/testcases/kernel/syscalls/select/select_var.h b/testcases/kernel/syscalls/select/select_var.h
-index a945fa6..e23f1fa 100644
---- a/testcases/kernel/syscalls/select/select_var.h
-+++ b/testcases/kernel/syscalls/select/select_var.h
-@@ -84,14 +84,30 @@ static int do_select_faulty_to(int nfds, fd_set *readfds, fd_set *writefds,
- #endif
- 		return ret;
- 	}
--	case 4:
-+	case 4: {
- #ifdef __NR__newselect
--		return tst_syscall(__NR__newselect, nfds, readfds, writefds, exceptfds, timeout);
-+		struct __kernel_old_timeval _tv;
-+		void *tv = timeout;
-+		int ret;
-+
-+		if (timeout && !faulty_to) {
-+			_tv.tv_sec = timeout->tv_sec;
-+			_tv.tv_usec = timeout->tv_usec;
-+			tv = &_tv;
-+		}
-+
-+		ret = tst_syscall(__NR__newselect, nfds, readfds, writefds, exceptfds, tv);
-+		if (timeout && !faulty_to) {
-+			timeout->tv_sec = _tv.tv_sec;
-+			timeout->tv_usec = _tv.tv_usec;
-+		}
-+		return ret;
- #else
- 		tst_brk(TCONF, "__NR__newselect not implemented");
- #endif
- 	break;
- 	}
-+	}
+Changes in v3 (picking up José's v2, which had stalled):
+- Rebased on pdx86 for-next
+- Also read CAMERA_LED_NEG at probe, so the LED is right after a cold boot
+- Register a read-only asus::camera LED when only CAMERA_LED_NEG exists,
+  with brightness_hw_changed on key presses (Ilpo's suggestion on v2)
+- Comment on why the read is what updates the LED (also from v2 review)
+- v2: https://lore.kernel.org/r/adg6GzkykThAB_4u@djouze-zen
+
+Tested again on the Zenbook S 14 UX5406SA (BIOS 309), on Fedora's 7.2.9
+kernel with the same change applied: camera key presses keep the LED,
+asus::camera and the camera output in sync, and with the camera disabled
+and the LED forced off, loading the driver turns the LED back on.
+
+I used Claude while working on this. It helped
+me read through the DSDT, drafted the changes on top of v2 and wrote the
+test scripts. I went through the patch myself and ran the tests on my
+laptop.
+---
+ drivers/platform/x86/asus-wmi.c            | 75 ++++++++++++++++++++++++++++--
+ include/linux/platform_data/x86/asus-wmi.h |  2 +-
+ 2 files changed, 73 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index fb1d4a0..93b51c8 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -17,6 +17,7 @@
+ #include <linux/backlight.h>
+ #include <linux/bits.h>
+ #include <linux/cleanup.h>
++#include <linux/container_of.h>
+ #include <linux/debugfs.h>
+ #include <linux/delay.h>
+ #include <linux/dmi.h>
+@@ -72,6 +73,8 @@ module_param(fnlock_default, bool, 0444);
+ #define NOTIFY_KBD_TTP			0xae
+ #define NOTIFY_LID_FLIP			0xfa
+ #define NOTIFY_LID_FLIP_ROG		0xbd
++#define NOTIFY_CAMERA_TOGGLE_1		0x82
++#define NOTIFY_CAMERA_TOGGLE_2		0x85
+ #define NOTIFY_KEYSTONE			0xb4
  
- 	return -1;
+ #define ASUS_WMI_FNLOCK_BIOS_DISABLED	BIT(0)
+@@ -312,6 +315,7 @@ struct asus_wmi {
+ 	u32 kbd_rgb_dev;
+ 	bool kbd_rgb_state_available;
+ 	bool oobe_state_available;
++	bool camera_neg_led_available;
+ 
+ 	u8 throttle_thermal_policy_mode;
+ 	u32 throttle_thermal_policy_dev;
+@@ -2096,6 +2100,54 @@ static int camera_led_set(struct led_classdev *led_cdev,
+ 	return err < 0 ? err : 0;
  }
+ 
++static bool is_camera_toggle(int code)
++{
++	return code == NOTIFY_CAMERA_TOGGLE_1 || code == NOTIFY_CAMERA_TOGGLE_2;
++}
++
++/*
++ * Some models (e.g. Zenbook S 14 UX5406SA, Zenbook S 16 UM5606WA) have no
++ * ASUS_WMI_DEVID_CAMERA_LED. The firmware handles the camera key itself and
++ * only exposes the state through ASUS_WMI_DEVID_CAMERA_LED_NEG, and reading
++ * that has a side effect: the firmware copies the state to the LED GPIO.
++ * Nothing else updates the LED, so read it after every camera key event.
++ * Registering asus::camera reads it too (via brightness_get), which sets the
++ * LED at probe. Setting it is no use, the firmware accepts DEVS on this
++ * device only once per boot.
++ *
++ * Returns 1 if the camera is disabled (LED lit), 0 if enabled, or -errno.
++ */
++static int camera_neg_led_sync(struct asus_wmi *asus)
++{
++	u32 result;
++	int err;
++
++	err = asus_wmi_get_devstate(asus, ASUS_WMI_DEVID_CAMERA_LED_NEG, &result);
++	if (err)
++		return err;
++
++	return !(result & ASUS_WMI_DSTS_STATUS_BIT);
++}
++
++static enum led_brightness camera_neg_led_get(struct led_classdev *led_cdev)
++{
++	struct asus_wmi *asus = container_of(led_cdev, struct asus_wmi, camera_led);
++	int state = camera_neg_led_sync(asus);
++
++	return state < 0 ? LED_OFF : state;
++}
++
++/* The firmware owns this LED; a write just resyncs it with the camera state. */
++static int camera_neg_led_set(struct led_classdev *led_cdev,
++			      enum led_brightness brightness)
++{
++	struct asus_wmi *asus = container_of(led_cdev, struct asus_wmi, camera_led);
++
++	if (!(led_cdev->flags & LED_UNREGISTERING))
++		camera_neg_led_sync(asus);
++	return 0;
++}
++
+ static void asus_wmi_led_exit(struct asus_wmi *asus)
+ {
+ 	scoped_guard(spinlock_irqsave, &asus_ref.lock)
+@@ -2227,11 +2279,18 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
+ 			goto error;
+ 	}
+ 
+-	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED)) {
++	if (asus->camera_neg_led_available ||
++	    asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED)) {
+ 		asus->camera_led.name = "asus::camera";
+ 		asus->camera_led.max_brightness = 1;
+-		asus->camera_led.brightness_get = camera_led_get;
+-		asus->camera_led.brightness_set_blocking = camera_led_set;
++		if (asus->camera_neg_led_available) {
++			asus->camera_led.flags = LED_BRIGHT_HW_CHANGED;
++			asus->camera_led.brightness_get = camera_neg_led_get;
++			asus->camera_led.brightness_set_blocking = camera_neg_led_set;
++		} else {
++			asus->camera_led.brightness_get = camera_led_get;
++			asus->camera_led.brightness_set_blocking = camera_led_set;
++		}
+ 
+ 		rv = led_classdev_register(&asus->platform_device->dev,
+ 						&asus->camera_led);
+@@ -4733,6 +4792,13 @@ static void asus_wmi_handle_event_code(int code, struct asus_wmi *asus)
+ 	if (is_display_toggle(code) && asus->driver->quirks->no_display_toggle)
+ 		return;
+ 
++	if (is_camera_toggle(code) && asus->camera_neg_led_available) {
++		int state = camera_neg_led_sync(asus);
++
++		if (state >= 0)
++			led_classdev_notify_brightness_hw_changed(&asus->camera_led, state);
++	}
++
+ 	if (!sparse_keymap_report_event(asus->inputdev, code,
+ 					key_value, autorelease))
+ 		pr_info("Unknown key code 0x%x\n", code);
+@@ -5210,6 +5276,9 @@ static int asus_wmi_add(struct platform_device *pdev)
+ #endif /* IS_ENABLED(CONFIG_ASUS_WMI_DEPRECATED_ATTRS) */
+ 
+ 	asus->oobe_state_available = asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_OOBE);
++	asus->camera_neg_led_available =
++		!asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED) &&
++		asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED_NEG);
+ 
+ 	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY))
+ 		asus->throttle_thermal_policy_dev = ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY;
+diff --git a/include/linux/platform_data/x86/asus-wmi.h b/include/linux/platform_data/x86/asus-wmi.h
+index 4ea1ccc..5964063 100644
+--- a/include/linux/platform_data/x86/asus-wmi.h
++++ b/include/linux/platform_data/x86/asus-wmi.h
+@@ -57,7 +57,7 @@
+ #define ASUS_WMI_DEVID_MUTE_LED	0x0004001C
+ 
+ /* Disable Camera LED */
+-#define ASUS_WMI_DEVID_CAMERA_LED_NEG	0x00060078 /* 0 = on (unused) */
++#define ASUS_WMI_DEVID_CAMERA_LED_NEG	0x00060078 /* 0 = on */
+ #define ASUS_WMI_DEVID_CAMERA_LED	0x00060079 /* 1 = on */
+ 
+ /* Backlight and Brightness */
 
 ---
-base-commit: 1255a3be50a69950607ed76fd2e9566189447f7a
-change-id: 20261019-research-select-time64-rk3576-55aaabe3502d
+base-commit: ea40f1e9f07aab937b9a217633be7a1f66260394
+change-id: 20261017-asus-wmi-camera-led-06a6e05f01e2
 
 Best regards,
 --  
-Wenqiang Zhao <berringtoni36@gmail.com>
+Zane Hunt <git@turtledev.nz>
 
