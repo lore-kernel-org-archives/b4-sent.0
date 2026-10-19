@@ -1,10 +1,10 @@
 From: Manuel Huber <manuelh@nvidia.com>
-Date: Mon, 19 Oct 2026 21:40:25 +0000
-Subject: [PATCH RFC 1/4] ipe: add the .ipe policy keyring
+Date: Mon, 19 Oct 2026 21:40:26 +0000
+Subject: [PATCH RFC 2/4] keys: add KEY_SPEC_IPE_KEYRING
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-b4-ipe-keyring-rfc-v1-1-156f0b93e843@nvidia.com>
+Message-Id: <20261019-b4-ipe-keyring-rfc-v1-2-156f0b93e843@nvidia.com>
 References: <20261019-b4-ipe-keyring-rfc-v1-0-156f0b93e843@nvidia.com>
 In-Reply-To: <20261019-b4-ipe-keyring-rfc-v1-0-156f0b93e843@nvidia.com>
 To: Fan Wu <wufan@kernel.org>, David Howells <dhowells@redhat.com>, 
@@ -20,245 +20,133 @@ Cc: Christian Brauner <brauner@kernel.org>,
  bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Manuel Huber <manuelh@nvidia.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792446042; l=7425;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792446042; l=4139;
  i=manuelh@nvidia.com; s=20261019; h=from:subject:message-id;
- bh=pzmdNrjH0K9jBZOsygXh8Yb7f2fOt7gvUDgHY5ObJnM=;
- b=224d2yttNRkgR9OFGtyo3Av3E6VfoYQzjQs75w2w9gzlveaL4NqBDAD/bPpkGmLk8nKssW5tw
- bnMFsrT4dQqDt7AuC0tNnj5u5wi9HMLbltX0uZGNIerHOwUPuFqmWxJ
+ bh=qU5seb89kAZTaYK+uzyIJT50NtrM62WKZmZ+vUqdSqw=;
+ b=NJd1deluGBJGvxMmMXOfHxq9TE+XBK4A2IXsdH4GeJcSmNg3QJBNkqq9r9ZbUVHoSowaLXGxB
+ SSNA6aw5bVjDNkrjofshdkxNM6TGTie/nOlYBdg1/XzigYGkhIM1/TI
 X-Developer-Key: i=manuelh@nvidia.com; a=ed25519;
  pk=uKggxpZ/mM0qtFnudxvh5Dfz8I6VoehwoM3eYCe3tyU=
 X-Endpoint-Received: by B4 Relay for manuelh@nvidia.com/20261019 with auth_id=1244
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a dedicated .ipe keyring for IPE policy signature verification,
-modeled after the .dm-verity and .bpf keyring implementations.
-
-With this, userspace can provision its own keys into the keyring,
-then restrict it and activate it for IPE policy signature verification.
-
-This enables scenarios in which a trusted userspace component generates
-an IPE policy, and creates an ephemeral policy-signing key pair,
-provisions its public certificate, and restricts the IPE keyring during
-the early lifetime of a system. The trusted component can then sign the
-IPE policy, destroy the private key, and load and activate the policy.
-During that phase, the system is considered in a trusted state whereas
-the system transitions into a possibly untrusted state afterwards,
-running arbitrary user-provided applications. In such a scenario, the
-trusted userspace component could reside on a dm-verity protected
-rootfs disk, and applications would reside on additional dm-verity
-protected disks. The latter disks would be dynamically attached and
-their dm-verity root hashes and/or signatures not known a priori to
-launching the system.
-
-A concrete usage scenario could be Kata Containers, which enables
-running Kubernetes pods in ephemeral, headless utility VMs, possibly
-without systemd. The rootfs disk is static and known beforehand, but
-containerd's image layers might be acquired and transported into the
-VM using the erofs snapshotter and dynamic block device attachment
-using dm-verity.
+The IPE policy keyring is allocated unlinked, so userspace would
+otherwise have to scrape /proc/keys to name it.
 
 Signed-off-by: Manuel Huber <manuelh@nvidia.com>
 ---
- Documentation/admin-guide/kernel-parameters.txt |  9 +++
- security/ipe/Makefile                           |  1 +
- security/ipe/ipe.c                              |  2 +
- security/ipe/keyring.c                          | 79 +++++++++++++++++++++++++
- security/ipe/keyring.h                          | 16 +++++
- security/ipe/policy.c                           | 10 ++++
- 6 files changed, 117 insertions(+)
+ Documentation/security/keys/core.rst |  9 +++++++++
+ include/linux/key.h                  |  2 ++
+ include/uapi/linux/keyctl.h          |  1 +
+ security/ipe/keyring.c               |  1 +
+ security/keys/process_keys.c         | 23 +++++++++++++++++++++++
+ 5 files changed, 36 insertions(+)
 
-diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index e75344f4e0cd..fd508dd779ed 100644
---- a/Documentation/admin-guide/kernel-parameters.txt
-+++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -2733,6 +2733,15 @@ Kernel parameters
- 			Determine whether IPE starts in permissive (0) or
- 			enforce (1) mode. The default is enforce.
+diff --git a/Documentation/security/keys/core.rst b/Documentation/security/keys/core.rst
+index 326b8a973828..e4ecda5c2525 100644
+--- a/Documentation/security/keys/core.rst
++++ b/Documentation/security/keys/core.rst
+@@ -373,6 +373,15 @@ process making the call::
+ 	KEY_SPEC_REQKEY_AUTH_KEY	-7	assumed request_key()
+ 						  authorisation key
  
-+	ipe.keyring_unsealed=
-+			[IPE]
-+			Format: <bool>
-+			When set to 1, leave the IPE policy keyring
-+			unsealed after initialization so userspace can provision
-+			keys. Once the keyring is nonempty and restricted, it is
-+			searched during policy-signature verification. The default
-+			is 0, which creates the keyring restricted and empty.
++There are also values that refer to a specific kernel keyring rather than to
++anything belonging to the caller.  These keyrings are not linked into any
++keyring, so a search cannot reach them and the ID is the only way to name
++one::
 +
- 	ipe.success_audit=
- 			[IPE]
- 			Format: <bool>
-diff --git a/security/ipe/Makefile b/security/ipe/Makefile
-index 2ffabfa63fe9..109e736696a5 100644
---- a/security/ipe/Makefile
-+++ b/security/ipe/Makefile
-@@ -20,6 +20,7 @@ obj-$(CONFIG_SECURITY_IPE) += \
- 	hooks.o \
- 	fs.o \
- 	ipe.o \
-+	keyring.o \
- 	policy.o \
- 	policy_fs.o \
- 	policy_parser.o \
-diff --git a/security/ipe/ipe.c b/security/ipe/ipe.c
-index 495bb765de1b..f5232f850dc2 100644
---- a/security/ipe/ipe.c
-+++ b/security/ipe/ipe.c
-@@ -7,6 +7,7 @@
- #include "ipe.h"
- #include "eval.h"
- #include "hooks.h"
-+#include "keyring.h"
++	CONSTANT			VALUE	KEY REFERENCED
++	==============================	======	===========================
++	KEY_SPEC_IPE_KEYRING		-12	the ".ipe" keyring
++
  
- extern const char *const ipe_boot_policy;
- bool ipe_enabled;
-@@ -97,4 +98,5 @@ DEFINE_LSM(ipe) = {
- 	.init = ipe_init,
- 	.blobs = &ipe_blobs,
- 	.initcall_fs = ipe_init_securityfs,
-+	.initcall_late = ipe_keyring_init,
- };
+ The main syscalls are:
+ 
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 81b8f05c6898..9c2ac0c70d56 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -440,6 +440,8 @@ extern key_ref_t keyring_search(key_ref_t keyring,
+ extern int keyring_restrict(key_ref_t keyring, const char *type,
+ 			    const char *restriction);
+ 
++extern void key_register_ipe_keyring(struct key *keyring);
++
+ extern struct key *key_lookup(key_serial_t id);
+ 
+ static inline key_serial_t key_serial(const struct key *key)
+diff --git a/include/uapi/linux/keyctl.h b/include/uapi/linux/keyctl.h
+index 4c8884eea808..e42fca286b15 100644
+--- a/include/uapi/linux/keyctl.h
++++ b/include/uapi/linux/keyctl.h
+@@ -24,6 +24,7 @@
+ #define KEY_SPEC_GROUP_KEYRING		-6	/* - key ID for GID-specific keyring */
+ #define KEY_SPEC_REQKEY_AUTH_KEY	-7	/* - key ID for assumed request_key auth key */
+ #define KEY_SPEC_REQUESTOR_KEYRING	-8	/* - key ID for request_key() dest keyring */
++#define KEY_SPEC_IPE_KEYRING		-12	/* - key ID for the .ipe keyring */
+ 
+ /* request-key default keyrings */
+ #define KEY_REQKEY_DEFL_NO_CHANGE		-1
 diff --git a/security/ipe/keyring.c b/security/ipe/keyring.c
-new file mode 100644
-index 000000000000..ea8d164b62a6
---- /dev/null
+index ea8d164b62a6..5158dc7310a7 100644
+--- a/security/ipe/keyring.c
 +++ b/security/ipe/keyring.c
-@@ -0,0 +1,79 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (C) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-+ */
-+
-+#include <linux/cred.h>
-+#include <linux/err.h>
-+#include <linux/key.h>
-+#include <linux/moduleparam.h>
-+
-+#include "ipe.h"
-+#include "keyring.h"
-+
+@@ -74,6 +74,7 @@ int __init ipe_keyring_init(void)
+ 	}
+ 
+ 	ipe_keyring = keyring;
++	key_register_ipe_keyring(ipe_keyring);
+ 
+ 	return 0;
+ }
+diff --git a/security/keys/process_keys.c b/security/keys/process_keys.c
+index a63c46bb2d14..20d6faefb75e 100644
+--- a/security/keys/process_keys.c
++++ b/security/keys/process_keys.c
+@@ -22,6 +22,9 @@
+ /* Session keyring create vs join semaphore */
+ static DEFINE_MUTEX(key_session_mutex);
+ 
++/* IPE keyring reachable through KEY_SPEC_IPE_KEYRING */
 +static struct key *ipe_keyring __ro_after_init;
 +
-+static bool ipe_keyring_unsealed __ro_after_init;
-+
-+/* Set the right module name for built-in parameters. */
-+#ifdef KBUILD_MODNAME
-+#undef KBUILD_MODNAME
-+#define KBUILD_MODNAME "ipe"
-+#endif
-+
-+module_param_named(keyring_unsealed, ipe_keyring_unsealed, bool, 0444);
-+MODULE_PARM_DESC(keyring_unsealed, "Leave the IPE keyring unsealed");
-+
-+/**
-+ * ipe_keyring_lookup() - Get the IPE keyring if it is ready for use.
-+ *
-+ * Return: A borrowed pointer to the IPE keyring if it is nonempty and
-+ * restricted, or %NULL otherwise. The keyring has system lifetime.
-+ */
-+struct key *ipe_keyring_lookup(void)
-+{
-+	if (!ipe_keyring)
-+		return NULL;
-+
-+	if (!READ_ONCE(ipe_keyring->keys.nr_leaves_on_tree) ||
-+	    !READ_ONCE(ipe_keyring->restrict_link))
-+		return NULL;
-+
-+	return ipe_keyring;
-+}
-+
-+/**
-+ * ipe_keyring_init() - Allocate and configure the IPE keyring.
-+ *
-+ * Return: Always %0. A failure leaves IPE without its dedicated keyring.
-+ */
-+int __init ipe_keyring_init(void)
-+{
-+	struct key *keyring;
-+	int rc;
-+
-+	keyring = keyring_alloc(".ipe", GLOBAL_ROOT_UID, GLOBAL_ROOT_GID,
-+				current_cred(),
-+				KEY_POS_SEARCH |
-+				KEY_USR_VIEW | KEY_USR_READ | KEY_USR_WRITE |
-+				KEY_USR_SEARCH | KEY_USR_SETATTR,
-+				KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
-+	if (IS_ERR(keyring)) {
-+		pr_err("failed to allocate keyring: %ld\n", PTR_ERR(keyring));
-+		return 0;
-+	}
-+
-+	if (!ipe_keyring_unsealed) {
-+		rc = keyring_restrict(make_key_ref(keyring, true), NULL, NULL);
-+		if (rc) {
-+			pr_err("failed to restrict keyring: %d\n", rc);
-+			key_revoke(keyring);
-+			key_put(keyring);
-+			return 0;
-+		}
-+	}
-+
-+	ipe_keyring = keyring;
-+
-+	return 0;
-+}
-diff --git a/security/ipe/keyring.h b/security/ipe/keyring.h
-new file mode 100644
-index 000000000000..3d450a465511
---- /dev/null
-+++ b/security/ipe/keyring.h
-@@ -0,0 +1,16 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Copyright (C) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-+ */
-+
-+#ifndef _IPE_KEYRING_H
-+#define _IPE_KEYRING_H
-+
-+#include <linux/init.h>
-+
-+struct key;
-+
-+int __init ipe_keyring_init(void);
-+struct key *ipe_keyring_lookup(void);
-+
-+#endif /* _IPE_KEYRING_H */
-diff --git a/security/ipe/policy.c b/security/ipe/policy.c
-index e542329726bc..abc1ff9ac230 100644
---- a/security/ipe/policy.c
-+++ b/security/ipe/policy.c
-@@ -9,6 +9,7 @@
- #include "ipe.h"
- #include "eval.h"
- #include "fs.h"
-+#include "keyring.h"
- #include "policy.h"
- #include "policy_parser.h"
- #include "audit.h"
-@@ -160,6 +161,7 @@ struct ipe_policy *ipe_new_policy(const char *text, size_t textlen,
- 				  const char *pkcs7, size_t pkcs7len)
- {
- 	struct ipe_policy *new = NULL;
-+	struct key *keyring;
- 	int rc = 0;
+ /* The root user's tracking struct */
+ struct key_user root_key_user = {
+ 	.usage		= REFCOUNT_INIT(3),
+@@ -590,6 +593,18 @@ bool lookup_user_key_possessed(const struct key *key,
+ 	return key == match_data->raw_data;
+ }
  
- 	new = kzalloc_obj(*new);
-@@ -189,6 +191,14 @@ struct ipe_policy *ipe_new_policy(const char *text, size_t textlen,
- 						    VERIFYING_UNSPECIFIED_SIGNATURE,
- 						    set_pkcs7_data, new);
- #endif
-+		if (rc == -ENOKEY || rc == -EKEYREJECTED) {
-+			keyring = ipe_keyring_lookup();
-+			if (keyring)
-+				rc = verify_pkcs7_signature(NULL, 0, new->pkcs7,
-+							    pkcs7len, keyring,
-+							    VERIFYING_UNSPECIFIED_SIGNATURE,
-+							    set_pkcs7_data, new);
-+		}
- 		if (rc)
- 			goto err;
- 	} else {
++/**
++ * key_register_ipe_keyring - Publish the IPE keyring
++ * @keyring: The keyring to publish
++ *
++ * Make @keyring reachable by userspace through the KEY_SPEC_IPE_KEYRING
++ * special key ID. Called once, from an initcall, and never undone.
++ */
++void key_register_ipe_keyring(struct key *keyring)
++{
++	ipe_keyring = keyring;
++}
++
+ /*
+  * Look up a key ID given us by userspace with a given permissions mask to get
+  * the key it refers to.
+@@ -741,6 +756,14 @@ key_ref_t lookup_user_key(key_serial_t id, unsigned long lflags,
+ 		key_ref = make_key_ref(key, 1);
+ 		break;
+ 
++	case KEY_SPEC_IPE_KEYRING:
++		key = ipe_keyring;
++		if (!key)
++			goto error;
++		__key_get(key);
++		key_ref = make_key_ref(key, 0);
++		break;
++
+ 	default:
+ 		key_ref = ERR_PTR(-EINVAL);
+ 		if (id < 1)
 
 -- 
 2.53.0
