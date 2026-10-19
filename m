@@ -1,246 +1,877 @@
-From: Zane Hunt <git@turtledev.nz>
-Date: Mon, 19 Oct 2026 19:35:18 +1300
-Subject: [PATCH v4] platform/x86: asus-wmi: fix camera key LED on Zenbook
- S14
+From: Demos Ra <demosthenes.ra@gmail.com>
+Date: Mon, 19 Oct 2026 13:35:51 +0700
+Subject: [PATCH net-next] netlink: specs: Add a spec for nexthops in
+ rtnetlink
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261019-asus-wmi-camera-led-v4-1-7744c125bcc9@turtledev.nz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NyQ6CMBCGX4XM2TFdWD35HoZDhVFqBEyn1IXw7
- ha8e/zyL98MTM4SwyGZwVGwbMchQrpLoOnMcCW0bWRQQuVSyAINT4zP3mJjenIG79SiyE1OIrs
- ISQri8uHoYl/b66n+MU/nGzV+vVobnWU/uvemDXrt/TcEjRLLNDOl0oWuquLoJ+djQmE/fKBel
- uULk+Yk58sAAAA=
-X-Change-ID: 20261017-asus-wmi-camera-led-06a6e05f01e2
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- platform-driver-x86@vger.kernel.org
-Cc: =?utf-8?q?Jos=C3=A9_Guilherme_de_Castro_Rodrigues?= <jose.guilherme.cr.bh@gmail.com>, 
- linux-kernel@vger.kernel.org, Zane Hunt <git@turtledev.nz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792391727; l=8814;
- i=git@turtledev.nz; s=20261016; h=from:subject:message-id;
- bh=AyQeJsVv3Fvj/hhwEjxbvqi52N6/K7t7CxQK2jV7yZQ=;
- b=iVahtRUtnbKMAQhxGYCqHy1eS/Zhk1sFZazzgBTEw12G4fRTcs0QsAh/EMXAV95Mw5otTmCf3
- RHl7AxV6KVQB7NOsccV0s/aPvOTfidH5nBV9K+/x9jMqDZTq/wePimu
-X-Developer-Key: i=git@turtledev.nz; a=ed25519;
- pk=7P3HBZD1ukp3nMYpf+9Dcl3ryKIU5pYgOUKe/HOox6c=
-X-Endpoint-Received: by B4 Relay for git@turtledev.nz/20261016 with auth_id=1217
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261019-rt-nexthop-spec-v1-1-9c586edf86ab@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywqAIBAAf0X23IIPCuxXokPYWnsxUQkh/Pekj
+ gMz80CmxJRhFg8kujnzFTqoQYA7t3AQ8t4ZtNSTkspiKhiolvOKmCM5lN5Js2lnrRmhVzGR5/o
+ dFwj027C29gKo4Nx/awAAAA==
+X-Change-ID: 20261019-rt-nexthop-spec-0fc03a2c9935
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Donald Hunter <donald.hunter@gmail.com>, 
+ David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>
+Cc: Simon Horman <horms@kernel.org>, netdev@vger.kernel.org, 
+ Demos Ra <demosthenes.ra@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792391812; l=19503;
+ i=demosthenes.ra@gmail.com; s=20261019; h=from:subject:message-id;
+ bh=AgOHI97g4P+nb3cL7huyP7l7Zh+C9X8g6L/mUOvUcVw=;
+ b=otjehsogbyBd5Ub3TTOYDJGBbjWSEUkpqYe6/1HoiarMkFQJBfAiugnb3ISa7weaHfxjrmmFZ
+ ZA4K43wGbAdBJTJdZm1LQx0XhgYuU0D/t+iF8hcJTdlh8j3kx3CwGHP
+X-Developer-Key: i=demosthenes.ra@gmail.com; a=ed25519;
+ pk=sDKS9AI9zxhWgOqkhc9EOIo6cky+anqccB3VGtDvzCc=
+X-Endpoint-Received: by B4 Relay for demosthenes.ra@gmail.com/20261019 with auth_id=1235
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On some newer Zenbooks (Zenbook S 14 UX5406SA, Zenbook S 16 UM5606WA) the
-camera key turns the camera off in firmware, but the LED on the key never
-lights up under Linux. These machines don't have
-ASUS_WMI_DEVID_CAMERA_LED, so asus-wmi never registers asus::camera. The
-firmware exposes the state through ASUS_WMI_DEVID_CAMERA_LED_NEG instead.
+Add a YNL spec for nexthop objects and nexthop buckets in rtnetlink.
 
-Reading CAMERA_LED_NEG is what drives the LED: the DSTS handler reads the
-camera state from the EC and writes it to the LED GPIO before returning
-it. The set side can't be used, the firmware only accepts DEVS on this
-device once per boot.
+./tools/net/ynl/pyynl/cli.py \
+    --spec Documentation/netlink/specs/rt-nexthop.yaml \
+    --dump getnexthop
 
-When CAMERA_LED is missing but CAMERA_LED_NEG is there, register
-asus::camera as a read-only LED backed by CAMERA_LED_NEG, and read it
-after every camera key event, sending a brightness_hw_changed event.
-Registering the LED reads it as well, which fixes the LED being dark after
-a cold boot with the camera disabled.
+Exclude newnexthopbucket-ntf from the C code generation. ynl_gen_c.py
+looks up a classic notification by the request of the same message
+type, and no request uses RTM_NEWNEXTHOPBUCKET. The spec keeps the
+notification, so the Python tools can still subscribe to it.
 
-While at it, include <linux/container_of.h>, which this file already
-relied on.
-
-Link: https://lore.kernel.org/r/adg6GzkykThAB_4u@djouze-zen
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221752
-Assisted-by: Claude:claude-opus-5-5 iasl
-Co-developed-by: José Guilherme de Castro Rodrigues <jose.guilherme.cr.bh@gmail.com>
-Signed-off-by: José Guilherme de Castro Rodrigues <jose.guilherme.cr.bh@gmail.com>
-Signed-off-by: Zane Hunt <git@turtledev.nz>
+Signed-off-by: Demos Ra <demosthenes.ra@gmail.com>
 ---
-Changes in v4:
-- Keep José's Signed-off-by from v2 and add his Co-developed-by
-- Use my full name in the tags
-- Include <linux/container_of.h>
-- Reuse the existing asus::camera registration block, only the
-  handlers and flags differ
-- camera_neg_led_available is now only set when CAMERA_LED is missing,
-  so asus::camera is always the CAMERA_LED_NEG one when it's set. That
-  makes the LED_BRIGHT_HW_CHANGED check in the event handler unneeded,
-  so it's gone
-- Drop the explicit read at probe, led_classdev_register() already
-  reads the state through brightness_get
-- Link to v3: https://patch.msgid.link/20261017-asus-wmi-camera-led-v3-1-845a82373997@turtledev.nz
+Tested with tools/net/ynl/pyynl/cli.py on a 7.0 kernel: each
+operation's replies match ip nexthop, and the create and delete
+notifications are received. rt-nexthop-user.o builds with no warnings.
 
-Changes in v3 (picking up José's v2, which had stalled):
-- Rebased on pdx86 for-next
-- Also read CAMERA_LED_NEG at probe, so the LED is right after a cold boot
-- Register a read-only asus::camera LED when only CAMERA_LED_NEG exists,
-  with brightness_hw_changed on key presses (Ilpo's suggestion on v2)
-- Comment on why the read is what updates the LED (also from v2 review)
-- v2: https://lore.kernel.org/r/adg6GzkykThAB_4u@djouze-zen
-
-Tested again on the Zenbook S 14 UX5406SA (BIOS 309), on Fedora's 7.2.9
-kernel with the same change applied: camera key presses keep the LED,
-asus::camera and the camera output in sync, and with the camera disabled
-and the LED forced off, loading the driver turns the LED back on.
-
-I used Claude while working on this. It helped
-me read through the DSDT, drafted the changes on top of v2 and wrote the
-test scripts. I went through the patch myself and ran the tests on my
-laptop.
+newnexthopbucket-ntf is left out of the C generation with
+--exclude-op, as ethtool does for stats-get. If you would rather
+have ynl_gen_c.py handle a notification with no matching request,
+I can do that instead.
 ---
- drivers/platform/x86/asus-wmi.c            | 75 ++++++++++++++++++++++++++++--
- include/linux/platform_data/x86/asus-wmi.h |  2 +-
- 2 files changed, 73 insertions(+), 4 deletions(-)
+ Documentation/netlink/specs/rt-nexthop.yaml | 761 ++++++++++++++++++++++++++++
+ MAINTAINERS                                 |   1 +
+ tools/net/ynl/Makefile.deps                 |   9 +
+ tools/net/ynl/generated/Makefile            |   1 +
+ 4 files changed, 772 insertions(+)
 
-diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
-index fb1d4a0..93b51c8 100644
---- a/drivers/platform/x86/asus-wmi.c
-+++ b/drivers/platform/x86/asus-wmi.c
-@@ -17,6 +17,7 @@
- #include <linux/backlight.h>
- #include <linux/bits.h>
- #include <linux/cleanup.h>
-+#include <linux/container_of.h>
- #include <linux/debugfs.h>
- #include <linux/delay.h>
- #include <linux/dmi.h>
-@@ -72,6 +73,8 @@ module_param(fnlock_default, bool, 0444);
- #define NOTIFY_KBD_TTP			0xae
- #define NOTIFY_LID_FLIP			0xfa
- #define NOTIFY_LID_FLIP_ROG		0xbd
-+#define NOTIFY_CAMERA_TOGGLE_1		0x82
-+#define NOTIFY_CAMERA_TOGGLE_2		0x85
- #define NOTIFY_KEYSTONE			0xb4
- 
- #define ASUS_WMI_FNLOCK_BIOS_DISABLED	BIT(0)
-@@ -312,6 +315,7 @@ struct asus_wmi {
- 	u32 kbd_rgb_dev;
- 	bool kbd_rgb_state_available;
- 	bool oobe_state_available;
-+	bool camera_neg_led_available;
- 
- 	u8 throttle_thermal_policy_mode;
- 	u32 throttle_thermal_policy_dev;
-@@ -2096,6 +2100,54 @@ static int camera_led_set(struct led_classdev *led_cdev,
- 	return err < 0 ? err : 0;
- }
- 
-+static bool is_camera_toggle(int code)
-+{
-+	return code == NOTIFY_CAMERA_TOGGLE_1 || code == NOTIFY_CAMERA_TOGGLE_2;
-+}
+diff --git a/Documentation/netlink/specs/rt-nexthop.yaml b/Documentation/netlink/specs/rt-nexthop.yaml
+new file mode 100644
+index 000000000..06c28fa7d
+--- /dev/null
++++ b/Documentation/netlink/specs/rt-nexthop.yaml
+@@ -0,0 +1,761 @@
++# SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause)
++---
++name: rt-nexthop
++protocol: netlink-raw
++uapi-header: linux/nexthop.h
++protonum: 0
 +
-+/*
-+ * Some models (e.g. Zenbook S 14 UX5406SA, Zenbook S 16 UM5606WA) have no
-+ * ASUS_WMI_DEVID_CAMERA_LED. The firmware handles the camera key itself and
-+ * only exposes the state through ASUS_WMI_DEVID_CAMERA_LED_NEG, and reading
-+ * that has a side effect: the firmware copies the state to the LED GPIO.
-+ * Nothing else updates the LED, so read it after every camera key event.
-+ * Registering asus::camera reads it too (via brightness_get), which sets the
-+ * LED at probe. Setting it is no use, the firmware accepts DEVS on this
-+ * device only once per boot.
-+ *
-+ * Returns 1 if the camera is disabled (LED lit), 0 if enabled, or -errno.
-+ */
-+static int camera_neg_led_sync(struct asus_wmi *asus)
-+{
-+	u32 result;
-+	int err;
++doc: >-
++  Nexthop object management over rtnetlink.
 +
-+	err = asus_wmi_get_devstate(asus, ASUS_WMI_DEVID_CAMERA_LED_NEG, &result);
-+	if (err)
-+		return err;
++definitions:
++  -
++    name: nhmsg
++    type: struct
++    members:
++      -
++        name: nh-family
++        type: u8
++      -
++        name: nh-scope
++        type: u8
++      -
++        name: nh-protocol
++        type: u8
++      -
++        name: resvd
++        type: pad
++        len: 1
++      -
++        name: nh-flags
++        type: u32
++        enum: rtnh-f
++  -
++    name: rtnh-f
++    type: flags
++    name-prefix: rtnh-f-
++    enum-name:
++    entries:
++      - dead
++      - pervasive
++      - onlink
++      - offload
++      - linkdown
++      - unresolved
++      - trap
++  -
++    name: nexthop-grp
++    type: struct
++    members:
++      -
++        name: id
++        type: u32
++      -
++        name: weight
++        type: u8
++      -
++        name: weight-high
++        type: u8
++      -
++        name: resvd2
++        type: pad
++        len: 2
++  -
++    name: nexthop-grp-type
++    type: enum
++    name-prefix: nexthop-grp-type-
++    enum-name:
++    entries:
++      - mpath
++      - res
++  -
++    name: encap-type
++    type: enum
++    name-prefix: lwtunnel-encap-
++    enum-name:
++    entries:
++      - none
++      - mpls
++      - ip
++      - ila
++      - ip6
++      - seg6
++      - bpf
++      - seg6-local
++      - rpl
++      - ioam6
++      - xfrm
++  -
++    name: seg6-local-actions
++    type: enum
++    name-prefix: seg6-local-action-
++    enum-name:
++    entries:
++      - unspec
++      - end
++      - end-x
++      - end-t
++      - end-dx2
++      - end-dx6
++      - end-dx4
++      - end-dt6
++      - end-dt4
++      - end-b6
++      - end-b6-encap
++      - end-bm
++      - end-s
++      - end-as
++      - end-am
++      - end-bpf
++      - end-dt46
++  -
++    name: seg6-local-flv-ops
++    type: enum
++    name-prefix: seg6-local-flv-op-
++    enum-name:
++    entries:
++      -
++        name: unspec
++      -
++        name: psp
++      -
++        name: usp
++      -
++        name: usd
++      -
++        name: next-csid
++  -
++    name: nha-op-flag
++    type: flags
++    name-prefix: nha-op-flag-
++    enum-name:
++    entries:
++      - dump-stats
++      - dump-hw-stats
++  -
++    name: nha-op-flag-resp-grp-resvd-0
++    type: const
++    value: 2147483648
 +
-+	return !(result & ASUS_WMI_DSTS_STATUS_BIT);
-+}
++sub-messages:
++  -
++    name: encap-data
++    formats:
++      -
++        value: mpls
++        attribute-set: mpls-iptunnel
++      -
++        value: ip
++        attribute-set: lwtunnel-ip
++      -
++        value: ila
++        attribute-set: ila-attrs
++      -
++        value: ip6
++        attribute-set: lwtunnel-ip6
++      -
++        value: seg6
++        attribute-set: seg6-iptunnel
++      -
++        value: bpf
++        attribute-set: lwt-bpf
++      -
++        value: seg6-local
++        attribute-set: seg6-local
++      -
++        value: rpl
++        attribute-set: rpl-iptunnel
++      -
++        value: ioam6
++        attribute-set: ioam6-iptunnel
++      -
++        value: xfrm
++        attribute-set: lwt-xfrm
 +
-+static enum led_brightness camera_neg_led_get(struct led_classdev *led_cdev)
-+{
-+	struct asus_wmi *asus = container_of(led_cdev, struct asus_wmi, camera_led);
-+	int state = camera_neg_led_sync(asus);
++attribute-sets:
++  -
++    name: nexthop-attrs
++    name-prefix: nha-
++    attributes:
++      -
++        name: id
++        type: u32
++      -
++        name: group
++        type: binary  # array of struct: nexthop-grp
++      -
++        name: group-type
++        type: u16
++        enum: nexthop-grp-type
++      -
++        name: blackhole
++        type: flag
++      -
++        name: oif
++        type: u32
++      -
++        name: gateway
++        type: binary
++        display-hint: ipv4-or-v6
++      -
++        name: encap-type
++        type: u16
++        enum: encap-type
++      -
++        name: encap
++        type: sub-message
++        sub-message: encap-data
++        selector: encap-type
++      -
++        name: groups
++        type: flag
++      -
++        name: master
++        type: u32
++      -
++        name: fdb
++        type: flag
++      -
++        name: res-group
++        type: nest
++        nested-attributes: res-group-attrs
++      -
++        name: res-bucket
++        type: nest
++        nested-attributes: res-bucket-attrs
++      -
++        name: op-flags
++        type: u32
++        checks:
++          flags-mask: nha-op-flag
++      -
++        name: group-stats
++        type: nest
++        nested-attributes: group-stats-attrs
++      -
++        name: hw-stats-enable
++        type: u32
++        checks:
++          max: 1
++      -
++        name: hw-stats-used
++        type: u32
++      -
++        name: dst-port
++        type: u16
++        byte-order: big-endian
++        checks:
++          min: 1
++  -
++    name: mpls-iptunnel
++    name-prefix: mpls-iptunnel-
++    header: linux/mpls_iptunnel.h
++    attributes:
++      -
++        name: dst
++        type: binary
++      -
++        name: ttl
++        type: u8
++  -
++    name: lwtunnel-ip
++    name-prefix: lwtunnel-ip-
++    header: linux/lwtunnel.h
++    attributes:
++      -
++        name: id
++        type: u64
++        byte-order: big-endian
++      -
++        name: dst
++        type: u32
++        byte-order: big-endian
++        display-hint: ipv4
++      -
++        name: src
++        type: u32
++        byte-order: big-endian
++        display-hint: ipv4
++      -
++        name: ttl
++        type: u8
++      -
++        name: tos
++        type: u8
++      -
++        name: flags
++        type: u16
++        byte-order: big-endian
++      -
++        name: pad
++        type: pad
++      -
++        name: opts
++        type: nest
++        nested-attributes: lwtunnel-ip-opts
++  -
++    name: ila-attrs
++    name-prefix: ila-attr-
++    header: linux/ila.h
++    attributes:
++      -
++        name: locator
++        type: u64
++        byte-order: big-endian
++      -
++        name: identifier
++        type: u64
++      -
++        name: locator-match
++        type: u64
++        byte-order: big-endian
++      -
++        name: ifindex
++        type: s32
++      -
++        name: dir
++        type: u32
++      -
++        name: pad
++        type: pad
++      -
++        name: csum-mode
++        type: u8
++      -
++        name: ident-type
++        type: u8
++      -
++        name: hook-type
++        type: u8
++  -
++    name: lwtunnel-ip6
++    name-prefix: lwtunnel-ip6-
++    header: linux/lwtunnel.h
++    attributes:
++      -
++        name: id
++        type: u64
++        byte-order: big-endian
++      -
++        name: dst
++        type: binary
++        display-hint: ipv6
++      -
++        name: src
++        type: binary
++        display-hint: ipv6
++      -
++        name: hoplimit
++        type: u8
++      -
++        name: tc
++        type: u8
++      -
++        name: flags
++        type: u16
++        byte-order: big-endian
++      -
++        name: pad
++        type: pad
++      -
++        name: opts
++        type: nest
++        nested-attributes: lwtunnel-ip-opts
++  -
++    name: seg6-iptunnel
++    name-prefix: seg6-iptunnel-
++    header: linux/seg6_iptunnel.h
++    attributes:
++      -
++        name: srh
++        type: binary
++      -
++        name: src
++        type: binary
++        display-hint: ipv6
++      -
++        name: table
++        type: u32
++  -
++    name: lwt-bpf
++    name-prefix: lwt-bpf-
++    header: linux/lwtunnel.h
++    attributes:
++      -
++        name: in
++        type: nest
++        nested-attributes: lwt-bpf-prog
++      -
++        name: out
++        type: nest
++        nested-attributes: lwt-bpf-prog
++      -
++        name: xmit
++        type: nest
++        nested-attributes: lwt-bpf-prog
++      -
++        name: xmit-headroom
++        type: u32
++  -
++    name: seg6-local
++    name-prefix: seg6-local-
++    header: linux/seg6_local.h
++    attributes:
++      -
++        name: action
++        type: u32
++        enum: seg6-local-actions
++      -
++        name: srh
++        type: binary
++      -
++        name: table
++        type: u32
++      -
++        name: nh4
++        type: u32
++        byte-order: big-endian
++        display-hint: ipv4
++      -
++        name: nh6
++        type: binary
++        display-hint: ipv6
++      -
++        name: iif
++        type: u32
++      -
++        name: oif
++        type: u32
++      -
++        name: bpf
++        type: nest
++        nested-attributes: seg6-local-bpf
++      -
++        name: vrftable
++        type: u32
++      -
++        name: counters
++        type: nest
++        nested-attributes: seg6-local-cnt
++      -
++        name: flavors
++        type: nest
++        nested-attributes: seg6-local-flv
++  -
++    name: rpl-iptunnel
++    name-prefix: rpl-iptunnel-
++    header: linux/rpl_iptunnel.h
++    attributes:
++      -
++        name: srh
++        type: binary
++  -
++    name: ioam6-iptunnel
++    name-prefix: ioam6-iptunnel-
++    header: linux/ioam6_iptunnel.h
++    attributes:
++      -
++        name: mode
++        type: u8
++      -
++        name: dst
++        type: binary
++        display-hint: ipv6
++      -
++        name: trace
++        type: binary
++      -
++        name: freq-k
++        type: u32
++      -
++        name: freq-n
++        type: u32
++      -
++        name: src
++        type: binary
++        display-hint: ipv6
++  -
++    name: lwt-xfrm
++    name-prefix: lwt-xfrm-
++    header: linux/lwtunnel.h
++    attributes:
++      -
++        name: if-id
++        type: u32
++      -
++        name: link
++        type: u32
++  -
++    name: lwtunnel-ip-opts
++    name-prefix: lwtunnel-ip-opts-
++    attributes:
++      -
++        name: geneve
++        type: binary
++      -
++        name: vxlan
++        type: nest
++        nested-attributes: lwtunnel-ip-opt-vxlan
++      -
++        name: erspan
++        type: nest
++        nested-attributes: lwtunnel-ip-opt-erspan
++  -
++    name: lwtunnel-ip-opt-vxlan
++    name-prefix: lwtunnel-ip-opt-vxlan-
++    attributes:
++      -
++        name: gbp
++        type: u32
++  -
++    name: lwtunnel-ip-opt-erspan
++    name-prefix: lwtunnel-ip-opt-erspan-
++    attributes:
++      -
++        name: ver
++        type: u8
++      -
++        name: index
++        type: u32
++        byte-order: big-endian
++      -
++        name: dir
++        type: u8
++      -
++        name: hwid
++        type: u8
++  -
++    name: lwt-bpf-prog
++    name-prefix: lwt-bpf-prog-
++    attributes:
++      -
++        name: fd
++        type: u32
++      -
++        name: name
++        type: string
++        checks:
++          max-len: 256
++  -
++    name: seg6-local-bpf
++    name-prefix: seg6-local-bpf-
++    attr-max-name: seg6-local-bpf-prog-max
++    attributes:
++      -
++        name: prog
++        type: u32
++      -
++        name: prog-name
++        type: string
++        checks:
++          max-len: 256
++  -
++    name: seg6-local-cnt
++    name-prefix: seg6-local-cnt-
++    attributes:
++      -
++        name: pad
++        type: pad
++      -
++        name: packets
++        type: u64
++      -
++        name: bytes
++        type: u64
++      -
++        name: errors
++        type: u64
++  -
++    name: seg6-local-flv
++    name-prefix: seg6-local-flv-
++    attributes:
++      -
++        name: operation
++        type: u32
++        enum: seg6-local-flv-ops
++        enum-as-flags: true
++      -
++        name: lcblock-bits
++        type: u8
++      -
++        name: lcnode-fn-bits
++        type: u8
++  -
++    name: res-group-attrs
++    name-prefix: nha-res-group-
++    attributes:
++      -
++        name: pad
++        type: pad
++        value: 0
++      -
++        name: buckets
++        type: u16
++      -
++        name: idle-timer
++        type: u32
++      -
++        name: unbalanced-timer
++        type: u32
++      -
++        name: unbalanced-time
++        type: u64
++  -
++    name: res-bucket-attrs
++    name-prefix: nha-res-bucket-
++    attributes:
++      -
++        name: pad
++        type: pad
++        value: 0
++      -
++        name: index
++        type: u16
++      -
++        name: idle-time
++        type: u64
++      -
++        name: nh-id
++        type: u32
++  -
++    name: group-stats-attrs
++    name-prefix: nha-group-stats-
++    attributes:
++      -
++        name: entry
++        type: nest
++        nested-attributes: group-stats-entry-attrs
++        multi-attr: true
++  -
++    name: group-stats-entry-attrs
++    name-prefix: nha-group-stats-entry-
++    attributes:
++      -
++        name: id
++        type: u32
++      -
++        name: packets
++        type: uint
++      -
++        name: packets-hw
++        type: uint
 +
-+	return state < 0 ? LED_OFF : state;
-+}
++operations:
++  enum-model: directional
++  fixed-header: nhmsg
++  name-prefix: rtm-
++  list:
++    -
++      name: newnexthop
++      doc: Add new nexthop entry
++      attribute-set: nexthop-attrs
++      do:
++        request:
++          value: 104
++          attributes:
++            - id
++            - group
++            - group-type
++            - blackhole
++            - oif
++            - gateway
++            - encap-type
++            - encap
++            - fdb
++            - res-group
++            - hw-stats-enable
++            - dst-port
++    -
++      name: delnexthop
++      doc: Delete nexthop with given id.
++      attribute-set: nexthop-attrs
++      do:
++        request:
++          value: 105
++          attributes:
++            - id
++    -
++      name: getnexthop
++      doc: Get or dump nexthop entries
++      attribute-set: nexthop-attrs
++      do:
++        request:
++          value: 106
++          attributes:
++            - id
++            - op-flags
++        reply:
++          value: 104
++          attributes: &nexthop-all-attrs
++            - id
++            - group
++            - group-type
++            - blackhole
++            - oif
++            - gateway
++            - encap-type
++            - encap
++            - fdb
++            - res-group
++            - op-flags
++            - group-stats
++            - hw-stats-enable
++            - hw-stats-used
++            - dst-port
++      dump:
++        request:
++          value: 106
++          attributes:
++            - oif
++            - groups
++            - master
++            - fdb
++            - op-flags
++        reply:
++          value: 104
++          attributes: *nexthop-all-attrs
++    -
++      name: newnexthop-ntf
++      doc: Notification about a created nexthop.
++      value: 104
++      notify: getnexthop
++    -
++      name: delnexthop-ntf
++      doc: Notification about a deleted nexthop.
++      value: 105
++      notify: getnexthop
++    -
++      name: getnexthopbucket
++      doc: Get or dump nexthop buckets
++      attribute-set: nexthop-attrs
++      do:
++        request:
++          value: 118
++          attributes: &nexthop-bucket-all-attrs
++            - id
++            - res-bucket
++        reply:
++          value: 116
++          attributes: *nexthop-bucket-all-attrs
++      dump:
++        request:
++          value: 118
++          attributes:
++            - id
++            - oif
++            - master
++            - res-bucket
++        reply:
++          value: 116
++          attributes: *nexthop-bucket-all-attrs
++    -
++      name: newnexthopbucket-ntf
++      doc: Notification about a created nexthop bucket.
++      value: 116
++      notify: getnexthopbucket
 +
-+/* The firmware owns this LED; a write just resyncs it with the camera state. */
-+static int camera_neg_led_set(struct led_classdev *led_cdev,
-+			      enum led_brightness brightness)
-+{
-+	struct asus_wmi *asus = container_of(led_cdev, struct asus_wmi, camera_led);
-+
-+	if (!(led_cdev->flags & LED_UNREGISTERING))
-+		camera_neg_led_sync(asus);
-+	return 0;
-+}
-+
- static void asus_wmi_led_exit(struct asus_wmi *asus)
- {
- 	scoped_guard(spinlock_irqsave, &asus_ref.lock)
-@@ -2227,11 +2279,18 @@ static int asus_wmi_led_init(struct asus_wmi *asus)
- 			goto error;
- 	}
++mcast-groups:
++  list:
++    -
++      name: rtnlgrp-nexthop
++      value: 32
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 23e919448..6a5062f02 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -19144,6 +19144,7 @@ L:	netdev@vger.kernel.org
+ S:	Maintained
+ F:	Documentation/netlink/specs/rt-addr.yaml
+ F:	Documentation/netlink/specs/rt-neigh.yaml
++F:	Documentation/netlink/specs/rt-nexthop.yaml
+ F:	Documentation/netlink/specs/rt-route.yaml
+ F:	Documentation/netlink/specs/rt-rule.yaml
+ F:	include/linux/inetdevice.h
+diff --git a/tools/net/ynl/Makefile.deps b/tools/net/ynl/Makefile.deps
+index 3eee34e0e..9389f3752 100644
+--- a/tools/net/ynl/Makefile.deps
++++ b/tools/net/ynl/Makefile.deps
+@@ -45,6 +45,15 @@ CFLAGS_rt-link:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
+ 	$(call get_hdr_inc,_LINUX_IF_LINK_H,if_link.h)
+ CFLAGS_rt-neigh:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
+ 	$(call get_hdr_inc,__LINUX_NEIGHBOUR_H,neighbour.h)
++CFLAGS_rt-nexthop:=$(call get_hdr_inc,__LINUX_RTNETLINK_H,rtnetlink.h) \
++	$(call get_hdr_inc,_LINUX_NEXTHOP_H,nexthop.h) \
++	$(call get_hdr_inc,_LINUX_ILA_H,ila.h) \
++	$(call get_hdr_inc,_LINUX_IOAM6_IPTUNNEL_H,ioam6_iptunnel.h) \
++	$(call get_hdr_inc,_LINUX_MPLS_IPTUNNEL_H,mpls_iptunnel.h) \
++	$(call get_hdr_inc,_LINUX_RPL_IPTUNNEL_H,rpl_iptunnel.h) \
++	$(call get_hdr_inc,_LINUX_SEG6_IPTUNNEL_H,seg6_iptunnel.h) \
++	$(call get_hdr_inc,_LINUX_SEG6_LOCAL_H,seg6_local.h) \
++	$(call get_hdr_inc,_LWTUNNEL_H_,lwtunnel.h)
+ CFLAGS_rt-route:=$(call get_hdr_inc,_LINUX_ILA_H,ila.h) \
+ 	$(call get_hdr_inc,_LINUX_IOAM6_IPTUNNEL_H,ioam6_iptunnel.h) \
+ 	$(call get_hdr_inc,_LINUX_MPLS_IPTUNNEL_H,mpls_iptunnel.h) \
+diff --git a/tools/net/ynl/generated/Makefile b/tools/net/ynl/generated/Makefile
+index 5a186349b..d76d4ca94 100644
+--- a/tools/net/ynl/generated/Makefile
++++ b/tools/net/ynl/generated/Makefile
+@@ -18,6 +18,7 @@ include ../Makefile.deps
  
--	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED)) {
-+	if (asus->camera_neg_led_available ||
-+	    asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED)) {
- 		asus->camera_led.name = "asus::camera";
- 		asus->camera_led.max_brightness = 1;
--		asus->camera_led.brightness_get = camera_led_get;
--		asus->camera_led.brightness_set_blocking = camera_led_set;
-+		if (asus->camera_neg_led_available) {
-+			asus->camera_led.flags = LED_BRIGHT_HW_CHANGED;
-+			asus->camera_led.brightness_get = camera_neg_led_get;
-+			asus->camera_led.brightness_set_blocking = camera_neg_led_set;
-+		} else {
-+			asus->camera_led.brightness_get = camera_led_get;
-+			asus->camera_led.brightness_set_blocking = camera_led_set;
-+		}
+ YNL_GEN_ARG_ethtool:=--user-header linux/ethtool_netlink.h \
+ 	--exclude-op stats-get
++YNL_GEN_ARG_rt-nexthop:=--exclude-op newnexthopbucket-ntf
  
- 		rv = led_classdev_register(&asus->platform_device->dev,
- 						&asus->camera_led);
-@@ -4733,6 +4792,13 @@ static void asus_wmi_handle_event_code(int code, struct asus_wmi *asus)
- 	if (is_display_toggle(code) && asus->driver->quirks->no_display_toggle)
- 		return;
- 
-+	if (is_camera_toggle(code) && asus->camera_neg_led_available) {
-+		int state = camera_neg_led_sync(asus);
-+
-+		if (state >= 0)
-+			led_classdev_notify_brightness_hw_changed(&asus->camera_led, state);
-+	}
-+
- 	if (!sparse_keymap_report_event(asus->inputdev, code,
- 					key_value, autorelease))
- 		pr_info("Unknown key code 0x%x\n", code);
-@@ -5210,6 +5276,9 @@ static int asus_wmi_add(struct platform_device *pdev)
- #endif /* IS_ENABLED(CONFIG_ASUS_WMI_DEPRECATED_ATTRS) */
- 
- 	asus->oobe_state_available = asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_OOBE);
-+	asus->camera_neg_led_available =
-+		!asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED) &&
-+		asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_CAMERA_LED_NEG);
- 
- 	if (asus_wmi_dev_is_present(asus, ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY))
- 		asus->throttle_thermal_policy_dev = ASUS_WMI_DEVID_THROTTLE_THERMAL_POLICY;
-diff --git a/include/linux/platform_data/x86/asus-wmi.h b/include/linux/platform_data/x86/asus-wmi.h
-index 4ea1ccc..5964063 100644
---- a/include/linux/platform_data/x86/asus-wmi.h
-+++ b/include/linux/platform_data/x86/asus-wmi.h
-@@ -57,7 +57,7 @@
- #define ASUS_WMI_DEVID_MUTE_LED	0x0004001C
- 
- /* Disable Camera LED */
--#define ASUS_WMI_DEVID_CAMERA_LED_NEG	0x00060078 /* 0 = on (unused) */
-+#define ASUS_WMI_DEVID_CAMERA_LED_NEG	0x00060078 /* 0 = on */
- #define ASUS_WMI_DEVID_CAMERA_LED	0x00060079 /* 1 = on */
- 
- /* Backlight and Brightness */
+ TOOL:=../pyynl/ynl_gen_c.py
+ TOOL_RST:=../pyynl/ynl_gen_rst.py
 
 ---
-base-commit: ea40f1e9f07aab937b9a217633be7a1f66260394
-change-id: 20261017-asus-wmi-camera-led-06a6e05f01e2
+base-commit: 98c2ad4f5d805dbc1ea436a334ee59311806a48c
+change-id: 20261019-rt-nexthop-spec-0fc03a2c9935
 
 Best regards,
---  
-Zane Hunt <git@turtledev.nz>
+-- 
+Demos Ra <demosthenes.ra@gmail.com>
 
