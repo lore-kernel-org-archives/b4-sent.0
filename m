@@ -1,143 +1,130 @@
-From: Marcin Knap <marcin.knap@vecima.com>
-Date: Mon, 19 Oct 2026 10:22:02 +0200
-Subject: [PATCH bpf] xsk: Do not free ZC Rx buffer when the Rx ring is full
+From: Aiden Isik <aidenisik@member.fsf.org>
+Subject: [PATCH v2 0/5] arm64: dts: exynos: add initial support for Samsung
+ Galaxy Watch FE
+Date: Mon, 19 Oct 2026 11:23:46 +0100
+Message-Id: <20261019-for-next-lucky7-v2-0-c4ecab4b1c4c@member.fsf.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-xsk-zc-rx-double-free-v1-1-2aa19f6628fb@vecima.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0Q6CMAwAf4X02SYrKgn+ivGBbR1UDZBWzCLh3
- 53yeJfcrWCswgaXagXlt5hMYwE6VBCGbuwZJRaG2tUNOWox2wM/ATVjnBb/ZEzKjNQdvTu3IZ4
- oQWln5ST5/72CnxPcdmmLv3N4/Y6wbV+jyIs7fgAAAA==
-X-Change-ID: 20261019-xsk-zc-rx-double-free-1a3b059cd41f
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Magnus Karlsson <magnus.karlsson@intel.com>, 
- Maciej Fijalkowski <maciej.fijalkowski@intel.com>, 
- Stanislav Fomichev <sdf@fomichev.me>, Simon Horman <horms@kernel.org>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, jtollet@cisco.com
-Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
- Marcin Knap <marcin.knap@vecima.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792398177; l=3895;
- i=marcin.knap@vecima.com; s=20261019; h=from:subject:message-id;
- bh=s6M5ShvilqT323SiSxSUh6dP4sF4L+nlpgOVCpDnEy4=;
- b=HFs2SdpG1CqBqkvoJRwEfJGWNfBJ7ooY+MScmp5JkPzPFwlIAXQjDAdi23OedaFro/Z459wVH
- WUhia9cS1xdDc452zTPEUkNgfr0sWLUaj7fqvb7FkxgW6e/kSnBincv
-X-Developer-Key: i=marcin.knap@vecima.com; a=ed25519;
- pk=rCvVOuopf4s4BHtLE+FRnv0x83PoFHgBPo9mtNlvzLk=
-X-Endpoint-Received: by B4 Relay for marcin.knap@vecima.com/20261019 with auth_id=1237
+X-B4-Tracking: v=1; b=H4sIALLv1WoC/2WNQQ6CMBBFr2K6dkhbRdSV9zAsGJiBqlAzBQIh3
+ F3AuHL5kvffn1QgcRTUdTcpod4F55sF7H6n8iprSgJXLKystid9NjGwF2hoaOHV5c8xAYqRD5d
+ YY4GkltVbiN2wFe/pl0OHD8rbNbMalQutl3G77M3q/erJX703oOFomdFiYjCzt5pqJIk4cOSlV
+ Ok8zx/wV4ZVxQAAAA==
+X-Change-ID: 20260815-for-next-lucky7-e5bf3950bdbe
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aiden Isik <aidenisik@member.fsf.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3551;
+ i=aidenisik@member.fsf.org; h=from:subject:message-id;
+ bh=EQ/IbfNS9nKNdAEu6jhHR5zYzZlCmz/vHhGduVDUTHY=;
+ b=owEBiQJ2/ZANAwAIAUknAbLEetfrAcsmYgBq1e+6YjzaaPOzeBdhgf8S+2tZ8ccJTr788n1nN
+ SbeCkHVQR2JAk8EAAEIADkWIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCatXvuhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQSScBssR61+v+1hAAyy3DLescGXWNJZh8B+AdAfWdBRZxlE3
+ 38Dt+0/UzbzWuN7RVY5UHqJHK6iHb9AaZ0JKv8lO4SPKmhjQ/dmwwezLjnKaHaqZhF3qHk7r7od
+ vjtif9aUFVWoKGlON94ARrFvfb0AnLEfvj0aWRkOmIYmsjx+gBiXarh4aewaBRvniN5lF7S1XyN
+ lHWkE04UzYTcpJgQfuyTp2b8BpD3Zynv1Q0YnQI8xpap7q/hq3sC96W5h047GU0nuUVELxH1iG0
+ sq5Yve+dEHP2MXe0+3yFg1prfzae/2tZTOp01Cm2sjCkiSdR8N0vZZE5HYQvf2lqgdaa56GAfxy
+ V9QsKySOyn0OrMoUdEf0JGhqmEgnvqYr8JHXU3Cf9ScJylqr4Awv813Y7FO1F99WDuuAJ81ltI3
+ LWITfKehVjKTzhGuRWvCGYZGH17XUgX8BNR86tVTWNsZBLKH5x7/1fDG/J0xFx6HfVFIvJq3eut
+ G7eRz90KDKxoJm8/14TPq/Odmnq1K3xpLJVsU2/R6i7AV5A1Q7aul7TeW7zHI0ycX9+aGjGGpTr
+ BgLgJnm0vViKvGF1SYK4ACjIGefSgB//rBZV7KucW5ALRybBo0RLNnWpkUBcKoyl7Nuk6ffAgPd
+ Huj7PemM6FIyiSyDIQcbQhq2N5CymzQWZJj/AWytUNZ8EBq+Iftk=
+X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
+ fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
+X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When an XDP program redirects a zero-copy buffer to an XSK and the
-socket's Rx ring is full, xsk_rcv_zc() frees the buffer and returns
--ENOBUFS to xdp_do_redirect().
+Hi there,
 
-A failed xdp_do_redirect() leaves the buffer owned by the caller, and
-drivers rely on that: mlx5e treats the failure as XDP_DROP and releases
-the buffer when the Rx WQE is refilled, and i40e and ice free it on
-XDP_CONSUMED. The buffer is therefore freed twice. It gets reused for
-another Rx descriptor, the second free puts an in-use buffer back on
-the pool free list, and the same UMEM frame is later handed to user
-space twice. On mlx5 with striding RQ this also ended in a NULL pointer
-dereference in mlx5e_post_rx_wqes().
+This patchset adds initial support for the Exynos5515 SoC, along with
+support for the Samsung Galaxy Watch FE (codenamed lucky7), which uses
+this SoC.
 
-Leave the buffer with the caller on both the single-buffer and the
-multi-buffer -ENOBUFS paths, as xsk_rcv() and xsk_rcv_check() already
-do. i40e and ice relied on the core freeing the buffer on their
-need_wakeup -ENOBUFS (XDP_EXIT) path, so make them free it there.
+Support for the following is added:
+- Bootloader framebuffer
+- Both CPU cores
+- Memory
+- Generic timer
+- Watchdog timer
+- CMU_TOP, CMU_FSYS, CMU_PERI clock management units
+- ChipID
 
-Seen on Mellanox ConnectX-6 DX MT2892 (FW 22.47.1026) with AF_XDP
-zero-copy on 7.3.0-rc6 when the user-space consumer could not keep up
-with the Rx ring. With this change no duplicate frames were seen with
-striding RQ on or off.
+Currently, these device trees support booting the device to an initramfs.
 
-Fixes: 269009893146 ("xsk: recycle buffer in case Rx queue was full")
-Signed-off-by: Marcin Knap <marcin.knap@vecima.com>
+There are quite a few regions of reserved memory, where usage of them
+can crash the system and/or cause unexpected behaviour. Currently, most
+of them are named "misc-rmem@addr". They will be given names as their
+accompanying device drivers are added and their purpose becomes apparent.
+If you would like them named feel differently, feel free to let me know.
+
+The VGIC maintenance interrupt seems to be unavailable on this SoC.
+I cannot find any reference to it, nor usage of it, anywhere.
+It *could* very well still exist, but it is a mystery for now (and also
+not a *huge* deal on a low-power SoC designed for smartwatches).
+
+I am getting checkpatch warnings on this patchset advising to check
+MAINTAINERS as new files were added, but I am ignoring them as the
+entirety of arch/arm64/boot/dts/exynos is covered already.
+
+This patchset depends on [1] for drivers and device tree bindings.
+Note: This dependency was merged into the linux-watchdog tree.
+
+[1] https://lore.kernel.org/all/20260821-for-next-lucky7-watchdog-v4-0-d070cee5009f@member.fsf.org/
+
+Kind regards,
+- Aiden Isik
+
+Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
-Tested on mlx5 (ConnectX-6 DX) in zero-copy single-buffer mode.
-The i40e and ice changes and the multi-buffer path are build-tested
-only, as I don't have that hardware available.
----
- drivers/net/ethernet/intel/i40e/i40e_xsk.c |  1 +
- drivers/net/ethernet/intel/ice/ice_xsk.c   |  1 +
- net/xdp/xsk.c                              | 15 +++------------
- 3 files changed, 5 insertions(+), 12 deletions(-)
+Changes in v2:
+- Fix patchset title
+- Fix DCO email
+- Fix style issues reported by dt-check-style in strict mode
+- Added patches which were accidentally dropped in v1
+- Fix reserved memory and make all memory accessible in the memory node
+- Remove redundant PSCI 1.0 cpu_* function IDs
+- Extend GIC registers to correct size
+- Correct GIC unit address
+- Correct CPU unit address
+- Document unavailable VGIC maintenance interrupt
+- Remove references to dependencies which have since been merged to this tree
+- Link to v1: https://patch.msgid.link/20260817-for-next-lucky7-v1-0-42ffb2b71ba2@member.fsf.org
 
-diff --git a/drivers/net/ethernet/intel/i40e/i40e_xsk.c b/drivers/net/ethernet/intel/i40e/i40e_xsk.c
-index 9f47388eaba5..d32c7255f0b3 100644
---- a/drivers/net/ethernet/intel/i40e/i40e_xsk.c
-+++ b/drivers/net/ethernet/intel/i40e/i40e_xsk.c
-@@ -358,6 +358,7 @@ static void i40e_handle_xdp_result_zc(struct i40e_ring *rx_ring,
- 		return;
- 
- 	if (xdp_res == I40E_XDP_EXIT) {
-+		xsk_buff_free(xdp_buff);
- 		*failure = true;
- 		return;
- 	}
-diff --git a/drivers/net/ethernet/intel/ice/ice_xsk.c b/drivers/net/ethernet/intel/ice/ice_xsk.c
-index 0643017541c3..7c1dd4c87a71 100644
---- a/drivers/net/ethernet/intel/ice/ice_xsk.c
-+++ b/drivers/net/ethernet/intel/ice/ice_xsk.c
-@@ -636,6 +636,7 @@ int ice_clean_rx_irq_zc(struct ice_rx_ring *rx_ring,
- 		if (likely(xdp_res & (ICE_XDP_TX | ICE_XDP_REDIR))) {
- 			xdp_xmit |= xdp_res;
- 		} else if (xdp_res == ICE_XDP_EXIT) {
-+			xsk_buff_free(first);
- 			failure = true;
- 			first = NULL;
- 			break;
-diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
-index 33475b180ea6..0edc160c660f 100644
---- a/net/xdp/xsk.c
-+++ b/net/xdp/xsk.c
-@@ -224,21 +224,15 @@ static int xsk_rcv_zc(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)
- 	struct list_head *xskb_list;
- 	u32 contd = 0;
- 	u32 num_desc;
--	int err;
- 
--	if (likely(!frags)) {
--		err = __xsk_rcv_zc(xs, xskb, len, contd);
--		if (err)
--			goto err;
--		return 0;
--	}
-+	if (likely(!frags))
-+		return __xsk_rcv_zc(xs, xskb, len, contd);
- 
- 	contd = XDP_PKT_CONTD;
- 	num_desc = xdp_get_shared_info_from_buff(xdp)->nr_frags + 1;
- 	if (xskq_prod_nb_free(xs->rx, num_desc) < num_desc) {
- 		xs->rx_queue_full++;
--		err = -ENOBUFS;
--		goto err;
-+		return -ENOBUFS;
- 	}
- 
- 	__xsk_rcv_zc_safe(xs, xskb, len, contd);
-@@ -252,9 +246,6 @@ static int xsk_rcv_zc(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)
- 	}
- 
- 	return 0;
--err:
--	xsk_buff_free(xdp);
--	return err;
- }
- 
- static void *xsk_copy_xdp_start(struct xdp_buff *from)
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Peter Griffin <peter.griffin@linaro.org>
+To: Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-samsung-soc@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: ff47652a4b66c067c765a7ad464d930b5a9367cc
-change-id: 20261019-xsk-zc-rx-double-free-1a3b059cd41f
+Aiden Isik (5):
+      dt-bindings: soc: samsung: exynos-sysreg: Add compatibles for Exynos5515
+      dt-bindings: soc: samsung: exynos-pmu: Add Exynos5515 compatible
+      dt-bindings: arm: samsung: Add lucky7 board binding
+      arm64: dts: exynos: Add initial support for Exynos5515 SoC
+      arm64: dts: exynos: Add initial support for Samsung Galaxy Watch FE
+
+ .../bindings/arm/samsung/samsung-boards.yaml       |   6 +
+ .../bindings/soc/samsung/exynos-pmu.yaml           |   1 +
+ .../soc/samsung/samsung,exynos-sysreg.yaml         |   3 +
+ arch/arm64/boot/dts/exynos/exynos5515-lucky7.dts   | 219 +++++++++++++++++++++
+ arch/arm64/boot/dts/exynos/exynos5515.dtsi         | 189 ++++++++++++++++++
+ 5 files changed, 418 insertions(+)
+---
+base-commit: 993e1bec85faedf90c5d27480793084e54357c09
+change-id: 20260815-for-next-lucky7-e5bf3950bdbe
 
 Best regards,
 --  
-Marcin Knap <marcin.knap@vecima.com>
+Aiden Isik <aidenisik@member.fsf.org>
 
