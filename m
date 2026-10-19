@@ -1,10 +1,11 @@
 From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Mon, 19 Oct 2026 19:58:30 -0300
-Subject: [PATCH 1/3] drm/msm/a5xx: Reset the GPU when resuming it
+Date: Mon, 19 Oct 2026 19:58:31 -0300
+Subject: [PATCH 2/3] drm/msm/a5xx: Hold a CPU latency request while the GPU
+ is powered
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-a5xx-gpu-pm-v1-1-1d0c313a1412@gmail.com>
+Message-Id: <20261019-a5xx-gpu-pm-v1-2-1d0c313a1412@gmail.com>
 References: <20261019-a5xx-gpu-pm-v1-0-1d0c313a1412@gmail.com>
 In-Reply-To: <20261019-a5xx-gpu-pm-v1-0-1d0c313a1412@gmail.com>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
@@ -20,66 +21,167 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  Paul Sajna <sajattack@postmarketos.org>, 
  Fabricio Akio <fabricioakio@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792450714; l=2441;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792450714; l=6502;
  i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=pgmuJr74vl5DdcyIRaMFMXExHYM4RMyzyaatxZzA9fI=;
- b=Gv9+hl0G1oNlCSAMQZdDBTQPLlTR8N5rRKLdE6TIr3kf5oEw6KcNRUnIJ3AFXmW3Uz837tCrw
- Q4l+CQpQpJ2BiXcPolL0CUo0PGxBE6G5MuyEnA7VWLhkE1ekD8UlFzH
+ bh=vmAWCs0jc6biGnTgE0/+DF6RCludk5C4eAXduAuWwV0=;
+ b=QnrsuM4J/6cIzmsVszWA3f7J6XP9OBF1jbJipXpMXZowfaMopE9RUICY9nKM1TSpaCYO9iovR
+ SeiUeNWRLVlDv6iSAOGxxF2DDXB2theqPc10ncRE4qQ1Rd4CBH6ToB0
 X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
  pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
 X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On SDM630, SDM660 and MSM8998 the GPU's GX power domain belongs to its
-SMMU, not to the GPU, so GX switches off only once the SMMU suspends as
-well. A GPU resumed with GX still on keeps its state, and the CP keeps
-its ringbuffer read pointer. a5xx_hw_init() then rewinds the ringbuffer
-and writes CP_ME_INIT at its start, while the CP goes on from its old
-position, executes stale ringbuffer contents and hangs:
+On SDM630 the GPU was observed to stop executing while the SoC is in
+system-level power collapse, and to continue once the SoC wakes. Its
+interrupts have no wakeup route through the MPM, so it cannot wake the
+SoC itself. A submission overlapping such a state would stall until a
+CPU wakes, and a stall longer than the hang detector's threshold makes
+the driver recover the GPU, which can lose a frame.
 
-  timeout waiting to drain ringbuffer 0 rptr/wptr = 23/C
-
-Soft reset the GPU in a5xx_pm_resume() once it is powered, so that
-every resume starts from the reset state. The downstream driver resets
-only when it finds the GPU's power left on; resetting a GPU that was
-powered off changes nothing, and on A508 the reset takes about 2 us of
-a resume of about 1.5 ms, so do it every time.
+Qualcomm's downstream driver holds a CPU latency request while the GPU
+is active, qcom,pm-qos-active-latency, which keeps the CPU idle
+governors out of cluster and system-level power collapse. Do the same:
+take the request when the GPU resumes and drop it when it suspends, so
+those states remain available once the GPU has gone idle, and on
+destroy, which unbind reaches even when suspending the GPU failed. The
+limit is a per-GPU catalog value, downstream's for each SoC: 424 us
+for the A508 in SDM630, and 518 us for the A509 in SDM636 and the A512
+in SDM660.
 
 Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
 ---
-Tested on A508 only; the reset runs on every A5xx.
+The values are downstream's CPU latency while the GPU is active, per
+SoC:
+https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/arch/arm/boot/dts/qcom/sdm630-gpu.dtsi#L117
+https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/arch/arm/boot/dts/qcom/sdm660-gpu.dtsi#L126
+SDM636 takes SDM660's by including sdm660.dtsi:
+https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/arch/arm/boot/dts/qcom/sdm636.dtsi#L13
+Downstream reads it at probe, applies it when the GPU starts and drops
+it when the GPU slumbers:
+https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/drivers/gpu/msm/adreno.c#L887
+https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/drivers/gpu/msm/adreno.c#L1451
+https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/drivers/gpu/msm/kgsl_pwrctrl.c#L2753
 
-A stall with the same signature, the CP's read pointer past the write
-pointer just after CP_ME_INIT, was reported on an A509:
-https://lore.kernel.org/linux-arm-msm/20260308-adreno-ringbuffer-drain-timeout-recovery-v1-1-985a33faf108@postmarketos.org/
-This may be the root cause of the A509 stall Paul Sajna reported there.
+The A509 and A512 values are downstream's for SDM636 and SDM660;
+tested on an A508 only.
 ---
- drivers/gpu/drm/msm/adreno/a5xx_gpu.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/gpu/drm/msm/adreno/a5xx_catalog.c |  3 +++
+ drivers/gpu/drm/msm/adreno/a5xx_gpu.c     | 13 +++++++++++++
+ drivers/gpu/drm/msm/adreno/a5xx_gpu.h     |  4 ++++
+ drivers/gpu/drm/msm/adreno/adreno_gpu.h   |  5 +++++
+ 4 files changed, 25 insertions(+)
 
+diff --git a/drivers/gpu/drm/msm/adreno/a5xx_catalog.c b/drivers/gpu/drm/msm/adreno/a5xx_catalog.c
+index babd320f3b73..7b261f045eae 100644
+--- a/drivers/gpu/drm/msm/adreno/a5xx_catalog.c
++++ b/drivers/gpu/drm/msm/adreno/a5xx_catalog.c
+@@ -55,6 +55,7 @@ static const struct adreno_info a5xx_gpus[] = {
+ 		 * the GDSC which appears to make it grumpy
+ 		 */
+ 		.inactive_period = 250,
++		.cpu_latency_us = 424,
+ 		.quirks = ADRENO_QUIRK_LMLOADKILL_DISABLE,
+ 		.funcs = &a5xx_gpu_funcs,
+ 		.zapfw = "a508_zap.mdt",
+@@ -72,6 +73,7 @@ static const struct adreno_info a5xx_gpus[] = {
+ 		 * the GDSC which appears to make it grumpy
+ 		 */
+ 		.inactive_period = 250,
++		.cpu_latency_us = 518,
+ 		.quirks = ADRENO_QUIRK_LMLOADKILL_DISABLE,
+ 		.funcs = &a5xx_gpu_funcs,
+ 		/* Adreno 509 uses the same ZAP as 512 */
+@@ -105,6 +107,7 @@ static const struct adreno_info a5xx_gpus[] = {
+ 		 * the GDSC which appears to make it grumpy
+ 		 */
+ 		.inactive_period = 250,
++		.cpu_latency_us = 518,
+ 		.quirks = ADRENO_QUIRK_LMLOADKILL_DISABLE,
+ 		.funcs = &a5xx_gpu_funcs,
+ 		.zapfw = "a512_zap.mdt",
 diff --git a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
-index 16c7335c4b1f..dd0d731df138 100644
+index dd0d731df138..055b2bc9df2f 100644
 --- a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
 +++ b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
-@@ -1367,6 +1367,18 @@ static int a5xx_pm_resume(struct msm_gpu *gpu)
+@@ -1060,6 +1060,10 @@ static void a5xx_destroy(struct msm_gpu *gpu)
+ 		drm_gem_object_put(a5xx_gpu->shadow_bo);
+ 	}
+ 
++	/* Still held if suspending the GPU failed before it was destroyed */
++	if (cpu_latency_qos_request_active(&a5xx_gpu->pm_qos_req))
++		cpu_latency_qos_remove_request(&a5xx_gpu->pm_qos_req);
++
+ 	adreno_gpu_cleanup(adreno_gpu);
+ 	kfree(a5xx_gpu);
+ }
+@@ -1360,6 +1364,7 @@ static void a5xx_dump(struct msm_gpu *gpu)
+ static int a5xx_pm_resume(struct msm_gpu *gpu)
+ {
+ 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
++	struct a5xx_gpu *a5xx_gpu = to_a5xx_gpu(adreno_gpu);
+ 	int ret;
+ 
+ 	/* Turn on the core power */
+@@ -1367,6 +1372,11 @@ static int a5xx_pm_resume(struct msm_gpu *gpu)
  	if (ret)
  		return ret;
  
-+	/*
-+	 * The GX power domain is not necessarily switched off while we are
-+	 * suspended: on SDM630, SDM660 and MSM8998 it follows the GPU's SMMU
-+	 * rather than the GPU. If it stayed on, the CP still holds its old
-+	 * ringbuffer read pointer and would execute stale ringbuffer contents
-+	 * once hw_init restarts it. Soft reset the GPU so that it always
-+	 * resumes from its reset state.
-+	 */
-+	gpu_write(gpu, REG_A5XX_RBBM_SW_RESET_CMD, 1);
-+	gpu_read(gpu, REG_A5XX_RBBM_SW_RESET_CMD);
-+	gpu_write(gpu, REG_A5XX_RBBM_SW_RESET_CMD, 0);
++	if (adreno_gpu->info->cpu_latency_us &&
++	    !cpu_latency_qos_request_active(&a5xx_gpu->pm_qos_req))
++		cpu_latency_qos_add_request(&a5xx_gpu->pm_qos_req,
++					    adreno_gpu->info->cpu_latency_us);
 +
- 	/* Adreno 505, 506, 508, 509, 510, 512 needs manual RBBM sus/res control */
- 	if (!(adreno_is_a530(adreno_gpu) || adreno_is_a540(adreno_gpu))) {
- 		/* Halt the sp_input_clk at HM level */
+ 	/*
+ 	 * The GX power domain is not necessarily switched off while we are
+ 	 * suspended: on SDM630, SDM660 and MSM8998 it follows the GPU's SMMU
+@@ -1447,6 +1457,9 @@ static int a5xx_pm_suspend(struct msm_gpu *gpu)
+ 	if (ret)
+ 		return ret;
+ 
++	if (cpu_latency_qos_request_active(&a5xx_gpu->pm_qos_req))
++		cpu_latency_qos_remove_request(&a5xx_gpu->pm_qos_req);
++
+ 	if (a5xx_gpu->has_whereami)
+ 		for (i = 0; i < gpu->nr_rings; i++)
+ 			a5xx_gpu->shadow[i] = 0;
+diff --git a/drivers/gpu/drm/msm/adreno/a5xx_gpu.h b/drivers/gpu/drm/msm/adreno/a5xx_gpu.h
+index fb05f1ca3e81..07a36c05be25 100644
+--- a/drivers/gpu/drm/msm/adreno/a5xx_gpu.h
++++ b/drivers/gpu/drm/msm/adreno/a5xx_gpu.h
+@@ -4,6 +4,8 @@
+ #ifndef __A5XX_GPU_H__
+ #define __A5XX_GPU_H__
+ 
++#include <linux/pm_qos.h>
++
+ #include "adreno_gpu.h"
+ 
+ /* Bringing over the hack from the previous targets */
+@@ -48,6 +50,8 @@ struct a5xx_gpu {
+ 
+ 	/* True if the microcode supports the WHERE_AM_I opcode */
+ 	bool has_whereami;
++
++	struct pm_qos_request pm_qos_req;
+ };
+ 
+ #define to_a5xx_gpu(x) container_of(x, struct a5xx_gpu, base)
+diff --git a/drivers/gpu/drm/msm/adreno/adreno_gpu.h b/drivers/gpu/drm/msm/adreno/adreno_gpu.h
+index 4b2156825bdf..fcc382f4a9a1 100644
+--- a/drivers/gpu/drm/msm/adreno/adreno_gpu.h
++++ b/drivers/gpu/drm/msm/adreno/adreno_gpu.h
+@@ -118,6 +118,11 @@ struct adreno_info {
+ 	const struct adreno_gpu_funcs *funcs;
+ 	const char *zapfw;
+ 	u32 inactive_period;
++	/**
++	 * @cpu_latency_us: CPU latency limit to hold while the GPU is
++	 * powered, in microseconds, or 0 for none
++	 */
++	u32 cpu_latency_us;
+ 	union {
+ 		const struct a6xx_info *a6xx;
+ 	};
 
 -- 
 2.56.0
