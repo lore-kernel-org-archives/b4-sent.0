@@ -1,88 +1,126 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Mon, 19 Oct 2026 16:23:19 +0300
-Subject: [PATCH] drm/mediatek: mtk_dsi: do not enable HS clock in
- pre-enable for LPM panels
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Mon, 19 Oct 2026 15:37:33 +0200
+Subject: [PATCH v2] iio: imu: inv_icm42600: fix parsing of all FIFO frames
+ for odr change
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-6768-dsi-fix-v1-1-3e5616b45a67@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDA0NLXTNzMwvdlOJM3bTMCl3LNINko+REo6REyzQloJaColSgMNi46Fg
- Iv7g0KSs1uQRkhlJtLQAoHfg2cAAAAA==
-X-Change-ID: 20261019-6768-dsi-fix-9f0c2ca2ba9f
-To: Chun-Kuang Hu <chunkuang.hu@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- CK Hu <ck.hu@mediatek.com>, Gary Bisson <bisson.gary@gmail.com>
-Cc: dri-devel@lists.freedesktop.org, linux-mediatek@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- stable@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261019-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-v2-1-d72a69c327ff@tdk.com>
+X-B4-Tracking: v=1; b=H4sIABwd1moC/6WOTQ6CMBBGr0K6dkzbAKIr72FYtGWUUUpNWxoN4
+ e4W9AYuX/K+n5kF9ISBnYqZeUwUyI0Z5K5gplfjDYG6zExyWQsuaiByQHYCGhOQsaWsOYcrvcB
+ 1Hn4RTDjGbIAaBrh6ZTHAoVRHYbRslNQstz895tS2fGm/HCZ9RxPXudXoKUTn39u1JFbv/xdJg
+ AAttRZ1o3hViXPsHnvjLGuXZfkAOQ2nmw4BAAA=
+X-Change-ID: 20261016-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-74a91cb28a2b
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792416200; l=2272;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=JSG4TWGCcAQcls3Iu49KLqCH7zkim5ue4YYLwNCf0vg=;
- b=a1priHrWzzd5wggrEpf0KowBgM/lZiW5nLcwsUa91RhGy3yUoUHijxKnHdjdQOHPpFcIKUe5F
- nDuzITpaye8CDsDEK32e6TtMCcHv+eia4EKvKhzllTtgq97gUzNtITe
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792417055; l=3281;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=kD1/ng0GS6kPMK14Mq3qWLm6q2zMJ+jIcdvPt6Xp/Vo=;
+ b=DAWMDcOLqRRr7iqC6DWTped4J4M9UNqklDYVqXiraMEK1fslvlmpH7O4i+UCorQ2C3UCeS0Cw
+ dxi5AoZlxs/CjA0LPxi0W3PhIz2XivYnxoetCD1fkKagTl2fqN8/MlJ
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 76255024cadb ("drm/mediatek: mtk_dsi: enable hs clock during
-pre-enable") moved HS clock enablement from the mtk_output_dsi_enable()
-to mtk_dsi_poweron(). Later, the commit 3e191eddbdcb ("drm/mediatek:
-mtk_dsi: Enable HS clock only at pre-enable") moved the call to the
-mtk_dsi_bridge_atomic_pre_enable().
+For getting all odr change events, we need to parse all FIFO frames
+in each iio device. Fix this correctly by sending effectively all
+frames to all iio devices.
 
-However, mtk_dsi_lane_ready() explicitly sets mtk_dsi_clk_hs_mode(dsi, 0)
-so that DSI panels with MIPI_DSI_MODE_LPM can transmit initialization
-commands in Low-Power mode during their prepare() callback. Enabling the
-HS clock unconditionally in mtk_dsi_bridge_atomic_pre_enable() overrides
-this before panel prepare() runs, causing command transmission to fail.
+Previously only batches of frames containing a matching sensor event
+were sent to the corresponding iio device.
 
-Only enable the HS clock in mtk_dsi_bridge_atomic_pre_enable(), when
-MIPI_DSI_MODE_LPM is not set, and restore mtk_dsi_clk_hs_mode(dsi, 1) in
-mtk_output_dsi_enable(). This is no-op for non-LPM bridges.
-
-Fixes: 76255024cadb ("drm/mediatek: mtk_dsi: enable hs clock during pre-enable")
-Fixes: 3e191eddbdcb ("drm/mediatek: mtk_dsi: Enable HS clock only at pre-enable")
+Fixes: f670d4d34773 ("iio: imu: inv_icm42600: fix odr change not caught in certain cases")
 Cc: stable@vger.kernel.org
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
-This fix was tested with the Tianma NT36672A panel on the mt6768 platform.
----
- drivers/gpu/drm/mediatek/mtk_dsi.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Changes in v2:
+- Add blank line and direct return at end of functions.
+- Link to v1: https://patch.msgid.link/20261016-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-v1-1-b2bb168a0551@tdk.com
 
-diff --git a/drivers/gpu/drm/mediatek/mtk_dsi.c b/drivers/gpu/drm/mediatek/mtk_dsi.c
-index 7961139333ad..e5b433f353d5 100644
---- a/drivers/gpu/drm/mediatek/mtk_dsi.c
-+++ b/drivers/gpu/drm/mediatek/mtk_dsi.c
-@@ -794,6 +794,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi)
- 		return;
+To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+Cc: Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 24 +++++++++-------------
+ 1 file changed, 10 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+index 2bf9fc29d7d2..5bff2a3a44bc 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+@@ -532,22 +532,20 @@ int inv_icm42600_buffer_fifo_parse(struct inv_icm42600_state *st)
+ 		ts = &gyro_st->ts;
+ 		inv_sensors_timestamp_interrupt(ts, st->fifo.watermark.eff_gyro,
+ 						st->timestamp.gyro);
+-		ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
+-		if (ret)
+-			return ret;
+ 	}
  
- 	mtk_dsi_set_mode(dsi);
-+	mtk_dsi_clk_hs_mode(dsi, 1);
- 	mtk_dsi_start(dsi);
++	ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
++	if (ret)
++		return ret;
++
+ 	/* handle accelerometer timestamp and FIFO data parsing */
+ 	if (st->fifo.nb.accel > 0) {
+ 		ts = &accel_st->ts;
+ 		inv_sensors_timestamp_interrupt(ts, st->fifo.watermark.eff_accel,
+ 						st->timestamp.accel);
+-		ret = inv_icm42600_accel_parse_fifo(st->indio_accel);
+-		if (ret)
+-			return ret;
+ 	}
  
- 	dsi->enabled = true;
-@@ -858,7 +859,8 @@ static void mtk_dsi_bridge_atomic_pre_enable(struct drm_bridge *bridge,
- 		drm_err(drm, "failed to power on dsi\n");
- 
- 	mtk_dsi_lane_ready(dsi);
--	mtk_dsi_clk_hs_mode(dsi, 1);
-+	if (!(dsi->mode_flags & MIPI_DSI_MODE_LPM))
-+		mtk_dsi_clk_hs_mode(dsi, 1);
+-	return 0;
++	return inv_icm42600_accel_parse_fifo(st->indio_accel);
  }
  
- static void mtk_dsi_bridge_atomic_post_disable(struct drm_bridge *bridge,
+ int inv_icm42600_buffer_hwfifo_flush(struct inv_icm42600_state *st,
+@@ -572,20 +570,18 @@ int inv_icm42600_buffer_hwfifo_flush(struct inv_icm42600_state *st,
+ 	if (st->fifo.nb.gyro > 0) {
+ 		ts = &gyro_st->ts;
+ 		inv_sensors_timestamp_interrupt(ts, st->fifo.nb.gyro, gyro_ts);
+-		ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
+-		if (ret)
+-			return ret;
+ 	}
+ 
++	ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
++	if (ret)
++		return ret;
++
+ 	if (st->fifo.nb.accel > 0) {
+ 		ts = &accel_st->ts;
+ 		inv_sensors_timestamp_interrupt(ts, st->fifo.nb.accel, accel_ts);
+-		ret = inv_icm42600_accel_parse_fifo(st->indio_accel);
+-		if (ret)
+-			return ret;
+ 	}
+ 
+-	return 0;
++	return inv_icm42600_accel_parse_fifo(st->indio_accel);
+ }
+ 
+ int inv_icm42600_buffer_init(struct inv_icm42600_state *st)
 
 ---
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
-change-id: 20261019-6768-dsi-fix-9f0c2ca2ba9f
+base-commit: a22dc7ebb21a6bd4c8b63bc2c1dd46a24945aae7
+change-id: 20261016-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-74a91cb28a2b
 
 Best regards,
 --  
-Roman Vivchar <rva333@protonmail.com>
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
