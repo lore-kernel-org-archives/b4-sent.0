@@ -1,15 +1,13 @@
 From: Nizat Mikayilli <nacht@dxdmail.cc>
-Subject: [PATCH v3 0/2] Add Samsung Galaxy Tab S9 Wi-Fi (SM-X710) support
-Date: Tue, 20 Oct 2026 00:42:08 +0200
-Message-Id: <20261020-gts9wifi-dts-v3-0-afd06fb2d9f9@dxdmail.cc>
+Date: Tue, 20 Oct 2026 00:42:09 +0200
+Subject: [PATCH v3 1/2] dt-bindings: arm: qcom: Add Samsung Galaxy Tab S9
+ Wi-Fi
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMQQ6CMBCF4auQrq1pSxHrynsYF6UzhUkUTEsqh
- nB3Cys1cfle8v0zixgIIzsVMwuYKNLQ51HuCuY627fICfJmSqiDFELzdozmSZ44jJGD0rXCo6l
- UqVkmj4Cepi13uebdURyH8NrqSa7vn1CSXHDpBdQAukZtzzDB3dJt7xxbS0l96upHq6xdaZ1ph
- DcOmy+9LMsb1kUwv+cAAAA=
-X-Change-ID: 20261004-gts9wifi-dts-d2472e895234
+Message-Id: <20261020-gts9wifi-dts-v3-1-afd06fb2d9f9@dxdmail.cc>
+References: <20261020-gts9wifi-dts-v3-0-afd06fb2d9f9@dxdmail.cc>
+In-Reply-To: <20261020-gts9wifi-dts-v3-0-afd06fb2d9f9@dxdmail.cc>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,55 +17,39 @@ Cc: Abel Vesa <abelvesa@kernel.org>, linux-arm-msm@vger.kernel.org,
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Nizat Mikayilli <nacht@dxdmail.cc>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792449747; l=1748;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792449747; l=868;
  i=nacht@dxdmail.cc; s=20261004; h=from:subject:message-id;
- bh=LGWx48KWENRO2ONxIsS6866CNjCiod9zDcwxdMYqT1g=;
- b=x5/x8Bl8ozC1qRbpYRfgIq9PgiUGgPrc28MfNFtOoth2MYcZNWScSAHdpqiITwRFl1lXiIDne
- Ehg3poKbYBdAYHlBp7jVOATXuS8m6RanF7iesyQLajNBj5rdbz7eMk6
+ bh=sR0cnCpdpiTlMKTOwU1tkGMcO6qB707MJF9oZ3BW5c0=;
+ b=ipjhObC3/ajONJXHIUQWos0btqPdA9Sa/3KwuzgZyp9CAbMZ0/a3euAs4NfEFulO5MGav2zOx
+ XDJ71oqwV6HCISDKtq1RTziwfgeObvNLFzVeMQmCUgpnq9SwVZbqBPM
 X-Developer-Key: i=nacht@dxdmail.cc; a=ed25519;
  pk=Kay3P3pOJq5klUD+0/I8QX8JGOh0CeQXEwRVv7CMm4k=
 X-Endpoint-Received: by B4 Relay for nacht@dxdmail.cc/20261004 with auth_id=1111
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add devicetree support for the Samsung Galaxy Tab S9 Wi-Fi (SM-X710),
-an SM8550 tablet. Two patches: the qcom.yaml board entry and the board
-DTS describing UFS, microSD, USB 2.0 peripheral via eUSB2 with an NXP
-PTN3222 repeater, keys, GPU, video decoder, ADSP, the CS35L45/VA-macro
-audio path and WCN6855 Wi-Fi/Bluetooth.
+Document the Samsung Galaxy Tab S9 Wi-Fi (SM-X710), a tablet based on
+the SM8550 SoC.
 
-Tested on hardware on top of linux-next next-20261002 (boots to a shell
-through U-Boot): storage, microSD, USB gadget, framebuffer console, keys
-including the book-cover switch, CPU frequency scaling, GPU firmware and
-render node, video decoder node, speaker playback, DMIC capture, Wi-Fi
-scanning and Bluetooth firmware loading.
-
+Assisted-by: LLM
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Signed-off-by: Nizat Mikayilli <nacht@dxdmail.cc>
 ---
-Changes in v3:
-- Add Wi-Fi and Bluetooth (Konrad)
-- Test microSD and audio, update the commit message (Konrad)
-- Add a blank line before status properties (Konrad)
-- Expand the GPIO36..39 and USB comments (Konrad)
-- Add Krzysztof's Acked-by
-- Link to v2: https://lore.kernel.org/r/20261005-gts9wifi-dts-v2-0-c3ac9b0f9ceb@dxdmail.cc
+ Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Changes in v2:
-- Use my name for author and Signed-off-by (Conor)
-- Link to v1: https://lore.kernel.org/r/20261004-gts9wifi-dts-v1-0-1f0d7dd47e4a@dxdmail.cc
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index 121ca557ce1e..5e560f523d32 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -1173,6 +1173,7 @@ properties:
+               - qcom,sm8550-hdk
+               - qcom,sm8550-mtp
+               - qcom,sm8550-qrd
++              - samsung,gts9wifi
+               - samsung,q5q
+               - sony,pdx234
+           - const: qcom,sm8550
 
----
-Nizat Mikayilli (2):
-      dt-bindings: arm: qcom: Add Samsung Galaxy Tab S9 Wi-Fi
-      arm64: dts: qcom: sm8550: Add support for Samsung Galaxy Tab S9 Wi-Fi
-
- Documentation/devicetree/bindings/arm/qcom.yaml    |   1 +
- arch/arm64/boot/dts/qcom/Makefile                  |   1 +
- .../boot/dts/qcom/sm8550-samsung-gts9wifi.dts      | 888 +++++++++++++++++++++
- 3 files changed, 890 insertions(+)
----
-base-commit: f0406245cb9855e6318335a8a223551354291a46
-change-id: 20261004-gts9wifi-dts-d2472e895234
-
-Best regards,
 -- 
-Nizat Mikayilli <nacht@dxdmail.cc>
+2.56.0
 
