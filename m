@@ -1,126 +1,176 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Mon, 19 Oct 2026 15:37:33 +0200
-Subject: [PATCH v2] iio: imu: inv_icm42600: fix parsing of all FIFO frames
- for odr change
+From: Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+Date: Mon, 19 Oct 2026 16:38:55 +0300
+Subject: [PATCH v2] drm/msm/adreno: Register devfreq after the GPU-specific
+ init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261019-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-v2-1-d72a69c327ff@tdk.com>
-X-B4-Tracking: v=1; b=H4sIABwd1moC/6WOTQ6CMBBGr0K6dkzbAKIr72FYtGWUUUpNWxoN4
- e4W9AYuX/K+n5kF9ISBnYqZeUwUyI0Z5K5gplfjDYG6zExyWQsuaiByQHYCGhOQsaWsOYcrvcB
- 1Hn4RTDjGbIAaBrh6ZTHAoVRHYbRslNQstz895tS2fGm/HCZ9RxPXudXoKUTn39u1JFbv/xdJg
- AAttRZ1o3hViXPsHnvjLGuXZfkAOQ2nmw4BAAA=
-X-Change-ID: 20261016-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-74a91cb28a2b
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792417055; l=3281;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=kD1/ng0GS6kPMK14Mq3qWLm6q2zMJ+jIcdvPt6Xp/Vo=;
- b=DAWMDcOLqRRr7iqC6DWTped4J4M9UNqklDYVqXiraMEK1fslvlmpH7O4i+UCorQ2C3UCeS0Cw
- dxi5AoZlxs/CjA0LPxi0W3PhIz2XivYnxoetCD1fkKagTl2fqN8/MlJ
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261019-msm-gmu-freq-guard-v2-1-799eb15890ba@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7RhaA6muvIdhUaZDGWNBWyAaw
+ t0F3Lt8yfvvz5A4Cie4ZDNEniRJ362gDxlQazvPKG5l0LkuVa4MhhTQhxGbyC/0o40OubBkToV
+ RTV3AOnxGbuS9R2/Vj9NY35mGrbQZraShj5/9dVKb9/dgUqjQubN2RMRsyqsPVh5H6gNUy7J8A
+ cCu7pbGAAAA
+X-Change-ID: 20261018-msm-gmu-freq-guard-e5ac83581fb5
+To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792417161; l=6463;
+ i=eng.m7mdhashim.1@gmail.com; s=20261018; h=from:subject:message-id;
+ bh=r8SfK/Iz/wVLnIplhj+V3MUujIzOEzMTsriA+q8roW4=;
+ b=loEzTtjSzd0LghPPlDggXNMIcuYnZGEFrwTAxA0TB7rMZD0/qmxz2e5HNpxS0/wFLX9gzxI30
+ l6uInSRHW73A5aMS4YIeT3LYrcoRHIcQfEipypSRSt7Q5RAuj81yrwr
+X-Developer-Key: i=eng.m7mdhashim.1@gmail.com; a=ed25519;
+ pk=nadicxm5lJrpr6u2tkxbYV+wi8bWOYqheGU3HolXoXA=
+X-Endpoint-Received: by B4 Relay for eng.m7mdhashim.1@gmail.com/20261018 with auth_id=1228
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For getting all odr change events, we need to parse all FIFO frames
-in each iio device. Fix this correctly by sending effectively all
-frames to all iio devices.
+a6xx_gpu_init() registers devfreq through adreno_gpu_init() ->
+msm_gpu_init() -> msm_devfreq_init(), and only afterwards calls
+a6xx_gmu_init(), which fills gmu->gpu_freqs[] and sets
+gmu->nr_gpu_freqs. The devfreq sysfs node and the cooling device are
+live in that window, so a write to min_freq or max_freq, or a thermal
+QoS update, can reach a6xx_gmu_set_freq() while nr_gpu_freqs is still
+0.
 
-Previously only batches of frames containing a matching sensor event
-were sent to the corresponding iio device.
+The lookup loop then compares a u32 perf_index against
+gmu->nr_gpu_freqs - 1. With a count of 0 the bound converts to
+UINT_MAX, so the loop reads past the end of gpu_freqs[] until it hits
+unmapped memory. It faults with devfreq's lock held, so every later
+GPU user blocks and the machine hangs.
 
-Fixes: f670d4d34773 ("iio: imu: inv_icm42600: fix odr change not caught in certain cases")
+This was hit at boot on an X1P42100 (Adreno X1-45) laptop, where a udev
+rule wrote min_freq as soon as the devfreq device appeared:
+
+  Unable to handle kernel paging request at virtual address ffff000b80000000
+  Internal error: Oops: 0000000096000005 [#1]  SMP
+  CPU: 0 UID: 0 PID: 487 Comm: (udev-worker) Tainted: G        W  O
+  Hardware name: SAMSUNG ELECTRONICS CO., LTD. Galaxy Book4 Edge/NP750XQA-KB2US
+  pc : a6xx_gmu_set_freq+0x74/0x2a0 [msm]
+  lr : a6xx_gmu_set_freq+0x3c/0x2a0 [msm]
+  ...
+  x4 : 00000000ffffffff ...
+
+x4 holds the wrapped loop bound. The faulting address is 1 GiB
+aligned, which matches a linear read running off the end of the
+linear map.
+
+Move msm_devfreq_init() out of msm_gpu_init() and call it last in
+adreno_bind(), once the generation's init function has returned, so
+devfreq only appears after the freq and bandwidth tables are complete.
+Do it after dev_pm_opp_of_find_icc_paths() so a deferral there does not
+leave a devfreq or cooling device behind.
+This also closes the narrower race where a6xx_gmu_pwrlevels_probe()
+writes the tables and counts while a6xx_gmu_set_freq() may already be
+running, and it does not drop a frequency request the way an early
+return in a6xx_gmu_set_freq() would.
+
+a2xx has no gpu_busy() and never registers devfreq. a3xx, a4xx and
+a5xx build nothing after msm_gpu_init() that the devfreq callbacks
+read, and a6xx parts with a GMU wrapper or RGMU set the rate through
+the OPP core, so for all of them devfreq simply appears a little later
+in the same bind. GPU runtime PM is only enabled on first open, in
+adreno_load_gpu(), so no resume or suspend can reach
+msm_devfreq_resume() or msm_devfreq_suspend() during bind, and both
+return early through has_devfreq() in any case.
+
+Fixes: a2c3c0a54d4c ("drm/msm/a6xx: Add devfreq support for a6xx")
 Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Suggested-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Assisted-by: LLM
+Signed-off-by: Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
+---
+How this was found and tested:
+
+- Seen twice at boot (2026-10-03 and 2026-10-05) on a Samsung Galaxy
+  Book4 Edge 15" (NP750XQA, X1P42100 / Adreno X1-45) running a
+  downstream 7.2.7 tree with an out-of-tree device tree. Both oopses
+  were at a6xx_gmu_set_freq+0x74, about 9 s after power-on, from a udev
+  rule writing min_freq when the devfreq device appeared. The log ends
+  at "Call trace:" because the machine hung.
+- With v1's guard applied to the same downstream tree, the laptop has
+  booted 20 times since 2026-10-14 with no oops. That only shows the
+  guard did no harm. It does not prove the race was closed, because the
+  udev rule was moved to a delayed systemd unit on 2026-10-06 and the
+  window is narrow.
+- v2, backported to the same downstream tree in place of v1's guard,
+  booted 5 times with the original udev rule restored, so min_freq was
+  written the moment the devfreq device appeared. All 5 boots were
+  clean and the floor was applied (min_freq and cur_freq read back as
+  requested). Suspend/resume could not be tested: s2idle does not yet
+  resume on this machine for an unrelated reason.
+- On v7.3-rc7 v2 is only build-tested (arm64 defconfig, W=1, all of
+  drivers/gpu/drm/msm/). It has not been run on mainline or msm-next,
+  and I could only reason about a3xx-a5xx from the source.
+
+AI disclosure: an LLM coding assistant helped read the oops, trace the
+init ordering, check the other GPU generations and draft this commit
+message. I reviewed the result, tested it as described above, and take
+responsibility for it.
 ---
 Changes in v2:
-- Add blank line and direct return at end of functions.
-- Link to v1: https://patch.msgid.link/20261016-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-v1-1-b2bb168a0551@tdk.com
-
-To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>
-To: David Lechner <dlechner@baylibre.com>
-To: Nuno Sá <nuno.sa@analog.com>
-To: Andy Shevchenko <andy@kernel.org>
-Cc: Jonathan Cameron <jonathan.cameron@oss.qualcomm.com>
-Cc: linux-iio@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+- Register devfreq from adreno_bind() after the GPU-specific init,
+  instead of returning early in a6xx_gmu_set_freq() (Konrad).
+- This also addresses the two Sashiko findings on v1: the residual
+  race with a6xx_gmu_pwrlevels_probe() and the dropped frequency
+  request on resume.
+- Register devfreq after dev_pm_opp_of_find_icc_paths(), so a probe
+  deferral there does not leave a devfreq or cooling device behind.
+- Retitled from "drm/msm/a6xx: Don't set GPU freq before the GMU freq
+  table is built", since the change now touches common adreno code.
+- Link to v1: https://patch.msgid.link/20261018-msm-gmu-freq-guard-v1-1-dd92dcccee86@gmail.com
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 24 +++++++++-------------
- 1 file changed, 10 insertions(+), 14 deletions(-)
+ drivers/gpu/drm/msm/adreno/adreno_device.c | 8 ++++++++
+ drivers/gpu/drm/msm/msm_gpu.c              | 2 --
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-index 2bf9fc29d7d2..5bff2a3a44bc 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-@@ -532,22 +532,20 @@ int inv_icm42600_buffer_fifo_parse(struct inv_icm42600_state *st)
- 		ts = &gyro_st->ts;
- 		inv_sensors_timestamp_interrupt(ts, st->fifo.watermark.eff_gyro,
- 						st->timestamp.gyro);
--		ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
--		if (ret)
--			return ret;
- 	}
+diff --git a/drivers/gpu/drm/msm/adreno/adreno_device.c b/drivers/gpu/drm/msm/adreno/adreno_device.c
+index 05c77fe27..52d90e1d1 100644
+--- a/drivers/gpu/drm/msm/adreno/adreno_device.c
++++ b/drivers/gpu/drm/msm/adreno/adreno_device.c
+@@ -247,6 +247,14 @@ static int adreno_bind(struct device *dev, struct device *master, void *data)
+ 	if (ret)
+ 		return ret;
  
-+	ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
-+	if (ret)
-+		return ret;
++	/*
++	 * Register devfreq last: its sysfs, QoS and cooling device can reach
++	 * gpu_set_freq() as soon as it exists, and on a6xx the GMU freq and
++	 * bandwidth tables are only built by a6xx_gmu_init(), after
++	 * msm_gpu_init().
++	 */
++	msm_devfreq_init(gpu);
 +
- 	/* handle accelerometer timestamp and FIFO data parsing */
- 	if (st->fifo.nb.accel > 0) {
- 		ts = &accel_st->ts;
- 		inv_sensors_timestamp_interrupt(ts, st->fifo.watermark.eff_accel,
- 						st->timestamp.accel);
--		ret = inv_icm42600_accel_parse_fifo(st->indio_accel);
--		if (ret)
--			return ret;
- 	}
- 
--	return 0;
-+	return inv_icm42600_accel_parse_fifo(st->indio_accel);
+ 	return 0;
  }
  
- int inv_icm42600_buffer_hwfifo_flush(struct inv_icm42600_state *st,
-@@ -572,20 +570,18 @@ int inv_icm42600_buffer_hwfifo_flush(struct inv_icm42600_state *st,
- 	if (st->fifo.nb.gyro > 0) {
- 		ts = &gyro_st->ts;
- 		inv_sensors_timestamp_interrupt(ts, st->fifo.nb.gyro, gyro_ts);
--		ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
--		if (ret)
--			return ret;
- 	}
+diff --git a/drivers/gpu/drm/msm/msm_gpu.c b/drivers/gpu/drm/msm/msm_gpu.c
+index 0c2c35636..452da9272 100644
+--- a/drivers/gpu/drm/msm/msm_gpu.c
++++ b/drivers/gpu/drm/msm/msm_gpu.c
+@@ -968,8 +968,6 @@ int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
  
-+	ret = inv_icm42600_gyro_parse_fifo(st->indio_gyro);
-+	if (ret)
-+		return ret;
-+
- 	if (st->fifo.nb.accel > 0) {
- 		ts = &accel_st->ts;
- 		inv_sensors_timestamp_interrupt(ts, st->fifo.nb.accel, accel_ts);
--		ret = inv_icm42600_accel_parse_fifo(st->indio_accel);
--		if (ret)
--			return ret;
- 	}
+ 	platform_set_drvdata(pdev, &gpu->adreno_smmu);
  
--	return 0;
-+	return inv_icm42600_accel_parse_fifo(st->indio_accel);
- }
- 
- int inv_icm42600_buffer_init(struct inv_icm42600_state *st)
+-	msm_devfreq_init(gpu);
+-
+ 	gpu->vm = gpu->funcs->create_vm(gpu, pdev);
+ 	if (IS_ERR(gpu->vm)) {
+ 		ret = PTR_ERR(gpu->vm);
 
 ---
-base-commit: a22dc7ebb21a6bd4c8b63bc2c1dd46a24945aae7
-change-id: 20261016-iio-imu-inv-icm42600-fix-odr-change-event-in-all-frames-74a91cb28a2b
+base-commit: 24a19b953e2a3d0ea5a8c4951a0ab8f32720c907
+change-id: 20261018-msm-gmu-freq-guard-e5ac83581fb5
 
 Best regards,
 --  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Mohammed AlHashim <eng.m7mdhashim.1@gmail.com>
 
