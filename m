@@ -1,90 +1,93 @@
-From: Sami Tolvanen <samitolvanen@google.com>
-Date: Mon, 19 Oct 2026 20:21:52 +0000
-Subject: [PATCH] rust: drm: gem: shmem: do not leak pages when sg_table()
- fails
+From: Manuel Huber <manuelh@nvidia.com>
+Subject: [PATCH RFC 0/4] IPE: add a dedicated policy keyring
+Date: Mon, 19 Oct 2026 21:40:24 +0000
+Message-Id: <20261019-b4-ipe-keyring-rfc-v1-0-156f0b93e843@nvidia.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-rust-shmem-fixes-v1-1-3f7f6de5b5e7@google.com>
-X-B4-Tracking: v=1; b=H4sIAN971moC/x3LQQqAIBBA0avIrBtIhdCuEi2sxpqFFU5FEN09a
- fn4/AeEMpNAqx7IdLHwthboSsG4hHUm5KkYTG0aXWuP+ZQDZUmUMPJNgjY468IUrB8ilG3P9Id
- ydf37fiLu4TtiAAAA
-X-Change-ID: 20261019-rust-shmem-fixes-3a838ada39bf
-To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Trevor Gross <tmgross@umich.edu>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Lyude Paul <lyude@redhat.com>
-Cc: dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sami Tolvanen <samitolvanen@google.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MMQqAMAxA0atIZgO2ilBXwQO4ikOrUYNQJQVRp
+ He3OL7h/xcCCVOAJntB6OLAh09QeQbTZv1KyHMy6ELXqlAGXYV8Eu70CPsVZZnQmdIZS0obqyG
+ Fp9DC9z8doO9aGGP8AH+7iDNpAAAA
+X-Change-ID: 20261019-b4-ipe-keyring-rfc-b93b9ae129a2
+To: Fan Wu <wufan@kernel.org>, David Howells <dhowells@redhat.com>, 
+ Jarkko Sakkinen <jarkko@kernel.org>
+Cc: Christian Brauner <brauner@kernel.org>, 
+ Andrew Halaney <andrew@amutable.com>, Paul Moore <paul@paul-moore.com>, 
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Shuah Khan <shuah@kernel.org>, Randy Dunlap <rdunlap@infradead.org>, 
+ Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
+ linux-security-module@vger.kernel.org, keyrings@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, linux-doc@vger.kernel.org, 
+ bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Manuel Huber <manuelh@nvidia.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2150;
- i=samitolvanen@google.com; h=from:subject:message-id;
- bh=Zr7vQwXA9E8hmZ2MFtEBon9gBEwSUz6LGsU4RyoehDI=;
- b=owGbwMvMwCUWxa662nLh8irG02pJDFnXqh/66sV7me2K21Ap8fxBQcQl3qbl+9uSjvM/+BAUo
- vkqQ1Wwo5SFQYyLQVZMkaXl6+qtu787pb76XCQBM4eVCWQIAxenAEzEbg/DP9XdK03VPWOeTj1v
- FhWx5Xi0cA6vbYffi6OiRxVuSh4tnszw3/F8r8CvXVpTOrNWyzqsZryX+ldn7p3uLWLK2Rd/HSx
- O5QcA
-X-Developer-Key: i=samitolvanen@google.com; a=openpgp;
- fpr=35CCFB63B283D6D3AEB783944CB5F6848BBC56EE
-X-Endpoint-Received: by B4 Relay for samitolvanen@google.com/default with auth_id=1242
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792446042; l=2751;
+ i=manuelh@nvidia.com; s=20261019; h=from:subject:message-id;
+ bh=6WPcEAqFx8dpbBNrw8M+IL0uMQ7Yp3AICptgIgyBFtA=;
+ b=gkxyREkuboghZ5svc2zXzJmD9W9S2bUyNSjdWo563ECwGLU3xuBDMg9oYuexLJePZ5edkrcMn
+ iUDB19Lgr1ICwRUnqLsI5JMzrO0MYWKnXfSeG9B8v1dUd48rmk8lKcC
+X-Developer-Key: i=manuelh@nvidia.com; a=ed25519;
+ pk=uKggxpZ/mM0qtFnudxvh5Dfz8I6VoehwoM3eYCe3tyU=
+X-Endpoint-Received: by B4 Relay for manuelh@nvidia.com/20261019 with auth_id=1244
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-`SGTableMap::new()` takes a pages reference and maps the table before
-`Devres::new()` allocates. If the allocation fails, dropping the map
-frees the table but keeps the reference, and the next `sg_table()`
-takes another one. `drm_gem_shmem_release()` puts only one, so the
-pages leak.
+Add a dedicated ".ipe" keyring for IPE policy-signature verification,
+modeled after the dm-verity keyring, allowing userspace to provision
+IPE-specific policy-signing certificates. Systems that do not provision
+the keyring retain their existing behavior.
 
-Take the pages in the initializer, after the allocation.
+This RFC is based on commit 48f936e302a9 ("ipe: update the project and
+test suite links") from ipe/next so review can begin before the
+prerequisite keyring work reaches that branch. The series will be rebased
+onto a refreshed ipe/next once that work is available there [1].
 
-Fixes: 616c229ab010 ("rust: drm: gem: Introduce shmem::Object::sg_table()")
-Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
+The keyring readiness check currently follows the dm-verity and BPF
+implementations. A parallel keys RFC introduces keyring_is_empty() for
+this purpose [2]. A later revision will use the helper if it is available
+in the submission base.
+
+Testing:
+- Built an x86_64 kernel with GCC 15.2.0 and Clang/LLD 21.1.8.
+- Passed all 33 IPE parser KUnit assertions.
+- Passed all 4 sealed-default keyring selftests under QEMU TCG.
+- Passed all 16 provisioning-mode keyring selftests under QEMU TCG with
+  ipe.keyring_unsealed=1.
+
+[1] https://lore.kernel.org/r/20261008-ajhalaney-dmverity-key-identifier-v2-0-008456d189cb@amutable.com
+[2] https://lore.kernel.org/r/20261016215326.4110064-5-jarkko@kernel.org
+
+Signed-off-by: Manuel Huber <manuelh@nvidia.com>
 ---
- rust/kernel/drm/gem/shmem.rs | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+Manuel Huber (4):
+      ipe: add the .ipe policy keyring
+      keys: add KEY_SPEC_IPE_KEYRING
+      Documentation: ipe: document the IPE keyring
+      selftests/ipe: test the IPE policy keyring
 
-diff --git a/rust/kernel/drm/gem/shmem.rs b/rust/kernel/drm/gem/shmem.rs
-index a687d46d170d..72e4af3b0503 100644
---- a/rust/kernel/drm/gem/shmem.rs
-+++ b/rust/kernel/drm/gem/shmem.rs
-@@ -555,15 +555,18 @@ fn drop(&mut self) {
- }
- 
- impl<T: DriverObject> SGTableMap<T> {
--    fn new(obj: &Object<T>) -> impl Init<Self, Error> {
--        // INVARIANT:
--        // - We call drm_gem_shmem_get_pages_sgt below and check whether or not it succeeds,
--        //   fulfilling the invariant of SGTableMap that the object's `sgt` field is initialized.
--        // SAFETY:
--        // - `obj` is fully initialized, making this function safe to call.
--        from_err_ptr(unsafe { bindings::drm_gem_shmem_get_pages_sgt(obj.as_raw_shmem()) })?;
--
--        Ok(Self { obj: obj.into() })
-+    fn new(obj: &Object<T>) -> impl Init<Self, Error> + '_ {
-+        pin_init::init_scope(move || {
-+            // SAFETY:
-+            // - `obj` is fully initialized, making this function safe to call.
-+            from_err_ptr(unsafe { bindings::drm_gem_shmem_get_pages_sgt(obj.as_raw_shmem()) })?;
-+
-+            // INVARIANT:
-+            // - We call drm_gem_shmem_get_pages_sgt above and check whether or not it succeeds,
-+            //   fulfilling the invariant of SGTableMap that the object's `sgt` field is
-+            //   initialized.
-+            Ok(try_init!(Self { obj: obj.into() }))
-+        })
-     }
- }
- 
-
+ Documentation/admin-guide/LSM/ipe.rst           |  41 ++-
+ Documentation/admin-guide/kernel-parameters.txt |   9 +
+ Documentation/security/ipe.rst                  |  16 +-
+ Documentation/security/keys/core.rst            |   9 +
+ MAINTAINERS                                     |   1 +
+ include/linux/key.h                             |   2 +
+ include/uapi/linux/keyctl.h                     |   1 +
+ security/ipe/Makefile                           |   1 +
+ security/ipe/ipe.c                              |   2 +
+ security/ipe/keyring.c                          |  80 ++++++
+ security/ipe/keyring.h                          |  16 ++
+ security/ipe/policy.c                           |  10 +
+ security/keys/process_keys.c                    |  23 ++
+ tools/testing/selftests/Makefile                |   1 +
+ tools/testing/selftests/ipe/Makefile            |   5 +
+ tools/testing/selftests/ipe/config              |   7 +
+ tools/testing/selftests/ipe/test-ipe-keyring.sh | 357 ++++++++++++++++++++++++
+ 17 files changed, 575 insertions(+), 6 deletions(-)
 ---
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
-change-id: 20261019-rust-shmem-fixes-3a838ada39bf
+base-commit: 48f936e302a9c48cfc032eb5944c3a6246bc9043
+change-id: 20261019-b4-ipe-keyring-rfc-b93b9ae129a2
+
+Best regards,
+-- 
+Manuel Huber <manuelh@nvidia.com>
 
