@@ -1,73 +1,82 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Mon, 19 Oct 2026 12:55:43 +0800
-Subject: [PATCH v10 5/5] MAINTAINERS: add ARM/AMBARELLA SoC support
+From: Junyi Zhao <junyi.zhao@amlogic.com>
+Subject: [PATCH 0/3] Add vendor glue layer support and Amlogic A9
+ implementation
+Date: Mon, 19 Oct 2026 13:34:25 +0800
+Message-Id: <20261019-a9_i3c-v1-0-329d819d621f@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-cv75-soc-v10-5-d386065e2dd5@ambarella.com>
-References: <20261019-cv75-soc-v10-0-d386065e2dd5@ambarella.com>
-In-Reply-To: <20261019-cv75-soc-v10-0-d386065e2dd5@ambarella.com>
-To: Arnd Bergmann <arnd@arndb.de>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>, soc@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: Jerome Brunet <jbrunet@baylibre.com>, linux-clk@vger.kernel.org, 
- Brian Masney <masneyb@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+X-B4-Tracking: v=1; b=H4sIAOGr1WoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDA0MD3UTL+EzjZF3LFFMjE9MUA0uTZAsloOKCotS0zAqwQdGxEH5xaVJ
+ WanIJSLdSbS0AmYvdyWoAAAA=
+X-Change-ID: 20261010-a9_i3c-9d5245d094c8
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Frank Li <Frank.Li@nxp.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Lee Jones <lee@kernel.org>, mfd@lists.linux.dev, devicetree@vger.kernel.org, 
- Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
- linux-kernel@vger.kernel.org, Linus Walleij <linusw@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792385744; l=1241;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=66/FpPmSuU75AtQewU8cj7mu+Qa/5qamx4Km8ySoeYo=;
- b=+2HZXt/Q1o7OE8loSEe3SRjzhikyIx1oW7WWR5j768z5zP8/8XhOMTTprPKVPUvp/qWlqsLLA
- h/uxZj1JR3oBcnfZXwmupuPJLt8PwULXa6I9OlYVXjJmUnMczA1BChx
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc: linux-i3c@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, imx@lists.linux.dev, 
+ linux-hardening@vger.kernel.org, xianwei.zhao@amlogic.com, 
+ Kelvin.Zhang@amlogic.com, Junyi Zhao <junyi.zhao@amlogic.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792388075; l=1948;
+ i=junyi.zhao@amlogic.com; s=20260924; h=from:subject:message-id;
+ bh=pgIkA9EQP4kVbdf5QtIU9MRFvhNyPH6tw4oAfuEjiik=;
+ b=QIGcl9ephVHWpuLWE8j6m/z4Ati/770ms7/xAPm1vRqUYUPZMK1LXMa/5Whq8a8K6loC9Gw5I
+ KWH3cPY2l1xAuI3YvuF4GsbgSjndplpbnU+NZEYeW3luoxe1XAHVz36
+X-Developer-Key: i=junyi.zhao@amlogic.com; a=ed25519;
+ pk=hiL5PjGIksGFiWvEx9J3MhQqU/ro6vNbj72NIw4bbvA=
+X-Endpoint-Received: by B4 Relay for junyi.zhao@amlogic.com/20260924 with auth_id=1054
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a maintainer entry covering Ambarella CV75 bindings, DTS and
-related drivers.
+The SVC I3C controller IP is used by multiple vendors, which may
+require platform-specific handling for controller resources and
+integration details.
 
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
+Rework the SVC I3C driver to introduce a vendor glue layer that
+separates common controller logic from vendor-specific extensions.
+This allows different implementations to reuse the shared SVC I3C
+framework while providing their own platform-dependent operations.
+
+On top of the glue layer framework, add support for the Amlogic A9
+implementation of the SVC I3C controller, including Device Tree
+bindings and the A9-specific glue layer driver.
+
+This series consists of:
+
+  - Rework the SVC I3C driver to support vendor glue layers.
+  - Add Device Tree bindings for the Amlogic A9 I3C controller.
+  - Add the Amlogic A9 SVC I3C glue layer driver.
+
+Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
 ---
- MAINTAINERS | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+Junyi Zhao (3):
+      i3c: master: Rework SVC I3C to support vendor glue layers
+      dt-bindings: i3c: Add Amlogic A9 I3C controller
+      i3c: master: svc: Add Amlogic A9 glue layer
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 803b60ad628f..59e5b32d7a02 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2502,6 +2502,20 @@ F:	drivers/clocksource/asm9260_timer.c
- F:	drivers/rtc/rtc-asm9260.c
- F:	drivers/watchdog/asm9260_wdt.c
- 
-+ARM/AMBARELLA SOC SUPPORT
-+M:	Long Zhao <longzhao@ambarella.com>
-+L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
-+L:	devicetree@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/arm/ambarella.yaml
-+F:	Documentation/devicetree/bindings/clock/ambarella,cv75-rct.yaml
-+F:	Documentation/devicetree/bindings/pinctrl/ambarella,cv75-pinctrl.yaml
-+F:	arch/arm64/boot/dts/ambarella/
-+F:	drivers/clk/ambarella/
-+F:	drivers/pinctrl/pinctrl-ambarella*
-+F:	include/dt-bindings/clock/ambarella,cv75-rct.h
-+N:	ambarella
-+
- ARM/AMD PENSANDO ARM64 ARCHITECTURE
- M:	Brad Larson <blarson@amd.com>
- L:	linux-arm-kernel@lists.infradead.org (moderated for non-subscribers)
+ .../devicetree/bindings/i3c/amlogic,i3c-a9.yaml    | 102 +++++
+ MAINTAINERS                                        |  12 +-
+ drivers/i3c/master/Kconfig                         |   9 +-
+ drivers/i3c/master/Makefile                        |   2 +-
+ drivers/i3c/master/svc/Kconfig                     |  28 ++
+ drivers/i3c/master/svc/Makefile                    |   6 +
+ drivers/i3c/master/svc/i3c-amlogic.c               | 250 +++++++++++
+ .../master/{svc-i3c-master.c => svc/i3c-main.c}    | 467 ++-------------------
+ drivers/i3c/master/svc/i3c-main.h                  | 297 +++++++++++++
+ drivers/i3c/master/svc/i3c-silvaco.c               | 173 ++++++++
+ 10 files changed, 909 insertions(+), 437 deletions(-)
+---
+base-commit: aac26bee2287c88af5be5a5ff96d783b19a28790
+change-id: 20261010-a9_i3c-9d5245d094c8
 
--- 
-2.34.1
+Best regards,
+--  
+Junyi Zhao <junyi.zhao@amlogic.com>
 
