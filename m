@@ -1,116 +1,148 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 20 Oct 2026 14:01:11 +0900
-Subject: [PATCH] NFSv4.1: Return NFS4ERR_DELAY when a referring call wait
- times out
+From: Long Zhao <longzhao@ambarella.com>
+Subject: [PATCH v11 0/9] gpio: add Ambarella CV75 PL061 support
+Date: Tue, 20 Oct 2026 15:54:04 +0800
+Message-Id: <20261020-cv75-gpio-v11-0-e058bae19571@ambarella.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-nfs-referring-call-delay-v1-1-0be8f0608f7c@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAJb11moC/x2MQQqAMAzAviI9W9imVPAr4mFsVQtjSgeiiH93e
- AwkeaCwChcYmweUTymy5wq2bSBsPq+MEiuDM46scQbzUlB5YVXJKwafEkZO/kbqBrI9RW86gpo
- f1ZLrX0/z+36wK4BiagAAAA==
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- Olga Kornievskaia <okorniev@redhat.com>, 
- Benjamin Coddington <ben.coddington@hammerspace.com>, 
- linux-nfs@vger.kernel.org, stable@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792472470; l=4242;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=02LTmI/rckeyrcaFfqhLpIKa7n4ZNNpxGuJF72qSrHU=;
- b=fixfIzdcyuiXmZyiDH2FDbN0cdQRRWBrv/ep1P4uOFnwOkbh1Q31406/iWHYD0VOz9H5P3jBv
- w8dfkjDhysGCi81Eqfzxqwl7WNTCzD3UIovVYvnby3/HZwfOLHujptw
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIABwe12oC/12OzQqDMBCEX6Xk3JSsMf701PcoPcS4aooaSWxoE
+ d+9iVKQwl5md+abXYhDq9GR62khFr122oxBAJxPRHVybJHqOixIwpIMGMup8rmg7aQN5ZzXuYK
+ 6QQAS/JPFRr832P2xa/eqnqjmCIiOTrvZ2M/W5svo+3Fh5/owJWU0LTKlkqKUaVXc5FBJi30vL
+ 8oMJJI9sEMYxOGpcAp53iDHioOQQvzn13X9AvZXqYH3AAAA
+X-Change-ID: 20261007-cv75-gpio-333d7c1dfe11
+To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
+Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
+ Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
+ linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
+ Chanho Min <chanho.min@lge.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792482877; l=5381;
+ i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
+ bh=I7DyG0tZsHP4plNSLEM7+EI6mShjfwLJ7vlTrOCKg0A=;
+ b=zfW6OOhVMf6iTrQQoXTrdTQ2up1voojxRf6n5+fF0+Fo4N3Pq0g5A1BG6+5yVDnYgTh/qM8QT
+ uTA30FCEv4vCxRpUq1oLB7tqEP/XZC8qX48fBOjMWY4B/i/DJb786aX
+X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
+ pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
+X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 045d2a6d076a ("NFSv4.1: Delay callback processing when there
-are referring triples") made nfs4_callback_sequence() wait up to half
-a second for each request named in the referring call lists and answer
-NFS4ERR_DELAY if one is still outstanding, so that the server sends
-the callback again later (RFC 8881 section 2.10.6.3).
+The ambarella vendor prefix [1] is in linux-next (applied by Rob).
+The binding can be applied with this series.
 
-Commit 8618289c4655 ("NFSv4: Fix a sleep in atomic context in
-nfs4_callback_sequence()") turned referring_call_exists() from bool
-into int and made the caller test for a negative value, but kept
+Please take this series through the GPIO tree. The quirk, the PL061
+conversion and the Ambarella layout belong together.
 
-	status = nfs4_slot_wait_on_seqid(...) < 0;
+This is v11 of the GPIO patches from the combined CV75 series. The
+posting on Oct 9 numbered them v1 after the split. That was a
+mistake.
 
-A timeout stores 1, referring_call_exists() never returns a negative
-value, and the callback is processed as if the request had completed.
+These patches convert the ARM PL061 data path to regmap, then add
+the CV75 layout.
 
-nfsd has named the COPY in CB_OFFLOAD since commit b53a42970fa4
-("NFSD: Record each NFSv4 call's session slot index"). "NFSD: Send
-referring calls with CB_RECALL" [1], queued for v7.4, also names the
-OPEN that granted a delegation in a recall of it, and expects
-NFS4ERR_DELAY until the client has recorded the delegation. A client
-that has not recorded it within half a second answers
-NFS4ERR_BADHANDLE instead. nfsd sends the recall once more two seconds
-later, and if that is answered the same way, it gives up: a
-conflicting open then waits until the delegation is revoked when the
-lease time has passed.
+GPIO data path uses gpio-regmap with two layouts (ARM PrimeCell and
+Ambarella). ARM PL061 sets GPIO_REGMAP_QUIRK_SET_AFTER_DIR. IRQ stays
+a custom PL061 irqchip. The linear domain is instantiated with
+devm_irq_domain_instantiate() using the PL061 private data and
+attached by gpio-regmap. regmap-irq is not used.
 
-Keep the error from nfs4_slot_wait_on_seqid(). A server that names a
-request the client has not finished with now gets NFS4ERR_DELAY until
-the client has, however long that takes, where the callback used to
-be processed after half a second. Each resend answered this way holds
-a callback thread for half a second; by default there is one callback
-thread per minor version, shared by all servers.
+Tested on the CV75 EVK. The board boots. gpio-hammer toggles gpiochip0
+line 26 ten times, and gpio-event-mon on line 27 records alternating
+rising and falling edges. unbind and bind work; the chip re-registers
+and both tools work again after the rebind.
 
-With [1] on the server and a test-only sleep of five seconds before
-the client records a delegation, opening for write, on the server, a
-file that the client had just opened read-only took 90 to 92 seconds
-in five runs (lease time 90 seconds): both recalls were answered with
-NFS4ERR_BADHANDLE and the delegation was not returned. With this patch
-the client answered NFS4ERR_DELAY twice and then returned the
-delegation, and the open took 5.1 seconds in each of five runs.
+Changes in v11 (from Andy's v10 review):
+- pending: keep generic_handle_domain_irq() on one line.
+- convert: fit regmap_test_bits() on two lines, return
+  regmap_assign_bits() directly, and put the new locals in
+  reverse Christmas tree order.
+- cleanup: fix the guard()() reference in the commit message and
+  use scoped_guard() in pl061_irq_mask()/unmask().
+- pl061: keep gc->parent in a local before the gpio-regmap switch,
+  so that patch does not rewrite every log line.
+- switch: keep the existing GPIO* register macros. Split
+  reg_mask_xlate, drop pl061->dev for regmap_get_device(), and
+  instantiate the IRQ domain with devm_irq_domain_instantiate().
+  The remove action is registered before the gpiochip so devres
+  unwinds it after gpiochip_remove() and before the domain removal.
+- Drop the flags variable left unused by the guard() conversion.
+- unbind/bind cycle tested on the CV75 EVK.
+- Link to v10: https://patch.msgid.link/20261015-cv75-gpio-v10-0-3fe3eb315a55@ambarella.com
 
-Fixes: 8618289c4655 ("NFSv4: Fix a sleep in atomic context in nfs4_callback_sequence()")
-Cc: stable@vger.kernel.org
-Link: https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-9-323aa7196055@kernel.org # [1]
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
+Changes since the combined v9 [2]:
+- dt-bindings: explain that CV75 is a modified PL061 (Conor).
+- gpio-regmap: move quirks after fixed_direction_output (Andy).
+- gpio: pl061: Andy's review on the regmap conversion and switch:
+  use regmap_test_bits()/clear_bits()/set_bits()/assign_bits(),
+  drop the redundant if (pending) and fast_io, introduce the ARM
+  regmap_config (including REGCACHE_FLAT_S) in the convert patch
+  and leave it there, blank line after guard() plus the blank-line
+  and reverse Christmas tree cleanups, and keep the upstream
+  pl061_irq_chip name and unsigned irq_type() trigger without
+  adding .name.
+- gpio: pl061: cache DAT (REGCACHE_FLAT_S, not volatile) so
+  gpio_set() does not read-modify-write the pin level (Sashiko).
+
+Changes since the Oct 9 GPIO posting [3]:
+- gpio: pl061: Andy's follow-ups since that posting: assign_bits
+  for DAT writes, drop fast_io, name the ARM regmap_config in the
+  convert patch, the guard()/blank-line/irq_type cleanups, and keep
+  the upstream pl061_irq_chip name and unsigned trigger without
+  adding .name.
+- gpiolib: regmap: add Michael Walle's Reviewed-by on
+  GPIO_REGMAP_QUIRK_SET_AFTER_DIR.
+- gpio: pl061: restore Andy's and Linus's Reviewed-by on the
+  Ambarella variant.
+
+[1] https://patch.msgid.link/20261014-cv75-prefix-v1-1-fe95ed567880@ambarella.com
+[2] https://patch.msgid.link/20261001-cv75-v5-v9-0-486cc289a4b8@ambarella.com
+[3] https://patch.msgid.link/20261009-cv75-gpio-v1-0-5836bd438423@ambarella.com
+
+To: Bartosz Golaszewski <brgl@kernel.org>
+To: linux-gpio@vger.kernel.org
+Cc: Linus Walleij <linusw@kernel.org>
+Cc: Michael Walle <mwalle@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Rob Herring <robh@kernel.org>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Cc: Conor Dooley <conor+dt@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: Long Zhao <longzhao@ambarella.com>
+Cc: Long Zhao <zl020895@163.com>
+Cc: linux-kernel@vger.kernel.org
+
+Assisted-by: LLM
+Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
-The patch applies unchanged to v7.3, next-20261019 and the stable
-branches back to linux-5.10.y. Before v6.8 referring_call_exists()
-returns status itself and the caller already tests it for a negative
-value, so the change has the same effect there. [1] is queued for
-v7.4, so this would be good to have in v7.4 too.
+Long Zhao (9):
+      dt-bindings: gpio: pl061: add Ambarella CV75 variant
+      gpiolib: regmap: add GPIO_REGMAP_QUIRK_SET_AFTER_DIR
+      gpio: pl061: drop redundant pending check in the IRQ handler
+      gpio: pl061: convert register access to regmap
+      gpio: pl061: use IRQ_TYPE_LEVEL_MASK and IRQ_TYPE_EDGE_BOTH
+      gpio: pl061: use cleanup helpers for locks
+      gpio: pl061: keep the parent device in a local
+      gpio: pl061: switch data path to gpio-regmap
+      gpio: pl061: add Ambarella register-layout variant
 
-Tested in QEMU guests with Chuck's nfsd-testing b4e06bef3884 (based on
-v7.3-rc6, contains [1]) as client and server kernel; its NFS client
-callback, session and OPEN code is the same as in v7.3. KASAN and
-lockdep on, NFSv4.2, the export on XFS, nfsv4leasetime 90. The
-test-only sleep is a module parameter that makes
-nfs4_process_delegation() sleep before it records the delegation,
-while the OPEN still holds its slot. It is not part of this patch.
-Without the sleep the recall was answered at once with and without
-this patch (five runs each), and three async COPYs of 64 MiB completed
-with CB_OFFLOAD answered NFS4_OK in both.
+ .../devicetree/bindings/gpio/pl061-gpio.yaml       |  25 +-
+ drivers/gpio/Kconfig                               |   2 +
+ drivers/gpio/gpio-pl061.c                          | 538 ++++++++++++++-------
+ drivers/gpio/gpio-regmap.c                         |  15 +-
+ include/linux/amba/bus.h                           |   1 +
+ include/linux/gpio/regmap.h                        |  14 +
+ 6 files changed, 404 insertions(+), 191 deletions(-)
 ---
- fs/nfs/callback_proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 3fb10c8e42..f4ccfa50a0 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -489,7 +489,7 @@ static int referring_call_exists(struct nfs_client *clp,
- 			ref = &rclist->rcl_refcalls[j];
- 			spin_unlock(lock);
- 			status = nfs4_slot_wait_on_seqid(tbl, ref->rc_slotid,
--					ref->rc_sequenceid, HZ >> 1) < 0;
-+					ref->rc_sequenceid, HZ >> 1);
- 			spin_lock(lock);
- 			if (status)
- 				goto out;
-
----
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
-change-id: 20261020-nfs-referring-call-delay-6376146da036
+base-commit: 34cf6dafc47441dfb6b356a095b89c3585a93714
+change-id: 20261007-cv75-gpio-333d7c1dfe11
 
 Best regards,
--- 
-Daejun Park <daejun7.park@samsung.com>
+--  
+Long Zhao <longzhao@ambarella.com>
 
