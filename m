@@ -1,241 +1,261 @@
-From: Aiden Isik <aidenisik@member.fsf.org>
-Date: Tue, 20 Oct 2026 01:02:36 +0100
-Subject: [PATCH v2 3/3] pinctrl: samsung: Add Exynos5515 pinctrl
- configuration
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Tue, 20 Oct 2026 03:38:41 +0200
+Subject: [PATCH] ceph: read ahead along the stride of strided record reads
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-for-next-lucky7-pinctrl-v2-3-b6b0e6065452@member.fsf.org>
-References: <20261020-for-next-lucky7-pinctrl-v2-0-b6b0e6065452@member.fsf.org>
-In-Reply-To: <20261020-for-next-lucky7-pinctrl-v2-0-b6b0e6065452@member.fsf.org>
-To: Krzysztof Kozlowski <krzk@kernel.org>, 
- Sylwester Nawrocki <s.nawrocki@samsung.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Linus Walleij <linusw@kernel.org>, 
- Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>, 
- Tomasz Figa <tomasz.figa@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aiden Isik <aidenisik@member.fsf.org>
+Message-Id: <20261020-b4-wip-ceph-ra-stride-v1-1-6314b013d3b8@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSw6CQBBF0a2QGltJf9CoWzEOmuYh5QA7VfhJC
+ Hu30eEZ3LuQQQVG52YhxUtMHlOF3zWUxzTdwNJXU3Dh4F1w3LX8lsIZZWRNbLNKD95HN5w8jhE
+ pUm2LYpDP73u5/m3P7o48bzNa1y+xfdYVeQAAAA==
+X-Change-ID: 20261020-b4-wip-ceph-ra-stride-530f91e83ea3
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8848;
- i=aidenisik@member.fsf.org; h=from:subject:message-id;
- bh=WpGruSkDQ5IsRlg36hYMM7lL165QL22fCdhSe6pa0fI=;
- b=owEBiQJ2/ZANAwAIAUknAbLEetfrAcsmYgBq1q+bjOFJbWOXCtr6XjDBVxo6/5QoGIFN4yZSQ
- cWXVSVZKeWJAk8EAAEIADkWIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCatavmxsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwyLDIACgkQSScBssR61+ukeg//TMIg4hn0gY8svHMqv6Duyi5jfPRl5IJ
- vrzBEC98/oXKRp+Xu5+4Yg87UduiJBRSEauJM25U7XZUYfLjMxmXxZZTmbxja35+ceXWqHkm0m0
- Z1cyqmR2/WspWa4LO3JJFwQX9frzOK6JMd4uItIMzVqQz35PEAu0ZikclA77ZBOWD/6v8Fk50Hf
- ROi+9pSispcKnEDlFpkPUS0u1208xyGmb+3bZhlZ4qDwAkif2ljEdEHO9JKHWC+3vPboSD7QgZQ
- LuSV4kgp7YXLiod0fi7D/YhuN7oDiX12r0hYoUoIJtz5f5/bVPlcNv7KRt0gJiKS7s+XdpACE5O
- eGQahBGehoLwSD2SsAK7+03/bYFBXTsYSVg978O/HmGZ59wimezU74noAD2a19CxCDsuET/wzZM
- kdJuMG6PMG/0ev8gHmi5L4GDzXlhHj7nxGYoknAdHekt9AV4FHZHhMc9Xz3LLPPrbjhTxVGRtBQ
- e/KlxQeLPzhVB2HrewuJdLLivBmRvPM3qeg7nz5cm871esJU2MudidrqexNm9Qgx3Ae+/XvVxKi
- ogVeFscL7s1WPGcOdoH0fV2htMjb1BHKwAt/hv8vk+QZBSr5OtzF4TjknaKPvKvt1nlKj0VYsWP
- Bf9fSTKcizv4RzU2Yoftpv9mX+M+5oR6cJ5Bxrxynuz/WzyyMHD8=
-X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
- fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
-X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792460336; l=9737;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=6bQgoYjGpIWD5NadHM+Vv5XzETA6hE53g2TCAn0os7s=;
+ b=SOO6JtIS+wjvgVhsuEhyw9Jw16boEwHiAalUkc6XyJ1KsgxXdPPEhrOWSg8dPS2LB9cGyrdwk
+ CYRN8JlGyUIA52uSgzZQE8OLSI4tFcfb0PEDyPxKZ8F2fEFueM+gISk
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the pinctrl configuration for the Exynos5515 SoC. Reuse the pinctrl
-macros from Exynos850 and GS101, and add a few Exynos5515-specific macros.
+ceph_netfs_expand_readahead() rounds every readahead request out to the
+stripe unit, 4 MiB by default.  When several clients read interleaved
+records of a shared file, a record that misses the page cache drags in
+the whole object around it, and most of that are records the other
+clients read.  IO500's ior-hard-read does exactly this: 16 reader
+processes spread over 4 clients read 47008-byte records, each process
+every 16th record.  Every client ends up reading the whole file: the
+OSDs return 4x the data that is asked for and the read runs at a third
+of what the disks can do.
 
-Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
+Simply not expanding such a read is not enough.  The generic readahead
+sees each record as a small random read and reads it as is, so every
+record becomes a synchronous round trip; with one reader process per
+client that is half as fast as the over-reading it replaces.
+
+So detect the pattern and read ahead along it:
+
+ - ceph_read_iter() notes, per open file, the position and length of
+   every buffered read.  A read of the same length as the previous one,
+   starting as far after it as that one did after its predecessor, with
+   at least a page left out in between, for the second time in a row,
+   marks the file as strided.  The detection looks at the read() calls
+   and not at the page cache misses, because which reads miss depends on
+   what readahead already brought in.  Sequential reads leave no gap and
+   random reads have no fixed stride, so neither is affected.
+
+ - While a file is strided, ceph_netfs_expand_readahead() leaves its
+   requests alone, and ceph_stride_readahead() reads the next records of
+   the stride ahead, about a readahead window of them (at most 64), each
+   on its own with page_cache_ra_unbounded(), so that the records in
+   between are never read.
+
+Quick ior-hard runs, 28 GiB, 3 OSDs, ior-hard-read MiB/s.  Each client
+is a separate kernel client mount (its own client instance):
+
+  +--------------------------------+---------+--------+-------+
+  | Readers                        | Mount   | Before | After |
+  +--------------------------------+---------+--------+-------+
+  | 16 processes on 4 clients      | default |    487 |  2364 |
+  | 16 processes on 4 clients      | lazyio  |    468 |  2388 |
+  | 1 process on each of 4 clients | lazyio  |    732 |  1354 |
+  +--------------------------------+---------+--------+-------+
+
+The OSDs now read about the data that is asked for instead of 3.6-4x.
+ior-easy-read (sequential) and ior-rnd4K-easy-read (random 4 KiB) are
+unchanged, and no read of either was taken as strided.
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/pinctrl/samsung/pinctrl-exynos-arm64.c | 119 +++++++++++++++++++++++++
- drivers/pinctrl/samsung/pinctrl-exynos.h       |  20 +++++
- drivers/pinctrl/samsung/pinctrl-samsung.c      |   2 +
- drivers/pinctrl/samsung/pinctrl-samsung.h      |   1 +
- 4 files changed, 142 insertions(+)
+ fs/ceph/addr.c  | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ceph/file.c  | 29 +++++++++++++++++++++++++++++
+ fs/ceph/super.h | 15 +++++++++++++++
+ 3 files changed, 96 insertions(+)
 
-diff --git a/drivers/pinctrl/samsung/pinctrl-exynos-arm64.c b/drivers/pinctrl/samsung/pinctrl-exynos-arm64.c
-index 1aa977d2a1f8..3983979631c9 100644
---- a/drivers/pinctrl/samsung/pinctrl-exynos-arm64.c
-+++ b/drivers/pinctrl/samsung/pinctrl-exynos-arm64.c
-@@ -488,6 +488,125 @@ const struct samsung_pinctrl_of_match_data exynos5433_of_data __initconst = {
- 	.num_ctrl	= ARRAY_SIZE(exynos5433_pin_ctrl),
+diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
+index dd2bd8ed2424..737f9a5025f8 100644
+--- a/fs/ceph/addr.c
++++ b/fs/ceph/addr.c
+@@ -196,6 +196,15 @@ static void ceph_netfs_expand_readahead(struct netfs_io_request *rreq)
+ 		else
+ 			max_pages = priv->file_ra_pages;
+ 
++		/*
++		 * A file read in records at a fixed stride: the records in
++		 * between are typically read by other clients, so rounding
++		 * the request out to the stripe unit would mostly read data
++		 * this client never uses.  ceph_stride_readahead() reads the
++		 * next records of the stride ahead instead.
++		 */
++		if (priv->file_ra_strided)
++			return;
+ 	}
+ 
+ 	/* Readahead is disabled */
+@@ -221,6 +230,48 @@ static void ceph_netfs_expand_readahead(struct netfs_io_request *rreq)
+ 	}
+ }
+ 
++/*
++ * Read ahead for a file that is read in records at a fixed stride, as
++ * several clients reading interleaved records of a shared file do.  The
++ * generic readahead sees each record as a small random read and reads it
++ * as is, and ceph_netfs_expand_readahead() leaves strided files alone, so
++ * without this each record would be a synchronous round trip to the OSDs.
++ * Read the next records of the stride ahead instead, about a readahead
++ * window of them, each on its own so that the records in between are not
++ * read.  page_cache_ra_unbounded() skips the pages that are already cached.
++ *
++ * The caller holds the read caps and has registered its rw context.
++ */
++void ceph_stride_readahead(struct file *filp, struct ceph_file_info *fi,
++			   loff_t pos, size_t len)
++{
++	struct address_space *mapping = filp->f_mapping;
++	loff_t isize = i_size_read(mapping->host);
++	unsigned long window = (unsigned long)filp->f_ra.ra_pages << PAGE_SHIFT;
++	loff_t stride = fi->ra_stride, next, end;
++	unsigned int nr;
++
++	if (!fi->ra_strided || !window || (filp->f_mode & FMODE_RANDOM))
++		return;
++	nr = clamp_t(unsigned long, window / len, 1, CEPH_STRIDE_RA_MAX);
++	end = pos + stride * nr;
++	/* continue after the records already read ahead */
++	next = fi->ra_stride_next;
++	if (next <= pos || next > end)
++		next = pos + stride;
++
++	filemap_invalidate_lock_shared(mapping);
++	for (; next <= end && next < isize; next += stride) {
++		pgoff_t first = next >> PAGE_SHIFT;
++		pgoff_t last = (min(next + (loff_t)len, isize) - 1) >> PAGE_SHIFT;
++		DEFINE_READAHEAD(ractl, filp, &filp->f_ra, mapping, first);
++
++		page_cache_ra_unbounded(&ractl, last - first + 1, 0);
++	}
++	filemap_invalidate_unlock_shared(mapping);
++	fi->ra_stride_next = next;
++}
++
+ static void finish_netfs_read(struct ceph_osd_request *req)
+ {
+ 	struct inode *inode = req->r_inode;
+@@ -525,6 +576,7 @@ static int ceph_init_request(struct netfs_io_request *rreq, struct file *file)
+ 	if (fi) {
+ 		priv->file_ra_pages = file->f_ra.ra_pages;
+ 		priv->file_ra_disabled = file->f_mode & FMODE_RANDOM;
++		priv->file_ra_strided = READ_ONCE(fi->ra_strided);
+ 
+ 		/*
+ 		 * ceph_read_iter() and ceph_filemap_fault() hold caps and
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 856710c63765..8b8f0a458993 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -2203,6 +2203,33 @@ ceph_sync_write(struct kiocb *iocb, struct iov_iter *from, loff_t pos,
+  *
+  * Hmm, the sync read case isn't actually async... should it be?
+  */
++/*
++ * Is this file read in records at a fixed stride?  Look at the read()
++ * calls themselves, not at the page cache misses: those depend on what
++ * readahead has already brought in.  A read of the same length as the
++ * previous one, starting as far after it as that one did after its
++ * predecessor, with at least a page left out in between, for the second
++ * time in a row.  Sequential reads leave no gap and random reads have no
++ * fixed stride, so neither matches.
++ */
++static void ceph_note_read_stride(struct ceph_file_info *fi, loff_t pos,
++				  size_t len)
++{
++	loff_t stride = pos - fi->ra_prev_pos;
++
++	if (fi->ra_prev_len && len == fi->ra_prev_len &&
++	    stride >= (loff_t)len + PAGE_SIZE && stride == fi->ra_stride) {
++		if (fi->ra_stride_hits < 2)
++			fi->ra_stride_hits++;
++	} else {
++		fi->ra_stride_hits = 0;
++	}
++	fi->ra_stride = stride;
++	fi->ra_prev_pos = pos;
++	fi->ra_prev_len = len;
++	WRITE_ONCE(fi->ra_strided, fi->ra_stride_hits >= 2);
++}
++
+ static ssize_t ceph_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ {
+ 	struct file *filp = iocb->ki_filp;
+@@ -2278,7 +2305,9 @@ static ssize_t ceph_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 		boutc(cl, "async %p %llx.%llx %llu~%u got cap refs on %s\n",
+ 		      inode, ceph_vinop(inode), iocb->ki_pos, (unsigned)len,
+ 		      ceph_cap_string(got));
++		ceph_note_read_stride(fi, iocb->ki_pos, len);
+ 		ceph_add_rw_context(fi, &rw_ctx);
++		ceph_stride_readahead(filp, fi, iocb->ki_pos, len);
+ 		ret = generic_file_read_iter(iocb, to);
+ 		ceph_del_rw_context(fi, &rw_ctx);
+ 	}
+diff --git a/fs/ceph/super.h b/fs/ceph/super.h
+index 458fd63dd79f..f10520a3422a 100644
+--- a/fs/ceph/super.h
++++ b/fs/ceph/super.h
+@@ -69,6 +69,7 @@
+  * CEPH_MSG_MAX_DATA_LEN should be small enough. */
+ #define CEPH_MAX_WRITE_SIZE		CEPH_MSG_MAX_DATA_LEN
+ #define CEPH_RASIZE_DEFAULT             (8192*1024)    /* max readahead */
++#define CEPH_STRIDE_RA_MAX              64             /* records read ahead on a stride */
+ #define CEPH_MAX_READDIR_DEFAULT        1024
+ #define CEPH_MAX_READDIR_BYTES_DEFAULT  (512*1024)
+ #define CEPH_SNAPDIRNAME_DEFAULT        ".snap"
+@@ -567,6 +568,9 @@ struct ceph_netfs_request_data {
+ 
+ 	/* Set it if fadvise disables file readahead entirely */
+ 	bool file_ra_disabled;
++
++	/* Set it if the file is read in records at a fixed stride */
++	bool file_ra_strided;
  };
  
-+/* pin banks of exynos5515 pin-controller 0 (ALIVE) */
-+static const struct samsung_pin_bank_data exynos5515_pin_banks0[] __initconst = {
-+	GS101_PIN_BANK_EINTW(8, 0x000, "gpa0", 0x00, 0x00),
-+	GS101_PIN_BANK_EINTW(7, 0x020, "gpa1", 0x04, 0x08),
-+	EXYNOS850_PIN_BANK_EINTN(6, 0x040, "gpq0"),
-+	EXYNOS850_PIN_BANK_EINTN(6, 0x060, "etc0"),
-+};
-+
-+/* pin banks of exynos5515 pin-controller 1 (CMGP) */
-+static const struct samsung_pin_bank_data exynos5515_pin_banks1[] __initconst = {
-+	GS101_PIN_BANK_EINTW(1, 0x000, "gpm0", 0x00, 0x00),
-+	GS101_PIN_BANK_EINTW(1, 0x020, "gpm1", 0x04, 0x04),
-+	GS101_PIN_BANK_EINTW(1, 0x040, "gpm2", 0x08, 0x08),
-+	GS101_PIN_BANK_EINTW(1, 0x060, "gpm3", 0x0c, 0x0c),
-+	GS101_PIN_BANK_EINTW(1, 0x080, "gpm4", 0x10, 0x10),
-+	GS101_PIN_BANK_EINTW(1, 0x0a0, "gpm5", 0x14, 0x14),
-+	GS101_PIN_BANK_EINTW(1, 0x0c0, "gpm6", 0x18, 0x18),
-+	GS101_PIN_BANK_EINTW(1, 0x0e0, "gpm7", 0x1c, 0x1c),
-+	GS101_PIN_BANK_EINTW(1, 0x100, "gpm8", 0x20, 0x20),
-+	GS101_PIN_BANK_EINTW(1, 0x120, "gpm9", 0x24, 0x24),
-+	GS101_PIN_BANK_EINTW(1, 0x140, "gpm10", 0x28, 0x28),
-+	GS101_PIN_BANK_EINTW(1, 0x160, "gpm11", 0x2c, 0x2c),
-+	GS101_PIN_BANK_EINTW(1, 0x180, "gpm12", 0x30, 0x30),
-+	GS101_PIN_BANK_EINTW(1, 0x1a0, "gpm13", 0x34, 0x34),
-+	GS101_PIN_BANK_EINTW(1, 0x1c0, "gpm14", 0x38, 0x38),
-+	GS101_PIN_BANK_EINTW(1, 0x1e0, "gpm15", 0x3c, 0x3c),
-+	GS101_PIN_BANK_EINTW(1, 0x200, "gpm16", 0x40, 0x40),
-+	GS101_PIN_BANK_EINTW(1, 0x220, "gpm17", 0x44, 0x44),
-+	GS101_PIN_BANK_EINTW(1, 0x240, "gpm18", 0x48, 0x48),
-+	GS101_PIN_BANK_EINTW(1, 0x260, "gpm19", 0x4c, 0x4c),
-+	EXYNOS5515_PIN_BANK_EINTG(1, 0x280, "gpm20", 0x50, 0x50),
-+	EXYNOS5515_PIN_BANK_EINTG(1, 0x2a0, "gpm21", 0x54, 0x54),
-+	GS101_PIN_BANK_EINTW(1, 0x2c0, "gpm22", 0x58, 0x58),
-+	GS101_PIN_BANK_EINTW(1, 0x2e0, "gpm23", 0x5c, 0x5c),
-+	GS101_PIN_BANK_EINTW(1, 0x300, "gpm24", 0x60, 0x60),
-+	GS101_PIN_BANK_EINTW(1, 0x320, "gpm25", 0x64, 0x64),
-+	GS101_PIN_BANK_EINTW(1, 0x340, "gpm26", 0x68, 0x68),
-+};
-+
-+/* pin banks of exynos5515 pin-controller 2 (DISP) */
-+static const struct samsung_pin_bank_data exynos5515_pin_banks2[] __initconst = {
-+	EXYNOS5515_PIN_BANK_EINTN(5, 0x000, "gpb0"),
-+	EXYNOS5515_PIN_BANK_EINTN(4, 0x020, "gpb1"),
-+};
-+
-+/* pin banks of exynos5515 pin-controller 3 (FSYS) */
-+static const struct samsung_pin_bank_data exynos5515_pin_banks3[] __initconst = {
-+	EXYNOS5515_PIN_BANK_EINTN(4, 0x000, "gpf0"),
-+	EXYNOS5515_PIN_BANK_EINTN(8, 0x020, "gpf1"),
-+	EXYNOS5515_PIN_BANK_EINTN(6, 0x040, "gpf2"),
-+};
-+
-+/* pin banks of exynos5515 pin-controller 4 (PERI) */
-+static const struct samsung_pin_bank_data exynos5515_pin_banks4[] __initconst = {
-+	GS101_PIN_BANK_EINTG(2, 0x000, "gpp0", 0x00, 0x00),
-+	GS101_PIN_BANK_EINTG(2, 0x020, "gpp1", 0x04, 0x04),
-+	GS101_PIN_BANK_EINTG(2, 0x040, "gpp2", 0x08, 0x08),
-+	GS101_PIN_BANK_EINTG(3, 0x060, "gpp3", 0x0c, 0x0c),
-+	GS101_PIN_BANK_EINTG(4, 0x080, "gpp4", 0x10, 0x10),
-+	GS101_PIN_BANK_EINTG(4, 0x0A0, "gpc0", 0x14, 0x14),
-+	GS101_PIN_BANK_EINTG(2, 0x0C0, "gpc1", 0x18, 0x18),
-+	GS101_PIN_BANK_EINTG(2, 0x0E0, "gpg0", 0x1c, 0x1c),
-+	GS101_PIN_BANK_EINTG(2, 0x100, "gpg1", 0x20, 0x20),
-+	GS101_PIN_BANK_EINTG(2, 0x120, "gpg2", 0x24, 0x24),
-+	GS101_PIN_BANK_EINTG(2, 0x140, "gpg3", 0x28, 0x28),
-+	GS101_PIN_BANK_EINTG(2, 0x160, "gpg4", 0x2c, 0x2c),
-+	GS101_PIN_BANK_EINTG(2, 0x180, "gpg5", 0x30, 0x30),
-+	GS101_PIN_BANK_EINTG(2, 0x1A0, "gpg6", 0x34, 0x34),
-+	GS101_PIN_BANK_EINTG(2, 0x1C0, "gpg7", 0x38, 0x38),
-+};
-+
-+/* pin banks of exynos5515 pin-controller 5 (VTS) */
-+static const struct samsung_pin_bank_data exynos5515_pin_banks5[] __initconst = {
-+	EXYNOS5515_PIN_BANK_EINTN(2, 0x000, "gpv0"),
-+};
-+
-+static const struct samsung_pin_ctrl exynos5515_pin_ctrl[] __initconst = {
-+	{
-+		/* pin-controller instance 0 ALIVE data */
-+		.pin_banks	= exynos5515_pin_banks0,
-+		.nr_banks	= ARRAY_SIZE(exynos5515_pin_banks0),
-+		.eint_wkup_init	= exynos_eint_wkup_init,
-+		.suspend	= gs101_pinctrl_suspend,
-+		.resume		= gs101_pinctrl_resume,
-+	}, {
-+		/* pin-controller instance 1 CMGP data */
-+		.pin_banks	= exynos5515_pin_banks1,
-+		.nr_banks	= ARRAY_SIZE(exynos5515_pin_banks1),
-+		.eint_gpio_init	= exynos_eint_gpio_init,
-+		.eint_wkup_init	= exynos_eint_wkup_init,
-+		.suspend	= gs101_pinctrl_suspend,
-+		.resume		= gs101_pinctrl_resume,
-+	}, {
-+		/* pin-controller instance 2 DISP data */
-+		.pin_banks	= exynos5515_pin_banks2,
-+		.nr_banks	= ARRAY_SIZE(exynos5515_pin_banks2),
-+	}, {
-+		/* pin-controller instance 3 FSYS data */
-+		.pin_banks	= exynos5515_pin_banks3,
-+		.nr_banks	= ARRAY_SIZE(exynos5515_pin_banks3),
-+	}, {
-+		/* pin-controller instance 4 PERI data */
-+		.pin_banks	= exynos5515_pin_banks4,
-+		.nr_banks	= ARRAY_SIZE(exynos5515_pin_banks4),
-+		.eint_gpio_init	= exynos_eint_gpio_init,
-+		.suspend	= gs101_pinctrl_suspend,
-+		.resume		= gs101_pinctrl_resume,
-+	}, {
-+		/* pin-controller instance 5 VTS data */
-+		.pin_banks	= exynos5515_pin_banks5,
-+		.nr_banks	= ARRAY_SIZE(exynos5515_pin_banks5),
-+	},
-+};
-+
-+const struct samsung_pinctrl_of_match_data exynos5515_of_data __initconst = {
-+	.ctrl		= exynos5515_pin_ctrl,
-+	.num_ctrl	= ARRAY_SIZE(exynos5515_pin_ctrl),
-+};
-+
- /* pin banks of exynos7 pin-controller - ALIVE */
- static const struct samsung_pin_bank_data exynos7_pin_banks0[] __initconst = {
- 	/* Must start with EINTG banks, ordered by EINT group number. */
-diff --git a/drivers/pinctrl/samsung/pinctrl-exynos.h b/drivers/pinctrl/samsung/pinctrl-exynos.h
-index c9c38f8988dd..92bf8f0f1eb0 100644
---- a/drivers/pinctrl/samsung/pinctrl-exynos.h
-+++ b/drivers/pinctrl/samsung/pinctrl-exynos.h
-@@ -132,6 +132,26 @@
- 		.pctl_res_idx   = pctl_idx,			\
- 	}							\
+ static inline struct ceph_inode_info *
+@@ -893,6 +897,9 @@ static inline bool __ceph_is_any_real_caps(const struct ceph_inode_info *ci)
+ }
  
-+#define EXYNOS5515_PIN_BANK_EINTN(pins, reg, id)		\
-+	{							\
-+		.type		= &exynos850_bank_type_off,	\
-+		.pctl_offset	= reg,				\
-+		.nr_pins	= pins,				\
-+		.eint_type	= EINT_TYPE_NONE,		\
-+		.name		= id				\
-+	}
+ extern int __ceph_caps_issued(struct ceph_inode_info *ci, int *implemented);
++struct ceph_file_info;
++extern void ceph_stride_readahead(struct file *filp, struct ceph_file_info *fi,
++				  loff_t pos, size_t len);
+ extern int __ceph_caps_issued_mask(struct ceph_inode_info *ci, int mask, int t);
+ extern int __ceph_caps_issued_mask_metric(struct ceph_inode_info *ci, int mask,
+ 					  int t);
+@@ -987,6 +994,14 @@ struct ceph_file_info {
+ 	struct list_head rw_contexts;
+ 
+ 	u32 filp_gen;
 +
-+#define EXYNOS5515_PIN_BANK_EINTG(pins, reg, id, offs, fltcon_offs)	\
-+	{								\
-+		.type			= &exynos850_bank_type_alive,	\
-+		.pctl_offset		= reg,				\
-+		.nr_pins		= pins,				\
-+		.eint_type		= EINT_TYPE_GPIO,		\
-+		.eint_offset		= offs,				\
-+		.eint_fltcon_offset	= fltcon_offs,			\
-+		.name			= id				\
-+	}
-+
- #define EXYNOS7870_PIN_BANK_EINTN(pins, reg, id)		\
- 	{							\
- 		.type		= &exynos7870_bank_type_alive,	\
-diff --git a/drivers/pinctrl/samsung/pinctrl-samsung.c b/drivers/pinctrl/samsung/pinctrl-samsung.c
-index 5ecc9ed4c44d..f6b392a84cee 100644
---- a/drivers/pinctrl/samsung/pinctrl-samsung.c
-+++ b/drivers/pinctrl/samsung/pinctrl-samsung.c
-@@ -1492,6 +1492,8 @@ static const struct of_device_id samsung_pinctrl_dt_match[] = {
- 		.data = &exynos2200_of_data },
- 	{ .compatible = "samsung,exynos5433-pinctrl",
- 		.data = &exynos5433_of_data },
-+	{ .compatible = "samsung,exynos5515-pinctrl",
-+		.data = &exynos5515_of_data},
- 	{ .compatible = "samsung,exynos7-pinctrl",
- 		.data = &exynos7_of_data },
- 	{ .compatible = "samsung,exynos7870-pinctrl",
-diff --git a/drivers/pinctrl/samsung/pinctrl-samsung.h b/drivers/pinctrl/samsung/pinctrl-samsung.h
-index bb02fb49b2af..7c60375d5924 100644
---- a/drivers/pinctrl/samsung/pinctrl-samsung.h
-+++ b/drivers/pinctrl/samsung/pinctrl-samsung.h
-@@ -392,6 +392,7 @@ extern const struct samsung_pinctrl_of_match_data exynos5260_of_data;
- extern const struct samsung_pinctrl_of_match_data exynos5410_of_data;
- extern const struct samsung_pinctrl_of_match_data exynos5420_of_data;
- extern const struct samsung_pinctrl_of_match_data exynos5433_of_data;
-+extern const struct samsung_pinctrl_of_match_data exynos5515_of_data;
- extern const struct samsung_pinctrl_of_match_data exynos7_of_data;
- extern const struct samsung_pinctrl_of_match_data exynos7870_of_data;
- extern const struct samsung_pinctrl_of_match_data exynos7885_of_data;
++	/* stride detection of buffered reads, see ceph_note_read_stride() */
++	loff_t ra_prev_pos;
++	loff_t ra_stride;
++	size_t ra_prev_len;
++	unsigned int ra_stride_hits;
++	bool ra_strided;
++	loff_t ra_stride_next;	/* next record to read ahead */
+ };
+ 
+ struct ceph_dir_file_info {
 
--- 
-2.54.0
+---
+base-commit: ed0502cb11f84fff29f374238e526ae94d9bdfde
+change-id: 20261020-b4-wip-ceph-ra-stride-530f91e83ea3
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
