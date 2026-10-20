@@ -1,11 +1,11 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 20 Oct 2026 12:08:45 +0900
-Subject: [PATCH v4 2/9] xfs: add a flag to convert unwritten extents
- without allocating blocks
+Date: Tue, 20 Oct 2026 12:08:46 +0900
+Subject: [PATCH v4 3/9] xfs: refuse a pNFS LAYOUTCOMMIT of a range without
+ blocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-xfs-pnfs-batch-v4-2-9230fa2ca4a4@samsung.com>
+Message-Id: <20261020-xfs-pnfs-batch-v4-3-9230fa2ca4a4@samsung.com>
 References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
 In-Reply-To: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
 To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
@@ -17,122 +17,178 @@ Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=4281;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=6738;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=LMdiz7cgREAvupMlKqMsckhym0R5xHQMlfoCvJZGlCU=;
- b=uE/Q778ZlOAYYo2B0/PNLMhX5/oAOfSxbofWQIC7VXvCsaYPaMTFAdFwj1iJUNpAhgAuAYijQ
- Qx4YUXjT6HUDgEQ+5v8dAA0N1rl+y0trrPfvUmcekRWbWDstcpNWVVK
+ bh=TS0BpT+iyPj0zrwPOS+USB60F2J2/oQCnoflsIQ4Vk0=;
+ b=Hkx/e4cS0sGKldcK/QBgKt9Sx0ZoLuaSLsF//OSB1vRdwFsSaqUJEI2ivhOLoFUMYFgzabO6E
+ VIpltQ0OuHgAZw9xd8b7Yjad3vSMp1c2OsETY54QBDT+pQxboHrI8ja
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_bmapi_write() with XFS_BMAPI_CONVERT converts unwritten extents to
-written ones, and allocates blocks for any hole or delalloc extent it
-finds in the range. A caller that may only convert blocks that are
-already allocated has to look at the mapping first, and the mapping can
-change once the ILOCK is dropped.
+xfs_fs_commit_blocks() passes every range that a pNFS client commits to
+xfs_iomap_write_unwritten(), whatever is mapped there, and the range can
+be a hole. nfsd does not check the extents of a block or SCSI layout
+LAYOUTCOMMIT against the layouts it handed out, and for a reclaim during
+the grace period it has no layouts to check against, so a client can
+commit a range that it never had a layout for.
 
-Add XFS_BMAPI_CONVERT_ONLY. With it, xfs_bmapi_write() stops at a hole
-or a delalloc extent instead of allocating blocks and returns the
-mappings that it converted before it. If the range starts with a hole or
-a delalloc extent, it returns -ENOSR, as it does when a delalloc
-conversion maps nothing in the range. Nothing has been changed then, and
-the caller decides what to do with its transaction.
+For a hole, xfs_bmapi_write() with XFS_BMAPI_CONVERT allocates new
+blocks as written extents, while the transaction only reserved blocks
+for bmbt splits. A hole larger than that reservation shuts XFS down:
 
-A flag of this name was removed by commit 26b91c728b2d ("xfs: make COW
-fork unwritten extent conversions more robust"). That one skipped the
-allocation and still mapped the hole; this one stops before it.
+  XFS (nvme0n1): Corruption of in-memory data (0x8) detected at
+    xfs_trans_mod_sb+0x817/0x960 (fs/xfs/xfs_trans.c:351).
+    Shutting down filesystem.
 
-"xfs: refuse a pNFS LAYOUTCOMMIT of a range without blocks" uses it,
-which is why this is marked for stable.
+A smaller hole gets blocks that nobody wrote mapped into the file as
+data, so readers see whatever those blocks held, and the LAYOUTCOMMIT
+succeeds.
 
-Suggested-by: Christoph Hellwig <hch@lst.de>
-Link: https://lore.kernel.org/r/20261013120359.GB2944@lst.de
+With pynfs as the client and an RW layout for the first 64 KiB of a
+2 MiB sparse file, a LAYOUTCOMMIT of 64 KiB at offset 1 MiB, which no
+layout covered, got NFS4ERR_IO and shut XFS down. A LAYOUTCOMMIT of
+4 KiB at 1 MiB got NFS4_OK, and the file got a written block there. The
+client wrote nothing to the device in either case.
+
+A client may only write to blocks that a layout handed out, and
+xfs_fs_map_blocks() allocates blocks for any hole in a write layout, so
+a committed range without blocks holds nothing that can be committed.
+Pass XFS_BMAPI_CONVERT_ONLY from xfs_fs_commit_blocks() through
+xfs_iomap_write_unwritten(), and fail with -EIO when xfs_bmapi_write()
+finds a hole or a delalloc extent. Each xfs_bmapi_write() call finds the
+extent and converts it in one transaction under the ILOCK, so nothing
+can change it between the check and the conversion. -EIO is what
+xfs_pnfs_validate_isize() returns when the new size falls into a hole.
+
+xfs_iomap_write_unwritten() commits the transaction instead of
+cancelling it when it fails this way, as xfs_alloc_file_space() does
+after -ENOSR. xfs_iext_count_extend() logs the inode when it moves the
+inode to large extent counters, which happens when the data fork of an
+inode without large extent counts nears 2^31 extents on a filesystem
+that supports them, and cancelling a dirty transaction shuts the
+filesystem down.
+
+Ranges before the hole have been converted by the time the commit
+fails, as they would have been had the client committed them in a
+LAYOUTCOMMIT of their own. Later ranges are left alone, and the
+timestamps and the size are not updated.
+
+With this, both LAYOUTCOMMITs get NFS4ERR_IO, XFS keeps running and no
+block is allocated.
+
+Link: https://lore.kernel.org/r/20261014130834.GB15773@lst.de
+Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 Cc: stable@vger.kernel.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/xfs/libxfs/xfs_bmap.c | 14 ++++++++++++--
- fs/xfs/libxfs/xfs_bmap.h | 10 +++++++++-
- 2 files changed, 21 insertions(+), 3 deletions(-)
+ fs/xfs/xfs_file.c  |  2 +-
+ fs/xfs/xfs_ioend.c |  2 +-
+ fs/xfs/xfs_iomap.c | 20 +++++++++++++++++---
+ fs/xfs/xfs_iomap.h |  3 ++-
+ fs/xfs/xfs_pnfs.c  |  9 ++++++++-
+ 5 files changed, 29 insertions(+), 7 deletions(-)
 
-diff --git a/fs/xfs/libxfs/xfs_bmap.c b/fs/xfs/libxfs/xfs_bmap.c
-index ca49bf4a50..95c0178b44 100644
---- a/fs/xfs/libxfs/xfs_bmap.c
-+++ b/fs/xfs/libxfs/xfs_bmap.c
-@@ -4130,6 +4130,8 @@ xfs_bmapi_finish(
-  * Returns a negative error code on failure, including -ENOSPC when it could not
-  * allocate any blocks and -ENOSR when it did allocate blocks to convert a
-  * delalloc range, but those blocks were before the passed in range.
-+ * With XFS_BMAPI_CONVERT_ONLY, it stops at a hole or a delalloc extent instead
-+ * of allocating blocks, and returns -ENOSR if it stops before mapping anything.
-  */
- int
- xfs_bmapi_write(
-@@ -4189,6 +4191,8 @@ xfs_bmapi_write(
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 7d0c8a1975..720f4a9b40 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -666,7 +666,7 @@ xfs_dio_write_end_io(
+ 	 * they are converted.
  	 */
- 	ASSERT((flags & (XFS_BMAPI_PREALLOC | XFS_BMAPI_ZERO)) !=
- 			(XFS_BMAPI_PREALLOC | XFS_BMAPI_ZERO));
-+	ASSERT(!(flags & XFS_BMAPI_CONVERT_ONLY) ||
-+	       (flags & XFS_BMAPI_CONVERT));
- 
- 	if (XFS_IS_CORRUPT(mp, !xfs_ifork_has_extents(ifp)) ||
- 	    XFS_TEST_ERROR(mp, XFS_ERRTAG_BMAPIFORMAT)) {
-@@ -4237,6 +4241,9 @@ xfs_bmapi_write(
- 		 * that we found, if any.
- 		 */
- 		if (need_alloc || wasdelay) {
-+			if (flags & XFS_BMAPI_CONVERT_ONLY)
-+				break;
-+
- 			bma.eof = eof;
- 			bma.conv = !!(flags & XFS_BMAPI_CONVERT);
- 			bma.wasdel = wasdelay;
-@@ -4332,10 +4339,13 @@ xfs_bmapi_write(
- 	 *
- 	 * To avoid a successful return with *nmap set to 0, return the magic
- 	 * -ENOSR error code for this particular case so that the caller can
--	 * handle it.
-+	 * handle it. The same goes for XFS_BMAPI_CONVERT_ONLY stopping at a
-+	 * hole or a delalloc extent at the start of the range, in which case
-+	 * nothing has been changed.
- 	 */
- 	if (!n) {
--		ASSERT(bma.nallocs >= *nmap);
-+		ASSERT(bma.nallocs >= *nmap ||
-+		       (flags & XFS_BMAPI_CONVERT_ONLY));
- 		return -ENOSR;
+ 	if (flags & IOMAP_DIO_UNWRITTEN) {
+-		error = xfs_iomap_write_unwritten(ip, offset, size, true);
++		error = xfs_iomap_write_unwritten(ip, offset, size, true, 0);
+ 		goto out;
  	}
- 	*nmap = n;
-diff --git a/fs/xfs/libxfs/xfs_bmap.h b/fs/xfs/libxfs/xfs_bmap.h
-index e9f5416e4c..fb7481e819 100644
---- a/fs/xfs/libxfs/xfs_bmap.h
-+++ b/fs/xfs/libxfs/xfs_bmap.h
-@@ -90,6 +90,13 @@ struct xfs_bmalloca {
- /* Try to align allocations to the extent size hint */
- #define XFS_BMAPI_EXTSZALIGN	(1u << 11)
  
-+/*
-+ * Use with XFS_BMAPI_CONVERT to convert unwritten extents without allocating
-+ * blocks. Stop at a hole or a delalloc extent: return the mappings found so
-+ * far, or -ENOSR if there are none.
-+ */
-+#define XFS_BMAPI_CONVERT_ONLY	(1u << 12)
-+
- #define XFS_BMAPI_FLAGS \
- 	{ XFS_BMAPI_ENTIRE,	"ENTIRE" }, \
- 	{ XFS_BMAPI_METADATA,	"METADATA" }, \
-@@ -102,7 +109,8 @@ struct xfs_bmalloca {
- 	{ XFS_BMAPI_COWFORK,	"COWFORK" }, \
- 	{ XFS_BMAPI_NODISCARD,	"NODISCARD" }, \
- 	{ XFS_BMAPI_NORMAP,	"NORMAP" },\
--	{ XFS_BMAPI_EXTSZALIGN,	"EXTSZALIGN" }
-+	{ XFS_BMAPI_EXTSZALIGN,	"EXTSZALIGN" }, \
-+	{ XFS_BMAPI_CONVERT_ONLY,	"CONVERT_ONLY" }
+diff --git a/fs/xfs/xfs_ioend.c b/fs/xfs/xfs_ioend.c
+index 48becc3bf6..7f4a4a95af 100644
+--- a/fs/xfs/xfs_ioend.c
++++ b/fs/xfs/xfs_ioend.c
+@@ -237,7 +237,7 @@ xfs_end_ioend_write(
+ 	if (ioend->io_flags & IOMAP_IOEND_SHARED)
+ 		error = xfs_reflink_end_cow(ip, offset, size);
+ 	else if (ioend->io_flags & IOMAP_IOEND_UNWRITTEN)
+-		error = xfs_iomap_write_unwritten(ip, offset, size, false);
++		error = xfs_iomap_write_unwritten(ip, offset, size, false, 0);
  
+ 	if (!error &&
+ 	    !(ioend->io_flags & IOMAP_IOEND_DIRECT) &&
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index 329c745e31..99d48081c5 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -614,7 +614,8 @@ xfs_iomap_write_unwritten(
+ 	xfs_inode_t	*ip,
+ 	xfs_off_t	offset,
+ 	xfs_off_t	count,
+-	bool		update_isize)
++	bool		update_isize,
++	uint32_t	bmapi_flags)
+ {
+ 	xfs_mount_t	*mp = ip->i_mount;
+ 	xfs_fileoff_t	offset_fsb;
+@@ -676,8 +677,21 @@ xfs_iomap_write_unwritten(
+ 		 */
+ 		nimaps = 1;
+ 		error = xfs_bmapi_write(tp, ip, offset_fsb, count_fsb,
+-					XFS_BMAPI_CONVERT, resblks, &imap,
+-					&nimaps);
++					XFS_BMAPI_CONVERT | bmapi_flags,
++					resblks, &imap, &nimaps);
++		if (error == -ENOSR && (bmapi_flags & XFS_BMAPI_CONVERT_ONLY)) {
++			/*
++			 * Nothing was mapped: the rest of the range starts
++			 * with a hole or a delalloc extent. Nothing was
++			 * changed either, but xfs_iext_count_extend() may
++			 * have logged the inode, and cancelling a dirty
++			 * transaction shuts the filesystem down. Commit it,
++			 * as xfs_alloc_file_space() does on -ENOSR.
++			 */
++			error = xfs_trans_commit(tp);
++			xfs_iunlock(ip, XFS_ILOCK_EXCL);
++			return error ? error : -EIO;
++		}
+ 		if (error)
+ 			goto error_on_bmapi_transaction;
  
- static inline int xfs_bmapi_aflag(int w)
+diff --git a/fs/xfs/xfs_iomap.h b/fs/xfs/xfs_iomap.h
+index f2520a9b3a..8fc0c6fc8b 100644
+--- a/fs/xfs/xfs_iomap.h
++++ b/fs/xfs/xfs_iomap.h
+@@ -15,7 +15,8 @@ struct xfs_zone_alloc_ctx;
+ int xfs_iomap_write_direct(struct xfs_inode *ip, xfs_fileoff_t offset_fsb,
+ 		xfs_fileoff_t count_fsb, unsigned int flags,
+ 		struct xfs_bmbt_irec *imap, u64 *sequence);
+-int xfs_iomap_write_unwritten(struct xfs_inode *, xfs_off_t, xfs_off_t, bool);
++int xfs_iomap_write_unwritten(struct xfs_inode *ip, xfs_off_t offset,
++		xfs_off_t count, bool update_isize, uint32_t bmapi_flags);
+ xfs_fileoff_t xfs_iomap_eof_align_last_fsb(struct xfs_inode *ip,
+ 		xfs_fileoff_t end_fsb);
+ 
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index a9f0b472f3..7ff83274a5 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -344,7 +344,14 @@ xfs_fs_commit_blocks(
+ 					(end - 1) >> PAGE_SHIFT);
+ 		WARN_ON_ONCE(error);
+ 
+-		error = xfs_iomap_write_unwritten(ip, start, length, false);
++		/*
++		 * A client may only write to blocks that a layout handed out,
++		 * and xfs_fs_map_blocks() allocates blocks for any hole in a
++		 * write layout, so refuse to allocate blocks for a hole or a
++		 * delalloc extent in the committed range.
++		 */
++		error = xfs_iomap_write_unwritten(ip, start, length, false,
++				XFS_BMAPI_CONVERT_ONLY);
+ 		if (error)
+ 			goto out_drop_iolock;
+ 	}
 
 -- 
 2.43.0
