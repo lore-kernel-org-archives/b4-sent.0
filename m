@@ -1,131 +1,144 @@
 From: Eric Davis <eric.davis@broadcom.com>
-Date: Mon, 19 Oct 2026 20:03:30 -0700
-Subject: [PATCH rdma-next v2 03/13] RDMA/core: report the reliable
- unconnected device capabilities
+Date: Mon, 19 Oct 2026 20:03:31 -0700
+Subject: [PATCH rdma-next v2 04/13] RDMA/core: add the reliable unconnected
+ queue pair type
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261019-uet-ib-core-v2-3-8bd654f25370@broadcom.com>
+Message-Id: <20261019-uet-ib-core-v2-4-8bd654f25370@broadcom.com>
 References: <20261019-uet-ib-core-v2-0-8bd654f25370@broadcom.com>
 In-Reply-To: <20261019-uet-ib-core-v2-0-8bd654f25370@broadcom.com>
 To: Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>
 Cc: linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Eric Davis <eric.davis@broadcom.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465414; l=4489;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465414; l=4583;
  i=eric.davis@broadcom.com; s=20261014; h=from:subject:message-id;
- bh=0vggS3kxYqLouN3EkZY+uyQtSRkdqNXoiZQOh4hHx1U=;
- b=cg/2mylI21Itjpszv+1uxDeun+tvbMihqM3Il54YCOww7DMN/miTtNcGxC5J5BzfQQzslDyCM
- /RChb0I+mjMCkuRaUxD4FZheA+41JrEcCdNRxZNrQuNDrLMhWQmcyCJ
+ bh=EWRf4cDO67t06PHg/KvDiWA4QDgIyvbCWmC5JmJw6ms=;
+ b=+7XEWOaGTNgo/sF7SDJcmkbhshgB+MvK8BKmy2b1uBMr9iuhlci0Ic/kvoKpzsRWx69DgPmj/
+ mjm8OI/5LdPCVrBJDumIgEUfw1JW4ejTBZ/+3KyTPOI3icJ2UYBDVHg
 X-Developer-Key: i=eric.davis@broadcom.com; a=ed25519;
  pk=uy3oCTOYBipIPjryXGMynBmtPvbO6qN2FOrduzpiI4A=
 X-Endpoint-Received: by B4 Relay for eric.davis@broadcom.com/20261014 with auth_id=1186
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the capability bits a device uses to advertise reliable unconnected
-support alongside additional features. The transport itself, 64-bit
-immediate data, 64-bit memory keys, caller-chosen keys, and the four
-memory region access restrictions.
+Add IB_QPT_RU and its userspace counterpart, together with the field
+layout of a reliable unconnected queue pair number used by UET.
 
-Report the job, job key, and address table limits through the extended
-query_device response so userspace can size against them.
+Such a number uses all 32 bits, unlike the 24-bit InfiniBand and RoCE
+one, so exempt it from the restrack assertion that no queue pair number
+sets the top byte.
 
 Signed-off-by: Eric Davis <eric.davis@broadcom.com>
 ---
- drivers/infiniband/core/uverbs_cmd.c |  3 +++
- include/rdma/ib_verbs.h              | 14 ++++++++++++++
- include/uapi/rdma/ib_user_verbs.h    | 25 +++++++++++++++++++++++++
- 3 files changed, 42 insertions(+)
+ drivers/infiniband/core/restrack.c      | 13 ++++++++++++-
+ drivers/infiniband/core/uverbs_cmd.c    | 14 ++++++++++++++
+ include/rdma/ib_verbs.h                 |  1 +
+ include/uapi/rdma/ib_user_ioctl_verbs.h | 16 ++++++++++++++++
+ 4 files changed, 43 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/infiniband/core/restrack.c b/drivers/infiniband/core/restrack.c
+index a8b838fdc7b5..ddb09b17b733 100644
+--- a/drivers/infiniband/core/restrack.c
++++ b/drivers/infiniband/core/restrack.c
+@@ -241,7 +241,18 @@ void rdma_restrack_add(struct rdma_restrack_entry *res)
+ 		/* Special case to ensure that LQPN points to right QP */
+ 		struct ib_qp *qp = container_of(res, struct ib_qp, res);
+ 
+-		WARN_ONCE(qp->qp_num >> 24 || qp->port >> 8,
++		/* An InfiniBand/RoCE QP number is 24 bits and the top byte is
++		 * where the port is folded in for SMI and GSI. A reliable
++		 * unconnected pair is an exception as its QP number is a
++		 * full 32b wide, though of the top byte only the absolute bit
++		 * may be set. An absolute number whose low bits are 0 or 1
++		 * still conflicts SMI/GSI on port 128, which takes a device
++		 * with both RU and MADs on that many ports.
++		 */
++		WARN_ONCE(qp->port >> 8 ||
++			  (qp->qp_type != IB_QPT_RU && qp->qp_num >> 24) ||
++			  (qp->qp_type == IB_QPT_RU &&
++			   qp->qp_num & IB_UVERBS_QPN_UET_RESERVED_MASK),
+ 			  "QP number 0x%0X and port 0x%0X", qp->qp_num,
+ 			  qp->port);
+ 		res->id = qp->qp_num;
 diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
-index aca7c6ab55cd..ed55fbbdfc18 100644
+index ed55fbbdfc18..e4fdfa0d9548 100644
 --- a/drivers/infiniband/core/uverbs_cmd.c
 +++ b/drivers/infiniband/core/uverbs_cmd.c
-@@ -3597,6 +3597,9 @@ static int ib_uverbs_ex_query_device(struct uverbs_attr_bundle *attrs)
- 	resp.cq_moderation_caps.max_cq_moderation_period =
- 		attr.cq_caps.max_cq_moderation_period;
- 	resp.max_dm_size = attr.max_dm_size;
-+	resp.max_job_ids = attr.max_job_ids;
-+	resp.max_job_keys = attr.max_job_keys;
-+	resp.max_addr_entries = attr.max_addr_entries;
- 	resp.response_length = uverbs_response_length(attrs, sizeof(resp));
+@@ -2058,6 +2058,12 @@ static int ib_uverbs_post_send(struct uverbs_attr_bundle *attrs)
+ 		goto out;
+ 	}
  
- 	return uverbs_response(attrs, &resp, sizeof(resp));
++	/* reliable unconnected work requests are posted by the provider */
++	if (qp->qp_type == IB_QPT_RU) {
++		ret = -EOPNOTSUPP;
++		goto out_put;
++	}
++
+ 	is_ud = qp->qp_type == IB_QPT_UD;
+ 	sg_ind = 0;
+ 	last = NULL;
+@@ -2335,6 +2341,14 @@ static int ib_uverbs_post_recv(struct uverbs_attr_bundle *attrs)
+ 		goto out;
+ 	}
+ 
++	/* reliable unconnected work requests are posted by the provider */
++	if (qp->qp_type == IB_QPT_RU) {
++		rdma_lookup_put_uobject(&qp->uobject->uevent.uobject,
++					UVERBS_LOOKUP_READ);
++		ret = -EOPNOTSUPP;
++		goto out;
++	}
++
+ 	resp.bad_wr = 0;
+ 	ret = qp->device->ops.post_recv(qp->real_qp, wr, &bad_wr);
+ 
 diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index 4e3a5c38cbe8..02f3312c7cf2 100644
+index 02f3312c7cf2..8d74ed4fc581 100644
 --- a/include/rdma/ib_verbs.h
 +++ b/include/rdma/ib_verbs.h
-@@ -278,6 +278,14 @@ enum ib_device_cap_flags {
- 	IB_DEVICE_FLUSH_PERSISTENT = IB_UVERBS_DEVICE_FLUSH_PERSISTENT,
- 	IB_DEVICE_ATOMIC_WRITE = IB_UVERBS_DEVICE_ATOMIC_WRITE,
- 	IB_DEVICE_CC_DMA_BOUNCE = IB_UVERBS_DEVICE_CC_DMA_BOUNCE,
-+	IB_DEVICE_RU = IB_UVERBS_DEVICE_RU,
-+	IB_DEVICE_IMM64 = IB_UVERBS_DEVICE_IMM64,
-+	IB_DEVICE_KEY64 = IB_UVERBS_DEVICE_KEY64,
-+	IB_DEVICE_USER_RKEY = IB_UVERBS_DEVICE_USER_RKEY,
-+	IB_DEVICE_MR_UNRESTRICTED = IB_UVERBS_DEVICE_MR_UNRESTRICTED,
-+	IB_DEVICE_MR_JOB_RESTRICTED = IB_UVERBS_DEVICE_MR_JOB_RESTRICTED,
-+	IB_DEVICE_MR_QP_RESTRICTED = IB_UVERBS_DEVICE_MR_QP_RESTRICTED,
-+	IB_DEVICE_MR_QP_JOB_RESTRICTED = IB_UVERBS_DEVICE_MR_QP_JOB_RESTRICTED,
+@@ -1188,6 +1188,7 @@ enum ib_qp_type {
+ 	IB_QPT_RAW_PACKET = IB_UVERBS_QPT_RAW_PACKET,
+ 	IB_QPT_XRC_INI = IB_UVERBS_QPT_XRC_INI,
+ 	IB_QPT_XRC_TGT = IB_UVERBS_QPT_XRC_TGT,
++	IB_QPT_RU = IB_UVERBS_QPT_RU,
+ 	IB_QPT_MAX,
+ 	IB_QPT_DRIVER = IB_UVERBS_QPT_DRIVER,
+ 	/* Reserve a range for qp types internal to the low level driver.
+diff --git a/include/uapi/rdma/ib_user_ioctl_verbs.h b/include/uapi/rdma/ib_user_ioctl_verbs.h
+index ed72f48960f8..b6d46115f799 100644
+--- a/include/uapi/rdma/ib_user_ioctl_verbs.h
++++ b/include/uapi/rdma/ib_user_ioctl_verbs.h
+@@ -91,6 +91,7 @@ enum ib_uverbs_qp_type {
+ 	IB_UVERBS_QPT_RAW_PACKET = 8,
+ 	IB_UVERBS_QPT_XRC_INI,
+ 	IB_UVERBS_QPT_XRC_TGT,
++	IB_UVERBS_QPT_RU,
+ 	IB_UVERBS_QPT_DRIVER = 0xFF,
  };
  
- enum ib_kernel_cap_flags {
-@@ -456,6 +464,12 @@ struct ib_device_attr {
- 	u64			max_dm_size;
- 	/* Max entries for sgl for optimized performance per READ */
- 	u32			max_sgl_rd;
-+	/* Jobs allocated at once, not the largest JobID */
-+	u32			max_job_ids;
-+	/* Job keys allocated at once */
-+	u32			max_job_keys;
-+	/* Largest address table a single job may have */
-+	u32			max_addr_entries;
+@@ -302,6 +303,21 @@ struct ib_uverbs_buffer_desc {
+ 	__aligned_u64 length;
  };
  
- enum ib_mtu {
-diff --git a/include/uapi/rdma/ib_user_verbs.h b/include/uapi/rdma/ib_user_verbs.h
-index 565301594634..bae6fcfa01dd 100644
---- a/include/uapi/rdma/ib_user_verbs.h
-+++ b/include/uapi/rdma/ib_user_verbs.h
-@@ -300,6 +300,10 @@ struct ib_uverbs_ex_query_device_resp {
- 	__aligned_u64 max_dm_size;
- 	__u32 xrc_odp_caps;
- 	__u32 reserved;
-+	__u32 max_job_ids; /* jobs allocated at once, not a JobID */
-+	__u32 max_job_keys; /* job keys allocated at once */
-+	__u32 max_addr_entries; /* largest address table of one job */
-+	__u32 reserved2;
- };
- 
- struct ib_uverbs_query_port {
-@@ -1370,6 +1374,27 @@ enum ib_uverbs_device_cap_flags {
- 	IB_UVERBS_DEVICE_ATOMIC_WRITE = 1ULL << 40,
- 	/* CoCo guest with DMA bounce buffering required */
- 	IB_UVERBS_DEVICE_CC_DMA_BOUNCE = 1ULL << 41,
-+	/* Reliable unconnected QPs, jobs, job keys and address tables */
-+	IB_UVERBS_DEVICE_RU = 1ULL << 42,
-+	/* 64-bit immediate data */
-+	IB_UVERBS_DEVICE_IMM64 = 1ULL << 43,
-+	/* An MR may carry 64-bit keys as a second name beside its 32-bit ones */
-+	IB_UVERBS_DEVICE_KEY64 = 1ULL << 44,
-+	/* MR registration with a caller-chosen rkey */
-+	IB_UVERBS_DEVICE_USER_RKEY = 1ULL << 45,
-+	/*
-+	 * MR access restrictions, meaningful only with IB_UVERBS_DEVICE_RU.
-+	 * Each names what an incoming request must match, and each is its own
-+	 * match: supporting two does not imply their combination.
-+	 */
-+	/* PD: any QP */
-+	IB_UVERBS_DEVICE_MR_UNRESTRICTED = 1ULL << 46,
-+	/* PD and JobID: any QP, one job */
-+	IB_UVERBS_DEVICE_MR_JOB_RESTRICTED = 1ULL << 47,
-+	/* PD and QP: the QP the MR is attached to */
-+	IB_UVERBS_DEVICE_MR_QP_RESTRICTED = 1ULL << 48,
-+	/* PD, QP and JobID: the attached QP, one job */
-+	IB_UVERBS_DEVICE_MR_QP_JOB_RESTRICTED = 1ULL << 49,
- };
- 
- enum ib_uverbs_raw_packet_caps {
++/* A UET reliable unconnected queue pair number uses all 32 bits:
++ *
++ *	[ absolute 1b | reserved 7b | resource index 12b | PIDonFEP 12b ]
++ *
++ * An absolute pair is named by its number alone. A relative one is named
++ * within a job, so it must carry a job key when it is created. The reserved
++ * bits are zero.
++ */
++#define IB_UVERBS_QPN_UET_PID_ON_FEP_MASK	0x00000fff
++#define IB_UVERBS_QPN_UET_PID_ON_FEP_SHIFT	0
++#define IB_UVERBS_QPN_UET_RI_MASK		0x00fff000
++#define IB_UVERBS_QPN_UET_RI_SHIFT		12
++#define IB_UVERBS_QPN_UET_RESERVED_MASK		0x7f000000
++#define IB_UVERBS_QPN_UET_ABSOLUTE_ADDR_BIT	0x80000000
++
+ enum ib_uverbs_comp_cntr_entry {
+ 	IB_UVERBS_COMP_CNTR_ENTRY_COMP,
+ 	IB_UVERBS_COMP_CNTR_ENTRY_ERR,
 
 -- 
 2.56.0
