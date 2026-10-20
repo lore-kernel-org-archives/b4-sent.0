@@ -1,169 +1,147 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Tue, 20 Oct 2026 15:54:13 +0800
-Subject: [PATCH v11 9/9] gpio: pl061: add Ambarella register-layout variant
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH 0/5] ceph: fix lazyio for shared-file writers
+Date: Tue, 20 Oct 2026 10:05:46 +0200
+Message-Id: <20261020-b4-wip-ceph-lazyio-fix-v1-0-f4cc62459d37@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-cv75-gpio-v11-9-e058bae19571@ambarella.com>
-References: <20261020-cv75-gpio-v11-0-e058bae19571@ambarella.com>
-In-Reply-To: <20261020-cv75-gpio-v11-0-e058bae19571@ambarella.com>
-To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
-Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
- Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
- linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqDMBCF4VeRWXcgiVWkr1K60OlER0RD4l189
+ 6a6/A6c/4DAXjjAKznA8yxBhj5CPxKgpuxrRvlGg1Em18oorJ64iENi12BX7psMaGXFzOrUsk4
+ LSwTx7DzH+Qq/P7fDVLVM478G5/kDXMelDXoAAAA=
+X-Change-ID: 20261020-b4-wip-ceph-lazyio-fix-5f13fe138fcc
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792482878; l=4176;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=2uDxqZhVJnIpg09mNLOg/k2Rrl91j8nI5GQMhqJH+5M=;
- b=GYS5gG6H7t6JYDGf5IdKOL9zJV/2LDm4j8yOkGzI1X774ZixJwX+uTxHAlcacAKYB7tInf3vH
- F8vqSiay8dPA1TDvl2fEhH5aWSNowvwTrVDkEJ5KtXhg+fidVua69cs
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792483564; l=5859;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=XH2a8zLAWIxqBUyfnhvSRVD0/EPS7XChq0jkTxdXs/0=;
+ b=QZJaPRm03RP7mL/N8XNXWAzs5JdqvnrPMiuRl7Jlhe4ZSoCnMHe/ByZLEci2DExfTTELMWPOP
+ EEQG08+R190BZj0jk8546YAxqFibrDL/oyXaxmXO0uOYxRtgf2mFT4b
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a 32-bit, 32-line layout with DAT/DIR/IS/IBE/IEV/IE/MIS/IC plus
-MASK and ENABLE. Probe unmasks the bank and enables the controller.
-IRQ type changes also clear the pending bit. This derivative does not
-need write-after-direction or system suspend save/restore.
+The lazyio mount option lets several clients buffer and cache writes to
+one shared file.  With it, the io500 ior-hard phase fails its read
+verification and the whole run is marked invalid.  ior-hard has every
+process write 47008-byte records (11 pages plus 2112 bytes) into one
+shared file, interleaved with the records of the other processes, so
+the record boundaries fall inside pages that two clients share.  A
+client writes such a page back whole, and the bytes around its own
+record, read before the write or zero-filled beyond its local EOF,
+overwrite the records another client wrote into the same page.  In the
+tests below each client is a separate kernel client mount.
 
-Cache DAT (REGCACHE_FLAT_S, not volatile) so gpio_set() updates one
-bit from the output shadow instead of read-modify-writing the pin
-level across the bank.
+Patch 3 is the fix: a page that a lazy I/O write dirtied only in part
+keeps its dirty byte range, and writeback sends only that range.  A
+write without lazy I/O starts no range, so non-lazy writeback is
+unchanged and sends whole pages as before.
 
-Match the part with designer AMBA_VENDOR_AMBARELLA (JEP106 identity
-0x68, bit 7 set) and part number 0x061.
+Patches 1, 2 and 4 fix cap handling problems found while testing it:
 
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
+ - Patch 1: ceph_check_caps() could put off invalidating a cache whose
+   CACHE or LAZYIO was being revoked while the session's cap was stale,
+   and nothing checked it again.  The MDS then waited for the revoke
+   for good.  A lazy writer on a slow client (arm64, 64K pages, under
+   QEMU) hung that way after shared-file writes.
+
+ - Patches 2 and 4: a lazy I/O open no longer asks for LAZYIO while
+   CACHE (for a reader) or BUFFER (for a writer) is available, and asks
+   for it only once the MDS turns those down.  This saves a cap update
+   and a grant per lazy open of a cached inode, and the LAZYIO revoke
+   when the only client of a file opened for writing becomes its loner.
+
+Testing
+=======
+
+One host, 3 OSDs on NVMe, 3 active MDS with a distributed tree pin on
+the mdtest directories, 4 kernel client mounts, 16 io500 processes
+(4 per client), io500 with all phases unless noted.
+
+Data verification, lazyio mount option:
+
++-------------------------------+------------------+------------------+
+| Test                          | Without series   | With series      |
++-------------------------------+------------------+------------------+
+| ior-hard only, bad records    | 131881           | 0 (3 runs)       |
+| Full io500, bad records       | 142876, 73999    | 0 (10 runs)      |
+| Full io500 result             | invalid          | valid            |
++-------------------------------+------------------+------------------+
+
+Full io500, unpatched kernel without lazyio vs this series with
+lazyio (2 runs each):
+
++---------------------------+-----------------+-----------------+-----+
+| Phase / score             | Unpatched       | Series + lazyio | Diff|
++---------------------------+-----------------+-----------------+-----+
+| ior-hard-write (GiB/s)    | 0.193 / 0.192   | 0.267 / 0.272   | +40%|
+| ior-hard-read (GiB/s)     | 0.459 / 0.457   | 0.460 / 0.458   | +1% |
+| BW score                  | 0.914 / 0.908   | 0.982 / 0.980   | +8% |
+| MD score                  | 27.30 / 26.36   | 27.45 / 27.53   | +3% |
+| TOTAL                     | 4.994 / 4.893   | 5.192 / 5.193   | +5% |
++---------------------------+-----------------+-----------------+-----+
+
+Without the lazyio mount option the series changes nothing measurable:
+full io500 TOTAL 4.932 / 4.929 unpatched vs 4.935 / 4.910 with patches
+1-3 (patch 4 only changes lazy I/O opens).  A non-lazy fio sub-page
+overwrite test was within the run-to-run spread (about +-4%).
+
+arm64 with 64K pages (QEMU guest): fsx, overwrites checked from a
+second mount, and lazy writes of 47008-byte and 3000-byte records from
+4 mounts all pass, with 0 bad words, in crc, legacy and secure
+messenger modes.
+
+Known issues, not addressed here
+================================
+
+ - mdtest's read phase opens files read-write.  With lazyio that still
+   costs about one LAZYIO revoke per file in io500 mdtest-hard-read
+   (2.5-2.7M per run, against a few dozen without lazyio); patch 4
+   removes it only in a smaller reproducer.  Opening the files read-only
+   in mdtest removes the revokes in both modes.
+
+ - A lazy read that starts about a second after a lazy write of the
+   same file can hang in __ceph_get_caps(): a LAZYIO revoke is held back
+   while the cap is in use, and nothing calls ceph_check_caps() again
+   once the use ends.  Full io500 runs, which have other phases between
+   ior-hard-write and ior-hard-read, have not hit it.
+
+Xiubo Li (4):
+  ceph: invalidate a revoked cache even while its cap is stale
+  ceph: do not ask for LAZYIO for a lazy reader that holds CACHE
+  ceph: write back only the dirty bytes of a lazy I/O write
+  ceph: ask for LAZYIO only once the MDS turns CACHE or BUFFER down
+
+ fs/ceph/addr.c       | 360 ++++++++++++++++++++++++++++++++++++++-----
+ fs/ceph/caps.c       |  44 +++++-
+ fs/ceph/file.c       |   4 +
+ fs/ceph/mds_client.c |  10 ++
+ fs/ceph/super.h      |   1 +
+ 5 files changed, 381 insertions(+), 38 deletions(-)
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/gpio/gpio-pl061.c | 58 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/amba/bus.h  |  1 +
- 2 files changed, 59 insertions(+)
+Xiubo Li (5):
+      ceph: invalidate a revoked cache even while its cap is stale
+      ceph: do not ask for LAZYIO for a lazy reader that holds CACHE
+      ceph: write back only the dirty bytes of a lazy I/O write
+      ceph: ask for LAZYIO only once the MDS turns CACHE or BUFFER down
+      ceph: keep LAZYIO with the read caps of a closed file
 
-diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
-index 3d04f8c2a5c6..27d88c8cbcfe 100644
---- a/drivers/gpio/gpio-pl061.c
-+++ b/drivers/gpio/gpio-pl061.c
-@@ -39,6 +39,18 @@
- #define PL061_GPIO_NR	8
- #define PL061_DATA_OFFSET	2
- 
-+#define AMBARELLA_GPIO_NR	32
-+#define AMBARELLA_DAT		0x00
-+#define AMBARELLA_DIR		0x04
-+#define AMBARELLA_IS		0x08
-+#define AMBARELLA_IBE		0x0c
-+#define AMBARELLA_IEV		0x10
-+#define AMBARELLA_IE		0x14
-+#define AMBARELLA_MIS		0x20
-+#define AMBARELLA_IC		0x24
-+#define AMBARELLA_MASK		0x28
-+#define AMBARELLA_ENABLE	0x2c
-+
- struct pl061_regs {
- 	unsigned int dat;
- 	unsigned int dir;
-@@ -93,6 +105,17 @@ static bool pl061_arm_volatile_reg(struct device *dev, unsigned int reg)
- 	}
- }
- 
-+static bool pl061_ambarella_volatile_reg(struct device *dev, unsigned int reg)
-+{
-+	switch (reg) {
-+	case AMBARELLA_MIS:
-+	case AMBARELLA_IC:
-+		return true;
-+	default:
-+		return false;
-+	}
-+}
-+
- static const struct regmap_config pl061_arm_regmap_config = {
- 	.reg_bits = 16,
- 	.val_bits = 8,
-@@ -103,6 +126,16 @@ static const struct regmap_config pl061_arm_regmap_config = {
- 	.use_raw_spinlock = true,
- };
- 
-+static const struct regmap_config pl061_ambarella_regmap_config = {
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = AMBARELLA_ENABLE,
-+	.volatile_reg = pl061_ambarella_volatile_reg,
-+	.cache_type = REGCACHE_FLAT_S,
-+	.use_raw_spinlock = true,
-+};
-+
- static unsigned int pl061_line_mask(struct pl061 *pl061, irq_hw_number_t hwirq)
- {
- 	return BIT(hwirq % pl061->data->ngpio);
-@@ -338,6 +371,19 @@ static const struct pl061_regs pl061_arm_regs = {
- 	.ic	= GPIOIC,
- };
- 
-+static const struct pl061_regs pl061_ambarella_regs = {
-+	.dat	= AMBARELLA_DAT,
-+	.dir	= AMBARELLA_DIR,
-+	.is	= AMBARELLA_IS,
-+	.ibe	= AMBARELLA_IBE,
-+	.iev	= AMBARELLA_IEV,
-+	.ie	= AMBARELLA_IE,
-+	.mis	= AMBARELLA_MIS,
-+	.ic	= AMBARELLA_IC,
-+	.mask	= AMBARELLA_MASK,
-+	.enable	= AMBARELLA_ENABLE,
-+};
-+
- static const struct pl061_drvdata pl061_arm = {
- 	.regmap_config		= &pl061_arm_regmap_config,
- 	.regs			= &pl061_arm_regs,
-@@ -347,6 +393,13 @@ static const struct pl061_drvdata pl061_arm = {
- 	.reg_mask_xlate		= pl061_arm_reg_mask_xlate,
- };
- 
-+static const struct pl061_drvdata pl061_ambarella = {
-+	.regmap_config		= &pl061_ambarella_regmap_config,
-+	.regs			= &pl061_ambarella_regs,
-+	.ngpio			= AMBARELLA_GPIO_NR,
-+	.clear_irq_on_type	= true,
-+};
-+
- static int pl061_probe(struct amba_device *adev, const struct amba_id *id)
- {
- 	struct gpio_regmap_config config = {};
-@@ -521,6 +574,11 @@ static const struct amba_id pl061_ids[] = {
- 		.mask	= 0x000fffff,
- 		.data	= (void *)&pl061_arm,
- 	},
-+	{
-+		.id	= (AMBA_VENDOR_AMBARELLA << 12) | 0x061,
-+		.mask	= 0x000fffff,
-+		.data	= (void *)&pl061_ambarella,
-+	},
- 	{ 0, 0 },
- };
- MODULE_DEVICE_TABLE(amba, pl061_ids);
-diff --git a/include/linux/amba/bus.h b/include/linux/amba/bus.h
-index 80a74cd2da7e..411533bfa61d 100644
---- a/include/linux/amba/bus.h
-+++ b/include/linux/amba/bus.h
-@@ -98,6 +98,7 @@ enum amba_vendor {
- 	AMBA_VENDOR_ST = 0x80,
- 	AMBA_VENDOR_QCOM = 0x51,
- 	AMBA_VENDOR_LSI = 0xb6,
-+	AMBA_VENDOR_AMBARELLA = 0xe8,
- };
- 
- extern const struct bus_type amba_bustype;
+ fs/ceph/addr.c       | 360 ++++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/ceph/caps.c       |  51 +++++++-
+ fs/ceph/file.c       |   4 +
+ fs/ceph/mds_client.c |  10 ++
+ fs/ceph/super.h      |   1 +
+ 5 files changed, 386 insertions(+), 40 deletions(-)
+---
+base-commit: ed0502cb11f84fff29f374238e526ae94d9bdfde
+change-id: 20261020-b4-wip-ceph-lazyio-fix-5f13fe138fcc
 
--- 
-2.34.1
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
