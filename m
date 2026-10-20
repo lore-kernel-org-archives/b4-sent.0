@@ -1,127 +1,64 @@
-From: Brad Drury <drury.brad@gmail.com>
-Date: Tue, 20 Oct 2026 16:40:59 +0800
-Subject: [PATCH] drm/amdgpu/gmc6: restore FB location and HDP non-surface
- programming
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Tue, 20 Oct 2026 10:42:30 +0200
+Subject: [PATCH] iio: imu: inv_icm42600: update gyro start and stop delay
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-gmc6-writes-only-v3-v1-1-70730a302504@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMPQ6DMAxA4asgz7WUH8HAVVCHJBgwglDFQIsQd
- ydtx2947wShxCRQFyck2ll4iRn6UUAYXOwJuc0Go0yllVHYz6HCd+KVBJc4HbhbtFaX2rngfOc
- hl69EHX9+1+b5t2x+pLB+V3BdN2T+Y1l3AAAA
-X-Change-ID: 20261020-gmc6-writes-only-v3-33151aacabfb
-To: Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>
-Cc: amd-gfx@lists.freedesktop.org, stable@vger.kernel.org, 
- Brad Drury <drury.brad@gmail.com>
+Message-Id: <20261020-iio-imu-inv-icm42600-update-gyro-start-stop-delay-v1-1-ed52290a4ca4@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAHUp12oC/yXNywrCMBCF4Vcps3ZgEiSoryIuYjKtIzYJuRRL6
+ bsbdXPg25x/g8JZuMBl2CDzIkVi6FCHAdzDholRfDdo0kaROqNIRJkbSlhQ3HzUhghb8rYyTmu
+ OWKrNtW9M6PllVzQnb0dWhrQi6L8p8yjvX/N6+7u0+5Nd/YZg3z/AlwJJlQAAAA==
+X-Change-ID: 20261019-iio-imu-inv-icm42600-update-gyro-start-stop-delay-68dafe160210
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792485661; l=4500;
- i=drury.brad@gmail.com; s=20261020; h=from:subject:message-id;
- bh=raIwOSTMc66p8OsMKySvOqV197RJo30SgKnIRMjJUaQ=;
- b=qlVrHHTaGlVubwyQsxPbVgSl3AaxIXEaz/lqwKoS7+P5x50WLXNJ14ZTm1bfd+0lrSqB2kgjn
- OIMTgBeU860A32iXHLG698uljaE/S7HWIQmJB7CfWs59s23lcMRNWAn
-X-Developer-Key: i=drury.brad@gmail.com; a=ed25519;
- pk=vbLeVFkpkhLWuDhWMxes9in024/YW681CJos0eosnVQ=
-X-Endpoint-Received: by B4 Relay for drury.brad@gmail.com/20261020 with auth_id=1247
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792485752; l=1399;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=rYltn7fKB8YhPW/iRMCE7L2yTLJevy0EmSTjB4xuN+c=;
+ b=Un0R6vJGxLUzCcYGg0lb1WZ/8zxo6QNxOlLOvC8TBtfKqpRC72aMq0j11LKV9QpxNaww07QeS
+ xL6+W6DGsRuCs+oQOsGrSPRHubEQyds4kp5RK32/fcVVsu+z6GbbdlC
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On a MacBookPro11,5 (Radeon R9 M370X, Verde, PCI 1002:6821), used as a
-headless PRIME offload GPU with the panel on i915, every S3 resume with
-amdgpu fails:
+Following datasheet gyroscope specifications, the maximum start time
+for gyroscope is 45ms. Stop time is required for letting gyroscope
+mechanical structure settle down before enabling it back. 50ms is a
+sufficient value for that.
 
-  amdgpu 0000:01:00.0: [drm] ring gfx test failed (-110)
-  amdgpu 0000:01:00.0: resume of IP block <gfx_v6_0> failed -110
+Update values to these numbers.
 
-followed by SDMA timeouts and a failed GPU recovery.  The GPU stays
-unusable until reboot.  radeon resumes the same card fine.
-
-Instrumenting the resume path with a write/read-back VRAM probe through
-MM_INDEX/MM_DATA shows that VRAM is still intact after the driver
-re-POSTs the card and at the start of gmc_v6_0_hw_init(), but is corrupt
-at the end of it.  The gfx ring test failure is a consequence.
-
-Commit 71086a3e8470 ("drm/amdgpu/gmc6: drop fb location programming")
-removed the MC_VM_FB_LOCATION and HDP_NONSURFACE_* writes from
-gmc_v6_0_mc_program(), on the grounds that the vbios sets these up.
-That holds after the system firmware POSTs the card at boot, but it does
-not appear to hold after S3, where the card is only re-POSTed via
-asic_init.  radeon's si_mc_program() still writes them on every init and
-resume.
-
-Write them again, with the same values as radeon, after the AGP aperture
-registers.  gmc_v8_0_mc_program() already does the same for SR-IOV VFs.
-
-Unlike radeon and the code removed by 71086a3e8470, this does not black
-out the MC around the writes.  The old gmc_v6_0_mc_stop() relied on
-amdgpu_display_stop_mc_access() to blank the CRTCs first, and that was
-removed by commit e4f6b39e8bcd ("drm/amdgpu: remove *_mc_access from
-display funcs"), so restoring the blackout now would stop the MC under a
-live scanout.  On this machine the writes alone fix resume; a variant that
-also restored the blackout behaved the same.
-
-It is not established which of these writes is the one that matters.
-At boot on this machine FB_LOCATION and HDP_NONSURFACE_BASE already hold
-the values written here, but HDP_NONSURFACE_INFO/SIZE do not.  The
-register state on a failing resume could not be captured.
-
-Tested on linux 7.3-rc7, MacBookPro11,5, amdgpu.si_support=1
-radeon.si_support=0, mem_sleep=deep, with this change alone on top of
-the stock driver:
- - 7/7 S3 cycles clean, from a few seconds to 10 h 49 min asleep, on
-   battery and on AC, including two back-to-back cycles woken by the
-   RTC alarm
- - DRI_PRIME=1 glxinfo (radeonsi), glxgears and vkcube (RADV) work
-   after each resume; no ring, -110 or reset errors in the log
- - cold boot unaffected
-
-The variant with the MC blackout passed a further 6/6 cycles, up to
-9 h 40 min asleep.
-
-This patch applies to amd-staging-drm-next with only a line offset from
-the tested 7.3-rc7 change and has been build-tested there.
-
-Not tested: other SI parts (Tahiti, Pitcairn, Oland, Hainan), and an SI
-dGPU that drives a display.
-
-Fixes: 71086a3e8470 ("drm/amdgpu/gmc6: drop fb location programming")
-Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Brad Drury <drury.brad@gmail.com>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
-I can run further tests on this machine (MacBookPro11,5, R9 M370X /
-Verde) if that would help, e.g. register dumps or other variants.
----
- drivers/gpu/drm/amd/amdgpu/gmc_v6_0.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/amd/amdgpu/gmc_v6_0.c b/drivers/gpu/drm/amd/amdgpu/gmc_v6_0.c
-index a7c353d1a..d6e315f4b 100644
---- a/drivers/gpu/drm/amd/amdgpu/gmc_v6_0.c
-+++ b/drivers/gpu/drm/amd/amdgpu/gmc_v6_0.c
-@@ -223,6 +223,17 @@ static void gmc_v6_0_mc_program(struct amdgpu_device *adev)
- 	WREG32(mmMC_VM_AGP_BASE, 0);
- 	WREG32(mmMC_VM_AGP_TOP, adev->gmc.agp_end >> 22);
- 	WREG32(mmMC_VM_AGP_BOT, adev->gmc.agp_start >> 22);
-+	/*
-+	 * Don't rely on the vbios having set these up.  After S3 the card is
-+	 * only re-POSTed with asic_init, and without these (as written by
-+	 * radeon's si_mc_program()) VRAM is corrupt by the end of hw_init.
-+	 */
-+	WREG32(mmMC_VM_FB_LOCATION,
-+	       (((adev->gmc.vram_end >> 24) & 0xFFFF) << 16) |
-+	       ((adev->gmc.vram_start >> 24) & 0xFFFF));
-+	WREG32(mmHDP_NONSURFACE_BASE, adev->gmc.vram_start >> 8);
-+	WREG32(mmHDP_NONSURFACE_INFO, (2 << 7) | (1 << 30));
-+	WREG32(mmHDP_NONSURFACE_SIZE, 0x3FFFFFFF);
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
+index 3737e79dbcc1..c4a928fd3b8a 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
+@@ -439,8 +439,8 @@ struct inv_icm42600_sensor_state {
+ #define INV_ICM42600_POWER_UP_TIME_MS		100
+ #define INV_ICM42600_RESET_TIME_MS		1
+ #define INV_ICM42600_ACCEL_STARTUP_TIME_MS	20
+-#define INV_ICM42600_GYRO_STARTUP_TIME_MS	60
+-#define INV_ICM42600_GYRO_STOP_TIME_MS		150
++#define INV_ICM42600_GYRO_STARTUP_TIME_MS	45
++#define INV_ICM42600_GYRO_STOP_TIME_MS		50
+ #define INV_ICM42600_TEMP_STARTUP_TIME_MS	14
+ #define INV_ICM42600_SUSPEND_DELAY_MS		2000
  
- 	if (gmc_v6_0_wait_for_idle(ip_block))
- 		dev_warn(adev->dev, "Wait for MC idle timedout !\n");
 
 ---
-base-commit: f307e9d20cc7bd6dd54a3fd8c2af767dd7ef2931
-change-id: 20261020-gmc6-writes-only-v3-33151aacabfb
+base-commit: 43ffda3c7f8456bbe641ae8249a077a361b97880
+change-id: 20261019-iio-imu-inv-icm42600-update-gyro-start-stop-delay-68dafe160210
 
 Best regards,
 --  
-Brad Drury <drury.brad@gmail.com>
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
