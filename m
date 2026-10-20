@@ -1,65 +1,75 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Tue, 20 Oct 2026 10:05:51 +0200
-Subject: [PATCH 5/5] ceph: keep LAZYIO with the read caps of a closed file
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v3 0/2] drm/tegra: Support YVU formats
+Date: Tue, 20 Oct 2026 03:10:06 -0500
+Message-Id: <20261020-tegra-drm-yvu420-v3-0-7f19a834ba98@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-b4-wip-ceph-lazyio-fix-v1-5-f4cc62459d37@clyso.com>
-References: <20261020-b4-wip-ceph-lazyio-fix-v1-0-f4cc62459d37@clyso.com>
-In-Reply-To: <20261020-b4-wip-ceph-lazyio-fix-v1-0-f4cc62459d37@clyso.com>
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792483564; l=1563;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=vCRKa1jTwTRmyvIPqElXVacQQHdBR1gNvKu9DI1jLQE=;
- b=Z/Hs4K4lnERsSrvgustj02cukELiGN4Y+hBDpPlHF02CYvdciuRLbk+RUlhqGv0YUZ9UbMxQK
- uE+l9Vl6d98BXkY8M0bnd+BV78Pjd+GNp9uJSwzQbQo/FFbOI6K6k2s
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6CMBCF4auQrq2ZaYuiK+9hXJR2gCZCTYuNh
+ HB3CysWxuX/kvlmZpGCo8iuxcwCJRedH3LIQ8FMp4eWuLO5mQBxQoCKj9QGzW3o+ZTeSgBHW9d
+ nVECl0iyfvQI17rOR90fuzsXRh2n7kHBd/2AJOXBr0CglDUAjb22v3fNofM9WLIkdgL8AkYESR
+ VVdEKSu1R5YluULwDvQafEAAAA=
+X-Change-ID: 20261008-tegra-drm-yvu420-1dbb7140e54a
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
+Cc: dri-devel@lists.freedesktop.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792483811; l=1918;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=UNJCnLzNELDA2JhJJEdojVulK80QfqyCajHgxLoaqXY=;
+ b=4SHbIyPX/mu4c17CytuieKZ7CuYq1/sk1jNotZQ7DQ5BNbWStdZOimoS87zN+9YGv5tI+VySY
+ 1Q1bJLZHcMTD+t8z8dKfUnpoBO/wRcVUE7VGhGtlPFVxEN+q99Jqa/V
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A lazy I/O open of a file in LOCK_SYNC gets LAZYIO issued along with
-the read caps.  Once the file is closed and its wanted caps lapse,
-ceph_check_caps() keeps the shared and read caps of a file that was
-not opened for writing, but not LAZYIO, so it sends the MDS a cap
-update for every closed file only to give LAZYIO back.  With the
-lazyio mount option, io500 mdtest-hard-read sends about one such
-message per file read, from about 60 seconds after the reads start,
-and the MDS serves the reads more slowly while they arrive.
+This is not directly supported by the display controller hardware.
+However, this can be handled efficiently on tegradc by just passing the
+chroma planes to the hardware backwards and reporting it as the yuv
+equivalent. Nvdisplay has a hardware flag to handle the swap in
+hardware.
 
-Keep LAZYIO under the same condition as the read caps.  The MDS still
-revokes it together with CACHE when another client needs the file.
+YVU420 is required by AOSP for software decoded video playback among
+other things. An attempt was made to handle this in gralloc by swapping
+the chroma planes there, but it wasn't working. This kernel
+implementation is working and is more generic anyways. This has been
+verified on a SHIELD TV 2019 Pro for the tegradc path and a Jetson TX2
+NX for the nvdisplay path.
 
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- fs/ceph/caps.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Changes in v3:
+- In patch 1, use the SWAP_UV window group flag instead of manually
+  swapping for nvdisplay
+- In patch 2, support the chroma swapped variants of the other yuv types
+- Link to v2: https://lore.kernel.org/r/20261018-tegra-drm-yvu420-v2-0-512889103ab4@gmail.com
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index 49e5c1c36b68..aca09351a094 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -2266,10 +2266,13 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 			/*
- 			 * keep RD only if we didn't have the file open RW,
- 			 * because then the mds would revoke it anyway to
--			 * journal max_size=0.
-+			 * journal max_size=0.  Keep LAZYIO with it: a lazy
-+			 * I/O open gets it issued in LOCK_SYNC, and giving
-+			 * it back costs a cap message per closed file, while
-+			 * the MDS revokes it along with CACHE when it must.
- 			 */
- 			if (ci->i_max_size == 0)
--				retain |= CEPH_CAP_ANY_RD;
-+				retain |= CEPH_CAP_ANY_RD | CEPH_CAP_FILE_LAZYIO;
- 		}
- 	}
- 
+Changes in v2:
+- In patch 1, simplify pre-nvdisplay path to a swap of the window base
+  address
+- In patch 1, address sashiko report about failure to copy the new
+  struct entry in duplicate_state
+- In patch 2, address sashiko report that yvu420 was missing from
+  tegra20_overlays when the targets already support yuv420.
+- Link to v1: https://lore.kernel.org/r/20261008-tegra-drm-yvu420-v1-0-dc1c443c00f3@gmail.com
 
+---
+Aaron Kling (2):
+      drm/tegra: Support swapping chroma planes
+      drm/tegra: Support YVU formats
+
+ drivers/gpu/drm/tegra/dc.c    | 13 ++++++++++++-
+ drivers/gpu/drm/tegra/hub.c   |  9 +++++++--
+ drivers/gpu/drm/tegra/plane.c | 29 ++++++++++++++++++++++++++++-
+ drivers/gpu/drm/tegra/plane.h |  3 ++-
+ 4 files changed, 49 insertions(+), 5 deletions(-)
+---
+base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
+change-id: 20261008-tegra-drm-yvu420-1dbb7140e54a
+
+Best regards,
 -- 
-2.53.0
+Aaron Kling <webgeek1234@gmail.com>
 
