@@ -1,11 +1,11 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Tue, 20 Oct 2026 12:08:47 +0900
-Subject: [PATCH v4 4/9] xfs: clamp a pNFS LAYOUTCOMMIT extent before
- computing its end
+Date: Tue, 20 Oct 2026 12:08:48 +0900
+Subject: [PATCH v4 5/9] xfs: limit the count of a pNFS write allocation to
+ one extent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-xfs-pnfs-batch-v4-4-9230fa2ca4a4@samsung.com>
+Message-Id: <20261020-xfs-pnfs-batch-v4-5-9230fa2ca4a4@samsung.com>
 References: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
 In-Reply-To: <20261020-xfs-pnfs-batch-v4-0-9230fa2ca4a4@samsung.com>
 To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
@@ -17,60 +17,88 @@ Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=1903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792465723; l=3759;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=nP9RMvT+2/zi+VUBuU+Zdw9BhC8rbBfOGbPtZzbzLCE=;
- b=PJJKeYHGKbDmd5zcaR1gtO5Pp/W5Fe9pqLdUmfq0kmgYCQxZZDjBjbd1WgYu+I3lyocdVAQTZ
- 2AcR4w6j/lVC5UUEGO+HyLgfse/9n1wSeXaHAd55oQ3xrGDyH4AraQN
+ bh=bIokulr9YmNCvihfXF2HXvVG1KbQ9zOS6h+CiqM7w0k=;
+ b=s78AkhLG828fo4VOvL4QMljwxBhouOcu4IvrIPAXWM8XOXbyFNICpXUArUQ5R66nAJBzVK4d7
+ MrBZqyH+1opBWW70VuqFGwmUwmbPQ0/r+OulyNAhKXyH2UddRBqRaOd
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-xfs_fs_commit_blocks() clamps the end of each committed extent to the
-file size, but computes the end as offset + length first. A length
-from the client can make that sum wrap around, and the loop then
-passes the client's length, unclamped, to xfs_iomap_write_unwritten().
-The range wraps there as well, and xfs_bmapi_write() maps nothing.
-Before the previous two patches, that failed an assertion on XFS_DEBUG
-kernels, which is a BUG with XFS_ASSERT_FATAL, and otherwise returned
--ENOSR, which nfsd warns about as a non-standard errno. With
-XFS_BMAPI_CONVERT_ONLY, the LAYOUTCOMMIT fails with -EIO and converts
-nothing, even when every block up to the size is allocated.
+xfs_fs_map_blocks() asks xfs_iomap_write_direct() to allocate from the
+start of a hole to the end of the range of a LAYOUTGET, which a client
+chooses, or to the end of the hole if the range ends before EOF.
+xfs_iomap_write_direct() reserves blocks for that whole count, in an
+unsigned int, but xfs_bmapi_write() maps at most XFS_MAX_BMBT_EXTLEN
+blocks in one mapping. A count of about 2^32 blocks or more wraps the
+reservation. If it wraps to a few blocks, the allocation uses more
+blocks than the transaction reserved, and xfs_trans_mod_sb() shuts the
+filesystem down. With 4 KiB blocks, an RW LAYOUTGET at offset 0 of an
+empty file for 16 TiB does it.
 
-With pynfs as the client and an RW layout for the first 64 KiB of a
-2 MiB sparse file, a LAYOUTCOMMIT of 2^64 - 4 KiB at 4 KiB got
-NFS4ERR_IO, "nfsd: non-standard errno: -63" and a WARNING, or the
-assertion on XFS_DEBUG. With the previous two patches, it gets
-NFS4ERR_IO and the laid-out range stays unwritten.
+Direct I/O, DAX and buffered writes with an extent size hint never ask
+for that much, as xfs_direct_write_iomap_begin() limits them to 1024
+pages to keep the count below 32 bits. Limit a pNFS allocation to
+XFS_MAX_BMBT_EXTLEN blocks, as xfs_alloc_file_space() limits each of
+its reservations for the same reason. This shrinks the reservation; the
+mapping that xfs_bmapi_write() returns stays the same. nfsd asks again
+for the rest of the range since commit cc6c40e09d7b ("NFSD/blocklayout:
+Support multiple extents per LAYOUTGET"), while the reply has room for
+another extent; before that, the layout ends with the extent and the
+client asks again.
 
-Clamp the length to what is left below the size before adding it to
-the offset. The extent then ends at the size, its allocated part is
-converted, and the LAYOUTCOMMIT gets NFS4ERR_IO at the hole after it.
+An RW LAYOUTGET for more than the free space used to fail with
+NFS4ERR_NOSPC before anything was allocated, as the first call that
+allocates tried to reserve blocks for all of it. Where nfsd maps one
+extent per LAYOUTGET, it now gets the first extent. Where nfsd asks
+again, it allocates one extent after the other: if the reply fills up
+first (at most 92 extents with 4 KiB pages), the client gets those
+extents, and if fewer than XFS_MAX_BMBT_EXTLEN blocks are free first,
+nfsd fails the LAYOUTGET. The blocks it allocated stay past EOF, as
+the inode is marked preallocated; xfs_alloc_file_space() likewise
+keeps what it allocated when it runs out of space.
 
+With pynfs as the client and a 32 GiB XFS, an RW LAYOUTGET at offset 0
+of an empty file for 16 TiB shut the filesystem down: "Corruption of
+in-memory data (0x8) detected at xfs_trans_mod_sb". With this patch it
+gets NFS4ERR_NOSPC, also with XFS_DEBUG, XFS keeps running, and less
+than 8 GiB of the filesystem, one extent's worth, is left free. One
+for 100 GiB ends the same way, where it got NFS4ERR_NOSPC with nothing
+allocated before. One for 16 GiB, which fits, is granted the same
+three extents as before.
+
+Suggested-by: Darrick J. Wong <djwong@kernel.org>
+Link: https://lore.kernel.org/r/20261008154017.GO2705364@frogsfrogsfrogs
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Link: https://lore.kernel.org/r/20261015060932.GD14035@lst.de
 Fixes: 527851124d10 ("xfs: implement pNFS export operations")
 Cc: stable@vger.kernel.org
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/xfs/xfs_pnfs.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ fs/xfs/xfs_pnfs.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index 7ff83274a5..19eb18e129 100644
+index 19eb18e129..401a790299 100644
 --- a/fs/xfs/xfs_pnfs.c
 +++ b/fs/xfs/xfs_pnfs.c
-@@ -328,9 +328,7 @@ xfs_fs_commit_blocks(
- 		if (start > size)
- 			continue;
+@@ -224,6 +224,14 @@ xfs_fs_map_blocks(
+ 		else if (nimaps && imap.br_startblock == HOLESTARTBLOCK)
+ 			end_fsb = min(end_fsb, imap.br_startoff +
+ 					       imap.br_blockcount);
++		/*
++		 * xfs_bmapi_write() maps at most XFS_MAX_BMBT_EXTLEN blocks
++		 * in one mapping, so don't reserve blocks for more. The
++		 * range comes from a client, and its block count may not
++		 * even fit the 32-bit reservation. The rest of the range
++		 * is mapped by a later call.
++		 */
++		end_fsb = min(end_fsb, offset_fsb + XFS_MAX_BMBT_EXTLEN);
+ 		xfs_iunlock(ip, lock_flags);
  
--		end = start + maps[i].length;
--		if (end > size)
--			end = size;
-+		end = start + min_t(u64, maps[i].length, size - start);
- 
- 		length = end - start;
- 		if (!length)
+ 		error = xfs_iomap_write_direct(ip, offset_fsb,
 
 -- 
 2.43.0
