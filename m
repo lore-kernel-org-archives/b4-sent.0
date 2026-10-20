@@ -1,15 +1,12 @@
 From: Fabricio Akio <fabricioakio@gmail.com>
-Subject: [PATCH v2 0/3] drm/msm/a5xx: Fix GPU stalls on A508, A509 and A512
-Date: Mon, 19 Oct 2026 23:05:07 -0300
-Message-Id: <20261019-a5xx-gpu-pm-v2-0-457aafbb28da@gmail.com>
+Date: Mon, 19 Oct 2026 23:05:08 -0300
+Subject: [PATCH v2 1/3] drm/msm/a5xx: Reset the GPU when resuming it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jm7ZhOAUVX3sOwKGWAMUJJCwRDu
- LuAW5cvef/9BQJ74QD3aAHPkwRx3Qb6FIFtTFczSrkxaKUvpOiGJp1nrPsR+xarNCtswqzj7Ar
- bovdcyXzUnvmPw1i82A57YjcaCYPzn+Nuot37X54IFVKpbEyxoYT0o26NvM/WtZCv6/oFp/nJf
- LgAAAA=
-X-Change-ID: 20261019-a5xx-gpu-pm-f58bc4ee2387
+Message-Id: <20261019-a5xx-gpu-pm-v2-1-457aafbb28da@gmail.com>
+References: <20261019-a5xx-gpu-pm-v2-0-457aafbb28da@gmail.com>
+In-Reply-To: <20261019-a5xx-gpu-pm-v2-0-457aafbb28da@gmail.com>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
  Konrad Dybcio <konradybcio@kernel.org>, 
  Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
@@ -23,60 +20,121 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  Paul Sajna <sajattack@postmarketos.org>, 
  Fabricio Akio <fabricioakio@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792461909; l=2141;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792461909; l=4545;
  i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=ww0IS2pCRUm3JGopuPyKyAKswNjkjXYoL6LMxImCPLY=;
- b=FcYj4QkL2ZkDvAG/1XX6YtqZNjPmzKQjMCcPsoJy3GwSKkVWM0lsnLQa6pROcr7rYbeH8HamE
- 5jP5k7O8TidDRseXvttzlFya7N15nfc4+p5QZQEoNTAlxi7MQBMDxcD
+ bh=idG9UEOCHDY9HHinuKj/MRVsQ1JSiZd+zxX4FQSwrt4=;
+ b=lMwkiCpQtm+UPs3qByl0tnTg6eemFpXL8Tgk6y4MrPXyboTSxaIBWoZP+tRdRvKGE9m5B2yX/
+ 1c+k49zDDlJDBYhwJqT/3FuuJ5M+zRAsXxXABNMey7eLvYih9CwsFkZ
 X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
  pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
 X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Three changes to how the A508, A509 and A512 power up and down, found
-running a phone shell on an SDM630 phone. The first resets the GPU on
-every resume: on SDM630, SDM660 and MSM8998 the GPU's GX power domain
-belongs to its SMMU, so a GPU resumed soon after suspending keeps its
-state, and its CP runs stale ringbuffer contents and hangs. The second
-holds a CPU latency request while the GPU is powered, as the
-downstream driver does: on SDM630 the GPU stops executing while the
-SoC is in system-level power collapse, so a submission overlapping
-such a state would stall and trip the hang detector. The third powers
-these GPUs down after downstream's 80 ms idle instead of the A530's
-250 ms, so the request is released when downstream releases it.
+On SDM630, SDM660 and MSM8998 the GPU's GX power domain belongs to its
+SMMU, not to the GPU, so GX switches off only once the SMMU suspends as
+well. A GPU resumed with GX still on keeps its state, and the CP keeps
+its ringbuffer read pointer. a5xx_hw_init() then rewinds the ringbuffer
+and writes CP_ME_INIT at its start, while the CP goes on from its old
+position, executes stale ringbuffer contents and hangs:
 
-The second patch adds code next to the first's, and the third sits on
-the second.
+  timeout waiting to drain ringbuffer 0 rptr/wptr = 23/C
 
-Tested on a Motorola Moto X4 (SDM630, A508), whose board file is not
-in mainline yet, on sdm660-mainline's 7.2 kernel. The stall the second
-patch prevents was measured with an SDM630 system-level idle state
-that is not in mainline.
+Soft reset the GPU in a5xx_pm_resume() once it is powered, so that
+every resume starts from the reset state. The downstream driver resets
+only when it finds the GPU's power left on; resetting a GPU that was
+powered off changes nothing, and on A508 the reset takes about 2 us of
+a resume of about 1.5 ms, so do it every time.
 
+The reset also clears the busy counter, which msm_gpu_pm_resume() has
+just sampled as devfreq's baseline. Take the baseline again after the
+reset, or the next devfreq poll subtracts the old count from the new
+one, wraps, and sets the GPU to its top frequency.
+
+Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
 ---
 Changes in v2:
-- Patch 1: take devfreq's busy-cycle baseline again after the reset,
-  which clears the busy counter (Sashiko)
-- Link to v1: https://patch.msgid.link/20261019-a5xx-gpu-pm-v1-0-1d0c313a1412@gmail.com
+- Take devfreq's busy-cycle baseline again after the reset, which
+  clears the busy counter (Sashiko)
 
+Tested on A508 only; the reset runs on every A5xx.
+
+A stall with the same signature, the CP's read pointer past the write
+pointer just after CP_ME_INIT, was reported on an A509:
+https://lore.kernel.org/linux-arm-msm/20260308-adreno-ringbuffer-drain-timeout-recovery-v1-1-985a33faf108@postmarketos.org/
+This may be the root cause of the A509 stall Paul Sajna reported there.
 ---
-Fabricio Akio (3):
-      drm/msm/a5xx: Reset the GPU when resuming it
-      drm/msm/a5xx: Hold a CPU latency request while the GPU is powered
-      drm/msm/a5xx: Use the downstream GPU idle timeout on A508, A509 and A512
+ drivers/gpu/drm/msm/adreno/a5xx_gpu.c | 15 +++++++++++++++
+ drivers/gpu/drm/msm/msm_gpu.h         |  1 +
+ drivers/gpu/drm/msm/msm_gpu_devfreq.c | 17 +++++++++++++++++
+ 3 files changed, 33 insertions(+)
 
- drivers/gpu/drm/msm/adreno/a5xx_catalog.c | 21 ++++++---------------
- drivers/gpu/drm/msm/adreno/a5xx_gpu.c     | 28 ++++++++++++++++++++++++++++
- drivers/gpu/drm/msm/adreno/a5xx_gpu.h     |  4 ++++
- drivers/gpu/drm/msm/adreno/adreno_gpu.h   |  5 +++++
- drivers/gpu/drm/msm/msm_gpu.h             |  1 +
- drivers/gpu/drm/msm/msm_gpu_devfreq.c     | 17 +++++++++++++++++
- 6 files changed, 61 insertions(+), 15 deletions(-)
----
-base-commit: 2efb7a11f1aa4d2dc285fe2680cca22cb9f72f64
-change-id: 20261019-a5xx-gpu-pm-f58bc4ee2387
+diff --git a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
+index 16c7335c4b1f..0aff8252a00f 100644
+--- a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
++++ b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
+@@ -1367,6 +1367,21 @@ static int a5xx_pm_resume(struct msm_gpu *gpu)
+ 	if (ret)
+ 		return ret;
+ 
++	/*
++	 * The GX power domain is not necessarily switched off while we are
++	 * suspended: on SDM630, SDM660 and MSM8998 it follows the GPU's SMMU
++	 * rather than the GPU. If it stayed on, the CP still holds its old
++	 * ringbuffer read pointer and would execute stale ringbuffer contents
++	 * once hw_init restarts it. Soft reset the GPU so that it always
++	 * resumes from its reset state.
++	 */
++	gpu_write(gpu, REG_A5XX_RBBM_SW_RESET_CMD, 1);
++	gpu_read(gpu, REG_A5XX_RBBM_SW_RESET_CMD);
++	gpu_write(gpu, REG_A5XX_RBBM_SW_RESET_CMD, 0);
++
++	/* The reset cleared the busy counter devfreq has just sampled */
++	msm_devfreq_resample_busy(gpu);
++
+ 	/* Adreno 505, 506, 508, 509, 510, 512 needs manual RBBM sus/res control */
+ 	if (!(adreno_is_a530(adreno_gpu) || adreno_is_a540(adreno_gpu))) {
+ 		/* Halt the sp_input_clk at HM level */
+diff --git a/drivers/gpu/drm/msm/msm_gpu.h b/drivers/gpu/drm/msm/msm_gpu.h
+index d27d54bdb7a7..0e0768c15bcc 100644
+--- a/drivers/gpu/drm/msm/msm_gpu.h
++++ b/drivers/gpu/drm/msm/msm_gpu.h
+@@ -735,6 +735,7 @@ static inline struct msm_context *msm_context_get(
+ void msm_devfreq_init(struct msm_gpu *gpu);
+ void msm_devfreq_cleanup(struct msm_gpu *gpu);
+ void msm_devfreq_resume(struct msm_gpu *gpu);
++void msm_devfreq_resample_busy(struct msm_gpu *gpu);
+ void msm_devfreq_suspend(struct msm_gpu *gpu);
+ void msm_devfreq_boost(struct msm_gpu *gpu, unsigned factor);
+ void msm_devfreq_active(struct msm_gpu *gpu);
+diff --git a/drivers/gpu/drm/msm/msm_gpu_devfreq.c b/drivers/gpu/drm/msm/msm_gpu_devfreq.c
+index 2e1d5c343272..2e963bff3f61 100644
+--- a/drivers/gpu/drm/msm/msm_gpu_devfreq.c
++++ b/drivers/gpu/drm/msm/msm_gpu_devfreq.c
+@@ -242,6 +242,23 @@ void msm_devfreq_resume(struct msm_gpu *gpu)
+ 	devfreq_resume_device(df->devfreq);
+ }
+ 
++/*
++ * Take a new busy cycles baseline, for a GPU that resets its busy counter
++ * after msm_devfreq_resume() has sampled it.
++ */
++void msm_devfreq_resample_busy(struct msm_gpu *gpu)
++{
++	struct msm_gpu_devfreq *df = &gpu->devfreq;
++	unsigned long sample_rate;
++
++	if (!has_devfreq(gpu))
++		return;
++
++	mutex_lock(&df->lock);
++	df->busy_cycles = gpu->funcs->gpu_busy(gpu, &sample_rate);
++	mutex_unlock(&df->lock);
++}
++
+ void msm_devfreq_suspend(struct msm_gpu *gpu)
+ {
+ 	struct msm_gpu_devfreq *df = &gpu->devfreq;
 
-Best regards,
---  
-Fabricio Akio <fabricioakio@gmail.com>
+-- 
+2.56.0
 
