@@ -1,76 +1,119 @@
-From: Qinguang Xu <guang.cy2023@gmail.com>
-Date: Tue, 20 Oct 2026 21:39:06 +0800
-Subject: [PATCH] regmap: irq: fix incorrect index calculation for
- read_sub_irq_data()
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Tue, 20 Oct 2026 17:26:00 +0200
+Subject: [PATCH] iio: inv_sensors: prevent timestamps going back in time in
+ transitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-debug-v1-1-44e0491ede30@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAyMD3ZTUpNJ0XbOk1FRTUzNji0RLQyWg2oKi1LTMCrA50bG1tQDoIvy
- tVwAAAA==
-X-Change-ID: 20261020-debug-6bee55638a91
-To: Mark Brown <broonie@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>
-Cc: linux-kernel@vger.kernel.org, driver-core@lists.linux.dev, 
- Qinguang Xu <guang.cy2023@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792503607; l=1610;
- i=guang.cy2023@gmail.com; s=20261020; h=from:subject:message-id;
- bh=h/epT8PozJJSzYsR6YyQpeY/N08qpMA03/LtijdFBKU=;
- b=N/3MqOgQb9WGXlYuHe3je8J4Nun33kI8SPFWObRtxpeLnhwe3lVID8RzhMAkBE2xMpMPmjwY0
- +G1DTk/TrnLA+3Sh2SUuBPUsvq3JsrUCZGewiDRcoSd7gw1cr4bwnSy
-X-Developer-Key: i=guang.cy2023@gmail.com; a=ed25519;
- pk=nBIKvk/kltcVDBLn+o4Bv1W0xE/m2VgIByF+uxYTYzk=
-X-Endpoint-Received: by B4 Relay for guang.cy2023@gmail.com/20261020 with auth_id=1248
+Message-Id: <20261020-iio-common-inv-sensors-fixes-for-preventing-timestamp-in-past-v1-1-c27be451b287@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAAeI12oC/yWNwQrCMBBEf6Xs2YWkSon+iniI7baukE3IxiKU/
+ rurXgYezMzbQKkyKVy6DSqtrJzFwB86GB9RFkKejKF3/eBd75A545hTyoIsKyqJ5qo485ssc8V
+ iNySNZcHGibTFVKyKJWrDMEV/nodwdOEE5rDyb2mK6+3P+ro/aWxfKez7Bw3903GhAAAA
+X-Change-ID: 20261020-iio-common-inv-sensors-fixes-for-preventing-timestamp-in-past-8da19f683084
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792509964; l=3507;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=SKRCGdHQ3/TSi0j/AnCYzWp+4z8JacqTdI3yvmeaYFE=;
+ b=3UVAS7YsWlCyaqey1MfHrpDdIzft+npqsEh1GeWkEd2LHGvRRicxbJ6cP/WTedQI8XG/1r7Je
+ bIuNz3L6ALlDMF1GPQQDjK3cbMM+RejEYNDuerAtpznFcRniqE6AtJ6
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While working on a PMIC driver that utilizes num_main_regs > 1, this
-issue was noticed. Currently, no in-tree driver sets `num_main_regs >
-1`, so this bug has not been triggered in practice.
+Ensure when computing first timestamp and when applying odr change,
+that the next timestamp will not be lower than the previous one.
 
-Pass the global index calculated with `i` instead of the local bit
-offset `b` to read_sub_irq_data().
+This way there is no risk to have a timestamp going back in time, meaning
+being lower than the previous one. It already can never happen without
+a transition because we are generating timestamps by adding the period
+to the last timestamp.
 
-Fix an off-by-one error in the index bounds check.
-
-This patch has been compile-tested only.
-
-Signed-off-by: Qinguang Xu <guang.cy2023@gmail.com>
+Fixes: 0ecc363ccea7 ("iio: make invensense timestamp module generic")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- drivers/base/regmap/regmap-irq.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/iio/common/inv_sensors/inv_sensors_timestamp.c | 16 ++++++++++++----
+ include/linux/iio/common/inv_sensors_timestamp.h       |  3 ++-
+ 2 files changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/base/regmap/regmap-irq.c b/drivers/base/regmap/regmap-irq.c
-index 99b55b105..e151c6222 100644
---- a/drivers/base/regmap/regmap-irq.c
-+++ b/drivers/base/regmap/regmap-irq.c
-@@ -398,14 +398,14 @@ static int read_irq_data(struct regmap_irq_chip_data *data)
+diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
+index 8c9e81a77e68..9040da80f0c7 100644
+--- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
++++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
+@@ -133,10 +133,15 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+ 		return;
  
- 		/* Read sub registers with active IRQs */
- 		for (i = 0; i < chip->num_main_regs; i++) {
--			unsigned int b;
-+			unsigned int b, index;
- 			const unsigned long mreg = data->main_status_buf[i];
+ 	/* no previous data, compute theoretical value from interrupt */
+-	if (ts->timestamp == 0) {
++	if (!ts->init) {
+ 		/* elapsed time: sensor period * sensor samples number */
+ 		interval = (s64)ts->period * (s64)sample_nb;
+-		ts->timestamp = timestamp - interval;
++		delta = timestamp - interval;
++		/* prevent next timestamp to be lower than the last one */
++		if ((delta + ts->period) > ts->timestamp)
++			ts->timestamp = delta;
++		ts->init = true;
++
+ 	}
  
- 			for_each_set_bit(b, &mreg, map->format.val_bytes * 8) {
--				if (i * map->format.val_bytes * 8 + b >
--				    max_main_bits)
-+				index = i * map->format.val_bytes * 8 + b;
-+				if (index >= max_main_bits)
- 					break;
--				ret = read_sub_irq_data(data, b);
-+				ret = read_sub_irq_data(data, index);
+ 	/* update delta timestamps and estimated period */
+@@ -184,7 +189,7 @@ void inv_sensors_timestamp_apply_odr(struct inv_sensors_timestamp *ts,
+ 				     u32 fifo_period, size_t fifo_nb,
+ 				     unsigned int fifo_no)
+ {
+-	s64 interval;
++	s64 interval, timestamp;
+ 	u32 fifo_mult;
  
- 				if (ret != 0) {
- 					dev_err(map->dev, "Failed to read IRQ status %d\n", ret);
+ 	if (ts->new_mult == 0)
+@@ -207,7 +212,10 @@ void inv_sensors_timestamp_apply_odr(struct inv_sensors_timestamp *ts,
+ 		fifo_period = fifo_mult * ts->chip_period.val;
+ 		/* computes time interval between interrupt and this sample */
+ 		interval = (s64)(fifo_nb - fifo_no) * (s64)fifo_period;
+-		ts->timestamp = ts->it.up - interval;
++		timestamp = ts->it.up - interval;
++		/* prevent next timestamp to be lower than current one */
++		if ((timestamp + ts->period) > ts->timestamp)
++			ts->timestamp = timestamp;
+ 	}
+ }
+ EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_apply_odr, "IIO_INV_SENSORS_TIMESTAMP");
+diff --git a/include/linux/iio/common/inv_sensors_timestamp.h b/include/linux/iio/common/inv_sensors_timestamp.h
+index 4f08204ede3b..91690778ae88 100644
+--- a/include/linux/iio/common/inv_sensors_timestamp.h
++++ b/include/linux/iio/common/inv_sensors_timestamp.h
+@@ -66,6 +66,7 @@ struct inv_sensors_timestamp {
+ 	u32 new_mult;
+ 	u32 period;
+ 	struct inv_sensors_timestamp_acc chip_period;
++	bool init;
+ };
+ 
+ void inv_sensors_timestamp_init(struct inv_sensors_timestamp *ts,
+@@ -94,7 +95,7 @@ static inline void inv_sensors_timestamp_reset(struct inv_sensors_timestamp *ts)
+ 	ts->it = interval_init;
+ 	ts->delta = interval_init;
+ 	ts->delta_counter = 0;
+-	ts->timestamp = 0;
++	ts->init = false;
+ }
+ 
+ #endif
 
 ---
-base-commit: 4056b3c9d3c92ea45955641dbafeb9b960e146ef
-change-id: 20261020-debug-6bee55638a91
+base-commit: 43ffda3c7f8456bbe641ae8249a077a361b97880
+change-id: 20261020-iio-common-inv-sensors-fixes-for-preventing-timestamp-in-past-8da19f683084
 
 Best regards,
--- 
-Qinguang Xu <guang.cy2023@gmail.com>
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
