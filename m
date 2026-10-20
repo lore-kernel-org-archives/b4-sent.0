@@ -1,521 +1,131 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 20 Oct 2026 09:27:03 -0300
-Subject: [PATCH RFC v3 5/5] iio: test: add kunit tests for channel info
- writes
+From: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
+Subject: [PATCH v5 00/10] can: peak_usb: fixes, cleanup and input
+ validation hardening
+Date: Tue, 20 Oct 2026 15:30:39 +0200
+Message-Id: <20261020-canfd_check_channel_idx-v5-0-a62b35b867f0@peak-system.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261020-e-notation-v3-5-fd385c0fbf65@analog.com>
-References: <20261020-e-notation-v3-0-fd385c0fbf65@analog.com>
-In-Reply-To: <20261020-e-notation-v3-0-fd385c0fbf65@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792499229; l=18371;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=etzEsJTNxGniKPVl9k3nrFa0ZjtF5iQ+dd++vIYpf8I=;
- b=IgvlrNoOorGMID1JFoUmWvr0EK+E6dmP4wSstocaREq/w3LB1wiOIblNbHD6Lhk5kY+LhIsMQ
- nMXQRuSj/c/Ak49YVoS3s3M9GMBPy46OtE5fq/7RAHQPfwVwFKd0xb5
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43NUWvDIBQF4L9SfJ5DjdmNe9r/GCVc9bq4dmnRN
+ LSU/Pdpx6CwBvZ44JzvXFmmFCmz182VJZpjjoexhPZpw9yA4wfx6EtmSqgXKQRwh2PwvRvI7fr
+ aGGnfR3/mqD2gREkEnpX1MVGI55v8vv3J+WQ/yU2Vq40h5umQLrfrWdbe70u3+jJLLrjAxtpOB
+ U3CvB0Jdzxf8kRfzyGxejWre8ysY6pgASyAMsqAkQ+x5g5TYh1rCgbaS3AttsbQQ0z/E9MFs8F
+ 66mToLNo/2LIs36s9rvi8AQAA
+X-Change-ID: 20261007-canfd_check_channel_idx-a4d7a1a1ee7d
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol@kernel.org>, Dan Carpenter <error27@gmail.com>, 
+ Wolfgang Grandegger <wg@grandegger.com>
+Cc: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>, 
+ linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Stefan_G=C3=BCnther?= <stefangun@pm.me>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792503050; l=4489;
+ i=s.grosjean@peak-system.fr; s=20261020; h=from:subject:message-id;
+ bh=wZ2HZ+zMm5V2T6Bd7WCF/RbuqkDZvPvZrcAS0O2FTlQ=;
+ b=63l4J/Z1VkV6vWFD+ni/7D26oAsb/49pmdXqiRsQ9j3qoLbxGLNiBwOaSifmywefd3M9i6MDE
+ 4a05HEUuUx5BdXpomFE6q2gJ+enxl9fLK16wKA1YbhGbVZYhto0Sjx9
+X-Developer-Key: i=s.grosjean@peak-system.fr; a=ed25519;
+ pk=bP7QV2zvvAKAfConZlUOGKGEcXL64SNUpVUm++Ai+/c=
+X-Endpoint-Received: by B4 Relay for s.grosjean@peak-system.fr/20261020 with auth_id=1250
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a KUnit test suite covering iio_write_channel_info(), the sysfs
-store handler that parses a channel info value according to the format
-reported by write_raw_get_fmt() and hands it to write_raw(). The
-function is made visible to KUnit through VISIBLE_IF_KUNIT and
-EXPORT_SYMBOL_IF_KUNIT, so it stays static in regular builds.
+This series contains bug fixes, cleanups and input validation
+improvements for the PEAK-System USB CAN drivers.
 
-The suite uses an unregistered iio_dev allocated on a KUnit device,
-with stub write_raw_get_fmt() and write_raw() callbacks that select
-the format under test and capture the parsed values. Cases are grouped
-by format:
+Patch 1 fixes CAN error frame generation, where CAN_ERR_CNT overwrote
+previously set CAN error flags.
 
-  - IIO_VAL_INT: decimal, hex and octal input, decimal fallback with
-    rounding and E notation, and 32-bit range checks.
-  - IIO_VAL_INT_PLUS_MICRO / IIO_VAL_INT_PLUS_NANO: sign handling,
-    rounding of extra digits (ties to even), E notation and malformed
-    input.
-  - IIO_VAL_INT_PLUS_MICRO_DB: optional "dB" / " dB" suffix.
-  - IIO_VAL_CHAR: single character input.
-  - IIO_VAL_INT_64 and IIO_VAL_DECIMAL64_*: 64-bit values split into
-    val/val2, including the S64_MAX / S64_MIN boundaries.
+Patches 2, 3 and 5 are cleanups: make a public header self-contained,
+sort the CAN_CTRLMODE_* flags in ctrlmode_supported, and replace
+open-coded bitmask operations with bitops. Patch 5 also makes the
+state flag updates atomic, which patch 6 relies on.
 
-Further cases cover unsupported formats, the default micro precision
-used when write_raw_get_fmt() is absent, a missing write_raw(), and
-error propagation from write_raw().
+Patch 4 adds bounds checks to the PCAN-USB RX parser, so that
+truncated or malformed records are rejected instead of being read
+beyond the received data.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Patch 6 validates the channel numbers received from PCAN-USB FD
+devices, rejects records for channels that are not set up, and stops
+RX on all channels before they are released, on disconnect as well as
+on probe failure.
+
+Patch 7 fixes the RX parsing of self-received RTR frames with SRR set,
+which left the RX cursor one byte behind.
+
+Patches 8 to 10 fix related issues found while reviewing the above:
+the same channel slot check in the PCAN-USB Pro driver, the netdevs
+being registered before their channels are initialized, and the dump of
+stale RX buffer bytes on decode errors.
+
 ---
- MAINTAINERS                               |   1 +
- drivers/iio/iio_core.h                    |   3 +
- drivers/iio/industrialio-core.c           |   9 +-
- drivers/iio/test/Kconfig                  |  14 ++
- drivers/iio/test/Makefile                 |   1 +
- drivers/iio/test/iio-test-channel-write.c | 360 ++++++++++++++++++++++++++++++
- 6 files changed, 384 insertions(+), 4 deletions(-)
+Changes in v5:
+- Register the netdevs only once all the channels of the interface are
+  initialized, since they share resources during the init of a sibling
+  (patch 9).
+- Link to v4: https://lore.kernel.org/r/20261020-canfd_check_channel_idx-v4-0-bfbde81f8bab@peak-system.fr
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 52024397dc78..ef8b912f593b 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -12758,6 +12758,7 @@ M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
- L:	linux-iio@vger.kernel.org
- S:	Maintained
- F:	drivers/iio/test/iio-test-channel-prefix.c
-+F:	drivers/iio/test/iio-test-channel-write.c
- F:	drivers/iio/test/iio-test-format.c
- 
- IIO UNIT CONVERTER
-diff --git a/drivers/iio/iio_core.h b/drivers/iio/iio_core.h
-index 59fa1bd9924b..08f0cc28ad8c 100644
---- a/drivers/iio/iio_core.h
-+++ b/drivers/iio/iio_core.h
-@@ -114,6 +114,9 @@ ssize_t __iio_chan_prefix_emit(struct device *dev,
- 			       const struct iio_chan_spec *chan,
- 			       enum iio_shared_by shared_by,
- 			       char *buf, size_t len);
-+ssize_t iio_write_channel_info(struct device *dev,
-+			       struct device_attribute *attr,
-+			       const char *buf, size_t len);
- #endif
- 
- #endif
-diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index ce5391b1ca34..6c8fe0949a06 100644
---- a/drivers/iio/industrialio-core.c
-+++ b/drivers/iio/industrialio-core.c
-@@ -1077,10 +1077,10 @@ static int __iio_str_to_fixpoint_units(const char *str, const char *units,
- 	return iio_str_to_fixpoint(dec_str, fract_mult, integer, fract);
- }
- 
--static ssize_t iio_write_channel_info(struct device *dev,
--				      struct device_attribute *attr,
--				      const char *buf,
--				      size_t len)
-+VISIBLE_IF_KUNIT
-+ssize_t iio_write_channel_info(struct device *dev,
-+			       struct device_attribute *attr,
-+			       const char *buf, size_t len)
- {
- 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
- 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
-@@ -1168,6 +1168,7 @@ static ssize_t iio_write_channel_info(struct device *dev,
- 
- 	return len;
- }
-+EXPORT_SYMBOL_IF_KUNIT(iio_write_channel_info);
- 
- static
- int __iio_device_attr_init(struct device *dev,
-diff --git a/drivers/iio/test/Kconfig b/drivers/iio/test/Kconfig
-index 04930b4fdd5d..af75c032a330 100644
---- a/drivers/iio/test/Kconfig
-+++ b/drivers/iio/test/Kconfig
-@@ -17,6 +17,20 @@ config IIO_CHANNEL_PREFIX_KUNIT_TEST
- 
- 	  If unsure, say N.
- 
-+config IIO_CHANNEL_WRITE_KUNIT_TEST
-+	tristate "Test IIO channel info write" if !KUNIT_ALL_TESTS
-+	depends on KUNIT && IIO
-+	default KUNIT_ALL_TESTS
-+	help
-+	  Build unit tests for iio_write_channel_info(), the sysfs store
-+	  handler that parses channel info values according to the format
-+	  reported by write_raw_get_fmt() and passes them to write_raw().
-+
-+	  For more information on KUnit and unit tests in general, please refer
-+	  to the KUnit documentation in Documentation/dev-tools/kunit/.
-+
-+	  If unsure, say N.
-+
- config IIO_GTS_KUNIT_TEST
- 	tristate "Test IIO gain-time-scale helpers" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-diff --git a/drivers/iio/test/Makefile b/drivers/iio/test/Makefile
-index ba08afa7f3f2..bcaf82ffd9c1 100644
---- a/drivers/iio/test/Makefile
-+++ b/drivers/iio/test/Makefile
-@@ -5,6 +5,7 @@
- 
- # Keep in alphabetical order
- obj-$(CONFIG_IIO_CHANNEL_PREFIX_KUNIT_TEST) += iio-test-channel-prefix.o
-+obj-$(CONFIG_IIO_CHANNEL_WRITE_KUNIT_TEST) += iio-test-channel-write.o
- obj-$(CONFIG_IIO_RESCALE_KUNIT_TEST) += iio-test-rescale.o
- obj-$(CONFIG_IIO_FORMAT_KUNIT_TEST) += iio-test-format.o
- obj-$(CONFIG_IIO_GTS_KUNIT_TEST) += iio-test-gts.o
-diff --git a/drivers/iio/test/iio-test-channel-write.c b/drivers/iio/test/iio-test-channel-write.c
-new file mode 100644
-index 000000000000..9205a5674d0e
---- /dev/null
-+++ b/drivers/iio/test/iio-test-channel-write.c
-@@ -0,0 +1,360 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Unit tests for IIO channel info writes.
-+ */
-+
-+#include <kunit/device.h>
-+#include <kunit/test.h>
-+#include <kunit/visibility.h>
-+
-+#include <linux/iio/iio.h>
-+#include <linux/iio/sysfs.h>
-+#include <linux/iio/types.h>
-+#include <linux/string.h>
-+
-+#include "../iio_core.h"
-+
-+#define IIO_TEST_UNSUPPORTED_FMT	IIO_VAL_FRACTIONAL
-+
-+struct iio_test_write_priv {
-+	int fmt;
-+	int ret;
-+	int val;
-+	int val2;
-+	bool called;
-+};
-+
-+struct iio_test_write_ctx {
-+	struct iio_dev *indio_dev;
-+	struct iio_dev_attr attr;
-+};
-+
-+static int iio_test_write_raw_get_fmt(struct iio_dev *indio_dev,
-+				      struct iio_chan_spec const *chan,
-+				      long mask)
-+{
-+	struct iio_test_write_priv *priv = iio_priv(indio_dev);
-+
-+	return priv->fmt;
-+}
-+
-+static int iio_test_write_raw(struct iio_dev *indio_dev,
-+			      struct iio_chan_spec const *chan,
-+			      int val, int val2, long mask)
-+{
-+	struct iio_test_write_priv *priv = iio_priv(indio_dev);
-+
-+	priv->val = val;
-+	priv->val2 = val2;
-+	priv->called = true;
-+
-+	return priv->ret;
-+}
-+
-+static const struct iio_info iio_test_write_info = {
-+	.write_raw = iio_test_write_raw,
-+	.write_raw_get_fmt = iio_test_write_raw_get_fmt,
-+};
-+
-+static const struct iio_info iio_test_write_info_no_fmt = {
-+	.write_raw = iio_test_write_raw,
-+};
-+
-+static const struct iio_info iio_test_write_info_no_write = {
-+};
-+
-+static const struct iio_chan_spec iio_test_write_chan = {
-+	.type = IIO_VOLTAGE,
-+	.indexed = 1,
-+	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),
-+};
-+
-+static int iio_test_write_init(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx;
-+	struct device *dev;
-+
-+	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, ctx);
-+
-+	dev = kunit_device_register(test, "iio-test-channel-write");
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev);
-+
-+	ctx->indio_dev = devm_iio_device_alloc(dev,
-+					       sizeof(struct iio_test_write_priv));
-+	KUNIT_ASSERT_NOT_NULL(test, ctx->indio_dev);
-+	ctx->indio_dev->info = &iio_test_write_info;
-+
-+	ctx->attr.c = &iio_test_write_chan;
-+	ctx->attr.address = IIO_CHAN_INFO_SCALE;
-+
-+	test->priv = ctx;
-+
-+	return 0;
-+}
-+
-+static struct iio_test_write_priv *iio_test_write_priv(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+
-+	return iio_priv(ctx->indio_dev);
-+}
-+
-+static ssize_t iio_test_write(struct kunit *test, int fmt, const char *str)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+	struct iio_test_write_priv *priv = iio_priv(ctx->indio_dev);
-+
-+	priv->fmt = fmt;
-+	priv->called = false;
-+	priv->val = 0xdead;
-+	priv->val2 = 0xbeef;
-+
-+	return iio_write_channel_info(&ctx->indio_dev->dev, &ctx->attr.dev_attr,
-+				      str, strlen(str));
-+}
-+
-+#define EXPECT_WRITE(_test, _fmt, _str, _val, _val2) do {			\
-+		struct kunit *__test = (_test);					\
-+		struct iio_test_write_priv *__priv;				\
-+		const char *__str = (_str);					\
-+		ssize_t __len = strlen(__str);					\
-+		ssize_t __ret;							\
-+										\
-+		__ret = iio_test_write(__test, (_fmt), __str);			\
-+		__priv = iio_test_write_priv(__test);				\
-+		KUNIT_EXPECT_EQ_MSG(__test, __ret, __len,			\
-+				    "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_TRUE_MSG(__test, __priv->called,			\
-+				      "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_EQ_MSG(__test, __priv->val, (_val),		\
-+				    "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_EQ_MSG(__test, __priv->val2, (_val2),		\
-+				    "input: \"%s\"", __str);			\
-+	} while (0)
-+
-+#define EXPECT_WRITE_S64(_test, _fmt, _str, _expected) do {			\
-+		s32 __lo, __hi;							\
-+										\
-+		iio_val_s64_decompose((_expected), &__lo, &__hi);		\
-+		EXPECT_WRITE(_test, _fmt, _str, __lo, __hi);			\
-+	} while (0)
-+
-+#define EXPECT_WRITE_ERR(_test, _fmt, _str, _err) do {				\
-+		struct kunit *__test = (_test);					\
-+		const char *__str = (_str);					\
-+		ssize_t __ret;							\
-+										\
-+		__ret = iio_test_write(__test, (_fmt), __str);			\
-+		KUNIT_EXPECT_EQ_MSG(__test, __ret, (ssize_t)(_err),		\
-+				    "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_FALSE_MSG(__test,					\
-+				       iio_test_write_priv(__test)->called,	\
-+				       "input: \"%s\"", __str);			\
-+	} while (0)
-+
-+static void iio_test_write_int(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT, "0", 0, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "42\n", 42, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "-7", -7, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "+7", 7, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "2147483647", INT_MAX, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "-2147483648", INT_MIN, 0);
-+
-+	/* hex and octal are still accepted for integers */
-+	EXPECT_WRITE(test, IIO_VAL_INT, "0x10", 16, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "010", 8, 0);
-+
-+	/* decimal fallback: fractional digits are rounded, ties to even */
-+	EXPECT_WRITE(test, IIO_VAL_INT, "1.9", 2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "-1.9", -2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "1e3", 1000, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "15e-1", 2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "25e-1", 2, 0);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "2147483648", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "-2147483649", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "abc", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "12abc", -EINVAL);
-+}
-+
-+static void iio_test_write_int_plus_micro(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0", 0, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1.5\n", 1, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-1.5", -1, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-0.5", 0, -500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, ".25", 0, 250000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "3.", 3, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.000001", 0, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-0.000001", 0, -1);
-+
-+	/* digits beyond the precision are rounded, ties to even */
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1.2345678", 1, 234568);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.0000009", 0, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.0000005", 0, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.0000015", 0, 2);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-0.0000015", 0, -2);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.9999995", 1, 0);
-+
-+	/* E notation */
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1.5e3", 1500, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1e-3", 0, 1000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-25E-1\n", -2, 500000);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "2147483648", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, ".", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "1.5x", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "1.2.3", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "0x10", -EINVAL);
-+}
-+
-+static void iio_test_write_int_plus_nano(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "1.5", 1, 500000000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "0.000000001", 0, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "-0.000000001", 0, -1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "-2.000000001", -2, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "1.0000000019", 1, 2);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "25e-10", 0, 2);
-+}
-+
-+static void iio_test_write_int_plus_micro_db(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "-3.5 dB\n", -3, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "-3.5dB", -3, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "2dB", 2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "-0.25 dB", 0, -250000);
-+
-+	/* the unit suffix is optional */
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.25", 1, 250000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.25\n", 1, 250000);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "dB", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.5 db", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "2.5 dBm", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "7.3dBm", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "10 ddB", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.5 V", -EINVAL);
-+}
-+
-+static void iio_test_write_char(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_CHAR, "x", 'x', 0);
-+	EXPECT_WRITE(test, IIO_VAL_CHAR, "K\n", 'K', 0);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_CHAR, "", -EINVAL);
-+}
-+
-+static void iio_test_write_int_64(struct kunit *test)
-+{
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "0", 0);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "-1", -1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "4294967296\n", 4294967296LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "0x100000000", 0x100000000LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "9223372036854775807", S64_MAX);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "-9223372036854775808", S64_MIN);
-+
-+	/* decimal fallback */
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "1.9", 2);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "5e9", 5000000000LL);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_64, "9223372036854775808", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_64, "abc", -EINVAL);
-+}
-+
-+static void iio_test_write_decimal64(struct kunit *test)
-+{
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MILLI, "1.5", 1500);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MILLI, "-0.001", -1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MILLI, "0.0009", 1);
-+
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MICRO, "1.5e3", 1500000000LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MICRO, "-0.000001\n", -1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MICRO, "5000", 5000000000LL);
-+
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_NANO, "1.000000001",
-+			 1000000001LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_PICO, "1e-12", 1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_PICO, "-2.5", -2500000000000LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_FEMTO, "9223.372036854775807",
-+			 S64_MAX);
-+
-+	/* no hex support when a decimal scale is set */
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_MICRO, "0x10", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_FEMTO, "9223.372036854775808",
-+			 -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_MICRO, "1e20", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_MICRO, "1.5 Hz", -EINVAL);
-+}
-+
-+static void iio_test_write_unsupported_fmt(struct kunit *test)
-+{
-+	EXPECT_WRITE_ERR(test, IIO_TEST_UNSUPPORTED_FMT, "1", -EINVAL);
-+	EXPECT_WRITE_ERR(test, -EBUSY, "1", -EINVAL);
-+}
-+
-+static void iio_test_write_no_get_fmt(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+
-+	/* without write_raw_get_fmt() values are parsed as IIO_VAL_INT_PLUS_MICRO */
-+	ctx->indio_dev->info = &iio_test_write_info_no_fmt;
-+
-+	EXPECT_WRITE(test, 0, "1.5", 1, 500000);
-+	EXPECT_WRITE(test, 0, "-0.000001", 0, -1);
-+	EXPECT_WRITE(test, 0, "1.2345678", 1, 234568);
-+	EXPECT_WRITE_ERR(test, 0, "0x10", -EINVAL);
-+}
-+
-+static void iio_test_write_no_write_raw(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+
-+	ctx->indio_dev->info = &iio_test_write_info_no_write;
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "1", -EINVAL);
-+}
-+
-+static void iio_test_write_raw_error(struct kunit *test)
-+{
-+	struct iio_test_write_priv *priv = iio_test_write_priv(test);
-+	ssize_t ret;
-+
-+	priv->ret = -EBUSY;
-+	ret = iio_test_write(test, IIO_VAL_INT, "1");
-+	KUNIT_EXPECT_EQ(test, ret, (ssize_t)-EBUSY);
-+	KUNIT_EXPECT_TRUE(test, priv->called);
-+	KUNIT_EXPECT_EQ(test, priv->val, 1);
-+}
-+
-+static struct kunit_case iio_channel_write_test_cases[] = {
-+	KUNIT_CASE(iio_test_write_int),
-+	KUNIT_CASE(iio_test_write_int_plus_micro),
-+	KUNIT_CASE(iio_test_write_int_plus_nano),
-+	KUNIT_CASE(iio_test_write_int_plus_micro_db),
-+	KUNIT_CASE(iio_test_write_char),
-+	KUNIT_CASE(iio_test_write_int_64),
-+	KUNIT_CASE(iio_test_write_decimal64),
-+	KUNIT_CASE(iio_test_write_unsupported_fmt),
-+	KUNIT_CASE(iio_test_write_no_get_fmt),
-+	KUNIT_CASE(iio_test_write_no_write_raw),
-+	KUNIT_CASE(iio_test_write_raw_error),
-+	{ }
-+};
-+
-+static struct kunit_suite iio_channel_write_test_suite = {
-+	.name = "iio-channel-write",
-+	.init = iio_test_write_init,
-+	.test_cases = iio_channel_write_test_cases,
-+};
-+
-+kunit_test_suite(iio_channel_write_test_suite);
-+
-+MODULE_AUTHOR("Rodrigo Alencar <rodrigo.alencar@analog.com>");
-+MODULE_DESCRIPTION("Test IIO channel info write parsing");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("EXPORTED_FOR_KUNIT_TESTING");
+Changes in v4:
+- Register the netdev only once the channel is initialized, instead of
+  only reordering unregister_candev() and dev_free() on probe failure
+  (patch 9).
+- Link to v3: https://lore.kernel.org/r/20261020-canfd_check_channel_idx-v3-0-74d17c5a599e@peak-system.fr
 
+Changes in v3:
+- Fix out-of-bounds read of the error counters in PCAN-USB bus events.
+- Harden channel handling in PCAN-USB FD: publish/read channel slots
+  with smp_store_release()/READ_ONCE(), clear them on teardown, stop RX
+  on all channels on disconnect and on the siblings on probe failure,
+  and reject ndo_open() once disconnected.
+- Fix RX cursor desync for self-received RTR frames with SRR.
+- Replace open-coded bitmask operations with bitops.
+- Add channel slot checks to PCAN-USB Pro.
+- Unregister the netdev before dev_free() on probe failure.
+- Only dump received bytes, rate limited, on decode error.
+- Link to v2: https://patch.msgid.link/20261009-canfd_check_channel_idx-v2-0-f7b772929791@peak-system.fr
+
+Changes in v2:
+- Kill all pending RX URBs before unregistering sibling netdevs.
+- Reject records targeting unavailable channels during device
+  initialization in rare corner cases involving malformed device
+  input.
+- Link to v1: https://patch.msgid.link/20261008-canfd_check_channel_idx-v1-0-0a3bb82f4e09@peak-system.fr
+
+To: Marc Kleine-Budde <mkl@pengutronix.de>
+To: Vincent Mailhol <mailhol@kernel.org>
+To: Dan Carpenter <error27@gmail.com>
+To: Wolfgang Grandegger <wg@grandegger.com>
+Cc: Stéphane Grosjean <s.grosjean@peak-system.fr>
+Cc: linux-can@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Marc Kleine-Budde (1):
+      can: peak_usb: add missing includes
+
+Stefan Günther (1):
+      can: peak_usb: fix missing CAN_ERR_FLAG when reporting error counters
+
+Stéphane Grosjean (8):
+      can: peak_usb: sort ctrlmode_supported flags
+      can: peak_usb: harden PCAN-USB message validation
+      can: peak_usb: replace open-coded bitmask operations with bitops
+      can: peak_usb: harden channel handling in PCAN-USB FD
+      can: peak_usb: fix RX cursor desync for self-received RTR frames with SRR
+      can: peak_usb: reject records for unset channels in PCAN-USB Pro
+      can: peak_usb: register the netdevs only once all channels are set up
+      can: peak_usb: only dump received bytes on decode error
+
+ drivers/net/can/usb/peak_usb/pcan_usb.c      | 51 ++++++++++-----
+ drivers/net/can/usb/peak_usb/pcan_usb_core.c | 91 ++++++++++++++++++--------
+ drivers/net/can/usb/peak_usb/pcan_usb_core.h | 16 ++++-
+ drivers/net/can/usb/peak_usb/pcan_usb_fd.c   | 96 ++++++++++++++++++++--------
+ drivers/net/can/usb/peak_usb/pcan_usb_pro.c  | 29 +++++++--
+ 5 files changed, 201 insertions(+), 82 deletions(-)
+---
+base-commit: a7bfaba4823e3c165bb2004c74eff7c096672bc7
+change-id: 20261007-canfd_check_channel_idx-a4d7a1a1ee7d
+
+Best regards,
 -- 
-2.43.0
+Stéphane Grosjean <s.grosjean@peak-system.fr>
 
