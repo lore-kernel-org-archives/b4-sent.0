@@ -1,11 +1,11 @@
 From: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
-Date: Tue, 20 Oct 2026 15:30:44 +0200
-Subject: [PATCH v5 05/10] can: peak_usb: replace open-coded bitmask
- operations with bitops
+Date: Tue, 20 Oct 2026 15:30:45 +0200
+Subject: [PATCH v5 06/10] can: peak_usb: harden channel handling in
+ PCAN-USB FD
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261020-canfd_check_channel_idx-v5-5-a62b35b867f0@peak-system.fr>
+Message-Id: <20261020-canfd_check_channel_idx-v5-6-a62b35b867f0@peak-system.fr>
 References: <20261020-canfd_check_channel_idx-v5-0-a62b35b867f0@peak-system.fr>
 In-Reply-To: <20261020-canfd_check_channel_idx-v5-0-a62b35b867f0@peak-system.fr>
 To: Marc Kleine-Budde <mkl@pengutronix.de>, 
@@ -14,179 +14,249 @@ To: Marc Kleine-Budde <mkl@pengutronix.de>,
 Cc: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>, 
  linux-can@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792503050; l=6592;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792503050; l=9022;
  i=s.grosjean@peak-system.fr; s=20261020; h=from:subject:message-id;
- bh=nQyQ44v+InsbZVERsOlgObbCokwsrHOkh2r9DVOCK+4=;
- b=oskgEEZBfAkDRzcqvFhanKj3YUeOmOg3YhUHcMbBTmr1OdnGf8oW8pqyiHepTCpfIfUWqTc4g
- Ahe0bm1O3+SDufQvAI4EW48odfUEBDfcKbxtajuYyZz91QdxWqMOYLO
+ bh=hxMAg2zjylNdq/y8YWH3p+YyrFMLMRnjsYt+c7nDS8w=;
+ b=FOsD+sENQFY4VwMCCWpYZ8c7+om/L6CR5lfAX7JGFDJ/CnZ1N4WXlLb3+ONGWuoX/Xjst7Nof
+ Xa/HJCiXiQ+D2SNYpfQ1fcLvYa4QreZx6xiowduDn03g1LdxvCg77fG
 X-Developer-Key: i=s.grosjean@peak-system.fr; a=ed25519;
  pk=bP7QV2zvvAKAfConZlUOGKGEcXL64SNUpVUm++Ai+/c=
 X-Endpoint-Received: by B4 Relay for s.grosjean@peak-system.fr/20261020 with auth_id=1250
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PCAN_USB_STATE_* flags of struct peak_usb_device are set, cleared
-and tested from different contexts (ndo_open/ndo_stop, USB disconnect,
-URB completion) with non-atomic open-coded bitmask operations.
+Records received from PCAN-USB FD family devices carry a CAN channel
+number used to index the adapter CAN device table usb_if->dev[].
 
-Turn these flags into bit numbers, make the state field an unsigned
-long and use set_bit(), clear_bit() and test_bit() instead, so that
-updating one flag can no longer overwrite a concurrent update of
-another one. The next patch relies on this to clear CONNECTED while a
-channel may be opened.
+The decoders only checked this number against the size of the table
+(2 entries). On single-channel adapters (PCAN-USB FD, PCAN-Chip USB),
+dev[1] is never set, so a record for channel 1 led to a NULL pointer
+dereference in URB completion context. On two-channel adapters, a
+channel slot is also NULL until that channel has been initialized,
+while the RX URBs of channel 0 may already be running.
 
-dev->state is zeroed by alloc_candev(), so setting CONNECTED with
-set_bit() at creation is equivalent to the former assignment.
+Check the channel number against the number of controllers of the
+adapter and reject records for a channel whose slot is empty. Such a
+record makes the decoder stop processing the rest of the URB.
 
+When probing a channel fails after its slot has been filled, the
+channel is freed but its slot kept pointing to it. Clear the slot in
+pcan_usb_fd_free() and, before freeing the channel, stop RX on the
+sibling channels already created, since the whole interface is then
+released anyway. Slots are published with smp_store_release() and
+read with READ_ONCE().
+
+Finally, peak_usb_disconnect() now stops RX on all channels before
+unregistering any of them: it clears CONNECTED, which makes
+peak_usb_ndo_open() fail, then poisons the RX anchors. This matters
+when it is called from the probe error path, where the USB core has
+not disabled the interface.
+
+Fixes: a6921dd524fe ("can: peak_usb: add range checking in decode operations")
 Signed-off-by: Stéphane Grosjean <s.grosjean@peak-system.fr>
 ---
- drivers/net/can/usb/peak_usb/pcan_usb.c      |  4 ++--
- drivers/net/can/usb/peak_usb/pcan_usb_core.c | 10 +++++-----
- drivers/net/can/usb/peak_usb/pcan_usb_core.h |  9 ++++++---
- drivers/net/can/usb/peak_usb/pcan_usb_fd.c   |  2 +-
- drivers/net/can/usb/peak_usb/pcan_usb_pro.c  |  6 +++---
- 5 files changed, 17 insertions(+), 14 deletions(-)
+ drivers/net/can/usb/peak_usb/pcan_usb_core.c | 30 +++++++++++++-
+ drivers/net/can/usb/peak_usb/pcan_usb_fd.c   | 62 +++++++++++++++++++++-------
+ 2 files changed, 75 insertions(+), 17 deletions(-)
 
-diff --git a/drivers/net/can/usb/peak_usb/pcan_usb.c b/drivers/net/can/usb/peak_usb/pcan_usb.c
-index 5da91d5dc67a..93da0fd4f10e 100644
---- a/drivers/net/can/usb/peak_usb/pcan_usb.c
-+++ b/drivers/net/can/usb/peak_usb/pcan_usb.c
-@@ -158,7 +158,7 @@ static int pcan_usb_send_cmd(struct peak_usb_device *dev, u8 f, u8 n, u8 *p)
- 	int actual_length;
- 
- 	/* usb device unregistered? */
--	if (!(dev->state & PCAN_USB_STATE_CONNECTED))
-+	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
- 		return 0;
- 
- 	dev->cmd_buf[PCAN_USB_CMD_FUNC] = f;
-@@ -188,7 +188,7 @@ static int pcan_usb_wait_rsp(struct peak_usb_device *dev, u8 f, u8 n, u8 *p)
- 	int actual_length;
- 
- 	/* usb device unregistered? */
--	if (!(dev->state & PCAN_USB_STATE_CONNECTED))
-+	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
- 		return 0;
- 
- 	/* first, send command */
 diff --git a/drivers/net/can/usb/peak_usb/pcan_usb_core.c b/drivers/net/can/usb/peak_usb/pcan_usb_core.c
-index 55aad01cd8ca..a1b17e1e6fea 100644
+index a1b17e1e6fea..4c08656e7768 100644
 --- a/drivers/net/can/usb/peak_usb/pcan_usb_core.c
 +++ b/drivers/net/can/usb/peak_usb/pcan_usb_core.c
-@@ -263,7 +263,7 @@ static void peak_usb_read_bulk_callback(struct urb *urb)
- 	/* protect from any incoming empty msgs */
- 	if ((urb->actual_length > 0) && (dev->adapter->dev_decode_buf)) {
- 		/* handle these kinds of msgs only if _start callback called */
--		if (dev->state & PCAN_USB_STATE_STARTED) {
-+		if (test_bit(PCAN_USB_STATE_STARTED, &dev->state)) {
- 			err = dev->adapter->dev_decode_buf(dev, urb);
- 			if (err)
- 				pcan_dump_mem("received usb message",
-@@ -537,7 +537,7 @@ static int peak_usb_start(struct peak_usb_device *dev)
- 			goto err_adapter;
- 	}
- 
--	dev->state |= PCAN_USB_STATE_STARTED;
-+	set_bit(PCAN_USB_STATE_STARTED, &dev->state);
- 
- 	/* can set bus on now */
- 	if (dev->adapter->dev_set_bus) {
-@@ -631,7 +631,7 @@ static int peak_usb_ndo_stop(struct net_device *netdev)
- {
+@@ -574,6 +574,9 @@ static int peak_usb_ndo_open(struct net_device *netdev)
  	struct peak_usb_device *dev = netdev_priv(netdev);
+ 	int err;
  
--	dev->state &= ~PCAN_USB_STATE_STARTED;
-+	clear_bit(PCAN_USB_STATE_STARTED, &dev->state);
- 	netif_stop_queue(netdev);
++	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
++		return -ENODEV;
++
+ 	/* common open */
+ 	err = open_candev(netdev);
+ 	if (err)
+@@ -904,6 +907,22 @@ int pcan_get_ts_info(struct net_device *dev, struct kernel_ethtool_ts_info *info
+ 	return 0;
+ }
  
- 	close_candev(netdev);
-@@ -941,7 +941,7 @@ static int peak_usb_create_dev(const struct peak_usb_adapter *peak_usb_adapter,
- 	dev->netdev = netdev;
- 	dev->adapter = peak_usb_adapter;
- 	dev->ctrl_idx = ctrl_idx;
--	dev->state = PCAN_USB_STATE_CONNECTED;
-+	set_bit(PCAN_USB_STATE_CONNECTED, &dev->state);
++/*
++ * stop RX on dev and on all its previous siblings: clearing CONNECTED makes
++ * peak_usb_ndo_open() fail, then poisoning the RX anchors waits for running
++ * completion handlers and makes any later submission on them fail.
++ */
++static void peak_usb_stop_rx(struct peak_usb_device *dev)
++{
++	struct peak_usb_device *d;
++
++	for (d = dev; d; d = d->prev_siblings)
++		clear_bit(PCAN_USB_STATE_CONNECTED, &d->state);
++
++	for (d = dev; d; d = d->prev_siblings)
++		usb_poison_anchored_urbs(&d->rx_submitted);
++}
++
+ /*
+  * create one device which is attached to CAN controller #ctrl_idx of the
+  * usb adapter.
+@@ -1014,6 +1033,12 @@ static int peak_usb_create_dev(const struct peak_usb_adapter *peak_usb_adapter,
+ 	return 0;
  
- 	dev->ep_msg_in = peak_usb_adapter->ep_msg_in;
- 	dev->ep_msg_out = peak_usb_adapter->ep_msg_out[ctrl_idx];
-@@ -1044,7 +1044,7 @@ static void peak_usb_disconnect(struct usb_interface *intf)
+ adap_dev_free:
++	/* the whole interface is released when probing a channel fails:
++	 * stop RX on the channels already created, since their RX URBs may
++	 * carry records for this one.
++	 */
++	peak_usb_stop_rx(dev->prev_siblings);
++
+ 	if (dev->adapter->dev_free)
+ 		dev->adapter->dev_free(dev);
+ 
+@@ -1038,13 +1063,14 @@ static void peak_usb_disconnect(struct usb_interface *intf)
+ 	struct peak_usb_device *dev;
+ 	struct peak_usb_device *dev_prev_siblings;
+ 
+-	/* unregister as many netdev devices as siblings */
++	/* stop RX on all channels before unregistering and freeing them */
++	peak_usb_stop_rx(usb_get_intfdata(intf));
++
+ 	for (dev = usb_get_intfdata(intf); dev; dev = dev_prev_siblings) {
+ 		struct net_device *netdev = dev->netdev;
  		char name[IFNAMSIZ];
  
  		dev_prev_siblings = dev->prev_siblings;
--		dev->state &= ~PCAN_USB_STATE_CONNECTED;
-+		clear_bit(PCAN_USB_STATE_CONNECTED, &dev->state);
+-		clear_bit(PCAN_USB_STATE_CONNECTED, &dev->state);
  		strscpy(name, netdev->name, IFNAMSIZ);
  
  		unregister_candev(netdev);
-diff --git a/drivers/net/can/usb/peak_usb/pcan_usb_core.h b/drivers/net/can/usb/peak_usb/pcan_usb_core.h
-index 9ad7d31d2720..cb8777c3e08e 100644
---- a/drivers/net/can/usb/peak_usb/pcan_usb_core.h
-+++ b/drivers/net/can/usb/peak_usb/pcan_usb_core.h
-@@ -109,15 +109,18 @@ struct peak_tx_urb_context {
- 	struct urb *urb;
- };
- 
--#define PCAN_USB_STATE_CONNECTED	0x00000001
--#define PCAN_USB_STATE_STARTED		0x00000002
-+/* bit numbers for struct peak_usb_device::state (used with set_bit()/
-+ * clear_bit()/test_bit() for atomic read-modify-write across contexts)
-+ */
-+#define PCAN_USB_STATE_CONNECTED	0
-+#define PCAN_USB_STATE_STARTED		1
- 
- /* PEAK-System USB device */
- struct peak_usb_device {
- 	struct can_priv can;
- 	const struct peak_usb_adapter *adapter;
- 	unsigned int ctrl_idx;
--	u32 state;
-+	unsigned long state;
- 
- 	struct usb_device *udev;
- 	struct net_device *netdev;
 diff --git a/drivers/net/can/usb/peak_usb/pcan_usb_fd.c b/drivers/net/can/usb/peak_usb/pcan_usb_fd.c
-index 82502594a409..15d275d6a127 100644
+index 15d275d6a127..eee5b5eaa247 100644
 --- a/drivers/net/can/usb/peak_usb/pcan_usb_fd.c
 +++ b/drivers/net/can/usb/peak_usb/pcan_usb_fd.c
-@@ -202,7 +202,7 @@ static int pcan_usb_fd_send_cmd(struct peak_usb_device *dev, void *cmd_tail)
- 	ptrdiff_t cmd_len;
+@@ -60,6 +60,7 @@ struct __packed pcan_ufd_fw_info {
  
- 	/* usb device unregistered? */
--	if (!(dev->state & PCAN_USB_STATE_CONNECTED))
-+	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
- 		return 0;
+ /* handle device specific info used by the netdevices */
+ struct pcan_usb_fd_if {
++	const struct peak_usb_adapter *adapter;
+ 	struct peak_usb_device	*dev[PCAN_USB_MAX_CHANNEL];
+ 	struct pcan_ufd_fw_info	fw_info;
+ 	struct peak_time_ref	time_ref;
+@@ -536,10 +537,16 @@ static int pcan_usb_fd_decode_canmsg(struct pcan_usb_fd_if *usb_if,
+ 	struct sk_buff *skb;
+ 	const u16 rx_msg_flags = le16_to_cpu(rm->flags);
  
- 	/* if a packet is not filled completely by commands, the command list
-diff --git a/drivers/net/can/usb/peak_usb/pcan_usb_pro.c b/drivers/net/can/usb/peak_usb/pcan_usb_pro.c
-index 4c3d89a160af..cbc23953ce61 100644
---- a/drivers/net/can/usb/peak_usb/pcan_usb_pro.c
-+++ b/drivers/net/can/usb/peak_usb/pcan_usb_pro.c
-@@ -210,7 +210,7 @@ static int pcan_usb_pro_send_cmd(struct peak_usb_device *dev,
- 	int err;
+-	if (pucan_msg_get_channel(rm) >= ARRAY_SIZE(usb_if->dev))
+-		return -ENOMEM;
++	/* Reject invalid channel numbers reported by the firmware */
++	if (pucan_msg_get_channel(rm) >= usb_if->adapter->ctrl_count)
++		return -EINVAL;
++
++	dev = READ_ONCE(usb_if->dev[pucan_msg_get_channel(rm)]);
++
++	/* reject records for a channel that is not (or no longer) set up */
++	if (!dev)
++		return -EINVAL;
  
- 	/* usb device unregistered? */
--	if (!(dev->state & PCAN_USB_STATE_CONNECTED))
-+	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
- 		return 0;
+-	dev = usb_if->dev[pucan_msg_get_channel(rm)];
+ 	netdev = dev->netdev;
  
- 	err = usb_bulk_msg(dev->udev,
-@@ -234,7 +234,7 @@ static int pcan_usb_pro_wait_rsp(struct peak_usb_device *dev,
- 	int i, err = 0;
+ 	if (rx_msg_flags & PUCAN_MSG_EXT_DATA_LEN) {
+@@ -605,10 +612,16 @@ static int pcan_usb_fd_decode_status(struct pcan_usb_fd_if *usb_if,
+ 	struct can_frame *cf;
+ 	struct sk_buff *skb;
  
- 	/* usb device unregistered? */
--	if (!(dev->state & PCAN_USB_STATE_CONNECTED))
-+	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
- 		return 0;
+-	if (pucan_stmsg_get_channel(sm) >= ARRAY_SIZE(usb_if->dev))
+-		return -ENOMEM;
++	/* Reject invalid channel numbers reported by the firmware */
++	if (pucan_stmsg_get_channel(sm) >= usb_if->adapter->ctrl_count)
++		return -EINVAL;
++
++	dev = READ_ONCE(usb_if->dev[pucan_stmsg_get_channel(sm)]);
++
++	/* reject records for a channel that is not (or no longer) set up */
++	if (!dev)
++		return -EINVAL;
  
- 	req_data_type = pum->u.rec_buffer[4];
-@@ -318,7 +318,7 @@ int pcan_usb_pro_send_req(struct peak_usb_device *dev, int req_id,
- 	unsigned int p;
+-	dev = usb_if->dev[pucan_stmsg_get_channel(sm)];
+ 	pdev = container_of(dev, struct pcan_usb_fd_device, dev);
+ 	netdev = dev->netdev;
  
- 	/* usb device unregistered? */
--	if (!(dev->state & PCAN_USB_STATE_CONNECTED))
-+	if (!test_bit(PCAN_USB_STATE_CONNECTED, &dev->state))
- 		return 0;
+@@ -662,10 +675,16 @@ static int pcan_usb_fd_decode_error(struct pcan_usb_fd_if *usb_if,
+ 	struct pcan_usb_fd_device *pdev;
+ 	struct peak_usb_device *dev;
  
- 	req_type = USB_TYPE_VENDOR | USB_RECIP_OTHER;
+-	if (pucan_ermsg_get_channel(er) >= ARRAY_SIZE(usb_if->dev))
++	/* Reject invalid channel numbers reported by the firmware */
++	if (pucan_ermsg_get_channel(er) >= usb_if->adapter->ctrl_count)
++		return -EINVAL;
++
++	dev = READ_ONCE(usb_if->dev[pucan_ermsg_get_channel(er)]);
++
++	/* reject records for a channel that is not (or no longer) set up */
++	if (!dev)
+ 		return -EINVAL;
+ 
+-	dev = usb_if->dev[pucan_ermsg_get_channel(er)];
+ 	pdev = container_of(dev, struct pcan_usb_fd_device, dev);
+ 
+ 	/* keep a trace of tx and rx error counters for later use */
+@@ -685,10 +704,16 @@ static int pcan_usb_fd_decode_overrun(struct pcan_usb_fd_if *usb_if,
+ 	struct can_frame *cf;
+ 	struct sk_buff *skb;
+ 
+-	if (pufd_omsg_get_channel(ov) >= ARRAY_SIZE(usb_if->dev))
++	/* Reject invalid channel numbers reported by the firmware */
++	if (pufd_omsg_get_channel(ov) >= usb_if->adapter->ctrl_count)
++		return -EINVAL;
++
++	dev = READ_ONCE(usb_if->dev[pufd_omsg_get_channel(ov)]);
++
++	/* reject records for a channel that is not (or no longer) set up */
++	if (!dev)
+ 		return -EINVAL;
+ 
+-	dev = usb_if->dev[pufd_omsg_get_channel(ov)];
+ 	netdev = dev->netdev;
+ 
+ 	/* allocate an skb to store the error frame */
+@@ -981,6 +1006,9 @@ static int pcan_usb_fd_init(struct peak_usb_device *dev)
+ 		if (!pdev->usb_if)
+ 			goto err_out;
+ 
++		/* needed by the decoders to check channel numbers */
++		pdev->usb_if->adapter = dev->adapter;
++
+ 		/* allocate command buffer once for all for the interface */
+ 		pdev->cmd_buffer_addr = kzalloc(PCAN_UFD_CMD_BUFFER_SIZE,
+ 						GFP_KERNEL);
+@@ -1054,7 +1082,8 @@ static int pcan_usb_fd_init(struct peak_usb_device *dev)
+ 		fw_info = &pdev->usb_if->fw_info;
+ 	}
+ 
+-	pdev->usb_if->dev[dev->ctrl_idx] = dev;
++	/* publish dev to the decoders, after the ctrlmode copies above */
++	smp_store_release(&pdev->usb_if->dev[dev->ctrl_idx], dev);
+ 	dev->can_channel_id =
+ 		le32_to_cpu(pdev->usb_if->fw_info.dev_id[dev->ctrl_idx]);
+ 
+@@ -1124,14 +1153,17 @@ static void pcan_usb_fd_exit(struct peak_usb_device *dev)
+ 	}
+ }
+ 
+-/* called when the USB adapter is unplugged */
++/* called when the USB adapter is unplugged, or when probing a sibling fails */
+ static void pcan_usb_fd_free(struct peak_usb_device *dev)
+ {
++	struct pcan_usb_fd_device *pdev =
++		container_of(dev, struct pcan_usb_fd_device, dev);
++
++	/* clear this channel's slot: dev is going to be freed */
++	WRITE_ONCE(pdev->usb_if->dev[dev->ctrl_idx], NULL);
++
+ 	/* last device: can free shared objects now */
+ 	if (!dev->prev_siblings && !dev->next_siblings) {
+-		struct pcan_usb_fd_device *pdev =
+-			container_of(dev, struct pcan_usb_fd_device, dev);
+-
+ 		/* free commands buffer */
+ 		kfree(pdev->cmd_buffer_addr);
+ 
 
 -- 
 2.53.0
