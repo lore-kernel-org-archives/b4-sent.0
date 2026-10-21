@@ -1,11 +1,10 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:20 +0800
-Subject: [PATCH 23/27] usb: dwc3: Configure RK3572 PIPE port before
- discovery
+Date: Thu, 22 Oct 2026 00:11:21 +0800
+Subject: [PATCH 24/27] mmc: dw_mmc-rockchip: Keep RK3572 NVM domain powered
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-23-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-24-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -42,85 +41,80 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=2530;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=2194;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=h5W+2vCeTnJq9csdidWq+DAD3u6T94cfAIF4kAYsWso=;
- b=JgKhkQkYYvj1vSafR0hKio8ahXnc0hk8CyRtyjQdwxIIZQYev4aN+8zACYBJOUlMgSQpvu3SB
- SOO/YLIkEiWDyGdl3tkSvR9xQJXkTc4rP1GaSxaHL42QX07bWlQbOdt
+ bh=3PU9hSe/SMk7DBdg0xf4xauSWrjq1Nz1yuJVCXM3AuM=;
+ b=F8VlQQXXXNczwtESOy5RD1fLR2o2T1P1xaFISpXna6qy9gK+Nv97fAEV0tPYcJpVPqhMJ72/i
+ Vvc390n0/atAb9P5zCJiO6A21b9yqanXUk0GsKPdEjNs1+rSq2/UdJr
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Firmware may leave the USB3 PIPE port disabled, causing DWC3 to discover
-only USB2. Configure the port before reading controller capabilities.
+Power cycling the RK3572 NVM domain causes repeated SD recovery. Keep it
+powered during runtime suspend without disabling controller runtime PM.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- drivers/usb/dwc3/dwc3-generic-plat.c | 31 +++++++++++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ drivers/mmc/host/dw_mmc-rockchip.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/drivers/usb/dwc3/dwc3-generic-plat.c b/drivers/usb/dwc3/dwc3-generic-plat.c
-index ca69ac0eb07ce..11e71fc76be1a 100644
---- a/drivers/usb/dwc3/dwc3-generic-plat.c
-+++ b/drivers/usb/dwc3/dwc3-generic-plat.c
-@@ -22,6 +22,10 @@
- #define EIC7700_HSP_AXI_LP_XM_CSYSREQ	BIT(0)
- #define EIC7700_HSP_AXI_LP_XS_CSYSREQ	BIT(16)
+diff --git a/drivers/mmc/host/dw_mmc-rockchip.c b/drivers/mmc/host/dw_mmc-rockchip.c
+index 75c82ff20f177..8bc55d4b996c6 100644
+--- a/drivers/mmc/host/dw_mmc-rockchip.c
++++ b/drivers/mmc/host/dw_mmc-rockchip.c
+@@ -10,6 +10,7 @@
+ #include <linux/mmc/host.h>
+ #include <linux/of_address.h>
+ #include <linux/mmc/slot-gpio.h>
++#include <linux/pm_domain.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/slab.h>
  
-+#define RK3572_PIPE_USB3		0x1100
-+#define RK3572_PIPE_USB2_ONLY		0x0189
-+#define RK3572_PIPE_WRITE_MASK		GENMASK(31, 16)
-+
- struct dwc3_generic {
- 	struct device		*dev;
- 	struct dwc3		dwc;
-@@ -85,6 +89,27 @@ static int dwc3_spacemit_k1_init(struct dwc3_generic *dwc3g)
+@@ -528,6 +529,19 @@ static int dw_mci_rockchip_init(struct dw_mci *host)
  	return 0;
  }
  
-+static int dwc3_rk3572_init(struct dwc3_generic *dwc3g)
++static int dw_mci_rk3572_init(struct dw_mci *host)
 +{
-+	struct device *dev = dwc3g->dev;
-+	enum usb_device_speed speed = usb_get_maximum_speed(dev);
-+	struct regmap *grf;
-+	u32 offset, value = RK3572_PIPE_USB2_ONLY;
++	int ret;
 +
-+	grf = syscon_regmap_lookup_by_phandle_args(dev->of_node, "rockchip,grf",
-+						   1, &offset);
-+	if (IS_ERR(grf))
-+		return dev_err_probe(dev, PTR_ERR(grf), "failed to get PHP GRF\n");
++	/* Power cycling the NVM domain disrupts SDMMC recovery. */
++	ret = dev_pm_genpd_rpm_always_on(host->dev, true);
++	if (ret && ret != -EOPNOTSUPP)
++		dev_warn(host->dev, "failed to keep power domain on: %pe\n",
++			 ERR_PTR(ret));
 +
-+	if (device_property_match_string(dev, "phy-names", "usb3-phy") >= 0 &&
-+	    speed != USB_SPEED_LOW && speed != USB_SPEED_FULL &&
-+	    speed != USB_SPEED_HIGH)
-+		value = RK3572_PIPE_USB3;
-+
-+	/* Configure the PIPE port before the core reads its port count. */
-+	return regmap_write(grf, offset, RK3572_PIPE_WRITE_MASK | value);
++	return dw_mci_rockchip_init(host);
 +}
 +
- static int dwc3_generic_probe(struct platform_device *pdev)
- {
- 	const struct dwc3_generic_config *plat_config;
-@@ -231,11 +256,17 @@ static const struct dwc3_generic_config eic7700_dwc3 =  {
- 	.properties = DWC3_DEFAULT_PROPERTIES,
+ static const struct dw_mci_drv_data rk2928_drv_data = {
+ 	.init			= dw_mci_rockchip_init,
+ 	.parse_dt		= dw_mci_rk2928_parse_dt,
+@@ -541,6 +555,14 @@ static const struct dw_mci_drv_data rk3288_drv_data = {
+ 	.init			= dw_mci_rockchip_init,
  };
  
-+static const struct dwc3_generic_config rk3572_dwc3 = {
-+	.init = dwc3_rk3572_init,
-+	.properties = DWC3_DEFAULT_PROPERTIES,
++static const struct dw_mci_drv_data rk3572_drv_data = {
++	.common_caps		= MMC_CAP_CMD23,
++	.set_ios		= dw_mci_rk3288_set_ios,
++	.execute_tuning		= dw_mci_rk3288_execute_tuning,
++	.parse_dt		= dw_mci_rk3576_parse_dt,
++	.init			= dw_mci_rk3572_init,
 +};
 +
- static const struct of_device_id dwc3_generic_of_match[] = {
- 	{ .compatible = "spacemit,k1-dwc3", &spacemit_k1_dwc3},
- 	{ .compatible = "spacemit,k3-dwc3", },
- 	{ .compatible = "fsl,ls1028a-dwc3", &fsl_ls1028_dwc3},
- 	{ .compatible = "eswin,eic7700-dwc3", &eic7700_dwc3},
-+	{ .compatible = "rockchip,rk3572-dwc3", &rk3572_dwc3 },
- 	{ .compatible = "starfive,jhb100-dwc3", },
- 	{ /* sentinel */ }
- };
+ static const struct dw_mci_drv_data rk3576_drv_data = {
+ 	.common_caps		= MMC_CAP_CMD23,
+ 	.set_ios		= dw_mci_rk3288_set_ios,
+@@ -554,6 +576,8 @@ static const struct of_device_id dw_mci_rockchip_match[] = {
+ 		.data = &rk2928_drv_data },
+ 	{ .compatible = "rockchip,rk3288-dw-mshc",
+ 		.data = &rk3288_drv_data },
++	{ .compatible = "rockchip,rk3572-dw-mshc",
++		.data = &rk3572_drv_data },
+ 	{ .compatible = "rockchip,rk3576-dw-mshc",
+ 		.data = &rk3576_drv_data },
+ 	{},
 
 -- 
 2.34.1
