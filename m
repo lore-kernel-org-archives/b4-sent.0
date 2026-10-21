@@ -1,11 +1,10 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:17 +0800
-Subject: [PATCH 20/27] dt-bindings: usb: rockchip: Add RK3572 DWC3
- controller
+Date: Thu, 22 Oct 2026 00:11:18 +0800
+Subject: [PATCH 21/27] phy: rockchip-inno-usb2: Add RK3572 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-20-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-21-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -42,130 +41,184 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=2999;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=6030;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=iT5BkLeeMmmjRIQeuSIycaI/UXplV+prYKUmY7Ulxps=;
- b=v53jOqW6R2n7fnmg8g19Yw7h4T0AjT02bVfEk5sahYgQzXvZmOvgxh+pYAmDqwo1QrriCFURL
- PtaQ5zJEYipCdDZabXmFfxXkC5DXvBCRrr4RHaHwP9Kab8NEfd0cZhV
+ bh=MPl2FQncIHhIqjcsF+b7mqwRNlggJx2lRqAwXBLUJcg=;
+ b=csHlm1OtXnrb4d6G2om1X16+yZzKXaej9famSMbN4YeXs2pQos5crLHMU00zCwyO8NPws/R4G
+ ThNK60Wm1bgCtYcGsnwq4TVPa+qGIyky4o2MpdjfhBQxaY5DACYpBGf
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe the PHP GRF register used to configure the DWC3 PIPE port before
-controller discovery.
+Support both RK3572 USB2 PHY instances.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- .../bindings/usb/rockchip,rk3572-dwc3.yaml         | 100 +++++++++++++++++++++
- 1 file changed, 100 insertions(+)
+ drivers/phy/rockchip/phy-rockchip-inno-usb2.c | 136 ++++++++++++++++++++++++++
+ 1 file changed, 136 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/usb/rockchip,rk3572-dwc3.yaml b/Documentation/devicetree/bindings/usb/rockchip,rk3572-dwc3.yaml
-new file mode 100644
-index 000000000000..47ff5e16dce6
---- /dev/null
-+++ b/Documentation/devicetree/bindings/usb/rockchip,rk3572-dwc3.yaml
-@@ -0,0 +1,100 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/usb/rockchip,rk3572-dwc3.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+index 7d8a533f24aea..16a36e68cb6d3 100644
+--- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
++++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
+@@ -1544,6 +1544,49 @@ static int rk3528_usb2phy_tuning(struct rockchip_usb2phy *rphy)
+ 	return 0;
+ }
+ 
++static int rk3572_usb2phy_tuning(struct rockchip_usb2phy *rphy)
++{
++	u32 reg = rphy->phy_cfg->reg;
++	struct clk *refclk;
++	unsigned long rate;
++	u32 val;
++	int ret;
 +
-+title: Rockchip RK3572 DWC3 USB controller
++	refclk = devm_clk_get(rphy->dev, "phyclk");
++	if (IS_ERR(refclk))
++		return PTR_ERR(refclk);
++	rate = clk_get_rate(refclk);
++	if (rate != 24000000 && rate != 26000000)
++		return -EINVAL;
 +
-+maintainers:
-+  - Heiko Stuebner <heiko@sntech.de>
-+  - Cunhao Lu <1579567540@qq.com>
++	ret = regmap_write(rphy->grf, reg + 0x0004,
++			   GENMASK(18, 16) | (rate == 24000000 ? 2 : 6));
++	if (ret)
++		return ret;
 +
-+allOf:
-+  - $ref: snps,dwc3-common.yaml#
++	ret = regmap_read(rphy->grf, reg + 0x0010, &val);
++	if (ret)
++		return ret;
++	if (val & BIT(13)) {
++		ret = regmap_write(rphy->grf, reg + 0x0010, BIT(29));
++		if (ret)
++			return ret;
++		ret = rockchip_usb2phy_reset(rphy);
++		if (ret)
++			return ret;
++	}
 +
-+properties:
-+  compatible:
-+    const: rockchip,rk3572-dwc3
++	/* Set the normal line-state filter interval. */
++	ret = regmap_write(rphy->grf, reg + 0x0020, 0x30100);
++	if (ret)
++		return ret;
++	/* Increase HS voltage by 5.89% and double pre-emphasis current. */
++	ret = regmap_write(rphy->grf, reg + 0x000c, GENMASK(27, 24) | 0x0900);
++	if (ret)
++		return ret;
++	return regmap_write(rphy->grf, reg + 0x0010, GENMASK(20, 19) | 0x0010);
++}
 +
-+  reg:
-+    maxItems: 1
+ static int rk3576_usb2phy_tuning(struct rockchip_usb2phy *rphy)
+ {
+ 	int ret;
+@@ -2126,6 +2169,98 @@ static const struct rockchip_usb2phy_cfg rk3568_phy_cfgs[] = {
+ 	{ /* sentinel */ }
+ };
+ 
++static const struct rockchip_usb2phy_cfg rk3572_phy_cfgs[] = {
++	{
++		.reg = 0x0,
++		.num_ports	= 1,
++		.phy_tuning	= rk3572_usb2phy_tuning,
++		.clkout_ctl	= { 0x0008, 0, 0, 1, 0 },
++		.port_cfgs	= {
++			[USB2PHY_PORT_OTG] = {
++				.phy_sus	= { 0x0000, 8, 0, 0, 0x1d1 },
++				.bvalid_det_en	= { 0x00c0, 1, 1, 0, 1 },
++				.bvalid_det_st	= { 0x00c4, 1, 1, 0, 1 },
++				.bvalid_det_clr = { 0x00c8, 1, 1, 0, 1 },
++				.idfall_det_en	= { 0x00c0, 4, 4, 0, 1 },
++				.idfall_det_st	= { 0x00c4, 4, 4, 0, 1 },
++				.idfall_det_clr = { 0x00c8, 4, 4, 0, 1 },
++				.idrise_det_en	= { 0x00c0, 3, 3, 0, 1 },
++				.idrise_det_st	= { 0x00c4, 3, 3, 0, 1 },
++				.idrise_det_clr = { 0x00c8, 3, 3, 0, 1 },
++				.ls_det_en	= { 0x00c0, 0, 0, 0, 1 },
++				.ls_det_st	= { 0x00c4, 0, 0, 0, 1 },
++				.ls_det_clr	= { 0x00c8, 0, 0, 0, 1 },
++				.disfall_en	= { 0x00c0, 6, 6, 0, 1 },
++				.disfall_st	= { 0x00c4, 6, 6, 0, 1 },
++				.disfall_clr	= { 0x00c8, 6, 6, 0, 1 },
++				.disrise_en	= { 0x00c0, 5, 5, 0, 1 },
++				.disrise_st	= { 0x00c4, 5, 5, 0, 1 },
++				.disrise_clr	= { 0x00c8, 5, 5, 0, 1 },
++				.utmi_avalid	= { 0x0080, 1, 1, 0, 1 },
++				.utmi_bvalid	= { 0x0080, 0, 0, 0, 1 },
++				.utmi_id	= { 0x0080, 6, 6, 0, 1 },
++				.utmi_ls	= { 0x0080, 5, 4, 0, 1 },
++			}
++		},
++		.chg_det = {
++			.cp_det		= { 0x0080, 8, 8, 0, 1 },
++			.dcp_det	= { 0x0080, 8, 8, 0, 1 },
++			.dp_det		= { 0x0080, 9, 9, 1, 0 },
++			.idm_sink_en	= { 0x0010, 5, 5, 1, 0 },
++			.idp_sink_en	= { 0x0010, 5, 5, 0, 1 },
++			.idp_src_en	= { 0x0010, 14, 14, 0, 1 },
++			.rdm_pdwn_en	= { 0x0010, 14, 14, 0, 1 },
++			.vdm_src_en	= { 0x0010, 7, 6, 0, 3 },
++			.vdp_src_en	= { 0x0010, 7, 6, 0, 3 },
++		},
++	},
++	{
++		.reg = 0x2000,
++		.num_ports	= 1,
++		.phy_tuning	= rk3572_usb2phy_tuning,
++		.clkout_ctl	= { 0x2008, 0, 0, 1, 0 },
++		.port_cfgs	= {
++			[USB2PHY_PORT_OTG] = {
++				.phy_sus	= { 0x2000, 8, 0, 0, 0x1d1 },
++				.bvalid_det_en	= { 0x20c0, 1, 1, 0, 1 },
++				.bvalid_det_st	= { 0x20c4, 1, 1, 0, 1 },
++				.bvalid_det_clr = { 0x20c8, 1, 1, 0, 1 },
++				.idfall_det_en	= { 0x20c0, 4, 4, 0, 1 },
++				.idfall_det_st	= { 0x20c4, 4, 4, 0, 1 },
++				.idfall_det_clr = { 0x20c8, 4, 4, 0, 1 },
++				.idrise_det_en	= { 0x20c0, 3, 3, 0, 1 },
++				.idrise_det_st	= { 0x20c4, 3, 3, 0, 1 },
++				.idrise_det_clr = { 0x20c8, 3, 3, 0, 1 },
++				.ls_det_en	= { 0x20c0, 0, 0, 0, 1 },
++				.ls_det_st	= { 0x20c4, 0, 0, 0, 1 },
++				.ls_det_clr	= { 0x20c8, 0, 0, 0, 1 },
++				.disfall_en	= { 0x20c0, 6, 6, 0, 1 },
++				.disfall_st	= { 0x20c4, 6, 6, 0, 1 },
++				.disfall_clr	= { 0x20c8, 6, 6, 0, 1 },
++				.disrise_en	= { 0x20c0, 5, 5, 0, 1 },
++				.disrise_st	= { 0x20c4, 5, 5, 0, 1 },
++				.disrise_clr	= { 0x20c8, 5, 5, 0, 1 },
++				.utmi_avalid	= { 0x2080, 1, 1, 0, 1 },
++				.utmi_bvalid	= { 0x2080, 0, 0, 0, 1 },
++				.utmi_id	= { 0x2080, 6, 6, 0, 1 },
++				.utmi_ls	= { 0x2080, 5, 4, 0, 1 },
++			}
++		},
++		.chg_det = {
++			.cp_det		= { 0x2080, 8, 8, 0, 1 },
++			.dcp_det	= { 0x2080, 8, 8, 0, 1 },
++			.dp_det		= { 0x2080, 9, 9, 1, 0 },
++			.idm_sink_en	= { 0x2010, 5, 5, 1, 0 },
++			.idp_sink_en	= { 0x2010, 5, 5, 0, 1 },
++			.idp_src_en	= { 0x2010, 14, 14, 0, 1 },
++			.rdm_pdwn_en	= { 0x2010, 14, 14, 0, 1 },
++			.vdm_src_en	= { 0x2010, 7, 6, 0, 3 },
++			.vdp_src_en	= { 0x2010, 7, 6, 0, 3 },
++		},
++	},
++	{ /* sentinel */ }
++};
 +
-+  interrupts:
-+    maxItems: 1
-+
-+  dma-coherent: true
-+
-+  clocks:
-+    minItems: 3
-+    maxItems: 3
-+
-+  clock-names:
-+    items:
-+      - const: ref_clk
-+      - const: suspend_clk
-+      - const: bus_clk
-+
-+  phys:
-+    minItems: 1
-+    items:
-+      - description: USB2 PHY
-+      - description: USB3 PHY
-+
-+  phy-names:
-+    minItems: 1
-+    items:
-+      - const: usb2-phy
-+      - const: usb3-phy
-+
-+  power-domains:
-+    maxItems: 1
-+
-+  resets:
-+    maxItems: 1
-+
-+  rockchip,grf:
-+    $ref: /schemas/types.yaml#/definitions/phandle-array
-+    description:
-+      PHP GRF and the controller's PIPE configuration register offset.
-+    items:
-+      - items:
-+          - description: PHP GRF phandle
-+          - enum: [0x14, 0x34]
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - clocks
-+  - clock-names
-+  - phys
-+  - phy-names
-+  - power-domains
-+  - resets
-+  - rockchip,grf
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/clock/rockchip,rk3572-cru.h>
-+    #include <dt-bindings/interrupt-controller/arm-gic.h>
-+    #include <dt-bindings/phy/phy.h>
-+    #include <dt-bindings/power/rockchip,rk3572-power-controller.h>
-+    #include <dt-bindings/reset/rockchip,rk3572-cru.h>
-+
-+    usb@24400000 {
-+        compatible = "rockchip,rk3572-dwc3";
-+        reg = <0x24400000 0x400000>;
-+        interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH>;
-+        clocks = <&cru CLK_REF_USB3OTG1>, <&cru CLK_SUSPEND_USB3OTG1>,
-+                 <&cru ACLK_USB3OTG1>;
-+        clock-names = "ref_clk", "suspend_clk", "bus_clk";
-+        phys = <&u2phy1_otg>, <&combphy1 PHY_TYPE_USB3>;
-+        phy-names = "usb2-phy", "usb3-phy";
-+        power-domains = <&power RK3572_PD_PHP>;
-+        resets = <&cru SRST_ARESETN_USB3OTG1>;
-+        rockchip,grf = <&php_grf 0x34>;
-+        dr_mode = "host";
-+    };
+ static const struct rockchip_usb2phy_cfg rk3576_phy_cfgs[] = {
+ 	{
+ 		.reg = 0x0,
+@@ -2378,6 +2513,7 @@ static const struct of_device_id rockchip_usb2phy_dt_match[] = {
+ 	{ .compatible = "rockchip,rk3528-usb2phy", .data = &rk3528_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3562-usb2phy", .data = &rk3562_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3568-usb2phy", .data = &rk3568_phy_cfgs },
++	{ .compatible = "rockchip,rk3572-usb2phy", .data = &rk3572_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3576-usb2phy", .data = &rk3576_phy_cfgs },
+ 	{ .compatible = "rockchip,rk3588-usb2phy", .data = &rk3588_phy_cfgs },
+ 	{ .compatible = "rockchip,rv1108-usb2phy", .data = &rv1108_phy_cfgs },
 
 -- 
 2.34.1
