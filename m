@@ -1,10 +1,10 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:02 +0800
-Subject: [PATCH 05/27] dt-bindings: pinctrl: rockchip: Add RK3572
+Date: Thu, 22 Oct 2026 00:11:03 +0800
+Subject: [PATCH 06/27] dt-bindings: gpio: rockchip: Add RK3572 GPIO banks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-5-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-6-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -41,35 +41,71 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=808;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=1558;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=7Cwg4wq5+C6jKGQLPpMc9LwBD2h7LAV97O69wvTBPj8=;
- b=EF4whsGfJl4BJ74dJFmiD0OLdXtnmpjaJdIa5SjqcpJ1E5QnilqIGFxGptEjeUZVlzPmMEbVw
- ox/BKH2IxLdDM2nkeGE4jgZCgSye/1RSrtxMlFnb3A+fVMODRy/G6Ux
+ bh=71XPLp2LqTx5hu9SnpsYS2dYxBCGTBCIH6TDOlt/UTY=;
+ b=gUcs6i+rCmZW4P9eCpq1UvpoUfHiUAfwTjBWYCyFUWqqTSAST4oT5QX3mhKaRqGm/lrSXDu3E
+ 4i0YyfNKdCEChy+pHpiyrYy/UwckAdQWmSXhXFS1hCFyRwPMSN4yzQY
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the RK3572 pinctrl compatible.
+RK3572 GPIO banks have four parent interrupts and a separate debounce
+clock.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ .../bindings/gpio/rockchip,gpio-bank.yaml          | 24 +++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml
-index 81747bb53056..cbecabd8e307 100644
---- a/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml
-+++ b/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml
-@@ -48,6 +48,7 @@ properties:
-       - rockchip,rk3528-pinctrl
-       - rockchip,rk3562-pinctrl
-       - rockchip,rk3568-pinctrl
-+      - rockchip,rk3572-pinctrl
-       - rockchip,rk3576-pinctrl
-       - rockchip,rk3588-pinctrl
-       - rockchip,rv1103b-pinctrl
+diff --git a/Documentation/devicetree/bindings/gpio/rockchip,gpio-bank.yaml b/Documentation/devicetree/bindings/gpio/rockchip,gpio-bank.yaml
+index 774e9c7de606..8655854ac0a3 100644
+--- a/Documentation/devicetree/bindings/gpio/rockchip,gpio-bank.yaml
++++ b/Documentation/devicetree/bindings/gpio/rockchip,gpio-bank.yaml
+@@ -14,12 +14,14 @@ properties:
+     enum:
+       - rockchip,gpio-bank
+       - rockchip,rk3188-gpio-bank0
++      - rockchip,rk3572-gpio-bank
+ 
+   reg:
+     maxItems: 1
+ 
+   interrupts:
+-    maxItems: 1
++    minItems: 1
++    maxItems: 4
+ 
+   clocks:
+     minItems: 1
+@@ -51,6 +53,26 @@ properties:
+       of this bank, on SoCs such as the RV1106 where each GPIO bank has
+       its own IOC block.
+ 
++allOf:
++  - if:
++      properties:
++        compatible:
++          const: rockchip,rk3572-gpio-bank
++    then:
++      properties:
++        interrupts:
++          items:
++            - description: GPIO group 0
++            - description: GPIO group 1
++            - description: GPIO group 2
++            - description: GPIO group 3
++        clocks:
++          minItems: 2
++    else:
++      properties:
++        interrupts:
++          maxItems: 1
++
+ patternProperties:
+   "^.+-hog(-[0-9]+)?$":
+     type: object
 
 -- 
 2.34.1
