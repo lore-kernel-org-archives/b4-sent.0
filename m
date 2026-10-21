@@ -1,10 +1,11 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:06 +0800
-Subject: [PATCH 09/27] gpio: rockchip: Add RK3572 GPIO support
+Date: Thu, 22 Oct 2026 00:11:07 +0800
+Subject: [PATCH 10/27] pmdomain: rockchip: Add RK3572 boot peripheral
+ domains
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-9-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-10-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -41,242 +42,302 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=7782;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=9125;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=ybuMjroqWlGrhbZ7b+7+3KlQvwUxXnFSIMLjfQO0hew=;
- b=RqtBCE+OwGqzr9ILJLcWOVv41u5fPijhMaXsMt68lHeN6E3KIkhV5WLpGINhA51ZzleGRQUis
- c3ga1PlIquNDkoeUSPuKbs2jgMY8vIykxHmYjoi3qmQQiuIcfdpIuu0
+ bh=OcoLzubR+q6LA4Mp8RFJ2dcJWa6HZEI/3F0zWmoWW+Y=;
+ b=31DndXn+l9vraEjbkUVK1hHT383BRrksW+mizMDtg7mJ97WqryA318Mlr8GICWwn4BqGXTRsO
+ QsCzMX2gm5GBpGf0KSFuezb2rS5FvA6AX4uXHuMboLk7fKU4sye0DUz
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support GPIO V2.7, four parent interrupts, and firmware-provided
-interrupt-group masks. Keep all pins on the primary interrupt when group
-queries are unavailable.
+Add the NVM0, NVM1, PHP, and VOP power domains. Wait for the GRF firewall
+before restoring consumers and retry power-on failures without cycling
+the domain again.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- drivers/gpio/gpio-rockchip.c        | 91 +++++++++++++++++++++++++++++++++----
- drivers/pinctrl/pinctrl-rockchip.h  |  8 +++-
- include/soc/rockchip/rockchip_sip.h |  5 ++
- 3 files changed, 92 insertions(+), 12 deletions(-)
+ drivers/pmdomain/rockchip/pm-domains.c | 141 ++++++++++++++++++++++++++++++---
+ 1 file changed, 131 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/gpio/gpio-rockchip.c b/drivers/gpio/gpio-rockchip.c
-index 77b239a9a601e..35894a68b5446 100644
---- a/drivers/gpio/gpio-rockchip.c
-+++ b/drivers/gpio/gpio-rockchip.c
-@@ -6,6 +6,7 @@
-  * Copyright (c) 2021 Rockchip Electronics Co. Ltd.
-  */
+diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
+index e193f978d5f3..86a6ffd43254 100644
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -39,6 +39,7 @@
+ #include <dt-bindings/power/rockchip,rk3528-power.h>
+ #include <dt-bindings/power/rockchip,rk3562-power.h>
+ #include <dt-bindings/power/rk3568-power.h>
++#include <dt-bindings/power/rockchip,rk3572-power-controller.h>
+ #include <dt-bindings/power/rockchip,rk3576-power.h>
+ #include <dt-bindings/power/rk3588-power.h>
  
-+#include <linux/arm-smccc.h>
- #include <linux/bitops.h>
- #include <linux/clk.h>
- #include <linux/device.h>
-@@ -21,6 +22,7 @@
- #include <linux/pinctrl/pinconf-generic.h>
- #include <linux/platform_device.h>
- #include <linux/regmap.h>
-+#include <soc/rockchip/rockchip_sip.h>
+@@ -59,6 +60,9 @@ struct rockchip_domain_info {
+ 	u32 pwr_offset;
+ 	u32 mem_offset;
+ 	u32 req_offset;
++	u32 status_offset;
++	u32 firewall_mask;
++	u32 clk_ungate_offset;
+ };
  
- #include "../pinctrl/core.h"
- #include "../pinctrl/pinctrl-rockchip.h"
-@@ -35,6 +37,7 @@
- #define GPIO_TYPE_V2		(0x01000C2B)
- #define GPIO_TYPE_V2_1		(0x0101157C)
- #define GPIO_TYPE_V2_2		(0x010219C8)
-+#define GPIO_TYPE_V2_7		(0x01074D2E)
+ struct rockchip_pmu_info {
+@@ -72,6 +76,8 @@ struct rockchip_pmu_info {
+ 	u32 mem_status_offset;
+ 	u32 repair_status_offset;
+ 	u32 clk_ungate_offset;
++	u32 firewall_status_offset;
++	bool chain_status_inverted;
  
- static const struct rockchip_gpio_regs gpio_regs_v1 = {
- 	.port_dr = 0x00,
-@@ -209,12 +212,27 @@ static int rockchip_gpio_set_debounce(struct gpio_chip *gc,
- 	if (bank->gpio_type == GPIO_TYPE_V2 && !IS_ERR(bank->db_clk)) {
- 		div_debounce_support = true;
- 		freq = clk_get_rate(bank->db_clk);
--		max_debounce = (GENMASK(23, 0) + 1) * 2 * 1000000 / freq;
--		if (debounce > max_debounce)
--			return -EINVAL;
+ 	u32 core_pwrcnt_offset;
+ 	u32 gpu_pwrcnt_offset;
+@@ -101,11 +107,13 @@ struct rockchip_pm_domain {
+ 	struct clk_bulk_data *clks;
+ 	struct device_node *node;
+ 	struct regulator *supply;
++	bool power_on_pending;
+ };
  
--		div = debounce * freq;
--		div_reg = DIV_ROUND_CLOSEST_ULL(div, 2 * USEC_PER_SEC) - 1;
-+		if (of_device_is_compatible(bank->of_node, "rockchip,rk3572-gpio-bank")) {
-+			if (!freq)
-+				return -EINVAL;
-+
-+			div = (u64)(GENMASK(23, 0) + 1) * USEC_PER_SEC;
-+			max_debounce = div_u64(div, 2 * freq);
-+			if (debounce > max_debounce)
-+				return -EINVAL;
-+
-+			div = (u64)debounce * freq * 2;
-+			div_reg = DIV_ROUND_CLOSEST_ULL(div, USEC_PER_SEC);
-+			div_reg = div_reg ? div_reg - 1 : 0;
-+		} else {
-+			max_debounce = (GENMASK(23, 0) + 1) * 2 * 1000000 / freq;
-+			if (debounce > max_debounce)
-+				return -EINVAL;
-+
-+			div = debounce * freq;
-+			div_reg = DIV_ROUND_CLOSEST_ULL(div, 2 * USEC_PER_SEC) - 1;
-+		}
- 	} else {
- 		div_debounce_support = false;
- 	}
-@@ -342,6 +360,12 @@ static void rockchip_irq_demux(struct irq_desc *desc)
- 	chained_irq_enter(chip, desc);
+ struct rockchip_pmu {
+ 	struct device *dev;
+ 	struct regmap *regmap;
++	struct regmap *grf;
+ 	const struct rockchip_pmu_info *info;
+ 	struct mutex mutex; /* mutex lock for pmu */
+ 	struct genpd_onecell_data genpd_data;
+@@ -373,15 +381,16 @@ static bool rockchip_pmu_domain_is_idle(struct rockchip_pm_domain *pd)
+ 	const struct rockchip_domain_info *pd_info = pd->info;
+ 	unsigned int val;
  
- 	pending = readl_relaxed(bank->reg_base + bank->gpio_regs->int_status);
-+	for (unsigned int i = 0; i < bank->nr_irqs; i++) {
-+		if (bank->irqs[i] == irq_desc_get_irq(desc)) {
-+			pending &= bank->irq_masks[i];
-+			break;
-+		}
-+	}
- 	for_each_set_bit(irq, &pending, 32) {
- 		dev_dbg(bank->dev, "handling irq %d\n", irq);
+-	regmap_read(pmu->regmap, pmu->info->idle_offset, &val);
++	regmap_read(pmu->regmap, pmu->info->idle_offset + pd_info->status_offset, &val);
+ 	return (val & pd_info->idle_mask) == pd_info->idle_mask;
+ }
  
-@@ -568,8 +592,9 @@ static int rockchip_interrupts_register(struct rockchip_pin_bank *bank)
- 	rockchip_gpio_writel(bank, 0xffffffff, bank->gpio_regs->int_en);
- 	gc->mask_cache = 0xffffffff;
+-static unsigned int rockchip_pmu_read_ack(struct rockchip_pmu *pmu)
++static unsigned int rockchip_pmu_read_ack(struct rockchip_pm_domain *pd)
+ {
++	struct rockchip_pmu *pmu = pd->pmu;
+ 	unsigned int val;
  
--	irq_set_chained_handler_and_data(bank->irq,
--					 rockchip_irq_demux, bank);
-+	for (unsigned int i = 0; i < bank->nr_irqs; i++)
-+		irq_set_chained_handler_and_data(bank->irqs[i],
-+						 rockchip_irq_demux, bank);
+-	regmap_read(pmu->regmap, pmu->info->ack_offset, &val);
++	regmap_read(pmu->regmap, pmu->info->ack_offset + pd->info->status_offset, &val);
+ 	return val;
+ }
+ 
+@@ -400,7 +409,8 @@ static int rockchip_pmu_ungate_clk(struct rockchip_pm_domain *pd, bool ungate)
+ 
+ 	val = ungate ? (pd_info->clk_ungate_mask | clk_ungate_w_mask) :
+ 			clk_ungate_w_mask;
+-	regmap_write(pmu->regmap, pmu->info->clk_ungate_offset, val);
++	regmap_write(pmu->regmap, pmu->info->clk_ungate_offset +
++		     pd_info->clk_ungate_offset, val);
  
  	return 0;
  }
-@@ -645,6 +670,36 @@ static void rockchip_clk_put(void *data)
- 	clk_put(clk);
+@@ -431,7 +441,7 @@ static int rockchip_pmu_set_idle_request(struct rockchip_pm_domain *pd,
+ 
+ 	/* Wait util idle_ack = 1 */
+ 	target_ack = idle ? pd_info->ack_mask : 0;
+-	ret = readx_poll_timeout_atomic(rockchip_pmu_read_ack, pmu, val,
++	ret = readx_poll_timeout_atomic(rockchip_pmu_read_ack, pd, val,
+ 					(val & pd_info->ack_mask) == target_ack,
+ 					0, 10000);
+ 	if (ret) {
+@@ -543,6 +553,9 @@ static bool rockchip_pmu_domain_is_chain_on(struct rockchip_pm_domain *pd)
+ 	regmap_read(pmu->regmap,
+ 		    pmu->info->chain_status_offset + pd->info->mem_offset, &val);
+ 
++	if (pmu->info->chain_status_inverted)
++		return !(val & pd->info->mem_status_mask);
++
+ 	/* 1'b1: power on, 1'b0: power off */
+ 	return val & pd->info->mem_status_mask;
+ }
+@@ -644,14 +657,29 @@ static int rockchip_do_pmu_set_power_domain(struct rockchip_pm_domain *pd,
+ 	return 0;
  }
  
-+static int rockchip_gpio_read_irq_groups(struct rockchip_pin_bank *bank)
++static int rockchip_pmu_wait_firewall(struct rockchip_pm_domain *pd)
 +{
-+	struct arm_smccc_res res;
-+	u32 assigned = 0;
-+	int status;
++	struct rockchip_pmu *pmu = pd->pmu;
++	u32 mask = pd->info->firewall_mask;
++	u32 val;
 +
-+	for (unsigned int i = 1; i < bank->nr_irqs; i++) {
-+		arm_smccc_smc(ROCKCHIP_SIP_GPIO_CONFIG, ROCKCHIP_SIP_GPIO_GET_GROUP,
-+			      bank->bank_num, i, 0, 0, 0, 0, &res);
-+		status = (int)res.a0;
-+		if (i == 1 && (status == SMCCC_RET_NOT_SUPPORTED ||
-+			       status == ROCKCHIP_SIP_RET_NOT_SUPPORTED)) {
-+			/* Older firmware leaves all pins on the primary IRQ. */
-+			dev_dbg(bank->dev, "GPIO group query unsupported: %d\n",
-+				status);
-+			break;
-+		}
-+		if (status)
-+			return dev_err_probe(bank->dev, -EIO,
-+					     "cannot read interrupt group %u: %d\n",
-+					     i, status);
-+		bank->irq_masks[i] = res.a1;
-+		if (assigned & bank->irq_masks[i])
-+			return -EINVAL;
-+		assigned |= bank->irq_masks[i];
-+	}
-+	bank->irq_masks[0] = ~assigned;
-+	return 0;
++	if (!mask)
++		return 0;
++
++	return regmap_read_poll_timeout(pmu->grf, pmu->info->firewall_status_offset,
++				       val, (val & mask) == mask, 0, 10000);
 +}
 +
- static int rockchip_get_bank_data(struct rockchip_pin_bank *bank)
+ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
  {
- 	struct platform_device *pdev = to_platform_device(bank->dev);
-@@ -654,10 +709,23 @@ static int rockchip_get_bank_data(struct rockchip_pin_bank *bank)
- 	if (IS_ERR(bank->reg_base))
- 		return PTR_ERR(bank->reg_base);
+ 	struct rockchip_pmu *pmu = pd->pmu;
++	bool is_on;
+ 	int ret;
  
--	ret = platform_get_irq(pdev, 0);
-+	ret = platform_irq_count(pdev);
- 	if (ret < 0)
- 		return ret;
--	bank->irq = ret;
-+	if (ret != (of_device_is_compatible(bank->of_node,
-+					    "rockchip,rk3572-gpio-bank") ? 4 : 1))
-+		return -EINVAL;
-+	bank->nr_irqs = ret;
-+	for (unsigned int i = 0; i < bank->nr_irqs; i++) {
-+		ret = platform_get_irq(pdev, i);
+ 	guard(mutex)(&pmu->mutex);
+ 
+-	if (rockchip_pmu_domain_is_on(pd) == power_on)
++	is_on = rockchip_pmu_domain_is_on(pd);
++	if (is_on == power_on && !pd->power_on_pending)
+ 		return 0;
+ 
+ 	ret = clk_bulk_enable(pd->num_clks, pd->clks);
+@@ -663,7 +691,8 @@ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
+ 	rockchip_pmu_ungate_clk(pd, true);
+ 
+ 	if (!power_on) {
+-		rockchip_pmu_save_qos(pd);
++		if (!pd->power_on_pending)
++			rockchip_pmu_save_qos(pd);
+ 
+ 		/* if powering down, idle request to NIU first */
+ 		ret = rockchip_pmu_set_idle_request(pd, true);
+@@ -671,18 +700,29 @@ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
+ 			goto out;
+ 	}
+ 
+-	ret = rockchip_do_pmu_set_power_domain(pd, power_on);
+-	if (ret < 0)
+-		goto out;
++	/* A failed firewall wait must not restart powered memory on retry. */
++	if (is_on != power_on) {
++		ret = rockchip_do_pmu_set_power_domain(pd, power_on);
 +		if (ret < 0)
-+			return ret;
-+		bank->irqs[i] = ret;
++			goto out;
 +	}
+ 
+ 	if (power_on) {
++		if (pd->info->firewall_mask)
++			pd->power_on_pending = true;
 +
-+	ret = rockchip_gpio_read_irq_groups(bank);
-+	if (ret)
-+		return ret;
+ 		/* if powering up, leave idle mode */
+ 		ret = rockchip_pmu_set_idle_request(pd, false);
+ 		if (ret < 0)
+ 			goto out;
  
- 	bank->clk = devm_clk_get_enabled(bank->dev, NULL);
- 	if (IS_ERR(bank->clk))
-@@ -669,6 +737,7 @@ static int rockchip_get_bank_data(struct rockchip_pin_bank *bank)
- 	case GPIO_TYPE_V2:
- 	case GPIO_TYPE_V2_1:
- 	case GPIO_TYPE_V2_2:
-+	case GPIO_TYPE_V2_7:
- 		bank->gpio_regs = &gpio_regs_v2;
- 		bank->gpio_type = GPIO_TYPE_V2;
- 		bank->db_clk = of_clk_get(bank->of_node, 1);
-@@ -797,7 +866,8 @@ static void rockchip_gpio_remove(struct platform_device *pdev)
- {
- 	struct rockchip_pin_bank *bank = platform_get_drvdata(pdev);
++		ret = rockchip_pmu_wait_firewall(pd);
++		if (ret)
++			goto out;
++
+ 		rockchip_pmu_restore_qos(pd);
+ 	}
++	pd->power_on_pending = false;
  
--	irq_set_chained_handler_and_data(bank->irq, NULL, NULL);
-+	for (unsigned int i = 0; i < bank->nr_irqs; i++)
-+		irq_set_chained_handler_and_data(bank->irqs[i], NULL, NULL);
- 	if (bank->domain) {
- 		irq_domain_remove_generic_chips(bank->domain);
- 		irq_domain_remove(bank->domain);
-@@ -807,6 +877,7 @@ static void rockchip_gpio_remove(struct platform_device *pdev)
+ out:
+ 	rockchip_pmu_ungate_clk(pd, false);
+@@ -1064,6 +1104,11 @@ static int rockchip_pm_domain_probe(struct platform_device *pdev)
+ 	mutex_init(&pmu->mutex);
  
- static const struct of_device_id rockchip_gpio_match[] = {
- 	{ .compatible = "rockchip,gpio-bank", },
-+	{ .compatible = "rockchip,rk3572-gpio-bank" },
- 	{ .compatible = "rockchip,rk3188-gpio-bank0" },
- 	{ },
+ 	pmu->info = pmu_info;
++	if (pmu_info->firewall_status_offset) {
++		pmu->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
++		if (IS_ERR(pmu->grf))
++			return dev_err_probe(dev, PTR_ERR(pmu->grf), "failed to get system GRF\n");
++	}
+ 
+ 	pmu->genpd_data.domains = pmu->domains;
+ 	pmu->genpd_data.num_domains = pmu_info->num_domains;
+@@ -1313,6 +1358,62 @@ static const struct rockchip_domain_info rk3568_pm_domains[] = {
+ 	[RK3568_PD_PIPE]	= DOMAIN_RK3568("pipe", BIT(8), BIT(11), false, false),
  };
-diff --git a/drivers/pinctrl/pinctrl-rockchip.h b/drivers/pinctrl/pinctrl-rockchip.h
-index 553197f6dc690..058b58dcde404 100644
---- a/drivers/pinctrl/pinctrl-rockchip.h
-+++ b/drivers/pinctrl/pinctrl-rockchip.h
-@@ -302,7 +302,9 @@ struct rockchip_drv {
-  *	    bank has its own IOC block
-  * @clk: clock of the gpio bank
-  * @db_clk: clock of the gpio debounce
-- * @irq: interrupt of the gpio bank
-+ * @irqs: parent interrupts of the GPIO bank
-+ * @irq_masks: pins assigned to each parent interrupt
-+ * @nr_irqs: number of parent interrupts
-  * @saved_masks: Saved content of GPIO_INTEN at suspend time.
-  * @pin_base: first pin number
-  * @nr_pins: number of pins in this bank
-@@ -331,7 +333,9 @@ struct rockchip_pin_bank {
- 	struct regmap			*regmap_ioc;
- 	struct clk			*clk;
- 	struct clk			*db_clk;
--	int				irq;
-+	unsigned int			irqs[4];
-+	u32				irq_masks[4];
-+	unsigned int			nr_irqs;
- 	u32				saved_masks;
- 	u32				pin_base;
- 	u8				nr_pins;
-diff --git a/include/soc/rockchip/rockchip_sip.h b/include/soc/rockchip/rockchip_sip.h
-index 501ad1fedb201..984272ede3baf 100644
---- a/include/soc/rockchip/rockchip_sip.h
-+++ b/include/soc/rockchip/rockchip_sip.h
-@@ -20,4 +20,9 @@
- #define ROCKCHIP_SIP_CONFIG_DRAM_SET_PARAM	0x07
- #define ROCKCHIP_SIP_CONFIG_DRAM_SET_ODT_PD	0x08
  
-+#define ROCKCHIP_SIP_RET_NOT_SUPPORTED		-2
++static const struct rockchip_domain_info rk3572_pm_domains[] = {
++	[RK3572_PD_NVM1] = {
++		.name = "nvm1",
++		.pwr_mask = BIT(4),
++		.pwr_w_mask = BIT(20),
++		.mem_status_mask = BIT(4),
++		.repair_status_mask = BIT(3),
++		.req_mask = BIT(6),
++		.req_w_mask = BIT(22),
++		.idle_mask = BIT(6),
++		.ack_mask = BIT(6),
++		.clk_ungate_mask = BIT(6),
++	},
++	[RK3572_PD_PHP] = {
++		.name = "php",
++		.pwr_mask = BIT(7),
++		.pwr_w_mask = BIT(23),
++		.mem_status_mask = BIT(7),
++		.repair_status_mask = BIT(5),
++		.req_mask = BIT(9),
++		.req_w_mask = BIT(25),
++		.idle_mask = BIT(9),
++		.ack_mask = BIT(9),
++		.clk_ungate_mask = BIT(9),
++		.firewall_mask = BIT(28),
++	},
++	[RK3572_PD_VOP] = {
++		.name = "vop",
++		.pwr_mask = BIT(12),
++		.pwr_w_mask = BIT(28),
++		.mem_status_mask = BIT(12),
++		.repair_status_mask = BIT(10),
++		.req_mask = BIT(14),
++		.req_w_mask = BIT(30),
++		.idle_mask = BIT(14),
++		.ack_mask = BIT(14),
++		.clk_ungate_mask = BIT(14),
++		.firewall_mask = BIT(23),
++	},
++	[RK3572_PD_NVM0] = {
++		.name = "nvm0",
++		.pwr_mask = BIT(15),
++		.pwr_w_mask = BIT(31),
++		.mem_status_mask = BIT(15),
++		.repair_status_mask = BIT(13),
++		.req_mask = BIT(0),
++		.req_w_mask = BIT(16),
++		.idle_mask = BIT(0),
++		.ack_mask = BIT(0),
++		.clk_ungate_mask = BIT(0),
++		.req_offset = 4,
++		.status_offset = 4,
++		.clk_ungate_offset = 4,
++	},
++};
 +
-+#define ROCKCHIP_SIP_GPIO_CONFIG		0x8200002c
-+#define ROCKCHIP_SIP_GPIO_GET_GROUP		0
+ static const struct rockchip_domain_info rk3576_pm_domains[] = {
+ 	[RK3576_PD_NPU]		= DOMAIN_RK3576("npu",    0x0, BIT(0),  BIT(0), 0,       0x0, 0,       0,       0,       false),
+ 	[RK3576_PD_NVM]		= DOMAIN_RK3576("nvm",    0x0, BIT(6),  0,      BIT(6),  0x4, BIT(2),  BIT(18), BIT(2),  false),
+@@ -1536,6 +1637,23 @@ static const struct rockchip_pmu_info rk3568_pmu = {
+ 	.domain_info = rk3568_pm_domains,
+ };
+ 
++static const struct rockchip_pmu_info rk3572_pmu = {
++	.pwr_offset = 0x210,
++	.status_offset = 0x230,
++	.chain_status_offset = 0x250,
++	.chain_status_inverted = true,
++	.mem_status_offset = 0x260,
++	.mem_pwr_offset = 0x300,
++	.req_offset = 0x110,
++	.idle_offset = 0x130,
++	.ack_offset = 0x120,
++	.repair_status_offset = 0x570,
++	.clk_ungate_offset = 0x150,
++	.firewall_status_offset = 0x140,
++	.num_domains = ARRAY_SIZE(rk3572_pm_domains),
++	.domain_info = rk3572_pm_domains,
++};
 +
- #endif
+ static const struct rockchip_pmu_info rk3576_pmu = {
+ 	.pwr_offset = 0x210,
+ 	.status_offset = 0x230,
+@@ -1648,6 +1766,9 @@ static const struct of_device_id rockchip_pm_domain_dt_match[] = {
+ 		.data = (void *)&rk3568_pmu,
+ 	},
+ 	{
++		.compatible = "rockchip,rk3572-power-controller",
++		.data = &rk3572_pmu,
++	}, {
+ 		.compatible = "rockchip,rk3576-power-controller",
+ 		.data = (void *)&rk3576_pmu,
+ 	},
 
 -- 
 2.34.1
