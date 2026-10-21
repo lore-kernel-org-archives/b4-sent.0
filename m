@@ -1,14 +1,13 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Subject: [PATCH 0/4] nfsd: keep a layout whose recall overtakes the
- LAYOUTGET reply
-Date: Wed, 21 Oct 2026 10:03:02 +0900
-Message-Id: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
+Date: Wed, 21 Oct 2026 10:03:03 +0900
+Subject: [PATCH 1/4] nfsd: share the grant slot record between delegations
+ and layouts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEYP2GoC/x2MQQqAIBAAvxJ7bkFFhPpKdDBda0EstKKI/p50H
- IaZBwplpgJ980CmkwuvqYJsG3CLTTMh+8qghDJSKIkpFI/R3uuxY6bgbIxoxKRD502ntYdablX
- w9V+H8X0/Z0sSOmUAAAA=
+Message-Id: <20261021-nfsd-layout-refcall-v1-1-797096b92377@samsung.com>
+References: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
+In-Reply-To: <20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
@@ -18,122 +17,306 @@ Cc: Christoph Hellwig <hch@lst.de>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792544582; l=6203;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792544582; l=10984;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=XlCKRZQ1Fv9OeSsQKdpQstdH4Advnnpuw/c9IVwOY00=;
- b=b9UWjxDBjAJawimMTjzQWvdWHqUwcQSLcF0zdn1tTGiz2LWdHrbprPCdpdNrH1Ol/zHjvhZl5
- 3vCKJI3trb8Bbdfh/OJJprEmFOxrp2T1411qwoC5+pXOgQZRLDSLdnh
+ bh=QxHRB7614mP6+oETtTBuCFRB1KVGlQKvj8Q12/DfSdI=;
+ b=eKim2/0cJbVCijvaBHTQfuyw/RRyVLn9IZvHZ7bpaa1a+B6KPv0UmgFwr7mK7AZ3GcZImktni
+ ylRI18fak0CChCTj1q4GrhhmU7Nc7D2dDt4IQ8tgNXCVTtepODp/UgJ
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With [3], a client that writes to a file through the metadata server
-while it does I/O through a layout of the same file gets
-NFS4ERR_RECALLCONFLICT for LAYOUTGET after LAYOUTGET. One Linux block
-layout client writing 1 MiB blocks with O_DIRECT through its layout and
-512 bytes at the middle of a page, which it sends through the metadata
-server, to the same file did 54, 54 and 51 of its 1 MiB writes in 30
-seconds in three runs with patches 1 to 3. Patch 4 lets such a LAYOUTGET
-succeed with an immediate recall instead when the lease break comes from
-the same client (244, 249 and 241). That recall can overtake the
-LAYOUTGET reply: a client that does not know the layout stateid yet
-answers NFS4ERR_NOMATCHING_LAYOUT, nfsd drops the layout, and the Linux
-client loses the writes it then sends through it, which read back as
-zeroes although fsync() succeeded. Without patches 2 and 3, patch 4 lost
-85 of 600, 87 of 584 and 79 of 600 blocks. The same race exists today
-with a client that is slow to process a LAYOUTGET reply. Patch 2 has the
-details.
+The delegation code remembers the forward-channel slot that carried the
+request that granted a delegation (dl_recall_grant), tests whether the
+client has retired that slot since (nfsd4_recall_grant_slot_retired()),
+and names the request as a referring call in the CB_SEQUENCE of a
+recall. The next two patches need the same for layouts.
 
-Patch 1 lets layouts share the record of the slot that carried a grant
-with the delegation code [1]. Patch 2 resends the recall once, as the
-delegation code does, when the client answers NFS4ERR_NOMATCHING_LAYOUT
-before the slot of the LAYOUTGET has retired. Patch 3 names the
-LAYOUTGET as a referring call (RFC 8881 sections 2.10.6.3 and
-12.5.5.2.1), so that a client that honors it holds the recall back; the
-Linux client does with [2]. The resend comes first because the referring
-call alone does not help the Linux client without [2] once it needs
-more than half a second: it then answers NFS4ERR_NOMATCHING_LAYOUT
-anyway, and the half second it waits makes more recalls meet an
-unprocessed reply.
+Make the record a type of its own, struct nfsd4_grant_slot, and move the
+code that fills it in, the slot test and the code that adds the
+referring call into nfsd41_record_grant_slot(),
+nfsd41_grant_slot_retired() and nfsd41_cb_referring_grant(), named for
+the session machinery they depend on. The flag that was part of the
+delegation's record stays with the delegation, as
+dl_recall_retired_at_send.
 
-A pNFS client writes 1 MiB blocks with O_DIRECT to a new file for 60
-seconds next to an NFSv4.0 client writing to another range of it, with a
-test-only delay of one second in the pNFS client before
-pnfs_layout_process(). Blocks that read back as zeroes / blocks written
-through a layout, and the NFSv4.0 client, two runs each:
+No change in behavior.
 
-  nfsd-testing                         14/58, 14/57  600 in 15.0, 15.3 s
-  + patch 1, referring call, no resend 31/56, 29/56  600 in 33.9, 32.4 s
-  + patches 1 and 2                    0/27, 0/26    600 in 37.8, 51.9 s
-  + patches 1 to 3                     0/23, 0/23    71, 76 in 62 s
-  + patches 1 to 4                     0/25, 0/27    600 in 28.6, 27.9 s
-  + patches 1 to 4, [2] on client      0/19, 0/23    600 in 40.9, 32.8 s
-
-Every block lost was one whose reply the recall overtook. Patch 4 does
-not act in this test, as the lease breaks come from the other client, so
-patches 1 to 3 and 1 to 4 behave the same here. The cost is on the
-writer that breaks the lease: a recall that meets a LAYOUTGET reply the
-client has not processed within half a second lasts at least two and a
-half seconds, and WRITEs through the metadata server get NFS4ERR_DELAY
-meanwhile. With fs.lease-break-time at two seconds or less, such a
-recall outlasts the lease break and the client is fenced. The NFSv4.0
-client needs about 15 seconds plus, for each recall that meets an
-unprocessed reply, nothing on nfsd-testing, half a second with the
-referring call alone, two seconds with patches 1 and 2, and two and a
-half from patch 3 on. Such recalls numbered 14 and 14, 31 and 29, 11 and
-18, 23 and 23, and 5 and 5 in the rows above without [2]. How many there
-are varies between runs: in twelve runs with patches 1
-to 3 or 1 to 4, 23 or 24 met an unprocessed reply in eight, and the
-NFSv4.0 client wrote 6 to 76 blocks in a minute; in the other four it
-finished in 20.3 to 49.1 seconds. Two runs do not rank the stages.
-
-With a delay of four seconds, longer than the resend covers, a client
-without [2] loses every block whose reply the recall overtakes: 7 and 8
-of 15 with patches 1 and 2, where the NFSv4.0 client was done after 29.0
-and 31.5 seconds and broke no lease after that, and 15 of 15 in each of
-two runs with patches 1 to 4, where it was still writing after 60
-seconds. With [2], none (8 and 9 blocks).
-
-QEMU guests (nvmet-tcp target, nfsd on XFS, NFSv4.2 block layout clients
-and an NFSv4.0 client), nfsd-testing b4e06bef3884 with KASAN and
-lockdep; no KASAN or lockdep report from nfsd or the clients. SCSI and
-flexfiles layouts were not tested. Without the delay, one block read
-back as zeroes in one of 17 runs of 30 seconds on nfsd-testing, in a run
-that was not traced; the eight traced ones showed no recall overtaking a
-reply. One boot of the target VM, on an image with patch 1 and the
-referring call only, reported "BUG: KASAN: wild-memory-access in
-do_raw_spin_lock" 0.6 seconds in, before any NFS traffic; twelve more
-boots did not repeat it. pynfs BLOCK3 fails with NFS4ERR_BADXDR with and
-without the series; local recall tests (not posted) pass from patch 2
-on.
-
-The series applies on nfsd-testing, which has [1] and [3]. Patch 2 needs
-patches of [3] that it names, patch 3 should not go before v7.1, and
-patch 4 needs patches 2 and 3.
-
-[1] https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-0-323aa7196055@kernel.org
-[2] https://lore.kernel.org/r/20261020-nfs-referring-call-delay-v1-1-0be8f0608f7c@samsung.com
-[3] https://lore.kernel.org/r/20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com
-
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Daejun Park (4):
-      nfsd: share the grant slot record between delegations and layouts
-      nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT
-      nfsd: send a referring call with CB_LAYOUTRECALL
-      nfsd: do not fail a LAYOUTGET on a lease break by the same client
+ fs/nfsd/nfs4state.c | 115 ++++++++++++++++++++++++++++++++++++----------------
+ fs/nfsd/state.h     |  24 +++++++----
+ 2 files changed, 96 insertions(+), 43 deletions(-)
 
- fs/nfsd/nfs4layouts.c | 144 +++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4proc.c    |   6 +++
- fs/nfsd/nfs4state.c   | 115 +++++++++++++++++++++++++++-------------
- fs/nfsd/state.h       |  53 ++++++++++++++++---
- fs/nfsd/trace.h       |   2 +
- 5 files changed, 264 insertions(+), 56 deletions(-)
----
-base-commit: b4e06bef38843c8b909d0b4317dfaaf87dba6d72
-change-id: 20261021-nfsd-layout-refcall-60b4f9d6944d
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f2b52ba901..735eaa4b7f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1291,7 +1291,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 	dp->dl_recalled = false;
+ 	dp->dl_recall_rejected = false;
+ 	dp->dl_recall_grant.valid = false;
+-	dp->dl_recall_grant.retired_at_send = false;
++	dp->dl_recall_retired_at_send = false;
+ 	get_nfs4_file(fp);
+ 	dp->dl_stid.sc_file = fp;
+ 	nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
+@@ -6251,37 +6251,49 @@ bool nfsd_wait_for_delegreturn(struct svc_rqst *rqstp, struct inode *inode)
+  * gen_sessionid() composes a sessionid from the client's clientid and a
+  * sequence counter, so the sequence alone identifies the granting session.
+  */
+-static void nfsd4_recall_grant_sessionid(const struct nfs4_delegation *dp,
+-					 struct nfsd4_sessionid *sid)
++static void nfsd41_grant_slot_sessionid(struct nfs4_client *clp,
++					const struct nfsd4_grant_slot *grant,
++					struct nfsd4_sessionid *sid)
+ {
+-	sid->clientid = dp->dl_stid.sc_client->cl_clientid;
+-	sid->sequence = dp->dl_recall_grant.sessionid_seq;
++	sid->clientid = clp->cl_clientid;
++	sid->sequence = grant->sessionid_seq;
+ 	sid->reserved = 0;
+ }
+ 
+-static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++/**
++ * nfsd41_grant_slot_retired - has the client seen the reply to a grant?
++ * @clp: client that sent the granting request
++ * @grant: forward-channel slot that carried the request
++ *
++ * Context: Takes nn->client_lock.
++ *
++ * Return: true if the client has gone on to use the slot for a later
++ * request, or has given the slot up, so that it must have received the
++ * reply. False if that cannot be shown, and if @grant is not valid.
++ */
++bool nfsd41_grant_slot_retired(struct nfs4_client *clp,
++			       const struct nfsd4_grant_slot *grant)
+ {
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 	struct nfsd4_sessionid sid;
+ 	bool retired = false;
+ 	void *entry;
+ 
+-	if (!dp->dl_recall_grant.valid)
++	if (!grant->valid)
+ 		return false;
+ 
+-	nfsd4_recall_grant_sessionid(dp, &sid);
++	nfsd41_grant_slot_sessionid(clp, grant, &sid);
+ 
+ 	/*
+-	 * A missing session does not prove the client saw the grant: a
++	 * A missing session does not prove the client saw the reply: a
+ 	 * DESTROY_SESSION unhashes its own session before the reply to
+ 	 * that compound is encoded.
+ 	 */
+ 	spin_lock(&nn->client_lock);
+ 	ses = __find_in_sessionid_hashtbl((struct nfs4_sessionid *)&sid,
+ 					  clp->net);
+-	entry = ses ? xa_load(&ses->se_slots, dp->dl_recall_grant.slotid) : NULL;
++	entry = ses ? xa_load(&ses->se_slots, grant->slotid) : NULL;
+ 	if (xa_is_value(entry)) {
+ 		/*
+ 		 * A slot is freed only once the client has acknowledged
+@@ -6294,18 +6306,49 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+ 
+ 		/*
+ 		 * A reactivated slot was freed and rebuilt, so the same
+-		 * acknowledgment applies. The seqid test errs toward
+-		 * revoking: a rebuilt slot restarting at seqid 1 matches
+-		 * an old grant.
++		 * acknowledgment applies. The seqid test errs toward "not
++		 * retired", the side on which the callers do not take the
++		 * client's answer at once: a rebuilt slot restarting at
++		 * seqid 1 matches an old grant.
+ 		 */
+ 		retired = (slot->sl_flags & NFSD4_SLOT_REUSED) ||
+ 			  ((slot->sl_flags & NFSD4_SLOT_INITIALIZED) &&
+-			   slot->sl_seqid != dp->dl_recall_grant.seqid);
++			   slot->sl_seqid != grant->seqid);
+ 	}
+ 	spin_unlock(&nn->client_lock);
+ 	return retired;
+ }
+ 
++/**
++ * nfsd41_cb_referring_grant - name a granting request as referring call
++ * @cb: callback that refers to state the request created
++ * @clp: client that sent the request
++ * @grant: forward-channel slot that carried the request
++ *
++ * Does nothing if @grant is not valid.
++ *
++ * Context: May sleep. Caller serializes access to @cb, as for
++ * nfsd41_cb_referring_call().
++ */
++void nfsd41_cb_referring_grant(struct nfsd4_callback *cb,
++			       struct nfs4_client *clp,
++			       const struct nfsd4_grant_slot *grant)
++{
++	struct nfsd4_sessionid sid;
++
++	if (!grant->valid)
++		return;
++	nfsd41_grant_slot_sessionid(clp, grant, &sid);
++	nfsd41_cb_referring_call(cb, (struct nfs4_sessionid *)&sid,
++				 grant->slotid, grant->seqid);
++}
++
++static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++{
++	return nfsd41_grant_slot_retired(dp->dl_stid.sc_client,
++					 &dp->dl_recall_grant);
++}
++
+ /*
+  * ->prepare does not run on every send: nfsd4_run_cb_work() skips it
+  * on a requeue, and a retry via rpc_restart_call_prepare() re-enters
+@@ -6315,9 +6358,9 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+  */
+ static void nfsd4_refresh_recall_grant(struct nfs4_delegation *dp)
+ {
+-	dp->dl_recall_grant.retired_at_send =
++	dp->dl_recall_retired_at_send =
+ 			nfsd4_recall_grant_slot_retired(dp);
+-	if (dp->dl_recall_grant.retired_at_send)
++	if (dp->dl_recall_retired_at_send)
+ 		nfsd41_cb_destroy_referring_call_list(&dp->dl_recall);
+ }
+ 
+@@ -6345,15 +6388,9 @@ static bool nfsd4_cb_recall_prepare(struct nfsd4_callback *cb)
+ 
+ 	nfsd4_refresh_recall_grant(dp);
+ 
+-	if (dp->dl_recall_grant.valid && !dp->dl_recall_grant.retired_at_send) {
+-		struct nfsd4_sessionid sid;
+-
+-		nfsd4_recall_grant_sessionid(dp, &sid);
+-		nfsd41_cb_referring_call(&dp->dl_recall,
+-					 (struct nfs4_sessionid *)&sid,
+-					 dp->dl_recall_grant.slotid,
+-					 dp->dl_recall_grant.seqid);
+-	}
++	if (!dp->dl_recall_retired_at_send)
++		nfsd41_cb_referring_grant(&dp->dl_recall, dp->dl_stid.sc_client,
++					  &dp->dl_recall_grant);
+ 	return true;
+ }
+ 
+@@ -6405,7 +6442,7 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+ 		 * the grant. Trust the rejection only if the slot had
+ 		 * retired when this recall was sent.
+ 		 */
+-		if (dp->dl_recall_grant.retired_at_send) {
++		if (dp->dl_recall_retired_at_send) {
+ 			nfsd4_deleg_recall_rejected(dp);
+ 			return 1;
+ 		}
+@@ -7014,19 +7051,25 @@ static bool nfsd4_want_read_deleg(const struct nfsd4_open *open)
+ 		OPEN4_SHARE_ACCESS_WANT_READ_DELEG;
+ }
+ 
+-static void
+-nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
+-				 const struct nfsd4_compound_state *cstate)
++/**
++ * nfsd41_record_grant_slot - remember the slot that carries a request
++ * @grant: record to fill in
++ * @cstate: compound state of the request
++ *
++ * Leaves @grant alone for a request without a session (NFSv4.0).
++ */
++void nfsd41_record_grant_slot(struct nfsd4_grant_slot *grant,
++			      const struct nfsd4_compound_state *cstate)
+ {
+ 	const struct nfsd4_sessionid *sid;
+ 
+ 	if (!cstate->session)
+ 		return;
+ 	sid = (struct nfsd4_sessionid *)cstate->session->se_sessionid.data;
+-	dp->dl_recall_grant.sessionid_seq = sid->sequence;
+-	dp->dl_recall_grant.slotid = cstate->slot->sl_index;
+-	dp->dl_recall_grant.seqid = cstate->slot->sl_seqid;
+-	dp->dl_recall_grant.valid = true;
++	grant->sessionid_seq = sid->sequence;
++	grant->slotid = cstate->slot->sl_index;
++	grant->seqid = cstate->slot->sl_seqid;
++	grant->valid = true;
+ }
+ 
+ static struct nfs4_delegation *
+@@ -7135,7 +7178,7 @@ nfs4_set_delegation(struct nfsd4_open *open,
+ 	 * visible to lease breakers. A conflicting open can drive
+ 	 * CB_RECALL to completion from that point on.
+ 	 */
+-	nfs4_delegation_record_grant_slot(dp, cstate);
++	nfsd41_record_grant_slot(&dp->dl_recall_grant, cstate);
+ 
+ 	if (stp->st_stid.sc_export)
+ 		dp->dl_stid.sc_export = exp_get(stp->st_stid.sc_export);
+@@ -10771,7 +10814,7 @@ nfsd_get_dir_deleg(struct nfsd4_compound_state *cstate,
+ 	dp = alloc_init_dir_deleg(clp, fp);
+ 	if (!dp)
+ 		goto out_delegees;
+-	nfs4_delegation_record_grant_slot(dp, cstate);
++	nfsd41_record_grant_slot(&dp->dl_recall_grant, cstate);
+ 	if (cstate->current_fh.fh_export)
+ 		dp->dl_stid.sc_export =
+ 			exp_get(cstate->current_fh.fh_export);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 5f43668486..2c00b334c3 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -276,6 +276,14 @@ struct nfsd4_cb_notify {
+ 	struct nfsd4_callback		ncn_cb;		// notify4 callback
+ };
+ 
++/* Forward-channel slot that carried a request which created state */
++struct nfsd4_grant_slot {
++	u32			sessionid_seq;
++	u32			slotid;
++	u32			seqid;
++	bool			valid;
++};
++
+ /*
+  * Represents a delegation stateid. The nfs4_client holds references to these
+  * and they are put when it is being destroyed or when the delegation is
+@@ -315,13 +323,8 @@ struct nfs4_delegation {
+ 	bool			dl_setattr;
+ 
+ 	/* Forward-channel slot that carried the granting request */
+-	struct {
+-		u32			sessionid_seq;
+-		u32			slotid;
+-		u32			seqid;
+-		bool			valid;
+-		bool			retired_at_send;
+-	} dl_recall_grant;
++	struct nfsd4_grant_slot	dl_recall_grant;
++	bool			dl_recall_retired_at_send;
+ 
+ 	union {
+ 		/* for CB_GETATTR */
+@@ -949,6 +952,13 @@ extern void nfsd41_cb_referring_call(struct nfsd4_callback *cb,
+ 				     struct nfs4_sessionid *sessionid,
+ 				     u32 slotid, u32 seqno);
+ extern void nfsd41_cb_destroy_referring_call_list(struct nfsd4_callback *cb);
++extern void nfsd41_record_grant_slot(struct nfsd4_grant_slot *grant,
++				     const struct nfsd4_compound_state *cstate);
++extern bool nfsd41_grant_slot_retired(struct nfs4_client *clp,
++				      const struct nfsd4_grant_slot *grant);
++extern void nfsd41_cb_referring_grant(struct nfsd4_callback *cb,
++				      struct nfs4_client *clp,
++				      const struct nfsd4_grant_slot *grant);
+ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 		const struct nfsd4_callback_ops *ops, enum nfsd4_cb_op op);
+ extern bool nfsd4_run_cb(struct nfsd4_callback *cb);
 
-Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+2.43.0
 
