@@ -1,10 +1,11 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:00 +0800
-Subject: [PATCH 03/27] dt-bindings: soc: rockchip: Add RK3572 PMU and GRF
+Date: Thu, 22 Oct 2026 00:11:01 +0800
+Subject: [PATCH 04/27] dt-bindings: mfd: syscon: Add RK3572 QoS register
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-3-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-4-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -41,89 +42,35 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=3106;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=787;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=wJ94JN5Tzv4cmoYUSh00gVquJOC/PZzfdtSiGGYQM2U=;
- b=vP/t2ay2LwL1h3PbCoXFv8+wP3AFNmubZrHnyotQ/xf9gkVyzVsFDhbGn6+V5Idt9pTZYGUU3
- dUO0oMsepxhC0j2EdjEbgOIsLlgApcxnPm83NvnT40ro+SPr5f73l46
+ bh=uFfiJe79UHoJUmZUfddULOE/yY4AM8aRwf1OA9QQsAw=;
+ b=PQlvImamcct9qYzOV3A6Za7RjEIj1sPanPiyKUAgVT8qOcZLZshqI9eYCroTYs9FppadblViO
+ vNmeEdVoB8IAPJdBQj2d2OT1inwdeWPYAeSge7dK06aGkCZlOaxcUEQ
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3572 PMU and GRF blocks are system controllers shared with the
-clock, power-domain, and USB PHY drivers.
+Add rockchip,rk3572-qos to the syscon compatible list.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- Documentation/devicetree/bindings/arm/rockchip/pmu.yaml |  2 ++
- Documentation/devicetree/bindings/soc/rockchip/grf.yaml | 12 ++++++++++++
- 2 files changed, 14 insertions(+)
+ Documentation/devicetree/bindings/mfd/syscon.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml b/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml
-index 1cff2328cd01..43dcaa77ffdb 100644
---- a/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml
-+++ b/Documentation/devicetree/bindings/arm/rockchip/pmu.yaml
-@@ -28,6 +28,7 @@ select:
-           - rockchip,rk3528-pmu
-           - rockchip,rk3562-pmu
-           - rockchip,rk3568-pmu
-+          - rockchip,rk3572-pmu
-           - rockchip,rk3576-pmu
-           - rockchip,rk3588-pmu
-           - rockchip,rv1126-pmu
-@@ -48,6 +49,7 @@ properties:
-           - rockchip,rk3528-pmu
-           - rockchip,rk3562-pmu
-           - rockchip,rk3568-pmu
-+          - rockchip,rk3572-pmu
-           - rockchip,rk3576-pmu
-           - rockchip,rk3588-pmu
-           - rockchip,rv1126-pmu
-diff --git a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
-index 7bcb4e2f47ec..3c4e7d1e9a07 100644
---- a/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
-+++ b/Documentation/devicetree/bindings/soc/rockchip/grf.yaml
-@@ -30,6 +30,12 @@ properties:
-               - rockchip,rk3568-pipe-grf
-               - rockchip,rk3568-pipe-phy-grf
-               - rockchip,rk3568-usb2phy-grf
-+              - rockchip,rk3572-ioc-grf
-+              - rockchip,rk3572-nvm0-grf
-+              - rockchip,rk3572-php-grf
-+              - rockchip,rk3572-pipe-phy-grf
-+              - rockchip,rk3572-pmu0-grf
-+              - rockchip,rk3572-sys-grf
-               - rockchip,rk3576-bigcore-grf
-               - rockchip,rk3576-cci-grf
-               - rockchip,rk3576-dcphy-grf
-@@ -95,6 +101,7 @@ properties:
-               - rockchip,rk3562-pmu-grf
-               - rockchip,rk3568-grf
-               - rockchip,rk3568-pmugrf
-+              - rockchip,rk3572-usb2phy-grf
-               - rockchip,rk3576-ioc-grf
-               - rockchip,rk3576-pmu0-grf
-               - rockchip,rk3576-usb2phy-grf
-@@ -258,6 +265,7 @@ allOf:
-               - rockchip,rk3308-usb2phy-grf
-               - rockchip,rk3328-usb2phy-grf
-               - rockchip,rk3399-grf
-+              - rockchip,rk3572-usb2phy-grf
-               - rockchip,rk3576-usb2phy-grf
-               - rockchip,rk3588-usb2phy-grf
-               - rockchip,rv1108-grf
-@@ -309,6 +317,10 @@ allOf:
-         compatible:
-           contains:
-             enum:
-+              - rockchip,rk3572-nvm0-grf
-+              - rockchip,rk3572-php-grf
-+              - rockchip,rk3572-pipe-phy-grf
-+              - rockchip,rk3572-usb2phy-grf
-               - rockchip,rk3576-dcphy-grf
-               - rockchip,rk3576-vo1-grf
-               - rockchip,rk3588-vo-grf
+diff --git a/Documentation/devicetree/bindings/mfd/syscon.yaml b/Documentation/devicetree/bindings/mfd/syscon.yaml
+index 945a168b613d..b3c96e1de74f 100644
+--- a/Documentation/devicetree/bindings/mfd/syscon.yaml
++++ b/Documentation/devicetree/bindings/mfd/syscon.yaml
+@@ -118,6 +118,7 @@ properties:
+               - rockchip,rk3528-qos
+               - rockchip,rk3562-qos
+               - rockchip,rk3568-qos
++              - rockchip,rk3572-qos
+               - rockchip,rk3576-qos
+               - rockchip,rk3588-qos
+               - rockchip,rv1126-qos
 
 -- 
 2.34.1
