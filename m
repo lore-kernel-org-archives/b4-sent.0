@@ -1,10 +1,10 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:21 +0800
-Subject: [PATCH 24/27] mmc: dw_mmc-rockchip: Keep RK3572 NVM domain powered
+Date: Thu, 22 Oct 2026 00:11:22 +0800
+Subject: [PATCH 25/27] dt-bindings: arm: rockchip: Add Forlinx OK3572-C
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-24-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-25-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -41,80 +41,41 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=2194;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=940;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=3PU9hSe/SMk7DBdg0xf4xauSWrjq1Nz1yuJVCXM3AuM=;
- b=F8VlQQXXXNczwtESOy5RD1fLR2o2T1P1xaFISpXna6qy9gK+Nv97fAEV0tPYcJpVPqhMJ72/i
- Vvc390n0/atAb9P5zCJiO6A21b9yqanXUk0GsKPdEjNs1+rSq2/UdJr
+ bh=oauBPTMgwrpEfcYOz8hlG+zW49i1/JZ++ifkxeoDUZ4=;
+ b=n2lIa41639g6ID0rghs3WoNNMv7QeAjmDoPk8c0SVRA3+qL8scQhxIssd4e0qw1PHqJhVeq/R
+ SluQoGY23TuBCWO1u9LnwDxY6ogyJVzIFE5riu34wg3crDq98cgOfX+
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Power cycling the RK3572 NVM domain causes repeated SD recovery. Keep it
-powered during runtime suspend without disabling controller runtime PM.
+The board uses the FET3572-C system-on-module and falls back to the
+RK3572 SoC compatible.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- drivers/mmc/host/dw_mmc-rockchip.c | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ Documentation/devicetree/bindings/arm/rockchip.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/drivers/mmc/host/dw_mmc-rockchip.c b/drivers/mmc/host/dw_mmc-rockchip.c
-index 75c82ff20f177..8bc55d4b996c6 100644
---- a/drivers/mmc/host/dw_mmc-rockchip.c
-+++ b/drivers/mmc/host/dw_mmc-rockchip.c
-@@ -10,6 +10,7 @@
- #include <linux/mmc/host.h>
- #include <linux/of_address.h>
- #include <linux/mmc/slot-gpio.h>
-+#include <linux/pm_domain.h>
- #include <linux/pm_runtime.h>
- #include <linux/slab.h>
+diff --git a/Documentation/devicetree/bindings/arm/rockchip.yaml b/Documentation/devicetree/bindings/arm/rockchip.yaml
+index a799bb843f74..2880ea741e73 100644
+--- a/Documentation/devicetree/bindings/arm/rockchip.yaml
++++ b/Documentation/devicetree/bindings/arm/rockchip.yaml
+@@ -331,6 +331,12 @@ properties:
+           - const: forlinx,fet3588-c
+           - const: rockchip,rk3588
  
-@@ -528,6 +529,19 @@ static int dw_mci_rockchip_init(struct dw_mci *host)
- 	return 0;
- }
- 
-+static int dw_mci_rk3572_init(struct dw_mci *host)
-+{
-+	int ret;
++      - description: Forlinx OK3572-C with FET3572-C
++        items:
++          - const: forlinx,ok3572-c
++          - const: forlinx,fet3572-c
++          - const: rockchip,rk3572
 +
-+	/* Power cycling the NVM domain disrupts SDMMC recovery. */
-+	ret = dev_pm_genpd_rpm_always_on(host->dev, true);
-+	if (ret && ret != -EOPNOTSUPP)
-+		dev_warn(host->dev, "failed to keep power domain on: %pe\n",
-+			 ERR_PTR(ret));
-+
-+	return dw_mci_rockchip_init(host);
-+}
-+
- static const struct dw_mci_drv_data rk2928_drv_data = {
- 	.init			= dw_mci_rockchip_init,
- 	.parse_dt		= dw_mci_rk2928_parse_dt,
-@@ -541,6 +555,14 @@ static const struct dw_mci_drv_data rk3288_drv_data = {
- 	.init			= dw_mci_rockchip_init,
- };
- 
-+static const struct dw_mci_drv_data rk3572_drv_data = {
-+	.common_caps		= MMC_CAP_CMD23,
-+	.set_ios		= dw_mci_rk3288_set_ios,
-+	.execute_tuning		= dw_mci_rk3288_execute_tuning,
-+	.parse_dt		= dw_mci_rk3576_parse_dt,
-+	.init			= dw_mci_rk3572_init,
-+};
-+
- static const struct dw_mci_drv_data rk3576_drv_data = {
- 	.common_caps		= MMC_CAP_CMD23,
- 	.set_ios		= dw_mci_rk3288_set_ios,
-@@ -554,6 +576,8 @@ static const struct of_device_id dw_mci_rockchip_match[] = {
- 		.data = &rk2928_drv_data },
- 	{ .compatible = "rockchip,rk3288-dw-mshc",
- 		.data = &rk3288_drv_data },
-+	{ .compatible = "rockchip,rk3572-dw-mshc",
-+		.data = &rk3572_drv_data },
- 	{ .compatible = "rockchip,rk3576-dw-mshc",
- 		.data = &rk3576_drv_data },
- 	{},
+       - description: FriendlyElec NanoPi R2 series boards
+         items:
+           - enum:
 
 -- 
 2.34.1
