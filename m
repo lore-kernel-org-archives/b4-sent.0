@@ -1,66 +1,162 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Wed, 21 Oct 2026 13:52:07 +0200
-Subject: [PATCH v2 5/5] ceph: keep LAZYIO with the read caps of a closed
- file
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH v12 0/2] Add LPASS VA CSR HeartBeat pulse clock support
+Date: Wed, 21 Oct 2026 18:10:05 +0530
+Message-Id: <20261021-master-v12-0-9b3df51fd1d7@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261021-b4-wip-ceph-lazyio-fix-v2-5-25d28479d6ea@clyso.com>
-References: <20261021-b4-wip-ceph-lazyio-fix-v2-0-25d28479d6ea@clyso.com>
-In-Reply-To: <20261021-b4-wip-ceph-lazyio-fix-v2-0-25d28479d6ea@clyso.com>
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAKWy2GoC/3XOwW7CMAwG4FdBOS/IdhUS78R7TDuE1B2ZVgpJq
+ TahvjsJSB3SxiWSo//77YvKkqJk9bq6qCRTzHE4lAHpZaXC3h8+RMe2fCgC2gCj1b3PoyS9CWS
+ t64z17FUJH5N08fvW9PZ+n/N59ylhrLom9jGPQ/q5rZpczf0pnZwG7ahpKZgWGPx2yHl9OvuvM
+ PT9ujyqdk/8oMktmoumclYH3LEHfqIRHngDC0coHsEQ2F0wZM0zj4tHQPr1WL0BYGkk+ND84+d
+ 5vgLXT1W1dAEAAA==
+X-Change-ID: 20260917-master-6c2778f57a9a
+To: andersson@kernel.org, abelvesa@kernel.org, sboyd@kernel.org, 
+ bmasney+clk@redhat.com, jbrunet+clk@baylibre.com, robh@kernel.org, 
+ krzk+dt@kernel.org, conor+dt@kernel.org, 
+ srinivas.kandagatla@oss.qualcomm.com, sarath.ganapathiraju@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792583534; l=1563;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=vCRKa1jTwTRmyvIPqElXVacQQHdBR1gNvKu9DI1jLQE=;
- b=XNDWBH3zdJHMX+RwPS6lz2XN94hqUEf0FqBU0YMxIyMKX5cBmVWdWSUCAmKgLFAsFmNX+VYFS
- hU8aLij4lFSCMI+tSqzqdgKOdgKL2mugoE68QZ9ncCxU4GTS0sJB1K3
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792586405; l=6029;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=MIp0PUPBGFUPDrO/evYhVpKxTuVZhOJ9e9YQIHwHSIw=;
+ b=YJJKiKzMQwMXN8hjydy8WPMwFKwDQELLEJVAW7xfnvoFqdBW6FGSSw0ToRZiL03LqWoWMfwYT
+ BGACJuh0Th6DKaZYUhKQb+OcNFMcD+LHJO3fr5y9HwKDnb+fSFZMJ/7
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A lazy I/O open of a file in LOCK_SYNC gets LAZYIO issued along with
-the read caps.  Once the file is closed and its wanted caps lapse,
-ceph_check_caps() keeps the shared and read caps of a file that was
-not opened for writing, but not LAZYIO, so it sends the MDS a cap
-update for every closed file only to give LAZYIO back.  With the
-lazyio mount option, io500 mdtest-hard-read sends about one such
-message per file read, from about 60 seconds after the reads start,
-and the MDS serves the reads more slowly while they arrive.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-Keep LAZYIO under the same condition as the read caps.  The MDS still
-revokes it together with CACHE when another client needs the file.
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider.
 
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node under Documentation/devicetree/bindings/clock/.
+
+Patch 2 adds the lpass-va-csr driver under drivers/clk/qcom that
+registers the lpass_heartbeat_pulse clock and enables/disables the
+rate generator via regmap when the clock consumer requests it.
+
+Changes in v12:
+- Rebase the series on linux-next next-20261020.
+- Depend on PM_CLK so COMPILE_TEST builds cannot select the driver when
+  pm_clk_suspend() and pm_clk_resume() are unavailable (Sashiko, LKP).
+- Link to v11: https://patch.msgid.link/20261012-master-v11-0-15009e3ecac3@oss.qualcomm.com
+
+Changes in v11:
+- Rebase the series on linux-next next-20261009.
+- Drop the custom heartbeat prepare/unprepare callbacks and rely on CCF
+  provider runtime PM handling (Ajay).
+- Restore the rate generator counter and delay registers from the
+  runtime resume callback after the LPASS vote clocks are enabled
+  (Sashiko).
+- Add an of_device_get_match_data() NULL guard (Sashiko).
+- Link to v10: https://patch.msgid.link/20260930-master-v10-0-105207bc5275@oss.qualcomm.com
+
+Changes in v10:
+- Rebase the series on linux-next next-20260929.
+- Add clk_is_enabled_regmap() to report the heartbeat gate state for
+  clk_disable_unused() (Sashiko).
+- Add Rob's Reviewed-by tag to the binding patch.
+- Link to v9: https://patch.msgid.link/20260928-master-v9-0-2277f09f9a09@oss.qualcomm.com
+
+Changes in v9:
+- Rebase the series on linux-next next-20260928.
+- Add runtime PM callbacks so the LPASS LPR and audio vote clocks are
+  enabled by pm_runtime_resume_and_get() before touching VA CSR
+  registers.
+- Keep the LPASS vote clocks enabled across heartbeat clock
+  enable/disable register accesses by taking a runtime PM reference from
+  the heartbeat clock prepare path.
+- Use synchronous runtime PM put on probe success and error paths.
+- Drop the one-use runtime PM error label while keeping synchronous puts (Konrad).
+- Wrap the runtime PM ops with pm_ptr() from HTML review.
+- Link to v8: https://patch.msgid.link/20260917-master-v8-0-823d2c5d090a@oss.qualcomm.com
+
+Changes in v8:
+- Rebase the series on linux-next next-20260916.
+- Require the LPASS LPR and audio vote clocks to access VA CSR
+  register space safely.
+- Attach the DT vote clocks to runtime PM and resume the device before
+  programming the rate generator registers.
+- Program the counter and delay registers once during probe.
+- Use qcom's simple regmap gate ops for the enable bit (Srinivas).
+- Drop the unreachable of_device_get_match_data() NULL check (Srinivas).
+- Drop stale Reviewed-by/Tested-by tags after the binding and driver
+  changes.
+- Link to v7: https://patch.msgid.link/20260831-heartbeat-v7-next-20260828-v7-0-e3ffeac46a51@oss.qualcomm.com
+
+Changes in v7:
+- Rebase the series on linux-next next-20260828.
+- Add Prasad's Reviewed-by and Tested-by tags to patch 2.
+- Link to v6: https://patch.msgid.link/20260821-heartbeat-v6-next-20260821-send-v6-0-62c5df84ce21@oss.qualcomm.com
+
+Changes in v6:
+- Rebase the series on linux-next next-20260821.
+- Capitalize Hawi in binding text (Bjorn).
+- Simplify the binding example by removing the soc wrapper and
+  two-cell address/size setup (Bjorn).
+- Keep the full VA CSR register window in the binding and describe it
+  as the VA CSR register block after Konrad clarified the earlier
+  register-range concern (Bjorn, Konrad).
+- Link to v5: https://patch.msgid.link/20260806-master-20260805-sync-v5-0-0ff42e9b6431@oss.qualcomm.com
+
+Changes in v5:
+- Add explicit ARM64 Kconfig gating and Qualcomm default-module policy
+  for QCOM_CLK_LPASS_HEARTBEAT_PULSE to align with nearby qcom clock
+  entries.
+- Link to v4: https://patch.msgid.link/20260805-master-20260805-sync-v4-0-dfbcbf427c2c@oss.qualcomm.com
+
+Changes in v4:
+- Rename the binding filename and schema ID to hawi-specific naming:
+  qcom,lpass-va-csr.yaml -> qcom,hawi-lpass-va-csr.yaml (Krzysztof).
+- Rename Kconfig symbol QCOM_CLK_LPASS_VA_CSR to
+  QCOM_CLK_LPASS_HEARTBEAT_PULSE (Konrad).
+- Add devm_pm_runtime_enable() in the lpass-va-csr probe path.
+- Drop the qcom,lpass-va-macro binding extension patch; it will be
+  resubmitted with the Hawi DTSI changes.
+- Drop sound/soc/codecs/Kconfig select wiring to keep this series
+  clock-only (Konrad).
+- Link to v3: https://lore.kernel.org/all/20260723-master-v3-0-3d67b79b0515@oss.qualcomm.com/
+
+Changes in v3:
+- Move the qcom,lpass-va-csr binding under
+  Documentation/devicetree/bindings/clock/ (Krzysztof).
+- Move the driver under drivers/clk/qcom/ (Krzysztof).
+- Improve the schema description and use generic clock-controller node
+  naming (Krzysztof).
+- Use additionalProperties: false and keep compatibles sorted.
+
+Changes in v2:
+- Split the qcom,lpass-va-csr and qcom,lpass-va-macro bindings into
+  separate patches.
+
+Changes in v1:
+- Initial version
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- fs/ceph/caps.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Sarath Ganapathiraju (2):
+      dt-bindings: clock: qcom: Add LPASS VA CSR HeartBeat pulse clock
+      clk: qcom: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index 49e5c1c36b68..aca09351a094 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -2266,10 +2266,13 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
- 			/*
- 			 * keep RD only if we didn't have the file open RW,
- 			 * because then the mds would revoke it anyway to
--			 * journal max_size=0.
-+			 * journal max_size=0.  Keep LAZYIO with it: a lazy
-+			 * I/O open gets it issued in LOCK_SYNC, and giving
-+			 * it back costs a cap message per closed file, while
-+			 * the MDS revokes it along with CACHE when it must.
- 			 */
- 			if (ci->i_max_size == 0)
--				retain |= CEPH_CAP_ANY_RD;
-+				retain |= CEPH_CAP_ANY_RD | CEPH_CAP_FILE_LAZYIO;
- 		}
- 	}
- 
+ .../bindings/clock/qcom,hawi-lpass-va-csr.yaml     |  62 +++++++
+ drivers/clk/qcom/Kconfig                           |  15 ++
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/lpass-va-csr.c                    | 180 +++++++++++++++++++++
+ 4 files changed, 258 insertions(+)
+---
+base-commit: 8f7df005a7564bd7ffa75da9c3085d5b996f1e16
+change-id: 20260917-master-6c2778f57a9a
 
--- 
-2.53.0
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
