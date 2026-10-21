@@ -1,117 +1,95 @@
-From: Moe Mahhouk <moe@flashbots.net>
-Date: Wed, 21 Oct 2026 17:16:32 +0000
-Subject: [PATCH] virt: tdx-guest: Poll Quote status with exponential
- backoff
+From: Serv Pol <servpol@tuta.io>
+Subject: [PATCH v2 0/2] power: supply: Add GL.iNet GL-E750 MCU battery
+ driver
+Date: Wed, 21 Oct 2026 19:33:42 +0000
+Message-Id: <20261021-gl-e750-mcu-v2-0-9bd7e7c2e0e1@tuta.io>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261021-tdx-guest-quote-poll-v1-1-919a87812ecb@flashbots.net>
-X-B4-Tracking: v=1; b=H4sIAG/z2GoC/yXMQQqDMBBA0avIrDswCbRir1K6aOJEp4ixmaQI4
- t2b6vIt/t9AOQkr3JsNEn9FJc4V5tKAH1/zwCh9NViyN0PWYO5XHAprxk+JmXGJ04QUWhf8teu
- IHNR0SRxkPbaP52kt7s0+/1+w7z+kcMDgeAAAAA==
-X-Change-ID: 20261021-tdx-guest-quote-poll-0f7bfc59900b
-To: Kiryl Shutsemau <kas@kernel.org>, 
- Rick Edgecombe <rick.p.edgecombe@intel.com>, 
- Dave Hansen <dave.hansen@linux.intel.com>
-Cc: x86@kernel.org, linux-coco@lists.linux.dev, kvm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Moe Mahhouk <moe@flashbots.net>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJYT2WoC/22NQQ6CMBBFr0Jm7Zi2ShFX3sOwwHaAMUpNW4iGc
+ Hdb3Lp8yfvvLxDIMwU4Fwt4mjmwGxOoXQFmaMeekG1iUEJpKUSJ/QOpKgU+zYSdFtoYq7UlA2n
+ x8tTxe6tdmx+H6XYnE3MiGwOH6Pxnu5tl9v6XZ4kCj3VtFR1kV530JU6x3bODZl3XL7snm3y2A
+ AAA
+X-Change-ID: 20261005-gl-e750-mcu-f606ccd66dec
+To: Serv Pol <servpol@tuta.io>, Sebastian Reichel <sre@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792602996; l=3676;
- i=moe@flashbots.net; s=20261021; h=from:subject:message-id;
- bh=ovLjrwfOdsN8YV/HwtnnZX45Tn33AdVlaLj2iyiZxOg=;
- b=NerAd036wmkMOdNkDJm5yKzKT8DYx11lgGw4sGyYs33FluB7iBSKnw0ovprvbNvjeyeRTOoib
- Chgkf+bdwTWAe2iY3uOW0Za4az4NHjcAknw5+o6DNLQwK+5cV3GQbYR
-X-Developer-Key: i=moe@flashbots.net; a=ed25519;
- pk=hJTKfjLno/YESrpxMIKDJk34GM+/8Tol+24XK2b4xf0=
-X-Endpoint-Received: by B4 Relay for moe@flashbots.net/20261021 with auth_id=1259
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792611222; l=3137;
+ i=servpol@tuta.io; s=20261005; h=from:subject:message-id;
+ bh=UTjoj589VJYwISLkJrhvgw9JTnsKO/syLAvRB7fBWoQ=;
+ b=WYNQ9ZC1fBbLGfWA0V/dav1NktTsJSRnfvwcBMrIny4+mPibtkF+GsSpAOKDoP1PBROTacwf9
+ /Dd5ZHnFaoFAham753+6e+0W7abwOU9/a9v91oNd35QFFe8Kuq5pq33
+X-Developer-Key: i=servpol@tuta.io; a=ed25519;
+ pk=2HCjaqYjXxgwTYu30Nem9DOHT8mtKgjitt1vEXKpwrE=
+X-Endpoint-Received: by B4 Relay for servpol@tuta.io/20261005 with auth_id=1120
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wait_for_quote_completion() sleeps for a full second before it first
-checks whether the VMM has completed a GetQuote request, and then
-rechecks once per second. Every Quote request therefore takes at least
-one second, however quickly the host answers.
+The GL.iNet GL-E750 (Mudi) is a battery powered LTE travel router
+(QCA9531). A microcontroller on the SoC UART drives the OLED status
+screen, monitors the battery and watches the power switch. The host talks
+to it in text lines of JSON; on request it reports the battery state, and
+when the power switch is turned off it sends a notification a few seconds
+before cutting the power.
 
-With a local Quote Generation Service the VMM completes the request in
-a few milliseconds. On an Emerald Rapids host (KVM, QEMU 11.1, Intel
-QGS), 40 back-to-back Quote requests through configfs-tsm took
-1021-1024 ms each; with this change they take 2-3 ms. Since quote_lock
-serializes requests, the one-second floor also caps a TD at about one
-Quote per second, which hurts users that bind a fresh Quote to every
-connection, such as attested TLS.
+This series adds a binding and a serdev driver that exposes the battery
+through the power_supply class and shuts the system down cleanly when the
+switch is turned off. The screen content (SSIDs, clients, cellular state,
+free-form vendor JSON) is deliberately left out.
 
-Poll with an exponential backoff instead: start at 100 us and double the
-interval up to 100 ms. A fast Quote is noticed within a few milliseconds,
-a slow one costs at most ten wakeups per second. The timeout is
-unchanged, and a pending signal still aborts the wait with -EINTR.
+The board itself is supported by OpenWrt (ath79), not by an in-tree DTS,
+so there is no in-tree user of the binding yet. The OpenWrt side is at
+https://github.com/openwrt/openwrt/pull/25649
 
-The latency was found while measuring TD boot and attestation times.
-The code and this changelog were written with an AI coding assistant,
-Claude (Claude Code, model Claude Opus 5.5), which also ran the tests.
-Tested on mainline a804c5742 in a TDX guest (KVM host v7.0, QEMU 11.1.2,
-TDX module 1.5.34, Intel QGS) with 40 Quote requests per kernel; builds
-with W=1 and passes checkpatch.pl.
+Testing: OpenWrt main with kernel 6.18, v1 of this series on a GL-E750
+V1 and this version on a GL-E750 V2. Battery properties read back as
+expected (capacity, status, temperature, cycle count), the module was
+unloaded and reloaded repeatedly without warnings, and turning the power
+switch off logs "power switch turned off, shutting down" and leads to a
+clean shutdown before the MCU removes power. The receive path was also
+run in a userspace harness with ASan and UBSan, feeding replies and
+events with and without line endings, glued together and split across
+poll boundaries. On this tree: checkpatch --strict, W=1 and sparse
+builds, and dt_binding_check are clean.
 
-Signed-off-by: Moe Mahhouk <moe@flashbots.net>
----
-The GHCI SetupEventNotifyInterrupt mechanism would avoid polling
-altogether, but it relies on the VMM implementing that service. This
-patch keeps the existing polling model, which works with any VMM, and
-only removes the fixed one-second floor.
----
- drivers/virt/coco/tdx-guest/tdx-guest.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/virt/coco/tdx-guest/tdx-guest.c b/drivers/virt/coco/tdx-guest/tdx-guest.c
-index 11d741da3..5cb7365b2 100644
---- a/drivers/virt/coco/tdx-guest/tdx-guest.c
-+++ b/drivers/virt/coco/tdx-guest/tdx-guest.c
-@@ -16,6 +16,8 @@
- #include <linux/set_memory.h>
- #include <linux/io.h>
- #include <linux/delay.h>
-+#include <linux/jiffies.h>
-+#include <linux/sched/signal.h>
- #include <linux/sockptr.h>
- #include <linux/tsm.h>
- #include <linux/tsm-mr.h>
-@@ -271,18 +273,25 @@ static struct tdx_quote_buf *alloc_quote_buf(void)
-  */
- static int wait_for_quote_completion(struct tdx_quote_buf *buf, u32 timeout)
- {
--	int i = 0;
-+	unsigned long deadline = jiffies + timeout * HZ;
-+	unsigned int sleep_us = 100;
- 
- 	/*
--	 * Quote requests usually take a few seconds to complete, so waking up
--	 * once per second to recheck the status is fine for this use case.
-+	 * A local Quote Generation Service usually completes the request
-+	 * within a few milliseconds. Poll with an exponential backoff, from
-+	 * 100 us up to 100 ms, so that a fast Quote is noticed promptly while
-+	 * a slow one costs at most ten wakeups per second.
- 	 */
--	while (buf->status == GET_QUOTE_IN_FLIGHT && i++ < timeout) {
--		if (msleep_interruptible(MSEC_PER_SEC))
-+	while (READ_ONCE(buf->status) == GET_QUOTE_IN_FLIGHT) {
-+		if (time_after(jiffies, deadline))
-+			return -ETIMEDOUT;
-+		if (signal_pending(current))
- 			return -EINTR;
-+		usleep_range(sleep_us, 2 * sleep_us);
-+		sleep_us = min(2 * sleep_us, 100 * USEC_PER_MSEC);
- 	}
- 
--	return (i == timeout) ? -ETIMEDOUT : 0;
-+	return 0;
- }
- 
- static int tdx_report_new_locked(struct tsm_report *report)
+Tool use: the driver, the binding and the changelogs were written with
+the help of an AI coding assistant (Claude, claude-opus-5-5), based on
+the vendor protocol description at
+https://github.com/gl-inet/GL-E750-MCU-instruction and on traces of the
+MCU traffic on the device. I reviewed the code, tested it on the
+hardware as described above and am responsible for it.
 
 ---
-base-commit: a804c5742bff224d4cb4d25dd383554d598be32b
-change-id: 20261021-tdx-guest-quote-poll-0f7bfc59900b
+Changes in v2:
+- Do not drop messages from the MCU when a status reply comes without a
+  line ending: a new message (they all start with '{') now ends the
+  previous one, and the poll work only consumes a pending status reply
+  instead of clearing the receive buffer, so a power switch event that
+  is being received is no longer lost (Sashiko AI review).
+- Drop <linux/mod_devicetable.h>, <linux/serdev.h> provides of_device_id
+  (Uwe Kleine-König).
+- Link to v1: https://patch.msgid.link/20261005-gl-e750-mcu-v1-0-499d2e31f786@tuta.io
+
+---
+Serv Pol (2):
+      dt-bindings: power: supply: Add GL.iNet GL-E750 MCU
+      power: supply: Add GL.iNet GL-E750 MCU battery driver
+
+ .../bindings/power/supply/glinet,gl-e750-mcu.yaml  |  37 +++
+ MAINTAINERS                                        |   7 +
+ drivers/power/supply/Kconfig                       |  13 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/gl-e750-mcu.c                 | 369 +++++++++++++++++++++
+ 5 files changed, 427 insertions(+)
+---
+base-commit: 5c1c602463d597c5189ddc5a73dece588ba2c57a
+change-id: 20261005-gl-e750-mcu-f606ccd66dec
 
 Best regards,
 --  
-Moe Mahhouk <moe@flashbots.net>
+Serv Pol <servpol@tuta.io>
 
