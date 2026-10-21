@@ -1,74 +1,69 @@
-From: Han Gao <gaohan@iscas.ac.cn>
-Date: Thu, 22 Oct 2026 03:53:38 +0800
-Subject: [PATCH 18/18] MAINTAINERS: add Zhihe A210
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v2 0/2] Add Altera timeout bridge driver
+Date: Wed, 21 Oct 2026 19:56:22 +0000
+Message-Id: <20261021-feature-timeout-ip-v2-0-a037be089518@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-a210-init-v1-18-5e438f972d24@iscas.ac.cn>
-References: <20261022-a210-init-v1-0-5e438f972d24@iscas.ac.cn>
-In-Reply-To: <20261022-a210-init-v1-0-5e438f972d24@iscas.ac.cn>
+X-B4-Tracking: v=1; b=H4sIAOYY2WoC/32NSw6CQBAFr0J6bZv5RD6uvIdhMTKNdAwM6RmIh
+ nB3Rw7gsip59TaIJEwRrsUGQitHDlMGcyqgG9z0JGSfGYwypVbKYk8uLUKYeKSwJOQZK9fY0ip
+ PpmkgD2ehnt9H9N5mHjimIJ/jY9U/+ze3alRY17bqrNb+UunbQ5YXybkLI7T7vn8BQBCvHrUAA
+ AA=
+X-Change-ID: 20261003-feature-timeout-ip-7a93630de299
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, 
- Philipp Zabel <p.zabel@pengutronix.de>, Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>, Thomas Gleixner <tglx@kernel.org>, 
- Radu Rendec <radu@rendec.net>, Samuel Holland <samuel.holland@sifive.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Anup Patel <anup@brainfault.org>, Icenowy Zheng <uwu@icenowy.me>, 
- Drew Fustini <fustini@kernel.org>
+ Conor Dooley <conor+dt@kernel.org>
 Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-riscv@lists.infradead.org, linux-clk@vger.kernel.org, 
- linux-gpio@vger.kernel.org, Paul Walmsley <paul.walmsley@sifive.com>, 
- Han Gao <gaohan@iscas.ac.cn>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792612403; l=1169;
- i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=V6Z8Ev0gcQ0r2yYs+mWTjEjLznl2g2dwdtHJ63ANCKs=;
- b=Di15BnB3X6xsFswYVjWNhBkyYaNeNMuez9huqeW+b4XDKwnUSTspd8HoIu5BpCglT0b/YU6U4
- ZSBAXy9IWawBK0XdUTZlacSXjqQQPeKd/61Hz25Zh6gEFreOUZghqV3
-X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
- pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
-X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792612593; l=1633;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=lJpE9cg9IeF8aoZNz2dghC01UkZXyo/mx2Fv4BVXTmM=;
+ b=mvdsBBK4Y0BRMscdKiQHNacZqHp2e2B7AQX5fNUTRjVNztMVx8qxWyem8xDTUhj9mCAP49FEy
+ fxWXBrBEl9EASbdoZfK7TYEvdASSYTiSUHrVwT9TJ9PlQCzGkFqxWAI
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Zhiguo Zhu and Han Gao as A210 maintainers.
+This series adds support for the Altera's AXI Timeout Bridge IP. 
 
-Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
+The timeout bridge connects an Axi bus to the HPS and provides a
+downstream address space for devices implemented in the FPGA. The
+bridge also exposes status information and generates an interrupt when
+a timeout occurs.
+
+The driver registers the timeout bridge as a bus and allows child
+devices behind the bridge to be described as the child nodes in the
+device tree.
+
+The latest bridge documentation (as of October 2026):
+https://docs.altera.com/r/docs/683609/26.1/quartus-prime-pro-edition-user-guide/axi-timeout-bridge-ip
+
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
- MAINTAINERS | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Changes in v2:
+- Address review notes
+- Simplify error handling
+- Provide better description for DT Schema
+- Link to v1: https://lore.kernel.org/r/20261003-feature-timeout-ip-v1-0-8837c311d571@bruker.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 782389bd5cd3..97cf956fd632 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -30115,6 +30115,22 @@ L:	linux-kernel@vger.kernel.org
- S:	Maintained
- F:	arch/x86/kernel/cpu/zhaoxin.c
- 
-+ZHIHE A210 SOC SUPPORT
-+M:	Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
-+M:	Han Gao <gaohan@iscas.ac.cn>
-+L:	linux-riscv@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/clock/zhihe,a210-*.yaml
-+F:	Documentation/devicetree/bindings/pinctrl/zhihe,a210-pinctrl.yaml
-+F:	Documentation/devicetree/bindings/reset/zhihe,a210-reset.yaml
-+F:	Documentation/devicetree/bindings/riscv/zhihe.yaml
-+F:	arch/riscv/boot/dts/zhihe/
-+F:	drivers/clk/zhihe/
-+F:	drivers/pinctrl/pinctrl-a210.c
-+F:	drivers/reset/reset-a210.c
-+F:	include/dt-bindings/clock/zhihe,a210-*.h
-+F:	include/dt-bindings/reset/zhihe,a210-resets.h
-+
- ZONED BLOCK DEVICE (BLOCK LAYER)
- M:	Damien Le Moal <dlemoal@kernel.org>
- L:	linux-block@vger.kernel.org
+---
+Vyacheslav Yurkov (2):
+      dt-bindings: bus: Add Altera AXI Timeout Bridge
+      bus: Add Altera AXI Timeout Bridge driver
 
+ .../ABI/testing/sysfs-driver-altera-timeout-bridge |  21 +++
+ .../bindings/bus/altr,axi-timeout-bridge-1.0.yaml  |  80 ++++++++++
+ MAINTAINERS                                        |   7 +
+ drivers/bus/Kconfig                                |   9 ++
+ drivers/bus/Makefile                               |   1 +
+ drivers/bus/altera-timeout-bridge.c                | 173 +++++++++++++++++++++
+ 6 files changed, 291 insertions(+)
+---
+base-commit: a804c5742bff224d4cb4d25dd383554d598be32b
+change-id: 20261003-feature-timeout-ip-7a93630de299
+
+Best regards,
 -- 
-2.55.0
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
