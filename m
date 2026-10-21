@@ -1,10 +1,11 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:19 +0800
-Subject: [PATCH 22/27] phy: rockchip-naneng-combphy: Add RK3572 support
+Date: Thu, 22 Oct 2026 00:11:20 +0800
+Subject: [PATCH 23/27] usb: dwc3: Configure RK3572 PIPE port before
+ discovery
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-22-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-23-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -41,242 +42,85 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=8706;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=2530;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=wC2aLPgJOhrcC7ie1Sc3x8qp5suDThHbcIf1QuP1Gno=;
- b=DzUmoa+fO7xpmPZra3NC8fmhgRM7tqdEJ+v+VPO74dHb/SZ/y1gKncl1LRskmymmm4VxE4krX
- fKu2I3IpxIyA0/dkLTBuOzaN29bA75HSzMDiQUPFwJdGWyKSPzU5m24
+ bh=h5W+2vCeTnJq9csdidWq+DAD3u6T94cfAIF4kAYsWso=;
+ b=JgKhkQkYYvj1vSafR0hKio8ahXnc0hk8CyRtyjQdwxIIZQYev4aN+8zACYBJOUlMgSQpvu3SB
+ SOO/YLIkEiWDyGdl3tkSvR9xQJXkTc4rP1GaSxaHL42QX07bWlQbOdt
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support PCIe, USB3, and SATA operation on the RK3572 combo PHY.
+Firmware may leave the USB3 PIPE port disabled, causing DWC3 to discover
+only USB2. Configure the port before reading controller capabilities.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- drivers/phy/rockchip/phy-rockchip-naneng-combphy.c | 201 +++++++++++++++++++++
- 1 file changed, 201 insertions(+)
+ drivers/usb/dwc3/dwc3-generic-plat.c | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
-diff --git a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
-index 7843356a4dd4..e13a78ab5777 100644
---- a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
-+++ b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
-@@ -1000,6 +1000,204 @@ static const struct rockchip_combphy_cfg rk3568_combphy_cfgs = {
- 	.combphy_cfg	= rk3568_combphy_cfg,
- };
+diff --git a/drivers/usb/dwc3/dwc3-generic-plat.c b/drivers/usb/dwc3/dwc3-generic-plat.c
+index ca69ac0eb07ce..11e71fc76be1a 100644
+--- a/drivers/usb/dwc3/dwc3-generic-plat.c
++++ b/drivers/usb/dwc3/dwc3-generic-plat.c
+@@ -22,6 +22,10 @@
+ #define EIC7700_HSP_AXI_LP_XM_CSYSREQ	BIT(0)
+ #define EIC7700_HSP_AXI_LP_XS_CSYSREQ	BIT(16)
  
-+static int rk3572_combphy_cfg(struct rockchip_combphy_priv *priv)
++#define RK3572_PIPE_USB3		0x1100
++#define RK3572_PIPE_USB2_ONLY		0x0189
++#define RK3572_PIPE_WRITE_MASK		GENMASK(31, 16)
++
+ struct dwc3_generic {
+ 	struct device		*dev;
+ 	struct dwc3		dwc;
+@@ -85,6 +89,27 @@ static int dwc3_spacemit_k1_init(struct dwc3_generic *dwc3g)
+ 	return 0;
+ }
+ 
++static int dwc3_rk3572_init(struct dwc3_generic *dwc3g)
 +{
-+	const struct rockchip_combphy_grfcfg *cfg = priv->cfg->grfcfg;
-+	unsigned long rate;
++	struct device *dev = dwc3g->dev;
++	enum usb_device_speed speed = usb_get_maximum_speed(dev);
++	struct regmap *grf;
++	u32 offset, value = RK3572_PIPE_USB2_ONLY;
 +
-+	switch (priv->type) {
-+	case PHY_TYPE_PCIE:
-+		/* Set SSC downward spread spectrum */
-+		rockchip_combphy_updatel(priv, GENMASK(5, 4), BIT(4), 0x7c);
++	grf = syscon_regmap_lookup_by_phandle_args(dev->of_node, "rockchip,grf",
++						   1, &offset);
++	if (IS_ERR(grf))
++		return dev_err_probe(dev, PTR_ERR(grf), "failed to get PHP GRF\n");
 +
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con0_for_pcie, true);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con1_for_pcie, true);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con2_for_pcie, true);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con3_for_pcie, true);
-+		break;
-+	case PHY_TYPE_USB3:
-+		/* Set SSC downward spread spectrum */
-+		rockchip_combphy_updatel(priv, GENMASK(5, 4), BIT(4), 0x7c);
++	if (device_property_match_string(dev, "phy-names", "usb3-phy") >= 0 &&
++	    speed != USB_SPEED_LOW && speed != USB_SPEED_FULL &&
++	    speed != USB_SPEED_HIGH)
++		value = RK3572_PIPE_USB3;
 +
-+		/* Enable adaptive CTLE for USB3.0 Rx */
-+		rockchip_combphy_updatel(priv, GENMASK(0, 0), BIT(0), 0x38);
-+
-+		/* Set PLL KVCO fine tuning signals */
-+		rockchip_combphy_updatel(priv, GENMASK(4, 2), BIT(3), 0x80);
-+
-+		/* Set PLL LPF R1 to su_trim[10:7]=1001 */
-+		writel(0x4, priv->mmio + (0xb << 2));
-+
-+		/* Set PLL input clock divider 1/2 */
-+		rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0x14);
-+
-+		writel(0x32, priv->mmio + (0x11 << 2));
-+
-+		/* Set PLL KVCO to min and set PLL charge pump current to max */
-+		writel(0xf0, priv->mmio + (0xa << 2));
-+
-+		/* Set Rx squelch input filter bandwidth */
-+		writel(0x0d, priv->mmio + (0x14 << 2));
-+
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_txcomp_sel, false);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_txelec_sel, false);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->usb_mode_set, true);
-+		break;
-+	case PHY_TYPE_SATA:
-+		/* Enable adaptive CTLE for SATA Rx */
-+		rockchip_combphy_updatel(priv, GENMASK(0, 0), BIT(0), 0x38);
-+
-+		/* Set tx_rterm = 50 ohm and rx_rterm = 43.5 ohm */
-+		writel(0x8f, priv->mmio + (0x06 << 2));
-+
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con0_for_sata, true);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con1_for_sata, true);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con2_for_sata, true);
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->con3_for_sata, true);
-+		rockchip_combphy_param_write(priv->pipe_grf, &cfg->pipe_con0_for_sata, true);
-+		rockchip_combphy_param_write(priv->pipe_grf, &cfg->pipe_con1_for_sata, true);
-+		break;
-+	default:
-+		dev_err(priv->dev, "incompatible PHY type\n");
-+		return -EINVAL;
-+	}
-+
-+	rate = clk_get_rate(priv->refclk);
-+
-+	switch (rate) {
-+	case 24000000:
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_24m, true);
-+		if (priv->type == PHY_TYPE_USB3 || priv->type == PHY_TYPE_SATA) {
-+			/* Set ssc_cnt[9:0]=0101111101 & 31.5KHz */
-+			rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0xe << 2);
-+
-+			rockchip_combphy_updatel(priv, GENMASK(7, 0), 0x5f, 0xf << 2);
-+		} else if (priv->type == PHY_TYPE_PCIE) {
-+			/* PLL KVCO tuning fine */
-+			rockchip_combphy_updatel(priv, GENMASK(4, 2), 0x4 << 2, 0x20 << 2);
-+
-+			writel(0x0, priv->mmio + (0x1b << 2));
-+
-+			/* Set up su_trim: T0_1 */
-+			writel(0x90, priv->mmio + (0xa << 2));
-+			writel(0x02, priv->mmio + (0xb << 2));
-+			writel(0x57, priv->mmio + (0xd << 2));
-+
-+			writel(0x5f, priv->mmio + (0xf << 2));
-+		}
-+		break;
-+	case 25000000:
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_25m, true);
-+		break;
-+	case 100000000:
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_100m, true);
-+		if (priv->type == PHY_TYPE_PCIE) {
-+			/* gate_tx_pck_sel length select work for L1SS */
-+			writel(0xc0, priv->mmio + 0x74);
-+
-+			/* PLL KVCO tuning fine */
-+			rockchip_combphy_updatel(priv, GENMASK(4, 2), 0x4 << 2, 0x20 << 2);
-+
-+			/* Set up rx_trim: PLL LPF C1 85pf R1 1.25kohm */
-+			writel(0x4c, priv->mmio + (0x1b << 2));
-+
-+			/* Set up su_trim: T3_P1 650mv */
-+			writel(0x90, priv->mmio + (0xa << 2));
-+			writel(0x43, priv->mmio + (0xb << 2));
-+			writel(0x88, priv->mmio + (0xc << 2));
-+			writel(0x56, priv->mmio + (0xd << 2));
-+		} else if (priv->type == PHY_TYPE_SATA) {
-+			/* downward spread spectrum +500ppm */
-+			rockchip_combphy_updatel(priv, GENMASK(7, 4), 0x50, 0x1f << 2);
-+
-+			/* ssc ppm adjust to 3500ppm */
-+			rockchip_combphy_updatel(priv, GENMASK(3, 0), 0x7, 0x9 << 2);
-+		}
-+		break;
-+	default:
-+		dev_err(priv->dev, "Unsupported rate: %lu\n", rate);
-+		return -EINVAL;
-+	}
-+
-+	if (priv->ext_refclk) {
-+		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_ext, true);
-+		if (priv->type == PHY_TYPE_PCIE && rate == 100000000) {
-+			writel(0x10, priv->mmio + (0x20 << 2));
-+
-+			writel(0x0c, priv->mmio + (0x1b << 2));
-+
-+			/*
-+			 * Set up su_trim: T3_P1 650mv
-+			 * CKRCV termination resistor adjust 11: Hi-Z
-+			 */
-+			writel(0x90, priv->mmio + (0xa << 2));
-+			writel(0x43, priv->mmio + (0xb << 2));
-+			writel(0xb8, priv->mmio + (0xc << 2));
-+			writel(0x56, priv->mmio + (0xd << 2));
-+		}
-+	}
-+
-+	if (priv->enable_ssc) {
-+		rockchip_combphy_updatel(priv, GENMASK(4, 4), BIT(4), 0x7 << 2);
-+		/* PLL control SSC module period should be set */
-+		rockchip_combphy_updatel(priv, GENMASK(5, 5), BIT(5), 0x20 << 2);
-+
-+		if (priv->type == PHY_TYPE_PCIE && rate == 24000000) {
-+			/* xin24m T0_1 650mV */
-+			writel(0x00, priv->mmio + (0x10 << 2));
-+			writel(0x32, priv->mmio + (0x11 << 2));
-+			writel(0x00, priv->mmio + (0x1b << 2));
-+			writel(0x90, priv->mmio + (0x0a << 2));
-+			writel(0x02, priv->mmio + (0x0b << 2));
-+			writel(0x08, priv->mmio + (0x0c << 2));
-+			writel(0x57, priv->mmio + (0x0d << 2));
-+			writel(0x40, priv->mmio + (0x0e << 2));
-+			writel(0x5f, priv->mmio + (0x0f << 2));
-+			writel(0x10, priv->mmio + (0x20 << 2));
-+			/* ssc_cnt: 0101111101 & 31.5KHz */
-+			rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0xe << 2);
-+			rockchip_combphy_updatel(priv, GENMASK(7, 0), 0x5f, 0xf << 2);
-+		} else if (priv->type == PHY_TYPE_PCIE && rate == 100000000) {
-+			/* ssc_cnt: 1000110001 & 31.5KHz */
-+			rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0xe << 2);
-+			rockchip_combphy_updatel(priv, GENMASK(7, 0), 0x8c, 0xf << 2);
-+		}
-+	}
-+
-+	if (priv->type == PHY_TYPE_PCIE)
-+		rockchip_combphy_updatel(priv, BIT(5), BIT(5), 0x64);
-+
-+	return 0;
++	/* Configure the PIPE port before the core reads its port count. */
++	return regmap_write(grf, offset, RK3572_PIPE_WRITE_MASK | value);
 +}
 +
-+static const struct rockchip_combphy_grfcfg rk3572_combphy_grfcfgs = {
-+	/* pipe-phy-grf */
-+	.usb_mode_set		= { 0x0000, 5, 0, 0x00, 0x04 },
-+	.pipe_clk_24m		= { 0x0004, 14, 13, 0x00, 0x00 },
-+	.pipe_clk_25m		= { 0x0004, 14, 13, 0x00, 0x01 },
-+	.pipe_clk_100m		= { 0x0004, 14, 13, 0x00, 0x02 },
-+	.pipe_txelec_sel	= { 0x0008, 12, 12, 0x00, 0x01 },
-+	.pipe_txcomp_sel	= { 0x0008, 15, 15, 0x00, 0x01 },
-+	.pipe_clk_ext		= { 0x000c, 9, 8, 0x02, 0x01 },
-+	.pipe_phy_status	= { 0x0034, 6, 6, 0x01, 0x00 },
-+	.con0_for_pcie		= { 0x0000, 15, 0, 0x00, 0x1000 },
-+	.con1_for_pcie		= { 0x0004, 15, 0, 0x00, 0x0000 },
-+	.con2_for_pcie		= { 0x0008, 15, 0, 0x00, 0x0101 },
-+	.con3_for_pcie		= { 0x000c, 15, 0, 0x00, 0x0200 },
-+	.con0_for_sata		= { 0x0000, 15, 0, 0x00, 0x0129 },
-+	.con1_for_sata		= { 0x0004, 15, 0, 0x00, 0x0000 },
-+	.con2_for_sata		= { 0x0008, 15, 0, 0x00, 0x80c1 },
-+	.con3_for_sata		= { 0x000c, 15, 0, 0x00, 0x0407 },
-+	/* php-grf */
-+	.pipe_con0_for_sata	= { 0x0058, 2, 0, 0x00, 0x2 },
-+	.pipe_con1_for_sata	= { 0x005c, 2, 0, 0x00, 0x2 },
-+};
-+
-+static const struct rockchip_combphy_cfg rk3572_combphy_cfgs = {
-+	.grfcfg		= &rk3572_combphy_grfcfgs,
-+	.combphy_cfg	= rk3572_combphy_cfg,
-+};
-+
- static int rk3576_combphy_cfg(struct rockchip_combphy_priv *priv)
+ static int dwc3_generic_probe(struct platform_device *pdev)
  {
- 	const struct rockchip_combphy_grfcfg *cfg = priv->cfg->grfcfg;
-@@ -1407,6 +1605,9 @@ static const struct of_device_id rockchip_combphy_of_match[] = {
- 		.data = &rk3568_combphy_cfgs,
- 	},
- 	{
-+		.compatible = "rockchip,rk3572-naneng-combphy",
-+		.data = &rk3572_combphy_cfgs,
-+	}, {
- 		.compatible = "rockchip,rk3576-naneng-combphy",
- 		.data = &rk3576_combphy_cfgs,
- 	},
+ 	const struct dwc3_generic_config *plat_config;
+@@ -231,11 +256,17 @@ static const struct dwc3_generic_config eic7700_dwc3 =  {
+ 	.properties = DWC3_DEFAULT_PROPERTIES,
+ };
+ 
++static const struct dwc3_generic_config rk3572_dwc3 = {
++	.init = dwc3_rk3572_init,
++	.properties = DWC3_DEFAULT_PROPERTIES,
++};
++
+ static const struct of_device_id dwc3_generic_of_match[] = {
+ 	{ .compatible = "spacemit,k1-dwc3", &spacemit_k1_dwc3},
+ 	{ .compatible = "spacemit,k3-dwc3", },
+ 	{ .compatible = "fsl,ls1028a-dwc3", &fsl_ls1028_dwc3},
+ 	{ .compatible = "eswin,eic7700-dwc3", &eic7700_dwc3},
++	{ .compatible = "rockchip,rk3572-dwc3", &rk3572_dwc3 },
+ 	{ .compatible = "starfive,jhb100-dwc3", },
+ 	{ /* sentinel */ }
+ };
 
 -- 
 2.34.1
