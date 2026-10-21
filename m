@@ -1,131 +1,76 @@
-From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
-Date: Wed, 21 Oct 2026 10:56:19 +0800
-Subject: [PATCH] perf timechart: Fail IO recording when no syscall
- tracepoint is available
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH 0/5] media: i2c: it6625: fix DV timings handling
+Date: Wed, 21 Oct 2026 14:03:24 +0800
+Message-Id: <20261021-upstream-it6625-dv-timings-fix-v1-0-5881babdc4c2@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261021-timechart-io-no-tp-v1-1-71779e7db01e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23IKP6PUr0UFsqz2koRKB+O9Jx
- 2GYyRApMEWYmwyBHo7sXQXZNmBP4w5C3iqDEqqXQklMfFE1ISF7dB7TjZ3UgzWDHu2koIZ3oJ3
- ff7qspXxbF1oWZAAAAA==
-X-Change-ID: 20261021-timechart-io-no-tp-4137ca738c92
-To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>, Stanislav Fomichev <sdf@fomichev.me>
-Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Hang Zhengyang <hang.zhengyang1010@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792551380; l=3030;
- i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
- bh=oqWV2I1IZHKBOUj20ITS6+0GsuHEqAmhyLX9MrxOjlE=;
- b=VkXSHYDY5SISGSSN5JPI6RK0QVYT1vneV932Dk9h/zRPHKY/kbK/9Y/eMYCtXYqNMU2TvW7fv
- BVQgX75/DEhDyiBl4M9QFWhykVlU5Gn8wa/7+ZvLdMgacPCdffRyIsb
-X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
- pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
-X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
+X-B4-Tracking: v=1; b=H4sIAKxV2GoC/x2NMQ6AIAwAv2I62wRQGfyKcVCo2kE0FI0J8e8Sx
+ 7vhLoNQZBLoqwyRbhY+QgFdV+C2KayE7AuDUcZqZTRep6RI046crDUd+hsT7xxWwYUf9As5Zd2
+ s5qaFEjkjFf0PhvF9Pz1icrxwAAAA
+X-Change-ID: 20261021-upstream-it6625-dv-timings-fix-dfec06cb0b34
+To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Hans Verkuil <hverkuil+cisco@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792562607; l=2245;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=6szBEJ3MNX6NVlImTnsjsidGTgcwJHtOC3ALX2KDrvg=;
+ b=oBjuweC38apxOJ8YY6nQ+1ouYccnRATufFcidtVKxzk53AGTvYkW8j6XwuIUl89ci8A3Mn+Ma
+ 5ud9flEFltcC9RlgqOSC36xmoBboWLBNQd5FHu1dlSW427zG2znzTjL
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-'perf timechart record -I' skips the syscall tracepoints that are not
-available.  When none is, e.g. tracefs is not readable or the kernel lacks
-CONFIG_FTRACE_SYSCALLS, perf record falls back to its default event and
-succeeds, and 'perf timechart' later fails with a misleading message:
+This series fixes five issues in how the IT6625 driver detects, reports
+and configures DV timings.
 
-  No trace sample to read. Did you call 'perf timechart record'?
+Patch 1 keeps the configured DV timings and the ACTIVE pad format when
+the HDMI 5V state changes, instead of clearing them.
+Patch 2 makes S_DV_TIMINGS return -EBUSY for a timings change while the
+subdev is streaming.
+Patch 3 reports the detected horizontal and vertical sync polarities.
+Patch 4 fixes the vertical timings of the second field of interlaced
+input, so that a 1080i frame totals 1125 lines.
+Patch 5 lowers the minimum pixel clock to 25 MHz, so that the 640x480
+formats are accepted.
 
-Fail at record time instead, reporting why like parse_events() does.
+The series is based on media next and applies on its own. It does not
+depend on the pending IT6625 reset timing series [1]; the two apply in
+either order.
 
-Fixes: b97b59b93d10 ("perf timechart: Implement IO mode")
-Assisted-by: LLM
-Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+The changes were tested on hardware with HDMI sources, with the patches
+applied to the driver on an older kernel. The configured timings were
+kept across an HDMI unplug and replug. While the subdev was streaming, a
+timings change was refused and identical timings were still accepted;
+the change was accepted once streaming had stopped. Negative, positive
+and mixed (negative horizontal, positive vertical) sync polarities were
+reported correctly. 1080i50, 1080i59.94 and 1080i60 input was reported
+with 1125 lines per frame and the expected field rates, and 640x480p60
+and 720x576p50 input was detected. No video frames were captured in
+these tests.
+
+[1] https://lore.kernel.org/r/20261007-upstream-it6625-reset-delay-v2-0-c5d6b2522bbe@ite.com.tw
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
-Found because the IO-only case of 'perf test timechart' fails as a
-normal user; it is now skipped.  Tested as a normal user and as root
-(all three cases pass).  The fix and changelog were drafted with an AI
-assistant; I reproduced the issue, reviewed and tested the change.
----
- tools/perf/builtin-timechart.c | 35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Hermes Wu (5):
+      media: i2c: it6625: keep the configured DV timings on 5V changes
+      media: i2c: it6625: reject DV timings changes while streaming
+      media: i2c: it6625: report the detected sync polarities
+      media: i2c: it6625: fix the second-field vertical timings
+      media: i2c: it6625: lower the minimum pixel clock to 25 MHz
 
-diff --git a/tools/perf/builtin-timechart.c b/tools/perf/builtin-timechart.c
-index 9eb335d9db16..69cc89232d6c 100644
---- a/tools/perf/builtin-timechart.c
-+++ b/tools/perf/builtin-timechart.c
-@@ -9,8 +9,10 @@
-  */
- 
- #include <errno.h>
-+#include <fcntl.h>
- #include <inttypes.h>
- #include <stdlib.h>
-+#include <unistd.h>
- 
- #include "builtin.h"
- #include "util/color.h"
-@@ -28,6 +30,7 @@
- #include "util/header.h"
- #include <subcmd/pager.h>
- #include <subcmd/parse-options.h>
-+#include <api/fs/tracing_path.h>
- #include "util/parse-events.h"
- #include "util/event.h"
- #include "util/session.h"
-@@ -1793,6 +1796,30 @@ static int timechart__tui(struct timechart *tchart)
- 	return ret;
- }
- 
-+/*
-+ * None of the syscall tracepoints can be used: find out why from the
-+ * syscalls event directory and explain it the way parse_events() does.
-+ */
-+static void timechart__io_record_error(void)
-+{
-+	char errbuf[BUFSIZ];
-+	char *path = get_events_file("syscalls");
-+	int err = ENOENT;
-+	int fd;
-+
-+	if (path) {
-+		fd = open(path, O_RDONLY | O_DIRECTORY);
-+		if (fd < 0)
-+			err = errno;
-+		else
-+			close(fd);
-+		put_events_file(path);
-+	}
-+
-+	tracing_path__strerror_open_tp(err, errbuf, sizeof(errbuf), "syscalls", NULL);
-+	pr_err("No syscall tracepoints available to record IO events\n%s", errbuf);
-+}
-+
- static int timechart__io_record(int argc, const char **argv, const char *output_data)
- {
- 	unsigned int rec_argc, i;
-@@ -1922,6 +1949,14 @@ static int timechart__io_record(int argc, const char **argv, const char *output_
- 		*p++ = filter;
- 	}
- 
-+	/* With no event, perf record would silently use its default one */
-+	if (p == rec_argv + common_args_nr) {
-+		timechart__io_record_error();
-+		free(rec_argv);
-+		free(filter);
-+		return -1;
-+	}
-+
- 	for (i = 0; i < (unsigned int)argc; i++)
- 		*p++ = argv[i];
- 
-
+ drivers/media/i2c/it6625.c | 37 +++++++++++++++++--------------------
+ 1 file changed, 17 insertions(+), 20 deletions(-)
 ---
-base-commit: 1c90f0a3c8a1c4e38f9edd97af9e20848805a7fb
-change-id: 20261021-timechart-io-no-tp-4137ca738c92
+base-commit: d7e7bca7169873b46e857c025c10f3336c1258d8
+change-id: 20261021-upstream-it6625-dv-timings-fix-dfec06cb0b34
 
 Best regards,
 -- 
-Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Hermes Wu <Hermes.wu@ite.com.tw>
 
