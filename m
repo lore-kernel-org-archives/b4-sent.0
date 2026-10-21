@@ -1,11 +1,10 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:01 +0800
-Subject: [PATCH 04/27] dt-bindings: mfd: syscon: Add RK3572 QoS register
- compatible
+Date: Thu, 22 Oct 2026 00:11:02 +0800
+Subject: [PATCH 05/27] dt-bindings: pinctrl: rockchip: Add RK3572
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-4-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-5-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -42,35 +41,35 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=787;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=808;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=uFfiJe79UHoJUmZUfddULOE/yY4AM8aRwf1OA9QQsAw=;
- b=PQlvImamcct9qYzOV3A6Za7RjEIj1sPanPiyKUAgVT8qOcZLZshqI9eYCroTYs9FppadblViO
- vNmeEdVoB8IAPJdBQj2d2OT1inwdeWPYAeSge7dK06aGkCZlOaxcUEQ
+ bh=7Cwg4wq5+C6jKGQLPpMc9LwBD2h7LAV97O69wvTBPj8=;
+ b=EF4whsGfJl4BJ74dJFmiD0OLdXtnmpjaJdIa5SjqcpJ1E5QnilqIGFxGptEjeUZVlzPmMEbVw
+ ox/BKH2IxLdDM2nkeGE4jgZCgSye/1RSrtxMlFnb3A+fVMODRy/G6Ux
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add rockchip,rk3572-qos to the syscon compatible list.
+Add the RK3572 pinctrl compatible.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- Documentation/devicetree/bindings/mfd/syscon.yaml | 1 +
+ Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/mfd/syscon.yaml b/Documentation/devicetree/bindings/mfd/syscon.yaml
-index 945a168b613d..b3c96e1de74f 100644
---- a/Documentation/devicetree/bindings/mfd/syscon.yaml
-+++ b/Documentation/devicetree/bindings/mfd/syscon.yaml
-@@ -118,6 +118,7 @@ properties:
-               - rockchip,rk3528-qos
-               - rockchip,rk3562-qos
-               - rockchip,rk3568-qos
-+              - rockchip,rk3572-qos
-               - rockchip,rk3576-qos
-               - rockchip,rk3588-qos
-               - rockchip,rv1126-qos
+diff --git a/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml
+index 81747bb53056..cbecabd8e307 100644
+--- a/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml
++++ b/Documentation/devicetree/bindings/pinctrl/rockchip,pinctrl.yaml
+@@ -48,6 +48,7 @@ properties:
+       - rockchip,rk3528-pinctrl
+       - rockchip,rk3562-pinctrl
+       - rockchip,rk3568-pinctrl
++      - rockchip,rk3572-pinctrl
+       - rockchip,rk3576-pinctrl
+       - rockchip,rk3588-pinctrl
+       - rockchip,rv1103b-pinctrl
 
 -- 
 2.34.1
