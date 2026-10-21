@@ -1,113 +1,131 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Wed, 21 Oct 2026 02:02:29 +0000
-Subject: [PATCH] arm64: dts: rockchip: Add vdd_log and vdd_center to Kobol
- Helios64
+From: Hang Zhengyang <hang.zhengyang1010@gmail.com>
+Date: Wed, 21 Oct 2026 10:56:19 +0800
+Subject: [PATCH] perf timechart: Fail IO recording when no syscall
+ tracepoint is available
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261021-helios64-vdd-log-center-v1-1-4cafd110e0e5@iav.lv>
-X-B4-Tracking: v=1; b=H4sIADUd2GoC/x3MQQqAIBBA0avErBtoTCy6SrQwnWogNDQiiO6et
- HyL/x/InIQzDNUDiS/JEkMB1RW4zYaVUXwxqEYZahThxrvEbDRe3uMeV3QcTk44U+sXPZuutwS
- lPhIvcv/ncXrfDzkFkdJpAAAA
-To: Heiko Stuebner <heiko@sntech.de>
-Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2557; i=iav@iav.lv;
- h=from:subject:message-id; bh=RDt7P+CwOHiaEZvswLkEBaOOUqR15G5E3l+XUXhUTd8=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFk3ZM28ok6uurQ4RuGJvaChU8C3vtWXs34WMTzvOV6gO
- ofBseBRRykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZhI8SmG/1lfjils1Jsu0lPc
- klw6+daeKx4PfI8siAiqF+btd3xrHsjIsCsy+OKF7YymHVIti1g23t9sLJ3R8S8h2Svyb/PRd0d
- jGQE=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261021-timechart-io-no-tp-v1-1-71779e7db01e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23IKP6PUr0UFsqz2koRKB+O9Jx
+ 2GYyRApMEWYmwyBHo7sXQXZNmBP4w5C3iqDEqqXQklMfFE1ISF7dB7TjZ3UgzWDHu2koIZ3oJ3
+ ff7qspXxbF1oWZAAAAA==
+X-Change-ID: 20261021-timechart-io-no-tp-4137ca738c92
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>, Stanislav Fomichev <sdf@fomichev.me>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hang Zhengyang <hang.zhengyang1010@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792551380; l=3030;
+ i=hang.zhengyang1010@gmail.com; s=20261008; h=from:subject:message-id;
+ bh=oqWV2I1IZHKBOUj20ITS6+0GsuHEqAmhyLX9MrxOjlE=;
+ b=VkXSHYDY5SISGSSN5JPI6RK0QVYT1vneV932Dk9h/zRPHKY/kbK/9Y/eMYCtXYqNMU2TvW7fv
+ BVQgX75/DEhDyiBl4M9QFWhykVlU5Gn8wa/7+ZvLdMgacPCdffRyIsb
+X-Developer-Key: i=hang.zhengyang1010@gmail.com; a=ed25519;
+ pk=5drRny3PqRPLhKVB0YIQXN5YyD8miKCpXWhnEPvafAI=
+X-Endpoint-Received: by B4 Relay for hang.zhengyang1010@gmail.com/20261008 with auth_id=1133
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Helios64 feeds VDD_LOG from a PWM regulator driven by PWM2 and
-VDD_CENTER from DCDC_REG1 of the RK808, but the device tree describes
-neither of them.
+'perf timechart record -I' skips the syscall tracepoints that are not
+available.  When none is, e.g. tracefs is not readable or the kernel lacks
+CONFIG_FTRACE_SYSCALLS, perf record falls back to its default event and
+succeeds, and 'perf timechart' later fails with a misleading message:
 
-Describe both. The vdd_log range comes from the schematic (sheet 8):
-0.83 V with 3.0 V on LOG_DVS_PWM and 1.4 V with 0 V, so the PWM is
-inverted. vdd_center gets the same limits as vdd_cpu_l.
+  No trace sample to read. Did you call 'perf timechart record'?
 
-With U-Boot setting both rails to 950 mV, Linux 7.3-rc7 reports 949 mV
-and 950 mV.
+Fail at record time instead, reporting why like parse_events() does.
 
+Fixes: b97b59b93d10 ("perf timechart: Implement IO mode")
 Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Signed-off-by: Hang Zhengyang <hang.zhengyang1010@gmail.com>
 ---
-No regulator-state-mem: deep suspend does not resume on this board yet,
-so no suspend value is tested.
-
-U-Boot sets both rails to 950 mV:
-https://lore.kernel.org/r/20261021-b4-helios64-v1-1-74afe8aa6d72@iav.lv
-
-This conflicts with the pending power tree series in the list of fixed
-regulators; I will rebase whichever goes in second:
-https://lore.kernel.org/r/20261016-helios64-power-tree-v1-0-31d6c8dc5092@iav.lv
+Found because the IO-only case of 'perf test timechart' fails as a
+normal user; it is now skipped.  Tested as a normal user and as root
+(all three cases pass).  The fix and changelog were drafted with an AI
+assistant; I reproduced the issue, reviewed and tested the change.
 ---
- .../boot/dts/rockchip/rk3399-kobol-helios64.dts    | 24 ++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ tools/perf/builtin-timechart.c | 35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-index 63ad79b4c8ac..3c2ba805e999 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-@@ -271,6 +271,17 @@ vcc12v_dcin_bkup: regulator-vcc12v-dcin-bkup {
- 		regulator-max-microvolt = <12000000>;
- 		vin-supply = <&vcc12v_dcin>;
- 	};
-+
-+	vdd_log: regulator-vdd-log {
-+		compatible = "pwm-regulator";
-+		pwms = <&pwm2 0 25000 1>;
-+		pwm-supply = <&vcc5v0_sys>;
-+		regulator-name = "vdd_log";
-+		regulator-always-on;
-+		regulator-boot-on;
-+		regulator-min-microvolt = <830000>;
-+		regulator-max-microvolt = <1400000>;
-+	};
- };
+diff --git a/tools/perf/builtin-timechart.c b/tools/perf/builtin-timechart.c
+index 9eb335d9db16..69cc89232d6c 100644
+--- a/tools/perf/builtin-timechart.c
++++ b/tools/perf/builtin-timechart.c
+@@ -9,8 +9,10 @@
+  */
  
- /*
-@@ -370,6 +381,15 @@ rk808: pmic@1b {
- 		#clock-cells = <1>;
+ #include <errno.h>
++#include <fcntl.h>
+ #include <inttypes.h>
+ #include <stdlib.h>
++#include <unistd.h>
  
- 		regulators {
-+			vdd_center: DCDC_REG1 {
-+				regulator-name = "vdd_center";
-+				regulator-always-on;
-+				regulator-boot-on;
-+				regulator-min-microvolt = <750000>;
-+				regulator-max-microvolt = <1350000>;
-+				regulator-ramp-delay = <6001>;
-+			};
-+
- 			vdd_cpu_l: DCDC_REG2 {
- 				regulator-name = "vdd_cpu_l";
- 				regulator-always-on;
-@@ -580,6 +600,10 @@ &pwm1 {
- 	status = "okay";
- };
+ #include "builtin.h"
+ #include "util/color.h"
+@@ -28,6 +30,7 @@
+ #include "util/header.h"
+ #include <subcmd/pager.h>
+ #include <subcmd/parse-options.h>
++#include <api/fs/tracing_path.h>
+ #include "util/parse-events.h"
+ #include "util/event.h"
+ #include "util/session.h"
+@@ -1793,6 +1796,30 @@ static int timechart__tui(struct timechart *tchart)
+ 	return ret;
+ }
  
-+&pwm2 {
-+	status = "okay";
-+};
++/*
++ * None of the syscall tracepoints can be used: find out why from the
++ * syscalls event directory and explain it the way parse_events() does.
++ */
++static void timechart__io_record_error(void)
++{
++	char errbuf[BUFSIZ];
++	char *path = get_events_file("syscalls");
++	int err = ENOENT;
++	int fd;
 +
- &saradc {
- 	vref-supply = <&vcc1v8_s3>;
- 	status = "okay";
++	if (path) {
++		fd = open(path, O_RDONLY | O_DIRECTORY);
++		if (fd < 0)
++			err = errno;
++		else
++			close(fd);
++		put_events_file(path);
++	}
++
++	tracing_path__strerror_open_tp(err, errbuf, sizeof(errbuf), "syscalls", NULL);
++	pr_err("No syscall tracepoints available to record IO events\n%s", errbuf);
++}
++
+ static int timechart__io_record(int argc, const char **argv, const char *output_data)
+ {
+ 	unsigned int rec_argc, i;
+@@ -1922,6 +1949,14 @@ static int timechart__io_record(int argc, const char **argv, const char *output_
+ 		*p++ = filter;
+ 	}
+ 
++	/* With no event, perf record would silently use its default one */
++	if (p == rec_argv + common_args_nr) {
++		timechart__io_record_error();
++		free(rec_argv);
++		free(filter);
++		return -1;
++	}
++
+ 	for (i = 0; i < (unsigned int)argc; i++)
+ 		*p++ = argv[i];
+ 
 
 ---
-base-commit: d2abcbb905b0e4b2e06b257fa1e5bcf4faa6dbda
-change-id: 20261021-helios64-vdd-log-center-b13df4b678a1
+base-commit: 1c90f0a3c8a1c4e38f9edd97af9e20848805a7fb
+change-id: 20261021-timechart-io-no-tp-4137ca738c92
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Hang Zhengyang <hang.zhengyang1010@gmail.com>
 
