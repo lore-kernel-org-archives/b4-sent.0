@@ -1,10 +1,10 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Thu, 22 Oct 2026 00:11:18 +0800
-Subject: [PATCH 21/27] phy: rockchip-inno-usb2: Add RK3572 support
+Date: Thu, 22 Oct 2026 00:11:19 +0800
+Subject: [PATCH 22/27] phy: rockchip-naneng-combphy: Add RK3572 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-add-board-ok3572-c-v1-21-0b0fd85a31ee@qq.com>
+Message-Id: <20261022-add-board-ok3572-c-v1-22-0b0fd85a31ee@qq.com>
 References: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 In-Reply-To: <20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -41,184 +41,242 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-stm32@st-md-mailman.stormreply.com, linux-phy@lists.infradead.org, 
  linux-usb@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=6030;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792599138; l=8706;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=MPl2FQncIHhIqjcsF+b7mqwRNlggJx2lRqAwXBLUJcg=;
- b=csHlm1OtXnrb4d6G2om1X16+yZzKXaej9famSMbN4YeXs2pQos5crLHMU00zCwyO8NPws/R4G
- ThNK60Wm1bgCtYcGsnwq4TVPa+qGIyky4o2MpdjfhBQxaY5DACYpBGf
+ bh=wC2aLPgJOhrcC7ie1Sc3x8qp5suDThHbcIf1QuP1Gno=;
+ b=DzUmoa+fO7xpmPZra3NC8fmhgRM7tqdEJ+v+VPO74dHb/SZ/y1gKncl1LRskmymmm4VxE4krX
+ fKu2I3IpxIyA0/dkLTBuOzaN29bA75HSzMDiQUPFwJdGWyKSPzU5m24
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support both RK3572 USB2 PHY instances.
+Support PCIe, USB3, and SATA operation on the RK3572 combo PHY.
 
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- drivers/phy/rockchip/phy-rockchip-inno-usb2.c | 136 ++++++++++++++++++++++++++
- 1 file changed, 136 insertions(+)
+ drivers/phy/rockchip/phy-rockchip-naneng-combphy.c | 201 +++++++++++++++++++++
+ 1 file changed, 201 insertions(+)
 
-diff --git a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
-index 7d8a533f24aea..16a36e68cb6d3 100644
---- a/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
-+++ b/drivers/phy/rockchip/phy-rockchip-inno-usb2.c
-@@ -1544,6 +1544,49 @@ static int rk3528_usb2phy_tuning(struct rockchip_usb2phy *rphy)
- 	return 0;
- }
- 
-+static int rk3572_usb2phy_tuning(struct rockchip_usb2phy *rphy)
-+{
-+	u32 reg = rphy->phy_cfg->reg;
-+	struct clk *refclk;
-+	unsigned long rate;
-+	u32 val;
-+	int ret;
-+
-+	refclk = devm_clk_get(rphy->dev, "phyclk");
-+	if (IS_ERR(refclk))
-+		return PTR_ERR(refclk);
-+	rate = clk_get_rate(refclk);
-+	if (rate != 24000000 && rate != 26000000)
-+		return -EINVAL;
-+
-+	ret = regmap_write(rphy->grf, reg + 0x0004,
-+			   GENMASK(18, 16) | (rate == 24000000 ? 2 : 6));
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_read(rphy->grf, reg + 0x0010, &val);
-+	if (ret)
-+		return ret;
-+	if (val & BIT(13)) {
-+		ret = regmap_write(rphy->grf, reg + 0x0010, BIT(29));
-+		if (ret)
-+			return ret;
-+		ret = rockchip_usb2phy_reset(rphy);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	/* Set the normal line-state filter interval. */
-+	ret = regmap_write(rphy->grf, reg + 0x0020, 0x30100);
-+	if (ret)
-+		return ret;
-+	/* Increase HS voltage by 5.89% and double pre-emphasis current. */
-+	ret = regmap_write(rphy->grf, reg + 0x000c, GENMASK(27, 24) | 0x0900);
-+	if (ret)
-+		return ret;
-+	return regmap_write(rphy->grf, reg + 0x0010, GENMASK(20, 19) | 0x0010);
-+}
-+
- static int rk3576_usb2phy_tuning(struct rockchip_usb2phy *rphy)
- {
- 	int ret;
-@@ -2126,6 +2169,98 @@ static const struct rockchip_usb2phy_cfg rk3568_phy_cfgs[] = {
- 	{ /* sentinel */ }
+diff --git a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
+index 7843356a4dd4..e13a78ab5777 100644
+--- a/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
++++ b/drivers/phy/rockchip/phy-rockchip-naneng-combphy.c
+@@ -1000,6 +1000,204 @@ static const struct rockchip_combphy_cfg rk3568_combphy_cfgs = {
+ 	.combphy_cfg	= rk3568_combphy_cfg,
  };
  
-+static const struct rockchip_usb2phy_cfg rk3572_phy_cfgs[] = {
-+	{
-+		.reg = 0x0,
-+		.num_ports	= 1,
-+		.phy_tuning	= rk3572_usb2phy_tuning,
-+		.clkout_ctl	= { 0x0008, 0, 0, 1, 0 },
-+		.port_cfgs	= {
-+			[USB2PHY_PORT_OTG] = {
-+				.phy_sus	= { 0x0000, 8, 0, 0, 0x1d1 },
-+				.bvalid_det_en	= { 0x00c0, 1, 1, 0, 1 },
-+				.bvalid_det_st	= { 0x00c4, 1, 1, 0, 1 },
-+				.bvalid_det_clr = { 0x00c8, 1, 1, 0, 1 },
-+				.idfall_det_en	= { 0x00c0, 4, 4, 0, 1 },
-+				.idfall_det_st	= { 0x00c4, 4, 4, 0, 1 },
-+				.idfall_det_clr = { 0x00c8, 4, 4, 0, 1 },
-+				.idrise_det_en	= { 0x00c0, 3, 3, 0, 1 },
-+				.idrise_det_st	= { 0x00c4, 3, 3, 0, 1 },
-+				.idrise_det_clr = { 0x00c8, 3, 3, 0, 1 },
-+				.ls_det_en	= { 0x00c0, 0, 0, 0, 1 },
-+				.ls_det_st	= { 0x00c4, 0, 0, 0, 1 },
-+				.ls_det_clr	= { 0x00c8, 0, 0, 0, 1 },
-+				.disfall_en	= { 0x00c0, 6, 6, 0, 1 },
-+				.disfall_st	= { 0x00c4, 6, 6, 0, 1 },
-+				.disfall_clr	= { 0x00c8, 6, 6, 0, 1 },
-+				.disrise_en	= { 0x00c0, 5, 5, 0, 1 },
-+				.disrise_st	= { 0x00c4, 5, 5, 0, 1 },
-+				.disrise_clr	= { 0x00c8, 5, 5, 0, 1 },
-+				.utmi_avalid	= { 0x0080, 1, 1, 0, 1 },
-+				.utmi_bvalid	= { 0x0080, 0, 0, 0, 1 },
-+				.utmi_id	= { 0x0080, 6, 6, 0, 1 },
-+				.utmi_ls	= { 0x0080, 5, 4, 0, 1 },
-+			}
-+		},
-+		.chg_det = {
-+			.cp_det		= { 0x0080, 8, 8, 0, 1 },
-+			.dcp_det	= { 0x0080, 8, 8, 0, 1 },
-+			.dp_det		= { 0x0080, 9, 9, 1, 0 },
-+			.idm_sink_en	= { 0x0010, 5, 5, 1, 0 },
-+			.idp_sink_en	= { 0x0010, 5, 5, 0, 1 },
-+			.idp_src_en	= { 0x0010, 14, 14, 0, 1 },
-+			.rdm_pdwn_en	= { 0x0010, 14, 14, 0, 1 },
-+			.vdm_src_en	= { 0x0010, 7, 6, 0, 3 },
-+			.vdp_src_en	= { 0x0010, 7, 6, 0, 3 },
-+		},
-+	},
-+	{
-+		.reg = 0x2000,
-+		.num_ports	= 1,
-+		.phy_tuning	= rk3572_usb2phy_tuning,
-+		.clkout_ctl	= { 0x2008, 0, 0, 1, 0 },
-+		.port_cfgs	= {
-+			[USB2PHY_PORT_OTG] = {
-+				.phy_sus	= { 0x2000, 8, 0, 0, 0x1d1 },
-+				.bvalid_det_en	= { 0x20c0, 1, 1, 0, 1 },
-+				.bvalid_det_st	= { 0x20c4, 1, 1, 0, 1 },
-+				.bvalid_det_clr = { 0x20c8, 1, 1, 0, 1 },
-+				.idfall_det_en	= { 0x20c0, 4, 4, 0, 1 },
-+				.idfall_det_st	= { 0x20c4, 4, 4, 0, 1 },
-+				.idfall_det_clr = { 0x20c8, 4, 4, 0, 1 },
-+				.idrise_det_en	= { 0x20c0, 3, 3, 0, 1 },
-+				.idrise_det_st	= { 0x20c4, 3, 3, 0, 1 },
-+				.idrise_det_clr = { 0x20c8, 3, 3, 0, 1 },
-+				.ls_det_en	= { 0x20c0, 0, 0, 0, 1 },
-+				.ls_det_st	= { 0x20c4, 0, 0, 0, 1 },
-+				.ls_det_clr	= { 0x20c8, 0, 0, 0, 1 },
-+				.disfall_en	= { 0x20c0, 6, 6, 0, 1 },
-+				.disfall_st	= { 0x20c4, 6, 6, 0, 1 },
-+				.disfall_clr	= { 0x20c8, 6, 6, 0, 1 },
-+				.disrise_en	= { 0x20c0, 5, 5, 0, 1 },
-+				.disrise_st	= { 0x20c4, 5, 5, 0, 1 },
-+				.disrise_clr	= { 0x20c8, 5, 5, 0, 1 },
-+				.utmi_avalid	= { 0x2080, 1, 1, 0, 1 },
-+				.utmi_bvalid	= { 0x2080, 0, 0, 0, 1 },
-+				.utmi_id	= { 0x2080, 6, 6, 0, 1 },
-+				.utmi_ls	= { 0x2080, 5, 4, 0, 1 },
-+			}
-+		},
-+		.chg_det = {
-+			.cp_det		= { 0x2080, 8, 8, 0, 1 },
-+			.dcp_det	= { 0x2080, 8, 8, 0, 1 },
-+			.dp_det		= { 0x2080, 9, 9, 1, 0 },
-+			.idm_sink_en	= { 0x2010, 5, 5, 1, 0 },
-+			.idp_sink_en	= { 0x2010, 5, 5, 0, 1 },
-+			.idp_src_en	= { 0x2010, 14, 14, 0, 1 },
-+			.rdm_pdwn_en	= { 0x2010, 14, 14, 0, 1 },
-+			.vdm_src_en	= { 0x2010, 7, 6, 0, 3 },
-+			.vdp_src_en	= { 0x2010, 7, 6, 0, 3 },
-+		},
-+	},
-+	{ /* sentinel */ }
++static int rk3572_combphy_cfg(struct rockchip_combphy_priv *priv)
++{
++	const struct rockchip_combphy_grfcfg *cfg = priv->cfg->grfcfg;
++	unsigned long rate;
++
++	switch (priv->type) {
++	case PHY_TYPE_PCIE:
++		/* Set SSC downward spread spectrum */
++		rockchip_combphy_updatel(priv, GENMASK(5, 4), BIT(4), 0x7c);
++
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con0_for_pcie, true);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con1_for_pcie, true);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con2_for_pcie, true);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con3_for_pcie, true);
++		break;
++	case PHY_TYPE_USB3:
++		/* Set SSC downward spread spectrum */
++		rockchip_combphy_updatel(priv, GENMASK(5, 4), BIT(4), 0x7c);
++
++		/* Enable adaptive CTLE for USB3.0 Rx */
++		rockchip_combphy_updatel(priv, GENMASK(0, 0), BIT(0), 0x38);
++
++		/* Set PLL KVCO fine tuning signals */
++		rockchip_combphy_updatel(priv, GENMASK(4, 2), BIT(3), 0x80);
++
++		/* Set PLL LPF R1 to su_trim[10:7]=1001 */
++		writel(0x4, priv->mmio + (0xb << 2));
++
++		/* Set PLL input clock divider 1/2 */
++		rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0x14);
++
++		writel(0x32, priv->mmio + (0x11 << 2));
++
++		/* Set PLL KVCO to min and set PLL charge pump current to max */
++		writel(0xf0, priv->mmio + (0xa << 2));
++
++		/* Set Rx squelch input filter bandwidth */
++		writel(0x0d, priv->mmio + (0x14 << 2));
++
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_txcomp_sel, false);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_txelec_sel, false);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->usb_mode_set, true);
++		break;
++	case PHY_TYPE_SATA:
++		/* Enable adaptive CTLE for SATA Rx */
++		rockchip_combphy_updatel(priv, GENMASK(0, 0), BIT(0), 0x38);
++
++		/* Set tx_rterm = 50 ohm and rx_rterm = 43.5 ohm */
++		writel(0x8f, priv->mmio + (0x06 << 2));
++
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con0_for_sata, true);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con1_for_sata, true);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con2_for_sata, true);
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->con3_for_sata, true);
++		rockchip_combphy_param_write(priv->pipe_grf, &cfg->pipe_con0_for_sata, true);
++		rockchip_combphy_param_write(priv->pipe_grf, &cfg->pipe_con1_for_sata, true);
++		break;
++	default:
++		dev_err(priv->dev, "incompatible PHY type\n");
++		return -EINVAL;
++	}
++
++	rate = clk_get_rate(priv->refclk);
++
++	switch (rate) {
++	case 24000000:
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_24m, true);
++		if (priv->type == PHY_TYPE_USB3 || priv->type == PHY_TYPE_SATA) {
++			/* Set ssc_cnt[9:0]=0101111101 & 31.5KHz */
++			rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0xe << 2);
++
++			rockchip_combphy_updatel(priv, GENMASK(7, 0), 0x5f, 0xf << 2);
++		} else if (priv->type == PHY_TYPE_PCIE) {
++			/* PLL KVCO tuning fine */
++			rockchip_combphy_updatel(priv, GENMASK(4, 2), 0x4 << 2, 0x20 << 2);
++
++			writel(0x0, priv->mmio + (0x1b << 2));
++
++			/* Set up su_trim: T0_1 */
++			writel(0x90, priv->mmio + (0xa << 2));
++			writel(0x02, priv->mmio + (0xb << 2));
++			writel(0x57, priv->mmio + (0xd << 2));
++
++			writel(0x5f, priv->mmio + (0xf << 2));
++		}
++		break;
++	case 25000000:
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_25m, true);
++		break;
++	case 100000000:
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_100m, true);
++		if (priv->type == PHY_TYPE_PCIE) {
++			/* gate_tx_pck_sel length select work for L1SS */
++			writel(0xc0, priv->mmio + 0x74);
++
++			/* PLL KVCO tuning fine */
++			rockchip_combphy_updatel(priv, GENMASK(4, 2), 0x4 << 2, 0x20 << 2);
++
++			/* Set up rx_trim: PLL LPF C1 85pf R1 1.25kohm */
++			writel(0x4c, priv->mmio + (0x1b << 2));
++
++			/* Set up su_trim: T3_P1 650mv */
++			writel(0x90, priv->mmio + (0xa << 2));
++			writel(0x43, priv->mmio + (0xb << 2));
++			writel(0x88, priv->mmio + (0xc << 2));
++			writel(0x56, priv->mmio + (0xd << 2));
++		} else if (priv->type == PHY_TYPE_SATA) {
++			/* downward spread spectrum +500ppm */
++			rockchip_combphy_updatel(priv, GENMASK(7, 4), 0x50, 0x1f << 2);
++
++			/* ssc ppm adjust to 3500ppm */
++			rockchip_combphy_updatel(priv, GENMASK(3, 0), 0x7, 0x9 << 2);
++		}
++		break;
++	default:
++		dev_err(priv->dev, "Unsupported rate: %lu\n", rate);
++		return -EINVAL;
++	}
++
++	if (priv->ext_refclk) {
++		rockchip_combphy_param_write(priv->phy_grf, &cfg->pipe_clk_ext, true);
++		if (priv->type == PHY_TYPE_PCIE && rate == 100000000) {
++			writel(0x10, priv->mmio + (0x20 << 2));
++
++			writel(0x0c, priv->mmio + (0x1b << 2));
++
++			/*
++			 * Set up su_trim: T3_P1 650mv
++			 * CKRCV termination resistor adjust 11: Hi-Z
++			 */
++			writel(0x90, priv->mmio + (0xa << 2));
++			writel(0x43, priv->mmio + (0xb << 2));
++			writel(0xb8, priv->mmio + (0xc << 2));
++			writel(0x56, priv->mmio + (0xd << 2));
++		}
++	}
++
++	if (priv->enable_ssc) {
++		rockchip_combphy_updatel(priv, GENMASK(4, 4), BIT(4), 0x7 << 2);
++		/* PLL control SSC module period should be set */
++		rockchip_combphy_updatel(priv, GENMASK(5, 5), BIT(5), 0x20 << 2);
++
++		if (priv->type == PHY_TYPE_PCIE && rate == 24000000) {
++			/* xin24m T0_1 650mV */
++			writel(0x00, priv->mmio + (0x10 << 2));
++			writel(0x32, priv->mmio + (0x11 << 2));
++			writel(0x00, priv->mmio + (0x1b << 2));
++			writel(0x90, priv->mmio + (0x0a << 2));
++			writel(0x02, priv->mmio + (0x0b << 2));
++			writel(0x08, priv->mmio + (0x0c << 2));
++			writel(0x57, priv->mmio + (0x0d << 2));
++			writel(0x40, priv->mmio + (0x0e << 2));
++			writel(0x5f, priv->mmio + (0x0f << 2));
++			writel(0x10, priv->mmio + (0x20 << 2));
++			/* ssc_cnt: 0101111101 & 31.5KHz */
++			rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0xe << 2);
++			rockchip_combphy_updatel(priv, GENMASK(7, 0), 0x5f, 0xf << 2);
++		} else if (priv->type == PHY_TYPE_PCIE && rate == 100000000) {
++			/* ssc_cnt: 1000110001 & 31.5KHz */
++			rockchip_combphy_updatel(priv, GENMASK(7, 6), BIT(6), 0xe << 2);
++			rockchip_combphy_updatel(priv, GENMASK(7, 0), 0x8c, 0xf << 2);
++		}
++	}
++
++	if (priv->type == PHY_TYPE_PCIE)
++		rockchip_combphy_updatel(priv, BIT(5), BIT(5), 0x64);
++
++	return 0;
++}
++
++static const struct rockchip_combphy_grfcfg rk3572_combphy_grfcfgs = {
++	/* pipe-phy-grf */
++	.usb_mode_set		= { 0x0000, 5, 0, 0x00, 0x04 },
++	.pipe_clk_24m		= { 0x0004, 14, 13, 0x00, 0x00 },
++	.pipe_clk_25m		= { 0x0004, 14, 13, 0x00, 0x01 },
++	.pipe_clk_100m		= { 0x0004, 14, 13, 0x00, 0x02 },
++	.pipe_txelec_sel	= { 0x0008, 12, 12, 0x00, 0x01 },
++	.pipe_txcomp_sel	= { 0x0008, 15, 15, 0x00, 0x01 },
++	.pipe_clk_ext		= { 0x000c, 9, 8, 0x02, 0x01 },
++	.pipe_phy_status	= { 0x0034, 6, 6, 0x01, 0x00 },
++	.con0_for_pcie		= { 0x0000, 15, 0, 0x00, 0x1000 },
++	.con1_for_pcie		= { 0x0004, 15, 0, 0x00, 0x0000 },
++	.con2_for_pcie		= { 0x0008, 15, 0, 0x00, 0x0101 },
++	.con3_for_pcie		= { 0x000c, 15, 0, 0x00, 0x0200 },
++	.con0_for_sata		= { 0x0000, 15, 0, 0x00, 0x0129 },
++	.con1_for_sata		= { 0x0004, 15, 0, 0x00, 0x0000 },
++	.con2_for_sata		= { 0x0008, 15, 0, 0x00, 0x80c1 },
++	.con3_for_sata		= { 0x000c, 15, 0, 0x00, 0x0407 },
++	/* php-grf */
++	.pipe_con0_for_sata	= { 0x0058, 2, 0, 0x00, 0x2 },
++	.pipe_con1_for_sata	= { 0x005c, 2, 0, 0x00, 0x2 },
 +};
 +
- static const struct rockchip_usb2phy_cfg rk3576_phy_cfgs[] = {
++static const struct rockchip_combphy_cfg rk3572_combphy_cfgs = {
++	.grfcfg		= &rk3572_combphy_grfcfgs,
++	.combphy_cfg	= rk3572_combphy_cfg,
++};
++
+ static int rk3576_combphy_cfg(struct rockchip_combphy_priv *priv)
+ {
+ 	const struct rockchip_combphy_grfcfg *cfg = priv->cfg->grfcfg;
+@@ -1407,6 +1605,9 @@ static const struct of_device_id rockchip_combphy_of_match[] = {
+ 		.data = &rk3568_combphy_cfgs,
+ 	},
  	{
- 		.reg = 0x0,
-@@ -2378,6 +2513,7 @@ static const struct of_device_id rockchip_usb2phy_dt_match[] = {
- 	{ .compatible = "rockchip,rk3528-usb2phy", .data = &rk3528_phy_cfgs },
- 	{ .compatible = "rockchip,rk3562-usb2phy", .data = &rk3562_phy_cfgs },
- 	{ .compatible = "rockchip,rk3568-usb2phy", .data = &rk3568_phy_cfgs },
-+	{ .compatible = "rockchip,rk3572-usb2phy", .data = &rk3572_phy_cfgs },
- 	{ .compatible = "rockchip,rk3576-usb2phy", .data = &rk3576_phy_cfgs },
- 	{ .compatible = "rockchip,rk3588-usb2phy", .data = &rk3588_phy_cfgs },
- 	{ .compatible = "rockchip,rv1108-usb2phy", .data = &rv1108_phy_cfgs },
++		.compatible = "rockchip,rk3572-naneng-combphy",
++		.data = &rk3572_combphy_cfgs,
++	}, {
+ 		.compatible = "rockchip,rk3576-naneng-combphy",
+ 		.data = &rk3576_combphy_cfgs,
+ 	},
 
 -- 
 2.34.1
