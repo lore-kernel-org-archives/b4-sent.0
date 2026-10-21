@@ -1,16 +1,12 @@
 From: Serv Pol <servpol@tuta.io>
-Subject: [PATCH v2 0/2] power: supply: Add GL.iNet GL-E750 MCU battery
- driver
-Date: Wed, 21 Oct 2026 19:33:42 +0000
-Message-Id: <20261021-gl-e750-mcu-v2-0-9bd7e7c2e0e1@tuta.io>
+Date: Wed, 21 Oct 2026 19:33:43 +0000
+Subject: [PATCH v2 1/2] dt-bindings: power: supply: Add GL.iNet GL-E750 MCU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAJYT2WoC/22NQQ6CMBBFr0Jm7Zi2ShFX3sOwwHaAMUpNW4iGc
- Hdb3Lp8yfvvLxDIMwU4Fwt4mjmwGxOoXQFmaMeekG1iUEJpKUSJ/QOpKgU+zYSdFtoYq7UlA2n
- x8tTxe6tdmx+H6XYnE3MiGwOH6Pxnu5tl9v6XZ4kCj3VtFR1kV530JU6x3bODZl3XL7snm3y2A
- AAA
-X-Change-ID: 20261005-gl-e750-mcu-f606ccd66dec
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261021-gl-e750-mcu-v2-1-9bd7e7c2e0e1@tuta.io>
+References: <20261021-gl-e750-mcu-v2-0-9bd7e7c2e0e1@tuta.io>
+In-Reply-To: <20261021-gl-e750-mcu-v2-0-9bd7e7c2e0e1@tuta.io>
 To: Serv Pol <servpol@tuta.io>, Sebastian Reichel <sre@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
@@ -19,77 +15,90 @@ Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org,
  =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792611222; l=3137;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792611222; l=2333;
  i=servpol@tuta.io; s=20261005; h=from:subject:message-id;
- bh=UTjoj589VJYwISLkJrhvgw9JTnsKO/syLAvRB7fBWoQ=;
- b=WYNQ9ZC1fBbLGfWA0V/dav1NktTsJSRnfvwcBMrIny4+mPibtkF+GsSpAOKDoP1PBROTacwf9
- /Dd5ZHnFaoFAham753+6e+0W7abwOU9/a9v91oNd35QFFe8Kuq5pq33
+ bh=NV3B8WNtquyc/QmniTSXc3WtCmSQvbnSES0fh7ui05g=;
+ b=sw8n4tb9dg9MNaNTOTpmjGGaSxYOUo3FmWMI8cY6WY5pfXvlSyqW/d1lmcDuA9ni3Ggp7FNIy
+ NMjdgkKyas7AtHg5k+RpqcADz/GA0tMiQGAd02BrJfk9F/dAKKoVBYy
 X-Developer-Key: i=servpol@tuta.io; a=ed25519;
  pk=2HCjaqYjXxgwTYu30Nem9DOHT8mtKgjitt1vEXKpwrE=
 X-Endpoint-Received: by B4 Relay for servpol@tuta.io/20261005 with auth_id=1120
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The GL.iNet GL-E750 (Mudi) is a battery powered LTE travel router
-(QCA9531). A microcontroller on the SoC UART drives the OLED status
-screen, monitors the battery and watches the power switch. The host talks
-to it in text lines of JSON; on request it reports the battery state, and
-when the power switch is turned off it sends a notification a few seconds
-before cutting the power.
+The GL.iNet GL-E750 (Mudi) travel router has a microcontroller on the SoC
+UART. It drives the OLED status screen, monitors the battery and reports
+when the power switch is turned off, a few seconds before it cuts the
+power. Add a binding for it.
 
-This series adds a binding and a serdev driver that exposes the battery
-through the power_supply class and shuts the system down cleanly when the
-switch is turned off. The screen content (SSIDs, clients, cellular state,
-free-form vendor JSON) is deliberately left out.
-
-The board itself is supported by OpenWrt (ath79), not by an in-tree DTS,
-so there is no in-tree user of the binding yet. The OpenWrt side is at
-https://github.com/openwrt/openwrt/pull/25649
-
-Testing: OpenWrt main with kernel 6.18, v1 of this series on a GL-E750
-V1 and this version on a GL-E750 V2. Battery properties read back as
-expected (capacity, status, temperature, cycle count), the module was
-unloaded and reloaded repeatedly without warnings, and turning the power
-switch off logs "power switch turned off, shutting down" and leads to a
-clean shutdown before the MCU removes power. The receive path was also
-run in a userspace harness with ASan and UBSan, feeding replies and
-events with and without line endings, glued together and split across
-poll boundaries. On this tree: checkpatch --strict, W=1 and sparse
-builds, and dt_binding_check are clean.
-
-Tool use: the driver, the binding and the changelogs were written with
-the help of an AI coding assistant (Claude, claude-opus-5-5), based on
-the vendor protocol description at
-https://github.com/gl-inet/GL-E750-MCU-instruction and on traces of the
-MCU traffic on the device. I reviewed the code, tested it on the
-hardware as described above and am responsible for it.
-
+Assisted-by: Claude:claude-opus-5-5
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Signed-off-by: Serv Pol <servpol@tuta.io>
 ---
-Changes in v2:
-- Do not drop messages from the MCU when a status reply comes without a
-  line ending: a new message (they all start with '{') now ends the
-  previous one, and the poll work only consumes a pending status reply
-  instead of clearing the receive buffer, so a power switch event that
-  is being received is no longer lost (Sashiko AI review).
-- Drop <linux/mod_devicetable.h>, <linux/serdev.h> provides of_device_id
-  (Uwe Kleine-König).
-- Link to v1: https://patch.msgid.link/20261005-gl-e750-mcu-v1-0-499d2e31f786@tuta.io
+ .../bindings/power/supply/glinet,gl-e750-mcu.yaml  | 37 ++++++++++++++++++++++
+ MAINTAINERS                                        |  6 ++++
+ 2 files changed, 43 insertions(+)
 
----
-Serv Pol (2):
-      dt-bindings: power: supply: Add GL.iNet GL-E750 MCU
-      power: supply: Add GL.iNet GL-E750 MCU battery driver
+diff --git a/Documentation/devicetree/bindings/power/supply/glinet,gl-e750-mcu.yaml b/Documentation/devicetree/bindings/power/supply/glinet,gl-e750-mcu.yaml
+new file mode 100644
+index 000000000..a7ea4dde8
+--- /dev/null
++++ b/Documentation/devicetree/bindings/power/supply/glinet,gl-e750-mcu.yaml
+@@ -0,0 +1,37 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/power/supply/glinet,gl-e750-mcu.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: GL.iNet GL-E750 status MCU
++
++maintainers:
++  - Serv Pol <servpol@tuta.io>
++
++description:
++  The GL.iNet GL-E750 (Mudi) travel router has a microcontroller connected
++  to the SoC UART. It drives the OLED status screen, monitors the battery
++  and reports when the power switch is turned off, a few seconds before it
++  cuts the power.
++
++allOf:
++  - $ref: power-supply.yaml#
++  - $ref: /schemas/serial/serial-peripheral-props.yaml#
++
++properties:
++  compatible:
++    const: glinet,gl-e750-mcu
++
++required:
++  - compatible
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    serial {
++        mcu {
++            compatible = "glinet,gl-e750-mcu";
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 3a19da74d..247432449 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -11105,6 +11105,12 @@ L:	platform-driver-x86@vger.kernel.org
+ S:	Maintained
+ F:	drivers/platform/x86/gigabyte-wmi.c
+ 
++GL.INET GL-E750 MCU BATTERY DRIVER
++M:	Serv Pol <servpol@tuta.io>
++L:	linux-pm@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/power/supply/glinet,gl-e750-mcu.yaml
++
+ GNSS SUBSYSTEM
+ M:	Johan Hovold <johan@kernel.org>
+ S:	Maintained
 
- .../bindings/power/supply/glinet,gl-e750-mcu.yaml  |  37 +++
- MAINTAINERS                                        |   7 +
- drivers/power/supply/Kconfig                       |  13 +
- drivers/power/supply/Makefile                      |   1 +
- drivers/power/supply/gl-e750-mcu.c                 | 369 +++++++++++++++++++++
- 5 files changed, 427 insertions(+)
----
-base-commit: 5c1c602463d597c5189ddc5a73dece588ba2c57a
-change-id: 20261005-gl-e750-mcu-f606ccd66dec
-
-Best regards,
---  
-Serv Pol <servpol@tuta.io>
+-- 
+2.47.3
 
