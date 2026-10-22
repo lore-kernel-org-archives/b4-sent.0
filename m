@@ -1,133 +1,110 @@
 From: Cristian Filipescu <filipescu.cristian@gmail.com>
-Date: Thu, 22 Oct 2026 05:55:02 +0000
-Subject: [PATCH v2 2/2] sunxi: Add Orange Pi 3 LTS defconfig
+Subject: [PATCH v2 0/2] arm64: dts: allwinner: Support Orange Pi 3 LTS
+Date: Thu, 22 Oct 2026 05:56:04 +0000
+Message-Id: <20261022-sunxi-orangepi-3-lts-v2-0-70b899252c6a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-sunxi-orangepi-3-lts-v2-2-46b9df5f9e43@gmail.com>
-References: <20261022-sunxi-orangepi-3-lts-v2-0-46b9df5f9e43@gmail.com>
-In-Reply-To: <20261022-sunxi-orangepi-3-lts-v2-0-46b9df5f9e43@gmail.com>
-To: u-boot@lists.u-boot-project.org
-Cc: Andre Przywara <andre.przywara@arm.com>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Hans de Goede <hdegoede@redhat.com>, 
+X-B4-Tracking: v=1; b=H4sIAHSl2WoC/yWM3Q6CMAxGX4X02iZYCFFfxXixjSo1ZJCVmSWEd
+ 3fVy/P9nB2Uk7DCrdkh8UdUlliBTg2EycUXo4yVgVoazi0Rao5FcEnWrYIdzpti3/krUT+4C49
+ Qr2vip5Sf9v74s2b/5rCZyxbeKaOvljBZNEvMBS2E4/gCnxZUk5UAAAA=
+X-Change-ID: 20261022-sunxi-orangepi-3-lts-43b92246a8ed
+To: linux-sunxi@lists.linux.dev, devicetree@vger.kernel.org, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Andre Przywara <andre.przywara@arm.com>, linux-kernel@vger.kernel.org, 
  Cristian Filipescu <filipescu.cristian@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792648514; l=3227;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792648566; l=4037;
  i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
- bh=wQbVA8bqEQVClwmJkwr0zVm+czfrqdl+XPM9uwHmMGM=;
- b=nitYkL+q0Mhp42nAwwGN+0BdMJbMnkLgqG8LCiXzI04SbHC/ENhCxvXJuvBipi3hgUasyvB7v
- UDUwhonlSUMDD8alFoX5VQ3E0ADi1yK6qBKUqEORGiuwQ1N5rtEEqmr
+ bh=UWARrsbcfqqgmoUfwye7apXutTup2/cnkBWxxeBO1G8=;
+ b=Fis/SI/NwEVhlFc/JEIH4uS2Tg4IpEa6L7GSS4krojtK6zXY72tIac9VY33JDqYQLUakPuHBD
+ mf7uB3uRGEjAK/yrElPyLps0orgN6OxFJqhGscpGQQD6biyzSw/xulm
 X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
  pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
 X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a separate configuration for the Orange Pi 3 LTS, using its local
-device tree rather than the original Orange Pi 3 board description.
+Continue Jernej Skrabec's April 2025 Orange Pi 3 LTS series, retaining
+his authorship and Rob Herring's acknowledgement of the binding patch:
+https://lore.kernel.org/linux-sunxi/20250413134318.66681-1-jernej.skrabec@gmail.com/
 
-Reuse the H6 LPDDR3, SD/eMMC and USB configuration from orangepi_3.
-Enable the sun8i EMAC and Motorcomm PHY driver for the LTS Ethernet
-hardware, and omit the AP6256-specific Bluetooth fixup used by the
-original board.
+Add the board compatible and a device tree for the Allwinner H6-based
+Orange Pi 3 LTS, with 2 GiB LPDDR3, 8 GiB eMMC, Motorcomm YT8531C
+Ethernet PHY, USB host ports and HDMI. The wireless module's SDIO wiring
+and power supplies are described; working Wi-Fi/Bluetooth is not claimed.
 
-Enable GPIO LEDs in main U-Boot to light the green power LED on PL7.
-Leave the early SPL status LED disabled. At the OS handoff, turn off
-green and turn on red before Linux initializes its LED driver. Limit
-this indication to the Orange Pi 3 LTS board compatible.
+Changes since v1:
+- Rebase onto current mainline Linux.
+- Fix oscillator naming and use CLK_OSC32K_FANOUT.
+- Chain the GMAC and wireless 3.3 V regulators to their input supply.
+- Keep BLDO3 always on and describe the PM-bank supply.
+- Document the DCDCA/DCDCB polyphase arrangement.
+- Use rgmii-id with zero MAC delays and 1950 ps PHY RX/TX delays,
+  following the Ethernet discussion in the original review.
+- Use green PL7 as the power LED and red PL4 as the status LED.
+- Default green off and red on for Linux startup; userspace can clear
+  both at its readiness milestone. U-Boot overrides its own defaults.
 
-Extend the board maintainer entry to cover the new configuration.
+The device-tree hardware settings match the accompanying U-Boot series;
+only include paths differ. U-Boot boot tests of the earlier red-LED
+revision confirmed 2 GiB RAM, SD/eMMC enumeration, DHCP and ping.
+The submitted green-LED U-Boot revision also booted the Linux test
+image from SD. The corrected U-Boot handoff LED sequence has also
+been confirmed on the board.
+
+Validation:
+- Compile both the new LTS DTB and the existing Orange Pi 3 DTB.
+- Run dt_binding_check for arm/sunxi.yaml.
+- Validate both board DTBs against the full processed schema set.
+- Run checkpatch --strict, ignoring FILE_PATH_CHANGES because the new
+  DTS is already covered by the Allwinner MAINTAINERS directory pattern.
+- Build an Allwinner-focused arm64 diagnostic kernel with the required
+  drivers built in and a separate BusyBox initramfs for RAM-only testing.
+
+The proposed eMMC properties remain conservative. Higher-speed eMMC
+modes and the earlier LED drive-strength question are not resolved by
+this revision's build and schema checks.
+
+On-board Linux testing with the diagnostic CONFIG_MODULES=y kernel
+reaches the RAM shell with four CPUs and 2 GiB RAM. AXP806 regulators
+initialize successfully; SD, eMMC and an SDIO card enumerate; eth0 and
+USB host root hubs register. An earlier CONFIG_MODULES=n diagnostic
+build failed to defer pinctrl probing and timed out accessing the PMIC.
+The latest test no longer exhibits that failure.
+
+The YT8531 PHY links at 1 Gbps/full duplex; DHCP, DNS and an IPv6
+Internet ping passed (2/2 received). Two direct 8 MiB reads from each
+of SD and eMMC compared identical. Two cold starts with LED, shell and
+Ethernet checks were confirmed. Sustained transfer, external USB device
+transfers and HDMI output remain untested.
+The installed Fedora IoT deployment is untouched. The test initramfs
+clears both LEDs before opening the shell. After updating the bootloader, Cristian confirmed the complete
+sequence: green in main U-Boot, red at Starting kernel, both off at
+the diagnostic shell.
+
+Codex assisted with adapting the original DTS and review feedback,
+preparing this cover and container build/test tooling, and analyzing
+the supplied serial log. The board boot was performed by Cristian.
 
 Signed-off-by: Cristian Filipescu <filipescu.cristian@gmail.com>
 ---
- board/sunxi/MAINTAINERS          |  1 +
- board/sunxi/board.c              | 19 +++++++++++++++++++
- configs/orangepi_3_lts_defconfig | 19 +++++++++++++++++++
- 3 files changed, 39 insertions(+)
+Jernej Skrabec (2):
+      dt-bindings: arm: sunxi: Add Orange Pi 3 LTS board
+      arm64: dts: allwinner: h6: Add Orange Pi 3 LTS
 
-diff --git a/board/sunxi/MAINTAINERS b/board/sunxi/MAINTAINERS
-index e84219e2..6a47b9cc 100644
---- a/board/sunxi/MAINTAINERS
-+++ b/board/sunxi/MAINTAINERS
-@@ -442,6 +442,7 @@ ORANGEPI 3 LTS BOARD
- M:	Cristian Filipescu <filipescu.cristian@gmail.com>
- S:	Maintained
- F:	arch/arm/dts/sun50i-h6-orangepi-3-lts.dts
-+F:	configs/orangepi_3_lts_defconfig
- F:	arch/arm/dts/sun50i-h6-orangepi-3-lts-u-boot.dtsi
- 
- ORANGEPI 4A BOARD
-diff --git a/board/sunxi/board.c b/board/sunxi/board.c
-index 3d1afec7..7b735a26 100644
---- a/board/sunxi/board.c
-+++ b/board/sunxi/board.c
-@@ -10,6 +10,7 @@
-  * Some board init for the Allwinner A10-evb board.
-  */
- 
-+#include <bootm.h>
- #include <clock_legacy.h>
- #include <dm.h>
- #include <env.h>
-@@ -17,6 +18,7 @@
- #include <i2c.h>
- #include <image.h>
- #include <init.h>
-+#include <led.h>
- #include <log.h>
- #include <mmc.h>
- #include <axp_pmic.h>
-@@ -875,6 +877,23 @@ int board_late_init(void)
- 	return 0;
- }
- 
-+void board_quiesce_devices(void)
-+{
-+	struct udevice *dev;
-+
-+	if (!CONFIG_IS_ENABLED(LED))
-+		return;
-+
-+	if (!of_machine_is_compatible("xunlong,orangepi-3-lts"))
-+		return;
-+
-+	/* Indicate the OS handoff before Linux initializes its LED driver. */
-+	if (!led_get_by_label("red:status", &dev))
-+		led_set_state(dev, LEDST_ON);
-+	if (!led_get_by_label("green:power", &dev))
-+		led_set_state(dev, LEDST_OFF);
-+}
-+
- static void bluetooth_dt_fixup(void *blob)
- {
- 	/* Some devices ship with a Bluetooth controller default address.
-diff --git a/configs/orangepi_3_lts_defconfig b/configs/orangepi_3_lts_defconfig
-new file mode 100644
-index 00000000..b7571134
---- /dev/null
-+++ b/configs/orangepi_3_lts_defconfig
-@@ -0,0 +1,19 @@
-+CONFIG_ARM=y
-+CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="sun50i-h6-orangepi-3-lts"
-+CONFIG_SPL=y
-+CONFIG_MACH_SUN50I_H6=y
-+CONFIG_SUNXI_DRAM_H6_LPDDR3=y
-+CONFIG_MMC_SUNXI_SLOT_EXTRA=2
-+# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
-+CONFIG_LED=y
-+CONFIG_LED_GPIO=y
-+CONFIG_SUN8I_EMAC=y
-+CONFIG_PHY_MOTORCOMM=y
-+CONFIG_PHY_SUN50I_USB3=y
-+CONFIG_USB_XHCI_HCD=y
-+CONFIG_USB_XHCI_DWC3=y
-+CONFIG_USB_EHCI_HCD=y
-+CONFIG_USB_OHCI_HCD=y
-+CONFIG_USB_DWC3=y
-+# CONFIG_USB_DWC3_GADGET is not set
+ Documentation/devicetree/bindings/arm/sunxi.yaml   |   5 +
+ arch/arm64/boot/dts/allwinner/Makefile             |   1 +
+ .../dts/allwinner/sun50i-h6-orangepi-3-lts.dts     | 362 +++++++++++++++++++++
+ 3 files changed, 368 insertions(+)
+---
+base-commit: 4403278e4ea2f654f8130a5c03eb8b4516a0f201
+change-id: 20261022-sunxi-orangepi-3-lts-43b92246a8ed
 
--- 
-2.47.3
+Best regards,
+--  
+Cristian Filipescu <filipescu.cristian@gmail.com>
 
