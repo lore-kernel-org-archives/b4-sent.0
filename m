@@ -1,11 +1,10 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:49 -0700
-Subject: [PATCH RFC v2 17/50] KVM: selftests: Test guest execution with
- tmpfs-backed guest_memfd
+Date: Thu, 22 Oct 2026 16:27:50 -0700
+Subject: [PATCH RFC v2 18/50] KVM: selftests: Document testing TODOs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-17-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-18-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,97 +55,44 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2755;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1090;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=N/vFySqhzz3dW65J5EFhyRFk6LB15JoXBGCroknEhCY=;
- b=3+azDMpNzGZAiJkCGhllbXDoBCpuaO/CIda4zJwz+p2iQFNCnYOkkJsCYKEeJ8sHTzGm/Ysn5
- 3a9n4kDRMwxBk2Rd61BgxYePCJBJJicbcrt0PQ/kcPF9PlmC9M9qTi7
+ bh=godniHxo7p4sYODKlWAWDg9KeRfwB6fIAgZfycigz1Q=;
+ b=R/i8dl0tqQod9u3IUnuGkBBKRl2LJ9IKnGENBg55uwgkzUZW5KjiPzoLy20NMDOZmJNRCJmxC
+ qpTDu1tB11kDJPvQLZ9ngBvCkOGGIMqds0dr+HS7ETGioatdbrFK0Wy
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Test that a guest vCPU can execute instructions and read/write memory
-mapped into a guest_memfd instance that is backed by a tmpfs resource
-pool descriptor.
+Remind myself about all the tests (A)I did not write.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/testing/selftests/kvm/guest_memfd_test.c | 56 ++++++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+ tools/testing/selftests/kvm/guest_memfd_test.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index 20de24ad535f1..8e9261db23354 100644
+index 8e9261db23354..fd249445ce3cc 100644
 --- a/tools/testing/selftests/kvm/guest_memfd_test.c
 +++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -799,6 +799,61 @@ static void test_guest_memfd_guest(void)
- 	kvm_vm_free(vm);
- }
+@@ -701,6 +701,16 @@ static void test_guest_memfd(unsigned long vm_type)
  
-+static void test_guest_memfd_guest_resource(void)
-+{
-+	const gpa_t gpa = SZ_4G;
-+	const int slot = 1;
-+	struct kvm_vcpu *vcpu;
-+	struct kvm_vm *vm;
-+	int pool_fd, fd, i;
-+	size_t size;
-+	u8 *mem;
-+
-+	if (!kvm_check_cap(KVM_CAP_GUEST_MEMFD_FLAGS))
-+		return;
-+
-+	pool_fd = create_tmpfs_pool_fd("never", true, page_size);
-+	if (pool_fd < 0)
-+		TEST_REQUIRE(false);
-+
-+	vm = __vm_create_shape_with_one_vcpu(VM_SHAPE_DEFAULT, &vcpu, 1, guest_code);
-+
-+	TEST_ASSERT(vm_check_cap(vm, KVM_CAP_GUEST_MEMFD_FLAGS) & GUEST_MEMFD_FLAG_MMAP,
-+		    "Default VM type should support MMAP, supported flags = 0x%x",
-+		    vm_check_cap(vm, KVM_CAP_GUEST_MEMFD_FLAGS));
-+	TEST_ASSERT(vm_check_cap(vm, KVM_CAP_GUEST_MEMFD_FLAGS) & GUEST_MEMFD_FLAG_INIT_SHARED,
-+		    "Default VM type should support INIT_SHARED, supported flags = 0x%x",
-+		    vm_check_cap(vm, KVM_CAP_GUEST_MEMFD_FLAGS));
-+
-+	size = max_t(size_t, vm->page_size, page_size);
-+	fd = __vm_create_guest_memfd_resource(vm, size,
-+					      GUEST_MEMFD_FLAG_MMAP |
-+					      GUEST_MEMFD_FLAG_INIT_SHARED |
-+					      GUEST_MEMFD_FLAG_USE_RESOURCE,
-+					      pool_fd);
-+	TEST_ASSERT(fd >= 0, "guest_memfd with tmpfs pool should succeed");
-+
-+	vm_set_user_memory_region2(vm, slot, KVM_MEM_GUEST_MEMFD, gpa, size, NULL, fd, 0);
-+
-+	mem = kvm_mmap(size, PROT_READ | PROT_WRITE, MAP_SHARED, fd);
-+	memset(mem, 0xaa, size);
-+	kvm_munmap(mem, size);
-+
-+	virt_map(vm, gpa, gpa, size / vm->page_size);
-+	vcpu_args_set(vcpu, 2, gpa, size);
-+	vcpu_run(vcpu);
-+
-+	TEST_ASSERT_EQ(get_ucall(vcpu, NULL), UCALL_DONE);
-+
-+	mem = kvm_mmap(size, PROT_READ | PROT_WRITE, MAP_SHARED, fd);
-+	for (i = 0; i < size; i++)
-+		TEST_ASSERT_EQ(mem[i], 0xff);
-+
-+	close(fd);
-+	close(pool_fd);
-+	kvm_vm_free(vm);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	unsigned long vm_types, vm_type;
-@@ -819,4 +874,5 @@ int main(int argc, char *argv[])
- 		test_guest_memfd(vm_type);
+ 	test_guest_memfd_flags(vm);
  
- 	test_guest_memfd_guest();
-+	test_guest_memfd_guest_resource();
- }
++	/*
++	 * TODO: Test that guest_memfd creation rejects a read-only tmpfs mount
++	 * (e.g. MOUNT_ATTR_RDONLY) with EROFS.
++	 *
++	 * TODO: Test that guest_memfd creation rejects an ID-mapped tmpfs mount
++	 * (e.g. MOUNT_ATTR_IDMAP) lacking write or execute/search permissions
++	 * with EACCES.
++	 *
++	 * TODO: Test mpol fallback to mount config.
++	 */
+ 	test_resource_fd_invalid(vm);
+ 	test_resource_fd_unsupported_fs(vm);
+ 	test_resource_fd_memfd(vm);
 
 -- 
 2.56.0.257.gf7497c7d27-goog
