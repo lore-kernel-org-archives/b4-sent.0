@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:09 -0700
-Subject: [PATCH RFC v2 37/50] KVM: guest_memfd: Clamp hole punch range to
- inode size
+Date: Thu, 22 Oct 2026 16:28:10 -0700
+Subject: [PATCH RFC v2 38/50] KVM: guest_memfd: Support reclaim during hole
+ punch in PFN mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-37-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-38-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,59 +56,91 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1715;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2795;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Ut3EG2X8EgvKSaBojxaqm0LiB2HnrF3D2O2Y+AYN1/Y=;
- b=jo/4WWFNvWE8UoSL4NCOGTXbPX2nxWqhjWOUWHhJrS6DawmFBYoi1UqBJasPAgclf7meDCcbv
- YOiCtyF/mLqBLfaOlIGaylK/087Z2EOgIL+qnlQIM75VfdQUjqKDaUE
+ bh=Amg9h7PFK16CNLlu8wPc8g3msTSzfsY9jcWdvuN1E3s=;
+ b=juwFRws8T0z3x8gJBTIgAzHVW9gxXr/0rumZeyTIjNlEMf+me1eQ7r0gWp5QZxgPTATu/OJdn
+ y897sKLaSagDVXPEqUTUL67SrR2vlPH17j+23zbPqaOnlyFKKID2cBN
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When userspace punches a hole via fallocate, the VFS only validates that
-the offset and length do not overflow the superblock maximum file size,
-allowing ranges that extend past the end of the guest_memfd inode.
+In PFN mode, guest_memfd does not allocate or insert folios into the page
+cache (inode->i_mapping). Calling truncate_inode_pages_range() is therefore
+unnecessary.
 
-In folio mode, truncating page cache folios past the end of the inode is a
-fast no-op because the page cache xarray has no entries beyond the inode
-size.
+Instead, call unmap_mapping_range() when in PFN mode to unmap any host
+userspace PTEs over the punched range, while retaining
+kvm_gmem_invalidate_start() and kvm_gmem_invalidate_end() to zap stage-2
+KVM SPTEs.
 
-Prepare for PFN mode by clamping the hole punch range to the inode size and
-returning early if the starting offset is at or beyond the end of the file.
-
-This avoids, in PFN mode, iterating across a potentially huge punched range
-where the provider isn't even providing that memory to guest_memfd.
-
-For folios, no functional change intended.
+Reclaim any confidential architecture state (e.g. SEV-SNP RMP) on provider
+PFNs across the punched range via kvm_gmem_pfn_reclaim(), querying
+.lookup_pfn_range() to skip unallocated holes without allocating memory.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ virt/kvm/guest_memfd.c | 32 ++++++++++++++++++++++++++++++--
+ 1 file changed, 30 insertions(+), 2 deletions(-)
 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index f0c5162cc7a7f..206b90646c743 100644
+index 206b90646c743..0819c3653e88a 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -382,8 +382,15 @@ static void kvm_gmem_invalidate_end(struct inode *inode, pgoff_t start,
+@@ -143,7 +143,7 @@ static int gmem_provider_get_pfn(struct gmem_inode *gi, pgoff_t index,
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT
++#if defined(CONFIG_HAVE_KVM_ARCH_GMEM_CONVERT) || defined(CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM)
+ static int gmem_provider_lookup_pfn_range(struct gmem_inode *gi, pgoff_t index,
+ 					  kvm_pfn_t *pfn, size_t *nr_pages)
+ {
+@@ -379,6 +379,29 @@ static void kvm_gmem_invalidate_end(struct inode *inode, pgoff_t start,
+ 		__kvm_gmem_invalidate_end(f, start, end);
+ }
+ 
++#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_RECLAIM
++static void kvm_gmem_pfn_reclaim(struct gmem_inode *gi, pgoff_t start, pgoff_t end)
++{
++	pgoff_t index;
++
++	for (index = start; index < end; ) {
++		size_t step = 1;
++		size_t nr_pages;
++		kvm_pfn_t pfn;
++
++		if (!gmem_provider_lookup_pfn_range(gi, index, &pfn, &nr_pages)) {
++			step = min_t(size_t, nr_pages, end - index);
++			kvm_arch_gmem_reclaim(pfn, step);
++		}
++
++		index += step;
++		cond_resched();
++	}
++}
++#else
++static void kvm_gmem_pfn_reclaim(struct gmem_inode *gi, pgoff_t start, pgoff_t end) {}
++#endif
++
  static long kvm_gmem_punch_hole(struct inode *inode, loff_t offset, loff_t len)
  {
  	enum kvm_gfn_range_filter filter = kvm_gmem_get_all_gfns_filter(inode);
--	pgoff_t start = offset >> PAGE_SHIFT;
--	pgoff_t end = (offset + len) >> PAGE_SHIFT;
-+	loff_t size = i_size_read(inode);
-+	pgoff_t start, end;
-+
-+	if (offset >= size)
-+		return 0;
-+
-+	len = min(len, size - offset);
-+	start = offset >> PAGE_SHIFT;
-+	end = (offset + len) >> PAGE_SHIFT;
+@@ -400,7 +423,12 @@ static long kvm_gmem_punch_hole(struct inode *inode, loff_t offset, loff_t len)
  
- 	/*
- 	 * Bindings must be stable across invalidation to ensure the start+end
+ 	kvm_gmem_invalidate_start(inode, start, end, filter);
+ 
+-	truncate_inode_pages_range(inode->i_mapping, offset, offset + len - 1);
++	if (kvm_gmem_is_pfn_mode(GMEM_I(inode))) {
++		unmap_mapping_range(inode->i_mapping, offset, len, 0);
++		kvm_gmem_pfn_reclaim(GMEM_I(inode), start, end);
++	} else {
++		truncate_inode_pages_range(inode->i_mapping, offset, offset + len - 1);
++	}
+ 
+ 	kvm_gmem_invalidate_end(inode, start, end);
+ 
 
 -- 
 2.56.0.257.gf7497c7d27-goog
