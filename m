@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:59 -0700
-Subject: [PATCH RFC v2 27/50] samples/kvm: Remove mem_provider_ops from
- sample provider
+Date: Thu, 22 Oct 2026 16:28:00 -0700
+Subject: [PATCH RFC v2 28/50] samples/kvm: Make provider files independent
+ of a root pool
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-27-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-28-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,257 +56,487 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=8340;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=14373;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=S5v5jXc6PnMRtZUZ0DKjcX62D7jtBt/5hL1gymz+OBQ=;
- b=6MeGzyOwEhN0CpX45Vc/yYXmowtUHXg5L6FY6U7eb8Xb34dSRrBcAnrw5ieYLOWztt9ggnpF5
- azh+Buf814NBfVhk0xg6LGh9LdYVZtt55/yKbXawF9c4lsIH0TneUkL
+ bh=XWrssdqecvYTeKbgOR3E/4j1UfbxSbeVXECooite7yU=;
+ b=i/Iy61ZCwiUC4kTb/Nd2/YuidtxPfYUDIcAa7k0EK0jeHEpNScT/4csBpKeRZOHryQhI9hDAR
+ ab5BeDMRwsoDUJytRerHVs77xeigY7Ns51BLKpnAXvyE0vyMYtf0rBu
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Trim this memory provider down to just the memory provider parts first,
-removing mem_provider_ops and related callbacks.
+Remove the root pool concept (mps_root) and allow each provider file to
+directly allocate its own contiguous memory range from alloc_contig_pages.
 
-Leave the integration with guest_memfd alternative providers to future
-patches.
+Because children are effectively independent and no longer share or
+transfer ownership of memory regions, managing a global root pool is
+unnecessary and adds artificial restrictions.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/Kconfig                   |   4 +-
- samples/kvm/mem_provider_sample.c | 121 ++++----------------------------------
- samples/kvm/mem_provider_sample.h |   8 +--
- 3 files changed, 18 insertions(+), 115 deletions(-)
+ samples/kvm/mem_provider_sample.c | 264 ++++++++++----------------------------
+ samples/kvm/mem_provider_sample.h |  37 ++----
+ 2 files changed, 77 insertions(+), 224 deletions(-)
 
-diff --git a/samples/Kconfig b/samples/Kconfig
-index a06eafb5d7ba4..29a0efe49ac3a 100644
---- a/samples/Kconfig
-+++ b/samples/Kconfig
-@@ -328,9 +328,9 @@ source "samples/damon/Kconfig"
- 
- config SAMPLE_KVM_MEM_PROVIDER
- 	tristate "Build sample memory provider -- loadable module only"
--	depends on MEM_PROVIDER && CONTIG_ALLOC && X86_64 && m
-+	depends on CONTIG_ALLOC && X86_64 && m
- 	help
--	  This builds a sample memory provider (include/linux/mem_provider.h).
-+	  This builds a sample memory provider.
- 	  Its files can back a guest_memfd and be mapped by iommufd.
- 	  It allocates a contiguous region with alloc_contig_pages()
- 	  and carves out child provider files on the fly.
 diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index 574c712a11389..294b2d65fc29d 100644
+index 294b2d65fc29d..a8d40f3c631ed 100644
 --- a/samples/kvm/mem_provider_sample.c
 +++ b/samples/kvm/mem_provider_sample.c
-@@ -2,13 +2,10 @@
+@@ -2,12 +2,12 @@
  /*
   * mem_provider_sample - a sample memory provider.
   *
-- * The module owns a region of physical memory and lends it through provider
-- * files (include/linux/mem_provider.h).  A VMM passes the same file to
-- * KVM_CREATE_GUEST_MEMFD, for the guest, and to IOMMU_IOAS_MAP_FILE, for the
-- * guest's devices.  The module calls neither KVM nor iommufd: it answers
-- * "what is page N" and revokes a range when the answer changes.
-+ * The module owns a region of physical memory and lends it through child
-+ * files.
+- * The module owns a region of physical memory and lends it through child
+- * files.
++ * The module provides physical memory through provider files.
   *
-- * The control device /dev/mem_provider_sample creates provider files.
-+ * The control device /dev/mem_provider_sample creates child files.
-  * NEW_CHILD carves part of the region into a child file. A page can also
-  * be taken away. See mem_provider_sample.h.
+- * The control device /dev/mem_provider_sample creates child files.
+- * NEW_CHILD carves part of the region into a child file. A page can also
+- * be taken away. See mem_provider_sample.h.
++ * The control device /dev/mem_provider_sample creates provider files.
++ * Each file allocates its own contiguous memory from alloc_contig_pages().
++ * Pages can be dynamically marked present or absent.
++ * See mem_provider_sample.h.
   *
-@@ -21,7 +18,6 @@
- #include <linux/fs.h>
- #include <linux/gfp.h>
- #include <linux/io.h>
--#include <linux/mem_provider.h>
- #include <linux/miscdevice.h>
- #include <linux/mm.h>
- #include <linux/module.h>
-@@ -31,14 +27,11 @@
+  * Confidential VMs are not supported.
+  */
+@@ -27,43 +27,18 @@
  #include "mem_provider_sample.h"
  
  /*
-- * One provider file.
-+ * One child file.
-  *
-- * Lock order: mps_root.lock, then mps_info.lock, then the consumers' locks
-- * (taken by their revoke callbacks).  get_page() takes no lock, so a
-- * consumer can call it from its fault paths and its revoke callback.
-+ * Lock order: mps_root.lock, then mps_info.lock.
+- * One child file.
+- *
+- * Lock order: mps_root.lock, then mps_info.lock.
++ * One provider file.
   */
  struct mps_info {
--	struct mem_provider_file mpf;
  	struct mutex lock;		/* the bitmaps */
  
  	unsigned long base_pfn;
-@@ -69,89 +62,7 @@ static struct mps_root {
- 	struct list_head children;
- } mps_root;
+ 	unsigned long npages;
+-	struct page *cma_pages;		/* from alloc_contig_pages(), or NULL */
++	struct page *cma_pages;		/* from alloc_contig_pages() */
  
--/* Does @info have page @index now?  Called with or without info->lock. */
--static bool mps_page_present(struct mps_info *info, unsigned long index)
--{
--	return !test_bit(index, info->absent);
--}
+ 	unsigned long *absent;		/* taken away by CTL_SET_PRESENT */
 -
+-	/*
+-	 * A child of the root: its first page in the root, and whether it
+-	 * was carved out from the root (is_child).
+-	 */
+-	unsigned long root_index;
+-	bool is_child;
+-	struct list_head root_link;	/* mps_root.children, mps_root.lock */
+ };
+ 
 -/*
-- * The length of the run from @index of pages with the same state as @index:
-- * present.
+- * The root region, owned by the control device.  Changes of ownership run
+- * under @lock, which is taken before any child's lock.
 - */
--static unsigned long mps_run(struct mps_info *info, unsigned long index)
--{
--	unsigned long end = info->npages;
+-static struct mps_root {
+-	struct mutex lock;		/* everything below */
+-	unsigned long base_pfn;
+-	unsigned long npages;
+-	struct page *cma_pages;
+-	unsigned long *allocated;	/* pages allocated to a child */
+-	struct list_head children;
+-} mps_root;
 -
--	end = min(end, find_next_bit(info->absent, info->npages, index + 1));
--	return end - index;
--}
+-/* ---- Child file --------------------------------------------------------- */
 -
--/* ---- Provider operations ------------------------------------------------ */
--
--static struct mem_provider_file *
--mps_mp_attach(struct file *file, loff_t size)
--{
--	struct mps_info *info = file->private_data;
--
--	if (size > (loff_t)info->npages << PAGE_SHIFT)
--		return ERR_PTR(-EINVAL);
--	return &info->mpf;
--}
--
--static void mps_mp_detach(struct mem_provider_file *mpf)
--{
--}
--
--/*
-- * Reads the bitmaps without info->lock.  A change runs under the lock and
-- * revokes the range afterwards, so an answer that a change makes out of date
-- * is dropped by the consumer.
-- */
--static int mps_mp_get_page(struct mem_provider_file *mpf, pgoff_t index,
--			   unsigned long *pfn, int *max_order, u32 *attrs)
--{
--	struct mps_info *info = container_of(mpf, struct mps_info, mpf);
--	unsigned long run;
--
--	if (index >= info->npages)
--		return -EINVAL;
--
--	if (!mps_page_present(info, index))
--		return -EFAULT;
--
--	/* The aligned block around @index must be one run. */
--	run = mps_run(info, index);
--	while (*max_order) {
--		unsigned long first = ALIGN_DOWN(index, 1UL << *max_order);
--
--		if (first + (1UL << *max_order) <= index + run &&
--		    (first == index || mps_page_present(info, first)) &&
--		    mps_run(info, first) >= 1UL << *max_order)
--			break;
--		(*max_order)--;
+ /* Byte range [offset, offset + len) of @info as page indices. */
+ static int mps_range(struct mps_info *info, u64 offset, u64 len,
+ 		     unsigned long *start, unsigned long *end)
+@@ -93,8 +68,7 @@ static long mps_get_stats(struct mps_info *info, void __user *uarg)
+ 	struct mps_stats st = {};
+ 
+ 	mutex_lock(&info->lock);
+-	st.region_offset = (u64)info->root_index << PAGE_SHIFT;
+-	st.region_len = (u64)info->npages << PAGE_SHIFT;
++	st.size = (u64)info->npages << PAGE_SHIFT;
+ 	st.absent_pages = bitmap_weight(info->absent, info->npages);
+ 	mutex_unlock(&info->lock);
+ 
+@@ -102,9 +76,8 @@ static long mps_get_stats(struct mps_info *info, void __user *uarg)
+ }
+ 
+ /*
+- * A child fd is read-only to its holder: only GET_STATS.  The owner changes a
+- * child's pages through the control device (MPS_CTL_SET_PRESENT), so a VMM
+- * that holds a child cannot.
++ * A provider fd is read-only to its holder: only GET_STATS. The owner changes
++ * a file's pages through the control device (MPS_CTL_SET_PRESENT).
+  */
+ static long mps_file_ioctl(struct file *file, unsigned int cmd,
+ 			   unsigned long arg)
+@@ -117,18 +90,10 @@ static long mps_file_ioctl(struct file *file, unsigned int cmd,
+ 	return -ENOTTY;
+ }
+ 
+-/* Every consumer has detached: each one holds a reference to the file. */
+ static int mps_file_release(struct inode *inode, struct file *file)
+ {
+ 	struct mps_info *info = file->private_data;
+ 
+-	/* A child gives the pages it has back to the root. */
+-	if (info->is_child) {
+-		mutex_lock(&mps_root.lock);
+-		list_del(&info->root_link);
+-		bitmap_clear(mps_root.allocated, info->root_index, info->npages);
+-		mutex_unlock(&mps_root.lock);
 -	}
+ 	if (info->cma_pages)
+ 		free_contig_range(info->base_pfn, info->npages);
+ 	bitmap_free(info->absent);
+@@ -143,124 +108,13 @@ static const struct file_operations mps_file_fops = {
+ 	.compat_ioctl	= compat_ptr_ioctl,
+ };
+ 
+-/*
+- * Make a provider file over [base_pfn, base_pfn + npages).  The fd is
+- * reserved but not installed, so that the caller can finish setting up
+- * @info before another thread can reach it.
+- */
+-static int mps_new_file(unsigned long base_pfn, unsigned long npages,
+-			u32 flags, struct mps_info **infop,
+-			 struct file **filep)
+-{
+-	struct mps_info *info;
+-	struct file *file;
+-	int fd, ret;
 -
--	*pfn = info->base_pfn + index;
+-	info = kzalloc_obj(*info);
+-	if (!info)
+-		return -ENOMEM;
+-	info->base_pfn = base_pfn;
+-	info->npages = npages;
+-	info->absent = bitmap_zalloc(npages, GFP_KERNEL);
+-	if (!info->absent) {
+-		ret = -ENOMEM;
+-		goto err_free;
+-	}
+-	mutex_init(&info->lock);
+-	INIT_LIST_HEAD(&info->root_link);
+-
+-	fd = get_unused_fd_flags(O_CLOEXEC);
+-	if (fd < 0) {
+-		ret = fd;
+-		goto err_free;
+-	}
+-	file = anon_inode_getfile("[mem-provider-sample]", &mps_file_fops,
+-				  info, O_RDWR);
+-	if (IS_ERR(file)) {
+-		put_unused_fd(fd);
+-		ret = PTR_ERR(file);
+-		goto err_free;
+-	}
+-	*infop = info;
+-	*filep = file;
+-	return fd;
+-
+-err_free:
+-	bitmap_free(info->absent);
+-	kfree(info);
+-	return ret;
+-}
+-
+-static struct page *mps_alloc_region(unsigned long npages)
+-{
+-	struct page *pages;
+-
+-	pages = alloc_contig_pages(npages, GFP_KERNEL | __GFP_ZERO,
+-				   numa_node_id(), NULL);
+-	return pages;
+-}
+-
+-/* ---- Root and children -------------------------------------------------- */
+-
+-/* Create the root on the first NEW_CHILD of @size. */
+-static int mps_root_ensure(u64 size)
+-{
+-	struct page *pages;
+-	unsigned long npages;
+-
+-	lockdep_assert_held(&mps_root.lock);
+-	if (mps_root.npages)
+-		return 0;
+-
+-	if (!size || !PAGE_ALIGNED(size))
+-		return -EINVAL;
+-	npages = size >> PAGE_SHIFT;
+-	pages = mps_alloc_region(npages);
+-	if (!pages)
+-		return -ENOMEM;
+-	mps_root.base_pfn = page_to_pfn(pages);
+-	mps_root.allocated = bitmap_zalloc(npages, GFP_KERNEL);
+-	if (!mps_root.allocated) {
+-		free_contig_range(page_to_pfn(pages), npages);
+-		return -ENOMEM;
+-	}
+-	mps_root.cma_pages = pages;
+-	mps_root.npages = npages;
 -	return 0;
 -}
 -
--static const struct mem_provider_ops mps_mp_ops = {
--	.attach		= mps_mp_attach,
--	.detach		= mps_mp_detach,
--	.get_page	= mps_mp_get_page,
--};
--
--/* Tell the consumers that pages [start, end) of @info changed. */
--static void mps_revoke(struct mps_info *info, unsigned long start,
--		       unsigned long end)
+-static void mps_root_teardown(void)
 -{
--	if (end > start)
--		mem_provider_revoke(&info->mpf, (loff_t)start << PAGE_SHIFT,
--				    (loff_t)(end - start) << PAGE_SHIFT);
+-	if (!mps_root.npages)
+-		return;
+-	WARN_ON(!list_empty(&mps_root.children));
+-	if (mps_root.cma_pages)
+-		free_contig_range(mps_root.base_pfn, mps_root.npages);
+-	bitmap_free(mps_root.allocated);
 -}
 -
--/* ---- Provider file ------------------------------------------------------ */
-+/* ---- Child file --------------------------------------------------------- */
- 
- /* Byte range [offset, offset + len) of @info as page indices. */
- static int mps_range(struct mps_info *info, u64 offset, u64 len,
-@@ -174,7 +85,6 @@ static void mps_set_present(struct mps_info *info, unsigned long start,
- 		bitmap_clear(info->absent, start, end - start);
- 	else
- 		bitmap_set(info->absent, start, end - start);
--	mps_revoke(info, start, end);
- 	mutex_unlock(&info->lock);
- }
- 
-@@ -226,15 +136,11 @@ static int mps_file_release(struct inode *inode, struct file *file)
- 	return 0;
- }
- 
--static const struct mem_provider_fops mps_file_fops = {
--	.fops = {
--		.owner		= THIS_MODULE,
--		.fop_flags	= FOP_MEM_PROVIDER,
--		.release	= mps_file_release,
--		.unlocked_ioctl	= mps_file_ioctl,
--		.compat_ioctl	= compat_ptr_ioctl,
--	},
--	.ops = &mps_mp_ops,
-+static const struct file_operations mps_file_fops = {
-+	.owner		= THIS_MODULE,
-+	.release	= mps_file_release,
-+	.unlocked_ioctl	= mps_file_ioctl,
-+	.compat_ioctl	= compat_ptr_ioctl,
- };
- 
- /*
-@@ -253,7 +159,6 @@ static int mps_new_file(unsigned long base_pfn, unsigned long npages,
- 	info = kzalloc_obj(*info);
- 	if (!info)
- 		return -ENOMEM;
--	mem_provider_file_init(&info->mpf);
- 	info->base_pfn = base_pfn;
- 	info->npages = npages;
- 	info->absent = bitmap_zalloc(npages, GFP_KERNEL);
-@@ -269,7 +174,7 @@ static int mps_new_file(unsigned long base_pfn, unsigned long npages,
- 		ret = fd;
- 		goto err_free;
- 	}
--	file = anon_inode_getfile("[mem-provider-sample]", &mps_file_fops.fops,
-+	file = anon_inode_getfile("[mem-provider-sample]", &mps_file_fops,
- 				  info, O_RDWR);
- 	if (IS_ERR(file)) {
- 		put_unused_fd(fd);
-@@ -354,7 +259,7 @@ static struct file *mps_get_child(int fd, struct mps_info **infop)
+-/* A page-aligned byte range of the root as page indices [first, last). */
+-static int mps_root_range(u64 offset, u64 length, unsigned long *first,
+-			  unsigned long *last)
+-{
+-	if (!length || !PAGE_ALIGNED(offset) || !PAGE_ALIGNED(length))
+-		return -EINVAL;
+-	*first = offset >> PAGE_SHIFT;
+-	*last = *first + (length >> PAGE_SHIFT);
+-	if (*last <= *first || *last > mps_root.npages)
+-		return -EINVAL;
+-	return 0;
+-}
+-
+-/* Return a referenced child file made by NEW_CHILD. */
+-static struct file *mps_get_child(int fd, struct mps_info **infop)
++static struct file *mps_get_file(int fd, struct mps_info **infop)
+ {
+ 	struct file *file = fget(fd);
  
  	if (!file)
  		return ERR_PTR(-EBADF);
--	if (file->f_op != &mps_file_fops.fops ||
-+	if (file->f_op != &mps_file_fops ||
- 	    !((struct mps_info *)file->private_data)->is_child) {
+-	if (file->f_op != &mps_file_fops ||
+-	    !((struct mps_info *)file->private_data)->is_child) {
++	if (file->f_op != &mps_file_fops) {
  		fput(file);
  		return ERR_PTR(-EINVAL);
-diff --git a/samples/kvm/mem_provider_sample.h b/samples/kvm/mem_provider_sample.h
-index 51eaf39acbad1..b520b49e56f60 100644
---- a/samples/kvm/mem_provider_sample.h
-+++ b/samples/kvm/mem_provider_sample.h
-@@ -6,12 +6,10 @@
- #include <linux/types.h>
+ 	}
+@@ -268,55 +122,76 @@ static struct file *mps_get_child(int fd, struct mps_info **infop)
+ 	return file;
+ }
+ 
+-static long mps_ctl_new_child(void __user *uarg)
++static long mps_ctl_new_file(void __user *uarg)
+ {
+-	struct mps_new_child nc;
+-	unsigned long first, last;
++	struct mps_new_file nf;
+ 	struct mps_info *info;
++	struct page *pages;
+ 	struct file *file;
++	unsigned long npages;
+ 	int fd, ret;
+ 
+-	if (copy_from_user(&nc, uarg, sizeof(nc)))
++	if (copy_from_user(&nf, uarg, sizeof(nf)))
+ 		return -EFAULT;
+-	if (nc.flags || nc.pad)
++	if (nf.flags || nf.pad)
++		return -EINVAL;
++	if (!nf.size || !PAGE_ALIGNED(nf.size))
++		return -EINVAL;
++
++	npages = nf.size >> PAGE_SHIFT;
++	if (npages > KMALLOC_MAX_SIZE * BITS_PER_BYTE)
+ 		return -EINVAL;
+ 
+-	mutex_lock(&mps_root.lock);
+-	ret = mps_root_ensure(nc.offset + nc.len);
+-	if (ret)
+-		goto out_unlock;
+-	ret = mps_root_range(nc.offset, nc.len, &first, &last);
+-	if (ret)
+-		goto out_unlock;
+-
+-	if (find_next_bit(mps_root.allocated, last, first) < last) {
+-		ret = -EBUSY;
+-		goto out_unlock;
++	info = kzalloc_obj(*info);
++	if (!info)
++		return -ENOMEM;
++
++	info->absent = bitmap_zalloc(npages, GFP_KERNEL);
++	if (!info->absent) {
++		ret = -ENOMEM;
++		goto err_free_info;
+ 	}
+ 
+-	fd = mps_new_file(mps_root.base_pfn + first, last - first, nc.flags,
+-			  &info, &file);
++	pages = alloc_contig_pages(npages, GFP_KERNEL | __GFP_ZERO,
++				   numa_node_id(), NULL);
++	if (!pages) {
++		ret = -ENOMEM;
++		goto err_free_absent;
++	}
++
++	info->cma_pages = pages;
++	info->base_pfn = page_to_pfn(pages);
++	info->npages = npages;
++	mutex_init(&info->lock);
++
++	fd = get_unused_fd_flags(O_CLOEXEC);
+ 	if (fd < 0) {
+ 		ret = fd;
+-		goto out_unlock;
++		goto err_free_pages;
++	}
++
++	file = anon_inode_getfile("[mem-provider-sample]", &mps_file_fops,
++				  info, O_RDWR);
++	if (IS_ERR(file)) {
++		put_unused_fd(fd);
++		ret = PTR_ERR(file);
++		goto err_free_pages;
+ 	}
+ 
+-	bitmap_set(mps_root.allocated, first, last - first);
+-	info->is_child = true;
+-	info->root_index = first;
+-	list_add(&info->root_link, &mps_root.children);
+-	mutex_unlock(&mps_root.lock);
+ 	fd_install(fd, file);
+ 	return fd;
+ 
+-out_unlock:
+-	mutex_unlock(&mps_root.lock);
++err_free_pages:
++	free_contig_range(page_to_pfn(pages), npages);
++err_free_absent:
++	bitmap_free(info->absent);
++err_free_info:
++	kfree(info);
+ 	return ret;
+ }
  
  /*
-- * A sample memory provider (include/linux/mem_provider.h).
-+ * A sample memory provider.
+- * CTL_SET_PRESENT changes a child's pages, by the owner on the control device.
+- * A VMM that holds the child fd cannot, so it cannot undo them.
++ * CTL_SET_PRESENT changes a file's pages, by the owner on the control device.
+  */
+ static long mps_ctl_set_present(void __user *uarg)
+ {
+@@ -330,7 +205,7 @@ static long mps_ctl_set_present(void __user *uarg)
+ 		return -EFAULT;
+ 	if (cr.value > 1)
+ 		return -EINVAL;
+-	file = mps_get_child(cr.fd, &info);
++	file = mps_get_file(cr.fd, &info);
+ 	if (IS_ERR(file))
+ 		return PTR_ERR(file);
+ 	ret = mps_range(info, cr.offset, cr.len, &start, &end);
+@@ -346,8 +221,8 @@ static long mps_ctl_ioctl(struct file *file, unsigned int cmd,
+ 	void __user *uarg = (void __user *)arg;
+ 
+ 	switch (cmd) {
+-	case MPS_NEW_CHILD:
+-		return mps_ctl_new_child(uarg);
++	case MPS_NEW_FILE:
++		return mps_ctl_new_file(uarg);
+ 	case MPS_CTL_SET_PRESENT:
+ 		return mps_ctl_set_present(uarg);
+ 	default:
+@@ -369,22 +244,13 @@ static struct miscdevice mps_dev = {
+ 
+ static int __init mps_init(void)
+ {
+-	int ret;
+-
+-	mutex_init(&mps_root.lock);
+-	INIT_LIST_HEAD(&mps_root.children);
+-
+-	ret = misc_register(&mps_dev);
+-	if (ret)
+-		return ret;
+-	return 0;
++	return misc_register(&mps_dev);
+ }
+ module_init(mps_init);
+ 
+ static void __exit mps_exit(void)
+ {
+ 	misc_deregister(&mps_dev);
+-	mps_root_teardown();
+ }
+ module_exit(mps_exit);
+ 
+diff --git a/samples/kvm/mem_provider_sample.h b/samples/kvm/mem_provider_sample.h
+index b520b49e56f60..c4cb10b4aadeb 100644
+--- a/samples/kvm/mem_provider_sample.h
++++ b/samples/kvm/mem_provider_sample.h
+@@ -8,41 +8,28 @@
+ /*
+  * A sample memory provider.
   *
-- * Every fd that this module returns is a provider file.  Pass it as
-- * resource_fd to KVM_CREATE_GUEST_MEMFD with GUEST_MEMFD_FLAG_USE_RESOURCE,
-- * and as fd to IOMMU_IOAS_MAP_FILE.  Both consumers follow every change that
-- * the ioctls below make.
-+ * Every fd that this module returns is a child file. Pass it to
-+ * KVM_CREATE_GUEST_MEMFD.
+- * Every fd that this module returns is a child file. Pass it to
++ * Every fd that this module returns is a provider file. Pass it to
+  * KVM_CREATE_GUEST_MEMFD.
   */
  
  #define MPS_IOCTL_BASE		'P'
+ 
+ /*
+- * ---- A tree of owners --------------------------------------------------
+- *
+- * The control device owns one region, the root.  NEW_CHILD carves part of
+- * it into a new provider fd for one VM.
+- *
+- * The owner changes a child's pages through the control device
+- * (CTL_SET_PRESENT).  A child fd is read-only to its holder: a VMM can
+- * only GET_STATS, never change the memory.
+- */
+-
+-/*
+- * ioctl on /dev/mem_provider_sample: carve [@offset, @offset + @len) of the
+- * root into a new child fd. Returns the child fd.
++ * ioctl on /dev/mem_provider_sample: create a new provider fd of @size.
++ * Returns the provider fd.
+  */
+-struct mps_new_child {
++struct mps_new_file {
+ 	__u32 flags;	/* Reserved, must be 0 */
+ 	__u32 pad;
+-	__u64 offset;	/* bytes into the root, page aligned */
+-	__u64 len;	/* bytes, page aligned */
++	__u64 size;	/* bytes, page aligned */
+ };
+ 
+-#define MPS_NEW_CHILD \
+-	_IOW(MPS_IOCTL_BASE, 5, struct mps_new_child)
++#define MPS_NEW_FILE \
++	_IOW(MPS_IOCTL_BASE, 5, struct mps_new_file)
+ 
+-/* ioctl on a child fd: read the child's state, for tests. */
++/* ioctl on a provider fd: read the file's state, for tests. */
+ struct mps_stats {
+-	__u64 region_offset;	/* the child's range in the root */
+-	__u64 region_len;
++	__u64 size;
+ 	__u64 absent_pages;	/* pages taken away by CTL_SET_PRESENT */
+ };
+ 
+@@ -50,14 +37,14 @@ struct mps_stats {
+ 	_IOR(MPS_IOCTL_BASE, 10, struct mps_stats)
+ 
+ /*
+- * ioctl on /dev/mem_provider_sample: CTL_SET_PRESENT on child @fd, by the
++ * ioctl on /dev/mem_provider_sample: CTL_SET_PRESENT on file @fd, by the
+  * owner. @value is the present value (1 = present, 0 = absent), and @offset
+- * and @len are a byte range within the child, page aligned.
++ * and @len are a byte range within the file, page aligned.
+  */
+ struct mps_ctl_range {
+ 	__s32 fd;
+ 	__u32 value;
+-	__u64 offset;	/* bytes into the child, page aligned */
++	__u64 offset;	/* bytes into the file, page aligned */
+ 	__u64 len;	/* bytes, page aligned */
+ };
+ 
 
 -- 
 2.56.0.257.gf7497c7d27-goog
