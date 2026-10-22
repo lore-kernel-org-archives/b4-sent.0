@@ -1,210 +1,155 @@
-From: Johannes Schrimpf <johannes.schrimpf@blueye.no>
-Date: Thu, 22 Oct 2026 12:16:52 +0200
-Subject: [PATCH v2] media: uvcvideo: Release streaming interfaces at
- disconnect, not last close
+From: Sercan GOKMEN <gokmensercan@gmail.com>
+Date: Thu, 22 Oct 2026 16:00:52 +0300
+Subject: [PATCH] platform/x86: asus-wmi: Add keyboard backlight read-back
+ quirk for ASUS ExpertBook Ultra B9406CAA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-uvc-release-intfs-v2-1-901bc1c47cfb@blueye.no>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/32Nyw6CMBBFf4XM2hqKUtGV/2FY9DGVGlJMhzYSw
- r/b4t7M6uTee2YFwuCQ4FatEDA5cpPP0Bwq0IP0T2TOZIambgSv+ZnFpFnAESXlyM+WmLXXFk8
- XIRRvIe/eAa377M5H/2OK6oV6LqLSGBzNU1j2p4mX3j9/4ixfZwR2xkppursaIy549BP027Z9A
- XPd/+fEAAAA
-X-Change-ID: 20261014-uvc-release-intfs-ff95e3766b15
-To: laurent.pinchart@ideasonboard.com, hansg@kernel.org
-Cc: ribalda@chromium.org, hverkuil@kernel.org, linux-kernel@vger.kernel.org, 
- mchehab@kernel.org, linux-media@vger.kernel.org, stable@vger.kernel.org, 
- Johannes Schrimpf <johannes.schrimpf@blueye.no>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792664229; l=7840;
- i=johannes.schrimpf@blueye.no; s=20261014; h=from:subject:message-id;
- bh=jITjUBkqSOrja9OK7j/wiP5VysOC8DbpzIk24IUo4ns=;
- b=PCRLhcqexTTYWT5A2+bjtxRNBlp44aWrcGYfceBjjiWYGAmJlROJ8vu54EeiA1t9sISWgXKH8
- khjZYShjQuUDa4Daum8GIFwL3duaVHmaLkve+IbVHmoTdqhAwatZbPI
-X-Developer-Key: i=johannes.schrimpf@blueye.no; a=ed25519;
- pk=900KgDI7vLhnD9R982XOT47UCm3e4vWxQWBC4jDCUPo=
-X-Endpoint-Received: by B4 Relay for johannes.schrimpf@blueye.no/20261014 with auth_id=1178
+Message-Id: <20261022-b4-asus-wmi-b9406caa-kbd-readback-v1-1-fb33ed98dd16@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNwQ6CMAyA4VchPdtkFCTMVzEeuq1qJaJZRUkI7
+ 87U43f5/wVMsorBoVogy1tNH2NBvasgXnm8CGoqBnLU1Y4IQ4tsk+Hnrhh867rIjENImIVT4Dg
+ gS+rJ75vUNx5K55nlrPPvcTz9bVO4SXx9w7CuG/Khba2FAAAA
+X-Change-ID: 20261022-b4-asus-wmi-b9406caa-kbd-readback-aed82953d839
+To: Corentin Chary <corentin.chary@gmail.com>, 
+ "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
+ Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
+Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sercan GOKMEN <gokmensercan@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792674051; l=5290;
+ i=gokmensercan@gmail.com; s=20261022; h=from:subject:message-id;
+ bh=fSTmrfZTjXJhJvDRdGbk0K/+rwI2QBECNtaYIr3fMRU=;
+ b=QxmCus+1hrgSGoq6KlRU6n1u9s+4iePiNgCTGkltxKKVejqhos/B/9600VXxtAZJ019OftfT4
+ a7biuSGhUQdAdxCD2n1EDzB/o3Cv1Ecz3leVubsy0yrtiz+dvVNfTZj
+X-Developer-Key: i=gokmensercan@gmail.com; a=ed25519;
+ pk=nFIlLCcGouUfBov8xxW0K4qUtEjdhJniMOO8WCSqghU=
+X-Endpoint-Received: by B4 Relay for gokmensercan@gmail.com/20261022 with auth_id=1282
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a UVC camera goes through a USB reset while an application holds it
-open, the camera is unusable after the reset.
+On the ASUS ExpertBook Ultra B9406CAA (BIOS 312) the keyboard backlight
+query DSTS(ASUS_WMI_DEVID_KBD_BACKLIGHT) always returns 0x550000: the
+presence bit is set but the level bits are 0 regardless of the level the
+EC is actually driving. The DSDT's DSTS handler for 0x00050021 builds
+its reply from constants (0x400000 | 0x350000, masked by the KBLT flag)
+and never reads the level from the EC, so no query variant can return
+it. Writes work: DEVS hands the value to the EC method SLKB and the
+0x80|level form the driver uses steps the keyboard through all levels.
 
-The old uvc_device releases its streaming interfaces only when its last
-open file handle is closed, which unbinds them from the new uvc_device
-that has claimed them in the meantime.
+kbd_led_get() re-reads the firmware on every sysfs read and stores the
+result in asus->kbd_led_wk, so on this machine every read overwrites the
+cached level with 0. The visible effects are:
 
-Release them on disconnect and on the probe error path instead, as the
-last step of uvc_unregister_video(), which is renamed to
-uvc_unregister_device().
+ - /sys/class/leds/asus::kbd_backlight/brightness, UPower's
+   GetBrightness and brightnessctl always report 0;
+ - systemd-backlight saves 0 at shutdown and restores a dark keyboard
+   at every boot;
+ - the Fn backlight key on this laptop raises ASUS_EV_BRTTOGGLE, and
+   asus_wmi_kbd_led_hw_event() computes the next level from the cached
+   value, so after any read has zeroed the cache the next press always
+   yields level 1 whatever the keyboard was actually showing.
 
-This also ensures that usb_driver_release_interface() is only called
-with the USB device lock held.
+Add a quirk_entry flag, kbd_led_no_readback, which makes kbd_led_get()
+return the cached level the way the existing !kbd_led_avail path
+already does. Every path that changes the level (do_kbd_led_set(),
+kbd_led_set_by_kbd(), the hotkey handler) keeps kbd_led_wk current, so
+the cache is the only trustworthy source on this board. Match the
+board with the same DMI strings the accepted SoundWire quirk for this
+machine uses (sys_vendor "ASUS", board_name "B9406CAA").
 
-Fixes: c0efd232929c ("V4L/DVB (8145a): USB Video Class driver")
-Cc: stable@vger.kernel.org # needs adjustments for <= 6.14: &uvc_driver.driver
-Assisted-by: LLM
-Reviewed-by: Ricardo Ribalda <ribalda@chromium.org>
-Signed-off-by: Johannes Schrimpf <johannes.schrimpf@blueye.no>
+Tested on the B9406CAA with Linux 7.2.3: after the quirk, brightness
+reads back 3/1/2 after the corresponding writes, UPower reports the same
+value, and three presses of the Fn backlight key from level 2 give
+2 -> 3 -> 0 -> 1 (the ASUS_EV_BRTTOGGLE wrap), each step read back
+correctly. Re-tested on Linux 7.3.0: writes of 3/1/2/0 read back
+unchanged. Also compile-tested on this base with W=1 (clang).
+
+Signed-off-by: Sercan GOKMEN <gokmensercan@gmail.com>
 ---
-Changes in v2:
-- Shorten the commit message; the details are now below (Ricardo).
-- Move the release into uvc_unregister_video() as its last step and
-  rename that function to uvc_unregister_device() (Ricardo). The
-  release still runs after the video nodes are unregistered and before
-  kref_put(), in uvc_disconnect() and on the probe error path.
-- Add Ricardo's Reviewed-by.
-- Link to v1: https://patch.msgid.link/20261014-uvc-release-intfs-v1-1-18d6e8dfaad8@blueye.no
+The patch is also tracked, with the other B9406CAA upstream patches,
+in the community support repo for this laptop:
+https://github.com/burakgon/asus-expertbook-linux/tree/main/upstream-patches
 ---
-Details from the v1 commit message:
+ drivers/platform/x86/asus-nb-wmi.c | 21 +++++++++++++++++++++
+ drivers/platform/x86/asus-wmi.c    |  3 ++-
+ drivers/platform/x86/asus-wmi.h    |  5 +++++
+ 3 files changed, 28 insertions(+), 1 deletion(-)
 
-Mechanism: uvcvideo has no pre_reset() and post_reset() handlers, so
-usb_reset_device() unbinds it and probes it again on the same struct
-usb_interface objects. A file handle from before the reset keeps the
-old uvc_device alive. usb_driver_release_interface() only checks that
-the interface is bound to uvcvideo, not to which uvc_device, so the
-old uvc_delete() unbinds the interfaces from the new device. The URBs
-of a running stream then complete with -ESHUTDOWN,
-uvc_video_complete() sets UVC_QUEUE_DISCONNECTED, and every following
-VIDIOC_QBUF fails with -ENODEV. Nothing is logged, and the stream stays
-dead until the next reset or replug.
-
-Reproduction, with a Sonix camera (0c45:6366) on an i.MX6Q board,
-Linux 6.18.24 (linux-fslc-imx):
-
-  1. open() a video node of the camera and keep the file handle
-  2. reset the camera with USBDEVFS_RESET
-  3. stream from a video node of the re-probed device
-  4. close() the file handle from step 1
-
-The stream fails within a few milliseconds of the close() in 4 of 4
-runs, with one KOBJ_UNBIND uevent per VideoStreaming interface; the
-VideoControl interface stays bound. A handle on either streaming
-interface has the same effect. Without step 1 the stream survives.
-
-usb-serial splits it the same way: usb_serial_disconnect() releases the
-sibling interface, and its kref release, destroy_serial(), releases
-none. With no file handle open, uvc_disconnect() drops the last
-reference itself, so on that path the interfaces are still released
-from within uvc_disconnect(), as before.
-
-Tested with v1 on the same board and kernel: the reproduction with the
-handle on either streaming interface or closed before the stream
-starts, a USB reset without a held handle, sysfs unbind/bind of the
-VideoControl interface with and without a held handle, and a second
-UVC camera (MJPEG and H.264 at 1080p). The stream survives all four
-streaming runs, none of the five stale-handle closes unbinds an
-interface, and the close() takes 0.13-0.23 ms instead of 38-42 ms.
-USB-reset recovery and the second camera work, and sysfs unbind/bind
-releases and reclaims the streaming interfaces.
-
-Tested with v2 on the same board, built into the kernel image: the
-reproduction with the handle on either streaming interface, closed
-before the stream starts, and with no handle held. The stream survives
-all four runs and no interface is unbound; in the two runs that close
-the stale handle while streaming, 149 frames arrive in the 5 s after
-the close.
-
-Ricardo's "media: uvcvideo: Remove refcounted cleanup" (Nov 2024) would
-have moved all device cleanup into uvc_disconnect(), and was NACKed
-because it fixed no concrete bug. This patch keeps the refcounted
-cleanup and moves only the release of the streaming interfaces.
-
-Tool use: this was developed with an LLM coding assistant, Claude Code
-running Claude Opus 5.5; v1 was also reviewed by GPT-6 Astra. Starting
-from stream failures in our bench logs, the assistant traced the code
-path, wrote the reproduction scripts, ran them and the tests above on
-the device, surveyed the upstream history and other drivers, built and
-checked the patch on media-committers next, and drafted the patch, the
-changelog and these notes.
-
-Test kernel: linux-fslc-imx 6.18.24 with three local uvcvideo patches
-(keep MJPEG frames recovered by MJPEG_NO_EOF, nodrop=0 by default, and a
-coherent_urbs parameter). None of them touches probe, uvc_disconnect(),
-uvc_delete(), the interface claim/release or uvc_video_complete().
-
-Not tested:
-- an unmodified uvcvideo, or any kernel other than linux-fslc-imx
-  6.18.24; on media-committers next, the patch is build-tested only
-  (v1: gcc and clang, arm, arm64 and x86_64, W=1, sparse, smatch; v2:
-  gcc, arm, W=1)
-- a debug kernel: the test kernel is the board's production config
-  (SMP, PREEMPT; no lockdep, DEBUG_ATOMIC_SLEEP, DEBUG_MUTEXES,
-  SLUB_DEBUG, DEBUG_PAGEALLOC or KASAN)
-- unplug and replug, sysfs unbind of a VideoStreaming interface, and
-  the probe error path
-- frame delivery after a sysfs rebind: the Sonix camera delivers no
-  frames after any re-probe that does not follow a USB reset, with and
-  without this patch, so those runs check only the binding; the
-  second camera was not rebound
-- v4l2-compliance
-- any camera other than the two on this board
----
- drivers/media/usb/uvc/uvc_driver.c | 17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
-
-diff --git a/drivers/media/usb/uvc/uvc_driver.c b/drivers/media/usb/uvc/uvc_driver.c
-index cbc1456..bb8f0e3 100644
---- a/drivers/media/usb/uvc/uvc_driver.c
-+++ b/drivers/media/usb/uvc/uvc_driver.c
-@@ -1976,7 +1976,6 @@ static void uvc_delete(struct kref *kref)
- 		struct uvc_streaming *streaming;
+diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
+index 3b0f3346d..894f622c8 100644
+--- a/drivers/platform/x86/asus-nb-wmi.c
++++ b/drivers/platform/x86/asus-nb-wmi.c
+@@ -93,6 +93,18 @@ static struct quirk_entry quirk_asus_unknown = {
+ 	.wmi_backlight_set_devstate = true,
+ };
  
- 		streaming = list_entry(p, struct uvc_streaming, list);
--		usb_driver_release_interface(&uvc_driver, streaming->intf);
- 		uvc_stream_delete(streaming);
++/*
++ * ASUS ExpertBook Ultra B9406CAA (BIOS 312): the keyboard backlight query,
++ * DSTS(0x00050021), always returns 0x550000, i.e. level 0, whatever the EC is
++ * actually driving. Writes work. Without this quirk every sysfs read
++ * overwrites the cached level with 0, so UPower, brightnessctl and
++ * systemd-backlight all see a dark keyboard and restore level 0 at boot.
++ */
++static struct quirk_entry quirk_asus_b9406caa = {
++	.wmi_backlight_set_devstate = true,
++	.kbd_led_no_readback = true,
++};
++
+ static struct quirk_entry quirk_asus_q500a = {
+ 	.filter_i8042_e1_extended_codes = true,
+ 	.wmi_backlight_set_devstate = true,
+@@ -167,6 +179,15 @@ static int dmi_matched(const struct dmi_system_id *dmi)
+ }
+ 
+ static const struct dmi_system_id asus_quirks[] = {
++	{
++		.callback = dmi_matched,
++		.ident = "ASUS ExpertBook Ultra B9406CAA",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "ASUS"),
++			DMI_MATCH(DMI_BOARD_NAME, "B9406CAA"),
++		},
++		.driver_data = &quirk_asus_b9406caa,
++	},
+ 	{
+ 		.callback = dmi_matched,
+ 		.ident = "ASUSTeK COMPUTER INC. Q500A",
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index fb1d4a085..19a0b3a0c 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -1966,7 +1966,8 @@ static enum led_brightness kbd_led_get(struct led_classdev *led_cdev)
+ 	asus = container_of(led_cdev, struct asus_wmi, kbd_led);
+ 
+ 	scoped_guard(spinlock_irqsave, &asus_ref.lock) {
+-		if (!asus->kbd_led_avail)
++		if (!asus->kbd_led_avail ||
++		    asus->driver->quirks->kbd_led_no_readback)
+ 			return asus->kbd_led_wk;
  	}
  
-@@ -1992,9 +1991,9 @@ static void uvc_release(struct video_device *vdev)
- }
- 
- /*
-- * Unregister the video devices.
-+ * Unregister the device and release the streaming interfaces.
-  */
--static void uvc_unregister_video(struct uvc_device *dev)
-+static void uvc_unregister_device(struct uvc_device *dev)
- {
- 	struct uvc_streaming *stream;
- 
-@@ -2024,6 +2023,14 @@ static void uvc_unregister_video(struct uvc_device *dev)
- 	if (media_devnode_is_registered(dev->mdev.devnode))
- 		media_device_unregister(&dev->mdev);
- #endif
-+
+diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
+index b45f81b38..4f010f634 100644
+--- a/drivers/platform/x86/asus-wmi.h
++++ b/drivers/platform/x86/asus-wmi.h
+@@ -52,6 +52,11 @@ struct quirk_entry {
+ 	 */
+ 	int no_display_toggle;
+ 	u32 xusb2pr;
 +	/*
-+	 * Release the streaming interfaces here, not in uvc_delete(): after a
-+	 * USB reset, a new uvc_device may already have claimed the same
-+	 * interfaces.
++	 * The firmware never reports the keyboard backlight level (the query
++	 * always returns level 0), so trust the driver's cached value instead.
 +	 */
-+	list_for_each_entry(stream, &dev->streams, list)
-+		usb_driver_release_interface(&uvc_driver, stream->intf);
- }
++	bool kbd_led_no_readback;
+ };
  
- int uvc_register_video_device(struct uvc_device *dev,
-@@ -2355,7 +2362,7 @@ static int uvc_probe(struct usb_interface *intf,
- 	return 0;
- 
- error:
--	uvc_unregister_video(dev);
-+	uvc_unregister_device(dev);
- 	kref_put(&dev->ref, uvc_delete);
- 	return ret;
- }
-@@ -2374,7 +2381,7 @@ static void uvc_disconnect(struct usb_interface *intf)
- 	    UVC_SC_VIDEOSTREAMING)
- 		return;
- 
--	uvc_unregister_video(dev);
-+	uvc_unregister_device(dev);
- 	kref_put(&dev->ref, uvc_delete);
- }
- 
+ struct asus_wmi_driver {
 
 ---
-base-commit: d7e7bca7169873b46e857c025c10f3336c1258d8
-change-id: 20261014-uvc-release-intfs-ff95e3766b15
+base-commit: 893018d51f27ec0449155b0afe371aaf65380630
+change-id: 20261022-b4-asus-wmi-b9406caa-kbd-readback-aed82953d839
 
 Best regards,
 --  
-Johannes Schrimpf <johannes.schrimpf@blueye.no>
+Sercan GOKMEN <gokmensercan@gmail.com>
 
