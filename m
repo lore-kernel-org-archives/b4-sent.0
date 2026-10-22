@@ -1,574 +1,101 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 22 Oct 2026 09:26:10 +0000
-Subject: [PATCH v2 2/2] i2c: amlogic: Add Amlogic A9 I2C controller driver
+From: Andrei Stancovici <andrei.stancovici@analog.com>
+Subject: [PATCH v2 0/3] iio: adc: ltc2497: add LTC2493 support and
+ line-frequency rejection
+Date: Thu, 22 Oct 2026 12:58:17 +0300
+Message-Id: <20261022-submission-ltc2493-support-v1-v2-0-391d908d2877@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-a9-i2c-v2-2-45e3cef175bf@amlogic.com>
-References: <20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com>
-In-Reply-To: <20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com>
-To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Xianwei Zhao <xianwei.zhaol@amlogic.com>
-Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, linux-i2c@vger.kernel.org, 
- linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792661171; l=15636;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=HCbf8i4EvDwf3KC+XAjiNgOXrI0QcRottF2/ZqXdJTQ=;
- b=slvavCF56UxbL1AdGnnOOBhYm5Yybaf5RBt0mdG7igtyr3UMIEYDkqKR3ygevQ3KVQpNANPQG
- 4rzCM6wW3JQDNjXaN3sjF9XfjxjjMoQ4805uzqqEXLZdm5xdMWn5OhP
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADne2WoC/42OQQ6CMBAAv0L2bE1bKhFP/MNwKO0Ka4CSthIN4
+ e+2+AGTvcxmMrsbBPSEAW7FBh5XCuTmBPJUgBn03CMjmxgkl5XgvGbh1U0UssbGaKSqy7RaFuc
+ jWwW7VkrVaFGV0kJqLB4f9D769/bHKfBEE3M0GwOF6PzneGAV2fv3VhrOSqutsKoTF6kbPevR9
+ WfjJmj3ff8CQQpv7N0AAAA=
+X-Change-ID: 20261009-submission-ltc2493-support-v1-86449ede432d
+To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Beguin <liambeguin@gmail.com>, 
+ Joshua Crofts <joshua.crofts1@gmail.com>
+Cc: linux@analog.com, linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Andrei Stancovici <andrei.stancovici@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792663098; l=3104;
+ i=andrei.stancovici@analog.com; s=20261009; h=from:subject:message-id;
+ bh=yPsqOFeX5OG71XtkfM53Dkyy130nnE6U9LTTm4qQtUM=;
+ b=Bv5SokQryLzD6Jp1AUfflpESvj8Lt7SDZjuElK2RHsTuO7NcK33myjeO79yvfCabfHwsi1AGJ
+ tVtlI2P+PpXDeUnfu6//cPQ0XAjG/9MEgMaZ/YT5Rr2GchpNakCBOLA
+X-Developer-Key: i=andrei.stancovici@analog.com; a=ed25519;
+ pk=wgT+au+blAhVYxhwNgdx0woNl/1p+OCG484rnTRFrsE=
+X-Endpoint-Received: by B4 Relay for andrei.stancovici@analog.com/20261009 with auth_id=1140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Junyi Zhao <junyi.zhao@amlogic.com>
+This series adds LTC2493 support to the ltc2497 driver, and adds FA/FB
+line-frequency rejection for the LTC2499 and the LTC2493.
 
-Add support for the new I2C controller used by Amlogic A9 SoCs.
+It includes:
+- the LTC2493 device-tree binding,
+- FA/FB line-frequency rejection (50Hz, 60Hz, or both) exposed via
+  filter_mode, implemented in the core and enabled for the LTC2499,
+- LTC2493 support in the driver: 4 single-ended inputs or 2 differential
+  pairs, 24-bit result, same command format as the LTC2499, the internal
+  PTAT temperature channel, the 2x conversion speed mode exposed via
+  sampling_frequency, and the same rejection selection.
 
-Add a dedicated Kconfig option and Makefile entry for the A9 I2C
-controller driver. And add Amlogic I2C controller entry to MAINTAINERS
-to clarify the maintainers.
+The rejection patch also adjusts the conversion wait time for each
+rejection mode. The 50Hz-only mode takes up to 163.5 ms at 1x, while the
+previous fixed 150 ms delay only covered the default 50/60Hz mode.
 
-Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Validated on a Raspberry Pi 4 running 7.3.0-rc4, over an IIO network
+backend, with a DC1010A-A board (LTC2493), a DC1012A-A board (LTC2499)
+and an LTC2497:
+- LTC2493: 41/41 hardware tests passed,
+- LTC2499: 36/36 hardware tests passed,
+- LTC2497: 24/24 hardware tests passed,
+- all LTC2493 rejection x speed combinations were exercised without
+  conversion or I2C errors.
+
+LTC2496 was build-tested only because no LTC2496 hardware was available.
+
+The source in this series matches the hardware-tested tree.
+
+Signed-off-by: Andrei Stancovici <andrei.stancovici@analog.com>
 ---
- MAINTAINERS                         |   9 +
- drivers/i2c/busses/Kconfig          |   8 +
- drivers/i2c/busses/Makefile         |   1 +
- drivers/i2c/busses/i2c-amlogic-a9.c | 469 ++++++++++++++++++++++++++++++++++++
- 4 files changed, 487 insertions(+)
+Changes in v2:
+- Restructured from six patches to three, following review from Nuno Sá
+  and Jonathan Cameron: the FA/FB rejection infrastructure comes first,
+  and the LTC2493 is then introduced complete in a single patch instead
+  of growing a chip_info entry over four of them.
+- The input count is modelled as a number rather than a bool, so further
+  family members do not each add a branch (Jonathan Cameron).
+- FA/FB is modelled as a 2-bit field rather than two independent flags,
+  with the mapping helper removed (Jonathan Cameron).
+- Addressed the locking, comment and churn review on the FA/FB patch.
+- Behaviour is unchanged, re-verified by hardware regression on all
+  three parts; see the validation summary above.
+- Per-patch changelogs are under the --- of each patch.
+- Link to v1: https://lore.kernel.org/r/20261009-submission-ltc2493-support-v1-v1-0-3dad1d4b152a@analog.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index a2d702919ef3..a56bdfefabad 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1371,6 +1371,15 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
- 
-+AMLOGIC I2C DRIVER
-+M:	Junyi Zhao <junyi.zhao@amlogic.com>
-+M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
-+L:	linux-i2c@vger.kernel.org
-+L:	linux-amlogic@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/i2c/amlogic,a9-i2c.yaml
-+F:	drivers/i2c/busses/i2c-amlogic-a9.c
-+
- AMLOGIC ISP DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
-diff --git a/drivers/i2c/busses/Kconfig b/drivers/i2c/busses/Kconfig
-index 275aaa7f3583..50e031d97ed3 100644
---- a/drivers/i2c/busses/Kconfig
-+++ b/drivers/i2c/busses/Kconfig
-@@ -885,6 +885,14 @@ config I2C_MESON
- 	  If you say yes to this option, support will be included for the
- 	  I2C interface on the Amlogic Meson family of SoCs.
- 
-+config I2C_AMLOGIC_A9
-+	tristate "Amlogic new I2C controller"
-+	depends on ARCH_MESON || COMPILE_TEST
-+	depends on COMMON_CLK
-+	help
-+	  If you say yes to this option, support will be included for the
-+	  I2C interface on the new Amlogic family of SoCs.
-+
- config I2C_MICROCHIP_CORE
- 	tristate "Microchip FPGA I2C controller"
- 	depends on ARCH_MICROCHIP_POLARFIRE || COMPILE_TEST
-diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
-index e5440de0fe14..343eec4b0889 100644
---- a/drivers/i2c/busses/Makefile
-+++ b/drivers/i2c/busses/Makefile
-@@ -82,6 +82,7 @@ obj-$(CONFIG_I2C_LPC2K)		+= i2c-lpc2k.o
- obj-$(CONFIG_I2C_LS2X)		+= i2c-ls2x.o
- obj-$(CONFIG_I2C_LS2X_V2)	+= i2c-ls2x-v2.o
- obj-$(CONFIG_I2C_MESON)		+= i2c-meson.o
-+obj-$(CONFIG_I2C_AMLOGIC_A9)	+= i2c-amlogic-a9.o
- obj-$(CONFIG_I2C_MICROCHIP_CORE)	+= i2c-microchip-corei2c.o
- obj-$(CONFIG_I2C_MPC)		+= i2c-mpc.o
- obj-$(CONFIG_I2C_MT65XX)	+= i2c-mt65xx.o
-diff --git a/drivers/i2c/busses/i2c-amlogic-a9.c b/drivers/i2c/busses/i2c-amlogic-a9.c
-new file mode 100644
-index 000000000000..d4954a4fd88e
---- /dev/null
-+++ b/drivers/i2c/busses/i2c-amlogic-a9.c
-@@ -0,0 +1,469 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+/*
-+ * Copyright (C) 2026 Amlogic, Inc. All rights reserved
-+ */
-+
-+#include <linux/clk.h>
-+#include <linux/completion.h>
-+#include <linux/i2c.h>
-+#include <linux/interrupt.h>
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+
-+/* Amlogic I2C register map */
-+#define REG_CFG_RDY		0x00
-+#define REG_CFG_I2C		0x04
-+#define REG_CFG_START		0x08
-+#define REG_CFG_BUS		0x0c
-+#define REG_TX_RD_ADDR		0x10
-+#define REG_TX_WR_ADDR		0x14
-+#define REG_RX_RD_ADDR		0x18
-+#define REG_RX_WR_ADDR		0x1c
-+#define REG_CFG_TX		0x20
-+#define REG_CFG_RX		0x24
-+#define REG_CFG_IRQ_STATE	0x30
-+#define REG_CFG_IRQ_ENABLE	0x34
-+#define REG_SHAKE_BLK_CNT	0x38
-+
-+/* CFG RDY fields */
-+#define RDY_TEE_ONLY		BIT(1)
-+#define RDY_IF			BIT(0)
-+
-+/* CFG I2C fields */
-+#define I2C_RX_THR		GENMASK(23, 16)
-+#define I2C_TX_THR		GENMASK(15, 8)
-+
-+/* CFG BUS fields */
-+#define BUS_NO_STOP		BIT(18)
-+
-+/* SCL = clk/b_ratio	if b_ratio<=8, SCL = clk/8 */
-+#define BUS_RATIO_MASK		GENMASK(11, 0)
-+
-+/* CFG START fields */
-+#define START_START		BIT(31)
-+#define START_LEN		GENMASK(23, 12)
-+#define START_LEN_SHIFT		12
-+#define START_SLAVE_ADDR	GENMASK(10, 1)
-+#define START_SADDR_SHIFT	1
-+#define START_READ		BIT(0)
-+
-+/* CFG TX_RX fields */
-+#define TX_RX_DATA		GENMASK(7, 0)
-+
-+/* CFG IRQ fields */
-+#define IRQ_ALL_MASK		GENMASK(15, 0)
-+#define A9_NCK_ERROR		BIT(0)
-+#define A9_RX_THRESH_READ	BIT(5)
-+#define A9_TX_THRESH_WRITE	BIT(6)
-+#define A9_PHY_DONE		BIT(7)
-+#define A9_TASK_DONE		BIT(8)
-+#define A9_ALL_DONE		BIT(9)
-+
-+#define A9_TRANS_DONE		(A9_PHY_DONE | A9_NCK_ERROR)
-+#define A9_TRANS_ERROR		(A9_NCK_ERROR)
-+#define A9_ENABLE_IRQ_BIT	(A9_NCK_ERROR | A9_PHY_DONE)
-+#define THRESH_MODE		(A9_RX_THRESH_READ | A9_TX_THRESH_WRITE)
-+
-+#define A9_I2C_FIFO_DEPTH	32
-+#define A9_I2C_HALF_FIFO	(A9_I2C_FIFO_DEPTH >> 1)
-+
-+#define A9_I2C_MAX_XFER_SIZE	0xfff
-+
-+#define I2C_TIMEOUT_MS		500
-+
-+enum {
-+	A9_STATE_IDLE,
-+	A9_STATE_READ,
-+	A9_STATE_WRITE,
-+};
-+
-+enum fifo_fill_mode {
-+	A9_FIFO_FILL_FULL,
-+	A9_FIFO_FILL_HALF,
-+};
-+
-+/**
-+ * struct aml_i2c - Amlogic I2C device private data
-+ *
-+ * @adap:	I2C adapter instance
-+ * @dev:	Pointer to device structure
-+ * @regs:	Base address of the device memory mapped registers
-+ * @clk:	Pointer to clock structure
-+ * @msg:	Pointer to the current I2C message
-+ * @state:	Current state in the driver state machine
-+ * @count:	Number of bytes to be sent/received in current transfer
-+ * @pos:	Current position in the send/receive buffer
-+ * @error:	Flag set when an error is received
-+ * @lock:	To avoid race conditions between irq handler and xfer code
-+ * @done:	Completion used to wait for transfer termination
-+ * @clk_rate:	Clock source rate of I2C module
-+ * @frequency:	Operating frequency of I2C bus clock
-+ */
-+struct aml_i2c {
-+	struct i2c_adapter	adap;
-+	struct device		*dev;
-+	void __iomem		*regs;
-+	struct clk		*clk;
-+
-+	struct i2c_msg		*msg;
-+	int			state;
-+	int			count;
-+	int			pos;
-+	int			error;
-+	/* protect reg access */
-+	spinlock_t		lock;
-+	struct completion	done;
-+	unsigned long		clk_rate;
-+	unsigned int		frequency;
-+};
-+
-+static void aml_i2c_set_mask(struct aml_i2c *i2c, int reg, u32 mask, u32 val)
-+{
-+	u32 data;
-+
-+	data = readl(i2c->regs + reg);
-+	data &= ~mask;
-+	data |= val & mask;
-+	writel(data, i2c->regs + reg);
-+}
-+
-+/*
-+ * SCL = clk/b_ratio. if b_ratio<=8, SCL = clk/8
-+ */
-+static int aml_i2c_set_clk_div(struct aml_i2c *i2c)
-+{
-+	unsigned long clk_rate = i2c->clk_rate;
-+	unsigned int div;
-+
-+	div = DIV_ROUND_UP(clk_rate, i2c->frequency);
-+
-+	/* clock divider has 12 bits */
-+	if (div >= (1 << 12)) {
-+		dev_err(i2c->dev, "requested bus frequency too low\n");
-+		return -EINVAL;
-+	} else if (div <= 8) {
-+		dev_err(i2c->dev, "requested bus frequency too high\n");
-+		return -EINVAL;
-+	}
-+	/* CFG_BUS reg:11 - 0 bits */
-+	aml_i2c_set_mask(i2c, REG_CFG_BUS, BUS_RATIO_MASK, div);
-+
-+	return 0;
-+}
-+
-+static void reset_fifo_pos(struct aml_i2c *i2c)
-+{
-+	writel(0x00, i2c->regs + REG_TX_RD_ADDR);
-+	writel(0x00, i2c->regs + REG_TX_WR_ADDR);
-+	writel(0x00, i2c->regs + REG_RX_WR_ADDR);
-+	writel(0x00, i2c->regs + REG_RX_RD_ADDR);
-+}
-+
-+static int controller_is_error(struct aml_i2c *i2c)
-+{
-+	int ret = 0;
-+
-+	if (readl(i2c->regs + REG_CFG_IRQ_STATE) & A9_TRANS_ERROR)
-+		ret = -ENXIO;
-+
-+	return ret;
-+}
-+
-+static int controller_is_done(struct aml_i2c *i2c)
-+{
-+	return readl(i2c->regs + REG_CFG_IRQ_STATE) & A9_TRANS_DONE;
-+}
-+
-+static void clear_irq_status(struct aml_i2c *i2c, u32 irq_bits)
-+{
-+	writel(irq_bits, i2c->regs + REG_CFG_IRQ_STATE);
-+}
-+
-+static int aml_i2c_init(struct aml_i2c *i2c)
-+{
-+	int ret;
-+
-+	clear_irq_status(i2c, IRQ_ALL_MASK);
-+	aml_i2c_set_mask(i2c, REG_CFG_BUS, BUS_NO_STOP, BUS_NO_STOP);
-+	aml_i2c_set_mask(i2c, REG_CFG_I2C, I2C_RX_THR | I2C_TX_THR,
-+			 (A9_I2C_FIFO_DEPTH << 16) | (A9_I2C_HALF_FIFO << 8));
-+	reset_fifo_pos(i2c);
-+	ret = aml_i2c_set_clk_div(i2c);
-+
-+	return ret;
-+}
-+
-+static void aml_i2c_put_data(struct aml_i2c *i2c, u8 *buf, int len)
-+{
-+	int i;
-+
-+	/* When this I2C module transfers 0 bytes, it must still send at least 1 byte. */
-+	if (!i2c->msg->len) {
-+		writel(0x00, i2c->regs + REG_CFG_TX);
-+		return;
-+	}
-+
-+	for (i = 0; i < len; i++, buf++)
-+		writel(*buf, i2c->regs + REG_CFG_TX);
-+}
-+
-+static void aml_i2c_prepare_xfer(struct aml_i2c *i2c, enum fifo_fill_mode mode)
-+{
-+	bool write = !(i2c->msg->flags & I2C_M_RD);
-+
-+	if (!write)
-+		return;
-+
-+	if (mode == A9_FIFO_FILL_FULL)
-+		i2c->count = min(i2c->msg->len - i2c->pos, A9_I2C_FIFO_DEPTH);
-+	else
-+		i2c->count = min(i2c->msg->len - i2c->pos, A9_I2C_HALF_FIFO);
-+	aml_i2c_put_data(i2c, i2c->msg->buf + i2c->pos, i2c->count);
-+}
-+
-+static irqreturn_t aml_i2c_irq(int irqno, void *dev_id)
-+{
-+	struct aml_i2c *i2c = dev_id;
-+	u8 *buf = NULL;
-+	int ret;
-+	u32 rd_len, i;
-+	u32 rd_val;
-+
-+	spin_lock(&i2c->lock);
-+	ret = controller_is_error(i2c);
-+	if (ret) {
-+		i2c->error = ret;
-+		goto complete_irq_out;
-+	}
-+
-+	switch (i2c->state) {
-+	case A9_STATE_READ:
-+		buf = i2c->msg->buf;
-+		rd_len = min(i2c->msg->len - i2c->pos, A9_I2C_FIFO_DEPTH);
-+		for (i = 0; i < rd_len; i++) {
-+			rd_val = readl(i2c->regs + REG_CFG_RX);
-+			buf[i2c->pos++] = rd_val & TX_RX_DATA;
-+		}
-+		/* Rx must clear thresh after read fifo */
-+		clear_irq_status(i2c, A9_RX_THRESH_READ);
-+		break;
-+	case A9_STATE_WRITE:
-+		aml_i2c_prepare_xfer(i2c, A9_FIFO_FILL_HALF);
-+		if ((i2c->pos + A9_I2C_HALF_FIFO) >= i2c->msg->len)
-+			aml_i2c_set_mask(i2c, REG_CFG_IRQ_ENABLE, A9_TX_THRESH_WRITE, 0);
-+		i2c->pos += i2c->count;
-+		/* Tx must clear thresh after write fifo */
-+		clear_irq_status(i2c, A9_TX_THRESH_WRITE);
-+		break;
-+	case A9_STATE_IDLE:
-+		dev_warn(i2c->dev, "i2c irq triggered abnormally, irq_state:0x%x,irq_en:0x%x\n",
-+			 readl(i2c->regs + REG_CFG_IRQ_STATE),
-+			 readl(i2c->regs + REG_CFG_IRQ_ENABLE));
-+		break;
-+	default:
-+		break;
-+	}
-+
-+	if (!controller_is_done(i2c)) {
-+		goto irq_trans_out;
-+	} else {
-+		if (i2c->state == A9_STATE_READ && (i2c->msg->len - i2c->pos))
-+			goto irq_trans_out;
-+	}
-+
-+complete_irq_out:
-+	reset_fifo_pos(i2c);
-+	complete(&i2c->done);
-+	i2c->state = A9_STATE_IDLE;
-+	aml_i2c_set_mask(i2c, REG_CFG_IRQ_ENABLE, A9_RX_THRESH_READ | A9_TX_THRESH_WRITE, 0);
-+	clear_irq_status(i2c, IRQ_ALL_MASK);
-+irq_trans_out:
-+	spin_unlock(&i2c->lock);
-+
-+	return IRQ_HANDLED;
-+}
-+
-+static void aml_i2c_do_start(struct aml_i2c *i2c, struct i2c_msg *msg)
-+{
-+	unsigned int reg_val;
-+	unsigned int trans_len;
-+
-+	trans_len = msg->len;
-+	reg_val = (unsigned int)((msg->addr << START_SADDR_SHIFT) |
-+				((msg->flags & I2C_M_RD) ? START_READ : 0) |
-+				((trans_len & 0xfff) << START_LEN_SHIFT) | START_START);
-+	aml_i2c_set_mask(i2c, REG_CFG_START,
-+			 START_START | START_SLAVE_ADDR | START_READ | START_LEN, reg_val);
-+	clear_irq_status(i2c, IRQ_ALL_MASK);
-+	/* enable thresh mode */
-+	if (trans_len > A9_I2C_FIFO_DEPTH) {
-+		reg_val = (msg->flags & I2C_M_RD) ? A9_RX_THRESH_READ : A9_TX_THRESH_WRITE;
-+		aml_i2c_set_mask(i2c, REG_CFG_IRQ_ENABLE,
-+				 A9_RX_THRESH_READ | A9_TX_THRESH_WRITE, reg_val);
-+	}
-+}
-+
-+static int aml_i2c_xfer_msg(struct aml_i2c *i2c, struct i2c_msg *msg, bool last)
-+{
-+	unsigned long time_left, flags;
-+	int ret = 0;
-+
-+	i2c->msg = msg;
-+	i2c->pos = 0;
-+	i2c->count = 0;
-+	i2c->error = 0;
-+
-+	i2c->state = (msg->flags & I2C_M_RD) ? A9_STATE_READ : A9_STATE_WRITE;
-+	spin_lock_irqsave(&i2c->lock, flags);
-+	aml_i2c_prepare_xfer(i2c, A9_FIFO_FILL_FULL);
-+	i2c->pos += i2c->count;
-+	spin_unlock_irqrestore(&i2c->lock, flags);
-+	reinit_completion(&i2c->done);
-+
-+	if (last)
-+		aml_i2c_set_mask(i2c, REG_CFG_BUS, BUS_NO_STOP, 0);
-+	else
-+		aml_i2c_set_mask(i2c, REG_CFG_BUS, BUS_NO_STOP, BUS_NO_STOP);
-+	/* Start the transfer */
-+	aml_i2c_do_start(i2c, msg);
-+
-+	time_left = msecs_to_jiffies(I2C_TIMEOUT_MS);
-+	time_left = wait_for_completion_timeout(&i2c->done, time_left);
-+
-+	/*
-+	 * Protect access to i2c struct and registers from interrupt
-+	 * handlers triggered by a transfer terminated after the
-+	 * timeout period
-+	 */
-+
-+	spin_lock_irqsave(&i2c->lock, flags);
-+	if (!time_left) {
-+		i2c->state = A9_STATE_IDLE;
-+		clear_irq_status(i2c, IRQ_ALL_MASK);
-+		reset_fifo_pos(i2c);
-+		ret = -ETIMEDOUT;
-+	}
-+
-+	if (i2c->error)
-+		ret = i2c->error;
-+	spin_unlock_irqrestore(&i2c->lock, flags);
-+
-+	return ret;
-+}
-+
-+static int aml_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
-+{
-+	struct aml_i2c *i2c = adap->algo_data;
-+	int i, ret = 0;
-+
-+	for (i = 0; i < num; i++) {
-+		ret = aml_i2c_xfer_msg(i2c, msgs + i, i == num - 1);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return i;
-+}
-+
-+static u32 aml_i2c_func(struct i2c_adapter *adap)
-+{
-+	return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
-+}
-+
-+static const struct i2c_adapter_quirks aml_i2c_quirks = {
-+	.max_read_len = A9_I2C_MAX_XFER_SIZE,
-+	.max_write_len = A9_I2C_MAX_XFER_SIZE,
-+};
-+
-+static const struct i2c_algorithm aml_i2c_algorithm = {
-+	.master_xfer	= aml_i2c_xfer,
-+	.functionality	= aml_i2c_func,
-+};
-+
-+static int aml_i2c_probe(struct platform_device *pdev)
-+{
-+	struct device_node *np = pdev->dev.of_node;
-+	struct aml_i2c *i2c;
-+	struct i2c_timings timings;
-+	int irq, ret;
-+
-+	i2c = devm_kzalloc(&pdev->dev, sizeof(struct aml_i2c), GFP_KERNEL);
-+	if (!i2c)
-+		return -ENOMEM;
-+
-+	i2c_parse_fw_timings(&pdev->dev, &timings, true);
-+	i2c->frequency = timings.bus_freq_hz;
-+
-+	i2c->dev = &pdev->dev;
-+	platform_set_drvdata(pdev, i2c);
-+
-+	spin_lock_init(&i2c->lock);
-+	init_completion(&i2c->done);
-+
-+	i2c->regs  = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(i2c->regs))
-+		return PTR_ERR(i2c->regs);
-+
-+	i2c->clk = devm_clk_get_enabled(&pdev->dev, NULL);
-+	if (IS_ERR(i2c->clk))
-+		return dev_err_probe(&pdev->dev, PTR_ERR(i2c->clk), "can't get enable clock\n");
-+
-+	i2c->clk_rate = clk_get_rate(i2c->clk);
-+	if (i2c->clk_rate == 0)
-+		return dev_err_probe(&pdev->dev, -EINVAL, "failed to get clk rate\n");
-+
-+	ret = aml_i2c_init(i2c);
-+	if (ret < 0)
-+		return dev_err_probe(&pdev->dev, ret, "fail init i2c\n");
-+
-+	irq = platform_get_irq(pdev, 0);
-+	if (irq < 0)
-+		return dev_err_probe(&pdev->dev, irq, "can't find IRQ\n");
-+
-+	ret = devm_request_irq(&pdev->dev, irq, aml_i2c_irq, 0, dev_name(&pdev->dev), i2c);
-+	if (ret < 0)
-+		return dev_err_probe(&pdev->dev, ret, "can't request IRQ\n");
-+	/* Enable error & done irq */
-+	writel(A9_ENABLE_IRQ_BIT, i2c->regs + REG_CFG_IRQ_ENABLE);
-+	strscpy(i2c->adap.name, "Amlogic I2C adapter",
-+		sizeof(i2c->adap.name));
-+	i2c->adap.owner = THIS_MODULE;
-+	i2c->adap.algo = &aml_i2c_algorithm;
-+	i2c->adap.quirks = &aml_i2c_quirks;
-+	i2c->adap.dev.parent = &pdev->dev;
-+	i2c->adap.dev.of_node = np;
-+	i2c->adap.algo_data = i2c;
-+
-+	return i2c_add_adapter(&i2c->adap);
-+}
-+
-+static void aml_i2c_remove(struct platform_device *pdev)
-+{
-+	struct aml_i2c *i2c = platform_get_drvdata(pdev);
-+
-+	i2c_del_adapter(&i2c->adap);
-+}
-+
-+static const struct of_device_id aml_i2c_match[] = {
-+	{	.compatible = "amlogic,a9-i2c",},
-+	{ }
-+};
-+
-+MODULE_DEVICE_TABLE(of, aml_i2c_match);
-+
-+static struct platform_driver aml_i2c_driver = {
-+	.probe   = aml_i2c_probe,
-+	.remove  = aml_i2c_remove,
-+	.driver  = {
-+		.name  = "amlogic-i2c",
-+		.of_match_table = aml_i2c_match,
-+	},
-+};
-+
-+module_platform_driver(aml_i2c_driver);
-+
-+MODULE_DESCRIPTION("Amlogic I2C Bus driver");
-+MODULE_AUTHOR("Junyi Zhao <junyi.zhao@amlogic.com>");
-+MODULE_LICENSE("GPL");
+---
+Andrei Stancovici (3):
+      dt-bindings: iio: adc: lltc,ltc2497: add LTC2493 support
+      iio: adc: ltc2497: add FA/FB line-frequency rejection selection
+      iio: adc: ltc2497: add LTC2493 support
 
--- 
-2.52.0
+ .../devicetree/bindings/iio/adc/lltc,ltc2497.yaml  |   7 +
+ drivers/iio/adc/ltc2496.c                          |   1 +
+ drivers/iio/adc/ltc2497-core.c                     | 227 +++++++++++++++++----
+ drivers/iio/adc/ltc2497.c                          |  47 +++--
+ drivers/iio/adc/ltc2497.h                          |  31 ++-
+ 5 files changed, 251 insertions(+), 62 deletions(-)
+---
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261009-submission-ltc2493-support-v1-86449ede432d
+
+Best regards,
+--  
+Andrei Stancovici <andrei.stancovici@analog.com>
 
