@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:01 -0700
-Subject: [PATCH RFC v2 29/50] samples/kvm: Move set_present ioctl from
- device to provider file
+Date: Thu, 22 Oct 2026 16:28:02 -0700
+Subject: [PATCH RFC v2 30/50] KVM: selftests: Add basic test for sample
+ memory provider
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-29-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-30-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,202 +56,194 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5767;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5553;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=H/aHfqiQsIGjlkRuZcgzrZG67kHqDrIDRTIsNyoR6Bg=;
- b=SRVh1fisaAFs6F5av7vtWATQWJcgQy1DTGO+tQZj/9hRwxvBUfF76l/qlxY4d03eZsrtDm9lZ
- qso+VjcAhbMD+Y8KkK84sFBWIHRpbZZKhIeu5He2gCzPnW0tg1HlnPv
+ bh=DxHc6o6FnWpOH7kMAejZmhFMGKZWARQeHZ9yAfr2gtM=;
+ b=MZWm5OhI65j5qGliKRKMwC78fhjZnRK4OJnvkL5NZPMB3GRVId6GmA9lc7rWY/7Oe6I17BuFk
+ /BfBpbRroEDB7//o/KaeRPl5dErRndTcfCEIUCt859LcAinaQKoho5Y
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the MPS_CTL_SET_PRESENT ioctl from the /dev/mem_provider_sample
-control device to become MPS_SET_PRESENT directly on the provider file
-descriptor itself.
+Add a selftest for the sample memory provider (/dev/mem_provider_sample).
 
-Calling MPS_SET_PRESENT directly on the provider file eliminates the
-need to pass a file descriptor in the ioctl argument.
+Test basic lifecycle creation across multiple sizes. Verify file capacity
+and absent pages accounting using the MPS_GET_STATS ioctl. Also test
+marking pages absent and present with MPS_SET_PRESENT, verifying that
+absent pages are reflected in stats accordingly.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/mem_provider_sample.c | 90 ++++++++++++++-------------------------
- samples/kvm/mem_provider_sample.h | 14 +++---
- 2 files changed, 40 insertions(+), 64 deletions(-)
+ tools/testing/selftests/kvm/Makefile.kvm           |   1 +
+ .../selftests/kvm/mem_provider_sample_test.c       | 147 +++++++++++++++++++++
+ 2 files changed, 148 insertions(+)
 
-diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index a8d40f3c631ed..397ebb3773f39 100644
---- a/samples/kvm/mem_provider_sample.c
-+++ b/samples/kvm/mem_provider_sample.c
-@@ -36,7 +36,7 @@ struct mps_info {
- 	unsigned long npages;
- 	struct page *cma_pages;		/* from alloc_contig_pages() */
+diff --git a/tools/testing/selftests/kvm/Makefile.kvm b/tools/testing/selftests/kvm/Makefile.kvm
+index 17a4256e90819..5f7118bddfc36 100644
+--- a/tools/testing/selftests/kvm/Makefile.kvm
++++ b/tools/testing/selftests/kvm/Makefile.kvm
+@@ -72,6 +72,7 @@ TEST_GEN_PROGS_COMMON += set_memory_region_test
+ TEST_GEN_PROGS_COMMON += memslot_modification_stress_test
+ TEST_GEN_PROGS_COMMON += memslot_perf_test
+ TEST_GEN_PROGS_COMMON += vm_types_test
++TEST_GEN_PROGS_COMMON += mem_provider_sample_test
  
--	unsigned long *absent;		/* taken away by CTL_SET_PRESENT */
-+	unsigned long *absent;		/* taken away by MPS_SET_PRESENT */
- };
- 
- /* Byte range [offset, offset + len) of @info as page indices. */
-@@ -75,21 +75,6 @@ static long mps_get_stats(struct mps_info *info, void __user *uarg)
- 	return copy_to_user(uarg, &st, sizeof(st)) ? -EFAULT : 0;
- }
- 
--/*
-- * A provider fd is read-only to its holder: only GET_STATS. The owner changes
-- * a file's pages through the control device (MPS_CTL_SET_PRESENT).
-- */
--static long mps_file_ioctl(struct file *file, unsigned int cmd,
--			   unsigned long arg)
--{
--	struct mps_info *info = file->private_data;
--	void __user *uarg = (void __user *)arg;
--
--	if (cmd == MPS_GET_STATS)
--		return mps_get_stats(info, uarg);
--	return -ENOTTY;
--}
--
- static int mps_file_release(struct inode *inode, struct file *file)
- {
- 	struct mps_info *info = file->private_data;
-@@ -101,6 +86,38 @@ static int mps_file_release(struct inode *inode, struct file *file)
- 	return 0;
- }
- 
-+static long mps_file_set_present(struct mps_info *info, void __user *uarg)
-+{
-+	struct mps_set_present sp;
-+	unsigned long start, end;
-+	int ret;
+ # Compiled test targets
+ TEST_GEN_PROGS_x86 = $(TEST_GEN_PROGS_COMMON)
+diff --git a/tools/testing/selftests/kvm/mem_provider_sample_test.c b/tools/testing/selftests/kvm/mem_provider_sample_test.c
+new file mode 100644
+index 0000000000000..932ea3f30f494
+--- /dev/null
++++ b/tools/testing/selftests/kvm/mem_provider_sample_test.c
+@@ -0,0 +1,147 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Tests for the sample memory provider (/dev/mem_provider_sample).
++ */
++#include <fcntl.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/ioctl.h>
++#include <sys/stat.h>
++#include <unistd.h>
 +
-+	if (copy_from_user(&sp, uarg, sizeof(sp)))
-+		return -EFAULT;
-+	if (sp.value > 1 || sp.pad)
-+		return -EINVAL;
-+	ret = mps_range(info, sp.offset, sp.len, &start, &end);
-+	if (!ret)
-+		mps_set_present(info, start, end, sp.value);
-+	return ret;
++#include "test_util.h"
++#include "../../../../samples/kvm/mem_provider_sample.h"
++
++#define DEV_PATH "/dev/mem_provider_sample"
++
++static int open_provider_dev(void)
++{
++	int fd = open(DEV_PATH, O_RDWR);
++
++	if (fd < 0) {
++		TEST_REQUIRE(errno != ENOENT && errno != ENODEV);
++		TEST_FAIL("Failed to open %s: %d (%s)", DEV_PATH, errno,
++			  strerror(errno));
++	}
++	return fd;
 +}
 +
-+static long mps_file_ioctl(struct file *file, unsigned int cmd,
-+			   unsigned long arg)
++static int create_provider_file(int dev_fd, uint64_t size)
 +{
-+	struct mps_info *info = file->private_data;
-+	void __user *uarg = (void __user *)arg;
++	struct mps_new_file nf = {
++		.size = size,
++	};
++	int fd;
 +
-+	switch (cmd) {
-+	case MPS_GET_STATS:
-+		return mps_get_stats(info, uarg);
-+	case MPS_SET_PRESENT:
-+		return mps_file_set_present(info, uarg);
-+	default:
-+		return -ENOTTY;
++	fd = ioctl(dev_fd, MPS_NEW_FILE, &nf);
++	TEST_ASSERT(fd >= 0, "MPS_NEW_FILE failed for size 0x%lx: %d (%s)",
++		    size, errno, strerror(errno));
++	return fd;
++}
++
++static void test_lifecycle_and_creation(int dev_fd)
++{
++	size_t page_size = getpagesize();
++	uint64_t sizes[] = {
++		page_size,
++		2 * page_size,
++		2 * 1024 * 1024,
++	};
++	struct mps_stats st;
++	int i, fd;
++
++	for (i = 0; i < ARRAY_SIZE(sizes); i++) {
++		fd = create_provider_file(dev_fd, sizes[i]);
++
++		memset(&st, 0, sizeof(st));
++		TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
++			    "MPS_GET_STATS failed: %d (%s)",
++			    errno, strerror(errno));
++		TEST_ASSERT(st.size == sizes[i],
++			    "size mismatch: expected 0x%lx, got 0x%llx",
++			    sizes[i], st.size);
++		TEST_ASSERT(st.absent_pages == 0,
++			    "absent_pages mismatch: expected 0, got %llu",
++			    st.absent_pages);
++
++		close(fd);
 +	}
 +}
 +
- static const struct file_operations mps_file_fops = {
- 	.owner		= THIS_MODULE,
- 	.release	= mps_file_release,
-@@ -108,20 +125,6 @@ static const struct file_operations mps_file_fops = {
- 	.compat_ioctl	= compat_ptr_ioctl,
- };
- 
--static struct file *mps_get_file(int fd, struct mps_info **infop)
--{
--	struct file *file = fget(fd);
--
--	if (!file)
--		return ERR_PTR(-EBADF);
--	if (file->f_op != &mps_file_fops) {
--		fput(file);
--		return ERR_PTR(-EINVAL);
--	}
--	*infop = file->private_data;
--	return file;
--}
--
- static long mps_ctl_new_file(void __user *uarg)
- {
- 	struct mps_new_file nf;
-@@ -190,31 +193,6 @@ static long mps_ctl_new_file(void __user *uarg)
- 	return ret;
- }
- 
--/*
-- * CTL_SET_PRESENT changes a file's pages, by the owner on the control device.
-- */
--static long mps_ctl_set_present(void __user *uarg)
--{
--	struct mps_ctl_range cr;
--	unsigned long start, end;
--	struct mps_info *info;
--	struct file *file;
--	int ret;
--
--	if (copy_from_user(&cr, uarg, sizeof(cr)))
--		return -EFAULT;
--	if (cr.value > 1)
--		return -EINVAL;
--	file = mps_get_file(cr.fd, &info);
--	if (IS_ERR(file))
--		return PTR_ERR(file);
--	ret = mps_range(info, cr.offset, cr.len, &start, &end);
--	if (!ret)
--		mps_set_present(info, start, end, cr.value);
--	fput(file);
--	return ret;
--}
--
- static long mps_ctl_ioctl(struct file *file, unsigned int cmd,
- 			  unsigned long arg)
- {
-@@ -223,8 +201,6 @@ static long mps_ctl_ioctl(struct file *file, unsigned int cmd,
- 	switch (cmd) {
- 	case MPS_NEW_FILE:
- 		return mps_ctl_new_file(uarg);
--	case MPS_CTL_SET_PRESENT:
--		return mps_ctl_set_present(uarg);
- 	default:
- 		return -ENOTTY;
- 	}
-diff --git a/samples/kvm/mem_provider_sample.h b/samples/kvm/mem_provider_sample.h
-index c4cb10b4aadeb..b9f10286cb30e 100644
---- a/samples/kvm/mem_provider_sample.h
-+++ b/samples/kvm/mem_provider_sample.h
-@@ -30,25 +30,25 @@ struct mps_new_file {
- /* ioctl on a provider fd: read the file's state, for tests. */
- struct mps_stats {
- 	__u64 size;
--	__u64 absent_pages;	/* pages taken away by CTL_SET_PRESENT */
-+	__u64 absent_pages;	/* pages taken away by MPS_SET_PRESENT */
- };
- 
- #define MPS_GET_STATS \
- 	_IOR(MPS_IOCTL_BASE, 10, struct mps_stats)
- 
- /*
-- * ioctl on /dev/mem_provider_sample: CTL_SET_PRESENT on file @fd, by the
-- * owner. @value is the present value (1 = present, 0 = absent), and @offset
-+ * ioctl on a provider fd: SET_PRESENT on [@offset, @offset + @len).
-+ * @value is the present value (1 = present, 0 = absent), and @offset
-  * and @len are a byte range within the file, page aligned.
-  */
--struct mps_ctl_range {
--	__s32 fd;
-+struct mps_set_present {
- 	__u32 value;
-+	__u32 pad;
- 	__u64 offset;	/* bytes into the file, page aligned */
- 	__u64 len;	/* bytes, page aligned */
- };
- 
--#define MPS_CTL_SET_PRESENT \
--	_IOW(MPS_IOCTL_BASE, 12, struct mps_ctl_range)
-+#define MPS_SET_PRESENT \
-+	_IOW(MPS_IOCTL_BASE, 12, struct mps_set_present)
- 
- #endif /* _SAMPLES_KVM_MEM_PROVIDER_SAMPLE_H */
++static void test_set_present(int dev_fd)
++{
++	size_t page_size = getpagesize();
++	uint64_t nr_pages = 4;
++	uint64_t file_size = nr_pages * page_size;
++	struct mps_set_present sp;
++	struct mps_stats st;
++	int ret, fd;
++
++	fd = create_provider_file(dev_fd, file_size);
++
++	/* Initially all pages are present */
++	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
++		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
++	TEST_ASSERT(st.absent_pages == 0,
++		    "Initial absent_pages mismatch: expected 0, got %llu",
++		    st.absent_pages);
++
++	/* Mark page 1 absent */
++	memset(&sp, 0, sizeof(sp));
++	sp.value = 0;
++	sp.offset = page_size;
++	sp.len = page_size;
++	ret = ioctl(fd, MPS_SET_PRESENT, &sp);
++	TEST_ASSERT(!ret, "MPS_SET_PRESENT (absent) failed: %d (%s)",
++		    errno, strerror(errno));
++
++	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
++		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
++	TEST_ASSERT(st.size == file_size,
++		    "size changed unexpectedly: 0x%llx", st.size);
++	TEST_ASSERT(st.absent_pages == 1,
++		    "absent_pages mismatch after absent: expected 1, got %llu",
++		    st.absent_pages);
++
++	/* Mark page 1 back to present */
++	sp.value = 1;
++	ret = ioctl(fd, MPS_SET_PRESENT, &sp);
++	TEST_ASSERT(!ret, "MPS_SET_PRESENT (present) failed: %d (%s)",
++		    errno, strerror(errno));
++
++	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
++		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
++	TEST_ASSERT(st.absent_pages == 0,
++		    "absent_pages mismatch after restore: expected 0, got %llu",
++		    st.absent_pages);
++
++	/* Mark all pages absent */
++	sp.value = 0;
++	sp.offset = 0;
++	sp.len = file_size;
++	ret = ioctl(fd, MPS_SET_PRESENT, &sp);
++	TEST_ASSERT(!ret, "MPS_SET_PRESENT (all absent) failed: %d (%s)",
++		    errno, strerror(errno));
++
++	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
++		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
++	TEST_ASSERT(st.absent_pages == nr_pages,
++		    "absent_pages mismatch after all absent: expected %lu, got %llu",
++		    nr_pages, st.absent_pages);
++
++	close(fd);
++}
++
++int main(int argc, char *argv[])
++{
++	int dev_fd;
++
++	dev_fd = open_provider_dev();
++
++	test_lifecycle_and_creation(dev_fd);
++	test_set_present(dev_fd);
++
++	close(dev_fd);
++	return 0;
++}
 
 -- 
 2.56.0.257.gf7497c7d27-goog
