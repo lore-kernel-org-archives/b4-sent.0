@@ -1,10 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 22 Oct 2026 12:19:00 -0300
-Subject: [PATCH v2 02/10] iio: backend: add devm_iio_backend_get_optional()
+Date: Thu, 22 Oct 2026 12:19:01 -0300
+Subject: [PATCH v2 03/10] dt-bindings: iio: frequency: add
+ adi,ad9910-axi-backend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261022-ad9910-backend-support-v2-2-0ff7f0bff326@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261022-ad9910-backend-support-v2-3-0ff7f0bff326@analog.com>
 References: <20261022-ad9910-backend-support-v2-0-0ff7f0bff326@analog.com>
 In-Reply-To: <20261022-ad9910-backend-support-v2-0-0ff7f0bff326@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -22,117 +23,123 @@ Cc: Olivier Moysan <olivier.moysan@foss.st.com>,
  Randy Dunlap <rdunlap@infradead.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792682347; l=4433;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792682347; l=3683;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=DR+JgLsY7qzSw7iJ/0ySFgwEAMpmPHtv/6q9aBcxSno=;
- b=3crxF6HvT5YXyw7lQncL7kG6Ddm2Syj8/O1U35ssgsGrGerNwuxlVurVylA8hO61dD0jB5dih
- vVin55RAwaJCDMT2C+5/HMGDQ7QNjwZAXflztbrTsKBiQ0ei9DvZwhj
+ bh=CY1SqfatwESZkmEigRY0fdqsP8jg+f3FT7aQydkMpu0=;
+ b=oI+lu8LbTOa5A6uaf9OYIuX4y81mOUXtMN/wKCdcC1YNfsNQkrOSbWCPrVI6U8OWrnOPgJPKy
+ 9F4hXqVq0vZAMv7vRARXh22XzTJpNGwoCWVbyO2/DO/H8ETPZ4TtVbZ
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Frontend devices might not need a backend driver to rely on. An IIO device
-that supports backends can behave differently when they are not available
-and that should be acceptable. Such parts may provide basic functionality
-solely using the control interface (SPI for instance), being able to have
-extended features when a backend is present.
+Add bindings for the AD9910 AXI backend IP core. The FPGA IP core
+interfaces with the data and control pins of the AD9910 DDS, streaming
+data from memory via DMA into the 18-bit parallel data port (F[1:0] and
+D[15:0] pins), which is clocked by the PDCLK output of the device. It
+also drives the PROFILE[2:0] pins and the DRCTL pin, which controls the
+slope direction of the digital ramp generator (DRG). The DRCTL pin is
+driven by a PWM generator, so the IP core is described both as an IIO
+backend and as a PWM provider.
 
-Add devm_iio_backend_get_optional(), which returns NULL when the backend
-is not described in firmware, i.e., when the io-backends property is not
-present or, for a named lookup, when the name is not listed in the
-io-backend-names property. Other errors, such as probe deferral, are
-still returned.
-
-To make that possible, a named lookup that does not match any entry of
-io-backend-names now fails with -ENOENT, the same error returned when the
-io-backends reference is missing. Also, the missing reference is no longer
-logged as an error, leaving that to the caller.
-
-Reviewed-by: Nuno Sá <nuno.sa@analog.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/industrialio-backend.c | 38 ++++++++++++++++++++++++++++++++++++++
- include/linux/iio/backend.h        |  2 ++
- 2 files changed, 40 insertions(+)
+ .../iio/frequency/adi,ad9910-axi-backend.yaml      | 74 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 75 insertions(+)
 
-diff --git a/drivers/iio/industrialio-backend.c b/drivers/iio/industrialio-backend.c
-index fbf5c39d7655..d12d163f45ca 100644
---- a/drivers/iio/industrialio-backend.c
-+++ b/drivers/iio/industrialio-backend.c
-@@ -1006,6 +1006,9 @@ static struct iio_backend *__devm_iio_backend_fwnode_get_by_index(struct device
- 
- 	struct fwnode_handle *fwnode_back __free(fwnode_handle) =
- 		fwnode_find_reference(fwnode, "io-backends", index);
-+	/* not described in firmware, let the caller decide what to do */
-+	if (PTR_ERR(fwnode_back) == -ENOENT)
-+		return ERR_CAST(fwnode_back);
- 	if (IS_ERR(fwnode_back))
- 		return dev_err_cast_probe(dev, fwnode_back,
- 					  "Cannot get Firmware reference\n");
-@@ -1034,7 +1037,17 @@ static struct iio_backend *__devm_iio_backend_fwnode_get(struct device *dev, con
- 	int ret;
- 
- 	if (name) {
-+		if (!device_property_present(dev, "io-backend-names"))
-+			return ERR_PTR(-ENOENT);
+diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
+new file mode 100644
+index 000000000000..20c45fbaf945
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
+@@ -0,0 +1,74 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/frequency/adi,ad9910-axi-backend.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- 		ret = device_property_match_string(dev, "io-backend-names", name);
-+		/*
-+		 * device_property_match_string() also returns -ENODATA when
-+		 * @name is not listed in the property, which means that this
-+		 * backend is not described in firmware.
-+		 */
-+		if (ret == -ENODATA)
-+			return ERR_PTR(-ENOENT);
- 		if (ret < 0)
- 			return ERR_PTR(ret);
- 		index = ret;
-@@ -1061,6 +1074,31 @@ struct iio_backend *devm_iio_backend_get(struct device *dev, const char *name)
- }
- EXPORT_SYMBOL_NS_GPL(devm_iio_backend_get, "IIO_BACKEND");
- 
-+/**
-+ * devm_iio_backend_get_optional - Optional device managed backend device get
-+ * @dev: Consumer device for the backend
-+ * @name: Backend name
-+ *
-+ * Gets the backend associated with @dev. A backend not described in firmware,
-+ * i.e., the io-backends property is not present or @name is not listed in
-+ * the io-backend-names property, is not treated as an error.
-+ *
-+ * RETURNS:
-+ * A backend pointer, NULL if the backend is not described in firmware,
-+ * negative error pointer otherwise.
-+ */
-+struct iio_backend *devm_iio_backend_get_optional(struct device *dev,
-+						  const char *name)
-+{
-+	struct iio_backend *back = devm_iio_backend_get(dev, name);
++title: Analog Devices AD9910 AXI Backend IP core
 +
-+	if (IS_ERR(back) && PTR_ERR(back) == -ENOENT)
-+		return NULL;
++maintainers:
++  - Rodrigo Alencar <rodrigo.alencar@analog.com>
 +
-+	return back;
-+}
-+EXPORT_SYMBOL_NS_GPL(devm_iio_backend_get_optional, "IIO_BACKEND");
++description:
++  FPGA IP core that interfaces with the data and control pins of the AD9910
++  Direct Digital Synthesizer. The SPI bus is used as the control interface
++  of the AD9910 device, while this IP core streams data from memory via DMA
++  into the 18-bit parallel data port (F[1:0] and D[15:0] pins), which is
++  clocked by the PDCLK output of the AD9910. The IP core also drives the
++  PROFILE[2:0] pins for profile selection and provides a PWM generator that
++  drives the DRCTL pin, controlling the digital ramp generator (DRG) slope
++  direction.
 +
- /**
-  * devm_iio_backend_get_by_index - Device managed backend device get by index
-  * @dev: Consumer device for the backend
-diff --git a/include/linux/iio/backend.h b/include/linux/iio/backend.h
-index 9c16b695a602..93d5f2073cc3 100644
---- a/include/linux/iio/backend.h
-+++ b/include/linux/iio/backend.h
-@@ -267,6 +267,8 @@ int iio_backend_extend_chan_spec(struct iio_backend *back,
- bool iio_backend_has_caps(struct iio_backend *back, u32 caps);
- void *iio_backend_get_priv(const struct iio_backend *conv);
- struct iio_backend *devm_iio_backend_get(struct device *dev, const char *name);
-+struct iio_backend *devm_iio_backend_get_optional(struct device *dev,
-+						  const char *name);
- struct iio_backend *devm_iio_backend_get_by_index(struct device *dev, unsigned int index);
- struct iio_backend *devm_iio_backend_fwnode_get(struct device *dev,
- 						const char *name,
++  https://developer.analog.com/docs/hdl/latest/library/axi_ad9910/index.html
++
++properties:
++  compatible:
++    const: adi,ad9910-axi-backend
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++    description: AXI bus clock (s_axi_aclk).
++
++  dmas:
++    maxItems: 1
++
++  dma-names:
++    items:
++      - const: tx
++
++  '#io-backend-cells':
++    const: 0
++
++  '#pwm-cells':
++    const: 3
++    description:
++      The first cell must be 0, as only the DRCTL PWM output is available.
++      The second cell is the PWM period in nanoseconds and the third cell
++      holds the PWM flags.
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - dmas
++  - dma-names
++  - '#io-backend-cells'
++  - '#pwm-cells'
++
++additionalProperties: false
++
++examples:
++  - |
++    ad9910_backend: dds-backend@44a00000 {
++        compatible = "adi,ad9910-axi-backend";
++        reg = <0x44a00000 0x10000>;
++        clocks = <&clkc 15>;
++        dmas = <&tx_dma 0>;
++        dma-names = "tx";
++        #io-backend-cells = <0>;
++        #pwm-cells = <3>;
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 52024397dc78..351ec0bca477 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1731,6 +1731,7 @@ S:	Supported
+ W:	https://ez.analog.com/linux-software-drivers
+ F:	Documentation/ABI/testing/debugfs-iio-ad9910
+ F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
++F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
+ F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+ F:	Documentation/iio/ad9910.rst
+ F:	drivers/iio/frequency/ad9910.c
 
 -- 
 2.43.0
