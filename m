@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:12 -0700
-Subject: [PATCH RFC v2 40/50] KVM: guest_memfd: Support put_pfn_range
- provider op in PFN mode
+Date: Thu, 22 Oct 2026 16:28:13 -0700
+Subject: [PATCH RFC v2 41/50] KVM: guest_memfd: Add TODO for memory failure
+ handling in PFN mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-40-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-41-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,98 +56,41 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=3575;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=995;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=fQMRQxusZ1KmD4dPC2As64TjcyJvgKaoXqpKrVt4BKs=;
- b=441+taHyVGg3FOmYBS6hIkVBssZuzaMXxGa8VYy3o42dXNzBFf0zRuCuCp0rd2+Xc7H6tCxAO
- gOn8Ozq7ysEA0qQMA3sh6bogKiwLKMoH6biYx3NGNEr70RBWa44tYBz
+ bh=ywimPr8xM8W5IWC+IFHzZM+XE9Py2m+UQJgTrzAxKZc=;
+ b=AmJho2/OmL5iB6a3wmmUlrO/oEcg3/kVVcZkPZCjkwKxtxHbWU1NfSLey8pjERpooe/o5caEO
+ cTmpBxuPY05Cn9MXbqAN6Hlr9/+SNa1XkP1V/8eVUvxLXLs831J+mRv
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When punching holes or destroying guest_memfd files in folio mode,
-folios are truncated and freed, allowing the backing filesystem to free
-or reset memory.
-
-In PFN mode, memory is not backed by page cache folios. To inform the
-provider that a physical range has been released by guest_memfd,
-introduce the .put_pfn_range callback to struct
-guest_memfd_provider_operations.
-
-Invoke .put_pfn_range() after kvm_gmem_pfn_reclaim() during both hole
-punching and inode destruction, passing the file index and page count.
+Add a TODO comment noting that PFN mode does not use page-cache folios, so
+->error_remove_folio() will not be called by the core memory failure
+infrastructure when physical memory errors occur.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/guest_memfd.h |  5 +++++
- virt/kvm/guest_memfd.c      | 16 ++++++++++++++--
- 2 files changed, 19 insertions(+), 2 deletions(-)
+ virt/kvm/guest_memfd.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/include/linux/guest_memfd.h b/include/linux/guest_memfd.h
-index 2f1c679dd154c..3c0cc35f748bc 100644
---- a/include/linux/guest_memfd.h
-+++ b/include/linux/guest_memfd.h
-@@ -33,6 +33,10 @@ struct mempolicy;
-  *                    -ENOENT. Return a negative error code on other failure.
-  *                    The provider must define @get_pfn when @lookup_pfn_range
-  *                    is defined.
-+ * @put_pfn_range: Release a range of PFNs previously obtained for a given
-+ *                 index.  The provider does not need to ensure that backing
-+ *                 memory is present. If backing memory is not available, the
-+ *                 provider should skip the unbacked range.
-  *
-  * Used by filesystems and device drivers that provide memory for guest_memfd.
-  */
-@@ -46,6 +50,7 @@ struct guest_memfd_provider_operations {
- 		       int *max_order);
- 	int (*lookup_pfn_range)(void *provider, pgoff_t index,
- 				unsigned long *pfn, size_t *nr_pages);
-+	void (*put_pfn_range)(void *provider, pgoff_t index, size_t nr_pages);
- };
- 
- #endif /* _LINUX_GUEST_MEMFD_H */
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 88eae9d6d249f..5741ff6ab94c6 100644
+index 5741ff6ab94c6..c89df77df7146 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -171,6 +171,13 @@ static void gmem_provider_invalidate_folio(struct gmem_inode *gi,
- 		gi->provider_ops->invalidate_folio(gi->provider, folio);
+@@ -1068,6 +1068,11 @@ static int kvm_gmem_migrate_folio(struct address_space *mapping,
+ 	return -EINVAL;
  }
  
-+static void gmem_provider_put_pfn_range(struct gmem_inode *gi, pgoff_t index,
-+					size_t nr_pages)
-+{
-+	if (gi->provider_ops && gi->provider_ops->put_pfn_range)
-+		gi->provider_ops->put_pfn_range(gi->provider, index, nr_pages);
-+}
-+
- static void gmem_provider_release(struct gmem_inode *gi)
++/*
++ * TODO: Support memory failure notification for PFN mode. In PFN mode, memory
++ * is not backed by page cache folios, so ->error_remove_folio() will not be
++ * invoked by the core memory failure handler.
++ */
+ static int kvm_gmem_error_folio(struct address_space *mapping, struct folio *folio)
  {
- 	if (gi->provider_ops && gi->provider_ops->release)
-@@ -426,6 +433,7 @@ static long kvm_gmem_punch_hole(struct inode *inode, loff_t offset, loff_t len)
- 	if (kvm_gmem_is_pfn_mode(GMEM_I(inode))) {
- 		unmap_mapping_range(inode->i_mapping, offset, len, 0);
- 		kvm_gmem_pfn_reclaim(GMEM_I(inode), start, end);
-+		gmem_provider_put_pfn_range(GMEM_I(inode), start, end - start);
- 	} else {
- 		truncate_inode_pages_range(inode->i_mapping, offset, offset + len - 1);
- 	}
-@@ -1647,8 +1655,12 @@ static void kvm_gmem_destroy_inode(struct inode *inode)
- 	 * Skip if the provider was not yet set up, as iput() can reach this on
- 	 * error paths before provider_ops is initialized.
- 	 */
--	if (gi->provider_ops && kvm_gmem_is_pfn_mode(gi))
--		kvm_gmem_pfn_reclaim(gi, 0, i_size_read(inode) >> PAGE_SHIFT);
-+	if (gi->provider_ops && kvm_gmem_is_pfn_mode(gi)) {
-+		pgoff_t nr_pages = i_size_read(inode) >> PAGE_SHIFT;
-+
-+		kvm_gmem_pfn_reclaim(gi, 0, nr_pages);
-+		gmem_provider_put_pfn_range(gi, 0, nr_pages);
-+	}
- 
- 	gmem_provider_release(gi);
- 
+ 	struct inode *inode = mapping->host;
 
 -- 
 2.56.0.257.gf7497c7d27-goog
