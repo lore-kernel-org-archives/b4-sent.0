@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:44 -0700
-Subject: [PATCH RFC v2 12/50] KVM: selftests: Test rejection of regular
- file in tmpfs mount
+Date: Thu, 22 Oct 2026 16:27:45 -0700
+Subject: [PATCH RFC v2 13/50] KVM: selftests: Test guest_memfd with tmpfs
+ resource pool
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-12-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-13-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,64 +56,85 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1842;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2627;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=pDE4OVnGboOSGiy8/kldBMjQFbPdRMO9/IEWat+ioPU=;
- b=GgWocXsPVabq+HYGkSW3vHTi6dWLrVAKmjkzMiyD2mhGGJyKDlTt8oY3GVzXJAo2KuFBE2fM7
- Q4c0wDndunDA0ktzQqq9tCeTM2LcnZf8TC0DtQkts4wTJuKL9cmRODO
+ bh=YbcH78A2PggvmgIHyLc+FvDnM+c8ZNEhltr6vRYx48I=;
+ b=3tHe0p96whxRdNNyX/r+KpHPSvLRTqYyqnIWCP8R+a0C5FAForRtXgxX3rTpW+B9mcxCieVzj
+ d7PIu77lFIPDjzb3OfhoEdtqC1oPeBW3BEXI9o3cm6P/lHqLHMwabS9
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add test coverage verifying that creating a regular file inside an
-actual tmpfs mount and passing that file descriptor as resource_fd
-fails with EOPNOTSUPP, because tmpfs regular files do not have
-gmem_provider_ops defined on their file_operations.
+Add test coverage verifying that creating a guest_memfd backed by a
+tmpfs resource pool directory succeeds across all guest_memfd subtests
+and flag combinations, and reports the requested file size.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/testing/selftests/kvm/guest_memfd_test.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ tools/testing/selftests/kvm/guest_memfd_test.c | 35 ++++++++++++++++++++------
+ 1 file changed, 27 insertions(+), 8 deletions(-)
 
 diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index 541d8cdd0bbf7..bef1acead4a6d 100644
+index bef1acead4a6d..2250c3e9a583f 100644
 --- a/tools/testing/selftests/kvm/guest_memfd_test.c
 +++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -613,6 +613,25 @@ static void __test_guest_memfd(struct kvm_vm *vm, u64 flags)
- 	gmem_test_vm(invalid_binding, vm, flags);
+@@ -562,12 +562,23 @@ static void test_resource_fd_tmpfs_huge(struct kvm_vm *vm)
+ 	close(pool_fd);
  }
  
-+static void test_resource_fd_tmpfs_regular_file(struct kvm_vm *vm)
-+{
-+	int pool_fd, file_fd, fd;
-+
-+	pool_fd = create_tmpfs_pool_fd("never", true, page_size);
-+
-+	file_fd = openat(pool_fd, "regular_file", O_CREAT | O_RDWR | O_CLOEXEC, 0644);
-+	TEST_ASSERT(file_fd >= 0, "openat regular_file in tmpfs pool failed");
-+
-+	fd = __vm_create_guest_memfd_resource(vm, page_size,
-+					      GUEST_MEMFD_FLAG_USE_RESOURCE,
-+					      file_fd);
-+	TEST_ASSERT(fd < 0, "guest_memfd with tmpfs regular file should fail");
-+	TEST_ASSERT_EQ(errno, EOPNOTSUPP);
-+
-+	close(file_fd);
-+	close(pool_fd);
-+}
-+
- static void test_guest_memfd(unsigned long vm_type)
- {
- 	struct kvm_vm *vm = vm_create_barebones_type(vm_type);
-@@ -625,6 +644,7 @@ static void test_guest_memfd(unsigned long vm_type)
- 	test_resource_fd_memfd(vm);
- 	test_resource_fd_tmpfs_swap(vm);
- 	test_resource_fd_tmpfs_huge(vm);
-+	test_resource_fd_tmpfs_regular_file(vm);
+-#define ____gmem_test(__test, __vm, __flags, __gmem_size, args...)	\
+-do {									\
+-	int fd = vm_create_guest_memfd(__vm, __gmem_size, __flags);	\
+-									\
+-	test_##__test(args);						\
+-	close(fd);							\
++#define ____gmem_test(__test, __vm, __flags, __gmem_size, args...)		\
++do {										\
++	int pool_fd = -1;							\
++	int fd;									\
++										\
++	if ((__flags) & GUEST_MEMFD_FLAG_USE_RESOURCE) {			\
++		pool_fd = create_tmpfs_pool_fd("never", true, __gmem_size);	\
++		fd = vm_create_guest_memfd_resource(__vm, __gmem_size,		\
++						    __flags, pool_fd);		\
++	} else {								\
++		fd = vm_create_guest_memfd(__vm, __gmem_size, __flags);	\
++	}									\
++										\
++	test_##__test(args);							\
++	close(fd);								\
++	if (pool_fd >= 0)							\
++		close(pool_fd);							\
+ } while (0)
+ 
+ #define __gmem_test(__test, __vm, __flags, __gmem_size)			\
+@@ -647,15 +658,23 @@ static void test_guest_memfd(unsigned long vm_type)
+ 	test_resource_fd_tmpfs_regular_file(vm);
  
  	__test_guest_memfd(vm, 0);
++	__test_guest_memfd(vm, GUEST_MEMFD_FLAG_USE_RESOURCE);
  
+ 	flags = vm_check_cap(vm, KVM_CAP_GUEST_MEMFD_FLAGS);
+-	if (flags & GUEST_MEMFD_FLAG_MMAP)
++	if (flags & GUEST_MEMFD_FLAG_MMAP) {
+ 		__test_guest_memfd(vm, GUEST_MEMFD_FLAG_MMAP);
++		__test_guest_memfd(vm, GUEST_MEMFD_FLAG_MMAP |
++				       GUEST_MEMFD_FLAG_USE_RESOURCE);
++	}
+ 
+ 	/* MMAP should always be supported if INIT_SHARED is supported. */
+-	if (flags & GUEST_MEMFD_FLAG_INIT_SHARED)
++	if (flags & GUEST_MEMFD_FLAG_INIT_SHARED) {
+ 		__test_guest_memfd(vm, GUEST_MEMFD_FLAG_MMAP |
+ 				       GUEST_MEMFD_FLAG_INIT_SHARED);
++		__test_guest_memfd(vm, GUEST_MEMFD_FLAG_MMAP |
++				       GUEST_MEMFD_FLAG_INIT_SHARED |
++				       GUEST_MEMFD_FLAG_USE_RESOURCE);
++	}
+ 
+ 	kvm_vm_free(vm);
+ }
 
 -- 
 2.56.0.257.gf7497c7d27-goog
