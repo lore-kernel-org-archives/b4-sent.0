@@ -1,98 +1,73 @@
-From: Michael Lowman <michael.d.lowman@gmail.com>
-Date: Thu, 22 Oct 2026 15:10:26 +0200
-Subject: [PATCH] SUNRPC: avoid possible page reuse from
- svcauth_gss_wrap_integ()
+From: Kylie C <kyliepc@proton.me>
+Date: Thu, 22 Oct 2026 09:30:38 -0400
+Subject: [PATCH] drm/amd/display: Don't select zero V_TOTAL_MIN/MAX on DCN2
+ seamless boot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-integ-page-reuse-v1-1-fbe571857d4f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPRvYpNgWX0U8xDi120OUrEpBf
- HejHj+G+TdSJIFSXWyUsIrKGDNsWVD4+jjASJ9Njt3Tsn0ZiTMGM/m8JCwKwz1XD7w7Dt5Rvk0
- JH/lfyaa9rUv3Q5jPDu37ARxRp2p0AAAA
-X-Change-ID: 20261017-integ-page-reuse-0d053e8b0ca2
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Michael Lowman <michael.d.lowman@gmail.com>
+Message-Id: <20261022-dcn2-seamless-vtotal-v1-1-6ceb87f98629@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZOS/QRifiq8gOXZNpZHbSdEMYe
+ 3erHr/D/29gklUMLs0GWVY1nVOFbxuI95BugsrVQI5O3hEhx0RoEp6TmOFa5hImPHSe3ZmJx+4
+ INX1lGfX92177v20ZHhLL9wX7/gE8A/SNeAAAAA==
+X-Change-ID: 20261022-dcn2-seamless-vtotal-351d08d2df54
+To: Harry Wentland <harry.wentland@amd.com>, Leo Li <sunpeng.li@amd.com>, 
+ Rodrigo Siqueira <siqueira@igalia.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Kylie C <kyliepc@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2485;
- i=michael.d.lowman@gmail.com; h=from:subject:message-id;
- bh=J5FcyzJj5w1NI+B2kzsCRu8psxQMF7yI9ZjgbLBQU78=;
- b=owEBiQF2/pANAwAKAbhUyZi0A3mzAcsmYgBq2gtMggRxlwYUWnxU0m3X2axlVUp3BHI1AbrpI
- CcRqyeIECWJAU8EAAEKADkWIQR42JpeMFqVv37vF7e4VMmYtAN5swUCatoLTBscbWljaGFlbC5k
- Lmxvd21hbkBnbWFpbC5jb20ACgkQuFTJmLQDebPbwwgAqbu3jYLWuD/72zzMOa2jnbH02bFL5v2
- x5MGr66dgVYycOiwAqRtQ40b7GIctSGkOQsQlDTPxbpNMbvd0YpRrWE1/mgVSeG7eF+93WUmqYH
- lNT8PRqcoR2hcnWAKTEA0mdEhPgVDrB/zUPV2qBn6wHN81SyXukJyWF/EdJxSYKVBZ0pnOOT0ht
- tl8z/laCrVntlhgebqoG7aZK/OoLOzYuRfcMJlfJtDgl4aGEu0SRs1oB5YtZHj0c5RjfutDwSeA
- draF82Tm0QhuLM58HX9+u3bMzhV6F4nfzr/9+zsGoWqgMEnrLqaJ6n6mIjA9s3I2/We4sqlnw82
- 2Gpamr6wdzQ==
-X-Developer-Key: i=michael.d.lowman@gmail.com; a=openpgp;
- fpr=6E281440251F4A47DCA99700FD4D12FE546354BA
-X-Endpoint-Received: by B4 Relay for michael.d.lowman@gmail.com/default with auth_id=1283
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792675851; l=1577;
+ i=kyliepc@proton.me; s=20261022; h=from:subject:message-id;
+ bh=E3b6PcfPUilGy4eYSVtJ/EqKpq1VZvJ1nhCA//JGxdU=;
+ b=LrrKoFxk1Om3OmiLoo28vF48JCMXdd3ru7QQl5pl++6C/ufZ2XgsqRdZquDPC+Mz+7FliTljS
+ bJleZsBuTJpBZSVEvjnsQC44W2F3xz+jUZhp6SP2UKYfKJSE1EcInDA
+X-Developer-Key: i=kyliepc@proton.me; a=ed25519;
+ pk=T/yRT5OdlaWnEmvYU6894i5NEH44SmsyRlMNTde5DDs=
+X-Endpoint-Received: by B4 Relay for kyliepc@proton.me/20261022 with auth_id=1285
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 7702378ac4d4 ("SUNRPC: Convert svcauth_gss_wrap_integ() to
-use xdr_stream()") and its parent changed from calculating the
-integrity checksum in-place in an unused part of the response buffer
-to calculating in a scratch buffer and appending it to the response
-stream. While the unused part of the response buffer happened to
-always end on the first page, the append always occurs on the last.
+Initialize V_TOTAL_MIN/MAX to V_TOTAL before enabling the selectors if
+they are still 0, as optc1_program_timing() does without seamless boot.
 
-If less than 32 bytes remain before the page boundary, some or all
-of the checksum will be written to the next page. But since the xdr
-functions do not update the response's page accounting, the page
-will be immediately available for reuse. Data from another request
-will overwrite the portion of the checksum on the new page.
+Tested on Renoir (DCN 2.1) eDP with amdgpu.seamless=1.
 
-Avoid this by marking the page as used when needed.
+This removes the flash between the bios logo & plymouth on my laptop.
 
-Signed-off-by: Michael Lowman <michael.d.lowman@gmail.com>
-Fixes: 7702378ac4d4 ("SUNRPC: Convert svcauth_gss_wrap_integ() to use xdr_stream()")
+Signed-off-by: Kylie C <kyliepc@proton.me>
 ---
-When running several reads in parallel from an NFSv4 mount using
-sec=krb5i, I find that the checksum is often invalid; of ten 64k
-reads of ten different files launched in parallel, usually eight fail.
-I observed that this did not occur when using sec=krb5p, and that
-part of the checksum appeared to be overwritten with valid data
-from other packets. After building with the attached change, I
-no longer experience read failures.
----
- net/sunrpc/auth_gss/svcauth_gss.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Fixes the black screen when enabling amdgpu.seamless=1 on Renoir APU
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 43839e805531..4219cfb2e88a 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1835,6 +1835,17 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
- 		goto wrap_failed;
- 	xdr_commit_encode(xdr);
- 
-+	/**
-+	 * While the data protocol normally accounts for pages
-+	 * used in the encode of the operation, the checksum is
-+	 * written by the above xdr_stream_encode_opaque and can therefore
-+	 * end up in the next page.
-+	 * Update the request's bookkeeping to avoid reusing the page for the
-+	 * next request while it's still referenced by this one.
-+	 */
-+	if (xdr->page_ptr + 1 > rqstp->rq_next_page)
-+		rqstp->rq_next_page = xdr->page_ptr + 1;
+With this plymouth smooth boot is possible on this hardware
+---
+ drivers/gpu/drm/amd/display/dc/optc/dcn20/dcn20_optc.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/gpu/drm/amd/display/dc/optc/dcn20/dcn20_optc.c b/drivers/gpu/drm/amd/display/dc/optc/dcn20/dcn20_optc.c
+index 73cc8a713..2cdfe3d7a 100644
+--- a/drivers/gpu/drm/amd/display/dc/optc/dcn20/dcn20_optc.c
++++ b/drivers/gpu/drm/amd/display/dc/optc/dcn20/dcn20_optc.c
+@@ -449,6 +449,13 @@ void optc2_lock_doublebuffer_disable(struct timing_generator *optc)
+ void optc2_setup_manual_trigger(struct timing_generator *optc)
+ {
+ 	struct optc *optc1 = DCN10TG_FROM_TG(optc);
++	uint32_t v_total, v_total_max;
 +
- out:
- 	return 0;
++	REG_GET(OTG_V_TOTAL_MAX, OTG_V_TOTAL_MAX, &v_total_max);
++	if (!v_total_max) {
++		REG_GET(OTG_V_TOTAL, OTG_V_TOTAL, &v_total);
++		optc->funcs->set_vtotal_min_max(optc, v_total, v_total);
++	}
  
+ 	/* Set the min/max selectors unconditionally so that
+ 	 * DMCUB fw may change OTG timings when necessary
 
 ---
-base-commit: eafb6de800781f0a1be5cdd98d150620041d8b27
-change-id: 20261017-integ-page-reuse-0d053e8b0ca2
+base-commit: 77f548b127c6de34ce271fa09ba270cb1ef9f2da
+change-id: 20261022-dcn2-seamless-vtotal-351d08d2df54
 
 Best regards,
 --  
-Michael Lowman <michael.d.lowman@gmail.com>
+Kylie C <kyliepc@proton.me>
 
