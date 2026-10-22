@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:21 -0700
-Subject: [PATCH RFC v2 49/50] samples/kvm: Implement lookup_pfn_range
- provider operation
+Date: Thu, 22 Oct 2026 16:28:22 -0700
+Subject: [PATCH RFC v2 50/50] KVM: selftests: Test guest_memfd conversions
+ with sample memory provider backing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-49-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-50-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,62 +56,165 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1549;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5170;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Mxwswz0tvmW2OjORg6A0NdxFcOvRzA8Ssc3edQQqFSg=;
- b=uAEX7tbJq1SltgB41mlSqmIm26HGCsUypikhFQvshzacFVhKqK4FkVxWyJYlbJKGLQp0VnDdB
- rtv1tClBr/XBhmCLSd6iQcsVFyWoY4LD4toRb9Hbbbcs3BUKSC+/2mC
+ bh=rlB85PYh1jaJvMrL1kLAqla/p5s2l4avZfOOeeGlWDM=;
+ b=VSMpakwCoRWmpL30l5zo+rYlaAKf2cnLwpQ7a87uoka6eTdULgcyR5+xHnOSv19D2vO2aAMw7
+ uw5/EyEtXt5Amy29y7apd5iX/XRwsIqytyCd7Kch17Xizk0nX9V2GLL
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement .lookup_pfn_range to allow looking up index -> pfn mappings to
-satisfy guest_memfd requirements and make this sample memory provider a
-valid PFN mode provider.
+Add fixture variant for the sample memory provider.
 
-This sample memory provider performs allocations upfront, so
-.lookup_pfn_range doesn't do any allocations anyway and is only slightly
-different from .get_pfn.
+If /dev/mem_provider_sample cannot be opened because the module is not
+loaded, the mps variant is skipped gracefully via TEST_REQUIRE().
+
+Because PFN-backed memory cannot be pinned via GUP, expect pinning to fail
+for the mps variant in the elevated_refcount test.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/mem_provider_sample.c | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ tools/testing/selftests/kvm/include/kvm_util.h     |  1 +
+ tools/testing/selftests/kvm/lib/kvm_util.c         |  9 ++++-
+ .../kvm/x86/guest_memfd_conversions_test.c         | 44 +++++++++++++++++++++-
+ 3 files changed, 51 insertions(+), 3 deletions(-)
 
-diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index 3fa0d1a4335b5..5496e0c7864b9 100644
---- a/samples/kvm/mem_provider_sample.c
-+++ b/samples/kvm/mem_provider_sample.c
-@@ -197,10 +197,28 @@ static int mps_gmem_get_pfn(void *provider, pgoff_t index, unsigned long *pfn,
- 	return 0;
+diff --git a/tools/testing/selftests/kvm/include/kvm_util.h b/tools/testing/selftests/kvm/include/kvm_util.h
+index eca296539db79..1a1387f36a52c 100644
+--- a/tools/testing/selftests/kvm/include/kvm_util.h
++++ b/tools/testing/selftests/kvm/include/kvm_util.h
+@@ -1350,6 +1350,7 @@ static inline int pin_self_to_any_cpu(void)
+ 	return pin_task_to_any_cpu(pthread_self());
  }
  
-+static int mps_gmem_lookup_pfn_range(void *provider, pgoff_t index,
-+				     unsigned long *pfn, size_t *nr_pages)
-+{
-+	struct file *resource_file = provider;
-+	struct mps_info *info = resource_file->private_data;
-+
-+	if (index >= info->npages)
-+		return -EINVAL;
-+
-+	if (test_bit(index, info->absent))
-+		return -ENOENT;
-+
-+	*pfn = info->base_pfn + index;
-+	*nr_pages = 1;
-+	return 0;
++int __pin_pages(void *vaddr, uint64_t size);
+ void pin_pages(void *vaddr, uint64_t size);
+ void unpin_pages(void);
+ 
+diff --git a/tools/testing/selftests/kvm/lib/kvm_util.c b/tools/testing/selftests/kvm/lib/kvm_util.c
+index d42e201eba763..9793818f54d23 100644
+--- a/tools/testing/selftests/kvm/lib/kvm_util.c
++++ b/tools/testing/selftests/kvm/lib/kvm_util.c
+@@ -674,7 +674,7 @@ int __pin_task_to_cpu(pthread_t task, int cpu)
+ 
+ static int gup_test_fd = -1;
+ 
+-void pin_pages(void *vaddr, uint64_t size)
++int __pin_pages(void *vaddr, uint64_t size)
+ {
+ 	const struct pin_longterm_test args = {
+ 		.addr = (uint64_t)vaddr,
+@@ -685,7 +685,12 @@ void pin_pages(void *vaddr, uint64_t size)
+ 	gup_test_fd = __open_path_or_exit("/sys/kernel/debug/gup_test", O_RDWR,
+ 					  "Is CONFIG_GUP_TEST enabled?");
+ 
+-	TEST_ASSERT_EQ(ioctl(gup_test_fd, PIN_LONGTERM_TEST_START, &args), 0);
++	return ioctl(gup_test_fd, PIN_LONGTERM_TEST_START, &args);
 +}
 +
- static const struct guest_memfd_provider_operations mps_gmem_provider_ops = {
- 	.attach		= mps_gmem_attach,
- 	.release	= mps_gmem_release,
- 	.get_pfn	= mps_gmem_get_pfn,
-+	.lookup_pfn_range = mps_gmem_lookup_pfn_range,
- 	.put_pfn_range	= mps_gmem_put_pfn_range,
++void pin_pages(void *vaddr, uint64_t size)
++{
++	TEST_ASSERT_EQ(__pin_pages(vaddr, size), 0);
+ }
+ 
+ void unpin_pages(void)
+diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
+index 023df9cb9d4a6..b99e4cdbab8e6 100644
+--- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
++++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
+@@ -16,11 +16,13 @@
+ #include "kselftest_harness.h"
+ #include "test_util.h"
+ #include "ucall_common.h"
++#include "../../../../samples/kvm/mem_provider_sample.h"
+ 
+ FIXTURE(gmem_conversions) {
+ 	struct kvm_vcpu *vcpu;
+ 	int gmem_fd;
+ 	int resource_fd;
++	bool expect_pin_failure;
+ 	/* HVA of the first byte of the memory mmap()-ed from gmem_fd. */
+ 	char *mem;
+ };
+@@ -29,10 +31,14 @@ typedef FIXTURE_DATA(gmem_conversions) test_data_t;
+ 
+ FIXTURE_VARIANT(gmem_conversions) {
+ 	int (*create_resource)(size_t size);
++	uint64_t extra_flags;
++	bool expect_pin_failure;
  };
  
+ FIXTURE_VARIANT_ADD(gmem_conversions, native) {
+ 	.create_resource = NULL,
++	.extra_flags = 0,
++	.expect_pin_failure = false,
+ };
+ 
+ static int create_tmpfs_resource(size_t size)
+@@ -42,6 +48,34 @@ static int create_tmpfs_resource(size_t size)
+ 
+ FIXTURE_VARIANT_ADD(gmem_conversions, tmpfs) {
+ 	.create_resource = create_tmpfs_resource,
++	.extra_flags = 0,
++	.expect_pin_failure = false,
++};
++
++static int create_mps_resource(size_t size)
++{
++	struct mps_new_file nf = {
++		.size = size,
++	};
++	int dev_fd, fd;
++
++	dev_fd = open("/dev/mem_provider_sample", O_RDWR);
++	if (dev_fd < 0) {
++		TEST_REQUIRE(errno != ENOENT && errno != ENODEV);
++		TEST_FAIL("Failed to open /dev/mem_provider_sample: %d (%s)",
++			  errno, strerror(errno));
++	}
++
++	fd = ioctl(dev_fd, MPS_NEW_FILE, &nf);
++	TEST_ASSERT(fd >= 0, "MPS_NEW_FILE failed: %d (%s)", errno, strerror(errno));
++	close(dev_fd);
++	return fd;
++}
++
++FIXTURE_VARIANT_ADD(gmem_conversions, mps) {
++	.create_resource = create_mps_resource,
++	.extra_flags = GUEST_MEMFD_FLAG_PFN_MODE,
++	.expect_pin_failure = true,
+ };
+ 
+ FIXTURE_SETUP(gmem_conversions) { }
+@@ -75,10 +109,12 @@ static void gmem_conversions_do_setup(test_data_t *t,
+ 
+ 	vm = __vm_create_shape_with_one_vcpu(shape, &t->vcpu, nr_pages, guest_do_rmw);
+ 
++	t->expect_pin_failure = variant->expect_pin_failure;
+ 	t->resource_fd = -1;
+ 
+ 	if (variant->create_resource) {
+-		uint64_t flags = gmem_flags | GUEST_MEMFD_FLAG_USE_RESOURCE;
++		uint64_t flags = gmem_flags | GUEST_MEMFD_FLAG_USE_RESOURCE |
++				 variant->extra_flags;
+ 
+ 		t->resource_fd = variant->create_resource(size);
+ 		TEST_ASSERT(t->resource_fd >= 0, "Failed to create backing resource");
+@@ -506,6 +542,12 @@ GMEM_CONVERSION_MULTIPAGE_TEST_INIT_SHARED(elevated_refcount, 4)
+ {
+ 	int i;
+ 
++	if (t->expect_pin_failure) {
++		TEST_ASSERT(__pin_pages(t->mem + test_page * page_size, page_size) < 0,
++			    "Pinning PFN-backed memory should fail");
++		return;
++	}
++
+ 	pin_pages(t->mem + test_page * page_size, page_size);
+ 
+ 	for (i = 0; i < nr_pages; i++)
 
 -- 
 2.56.0.257.gf7497c7d27-goog
