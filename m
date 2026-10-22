@@ -1,247 +1,210 @@
-From: Andrei Stancovici <andrei.stancovici@analog.com>
-Date: Thu, 22 Oct 2026 12:58:20 +0300
-Subject: [PATCH v2 3/3] iio: adc: ltc2497: add LTC2493 support
+From: Johannes Schrimpf <johannes.schrimpf@blueye.no>
+Date: Thu, 22 Oct 2026 12:16:52 +0200
+Subject: [PATCH v2] media: uvcvideo: Release streaming interfaces at
+ disconnect, not last close
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261022-submission-ltc2493-support-v1-v2-3-391d908d2877@analog.com>
-References: <20261022-submission-ltc2493-support-v1-v2-0-391d908d2877@analog.com>
-In-Reply-To: <20261022-submission-ltc2493-support-v1-v2-0-391d908d2877@analog.com>
-To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Liam Beguin <liambeguin@gmail.com>, 
- Joshua Crofts <joshua.crofts1@gmail.com>
-Cc: linux@analog.com, linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Andrei Stancovici <andrei.stancovici@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261022-uvc-release-intfs-v2-1-901bc1c47cfb@blueye.no>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAA/32Nyw6CMBBFf4XM2hqKUtGV/2FY9DGVGlJMhzYSw
+ r/b4t7M6uTee2YFwuCQ4FatEDA5cpPP0Bwq0IP0T2TOZIambgSv+ZnFpFnAESXlyM+WmLXXFk8
+ XIRRvIe/eAa377M5H/2OK6oV6LqLSGBzNU1j2p4mX3j9/4ixfZwR2xkppursaIy549BP027Z9A
+ XPd/+fEAAAA
+X-Change-ID: 20261014-uvc-release-intfs-ff95e3766b15
+To: laurent.pinchart@ideasonboard.com, hansg@kernel.org
+Cc: ribalda@chromium.org, hverkuil@kernel.org, linux-kernel@vger.kernel.org, 
+ mchehab@kernel.org, linux-media@vger.kernel.org, stable@vger.kernel.org, 
+ Johannes Schrimpf <johannes.schrimpf@blueye.no>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792663098; l=8715;
- i=andrei.stancovici@analog.com; s=20261009; h=from:subject:message-id;
- bh=y587TS9YqWDIOJvw8dQBhToPnXX1YTN14TsWokMI8DI=;
- b=eir08n3POeaz1h0QalSSsLxr/ZdJl/6D0heAqsWBphGnIbivgnXmMNb1VbkjZ91QYgtL7cEG6
- mPUUbi32cSvAOcrdqtk/9axrtYCpR9+Rfa3oWwlNk8pY+M3IN207UZe
-X-Developer-Key: i=andrei.stancovici@analog.com; a=ed25519;
- pk=wgT+au+blAhVYxhwNgdx0woNl/1p+OCG484rnTRFrsE=
-X-Endpoint-Received: by B4 Relay for andrei.stancovici@analog.com/20261009 with auth_id=1140
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792664229; l=7840;
+ i=johannes.schrimpf@blueye.no; s=20261014; h=from:subject:message-id;
+ bh=jITjUBkqSOrja9OK7j/wiP5VysOC8DbpzIk24IUo4ns=;
+ b=PCRLhcqexTTYWT5A2+bjtxRNBlp44aWrcGYfceBjjiWYGAmJlROJ8vu54EeiA1t9sISWgXKH8
+ khjZYShjQuUDa4Daum8GIFwL3duaVHmaLkve+IbVHmoTdqhAwatZbPI
+X-Developer-Key: i=johannes.schrimpf@blueye.no; a=ed25519;
+ pk=900KgDI7vLhnD9R982XOT47UCm3e4vWxQWBC4jDCUPo=
+X-Endpoint-Received: by B4 Relay for johannes.schrimpf@blueye.no/20261014 with auth_id=1178
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The LTC2493 is the 4-channel member of the LTC2499 family: 4 single-ended
-inputs or 2 differential pairs, 24-bit result, and the same command
-format, internal PTAT temperature sensor, 2x speed mode and line-frequency
-rejection as the LTC2499.
+If a UVC camera goes through a USB reset while an application holds it
+open, the camera is unusable after the reset.
 
-For channel enumeration, the parts differ in how many inputs they
-have, so record that count in chip_info and select the corresponding
-channel table from it. A future family member with another input
-count is then one more table and one more row rather than another
-branch in probe.
+The old uvc_device releases its streaming interfaces only when its last
+open file handle is closed, which unbinds them from the new uvc_device
+that has claimed them in the meantime.
 
-Datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/2493fe.pdf
-Signed-off-by: Andrei Stancovici <andrei.stancovici@analog.com>
+Release them on disconnect and on the probe error path instead, as the
+last step of uvc_unregister_video(), which is renamed to
+uvc_unregister_device().
 
+This also ensures that usb_driver_release_interface() is only called
+with the USB device lock held.
+
+Fixes: c0efd232929c ("V4L/DVB (8145a): USB Video Class driver")
+Cc: stable@vger.kernel.org # needs adjustments for <= 6.14: &uvc_driver.driver
+Assisted-by: LLM
+Reviewed-by: Ricardo Ribalda <ribalda@chromium.org>
+Signed-off-by: Johannes Schrimpf <johannes.schrimpf@blueye.no>
 ---
 Changes in v2:
-- Folded in the previous temperature, 2x speed and rejection patches, so
-  the LTC2493 chip_info entry is complete where the part is introduced
-  (Nuno Sá, Jonathan Cameron).
-- Replaced bool four_channel with u8 num_inputs, and pick the channel
-  table from a set keyed by that count in the core, so another input
-  count is one more table and one more row rather than another branch in
-  probe (Jonathan Cameron). It is named num_inputs rather than
-  num_channels because indio_dev->num_channels represents the complete
-  IIO channel set and is 33 for the 16-input part.
-  pahole, struct ltc2497_chip_info, before -> after: LP64 16 -> 16 bytes,
-  ILP32 12 -> 12 bytes, no holes either way. The u8 lands in the padding
-  the trailing bools already occupied, so nothing was reordered.
-- ltc2496_info and the LTC2497/LTC2499 entries gain num_inputs = 16.
-  Without it those parts match no channel set and fail probe.
-- Dropped the comment above the temperature-channel trim rather than
-  rewording it (Nuno Sá).
-- Dropped Joshua Crofts' Reviewed-by from the old patch 2/6: that patch
-  is now merged with three others and the channel representation it
-  covered has been rewritten, so it needs a fresh look.
+- Shorten the commit message; the details are now below (Ricardo).
+- Move the release into uvc_unregister_video() as its last step and
+  rename that function to uvc_unregister_device() (Ricardo). The
+  release still runs after the video nodes are unregistered and before
+  kref_put(), in uvc_disconnect() and on the probe error path.
+- Add Ricardo's Reviewed-by.
+- Link to v1: https://patch.msgid.link/20261014-uvc-release-intfs-v1-1-18d6e8dfaad8@blueye.no
 ---
- drivers/iio/adc/ltc2496.c      |  1 +
- drivers/iio/adc/ltc2497-core.c | 66 +++++++++++++++++++++++++++++++++++++-----
- drivers/iio/adc/ltc2497.c      | 13 +++++++++
- drivers/iio/adc/ltc2497.h      |  1 +
- 4 files changed, 74 insertions(+), 7 deletions(-)
+Details from the v1 commit message:
 
-diff --git a/drivers/iio/adc/ltc2496.c b/drivers/iio/adc/ltc2496.c
-index 5b5b6ab28850..e40440410f60 100644
---- a/drivers/iio/adc/ltc2496.c
-+++ b/drivers/iio/adc/ltc2496.c
-@@ -89,6 +89,7 @@ static void ltc2496_remove(struct spi_device *spi)
- static const struct ltc2497_chip_info ltc2496_info = {
- 	.resolution = 16,
- 	.name = NULL,
-+	.num_inputs = 16,
- };
+Mechanism: uvcvideo has no pre_reset() and post_reset() handlers, so
+usb_reset_device() unbinds it and probes it again on the same struct
+usb_interface objects. A file handle from before the reset keeps the
+old uvc_device alive. usb_driver_release_interface() only checks that
+the interface is bound to uvcvideo, not to which uvc_device, so the
+old uvc_delete() unbinds the interfaces from the new device. The URBs
+of a running stream then complete with -ESHUTDOWN,
+uvc_video_complete() sets UVC_QUEUE_DISCONNECTED, and every following
+VIDIOC_QBUF fails with -ENODEV. Nothing is logged, and the stream stays
+dead until the next reset or replug.
+
+Reproduction, with a Sonix camera (0c45:6366) on an i.MX6Q board,
+Linux 6.18.24 (linux-fslc-imx):
+
+  1. open() a video node of the camera and keep the file handle
+  2. reset the camera with USBDEVFS_RESET
+  3. stream from a video node of the re-probed device
+  4. close() the file handle from step 1
+
+The stream fails within a few milliseconds of the close() in 4 of 4
+runs, with one KOBJ_UNBIND uevent per VideoStreaming interface; the
+VideoControl interface stays bound. A handle on either streaming
+interface has the same effect. Without step 1 the stream survives.
+
+usb-serial splits it the same way: usb_serial_disconnect() releases the
+sibling interface, and its kref release, destroy_serial(), releases
+none. With no file handle open, uvc_disconnect() drops the last
+reference itself, so on that path the interfaces are still released
+from within uvc_disconnect(), as before.
+
+Tested with v1 on the same board and kernel: the reproduction with the
+handle on either streaming interface or closed before the stream
+starts, a USB reset without a held handle, sysfs unbind/bind of the
+VideoControl interface with and without a held handle, and a second
+UVC camera (MJPEG and H.264 at 1080p). The stream survives all four
+streaming runs, none of the five stale-handle closes unbinds an
+interface, and the close() takes 0.13-0.23 ms instead of 38-42 ms.
+USB-reset recovery and the second camera work, and sysfs unbind/bind
+releases and reclaims the streaming interfaces.
+
+Tested with v2 on the same board, built into the kernel image: the
+reproduction with the handle on either streaming interface, closed
+before the stream starts, and with no handle held. The stream survives
+all four runs and no interface is unbound; in the two runs that close
+the stale handle while streaming, 149 frames arrive in the 5 s after
+the close.
+
+Ricardo's "media: uvcvideo: Remove refcounted cleanup" (Nov 2024) would
+have moved all device cleanup into uvc_disconnect(), and was NACKed
+because it fixed no concrete bug. This patch keeps the refcounted
+cleanup and moves only the release of the streaming interfaces.
+
+Tool use: this was developed with an LLM coding assistant, Claude Code
+running Claude Opus 5.5; v1 was also reviewed by GPT-6 Astra. Starting
+from stream failures in our bench logs, the assistant traced the code
+path, wrote the reproduction scripts, ran them and the tests above on
+the device, surveyed the upstream history and other drivers, built and
+checked the patch on media-committers next, and drafted the patch, the
+changelog and these notes.
+
+Test kernel: linux-fslc-imx 6.18.24 with three local uvcvideo patches
+(keep MJPEG frames recovered by MJPEG_NO_EOF, nodrop=0 by default, and a
+coherent_urbs parameter). None of them touches probe, uvc_disconnect(),
+uvc_delete(), the interface claim/release or uvc_video_complete().
+
+Not tested:
+- an unmodified uvcvideo, or any kernel other than linux-fslc-imx
+  6.18.24; on media-committers next, the patch is build-tested only
+  (v1: gcc and clang, arm, arm64 and x86_64, W=1, sparse, smatch; v2:
+  gcc, arm, W=1)
+- a debug kernel: the test kernel is the board's production config
+  (SMP, PREEMPT; no lockdep, DEBUG_ATOMIC_SLEEP, DEBUG_MUTEXES,
+  SLUB_DEBUG, DEBUG_PAGEALLOC or KASAN)
+- unplug and replug, sysfs unbind of a VideoStreaming interface, and
+  the probe error path
+- frame delivery after a sysfs rebind: the Sonix camera delivers no
+  frames after any re-probe that does not follow a USB reset, with and
+  without this patch, so those runs check only the binding; the
+  second camera was not rebound
+- v4l2-compliance
+- any camera other than the two on this board
+---
+ drivers/media/usb/uvc/uvc_driver.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/media/usb/uvc/uvc_driver.c b/drivers/media/usb/uvc/uvc_driver.c
+index cbc1456..bb8f0e3 100644
+--- a/drivers/media/usb/uvc/uvc_driver.c
++++ b/drivers/media/usb/uvc/uvc_driver.c
+@@ -1976,7 +1976,6 @@ static void uvc_delete(struct kref *kref)
+ 		struct uvc_streaming *streaming;
  
- static const struct of_device_id ltc2496_of_match[] = {
-diff --git a/drivers/iio/adc/ltc2497-core.c b/drivers/iio/adc/ltc2497-core.c
-index c218d87d3a62..9346a39968d0 100644
---- a/drivers/iio/adc/ltc2497-core.c
-+++ b/drivers/iio/adc/ltc2497-core.c
-@@ -420,6 +420,49 @@ static const struct iio_chan_spec _name[] = {                           \
- LTC2497_DEFINE_CHANNELS(ltc2497core_channel, 0);
- LTC2497_DEFINE_CHANNELS(ltc2497core_channel_samp_freq, BIT(IIO_CHAN_INFO_SAMP_FREQ));
+ 		streaming = list_entry(p, struct uvc_streaming, list);
+-		usb_driver_release_interface(&uvc_driver, streaming->intf);
+ 		uvc_stream_delete(streaming);
+ 	}
  
-+#define LTC2493_DEFINE_CHANNELS(_name, _extra_mask)                     \
-+static const struct iio_chan_spec _name[] = {                           \
-+	LTC2497_CHAN(0, LTC2497_SGL, "CH0", _extra_mask),               \
-+	LTC2497_CHAN(1, LTC2497_SGL, "CH1", _extra_mask),               \
-+	LTC2497_CHAN(2, LTC2497_SGL, "CH2", _extra_mask),               \
-+	LTC2497_CHAN(3, LTC2497_SGL, "CH3", _extra_mask),               \
-+	LTC2497_CHAN_DIFF(0, LTC2497_DIFF, _extra_mask),                \
-+	LTC2497_CHAN_DIFF(1, LTC2497_DIFF, _extra_mask),                \
-+	LTC2497_CHAN_DIFF(0, LTC2497_DIFF | LTC2497_SIGN, _extra_mask), \
-+	LTC2497_CHAN_DIFF(1, LTC2497_DIFF | LTC2497_SIGN, _extra_mask), \
-+	LTC2497_TEMP_CHANNEL,                                           \
-+}
-+
-+LTC2493_DEFINE_CHANNELS(ltc2493_channel, 0);
-+LTC2493_DEFINE_CHANNELS(ltc2493_channel_samp_freq, BIT(IIO_CHAN_INFO_SAMP_FREQ));
-+
-+/*
-+ * Channel sets keyed by the part's single-ended input count, so that adding a
-+ * family member with a different count is a new table and a new row here
-+ * rather than a new branch in probe.  num_channels counts the temperature
-+ * entry, which probe drops again for parts without the sensor.
-+ */
-+struct ltc2497core_channel_set {
-+	u8 num_inputs;
-+	unsigned int num_channels;
-+	const struct iio_chan_spec *channels;
-+	const struct iio_chan_spec *channels_samp_freq;
-+};
-+
-+static const struct ltc2497core_channel_set ltc2497core_channel_sets[] = {
-+	{
-+		.num_inputs		= 4,
-+		.num_channels		= ARRAY_SIZE(ltc2493_channel),
-+		.channels		= ltc2493_channel,
-+		.channels_samp_freq	= ltc2493_channel_samp_freq,
-+	}, {
-+		.num_inputs		= 16,
-+		.num_channels		= ARRAY_SIZE(ltc2497core_channel),
-+		.channels		= ltc2497core_channel,
-+		.channels_samp_freq	= ltc2497core_channel_samp_freq,
-+	},
-+};
-+
- static const struct iio_info ltc2497core_info = {
- 	.read_raw = ltc2497core_read_raw,
- 	.read_avail = ltc2497core_read_avail,
-@@ -430,6 +473,7 @@ int ltc2497core_probe(struct device *dev, struct iio_dev *indio_dev)
- {
- 	struct ltc2497core_driverdata *ddata = iio_priv(indio_dev);
- 	struct iio_map *plat_data = dev_get_platdata(dev);
-+	const struct ltc2497core_channel_set *set = NULL;
- 	int ret;
- 
- 	/*
-@@ -441,17 +485,25 @@ int ltc2497core_probe(struct device *dev, struct iio_dev *indio_dev)
- 	else
- 		indio_dev->name = dev_name(dev);
- 
-+	for (unsigned int i = 0; i < ARRAY_SIZE(ltc2497core_channel_sets); i++) {
-+		if (ltc2497core_channel_sets[i].num_inputs ==
-+		    ddata->chip_info->num_inputs) {
-+			set = &ltc2497core_channel_sets[i];
-+			break;
-+		}
-+	}
-+	if (!set)
-+		return -EINVAL;
-+
- 	indio_dev->info = &ltc2497core_info;
- 	indio_dev->modes = INDIO_DIRECT_MODE;
- 	if (ddata->chip_info->has_speed_mode)
--		indio_dev->channels = ltc2497core_channel_samp_freq;
--	else
--		indio_dev->channels = ltc2497core_channel;
--	/* Only the ltc2499 has a temperature channel; it is the last entry. */
--	if (ddata->chip_info->has_temp)
--		indio_dev->num_channels = ARRAY_SIZE(ltc2497core_channel);
-+		indio_dev->channels = set->channels_samp_freq;
- 	else
--		indio_dev->num_channels = ARRAY_SIZE(ltc2497core_channel) - 1;
-+		indio_dev->channels = set->channels;
-+	indio_dev->num_channels = set->num_channels;
-+	if (!ddata->chip_info->has_temp)
-+		indio_dev->num_channels--;
- 
- 	if (ddata->chip_info->has_rejection_mode) {
- 		struct iio_chan_spec *channels;
-diff --git a/drivers/iio/adc/ltc2497.c b/drivers/iio/adc/ltc2497.c
-index 4cccd3b7c8ef..644954b785b8 100644
---- a/drivers/iio/adc/ltc2497.c
-+++ b/drivers/iio/adc/ltc2497.c
-@@ -19,6 +19,7 @@
- #include "ltc2497.h"
- 
- enum ltc2497_chip_type {
-+	TYPE_LTC2493,
- 	TYPE_LTC2497,
- 	TYPE_LTC2499,
- };
-@@ -173,13 +174,23 @@ static void ltc2497_remove(struct i2c_client *client)
+@@ -1992,9 +1991,9 @@ static void uvc_release(struct video_device *vdev)
  }
  
- static const struct ltc2497_chip_info ltc2497_info[] = {
-+	[TYPE_LTC2493] = {
-+		.resolution = 24,
-+		.name = "ltc2493",
-+		.num_inputs = 4,
-+		.has_temp = true,
-+		.has_speed_mode = true,
-+		.has_rejection_mode = true,
-+	},
- 	[TYPE_LTC2497] = {
- 		.resolution = 16,
- 		.name = NULL,
-+		.num_inputs = 16,
- 	},
- 	[TYPE_LTC2499] = {
- 		.resolution = 24,
- 		.name = "ltc2499",
-+		.num_inputs = 16,
- 		.has_temp = true,
- 		.has_speed_mode = true,
- 		.has_rejection_mode = true,
-@@ -187,6 +198,7 @@ static const struct ltc2497_chip_info ltc2497_info[] = {
- };
+ /*
+- * Unregister the video devices.
++ * Unregister the device and release the streaming interfaces.
+  */
+-static void uvc_unregister_video(struct uvc_device *dev)
++static void uvc_unregister_device(struct uvc_device *dev)
+ {
+ 	struct uvc_streaming *stream;
  
- static const struct i2c_device_id ltc2497_id[] = {
-+	{ .name = "ltc2493", .driver_data = (kernel_ulong_t)&ltc2497_info[TYPE_LTC2493] },
- 	{ .name = "ltc2497", .driver_data = (kernel_ulong_t)&ltc2497_info[TYPE_LTC2497] },
- 	{ .name = "ltc2499", .driver_data = (kernel_ulong_t)&ltc2497_info[TYPE_LTC2499] },
- 	{ }
-@@ -194,6 +206,7 @@ static const struct i2c_device_id ltc2497_id[] = {
- MODULE_DEVICE_TABLE(i2c, ltc2497_id);
+@@ -2024,6 +2023,14 @@ static void uvc_unregister_video(struct uvc_device *dev)
+ 	if (media_devnode_is_registered(dev->mdev.devnode))
+ 		media_device_unregister(&dev->mdev);
+ #endif
++
++	/*
++	 * Release the streaming interfaces here, not in uvc_delete(): after a
++	 * USB reset, a new uvc_device may already have claimed the same
++	 * interfaces.
++	 */
++	list_for_each_entry(stream, &dev->streams, list)
++		usb_driver_release_interface(&uvc_driver, stream->intf);
+ }
  
- static const struct of_device_id ltc2497_of_match[] = {
-+	{ .compatible = "lltc,ltc2493", .data = &ltc2497_info[TYPE_LTC2493] },
- 	{ .compatible = "lltc,ltc2497", .data = &ltc2497_info[TYPE_LTC2497] },
- 	{ .compatible = "lltc,ltc2499", .data = &ltc2497_info[TYPE_LTC2499] },
- 	{ }
-diff --git a/drivers/iio/adc/ltc2497.h b/drivers/iio/adc/ltc2497.h
-index 3a3fd82b21a3..02ca0c946448 100644
---- a/drivers/iio/adc/ltc2497.h
-+++ b/drivers/iio/adc/ltc2497.h
-@@ -47,6 +47,7 @@ enum ltc2497_rejection {
- struct ltc2497_chip_info {
- 	const char *name;
- 	u32 resolution;
-+	u8 num_inputs;		/* single-ended inputs */
- 	bool has_temp;
- 	bool has_speed_mode;	/* SPD bit in the 2nd config byte (LTC2499/LTC2493) */
- 	bool has_rejection_mode;	/* FA/FB bits in the 2nd config byte */
+ int uvc_register_video_device(struct uvc_device *dev,
+@@ -2355,7 +2362,7 @@ static int uvc_probe(struct usb_interface *intf,
+ 	return 0;
+ 
+ error:
+-	uvc_unregister_video(dev);
++	uvc_unregister_device(dev);
+ 	kref_put(&dev->ref, uvc_delete);
+ 	return ret;
+ }
+@@ -2374,7 +2381,7 @@ static void uvc_disconnect(struct usb_interface *intf)
+ 	    UVC_SC_VIDEOSTREAMING)
+ 		return;
+ 
+-	uvc_unregister_video(dev);
++	uvc_unregister_device(dev);
+ 	kref_put(&dev->ref, uvc_delete);
+ }
+ 
 
--- 
-2.43.0
+---
+base-commit: d7e7bca7169873b46e857c025c10f3336c1258d8
+change-id: 20261014-uvc-release-intfs-ff95e3766b15
+
+Best regards,
+--  
+Johannes Schrimpf <johannes.schrimpf@blueye.no>
 
