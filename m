@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:02 -0700
-Subject: [PATCH RFC v2 30/50] KVM: selftests: Add basic test for sample
- memory provider
+Date: Thu, 22 Oct 2026 16:28:03 -0700
+Subject: [PATCH RFC v2 31/50] KVM: guest_memfd: Support getting PFNs for
+ stage 2 from providers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-30-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-31-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,194 +56,181 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5553;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=6020;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=DxHc6o6FnWpOH7kMAejZmhFMGKZWARQeHZ9yAfr2gtM=;
- b=MZWm5OhI65j5qGliKRKMwC78fhjZnRK4OJnvkL5NZPMB3GRVId6GmA9lc7rWY/7Oe6I17BuFk
- /BfBpbRroEDB7//o/KaeRPl5dErRndTcfCEIUCt859LcAinaQKoho5Y
+ bh=jEkr/nY1nFVQLtsltdN4AJnwp36Iu4m7TarLTGyPZVc=;
+ b=vAkluFarmlZI1TwtSGhLOd+jHlS0DLSrWj3cCriODu55Bs8Tz1V4Ot2NifETUEWZCMUMWV2GD
+ CtaY4a2NaZCCpOvCQwRHzJ6wEKfOMC4mO8bqs82RiiNQXQnqSLT2A0P
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a selftest for the sample memory provider (/dev/mem_provider_sample).
+Add .get_pfn callback to struct guest_memfd_provider_operations to
+support physical memory providers (e.g. devices, DAX, or pre-allocated
+ranges) that supply PFNs directly without folio allocation or page cache
+insertion.
 
-Test basic lifecycle creation across multiple sizes. Verify file capacity
-and absent pages accounting using the MPS_GET_STATS ioctl. Also test
-marking pages absent and present with MPS_SET_PRESENT, verifying that
-absent pages are reflected in stats accordingly.
+Define GUEST_MEMFD_FLAG_PFN_MODE in uapi/linux/kvm.h and define
+kvm_gmem_is_pfn_mode() to check for this flag in gi->flags.
+
+In __kvm_gmem_get_pfn(), query .get_pfn() directly when in PFN mode
+and return NULL on success (instead of a struct folio *).
+
+Note that .alloc_folio is still required by kvm_gmem_attach_resource() and
+GUEST_MEMFD_FLAG_PFN_MODE is not yet enabled for userspace.  Subsequent
+patches will update the rest of guest_memfd (e.g. mmap, fallocate,
+truncation, and attributes) to support PFN mode before enabling the flag
+and allowing external PFN-backed providers to be attached.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/testing/selftests/kvm/Makefile.kvm           |   1 +
- .../selftests/kvm/mem_provider_sample_test.c       | 147 +++++++++++++++++++++
- 2 files changed, 148 insertions(+)
+ include/linux/guest_memfd.h |  8 ++++++++
+ include/uapi/linux/kvm.h    |  1 +
+ virt/kvm/guest_memfd.c      | 42 +++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 46 insertions(+), 5 deletions(-)
 
-diff --git a/tools/testing/selftests/kvm/Makefile.kvm b/tools/testing/selftests/kvm/Makefile.kvm
-index 17a4256e90819..5f7118bddfc36 100644
---- a/tools/testing/selftests/kvm/Makefile.kvm
-+++ b/tools/testing/selftests/kvm/Makefile.kvm
-@@ -72,6 +72,7 @@ TEST_GEN_PROGS_COMMON += set_memory_region_test
- TEST_GEN_PROGS_COMMON += memslot_modification_stress_test
- TEST_GEN_PROGS_COMMON += memslot_perf_test
- TEST_GEN_PROGS_COMMON += vm_types_test
-+TEST_GEN_PROGS_COMMON += mem_provider_sample_test
+diff --git a/include/linux/guest_memfd.h b/include/linux/guest_memfd.h
+index f3e6077c39ac3..10c48f41a6d7e 100644
+--- a/include/linux/guest_memfd.h
++++ b/include/linux/guest_memfd.h
+@@ -18,6 +18,12 @@ struct mempolicy;
+  *               Must return a pointer to a struct folio on success, or an
+  *               ERR_PTR() error code on failure. Must never return NULL.
+  * @invalidate_folio: Notify provider that a folio has been invalidated.
++ * @get_pfn: Obtain a PFN for a given index. The provider must ensure backing
++ *           memory is present and is responsible for its contents, such as
++ *           zeroing if necessary. On success, return 0 with the physical frame
++ *           number in @pfn and, if @max_order is non-NULL, the maximum page
++ *           order of contiguous backing memory containing @pfn. Returns a
++ *           negative error code on failure.
+  *
+  * Used by filesystems and device drivers that provide memory for guest_memfd.
+  */
+@@ -27,6 +33,8 @@ struct guest_memfd_provider_operations {
+ 	struct folio *(*alloc_folio)(void *provider, pgoff_t index,
+ 				     struct mempolicy *mpol);
+ 	void (*invalidate_folio)(void *provider, struct folio *folio);
++	int (*get_pfn)(void *provider, pgoff_t index, unsigned long *pfn,
++		       int *max_order);
+ };
  
- # Compiled test targets
- TEST_GEN_PROGS_x86 = $(TEST_GEN_PROGS_COMMON)
-diff --git a/tools/testing/selftests/kvm/mem_provider_sample_test.c b/tools/testing/selftests/kvm/mem_provider_sample_test.c
-new file mode 100644
-index 0000000000000..932ea3f30f494
---- /dev/null
-+++ b/tools/testing/selftests/kvm/mem_provider_sample_test.c
-@@ -0,0 +1,147 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Tests for the sample memory provider (/dev/mem_provider_sample).
-+ */
-+#include <fcntl.h>
-+#include <stdint.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <sys/ioctl.h>
-+#include <sys/stat.h>
-+#include <unistd.h>
-+
-+#include "test_util.h"
-+#include "../../../../samples/kvm/mem_provider_sample.h"
-+
-+#define DEV_PATH "/dev/mem_provider_sample"
-+
-+static int open_provider_dev(void)
+ #endif /* _LINUX_GUEST_MEMFD_H */
+diff --git a/include/uapi/linux/kvm.h b/include/uapi/linux/kvm.h
+index f4108bf7e3192..6798056f50e32 100644
+--- a/include/uapi/linux/kvm.h
++++ b/include/uapi/linux/kvm.h
+@@ -1675,6 +1675,7 @@ struct kvm_memory_attributes2 {
+ #define GUEST_MEMFD_FLAG_MMAP		(1ULL << 0)
+ #define GUEST_MEMFD_FLAG_INIT_SHARED	(1ULL << 1)
+ #define GUEST_MEMFD_FLAG_USE_RESOURCE	(1ULL << 2)
++#define GUEST_MEMFD_FLAG_PFN_MODE	(1ULL << 3)
+ 
+ struct kvm_create_guest_memfd {
+ 	__u64 size;
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index 84877beed6701..3d89bc76f3867 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -54,6 +54,11 @@ static __always_inline struct gmem_inode *GMEM_I(struct inode *inode)
+ 	return container_of(inode, struct gmem_inode, vfs_inode);
+ }
+ 
++static bool kvm_gmem_is_pfn_mode(struct gmem_inode *gi)
 +{
-+	int fd = open(DEV_PATH, O_RDWR);
-+
-+	if (fd < 0) {
-+		TEST_REQUIRE(errno != ENOENT && errno != ENODEV);
-+		TEST_FAIL("Failed to open %s: %d (%s)", DEV_PATH, errno,
-+			  strerror(errno));
-+	}
-+	return fd;
++	return gi->flags & GUEST_MEMFD_FLAG_PFN_MODE;
 +}
 +
-+static int create_provider_file(int dev_fd, uint64_t size)
+ static void *gmem_native_attach(struct inode *gmem_inode,
+ 				struct file *resource_file)
+ {
+@@ -124,6 +129,20 @@ static struct folio *gmem_provider_alloc_folio(struct gmem_inode *gi,
+ 	return ERR_PTR(-EOPNOTSUPP);
+ }
+ 
++static int gmem_provider_get_pfn(struct gmem_inode *gi, pgoff_t index,
++				 kvm_pfn_t *pfn, int *max_order)
 +{
-+	struct mps_new_file nf = {
-+		.size = size,
-+	};
-+	int fd;
++	unsigned long raw_pfn;
++	int r;
 +
-+	fd = ioctl(dev_fd, MPS_NEW_FILE, &nf);
-+	TEST_ASSERT(fd >= 0, "MPS_NEW_FILE failed for size 0x%lx: %d (%s)",
-+		    size, errno, strerror(errno));
-+	return fd;
-+}
++	r = gi->provider_ops->get_pfn(gi->provider, index, &raw_pfn, max_order);
++	if (r)
++		return r;
 +
-+static void test_lifecycle_and_creation(int dev_fd)
-+{
-+	size_t page_size = getpagesize();
-+	uint64_t sizes[] = {
-+		page_size,
-+		2 * page_size,
-+		2 * 1024 * 1024,
-+	};
-+	struct mps_stats st;
-+	int i, fd;
-+
-+	for (i = 0; i < ARRAY_SIZE(sizes); i++) {
-+		fd = create_provider_file(dev_fd, sizes[i]);
-+
-+		memset(&st, 0, sizeof(st));
-+		TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
-+			    "MPS_GET_STATS failed: %d (%s)",
-+			    errno, strerror(errno));
-+		TEST_ASSERT(st.size == sizes[i],
-+			    "size mismatch: expected 0x%lx, got 0x%llx",
-+			    sizes[i], st.size);
-+		TEST_ASSERT(st.absent_pages == 0,
-+			    "absent_pages mismatch: expected 0, got %llu",
-+			    st.absent_pages);
-+
-+		close(fd);
-+	}
-+}
-+
-+static void test_set_present(int dev_fd)
-+{
-+	size_t page_size = getpagesize();
-+	uint64_t nr_pages = 4;
-+	uint64_t file_size = nr_pages * page_size;
-+	struct mps_set_present sp;
-+	struct mps_stats st;
-+	int ret, fd;
-+
-+	fd = create_provider_file(dev_fd, file_size);
-+
-+	/* Initially all pages are present */
-+	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
-+		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
-+	TEST_ASSERT(st.absent_pages == 0,
-+		    "Initial absent_pages mismatch: expected 0, got %llu",
-+		    st.absent_pages);
-+
-+	/* Mark page 1 absent */
-+	memset(&sp, 0, sizeof(sp));
-+	sp.value = 0;
-+	sp.offset = page_size;
-+	sp.len = page_size;
-+	ret = ioctl(fd, MPS_SET_PRESENT, &sp);
-+	TEST_ASSERT(!ret, "MPS_SET_PRESENT (absent) failed: %d (%s)",
-+		    errno, strerror(errno));
-+
-+	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
-+		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
-+	TEST_ASSERT(st.size == file_size,
-+		    "size changed unexpectedly: 0x%llx", st.size);
-+	TEST_ASSERT(st.absent_pages == 1,
-+		    "absent_pages mismatch after absent: expected 1, got %llu",
-+		    st.absent_pages);
-+
-+	/* Mark page 1 back to present */
-+	sp.value = 1;
-+	ret = ioctl(fd, MPS_SET_PRESENT, &sp);
-+	TEST_ASSERT(!ret, "MPS_SET_PRESENT (present) failed: %d (%s)",
-+		    errno, strerror(errno));
-+
-+	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
-+		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
-+	TEST_ASSERT(st.absent_pages == 0,
-+		    "absent_pages mismatch after restore: expected 0, got %llu",
-+		    st.absent_pages);
-+
-+	/* Mark all pages absent */
-+	sp.value = 0;
-+	sp.offset = 0;
-+	sp.len = file_size;
-+	ret = ioctl(fd, MPS_SET_PRESENT, &sp);
-+	TEST_ASSERT(!ret, "MPS_SET_PRESENT (all absent) failed: %d (%s)",
-+		    errno, strerror(errno));
-+
-+	TEST_ASSERT(!ioctl(fd, MPS_GET_STATS, &st),
-+		    "MPS_GET_STATS failed: %d (%s)", errno, strerror(errno));
-+	TEST_ASSERT(st.absent_pages == nr_pages,
-+		    "absent_pages mismatch after all absent: expected %lu, got %llu",
-+		    nr_pages, st.absent_pages);
-+
-+	close(fd);
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	int dev_fd;
-+
-+	dev_fd = open_provider_dev();
-+
-+	test_lifecycle_and_creation(dev_fd);
-+	test_set_present(dev_fd);
-+
-+	close(dev_fd);
++	*pfn = raw_pfn;
 +	return 0;
 +}
++
+ static void gmem_provider_invalidate_folio(struct gmem_inode *gi,
+ 					   struct folio *folio)
+ {
+@@ -1270,15 +1289,17 @@ void kvm_gmem_unbind(struct kvm_memory_slot *slot)
+ 	filemap_invalidate_unlock(file->f_mapping);
+ }
+ 
+-/* Returns a locked folio on success.  */
++/* On success, return a locked folio in folio mode and NULL in PFN mode. */
+ static struct folio *__kvm_gmem_get_pfn(struct file *file,
+ 					struct kvm_memory_slot *slot,
+ 					pgoff_t index, kvm_pfn_t *pfn,
+ 					int *max_order)
+ {
+ 	struct file *slot_file = READ_ONCE(slot->gmem.file);
++	struct gmem_inode *gi = GMEM_I(file_inode(file));
+ 	struct gmem_file *f = file->private_data;
+ 	struct folio *folio;
++	int r;
+ 
+ 	if (file != slot_file) {
+ 		WARN_ON_ONCE(slot_file);
+@@ -1290,6 +1311,13 @@ static struct folio *__kvm_gmem_get_pfn(struct file *file,
+ 		return ERR_PTR(-EIO);
+ 	}
+ 
++	if (kvm_gmem_is_pfn_mode(gi)) {
++		r = gmem_provider_get_pfn(gi, index, pfn, max_order);
++		if (r)
++			return ERR_PTR(r);
++		return NULL;
++	}
++
+ 	folio = kvm_gmem_get_folio(file_inode(file), index);
+ 	if (IS_ERR(folio))
+ 		return folio;
+@@ -1338,8 +1366,10 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 		r = kvm_arch_gmem_make_private(kvm, gfn, *pfn,
+ 					       (kvm_pfn_t)1 << *max_order);
+ 
+-	folio_unlock(folio);
+-	folio_put(folio);
++	if (folio) {
++		folio_unlock(folio);
++		folio_put(folio);
++	}
+ 
+ out:
+ 	filemap_invalidate_unlock_shared(file_inode(file)->i_mapping);
+@@ -1366,7 +1396,8 @@ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 		goto out_unlock;
+ 	}
+ 
+-	folio_unlock(folio);
++	if (folio)
++		folio_unlock(folio);
+ 
+ 	if (!kvm_is_private_gfn(kvm, gfn)) {
+ 		ret = -EINVAL;
+@@ -1376,7 +1407,8 @@ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 	ret = post_populate(kvm, gfn, pfn, src_page, opaque);
+ 
+ out_put_folio:
+-	folio_put(folio);
++	if (folio)
++		folio_put(folio);
+ out_unlock:
+ 	filemap_invalidate_unlock(file->f_mapping);
+ 	return ret;
 
 -- 
 2.56.0.257.gf7497c7d27-goog
