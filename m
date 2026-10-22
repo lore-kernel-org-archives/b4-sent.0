@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:54 -0700
-Subject: [PATCH RFC v2 22/50] samples/kvm: Remove readonly support from
- sample provider
+Date: Thu, 22 Oct 2026 16:27:55 -0700
+Subject: [PATCH RFC v2 23/50] samples/kvm: Remove child ownership tracking
+ from sample provider
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-22-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-23-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,221 +56,269 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=7719;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=8882;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=KmuNfE164jdZmg6x8NSbkgPNCkgJMfiXBEIOVKni6Sw=;
- b=NL8RHxzlaCihqsS2rYaBHXsTcQILZKtBgbc3euu5fec8+gL9zqbjfaRemzqOwNdyAhjq8IGUg
- 6gC107g7fskDQKFCsZTkog+JKUugHvc0npKmSYNKVZ/XAJMRqHoC1fo
+ bh=qZbL+QJVNKb0L2oUo9qw6ZpUrTdAKrmTQ6W+rRuOJj8=;
+ b=buCaGa+KJp6KTNyEF2GukFjSdlkmQeHt2oLjFswkYRiHyeNibxJs4DZOA3x9jFrrpolQ6Nluh
+ d8zPN/aL78eCwjLLyw8A8x8It/152jzC1OUxx2LgKbY1qKzFQ3biC8i
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove the MPS_CTL_SET_READONLY ioctl, MEM_PROVIDER_ATTR_READONLY
-attribute, and readonly tracking bitmap from the sample memory provider.
+Remove per-child owned bitmaps and overlapping child range tracking from
+the sample memory provider.
 
-Keeping only the present versus absent control interface focuses
-attention on the essential interface design for page backing and
-revocation.
+Each child directly carves out a non-overlapping slice from the root pool
+tracking allocated pages in mps_root.allocated.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/mem_provider_sample.c | 52 ++++++++-------------------------------
- samples/kvm/mem_provider_sample.h | 13 ++++------
- 2 files changed, 15 insertions(+), 50 deletions(-)
+ samples/kvm/mem_provider_sample.c | 115 +++++---------------------------------
+ samples/kvm/mem_provider_sample.h |   1 -
+ 2 files changed, 15 insertions(+), 101 deletions(-)
 
 diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index 5afc433dce6e8..37538dce40cf8 100644
+index 37538dce40cf8..4e8f306ba1154 100644
 --- a/samples/kvm/mem_provider_sample.c
 +++ b/samples/kvm/mem_provider_sample.c
-@@ -66,7 +66,6 @@ struct mps_info {
- 	bool fixed_wb;			/* holds a ref on the fixed-region WB alias */
- 
+@@ -68,11 +68,11 @@ struct mps_info {
  	unsigned long *absent;		/* taken away by CTL_SET_PRESENT */
--	unsigned long *readonly;
  
  	/*
- 	 * A child of the root: its first page in the root, and the pages it
-@@ -146,7 +145,7 @@ static bool mps_page_present(struct mps_info *info, unsigned long index)
+-	 * A child of the root: its first page in the root, and the pages it
+-	 * has.  NULL @owned for a file made by SETUP, which has all its pages.
++	 * A child of the root: its first page in the root, and whether it
++	 * was carved out from the root (is_child).
+ 	 */
+ 	unsigned long root_index;
+-	unsigned long *owned;
++	bool is_child;
+ 	struct list_head root_link;	/* mps_root.children, mps_root.lock */
+ };
  
- /*
-  * The length of the run from @index of pages with the same state as @index:
-- * present, and the same read-only bit.
-+ * present.
-  */
- static unsigned long mps_run(struct mps_info *info, unsigned long index)
+@@ -85,8 +85,7 @@ static struct mps_root {
+ 	unsigned long base_pfn;
+ 	unsigned long npages;
+ 	struct page *cma_pages;
+-	unsigned long *owned;		/* pages that a child has */
+-	unsigned long *donated;		/* pages kept at the root */
++	unsigned long *allocated;	/* pages allocated to a child */
+ 	struct list_head children;
+ 	/*
+ 	 * The addr=/len= region is used either by one SETUP file or by the
+@@ -138,8 +137,6 @@ static void mps_fixed_wb_put(void)
+ /* Does @info have page @index now?  Called with or without info->lock. */
+ static bool mps_page_present(struct mps_info *info, unsigned long index)
  {
-@@ -156,12 +155,6 @@ static unsigned long mps_run(struct mps_info *info, unsigned long index)
- 	if (info->owned)
- 		end = min(end, find_next_zero_bit(info->owned, info->npages,
- 						  index + 1));
--	if (test_bit(index, info->readonly))
--		end = min(end, find_next_zero_bit(info->readonly, info->npages,
+-	if (info->owned && !test_bit(index, info->owned))
+-		return false;
+ 	return !test_bit(index, info->absent);
+ }
+ 
+@@ -152,9 +149,6 @@ static unsigned long mps_run(struct mps_info *info, unsigned long index)
+ 	unsigned long end = info->npages;
+ 
+ 	end = min(end, find_next_bit(info->absent, info->npages, index + 1));
+-	if (info->owned)
+-		end = min(end, find_next_zero_bit(info->owned, info->npages,
 -						  index + 1));
--	else
--		end = min(end, find_next_bit(info->readonly, info->npages,
--					     index + 1));
  	return end - index;
  }
  
-@@ -211,8 +204,6 @@ static int mps_mp_get_page(struct mem_provider_file *mpf, pgoff_t index,
- 	}
- 
- 	*pfn = info->base_pfn + index;
--	if (test_bit(index, info->readonly))
--		*attrs |= MEM_PROVIDER_ATTR_READONLY;
- 	/* The creator of the file decides whether the host may map it. */
- 	if (!info->mmap_capable)
- 		*attrs |= MEM_PROVIDER_ATTR_NO_USER_MAP;
-@@ -249,18 +240,6 @@ static int mps_range(struct mps_info *info, u64 offset, u64 len,
- 	return 0;
- }
- 
--static void mps_set_readonly(struct mps_info *info, unsigned long start,
--			     unsigned long end, bool readonly)
--{
--	mutex_lock(&info->lock);
--	if (readonly)
--		bitmap_set(info->readonly, start, end - start);
--	else
--		bitmap_clear(info->readonly, start, end - start);
--	mps_revoke(info, start, end);
--	mutex_unlock(&info->lock);
--}
--
- static void mps_set_present(struct mps_info *info, unsigned long start,
- 			    unsigned long end, bool present)
- {
-@@ -283,7 +262,6 @@ static long mps_get_stats(struct mps_info *info, void __user *uarg)
- 	st.owned_pages = info->owned ?
- 		bitmap_weight(info->owned, info->npages) : info->npages;
+@@ -259,8 +253,6 @@ static long mps_get_stats(struct mps_info *info, void __user *uarg)
+ 	mutex_lock(&info->lock);
+ 	st.region_offset = (u64)info->root_index << PAGE_SHIFT;
+ 	st.region_len = (u64)info->npages << PAGE_SHIFT;
+-	st.owned_pages = info->owned ?
+-		bitmap_weight(info->owned, info->npages) : info->npages;
  	st.absent_pages = bitmap_weight(info->absent, info->npages);
--	st.readonly_pages = bitmap_weight(info->readonly, info->npages);
  	mutex_unlock(&info->lock);
  
- 	return copy_to_user(uarg, &st, sizeof(st)) ? -EFAULT : 0;
-@@ -291,8 +269,8 @@ static long mps_get_stats(struct mps_info *info, void __user *uarg)
- 
- /*
-  * A child fd is read-only to its holder: only GET_STATS.  The owner changes a
-- * child's pages through the control device (MPS_CTL_SET_PRESENT and
-- * MPS_CTL_SET_READONLY), so a VMM that holds a child cannot.
-+ * child's pages through the control device (MPS_CTL_SET_PRESENT), so a VMM
-+ * that holds a child cannot.
-  */
- static long mps_file_ioctl(struct file *file, unsigned int cmd,
- 			   unsigned long arg)
-@@ -335,7 +313,6 @@ static int mps_file_release(struct inode *inode, struct file *file)
- 	if (info->cma_pages)
- 		free_contig_range(info->base_pfn, info->npages);
- 	bitmap_free(info->absent);
--	bitmap_free(info->readonly);
- 	kfree(info);
- 	return 0;
- }
-@@ -372,8 +349,7 @@ static int mps_new_file(unsigned long base_pfn, unsigned long npages,
- 	info->npages = npages;
- 	info->mmap_capable = flags & MPS_FLAG_MMAP_CAPABLE;
- 	info->absent = bitmap_zalloc(npages, GFP_KERNEL);
--	info->readonly = bitmap_zalloc(npages, GFP_KERNEL);
--	if (!info->absent || !info->readonly) {
-+	if (!info->absent) {
- 		ret = -ENOMEM;
- 		goto err_free;
- 	}
-@@ -398,7 +374,6 @@ static int mps_new_file(unsigned long base_pfn, unsigned long npages,
- 
- err_free:
- 	bitmap_free(info->absent);
--	bitmap_free(info->readonly);
- 	kfree(info);
- 	return ret;
- }
-@@ -675,11 +650,10 @@ static bool mps_child_owns(struct mps_info *info, unsigned long first,
- }
- 
- /*
-- * CTL_SET_READONLY and CTL_SET_PRESENT change a child's pages, by the owner on
-- * the control device.  A VMM that holds the child fd cannot, so it cannot undo
-- * them.
-+ * CTL_SET_PRESENT changes a child's pages, by the owner on the control device.
-+ * A VMM that holds the child fd cannot, so it cannot undo them.
-  */
--static long mps_ctl_set_range(void __user *uarg, bool readonly)
-+static long mps_ctl_set_present(void __user *uarg)
+@@ -287,19 +279,13 @@ static long mps_file_ioctl(struct file *file, unsigned int cmd,
+ static int mps_file_release(struct inode *inode, struct file *file)
  {
- 	struct mps_ctl_range cr;
- 	unsigned long start, end;
-@@ -695,12 +669,8 @@ static long mps_ctl_set_range(void __user *uarg, bool readonly)
- 	if (IS_ERR(file))
- 		return PTR_ERR(file);
- 	ret = mps_range(info, cr.offset, cr.len, &start, &end);
--	if (!ret) {
--		if (readonly)
--			mps_set_readonly(info, start, end, cr.value);
--		else
--			mps_set_present(info, start, end, cr.value);
+ 	struct mps_info *info = file->private_data;
+-	unsigned long i;
+ 
+-	/*
+-	 * A child gives the pages it has back to the root.  Pages it donated
+-	 * stay at the root, and pages moved out belong to another child.
+-	 */
+-	if (info->owned) {
++	/* A child gives the pages it has back to the root. */
++	if (info->is_child) {
+ 		mutex_lock(&mps_root.lock);
+ 		list_del(&info->root_link);
+-		for_each_set_bit(i, info->owned, info->npages)
+-			__clear_bit(info->root_index + i, mps_root.owned);
++		bitmap_clear(mps_root.allocated, info->root_index, info->npages);
+ 		mutex_unlock(&mps_root.lock);
+-		bitmap_free(info->owned);
+ 	}
+ 	if (addr && len && !info->cma_pages) {
+ 		mutex_lock(&mps_root.lock);
+@@ -473,13 +459,8 @@ static int mps_root_ensure(u64 size)
+ 			return -ENOMEM;
+ 		mps_root.base_pfn = page_to_pfn(pages);
+ 	}
+-	mps_root.owned = bitmap_zalloc(npages, GFP_KERNEL);
+-	mps_root.donated = bitmap_zalloc(npages, GFP_KERNEL);
+-	if (!mps_root.owned || !mps_root.donated) {
+-		bitmap_free(mps_root.owned);
+-		bitmap_free(mps_root.donated);
+-		mps_root.owned = NULL;
+-		mps_root.donated = NULL;
++	mps_root.allocated = bitmap_zalloc(npages, GFP_KERNEL);
++	if (!mps_root.allocated) {
+ 		if (pages)
+ 			free_contig_range(page_to_pfn(pages), npages);
+ 		return -ENOMEM;
+@@ -496,8 +477,7 @@ static void mps_root_teardown(void)
+ 	WARN_ON(!list_empty(&mps_root.children));
+ 	if (mps_root.cma_pages)
+ 		free_contig_range(mps_root.base_pfn, mps_root.npages);
+-	bitmap_free(mps_root.owned);
+-	bitmap_free(mps_root.donated);
++	bitmap_free(mps_root.allocated);
+ }
+ 
+ /* A page-aligned byte range of the root as page indices [first, last). */
+@@ -521,7 +501,7 @@ static struct file *mps_get_child(int fd, struct mps_info **infop)
+ 	if (!file)
+ 		return ERR_PTR(-EBADF);
+ 	if (file->f_op != &mps_file_fops.fops ||
+-	    !((struct mps_info *)file->private_data)->owned) {
++	    !((struct mps_info *)file->private_data)->is_child) {
+ 		fput(file);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+@@ -532,9 +512,8 @@ static struct file *mps_get_child(int fd, struct mps_info **infop)
+ static long mps_ctl_new_child(void __user *uarg)
+ {
+ 	struct mps_new_child nc;
+-	unsigned long first, last, i, grant = 0;
++	unsigned long first, last;
+ 	struct mps_info *info;
+-	unsigned long *owned;
+ 	struct file *file;
+ 	int fd, ret;
+ 
+@@ -551,25 +530,14 @@ static long mps_ctl_new_child(void __user *uarg)
+ 	if (ret)
+ 		goto out_unlock;
+ 
+-	/* A child that would get no page is likely a mistake. */
+-	for (i = first; i < last; i++)
+-		if (!test_bit(i, mps_root.owned) &&
+-		    !test_bit(i, mps_root.donated))
+-			grant++;
+-	if (!grant) {
++	if (find_next_bit(mps_root.allocated, last, first) < last) {
+ 		ret = -EBUSY;
+ 		goto out_unlock;
+ 	}
+ 
+-	owned = bitmap_zalloc(last - first, GFP_KERNEL);
+-	if (!owned) {
+-		ret = -ENOMEM;
+-		goto out_unlock;
 -	}
-+	if (!ret)
-+		mps_set_present(info, start, end, cr.value);
- 	fput(file);
+ 	fd = mps_new_file(mps_root.base_pfn + first, last - first, nc.flags,
+ 			  &info, &file);
+ 	if (fd < 0) {
+-		bitmap_free(owned);
+ 		ret = fd;
+ 		goto out_unlock;
+ 	}
+@@ -577,22 +545,14 @@ static long mps_ctl_new_child(void __user *uarg)
+ 		if (mps_fixed_wb_get()) {
+ 			put_unused_fd(fd);
+ 			fput(file);
+-			bitmap_free(owned);
+ 			ret = -ENOMEM;
+ 			goto out_unlock;
+ 		}
+ 		info->fixed_wb = true;
+ 	}
+ 
+-	/* No other thread can reach the child until fd_install(). */
+-	for (i = first; i < last; i++) {
+-		if (test_bit(i, mps_root.owned) ||
+-		    test_bit(i, mps_root.donated))
+-			continue;
+-		__set_bit(i - first, owned);
+-		__set_bit(i, mps_root.owned);
+-	}
+-	info->owned = owned;
++	bitmap_set(mps_root.allocated, first, last - first);
++	info->is_child = true;
+ 	info->root_index = first;
+ 	list_add(&info->root_link, &mps_root.children);
+ 	mutex_unlock(&mps_root.lock);
+@@ -604,51 +564,6 @@ static long mps_ctl_new_child(void __user *uarg)
  	return ret;
  }
-@@ -715,10 +685,8 @@ static long mps_ctl_ioctl(struct file *file, unsigned int cmd,
- 		return mps_ctl_setup(uarg);
- 	case MPS_NEW_CHILD:
- 		return mps_ctl_new_child(uarg);
--	case MPS_CTL_SET_READONLY:
--		return mps_ctl_set_range(uarg, true);
- 	case MPS_CTL_SET_PRESENT:
--		return mps_ctl_set_range(uarg, false);
-+		return mps_ctl_set_present(uarg);
- 	default:
- 		return -ENOTTY;
- 	}
+ 
+-/* Take [first, last) of the root from @info.  Called under mps_root.lock. */
+-static void mps_child_lose(struct mps_info *info, unsigned long first,
+-			   unsigned long last)
+-{
+-	unsigned long s = first - info->root_index;
+-	unsigned long e = last - info->root_index;
+-
+-	mutex_lock(&info->lock);
+-	bitmap_clear(info->owned, s, e - s);
+-	mps_revoke(info, s, e);
+-	mutex_unlock(&info->lock);
+-	bitmap_clear(mps_root.owned, first, last - first);
+-}
+-
+-/* Give [first, last) of the root to @info.  Called under mps_root.lock. */
+-static void mps_child_gain(struct mps_info *info, unsigned long first,
+-			   unsigned long last)
+-{
+-	unsigned long s = first - info->root_index;
+-	unsigned long e = last - info->root_index;
+-
+-	mutex_lock(&info->lock);
+-	bitmap_set(info->owned, s, e - s);
+-	mps_revoke(info, s, e);
+-	mutex_unlock(&info->lock);
+-	bitmap_set(mps_root.owned, first, last - first);
+-}
+-
+-static bool mps_child_covers(struct mps_info *info, unsigned long first,
+-			     unsigned long last)
+-{
+-	return first >= info->root_index &&
+-	       last <= info->root_index + info->npages;
+-}
+-
+-static bool mps_child_owns(struct mps_info *info, unsigned long first,
+-			   unsigned long last)
+-{
+-	unsigned long s = first - info->root_index;
+-	unsigned long e = last - info->root_index;
+-
+-	return mps_child_covers(info, first, last) &&
+-	       find_next_zero_bit(info->owned, e, s) >= e;
+-}
+-
+ /*
+  * CTL_SET_PRESENT changes a child's pages, by the owner on the control device.
+  * A VMM that holds the child fd cannot, so it cannot undo them.
 diff --git a/samples/kvm/mem_provider_sample.h b/samples/kvm/mem_provider_sample.h
-index acff5785099b5..5955c1c0fbf80 100644
+index 5955c1c0fbf80..1afea136328f5 100644
 --- a/samples/kvm/mem_provider_sample.h
 +++ b/samples/kvm/mem_provider_sample.h
-@@ -48,8 +48,8 @@ struct mps_setup {
-  * RECLAIM them.  Each change revokes the range, so KVM and iommufd follow.
-  *
-  * The owner changes a child's pages through the control device
-- * (CTL_SET_READONLY, CTL_SET_PRESENT).  A child fd is read-only to its
-- * holder: a VMM can only GET_STATS, never change the memory.
-+ * (CTL_SET_PRESENT).  A child fd is read-only to its holder: a VMM can
-+ * only GET_STATS, never change the memory.
-  */
- 
- /*
-@@ -74,16 +74,15 @@ struct mps_stats {
+@@ -72,7 +72,6 @@ struct mps_new_child {
+ struct mps_stats {
+ 	__u64 region_offset;	/* the child's range in the root */
  	__u64 region_len;
- 	__u64 owned_pages;	/* pages the child has */
+-	__u64 owned_pages;	/* pages the child has */
  	__u64 absent_pages;	/* pages taken away by CTL_SET_PRESENT */
--	__u64 readonly_pages;
  };
- 
- #define MPS_GET_STATS \
- 	_IOR(MPS_IOCTL_BASE, 10, struct mps_stats)
- 
- /*
-- * ioctls on /dev/mem_provider_sample: CTL_SET_READONLY or CTL_SET_PRESENT on
-- * child @fd, by the owner.  @value is the readonly or present value, and
-- * @offset and @len are a byte range within the child, page aligned.
-+ * ioctl on /dev/mem_provider_sample: CTL_SET_PRESENT on child @fd, by the
-+ * owner. @value is the present value (1 = present, 0 = absent), and @offset
-+ * and @len are a byte range within the child, page aligned.
-  */
- struct mps_ctl_range {
- 	__s32 fd;
-@@ -92,8 +91,6 @@ struct mps_ctl_range {
- 	__u64 len;	/* bytes, page aligned */
- };
- 
--#define MPS_CTL_SET_READONLY \
--	_IOW(MPS_IOCTL_BASE, 11, struct mps_ctl_range)
- #define MPS_CTL_SET_PRESENT \
- 	_IOW(MPS_IOCTL_BASE, 12, struct mps_ctl_range)
  
 
 -- 
