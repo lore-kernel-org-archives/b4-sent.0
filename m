@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:57 -0700
-Subject: [PATCH RFC v2 25/50] samples/kvm: Remove MMAP_CAPABLE flag from
- sample provider
+Date: Thu, 22 Oct 2026 16:27:58 -0700
+Subject: [PATCH RFC v2 26/50] samples/kvm: Remove fixed address and length
+ module parameters
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-25-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-26-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,179 +56,148 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5272;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=4776;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=NyLuSglYrgseNgo22Leven/EVJ6xVizHVjRReJCGP3c=;
- b=oOyJLSyR86edjat5g+/tkS/BgrVfnXSZMxDSUij8i8EsT8NCw5Hlv/4VKfZZ36+fvuL82lKzW
- YHjlPObEObuCk6Lf69FV0eMFWTxmVS2+taE4yXO2/NipSMiv4SSI0tI
+ bh=ZvgRlCQoX8aAOrmBNmY778ViCyt2HTQ8fDZpwcewiX8=;
+ b=hMQxwei6fo+VWEPARf94RDMkjPiXa+ZvJwZ4AhdrwKCCaWXn8vnLqltUKdpAyZOGn4NdnyfGr
+ LnjlZ8YhxflCPm+xo9J+Bmw3RSJruFNHUioJ+FO3GfZblRoOKJxiBWk
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove the MMAP_CAPABLE flag and associated write-back PAT mapping logic
-from the sample memory provider.
+Remove the addr and len module parameters from the sample memory
+provider.
 
-This is removed to focus on the core concept of providing memory.
+The prototype doesn't require pre-carved out memory ranges, since
+MPS_NEW_CHILD already allows carving out memory on the fly. Being able to
+carve out memory on the fly makes testing easier.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/mem_provider_sample.c | 66 +--------------------------------------
- samples/kvm/mem_provider_sample.h |  6 +---
- 2 files changed, 2 insertions(+), 70 deletions(-)
+ samples/Kconfig                   | 12 +++------
+ samples/kvm/mem_provider_sample.c | 53 +++++++++------------------------------
+ 2 files changed, 15 insertions(+), 50 deletions(-)
 
+diff --git a/samples/Kconfig b/samples/Kconfig
+index 3c870bca076af..a06eafb5d7ba4 100644
+--- a/samples/Kconfig
++++ b/samples/Kconfig
+@@ -331,15 +331,9 @@ config SAMPLE_KVM_MEM_PROVIDER
+ 	depends on MEM_PROVIDER && CONTIG_ALLOC && X86_64 && m
+ 	help
+ 	  This builds a sample memory provider (include/linux/mem_provider.h).
+-	  Its files can back a guest_memfd and be mapped by iommufd.  Loaded
+-	  with addr= and len=, it lends a fixed physical range that has no
+-	  struct page, for example memory hidden with memmap= on the command
+-	  line.  Without them, it allocates a contiguous region with
+-	  alloc_contig_pages().
+-
+-	  It shows how a memory owner moves pages between VMs, takes them
+-	  back or makes them read only, and how guest_memfd and iommufd
+-	  follow each change.
++	  Its files can back a guest_memfd and be mapped by iommufd.
++	  It allocates a contiguous region with alloc_contig_pages()
++	  and carves out child provider files on the fly.
+ 
+ 	  If unsure, say N.
+ 
 diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index abb8e35cd5357..f7ecb2ea1d75d 100644
+index f7ecb2ea1d75d..574c712a11389 100644
 --- a/samples/kvm/mem_provider_sample.c
 +++ b/samples/kvm/mem_provider_sample.c
-@@ -61,8 +61,6 @@ struct mps_info {
- 	unsigned long base_pfn;
- 	unsigned long npages;
- 	struct page *cma_pages;		/* from alloc_contig_pages(), or NULL */
--	bool mmap_capable;
--	bool fixed_wb;			/* holds a ref on the fixed-region WB alias */
- 
- 	unsigned long *absent;		/* taken away by CTL_SET_PRESENT */
- 
-@@ -86,48 +84,8 @@ static struct mps_root {
- 	struct page *cma_pages;
- 	unsigned long *allocated;	/* pages allocated to a child */
- 	struct list_head children;
--	/* Files over the fixed region that may be mapped into userspace. */
--	unsigned int fixed_wb_users;
- } mps_root;
- 
--/*
-- * A write-back mapping of the addr=/len= region, held while any file over it
-- * may be mapped into userspace (counted by mps_root.fixed_wb_users).  Without
-- * it, PAT makes the range uncached on x86, and the VMM's mapping would be
-- * uncached while the guest's is write-back.  PAT may still give a weaker type
-- * if the MTRRs do not mark the range write-back.
-- */
--static void *mps_fixed_wb;
--
--/* A file over the fixed region whose pages the host may map. */
--static bool mps_over_fixed_mappable(struct mps_info *info)
--{
--	return addr && len && !info->cma_pages && info->mmap_capable;
--}
--
--/*
-- * Hold a write-back mapping of the fixed region while any file over it may be
-- * mapped into userspace.  Called under mps_root.lock.
-- */
--static int mps_fixed_wb_get(void)
--{
--	if (mps_root.fixed_wb_users == 0) {
--		mps_fixed_wb = memremap(addr, len, MEMREMAP_WB);
--		if (!mps_fixed_wb)
--			return -ENOMEM;
--	}
--	mps_root.fixed_wb_users++;
--	return 0;
--}
--
--static void mps_fixed_wb_put(void)
--{
--	if (--mps_root.fixed_wb_users == 0) {
--		memunmap(mps_fixed_wb);
--		mps_fixed_wb = NULL;
--	}
--}
--
- /* Does @info have page @index now?  Called with or without info->lock. */
- static bool mps_page_present(struct mps_info *info, unsigned long index)
- {
-@@ -192,9 +150,6 @@ static int mps_mp_get_page(struct mem_provider_file *mpf, pgoff_t index,
- 	}
- 
- 	*pfn = info->base_pfn + index;
--	/* The creator of the file decides whether the host may map it. */
--	if (!info->mmap_capable)
--		*attrs |= MEM_PROVIDER_ATTR_NO_USER_MAP;
- 	return 0;
- }
- 
-@@ -281,13 +236,6 @@ static int mps_file_release(struct inode *inode, struct file *file)
- 		bitmap_clear(mps_root.allocated, info->root_index, info->npages);
- 		mutex_unlock(&mps_root.lock);
- 	}
--	if (addr && len && !info->cma_pages) {
--		mutex_lock(&mps_root.lock);
--		if (info->fixed_wb)
--			mps_fixed_wb_put();
--		mutex_unlock(&mps_root.lock);
--	}
--
- 	if (info->cma_pages)
- 		free_contig_range(info->base_pfn, info->npages);
- 	bitmap_free(info->absent);
-@@ -325,7 +273,6 @@ static int mps_new_file(unsigned long base_pfn, unsigned long npages,
- 	mem_provider_file_init(&info->mpf);
- 	info->base_pfn = base_pfn;
- 	info->npages = npages;
--	info->mmap_capable = flags & MPS_FLAG_MMAP_CAPABLE;
- 	info->absent = bitmap_zalloc(npages, GFP_KERNEL);
- 	if (!info->absent) {
- 		ret = -ENOMEM;
-@@ -449,7 +396,7 @@ static long mps_ctl_new_child(void __user *uarg)
- 
- 	if (copy_from_user(&nc, uarg, sizeof(nc)))
- 		return -EFAULT;
--	if ((nc.flags & ~MPS_FLAG_MMAP_CAPABLE) || nc.pad)
-+	if (nc.flags || nc.pad)
- 		return -EINVAL;
- 
- 	mutex_lock(&mps_root.lock);
-@@ -471,15 +418,6 @@ static long mps_ctl_new_child(void __user *uarg)
- 		ret = fd;
- 		goto out_unlock;
- 	}
--	if (mps_over_fixed_mappable(info)) {
--		if (mps_fixed_wb_get()) {
--			put_unused_fd(fd);
--			fput(file);
--			ret = -ENOMEM;
--			goto out_unlock;
--		}
--		info->fixed_wb = true;
--	}
- 
- 	bitmap_set(mps_root.allocated, first, last - first);
- 	info->is_child = true;
-@@ -571,8 +509,6 @@ static void __exit mps_exit(void)
- {
- 	misc_deregister(&mps_dev);
- 	mps_root_teardown();
--	if (mps_fixed_wb)
--		memunmap(mps_fixed_wb);
- }
- module_exit(mps_exit);
- 
-diff --git a/samples/kvm/mem_provider_sample.h b/samples/kvm/mem_provider_sample.h
-index 3b0928b6478ca..51eaf39acbad1 100644
---- a/samples/kvm/mem_provider_sample.h
-+++ b/samples/kvm/mem_provider_sample.h
-@@ -14,10 +14,6 @@
-  * the ioctls below make.
+@@ -8,17 +8,9 @@
+  * guest's devices.  The module calls neither KVM nor iommufd: it answers
+  * "what is page N" and revokes a range when the answer changes.
+  *
+- * The region is either:
+- *
+- *  - a fixed range given with addr= and len=, which has no struct page, for
+- *    example memory hidden from the kernel with memmap= on the command line;
+- *  - or, without those parameters, a range from alloc_contig_pages().
+- *
+  * The control device /dev/mem_provider_sample creates provider files.
+- * SETUP makes one file over the whole region.  NEW_CHILD carves part of the
+- * region into a child file, and MOVE, DONATE and RECLAIM change which child
+- * has which page.  A page can also be taken away or made read only.  See
+- * mem_provider_sample.h.
++ * NEW_CHILD carves part of the region into a child file. A page can also
++ * be taken away. See mem_provider_sample.h.
+  *
+  * Confidential VMs are not supported.
   */
+@@ -38,15 +30,6 @@
  
--/* Flags for struct mps_new_child */
--/* The host may map the pages; otherwise they are NO_USER_MAP */
--#define MPS_FLAG_MMAP_CAPABLE	(1u << 0)
+ #include "mem_provider_sample.h"
+ 
+-static unsigned long long addr;
+-module_param(addr, ullong, 0444);
+-MODULE_PARM_DESC(addr,
+-		 "Physical base of a region with no struct page (optional)");
 -
- #define MPS_IOCTL_BASE		'P'
- 
+-static unsigned long long len;
+-module_param(len, ullong, 0444);
+-MODULE_PARM_DESC(len, "Size in bytes of that region (optional)");
+-
  /*
-@@ -36,7 +32,7 @@
-  * root into a new child fd. Returns the child fd.
-  */
- struct mps_new_child {
--	__u32 flags;	/* MPS_FLAG_* */
-+	__u32 flags;	/* Reserved, must be 0 */
- 	__u32 pad;
- 	__u64 offset;	/* bytes into the root, page aligned */
- 	__u64 len;	/* bytes, page aligned */
+  * One provider file.
+  *
+@@ -314,32 +297,26 @@ static struct page *mps_alloc_region(unsigned long npages)
+ 
+ /* ---- Root and children -------------------------------------------------- */
+ 
+-/* Create the root on the first NEW_CHILD, from addr=/len= or of @size. */
++/* Create the root on the first NEW_CHILD of @size. */
+ static int mps_root_ensure(u64 size)
+ {
+-	struct page *pages = NULL;
++	struct page *pages;
+ 	unsigned long npages;
+ 
+ 	lockdep_assert_held(&mps_root.lock);
+ 	if (mps_root.npages)
+ 		return 0;
+ 
+-	if (addr && len) {
+-		mps_root.base_pfn = addr >> PAGE_SHIFT;
+-		npages = len >> PAGE_SHIFT;
+-	} else {
+-		if (!size || !PAGE_ALIGNED(size))
+-			return -EINVAL;
+-		npages = size >> PAGE_SHIFT;
+-		pages = mps_alloc_region(npages);
+-		if (!pages)
+-			return -ENOMEM;
+-		mps_root.base_pfn = page_to_pfn(pages);
+-	}
++	if (!size || !PAGE_ALIGNED(size))
++		return -EINVAL;
++	npages = size >> PAGE_SHIFT;
++	pages = mps_alloc_region(npages);
++	if (!pages)
++		return -ENOMEM;
++	mps_root.base_pfn = page_to_pfn(pages);
+ 	mps_root.allocated = bitmap_zalloc(npages, GFP_KERNEL);
+ 	if (!mps_root.allocated) {
+-		if (pages)
+-			free_contig_range(page_to_pfn(pages), npages);
++		free_contig_range(page_to_pfn(pages), npages);
+ 		return -ENOMEM;
+ 	}
+ 	mps_root.cma_pages = pages;
+@@ -489,12 +466,6 @@ static int __init mps_init(void)
+ {
+ 	int ret;
+ 
+-	if ((addr || len) &&
+-	    (!addr || !len || !PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len))) {
+-		pr_err("mem_provider_sample: addr= and len= must both be set and page aligned\n");
+-		return -EINVAL;
+-	}
+-
+ 	mutex_init(&mps_root.lock);
+ 	INIT_LIST_HEAD(&mps_root.children);
+ 
 
 -- 
 2.56.0.257.gf7497c7d27-goog
