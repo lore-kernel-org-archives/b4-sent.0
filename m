@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:56 -0700
-Subject: [PATCH RFC v2 24/50] samples/kvm: Remove MPS_SETUP support from
+Date: Thu, 22 Oct 2026 16:27:57 -0700
+Subject: [PATCH RFC v2 25/50] samples/kvm: Remove MMAP_CAPABLE flag from
  sample provider
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-24-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-25-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,204 +56,179 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=6500;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5272;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=kd/hDDXV3WNRGwpxli/N8UyduIITpgFXaaGre5ydRTg=;
- b=jWVnD6aMNALyW68Ag9Zv6gBXyLPiCk1SiGVbKrBoHWUSRZxnN+CWHddR98l5/8R+inewYyeVU
- tdNch/zzH+eD4XauEf7pBaqVQ8X8LbSWNeFYWqvoN0U1h4fg1M736Js
+ bh=NyLuSglYrgseNgo22Leven/EVJ6xVizHVjRReJCGP3c=;
+ b=oOyJLSyR86edjat5g+/tkS/BgrVfnXSZMxDSUij8i8EsT8NCw5Hlv/4VKfZZ36+fvuL82lKzW
+ YHjlPObEObuCk6Lf69FV0eMFWTxmVS2+taE4yXO2/NipSMiv4SSI0tI
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MPS_SETUP is a subset of the functionality provided by MPS_NEW_CHILD.
-A single file covering the entire region can be created by carving out
-the full range with MPS_NEW_CHILD.
+Remove the MMAP_CAPABLE flag and associated write-back PAT mapping logic
+from the sample memory provider.
 
-Retain MPS_NEW_CHILD as it enables testing alternative provider
-functionality when there are separate sub-pools of memory carved out
-from the root.
+This is removed to focus on the core concept of providing memory.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/mem_provider_sample.c | 72 ---------------------------------------
- samples/kvm/mem_provider_sample.h | 29 ++--------------
- 2 files changed, 3 insertions(+), 98 deletions(-)
+ samples/kvm/mem_provider_sample.c | 66 +--------------------------------------
+ samples/kvm/mem_provider_sample.h |  6 +---
+ 2 files changed, 2 insertions(+), 70 deletions(-)
 
 diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index 4e8f306ba1154..abb8e35cd5357 100644
+index abb8e35cd5357..f7ecb2ea1d75d 100644
 --- a/samples/kvm/mem_provider_sample.c
 +++ b/samples/kvm/mem_provider_sample.c
-@@ -61,7 +61,6 @@ struct mps_info {
+@@ -61,8 +61,6 @@ struct mps_info {
  	unsigned long base_pfn;
  	unsigned long npages;
  	struct page *cma_pages;		/* from alloc_contig_pages(), or NULL */
--	bool fixed;			/* a SETUP file over addr=/len= */
- 	bool mmap_capable;
- 	bool fixed_wb;			/* holds a ref on the fixed-region WB alias */
+-	bool mmap_capable;
+-	bool fixed_wb;			/* holds a ref on the fixed-region WB alias */
  
-@@ -87,11 +86,6 @@ static struct mps_root {
+ 	unsigned long *absent;		/* taken away by CTL_SET_PRESENT */
+ 
+@@ -86,48 +84,8 @@ static struct mps_root {
  	struct page *cma_pages;
  	unsigned long *allocated;	/* pages allocated to a child */
  	struct list_head children;
--	/*
--	 * The addr=/len= region is used either by one SETUP file or by the
--	 * root, never by both, so that its frames have one owner.
--	 */
--	bool fixed_setup;
- 	/* Files over the fixed region that may be mapped into userspace. */
- 	unsigned int fixed_wb_users;
+-	/* Files over the fixed region that may be mapped into userspace. */
+-	unsigned int fixed_wb_users;
  } mps_root;
-@@ -289,8 +283,6 @@ static int mps_file_release(struct inode *inode, struct file *file)
- 	}
- 	if (addr && len && !info->cma_pages) {
- 		mutex_lock(&mps_root.lock);
--		if (info->fixed)
--			mps_root.fixed_setup = false;
- 		if (info->fixed_wb)
- 			mps_fixed_wb_put();
- 		mutex_unlock(&mps_root.lock);
-@@ -373,66 +365,6 @@ static struct page *mps_alloc_region(unsigned long npages)
- 	return pages;
- }
  
--static long mps_ctl_setup(void __user *uarg)
+-/*
+- * A write-back mapping of the addr=/len= region, held while any file over it
+- * may be mapped into userspace (counted by mps_root.fixed_wb_users).  Without
+- * it, PAT makes the range uncached on x86, and the VMM's mapping would be
+- * uncached while the guest's is write-back.  PAT may still give a weaker type
+- * if the MTRRs do not mark the range write-back.
+- */
+-static void *mps_fixed_wb;
+-
+-/* A file over the fixed region whose pages the host may map. */
+-static bool mps_over_fixed_mappable(struct mps_info *info)
 -{
--	struct mps_setup setup;
--	unsigned long base_pfn, npages;
--	struct page *pages = NULL;
--	struct mps_info *info;
--	struct file *file;
--	int fd;
--
--	if (copy_from_user(&setup, uarg, sizeof(setup)))
--		return -EFAULT;
--	if ((setup.flags & ~MPS_FLAG_MMAP_CAPABLE) || setup.pad)
--		return -EINVAL;
--
--	if (addr && len) {
--		/* The fixed region has one owner: this file or the root. */
--		mutex_lock(&mps_root.lock);
--		if (mps_root.fixed_setup || mps_root.npages) {
--			mutex_unlock(&mps_root.lock);
--			return -EBUSY;
--		}
--		fd = mps_new_file(addr >> PAGE_SHIFT, len >> PAGE_SHIFT,
--				  setup.flags, &info, &file);
--		if (fd >= 0 && mps_over_fixed_mappable(info)) {
--			if (mps_fixed_wb_get()) {
--				put_unused_fd(fd);
--				fput(file);
--				fd = -ENOMEM;
--			} else {
--				info->fixed_wb = true;
--			}
--		}
--		if (fd >= 0) {
--			info->fixed = true;
--			mps_root.fixed_setup = true;
--		}
--		mutex_unlock(&mps_root.lock);
--		if (fd >= 0)
--			fd_install(fd, file);
--		return fd;
--	}
--
--	if (!setup.size || !PAGE_ALIGNED(setup.size))
--		return -EINVAL;
--	npages = setup.size >> PAGE_SHIFT;
--	pages = mps_alloc_region(npages);
--	if (!pages)
--		return -ENOMEM;
--	base_pfn = page_to_pfn(pages);
--
--	fd = mps_new_file(base_pfn, npages, setup.flags, &info, &file);
--	if (fd < 0) {
--		free_contig_range(base_pfn, npages);
--		return fd;
--	}
--	info->cma_pages = pages;
--	fd_install(fd, file);
--	return fd;
+-	return addr && len && !info->cma_pages && info->mmap_capable;
 -}
 -
- /* ---- Root and children -------------------------------------------------- */
+-/*
+- * Hold a write-back mapping of the fixed region while any file over it may be
+- * mapped into userspace.  Called under mps_root.lock.
+- */
+-static int mps_fixed_wb_get(void)
+-{
+-	if (mps_root.fixed_wb_users == 0) {
+-		mps_fixed_wb = memremap(addr, len, MEMREMAP_WB);
+-		if (!mps_fixed_wb)
+-			return -ENOMEM;
+-	}
+-	mps_root.fixed_wb_users++;
+-	return 0;
+-}
+-
+-static void mps_fixed_wb_put(void)
+-{
+-	if (--mps_root.fixed_wb_users == 0) {
+-		memunmap(mps_fixed_wb);
+-		mps_fixed_wb = NULL;
+-	}
+-}
+-
+ /* Does @info have page @index now?  Called with or without info->lock. */
+ static bool mps_page_present(struct mps_info *info, unsigned long index)
+ {
+@@ -192,9 +150,6 @@ static int mps_mp_get_page(struct mem_provider_file *mpf, pgoff_t index,
+ 	}
  
- /* Create the root on the first NEW_CHILD, from addr=/len= or of @size. */
-@@ -446,8 +378,6 @@ static int mps_root_ensure(u64 size)
- 		return 0;
+ 	*pfn = info->base_pfn + index;
+-	/* The creator of the file decides whether the host may map it. */
+-	if (!info->mmap_capable)
+-		*attrs |= MEM_PROVIDER_ATTR_NO_USER_MAP;
+ 	return 0;
+ }
  
- 	if (addr && len) {
--		if (mps_root.fixed_setup)
--			return -EBUSY;
- 		mps_root.base_pfn = addr >> PAGE_SHIFT;
- 		npages = len >> PAGE_SHIFT;
- 	} else {
-@@ -596,8 +526,6 @@ static long mps_ctl_ioctl(struct file *file, unsigned int cmd,
- 	void __user *uarg = (void __user *)arg;
+@@ -281,13 +236,6 @@ static int mps_file_release(struct inode *inode, struct file *file)
+ 		bitmap_clear(mps_root.allocated, info->root_index, info->npages);
+ 		mutex_unlock(&mps_root.lock);
+ 	}
+-	if (addr && len && !info->cma_pages) {
+-		mutex_lock(&mps_root.lock);
+-		if (info->fixed_wb)
+-			mps_fixed_wb_put();
+-		mutex_unlock(&mps_root.lock);
+-	}
+-
+ 	if (info->cma_pages)
+ 		free_contig_range(info->base_pfn, info->npages);
+ 	bitmap_free(info->absent);
+@@ -325,7 +273,6 @@ static int mps_new_file(unsigned long base_pfn, unsigned long npages,
+ 	mem_provider_file_init(&info->mpf);
+ 	info->base_pfn = base_pfn;
+ 	info->npages = npages;
+-	info->mmap_capable = flags & MPS_FLAG_MMAP_CAPABLE;
+ 	info->absent = bitmap_zalloc(npages, GFP_KERNEL);
+ 	if (!info->absent) {
+ 		ret = -ENOMEM;
+@@ -449,7 +396,7 @@ static long mps_ctl_new_child(void __user *uarg)
  
- 	switch (cmd) {
--	case MPS_SETUP:
--		return mps_ctl_setup(uarg);
- 	case MPS_NEW_CHILD:
- 		return mps_ctl_new_child(uarg);
- 	case MPS_CTL_SET_PRESENT:
+ 	if (copy_from_user(&nc, uarg, sizeof(nc)))
+ 		return -EFAULT;
+-	if ((nc.flags & ~MPS_FLAG_MMAP_CAPABLE) || nc.pad)
++	if (nc.flags || nc.pad)
+ 		return -EINVAL;
+ 
+ 	mutex_lock(&mps_root.lock);
+@@ -471,15 +418,6 @@ static long mps_ctl_new_child(void __user *uarg)
+ 		ret = fd;
+ 		goto out_unlock;
+ 	}
+-	if (mps_over_fixed_mappable(info)) {
+-		if (mps_fixed_wb_get()) {
+-			put_unused_fd(fd);
+-			fput(file);
+-			ret = -ENOMEM;
+-			goto out_unlock;
+-		}
+-		info->fixed_wb = true;
+-	}
+ 
+ 	bitmap_set(mps_root.allocated, first, last - first);
+ 	info->is_child = true;
+@@ -571,8 +509,6 @@ static void __exit mps_exit(void)
+ {
+ 	misc_deregister(&mps_dev);
+ 	mps_root_teardown();
+-	if (mps_fixed_wb)
+-		memunmap(mps_fixed_wb);
+ }
+ module_exit(mps_exit);
+ 
 diff --git a/samples/kvm/mem_provider_sample.h b/samples/kvm/mem_provider_sample.h
-index 1afea136328f5..3b0928b6478ca 100644
+index 3b0928b6478ca..51eaf39acbad1 100644
 --- a/samples/kvm/mem_provider_sample.h
 +++ b/samples/kvm/mem_provider_sample.h
-@@ -14,38 +14,17 @@
+@@ -14,10 +14,6 @@
   * the ioctls below make.
   */
  
--/* Flags for struct mps_setup and struct mps_new_child */
-+/* Flags for struct mps_new_child */
- /* The host may map the pages; otherwise they are NO_USER_MAP */
- #define MPS_FLAG_MMAP_CAPABLE	(1u << 0)
- 
--/*
-- * ioctl on /dev/mem_provider_sample: create a provider fd.
-- *
-- * If the module was loaded with addr= and len=, the fd covers that fixed
-- * range, which has no struct page, and @size is ignored.  The fixed range
-- * then has one owner.  SETUP fails with -EBUSY while a SETUP file uses it,
-- * or once the first MPS_NEW_CHILD has made it the root of the children, which
-- * lasts until the module is unloaded.  MPS_NEW_CHILD fails with -EBUSY while
-- * a SETUP file uses it.  Otherwise the fd covers @size bytes from
-- * alloc_contig_pages().
-- */
--struct mps_setup {
--	__u32 flags;	/* MPS_FLAG_* */
--	__u32 pad;
--	__u64 size;	/* bytes, page aligned */
--};
+-/* Flags for struct mps_new_child */
+-/* The host may map the pages; otherwise they are NO_USER_MAP */
+-#define MPS_FLAG_MMAP_CAPABLE	(1u << 0)
 -
  #define MPS_IOCTL_BASE		'P'
--#define MPS_SETUP \
--	_IOW(MPS_IOCTL_BASE, 1, struct mps_setup)
  
  /*
-  * ---- A tree of owners --------------------------------------------------
-  *
-  * The control device owns one region, the root.  NEW_CHILD carves part of
-- * it into a new provider fd for one VM.  The owner can MOVE pages between
-- * children, DONATE pages to the root, so that no child has them, and
-- * RECLAIM them.  Each change revokes the range, so KVM and iommufd follow.
-+ * it into a new provider fd for one VM.
-  *
-  * The owner changes a child's pages through the control device
-  * (CTL_SET_PRESENT).  A child fd is read-only to its holder: a VMM can
-@@ -54,9 +33,7 @@ struct mps_setup {
- 
- /*
-  * ioctl on /dev/mem_provider_sample: carve [@offset, @offset + @len) of the
-- * root into a new child fd.  The child gets every page of the range that no
-- * other child has and that is not donated.  Ranges of children may overlap,
-- * which is how a page can MOVE between them.  Returns the child fd.
-+ * root into a new child fd. Returns the child fd.
+@@ -36,7 +32,7 @@
+  * root into a new child fd. Returns the child fd.
   */
  struct mps_new_child {
- 	__u32 flags;	/* MPS_FLAG_* */
+-	__u32 flags;	/* MPS_FLAG_* */
++	__u32 flags;	/* Reserved, must be 0 */
+ 	__u32 pad;
+ 	__u64 offset;	/* bytes into the root, page aligned */
+ 	__u64 len;	/* bytes, page aligned */
 
 -- 
 2.56.0.257.gf7497c7d27-goog
