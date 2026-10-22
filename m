@@ -1,155 +1,98 @@
-From: Sercan GOKMEN <gokmensercan@gmail.com>
-Date: Thu, 22 Oct 2026 16:00:52 +0300
-Subject: [PATCH] platform/x86: asus-wmi: Add keyboard backlight read-back
- quirk for ASUS ExpertBook Ultra B9406CAA
+From: Michael Lowman <michael.d.lowman@gmail.com>
+Date: Thu, 22 Oct 2026 15:10:26 +0200
+Subject: [PATCH] SUNRPC: avoid possible page reuse from
+ svcauth_gss_wrap_integ()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-b4-asus-wmi-b9406caa-kbd-readback-v1-1-fb33ed98dd16@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNwQ6CMAyA4VchPdtkFCTMVzEeuq1qJaJZRUkI7
- 87U43f5/wVMsorBoVogy1tNH2NBvasgXnm8CGoqBnLU1Y4IQ4tsk+Hnrhh867rIjENImIVT4Dg
- gS+rJ75vUNx5K55nlrPPvcTz9bVO4SXx9w7CuG/Khba2FAAAA
-X-Change-ID: 20261022-b4-asus-wmi-b9406caa-kbd-readback-aed82953d839
-To: Corentin Chary <corentin.chary@gmail.com>, 
- "Luke D. Jones" <luke@ljones.dev>, Denis Benato <denis.benato@linux.dev>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sercan GOKMEN <gokmensercan@gmail.com>
+Message-Id: <20261022-integ-page-reuse-v1-1-fbe571857d4f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPRvYpNgWX0U8xDi120OUrEpBf
+ HejHj+G+TdSJIFSXWyUsIrKGDNsWVD4+jjASJ9Njt3Tsn0ZiTMGM/m8JCwKwz1XD7w7Dt5Rvk0
+ JH/lfyaa9rUv3Q5jPDu37ARxRp2p0AAAA
+X-Change-ID: 20261017-integ-page-reuse-0d053e8b0ca2
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Michael Lowman <michael.d.lowman@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792674051; l=5290;
- i=gokmensercan@gmail.com; s=20261022; h=from:subject:message-id;
- bh=fSTmrfZTjXJhJvDRdGbk0K/+rwI2QBECNtaYIr3fMRU=;
- b=QxmCus+1hrgSGoq6KlRU6n1u9s+4iePiNgCTGkltxKKVejqhos/B/9600VXxtAZJ019OftfT4
- a7biuSGhUQdAdxCD2n1EDzB/o3Cv1Ecz3leVubsy0yrtiz+dvVNfTZj
-X-Developer-Key: i=gokmensercan@gmail.com; a=ed25519;
- pk=nFIlLCcGouUfBov8xxW0K4qUtEjdhJniMOO8WCSqghU=
-X-Endpoint-Received: by B4 Relay for gokmensercan@gmail.com/20261022 with auth_id=1282
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2485;
+ i=michael.d.lowman@gmail.com; h=from:subject:message-id;
+ bh=J5FcyzJj5w1NI+B2kzsCRu8psxQMF7yI9ZjgbLBQU78=;
+ b=owEBiQF2/pANAwAKAbhUyZi0A3mzAcsmYgBq2gtMggRxlwYUWnxU0m3X2axlVUp3BHI1AbrpI
+ CcRqyeIECWJAU8EAAEKADkWIQR42JpeMFqVv37vF7e4VMmYtAN5swUCatoLTBscbWljaGFlbC5k
+ Lmxvd21hbkBnbWFpbC5jb20ACgkQuFTJmLQDebPbwwgAqbu3jYLWuD/72zzMOa2jnbH02bFL5v2
+ x5MGr66dgVYycOiwAqRtQ40b7GIctSGkOQsQlDTPxbpNMbvd0YpRrWE1/mgVSeG7eF+93WUmqYH
+ lNT8PRqcoR2hcnWAKTEA0mdEhPgVDrB/zUPV2qBn6wHN81SyXukJyWF/EdJxSYKVBZ0pnOOT0ht
+ tl8z/laCrVntlhgebqoG7aZK/OoLOzYuRfcMJlfJtDgl4aGEu0SRs1oB5YtZHj0c5RjfutDwSeA
+ draF82Tm0QhuLM58HX9+u3bMzhV6F4nfzr/9+zsGoWqgMEnrLqaJ6n6mIjA9s3I2/We4sqlnw82
+ 2Gpamr6wdzQ==
+X-Developer-Key: i=michael.d.lowman@gmail.com; a=openpgp;
+ fpr=6E281440251F4A47DCA99700FD4D12FE546354BA
+X-Endpoint-Received: by B4 Relay for michael.d.lowman@gmail.com/default with auth_id=1283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the ASUS ExpertBook Ultra B9406CAA (BIOS 312) the keyboard backlight
-query DSTS(ASUS_WMI_DEVID_KBD_BACKLIGHT) always returns 0x550000: the
-presence bit is set but the level bits are 0 regardless of the level the
-EC is actually driving. The DSDT's DSTS handler for 0x00050021 builds
-its reply from constants (0x400000 | 0x350000, masked by the KBLT flag)
-and never reads the level from the EC, so no query variant can return
-it. Writes work: DEVS hands the value to the EC method SLKB and the
-0x80|level form the driver uses steps the keyboard through all levels.
+Commit 7702378ac4d4 ("SUNRPC: Convert svcauth_gss_wrap_integ() to
+use xdr_stream()") and its parent changed from calculating the
+integrity checksum in-place in an unused part of the response buffer
+to calculating in a scratch buffer and appending it to the response
+stream. While the unused part of the response buffer happened to
+always end on the first page, the append always occurs on the last.
 
-kbd_led_get() re-reads the firmware on every sysfs read and stores the
-result in asus->kbd_led_wk, so on this machine every read overwrites the
-cached level with 0. The visible effects are:
+If less than 32 bytes remain before the page boundary, some or all
+of the checksum will be written to the next page. But since the xdr
+functions do not update the response's page accounting, the page
+will be immediately available for reuse. Data from another request
+will overwrite the portion of the checksum on the new page.
 
- - /sys/class/leds/asus::kbd_backlight/brightness, UPower's
-   GetBrightness and brightnessctl always report 0;
- - systemd-backlight saves 0 at shutdown and restores a dark keyboard
-   at every boot;
- - the Fn backlight key on this laptop raises ASUS_EV_BRTTOGGLE, and
-   asus_wmi_kbd_led_hw_event() computes the next level from the cached
-   value, so after any read has zeroed the cache the next press always
-   yields level 1 whatever the keyboard was actually showing.
+Avoid this by marking the page as used when needed.
 
-Add a quirk_entry flag, kbd_led_no_readback, which makes kbd_led_get()
-return the cached level the way the existing !kbd_led_avail path
-already does. Every path that changes the level (do_kbd_led_set(),
-kbd_led_set_by_kbd(), the hotkey handler) keeps kbd_led_wk current, so
-the cache is the only trustworthy source on this board. Match the
-board with the same DMI strings the accepted SoundWire quirk for this
-machine uses (sys_vendor "ASUS", board_name "B9406CAA").
-
-Tested on the B9406CAA with Linux 7.2.3: after the quirk, brightness
-reads back 3/1/2 after the corresponding writes, UPower reports the same
-value, and three presses of the Fn backlight key from level 2 give
-2 -> 3 -> 0 -> 1 (the ASUS_EV_BRTTOGGLE wrap), each step read back
-correctly. Re-tested on Linux 7.3.0: writes of 3/1/2/0 read back
-unchanged. Also compile-tested on this base with W=1 (clang).
-
-Signed-off-by: Sercan GOKMEN <gokmensercan@gmail.com>
+Signed-off-by: Michael Lowman <michael.d.lowman@gmail.com>
+Fixes: 7702378ac4d4 ("SUNRPC: Convert svcauth_gss_wrap_integ() to use xdr_stream()")
 ---
-The patch is also tracked, with the other B9406CAA upstream patches,
-in the community support repo for this laptop:
-https://github.com/burakgon/asus-expertbook-linux/tree/main/upstream-patches
+When running several reads in parallel from an NFSv4 mount using
+sec=krb5i, I find that the checksum is often invalid; of ten 64k
+reads of ten different files launched in parallel, usually eight fail.
+I observed that this did not occur when using sec=krb5p, and that
+part of the checksum appeared to be overwritten with valid data
+from other packets. After building with the attached change, I
+no longer experience read failures.
 ---
- drivers/platform/x86/asus-nb-wmi.c | 21 +++++++++++++++++++++
- drivers/platform/x86/asus-wmi.c    |  3 ++-
- drivers/platform/x86/asus-wmi.h    |  5 +++++
- 3 files changed, 28 insertions(+), 1 deletion(-)
+ net/sunrpc/auth_gss/svcauth_gss.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/drivers/platform/x86/asus-nb-wmi.c b/drivers/platform/x86/asus-nb-wmi.c
-index 3b0f3346d..894f622c8 100644
---- a/drivers/platform/x86/asus-nb-wmi.c
-+++ b/drivers/platform/x86/asus-nb-wmi.c
-@@ -93,6 +93,18 @@ static struct quirk_entry quirk_asus_unknown = {
- 	.wmi_backlight_set_devstate = true,
- };
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 43839e805531..4219cfb2e88a 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1835,6 +1835,17 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
+ 		goto wrap_failed;
+ 	xdr_commit_encode(xdr);
  
-+/*
-+ * ASUS ExpertBook Ultra B9406CAA (BIOS 312): the keyboard backlight query,
-+ * DSTS(0x00050021), always returns 0x550000, i.e. level 0, whatever the EC is
-+ * actually driving. Writes work. Without this quirk every sysfs read
-+ * overwrites the cached level with 0, so UPower, brightnessctl and
-+ * systemd-backlight all see a dark keyboard and restore level 0 at boot.
-+ */
-+static struct quirk_entry quirk_asus_b9406caa = {
-+	.wmi_backlight_set_devstate = true,
-+	.kbd_led_no_readback = true,
-+};
-+
- static struct quirk_entry quirk_asus_q500a = {
- 	.filter_i8042_e1_extended_codes = true,
- 	.wmi_backlight_set_devstate = true,
-@@ -167,6 +179,15 @@ static int dmi_matched(const struct dmi_system_id *dmi)
- }
- 
- static const struct dmi_system_id asus_quirks[] = {
-+	{
-+		.callback = dmi_matched,
-+		.ident = "ASUS ExpertBook Ultra B9406CAA",
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "ASUS"),
-+			DMI_MATCH(DMI_BOARD_NAME, "B9406CAA"),
-+		},
-+		.driver_data = &quirk_asus_b9406caa,
-+	},
- 	{
- 		.callback = dmi_matched,
- 		.ident = "ASUSTeK COMPUTER INC. Q500A",
-diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
-index fb1d4a085..19a0b3a0c 100644
---- a/drivers/platform/x86/asus-wmi.c
-+++ b/drivers/platform/x86/asus-wmi.c
-@@ -1966,7 +1966,8 @@ static enum led_brightness kbd_led_get(struct led_classdev *led_cdev)
- 	asus = container_of(led_cdev, struct asus_wmi, kbd_led);
- 
- 	scoped_guard(spinlock_irqsave, &asus_ref.lock) {
--		if (!asus->kbd_led_avail)
-+		if (!asus->kbd_led_avail ||
-+		    asus->driver->quirks->kbd_led_no_readback)
- 			return asus->kbd_led_wk;
- 	}
- 
-diff --git a/drivers/platform/x86/asus-wmi.h b/drivers/platform/x86/asus-wmi.h
-index b45f81b38..4f010f634 100644
---- a/drivers/platform/x86/asus-wmi.h
-+++ b/drivers/platform/x86/asus-wmi.h
-@@ -52,6 +52,11 @@ struct quirk_entry {
- 	 */
- 	int no_display_toggle;
- 	u32 xusb2pr;
-+	/*
-+	 * The firmware never reports the keyboard backlight level (the query
-+	 * always returns level 0), so trust the driver's cached value instead.
++	/**
++	 * While the data protocol normally accounts for pages
++	 * used in the encode of the operation, the checksum is
++	 * written by the above xdr_stream_encode_opaque and can therefore
++	 * end up in the next page.
++	 * Update the request's bookkeeping to avoid reusing the page for the
++	 * next request while it's still referenced by this one.
 +	 */
-+	bool kbd_led_no_readback;
- };
++	if (xdr->page_ptr + 1 > rqstp->rq_next_page)
++		rqstp->rq_next_page = xdr->page_ptr + 1;
++
+ out:
+ 	return 0;
  
- struct asus_wmi_driver {
 
 ---
-base-commit: 893018d51f27ec0449155b0afe371aaf65380630
-change-id: 20261022-b4-asus-wmi-b9406caa-kbd-readback-aed82953d839
+base-commit: eafb6de800781f0a1be5cdd98d150620041d8b27
+change-id: 20261017-integ-page-reuse-0d053e8b0ca2
 
 Best regards,
 --  
-Sercan GOKMEN <gokmensercan@gmail.com>
+Michael Lowman <michael.d.lowman@gmail.com>
 
