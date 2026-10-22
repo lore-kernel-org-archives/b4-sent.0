@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:04 -0700
-Subject: [PATCH RFC v2 32/50] KVM: guest_memfd: Refactor error handling in
- kvm_gmem_fault_user_mapping
+Date: Thu, 22 Oct 2026 16:28:05 -0700
+Subject: [PATCH RFC v2 33/50] KVM: guest_memfd: Support mmap and user fault
+ handling in PFN mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-32-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-33-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,69 +56,107 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1832;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=3706;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=dYSKWEqxzq5w5P2XdLUDho7bFGF6J44KoRNxEd5fGtA=;
- b=msD3ENL3cY/k08+ql3P8gqAAGfjehleVwAZiVcfHCC8P+96fOGxgo61lNP/yMkaBjQIQLiIPB
- L5754XD4S3SBbtLknI4lQy2w6cWqwzxnlcAPcyPlVouttf9eR85MZjW
+ bh=elLIGBYw0BUJ9IbNw0ScjqZOWht3JZnml1/BafVIxxA=;
+ b=VW4cbdmPxp6Pao5q+UBf9fgRtR76zuJjTkAk5Ko45CrogkVItmv81as/Lvua8wCNXiykVR6H/
+ c7oDGQMzSZXBixMwnUcjgTlSfcnS1H0bfnLQ5pnFxQgPtZqsEOfFJds
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Track the status of kvm_gmem_fault_user_mapping() using an explicit error
-code rather than encoding errors into the folio pointer.
+In PFN mode, guest_memfd memory is backed by raw PFNs rather than
+page-cache folios.
 
-This moves away from relying on the folio pointer holding error states,
-such as synthesizing ERR_PTR(-EACCES) when memory is not shared only to
-extract PTR_ERR afterwards, and prepares kvm_gmem_fault_user_mapping() for
-PFN mode in the next commit, where no folio is returned on success.
+Mark the VMA with VM_PFNMAP when setting up the VMA in PFN mode, and
+insert the PFN into the user page tables during fault handling.
+
+In folio mode, the fault handler obtains a locked folio under the
+shared filemap invalidation lock and returns with the folio still
+locked so the core fault handler installs the PTE before unlocking the
+folio. Any concurrent truncation or invalidation must wait on the
+folio lock before unmapping and removing the folio.
+
+In PFN mode, there is no folio lock to bridge the gap after dropping
+the shared filemap invalidation lock. If the lock were dropped before
+inserting the PFN into the page tables, a concurrent hole punch or
+provider-driven revocation could acquire the exclusive filemap
+invalidation lock, unmap existing mappings (missing the not-yet-mapped
+PTE), and reclaim the backing memory, only for the fault handler to
+subsequently install a stale PTE pointing to the revoked PFN.
+
+Keep the shared filemap invalidation lock held across PFN insertion so
+that obtaining the PFN and installing the PTE are atomic with respect
+to operations holding the exclusive filemap invalidation lock. For
+provider-driven revocation to safely tear down mappings without races,
+the provider must first mark the range unavailable so new faults fail,
+and then invoke revocation, which acquires the exclusive filemap
+invalidation lock to wait for any in-flight faults to finish installing
+their PTEs before unmapping them. This also requires providers not to
+hold any lock across revocation that is also acquired during PFN
+lookup.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ virt/kvm/guest_memfd.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 3d89bc76f3867..8588912cb0b82 100644
+index 8588912cb0b82..50031e191968b 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -562,24 +562,28 @@ static bool kvm_gmem_supports_mmap(struct inode *inode)
+@@ -562,8 +562,10 @@ static bool kvm_gmem_supports_mmap(struct inode *inode)
  static vm_fault_t kvm_gmem_fault_user_mapping(struct vm_fault *vmf)
  {
  	struct inode *inode = file_inode(vmf->vma->vm_file);
--	struct folio *folio;
++	struct gmem_inode *gi = GMEM_I(inode);
  	vm_fault_t ret = VM_FAULT_LOCKED;
-+	struct folio *folio = NULL;
-+	int r = 0;
+ 	struct folio *folio = NULL;
++	kvm_pfn_t pfn;
+ 	int r = 0;
  
  	if (((loff_t)vmf->pgoff << PAGE_SHIFT) >= i_size_read(inode))
- 		return VM_FAULT_SIGBUS;
- 
+@@ -572,6 +574,10 @@ static vm_fault_t kvm_gmem_fault_user_mapping(struct vm_fault *vmf)
  	filemap_invalidate_lock_shared(inode->i_mapping);
--	if (kvm_gmem_is_shared_mem(inode, vmf->pgoff))
-+	if (!kvm_gmem_is_shared_mem(inode, vmf->pgoff)) {
-+		r = -EACCES;
-+	} else {
+ 	if (!kvm_gmem_is_shared_mem(inode, vmf->pgoff)) {
+ 		r = -EACCES;
++	} else if (kvm_gmem_is_pfn_mode(gi)) {
++		r = gmem_provider_get_pfn(gi, vmf->pgoff, &pfn, NULL);
++		if (!r)
++			ret = vmf_insert_pfn(vmf->vma, vmf->address, pfn);
+ 	} else {
  		folio = kvm_gmem_get_folio(inode, vmf->pgoff);
--	else
--		folio = ERR_PTR(-EACCES);
-+		if (IS_ERR(folio))
-+			r = PTR_ERR(folio);
-+	}
- 	filemap_invalidate_unlock_shared(inode->i_mapping);
- 
--	if (IS_ERR(folio)) {
--		if (PTR_ERR(folio) == -EAGAIN)
-+	if (r) {
-+		if (r == -EAGAIN)
- 			return VM_FAULT_RETRY;
- 
--		return vmf_error(PTR_ERR(folio));
-+		return vmf_error(r);
+ 		if (IS_ERR(folio))
+@@ -586,6 +592,9 @@ static vm_fault_t kvm_gmem_fault_user_mapping(struct vm_fault *vmf)
+ 		return vmf_error(r);
  	}
  
++	if (kvm_gmem_is_pfn_mode(gi))
++		return ret;
++
  	if (WARN_ON_ONCE(folio_test_large(folio))) {
+ 		ret = VM_FAULT_SIGBUS;
+ 		goto out_folio;
+@@ -646,6 +655,8 @@ static const struct vm_operations_struct kvm_gmem_vm_ops = {
+ 
+ static int kvm_gmem_mmap(struct file *file, struct vm_area_struct *vma)
+ {
++	struct gmem_inode *gi = GMEM_I(file_inode(file));
++
+ 	if (!kvm_gmem_supports_mmap(file_inode(file)))
+ 		return -ENODEV;
+ 
+@@ -654,6 +665,9 @@ static int kvm_gmem_mmap(struct file *file, struct vm_area_struct *vma)
+ 		return -EINVAL;
+ 	}
+ 
++	if (kvm_gmem_is_pfn_mode(gi))
++		vm_flags_set(vma, VM_PFNMAP);
++
+ 	vma->vm_ops = &kvm_gmem_vm_ops;
+ 
+ 	return 0;
 
 -- 
 2.56.0.257.gf7497c7d27-goog
