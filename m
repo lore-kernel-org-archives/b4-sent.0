@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:27:40 -0700
-Subject: [PATCH RFC v2 08/50] KVM: selftests: Test rejection of unsupported
- filesystem for resource_fd
+Date: Thu, 22 Oct 2026 16:27:41 -0700
+Subject: [PATCH RFC v2 09/50] KVM: selftests: Test rejection of memfd for
+ resource_fd
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-8-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-9-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,19 +56,20 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1909;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=MKtSCk+ZsgV89o0Atosj30SncvaeVEKWTGxyjRkwt3w=;
- b=LXu+Ja9u5BkvgZlmzPdoqaK+INQtueJHsx2u2mHiJGo0Qpee/AO8GRK5ofjeZNlIF2IbkfNgX
- MPs2NATgGOTAyxWhfu7Nl1Hb2BTO+4kwolIttfLzGdtRCeA//sq6R6j
+ bh=qTja1erI/Lan5wmGs9jbLgcIfoZ3cox1rPf5vW4srgs=;
+ b=rew4+7ZZjD6ryhzcWU6m/IEO4Mn/eGn4S6P1gpc2Xyar1xtPPFqbC9vU2tNnvjWrBnFpovP09
+ ++QGuwuIvWnDng1N+Ovvgujyhlo+c7XuMKrwUcV7a74mJEw0lbWBznt
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add test coverage verifying that passing a directory file descriptor
-from an unsupported filesystem without provider operations as a resource
-file fails with EOPNOTSUPP.
+Add test coverage verifying that passing an fd created via memfd_create
+as a resource file fails with EOPNOTSUPP, because regular files do not
+implement gmem_provider_ops. Only directory file descriptors representing
+the mount root are supported as resource pools.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
@@ -76,42 +77,42 @@ Signed-off-by: Ackerley Tng <ackerleytng@google.com>
  1 file changed, 22 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index 3313d306c0bdc..445396860d819 100644
+index 445396860d819..d62ae23256083 100644
 --- a/tools/testing/selftests/kvm/guest_memfd_test.c
 +++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -436,6 +436,27 @@ static void test_resource_fd_invalid(struct kvm_vm *vm)
- 	TEST_ASSERT_EQ(errno, EBADF);
+@@ -457,6 +457,27 @@ static void test_resource_fd_unsupported_fs(struct kvm_vm *vm)
+ 	close(file_fd);
  }
  
-+static void test_resource_fd_unsupported_fs(struct kvm_vm *vm)
++static void test_resource_fd_memfd(struct kvm_vm *vm)
 +{
 +	int fd, file_fd;
 +
 +	/*
-+	 * Passing an FD from an unsupported filesystem without provider ops
-+	 * (e.g. the /proc mount root directory) is rejected by KVM with
-+	 * EOPNOTSUPP.
++	 * Passing an fd returned by memfd_create is rejected with EOPNOTSUPP
++	 * because regular files do not have gmem_provider_ops defined on their
++	 * f_op. Only directory FDs representing the mount root are supported
++	 * resource pools.
 +	 */
-+	file_fd = open("/proc", O_DIRECTORY | O_RDONLY);
-+	TEST_ASSERT(file_fd >= 0, "open /proc failed");
++	file_fd = memfd_create("test_memfd", 0);
++	TEST_ASSERT(file_fd >= 0, "memfd_create failed");
 +
 +	fd = __vm_create_guest_memfd_resource(vm, page_size,
 +					      GUEST_MEMFD_FLAG_USE_RESOURCE,
 +					      file_fd);
-+	TEST_ASSERT(fd < 0, "guest_memfd with /proc fd should fail");
++	TEST_ASSERT(fd < 0, "guest_memfd with memfd should fail");
 +	TEST_ASSERT_EQ(errno, EOPNOTSUPP);
-+
 +	close(file_fd);
 +}
 +
  #define ____gmem_test(__test, __vm, __flags, __gmem_size, args...)	\
  do {									\
  	int fd = vm_create_guest_memfd(__vm, __gmem_size, __flags);	\
-@@ -495,6 +516,7 @@ static void test_guest_memfd(unsigned long vm_type)
- 	test_guest_memfd_flags(vm);
+@@ -517,6 +538,7 @@ static void test_guest_memfd(unsigned long vm_type)
  
  	test_resource_fd_invalid(vm);
-+	test_resource_fd_unsupported_fs(vm);
+ 	test_resource_fd_unsupported_fs(vm);
++	test_resource_fd_memfd(vm);
  
  	__test_guest_memfd(vm, 0);
  
