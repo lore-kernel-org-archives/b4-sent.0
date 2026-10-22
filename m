@@ -1,101 +1,92 @@
-From: Moe Mahhouk <moe@flashbots.net>
-Date: Thu, 22 Oct 2026 16:31:42 +0000
-Subject: [PATCH v2 2/2] virt: tdx-guest: Poll Quote status with exponential
- backoff
+From: Aiden Isik <aidenisik@member.fsf.org>
+Subject: [PATCH 0/2] Add Exynos5515 USB PHY support
+Date: Thu, 22 Oct 2026 17:46:35 +0100
+Message-Id: <20261022-for-next-lucky7-usb-phy-v1-0-2e47f8484bf4@member.fsf.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-tdx-guest-quote-poll-v2-2-7543c6eb2d36@flashbots.net>
-References: <20261022-tdx-guest-quote-poll-v2-0-7543c6eb2d36@flashbots.net>
-In-Reply-To: <20261022-tdx-guest-quote-poll-v2-0-7543c6eb2d36@flashbots.net>
-To: Kiryl Shutsemau <kas@kernel.org>, 
- Rick Edgecombe <rick.p.edgecombe@intel.com>, 
- Dave Hansen <dave.hansen@linux.intel.com>, 
- Erdem Aktas <erdemaktas@google.com>, Tom Lendacky <thomas.lendacky@amd.com>, 
- Dan Williams <djbw@kernel.org>
-Cc: Jun Miao <jun.miao@intel.com>, 
- Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>, 
- x86@kernel.org, linux-coco@lists.linux.dev, kvm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Moe Mahhouk <moe@flashbots.net>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792686704; l=2835;
- i=moe@flashbots.net; s=20261021; h=from:subject:message-id;
- bh=qSVE+hw1y6dS8lKhF55oe4BwZY0z5PC+umOVM8RdJVs=;
- b=Rd5lKcb7G0lbmQa+sbSVtrW/ii30WTcmvTRyosbGzigOVfjWjbpLDhs7VwADVmo74iAgjyxUd
- J2wjHqerY0ICEdFvlU7hYMFOKlbDVIxSdYtTzxAu0VamilZEO7JzAwT
-X-Developer-Key: i=moe@flashbots.net; a=ed25519;
- pk=hJTKfjLno/YESrpxMIKDJk34GM+/8Tol+24XK2b4xf0=
-X-Endpoint-Received: by B4 Relay for moe@flashbots.net/20261021 with auth_id=1259
+X-B4-Tracking: v=1; b=H4sIAOs92moC/yXMQQ6CMBBA0auQWTsJTAhFr2Jc2DKFUVNIhxoI4
+ e5WWL7F/xsoR2GFW7FB5K+ojCGjuhTghmfoGaXLBiqpqUoi9GPEwMuMn+Teq8GkFqdhRWOori1
+ 5d20Zcj1F9rIc5/vjtCb7Yjf/d7DvP+kvrUl7AAAA
+X-Change-ID: 20261022-for-next-lucky7-usb-phy-77244b2fc98e
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Marek Szyprowski <m.szyprowski@samsung.com>, 
+ Sylwester Nawrocki <s.nawrocki@samsung.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-phy@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ Aiden Isik <aidenisik@member.fsf.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1831;
+ i=aidenisik@member.fsf.org; h=from:subject:message-id;
+ bh=me8mjqkDEH3k+r4GPGLnzrCNkQZFbNxiQ3wp8aaLBNU=;
+ b=owEBiQJ2/ZANAwAIAUknAbLEetfrAcsmYgBq2j3s5XBlupmzJ4a/zgSIyMg+7QLmOCmMMMq4H
+ 3sVdzbgdE+JAk8EAAEIADkWIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCato97BsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQSScBssR61+sJbBAAytJ84YhHRR+XnuUu8QYoumKEKfprYYg
+ Hu7gNBMqyPPPHZOWq0yopgsvDpLJnyL97ZhTkLK4OgNKhcugsq+Di+lbsY1wk9koHodBB+db4oP
+ yi7S+wwCkhx7PbKzcjJXPUvmlSdzl0uXnobwKUVPMCXj5oh2OlWNrwC6ropbfeNL+726eRAs9qZ
+ 9snYCyTj0W40RWvsc52Ye7x8aq3ath/iuJZwJMVk4JV7rnN7z2L4mKEu3sHHhfrymAi9EtxR6S/
+ tFk6lmv8gESSH65GXAvTPru8modWt3P5fwD/RpIDITiJe2gIppo9qrDuYTzBNaZtHHkqpMHWLCt
+ grFKLjfJ2JV+fENCrKd97EiH8qOZ4//rcUV29mMBnaKr0MvmYuj/ZO+JYFlfPnIWeFMxTIbFIvo
+ 1GvJveA7UxEwWiiOB8ORN+jndCA7tN317WgX6FotzhLtR4Lw6zS+hcvWmYTQrHR4/iOc/os1vjn
+ Q9U5NTQF/78j/MtfGUzJ4l5ZVCrwSmPxhGOHzrcQGed16K2t72oumof33ZaxrGamJSNXk7vpVjJ
+ dVFv8/SfR1te3m/6ldQBsaIFt0j1bz3uuQSUbnJo+Nph6bB8UxgdZPHBpB4uqwhG2+yajdXALfN
+ pLZjQS9P/GcCAW2U1HxJKsHDiczkCn8MgYw+WB9ZY3zE2traehEY=
+X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
+ fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
+X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wait_for_quote_completion() sleeps for a full second before it first
-checks whether the VMM has completed a GetQuote request, and then
-rechecks once per second. Every Quote request therefore takes at least
-one second, however quickly the host answers.
+Hi there,
 
-With a local Quote Generation Service the VMM completes the request in
-a few milliseconds. On an Emerald Rapids host (KVM, QEMU 11.1, Intel
-QGS), back-to-back Quote requests through configfs-tsm took 1021-1024 ms
-each; with this change they take 6-12 ms at HZ=250. Since quote_lock
-serializes requests, the one-second floor also caps a TD at about one
-Quote per second, which hurts users that bind a fresh Quote to every
-connection, such as attested TLS.
+This patchset adds support for the Exynos5515 USB PHY.
 
-Poll with an exponential backoff instead: sleep 1 ms first and double
-the interval up to 100 ms, so that a fast Quote is noticed within a few
-milliseconds while a slow one costs at most ten wakeups per second. The
-sleep stays interruptible, and the timeout becomes a deadline in
-jiffies.
+The PHY supports High-Speed (UTMI+), and also appears to support
+Super-Speed (PIPE3) USB according to Samsung's own code to drive this PHY.
+However, none of the Exynos5515 hardware which I am aware of actually
+supports Super-Speed, therefore I am unable to test that part, hence PIPE3
+support being omitted.
 
-Signed-off-by: Moe Mahhouk <moe@flashbots.net>
+This patchset was tested on a Samsung Galaxy Watch FE using the USB serial
+gadget.
+
+This patchset also depends on [1], due to using an
+exynos5_usbdrd_phy_drvdata member (.n_phy_cfg) which was introduced to fix
+an out-of-bounds access bug.
+
+It also depends on [2] and [3] in that they are the clock and pinctrl
+drivers for Exynos5515, and without them this driver cannot talk to the
+PHY. It does however build without them. [2] should be close to being
+merged into Torvalds' tree, and [3] was just submitted by myself a few
+days ago.
+
+[1] - https://lore.kernel.org/all/20261020063559.3530901-1-selvarasu.g@samsung.com/
+[2] - https://lore.kernel.org/all/20260818-for-next-lucky7-clock-v2-0-cda0cc80f158@member.fsf.org/
+[3] - https://lore.kernel.org/all/20261020-for-next-lucky7-pinctrl-v2-0-b6b0e6065452@member.fsf.org/
+
+Kind regards,
+- Aiden Isik
+
+Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
- drivers/virt/coco/tdx-guest/tdx-guest.c | 19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
+Aiden Isik (2):
+      dt-bindings: phy: samsung,usb3-drd-phy: Add Exynos5515 compatible
+      phy: exynos5-usbdrd: Add support for the Exynos5515 usbdrd phy
 
-diff --git a/drivers/virt/coco/tdx-guest/tdx-guest.c b/drivers/virt/coco/tdx-guest/tdx-guest.c
-index a5a53174f9d9..000fff4ef6f5 100644
---- a/drivers/virt/coco/tdx-guest/tdx-guest.c
-+++ b/drivers/virt/coco/tdx-guest/tdx-guest.c
-@@ -16,6 +16,7 @@
- #include <linux/set_memory.h>
- #include <linux/io.h>
- #include <linux/delay.h>
-+#include <linux/jiffies.h>
- #include <linux/sockptr.h>
- #include <linux/tsm.h>
- #include <linux/tsm-mr.h>
-@@ -271,18 +272,24 @@ static struct tdx_quote_buf *alloc_quote_buf(void)
-  */
- static int wait_for_quote_completion(struct tdx_quote_buf *buf, u32 timeout)
- {
--	int i = 0;
-+	unsigned long deadline = jiffies + secs_to_jiffies(timeout);
-+	unsigned int sleep_ms = 1;
- 
- 	/*
--	 * Quote requests usually take a few seconds to complete, so waking up
--	 * once per second to recheck the status is fine for this use case.
-+	 * A local Quote Generation Service usually completes the request
-+	 * within a few milliseconds. Poll with an exponential backoff, from
-+	 * 1 ms up to 100 ms, so that a fast Quote is noticed promptly while
-+	 * a slow one costs at most ten wakeups per second.
- 	 */
--	while (buf->status == GET_QUOTE_IN_FLIGHT && i++ < timeout) {
--		if (msleep_interruptible(MSEC_PER_SEC))
-+	while (READ_ONCE(buf->status) == GET_QUOTE_IN_FLIGHT) {
-+		if (time_after(jiffies, deadline))
-+			return -ETIMEDOUT;
-+		if (msleep_interruptible(sleep_ms))
- 			return -EINTR;
-+		sleep_ms = min(2 * sleep_ms, 100U);
- 	}
- 
--	return (buf->status == GET_QUOTE_IN_FLIGHT) ? -ETIMEDOUT : 0;
-+	return 0;
- }
- 
- static int tdx_report_new_locked(struct tsm_report *report)
+ .../bindings/phy/samsung,usb3-drd-phy.yaml         |  2 +
+ drivers/phy/samsung/phy-exynos5-usbdrd.c           | 43 ++++++++++++++++++++++
+ 2 files changed, 45 insertions(+)
+---
+base-commit: 5260a8a68459dd67262970d38f1b2496f0cad371
+change-id: 20261022-for-next-lucky7-usb-phy-77244b2fc98e
 
--- 
-2.34.1
+Best regards,
+--  
+Aiden Isik <aidenisik@member.fsf.org>
 
