@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 22 Oct 2026 19:43:09 +0200
-Subject: [PATCH v4 3/4] wifi: ath11k: Connect to the QMI server belonging
+Date: Thu, 22 Oct 2026 19:43:10 +0200
+Subject: [PATCH v4 4/4] wifi: ath12k: Connect to the QMI server belonging
  to the device owned by this driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-qrtr-multi-ep-v4-3-c6fdb75fcd3e@oss.qualcomm.com>
+Message-Id: <20261022-qrtr-multi-ep-v4-4-c6fdb75fcd3e@oss.qualcomm.com>
 References: <20261022-qrtr-multi-ep-v4-0-c6fdb75fcd3e@oss.qualcomm.com>
 In-Reply-To: <20261022-qrtr-multi-ep-v4-0-c6fdb75fcd3e@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -23,22 +23,22 @@ Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org,
  Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4091;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4303;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=5fbq8IwxgM8XJ6aODOGmdRnrrzV+MomZgCeu5eoQmhc=;
- b=owGbwMvMwMUYOl/w2b+J574ynlZLYsi65W2SvVmxnE/cf5vntrT6rW+c7n+oMLh3iNV1o53Gs
- +nWDSGenYzGLAyMXAyyYoos6UudtRo9Tt9YEqE+HWYQKxPIFAYuTgGYSOIq9v+ZiS0zIxv2mkd5
- rw3vvck3P9T0eInqj32COwM9itraiyRM7prfdPaPD3YO4BZ9niK8tyRCzWvPr9dbfdbFRxVGP57
- Bo1YmwBA8W6y/91gUL7PGPYtTV35P4n4neZ+Vz/J3sYd/RrH7Gtbwf/q3/JL/NKe/y1XbVV+wzJ
- T3ULXSjNR0zc1uZk0m7ceWf/VfX/b6RZXEVLU9OncfJBt3NRvr3uEuXPe8XZLfJYt1jTSD4Juap
- J8Tn0al/LTk7pdfksl5UEXp5DItDgPl7Tm55X7RE6cKBqZ+Ea6JP1TweZfpiweer5MNT9qtLT33
- 83GPFouAqQvbB6YqpxKvz77da8JOsWRMqb2UOCUz8TcA
+ bh=12Qa0EpdKE17l7J/TlSWmlYBFBDnMCpE99H5MSImZQM=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBq2ks1l0yBojVpshNCZp9U7fxLtGT4aTO89TKkM
+ GrxDwXHwP6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCatpLNQAKCRBVnxHm/pHO
+ 9RasB/0UnIGBlYOFagdQugHnjX5NyZ9LrSeSLbzd9ytyzqjrZ1sJN3K0J0QsAsjo8rDOzCCIctD
+ HsclzOy/kY9LVwzvBFD5zuzqz3CVaZ5FPNKKJMiI+CPAqYQrDI6D+9A9KiVIKHlILtT75aJMGV9
+ 8Y8tezgoEi4/iFy58BaBg3bXm/aet9yVrVEQupGDlSVPJoOk3eI1gCmNFPffDCe9ljKMvJAqRc9
+ EsfvOQN53KJcQe8w8IQH18p8XGYHSabx6uxQ2dyZHfl7L/FyJySf7poITdV3HpD3lewqAfugHxh
+ DAiSgnlZA7bkBxtK3lR0IJh/SYHTJFe3GlAL9JkSLfqjvu14
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When two identical ath11k PCIe devices are connected to the same host, both
+When two identical ath12k PCIe devices are connected to the same host, both
 advertise the WLFW service with the same service and instance id. The QMI
 lookup reports both servers to each device, so a device may connect to the
 firmware running on the other device.
@@ -53,77 +53,85 @@ transports that do not assign one keep their current behavior.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/net/wireless/ath/ath11k/hif.h |  9 +++++++++
- drivers/net/wireless/ath/ath11k/pci.c |  9 +++++++++
- drivers/net/wireless/ath/ath11k/qmi.c | 10 ++++++++++
- 3 files changed, 28 insertions(+)
+ drivers/net/wireless/ath/ath12k/hif.h |  9 +++++++++
+ drivers/net/wireless/ath/ath12k/pci.c |  9 +++++++++
+ drivers/net/wireless/ath/ath12k/qmi.c | 11 +++++++++++
+ 3 files changed, 29 insertions(+)
 
-diff --git a/drivers/net/wireless/ath/ath11k/hif.h b/drivers/net/wireless/ath/ath11k/hif.h
-index 017fed1b4bd1..f432fa4890be 100644
---- a/drivers/net/wireless/ath/ath11k/hif.h
-+++ b/drivers/net/wireless/ath/ath11k/hif.h
-@@ -32,6 +32,7 @@ struct ath11k_hif_ops {
- 	void (*ce_irq_disable)(struct ath11k_base *ab);
- 	void (*get_ce_msi_idx)(struct ath11k_base *ab, u32 ce_id, u32 *msi_idx);
- 	void (*coredump_download)(struct ath11k_base *ab);
-+	unsigned int (*get_qrtr_node_id)(struct ath11k_base *ab);
+diff --git a/drivers/net/wireless/ath/ath12k/hif.h b/drivers/net/wireless/ath/ath12k/hif.h
+index 4de8667690e9..b8592c3d84e7 100644
+--- a/drivers/net/wireless/ath/ath12k/hif.h
++++ b/drivers/net/wireless/ath/ath12k/hif.h
+@@ -32,6 +32,7 @@ struct ath12k_hif_ops {
+ 	void (*get_ce_msi_idx)(struct ath12k_base *ab, u32 ce_id, u32 *msi_idx);
+ 	int (*panic_handler)(struct ath12k_base *ab);
+ 	void (*coredump_download)(struct ath12k_base *ab);
++	unsigned int (*get_qrtr_node_id)(struct ath12k_base *ab);
  };
  
- static inline void ath11k_hif_ce_irq_enable(struct ath11k_base *ab)
-@@ -159,4 +160,12 @@ static inline void ath11k_hif_coredump_download(struct ath11k_base *ab)
+ static inline int ath12k_hif_map_service_to_pipe(struct ath12k_base *ab, u16 service_id,
+@@ -162,4 +163,12 @@ static inline void ath12k_hif_coredump_download(struct ath12k_base *ab)
+ 	if (ab->hif.ops->coredump_download)
  		ab->hif.ops->coredump_download(ab);
  }
- 
-+static inline unsigned int ath11k_hif_get_qrtr_node_id(struct ath11k_base *ab)
++
++static inline unsigned int ath12k_hif_get_qrtr_node_id(struct ath12k_base *ab)
 +{
 +	if (!ab->hif.ops->get_qrtr_node_id)
 +		return 0;
 +
 +	return ab->hif.ops->get_qrtr_node_id(ab);
 +}
-+
- #endif /* _HIF_H_ */
-diff --git a/drivers/net/wireless/ath/ath11k/pci.c b/drivers/net/wireless/ath/ath11k/pci.c
-index a163168f3617..d40c057e130c 100644
---- a/drivers/net/wireless/ath/ath11k/pci.c
-+++ b/drivers/net/wireless/ath/ath11k/pci.c
+ #endif /* ATH12K_HIF_H */
+diff --git a/drivers/net/wireless/ath/ath12k/pci.c b/drivers/net/wireless/ath/ath12k/pci.c
+index 6441927b5382..9b6108c1abdc 100644
+--- a/drivers/net/wireless/ath/ath12k/pci.c
++++ b/drivers/net/wireless/ath/ath12k/pci.c
 @@ -10,6 +10,7 @@
- #include <linux/of.h>
+ #include <linux/pci.h>
  #include <linux/time.h>
  #include <linux/vmalloc.h>
 +#include <net/qrtr.h>
  
  #include "pci.h"
  #include "core.h"
-@@ -900,6 +901,13 @@ static int ath11k_pci_start(struct ath11k_base *ab)
- 	return 0;
+@@ -1491,6 +1492,13 @@ static int ath12k_pci_panic_handler(struct ath12k_base *ab)
+ 	return NOTIFY_OK;
  }
  
-+static unsigned int ath11k_pci_get_qrtr_node_id(struct ath11k_base *ab)
++static unsigned int ath12k_pci_get_qrtr_node_id(struct ath12k_base *ab)
 +{
-+	struct ath11k_pci *ab_pci = ath11k_pci_priv(ab);
++	struct ath12k_pci *ab_pci = ath12k_pci_priv(ab);
 +
 +	return qrtr_host_node_id(ab_pci->mhi_ctrl->index);
 +}
 +
- static const struct ath11k_hif_ops ath11k_pci_hif_ops = {
- 	.start = ath11k_pci_start,
- 	.stop = ath11k_pcic_stop,
-@@ -921,6 +929,7 @@ static const struct ath11k_hif_ops ath11k_pci_hif_ops = {
- #ifdef CONFIG_DEV_COREDUMP
- 	.coredump_download = ath11k_pci_coredump_download,
+ static const struct ath12k_hif_ops ath12k_pci_hif_ops = {
+ 	.start = ath12k_pci_start,
+ 	.stop = ath12k_pci_stop,
+@@ -1512,6 +1520,7 @@ static const struct ath12k_hif_ops ath12k_pci_hif_ops = {
+ #ifdef CONFIG_ATH12K_COREDUMP
+ 	.coredump_download = ath12k_pci_coredump_download,
  #endif
-+	.get_qrtr_node_id = ath11k_pci_get_qrtr_node_id,
++	.get_qrtr_node_id = ath12k_pci_get_qrtr_node_id,
  };
  
- static void ath11k_pci_read_hw_version(struct ath11k_base *ab, u32 *major, u32 *minor)
-diff --git a/drivers/net/wireless/ath/ath11k/qmi.c b/drivers/net/wireless/ath/ath11k/qmi.c
-index 7dc07339b957..6d86e552038c 100644
---- a/drivers/net/wireless/ath/ath11k/qmi.c
-+++ b/drivers/net/wireless/ath/ath11k/qmi.c
-@@ -3170,8 +3170,18 @@ static int ath11k_qmi_ops_new_server(struct qmi_handle *qmi_hdl,
- 	struct ath11k_qmi *qmi = container_of(qmi_hdl, struct ath11k_qmi, handle);
- 	struct ath11k_base *ab = qmi->ab;
+ static enum ath12k_device_family
+diff --git a/drivers/net/wireless/ath/ath12k/qmi.c b/drivers/net/wireless/ath/ath12k/qmi.c
+index 280e50a1f31d..507062068f8e 100644
+--- a/drivers/net/wireless/ath/ath12k/qmi.c
++++ b/drivers/net/wireless/ath/ath12k/qmi.c
+@@ -9,6 +9,7 @@
+ #include "qmi.h"
+ #include "core.h"
+ #include "debug.h"
++#include "hif.h"
+ #include <linux/of.h>
+ #include <linux/firmware.h>
+ #include <linux/of_address.h>
+@@ -3940,8 +3941,18 @@ static int ath12k_qmi_ops_new_server(struct qmi_handle *qmi_hdl,
+ 	struct ath12k_qmi *qmi = container_of(qmi_hdl, struct ath12k_qmi, handle);
+ 	struct ath12k_base *ab = qmi->ab;
  	struct sockaddr_qrtr *sq = &qmi->sq;
 +	unsigned int node_id;
  	int ret;
@@ -133,7 +141,7 @@ index 7dc07339b957..6d86e552038c 100644
 +	 * transport has not assigned a unique node id, so accept the server
 +	 * unfiltered.
 +	 */
-+	node_id = ath11k_hif_get_qrtr_node_id(ab);
++	node_id = ath12k_hif_get_qrtr_node_id(ab);
 +	if (node_id && service->node != node_id)
 +		return -EINVAL;
 +
