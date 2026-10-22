@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:18 -0700
-Subject: [PATCH RFC v2 46/50] samples/kvm: Implement get_pfn provider
+Date: Thu, 22 Oct 2026 16:28:19 -0700
+Subject: [PATCH RFC v2 47/50] samples/kvm: Implement put_pfn_range provider
  operation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-46-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-47-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,75 +56,70 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2288;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2119;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=bXiMo/29sunbuD+D3YtdW/0ZD1dlMXBq3S4o9V1nmWA=;
- b=LubVvmekbGEL4qJWwfPec8oSMZvh3Y2RjF8dyEzW5bd0aBY8/BgAlTFxHuNlSCp1RS5cnvglh
- ae7FJdAKp5oA3R/ugOUNqkjkZb/wJiuqKvcMsFXTMemQ+V6m+xh7YEl
+ bh=pi2zso59ygjDMW0jQ8vMvbcQ7Mg17Pfm1HpOzHVZMT4=;
+ b=FeDMpombwEf/FE13JwARgBMWuXk+ng4trAiHCZK87Mj+RPNNvF/snx58olAl1/HscRsy0XR/d
+ fXqX41lY3XdCh+hR/hmQDnI3YEr/FF1ORAq9/bz1EuVkc/iBWwk4zYH
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement the .get_pfn callback in mps_gmem_provider_ops to operate as a
-direct PFN provider for guest_memfd.
+When guest_memfd hole punches or destroys an instance backed by a PFN
+provider, it invokes .put_pfn_range to release the physical memory back
+to the provider.
 
-Implementing .get_pfn satisfies guest_memfd's provider operations
-requirement, enabling mem_provider_sample files to be attached as
-resource_fd memory providers for guest_memfd.
-
-In mps_gmem_get_pfn(), return the physical frame number corresponding to
-the requested index from the CMA reservation, returning -EFAULT if the
-page was marked absent via MPS_SET_PRESENT.
-
-Checking test_bit(index, info->absent) is done locklessly without
-holding info->lock:
-- test_bit() is an atomic memory read.
-- Locklessness prevents lock inversion and deadlocks. In guest_memfd,
-  the guest page fault path (kvm_gmem_get_pfn()) holds
-  filemap_invalidate_lock_shared while calling .get_pfn(). Avoiding
-  info->lock in .get_pfn() ensures no lock inversions exist between
-  filemap_invalidate_lock and info->lock.
-- Similarly, while kvm_gmem_revoke() now takes an explicit pfn and avoids
-  calling back into .get_pfn(), avoiding info->lock in .get_pfn() keeps
-  the lookup path completely lock-free and robust.
+Implement the .put_pfn_range callback in mps_gmem_provider_ops to clear
+the CMA pages across the released range via clear_highpage(). This
+ensures that subsequent accesses to punched ranges observe zeroed memory,
+matching POSIX fallocate hole-punching semantics and preventing stale data
+from being observed when pages are reused.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- samples/kvm/mem_provider_sample.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ samples/kvm/mem_provider_sample.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
 diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index d9e57484c3933..a43c76d2259e7 100644
+index a43c76d2259e7..dee15179959b2 100644
 --- a/samples/kvm/mem_provider_sample.c
 +++ b/samples/kvm/mem_provider_sample.c
-@@ -132,9 +132,29 @@ static void mps_gmem_release(void *provider)
- 	fput(resource_file);
- }
+@@ -17,6 +17,7 @@
+ #include <linux/file.h>
+ #include <linux/fs.h>
+ #include <linux/gfp.h>
++#include <linux/highmem.h>
+ #include <linux/guest_memfd.h>
+ #include <linux/io.h>
+ #include <linux/miscdevice.h>
+@@ -40,6 +41,21 @@ struct mps_info {
+ 	unsigned long *absent;		/* taken away by MPS_SET_PRESENT */
+ };
  
-+static int mps_gmem_get_pfn(void *provider, pgoff_t index, unsigned long *pfn,
-+			    int *max_order)
++static void mps_gmem_put_pfn_range(void *provider, pgoff_t index,
++				   size_t nr_pages)
 +{
 +	struct file *resource_file = provider;
 +	struct mps_info *info = resource_file->private_data;
++	size_t i;
 +
 +	if (index >= info->npages)
-+		return -EINVAL;
++		return;
 +
-+	if (test_bit(index, info->absent))
-+		return -EFAULT;
-+
-+	*pfn = info->base_pfn + index;
-+	if (max_order)
-+		*max_order = 0;
-+
-+	return 0;
++	nr_pages = min_t(size_t, nr_pages, info->npages - index);
++	for (i = 0; i < nr_pages; i++)
++		clear_highpage(info->cma_pages + index + i);
 +}
 +
- static const struct guest_memfd_provider_operations mps_gmem_provider_ops = {
+ /* Byte range [offset, offset + len) of @info as page indices. */
+ static int mps_range(struct mps_info *info, u64 offset, u64 len,
+ 		     unsigned long *start, unsigned long *end)
+@@ -155,6 +171,7 @@ static const struct guest_memfd_provider_operations mps_gmem_provider_ops = {
  	.attach		= mps_gmem_attach,
  	.release	= mps_gmem_release,
-+	.get_pfn	= mps_gmem_get_pfn,
+ 	.get_pfn	= mps_gmem_get_pfn,
++	.put_pfn_range	= mps_gmem_put_pfn_range,
  };
  
  static const struct file_operations mps_file_fops = {
