@@ -1,11 +1,11 @@
 From: Moe Mahhouk <moe@flashbots.net>
-Date: Thu, 22 Oct 2026 16:31:41 +0000
-Subject: [PATCH v2 1/2] virt: tdx-guest: Fix timeout detection in
- wait_for_quote_completion()
+Date: Thu, 22 Oct 2026 16:31:42 +0000
+Subject: [PATCH v2 2/2] virt: tdx-guest: Poll Quote status with exponential
+ backoff
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-tdx-guest-quote-poll-v2-1-7543c6eb2d36@flashbots.net>
+Message-Id: <20261022-tdx-guest-quote-poll-v2-2-7543c6eb2d36@flashbots.net>
 References: <20261022-tdx-guest-quote-poll-v2-0-7543c6eb2d36@flashbots.net>
 In-Reply-To: <20261022-tdx-guest-quote-poll-v2-0-7543c6eb2d36@flashbots.net>
 To: Kiryl Shutsemau <kas@kernel.org>, 
@@ -18,53 +18,80 @@ Cc: Jun Miao <jun.miao@intel.com>,
  x86@kernel.org, linux-coco@lists.linux.dev, kvm@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Moe Mahhouk <moe@flashbots.net>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792686704; l=1829;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792686704; l=2835;
  i=moe@flashbots.net; s=20261021; h=from:subject:message-id;
- bh=YaSIvAAyOdwGXioa5qC1w+XfaeHGA1mdgyIez+tbqmI=;
- b=gop851gcNfC9FdA8rDtgApXoAypDqEwm9vBsHIfarMsYKnB/wXH8uxG49GfAyZWG28NmwFcMs
- CHj3aeTmSQIDQj74Yoa2z9lMdTPaMxAk5xsdwb459xgf5rydkSrLnRA
+ bh=qSVE+hw1y6dS8lKhF55oe4BwZY0z5PC+umOVM8RdJVs=;
+ b=Rd5lKcb7G0lbmQa+sbSVtrW/ii30WTcmvTRyosbGzigOVfjWjbpLDhs7VwADVmo74iAgjyxUd
+ J2wjHqerY0ICEdFvlU7hYMFOKlbDVIxSdYtTzxAu0VamilZEO7JzAwT
 X-Developer-Key: i=moe@flashbots.net; a=ed25519;
  pk=hJTKfjLno/YESrpxMIKDJk34GM+/8Tol+24XK2b4xf0=
 X-Endpoint-Received: by B4 Relay for moe@flashbots.net/20261021 with auth_id=1259
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wait_for_quote_completion() counts the seconds it has waited in i and
-reports a timeout when i == timeout. That gets both outcomes of the
-last second wrong:
+wait_for_quote_completion() sleeps for a full second before it first
+checks whether the VMM has completed a GetQuote request, and then
+rechecks once per second. Every Quote request therefore takes at least
+one second, however quickly the host answers.
 
-- If the request is still in flight after the last sleep, the loop
-  condition increments i once more before it fails, so the loop ends
-  with i == timeout + 1 and the function returns 0. The caller then
-  returns -EIO instead of -ETIMEDOUT, without the "GetQuote request
-  timedout" message. Before commit 0f409eaea53e ("virt: tdx-guest:
-  Return error for GetQuote failures") a timed-out request even
-  returned success with an empty Quote.
+With a local Quote Generation Service the VMM completes the request in
+a few milliseconds. On an Emerald Rapids host (KVM, QEMU 11.1, Intel
+QGS), back-to-back Quote requests through configfs-tsm took 1021-1024 ms
+each; with this change they take 6-12 ms at HZ=250. Since quote_lock
+serializes requests, the one-second floor also caps a TD at about one
+Quote per second, which hurts users that bind a fresh Quote to every
+connection, such as attested TLS.
 
-- If the VMM completes the request during the last sleep, the loop ends
-  on the status check with i == timeout, and the function returns
-  -ETIMEDOUT for a completed request, discarding the Quote.
+Poll with an exponential backoff instead: sleep 1 ms first and double
+the interval up to 100 ms, so that a fast Quote is noticed within a few
+milliseconds while a slow one costs at most ten wakeups per second. The
+sleep stays interruptible, and the timeout becomes a deadline in
+jiffies.
 
-Decide on the Quote buffer instead: the request timed out if it is
-still in flight when the wait ends.
-
-Fixes: f4738f56d1dc ("virt: tdx-guest: Add Quote generation support using TSM_REPORTS")
-Reported-by: Kiryl Shutsemau <kas@kernel.org>
-Closes: https://lore.kernel.org/all/atoHWgQF-0vlTRK4@thinkstation/
 Signed-off-by: Moe Mahhouk <moe@flashbots.net>
 ---
- drivers/virt/coco/tdx-guest/tdx-guest.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/virt/coco/tdx-guest/tdx-guest.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/virt/coco/tdx-guest/tdx-guest.c b/drivers/virt/coco/tdx-guest/tdx-guest.c
-index 11d741da3b35..a5a53174f9d9 100644
+index a5a53174f9d9..000fff4ef6f5 100644
 --- a/drivers/virt/coco/tdx-guest/tdx-guest.c
 +++ b/drivers/virt/coco/tdx-guest/tdx-guest.c
-@@ -282,7 +282,7 @@ static int wait_for_quote_completion(struct tdx_quote_buf *buf, u32 timeout)
+@@ -16,6 +16,7 @@
+ #include <linux/set_memory.h>
+ #include <linux/io.h>
+ #include <linux/delay.h>
++#include <linux/jiffies.h>
+ #include <linux/sockptr.h>
+ #include <linux/tsm.h>
+ #include <linux/tsm-mr.h>
+@@ -271,18 +272,24 @@ static struct tdx_quote_buf *alloc_quote_buf(void)
+  */
+ static int wait_for_quote_completion(struct tdx_quote_buf *buf, u32 timeout)
+ {
+-	int i = 0;
++	unsigned long deadline = jiffies + secs_to_jiffies(timeout);
++	unsigned int sleep_ms = 1;
+ 
+ 	/*
+-	 * Quote requests usually take a few seconds to complete, so waking up
+-	 * once per second to recheck the status is fine for this use case.
++	 * A local Quote Generation Service usually completes the request
++	 * within a few milliseconds. Poll with an exponential backoff, from
++	 * 1 ms up to 100 ms, so that a fast Quote is noticed promptly while
++	 * a slow one costs at most ten wakeups per second.
+ 	 */
+-	while (buf->status == GET_QUOTE_IN_FLIGHT && i++ < timeout) {
+-		if (msleep_interruptible(MSEC_PER_SEC))
++	while (READ_ONCE(buf->status) == GET_QUOTE_IN_FLIGHT) {
++		if (time_after(jiffies, deadline))
++			return -ETIMEDOUT;
++		if (msleep_interruptible(sleep_ms))
  			return -EINTR;
++		sleep_ms = min(2 * sleep_ms, 100U);
  	}
  
--	return (i == timeout) ? -ETIMEDOUT : 0;
-+	return (buf->status == GET_QUOTE_IN_FLIGHT) ? -ETIMEDOUT : 0;
+-	return (buf->status == GET_QUOTE_IN_FLIGHT) ? -ETIMEDOUT : 0;
++	return 0;
  }
  
  static int tdx_report_new_locked(struct tsm_report *report)
