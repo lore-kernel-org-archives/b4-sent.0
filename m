@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:16 -0700
-Subject: [PATCH RFC v2 44/50] KVM: selftests: Test flag dependency of
- PFN_MODE on USE_RESOURCE
+Date: Thu, 22 Oct 2026 16:28:17 -0700
+Subject: [PATCH RFC v2 45/50] samples/kvm: Implement attach and release
+ provider ops in sample provider
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-44-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-45-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,71 +56,75 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2495;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1898;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=hW848+QLjOl269a7jTABrUtgNNZFcVVtDQ3JXHLCB+w=;
- b=fU28rqS9xlt6ezgnpahjWog+2P1ewPQlBSE+tyB8TuF5+17PJac6BxJaoiYMYysn333j5bn6N
- TnDkxIkJYU5ALgLLw+3zeLxvcsKbeB38GL6yfutX+0WrdXscM2rsPom
+ bh=KGuPGvRWcbKGcEsNC27FbqmF987N6l1g/xr1+ZAzxc4=;
+ b=Z8JHLu6Ste4p8ZrYRqK06GDhAVo48QV4XZ+VWzhKHyf7aaqsyXhbrwWLtjaRHzGTMt3dr8qvY
+ 4A+I9EpN32UAecHoaXDspE+Lg0dT9WcHVIl7AcXBRh4n+ovXjEly61w
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Creating a guest_memfd with GUEST_MEMFD_FLAG_PFN_MODE requires
-GUEST_MEMFD_FLAG_USE_RESOURCE.
+Implement the guest_memfd provider operations in the sample memory
+provider module, providing .attach and .release callbacks.
 
-Skip testing GUEST_MEMFD_FLAG_PFN_MODE as an isolated flag in
-test_guest_memfd_flags() because creating a guest_memfd with PFN_MODE
-alone without USE_RESOURCE is rejected by KVM with EINVAL.
+In .attach, take a reference to the provider file (get_file) to keep the
+provider context alive while attached. In .release, release the file
+reference via fput.
 
-In test_resource_fd_invalid(), verify that attempting to create a
-guest_memfd with GUEST_MEMFD_FLAG_PFN_MODE without
-GUEST_MEMFD_FLAG_USE_RESOURCE fails with EINVAL.
+Attach the provider operations to mps_file_fops.gmem_provider_ops so that
+provider file descriptors created by the sample module can be passed as
+resource_fd to guest_memfd.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/include/uapi/linux/kvm.h                 | 1 +
- tools/testing/selftests/kvm/guest_memfd_test.c | 8 +++++++-
- 2 files changed, 8 insertions(+), 1 deletion(-)
+ samples/kvm/mem_provider_sample.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/tools/include/uapi/linux/kvm.h b/tools/include/uapi/linux/kvm.h
-index 66c1f40b50c29..3ef7bc37a7070 100644
---- a/tools/include/uapi/linux/kvm.h
-+++ b/tools/include/uapi/linux/kvm.h
-@@ -1655,6 +1655,7 @@ struct kvm_memory_attributes {
- #define GUEST_MEMFD_FLAG_MMAP		(1ULL << 0)
- #define GUEST_MEMFD_FLAG_INIT_SHARED	(1ULL << 1)
- #define GUEST_MEMFD_FLAG_USE_RESOURCE	(1ULL << 2)
-+#define GUEST_MEMFD_FLAG_PFN_MODE	(1ULL << 3)
+diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
+index 397ebb3773f39..d9e57484c3933 100644
+--- a/samples/kvm/mem_provider_sample.c
++++ b/samples/kvm/mem_provider_sample.c
+@@ -17,6 +17,7 @@
+ #include <linux/file.h>
+ #include <linux/fs.h>
+ #include <linux/gfp.h>
++#include <linux/guest_memfd.h>
+ #include <linux/io.h>
+ #include <linux/miscdevice.h>
+ #include <linux/mm.h>
+@@ -118,11 +119,30 @@ static long mps_file_ioctl(struct file *file, unsigned int cmd,
+ 	}
+ }
  
- struct kvm_create_guest_memfd {
- 	__u64 size;
-diff --git a/tools/testing/selftests/kvm/guest_memfd_test.c b/tools/testing/selftests/kvm/guest_memfd_test.c
-index cbc2f309664b2..fb9d50be2e3b6 100644
---- a/tools/testing/selftests/kvm/guest_memfd_test.c
-+++ b/tools/testing/selftests/kvm/guest_memfd_test.c
-@@ -407,7 +407,8 @@ static void test_guest_memfd_flags(struct kvm_vm *vm)
- 	int fd;
- 
- 	for (flag = BIT(0); flag; flag <<= 1) {
--		if (flag == GUEST_MEMFD_FLAG_USE_RESOURCE)
-+		if (flag == GUEST_MEMFD_FLAG_USE_RESOURCE ||
-+		    flag == GUEST_MEMFD_FLAG_PFN_MODE)
- 			continue;
- 		fd = __vm_create_guest_memfd(vm, page_size, flag);
- 		if (flag & valid_flags) {
-@@ -432,6 +433,11 @@ static void test_resource_fd_invalid(struct kvm_vm *vm)
- 	TEST_ASSERT(fd < 0, "guest_memfd with resource_fd but without flag should fail");
- 	TEST_ASSERT_EQ(errno, EINVAL);
- 
-+	/* PFN_MODE without GUEST_MEMFD_FLAG_USE_RESOURCE fails */
-+	fd = __vm_create_guest_memfd(vm, page_size, GUEST_MEMFD_FLAG_PFN_MODE);
-+	TEST_ASSERT(fd < 0, "guest_memfd with PFN_MODE without USE_RESOURCE should fail");
-+	TEST_ASSERT_EQ(errno, EINVAL);
++static void *mps_gmem_attach(struct inode *gmem_inode,
++			     struct file *resource_file)
++{
++	return get_file(resource_file);
++}
 +
- 	/* Bad file descriptor with GUEST_MEMFD_FLAG_USE_RESOURCE fails */
- 	fd = __vm_create_guest_memfd_resource(vm, page_size,
- 					      GUEST_MEMFD_FLAG_USE_RESOURCE, -1);
++static void mps_gmem_release(void *provider)
++{
++	struct file *resource_file = provider;
++
++	fput(resource_file);
++}
++
++static const struct guest_memfd_provider_operations mps_gmem_provider_ops = {
++	.attach		= mps_gmem_attach,
++	.release	= mps_gmem_release,
++};
++
+ static const struct file_operations mps_file_fops = {
+ 	.owner		= THIS_MODULE,
+ 	.release	= mps_file_release,
+ 	.unlocked_ioctl	= mps_file_ioctl,
+ 	.compat_ioctl	= compat_ptr_ioctl,
++	.gmem_provider_ops = &mps_gmem_provider_ops,
+ };
+ 
+ static long mps_ctl_new_file(void __user *uarg)
 
 -- 
 2.56.0.257.gf7497c7d27-goog
