@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:17 -0700
-Subject: [PATCH RFC v2 45/50] samples/kvm: Implement attach and release
- provider ops in sample provider
+Date: Thu, 22 Oct 2026 16:28:18 -0700
+Subject: [PATCH RFC v2 46/50] samples/kvm: Implement get_pfn provider
+ operation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-45-5dd1dc6c660a@google.com>
+Message-Id: <20261022-gmem-alternative-providers-v2-46-5dd1dc6c660a@google.com>
 References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
 To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
@@ -56,26 +56,38 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=1898;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=2288;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=KGuPGvRWcbKGcEsNC27FbqmF987N6l1g/xr1+ZAzxc4=;
- b=Z8JHLu6Ste4p8ZrYRqK06GDhAVo48QV4XZ+VWzhKHyf7aaqsyXhbrwWLtjaRHzGTMt3dr8qvY
- 4A+I9EpN32UAecHoaXDspE+Lg0dT9WcHVIl7AcXBRh4n+ovXjEly61w
+ bh=bXiMo/29sunbuD+D3YtdW/0ZD1dlMXBq3S4o9V1nmWA=;
+ b=LubVvmekbGEL4qJWwfPec8oSMZvh3Y2RjF8dyEzW5bd0aBY8/BgAlTFxHuNlSCp1RS5cnvglh
+ ae7FJdAKp5oA3R/ugOUNqkjkZb/wJiuqKvcMsFXTMemQ+V6m+xh7YEl
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement the guest_memfd provider operations in the sample memory
-provider module, providing .attach and .release callbacks.
+Implement the .get_pfn callback in mps_gmem_provider_ops to operate as a
+direct PFN provider for guest_memfd.
 
-In .attach, take a reference to the provider file (get_file) to keep the
-provider context alive while attached. In .release, release the file
-reference via fput.
+Implementing .get_pfn satisfies guest_memfd's provider operations
+requirement, enabling mem_provider_sample files to be attached as
+resource_fd memory providers for guest_memfd.
 
-Attach the provider operations to mps_file_fops.gmem_provider_ops so that
-provider file descriptors created by the sample module can be passed as
-resource_fd to guest_memfd.
+In mps_gmem_get_pfn(), return the physical frame number corresponding to
+the requested index from the CMA reservation, returning -EFAULT if the
+page was marked absent via MPS_SET_PRESENT.
+
+Checking test_bit(index, info->absent) is done locklessly without
+holding info->lock:
+- test_bit() is an atomic memory read.
+- Locklessness prevents lock inversion and deadlocks. In guest_memfd,
+  the guest page fault path (kvm_gmem_get_pfn()) holds
+  filemap_invalidate_lock_shared while calling .get_pfn(). Avoiding
+  info->lock in .get_pfn() ensures no lock inversions exist between
+  filemap_invalidate_lock and info->lock.
+- Similarly, while kvm_gmem_revoke() now takes an explicit pfn and avoids
+  calling back into .get_pfn(), avoiding info->lock in .get_pfn() keeps
+  the lookup path completely lock-free and robust.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
@@ -83,48 +95,39 @@ Signed-off-by: Ackerley Tng <ackerleytng@google.com>
  1 file changed, 20 insertions(+)
 
 diff --git a/samples/kvm/mem_provider_sample.c b/samples/kvm/mem_provider_sample.c
-index 397ebb3773f39..d9e57484c3933 100644
+index d9e57484c3933..a43c76d2259e7 100644
 --- a/samples/kvm/mem_provider_sample.c
 +++ b/samples/kvm/mem_provider_sample.c
-@@ -17,6 +17,7 @@
- #include <linux/file.h>
- #include <linux/fs.h>
- #include <linux/gfp.h>
-+#include <linux/guest_memfd.h>
- #include <linux/io.h>
- #include <linux/miscdevice.h>
- #include <linux/mm.h>
-@@ -118,11 +119,30 @@ static long mps_file_ioctl(struct file *file, unsigned int cmd,
- 	}
+@@ -132,9 +132,29 @@ static void mps_gmem_release(void *provider)
+ 	fput(resource_file);
  }
  
-+static void *mps_gmem_attach(struct inode *gmem_inode,
-+			     struct file *resource_file)
-+{
-+	return get_file(resource_file);
-+}
-+
-+static void mps_gmem_release(void *provider)
++static int mps_gmem_get_pfn(void *provider, pgoff_t index, unsigned long *pfn,
++			    int *max_order)
 +{
 +	struct file *resource_file = provider;
++	struct mps_info *info = resource_file->private_data;
 +
-+	fput(resource_file);
++	if (index >= info->npages)
++		return -EINVAL;
++
++	if (test_bit(index, info->absent))
++		return -EFAULT;
++
++	*pfn = info->base_pfn + index;
++	if (max_order)
++		*max_order = 0;
++
++	return 0;
 +}
 +
-+static const struct guest_memfd_provider_operations mps_gmem_provider_ops = {
-+	.attach		= mps_gmem_attach,
-+	.release	= mps_gmem_release,
-+};
-+
- static const struct file_operations mps_file_fops = {
- 	.owner		= THIS_MODULE,
- 	.release	= mps_file_release,
- 	.unlocked_ioctl	= mps_file_ioctl,
- 	.compat_ioctl	= compat_ptr_ioctl,
-+	.gmem_provider_ops = &mps_gmem_provider_ops,
+ static const struct guest_memfd_provider_operations mps_gmem_provider_ops = {
+ 	.attach		= mps_gmem_attach,
+ 	.release	= mps_gmem_release,
++	.get_pfn	= mps_gmem_get_pfn,
  };
  
- static long mps_ctl_new_file(void __user *uarg)
+ static const struct file_operations mps_file_fops = {
 
 -- 
 2.56.0.257.gf7497c7d27-goog
