@@ -1,10 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Thu, 22 Oct 2026 23:52:39 +0200
-Subject: [PATCH 1/4] clk: meson: g12a: fix fclk_div2p5 multiplier
+Date: Thu, 22 Oct 2026 23:52:40 +0200
+Subject: [PATCH 2/4] clk: meson: g12a: fix swapped VID_PLL and VID_PLL_DIV
+ clock ids
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-fix-g12a-clk-v1-1-e2bd8f3f1afa@aliel.fr>
+Message-Id: <20261022-fix-g12a-clk-v1-2-e2bd8f3f1afa@aliel.fr>
 References: <20261022-fix-g12a-clk-v1-0-e2bd8f3f1afa@aliel.fr>
 In-Reply-To: <20261022-fix-g12a-clk-v1-0-e2bd8f3f1afa@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -16,43 +17,45 @@ Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=828;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1162;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=kmf21z98rptos6YhBfPRKtB/DG5G/xeS94e38Rd7M00=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9at1j062/vqpNvFbynuv/zmVmqp9x1xU44b11/OfiLw+
- CbTTtWzHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBE7qUz/M9oLN/5IiL8XZ3i
- OlWejYrcvW5rM91kn39Km6B3RHPPAT9GhsnzL94waohu3Fz6avurlIffpgUoyup8Wfkk7P5h9pU
- lE7kA
+ bh=YR8frSm+6sxxqFo9ANrOruNDwaVVFJ61khzljz/qP2U=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9at1r126fz2QibRosEiwl19TzbEnL0cZaFv9YPZIpPtQ
+ rjnp2cdpSwMYlwMsmKKLP1zLU+8u3z0zNc96ikwc1iZQIYwcHEKwET4uBn+Z0duUVv/Tn3z8+uX
+ 5AXCJN88WR9lpW5jOMtwcufHhayS8xn+u984/vPqXeXVJXz22w8bP9rb+6stTvxEyWrXFbdteNJ
+ fsAAA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-g12a_fclk_div2p5 should be fclk divided by 2.5.
-The mult has been declared as 1 which results
-as fclk/5 instead of fclk/2.5.
+In g12a onecell data table CLKID_VID_PLL points to g12a_vid_pll_div
+and CLKID_VID_PLL_DIV points to g12a_vid_pll. So the ids are swapped.
 
-Set mult=2 to get the correct div 2.5 rate.
+Swap the ids back to their right entries.
 
 Fixes: 085a4ea93d54 ("clk: meson: g12a: add peripheral clock controller")
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/clk/meson/g12a.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/clk/meson/g12a.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/clk/meson/g12a.c b/drivers/clk/meson/g12a.c
-index d0d4c7b6dc82..4ec5f15daf98 100644
+index 4ec5f15daf98..07105b2089c3 100644
 --- a/drivers/clk/meson/g12a.c
 +++ b/drivers/clk/meson/g12a.c
-@@ -995,7 +995,7 @@ static struct clk_regmap g12a_fclk_div7 = {
- };
- 
- static struct clk_fixed_factor g12a_fclk_div2p5_div = {
--	.mult = 1,
-+	.mult = 2,
- 	.div = 5,
- 	.hw.init = &(struct clk_init_data){
- 		.name = "fclk_div2p5_div",
+@@ -4622,9 +4622,9 @@ static struct clk_hw *g12a_hw_clks[] = {
+ 	[CLKID_HDMI_PLL_OD]		= &g12a_hdmi_pll_od.hw,
+ 	[CLKID_HDMI_PLL_OD2]		= &g12a_hdmi_pll_od2.hw,
+ 	[CLKID_HDMI_PLL]		= &g12a_hdmi_pll.hw,
+-	[CLKID_VID_PLL]			= &g12a_vid_pll_div.hw,
++	[CLKID_VID_PLL]			= &g12a_vid_pll.hw,
+ 	[CLKID_VID_PLL_SEL]		= &g12a_vid_pll_sel.hw,
+-	[CLKID_VID_PLL_DIV]		= &g12a_vid_pll.hw,
++	[CLKID_VID_PLL_DIV]		= &g12a_vid_pll_div.hw,
+ 	[CLKID_VCLK_SEL]		= &g12a_vclk_sel.hw,
+ 	[CLKID_VCLK2_SEL]		= &g12a_vclk2_sel.hw,
+ 	[CLKID_VCLK_INPUT]		= &g12a_vclk_input.hw,
 
 -- 
 2.43.0
