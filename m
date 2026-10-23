@@ -1,14 +1,12 @@
 From: Radu Sabau <radu.sabau@analog.com>
-Subject: [PATCH v4 0/8] iio: imu: Add support for the ADI ADIS16607
-Date: Fri, 23 Oct 2026 12:30:17 +0300
-Message-Id: <20261023-adis16607-v4-0-a4d541ebfd13@analog.com>
+Date: Fri, 23 Oct 2026 12:30:18 +0300
+Subject: [PATCH v4 1/8] iio: imu: adis: Add optional self_test callback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIACkp22oC/2XMTQ7CIBCG4as0rMUALX+uvIdxgTC0JFoMGKJpe
- ndpVxiX32Sed0EZUoCMTt2CEpSQQ5zrGA4dspOZR8DB1Y0YYYIIKrFxIVMhiMREae+t4NzCDdX
- /ZwIf3nvrcq17CvkV02dPF7pd9wolhDaVQjHB2iptAXruuDib2dzjeLTxgbZMYS1VLWWVSqsH5
- xVRUpk/2jeU8pb2lXotmRvAAyj+Q9d1/QJ5sbVzGQEAAA==
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261023-adis16607-v4-1-a4d541ebfd13@analog.com>
+References: <20261023-adis16607-v4-0-a4d541ebfd13@analog.com>
+In-Reply-To: <20261023-adis16607-v4-0-a4d541ebfd13@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Nuno Sa <nuno.sa@analog.com>, Jonathan Cameron <jic23@kernel.org>, 
@@ -21,286 +19,67 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, linux@analog.com, 
  Jonathan Cameron <jic23@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792747820; l=15184;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792747820; l=2136;
  i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
- bh=blpfuhphV3xIbzwtEl/kWdFibNliaCDRqHSRBD9E/Bg=;
- b=Rp3y+30DlMVhjgzu9gf7/7yR19PQt4y7vhpR2DHVDqQMv5FjDHhgw5wZ7y1cC0iKa4M6craIt
- 3JMGoL/74tjD695JpnLl5PhU4WB4fY+n6GeA3pUCNRxIEOkAGxLLGZH
+ bh=YazgVExHlg7DuTSHjItfCNnSyD1jkv3xVZj1NUe2B1Y=;
+ b=zjAtXiFPT6vqV4PiSaqaTYsgZlenKRYOWce/zDx963u5ksL4l5XCzFNQXjWblVtUrneZQKZ7v
+ E/hl3KW951rBhDFg629/XgrMc9h8nrWfwBrwp0pfZnq4+UNDiNmtcqB
 X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
  pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
 X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the Analog Devices ADIS16607, a precision
-MEMS IMU with triaxial gyroscope, triaxial accelerometer, and
-temperature sensor, communicating over a non-standard SPI Half-Duplex
-protocol.
+Add an optional self_test callback to struct adis_data, for devices
+whose self-test doesn't fit the generic mask-write/sleep/check-status
+sequence. Purely additive: defaults to NULL, no change for existing
+drivers.
 
-Patch 1 adds an optional self_test callback to adislib, for devices
-whose self-test sequence doesn't fit the generic
-mask-write/sleep/check-status pattern.
-
-Patch 2 fixes the reset dispatch: both __adis_initial_startup()'s reset
-fallback and the public adis_reset() wrapper were calling
-__adis_reset() directly instead of dispatching through
-adis->ops->reset(). That bug is invisible for every existing adislib
-driver (adis_default_ops.reset is __adis_reset() itself), but silently
-breaks a driver with fully custom ops - like this one - on any board
-without a reset-gpios property, or any caller of adis_reset() on a
-device like adis16550 whose custom reset op needs a different write
-size than __adis_reset()'s hardcoded 8-bit one. Carries a Fixes tag for
-the commit that introduced the hardcoded call; no stable backport is
-needed since the bug only manifests for a custom-ops driver, and this
-is the first one.
-
-Patch 3 adds an optional post_reset_setup callback to adislib, for
-devices that need extra device-specific bring-up between reset and
-self-test (SPI mode locking, status/bootloader checks, pin or
-burst-mode configuration, etc.) - not all ADIS devices need this, so
-it's only called when set, same as self_test.
-
-Patch 4 adds the devicetree binding.
-
-Patches 5-8 add the driver in functional groupings, as requested in
-v1 review:
- - Patch 5: base driver - probe, raw channel reads, decimation/sample
-   frequency, startup and self-test via adislib, debugfs identity
-   entries. No buffered capture yet.
- - Patch 6: buffered capture via the device's hardware FIFO.
- - Patch 7: external clock sync support.
- - Patch 8: calibration bias support for gyro/accel.
-
-Notable points for reviewers:
-
- - The device does not implement the standard ADIS SPI protocol used
-   by other parts in the family; reads/writes are done over a custom
-   Half-Duplex sequence (see adis16607_spi_read()/adis16607_spi_write()
-   and the adis_ops overrides).
-
- - Startup is split across the two new adislib callbacks rather than a
-   driver-private initial_startup(): adis16607_post_reset_setup() does
-   SPI Half-Duplex locking, dev_id verification, the bootloader-busy
-   check, and (once FIFO is wired up in patch 6) burst-mode and
-   DR/DEV_NOK interrupt-pin configuration; adis16607_self_test() does
-   the actual per-axis delta-check, clearing the SELF_TEST register on
-   every exit path (not just success) so a failure doesn't leave the
-   sensor sitting in its self-test/force state.
-
- - GPIO0's reset-pin routing (RESET_GPIO_MASK in USER_GPIO_CFG) is
-   runtime-writable on this part, so a prior write (bug, firmware,
-   direct register access) could leave it de-routed, silently
-   defeating reset-gpios. Patch 5's probe() forces it back to the
-   reset function over SPI before relying on toggling the pin -
-   warning rather than erroring out on failure, so a still-responsive
-   device still gets a real chance at reset. Patch 6 adds the
-   DR/DEV_NOK pins to the same USER_GPIO_CFG register via a
-   read-modify-write, so it can't clobber what probe() already set.
-
- - The hardware FIFO is the *only* buffered capture path - there is no
-   single-sample direct burst-read trigger mode. The FIFO-pop command
-   and the regular burst-read command are genuinely different
-   protocols on this device (different payload shapes, no checksum on
-   the FIFO side), so this stays driver-private rather than going
-   through adislib's generic burst-read helpers.
-
- - The FIFO drain in the trigger handler just reads DIAG_STAT (which
-   clears FIFO_THRESH_MET as a side effect) and pops however many
-   complete samples are available - no disabling, flushing, or
-   re-enabling around the drain. The datasheet's dual-port FIFO
-   architecture means reads and writes don't contend, so there's
-   nothing for a disable step to protect against.
-
- - The FIFO-threshold interrupt is signaled via DEV_NOK on the
-   device's one physically-wired interrupt pin, which stays asserted
-   (level-triggered) until DIAG_STAT is read and cleared - this sets
-   has_fifo on adis_data and requests the IRQ through adislib's
-   threaded/level path, matching adislib's actual contract for that
-   flag.
-
- - An optional external clock (clocks property) selects between
-   SYNC_DIRECT and SYNC_SCALED modes depending on the supplied
-   frequency, with the internal 8 kHz clock used as the default when
-   no clock is provided (adis16607_config_clk()).
-
-This has been tested on a Raspberry Pi 4 (arm64) with the device wired
-over SPI, exercising the FIFO buffered-capture path with the updated
-DEV_NOK/level-triggered interrupt wiring.
-
-To: Lars-Peter Clausen <lars@metafoo.de>
-To: Michael Hennerich <Michael.Hennerich@analog.com>
-To: Jonathan Cameron <jic23@kernel.org>
-To: David Lechner <dlechner@baylibre.com>
-To: Nuno Sá <nuno.sa@analog.com>
-To: Andy Shevchenko <andy@kernel.org>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Alexandru Ardelean <alexandru.ardelean@analog.com>
-Cc: linux-iio@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>
 Signed-off-by: Radu Sabau <radu.sabau@analog.com>
-
-Changes in v4:
-- Split the combined adislib commit into three: self_test callback,
-  the reset-dispatch fix, and post_reset_setup callback, each its own
-  patch - the original bundled all three under one "Also..." (Jonathan).
-- Simplified the reset-dispatch fix: removed the internal settle-time
-  sleep from __adis_reset() entirely and made both call sites
-  (__adis_initial_startup(), adis_reset()) sleep unconditionally after
-  dispatching through adis->ops->reset() - no more comparing against
-  __adis_reset() to decide whether to sleep (Jonathan).
-- dt-bindings: commit message now states how adis16607-2/-3 actually
-  differ (gyro full-scale range only) instead of just asserting two
-  variants exist (Jonathan). Narrowed reset-gpios's description to
-  just itself, and expanded the top-level description to explain the
-  device's five GPIO pins and where each one's function is actually
-  modeled (clocks, interrupts, or not exposed) (Jonathan).
-- Base driver: moved the RESET_GPIO_MASK force-write from after reset
-  to before it, in probe() - a previously-defeated reset-pin routing
-  (buggy driver, direct reg access) now gets a chance to be corrected
-  before relying on the GPIO toggle, instead of too late to matter;
-  only warns rather than erroring out on failure, so a still-live
-  device keeps its chance at a real reset (Jonathan). Removed the
-  now-redundant duplicate of that same write from
-  adis16607_post_reset_setup() (Andy).
-- Base driver: large style/cleanup batch - dropped an unneeded
-  <linux/kernel.h> include, reordered struct adis16607 so struct adis
-  is first (cheaper container_of(), measured -0.41% code size via
-  bloat-o-meter), use spi_message_init_with_transfers() instead of
-  repeated spi_message_add_tail(), ARRAY_SIZE() instead of hardcoded
-  loop bounds, put_unaligned_be16(), combined the firmware/revision
-  debugfs files into one "major.minor"-formatted entry, dropped an
-  unnecessary #ifdef CONFIG_DEBUG_FS wrapper, guard()/
-  adis_dev_auto_lock() instead of manual mutex lock/unlock, -ENODATA
-  instead of -EINVAL for an unmatched chip_info, unit-suffixed
-  clk_freq_mhz/int_clk_hz field names with MILLI from <linux/units.h>
-  instead of a bare magic 1000, de-duplicated/inlined several
-  single- or two-use macros (Andy, Jonathan).
-- Base driver: the self-test startup delay now cites the actual
-  datasheet value (Inertial Settling Time, 40ms) instead of an
-  unexplained 100ms that didn't match anything in the datasheet
-  (Andy). Self-test now clears the SELF_TEST register on every
-  failure path, not just on success (Sashiko AI).
-- FIFO: dropped disabling the FIFO before draining and the
-  flush-and-re-enable afterward entirely - the datasheet confirms
-  overflow-only overwrite (not overwrite-during-read) and a dual-port
-  architecture with no read/write contention, so there was nothing
-  for the disable step to protect against, and it was costing real
-  samples during its own disabled window (Jonathan). fifo_buf is now
-  a fixed-size array instead of a heap allocation reallocated on
-  every scan-mode change; deleted the now-unnecessary
-  update_scan_mode() and its devm cleanup entirely (Jonathan).
-  guard()/adis_dev_auto_lock() and direct returns in buffer
-  postenable/postdisable (Jonathan). clamp() instead of clamp_t() -
-  confirmed by building that the forced cast wasn't needed (Jonathan).
-- Sync: adis16607_config_clk() now reads DEC_RATE live instead of
-  assuming it's 0 after reset, the same way adis16607_get_freq()
-  already does - consistent with how USER_SYNC is already written
-  explicitly rather than relying on its own reset default (Jonathan).
-- Link to v3: https://lore.kernel.org/r/20261015-adis16607-v3-0-f972d4efee85@a
-
-Changes in v3:
-- Fixed the public adis_reset() wrapper (adis.h) to also dispatch
-  through adis->ops->reset() instead of hardcoding __adis_reset() -
-  the same bug class as the v2 __adis_initial_startup() fix, just a
-  second call site that was missed. Switched both checks from
-  comparing against adis_default_ops to adis->ops->reset != __adis_reset,
-  which also works from the header, where adis_default_ops isn't
-  visible (Sashiko).
-- Fixed dt-binding wording: dropped "compatible" from the variant
-  description (reads as a DT compatible-string fallback claim, which
-  doesn't exist here - the two variants aren't interchangeable) and
-  dropped a Linux-driver-specific sentence from reset-gpios's
-  description (Conor); removed a stale commit-message bullet claiming
-  a FIFO watermark property that was never in the binding (Sashiko).
-- Dropped a redundant <linux/mod_devicetable.h> include -
-  <linux/spi/spi.h> already provides it (Uwe, Andy); switched
-  adis16607_id[] to named initializers (Uwe).
-- Fixed FIFO sample timestamps: they were projected forward from the
-  IRQ-fire time instead of back-dated, so the newest sample in a batch
-  ended up timestamped in the future. Now back-dated so the newest
-  sample lands on the IRQ-fire time and earlier ones count back from
-  it (Sashiko).
-- Added a comment explaining why disabling the FIFO during drain, and
-  the flush afterward, don't lose in-flight samples - no new samples
-  are enqueued at all while disabled, so nothing can arrive in that
-  window for the flush to drop (Sashiko asked twice, independently).
-- Reworked external clock sync configuration (adis16607_config_clk())
-  so every mode (default/direct/scaled) explicitly writes its own
-  complete SYNC_GPIO_MASK/USER_SYNC state, instead of only writing
-  conditionally when enabling non-default sync (Sashiko x2); switched
-  the sync scale factor from truncating to rounding division (Sashiko);
-  fixed a real bug where SCALED mode's effective clock was hardcoded
-  to the nominal internal rate instead of the actual achieved rate
-  (ext_clk_hz * sync_scale), which would have caused FIFO timestamps
-  to drift whenever the external clock didn't divide the internal
-  clock exactly (Sashiko).
-- Added range validation before writing calibration bias - out-of-
-  range values were silently truncated to 16 bits instead of being
-  rejected (Sashiko).
-- Link to v2: https://lore.kernel.org/r/20261008-adis16607-v2-0-7c94df80878a@analog.com
-
-Changes in v2:
-- Split the driver commit into functional groupings per review:
-  base, FIFO, external clock sync, calibration bias (Nuno).
-- Added adis_data.self_test and adis_data.post_reset_setup callbacks
-  to adislib instead of duplicating startup/self-test logic in the
-  driver (Nuno). post_reset_setup is a second, honestly-named hook
-  added after review feedback that overloading self_test to also mean
-  "everything else the device needs at startup" was misleading.
-- Fixed __adis_initial_startup()'s reset fallback to dispatch through
-  adis->ops->reset() instead of a hardcoded __adis_reset() call -
-  found while wiring up this driver's custom reset op. Added a Fixes
-  tag for the originating commit.
-- Removed the direct single-sample burst-read capture path entirely;
-  the hardware FIFO is now the only buffered capture mode. Dropped
-  adi,fifo-enable from the binding accordingly.
-- Fixed FIFO-threshold interrupt wiring: set has_fifo on adis_data and
-  switch the DT interrupt type from edge to level, matching the
-  DEV_NOK signal this now uses (previously only the data-ready pulse
-  was wired, which never actually generated a FIFO interrupt).
-- Moved the optional reset-status GPIO output into the base driver
-  patch (where it conceptually belongs) instead of bundling it into
-  the FIFO patch's USER_GPIO_CFG write; the FIFO patch now updates
-  that register with a read-modify-write instead of a blind write.
-- Fixed cover letter: "Three compatible variants (-1, -2, -3)" was
-  wrong, there are only two (-2, -3); "configurable data-ready
-  interrupt pin (DIO1-4)" was wrong, there's a single fixed pin.
-- Corrected spi-max-frequency to 10 MHz (datasheet maximum), from
-  15 MHz.
-- Renamed ADIS16607_REG_SW_RES to ADIS16607_REG_SOFT_RESET to match
-  the datasheet's register name; renamed burst_buf to fifo_buf and
-  dropped the redundant "fifo_" prefix from the buffer postenable/
-  postdisable/ops names, since FIFO is the only capture mode and
-  "burst" no longer described what that scratch buffer is used for.
-- Link to v1: https://lore.kernel.org/r/20261001-adis16607-v1-0-9c89cee35d56@analog.com
-
 ---
-Radu Sabau (8):
-      iio: imu: adis: Add optional self_test callback
-      iio: imu: adis: Fix custom reset dispatch in adislib
-      iio: imu: adis: Add optional post_reset_setup callback
-      dt-bindings: iio: imu: Add bindings for ADI ADIS16607
-      iio: imu: Add driver for the ADI ADIS16607
-      iio: imu: adis16607: Add FIFO-based buffered/triggered capture
-      iio: imu: adis16607: Add external clock sync support
-      iio: imu: adis16607: Add calibration bias support for gyro/accel
+ drivers/iio/imu/adis.c       | 3 +++
+ include/linux/iio/imu/adis.h | 7 +++++++
+ 2 files changed, 10 insertions(+)
 
- .../devicetree/bindings/iio/imu/adi,adis16607.yaml |   94 ++
- MAINTAINERS                                        |    8 +
- drivers/iio/imu/Kconfig                            |   13 +
- drivers/iio/imu/Makefile                           |    1 +
- drivers/iio/imu/adis.c                             |   15 +-
- drivers/iio/imu/adis16607.c                        | 1325 ++++++++++++++++++++
- include/linux/iio/imu/adis.h                       |   26 +-
- 7 files changed, 1477 insertions(+), 5 deletions(-)
----
-base-commit: 0fcb05b72344f40806cbe810de8872f1698bf053
-change-id: 20260617-adis16607-089ffc655ceb
+diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
+index a2bc1d14ed91..388518ebba2e 100644
+--- a/drivers/iio/imu/adis.c
++++ b/drivers/iio/imu/adis.c
+@@ -360,6 +360,9 @@ static int adis_self_test(struct adis *adis)
+ 	int ret;
+ 	const struct adis_timeout *timeouts = adis->data->timeouts;
+ 
++	if (adis->data->self_test)
++		return adis->data->self_test(adis);
++
+ 	ret = __adis_write_reg_16(adis, adis->data->self_test_reg,
+ 				  adis->data->self_test_mask);
+ 	if (ret) {
+diff --git a/include/linux/iio/imu/adis.h b/include/linux/iio/imu/adis.h
+index bfb6df68e6c9..14f9b304c252 100644
+--- a/include/linux/iio/imu/adis.h
++++ b/include/linux/iio/imu/adis.h
+@@ -51,6 +51,12 @@ struct adis_timeout {
+  * @self_test_mask: Bitmask of supported self-test operations
+  * @self_test_reg: Register address to request self test command
+  * @self_test_no_autoclear: True if device's self-test needs clear of ctrl reg
++ * @self_test: Optional device-specific self-test override. When set,
++ *		it is called instead of the generic mask-write/sleep/
++ *		check-status sequence. The callback owns its own pass/fail
++ *		determination entirely (it should call __adis_check_status()
++ *		itself if it wants status-register checks). Must return 0 on
++ *		success, a negative error code otherwise.
+  * @status_error_msgs: Array of error messages
+  * @status_error_mask: Bitmask of errors supported by the device
+  * @timeouts: Chip specific delays
+@@ -81,6 +87,7 @@ struct adis_data {
+ 	unsigned int self_test_mask;
+ 	unsigned int self_test_reg;
+ 	bool self_test_no_autoclear;
++	int (*self_test)(struct adis *adis);
+ 	const struct adis_timeout *timeouts;
+ 
+ 	const char * const *status_error_msgs;
 
-Best regards,
 -- 
-Radu Sabau <radu.sabau@analog.com>
+2.43.0
 
