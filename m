@@ -1,153 +1,83 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Fri, 23 Oct 2026 07:46:28 -0700
-Subject: [PATCH mptcp-next v2] selftests: mptcp: sockopt: echo until EOF on
- partial reads
+From: =?utf-8?q?Lo=C3=AFc_Kassel?= <loic.kassel@gmail.com>
+Date: Fri, 23 Oct 2026 19:21:54 +0200
+Subject: [PATCH wireless] wifi: mac80211_hwsim: use CLOCK_BOOTTIME for the
+ beacon timer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-fix-mptcp-issue-639-v2-1-14a3d3746d2d@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OyQ6CMBRFf8W8tc90kKGu/A/DosBDagJt2kIwh
- H+3wN7lzT13WCGQNxTgcVnB02yCsWMS4nqBptfjm9C0SYNgIueMF9iZBQcXG4cmhIkwlwpVLqX
- SslWCa0hJ5ylhR+sLTnikJUJ1emGqP9TEvXanexOi9d/jwsyPzN+1mSNHlmX3lhW6Lrvy6byNd
- rwNBNW2bT+CCqIH1AAAAA==
-X-Change-ID: 20261017-fix-mptcp-issue-639-96339a3d921a
-To: MPTCP Linux <mptcp@lists.linux.dev>
-Cc: 
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792766790; l=4572;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=YFBOuJzzXnClbJR18ebSuZTHm9Q2G8VNkK/qk0+YwCo=;
- b=2DCnDe3eQBEdXXw5WJ4YIEVv1hcxesRVTcOX7vCIIOAo/4ohN8fI3DYfVMCXmN2E9SKbePm9E
- kW0YvEDBm75Dy/M0mhGoY5c1VYZh6xNA5kan6vtgG+XubZJ4SKCGah2
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261023-hwsim-beacon-clock-v1-1-9b3f3ffc099b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQrCMBBG4auUWTuQRJC2VxEXcfrXDraJZKARS
+ u9ucPkt3jvIUBRGY3dQwa6mOTX4S0eyxPQC69RMwYWbd+HKSzXd+IkoObGsWd6M2M/wk5Nh6Km
+ Fn4JZv//pnaoWrDCjx3n+AGkPCAZuAAAA
+X-Change-ID: 20261023-hwsim-beacon-clock-ea8fe1d0c998
+To: Johannes Berg <johannes@sipsolutions.net>, 
+ Benjamin Berg <benjamin.berg@intel.com>, 
+ Miri Korenblit <miriam.rachel.korenblit@intel.com>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Lo=C3=AFc_Kassel?= <loic.kassel@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792776149; l=2489;
+ i=loic.kassel@gmail.com; s=20261023; h=from:subject:message-id;
+ bh=pcL4DXeSmeZCNbu0odCOcRBBfSJ6zAv3ONG4ux6DNnE=;
+ b=U3rRFkEZroe2nHeMsYy0UB62+omfo4r4pYx8C4+PAvwcAnH4Oakmla/sLkFzEO8wb33TzCkbo
+ /Lu/O+6TjsUBW9ZoFFUPEZBRF3gEUDpgJnfExmkIgfK7JMrXM31YAps
+X-Developer-Key: i=loic.kassel@gmail.com; a=ed25519;
+ pk=8MjN6l7+bGFfW7/nYXQfpGkxGFb6lH8T7uhKv5XLruA=
+X-Endpoint-Received: by B4 Relay for loic.kassel@gmail.com/20261023 with auth_id=1290
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-process_one_client() used a single read() and write() before waiting
-for hangup. A SOCK_STREAM read() can return a short count when the
-payload is segmented, so the server echoed only part of the data and
-then blocked on FIN.
+The simulated TSF is based on boottime, and the beacon timer is re-armed
+with an absolute expiry derived from the TSF through
+mac80211_hwsim_tsf_to_boottime(). The timer itself is however still set
+up with CLOCK_MONOTONIC.
 
-The client keeps reading until it has the full length and only then
-closes the socket. The two sides wait on each other and the test
-hangs until SIGALRM.
+Boottime keeps running while the system is suspended, monotonic does
+not. After the host has been suspended once, every beacon is therefore
+scheduled too late by the total time spent in suspend, and APs
+practically stop sending beacons.
 
-The server does not know the payload length, so echo each chunk until
-read() returns 0. Retry short writes, and accumulate nread/nwritten for
-the existing sockopt checks.
+Set the beacon timer up with CLOCK_BOOTTIME so that it is consistent
+with the TSF.
 
-Fixes: ce9979129a0b ("selftests: mptcp: add mptcp getsockopt test cases")
-Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/639
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+The bug was analysed, and this change and commit message drafted, with
+the help of an AI assistant (Claude, Opus 5.5). I reviewed the change
+and tested it on v7.2.11 (Fedora 44), applying the same one-line change
+to that kernel's mac80211_hwsim and loading it as an out-of-tree module.
+With hostapd started after a suspend (boottime 61 s ahead of monotonic),
+an associated station received about 10 beacons per second with no
+beacon loss, and scans found all APs. With the unmodified module, in the
+same situation, beacons practically stopped and APs without associated
+stations were not found by scans.
+
+Fixes: 933f5bec98a1 ("wifi: mac80211_hwsim: register beacon timer by calculating TBTT")
+Closes: https://lore.kernel.org/linux-wireless/CAAzpgGdksHZjx4jc20zqnAG_PQ2e1ggANQjt2eiycUiWc+vPHg@mail.gmail.com/
+Signed-off-by: Loïc Kassel <loic.kassel@gmail.com>
 ---
-Changes in v2:
-- target mptcp-next instead of mptcp-net
-- echo until hangup with goto; retry short writes; use nread/nwritten
-- Link to v1: https://patch.msgid.link/20261017-fix-mptcp-issue-639-v1-1-0554d07ab8f8@proton.me
+Benjamin confirmed the analysis in the report thread and suggested that
+I send the fix myself. This is my first kernel patch.
 ---
- tools/testing/selftests/net/mptcp/mptcp_sockopt.c | 60 +++++++++++++----------
- 1 file changed, 34 insertions(+), 26 deletions(-)
+ drivers/net/wireless/virtual/mac80211_hwsim_main.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-index b6e58d936ebe..deb239058e79 100644
---- a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-+++ b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-@@ -638,7 +638,8 @@ static void connect_one_server(int fd, int pipefd)
+diff --git a/drivers/net/wireless/virtual/mac80211_hwsim_main.c b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+index b9446577ff..203bf9a4b9 100644
+--- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
++++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+@@ -6136,7 +6136,7 @@ static int mac80211_hwsim_new_radio(struct genl_info *info,
  
- static void process_one_client(int fd, int pipefd)
- {
--	ssize_t ret, ret2, ret3;
-+	size_t nread = 0, nwritten = 0;
-+	ssize_t ret, n, w, off;
- 	struct so_state s;
- 	char buf[4096];
- 
-@@ -648,46 +649,53 @@ static void process_one_client(int fd, int pipefd)
- 	ret = write(pipefd, "xmit", 4);
- 	assert(ret == 4);
- 
--	ret = read(fd, buf, sizeof(buf));
--	if (ret < 0)
-+read_more:
-+	n = read(fd, buf, sizeof(buf));
-+	if (n < 0)
- 		die_perror("read");
-+	if (n == 0)
-+		goto hangup;
-+
-+	for (off = 0; off < n; off += w) {
-+		w = write(fd, buf + off, n - off);
-+		if (w < 0)
-+			die_perror("write");
-+		if (w == 0)
-+			xerror("write returned 0");
-+	}
-+	nread += n;
-+	nwritten += n;
-+	goto read_more;
- 
--	assert(s.mptcpi_rcv_delta <= (uint64_t)ret);
-+hangup:
-+	assert(s.mptcpi_rcv_delta <= nread);
- 
- 	if (s.tcpi_rcv_delta)
--		assert(s.tcpi_rcv_delta == (uint64_t)ret);
--
--	ret2 = write(fd, buf, ret);
--	if (ret2 < 0)
--		die_perror("write");
--
--	/* wait for hangup */
--	ret3 = read(fd, buf, 1);
--	if (ret3 != 0)
--		xerror("expected EOF, got %lu", ret3);
-+		assert(s.tcpi_rcv_delta <= nread);
- 
--	do_getsockopts(&s, fd, ret, ret2);
--	if (s.mptcpi_rcv_delta != (uint64_t)ret + 1)
-+	do_getsockopts(&s, fd, nread, nwritten);
-+	if (s.mptcpi_rcv_delta != (uint64_t)nread + 1)
- 		xerror("mptcpi_rcv_delta %" PRIu64 ", expect %" PRIu64 ", diff %" PRId64,
--		       s.mptcpi_rcv_delta, ret + 1, s.mptcpi_rcv_delta - (ret + 1));
-+		       s.mptcpi_rcv_delta, (uint64_t)nread + 1,
-+		       s.mptcpi_rcv_delta - ((uint64_t)nread + 1));
- 
- 	/* be nice when running on top of older kernel */
- 	if (s.pkt_stats_avail) {
--		if (s.last_sample.mptcpi_bytes_sent != ret2)
-+		if (s.last_sample.mptcpi_bytes_sent != nwritten)
- 			xerror("mptcpi_bytes_sent %" PRIu64 ", expect %" PRIu64
- 			       ", diff %" PRId64,
--			       s.last_sample.mptcpi_bytes_sent, ret2,
--			       s.last_sample.mptcpi_bytes_sent - ret2);
--		if (s.last_sample.mptcpi_bytes_received != ret)
-+			       s.last_sample.mptcpi_bytes_sent, nwritten,
-+			       s.last_sample.mptcpi_bytes_sent - nwritten);
-+		if (s.last_sample.mptcpi_bytes_received != nread)
- 			xerror("mptcpi_bytes_received %" PRIu64 ", expect %" PRIu64
- 			       ", diff %" PRId64,
--			       s.last_sample.mptcpi_bytes_received, ret,
--			       s.last_sample.mptcpi_bytes_received - ret);
--		if (s.last_sample.mptcpi_bytes_acked != ret)
-+			       s.last_sample.mptcpi_bytes_received, nread,
-+			       s.last_sample.mptcpi_bytes_received - nread);
-+		if (s.last_sample.mptcpi_bytes_acked != nread)
- 			xerror("mptcpi_bytes_acked %" PRIu64 ", expect %" PRIu64
- 			       ", diff %" PRId64,
--			       s.last_sample.mptcpi_bytes_acked, ret,
--			       s.last_sample.mptcpi_bytes_acked - ret);
-+			       s.last_sample.mptcpi_bytes_acked, nread,
-+			       s.last_sample.mptcpi_bytes_acked - nread);
+ 	for (i = 0; i < ARRAY_SIZE(data->link_data); i++) {
+ 		hrtimer_setup(&data->link_data[i].beacon_timer, mac80211_hwsim_beacon,
+-			      CLOCK_MONOTONIC, HRTIMER_MODE_ABS_SOFT);
++			      CLOCK_BOOTTIME, HRTIMER_MODE_ABS_SOFT);
+ 		data->link_data[i].link_id = i;
  	}
  
- 	close(fd);
 
 ---
-base-commit: a22035be824449c4921ec406f6383089016a628c
-change-id: 20261017-fix-mptcp-issue-639-96339a3d921a
+base-commit: 9d8ec0b5b5295bd23d979d1b2b905de25c36fff2
+change-id: 20261023-hwsim-beacon-clock-ea8fe1d0c998
 
 Best regards,
---  
-Quanye Yang <quanyeyang@proton.me>
+-- 
+Loïc Kassel <loic.kassel@gmail.com>
 
