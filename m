@@ -1,11 +1,11 @@
 From: Radu Sabau <radu.sabau@analog.com>
-Date: Fri, 23 Oct 2026 12:30:19 +0300
-Subject: [PATCH v4 2/8] iio: imu: adis: Fix custom reset dispatch in
- adislib
+Date: Fri, 23 Oct 2026 12:30:20 +0300
+Subject: [PATCH v4 3/8] iio: imu: adis: Add optional post_reset_setup
+ callback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-adis16607-v4-2-a4d541ebfd13@analog.com>
+Message-Id: <20261023-adis16607-v4-3-a4d541ebfd13@analog.com>
 References: <20261023-adis16607-v4-0-a4d541ebfd13@analog.com>
 In-Reply-To: <20261023-adis16607-v4-0-a4d541ebfd13@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
@@ -20,101 +20,70 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, linux@analog.com, 
  Jonathan Cameron <jic23@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792747820; l=2750;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792747820; l=2254;
  i=radu.sabau@analog.com; s=20261001; h=from:subject:message-id;
- bh=vuWXnWSiWcah16SzlQvOsXkP8u5qRQjoUvxICsehtNU=;
- b=65/j/nI+nWzwoH+3gaT2k/GBM/HGxFEJGyisaCl4wFLSsn1LkCV4yahYp2TccX+AomiRmS88b
- mPtBMxJeCFPCFQc0n4gZijKj8SaqAr1pOCTpaHUy7uhEI0KP/7rwjHs
+ bh=AxyPMdWe1dfHmRZJ8557DpedZhOiyzpzTaIVnfJheV8=;
+ b=FZXhlGaYJE1OPG3ofpX4RgWCnZf6/yfkixVe6xYjUp/sgvByJFsh1LO9NEQu5KAw2U3UYHodq
+ xTliY6bzpeoCMBmJtCPDVLcHFkc23PjHo3ax/yy0Q3gfmtXj2bnplTd
 X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
  pk=XOZSO/Ut8qfYw7khL8lUF65Pgl+VLihISyS+Iy9jY8c=
 X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20261001 with auth_id=1094
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__adis_initial_startup()'s no-reset-gpio path called __adis_reset()
-directly instead of adis->ops->reset(), silently ignoring any driver's
-custom reset implementation. Invisible until now since
-adis_default_ops.reset is __adis_reset() itself. Dispatch through
-adis->ops->reset() instead - the same bug existed in the public
-adis_reset() wrapper, fixed here too.
+Add an optional post_reset_setup callback to struct adis_data, called
+right after reset and before self-test. Not all ADIS devices need
+extra bring-up between reset and self-test (SPI mode locking, status
+or bootloader checks, pin or burst-mode configuration, etc.) - purely
+additive: defaults to NULL, no change for existing drivers.
 
-Move the settle-time sleep out of __adis_reset() and into both call
-sites instead, so every reset op (default or custom) is treated
-uniformly: adis->ops->reset() is expected to just do the write, and
-the library always sleeps the settle time afterwards. This removes
-the previous asymmetric "sleep here only for custom ops" special
-case entirely.
-
-Fixes: ecb010d44108 ("iio: imu: adis: Refactor adis_initial_startup")
 Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
- drivers/iio/imu/adis.c       |  6 ++----
- include/linux/iio/imu/adis.h | 12 +++++++++++-
- 2 files changed, 13 insertions(+), 5 deletions(-)
+ drivers/iio/imu/adis.c       | 6 ++++++
+ include/linux/iio/imu/adis.h | 7 +++++++
+ 2 files changed, 13 insertions(+)
 
 diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
-index 388518ebba2e..5c3bb7259037 100644
+index 5c3bb7259037..332cc7b0ff35 100644
 --- a/drivers/iio/imu/adis.c
 +++ b/drivers/iio/imu/adis.c
-@@ -340,7 +340,6 @@ EXPORT_SYMBOL_NS_GPL(__adis_check_status, "IIO_ADISLIB");
- int __adis_reset(struct adis *adis)
- {
- 	int ret;
--	const struct adis_timeout *timeouts = adis->data->timeouts;
- 
- 	ret = __adis_write_reg_8(adis, adis->data->glob_cmd_reg,
- 				 ADIS_GLOB_CMD_SW_RESET);
-@@ -349,8 +348,6 @@ int __adis_reset(struct adis *adis)
- 		return ret;
+@@ -419,6 +419,12 @@ int __adis_initial_startup(struct adis *adis)
+ 		msleep(timeouts->sw_reset_ms);
  	}
  
--	msleep(timeouts->sw_reset_ms);
--
- 	return 0;
- }
- EXPORT_SYMBOL_NS_GPL(__adis_reset, "IIO_ADIS_LIB");
-@@ -416,9 +413,10 @@ int __adis_initial_startup(struct adis *adis)
- 		gpiod_set_value_cansleep(gpio, 0);
- 		msleep(timeouts->reset_ms);
- 	} else {
--		ret = __adis_reset(adis);
-+		ret = adis->ops->reset(adis);
- 		if (ret)
- 			return ret;
-+		msleep(timeouts->sw_reset_ms);
- 	}
- 
++	if (adis->data->post_reset_setup) {
++		ret = adis->data->post_reset_setup(adis);
++		if (ret)
++			return ret;
++	}
++
  	ret = adis_self_test(adis);
+ 	if (ret)
+ 		return ret;
 diff --git a/include/linux/iio/imu/adis.h b/include/linux/iio/imu/adis.h
-index 14f9b304c252..c09b381eb619 100644
+index c09b381eb619..3d7c7febaec6 100644
 --- a/include/linux/iio/imu/adis.h
 +++ b/include/linux/iio/imu/adis.h
-@@ -10,6 +10,7 @@
- #define __IIO_ADIS_H__
+@@ -52,6 +52,12 @@ struct adis_timeout {
+  * @self_test_mask: Bitmask of supported self-test operations
+  * @self_test_reg: Register address to request self test command
+  * @self_test_no_autoclear: True if device's self-test needs clear of ctrl reg
++ * @post_reset_setup: Optional device-specific hook called after reset,
++ *		before self-test. Not all ADIS devices need extra bring-up
++ *		between reset and self-test (SPI mode locking, status or
++ *		bootloader checks, pin or burst-mode configuration, etc.) -
++ *		only called when set. Must return 0 on success, a negative
++ *		error code otherwise.
+  * @self_test: Optional device-specific self-test override. When set,
+  *		it is called instead of the generic mask-write/sleep/
+  *		check-status sequence. The callback owns its own pass/fail
+@@ -88,6 +94,7 @@ struct adis_data {
+ 	unsigned int self_test_mask;
+ 	unsigned int self_test_reg;
+ 	bool self_test_no_autoclear;
++	int (*post_reset_setup)(struct adis *adis);
+ 	int (*self_test)(struct adis *adis);
+ 	const struct adis_timeout *timeouts;
  
- #include <linux/cleanup.h>
-+#include <linux/delay.h>
- #include <linux/spi/spi.h>
- #include <linux/interrupt.h>
- #include <linux/iio/iio.h>
-@@ -178,8 +179,17 @@ int __adis_reset(struct adis *adis);
-  */
- static inline int adis_reset(struct adis *adis)
- {
-+	int ret;
-+
- 	guard(mutex)(&adis->state_lock);
--	return __adis_reset(adis);
-+
-+	ret = adis->ops->reset(adis);
-+	if (ret)
-+		return ret;
-+
-+	msleep(adis->data->timeouts->sw_reset_ms);
-+
-+	return 0;
- }
- 
- int __adis_write_reg(struct adis *adis, unsigned int reg,
 
 -- 
 2.43.0
