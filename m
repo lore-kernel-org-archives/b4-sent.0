@@ -1,319 +1,78 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Fri, 23 Oct 2026 11:10:25 +0900
-Subject: [PATCH v2 4/4] nfsd: do not fail a LAYOUTGET on a lease break by
- the same client
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH net 0/2] net/iucv: two fixes in the HiperSockets receive
+ path
+Date: Thu, 22 Oct 2026 21:48:33 -0500
+Message-Id: <20261022-b4-disp-b35a9153-v1-0-d74645876195@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-nfsd-layout-refcall-v2-4-2160bddced0c@samsung.com>
-References: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
-In-Reply-To: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: Christoph Hellwig <hch@lst.de>, 
- Benjamin Coddington <ben.coddington@hammerspace.com>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792721421; l=13186;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=KnGMB0uW//H10UcDvkCS6Dac/ufCUyYjUaxjBYG9z24=;
- b=pWzAds3HSNTZ2WaEF7+ROG0f0iL7A9t+d3zZDZPPEpHYfvfeAZDM0nOc8bfXqx0XML7VVQ7rp
- OkCa60zUa2GD0rXsHGoBn6Nhp0iwQiOkGb77BypWj5TfrgqjOyCCole
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMyQrCQBAFfyW8sw2zZEF/RTzM0mp7GMN0IkLIv
+ zvqsQqqNihXYcWp21D5JSrP0sAeOqR7KDcmyY3hjButcY5iT1l0puiHcLSDp5BNn9M0TtYHtGy
+ ufJX3b3lG4QWXv9Q1Pjgt3xn2/QNSgGrJeQAAAA==
+X-Change-ID: 20261022-b4-disp-b35a9153-ad04dc76713a
+To: Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, 
+ Alexandra Winter <wintera@linux.ibm.com>, 
+ Thorsten Winkler <twinkler@linux.ibm.com>
+Cc: Nagamani PV <nagamani@linux.ibm.com>, netdev@vger.kernel.org, 
+ Hidayath Khan <hidayath@linux.ibm.com>, linux-s390@vger.kernel.org, 
+ Simon Horman <horms@kernel.org>, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792723713; l=2328;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=BNJJOuLjMNRhAx5T7Da8KhKmOmXfQyl0MXLk28E4drE=;
+ b=Z8InjL46QKi0duh6ud0YXgHDg5z3Pou/y/6UaKe6E6PVWr6eJPcSeyD1Nbzl6PFt6V64p3KHL
+ SDS+sLZnONUCKabpDPw0vkcm6jMuVKIn0dYchNRPVsSb6Xk4/Y6fX4e
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-"nfsd: fail a LAYOUTGET in progress when the layout lease is broken"
-fails a LAYOUTGET whose layout stateid has no layouts yet when the lease
-is broken, so that no layout is handed out after the break without a
-recall. Since "nfsd: answer NFS4ERR_DELAY instead of waiting for a
-layout recall", a WRITE through the metadata server that meets a layout
-of its own client gets NFS4ERR_DELAY, and the Linux client resends it
-every 0.1 seconds; a resend breaks the lease of any LAYOUTGET that the
-same client has in progress. A client that writes through the metadata
-server while it does I/O through a layout of the same file, as the Linux
-client does for O_DIRECT writes that are not aligned to a page, then
-gets NFS4ERR_RECALLCONFLICT for LAYOUTGET after LAYOUTGET, and waits up
-to 15 seconds between them.
+Two bugs in the HiperSockets receive path that predate the socket-locking
+rework [1]; review and testing of that rework turned them up. Neither
+depends on it.
 
-When the break comes from a request of the client that holds the layout
-stateid, nfsd4_break_file_layout() notes that the break met a LAYOUTGET
-in progress and when the break times out (fl_break_time), and
-nfsd4_insert_layout() recalls the layout as soon as it adds it. The
-LAYOUTGET succeeds and the client is asked for the layout back at once.
-nfsd4_layout_breaker_is_holder() finds the client of the breaker as
-nfsd_breaker_owns_lease() does for delegations. The layout is still
-recalled: a write through the metadata server can change the block
-mapping that the layout describes. A break by another client or by a
-local process fails the LAYOUTGET as before, and the conflicting
-operation goes ahead without waiting for a recall, unless a break by the
-holder came first. The new case is traced as nfsd_layout_break_pending.
+1/2 clears hs_dev before the socket drops its reference on the device and
+marks the accesses that race with it: afiucv_hs_rcv() compares hs_dev
+under iucv_sk_list.lock while close() clears it under lock_sock().
+Hidayath Khan caught the racing pair with KCSAN under z/VM [2] and
+suggested the fix. The listener's child now takes its device from the
+frame instead of reading the listener's field in softirq. This is an
+ordering fix with no known crash.
 
-A LAYOUTGET that would add its layout after the break has timed out
-fails as before, whether or not the timeout has been noticed yet:
-time_out_leases() notices it only when another lease operation on the
-file comes, and a layout added in between would be recalled when it is
-already due and have its client fenced if that operation comes before
-the layout is back. When the timeout is noticed first,
-nfsd4_layout_lm_breaker_timedout() marks the layout stateid recalled, so
-that the LAYOUTGET fails. A layout added shortly before the break times
-out is recalled with what is left of fs.lease-break-time, and its client
-is fenced if it does not return the layout by then, where the LAYOUTGET
-failed before this patch. With the default of 45 seconds that takes a
-LAYOUTGET that has been in progress for most of that time.
+2/2 stops counting the SHT's empty frame against the receive window (the
+peer does not count it) and drops the WARN_ON on the overrun path, which
+a peer reaches from the network by sending past its window. Only frames
+with data count now; a zero-length data frame, which already ends the
+stream for its reader, is no longer counted either. 2/2 applies on its
+own and goes to stable.
 
-The recall is queued before the LAYOUTGET reply is sent and can reach
-the client first; a client that answers NFS4ERR_NOMATCHING_LAYOUT then
-would have its layout thrown away while it uses it. The resent recall of
-"nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT"
-and the referring call that CB_LAYOUTRECALL carries since "nfsd: send a
-referring call with CB_LAYOUTRECALL" cover that, for a client that takes
-the reply in within about three seconds or holds the recall back, which
-is why this comes after them. A recall that cannot be sent because the
-backchannel is down ends at once and drops the layouts, as any layout
-recall does today; with this patch that can take the layout that the
-LAYOUTGET is handing out.
+Based on net f4377bf85887. The same two patches apply on net-next
+8df0638138d3, where the test set ran, and on mainline (7.3-rc7); the
+SHT case below ran on this base as well. Tested on an s390x guest
+under QEMU TCG with KASAN and lockdep on. QEMU has no HiperSockets
+adapter and its s390x CPU emulation lacked things this needs: the
+adapter is one I wrote, under the real qeth and qdio drivers, the CPU
+carries my patches, and there is no IBM Z to compare against. With 2/2
+an SHT read while frames wait in backlog_skb_q gives EOF instead of
+WARN plus -EFAULT. 1/2 does not change any result in the rework's test
+set; its race shows under KCSAN, not here. Logs on request.
 
-One client writing 1 MiB blocks with O_DIRECT through its block layout
-and 512 bytes at the middle of a page through the metadata server to the
-same file, for 30 seconds: before this patch 51, 54 and 12 of the 1 MiB
-writes were done in three runs, as the LAYOUTGETs failed and the client
-backed off; with it 240, 249 and 244, with no 1 MiB block lost. The 512
-byte writes went from 5172, 5137 and 7589 to 1473, 1214 and 1397: the
-client now holds a layout most of the time, and such a WRITE meets it
-and gets NFS4ERR_DELAY. The same change without the two patches above
-lost 75 of 600, 79 of 589 and 87 of 600 blocks.
+[1] https://lore.kernel.org/netdev/20261011-b4-disp-410518f4-v1-1-753bf3258292@proton.me/
+[2] https://lore.kernel.org/netdev/b3fea2ca-25ff-42c0-812c-f8cc6bb6667e@linux.ibm.com/
 
-With fs.lease-break-time at one second and a test-only delay before
-nfsd4_insert_layout(), a 512 byte write through the metadata server 0.3
-seconds into the LAYOUTGET broke the lease and was resent every 0.1
-seconds; the first resend after the break timed out came 37 to 44 ms
-after it. A layout added 25 to 29 ms before the break timed out was
-recalled at once and returned in each of five runs, without fencing.
-LAYOUTGETs that would add their layout about 17 or 30 ms after the break
-had timed out, before that resend, failed with NFS4ERR_RECALLCONFLICT in
-each of five runs at each offset. With the test of the deadline taken
-out, they handed the layout out. At 17 ms the client returned it before
-the resend in each of five runs, and nothing was fenced; at 30 ms the
-resend timed the break out while the client still held the layout, and
-had it fenced, in four of five, and came first in the fifth.
-
-With a test-only delay of three seconds and a local write on the server
-that breaks the lease during that delay and goes ahead one second later,
-the LAYOUTGET fails with NFS4ERR_RECALLCONFLICT with this patch in each
-of three runs: a local process is not the holder, so this patch leaves
-that case alone. With another client breaking the lease, as in the test
-of "nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT"
-without the delay, the 1 MiB writes went on with the whole series as
-without it, 600 blocks in each of three runs of 30 seconds, and no
-recall overtook a reply; without the series, one did in one of three
-runs, and that block read back as zeroes.
-
-No Fixes: tag, as "nfsd: fail a LAYOUTGET in progress when the layout
-lease is broken" is not upstream yet. Where that patch is backported,
-this one is needed too, but only together with the two patches before
-it, so only where "NFSD: Send referring calls with CB_RECALL" and its
-series are, and not before v7.1.
-
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
- fs/nfsd/nfs4layouts.c | 81 ++++++++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/state.h       | 11 +++++++
- fs/nfsd/trace.h       |  1 +
- 3 files changed, 82 insertions(+), 11 deletions(-)
+Bryam Vargas (2):
+      net/iucv: clear hs_dev before dropping its reference
+      net/iucv: do not count the SHT frame against the receive window
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 7a0353149e..c797bc7d93 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -336,6 +336,8 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
- 	}
- 
- 	ls->ls_recall_start = 0;
-+	ls->ls_break_pending = false;
-+	ls->ls_break_time = 0;
- 	ls->ls_fenced = false;
- 	ls->ls_fence_inflight = false;
- 	ls->ls_fence_stopped = false;
-@@ -459,16 +461,42 @@ nfsd4_recall_file_layout(struct nfs4_layout_stateid *ls)
- 	spin_unlock(&ls->ls_lock);
- }
- 
-+/* Whether the lease break comes from a request of the client of @ls */
-+static bool
-+nfsd4_layout_breaker_is_holder(const struct nfs4_layout_stateid *ls)
-+{
-+	struct svc_rqst *rqstp = nfsd_current_rqst();
-+	struct nfsd_thread_local_info *ntli;
-+
-+	if (!nfsd_v4client(rqstp))
-+		return false;
-+	ntli = rqstp->rq_private;
-+	return *ntli->ntli_lease_breaker == ls->ls_stid.sc_client;
-+}
-+
- /*
-- * A layout stateid with no layouts belongs to a LAYOUTGET in progress
-- * and already holds the lease. Mark the stateid recalled so that
-- * nfsd4_insert_layout() fails the LAYOUTGET and the lease is released.
-+ * A lease break also has to reach a LAYOUTGET in progress, whose layout
-+ * stateid holds the lease but has no layouts yet. Mark the stateid
-+ * recalled so that nfsd4_insert_layout() fails the LAYOUTGET and the
-+ * lease is released. When the break comes from a request of the same
-+ * client, as a WRITE through the metadata server that the Linux client
-+ * sends next to its I/O through the layout, failing its LAYOUTGET would
-+ * have it back off and fail again: note the break and its deadline
-+ * instead, and let nfsd4_insert_layout() recall the layout as soon as it
-+ * adds it, unless the break is past its deadline by then.
-+ * ->lm_break() is not called again for a lease that is already breaking.
-  */
- static void
--nfsd4_break_file_layout(struct nfs4_layout_stateid *ls)
-+nfsd4_break_file_layout(struct nfs4_layout_stateid *ls,
-+			unsigned long break_time)
- {
- 	spin_lock(&ls->ls_lock);
--	if (!ls->ls_recalled && list_empty(&ls->ls_layouts)) {
-+	if (!ls->ls_recalled && list_empty(&ls->ls_layouts) &&
-+	    nfsd4_layout_breaker_is_holder(ls)) {
-+		ls->ls_break_pending = true;
-+		ls->ls_break_time = break_time;
-+		trace_nfsd_layout_break_pending(&ls->ls_stid.sc_stateid);
-+	} else if (!ls->ls_recalled && list_empty(&ls->ls_layouts)) {
- 		ls->ls_recalled = true;
- 		atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
- 		trace_nfsd_layout_recall_empty(&ls->ls_stid.sc_stateid);
-@@ -478,6 +506,18 @@ nfsd4_break_file_layout(struct nfs4_layout_stateid *ls)
- 	spin_unlock(&ls->ls_lock);
- }
- 
-+/*
-+ * Whether the lease break noted by nfsd4_break_file_layout() is past its
-+ * deadline. A layout added now would be recalled too late, whether or
-+ * not time_out_leases() has noticed the timeout yet.
-+ */
-+static bool
-+nfsd4_layout_break_expired(const struct nfs4_layout_stateid *ls)
-+{
-+	return ls->ls_break_pending && ls->ls_break_time &&
-+	       time_after(jiffies, ls->ls_break_time);
-+}
-+
- static inline u64
- layout_end(struct nfsd4_layout_seg *seg)
- {
-@@ -553,7 +593,7 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	if (nfserr)
- 		goto out;
- 	spin_lock(&ls->ls_lock);
--	if (ls->ls_recalled) {
-+	if (ls->ls_recalled || nfsd4_layout_break_expired(ls)) {
- 		nfserr = nfserr_recallconflict;
- 		goto out_unlock_ls;
- 	}
-@@ -575,7 +615,7 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	if (nfserr)
- 		goto out;
- 	spin_lock(&ls->ls_lock);
--	if (ls->ls_recalled) {
-+	if (ls->ls_recalled || nfsd4_layout_break_expired(ls)) {
- 		nfserr = nfserr_recallconflict;
- 		goto out_unlock_ls;
- 	}
-@@ -589,6 +629,10 @@ nfsd4_insert_layout(struct nfsd4_layoutget *lgp, struct nfs4_layout_stateid *ls)
- 	new = NULL;
- done:
- 	nfs4_inc_and_copy_stateid(&lgp->lg_sid, &ls->ls_stid);
-+	if (ls->ls_break_pending) {
-+		ls->ls_break_pending = false;
-+		nfsd4_recall_file_layout_locked(ls);
-+	}
- out_unlock_ls:
- 	spin_unlock(&ls->ls_lock);
- out:
-@@ -1182,7 +1226,7 @@ nfsd4_layout_lm_break(struct file_lease *fl)
- 	 * Enforce break lease timeout to prevent NFSD
- 	 * thread from hanging in __break_lease.
- 	 */
--	nfsd4_break_file_layout(fl->c.flc_owner);
-+	nfsd4_break_file_layout(fl->c.flc_owner, fl->fl_break_time);
- 	return false;
- }
- 
-@@ -1373,7 +1417,9 @@ static void nfsd4_layout_fence_worker(struct work_struct *work)
-  *
-  * Schedule a worker to fence the client from accessing the block device.
-  * If the layout type has no fence operation, the worker runs the fence
-- * script instead.
-+ * script instead. If a lease break of its own client met the LAYOUTGET
-+ * of a layout stateid that has no layouts yet, mark it recalled instead,
-+ * so that the LAYOUTGET fails.
-  *
-  * This function runs under the protection of the spin_lock flc_lock.
-  * At this time, the file_lease associated with the layout stateid is
-@@ -1413,8 +1459,21 @@ nfsd4_layout_lm_breaker_timedout(struct file_lease *fl)
- 		spin_unlock(&ls->ls_lock);
- 		return false;
- 	}
--	if (list_empty(&ls->ls_layouts) ||
--			!refcount_inc_not_zero(&ls->ls_stid.sc_count)) {
-+	if (list_empty(&ls->ls_layouts)) {
-+		/*
-+		 * The lease goes away and the conflicting operation goes
-+		 * ahead, so a LAYOUTGET that the break met must not add a
-+		 * layout any more: fail it as nfsd4_insert_layout() fails one
-+		 * on a recalled layout stateid.
-+		 */
-+		if (ls->ls_break_pending && !ls->ls_recalled) {
-+			ls->ls_recalled = true;
-+			atomic_inc(&ls->ls_stid.sc_file->fi_lo_recalls);
-+		}
-+		spin_unlock(&ls->ls_lock);
-+		return true;
-+	}
-+	if (!refcount_inc_not_zero(&ls->ls_stid.sc_count)) {
- 		spin_unlock(&ls->ls_lock);
- 		return true;
- 	}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 5cf3a5ac46..ec325825d7 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -876,6 +876,17 @@ struct nfs4_layout_stateid {
- 	/* The client has answered NFS4_OK to the recall */
- 	bool				ls_recall_accepted;
- 	bool				ls_recalled;
-+	/*
-+	 * A lease break of this client met a LAYOUTGET in progress: recall
-+	 * the layout it adds, or fail it once the break is past its time.
-+	 * Under ls_lock.
-+	 */
-+	bool				ls_break_pending;
-+	/*
-+	 * fl_break_time of that break: 0 if it does not time out.
-+	 * Under ls_lock.
-+	 */
-+	unsigned long			ls_break_time;
- 	struct mutex			ls_mutex;
- 	/*
- 	 * The latest NFSD4_LAYOUT_MAX_GRANTS LAYOUTGETs that added a
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index a2c21d491a..2110e95ee1 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -829,6 +829,7 @@ DEFINE_STATEID_EVENT(layout_commit_lookup_fail);
- DEFINE_STATEID_EVENT(layout_return_lookup_fail);
- DEFINE_STATEID_EVENT(layout_recall);
- DEFINE_STATEID_EVENT(layout_recall_empty);
-+DEFINE_STATEID_EVENT(layout_break_pending);
- DEFINE_STATEID_EVENT(layout_recall_done);
- DEFINE_STATEID_EVENT(layout_recall_resend);
- DEFINE_STATEID_EVENT(layout_recall_new_seqid);
+ net/iucv/af_iucv.c | 39 +++++++++++++++++++++++++++++----------
+ 1 file changed, 29 insertions(+), 10 deletions(-)
+---
+base-commit: f4377bf85887f57b59abb5479f7660a81ffe4449
+change-id: 20261022-b4-disp-b35a9153-ad04dc76713a
 
--- 
-2.43.0
+Best regards,
+--  
+bryamzxz <hexlabsecurity@proton.me>
 
