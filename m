@@ -1,11 +1,11 @@
 From: Ishu Brar <patches@brar.si>
-Date: Fri, 23 Oct 2026 14:19:00 +0530
-Subject: [PATCH v2 2/4] drm/msm/a6xx: Add a bandwidth table for the Adreno
- 620 GMU
+Date: Fri, 23 Oct 2026 14:19:01 +0530
+Subject: [PATCH v2 3/4] drm/msm/a6xx: Program the PDC sequencer on Adreno
+ 620
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-adreno-a620-v2-2-1d654c3f52d5@brar.si>
+Message-Id: <20261023-adreno-a620-v2-3-1d654c3f52d5@brar.si>
 References: <20261023-adreno-a620-v2-0-1d654c3f52d5@brar.si>
 In-Reply-To: <20261023-adreno-a620-v2-0-1d654c3f52d5@brar.si>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -23,101 +23,112 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792745340; l=3158;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792745340; l=4541;
  i=patches@brar.si; h=from:subject:message-id;
- bh=ZgldijA3JDgDsTY5MOw8s5Wh1FCac7/xjEdjhBWUFz8=;
- b=PNMT/GH5Th4EWpLP567H9jPExcocaDeL/mKA6+DjOYItbWDx5d6oy+g0qVJ+1//kwvQY5AWvc
- 8RozAjkVxWUD9h0+6IynxGRDilXyhpcv+7C8sGEiqAmZsmPOORsMXSo
+ bh=x4HOsHyXPYSkJ2t+WDA/wMUzqtU9tuPNuXBzb9lwnYE=;
+ b=YTHcpeO9DF/KCWZAIWs3FqVznniqYVeIc1vrEw3Svor8mVrLAYlMah3ZMp88GOFGnMHdVaMlZ
+ ca6nApgpXpJA9sH5iqmF7bqPfbO6C8rjF4QMjhI0wuNkayzYo8N/fkR
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Without an A620 specific table the GMU falls back to the generic A630
-one, whose BCM addresses do not exist on SM7250, and the first GX
-performance vote times out.
+Unlike the rest of the A650 family, the A620 does not get its PDC set up
+by AOP (the downstream devicetree has no pdc_in_aop for it). Without the
+sequence, the RSC never acks the second power-up ("Unable to power on
+the GPU RSC") and the device hangs.
 
-Like the A650 one, send a single "off" entry just to get things running,
-with the BCM addresses looked up in cmd-db. This is only used while the
-GPU OPP table has no bandwidth levels; with them, the table is generated
-from the BCMs listed in the catalog entry. Add adreno_is_a620() for the
-selection.
+Program the sequence from the driver, taking the xo, mx and cx resource
+addresses from cmd-db instead of the hardcoded ones.
 
 Assisted-by: Claude
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- drivers/gpu/drm/msm/adreno/a6xx_hfi.c   | 34 +++++++++++++++++++++++++++++++++
- drivers/gpu/drm/msm/adreno/adreno_gpu.h |  5 +++++
- 2 files changed, 39 insertions(+)
+ drivers/gpu/drm/msm/adreno/a6xx_gmu.c | 35 +++++++++++++++++++++++++++++------
+ 1 file changed, 29 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_hfi.c b/drivers/gpu/drm/msm/adreno/a6xx_hfi.c
-index 6b34e704a..b59853678 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_hfi.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_hfi.c
-@@ -553,6 +553,38 @@ static void a650_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
- 	msg->cnoc_cmds_data[1][0] =  0x60000001;
- }
+diff --git a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
+index 662f09bec..8d426f1f1 100644
+--- a/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
++++ b/drivers/gpu/drm/msm/adreno/a6xx_gmu.c
+@@ -686,6 +686,7 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
+ 	u32 seqmem0_drv0_reg = REG_A6XX_RSCC_SEQ_MEM_0_DRV0;
+ 	void __iomem *seqptr = NULL;
+ 	uint32_t pdc_address_offset;
++	u32 mx_addr = 0x30010, cx_addr = 0x30000, vrm_addr = 0;
+ 	void __iomem *pdcptr;
+ 	bool pdc_in_aop = false;
  
-+static void a620_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
-+{
-+	/*
-+	 * Used when the OPP table has no bandwidth levels, otherwise the
-+	 * table is generated from the BCMs in the catalog. Send a single
-+	 * "off" entry just to get things running.
-+	 */
-+	msg->bw_level_num = 1;
-+
-+	msg->ddr_cmds_num = 3;
-+	msg->ddr_wait_bitmask = 0x01;
-+
-+	msg->ddr_cmds_addrs[0] = cmd_db_read_addr("MC0");
-+	msg->ddr_cmds_addrs[1] = cmd_db_read_addr("SH0");
-+	msg->ddr_cmds_addrs[2] = cmd_db_read_addr("ACV");
-+
-+	msg->ddr_cmds_data[0][0] =  0x40000000;
-+	msg->ddr_cmds_data[0][1] =  0x40000000;
-+	msg->ddr_cmds_data[0][2] =  0x40000000;
-+
-+	/*
-+	 * These are the CX (CNOC) votes - these are used by the GMU but the
-+	 * votes are known and fixed for the target
-+	 */
-+	msg->cnoc_cmds_num = 1;
-+	msg->cnoc_wait_bitmask = 0x01;
-+
-+	msg->cnoc_cmds_addrs[0] = cmd_db_read_addr("CN0");
-+	msg->cnoc_cmds_data[0][0] =  0x40000000;
-+	msg->cnoc_cmds_data[1][0] =  0x60000001;
-+}
-+
- static void a690_build_bw_table(struct a6xx_hfi_msg_bw_table *msg)
- {
- 	/*
-@@ -818,6 +850,8 @@ static int a6xx_hfi_send_bw_table(struct a6xx_gmu *gmu)
- 		a619_build_bw_table(msg);
- 	else if (adreno_is_a640_family(adreno_gpu))
- 		a640_build_bw_table(msg);
-+	else if (adreno_is_a620(adreno_gpu))
-+		a620_build_bw_table(msg);
- 	else if (adreno_is_a650(adreno_gpu))
- 		a650_build_bw_table(msg);
- 	else if (adreno_is_7c3(adreno_gpu))
-diff --git a/drivers/gpu/drm/msm/adreno/adreno_gpu.h b/drivers/gpu/drm/msm/adreno/adreno_gpu.h
-index 4b2156825..b77502446 100644
---- a/drivers/gpu/drm/msm/adreno/adreno_gpu.h
-+++ b/drivers/gpu/drm/msm/adreno/adreno_gpu.h
-@@ -443,6 +443,11 @@ static inline int adreno_is_a619_holi(const struct adreno_gpu *gpu)
- 	return adreno_is_a619(gpu) && adreno_has_gmu_wrapper(gpu);
- }
+@@ -697,8 +698,18 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
+ 	if (IS_ERR(pdcptr))
+ 		return;
  
-+static inline int adreno_is_a620(const struct adreno_gpu *gpu)
-+{
-+	return gpu->info->chip_ids[0] == 0x06020000;
-+}
+-	if (adreno_is_a650_family(adreno_gpu) ||
+-	    adreno_is_a7xx(adreno_gpu))
++	/* Unlike the rest of the A650 family, A620 has no PDC setup from AOP */
++	if (adreno_is_a620(adreno_gpu)) {
++		pdc_address_offset = cmd_db_read_addr("xo.lvl");
++		mx_addr = cmd_db_read_addr("mx.lvl");
++		cx_addr = cmd_db_read_addr("cx.lvl");
++		vrm_addr = cmd_db_read_addr("vrm.soc");
++		if (!pdc_address_offset || !mx_addr || !cx_addr) {
++			DRM_DEV_ERROR(gmu->dev, "No PDC resource addresses in cmd-db\n");
++			return;
++		}
++	} else if (adreno_is_a650_family(adreno_gpu) ||
++		 adreno_is_a7xx(adreno_gpu))
+ 		pdc_in_aop = true;
+ 	else if (adreno_is_a618(adreno_gpu) || adreno_is_a640_family(adreno_gpu))
+ 		pdc_address_offset = 0x30090;
+@@ -766,25 +777,31 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD_WAIT_FOR_CMPL_BANK, 0);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CONTROL, 0);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID, 0x10108);
+-	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR, 0x30010);
++	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR, mx_addr);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_DATA, 1);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID + 4, 0x10108);
+-	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR + 4, 0x30000);
++	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR + 4, cx_addr);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_DATA + 4, 0x0);
+ 
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID + 8, 0x10108);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR + 8, pdc_address_offset);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_DATA + 8, 0x0);
+ 
++	if (vrm_addr) {
++		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_MSGID + 12, 0x10108);
++		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_ADDR + 12, vrm_addr + 0x4);
++		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS1_CMD0_DATA + 12, 0x0);
++	}
 +
- static inline int adreno_is_a621(const struct adreno_gpu *gpu)
- {
- 	return gpu->info->chip_ids[0] == 0x06020100;
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD_ENABLE_BANK, 7);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD_WAIT_FOR_CMPL_BANK, 0);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CONTROL, 0);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_MSGID, 0x10108);
+-	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR, 0x30010);
++	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR, mx_addr);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_DATA, 2);
+ 
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_MSGID + 4, 0x10108);
+-	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR + 4, 0x30000);
++	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR + 4, cx_addr);
+ 	if (adreno_is_a618(adreno_gpu) || adreno_is_a619(adreno_gpu) ||
+ 			adreno_is_a650_family(adreno_gpu))
+ 		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_DATA + 4, 0x2);
+@@ -794,6 +811,12 @@ static void a6xx_gmu_rpmh_init(struct a6xx_gmu *gmu)
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR + 8, pdc_address_offset);
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_DATA + 8, 0x3);
+ 
++	if (vrm_addr) {
++		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_MSGID + 12, 0x10108);
++		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_ADDR + 12, vrm_addr + 0x4);
++		pdc_write(pdcptr, REG_A6XX_PDC_GPU_TCS3_CMD0_DATA + 12, 0x1);
++	}
++
+ 	/* Setup GPU PDC */
+ setup_pdc:
+ 	pdc_write(pdcptr, REG_A6XX_PDC_GPU_SEQ_START_ADDR, 0);
 
 -- 
 2.56.0
