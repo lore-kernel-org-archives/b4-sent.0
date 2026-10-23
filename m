@@ -1,485 +1,124 @@
 From: Ishu Brar <patches@brar.si>
-Date: Fri, 23 Oct 2026 13:51:17 +0530
-Subject: [PATCH 2/2] drm/panel: Add Samsung AMS644VK04 panel driver
+Subject: [PATCH v2 0/4] drm/msm/adreno: Add Adreno 620
+Date: Fri, 23 Oct 2026 14:18:58 +0530
+Message-Id: <20261023-adreno-a620-v2-0-1d654c3f52d5@brar.si>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-panel-ams644vk04-v1-2-56096aecd0ff@brar.si>
-References: <20261023-panel-ams644vk04-v1-0-56096aecd0ff@brar.si>
-In-Reply-To: <20261023-panel-ams644vk04-v1-0-56096aecd0ff@brar.si>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ7CIBBFr9LMWgygodZV72G6oGWw4wLMUImm6
+ d2FunX5kvffXyEhEya4NiswZkoUQwF9aGCabbijIFcYtNRGSWWEdYwhCmu0FN4imq4bTxftoSy
+ ejJ7ee+02/Di9xgdOS01UY6a0RP7sd1lV7385KyHF2bbojFbSta4f2fIxEQzbtn0B0Y5YkLYAA
+ AA=
+X-Change-ID: 20261016-adreno-a620-faee699b382f
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ Conor Dooley <conor+dt@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
+ Akhil P Oommen <akhilpo@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792743679; l=16340;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792745340; l=4076;
  i=patches@brar.si; h=from:subject:message-id;
- bh=qfcpODlADwF5aBKuH0qsXsVq8GHCNtDooMSQs8wT4F4=;
- b=Hh3qQGa7veRbgRhwvLjpatBjmHZ9EsLz6QxuVZJLUOB6lEypgis5LvJErFBxom7yzQGOTg0SY
- 6uc8Bn4upInBzCGlDADuQz8D4zvMbrbuFP8jBnAty8SmyQnsplZI9dP
+ bh=/beW+AELpxp6o1wu1hniusiXifJZlEukCyeC01/aOdM=;
+ b=FQHQoc8nksHyFjwH9rtQud/6Sz7XiVo9yW+GxJLlCUUjw1Ls15rVTcsdPiz/S/b0//za1teSJ
+ gD3SEC2o7apC+fT/I0o+6AihJHFhbUqZSi01k882SZIwpPELBzyZrqr
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the Samsung AMS644VK04, a 1080x2400 DSI command mode
-AMOLED panel with DSC found in the OnePlus Nord (SM7250). It uses four
-lanes and DSC 1.1 at 8 bits per pixel.
+This adds Adreno 620 GPU found in Qualcomm SM7250 (Snapdragon
+765/765G/768G) to msm driver. It is A650 derivative using 
+a650 SQE/GMU firmware and a620_zap.mbn. On top of catalog entry it
+needs two A620 specific GMU changes:
 
-The initialisation sequence and the DSC picture parameter set come from
-the downstream driver. The PPS is sent as a fixed DCS 0x9e command
-because it differs from what drm_dsc_pps_payload_pack() computes for the
-same geometry: the downstream first_line_bpg_offset is 15 while the
-helper gives 12, which also changes a few derived values and the last
-rate control ranges. Only the 90 Hz mode is described for now.
+ - A620 has no PDC setup from AOP, so PDC sequencer is
+   programmed from driver (xo/mx/cx addresses from cmd-db). Without
+   it RSC never acks second power-up and device hangs.
+ - A bandwidth table with BCM addresses of this SoC. The generic
+   A630 one does not exist on SM7250, so first GX performance vote
+   times out.
 
-Tested on a OnePlus Nord with the msm DSI host, including suspend and
-resume.
+Tested on OnePlus Nord (SM7250) running mainline: the GPU, GMU and
+Vulkan work. This needs the SM7250 SMMU series [1] as well, otherwise
+the device is reset when the first per-process pagetable is created.
+The SoC devicetree nodes are not part of this series; they will be sent
+separately once the SoC dtsi is accepted.
 
-Assisted-by: Claude
+[1] https://lore.kernel.org/all/20261023-smmu-sm7250-v2-0-8bb881ce19f5@brar.si/
+
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- MAINTAINERS                                      |   1 +
- drivers/gpu/drm/panel/Kconfig                    |  15 +
- drivers/gpu/drm/panel/Makefile                   |   1 +
- drivers/gpu/drm/panel/panel-samsung-ams644vk04.c | 373 +++++++++++++++++++++++
- 4 files changed, 390 insertions(+)
+Changes in v2:
+- Patch 3: also program the VRM command (vrm.soc + 4) in TCS1 and TCS3
+  when cmd-db has it, as the downstream driver does (Konrad).
+- Patch 4: GMU clock gating mode is 0x00020202 as downstream (was
+  0x00020200); add the SH0/MC0/ACV BCM list for the generic bandwidth
+  table. The bus widths are the ones the other A6xx/A7xx parts use.
+- Patch 2 is kept for now: the generic table is only used when the OPP
+  table has bandwidth levels, which needs the SM7250 interconnect
+  driver and DT that are not upstream yet. Without it the A620 would
+  fall back to the A630 table.
+- Testing: v2 was re-tested on the OnePlus Nord (these changes on top
+  of my 7.3-rc7 port tree, not on msm-next), with the interconnect
+  path and OPP bandwidth levels in the GPU node. Vulkan workloads ran
+  across GPU power cycles and all four GPU frequencies; each frequency
+  selected its own bandwidth level, the generated BCM votes scale
+  linearly with the OPP bandwidth and the GMU accepted the table. I
+  could not read back the resulting DDR frequency.
+- Protect map (patch 4 follow-up suggested by Konrad): not included
+  yet, waiting for the downstream reference of the 0x1c800 range.
+- Link to v1: https://patch.msgid.link/20261016-adreno-a620-v1-0-4a7ed6210d7d@brar.si
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1eec53b0e..0cdb25220 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -8467,6 +8467,7 @@ M:	Ishu Brar <patches@brar.si>
- S:	Maintained
- T:	git https://gitlab.freedesktop.org/drm/misc/kernel.git
- F:	Documentation/devicetree/bindings/display/panel/samsung,ams644vk04.yaml
-+F:	drivers/gpu/drm/panel/panel-samsung-ams644vk04.c
- 
- DRM DRIVER FOR SAMSUNG DB7430 PANELS
- M:	Linus Walleij <linusw@kernel.org>
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 7a520b4d6..b3c1c4f4b 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -956,6 +956,21 @@ config DRM_PANEL_SAMSUNG_AMS639RQ08
- 	  Say Y or M here if you want to enable support for the
- 	  Samsung AMS639RQ08 FHD Plus (2340x1080@60Hz) CMD mode panel.
- 
-+config DRM_PANEL_SAMSUNG_AMS644VK04
-+	tristate "Samsung AMS644VK04 panel"
-+	depends on OF
-+	depends on DRM_MIPI_DSI
-+	depends on BACKLIGHT_CLASS_DEVICE
-+	depends on GPIOLIB
-+	depends on REGULATOR
-+	help
-+	  Say Y or M here if you want to enable support for the
-+	  Samsung AMS644VK04 FHD Plus (1080x2400) DSC command mode AMOLED
-+	  panel, found in the OnePlus Nord.
-+
-+	  To compile this driver as a module, choose M here: the module
-+	  will be called panel-samsung-ams644vk04.
-+
- config DRM_PANEL_SAMSUNG_S6E88A0_AMS427AP24
- 	tristate "Samsung AMS427AP24 panel with S6E88A0 controller"
- 	depends on GPIOLIB && OF && REGULATOR
-diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index da5175909..01c1ca740 100644
---- a/drivers/gpu/drm/panel/Makefile
-+++ b/drivers/gpu/drm/panel/Makefile
-@@ -92,6 +92,7 @@ obj-$(CONFIG_DRM_PANEL_RENESAS_R69328) += panel-renesas-r69328.o
- obj-$(CONFIG_DRM_PANEL_RONBO_RB070D30) += panel-ronbo-rb070d30.o
- obj-$(CONFIG_DRM_PANEL_SAMSUNG_AMS581VF01) += panel-samsung-ams581vf01.o
- obj-$(CONFIG_DRM_PANEL_SAMSUNG_AMS639RQ08) += panel-samsung-ams639rq08.o
-+obj-$(CONFIG_DRM_PANEL_SAMSUNG_AMS644VK04) += panel-samsung-ams644vk04.o
- obj-$(CONFIG_DRM_PANEL_SAMSUNG_ATNA33XC20) += panel-samsung-atna33xc20.o
- obj-$(CONFIG_DRM_PANEL_SAMSUNG_DB7430) += panel-samsung-db7430.o
- obj-$(CONFIG_DRM_PANEL_SAMSUNG_LD9040) += panel-samsung-ld9040.o
-diff --git a/drivers/gpu/drm/panel/panel-samsung-ams644vk04.c b/drivers/gpu/drm/panel/panel-samsung-ams644vk04.c
-new file mode 100644
-index 000000000..66c589f0b
---- /dev/null
-+++ b/drivers/gpu/drm/panel/panel-samsung-ams644vk04.c
-@@ -0,0 +1,373 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Samsung AMS644VK04 AMOLED DSI command mode panel driver (DSC)
-+ *
-+ * 1080x2400, 4 lanes, DSC 1.1 8 bpc -> 8 bpp, 90 Hz.
-+ * Found in the OnePlus Nord (avicii).
-+ *
-+ * The initialisation sequences were generated from the downstream panel
-+ * description ("samsung ams644vk04 fhd cmd mode dsc dsi panel").
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/regulator/consumer.h>
-+
-+#include <drm/display/drm_dsc.h>
-+#include <drm/drm_mipi_dsi.h>
-+#include <drm/drm_modes.h>
-+#include <drm/drm_panel.h>
-+#include <drm/drm_probe_helper.h>
-+
-+#define AMS644VK04_WIDTH		1080
-+#define AMS644VK04_HEIGHT		2400
-+
-+#define AMS644VK04_MAX_BRIGHTNESS	0x7ff
-+#define AMS644VK04_DEFAULT_BRIGHTNESS	0x140
-+
-+/* Power-on order and expected load as given by the downstream supply entries */
-+static const struct regulator_bulk_data ams644vk04_supplies[] = {
-+	{ .supply = "vddio", .init_load_uA = 62000 },
-+	{ .supply = "vout", .init_load_uA = 857000 },
-+	{ .supply = "vdd", .init_load_uA = 857000 },
-+};
-+
-+struct ams644vk04 {
-+	struct drm_panel panel;
-+	struct mipi_dsi_device *dsi;
-+	struct drm_dsc_config dsc;
-+	struct gpio_desc *reset_gpio;
-+	struct regulator_bulk_data *supplies;
-+	bool prepared;
-+};
-+
-+static inline struct ams644vk04 *to_ams644vk04(struct drm_panel *panel)
-+{
-+	return container_of(panel, struct ams644vk04, panel);
-+}
-+
-+/*
-+ * DSC Picture Parameter Set as sent by the downstream driver: DCS 0x9e with
-+ * the first 88 bytes of the PPS.  drm_dsc_pps_payload_pack() computes a
-+ * different set for the same geometry: the downstream first_line_bpg_offset
-+ * is 15 (the helper gives 12), which also changes nfl_bpg_offset,
-+ * initial_dec_delay and scale_increment_interval, and the last rate control
-+ * ranges differ.  This is the combination known to work with this panel.
-+ */
-+static const u8 ams644vk04_pps_cmd[] = {
-+	0x9e, 0x11, 0x00, 0x00, 0x89, 0x30, 0x80, 0x09,
-+	0x60, 0x04, 0x38, 0x00, 0x30, 0x02, 0x1c, 0x02,
-+	0x1c, 0x02, 0x00, 0x02, 0x52, 0x00, 0x20, 0x04,
-+	0x23, 0x00, 0x07, 0x00, 0x0f, 0x02, 0x8e, 0x02,
-+	0x1f, 0x18, 0x00, 0x10, 0xf0, 0x03, 0x0c, 0x20,
-+	0x00, 0x06, 0x0b, 0x0b, 0x33, 0x0e, 0x1c, 0x2a,
-+	0x38, 0x46, 0x54, 0x62, 0x69, 0x70, 0x77, 0x79,
-+	0x7b, 0x7d, 0x7e, 0x01, 0x02, 0x01, 0x00, 0x09,
-+	0x40, 0x09, 0xbe, 0x19, 0xfc, 0x19, 0xfa, 0x19,
-+	0xf8, 0x1a, 0x38, 0x1a, 0x78, 0x1a, 0xb6, 0x2a,
-+	0xb6, 0x2a, 0xf4, 0x2a, 0xf4, 0x4b, 0x34, 0x63,
-+	0x74,
-+};
-+
-+static void ams644vk04_send_on(struct mipi_dsi_multi_context *dsi_ctx)
-+{
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x9d, 0x01);
-+	mipi_dsi_dcs_write_buffer_multi(dsi_ctx, ams644vk04_pps_cmd, sizeof(ams644vk04_pps_cmd));
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_exit_sleep_mode_multi(dsi_ctx);
-+	mipi_dsi_msleep(dsi_ctx, 20);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_set_tear_on_multi(dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_set_column_address_multi(dsi_ctx, 0, AMS644VK04_WIDTH - 1);
-+	mipi_dsi_dcs_set_page_address_multi(dsi_ctx, 0, AMS644VK04_HEIGHT - 1);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf5, 0x85);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x02);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf8, 0xc4);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x04);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf8, 0x41, 0x47, 0x11, 0xb8, 0xb8);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x02);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf8, 0xcc);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x03);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf2, 0x82);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf5, 0x87);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x03);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xdd, 0x40);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_msleep(dsi_ctx, 110);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x06);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb7, 0x01);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb0, 0x05);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb7, 0x13);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xb7, 0x01, 0x37);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x53, 0x20);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x60, 0x10);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0x55, 0x00);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xbd, 0x01);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xe6, 0x00);
-+	mipi_dsi_dcs_write_seq_multi(dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	mipi_dsi_dcs_set_display_on_multi(dsi_ctx);
-+}
-+
-+static void ams644vk04_send_off(struct mipi_dsi_multi_context *dsi_ctx)
-+{
-+	mipi_dsi_dcs_set_display_off_multi(dsi_ctx);
-+	mipi_dsi_msleep(dsi_ctx, 10);
-+	mipi_dsi_dcs_enter_sleep_mode_multi(dsi_ctx);
-+	mipi_dsi_msleep(dsi_ctx, 120);
-+}
-+
-+static void ams644vk04_reset(struct ams644vk04 *ctx)
-+{
-+	/* Same timing as downstream: 10 ms steps, the logical value 1 asserts reset */
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-+	usleep_range(10000, 10100);
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+	usleep_range(10000, 10100);
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-+	usleep_range(10000, 10100);
-+}
-+
-+static void ams644vk04_supplies_disable(struct ams644vk04 *ctx, int first)
-+{
-+	int i;
-+
-+	for (i = first; i >= 0; i--)
-+		regulator_disable(ctx->supplies[i].consumer);
-+}
-+
-+static int ams644vk04_supplies_enable(struct ams644vk04 *ctx)
-+{
-+	struct device *dev = &ctx->dsi->dev;
-+	int i, ret;
-+
-+	/* The rails come up one after the other, vddio and vout need time to settle */
-+	for (i = 0; i < ARRAY_SIZE(ams644vk04_supplies); i++) {
-+		ret = regulator_enable(ctx->supplies[i].consumer);
-+		if (ret) {
-+			dev_err(dev, "Failed to enable %s: %d\n",
-+				ams644vk04_supplies[i].supply, ret);
-+			ams644vk04_supplies_disable(ctx, i - 1);
-+			return ret;
-+		}
-+
-+		if (i < ARRAY_SIZE(ams644vk04_supplies) - 1)
-+			msleep(20);
-+	}
-+
-+	return 0;
-+}
-+
-+static int ams644vk04_prepare(struct drm_panel *panel)
-+{
-+	struct ams644vk04 *ctx = to_ams644vk04(panel);
-+	struct device *dev = &ctx->dsi->dev;
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi };
-+	int ret;
-+
-+	ret = ams644vk04_supplies_enable(ctx);
-+	if (ret)
-+		return ret;
-+
-+	ams644vk04_reset(ctx);
-+
-+	ams644vk04_send_on(&dsi_ctx);
-+	if (dsi_ctx.accum_err) {
-+		ret = dsi_ctx.accum_err;
-+		dev_err(dev, "Failed to send on sequence: %d\n", ret);
-+		goto err_power_down;
-+	}
-+
-+	ctx->prepared = true;
-+
-+	return 0;
-+
-+err_power_down:
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+	ams644vk04_supplies_disable(ctx, ARRAY_SIZE(ams644vk04_supplies) - 1);
-+
-+	return ret;
-+}
-+
-+static int ams644vk04_unprepare(struct drm_panel *panel)
-+{
-+	struct ams644vk04 *ctx = to_ams644vk04(panel);
-+	struct device *dev = &ctx->dsi->dev;
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi };
-+
-+	ctx->prepared = false;
-+
-+	ams644vk04_send_off(&dsi_ctx);
-+	if (dsi_ctx.accum_err)
-+		dev_err(dev, "Failed to send off sequence: %d\n", dsi_ctx.accum_err);
-+
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+	ams644vk04_supplies_disable(ctx, ARRAY_SIZE(ams644vk04_supplies) - 1);
-+
-+	return 0;
-+}
-+
-+/*
-+ * Timings are the downstream ones.  The clock is htotal * vtotal * refresh:
-+ * the msm DSI host scales the pixel clock for DSC by itself, so the mode
-+ * describes the uncompressed picture.
-+ */
-+static const struct drm_display_mode ams644vk04_mode = {
-+	.clock = (1080 + 52 + 24 + 24) * (2400 + 4 + 4 + 8) * 90 / 1000,
-+	.hdisplay = 1080,
-+	.hsync_start = 1080 + 52,
-+	.hsync_end = 1080 + 52 + 24,
-+	.htotal = 1080 + 52 + 24 + 24,
-+	.vdisplay = 2400,
-+	.vsync_start = 2400 + 4,
-+	.vsync_end = 2400 + 4 + 4,
-+	.vtotal = 2400 + 4 + 4 + 8,
-+	.width_mm = 67,
-+	.height_mm = 149,
-+	.type = DRM_MODE_TYPE_DRIVER,
-+};
-+
-+static int ams644vk04_get_modes(struct drm_panel *panel,
-+				struct drm_connector *connector)
-+{
-+	return drm_connector_helper_get_modes_fixed(connector, &ams644vk04_mode);
-+}
-+
-+static const struct drm_panel_funcs ams644vk04_panel_funcs = {
-+	.prepare = ams644vk04_prepare,
-+	.unprepare = ams644vk04_unprepare,
-+	.get_modes = ams644vk04_get_modes,
-+};
-+
-+static int ams644vk04_bl_update_status(struct backlight_device *bl)
-+{
-+	struct ams644vk04 *ctx = bl_get_data(bl);
-+
-+	if (!ctx->prepared)
-+		return 0;
-+
-+	/* The panel takes the 11 bit level most significant byte first */
-+	return mipi_dsi_dcs_set_display_brightness_large(ctx->dsi,
-+							 backlight_get_brightness(bl));
-+}
-+
-+static const struct backlight_ops ams644vk04_bl_ops = {
-+	.update_status = ams644vk04_bl_update_status,
-+};
-+
-+static int ams644vk04_probe(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	const struct backlight_properties props = {
-+		.type = BACKLIGHT_RAW,
-+		.brightness = AMS644VK04_DEFAULT_BRIGHTNESS,
-+		.max_brightness = AMS644VK04_MAX_BRIGHTNESS,
-+	};
-+	struct backlight_device *bl;
-+	struct ams644vk04 *ctx;
-+	int ret;
-+
-+	ctx = devm_drm_panel_alloc(dev, struct ams644vk04, panel,
-+				   &ams644vk04_panel_funcs,
-+				   DRM_MODE_CONNECTOR_DSI);
-+	if (IS_ERR(ctx))
-+		return PTR_ERR(ctx);
-+
-+	ret = devm_regulator_bulk_get_const(dev, ARRAY_SIZE(ams644vk04_supplies),
-+					    ams644vk04_supplies, &ctx->supplies);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "Failed to get regulators\n");
-+
-+	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
-+	if (IS_ERR(ctx->reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
-+				     "Failed to get reset-gpios\n");
-+
-+	ctx->dsi = dsi;
-+	mipi_dsi_set_drvdata(dsi, ctx);
-+
-+	dsi->lanes = 4;
-+	dsi->format = MIPI_DSI_FMT_RGB888;
-+	dsi->mode_flags = MIPI_DSI_MODE_LPM | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			  MIPI_DSI_MODE_DSC_ALL_SLICES_IN_PKT;
-+
-+	/*
-+	 * DSC 1.1, 8 bpc, 8 bpp (4 fractional bits), block prediction, two
-+	 * 540x48 slices per line, both in the same packet.  The DSI host
-+	 * derives the remaining rate control parameters from this.
-+	 */
-+	ctx->dsc.dsc_version_major = 1;
-+	ctx->dsc.dsc_version_minor = 1;
-+	ctx->dsc.slice_width = 540;
-+	ctx->dsc.slice_height = 48;
-+	ctx->dsc.slice_count = AMS644VK04_WIDTH / ctx->dsc.slice_width;
-+	ctx->dsc.bits_per_component = 8;
-+	ctx->dsc.bits_per_pixel = 8 << 4;
-+	ctx->dsc.block_pred_enable = true;
-+	dsi->dsc = &ctx->dsc;
-+
-+	ctx->panel.prepare_prev_first = true;
-+
-+	bl = devm_backlight_device_register(dev, dev_name(dev), dev, ctx,
-+					    &ams644vk04_bl_ops, &props);
-+	if (IS_ERR(bl))
-+		return dev_err_probe(dev, PTR_ERR(bl), "Failed to register backlight\n");
-+	ctx->panel.backlight = bl;
-+
-+	drm_panel_add(&ctx->panel);
-+
-+	ret = mipi_dsi_attach(dsi);
-+	if (ret < 0) {
-+		drm_panel_remove(&ctx->panel);
-+		return dev_err_probe(dev, ret, "Failed to attach to DSI host\n");
-+	}
-+
-+	return 0;
-+}
-+
-+static void ams644vk04_remove(struct mipi_dsi_device *dsi)
-+{
-+	struct ams644vk04 *ctx = mipi_dsi_get_drvdata(dsi);
-+	int ret;
-+
-+	ret = mipi_dsi_detach(dsi);
-+	if (ret < 0)
-+		dev_err(&dsi->dev, "Failed to detach from DSI host: %d\n", ret);
-+
-+	drm_panel_remove(&ctx->panel);
-+}
-+
-+static const struct of_device_id ams644vk04_of_match[] = {
-+	{ .compatible = "samsung,ams644vk04" },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ams644vk04_of_match);
-+
-+static struct mipi_dsi_driver ams644vk04_driver = {
-+	.probe = ams644vk04_probe,
-+	.remove = ams644vk04_remove,
-+	.driver = {
-+		.name = "panel-samsung-ams644vk04",
-+		.of_match_table = ams644vk04_of_match,
-+	},
-+};
-+module_mipi_dsi_driver(ams644vk04_driver);
-+
-+MODULE_DESCRIPTION("Panel driver for the Samsung AMS644VK04 AMOLED DSI panel");
-+MODULE_LICENSE("GPL");
+To: Rob Clark <robin.clark@oss.qualcomm.com>
+To: Dmitry Baryshkov <lumag@kernel.org>
+To: Abhinav Kumar <abhinav.kumar@linux.dev>
+To: Jessica Zhang <jesszhan0024@gmail.com>
+To: Sean Paul <sean@poorly.run>
+To: Marijn Suijten <marijn.suijten@somainline.org>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Akhil P Oommen <akhilpo@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: dri-devel@lists.freedesktop.org
+Cc: freedreno@lists.freedesktop.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
--- 
-2.56.0
+---
+Ishu Brar (4):
+      dt-bindings: display: msm: Document Adreno 620 and its GMU
+      drm/msm/a6xx: Add a bandwidth table for the Adreno 620 GMU
+      drm/msm/a6xx: Program the PDC sequencer on Adreno 620
+      drm/msm/adreno: Add Adreno 620
+
+ .../devicetree/bindings/display/msm/gmu.yaml       |  2 ++
+ .../devicetree/bindings/display/msm/gpu.yaml       |  1 +
+ drivers/gpu/drm/msm/adreno/a6xx_catalog.c          | 35 ++++++++++++++++++++++
+ drivers/gpu/drm/msm/adreno/a6xx_gmu.c              | 35 ++++++++++++++++++----
+ drivers/gpu/drm/msm/adreno/a6xx_hfi.c              | 34 +++++++++++++++++++++
+ drivers/gpu/drm/msm/adreno/adreno_gpu.h            |  5 ++++
+ 6 files changed, 106 insertions(+), 6 deletions(-)
+---
+base-commit: d024361c631b3f020a26c07d683e5103404b0fbf
+change-id: 20261016-adreno-a620-faee699b382f
+
+Best regards,
+--  
+Ishu Brar <patches@brar.si>
 
