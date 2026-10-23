@@ -1,94 +1,80 @@
 From: Ishu Brar <patches@brar.si>
-Date: Fri, 23 Oct 2026 15:23:34 +0530
-Subject: [PATCH v3 4/4] drm/msm/adreno: Add Adreno 620
+Subject: [PATCH 0/2] clk: qcom: Add SM7250 graphics clock controller
+Date: Fri, 23 Oct 2026 15:40:07 +0530
+Message-Id: <20261023-gpucc-sm7250-v1-0-d9149cece8be@brar.si>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-adreno-a620-v3-4-2d1d566e5e13@brar.si>
-References: <20261023-adreno-a620-v3-0-2d1d566e5e13@brar.si>
-In-Reply-To: <20261023-adreno-a620-v3-0-2d1d566e5e13@brar.si>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2O2W7CMBBFfyXyc43siRcSVRX/UfHgZRzc1iyep
+ EJC/DuG8HikO+fMjRHWjMTG7sYq/mfKp2MD+dGxcHDHCXmOjRkIMFJAz6fzEgKnYkELbiS4qHs
+ jbELWTs4VU76+dN/7lWnxPxjmp+O9qHhZWmdeZ6wgkXt1xu5zzUgjFKgeNltQXHKqiNSe+XVVD
+ FLspuLy3yacytfT6B0hb1DyPHZJGwuujykJGGQ0Tmn0IoDe+iGCd+hVDNpatr/fHyBHHdz8AAA
+ A
+X-Change-ID: 20261023-gpucc-sm7250-612ad53607fe
+To: Bjorn Andersson <andersson@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Taniya Das <taniya.das@oss.qualcomm.com>, 
+ Imran Shaik <quic_imrashai@quicinc.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792749211; l=1984;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792750212; l=2244;
  i=patches@brar.si; h=from:subject:message-id;
- bh=SXhjO95iBcH7IwOefumH4uTRVu/XmPTsHaG2fpqGjpA=;
- b=L0BEo4fMIFVbf9gVY7fAAvdmI6AITOYqdPNYNROXF8xN81RzhJ2BBsKOXWzdEiz3ODP5IFH+v
- OkG2EBKwPTZC6SEaurnkedD9bidNpQ6y0DVVzMszz/Gze/sVWD19Sn2
+ bh=csQC91w2xnFUlZjbWTApHmZ5Uas0bD/vSn5E/fO39W4=;
+ b=eoO5HEEjzPQcGmT63wRlGxDPu6REpgOtQxbetg3n/SEXmy874oxqpn3A+/SAmh1TCsEuINkpy
+ 19GMUOwlu6XCEQkc5wQ7/tT37XoQ6N0a4Ab0cVj90VkRljn55+wmc0d
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the catalog entry for the Adreno 620 (chip id 0x06020000) found in
-the Snapdragon 765/765G/768G (SM7250). It is an A650 derivative and
-uses its SQE and GMU firmware and protect table, together with the A620
-zap shader.
+Add the graphics clock controller (GPU_CC) of the Qualcomm SM7250 SoC
+(Snapdragon 765/765G/768G): a binding patch with the header, and the
+driver. It provides the GMU clock with its Lucid PLL, the GPU CX and GX
+power domains and the GPU SMMU vote clock. The driver follows gpucc-sm8250;
+the PLL settings, frequency table, register offsets and GDSC data come from
+the downstream driver of the platform.
 
-The speed-bin fuse values map to the OPP bins as in the downstream
-"lito" devicetree: fuse 0 is the default bin and fuse 132 and 115 are
-the two alternate ones.
+This series depends on the SM7250 GCC series from Shreeshankar [1] (the
+Kconfig symbol SM_GCC_7250 and the parent clocks come from it). The
+Adreno 620 series [2] needs this controller for the GMU clock and the GPU
+power domains. The SoC devicetree nodes are not part of this series.
 
-The GMU clock gating mode is 0x00020202, which is what the downstream
-driver programs on every A6xx except the A612 and A615 family. Use the
-shared list of Bus Clock Managers so that the GMU bandwidth table is
-generated from the bandwidth levels of the GPU OPP table.
+Tested on a OnePlus Nord (a 7.3-rc7 based tree with the GCC series
+applied): the controller probes and provides the clocks and power domains
+for the Adreno 620 GPU. I have not tested the GPU at full load on this
+combination, and have no other SM7250 hardware.
+
+[1] https://lore.kernel.org/r/20261016042432.824-1-sreeshankar0910@gmail.com
+[2] https://lore.kernel.org/r/20261023-adreno-a620-v3-0-2d1d566e5e13@brar.si
 
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- drivers/gpu/drm/msm/adreno/a6xx_catalog.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+Ishu Brar (2):
+      dt-bindings: clock: qcom: Add SM7250 graphics clock controller
+      clk: qcom: Add SM7250 graphics clock controller driver
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-index c4d332f48..6cdc3f5a2 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-@@ -954,6 +954,32 @@ static const struct adreno_info a6xx_gpus[] = {
- 			{ 169, 2 },
- 			{ 180, 1 },
- 		),
-+	}, {
-+		.chip_ids = ADRENO_CHIP_IDS(0x06020000),
-+		.family = ADRENO_6XX_GEN3,
-+		.fw = {
-+			[ADRENO_FW_SQE] = "a650_sqe.fw",
-+			[ADRENO_FW_GMU] = "a650_gmu.bin",
-+		},
-+		.gmem = SZ_512K,
-+		.inactive_period = DRM_MSM_INACTIVE_PERIOD,
-+		.quirks = ADRENO_QUIRK_HAS_CACHED_COHERENT |
-+			  ADRENO_QUIRK_HAS_HW_APRIV,
-+		.funcs = &a6xx_gpu_funcs,
-+		.zapfw = "a620_zap.mbn",
-+		.a6xx = &(const struct a6xx_info) {
-+			.hwcg = a620_hwcg,
-+			.protect = &a650_protect,
-+			.gbif_cx = a640_gbif,
-+			.gmu_cgc_mode = 0x00020202,
-+			.prim_fifo_threshold = 0x00010000,
-+			.bcms = a6xx_bcms,
-+		},
-+		.speedbins = ADRENO_SPEEDBINS(
-+			{ 0,   0 },
-+			{ 132, 1 },
-+			{ 115, 3 },
-+		),
- 	}, {
- 		.chip_ids = ADRENO_CHIP_IDS(0x06020100),
- 		.family = ADRENO_6XX_GEN3,
+ .../devicetree/bindings/clock/qcom,gpucc.yaml      |   2 +
+ drivers/clk/qcom/Kconfig                           |  10 +
+ drivers/clk/qcom/Makefile                          |   1 +
+ drivers/clk/qcom/gpucc-sm7250.c                    | 366 +++++++++++++++++++++
+ include/dt-bindings/clock/qcom,gpucc-sm7250.h      |  36 ++
+ 5 files changed, 415 insertions(+)
+---
+base-commit: f5672a3dff0291d6a45eb0c258b9d2baeb4dc577
+change-id: 20261023-gpucc-sm7250-612ad53607fe
+prerequisite-message-id: <20261016042432.824-1-sreeshankar0910@gmail.com>
+prerequisite-patch-id: 73b48e3c0861782784c45684336c1cb2c8b37852
+prerequisite-patch-id: fb97b00b62996e3d3634185a803a33eb545522dd
+prerequisite-patch-id: 8190bf61e50dbe2e09859505e8e4d8cb4ab02ddb
+prerequisite-patch-id: 8c34692012f724a93c58e1df02338acec497344d
+prerequisite-patch-id: 983ca91f160cca12047d9b0829c8cbbf4cc32e98
 
--- 
-2.56.0
+Best regards,
+--  
+Ishu Brar <patches@brar.si>
 
