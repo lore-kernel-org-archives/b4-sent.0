@@ -1,86 +1,126 @@
-From: Awal Awal <awal.nova@gmail.com>
-Date: Fri, 23 Oct 2026 10:08:45 +0200
-Subject: [PATCH] platform/x86/amd/pmf: Fix memory leak in NPU metrics query
+From: Cunhao Lu <1579567540@qq.com>
+Date: Fri, 23 Oct 2026 16:21:05 +0800
+Subject: [PATCH] gpio: rockchip: Fix debounce arithmetic for GPIO v2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-amd-pmf-npu-leak-v1-1-798e7161bfba@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTPJ0BKiXsWwqGWKo1KblhoSw
- t2psHyL/1dIHIUT3KoVIv8kydcXNHUF9mn8yChDMShSXUNKo5kGDJNDHzJ+2LzRte3V6IslTQQ
- lC5GdLMfy3p9O+fFiO/8/sG07ppGRFXQAAAA=
-X-Change-ID: 20261023-amd-pmf-npu-leak-f449a38c0300
-To: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: Lizhi Hou <lizhi.hou@amd.com>, Mario Limonciello <superm1@kernel.org>, 
- platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Awal Awal <awal.nova@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792742928; l=2529;
- i=awal.nova@gmail.com; s=20261023; h=from:subject:message-id;
- bh=1bjGttJlIKK90PokbdtL9brjGLD+8hVegScmsmTQyH8=;
- b=qI5h+6XD1sXXYtGPyE9ijcPejx4iL2AwYuBs1zP7tlGEssCU9Ln+c3edzB+QHoiwKS44YIxC3
- cMv68bxQ6R7DxsHLeL29Xy4Kity9Z2S948WZaQK2CQFQ86L5ZZ8lBvu
-X-Developer-Key: i=awal.nova@gmail.com; a=ed25519;
- pk=wrV+x9VJEgMwdldj38seKq88Gn1n1guE6xG6rtmR6Fs=
-X-Endpoint-Received: by B4 Relay for awal.nova@gmail.com/20261023 with auth_id=1286
+Message-Id: <20261023-fix-rockchip-gpio-v2-debounce-v1-1-f1141bd5b58f@qq.com>
+X-B4-Tracking: v=1; b=H4sIAPAY22oC/yXMQQrCMBBG4auUWTuQTqFFryIu7OS3HYUkJLYUS
+ u9u1OW3eG+ngmwodGl2ylitWAwV7akhne9hApuvJnHSt046ftjGOepLZ0s8JYu8CnuMcQkKPru
+ hH9RD4Duqj5RRg9//evu7LOMT+v5O6Tg+e9INuoEAAAA=
+X-Change-ID: 20261023-fix-rockchip-gpio-v2-debounce-90767cde2ed3
+To: Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Jianqun Xu <jay.xu@rock-chips.com>
+Cc: linux-gpio@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Cunhao Lu <1579567540@qq.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792743678; l=3798;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=990tz6V6xSqlnsWsntOcrs9gs3SDwAyWpRr2l3eS5jA=;
+ b=MT2tjLEkyabOrZ4KFYK1MjnqubLChv5mTzLHiyvAzJ27voIKRUdgCfGc/HuEDJpf4r0Ur6HxK
+ vjeJI+cZ4ILCoeBSjnIhtn2ioR6lVFz7/f31Em4yLqEq8ZqZtgJwf7S
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-amd_pmf_get_smu_metrics() calls amd_pmf_set_dram_addr() with
-alloc_buffer set to true on every NPU metrics request. Each call
-devm_kzalloc()s a new metrics table buffer and overwrites dev->buf with
-it. The previous buffer stays on the devres list and is only released
-when the device is unbound, so every request leaks one buffer.
+The debounce interval calculations use unsigned long operands. On 32-bit
+systems, the numerator used to calculate the maximum interval overflows
+before division, while multiplying the requested interval by the clock
+rate overflows before it is assigned to a u64. A zero debounce clock rate
+also causes division by zero.
 
-amdxdna calls amd_pmf_get_npu_data() for its sensor query, so any
-userspace monitor that polls NPU utilisation through
-DRM_IOCTL_AMDXDNA_GET_INFO leaks memory for as long as it runs. On a
-Ryzen AI 9 365 (family 1Ah model 20h) laptop with a system monitor
-polling about 1.4 times per second, the kmalloc-512 cache grew to 5.8
-million objects (2.8 GiB) over 38 days of uptime.
+Use 64-bit arithmetic for both calculations and reject a zero clock rate
+before division.
 
-The buffer size depends only on the CPU ID, and the buffer is usually
-already allocated by amd_pmf_init_metrics_table() or
-amd_pmf_init_smart_pc(). Allocate it only if it does not exist yet and
-keep reprogramming its address on every request as before.
+At 32768 Hz, a 1 us request rounds to zero divider periods. Subtracting
+one then wraps the divider value to ULONG_MAX. Decrement only a nonzero
+rounded period count so that such requests use the smallest divider
+value.
 
-Fixes: 118222e20d16 ("platform/x86/amd/pmf: Introduce new interface to export NPU metrics")
+Fixes: 3bcbd1a85b68 ("gpio/rockchip: support next version gpio controller")
 Cc: stable@vger.kernel.org
-Signed-off-by: Awal Awal <awal.nova@gmail.com>
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
-Tested on a Lenovo Yoga Pro 7 14ASP10 (Ryzen AI 9 365) with the
-equivalent change applied to core.c of a 7.0.14 based kernel. With the
-Resources app polling, the unpatched driver made 84 devm_kmalloc() calls
-for 84 NPU metrics queries in 60 s. The patched driver served 106
-queries in 60 s, all returning 0, with no devm_kmalloc() calls and a
-flat kmalloc-512 cache.
+This pre-existing issue was found by Sashiko AI during the RK3572
+mainlining work:
+https://sashiko.dev/#/patchset/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com?part=9
 
-Up to v7.2 this code lives in drivers/platform/x86/amd/pmf/core.c
-(it moved to metrics.c in v7.3); the same one-line change applies to
-amd_pmf_get_smu_metrics() there.
+On 32-bit systems, the unsigned long products used to calculate the
+maximum and requested debounce intervals can overflow before being
+assigned to u64. A zero debounce clock rate also causes division by
+zero. In addition, at 32768 Hz, a 1 us request rounds to zero divider
+periods, so subtracting one underflows to ULONG_MAX.
+
+This patch performs both interval calculations in 64-bit arithmetic,
+rejects a zero clock rate, and avoids decrementing a zero rounded period
+count. The existing set_config fallback and divider register accesses
+are unchanged.
+
+Validation:
+
+- A host reproducer confirmed the 32768 Hz, 1 us underflow and the
+  incorrect maximum interval produced by 32-bit arithmetic.
+- The combined GPIO arithmetic suite passed 126 cases for each modeled
+  arithmetic width, covering both legacy GPIO v2 and RK3572 V2.7. The
+  suite includes zero-clock-rate and request-boundary cases. The 32-bit
+  run models unsigned long arithmetic; the 64-bit run uses the native
+  host width. Both are arithmetic-level host tests, not ARM32 hardware
+  or electrical tests.
+
+AI assistance:
+
+- Codex / DeepSeek V4.1 Flash were used for:
+  - Collecting data
+  - Automating tests
+  - Reviewing and adjusting code style to follow community conventions
 ---
- drivers/platform/x86/amd/pmf/metrics.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpio/gpio-rockchip.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/platform/x86/amd/pmf/metrics.c b/drivers/platform/x86/amd/pmf/metrics.c
-index 5c0e368ec..6bad7a409 100644
---- a/drivers/platform/x86/amd/pmf/metrics.c
-+++ b/drivers/platform/x86/amd/pmf/metrics.c
-@@ -261,7 +261,7 @@ static int amd_pmf_get_smu_metrics(struct amd_pmf_dev *dev, struct amd_pmf_npu_m
- 	switch (dev->cpu_id) {
- 	case PCI_DEVICE_ID_AMD_1AH_M20H_ROOT:
- 	case PCI_DEVICE_ID_AMD_1AH_M60H_ROOT:
--		ret = amd_pmf_set_dram_addr(dev, true);
-+		ret = amd_pmf_set_dram_addr(dev, !dev->buf);
- 		if (ret)
- 			return ret;
+diff --git a/drivers/gpio/gpio-rockchip.c b/drivers/gpio/gpio-rockchip.c
+index 77b239a9a601..714604c11d78 100644
+--- a/drivers/gpio/gpio-rockchip.c
++++ b/drivers/gpio/gpio-rockchip.c
+@@ -201,20 +201,25 @@ static int rockchip_gpio_set_debounce(struct gpio_chip *gc,
+ {
+ 	struct rockchip_pin_bank *bank = gpiochip_get_data(gc);
+ 	const struct rockchip_gpio_regs	*reg = bank->gpio_regs;
+-	unsigned long flags, div_reg, freq, max_debounce;
++	unsigned long flags, div_reg, freq;
+ 	bool div_debounce_support;
+ 	unsigned int cur_div_reg;
+-	u64 div;
++	u64 div, max_debounce;
  
+ 	if (bank->gpio_type == GPIO_TYPE_V2 && !IS_ERR(bank->db_clk)) {
+ 		div_debounce_support = true;
+ 		freq = clk_get_rate(bank->db_clk);
+-		max_debounce = (GENMASK(23, 0) + 1) * 2 * 1000000 / freq;
++		if (!freq)
++			return -EINVAL;
++
++		div = (u64)(GENMASK(23, 0) + 1) * 2 * USEC_PER_SEC;
++		max_debounce = div64_u64(div, freq);
+ 		if (debounce > max_debounce)
+ 			return -EINVAL;
+ 
+-		div = debounce * freq;
+-		div_reg = DIV_ROUND_CLOSEST_ULL(div, 2 * USEC_PER_SEC) - 1;
++		div = (u64)debounce * freq;
++		div_reg = DIV_ROUND_CLOSEST_ULL(div, 2 * USEC_PER_SEC);
++		div_reg = div_reg ? div_reg - 1 : 0;
+ 	} else {
+ 		div_debounce_support = false;
+ 	}
 
 ---
-base-commit: 893018d51f27ec0449155b0afe371aaf65380630
-change-id: 20261023-amd-pmf-npu-leak-f449a38c0300
+base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
+change-id: 20261023-fix-rockchip-gpio-v2-debounce-90767cde2ed3
 
 Best regards,
 --  
-Awal Awal <awal.nova@gmail.com>
+Cunhao Lu <1579567540@qq.com>
 
