@@ -1,152 +1,124 @@
 From: Bernd Schubert <bernd@bsbernd.com>
-Date: Sat, 24 Oct 2026 00:50:35 +0200
-Subject: [PATCH v7 6/8] fuse: {io-uring} Queue background requests on a
- different core
+Date: Sat, 24 Oct 2026 00:50:36 +0200
+Subject: [PATCH v7 7/8] fuse: Add retry attempts for numa local queues for
+ load distribution
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-reduced-nr-ring-queues_3-v7-6-4e77e284fd48@bsbernd.com>
+Message-Id: <20261024-reduced-nr-ring-queues_3-v7-7-4e77e284fd48@bsbernd.com>
 References: <20261024-reduced-nr-ring-queues_3-v7-0-4e77e284fd48@bsbernd.com>
 In-Reply-To: <20261024-reduced-nr-ring-queues_3-v7-0-4e77e284fd48@bsbernd.com>
 To: Joanne Koong <joannelkoong@gmail.com>, 
  Miklos Szeredi <miklos@szeredi.hu>
 Cc: Bernd Schubert <bernd@bsbernd.com>, fuse-devel@lists.linux.dev
 X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4021; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=oUbbCnwNP1quWDYI5AMQL4ZSQ9HWTbA55+IRKXYl5V0=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLJuP9nLNbU35ZNbfm9X15bADKGtz74UcP8M2vzPw0dTX
- YOD8dvBjlIWBjEOBlkxRZYuiT22U/7xyap9XX8dZg4rE8gQBi5OAZjI5m6G/5Gvpu1858yeyOIn
- u3pXXWuyyL0bcRGe6dG7jNeqNsdOv8jwTyfnZkjmbbUNbB8vuAX9XDa95ljHwpIfi8NXzGmqsPu
- /jwMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2856; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=adBEJ1BmwJtbJvMferBwXqU975gjTI5Gx8GJUfvKlOo=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLJuP9mb5yQZ1aehoZw2uzRg0pVd2xlXPbI6ybrI+52ni
+ KngJtGXHaUsDGIcDLJiiixdEntsp/zjk1X7uv46zBxWJpAhDFycAjCRDacYGW4YfGFg45fRPv7n
+ gH9/ab3zqe46M5Hu4oQLs1LDrd5bvmb4K+Jcqyj89gC3Wtt8qd/1+Ru3Hd3bLj71QUTRc5kFLkV
+ XmQE=
 X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
  fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
 X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Running background IO on a different core makes quite a difference.
+This is to further improve performance.
 
 fio --directory=/tmp/dest --name=iops.\$jobnum --rw=randread \
 --bs=4k --size=1G --numjobs=1 --iodepth=4 --time_based\
 --runtime=30s --group_reporting --ioengine=io_uring\
- --direct=1
+--direct=1
 
 unpatched
-   READ: bw=272MiB/s (285MB/s) ...
-patched
    READ: bw=650MiB/s (682MB/s)
+patched:
+   READ: bw=995MiB/s (1043MB/s)
 
-Reason is easily visible, the fio process is migrating between CPUs
-when requests are submitted on the queue for the same core.
-
-With --iodepth=8
+with --iodepth=8
 
 unpatched
-   READ: bw=466MiB/s (489MB/s)
-patched
    READ: bw=641MiB/s (672MB/s)
-
-Without io-uring (--iodepth=8)
-   READ: bw=729MiB/s (764MB/s)
-
-Without fuse (--iodepth=8)
-   READ: bw=2199MiB/s (2306MB/s)
-
-(Test were done with
-<libfuse>/example/passthrough_hp -o allow_other --nopassthrough  \
-[-o io_uring] /tmp/source /tmp/dest
-)
-
-Additional notes:
-
-With FURING_NEXT_QUEUE_RETRIES=0 (--iodepth=8)
-   READ: bw=903MiB/s (946MB/s)
-
-With just a random qid (--iodepth=8)
-   READ: bw=429MiB/s (450MB/s)
-
-With --iodepth=1
-unpatched
-   READ: bw=195MiB/s (204MB/s)
 patched
-   READ: bw=232MiB/s (243MB/s)
+   READ: bw=966MiB/s (1012MB/s)
 
-With --iodepth=1 --numjobs=2
-unpatched
-   READ: bw=366MiB/s (384MB/s)
-patched
-   READ: bw=472MiB/s (495MB/s)
-
-With --iodepth=1 --numjobs=8
-unpatched
-   READ: bw=1437MiB/s (1507MB/s)
-patched
-   READ: bw=1529MiB/s (1603MB/s)
-fuse without io-uring
-   READ: bw=1314MiB/s (1378MB/s), 1314MiB/s-1314MiB/s ...
-no-fuse
-   READ: bw=2566MiB/s (2690MB/s), 2566MiB/s-2566MiB/s ...
-
-In summary, for async requests the core doing application IO is busy
-sending requests and processing IOs should be done on a different core.
-Spreading the load on random cores is also not desirable, as the core
-might be frequency scaled down and/or in C1 sleep states. Not shown here,
-but differnces are much smaller when the system uses performance govenor
-instead of schedutil (ubuntu default). Obviously at the cost of higher
-system power consumption for performance govenor - not desirable either.
-
-Results without io-uring (which uses fixed libfuse threads per queue)
-heavily depend on the current number of active threads. Libfuse uses
-default of max 10 threads, but actual nr max threads is a parameter.
-Also, no-fuse-io-uring results heavily depend on, if there was already
-running another workload before, as libfuse starts these threads
-dynamically - i.e. the more threads are active, the worse the
-performance.
+Reason is that with --iodepth=x (x > 1) fio submits multiple async
+requests and a single queue might become CPU limited. I.e. spreading
+the load helps.
 
 Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- fs/fuse/dev_uring.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ fs/fuse/dev_uring.c | 41 +++++++++++++++++++++++++++++++++++------
+ 1 file changed, 35 insertions(+), 6 deletions(-)
 
 diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index cff8a06e6d68..f22a1b5fc7fb 100644
+index f22a1b5fc7fb..ca82965fdee1 100644
 --- a/fs/fuse/dev_uring.c
 +++ b/fs/fuse/dev_uring.c
-@@ -1959,7 +1959,8 @@ static void fuse_uring_send_in_task(struct io_tw_req tw_req, io_tw_token_t tw)
- 	}
- }
+@@ -24,6 +24,11 @@ MODULE_PARM_DESC(enable_uring,
  
--static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring)
-+static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
-+						       bool background)
+ #define FUSE_URING_ADD_QUEUE_FLAGS	(FUSE_URING_ZERO_COPY)
+ 
++/* Number of requests in the queue until another queue is checked */
++#define FUSE_URING_Q_THRESHOLD 2
++
++#define FUSE_URING_Q_RETRIES 2 /* number of retries for a better queue */
++
+ bool fuse_uring_enabled(void)
+ {
+ 	return enable_uring;
+@@ -1964,10 +1969,11 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
  {
  	struct fuse_queue_maps *maps;
  	struct fuse_queue_map *q_map;
-@@ -1977,6 +1978,8 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring)
- 	if (!q_map->nr_queues)
- 		q_map = &maps->global;
- 	qid = q_map->cpu_to_qid[cpu];
-+	if (qid == cpu && background)
-+		qid = cpumask_next_wrap(qid, q_map->registered_q_mask);
- 	if (WARN_ON_ONCE(qid >= ring->max_nr_queues))
+-	struct fuse_ring_queue *queue = NULL;
++	struct fuse_ring_queue *queue = NULL, *primary_queue = NULL;
+ 	unsigned int cpu = task_cpu(current);
+ 	unsigned int qid;
+ 	int node = fuse_uring_cpu_to_node(cpu);
++	int retries = 0;
+ 
+ 	rcu_read_lock();
+ 	maps = rcu_dereference(ring->q_maps);
+@@ -1975,11 +1981,34 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
  		goto out;
  
-@@ -2004,7 +2007,7 @@ void fuse_uring_queue_fuse_req(struct fuse_iqueue *fiq, struct fuse_req *req)
- 	int err;
- 
- 	err = -EINVAL;
--	queue = fuse_uring_select_queue(ring);
-+	queue = fuse_uring_select_queue(ring, false);
- 	if (!queue)
- 		goto err;
- 
-@@ -2047,7 +2050,7 @@ bool fuse_uring_queue_bq_req(struct fuse_req *req)
- 	struct fuse_ring_queue *queue;
- 	struct fuse_ring_ent *ent = NULL;
- 
--	queue = fuse_uring_select_queue(ring);
-+	queue = fuse_uring_select_queue(ring, true);
- 	if (!queue)
- 		return false;
+ 	q_map = &maps->numa[node];
+-	if (!q_map->nr_queues)
+-		q_map = &maps->global;
+-	qid = q_map->cpu_to_qid[cpu];
+-	if (qid == cpu && background)
+-		qid = cpumask_next_wrap(qid, q_map->registered_q_mask);
++	if (q_map->nr_queues) {
++		qid = q_map->cpu_to_qid[cpu];
++		if (qid == cpu && background)
++			qid = cpumask_next_wrap(qid, q_map->registered_q_mask);
++retry:
++		if (WARN_ON_ONCE(qid >= ring->max_nr_queues)) {
++			queue = NULL;
++			goto out;
++		}
++		queue = READ_ONCE(ring->queues[qid]);
++		if (unlikely(!queue))
++			goto out;
++
++		if (READ_ONCE(queue->nr_reqs) < FUSE_URING_Q_THRESHOLD)
++			goto out;
++
++		if (retries < FUSE_URING_Q_RETRIES) {
++			if (!retries)
++				primary_queue = queue;
++			qid = cpumask_next_wrap(qid, q_map->registered_q_mask);
++			retries++;
++			goto retry;
++		}
++		queue = primary_queue;
++		goto out;
++	}
++
++	qid = maps->global.cpu_to_qid[cpu];
+ 	if (WARN_ON_ONCE(qid >= ring->max_nr_queues))
+ 		goto out;
  
 
 -- 
