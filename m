@@ -1,379 +1,193 @@
-From: Xincheng Ji <jixincheng@ultrarisc.com>
-Date: Fri, 23 Oct 2026 09:56:47 +0800
-Subject: [PATCH v5 7/7] riscv: dts: ultrarisc: Add Milk-V Titan board
- device tree
+From: Daejun Park <daejun7.park@samsung.com>
+Subject: [PATCH v2 0/4] nfsd: keep a layout whose recall overtakes the
+ LAYOUTGET reply
+Date: Fri, 23 Oct 2026 11:10:21 +0900
+Message-Id: <20261023-nfsd-layout-refcall-v2-0-2160bddced0c@samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-ultrarisc-dts-v5-7-af79dbd6ccec@ultrarisc.com>
-References: <20261023-ultrarisc-dts-v5-0-af79dbd6ccec@ultrarisc.com>
-In-Reply-To: <20261023-ultrarisc-dts-v5-0-af79dbd6ccec@ultrarisc.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Andrew Lunn <andrew@lunn.ch>, 
- Jia Wang <wangjia@ultrarisc.com>, Xincheng Ji <jixincheng@ultrarisc.com>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Thomas Gleixner <tglx@kernel.org>, 
- Samuel Holland <samuel.holland@sifive.com>, 
- Anup Patel <anup@brainfault.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
- linux-riscv@lists.infradead.org
-X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792720613; l=7276;
- i=jixincheng@ultrarisc.com; s=20260922; h=from:subject:message-id;
- bh=zoKYyWE9eT9qjmwtXkTVhVuKVocH7YY094OMCZ3WK9A=;
- b=D8GgPlPajKQHLRtCsVGhAQhhyHnzriImshJXU2h2sILFkONi+VSH9+cn3q8+BT7Q6xD/5Zz4Y
- vuBV27d8aAZAQ6qxA6SX+yu5b/ESYIen4zYtD0zG2lGbeLsgHg+OoHL
-X-Developer-Key: i=jixincheng@ultrarisc.com; a=ed25519;
- pk=n848dcS5D6g0vLad/rjp4Gf/1eedTe1a3pYUrkt2260=
-X-Endpoint-Received: by B4 Relay for jixincheng@ultrarisc.com/20260922 with auth_id=1046
+X-B4-Tracking: v=1; b=H4sIAA3C2moC/32NQQ6DIBREr2L+ur8BaiB01XsYFyioJAoNX0mN8
+ e6lHqDLN5N5cwC55B3BszoguezJx1BA3CroJxNGh94WBsGE5ExwDANZnM0etxWTG3ozzyhZVw/
+ aSl3XFsryXQr/uaxNW3jytMa0XyeZ/9L/vsyRodKKadlp8VDqRWahLYz3Pi7Qnuf5Bay02u64A
+ AAA
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: Christoph Hellwig <hch@lst.de>, 
+ Benjamin Coddington <ben.coddington@hammerspace.com>, 
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792721421; l=9611;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=P+NrkR3o9CYLqTw1Ac3QtrS+Z8Sn3XRRddY9RENucw4=;
+ b=JqeoqrQcKbK5esgRJmpFJ4DNBaw8777BIoib0gyiLjz8HUgDouAnejsBHNJvqGaHrbIc1wwOV
+ wLmNUf69txUCtWfx2qlBImGyE9l7OVYdDrd2vfWqFGdH69b7mVgE0sj
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Jia Wang <wangjia@ultrarisc.com>
+With [3], a client that writes to a file through the metadata server
+while it does I/O through a layout of the same file gets
+NFS4ERR_RECALLCONFLICT for LAYOUTGET after LAYOUTGET. One Linux block
+layout client writing 1 MiB blocks with O_DIRECT through its layout and
+512 bytes at the middle of a page, which it sends through the metadata
+server, to the same file did 51, 54 and 12 of its 1 MiB writes in 30
+seconds in three runs with patches 1 to 3. Patch 4 lets such a LAYOUTGET
+succeed with an immediate recall instead when the lease break comes from
+the same client (240, 249 and 244). That recall can overtake the
+LAYOUTGET reply: a client that does not know the layout stateid yet
+answers NFS4ERR_NOMATCHING_LAYOUT, nfsd drops the layout, and the Linux
+client loses the writes it then sends through it, which read back as
+zeroes although fsync() succeeded. Without patches 2 and 3, patch 4 lost
+75 of 600, 79 of 589 and 87 of 600 blocks. The same race exists today:
+on nfsd-testing, a recall overtook a LAYOUTGET reply in one of three 30
+second runs of the test below without its delay, and that block read
+back as zeroes. A block layout client can take long to process a reply,
+as pnfs_layout_process() may need a GETDEVICEINFO and a blkmapd upcall
+for a new device while it holds the slot of the LAYOUTGET. Patch 2 has
+the details.
 
-Milk-V Titan is an ITX motherboard based on the UltraRISC DP1000 SoC.
+Patch 1 lets layouts share the record of the slot that carried a grant
+with the delegation code [1]. Patch 2 resends the recall once, as the
+delegation code does, when the client answers NFS4ERR_NOMATCHING_LAYOUT
+before the slots of the LAYOUTGETs have retired. Patch 3 names those
+LAYOUTGETs as referring calls (RFC 8881 sections 2.10.6.3 and
+12.5.5.2.1), so that a client that honors them holds the recall back;
+the Linux client does with [2]. The resend comes first because the
+referring call alone does not help the Linux client without [2] once it
+needs more than half a second: it then answers NFS4ERR_NOMATCHING_LAYOUT
+anyway, and the half second it waits makes each such recall longer.
 
-Link: https://milkv.io/docs/titan/overview
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+A pNFS client writes 1 MiB blocks with O_DIRECT to a new file for 60
+seconds next to an NFSv4.0 client writing to another range of it, with a
+test-only delay of one second in the pNFS client before
+pnfs_layout_process(). Blocks that read back as zeroes / blocks written
+through a layout, and the NFSv4.0 client, two runs each:
+
+  nfsd-testing                         13/57, 14/58  600 in 14.6, 15.0 s
+  + patches 1 and 2                    0/30, 0/41    600 in 21.2, 20.9 s
+  + patches 1 to 3                     0/20, 0/28    600 in 35.8, 25.2 s
+  + patches 1 to 4                     0/23, 0/24    62, 9 in 60 s
+  + patches 1 to 4, [2] on client      0/22, 0/24    227, 15 in 60 s
+
+The NFSv4.0 client stops after 60 seconds. Every block lost was one
+whose reply the recall overtook. Patch 4 did not act in this test
+(nfsd_layout_break_pending did not fire), as the lease breaks come from
+the other client; rows 3 and 4 differ in how many recalls met an
+unprocessed reply: 8 and 4 against 23 and 24, which in row 4 is every
+LAYOUTGET. The cost is on the writer that breaks the lease: a recall
+that meets a LAYOUTGET reply the client has not processed within half a
+second lasts at least two and a half seconds, and WRITEs through the
+metadata server get NFS4ERR_DELAY meanwhile. The NFSv4.0 client needs
+about 15 seconds plus, for each such recall, nothing on nfsd-testing,
+two seconds with patches 1 and 2, and two and a half from patch 3 on;
+such recalls numbered 13 and 14, 3 and 3, 8 and 4, and 23 and 24 in the
+rows above without [2]. Each one also keeps the NFSv4.0 client breaking
+the lease for longer, so the count feeds on itself and varies between
+runs of the same code; two runs do not rank the stages. With
+fs.lease-break-time at two seconds or less, such a recall outlasts the
+lease break and the client is fenced.
+
+With a delay of four seconds, longer than the resend covers, a client
+without [2] loses every block whose reply the recall overtakes: 8 of 15
+in each of two runs with patches 1 and 2, where the NFSv4.0 client was
+done after 31.5 and 31.2 seconds and broke no lease after that, and 15
+of 15 in each of two runs with patches 1 to 3 and with patches 1 to 4,
+where it was still writing after 60 seconds. With [2], none (11 and 7
+blocks).
+
+QEMU guests (nvmet-tcp target, nfsd on XFS, NFSv4.2 block layout clients
+and an NFSv4.0 client), nfsd-testing 764ffa45f3f2 with KASAN and
+lockdep; no KASAN or lockdep report from nfsd or the clients. SCSI and
+flexfiles layouts were not tested. Without the delay, no recall overtook
+a reply with the series in three runs of 30 seconds. The runs of patch 4
+around the deadline of a lease break are from v1, on nfsd-testing
+b4e06bef3884; patch 4 is the same code in v2. One boot of the metadata
+server VM, on an image of v1, reported "BUG: KASAN: wild-memory-access
+in do_raw_spin_lock" 0.5 seconds in, during identify_cpu() and before
+any NFS traffic, as one boot did in the v1 tests. pynfs BLOCK3 fails
+with NFS4ERR_BADXDR with and without the series; local recall tests (not
+posted) pass with the series, and two of them fail on nfsd-testing.
+
+The series applies on nfsd-testing, which has [1] and [3]. Patch 2 needs
+patches of [3] that it names, patch 3 should not go before v7.1, and
+patch 4 needs patches 2 and 3.
+
+[1] https://lore.kernel.org/r/20260802-nfsd-deleg-destroy-badhandle-v1-0-323aa7196055@kernel.org
+[2] https://lore.kernel.org/r/20261020-nfs-referring-call-delay-v1-1-0be8f0608f7c@samsung.com
+[3] https://lore.kernel.org/r/20261015-nfsd-layout-recall-v3-0-ba3269f8ca22@samsung.com
+
 ---
- arch/riscv/boot/dts/ultrarisc/Makefile             |   1 +
- .../dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi  | 108 +++++++++++
- .../boot/dts/ultrarisc/dp1000-milkv-titan.dts      | 201 +++++++++++++++++++++
- 3 files changed, 310 insertions(+)
+Changes in v2:
+- 2/4: keep a record of each LAYOUTGET whose slot has not retired, up
+  to the latest eight, instead of the last one only (Sashiko). A
+  LAYOUTGET that cannot allocate its record fails with NFS4ERR_DELAY
+  before any blocks are allocated.
+- 3/4: name every recorded LAYOUTGET as a referring call (Sashiko), and
+  make room for eight in NFS4_enc_cb_layout_sz, which had room for one.
+  In a pynfs test (not posted) with two LAYOUTGETs on two slots, v1
+  named the second only and v2 names both, in each of five runs.
+- 3/4: nfsd41_cb_referring_call() and nfsd41_cb_referring_grant() report
+  an allocation failure. A recall that could not name a LAYOUTGET does
+  not trust NFS4ERR_NOMATCHING_LAYOUT; it is sent again every two
+  seconds until the client answers otherwise or the recall ends as the
+  polls do (Sashiko). With a test-only switch that fails the allocation
+  and the four second delay, v1 lost 8 of 15 blocks in each of two runs
+  and v2 none. A client that answers NFS4ERR_NOMATCHING_LAYOUT to such a
+  recall is fenced as one that does not answer, after fs.lease-break-time
+  or two lease periods, and every LAYOUTGET for the file, its own
+  included, fails until then. The end of the polls and the fencing move
+  into helpers.
+- 2/4, 4/4: the answer to the resend is still trusted when the slot of
+  the LAYOUTGET has not retired (Sashiko on 2/4 and 4/4). Once the
+  recall names the LAYOUTGET, waiting for it is the client's part: RFC
+  8881 section 12.5.5.2.1 says the client MUST wait for the referenced
+  calls before it processes the recall, and the Linux client does with
+  [2]. Waiting for the slot to retire instead waits for the client's
+  next request on that slot. An idle Linux client sends only its lease
+  renewal, two thirds of a lease period after its last request (60
+  seconds by default) and on its lowest free slot, and does not use a
+  higher slot again until it is busy. Until then every LAYOUTGET for the
+  file fails, and a recall that comes from a lease break has the client
+  fenced after fs.lease-break-time (45 seconds by default) although it
+  has no layout. An earlier version that polled until the slot retired,
+  behind an idle reader that answered NFS4ERR_NOMATCHING_LAYOUT 1112
+  times, ended the write 23 seconds after the reader's first read,
+  against 13 seconds when resending once, on that older base; the writer
+  starts 8 seconds after the reader, and the poll ended only because the
+  reader read again 20 seconds after its first read. On nfsd-testing the
+  write ends 8.8 seconds after the first read without the series and
+  11.8 with patches 1 and 2: the resend costs the writer 3 seconds, also
+  with [2], as nfsd cannot tell a client that waits for referring calls
+  from one that does not. The comment in nfsd4_cb_layout_done() now says
+  what is left at risk.
+- Rebased on nfsd-testing 764ffa45f3f2 and tested there.
+- Link to v1: https://lore.kernel.org/r/20261021-nfsd-layout-refcall-v1-0-797096b92377@samsung.com
 
-diff --git a/arch/riscv/boot/dts/ultrarisc/Makefile b/arch/riscv/boot/dts/ultrarisc/Makefile
-index 454d849a6ce4..dfd15c064d07 100644
---- a/arch/riscv/boot/dts/ultrarisc/Makefile
-+++ b/arch/riscv/boot/dts/ultrarisc/Makefile
-@@ -1,2 +1,3 @@
- # SPDX-License-Identifier: GPL-2.0
-+dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-milkv-titan.dtb
- dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-shenrongda-m0.dtb
-diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi
-new file mode 100644
-index 000000000000..7a812e40a249
---- /dev/null
-+++ b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi
-@@ -0,0 +1,108 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright(C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ */
-+
-+#include "dp1000.dtsi"
-+#include "dp1000-pinctrl.h"
-+
-+&pinctrl {
-+	i2c0_pins: i2c0-pins {
-+		pins = <PA12 PA13>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	i2c1_pins: i2c1-pins {
-+		pins = <PB6 PB7>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	i2c2_pins: i2c2-pins {
-+		pins = <PC0 PC1>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	i2c3_pins: i2c3-pins {
-+		pins = <PC2 PC3>;
-+		function = "i2c";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	io_pins: io-pins {
-+		pins = <PA10 PA15 PB0 PB1 PB2 PD6 PD7>;
-+		function = "gpio";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	gpio_keys_pins: gpio-keys-pins {
-+		pins = <PA4 PA11 PA14>;
-+		function = "gpio";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	mux_dcdc_i2c_pins: mux-dcdc-i2c-pins {
-+		pins = <PA5>;
-+		function = "gpio";
-+	};
-+
-+	mux_i2c3_pins: mux-i2c3-pins {
-+		pins = <PA6>;
-+		function = "gpio";
-+	};
-+
-+	mux_uart0_pins: mux-uart0-pins {
-+		pins = <PA7>;
-+		function = "gpio";
-+	};
-+
-+	spi0_pins: spi0-pins {
-+		pins = <PD0 PD1 PD2 PD3 PD4 PD5>;
-+		function = "spi";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	spi1_pins: spi1-pins {
-+		pins = <PA0 PA1 PA2 PA3>;
-+		function = "spi";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart0_pins: uart0-pins {
-+		pins = <PA8 PA9>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart1_pins: uart1-pins {
-+		pins = <PB4 PB5>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart2_pins: uart2-pins {
-+		pins = <PC4 PC5>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+
-+	uart3_pins: uart3-pins {
-+		pins = <PC6 PC7>;
-+		function = "uart";
-+		bias-pull-up;
-+		drive-strength = <33>;
-+	};
-+};
-diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts
-new file mode 100644
-index 000000000000..df4a0e60dfd6
---- /dev/null
-+++ b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts
-@@ -0,0 +1,201 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright(C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ */
-+
-+#include "dp1000-milkv-titan-pinctrl.dtsi"
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/input/gpio-keys.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
-+
-+/ {
-+	model = "Milk-V Titan";
-+	compatible = "milkv,titan", "ultrarisc,dp1000";
-+
-+	aliases {
-+		serial0 = &uart0;
-+		serial1 = &uart1;
-+		serial2 = &uart2;
-+		serial3 = &uart3;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio_keys_pins>;
-+
-+		key-wakeup-0 {
-+			label = "Wake-Up";
-+			gpios = <&gpio_a 14 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_WAKEUP>;
-+			linux,input-type = <EV_KEY>;
-+			debounce-interval = <10>;
-+			wakeup-source;
-+			wakeup-event-action = <EV_ACT_ASSERTED>;
-+		};
-+
-+		key-wakeup-1 {
-+			label = "Power";
-+			gpios = <&gpio_a 11 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_POWER>;
-+			linux,input-type = <EV_KEY>;
-+			debounce-interval = <10>;
-+			wakeup-source;
-+			wakeup-event-action = <EV_ACT_ASSERTED>;
-+		};
-+
-+		key-wakeup-2 {
-+			label = "Wake-Up-by-USB";
-+			interrupts-extended = <&gpio_a 4 IRQ_TYPE_EDGE_FALLING>;
-+			linux,code = <KEY_WAKEUP>;
-+			linux,input-type = <EV_KEY>;
-+			debounce-interval = <10>;
-+			wakeup-source;
-+		};
-+	};
-+};
-+
-+&i2c0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c0_pins>;
-+};
-+
-+&i2c1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c1_pins>;
-+};
-+
-+&i2c2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c2_pins>;
-+
-+	rtc@68 {
-+		compatible = "st,m41t11";
-+		reg = <0x68>;
-+	};
-+};
-+
-+&i2c3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2c3_pins>;
-+};
-+
-+&spi0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spi0_pins>;
-+};
-+
-+&spi1 {
-+	num-cs = <1>;
-+
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&spi1_pins>;
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_pins>;
-+};
-+
-+&uart1 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart1_pins>;
-+};
-+
-+&uart2 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart2_pins>;
-+};
-+
-+&uart3 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart3_pins>;
-+};
-+
-+&pcie_x16 {
-+	status = "okay";
-+};
-+
-+&pcie_x4a {
-+	status = "okay";
-+};
-+
-+&pcie_x4b {
-+	status = "okay";
-+};
-+
-+&gpio {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&io_pins &mux_dcdc_i2c_pins &mux_i2c3_pins &mux_uart0_pins>;
-+};
-+
-+&gpio_a {
-+	dcdc-i2c-mux-hog {
-+		gpio-hog;
-+		gpios = <5 GPIO_ACTIVE_HIGH>;
-+		output-low;
-+		line-name = "dcdc-i2c-mux";
-+	};
-+
-+	i2c3-mux-hog {
-+		gpio-hog;
-+		gpios = <6 GPIO_ACTIVE_HIGH>;
-+		output-low;
-+		line-name = "i2c3-mux";
-+	};
-+
-+	uart0-mux-hog {
-+		gpio-hog;
-+		gpios = <7 GPIO_ACTIVE_HIGH>;
-+		output-high;
-+		line-name = "uart0-mux";
-+	};
-+};
-+
-+&ethernet {
-+	phy-handle = <&phy0>;
-+	/*
-+	 * The PCB does not add RGMII TX or RX clock delays. The DP1000
-+	 * integration adds fixed delays in both directions.
-+	 */
-+	phy-mode = "rgmii-id";
-+
-+	status = "okay";
-+
-+	mdio {
-+		compatible = "snps,dwmac-mdio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		phy0: phy@0 {
-+			reg = <0>;
-+
-+			leds {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				led@1 {
-+					reg = <1>;
-+					color = <LED_COLOR_ID_YELLOW>;
-+					function = LED_FUNCTION_INDICATOR;
-+					default-state = "keep";
-+					linux,default-trigger = "netdev";
-+				};
-+
-+				led@2 {
-+					reg = <2>;
-+					color = <LED_COLOR_ID_GREEN>;
-+					function = LED_FUNCTION_ACTIVITY;
-+					default-state = "keep";
-+					linux,default-trigger = "netdev";
-+				};
-+			};
-+		};
-+	};
-+};
+---
+Daejun Park (4):
+      nfsd: share the grant slot record between delegations and layouts
+      nfsd: resend a layout recall once before trusting NOMATCHING_LAYOUT
+      nfsd: send a referring call with CB_LAYOUTRECALL
+      nfsd: do not fail a LAYOUTGET on a lease break by the same client
 
+ fs/nfsd/nfs4callback.c |  13 +-
+ fs/nfsd/nfs4layouts.c  | 325 ++++++++++++++++++++++++++++++++++++++++---------
+ fs/nfsd/nfs4proc.c     |  12 ++
+ fs/nfsd/nfs4state.c    | 118 ++++++++++++------
+ fs/nfsd/pnfs.h         |   3 +
+ fs/nfsd/state.h        |  65 ++++++++--
+ fs/nfsd/trace.h        |   2 +
+ fs/nfsd/xdr4cb.h       |   6 +-
+ 8 files changed, 439 insertions(+), 105 deletions(-)
+---
+base-commit: 764ffa45f3f2189cd86ec6d46d248fc0440507b6
+change-id: 20261021-nfsd-layout-refcall-60b4f9d6944d
+
+Best regards,
 -- 
-2.34.1
+Daejun Park <daejun7.park@samsung.com>
 
