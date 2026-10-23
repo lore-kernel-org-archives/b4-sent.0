@@ -1,81 +1,80 @@
-From: Daan De Meyer <daan@amutable.com>
-Date: Fri, 23 Oct 2026 09:47:21 +0200
-Subject: [PATCH v4 2/2] nbd: drop stale partitions on NBD_CLEAR_SOCK
+From: Ishu Brar <patches@brar.si>
+Subject: [PATCH v2 0/2] iommu/arm-smmu-qcom: Add SM7250 support
+Date: Fri, 23 Oct 2026 13:24:30 +0530
+Message-Id: <20261023-smmu-sm7250-v2-0-8bb881ce19f5@brar.si>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-b4-loop-nbd-stale-partitions-v4-2-2baf05e4b2cb@amutable.com>
-References: <20261023-b4-loop-nbd-stale-partitions-v4-0-2baf05e4b2cb@amutable.com>
-In-Reply-To: <20261023-b4-loop-nbd-stale-partitions-v4-0-2baf05e4b2cb@amutable.com>
-To: Jens Axboe <axboe@kernel.dk>, Christian Brauner <brauner@kernel.org>, 
- Josef Bacik <josef@toxicpanda.com>, 
- Daan De Meyer <daan.j.demeyer@gmail.com>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- nbd@other.debian.org, Christoph Hellwig <hch@infradead.org>, 
- Bart Van Assche <bvanassche@acm.org>, 
- Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>, 
- Daan De Meyer <daan@amutable.com>, stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NzQ6CMBCEX4Xs2Zq2yJ8n38NwgHYrawKYLhAN6
+ bvb4tXLJF8y880OjJ6Q4Zrt4HEjpnmKoE8ZmKGbHijIRgYtdamkKgWP4xqj0oUUTVFZJ7VtdJ1
+ DXLw8Onoftnv7Y177J5olKVJjIF5m/znuNpV6/82bElKgUs7IvL4Y19163/kzE7QhhC/ZArMAt
+ gAAAA==
+X-Change-ID: 20261016-smmu-sm7250-957df02d9283
+To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
+ "Joerg Roedel (AMD)" <joro@8bytes.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Rob Clark <robin.clark@oss.qualcomm.com>
+Cc: linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792741645; l=2448;
- i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=Xsf7lw9CzriaYcZ7LSWs2dUmnLL/EkAep1GawGfe3ic=;
- b=Gk00yNSAxP0BGLLgZfO+zaDaxRJD3UmvXzA2USAiHH8ymQf38em9AeTOaEeJgTv7csveCg6OV
- S+Ui/WVp2pFB7LgAZP1DCBYHO4ZjfizxVy2yFlSfoOzrfWpY9IWgabW
-X-Developer-Key: i=daan@amutable.com; a=ed25519;
- pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
-X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792742166; l=1770;
+ i=patches@brar.si; h=from:subject:message-id;
+ bh=sQLOhZMi8aZbIqVsMhAfiz8/FuPFV6+J4pw61zOCgdE=;
+ b=9Q+sBnjBwBjboIPiR/Ad0kQ1lgiFss5sSPJvkLB0DOL5jYe8jhRpQHcODvee7s5/620vV8P02
+ HensHpKQT9jAyR/kTvQ7J909qy2quEecxQBdUAYoSfbETXuXqmHdH3S
+X-Developer-Key: i=patches@brar.si; a=ed25519;
+ pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
+X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 267ec4d7223a ("loop: fix partition scan race between udev and
-loop_reread_partitions()") stopped disk_force_media_change() from
-setting GD_NEED_PART_SCAN. Besides requesting a rescan, that bit was what
-removed stale partitions on the next open, as bdev_disk_changed() drops
-all partitions before it consults disk_has_partscan().
+This documents SMMUs of Qualcomm SM7250 (Snapdragon
+765/765G/768G) and skips Adreno SMMU PRR setup on it.
 
-nbd_clear_sock_ioctl() relied on that. It zeroes the capacity through
-nbd_bdev_reset(), but nothing removes the partitions of the disconnected
-device anymore. With the default max_part=16 they linger until the next
-connect sets GD_NEED_PART_SCAN again. With max_part=0 nothing ever sets
-it, so they are never removed at all, even though nbd does not set
-GENHD_FL_NO_PART and partitions can therefore still be added with BLKPG.
+As on SM8250, firmware resets device when PRR registers are
+written, which happens as soon as GPU creates its first per-process
+pagetable. Patch 1 adds the compatible to binding (apps SMMU and GPU
+SMMU). Patch 2 excludes it from PRR callbacks.
 
-Set GD_NEED_PART_SCAN in nbd_clear_sock_ioctl() so the partitions are
-dropped on the next open. Calling bdev_disk_changed() directly is not an
-option as it needs open_mutex. nbd_open() acquires config_lock under
-open_mutex, and nbd_clear_sock_ioctl() runs with config_lock held.
-Taking open_mutex in nbd_clear_sock_ioctl() would invert that lock order.
+Tested on OnePlus Nord (SM7250) with Vulkan on Adreno 620. The SoC
+devicetree nodes are not part of this series.
 
-Fixes: 267ec4d7223a ("loop: fix partition scan race between udev and loop_reread_partitions()")
-Cc: stable@vger.kernel.org
-Reviewed-by: Christian Brauner (Amutable) <brauner@kernel.org>
-Reviewed-by: Bart Van Assche <bvanassche@acm.org>
-Tested-by: Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>
-Signed-off-by: Daan De Meyer <daan@amutable.com>
+Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- drivers/block/nbd.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Changes in v2:
+- Patch 1: also add qcom,sm7250-smmu-500 to the allOf block that
+  requires the ahb/bus/iface clocks, so the GPU SMMU clocks are
+  validated like on sm8250 (sashiko review, confirmed by Krzysztof).
+- Patch 2: unchanged.
+- Link to v1: https://patch.msgid.link/20261016-smmu-sm7250-v1-0-e11fc0384cfa@brar.si
 
-diff --git a/drivers/block/nbd.c b/drivers/block/nbd.c
-index ffce519bf008..322dbd16dc93 100644
---- a/drivers/block/nbd.c
-+++ b/drivers/block/nbd.c
-@@ -1616,6 +1616,15 @@ static void nbd_clear_sock_ioctl(struct nbd_device *nbd)
- 	nbd_clear_sock(nbd);
- 	disk_force_media_change(nbd->disk);
- 	nbd_bdev_reset(nbd);
-+	/*
-+	 * Drop the partitions of the disconnected device on the next open.
-+	 * They can exist even with max_part zero as they may have been added
-+	 * manually with BLKPG. Dropping them here would need open_mutex.
-+	 * nbd_open() acquires config_lock under open_mutex, and we hold
-+	 * config_lock here. Taking open_mutex here can deadlock against
-+	 * nbd_open().
-+	 */
-+	set_bit(GD_NEED_PART_SCAN, &nbd->disk->state);
- 	if (test_and_clear_bit(NBD_RT_HAS_CONFIG_REF,
- 			       &nbd->config->runtime_flags))
- 		nbd_config_put(nbd);
+To: Will Deacon <will@kernel.org>
+To: Robin Murphy <robin.murphy@arm.com>
+To: "Joerg Roedel (AMD)" <joro@8bytes.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Rob Clark <robin.clark@oss.qualcomm.com>
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: iommu@lists.linux.dev
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
 
--- 
-2.54.0
+---
+Ishu Brar (2):
+      dt-bindings: arm-smmu: Document SM7250 SMMU
+      iommu/arm-smmu-qcom: Skip PRR setup on SM7250 GPU SMMU
+
+ Documentation/devicetree/bindings/iommu/arm,smmu.yaml | 4 ++++
+ drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c            | 1 +
+ 2 files changed, 5 insertions(+)
+---
+base-commit: 7b7429c28ac01c8a2952225a4b8a742eec7359c3
+change-id: 20261016-smmu-sm7250-957df02d9283
+
+Best regards,
+--  
+Ishu Brar <patches@brar.si>
 
