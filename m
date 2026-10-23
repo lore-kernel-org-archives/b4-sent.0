@@ -1,221 +1,185 @@
-From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 22 Oct 2026 16:28:22 -0700
-Subject: [PATCH RFC v2 50/50] KVM: selftests: Test guest_memfd conversions
- with sample memory provider backing
+From: Xincheng Ji <jixincheng@ultrarisc.com>
+Subject: [PATCH v5 0/7] riscv: Add device tree support for UltraRISC DP1000
+Date: Fri, 23 Oct 2026 09:56:40 +0800
+Message-Id: <20261023-ultrarisc-dts-v5-0-af79dbd6ccec@ultrarisc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261022-gmem-alternative-providers-v2-50-5dd1dc6c660a@google.com>
-References: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
-In-Reply-To: <20261022-gmem-alternative-providers-v2-0-5dd1dc6c660a@google.com>
-To: Alex Williamson <alex@shazbot.org>, Alexander Graf <graf@amazon.de>, 
- Alexander Viro <viro@zeniv.linux.org.uk>, 
- Alexey Kardashevskiy <aik@amd.com>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- "Aneesh Kumar K.V" <aneesh.kumar@kernel.org>, 
- Ashish Kalra <ashish.kalra@amd.com>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Baolu Lu <baolu.lu@linux.intel.com>, Bill Wendling <morbo@google.com>, 
- Borislav Petkov <bp@alien8.de>, Catalin Marinas <catalin.marinas@arm.com>, 
- Christian Brauner <brauner@kernel.org>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- Connor Williamson <connordw@amazon.com>, 
- Dave Hansen <dave.hansen@linux.intel.com>, 
- Dave Jiang <dave.jiang@intel.com>, David Hildenbrand <david@kernel.org>, 
- David Rientjes <rientjes@google.com>, David Woodhouse <dwmw2@infradead.org>, 
- Erdem Aktas <erdemaktas@google.com>, Frank van der Linden <fvdl@google.com>, 
- Fred Griffoul <fgriffo@amazon.co.uk>, Fred Griffoul <griffoul@gmail.com>, 
- Gregory Price <gourry@gourry.net>, "H. Peter Anvin" <hpa@zytor.com>, 
- Hugh Dickins <hughd@google.com>, Ingo Molnar <mingo@redhat.com>, 
- Jacob Pan <jacob.pan@linux.microsoft.com>, 
- James Houghton <jthoughton@google.com>, Jan Kara <jack@suse.cz>, 
- Jason Gunthorpe <jgg@ziepe.ca>, Jianxiong Gao <jxgao@google.com>, 
- Joerg Roedel <joro@8bytes.org>, Joey Gouly <joey.gouly@arm.com>, 
- John Starks <John.Starks@microsoft.com>, Jonathan Corbet <corbet@lwn.net>, 
- Justin Stitt <justinstitt@google.com>, Kevin Tian <kevin.tian@intel.com>, 
- Lorenzo Stoakes <ljs@kernel.org>, Marc Zyngier <maz@kernel.org>, 
- Michael Roth <michael.roth@amd.com>, Mike Rapoport <rppt@kernel.org>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nick Desaulniers <ndesaulniers@google.com>, 
- Nicolin Chen <nicolinc@nvidia.com>, Oliver Upton <oupton@kernel.org>, 
- Paolo Bonzini <pbonzini@redhat.com>, Pratyush Yadav <pratyush@kernel.org>, 
- Randy Dunlap <rdunlap@infradead.org>, Robin Murphy <robin.murphy@arm.com>, 
- Samiullah Khawaja <skhawaja@google.com>, 
- Sean Christopherson <seanjc@google.com>, Shuah Khan <shuah@kernel.org>, 
- Steffen Eiden <seiden@linux.ibm.com>, Steven Price <steven.price@arm.com>, 
- Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Tarun Sahu <tarunsahu@google.com>, Thomas Gleixner <tglx@kernel.org>, 
- Tom Lendacky <thomas.lendacky@amd.com>, Tycho Andersen <tycho@kernel.org>, 
- Vishal Annapurve <vannapurve@google.com>, 
- Vlastimil Babka <vbabka@kernel.org>, Will Deacon <will@kernel.org>, 
- Xu Yilun <yilun.xu@linux.intel.com>, Yan Zhao <yan.y.zhao@intel.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, x86@kernel.org, 
- Shuah Khan <skhan@linuxfoundation.org>, Fuad Tabba <fuad.tabba@linux.dev>
-Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, linux-mm@kvack.org, llvm@lists.linux.dev, 
- Ackerley Tng <ackerleytng@google.com>
+X-B4-Tracking: v=1; b=H4sIANm+2moC/23Q3U7DMAwF4FeZek1R4vw1E0K8B+LCThxWxDZou
+ gKa9u6kGQJW7dJq/J36HJvMQ8+5Wa+OzcBTn/v9rgzmZtWEDe6eue1jmRsQYIUBaA+v44BDn0M
+ bx9z6iKQQlLRkm7LzNnDqP6v3+HSe84FeOIwz8vNi4PdDCRrPz5ot54w1aL26qzleuDZ+bDH8S
+ 5ugFa1H5Sl1kZRUD7/fbsN+e19tHMOmOsmAjcqyRI2RrPHYSUhRS21iQGDrSXpt1OWWi4YliM5
+ oWzJQ6VnxQrtggZRxqXM6ecnzFmHmtgRv+7EsCq20SDJEEQOnDjyThWRId8jeIASWjmJq5k42f
+ R73w1etfJK1gnp1B3rR7iTLzVYiOWRiz+by5qpN8CfMvS2EuTXDpIN32rlwVVC/ghRSLQU1Cyk
+ pJgL0Il4T9H/BLwVdBOXd/AchlvKXwul0+gZGX1NqiAIAAA==
+X-Change-ID: 20260522-ultrarisc-dts-9dab3a2316b6
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Andrew Lunn <andrew@lunn.ch>, 
+ Jia Wang <wangjia@ultrarisc.com>, Xincheng Ji <jixincheng@ultrarisc.com>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, 
+ Samuel Holland <samuel.holland@sifive.com>, 
+ Anup Patel <anup@brainfault.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
+ linux-riscv@lists.infradead.org, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792711665; l=5170;
- i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=rlB85PYh1jaJvMrL1kLAqla/p5s2l4avZfOOeeGlWDM=;
- b=VSMpakwCoRWmpL30l5zo+rYlaAKf2cnLwpQ7a87uoka6eTdULgcyR5+xHnOSv19D2vO2aAMw7
- uw5/EyEtXt5Amy29y7apd5iX/XRwsIqytyCd7Kch17Xizk0nX9V2GLL
-X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
- pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
-X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792720613; l=7263;
+ i=jixincheng@ultrarisc.com; s=20260922; h=from:subject:message-id;
+ bh=dY9XikwZ8pE3Tbs+CBPDuW74NG7hS6wepUlnCqJ3Y78=;
+ b=W8irDb4sLUqq+Dk3dqYXyGXlqDoc2w2tTDidjjwf7NiLk+7vvuB/eVe8qP58KUg+nR6ndMytM
+ mk+BBYvAj/NDVIC9QrrwV/a4Ppu1i9Q8VaVxWZQAekD/2+EXRov3+tA
+X-Developer-Key: i=jixincheng@ultrarisc.com; a=ed25519;
+ pk=n848dcS5D6g0vLad/rjp4Gf/1eedTe1a3pYUrkt2260=
+X-Endpoint-Received: by B4 Relay for jixincheng@ultrarisc.com/20260922 with auth_id=1046
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add fixture variant for the sample memory provider.
+Add Devicetree support for the UltraRISC DP1000 RISC-V SoC and two
+DP1000-based motherboards: Shenzhen Rongda M0 and Milk-V Titan.
 
-If /dev/mem_provider_sample cannot be opened because the module is not
-loaded, the mps variant is skipped gracefully via TEST_REQUIRE().
+DP1000 integrates eight UltraRISC CP100 CPU cores.  The SoC description
+includes the CPU and cache topology, CLINT, PLIC, clock controller,
+pinctrl, GPIO, four UARTs, two SPI controllers, four I2C controllers,
+three PCIe root complexes, GMAC, and the DMA controller.
 
-Because PFN-backed memory cannot be pinned via GUP, expect pinning to fail
-for the mps variant in the elevated_refcount test.
+The Shenzhen Rongda M0 and Milk-V Titan device trees add their
+board-specific pin multiplexing, RTC devices, and Ethernet PHY
+configuration.  Both boards enable the three PCIe root complexes and
+the GMAC described as disabled by default in the SoC DTS.  The Titan
+description also provides its GPIO wakeup keys.
 
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+The binding patches add the vendor, CPU, board, and peripheral compatible
+strings consumed by the new device trees.  The SPI, I2C, and AXI DMA nodes
+use their respective generic DesignWare compatible strings as fallbacks.
+
+An earlier version of the DP1000 SoC and board Devicetree support was
+posted as part of a combined Devicetree and pinctrl series. The pinctrl
+binding and driver were subsequently split out and merged separately.
+This series carries the updated Devicetree portion.
+
+Link: https://lore.kernel.org/all/20260515-ultrarisc-pinctrl-v1-0-bf559589ea8a@ultrarisc.com/
+
+The following prerequisites have been applied to their respective
+subsystem trees but are not yet included in the base:
+
+- net: stmmac: Add common internal RGMII delay handling and DP1000 support
+  https://lore.kernel.org/netdev/20260907-dwmac-ultrarisc-v2-0-9a39bf8db313@ultrarisc.com/
+
+- dt-bindings: i2c: dw: Add compatible for UltraRISC DP1000 SoC
+  https://patch.msgid.link/20260907-ultrarisc-dts-v2-6-5eb4c97477c5@ultrarisc.com
+
+- dt-bindings: dma: snps,dw-axi-dmac: Add UltraRISC DP1000 compatible
+  https://patch.msgid.link/20260907-ultrarisc-dts-v2-7-5eb4c97477c5@ultrarisc.com
+
+Testing:
+- Built dp1000-shenrongda-m0.dtb and dp1000-milkv-titan.dtb with
+  ARCH=riscv and W=1.
+- Ran dt_binding_check for the modified and prerequisite bindings.
+- Validated both DTBs against the relevant Devicetree schemas with
+  CHECK_DTBS=y and all prerequisite changes applied.
+- Boot-tested both DTBs on Shenzhen Rongda M0 and Milk-V Titan. Verified
+  the CPU topology and CBO selftests, UART, SPI, I2C/RTC, system memory,
+  and all three PCIe root complexes. The expected PCIe endpoints were
+  enumerated on both boards.
+- With the prerequisite GMAC series applied, ultrarisc-dwmac established
+  1000 Mb/s full-duplex links with the YT8531S PHY on M0 and the RTL8211F
+  PHY on Titan.
+
+Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Signed-off-by: Xincheng Ji <jixincheng@ultrarisc.com>
 ---
- tools/testing/selftests/kvm/include/kvm_util.h     |  1 +
- tools/testing/selftests/kvm/lib/kvm_util.c         |  9 ++++-
- .../kvm/x86/guest_memfd_conversions_test.c         | 44 +++++++++++++++++++++-
- 3 files changed, 51 insertions(+), 3 deletions(-)
+Changes in v5:
+- Drop the deprecated label properties from the Milk-V Titan PHY LED
+  nodes so that LED names are composed from color and function
+- Replace the deprecated snps,nr-gpios property with ngpios for all four
+  DP1000 GPIO ports, preserving the existing GPIO counts.
+- Link to v4: https://patch.msgid.link/20261019-ultrarisc-dts-v4-0-3979747cda2e@ultrarisc.com
 
-diff --git a/tools/testing/selftests/kvm/include/kvm_util.h b/tools/testing/selftests/kvm/include/kvm_util.h
-index eca296539db79..1a1387f36a52c 100644
---- a/tools/testing/selftests/kvm/include/kvm_util.h
-+++ b/tools/testing/selftests/kvm/include/kvm_util.h
-@@ -1350,6 +1350,7 @@ static inline int pin_self_to_any_cpu(void)
- 	return pin_task_to_any_cpu(pthread_self());
- }
- 
-+int __pin_pages(void *vaddr, uint64_t size);
- void pin_pages(void *vaddr, uint64_t size);
- void unpin_pages(void);
- 
-diff --git a/tools/testing/selftests/kvm/lib/kvm_util.c b/tools/testing/selftests/kvm/lib/kvm_util.c
-index d42e201eba763..9793818f54d23 100644
---- a/tools/testing/selftests/kvm/lib/kvm_util.c
-+++ b/tools/testing/selftests/kvm/lib/kvm_util.c
-@@ -674,7 +674,7 @@ int __pin_task_to_cpu(pthread_t task, int cpu)
- 
- static int gup_test_fd = -1;
- 
--void pin_pages(void *vaddr, uint64_t size)
-+int __pin_pages(void *vaddr, uint64_t size)
- {
- 	const struct pin_longterm_test args = {
- 		.addr = (uint64_t)vaddr,
-@@ -685,7 +685,12 @@ void pin_pages(void *vaddr, uint64_t size)
- 	gup_test_fd = __open_path_or_exit("/sys/kernel/debug/gup_test", O_RDWR,
- 					  "Is CONFIG_GUP_TEST enabled?");
- 
--	TEST_ASSERT_EQ(ioctl(gup_test_fd, PIN_LONGTERM_TEST_START, &args), 0);
-+	return ioctl(gup_test_fd, PIN_LONGTERM_TEST_START, &args);
-+}
-+
-+void pin_pages(void *vaddr, uint64_t size)
-+{
-+	TEST_ASSERT_EQ(__pin_pages(vaddr, size), 0);
- }
- 
- void unpin_pages(void)
-diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-index 023df9cb9d4a6..b99e4cdbab8e6 100644
---- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-+++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-@@ -16,11 +16,13 @@
- #include "kselftest_harness.h"
- #include "test_util.h"
- #include "ucall_common.h"
-+#include "../../../../samples/kvm/mem_provider_sample.h"
- 
- FIXTURE(gmem_conversions) {
- 	struct kvm_vcpu *vcpu;
- 	int gmem_fd;
- 	int resource_fd;
-+	bool expect_pin_failure;
- 	/* HVA of the first byte of the memory mmap()-ed from gmem_fd. */
- 	char *mem;
- };
-@@ -29,10 +31,14 @@ typedef FIXTURE_DATA(gmem_conversions) test_data_t;
- 
- FIXTURE_VARIANT(gmem_conversions) {
- 	int (*create_resource)(size_t size);
-+	uint64_t extra_flags;
-+	bool expect_pin_failure;
- };
- 
- FIXTURE_VARIANT_ADD(gmem_conversions, native) {
- 	.create_resource = NULL,
-+	.extra_flags = 0,
-+	.expect_pin_failure = false,
- };
- 
- static int create_tmpfs_resource(size_t size)
-@@ -42,6 +48,34 @@ static int create_tmpfs_resource(size_t size)
- 
- FIXTURE_VARIANT_ADD(gmem_conversions, tmpfs) {
- 	.create_resource = create_tmpfs_resource,
-+	.extra_flags = 0,
-+	.expect_pin_failure = false,
-+};
-+
-+static int create_mps_resource(size_t size)
-+{
-+	struct mps_new_file nf = {
-+		.size = size,
-+	};
-+	int dev_fd, fd;
-+
-+	dev_fd = open("/dev/mem_provider_sample", O_RDWR);
-+	if (dev_fd < 0) {
-+		TEST_REQUIRE(errno != ENOENT && errno != ENODEV);
-+		TEST_FAIL("Failed to open /dev/mem_provider_sample: %d (%s)",
-+			  errno, strerror(errno));
-+	}
-+
-+	fd = ioctl(dev_fd, MPS_NEW_FILE, &nf);
-+	TEST_ASSERT(fd >= 0, "MPS_NEW_FILE failed: %d (%s)", errno, strerror(errno));
-+	close(dev_fd);
-+	return fd;
-+}
-+
-+FIXTURE_VARIANT_ADD(gmem_conversions, mps) {
-+	.create_resource = create_mps_resource,
-+	.extra_flags = GUEST_MEMFD_FLAG_PFN_MODE,
-+	.expect_pin_failure = true,
- };
- 
- FIXTURE_SETUP(gmem_conversions) { }
-@@ -75,10 +109,12 @@ static void gmem_conversions_do_setup(test_data_t *t,
- 
- 	vm = __vm_create_shape_with_one_vcpu(shape, &t->vcpu, nr_pages, guest_do_rmw);
- 
-+	t->expect_pin_failure = variant->expect_pin_failure;
- 	t->resource_fd = -1;
- 
- 	if (variant->create_resource) {
--		uint64_t flags = gmem_flags | GUEST_MEMFD_FLAG_USE_RESOURCE;
-+		uint64_t flags = gmem_flags | GUEST_MEMFD_FLAG_USE_RESOURCE |
-+				 variant->extra_flags;
- 
- 		t->resource_fd = variant->create_resource(size);
- 		TEST_ASSERT(t->resource_fd >= 0, "Failed to create backing resource");
-@@ -506,6 +542,12 @@ GMEM_CONVERSION_MULTIPAGE_TEST_INIT_SHARED(elevated_refcount, 4)
- {
- 	int i;
- 
-+	if (t->expect_pin_failure) {
-+		TEST_ASSERT(__pin_pages(t->mem + test_page * page_size, page_size) < 0,
-+			    "Pinning PFN-backed memory should fail");
-+		return;
-+	}
-+
- 	pin_pages(t->mem + test_page * page_size, page_size);
- 
- 	for (i = 0; i < nr_pages; i++)
+Changes in v4:
+- Move L2 cache nodes out of the CPU nodes and reference them using
+  next-level-cache, following the standard Devicetree cache topology.
+- Link to v3: https://patch.msgid.link/20261013-ultrarisc-dts-v3-0-5ff3ebb2a90d@ultrarisc.com
 
--- 
-2.56.0.257.gf7497c7d27-goog
+Changes in v3:
+- Drop the DP1000 SPI binding patch, which has been merged, and the I2C
+  and DMA binding patches, which have been applied.
+- Correct the reg property address ranges and sizes for DMA and I2C nodes in the DP1000 base device tree.
+- Link to v2: https://patch.msgid.link/20260907-ultrarisc-dts-v2-0-5eb4c97477c5@ultrarisc.com
+
+Changes in v2:
+- Remove the dependency on the DP1000 clock series, which has since
+  been merged.
+- Drop the generic DWMAC compatible patch; DP1000 GMAC support is handled
+  by a separate prerequisite series.
+- Drop the RISC-V CPU binding yamllint fix, which has been applied.
+- Add DP1000-specific resource constraints and hardware descriptions to
+  the SPI, I2C and DMA bindings.
+- Correct the native chip-select count of SPI1 from three to four.
+- Describe all eight per-channel DMA interrupts.
+- Update the DP1000 GMAC nodes for the separate GMAC support series:
+  remove the generic DWMAC fallback, use "rgmii-id" for both boards, and
+  clarify the fixed MAC-side RGMII delays.
+- Link to v1: https://patch.msgid.link/20260824-ultrarisc-dts-v1-0-61ab7aebe9e5@ultrarisc.com
+
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Paul Walmsley <pjw@kernel.org>
+To: Palmer Dabbelt <palmer@dabbelt.com>
+To: Albert Ou <aou@eecs.berkeley.edu>
+To: Alexandre Ghiti <alex@ghiti.fr>
+To: Jia Wang <wangjia@ultrarisc.com>
+To: Daniel Lezcano <daniel.lezcano@kernel.org>
+To: Thomas Gleixner <tglx@kernel.org>
+To: Samuel Holland <samuel.holland@sifive.com>
+To: Anup Patel <anup@brainfault.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Paul Walmsley <paul.walmsley@sifive.com>
+Cc: Palmer Dabbelt <palmer@sifive.com>
+Cc: Conor Dooley <conor@kernel.org>
+Cc: linux-riscv@lists.infradead.org
+
+---
+Jia Wang (7):
+      dt-bindings: vendor-prefixes: Add shenrongda
+      dt-bindings: riscv: cpus: Add UltraRISC CP100 compatible
+      dt-bindings: riscv: Add UltraRISC DP1000 board compatibles
+      dt-bindings: timer: Add UltraRISC DP1000 CLINT
+      riscv: dts: ultrarisc: Add initial device tree for UltraRISC DP1000
+      riscv: dts: ultrarisc: Add Shenzhen Rongda M0 board device tree
+      riscv: dts: ultrarisc: Add Milk-V Titan board device tree
+
+ Documentation/devicetree/bindings/riscv/cpus.yaml  |   1 +
+ .../devicetree/bindings/riscv/ultrarisc.yaml       |  27 +
+ .../devicetree/bindings/timer/sifive,clint.yaml    |   1 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |   8 +
+ arch/riscv/boot/dts/Makefile                       |   1 +
+ arch/riscv/boot/dts/ultrarisc/Makefile             |   3 +
+ .../dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi  | 108 +++
+ .../boot/dts/ultrarisc/dp1000-milkv-titan.dts      | 201 +++++
+ arch/riscv/boot/dts/ultrarisc/dp1000-pinctrl.h     |  63 ++
+ .../ultrarisc/dp1000-shenrongda-m0-pinctrl.dtsi    |  79 ++
+ .../boot/dts/ultrarisc/dp1000-shenrongda-m0.dts    | 113 +++
+ arch/riscv/boot/dts/ultrarisc/dp1000.dtsi          | 865 +++++++++++++++++++++
+ 13 files changed, 1472 insertions(+)
+---
+base-commit: 704340f1cd0dcef829eb62f5b48ae95a2ce17bdf
+change-id: 20260522-ultrarisc-dts-9dab3a2316b6
+prerequisite-message-id: <20260907-dwmac-ultrarisc-v2-0-9a39bf8db313@ultrarisc.com>
+prerequisite-patch-id: 92e6cf1352d54e283d7721dc1542b580b8a41be1
+prerequisite-patch-id: 875c2058e9d8a983d785d7447374758f994dc847
+prerequisite-patch-id: 060a9b129c32c623a52ab1ba66f7a357e54575ff
+prerequisite-patch-id: 9aafbac6d2531a378b2057bf57787c814523f9d3
+prerequisite-patch-id: d75120a112276bd966d37441bd4d631e1539d0e8
+prerequisite-patch-id: f526d36e1a4adb659a812fd4145dca2e69b19453
+prerequisite-patch-id: 7d5e12085468dba34526d9047c62b357f874f91e
+
+Best regards,
+--  
+Xincheng Ji <jixincheng@ultrarisc.com>
 
