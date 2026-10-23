@@ -1,105 +1,69 @@
-From: Ishu Brar <patches@brar.si>
-Date: Fri, 23 Oct 2026 14:19:02 +0530
-Subject: [PATCH v2 4/4] drm/msm/adreno: Add Adreno 620
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Fri, 23 Oct 2026 08:50:56 +0000
+Subject: [PATCH] dmaengine: amlogic: fix workqueque not free when probe
+ failed
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-adreno-a620-v2-4-1d654c3f52d5@brar.si>
-References: <20261023-adreno-a620-v2-0-1d654c3f52d5@brar.si>
-In-Reply-To: <20261023-adreno-a620-v2-0-1d654c3f52d5@brar.si>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792745340; l=2351;
- i=patches@brar.si; h=from:subject:message-id;
- bh=tU61s/7XnImqnoXanHZtlX9L/8bbUJ87V/QXf+2mrqI=;
- b=OG6UaA9YwE3jmVOZ0IRBLIxk82gnLtPxhTtMjMEkVUhl1vSTVzrmwhVpXvvAMrBh2xa1Wwae1
- XDeSEWgm/KKBtxQn9doZl9UHBq9NAeGvqTYqEgHU/fsinYx/+kRMyH8
-X-Developer-Key: i=patches@brar.si; a=ed25519;
- pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
-X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
+Message-Id: <20261023-fix-a9-dma-wq-v1-1-b414de837e6e@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAO8f22oC/x2MQQqAIBAAvxJ7bkGNivpKdLDcrT1kpVBB+Pek4
+ 8DMvBApCEXoixcCXRJl9xl0WcC8Wr8QissMRplGK1Mhy4O2Q7dZvE9sNRPXyjF3E+TmCJSF/ze
+ MKX0oPnP1XwAAAA==
+X-Change-ID: 20261023-fix-a9-dma-wq-71fef50dff9b
+To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792745469; l=1430;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=a34YHjJv3kRrPIxLkFWemJns1CaLpsW5MhyikgyybBs=;
+ b=QCRqlQC2+0xlvnJkgx367+S7w90kOB7yOCm56pMEQxvQD0+gfGwAahN9MRoK2W7IlDKsEWWX/
+ ZlkU+oToRVLB0nm+c2c/Or5rM4MP6aHEyzjfg3I8WJVozpPRuDZLaE/
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the catalog entry for the Adreno 620 (chip id 0x06020000) found in
-the Snapdragon 765/765G/768G (SM7250). It is an A650 derivative and
-uses its SQE and GMU firmware and protect table, together with the A620
-zap shader.
+when probe failed, workqueue not free. Convert the driver to use
+devm_alloc_ordered_workqueue() for allocating the workqueue. This
+ties the workqueue lifetime to the device and removes the need for
+explicitly destroying it in the remove callback.
 
-The speed-bin fuse values map to the OPP bins as in the downstream
-"lito" devicetree: fuse 0 is the default bin and fuse 132 and 115 are
-the two alternate ones.
-
-The GMU clock gating mode is 0x00020202, which is what the downstream
-driver programs on every A6xx except the A612 and A615 family. List the
-SH0/MC0/ACV bus clock managers like the other A6xx and A7xx parts do, so
-the bandwidth table is generated from the OPP table once it carries
-bandwidth votes; until then the table added earlier in this series is
-used. The bus widths are the ones the other parts use.
-
-Signed-off-by: Ishu Brar <patches@brar.si>
+Fixes: b84b5197e344 ("dmaengine: amlogic: Add general DMA driver for A9")
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/gpu/drm/msm/adreno/a6xx_catalog.c | 35 +++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Fix workqueque not free when probe failed.
+---
+ drivers/dma/amlogic-dma.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-index 4ef2bd6e7..bea11ba6c 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-@@ -943,6 +943,41 @@ static const struct adreno_info a6xx_gpus[] = {
- 			{ 169, 2 },
- 			{ 180, 1 },
- 		),
-+	}, {
-+		.chip_ids = ADRENO_CHIP_IDS(0x06020000),
-+		.family = ADRENO_6XX_GEN3,
-+		.fw = {
-+			[ADRENO_FW_SQE] = "a650_sqe.fw",
-+			[ADRENO_FW_GMU] = "a650_gmu.bin",
-+		},
-+		.gmem = SZ_512K,
-+		.inactive_period = DRM_MSM_INACTIVE_PERIOD,
-+		.quirks = ADRENO_QUIRK_HAS_CACHED_COHERENT |
-+			  ADRENO_QUIRK_HAS_HW_APRIV,
-+		.funcs = &a6xx_gpu_funcs,
-+		.zapfw = "a620_zap.mbn",
-+		.a6xx = &(const struct a6xx_info) {
-+			.hwcg = a620_hwcg,
-+			.protect = &a650_protect,
-+			.gbif_cx = a640_gbif,
-+			.gmu_cgc_mode = 0x00020202,
-+			.prim_fifo_threshold = 0x00010000,
-+			.bcms = (const struct a6xx_bcm[]) {
-+				{ .name = "SH0", .buswidth = 16 },
-+				{ .name = "MC0", .buswidth = 4 },
-+				{
-+					.name = "ACV",
-+					.fixed = true,
-+					.perfmode = BIT(3),
-+				},
-+				{ /* sentinel */ },
-+			},
-+		},
-+		.speedbins = ADRENO_SPEEDBINS(
-+			{ 0,   0 },
-+			{ 132, 1 },
-+			{ 115, 3 },
-+		),
- 	}, {
- 		.chip_ids = ADRENO_CHIP_IDS(0x06020100),
- 		.family = ADRENO_6XX_GEN3,
+diff --git a/drivers/dma/amlogic-dma.c b/drivers/dma/amlogic-dma.c
+index 684121d13fca..791bd82743d3 100644
+--- a/drivers/dma/amlogic-dma.c
++++ b/drivers/dma/amlogic-dma.c
+@@ -620,7 +620,7 @@ static int aml_dma_probe(struct platform_device *pdev)
+ 	if (!aml_dma)
+ 		return -ENOMEM;
+ 
+-	aml_dma->free_wq = alloc_ordered_workqueue("aml_dma_free", 0);
++	aml_dma->free_wq = devm_alloc_ordered_workqueue(&pdev->dev, "aml_dma_free", 0);
+ 	if (!aml_dma->free_wq)
+ 		return -ENOMEM;
+ 
+@@ -712,7 +712,6 @@ static void aml_dma_remove(struct platform_device *pdev)
+ 		if (aml_chan)
+ 			tasklet_kill(&aml_chan->vchan.task);
+ 	}
+-	destroy_workqueue(aml_dma->free_wq);
+ }
+ 
+ static const struct of_device_id aml_dma_ids[] = {
 
+---
+base-commit: aff5e6a77fc69a7c490246465940d18422d7c631
+change-id: 20261023-fix-a9-dma-wq-71fef50dff9b
+
+Best regards,
 -- 
-2.56.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
