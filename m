@@ -1,169 +1,96 @@
-From: Max Bretschneider <max.bretschneider@leica-geosystems.com>
-Date: Sat, 24 Oct 2026 00:28:54 +0200
-Subject: [PATCH v2 4/4] media: i2c: ov08d10: add get_selection support
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH v7 0/8] fuse: {io-uring} Allow to reduce the number of
+ queues and request distribution
+Date: Sat, 24 Oct 2026 00:50:29 +0200
+Message-Id: <20261024-reduced-nr-ring-queues_3-v7-0-4e77e284fd48@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-ov08d10-get-selection-v2-4-f8c49972ca18@leica-geosystems.com>
-References: <20261024-ov08d10-get-selection-v2-0-f8c49972ca18@leica-geosystems.com>
-In-Reply-To: <20261024-ov08d10-get-selection-v2-0-f8c49972ca18@leica-geosystems.com>
-To: Jimmy Su <jimmy.su@intel.com>, Matthias Fend <matthias.fend@emfend.at>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Max Bretschneider <max.bretschneider@leica-geosystems.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792794706; l=4916;
- i=max.bretschneider@leica-geosystems.com; s=20260501;
- h=from:subject:message-id; bh=pSPbfW/+rQXIuQoU/4hrAg5l2fsycIgBp7w9O8RjxoE=;
- b=zoQokf57qmjGEky4VZ/Z/6RraDLuWEPTwXHwQplZUWcK/7SQxcfb41UenzEFp2UzWJzx8rMWn
- npE8Fr5YQBOCEo6VMB+YifxjKIyb+vzktfm86Dzi462BmqNBx34pRxP
-X-Developer-Key: i=max.bretschneider@leica-geosystems.com; a=ed25519;
- pk=jf4ba33jrWlsOdGemi2InMtJAngoJVZU8Moetp0ixik=
-X-Endpoint-Received: by B4 Relay for max.bretschneider@leica-geosystems.com/20260501 with auth_id=1161
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Ny27CMBCF4VdBXtfIF+JLV7xHhaqxZwJe1KF2E
+ 1GhvDsOqFXZRF3+R5pvrqxSSVTZ6+bKCk2ppiG3sC8bFk+Qj8QTtmZKqE5YpXghHCMhz4WXlI/
+ 8c6SR6rvmBmKwHgG9daydnwv16XKn3w6tT6l+DeX7/mmSy/oPdJJccABH2gJ5S2aPmLdx+GALO
+ alfRgqhVxjVGLtTfS/B9bFzz4z+w8g1RjfGoLPRAWgJ9MyYH8ZIodYYszCdU7qLPviA+1ADlYw
+ Pap7nGyUqXIWXAQAA
+X-Change-ID: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+To: Joanne Koong <joannelkoong@gmail.com>, 
+ Miklos Szeredi <miklos@szeredi.hu>
+Cc: Bernd Schubert <bernd@bsbernd.com>, fuse-devel@lists.linux.dev
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2897; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=439drljPCtun3e95Ug86Q73VP6NEzeD2ZKEwJOGShkM=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLJuP9nltXxJ2YtfQZWlcpNcOk/du3Mm9M3N6E1pk6+Kc
+ WeJG83Z11HKwiDGwSArpsjSJbHHdso/Plm1r+uvw8xhZQIZwsDFKQATmXyMkeFUdWae1+Vrex0a
+ TRtW5S1sePP3t/qeBTv3a97cL5/PE/yJ4Q/3N6aVrUKTHwjEfJm0bmrY/1f+WVvCz3RGdEXtrnT
+ M7+QHAA==
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver does not implement .get_selection, so it never reports the
-analogue crop rectangle of the active mode. Userspace has no way to learn
-which region of the pixel array a given mode reads out, and cannot assume
-a fixed one, because the modes differ: the full mode reads 3280x2460 at
-offset (4,8), while the 3264x2448 and the 2x2 binned 1632x1224 modes read
-3264x2448 at offset (12,16).
+Allow a server to negotiate fewer io-uring queues than CPUs through
+FUSE_URING_REDUCED_Q in its INIT reply. Reduced mode requires ADD_QUEUE
+and starts serving at the first entry. Legacy mode waits for every queue.
+RCU-published CPU maps retain NUMA affinity, background queue selection
+and limited retries of busy queues.
 
-Consumers that derive the sensor scale from the analogue crop and the
-output size therefore compute a wrong result for the cropped and binned
-modes, and may reject those configurations.
+Libfuse PR: https://github.com/libfuse/libfuse/pull/1659
 
-Track the analogue crop rectangle per mode, store it in the subdev state
-when the format is set, and report it through .get_selection. Also report
-V4L2_SEL_TGT_CROP_DEFAULT, V4L2_SEL_TGT_CROP_BOUNDS and
-V4L2_SEL_TGT_NATIVE_SIZE from the pixel array geometry.
-
-The pixel array geometry and the per-mode offsets are taken from the
-sensor datasheet and the recommended reference register sets.
-
-Signed-off-by: Max Bretschneider <max.bretschneider@leica-geosystems.com>
+Assisted-by: <various-ai-models>
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- drivers/media/i2c/ov08d10.c | 50 ++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 49 insertions(+), 1 deletion(-)
+Changes in v7:
+- Address a Sashiko review about possible holes in the system cpu map,
+  iterating about all CPUs might have caused issues. 
+  We use for_each_possible_cpu() as iterate now and also check 
+  with cpu_possible() .
+- Link to v6: https://patch.msgid.link/20261023-reduced-nr-ring-queues_3-v6-0-658235c9b9bd@bsbernd.com
 
-diff --git a/drivers/media/i2c/ov08d10.c b/drivers/media/i2c/ov08d10.c
-index 4b503ddfa042..2e5ae8c49067 100644
---- a/drivers/media/i2c/ov08d10.c
-+++ b/drivers/media/i2c/ov08d10.c
-@@ -65,6 +65,14 @@
- #define OV08D10_REG_FLIP_OPT			0x32
- #define OV08D10_REG_FLIP_MASK			0x3
- 
-+/* OV08D10 native and active pixel array size */
-+#define OV08D10_NATIVE_WIDTH			3288
-+#define OV08D10_NATIVE_HEIGHT			2476
-+#define OV08D10_PIXEL_ARRAY_LEFT		4
-+#define OV08D10_PIXEL_ARRAY_TOP			8
-+#define OV08D10_PIXEL_ARRAY_WIDTH		3280
-+#define OV08D10_PIXEL_ARRAY_HEIGHT		2464
-+
- #define to_ov08d10(_sd)		container_of(_sd, struct ov08d10, sd)
- 
- struct ov08d10_reg {
-@@ -110,6 +118,9 @@ struct ov08d10_mode {
- 
- 	/* Number of data lanes */
- 	u8 data_lanes;
-+
-+	/* Analogue crop rectangle, in native sensor coordinates */
-+	struct v4l2_rect crop;
- };
- 
- /* 3280x2460, 3264x2448 need 720Mbps/lane, 2 lanes - 19.2 MHz */
-@@ -624,6 +635,7 @@ static const struct ov08d10_lane_cfg lane_cfg_2 = {
- 		},
- 		.link_freq_index = 0,
- 		.data_lanes = 2,
-+		.crop = { .left =  4, .top =  8, .width = 3280, .height = 2460 },
- 	},
- 	{
- 		.width = 3264,
-@@ -637,6 +649,7 @@ static const struct ov08d10_lane_cfg lane_cfg_2 = {
- 		},
- 		.link_freq_index = 0,
- 		.data_lanes = 2,
-+		.crop = { .left = 12, .top = 16, .width = 3264, .height = 2448 },
- 	},
- 	{
- 		.width = 1632,
-@@ -650,6 +663,7 @@ static const struct ov08d10_lane_cfg lane_cfg_2 = {
- 		},
- 		.link_freq_index = 1,
- 		.data_lanes = 2,
-+		.crop = { .left = 12, .top = 16, .width = 3264, .height = 2448 },
- 	}}
- };
- 
-@@ -1209,6 +1223,7 @@ static int ov08d10_set_format(struct v4l2_subdev *sd,
- 
- 	ov08d10_update_pad_format(ov08d10, mode, &fmt->format);
- 	*v4l2_subdev_state_get_format(sd_state, fmt->pad) = fmt->format;
-+	*v4l2_subdev_state_get_crop(sd_state, fmt->pad) = mode->crop;
- 
- 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
- 		__v4l2_ctrl_s_ctrl(ov08d10->link_freq, mode->link_freq_index);
-@@ -1270,13 +1285,45 @@ static int ov08d10_enum_frame_size(struct v4l2_subdev *sd,
- 	return 0;
- }
- 
-+static int ov08d10_get_selection(struct v4l2_subdev *sd,
-+				 const struct v4l2_subdev_client_info *ci,
-+				 struct v4l2_subdev_state *sd_state,
-+				 struct v4l2_subdev_selection *sel)
-+{
-+	switch (sel->target) {
-+	case V4L2_SEL_TGT_CROP:
-+		sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
-+		return 0;
-+
-+	case V4L2_SEL_TGT_NATIVE_SIZE:
-+		sel->r.left = 0;
-+		sel->r.top = 0;
-+		sel->r.width = OV08D10_NATIVE_WIDTH;
-+		sel->r.height = OV08D10_NATIVE_HEIGHT;
-+		return 0;
-+
-+	case V4L2_SEL_TGT_CROP_DEFAULT:
-+	case V4L2_SEL_TGT_CROP_BOUNDS:
-+		sel->r.left = OV08D10_PIXEL_ARRAY_LEFT;
-+		sel->r.top = OV08D10_PIXEL_ARRAY_TOP;
-+		sel->r.width = OV08D10_PIXEL_ARRAY_WIDTH;
-+		sel->r.height = OV08D10_PIXEL_ARRAY_HEIGHT;
-+		return 0;
-+
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
- static int ov08d10_init_state(struct v4l2_subdev *sd,
- 			      struct v4l2_subdev_state *sd_state)
- {
- 	struct ov08d10 *ov08d10 = to_ov08d10(sd);
-+	const struct ov08d10_mode *mode = &ov08d10->priv_lane->sp_modes[0];
- 
--	ov08d10_update_pad_format(ov08d10, &ov08d10->priv_lane->sp_modes[0],
-+	ov08d10_update_pad_format(ov08d10, mode,
- 				  v4l2_subdev_state_get_format(sd_state, 0));
-+	*v4l2_subdev_state_get_crop(sd_state, 0) = mode->crop;
- 
- 	return 0;
- }
-@@ -1290,6 +1337,7 @@ static const struct v4l2_subdev_pad_ops ov08d10_pad_ops = {
- 	.get_fmt = v4l2_subdev_get_fmt,
- 	.enum_mbus_code = ov08d10_enum_mbus_code,
- 	.enum_frame_size = ov08d10_enum_frame_size,
-+	.get_selection = ov08d10_get_selection,
- };
- 
- static const struct v4l2_subdev_ops ov08d10_subdev_ops = {
+Changes in v6:
+- Rebase onto ADD_QUEUE and bufpool support.
+- Require FUSE_URING_REDUCED_Q in the INIT reply for reduced mode (Joanne).
+- Publish CPU-to-queue maps through RCU (Joanne).
 
--- 
-2.43.0
+Changes in v5
+- Rebased to miklos-for-next (Linux 7.2 base).
+- Folded "Fetch a queued fuse request on command registration" into
+  "Allow reduced number of ring queues", inlining fuse_uring_do_register()
+  into fuse_uring_register().
+  - Fixed retry logic in "Add retry attempts for numa local queues":
+    replaced cpu++ with cpumask_next_wrap(qid, mask) so each retry
+    advances to a genuinely different registered queue (Joanne)-
+  - Simplified "Prefer the current core over mapping" (Joanne).
+  - Folded READ_ONCE() annotation for ring->ready into "Allow reduced
+    number of ring queues" to match WRITE_ONCE() on the writer side and
+    suppress a KCSAN data-race warning.
+
+To: Bernd Schubert <bernd@bsbernd.com>
+To: Joanne Koong <joannelkoong@gmail.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: fuse-devel@lists.linux.dev
+
+---
+Bernd Schubert (8):
+      fuse: {io-uring} Add queue length counters
+      fuse: {io-uring} Rename ring->nr_queues to max_nr_queues
+      fuse: {io-uring} Add CPU to queue maps
+      fuse: {io-uring} Select the queue through the CPU to queue maps
+      fuse: {io-uring} Allow reduced queues through INIT negotiation
+      fuse: {io-uring} Queue background requests on a different core
+      fuse: Add retry attempts for numa local queues for load distribution
+      fuse: {io-uring} Prefer the current core over mapping
+
+ fs/fuse/dev.c             |   2 +-
+ fs/fuse/dev.h             |   1 +
+ fs/fuse/dev_uring.c       | 324 ++++++++++++++++++++++++++++++++++++++++------
+ fs/fuse/dev_uring_i.h     |  31 ++++-
+ fs/fuse/inode.c           |   8 +-
+ include/uapi/linux/fuse.h |   4 +
+ 6 files changed, 324 insertions(+), 46 deletions(-)
+---
+base-commit: 1d8630946017ead740c4126395d4763371f0107c
+change-id: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+
+Best regards,
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
