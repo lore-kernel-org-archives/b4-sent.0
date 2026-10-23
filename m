@@ -1,109 +1,75 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Fri, 23 Oct 2026 11:10:23 +0800
-Subject: [PATCH v2] rockchip: ram: Fix LPDDR5X size decoding
+From: Han Gao <gaohan@iscas.ac.cn>
+Subject: [PATCH 0/5] riscv: kexec: fix kexec_file with CMA-backed segments
+Date: Fri, 23 Oct 2026 15:33:13 +0800
+Message-Id: <20261023-riscv-kexec-cma-fixes-v1-0-825b90ea23c4@iscas.ac.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-lpddr5x-size-fix-v2-1-508af15a8200@qq.com>
-X-B4-Tracking: v=1; b=H4sIAB7Q2moC/32NwQ6CMBBEf4Xs2TVsjYie+A/DobSLrFEKLRKU8
- O8WvHt8k5k3MwT2wgEuyQyeRwni2ghql4BpdHtjFBsZVKoySumMj85af5wwyIexlgnrismQpiy
- 3DHHWeY7xpryWPw6v6s5mWD1ro5EwOP/ePkdae3/0IyHhIctzRadKa62Kvt8b94RyWZYvBSsIt
- b8AAAA=
-X-Change-ID: 20261019-lpddr5x-size-fix-fbe1c1a168de
-To: Simon Glass <sjg@chromium.org>, u-boot@lists.u-boot-project.org
-Cc: Tom Rini <trini@konsulko.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Quentin Schulz <u-boot@0leil.net>, Kever Yang <kever.yang@rock-chips.com>, 
- Anshul Dalal <anshuld@ti.com>, Jonas Karlman <jonas@kwiboo.se>, 
- Cunhao Lu <1579567540@qq.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792725027; l=3059;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=Bbkz+sqnOaC5URhlYmuQwWxOxVGyouyfDvk0pO4AQps=;
- b=5b/+ZGGowbFUGMrs4DmKe9fN3nFqSq9EADGGIk17+MtRi55yYDlnecYI37GPC1AyO0sY7oB5a
- eD8jHcXnzP1B8sLssdSvxAjH97qHdWLRW7QvliKnRgiNFHgqa2T2gVy
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QqCQBCF4VeRuW5AV9S2V4ku1vGYU2SxkyKI7
+ 95qlx+H/6xkiAqjS7ZSxKym7zGhOGUkQxjvYO2SyeWuLnJXclSTmZ9YICyvwL0uMPat1L7x51B
+ JT6n9RBxDSq+3v21qH5Dvfkbb9gOHEL0ueQAAAA==
+X-Change-ID: 20261023-riscv-kexec-cma-fixes-9bc69798a5cf
+To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
+ Nathan Chancellor <nathan@kernel.org>, 
+ Nick Desaulniers <ndesaulniers@google.com>, 
+ Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Baoquan He <baoquan.he@linux.dev>, Mike Rapoport <rppt@kernel.org>, 
+ Pasha Tatashin <pasha.tatashin@soleen.com>, 
+ Pratyush Yadav <pratyush@kernel.org>, Yao Zi <me@ziyao.cc>
+Cc: Han Gao <rabenda.cn@gmail.com>, Han Gao <gaohan@iscas.ac.cn>, 
+ linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ llvm@lists.linux.dev, kexec@lists.infradead.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792740795; l=1990;
+ i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
+ bh=Thjxfmu56NJtgVUdSnPeX0m3Ki7icxN2HFTUo0uN07Y=;
+ b=XDRVxrg/MPvhZsdxIHy3UA8cSlaAZoQOXZCJXfFOxKsAnZAwNXDEMiirk3dJXJ0NxyUn3KHzz
+ ALTRjBPSRlUDwLRKSoyIDI9T86UgT2itnhAauIZ2jOmBuocOu7ukC1r
+X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
+ pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
+X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The shared SDRAM decoder treats type 10 as DDR5 and uses the wrong
-bank count for LPDDR5X. On the 4 GiB OK3572-C, register values
-0x100043c1 and 0x30001001 therefore produce a size of 1 GiB.
+I ran into these while doing kexec_file reboots in a loop on a Zhihe
+A210 board. Things mostly worked, but every few rounds the next kernel
+would hang or purgatory would spin, depending on where the segments and
+the DTB happened to land. Most of it goes back to segments now being
+allocated from CMA, which exposed a few assumptions that no longer hold.
+They are separate bugs, so each one gets its own patch.
 
-Replace the DDR5 symbol with LPDDR5X as type 10. Apply the existing
-LPDDR5 bank decoding to LPDDR5X so the same register values yield
-4 GiB. The type value matches include/soc/rockchip/rockchip_grf.h in
-the kernel-6.12 sources of Forlinx OK3572-C BSP Alpha1.
+Patch 1 lets the RISC-V relocation code turn the MMU off even when the
+entry list has no indirection page, which is the normal case with CMA.
+Patch 2 fixes the purgatory relocations, which assumed a PC-relative low
+part always sits right after its high part. Patches 3 and 4 are in the
+generic code: CMA quietly caps the alignment below what the RISC-V
+kernel needs, and the tail of CMA segment pages was never cleared even
+though the purgatory digest expects zeroes there. Patch 5 reserves the
+DTB early enough that a CMA pool cannot be placed on top of it.
 
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
-Reviewed-by: Jonas Karlman <jonas@kwiboo.se>
----
-This patch fixes LPDDR5X capacity decoding in Rockchip's shared SDRAM
-decoder.
-
-The geometry registers captured on a Forlinx OK3572-C with 4 GiB of
-LPDDR5X are 0x100043c1 and 0x30001001. The current decoder labels type
-10 as DDR5 and uses the generic bank calculation. With the bank bit
-set, it assumes four banks instead of 16 and reports only 1 GiB.
-
-Replace the DDR5 symbol with LPDDR5X as type 10, following the Rockchip
-type definitions in Forlinx OK3572-C BSP Alpha1. Use the existing
-LPDDR5 bank calculation for LPDDR5X so the captured register values
-decode to the correct 4 GiB capacity.
-
-The fix applies to mainline independently of the RK3572 SoC and board
-support.
-
-Host-side validation of the decoder with the captured register values
-reproduced 1 GiB before the fix and returned 4 GiB after it. Regression
-checks for eight other memory type codes produced the same results
-before and after the fix, with no UBSan errors.
----
-Changes in v2:
-- Drop the DDR5 symbol instead of assigning it type 11.
-- Add Jonas Karlman's Reviewed-by tag.
-- Link to v1:
-  https://patch.msgid.link/20261019-lpddr5x-size-fix-v1-1-3688217baaa2@qq.com
----
- arch/arm/include/asm/arch-rockchip/sdram.h | 2 +-
- arch/arm/mach-rockchip/sdram.c             | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/arch/arm/include/asm/arch-rockchip/sdram.h b/arch/arm/include/asm/arch-rockchip/sdram.h
-index 476fc1c4ee3..1c28d4aefb9 100644
---- a/arch/arm/include/asm/arch-rockchip/sdram.h
-+++ b/arch/arm/include/asm/arch-rockchip/sdram.h
-@@ -14,7 +14,7 @@ enum {
- 	LPDDR4 = 7,
- 	LPDDR4X = 8,
- 	LPDDR5 = 9,
--	DDR5 = 10,
-+	LPDDR5X = 10,
- 	UNUSED = 0xFF
- };
- 
-diff --git a/arch/arm/mach-rockchip/sdram.c b/arch/arm/mach-rockchip/sdram.c
-index 2e404df1b20..b5891913701 100644
---- a/arch/arm/mach-rockchip/sdram.c
-+++ b/arch/arm/mach-rockchip/sdram.c
-@@ -403,8 +403,8 @@ size_t rockchip_sdram_size(phys_addr_t reg)
- 		cs0_col = 9 + (sys_reg2 >> SYS_REG_COL_SHIFT(ch) &
- 			  SYS_REG_COL_MASK);
- 		cs1_col = cs0_col;
--		if (dram_type == LPDDR5)
--			/* LPDDR5: 0:8bank(bk=3), 1:16bank(bk=4) */
-+		if (dram_type == LPDDR5 || dram_type == LPDDR5X)
-+			/* LPDDR5/LPDDR5X: 0:8bank(bk=3), 1:16bank(bk=4) */
- 			bk = 3 + ((sys_reg2 >> SYS_REG_BK_SHIFT(ch)) &
- 			SYS_REG_BK_MASK);
- 		else
+With all five applied, the board survives repeated kexec_file reboots,
+including the layouts where every segment comes from CMA.
 
 ---
-base-commit: acc808479730e13e74199119eb9b2b9113999244
-change-id: 20261019-lpddr5x-size-fix-fbe1c1a168de
+Han Gao (5):
+      riscv: kexec: Disable the MMU before walking the entry list
+      riscv: kexec_file: Pair PC-relative low parts with their high parts
+      kexec_file: Honor the segment alignment for CMA allocations
+      kexec_core: Clear the unused part of CMA segments
+      riscv: mm: Reserve the DTB before scanning reserved memory
+
+ arch/riscv/kernel/kexec_relocate.S     | 29 ++++++------
+ arch/riscv/kernel/machine_kexec_file.c | 84 ++++++++++++++++++++++++++--------
+ arch/riscv/mm/init.c                   | 18 ++++----
+ kernel/kexec_core.c                    |  6 +--
+ kernel/kexec_file.c                    |  7 +++
+ 5 files changed, 99 insertions(+), 45 deletions(-)
+---
+base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
+change-id: 20261023-riscv-kexec-cma-fixes-9bc69798a5cf
 
 Best regards,
 --  
-Cunhao Lu <1579567540@qq.com>
+Han Gao <gaohan@iscas.ac.cn>
 
