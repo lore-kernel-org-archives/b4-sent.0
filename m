@@ -1,15 +1,13 @@
 From: Max Bretschneider <max.bretschneider@leica-geosystems.com>
-Subject: [PATCH v2 0/4] media: i2c: ov08d10: use the subdev active state
- and add get_selection
-Date: Sat, 24 Oct 2026 00:28:50 +0200
-Message-Id: <20261024-ov08d10-get-selection-v2-0-f8c49972ca18@leica-geosystems.com>
+Date: Sat, 24 Oct 2026 00:28:51 +0200
+Subject: [PATCH v2 1/4] media: i2c: ov08d10: fix NULL pointer dereference
+ in ov08d10_get_hwcfg()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKLf22oC/3WNyw6CMBREf4V0bU1vlQKu/A/Doo8LNAFqeptGQ
- vh3K3uXZzJzZmeE0SOxR7WziNmTD2sBeamYnfQ6IveuMJNCKtHJjocsWgeCj5g44Yw2lQW3Wjd
- GWdO6AVnZviMO/nN6X33hyVMKcTtvMvzS0wgC4I8xAwdeOzSo7jfVqPo5o7e6tAJtlHChqw0L6
- 4/j+AKed3y/xQAAAA==
+Message-Id: <20261024-ov08d10-get-selection-v2-1-f8c49972ca18@leica-geosystems.com>
+References: <20261024-ov08d10-get-selection-v2-0-f8c49972ca18@leica-geosystems.com>
+In-Reply-To: <20261024-ov08d10-get-selection-v2-0-f8c49972ca18@leica-geosystems.com>
 To: Jimmy Su <jimmy.su@intel.com>, Matthias Fend <matthias.fend@emfend.at>, 
  Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Mauro Carvalho Chehab <mchehab@kernel.org>
@@ -17,82 +15,59 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  stable@vger.kernel.org, 
  Max Bretschneider <max.bretschneider@leica-geosystems.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792794706; l=3275;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792794706; l=1799;
  i=max.bretschneider@leica-geosystems.com; s=20260501;
- h=from:subject:message-id; bh=oNEbJ88MKt/pgzyIkNizvj1+LJU8OCz+hHF/MohQvGk=;
- b=0MAkuKBXNsy0Ea2kZjoRsfeij9FPgEPcXr5McPCGJBUnVNFE67b/kNZigLsDt3YIHB81Ge8sE
- 8mRrr8iu4C0Ce8PfQFkTJo3PJfK+uBKu/X0AzGxPIaKflPYS/e5W0p1
+ h=from:subject:message-id; bh=eLsu5tl24BX1oODaXRTSuCWikGC+/dtd311jxFs+7AE=;
+ b=hIO6AMJ8wkZArMvQX4UdhsS4mGWC7tFTaNKFIJofJApLN7LIonU+0mTVcVqJhgr1UK+Q/hQ1o
+ u2eYkdGBrGpDi/ultjbXix/+rkLTEsPUvZ1xNvM/EtGXluyg0KN70GC
 X-Developer-Key: i=max.bretschneider@leica-geosystems.com; a=ed25519;
  pk=jf4ba33jrWlsOdGemi2InMtJAngoJVZU8Moetp0ixik=
 X-Endpoint-Received: by B4 Relay for max.bretschneider@leica-geosystems.com/20260501 with auth_id=1161
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-v1 of this was a single patch adding get_selection. After review this grew
-into four, three of which address points raised in the review.
+ov08d10_get_hwcfg() logs the number of data lanes using
+ov08d10->cur_mode->data_lanes, but cur_mode is only assigned later in
+probe(). At the point of the dev_dbg() call it is still NULL, as the
+driver data is allocated with devm_kzalloc(). ov08d10->priv_lane, which
+cur_mode is set to point into, is only assigned on the following line, so
+the value is not reachable here by any route.
 
-Patch 1 fixes a NULL pointer dereference in ov08d10_get_hwcfg() and is
-marked for stable.
+The arguments of dev_dbg() are only evaluated when the call site is
+enabled, so this dereferences NULL as soon as debugging is turned on for
+the driver:
 
-Patches 2 and 3 port the driver to the subdev active state and drop the
-cached current mode, both requested in review of v1. Dropping cur_mode
-means the mode is now derived from the active state instead, for which a
-small ov08d10_get_mode() helper was added.
+  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000028
+  pc : ov08d10_get_hwcfg+0x1b0/0x228 [ov08d10]
+  Call trace:
+   ov08d10_get_hwcfg+0x1b0/0x228 [ov08d10] (P)
+   ov08d10_probe+0xdc/0x658 [ov08d10]
+   i2c_device_probe+0x194/0x388
 
-Patch 4 then adds get_selection, the original change from v1. Without this
-the driver never reports the analogue crop, so userspace cannot tell which
-region of the pixel array each mode reads out.
+Print the number of data lanes parsed from the endpoint instead, which is
+the value the message refers to and which has just been validated.
 
-Tested on a Hexagon/Leica CS50 (i.MX8MP, rkisp1) running 6.16.12 with the
-equivalent of this series applied. Further tests on a more recent kernel
-will be done in the coming weeks.
-
-- Compile-tested against media/next, built with W=1, and checked with
-  sparse and checkpatch --strict.
-- The NULL dereference was first reproduced before the fix. With the fix
-  applied, and dynamic debug enabled for that statement so that its
-  arguments are actually evaluated, rebinding the driver prints
-  "Using N data lanes" instead of oopsing.
-- libcamera no longer reports "Unable to get rectangle" errors and no
-  longer defaults PixelArraySize, PixelArrayActiveAreas or the analogue
-  crop rectangle, all of which it did before.
-- The crop rectangle is correct for all tested modes.
-- Toggling HFLIP changes the media bus code reported on the source pad
-  between SBGGR10 and SGBRG10, as expected.
-- Streaming works in both the 3280x2460 and the 2x2 binned 1632x1224
-  modes.
-- v4l2-compliance 1.26.1 (SHA 4aee01a02792, 2023-12-12), run against the
-  media device: 52 of 52 pass on the sensor subdev, no failures.
-- With CONFIG_PROVE_LOCKING=y there were no lockdep reports across format
-  and selection changes, both flips, exposure, gain and vblank writes,
-  streaming in both modes, control writes while streaming, and a driver
-  unbind/rebind cycle.
-
-Mainly modelled on imx335, imx214, imx355.
-
+Fixes: 7be91e02ed57 ("media: i2c: Add ov08d10 camera sensor driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Max Bretschneider <max.bretschneider@leica-geosystems.com>
 ---
-Changes in v2:
-- Fix the NULL pointer dereference in ov08d10_get_hwcfg(), Cc stable
-- Port the driver to the subdev active state, drop the driver's
-  own mutex in favor of the state lock shared with the control handler
-- Drop the cached current mode and derive it from the active state
-- Moved ov08d10_get_selection() out of the control handling section and
-  appended it to the pad ops, keeping the driver's ordering
-- Link to v1: https://lore.kernel.org/r/20261011-ov08d10-get-selection-v1-1-5debe6436765@leica-geosystems.com
+ drivers/media/i2c/ov08d10.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
----
-Max Bretschneider (4):
-      media: i2c: ov08d10: fix NULL pointer dereference in ov08d10_get_hwcfg()
-      media: i2c: ov08d10: use the subdev active state
-      media: i2c: ov08d10: drop the cached current mode
-      media: i2c: ov08d10: add get_selection support
+diff --git a/drivers/media/i2c/ov08d10.c b/drivers/media/i2c/ov08d10.c
+index 0710d2243cc0..4dc68ff89eda 100644
+--- a/drivers/media/i2c/ov08d10.c
++++ b/drivers/media/i2c/ov08d10.c
+@@ -1432,7 +1432,8 @@ static int ov08d10_get_hwcfg(struct ov08d10 *ov08d10)
+ 		goto check_hwcfg_error;
+ 	}
+ 
+-	dev_dbg(dev, "Using %u data lanes\n", ov08d10->cur_mode->data_lanes);
++	dev_dbg(dev, "Using %u data lanes\n",
++		bus_cfg.bus.mipi_csi2.num_data_lanes);
+ 
+ 	ov08d10->priv_lane = &lane_cfg_2;
+ 	ov08d10->modes_size = ov08d10_modes_num(ov08d10);
 
- drivers/media/i2c/ov08d10.c | 172 +++++++++++++++++++++++++++-----------------
- 1 file changed, 106 insertions(+), 66 deletions(-)
----
-base-commit: 2dcdfb625c3b8fe87454e19dfbc54b3e3f0ad70e
-change-id: 20260929-ov08d10-get-selection-caa7b6cb8dfe
-
-Best regards,
 -- 
-Max Bretschneider <max.bretschneider@leica-geosystems.com>
+2.43.0
 
