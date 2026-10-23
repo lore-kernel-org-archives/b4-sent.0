@@ -1,11 +1,11 @@
 From: Jhonata Poma-Hansen <jhonata.poma@gmail.com>
-Date: Fri, 23 Oct 2026 13:26:07 +0200
-Subject: [PATCH net 1/2] netlink: retry a dump skb that does not fit with
- the minimum size
+Date: Fri, 23 Oct 2026 13:26:08 +0200
+Subject: [PATCH net 2/2] selftests: net: netlink-dumps: start a dump with a
+ notification queued
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-netlink-dump-livelock-v1-1-478214a635d2@gmail.com>
+Message-Id: <20261023-netlink-dump-livelock-v1-2-478214a635d2@gmail.com>
 References: <20261023-netlink-dump-livelock-v1-0-478214a635d2@gmail.com>
 In-Reply-To: <20261023-netlink-dump-livelock-v1-0-478214a635d2@gmail.com>
 To: "David S. Miller" <davem@davemloft.net>, 
@@ -16,70 +16,139 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, Kuniyuki Iwashima <kuniyu@google.com>, 
  Jhonata Poma-Hansen <jhonata.poma@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2113;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3524;
  i=jhonata.poma@gmail.com; h=from:subject:message-id;
- bh=wpiSXo5U0PAbR1oO+UlU/ssinpjnck+7Z7pQkTuLTv8=;
- b=owGbwMvMwCX21S6Y7aK9oS7jabUkhqzbLv4TN7/T0dzqESTLuX5WpoopX9pVz5DKved6xaR7j
- x/ReqfdUcrCIMbFICumyOJz9nEPt+LHHf8f7rgMM4eVCWQIAxenAEyEj53hF9Pm395xN2rPsbas
- n3ZZWjZEf0/StDndDSGNKTeWfthwbSIjw8q23LKf0QdzH/J/F1dOWVp2kEHm+M/NNYr9m+aofwh
- 5ywIA
+ bh=f+a8MC9imhU/+9RhQSahUYzMxPQaNUJwAl0pyGoew3k=;
+ b=owGbwMvMwCX21S6Y7aK9oS7jabUkhqzbLv5s5vKyU8XutQhXJs9qZ/lTqNcqrtmwfI5vi8SlD
+ 8uZRSs6SlkYxLgYZMUUWXzOPu7hVvy44//DHZdh5rAygQxh4OIUgInU+DH8ZpmxIuPLw5sCalPC
+ lcoWT3Kas13UPMvm1IrM/T2/nsRfO8PwP6yALS61scmVvarvH68n7yf34oJfATulug8/3nHx/zk
+ tBgA=
 X-Developer-Key: i=jhonata.poma@gmail.com; a=openpgp;
  fpr=4CCDE38C0B21F1B8FFE1B8D3F53E5306D13F312D
 X-Endpoint-Received: by B4 Relay for jhonata.poma@gmail.com/default with auth_id=1288
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-netlink_dump() sizes the skb after the largest buffer the reader passed
-to recvmsg(), up to 32KiB. Since commit ae8f160e7eb2 ("netlink: Fix
-wraparounds of sk->sk_rmem_alloc.") the skb is only queued if it fits
-in sk_rcvbuf, or if nothing else is charged to the socket.
+Add a test which starts a link dump on a socket with a small receive
+buffer while a link notification is still queued, after a large read
+made the kernel attempt large dump skbs. The test reads like libnl
+does, peeking before each read, and expects the dump to complete.
 
-A reader with a small receive buffer that still has data charged to
-its socket when a dump starts gets ENOBUFS, even when a minimum size
-skb would fit. The dump stays marked as running and every recvmsg()
-retries it, so a reader that peeks before reading, as libnl does,
-never consumes the data at the head of the queue and spins forever.
-
-"iw dev wlan0 scan" hits this: its socket has an 8KiB buffer, it joins
-the nl80211 multicast groups, and it dumps the scan results as soon as
-it has read the NEW_SCAN_RESULTS notification. When it preempts the
-sender, the notification is still charged to its socket until
-netlink_broadcast() returns, the dump fails to start and iw spins at
-100% CPU.
-
-Retry with alloc_min_size before failing the dump.
-
-Fixes: ae8f160e7eb2 ("netlink: Fix wraparounds of sk->sk_rmem_alloc.")
 Signed-off-by: Jhonata Poma-Hansen <jhonata.poma@gmail.com>
 ---
- net/netlink/af_netlink.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ tools/testing/selftests/net/netlink-dumps.c | 93 +++++++++++++++++++++++++++++
+ 1 file changed, 93 insertions(+)
 
-diff --git a/net/netlink/af_netlink.c b/net/netlink/af_netlink.c
-index a904dc3bc..b750e79fe 100644
---- a/net/netlink/af_netlink.c
-+++ b/net/netlink/af_netlink.c
-@@ -2318,10 +2318,21 @@ static int netlink_dump(struct sock *sk, bool lock_taken)
- 	if (!skb)
- 		goto errout_skb;
+diff --git a/tools/testing/selftests/net/netlink-dumps.c b/tools/testing/selftests/net/netlink-dumps.c
+index 51129c564..6f66a478d 100644
+--- a/tools/testing/selftests/net/netlink-dumps.c
++++ b/tools/testing/selftests/net/netlink-dumps.c
+@@ -3,8 +3,10 @@
+ #define _GNU_SOURCE
  
-+retry:
- 	rcvbuf = READ_ONCE(sk->sk_rcvbuf);
- 	rmem = atomic_add_return(skb->truesize, &sk->sk_rmem_alloc);
- 	if (rmem != skb->truesize && rmem >= rcvbuf) {
- 		atomic_sub(skb->truesize, &sk->sk_rmem_alloc);
-+		/* A skb sized after max_recvmsg_len may not fit next to data
-+		 * still charged to the socket, while a minimum size one does.
-+		 */
-+		if (alloc_size > alloc_min_size) {
-+			kfree_skb(skb);
-+			alloc_size = alloc_min_size;
-+			skb = alloc_skb(alloc_size, GFP_KERNEL);
-+			if (skb)
-+				goto retry;
+ #include <fcntl.h>
++#include <sched.h>
+ #include <stdio.h>
+ #include <string.h>
++#include <sys/ioctl.h>
+ #include <sys/socket.h>
+ #include <sys/stat.h>
+ #include <sys/syscall.h>
+@@ -260,4 +262,95 @@ TEST(close_with_ref)
+ 	usleep(100 * 1000);
+ }
+ 
++static int lo_set_up(int sock, bool up)
++{
++	struct ifreq ifr = {};
++
++	strcpy(ifr.ifr_name, "lo");
++	if (ioctl(sock, SIOCGIFFLAGS, &ifr))
++		return -1;
++	if (up)
++		ifr.ifr_flags |= IFF_UP;
++	else
++		ifr.ifr_flags &= ~IFF_UP;
++	return ioctl(sock, SIOCSIFFLAGS, &ifr);
++}
++
++static const struct {
++	struct nlmsghdr nlhdr;
++	struct ifinfomsg ifm;
++} dump_links = {
++	.nlhdr = {
++		.nlmsg_len	= sizeof(dump_links),
++		.nlmsg_type	= RTM_GETLINK,
++		.nlmsg_flags	= NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
++		.nlmsg_seq	= 1,
++	},
++	.ifm = {
++		.ifi_family	= AF_UNSPEC,
++	},
++};
++
++// A dump started while a notification is still queued must make progress
++// for a reader which peeks before reading, like libnl does
++TEST(dump_with_queued_ntf)
++{
++	struct sockaddr_nl addr = {
++		.nl_family	= AF_NETLINK,
++		.nl_groups	= RTMGRP_LINK,
++	};
++	int netlink_sock, inet_sock, i;
++	int rcvbuf = 8192;
++	bool done = false;
++	char buf[32768];
++	ssize_t n;
++
++	ASSERT_EQ(unshare(CLONE_NEWNET), 0);
++
++	inet_sock = socket(AF_INET, SOCK_DGRAM, 0);
++	ASSERT_GE(inet_sock, 0);
++	netlink_sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
++	ASSERT_GE(netlink_sock, 0);
++	ASSERT_EQ(setsockopt(netlink_sock, SOL_SOCKET, SO_RCVBUF,
++			     &rcvbuf, sizeof(rcvbuf)), 0);
++	ASSERT_EQ(bind(netlink_sock, (struct sockaddr *)&addr,
++		       sizeof(addr)), 0);
++
++	// A large read makes the kernel attempt large dump skbs
++	ASSERT_EQ(lo_set_up(inet_sock, true), 0);
++	n = recv(netlink_sock, buf, sizeof(buf), 0);
++	ASSERT_GE(n, (ssize_t)sizeof(struct nlmsghdr));
++
++	// Leave one notification queued, then start the dump
++	ASSERT_EQ(lo_set_up(inet_sock, false), 0);
++	n = send(netlink_sock, &dump_links, sizeof(dump_links), 0);
++	ASSERT_EQ(n, sizeof(dump_links));
++
++	for (i = 0; i < 100 && !done; i++) {
++		struct nlmsghdr *nlh;
++
++		n = recv(netlink_sock, buf, sizeof(buf),
++			 MSG_PEEK | MSG_TRUNC | MSG_DONTWAIT);
++		if (n < 0)
++			continue;
++		n = recv(netlink_sock, buf, sizeof(buf), MSG_DONTWAIT);
++		if (n < 0)
++			continue;
++
++		for (nlh = (struct nlmsghdr *)buf; NLMSG_OK(nlh, n);
++		     nlh = NLMSG_NEXT(nlh, n)) {
++			if (nlh->nlmsg_seq != dump_links.nlhdr.nlmsg_seq)
++				continue;
++			if (nlh->nlmsg_type == NLMSG_ERROR)
++				EXPECT_EQ(*(int *)NLMSG_DATA(nlh), 0);
++			if (nlh->nlmsg_type == NLMSG_DONE)
++				done = true;
 +		}
- 		goto errout_skb;
- 	}
- 
++	}
++	EXPECT_TRUE(done);
++
++	close(netlink_sock);
++	close(inet_sock);
++}
++
+ TEST_HARNESS_MAIN
 
 -- 
 2.54.0
