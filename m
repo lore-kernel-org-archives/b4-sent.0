@@ -1,109 +1,88 @@
-From: Leno Hou <lenohou@gmail.com>
-Date: Sat, 24 Oct 2026 04:22:06 +0800
-Subject: [PATCH 6.1 2/2] mm: vmscan: fix dirty folios throttling on cgroup
- v1 for MGLRU
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH v6 0/8] fuse: {io-uring} Allow to reduce the number of
+ queues and request distribution
+Date: Fri, 23 Oct 2026 22:28:42 +0200
+Message-Id: <20261023-reduced-nr-ring-queues_3-v6-0-658235c9b9bd@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-linux-6-1-y-v1-2-cf381365f30b@gmail.com>
-References: <20261024-linux-6-1-y-v1-0-cf381365f30b@gmail.com>
-In-Reply-To: <20261024-linux-6-1-y-v1-0-cf381365f30b@gmail.com>
-To: Leno Hou <lenohou@gmail.com>
-Cc: Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Barry Song <baohua@kernel.org>, Kairui Song <kasong@tencent.com>, 
- Johannes Weiner <hannes@cmpxchg.org>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Axel Rasmussen <axelrasmussen@google.com>, 
- David Hildenbrand <david@kernel.org>, 
- "Lorenzo Stoakes (Oracle)" <ljs@kernel.org>, 
- Michal Hocko <mhocko@kernel.org>, Qi Zheng <zhengqi.arch@bytedance.com>, 
- Wei Xu <weixugc@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Andrew Morton <akpm@linux-foundation.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792787007; l=3224;
- i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
- bh=D2gFt3Bs+PV7C5qZxnAC9J6trppD5tGWe+3gmfZI3lg=;
- b=zHnXqRNLn2uM1UnQdoXdvtdndLrFtRbyfOcLqzeZtYKSJC8BK4YyuaMvnVBETDjWdteTMA/Wy
- y5TL8CUMTs0COgvOT4mcIleuz2tvbvsUw0UTT6xoU5e/vboImdTPjXf
-X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
- pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
-X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Nyw6CMBCF4VcxXVvTi7TFle9hjBnbAbqwaCtEQ
+ 3h3CwsvG+LyP8l8M5CE0WMiu9VAIvY++TbkUOsVsQ2EGql3uYlgomBaCBrRdRYdDZFGH2p667D
+ DdJJUgT3r0oErtSH5/Bqx8o+ZPhxzNz7d2/icP/V8Wv9Ae04ZBTAoNWCpUe2dCxvbXshE9uLNc
+ MbkAiMyo7eiqjiYyhbml5FfDF9iZGaUM9oaAMkBP8w4ji/okbxkTAEAAA==
+X-Change-ID: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+To: Joanne Koong <joannelkoong@gmail.com>, 
+ Miklos Szeredi <miklos@szeredi.hu>
+Cc: Bernd Schubert <bernd@bsbernd.com>, fuse-devel@lists.linux.dev
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2558; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=KUk6hPwjwJba4divXeCUDPAxEnplWEnau4Zm9bn6kd0=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLJuH25QOBT/7+Wi0IbPm/1LL80+ZjujXnzzqx9rpKwMp
+ YS2358T01HKwiDGwSArpsjSJbHHdso/Plm1r+uvw8xhZQIZwsDFKQATeerKyLB62kHvHqO2ax57
+ bp4w40lO7he4ffq/y0/x8DnFQTyKcxwZ/qdtk6xyWqvN5zI3Z2XVXP+FderNZTWXL6lUl6VUeD0
+ 7yg8A
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-[ Upstream commit 13b6b620910436c29dea398382e83c9499fd13e4 ]
+Allow a server to negotiate fewer io-uring queues than CPUs through
+FUSE_URING_REDUCED_Q in its INIT reply. Reduced mode requires ADD_QUEUE
+and starts serving at the first entry. Legacy mode waits for every queue.
+RCU-published CPU maps retain NUMA affinity, background queue selection
+and limited retries of busy queues.
 
-The balance_dirty_pages() won't do the dirty folios throttling on
-cgroupv1.  See commit 9badce000e2c ("cgroup, writeback: don't enable
-cgroup writeback on traditional hierarchies").
+Libfuse PR: https://github.com/libfuse/libfuse/pull/1659
 
-Moreover, after commit 6b0dfabb3555 ("fs: Remove aops->writepage"), we no
-longer attempt to write back filesystem folios through reclaim.
-
-On large memory systems, the flusher may not be able to write back quickly
-enough.  Consequently, MGLRU will encounter many folios that are already
-under writeback.  Since we cannot reclaim these dirty folios, the system
-may run out of memory and trigger the OOM killer.
-
-Hence, for cgroup v1, let's throttle reclaim after waking up the flusher,
-which is similar to commit 81a70c21d917 ("mm/cgroup/reclaim: fix dirty
-pages throttling on cgroup v1"), to avoid unnecessary OOM.
-
-The following test program can easily reproduce the OOM issue.  With this
-patch applied, the test passes successfully.
-
-$mkdir /sys/fs/cgroup/memory/test
-$echo 256M > /sys/fs/cgroup/memory/test/memory.limit_in_bytes
-$echo $$ > /sys/fs/cgroup/memory/test/cgroup.procs
-$dd if=/dev/zero of=/mnt/data.bin bs=1M count=800
-
-Link: https://lore.kernel.org/3445af0f09e8ca945492e052e82594f8c4f2e2f6.1774606060.git.baolin.wang@linux.alibaba.com
-Fixes: ac35a4902374 ("mm: multi-gen LRU: minimal implementation")
-Signed-off-by: Baolin Wang <baolin.wang@linux.alibaba.com>
-Reviewed-by: Barry Song <baohua@kernel.org>
-Reviewed-by: Kairui Song <kasong@tencent.com>
-Acked-by: Johannes Weiner <hannes@cmpxchg.org>
-Acked-by: Shakeel Butt <shakeel.butt@linux.dev>
-Cc: Axel Rasmussen <axelrasmussen@google.com>
-Cc: David Hildenbrand <david@kernel.org>
-Cc: Lorenzo Stoakes (Oracle) <ljs@kernel.org>
-Cc: Michal Hocko <mhocko@kernel.org>
-Cc: Qi Zheng <zhengqi.arch@bytedance.com>
-Cc: Wei Xu <weixugc@google.com>
-Cc: Yuanchu Xie <yuanchu@google.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Leno Hou <lenohou@gmail.com>
+Assisted-by: <various-ai-models>
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- mm/vmscan.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+Changes in v6:
+- Rebase onto ADD_QUEUE and bufpool support.
+- Require FUSE_URING_REDUCED_Q in the INIT reply for reduced mode (Joanne).
+- Publish CPU-to-queue maps through RCU (Joanne).
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index f58651d45540..468207509840 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -5267,8 +5267,22 @@ static void lru_gen_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc
- 	 *  If too many file cache in the coldest generation can't be evicted
- 	 *  due to being dirty, wake up the flusher.
- 	 */
--	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken)
-+	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken) {
-+		struct pglist_data *pgdat = lruvec_pgdat(lruvec);
-+
- 		wakeup_flusher_threads(WB_REASON_VMSCAN);
-+		/*
-+		 * For cgroupv1 dirty throttling is achieved by waking up
-+		 * the kernel flusher here and later waiting on folios
-+		 * which are in writeback to finish (see shrink_folio_list()).
-+		 *
-+		 * Flusher may not be able to issue writeback quickly
-+		 * enough for cgroupv1 writeback throttling to work
-+		 * on a large system.
-+		 */
-+		if (!writeback_throttling_sane(sc))
-+			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
-+	}
- 
- 	clear_mm_walk();
- 
+Changes in v5
+- Rebased to miklos-for-next (Linux 7.2 base).
+- Folded "Fetch a queued fuse request on command registration" into
+  "Allow reduced number of ring queues", inlining fuse_uring_do_register()
+  into fuse_uring_register().
+  - Fixed retry logic in "Add retry attempts for numa local queues":
+    replaced cpu++ with cpumask_next_wrap(qid, mask) so each retry
+    advances to a genuinely different registered queue (Joanne)-
+  - Simplified "Prefer the current core over mapping" (Joanne).
+  - Folded READ_ONCE() annotation for ring->ready into "Allow reduced
+    number of ring queues" to match WRITE_ONCE() on the writer side and
+    suppress a KCSAN data-race warning.
 
--- 
-2.55.0
+To: Bernd Schubert <bernd@bsbernd.com>
+To: Joanne Koong <joannelkoong@gmail.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: fuse-devel@lists.linux.dev
+
+---
+Bernd Schubert (8):
+      fuse: {io-uring} Add queue length counters
+      fuse: {io-uring} Rename ring->nr_queues to max_nr_queues
+      fuse: {io-uring} Add CPU to queue maps
+      fuse: {io-uring} Select the queue through the CPU to queue maps
+      fuse: {io-uring} Allow reduced queues through INIT negotiation
+      fuse: {io-uring} Queue background requests on a different core
+      fuse: Add retry attempts for numa local queues for load distribution
+      fuse: {io-uring} Prefer the current core over mapping
+
+ fs/fuse/dev.c             |   2 +-
+ fs/fuse/dev.h             |   1 +
+ fs/fuse/dev_uring.c       | 318 ++++++++++++++++++++++++++++++++++++++++------
+ fs/fuse/dev_uring_i.h     |  31 ++++-
+ fs/fuse/inode.c           |   8 +-
+ include/uapi/linux/fuse.h |   4 +
+ 6 files changed, 320 insertions(+), 44 deletions(-)
+---
+base-commit: 1d8630946017ead740c4126395d4763371f0107c
+change-id: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+
+Best regards,
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
