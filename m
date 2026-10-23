@@ -1,10 +1,11 @@
 From: Ishu Brar <patches@brar.si>
-Date: Fri, 23 Oct 2026 13:24:31 +0530
-Subject: [PATCH v2 1/2] dt-bindings: arm-smmu: Document SM7250 SMMU
+Date: Fri, 23 Oct 2026 13:24:32 +0530
+Subject: [PATCH v2 2/2] iommu/arm-smmu-qcom: Skip PRR setup on SM7250 GPU
+ SMMU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-smmu-sm7250-v2-1-8bb881ce19f5@brar.si>
+Message-Id: <20261023-smmu-sm7250-v2-2-8bb881ce19f5@brar.si>
 References: <20261023-smmu-sm7250-v2-0-8bb881ce19f5@brar.si>
 In-Reply-To: <20261023-smmu-sm7250-v2-0-8bb881ce19f5@brar.si>
 To: Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
@@ -16,61 +17,40 @@ Cc: linux-arm-kernel@lists.infradead.org, iommu@lists.linux.dev,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792742166; l=1815;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792742167; l=1110;
  i=patches@brar.si; h=from:subject:message-id;
- bh=kHofjg1XdVn2qUP3so4fPH+WhKAeqzgGb/wA76RUHIc=;
- b=kcB0keyDTGZuDJirrCw6myRtz9EV4ChtMBoNpEgIhT0yoevqc1MF3Gwb9YalvJIuQi9Dm3Kwe
- cXS1J9WFYK5D1NCe1z3bNCPUaKB19zQf1pnnR1kErNYmfW47ablsW4t
+ bh=VF/mGbM1EJsewrS92EWhHwKM9QYUxif31RQPsJ22WkY=;
+ b=dquIgiNHyvz4rhwd+HLQRvAKDNpWA1NSq3XXVL2MODeB2oSQHozaFNUi708en0LVV+Z4zfiFr
+ yaupfqnLzdbCzTFPf7A2QlQfQy6ilCjcxt/uz4nXbEFQpXwaZB2TMrU
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the SMMU found on the Qualcomm SM7250 SoC: the apps SMMU, which
-is an MMU-500 implementation, and the GPU SMMU, which additionally
-carries qcom,adreno-smmu.
+As on SM8250, the firmware on SM7250 resets the device when the Adreno
+SMMU PRR registers are written. This happened as soon as the first
+per-process GPU pagetable was created. Do not install the PRR
+callbacks for the SM7250 GPU SMMU either.
+
+Tested on a OnePlus Nord (SM7250) with Vulkan.
 
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
- Documentation/devicetree/bindings/iommu/arm,smmu.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/iommu/arm,smmu.yaml b/Documentation/devicetree/bindings/iommu/arm,smmu.yaml
-index 6748351c7..9abfd77fc 100644
---- a/Documentation/devicetree/bindings/iommu/arm,smmu.yaml
-+++ b/Documentation/devicetree/bindings/iommu/arm,smmu.yaml
-@@ -64,6 +64,7 @@ properties:
-               - qcom,sm6125-smmu-500
-               - qcom,sm6350-smmu-500
-               - qcom,sm6375-smmu-500
-+              - qcom,sm7250-smmu-500
-               - qcom,sm8150-smmu-500
-               - qcom,sm8250-smmu-500
-               - qcom,sm8350-smmu-500
-@@ -116,6 +117,7 @@ properties:
-               - qcom,shikra-smmu-500
-               - qcom,sm6115-smmu-500
-               - qcom,sm6125-smmu-500
-+              - qcom,sm7250-smmu-500
-               - qcom,sm8150-smmu-500
-               - qcom,sm8250-smmu-500
-               - qcom,sm8350-smmu-500
-@@ -445,6 +447,7 @@ allOf:
-               - qcom,sc8180x-smmu-500
-               - qcom,sm6350-smmu-v2
-               - qcom,sm7150-smmu-v2
-+              - qcom,sm7250-smmu-500
-               - qcom,sm8150-smmu-500
-               - qcom,sm8250-smmu-500
-     then:
-@@ -641,6 +644,7 @@ allOf:
-                 - qcom,shikra-smmu-500
-                 - qcom,sm6115-smmu-500
-                 - qcom,sm6125-smmu-500
-+                - qcom,sm7250-smmu-500
-                 - qcom,sm8150-smmu-500
-                 - qcom,sm8250-smmu-500
-                 - qcom,sm8350-smmu-500
+diff --git a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
+index 795e8ec7e..55071eb03 100644
+--- a/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
++++ b/drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c
+@@ -394,6 +394,7 @@ static int qcom_adreno_smmu_init_context(struct arm_smmu_domain *smmu_domain,
+ 	priv->set_prr_addr = NULL;
+ 
+ 	if (of_device_is_compatible(np, "qcom,smmu-500") &&
++	    !of_device_is_compatible(np, "qcom,sm7250-smmu-500") &&
+ 	    !of_device_is_compatible(np, "qcom,sm8250-smmu-500") &&
+ 	    of_device_is_compatible(np, "qcom,adreno-smmu")) {
+ 		priv->set_prr_bit = qcom_adreno_smmu_set_prr_bit;
 
 -- 
 2.56.0
