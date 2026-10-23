@@ -1,72 +1,66 @@
-From: Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
-Date: Fri, 23 Oct 2026 12:15:28 +0000
-Subject: [PATCH 2/2] usb: gadget: f_ecm: do not notify from ecm_set_alt()
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v2 0/3] clk: meson: g12a: fix a few clock definition errors
+Date: Fri, 23 Oct 2026 14:53:50 +0200
+Message-Id: <20261023-fix-g12a-clk-v2-0-0b0b9b86d437@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-ncm-ecm-lpm-v1-2-d01e81fbf460@leica-geosystems.com>
-References: <20261023-ncm-ecm-lpm-v1-0-d01e81fbf460@leica-geosystems.com>
-In-Reply-To: <20261023-ncm-ecm-lpm-v1-0-d01e81fbf460@leica-geosystems.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Neill Kapron <nkapron@google.com>, Kuen-Han Tsai <khtsai@google.com>, 
- linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
+X-B4-Tracking: v=1; b=H4sIAN5Y22oC/3WMQQ6CQAxFr0K6tmZaAzGuvIdhMUALjQTMDJloy
+ Nzdkb3L93/e2yFKMIlwq3YIkizauhTgUwX95JdR0IbCwI4bcsyo9saR2GM/P5G0q7mjulffQFF
+ eQcp/5B5t4cnitobPUU/0W/+EEqFD4W646kXJq7/72WQ+a4A25/wFfY3+bKcAAAA=
+X-Change-ID: 20261022-fix-g12a-clk-1fb52b15cfa6
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Stephen Boyd <sboyd@kernel.org>, 
+ Brian Masney <bmasney+clk@redhat.com>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jian Hu <jian.hu@amlogic.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1818;
- i=massimo.toscanelli@leica-geosystems.com; h=from:subject:message-id;
- bh=1yFrqwzUswmQN5891X/izJlFIQr+YSlAI0VR6/27q08=;
- b=owGbwMvMwCVmIB2leGXyl1LG02pJDFm3/f/Pydxz17jQRNTtduXz3IyTfUeOfP59eevrLd6vf
- 1fNDz3U31HKwiDGxSArpshybUv49wjb3LAdWV2rYOawMoEMYeDiFICJvH/NyLCy6dZu0dfezYLc
- J00Tf71ce7M1/P2ueXd/Wm79tvliS8Y2hv9JXBHvSpS5ghvvyO87+2XjDCXRFnO5tbI1gcG7TlW
- tecEHAA==
-X-Developer-Key: i=massimo.toscanelli@leica-geosystems.com; a=openpgp;
- fpr=D6B457F7583D6D56B86A8AAA301B5A21D493F475
-X-Endpoint-Received: by B4 Relay for massimo.toscanelli@leica-geosystems.com/default with auth_id=1289
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1213;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=YTsDBLMNkEFFewGfzypfNHgAfzd07DIYOGxGlQ1uYps=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ9btSFn1d0cXbz6SYcGbvXD+7roPc84mBahK/JP7qPLvt
+ KCAhIh8RykLgxgXg6yYIkv/XMsT7y4fPfN1j3oKzBxWJpAhDFycAjCRL96MDFtmRFtvVblYxbak
+ 7K268h+ljRHzfosxe57f9y+T5fkBKy9Ghhe+KUdbFq4LPNE0S4Sn/fqNjXeTmX+e/Za7+ej5BH/
+ zFH4A
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ecm_set_alt() calls ecm_notify() for both altsettings of the data
-interface. So a notification is already queued at SET_CONFIGURATION,
-when altsetting 0 is selected, and it waits until the host reads the
-interrupt endpoint.
+While reviewing the G12A clock controller, I noticed mistakes in
+the clock definitions:
 
-The USB 2.0 LPM ECN (section 2.2.2) lets a device answer NYET to an LPM
-request when it has data pending for the host, and DWC3 does so. So
-when the host loads no class driver, the device never enters L1.
+ - CLKID_VID_PLL and CLKID_VID_PLL_DIV are swapped in the hw_onecell_data
+   tables.
 
-For altsetting 1 the call is not needed: gether_connect() already
-calls ecm_open() or ecm_close(), and both notify. The extra call only
-restarts the sequence while the first notification is in flight, so
-the host gets two connection notifications before the speed one. The
-removed comment calls this a minor disagreement with the ECM spec.
+The fix is split per SoC (g12a, g12b, sm1) since each table was
+introduced by a different commit so I provide different Fixes: tag.
 
-Remove the call and the comment.
+I do not see any consumer today, so nobody should be affected.
+I don't think there is any values in backporting them btw.
 
-Fixes: da741b8c56d6 ("usb ethernet gadget: split CDC Ethernet function")
-Signed-off-by: Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/usb/gadget/function/f_ecm.c | 8 --------
- 1 file changed, 8 deletions(-)
+Changes in v2:
+- Drop the first patch as it would introduce a bug due to misreading..
+- Link to v1: https://patch.msgid.link/20261022-fix-g12a-clk-v1-0-e2bd8f3f1afa@aliel.fr
 
-diff --git a/drivers/usb/gadget/function/f_ecm.c b/drivers/usb/gadget/function/f_ecm.c
-index e495bac4efe..c8c3a7d1c80 100644
---- a/drivers/usb/gadget/function/f_ecm.c
-+++ b/drivers/usb/gadget/function/f_ecm.c
-@@ -581,14 +581,6 @@ static int ecm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
- 			if (IS_ERR(net))
- 				return PTR_ERR(net);
- 		}
--
--		/* NOTE this can be a minor disagreement with the ECM spec,
--		 * which says speed notifications will "always" follow
--		 * connection notifications.  But we allow one connect to
--		 * follow another (if the first is in flight), and instead
--		 * just guarantee that a speed notification is always sent.
--		 */
--		ecm_notify(ecm);
- 	} else
- 		goto fail;
- 
+---
+Ronald Claveau (3):
+      clk: meson: g12a: fix swapped VID_PLL and VID_PLL_DIV clock ids
+      clk: meson: g12a: fix swapped VID_PLL and VID_PLL_DIV clock ids for g12b
+      clk: meson: g12a: fix swapped VID_PLL and VID_PLL_DIV clock ids for sm1
 
--- 
-2.43.0
+ drivers/clk/meson/g12a.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+---
+base-commit: d419d682257d813f6cb7a28e42b35d0edf4ad038
+change-id: 20261022-fix-g12a-clk-1fb52b15cfa6
+
+Best regards,
+--  
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
