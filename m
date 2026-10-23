@@ -1,14 +1,12 @@
 From: Ishu Brar <patches@brar.si>
-Subject: [PATCH 0/2] drm/panel: Add Samsung AMS644VK04 panel
-Date: Fri, 23 Oct 2026 13:51:15 +0530
-Message-Id: <20261023-panel-ams644vk04-v1-0-56096aecd0ff@brar.si>
+Date: Fri, 23 Oct 2026 13:51:16 +0530
+Subject: [PATCH 1/2] dt-bindings: display: panel: Add Samsung AMS644VK04
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw6CMBBG4Vchs7ZJOzbE+CrGRYt/cbxU0kFiQ
- nh3iiy/xTkzKYpA6dzMVDCJyidXuEND3T3kHkZu1cSWW2f5aIaQ8TLhra3309N6g3SKHNmDmal
- mQ0GS3395ue7Wb3ygG7cPLcsKOeVzJXQAAAA=
-X-Change-ID: 20261023-panel-ams644vk04-ef8b2b24e222
+Message-Id: <20261023-panel-ams644vk04-v1-1-56096aecd0ff@brar.si>
+References: <20261023-panel-ams644vk04-v1-0-56096aecd0ff@brar.si>
+In-Reply-To: <20261023-panel-ams644vk04-v1-0-56096aecd0ff@brar.si>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
@@ -19,55 +17,127 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Ishu Brar <patches@brar.si>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792743679; l=1791;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792743679; l=3095;
  i=patches@brar.si; h=from:subject:message-id;
- bh=CmyaiwJWwoIMm1mdMGXzb84Z0m35G/pLGpSpkLPfqbk=;
- b=tWJfdchfzzcMsz0ZZmLr/J/rhEsP7HlXepsJOewkxdR9nqjFRuWQScnNSu8dZNObkScA23PTQ
- AjiVFN0U98sDzyZtaohbhJu7AvzvLqfvnWHRoTIyhZHbwRiHwjauXsP
+ bh=Tt1XsfnXS440HSGg/wswJNMW2cDPJCmbAVKWWsAuN2g=;
+ b=o0Gqznn8TvZqQCsIDRMLvYNrNIirR2xp0Z7BhozECpMPgRKrnmjJvRoqtN1rcSdC1jdxyP7SP
+ qe0ujG2FtpoBZOi6xSIfYl3P68RNeLyvT9XrpDjis+we2UuJLFYn+K0
 X-Developer-Key: i=patches@brar.si; a=ed25519;
  pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
 X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a binding and a driver for the Samsung AMS644VK04, a 6.44 inch
-1080x2400 MIPI DSI command mode AMOLED panel with DSC, used in the
-OnePlus Nord (SM7250).
-
-The driver describes only the 90 Hz mode for now; the panel also does
-60 Hz, which needs a way to pick the mode from the display pipeline that
-I did not want to invent here.
-
-One question for the reviewers: the DSC picture parameter set is the one
-the downstream driver sends (DCS 0x9e, 88 bytes). It differs from what
-drm_dsc_pps_payload_pack() computes for the same geometry, mainly
-first_line_bpg_offset (15 downstream, 12 from the helper) and the last
-rate control ranges. The msm DSI host fills the shared drm_dsc_config
-with the helper values, so the encoder and the panel decoder use
-different rate control parameters; the picture looks correct. If you
-prefer, I can switch to the helper PPS once I have tested that the panel
-accepts it.
-
-Tested on a OnePlus Nord with the msm DSI host (a 7.3-rc7 based tree),
-including suspend and resume. The SoC devicetree nodes are not part of
-this series.
+Document the Samsung AMS644VK04, a 6.44 inch 1080x2400 MIPI DSI command
+mode AMOLED panel with DSC that supports 60 Hz and 90 Hz. It is used in
+the OnePlus Nord (SM7250). The panel is powered by three supplies and
+has a reset GPIO.
 
 Signed-off-by: Ishu Brar <patches@brar.si>
 ---
-Ishu Brar (2):
-      dt-bindings: display: panel: Add Samsung AMS644VK04
-      drm/panel: Add Samsung AMS644VK04 panel driver
+ .../bindings/display/panel/samsung,ams644vk04.yaml | 76 ++++++++++++++++++++++
+ MAINTAINERS                                        |  6 ++
+ 2 files changed, 82 insertions(+)
 
- .../bindings/display/panel/samsung,ams644vk04.yaml |  76 +++++
- MAINTAINERS                                        |   7 +
- drivers/gpu/drm/panel/Kconfig                      |  15 +
- drivers/gpu/drm/panel/Makefile                     |   1 +
- drivers/gpu/drm/panel/panel-samsung-ams644vk04.c   | 373 +++++++++++++++++++++
- 5 files changed, 472 insertions(+)
----
-base-commit: cf5d8e390e2ac2cfa24a50645efdbb9f0eebe65f
-change-id: 20261023-panel-ams644vk04-ef8b2b24e222
+diff --git a/Documentation/devicetree/bindings/display/panel/samsung,ams644vk04.yaml b/Documentation/devicetree/bindings/display/panel/samsung,ams644vk04.yaml
+new file mode 100644
+index 000000000..50f8c516b
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/panel/samsung,ams644vk04.yaml
+@@ -0,0 +1,76 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/panel/samsung,ams644vk04.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Samsung AMS644VK04 1080x2400 MIPI-DSI Panel
++
++maintainers:
++  - Ishu Brar <patches@brar.si>
++
++description:
++  The Samsung AMS644VK04 is a 6.44 inch 1080x2400 MIPI-DSI command mode AMOLED
++  panel with DSC, supporting 60 Hz and 90 Hz refresh rates. It is used in the
++  OnePlus Nord.
++
++allOf:
++  - $ref: panel-common.yaml#
++
++properties:
++  compatible:
++    const: samsung,ams644vk04
++
++  reg:
++    maxItems: 1
++
++  vddio-supply:
++    description: I/O voltage rail (1.8 V)
++
++  vdd-supply:
++    description: Panel logic voltage rail (3.0 V)
++
++  vout-supply:
++    description: Panel supply rail (1.28 V)
++
++  reset-gpios: true
++  port: true
++
++required:
++  - compatible
++  - reg
++  - vddio-supply
++  - vdd-supply
++  - vout-supply
++  - reset-gpios
++  - port
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    dsi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        panel@0 {
++            compatible = "samsung,ams644vk04";
++            reg = <0>;
++
++            vddio-supply = <&vreg_l13a_1p8>;
++            vdd-supply = <&vreg_l18a_3p0>;
++            vout-supply = <&vreg_l7a_1p28>;
++
++            reset-gpios = <&pm8150l_gpios 3 GPIO_ACTIVE_LOW>;
++
++            port {
++                panel_in: endpoint {
++                    remote-endpoint = <&mdss_dsi0_out>;
++                };
++            };
++        };
++    };
++
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a08087fb6..1eec53b0e 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -8462,6 +8462,12 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/display/panel/raydium,rm69220.yaml
+ F:	drivers/gpu/drm/panel/panel-raydium-rm69220.c
+ 
++DRM DRIVER FOR SAMSUNG AMS644VK04 PANEL
++M:	Ishu Brar <patches@brar.si>
++S:	Maintained
++T:	git https://gitlab.freedesktop.org/drm/misc/kernel.git
++F:	Documentation/devicetree/bindings/display/panel/samsung,ams644vk04.yaml
++
+ DRM DRIVER FOR SAMSUNG DB7430 PANELS
+ M:	Linus Walleij <linusw@kernel.org>
+ S:	Maintained
 
-Best regards,
---  
-Ishu Brar <patches@brar.si>
+-- 
+2.56.0
 
