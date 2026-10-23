@@ -1,58 +1,76 @@
 From: Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
-Subject: [PATCH 0/2] usb: gadget: f_ncm/f_ecm: do not notify from set_alt()
-Date: Fri, 23 Oct 2026 12:15:26 +0000
-Message-Id: <20261023-ncm-ecm-lpm-v1-0-d01e81fbf460@leica-geosystems.com>
+Date: Fri, 23 Oct 2026 12:15:27 +0000
+Subject: [PATCH 1/2] usb: gadget: f_ncm: do not notify from ncm_set_alt()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAN5P22oC/yXMSw5AMBSF4a3IHWtSFc+tiEEfF1coaRGJ2Ltic
- Abf4PwXeHSEHuroAocHeVpsQBJHoAdpe2RkgkFwkSdcpMzqmWHYtM7MlMpIybOiyhHCY3XY0fn
- Vmva339WIensTcN8PxY9WdW8AAAA=
-X-Change-ID: 20261023-ncm-ecm-lpm-d8bdaa05796e
+Message-Id: <20261023-ncm-ecm-lpm-v1-1-d01e81fbf460@leica-geosystems.com>
+References: <20261023-ncm-ecm-lpm-v1-0-d01e81fbf460@leica-geosystems.com>
+In-Reply-To: <20261023-ncm-ecm-lpm-v1-0-d01e81fbf460@leica-geosystems.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Cc: Neill Kapron <nkapron@google.com>, Kuen-Han Tsai <khtsai@google.com>, 
  linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1243;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1875;
  i=massimo.toscanelli@leica-geosystems.com; h=from:subject:message-id;
- bh=I4f84Py9CB+7jlDOXX8Ue6geUC18b5pebZvms0M9osU=;
- b=owGbwMvMwCVmIB2leGXyl1LG02pJDFm3/X9L86mfeyQazpK43/2Fad6/dS+9z/o1rdP+2+67p
- OyzRZV7RykLgxgXg6yYIsu1LeHfI2xzw3Zkda2CmcPKBDKEgYtTACaybDojw/bUtj0xhV7snixf
- j5pOLzZrnRIcoPRR/aqvJ2f0/GVmBQy/WVWfLW74+6nfuit0wTrm0K2FPq3BOrv/P1V4qmT7pCC
- GDwA=
+ bh=hQVH6VWyCLNHwuW5Htd2QhnoAZtXU6Oc3of/HZbqcLo=;
+ b=owGbwMvMwCVmIB2leGXyl1LG02pJDFm3/f/zu3VdWDrD6jX/nPVeKoGmfmu77WfFNXW2hllnH
+ ss5wNjbUcrCIMbFICumyHJtS/j3CNvcsB1ZXatg5rAygQxh4OIUgInoL2JkeM7+4frpyfveO+xN
+ r7h7tWRid2B9xOGHrD1boyYIrNhqwMrwP31+d7vP86AJ8unNsrfP7P9Y2V62+bGdqmvRNyWuE6s
+ 6mAA=
 X-Developer-Key: i=massimo.toscanelli@leica-geosystems.com; a=openpgp;
  fpr=D6B457F7583D6D56B86A8AAA301B5A21D493F475
 X-Endpoint-Received: by B4 Relay for massimo.toscanelli@leica-geosystems.com/default with auth_id=1289
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-f_ncm and f_ecm queue a notification on the interrupt endpoint already
-at SET_CONFIGURATION, when the data interface is in altsetting 0. If the
-host loads no class driver, nobody reads it. While data is pending for
-the host the device may answer NYET to an LPM request, and DWC3 does,
-so the device never enters L1. The USB-IF USB3CV tool fails the
-"L1 Suspend/Resume" test (TD 9.21) because of this.
+ncm_set_alt() calls ncm_notify() for both altsettings of the data
+interface. So a notification is already queued at SET_CONFIGURATION,
+when altsetting 0 is selected, and it waits until the host reads the
+interrupt endpoint.
 
-For altsetting 1 the call in set_alt() is not needed: gether_connect()
-already notifies through the open/close callbacks. The extra call also
-makes the host see two connection notifications before the speed one.
+The USB 2.0 LPM ECN (section 2.2.2) lets a device answer NYET to an LPM
+request when it has data pending for the host, and DWC3 does so. So
+when the host loads no class driver, like the USB-IF test tool, the
+device never enters L1 and the LPM L1 test fails.
 
-Patch 1 fixes f_ncm, patch 2 makes the same change in f_ecm.
+The CDC NCM spec (version 1.1, section 9.2) [1] asks for the
+notifications only when the host selects altsetting 1. There the call
+is not needed: gether_connect() already calls ncm_open() or
+ncm_close(), and both notify. The extra call only restarts the
+sequence while the first notification is in flight, so the host gets
+two connection notifications before the speed one.
 
+The old ether.c also notified only for altsetting 1, until commit
+da741b8c56d6 ("usb ethernet gadget: split CDC Ethernet function")
+moved the call out of that branch in f_ecm. f_ncm copied that
+pattern.
+
+Remove the call.
+
+Fixes: 9f6ce4240a2b ("usb: gadget: f_ncm.c added")
+Link: https://www.usb.org/sites/default/files/NCM11.pdf # [1]
 Signed-off-by: Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
 ---
-Massimo Toscanelli (2):
-      usb: gadget: f_ncm: do not notify from ncm_set_alt()
-      usb: gadget: f_ecm: do not notify from ecm_set_alt()
-
- drivers/usb/gadget/function/f_ecm.c | 8 --------
  drivers/usb/gadget/function/f_ncm.c | 4 ----
- 2 files changed, 12 deletions(-)
----
-base-commit: bdf12cde30830d46a8ef1ba93986356f1164b4f1
-change-id: 20261023-ncm-ecm-lpm-d8bdaa05796e
+ 1 file changed, 4 deletions(-)
 
-Best regards,
---  
-Massimo Toscanelli <massimo.toscanelli@leica-geosystems.com>
+diff --git a/drivers/usb/gadget/function/f_ncm.c b/drivers/usb/gadget/function/f_ncm.c
+index 500c9c19c78..0c7ec74d390 100644
+--- a/drivers/usb/gadget/function/f_ncm.c
++++ b/drivers/usb/gadget/function/f_ncm.c
+@@ -921,10 +921,6 @@ static int ncm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
+ 				return PTR_ERR(net);
+ 			ncm->netdev = net;
+ 		}
+-
+-		spin_lock(&ncm->lock);
+-		ncm_notify(ncm);
+-		spin_unlock(&ncm->lock);
+ 	} else
+ 		goto fail;
+ 
+
+-- 
+2.43.0
 
