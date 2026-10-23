@@ -1,11 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Fri, 23 Oct 2026 15:33:16 +0800
-Subject: [PATCH 3/5] kexec_file: Honor the segment alignment for CMA
- allocations
+Date: Fri, 23 Oct 2026 15:33:17 +0800
+Subject: [PATCH 4/5] kexec_core: Clear the unused part of CMA segments
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261023-riscv-kexec-cma-fixes-v1-3-825b90ea23c4@iscas.ac.cn>
+Message-Id: <20261023-riscv-kexec-cma-fixes-v1-4-825b90ea23c4@iscas.ac.cn>
 References: <20261023-riscv-kexec-cma-fixes-v1-0-825b90ea23c4@iscas.ac.cn>
 In-Reply-To: <20261023-riscv-kexec-cma-fixes-v1-0-825b90ea23c4@iscas.ac.cn>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -21,50 +20,56 @@ Cc: Han Gao <rabenda.cn@gmail.com>, Han Gao <gaohan@iscas.ac.cn>,
  linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
  llvm@lists.linux.dev, kexec@lists.infradead.org
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792740795; l=1480;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792740795; l=1247;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=qJEDPA0ppewD/2akK6SOlKkXPbYM3Y6vYk6RoryMxR0=;
- b=k2WWS6RTJ6LmCg0h1zKhwYN75d0Cz5RFyTNujkDVbhWiDu1L84xl9pr9j0UyBeqXCXktEAl1S
- b8+pMaOPh4vB3By4HbvwIG+rIw9MQ2jqBYyRbEonik0/PRAt8W4WIsi
+ bh=WsDVC64bHfydftrHjB9ROmcnpvLdDMLm7LAG2iAtKWU=;
+ b=DHa8l1upqFe8GF0mr/wI7BJo0OZLh4M+VDC9vtw7ebm3LQOk9dhQ/R3IcFgCVQ3BmqCnUxdFj
+ 9V4k04q5zHwBlic6h3xu2XScMsBcX0ln1yqzAgLHbr//OOGGibK8100
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dma_alloc_from_contiguous() limits the requested alignment to
-CONFIG_CMA_ALIGNMENT without reporting it. kexec_alloc_contig() can
-therefore place a segment at a less aligned address than buf_align. On
-RISC-V with 4 KiB pages, the default 1 MiB limit is below the 2 MiB
-kernel alignment, and the new kernel stops at the setup_vm() BUG_ON for
-a misaligned physical address.
+kimage_load_cma_segment() copies the source data into pages that are not
+cleared, but zeroes nothing after it: the final memset() runs once the
+loop has consumed all of memsz. The tail of the last source page and
+every page beyond bufsz keep stale data, while the purgatory digest
+covers them as zeroes.
 
-Release such a block and fall back to the regular memory hole search,
-which honors the alignment.
+A kexec_file reboot then stops in purgatory on a digest mismatch, for
+instance when the DTB lands in a reused CMA page.
+
+Zero the remainder of each page instead.
 
 Fixes: 07d24902977e ("kexec: enable CMA based contiguous allocation")
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- kernel/kexec_file.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ kernel/kexec_core.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/kernel/kexec_file.c b/kernel/kexec_file.c
-index 59fb9d71e9d8..6ce10e01414e 100644
---- a/kernel/kexec_file.c
-+++ b/kernel/kexec_file.c
-@@ -690,6 +690,13 @@ static int kexec_alloc_contig(struct kexec_buf *kbuf)
+diff --git a/kernel/kexec_core.c b/kernel/kexec_core.c
+index dc770b9a6d05..0d6e10bea4e4 100644
+--- a/kernel/kexec_core.c
++++ b/kernel/kexec_core.c
+@@ -780,15 +780,15 @@ static int kimage_load_cma_segment(struct kimage *image, int idx)
+ 			goto out;
+ 		}
  
- 	mem = page_to_boot_pfn(p) << PAGE_SHIFT;
- 
-+	/* dma_alloc_from_contiguous() caps the alignment at CONFIG_CMA_ALIGNMENT. */
-+	if (!IS_ALIGNED(mem, kbuf->buf_align)) {
-+		pr_debug("CMA block 0x%lx is not aligned to 0x%lx\n", mem, kbuf->buf_align);
-+		dma_release_from_contiguous(NULL, p, nr_pages);
-+		return -EINVAL;
-+	}
++		/* CMA pages are not cleared: zero the part without source data */
++		memset(ptr + uchunk, 0, mchunk - uchunk);
 +
- 	if (kimage_is_destination_range(kbuf->image, mem, mem + kbuf->memsz)) {
- 		/* Our region is already in use by a statically defined one. Bail out. */
- 		pr_debug("CMA overlaps existing mem: 0x%lx+0x%lx\n", mem, kbuf->memsz);
+ 		ptr    += mchunk;
+ 		mbytes -= mchunk;
+ 
+ 		cond_resched();
+ 	}
+ 
+-	/* Clear any remainder */
+-	memset(ptr, 0, mbytes);
+-
+ out:
+ 	return result;
+ }
 
 -- 
 2.55.0
