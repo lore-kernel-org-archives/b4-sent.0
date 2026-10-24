@@ -1,110 +1,78 @@
 From: Leno Hou <lenohou@gmail.com>
-Date: Sat, 24 Oct 2026 13:37:26 +0800
-Subject: [PATCH PATCH 6.6 v2 2/2] mm: vmscan: fix dirty folios throttling
- on cgroup v1 for MGLRU
+Subject: [PATCH 6.1 v2 0/2] mm: vmscan: fix dirty folios throttling on
+ cgroup v1 for MGLRU
+Date: Sat, 24 Oct 2026 13:38:43 +0800
+Message-Id: <20261024-linux-6-1-y-v2-0-92958fc61228@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-fix-mglru-v6-6-v2-v2-2-6ca69ba6e9ae@gmail.com>
-References: <20261024-fix-mglru-v6-6-v2-v2-0-6ca69ba6e9ae@gmail.com>
-In-Reply-To: <20261024-fix-mglru-v6-6-v2-v2-0-6ca69ba6e9ae@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNuw6CQBREf4Xc2kv2oStYaWwsLewMBay7cA0Ps
+ wsEQvh3ASvLycyZM4E3joyHUzCBMz15auoliF0Aukjr3CC9lgyCCcViHmNJdTegQo4jZkpoe1Q
+ qSqWEhfg4Y2nY3p5wvzyut0CFHJJf5bvsbXS7vq3jgnzbuHEz93xDVglnYv8n6Tky1FZGXKqDl
+ Sw751VKZaibCpJ5nr9U+kh1wwAAAA==
+X-Change-ID: 20260919-linux-6-1-y-b62cf7668a33
 To: stable@vger.kernel.org
-Cc: Leno Hou <lenohou@gmail.com>, 
+Cc: Leno Hou <lenohou@gmail.com>, Wei Xu <weixugc@google.com>, 
+ Zeng Jingxiang <linuszeng@tencent.com>, Kairui Song <kasong@tencent.com>, 
+ Chris Li <chrisl@kernel.org>, "T.J. Mercier" <tjmercier@google.com>, 
+ Yu Zhao <yuzhao@google.com>, Andrew Morton <akpm@linux-foundation.org>, 
  Baolin Wang <baolin.wang@linux.alibaba.com>, Barry Song <baohua@kernel.org>, 
- Kairui Song <kasong@tencent.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- Shakeel Butt <shakeel.butt@linux.dev>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Shakeel Butt <shakeel.butt@linux.dev>, 
  Axel Rasmussen <axelrasmussen@google.com>, 
  David Hildenbrand <david@kernel.org>, 
  "Lorenzo Stoakes (Oracle)" <ljs@kernel.org>, 
  Michal Hocko <mhocko@kernel.org>, Qi Zheng <zhengqi.arch@bytedance.com>, 
- Wei Xu <weixugc@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Andrew Morton <akpm@linux-foundation.org>
+ Yuanchu Xie <yuanchu@google.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792820248; l=3276;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792820328; l=1839;
  i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
- bh=JnVRp/o3pn75fe9dOg9lgs8yva4bEL6E9tCoeF7HgKg=;
- b=Kdk0XSMQgD062IFU/x1MoDkC2el+132vXKVa378s+0pXFr14mbUwnqdmT1zxIr9JkZbkF9zdo
- EbuYxscaiQuA2GPWmmB9yYebFxWUiE0tl24j0dS+6SWUYdVAEAm1Z1G
+ bh=7ZVbrrON3k4kx5LrBKVyBNgPO30Z2rlp/eRf3qHKhU0=;
+ b=03h52asE15rJ3tWDBxJCnq0JqADUwRrZjN1Y/t3pYh9tv2ifjz7Qu1KOZWpRh2nqc8JxFdXOf
+ VFT2E7KeCfwB0aw0729dJCQBhio62ZSmnw6UgeeEkA1JLDojl6cjXzp
 X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
  pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
 X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-[ Upstream commit 13b6b620910436c29dea398382e83c9499fd13e4 ]
+The series backports the following upstream commits:
 
-The balance_dirty_pages() won't do the dirty folios throttling on
-cgroupv1.  See commit 9badce000e2c ("cgroup, writeback: don't enable
-cgroup writeback on traditional hierarchies").
+  1. 1bc542c6a0d1 ("mm/vmscan: wake up flushers conditionally to avoid cgroup OOM")
+  2. 13b6b6209104 ("mm: vmscan: fix dirty folios throttling on cgroup v1 for MGLRU")
 
-Moreover, after commit 6b0dfabb3555 ("fs: Remove aops->writepage"), we no
-longer attempt to write back filesystem folios through reclaim.
+Patch 1 wakes up flushers conditionally when a memcg is about to OOM due
+to dirty caches.  It restores the flusher wakeup that was removed by
+14aa8b2d5c2e ("mm/mglru: don't sync disk for each aging cycle").
 
-On large memory systems, the flusher may not be able to write back quickly
-enough.  Consequently, MGLRU will encounter many folios that are already
-under writeback.  Since we cannot reclaim these dirty folios, the system
-may run out of memory and trigger the OOM killer.
+Patch 2 handles cgroup v1, where balance_dirty_pages() does not throttle
+dirty folios.  See 9badce000e2c ("cgroup, writeback: don't enable cgroup
+writeback on traditional hierarchies").  After 6b0dfabb3555 ("fs: Remove
+aops->writepage"), reclaim no longer writes back filesystem folios
+directly.  On large memory systems, the flusher may not be able to write
+back quickly enough, leaving many folios already under writeback.  Since
+MGLRU cannot reclaim these dirty folios, the system may run out of memory
+and trigger the OOM killer.  Patch 2 throttles reclaim after waking up
+the flusher for cgroup v1, similar to 81a70c21d917
+("mm/cgroup/reclaim: fix dirty pages throttling on cgroup v1").
 
-Hence, for cgroup v1, let's throttle reclaim after waking up the flusher,
-which is similar to commit 81a70c21d917 ("mm/cgroup/reclaim: fix dirty
-pages throttling on cgroup v1"), to avoid unnecessary OOM.
-
-The following test program can easily reproduce the OOM issue.  With this
-patch applied, the test passes successfully.
-
-$mkdir /sys/fs/cgroup/memory/test
-$echo 256M > /sys/fs/cgroup/memory/test/memory.limit_in_bytes
-$echo $$ > /sys/fs/cgroup/memory/test/cgroup.procs
-$dd if=/dev/zero of=/mnt/data.bin bs=1M count=800
-
-Link: https://lore.kernel.org/3445af0f09e8ca945492e052e82594f8c4f2e2f6.1774606060.git.baolin.wang@linux.alibaba.com
-Fixes: ac35a4902374 ("mm: multi-gen LRU: minimal implementation")
-Signed-off-by: Baolin Wang <baolin.wang@linux.alibaba.com>
-Reviewed-by: Barry Song <baohua@kernel.org>
-Reviewed-by: Kairui Song <kasong@tencent.com>
-Acked-by: Johannes Weiner <hannes@cmpxchg.org>
-Acked-by: Shakeel Butt <shakeel.butt@linux.dev>
-Cc: Axel Rasmussen <axelrasmussen@google.com>
-Cc: David Hildenbrand <david@kernel.org>
-Cc: Lorenzo Stoakes (Oracle) <ljs@kernel.org>
-Cc: Michal Hocko <mhocko@kernel.org>
-Cc: Qi Zheng <zhengqi.arch@bytedance.com>
-Cc: Wei Xu <weixugc@google.com>
-Cc: Yuanchu Xie <yuanchu@google.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Leno Hou <lenohou@gmail.com>
 ---
- mm/vmscan.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://patch.msgid.link/20261024-linux-6-1-y-v1-0-cf381365f30b@gmail.com
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index a165f685216d..43b808e4e9f2 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -5431,8 +5431,22 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
- 	 *  If too many file cache in the coldest generation can't be evicted
- 	 *  due to being dirty, wake up the flusher.
- 	 */
--	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken)
-+	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken) {
-+		struct pglist_data *pgdat = lruvec_pgdat(lruvec);
-+
- 		wakeup_flusher_threads(WB_REASON_VMSCAN);
-+		/*
-+		 * For cgroupv1 dirty throttling is achieved by waking up
-+		 * the kernel flusher here and later waiting on folios
-+		 * which are in writeback to finish (see shrink_folio_list()).
-+		 * 
-+		 * Flusher may not be able to issue writeback quickly
-+		 * enough for cgroupv1 writeback throttling to work
-+		 * on a large system.
-+		 */
-+		if (!writeback_throttling_sane(sc))
-+			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
-+	}
- 	/* whether this lruvec should be rotated */
- 	return nr_to_scan < 0;
- }
+---
+Leno Hou (2):
+      mm/vmscan: wake up flushers conditionally to avoid cgroup OOM
+      mm: vmscan: fix dirty folios throttling on cgroup v1 for MGLRU
 
--- 
-2.55.0
+ mm/vmscan.c | 37 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 35 insertions(+), 2 deletions(-)
+---
+base-commit: 79807e970724c1f90cee1316361d61b80db4eef6
+change-id: 20260919-linux-6-1-y-b62cf7668a33
+
+Best regards,
+--  
+Leno Hou <lenohou@gmail.com>
 
