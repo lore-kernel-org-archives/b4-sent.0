@@ -1,81 +1,187 @@
 From: Leno Hou <lenohou@gmail.com>
-Subject: [PATCH 6.6 v2 0/2] mm: vmscan: fix dirty folios throttling on
- cgroup v1 for MGLRU
-Date: Sat, 24 Oct 2026 13:37:24 +0800
-Message-Id: <20261024-fix-mglru-v6-6-v2-v2-0-6ca69ba6e9ae@gmail.com>
+Date: Sat, 24 Oct 2026 13:37:25 +0800
+Subject: [PATCH PATCH 6.6 v2 1/2] mm/vmscan: wake up flushers conditionally
+ to avoid cgroup OOM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NPQ+CMBRF/wp5s4+0tangpHFxdHAzDFAKPMOHa
- aHREP67BXfHm3vuuTM4Y8k4OEYzWOPJ0dCHIHYR6Cbva4NUhgyCCcWZkFjRG7u6tRN6hQq9wDI
- pdFpKnuz1AcLuZU2ANucDbuf75RqpWEH2q9xUPI0eV+cKN+TGwX62f8+3yZ8rz5FhotNCsiqtt
- JCnusupjfXQQbYsyxc2lMWFzwAAAA==
-X-Change-ID: 20261024-fix-mglru-v6-6-v2-d8bc9d4183c7
+Message-Id: <20261024-fix-mglru-v6-6-v2-v2-1-6ca69ba6e9ae@gmail.com>
+References: <20261024-fix-mglru-v6-6-v2-v2-0-6ca69ba6e9ae@gmail.com>
+In-Reply-To: <20261024-fix-mglru-v6-6-v2-v2-0-6ca69ba6e9ae@gmail.com>
 To: stable@vger.kernel.org
 Cc: Leno Hou <lenohou@gmail.com>, Wei Xu <weixugc@google.com>, 
  Zeng Jingxiang <linuszeng@tencent.com>, Kairui Song <kasong@tencent.com>, 
  Chris Li <chrisl@kernel.org>, "T.J. Mercier" <tjmercier@google.com>, 
- Yu Zhao <yuzhao@google.com>, Andrew Morton <akpm@linux-foundation.org>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, Barry Song <baohua@kernel.org>, 
- Johannes Weiner <hannes@cmpxchg.org>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Axel Rasmussen <axelrasmussen@google.com>, 
- David Hildenbrand <david@kernel.org>, 
- "Lorenzo Stoakes (Oracle)" <ljs@kernel.org>, 
- Michal Hocko <mhocko@kernel.org>, Qi Zheng <zhengqi.arch@bytedance.com>, 
- Yuanchu Xie <yuanchu@google.com>
+ Yu Zhao <yuzhao@google.com>, Andrew Morton <akpm@linux-foundation.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792820248; l=1953;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792820248; l=5683;
  i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
- bh=wiZH6EVRwOnlRNo/NR8UbS+l5zDK/ZcJVhP21ClK39A=;
- b=ZGFg42OPIZfhyJigfHjgwxQ/nUqvy1DR+EVehQetAL/Niv952Bzc+JW9rpl2Uq2ZxTHfhXEVB
- +f6amc7smXBBdbgn+jbYhFvXHQ8TRE+z/MKez7Q76Cfc7g9lLj6XQci
+ bh=nKAzG19+qMzUxs7SJjNjH/nBPOniYdoxadIdZNRaLLU=;
+ b=dUZo43mInN2lG0/tGEROH+dfi9QWLW/fpeuGoKrmiKuWgCenmAguqhOw23mAXxdW7gzuh8iC3
+ sayk/PbefPTCuWchbRXmvQ24EGl3iLx9OINT6SC+JNcuqWeZcICzOHh
 X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
  pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
 X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The series backports the following upstream commits:
+[ Upstream commit 1bc542c6a0d1444559ab75823a89a94d244bf933 ]
 
-1. 1bc542c6a0d1 ("mm/vmscan: wake up flushers conditionally to avoid cgroup OOM")
-2. 13b6b6209104 ("mm: vmscan: fix dirty folios throttling on cgroup v1 for MGLRU")
+Commit 14aa8b2d5c2e ("mm/mglru: don't sync disk for each aging cycle")
+removed the opportunity to wake up flushers during the MGLRU page
+reclamation process can lead to an increased likelihood of triggering OOM
+when encountering many dirty pages during reclamation on MGLRU.
 
-Patch 1 wakes up flushers conditionally when a memcg is about to OOM due
-to dirty caches.  It restores the flusher wakeup that was removed by
-14aa8b2d5c2e ("mm/mglru: don't sync disk for each aging cycle").
+This leads to premature OOM if there are too many dirty pages in cgroup:
+Killed
 
-Patch 2 handles cgroup v1, where balance_dirty_pages() does not throttle
-dirty folios.  See 9badce000e2c ("cgroup, writeback: don't enable cgroup
-writeback on traditional hierarchies").  After 6b0dfabb3555 ("fs: Remove
-aops->writepage"), reclaim no longer writes back filesystem folios
-directly.  On large memory systems, the flusher may not be able to write
-back quickly enough, leaving many folios already under writeback.  Since
-MGLRU cannot reclaim these dirty folios, the system may run out of memory
-and trigger the OOM killer.  Patch 2 throttles reclaim after waking up
-the flusher for cgroup v1, similar to 81a70c21d917
-("mm/cgroup/reclaim: fix dirty pages throttling on cgroup v1").
+dd invoked oom-killer: gfp_mask=0x101cca(GFP_HIGHUSER_MOVABLE|__GFP_WRITE),
+order=0, oom_score_adj=0
 
+Call Trace:
+<TASK>
+dump_stack_lvl+0x5f/0x80
+dump_stack+0x14/0x20
+dump_header+0x46/0x1b0
+oom_kill_process+0x104/0x220
+out_of_memory+0x112/0x5a0
+mem_cgroup_out_of_memory+0x13b/0x150
+try_charge_memcg+0x44f/0x5c0
+charge_memcg+0x34/0x50
+__mem_cgroup_charge+0x31/0x90
+filemap_add_folio+0x4b/0xf0
+__filemap_get_folio+0x1a4/0x5b0
+? srso_return_thunk+0x5/0x5f
+? __block_commit_write+0x82/0xb0
+ext4_da_write_begin+0xe5/0x270
+generic_perform_write+0x134/0x2b0
+ext4_buffered_write_iter+0x57/0xd0
+ext4_file_write_iter+0x76/0x7d0
+? selinux_file_permission+0x119/0x150
+? srso_return_thunk+0x5/0x5f
+? srso_return_thunk+0x5/0x5f
+vfs_write+0x30c/0x440
+ksys_write+0x65/0xe0
+__x64_sys_write+0x1e/0x30
+x64_sys_call+0x11c2/0x1d50
+do_syscall_64+0x47/0x110
+entry_SYSCALL_64_after_hwframe+0x76/0x7e
+
+memory: usage 308224kB, limit 308224kB, failcnt 2589
+swap: usage 0kB, limit 9007199254740988kB, failcnt 0
+
+...
+file_dirty 303247360
+file_writeback 0
+...
+
+oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=test,
+mems_allowed=0,oom_memcg=/test,task_memcg=/test,task=dd,pid=4404,uid=0
+Memory cgroup out of memory: Killed process 4404 (dd) total-vm:10512kB,
+anon-rss:1152kB, file-rss:1824kB, shmem-rss:0kB, UID:0 pgtables:76kB
+oom_score_adj:0
+
+The flusher wake up was removed to decrease SSD wearing, but if we are
+seeing all dirty folios at the tail of an LRU, not waking up the flusher
+could lead to thrashing easily.  So wake it up when a memcg is about to
+OOM due to dirty caches.
+
+I did run the build kernel test[1] on V6, with -j16 1G memcg on my local
+branch:
+
+Without the patch(10 times):
+user 1449.394
+system 368.78 372.58 363.03 362.31 360.84 372.70 368.72 364.94 373.51
+366.58 (avg 367.399)
+real 164.883
+
+With the V6 patch(10 times):
+user 1447.525
+system 360.87 360.63 372.39 364.09 368.49 365.15 359.93 362.04 359.72
+354.60 (avg 362.79)
+real 164.514
+
+Test results show that this patch has about 1% performance improvement,
+which should be caused by noise.
+
+Link: https://lkml.kernel.org/r/20241026115714.1437435-1-jingxiangzeng.cas@gmail.com
+Link: https://lore.kernel.org/all/CACePvbV4L-gRN9UKKuUnksfVJjOTq_5Sti2-e=pb_w51kucLKQ@mail.gmail.com/ [1]
+Fixes: 14aa8b2d5c2e ("mm/mglru: don't sync disk for each aging cycle")
+Suggested-by: Wei Xu <weixugc@google.com>
+Signed-off-by: Zeng Jingxiang <linuszeng@tencent.com>
+Signed-off-by: Kairui Song <kasong@tencent.com>
+Reviewed-by: Wei Xu <weixugc@google.com>
+Tested-by: Chris Li <chrisl@kernel.org>
+Cc: T.J. Mercier <tjmercier@google.com>
+Cc: Yu Zhao <yuzhao@google.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: Leno Hou <lenohou@gmail.com>
 ---
-Changes in v2:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v1: https://patch.msgid.link/20261024-fix-mglru-v6-6-v2-v1-0-8c9b40f9fc24@gmail.com
+ mm/vmscan.c | 22 ++++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
 
-Changes in v2:
-- Link to v1: https://patch.msgid.link/20261024-linux-6-1-y-v1-0-cf381365f30b@gmail.com
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 4197e10a27b6..a165f685216d 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -4913,6 +4913,7 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
+ 		       int tier_idx)
+ {
+ 	bool success;
++	bool dirty, writeback;
+ 	int gen = folio_lru_gen(folio);
+ 	int type = folio_is_file_lru(folio);
+ 	int zone = folio_zonenum(folio);
+@@ -4961,9 +4962,17 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
+ 		return true;
+ 	}
+ 
++	dirty = folio_test_dirty(folio);
++	writeback = folio_test_writeback(folio);
++	if (type == LRU_GEN_FILE && dirty) {
++		sc->nr.file_taken += delta;
++		if (!writeback)
++			sc->nr.unqueued_dirty += delta;
++	}
++
+ 	/* waiting for writeback */
+-	if (folio_test_locked(folio) || folio_test_writeback(folio) ||
+-	    (type == LRU_GEN_FILE && folio_test_dirty(folio))) {
++	if (folio_test_locked(folio) || writeback ||
++	    (type == LRU_GEN_FILE && dirty)) {
+ 		gen = folio_inc_gen(lruvec, folio, true);
+ 		list_move(&folio->lru, &lrugen->folios[gen][type][zone]);
+ 		return true;
+@@ -5075,6 +5084,8 @@ static int scan_folios(struct lruvec *lruvec, struct scan_control *sc,
+ 	__count_memcg_events(memcg, PGREFILL, sorted);
+ 	__count_vm_events(PGSCAN_ANON + type, isolated);
+ 
++	if (type == LRU_GEN_FILE)
++		sc->nr.file_taken += isolated;
+ 	/*
+ 	 * There might not be eligible folios due to reclaim_idx. Check the
+ 	 * remaining to prevent livelock if it's not making progress.
+@@ -5203,6 +5214,7 @@ static int evict_folios(struct lruvec *lruvec, struct scan_control *sc, int swap
+ 		return scanned;
+ retry:
+ 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false);
++	sc->nr.unqueued_dirty += stat.nr_unqueued_dirty;
+ 	sc->nr_reclaimed += reclaimed;
+ 
+ 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
+@@ -5415,6 +5427,12 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 		cond_resched();
+ 	}
+ 
++	/*
++	 *  If too many file cache in the coldest generation can't be evicted
++	 *  due to being dirty, wake up the flusher.
++	 */
++	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken)
++		wakeup_flusher_threads(WB_REASON_VMSCAN);
+ 	/* whether this lruvec should be rotated */
+ 	return nr_to_scan < 0;
+ }
 
----
-Leno Hou (2):
-      mm/vmscan: wake up flushers conditionally to avoid cgroup OOM
-      mm: vmscan: fix dirty folios throttling on cgroup v1 for MGLRU
-
- mm/vmscan.c | 36 ++++++++++++++++++++++++++++++++++--
- 1 file changed, 34 insertions(+), 2 deletions(-)
----
-base-commit: 0aebf2870d53a8d97e02a99e2103ea0b38950c1b
-change-id: 20261024-fix-mglru-v6-6-v2-d8bc9d4183c7
-
-Best regards,
---  
-Leno Hou <lenohou@gmail.com>
+-- 
+2.55.0
 
