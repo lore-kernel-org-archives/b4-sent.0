@@ -1,105 +1,111 @@
-From: Moe Mahhouk <moe@flashbots.net>
-Date: Sat, 24 Oct 2026 19:17:13 +0000
-Subject: [PATCH v3 2/2] virt: tdx-guest: Poll Quote status with exponential
- backoff
+From: Arnaud Ungaro <contact@arnaud-ungaro.fr>
+Date: Sat, 24 Oct 2026 22:39:12 +0200
+Subject: [PATCH] platform/x86: hp-wmi: Add OMEN 16-k0xxx board 8A4C support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-tdx-guest-quote-poll-v3-2-6a83bb767314@flashbots.net>
-References: <20261024-tdx-guest-quote-poll-v3-0-6a83bb767314@flashbots.net>
-In-Reply-To: <20261024-tdx-guest-quote-poll-v3-0-6a83bb767314@flashbots.net>
-To: Kiryl Shutsemau <kas@kernel.org>, 
- Rick Edgecombe <rick.p.edgecombe@intel.com>, 
- Dave Hansen <dave.hansen@linux.intel.com>, 
- Erdem Aktas <erdemaktas@google.com>, Tom Lendacky <thomas.lendacky@amd.com>, 
- Dan Williams <djbw@kernel.org>, 
- Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
-Cc: Jun Miao <jun.miao@intel.com>, x86@kernel.org, 
- linux-coco@lists.linux.dev, kvm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Moe Mahhouk <moe@flashbots.net>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792869441; l=3161;
- i=moe@flashbots.net; s=20261021; h=from:subject:message-id;
- bh=9wLrH7YqqH84MzZMatdM4i6m5nN1ejaqoVcq375fEBE=;
- b=eLxTF7RjCr/NlBZDcr2wIPJaLyGbKqnr+6cYoqZXkprSmTHNs7XnnNu4EuYvkREcOKAz0DYte
- ctdRoi0YC4aBRkWIqLWL+tED/gTHUk63Yw+afTF5T9sQN8VdaISjYxf
-X-Developer-Key: i=moe@flashbots.net; a=ed25519;
- pk=hJTKfjLno/YESrpxMIKDJk34GM+/8Tol+24XK2b4xf0=
-X-Endpoint-Received: by B4 Relay for moe@flashbots.net/20261021 with auth_id=1259
+Message-Id: <20261024-hp-wmi-8a4c-v1-1-5297fe0104de@arnaud-ungaro.fr>
+X-B4-Tracking: v=1; b=H4sIAG8X3WoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAyMT3YwC3fLcTF2LRJNk3eRE02Qjy0QLUwuTRCWgjoKi1LTMCrBp0bG
+ 1tQAtXBcCXQAAAA==
+X-Change-ID: 20261024-hp-wmi-8a4c-ca5c29a8584a
+To: =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Hans de Goede <hansg@kernel.org>
+Cc: platform-driver-x86@vger.kernel.org, 
+ Krishna Chomal <krishna.chomal108@gmail.com>, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792874351; l=3562;
+ i=contact@arnaud-ungaro.fr; s=20261024; h=from:subject:message-id;
+ bh=rRskuoSffCBZeKa0EotDA49CXzGteq8ptZIW1CoaE4M=;
+ b=0cC0d+4wMxvOvKTcdgD2Oi3wvky9K4u6kCNl0PVAxIU3dqQxTnRnC84774fTJQDz7Om4+ztQB
+ XucxRR4r9OSCiBRjpZTGdRPPGj63GZTnEo2Ts+MaFqKHmvZngOydqkT
+X-Developer-Key: i=contact@arnaud-ungaro.fr; a=ed25519;
+ pk=E36DBHlmRhVNV3rriuNdMXwzVy3fGJ5rWE/saD1H0XU=
+X-Endpoint-Received: by B4 Relay for contact@arnaud-ungaro.fr/20261024 with auth_id=1313
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wait_for_quote_completion() sleeps for a full second before it first
-checks whether the VMM has completed a GetQuote request, and then
-rechecks once per second. Every Quote request therefore takes at least
-one second, however quickly the host answers.
+The HP OMEN 16-k0xxx ships with at least two DMI board names. 8A4D is
+already mapped to omen_v1_legacy_board_params but 8A4C is not. On 8A4C
+the driver falls back to the generic thermal profile path so the
+performance profile never enables the GPU configurable TGP. The RTX
+3070 Ti Laptop GPU stays capped at 105 W instead of 150 W with
+nvidia-powerd running.
 
-With a local Quote Generation Service the VMM completes the request in
-a few milliseconds. On an Emerald Rapids host (KVM, QEMU 11.1, Intel
-QGS), back-to-back Quote requests through configfs-tsm took 1021-1024 ms
-each; with this change they take 6-12 ms at HZ=250. Since quote_lock
-serializes requests, the one-second floor also caps a TD at about one
-Quote per second, which hurts users that bind a fresh Quote to every
-connection, such as attested TLS.
+The board reports thermal policy version 1 through
+HPWMI_GET_SYSTEM_DESIGN_DATA and keeps its thermal profile in EC
+register 0x95 (0x30 by default). This is what
+omen_v1_legacy_board_params expects.
 
-Poll with an exponential backoff instead: double the sleep from 1 ms up
-to 100 ms, so that a fast Quote is noticed within a few milliseconds
-while a slow one costs at most ten wakeups per second.
-msleep_interruptible() rounds up to whole jiffies, so at HZ=250 the 1, 2
-and 4 ms steps are one 4 ms tick each. The sleep stays interruptible,
-and the timeout becomes a deadline in jiffies.
+Add 8A4C to hp_wmi_feature_boards[] and map it to
+omen_v1_legacy_board_params.
 
-Reviewed-by: Kiryl Shutsemau (Meta) <kas@kernel.org>
-Reviewed-by: Kuppuswamy Sathyanarayanan <sathyanarayanan.kuppuswamy@linux.intel.com>
-Signed-off-by: Moe Mahhouk <moe@flashbots.net>
+Tested on an OMEN 16-k0001nf (board 8A4C, BIOS F.21) with nvidia-powerd
+running:
+
+- With this change on 7.2.9 the performance profile enables cTGP. The
+  GPU power limit goes from 80 W to 125 W at idle and 150 W under load.
+- With hp-wmi.c from for-next the low-power, balanced and performance
+  profiles all switch. EC 0x95 reads 0x31 in performance. The GPU power
+  limit at idle is 125 W in performance and 80 W otherwise. Both fan
+  speeds are reported and the max and auto fan modes work.
+
+Cc: stable@vger.kernel.org # 7.2.x
+Signed-off-by: Arnaud Ungaro <contact@arnaud-ungaro.fr>
 ---
- drivers/virt/coco/tdx-guest/tdx-guest.c | 20 ++++++++++++++------
- 1 file changed, 14 insertions(+), 6 deletions(-)
+Notes on this board, not changed by this patch:
 
-diff --git a/drivers/virt/coco/tdx-guest/tdx-guest.c b/drivers/virt/coco/tdx-guest/tdx-guest.c
-index a5a53174f9d9..d58c8eccb26b 100644
---- a/drivers/virt/coco/tdx-guest/tdx-guest.c
-+++ b/drivers/virt/coco/tdx-guest/tdx-guest.c
-@@ -16,6 +16,7 @@
- #include <linux/set_memory.h>
- #include <linux/io.h>
- #include <linux/delay.h>
-+#include <linux/jiffies.h>
- #include <linux/sockptr.h>
- #include <linux/tsm.h>
- #include <linux/tsm-mr.h>
-@@ -271,18 +272,25 @@ static struct tdx_quote_buf *alloc_quote_buf(void)
-  */
- static int wait_for_quote_completion(struct tdx_quote_buf *buf, u32 timeout)
- {
--	int i = 0;
-+	unsigned long deadline = jiffies + secs_to_jiffies(timeout);
-+	unsigned int sleep_ms = 1;
- 
- 	/*
--	 * Quote requests usually take a few seconds to complete, so waking up
--	 * once per second to recheck the status is fine for this use case.
-+	 * A local Quote Generation Service usually completes the request
-+	 * within a few milliseconds. Poll with an exponential backoff of up
-+	 * to 100 ms, so that a fast Quote is noticed promptly while a slow
-+	 * one costs at most ten wakeups per second. msleep_interruptible()
-+	 * rounds up to whole jiffies, so the shortest steps take one tick.
- 	 */
--	while (buf->status == GET_QUOTE_IN_FLIGHT && i++ < timeout) {
--		if (msleep_interruptible(MSEC_PER_SEC))
-+	while (READ_ONCE(buf->status) == GET_QUOTE_IN_FLIGHT) {
-+		if (time_after(jiffies, deadline))
-+			return -ETIMEDOUT;
-+		if (msleep_interruptible(sleep_ms))
- 			return -EINTR;
-+		sleep_ms = min(2 * sleep_ms, 100U);
- 	}
- 
--	return (buf->status == GET_QUOTE_IN_FLIGHT) ? -ETIMEDOUT : 0;
-+	return 0;
- }
- 
- static int tdx_report_new_locked(struct tsm_report *report)
+- Like on 8A4D (https://bugzilla.kernel.org/show_bug.cgi?id=221680) the
+  EC moves 0x95 back to 0x30 120 to 132 s after switching to
+  performance while cTGP stays enabled and platform_profile still reads
+  "performance". Under a long CPU load the CPU is already limited by its
+  temperature (97 C) and package power is about the same before and
+  after the fallback.
 
+- I cleared the EC timer (0x63) and set the NOTIMER and TURBO flags in
+  0x62 after each profile change as the driver does for the boards in
+  omen_timed_thermal_profile_boards[]. 0x95 then stays at 0x31 but the
+  fans stay at 2100 and 0 RPM under full CPU load and the CPU throttles
+  down to 40 W. So I left the timer alone.
+
+- Reloading hp-wmi after the fallback left no platform profile
+  registered. A separate patch handles that.
+
+Kernel versions:
+
+- Tested on the laptop with 7.2.9.
+- Applies to 7.2.12 and 7.3 and builds without warnings with W=1
+  (7.2.12 against the 7.2.9 headers, 7.3 against for-next).
+- Does not apply to 7.0 and 7.1. They list 8A4D in
+  victus_s_thermal_profile_boards[] with omen_v1_legacy_thermal_params
+  so a backport there would add 8A4C to that table instead.
+- 6.19 and older have no support for 8A4D.
+
+This is why the stable tag is limited to 7.2.x.
+---
+ drivers/platform/x86/hp/hp-wmi.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/drivers/platform/x86/hp/hp-wmi.c b/drivers/platform/x86/hp/hp-wmi.c
+index 52077833ac89d3f4bd9b99fbbc1812c4f09d16c7..1cebc7e0cf47668761491091c50af0fb25d42572 100644
+--- a/drivers/platform/x86/hp/hp-wmi.c
++++ b/drivers/platform/x86/hp/hp-wmi.c
+@@ -257,6 +257,10 @@ static const struct dmi_system_id hp_wmi_feature_boards[] __initconst = {
+ 		.matches = { DMI_MATCH(DMI_BOARD_NAME, "8A44") },
+ 		.driver_data = (void *)&omen_v1_legacy_board_params,
+ 	},
++	{
++		.matches = { DMI_MATCH(DMI_BOARD_NAME, "8A4C") },
++		.driver_data = (void *)&omen_v1_legacy_board_params,
++	},
+ 	{
+ 		.matches = { DMI_MATCH(DMI_BOARD_NAME, "8A4D") },
+ 		.driver_data = (void *)&omen_v1_legacy_board_params,
+
+---
+base-commit: 9d3475065167197742b0882aff21cf8e78393277
+change-id: 20261024-hp-wmi-8a4c-ca5c29a8584a
+
+Best regards,
 -- 
-2.34.1
+Arnaud Ungaro <contact@arnaud-ungaro.fr>
 
