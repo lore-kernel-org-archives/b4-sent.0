@@ -1,144 +1,101 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 25 Oct 2026 23:28:13 +0100
-Subject: [PATCH] arm64: dts: qcom: sdm845-google: Move panel pins into
- common
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH v8 0/8] fuse: {io-uring} Allow to reduce the number of
+ queues and request distribution
+Date: Sun, 25 Oct 2026 23:29:08 +0100
+Message-Id: <20261025-reduced-nr-ring-queues_3-v8-0-8a2570e8d2a4@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261025-pixel-panel-pins-fix-v1-1-7cde6f7ca861@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QoCIRBFf0XmuQGdKKJfiR5sd9wmwsRpF0H89
- 7R9uXAunFNBOQsrXE2FzJuofGIHdzAwPX1cGGXuDGTp7CydMEnhNyYfx0pUDFKQOBAdw0wXstD
- VlLnf/+ztvrOujxdP39GC1n6ehVk9eAAAAA==
-X-Change-ID: 20261025-pixel-panel-pins-fix-2ef223fd2820
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Selvaraj <foss@joelselvaraj.com>, 
- Casey Connolly <casey@connolly.tech>
-Cc: Sumit Semwal <sumit.semwal@linaro.org>, Vinod Koul <vkoul@kernel.org>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Petr Vorel <petr.vorel@gmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2816; i=david@ixit.cz;
- h=from:subject:message-id; bh=sZieprxE4e1RIG8z6t14P5reed770kk+50G6rXBQCqo=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq3oJ+en+4/21fx6ETZOMR/4ZxYH/0jNcVLy9fa
- XhiVr9xT02JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCat6CfgAKCRBgAj/E00kg
- cnu8EADJgEy9gtlVyB/MBlIDisr8uSn3q7V8RQbuFp0zlCmixuOczwSqLvqdcVHmJD48cWluUs5
- r1WRvjRyE5Hs9fPCc6yzRGzbAW0ALINPMhInIzRRikLkJTz8Tc4N/0xorCdc6zFfIB412Iv+FZR
- +LThREZvwGYo+EombXjyJNybm7CDCtXgWR8s3+u8UyQVY7Jb3r+p9dq3pq4WcCX8ars02wOHu7a
- Qxzmupa5ed/WXM3R1t/q/bAbhq1R+DQjat+ACWHO4pmQid3W5W52SXPlyHQaJdrx7d9TIFH92hA
- 6IJnSCtGTyRks0jNrCLq+B7muymD1dN/Bfkyh0SMu6wQBKwAvZtarwNxeuQYr4kepyvWcVTmRZi
- 8HrYsbt7swrPBDbpN4uV9UUmWZM6J2MKfTYAQYcIIVD+fRay4pJ2mMKZDbfP3rrFhoYnYSPKqtj
- AkeTVysMqInbeezc1Vq8wVYeAP8SvRG3MkPAWb7R5JDkZpcru5nFjYRCnVHZAwbbO0x2270ffh5
- WX3h5BuFNanyxkiWccaKlIy5YDx07TL6kyOSZLpfmGOdxeLhPArc4hZNgci0/tzbCtUCNU5ESg5
- fP11dU6xtEXVyzUSYNPgn9eGZDQWPjnhoPw7kVr3U16rRRiRfNmc0iUTo1bd39nDVDxAmy4Pfsk
- hZyasE5jYS9MZbQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43NTU7DMBCG4atUXmPkn8Rjs+o9EEKOZ9x6gVNsE
+ oGq3B2nEtBsIpbvJ80zV1apJKrs6XBlheZU05hb2IcDC2efT8QTtmZKqF6AUrwQToGQ58JLyif
+ +PtFE9VVz48MADj06sKydXwrF9Hmjn19an1P9GMvX7dMs1/Uf6Cy54N5b0uDJAZkjYn4M4xtby
+ Vn9MlIIvcOoxkCnYpTextDbLaPvGLnH6MYYtBCs91p62jLmhzFSqD3GrExvle6DG9yAx6EOVDL
+ +UXBPdTsUNKojAFK2i9jZLbUsyzdPHkrZ4gEAAA==
+X-Change-ID: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+To: Joanne Koong <joannelkoong@gmail.com>, 
+ Miklos Szeredi <miklos@szeredi.hu>
+Cc: Bernd Schubert <bernd@bsbernd.com>, fuse-devel@lists.linux.dev
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3122; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=CYo6sDs3WQXmK8jeohKh+18IGAcALzYcj0hLeTiLakI=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLLuNe2bdP+Q1JZ+GbHtR5nrLbbsqlzoco/xW3c61w+d0
+ Dl1LvvlOkpZGMQ4GGTFFFm6JPbYTvnHJ6v2df11mDmsTCBDGLg4BWAil18yMvy/eTx+6a9QF8en
+ /3/EFZ2QrE4zbzPtV7oTNlHAJFZexIThn/3ud59cluwq3ezL7Xn61Yy7TlPfSQTMaVljETfV7Em
+ DIhMA
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both devices share the pinctrl configuration.
+Allow a server to negotiate fewer io-uring queues than CPUs through
+FUSE_URING_REDUCED_Q in its INIT reply. Reduced mode requires ADD_QUEUE
+and starts serving at the first entry. Legacy mode waits for every queue.
+RCU-published CPU maps retain NUMA affinity, background queue selection
+and limited retries of busy queues.
 
-Fixes: a678adbf2d22 ("arm64: dts: qcom: Add support for Pixel 3 and Pixel 3 XL")
-Reviewed-by: Petr Vorel <petr.vorel@gmail.com>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Libfuse PR: https://github.com/libfuse/libfuse/pull/1659
+
+Assisted-by: <various-ai-models>
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
-Retained R-b from previous series, added Fixes: tag.
+Changes in v8:
+- Address another Sashiko review, FUSE_URING_REDUCED_Q should be
+  in the fuse_uring_enabled() group
+- Link to v7: https://patch.msgid.link/20261024-reduced-nr-ring-queues_3-v7-0-4e77e284fd48@bsbernd.com
 
-https://lore.kernel.org/all/20260924-crosshatch-panel-v2-0-08d5c7bf72fc@ixit.cz
+Changes in v7:
+- Address a Sashiko review about possible holes in the system cpu map,
+  iterating about all CPUs might have caused issues. 
+  We use for_each_possible_cpu() as iterate now and also check 
+  with cpu_possible() .
+- Link to v6: https://patch.msgid.link/20261023-reduced-nr-ring-queues_3-v6-0-658235c9b9bd@bsbernd.com
 
-While it's not obvious from current DT, as we upstreaming Pixel 3 XL
-bits, we already know this block was misplaced.
+Changes in v6:
+- Rebase onto ADD_QUEUE and bufpool support.
+- Require FUSE_URING_REDUCED_Q in the INIT reply for reduced mode (Joanne).
+- Publish CPU-to-queue maps through RCU (Joanne).
 
-This will save us some unplesant rebase conflicts while we upstream the
-rest of the panel for Pixel 3 XL and other bits.
----
- arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts | 18 ------------------
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi  | 16 ++++++++++++++++
- 2 files changed, 16 insertions(+), 18 deletions(-)
+Changes in v5
+- Rebased to miklos-for-next (Linux 7.2 base).
+- Folded "Fetch a queued fuse request on command registration" into
+  "Allow reduced number of ring queues", inlining fuse_uring_do_register()
+  into fuse_uring_register().
+  - Fixed retry logic in "Add retry attempts for numa local queues":
+    replaced cpu++ with cpumask_next_wrap(qid, mask) so each retry
+    advances to a genuinely different registered queue (Joanne)-
+  - Simplified "Prefer the current core over mapping" (Joanne).
+  - Folded READ_ONCE() annotation for ring->ready into "Allow reduced
+    number of ring queues" to match WRITE_ONCE() on the writer side and
+    suppress a KCSAN data-race warning.
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-index fa89be500fb85..a000c75494f1c 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-@@ -61,29 +61,11 @@ &mdss_dsi0_out {
- };
- 
- &mdss_dsi0_phy {
- 	vdds-supply = <&vdda_mipi_dsi0_pll>;
- 
- 	status = "okay";
- };
- 
--&tlmm {
--	panel_default: panel-default-state {
--		reset-pins {
--			pins = "gpio6";
--			function = "gpio";
--			drive-strength = <8>;
--			bias-disable;
--		};
--
--		te-pins {
--			pins = "gpio12";
--			function = "mdp_vsync";
--			drive-strength = <2>;
--			bias-pull-down;
--		};
--	};
--};
--
- &wifi {
- 	qcom,calibration-variant = "Google_blueline";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index f1379857e2742..d54cb47cdf95b 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -473,16 +473,32 @@ &qup_uart9_tx {
- 	drive-strength = <2>;
- 	bias-disable;
- };
- 
- &tlmm {
- 	gpio-reserved-ranges = < 0 4>, /* SPI (Intel MNH Pixel Visual Core) */
- 			       <81 4>; /* SPI (most likely Fingerprint Cards FPC1075) */
- 
-+	panel_default: panel-default-state {
-+		reset-pins {
-+			pins = "gpio6";
-+			function = "gpio";
-+			drive-strength = <8>;
-+			bias-disable;
-+		};
-+
-+		te-pins {
-+			pins = "gpio12";
-+			function = "mdp_vsync";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+	};
-+
- 	nfc_default: nfc-default-state {
- 		enable-pins {
- 			pins = "gpio25";
- 			function = "gpio";
- 			drive-strength = <2>;
- 			bias-pull-down;
- 		};
- 
+To: Bernd Schubert <bernd@bsbernd.com>
+To: Joanne Koong <joannelkoong@gmail.com>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: fuse-devel@lists.linux.dev
 
 ---
-base-commit: 20a33c6b6cbe7e4805dfb6cd68816937443aa148
-change-id: 20261025-pixel-panel-pins-fix-2ef223fd2820
+Bernd Schubert (8):
+      fuse: {io-uring} Add queue length counters
+      fuse: {io-uring} Rename ring->nr_queues to max_nr_queues
+      fuse: {io-uring} Add CPU to queue maps
+      fuse: {io-uring} Select the queue through the CPU to queue maps
+      fuse: {io-uring} Allow reduced queues through INIT negotiation
+      fuse: {io-uring} Queue background requests on a different core
+      fuse: Add retry attempts for numa local queues for load distribution
+      fuse: {io-uring} Prefer the current core over mapping
+
+ fs/fuse/dev.c             |   2 +-
+ fs/fuse/dev.h             |   1 +
+ fs/fuse/dev_uring.c       | 324 ++++++++++++++++++++++++++++++++++++++++------
+ fs/fuse/dev_uring_i.h     |  31 ++++-
+ fs/fuse/inode.c           |   9 +-
+ include/uapi/linux/fuse.h |   4 +
+ 6 files changed, 325 insertions(+), 46 deletions(-)
+---
+base-commit: 1d8630946017ead740c4126395d4763371f0107c
+change-id: 20250722-reduced-nr-ring-queues_3-6acb79dad978
 
 Best regards,
 --  
-David Heidelberg <david@ixit.cz>
+Bernd Schubert <bernd@bsbernd.com>
 
