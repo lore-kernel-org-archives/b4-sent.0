@@ -1,129 +1,119 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Sat, 24 Oct 2026 19:32:42 -0500
-Subject: [PATCH ath-next] wifi: ath11k: report the measured noise floor of
- the channel in use
+Date: Sat, 24 Oct 2026 19:33:01 -0500
+Subject: [PATCH ath-next] wifi: ath11k: fix beacon stats with more than one
+ started vdev
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-ath11k-survey-noise-floor-v1-1-8eb03002aab8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAClO3WoC/yWMQQrCMBAAv1L27EITaol+RTyk68auSiLZtFRK/
- 26sx2GYWUE5CyucmxUyz6KSYgVzaIBGH++McqsMtrW9aW2HvozGPFGnPPMHYxJlDK+UMpLzxxM
- 5ci50UPt35iDL/r5AzTDyUuD6NzoND6byW8O2fQFrcLFyhwAAAA==
-X-Change-ID: 20261024-ath11k-survey-noise-floor-c8a59c8c88f4
+Message-Id: <20261024-ath11k-bcn-stats-v1-1-1355f86ec907@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADxO3WoC/yWMSwrDMAwFrxK0rsByQxe5SujCH6VRAm6x1BAIu
+ Xvddjm8N3OAchVWGLoDKm+i8iwN6NJBmkN5MEpuDN75GznfY7CZaMWYCqoFU3TXKebecY6eoGm
+ vypPsv+QI7Y2Fd4P7f9F3XDjZtwjn+QEHglELfgAAAA==
+X-Change-ID: 20261024-ath11k-bcn-stats-03fbd40edb21
 To: Jeff Johnson <jjohnson@kernel.org>
 Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
  linux-kernel@vger.kernel.org, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792888361; l=4101;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792888380; l=3718;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=qzZpKyEkcevX8rqLtU57o7fduxhGno+SZWFUzasBvOE=;
- b=R0N9mUzH4SMm1KlvBjfjsJOkVQZRGfvnfOe/ESbC1iLVtxPLZF0dGGkLLf1uHQTi5xKJnLavu
- Afy7b6eaiiUB4G/Xv0Btmfz0qx2VpOwylsc7HbeXlr9lh+9PdZ+1Fnk
+ bh=vMs+Yy0kwU5J/ZNugFhL2guGxAJmpSpiZGhMOQQV6/c=;
+ b=e+0h242b8f1f3kyTwb1214FNrbc3wtmB5iK/fbrbc8ioniBBRKm6hxrJ6VE2Z0XcAZHZNVQz+
+ ZDzCgRu+0LdBLct259/0Jy0o0uledG+ZV8FRx4tPrCppH+yDA42QXLZ
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For the channel in use, ath11k fills the survey's noise from the
-firmware's pdev bss channel info event. That value is not the channel's
-measured noise floor: on IPQ8074 it reads -108 to -109 dBm on 5 GHz and
--101 to -102 dBm on 2.4 GHz and barely moves, while the firmware's pdev
-stats report the channel's noise floor as -94 and -96 dBm at the same
-moment, and the channel info events of a scan give -93 to -96 dBm for the
-other channels. A noise floor near -109 dBm is not physical for an
-80 MHz channel, so `iw survey dump` and anything built on it show the
-channel in use 10 to 15 dB quieter than it is.
+ath11k_open_bcn_stats() requests beacon stats one vdev at a time, and
+ath11k_mac_fw_stats_request() waits for fw_stats_done after each
+request. ath11k_debugfs_fw_stats_process() completes fw_stats_done only
+once num_bcn_recvd reaches num_started_vdevs, but every request resets
+num_bcn_recvd first. With more than one started vdev the count is never
+reached, the first request times out, and reading fw_stats/beacon_stats
+fails with -ETIMEDOUT.
 
-Request the pdev stats when the survey of the channel in use is read,
-and report their channel noise floor, when it is plausible, in place of
-the bss channel info one. Keep it in the channel's survey entry as well,
-so the channel shows its last measured value once the radio has left it.
-
-With this, on an IPQ8074 AP the in-use survey reads -95 dBm (5 GHz) and
--96 dBm (2.4 GHz), equal to the pdev stats, instead of -106 and -102;
-after a channel switch the new channel reads -92 dBm, as the pdev stats
-do, and the old one keeps its last measured value.
+Complete fw_stats_done on each beacon stats reply and drop
+num_bcn_recvd, as ath12k does since commit 2977567b244f ("wifi: ath12k:
+Fix timeout error during beacon stats retrieval").
 
 Tested-on: IPQ8074 hw2.0 AHB WLAN.HK.2.9.0.1-02146-QCAHKSWPL_SILICONZ-1
 
+Fixes: 9f6e82d11bb9 ("wifi: ath11k: avoid burning CPU in ath11k_debugfs_fw_stats_request()")
+Fixes: 2bcf73b2612d ("wifi: ath11k: don't use static variables in ath11k_debugfs_fw_stats_process()")
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-Pairs with "wifi: ath11k: update rx_channel on a channel switch", sent
-separately. Without it, after a channel switch the survey flags the old
-channel as in use, and this patch would report its noise floor there.
+Found on an Arista C-260 (IPQ8074), where reading beacon_stats failed
+on both radios, each running four BSSes.
 ---
- drivers/net/wireless/ath/ath11k/mac.c | 44 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 43 insertions(+), 1 deletion(-)
+ drivers/net/wireless/ath/ath11k/core.h    |  1 -
+ drivers/net/wireless/ath/ath11k/debugfs.c | 12 +++---------
+ drivers/net/wireless/ath/ath11k/mac.c     |  1 -
+ 3 files changed, 3 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index 1a237adaa..570321f76 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -9338,6 +9338,46 @@ ath11k_mac_update_bss_chan_survey(struct ath11k *ar,
- 		ath11k_warn(ar->ab, "bss channel survey timed out\n");
+diff --git a/drivers/net/wireless/ath/ath11k/core.h b/drivers/net/wireless/ath/ath11k/core.h
+index a0d725923..9be0259e7 100644
+--- a/drivers/net/wireless/ath/ath11k/core.h
++++ b/drivers/net/wireless/ath/ath11k/core.h
+@@ -616,7 +616,6 @@ struct ath11k_fw_stats {
+ 	struct list_head vdevs;
+ 	struct list_head bcn;
+ 	u32 num_vdev_recvd;
+-	u32 num_bcn_recvd;
+ };
+ 
+ struct ath11k_dbg_htt_stats {
+diff --git a/drivers/net/wireless/ath/ath11k/debugfs.c b/drivers/net/wireless/ath/ath11k/debugfs.c
+index 70922612d..3e4375715 100644
+--- a/drivers/net/wireless/ath/ath11k/debugfs.c
++++ b/drivers/net/wireless/ath/ath11k/debugfs.c
+@@ -97,7 +97,6 @@ void ath11k_debugfs_add_dbring_entry(struct ath11k *ar,
+ void ath11k_debugfs_fw_stats_process(struct ath11k *ar, struct ath11k_fw_stats *stats)
+ {
+ 	struct ath11k_base *ab = ar->ab;
+-	bool is_end = true;
+ 
+ 	/* WMI_REQUEST_PDEV_STAT, WMI_REQUEST_RSSI_PER_CHAIN_STAT and
+ 	 * WMI_REQUEST_VDEV_STAT requests have been already processed.
+@@ -107,18 +106,13 @@ void ath11k_debugfs_fw_stats_process(struct ath11k *ar, struct ath11k_fw_stats *
+ 			ath11k_warn(ab, "empty bcn stats");
+ 			return;
+ 		}
+-		/* Mark end until we reached the count of all started VDEVs
+-		 * within the PDEV
++		/* ath11k_open_bcn_stats() requests one vdev's beacon stats at
++		 * a time, so one reply ends a request.
+ 		 */
+-		if (ar->num_started_vdevs)
+-			is_end = ((++ar->fw_stats.num_bcn_recvd) ==
+-				  ar->num_started_vdevs);
+-
+ 		list_splice_tail_init(&stats->bcn,
+ 				      &ar->fw_stats.bcn);
+ 
+-		if (is_end)
+-			complete(&ar->fw_stats_done);
++		complete(&ar->fw_stats_done);
+ 	}
  }
  
-+/* The noise floor in the firmware's bss channel info event is not the
-+ * channel's measured noise floor: on IPQ8074 it reads about -109 dBm on
-+ * 5 GHz and -102 dBm on 2.4 GHz, and barely moves, while the measured value
-+ * the firmware reports in its pdev stats is -94 and -96. Report the measured
-+ * one for the channel in use, as the channel info events of a scan do for
-+ * the other channels.
-+ */
-+static void ath11k_mac_get_chan_noise_floor(struct ath11k *ar,
-+					    struct survey_info *ar_survey,
-+					    struct survey_info *survey)
-+{
-+	struct ath11k_fw_stats_pdev *pdev;
-+	s32 nf;
-+
-+	lockdep_assert_held(&ar->conf_mutex);
-+
-+	if (ar->scan.state != ATH11K_SCAN_IDLE)
-+		return;
-+
-+	if (ath11k_mac_get_fw_stats(ar, ar->pdev->pdev_id, 0,
-+				    WMI_REQUEST_PDEV_STAT))
-+		return;
-+
-+	spin_lock_bh(&ar->data_lock);
-+	pdev = list_first_entry_or_null(&ar->fw_stats.pdevs,
-+					struct ath11k_fw_stats_pdev, list);
-+	nf = pdev ? pdev->ch_noise_floor : 0;
-+	/* keep it for the channel too, so its survey shows the last measured
-+	 * value once the radio has left it
-+	 */
-+	if (nf < 0 && nf > -127)
-+		ar_survey->noise = nf;
-+	spin_unlock_bh(&ar->data_lock);
-+
-+	if (nf < 0 && nf > -127) {
-+		survey->noise = nf;
-+		survey->filled |= SURVEY_INFO_NOISE_DBM;
-+	}
-+}
-+
- static int ath11k_mac_op_get_survey(struct ieee80211_hw *hw, int idx,
- 				    struct survey_info *survey)
- {
-@@ -9381,8 +9421,10 @@ static int ath11k_mac_op_get_survey(struct ieee80211_hw *hw, int idx,
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index 1a237adaa..74ecf4661 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -4059,7 +4059,6 @@ static void ath11k_mac_fw_stats_reset(struct ath11k *ar)
+ 	ath11k_fw_stats_pdevs_free(&ar->fw_stats.pdevs);
+ 	ath11k_fw_stats_vdevs_free(&ar->fw_stats.vdevs);
+ 	ar->fw_stats.num_vdev_recvd = 0;
+-	ar->fw_stats.num_bcn_recvd = 0;
+ 	spin_unlock_bh(&ar->data_lock);
+ }
  
- 	survey->channel = &sband->channels[idx];
- 
--	if (ar->rx_channel == survey->channel)
-+	if (ar->rx_channel == survey->channel) {
- 		survey->filled |= SURVEY_INFO_IN_USE;
-+		ath11k_mac_get_chan_noise_floor(ar, ar_survey, survey);
-+	}
- 
- exit:
- 	mutex_unlock(&ar->conf_mutex);
 
 ---
 base-commit: cd026e68fdbf88b9cc522b76c7a9d92c9a41f709
-change-id: 20261024-ath11k-survey-noise-floor-c8a59c8c88f4
+change-id: 20261024-ath11k-bcn-stats-03fbd40edb21
 
 Best regards,
 --  
