@@ -1,101 +1,114 @@
 From: Bernd Schubert <bernd@bsbernd.com>
-Subject: [PATCH v8 0/8] fuse: {io-uring} Allow to reduce the number of
- queues and request distribution
-Date: Sun, 25 Oct 2026 23:29:08 +0100
-Message-Id: <20261025-reduced-nr-ring-queues_3-v8-0-8a2570e8d2a4@bsbernd.com>
+Date: Sun, 25 Oct 2026 23:29:09 +0100
+Subject: [PATCH v8 1/8] fuse: {io-uring} Add queue length counters
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43NTU7DMBCG4atUXmPkn8Rjs+o9EEKOZ9x6gVNsE
- oGq3B2nEtBsIpbvJ80zV1apJKrs6XBlheZU05hb2IcDC2efT8QTtmZKqF6AUrwQToGQ58JLyif
- +PtFE9VVz48MADj06sKydXwrF9Hmjn19an1P9GMvX7dMs1/Uf6Cy54N5b0uDJAZkjYn4M4xtby
- Vn9MlIIvcOoxkCnYpTextDbLaPvGLnH6MYYtBCs91p62jLmhzFSqD3GrExvle6DG9yAx6EOVDL
- +UXBPdTsUNKojAFK2i9jZLbUsyzdPHkrZ4gEAAA==
-X-Change-ID: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+Message-Id: <20261025-reduced-nr-ring-queues_3-v8-1-8a2570e8d2a4@bsbernd.com>
+References: <20261025-reduced-nr-ring-queues_3-v8-0-8a2570e8d2a4@bsbernd.com>
+In-Reply-To: <20261025-reduced-nr-ring-queues_3-v8-0-8a2570e8d2a4@bsbernd.com>
 To: Joanne Koong <joannelkoong@gmail.com>, 
  Miklos Szeredi <miklos@szeredi.hu>
 Cc: Bernd Schubert <bernd@bsbernd.com>, fuse-devel@lists.linux.dev
 X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3122; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=CYo6sDs3WQXmK8jeohKh+18IGAcALzYcj0hLeTiLakI=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLLuNe2bdP+Q1JZ+GbHtR5nrLbbsqlzoco/xW3c61w+d0
- Dl1LvvlOkpZGMQ4GGTFFFm6JPbYTvnHJ6v2df11mDmsTCBDGLg4BWAil18yMvy/eTx+6a9QF8en
- /3/EFZ2QrE4zbzPtV7oTNlHAJFZexIThn/3ud59cluwq3ezL7Xn61Yy7TlPfSQTMaVljETfV7Em
- DIhMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3112; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=ew8Loht7/s/v9+CJ7lFhSnfg10fFKeD1z4veh1XOTUw=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLLuNe3z4k/9s75099KKyZGPvpUk3Y9n7BK+kGY9U89v/
+ 4QvZwOKOkpZGMQ4GGTFFFm6JPbYTvnHJ6v2df11mDmsTCBDGLg4BWAibIaMDIuEjA+V/52/0u9p
+ FNezq1/XzXhRIR/QV8P1rD/+7OXH0ccZGY67KYjbS1ypsF69aPXzCTeeK+xxfCqw99o2dxH54/w
+ dlxkA
 X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
  fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
 X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Allow a server to negotiate fewer io-uring queues than CPUs through
-FUSE_URING_REDUCED_Q in its INIT reply. Reduced mode requires ADD_QUEUE
-and starts serving at the first entry. Legacy mode waits for every queue.
-RCU-published CPU maps retain NUMA affinity, background queue selection
-and limited retries of busy queues.
+This is another preparation and will be used for decision
+which queue to add a request to.
 
-Libfuse PR: https://github.com/libfuse/libfuse/pull/1659
-
-Assisted-by: <various-ai-models>
 Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+Reviewed-by: Joanne Koong <joannelkoong@gmail.com>
 ---
-Changes in v8:
-- Address another Sashiko review, FUSE_URING_REDUCED_Q should be
-  in the fuse_uring_enabled() group
-- Link to v7: https://patch.msgid.link/20261024-reduced-nr-ring-queues_3-v7-0-4e77e284fd48@bsbernd.com
+ fs/fuse/dev_uring.c   | 15 +++++++++++++--
+ fs/fuse/dev_uring_i.h |  3 +++
+ 2 files changed, 16 insertions(+), 2 deletions(-)
 
-Changes in v7:
-- Address a Sashiko review about possible holes in the system cpu map,
-  iterating about all CPUs might have caused issues. 
-  We use for_each_possible_cpu() as iterate now and also check 
-  with cpu_possible() .
-- Link to v6: https://patch.msgid.link/20261023-reduced-nr-ring-queues_3-v6-0-658235c9b9bd@bsbernd.com
+diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
+index 460776cd69cd..1aca6ce906f0 100644
+--- a/fs/fuse/dev_uring.c
++++ b/fs/fuse/dev_uring.c
+@@ -159,6 +159,7 @@ static void fuse_uring_req_end(struct fuse_ring_ent *ent, struct fuse_req *req,
+ 	spin_lock(&queue->lock);
+ 	ent->fuse_req = NULL;
+ 	list_del_init(&req->list);
++	queue->nr_reqs--;
+ 	if (test_bit(FR_BACKGROUND, &req->flags)) {
+ 		queue->active_background--;
+ 		spin_lock(&fch->bg_lock);
+@@ -166,7 +167,6 @@ static void fuse_uring_req_end(struct fuse_ring_ent *ent, struct fuse_req *req,
+ 		fuse_uring_flush_bg(queue);
+ 		spin_unlock(&fch->bg_lock);
+ 	}
+-
+ 	spin_unlock(&queue->lock);
+ 
+ 	zero_copy_unregister(ent->cmd, ent, issue_flags);
+@@ -188,6 +188,7 @@ static void fuse_uring_abort_end_queue_requests(struct fuse_ring_queue *queue)
+ 	list_for_each_entry(req, &queue->fuse_req_queue, list)
+ 		clear_bit(FR_PENDING, &req->flags);
+ 	list_splice_init(&queue->fuse_req_queue, &req_list);
++	queue->nr_reqs = 0;
+ 	spin_unlock(&queue->lock);
+ 
+ 	/* must not hold queue lock to avoid order issues with fi->lock */
+@@ -1823,6 +1824,7 @@ void fuse_uring_queue_fuse_req(struct fuse_iqueue *fiq, struct fuse_req *req)
+ 	req->ring_queue = queue;
+ 	ent = list_first_entry_or_null(&queue->ent_avail_queue,
+ 				       struct fuse_ring_ent, list);
++	queue->nr_reqs++;
+ 
+ 	if (!ent || fuse_uring_prep_buffer(ent, req)) {
+ 		list_add_tail(&req->list, &queue->fuse_req_queue);
+@@ -1863,6 +1865,7 @@ bool fuse_uring_queue_bq_req(struct fuse_req *req)
+ 	set_bit(FR_URING, &req->flags);
+ 	req->ring_queue = queue;
+ 	list_add_tail(&req->list, &queue->fuse_req_bg_queue);
++	queue->nr_reqs++;
+ 
+ 	ent = list_first_entry_or_null(&queue->ent_avail_queue,
+ 				       struct fuse_ring_ent, list);
+@@ -1894,8 +1897,16 @@ bool fuse_uring_queue_bq_req(struct fuse_req *req)
+ bool fuse_uring_remove_pending_req(struct fuse_req *req)
+ {
+ 	struct fuse_ring_queue *queue = req->ring_queue;
++	bool removed = fuse_remove_pending_req(req, &queue->lock);
+ 
+-	return fuse_remove_pending_req(req, &queue->lock);
++	if (removed) {
++		/* Update counters after successful removal */
++		spin_lock(&queue->lock);
++		queue->nr_reqs--;
++		spin_unlock(&queue->lock);
++	}
++
++	return removed;
+ }
+ 
+ static const struct fuse_iqueue_ops fuse_io_uring_ops = {
+diff --git a/fs/fuse/dev_uring_i.h b/fs/fuse/dev_uring_i.h
+index 263d0f8b9714..77f87075f62d 100644
+--- a/fs/fuse/dev_uring_i.h
++++ b/fs/fuse/dev_uring_i.h
+@@ -135,6 +135,9 @@ struct fuse_ring_queue {
+ 	/* background fuse requests */
+ 	struct list_head fuse_req_bg_queue;
+ 
++	/* number of requests queued or in userspace */
++	unsigned int nr_reqs;
++
+ 	struct fuse_pqueue fpq;
+ 
+ 	unsigned int active_background;
 
-Changes in v6:
-- Rebase onto ADD_QUEUE and bufpool support.
-- Require FUSE_URING_REDUCED_Q in the INIT reply for reduced mode (Joanne).
-- Publish CPU-to-queue maps through RCU (Joanne).
-
-Changes in v5
-- Rebased to miklos-for-next (Linux 7.2 base).
-- Folded "Fetch a queued fuse request on command registration" into
-  "Allow reduced number of ring queues", inlining fuse_uring_do_register()
-  into fuse_uring_register().
-  - Fixed retry logic in "Add retry attempts for numa local queues":
-    replaced cpu++ with cpumask_next_wrap(qid, mask) so each retry
-    advances to a genuinely different registered queue (Joanne)-
-  - Simplified "Prefer the current core over mapping" (Joanne).
-  - Folded READ_ONCE() annotation for ring->ready into "Allow reduced
-    number of ring queues" to match WRITE_ONCE() on the writer side and
-    suppress a KCSAN data-race warning.
-
-To: Bernd Schubert <bernd@bsbernd.com>
-To: Joanne Koong <joannelkoong@gmail.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: fuse-devel@lists.linux.dev
-
----
-Bernd Schubert (8):
-      fuse: {io-uring} Add queue length counters
-      fuse: {io-uring} Rename ring->nr_queues to max_nr_queues
-      fuse: {io-uring} Add CPU to queue maps
-      fuse: {io-uring} Select the queue through the CPU to queue maps
-      fuse: {io-uring} Allow reduced queues through INIT negotiation
-      fuse: {io-uring} Queue background requests on a different core
-      fuse: Add retry attempts for numa local queues for load distribution
-      fuse: {io-uring} Prefer the current core over mapping
-
- fs/fuse/dev.c             |   2 +-
- fs/fuse/dev.h             |   1 +
- fs/fuse/dev_uring.c       | 324 ++++++++++++++++++++++++++++++++++++++++------
- fs/fuse/dev_uring_i.h     |  31 ++++-
- fs/fuse/inode.c           |   9 +-
- include/uapi/linux/fuse.h |   4 +
- 6 files changed, 325 insertions(+), 46 deletions(-)
----
-base-commit: 1d8630946017ead740c4126395d4763371f0107c
-change-id: 20250722-reduced-nr-ring-queues_3-6acb79dad978
-
-Best regards,
---  
-Bernd Schubert <bernd@bsbernd.com>
+-- 
+2.55.0
 
