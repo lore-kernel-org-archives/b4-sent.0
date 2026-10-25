@@ -1,77 +1,96 @@
-From: Patrick Fischer <admin@tsv-stahl-riesa.de>
-Date: Sun, 25 Oct 2026 23:50:05 +0100
-Subject: [PATCH 2/2] serial: tegra: Fix overflow in
- tegra_check_rate_in_range()
+From: Igor Velkov <iav@iav.lv>
+Date: Sun, 25 Oct 2026 22:55:51 +0000
+Subject: [PATCH] arm64: dts: rockchip: Describe the Ethernet PHY on ROCK Pi
+ 4
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261025-upstream-serial-tegra-overflow-v1-2-267b5b7a79ee@tsv-stahl-riesa.de>
-References: <20261025-upstream-serial-tegra-overflow-v1-0-267b5b7a79ee@tsv-stahl-riesa.de>
-In-Reply-To: <20261025-upstream-serial-tegra-overflow-v1-0-267b5b7a79ee@tsv-stahl-riesa.de>
-To: Laxman Dewangan <ldewangan@nvidia.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, 
- Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: Shardar Shariff Md <smohammed@nvidia.com>, 
- Krishna Yarlagadda <kyarlagadda@nvidia.com>, 
- Svyatoslav Ryhel <clamor95@gmail.com>, linux-kernel@vger.kernel.org, 
- linux-serial@vger.kernel.org, linux-tegra@vger.kernel.org, 
- stable@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792968614; l=1845;
- i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
- bh=itgIcGWGOLTyUm1KE2QunM+q/33HpForOO0+9QOkieo=;
- b=ifzVpAwj3ytlam2cPbnwHEpgbVut600nZsB8xfp8yN+PiAPG/fl0ebaGnWo93f+fn/JFOt1PD
- DyJny1Zu3E3BqCKSZejwKM+IswXF+xrNvbegyTICip8X/rspzZoLoSW
-X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
- pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
-X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
+Message-Id: <20261025-rockpi4-gmac-phy-v1-1-69ce4d677189@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAPaI3moC/x3MSwqAMAwA0atI1gZs/XsVcSExrUHU0oIo0rtbX
+ L7FzAuBvXCAIXvB8yVBziNB5RnQOh+WUZZk0IVuVKFr9CdtTiq0+0zo1gdVZ1RJPZWtIUiZ82z
+ k/pfjFOMHydgcumIAAAA=
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Pragnesh Patel <Pragnesh_Patel@mentor.com>, 
+ Akash Gajjar <Akash_Gajjar@mentor.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2295; i=iav@iav.lv;
+ h=from:subject:message-id; bh=ysO0nvScc///4x6g3QSeXnmC72DmKboxgyT6JKfyNes=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn3Or7P1jZ6PnH/hIjcQx9E9L/axL654Hc84v6UypqD7
+ h8ei5+/21HKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAm4t3GyPD1UHKXP8+0xPwD
+ z0Pfan3c2f+D/c9+nn9h7D5J4idOb1Zl+O9rLfT124GNCRlpRw+fmrKwPNPjypr+te7r7p0VShX
+ TZ+YBAA==
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tegra_check_rate_in_range() calculates the deviation of the configured
-from the required clock rate as (configured_rate - required_rate) *
-10000 in a long, which is only 32 bits wide on 32-bit ARM. This
-overflows as soon as the two rates differ by more than about 214.7 kHz,
-so the check lets through exactly the large deviations it is meant to
-catch.
+The ROCK Pi 4 GMAC node has no mdio subnode and no phy-handle, so stmmac
+scans the whole MDIO bus. The RTL8211E answers at its strapped address 1
+and at the Realtek broadcast address 0, so two phy_devices are created
+for one chip, and the netdev attaches to the one at address 0.
 
-On the Tegra Note 7 (Tegra114) the Bluetooth UART ran at 45.33 MHz
-instead of 48 MHz at 3 Mbaud (-5.6 %, see the previous patch). The
-check calculated -0.18 % and let it pass, although the limit is 4 %.
+On system suspend mdio_bus_phy_suspend() leaves the attached PHY to the
+MAC (mac_managed_pm) but suspends the unattached one, which writes
+BMCR_PDOWN into the same chip. With s2idle and a MAC Wake-on-LAN magic
+packet, 17 of 40 cycles did not wake.
 
-Do the multiplication in 64 bits.
+Describe the PHY at address 1 and point phy-handle at it, so only one
+phy_device is created.
 
-Tested on the Tegra Note 7 with a tolerance of -500 for 1 to 4 Mbaud,
-which gives 45.33 MHz at 3 Mbaud: the driver now logs
-"configured baud rate is out of range by -555" and does not apply the
-rate. With the tolerance of 136 (48.00 MHz) it logs nothing.
+Tested on ROCK Pi 4A (RTL8211E), s2idle: one PHY on the bus; 40 of 40
+cycles woke on a magic packet sent 15 s into sleep, and 35 of 35 more
+woke from the expected source with magic packets sent after 5 s to
+20 min, RTC alarms, and the two alternating. Later board revisions use
+an RTL8211F; their schematics strap it to address 1 as well.
 
-64-bit platforms are not affected.
-
-Fixes: d781ec21bae6 ("serial: tegra: report clk rate errors")
-Cc: stable@vger.kernel.org
-Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
+Fixes: 1b5715c602fd ("arm64: dts: rockchip: add ROCK Pi 4 DTS support")
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/tty/serial/serial-tegra.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+The deprecated snps,reset-* properties stay in the MAC node; moving the
+reset to the PHY node is a separate change.
+---
+ arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/drivers/tty/serial/serial-tegra.c b/drivers/tty/serial/serial-tegra.c
-index cc09fbc3aad8..cb5ef8aac198 100644
---- a/drivers/tty/serial/serial-tegra.c
-+++ b/drivers/tty/serial/serial-tegra.c
-@@ -380,8 +380,8 @@ static int tegra_check_rate_in_range(struct tegra_uart_port *tup)
- {
- 	long diff;
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi
+index a8ab043e4062..52de4a79e2f4 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi
+@@ -202,6 +202,7 @@ &gmac {
+ 	clock_in_out = "input";
+ 	phy-supply = <&vcc3v3_lan>;
+ 	phy-mode = "rgmii";
++	phy-handle = <&rgmii_phy>;
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&rgmii_pins>;
+ 	snps,reset-gpio = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
+@@ -210,6 +211,16 @@ &gmac {
+ 	tx_delay = <0x28>;
+ 	rx_delay = <0x11>;
+ 	status = "okay";
++
++	mdio {
++		compatible = "snps,dwmac-mdio";
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		rgmii_phy: ethernet-phy@1 {
++			reg = <1>;
++		};
++	};
+ };
  
--	diff = ((long)(tup->configured_rate - tup->required_rate) * 10000)
--		/ tup->required_rate;
-+	diff = div_s64((s64)(tup->configured_rate - tup->required_rate) * 10000,
-+		       tup->required_rate);
- 	if (diff < (tup->cdata->error_tolerance_low_range * 100) ||
- 	    diff > (tup->cdata->error_tolerance_high_range * 100)) {
- 		dev_err(tup->uport.dev,
+ &gpu {
 
+---
+base-commit: d2abcbb905b0e4b2e06b257fa1e5bcf4faa6dbda
+change-id: 20261025-rockpi4-gmac-phy-18f13c9c37fc
+
+Best regards,
 -- 
-2.56.0
+Igor Velkov <iav@iav.lv>
 
