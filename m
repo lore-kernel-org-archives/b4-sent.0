@@ -1,104 +1,142 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sat, 24 Oct 2026 22:15:04 +0000
-Subject: [PATCH v2] arm64: dts: rockchip: Add the GPIO expander to Kobol
- Helios64
+From: Haipeng Lin <jimmie.lin@gmail.com>
+Date: Sat, 24 Oct 2026 20:24:00 -0400
+Subject: [PATCH] drm/panel-edp: disable the backlight before powering off
+ panel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261024-helios64-pca9655-v2-1-97210e9aafb1@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAOgt3WoC/32NSwrCMBRFt1Le2Ej+EkfuQzoI6at5UJqSlKCU7
- N3YBTg8B+65BxTMhAXuwwEZKxVKawd5GSBEv76Q0dQZJJdWcO5YxIVSsZptwTtrDFPOahWkD7O
- eoM+2jDO9z+Rz7Byp7Cl/zocqfvZPrArGmb0pRK2VtIY/yNfrUmFsrX0BjMhYFK0AAAA=
-To: Heiko Stuebner <heiko@sntech.de>
-Cc: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Rosen Penev <rosenp@gmail.com>, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2516; i=iav@iav.lv;
- h=from:subject:message-id; bh=NxG+xHVeylkpzOnvEZLanDkLJTXNZz8dgrlgIaGTkKw=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFl3dV/d6TAQm7Npl2PW069avwLfBltsv2fFzcbnUztpR
- deDGd8COkpZGMS4GGTFFFkmHNK4lbHk6l9/D/MHMHNYmUCGMHBxCsBEbi1gZFgQbsmwMNKU9xyb
- bXLOMam4R1xHNzAl2y5cxxRXeUSqRIPhv3dFqTFXxhdWJSkTB/uIMt35/0uYZoWKbPqZlW43474
- aGwA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261024-sp11-bl-upstream-1-v1-1-d39bfaf9afbc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAyMT3eICQ0PdpBzd0oLikqLUxFxdQ91UMzNDs0QzixSzNAMloMaCotS
+ 0zAqwodGxtbUA0eaJsWQAAAA=
+X-Change-ID: 20261024-sp11-bl-upstream-1-e6616a68d6f0
+To: Douglas Anderson <dianders@chromium.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>
+Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Linus Walleij <linusw@kernel.org>, Sam Ravnborg <sam@ravnborg.org>, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Dale Whinham <daleyo@gmail.com>, linux-arm-msm@vger.kernel.org, 
+ aarch64-laptops@lists.linaro.org, Haipeng Lin <jimmie.lin@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792887854; l=4817;
+ i=jimmie.lin@gmail.com; s=20261011; h=from:subject:message-id;
+ bh=Ad1iSx6+Lkqh9DkZeY8irIQ3hUZslhOvNah24ewp07A=;
+ b=PogfgUqfM2SzGF0yLihQqRwvLshIXA7c0iqTKAbXu3RzurqjhsnfnnS2SZ8SfVxRdSC7DzfEd
+ V7qdqNst1DzCD3vex6ve2i0T8eyEINM48JC+gywDQmJOuwrHr9yr7ve
+X-Developer-Key: i=jimmie.lin@gmail.com; a=ed25519;
+ pk=3KDRF1RQ/9A7ZUVTdRVEZnVrGltdmq1bRocsOYeXezI=
+X-Endpoint-Received: by B4 Relay for jimmie.lin@gmail.com/20261011 with auth_id=1164
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Helios64 has an ON Semiconductor PCA9655E 16-bit GPIO expander at 0x20
-on I2C2, powered from VCC3V3_SYS_S3. Its 16 lines go to pins 4-19 of
-the P5 GPIO header, one line per pin in order, so name them after the
-pins. Its INT# output goes to GPIO0_B1 with an external pull-up (R59
-to 1V8_S3), so the pin has no internal bias. Schematic, sheets 34 and
-35:
-https://wiki.kobol.io/helios64/files/schematics/Helios64_Schematics_Rev1.2.pdf
+If the display pipeline takes longer than the runtime-PM autosuspend
+delay (1 s) to bind after the panel probes, panel-edp's runtime suspend
+powers the panel off while the backlight is still on: pwm-backlight
+inherits the enable state left by the firmware at probe and keeps the
+enable GPIO high. The panel supply is thus cut without first disabling
+the backlight, leaving BL_EN asserted across a panel power cycle.
 
-Assisted-by: LLM
-Signed-off-by: Igor Velkov <iav@iav.lv>
----
-The node is the one tested on the board in v1; the line names are
-checked with dt-validate only.
----
-Changes in v2:
-- Drop the binding patch, applied by Bartosz as 356cab616b6f.
-- Name the lines after the P5 header pins, label the node p5_gpio.
-- Rebase on for-next.
-- Link to v1: https://lore.kernel.org/r/20261009-helios64-pca9655-v1-0-673ee4432650@iav.lv
----
- .../boot/dts/rockchip/rk3399-kobol-helios64.dts    | 25 ++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+On the Surface Pro 11 LCD (LGD0779), leaving BL_EN high across this
+power cycle appears to leave the backlight controller in an incorrect
+state: brightness is pinned near maximum with a greatly reduced
+dimming range. Subsequent brightness changes update the PWM duty, but
+do not restore it to normal. Cycling the backlight off and on at
+unchanged brightness restores the full range.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-index 63ad79b4c8ac..df993cbb17c8 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-kobol-helios64.dts
-@@ -461,6 +461,25 @@ &i2c2 {
- 	i2c-scl-falling-time-ns = <30>;
- 	status = "okay";
+The first drm_panel_enable() does not recover from this because
+pwm-backlight still considers itself enabled and leaves BL_EN high.
+
+Disable the attached backlight in panel_edp_suspend() before marking
+AUX unpowered and cutting panel power. This ensures that the first
+modeset enables the backlight after panel power and video are ready.
+When DRM has already disabled the backlight, it remains off.
+
+Verified on the Surface Pro 11 LCD by delaying display pipeline bind
+past the autosuspend timeout. BL_EN now drops before panel power is
+cut, and brightness control works at the first modeset.
+
+Fixes: 5540cf8f3e8d ("drm/panel-edp: Implement generic "edp-panel"s probed by EDID")
+Link: https://github.com/dwhinham/archiso-aarch64-sp11/issues/41
+Assisted-by: claude-fable:5
+Signed-off-by: Haipeng Lin <jimmie.lin@gmail.com>
+---
+Can reproduce on an installed system on Surface Pro 11 LCD (X1P-64-100,
+LGD0779 LCD) by booting with modprobe.blacklist=phy_qcom_qmp_combo then
+loading that module manually after ~20s. This delays DPU component bind
+past the panel's runtime autosuspend timeout.
+
+A/B tested against the same v7.2 tree:
+
+- Unpatched: panel VDD off 3.5s..20.5s while BL_EN stays high.
+after the first modeset brightness is pinned near max brightness with
+a "collapsed" dimming range. sysfs brightness writes still reprogram
+the PMIC LPG. One bl_power off/on cycle at unchanged brightness 
+restores the full range.
+
+- Patched: BL_EN drops ~300us before the VDD cut and rises again after
+panel power+link at the first modeset. full brightness range works.
+
+Tracing and functional testing on the SP11 shows unchanged sequencing
+for fast boots, DPMS off/on, and system suspend/resume.
+
+Two cases would benefit from testing on other hardware:
+1. AUX-controlled backlights
+The disable is placed before drm_dp_dpcd_set_powered(false) and
+regulator_disable() so the panel remains accessible if disabling its
+backlight requires AUX writes. But I have not tested this since my 
+LCD is GPIO/PWM based.
+
+2. Panels with shared/always-on supplies and no panel enable GPIO
+These panels may continue displaying the firmware framebuffer during
+the pre-first-modeset runtime suspend. This change will turn off their
+attached backlight during that interval, potentially making the boot
+display go dark earlier. This matches the driver's powered-off state,
+but I have not tested that configuration.
+
+Testing on other panel-edp systems particularly with pwm-backlight,
+would be appreciated.
+---
+ drivers/gpu/drm/panel/panel-edp.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/drivers/gpu/drm/panel/panel-edp.c b/drivers/gpu/drm/panel/panel-edp.c
+index 94bc54c3833a..87f9c13380be 100644
+--- a/drivers/gpu/drm/panel/panel-edp.c
++++ b/drivers/gpu/drm/panel/panel-edp.c
+@@ -21,6 +21,7 @@
+  * DEALINGS IN THE SOFTWARE.
+  */
  
-+	p5_gpio: gpio@20 {
-+		compatible = "onnn,pca9655", "nxp,pca9555";
-+		reg = <0x20>;
-+		gpio-controller;
-+		#gpio-cells = <2>;
-+		/* All 16 lines go to pins 4-19 of the P5 GPIO header */
-+		gpio-line-names = "PIN_4", "PIN_5", "PIN_6", "PIN_7",
-+				  "PIN_8", "PIN_9", "PIN_10", "PIN_11",
-+				  "PIN_12", "PIN_13", "PIN_14", "PIN_15",
-+				  "PIN_16", "PIN_17", "PIN_18", "PIN_19";
-+		interrupt-controller;
-+		#interrupt-cells = <2>;
-+		interrupt-parent = <&gpio0>;
-+		interrupts = <RK_PB1 IRQ_TYPE_LEVEL_LOW>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&exp16_int_l>;
-+		vcc-supply = <&vcc3v3_sys_s3>;
-+	};
-+
- 	temp@4c {
- 		compatible = "national,lm75";
- 		reg = <0x4c>;
-@@ -501,6 +520,12 @@ user1_btn: user1-btn {
- 		};
- 	};
++#include <linux/backlight.h>
+ #include <linux/debugfs.h>
+ #include <linux/delay.h>
+ #include <linux/gpio/consumer.h>
+@@ -413,6 +414,18 @@ static int panel_edp_suspend(struct device *dev)
+ {
+ 	struct panel_edp *p = dev_get_drvdata(dev);
  
-+	expander {
-+		exp16_int_l: exp16-int-l {
-+			rockchip,pins = <0 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
++	/*
++	 * eDP panel power sequencing requires the backlight to be off
++	 * whenever the panel is powered off. Before the first modeset the
++	 * backlight driver may still hold the enable state inherited from
++	 * the firmware, and some panels' backlight controllers come up in a
++	 * wrong dimming mode if their enable line stays high across a panel
++	 * power cycle. Sync the backlight off here so that the backlight
++	 * enable from drm_panel_enable() performs a true power-on in the
++	 * correct order.
++	 */
++	backlight_disable(p->base.backlight);
 +
- 	fan {
- 		fan1_sense: fan1-sense {
- 			rockchip,pins = <4 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
+ 	drm_dp_dpcd_set_powered(p->aux, false);
+ 	gpiod_set_value_cansleep(p->enable_gpio, 0);
+ 	regulator_disable(p->supply);
 
 ---
-base-commit: d2abcbb905b0e4b2e06b257fa1e5bcf4faa6dbda
-change-id: 20261009-helios64-pca9655-39643c2acf4d
+base-commit: cf61bef3801c3c9d0d8c39026b7b2fb242898a3a
+change-id: 20261024-sp11-bl-upstream-1-e6616a68d6f0
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Haipeng Lin <jimmie.lin@gmail.com>
 
