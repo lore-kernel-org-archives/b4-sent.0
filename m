@@ -1,168 +1,137 @@
-From: Eli Skeggs <kernel@eliskeggs.com>
-Date: Sun, 25 Oct 2026 16:41:58 -0700
-Subject: [PATCH bpf 2/2] selftests/bpf: Redirect a bare FIN to another
- socket's egress
+From: Ihor Urazov <z0rc3r@gmail.com>
+Date: Mon, 26 Oct 2026 01:47:52 +0200
+Subject: [PATCH] usb: typec: ucsi: acpi: Assume UCSI 1.0 on HP ZBook 8 G2i
+ 14
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261025-sockmap-bare-fin-v1-2-bb8feae7c4a7@eliskeggs.com>
-References: <20261025-sockmap-bare-fin-v1-0-bb8feae7c4a7@eliskeggs.com>
-In-Reply-To: <20261025-sockmap-bare-fin-v1-0-bb8feae7c4a7@eliskeggs.com>
-To: John Fastabend <john.fastabend@gmail.com>, 
- Jakub Sitnicki <jakub@cloudflare.com>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Cong Wang <cong.wang@bytedance.com>, 
- Daniel Borkmann <daniel@iogearbox.net>, Alexei Starovoitov <ast@kernel.org>, 
- Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, Shuah Khan <shuah@kernel.org>
-Cc: Geliang Tang <geliang@kernel.org>, netdev@vger.kernel.org, 
- bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Eli Skeggs <kernel@eliskeggs.com>
+Message-Id: <20261026-ucsi-hp-zbook-8-g2i-v1-1-91002e9ef073@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrB3QkIbSqxQXJpnqWEgko6UYc
+ ndTu3iLb/H+DEKJSeDRZEj0YeEYKvq2ATePYSJkXw2qU6avw90J47ziYWN84x0nxai1NqM1dCO
+ voT7XRC/+XtXn8LfsdiG3/VJQygnhDZjkdwAAAA==
+X-Change-ID: 20261026-ucsi-hp-zbook-8-g2i-4446ab6e5ed4
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Francesco Orro <ncesco@interstellar.eu>, 
+ Ihor Urazov <z0rc3r@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792971941; l=4880;
- i=kernel@eliskeggs.com; s=20261021; h=from:subject:message-id;
- bh=4le5YBHhX3XoOuXEtcw57i6wiQvbpdg4GyDHi4mqUR4=;
- b=BZlc7bOp4bZPIb1hWZMCebUp1rGvnBTGlTSBaXqnLzp3+B+yJygeG2w0oeCh/cHy71ZESi2Rq
- M1dy0JoM6g5BmBJQCDhfWz3GEwTDar2pWL3vesnmicUiNV1/sKXnlq/
-X-Developer-Key: i=kernel@eliskeggs.com; a=ed25519;
- pk=38k+FqQ3STTnr2H4HZ7IEseBOHWRDYVhvyMmQlB51gc=
-X-Endpoint-Received: by B4 Relay for kernel@eliskeggs.com/20261021 with auth_id=1252
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4018; i=z0rc3r@gmail.com;
+ h=from:subject:message-id; bh=xe4U+KYh11Pj1uxmd73sL6TM+I5I1Id6YUmQWliU7IU=;
+ b=owGbwMvMwCWmab25vPXFu0bG02pJDFn3pmoetTq2h5Mn6++0gi3vWS4yafMwFz+yfshrcrrji
+ eWRLSfNO0pZGMS4GGTFFFn69xnwaguZijN9sXkDM4eVCWQIAxenAEyk9xUjw44Xd3VrqxdJuX+K
+ sjZh3mOnl65VFv1g052feftPXTmrvYXhN/uZwiQLz+ZPl7er8/BO7bv21TJrRiAro+7+GVtYOa9
+ t5gAA
+X-Developer-Key: i=z0rc3r@gmail.com; a=openpgp;
+ fpr=F7D877ECBB274E704A31F3AC5D006BEB7252F7F2
+X-Endpoint-Received: by B4 Relay for z0rc3r@gmail.com/default with auth_id=1320
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Redirect data from two sockets to a third socket's egress. Half-close
-the first socket so that its FIN arrives in an skb of its own, then
-confirm that data redirected from the second socket after the first
-socket's half-close still egresses from the third socket, and that
-the third socket reports no error.
+The HP ZBook 8 G2i 14 (board 8ED9) exposes a working UCSI ACPI PPM, but
+its UCSI VERSION field reads zero until the first command completes.
+ucsi_register() rejects a zero version with -ENODEV, so no Type-C ports
+are registered.
 
-Without the sk_psock_backlog() fix, the zero-length skb breaks the
-target's psock: it ends up with a disabled transmit flag, and SO_ERROR
-reports EPIPE.
+The firmware's _DSM READ function (2) is a stub. The mailbox VERSION
+field is written only by the EC response handler, after a command
+completes, after which it reads 0x0100 (UCSI 1.0). The mailbox is
+48 bytes with 16-byte MESSAGE_IN/MESSAGE_OUT fields, the UCSI 1.x
+layout, and _DSM function 5 is not implemented.
 
-Signed-off-by: Eli Skeggs <kernel@eliskeggs.com>
+Add a DMI-specific read_version for this board that substitutes the
+version the firmware itself reports, UCSI 1.0, only when VERSION reads
+zero. A non-zero firmware version is used as is.
+
+The same firmware defect on the HP ZBook Fury G1i 16 was discussed in
+"[RFC PATCH] usb: typec: ucsi: acpi: bootstrap PPM on HP systems with
+empty _DSM func 2" [1]. The defect was reported to HP as case
+5166176673.
+
+Tested on an HP ZBook 8 G2i 14 with BIOS Y70 01.02.08, from a fresh
+boot where VERSION reads zero: three connectors register, the PD
+contract and alternate modes of a Thunderbolt dock are reported, and
+its DisplayPort output stays up across the PPM reset in ucsi_init().
+Dock unplug/replug and s2idle suspend/resume update the connector
+state without errors.
+
+Link: https://lore.kernel.org/linux-usb/f3M_fpjtt8FxDqGKcA84vqXmRbKzCBfpCrIK4-jCWvIscER51zkD8qD8FYpz75qZw51rMDRSkUyYlrBvLvdM8CGRY2l8TFVvr4MC1LdTzbc=@interstellar.eu/ [1]
+Fixes: c1b0bc2dabfa ("usb: typec: Add support for UCSI interface")
+Cc: stable@vger.kernel.org
+Cc: Francesco Orro <ncesco@interstellar.eu>
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Ihor Urazov <z0rc3r@gmail.com>
 ---
- .../selftests/bpf/prog_tests/sockmap_basic.c       | 74 ++++++++++++++++++++++
- .../selftests/bpf/progs/test_sockmap_pass_prog.c   |  8 +++
- 2 files changed, 82 insertions(+)
+Hi Heikki,
 
-diff --git a/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c b/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c
-index 1fef6ec2ba7a..e1e477ce72b3 100644
---- a/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c
-+++ b/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c
-@@ -1325,6 +1325,78 @@ static void test_sockmap_multi_channels(int sotype)
- 	test_sockmap_pass_prog__destroy(skel);
- }
+on the Fury G1i RFC you asked for the actual UCSI version instead of a
+guess. On this board the firmware itself reports 0x0100 once the first
+command completes (read back from the mailbox), and the mailbox layout and
+missing _DSM function 5 rule out 2.x. HP has been asked to report it from
+boot, case 5166176673.
+---
+ drivers/usb/typec/ucsi/ucsi_acpi.c | 35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
+
+diff --git a/drivers/usb/typec/ucsi/ucsi_acpi.c b/drivers/usb/typec/ucsi/ucsi_acpi.c
+index 5697ccc24ec3..2421a92ecb0e 100644
+--- a/drivers/usb/typec/ucsi/ucsi_acpi.c
++++ b/drivers/usb/typec/ucsi/ucsi_acpi.c
+@@ -148,6 +148,34 @@ static const struct ucsi_operations ucsi_acer_ops = {
+ 	.async_control = ucsi_acpi_async_control
+ };
  
-+/* A bare FIN turns into an empty skb. When redirected to another socket,
-+ * verify that it does not break the destination socket's psock. Data
-+ * later redirected to the destination socket must still transmit.
-+ */
-+static void test_sockmap_skb_verdict_redir_fin(void)
++static int ucsi_hp_read_version(struct ucsi *ucsi, u16 *version)
 +{
-+	int c0 = -1, p0 = -1, c1 = -1, p1 = -1, c2 = -1, p2 = -1;
-+	int err, map, zero = 0, one = 1, two = 2, sock_err;
-+	struct test_sockmap_pass_prog *skel;
-+	socklen_t len = sizeof(sock_err);
-+	struct bpf_program *prog;
-+	char buf = 'x', rcv;
++	struct ucsi_acpi *ua = ucsi_get_drvdata(ucsi);
++	int ret;
 +
-+	skel = test_sockmap_pass_prog__open_and_load();
-+	if (!ASSERT_OK_PTR(skel, "open_and_load"))
-+		return;
++	ret = ucsi_acpi_read_version(ucsi, version);
++	if (ret)
++		return ret;
 +
-+	err = create_socket_pairs(AF_INET, SOCK_STREAM, &c0, &c1, &p0, &p1);
-+	if (!ASSERT_OK(err, "create_socket_pairs()"))
-+		goto end;
-+	err = create_pair(AF_INET, SOCK_STREAM, &c2, &p2);
-+	if (!ASSERT_OK(err, "create_pair()"))
-+		goto end;
++	/* Firmware fills in VERSION (1.0) only after the first command completes */
++	if (!*version) {
++		dev_warn(ua->dev, "UCSI version is zero, assuming 1.0\n");
++		*version = UCSI_VERSION_1_0;
++	}
 +
-+	map = bpf_map__fd(skel->maps.sock_map_rx);
-+	prog = skel->progs.prog_skb_verdict_egress;
-+	err = bpf_prog_attach(bpf_program__fd(prog), map,
-+			      BPF_SK_SKB_STREAM_VERDICT, 0);
-+	if (!ASSERT_OK(err, "bpf_prog_attach verdict"))
-+		goto end;
-+
-+	err = bpf_map_update_elem(map, &zero, &p0, BPF_ANY);
-+	if (!ASSERT_OK(err, "bpf_map_update_elem(p0)"))
-+		goto end;
-+	err = bpf_map_update_elem(map, &one, &p1, BPF_ANY);
-+	if (!ASSERT_OK(err, "bpf_map_update_elem(p1)"))
-+		goto end;
-+	err = bpf_map_update_elem(map, &two, &p2, BPF_ANY);
-+	if (!ASSERT_OK(err, "bpf_map_update_elem(p2)"))
-+		goto end;
-+
-+	if (!ASSERT_EQ(xsend(c0, &buf, 1, 0), 1, "xsend(c0)"))
-+		goto end;
-+	if (!ASSERT_EQ(recv_timeout(c1, &rcv, 1, 0, IO_TIMEOUT_SEC), 1,
-+		       "recv_timeout(c1)"))
-+		goto end;
-+
-+	err = shutdown(c0, SHUT_WR);
-+	if (!ASSERT_OK(err, "shutdown(c0)"))
-+		goto end;
-+	if (!ASSERT_OK(recv_timeout(p0, &rcv, 1, 0, IO_TIMEOUT_SEC),
-+		       "recv_timeout(p0) EOF"))
-+		goto end;
-+
-+	if (!ASSERT_EQ(xsend(c2, &buf, 1, 0), 1, "xsend(c2)"))
-+		goto end;
-+	ASSERT_EQ(recv_timeout(c1, &rcv, 1, 0, IO_TIMEOUT_SEC), 1,
-+		  "recv_timeout(c1) after FIN");
-+
-+	err = getsockopt(p1, SOL_SOCKET, SO_ERROR, &sock_err, &len);
-+	if (ASSERT_OK(err, "getsockopt(SO_ERROR)"))
-+		ASSERT_OK(sock_err, "p1 error");
-+end:
-+	close_fd(&c0);
-+	close_fd(&p0);
-+	close_fd(&c1);
-+	close_fd(&p1);
-+	close_fd(&c2);
-+	close_fd(&p2);
-+	test_sockmap_pass_prog__destroy(skel);
++	return 0;
 +}
 +
- /* A socket in a sockmap without a verdict program keeps its ingress data
-  * in sk_receive_queue: FIONREAD must account for it.
-  */
-@@ -1404,6 +1476,8 @@ void test_sockmap_basic(void)
- 		test_sockmap_no_verdict_fionread();
- 	if (test__start_subtest("sockmap skb_verdict fionread on drop"))
- 		test_sockmap_skb_verdict_fionread(false);
-+	if (test__start_subtest("sockmap skb_verdict redirect bare FIN"))
-+		test_sockmap_skb_verdict_redir_fin();
- 	if (test__start_subtest("sockmap skb_verdict change tail"))
- 		test_sockmap_skb_verdict_change_tail();
- 	if (test__start_subtest("sockmap msg_verdict pop_data overflow"))
-diff --git a/tools/testing/selftests/bpf/progs/test_sockmap_pass_prog.c b/tools/testing/selftests/bpf/progs/test_sockmap_pass_prog.c
-index ef9edca184ea..dd3cb7524e21 100644
---- a/tools/testing/selftests/bpf/progs/test_sockmap_pass_prog.c
-+++ b/tools/testing/selftests/bpf/progs/test_sockmap_pass_prog.c
-@@ -52,6 +52,14 @@ int prog_skb_verdict_ingress(struct __sk_buff *skb)
- 	return bpf_sk_redirect_map(skb, &sock_map_rx, one, BPF_F_INGRESS);
- }
- 
-+SEC("sk_skb/stream_verdict")
-+int prog_skb_verdict_egress(struct __sk_buff *skb)
-+{
-+	int one = 1;
++static const struct ucsi_operations ucsi_hp_ops = {
++	.read_version = ucsi_hp_read_version,
++	.read_cci = ucsi_acpi_read_cci,
++	.poll_cci = ucsi_acpi_poll_cci,
++	.read_message_in = ucsi_acpi_read_message_in,
++	.write_message_out = ucsi_acpi_write_message_out,
++	.sync_control = ucsi_sync_control_common,
++	.async_control = ucsi_acpi_async_control
++};
 +
-+	return bpf_sk_redirect_map(skb, &sock_map_rx, one, 0);
-+}
-+
- SEC("sk_skb/stream_parser")
- int prog_skb_verdict_ingress_strp(struct __sk_buff *skb)
- {
+ static int ucsi_gram_sync_control(struct ucsi *ucsi, u64 command, u32 *cci,
+ 				  void *val, size_t len, void *msg_out,
+ 				  size_t msg_out_size)
+@@ -196,6 +224,13 @@ static const struct dmi_system_id ucsi_acpi_quirks[] = {
+ 		},
+ 		.driver_data = (void *)&ucsi_acer_ops,
+ 	},
++	{
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
++			DMI_MATCH(DMI_BOARD_NAME, "8ED9"),
++		},
++		.driver_data = (void *)&ucsi_hp_ops,
++	},
+ 	{
+ 		.matches = {
+ 			DMI_MATCH(DMI_SYS_VENDOR, "LG Electronics"),
 
--- 
-2.56.0
+---
+base-commit: 21a7f44fd0765fcc5194130b28767786eba1d1e7
+change-id: 20261026-ucsi-hp-zbook-8-g2i-4446ab6e5ed4
+
+Best regards,
+--  
+Ihor Urazov <z0rc3r@gmail.com>
 
