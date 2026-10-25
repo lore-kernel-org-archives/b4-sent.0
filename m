@@ -1,70 +1,80 @@
-From: Bernd Schubert <bernd@bsbernd.com>
-Date: Sun, 25 Oct 2026 23:29:16 +0100
-Subject: [PATCH v8 8/8] fuse: {io-uring} Prefer the current core over
- mapping
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v4 0/2] drm/tegra: Support YVU formats
+Date: Sun, 25 Oct 2026 17:34:28 -0500
+Message-Id: <20261025-tegra-drm-yvu420-v4-0-30b3bb0d0752@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261025-reduced-nr-ring-queues_3-v8-8-8a2570e8d2a4@bsbernd.com>
-References: <20261025-reduced-nr-ring-queues_3-v8-0-8a2570e8d2a4@bsbernd.com>
-In-Reply-To: <20261025-reduced-nr-ring-queues_3-v8-0-8a2570e8d2a4@bsbernd.com>
-To: Joanne Koong <joannelkoong@gmail.com>, 
- Miklos Szeredi <miklos@szeredi.hu>
-Cc: Bernd Schubert <bernd@bsbernd.com>, fuse-devel@lists.linux.dev
-X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1450; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=tpcIJt64KMjnkQcqgwgIdVkmxlr0O8K5l+u5VmbpUA8=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLLuNR2smzFp/6fMJSXimv0S708s/adSKHLRhfHoX1ez5
- f8XS95Y0FHKwiDGwSArpsjSJbHHdso/Plm1r+uvw8xhZQIZwsDFKQATcc9kZPhbYyQ/OXZzRdSj
- KOfb9Wyry7d8kk1KX7PTQzA3IchwgRnDf5e3vsWvLnsf1V/XK3iklj+R687LgP8d/ApLZZNOqq8
- 9xgAA
-X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
- fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
-X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NwQ6CMAyA4VchOzvTbkOGJ9/DeBjbgCUCZsNFQ
+ nh3ByeixuPftF9nEqx3NpBzNhNvowtu6FOIQ0Z0q/rGUmdSEwbshACSjrbxihrf0Sk+BQOKpqo
+ KFGBzoUg6e3hbu9dGXm+pWxfGwU/bh4jr9A8WkQI1GrUQXAPU/NJ0yt2PeujIikW2A/AXwBKQI
+ 5OyROCqEp8A3wFp/xvgCShqLJXkolKl3APLsrwBBeCqZDIBAAA=
+X-Change-ID: 20261008-tegra-drm-yvu420-1dbb7140e54a
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
+Cc: dri-devel@lists.freedesktop.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792967672; l=2128;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=ilqcffhru43nXGSWBduPO0jtANCxR7RAgDglJEEAKNo=;
+ b=Oy9FfeM3IQVzNcWnlSZvuWSffvGe0eSkfXzn1LFrxyqa70g8MAm04jiHAD5TNGUH54pfUnvaU
+ aNLPACdL4FeDAIHBcdskrHm1On5iGyOGywkpo3u8w7rUpN3GdfIwE+e
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the mapping to prefer queues that belong to the
-current cpu. If no queue is registered for the current cpu,
-fall back is to the existing round robin logic.
+This is not directly supported by the display controller hardware.
+However, this can be handled efficiently on tegradc by just passing the
+chroma planes to the hardware backwards and reporting it as the yuv
+equivalent. Nvdisplay has a hardware flag to handle the swap in
+hardware.
 
-Example (with core binding)
+YVU420 is required by AOSP for software decoded video playback among
+other things. An attempt was made to handle this in gralloc by swapping
+the chroma planes there, but it wasn't working. This kernel
+implementation is working and is more generic anyways. This has been
+verified on a SHIELD TV 2019 Pro for the tegradc path and a Jetson TX2
+NX for the nvdisplay path.
 
-unpatched WRITE: bw=841MiB/s
-patched   WRITE: bw=1363MiB/s
-
-With
-fio --name=test --ioengine=psync --direct=1 \
-    --rw=write --bs=1M --iodepth=1 --numjobs=1 \
-    --filename_format=/redfs/testfile.\$jobnum --size=100G \
-    --thread --create_on_open=1 --runtime=30s --cpus_allowed=1
-
-In order to get the good number `--cpus_allowed=1` is needed.
-This could be improved by a future change that avoids
-cpu migration in fuse_request_end() on wake_up() call.
-
-Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- fs/fuse/dev_uring.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Changes in v4:
+- Drop yvu422 from the nvdisplay path. Yuv422 is not supported and will
+  be removed separately
+- Link to v3: https://lore.kernel.org/r/20261020-tegra-drm-yvu420-v3-0-7f19a834ba98@gmail.com
 
-diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index ca82965fdee1..2efea959d7e6 100644
---- a/fs/fuse/dev_uring.c
-+++ b/fs/fuse/dev_uring.c
-@@ -398,6 +398,12 @@ static void fuse_uring_cpu_qid_mapping(struct fuse_queue_map *q_map, int node)
- 		if (node != -1 && fuse_uring_cpu_to_node(cpu) != node)
- 			continue;
- 
-+		/* Prefer the queue belonging to the current cpu */
-+		if (cpumask_test_cpu(cpu, q_map->registered_q_mask)) {
-+			q_map->cpu_to_qid[cpu] = cpu;
-+			continue;
-+		}
-+
- 		qid_idx = mapping_count % q_map->nr_queues;
- 		q_map->cpu_to_qid[cpu] = cpumask_nth(qid_idx,
- 						     q_map->registered_q_mask);
+Changes in v3:
+- In patch 1, use the SWAP_UV window group flag instead of manually
+  swapping for nvdisplay
+- In patch 2, support the chroma swapped variants of the other yuv types
+- Link to v2: https://lore.kernel.org/r/20261018-tegra-drm-yvu420-v2-0-512889103ab4@gmail.com
 
+Changes in v2:
+- In patch 1, simplify pre-nvdisplay path to a swap of the window base
+  address
+- In patch 1, address sashiko report about failure to copy the new
+  struct entry in duplicate_state
+- In patch 2, address sashiko report that yvu420 was missing from
+  tegra20_overlays when the targets already support yuv420.
+- Link to v1: https://lore.kernel.org/r/20261008-tegra-drm-yvu420-v1-0-dc1c443c00f3@gmail.com
+
+---
+Aaron Kling (2):
+      drm/tegra: Support swapping chroma planes
+      drm/tegra: Support YVU formats
+
+ drivers/gpu/drm/tegra/dc.c    | 13 ++++++++++++-
+ drivers/gpu/drm/tegra/hub.c   |  8 ++++++--
+ drivers/gpu/drm/tegra/plane.c | 29 ++++++++++++++++++++++++++++-
+ drivers/gpu/drm/tegra/plane.h |  3 ++-
+ 4 files changed, 48 insertions(+), 5 deletions(-)
+---
+base-commit: 20a33c6b6cbe7e4805dfb6cd68816937443aa148
+change-id: 20261008-tegra-drm-yvu420-1dbb7140e54a
+
+Best regards,
 -- 
-2.55.0
+Aaron Kling <webgeek1234@gmail.com>
 
