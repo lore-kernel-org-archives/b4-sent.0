@@ -1,15 +1,13 @@
 From: Eli Skeggs <kernel@eliskeggs.com>
-Subject: [PATCH bpf 0/2] bpf, sockmap: Fix dropped data and EPIPE on empty
+Date: Sun, 25 Oct 2026 16:41:57 -0700
+Subject: [PATCH bpf 1/2] bpf, sockmap: Stop reporting EPIPE on zero-length
  skb redirect
-Date: Sun, 25 Oct 2026 16:41:56 -0700
-Message-Id: <20261025-sockmap-bare-fin-v1-0-bb8feae7c4a7@eliskeggs.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swtJhCr+inhI1o2uYhqyVYTSf
- zfqcQZmFpg0FcNhWNDkpaZT6eA3A/gay0VIz50RXBi9C45s4vsjVkqxCWUtJD7v/eh4y7uEntU
- mWd+/5RGpZpz+0p7pJjx/Z1jXDweIJxJ5AAAA
-X-Change-ID: 20261020-sockmap-bare-fin-e1f8160c3c7b
+Message-Id: <20261025-sockmap-bare-fin-v1-1-bb8feae7c4a7@eliskeggs.com>
+References: <20261025-sockmap-bare-fin-v1-0-bb8feae7c4a7@eliskeggs.com>
+In-Reply-To: <20261025-sockmap-bare-fin-v1-0-bb8feae7c4a7@eliskeggs.com>
 To: John Fastabend <john.fastabend@gmail.com>, 
  Jakub Sitnicki <jakub@cloudflare.com>, 
  Jiayuan Chen <jiayuan.chen@linux.dev>, 
@@ -27,56 +25,60 @@ Cc: Geliang Tang <geliang@kernel.org>, netdev@vger.kernel.org,
  bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Eli Skeggs <kernel@eliskeggs.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792971941; l=1845;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792971941; l=2155;
  i=kernel@eliskeggs.com; s=20261021; h=from:subject:message-id;
- bh=Wlyiie0CKDzxYgDQSpvxa4sS+tMNMfU2M/Qk54ENhjw=;
- b=tbyYi/j3qg52YiRw/uGwHTvdc1MwNPTaY4YyjbYq3J6a31YmybW5d/zOUFmKzo8P67EOjxD7h
- kZuWm2tJq1YBrVWeIvDgbj0Jp5hebWFSYVm5EGihK9IZk/NKBTSYo5y
+ bh=tMsJNHGrPmApxQR/k04sdDxy9WoPcaNMSS8fSsBnQhE=;
+ b=aqOQiUQEIH5hPFtqejVgawPtZtjmbWIer2omhEGNDqEVU8Wi6bSfPUeGRerJbm9UpJT86HvRe
+ 5QQD3b2EqgpCCK7UqRblzXI9yZLAkfs46dNpxxTr6MuytG4PjkHfCJZ
 X-Developer-Key: i=kernel@eliskeggs.com; a=ed25519;
  pk=38k+FqQ3STTnr2H4HZ7IEseBOHWRDYVhvyMmQlB51gc=
 X-Endpoint-Received: by B4 Relay for kernel@eliskeggs.com/20261021 with auth_id=1252
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a socket receives a bare FIN, tcp_read_skb() hands an empty skb to
-the attached BPF stream_verdict program. The program may redirect that
-skb to another socket. Doing so causes the target socket to report EPIPE
-and stop transmitting redirected data. A proxy may see the erroneous
-EPIPE and truncate a half-closed connection. Instead of treating a
-redirected empty skb as an error, treat a 0 return as an error only when
-there is more data to send.
+A FIN can arrive on a packet with no data. In that case, tcp_read_skb()
+produces an empty skb, and the attached BPF stream_verdict program may
+choose to redirect the skb to another socket. Further data redirected to
+that socket from any socket gets dropped, and the target socket starts
+reporting EPIPE. A userspace application may see that EPIPE and decide
+the socket is no longer usable. For a BPF-based proxy, this can break a
+bidirectional stream, truncating the response instead of leaving the
+socket half-open.
 
-Patch 2 adds a selftest that fails without patch 1.
+Prior to the introduction of tcp_read_skb(), tcp_read_sock() never
+passed a zero-length skb to its actor, sk_psock_verdict_recv(). When a
+redirected skb landed in sk_psock_backlog(), it was always non-empty.
+tcp_read_skb() deviated from the historical behavior by passing any
+zero-length skbs to recv_actor(), exposing this latent bug by adding
+zero-length skbs to a queue that hadn't previously received them.  When
+sk_psock_backlog() encounters a zero-length skb, it interprets ret == 0
+as a hard error, reports EPIPE, and clears the transmit flag.
 
-Tested on x86_64 with virtme-ng, under QEMU without KVM. The new subtest
-fails on bpf/master without patch 1, and passes with it. The full
-test_progs -t sockmap passes all seven tests and 802 subtests with patch
-1.
+Treat a return of 0 as success when there is no data to send, while
+continuing to fail on a 0 return with residual bytes. The loop exits
+without incident on an empty skb, and the skb gets cleaned up as usual.
+On an ingress redirect, the empty message is still queued as before, but
+the target socket no longer reports EPIPE.
 
-The bug dates from v6.0 (965b57b469a5), so please consider queueing
-patch 1 for stable.
-
-Found while building a sockmap proxy between TCP and MPTCP sockets,
-running out-of-tree MPTCP sockmap patches, where the EPIPE caused
-half-closed connections to prematurely abort. An LLM helped locate and
-reproduce the issue, and proposed an initial fix. I traced the code
-path, reviewed and verified the LLM-written test, and simplified its
-proposal to a one-line fix.
-
+Fixes: 965b57b469a5 ("net: Introduce a new proto_ops ->read_skb()")
 Signed-off-by: Eli Skeggs <kernel@eliskeggs.com>
 ---
-Eli Skeggs (2):
-      bpf, sockmap: Stop reporting EPIPE on zero-length skb redirect
-      selftests/bpf: Redirect a bare FIN to another socket's egress
+ net/core/skmsg.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- net/core/skmsg.c                                   |  2 +-
- .../selftests/bpf/prog_tests/sockmap_basic.c       | 74 ++++++++++++++++++++++
- .../selftests/bpf/progs/test_sockmap_pass_prog.c   |  8 +++
- 3 files changed, 83 insertions(+), 1 deletion(-)
----
-base-commit: f909e534f5e34feb2ea2701d54df63e21aa506fc
-change-id: 20261020-sockmap-bare-fin-e1f8160c3c7b
+diff --git a/net/core/skmsg.c b/net/core/skmsg.c
+index df385a5a961e..f9b2e3486cfb 100644
+--- a/net/core/skmsg.c
++++ b/net/core/skmsg.c
+@@ -716,7 +716,7 @@ static void sk_psock_backlog(struct work_struct *work)
+ 			if (!sock_flag(psock->sk, SOCK_DEAD))
+ 				ret = sk_psock_handle_skb(psock, skb, off,
+ 							  len, ingress);
+-			if (ret <= 0) {
++			if (ret < 0 || (!ret && len)) {
+ 				if (ret == -EAGAIN) {
+ 					sk_psock_skb_state(psock, state, len, off);
+ 					/* Restore redir info we cleared before */
 
-Best regards,
---  
-Eli Skeggs <kernel@eliskeggs.com>
+-- 
+2.56.0
 
