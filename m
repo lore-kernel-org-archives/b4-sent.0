@@ -1,92 +1,88 @@
-From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Date: Sun, 25 Oct 2026 16:59:41 +0000
-Subject: [PATCH] iio: test: iio-test-format: add test case for char format
+From: Patrick Fischer <admin@tsv-stahl-riesa.de>
+Date: Sun, 25 Oct 2026 18:13:44 +0100
+Subject: [PATCH] gpu: host1x: mipi: Disable clock again after powering down
+ the pads
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261025-iio-test-format-char-v1-1-e2c208f90e87@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrB1IAq3aq4iLqBMdQSMzaSmId
- zetyw/e+w9QEiaFV3GA0IeV45ZhywKG2W8TIY/Z4Ix7WuMeyBwxkSYMUVafMK8Ea2+r0IfGO2M
- hX3ehwN9/tu1u67tfaEi/FpznBdGu6/R4AAAA
-X-Change-ID: 20261025-iio-test-format-char-8a17fbf9a201
-To: Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792947624; l=2121;
- i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=uYIGztgLiYRny/7kylD4MRCRKqn6ok2BmKnYkqfKVcI=;
- b=xBDuRUL+yDkde1Lwh9CMrp33F0cJH9ggpOK2GKUdDyWWatBvnmFIWACQ3CzvcSdm/a8Rao18T
- DiA2jJLpvZ0ByTE3W8YmcmNq4CskLZRb6u7LVZ3J6OlAbTJ0qu0kVwm
-X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
- pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
-X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
+Message-Id: <20261025-upstream-host1x-mipi-clk-v1-1-6bc6e755b4cb@tsv-stahl-riesa.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB1IAjXSqxQXMZnqtFVDJhZBv
+ HtTXb7F/zsIJSaBe7VDoi8LL3OBrivwo5sHQg7FYJRptDI3XKPkRG7CcZGsN5w4MvrPG9vGUnB
+ BW9srKHlM9OTtXD+6y7L2L/L5/4Pj+AFsAn58fAAAAA==
+X-Change-ID: 20261025-upstream-host1x-mipi-clk-867edad177b0
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
+Cc: Thierry Reding <treding@nvidia.com>, dri-devel@lists.freedesktop.org, 
+ Svyatoslav Ryhel <clamor95@gmail.com>, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792948429; l=2449;
+ i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
+ bh=IqCP8sWJtCLgWyd5xt/XstbRFuDUueRcejtTTWyeurE=;
+ b=lBTdo24bssxZ/0pg7gT0fqak5kfrXQlhLtVnpWYodJfpjoF4etnW0lF+foOFhOoHAiunw9n1x
+ 8qt7ntmx10hAiLVKjs8lOCLZ3ymbg5E2EhAuFgYhXHvL7Kxy5OQwynN
+X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
+ pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
+X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IIO_VAL_CHAR is used by thermocouple drivers to report the
-thermocouple type, but iio_format_value() has no test for it.
+tegra114_mipi_power_down() enables the MIPI calibration clock to access
+the bias pad registers but never disables it. Every disable/enable cycle
+of a DSI or CSI user therefore leaks one enable count, and the clock
+stays on for good after the first power down.
 
-Add a test case that checks a single character is printed followed
-by a newline.
+Add the missing clk_disable(), matching tegra114_mipi_power_up().
 
-Assisted-by: LLM
-Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+The leak gets more costly with "clk: tegra: Fix Tegra114 MIPI
+calibration clock parent", which makes PLL_P_OUT3 the parent of
+mipi-cal: without this fix PLL_P_OUT3 would then stay on as well.
+
+On a Tegra Note 7 (P1640) the enable count of mipi-cal in clk_summary
+grew by one with each DPMS off/on cycle of the DSI panel. With this
+patch it returns to 0 after each cycle.
+
+Fixes: 15372d4be7f0 ("gpu: host1x: mipi: Power down regulators when unused")
+Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
 ---
-Tested with KUnit on arm64 QEMU: all 8 iio-format cases pass.
----
- drivers/iio/test/iio-test-format.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+Mikko's "clk: tegra: Fix Tegra114 MIPI calibration clock parent" [1]
+fixes the MIPI calibration timeouts on Tegra114. While testing the same
+change on a Tegra Note 7 (P1640) I noticed that
+tegra114_mipi_power_down() leaks the clock enable it takes. With [1]
+applied that leak keeps PLL_P_OUT3 on after the first DPMS off, so the
+two belong together, although this patch applies and makes sense on
+its own.
 
-diff --git a/drivers/iio/test/iio-test-format.c b/drivers/iio/test/iio-test-format.c
-index e5d0a2ac4670..701c362695f3 100644
---- a/drivers/iio/test/iio-test-format.c
-+++ b/drivers/iio/test/iio-test-format.c
-@@ -197,6 +197,28 @@ static void iio_test_iio_format_value_multiple(struct kunit *test)
- 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "1 -2 3 -4 5 \n");
+[1] https://lore.kernel.org/all/20260930-b4-dalmore-fixes-mipical-clk-v1-1-0518be6c7979@nvidia.com/
+
+Tool use (see Documentation/process/generated-content.rst): this patch,
+its changelog and this note were prepared with an LLM coding assistant
+(Claude Code). It traced the clock enable counts from my clk_summary
+dumps and wrote the code change and the texts from my measurements and
+instructions. I reviewed the change and ran the test on the device.
+---
+ drivers/gpu/host1x/tegra114-mipi.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/gpu/host1x/tegra114-mipi.c b/drivers/gpu/host1x/tegra114-mipi.c
+index c084a09784d1..83a43a5e33af 100644
+--- a/drivers/gpu/host1x/tegra114-mipi.c
++++ b/drivers/gpu/host1x/tegra114-mipi.c
+@@ -197,6 +197,8 @@ static int tegra114_mipi_power_down(struct tegra_mipi *mipi)
+ 	value |= MIPI_CAL_BIAS_PAD_PDVCLAMP;
+ 	tegra_mipi_writel(mipi, value, MIPI_CAL_BIAS_PAD_CFG0);
+ 
++	clk_disable(mipi->clk);
++
+ 	return 0;
  }
  
-+static void iio_test_iio_format_value_char(struct kunit *test)
-+{
-+	char *buf;
-+	int val;
-+	int ret;
-+
-+	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
-+
-+	val = 'K';
-+	ret = iio_format_value(buf, IIO_VAL_CHAR, 1, &val);
-+	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "K\n");
-+
-+	val = 'j';
-+	ret = iio_format_value(buf, IIO_VAL_CHAR, 1, &val);
-+	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "j\n");
-+
-+	val = '0';
-+	ret = iio_format_value(buf, IIO_VAL_CHAR, 1, &val);
-+	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "0\n");
-+}
-+
- static void iio_test_iio_format_value_integer_64(struct kunit *test)
- {
- 	int values[2];
-@@ -308,6 +330,7 @@ static struct kunit_case iio_format_test_cases[] = {
- 		KUNIT_CASE(iio_test_iio_format_value_fractional),
- 		KUNIT_CASE(iio_test_iio_format_value_fractional_log2),
- 		KUNIT_CASE(iio_test_iio_format_value_multiple),
-+		KUNIT_CASE(iio_test_iio_format_value_char),
- 		KUNIT_CASE(iio_test_iio_format_value_integer_64),
- 		KUNIT_CASE(iio_test_iio_format_value_decimal_64),
- 		{ }
 
 ---
-base-commit: c9dbe2a47f635465c9985b7af74d2ae310e98125
-change-id: 20261025-iio-test-format-char-8a17fbf9a201
+base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
+change-id: 20261025-upstream-host1x-mipi-clk-867edad177b0
 
 Best regards,
 --  
-Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+Patrick Fischer <admin@tsv-stahl-riesa.de>
 
