@@ -1,96 +1,82 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sun, 25 Oct 2026 22:55:51 +0000
-Subject: [PATCH] arm64: dts: rockchip: Describe the Ethernet PHY on ROCK Pi
- 4
+From: Eli Skeggs <kernel@eliskeggs.com>
+Subject: [PATCH bpf 0/2] bpf, sockmap: Fix dropped data and EPIPE on empty
+ skb redirect
+Date: Sun, 25 Oct 2026 16:41:56 -0700
+Message-Id: <20261025-sockmap-bare-fin-v1-0-bb8feae7c4a7@eliskeggs.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261025-rockpi4-gmac-phy-v1-1-69ce4d677189@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAPaI3moC/x3MSwqAMAwA0atI1gZs/XsVcSExrUHU0oIo0rtbX
- L7FzAuBvXCAIXvB8yVBziNB5RnQOh+WUZZk0IVuVKFr9CdtTiq0+0zo1gdVZ1RJPZWtIUiZ82z
- k/pfjFOMHydgcumIAAAA=
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Pragnesh Patel <Pragnesh_Patel@mentor.com>, 
- Akash Gajjar <Akash_Gajjar@mentor.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2295; i=iav@iav.lv;
- h=from:subject:message-id; bh=ysO0nvScc///4x6g3QSeXnmC72DmKboxgyT6JKfyNes=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFn3Or7P1jZ6PnH/hIjcQx9E9L/axL654Hc84v6UypqD7
- h8ei5+/21HKwiDGxSArpsgy4ZDGrYwlV//6e5g/gJnDygQyhIGLUwAm4t3GyPD1UHKXP8+0xPwD
- z0Pfan3c2f+D/c9+nn9h7D5J4idOb1Zl+O9rLfT124GNCRlpRw+fmrKwPNPjypr+te7r7p0VShX
- TZ+YBAA==
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6W8swtJhCr+inhI1o2uYhqyVYTSf
+ zfqcQZmFpg0FcNhWNDkpaZT6eA3A/gay0VIz50RXBi9C45s4vsjVkqxCWUtJD7v/eh4y7uEntU
+ mWd+/5RGpZpz+0p7pJjx/Z1jXDweIJxJ5AAAA
+X-Change-ID: 20261020-sockmap-bare-fin-e1f8160c3c7b
+To: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Sitnicki <jakub@cloudflare.com>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Cong Wang <cong.wang@bytedance.com>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Alexei Starovoitov <ast@kernel.org>, 
+ Andrii Nakryiko <andrii@kernel.org>, Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, Shuah Khan <shuah@kernel.org>
+Cc: Geliang Tang <geliang@kernel.org>, netdev@vger.kernel.org, 
+ bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Eli Skeggs <kernel@eliskeggs.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792971941; l=1845;
+ i=kernel@eliskeggs.com; s=20261021; h=from:subject:message-id;
+ bh=Wlyiie0CKDzxYgDQSpvxa4sS+tMNMfU2M/Qk54ENhjw=;
+ b=tbyYi/j3qg52YiRw/uGwHTvdc1MwNPTaY4YyjbYq3J6a31YmybW5d/zOUFmKzo8P67EOjxD7h
+ kZuWm2tJq1YBrVWeIvDgbj0Jp5hebWFSYVm5EGihK9IZk/NKBTSYo5y
+X-Developer-Key: i=kernel@eliskeggs.com; a=ed25519;
+ pk=38k+FqQ3STTnr2H4HZ7IEseBOHWRDYVhvyMmQlB51gc=
+X-Endpoint-Received: by B4 Relay for kernel@eliskeggs.com/20261021 with auth_id=1252
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ROCK Pi 4 GMAC node has no mdio subnode and no phy-handle, so stmmac
-scans the whole MDIO bus. The RTL8211E answers at its strapped address 1
-and at the Realtek broadcast address 0, so two phy_devices are created
-for one chip, and the netdev attaches to the one at address 0.
+When a socket receives a bare FIN, tcp_read_skb() hands an empty skb to
+the attached BPF stream_verdict program. The program may redirect that
+skb to another socket. Doing so causes the target socket to report EPIPE
+and stop transmitting redirected data. A proxy may see the erroneous
+EPIPE and truncate a half-closed connection. Instead of treating a
+redirected empty skb as an error, treat a 0 return as an error only when
+there is more data to send.
 
-On system suspend mdio_bus_phy_suspend() leaves the attached PHY to the
-MAC (mac_managed_pm) but suspends the unattached one, which writes
-BMCR_PDOWN into the same chip. With s2idle and a MAC Wake-on-LAN magic
-packet, 17 of 40 cycles did not wake.
+Patch 2 adds a selftest that fails without patch 1.
 
-Describe the PHY at address 1 and point phy-handle at it, so only one
-phy_device is created.
+Tested on x86_64 with virtme-ng, under QEMU without KVM. The new subtest
+fails on bpf/master without patch 1, and passes with it. The full
+test_progs -t sockmap passes all seven tests and 802 subtests with patch
+1.
 
-Tested on ROCK Pi 4A (RTL8211E), s2idle: one PHY on the bus; 40 of 40
-cycles woke on a magic packet sent 15 s into sleep, and 35 of 35 more
-woke from the expected source with magic packets sent after 5 s to
-20 min, RTC alarms, and the two alternating. Later board revisions use
-an RTL8211F; their schematics strap it to address 1 as well.
+The bug dates from v6.0 (965b57b469a5), so please consider queueing
+patch 1 for stable.
 
-Fixes: 1b5715c602fd ("arm64: dts: rockchip: add ROCK Pi 4 DTS support")
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Found while building a sockmap proxy between TCP and MPTCP sockets,
+running out-of-tree MPTCP sockmap patches, where the EPIPE caused
+half-closed connections to prematurely abort. An LLM helped locate and
+reproduce the issue, and proposed an initial fix. I traced the code
+path, reviewed and verified the LLM-written test, and simplified its
+proposal to a one-line fix.
+
+Signed-off-by: Eli Skeggs <kernel@eliskeggs.com>
 ---
-The deprecated snps,reset-* properties stay in the MAC node; moving the
-reset to the PHY node is a separate change.
----
- arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Eli Skeggs (2):
+      bpf, sockmap: Stop reporting EPIPE on zero-length skb redirect
+      selftests/bpf: Redirect a bare FIN to another socket's egress
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi
-index a8ab043e4062..52de4a79e2f4 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-rock-pi-4.dtsi
-@@ -202,6 +202,7 @@ &gmac {
- 	clock_in_out = "input";
- 	phy-supply = <&vcc3v3_lan>;
- 	phy-mode = "rgmii";
-+	phy-handle = <&rgmii_phy>;
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&rgmii_pins>;
- 	snps,reset-gpio = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
-@@ -210,6 +211,16 @@ &gmac {
- 	tx_delay = <0x28>;
- 	rx_delay = <0x11>;
- 	status = "okay";
-+
-+	mdio {
-+		compatible = "snps,dwmac-mdio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		rgmii_phy: ethernet-phy@1 {
-+			reg = <1>;
-+		};
-+	};
- };
- 
- &gpu {
-
+ net/core/skmsg.c                                   |  2 +-
+ .../selftests/bpf/prog_tests/sockmap_basic.c       | 74 ++++++++++++++++++++++
+ .../selftests/bpf/progs/test_sockmap_pass_prog.c   |  8 +++
+ 3 files changed, 83 insertions(+), 1 deletion(-)
 ---
-base-commit: d2abcbb905b0e4b2e06b257fa1e5bcf4faa6dbda
-change-id: 20261025-rockpi4-gmac-phy-18f13c9c37fc
+base-commit: f909e534f5e34feb2ea2701d54df63e21aa506fc
+change-id: 20261020-sockmap-bare-fin-e1f8160c3c7b
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Eli Skeggs <kernel@eliskeggs.com>
 
