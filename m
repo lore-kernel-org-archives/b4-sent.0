@@ -1,15 +1,13 @@
 From: Patrick Fischer <admin@tsv-stahl-riesa.de>
-Subject: [PATCH 0/2] serial: tegra: Fix 32-bit overflows in the clock rate
- adjustment
-Date: Sun, 25 Oct 2026 23:50:03 +0100
-Message-Id: <20261025-upstream-serial-tegra-overflow-v1-0-267b5b7a79ee@tsv-stahl-riesa.de>
+Date: Sun, 25 Oct 2026 23:50:04 +0100
+Subject: [PATCH 1/2] serial: tegra: Fix overflow in
+ tegra_get_tolerance_rate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNyw6CQAyF4VchXdtkGIy3VzEuKtPBGmRIO6AJ4
- d0ddPktzn8WMFZhg0u1gPIsJmkoqHcVtA8aOkYJxeCdP9TONziNlpXphduQeszcKWGaWWOf3rg
- /hSa4eKQYzlAio3KUz+/gevvbpvuT27xVYV2/5xV1CYIAAAA=
-X-Change-ID: 20261023-upstream-serial-tegra-overflow-48d3d0f7afd9
+Message-Id: <20261025-upstream-serial-tegra-overflow-v1-1-267b5b7a79ee@tsv-stahl-riesa.de>
+References: <20261025-upstream-serial-tegra-overflow-v1-0-267b5b7a79ee@tsv-stahl-riesa.de>
+In-Reply-To: <20261025-upstream-serial-tegra-overflow-v1-0-267b5b7a79ee@tsv-stahl-riesa.de>
 To: Laxman Dewangan <ldewangan@nvidia.com>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Jiri Slaby <jirislaby@kernel.org>, 
@@ -21,61 +19,71 @@ Cc: Shardar Shariff Md <smohammed@nvidia.com>,
  linux-serial@vger.kernel.org, linux-tegra@vger.kernel.org, 
  stable@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792968614; l=2014;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792968614; l=2309;
  i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
- bh=6EwOpSqQKG4Eh41ZzqS8mdnou7ZQ+bwoEZb8R5Qxc/Y=;
- b=dOtxdFiyP5QQqFHMgbg5Yi29rC6fDt+1DPiL6e561nRFUU6GC7l7b1GuEiU2nixn8r2ZuZ5H7
- xQ7UgE/Z9r+Bu/PkHgJnoNc/fIyQYUed7VWa9qWjjNLCMTQoqjoUR+j
+ bh=gJnftTJ6jB1jgdWypz21lUHPmEbydEvI3zikNjoJOxA=;
+ b=85/ZmKHsXEBUB4ErFANq04SO6vKwA0ekArL5/pX4906QeA+JXgLi9gupwXcRW8pZdRbd+HyVo
+ x/XKjCDg41oBgSsBgY25ZFYxvz4TGqPhbtp6TtrDbrgzHZsyB5XNXZz
 X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
  pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
 X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On 32-bit ARM, both the clock rate adjustment from
-"nvidia,adjust-baud-rates" and the check of the resulting rate overflow
-a 32-bit long at the high baud rates the adjustment is meant for. On
-the Tegra Note 7 (Tegra114), Bluetooth at 3 Mbaud therefore ran with a
-UART clock 5.6 % too low, and the check computed -0.18 % and let it
-pass.
+tegra_get_tolerance_rate() raises or lowers the UART clock rate by the
+tolerance from "nvidia,adjust-baud-rates", given in units of 0.01 %. It
+calculates rate * tolerance in a long, which is only 32 bits wide on
+32-bit ARM. With a tolerance of 136 this overflows from a clock rate of
+about 15.8 MHz, i.e. from about 1 Mbaud, and the rate ends up adjusted
+in the wrong direction.
 
-UART clock at 3 Mbaud with a tolerance of 136 for 1 to 4 Mbaud
-(pll_p 408 MHz):
+The Tegra Note 7 (Tegra114) uses a tolerance of 136 for 1 to 4 Mbaud on
+its Bluetooth UART, as in the downstream device tree. For 3 Mbaud the
+driver asks for 47.79 MHz instead of 48.65 MHz, the clock rounds that
+down to 408 MHz / 9 = 45.33 MHz (-5.6 %), and the WL1801 controller
+stops answering after the switch to 3 Mbaud (HCI commands time out
+with -110). The same overflow gives 23.31 MHz instead of 24 MHz at
+1.5 Mbaud; both rates were confirmed on the device.
 
-                    requested    configured   check
-  without patches   47.79 MHz    45.33 MHz    -0.18 %
-  with patches      48.65 MHz    48.00 MHz     0.00 %
+Do the multiplication in 64 bits. With that the driver asks for
+48.65 MHz at 3 Mbaud and gets 48.00 MHz.
 
-With both patches and the unchanged tolerance of 136, Bluetooth on the
-Tegra Note 7 works at 3 Mbaud: the UART clock is 48.00 MHz, and the
-WL1801 scans and connects to a paired device without HCI errors.
+Tested on the Tegra Note 7 with the tolerance of 136: Bluetooth comes
+up at 3 Mbaud, scans and connects to a paired device, and the HCI
+counters show no errors.
 
-With a deliberately wrong tolerance of -500, which gives 45.33 MHz at
-3 Mbaud, the check now reports the deviation (out of range by -555,
-i.e. -5.55 %) instead of letting it pass.
+64-bit platforms are not affected.
 
-Both bugs date back to v5.4. 64-bit platforms are not affected.
-
-Tool use (see Documentation/process/generated-content.rst): both
-patches, their changelogs and this cover letter were prepared with an
-LLM coding assistant (Claude Code), which traced the wrong clock rates
-I measured on the device to the overflows, wrote the fixes and drafted
-the texts. It also recalculated the old and new arithmetic for the
-affected rates in a small userspace program; the results match the
-rates measured on the device. I reviewed the changes and ran the tests
-on the device.
-
+Fixes: f04a3cc8d455 ("serial: tegra: add support to adjust baud rate")
+Cc: stable@vger.kernel.org
+Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
 ---
-Patrick Fischer (2):
-      serial: tegra: Fix overflow in tegra_get_tolerance_rate()
-      serial: tegra: Fix overflow in tegra_check_rate_in_range()
+ drivers/tty/serial/serial-tegra.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
- drivers/tty/serial/serial-tegra.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
----
-base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
-change-id: 20261023-upstream-serial-tegra-overflow-48d3d0f7afd9
+diff --git a/drivers/tty/serial/serial-tegra.c b/drivers/tty/serial/serial-tegra.c
+index b0fc4ae3686f..cc09fbc3aad8 100644
+--- a/drivers/tty/serial/serial-tegra.c
++++ b/drivers/tty/serial/serial-tegra.c
+@@ -18,6 +18,7 @@
+ #include <linux/err.h>
+ #include <linux/io.h>
+ #include <linux/irq.h>
++#include <linux/math64.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/pagemap.h>
+@@ -368,8 +369,8 @@ static long tegra_get_tolerance_rate(struct tegra_uart_port *tup,
+ 	for (i = 0; i < tup->n_adjustable_baud_rates; ++i) {
+ 		if (baud >= tup->baud_tolerance[i].lower_range_baud &&
+ 		    baud <= tup->baud_tolerance[i].upper_range_baud)
+-			return (rate + (rate *
+-				tup->baud_tolerance[i].tolerance) / 10000);
++			return rate + div_s64((s64)rate *
++				tup->baud_tolerance[i].tolerance, 10000);
+ 	}
+ 
+ 	return rate;
 
-Best regards,
---  
-Patrick Fischer <admin@tsv-stahl-riesa.de>
+-- 
+2.56.0
 
