@@ -1,80 +1,141 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH v4 0/2] drm/tegra: Support YVU formats
-Date: Sun, 25 Oct 2026 17:34:28 -0500
-Message-Id: <20261025-tegra-drm-yvu420-v4-0-30b3bb0d0752@gmail.com>
+Date: Sun, 25 Oct 2026 17:34:29 -0500
+Subject: [PATCH v4 1/2] drm/tegra: Support swapping chroma planes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NwQ6CMAyA4VchOzvTbkOGJ9/DeBjbgCUCZsNFQ
- nh3ByeixuPftF9nEqx3NpBzNhNvowtu6FOIQ0Z0q/rGUmdSEwbshACSjrbxihrf0Sk+BQOKpqo
- KFGBzoUg6e3hbu9dGXm+pWxfGwU/bh4jr9A8WkQI1GrUQXAPU/NJ0yt2PeujIikW2A/AXwBKQI
- 5OyROCqEp8A3wFp/xvgCShqLJXkolKl3APLsrwBBeCqZDIBAAA=
-X-Change-ID: 20261008-tegra-drm-yvu420-1dbb7140e54a
+Message-Id: <20261025-tegra-drm-yvu420-v4-1-30b3bb0d0752@gmail.com>
+References: <20261025-tegra-drm-yvu420-v4-0-30b3bb0d0752@gmail.com>
+In-Reply-To: <20261025-tegra-drm-yvu420-v4-0-30b3bb0d0752@gmail.com>
 To: Thierry Reding <thierry.reding@kernel.org>, 
  Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
  Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
 Cc: dri-devel@lists.freedesktop.org, linux-tegra@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792967672; l=2128;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792967672; l=4205;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=ilqcffhru43nXGSWBduPO0jtANCxR7RAgDglJEEAKNo=;
- b=Oy9FfeM3IQVzNcWnlSZvuWSffvGe0eSkfXzn1LFrxyqa70g8MAm04jiHAD5TNGUH54pfUnvaU
- aNLPACdL4FeDAIHBcdskrHm1On5iGyOGywkpo3u8w7rUpN3GdfIwE+e
+ bh=PdvoZewR40xSFlePmLhL+p67dSFlU6dV1EmcDXmQs38=;
+ b=HCE2JmGbduwYBzxpAndUHKTKTXVSAsmyRTNB+cVwcB8jTXWN4zU3F6HUTWtIHlKc/KU7P1NQa
+ tkG25DS5YsbB/d8UhwY/w14zdA6OUiiwmaTKPDU46yKbXr4v7jUVBDv
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is not directly supported by the display controller hardware.
-However, this can be handled efficiently on tegradc by just passing the
-chroma planes to the hardware backwards and reporting it as the yuv
-equivalent. Nvdisplay has a hardware flag to handle the swap in
-hardware.
+The Tegra display controller supports some yuv types, but not their
+chroma swapped variants. For example, yuv420 is supported but yvu420 is
+not. For tegradc, this can be efficiently worked around by just passing
+the hardware said chroma planes backwards. For nvdisplay, there is a
+window group flag to do the swap in hardware. Add a flag to the plane
+state struct and handling to both tegradc and nvdisplay paths.
 
-YVU420 is required by AOSP for software decoded video playback among
-other things. An attempt was made to handle this in gralloc by swapping
-the chroma planes there, but it wasn't working. This kernel
-implementation is working and is more generic anyways. This has been
-verified on a SHIELD TV 2019 Pro for the tegradc path and a Jetson TX2
-NX for the nvdisplay path.
-
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Changes in v4:
-- Drop yvu422 from the nvdisplay path. Yuv422 is not supported and will
-  be removed separately
-- Link to v3: https://lore.kernel.org/r/20261020-tegra-drm-yvu420-v3-0-7f19a834ba98@gmail.com
+ drivers/gpu/drm/tegra/dc.c    | 6 +++++-
+ drivers/gpu/drm/tegra/hub.c   | 7 +++++--
+ drivers/gpu/drm/tegra/plane.c | 5 ++++-
+ drivers/gpu/drm/tegra/plane.h | 3 ++-
+ 4 files changed, 16 insertions(+), 5 deletions(-)
 
-Changes in v3:
-- In patch 1, use the SWAP_UV window group flag instead of manually
-  swapping for nvdisplay
-- In patch 2, support the chroma swapped variants of the other yuv types
-- Link to v2: https://lore.kernel.org/r/20261018-tegra-drm-yvu420-v2-0-512889103ab4@gmail.com
+diff --git a/drivers/gpu/drm/tegra/dc.c b/drivers/gpu/drm/tegra/dc.c
+index b0bfa946e6979..39c2e920d76a6 100644
+--- a/drivers/gpu/drm/tegra/dc.c
++++ b/drivers/gpu/drm/tegra/dc.c
+@@ -740,7 +740,8 @@ static int tegra_plane_atomic_check(struct drm_plane *plane,
+ 
+ 	err = tegra_plane_format(new_plane_state->fb->format->format,
+ 				 &plane_state->format,
+-				 &plane_state->swap);
++				 &plane_state->swap,
++				 &plane_state->swap_uv);
+ 	if (err < 0)
+ 		return err;
+ 
+@@ -872,6 +873,9 @@ static void tegra_plane_atomic_update(struct drm_plane *plane,
+ 			window.stride[i] = fb->pitches[i];
+ 	}
+ 
++	if (tegra_plane_state->swap_uv)
++		swap(window.base[1], window.base[2]);
++
+ 	tegra_dc_setup_window(p, &window);
+ }
+ 
+diff --git a/drivers/gpu/drm/tegra/hub.c b/drivers/gpu/drm/tegra/hub.c
+index 448f49f3a7d7e..5a86f8260f136 100644
+--- a/drivers/gpu/drm/tegra/hub.c
++++ b/drivers/gpu/drm/tegra/hub.c
+@@ -440,7 +440,8 @@ static int tegra_shared_plane_atomic_check(struct drm_plane *plane,
+ 
+ 	err = tegra_plane_format(new_plane_state->fb->format->format,
+ 				 &plane_state->format,
+-				 &plane_state->swap);
++				 &plane_state->swap,
++				 &plane_state->swap_uv);
+ 	if (err < 0)
+ 		return err;
+ 
+@@ -642,7 +643,9 @@ static void tegra_shared_plane_atomic_update(struct drm_plane *plane,
+ 	base |= addr_flag;
+ 
+ 	tegra_plane_writel(p, tegra_plane_state->format, DC_WIN_COLOR_DEPTH);
+-	tegra_plane_writel(p, 0, DC_WIN_PRECOMP_WGRP_PARAMS);
++
++	value = tegra_plane_state->swap_uv ? SWAP_UV : 0;
++	tegra_plane_writel(p, value, DC_WIN_PRECOMP_WGRP_PARAMS);
+ 
+ 	value = V_POSITION(new_state->crtc_y) |
+ 		H_POSITION(new_state->crtc_x);
+diff --git a/drivers/gpu/drm/tegra/plane.c b/drivers/gpu/drm/tegra/plane.c
+index 2148b0c59815c..757bc552809fe 100644
+--- a/drivers/gpu/drm/tegra/plane.c
++++ b/drivers/gpu/drm/tegra/plane.c
+@@ -59,6 +59,7 @@ tegra_plane_atomic_duplicate_state(struct drm_plane *plane)
+ 	copy->tiling = state->tiling;
+ 	copy->format = state->format;
+ 	copy->swap = state->swap;
++	copy->swap_uv = state->swap_uv;
+ 	copy->reflect_x = state->reflect_x;
+ 	copy->reflect_y = state->reflect_y;
+ 	copy->opaque = state->opaque;
+@@ -319,11 +320,13 @@ int tegra_plane_state_add(struct tegra_plane *plane,
+ 	return 0;
+ }
+ 
+-int tegra_plane_format(u32 fourcc, u32 *format, u32 *swap)
++int tegra_plane_format(u32 fourcc, u32 *format, u32 *swap, bool *swap_uv)
+ {
+ 	/* assume no swapping of fetched data */
+ 	if (swap)
+ 		*swap = BYTE_SWAP_NOSWAP;
++	if (swap_uv)
++		*swap_uv = false;
+ 
+ 	switch (fourcc) {
+ 	case DRM_FORMAT_ARGB4444:
+diff --git a/drivers/gpu/drm/tegra/plane.h b/drivers/gpu/drm/tegra/plane.h
+index e33a581e6490e..dba5f1b254e98 100644
+--- a/drivers/gpu/drm/tegra/plane.h
++++ b/drivers/gpu/drm/tegra/plane.h
+@@ -49,6 +49,7 @@ struct tegra_plane_state {
+ 	struct tegra_bo_tiling tiling;
+ 	u32 format;
+ 	u32 swap;
++	bool swap_uv;
+ 
+ 	bool reflect_x;
+ 	bool reflect_y;
+@@ -88,7 +89,7 @@ void tegra_plane_cleanup_fb(struct drm_plane *plane,
+ int tegra_plane_state_add(struct tegra_plane *plane,
+ 			  struct drm_plane_state *state);
+ 
+-int tegra_plane_format(u32 fourcc, u32 *format, u32 *swap);
++int tegra_plane_format(u32 fourcc, u32 *format, u32 *swap, bool *swap_uv);
+ bool tegra_plane_format_is_indexed(unsigned int format);
+ bool tegra_plane_format_is_yuv(unsigned int format, unsigned int *planes, unsigned int *bpc);
+ int tegra_plane_setup_legacy_state(struct tegra_plane *tegra,
 
-Changes in v2:
-- In patch 1, simplify pre-nvdisplay path to a swap of the window base
-  address
-- In patch 1, address sashiko report about failure to copy the new
-  struct entry in duplicate_state
-- In patch 2, address sashiko report that yvu420 was missing from
-  tegra20_overlays when the targets already support yuv420.
-- Link to v1: https://lore.kernel.org/r/20261008-tegra-drm-yvu420-v1-0-dc1c443c00f3@gmail.com
-
----
-Aaron Kling (2):
-      drm/tegra: Support swapping chroma planes
-      drm/tegra: Support YVU formats
-
- drivers/gpu/drm/tegra/dc.c    | 13 ++++++++++++-
- drivers/gpu/drm/tegra/hub.c   |  8 ++++++--
- drivers/gpu/drm/tegra/plane.c | 29 ++++++++++++++++++++++++++++-
- drivers/gpu/drm/tegra/plane.h |  3 ++-
- 4 files changed, 48 insertions(+), 5 deletions(-)
----
-base-commit: 20a33c6b6cbe7e4805dfb6cd68816937443aa148
-change-id: 20261008-tegra-drm-yvu420-1dbb7140e54a
-
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.56.0
 
