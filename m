@@ -1,97 +1,90 @@
-From: Filippo Falezza <effeffe99@gmail.com>
-Date: Mon, 26 Oct 2026 18:19:07 +0000
-Subject: [PATCH] remoteproc: qcom: pas: Print auth error code
+From: Xi Zhang <xz.ca.cn@gmail.com>
+Subject: [PATCH 0/8] drm/msm/dpu: various dpu resource allocation/release
+ mismatch fix
+Date: Mon, 26 Oct 2026 16:16:48 -0300
+Message-Id: <20261026-msm-dpu-res-clean-v1-0-f46130a8a717@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-pas-auth-error-v1-1-1569e83358e5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPbuQiBTaVykeYhyb7SHKroogv
- ntTPczhO8x/kEEFRq/qIMUmJlMu8HVFMYX8ActQTI1rHr6M52Ac1iUxVCdltLF9un7w0YHKaVa
- Msl/Bd3fb1v6LuPwrdJ4/s+C2enIAAAA=
-X-Change-ID: 20261026-pas-auth-error-e4c490bd1c0e
-To: Bjorn Andersson <andersson@kernel.org>, 
- Mathieu Poirier <mathieu.poirier@linaro.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Filippo Falezza <effeffe99@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDINbNLc7VTSko1S1KLdZNzklNzNNNMzQ3MDE0MDMxNU5TAuorKEpNy6w
+ AmxkdC+EXlyZlpSaXgAxSqq0FANyDXEd1AAAA
+X-Change-ID: 20261026-msm-dpu-res-clean-f1704106453f
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Xi Zhang <xz.ca.cn@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793038746; l=2798;
- i=effeffe99@gmail.com; s=20261022; h=from:subject:message-id;
- bh=+UAPMP0mpA/2AP1Feq4iEAd04j9ngTHwcofPyCUE/Rw=;
- b=/A113p09qt5dybuOuaIFcfMOHoKqEPwur5s2OMpFXC4z7zJipTjl/hbYB7nEIOxAIUAuYW7Yh
- LamNBz+gD6bAmKVdj1qtMzrew4KsdCHGMtU6w61Kx9mlSpAZyYEyV+u
-X-Developer-Key: i=effeffe99@gmail.com; a=ed25519;
- pk=7PPwl4QILojrh+ATB5QOpvXVmmoxaxyLQhrLRLWEL0I=
-X-Endpoint-Received: by B4 Relay for effeffe99@gmail.com/20261022 with auth_id=1327
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793042236; l=2550;
+ i=xz.ca.cn@gmail.com; s=20261026; h=from:subject:message-id;
+ bh=2/d8EjRzSoHnBXV69zMC8k8JvAq0euVt9rPufF4ekUk=;
+ b=tvvfgQt/49+WodVm0S42JjyPwwc8dvflO44G5lU42tTV1BsYKYjcRhW818+MdktdvZlgpqz5g
+ baRO9hlmGxHBs6CTqblKd9jO76mCXw/oCXrD1pca4RImCz0tYtDleHD
+X-Developer-Key: i=xz.ca.cn@gmail.com; a=ed25519;
+ pk=aRUll5L3eJbwG8Y4BO9uySKGzm+Uy+Ccei9prnRVZRs=
+X-Endpoint-Received: by B4 Relay for xz.ca.cn@gmail.com/20261026 with auth_id=1328
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a subsystem fails to start, qcom_pas_start() logs "failed to
-authenticate image and release reset", but drops the error returned by
-qcom_pas_prepare_and_auth_reset(). That code tells the failures apart:
-a negative errno is either a clock, interconnect or SHM bridge failure
-on the Linux side or the SCM call's own status, remapped by
-qcom_scm_call(); a positive value is the status the PIL service
-returned for the request. Without it, finding out which one happened
-means adding a print and rebuilding the kernel.
+This series fixes various resource de-allocation issues in DPU
+resource cleanup code. Aim is more reliable mode set, in particular
+when multiple displays/encoders are connected, to avoid blue screen
+or snowy dsc displays.
 
-Print the error code, for the DTB image as well as the main one.
+Tested with v7.3 + msm-next, on Ayaneo Pocket DS (SM8550 Kalama).
+Changes are not device/chip specific.
 
-Signed-off-by: Filippo Falezza <effeffe99@gmail.com>
+Some of the changes has lived in ROCKNIX distro for a few months.
+https://github.com/ROCKNIX/distribution/pull/2716
+
+Note: The first patch in that PR was problematic: uninitialized pointer
+variable field access (since fixed), and I did not understand drm
+atomic state tracking, so it wasn't doing anything at all and
+is not included in this series.
+
+The third patch linked above has more changes than what's included in
+this series. The extra change did not do anything that's needed.
+
+The following 2 commits are new and are not in ROCKNIX:
+
+[Patch 6/8] ("drm/msm/dpu: workaround res re-assignment issues by pairing enc/crtc")
+[Patch 7/8] ("drm/msm: force mode_changed on color_mgmt_changed, not just ctm")
+
+[Patch 7/8] would fix, from my testing:
+https://lore.kernel.org/all/33424a9d-10a6-4479-bba6-12f8ce60da1a@packett.cool/
+See original report by Stephan Gerhold:
+https://gitlab.freedesktop.org/drm/msm/-/work_items/102
+
+Note: I'm not part of the ROCKNIX team, just contributed a few patches
+there.
+
+Signed-off-by: Xi Zhang <xz.ca.cn@gmail.com>
 ---
-Hello there,
+Xi Zhang (8):
+      drm/msm/dpu: reset unassigned resource slots to NULL on topology update
+      drm/msm/dpu: save LMs in encoder mode_set for cleanup use later
+      drm/msm/dpu: use common helper cleanup function in cmd mode disable
+      drm/msm/dpu: Match setup_dither cleanup to the way it was set up
+      drm/msm/dpu: use cached PINGPONGs from mode set in cwb setup
+      drm/msm/dpu: workaround res re-assignment issues by pairing enc/crtc
+      drm/msm: force mode_changed on color_mgmt_changed, not just ctm
+      drm/msm/dpu: reset DSC_CMN_MAIN_CNF in dsc disable
 
-this is a small one: when a remote processor fails to authenticate,
-qcom_pas_start() says so but drops the error code, and that code is
-what tells a TrustZone refusal apart from a problem on the Linux side.
-The patch adds it to both messages, the main image and the DTB one.
-
-I ran into this bringing up the Motorola Moto G 5G Plus (nairo,
-SM7250), where the compute DSP will not start. With the patch it
-reports "failed to authenticate image and release reset: -22", which
-pointed at TrustZone refusing the call rather than at the image. The
-ADSP and the modem still start as before. I could not test the DTB
-path, as SM7250 has no DTB images.
-
-It builds without warnings with W=1 (arm64 defconfig), checkpatch
---strict is clean, and it applies to rproc-next (82d0bbd67c42). The
-change and the changelog were written with Claude Opus 5.5 in Claude
-Code during that bring-up; I tested it on the phone and reviewed it
-before sending.
-
-Thanks,
-Filippo
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c        | 115 ++++++++++-----------
+ .../gpu/drm/msm/disp/dpu1/dpu_encoder_phys_cmd.c   |  10 +-
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c     |   1 +
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c            |  15 ++-
+ drivers/gpu/drm/msm/msm_atomic.c                   |   3 +-
+ 5 files changed, 70 insertions(+), 74 deletions(-)
 ---
- drivers/remoteproc/qcom_q6v5_pas.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/remoteproc/qcom_q6v5_pas.c b/drivers/remoteproc/qcom_q6v5_pas.c
-index abc59c0c29f0..ea3eb8e293c2 100644
---- a/drivers/remoteproc/qcom_q6v5_pas.c
-+++ b/drivers/remoteproc/qcom_q6v5_pas.c
-@@ -346,7 +346,8 @@ static int qcom_pas_start(struct rproc *rproc)
- 		ret = qcom_pas_prepare_and_auth_reset(pas->dtb_pas_ctx);
- 		if (ret) {
- 			dev_err(pas->dev,
--				"failed to authenticate dtb image and release reset\n");
-+				"failed to authenticate dtb image and release reset: %d\n",
-+				ret);
- 			goto unmap_dtb_carveout;
- 		}
- 	}
-@@ -365,7 +366,7 @@ static int qcom_pas_start(struct rproc *rproc)
- 	ret = qcom_pas_prepare_and_auth_reset(pas->pas_ctx);
- 	if (ret) {
- 		dev_err(pas->dev,
--			"failed to authenticate image and release reset\n");
-+			"failed to authenticate image and release reset: %d\n", ret);
- 		goto unmap_carveout;
- 	}
- 
-
----
-base-commit: 82d0bbd67c42a44f0e18b0b7b0da0f3ace0c9527
-change-id: 20261026-pas-auth-error-e4c490bd1c0e
+base-commit: d024361c631b3f020a26c07d683e5103404b0fbf
+change-id: 20261026-msm-dpu-res-clean-f1704106453f
 
 Best regards,
 --  
-Filippo Falezza <effeffe99@gmail.com>
+Xi Zhang <xz.ca.cn@gmail.com>
 
