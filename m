@@ -1,129 +1,171 @@
-From: Patrick Fischer <admin@tsv-stahl-riesa.de>
-Date: Mon, 26 Oct 2026 07:25:05 +0100
-Subject: [PATCH] power: supply: bq24190: Fix NTC status decoding for
- BQ24193
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH v3 0/3] clk: rockchip: Add RK3572 clock and reset support
+Date: Mon, 26 Oct 2026 14:56:46 +0800
+Message-Id: <20261026-add-board-ok3572-c-clk-v3-0-dbabfa39d692@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-upstream-bq24190-ntc-v1-1-fdc12d795a99@tsv-stahl-riesa.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQrCMAyA4VcZORtok06YryIetpppBOtsuiGMv
- bvVHb/D/69gklUMTs0KWRY1faUKf2gg3vt0E9RrNZCjo3fEOE9WsvRPHN4UfOcwlYgjtxKZiUP
- ooKZTllE//+35stvm4SGx/F6wbV/toK4teAAAAA==
-X-Change-ID: 20261023-upstream-bq24190-ntc-f35ec3323449
-To: Sebastian Reichel <sre@kernel.org>, Aaron Kling <webgeek1234@gmail.com>
-Cc: Svyatoslav Ryhel <clamor95@gmail.com>, linux-pm@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Patrick Fischer <admin@tsv-stahl-riesa.de>
+X-B4-Tracking: v=1; b=H4sIAK753moC/3WOQQ6CMBREr0K69pvSBgRX3sO4oO2vVJRKi42Gc
+ HdbjNGFLieZeW8m4tEZ9GSbTcRhMN7YPga+yohsm/6IYFTMhFFW5pRxaJQCYRunwHa82DCQIM8
+ d0JoqrYqCaVWTOL461Oa+gPeHV/Y3cUI5JlpqtMaP1j0Wc8hT7y1hvyQhBwpUUK2qouE54m4Y1
+ tJeSKIH9r3/ezKwyKipqKuKlwLLD2Oe5yeMhhr0CwEAAA==
+X-Change-ID: 20261023-add-board-ok3572-c-clk-090dfd552fd9
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Elaine Zhang <zhangqing@rock-chips.com>, 
+ Richard Cochran <richardcochran@gmail.com>
+Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792995907; l=3658;
- i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
- bh=BUokX18EXdA2wvDNW7+3GVSpgzTFB0r3Izc5EIZbi7Q=;
- b=hzAhsAG/gqezLRrjScN6/AElzUocarO12tX3xX1U/ZKpX3OVKuK2zrVTLUlJN44sehJCsNbIa
- m9e658IV1dLAjA0xNvtuLq6e6ULTNjTHlzfY13AaOc5Xh+9tidgGgBa
-X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
- pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
-X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1792997816; l=5495;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=z+PAMzWHcuJVVVclopxlGF5C09sfEoJbDIpJ/atrE0o=;
+ b=+Pa7rSV4yxi3LYxuSQ4HV5XM+tzjxLNHGCLs7YsEbFlzIhquPSKg2A94jjo3xt8qH+fMuRe3n
+ 2pbTtLlJZwIDMdmp85BQfy3rPsa8+ULnYNQtbjEMxJ/KB76lb/t0fJt
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The BQ24193 has a single thermistor input and applies the JEITA
-temperature profile. Its NTC_FAULT field in REG09 is encoded
-differently from the BQ24190, which has two TS inputs:
+This is one of the subsystem submissions for RK3572 support.
 
-  NTC_FAULT  BQ24190    BQ24193
-  000        Normal     Normal
-  010        TS1 Hot    Warm
-  011        TS2 Cold   Cool
-  101        Both Cold  Cold
-  110        Both Hot   Hot
+This series adds the CRU binding, clock and reset IDs, an internal
+Rockchip 24-bit fractional divider helper, and the RK3572 clock and
+reset driver. The helper precedes the driver that uses it.
 
-(BQ24190/2/2I datasheet SLUSAW5B, table 17; BQ24193 datasheet
-SLUSBG7A, table 16.)
+The RK3572 SoC has eight CPU cores: two Cortex-A73 cores and six
+Cortex-A53 cores. It also integrates an Arm Mali-G310V2 MC1 GPU.
+The OK3572-C board provides two Gigabit Ethernet ports, three USB3 Type-A
+ports, a Type-C dual-role port, eMMC, microSD, and UART.
 
-Warm (45-60 C at the TS pin) and Cool (0-10 C) are not faults. The
-charger keeps charging at a reduced charge voltage or charge current.
-The BQ24193 uses bq24190_charger_get_ntc_status() though, so a warm
-battery is reported as POWER_SUPPLY_HEALTH_OVERHEAT and a cool one as
-POWER_SUPPLY_HEALTH_COLD.
+The driver provides the peripheral clock and reset trees, including the
+three audio fractional clocks. It obtains the PMU0 GRF for the AUPLL
+reference mux. CPU frequency scaling is controlled through SCMI; BPLL
+and LPLL remain enabled for firmware use.
 
-Add a BQ24193 decoder that reports POWER_SUPPLY_HEALTH_WARM and
-POWER_SUPPLY_HEALTH_COOL for these states. Cold and Hot are unchanged.
+Testing was performed with Debian 13 minimal and Linux 7.3 on the
+OK3572-C with the FET3572-C module. Shared peripheral tests were run with
+the system booted from SD, while eMMC validation covered the complete
+boot chain.
 
-On an NVIDIA Tegra Note 7 (P1640) REG09 reads 0x02 after a few minutes
-on USB power. The battery keeps charging, but the charger reports
-health "Overheat". With this patch it reports "Warm" in that state and
-"Good" while REG09 reads 0x00.
+Passed functionality:
 
-Fixes: afe5301bfbaa ("power: bq24190: Add BQ24193 support")
-Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
+- SD and eMMC complete the firmware, kernel, and root filesystem
+  boot chain.
+- UART console works at 1500000 baud.
+- SD read/write and data persistence checks pass.
+- All eight CPUs start; CPU frequency scaling and hotplug checks pass.
+- Both Ethernet ports obtain IPv4 addresses and pass bidirectional file
+  transfers.
+- All three Type-A ports pass USB2 and USB3 enumeration, data transfers,
+  and reconnect persistence checks.
+- Type-C host and device modes pass in both plug orientations. Physical
+  reconnects correctly select the expected device, host, and device roles
+  in sequence.
+
+Stability:
+
+- Repeated cold and software reboots complete on SD and eMMC without data
+  integrity failures.
+- A combined CPU, memory, network, SD, and USB3 stress test completes
+  without a crash, lockup, CPU offline event, or thermal shutdown.
+- Ethernet error and drop counters do not increase during bidirectional
+  network tests.
+
+Build and checks:
+
+- The kernel, modules, and board DTB build successfully.
+- Strict checkpatch reports no errors, with warnings about new
+  MAINTAINERS entries and the RK3572 Kconfig help text.
+
+Untested hardware and paths:
+
+- NPU
+- PCIe
+- GPU, video output, and audio
+- CPU rates above 1.2 GHz and voltage scaling
+- Other low-speed external interfaces
+
+Some files in this series are derived from the Forlinx OK3572-C BSP
+Alpha1. Thanks to Forlinx for their support.
+
+AI assistance:
+
+- Codex / DeepSeek V4.1 Flash were used for:
+  - Reviewing and adjusting code style to follow community conventions
+  - Automating tests
+  - Collecting data
+
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
-I kept this a pure decoding fix. Two things stay as they are and could
-be follow-ups if you want them:
+Changes in v3:
+- Close the reset ID gap while preserving the register mapping of each
+  named reset.
+- Check fractional-divider scaling against the actual field widths and
+  reject unrepresentable compensated ratios during rate determination.
+- Use signed negative PLL coefficients in the RK3572 rate table.
+- Drop CLK_NR_CLKS from the binding and derive the provider size from
+  registered clocks, keeping the existing clock IDs.
+- Fix the indentation of the CRU binding example.
+- Link to v2:
+  https://patch.msgid.link/20261023-add-board-ok3572-c-clk-v2-0-90b98836be6e@qq.com
 
-- The interrupt handler still logs a change to Warm or Cool as
-  "Fault: ... ntc 1", as it does for every change of REG09.
-- bq24190_charger_get_health() checks the NTC bits first, so while the
-  battery is warm or cool the charger health hides a charge fault or
-  battery over-voltage.
-
-Tool use (see Documentation/process/generated-content.rst): this patch,
-its changelog and this note were prepared with an LLM coding assistant
-(Claude Code). It compared the driver with both datasheets and wrote the
-code change and the texts from my register dumps and instructions. I
-reviewed the change and ran the test on the device.
----
- drivers/power/supply/bq24190_charger.c | 26 +++++++++++++++++++++++++-
- 1 file changed, 25 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/power/supply/bq24190_charger.c b/drivers/power/supply/bq24190_charger.c
-index 4bea6fd83c36..350cf79a0744 100644
---- a/drivers/power/supply/bq24190_charger.c
-+++ b/drivers/power/supply/bq24190_charger.c
-@@ -999,6 +999,30 @@ static int bq24190_charger_get_ntc_status(u8 value)
- 	return health;
- }
- 
-+static int bq24193_charger_get_ntc_status(u8 value)
-+{
-+	int health;
-+
-+	switch (value >> BQ24190_REG_F_NTC_FAULT_SHIFT & 0x7) {
-+	case 0x2: /* Warm */
-+		health = POWER_SUPPLY_HEALTH_WARM;
-+		break;
-+	case 0x3: /* Cool */
-+		health = POWER_SUPPLY_HEALTH_COOL;
-+		break;
-+	case 0x5: /* Cold */
-+		health = POWER_SUPPLY_HEALTH_COLD;
-+		break;
-+	case 0x6: /* Hot */
-+		health = POWER_SUPPLY_HEALTH_OVERHEAT;
-+		break;
-+	default:
-+		health = POWER_SUPPLY_HEALTH_UNKNOWN;
-+	}
-+
-+	return health;
-+}
-+
- static int bq24296_charger_get_ntc_status(u8 value)
- {
- 	int health;
-@@ -2013,7 +2037,7 @@ static const struct bq24190_chip_info bq24190_chip_info_tbl[] = {
- 		.check_chip = bq24190_check_chip,
- 		.set_chg_config = bq24190_battery_set_chg_config,
- 		.ntc_fault_mask = BQ24190_REG_F_NTC_FAULT_MASK,
--		.get_ntc_status = bq24190_charger_get_ntc_status,
-+		.get_ntc_status = bq24193_charger_get_ntc_status,
- 		.set_otg_vbus = bq24190_set_otg_vbus,
- 	},
- 	[BQ24196] = {
+Changes in v2:
+- Split the original RK3572 support series by subsystem.
+- Port the vendor 24-bit fractional divider to the internal Rockchip
+  clock helpers and adapt it to the determine_rate API.
+- Register audio frac0-2. Keep internal SPLL factors outside the DT
+  lookup so PPLL retains clock ID 0, and remove the unused xin12m factor.
+- Link to v1:
+  https://patch.msgid.link/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com
 
 ---
-base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
-change-id: 20261023-upstream-bq24190-ntc-f35ec3323449
+Raw dmesg: see v2 cover letter.
+
+To: Stephen Boyd <sboyd@kernel.org>
+To: Brian Masney <bmasney+clk@redhat.com>
+To: Jerome Brunet <jbrunet+clk@baylibre.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+To: Elaine Zhang <zhangqing@rock-chips.com>
+To: Richard Cochran <richardcochran@gmail.com>
+Cc: linux-clk@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: netdev@vger.kernel.org
+
+---
+Elaine Zhang (3):
+      dt-bindings: clock: rockchip: Add RK3572 CRU
+      clk: rockchip: Add internal support for 24-bit fractional dividers
+      clk: rockchip: Add RK3572 clock and reset support
+
+ .../bindings/clock/rockchip,rk3572-cru.yaml        |   57 +
+ drivers/clk/rockchip/Kconfig                       |    7 +
+ drivers/clk/rockchip/Makefile                      |    2 +
+ drivers/clk/rockchip/clk-fractional-divider-v2.c   |  354 ++++
+ drivers/clk/rockchip/clk-rk3572.c                  | 2007 ++++++++++++++++++++
+ drivers/clk/rockchip/clk.c                         |   10 +
+ drivers/clk/rockchip/clk.h                         |   61 +
+ drivers/clk/rockchip/rst-rk3572.c                  |  739 +++++++
+ include/dt-bindings/clock/rockchip,rk3572-cru.h    |  559 ++++++
+ include/dt-bindings/reset/rockchip,rk3572-cru.h    |  713 +++++++
+ 10 files changed, 4509 insertions(+)
+---
+base-commit: a804c5742bff224d4cb4d25dd383554d598be32b
+change-id: 20261023-add-board-ok3572-c-clk-090dfd552fd9
 
 Best regards,
 --  
-Patrick Fischer <admin@tsv-stahl-riesa.de>
+Cunhao Lu <1579567540@qq.com>
 
