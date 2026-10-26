@@ -1,75 +1,75 @@
 From: Martin Belanger <martin.nvme.dev@gmail.com>
-Subject: [PATCH 0/2] nvme-tcp: handle TLS control records at connect and on
- receive errors
-Date: Mon, 26 Oct 2026 14:09:43 -0400
-Message-Id: <20261026-nvme-tcp-ctrlrec-fixes-v1-0-ebf6ff7eff34@gmail.com>
+Date: Mon, 26 Oct 2026 14:09:44 -0400
+Subject: [PATCH 1/2] nvme-tcp: start error recovery when read_sock fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCUAwEf6XkbKCvWgV/RTy06VYj+izJswil/
- 27Uwx6GZWYhhymcjtVChlldnzkgbSqSa5cvYB2CqambfYpxnh/gIhNLsbtBeNQ3nNsxydDu6sO
- 27yjkyfA7wj2d/+yv/gYp3xqt6wdHTW6legAAAA==
-X-Change-ID: 20261026-nvme-tcp-ctrlrec-fixes-5f1cd54073ba
+Message-Id: <20261026-nvme-tcp-ctrlrec-fixes-v1-1-ebf6ff7eff34@gmail.com>
+References: <20261026-nvme-tcp-ctrlrec-fixes-v1-0-ebf6ff7eff34@gmail.com>
+In-Reply-To: <20261026-nvme-tcp-ctrlrec-fixes-v1-0-ebf6ff7eff34@gmail.com>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
  Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
  Hannes Reinecke <hare@kernel.org>
 Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Martin Belanger <martin.belanger@dell.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793038187; l=2128;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793038187; l=1609;
  i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=3hTAzrQJfgElLUy2dxnWBPcmYnvUEDdOPYD2sRIU/0g=;
- b=iQQCHjO1s/DBlbEGXiWuHp59XYALtBKQvAVw7ggCh/0qNPDM8zpPbc/a/fTIYvqg3xIIRnPzb
- jCRWH4eV55OBPFaLPIlAQmq/P2cdng7mpRhoPu/NfTXIqDh3NZB81oM
+ bh=ggidawoLoKfpkMXbqKndiLcxYd4qxdMDfKr5YsSgVnk=;
+ b=VFIrA0yEclOqssaEnOt9moNoMSkIDzLHTFipPmWLmams9r1umzRKoQ4yGnggqc3TvwySHMjIQ
+ O/XZ2KJkldcBMOfXFCYA+Xnyynr571JTUsbUbcw+dTFqIxBB6BqNv5R
 X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
  pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
 X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A TLS 1.3 peer can send records that carry no application data, for
-example a NewSessionTicket right after the handshake. nvme-tcp does not
-handle them correctly. This series fixes two cases.
+From: Martin Belanger <martin.belanger@dell.com>
 
-Patch 1: when read_sock() returns an error, nvme-tcp does not start
-error recovery. The queue stops receiving until a command times out.
-With a NewSessionTicket on a live queue, I/O stalls until the I/O
-timeout (30 seconds by default). With this patch, recovery starts at
-once. This also applies to plain TCP.
+nvme_tcp_recv_skb() disables the queue and starts error recovery for
+errors it detects itself. An error returned by the transport reaches
+nvme_tcp_try_recv() without either action.
 
-Patch 2: a NewSessionTicket that arrives before the ICResp fails the
-connection with "failed to receive icresp, error -104". A target that
-sends a ticket at once, such as an OpenSSL-based target, cannot be
-reached. With this patch, the ticket is discarded and the connection
-succeeds. An alert in place of the ICResp is now reported with its code,
-instead of as error -104.
+nvme_tcp_io_work() returns on a negative result and does not requeue
+itself, so the queue stops receiving and remains stalled until a command
+times out.
 
-These patches replace patch 1/2 of Hannes's "nvme,tls: minimal handling
-for TLS records":
-https://lore.kernel.org/all/20260922133708.84522-1-hare@kernel.org/
+Report the error and start error recovery when the queue is still
+enabled, which indicates that the error was not handled by the actor.
 
-Patch 2/2 of that series (the net/tls errno change) will be posted to
-netdev separately after 7.4-rc1. It will not change
-tls_sw_splice_read(), because that errno is visible to user space.
-After that, a follow-up nvme-tcp patch will read control records on a
-live queue, so a NewSessionTicket no longer causes a reconnect.
-
-Tested with host and target in one VM, with a test-only change to
-net/tls that makes the target send a NewSessionTicket or an alert.
-Also tested on plain TCP, and built with CONFIG_NVME_TCP_TLS=n.
-
+Assisted-by: LLM
 Signed-off-by: Martin Belanger <martin.belanger@dell.com>
 ---
-Martin Belanger (2):
-      nvme-tcp: start error recovery when read_sock fails
-      nvme-tcp: skip TLS control records while waiting for the ICResp
+ drivers/nvme/host/tcp.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
- drivers/nvme/host/tcp.c | 173 +++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 150 insertions(+), 23 deletions(-)
----
-base-commit: 6b4b543fa18757297ac756a6fe6e64f506b7844a
-change-id: 20261026-nvme-tcp-ctrlrec-fixes-5f1cd54073ba
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index 7190eb10c248..a03476f0f69d 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1431,7 +1431,21 @@ static int nvme_tcp_try_recv(struct nvme_tcp_queue *queue)
+ 	queue->nr_cqe = 0;
+ 	consumed = sock->ops->read_sock(sk, &rd_desc, nvme_tcp_recv_skb);
+ 	release_sock(sk);
+-	return consumed == -EAGAIN ? 0 : consumed;
++	if (consumed == -EAGAIN)
++		return 0;
++
++	/* nvme_tcp_recv_skb() does both of these itself, so a queue that is
++	 * still enabled failed inside read_sock() instead
++	 */
++	if (unlikely(consumed < 0 && queue->rd_enabled)) {
++		dev_err(queue->ctrl->ctrl.device,
++			"queue %d: receive failed: %d\n",
++			nvme_tcp_queue_id(queue), consumed);
++		queue->rd_enabled = false;
++		nvme_tcp_error_recovery(&queue->ctrl->ctrl);
++	}
++
++	return consumed;
+ }
+ 
+ static void nvme_tcp_io_work(struct work_struct *w)
 
-Best regards,
---  
-Martin Belanger <martin.nvme.dev@gmail.com>
+-- 
+2.53.0
 
