@@ -1,166 +1,93 @@
-From: Ke Sun <sunke@kylinos.cn>
-Date: Tue, 27 Oct 2026 00:41:04 +0800
-Subject: [PATCH v5 11/11] drm/tyr: gem: map cached BOs for
- DRM_PANTHOR_BO_WB_MMAP
+From: Ishu Brar <patches@brar.si>
+Subject: [PATCH v3 0/2] interconnect: qcom: Add SM7250 interconnect
+ provider
+Date: Mon, 26 Oct 2026 23:18:16 +0530
+Message-Id: <20261026-icc-sm7250-v3-0-aa303226298c@brar.si>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-tyr-ioctls-v5-11-59dfe98cb003@kylinos.cn>
-References: <20261027-tyr-ioctls-v5-0-59dfe98cb003@kylinos.cn>
-In-Reply-To: <20261027-tyr-ioctls-v5-0-59dfe98cb003@kylinos.cn>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Lorenzo Stoakes <ljs@kernel.org>, Lyude Paul <lyude@redhat.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>
-Cc: Sami Tolvanen <samitolvanen@google.com>, rust-for-linux@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, driver-core@lists.linux.dev, 
- Ke Sun <sunke@kylinos.cn>, Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793032870; l=4490;
- i=sunke@kylinos.cn; s=20260317; h=from:subject:message-id;
- bh=xSP6p7C7nG8SAdUfnGBh8hvRVeMZVo3JIuOGc55Xvp4=;
- b=7PYLAEGZJRQp7FGT4ZQff97+LUj+o5osxzNqaB1SFjZyzZkZh61cpNNRFmMJ9Gg/WpzyWhvPM
- ZIwEyaiSoGrB1xE2+2syZLDmBzMjrUmA2gqPoJp09A9O2GMktSBfkDz
-X-Developer-Key: i=sunke@kylinos.cn; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for sunke@kylinos.cn/20260317 with auth_id=950
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NywrCMBBFf6VkbSSZ5qUr/0NctHG0I9hKUoNS+
+ u8mdaGCywP3nDuxiIEwsm01sYCJIg19hnpVMd81/Rk5HTMzEGCkgJqT9zxeLWjBpXEKDSrZCGB
+ ZuAU80WOJ7Q9vjvf2gn4shbLoKI5DeC5vSZbd33CSPNdRWS8BjNN214YmrCOxkk3wLaofEbIo0
+ GrtNqqVzn3EeZ5fH0+yPe0AAAA=
+X-Change-ID: 20261023-icc-sm7250-1684e6e41a02
+To: Georgi Djakov <djakov@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Ishu Brar <patches@brar.si>
+Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Konrad Dybcio <konradybcio@kernel.org>, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793036977; l=2815;
+ i=patches@brar.si; h=from:subject:message-id;
+ bh=XMn17Mlz1sQ1bjtBVxi9S/AkNIdkb5Ce8gNvbH3tfeM=;
+ b=p6liVVIh25kiR7QvG2SeuvdfSRLRIVGeO/1/wz6ACoFFHbsJsxpSYqQSqZsuZ3JLEK0/StOyC
+ LNqW8DHZp0eBSkq95HLKpvpdbRsr+jxiEbjBhLPdf1H2DCwE9dvOUWX
+X-Developer-Key: i=patches@brar.si; a=ed25519;
+ pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
+X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sami Tolvanen <samitolvanen@google.com>
+Add the binding and the driver for the Network-On-Chip interconnect
+providers of the Qualcomm SM7250 SoC (Snapdragon 765/765G/768G). They are
+controlled through RPMh Bus Clock Managers, like the other RPMh based
+providers. The driver follows the layout of sm7150 and sm8250, and the
+nodes and BCMs come from the downstream interconnect description of the
+platform.
 
-Userspace may request a cacheable CPU mapping for a buffer it accesses
-frequently. Accept DRM_PANTHOR_BO_WB_MMAP in bo_create and map the
-buffer cached when the flag is set. Coherent devices already map
-cached. NO_MMAP and WB_MMAP together are rejected with EINVAL.
+Tested on a OnePlus Nord (a 7.3 based tree): all providers probe,
+and UFS, USB, display, I2C, serial and camera ISP devices get their
+paths without errors. The Adreno 620 GPU also takes its memory bandwidth
+levels from these providers (the Adreno 620 series sent earlier relies on
+them). The SoC devicetree nodes are not part of this series.
 
-On non-coherent platforms userspace owns the CPU cache maintenance
-around GPU access to these buffers.
-
-Signed-off-by: Sami Tolvanen <samitolvanen@google.com>
-[ Split the BO_CREATE validation and add the WB_MMAP flag checks
-  from the original. - Alvin ]
-Co-developed-by: Alvin Sun <alvin.sun@linux.dev>
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- drivers/gpu/drm/tyr/file.rs | 25 +++++++++++++++++++------
- drivers/gpu/drm/tyr/gem.rs  | 18 +++++++++++-------
- 2 files changed, 30 insertions(+), 13 deletions(-)
+Changes in v3:
+- Subject: drop the redundant trailing "bindings" (Krzysztof)
+- Drop the "Child node's properties" comment (Krzysztof)
+- Binding: no child nodes any more; compute-noc, mc-virt and qup-virt are
+  separate compatibles on top-level nodes without reg (reg: false), as in
+  the milos and kuno bindings, so patternProperties goes away (Krzysztof)
+- No change to the driver
+- Link to v2: https://patch.msgid.link/20261024-icc-sm7250-v2-0-0e755894b188@brar.si
 
-diff --git a/drivers/gpu/drm/tyr/file.rs b/drivers/gpu/drm/tyr/file.rs
-index d4d6a6742b2e1..6f4550d14bb39 100644
---- a/drivers/gpu/drm/tyr/file.rs
-+++ b/drivers/gpu/drm/tyr/file.rs
-@@ -258,19 +258,32 @@ pub(crate) fn bo_create(
-         bocreate: &mut uapi::drm_panthor_bo_create,
-         file: &TyrDrmFile,
-     ) -> Result<u32> {
--        if bocreate.size == 0
--            || bocreate.pad != 0
--            || bocreate.flags & !uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_NO_MMAP != 0
--        {
-+        if bocreate.size == 0 || bocreate.pad != 0 {
-             dev_dbg!(
-                 ddev.as_ref(),
--                "Invalid BO_CREATE params: size={}, pad={}, flags={:#x}\n",
-+                "Invalid BO_CREATE params: size={}, pad={}\n",
-                 bocreate.size,
--                bocreate.pad,
-+                bocreate.pad
-+            );
-+            return Err(EINVAL);
-+        }
-+
-+        let no_mmap = uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_NO_MMAP;
-+        let wb_mmap = uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_WB_MMAP;
-+        let valid_flags = no_mmap | wb_mmap;
-+
-+        if bocreate.flags & !valid_flags != 0 {
-+            dev_dbg!(
-+                ddev.as_ref(),
-+                "Invalid BO_CREATE flags: {:#x}\n",
-                 bocreate.flags
-             );
-             return Err(EINVAL);
-         }
-+        if bocreate.flags & no_mmap != 0 && bocreate.flags & wb_mmap != 0 {
-+            dev_dbg!(ddev.as_ref(), "BO_CREATE: NO_MMAP conflicts with WB_MMAP\n");
-+            return Err(EINVAL);
-+        }
- 
-         if bocreate.exclusive_vm_id != 0 {
-             dev_dbg!(ddev.as_ref(), "BO_CREATE: exclusive_vm_id not supported\n");
-diff --git a/drivers/gpu/drm/tyr/gem.rs b/drivers/gpu/drm/tyr/gem.rs
-index fad0720ce7123..d3791b62d5a7b 100644
---- a/drivers/gpu/drm/tyr/gem.rs
-+++ b/drivers/gpu/drm/tyr/gem.rs
-@@ -17,7 +17,8 @@
-     sync::{
-         aref::ARef,
-         Arc, //
--    }, //
-+    },
-+    uapi, //
- };
- 
- use crate::{
-@@ -63,13 +64,16 @@ fn new(_dev: &TyrDrmDevice, _size: usize, args: BoCreateArgs) -> impl PinInit<Se
- /// Type alias for Tyr GEM buffer objects.
- pub(crate) type Bo = gem::shmem::Object<BoData>;
- 
--/// Returns whether a BO should be mapped write-combine given the device's
--/// DMA coherence.
--pub(crate) fn should_map_wc(coherent: bool) -> bool {
-+/// Returns whether a BO should be mapped write-combine.
-+pub(crate) fn should_map_wc(coherent: bool, flags: u32) -> bool {
-     if coherent {
-         return false;
-     }
- 
-+    if flags & uapi::drm_panthor_bo_flags_DRM_PANTHOR_BO_WB_MMAP != 0 {
-+        return false;
-+    }
-+
-     true
- }
- 
-@@ -86,7 +90,7 @@ pub(crate) fn new_object(
- 
-     let aligned_size = size.checked_next_multiple_of(PAGE_SIZE).ok_or(EINVAL)?;
- 
--    let map_wc = should_map_wc(coherent);
-+    let map_wc = should_map_wc(coherent, flags);
-     let bo = Bo::new(
-         ddev,
-         aligned_size,
-@@ -116,7 +120,7 @@ pub(crate) fn new_dummy_object(ddev: &TyrDrmDevice, coherent: bool) -> Result<AR
-         ddev,
-         4096,
-         shmem::ObjectConfig {
--            map_wc: should_map_wc(coherent),
-+            map_wc: should_map_wc(coherent, 0),
-             parent_resv_obj: None,
-         },
-         BoCreateArgs { flags: 0 },
-@@ -174,7 +178,7 @@ pub(crate) fn new(
-             ddev,
-             bo_size,
-             shmem::ObjectConfig {
--                map_wc: should_map_wc(coherent),
-+                map_wc: should_map_wc(coherent, 0),
-                 parent_resv_obj: None,
-             },
-             BoCreateArgs { flags: 0 },
+Changes in v2:
+- Set .enable_mask = BIT(3) on the ACV BCM, like sm8150, sm8250 and sc7180, so
+  that the voter sends the one-hot APPS RSC bit instead of the scaled bandwidth
+  (reported by sashiko-bot)
+- Drop the IPA virtual provider (qcom,sm7250-ipa-virt, its BCM and its node IDs):
+  clk-rpmh already owns the IP0 BCM through RPMH_IPA_CLK, and the sibling SoCs
+  have no such provider either; otherwise icc_sync_state() would zero its vote
+  (reported by sashiko-bot)
+- Link to v1: https://patch.msgid.link/20261023-icc-sm7250-v1-0-1e47c1226857@brar.si
 
--- 
-2.43.0
+To: Georgi Djakov <djakov@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Ishu Brar <patches@brar.si>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: linux-pm@vger.kernel.org
+Cc: Konrad Dybcio <konradybcio@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Ishu Brar (2):
+      dt-bindings: interconnect: qcom: Add SM7250 RPMh NoC
+      interconnect: qcom: Add SM7250 interconnect provider driver
+
+ .../bindings/interconnect/qcom,sm7250-rpmh.yaml    |   81 +
+ drivers/interconnect/qcom/Kconfig                  |   14 +
+ drivers/interconnect/qcom/Makefile                 |    2 +
+ drivers/interconnect/qcom/sm7250.c                 | 1642 ++++++++++++++++++++
+ .../dt-bindings/interconnect/qcom,sm7250-rpmh.h    |  148 ++
+ 5 files changed, 1887 insertions(+)
+---
+base-commit: 3fd56a2833c22f62eb84297d0dbd47739632f1a0
+change-id: 20261023-icc-sm7250-1684e6e41a02
+
+Best regards,
+--  
+Ishu Brar <patches@brar.si>
 
