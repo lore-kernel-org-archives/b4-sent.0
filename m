@@ -1,206 +1,157 @@
-From: Esko Mobius <echoowall@gmail.com>
-Date: Mon, 26 Oct 2026 15:23:09 +0800
-Subject: [PATCH net 2/2] Revert "net: advertise TCP MSS from the configured
- MTU, not the learned PMTU"
+From: Enric Balletbo i Serra <eballetb@redhat.com>
+Subject: [PATCH 0/3] Fix NXP STM clockevent bugs causing lockups
+Date: Mon, 26 Oct 2026 09:44:31 +0100
+Message-Id: <20261026-nxp-stm-fixes-v1-0-20a64a4ea454@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-advmss-revert-v1-2-272fa4b7ecb6@gmail.com>
-References: <20261026-advmss-revert-v1-0-272fa4b7ecb6@gmail.com>
-In-Reply-To: <20261026-advmss-revert-v1-0-272fa4b7ecb6@gmail.com>
-To: netdev@vger.kernel.org
-Cc: Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@kernel.org>, 
- David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- Jiayuan Chen <jiayuan.chen@linux.dev>, Shuah Khan <shuah@kernel.org>, 
- Thorsten Leemhuis <regressions@leemhuis.info>, regressions@lists.linux.dev, 
- linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Esko Mobius <echoowall@gmail.com>, 
- Eric Dumazet <edumazet@kernel.org>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1792999388; l=7106;
- i=echoowall@gmail.com; s=20261026; h=from:subject:message-id;
- bh=fL0gKXuPe+I5V6mRdeFfmPyR7mfZWM2UrUUi/fbzPNQ=;
- b=PwtWXbh/QSU8s8/6UZXtK7P2iALPCmzcQe2h88iYL9ZiLRSFfrVpjL0toZoDDrCUpykbJHxxh
- 87/1+l0HfDLAC9s0m+bTv7L12i7SWDqAr5P0gEVgmwSoh9z9LEpKKll
-X-Developer-Key: i=echoowall@gmail.com; a=ed25519;
- pk=9XP6JhqjjPsHCF6UZZZTeqTRnXIa4+ufggnxXtTJ+no=
-X-Endpoint-Received: by B4 Relay for echoowall@gmail.com/20261026 with auth_id=1323
+X-B4-Tracking: v=1; b=H4sIAO8S32oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAyNj3byKAt3iklzdtMyK1GLdxCQDQzNjU0PzVLM0JaCegqJUsARQS3R
+ sbS0AvhROTl8AAAA=
+X-Change-ID: 20261023-nxp-stm-fixes-ab0163517e6f
+To: Daniel Lezcano <daniel.lezcano@kernel.org>, 
+ Thomas Gleixner <tglx@kernel.org>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
+ Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: linux-kernel@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-rt-devel@lists.linux.dev, 
+ Enric Balletbo i Serra <eballetb@redhat.com>, stable@vger.kernel.org
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793004293; l=5228;
+ i=eballetb@redhat.com; s=20261026; h=from:subject:message-id;
+ bh=08lTI33Sdf9zCMLJMIsZtZpCMAqAudngaQhHF26oVdA=;
+ b=fRZeajCkMIRg/d5oo/VDVNqhfytHOA91B+qlk8sR8AMsv+Wz0lsO4ih2lq0sAXOSLBf2LmKTr
+ RNHcShbeZAJAYWsVgWsHHoZf5IXffIxJuySdgxo1nTV8F2025ExDOX1
+X-Developer-Key: i=eballetb@redhat.com; a=ed25519;
+ pk=5zh6xuAxTiQwglL2NXQFqWuyRPmCE8T5KPXLbNXhnKI=
+X-Endpoint-Received: by B4 Relay for eballetb@redhat.com/20261026 with auth_id=1324
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This reverts commit 2640e6419594 ("net: advertise TCP MSS from the
-configured MTU, not the learned PMTU").
+This series fixes three bugs in the NXP STM clocksource driver that can
+cause soft lockups and missed timer events, particularly visible on
+PREEMPT_RT kernels running on S32G platforms.
 
-That commit stopped the learned PMTU from lowering the MSS we advertise
-in SYN and SYN-ACK. For symmetric paths it argued that "the peer runs
-its own PMTU discovery and usually already knows the real path MTU".
-That only holds if ICMP "fragmentation needed" can reach the peer. When
-the peer sits behind a firewall that drops inbound ICMP, its PMTU
-discovery is a black hole (RFC 2923, section 2.1), and the smaller MSS
-we advertised was the only thing keeping its full-size segments off the
-narrow hop.
+The NXP STM generates an interrupt only on exact match between the
+counter and comparator registers. If the counter passes the programmed
+value, the match is missed and the hardware must count through all 2^32
+ticks (~32.2s at 133 MHz) before firing, causing soft lockups.
 
-Inbound ICMP filtering is very common in enterprise and carrier
-networks, and it is pervasive in mainland China. We hit this in
-production after the commit was backported to 6.12.111: TCP connections
-that reach a server through a relay with a smaller-MTU hop complete the
-handshake, then stall as soon as the client sends full-size segments.
-Clients on networks that let ICMP through, and connections that bypass
-the relay, are unaffected, which made it hard to trace back to the
-kernel.
+Patch 1 fixes max_delta: on 64-bit platforms, ULONG_MAX exceeds the
+hardware's 32-bit compare register width, making it possible to program
+an unreachable compare value.
 
-Reproducer, network namespaces on a single host:
+Patch 2 fixes the overshoot detection in set_next_event: the existing
+check only detected counter wraps, not the normal case where the counter
+advances past the programmed value during the read-modify-write window.
+Replace it with a signed comparison following the pattern used by
+timer-imx-gpt.
 
-  cli --(1500)-- r1 --(1456)-- r2 --(1500)-- srv
+Patch 3 increases min_delta from 2us to 20us: under bus contention on
+PREEMPT_RT, 2us is not enough margin and the counter frequently
+overshoots the programmed value, triggering repeated -ETIME retries.
 
-r1 drops ICMP frag-needed towards cli. srv has already learned PMTU
-1456 towards cli, then cli uploads 1 MB to srv:
+The lockup can be reproduced on an unpatched S32G board with:
 
-  kernel                     SYN-ACK MSS   1 MB upload
-  6.12.107                   1416          OK
-  6.12.111                   1460          stalls, times out
-  7.3-rc7                    1460          stalls, times out
-  7.3-rc7 + this revert      1416          OK
+  # ./trigger_lockup &
+  # stress-ng --matrix 0 --memthrash 0 & dmesg -w | grep -i "soft lockup"
 
-The asymmetric case the commit was written for does not need a new
-default: the advertised MSS can already be set per route with the
-advmss metric, which takes precedence over default_advmss(). With this
-revert applied, on an asymmetric path where srv learned PMTU 1456
-towards cli while cli->srv is 1500 end to end:
+Where trigger_lockup.c is:
 
-  srv route to cli           SYN-ACK MSS   largest cli->srv segment
-  default                    1416          1404
-  advmss 1460                1460          1448
+  #define _GNU_SOURCE
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <time.h>
+  #include <pthread.h>
+  #include <sched.h>
+  #include <unistd.h>
 
-So DSR-style setups can opt in with "ip route ... advmss <mss>", while
-hosts whose peers cannot complete PMTU discovery keep working by
-default.
+  void *timer_hammer(void *arg) {
+      long cpu = (long)arg;
+      cpu_set_t cpuset;
+      CPU_ZERO(&cpuset);
+      CPU_SET(cpu, &cpuset);
+      pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 
-Fixes: 2640e6419594 ("net: advertise TCP MSS from the configured MTU, not the learned PMTU")
-Reported-by: Esko Mobius <echoowall@gmail.com>
-Closes: https://lore.kernel.org/regressions/4F0FAEB6-A13B-47F3-BFF1-C706686C6F64@gmail.com/
-Cc: stable@vger.kernel.org
-Signed-off-by: Esko Mobius <echoowall@gmail.com>
+      /* Request 1 ns to force the kernel to clamp to min_delta (2 us) */
+      struct timespec req = { .tv_sec = 0, .tv_nsec = 1 };
+
+      while (1) {
+          clock_nanosleep(CLOCK_MONOTONIC, 0, &req, NULL);
+      }
+      return NULL;
+  }
+
+  int main(void) {
+      long ncpus = sysconf(_SC_NPROCESSORS_ONLN);
+      pthread_t threads[ncpus];
+
+      printf("[+] Hammering hrtimers with minimal deltas across %ld cores...\n", ncpus);
+      printf("[+] Check dmesg for: 'BUG: soft lockup - CPU#... stuck for 32s!'\n");
+
+      for (long i = 0; i < ncpus; i++) {
+          pthread_create(&threads[i], NULL, timer_hammer, (void *)i);
+      }
+
+      for (long i = 0; i < ncpus; i++) {
+          pthread_join(threads[i], NULL);
+      }
+      return 0;
+  }
+
+The soft lockup trace looks like:
+
+  watchdog: BUG: soft lockup - CPU#1 stuck for 32s! [swapper/1:0]
+  Modules linked in: nft_ct nft_fib_inet nft_fib_ipv4 nft_fib_ipv6 nft_fib
+   nft_masq nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4
+   nf_tables veth bridge stp llc rfkill binfmt_misc nls_ascii nls_cp437 vfat
+   fat ina2xx rtc_pcf85063 regmap_spi micrel phy_package aquantia crc_itu_t
+   ci_hdrc_imx dwmac_s32 crct10dif_ce ci_hdrc ghash_ce stmmac_platform
+   sha2_ce sha256_arm64 sha1_ce udc_core stmmac ulpi phy_generic pcs_xpcs
+   usbmisc_imx phylink ptp pps_core i2c_imx fsl_edma virt_dma flexcan
+   can_dev s32g_wdt watchdog sch_fq_codel drm fuse drm_panel_orientation_quirks
+   nfnetlink dmi_sysfs ipv6
+  CPU: 1 UID: 0 PID: 0 Comm: swapper/1 Tainted: G               X   ------  ---  6.12.0-274.el10iv.aarch64 #1 PREEMPT_RT
+  Tainted: [X]=AUX
+  Hardware name: Unknown Unknown Product/Unknown Product, BIOS 2022.04-15.el10_4 04/01/2022
+  pstate: 60000005 (nZCv daif -PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  pc : default_idle_call+0x3c/0x170
+  lr : default_idle_call+0x30/0x170
+  sp : ffff80008011bdd0
+  x29: ffff80008011bdd0 x28: 0000000000000000 x27: 0000000000000000
+  x26: 0000000000000000 x25: 0000000000000000 x24: 0000000000000000
+  x23: 00000000000000c0 x22: ffff0008803ac840 x21: ffff0008803ac840
+  x20: 0000000000000000 x19: 0000000000000000 x18: 0000000000000000
+  x17: 0000000000000000 x16: 0000000000000000 x15: 0000000000000000
+  x14: 003369266b813144 x13: 0000000000000000 x12: 00000000000002eb
+  x11: 00000000000000c0 x10: 00000000000010a0 x9 : ffff800080350ff4
+  x8 : ffff0008803ad940 x7 : 0000000000000000 x6 : 0000000000000000
+  x5 : 0000000000000004 x4 : 0000000000c1c684 x3 : 0000000000000001
+  x2 : ffff0008803ac840 x1 : ffff800081712628 x0 : 0000000000000001
+  Call trace:
+   default_idle_call+0x3c/0x170 (P)
+   cpuidle_idle_call+0x1a8/0x248
+   do_idle+0xa4/0x118
+   cpu_startup_entry+0x3c/0x50
+   secondary_start_kernel+0x124/0x168
+   __secondary_switched+0xc0/0xc8
+  hrtimer: interrupt took 7246 ns
+
+Signed-off-by: Enric Balletbo i Serra <eballetb@redhat.com>
 ---
- include/net/ip.h        | 25 -------------------------
- include/net/ip6_route.h | 37 -------------------------------------
- net/ipv4/route.c        |  4 ++--
- net/ipv6/route.c        |  2 +-
- 4 files changed, 3 insertions(+), 65 deletions(-)
+Enric Balletbo i Serra (3):
+      clocksource/drivers/nxp-stm: Fix max_delta overflow on 64-bit platforms
+      clocksource/drivers/nxp-stm: Fix missed comparator match in set_next_event
+      clocksource/drivers/nxp-stm: Increase min_delta to 20us for PREEMPT_RT
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 618b9806c..0acc4ba5e 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -513,31 +513,6 @@ static inline unsigned int ip_dst_mtu_maybe_forward(const struct dst_entry *dst,
- 	return res;
- }
- 
--/* Configured/administrative MTU of a route, for advertising the TCP MSS.
-- *
-- * Unlike ip_dst_mtu_maybe_forward(), this deliberately ignores the
-- * ICMP-learned path MTU (rt->rt_pmtu).  The advertised MSS bounds what the
-- * peer may send to us and must reflect our receive capability (the device or
-- * route-configured MTU), not a path MTU learned on the reverse (send)
-- * direction, which may not apply to the peer->us path and outlives the fnhe
-- * for the whole connection.  See RFC 2923 section 2.3 and the comment above
-- * tcp_advertise_mss().
-- */
--static inline unsigned int ip_dst_mtu_configured(const struct dst_entry *dst)
--{
--	unsigned int mtu, res;
--
--	rcu_read_lock();
--	mtu = dst_metric_raw(dst, RTAX_MTU);
--	if (!mtu)
--		mtu = READ_ONCE(dst_dev_rcu(dst)->mtu);
--	mtu = min_t(unsigned int, mtu, IP_MAX_MTU);
--	res = mtu - lwtunnel_headroom(dst->lwtstate, mtu);
--	rcu_read_unlock();
--
--	return res;
--}
--
- static inline unsigned int ip_skb_dst_mtu(struct sock *sk,
- 					  const struct sk_buff *skb)
- {
-diff --git a/include/net/ip6_route.h b/include/net/ip6_route.h
-index 5f47cef0b..95f936be3 100644
---- a/include/net/ip6_route.h
-+++ b/include/net/ip6_route.h
-@@ -396,43 +396,6 @@ static inline unsigned int ip6_dst_mtu_maybe_forward(const struct dst_entry *dst
- 	return mtu - lwtunnel_headroom(dst->lwtstate, mtu);
- }
- 
--/* Configured/administrative MTU of a route, for advertising the TCP MSS.
-- *
-- * Unlike ip6_dst_mtu_maybe_forward(), this ignores any ICMPv6-learned path
-- * MTU (which is kept on the RTF_CACHE exception route) and returns the MTU of
-- * the underlying route (fib6_pmtu) or the egress device.  The advertised MSS
-- * bounds what the peer may send to us and must reflect our receive
-- * capability, not a path MTU learned on the reverse (send) direction.  See
-- * RFC 2923 section 2.3 and the comment above tcp_advertise_mss().
-- */
--static inline unsigned int ip6_dst_mtu_configured(const struct dst_entry *dst)
--{
--	const struct rt6_info *rt = dst_rt6_info(dst);
--	const struct fib6_info *from;
--	struct inet6_dev *idev;
--	unsigned int mtu = 0;
--
--	rcu_read_lock();
--	/* IPv6 keeps the learned PMTU and the configured MTU in the same
--	 * RTAX_MTU slot: the learned value sits on this (possibly RTF_CACHE)
--	 * dst, the configured one on the underlying route.  Reach the latter
--	 * via ->from (fib6_pmtu), populated by ip6_route_info_create().
--	 */
--	from = rcu_dereference(rt->from);
--	if (from)
--		mtu = from->fib6_pmtu;
--	if (!mtu) {
--		mtu = IPV6_MIN_MTU;
--		idev = __in6_dev_get(dst_dev_rcu(dst));
--		if (idev)
--			mtu = max_t(unsigned int, mtu, READ_ONCE(idev->cnf.mtu6));
--	}
--	rcu_read_unlock();
--
--	mtu = min_t(unsigned int, mtu, IP6_MAX_MTU);
--	return mtu - lwtunnel_headroom(dst->lwtstate, mtu);
--}
--
- u32 ip6_mtu_from_fib6(const struct fib6_result *res,
- 		      const struct in6_addr *daddr,
- 		      const struct in6_addr *saddr);
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index 595a3b7f1..93b9f4189 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -1365,8 +1365,8 @@ static unsigned int ipv4_default_advmss(const struct dst_entry *dst)
- 
- 	rcu_read_lock();
- 	net = dst_dev_net_rcu(dst);
--	advmss = max_t(unsigned int, ip_dst_mtu_configured(dst) - header_size,
--		       net->ipv4.ip_rt_min_advmss);
-+	advmss = max_t(unsigned int, ipv4_mtu(dst) - header_size,
-+				   net->ipv4.ip_rt_min_advmss);
- 	rcu_read_unlock();
- 
- 	return min(advmss, IPV4_MAX_PMTU - header_size);
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 94e5ef1c4..5760a357e 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -3239,7 +3239,7 @@ void ip6_sk_redirect(struct sk_buff *skb, struct sock *sk)
- 
- static unsigned int ip6_default_advmss(const struct dst_entry *dst)
- {
--	unsigned int mtu = ip6_dst_mtu_configured(dst);
-+	unsigned int mtu = dst6_mtu(dst);
- 	struct net *net;
- 
- 	mtu -= sizeof(struct ipv6hdr) + sizeof(struct tcphdr);
+ drivers/clocksource/timer-nxp-stm.c | 26 +++++++++++---------------
+ 1 file changed, 11 insertions(+), 15 deletions(-)
+---
+base-commit: 734bef548a96e8774d6eef5dfa2026c6edc4e80b
+change-id: 20261023-nxp-stm-fixes-ab0163517e6f
 
+Best regards,
 -- 
-Git-157)
+Enric Balletbo i Serra <eballetb@redhat.com>
 
