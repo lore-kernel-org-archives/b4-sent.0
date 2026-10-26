@@ -1,244 +1,97 @@
-From: Martin Belanger <martin.nvme.dev@gmail.com>
-Date: Mon, 26 Oct 2026 14:09:45 -0400
-Subject: [PATCH 2/2] nvme-tcp: skip TLS control records while waiting for
- the ICResp
+From: Filippo Falezza <effeffe99@gmail.com>
+Date: Mon, 26 Oct 2026 18:19:07 +0000
+Subject: [PATCH] remoteproc: qcom: pas: Print auth error code
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-nvme-tcp-ctrlrec-fixes-v1-2-ebf6ff7eff34@gmail.com>
-References: <20261026-nvme-tcp-ctrlrec-fixes-v1-0-ebf6ff7eff34@gmail.com>
-In-Reply-To: <20261026-nvme-tcp-ctrlrec-fixes-v1-0-ebf6ff7eff34@gmail.com>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Hannes Reinecke <hare@kernel.org>
-Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Martin Belanger <martin.belanger@dell.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793038187; l=6652;
- i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=EUPPHH0ueJSjw1+R4uzRq/kCNtZGOAasE74AcsJ584o=;
- b=bwpHw7IqFCCc9ZtBMGu9z1lfEGPkRKxugyCtKTPF6milVX37AbXIJUiz84mMmr4ySepWEsJFz
- voMx/wG/52hBSp02qhG9UE4E0pbM2l2absO24clNLTl+pOner3a4Dm5
-X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
- pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
-X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
+Message-Id: <20261026-pas-auth-error-v1-1-1569e83358e5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPbuQiBTaVykeYhyb7SHKroogv
+ ntTPczhO8x/kEEFRq/qIMUmJlMu8HVFMYX8ActQTI1rHr6M52Ac1iUxVCdltLF9un7w0YHKaVa
+ Msl/Bd3fb1v6LuPwrdJ4/s+C2enIAAAA=
+X-Change-ID: 20261026-pas-auth-error-e4c490bd1c0e
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Mathieu Poirier <mathieu.poirier@linaro.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Filippo Falezza <effeffe99@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793038746; l=2798;
+ i=effeffe99@gmail.com; s=20261022; h=from:subject:message-id;
+ bh=+UAPMP0mpA/2AP1Feq4iEAd04j9ngTHwcofPyCUE/Rw=;
+ b=/A113p09qt5dybuOuaIFcfMOHoKqEPwur5s2OMpFXC4z7zJipTjl/hbYB7nEIOxAIUAuYW7Yh
+ LamNBz+gD6bAmKVdj1qtMzrew4KsdCHGMtU6w61Kx9mlSpAZyYEyV+u
+X-Developer-Key: i=effeffe99@gmail.com; a=ed25519;
+ pk=7PPwl4QILojrh+ATB5QOpvXVmmoxaxyLQhrLRLWEL0I=
+X-Endpoint-Received: by B4 Relay for effeffe99@gmail.com/20261022 with auth_id=1327
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Martin Belanger <martin.belanger@dell.com>
+When a subsystem fails to start, qcom_pas_start() logs "failed to
+authenticate image and release reset", but drops the error returned by
+qcom_pas_prepare_and_auth_reset(). That code tells the failures apart:
+a negative errno is either a clock, interconnect or SHM bridge failure
+on the Linux side or the SCM call's own status, remapped by
+qcom_scm_call(); a positive value is the status the PIL service
+returned for the request. Without it, finding out which one happened
+means adding a print and rebuilding the kernel.
 
-A peer may send a NewSessionTicket as soon as the handshake completes,
-ahead of the ICResp. nvme_tcp_init_connection() fails the connection on
-any record that is not application data, so such a target cannot be
-reached at all. An OpenSSL-based target does this by default.
+Print the error code, for the DTB image as well as the main one.
 
-Discard such a record and read again, up to a fixed number of records.
-Report an alert, and fail the connection for any other record type.
-
-The record type is now checked before the length. A control record
-shorter than the ICResp was reported as -ECONNRESET, which hid the real
-cause.
-
-Fixes: 2837966ab2a8 ("nvme-tcp: control message handling for recvmsg()")
-Assisted-by: LLM
-Signed-off-by: Martin Belanger <martin.belanger@dell.com>
+Signed-off-by: Filippo Falezza <effeffe99@gmail.com>
 ---
- drivers/nvme/host/tcp.c | 157 +++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 135 insertions(+), 22 deletions(-)
+Hello there,
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index a03476f0f69d..2d361a9e8710 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -55,6 +55,12 @@ MODULE_PARM_DESC(tls_handshake_timeout,
- 		 "nvme TLS handshake timeout in seconds (default 10)");
- #endif
- 
-+/* read a TLS control record in chunks of this size */
-+#define NVME_TCP_TLS_REC_CHUNK 256
-+
-+/* TLS records read while waiting for the ICResp, the ICResp included */
-+#define NVME_TCP_ICRESP_MAX_RECORDS 8
-+
- static int nvme_tcp_cpu_queues[NR_CPUS];
- static DEFINE_SPINLOCK(nvme_tcp_cpu_queues_lock);
- 
-@@ -1548,12 +1554,138 @@ static void nvme_tcp_free_queue(struct nvme_ctrl *nctrl, int qid)
- 	mutex_destroy(&queue->pf_cache_lock);
- }
- 
-+static int nvme_tcp_recv_tls_alert(struct nvme_tcp_queue *queue,
-+				   struct msghdr *msg, int len)
-+{
-+	struct sock *sk = queue->sock->sk;
-+	u8 level, description;
-+
-+	if (len < 2) {
-+		dev_err(queue->ctrl->ctrl.device,
-+			"queue %d: truncated TLS alert\n",
-+			nvme_tcp_queue_id(queue));
-+		return -ENOTCONN;
-+	}
-+
-+	/* tls_alert_recv() reads through the iterator */
-+	iov_iter_revert(&msg->msg_iter, len);
-+	tls_alert_recv(sk, msg, &level, &description);
-+
-+	if (level == TLS_ALERT_LEVEL_FATAL) {
-+		dev_err(queue->ctrl->ctrl.device,
-+			"queue %d: fatal TLS alert %u\n",
-+			nvme_tcp_queue_id(queue), description);
-+		return -ENOTCONN;
-+	}
-+
-+	/* a peer shutting down normally is not worth a warning */
-+	if (description == TLS_ALERT_DESC_CLOSE_NOTIFY)
-+		dev_dbg(queue->ctrl->ctrl.device,
-+			"queue %d: TLS close_notify\n",
-+			nvme_tcp_queue_id(queue));
-+	else
-+		dev_warn(queue->ctrl->ctrl.device,
-+			 "queue %d: TLS alert %u\n",
-+			 nvme_tcp_queue_id(queue), description);
-+
-+	return 0;
-+}
-+
-+/*
-+ * Discard a TLS record that arrived in place of the ICResp. A peer may send
-+ * a NewSessionTicket as soon as the handshake completes.
-+ *
-+ * Returns 0 when the record was discarded and the ICResp can be read, or a
-+ * negative errno if the connection cannot continue.
-+ */
-+static int nvme_tcp_skip_tls_record(struct nvme_tcp_queue *queue,
-+				    struct msghdr *msg, u8 ctype, int len)
-+{
-+	u8 buf[NVME_TCP_TLS_REC_CHUNK];
-+	int ret;
-+
-+	switch (ctype) {
-+	case TLS_RECORD_TYPE_HANDSHAKE:
-+		break;
-+	case TLS_RECORD_TYPE_ALERT:
-+		ret = nvme_tcp_recv_tls_alert(queue, msg, len);
-+		return ret ? : -ENOTCONN;
-+	default:
-+		pr_err("queue %d: unhandled TLS record %u\n",
-+		       nvme_tcp_queue_id(queue), ctype);
-+		return -ENOTCONN;
-+	}
-+
-+	/* the ICResp is in a later record, drain this one first */
-+	while (!(msg->msg_flags & MSG_EOR)) {
-+		struct kvec iov = {
-+			.iov_base = buf,
-+			.iov_len = sizeof(buf),
-+		};
-+		struct msghdr drain = {};
-+
-+		ret = kernel_recvmsg(queue->sock, &drain, &iov, 1, sizeof(buf),
-+				     0);
-+		if (ret <= 0) {
-+			pr_warn("queue %d: failed to drain TLS record: %d\n",
-+				nvme_tcp_queue_id(queue), ret);
-+			return ret ? : -ECONNRESET;
-+		}
-+		msg->msg_flags = drain.msg_flags;
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-+ * Receive the ICResp. Over TLS, skip the records that a peer may send
-+ * ahead of it.
-+ *
-+ * Returns the length received, or a negative errno.
-+ */
-+static int nvme_tcp_recv_icresp(struct nvme_tcp_queue *queue,
-+				struct nvme_tcp_icresp_pdu *icresp)
-+{
-+	char cbuf[CMSG_LEN(sizeof(char))];
-+	struct msghdr msg;
-+	struct kvec iov;
-+	u8 ctype;
-+	int i, ret;
-+
-+	for (i = 0; i < NVME_TCP_ICRESP_MAX_RECORDS; i++) {
-+		memset(&msg, 0, sizeof(msg));
-+		memset(cbuf, 0, sizeof(cbuf));
-+		iov.iov_base = icresp;
-+		iov.iov_len = sizeof(*icresp);
-+		if (nvme_tcp_queue_tls(queue)) {
-+			msg.msg_control = cbuf;
-+			msg.msg_controllen = sizeof(cbuf);
-+		}
-+		msg.msg_flags = MSG_WAITALL;
-+		ret = kernel_recvmsg(queue->sock, &msg, &iov, 1,
-+				     iov.iov_len, msg.msg_flags);
-+		if (ret < 0 || !nvme_tcp_queue_tls(queue))
-+			return ret;
-+
-+		ctype = tls_get_record_type(queue->sock->sk,
-+					    (struct cmsghdr *)cbuf);
-+		if (ctype == TLS_RECORD_TYPE_DATA)
-+			return ret;
-+
-+		ret = nvme_tcp_skip_tls_record(queue, &msg, ctype, ret);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	pr_err("queue %d: too many TLS records before the ICResp\n",
-+	       nvme_tcp_queue_id(queue));
-+	return -EPROTO;
-+}
-+
- static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
- {
- 	struct nvme_tcp_icreq_pdu *icreq;
- 	struct nvme_tcp_icresp_pdu *icresp;
--	char cbuf[CMSG_LEN(sizeof(char))] = {};
--	u8 ctype;
- 	struct msghdr msg = {};
- 	struct kvec iov;
- 	bool ctrl_hdgst, ctrl_ddgst;
-@@ -1591,16 +1723,7 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
- 		goto free_icresp;
+this is a small one: when a remote processor fails to authenticate,
+qcom_pas_start() says so but drops the error code, and that code is
+what tells a TrustZone refusal apart from a problem on the Linux side.
+The patch adds it to both messages, the main image and the DTB one.
+
+I ran into this bringing up the Motorola Moto G 5G Plus (nairo,
+SM7250), where the compute DSP will not start. With the patch it
+reports "failed to authenticate image and release reset: -22", which
+pointed at TrustZone refusing the call rather than at the image. The
+ADSP and the modem still start as before. I could not test the DTB
+path, as SM7250 has no DTB images.
+
+It builds without warnings with W=1 (arm64 defconfig), checkpatch
+--strict is clean, and it applies to rproc-next (82d0bbd67c42). The
+change and the changelog were written with Claude Opus 5.5 in Claude
+Code during that bring-up; I tested it on the phone and reviewed it
+before sending.
+
+Thanks,
+Filippo
+---
+ drivers/remoteproc/qcom_q6v5_pas.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/remoteproc/qcom_q6v5_pas.c b/drivers/remoteproc/qcom_q6v5_pas.c
+index abc59c0c29f0..ea3eb8e293c2 100644
+--- a/drivers/remoteproc/qcom_q6v5_pas.c
++++ b/drivers/remoteproc/qcom_q6v5_pas.c
+@@ -346,7 +346,8 @@ static int qcom_pas_start(struct rproc *rproc)
+ 		ret = qcom_pas_prepare_and_auth_reset(pas->dtb_pas_ctx);
+ 		if (ret) {
+ 			dev_err(pas->dev,
+-				"failed to authenticate dtb image and release reset\n");
++				"failed to authenticate dtb image and release reset: %d\n",
++				ret);
+ 			goto unmap_dtb_carveout;
+ 		}
+ 	}
+@@ -365,7 +366,7 @@ static int qcom_pas_start(struct rproc *rproc)
+ 	ret = qcom_pas_prepare_and_auth_reset(pas->pas_ctx);
+ 	if (ret) {
+ 		dev_err(pas->dev,
+-			"failed to authenticate image and release reset\n");
++			"failed to authenticate image and release reset: %d\n", ret);
+ 		goto unmap_carveout;
  	}
  
--	memset(&msg, 0, sizeof(msg));
--	iov.iov_base = icresp;
--	iov.iov_len = sizeof(*icresp);
--	if (nvme_tcp_queue_tls(queue)) {
--		msg.msg_control = cbuf;
--		msg.msg_controllen = sizeof(cbuf);
--	}
--	msg.msg_flags = MSG_WAITALL;
--	ret = kernel_recvmsg(queue->sock, &msg, &iov, 1,
--			iov.iov_len, msg.msg_flags);
-+	ret = nvme_tcp_recv_icresp(queue, icresp);
- 	if (ret >= 0 && ret < sizeof(*icresp))
- 		ret = -ECONNRESET;
- 	if (ret < 0) {
-@@ -1608,16 +1731,6 @@ static int nvme_tcp_init_connection(struct nvme_tcp_queue *queue)
- 			nvme_tcp_queue_id(queue), ret);
- 		goto free_icresp;
- 	}
--	ret = -ENOTCONN;
--	if (nvme_tcp_queue_tls(queue)) {
--		ctype = tls_get_record_type(queue->sock->sk,
--					    (struct cmsghdr *)cbuf);
--		if (ctype != TLS_RECORD_TYPE_DATA) {
--			pr_err("queue %d: unhandled TLS record %d\n",
--			       nvme_tcp_queue_id(queue), ctype);
--			goto free_icresp;
--		}
--	}
- 	ret = -EINVAL;
- 	if (icresp->hdr.type != nvme_tcp_icresp) {
- 		pr_err("queue %d: bad type returned %d\n",
 
--- 
-2.53.0
+---
+base-commit: 82d0bbd67c42a44f0e18b0b7b0da0f3ace0c9527
+change-id: 20261026-pas-auth-error-e4c490bd1c0e
+
+Best regards,
+--  
+Filippo Falezza <effeffe99@gmail.com>
 
