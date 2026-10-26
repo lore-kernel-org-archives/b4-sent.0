@@ -1,520 +1,346 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Mon, 26 Oct 2026 08:54:10 -0300
-Subject: [PATCH v4 6/6] iio: test: add kunit tests for channel info writes
+From: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Date: Mon, 26 Oct 2026 09:30:00 -0400
+Subject: [PATCH net v2] ice: fix Tx hang dump using stale tx_buf[0].skb
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-e-notation-v4-6-a366a6d14d57@analog.com>
-References: <20261026-e-notation-v4-0-a366a6d14d57@analog.com>
-In-Reply-To: <20261026-e-notation-v4-0-a366a6d14d57@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+Message-Id: <20261026-ice-tx-hang-dump-v2-1-e2136ef2c5dc@hydroquebec.com>
+X-B4-Tracking: v=1; b=H4sIANdV32oC/3WNwQ6CMBBEf4Xs2TW0QBVO/ofhAO0iawLFthAI4
+ d8FPHucmTczK3hyTB6KaAVHE3u2/S7kJQLdVv2LkM2uQcZSiVgoZE0YZjwyNGM3IKWqTsmk98Q
+ o2GuDo4bnc/IJPQUof6Yf6zfpcIwdWMs+WLecx5M44f8fk0CBiWniJstveZWJR7sYZz8j1aSv2
+ nZQbtv2BSpF3KnNAAAA
+X-Change-ID: 20261016-ice-tx-hang-dump-e46b4ed483d6
+To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
+ Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
+ intel-wired-lan@lists.osuosl.org
+Cc: Aleksandr Loktionov <aleksandr.loktionov@intel.com>, 
+ Michal Kubiak <michal.kubiak@intel.com>, 
+ Wojciech Drewek <wojciech.drewek@intel.com>, 
+ Mateusz Polchlopek <mateusz.polchlopek@intel.com>, 
+ Paul Menzel <pmenzel@molgen.mpg.de>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ Vincent Choiniere <choiniere.vincent@hydroquebec.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793015661; l=18369;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=jqamOYiU6p7XWpsfsH6Bbe1F/sTMFMRa+igRPrkh/qc=;
- b=s5pvuoNgc39PdsCa20b20lnaWTog8iCFaovwZ3BOmE3eWAfdGjbh7ScUhM9P2JFEE7qoA/kKu
- lRXN67auPaDBmMLF00noOnonTblL65/JrJ+q62mSgmRhFlGHRI0tHZy
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793021400; l=12328;
+ i=choiniere.vincent@hydroquebec.com; s=20261016; h=from:subject:message-id;
+ bh=I7GEHSOCewXkNOi9K97E16dk0vuMi2DEXOuTLKY6QgQ=;
+ b=5DIjrp3LvUGrWXTnHDk10SqGvffs7ztbkvNi/EHheO70a/aSX2gabthGubzjoyT2XTYVDvK0A
+ 5quIkv6iadMC2lqQ97SyIDiInQbqC6sZ3NfuowgnlUDDbh60oVuBEXX
+X-Developer-Key: i=choiniere.vincent@hydroquebec.com; a=ed25519;
+ pk=MctQE067DucsZOaNqb+sjY7aQ+urhztuURanagEW3+8=
+X-Endpoint-Received: by B4 Relay for choiniere.vincent@hydroquebec.com/20261016 with auth_id=1210
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a KUnit test suite covering iio_write_channel_info(), the sysfs
-store handler that parses a channel info value according to the format
-reported by write_raw_get_fmt() and hands it to write_raw(). The
-function is made visible to KUnit through VISIBLE_IF_KUNIT and
-EXPORT_SYMBOL_IF_KUNIT, so it stays static in regular builds.
+ice_tx_hang_reporter_dump() always reads tx_ring->tx_buf[0].skb,
+regardless of next_to_clean. The Tx cleanup path frees the skb and
+marks the buffer empty without clearing the skb pointer, so slot 0 can
+hold a stale pointer. A NULL check alone does not cover this, and
+devlink_fmsg_dump_skb() can fault on the freed skb.
 
-The suite uses an unregistered iio_dev allocated on a KUnit device,
-with stub write_raw_get_fmt() and write_raw() callbacks that select
-the format under test and capture the parsed values. Cases are grouped
-by format:
+Using tx_buf[next_to_clean] alone does not fix the lifetime issues.
+The dump runs from the service task without synchronization with Tx
+cleanup or ring replacement:
 
-  - IIO_VAL_INT: decimal, hex and octal input, decimal fallback with
-    rounding and E notation, and 32-bit range checks.
-  - IIO_VAL_INT_PLUS_MICRO / IIO_VAL_INT_PLUS_NANO: sign handling,
-    rounding of extra digits (ties to even), E notation and malformed
-    input.
-  - IIO_VAL_INT_PLUS_MICRO_DB: optional "dB" / " dB" suffix.
-  - IIO_VAL_CHAR: single character input.
-  - IIO_VAL_INT_64 and IIO_VAL_DECIMAL64_*: 64-bit values split into
-    val/val2, including the S64_MAX / S64_MIN boundaries.
+- ice_clean_tx_irq() can free the skb at next_to_clean while the
+  report is being prepared. It calls napi_consume_skb() before
+  marking the buffer empty.
+- The ring saved by ice_tx_timeout() can be replaced or freed before
+  the service task runs. ethtool -G replaces the ring contents and
+  frees tx_buf and desc, while ethtool -L can free whole rings.
 
-Further cases cover unsupported formats, the default micro precision
-used when write_raw_get_fmt() is absent, a missing write_raw(), and
-error propagation from write_raw().
+Record the queue index, next_to_clean and next_to_use at timeout time.
+Before reporting, take RTNL and check that the saved ring is still
+one of the PF VSI Tx rings and that the VSI is up. Copy the
+descriptors and IRQ name while the ring storage is protected against
+replacement. If the ring cannot be used or the copy cannot be made,
+report only the values recorded at timeout time.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Tx cleanup can still run while the ring state is copied, so do not
+dereference the skb. Retain only its pointer value in the dump and
+remove the skb contents.
+
+Release RTNL before calling devlink_health_report(), which takes the
+devlink instance lock. Build the dump from the copied data and free
+the descriptor copy after reporting.
+
+Observed on an E810 PF passed through to a KVM guest with Ubuntu
+kernel 7.0.0-14 (PREEMPT_RT and a local scheduler patch): a delayed
+queue IRQ led to a Tx timeout and a page fault in
+devlink_fmsg_dump_skb():
+
+ BUG: unable to handle page fault for address: 0000000004cd0c11
+ Workqueue: ice ice_service_task [ice]
+ RIP: devlink_fmsg_dump_skb+0x2d8/0x5d0
+ Call Trace:
+  ice_tx_hang_reporter_dump+0x1ce/0x210 [ice]
+  devlink_health_do_dump+0xcc/0x190
+  devlink_health_report+0x1d7/0x260
+  ice_report_tx_hang+0x7d/0xa0 [ice]
+
+Fixes: 2a82874a3b7b ("ice: add Tx hang devlink health reporter")
+Link: https://lore.kernel.org/all/20260327072332.130320-1-aleksandr.loktionov@intel.com/
+Cc: stable@vger.kernel.org
+Signed-off-by: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
 ---
- MAINTAINERS                               |   1 +
- drivers/iio/iio_core.h                    |   3 +
- drivers/iio/industrialio-core.c           |   9 +-
- drivers/iio/test/Kconfig                  |  14 ++
- drivers/iio/test/Makefile                 |   1 +
- drivers/iio/test/iio-test-channel-write.c | 360 ++++++++++++++++++++++++++++++
- 6 files changed, 384 insertions(+), 4 deletions(-)
+Changes in v2:
+- Validate the saved ring under RTNL before dereferencing it from
+  the service task, and restrict snapshots to the PF VSI while it
+  is up (Sashiko).
+- Check next_to_clean against count before indexing tx_buf, and
+  copy the descriptors and IRQ name while ring replacement is
+  excluded (Sashiko).
+- Stop dereferencing the skb and remove its contents from the dump.
+  Keep only its pointer value (Sashiko).
+- Release RTNL before reporting to preserve the devlink instance
+  lock ordering.
+- Record the queue index and ring indices at timeout time as a
+  fallback when a snapshot cannot be made.
+- Drop Paul's Reviewed-by because the patch changed substantially.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 52024397dc78..ef8b912f593b 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -12758,6 +12758,7 @@ M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
- L:	linux-iio@vger.kernel.org
- S:	Maintained
- F:	drivers/iio/test/iio-test-channel-prefix.c
-+F:	drivers/iio/test/iio-test-channel-write.c
- F:	drivers/iio/test/iio-test-format.c
+v1:
+https://lore.kernel.org/netdev/20261016-ice-tx-hang-dump-v1-1-3df0f5979a51@hydroquebec.com/
+
+Testing:
+- Built ice.ko with x86_64 defconfig, CONFIG_ICE=m, GCC 12.2 and W=1.
+  Ran sparse with C=2 (sparse git c464045). Neither reported warnings
+  in the changed files.
+- checkpatch --strict reported only an unknown Fixes commit because
+  the local tree is a shallow clone.
+- Runtime testing used an E810 PF passed through to a KVM guest with
+  Ubuntu kernel 7.0.0-38 (PREEMPT_RT), KASAN, PROVE_LOCKING and
+  DEBUG_ATOMIC_SLEEP.
+- Forced Tx timeouts by starving one queue's IRQ thread. The watchdog
+  fired after five seconds, the PF recovered, and the dump retained
+  the v1 fields except for the skb contents.
+- Used a test-only kernel patch to insert configurable delays before
+  ice_report_tx_hang() or the dump callback. Racing ethtool commands
+  were started when the instrumentation logged the delay.
+- With v1 and the same instrumentation, shrinking the ring with
+  ethtool -G tx 64 while next_to_clean was above 64 triggered a KASAN
+  slab-out-of-bounds report. This was also reproduced on a non-RT
+  kernel built from net. Racing ethtool -L combined 1 triggered a
+  use-after-free followed by a general protection fault.
+- With v2, ran 168 forced Tx timeouts, including 149 with concurrent
+  ethtool -G (tx 64, 128 or 512) or ethtool -L combined 1, before and
+  after the ring state was copied. No KASAN, lockdep or
+  sleeping-in-atomic reports were observed. When the saved ring was
+  no longer present, the dump contained only the timeout-time values.
+
+Limitations:
+- The same stress testing was not completed on a non-RT kernel,
+  where Tx timeouts could not be forced reliably.
+- Subfunction VSIs and XDP were not tested. Subfunction VSI rings
+  are excluded from the snapshot because ice_sf_dev_remove() frees
+  them without RTNL.
+- This patch does not synchronize publication and consumption of
+  tx_hang_buf between ice_tx_timeout() and the service task. A newer
+  timeout may still be dropped or its fields mixed with an older
+  event.
+
+The original devlink_fmsg_dump_skb() crash was reproduced on Ubuntu
+kernel 7.0.0-14 with PREEMPT_RT and a local scheduler patch. The
+additional race reproductions above used test-only instrumentation.
+The affected reporter code is also present in upstream net at
+191aa4154.
+---
+ drivers/net/ethernet/intel/ice/devlink/health.c | 117 ++++++++++++++++++++----
+ drivers/net/ethernet/intel/ice/devlink/health.h |   6 ++
+ 2 files changed, 107 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/net/ethernet/intel/ice/devlink/health.c b/drivers/net/ethernet/intel/ice/devlink/health.c
+index 8e9a8a817..b9493ab47 100644
+--- a/drivers/net/ethernet/intel/ice/devlink/health.c
++++ b/drivers/net/ethernet/intel/ice/devlink/health.c
+@@ -382,7 +382,13 @@ struct ice_tx_hang_event {
+ 	u16 queue;
+ 	u16 next_to_clean;
+ 	u16 next_to_use;
+-	struct ice_tx_ring *tx_ring;
++	/* the fields below are only valid if @desc is set */
++	char irq_name[ICE_INT_NAME_STR_LEN];
++	void *desc_ptr;
++	dma_addr_t dma;
++	void *desc;
++	u32 desc_size;
++	void *skb_ptr;	/* pointer value only, never dereferenced */
+ };
  
- IIO UNIT CONVERTER
-diff --git a/drivers/iio/iio_core.h b/drivers/iio/iio_core.h
-index 59fa1bd9924b..08f0cc28ad8c 100644
---- a/drivers/iio/iio_core.h
-+++ b/drivers/iio/iio_core.h
-@@ -114,6 +114,9 @@ ssize_t __iio_chan_prefix_emit(struct device *dev,
- 			       const struct iio_chan_spec *chan,
- 			       enum iio_shared_by shared_by,
- 			       char *buf, size_t len);
-+ssize_t iio_write_channel_info(struct device *dev,
-+			       struct device_attribute *attr,
-+			       const char *buf, size_t len);
- #endif
- 
- #endif
-diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index 3f5190ddddef..1e74816ae14a 100644
---- a/drivers/iio/industrialio-core.c
-+++ b/drivers/iio/industrialio-core.c
-@@ -1096,10 +1096,10 @@ static int iio_str_to_fixpoint_units(const char *str, const char *units,
- 	return iio_str_to_fixpoint(dec_str, fract_mult, integer, fract);
- }
- 
--static ssize_t iio_write_channel_info(struct device *dev,
--				      struct device_attribute *attr,
--				      const char *buf,
--				      size_t len)
-+VISIBLE_IF_KUNIT
-+ssize_t iio_write_channel_info(struct device *dev,
-+			       struct device_attribute *attr,
-+			       const char *buf, size_t len)
+ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
+@@ -390,12 +396,10 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
+ 				     struct netlink_ext_ack *extack)
  {
- 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
- 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
-@@ -1183,6 +1183,7 @@ static ssize_t iio_write_channel_info(struct device *dev,
+ 	struct ice_tx_hang_event *event = priv_ctx;
+-	struct sk_buff *skb;
  
- 	return len;
- }
-+EXPORT_SYMBOL_IF_KUNIT(iio_write_channel_info);
+ 	if (!event)
+ 		return 0;
  
- static
- int __iio_device_attr_init(struct device *dev,
-diff --git a/drivers/iio/test/Kconfig b/drivers/iio/test/Kconfig
-index 04930b4fdd5d..af75c032a330 100644
---- a/drivers/iio/test/Kconfig
-+++ b/drivers/iio/test/Kconfig
-@@ -17,6 +17,20 @@ config IIO_CHANNEL_PREFIX_KUNIT_TEST
+-	skb = event->tx_ring->tx_buf->skb;
+ 	devlink_fmsg_obj_nest_start(fmsg);
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, head);
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, intr);
+@@ -403,13 +407,14 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, queue);
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, next_to_clean);
+ 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, next_to_use);
+-	devlink_fmsg_put(fmsg, "irq-mapping", event->tx_ring->q_vector->name);
+-	ice_fmsg_put_ptr(fmsg, "desc-ptr", event->tx_ring->desc);
+-	ice_fmsg_put_ptr(fmsg, "dma-ptr", (void *)(long)event->tx_ring->dma);
+-	ice_fmsg_put_ptr(fmsg, "skb-ptr", skb);
+-	devlink_fmsg_binary_pair_put(fmsg, "desc", event->tx_ring->desc,
+-				     event->tx_ring->count * sizeof(struct ice_tx_desc));
+-	devlink_fmsg_dump_skb(fmsg, skb);
++	if (event->desc) {
++		devlink_fmsg_put(fmsg, "irq-mapping", event->irq_name);
++		ice_fmsg_put_ptr(fmsg, "desc-ptr", event->desc_ptr);
++		ice_fmsg_put_ptr(fmsg, "dma-ptr", (void *)(long)event->dma);
++		ice_fmsg_put_ptr(fmsg, "skb-ptr", event->skb_ptr);
++		devlink_fmsg_binary_pair_put(fmsg, "desc", event->desc,
++					     event->desc_size);
++	}
+ 	devlink_fmsg_obj_nest_end(fmsg);
  
- 	  If unsure, say N.
- 
-+config IIO_CHANNEL_WRITE_KUNIT_TEST
-+	tristate "Test IIO channel info write" if !KUNIT_ALL_TESTS
-+	depends on KUNIT && IIO
-+	default KUNIT_ALL_TESTS
-+	help
-+	  Build unit tests for iio_write_channel_info(), the sysfs store
-+	  handler that parses channel info values according to the format
-+	  reported by write_raw_get_fmt() and passes them to write_raw().
+ 	return 0;
+@@ -424,24 +429,104 @@ void ice_prep_tx_hang_report(struct ice_pf *pf, struct ice_tx_ring *tx_ring,
+ 	buf->vsi_num = vsi_num;
+ 	buf->head = head;
+ 	buf->intr = intr;
++	buf->queue = tx_ring->q_index;
++	buf->next_to_clean = tx_ring->next_to_clean;
++	buf->next_to_use = tx_ring->next_to_use;
++}
 +
-+	  For more information on KUnit and unit tests in general, please refer
-+	  to the KUnit documentation in Documentation/dev-tools/kunit/.
-+
-+	  If unsure, say N.
-+
- config IIO_GTS_KUNIT_TEST
- 	tristate "Test IIO gain-time-scale helpers" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-diff --git a/drivers/iio/test/Makefile b/drivers/iio/test/Makefile
-index ba08afa7f3f2..bcaf82ffd9c1 100644
---- a/drivers/iio/test/Makefile
-+++ b/drivers/iio/test/Makefile
-@@ -5,6 +5,7 @@
- 
- # Keep in alphabetical order
- obj-$(CONFIG_IIO_CHANNEL_PREFIX_KUNIT_TEST) += iio-test-channel-prefix.o
-+obj-$(CONFIG_IIO_CHANNEL_WRITE_KUNIT_TEST) += iio-test-channel-write.o
- obj-$(CONFIG_IIO_RESCALE_KUNIT_TEST) += iio-test-rescale.o
- obj-$(CONFIG_IIO_FORMAT_KUNIT_TEST) += iio-test-format.o
- obj-$(CONFIG_IIO_GTS_KUNIT_TEST) += iio-test-gts.o
-diff --git a/drivers/iio/test/iio-test-channel-write.c b/drivers/iio/test/iio-test-channel-write.c
-new file mode 100644
-index 000000000000..9205a5674d0e
---- /dev/null
-+++ b/drivers/iio/test/iio-test-channel-write.c
-@@ -0,0 +1,360 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Unit tests for IIO channel info writes.
++/**
++ * ice_tx_hang_snapshot - copy the hung Tx ring state for the dump
++ * @pf: PF on which the Tx hang was detected
++ * @tx_ring: ring saved by ice_tx_timeout(), possibly stale
++ * @ev: event to fill in
++ *
++ * The saved ring may have been freed or replaced since the timeout (e.g. by
++ * ethtool -G or -L). Use it only if it is still one of the PF VSI Tx rings
++ * and the VSI is up: those rings are only replaced or freed under RTNL or
++ * from the service task, so with RTNL held every access below is to live
++ * memory. ice_clean_tx_irq() may still run and free the skb at
++ * next_to_clean at any time, so only the pointer value is recorded and the
++ * skb itself is never dereferenced.
 + */
-+
-+#include <kunit/device.h>
-+#include <kunit/test.h>
-+#include <kunit/visibility.h>
-+
-+#include <linux/iio/iio.h>
-+#include <linux/iio/sysfs.h>
-+#include <linux/iio/types.h>
-+#include <linux/string.h>
-+
-+#include "../iio_core.h"
-+
-+#define IIO_TEST_UNSUPPORTED_FMT	IIO_VAL_FRACTIONAL
-+
-+struct iio_test_write_priv {
-+	int fmt;
-+	int ret;
-+	int val;
-+	int val2;
-+	bool called;
-+};
-+
-+struct iio_test_write_ctx {
-+	struct iio_dev *indio_dev;
-+	struct iio_dev_attr attr;
-+};
-+
-+static int iio_test_write_raw_get_fmt(struct iio_dev *indio_dev,
-+				      struct iio_chan_spec const *chan,
-+				      long mask)
++static void ice_tx_hang_snapshot(struct ice_pf *pf, struct ice_tx_ring *tx_ring,
++				 struct ice_tx_hang_event *ev)
 +{
-+	struct iio_test_write_priv *priv = iio_priv(indio_dev);
++	struct ice_vsi *vsi = ice_get_main_vsi(pf);
++	struct ice_q_vector *q_vector;
++	struct ice_tx_buf *tx_buf;
++	unsigned int i;
++	u16 ntc, ntu;
++	void *desc;
++	u32 size;
 +
-+	return priv->fmt;
-+}
++	ASSERT_RTNL();
 +
-+static int iio_test_write_raw(struct iio_dev *indio_dev,
-+			      struct iio_chan_spec const *chan,
-+			      int val, int val2, long mask)
-+{
-+	struct iio_test_write_priv *priv = iio_priv(indio_dev);
++	if (!tx_ring || !vsi || !vsi->tx_rings ||
++	    test_bit(ICE_VSI_DOWN, vsi->state))
++		return;
 +
-+	priv->val = val;
-+	priv->val2 = val2;
-+	priv->called = true;
++	ice_for_each_txq(vsi, i)
++		if (vsi->tx_rings[i] == tx_ring)
++			break;
++	if (i == vsi->num_txq)
++		return;
 +
-+	return priv->ret;
-+}
++	q_vector = tx_ring->q_vector;
++	if (!q_vector || !tx_ring->desc || !tx_ring->tx_buf || !tx_ring->count)
++		return;
 +
-+static const struct iio_info iio_test_write_info = {
-+	.write_raw = iio_test_write_raw,
-+	.write_raw_get_fmt = iio_test_write_raw_get_fmt,
-+};
++	size = tx_ring->count * sizeof(struct ice_tx_desc);
++	desc = kvmalloc(size, GFP_KERNEL);
++	if (!desc)
++		return;
 +
-+static const struct iio_info iio_test_write_info_no_fmt = {
-+	.write_raw = iio_test_write_raw,
-+};
++	ntc = READ_ONCE(tx_ring->next_to_clean);
++	ntu = READ_ONCE(tx_ring->next_to_use);
 +
-+static const struct iio_info iio_test_write_info_no_write = {
-+};
++	if (ntc < tx_ring->count) {
++		tx_buf = &tx_ring->tx_buf[ntc];
++		if (tx_buf->type == ICE_TX_BUF_SKB)
++			ev->skb_ptr = READ_ONCE(tx_buf->skb);
 +
-+static const struct iio_chan_spec iio_test_write_chan = {
-+	.type = IIO_VOLTAGE,
-+	.indexed = 1,
-+	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),
-+};
++		memcpy(desc, tx_ring->desc, size);
++		ev->next_to_clean = ntc;
++		ev->next_to_use = ntu;
++		strscpy(ev->irq_name, q_vector->name);
++		ev->desc_ptr = tx_ring->desc;
++		ev->dma = tx_ring->dma;
++		ev->desc_size = size;
++		ev->desc = desc;
++	}
 +
-+static int iio_test_write_init(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx;
-+	struct device *dev;
++	if (!ev->desc)
++		kvfree(desc);
+ }
+ 
+ void ice_report_tx_hang(struct ice_pf *pf)
+ {
+ 	struct ice_health_tx_hang_buf *buf = &pf->health_reporters.tx_hang_buf;
+-	struct ice_tx_ring *tx_ring = buf->tx_ring;
+-
+ 	struct ice_tx_hang_event ev = {
+ 		.head = buf->head,
+ 		.intr = buf->intr,
+ 		.vsi_num = buf->vsi_num,
+-		.queue = tx_ring->q_index,
+-		.next_to_clean = tx_ring->next_to_clean,
+-		.next_to_use = tx_ring->next_to_use,
+-		.tx_ring = tx_ring,
++		.queue = buf->queue,
++		.next_to_clean = buf->next_to_clean,
++		.next_to_use = buf->next_to_use,
+ 	};
+ 
++	if (!pf->health_reporters.tx_hang)
++		return;
 +
-+	ctx = kunit_kzalloc(test, sizeof(*ctx), GFP_KERNEL);
-+	KUNIT_ASSERT_NOT_NULL(test, ctx);
++	rtnl_lock();
++	ice_tx_hang_snapshot(pf, buf->tx_ring, &ev);
++	rtnl_unlock();
 +
-+	dev = kunit_device_register(test, "iio-test-channel-write");
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, dev);
++	/* devlink_health_report() takes the devlink instance lock, which nests
++	 * outside RTNL, so only report once RTNL has been released.
++	 */
+ 	ice_devlink_health_report(pf->health_reporters.tx_hang, "Tx hang", &ev);
 +
-+	ctx->indio_dev = devm_iio_device_alloc(dev,
-+					       sizeof(struct iio_test_write_priv));
-+	KUNIT_ASSERT_NOT_NULL(test, ctx->indio_dev);
-+	ctx->indio_dev->info = &iio_test_write_info;
-+
-+	ctx->attr.c = &iio_test_write_chan;
-+	ctx->attr.address = IIO_CHAN_INFO_SCALE;
-+
-+	test->priv = ctx;
-+
-+	return 0;
-+}
-+
-+static struct iio_test_write_priv *iio_test_write_priv(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+
-+	return iio_priv(ctx->indio_dev);
-+}
-+
-+static ssize_t iio_test_write(struct kunit *test, int fmt, const char *str)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+	struct iio_test_write_priv *priv = iio_priv(ctx->indio_dev);
-+
-+	priv->fmt = fmt;
-+	priv->called = false;
-+	priv->val = 0xdead;
-+	priv->val2 = 0xbeef;
-+
-+	return iio_write_channel_info(&ctx->indio_dev->dev, &ctx->attr.dev_attr,
-+				      str, strlen(str));
-+}
-+
-+#define EXPECT_WRITE(_test, _fmt, _str, _val, _val2) do {			\
-+		struct kunit *__test = (_test);					\
-+		struct iio_test_write_priv *__priv;				\
-+		const char *__str = (_str);					\
-+		ssize_t __len = strlen(__str);					\
-+		ssize_t __ret;							\
-+										\
-+		__ret = iio_test_write(__test, (_fmt), __str);			\
-+		__priv = iio_test_write_priv(__test);				\
-+		KUNIT_EXPECT_EQ_MSG(__test, __ret, __len,			\
-+				    "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_TRUE_MSG(__test, __priv->called,			\
-+				      "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_EQ_MSG(__test, __priv->val, (_val),		\
-+				    "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_EQ_MSG(__test, __priv->val2, (_val2),		\
-+				    "input: \"%s\"", __str);			\
-+	} while (0)
-+
-+#define EXPECT_WRITE_S64(_test, _fmt, _str, _expected) do {			\
-+		s32 __lo, __hi;							\
-+										\
-+		iio_val_s64_decompose((_expected), &__lo, &__hi);		\
-+		EXPECT_WRITE(_test, _fmt, _str, __lo, __hi);			\
-+	} while (0)
-+
-+#define EXPECT_WRITE_ERR(_test, _fmt, _str, _err) do {				\
-+		struct kunit *__test = (_test);					\
-+		const char *__str = (_str);					\
-+		ssize_t __ret;							\
-+										\
-+		__ret = iio_test_write(__test, (_fmt), __str);			\
-+		KUNIT_EXPECT_EQ_MSG(__test, __ret, (ssize_t)(_err),		\
-+				    "input: \"%s\"", __str);			\
-+		KUNIT_EXPECT_FALSE_MSG(__test,					\
-+				       iio_test_write_priv(__test)->called,	\
-+				       "input: \"%s\"", __str);			\
-+	} while (0)
-+
-+static void iio_test_write_int(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT, "0", 0, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "42\n", 42, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "-7", -7, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "+7", 7, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "2147483647", INT_MAX, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "-2147483648", INT_MIN, 0);
-+
-+	/* hex and octal are still accepted for integers */
-+	EXPECT_WRITE(test, IIO_VAL_INT, "0x10", 16, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "010", 8, 0);
-+
-+	/* decimal fallback: fractional digits are rounded, ties to even */
-+	EXPECT_WRITE(test, IIO_VAL_INT, "1.9", 2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "-1.9", -2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "1e3", 1000, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "15e-1", 2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT, "25e-1", 2, 0);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "2147483648", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "-2147483649", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "abc", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "12abc", -EINVAL);
-+}
-+
-+static void iio_test_write_int_plus_micro(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0", 0, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1.5\n", 1, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-1.5", -1, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-0.5", 0, -500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, ".25", 0, 250000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "3.", 3, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.000001", 0, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-0.000001", 0, -1);
-+
-+	/* digits beyond the precision are rounded, ties to even */
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1.2345678", 1, 234568);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.0000009", 0, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.0000005", 0, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.0000015", 0, 2);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-0.0000015", 0, -2);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "0.9999995", 1, 0);
-+
-+	/* E notation */
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1.5e3", 1500, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "1e-3", 0, 1000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO, "-25E-1\n", -2, 500000);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "2147483648", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, ".", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "1.5x", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "1.2.3", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO, "0x10", -EINVAL);
-+}
-+
-+static void iio_test_write_int_plus_nano(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "1.5", 1, 500000000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "0.000000001", 0, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "-0.000000001", 0, -1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "-2.000000001", -2, 1);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "1.0000000019", 1, 2);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_NANO, "25e-10", 0, 2);
-+}
-+
-+static void iio_test_write_int_plus_micro_db(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "-3.5 dB\n", -3, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "-3.5dB", -3, 500000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "2dB", 2, 0);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "-0.25 dB", 0, -250000);
-+
-+	/* the unit suffix is optional */
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.25", 1, 250000);
-+	EXPECT_WRITE(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.25\n", 1, 250000);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "dB", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.5 db", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "2.5 dBm", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "7.3dBm", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "10 ddB", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_PLUS_MICRO_DB, "1.5 V", -EINVAL);
-+}
-+
-+static void iio_test_write_char(struct kunit *test)
-+{
-+	EXPECT_WRITE(test, IIO_VAL_CHAR, "x", 'x', 0);
-+	EXPECT_WRITE(test, IIO_VAL_CHAR, "K\n", 'K', 0);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_CHAR, "", -EINVAL);
-+}
-+
-+static void iio_test_write_int_64(struct kunit *test)
-+{
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "0", 0);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "-1", -1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "4294967296\n", 4294967296LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "0x100000000", 0x100000000LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "9223372036854775807", S64_MAX);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "-9223372036854775808", S64_MIN);
-+
-+	/* decimal fallback */
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "1.9", 2);
-+	EXPECT_WRITE_S64(test, IIO_VAL_INT_64, "5e9", 5000000000LL);
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_64, "9223372036854775808", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT_64, "abc", -EINVAL);
-+}
-+
-+static void iio_test_write_decimal64(struct kunit *test)
-+{
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MILLI, "1.5", 1500);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MILLI, "-0.001", -1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MILLI, "0.0009", 1);
-+
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MICRO, "1.5e3", 1500000000LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MICRO, "-0.000001\n", -1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_MICRO, "5000", 5000000000LL);
-+
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_NANO, "1.000000001",
-+			 1000000001LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_PICO, "1e-12", 1);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_PICO, "-2.5", -2500000000000LL);
-+	EXPECT_WRITE_S64(test, IIO_VAL_DECIMAL64_FEMTO, "9223.372036854775807",
-+			 S64_MAX);
-+
-+	/* no hex support when a decimal scale is set */
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_MICRO, "0x10", -EINVAL);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_FEMTO, "9223.372036854775808",
-+			 -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_MICRO, "1e20", -ERANGE);
-+	EXPECT_WRITE_ERR(test, IIO_VAL_DECIMAL64_MICRO, "1.5 Hz", -EINVAL);
-+}
-+
-+static void iio_test_write_unsupported_fmt(struct kunit *test)
-+{
-+	EXPECT_WRITE_ERR(test, IIO_TEST_UNSUPPORTED_FMT, "1", -EINVAL);
-+	EXPECT_WRITE_ERR(test, -EBUSY, "1", -EINVAL);
-+}
-+
-+static void iio_test_write_no_get_fmt(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+
-+	/* without write_raw_get_fmt() values are parsed as IIO_VAL_INT_PLUS_MICRO */
-+	ctx->indio_dev->info = &iio_test_write_info_no_fmt;
-+
-+	EXPECT_WRITE(test, 0, "1.5", 1, 500000);
-+	EXPECT_WRITE(test, 0, "-0.000001", 0, -1);
-+	EXPECT_WRITE(test, 0, "1.2345678", 1, 234568);
-+	EXPECT_WRITE_ERR(test, 0, "0x10", -EINVAL);
-+}
-+
-+static void iio_test_write_no_write_raw(struct kunit *test)
-+{
-+	struct iio_test_write_ctx *ctx = test->priv;
-+
-+	ctx->indio_dev->info = &iio_test_write_info_no_write;
-+
-+	EXPECT_WRITE_ERR(test, IIO_VAL_INT, "1", -EINVAL);
-+}
-+
-+static void iio_test_write_raw_error(struct kunit *test)
-+{
-+	struct iio_test_write_priv *priv = iio_test_write_priv(test);
-+	ssize_t ret;
-+
-+	priv->ret = -EBUSY;
-+	ret = iio_test_write(test, IIO_VAL_INT, "1");
-+	KUNIT_EXPECT_EQ(test, ret, (ssize_t)-EBUSY);
-+	KUNIT_EXPECT_TRUE(test, priv->called);
-+	KUNIT_EXPECT_EQ(test, priv->val, 1);
-+}
-+
-+static struct kunit_case iio_channel_write_test_cases[] = {
-+	KUNIT_CASE(iio_test_write_int),
-+	KUNIT_CASE(iio_test_write_int_plus_micro),
-+	KUNIT_CASE(iio_test_write_int_plus_nano),
-+	KUNIT_CASE(iio_test_write_int_plus_micro_db),
-+	KUNIT_CASE(iio_test_write_char),
-+	KUNIT_CASE(iio_test_write_int_64),
-+	KUNIT_CASE(iio_test_write_decimal64),
-+	KUNIT_CASE(iio_test_write_unsupported_fmt),
-+	KUNIT_CASE(iio_test_write_no_get_fmt),
-+	KUNIT_CASE(iio_test_write_no_write_raw),
-+	KUNIT_CASE(iio_test_write_raw_error),
-+	{ }
-+};
-+
-+static struct kunit_suite iio_channel_write_test_suite = {
-+	.name = "iio-channel-write",
-+	.init = iio_test_write_init,
-+	.test_cases = iio_channel_write_test_cases,
-+};
-+
-+kunit_test_suite(iio_channel_write_test_suite);
-+
-+MODULE_AUTHOR("Rodrigo Alencar <rodrigo.alencar@analog.com>");
-+MODULE_DESCRIPTION("Test IIO channel info write parsing");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("EXPORTED_FOR_KUNIT_TESTING");
++	kvfree(ev.desc);
+ }
+ 
+ static struct devlink_health_reporter *
+diff --git a/drivers/net/ethernet/intel/ice/devlink/health.h b/drivers/net/ethernet/intel/ice/devlink/health.h
+index 5edfc4d2a..508e4115d 100644
+--- a/drivers/net/ethernet/intel/ice/devlink/health.h
++++ b/drivers/net/ethernet/intel/ice/devlink/health.h
+@@ -37,6 +37,9 @@ enum ice_mdd_src {
+  * @head: descriptor head
+  * @intr: interrupt register value
+  * @vsi_num: VSI owning the queue that the hang occurred on
++ * @queue: index of the queue that the hang occurred on
++ * @next_to_clean: next_to_clean of the ring when the hang was detected
++ * @next_to_use: next_to_use of the ring when the hang was detected
+  * @fw_status: buffer for last received FW Status event
+  * @port_status: buffer for last received Port Status event
+  */
+@@ -50,6 +53,9 @@ struct ice_health {
+ 		u32 head;
+ 		u32 intr;
+ 		u16 vsi_num;
++		u16 queue;
++		u16 next_to_clean;
++		u16 next_to_use;
+ 	);
+ 	struct ice_aqc_health_status_elem fw_status;
+ 	struct ice_aqc_health_status_elem port_status;
 
--- 
-2.43.0
+---
+base-commit: 7076f684d5132e6a6145e1da2fa74771ecd052e5
+change-id: 20261016-ice-tx-hang-dump-e46b4ed483d6
 
