@@ -1,63 +1,75 @@
-From: Xi Zhang <xz.ca.cn@gmail.com>
-Date: Mon, 26 Oct 2026 17:25:47 -0300
-Subject: [PATCH v2 6/6] drm/msm/dpu: reset DSC_CMN_MAIN_CNF in dsc disable
+From: Cristian Filipescu <filipescu.cristian@gmail.com>
+Subject: [PATCH v3 0/2] arm64: dts: allwinner: Support Orange Pi 3 LTS
+Date: Mon, 26 Oct 2026 23:30:59 +0000
+Message-Id: <20261026-sunxi-orangepi-3-lts-v3-0-98fef4f75184@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-msm-dpu-res-clean-v2-6-3d864435186e@gmail.com>
-References: <20261026-msm-dpu-res-clean-v2-0-3d864435186e@gmail.com>
-In-Reply-To: <20261026-msm-dpu-res-clean-v2-0-3d864435186e@gmail.com>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Xi Zhang <xz.ca.cn@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793046364; l=1211;
- i=xz.ca.cn@gmail.com; s=20261026; h=from:subject:message-id;
- bh=wGiN+gugp5FNldO/Kg3sFcSJT75myNdU6h5lxozuNKM=;
- b=XeYvMeWiN8pWxAujZwv1lVFeUuZWtbYdWkRtqIUxjFcwFi1t9hLTcgJplJAkouXRs5pRxEzHJ
- Wlwqz6H2XOcBbB9Zf3kc3ceKOK6LDAw72c2JuTWnlB9yTrzm0Lffg7z
-X-Developer-Key: i=xz.ca.cn@gmail.com; a=ed25519;
- pk=aRUll5L3eJbwG8Y4BO9uySKGzm+Uy+Ccei9prnRVZRs=
-X-Endpoint-Received: by B4 Relay for xz.ca.cn@gmail.com/20261026 with auth_id=1328
+X-B4-Tracking: v=1; b=H4sIALPi32oC/4WOQRKCMAxFr8J0bRwMiODKezgs2lIhDrRMAwwOw
+ 91t8QAu3//JSzbBxpNhcU824c1CTM4GyE6J0J20rQFqAgtMsbikiMCzXQmcj91IkEE/MeSZqhD
+ zQpamEWF19OZF66F91j/mWb2NnqIrTijJBlSw6C5GPdl5hRjGsiOenP8cTy0YJX/uLwgp3FJVV
+ hVeURfy0Q6S+rN2g6j3ff8C0SUoP+cAAAA=
+X-Change-ID: 20261022-sunxi-orangepi-3-lts-43b92246a8ed
+To: linux-sunxi@lists.linux.dev, devicetree@vger.kernel.org, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Andre Przywara <andre.przywara@arm.com>, linux-kernel@vger.kernel.org, 
+ Cristian Filipescu <filipescu.cristian@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793057459; l=1992;
+ i=filipescu.cristian@gmail.com; s=uboot-20261021; h=from:subject:message-id;
+ bh=ssdCd+cOb3vtsGK2tRgFxcvft6R9+5/9qtV6Fbja4Yg=;
+ b=1vCFUDdeBnX3cdyq4w/VMNM8FHwVt4nneYPP6UQr+YeFjWhX4ilKTbVh8tBWcfLau/2MnN2YN
+ I//RPwFuqAFDGe6oRRlVHkYTp/Ryr8qdYsa/lzxqWCCsq9pbXb85ZqV
+X-Developer-Key: i=filipescu.cristian@gmail.com; a=ed25519;
+ pk=o7Ui0tU3x+X/6Pq6PZHmd2KFtOdPWttoPuNFOvdD8t0=
+X-Endpoint-Received: by B4 Relay for filipescu.cristian@gmail.com/uboot-20261021 with auth_id=1255
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From observation, DSC_CMN_MAIN_CNF has hardware restriction on
-differing values between paired even/odd dsc.
+Continue Jernej Skrabec's April 2025 series, adding the board compatible
+and device tree for the Allwinner H6-based Orange Pi 3 LTS.
 
-Reset it to 0 when dsc disable to avoid issues when a dsc pair
-is later used individually for each of its dsc.
+Board testing passed SD/eMMC reads, both LEDs at drive strength 10,
+and five Ethernet interface cycles plus three MAC driver rebinds.
+Each network cycle reached 1 Gbps/full duplex, obtained DHCP and passed
+ping; PHY ID and 125 MHz clock-output configuration were read back.
+eMMC DDR52 at 50 MHz and HS200 at 150 MHz each passed 768 MiB of direct
+reads and 256 MiB of patterned writes with verified readbacks and data
+restoration. All reported MMC error counters were zero. Both board DTBs
+compile and pass schema checks.
 
-Note that currently dpu always assigns dsc in pairs if possible
-for power saving. In the future, it may be desired to assign
-singular dsc if possible to support high display count. e.g.
-when dsc for DisplayPort support is added.
+Codex assisted with DTS updates, review analysis and build checks;
+Cristian performed the board tests.
 
-Tested on Ayaneo Pocket DS (SM8550 Kalama)
-
-Signed-off-by: Xi Zhang <xz.ca.cn@gmail.com>
 ---
- drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v3:
+- Keep green as power and red as status, matching Armbian LTS roles;
+  default green on and red off without a boot-stage sequence.
+- Select drive strength 10 on PL4 and PL7 with per-LED pinctrl states.
+- Move PHY reset to the MDIO bus, before discovery and outside detach.
+- Specify the YT8531C PHY ID; MAC rebind fails with early autodetection.
+- Enable 1.8 V eMMC DDR52 and HS200 after board testing; retain the
+  existing H6 maximum frequency of 150 MHz.
+- Shorten the descriptions and update validation status.
+- Link to v2: https://lore.kernel.org/all/20261022-sunxi-orangepi-3-lts-v2-0-70b899252c6a@gmail.com/
 
-diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c
-index b3395e9c34a1..b8a330d813e6 100644
---- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c
-+++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dsc_1_2.c
-@@ -78,6 +78,7 @@ static void dpu_hw_dsc_disable_1_2(struct dpu_hw_dsc *hw_dsc)
- 
- 	hw = &hw_dsc->hw;
- 	sblk = hw_dsc->caps->sblk;
-+	DPU_REG_WRITE(hw, DSC_CMN_MAIN_CNF, 0);
- 	DPU_REG_WRITE(hw, sblk->ctl.base + DSC_CFG, 0);
- 
- 	DPU_REG_WRITE(hw, sblk->enc.base + ENC_DF_CTRL, 0);
+---
+Jernej Skrabec (2):
+      dt-bindings: arm: sunxi: Add Orange Pi 3 LTS board
+      arm64: dts: allwinner: h6: Add Orange Pi 3 LTS
 
--- 
-2.55.0
+ Documentation/devicetree/bindings/arm/sunxi.yaml   |   5 +
+ arch/arm64/boot/dts/allwinner/Makefile             |   1 +
+ .../dts/allwinner/sun50i-h6-orangepi-3-lts.dts     | 379 +++++++++++++++++++++
+ 3 files changed, 385 insertions(+)
+---
+base-commit: 4403278e4ea2f654f8130a5c03eb8b4516a0f201
+change-id: 20261022-sunxi-orangepi-3-lts-43b92246a8ed
+
+Best regards,
+--  
+Cristian Filipescu <filipescu.cristian@gmail.com>
 
