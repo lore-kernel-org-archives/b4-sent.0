@@ -1,11 +1,11 @@
 From: Xi Zhang <xz.ca.cn@gmail.com>
-Date: Mon, 26 Oct 2026 17:25:44 -0300
-Subject: [PATCH v2 3/6] drm/msm/dpu: use common helper cleanup function in
- cmd mode disable
+Date: Mon, 26 Oct 2026 17:25:45 -0300
+Subject: [PATCH v2 4/6] drm/msm/dpu: Match setup_dither cleanup to the way
+ it was set up
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-msm-dpu-res-clean-v2-3-3d864435186e@gmail.com>
+Message-Id: <20261026-msm-dpu-res-clean-v2-4-3d864435186e@gmail.com>
 References: <20261026-msm-dpu-res-clean-v2-0-3d864435186e@gmail.com>
 In-Reply-To: <20261026-msm-dpu-res-clean-v2-0-3d864435186e@gmail.com>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -18,76 +18,50 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Xi Zhang <xz.ca.cn@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793046364; l=2525;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793046364; l=1544;
  i=xz.ca.cn@gmail.com; s=20261026; h=from:subject:message-id;
- bh=XhOd7j42hxYmVLxXb4nr7ytDGGzBgeEYP3Gif2p9Ajo=;
- b=e+J51x5c64ypvjwE1MQ2QKGu9yAPbPv6lxkaLyn/zLFZ2cMCcFtUkEjW3LpXgDrk6V+km22HW
- 7L/JXrcXEOfDemtZjChGE7ywZEmTGjMt1OawtJ6VfQ0RmIQo/sVya8b
+ bh=i8W21Uwim0c1+zeph5hx6bDBWdsis2GxB2oH6BEEkww=;
+ b=euKQ8P4qZyAu2dx4tItsfmlM/IJot2mVulrG4mVSxuASX2xKy1XyWLOa7VkLDFzhCk8fR2qdD
+ /MbwySbCj91Dkv0VseguSPHw0//cMrQ+k0rXv8jzl8mWfiN89+ytO69
 X-Developer-Key: i=xz.ca.cn@gmail.com; a=ed25519;
  pk=aRUll5L3eJbwG8Y4BO9uySKGzm+Uy+Ccei9prnRVZRs=
 X-Endpoint-Received: by B4 Relay for xz.ca.cn@gmail.com/20261026 with auth_id=1328
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cmd mode encoder previously did not clean up dsc, or LMs during
-disable.
-
-Change to use the common dpu_encoder_helper_phys_cleanup function
-for cmd mode disable.
-
-Also do not set intf_cfg.mode_3d during disable:
-dpu_encoder_helper_get_3d_blend_mode accesses drm_encoder->crtc->state
-directly so intf_cfg.mode_3d weren't set to expected value for disable.
-intf_cfg.mode_3d is also ignored by ctl->ops.reset_intf_cfg.
+Cleanup hw_pp->ops.setup_dither with NULL for all PINGPONGs,
+matching the way it was setup during enable.
 
 Signed-off-by: Xi Zhang <xz.ca.cn@gmail.com>
 ---
- drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c          |  4 ++--
- drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_cmd.c | 10 +---------
- 2 files changed, 3 insertions(+), 11 deletions(-)
+ drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
-index 81b983ecffbb..d967deb34c77 100644
+index d967deb34c77..acea64ebd24e 100644
 --- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
 +++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder.c
-@@ -2335,8 +2335,8 @@ void dpu_encoder_helper_phys_cleanup(struct dpu_encoder_phys *phys_enc)
- 		dpu_enc->dsc = NULL;
+@@ -1320,7 +1320,7 @@ static void _dpu_encoder_virt_enable_helper(struct drm_encoder *drm_enc)
+ 	if (dpu_enc->disp_info.intf_type == INTF_DSI &&
+ 			!WARN_ON(dpu_enc->num_phys_encs == 0)) {
+ 		unsigned bpc = dpu_enc->connector->display_info.bpc;
+-		for (i = 0; i < MAX_CHANNELS_PER_ENC; i++) {
++		for (i = 0; i < ARRAY_SIZE(dpu_enc->hw_pp); i++) {
+ 			if (!dpu_enc->hw_pp[i])
+ 				continue;
+ 			_dpu_encoder_setup_dither(dpu_enc->hw_pp[i], bpc);
+@@ -2306,8 +2306,10 @@ void dpu_encoder_helper_phys_cleanup(struct dpu_encoder_phys *phys_enc)
+ 		}
  	}
  
--	intf_cfg.stream_sel = 0; /* Don't care value for video mode */
--	intf_cfg.mode_3d = dpu_encoder_helper_get_3d_blend_mode(phys_enc);
-+	intf_cfg.stream_sel = 0; /* Ignored by reset_intf_cfg */
-+	intf_cfg.mode_3d = 0; /* Ignored by reset_intf_cfg */
- 	intf_cfg.dsc = dpu_encoder_helper_get_dsc(phys_enc);
- 	intf_cfg.cwb = dpu_enc->cwb_mask;
+-	if (phys_enc->hw_pp && phys_enc->hw_pp->ops.setup_dither)
+-		phys_enc->hw_pp->ops.setup_dither(phys_enc->hw_pp, NULL);
++	if (dpu_enc->disp_info.intf_type == INTF_DSI)
++		for (i = 0; i < ARRAY_SIZE(dpu_enc->hw_pp); i++)
++			if (dpu_enc->hw_pp[i] && dpu_enc->hw_pp[i]->ops.setup_dither)
++				dpu_enc->hw_pp[i]->ops.setup_dither(dpu_enc->hw_pp[i], NULL);
  
-diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_cmd.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_cmd.c
-index 45079ee59cf6..111f9dd5e053 100644
---- a/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_cmd.c
-+++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_encoder_phys_cmd.c
-@@ -538,7 +538,6 @@ static void dpu_encoder_phys_cmd_disable(struct dpu_encoder_phys *phys_enc)
- {
- 	struct dpu_encoder_phys_cmd *cmd_enc =
- 		to_dpu_encoder_phys_cmd(phys_enc);
--	struct dpu_hw_ctl *ctl;
- 
- 	if (phys_enc->enable_state == DPU_ENC_DISABLED) {
- 		DPU_ERROR_CMDENC(cmd_enc, "already disabled\n");
-@@ -566,14 +565,7 @@ static void dpu_encoder_phys_cmd_disable(struct dpu_encoder_phys *phys_enc)
- 			phys_enc->hw_pp->ops.disable_tearcheck(phys_enc->hw_pp);
- 	}
- 
--	if (phys_enc->hw_intf->ops.bind_pingpong_blk) {
--		phys_enc->hw_intf->ops.bind_pingpong_blk(
--				phys_enc->hw_intf,
--				PINGPONG_NONE);
--
--		ctl = phys_enc->hw_ctl;
--		ctl->ops.update_pending_flush_intf(ctl, phys_enc->hw_intf->idx);
--	}
-+	dpu_encoder_helper_phys_cleanup(phys_enc);
- 
- 	phys_enc->enable_state = DPU_ENC_DISABLED;
- }
+ 	if (dpu_enc->cwb_mask)
+ 		dpu_encoder_helper_phys_setup_cwb(phys_enc, false);
 
 -- 
 2.55.0
