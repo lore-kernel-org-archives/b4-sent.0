@@ -1,346 +1,112 @@
 From: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
-Date: Mon, 26 Oct 2026 09:30:00 -0400
-Subject: [PATCH net v2] ice: fix Tx hang dump using stale tx_buf[0].skb
+Date: Mon, 26 Oct 2026 09:30:22 -0400
+Subject: [PATCH iwl-net] ice: fix NULL dereference after disabling RDMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-ice-tx-hang-dump-v2-1-e2136ef2c5dc@hydroquebec.com>
-X-B4-Tracking: v=1; b=H4sIANdV32oC/3WNwQ6CMBBEf4Xs2TW0QBVO/ofhAO0iawLFthAI4
- d8FPHucmTczK3hyTB6KaAVHE3u2/S7kJQLdVv2LkM2uQcZSiVgoZE0YZjwyNGM3IKWqTsmk98Q
- o2GuDo4bnc/IJPQUof6Yf6zfpcIwdWMs+WLecx5M44f8fk0CBiWniJstveZWJR7sYZz8j1aSv2
- nZQbtv2BSpF3KnNAAAA
-X-Change-ID: 20261016-ice-tx-hang-dump-e46b4ed483d6
+Message-Id: <20261026-ice-deinit-rdma-null-v1-1-7d2130d1809a@hydroquebec.com>
+X-B4-Tracking: v=1; b=H4sIAO1V32oC/yWMwQrCMBAFf6Xs2YUmwQr+inhokxddiaskaRVK/
+ 92ox2GYWakgCwodu5UyFiny0AZm15G/jnoBS2hMtreD6e2exYMDRKVyDveRdU6JB+OimeBcPFh
+ q6TMjyvu3PZG8Eisqnf+izNMNvn6ntG0fbZLQUIEAAAA=
+X-Change-ID: 20261025-ice-deinit-rdma-null-613f1be33f72
 To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
  Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- intel-wired-lan@lists.osuosl.org
-Cc: Aleksandr Loktionov <aleksandr.loktionov@intel.com>, 
- Michal Kubiak <michal.kubiak@intel.com>, 
- Wojciech Drewek <wojciech.drewek@intel.com>, 
- Mateusz Polchlopek <mateusz.polchlopek@intel.com>, 
- Paul Menzel <pmenzel@molgen.mpg.de>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Michal Swiatkowski <michal.swiatkowski@linux.intel.com>, 
+ intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Vincent Choiniere <choiniere.vincent@hydroquebec.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793021400; l=12328;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793021421; l=3312;
  i=choiniere.vincent@hydroquebec.com; s=20261016; h=from:subject:message-id;
- bh=I7GEHSOCewXkNOi9K97E16dk0vuMi2DEXOuTLKY6QgQ=;
- b=5DIjrp3LvUGrWXTnHDk10SqGvffs7ztbkvNi/EHheO70a/aSX2gabthGubzjoyT2XTYVDvK0A
- 5quIkv6iadMC2lqQ97SyIDiInQbqC6sZ3NfuowgnlUDDbh60oVuBEXX
+ bh=k9KyR/hu9YHlPLJ6ekmbRPgwMefAd5BueodKK2/VMpU=;
+ b=8bwOLo9nJW2N0lkprTPvo4m7YK3bCgAvaOdITw89TeFZE4NqbPiFYxMcXYABPUonNi9ZXkF/N
+ SSg99Pxr0XBDc4xD+agc0rCZRcm5RqV9IGR1Q9in27Ko8MdWDYYRiTp
 X-Developer-Key: i=choiniere.vincent@hydroquebec.com; a=ed25519;
  pk=MctQE067DucsZOaNqb+sjY7aQ+urhztuURanagEW3+8=
 X-Endpoint-Received: by B4 Relay for choiniere.vincent@hydroquebec.com/20261016 with auth_id=1210
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ice_tx_hang_reporter_dump() always reads tx_ring->tx_buf[0].skb,
-regardless of next_to_clean. The Tx cleanup path frees the skb and
-marks the buffer empty without clearing the skb pointer, so slot 0 can
-hold a stale pointer. A NULL check alone does not cover this, and
-devlink_fmsg_dump_skb() can fault on the freed skb.
+ice_deinit_rdma() checks ice_is_rdma_ena() before dereferencing
+pf->cdev_info. While the enable_rdma devlink driverinit parameter is
+registered, that helper returns the parameter value. Once the parameter
+is unregistered, it falls back to ICE_FLAG_RDMA_ENA.
 
-Using tx_buf[next_to_clean] alone does not fix the lifetime issues.
-The dump runs from the service task without synchronization with Tx
-cleanup or ring replacement:
+When enable_rdma is set to false and applied by a devlink reload,
+ice_init_rdma() returns early, leaving pf->cdev_info NULL. During driver
+removal, ice_remove() calls ice_deinit_devlink() before ice_unload().
+The parameters are therefore unregistered before ice_deinit_rdma()
+runs. On an RDMA-capable device, ice_is_rdma_ena() then returns true,
+allowing ice_deinit_rdma() to dereference the NULL pointer.
 
-- ice_clean_tx_irq() can free the skb at next_to_clean while the
-  report is being prepared. It calls napi_consume_skb() before
-  marking the buffer empty.
-- The ring saved by ice_tx_timeout() can be replaced or freed before
-  the service task runs. ethtool -G replaces the ring contents and
-  frees tx_buf and desc, while ethtool -L can free whole rings.
+This can cause a panic during reboot, module removal or PCI unbind.
+Reproduced on an E810 PF with Ubuntu kernel 7.0.0-14 (PREEMPT_RT):
 
-Record the queue index, next_to_clean and next_to_use at timeout time.
-Before reporting, take RTNL and check that the saved ring is still
-one of the PF VSI Tx rings and that the VSI is up. Copy the
-descriptors and IRQ name while the ring storage is protected against
-replacement. If the ring cannot be used or the copy cannot be made,
-report only the values recorded at timeout time.
+ devlink dev param set pci/0000:02:00.0 name enable_rdma value false \
+         cmode driverinit
+ devlink dev reload pci/0000:02:00.0 action driver_reinit
+ systemctl reboot
 
-Tx cleanup can still run while the ring state is copied, so do not
-dereference the skb. Retain only its pointer value in the dump and
-remove the skb contents.
+ BUG: kernel NULL pointer dereference, address: 0000000000000018
+ RIP: 0010:ice_deinit_rdma+0x30/0x60 [ice]
+  ice_unload+0x3f/0x150 [ice]
+  ice_remove+0xb5/0x1d0 [ice]
+  ice_shutdown+0x1b/0x60 [ice]
+  pci_device_shutdown
+  device_shutdown
+  kernel_restart
+ Kernel panic - not syncing: Attempted to kill init!
 
-Release RTNL before calling devlink_health_report(), which takes the
-devlink instance lock. Build the dump from the copied data and free
-the descriptor copy after reporting.
+Check pf->cdev_info before dereferencing it, as
+ice_rdma_update_vsi_filter() already does. This preserves the existing
+enable_rdma semantics without changing other ice_is_rdma_ena() callers.
 
-Observed on an E810 PF passed through to a KVM guest with Ubuntu
-kernel 7.0.0-14 (PREEMPT_RT and a local scheduler patch): a delayed
-queue IRQ led to a Tx timeout and a page fault in
-devlink_fmsg_dump_skb():
-
- BUG: unable to handle page fault for address: 0000000004cd0c11
- Workqueue: ice ice_service_task [ice]
- RIP: devlink_fmsg_dump_skb+0x2d8/0x5d0
- Call Trace:
-  ice_tx_hang_reporter_dump+0x1ce/0x210 [ice]
-  devlink_health_do_dump+0xcc/0x190
-  devlink_health_report+0x1d7/0x260
-  ice_report_tx_hang+0x7d/0xa0 [ice]
-
-Fixes: 2a82874a3b7b ("ice: add Tx hang devlink health reporter")
-Link: https://lore.kernel.org/all/20260327072332.130320-1-aleksandr.loktionov@intel.com/
+Fixes: 87181cd6985f ("ice: enable_rdma devlink param")
 Cc: stable@vger.kernel.org
 Signed-off-by: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
 ---
-Changes in v2:
-- Validate the saved ring under RTNL before dereferencing it from
-  the service task, and restrict snapshots to the PF VSI while it
-  is up (Sashiko).
-- Check next_to_clean against count before indexing tx_buf, and
-  copy the descriptors and IRQ name while ring replacement is
-  excluded (Sashiko).
-- Stop dereferencing the skb and remove its contents from the dump.
-  Keep only its pointer value (Sashiko).
-- Release RTNL before reporting to preserve the devlink instance
-  lock ordering.
-- Record the queue index and ring indices at timeout time as a
-  fallback when a snapshot cannot be made.
-- Drop Paul's Reviewed-by because the patch changed substantially.
+Testing was performed on an E810 PF passed through to a KVM guest,
+using Ubuntu kernel 7.0.0-38 (PREEMPT_RT). Two kernels differing only
+by this patch were compared. Each test set enable_rdma=false and
+applied it with devlink reload driver_reinit before the removal step.
 
-v1:
-https://lore.kernel.org/netdev/20261016-ice-tx-hang-dump-v1-1-3df0f5979a51@hydroquebec.com/
+  Removal path      Without patch           With patch
+  reboot (x3)       NULL deref, panic (3/3) clean (3/3)
+  rmmod ice         NULL deref              clean
+  PCI unbind        NULL deref              clean
 
-Testing:
-- Built ice.ko with x86_64 defconfig, CONFIG_ICE=m, GCC 12.2 and W=1.
-  Ran sparse with C=2 (sparse git c464045). Neither reported warnings
-  in the changed files.
-- checkpatch --strict reported only an unknown Fixes commit because
-  the local tree is a shallow clone.
-- Runtime testing used an E810 PF passed through to a KVM guest with
-  Ubuntu kernel 7.0.0-38 (PREEMPT_RT), KASAN, PROVE_LOCKING and
-  DEBUG_ATOMIC_SLEEP.
-- Forced Tx timeouts by starving one queue's IRQ thread. The watchdog
-  fired after five seconds, the PF recovered, and the dump retained
-  the v1 fields except for the skb contents.
-- Used a test-only kernel patch to insert configurable delays before
-  ice_report_tx_hang() or the dump callback. Racing ethtool commands
-  were started when the instrumentation logged the delay.
-- With v1 and the same instrumentation, shrinking the ring with
-  ethtool -G tx 64 while next_to_clean was above 64 triggered a KASAN
-  slab-out-of-bounds report. This was also reproduced on a non-RT
-  kernel built from net. Racing ethtool -L combined 1 triggered a
-  use-after-free followed by a general protection fault.
-- With v2, ran 168 forced Tx timeouts, including 149 with concurrent
-  ethtool -G (tx 64, 128 or 512) or ethtool -L combined 1, before and
-  after the ring state was copied. No KASAN, lockdep or
-  sleeping-in-atomic reports were observed. When the saved ring was
-  no longer present, the dump contained only the timeout-time values.
+Additional checks on the patched kernel:
+  - Reboot without a preceding devlink reload completed cleanly.
+  - irdma devices returned after PCI unbind/bind.
+  - irdma devices returned after an enable_rdma false -> true reload
+    cycle.
 
-Limitations:
-- The same stress testing was not completed on a non-RT kernel,
-  where Tx timeouts could not be forced reliably.
-- Subfunction VSIs and XDP were not tested. Subfunction VSI rings
-  are excluded from the snapshot because ice_sf_dev_remove() frees
-  them without RTNL.
-- This patch does not synchronize publication and consumption of
-  tx_hang_buf between ice_tx_timeout() and the service task. A newer
-  timeout may still be dropped or its fields mixed with an older
-  event.
+No KASAN or kmemleak testing was performed.
 
-The original devlink_fmsg_dump_skb() crash was reproduced on Ubuntu
-kernel 7.0.0-14 with PREEMPT_RT and a local scheduler patch. The
-additional race reproductions above used test-only instrumentation.
-The affected reporter code is also present in upstream net at
-191aa4154.
+The exact target tree (net, 7076f684d5132e6a) was not built or tested.
+ice_deinit_rdma() and ice_is_rdma_ena() are unchanged there compared
+with the tested code.
 ---
- drivers/net/ethernet/intel/ice/devlink/health.c | 117 ++++++++++++++++++++----
- drivers/net/ethernet/intel/ice/devlink/health.h |   6 ++
- 2 files changed, 107 insertions(+), 16 deletions(-)
+ drivers/net/ethernet/intel/ice/ice_idc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/intel/ice/devlink/health.c b/drivers/net/ethernet/intel/ice/devlink/health.c
-index 8e9a8a817..b9493ab47 100644
---- a/drivers/net/ethernet/intel/ice/devlink/health.c
-+++ b/drivers/net/ethernet/intel/ice/devlink/health.c
-@@ -382,7 +382,13 @@ struct ice_tx_hang_event {
- 	u16 queue;
- 	u16 next_to_clean;
- 	u16 next_to_use;
--	struct ice_tx_ring *tx_ring;
-+	/* the fields below are only valid if @desc is set */
-+	char irq_name[ICE_INT_NAME_STR_LEN];
-+	void *desc_ptr;
-+	dma_addr_t dma;
-+	void *desc;
-+	u32 desc_size;
-+	void *skb_ptr;	/* pointer value only, never dereferenced */
- };
- 
- static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
-@@ -390,12 +396,10 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
- 				     struct netlink_ext_ack *extack)
- {
- 	struct ice_tx_hang_event *event = priv_ctx;
--	struct sk_buff *skb;
- 
- 	if (!event)
- 		return 0;
- 
--	skb = event->tx_ring->tx_buf->skb;
- 	devlink_fmsg_obj_nest_start(fmsg);
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, head);
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, intr);
-@@ -403,13 +407,14 @@ static int ice_tx_hang_reporter_dump(struct devlink_health_reporter *reporter,
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, queue);
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, next_to_clean);
- 	ICE_DEVLINK_FMSG_PUT_FIELD(fmsg, event, next_to_use);
--	devlink_fmsg_put(fmsg, "irq-mapping", event->tx_ring->q_vector->name);
--	ice_fmsg_put_ptr(fmsg, "desc-ptr", event->tx_ring->desc);
--	ice_fmsg_put_ptr(fmsg, "dma-ptr", (void *)(long)event->tx_ring->dma);
--	ice_fmsg_put_ptr(fmsg, "skb-ptr", skb);
--	devlink_fmsg_binary_pair_put(fmsg, "desc", event->tx_ring->desc,
--				     event->tx_ring->count * sizeof(struct ice_tx_desc));
--	devlink_fmsg_dump_skb(fmsg, skb);
-+	if (event->desc) {
-+		devlink_fmsg_put(fmsg, "irq-mapping", event->irq_name);
-+		ice_fmsg_put_ptr(fmsg, "desc-ptr", event->desc_ptr);
-+		ice_fmsg_put_ptr(fmsg, "dma-ptr", (void *)(long)event->dma);
-+		ice_fmsg_put_ptr(fmsg, "skb-ptr", event->skb_ptr);
-+		devlink_fmsg_binary_pair_put(fmsg, "desc", event->desc,
-+					     event->desc_size);
-+	}
- 	devlink_fmsg_obj_nest_end(fmsg);
- 
- 	return 0;
-@@ -424,24 +429,104 @@ void ice_prep_tx_hang_report(struct ice_pf *pf, struct ice_tx_ring *tx_ring,
- 	buf->vsi_num = vsi_num;
- 	buf->head = head;
- 	buf->intr = intr;
-+	buf->queue = tx_ring->q_index;
-+	buf->next_to_clean = tx_ring->next_to_clean;
-+	buf->next_to_use = tx_ring->next_to_use;
-+}
-+
-+/**
-+ * ice_tx_hang_snapshot - copy the hung Tx ring state for the dump
-+ * @pf: PF on which the Tx hang was detected
-+ * @tx_ring: ring saved by ice_tx_timeout(), possibly stale
-+ * @ev: event to fill in
-+ *
-+ * The saved ring may have been freed or replaced since the timeout (e.g. by
-+ * ethtool -G or -L). Use it only if it is still one of the PF VSI Tx rings
-+ * and the VSI is up: those rings are only replaced or freed under RTNL or
-+ * from the service task, so with RTNL held every access below is to live
-+ * memory. ice_clean_tx_irq() may still run and free the skb at
-+ * next_to_clean at any time, so only the pointer value is recorded and the
-+ * skb itself is never dereferenced.
-+ */
-+static void ice_tx_hang_snapshot(struct ice_pf *pf, struct ice_tx_ring *tx_ring,
-+				 struct ice_tx_hang_event *ev)
-+{
-+	struct ice_vsi *vsi = ice_get_main_vsi(pf);
-+	struct ice_q_vector *q_vector;
-+	struct ice_tx_buf *tx_buf;
-+	unsigned int i;
-+	u16 ntc, ntu;
-+	void *desc;
-+	u32 size;
-+
-+	ASSERT_RTNL();
-+
-+	if (!tx_ring || !vsi || !vsi->tx_rings ||
-+	    test_bit(ICE_VSI_DOWN, vsi->state))
-+		return;
-+
-+	ice_for_each_txq(vsi, i)
-+		if (vsi->tx_rings[i] == tx_ring)
-+			break;
-+	if (i == vsi->num_txq)
-+		return;
-+
-+	q_vector = tx_ring->q_vector;
-+	if (!q_vector || !tx_ring->desc || !tx_ring->tx_buf || !tx_ring->count)
-+		return;
-+
-+	size = tx_ring->count * sizeof(struct ice_tx_desc);
-+	desc = kvmalloc(size, GFP_KERNEL);
-+	if (!desc)
-+		return;
-+
-+	ntc = READ_ONCE(tx_ring->next_to_clean);
-+	ntu = READ_ONCE(tx_ring->next_to_use);
-+
-+	if (ntc < tx_ring->count) {
-+		tx_buf = &tx_ring->tx_buf[ntc];
-+		if (tx_buf->type == ICE_TX_BUF_SKB)
-+			ev->skb_ptr = READ_ONCE(tx_buf->skb);
-+
-+		memcpy(desc, tx_ring->desc, size);
-+		ev->next_to_clean = ntc;
-+		ev->next_to_use = ntu;
-+		strscpy(ev->irq_name, q_vector->name);
-+		ev->desc_ptr = tx_ring->desc;
-+		ev->dma = tx_ring->dma;
-+		ev->desc_size = size;
-+		ev->desc = desc;
-+	}
-+
-+	if (!ev->desc)
-+		kvfree(desc);
- }
- 
- void ice_report_tx_hang(struct ice_pf *pf)
- {
- 	struct ice_health_tx_hang_buf *buf = &pf->health_reporters.tx_hang_buf;
--	struct ice_tx_ring *tx_ring = buf->tx_ring;
--
- 	struct ice_tx_hang_event ev = {
- 		.head = buf->head,
- 		.intr = buf->intr,
- 		.vsi_num = buf->vsi_num,
--		.queue = tx_ring->q_index,
--		.next_to_clean = tx_ring->next_to_clean,
--		.next_to_use = tx_ring->next_to_use,
--		.tx_ring = tx_ring,
-+		.queue = buf->queue,
-+		.next_to_clean = buf->next_to_clean,
-+		.next_to_use = buf->next_to_use,
- 	};
- 
-+	if (!pf->health_reporters.tx_hang)
-+		return;
-+
-+	rtnl_lock();
-+	ice_tx_hang_snapshot(pf, buf->tx_ring, &ev);
-+	rtnl_unlock();
-+
-+	/* devlink_health_report() takes the devlink instance lock, which nests
-+	 * outside RTNL, so only report once RTNL has been released.
-+	 */
- 	ice_devlink_health_report(pf->health_reporters.tx_hang, "Tx hang", &ev);
-+
-+	kvfree(ev.desc);
- }
- 
- static struct devlink_health_reporter *
-diff --git a/drivers/net/ethernet/intel/ice/devlink/health.h b/drivers/net/ethernet/intel/ice/devlink/health.h
-index 5edfc4d2a..508e4115d 100644
---- a/drivers/net/ethernet/intel/ice/devlink/health.h
-+++ b/drivers/net/ethernet/intel/ice/devlink/health.h
-@@ -37,6 +37,9 @@ enum ice_mdd_src {
-  * @head: descriptor head
-  * @intr: interrupt register value
-  * @vsi_num: VSI owning the queue that the hang occurred on
-+ * @queue: index of the queue that the hang occurred on
-+ * @next_to_clean: next_to_clean of the ring when the hang was detected
-+ * @next_to_use: next_to_use of the ring when the hang was detected
-  * @fw_status: buffer for last received FW Status event
-  * @port_status: buffer for last received Port Status event
+diff --git a/drivers/net/ethernet/intel/ice/ice_idc.c b/drivers/net/ethernet/intel/ice/ice_idc.c
+index 102d63c30..09dfcffeb 100644
+--- a/drivers/net/ethernet/intel/ice/ice_idc.c
++++ b/drivers/net/ethernet/intel/ice/ice_idc.c
+@@ -454,7 +454,7 @@ int ice_init_rdma(struct ice_pf *pf)
   */
-@@ -50,6 +53,9 @@ struct ice_health {
- 		u32 head;
- 		u32 intr;
- 		u16 vsi_num;
-+		u16 queue;
-+		u16 next_to_clean;
-+		u16 next_to_use;
- 	);
- 	struct ice_aqc_health_status_elem fw_status;
- 	struct ice_aqc_health_status_elem port_status;
+ void ice_deinit_rdma(struct ice_pf *pf)
+ {
+-	if (!ice_is_rdma_ena(pf))
++	if (!ice_is_rdma_ena(pf) || !pf->cdev_info)
+ 		return;
+ 
+ 	xa_erase(&ice_aux_id, pf->aux_idx);
 
 ---
 base-commit: 7076f684d5132e6a6145e1da2fa74771ecd052e5
-change-id: 20261016-ice-tx-hang-dump-e46b4ed483d6
+change-id: 20261025-ice-deinit-rdma-null-613f1be33f72
 
