@@ -1,159 +1,75 @@
-From: Quanye Yang <quanyeyang@proton.me>
-Date: Mon, 26 Oct 2026 03:43:03 -0700
-Subject: [PATCH mptcp-next v3] selftests: mptcp: sockopt: echo until EOF on
- partial reads
+From: Andrea Amer <and.amer@gmail.com>
+Date: Mon, 26 Oct 2026 11:57:38 +0100
+Subject: [PATCH v3] iio: afe: rescale: expose offset if rescaler or source
+ has one
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-fix-mptcp-issue-639-v3-1-165485982827@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OSw6DIBiEr2JYl4aHonTVezRdoPxWmigGkNgY7
- 17UjYumy8nMfDML8uAMeHTLFuQgGm/skAS/ZKjp1PACbHTSiBEmKKElbs2M+zE0IzbeT4AFl1g
- KzqXiWjKqUGqODlJspz7QER5gDuh5eH6q39CEDbulO+ODdZ/9QqR75+9apJhiUhS5JqWqq7a6j
- 84GO1x72BciOzEY/81giUHz9JmXudBMnxnrun4BJ3d3KBgBAAA=
-X-Change-ID: 20261017-fix-mptcp-issue-639-96339a3d921a
-To: MPTCP Linux <mptcp@lists.linux.dev>
-Cc: matttbe@kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793011385; l=4942;
- i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
- bh=o6McbY/P99n91QwPAyUuPX3sTnYTyHf/vgicwWKGmfM=;
- b=X8+eBXsi2sTnzCxhoiWHd1D7UTHhTKjWO112WhJJMP29BBllJ9D+3fcnHP9IaukOj2pFLw+AQ
- hZ8QGqUU+pqAJA4mni7h7PXo/Sd13WY6ireJl5tq9CM95Vu16RRlzlC
-X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
- pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
-X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
+Message-Id: <20261026-iio-rescale-offset-v3-1-7cf6540111dc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACEy32oC/33NwQ6CMAyA4VchOzvDOhjOk+9hPMzRQRNgZiOLh
+ vDuDk4cjOnpb9KvC4sYCCO7FgsLmCiSn3LIU8Fsb6YOObW5GZSgRCmAE3keMFozIPfORZx5JaC
+ ujJRP1SqWD18BHb139P7I3VOcffjsP5LYtn+5JHieCltR60Y7B7duNDScrR/ZxiU4EuonAZkow
+ V6g1qoRUh+JdV2/kbOZ/PcAAAA=
+X-Change-ID: 20261012-iio-rescale-offset-41254a33b6d6
+To: Peter Rosin <peda@lysator.liu.se>, Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Liam Beguin <liambeguin@gmail.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <jic23@kernel.org>, Andrea Amer <and.amer@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793012260; l=1684;
+ i=and.amer@gmail.com; s=20261012; h=from:subject:message-id;
+ bh=7+5E3nPFEdzUpCLuOKaAoA53dGKvrkfb4WX9YIOvEws=;
+ b=VDVUdoBQYQZjXbvlRrnjs9xQP1nPAFe0JmJx9Tt2pyo1JnTRYUYHBNNdwsLcBoThKUmDJOkI+
+ LeUx+i9zr0pBbYdo5hBBJ0UiHzzisYggm3mVKvnJ68WPXD1vwwYeTyl
+X-Developer-Key: i=and.amer@gmail.com; a=ed25519;
+ pk=TiMK202FvcPM+yKGkAI4hsAZA7QkwyEgru97PAFa4pg=
+X-Endpoint-Received: by B4 Relay for and.amer@gmail.com/20261012 with auth_id=1165
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-process_one_client() used a single read() and write() before waiting
-for hangup. A SOCK_STREAM read() can return a short count when the
-payload is segmented, so the server echoed only part of the data and
-then blocked on FIN.
+A rescale channel advertises IIO_CHAN_INFO_OFFSET only when its own
+offset is non-zero. A child rescale therefore hides a source offset,
+and consumers apply raw * scale and drop it, even though
+rescale_read_raw() folds the source offset in.
 
-The client keeps reading until it has the full length and only then
-closes the socket. The two sides wait on each other and the test
-hangs until SIGALRM.
+Expose the attribute when either the rescaler or the source channel
+provides an offset.
 
-The server does not know the payload length, so echo each chunk until
-read() returns 0. Retry short writes, and accumulate nread/nwritten for
-the existing sockopt checks. Cast those totals to uint64_t when passing
-them to PRIu64 so the xerror() format is correct on 32-bit.
-
-Fixes: ce9979129a0b ("selftests: mptcp: add mptcp getsockopt test cases")
-Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/639
-Signed-off-by: Quanye Yang <quanyeyang@proton.me>
+Fixes: a29c3283653b ("iio: afe: rescale: add offset support")
+Signed-off-by: Andrea Amer <and.amer@gmail.com>
 ---
 Changes in v3:
-- rebase on latest mptcp/export
-- cast nread/nwritten to uint64_t for PRIu64 in xerror()
-- Link to v2: https://patch.msgid.link/20261023-fix-mptcp-issue-639-v2-1-14a3d3746d2d@proton.me
+- Only expose offset if the rescaler or the source has one (Jonathan Cameron)
+- Link to v2: https://lore.kernel.org/r/20261016-iio-rescale-offset-v2-1-02c825967139@gmail.com
 
 Changes in v2:
-- target mptcp-next instead of mptcp-net
-- echo until hangup with goto; retry short writes; use nread/nwritten
-- Link to v1: https://patch.msgid.link/20261017-fix-mptcp-issue-639-v1-1-0554d07ab8f8@proton.me
+- Keep the IIO_CHAN_INFO_SCALE line unchanged (Andy Shevchenko)
+- Link to v1: https://lore.kernel.org/r/20261012-iio-rescale-offset-v1-1-14ed15979ff2@gmail.com
 ---
- tools/testing/selftests/net/mptcp/mptcp_sockopt.c | 60 +++++++++++++----------
- 1 file changed, 34 insertions(+), 26 deletions(-)
+ drivers/iio/afe/iio-rescale.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-index b8158a1198eb..367ff12bf6c7 100644
---- a/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-+++ b/tools/testing/selftests/net/mptcp/mptcp_sockopt.c
-@@ -640,7 +640,8 @@ static void connect_one_server(int fd, int pipefd)
+diff --git a/drivers/iio/afe/iio-rescale.c b/drivers/iio/afe/iio-rescale.c
+index 3a6a09ffa5267ddfd5131fbd04a5df928836589d..c01292a15a29d02afa8de80a778c2c2a2aeecd3f 100644
+--- a/drivers/iio/afe/iio-rescale.c
++++ b/drivers/iio/afe/iio-rescale.c
+@@ -303,7 +303,8 @@ static int rescale_configure_channel(struct device *dev,
+ 	chan->info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
+ 		BIT(IIO_CHAN_INFO_SCALE);
  
- static void process_one_client(int fd, int pipefd)
- {
--	ssize_t ret, ret2, ret3;
-+	size_t nread = 0, nwritten = 0;
-+	ssize_t ret, n, w, off;
- 	struct so_state s;
- 	char buf[4096];
+-	if (rescale->offset)
++	if (rescale->offset ||
++	    iio_channel_has_info(schan, IIO_CHAN_INFO_OFFSET))
+ 		chan->info_mask_separate |= BIT(IIO_CHAN_INFO_OFFSET);
  
-@@ -650,46 +651,53 @@ static void process_one_client(int fd, int pipefd)
- 	ret = write(pipefd, "xmit", 4);
- 	assert(ret == 4);
- 
--	ret = read(fd, buf, sizeof(buf));
--	if (ret < 0)
-+read_more:
-+	n = read(fd, buf, sizeof(buf));
-+	if (n < 0)
- 		die_perror("read");
-+	if (n == 0)
-+		goto hangup;
-+
-+	for (off = 0; off < n; off += w) {
-+		w = write(fd, buf + off, n - off);
-+		if (w < 0)
-+			die_perror("write");
-+		if (w == 0)
-+			xerror("write returned 0");
-+	}
-+	nread += n;
-+	nwritten += n;
-+	goto read_more;
- 
--	assert(s.mptcpi_rcv_delta <= (uint64_t)ret);
-+hangup:
-+	assert(s.mptcpi_rcv_delta <= nread);
- 
- 	if (s.tcpi_rcv_delta)
--		assert(s.tcpi_rcv_delta == (uint64_t)ret);
--
--	ret2 = write(fd, buf, ret);
--	if (ret2 < 0)
--		die_perror("write");
--
--	/* wait for hangup */
--	ret3 = read(fd, buf, 1);
--	if (ret3 != 0)
--		xerror("expected EOF, got %lu", ret3);
-+		assert(s.tcpi_rcv_delta <= nread);
- 
--	do_getsockopts(&s, fd, ret, ret2);
--	if (s.mptcpi_rcv_delta != (uint64_t)ret + 1)
-+	do_getsockopts(&s, fd, nread, nwritten);
-+	if (s.mptcpi_rcv_delta != (uint64_t)nread + 1)
- 		xerror("mptcpi_rcv_delta %" PRIu64 ", expect %" PRIu64 ", diff %" PRId64,
--		       s.mptcpi_rcv_delta, ret + 1, s.mptcpi_rcv_delta - (ret + 1));
-+		       s.mptcpi_rcv_delta, (uint64_t)nread + 1,
-+		       s.mptcpi_rcv_delta - ((uint64_t)nread + 1));
- 
- 	/* be nice when running on top of older kernel */
- 	if (s.pkt_stats_avail) {
--		if (s.last_sample.mptcpi_bytes_sent != ret2)
-+		if (s.last_sample.mptcpi_bytes_sent != nwritten)
- 			xerror("mptcpi_bytes_sent %" PRIu64 ", expect %" PRIu64
- 			       ", diff %" PRId64,
--			       s.last_sample.mptcpi_bytes_sent, ret2,
--			       s.last_sample.mptcpi_bytes_sent - ret2);
--		if (s.last_sample.mptcpi_bytes_received != ret)
-+			       s.last_sample.mptcpi_bytes_sent, (uint64_t)nwritten,
-+			       s.last_sample.mptcpi_bytes_sent - (uint64_t)nwritten);
-+		if (s.last_sample.mptcpi_bytes_received != nread)
- 			xerror("mptcpi_bytes_received %" PRIu64 ", expect %" PRIu64
- 			       ", diff %" PRId64,
--			       s.last_sample.mptcpi_bytes_received, ret,
--			       s.last_sample.mptcpi_bytes_received - ret);
--		if (s.last_sample.mptcpi_bytes_acked != ret)
-+			       s.last_sample.mptcpi_bytes_received, (uint64_t)nread,
-+			       s.last_sample.mptcpi_bytes_received - (uint64_t)nread);
-+		if (s.last_sample.mptcpi_bytes_acked != nread)
- 			xerror("mptcpi_bytes_acked %" PRIu64 ", expect %" PRIu64
- 			       ", diff %" PRId64,
--			       s.last_sample.mptcpi_bytes_acked, ret,
--			       s.last_sample.mptcpi_bytes_acked - ret);
-+			       s.last_sample.mptcpi_bytes_acked, (uint64_t)nread,
-+			       s.last_sample.mptcpi_bytes_acked - (uint64_t)nread);
- 	}
- 
- 	close(fd);
+ 	/*
 
 ---
-base-commit: 77f43f9f764392db19087a46499b301ae629f437
-change-id: 20261017-fix-mptcp-issue-639-96339a3d921a
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261012-iio-rescale-offset-41254a33b6d6
 
 Best regards,
---  
-Quanye Yang <quanyeyang@proton.me>
+-- 
+Andrea Amer <and.amer@gmail.com>
 
