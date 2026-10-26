@@ -1,89 +1,73 @@
 From: Remy Demangeot <remy@demangeot.net>
-Subject: [PATCH 0/3] hwmon: (asus-ec-sensors) more MAXIMUS IX EXTREME
- sensors
-Date: Mon, 26 Oct 2026 09:57:34 +0100
-Message-Id: <20261026-b4-m9e-ext-sensors-v1-0-644d389b2de1@demangeot.net>
+Date: Mon, 26 Oct 2026 09:57:35 +0100
+Subject: [PATCH 1/3] hwmon: (asus-ec-sensors) add EXT_Sensor temperatures
+ for MAXIMUS IX EXTREME
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAP4V32oC/1WOy27CMBREfyXyurfyI06cCCH+A7HwY2i9cNLaB
- iEh/h1DNu3iLs5IM+feWUGOKGzu7izjGktclwbio2P+2y5foBgaM8nlINqR6ylNINwqFSxlzYX
- UxGEUjBmnwFrxJ+Mcb+/R42njjN9L265b+C+hhFLsWzR3u80j9B9PRgJdBQkapAh2kgJK8kNAe
- v231s8Fdf/yOltAfk0p1rmDcMrLQfGgnXF+1PqM3lkzBMkDN35UPZzmPTs9Hk+IzYzmBgEAAA=
- =
-X-Change-ID: 20261026-b4-m9e-ext-sensors-390e83e8879d
+Message-Id: <20261026-b4-m9e-ext-sensors-v1-1-644d389b2de1@demangeot.net>
+References: <20261026-b4-m9e-ext-sensors-v1-0-644d389b2de1@demangeot.net>
+In-Reply-To: <20261026-b4-m9e-ext-sensors-v1-0-644d389b2de1@demangeot.net>
 To: Eugene Shalygin <eugene.shalygin@gmail.com>, 
  Guenter Roeck <linux@roeck-us.net>
 Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Remy Demangeot <remy@demangeot.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793005066; l=2835;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793005066; l=1995;
  i=remy@demangeot.net; s=20261015; h=from:subject:message-id;
- bh=zn8DXKlaE4UvmTPoDcyez0qpguM1Sh9lNNufMZLHhXU=;
- b=/If33aB3oe4ancoLuekn6b85La6zjisVvdKxW3O5dP1i/D9Iz7HJ+4t5gok6QzVKJSbcdMCdr
- Upgx4aayxCwBsQ+ov+wLaiI1V5v1dwnEiqv6/UVtEcq2VzuVpSIwU2n
+ bh=WyQhdqkdM10QFFAO+QYVgb4wy5e8BEIj6Hxrc9XW7Nw=;
+ b=IsS3JVtgVcHZt6LMRA58mLfSaGRk0OeMoYSUZ4jIBAxWs3CD3Qx7RVDcXd+TBTvWwhC+Zwoew
+ F4byR4xKpaLDkoMthVlHNQ6XFLuQE2rXN7h4hHcdCuHwAMOcVJI4ZLa
 X-Developer-Key: i=remy@demangeot.net; a=ed25519;
  pk=h/s5N2ZlgZ0m+8FpMhSaCNJt0jvb9whRBAdJwpC+VAo=
 X-Endpoint-Received: by B4 Relay for remy@demangeot.net/20261015 with auth_id=1194
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds the remaining sensors of the MAXIMUS IX EXTREME EC
-that HWiNFO reads. It applies on top of "hwmon: (asus-ec-sensors) add
-MAXIMUS IX EXTREME", which Guenter applied:
-https://lore.kernel.org/r/20261015-b4-m9e-extreme-v1-1-621da921e320@demangeot.net
+The MAXIMUS IX EXTREME supports three additional thermistor inputs,
+EXT_Sensor1-3, located on the optional ASUS fan extension card. The
+EC reports them at bank 0, registers 0x60-0x62, as signed degrees
+Celsius, with -60 when no probe is connected (already handled as a
+blank value).
 
-Guenter asked why I assumed these might not be acceptable. No
-particular reason: two of them need access patterns the driver does
-not have yet (a selector register written before the read, and a
-second EC on its own I/O ports), so I preferred to ask before touching
-the read path.
+Add them to the Intel 200-series family as Extra_1-Extra_3 and enable
+them for the board.
 
- 1/3: EXT_Sensor1-3, plain reads at bank 0, 0x60-0x62.
- 2/3: EXT_FAN1-3 speeds, read after writing the fan number to the
-      selector register 0x43, which is restored afterwards.
- 3/3: the four water temperatures, on a second EC at I/O ports
-      0x68/0x6c, bank 1.
+Readings match HWiNFO 8.54 on the same machine, and moving a probe
+from one header to another moves the reading accordingly.
 
-Notes:
- - After 3/3, enum ec_sensors has 32 entries, which fills the
-   unsigned long sensor mask on 32-bit builds. Any further sensor
-   will need a wider mask (u64 and BIT_ULL()). I can send that as a
-   preparatory patch if you prefer.
- - asus_ec2_wait() polls with udelay(10). checkpatch suggests
-   usleep_range(), but the EC normally answers within a few
-   microseconds, so I kept udelay(). Happy to change it.
-
-A related question, independent of this series. The EC also holds the
-fan curves of the extension card fans: after selecting a fan through
-0x43, registers 0x4a-0x4f hold a 3-point curve (temperature in degrees
-Celsius, duty 0-255) that the BIOS writes at boot. Writing these
-registers changes the fan speed immediately, and writing the same duty
-at the three points gives a fixed speed. My out-of-tree driver uses
-this to expose pwmN and pwmN_enable (1: fixed duty through a flat
-curve, 2: BIOS curve, saved at probe and restored at unload and
-shutdown, and re-applied after resume), so that these fans can be
-driven from userspace like the Super I/O ones.
-
-Would write support like this be acceptable in asus-ec-sensors, or is
-it better kept out of tree or in a separate driver? I understand the
-driver is read-only by design, so "no" is a fine answer.
-
-Tested on the MAXIMUS IX EXTREME (BIOS 1501): readings match HWiNFO
-8.54 and the out-of-tree driver on the same machine.
-
+Signed-off-by: Remy Demangeot <remy@demangeot.net>
 ---
-Remy Demangeot (3):
-      hwmon: (asus-ec-sensors) add EXT_Sensor temperatures for MAXIMUS IX EXTREME
-      hwmon: (asus-ec-sensors) add fan extension card fans for MAXIMUS IX EXTREME
-      hwmon: (asus-ec-sensors) add water temperatures for MAXIMUS IX EXTREME
+ drivers/hwmon/asus-ec-sensors.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
- drivers/hwmon/asus-ec-sensors.c | 219 +++++++++++++++++++++++++++++++++++++---
- 1 file changed, 205 insertions(+), 14 deletions(-)
----
-base-commit: e1b3c2630d5b8bc755fe4ba86d20d08c734eb504
-change-id: 20261026-b4-m9e-ext-sensors-390e83e8879d
+diff --git a/drivers/hwmon/asus-ec-sensors.c b/drivers/hwmon/asus-ec-sensors.c
+index 3c97ae09cc19acad54696bff9e65d6bc4f3ce835..8966053b58173592a19afbab42ccbe8e6e6d7042 100644
+--- a/drivers/hwmon/asus-ec-sensors.c
++++ b/drivers/hwmon/asus-ec-sensors.c
+@@ -359,6 +359,12 @@ static const struct ec_sensor_info sensors_family_intel_200[] = {
+ 	[ec_sensor_temp_t_sensor] =
+ 		EC_SENSOR("T_Sensor", hwmon_temp, 1, 0x00, 0x3d),
+ 	[ec_sensor_temp_vrm] = EC_SENSOR("VRM", hwmon_temp, 1, 0x00, 0x3e),
++	[ec_sensor_temp_sensor_extra_1] =
++		EC_SENSOR("Extra_1", hwmon_temp, 1, 0x00, 0x60),
++	[ec_sensor_temp_sensor_extra_2] =
++		EC_SENSOR("Extra_2", hwmon_temp, 1, 0x00, 0x61),
++	[ec_sensor_temp_sensor_extra_3] =
++		EC_SENSOR("Extra_3", hwmon_temp, 1, 0x00, 0x62),
+ 	[ec_sensor_fan_cpu_opt] =
+ 		EC_SENSOR("CPU_Opt", hwmon_fan, 2, 0x00, 0xbc),
+ };
+@@ -523,7 +529,8 @@ static const struct ec_board_info board_info_maximus_vi_hero = {
+ 
+ static const struct ec_board_info board_info_maximus_ix_extreme = {
+ 	.sensors = SENSOR_TEMP_CHIPSET | SENSOR_TEMP_T_SENSOR |
+-		SENSOR_TEMP_VRM,
++		SENSOR_TEMP_VRM | SENSOR_TEMP_SENSOR_EXTRA_1 |
++		SENSOR_TEMP_SENSOR_EXTRA_2 | SENSOR_TEMP_SENSOR_EXTRA_3,
+ 	.mutex_path = ASUS_HW_ACCESS_MUTEX_SB_PCI0_LPCB_SIO1_MUT0,
+ 	.family = family_intel_200_series,
+ };
 
-Best regards,
 -- 
-Remy Demangeot <remy@demangeot.net>
+2.47.3
 
