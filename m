@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Mon, 26 Oct 2026 08:54:07 -0300
-Subject: [PATCH v4 3/6] lib: test-kstrtox: add E notation tests for
- kstrto[u]dec64()
+Date: Mon, 26 Oct 2026 08:54:08 -0300
+Subject: [PATCH v4 4/6] iio: test: rescale: compare scales against the
+ precision of the output
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-e-notation-v4-3-a366a6d14d57@analog.com>
+Message-Id: <20261026-e-notation-v4-4-a366a6d14d57@analog.com>
 References: <20261026-e-notation-v4-0-a366a6d14d57@analog.com>
 In-Reply-To: <20261026-e-notation-v4-0-a366a6d14d57@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
@@ -14,130 +14,161 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Andy Shevchenko <andy@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793015661; l=4105;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793015661; l=5598;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=AplilCw0/lgZtXwyKRUjI6JAbU6gbrQk+IIYLQb21T4=;
- b=34D9hB0iVYW1857tWE1NPi1VxrCzJ5TPLBL0PjZyg/FuJdSMTQdj3043SWfISMraC6L6gNbVY
- kbAdN7XZqpCBA2CE/mHUbwE4/9l9P63BDB0X1IqqvCXpM3t8iQpO9Ju
+ bh=nELWY96qckQqagFFtkhq4P+EyoDGOmFkXwKMJiZTz3c=;
+ b=+pFNmFDSZK8OonTTZfUEuL6RhH8MRKjo2ez5MpxV5Fo9C8MQN/Cm+fbYqfeMWxD4//6AVunDF
+ eEg3dd8v9u7D5QDUcTsNvE4CJcRa6zem3pQnuJznWyfnuvqtHcE+Nlu
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cover E notation parsing in kstrtoudec64() and kstrtodec64(): positive,
-zero and negative exponents, upper case 'E', an explicit '+' sign,
-rounding (ties to even) of integer digits dropped by negative exponents,
-large values, and failures for overflowing and invalid inputs.
+The scale tests format the rescaled value with iio_format_value(), which
+prints at most nano precision, and require the relative error to the
+expected value to be below 1 ppm. Both strings are parsed back with
+iio_str_to_fixpoint() at nano precision, so for the small scale cases the
+check only passes because the expected value, like the formatted one, is
+truncated to nano. For example, "0.000000033594" is parsed as 33 nano,
+equal to the formatted "0.000000033", although the actual error is about
+1.8%. If the expected value were rounded instead, it would be parsed as
+34 nano and the test would fail even though the output is as accurate as
+the format allows.
+
+Parse both values with kstrtodec64() at a scale of 10, one digit more
+than the output precision, so the expected value keeps the digits lost
+when formatting. Scale 10 is the largest that still fits the overflow
+cases (about 2.1e8) in an s64. Compute the relative error with
+mul_u64_u64_div_u64(), as the product with 10^6 no longer fits in 64 bits
+for those cases.
+
+Then allow a relative error up to the relative size of one nano of the
+expected value, the precision of the formatted output. This is 0 ppm for
+values of 0.01 and above, so those cases are checked as before, and it
+accepts the formatting error for the small scale cases.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- lib/test-kstrtox.c | 72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 72 insertions(+)
+ drivers/iio/test/iio-test-rescale.c | 59 ++++++++++++++-----------------------
+ 1 file changed, 22 insertions(+), 37 deletions(-)
 
-diff --git a/lib/test-kstrtox.c b/lib/test-kstrtox.c
-index 1f176b232085..a0c1e4286fd4 100644
---- a/lib/test-kstrtox.c
-+++ b/lib/test-kstrtox.c
-@@ -781,6 +781,36 @@ static void __init test_kstrtoudec64_ok(void)
- 		/* rounding with many excess digits */
- 		{"0.00000000000000000000000000000000423",	34,	42},
- 		{"1.99999999999999999999999999999999999",	3,	2000},
-+		/* E notation: positive exponent, no fraction */
-+		{"1e3",			3,	1000000ULL},
-+		{"42e2",		3,	4200000ULL},
-+		/* E notation: positive exponent with fraction */
-+		{"2.718e3",		3,	2718000ULL},
-+		{"1.5e2",		1,	1500ULL},
-+		/* E notation: uppercase E */
-+		{"1E3",			3,	1000000ULL},
-+		/* E notation: explicit positive exponent sign */
-+		{"1e+3",		3,	1000000ULL},
-+		/* E notation: zero exponent */
-+		{"1.5e0",		1,	15ULL},
-+		/* E notation: negative exponent shifts decimal left */
-+		{"271828e-5",		3,	2718ULL},
-+		{"2.71828e-1",		3,	272ULL},
-+		{"270e-2",		3,	2700ULL},
-+		/* E notation: negative exponent that rounds integer digits */
-+		{"27e-4",		3,	3ULL},
-+		{"19e-1",		0,	2ULL},
-+		/* E notation: ties to even on integer digits */
-+		{"125e-1",		0,	12ULL},
-+		{"135e-1",		0,	14ULL},
-+		{"25.0001e-1",		0,	3ULL},
-+		/* E notation: negative exponent below 1 ULP rounds to 0 */
-+		{"1e-5",		3,	0ULL},
-+		{"5e-1",		0,	0ULL},
-+		{"5e-2",		0,	0ULL},
-+		{"6e-1",		0,	1ULL},
-+		/* E notation: large value (27 GHz in micro Hz) */
-+		{"2.7e10",		6,	27000000000000000ULL},
- 	};
- 	TEST_OK(kstrtoudec64, u64, "%llu", test_udec64_ok);
+diff --git a/drivers/iio/test/iio-test-rescale.c b/drivers/iio/test/iio-test-rescale.c
+index de4a09f432c0..1347a9650355 100644
+--- a/drivers/iio/test/iio-test-rescale.c
++++ b/drivers/iio/test/iio-test-rescale.c
+@@ -6,6 +6,8 @@
+  */
+ 
+ #include <linux/gcd.h>
++#include <linux/kstrtox.h>
++#include <linux/math64.h>
+ #include <linux/overflow.h>
+ 
+ #include <linux/iio/afe/rescale.h>
+@@ -581,55 +583,36 @@ static void case_to_desc(const struct rescale_tc_data *t, char *desc)
+ KUNIT_ARRAY_PARAM(iio_rescale_scale, scale_cases, case_to_desc);
+ KUNIT_ARRAY_PARAM(iio_rescale_offset, offset_cases, case_to_desc);
+ 
+-/**
+- * iio_str_to_nano() - Parse a fixed-point string to get an
+- *                      IIO_VAL_INT_PLUS_NANO value
+- * @str: The string to parse
+- * @nano: The number as an integer
+- *
+- * Returns 0 on success, or a negative error code if the string could not be
+- * parsed.
++/*
++ * iio_format_value() prints scales with up to nano precision. Parse values
++ * with one more digit, so the expected values keep the precision lost there.
++ * Scale 10 is the largest that fits the overflow test cases in an s64.
+  */
+-static int iio_str_to_nano(const char *str, s64 *nano)
+-{
+-	int tmp, tmp2;
+-	int ret = 0;
+-
+-	/*
+-	 * iio_str_to_fixpoint() uses 10^8 here instead of 10^9 as fract_mult is
+-	 * the multiplier for the first decimal place.
+-	 */
+-	ret = iio_str_to_fixpoint(str, 100000000, &tmp, &tmp2);
+-	if (ret < 0)
+-		return ret;
+-
+-	if (tmp < 0)
+-		tmp2 *= -1;
+-
+-	*nano = (s64)tmp * 1000000000UL + tmp2;
+-
+-	return ret;
+-}
++#define IIO_TEST_DEC_SCALE	10
++#define IIO_TEST_NANO		10	/* one nano at IIO_TEST_DEC_SCALE */
+ 
+ /**
+  * iio_test_relative_error_ppm() - Compute relative error (in parts-per-million)
+  *                                 between two fixed-point strings
+  * @real_str: The real value as a string
+  * @exp_str: The expected value as a string
++ * @max_ppm: The relative size (in parts-per-million) of one nano of the
++ *           expected value, the precision of iio_format_value()
+  *
+  * Returns a negative error code if the strings could not be parsed, or the
+  * relative error in parts-per-million.
+  */
+-static int iio_test_relative_error_ppm(const char *real_str, const char *exp_str)
++static int iio_test_relative_error_ppm(const char *real_str, const char *exp_str,
++				       int *max_ppm)
+ {
+-	s64 real, exp, err;
++	s64 real, exp;
+ 	int ret;
+ 
+-	ret = iio_str_to_nano(real_str, &real);
++	ret = kstrtodec64(real_str, IIO_TEST_DEC_SCALE, &real);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	ret = iio_str_to_nano(exp_str, &exp);
++	ret = kstrtodec64(exp_str, IIO_TEST_DEC_SCALE, &exp);
+ 	if (ret < 0)
+ 		return ret;
+ 
+@@ -638,9 +621,9 @@ static int iio_test_relative_error_ppm(const char *real_str, const char *exp_str
+ 		return -EINVAL;
+ 	}
+ 
+-	err = 1000000UL * abs(exp - real);
++	*max_ppm = (int)div64_u64(IIO_TEST_NANO * 1000000ULL, abs(exp));
+ 
+-	return (int)div64_u64(err, abs(exp));
++	return (int)mul_u64_u64_div_u64(abs(exp - real), 1000000, abs(exp));
  }
-@@ -814,6 +844,17 @@ static void __init test_kstrtoudec64_fail(void)
- 		{"0.2",				20},
- 		{"0.18446744073709551616",	20},
- 		{"1",				20},
-+		/* E notation: exponent causes overflow */
-+		{"1e21",			1},
-+		{"2e20",			1},
-+		/* E notation: no digits after exponent marker */
-+		{"1e",			3},
-+		/* E notation: sign only after exponent marker */
-+		{"1e+",			3},
-+		{"1e-",			3},
-+		/* E notation: misc */
-+		{"1ee",			3}, /* double 'e' */
-+		{"1e+0b",		3}, /* hex character after exponent */
- 	};
- 	TEST_FAIL(kstrtoudec64, u64, "%llu", test_udec64_fail);
- }
-@@ -873,6 +914,27 @@ static void __init test_kstrtodec64_ok(void)
- 		{"-0.00000000000000000001",	20,	-1},
- 		{"0.009223372036854775807",	21,	LLONG_MAX},
- 		{"-0.009223372036854775808",	21,	LLONG_MIN},
-+		/* E notation: positive number */
-+		{"1e3",			3,	1000000LL},
-+		{"2.7e3",		3,	2700000LL},
-+		{"1.5e0",		1,	15LL},
-+		/* E notation: negative number with positive exponent */
-+		{"-1e3",		3,	-1000000LL},
-+		{"-2.7e3",		3,	-2700000LL},
-+		/* E notation: negative exponent */
-+		{"27e-1",		3,	2700LL},
-+		{"-27e-1",		3,	-2700LL},
-+		{"2.7e-1",		3,	270LL},
-+		{"-2.7e-1",		3,	-270LL},
-+		/* E notation: negative exponent rounds integer digits */
-+		{"-27e-4",		3,	-3LL},
-+		{"-125e-1",		0,	-12LL},
-+		{"-135e-1",		0,	-14LL},
-+		/* E notation: negative exponent below 1 ULP rounds to 0 */
-+		{"1e-5",		3,	0LL},
-+		{"-1e-5",		3,	0LL},
-+		{"-5e-1",		0,	0LL},
-+		{"-6e-1",		0,	-1LL},
- 	};
- 	TEST_OK(kstrtodec64, s64, "%lld", test_dec64_ok);
- }
-@@ -903,6 +965,16 @@ static void __init test_kstrtodec64_fail(void)
- 		{"-0.1",			20},
- 		{"0.09223372036854775808",	20},
- 		{"-0.09223372036854775809",	20},
-+		/* E notation: exponent causes overflow */
-+		{"1e21",		1},
-+		{"-1e21",		1},
-+		/* E notation: no digits after exponent marker */
-+		{"1e",			3},
-+		{"1e+",			3},
-+		{"1e-",			3},
-+		/* E notation: misc */
-+		{"1Ee+3",		3}, /* double 'e' with mixed case */
-+		{"1e+0xa",		3}, /* hex number exponent */
- 	};
- 	TEST_FAIL(kstrtodec64, s64, "%lld", test_dec64_fail);
- }
+ 
+ static void iio_rescale_test_scale(struct kunit *test)
+@@ -650,6 +633,7 @@ static void iio_rescale_test_scale(struct kunit *test)
+ 	struct rescale rescale;
+ 	int values[2];
+ 	int rel_ppm;
++	int max_ppm;
+ 	int ret;
+ 
+ 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buff);
+@@ -666,10 +650,11 @@ static void iio_rescale_test_scale(struct kunit *test)
+ 	ret = iio_format_value(buff, ret, 2, values);
+ 	KUNIT_EXPECT_EQ(test, (int)strlen(buff), ret);
+ 
+-	rel_ppm = iio_test_relative_error_ppm(buff, t->expected);
+-	KUNIT_EXPECT_GE_MSG(test, rel_ppm, 0, "failed to compute ppm\n");
++	rel_ppm = iio_test_relative_error_ppm(buff, t->expected, &max_ppm);
++	KUNIT_ASSERT_GE_MSG(test, rel_ppm, 0, "failed to compute ppm\n");
+ 
+-	KUNIT_EXPECT_EQ_MSG(test, rel_ppm, 0,
++	/* allow the error of the nano precision used to format the value */
++	KUNIT_EXPECT_LE_MSG(test, rel_ppm, max_ppm,
+ 			    "\t    real=%s"
+ 			    "\texpected=%s\n",
+ 			    buff, t->expected);
 
 -- 
 2.43.0
