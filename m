@@ -1,11 +1,11 @@
 From: Xi Zhang <xz.ca.cn@gmail.com>
-Date: Mon, 26 Oct 2026 16:16:54 -0300
-Subject: [PATCH 6/8] drm/msm/dpu: workaround res re-assignment issues by
- pairing enc/crtc
+Date: Mon, 26 Oct 2026 16:16:55 -0300
+Subject: [PATCH 7/8] drm/msm: force mode_changed on color_mgmt_changed, not
+ just ctm
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-msm-dpu-res-clean-v1-6-f46130a8a717@gmail.com>
+Message-Id: <20261026-msm-dpu-res-clean-v1-7-f46130a8a717@gmail.com>
 References: <20261026-msm-dpu-res-clean-v1-0-f46130a8a717@gmail.com>
 In-Reply-To: <20261026-msm-dpu-res-clean-v1-0-f46130a8a717@gmail.com>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -18,59 +18,47 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Xi Zhang <xz.ca.cn@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793042236; l=1740;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793042236; l=1219;
  i=xz.ca.cn@gmail.com; s=20261026; h=from:subject:message-id;
- bh=3eiBb0uy0PBNKjp2IH6yVXShmpVfE6rEzfXROTQjPv0=;
- b=ycxSfaEHnf/r9SC/zlyhmgTTleLJJJn92cKvzii6Bit0CyIas1C355iPIhMAqv0NA6PlhVHZC
- dulUR+CXhM7DEBZrrlKO277amomkcrzgmo04Y0S7FeLxt7KmbuRk4vy
+ bh=Wo3tEP0RL/iVZrlVbjqizqGErC2YhsS/kVeKWgJ1UBY=;
+ b=Ka8elEcmKvRmXT6MxV7shh8QtW1BUM34m8jO69Pppxv34hT1WkBIwW/du7byZGl5q+mivl9sR
+ dI2mCiPGOpqDqqYH8xMs8i3CNw8qaTypCBy8azN6b6SYsV6VTBNx13P
 X-Developer-Key: i=xz.ca.cn@gmail.com; a=ed25519;
  pk=aRUll5L3eJbwG8Y4BO9uySKGzm+Uy+Ccei9prnRVZRs=
 X-Endpoint-Received: by B4 Relay for xz.ca.cn@gmail.com/20261026 with auth_id=1328
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consider the scenario with 4 crtcs, 3 encoders/displays are
-connected. DPU resources is nearly maxed-out, and mode set is
-performed on a display which has acquired many dpu resources.
-A new crtc is selected by kernel drm for the mode set,
-and during atomic_check, the previous crtc won't have a chance
-to release its old resources from global_state before the new
-crtc tries to allocate new ones. Leading to atomic_check failure.
+dpu_crtc_atomic_check calls dpu_crtc_assign_resources when
+color_mgmt_changed is set, which is unsafe outside of full modeset.
 
-By having the same crtc for encoder when possible, during
-atomic_check each individual crtc will always be able to release
-old resources before allocating new ones.
+Set allow_modeset and mode_changed when color_mgmt_changed is set,
+not just when ctm is changed.
+
+Also would fix
+commit 42f62cd79578 ("drm/msm/dpu: try reserving the DSPP-less LM first")
+which was reverted.
+
+Closes: https://gitlab.freedesktop.org/drm/msm/-/work_items/102
 
 Signed-off-by: Xi Zhang <xz.ca.cn@gmail.com>
 ---
- drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c | 15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
+ drivers/gpu/drm/msm/msm_atomic.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
-index da3556eb6ecc..13099d6e3ac9 100644
---- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
-+++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
-@@ -879,9 +879,18 @@ static int _dpu_kms_drm_obj_init(struct dpu_kms *dpu_kms)
+diff --git a/drivers/gpu/drm/msm/msm_atomic.c b/drivers/gpu/drm/msm/msm_atomic.c
+index a8babf1dbe0d..6f0f30b0728a 100644
+--- a/drivers/gpu/drm/msm/msm_atomic.c
++++ b/drivers/gpu/drm/msm/msm_atomic.c
+@@ -195,8 +195,7 @@ int msm_atomic_check(struct drm_device *dev, struct drm_atomic_commit *state)
+ 	 */
+ 	for_each_oldnew_crtc_in_state(state, crtc, old_crtc_state,
+ 				      new_crtc_state, i) {
+-		if ((old_crtc_state->ctm && !new_crtc_state->ctm) ||
+-		    (!old_crtc_state->ctm && new_crtc_state->ctm)) {
++		if (new_crtc_state->color_mgmt_changed) {
+ 			new_crtc_state->mode_changed = true;
+ 			state->allow_modeset = true;
  		}
- 	}
- 
--	/* All CRTCs are compatible with all encoders */
--	drm_for_each_encoder(encoder, dev)
--		encoder->possible_crtcs = (1 << dev->mode_config.num_crtc) - 1;
-+	/* All CRTCs are compatible with all encoders.
-+	 * Nevertheless, if enough CRTCs are available, pair up crtc/encoder
-+	 * for better resource re-assignments during atomic_check
-+	 * from userspace mode set.
-+	 */
-+	i = 0;
-+	drm_for_each_encoder(encoder, dev) {
-+		if (dev->mode_config.num_crtc >= num_encoders)
-+			encoder->possible_crtcs = 1 << i++;
-+		else
-+			encoder->possible_crtcs = (1 << dev->mode_config.num_crtc) - 1;
-+	}
- 
- 	return 0;
- }
 
 -- 
 2.55.0
