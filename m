@@ -1,112 +1,131 @@
-From: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
-Date: Mon, 26 Oct 2026 09:30:22 -0400
-Subject: [PATCH iwl-net] ice: fix NULL dereference after disabling RDMA
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Mon, 26 Oct 2026 11:19:22 -0400
+Subject: [PATCH] mm, swap: stop cluster list scans once swapoff clears
+ SWP_WRITEOK
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-ice-deinit-rdma-null-v1-1-7d2130d1809a@hydroquebec.com>
-X-B4-Tracking: v=1; b=H4sIAO1V32oC/yWMwQrCMBAFf6Xs2YUmwQr+inhokxddiaskaRVK/
- 92ox2GYWakgCwodu5UyFiny0AZm15G/jnoBS2hMtreD6e2exYMDRKVyDveRdU6JB+OimeBcPFh
- q6TMjyvu3PZG8Eisqnf+izNMNvn6ntG0fbZLQUIEAAAA=
-X-Change-ID: 20261025-ice-deinit-rdma-null-613f1be33f72
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: Michal Swiatkowski <michal.swiatkowski@linux.intel.com>, 
- intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Message-Id: <20261026-swapoff-writeok-v1-1-4f4cd420aa33@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDINYtLk8syE9L0y0vyixJzc/WTbEwSjNKTEk2SjQ1VgLqKihKTcusAJs
+ YHQvhF5cmZaUml4CMUaqtBQDWLk8TcwAAAA==
+X-Change-ID: 20261026-swapoff-writeok-d82f2adc2a53
+To: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
+ Kairui Song <kasong@tencent.com>, Kemeng Shi <shikemeng@huaweicloud.com>, 
+ Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
+ stable@vger.kernel.org, Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793021421; l=3312;
- i=choiniere.vincent@hydroquebec.com; s=20261016; h=from:subject:message-id;
- bh=k9KyR/hu9YHlPLJ6ekmbRPgwMefAd5BueodKK2/VMpU=;
- b=8bwOLo9nJW2N0lkprTPvo4m7YK3bCgAvaOdITw89TeFZE4NqbPiFYxMcXYABPUonNi9ZXkF/N
- SSg99Pxr0XBDc4xD+agc0rCZRcm5RqV9IGR1Q9in27Ko8MdWDYYRiTp
-X-Developer-Key: i=choiniere.vincent@hydroquebec.com; a=ed25519;
- pk=MctQE067DucsZOaNqb+sjY7aQ+urhztuURanagEW3+8=
-X-Endpoint-Received: by B4 Relay for choiniere.vincent@hydroquebec.com/20261016 with auth_id=1210
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793027962; l=4058;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=13fz6rqNh91gTcPzM8hXNMOTAxUdtQgWk+c7vws4zJ8=;
+ b=vg9IYQzJgsesZ3/7DOx8iiu+UpwzJK/cT7keQ9ZTtaH4xqfxdkhcRRPeZI97Poq9QOz1X1L6b
+ rOOceG7nTAZB9hJbL18eVW0RArdVG4aOyGUa783AMsl5Gc87b5so/gq
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ice_deinit_rdma() checks ice_is_rdma_ena() before dereferencing
-pf->cdev_info. While the enable_rdma devlink driverinit parameter is
-registered, that helper returns the parameter value. Once the parameter
-is unregistered, it falls back to ICE_FLAG_RDMA_ENA.
+SWP_WRITEOK is cleared under si->lock when swapoff starts so that no
+new swap entries are allocated from the device, and try_to_unuse()
+then waits for writeback of the folios that still use the device.
 
-When enable_rdma is set to false and applied by a devlink reload,
-ice_init_rdma() returns early, leaving pf->cdev_info NULL. During driver
-removal, ice_remove() calls ice_deinit_devlink() before ice_unload().
-The parameters are therefore unregistered before ice_deinit_rdma()
-runs. On an RDMA-capable device, ice_is_rdma_ena() then returns true,
-allowing ice_deinit_rdma() to dereference the NULL pointer.
+However, an order-0 allocation that chose the device can race with
+swapoff clearing the flag and then loop forever.  It takes a cluster
+from the fragment cluster list of a higher order with
+isolate_lock_cluster(), the allocation from that cluster fails because
+SWP_WRITEOK is clear, and relocate_cluster() puts the cluster back on
+the same list, so the loop keeps finding clusters on it.
 
-This can cause a panic during reboot, module removal or PCI unbind.
-Reproduced on an E810 PF with Ubuntu kernel 7.0.0-14 (PREEMPT_RT):
+The looping task is in reclaim, and it may have set writeback on a
+folio whose write has been queued but not yet submitted.  swapoff then
+waits for that folio, while the reclaiming task, stuck in the loop,
+never reaches the point where it submits the write:
 
- devlink dev param set pci/0000:02:00.0 name enable_rdma value false \
-         cmode driverinit
- devlink dev reload pci/0000:02:00.0 action driver_reinit
- systemctl reboot
+  CPU0 (reclaim)                          CPU1 (swapoff)
+  --------------                          --------------
+  shrink_folio_list()
+    pageout(F)
+      /* F under writeback,
+         write not submitted */
+    folio_alloc_swap(G)  /* order 0 */
+      swap_alloc_slow()
+                                          del_from_avail_list(si, true)
+                                            si->flags &= ~SWP_WRITEOK
+                                          try_to_unuse()
+                                            folio_wait_writeback(F)
+        cluster_alloc_swap_entry()
+          isolate_lock_cluster()
+          /* allocation fails:
+             !SWP_WRITEOK */
+          relocate_cluster()
+          /* repeats forever */
+    swap_write_submit()
+    /* never reached */
 
- BUG: kernel NULL pointer dereference, address: 0000000000000018
- RIP: 0010:ice_deinit_rdma+0x30/0x60 [ice]
-  ice_unload+0x3f/0x150 [ice]
-  ice_remove+0xb5/0x1d0 [ice]
-  ice_shutdown+0x1b/0x60 [ice]
-  pci_device_shutdown
-  device_shutdown
-  kernel_restart
- Kernel panic - not syncing: Attempted to kill init!
+This results in a soft lockup on CPU0 and a swapoff that never returns.
 
-Check pf->cdev_info before dereferencing it, as
-ice_rdma_update_vsi_filter() already does. This preserves the existing
-enable_rdma semantics without changing other ice_is_rdma_ena() callers.
+isolate_lock_cluster() used to check SWP_WRITEOK under si->lock until
+commit 07adc4cf1ecd ("mm, swap: implement dynamic allocation of swap
+table") removed that check.  Restore the check.  Since swapoff clears
+the flag under the same lock, isolate_lock_cluster() then returns NULL,
+which ends the scan; the swap slot allocation for G fails, and reclaim
+goes on to submit the write of F.
 
-Fixes: 87181cd6985f ("ice: enable_rdma devlink param")
+Given that this is a race, its reproducibility is non-deterministic.
+We reproduce it by using a non-rotational swap device that is not
+synchronous, with 64K mTHP enabled, where one CPU repeatedly pages out
+two 64K folios and a 4K page with madvise(MADV_PAGEOUT), while other
+CPUs run swapoff and swapon on the same device.  In my tests it
+triggers within 20s in each run, and with the fix applied, it runs for
+300s without any hang/kernel report.  This bug was found and
+reproduced deterministically using a deterministic hypervisor that is
+currently under development.
+
+Fixes: 07adc4cf1ecd ("mm, swap: implement dynamic allocation of swap table")
 Cc: stable@vger.kernel.org
-Signed-off-by: Vincent Choiniere <choiniere.vincent@hydroquebec.com>
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Testing was performed on an E810 PF passed through to a KVM guest,
-using Ubuntu kernel 7.0.0-38 (PREEMPT_RT). Two kernels differing only
-by this patch were compared. Each test set enable_rdma=false and
-applied it with devlink reload driver_reinit before the removal step.
+Before commit dda8fb68b590 ("mm/swap: also use struct swap_iocb for
+block I/O"), reclaim submitted the swap write right away, so on 6.18
+to 7.2 the loop most likely ends once swapoff frees the slots instead
+of hanging.
 
-  Removal path      Without patch           With patch
-  reboot (x3)       NULL deref, panic (3/3) clean (3/3)
-  rmmod ice         NULL deref              clean
-  PCI unbind        NULL deref              clean
-
-Additional checks on the patched kernel:
-  - Reboot without a preceding devlink reload completed cleanly.
-  - irdma devices returned after PCI unbind/bind.
-  - irdma devices returned after an enable_rdma false -> true reload
-    cycle.
-
-No KASAN or kmemleak testing was performed.
-
-The exact target tree (net, 7076f684d5132e6a) was not built or tested.
-ice_deinit_rdma() and ice_is_rdma_ena() are unchanged there compared
-with the tested code.
+Reproducer: https://github.com/manitofigh/swapoff-repro/blob/main/swapoff.c
 ---
- drivers/net/ethernet/intel/ice/ice_idc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ mm/swapfile.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/net/ethernet/intel/ice/ice_idc.c b/drivers/net/ethernet/intel/ice/ice_idc.c
-index 102d63c30..09dfcffeb 100644
---- a/drivers/net/ethernet/intel/ice/ice_idc.c
-+++ b/drivers/net/ethernet/intel/ice/ice_idc.c
-@@ -454,7 +454,7 @@ int ice_init_rdma(struct ice_pf *pf)
-  */
- void ice_deinit_rdma(struct ice_pf *pf)
- {
--	if (!ice_is_rdma_ena(pf))
-+	if (!ice_is_rdma_ena(pf) || !pf->cdev_info)
- 		return;
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 601979b97f95..2b03d14b5f52 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -627,6 +627,10 @@ static struct swap_cluster_info *isolate_lock_cluster(
+ 	u8 flags = CLUSTER_FLAG_NONE;
  
- 	xa_erase(&ice_aux_id, pf->aux_idx);
+ 	spin_lock(&si->lock);
++
++	if (unlikely(!(si->flags & SWP_WRITEOK)))
++		goto out;
++
+ 	list_for_each_entry(ci, list, list) {
+ 		if (!spin_trylock(&ci->lock))
+ 			continue;
+@@ -642,6 +646,7 @@ static struct swap_cluster_info *isolate_lock_cluster(
+ 		found = ci;
+ 		break;
+ 	}
++out:
+ 	spin_unlock(&si->lock);
+ 
+ 	/* Cluster's table is freed when and only when it's on the free list. */
 
 ---
-base-commit: 7076f684d5132e6a6145e1da2fa74771ecd052e5
-change-id: 20261025-ice-deinit-rdma-null-613f1be33f72
+base-commit: e9011a65d78258901ba123c5f522bef26d29902f
+change-id: 20261026-swapoff-writeok-d82f2adc2a53
+
+Best regards,
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
