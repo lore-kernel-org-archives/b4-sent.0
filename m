@@ -1,70 +1,89 @@
-From: Enric Balletbo i Serra <eballetb@redhat.com>
-Date: Mon, 26 Oct 2026 09:44:34 +0100
-Subject: [PATCH 3/3] clocksource/drivers/nxp-stm: Increase min_delta to
- 20us for PREEMPT_RT
+From: Remy Demangeot <remy@demangeot.net>
+Subject: [PATCH 0/3] hwmon: (asus-ec-sensors) more MAXIMUS IX EXTREME
+ sensors
+Date: Mon, 26 Oct 2026 09:57:34 +0100
+Message-Id: <20261026-b4-m9e-ext-sensors-v1-0-644d389b2de1@demangeot.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-nxp-stm-fixes-v1-3-20a64a4ea454@redhat.com>
-References: <20261026-nxp-stm-fixes-v1-0-20a64a4ea454@redhat.com>
-In-Reply-To: <20261026-nxp-stm-fixes-v1-0-20a64a4ea454@redhat.com>
-To: Daniel Lezcano <daniel.lezcano@kernel.org>, 
- Thomas Gleixner <tglx@kernel.org>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: linux-kernel@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-rt-devel@lists.linux.dev, 
- Enric Balletbo i Serra <eballetb@redhat.com>, stable@vger.kernel.org
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793004293; l=1611;
- i=eballetb@redhat.com; s=20261026; h=from:subject:message-id;
- bh=2oVeDkpoG/kZGujP8YpSokhvVMo8D6Pr1tME75FCvYQ=;
- b=oJOj++Ax9eLtn9MXj4cg6VRzFKwnoiO5tNLT0d23izNOmKsdtC/1h8bWWET1Y35f76g/bOVb0
- XhycJ+0Wl1tApeDDk7ptKBEbENZ1EAQRpXw1C/GUzgfGlAMb2CHSQBl
-X-Developer-Key: i=eballetb@redhat.com; a=ed25519;
- pk=5zh6xuAxTiQwglL2NXQFqWuyRPmCE8T5KPXLbNXhnKI=
-X-Endpoint-Received: by B4 Relay for eballetb@redhat.com/20261026 with auth_id=1324
+X-B4-Tracking: v=1; b=H4sIAP4V32oC/1WOy27CMBREfyXyurfyI06cCCH+A7HwY2i9cNLaB
+ iEh/h1DNu3iLs5IM+feWUGOKGzu7izjGktclwbio2P+2y5foBgaM8nlINqR6ylNINwqFSxlzYX
+ UxGEUjBmnwFrxJ+Mcb+/R42njjN9L265b+C+hhFLsWzR3u80j9B9PRgJdBQkapAh2kgJK8kNAe
+ v231s8Fdf/yOltAfk0p1rmDcMrLQfGgnXF+1PqM3lkzBMkDN35UPZzmPTs9Hk+IzYzmBgEAAA=
+ =
+X-Change-ID: 20261026-b4-m9e-ext-sensors-390e83e8879d
+To: Eugene Shalygin <eugene.shalygin@gmail.com>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Remy Demangeot <remy@demangeot.net>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793005066; l=2835;
+ i=remy@demangeot.net; s=20261015; h=from:subject:message-id;
+ bh=zn8DXKlaE4UvmTPoDcyez0qpguM1Sh9lNNufMZLHhXU=;
+ b=/If33aB3oe4ancoLuekn6b85La6zjisVvdKxW3O5dP1i/D9Iz7HJ+4t5gok6QzVKJSbcdMCdr
+ Upgx4aayxCwBsQ+ov+wLaiI1V5v1dwnEiqv6/UVtEcq2VzuVpSIwU2n
+X-Developer-Key: i=remy@demangeot.net; a=ed25519;
+ pk=h/s5N2ZlgZ0m+8FpMhSaCNJt0jvb9whRBAdJwpC+VAo=
+X-Endpoint-Received: by B4 Relay for remy@demangeot.net/20261015 with auth_id=1194
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Under bus contention on PREEMPT_RT kernels, the 2us min_delta is too
-small and the counter can advance past the programmed comparator value
-before the overshoot check runs. While the -ETIME fallback handles this
-case, repeated retries add latency. Increase min_delta to 20us to reduce
-collision probability.
+This series adds the remaining sensors of the MAXIMUS IX EXTREME EC
+that HWiNFO reads. It applies on top of "hwmon: (asus-ec-sensors) add
+MAXIMUS IX EXTREME", which Guenter applied:
+https://lore.kernel.org/r/20261015-b4-m9e-extreme-v1-1-621da921e320@demangeot.net
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Enric Balletbo i Serra <eballetb@redhat.com>
+Guenter asked why I assumed these might not be acceptable. No
+particular reason: two of them need access patterns the driver does
+not have yet (a selector register written before the read, and a
+second EC on its own I/O ports), so I preferred to ask before touching
+the read path.
+
+ 1/3: EXT_Sensor1-3, plain reads at bank 0, 0x60-0x62.
+ 2/3: EXT_FAN1-3 speeds, read after writing the fan number to the
+      selector register 0x43, which is restored afterwards.
+ 3/3: the four water temperatures, on a second EC at I/O ports
+      0x68/0x6c, bank 1.
+
+Notes:
+ - After 3/3, enum ec_sensors has 32 entries, which fills the
+   unsigned long sensor mask on 32-bit builds. Any further sensor
+   will need a wider mask (u64 and BIT_ULL()). I can send that as a
+   preparatory patch if you prefer.
+ - asus_ec2_wait() polls with udelay(10). checkpatch suggests
+   usleep_range(), but the EC normally answers within a few
+   microseconds, so I kept udelay(). Happy to change it.
+
+A related question, independent of this series. The EC also holds the
+fan curves of the extension card fans: after selecting a fan through
+0x43, registers 0x4a-0x4f hold a 3-point curve (temperature in degrees
+Celsius, duty 0-255) that the BIOS writes at boot. Writing these
+registers changes the fan speed immediately, and writing the same duty
+at the three points gives a fixed speed. My out-of-tree driver uses
+this to expose pwmN and pwmN_enable (1: fixed duty through a flat
+curve, 2: BIOS curve, saved at probe and restored at unload and
+shutdown, and re-applied after resume), so that these fans can be
+driven from userspace like the Super I/O ones.
+
+Would write support like this be acceptable in asus-ec-sensors, or is
+it better kept out of tree or in a separate driver? I understand the
+driver is read-only by design, so "no" is a fine answer.
+
+Tested on the MAXIMUS IX EXTREME (BIOS 1501): readings match HWiNFO
+8.54 and the out-of-tree driver on the same machine.
+
 ---
- drivers/clocksource/timer-nxp-stm.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Remy Demangeot (3):
+      hwmon: (asus-ec-sensors) add EXT_Sensor temperatures for MAXIMUS IX EXTREME
+      hwmon: (asus-ec-sensors) add fan extension card fans for MAXIMUS IX EXTREME
+      hwmon: (asus-ec-sensors) add water temperatures for MAXIMUS IX EXTREME
 
-diff --git a/drivers/clocksource/timer-nxp-stm.c b/drivers/clocksource/timer-nxp-stm.c
-index ed7662a4e2bc..a0761d7f8b01 100644
---- a/drivers/clocksource/timer-nxp-stm.c
-+++ b/drivers/clocksource/timer-nxp-stm.c
-@@ -335,14 +335,14 @@ static int nxp_stm_clockevent_starting_cpu(unsigned int cpu)
- 	/*
- 	 * The timings measurement show reading the counter register
- 	 * and writing to the comparator register takes as a maximum
--	 * value 1100 ns at 133MHz rate frequency. The timer must be
--	 * set above this value and to be secure we set the minimum
--	 * value equal to 2000ns, so 2us.
-+	 * value 1100 ns at 133MHz rate frequency. However, under bus
-+	 * contention on PREEMPT_RT, 2us is too small and causes missed
-+	 * matches resulting in 32s wraparounds. Increase to 20us.
- 	 *
--	 * minimum ticks = (rate / MICRO) * 2
-+	 * minimum ticks = (rate / MICRO) * 20
- 	 */
- 	clockevents_config_and_register(&stm_timer->ced, stm_timer->rate,
--					(stm_timer->rate / MICRO) * 2, 0x7FFFFFFFU);
-+					(stm_timer->rate / MICRO) * 20, 0x7FFFFFFFU);
- 
- 	return 0;
- }
+ drivers/hwmon/asus-ec-sensors.c | 219 +++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 205 insertions(+), 14 deletions(-)
+---
+base-commit: e1b3c2630d5b8bc755fe4ba86d20d08c734eb504
+change-id: 20261026-b4-m9e-ext-sensors-390e83e8879d
 
+Best regards,
 -- 
-2.52.0
+Remy Demangeot <remy@demangeot.net>
 
