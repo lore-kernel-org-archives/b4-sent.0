@@ -1,146 +1,87 @@
-From: Haipeng Lin <jimmie.lin@gmail.com>
-Date: Mon, 26 Oct 2026 21:13:02 -0400
-Subject: [PATCH v2] drm/panel-edp: disable the backlight at probe
+From: Bingfang Guo <bingfangguo@tencent.com>
+Date: Tue, 27 Oct 2026 10:21:08 +0800
+Subject: [PATCH] mm/mglru: skip oom killing for high order allocs in kswapd
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261026-sp11-bl-upstream-1-v2-1-efc84396adf1@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQqDMBBFryKz7pRMWkLtqvcoLhIz0QGjklhpE
- e/e1AN08+F9+O9vkDkJZ7hXGyReJcs0FtCnCtrejh2j+MKglTak9BXzTIRuwNecl8Q2IiEbQ8a
- amzdBQRnOiYO8D+mzKdxLXqb0OT5W+rV/dSuV8JfaBRtqG1z76KKV4dxOEZp937+Ogc2WtAAAA
- A==
-X-Change-ID: 20261024-sp11-bl-upstream-1-e6616a68d6f0
-To: Douglas Anderson <dianders@chromium.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>
-Cc: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Linus Walleij <linusw@kernel.org>, Sam Ravnborg <sam@ravnborg.org>, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Dale Whinham <daleyo@gmail.com>, linux-arm-msm@vger.kernel.org, 
- aarch64-laptops@lists.linaro.org, Haipeng Lin <jimmie.lin@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793063673; l=4890;
- i=jimmie.lin@gmail.com; s=20261011; h=from:subject:message-id;
- bh=Wc0k3oO67F3S7EDiEGmSzJEvwEL5CUGbgzDoGXTLcs8=;
- b=+lS75aoCJDPrdFiEZL0w7xUoK2eON3nABsbxAPsz28j9zI94XDgBJQdLexqdioijrzqv2Zoxc
- 8PH2eb3pR4aCab9gRf5IECpOmd6qj4Mb0NEo5JskcYdo1h4E3egOfbO
-X-Developer-Key: i=jimmie.lin@gmail.com; a=ed25519;
- pk=3KDRF1RQ/9A7ZUVTdRVEZnVrGltdmq1bRocsOYeXezI=
-X-Endpoint-Received: by B4 Relay for jimmie.lin@gmail.com/20261011 with auth_id=1164
+Message-Id: <20261027-fix-mglru-kswapd-age-v1-1-b1ffdec4ae52@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAJMK4GoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDINZNy6zQzU3PKSrVzS4uTyxI0U0EqrG0MLY0MDM0STY3MVMCai0oSgW
+ qAxsbHQvhF5cmZaUml4DMUqqtBQCBaHKzeAAAAA==
+X-Change-ID: 20261026-fix-mglru-kswapd-age-98390614c746
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Barry Song <baohua@kernel.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ Johannes Weiner <hannes@cmpxchg.org>, David Hildenbrand <david@kernel.org>, 
+ Michal Hocko <mhocko@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ Yu Zhao <yuzhao@google.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Bingfang Guo <bingfangguo@tencent.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793067668; l=2033;
+ i=bingfangguo@tencent.com; s=20260812; h=from:subject:message-id;
+ bh=+NHgwZPSL4lsn3SUUTmSyqpRl3Ciw1JrL46ewddx38Q=;
+ b=jnw8LXfvvz+KGsE6wZisVj9vHnHVOxP2bE4RM+sv7KPH4LTBMws81Qrt3RYHmK//t2koHb3eQ
+ jSlAa4Q+v6VAc8lBCHD+G0R009PadeosKyjVND3NfHj0BEYipQa1Otw
+X-Developer-Key: i=bingfangguo@tencent.com; a=ed25519;
+ pk=q7u9S7d5e7VijWrYF9O+vv9/XvqWduVGtwGtuCObAHE=
+X-Endpoint-Received: by B4 Relay for bingfangguo@tencent.com/20260812 with auth_id=942
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pwm-backlight can preserve the enabled state left by firmware to
-support a seamless display handoff. However, panel-edp does not support
-such a handoff. When probing a generic eDP panel, it powers the panel
-on to read its EDID. If display pipeline binding takes longer than the
-runtime-PM autosuspend delay, the panel is then powered off while the
-backlight remains enabled.
+We observed that when MGLRU min_ttl is set and the system is highly
+fragmented, high order allocations (e.g. order == 9) will fail and wake
+up kswapd. It can not make any progress, while pushing generations of
+memcgs so that they all end up younger than min_ttl_ms, repeatedly
+triggering the OOM killer in lru_gen_age_node(). Then the whole process
+repeats until all processes are killed and the kernel panics.
 
-On the Surface Pro 11 LCD (LGD0779), leaving BL_EN high across this
-power cycle appears to leave the backlight controller in an incorrect
-state: brightness is pinned near maximum with a greatly reduced
-dimming range. Subsequent brightness changes update the PWM duty, but
-do not restore it to normal. Cycling the backlight off and on at
-unchanged brightness restores the full range.
+Fix this by skipping OOM killer invocations in lru_gen_age_node() for
+sc->order > PAGE_ALLOC_COSTLY_ORDER, which is also what the normal
+allocation path will do, to fail high order allocations without OOM
+killing.
 
-The first drm_panel_enable() does not recover from this because
-pwm-backlight still considers itself enabled and leaves BL_EN high.
+==== Testing ====
 
-Disable the backlight at probe, after acquiring it and before enabling
-runtime PM. This clears the firmware's enabled state so the DRM panel
-core turns the backlight on after panel power and video are ready at
-the first modeset.
+Tested on a VM with 6 cores and 6GiB of memory, HZ=1000, MGLRU enabled,
+min_ttl_ms set to 1000, and a workload that fragments the memory then
+allocates 2M pages.
 
-This also turns off the firmware display at probe on systems where it
-previously remained lit until the first modeset.
+Without the patch, kswapd kills all processes and panics the system even
+with plenty of memory available. With the patch, allocations fail but
+the system remains stable.
 
-Verified on the Surface Pro 11 LCD by delaying display pipeline bind
-past the autosuspend timeout. BL_EN now drops at probe, before panel
-runtime autosuspend, and brightness control works at the first modeset.
-
-Fixes: 5540cf8f3e8d ("drm/panel-edp: Implement generic "edp-panel"s probed by EDID")
-Link: https://github.com/dwhinham/archiso-aarch64-sp11/issues/41
-Suggested-by: Douglas Anderson <dianders@chromium.org>
-Assisted-by: LLM
-Signed-off-by: Haipeng Lin <jimmie.lin@gmail.com>
+Fixes: 30d77b7eef019 ("mm/mglru: fix ineffective protection calculation")
+Signed-off-by: Bingfang Guo <bingfangguo@tencent.com>
 ---
-Can reproduce on an installed system on Surface Pro 11 LCD (X1P-64-100,
-LGD0779 LCD) by booting with modprobe.blacklist=phy_qcom_qmp_combo then
-loading that module manually after ~20s. This delays DPU component bind
-past the panel's runtime autosuspend timeout.
+ mm/vmscan.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-A/B tested against the same v7.2 tree:
-
-- Unpatched: panel VDD off 3.5s..20.5s while BL_EN stays high.
-After the first modeset brightness is pinned near max brightness with
-a "collapsed" dimming range. sysfs brightness writes still reprogram
-the PMIC LPG. One bl_power off/on cycle at unchanged brightness 
-restores the full range.
-
-- Patched v2: patch provides the same full brightness range on boot
-(stalled or not) as the v1 patch. BL_EN drops at panel-edp probe,
-~1s before VDD cut, rises ~0.5s after panel power at the first modeset.
-
-Tracing and functional testing on the SP11 shows unchanged sequencing
-for fast boots (without artificial delay), DPMS off/on, and system
-suspend/resume.
-
-Panels with shared/always-on supplies and no panel enable GPIO
-may continue displaying the firmware framebuffer during the
-runtime suspend before first modeset. With this change panel-edp
-disables the backlight obtained through the backlight phandle at probe.
-The DRM panel core enables the backlight again at the first modeset.
-I have not tested this configuration.
-
-Testing on other panel-edp systems particularly with pwm-backlight,
-would be appreciated.
----
-Changes in v2:
-- Disables the backlight once at probe instead of
-  in panel_edp_suspend() following Doug Anderson's suggestion.
-- Only disable the backlight obtained through the backlight phandle.
-  The driver's AUX backlight setup is untouched.
-- Link to v1: https://lore.kernel.org/r/20261024-sp11-bl-upstream-1-v1-1-d39bfaf9afbc@gmail.com
----
- drivers/gpu/drm/panel/panel-edp.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
-
-diff --git a/drivers/gpu/drm/panel/panel-edp.c b/drivers/gpu/drm/panel/panel-edp.c
-index 94bc54c3833a..d019f4165674 100644
---- a/drivers/gpu/drm/panel/panel-edp.c
-+++ b/drivers/gpu/drm/panel/panel-edp.c
-@@ -21,6 +21,7 @@
-  * DEALINGS IN THE SOFTWARE.
-  */
- 
-+#include <linux/backlight.h>
- #include <linux/debugfs.h>
- #include <linux/delay.h>
- #include <linux/gpio/consumer.h>
-@@ -918,6 +919,16 @@ static int panel_edp_probe(struct device *dev, const struct panel_desc *desc,
- 	if (err)
- 		return err;
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 9959ca158ce83..b32777468ead8 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -4407,6 +4407,12 @@ static void lru_gen_age_node(struct pglist_data *pgdat, struct scan_control *sc)
+ 			reclaimable = lruvec_is_reclaimable(lruvec, sc, min_ttl);
+ 	} while ((memcg = mem_cgroup_iter(NULL, memcg, NULL)));
  
 +	/*
-+	 * Backlight drivers may preserve the state left by firmware,
-+	 * but panel-edp does not support seamless handoff.
-+	 * Runtime PM may power off the panel before the first modeset,
-+	 * leaving the backlight on.
-+	 * Disable it here so the DRM panel core enables it in the correct
-+	 * order at the first modeset.
++	 * OOM killing won't help high order allocations. Skip and let them fail.
 +	 */
-+	backlight_disable(panel->base.backlight);
++	if (sc->order > PAGE_ALLOC_COSTLY_ORDER)
++		return;
 +
  	/*
- 	 * We use runtime PM for prepare / unprepare since those power the panel
- 	 * on and off and those can be very slow operations. This is important
+ 	 * The main goal is to OOM kill if every generation from all memcgs is
+ 	 * younger than min_ttl. However, another possibility is all memcgs are
 
 ---
-base-commit: cf61bef3801c3c9d0d8c39026b7b2fb242898a3a
-change-id: 20261024-sp11-bl-upstream-1-e6616a68d6f0
+base-commit: 39274b454e9993cea319f4ac342a8082a9ee1730
+change-id: 20261026-fix-mglru-kswapd-age-98390614c746
 
 Best regards,
--- 
-Haipeng Lin <jimmie.lin@gmail.com>
+--  
+Bingfang Guo <bingfangguo@tencent.com>
 
