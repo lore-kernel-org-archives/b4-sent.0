@@ -1,86 +1,105 @@
-From: Ishu Brar <patches@brar.si>
-Date: Tue, 27 Oct 2026 11:49:31 +0530
-Subject: [PATCH] soc: qcom: ubwc: Add SM7250 configuration
+From: Younes Akhouayri <git@younes.io>
+Date: Tue, 27 Oct 2026 07:31:58 +0100
+Subject: [PATCH] rust: doctest: fix line numbers after crate-level
+ attributes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-ubwc-sm7250-v1-1-e766b1e264cf@brar.si>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAyNj3dKk8mTd4lxzI1MDXSMTI0szg5Q08+QUcyWgjoKi1LTMCrBp0bE
- QfnFpUlZqcgnICKXaWgBUVytYbwAAAA==
-X-Change-ID: 20261023-ubwc-sm7250-242960df7cd7
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ishu Brar <patches@brar.si>
+Message-Id: <20261027-rust-doctest-line-fix-v1-1-0c13185a58b6@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMBAEf6XcswdpCin6K+KDTTf2RFLJpaVQ+
+ u+e+rTMwsxOiiJQujQ7FayiMmeD9tRQnO75AZbRmLzzoXW+57Jo5XGOFbYvyeAkG8fBpRC64M8
+ JZO67wO5f93r7sy7DE7F+Y3QcH39dKBd5AAAA
+X-Change-ID: 20261027-rust-doctest-line-fix-cb0f663629fe
+To: Brendan Higgins <brendan.higgins@linux.dev>, 
+ David Gow <david@davidgow.net>, Rae Moar <raemoar63@gmail.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Shuah Khan <skhan@linuxfoundation.org>
+Cc: rust-for-linux@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ kunit-dev@googlegroups.com, linux-kernel@vger.kernel.org, 
+ Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793081973; l=2431;
- i=patches@brar.si; h=from:subject:message-id;
- bh=REZcuYhSVnpK6b9bGZLR8ew5vobahVC+TA4omr/hSOI=;
- b=P9YCRWo9cUO0sMQMc+mKBfT6mQPQ2Kx+JESL+Z/8VBissJTa540GGBwSrT4m+eTQoCGLrMPJB
- M71j8bl6kmBA6MMl9+MzmLb0qDgnsOCMIPMFG06Kya9lKaGIiydbKL6
-X-Developer-Key: i=patches@brar.si; a=ed25519;
- pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
-X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793082718; l=2652;
+ i=git@younes.io; s=20261027; h=from:subject:message-id;
+ bh=ZibAN+j218M4v6xGY3Uc7Usec6aRaCACBYkqr0vExUE=;
+ b=nRS2HXLSCcZDH+gtG/ijx+UjOUZy/v7h2EtBHqsRdWpcHtedueiNyv3iKNcZRZHGkqkYyhkFm
+ SF0fXLhRw+JB5s5OXbntEKAIan/1w+l+QGDt7BeIybka7jQf13q9Vez
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=TavwxGPDBjl4XGNQyFLKEW7PKSY4qOWusc7yf6hjV0c=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20261027 with auth_id=1332
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the UBWC configuration of the Qualcomm SM7250 SoC (Snapdragon
-765/765G/768G): UBWC encoder version 3.0 with highest bank bit 14.
+When a doctest starts with a crate-level attribute such as
+`#![expect(...)]`, KUnit reports failures one line too early, and
+`line!()` returns a line number that is one too low.
 
-The downstream GPU devicetree of the platform sets qcom,ubwc-mode to 3
-(UBWC 3.0) and a highest bank bit of 14, the downstream GPU driver does
-not enable the 8-channel macrotile mode of UBWC 3.1, and the downstream
-display devicetree also gives UBWC 3.0. No existing entry has UBWC 3.0
-with this bank bit, so add one.
+This happens because `rustdoc` moves those attribute lines out of the
+test body and puts them above the `main` function it generates. The
+generator works out where the body starts by counting the lines above
+`main`, but it does not know that some of those lines were moved there
+from the body. So every line after a moved attribute is mapped one line
+too early (or more, if there are several such attributes).
 
-Without an entry, the Adreno and DPU drivers fail to probe on SM7250,
-because qcom_ubwc_config_get_data() returns an error.
+For example, adding `assert_eq!(36, 0);` as line 36 of
+`rust/kernel/init.rs` (inside the doctest that starts with
+`# #![expect(clippy::undocumented_unsafe_blocks)]`) gives:
 
-Signed-off-by: Ishu Brar <patches@brar.si>
+    # rust_doctest_kernel_init_rs_2: ASSERTION FAILED at rust/kernel/init.rs:35
+
+Twelve in-tree doctests start like this, e.g. in `bits.rs`, `devres.rs`,
+`init.rs` and `std_vendor.rs`.
+
+Fix it by counting the attribute lines that `rustdoc` moved (every
+`#![...]` line above `main`, except the `#![allow(unused)]` that
+`rustdoc` adds itself) and taking them into account when computing
+where the body starts.
+
+With this change, the example above reports `rust/kernel/init.rs:36`,
+and doctests without such attributes keep reporting the same lines as
+before.
+
+Fixes: a66d733da801 ("rust: support running Rust documentation tests as KUnit ones")
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
-Add the UBWC configuration entry of the Qualcomm SM7250 SoC. The Adreno 620
-series [1] and the coming DPU series need it: both call
-qcom_ubwc_config_get_data() at probe, which fails without an entry.
+ scripts/rustdoc_test_gen.rs | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Tested on a OnePlus Nord (a 7.3 based tree): the Adreno 620 and the
-display probe with this entry, the GPU runs Vulkan work and the desktop
-renders without visible corruption.
-
-[1] https://lore.kernel.org/r/20261023-adreno-a620-v3-0-2d1d566e5e13@brar.si
----
- drivers/soc/qcom/ubwc_config.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/drivers/soc/qcom/ubwc_config.c b/drivers/soc/qcom/ubwc_config.c
-index a4d8769f8550..456995699fdb 100644
---- a/drivers/soc/qcom/ubwc_config.c
-+++ b/drivers/soc/qcom/ubwc_config.c
-@@ -42,6 +42,11 @@ static const struct qcom_ubwc_cfg_data ubwc_2_0_hbb15 = {
- 	.highest_bank_bit = 15,
- };
+diff --git a/scripts/rustdoc_test_gen.rs b/scripts/rustdoc_test_gen.rs
+index 754c5aafcce4..c821ec63c32d 100644
+--- a/scripts/rustdoc_test_gen.rs
++++ b/scripts/rustdoc_test_gen.rs
+@@ -168,6 +168,17 @@ fn main() {
+             .count()
+             + 1;
  
-+static const struct qcom_ubwc_cfg_data ubwc_3_0_hbb14 = {
-+	.ubwc_enc_version = UBWC_3_0,
-+	.highest_bank_bit = 14,
-+};
++        // `rustdoc` moves the crate-level attributes (`#![...]`) of the test out of its body and
++        // places them before `main`, after its own `#![allow(unused)]`. Subtract the moved lines,
++        // since the rest of the body is shifted by that amount with respect to the original source.
++        let hoisted_lines = body
++            .lines()
++            .take(body_offset - 1)
++            .filter(|line| line.starts_with("#!["))
++            .count()
++            .saturating_sub(1);
++        let body_offset = body_offset - hoisted_lines;
 +
- static const struct qcom_ubwc_cfg_data ubwc_3_0_hbb15 = {
- 	.ubwc_enc_version = UBWC_3_0,
- 	.highest_bank_bit = 15,
-@@ -168,6 +173,7 @@ static const struct of_device_id qcom_ubwc_configs[] __maybe_unused = {
- 	{ .compatible = "qcom,sm7125", .data = &ubwc_2_0_hbb14, },
- 	{ .compatible = "qcom,sm7150", .data = &ubwc_2_0_hbb14, },
- 	{ .compatible = "qcom,sm7225", .data = &ubwc_2_0_hbb14, },
-+	{ .compatible = "qcom,sm7250", .data = &ubwc_3_0_hbb14, },
- 	{ .compatible = "qcom,sm7325", .data = &ubwc_3_1_hbb14, },
- 	{ .compatible = "qcom,sm8150", .data = &ubwc_3_0_hbb15, },
- 	{ .compatible = "qcom,sm8250", .data = &ubwc_4_0_hbb16, },
+         use std::fmt::Write;
+         write!(
+             tests,
 
 ---
-base-commit: f5672a3dff0291d6a45eb0c258b9d2baeb4dc577
-change-id: 20261023-ubwc-sm7250-242960df7cd7
+base-commit: 21a7f44fd0765fcc5194130b28767786eba1d1e7
+change-id: 20261027-rust-doctest-line-fix-cb0f663629fe
 
 Best regards,
 --  
-Ishu Brar <patches@brar.si>
+Younes Akhouayri <git@younes.io>
 
