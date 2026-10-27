@@ -1,14 +1,13 @@
 From: Alexandre Marquet <tb@a-marquet.fr>
-Subject: [PATCH 0/3] DRM Google Nexus 10 display support
-Date: Tue, 27 Oct 2026 13:01:41 +0100
-Message-Id: <20261027-drm-misc-next-manta-auxbus-v1-0-3a45c3cf531d@a-marquet.fr>
+Date: Tue, 27 Oct 2026 13:01:42 +0100
+Subject: [PATCH 1/3] drm/bridge: analogix_dp: deassert DP_PHY_PD on
+ power-on for exynos
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKWS4GoC/yXMSw7CIBAA0Ks0s3YSSuP3KqaLAaY6JqBhwJA0v
- buoy7d5KyhnYYXLsELmt6g8U8e4G8DfKd0YJXSDNfYwGjthyBGjqMfErWCkVAipNlcVj27vzBL
- OZKYT9OCVeZH2y6/z31rdg335jrBtHzB4lBJ+AAAA
-X-Change-ID: 20261023-drm-misc-next-manta-auxbus-7b5b0fd9a038
+Message-Id: <20261027-drm-misc-next-manta-auxbus-v1-1-3a45c3cf531d@a-marquet.fr>
+References: <20261027-drm-misc-next-manta-auxbus-v1-0-3a45c3cf531d@a-marquet.fr>
+In-Reply-To: <20261027-drm-misc-next-manta-auxbus-v1-0-3a45c3cf531d@a-marquet.fr>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
  Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
@@ -31,49 +30,110 @@ Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
  Henrik Grimler <henrik@grimler.se>, Hendrik Noack <hendrik-noack@gmx.de>, 
  Alexandre Marquet <tb@a-marquet.fr>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793102508; l=1681;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793102508; l=3293;
  i=tb@a-marquet.fr; s=20261023; h=from:subject:message-id;
- bh=f1oj+Wwd1+MToNnaYOltu8jkeNrOGt2+b4GvKUkx/kE=;
- b=Q0u6yl+Xldh8lvEwFZiCC6j8shd8C4WEjiYDtBxaeb0XJroPskxBtvIJTcwV/EGuT4XB09eLL
- r+xuM9wpOfMA+j1X2uFV2iSJPDad00KP9+96VeELoZoM+EysL0shsAK
+ bh=nz55NJx/Uu4x8f9w96Y5Aa8FlPatjRYi6gKldhgQyRY=;
+ b=BDjAFMaKETqfYfJDRQJpBK7xZFOxJgEGoGMJlMGVBvYhrnwcpZ9mpeTxzvfsuuFikzLLrsANn
+ tOK2NDejgz7ArsLISEgxDV35PlcTAfDn3TCjdD1oERf5G+PMKd04fCS
 X-Developer-Key: i=tb@a-marquet.fr; a=ed25519;
  pk=zVRSO6FDK46rqmeA2GuzAhM24eFlUq1QpmXi9/KCFyk=
 X-Endpoint-Received: by B4 Relay for tb@a-marquet.fr/20261023 with auth_id=1334
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series proposes to add an entry in panel_edp for the panel used in
-the Google Nexus 10, as well as two modifications in analogix_dp and exynos_dp,
-which allow to effectively enable the use of aux-bus on the platform.
+On exynos platforms at least, calling
+analogix_dp_set_analog_power_down() to power on (with enable=false) CH0
+to CH3 or the AUX bus currently produces no effect, unless the function
+is first called to power on everything (by setting block to POWER_ALL or
+ANALOG_TOTAL). The reason for this is that DP_PHY_PD being asserted
+(which is its default state) renders every other register bit
+ineffective.
 
-It is actually a follow up of [1], with only the drm patches kept, as suggested
-in [2].
+This is particularly an issue for AUX bus initialization, that tends to
+happen before anything else (e.g., to request EDID), and thus, before
+anything has any chance to request a power on of the whole analog
+section of the chip.
 
-I preferred not to label this series as v2, and opted to change the title
-instead. Indeed, this series contains only drm patches, which are actually all
-new with respect to [1], following the guidance received to use aux-bus if
-possible (in [3]), which it is, building upon recent work on analogix_dp, and
-after applying the patches of this series.
-
-[1] https://lore.kernel.org/all/20260423-manta-display-v1-0-196f80c5673a@timmermann.space/
-[2] https://lore.kernel.org/all/20260425-uncovered-otter-of-sunshine-d00ed0@quoll/
-[3] https://lore.kernel.org/all/CAD=FV=VNvPtG_f1W942SKJfM4ptK8Wvd-nZs4geBCG3bO_A0BA@mail.gmail.com/
+This commit allows analogix_dp_set_analog_power_down() to power on any
+block, by deasserting DP_PHY_PD if needed.
 
 Signed-off-by: Alexandre Marquet <tb@a-marquet.fr>
 ---
-Alexandre Marquet (3):
-      drm/bridge: analogix_dp: deassert DP_PHY_PD on power-on for exynos
-      drm/exynos: exynos_dp: change poweron/off to encoder enable/disable
-      drm/panel_edp: Add SEC LTL101DL02-002 panel
+ drivers/gpu/drm/bridge/analogix/analogix_dp_reg.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
- drivers/gpu/drm/bridge/analogix/analogix_dp_reg.c | 19 +++++++----
- drivers/gpu/drm/exynos/exynos_dp.c                | 40 ++++++++---------------
- drivers/gpu/drm/panel/panel-edp.c                 |  2 ++
- 3 files changed, 28 insertions(+), 33 deletions(-)
----
-base-commit: cf61bef3801c3c9d0d8c39026b7b2fb242898a3a
-change-id: 20261023-drm-misc-next-manta-auxbus-7b5b0fd9a038
+diff --git a/drivers/gpu/drm/bridge/analogix/analogix_dp_reg.c b/drivers/gpu/drm/bridge/analogix/analogix_dp_reg.c
+index c1344a3f013a..9f634d4e4793 100644
+--- a/drivers/gpu/drm/bridge/analogix/analogix_dp_reg.c
++++ b/drivers/gpu/drm/bridge/analogix/analogix_dp_reg.c
+@@ -256,6 +256,19 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 	if (dp->plat_data && analogix_dp_is_rockchip(dp->plat_data->dev_type))
+ 		phy_pd_addr = ANALOGIX_DP_PD;
+ 
++	reg = readl(dp->reg_base + phy_pd_addr);
++
++	if (dp->plat_data && (dp->plat_data->dev_type == EXYNOS_DP)) {
++		/* On exynos, register AUX_PD and CH[0-3]_PD have no effect if
++		 * DP_PHY_PD is asserted. So, when powering any of them up, we
++		 * need to deassert DP_PHY_PD first.
++		 */
++		if (!enable && (reg & DP_PHY_PD)) {
++			reg &= ~DP_PHY_PD;
++			reg |= AUX_PD | CH0_PD | CH1_PD | CH2_PD | CH3_PD;
++		}
++	}
++
+ 	switch (block) {
+ 	case AUX_BLOCK:
+ 		if (dp->plat_data && analogix_dp_is_rockchip(dp->plat_data->dev_type))
+@@ -263,7 +276,6 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 		else
+ 			mask = AUX_PD;
+ 
+-		reg = readl(dp->reg_base + phy_pd_addr);
+ 		if (enable)
+ 			reg |= mask;
+ 		else
+@@ -272,7 +284,6 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 		break;
+ 	case CH0_BLOCK:
+ 		mask = CH0_PD;
+-		reg = readl(dp->reg_base + phy_pd_addr);
+ 
+ 		if (enable)
+ 			reg |= mask;
+@@ -282,7 +293,6 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 		break;
+ 	case CH1_BLOCK:
+ 		mask = CH1_PD;
+-		reg = readl(dp->reg_base + phy_pd_addr);
+ 
+ 		if (enable)
+ 			reg |= mask;
+@@ -292,7 +302,6 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 		break;
+ 	case CH2_BLOCK:
+ 		mask = CH2_PD;
+-		reg = readl(dp->reg_base + phy_pd_addr);
+ 
+ 		if (enable)
+ 			reg |= mask;
+@@ -302,7 +311,6 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 		break;
+ 	case CH3_BLOCK:
+ 		mask = CH3_PD;
+-		reg = readl(dp->reg_base + phy_pd_addr);
+ 
+ 		if (enable)
+ 			reg |= mask;
+@@ -321,7 +329,6 @@ void analogix_dp_set_analog_power_down(struct analogix_dp_device *dp,
+ 		else
+ 			mask = DP_PHY_PD;
+ 
+-		reg = readl(dp->reg_base + phy_pd_addr);
+ 		if (enable)
+ 			reg |= mask;
+ 		else
 
-Best regards,
---  
-Alexandre Marquet <tb@a-marquet.fr>
+-- 
+2.43.0
 
