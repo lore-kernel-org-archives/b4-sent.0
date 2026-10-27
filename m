@@ -1,11 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 27 Oct 2026 23:36:52 +0800
-Subject: [PATCH RFC 01/18] firmware: arm_scmi: Allow SCMI transports on
- RISC-V
+Date: Tue, 27 Oct 2026 23:36:53 +0800
+Subject: [PATCH RFC 02/18] dt-bindings: vendor-prefixes: add Zhihe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-a210-scmi-v1-1-74d58ce85bd8@iscas.ac.cn>
+Message-Id: <20261027-a210-scmi-v1-2-74d58ce85bd8@iscas.ac.cn>
 References: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 In-Reply-To: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -33,38 +32,39 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Paul Walmsley <paul.walmsley@sifive.com>, linux-clk@vger.kernel.org, 
  linux-serial@vger.kernel.org, Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=1013;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=842;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=TVSlaTkcQWucNuQbo9clD2EYvUNJXp80mxvivBUzLmI=;
- b=XVlpQR8bfbMMFzGIxQobo08oDZ+aFzeIFawIuzSgfBEgu6kQPqeL3bnZJwtQ/pcZFfd7koJGL
- 2y8kDDbLI/rAA1wM1EraHXBsLVhI55nKGexS5Wvdgb5NUB3SVppZ1Oj
+ bh=78H4CNA6muw7rwfV33m2sQ0QfyIqTcYL4B8JahPXMn4=;
+ b=ZlIYxo13cmOAFrP5dhVx8YBV6beEABXC/eF22oDJ1AKXa+I4RIFByDZzWBlPUSIX3TUDFFQ9X
+ hNEt/8H6owrBYrIHLOg2GkAvpO6b8uJOp8WCZ+bCF9Bmd7iZjztiPwo
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Mailbox and shared-memory SCMI transports do not require ARM execution.
-Allow RISC-V platforms to use the existing SCMI core and protocol drivers;
-architecture-specific transports retain their own dependencies.
+From: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 
+Add the vendor prefix for Zhihe Computing.
+
+Signed-off-by: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- drivers/firmware/arm_scmi/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/firmware/arm_scmi/Kconfig b/drivers/firmware/arm_scmi/Kconfig
-index 783c24a20e29..1cfe2b572d18 100644
---- a/drivers/firmware/arm_scmi/Kconfig
-+++ b/drivers/firmware/arm_scmi/Kconfig
-@@ -3,7 +3,7 @@ menu "ARM System Control and Management Interface Protocol"
- 
- config ARM_SCMI_PROTOCOL
- 	tristate "ARM System Control and Management Interface (SCMI) Message Protocol"
--	depends on ARM || ARM64 || COMPILE_TEST
-+	depends on ARM || ARM64 || RISCV || COMPILE_TEST
- 	help
- 	  ARM System Control and Management Interface (SCMI) protocol is a
- 	  set of operating system-independent software interfaces that are
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index ba2002969373..21142578837b 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -1973,6 +1973,8 @@ patternProperties:
+     description: Zealz
+   "^zeitec,.*":
+     description: ZEITEC Semiconductor Co., LTD.
++  "^zhihe,.*":
++    description: Zhihe Computing Limited
+   "^zidoo,.*":
+     description: Shenzhen Zidoo Technology Co., Ltd.
+   "^zii,.*":
 
 -- 
 2.55.0
