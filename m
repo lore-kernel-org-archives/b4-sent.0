@@ -1,10 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 27 Oct 2026 23:37:08 +0800
-Subject: [PATCH RFC 17/18] riscv: defconfig: enable A210 support
+Date: Tue, 27 Oct 2026 23:37:09 +0800
+Subject: [PATCH RFC 18/18] MAINTAINERS: add Zhihe A210
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-a210-scmi-v1-17-74d58ce85bd8@iscas.ac.cn>
+Message-Id: <20261027-a210-scmi-v1-18-74d58ce85bd8@iscas.ac.cn>
 References: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 In-Reply-To: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -32,96 +32,48 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Paul Walmsley <paul.walmsley@sifive.com>, linux-clk@vger.kernel.org, 
  linux-serial@vger.kernel.org, Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=2441;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=1092;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=eAfD142qqOegiKKXIl8oNxyczfVf35BqTLu5AYylfSc=;
- b=5rQEWh1ufuQftCFfr2HKZutyk+sL0V2JGANqtYHunqZL6pI1rX1HSHn77Bvu0YAx49muOw7j8
- niuZBUDHXRqDXNLNx4WcrC+3POrtY4mJvuQlWDhp2YA6Gl/dfD+OCN3
+ bh=9GPu+epF9k6rbtMyhWOkYOw3QLfgzPBWR9Pa4XSugC0=;
+ b=twemv20JvRO3q7e0BGCA9T65+jEJVu6g0Ry4ZA2BPrly/26TlC1+5GJSO/aU+teCnFSSRuYNe
+ KVuP8gy4gpHDuomclAAmrVgddoUnIbZ7elGvQwZxfnMUtuYvBhL3sS3
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable A210 pinctrl, mailbox and standard SCMI clock/reset drivers.
-
-The A210 has ten UARTs, and Melon Pi numbers them through serial0..9
-aliases with the console on serial4. With the default four 8250 ports,
-the ports beyond serial3 fall back to other line numbers and no longer
-match their aliases. Reserve ten ports.
+Add Zhiguo Zhu and Han Gao as A210 maintainers.
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- arch/riscv/configs/defconfig | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ MAINTAINERS | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 04ae305d5511..b4c4aea6eabe 100644
---- a/arch/riscv/configs/defconfig
-+++ b/arch/riscv/configs/defconfig
-@@ -33,6 +33,7 @@ CONFIG_SOC_STARFIVE=y
- CONFIG_ARCH_SUNXI=y
- CONFIG_ARCH_TENSTORRENT=y
- CONFIG_ARCH_THEAD=y
-+CONFIG_ARCH_ZHIHE=y
- CONFIG_ARCH_ULTRARISC=y
- CONFIG_ARCH_VIRT=y
- CONFIG_ARCH_CANAAN=y
-@@ -108,6 +109,8 @@ CONFIG_PCI_HOST_GENERIC=y
- CONFIG_PCIE_XILINX=y
- CONFIG_PCIE_FU740=y
- CONFIG_PCIE_STARFIVE_HOST=m
-+CONFIG_ARM_SCMI_PROTOCOL=y
-+CONFIG_ARM_SCMI_TRANSPORT_MAILBOX=y
- CONFIG_DEVTMPFS=y
- CONFIG_DEVTMPFS_MOUNT=y
- CONFIG_SIFIVE_CCACHE=y
-@@ -119,6 +122,7 @@ CONFIG_MTD_SPI_NOR=y
- CONFIG_BLK_DEV_LOOP=y
- CONFIG_VIRTIO_BLK=y
- CONFIG_BLK_DEV_NVME=m
-+CONFIG_SRAM=y
- CONFIG_BLK_DEV_SD=y
- CONFIG_BLK_DEV_SR=y
- CONFIG_SCSI_VIRTIO=y
-@@ -149,6 +153,8 @@ CONFIG_KEYBOARD_GPIO=y
- CONFIG_KEYBOARD_SUN4I_LRADC=m
- CONFIG_SERIAL_8250=y
- CONFIG_SERIAL_8250_CONSOLE=y
-+CONFIG_SERIAL_8250_NR_UARTS=10
-+CONFIG_SERIAL_8250_RUNTIME_UARTS=10
- CONFIG_SERIAL_8250_DW=y
- CONFIG_SERIAL_OF_PLATFORM=y
- CONFIG_SERIAL_EARLYCON_RISCV_SBI=y
-@@ -167,6 +173,7 @@ CONFIG_SPI_PL022=m
- CONFIG_SPI_SIFIVE=y
- CONFIG_SPI_SUN6I=y
- # CONFIG_PTP_1588_CLOCK is not set
-+CONFIG_PINCTRL_A210=y
- CONFIG_PINCTRL_TH1520=y
- CONFIG_PINCTRL_SOPHGO_CV1800B=y
- CONFIG_PINCTRL_SOPHGO_CV1812H=y
-@@ -255,6 +262,7 @@ CONFIG_VIRTIO_PCI=y
- CONFIG_VIRTIO_BALLOON=y
- CONFIG_VIRTIO_INPUT=y
- CONFIG_VIRTIO_MMIO=y
-+CONFIG_COMMON_CLK_SCMI=y
- CONFIG_CLK_SOPHGO_CV1800=y
- CONFIG_CLK_SOPHGO_SG2042_PLL=y
- CONFIG_CLK_SOPHGO_SG2042_CLKGEN=y
-@@ -263,11 +271,13 @@ CONFIG_SPACEMIT_K1_CCU=y
- CONFIG_SPACEMIT_K3_CCU=y
- CONFIG_SUN8I_DE2_CCU=m
- CONFIG_SUN50I_IOMMU=y
-+CONFIG_ZHIHE_A210_MBOX=y
- CONFIG_RPMSG_CHAR=y
- CONFIG_RPMSG_CTRL=y
- CONFIG_RPMSG_VIRTIO=y
- CONFIG_PM_DEVFREQ=y
- CONFIG_IIO=y
-+CONFIG_RESET_SCMI=y
- CONFIG_PWM=y
- CONFIG_PWM_PXA=m
- CONFIG_THEAD_C900_ACLINT_SSWI=y
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 782389bd5cd3..c6cdd9bb0864 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -30115,6 +30115,20 @@ L:	linux-kernel@vger.kernel.org
+ S:	Maintained
+ F:	arch/x86/kernel/cpu/zhaoxin.c
+ 
++ZHIHE A210 SOC SUPPORT
++M:	Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
++M:	Han Gao <gaohan@iscas.ac.cn>
++L:	linux-riscv@lists.infradead.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/mailbox/zhihe,a210-ap-mailbox.yaml
++F:	Documentation/devicetree/bindings/pinctrl/zhihe,a210-pinctrl.yaml
++F:	Documentation/devicetree/bindings/riscv/zhihe.yaml
++F:	arch/riscv/boot/dts/zhihe/
++F:	drivers/mailbox/mailbox-a210.c
++F:	drivers/pinctrl/pinctrl-a210.c
++F:	include/dt-bindings/clock/zhihe,a210-scmi.h
++F:	include/dt-bindings/reset/zhihe,a210-scmi.h
++
+ ZONED BLOCK DEVICE (BLOCK LAYER)
+ M:	Damien Le Moal <dlemoal@kernel.org>
+ L:	linux-block@vger.kernel.org
 
 -- 
 2.55.0
