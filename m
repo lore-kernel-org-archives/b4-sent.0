@@ -1,10 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 27 Oct 2026 23:37:06 +0800
-Subject: [PATCH RFC 15/18] riscv: dts: zhihe: add A210 module memory
+Date: Tue, 27 Oct 2026 23:37:07 +0800
+Subject: [PATCH RFC 16/18] riscv: dts: zhihe: add Melon Pi V1 and V2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-a210-scmi-v1-15-74d58ce85bd8@iscas.ac.cn>
+Message-Id: <20261027-a210-scmi-v1-16-74d58ce85bd8@iscas.ac.cn>
 References: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 In-Reply-To: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -32,40 +32,135 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Paul Walmsley <paul.walmsley@sifive.com>, linux-clk@vger.kernel.org, 
  linux-serial@vger.kernel.org, Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=777;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=3373;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=YcgMhPuDLQowVTt+MvNEeWTBEwtrbKzVnPLSZwTdXCU=;
- b=aUMIJL92mbux7iKL81HC8BugLUrnFHAYSK4Kw4wHQGnOxZD4j4gnfd866EGabI+4vyPwKFYDP
- sZTzA4FsxPbBmnaie1KIQJHeJ87wIlZuzcWbbwJzVsdRHl1t2mYFYd/
+ bh=oY4cd1y5LBziUvIW+aG4iF3iEAIqMm4nbEZQYJakX5E=;
+ b=4tiMJ27dq3Tmofw0aIhQnF/GFOKjJZclGrfTcCcOZ7U4KV5DotcDPjRSTf9e99e1z17caZh2u
+ WaAJAiTV8wjAkN0lTpG1Wndpa3NLV+shRaP/Yd7Q0QoCnNHHmrDzrmg
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the A210 module memory node with a default 4 GiB range for boot
-firmware to update with the detected capacity.
+Add Melon Pi V1 and V2 with the UART4 console on GPIO2_0 and GPIO2_1.
+Use serial aliases to preserve physical UART numbering.
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- arch/riscv/boot/dts/zhihe/a210-som.dtsi | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ arch/riscv/boot/dts/Makefile                       |  1 +
+ arch/riscv/boot/dts/zhihe/Makefile                 |  2 +
+ arch/riscv/boot/dts/zhihe/a210-melonpi-common.dtsi | 55 ++++++++++++++++++++++
+ arch/riscv/boot/dts/zhihe/a210-melonpi-v1.dts      |  9 ++++
+ arch/riscv/boot/dts/zhihe/a210-melonpi-v2.dts      |  9 ++++
+ 5 files changed, 76 insertions(+)
 
-diff --git a/arch/riscv/boot/dts/zhihe/a210-som.dtsi b/arch/riscv/boot/dts/zhihe/a210-som.dtsi
+diff --git a/arch/riscv/boot/dts/Makefile b/arch/riscv/boot/dts/Makefile
+index 69d8751fb17c..445edde8f107 100644
+--- a/arch/riscv/boot/dts/Makefile
++++ b/arch/riscv/boot/dts/Makefile
+@@ -12,3 +12,4 @@ subdir-y += spacemit
+ subdir-y += starfive
+ subdir-y += tenstorrent
+ subdir-y += thead
++subdir-y += zhihe
+diff --git a/arch/riscv/boot/dts/zhihe/Makefile b/arch/riscv/boot/dts/zhihe/Makefile
 new file mode 100644
-index 000000000000..a77447e402d7
+index 000000000000..553102091d4f
 --- /dev/null
-+++ b/arch/riscv/boot/dts/zhihe/a210-som.dtsi
-@@ -0,0 +1,11 @@
++++ b/arch/riscv/boot/dts/zhihe/Makefile
+@@ -0,0 +1,2 @@
++# SPDX-License-Identifier: GPL-2.0
++dtb-$(CONFIG_ARCH_ZHIHE) += a210-melonpi-v1.dtb a210-melonpi-v2.dtb
+diff --git a/arch/riscv/boot/dts/zhihe/a210-melonpi-common.dtsi b/arch/riscv/boot/dts/zhihe/a210-melonpi-common.dtsi
+new file mode 100644
+index 000000000000..52015f6de5f8
+--- /dev/null
++++ b/arch/riscv/boot/dts/zhihe/a210-melonpi-common.dtsi
+@@ -0,0 +1,55 @@
 +// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +
-+#include "a210.dtsi"
++#include "a210-som.dtsi"
 +
 +/ {
-+	/* The loader replaces this reference capacity after DDR training. */
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0x0 0x80000000 0x1 0x0>;
++	aliases {
++		serial0 = &uart0;
++		serial1 = &uart1;
++		serial2 = &uart2;
++		serial3 = &uart3;
++		serial4 = &uart4;
++		serial5 = &uart5;
++		serial6 = &uart6;
++		serial7 = &uart7;
++		serial8 = &uart8;
++		serial9 = &uart9;
 +	};
++
++	chosen {
++		stdout-path = "serial4:115200n8";
++	};
++};
++
++&peri2_padctrl {
++	status = "okay";
++
++	uart4_pins: uart4-0 {
++		rx-pins {
++			pins = "GPIO2_1";
++			function = "uart4";
++			bias-disable;
++			drive-strength = <1>;
++			input-enable;
++			input-schmitt-enable;
++			slew-rate = <0>;
++		};
++
++		tx-pins {
++			pins = "GPIO2_0";
++			function = "uart4";
++			bias-disable;
++			drive-strength = <3>;
++			input-disable;
++			input-schmitt-disable;
++			slew-rate = <0>;
++		};
++	};
++};
++
++&uart4 {
++	pinctrl-0 = <&uart4_pins>;
++	pinctrl-names = "default";
++
++	status = "okay";
++};
+diff --git a/arch/riscv/boot/dts/zhihe/a210-melonpi-v1.dts b/arch/riscv/boot/dts/zhihe/a210-melonpi-v1.dts
+new file mode 100644
+index 000000000000..a88e9b949c4a
+--- /dev/null
++++ b/arch/riscv/boot/dts/zhihe/a210-melonpi-v1.dts
+@@ -0,0 +1,9 @@
++// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++/dts-v1/;
++
++#include "a210-melonpi-common.dtsi"
++
++/ {
++	compatible = "zhihe,a210-melonpi-v1", "zhihe,a210-som", "zhihe,a210";
++	model = "Melon Pi V1";
++};
+diff --git a/arch/riscv/boot/dts/zhihe/a210-melonpi-v2.dts b/arch/riscv/boot/dts/zhihe/a210-melonpi-v2.dts
+new file mode 100644
+index 000000000000..71752471c5fb
+--- /dev/null
++++ b/arch/riscv/boot/dts/zhihe/a210-melonpi-v2.dts
+@@ -0,0 +1,9 @@
++// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++/dts-v1/;
++
++#include "a210-melonpi-common.dtsi"
++
++/ {
++	compatible = "zhihe,a210-melonpi-v2", "zhihe,a210-som", "zhihe,a210";
++	model = "Melon Pi V2";
 +};
 
 -- 
