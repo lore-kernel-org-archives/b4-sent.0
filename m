@@ -1,71 +1,150 @@
-From: Marco Ziliani <rylos78@gmail.com>
-Date: Tue, 27 Oct 2026 21:29:47 +0100
-Subject: [PATCH 3/3] media: i2c: ov5693: Use autosuspend when stopping the
- stream
+From: Mani Tofigh <mt4022@columbia.edu>
+Date: Tue, 27 Oct 2026 16:33:32 -0400
+Subject: [PATCH] mm/shmem: fix swapin livelock on a mismatched large swap
+ cache folio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-ov5693-fixes-v1-3-3c8ab1ae104d@gmail.com>
-References: <20261027-ov5693-fixes-v1-0-3c8ab1ae104d@gmail.com>
-In-Reply-To: <20261027-ov5693-fixes-v1-0-3c8ab1ae104d@gmail.com>
-To: Daniel Scally <dan.scally@ideasonboard.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, Chris Simpson <chris@nilk.net>, 
- Simon Kruse <simon0x+git@proton.me>, "D. Manresa" <dmanresa@gmail.com>, 
- linux-kernel@vger.kernel.org, Marco Ziliani <rylos78@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793132984; l=1849;
- i=rylos78@gmail.com; s=20261027; h=from:subject:message-id;
- bh=MYKsyD0NZ6WLk/QqygH2Wd+qTYlOlgxa6tvnmewfJPU=;
- b=7Cmu3nt7sesvcZYUUEEW/4sywPGxNI7gz09CEeAH9dQ4m2URhNbJ4SWum/4UnFknzoSrqbWPx
- ZyOOX6OqivRAokHVOT1Q9uRg868k27pQ4ejnzURCRu2biGGLVAw3VBH
-X-Developer-Key: i=rylos78@gmail.com; a=ed25519;
- pk=nXCfiK5yExPZCMp+lfKif3gdXkfjkUK2qk7bDW+ixMo=
-X-Endpoint-Received: by B4 Relay for rylos78@gmail.com/20261027 with auth_id=1333
+Message-Id: <20261027-shmem-swapin-mismatch-v1-1-84e30aa3b9e5@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrDvQBFToVYqLMY7NFJJKxqoQv
+ LtRF2/xLd6fQTkJK7yqDIkXUfnFAvOowHmKH0YZisE+bWPKUH3ggLrSJBGDaKDZeRyHloi4NbX
+ toXynxKNsV/fd3dZ//2U3nzHY9wOS/mNzeQAAAA==
+X-Change-ID: 20261026-shmem-swapin-mismatch-fd7aaae7152b
+To: Hugh Dickins <hughd@google.com>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, Kairui Song <kasong@tencent.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
+ Chris Li <chrisl@kernel.org>, Kemeng Shi <shikemeng@huaweicloud.com>, 
+ Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>, 
+ David Hildenbrand <david@kernel.org>, stable@vger.kernel.org, 
+ Mani Tofigh <mt4022@columbia.edu>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793133211; l=4725;
+ i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
+ bh=Vdl4OKyE80c+N/UAG+bYXzpu0HL0y5evYFJyEcYjtvw=;
+ b=7uEcFzFrWSSemDyMXBbHWaNW+OuNxmh1qJi8M4WhwJ60XkoJkAc5+eqGMXNjzw5vbCxDuDjY9
+ HBoa2eD2w2CDUcUk64WjB98n/hFWwztLwUaIG5XzUTnR44iklMkG7ET
+X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
+ pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
+X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver enables runtime PM autosuspend with a 1 second delay at
-probe, but drops the usage count at stream stop with pm_runtime_put(),
-which doesn't update the device's last busy time. The autosuspend
-delay is then counted from the runtime resume at stream start rather
-than from stream stop, so after any stream longer than the delay the
-sensor is powered off right away.
+On a SWP_SYNCHRONOUS_IO swap device, a large shmem folio can be left in
+the swap cache over swap slots that another file now uses.  Reading
+that other file then loops forever in shmem_get_folio_gfp():
+shmem_swapin_folio() finds the large folio, rounds the index and the
+swap entry down to the folio's size, finds no matching entry in the
+file and returns -EEXIST, and the retry finds the same folio again.
+Since the task keeps the mapping locked, a munmap() of the same mapping
+waits forever.
 
-Use pm_runtime_put_autosuspend(), which marks the device busy, so that
-the delay counts from stream stop as intended, and a following stream
-started within it doesn't power the sensor up from scratch again. With
-the mode now programmed on every stream start, keeping the sensor
-powered between streams no longer leaves it in a stale mode.
+The folio is left behind when the slots are freed and reused while the
+swapin is still allocating it:
 
-On a Surface Pro 9 (IPU6) with autosuspend_delay_ms set to 3000, the
-sensor suspended 1-2 ms after a 5 s stream stopped; with this change,
-3.7 s after it, i.e. the delay plus the autosuspend timer slack. On a
-Surface Pro 5 (IPU3) with the default 1 s delay, the sensor suspended
-as soon as a 2 s stream stopped; with this change, 1.1 s after it.
+  Task A (reads X)                      Task B
+  ----------------                      ------
+  shmem_swapin_folio()
+    allocate a large folio
+    for X's slots
+                                        punch a hole in X
+                                        /* X's slots freed */
+                                        swap out file Y
+                                        /* Y reuses those slots */
+    add the folio to the swap
+    cache over those slots
+    shmem_confirm_swap() fails
+    /* -EEXIST, the folio stays
+       in the swap cache */
 
-Fixes: 89aef879cb53 ("media: i2c: Add support for ov5693 sensor")
-Reported-by: D. Manresa <dmanresa@gmail.com>
-Closes: https://github.com/linux-surface/kernel/pull/181#issuecomment-6436016335
-Signed-off-by: Marco Ziliani <rylos78@gmail.com>
+  Task C (reads Y)
+  ----------------
+  shmem_swapin_folio()
+    finds the large folio
+    rounds down to its start,
+    where Y has no entry
+    /* -EEXIST, retried forever */
+
+Before commit c246d236b18b ("mm/shmem: never bypass the swap cache for
+SWP_SYNCHRONOUS_IO"), a direct swapin that failed this way freed its
+folio instead of leaving it in the swap cache.
+
+do_swap_page() already drops a large swap cache folio that does not
+fit for anonymous memory.  Do the same in shmem_swapin_folio() and on
+a -EEXIST, remove a large folio that is not
+anonymous/dirty/under-writeback from the swap cache so that the retry
+swaps in a folio that fits.
+
+The reproducer below fills a small brd swap device so that a 64K shmem
+folio and the 4K pages of another file land in the same slots, and races
+a read of the first file with a hole punch and a swapout of the second.
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development, but the non-deterministic C
+reproducer can typically trigger it in the 2-4s time range.  With the
+fix, nothing is triggered after 600 seconds.
+
+Fixes: c246d236b18b ("mm/shmem: never bypass the swap cache for SWP_SYNCHRONOUS_IO")
+Cc: stable@vger.kernel.org
+Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- drivers/media/i2c/ov5693.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Two patches in David Hildenbrand's v2 shmem fixes series are related
+to this one.  "mm/shmem: fix truncate hang in large swap entry" [1]
+makes truncation retry -EEXIST directly, so it can also loop on such a
+folio.  "mm/shmem: preserve allocation errors when swapping in large
+entries" [2] fixes a different -EEXIST loop, where a failed allocation
+is reported as -EEXIST.
 
-diff --git a/drivers/media/i2c/ov5693.c b/drivers/media/i2c/ov5693.c
-index ca0968498..ef5e7285c 100644
---- a/drivers/media/i2c/ov5693.c
-+++ b/drivers/media/i2c/ov5693.c
-@@ -1070,7 +1070,7 @@ static int ov5693_s_stream(struct v4l2_subdev *sd, int enable)
- 		goto err_power_down;
- 
- 	if (!enable)
--		pm_runtime_put(ov5693->dev);
-+		pm_runtime_put_autosuspend(ov5693->dev);
- 
- 	return 0;
- err_power_down:
+[1] https://lore.kernel.org/all/20261027-fixes_shmem-v2-10-86a00952acb9@kernel.org/
+[2] https://lore.kernel.org/all/20261027-fixes_shmem-v2-11-86a00952acb9@kernel.org/
 
--- 
-2.56.0
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/shmemloop.c
+---
+ mm/shmem.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 13e0786436cd..f1da8432d55c 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2568,11 +2568,14 @@ static int shmem_swapin_folio(struct inode *inode, pgoff_t index,
+ 	 * and swap cache folios are never partially freed.
+ 	 */
+ 	folio_lock(folio);
+-	if (!folio_matches_swap_entry(folio, swap) ||
+-	    shmem_confirm_swap(mapping, index, swap) < 0) {
++	if (!folio_matches_swap_entry(folio, swap)) {
+ 		error = -EEXIST;
+ 		goto unlock;
+ 	}
++	if (shmem_confirm_swap(mapping, index, swap) < 0) {
++		error = -EEXIST;
++		goto failed;
++	}
+ 	if (!folio_test_uptodate(folio)) {
+ 		error = -EIO;
+ 		goto failed;
+@@ -2613,6 +2616,15 @@ static int shmem_swapin_folio(struct inode *inode, pgoff_t index,
+ 		error = -EEXIST;
+ 	if (error == -EIO)
+ 		shmem_set_folio_swapin_error(inode, index, folio, swap);
++	/*
++	 * A large folio that does not fit the mapping, e.g. because its swap
++	 * entries were freed and reused, would be found again on every retry.
++	 * Drop it from the swap cache so the retry can swap in a fitting one.
++	 */
++	if (error == -EEXIST && folio && folio_test_large(folio) &&
++	    !folio_test_anon(folio) && !folio_test_dirty(folio) &&
++	    !folio_test_writeback(folio))
++		swap_cache_del_folio(folio);
+ unlock:
+ 	if (folio)
+ 		folio_unlock(folio);
+
+---
+base-commit: bae9a042b03b27924c6fd5bdc00a20d6a44d6041
+change-id: 20261026-shmem-swapin-mismatch-fd7aaae7152b
+
+Best regards,
+--  
+Mani Tofigh <mt4022@columbia.edu>
 
