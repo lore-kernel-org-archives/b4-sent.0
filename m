@@ -1,10 +1,10 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 27 Oct 2026 23:36:53 +0800
-Subject: [PATCH RFC 02/18] dt-bindings: vendor-prefixes: add Zhihe
+Date: Tue, 27 Oct 2026 23:36:54 +0800
+Subject: [PATCH RFC 03/18] riscv: add Zhihe A210 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-a210-scmi-v1-2-74d58ce85bd8@iscas.ac.cn>
+Message-Id: <20261027-a210-scmi-v1-3-74d58ce85bd8@iscas.ac.cn>
 References: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 In-Reply-To: <20261027-a210-scmi-v1-0-74d58ce85bd8@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -32,11 +32,11 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Paul Walmsley <paul.walmsley@sifive.com>, linux-clk@vger.kernel.org, 
  linux-serial@vger.kernel.org, Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=842;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793115418; l=1013;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=78H4CNA6muw7rwfV33m2sQ0QfyIqTcYL4B8JahPXMn4=;
- b=ZlIYxo13cmOAFrP5dhVx8YBV6beEABXC/eF22oDJ1AKXa+I4RIFByDZzWBlPUSIX3TUDFFQ9X
- hNEt/8H6owrBYrIHLOg2GkAvpO6b8uJOp8WCZ+bCF9Bmd7iZjztiPwo
+ bh=4BCg+toIRbmSQPVtgy4Q0XzWNjGrXKkDc5R8if2Rdc4=;
+ b=1pDamW3QTPBKSSKzzRENwqiqMqVJhpTprOuArsGVVA8UErhZhB2MrFaIMX07VrlWigcyFgZL1
+ WpehrKhtBPgC++sF6Kq8JbHl8+KDOE37eNlO24T6In/83R1aQLkLfpV
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
@@ -44,27 +44,36 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 
-Add the vendor prefix for Zhihe Computing.
+Add the ARCH_ZHIHE option for the Zhihe A210 SoC.
 
 Signed-off-by: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
+Co-developed-by: Han Gao <gaohan@iscas.ac.cn>
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/riscv/Kconfig.socs | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index ba2002969373..21142578837b 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1973,6 +1973,8 @@ patternProperties:
-     description: Zealz
-   "^zeitec,.*":
-     description: ZEITEC Semiconductor Co., LTD.
-+  "^zhihe,.*":
-+    description: Zhihe Computing Limited
-   "^zidoo,.*":
-     description: Shenzhen Zidoo Technology Co., Ltd.
-   "^zii,.*":
+diff --git a/arch/riscv/Kconfig.socs b/arch/riscv/Kconfig.socs
+index cecbce0c4983..b9863ebd88c7 100644
+--- a/arch/riscv/Kconfig.socs
++++ b/arch/riscv/Kconfig.socs
+@@ -91,6 +91,16 @@ config ARCH_ULTRARISC
+ 	  This enables support for UltraRISC SoC platform hardware,
+ 	  including boards based on the UR-DP1000.
+ 
++config ARCH_ZHIHE
++	bool "ZhiHe SoCs"
++	depends on 64BIT && MMU
++	select ARCH_HAS_RESET_CONTROLLER
++	help
++	  Enable support for the Zhihe A210 SoC.
++	  A210 has four C908 and four C920 RISC-V CPU cores.
++	  Supported boards include the Melon Pi V1 and V2.
++	  Say Y here to build a kernel for these boards.
++
+ config ARCH_VIRT
+ 	bool "QEMU Virt Machine"
+ 	select POWER_RESET
 
 -- 
 2.55.0
