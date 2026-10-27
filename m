@@ -1,76 +1,106 @@
-From: Ishu Brar <patches@brar.si>
-Date: Tue, 27 Oct 2026 12:44:38 +0530
-Subject: [PATCH v4 5/5] drm/msm/a6xx: Protect the 0x1c800-0x1e7ff GMU range
- on A620 and A650
+From: Chen Linxuan <me@black-desk.cn>
+Date: Tue, 27 Oct 2026 16:22:15 +0800
+Subject: [PATCH] pidfd: restrict task access ioctls to the caller's pid
+ namespace
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-adreno-a620-v4-5-b0095e028c76@brar.si>
-References: <20261027-adreno-a620-v4-0-b0095e028c76@brar.si>
-In-Reply-To: <20261027-adreno-a620-v4-0-b0095e028c76@brar.si>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Konrad Dybcio <konradybcio@kernel.org>, 
- Akhil P Oommen <akhilpo@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, Ishu Brar <patches@brar.si>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793085280; l=1823;
- i=patches@brar.si; h=from:subject:message-id;
- bh=uJTDKKOJDAvrd0WSzrpyyryyzrwcJ4u+PPWaRGHdnNY=;
- b=RcTOxjE8hhv0TGlBtQlkofh7TIPAqZnkl+CNmTWxi5zzD41biNM8KTI3r5WnPAN4CLoM6BcXM
- O2YShEc11EMAt9Rp7hIYhKRsIiTFZuI8E5/8GkKmDBH1DLPHiE8fdS5
-X-Developer-Key: i=patches@brar.si; a=ed25519;
- pk=Ds+E23E3ntzjPzuBDyVRkOouclcNI5k75R+N42yJtCk=
-X-Endpoint-Received: by B4 Relay for patches@brar.si/default with auth_id=1189
+Message-Id: <20261027-pidfd-task-access-v1-1-d46cf0fa4ca1@black-desk.cn>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB2IoRjsVcRFMhl1FKxkbCkE7
+ 95Ul2/xfwblJKzwrDIk/ojKayto6gpo9tvEKLEYrLFtY6zDXeIY8fC6oidiVQyuc0zBtsY/oHR
+ 74lG+17Mfbus7LEzHfwTn+QP6aJ3EdQAAAA==
+X-Change-ID: 20261027-pidfd-task-access-b797ecb260a4
+To: Christian Brauner <brauner@kernel.org>, Jann Horn <jannh@google.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-api@vger.kernel.org, Chen Linxuan <me@black-desk.cn>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2904; i=me@black-desk.cn;
+ s=20260831; h=from:subject:message-id;
+ bh=NJGDJ4tAiDZhLhTR/ki/QbOLj26AyQQxFTXud2F+Uxo=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBq4F9CKxRS8zvMiS4Y5tBkX2gAQZ6Z9+krgSBb7
+ LCi8zk6uRGJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCauBfQgAKCRB2HuYUOZmu
+ i0UeD/0TIMg45/Wr71eH7wN89I0/aoj2TDmRpMs9bVru+UZ4bdPCFngLgH/SlvX5qXbTKMcoWTu
+ 7rCblQ287n/0JHBRCJb8XogWmNO0yBE+REFNUcvLNgkbknTlNpAvLs17N8h16nAL3xUqjw93GcO
+ vUXYDFbUu5rY3iU8q5IQ9rpDBq5mYM7vTkSIIY0KXR90L19CF0rqpm2P3Nq/1xWhpcRAfyc42Ii
+ SGBgp53CyL0n/D90VZ7ZcHZjBiduN6cwZFma5LO39Gh12eu8qhqd6IzGDDv/LbCVg6S1vlv8c/E
+ WqlTcgNTk+bDOqATlOtcvfjiVi0IxrSqlRWYphFs11fJ3Am0EPW6b8+7/nC5Qfyay4Syy9Ou8dF
+ opuGz9/JrGnZGtDbfLg1kU0tLx/NsgltEqhriT3L2nZLfSWAYV3zC4A7LFw1A2PIYEBzuYwGEs1
+ 26ufm52NX6NrJTfmjRV27LvRm6uhO+sxDt1I6F0VbAKUUF+qA00EKr/fesJL1YNVvTdj6qJoHOi
+ umDQZEUpr3IRYUQt5RhUPa7F5QF8x99WlGOW/i5m1laCXa5sMtJOM2pCVXDR31tGaIdD8/O7Agf
+ +gvCZrBOevdtWPuoFcS+7ETCWiR6b6Xp+hKzs5hIDAvRyvJI41rknc86fSuvV47zqs3k9adALLE
+ JjLzh7sObruOqVA==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/20260831 with auth_id=991
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-No protect entry covers the range from 0x1c800 to 0x1e7ff: the entry
-at 0x1a800 ends at 0x1c7ff and the next one starts at 0x1f400. The range
-holds GMU registers, among them GMU_NMI_CONTROL_STATUS (0x1cbf0),
-GMU_BOOT_SLUMBER_OPTION (0x1cbf8), the GX and MX vote indexes (0x1cbf9,
-0x1cbfa), the DCVS option, setting and return registers (0x1cbfc to
-0x1cbff) and GMU_CORE_FW_VERSION (0x1d3f8), see a6xx_gmu.xml.
+pidfds can cross pid namespace boundaries: a task may obtain one for a
+process outside of its own pid namespace hierarchy through SO_PASSPIDFD
+or SO_PEERPIDFD, via SCM_RIGHTS, or through file descriptor inheritance.
 
-Add the range as no read/write to the A650 protect list, which A620 and
-A650 share, so that these registers are reserved as well. This follows
-Konrad Dybcio's suggestion; the downstream kgsl protect table of the
-OnePlus Nord (a620_protected_regs) has no entry for this range, so there
-is no downstream reference for it.
+The namespace ioctls gate access with a ptrace check against the
+target's credentials only. That check does not account for the pid
+namespace relationship between the caller and the target, so a task
+inside a pid namespace can use a pidfd obtained across that boundary to
+acquire namespace file descriptors of a task outside of its hierarchy.
 
-The list is also used by A621, A623, A702 and A704, which I could not
-test. Tested on A620 only (OnePlus Nord, a 7.3 based tree): a Vulkan
-workload ran across GPU frequency changes without protect, fault or GMU
-errors. A write into the range being rejected was not tested.
+procfs exposes the equivalent information only for tasks visible in the
+reader's pid namespace, and PIDFD_GET_INFO already answers with -EREMOTE
+for targets outside the caller's hierarchy. Extend that policy to the
+namespace ioctls: fail with -EREMOTE unless the target is visible in the
+caller's active pid namespace. Callers in ancestor pid namespaces are
+unaffected.
 
-Suggested-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Ishu Brar <patches@brar.si>
+Unlike PIDFD_GET_INFO, the visibility check is performed after the task
+lookup here, so reaped targets outside of the caller's pid namespace
+hierarchy answer -ESRCH instead of -EREMOTE.
+
+Link: https://lore.kernel.org/all/CAG48ez1T5-tUHVK_iHsgUtWa-inVdrZxA3E-ZCW0iENJvasKfg@mail.gmail.com
+Link: https://lore.kernel.org/all/20260925-gewischt-auftrag-tierzucht-c153cb3f9f74@brauner
+Suggested-by: Jann Horn <jannh@google.com>
+Suggested-by: Christian Brauner <brauner@kernel.org>
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- drivers/gpu/drm/msm/adreno/a6xx_catalog.c | 1 +
- 1 file changed, 1 insertion(+)
+This patch was previously submitted as patch 1/4 of the task path ioctl
+series v3. It is now submitted independently because it changes access
+to existing namespace ioctls and does not depend on the new path ioctls.
 
-diff --git a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-index 6cdc3f5a2583..c93de04bb187 100644
---- a/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-+++ b/drivers/gpu/drm/msm/adreno/a6xx_catalog.c
-@@ -576,6 +576,7 @@ static const u32 a650_protect_regs[] = {
- 	A6XX_PROTECT_RDONLY(0x0fc00, 0x1fff),
- 	A6XX_PROTECT_NORDWR(0x18400, 0x1fff),
- 	A6XX_PROTECT_NORDWR(0x1a800, 0x1fff),
-+	A6XX_PROTECT_NORDWR(0x1c800, 0x1fff),
- 	A6XX_PROTECT_NORDWR(0x1f400, 0x0443),
- 	A6XX_PROTECT_RDONLY(0x1f844, 0x007b),
- 	A6XX_PROTECT_NORDWR(0x1f887, 0x001b),
+The code and commit message are unchanged from v3 1/4. The patch has
+been rebased onto current mainline. A revised task path ioctl series
+will follow separately and depend on this patch.
 
--- 
-2.56.0
+Previous submission:
+https://lore.kernel.org/all/20261010-pidfd-get-paths-v3-1-f245440b2b30@black-desk.cn/
+---
+ fs/pidfs.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/fs/pidfs.c b/fs/pidfs.c
+index 7f8c323ce6cb..cfb93c4ccf23 100644
+--- a/fs/pidfs.c
++++ b/fs/pidfs.c
+@@ -556,6 +556,14 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	if (arg)
+ 		return -EINVAL;
+ 
++	/*
++	 * Require the target to be visible in the caller's pid namespace
++	 * for operations that grant access to its resources, mirroring
++	 * procfs and PIDFD_GET_INFO.
++	 */
++	if (!pid_in_current_pidns(pidfd_pid(file)))
++		return -EREMOTE;
++
+ 	/*
+ 	 * We're trying to open a file descriptor to the namespace so perform a
+ 	 * filesystem cred ptrace check. Hold @task's exec_update_lock for the
+
+---
+base-commit: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+change-id: 20261027-pidfd-task-access-b797ecb260a4
+
+Best regards,
+--  
+Chen Linxuan <me@black-desk.cn>
 
