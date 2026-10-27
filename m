@@ -1,15 +1,15 @@
 From: Leno Hou <lenohou@gmail.com>
-Date: Wed, 28 Oct 2026 00:33:55 +0800
-Subject: [PATCH Resend 6.12] mm: vmscan: fix dirty folios throttling on
+Date: Wed, 28 Oct 2026 00:39:03 +0800
+Subject: [PATCH PATCH 6.18] mm: vmscan: fix dirty folios throttling on
  cgroup v1 for MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-fix-mglru-v6-12-v1-1-e44f4f97ca67@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBBFr9LM2jHtEBr0GG6NC2gHGAPVdISYE
- O5u1eXL/+9toJyFFc5mg8yrqDxSAXcwEMY2DYwSCwNZ8s5Sg728cR6mvODq0RHWpz7UsQttVVk
- o1jNzufyKV7iwcorGHx3B7T/q0t05vL5N2PcPW/IE+4AAAAA=
-X-Change-ID: 20261028-fix-mglru-v6-12-59fc5dbca330
+Message-Id: <20261028-fix-mglru-v6-18-v1-1-5813f30470a5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAyML3bTMCt3c9JyiUt0yM11DC12jVKPkJMvURMPk5FQloK6ColSgErC
+ J0UoBjiHOHgpmeoYWSrEQueLSpKzU5BKQkUq1tQDt75kYfwAAAA==
+X-Change-ID: 20261028-fix-mglru-v6-18-2e2cb9ea1cce
 To: stable@vger.kernel.org
 Cc: Baolin Wang <baolin.wang@linux.alibaba.com>, 
  Barry Song <baohua@kernel.org>, Kairui Song <kasong@tencent.com>, 
@@ -21,11 +21,11 @@ Cc: Baolin Wang <baolin.wang@linux.alibaba.com>,
  Wei Xu <weixugc@google.com>, Yuanchu Xie <yuanchu@google.com>, 
  Andrew Morton <akpm@linux-foundation.org>, Leno Hou <lenohou@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793118841; l=3366;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793119146; l=3366;
  i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
- bh=w5XO7uxDe6BmXywiUuWRH0ePynDG5fOBKE7mkiiXvK0=;
- b=J9F6rHPhSJslAtxXDC/CJCbqmroGQWPBOdIBdHQAaS4dtdfRWIOt4gh0xoTGECyvBQpLQ9zTn
- Tzx1cS9YnbwDLrj2hFWqYrR8325U6AFLVPg2Mk+X1S8WDM2bi77KCV3
+ bh=ZuOibcyCjCwv7fTq5uuREQh9Yfw6I6yU4s9aM7bnXV4=;
+ b=3j88arFiX8mhZjRvXzpkeMvBcyhqDUR26nojAxrpj74mDTVq3eldHmZqWhb7Px6kGFQpZa6ZE
+ qdwMVTRednGAejQQotqS2wsl0h7hpNVih/ipGXCJBL7lFVWcCfxVja9
 X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
  pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
 X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
@@ -78,10 +78,10 @@ Signed-off-by: Leno Hou <lenohou@gmail.com>
  1 file changed, 16 insertions(+), 1 deletion(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index f9b5fbd072db..074e403ffd14 100644
+index 2c66fbcd6e84..c983815bde5b 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -4809,9 +4809,24 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+@@ -4901,9 +4901,24 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
  	 * If too many file cache in the coldest generation can't be evicted
  	 * due to being dirty, wake up the flusher.
  	 */
@@ -109,8 +109,8 @@ index f9b5fbd072db..074e403ffd14 100644
  }
 
 ---
-base-commit: 85d82e0d7c2dfd3e75d34f35b7ebbf41f45c9c4e
-change-id: 20261028-fix-mglru-v6-12-59fc5dbca330
+base-commit: 1253a6aa5d104312bf0992afacc15220ae35bdf9
+change-id: 20261028-fix-mglru-v6-18-2e2cb9ea1cce
 
 Best regards,
 --  
