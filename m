@@ -1,11 +1,11 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Date: Tue, 27 Oct 2026 08:00:48 +0100
-Subject: [PATCH v3 4/5] ceph: ask for LAZYIO only once the MDS turns CACHE
- or BUFFER down
+Date: Tue, 27 Oct 2026 08:00:49 +0100
+Subject: [PATCH v3 5/5] ceph: keep LAZYIO with the read caps of a closed
+ file
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-b4-wip-ceph-lazyio-fix-v3-4-df2926c30867@clyso.com>
+Message-Id: <20261027-b4-wip-ceph-lazyio-fix-v3-5-df2926c30867@clyso.com>
 References: <20261027-b4-wip-ceph-lazyio-fix-v3-0-df2926c30867@clyso.com>
 In-Reply-To: <20261027-b4-wip-ceph-lazyio-fix-v3-0-df2926c30867@clyso.com>
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
@@ -13,93 +13,53 @@ To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>,
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793084460; l=3543;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793084460; l=1563;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=vM1YJ8Qdb6EoK/7Y+Z2XaIpcesKUcnEvtBTos7L2Q+s=;
- b=lPZdiSqqQVPAu8YmiOtzxzoT1KLqFsZxXCmCRyWYUKBpmU3LfU0U1ggov9+FqfRTpWUc87QUO
- m+kBvosF2s4Cp0mQS6U92b27Df2T4aMnABP0fSAzfRJU0FQ7eoGGWHr
+ bh=vCRKa1jTwTRmyvIPqElXVacQQHdBR1gNvKu9DI1jLQE=;
+ b=q+KIBCZrX/5m1P407OHS3rX7W5lbaJeEzIkzXA7XEeT/bc16angVEzTn65lTIE9s6a+41JvAv
+ 9le4YNUQl0dBcw2XZC1BngsVcE2fs/2VRpEDi3Aaawwc0w3AdG+xzgw
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A lazy I/O open asked for LAZYIO with the other caps of its mode.  The
-MDS issues LAZYIO in LOCK_SYNC, but not in LOCK_SYNC_EXCL: an open for
-writing by the only client of a synced file makes that client the
-loner, and the MDS revokes the LAZYIO it has just issued on the way to
-LOCK_EXCL.  mdtest's "read" phase opens files O_RDWR (it passes
-O_RDONLY, 0, where the backend wants IOR_RDONLY), so with the lazyio
-mount option a file read can cost a revoke and its ack.  A reader whose
-caps came from a lookup also paid a cap message and a grant for LAZYIO
-it had no use for.
+A lazy I/O open of a file in LOCK_SYNC gets LAZYIO issued along with
+the read caps.  Once the file is closed and its wanted caps lapse,
+ceph_check_caps() keeps the shared and read caps of a file that was
+not opened for writing, but not LAZYIO, so it sends the MDS a cap
+update for every closed file only to give LAZYIO back.  With the
+lazyio mount option, io500 mdtest-hard-read sends about one such
+message per file read, from about 60 seconds after the reads start,
+and the MDS serves the reads more slowly while they arrive.
 
-LAZYIO only stands in for CACHE (reads) and BUFFER (writes) when the
-MDS will not give those out, i.e. when the file goes mixed.  Ask for it
-once CACHE, or BUFFER for a writer, is in the wanted set the MDS knows
-of but not issued, and keep it while it is issued.  A lazy client of a
-file that goes mixed then gets LAZYIO one cap message later than it
-did.
-
-Reading 2000 files O_RDWR from a second client cost 930 revokes and
-2916 cap messages to the MDS before this change, and costs 0 revokes
-and 2000 cap messages with it, the same as without lazyio.  In an io500
-run the mdtest-hard-read phase still sees about one revoke per file
-with lazyio (2.5-2.7M); those go away only when mdtest opens the files
-read-only.
+Keep LAZYIO under the same condition as the read caps.  The MDS still
+revokes it together with CACHE when another client needs the file.
 
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- fs/ceph/caps.c | 30 +++++++++++++++++++-----------
- 1 file changed, 19 insertions(+), 11 deletions(-)
+ fs/ceph/caps.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index c063d3cf7d21..49e5c1c36b68 100644
+index 49e5c1c36b68..aca09351a094 100644
 --- a/fs/ceph/caps.c
 +++ b/fs/ceph/caps.c
-@@ -1126,24 +1126,32 @@ static inline int ceph_adjust_caps_used_for_lazyio(struct ceph_inode_info *ci,
- #define FMODE_WAIT_BIAS 1000
+@@ -2266,10 +2266,13 @@ void ceph_check_caps(struct ceph_inode_info *ci, int flags)
+ 			/*
+ 			 * keep RD only if we didn't have the file open RW,
+ 			 * because then the mds would revoke it anyway to
+-			 * journal max_size=0.
++			 * journal max_size=0.  Keep LAZYIO with it: a lazy
++			 * I/O open gets it issued in LOCK_SYNC, and giving
++			 * it back costs a cap message per closed file, while
++			 * the MDS revokes it along with CACHE when it must.
+ 			 */
+ 			if (ci->i_max_size == 0)
+-				retain |= CEPH_CAP_ANY_RD;
++				retain |= CEPH_CAP_ANY_RD | CEPH_CAP_FILE_LAZYIO;
+ 		}
+ 	}
  
- /*
-- * Does a lazy I/O open want LAZYIO?  A writer does, to keep buffering
-- * when the file goes mixed.  A reader whose cache is backed by CACHE
-- * gains nothing from it, and asking for it would cost a cap message to
-- * the MDS and a grant back for every open of a file that was looked up
-- * or stat'ed before: want it only once CACHE is gone, or keep it while
-- * it is still issued.
-+ * Does a lazy I/O open want LAZYIO?  It stands in for CACHE (reads) and
-+ * BUFFER (writes) when the MDS will not give those out, i.e. when the
-+ * file goes mixed.  Until then it gains nothing, and asking for it costs:
-+ * the MDS issues LAZYIO in LOCK_SYNC, but not in LOCK_SYNC_EXCL, so an
-+ * open that makes the client the loner of a synced file (any open for
-+ * writing by a single client, as mdtest's "read" phase does) gets the
-+ * LAZYIO it asked for revoked again on the way to LOCK_EXCL: a revoke and
-+ * its ack for every file opened.  A reader whose caps came from a lookup
-+ * also paid a cap message and a grant for it.
-+ *
-+ * So want LAZYIO once the MDS has turned CACHE (BUFFER for a writer)
-+ * down, i.e. it is in the wanted set the MDS knows of but not issued,
-+ * and keep it while it is issued.
-  *
-  * Caller must hold i_ceph_lock.
-  */
- bool __ceph_lazy_wants_lazyio(struct ceph_inode_info *ci, bool write)
- {
--	int issued;
-+	int need = write ? CEPH_CAP_FILE_BUFFER : CEPH_CAP_FILE_CACHE;
-+	int issued = __ceph_caps_issued(ci, NULL);
- 
--	if (write)
-+	if (issued & CEPH_CAP_FILE_LAZYIO)
- 		return true;
--	issued = __ceph_caps_issued(ci, NULL);
--	return !(issued & CEPH_CAP_FILE_CACHE) ||
--	       (issued & CEPH_CAP_FILE_LAZYIO);
-+	if (issued & need)
-+		return false;
-+	return __ceph_caps_mds_wanted(ci, true) & need;
- }
- 
- /*
 
 -- 
 2.53.0
