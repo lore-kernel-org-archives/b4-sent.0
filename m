@@ -1,137 +1,90 @@
-From: Ihor Urazov <z0rc3r@gmail.com>
-Date: Tue, 27 Oct 2026 12:35:00 +0200
-Subject: [PATCH v2] usb: typec: ucsi: acpi: Assume UCSI 1.0 on HP ZBook 8
- G2i 14
+From: Martin Belanger <martin.nvme.dev@gmail.com>
+Subject: [PATCH v2 0/2] nvme-tcp: handle TLS control records at connect and
+ on receive errors
+Date: Tue, 27 Oct 2026 06:38:51 -0400
+Message-Id: <20261027-nvme-tcp-ctrlrec-fixes-v2-0-9656395ebcf2@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-ucsi-hp-zbook-8-g2i-v2-1-02a600e4f0a4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NwQ6CMBBEf4Xs2TVtrSie/A/DAcoCq0JJC41K+
- HcL3j3M4SUz82bw5Jg8XJIZHAX2bPsIapeAaYu+IeQqMiihUhmDk/GM7YCf0toHnrFRjFrrtCh
- TOlKlIS4HRzW/ttdb/mM/lXcy43q1Nlr2o3XvTRvk2vtvCBIlZlIIRRnV4nS4Nl3Bz72xHeTLs
- nwBQeBu+8gAAAA=
-X-Change-ID: 20261026-ucsi-hp-zbook-8-g2i-4446ab6e5ed4
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Francesco Orro <ncesco@interstellar.eu>, 
- Huang Wei <huangwei@kylinos.cn>, Ihor Urazov <z0rc3r@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4023; i=z0rc3r@gmail.com;
- h=from:subject:message-id; bh=NlPCvrvQhtgItzt9zsdsYFiRx4ZowVkUcnfZuo3biYA=;
- b=owGbwMvMwCWmab25vPXFu0bG02pJDFkP6sIKDLW3xMdYFExSvVCrEH9SYOrxPTm1Dpkc0bX+r
- 9bqP/zSUcrCIMbFICumyNK/z4BXW8hUnOmLzRuYOaxMIEMYuDgFYCLPKhgZ5p7v37Wsanozl4il
- p+uM59orTF3WBQradSS/Plm52HYrM8Mf7kVvvj/Lj2WY1Tfn5QlHtvVLl2f67mE+bNkjK17WXf6
- MEwA=
-X-Developer-Key: i=z0rc3r@gmail.com; a=openpgp;
- fpr=F7D877ECBB274E704A31F3AC5D006BEB7252F7F2
-X-Endpoint-Received: by B4 Relay for z0rc3r@gmail.com/default with auth_id=1320
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNSw6CMBCGr0K6dgwtr8SV9zAsYJiBMbzS1kZDu
+ LsFD+DiX3z5X5tyZIWcuiWbshTEyTJHMJdE4dDMPYF0kZVJTamjYA4TgccV0NvREgLLmxwUrLE
+ r8rTK2kbF8mrpNGL3Uf/YvdonoT/WjsQgzi/2cz4HfeT+ngQNKVDLJXNFzFl+76dGxisuk6r3f
+ f8CZOUpQM4AAAA=
+X-Change-ID: 20261026-nvme-tcp-ctrlrec-fixes-5f1cd54073ba
+To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
+ Hannes Reinecke <hare@kernel.org>
+Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Martin Belanger <martin.belanger@dell.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793097538; l=2782;
+ i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
+ bh=xDMOiq++9UZ29kjwcpP4dDWjnCBrv+AXCwcTDZukADk=;
+ b=yVaGlqySFRyykT+BVlZcGQur1fUfb2FlJzxyevbNmIqv2leBqsWvvKOFEKklG5m4NT4m4gnsG
+ F8gkMJYnhCdDotd9ethcPAuOo3q5UoaeoEIgXtJ+kCe/Al8LHjENB5e
+X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
+ pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
+X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HP ZBook 8 G2i 14 (board 8ED9) exposes a working UCSI ACPI PPM, but
-its UCSI VERSION field reads zero until the first command completes.
-ucsi_register() rejects a zero version with -ENODEV, so no Type-C ports
-are registered.
+A TLS 1.3 peer can send records that carry no application data, for
+example a NewSessionTicket right after the handshake. nvme-tcp does not
+handle them correctly. This series fixes two cases.
 
-The firmware's _DSM READ function (2) is a stub. The mailbox VERSION
-field is written only by the EC response handler, after a command
-completes, after which it reads 0x0100 (UCSI 1.0). The mailbox is
-48 bytes with 16-byte MESSAGE_IN/MESSAGE_OUT fields, the UCSI 1.x
-layout, and _DSM function 5 is not implemented.
+Patch 1: when read_sock() returns an error, nvme-tcp does not start
+error recovery. The queue stops receiving until a command times out.
+With a NewSessionTicket on a live queue, I/O stalls until the I/O
+timeout (30 seconds by default). With this patch, recovery starts at
+once. This also applies to plain TCP.
 
-Add a DMI-specific read_version for this board that substitutes the
-version the firmware itself reports, UCSI 1.0, only when VERSION reads
-zero. A non-zero firmware version is used as is.
+Patch 2: a NewSessionTicket that arrives before the ICResp fails the
+connection with "failed to receive icresp, error -104". A target that
+sends a ticket at once, such as an OpenSSL-based target, cannot be
+reached. With this patch, the ticket is discarded and the connection
+succeeds. An alert in place of the ICResp is now reported with its code,
+instead of as error -104.
 
-The same firmware defect on the HP ZBook Fury G1i 16 was discussed in
-"[RFC PATCH] usb: typec: ucsi: acpi: bootstrap PPM on HP systems with
-empty _DSM func 2" [1]. The defect was reported to HP as case
-5166176673.
+These patches replace patch 1/2 of Hannes's "nvme,tls: minimal handling
+for TLS records":
+https://lore.kernel.org/all/20260922133708.84522-1-hare@kernel.org/
 
-Tested on an HP ZBook 8 G2i 14 with BIOS Y70 01.02.08, from a fresh
-boot where VERSION reads zero: three connectors register, the PD
-contract and alternate modes of a Thunderbolt dock are reported, and
-its DisplayPort output stays up across the PPM reset in ucsi_init().
-Dock unplug/replug and s2idle suspend/resume update the connector
-state without errors.
+Patch 2/2 of that series (the net/tls errno change) will be posted to
+netdev separately after 7.4-rc1. It will not change
+tls_sw_splice_read(), because that errno is visible to user space.
+After that, a follow-up nvme-tcp patch will read control records on a
+live queue, so a NewSessionTicket no longer causes a reconnect.
 
-Link: https://lore.kernel.org/linux-usb/f3M_fpjtt8FxDqGKcA84vqXmRbKzCBfpCrIK4-jCWvIscER51zkD8qD8FYpz75qZw51rMDRSkUyYlrBvLvdM8CGRY2l8TFVvr4MC1LdTzbc=@interstellar.eu/ [1]
-Fixes: bdc62f2bae8f ("usb: typec: ucsi: Simplified registration and I/O API")
-Cc: stable@vger.kernel.org
-Cc: Francesco Orro <ncesco@interstellar.eu>
-Assisted-by: Claude:claude-opus-5-5
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: Huang Wei <huangwei@kylinos.cn>
-Signed-off-by: Ihor Urazov <z0rc3r@gmail.com>
+Tested with host and target in one VM, with a test-only change to
+net/tls that makes the target send NewSessionTickets of 64 to 1000
+bytes, or an alert.
+Also tested on plain TCP, and built with CONFIG_NVME_TCP_TLS=n.
+
+Signed-off-by: Martin Belanger <martin.belanger@dell.com>
 ---
 Changes in v2:
-- Point Fixes: at bdc62f2bae8f, which added the zero-version check (Huang Wei)
-- Add Reviewed-by tags
-- Link to v1: https://patch.msgid.link/20261026-ucsi-hp-zbook-8-g2i-v1-1-91002e9ef073@gmail.com
----
- drivers/usb/typec/ucsi/ucsi_acpi.c | 35 +++++++++++++++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
-
-diff --git a/drivers/usb/typec/ucsi/ucsi_acpi.c b/drivers/usb/typec/ucsi/ucsi_acpi.c
-index 5697ccc24ec3..2421a92ecb0e 100644
---- a/drivers/usb/typec/ucsi/ucsi_acpi.c
-+++ b/drivers/usb/typec/ucsi/ucsi_acpi.c
-@@ -148,6 +148,34 @@ static const struct ucsi_operations ucsi_acer_ops = {
- 	.async_control = ucsi_acpi_async_control
- };
- 
-+static int ucsi_hp_read_version(struct ucsi *ucsi, u16 *version)
-+{
-+	struct ucsi_acpi *ua = ucsi_get_drvdata(ucsi);
-+	int ret;
-+
-+	ret = ucsi_acpi_read_version(ucsi, version);
-+	if (ret)
-+		return ret;
-+
-+	/* Firmware fills in VERSION (1.0) only after the first command completes */
-+	if (!*version) {
-+		dev_warn(ua->dev, "UCSI version is zero, assuming 1.0\n");
-+		*version = UCSI_VERSION_1_0;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct ucsi_operations ucsi_hp_ops = {
-+	.read_version = ucsi_hp_read_version,
-+	.read_cci = ucsi_acpi_read_cci,
-+	.poll_cci = ucsi_acpi_poll_cci,
-+	.read_message_in = ucsi_acpi_read_message_in,
-+	.write_message_out = ucsi_acpi_write_message_out,
-+	.sync_control = ucsi_sync_control_common,
-+	.async_control = ucsi_acpi_async_control
-+};
-+
- static int ucsi_gram_sync_control(struct ucsi *ucsi, u64 command, u32 *cci,
- 				  void *val, size_t len, void *msg_out,
- 				  size_t msg_out_size)
-@@ -196,6 +224,13 @@ static const struct dmi_system_id ucsi_acpi_quirks[] = {
- 		},
- 		.driver_data = (void *)&ucsi_acer_ops,
- 	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+			DMI_MATCH(DMI_BOARD_NAME, "8ED9"),
-+		},
-+		.driver_data = (void *)&ucsi_hp_ops,
-+	},
- 	{
- 		.matches = {
- 			DMI_MATCH(DMI_SYS_VENDOR, "LG Electronics"),
+- Patch 2: pass a control buffer when draining a record. Without it,
+  kTLS fails a ticket longer than 128 bytes with -EIO. (Sashiko)
+- Patch 2: report a peer that closes before the ICResp as -ECONNRESET.
+  (Sashiko)
+- Patch 1: start error recovery under the socket lock, before
+  release_sock() processes the backlog. (Sashiko)
+- Patch 2: cite RFC 9846 section 4.7.1 in the commit message. (Hannes)
+- Kept Hannes's Reviewed-by on both patches. The changes since v1 are
+  small fixes found in review.
+- Link to v1: https://patch.msgid.link/20261026-nvme-tcp-ctrlrec-fixes-v1-0-ebf6ff7eff34@gmail.com
 
 ---
-base-commit: 21a7f44fd0765fcc5194130b28767786eba1d1e7
-change-id: 20261026-ucsi-hp-zbook-8-g2i-4446ab6e5ed4
+Martin Belanger (2):
+      nvme-tcp: start error recovery when read_sock fails
+      nvme-tcp: skip TLS control records while waiting for the ICResp
+
+ drivers/nvme/host/tcp.c | 175 ++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 153 insertions(+), 22 deletions(-)
+---
+base-commit: 6b4b543fa18757297ac756a6fe6e64f506b7844a
+change-id: 20261026-nvme-tcp-ctrlrec-fixes-5f1cd54073ba
 
 Best regards,
 --  
-Ihor Urazov <z0rc3r@gmail.com>
+Martin Belanger <martin.nvme.dev@gmail.com>
 
