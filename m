@@ -1,162 +1,179 @@
-From: Chen Linxuan <me@black-desk.cn>
-Date: Tue, 27 Oct 2026 16:46:09 +0800
-Subject: [PATCH v4 3/3] pidfd: Add task path ioctls
+From: Cunhao Lu <1579567540@qq.com>
+Subject: [PATCH v4 0/4] clk: rockchip: Add RK3572 clock and reset support
+Date: Tue, 27 Oct 2026 18:04:27 +0800
+Message-Id: <20261027-add-board-ok3572-c-clk-v4-0-d4152b4fedaa@qq.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-pidfd-get-paths-v4-3-e2a6a47e3c95@black-desk.cn>
-References: <20261027-pidfd-get-paths-v4-0-e2a6a47e3c95@black-desk.cn>
-In-Reply-To: <20261027-pidfd-get-paths-v4-0-e2a6a47e3c95@black-desk.cn>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, Kees Cook <kees@kernel.org>, 
- Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
- Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
- K Prateek Nayak <kprateek.nayak@amd.com>, 
- John Johansen <john.johansen@canonical.com>, 
- Georgia Garcia <georgia.garcia@canonical.com>, 
- Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
- "Serge E. Hallyn" <serge@hallyn.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, apparmor@lists.ubuntu.com, 
- linux-security-module@vger.kernel.org, Chen Linxuan <me@black-desk.cn>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3666; i=me@black-desk.cn;
- s=20260831; h=from:subject:message-id;
- bh=GO9QtsM65CRyK7g1akKw0I2XR97HTxP4qgarbCXi9wo=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBq4GTUwucgCpXdP5YCfu0iifXt21jpn95csGX7K
- pCdrkbJLmKJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCauBk1AAKCRB2HuYUOZmu
- iz6vD/9amvWNr/pBRZSGWKR8+jIrG3T26BdSJwgZ6aXx4zKeWCfabKIJetU1nK7wmQfHZxF7VPh
- WtOAA5lcYGvfT4sUwQmg90fL8jzOBcqjAczg0hqtO4BPRWPqQ0PlGut0VlPqe8MDKX+PKwdAukV
- CWKUZsqgjDaN7sFFSpooiJIf58befMH5NzhIgALR63PyYYgrPrlTOxtyo7PMOm8TSqCAmTHuWWJ
- +cXcWxCukn6LHDmL6M4g/+vAWb5e8RdgHjgqNVwJDKfBrzVU2LoNt5vbHSLnvd/y6R87tdH1OH2
- vWTXAXLHYx5KMiqjkbLSv9hMkEECPYh+dBQ99fIcHrggA0Pz/UqSd4lVe6ct00qDNmgdSUankQt
- jij6S0GyYzCJwJOT0oko1BNuNyeIQ79HUYOVn138NQY6lNerA0DnVLPWYcTH0j6AbOhbI8W4vex
- Jns15ni4Cs8s9TQJ/TspIg8/L0R5z94wXE0FwAwJ3gtebYbUvoYjxJWkNuIuz+cxljrMXa9rNbQ
- 0vTZx6yF4lZ9bJLP6MMzHznfeoOVXLmSYew3K5PHGUsOev2vAZMG4ZBjOe+7t92R8rdiW2o23yO
- zAXtZVdZ7oqnM7H6mVhtqnYlXZLjqg4Vda7NFIlw8/+fORavG0hL57KsjCKs/4OKG9hgOGsg3/c
- gVo50EHdI3vEcRA==
-X-Developer-Key: i=me@black-desk.cn; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for me@black-desk.cn/20260831 with auth_id=991
+X-B4-Tracking: v=1; b=H4sIACt34GoC/3XO3W4CIRAF4FcxXDsNO3Tp4pXvYbwAZqjUHxSU2
+ Jh997I2bWxSL09y5jtzE4Vz5CIWs5vIXGOJ6dDC63wm/MYe3hkitSxQou4kKrBE4JLNBGmr+jc
+ ED363BWkkBep7DGREOz5mDvF6h1fr71wu7oP9edKmxiaWc8qf9+XaTb2fEfxvpHYgQToZaOit6
+ piXp9OLT3sx6RUf758+WbEZRjozDEo71n8N9Wjop4ZqBjnrglWGtMFfYxzHL6m/bGhPAQAA
+X-Change-ID: 20261023-add-board-ok3572-c-clk-090dfd552fd9
+To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
+ Jerome Brunet <jbrunet+clk@baylibre.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Elaine Zhang <zhangqing@rock-chips.com>, 
+ Richard Cochran <richardcochran@gmail.com>
+Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793095473; l=5839;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=8trn1FKXRc/Z8uopivV1JhZgRiQfUeprY/VzfStCnT4=;
+ b=+QB4V7LLaKfSh37JANKQhdHd2LUTlUTJk92+cz3V6GY4Tg4+bQlxht7MKWefnfuYJuJ/eD65E
+ WJAkauDncbvAGclC6HzjaTfLQ2OUzVLeebJv9qZ4B8O2GXEJhYv2YHc
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add PIDFD_GET_EXE, PIDFD_GET_CWD, and PIDFD_GET_ROOT to return
-close-on-exec O_PATH file descriptors referencing the target task's
-executable, working directory, and root directory.
+This is one of the subsystem submissions for RK3572 support.
 
-The ioctls acquire the target through the shared task acquisition
-helper and are thus subject to the same checks as the namespace
-ioctls. The target is sampled while holding exec_update_lock so that
-the access check and the path read cannot race with execve().
+This series adds the CRU binding, clock and reset IDs, an internal
+Rockchip 24-bit fractional divider helper, a composite clock macro with
+mux-table support, and the RK3572 clock and reset driver. The shared
+helpers precede the driver that uses them.
 
-This allows userspace to obtain stable path references from a pidfd
-without requiring procfs.
+The RK3572 SoC has eight CPU cores: two Cortex-A73 cores and six
+Cortex-A53 cores. It also integrates an Arm Mali-G310V2 MC1 GPU.
+The OK3572-C board provides two Gigabit Ethernet ports, three USB3 Type-A
+ports, a Type-C dual-role port, eMMC, microSD, and UART.
 
-Signed-off-by: Chen Linxuan <me@black-desk.cn>
+The driver provides the peripheral clock and reset trees, including the
+three audio fractional clocks. It obtains the PMU0 GRF for the AUPLL
+reference mux. CPU frequency scaling is controlled through SCMI; BPLL
+and LPLL remain enabled for firmware use.
+
+Testing was performed with Debian 13 minimal and Linux 7.3 on the
+OK3572-C with the FET3572-C module. Shared peripheral tests were run with
+the system booted from SD, while eMMC validation covered the complete
+boot chain.
+
+Passed functionality:
+
+- SD and eMMC complete the firmware, kernel, and root filesystem
+  boot chain.
+- UART console works at 1500000 baud.
+- SD read/write and data persistence checks pass.
+- All eight CPUs start; CPU frequency scaling and hotplug checks pass.
+- Both Ethernet ports obtain IPv4 addresses and pass bidirectional file
+  transfers.
+- All three Type-A ports pass USB2 and USB3 enumeration, data transfers,
+  and reconnect persistence checks.
+- Type-C host and device modes pass in both plug orientations. Physical
+  reconnects correctly select the expected device, host, and device roles
+  in sequence.
+
+Stability:
+
+- Repeated cold and software reboots complete on SD and eMMC without data
+  integrity failures.
+- A combined CPU, memory, network, SD, and USB3 stress test completes
+  without a crash, lockup, CPU offline event, or thermal shutdown.
+- Ethernet error and drop counters do not increase during bidirectional
+  network tests.
+
+Build and checks:
+
+- The kernel, modules, and board DTB build successfully.
+- Strict checkpatch reports no errors, with warnings about new
+  MAINTAINERS entries and the RK3572 Kconfig help text.
+
+Untested hardware and paths:
+
+- NPU
+- PCIe
+- GPU, video output, and audio
+- CPU rates above 1.2 GHz and voltage scaling
+- Other low-speed external interfaces
+
+Some files in this series are derived from the Forlinx OK3572-C BSP
+Alpha1. Thanks to Forlinx for their support.
+
+AI assistance:
+
+- Codex / DeepSeek V4.1 Flash were used for:
+  - Reviewing and adjusting code style to follow community conventions
+  - Automating tests
+  - Collecting data
+
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
- fs/pidfs.c                 | 38 ++++++++++++++++++++++++++++++++++++++
- include/uapi/linux/pidfd.h |  7 +++++++
- 2 files changed, 45 insertions(+)
+Changes in v4:
+- Move COMPOSITE_MUXTBL into clk.h as a separate preparatory patch and
+  use it in the RK3572 driver.
+- Link to v3:
+  https://patch.msgid.link/20261026-add-board-ok3572-c-clk-v3-0-dbabfa39d692@qq.com
 
-diff --git a/fs/pidfs.c b/fs/pidfs.c
-index b70ec50f64da..1e5b0dcb9975 100644
---- a/fs/pidfs.c
-+++ b/fs/pidfs.c
-@@ -4,6 +4,7 @@
- #include <linux/exportfs.h>
- #include <linux/file.h>
- #include <linux/fs.h>
-+#include <linux/fs_struct.h>
- #include <linux/cgroup.h>
- #include <linux/magic.h>
- #include <linux/mount.h>
-@@ -510,6 +511,9 @@ static bool pidfs_ioctl_valid(unsigned int cmd)
- 	case PIDFD_GET_UTS_NAMESPACE:
- 	case PIDFD_GET_USER_NAMESPACE:
- 	case PIDFD_GET_PID_NAMESPACE:
-+	case PIDFD_GET_EXE:
-+	case PIDFD_GET_CWD:
-+	case PIDFD_GET_ROOT:
- 		return true;
- 	}
- 
-@@ -687,9 +691,31 @@ static struct ns_common *pidfd_get_namespace(struct pid *pid,
- 	return ns_common;
- }
- 
-+static int pidfd_get_task_path(struct pid *pid, unsigned int cmd,
-+			       unsigned long arg, struct path *path)
-+{
-+	CLASS(pidfd_task_locked, task)(pid, arg);
-+
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+
-+	switch (cmd) {
-+	case PIDFD_GET_EXE:
-+		return get_task_exe_path(task, path);
-+	case PIDFD_GET_CWD:
-+		return get_task_pwd(task, path);
-+	case PIDFD_GET_ROOT:
-+		return get_task_root(task, path);
-+	}
-+
-+	return -EINVAL;
-+}
-+
- static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- {
- 	struct ns_common *ns_common = NULL;
-+	struct path path __free(path_put) = {};
-+	int error;
- 
- 	if (!pidfs_ioctl_valid(cmd))
- 		return -ENOIOCTLCMD;
-@@ -707,6 +733,18 @@ static long pidfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	if (_IOC_NR(cmd) == _IOC_NR(PIDFD_GET_INFO))
- 		return pidfd_info(file, cmd, arg);
- 
-+	switch (cmd) {
-+	case PIDFD_GET_EXE:
-+	case PIDFD_GET_CWD:
-+	case PIDFD_GET_ROOT:
-+		error = pidfd_get_task_path(pidfd_pid(file), cmd, arg, &path);
-+		if (error)
-+			return error;
-+
-+		return FD_ADD(O_CLOEXEC,
-+			      dentry_open(&path, O_PATH, current_cred()));
-+	}
-+
- 	ns_common = pidfd_get_namespace(pidfd_pid(file), cmd, arg);
- 	if (IS_ERR(ns_common))
- 		return PTR_ERR(ns_common);
-diff --git a/include/uapi/linux/pidfd.h b/include/uapi/linux/pidfd.h
-index 0919246a1611..95ce1819f423 100644
---- a/include/uapi/linux/pidfd.h
-+++ b/include/uapi/linux/pidfd.h
-@@ -121,4 +121,11 @@ struct pidfd_info {
- #define PIDFD_GET_UTS_NAMESPACE               _IO(PIDFS_IOCTL_MAGIC, 10)
- #define PIDFD_GET_INFO                        _IOWR(PIDFS_IOCTL_MAGIC, 11, struct pidfd_info)
- 
-+/* Return an O_PATH file descriptor for the target task's executable. */
-+#define PIDFD_GET_EXE                         _IO(PIDFS_IOCTL_MAGIC, 12)
-+/* Return an O_PATH file descriptor for the target task's working directory. */
-+#define PIDFD_GET_CWD                         _IO(PIDFS_IOCTL_MAGIC, 13)
-+/* Return an O_PATH file descriptor for the target task's root directory. */
-+#define PIDFD_GET_ROOT                        _IO(PIDFS_IOCTL_MAGIC, 14)
-+
- #endif /* _UAPI_LINUX_PIDFD_H */
+Changes in v3:
+- Close the reset ID gap while preserving the register mapping of each
+  named reset.
+- Check fractional-divider scaling against the actual field widths and
+  reject unrepresentable compensated ratios during rate determination.
+- Use signed negative PLL coefficients in the RK3572 rate table.
+- Drop CLK_NR_CLKS from the binding and derive the provider size from
+  registered clocks, keeping the existing clock IDs.
+- Fix the indentation of the CRU binding example.
+- Link to v2:
+  https://patch.msgid.link/20261023-add-board-ok3572-c-clk-v2-0-90b98836be6e@qq.com
 
--- 
-2.56.0
+Changes in v2:
+- Split the original RK3572 support series by subsystem.
+- Port the vendor 24-bit fractional divider to the internal Rockchip
+  clock helpers and adapt it to the determine_rate API.
+- Register audio frac0-2. Keep internal SPLL factors outside the DT
+  lookup so PPLL retains clock ID 0, and remove the unused xin12m factor.
+- Link to v1:
+  https://patch.msgid.link/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com
+
+---
+Raw dmesg: see v2 cover letter.
+
+To: Stephen Boyd <sboyd@kernel.org>
+To: Brian Masney <bmasney+clk@redhat.com>
+To: Jerome Brunet <jbrunet+clk@baylibre.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+To: Philipp Zabel <p.zabel@pengutronix.de>
+To: Elaine Zhang <zhangqing@rock-chips.com>
+To: Richard Cochran <richardcochran@gmail.com>
+Cc: linux-clk@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Cc: netdev@vger.kernel.org
+
+---
+Elaine Zhang (4):
+      dt-bindings: clock: rockchip: Add RK3572 CRU
+      clk: rockchip: Add internal support for 24-bit fractional dividers
+      clk: rockchip: Add composite clock macro with mux table
+      clk: rockchip: Add RK3572 clock and reset support
+
+ .../bindings/clock/rockchip,rk3572-cru.yaml        |   57 +
+ drivers/clk/rockchip/Kconfig                       |    7 +
+ drivers/clk/rockchip/Makefile                      |    2 +
+ drivers/clk/rockchip/clk-fractional-divider-v2.c   |  354 ++++
+ drivers/clk/rockchip/clk-rk3572.c                  | 1981 ++++++++++++++++++++
+ drivers/clk/rockchip/clk.c                         |   10 +
+ drivers/clk/rockchip/clk.h                         |   83 +
+ drivers/clk/rockchip/rst-rk3572.c                  |  739 ++++++++
+ include/dt-bindings/clock/rockchip,rk3572-cru.h    |  559 ++++++
+ include/dt-bindings/reset/rockchip,rk3572-cru.h    |  713 +++++++
+ 10 files changed, 4505 insertions(+)
+---
+base-commit: a804c5742bff224d4cb4d25dd383554d598be32b
+change-id: 20261023-add-board-ok3572-c-clk-090dfd552fd9
+
+Best regards,
+--  
+Cunhao Lu <1579567540@qq.com>
 
