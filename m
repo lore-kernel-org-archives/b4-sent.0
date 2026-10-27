@@ -1,11 +1,11 @@
 From: Cunhao Lu <1579567540@qq.com>
-Date: Tue, 27 Oct 2026 18:04:29 +0800
-Subject: [PATCH v4 2/4] clk: rockchip: Add internal support for 24-bit
- fractional dividers
+Date: Tue, 27 Oct 2026 18:04:30 +0800
+Subject: [PATCH v4 3/4] clk: rockchip: Add composite clock macro with mux
+ table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-add-board-ok3572-c-clk-v4-2-d4152b4fedaa@qq.com>
+Message-Id: <20261027-add-board-ok3572-c-clk-v4-3-d4152b4fedaa@qq.com>
 References: <20261027-add-board-ok3572-c-clk-v4-0-d4152b4fedaa@qq.com>
 In-Reply-To: <20261027-add-board-ok3572-c-clk-v4-0-d4152b4fedaa@qq.com>
 To: Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney+clk@redhat.com>, 
@@ -20,11 +20,11 @@ Cc: Cunhao Lu <1579567540@qq.com>, linux-clk@vger.kernel.org,
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793095473; l=14602;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793095473; l=1536;
  i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=ZqzJUJ10Zi7hd4crYOXXytNWxgw9kpxrle17/5vCwU8=;
- b=H6pjxEUSSMzaB7kBZn6s4LLs0qwuBZlyTxxcc3oRjVlTvx5Vb6s6TSr/p25XhZn/Nl3eSrIWV
- QJ0h/2JqmdnBcQUM2cLPKyUcYM3HaGGOQbnD2RAN0Lu//CKDfI1bdex
+ bh=5um5DvzGZ7NXY6308q7TLtQUZ+TSSmWq3dE0E24Czn4=;
+ b=bRl9Yy/7ZVeWKnKmH5RLeILOIi1gf03Y4ApdDA1CLMKA0z313KKKXyiz/z6SCWvbrSNOMNi94
+ 6eItUdvSpvDANAu16aOwONZWduPFst+smzxpke9U0qPV1AEnw/LG4RV
 X-Developer-Key: i=1579567540@qq.com; a=ed25519;
  pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
 X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
@@ -32,477 +32,55 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Elaine Zhang <zhangqing@rock-chips.com>
 
-Some Rockchip clocks split each 24-bit numerator and denominator between
-a low register containing 16 bits of each value and a high register
-containing the remaining 8 bits.
+Some Rockchip composite clocks use mux selector values that do not
+match the order of their parent clocks.
 
-Add an internal Rockchip fractional-divider helper and clock branch type
-for this register layout. This provides the support needed by the RK3572
-audio fractional clocks.
+Add COMPOSITE_MUXTBL to describe the parent-to-selector mapping along
+with the divider and gate. The RK3572 audio clocks use this layout.
 
 Signed-off-by: Elaine Zhang <zhangqing@rock-chips.com>
-
-- Adapted the rate callback to determine_rate().
-- Made the registration interface internal to the Rockchip clock driver.
-- Rejected compensated ratios exceeding the field widths before
-  multiplication or register writes.
-
-Co-developed-by: Cunhao Lu <1579567540@qq.com>
 Signed-off-by: Cunhao Lu <1579567540@qq.com>
----
-Changes in v3:
-- Reject compensated ratios that exceed the actual field widths before
-  multiplication or register writes.
----
- drivers/clk/rockchip/Makefile                    |   1 +
- drivers/clk/rockchip/clk-fractional-divider-v2.c | 354 +++++++++++++++++++++++
- drivers/clk/rockchip/clk.c                       |  10 +
- drivers/clk/rockchip/clk.h                       |  25 ++
- 4 files changed, 390 insertions(+)
 
-diff --git a/drivers/clk/rockchip/Makefile b/drivers/clk/rockchip/Makefile
-index 554b7eb83dc91..91d4ea4837e3e 100644
---- a/drivers/clk/rockchip/Makefile
-+++ b/drivers/clk/rockchip/Makefile
-@@ -10,6 +10,7 @@ clk-rockchip-y += clk-pll.o
- clk-rockchip-y += clk-cpu.o
- clk-rockchip-y += clk-gate-grf.o
- clk-rockchip-y += clk-half-divider.o
-+clk-rockchip-y += clk-fractional-divider-v2.o
- clk-rockchip-y += clk-inverter.o
- clk-rockchip-y += clk-mmc-phase.o
- clk-rockchip-y += clk-muxgrf.o
-diff --git a/drivers/clk/rockchip/clk-fractional-divider-v2.c b/drivers/clk/rockchip/clk-fractional-divider-v2.c
-new file mode 100644
-index 0000000000000..102e03f9d6e60
---- /dev/null
-+++ b/drivers/clk/rockchip/clk-fractional-divider-v2.c
-@@ -0,0 +1,354 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (c) 2024 Rockchip Electronics Co., Ltd.
-+ *
-+ * Adjustable fractional divider clock implementation.
-+ * Uses rational best approximation algorithm.
-+ *
-+ * Output is calculated as
-+ *
-+ *	rate = (m / n) * parent_rate				(1)
-+ *
-+ * This is useful when we have a prescaler block which asks for
-+ * m (numerator) and n (denominator) values to be provided to satisfy
-+ * the (1) as much as possible.
-+ *
-+ * Since m and n have the limitation by a range, e.g.
-+ *
-+ *	n >= 1, n < N_width, where N_width = 2^nwidth		(2)
-+ *
-+ * for some cases the output may be saturated. Hence, from (1) and (2),
-+ * assuming the worst case when m = 1, the inequality
-+ *
-+ *	floor(log2(parent_rate / rate)) <= nwidth		(3)
-+ *
-+ * may be derived. Thus, in cases when
-+ *
-+ *	(parent_rate / rate) >> N_width				(4)
-+ *
-+ * we might scale up the rate by 2^scale (see the description of
-+ * CLK_FRAC_DIVIDER_POWER_OF_TWO_PS for additional information), where
-+ *
-+ *	scale = floor(log2(parent_rate / rate)) - nwidth	(5)
-+ *
-+ * and assume that the IP, that needs m and n, has also its own
-+ * prescaler, which is capable to divide by 2^scale. In this way
-+ * we get the denominator to satisfy the desired range (2) and
-+ * at the same time a much better result of m and n than simple
-+ * saturated values.
-+ */
-+
-+#include <linux/clk-provider.h>
-+#include <linux/io.h>
-+#include <linux/device.h>
-+#include <linux/slab.h>
-+#include <linux/rational.h>
-+#include "clk.h"
-+
-+struct clk_fractional_divider_v2 {
-+	struct clk_hw	hw;
-+	void __iomem	*reg;
-+	void __iomem	*high_reg;
-+	u8		mshift;
-+	u8		mwidth;
-+	u32		mmask;
-+	u8		nshift;
-+	u8		nwidth;
-+	u32		nmask;
-+	u8		high_mshift;
-+	u8		high_mwidth;
-+	u32		high_mmask;
-+	u8		high_nshift;
-+	u8		high_nwidth;
-+	u32		high_nmask;
-+	u8		flags;
-+	void		(*approximation)(struct clk_hw *hw,
-+					 unsigned long rate,
-+					 unsigned long *parent_rate,
-+					 unsigned long *m, unsigned long *n);
-+	spinlock_t	*lock; /* Protects the low and high register pair. */
-+};
-+
-+#define to_clk_fd_v2(_hw) container_of(_hw, struct clk_fractional_divider_v2, hw)
-+
-+static inline u32 clk_fd_v2_readl(struct clk_fractional_divider_v2 *fd,
-+				  void __iomem *reg)
-+{
-+	return readl(reg);
-+}
-+
-+static inline void clk_fd_v2_writel(struct clk_fractional_divider_v2 *fd,
-+				    void __iomem *reg, u32 val)
-+{
-+	writel(val, reg);
-+}
-+
-+static unsigned long clk_fd_v2_recalc_rate(struct clk_hw *hw,
-+					   unsigned long parent_rate)
-+{
-+	struct clk_fractional_divider_v2 *fd = to_clk_fd_v2(hw);
-+	unsigned long flags = 0;
-+	unsigned long m_low, n_low, m_high, n_high, m, n;
-+	u32 val_low, val_high;
-+	u64 ret;
-+
-+	if (fd->lock)
-+		spin_lock_irqsave(fd->lock, flags);
-+	else
-+		__acquire(fd->lock);
-+
-+	val_low = clk_fd_v2_readl(fd, fd->reg);
-+	val_high = clk_fd_v2_readl(fd, fd->high_reg);
-+
-+	if (fd->lock)
-+		spin_unlock_irqrestore(fd->lock, flags);
-+	else
-+		__release(fd->lock);
-+
-+	m_low = (val_low & fd->mmask) >> fd->mshift;
-+	n_low = (val_low & fd->nmask) >> fd->nshift;
-+	m_high = (val_high & fd->high_mmask) >> fd->high_mshift;
-+	n_high = (val_high & fd->high_nmask) >> fd->high_nshift;
-+	m = (m_high << 16) | m_low;
-+	n = (n_high << 16) | n_low;
-+
-+	if (fd->flags & CLK_FRAC_DIVIDER_ZERO_BASED) {
-+		m++;
-+		n++;
-+	}
-+
-+	if (!n || !m)
-+		return parent_rate;
-+
-+	ret = (u64)parent_rate * m;
-+	do_div(ret, n);
-+
-+	return ret;
-+}
-+
-+static void clk_fractional_divider_general_approximation_v2(struct clk_hw *hw,
-+							    unsigned long rate,
-+							    unsigned long *parent_rate,
-+							    unsigned long *m, unsigned long *n)
-+{
-+	struct clk_fractional_divider_v2 *fd = to_clk_fd_v2(hw);
-+	unsigned long scale;
-+
-+	/*
-+	 * Get rate closer to *parent_rate to guarantee there is no overflow
-+	 * for m and n. In the result it will be the nearest rate left shifted
-+	 * by (scale - fd->nwidth) bits.
-+	 *
-+	 * For the detailed explanation see the top comment in this file.
-+	 */
-+	scale = fls_long(*parent_rate / rate - 1);
-+	if (scale > fd->nwidth)
-+		rate <<= scale - fd->nwidth;
-+
-+	rational_best_approximation(rate, *parent_rate,
-+				    GENMASK(fd->mwidth - 1, 0),
-+				    GENMASK(fd->nwidth - 1, 0),
-+				    m, n);
-+}
-+
-+static int clk_fd_v2_get_divider(struct clk_hw *hw, unsigned long rate,
-+				 unsigned long parent_rate,
-+				 unsigned long *m, unsigned long *n)
-+{
-+	struct clk_fractional_divider_v2 *fd = to_clk_fd_v2(hw);
-+	u32 factor;
-+
-+	rational_best_approximation(rate, parent_rate,
-+				    GENMASK(fd->mwidth - 1, 0),
-+				    GENMASK(fd->nwidth - 1, 0),
-+				    m, n);
-+
-+	if (fd->flags & CLK_FRAC_DIVIDER_ZERO_BASED) {
-+		(*m)--;
-+		(*n)--;
-+	}
-+	/*
-+	 * When compensation the fractional divider,
-+	 * the [1:0] bits of the numerator register are omitted,
-+	 * which will lead to a large deviation in the result.
-+	 * Therefore, it is required that the numerator must
-+	 * be at least 4.
-+	 *
-+	 * Note that there are some exceptions here:
-+	 * If there is an even frac div, we need to keep the original
-+	 * numerator(<4) and denominator. Otherwise, it may cause the
-+	 * issue that the duty ratio is not 50%.
-+	 */
-+	if (*m < 4 && *m != 0) {
-+		if (*n % 2 == 0)
-+			factor = 1;
-+		else
-+			factor = DIV_ROUND_UP(4, *m);
-+
-+		if (*m > GENMASK(fd->mwidth - 1, 0) / factor ||
-+		    *n > GENMASK(fd->nwidth - 1, 0) / factor)
-+			return -EINVAL;
-+
-+		*n *= factor;
-+		*m *= factor;
-+	}
-+
-+	return 0;
-+}
-+
-+static int clk_fd_v2_determine_rate(struct clk_hw *hw,
-+				    struct clk_rate_request *req)
-+{
-+	struct clk_fractional_divider_v2 *fd = to_clk_fd_v2(hw);
-+	unsigned long m, n;
-+	u64 ret;
-+
-+	if (!req->rate || req->rate >= req->best_parent_rate) {
-+		req->rate = req->best_parent_rate;
-+		return 0;
-+	}
-+
-+	if (fd->approximation)
-+		fd->approximation(hw, req->rate, &req->best_parent_rate, &m, &n);
-+	else
-+		clk_fractional_divider_general_approximation_v2(hw, req->rate,
-+								&req->best_parent_rate,
-+								&m, &n);
-+
-+	ret = (u64)req->best_parent_rate * m;
-+	do_div(ret, n);
-+	req->rate = ret;
-+
-+	/* Validate the rounded rate that set_rate() will receive. */
-+	return clk_fd_v2_get_divider(hw, req->rate, req->best_parent_rate, &m, &n);
-+}
-+
-+static int clk_fd_v2_set_rate(struct clk_hw *hw, unsigned long rate,
-+			      unsigned long parent_rate)
-+{
-+	struct clk_fractional_divider_v2 *fd = to_clk_fd_v2(hw);
-+	unsigned long flags = 0;
-+	unsigned long m, n, m_low, n_low, m_high, n_high;
-+	u32 val, val_high;
-+	int ret;
-+
-+	ret = clk_fd_v2_get_divider(hw, rate, parent_rate, &m, &n);
-+	if (ret)
-+		return ret;
-+
-+	if (fd->lock)
-+		spin_lock_irqsave(fd->lock, flags);
-+	else
-+		__acquire(fd->lock);
-+
-+	m_low = m & fd->nmask;
-+	n_low = n & fd->nmask;
-+	m_high = (m & GENMASK(fd->mwidth - 1, (fd->mwidth - fd->high_mwidth))) >>
-+		 (fd->mwidth - fd->high_mwidth);
-+	n_high = (n & GENMASK(fd->nwidth - 1, (fd->nwidth - fd->high_nwidth))) >>
-+		 (fd->nwidth - fd->high_nwidth);
-+
-+	val_high = clk_fd_v2_readl(fd, fd->high_reg);
-+	val_high &= ~(fd->high_mmask | fd->high_nmask);
-+	val_high |= (m_high << fd->high_mshift) | (n_high << fd->high_nshift);
-+
-+	clk_fd_v2_writel(fd, fd->high_reg, val_high);
-+
-+	val = clk_fd_v2_readl(fd, fd->reg);
-+	val &= ~(fd->mmask | fd->nmask);
-+	val |= (m_low << fd->mshift) | (n_low << fd->nshift);
-+	clk_fd_v2_writel(fd, fd->reg, val);
-+
-+	if (fd->lock)
-+		spin_unlock_irqrestore(fd->lock, flags);
-+	else
-+		__release(fd->lock);
-+
-+	return 0;
-+}
-+
-+static const struct clk_ops clk_fractional_divider_ops_v2 = {
-+	.recalc_rate = clk_fd_v2_recalc_rate,
-+	.determine_rate = clk_fd_v2_determine_rate,
-+	.set_rate = clk_fd_v2_set_rate,
-+};
-+
-+static struct clk_hw *clk_hw_register_fractional_divider_v2(struct device *dev,
-+							    const char *name,
-+							    const char *parent_name,
-+							    unsigned long flags,
-+							    void __iomem *reg,
-+							    u8 mshift, u8 mwidth,
-+							    u8 nshift, u8 nwidth,
-+							    void __iomem *high_reg,
-+							    u8 high_mshift, u8 high_mwidth,
-+							    u8 high_nshift, u8 high_nwidth,
-+							    u8 clk_divider_flags,
-+							    spinlock_t *lock)
-+{
-+	struct clk_fractional_divider_v2 *fd;
-+	struct clk_init_data init;
-+	struct clk_hw *hw;
-+	int ret;
-+
-+	fd = kzalloc_obj(*fd);
-+	if (!fd)
-+		return ERR_PTR(-ENOMEM);
-+
-+	init.name = name;
-+	init.ops = &clk_fractional_divider_ops_v2;
-+	init.flags = flags;
-+	init.parent_names = parent_name ? &parent_name : NULL;
-+	init.num_parents = parent_name ? 1 : 0;
-+
-+	fd->reg = reg;
-+	fd->mshift = mshift;
-+	fd->mwidth = mwidth + high_mwidth;
-+	fd->mmask = GENMASK(mwidth - 1, 0) << mshift;
-+	fd->nshift = nshift;
-+	fd->nwidth = nwidth + high_nwidth;
-+	fd->nmask = GENMASK(nwidth - 1, 0) << nshift;
-+	fd->high_reg = high_reg;
-+	fd->high_mshift = high_mshift;
-+	fd->high_mwidth = high_mwidth;
-+	fd->high_mmask = GENMASK(high_mwidth - 1, 0) << high_mshift;
-+	fd->high_nshift = high_nshift;
-+	fd->high_nwidth = high_nwidth;
-+	fd->high_nmask = GENMASK(high_nwidth - 1, 0) << high_nshift;
-+	fd->flags = clk_divider_flags;
-+	fd->lock = lock;
-+	fd->hw.init = &init;
-+
-+	hw = &fd->hw;
-+	ret = clk_hw_register(dev, hw);
-+	if (ret) {
-+		kfree(fd);
-+		hw = ERR_PTR(ret);
-+	}
-+
-+	return hw;
-+}
-+
-+struct clk *rockchip_clk_register_frac_v2(struct device *dev,
-+					  const char *name,
-+					  const char *parent_name,
-+					  unsigned long flags,
-+					  void __iomem *reg,
-+					  u8 mshift, u8 width,
-+					  void __iomem *high_reg,
-+					  u8 high_mshift, u8 high_width,
-+					  u8 clk_divider_flags,
-+					  spinlock_t *lock)
-+{
-+	struct clk_hw *hw;
-+
-+	hw = clk_hw_register_fractional_divider_v2(dev, name, parent_name, flags,
-+						   reg, mshift, width, 0, width,
-+						   high_reg, high_mshift, high_width,
-+						   0, high_width,
-+						   clk_divider_flags,
-+						   lock);
-+	if (IS_ERR(hw))
-+		return ERR_CAST(hw);
-+	return hw->clk;
-+}
-diff --git a/drivers/clk/rockchip/clk.c b/drivers/clk/rockchip/clk.c
-index ee8c79b938d3c..0646a2e6af0a8 100644
---- a/drivers/clk/rockchip/clk.c
-+++ b/drivers/clk/rockchip/clk.c
-@@ -589,6 +589,16 @@ void rockchip_clk_register_branches(struct rockchip_clk_provider *ctx,
- 				list->gate_flags, flags, list->child,
- 				&ctx->lock);
- 			break;
-+		case branch_fraction_divider_v2:
-+			clk = rockchip_clk_register_frac_v2(NULL, list->name,
-+							    list->parent_names[0], flags,
-+							    ctx->reg_base + list->muxdiv_offset,
-+							    list->mux_shift, list->mux_width,
-+							    ctx->reg_base + list->div_offset,
-+							    list->div_shift, list->div_width,
-+							    list->div_flags,
-+							    &ctx->lock);
-+			break;
- 		case branch_half_divider:
- 			clk = rockchip_clk_register_halfdiv(list->name,
- 				list->parent_names, list->num_parents,
+---
+Changes in v4:
+- Split this helper out of the RK3572 driver patch.
+---
+ drivers/clk/rockchip/clk.h | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
 diff --git a/drivers/clk/rockchip/clk.h b/drivers/clk/rockchip/clk.h
-index 72b36bba31523..dce4db3f67b04 100644
+index dce4db3f67b0..bc3a1def679b 100644
 --- a/drivers/clk/rockchip/clk.h
 +++ b/drivers/clk/rockchip/clk.h
-@@ -781,6 +781,13 @@ struct clk *rockchip_clk_register_ddrclk(const char *name, int flags,
- 					 int ddr_flags, void __iomem *reg_base,
- 					 spinlock_t *lock);
- 
-+struct clk *rockchip_clk_register_frac_v2(struct device *dev,
-+					  const char *name, const char *parent_name,
-+					  unsigned long flags, void __iomem *reg,
-+					  u8 mshift, u8 width,
-+					  void __iomem *high_reg, u8 high_mshift, u8 high_width,
-+					  u8 clk_divider_flags, spinlock_t *lock);
-+
- #define ROCKCHIP_INVERTER_HIWORD_MASK	BIT(0)
- 
- struct clk *rockchip_clk_register_inverter(const char *name,
-@@ -806,6 +813,7 @@ enum rockchip_clk_branch_type {
- 	branch_grf_mux,
- 	branch_divider,
- 	branch_fraction_divider,
-+	branch_fraction_divider_v2,
- 	branch_gate,
- 	branch_grf_gate,
- 	branch_linked_gate,
-@@ -1014,6 +1022,23 @@ struct rockchip_clk_branch {
- 		.child		= ch,				\
+@@ -871,6 +871,28 @@ struct rockchip_clk_branch {
+ 		.gate_flags	= gf,				\
  	}
  
-+#define COMPOSITE_FRAC_V2(_id, cname, pname, f, mo, ms, mw, do, ds, dw, df)\
++#define COMPOSITE_MUXTBL(_id, cname, pnames, f, mo, ms, mw, mf,	\
++			 mt, ds, dw, df, go, gs, gf)		\
 +	{							\
 +		.id		= _id,				\
-+		.branch_type	= branch_fraction_divider_v2,	\
++		.branch_type	= branch_composite,		\
 +		.name		= cname,			\
-+		.parent_names	= (const char *[]){ pname },	\
-+		.num_parents	= 1,				\
++		.parent_names	= pnames,			\
++		.num_parents	= ARRAY_SIZE(pnames),		\
 +		.flags		= f,				\
 +		.muxdiv_offset	= mo,				\
 +		.mux_shift	= ms,				\
 +		.mux_width	= mw,				\
-+		.div_offset	= do,				\
++		.mux_flags	= mf,				\
++		.mux_table	= mt,				\
 +		.div_shift	= ds,				\
 +		.div_width	= dw,				\
 +		.div_flags	= df,				\
++		.gate_offset	= go,				\
++		.gate_shift	= gs,				\
++		.gate_flags	= gf,				\
 +	}
 +
- #define COMPOSITE_FRACMUX_NOGATE(_id, cname, pname, f, mo, df, ch) \
+ #define COMPOSITE_DIV_OFFSET(_id, cname, pnames, f, mo, ms, mw,	\
+ 			     mf, do, ds, dw, df, go, gs, gf)	\
  	{							\
- 		.id		= _id,				\
 
 -- 
 2.34.1
