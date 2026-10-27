@@ -1,87 +1,73 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Date: Tue, 27 Oct 2026 16:09:01 -0400
-Subject: [PATCH] mm: annotate lockless accesses to vm_committed_as_batch
+Date: Tue, 27 Oct 2026 16:09:11 -0400
+Subject: [PATCH] smp: use READ_ONCE() for csd flags in the async path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-kcsan-mm-v1-1-66757485b917@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAyNz3ezk4sQ83dxc3WQDQ3NLE1NTS1NLSyWg8oKi1LTMCrBR0bEQfnF
- pUlZqcglIv1JtLQCK5KvgbAAAAA==
-X-Change-ID: 20261027-kcsan-mm-c01794559599
-To: Mike Rapoport <rppt@kernel.org>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org, tz2294@columbia.edu, 
- Mani Tofigh <mt4022@columbia.edu>
+Message-Id: <20261027-kcsan-smp-v1-1-57a4949106b2@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDWhUn9XEYuqwRAlHUQi7q5Yf
+ snLu4DRETKUwQUOD2JarEccBmAGbXsU1HqDjGQaRzITk2FtBc+raIs0zxKFUuUafL867Oj8XlX
+ 9m/dmRLO9A7jvB8vwzeltAAAA
+X-Change-ID: 20261027-kcsan-smp-d968735e258a
+To: Thomas Gleixner <tglx@kernel.org>, 
+ Peter Zijlstra <peterz@infradead.org>
+Cc: "Paul E. McKenney" <paulmck@kernel.org>, linux-kernel@vger.kernel.org, 
+ tz2294@columbia.edu, Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793131741; l=2109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793131751; l=1644;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=j7Mc9C4QlmCwhmnKNi4h7TqTqfjBLIBQjYqiZTNCEhg=;
- b=0Hqd2fa5iviDcBvKgRDs91aLAznIPOLYpILVxsb/Gu5CvLIwOieETU/yf+NKTPQfPHczGDeQK
- J9UjE21rqSfBHoTSVWFwm69tJ00PEmDUjslAk2LRNLpDoBJ9Upa1Mc5
+ bh=UoFjy57HrPBIOxXCXeP3uYlJT7z/vKDqaE0Wh7LGDd0=;
+ b=x7adRW74xgRXMnSNCFytKDR3tGpRQYNd5Xq5Rwgy6uluIYTB0ImYyGIO+yuAAx5uoHCclt+Hi
+ /FK6aZPiX2uCqfqOXSXN0V+WJDYE7Y2YLfr1M8M1AqXDRNfUH8j78Vk
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vm_committed_as_batch is read without a lock, and it's only a hint for
-how often the per-CPU counts get folded, so racing with an update is
-harmless.  Annotate the accesses.
+smp_call_function_single_async() checks CSD_FLAG_LOCK without a lock
+while the target CPU may be clearing it.  The race is harmless, since a
+stale read only sees the flag still set and returns -EBUSY.  Use
+READ_ONCE() like the other lockless readers of u_flags in this file.
 
-  [    0.953509] BUG: KCSAN: data-race in __vm_enough_memory / mm_compute_batch
+  [   18.136106] BUG: KCSAN: data-race in __flush_smp_call_function_queue / smp_call_function_single_async
 
-  [    0.953645] write to 0xffffffff825165d8 of 4 bytes by task 1 on cpu 0:
-  [    0.953692]  mm_compute_batch+0xc2/0x120
-  [    0.953781]  mm_compute_batch_init+0x1c/0x20
+  [   18.136218] write (marked) to 0xff1100002b62b608 of 4 bytes by interrupt on cpu 0:
+  [   18.136269]  __flush_smp_call_function_queue+0x36b/0xda0
+  [   18.136338]  generic_smp_call_function_single_interrupt+0xf/0x10
   ...
 
-  [    0.954325] read to 0xffffffff825165d8 of 4 bytes by task 41 on cpu 1:
-  [    0.954373]  __vm_enough_memory+0x24/0x2b0
-  [    0.954444]  shmem_inode_acct_blocks+0x1b3/0x230
+  [   18.139279] read to 0xff1100002b62b608 of 4 bytes by task 235 on cpu 1:
+  [   18.139327]  smp_call_function_single_async+0x22/0xb0
+  [   18.139396]  enqueue_task+0x25/0xf0
   ...
 
-  [    0.955288] value changed: 0x00000020 -> 0x00005003
+  [   18.157072] value changed: 0x00000001 -> 0x00000000
 
 Found with KCSAN while fuzzing under a deterministic hypervisor that's
 currently under development.
 
 Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
- include/linux/mman.h | 3 ++-
- mm/mm_init.c         | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ kernel/smp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/mman.h b/include/linux/mman.h
-index 389521594c69..66e6c9c335b5 100644
---- a/include/linux/mman.h
-+++ b/include/linux/mman.h
-@@ -75,7 +75,8 @@ unsigned long vm_memory_committed(void);
+diff --git a/kernel/smp.c b/kernel/smp.c
+index 89a30d831ef5..8064652747ea 100644
+--- a/kernel/smp.c
++++ b/kernel/smp.c
+@@ -822,7 +822,7 @@ int smp_call_function_single_async(int cpu, call_single_data_t *csd)
  
- static inline void vm_acct_memory(long pages)
- {
--	percpu_counter_add_batch(&vm_committed_as, pages, vm_committed_as_batch);
-+	percpu_counter_add_batch(&vm_committed_as, pages,
-+				 data_race(vm_committed_as_batch));
- }
+ 	preempt_disable();
  
- static inline void vm_unacct_memory(long pages)
-diff --git a/mm/mm_init.c b/mm/mm_init.c
-index 41a27860d2f6..81f360db0787 100644
---- a/mm/mm_init.c
-+++ b/mm/mm_init.c
-@@ -211,7 +211,7 @@ void mm_compute_batch(int overcommit_policy)
- 	else
- 		memsized_batch = min_t(u64, ram_pages/nr/4, INT_MAX);
- 
--	vm_committed_as_batch = max_t(s32, memsized_batch, batch);
-+	WRITE_ONCE(vm_committed_as_batch, max_t(s32, memsized_batch, batch));
- }
- 
- static int __meminit mm_compute_batch_notifier(struct notifier_block *self,
+-	if (csd->node.u_flags & CSD_FLAG_LOCK) {
++	if (READ_ONCE(csd->node.u_flags) & CSD_FLAG_LOCK) {
+ 		err = -EBUSY;
+ 		goto out;
+ 	}
 
 ---
 base-commit: d135ab453a7400a34930bdda1ef4bdc8acfac80e
-change-id: 20261027-kcsan-mm-c01794559599
+change-id: 20261027-kcsan-smp-d968735e258a
 
 Best regards,
 --  
