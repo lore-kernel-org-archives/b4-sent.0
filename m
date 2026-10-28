@@ -1,81 +1,98 @@
-From: =?utf-8?q?Krzysztof_Soko=C5=82owski?= <krzysiek.sokolowski@gmail.com>
-Date: Wed, 28 Oct 2026 12:28:11 +0100
-Subject: [PATCH] dmaengine: pl330: drop only the runtime PM reference a
- channel holds
+From: Ramses de Norre <ramses@well-founded.dev>
+Subject: [PATCH net v4 0/2] bonding: fix the initial last_rx seed for the
+ ARP monitor
+Date: Wed, 28 Oct 2026 12:48:06 +0100
+Message-Id: <20261028-bonding-last-rx-v4-0-4d8e4cd47467@well-founded.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261028-pl330-runtime-pm-v1-1-f0fb5c34a7c4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2Nyw7CIBQFf6VhLcnl3forpgugF8XYh0CNSdN/F
- 63LSebM2UjGFDGTc7ORhK+Y4zxVYKeG+JudrkjjUJlw4JoBb+nyEAJoWqcSR6TLSJ2yAkCB40G
- ROlsShvj+JS/9wXl1d/Tl2/kbCZ9r/SqHRpzNSP08jrGcGxuCQm2NCV531njZAZdaatVJGFgrO
- R+M14KRft8/xOgpXMAAAAA=
-X-Change-ID: 20261028-pl330-runtime-pm-b5a30050b2f5
-To: Vinod Koul <vkoul@kernel.org>
-Cc: Frank Li <Frank.Li@kernel.org>, dmaengine@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- =?utf-8?q?Krzysztof_Soko=C5=82owski?= <krzysiek.sokolowski@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793186892; l=2072;
- i=krzysiek.sokolowski@gmail.com; s=20261028; h=from:subject:message-id;
- bh=N0Dj51bhXIkS3BDw3/lGRjrwPEjdmvZxsqfqjpdUcCU=;
- b=ehlD/UbuZSYLlj0k3N8mtTulGuMalewB+pRQnS63Q3pr8M5a7lbCppFfroC6Kq/aGDjJJK1ee
- 1uDkG+C2TppBmzIO7uFxRQQuHlqX9L2yt4eiW5LwDi6NBGvo/2IN8LI
-X-Developer-Key: i=krzysiek.sokolowski@gmail.com; a=ed25519;
- pk=qeeCHf+lXP5Q+6LakjbiVVxxcDVYb7Op1WMfhoaK2T0=
-X-Endpoint-Received: by B4 Relay for krzysiek.sokolowski@gmail.com/20261028 with auth_id=1343
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOwQ6CMAwG4FcxOzuzdSjDk+9hPABrYYYMs8HEG
+ N7diYnxgMc2f7+/TxbQWwzsuHkyj9EG27s0ZNsNq9vSNcitSTMDAQehZc6r3hnrGt6VYeB+4kI
+ JRaXINBWGpaubR7LTIp6Zw4FdPsswVlesh7f1jrU2DL1/LL1RLuG/FVFyyQtTHignQ1rC6Y5dx
+ 6kfnUGzMxiXkgg/DKwwkJi8VlopDVCD+sOoLyPFGqMSs88KkZOkSmRr38zz/AJmn4Z3WgEAAA=
+ =
+X-Change-ID: 20260817-bonding-last-rx-0303fa048f9d
+To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Jiri Bohac <jbohac@suse.cz>, 
+ Eric Dumazet <edumazet@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nikolay Aleksandrov <razor@blackwall.org>, 
+ Hangbin Liu <hangbin.liu@linux.dev>, 
+ Ramses de Norre <ramses@well-founded.dev>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793188089; l=2944;
+ i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
+ bh=xLrmUFjRPWtdn4U5H1DplHJw2hv8F/w6hsEGx/wnJJM=;
+ b=maMuKqZ2KVJYu9NHY79eSLYdrP1uPboyHXpYrRa8EZ9CsrJCfNbx9lvi6hBvD6aDlGRZW100f
+ aM2RK/fwgSPAjJ7si5phVJWUHKh+w017k8QUM+Utkm0hQHR6XwCc361
+X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
+ pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
+X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pl330_tasklet() drops a runtime PM reference when the channel's work
-list is empty, without checking that the channel still holds one.
-pl330_terminate_all() drops that reference too (power_down =
-pch->active) and clears pch->active. If a completion schedules the
-tasklet and a client terminates the channel before the tasklet runs, the
-tasklet finds an empty work list and drops the reference a second time:
+bond_enslave() seeds a new slave's last_rx before it has received
+anything. The ARP monitor checks that seed with an up test for a slave
+that starts DOWN, and with a down test for a slave that starts UP. The
+seed is wrong for both.
 
-  Runtime PM usage count underflow!
+Patch 1 fixes a slave that starts DOWN. Since the up test gained
+arp_interval/2 of slack, the seed falls inside the up window, so the
+slave is reported UP for half an interval without having received
+anything.
 
-after which the controller can be runtime suspended while still in use.
+Patch 2 fixes a slave that starts UP. The seed brings its down deadline
+forward by one interval compared to what arp_missed_max implies. In
+load-balance mode, which has no grace period after enslavement, a
+healthy slave can flap DOWN with arp_missed_max=1.
 
-Seen on an RK3128 board (dw_mmc using the PL330 for SD transfers) under
-combined SD and USB load, where the dw_mmc error path terminates the
-channel; the underflow was followed by "pl330_update:1678 Unexpected!"
-and a failure to request the DMA channel again.
+Jay, on your v3 question: the up test always uses a single interval, so
+the fix for a slave that starts DOWN holds for any arp_missed_max. But
+v3 also changed the seed of a slave that starts UP, which made the
+load-balance flap happen with the default arp_missed_max=2 too. v4 only
+uses the older seed for a slave that starts DOWN, and patch 2 gives a
+slave that starts UP a full arp_missed_max window.
 
-Take power_down from pch->active in the tasklet, as pl330_terminate_all()
-does, so the reference taken in pl330_issue_pending() is dropped once.
-
-Fixes: 5c9e6c2b2ba3 ("dmaengine: pl330: Fix runtime PM support for terminated transfers")
-Cc: stable@vger.kernel.org
-Signed-off-by: Krzysztof Sokołowski <krzysiek.sokolowski@gmail.com>
+Signed-off-by: Ramses de Norre <ramses@well-founded.dev>
 ---
- drivers/dma/pl330.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Changes in v4:
+- Patch 1: only use the older seed for a slave that starts DOWN. v3
+  also applied it to a slave that starts UP, which brought its down
+  deadline forward by one interval (Jay).
+- New patch 2: seed a slave that starts UP with last_link_up, giving it
+  a full arp_missed_max window. Fixes an existing flap in load-balance
+  mode with arp_missed_max=1.
+- Drop Hangbin's Reviewed-by, patch 1 changed.
+- Link to v3: https://patch.msgid.link/20261027-bonding-last-rx-v3-1-54907f1fb042@well-founded.dev
 
-diff --git a/drivers/dma/pl330.c b/drivers/dma/pl330.c
-index c2d0b47..b0eced8 100644
---- a/drivers/dma/pl330.c
-+++ b/drivers/dma/pl330.c
-@@ -2090,7 +2090,12 @@ static void pl330_tasklet(struct tasklet_struct *t)
- 		spin_lock(&pch->thread->dmac->lock);
- 		_stop(pch->thread);
- 		spin_unlock(&pch->thread->dmac->lock);
--		power_down = true;
-+		/*
-+		 * Drop the runtime PM reference only if this channel still
-+		 * holds it: pl330_terminate_all() may already have dropped it
-+		 * while this tasklet was scheduled.
-+		 */
-+		power_down = pch->active;
- 		pch->active = false;
- 	} else {
- 		/* Make sure the PL330 Channel thread is active */
+Changes in v3:
+- No code changes. Rebase on current net.
+- Reword the commit message along the lines of the v2 discussion: lead
+  with what the last_rx seed is for, state that the false UP happens
+  independent of primary_reselect, and that the initial link state is
+  unchanged.
+- Pick up Reviewed-by from Hangbin.
+- Cc Nikolay. Hangbin asked for a second review, Jay or Nikolay, would
+  you have a look?
+- Link to v2: https://patch.msgid.link/20260827-bonding-last-rx-v2-1-7c3833822c23@well-founded.dev
+
+Changes in v2:
+- No code changes. Resend with my personal name in the From and
+  Signed-off-by lines instead of my handle, as requested for the DCO.
+- Link to v1: https://patch.msgid.link/20260817-bonding-last-rx-v1-1-9da6f7fdf812@well-founded.dev
 
 ---
-base-commit: aff5e6a77fc69a7c490246465940d18422d7c631
-change-id: 20261028-pl330-runtime-pm-b5a30050b2f5
+Ramses de Norre (2):
+      bonding: fix initial last_rx vs ARP-monitor slack window
+      bonding: give a slave that starts UP a full arp_missed_max window
+
+ drivers/net/bonding/bond_main.c | 26 +++++++++++++++++++-------
+ 1 file changed, 19 insertions(+), 7 deletions(-)
+---
+base-commit: f75062536e2d45ee182828f0e47e0124be2fdc8d
+change-id: 20260817-bonding-last-rx-0303fa048f9d
 
 Best regards,
 --  
-Krzysztof Sokołowski <krzysiek.sokolowski@gmail.com>
+Ramses de Norre <ramses@well-founded.dev>
 
