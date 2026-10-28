@@ -1,16 +1,13 @@
 From: Martin Belanger <martin.nvme.dev@gmail.com>
-Subject: [PATCH RFC net-next v2 0/5] tls: perform TLS 1.3 KeyUpdate in the
- kernel
-Date: Wed, 28 Oct 2026 09:52:50 -0400
-Message-Id: <20261028-keyupdate-rfc-v2-0-eb5143b4c487@gmail.com>
+Date: Wed, 28 Oct 2026 09:52:51 -0400
+Subject: [PATCH RFC net-next v2 1/5] tls: add HKDF-Expand-Label for the TLS
+ 1.3 key schedule
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3VOSw6CMBC9Cpm1NaUCVVcmJh7ArWEB7QCDUkhbC
- IRwdwHXLt//zeDQEjq4BjNYHMhRa1YgDgGoKjMlMtIrBsFFEnIRszdOfaczj8wWil0ifVISzxG
- XEtZMZ7Ggce97wfNx3ziDnhkcPaQ/g+vzGpXfWje5IudbO+0PhnAP/hkbQsZZwnMp4wSVyvWtb
- DL6HFXbQLosyxcEuZRnzQAAAA==
-X-Change-ID: 20261025-keyupdate-rfc-94d3c7e84077
+Message-Id: <20261028-keyupdate-rfc-v2-1-eb5143b4c487@gmail.com>
+References: <20261028-keyupdate-rfc-v2-0-eb5143b4c487@gmail.com>
+In-Reply-To: <20261028-keyupdate-rfc-v2-0-eb5143b4c487@gmail.com>
 To: John Fastabend <john.fastabend@gmail.com>, 
  Jakub Kicinski <kuba@kernel.org>, Sabrina Dubroca <sd@queasysnail.net>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
@@ -24,172 +21,165 @@ Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
  Alistair Francis <alistair.francis@wdc.com>, 
  Martin Belanger <martin.belanger@dell.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793195573; l=7775;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793195573; l=5308;
  i=martin.nvme.dev@gmail.com; s=20261014; h=from:subject:message-id;
- bh=1N8ztvltpxCgLjG4JCYeAP0U6mmOIq99oUVPwvzatY4=;
- b=kGG+fFh2LD1Iu4Z+nzZ/m5P/t+epO0cfX1R/YRXMafPgpSqafLGvKKdwCcJCCZ6dfaElmk2p5
- bHsq7B1vuIDC4xJ60W1W0hVTMEW6r5XURsEK42DblbxAPJOaw3pRuT1
+ bh=pH4YhE4u4x17EaEwNK+mf52ndKZ9YKny0gD+XRiyqAU=;
+ b=uO5IozmA52e2+eKlR1cuy6YS6ahf+9gi4hqeTAhuVlnQkjfIR+r8kPoYgqHsZzdFeGBiJt+4k
+ menQDqHe6AwDNuZxTzxPSfJM5CAPhcyvEQo4wFvX0C87OweifgIk+WZ
 X-Developer-Key: i=martin.nvme.dev@gmail.com; a=ed25519;
  pk=4K+XXetGK35w2LzRRddd/bbHawZU222BN+YZRuSpN+k=
 X-Endpoint-Received: by B4 Relay for martin.nvme.dev@gmail.com/20261014 with auth_id=1176
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kTLS does not currently handle TLS 1.3 KeyUpdate. It never sends a
-KeyUpdate. And when it receives one, it blocks the socket until the
-application installs the next key. kTLS also does not enforce the key
-usage limit on transmit.
+From: Martin Belanger <martin.belanger@dell.com>
 
-This applies to TLS libraries in user space as well as kernel users such
-as NVMe/TCP or sunrpc:
+A TLS 1.3 KeyUpdate derives the next traffic secret, key and IV with
+HKDF-Expand-Label (RFC 9846, section 7.2). Add the helper for the
+kernel to do this itself.
 
-- GnuTLS sends a KeyUpdate after 2^24 records when it runs its own
-  record layer. With kTLS, the record layer is handled in the kernel and
-  GnuTLS therefore never runs the check. OpenSSL never sends a KeyUpdate
-  on its own.
-- NVMe/TCP and sunrpc don't have a mechanism to install a new key. A
-  conforming peer that sends a KeyUpdate stalls their connection.
+Only the part of the key schedule after the handshake is needed. The
+input is a traffic secret, which is already a pseudorandom key, so
+HKDF-Extract is not needed. Each output is at most Hash.length bytes,
+so each derivation is a single HMAC with the library SHA-256 or SHA-384
+functions.
 
-RFC 9846 (July 2026), which obsoletes RFC 8446, makes the limit
-mandatory (section 5.5): "Implementations MUST either close the
-connection or do a key update as described in Section 4.7.3 prior to
-reaching these limits." Long-lived connections with small records reach
-the limit quickly. One NVMe/TCP queue sends at least one record per
-command, and more with large I/O. Depending on the load and link speed,
-the 2^24 limit can be reached in less than 10 minutes in many cases.
-
-With this series, kTLS handles KeyUpdate in both directions for a socket
-that registers its traffic secrets. A socket that does not register them
-behaves as before. A user can opt in by passing the secrets after the
-handshake. GnuTLS and OpenSSL install the kTLS keys themselves, so they
-could register the secrets at the same time. tlshd gets the secrets from
-GnuTLS through a callback it uses for QUIC.
-
-Why the record layer
-====================
-
-KeyUpdate must be handled where the records are built.
-
-The 2^24 limit is a record count, and only the record layer can see the
-count precisely as it changes. A user sitting above kTLS can only read
-the count with getsockopt(TLS_TX) after each write. A kTLS user writes
-bytes, and the kernel splits and merges those bytes into records. I
-counted send calls in an NVMe/TCP prototype trying to guesstimate the
-2^24 limit. The count was correct with 4 KB I/O, but was 21 times too
-low with 1 MB I/O. Each send call translates into a different number of
-records. It's simply not possible to precisely guess the number of
-records based on the number of send calls.
-
-The KeyUpdate must also go at a precise place in the record stream
-(section 4.7.3). It is encrypted with the old key, and every record
-after it with the new key. When the peer sets update_requested, our
-KeyUpdate must go out before the next Application Data record. The key
-can only change between two records. Only net/tls has control over that.
-Fixing this in one driver or library would leave other drivers or
-libraries to re-implement their own (imperfect) solution.
-
-The in-kernel QUIC series under review on netdev splits the work the
-same way as this proposed fix. The handshake stays in user space, the
-secrets are passed in with a socket option, and the kernel derives each
-key update with HKDF-Expand-Label (quic_crypto_key_update()).
-
-What the series does
-====================
-
-- Two new socket options, TLS_TX_TRAFFIC_SECRET and
-  TLS_RX_TRAFFIC_SECRET, are used to register the application traffic
-  secrets. The secret is passed as raw bytes. The kernel derives the
-  hash (SHA-256 or SHA-384) from the cipher installed with TLS_TX or
-  TLS_RX. The TX secret must be set first because the RX secret needs
-  the TX secret in case a received KeyUpdate asks for a reply.
-- A third socket option, TLS_TX_KEY_UPDATE, can be used to send a
-  KeyUpdate now. It can also optionally ask the peer to update too.
-- Receive: kTLS consumes the KeyUpdate, installs the next key and
-  continues. This works for recvmsg, splice and read_sock.
-- Transmit: kTLS sends a KeyUpdate after 2^24 records, a margin below
-  the 2^24.5 limit of RFC 9846 section 5.5, and in reply to
-  update_requested. ChaCha20-Poly1305 has no record limit.
-- kTLS aborts the connection when a peer sends more than 8 KeyUpdates in
-  one second, or an invalid KeyUpdate. GnuTLS uses the same rate limit.
-- Software path only. Device offload is unchanged.
-- SM4-GCM and SM4-CCM are not supported: the kernel has no HMAC-SM3.
-
-Testing
-=======
-
-- NVMe/TCP host and target over loopback, with the record limit and the
-  rate limit lowered for the test: more than 1000 KeyUpdates in each
-  direction under I/O, with AES-128-GCM and AES-256-GCM.
-- Interoperability with OpenSSL in user space, which derives the keys on
-  its own, including the reply to update_requested.
-- New selftests in tools/testing/selftests/net/tls.c for every TLS 1.3
-  cipher kTLS supports. The full tls selftest passes.
-
-The matching tlshd change for ktls-utils is a small patch to be
-submitted at a later time if this series is accepted.
-
-Questions
-=========
-
-This is an RFC for feedback on the design and the new socket options, in
-particular:
-
-1. I used one socket option per direction, like TLS_TX and TLS_RX. Is
-   that the right form? Would one option that sets secrets for both
-   directions be better?
-2. When the application installs a key itself with TLS_TX or TLS_RX
-   after the secrets have already been registered, the series removes
-   the registered secrets (TLS_TX removes both, TLS_RX only the RX
-   secret) and gives KeyUpdate back to the application. Is that right,
-   or should the key change be refused while a secret is registered?
-3. TLS_TX_KEY_UPDATE (patch 4) is not needed for the record limit. I can
-   move it to a separate series if you prefer a smaller first step.
-
+Assisted-by: LLM
+Reviewed-by: Hannes Reinecke <hare@kernel.org>
 Signed-off-by: Martin Belanger <martin.belanger@dell.com>
 ---
-Changes in v2:
-- Patch 2: check that the installed key and IV come from the
-  registered secret. (Hannes)
-- Patch 3: free the KeyUpdate record when its processing fails.
-  (Sashiko)
-- Patch 3: after a rekey, wake pollers only if a pending KeyUpdate held
-  them back. (Sashiko)
-- Patch 4: keep MSG_NOSIGNAL when sending a KeyUpdate. setsockopt()
-  never raises SIGPIPE. (Sashiko)
-- Patch 4: clear the KeyUpdate request state when the application
-  installs a key with TLS_TX or TLS_RX. (Sashiko)
-- Patch 5: derive the test keys from the secrets with AF_ALG. Add tests
-  for the changes above.
-- Not changed: if TCP fails to send the KeyUpdate after the record was
-  queued, TLS_TX_KEY_UPDATE can return 0, as sendmsg() returns the
-  queued length. The next call reports the error. (Sashiko)
-- Link to v1: https://patch.msgid.link/20261025-keyupdate-rfc-v1-0-60b7756eccbd@gmail.com
+ net/tls/Kconfig    |  2 ++
+ net/tls/Makefile   |  2 +-
+ net/tls/tls.h      |  2 ++
+ net/tls/tls_hkdf.c | 82 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 87 insertions(+), 1 deletion(-)
 
----
-Martin Belanger (5):
-      tls: add HKDF-Expand-Label for the TLS 1.3 key schedule
-      tls: add socket options to register the traffic secrets
-      tls: update the RX key when a KeyUpdate is received
-      tls: send a KeyUpdate at the record limit and on request
-      selftests/tls: add KeyUpdate tests
+diff --git a/net/tls/Kconfig b/net/tls/Kconfig
+index 4f4d5973a28f..6183ebe954ee 100644
+--- a/net/tls/Kconfig
++++ b/net/tls/Kconfig
+@@ -8,6 +8,8 @@ config TLS
+ 	select CRYPTO
+ 	select CRYPTO_AES
+ 	select CRYPTO_GCM
++	select CRYPTO_LIB_SHA256
++	select CRYPTO_LIB_SHA512
+ 	select NET_SOCK_MSG
+ 	default n
+ 	help
+diff --git a/net/tls/Makefile b/net/tls/Makefile
+index 4c7d296081ee..6edcf1271b75 100644
+--- a/net/tls/Makefile
++++ b/net/tls/Makefile
+@@ -7,6 +7,6 @@ CFLAGS_trace.o := -I$(src)
+ 
+ obj-$(CONFIG_TLS) += tls.o
+ 
+-tls-y := tls_main.o tls_sw.o tls_proc.o trace.o tls_strp.o
++tls-y := tls_main.o tls_sw.o tls_proc.o trace.o tls_strp.o tls_hkdf.o
+ 
+ tls-$(CONFIG_TLS_DEVICE) += tls_device.o tls_device_fallback.o
+diff --git a/net/tls/tls.h b/net/tls/tls.h
+index 60a37bdaaa25..b2061f6bf065 100644
+--- a/net/tls/tls.h
++++ b/net/tls/tls.h
+@@ -147,6 +147,8 @@ void tls_strp_abort_strp(struct tls_strparser *strp, int err);
+ int init_prot_info(struct tls_prot_info *prot,
+ 		   const struct tls_crypto_info *crypto_info,
+ 		   const struct tls_cipher_desc *cipher_desc);
++int tls_hkdf_expand_label(const u8 *secret, size_t secret_len,
++			  const char *label, u8 *out, size_t out_len);
+ int tls_set_sw_offload(struct sock *sk, int tx,
+ 		       struct tls_crypto_info *new_crypto_info);
+ void tls_update_rx_zc_capable(struct tls_context *tls_ctx);
+diff --git a/net/tls/tls_hkdf.c b/net/tls/tls_hkdf.c
+new file mode 100644
+index 000000000000..49e33146ac7e
+--- /dev/null
++++ b/net/tls/tls_hkdf.c
+@@ -0,0 +1,82 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Copyright (c) 2026 Dell Technologies Inc. or its subsidiaries.
++ *
++ * TLS 1.3 HKDF-Expand-Label, RFC 9846 section 7.1.
++ *
++ * TLS 1.3 derives all of its secrets and keys with HKDF (RFC 5869). The
++ * TLS handshake runs in user space and gives the kernel one application
++ * traffic secret for each direction. For a KeyUpdate, the kernel derives
++ * the next traffic secret from the current one (section 7.2), and the
++ * new key and IV from the next traffic secret (section 7.3). Both steps
++ * use only HKDF-Expand-Label, so this file implements only that
++ * function, not the full key schedule of the handshake.
++ *
++ * The input is always a traffic secret. It is already a random key of
++ * the hash length, so HKDF-Extract is not needed. No output is longer
++ * than the hash, so HKDF-Expand is a single HMAC.
++ */
++
++#include <crypto/sha2.h>
++#include <linux/errno.h>
++#include <linux/string.h>
++#include <linux/unaligned.h>
++
++#include "tls.h"
++
++#define TLS_HKDF_LABEL_PREFIX		"tls13 "
++#define TLS_HKDF_LABEL_PREFIX_LEN	(sizeof(TLS_HKDF_LABEL_PREFIX) - 1)
++#define TLS_HKDF_LABEL_MAX		32
++
++/**
++ * tls_hkdf_expand_label - HKDF-Expand-Label with an empty context
++ * @secret: the secret
++ * @secret_len: length of @secret, which selects the hash: SHA-256 for
++ *	SHA256_DIGEST_SIZE, SHA-384 for SHA384_DIGEST_SIZE
++ * @label: the label, without the "tls13 " prefix
++ * @out: output buffer
++ * @out_len: number of bytes to derive, at most @secret_len
++ *
++ * Return: 0 on success, -EINVAL if a length is not valid.
++ */
++int tls_hkdf_expand_label(const u8 *secret, size_t secret_len,
++			  const char *label, u8 *out, size_t out_len)
++{
++	u8 info[2 + 1 + TLS_HKDF_LABEL_PREFIX_LEN + TLS_HKDF_LABEL_MAX + 1 + 1];
++	size_t label_len = strlen(label);
++	u8 tmp[SHA384_DIGEST_SIZE];
++	size_t pos = 0;
++
++	if (secret_len != SHA256_DIGEST_SIZE &&
++	    secret_len != SHA384_DIGEST_SIZE)
++		return -EINVAL;
++	if (!out_len || out_len > secret_len || label_len > TLS_HKDF_LABEL_MAX)
++		return -EINVAL;
++
++	/* struct {
++	 *	uint16 length;
++	 *	opaque label<7..255>;
++	 *	opaque context<0..255>;
++	 * } HkdfLabel;
++	 *
++	 * followed by the HKDF-Expand counter for the first output block.
++	 */
++	put_unaligned_be16(out_len, info);
++	pos += 2;
++	info[pos++] = TLS_HKDF_LABEL_PREFIX_LEN + label_len;
++	memcpy(info + pos, TLS_HKDF_LABEL_PREFIX, TLS_HKDF_LABEL_PREFIX_LEN);
++	pos += TLS_HKDF_LABEL_PREFIX_LEN;
++	memcpy(info + pos, label, label_len);
++	pos += label_len;
++	info[pos++] = 0;	/* empty context */
++	info[pos++] = 1;	/* counter */
++
++	if (secret_len == SHA256_DIGEST_SIZE)
++		hmac_sha256_usingrawkey(secret, secret_len, info, pos, tmp);
++	else
++		hmac_sha384_usingrawkey(secret, secret_len, info, pos, tmp);
++
++	memcpy(out, tmp, out_len);
++	memzero_explicit(tmp, sizeof(tmp));
++
++	return 0;
++}
 
- Documentation/networking/tls.rst   |  43 ++++
- include/net/tls.h                  |  23 +++
- include/uapi/linux/tls.h           |   3 +
- net/tls/Kconfig                    |   2 +
- net/tls/Makefile                   |   3 +-
- net/tls/tls.h                      |   5 +
- net/tls/tls_hkdf.c                 |  82 ++++++++
- net/tls/tls_keyupdate.c            | 155 ++++++++++++++
- net/tls/tls_main.c                 | 175 +++++++++++++++-
- net/tls/tls_sw.c                   | 193 ++++++++++++++++-
- tools/testing/selftests/net/config |   4 +
- tools/testing/selftests/net/tls.c  | 412 +++++++++++++++++++++++++++++++++++++
- 12 files changed, 1091 insertions(+), 9 deletions(-)
----
-base-commit: 1a2c35c49cc7c6be860038b8442b52424a8f123c
-change-id: 20261025-keyupdate-rfc-94d3c7e84077
-
-Best regards,
---  
-Martin Belanger <martin.nvme.dev@gmail.com>
+-- 
+2.53.0
 
