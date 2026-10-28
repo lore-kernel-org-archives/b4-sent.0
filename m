@@ -1,92 +1,62 @@
 From: Luca Stefani <luca.stefani.ge1@gmail.com>
-Date: Wed, 28 Oct 2026 18:55:49 +0100
-Subject: [PATCH 1/2] btrfs: account partially completed discards
+Date: Wed, 28 Oct 2026 18:55:50 +0100
+Subject: [PATCH 2/2] btrfs: don't report failure when trim is interrupted
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-b4-btrfs-fitrim-interruption-v1-1-bf5c53738b3a@gmail.com>
+Message-Id: <20261028-b4-btrfs-fitrim-interruption-v1-2-bf5c53738b3a@gmail.com>
 References: <20261028-b4-btrfs-fitrim-interruption-v1-0-bf5c53738b3a@gmail.com>
 In-Reply-To: <20261028-b4-btrfs-fitrim-interruption-v1-0-bf5c53738b3a@gmail.com>
 To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
  Luca Stefani <luca.stefani.ge1@gmail.com>
 Cc: Robbie Ko <robbieko@synology.com>, Filipe Manana <fdmanana@suse.com>, 
- linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org
+ linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Zhiwei Liang <zhiwei.liang@zliang.me>, Qu Wenruo <wqu@suse.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793210149; l=2358;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793210149; l=1270;
  i=luca.stefani.ge1@gmail.com; s=20261028; h=from:subject:message-id;
- bh=F8Pv6qkXxT7wewljV2XNrswlKdtAJgpfaMISGxrcbhU=;
- b=+2gdX7sfz1h0qgzIpAuAL6fcd6qg9uioKN7l5daPZivzQYYj9AoiKdo6Wa+usHadZ3K6F0llM
- pY2vmhhMZxWBC3D/CtV6lD9mGMraSPSEUdx6NAn3kupD90Dn+Tp9bOZ
+ bh=SHRYs75MlS7h15FzpDG0vGMIMQ3guuhpE4HMc+f+OLg=;
+ b=PqMIpIsvrDz40U2W8kqPvIIUiPvJl384C2hgujzHQfvCa78g9smaGobCvkjcJb5ARaj9kwnD4
+ LtACyEsLihdAxU1shFVoLAH5KkOvKavqdgLPOLRFCW7Luu38T+iiiNz
 X-Developer-Key: i=luca.stefani.ge1@gmail.com; a=ed25519;
  pk=0OIKU9oiaC0ALN4kqvw7ZbPFXqsBLvWm7MhEDYv3PyI=
 X-Endpoint-Received: by B4 Relay for luca.stefani.ge1@gmail.com/20261028 with auth_id=1347
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A discard can complete part of a range before a later chunk is interrupted
-or fails. btrfs_issue_discard() reports the bytes already discarded, but
-its callers only accumulate those bytes when the entire operation succeeds.
+Treat cancellation as a successful partial trim as ext4 and XFS do.
 
-Link: https://lore.kernel.org/20261028-btrfs-fitrim-freezer-v1-1-0ad1d58aa94d@zliang.me/
+Reported-by: Zhiwei Liang <zhiwei.liang@zliang.me>
+Closes: https://lore.kernel.org/20261028-btrfs-fitrim-freezer-v1-1-0ad1d58aa94d@zliang.me/
+Suggested-by: Qu Wenruo <wqu@suse.com>
 Signed-off-by: Luca Stefani <luca.stefani.ge1@gmail.com>
 ---
- fs/btrfs/extent-tree.c      | 5 ++---
- fs/btrfs/free-space-cache.c | 5 ++---
- 2 files changed, 4 insertions(+), 6 deletions(-)
+ fs/btrfs/extent-tree.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
-index 9b0a5c6b96f3..242db255cf1c 100644
+index 242db255cf1c..90e581c29609 100644
 --- a/fs/btrfs/extent-tree.c
 +++ b/fs/btrfs/extent-tree.c
-@@ -1463,6 +1463,7 @@ int btrfs_discard_extent(struct btrfs_fs_info *fs_info, u64 bytenr,
- 				continue;
+@@ -6926,7 +6926,7 @@ int btrfs_trim_fs(struct btrfs_fs_info *fs_info, struct fstrim_range *range)
+ 			bg_failed, ERR_PTR(bg_ret));
  
- 			ret = do_discard_extent(stripe, &bytes);
-+			discarded_bytes += bytes;
- 			if (ret) {
- 				/*
- 				 * Keep going if discard is not supported by the
-@@ -1471,8 +1472,6 @@ int btrfs_discard_extent(struct btrfs_fs_info *fs_info, u64 bytenr,
- 				if (ret != -EOPNOTSUPP)
- 					break;
- 				ret = 0;
--			} else {
--				discarded_bytes += bytes;
- 			}
- 		}
- 		kfree(stripes);
-@@ -6703,6 +6702,7 @@ static int btrfs_trim_free_extents_throttle(struct btrfs_device *device,
+ 	if (ret == -ERESTARTSYS || ret == -EINTR)
+-		return ret;
++		goto out;
  
- 		ret = btrfs_issue_discard(device->bdev, start, len,
- 					  &bytes);
-+		*trimmed += bytes;
- 		if (!ret)
- 			btrfs_set_extent_bit(&device->alloc_state, start,
- 					     start + bytes - 1, CHUNK_TRIMMED, NULL);
-@@ -6712,7 +6712,6 @@ static int btrfs_trim_free_extents_throttle(struct btrfs_device *device,
- 			break;
- 
- 		start += len;
--		*trimmed += bytes;
- 		trim_len += len;
- 		if (trim_len >= BTRFS_MAX_TRIM_LENGTH) {
- 			*ret_next_pos = start;
-diff --git a/fs/btrfs/free-space-cache.c b/fs/btrfs/free-space-cache.c
-index bff6e5b372d6..a85806bcf87a 100644
---- a/fs/btrfs/free-space-cache.c
-+++ b/fs/btrfs/free-space-cache.c
-@@ -2415,10 +2415,9 @@ static int do_trimming(struct btrfs_block_group *block_group,
- 	spin_unlock(&space_info->lock);
- 
- 	ret = btrfs_discard_extent(fs_info, start, bytes, &trimmed, false);
--	if (!ret) {
--		*total_trimmed += trimmed;
-+	*total_trimmed += trimmed;
-+	if (!ret)
- 		trim_state = BTRFS_TRIM_STATE_TRIMMED;
--	}
- 
- 	if (reserved_start < start)
- 		__btrfs_add_free_space(block_group, reserved_start,
+ 	ret = btrfs_trim_free_extents(fs_info, &group_trimmed, &dev_failed, &dev_ret);
+ 	trimmed += group_trimmed;
+@@ -6935,9 +6935,8 @@ int btrfs_trim_fs(struct btrfs_fs_info *fs_info, struct fstrim_range *range)
+ 		btrfs_warn(fs_info,
+ 			"failed to trim %llu device(s), first error %pe",
+ 			dev_failed, ERR_PTR(dev_ret));
++out:
+ 	range->len = trimmed;
+-	if (ret == -ERESTARTSYS || ret == -EINTR)
+-		return ret;
+ 	if (bg_ret)
+ 		return bg_ret;
+ 	return dev_ret;
 
 -- 
 2.56.0
