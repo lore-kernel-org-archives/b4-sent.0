@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Wed, 28 Oct 2026 14:17:24 +0300
-Subject: [PATCH v6 05/11] dt-bindings: mailbox: qcom: Add MSM8952 APCS
+Date: Wed, 28 Oct 2026 14:17:25 +0300
+Subject: [PATCH v6 06/11] dt-bindings: clock: qcom,a53pll: Add MSM8952
  compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-msm8952-initial-support-v6-5-e07ddd8bcf4c@mainlining.org>
+Message-Id: <20261028-msm8952-initial-support-v6-6-e07ddd8bcf4c@mainlining.org>
 References: <20261028-msm8952-initial-support-v6-0-e07ddd8bcf4c@mainlining.org>
 In-Reply-To: <20261028-msm8952-initial-support-v6-0-e07ddd8bcf4c@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -42,39 +42,59 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  linux-remoteproc@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793186351; l=1010;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793186351; l=1385;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=4SRoaEV+jb2+MQXKbteEPlFA0htY5fjMkh7Yu9tlUFU=;
- b=3AHMQWA0DgEunwCg6ewTCeBMBBNzoqUS16lMOy7XGkSEtXStcKWyXRX2eMQHaOZfyUm/P6G/1
- wI4GyEa2zcSCzfrxKkLhrJsCG8o/ipCLhpQv6SWC1L5Py1TS52/c4RJ
+ bh=BrzMm8QIgqROsRwWhO5mUK+pBiKnEr9sw/uWcqoVjmc=;
+ b=wJUCS0E1QC//bgwIhJ3rv8QS6QJhatBac3eV4Z4kJIhHk3lq1qq8Wv76ghgEB0Mch99FNWQ52
+ fC2U63mJeS7CQN+r9MsE/3AZPX50PJ88XHH6JWDM1dfngE7vz67tdY3
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the APCS mailbox compatible for the MSM8952.
+Document the a53pll found on MSM8952.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ .../devicetree/bindings/clock/qcom,a53pll.yaml     | 25 +++++++++++++---------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml b/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml
-index 5110363a0717..c2b0d7394f36 100644
---- a/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml
-+++ b/Documentation/devicetree/bindings/mailbox/qcom,apcs-kpss-global.yaml
-@@ -31,6 +31,11 @@ properties:
-               - qcom,qcs404-apcs-apps-global
-           - const: qcom,msm8916-apcs-kpss-global
-           - const: syscon
+diff --git a/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml b/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml
+index 1eec77e75a0a..4abfaa24bc71 100644
+--- a/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml
++++ b/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml
+@@ -15,16 +15,21 @@ description:
+ 
+ properties:
+   compatible:
+-    enum:
+-      - qcom,ipq5018-a53pll
+-      - qcom,ipq5210-a53pll
+-      - qcom,ipq5332-a53pll
+-      - qcom,ipq6018-a53pll
+-      - qcom,ipq8074-a53pll
+-      - qcom,ipq9574-a73pll
+-      - qcom,msm8226-a7pll
+-      - qcom,msm8916-a53pll
+-      - qcom,msm8939-a53pll
++    oneOf:
++      - enum:
++          - qcom,ipq5018-a53pll
++          - qcom,ipq5210-a53pll
++          - qcom,ipq5332-a53pll
++          - qcom,ipq6018-a53pll
++          - qcom,ipq8074-a53pll
++          - qcom,ipq9574-a73pll
++          - qcom,msm8226-a7pll
++          - qcom,msm8916-a53pll
++          - qcom,msm8939-a53pll
 +      - items:
 +          - enum:
-+              - qcom,msm8952-apcs-kpss-global
-+          - const: qcom,msm8939-apcs-kpss-global
-+          - const: syscon
-       - items:
-           - enum:
-               - qcom,msm8974-apcs-kpss-global
++              - qcom,msm8952-a53pll
++          - const: qcom,msm8939-a53pll
+ 
+   reg:
+     maxItems: 1
 
 -- 
 2.55.0
