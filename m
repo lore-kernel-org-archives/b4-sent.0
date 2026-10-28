@@ -1,11 +1,11 @@
 From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Wed, 28 Oct 2026 16:42:33 -0700
-Subject: [PATCH v6 2/5] perf symbols: Split out name-independent duplicate
- symbol selection
+Date: Wed, 28 Oct 2026 16:42:34 -0700
+Subject: [PATCH v6 3/5] perf symbols: Point to the symbol name instead of
+ embedding it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-perf-symbol-memory-send-v6-2-7e90415f0101@uber.com>
+Message-Id: <20261028-perf-symbol-memory-send-v6-3-7e90415f0101@uber.com>
 References: <20261028-perf-symbol-memory-send-v6-0-7e90415f0101@uber.com>
 In-Reply-To: <20261028-perf-symbol-memory-send-v6-0-7e90415f0101@uber.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -19,106 +19,81 @@ To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
 Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Alireza Haghdoost <haghdoost@uber.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3083; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=UFacskGEBu0XEz3nvj7QOau6UP9nsBYAYWQ+E7Nz3js=;
- b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq4oh2tWOhJUiFDWi4yQZNya/JlXoiWvKSy0z0g
- Xmh32y/1N+JAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCauKIdhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtiQQQ/+OgLAXIXP4L/3YiuXilobQUOBhQRAViT
- ulCpV/5ik8ZeNccLISGDCCa/0GAK+DkUs2NmTpQrH83p90bP/1wCCIqH8/BnL1AGecCc2/w8wMf
- Xb0KqXCc6MrGBeEbWqx07Ld3r76dnB/NdzE4zRodO3thk1KZSgKI4LSoZ8BdvMVGddktk2GQtf3
- G6De6qKezufavVgrAT7k2USVJNdxLYBs2U3DNnkLz5IZixaGaLu9FRSIC06RFPyjzdgHdRtGtIG
- 8Tkio534MKsOsCphpSWb+oI0jCx7bbL6FeMlSdaJyDiU+RvSocKg63WuJDcU9UHO8y7bBl4acHI
- iHuHPLFKWSDoZKLP+CizVfluafU5dsCM/jhb7f+CgY7MsFGF87pFSWMsxJVYl2SLwKINOKjoTrW
- J4ZrAqymGYVx+Xz5KtINXLsMwMndZO1Is3l4umnQ/D0IFsa2UoIR8jmrbXJfnewzsgFvbtPV5Fp
- dHAUkNAgVzd9ofWX4zKUGQfd8ibzDBDmjzLvS/G5mth0C6gsSJUEMmOvhuWAUqVLtCzZn58n4bM
- R29iSQRBlXKXlTqtwKzmFOeI0ms2rGdwYt0Ef3JcySpYoxpoCK/999tSlDk2zJR08c/Ak08BXr7
- L9ar+AjI13Z4RSGzqNDKZRJO44NA8RWKEmmNXh5765lMIp8lMjug=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2211; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=StUqBnmB7QE/x00WFgZFXRbs4qC9OsQOqq8JJSIB66s=;
+ b=owEBiQJ2/ZANAwAIAVNlBDxl2ALYAcsmYgBq4oh2X2YhnuN8Atl7FP7ZuNj2so0EbTGJo3DCM
+ B8n5IlOJIqJAk8EAAEIADkWIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCauKIdhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQU2UEPGXYAtjYExAAm1r7nsfEKO3RCcNzWSYQLbKzprw4Rgc
+ h03jixxBalliuQYkyu+VsAhBgTiX0x2ARqszoH8ayjjh15pBGLgIKakavaybX+OmE+Sp9ih3sn8
+ zLtZWA0bxz3T+HIGmsAsP/1fJC6e22JYJwFKv1hNWPBi9nlz+t1mxmyOEh1B0ePTk+C53N9E55j
+ tNeYzOf7N78mi/TT9zFoD17XY5TpJHqMMbAt5IsPrVFOn4aEbd3+9j+5eUxJiPFVnU/Ff2mJmk6
+ VIyoGzMNdSuaUDryBEKDerCjczivPG/xi+oEBYadNN5nNnA0jWRmslXvAsupWvleFxS9WTKO9VJ
+ nGE/teWGGes3u/D1DV3M8h6K8fjZ7c/0Z5llOW+a5CF868FwAlsh/vBByzC50BLM00UWRLAWnUW
+ YannlalMTPNmdfrMcoskGjddR65iamCAKtpcw4U0FG9cs5Bdm26sL0sqnhqg5buGlbqRfwUrzrR
+ aLKtYoiOqIe/FF/51iP54qhIX4VnG+ihFq96QiqyTBHtLcvP9JD4up1fUAs1pfzrKjK2Wu8AXBW
+ qhPb7rOOVJpDaH5qysgvBt+hQOiG62dnWQwxcN5JgRlCl/KVCK+UFSEox35KMDyncwKKwAXO5Md
+ P0q98P6nDGb53Co0B2Pvjm+1Q9GgzVASs4Ae+87y+vrMdaQBtRuU=
 X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
  fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
 X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch is a refactoring and does not change behavior. It moves the
-size, type and binding checks from choose_best_symbol() to
-choose_best_symbol_by_attrs(). It also adds symbol__choice_needs_names()
-to report whether choosing between two symbols requires their names.
+This patch changes the type of the name field in struct symbol from a
+flexible array (char name[]) to a pointer (char *name). It is a
+refactoring and does not change behavior, but it adds 8 bytes to each
+symbol allocation on 64-bit hosts.
 
-symbols__fixup_duplicate() keeps one of the symbols that share a start
-address. It compares size, type and binding first. If those attributes
-are equal, it compares leading underscores, name lengths and the result
-of arch__choose_best_symbol().
-
-An unresolved lazy symbol stores a file offset instead of a name
-pointer. Thus, the lazy loader cannot call choose_best_symbol() until it
-loads both names. The new helper lets the loader keep the names
-unresolved when the attributes select a winner. It loads names only when
-the attributes are equal and duplicate selection needs them.
+The next patch creates symbols whose names are read only when they are
+needed. When perf creates such a symbol, it does not know the length of
+the name, so it cannot allocate space for the name after the symbol.
+Perf also cannot allocate a larger symbol after it reads the name,
+because the rb-tree and the callers keep pointers to the symbol. With a
+pointer, perf can allocate the name separately and set the pointer later.
 
 Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
 ---
- tools/perf/util/symbol.c | 26 ++++++++++++++++++++++++--
- tools/perf/util/symbol.h |  1 +
- 2 files changed, 25 insertions(+), 2 deletions(-)
+ tools/perf/ui/stdio/hist.c | 1 +
+ tools/perf/util/symbol.c   | 1 +
+ tools/perf/util/symbol.h   | 2 +-
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
+diff --git a/tools/perf/ui/stdio/hist.c b/tools/perf/ui/stdio/hist.c
+index 8c4c8925df2c..c65e3aa73a13 100644
+--- a/tools/perf/ui/stdio/hist.c
++++ b/tools/perf/ui/stdio/hist.c
+@@ -106,6 +106,7 @@ static void init_rem_hits(void)
+ 		return;
+ 	}
+ 
++	rem_sq_bracket->name = (char *)(rem_sq_bracket + 1);
+ 	strcpy(rem_sq_bracket->name, "[...]");
+ 	rem_hits.ms.sym = rem_sq_bracket;
+ }
 diff --git a/tools/perf/util/symbol.c b/tools/perf/util/symbol.c
-index b61a574ce9a3..2d611c05d000 100644
+index 2d611c05d000..02c077d7e2a6 100644
 --- a/tools/perf/util/symbol.c
 +++ b/tools/perf/util/symbol.c
-@@ -157,11 +157,15 @@ int __weak arch__choose_best_symbol(struct symbol *syma,
- 	return SYMBOL_A;
- }
+@@ -362,6 +362,7 @@ struct symbol *symbol__new(u64 start, u64 len, u8 binding, u8 type, const char *
  
--static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
-+/*
-+ * Choose between two symbols at the same address by size, type and binding.
-+ * Returns SYMBOL_A or SYMBOL_B, or -1 if only their names can decide.
-+ */
-+static int choose_best_symbol_by_attrs(const struct symbol *syma,
-+				       const struct symbol *symb)
- {
- 	s64 a;
- 	s64 b;
--	size_t na, nb;
+ 	pr_debug4("%s: %s %#" PRIx64 "-%#" PRIx64 "\n",
+ 		  __func__, name, start, sym->end);
++	sym->name = (char *)(sym + 1);
+ 	memcpy(sym->name, name, namelen);
  
- 	/* Prefer a symbol with non zero length */
- 	a = syma->end - syma->start;
-@@ -194,6 +198,24 @@ static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
- 	if (b && !a)
- 		return SYMBOL_B;
- 
-+	return -1;
-+}
-+
-+bool symbol__choice_needs_names(const struct symbol *syma, const struct symbol *symb)
-+{
-+	return choose_best_symbol_by_attrs(syma, symb) < 0;
-+}
-+
-+static int choose_best_symbol(struct symbol *syma, struct symbol *symb)
-+{
-+	int ret = choose_best_symbol_by_attrs(syma, symb);
-+	s64 a;
-+	s64 b;
-+	size_t na, nb;
-+
-+	if (ret >= 0)
-+		return ret;
-+
- 	/* Prefer a symbol with less underscores */
- 	a = prefix_underscores_count(syma->name);
- 	b = prefix_underscores_count(symb->name);
+ 	return sym;
 diff --git a/tools/perf/util/symbol.h b/tools/perf/util/symbol.h
-index 46b1649c64fc..d8386c4a7fc5 100644
+index d8386c4a7fc5..c231d8e4427c 100644
 --- a/tools/perf/util/symbol.h
 +++ b/tools/perf/util/symbol.h
-@@ -303,6 +303,7 @@ int arch__compare_symbol_names(const char *namea, const char *nameb);
- int arch__compare_symbol_names_n(const char *namea, const char *nameb,
- 				 unsigned int n);
- int arch__choose_best_symbol(struct symbol *syma, struct symbol *symb);
-+bool symbol__choice_needs_names(const struct symbol *syma, const struct symbol *symb);
+@@ -95,7 +95,7 @@ struct symbol {
+ 	/** Architecture specific. Unused except on PPC where it holds st_other. */
+ 	u8		arch_sym;
+ 	/** The name of length namelen associated with the symbol. */
+-	char		name[];
++	char		*name;
+ };
  
- enum symbol_tag_include {
- 	SYMBOL_TAG_INCLUDE__NONE = 0,
+ void symbol__delete(struct symbol *sym);
 
 -- 
 Git-157)
