@@ -1,112 +1,100 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Tue, 27 Oct 2026 19:38:35 -0400
-Subject: [PATCH v2 2/2] usb: ehci-pci: Set has_hostpc for TDI EHCI on Intel
- CE5300
+From: Jez Ng <jez@sfcompute.com>
+Subject: [PATCH 0/2] thermal: intel: hfi: Stop hardware writing to freed
+ memory after kexec
+Date: Wed, 28 Oct 2026 00:14:44 +0000
+Message-Id: <20261028-hfi-kexec-v1-0-956234dcfb2b@sfcompute.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261027-ehci-ce5300-hostpc-v2-2-375e9d362d74@telaak.dev>
-References: <20261027-ehci-ce5300-hostpc-v2-0-375e9d362d74@telaak.dev>
-In-Reply-To: <20261027-ehci-ce5300-hostpc-v2-0-375e9d362d74@telaak.dev>
-To: Alan Stern <stern@rowland.harvard.edu>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Telaak <joseph@telaak.dev>
+X-B4-Tracking: v=1; b=H4sIAHQ+4WoC/yXM0QpAMBiG4VvRf2zFwuRW5MDmGz+FNqTk3g2HT
+ 729F3k4hqcqusjhYM/LHJDGEZmhnXsI7oJJJrJIE6nEYFlMOGEElMm0snmZaVDoVwfL5/eqm99
+ +1yPM9g7ovh/8KbM0bQAAAA==
+X-Change-ID: 20261027-hfi-kexec-e7c4b7f584be
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, 
+ Ricardo Neri <ricardo.neri-calderon@linux.intel.com>, 
+ Len Brown <len.brown@intel.com>, 
+ Stanislaw Gruszka <stanislaw.gruszka@linux.intel.com>
+Cc: "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>, 
+ linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Andrew James <ajames@sfcompute.com>, 
+ John Ranzie <jranzie@sfcompute.com>, Jez Ng <jez@sfcompute.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793144314; l=3297;
- i=joseph@telaak.dev; s=default; h=from:subject:message-id;
- bh=mAomdJY7vVHiH3SZhOh4pFTjDcxX+9QU//lNz5w7C8k=;
- b=vSS727hInN79mdgdbbEnxkaH9nfyw29I2eqlH5yTXBpHRWd+JBkXWIjomvRCLL0svZjIC5Ss0
- XkqjJgR+XxyBDTttuhbQowaE/9gCd6BlQ6t4rSjhBGu++LLcV/MRK3D
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=vbM2RxVf3De5c1pQhdR2zZNLas2GaS+BXNVRR5qg3hI=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/default with auth_id=1203
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793146828; l=3133;
+ i=jez@sfcompute.com; s=20261027; h=from:subject:message-id;
+ bh=Q35Ngjcsidz/Av1fy+wnmQitU+ZbicSO+I9WZ2tM750=;
+ b=+KBJozgnpPCuPVlgyuw7GVpttKhbd1B1UkcoLr6T/hB4ZH/VHKiVtKh4xfpgpVlldAaF4QLbE
+ skjnuMuefbkAJwSab7sOmc4GTCkzw9naIBsm5wI5dSRTTzxrJWHK8qE
+X-Developer-Key: i=jez@sfcompute.com; a=ed25519;
+ pk=e8QxvBomwv96udVoo4EZvgPDtnl1YbPysb3vNdKi8JA=
+X-Endpoint-Received: by B4 Relay for jez@sfcompute.com/20261027 with auth_id=1337
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The TransDimension EHCI core in the Intel CE5300 SoCs (192e:0101,
-revision >= 6) has the Moorestown-style register extensions: host
-mode is selected in USBMODE_EX rather than USBMODE, and the port speed
-is reported in HOSTPC.
+HFI hardware writes updates to a table at a physical address the kernel
+programs. Nothing disables HFI on shutdown, and since commit b33f3d2677b8
+("thermal: intel: hfi: Enable HFI only when required") a kernel that
+starts without thermal netlink clients does not touch HFI at all. So
+after a kexec, hardware keeps writing into the previous kernel's table,
+which the new kernel treats as free memory.
 
-Without has_hostpc, ehci_reset() never programs USBMODE_EX, so the
-core stays in idle mode: USBMODE_EX reads back 0, USBCMD.RS never
-sets and no device is ever reported as connected, even though the
-probe itself succeeds. With it, USBMODE_EX reads back 0x23 and
-devices enumerate.
+We hit this on dual-socket Sapphire Rapids hosts (Xeon Platinum 8462Y+)
+that boot a Debian 6.1 kernel and kexec into a 7.0 kernel. The new
+kernel crashed in find_inode_fast() when the inode hash table landed on
+one of the old table pages. Reading MSR 0x17d0 on the running 7.0
+kernel showed both packages still pointing at the 6.1 kernel's tables,
+and the corruption had the HFI table layout: a timestamp, a changed
+flag, then one row per CPU.
 
-USBMODE itself always reads back 0 on this core, so
-tdi_in_host_mode() would report a running controller as not in host
-mode and ehci_halt() would return without stopping it. Add
-has_usbmode_ex so that, for this core only, tdi_in_host_mode() reads
-host mode back from USBMODE_EX. ChipIdea also sets has_hostpc but
-keeps host mode in USBMODE, so it is unaffected.
+Patch 1 disables HFI in a syscore shutdown callback, which covers
+reboot, power off and kexec, and keeps it disabled afterwards: on kexec,
+user space runs until machine_shutdown(), so a new thermal netlink
+client could otherwise enable HFI again. Patch 2 makes a starting kernel
+disable HFI if the previous kernel left it enabled. Patch 2 can only
+narrow the window: hardware can still write between kernel start and
+the moment the package's first CPU reaches the thermal online callback,
+which was about 30 seconds into boot on these hosts.
 
-Intel's CE5300 BSP sets has_hostpc for device 0x0101, revision >= 6.
+This is the kexec counterpart of the hibernation corruption fixed by
+commit 97566d09fd02 ("thermal: intel: hfi: Add syscore callbacks for
+system-wide PM"), which disables HFI for suspend and hibernation but not
+for shutdown.
 
-Tested on a Control4 EA-3 (Intel Atom CE5310) with v7.3-rc6: a
-full-speed CP2104 USB-UART bridge (10c4:ea60) and a high-speed USB
-flash drive (0781:5575) enumerate with this change, and
-ehci_shutdown() leaves the controller halted (USBCMD.RS clear,
-USBSTS.HCHalted set); without the USBMODE_EX check it stays running.
+Tested on one of the hosts above with both patches applied to this base,
+alternating 100 kexecs (kexec_file_load + reboot(LINUX_REBOOT_CMD_KEXEC))
+between the patched kernel and an unpatched 7.0 kernel. Before each
+kexec, a thermal netlink subscriber enabled HFI on both packages. All
+100 passed:
 
-Assisted-by: LLM
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+ - Patch 1: after each of the 50 kexecs out of the patched kernel, the
+   unpatched kernel read HW_FEEDBACK_CONFIG = 0 on both packages.
+
+ - Patch 2: after each of the 50 kexecs into the patched kernel, it
+   logged "HFI left enabled on package N, disabled" for both packages
+   and read HW_FEEDBACK_CONFIG = 0.
+
+A test-only 5 second sleep after the shutdown callback, with a thermal
+netlink client subscribing during it, showed that patch 1 keeps HFI
+disabled. Without the hfi_shutdown_done check, the next kernel found HFI
+enabled again.
+
+Thanks to Andrew James and John Ranzie for reviewing.
+
+The investigation and testing were done via Opus 5.5, as were the
+drafting of the patches and changelogs. I reviewed all of it.
+
 ---
- drivers/usb/host/ehci-hcd.c |  5 +++++
- drivers/usb/host/ehci-pci.c | 10 ++++++++++
- drivers/usb/host/ehci.h     |  1 +
- 3 files changed, 16 insertions(+)
+Jez Ng (2):
+      thermal: intel: hfi: Disable HFI on shutdown and kexec
+      thermal: intel: hfi: Disable HFI left enabled by a previous kernel
 
-diff --git a/drivers/usb/host/ehci-hcd.c b/drivers/usb/host/ehci-hcd.c
-index 75f780ec3b..fd7b47c0f0 100644
---- a/drivers/usb/host/ehci-hcd.c
-+++ b/drivers/usb/host/ehci-hcd.c
-@@ -170,6 +170,11 @@ static int tdi_in_host_mode (struct ehci_hcd *ehci)
- {
- 	u32		tmp;
- 
-+	if (ehci->has_usbmode_ex) {
-+		tmp = ehci_readl(ehci, &ehci->regs->usbmode_ex);
-+		return (tmp & USBMODE_EX_HC) == USBMODE_EX_HC;
-+	}
-+
- 	tmp = ehci_readl(ehci, &ehci->regs->usbmode);
- 	return (tmp & 3) == USBMODE_CM_HC;
- }
-diff --git a/drivers/usb/host/ehci-pci.c b/drivers/usb/host/ehci-pci.c
-index 3c7430a06e..183002ed7d 100644
---- a/drivers/usb/host/ehci-pci.c
-+++ b/drivers/usb/host/ehci-pci.c
-@@ -155,6 +155,16 @@ static int ehci_pci_setup(struct usb_hcd *hcd)
- 	case PCI_VENDOR_ID_TDI:
- 		if (pdev->device == PCI_DEVICE_ID_TDI_EHCI)
- 			hcd->has_tt = 1;
-+		/*
-+		 * The Intel CE5300 core selects host mode in USBMODE_EX and
-+		 * reports port speed in HOSTPC, as on Moorestown. USBMODE
-+		 * reads as 0 on it, so host mode is read back from
-+		 * USBMODE_EX too.
-+		 */
-+		if (is_intel_ce_tdi(pdev)) {
-+			ehci->has_hostpc = 1;
-+			ehci->has_usbmode_ex = 1;
-+		}
- 		break;
- 	case PCI_VENDOR_ID_AMD:
- 		/* AMD PLL quirk */
-diff --git a/drivers/usb/host/ehci.h b/drivers/usb/host/ehci.h
-index 855a9d08b0..e26e913ad5 100644
---- a/drivers/usb/host/ehci.h
-+++ b/drivers/usb/host/ehci.h
-@@ -248,6 +248,7 @@ struct ehci_hcd {			/* one per controller */
- 	#define OHCI_HCCTRL_LEN         0x4
- 	__hc32			*ohci_hcctrl_reg;
- 	unsigned		has_hostpc:1;
-+	unsigned		has_usbmode_ex:1; /* host mode is in USBMODE_EX */
- 	unsigned		has_tdi_phy_lpm:1;
- 	unsigned		has_ppcd:1; /* support per-port change bits */
- 	u8			sbrn;		/* packed release number */
+ drivers/thermal/intel/intel_hfi.c | 71 ++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 63 insertions(+), 8 deletions(-)
+---
+base-commit: 70f331d89564126fdcaaa37f25194fe391d8f3fa
+change-id: 20261027-hfi-kexec-e7c4b7f584be
 
--- 
-Git-155)
+Best regards,
+--  
+Jez Ng <jez@sfcompute.com>
 
