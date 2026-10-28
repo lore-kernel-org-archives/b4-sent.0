@@ -1,10 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Wed, 28 Oct 2026 14:17:20 +0300
-Subject: [PATCH v6 01/11] dt-bindings: nvmem: Add compatible for MSM8952
+Date: Wed, 28 Oct 2026 14:17:21 +0300
+Subject: [PATCH v6 02/11] dt-bindings: iommu: qcom,iommu: Add MSM8952 IOMMU
+ to SMMUv2 compatibles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-msm8952-initial-support-v6-1-e07ddd8bcf4c@mainlining.org>
+Message-Id: <20261028-msm8952-initial-support-v6-2-e07ddd8bcf4c@mainlining.org>
 References: <20261028-msm8952-initial-support-v6-0-e07ddd8bcf4c@mainlining.org>
 In-Reply-To: <20261028-msm8952-initial-support-v6-0-e07ddd8bcf4c@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -42,36 +43,38 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  Muzaffer Kadir <muzafferkadir@mainlining.org>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793186351; l=867;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793186351; l=969;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=6JMvRgvxX2he4PG9Fo4mqxxQVXCwNkBZtmdxWuS+a1o=;
- b=eFxhaIJBFJRwEG4YuRjlJYkHQkgP4ol3CAcS5l2JYB8Rkw5mXz63GtI8VvCqCHdxoGcGsFfU5
- k16BEjt6Ts6Dd1ew9ZGR84jCd8NVqexao5c6kAjmD+gnY7SrNQBCR8x
+ bh=ITO15xkGcBa687Mp0TLRvjwHoI0S0V/a2UgW08TP0cI=;
+ b=bbQ9B6ZoQ4CoytedQ/JXDc2wPLkfC+fkBp6G90/GKqHkDx7uw2JbSd1kXJKeLW7gXIYZCAyvc
+ RiNyjtD+3PsBdiW3MeVjBZDs5EdVLeBFpeGiimDFRPJzkq2+uXuskO1
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the QFPROM block found on MSM8952.
+Add MSM8952 compatible string with "qcom,msm-iommu-v2" as fallback
+for the MSM8952 IOMMU which is compatible with Qualcomm's secure
+fw "SMMU v2" implementation.
 
 Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml | 1 +
+ Documentation/devicetree/bindings/iommu/qcom,iommu.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml b/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
-index 566304ed4c78..646f2e8dcf4d 100644
---- a/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
-+++ b/Documentation/devicetree/bindings/nvmem/qcom,qfprom.yaml
-@@ -37,6 +37,7 @@ properties:
-           - qcom,msm8916-qfprom
-           - qcom,msm8917-qfprom
-           - qcom,msm8937-qfprom
-+          - qcom,msm8952-qfprom
-           - qcom,msm8960-qfprom
-           - qcom,msm8974-qfprom
-           - qcom,msm8976-qfprom
+diff --git a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
+index 93a489025317..9952b9da9a6a 100644
+--- a/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
++++ b/Documentation/devicetree/bindings/iommu/qcom,iommu.yaml
+@@ -27,6 +27,7 @@ properties:
+           - const: qcom,msm-iommu-v1
+       - items:
+           - enum:
++              - qcom,msm8952-iommu
+               - qcom,msm8953-iommu
+               - qcom,msm8976-iommu
+           - const: qcom,msm-iommu-v2
 
 -- 
 2.55.0
