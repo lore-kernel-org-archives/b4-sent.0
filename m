@@ -1,116 +1,120 @@
-From: Jez Ng <jez@sfcompute.com>
-Date: Wed, 28 Oct 2026 00:14:46 +0000
-Subject: [PATCH 2/2] thermal: intel: hfi: Disable HFI left enabled by a
- previous kernel
+From: Zhiwei Liang <zhiwei.liang@zliang.me>
+Date: Wed, 28 Oct 2026 02:57:22 -0400
+Subject: [PATCH] btrfs: do not leak -ERESTARTSYS from FITRIM to userspace
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-hfi-kexec-v1-2-956234dcfb2b@sfcompute.com>
-References: <20261028-hfi-kexec-v1-0-956234dcfb2b@sfcompute.com>
-In-Reply-To: <20261028-hfi-kexec-v1-0-956234dcfb2b@sfcompute.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, 
- Ricardo Neri <ricardo.neri-calderon@linux.intel.com>, 
- Len Brown <len.brown@intel.com>, 
- Stanislaw Gruszka <stanislaw.gruszka@linux.intel.com>
-Cc: "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>, 
- linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Andrew James <ajames@sfcompute.com>, 
- John Ranzie <jranzie@sfcompute.com>, Jez Ng <jez@sfcompute.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793146828; l=3879;
- i=jez@sfcompute.com; s=20261027; h=from:subject:message-id;
- bh=MFHvCGMUfhFOc56f4vLbDg8eYQ8Wf8YlM3SPBL0W/oY=;
- b=FJFpb2EWq1gVcnPUpk8FY5Wsa6tnVG0gXGdAVE6kOPndaZVq8RYjjKa1x91I8PuEVgSph0pUT
- 01u9WWPekmHDMwIpgx962TDfY1uKUTpXwh0FafqaZ/4YKmk63b0E5VJ
-X-Developer-Key: i=jez@sfcompute.com; a=ed25519;
- pk=e8QxvBomwv96udVoo4EZvgPDtnl1YbPysb3vNdKi8JA=
-X-Endpoint-Received: by B4 Relay for jez@sfcompute.com/20261027 with auth_id=1337
+Message-Id: <20261028-btrfs-fitrim-freezer-v1-1-0ad1d58aa94d@zliang.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3Myw5AMBBG4VeRWZtESxCvIhbFX2bhkqmIEO+us
+ fwW5zwUoIJATfKQ4pQg2xph0oSG2a0TWMZospktTWZr7g/1gb0cKgt7BW4oj8XQO1Oigskpprv
+ Cy/Vv2+59Pw9B65ZmAAAA
+X-Change-ID: 20261028-btrfs-fitrim-freezer-d4cba16e7e13
+To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
+ Luca Stefani <luca.stefani.ge1@gmail.com>
+Cc: Qu Wenruo <wqu@suse.com>, Filipe Manana <fdmanana@suse.com>, 
+ Robbie Ko <robbieko@synology.com>, linux-btrfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Zhiwei Liang <zhiwei.liang@zliang.me>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793170644; l=3889;
+ i=zhiwei.liang@zliang.me; s=20261028; h=from:subject:message-id;
+ bh=Ad5ltHNBqZJjriNkGAbAzE09HDU828bU7XQWfgn5xEc=;
+ b=l5aVf854cSCkVputMgv0JYK/81X4hxuZ5sdDmE3fJg7kTXs4wErv/xbLQ17SVBAyjy7nPwgFt
+ R72ccD/s9QUA/elO70Yn0HB115xNrFGSHBo6jACTPusKs/MY7vSrXc8
+X-Developer-Key: i=zhiwei.liang@zliang.me; a=ed25519;
+ pk=+Dr+pFt7zVWal4wTkqPegKXbLTdm/ko6GA/XhKr6NO8=
+X-Endpoint-Received: by B4 Relay for zhiwei.liang@zliang.me/20261028 with auth_id=1339
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit b33f3d2677b8 ("thermal: intel: hfi: Enable HFI only when
-required"), the kernel only programs HFI when a thermal netlink client
-subscribes to events. Before that, the first CPU of each package to come
-online wrote a fresh table address and enabled HFI, which replaced any
-setup a previous kernel left behind.
+When a suspend starts during FITRIM, fstrim can fail with:
 
-Now, if the previous kernel left HFI enabled, for example across kexec,
-nothing touches it. Hardware keeps writing updates into the previous
-kernel's table, which is free memory in this kernel and can be allocated
-for anything. On dual-socket Sapphire Rapids systems kexec'ing from a 6.1
-kernel into 7.0, these writes corrupted the inode hash table and caused
-oopses in find_inode_fast().
+  fstrim: /: FITRIM ioctl failed: Unknown error 512
 
-When the first CPU of a package comes online, check
-MSR_IA32_HW_FEEDBACK_CONFIG and disable HFI if it is already enabled. If
-a client subscribes later, HFI is re-enabled with this kernel's table as
-before.
+On a Fedora 44 laptop with kernel 7.2.7, 3 of the last 21 weekly
+fstrim.service runs were in progress when an automatic suspend started.
+All three failed this way and left the filesystem untrimmed.
 
-This narrows the window but cannot close it. Hardware may still write
-to the old table until the package's first CPU reaches the thermal
-online callback, which runs from a device initcall. On the systems
-above that was about 30 seconds after this kernel started, 21 of which
-were spent in acpi_init(). In testing there, hardware wrote the table
-once right after HFI was enabled and not again over several minutes,
-idle or with every CPU busy, but the rate under other loads is
-unknown. The complete fix is for the previous kernel to disable HFI on
-shutdown, as "thermal: intel: hfi: Disable HFI on shutdown and kexec"
-does; this covers previous kernels that do not.
+Since commit 69313850dce3 ("btrfs: add cancellation points to trim
+loops"), the trim loops return -ERESTARTSYS when
+btrfs_trim_interrupted() sees freezing(current), and FITRIM returns it
+to userspace. Since commit bfb670b9183b ("btrfs: handle user interrupt
+properly in btrfs_trim_fs()"), btrfs_trim_fs() returns it right away.
 
-Also update the kernel-doc of intel_hfi_online(), which still described
-it as always enabling HFI.
+-ERESTARTSYS is only valid while a signal is pending, because only the
+signal handling on syscall exit turns it into a restart. But
+freeze_processes() first sets pm_freezing, which makes freezing() true
+for every user task. Then it walks the task list and sends each task a
+fake signal. The trim loops check btrfs_trim_interrupted() after every
+extent. If a check falls in this window, the loop returns -ERESTARTSYS
+with no signal pending. Nothing restarts the syscall. On that laptop,
+with a few thousand threads, freezing user space took 2 to 5 ms in each
+of the three suspends above, and all three runs hit this window.
 
-Fixes: b33f3d2677b8 ("thermal: intel: hfi: Enable HFI only when required")
-Cc: stable@vger.kernel.org
-Reviewed-by: Andrew James <ajames@sfcompute.com>
-Reviewed-by: John Ranzie <jranzie@sfcompute.com>
-Signed-off-by: Jez Ng <jez@sfcompute.com>
+Make btrfs_trim_interrupted() treat a freeze as an interruption only
+once the fake signal has arrived, i.e. when
+freezing(current) && signal_pending(current). freeze_processes() sends
+that signal in the same call. The trim loop stops at the next check
+after it, so suspend is not delayed.
+
+The restarted syscall re-reads struct fstrim_range from user memory.
+When the device phase is interrupted, btrfs_trim_fs() has already stored
+the trimmed byte count in range->len, and btrfs_ioctl_fitrim() copies
+the struct back unconditionally. The restart is then asked to trim
+[start, start + trimmed) instead of the requested range, or fails with
+-EINVAL when nothing was counted yet. Skip the copy_to_user() for
+-ERESTARTSYS. In all other cases the partial count is still copied back.
+
+Tested in a VM with pm_test=freezer. Without the patch, 18 of 20 freezes
+during a trim leaked errno 512, and 10 of 10 restarts after a
+device-phase interruption failed with -EINVAL. With the patch, all 30
+runs restarted and trimmed the full amount.
+
+Fixes: 69313850dce3 ("btrfs: add cancellation points to trim loops")
+CC: stable@vger.kernel.org # 5.15+
+Signed-off-by: Zhiwei Liang <zhiwei.liang@zliang.me>
 ---
- drivers/thermal/intel/intel_hfi.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+ fs/btrfs/free-space-cache.h | 3 ++-
+ fs/btrfs/ioctl.c            | 7 +++++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/thermal/intel/intel_hfi.c b/drivers/thermal/intel/intel_hfi.c
-index 8ff094eccbaf..b97f8113930c 100644
---- a/drivers/thermal/intel/intel_hfi.c
-+++ b/drivers/thermal/intel/intel_hfi.c
-@@ -413,13 +413,14 @@ static bool hfi_disable_if_enabled(void)
+diff --git a/fs/btrfs/free-space-cache.h b/fs/btrfs/free-space-cache.h
+index e22443598b..cba2f5fd6b 100644
+--- a/fs/btrfs/free-space-cache.h
++++ b/fs/btrfs/free-space-cache.h
+@@ -58,7 +58,8 @@ static inline bool btrfs_free_space_trimming_bitmap(
+ 
+ static inline bool btrfs_trim_interrupted(void)
+ {
+-	return fatal_signal_pending(current) || freezing(current);
++	return fatal_signal_pending(current) ||
++	       (freezing(current) && signal_pending(current));
  }
  
- /**
-- * intel_hfi_online() - Enable HFI on @cpu
-- * @cpu:	CPU in which the HFI will be enabled
-+ * intel_hfi_online() - Set up HFI on @cpu
-+ * @cpu:	CPU that is coming online
-  *
-- * Enable the HFI to be used in @cpu. The HFI is enabled at the package
-- * level. The first CPU in the package to come online does the full HFI
-- * initialization. Subsequent CPUs will just link themselves to the HFI
-- * instance of their package.
-+ * The HFI is enabled at the package level. The first CPU in the package to
-+ * come online does the full HFI initialization, which includes disabling HFI
-+ * if a previous kernel left it enabled. HFI is enabled only when there are
-+ * thermal netlink clients. Subsequent CPUs will just link themselves to the
-+ * HFI instance of their package.
-  *
-  * This function is called before enabling the thermal vector in the local APIC
-  * in order to ensure that @cpu has an associated HFI instance when it receives
-@@ -462,6 +463,14 @@ void intel_hfi_online(unsigned int cpu)
- 	if (hfi_instance->hdr)
- 		goto enable;
+ /*
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index ac070c745b..b02c59cbb0 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -529,6 +529,13 @@ static noinline int btrfs_ioctl_fitrim(struct btrfs_fs_info *fs_info,
+ 	range.minlen = max(range.minlen, minlen);
+ 	ret = btrfs_trim_fs(fs_info, &range);
  
 +	/*
-+	 * A previous kernel may have left HFI enabled across kexec. Hardware
-+	 * would keep writing to that kernel's table, in memory this kernel now
-+	 * owns.
++	 * A restart re-reads the range from user space, so do not clobber it
++	 * with the partial len the rerun would otherwise take as its input.
 +	 */
-+	if (hfi_disable_if_enabled())
-+		pr_info("HFI left enabled on package %u, disabled\n", pkg_id);
++	if (ret == -ERESTARTSYS)
++		return ret;
 +
- 	/*
- 	 * Hardware is programmed with the physical address of the first page
- 	 * frame of the table. Hence, the allocated memory must be page-aligned.
+ 	if (copy_to_user(arg, &range, sizeof(range)))
+ 		return -EFAULT;
+ 
 
+---
+base-commit: e17e64baf63f7c85bec209ed73f14c1b2a7e39fb
+change-id: 20261028-btrfs-fitrim-freezer-d4cba16e7e13
+
+Best regards,
 -- 
-2.39.5
+Zhiwei Liang <zhiwei.liang@zliang.me>
 
