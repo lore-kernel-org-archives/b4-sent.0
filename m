@@ -1,50 +1,93 @@
 From: Luca Stefani <luca.stefani.ge1@gmail.com>
-Subject: [PATCH 0/2] btrfs: don't expose ERESTARTSYS to userspace
-Date: Wed, 28 Oct 2026 18:55:48 +0100
-Message-Id: <20261028-b4-btrfs-fitrim-interruption-v1-0-bf5c53738b3a@gmail.com>
+Date: Wed, 28 Oct 2026 18:55:49 +0100
+Subject: [PATCH 1/2] btrfs: account partially completed discards
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNwQrCMBBEf6Xs2cUkVA3+inhI0o1dwbRsUimU/
- ruJnjy+YebNBpmEKcO120DozZmnVEEfOgijSw9CHiqDUeaslbHoe/RFYsbIRfiFnAqJLHOpQ+y
- to8vJKh2dgqqYhSKvX/3t/uO8+CeF0pyt4V0m9OJSGFsUpoHW499Ba8C+fwD6eobCqgAAAA==
-X-Change-ID: 20261028-b4-btrfs-fitrim-interruption-48ae75801fa0
+Message-Id: <20261028-b4-btrfs-fitrim-interruption-v1-1-bf5c53738b3a@gmail.com>
+References: <20261028-b4-btrfs-fitrim-interruption-v1-0-bf5c53738b3a@gmail.com>
+In-Reply-To: <20261028-b4-btrfs-fitrim-interruption-v1-0-bf5c53738b3a@gmail.com>
 To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
  Luca Stefani <luca.stefani.ge1@gmail.com>
 Cc: Robbie Ko <robbieko@synology.com>, Filipe Manana <fdmanana@suse.com>, 
- linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Zhiwei Liang <zhiwei.liang@zliang.me>, Qu Wenruo <wqu@suse.com>
+ linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793210149; l=774;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793210149; l=2358;
  i=luca.stefani.ge1@gmail.com; s=20261028; h=from:subject:message-id;
- bh=LP4DYsLlDaDdL3BoYv5vWPMKYJ6s1RRwL4P6KPDAzyQ=;
- b=uIUbdgWZ2fNLrejSX67UdUxqI1ETM6ecJqN4cAjl7NEPosiANqjvj85RUUh0BRBtDgpo9orL2
- allb0rgwTrPDbujmi1NtLaPeza3YnHEno2ybDI1XYTb4fsRsDDDnXbk
+ bh=F8Pv6qkXxT7wewljV2XNrswlKdtAJgpfaMISGxrcbhU=;
+ b=+2gdX7sfz1h0qgzIpAuAL6fcd6qg9uioKN7l5daPZivzQYYj9AoiKdo6Wa+usHadZ3K6F0llM
+ pY2vmhhMZxWBC3D/CtV6lD9mGMraSPSEUdx6NAn3kupD90Dn+Tp9bOZ
 X-Developer-Key: i=luca.stefani.ge1@gmail.com; a=ed25519;
  pk=0OIKU9oiaC0ALN4kqvw7ZbPFXqsBLvWm7MhEDYv3PyI=
 X-Endpoint-Received: by B4 Relay for luca.stefani.ge1@gmail.com/20261028 with auth_id=1347
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-trim can expose -ERESTARTSYS when the trim loops gets interrupted by
-a freezer request.
-
-Preserve byte counts of partially completed discards.
-Consume cancellation at btrfs_trim_fs(), and report partial progress.
+A discard can complete part of a range before a later chunk is interrupted
+or fails. btrfs_issue_discard() reports the bytes already discarded, but
+its callers only accumulate those bytes when the entire operation succeeds.
 
 Link: https://lore.kernel.org/20261028-btrfs-fitrim-freezer-v1-1-0ad1d58aa94d@zliang.me/
+Signed-off-by: Luca Stefani <luca.stefani.ge1@gmail.com>
 ---
-Luca Stefani (2):
-      btrfs: account partially completed discards
-      btrfs: don't report failure when trim is interrupted
+ fs/btrfs/extent-tree.c      | 5 ++---
+ fs/btrfs/free-space-cache.c | 5 ++---
+ 2 files changed, 4 insertions(+), 6 deletions(-)
 
- fs/btrfs/extent-tree.c      | 10 ++++------
- fs/btrfs/free-space-cache.c |  5 ++---
- 2 files changed, 6 insertions(+), 9 deletions(-)
----
-base-commit: 65ba8f34ec886ec72b2c07ddc8cf3d815c32869d
-change-id: 20261028-b4-btrfs-fitrim-interruption-48ae75801fa0
+diff --git a/fs/btrfs/extent-tree.c b/fs/btrfs/extent-tree.c
+index 9b0a5c6b96f3..242db255cf1c 100644
+--- a/fs/btrfs/extent-tree.c
++++ b/fs/btrfs/extent-tree.c
+@@ -1463,6 +1463,7 @@ int btrfs_discard_extent(struct btrfs_fs_info *fs_info, u64 bytenr,
+ 				continue;
+ 
+ 			ret = do_discard_extent(stripe, &bytes);
++			discarded_bytes += bytes;
+ 			if (ret) {
+ 				/*
+ 				 * Keep going if discard is not supported by the
+@@ -1471,8 +1472,6 @@ int btrfs_discard_extent(struct btrfs_fs_info *fs_info, u64 bytenr,
+ 				if (ret != -EOPNOTSUPP)
+ 					break;
+ 				ret = 0;
+-			} else {
+-				discarded_bytes += bytes;
+ 			}
+ 		}
+ 		kfree(stripes);
+@@ -6703,6 +6702,7 @@ static int btrfs_trim_free_extents_throttle(struct btrfs_device *device,
+ 
+ 		ret = btrfs_issue_discard(device->bdev, start, len,
+ 					  &bytes);
++		*trimmed += bytes;
+ 		if (!ret)
+ 			btrfs_set_extent_bit(&device->alloc_state, start,
+ 					     start + bytes - 1, CHUNK_TRIMMED, NULL);
+@@ -6712,7 +6712,6 @@ static int btrfs_trim_free_extents_throttle(struct btrfs_device *device,
+ 			break;
+ 
+ 		start += len;
+-		*trimmed += bytes;
+ 		trim_len += len;
+ 		if (trim_len >= BTRFS_MAX_TRIM_LENGTH) {
+ 			*ret_next_pos = start;
+diff --git a/fs/btrfs/free-space-cache.c b/fs/btrfs/free-space-cache.c
+index bff6e5b372d6..a85806bcf87a 100644
+--- a/fs/btrfs/free-space-cache.c
++++ b/fs/btrfs/free-space-cache.c
+@@ -2415,10 +2415,9 @@ static int do_trimming(struct btrfs_block_group *block_group,
+ 	spin_unlock(&space_info->lock);
+ 
+ 	ret = btrfs_discard_extent(fs_info, start, bytes, &trimmed, false);
+-	if (!ret) {
+-		*total_trimmed += trimmed;
++	*total_trimmed += trimmed;
++	if (!ret)
+ 		trim_state = BTRFS_TRIM_STATE_TRIMMED;
+-	}
+ 
+ 	if (reserved_start < start)
+ 		__btrfs_add_free_space(block_group, reserved_start,
 
-Best regards,
---  
-Luca Stefani <luca.stefani.ge1@gmail.com>
+-- 
+2.56.0
 
