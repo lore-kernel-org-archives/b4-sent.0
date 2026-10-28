@@ -1,205 +1,184 @@
-From: Usman Malik <usmanmalik@engineer.com>
-Date: Wed, 28 Oct 2026 15:10:40 +0100
-Subject: [PATCH ipsec] xfrm: use software GSO for inner tunnels without
- crypto offload
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Wed, 28 Oct 2026 09:57:51 -0500
+Subject: [PATCH wireless-next] wifi: mac80211: flush TX for a new key only
+ if it needs tailroom
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-xfrm-inner-gso-v1-1-1908f0eb7313@engineer.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/yWMSwqDQBAFryK9tkEH/OUqwUUc35gOZJTuJAji3
- Z3osgqqNjKowOiWbaT4ickcE5R5Rv75iBNYxsTkCleXhWt4DfpmiRHKk80c2qGrao+2GytK0aI
- Isp7DO8li8NRf2r7DC/7zn9G+H1sOCA55AAAA
-X-Change-ID: 20261027-xfrm-inner-gso-f8b956ce89d5
-To: Steffen Klassert <steffen.klassert@secunet.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Cosmin Ratiu <cratiu@nvidia.com>, Leon Romanovsky <leon@kernel.org>, 
- stable@vger.kernel.org, Usman Malik <usmanmalik@engineer.com>
+Message-Id: <20261028-b4-mac80211-tailroom-v1-1-f3cfbab9ef5f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAG4N4moC/yWMQQrCMBAAv1L27EIS2hL8inhI0o2utIlkoxZK/
+ 26qx2GY2UCoMAmcuw0KvVk4pwb61EG4u3Qj5KkxGGVGrYxF3+PiglVGa6yO55Lzgr0dVPR2Iho
+ jtPRZKPL6217gw4VmEsFEa4XrX8vLPyjUYw37/gVFEo1OhwAAAA==
+X-Change-ID: 20261028-b4-mac80211-tailroom-4850fb8dee6f
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8165;
- i=usmanmalik@engineer.com; h=from:subject:message-id;
- bh=mTypX1zNQGDPGclAGpw+WOJIpIe4eb8zZnLMHI6cuAM=;
- b=owEBbQKS/ZANAwAKATUQMBv7n6GlAcsmYgBq4gNKFIjTrzQPmHyXaPovwFr2zNieUmeCZWrvv
- i7jYzwhpLWJAjMEAAEKAB0WIQTkhh6bEhkO248PEok1EDAb+5+hpQUCauIDSgAKCRA1EDAb+5+h
- pfK9EACbjA4MOdXK6k6YcsMwM2+JE0Ur2DJOHVwEa83y1wKMkT0zAgOCyRL15jOurpeejtVIqBh
- o0AwSv6FJLjeIHOfCgBaRwdmnAdscUqa0YeBHaKqr9bkObfaUNSPMVBtSuagf/TiLdFit9lnw5P
- ESMsqHzbOGu8Lyb0wytmjb7FQ0Fw8qjQJJftewhgR32BR3dOQPYtlfRALBFJZHvWuWPrOHDepTI
- Qmj2k2zNwrxc86L+k7X4X9tj/ovy3bilgs93/zb84qamt2Fm3xJybMuj23S072zHJHoN7VDbBsT
- WUpgEylLN0utsqBvwQq4TKRbb6lU7UBif1hA+8M53JJcb6DDGDuLuYMga16Kv2/0Opcj5OJ+6Vb
- MthGyzXC38fFO6EsrjXclDgAujvAbG0X88JwNPA28Q0hYYNKAegtx+FgX+TFNa27THe2q/k87OR
- 4B354bvoZ4IRNuyM/Yr0FoZ6xeiEUv224kNsTfamfrfu+sfvSohIqXZ17cXOa3ImqpkAntyUCkN
- /jrL/PuA8RgAm+5c6FoGMjK4Oxa0l2xal00+tx4HhRu8S4Eo4HvD1OG/z39QZHeJ3z9pns3Wcw2
- xV3dE9wAgOWqHBOCYfCqgpXAOxTkKSZCiY9NvAXn3Q1ljvJ1kZ5E0/j3hn9MMOyLrVbnKtKGeuh
- mGY+PWJah3AOtNg==
-X-Developer-Key: i=usmanmalik@engineer.com; a=openpgp;
- fpr=E4861E9B12190EDB8F0F12893510301BFB9FA1A5
-X-Endpoint-Received: by B4 Relay for usmanmalik@engineer.com/default with auth_id=1336
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793199470; l=6194;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=VVRIR+z05sVgNPbb1Hz7v+/VmM8Tn2LY06AEVY6Gvuo=;
+ b=riVuGQy3wUiwpyg36tH+bNlgkKY6M1SeroWWKn6mwxv9nf1y7Wx1dMHzWRLWeXRgc4dTLYe8o
+ 4RKBBP/wyA4AwZASA8w2AbLqbBlEyUcY5j4CCW/9vKJ5ozKwKwda7ww
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 0aae2867aa60 ("xfrm_output: Force software GSO only in tunnel
-mode") limits the software GSO of packets with skb->inner_protocol set
-to tunnel mode. Its message says that packets with the crypto in
-software still get software GSO in the else branch. That holds only
-while no ESP GSO handler is registered. With esp4_offload or
-esp6_offload loaded when the SA is created, x->type_offload is set and
-xfrm_dev_offload_ok() returns true for an SA without an offload device.
-A transport-mode SA with software crypto then sends such a packet down
-the SKB_GSO_ESP path.
+ieee80211_key_link() counts every key it installs as needing tailroom
+before ieee80211_key_replace() uploads it to the driver, and
+increment_tailroom_need_count() runs synchronize_net() when that count
+goes from zero to one. On an AP whose keys are all in hardware the count
+is zero between stations, so each station's pairwise key waits for an
+RCU grace period, and hostapd waits on its NL80211_CMD_NEW_KEY before
+it authorizes the station and serves anyone else. Commit 133bf90dbb8b
+("mac80211: restrict delayed tailroom needed decrement") keeps the
+delayed decrement, which avoids this on a roam, to station interfaces.
 
-That path does not handle an inner IP tunnel. For an ipip or ip6tnl
-packet, xfrm{4,6}_transport_gso_segment() pass the packet to
-inet_gso_segment(), which leaves the transport header of each segment at
-the inner TCP header. __xfrm_transport_prep() expects it right after the
-ESP header and IV, so esp_xmit() and esp6_xmit() write the ESP header at
-offset 4 of the inner IPv4 header and encrypt from the TCP header. The
-first 4 bytes of the inner IPv4 header go out in clear, the receiver
-drops the segment with XfrmInStateProtoError, and bulk TCP through the
-tunnel falls to tens of Mbit/s. The v6.13 release does not show this,
-v6.14 does, and so do the stable kernels that carry 0aae2867aa60
-(measured on 5.4.293, 5.15.223 and 6.1.190).
+Measured on an IPQ8074 AP (ath11k, HZ=100), WPA2-PSK, the same non-MFP
+station roaming in, hostapd's NEW_KEY for the pairwise key to its next
+step: 31-65 ms (median ~42, 10 joins) on a BSS without PMF; 0-2 ms on
+the same BSS with ieee80211w=1, whose software BIP keys (ath11k leaves
+BIP to mac80211) keep the count above zero. A driver that does BIP in
+hardware pays it with PMF on too.
 
-Use software GSO for packets with skb->inner_protocol set when the SA
-has no offload device, as before 0aae2867aa60. An SA with crypto offload
-on a device keeps the SKB_GSO_ESP path in transport mode, which is what
-that commit is for.
+The flush keeps frames sized without tailroom from meeting a key that
+needs it in software. A key that replaces none can't be met before
+ieee80211_key_replace() publishes it, by which time it is known whether
+it went to the hardware without needing tailroom, giving the count
+back. So keep counting it beforehand, but flush on the count's
+transition from zero to one only if the key still needs tailroom when
+it is about to be published. A key replacing another is handled as
+before, since the old key may drop to software while still in use.
 
-The transport GSO handlers themselves still do not handle an inner IP
-tunnel. An SA with crypto offload that falls back to software
-segmentation in validate_xmit_xfrm() takes the same path. That is a
-separate change in xfrm{4,6}_transport_gso_segment() and is not part of
-this patch, which restores the behaviour before 0aae2867aa60 for SAs
-without an offload device.
+With this, the same joins took 0-2 ms without PMF (13 handshakes).
 
-Tested on v7.3 in a VM with two network namespaces on a veth, a
-rfc4106(gcm(aes)) SA between the outer addresses, esp4_offload and
-esp6_offload loaded, TSO on and 3 MB of bulk TCP per run, plus a 4 s
-iperf3 run. Both test kernels also carried a local esp6_xmit() change
-that builds the IV from the sequence number read before the increment,
-as esp_xmit() does, so that the capture analysis could check nonces as
-well. That change does not touch the path changed here. The sender
-capture was decrypted with the SA keys. Without this patch, two ip6tnl
-runs had 22 and 24 malformed packets at 36 Mbit/s, two ipip runs 18 and
-36 at about 50 Mbit/s, and iperf3 over ip6tnl gave 195 Mbit/s with
-XfrmInStateProtoError +358. With it, every ESP packet decrypts at offset
-0, no inner header byte is in clear, XfrmInStateProtoError stays at +0,
-the same runs reach 1.0 to 2.4 Gbit/s and iperf3 gives 2.62 Gbit/s. A
-function profile shows these packets now go through xfrm_output_gso(),
-while plain TCP over the same SA still goes through esp6_gso_segment().
-vxlan and geneve over a transport-mode and a tunnel-mode SA were clean
-before and after. In transport mode they now take the software GSO path
-as well. Hardware ESP offload was not tested, as no such NIC was
-available, and neither were BEET and IP-TFS mode, nor GRE over a
-transport-mode SA, which this change also moves to software GSO.
-
-The bug was found while measuring bulk TCP throughput through an ip6tnl
-tunnel over a transport-mode ESP SA.
-
-Fixes: 0aae2867aa60 ("xfrm_output: Force software GSO only in tunnel mode")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Usman Malik <usmanmalik@engineer.com>
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-The malformed layout is visible without keys. On the sender,
+ net/mac80211/key.c | 61 ++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 50 insertions(+), 11 deletions(-)
 
-  tcpdump -ni va 'ip6 proto 50 and ip6[56:2] = 0x4500 and ip6[60:4] = 0x1001'
-
-lists exactly the malformed packets (22 of 22 in one v7.3 run, 0 with
-this patch). For ipip the offsets are ip[36:2] and ip[40:4].
-
-Reproducer for the ip6tnl case. It prints the sender rate and the
-receiver's XfrmInStateProtoError delta with TSO on and off. Run as root
-with iproute2, ethtool and iperf3. Rerun after "ip netns del a" and "ip
-netns del b" if it stops early. On a plain v7.3 it printed 107 Mbit/s
-and +366 with TSO on, 2.72 Gbit/s and +0 with TSO off. With this patch
-it printed 2.62 Gbit/s and +0 with TSO on.
-
-  #!/bin/sh
-  set -e
-  modprobe -a esp4_offload esp6_offload
-  A="ip netns exec a"; B="ip netns exec b"
-  ip netns add a; ip netns add b
-  ip link add va type veth peer name vb
-  ip link set va netns a; ip link set vb netns b
-  $A ip link set lo up; $B ip link set lo up
-  $A ip link set dev va mtu 9000 up; $B ip link set dev vb mtu 9000 up
-  $A ip -6 addr add fd00:a::1/64 dev va nodad
-  $B ip -6 addr add fd00:a::2/64 dev vb nodad
-  $A ip -6 tunnel add t mode any local fd00:a::1 remote fd00:a::2 \
-     encaplimit none hoplimit 64
-  $B ip -6 tunnel add t mode any local fd00:a::2 remote fd00:a::1 \
-     encaplimit none hoplimit 64
-  $A ip link set dev t mtu 8926 up; $B ip link set dev t mtu 8926 up
-  $A ip addr add 10.9.0.1/30 dev t; $B ip addr add 10.9.0.2/30 dev t
-  key() { head -c 36 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
-  K1=0x$(key); K2=0x$(key)
-  for n in a b; do
-    ip netns exec $n ip xfrm state add src fd00:a::1 dst fd00:a::2 \
-      proto esp spi 0x1001 reqid 1 mode transport replay-window 128 \
-      aead 'rfc4106(gcm(aes))' $K1 128
-    ip netns exec $n ip xfrm state add src fd00:a::2 dst fd00:a::1 \
-      proto esp spi 0x1002 reqid 2 mode transport replay-window 128 \
-      aead 'rfc4106(gcm(aes))' $K2 128
-  done
-  $A ip xfrm policy add src fd00:a::1/128 dst fd00:a::2/128 dir out \
-     tmpl proto esp reqid 1 mode transport
-  $A ip xfrm policy add src fd00:a::2/128 dst fd00:a::1/128 dir in \
-     tmpl proto esp reqid 2 mode transport
-  $B ip xfrm policy add src fd00:a::2/128 dst fd00:a::1/128 dir out \
-     tmpl proto esp reqid 2 mode transport
-  $B ip xfrm policy add src fd00:a::1/128 dst fd00:a::2/128 dir in \
-     tmpl proto esp reqid 1 mode transport
-  $B iperf3 -s -D
-  err() { $B awk '$1=="XfrmInStateProtoError"{print $2}' \
-          /proc/net/xfrm_stat; }
-  run() { e0=$(err)
-    $A iperf3 -c 10.9.0.2 -t 4 | awk '/sender/{print $7,$8,"retr",$9}'
-    echo "XfrmInStateProtoError +$(( $(err) - e0 ))"; }
-  echo "tso on";  run
-  $A ethtool -K t tso off
-  echo "tso off"; run
-  pkill iperf3; ip netns del a; ip netns del b
-
-The esp6_xmit() change in the test kernels does what Jeremy Jean's
-"[PATCH ipsec 1/7] xfrm: esp6: use the current sequence number for the
-IV" does, except that esp.seqno is built after the seq.hi update, as in
-esp_xmit(). The two differ only at a seq.low wrap. This patch was not
-run on a v7.3 without that change.
-https://lore.kernel.org/netdev/20260930144523.435271-3-Jeremy.Jean@oss.cyber.gouv.fr/
-
-Jeremy Jean's "[PATCH ipsec 6/7] xfrm: segment untrusted GSO packets
-before sequence allocation", not applied yet, changes the same condition
-in xfrm_output() and moves the skb->encapsulation line above it, so
-whichever lands second needs a rebase. 6/7 adds SKB_GSO_DODGY packets to
-the software GSO case. The packets here come from a local TCP socket and
-are not DODGY, so 6/7 does not cover this case.
-https://lore.kernel.org/netdev/20260930144523.435271-8-Jeremy.Jean@oss.cyber.gouv.fr/
----
- net/xfrm/xfrm_output.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/net/xfrm/xfrm_output.c b/net/xfrm/xfrm_output.c
-index e305ba32e..c370d28a8 100644
---- a/net/xfrm/xfrm_output.c
-+++ b/net/xfrm/xfrm_output.c
-@@ -808,7 +808,8 @@ int xfrm_output(struct sock *sk, struct sk_buff *skb)
- 		skb->encapsulation = 1;
+diff --git a/net/mac80211/key.c b/net/mac80211/key.c
+index d32c61a90..ee646f5d5 100644
+--- a/net/mac80211/key.c
++++ b/net/mac80211/key.c
+@@ -73,6 +73,20 @@ update_vlan_tailroom_need_count(struct ieee80211_sub_if_data *sdata, int delta)
+ 	rcu_read_unlock();
+ }
  
- 		if (skb_is_gso(skb)) {
--			if (skb->inner_protocol && x->props.mode == XFRM_MODE_TUNNEL)
-+			if (skb->inner_protocol &&
-+			    (x->props.mode == XFRM_MODE_TUNNEL || !x->xso.dev))
- 				return xfrm_output_gso(net, sk, skb);
++/*
++ * Count a key as needing tailroom, and return whether the count went from
++ * zero to one, so that TX must be flushed before a key needing tailroom is
++ * used (see increment_tailroom_need_count()).
++ */
++static bool __increment_tailroom_need_count(struct ieee80211_sub_if_data *sdata)
++{
++	lockdep_assert_wiphy(sdata->local->hw.wiphy);
++
++	update_vlan_tailroom_need_count(sdata, 1);
++
++	return !sdata->crypto_tx_tailroom_needed_cnt++;
++}
++
+ static void increment_tailroom_need_count(struct ieee80211_sub_if_data *sdata)
+ {
+ 	/*
+@@ -94,11 +108,7 @@ static void increment_tailroom_need_count(struct ieee80211_sub_if_data *sdata)
+ 	 * http://mid.gmane.org/1308590980.4322.19.camel@jlt3.sipsolutions.net
+ 	 */
  
- 			skb_shinfo(skb)->gso_type |= SKB_GSO_ESP;
+-	lockdep_assert_wiphy(sdata->local->hw.wiphy);
+-
+-	update_vlan_tailroom_need_count(sdata, 1);
+-
+-	if (!sdata->crypto_tx_tailroom_needed_cnt++) {
++	if (__increment_tailroom_need_count(sdata)) {
+ 		/*
+ 		 * Flush all XMIT packets currently using HW encryption or no
+ 		 * encryption at all if the count transition is from 0 -> 1.
+@@ -569,10 +579,11 @@ int ieee80211_key_slot_lookup(struct ieee80211_sub_if_data *sdata,
+ 	return err;
+ }
+ 
+-static int ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
+-				 struct ieee80211_key_slot *slot,
+-				 struct ieee80211_key *old,
+-				 struct ieee80211_key *new)
++static int __ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
++				   struct ieee80211_key_slot *slot,
++				   struct ieee80211_key *old,
++				   struct ieee80211_key *new,
++				   bool flush)
+ {
+ 	bool defunikey, defmultikey, defmgmtkey, defbeaconkey;
+ 	struct ieee80211_local *local = sdata->local;
+@@ -618,6 +629,15 @@ static int ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
+ 			if (!ieee80211_key_needs_tailroom(new))
+ 				decrease_tailroom_need_count(sdata, 1);
+ 		}
++
++		/*
++		 * The new key isn't visible to TX yet. If counting it took the
++		 * tailroom count from zero to one, flush TX before it is,
++		 * unless it went to the hardware needing no tailroom and so
++		 * gave the count back.
++		 */
++		if (!ret && flush && ieee80211_key_needs_tailroom(new))
++			synchronize_net();
+ 	}
+ 
+ 	if (ret)
+@@ -693,6 +713,14 @@ static int ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
+ 	return 0;
+ }
+ 
++static int ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
++				 struct ieee80211_key_slot *slot,
++				 struct ieee80211_key *old,
++				 struct ieee80211_key *new)
++{
++	return __ieee80211_key_replace(sdata, slot, old, new, false);
++}
++
+ struct ieee80211_key *
+ ieee80211_key_alloc(u32 cipher, int idx, size_t key_len,
+ 		    const u8 *key_data,
+@@ -964,6 +992,7 @@ int ieee80211_key_link(struct ieee80211_sub_if_data *sdata,
+ 	static atomic_t key_color = ATOMIC_INIT(0);
+ 	struct ieee80211_key *old_key = NULL;
+ 	int idx = key->conf.keyidx;
++	bool flush = false;
+ 	int ret;
+ 
+ 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
+@@ -1031,9 +1060,19 @@ int ieee80211_key_link(struct ieee80211_sub_if_data *sdata,
+ 		goto out;
+ 	}
+ 
+-	increment_tailroom_need_count(sdata);
++	/*
++	 * A key replacing another is counted, and TX flushed if that takes
++	 * the count from zero to one, here: the old key may drop to software
++	 * while still in use. A new key isn't used before it is published,
++	 * once it is known whether it went to the hardware without needing
++	 * tailroom, so __ieee80211_key_replace() flushes TX only if not.
++	 */
++	if (old_key)
++		increment_tailroom_need_count(sdata);
++	else
++		flush = __increment_tailroom_need_count(sdata);
+ 
+-	ret = ieee80211_key_replace(sdata, slot, old_key, key);
++	ret = __ieee80211_key_replace(sdata, slot, old_key, key, flush);
+ 	if (ret) {
+ 		decrease_tailroom_need_count(sdata, 1);
+ 		key->local = NULL;
 
 ---
-base-commit: 835912998ca54a76b5c57f8c8459a86b1b45de40
-change-id: 20261027-xfrm-inner-gso-f8b956ce89d5
+base-commit: 2c50cd5d10e8723797f28c7978f1f61688e0c0d2
+change-id: 20261028-b4-mac80211-tailroom-4850fb8dee6f
 
 Best regards,
 --  
-Usman Malik <usmanmalik@engineer.com>
+Christopher Griffin <christophergriffin05@gmail.com>
 
