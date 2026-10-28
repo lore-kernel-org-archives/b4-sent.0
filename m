@@ -1,174 +1,104 @@
-From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Wed, 28 Oct 2026 14:37:39 -0500
-Subject: [PATCH ath-next 2/2] wifi: ath11k: advertise a spatial stream for
- every chain
+From: Andrei Stancovici <andrei.stancovici@analog.com>
+Subject: [PATCH v3 0/4] iio: adc: ltc2497: add LTC2493 support and
+ line-frequency rejection
+Date: Thu, 29 Oct 2026 00:24:25 +0200
+Message-Id: <20261029-submission-ltc2493-support-v1-v3-0-c7dd5f877c3b@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-b4-ath11k-qcn907x-caps-v1-2-c7daa6f1c02c@gmail.com>
-References: <20261028-b4-ath11k-qcn907x-caps-v1-0-c7daa6f1c02c@gmail.com>
-In-Reply-To: <20261028-b4-ath11k-qcn907x-caps-v1-0-c7daa6f1c02c@gmail.com>
-To: Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABl24moC/43OQQ7CIBAF0Ks0rMXAFNviynsYFxSwxbSlASSap
+ ncX6kZXmszmT37ezIK8dkZ7dCwW5HQ03tgphXJXINmLqdPYqJQREKgoIRz7ezsan2t4CBIYL9N
+ qnq0LOFLcVIxxrTQrQaFkzE5fzWPzz5d3TsBNy5DR3OiND9Y9twcizb1/b6UhuFRCUcVaegBxE
+ pMYbLeXdkT5WIQPDuAXB5njVHHSKGjq+otb1/UFngVSSiwBAAA=
+X-Change-ID: 20261009-submission-ltc2493-support-v1-86449ede432d
+To: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Liam Beguin <liambeguin@gmail.com>, 
+ Joshua Crofts <joshua.crofts1@gmail.com>
+Cc: linux@analog.com, linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
- Christopher Griffin <christophergriffin05@gmail.com>
+ Andrei Stancovici <andrei.stancovici@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793216257; l=6123;
- i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=8Uwxeg8UHngxATx0eZ4/cEVXGxe0+dvdWqlppGkOKfE=;
- b=ZpPF/FYUsE/MwMmiwn21IqxNMU7TLlxzf60JrTgfkhg3KzaxYjeAko1eP8rwUFmfscY2HG2LA
- K+MZiwC6CuqCnjVGY6jAs5SbSp7SkkO2Al2v0MgLbV/u8y2ybDyDW1H
-X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
- pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
-X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793226265; l=3174;
+ i=andrei.stancovici@analog.com; s=20261009; h=from:subject:message-id;
+ bh=1eElcDBdYH6U/ku61R6dLZL+jxyUrre0O5/3HdquLhs=;
+ b=yEFSNN9D24qKQqM56ZbWt8NYT5yfncSvbb2L3PTHannAmja4yUc/CCeEHsPfk1ItZwoHa6w5p
+ YHzLTQxydd9AhzvDp858mrV5p4ZXE+Y+Uoxvvva8EJa6tn5/RZDGcfZ
+X-Developer-Key: i=andrei.stancovici@analog.com; a=ed25519;
+ pk=wgT+au+blAhVYxhwNgdx0woNl/1p+OCG484rnTRFrsE=
+X-Endpoint-Received: by B4 Relay for andrei.stancovici@analog.com/20261009 with auth_id=1140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath11k counts stream i as supported only when bit i of the radio's
-chainmask is set: in the HT RX MCS mask (ath11k_create_ht_cap()), the
-VHT MCS maps (ath11k_create_vht_cap()) and the HE MCS maps
-(ath11k_mac_set_hemcsmap()). A chainmask need not be contiguous. The
-QCN9072 in an Arista C-360 reports 0x5, chains 0 and 2: it has two
-chains, and ar->num_tx_chains and ar->num_rx_chains say so, but bit 1
-is clear, so its HT, VHT and HE capabilities offer one stream ("2
-streams: not supported" in iw phy, on 2.4, 5 and 6 GHz) and it
-associates as a 1x1 client.
+This series adds LTC2493 support to the ltc2497 driver, and adds FA/FB
+line-frequency rejection for the LTC2499 and the LTC2493.
 
-A radio can use as many streams as it has chains, whichever chains
-they are. Count the streams up to ar->num_tx_chains and
-ar->num_rx_chains, the chainmasks' weights, and take TX STBC away when
-there is one TX chain rather than when the shifted TX chainmask is at
-most 1. The rate-cap chainmasks that only fed these tests go. This also
-ends the HE RX map's use of tx_chain_mask_shift for the RX chainmask.
+It includes:
+- the LTC2493 device-tree binding,
+- FA/FB line-frequency rejection (50Hz, 60Hz, or both) exposed via
+  filter_mode, implemented in the core and enabled for the LTC2499,
+- a preparatory refactor giving each supported channel layout a channel
+  set in the core, referenced directly from chip_info,
+- LTC2493 support in the driver: 4 single-ended inputs or 2 differential
+  pairs, 24-bit result, same command format as the LTC2499, the internal
+  PTAT temperature channel, the 2x conversion speed mode exposed via
+  sampling_frequency, and the same rejection selection.
 
-With this the QCN9072 shows HT MCS 0-15 and two VHT and HE streams on
-every band, and as a client on 5 GHz at 40 MHz it associated at
-HE-MCS 10, 2 streams, and ran 310 Mbit/s down and 438 up to a local
-server. Contiguous chainmasks get the same capabilities as before: the
-IPQ8074's radios (0xf, and 0xf0 shifted by 4) are unchanged.
+The rejection patch also adjusts the conversion wait time for each
+rejection mode. The 50Hz-only mode takes up to 163.5 ms at 1x, while the
+previous fixed 150 ms delay only covered the default 50/60Hz mode.
 
-Tested-on: QCN9074 hw1.0 PCI fw_version 0x250affff (vendor build)
-Tested-on: IPQ8074 hw2.0 AHB WLAN.HK.2.9.0.1-02146-QCAHKSWPL_SILICONZ-1
+Validated on a Raspberry Pi 4 running 7.3.0-rc4, over an IIO network
+backend, with a DC1010A-A board (LTC2493), a DC1012A-A board (LTC2499)
+and an LTC2497:
+- LTC2493: 41/41 hardware tests passed,
+- LTC2499: 36/36 hardware tests passed,
+- LTC2497: 24/24 hardware tests passed,
+- all LTC2493 rejection x speed combinations were exercised without
+  conversion or I2C errors.
 
-Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
-Fixes: ebf82988f844 ("wifi: ath11k: generate rx and tx mcs maps for supported HE mcs")
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
+LTC2496 was build-tested only because no LTC2496 hardware was available.
+
+The source in this series matches the hardware-tested tree.
+
+Signed-off-by: Andrei Stancovici <andrei.stancovici@analog.com>
 ---
- drivers/net/wireless/ath/ath11k/mac.c | 38 ++++++++++++-----------------------
- 1 file changed, 13 insertions(+), 25 deletions(-)
+Changes in v3:
+- The channel-set selection moved into a preparatory patch, so the patch
+  adding the LTC2493 no longer touches the chip_info of the parts
+  already supported (Nuno Sá).
+- chip_info now references a per-device channel set directly. The
+  num_inputs field and the keyed lookup it was matched against in probe
+  are both gone (Nuno Sá).
+- The LTC2493 patch is reduced to the device-specific additions.
+- The binding and FA/FB patches are unchanged. Nuno Sá's Reviewed-by is
+  added to the FA/FB patch.
+- Behaviour revalidated on hardware on all three parts; see the
+  validation summary above.
+- Per-patch changelogs are under the --- of each patch.
+- Link to v2: https://patch.msgid.link/20261022-submission-ltc2493-support-v1-v2-0-391d908d2877@analog.com
 
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index af01ef1cf4c9..62c3a6a7cd20 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -5556,7 +5556,7 @@ static int ath11k_mac_op_conf_tx(struct ieee80211_hw *hw,
- }
- 
- static struct ieee80211_sta_ht_cap
--ath11k_create_ht_cap(struct ath11k *ar, u32 ar_ht_cap, u32 rate_cap_rx_chainmask)
-+ath11k_create_ht_cap(struct ath11k *ar, u32 ar_ht_cap)
- {
- 	int i;
- 	struct ieee80211_sta_ht_cap ht_cap = {};
-@@ -5611,10 +5611,9 @@ ath11k_create_ht_cap(struct ath11k *ar, u32 ar_ht_cap, u32 rate_cap_rx_chainmask
- 	if (ar_vht_cap & WMI_VHT_CAP_MAX_MPDU_LEN_MASK)
- 		ht_cap.cap |= IEEE80211_HT_CAP_MAX_AMSDU;
- 
--	for (i = 0; i < ar->num_rx_chains; i++) {
--		if (rate_cap_rx_chainmask & BIT(i))
--			ht_cap.mcs.rx_mask[i] = 0xFF;
--	}
-+	/* a stream for every chain, whichever chains the chainmask names */
-+	for (i = 0; i < ar->num_rx_chains; i++)
-+		ht_cap.mcs.rx_mask[i] = 0xFF;
- 
- 	ht_cap.mcs.tx_params |= IEEE80211_HT_MCS_TX_DEFINED;
- 
-@@ -5723,8 +5722,7 @@ static void ath11k_set_vht_txbf_cap(struct ath11k *ar, u32 *vht_cap)
- }
- 
- static struct ieee80211_sta_vht_cap
--ath11k_create_vht_cap(struct ath11k *ar, u32 rate_cap_tx_chainmask,
--		      u32 rate_cap_rx_chainmask)
-+ath11k_create_vht_cap(struct ath11k *ar)
- {
- 	struct ieee80211_sta_vht_cap vht_cap = {};
- 	u16 txmcs_map, rxmcs_map;
-@@ -5742,18 +5740,18 @@ ath11k_create_vht_cap(struct ath11k *ar, u32 rate_cap_tx_chainmask,
- 	rxmcs_map = 0;
- 	txmcs_map = 0;
- 	for (i = 0; i < 8; i++) {
--		if (i < ar->num_tx_chains && rate_cap_tx_chainmask & BIT(i))
-+		if (i < ar->num_tx_chains)
- 			txmcs_map |= IEEE80211_VHT_MCS_SUPPORT_0_9 << (i * 2);
- 		else
- 			txmcs_map |= IEEE80211_VHT_MCS_NOT_SUPPORTED << (i * 2);
- 
--		if (i < ar->num_rx_chains && rate_cap_rx_chainmask & BIT(i))
-+		if (i < ar->num_rx_chains)
- 			rxmcs_map |= IEEE80211_VHT_MCS_SUPPORT_0_9 << (i * 2);
- 		else
- 			rxmcs_map |= IEEE80211_VHT_MCS_NOT_SUPPORTED << (i * 2);
- 	}
- 
--	if (rate_cap_tx_chainmask <= 1)
-+	if (ar->num_tx_chains <= 1)
- 		vht_cap.cap &= ~IEEE80211_VHT_CAP_TXSTBC;
- 
- 	vht_cap.vht_mcs.rx_mcs_map = cpu_to_le16(rxmcs_map);
-@@ -5767,20 +5765,14 @@ static void ath11k_mac_setup_ht_vht_cap(struct ath11k *ar,
- 					u32 *ht_cap_info)
- {
- 	struct ieee80211_supported_band *band;
--	u32 rate_cap_tx_chainmask;
--	u32 rate_cap_rx_chainmask;
- 	u32 ht_cap;
- 
--	rate_cap_tx_chainmask = ar->cfg_tx_chainmask >> cap->tx_chain_mask_shift;
--	rate_cap_rx_chainmask = ar->cfg_rx_chainmask >> cap->rx_chain_mask_shift;
--
- 	if (cap->supported_bands & WMI_HOST_WLAN_2G_CAP) {
- 		band = &ar->mac.sbands[NL80211_BAND_2GHZ];
- 		ht_cap = cap->band[NL80211_BAND_2GHZ].ht_cap_info;
- 		if (ht_cap_info)
- 			*ht_cap_info = ht_cap;
--		band->ht_cap = ath11k_create_ht_cap(ar, ht_cap,
--						    rate_cap_rx_chainmask);
-+		band->ht_cap = ath11k_create_ht_cap(ar, ht_cap);
- 	}
- 
- 	/* A 6 GHz capable radio may cover 5 GHz as well, as a QCN9074 does:
-@@ -5793,10 +5785,8 @@ static void ath11k_mac_setup_ht_vht_cap(struct ath11k *ar,
- 		ht_cap = cap->band[NL80211_BAND_5GHZ].ht_cap_info;
- 		if (ht_cap_info)
- 			*ht_cap_info = ht_cap;
--		band->ht_cap = ath11k_create_ht_cap(ar, ht_cap,
--						    rate_cap_rx_chainmask);
--		band->vht_cap = ath11k_create_vht_cap(ar, rate_cap_tx_chainmask,
--						      rate_cap_rx_chainmask);
-+		band->ht_cap = ath11k_create_ht_cap(ar, ht_cap);
-+		band->vht_cap = ath11k_create_vht_cap(ar);
- 	}
- }
- 
-@@ -5949,14 +5939,12 @@ static void ath11k_mac_set_hemcsmap(struct ath11k *ar,
- 	rxmcs_map = 0;
- 	txmcs_map = 0;
- 	for (i = 0; i < 8; i++) {
--		if (i < ar->num_tx_chains &&
--		    (ar->cfg_tx_chainmask >> cap->tx_chain_mask_shift) & BIT(i))
-+		if (i < ar->num_tx_chains)
- 			txmcs_map |= IEEE80211_HE_MCS_SUPPORT_0_11 << (i * 2);
- 		else
- 			txmcs_map |= IEEE80211_HE_MCS_NOT_SUPPORTED << (i * 2);
- 
--		if (i < ar->num_rx_chains &&
--		    (ar->cfg_rx_chainmask >> cap->tx_chain_mask_shift) & BIT(i))
-+		if (i < ar->num_rx_chains)
- 			rxmcs_map |= IEEE80211_HE_MCS_SUPPORT_0_11 << (i * 2);
- 		else
- 			rxmcs_map |= IEEE80211_HE_MCS_NOT_SUPPORTED << (i * 2);
+---
+Andrei Stancovici (4):
+      dt-bindings: iio: adc: lltc,ltc2497: add LTC2493 support
+      iio: adc: ltc2497: add FA/FB line-frequency rejection selection
+      iio: adc: ltc2497: select the channel set per device
+      iio: adc: ltc2497: add LTC2493 support
 
--- 
-2.43.0
+ .../devicetree/bindings/iio/adc/lltc,ltc2497.yaml  |   7 +
+ drivers/iio/adc/ltc2496.c                          |   1 +
+ drivers/iio/adc/ltc2497-core.c                     | 208 ++++++++++++++++-----
+ drivers/iio/adc/ltc2497.c                          |  47 +++--
+ drivers/iio/adc/ltc2497.h                          |  44 ++++-
+ 5 files changed, 243 insertions(+), 64 deletions(-)
+---
+base-commit: a3b3580713f3ac5a32dc2874ee546828977a1d68
+change-id: 20261009-submission-ltc2493-support-v1-86449ede432d
+
+Best regards,
+--  
+Andrei Stancovici <andrei.stancovici@analog.com>
 
