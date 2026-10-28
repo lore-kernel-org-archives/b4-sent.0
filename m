@@ -1,120 +1,117 @@
-From: Zhiwei Liang <zhiwei.liang@zliang.me>
-Date: Wed, 28 Oct 2026 02:57:22 -0400
-Subject: [PATCH] btrfs: do not leak -ERESTARTSYS from FITRIM to userspace
+From: Quanye Yang <quanyeyang@proton.me>
+Date: Wed, 28 Oct 2026 02:10:47 -0700
+Subject: [PATCH mptcp-next] selftests: mptcp: connect: fix OOB read on
+ read() error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-btrfs-fitrim-freezer-v1-1-0ad1d58aa94d@zliang.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3Myw5AMBBG4VeRWZtESxCvIhbFX2bhkqmIEO+us
- fwW5zwUoIJATfKQ4pQg2xph0oSG2a0TWMZospktTWZr7g/1gb0cKgt7BW4oj8XQO1Oigskpprv
- Cy/Vv2+59Pw9B65ZmAAAA
-X-Change-ID: 20261028-btrfs-fitrim-freezer-d4cba16e7e13
-To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
- Luca Stefani <luca.stefani.ge1@gmail.com>
-Cc: Qu Wenruo <wqu@suse.com>, Filipe Manana <fdmanana@suse.com>, 
- Robbie Ko <robbieko@synology.com>, linux-btrfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Zhiwei Liang <zhiwei.liang@zliang.me>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793170644; l=3889;
- i=zhiwei.liang@zliang.me; s=20261028; h=from:subject:message-id;
- bh=Ad5ltHNBqZJjriNkGAbAzE09HDU828bU7XQWfgn5xEc=;
- b=l5aVf854cSCkVputMgv0JYK/81X4hxuZ5sdDmE3fJg7kTXs4wErv/xbLQ17SVBAyjy7nPwgFt
- R72ccD/s9QUA/elO70Yn0HB115xNrFGSHBo6jACTPusKs/MY7vSrXc8
-X-Developer-Key: i=zhiwei.liang@zliang.me; a=ed25519;
- pk=+Dr+pFt7zVWal4wTkqPegKXbLTdm/ko6GA/XhKr6NO8=
-X-Endpoint-Received: by B4 Relay for zhiwei.liang@zliang.me/20261028 with auth_id=1339
+Message-Id: <20261028-fix-mptcp-issue-636-v1-1-1f1e2ee07a1e@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBBFryKz7kAm1lB6ldJFTUYdoWnIxCKId
+ zety8d//22gnIUV7s0Gmb+i8okV6NKAn15xZJRQGayxjoy94SArvlPxCUV1YXStQ+pMcFeiIbQ
+ G6jNlrtq/+oBTjrwWeJ6bLv3MvvyysO8He/2o1IMAAAA=
+X-Change-ID: 20261028-fix-mptcp-issue-636-150d6411fd30
+To: MPTCP Linux <mptcp@lists.linux.dev>
+Cc: 
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793178649; l=2933;
+ i=quanyeyang@proton.me; s=20260801; h=from:subject:message-id;
+ bh=5AkzoNWl9/i9Wmm1H6HE1sEtdhjRlQBNIjrUVgGp/uM=;
+ b=/izKasSmI4b1Ey19uaSP6XVUothrGxwM6rdH+FcDKYdHRwVLuUl/eyfy25t6V+3zCSjInfV9m
+ PejxSgd/PeLAIbIq/ijUSxuzB/5t5egbag8IxH4f6oWl/i4YhDDiQch
+X-Developer-Key: i=quanyeyang@proton.me; a=ed25519;
+ pk=9L9FrcvzMgxPaBRU6XV0EnqTgjDqVO596rQKSZ9qZoY=
+X-Endpoint-Received: by B4 Relay for quanyeyang@proton.me/20260801 with auth_id=963
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a suspend starts during FITRIM, fstrim can fail with:
+copyfd_io_poll() and sock_connect_mptcp() store the signed read()
+return value in unsigned wstate.len. On failure, -1 becomes UINT_MAX,
+so the later "len > 0" check is always true and the error path is
+dead. do_rnd_write() / sendto() then copy past the 8192-byte stack
+buffer.
 
-  fstrim: /: FITRIM ioctl failed: Unknown error 512
+Keep wstate.len unsigned, but capture read() in a ssize_t and only
+store a non-negative length. Retry EINTR in the poll loop; abort the
+TFO connect if the input file cannot be read.
 
-On a Fedora 44 laptop with kernel 7.2.7, 3 of the last 21 weekly
-fstrim.service runs were in progress when an automatic suspend started.
-All three failed this way and left the filesystem untrimmed.
-
-Since commit 69313850dce3 ("btrfs: add cancellation points to trim
-loops"), the trim loops return -ERESTARTSYS when
-btrfs_trim_interrupted() sees freezing(current), and FITRIM returns it
-to userspace. Since commit bfb670b9183b ("btrfs: handle user interrupt
-properly in btrfs_trim_fs()"), btrfs_trim_fs() returns it right away.
-
--ERESTARTSYS is only valid while a signal is pending, because only the
-signal handling on syscall exit turns it into a restart. But
-freeze_processes() first sets pm_freezing, which makes freezing() true
-for every user task. Then it walks the task list and sends each task a
-fake signal. The trim loops check btrfs_trim_interrupted() after every
-extent. If a check falls in this window, the loop returns -ERESTARTSYS
-with no signal pending. Nothing restarts the syscall. On that laptop,
-with a few thousand threads, freezing user space took 2 to 5 ms in each
-of the three suspends above, and all three runs hit this window.
-
-Make btrfs_trim_interrupted() treat a freeze as an interruption only
-once the fake signal has arrived, i.e. when
-freezing(current) && signal_pending(current). freeze_processes() sends
-that signal in the same call. The trim loop stops at the next check
-after it, so suspend is not delayed.
-
-The restarted syscall re-reads struct fstrim_range from user memory.
-When the device phase is interrupted, btrfs_trim_fs() has already stored
-the trimmed byte count in range->len, and btrfs_ioctl_fitrim() copies
-the struct back unconditionally. The restart is then asked to trim
-[start, start + trimmed) instead of the requested range, or fails with
--EINVAL when nothing was counted yet. Skip the copy_to_user() for
--ERESTARTSYS. In all other cases the partial count is still copied back.
-
-Tested in a VM with pm_test=freezer. Without the patch, 18 of 20 freezes
-during a trim leaked errno 512, and 10 of 10 restarts after a
-device-phase interruption failed with -EINVAL. With the patch, all 30
-runs restarted and trimmed the full amount.
-
-Fixes: 69313850dce3 ("btrfs: add cancellation points to trim loops")
-CC: stable@vger.kernel.org # 5.15+
-Signed-off-by: Zhiwei Liang <zhiwei.liang@zliang.me>
+Fixes: 048d19d444be ("mptcp: add basic kselftest for mptcp")
+Fixes: ca7ae8916043 ("selftests: mptcp: mptfo Initiator/Listener")
+Closes: https://github.com/multipath-tcp/mptcp_net-next/issues/636
+Signed-off-by: Quanye Yang <quanyeyang@proton.me>
 ---
- fs/btrfs/free-space-cache.h | 3 ++-
- fs/btrfs/ioctl.c            | 7 +++++++
- 2 files changed, 9 insertions(+), 1 deletion(-)
+ tools/testing/selftests/net/mptcp/mptcp_connect.c | 32 ++++++++++++++++-------
+ 1 file changed, 22 insertions(+), 10 deletions(-)
 
-diff --git a/fs/btrfs/free-space-cache.h b/fs/btrfs/free-space-cache.h
-index e22443598b..cba2f5fd6b 100644
---- a/fs/btrfs/free-space-cache.h
-+++ b/fs/btrfs/free-space-cache.h
-@@ -58,7 +58,8 @@ static inline bool btrfs_free_space_trimming_bitmap(
+diff --git a/tools/testing/selftests/net/mptcp/mptcp_connect.c b/tools/testing/selftests/net/mptcp/mptcp_connect.c
+index 178d98d91fea..d124fb96db15 100644
+--- a/tools/testing/selftests/net/mptcp/mptcp_connect.c
++++ b/tools/testing/selftests/net/mptcp/mptcp_connect.c
+@@ -398,9 +398,17 @@ static int sock_connect_mptcp(const char * const remoteaddr,
+ 			set_mark(sock, cfg_mark);
  
- static inline bool btrfs_trim_interrupted(void)
- {
--	return fatal_signal_pending(current) || freezing(current);
-+	return fatal_signal_pending(current) ||
-+	       (freezing(current) && signal_pending(current));
- }
- 
- /*
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index ac070c745b..b02c59cbb0 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -529,6 +529,13 @@ static noinline int btrfs_ioctl_fitrim(struct btrfs_fs_info *fs_info,
- 	range.minlen = max(range.minlen, minlen);
- 	ret = btrfs_trim_fs(fs_info, &range);
- 
-+	/*
-+	 * A restart re-reads the range from user space, so do not clobber it
-+	 * with the partial len the rerun would otherwise take as its input.
-+	 */
-+	if (ret == -ERESTARTSYS)
-+		return ret;
+ 		if (cfg_sockopt_types.mptfo) {
+-			if (!winfo->total_len)
+-				winfo->total_len = winfo->len = read(infd, winfo->buf,
+-								     sizeof(winfo->buf));
++			if (!winfo->total_len) {
++				ssize_t ret = read(infd, winfo->buf,
++						   sizeof(winfo->buf));
 +
- 	if (copy_to_user(arg, &range, sizeof(range)))
- 		return -EFAULT;
++				if (ret < 0) {
++					perror("read");
++					close(sock);
++					return -1;
++				}
++				winfo->total_len = winfo->len = ret;
++			}
+ 
+ 			syn_copied = sendto(sock, winfo->buf, winfo->len, MSG_FASTOPEN,
+ 					    a->ai_addr, a->ai_addrlen);
+@@ -698,8 +706,17 @@ static int copyfd_io_poll(int infd, int peerfd, int outfd,
+ 
+ 		if (fds.revents & POLLOUT) {
+ 			if (winfo->len == 0) {
++				ssize_t ret;
++
+ 				winfo->off = 0;
+-				winfo->len = read(infd, winfo->buf, sizeof(winfo->buf));
++				ret = read(infd, winfo->buf, sizeof(winfo->buf));
++				if (ret < 0) {
++					if (errno == EINTR)
++						continue;
++					perror("read");
++					return 4;
++				}
++				winfo->len = ret;
+ 			}
+ 
+ 			if (winfo->len > 0) {
+@@ -726,7 +743,7 @@ static int copyfd_io_poll(int infd, int peerfd, int outfd,
+ 				winfo->off += bw;
+ 				winfo->len -= bw;
+ 				total_wlen += bw;
+-			} else if (winfo->len == 0) {
++			} else {
+ 				/* We have no more data to send. */
+ 				fds.events &= ~POLLOUT;
+ 
+@@ -735,11 +752,6 @@ static int copyfd_io_poll(int infd, int peerfd, int outfd,
+ 					break;
+ 
+ 				shut_wr(peerfd);
+-			} else {
+-				if (errno == EINTR)
+-					continue;
+-				perror("read");
+-				return 4;
+ 			}
+ 		}
  
 
 ---
-base-commit: e17e64baf63f7c85bec209ed73f14c1b2a7e39fb
-change-id: 20261028-btrfs-fitrim-freezer-d4cba16e7e13
+base-commit: f2f79e9af965c1c49decfe56312fa547095fbbee
+change-id: 20261028-fix-mptcp-issue-636-150d6411fd30
 
 Best regards,
--- 
-Zhiwei Liang <zhiwei.liang@zliang.me>
+--  
+Quanye Yang <quanyeyang@proton.me>
 
