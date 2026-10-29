@@ -1,103 +1,97 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Wed, 28 Oct 2026 23:47:13 -0500
-Subject: [PATCH net v3] net/iucv: take a private, writable frame before
- rewriting it in place
+From: Igor Velkov <iav@iav.lv>
+Subject: [PATCH net v3 0/2] net: phy: postpone PHY interrupts during sleep
+ with MAC-managed PM
+Date: Thu, 29 Oct 2026 04:58:20 +0000
+Message-Id: <20261029-b4-phylib-mac-pm-irq-v3-v3-0-5907045f3210@iav.lv>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261028-b4-disp-1edbbc34-v3-1-13495411f5b9@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBAAv0L27CbQFkS/Qjyw3QXWQyVdNCaEv
- 1v1OJPM7GCSVQyu1Q5ZXmr6SAX8qYK4jGkWVC4MrnZdU7seKSCrrdgIE0UfMPQjn1sm38ULlGz
- NMun7txwgyQa3v7Qn3SVu3xkcxwdfbNRMeQAAAA==
-X-Change-ID: 20261028-b4-disp-1edbbc34-48ad75db36c9
-To: Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Alexandra Winter <wintera@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>, 
- Thorsten Winkler <twinkler@linux.ibm.com>, 
- "David S. Miller" <davem@davemloft.net>
-Cc: Hidayath Khan <hidayath@linux.ibm.com>, Simon Horman <horms@kernel.org>, 
- Ursula Braun <ursula.braun@de.ibm.com>, linux-s390@vger.kernel.org, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793249232; l=3123;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=JFUfhciEChw7BgSLF92o8VaqbY3+Obn41qmQCu8hTpc=;
- b=xB7V2bhn6yEiVdWWxB5Zut++I9OEjUHTLT/m685QspAXcWfHaaewSgGT5tCMdViA7k7dk9yJ7
- utyXMSZzOVrDTYPb5i/zuzqgNgCwKAWEkEBwow0HPRXlVi4uA2y/PcJ
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-B4-Tracking: v=1; b=H4sIAG3S4moC/x3MQQ5AMBBA0avIrE1CVROuIhZVUyahqhUh4u4ay
+ 7f4/4FIgSlCmz0Q6OTIm0uo8gzMrN1EyGMyiEKoshANDhL9fC884KoN+hU57HhWaFWtRkmlUdJ
+ Cqn0gy9d/7sDRAf37fhP5SQhuAAAA
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Lukas Wunner <lukas@wunner.de>, 
+ "Rafael J. Wysocki" <rafael.j.wysocki@intel.com>, 
+ Wei Fang <wei.fang@nxp.com>, 
+ =?utf-8?q?Niklas_S=C3=B6derlund?= <niklas.soderlund@ragnatech.se>, 
+ Paul Barker <paul@pbarker.dev>, 
+ Florian Fainelli <florian.fainelli@broadcom.com>, 
+ Doug Berger <opendmb@gmail.com>, 
+ Thangaraj Samynathan <Thangaraj.S@microchip.com>, netdev@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2683; i=iav@iav.lv;
+ h=from:subject:message-id; bh=gJPvY9nSBtRKuoslNWP0NOc/ooK8yuUEFk6N66h2ty0=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmPLuXxcXxlvhV5gXVJX822Be+cm7wLRHYseX/y3Oplu
+ juC5jQ1d5SyMIhxMciKKbJMOKRxK2PJ1b/+HuYPYOawMoEMYeDiFICJTG1k+Kdi1Pm8on/ug63l
+ t3o6tp2s65jFI9zVqnNp3T/+tZosqX8ZGdYxXMlewDepWMg3vjVo49nIBTU929j4bLqCnvd7HF2
+ lzwkA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-afiucv_hs_rcv() rewrites the frame in place -- EBCASC() on four name
-fields, then afiucv_swap_src_dest() swaps them and pushes an Ethernet
-header -- and can hand the same skb to dev_queue_xmit(), without making
-it private first, so a packet socket that also gets the frame reads the
-rewritten names. An ETH_P_ALL tap runs first and leaves af_iucv a
-cloned skb; a socket opened for ETH_P_AF_IUCV sits on a ptype_specific
-list, walked after ptype_base[], so deliver_skb() takes a reference and
-af_iucv runs on an skb that is shared but not cloned.
+When the MAC driver manages PHY PM, phylib never sets irq_suspended, and
+a PHY interrupt during the sleep transition runs the PHY driver's
+handler while the MDIO bus may be powered down. On Helios64 (dwmac-rk)
+this hangs the board on suspend as well as on resume.
 
-Unshare, then cow, in that order: skb_cow() can reach
-pskb_expand_head(), which has BUG_ON(skb_shared()). skb_cow() tests
-skb_cloned(), which is what a rewrite of the data needs; skb_cow_head()
-tests only the header. Asking for ETH_HLEN also covers the unchecked
-push in afiucv_swap_src_dest(); on the ordinary path eth_type_trans()
-has already pulled that much, so it only compares.
+Patch 1 moves the two flags out of a bitfield they share with the link
+state written under phydev->lock; patch 2 sets irq_suspended for these
+PHYs too.
 
-Fixes: 3881ac441f64 ("af_iucv: add HiperSockets transport")
-Closes: https://sashiko.dev/#/patchset/20260813-b4-disp-60433a46-v1-1-509e1200533e@proton.me?part=1
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Open question on 2/2: a postponed interrupt leaves the PHY line
+disabled until resume. With Wake-on-LAN, v3 still signals a wakeup
+from it, so suspend would abort when the link changes after
+phy_stop(): phylink_suspend() calls phylink_speed_down() after
+phylink_stop() when the PHY is the wake source (stmmac sets
+wol_phy_speed_ctrl), and a PHY that keeps its link interrupt enabled
+raises one there. RTL8211F masks it in suspend when its wakeup is
+enabled, so Helios64 woke on a magic packet 3 of 3 times. Never
+signalling a
+wakeup would let the system sleep with a wake-armed PHY line left
+disabled. Is the v3 behaviour acceptable, or should the MAC set
+irq_suspended once it has stopped the PHY (phylink_suspend() plus a
+phylib helper for MACs without phylink)?
+
+Changes in v3:
+- with mac_managed_pm, a postponed interrupt signals a wakeup event only
+  with Wake-on-LAN; with MAC power/wakeup enabled and no WoL, v2 aborted
+  s2idle on Helios64 3 of 3 times, v3 0 of 3 (reported by Sashiko)
+- phy_free_interrupt(): stop postponing and re-enable the line before
+  free_irq(), not after it (reported by Sashiko)
+- mdio_bus_phy_suspend() comment narrowed to the MDIO bus (reported by
+  Sashiko)
+- patch 1: Andrew suggested taking phydev->lock in phy_interrupt();
+  the commit message says why that does not close the race
+- tests rerun on v3
+
+Not changed: the replay does not reach a nested threaded PHY interrupt
+(irq_wake_thread() has no thread to wake). That code predates this
+series; v3 sends MAC-managed PHYs through it as well.
+
+Link to v2: https://lore.kernel.org/r/20261026045343.837889-1-iav@iav.lv
+
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-v3: skb_cow() instead of skb_cow_head(), as Paolo and the netdev AI
-    review asked: the rewrite is in the data, and skb_cow_head()'s
-    skb_header_cloned() test would leave it shared with a nohdr holder
-    (none reaches af_iucv today; still the wrong contract). One-word
-    change, rebased on net. v2 carried Alexandra's Reviewed-by; v3
-    changes the helper on Paolo's point, so it is not carried. Same
-    s390x QEMU A/B as v2, re-run on v3: same eight boots, same table.
-    Unpatched, the tap and the ETH_P_AF_IUCV socket both read the 48
-    name bytes in ASCII and a SYN with no listener never reaches the
-    socket; with this version every frame arrives as sent. Drop
-    skb_share_check() and the socket is broken again; drop skb_cow() and
-    both are.
+Igor Velkov (2):
+      net: phy: move irq_suspended and irq_rerun out of the bitfield
+      net: phy: postpone PHY interrupts during sleep with MAC-managed PM
 
-v2: https://lore.kernel.org/all/20261008-b4-disp-bf46f1ba-v2-1-46ff1ea9c40b@proton.me/
-v1: https://lore.kernel.org/all/20260815-b4-disp-dc82fde4-v1-0-e83b10b22ce9@proton.me/
----
- net/iucv/af_iucv.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
-
-diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
-index 5ba875798aa4..ce13fe3c85b5 100644
---- a/net/iucv/af_iucv.c
-+++ b/net/iucv/af_iucv.c
-@@ -2080,11 +2080,20 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
- 	int err = NET_RX_SUCCESS;
- 	char nullstring[8];
- 
-+	skb = skb_share_check(skb, GFP_ATOMIC);
-+	if (!skb)
-+		return NET_RX_SUCCESS;
-+
- 	if (!pskb_may_pull(skb, sizeof(*trans_hdr))) {
- 		kfree_skb(skb);
- 		return NET_RX_SUCCESS;
- 	}
- 
-+	if (skb_cow(skb, ETH_HLEN)) {
-+		kfree_skb(skb);
-+		return NET_RX_SUCCESS;
-+	}
-+
- 	trans_hdr = iucv_trans_hdr(skb);
- 	EBCASC(trans_hdr->destAppName, sizeof(trans_hdr->destAppName));
- 	EBCASC(trans_hdr->destUserID, sizeof(trans_hdr->destUserID));
-
+ drivers/net/phy/phy.c        | 21 +++++++++++++++++---
+ drivers/net/phy/phy_device.c | 46 +++++++++++++++++++++++++++-----------------
+ include/linux/phy.h          | 10 ++++++----
+ 3 files changed, 52 insertions(+), 25 deletions(-)
 ---
 base-commit: fcc00b15cb21a6de76826e5012b2c758505f5e65
-change-id: 20261028-b4-disp-1edbbc34-48ad75db36c9
+change-id: 20261029-b4-phylib-mac-pm-irq-v3-f656d4e1c64f
 
 Best regards,
---  
-bryamzxz <hexlabsecurity@proton.me>
+-- 
+Igor Velkov <iav@iav.lv>
 
