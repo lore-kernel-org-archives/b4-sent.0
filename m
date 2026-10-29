@@ -1,112 +1,81 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 29 Oct 2026 13:21:25 -0500
-Subject: [PATCH net v8 4/4] net/smc: bound the link failover cursor advance
- to the send buffer
+From: Kairui Song <kasong@tencent.com>
+Subject: [PATCH 0/3] mm/swap, zswap: fix stale zswap data and swap-in bugs
+Date: Fri, 30 Oct 2026 02:31:40 +0800
+Message-Id: <20261030-swap-fixes-v1-0-73f73a59f2fc@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-b4-disp-33001ace-v8-4-f9bb96e17827@proton.me>
-References: <20261029-b4-disp-33001ace-v8-0-f9bb96e17827@proton.me>
-In-Reply-To: <20261029-b4-disp-33001ace-v8-0-f9bb96e17827@proton.me>
-To: Sidraya Jayagond <sidraya@linux.ibm.com>, 
- Jakub Kicinski <kuba@kernel.org>, Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Paolo Abeni <pabeni@redhat.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
- "David S. Miller" <davem@davemloft.net>, 
- Dust Li <dust.li@linux.alibaba.com>, Eric Dumazet <edumazet@kernel.org>
-Cc: Guangguan Wang <guangguan.wang@linux.alibaba.com>, 
- Ursula Braun <ubraun@linux.ibm.com>, Stefan Raspl <raspl@linux.ibm.com>, 
- linux-s390@vger.kernel.org, Wen Gu <guwen@linux.alibaba.com>, 
- linux-kernel@vger.kernel.org, Hidayath Khan <hidayath@linux.ibm.com>, 
- Simon Horman <horms@kernel.org>, Wenjia Zhang <wenjia@linux.ibm.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, linux-rdma@vger.kernel.org, 
- netdev@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793298082; l=3862;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=pYvkTNfmgfYrChtl4QYbezukLNrDt2+mNDHk+pdZyKE=;
- b=QL6rWqrPTQJK5V3L71fhYkkY904avKa6++vytE2wVeuMzY/+PDyCEq7EeSIk8D93QKbpxDrUk
- MYUB2XWaREfDhHQyJNAAMOUfCx6+voiw9yvqv9v+b1IA/vVe3HWhha2
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSwqAIBAG4KvErBPUwKirRAuzqaZFhdMLxLtnt
+ fz4HwEYPSFDnQXweBLTuiSoPAM32WVEQX0yaKmNkoUUfNlNDHQjC2WtcdopLIcK0mDz+AWp37S
+ /+ehmdPv7ADE+X7ruZW4AAAA=
+X-Change-ID: 20261030-swap-fixes-1aa6c2c1e7f9
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
+ Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
+ Youngjun Park <youngjun.park@lge.com>, Yosry Ahmed <yosry@kernel.org>, 
+ Chengming Zhou <chengming.zhou@linux.dev>, 
+ Usama Arif <usamaarif642@gmail.com>, David Hildenbrand <david@kernel.org>, 
+ Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <liam@infradead.org>, 
+ Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
+ Chuanhua Han <hanchuanhua@oppo.com>, Johannes Weiner <hannes@cmpxchg.org>, 
+ Mani Tofigh <mt4022@columbia.edu>, linux-kernel@vger.kernel.org, 
+ Kairui Song <kasong@tencent.com>, Josef Bacik <josef@toxicpanda.com>, 
+ stable@vger.kernel.org, Chris Mason <mason@kernel.org>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793298765; l=1904;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=wv3cCqMTcjfUYGycGHsVPNfiqXd3kdzJNqs56uK6eQQ=;
+ b=H4nxBiyeHaeYaXxggD0n6aJqOAp/dzE0sKP5vEjlbXqvHybzWiKKiK4xx6FXElidAiRXbZqgv
+ vJspPul7updDHMMeyka+FAn9lnBoH3tWJNG/rm6XNfePr1wMD0atdSU
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On SMC-R link failover, smc_switch_cursor() rewinds the send and
-producer cursors to their values at the last completed CDC send, then
-advances them by the distance the peer's consumer cursor is ahead. That
-cursor comes from the wire, so a forged one adds an arbitrary amount to
-sndbuf_space and to the cursors. smc_curs_add() wraps them only once, so
-the next RDMA write takes its source past the send buffer.
+Hi all,
 
-A conforming peer keeps its cursor count inside its RMB and cannot
-consume past the data in the send buffer. Advance only for such a count,
-and no further than tx_curs_prep. The pre-failover tx_curs_sent cannot
-be the bound: an earlier failover may have rewound it below the peer's
-cursor. The destination side is not bounded here: smc_write_space()
-still sizes the window from the peer's cursor, so a forged one can take
-the next write past the peer's own RMB, where its HCA refuses it and
-the link goes down.
+There are some bug fixes found by AI and collected by David, mostly
+originally from Anthropic.  After filtering and dropping a few that are
+already being patched up by the community [1] [2], these are the 3 we
+kept.  I've reviewed them and they all look good to me, so please help
+have a look and we can get them merged soon, they are pretty simple and
+clean bug fixes patching real issues.
 
-Fixes: c6f02ebeea3a ("net/smc: switch connections to alternate link")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+The zswap bug can return stale data instead of the zeroes that were
+written, so it is data corruption and seems critical.  The extent fix is
+more urgent than it might look, as it can also read in unexpected data,
+but the setup could be really rare. The accounting fix is minor.
+The zswap and extent fixes affect stable kernels (v6.12+) and are marked
+for stable. The accounting fix only affects v7.3+.
+
+For the extent fix, in the long term we might actually want to detect
+extent contiguity and allow mTHP swap-in for single-extent swap files.
+We already disable mTHP allocation for swap files, so the current fix is
+trivial. It seems the most minimal and correct one for now.
+Optimization and cleanups can come later.
+
+Link: https://lore.kernel.org/linux-mm/20261026-swapoff-writeok-v1-1-4f4cd420aa33@columbia.edu/ [1]
+Link: https://lore.kernel.org/linux-mm/20260811132209.2862708-3-youngjun.park@lge.com/ [2]
+
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Bounding the copy in smc_tx_sendmsg() (3/4) does not cover this: the
-RDMA write takes its offsets from the cursors. Measured on rxe, send
-buffer 16K, peer RMB 32K, 4096 bytes sent and unconfirmed, the consumer
-cursor forged one wrap ahead at count 64: unpatched, tx_curs_sent lands
-64 bytes past the send buffer and the next write takes its source from
-there (rxe refuses that WR); with the patch the advance stops at
-tx_curs_prep, nothing is pending, and nothing is written after the
-switch. The destination side, with the consumer cursor forged two wraps
-ahead at the peer's RMB + 4096 (send buffer 64K, peer RMB 16K): with the
-patch the catch-up is skipped, the window is the whole RMB and the first
-write after the switch, from prod.count 1, ends one byte past the peer's
-RMB; its HCA refuses the write and the link goes down. Without the patch
-the catch-up lands prod on the forged count, smc_write_space() is 0 and
-nothing more is written.
+Chris Mason (1):
+      mm, swap: fix large swap-in across swap file extents
+
+Josef Bacik (2):
+      mm/zswap: drop the stale zswap entry of a zero folio
+      mm/swap: account synchronous swap reads as memory stall
+
+ mm/memory.c  | 16 +++++++++++++---
+ mm/page_io.c | 17 +++++++++++++++++
+ 2 files changed, 30 insertions(+), 3 deletions(-)
 ---
- net/smc/smc_core.c | 18 ++++++++++++------
- 1 file changed, 12 insertions(+), 6 deletions(-)
+base-commit: 24d45a1475dd4c671feb1df705f67ef2fc293969
+change-id: 20261030-swap-fixes-1aa6c2c1e7f9
 
-diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
-index fe6e4a2f7935..42d83a002ffb 100644
---- a/net/smc/smc_core.c
-+++ b/net/smc/smc_core.c
-@@ -1034,7 +1034,7 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
- 			     struct smc_wr_buf *wr_buf)
- {
- 	struct smc_connection *conn = &smc->conn;
--	union smc_host_cursor cons, fin;
-+	union smc_host_cursor cons, fin, prep;
- 	int rc = 0;
- 	int diff;
- 
-@@ -1043,12 +1043,18 @@ static int smc_switch_cursor(struct smc_sock *smc, struct smc_cdc_tx_pend *pend,
- 	/* set prod cursor to old state, enforce tx_rdma_writes() */
- 	smc_curs_copy(&conn->local_tx_ctrl.prod, &fin, conn);
- 	smc_curs_copy(&cons, &conn->local_rx_ctrl.cons, conn);
--
--	if (smc_curs_comp(conn->peer_rmbe_size, &cons, &fin) < 0) {
--		/* cons cursor advanced more than fin, and prod was set
--		 * fin above, so now prod is smaller than cons. Fix that.
-+	smc_curs_copy(&prep, &conn->tx_curs_prep, conn);
-+
-+	if (cons.count < conn->peer_rmbe_size &&
-+	    smc_curs_comp(conn->peer_rmbe_size, &cons, &fin) < 0) {
-+		/* cons cursor advanced more than fin, and prod was set fin
-+		 * above, so now prod is smaller than cons. cons comes off the
-+		 * wire: catch up only for a count inside the peer's RMB and no
-+		 * further than the send buffer holds, else that peer stalls.
- 		 */
--		diff = smc_curs_diff(conn->peer_rmbe_size, &fin, &cons);
-+		diff = min(smc_curs_diff(conn->peer_rmbe_size, &fin, &cons),
-+			   smc_curs_diff(conn->sndbuf_desc->len,
-+					 &conn->tx_curs_sent, &prep));
- 		smc_curs_add(conn->sndbuf_desc->len,
- 			     &conn->tx_curs_sent, diff);
- 		smc_curs_add(conn->sndbuf_desc->len,
-
--- 
-2.56.0
+Best regards,
+--  
+Kairui Song <kasong@tencent.com>
 
