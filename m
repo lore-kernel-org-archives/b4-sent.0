@@ -1,402 +1,270 @@
-From: Francesco Boccola <francesco.boccola@unina.it>
-Date: Thu, 29 Oct 2026 16:34:48 +0100
-Subject: [PATCH RFC v2] KVM: arm64: nVHE: Flush all TLBs when freeing a
- VM's stage-2
+From: Valerii Bokov <vlry.bkv@gmail.com>
+Date: Thu, 29 Oct 2026 17:03:13 +0100
+Subject: [PATCH v2] media: rkvdec: vdpu383: configure the reference read
+ cache
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-nvhe-stage2-flush-v2-1-096723b28bef@unina.it>
-X-B4-Tracking: v=1; b=H4sIAJdn42oC/32NwQ6CMBBEf4Xs2Rq2GAFPJiZ+gFfDYYWFriHFt
- KXREP5dwLvHmbx5M4FnJ+zhlEzgOIqXwS5B7xKoDdmOlTRLBp3qI6a6VDYaVj5Qx1q1/eiNQua
- CsubAWYaw7F6OW3lvzjvcrheofqUfH0+uw2pbMSM+DO6zPUfc4D8nERUqKvI6J6ISGc+jFUt7C
- VDN8/wFhz2CjMgAAAA=
-X-Change-ID: 20261029-nvhe-stage2-flush-1ee8a3d4e331
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>, 
- Fuad Tabba <fuad.tabba@linux.dev>, Joey Gouly <joey.gouly@arm.com>, 
- Steffen Eiden <seiden@linux.ibm.com>, 
- Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Mark Rutland <mark.rutland@arm.com>
-Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, 
- Francesco Boccola <francesco.boccola@unina.it>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793288088; l=14469;
- i=francesco.boccola@unina.it; s=20261029; h=from:subject:message-id;
- bh=9IF4V7AIed5CaK2oDNKXPIRINnVqS5Wh9/sL9HPf4nw=;
- b=lj2DTPtaJ+JK5PaPBUKGi6P78ixO1QOocnpfev3lOa83n77hySpIjprdmArTmGwXwxRrYj/6M
- Ft6oEhJN74qAeabaKNb0jzJdf0CHLxzID4Zo98muQSDNAUpXNlstWGA
-X-Developer-Key: i=francesco.boccola@unina.it; a=ed25519;
- pk=82q3OTrtEAajk43b58WBO5I1Hj8Gg8DU6k0GngJr9rA=
-X-Endpoint-Received: by B4 Relay for francesco.boccola@unina.it/20261029 with auth_id=1353
+Message-Id: <20261029-rkvdec-vdpu383-cache-v2-1-859bb44e03a0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBBGr0Jm7RjaEdK48h6ERWkHmCg/abXRE
+ O5u5QIu30u+920QOQhHuBYbBE4SZZkz6FMBbrTzwCg+M+hS16rUBsM9eXaY/PoiQ+isGxlN33W
+ 9IUXeEuTpGriX95Ft2syjxOcSPsdLUj/7J5gUKvRUXYynjipT34bJyuPslgnafd+/F+3q4LgAA
+ AA=
+X-Change-ID: 20261028-rkvdec-vdpu383-cache-8fbbf8313da3
+To: Detlev Casanova <detlev.casanova@collabora.com>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>
+Cc: linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Valerii Bokov <vlry.bkv@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793289799; l=10924;
+ i=vlry.bkv@gmail.com; s=20261028; h=from:subject:message-id;
+ bh=vPKssOpH7rm17FJw7zQKtZ43E9tGtwv6Ww4Ilm5fdec=;
+ b=NJ2r8ar99fkcqCDQWka9Y8mDyUdUbetqcb3yBxSNBm++tTqt10b7NvOFyN6IcYAyHuR+yUDqP
+ NEaAyB+Qip7C6gU9HqEOzAEaHfshR9tDbYZ/dbpHqPIGfYucWdwi5nL
+X-Developer-Key: i=vlry.bkv@gmail.com; a=ed25519;
+ pk=u/rk2lx5DMp734XMF4ThLZD2H0AqvfYuikR7wu2iyNA=
+X-Endpoint-Received: by B4 Relay for vlry.bkv@gmail.com/20261028 with auth_id=1342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kvm_free_stage2_pgd() frees a VM's stage-2 page tables without invalidating
-the TLBs. That is correct: the VM's VMID is not reused before the next VMID
-rollover, and flush_context() then invalidates the entries of all VMIDs on
-all CPUs (TLBI ALLE1IS).
+The VDPU383 has a reference read cache with its own register region,
+"cache" in the device tree, which the driver does not map. Its
+configuration and read limit are therefore left at their power-on
+values, and those differ between power-ups. On RK3576 this makes H.264
+decoding of a 2688x1520 stream take either 22.5 ms or 65.4 ms per
+frame, depending on the power-up, while the values the vendor driver
+programs bring it to 3.6 ms per frame.
 
-In nVHE mode, however, a CPU that ran a guest makes the host's broadcast
-TLB invalidations more expensive for the whole system until then, which
-with 16-bit VMIDs usually means until the host reboots. With stress-ng
---tlb-shootdown on three CPUs of a cluster, the cyclictest maximum on a
-fourth, isolated CPU goes, before and after one guest:
-- Cortex-A53 (Zynq UltraScale+ KV260, no VHE, 6.1.70-rt): 53-72 us ->
-  83-164 us;
-- Cortex-A55 (RK3588, kvm-arm.mode=nvhe, kvmarm/next): 18-23 -> 78-97 us;
-- Cortex-A76 (RK3588, kvm-arm.mode=nvhe, kvmarm/next): 16-30 -> 74-80 us.
-It crosses clusters: after a guest on an A55, an isolated A76 goes from
-14-18 us to 129-154 us. The same happens on kernel 6.12.113 (20-24 -> 44-49
-us on the A55) and on 7.1.9 with and without PREEMPT_RT.
+Map the "cache" region and configure it statically: enable cacheable
+read-allocate accesses with 64-byte lines and set the read limit
+(MAX_READS in the vendor driver) to 0x1c. The registers lose their
+configuration whenever the decoder is powered down, so they are
+programmed from runtime resume, which also covers the first use after
+probe. As the vendor driver does (rkvdec_vdpu38x_run() in
+mpp_rkvdec2.c), the cache is still cleared before every frame, because
+reference buffers are rewritten between frames.
 
-One guest that turns its stage-1 MMU on, even for a few microseconds, is
-enough; a guest that keeps its MMU off is not. With VHE nothing changes.
+The region is optional: on a device tree that does not describe it, the
+driver probes as before and leaves the cache unconfigured.
 
-The state is in the CPU that ran the guest: a local TLBI ALLE1 on that CPU
-at teardown removes the effect on every CPU, the same on all the other CPUs
-does not. Invalidating the dead VM's VMID (TLBI VMALLS12E1IS, as pKVM does
-at teardown) does not remove it either, whether stage 2 is disabled while
-it is issued (as __kvm_tlb_flush_vmid() does from the host's context) or
-enabled; nor does invalidating VMID 0 or the host's stage 1 (A53).
+Decode time per frame for a 2688x1520 H.264 stream on RK3576, within
+one decoder power-up, with the registers set between runs:
 
-So do the rollover's invalidation when the stage 2 of a VM that has run is
-freed, in nVHE mode. That costs one TLB refill on every CPU per VM
-teardown; 500 VMs created, run and torn down one after the other take 32.1
-ms each with it and 33.4 ms without, and an isolated CPU meanwhile sees no
-change in latency (15 us against 13 us).
+  MAX_READS  CACHE0_CFG  ms/frame
+  0x0        power-on        65.4  (slow power-up)
+  0x2        power-on        22.5  (fast power-up)
+  0x1c       power-on         7.2
+  0x2        0x13             8.6
+  0x1c       0x13             3.6
 
-Signed-off-by: Francesco Boccola <francesco.boccola@unina.it>
+The decoded output was bit-identical in all five cases. These numbers
+were taken by setting the registers from user space through /dev/mem.
+
+The registers were identified with the help of an AI coding assistant
+(Claude, model claude-opus-5-5), which diffed register dumps of fast
+and slow power-ups and matched the result against the vendor driver.
+It also drafted this patch and its changelog, which I reviewed. The
+measurements and tests were run on an RK3576 board.
+
+Link: https://lore.kernel.org/r/20260619111810.564384-1-laszlo.fiat@tuta.io
+Signed-off-by: Valerii Bokov <vlry.bkv@gmail.com>
 ---
-On Cortex-A53, A55 and A76 hosts in nVHE mode, a CPU that has run a guest
-with its stage-1 MMU on makes the host's broadcast TLB invalidations more
-expensive for the whole system until the next VMID rollover, which usually
-means until the host reboots. The patch does the rollover's invalidation
-(TLBI ALLE1IS) when the stage 2 of a VM that has run is freed; its commit
-message has the measurements.
+Testing on RK3576 (Smatek T10PE) with this patch applied, on top of
+6.18.34 with Simon's priming patch:
+- The cache registers are programmed on every runtime resume: zeroed
+  by hand while powered, then suspended and resumed without decoding,
+  they read back 0x1c/0x13 (4/4).
+- 2688x1520 H.264: 4.0-4.2 ms/frame on a 257-frame clip across 8
+  separate power-ups, no fast/slow lottery left.
+- Output is bit-exact against FFmpeg's software decoder (per-frame md5,
+  all 257 frames) for that H.264 clip and for an HEVC Main clip with
+  B-frames encoded from it.
+- 10 minutes of a live 2688x1520 H.264 RTSP stream at the camera's
+  25 fps: 24.4 fps average (23-25 fps in every 30 s window), 14% of
+  one CPU core, no kernel or decoder errors.
 
-RFC because we can only describe what these cores do, not explain it. Which
-per-CPU state survives the invalidation of the VM's VMID, and why it slows
-the broadcast invalidations of other CPUs, is microarchitectural; an
-explanation from someone who knows these TLBs would be welcome.
-Questions:
-- Is this known behaviour of these cores in nVHE mode (A53, A55 and A76
-  here)?
-- ALLE1IS also drops the host's own EL1&0 entries on every CPU. A local
-  TLBI ALLE1 on the CPUs the VM ran on (mmu->last_vcpu_ran) is enough in
-  our tests, but needs IPIs; would you prefer that?
-- In protected mode, the host itself runs with stage 2, and the same test
-  gives 112-153 us from boot, guest or not (18-23 us in nVHE mode before
-  any guest). Is that expected?
-- Should VHE hosts also invalidate (we see no effect there)?
+Open questions:
+- I have not checked whether the decoder's soft reset (after a timeout
+  or error) also resets the cache registers. If it does, they need to
+  be reprogrammed after a reset as well.
+- Simon's out-of-tree priming patch also modifies
+  rkvdec_runtime_resume(), so the two will conflict textually there.
 
-Reproducer (below): tinyvm.c, a ~110-line KVM VMM running a guest (guest.S)
-that turns its MMU on and powers off, and run.sh: stress-ng --tlb-shootdown
-and cyclictest (SCHED_FIFO 99) on a freshly booted host, 3 x 20 s before
-and after one such guest. Controls: a guest that keeps its MMU off (no
-change), the same kernel in VHE mode (no change), this patch on kvmarm/next
-(A55 19-22 -> 20-32 us, A76 14-24 -> 13-15 us).
-
-To run it: make (or make CROSS_COMPILE=aarch64-linux-gnu- LDFLAGS=-static),
-then, as root on a freshly booted host with stress-ng and cyclictest,
-./run.sh -v <cyclictest CPU> -c <three other CPUs of its cluster> -g <guest
-CPU>. The defaults (-v 3 -c 0-2 -g 2) fit a 4-CPU cluster; -m 0 runs the
-control guest (MMU off). In our tests the cyclictest CPU was isolated
-(isolcpus, nohz_full, rcu_nocbs).
-
-Found while measuring containers run as KVM guests against plain containers
-on these boards.
-
-==> Makefile <==
-# Native build on an arm64 host: make. Cross build (static, for hosts without
-# a compiler): make CROSS_COMPILE=aarch64-linux-gnu- LDFLAGS=-static
-CC = $(CROSS_COMPILE)gcc
-OBJCOPY = $(CROSS_COMPILE)objcopy
-CFLAGS = -O2 -Wall
-
-SPIN = 0
-all: tinyvm guest-mmu0.bin guest-mmu1.bin
-
-tinyvm: %: %.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
-
-guest-mmu%.bin: guest.S
-	$(CC) -nostdlib -static -Wl,-Ttext=0x40000000 -Wl,--build-id=none -DMMU=$* -DSPIN=$(SPIN) -o guest-mmu$*.elf $<
-	$(OBJCOPY) -O binary guest-mmu$*.elf $@
-
-clean:
-	rm -f tinyvm guest-mmu*.elf guest-mmu*.bin
-
-==> guest.S <==
-/*
- * guest.S - the guest of tinyvm: with MMU=1 it turns its stage-1 MMU and
- * caches on (identity map of its RAM), writes a marker through the MMU, spins
- * for SPIN seconds (virtual counter) and powers the VM off (PSCI SYSTEM_OFF);
- * with MMU=0 it does the same with the MMU off.
- * Linked at the start of the guest RAM (0x40000000):
- *   gcc -nostdlib -static -Wl,-Ttext=0x40000000 -Wl,--build-id=none -DMMU=1 \
- *       -o guest-mmu.elf guest.S && objcopy -O binary guest-mmu.elf guest-mmu.bin
- */
-#ifndef MMU
-#define MMU 1
-#endif
-#ifndef SPIN
-#define SPIN 0
-#endif
-#define MARKER_ADDR	0x40100000	/* 1 MB into the RAM, read back by tinyvm */
-
-	.text
-	.globl	_start
-_start:
-#if MMU
-	movz	x0, #0xff00		/* MAIR: attr0 Device-nGnRnE, attr1 Normal WB */
-	msr	mair_el1, x0
-	movz	x0, #0x3519		/* TCR: T0SZ 25, WBWA inner shareable walks, */
-	movk	x0, #0x0080, lsl #16	/* 4 KB granule, no TTBR1 walks, */
-	movk	x0, #0x0002, lsl #32	/* 40-bit PA */
-	msr	tcr_el1, x0
-	adr	x0, pgtable
-	msr	ttbr0_el1, x0
-	isb
-	tlbi	vmalle1
-	dsb	ish
-	isb
-	mrs	x0, sctlr_el1
-	movz	x1, #0x1005		/* I, C, M */
-	orr	x0, x0, x1
-	msr	sctlr_el1, x0
-	isb
-#endif
-	movz	x1, #(MARKER_ADDR >> 16), lsl #16
-	movz	w2, #0x4d4d		/* "MM" */
-	movk	w2, #(0x55 + MMU), lsl #16
-	str	w2, [x1]
-	dsb	sy
-#if SPIN
-	mrs	x3, cntfrq_el0		/* spin SPIN seconds */
-	mov	x4, #SPIN
-	mul	x3, x3, x4
-	mrs	x4, cntvct_el0
-	add	x3, x3, x4
-2:	mrs	x4, cntvct_el0
-	cmp	x4, x3
-	b.lo	2b
-#endif
-	movz	w0, #0x0008
-	movk	w0, #0x8400, lsl #16	/* PSCI SYSTEM_OFF */
-	hvc	#0
-1:	wfi
-	b	1b
-
-	.balign	4096
-pgtable:	/* level 1, 1 GB blocks: 0-1 GB Device, 1-2 GB Normal WB (the RAM) */
-	.quad	0x0060000000000401
-	.quad	0x0000000040000705
-	.fill	510, 8, 0
-
-==> tinyvm.c <==
-/*
- * tinyvm <guest.bin> [cpu] - the smallest KVM VMM: one vCPU, 16 MB of RAM at
- * 0x40000000, no interrupt controller and no devices. It loads <guest.bin> at
- * the start of the RAM, runs the vCPU (pinned to [cpu]) until the guest powers
- * the VM off through PSCI, checks the marker the guest wrote and exits 0.
- * Build: gcc -O2 -o tinyvm tinyvm.c
- */
-#define _GNU_SOURCE
-#include <errno.h>
-#include <fcntl.h>
-#include <linux/kvm.h>
-#include <sched.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#define RAM_BASE	0x40000000UL
-#define RAM_SIZE	(16UL << 20)
-#define MARKER_OFF	0x100000UL
-
-#define CORE_REG(x) (KVM_REG_ARM64 | KVM_REG_SIZE_U64 | KVM_REG_ARM_CORE | \
-		     (offsetof(struct kvm_regs, x) / sizeof(uint32_t)))
-
-static void die(const char *what)
-{
-	perror(what);
-	exit(2);
-}
-
-int main(int argc, char **argv)
-{
-	struct kvm_userspace_memory_region region;
-	struct kvm_vcpu_init init;
-	struct kvm_one_reg reg;
-	struct kvm_run *run;
-	uint64_t pc = RAM_BASE;
-	int kvm, vm, vcpu, fd, size;
-	uint8_t *ram;
-	struct stat st;
-	uint32_t marker;
-
-	if (argc < 2) {
-		fprintf(stderr, "usage: %s <guest.bin> [cpu]\n", argv[0]);
-		return 2;
-	}
-	alarm(120);	/* a guest that faults spins forever: give up */
-	if (argc > 2) {
-		cpu_set_t set;
-
-		CPU_ZERO(&set);
-		CPU_SET(atoi(argv[2]), &set);
-		if (sched_setaffinity(0, sizeof(set), &set))
-			die("sched_setaffinity");
-	}
-	kvm = open("/dev/kvm", O_RDWR | O_CLOEXEC);
-	if (kvm < 0)
-		die("/dev/kvm");
-	vm = ioctl(kvm, KVM_CREATE_VM, 0);
-	if (vm < 0)
-		die("KVM_CREATE_VM");
-	ram = mmap(NULL, RAM_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	if (ram == MAP_FAILED)
-		die("mmap");
-	fd = open(argv[1], O_RDONLY);
-	if (fd < 0 || fstat(fd, &st) || st.st_size > (off_t)MARKER_OFF ||
-	    read(fd, ram, st.st_size) != st.st_size)
-		die(argv[1]);
-	close(fd);
-	region = (struct kvm_userspace_memory_region){
-		.slot = 0, .guest_phys_addr = RAM_BASE, .memory_size = RAM_SIZE,
-		.userspace_addr = (uintptr_t)ram,
-	};
-	if (ioctl(vm, KVM_SET_USER_MEMORY_REGION, &region))
-		die("KVM_SET_USER_MEMORY_REGION");
-	vcpu = ioctl(vm, KVM_CREATE_VCPU, 0);
-	if (vcpu < 0)
-		die("KVM_CREATE_VCPU");
-	if (ioctl(vm, KVM_ARM_PREFERRED_TARGET, &init))
-		die("KVM_ARM_PREFERRED_TARGET");
-	init.features[0] |= 1 << KVM_ARM_VCPU_PSCI_0_2;
-	if (ioctl(vcpu, KVM_ARM_VCPU_INIT, &init))
-		die("KVM_ARM_VCPU_INIT");
-	reg = (struct kvm_one_reg){ .id = CORE_REG(regs.pc), .addr = (uintptr_t)&pc };
-	if (ioctl(vcpu, KVM_SET_ONE_REG, &reg))
-		die("KVM_SET_ONE_REG pc");
-	size = ioctl(kvm, KVM_GET_VCPU_MMAP_SIZE, 0);
-	run = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, vcpu, 0);
-	if (run == MAP_FAILED)
-		die("mmap kvm_run");
-	for (;;) {
-		if (ioctl(vcpu, KVM_RUN, 0) && errno != EINTR)
-			die("KVM_RUN");
-		if (run->exit_reason == KVM_EXIT_SYSTEM_EVENT)
-			break;
-		fprintf(stderr, "unexpected exit %u\n", run->exit_reason);
-		return 2;
-	}
-	memcpy(&marker, ram + MARKER_OFF, sizeof(marker));
-	printf("guest done: system event %u, marker %#x (%s)\n", run->system_event.type, marker,
-	       marker == 0x564d4d ? "MMU on" : marker == 0x554d4d ? "MMU off" : "BAD");
-	close(vcpu);
-	close(vm);
-	close(kvm);
-	return marker == 0x564d4d || marker == 0x554d4d ? 0 : 1;
-}
-
-==> run.sh <==
-#!/bin/sh
-# run.sh [-v rt_cpu] [-c stress_cpus] [-g guest_cpu] [-t seconds] [-r runs] [-m 0|1]
-#
-# Does running a KVM guest make the host's broadcast TLB invalidations more
-# expensive, after the guest is gone? With stress-ng --tlb-shootdown on
-# stress_cpus (one worker per CPU), cyclictest (SCHED_FIFO 99) measures the
-# wake-up latency on rt_cpu and stress-ng its own throughput, -r times; then
-# tinyvm runs one guest on guest_cpu (-m 1: the guest turns its stage-1 MMU on,
-# the trigger; -m 0: it does not, the control); then the same measurements
-# again. The effect lasts until the next VMID rollover or reboot: run it on a
-# freshly booted, otherwise idle host. Needs stress-ng and cyclictest (rt-tests)
-# in PATH or STRESS_NG / CYCLICTEST; run as root from this directory after make.
-set -e
-V=3 C=0-2 G=2 T=20 N=3 M=1
-while getopts v:c:g:t:r:m: o; do
-	case $o in
-	v) V=$OPTARG ;; c) C=$OPTARG ;; g) G=$OPTARG ;; t) T=$OPTARG ;; r) N=$OPTARG ;;
-	m) M=$OPTARG ;; *) exit 2 ;;
-	esac
-done
-SNG=${STRESS_NG:-stress-ng}
-CT=${CYCLICTEST:-cyclictest}
-W=$(echo "$C" | awk -F, '{n = 0; for (i = 1; i <= NF; i++) { split($i, r, "-"); n += (r[2] == "" ? 1 : r[2] - r[1] + 1) } print n}')
-part() { awk -v c="$1" '/^processor/ {p = $3} /^CPU part/ && p == c {print $4; exit}' /proc/cpuinfo; }
-mode=$(dmesg 2>/dev/null | grep -o "kvm \[1\]: [A-Za-z ]*mode initialized" | sed 's/kvm \[1\]: //' | head -1)
-echo "kernel $(uname -r) $(uname -v | grep -o PREEMPT_RT), ${mode:-KVM mode unknown (dmesg)}, up $(cut -d. -f1 /proc/uptime) s"
-echo "cyclictest on CPU $V (part $(part $V)), stress-ng tlb-shootdown x$W on CPUs $C, guest on CPU $G (part $(part $G)), MMU=$M"
-[ -r /sys/module/kvm/parameters/stage2_free_flush ] &&
-	echo "stage2_free_flush $(cat /sys/module/kvm/parameters/stage2_free_flush)"
-
-measure() { # <phase> <run>
-	$SNG --tlb-shootdown "$W" --taskset "$C" -t $((T + 3)) --metrics-brief > sng.out 2>&1 &
-	sp=$!
-	sleep 1
-	set -- "$1" "$2" $($CT -m -a "$V" -p 99 -i 1000 -l $((T * 1000)) -q 2>/dev/null |
-		awk '/Avg:/ { for (i = 1; i < NF; i++) { if ($i == "Avg:") a = $(i + 1); if ($i == "Max:") m = $(i + 1) } } END { print a, m }')
-	wait $sp
-	ops=$(awk '/tlb-shootdown +[0-9]/ { print $(NF - 1) }' sng.out | tail -1)
-	printf '%-6s %d  cyclictest avg %4s us  max %5s us   stress-ng %8s bogo-ops/s\n' "$1" "$2" "$3" "$4" "$ops"
-	echo "$1 $3 $4 $ops" >> results.txt
-}
-
-rm -f results.txt
-i=1; while [ $i -le $N ]; do measure before $i; i=$((i + 1)); done
-./tinyvm guest-mmu$M.bin "$G"
-i=1; while [ $i -le $N ]; do measure after $i; i=$((i + 1)); done
-awk '{ a[$1] += $2; m[$1] += $3; o[$1] += $4; n[$1]++ }
-END { printf "after/before (means): cyclictest avg x%.2f, max x%.2f; stress-ng throughput x%.2f\n",
-	(a["after"] / n["after"]) / (a["before"] / n["before"]),
-	(m["after"] / n["after"]) / (m["before"] / n["before"]),
-	(o["after"] / n["after"]) / (o["before"] / n["before"]) }' results.txt
-rm -f sng.out results.txt
+Possibly related, not part of this patch:
+- VDPU381 (RK3588) may have the same problem. The vendor driver
+  programs three caches there before every frame (CACHE0/1/2 in
+  rkvdec2_run(): cacheable, read-allocate and 64-byte lines, plus a
+  clear of each), and mainline programs none. I have no RK3588 board to
+  check whether its decode speed also varies between power-ups.
 ---
 Changes in v2:
-- Restore the reproducer's lines starting with '#' (#include, #define, #if
-  and comments), which were dropped from v1.
-- Link to v1: https://patch.msgid.link/20261029-nvhe-stage2-flush-v1-1-a87c7aaa91e1@unina.it
+- Configure the cache statically from runtime resume instead of before
+  every frame, as suggested in review. The values are constants, so
+  "restore" is a plain rewrite; there is nothing to save.
+- Keep clearing the cache before every frame, as the vendor driver
+  does. Happy to drop it if that is preferred, but I have only shown
+  bit-exactness with a single clear on one clip, which is not enough to
+  rely on.
+- Make the "cache" region optional. v1 returned an error from probe
+  when it was missing, which would make the decoder disappear on any
+  device tree that does not describe it.
+- Map the region only for the VDPU383 variant, since the configured
+  values are specific to it and are now applied from shared code.
+- Link to v1: https://lore.kernel.org/r/20261028-rkvdec-vdpu383-cache-v1-1-d3548d3b3586@gmail.com
 ---
- arch/arm64/kvm/mmu.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ .../platform/rockchip/rkvdec/rkvdec-vdpu383-h264.c |  2 +
+ .../platform/rockchip/rkvdec/rkvdec-vdpu383-hevc.c |  2 +
+ .../platform/rockchip/rkvdec/rkvdec-vdpu383-regs.h |  9 +++++
+ drivers/media/platform/rockchip/rkvdec/rkvdec.c    | 46 +++++++++++++++++++++-
+ drivers/media/platform/rockchip/rkvdec/rkvdec.h    |  2 +
+ 5 files changed, 60 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/kvm/mmu.c b/arch/arm64/kvm/mmu.c
-index a48f3f531..baeea69e7 100644
---- a/arch/arm64/kvm/mmu.c
-+++ b/arch/arm64/kvm/mmu.c
-@@ -1216,6 +1216,17 @@ void kvm_free_stage2_pgd(struct kvm_s2_mmu *mmu)
- 	write_lock(&kvm->mmu_lock);
- 	pgt = mmu->pgt;
- 	if (pgt) {
-+		/*
-+		 * The VM's VMID is not reused before the next rollover, which
-+		 * invalidates all VMIDs, so its TLB entries can stay until then.
-+		 * In nVHE mode, however, a CPU that ran a guest with its stage-1
-+		 * MMU on makes the host's broadcast TLB invalidations more
-+		 * expensive for all CPUs, and invalidating the VM's VMID does not
-+		 * stop it: do the rollover's invalidation now. A VM that never
-+		 * ran has no VMID (0).
-+		 */
-+		if (!has_vhe() && atomic64_read(&mmu->vmid.id))
-+			kvm_call_hyp(__kvm_flush_vm_context);
- 		mmu->pgd_phys = 0;
- 		mmu->pgt = NULL;
- 		free_percpu(mmu->last_vcpu_ran);
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-h264.c b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-h264.c
+index 5ec755733..efb1f6975 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-h264.c
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-h264.c
+@@ -441,6 +441,8 @@ static int rkvdec_h264_run(struct rkvdec_ctx *ctx)
+ 	timeout_threshold = h264_ctx->regs.common.reg013_core_timeout_threshold;
+ 	rkvdec_schedule_watchdog(rkvdec, timeout_threshold);
+ 
++	rkvdec_vdpu383_clear_cache(rkvdec);
++
+ 	/* Start decoding! */
+ 	writel(timeout_threshold, rkvdec->link + VDPU383_LINK_TIMEOUT_THRESHOLD);
+ 	writel(0, rkvdec->link + VDPU383_LINK_IP_ENABLE);
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-hevc.c b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-hevc.c
+index 3462d995d..6223b89e2 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-hevc.c
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-hevc.c
+@@ -568,6 +568,8 @@ static int rkvdec_hevc_run(struct rkvdec_ctx *ctx)
+ 	timeout_threshold = hevc_ctx->regs.common.reg013_core_timeout_threshold;
+ 	rkvdec_schedule_watchdog(rkvdec, timeout_threshold);
+ 
++	rkvdec_vdpu383_clear_cache(rkvdec);
++
+ 	/* Start decoding! */
+ 	writel(timeout_threshold, rkvdec->link + VDPU383_LINK_TIMEOUT_THRESHOLD);
+ 	writel(VDPU383_IP_CRU_MODE, rkvdec->link + VDPU383_LINK_IP_ENABLE);
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-regs.h b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-regs.h
+index 04eb23297..f64d56a22 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-regs.h
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec-vdpu383-regs.h
+@@ -42,6 +42,15 @@
+ #define VDPU383_STA_INT_SOFTRESET_RDY	(BIT(10) | BIT(11))
+ #define VDPU383_STA_INT_ALL		0x3ff
+ 
++/* Reference read cache, in the "cache" register region */
++#define VDPU383_CACHE_CLR_CACHE0	0x10
++#define VDPU383_CACHE_MAX_READS		0x18
++#define VDPU383_CACHE_CACHE0_CFG	0x1c
++#define VDPU383_CACHE_CFG_CACHEABLE	BIT(0)
++#define VDPU383_CACHE_CFG_READ_ALLOCATE	BIT(1)
++#define VDPU383_CACHE_CFG_LINE_64B	BIT(4)
++#define VDPU383_CACHE_MAX_READS_VAL	0x1c
++
+ struct vdpu383_regs_common {
+ 	u32 reg008_dec_mode;
+ 
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.c b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
+index fbcd0f175..405df54cc 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec.c
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
+@@ -1158,6 +1158,29 @@ void rkvdec_schedule_watchdog(struct rkvdec_dev *rkvdec, u32 timeout_threshold)
+ 	schedule_delayed_work(&rkvdec->watchdog_work, msecs_to_jiffies(watchdog_time));
+ }
+ 
++/*
++ * The reference read cache and the read limit lose their configuration at
++ * every power-down and come up with values that vary between power-ups,
++ * several times slower than the vendor driver's. Program them whenever the
++ * decoder is powered up.
++ */
++static void rkvdec_vdpu383_config_cache(struct rkvdec_dev *rkvdec)
++{
++	writel(VDPU383_CACHE_CFG_CACHEABLE | VDPU383_CACHE_CFG_READ_ALLOCATE |
++	       VDPU383_CACHE_CFG_LINE_64B, rkvdec->cache + VDPU383_CACHE_CACHE0_CFG);
++	writel(VDPU383_CACHE_MAX_READS_VAL, rkvdec->cache + VDPU383_CACHE_MAX_READS);
++}
++
++/*
++ * Reference buffers are rewritten between frames, so the cache is cleared
++ * before every frame, as the vendor driver does.
++ */
++void rkvdec_vdpu383_clear_cache(struct rkvdec_dev *rkvdec)
++{
++	if (rkvdec->cache)
++		writel(1, rkvdec->cache + VDPU383_CACHE_CLR_CACHE0);
++}
++
+ static void rkvdec_device_run(void *priv)
+ {
+ 	struct rkvdec_ctx *ctx = priv;
+@@ -1807,6 +1830,19 @@ static int rkvdec_probe(struct platform_device *pdev)
+ 		rkvdec->link = devm_platform_ioremap_resource_byname(pdev, "link");
+ 		if (IS_ERR(rkvdec->link))
+ 			return PTR_ERR(rkvdec->link);
++
++		/* VDPU383 reference read cache; device trees may not describe it */
++		if (rkvdec->variant == &vdpu383_variant) {
++			if (platform_get_resource_byname(pdev, IORESOURCE_MEM, "cache")) {
++				rkvdec->cache =
++					devm_platform_ioremap_resource_byname(pdev, "cache");
++				if (IS_ERR(rkvdec->cache))
++					return PTR_ERR(rkvdec->cache);
++			} else {
++				dev_info(&pdev->dev,
++					 "no \"cache\" region, reference read cache not configured\n");
++			}
++		}
+ 	}
+ 
+ 	ret = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
+@@ -1875,8 +1911,16 @@ static void rkvdec_remove(struct platform_device *pdev)
+ static int rkvdec_runtime_resume(struct device *dev)
+ {
+ 	struct rkvdec_dev *rkvdec = dev_get_drvdata(dev);
++	int ret;
+ 
+-	return clk_bulk_prepare_enable(rkvdec->num_clocks, rkvdec->clocks);
++	ret = clk_bulk_prepare_enable(rkvdec->num_clocks, rkvdec->clocks);
++	if (ret)
++		return ret;
++
++	if (rkvdec->cache)
++		rkvdec_vdpu383_config_cache(rkvdec);
++
++	return 0;
+ }
+ 
+ static int rkvdec_runtime_suspend(struct device *dev)
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.h b/drivers/media/platform/rockchip/rkvdec/rkvdec.h
+index a24be6638..ab13b880a 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec.h
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.h
+@@ -136,6 +136,7 @@ struct rkvdec_dev {
+ 	struct clk *axi_clk;
+ 	void __iomem *regs;
+ 	void __iomem *link;
++	void __iomem *cache;
+ 	struct mutex vdev_lock; /* serializes ioctls */
+ 	struct delayed_work watchdog_work;
+ 	struct gen_pool *sram_pool;
+@@ -180,6 +181,7 @@ void rkvdec_run_preamble(struct rkvdec_ctx *ctx, struct rkvdec_run *run);
+ void rkvdec_run_postamble(struct rkvdec_ctx *ctx, struct rkvdec_run *run);
+ void rkvdec_memcpy_toio(void __iomem *dst, void *src, size_t len);
+ void rkvdec_schedule_watchdog(struct rkvdec_dev *rkvdec, u32 timeout_threshold);
++void rkvdec_vdpu383_clear_cache(struct rkvdec_dev *rkvdec);
+ 
+ void rkvdec_quirks_disable_qos(struct rkvdec_ctx *ctx);
+ 
 
 ---
-base-commit: dd0bc00e3e9201fd49b62ff9cc07890c89003afe
-change-id: 20261029-nvhe-stage2-flush-1ee8a3d4e331
+base-commit: 65ba8f34ec886ec72b2c07ddc8cf3d815c32869d
+change-id: 20261028-rkvdec-vdpu383-cache-8fbbf8313da3
 
 Best regards,
---  
-Francesco Boccola <francesco.boccola@unina.it>
+-- 
+Valerii Bokov <vlry.bkv@gmail.com>
 
