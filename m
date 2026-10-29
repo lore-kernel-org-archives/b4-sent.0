@@ -1,11 +1,11 @@
 From: Muzaffer Kadir <muzafferkadir@mainlining.org>
-Date: Fri, 30 Oct 2026 00:02:37 +0300
-Subject: [PATCH v7 06/11] dt-bindings: clock: qcom,a53pll: Add MSM8952
- compatible
+Date: Fri, 30 Oct 2026 00:02:38 +0300
+Subject: [PATCH v7 07/11] dt-bindings: display: msm: dsi-controller-main:
+ Add MSM8952 compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-msm8952-initial-support-v7-6-ad748ace375d@mainlining.org>
+Message-Id: <20261030-msm8952-initial-support-v7-7-ad748ace375d@mainlining.org>
 References: <20261030-msm8952-initial-support-v7-0-ad748ace375d@mainlining.org>
 In-Reply-To: <20261030-msm8952-initial-support-v7-0-ad748ace375d@mainlining.org>
 To: Srinivas Kandagatla <srini@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -42,59 +42,43 @@ Cc: David Heidelberg <david@ixit.cz>, phone-devel@vger.kernel.org,
  linux-remoteproc@vger.kernel.org, linux-input@vger.kernel.org, 
  Muzaffer Kadir <muzafferkadir@mainlining.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793307755; l=1385;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793307755; l=1157;
  i=muzafferkadir@mainlining.org; s=20260816; h=from:subject:message-id;
- bh=BrzMm8QIgqROsRwWhO5mUK+pBiKnEr9sw/uWcqoVjmc=;
- b=1mAfH2nBwjwf7aeVI3GXqV/oYDC0YmaZcLrSIbIredaTXJK8uFq6qs6FlBm/WyNBz6u/h9zws
- G3I7eE8HuyfBBZF5e9kRnmt0Owa8gG7DYTg3G8JRf/ZNN4hIyzViCCJ
+ bh=o++ptew9Ow2rBuPiY/JBHdw7xKutwMrQt/b2OznM4Wc=;
+ b=nOBi0yzAQJar2cg4/mSbkfcTE7ca63iwygljAxIdtpcSKawrpAfG7tugw8Lb2Y6JR/nUWWN49
+ FhaRteHL1QkBPgLnv/HuIYXKkF/ItE/ZpeS35QlCxUnGnDveFlVfnKz
 X-Developer-Key: i=muzafferkadir@mainlining.org; a=ed25519;
  pk=4zkv4suQ3cYcO4Z7CrV8JSSjEGLBGepUtvQCFjgnYIU=
 X-Endpoint-Received: by B4 Relay for muzafferkadir@mainlining.org/20260816 with auth_id=954
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the a53pll found on MSM8952.
+Document the DSI Controller found on the MSM8952.
 
 Signed-off-by: Muzaffer Kadir <muzafferkadir@mainlining.org>
 ---
- .../devicetree/bindings/clock/qcom,a53pll.yaml     | 25 +++++++++++++---------
- 1 file changed, 15 insertions(+), 10 deletions(-)
+ Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml b/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml
-index 1eec77e75a0a..4abfaa24bc71 100644
---- a/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml
-+++ b/Documentation/devicetree/bindings/clock/qcom,a53pll.yaml
-@@ -15,16 +15,21 @@ description:
- 
- properties:
-   compatible:
--    enum:
--      - qcom,ipq5018-a53pll
--      - qcom,ipq5210-a53pll
--      - qcom,ipq5332-a53pll
--      - qcom,ipq6018-a53pll
--      - qcom,ipq8074-a53pll
--      - qcom,ipq9574-a73pll
--      - qcom,msm8226-a7pll
--      - qcom,msm8916-a53pll
--      - qcom,msm8939-a53pll
-+    oneOf:
-+      - enum:
-+          - qcom,ipq5018-a53pll
-+          - qcom,ipq5210-a53pll
-+          - qcom,ipq5332-a53pll
-+          - qcom,ipq6018-a53pll
-+          - qcom,ipq8074-a53pll
-+          - qcom,ipq9574-a73pll
-+          - qcom,msm8226-a7pll
-+          - qcom,msm8916-a53pll
-+          - qcom,msm8939-a53pll
-+      - items:
-+          - enum:
-+              - qcom,msm8952-a53pll
-+          - const: qcom,msm8939-a53pll
- 
-   reg:
-     maxItems: 1
+diff --git a/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml b/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml
+index e4fd1cbbd4e0..8b352380827f 100644
+--- a/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml
++++ b/Documentation/devicetree/bindings/display/msm/dsi-controller-main.yaml
+@@ -19,6 +19,7 @@ properties:
+               - qcom,milos-dsi-ctrl
+               - qcom,msm8226-dsi-ctrl
+               - qcom,msm8916-dsi-ctrl
++              - qcom,msm8952-dsi-ctrl
+               - qcom,msm8953-dsi-ctrl
+               - qcom,msm8974-dsi-ctrl
+               - qcom,msm8976-dsi-ctrl
+@@ -271,6 +272,7 @@ allOf:
+           contains:
+             enum:
+               - qcom,msm8916-dsi-ctrl
++              - qcom,msm8952-dsi-ctrl
+               - qcom,msm8953-dsi-ctrl
+               - qcom,msm8976-dsi-ctrl
+     then:
 
 -- 
 2.55.0
