@@ -1,187 +1,203 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 29 Oct 2026 03:03:33 -0500
-Subject: [PATCH net v2] net/smc: don't spin in smc_rx_recvmsg() while a
- pipe holds spliced data
+From: Mark Korenberg <socketpair@gmail.com>
+Subject: [PATCH 0/2] btrfs: zoned: fix silent data loss from leaked active
+ zone reservation
+Date: Thu, 29 Oct 2026 13:16:43 +0500
+Message-Id: <20261029-btrfs-zoned-active-zone-leak-v1-0-777dd01ff914@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-b4-disp-da7f8e6a-v2-1-9052904adf72@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQ6CMBAFf4W8s5u0DQXxV4yH0i66HirpIiEh/
- LtVjzPJzA7lIqy4NDsKr6LyyhXcqUF8hHxnklQZzrjOGjfQ2FISnSmFfjpzF8j2yXoTfBsHj5r
- NhSfZfssrMi+4/aW+xyfH5TvDcXwAoqd3H3kAAAA=
-X-Change-ID: 20261029-b4-disp-da7f8e6a-17d150a54c95
-To: Dust Li <dust.li@linux.alibaba.com>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Eric Dumazet <edumazet@kernel.org>
-Cc: linux-s390@vger.kernel.org, Wen Gu <guwen@linux.alibaba.com>, 
- linux-rdma@vger.kernel.org, Tony Lu <tonylu@linux.alibaba.com>, 
- Wenjia Zhang <wenjia@linux.ibm.com>, netdev@vger.kernel.org, 
- Stefan Raspl <raspl@linux.ibm.com>, Hidayath Khan <hidayath@linux.ibm.com>, 
- Simon Horman <horms@kernel.org>, Ursula Braun <ubraun@linux.ibm.com>, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793261012; l=7130;
- i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
- bh=ar8KXhaTisT8HDuo20NamNjP4DQNRxjn6kgJ2jxpkAA=;
- b=ZyaCjkklAlXTK7izphnTd7TNW3OnqMNkgxPM34XZFQZn+EyHpIpkF4XFwpdKuKD+5IwvKiYX4
- 6exl2iDWr+gBqKUonTYPBLqaCorOq7Fq8yXfolySTxZ5MhQ2s74DEQb
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQ5AMBAAwK/Inm2iJYKviMO2XWxISSsixN81j
+ nOZByIH4Qhd9kDgU6JsPkHlGdiZ/MQoLhl0oWtV6BbNEcaI9+bZIdlDTv6BK9OCxpQVkXZtoyy
+ kYg88yvX3/fC+HxCOXHRuAAAA
+X-Change-ID: 20261029-btrfs-zoned-active-zone-leak-bb34aa2d981c
+To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
+ Naohiro Aota <naohiro.aota@wdc.com>
+Cc: linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Mark Korenberg <socketpair@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793261811; l=8424;
+ i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
+ bh=wHYWPALtrSPUdIYEayA4D8xOo2QJYw+fdvMJ1u+NcPk=;
+ b=zT6ML6VF3iW1aQzH+i3Hbsn3F/rQQch1fFdoc8VjdILIGnV7gvtihz/ri1Tej5eZYPBl0EfxZ
+ LEiaz0lp1wzCkYaHx9zJwbkPndVd1OQgxQULn6mBBLRZqdBUn2tqVtF
+X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
+ pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
+X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While bytes spliced off the RMB are still in a pipe, recvmsg() waits
-for the pipe to release them before it copies the data behind them.
-The path to that wait skips the timeout and signal checks, and
-smc_rx_wait() returns at once on RCV_SHUTDOWN. With a signal pending,
-after SHUT_RD, or once the peer closes or shuts down writing,
-recvmsg() spins on a CPU until the pipe is drained, and SIGKILL cannot
-stop it. MSG_DONTWAIT and an expired SO_RCVTIMEO wait there too
-instead of returning -EAGAIN.
+On zoned btrfs, buffered writeback can fail with -ENOSPC on a device with
+plenty of free space, and the data is lost without any error reaching the
+writer:
 
-Check the timeout and signals before that wait, and end it when the
-pipe releases the data or the connection is killed, not on RCV_SHUTDOWN.
-A zero-length read returns 0 without waiting for the pipe; a
-non-blocking one returns -EAGAIN while poll() still reports the socket
-readable (splice() can still take those bytes). The wait sets
-SOCKWQ_ASYNC_WAITDATA like smc_rx_wait(), so a byte arriving behind
-the pipe raises no SIGIO on a reader already asleep for it, and a full
-barrier orders its wait queue entry before its read of splice_pending,
-so no wake is lost.
+  BTRFS error (device ublkb0): cow_file_range failed, root=5 inode=...
+    start=... len=16777216 cur_offset=... cur_alloc_size=0: -28
+  BTRFS error (device ublkb0): failed to run delalloc range, ...: -28
 
-Fixes: 9014db202cb7 ("smc: add support for splice()")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+cow_file_range() ends the writeback of the range without writing it and
+only sets an error on the mapping. write() and close() succeed, rsync and
+cp exit with 0, the first syncfs() returns -ENOSPC and the second one 0.
+The pages stay in the page cache, so reading the files back right away
+does not necessarily show it. In the original report a 3.7 GB git pack
+file copied with rsync lost 37 ranges of 16 MiB.
+
+It was seen on a 100 GiB zoned device (ublk, 16 MiB zones, 128 open
+zones, no active zone limit, single profiles, commit=300) on 7.2.11 while
+copying a kernel tree onto a filesystem that had been filled, emptied and
+balanced with -dusage=0 -musage=0 before. The code involved is the same
+in current master.
+
+Cause
+-----
+
+1. btrfs_relocate_block_group() finishes the zones of the block group
+   before relocating it and ignores -EAGAIN. For a metadata or system
+   block group with allocated but not yet written tree blocks
+   (alloc_offset > meta_write_pointer) and for the data relocation block
+   group, do_zone_finish() returns -EAGAIN. The block group is then
+   relocated and removed with its zones still active: it stays on
+   fs_info->zone_active_bgs, and reserved_active_zones is never given
+   back. Caught with bpftrace on the reporter's machine:
+
+     zone_finish failed ret=-11 bg 43419435008 flags 0x2
+       alloc_offset 10420224 meta_written 10403840 used 16384 reserved 16384
+       btrfs_relocate_block_group <- btrfs_relocate_chunk <- __btrfs_balance
+     remove bg 43419435008 type 0x2 <- btrfs_remove_chunk
+
+   reserved_active_zones went from 1 to 0 at that moment and stayed
+   there. Before a remount the same filesystem had four such block
+   groups (removed from the chunk tree, still listed as active in
+   mountstats with used, reserved and unusable all 0) and, read from the
+   kernel, max_active_zones 128, active_zones_left 117,
+   reserved_active_zones -3.
+
+2. reserved_active_zones is 3 (6 with DUP) minus the active metadata,
+   tree-log and system zones, so it can be negative, legitimately too:
+   it dropped by 3 for a few seconds during an rm -rf, independently of
+   the leak.
+   btrfs_can_activate_zone() checks active_zones_left >= 1 + reserved for
+   data, which is always true with a negative reservation. So when the
+   active zones run out, can_allocate_chunk_zoned() neither finishes a
+   block group nor makes the caller wait: a chunk is allocated, its zone
+   cannot be activated, and find_free_extent() returns -ENOSPC. On the
+   reporter's machine btrfs_can_activate_zone() returned true 45 times,
+   each followed by a failed allocation, and btrfs_zone_finish_one_bg()
+   was never called.
+
+Patch 1 finishes the zones again before the relocated block group is
+removed: the block group is read-only and empty by then, and the commit
+at the end of relocate_block_group() has written its tree blocks. With
+debug output in a test kernel, the first btrfs_zone_finish() got -EAGAIN
+27 times over 6 test runs, and all 1143 calls of the new
+btrfs_zone_finish_relocated() succeeded at once. Patch 2 treats a
+negative reservation as zero for data. Patch 1 has to come first: with
+patch 2 alone the leaked reservation leaves no active zone for a new
+system block group, which runs into the deadlock described at the end.
+
+Reproducer
+----------
+
+zoned null_blk, 16 MiB zones, 16 open zones, commit=300. Each forced
+metadata+system balance after new chunks were allocated leaves one block
+group behind; then several writers lose their data:
+
+  mount -t configfs none /sys/kernel/config
+  d=/sys/kernel/config/nullb/zdev; mkdir $d
+  echo 4096 > $d/blocksize; echo 1 > $d/memory_backed; echo 1 > $d/zoned
+  echo 16 > $d/zone_size; echo 8192 > $d/size; echo 16 > $d/zone_max_open
+  echo 1 > $d/power
+  mkfs.btrfs -f -O zoned -d single -m single /dev/zdev
+  mount -o commit=300 /dev/zdev /mnt
+  for r in 1 2 3 4 5 6; do
+          dd if=/dev/urandom of=/mnt/pre$r bs=1M count=64
+          btrfs balance start --force -m -s /mnt
+  done
+  for i in 1 2 3 4 5 6 7 8; do
+          dd if=/dev/urandom of=/tmp/src$i bs=1M count=512
+  done
+  for i in 1 2 3 4 5 6 7 8; do cp /tmp/src$i /mnt/data$i & done; wait
+  sync -f /mnt; sync -f /mnt
+  echo 3 > /proc/sys/vm/drop_caches
+  for i in 1 2 3 4 5 6 7 8; do cmp /tmp/src$i /mnt/data$i; done
+
+"Zombies" are active metadata/system block groups in mountstats with a
+write pointer but used, reserved and unusable all 0; the reservation is
+3 minus the active metadata and system block groups.
+
+                    zombies  reservation  cow_file_range  syncfs  files
+                                          failures                differ
+  master                  3           -2           29714  fail x2    8/8
+  patch 1 only            0            1               0  0, 0       0/8
+  patch 2 only     deadlock in balance (see below)
+  both                    0            1               0  0, 0       0/8
+
+Testing
+-------
+
+virtme-ng VM, CONFIG_PROVE_LOCKING, hung task detector at 60 s, zoned
+null_blk with 16 MiB zones and commit=300, data checked on disk after
+dropping caches:
+
+- 8 x 512 MiB buffered writers, 16 and 128 open zones: no errors
+- 4 x 4000 small files, 16 open zones: no errors
+- 8 x 256 MiB O_DIRECT writers, 16 open zones: no errors
+- rsync of a 6 GB kernel tree with vm.dirty_bytes of 5 GB, 16 open
+  zones: no errors
+- filling the filesystem: dd still gets ENOSPC, no hang or retry loop
+- the reproducer's balance step on the same kind of ublk device as in
+  the original report (100 GiB, 16 MiB zones, 128 open zones), then
+  rsync of a kernel tree: master left 3 zombies
+  (reservation -2), logged 28 cow_file_range failures, the first
+  syncfs() returned -ENOSPC and the second 0, and the same 3.7 GB pack
+  file as in the original report differed on disk; patched: no zombies,
+  no errors, no differences
+- the reproducer above: see the table
+- 8 writers with --full-balance in a loop, 16 and 128 open zones, four
+  runs each on master and patched: no data loss on either; the issue
+  below aborts the transaction in 3 of 4 runs on both, and master also
+  deadlocked once
+
+Not fixed here
+--------------
+
+These show up with balance while writing on master as well; I did not
+want to grow this series:
+
+- Recursive ro_block_group_mutex: btrfs_inc_block_group_ro() ->
+  reserve_chunk_space() -> btrfs_zoned_activate_one_bg(info, true) ->
+  btrfs_zone_finish_one_bg() -> do_zone_finish() ->
+  btrfs_inc_block_group_ro(), with chunk_mutex held, so writeback hangs
+  in btrfs_can_activate_zone(). lockdep reports "possible recursive
+  locking detected". Seen on master with 8 writers and --full-balance in
+  a loop, 16 open zones, and with patch 2 alone in the reproducer.
+
+- "error while writing out transaction: -EAGAIN" from
+  btrfs_check_meta_write_pointer() during the commit in
+  relocate_block_group(), which aborts the transaction and forces the
+  filesystem read-only, in the same balance-while-writing test.
+
+- call_zone_finish() returns before reserved_active_zones++ and
+  btrfs_dev_clear_active_zone() when REQ_OP_ZONE_FINISH fails, and
+  do_zone_finish() still takes the block group off the active list, so
+  an I/O error there leaks the reservation and the active zone.
+
+I used an AI assistant (Claude) for the investigation, the reproducer
+and drafting the patches and this mail; the result was reviewed and
+tested as described above.
+
 ---
-Changes in v2:
-- Set and clear SOCKWQ_ASYNC_WAITDATA around the sleep, as
-  smc_rx_wait() does: a byte arriving behind the pipe raised SIGIO on
-  an O_ASYNC reader already asleep for it (the AI review of v1 [3],
-  Low). Measured on the v1 setup with that reader (F_SETOWN_EX to the
-  reading thread, a SIGIO handler without SA_RESTART, the peer sends
-  one more byte): v1 returns -EINTR within 1 ms of the byte; v2, like
-  the unpatched kernel, sleeps on (0 ms of CPU in 3 s) and reads the
-  next 4096 bytes after the drain. v2 without its sk_set_bit() line
-  brings the -EINTR back.
-- smp_mb() between add_wait_queue() and the read of splice_pending
-  (the review's Medium): the release decrements, then wakes only if
-  wq_has_sleeper() sees the entry, and the sleeper had only an unlock
-  and a lock acquire between its entry's store and its read, IOW
-  store-buffering, a lost wake. herd7 against LKMM: allowed without
-  the smp_mb(), forbidden with it. x86 and s390 can't show it (the
-  lock acquire is a full barrier there), so it's modeled, not
-  measured. smc_rx_wait() has the same gap, pre-existing; every CDC
-  message that brings data wakes it, so it's left alone.
-- The commit message now says a non-blocking read behind the pipe
-  returns -EAGAIN while poll() reports the socket readable (a
-  pre-existing point the review raised); poll() is left alone, since
-  hiding those bytes from smc_poll() would hide data splice() can
-  still take. A level-triggered loop that keeps the spliced bytes in a
-  pipe gets EPOLLIN and -EAGAIN until it drains that pipe; before the
-  patch the same read didn't return until the drain, asleep, one pass
-  per tick.
-- Not addressed: the other pre-existing point, a second splice()
-  reading a stale splice_pending between the first pipe's cursor
-  update and its decrement; the change Hidayath Khan announced in [1]
-  (the decrement moved under lock_sock()) would close it.
-- Rebased on net after the net-next merge (fcc00b15cb21); smc_rx.c is
-  the same there, on v7.3 and on v7.3-rc6. The three comments the
-  patch adds are shorter.
-- Link to v1: https://lore.kernel.org/netdev/20261013-b4-disp-193a2a59-v1-1-ed88ac10a41c@proton.me/
+Mark Korenberg (2):
+      btrfs: zoned: finish the zones of a relocated block group
+      btrfs: zoned: don't treat a negative zone reservation as free zones
 
-Every case of v1 (the repro is in its notes) run again on v2, on v7.3
-with KASAN, gives the same result: MSG_DONTWAIT -EAGAIN at once,
-SO_RCVTIMEO after 1050 ms, -EINTR or the SA_RESTART handler on a
-signal, SIGKILL done within 11 ms, recv(0) 0 at once; after a shutdown
-or an abort the reader sleeps with no CPU and gets the next 4096 bytes
-after the drain; the MSG_WAITALL read returns its 4096 at the signal;
-a second splice(SPLICE_F_NONBLOCK) with the first undrained returns
-the next 4096 at once; no KASAN splat. Not repeated: the SMC-R case
-(rdma link del on the reader's only device) and the run on top of the
-cursor-bounds series [2]; the wait's exit once the connection is
-killed is unchanged. Logs on request.
-
-For stable: 5.10.y and 5.15.y lack c924884743e9 ("net/smc: fix
-use-after-free in smc_rx_pipe_buf_release()"); its backports there are
-posted, not released. Without it a reader in SMC_CLOSED,
-SMC_PEERFINCLOSEWAIT or SMC_APPFINCLOSEWAIT would sleep until a
-signal, its timeout or the connection's kill instead of spinning,
-since the pipe release doesn't decrement splice_pending in those
-states. 6.1.y and up have it.
-
-[1] https://lore.kernel.org/all/7a174d1f-80d8-4294-ae66-829c9dacd662@linux.ibm.com/
-[2] https://lore.kernel.org/all/20261013-b4-disp-f345196c-v7-0-ef3dddfbfa68@proton.me/
-[3] https://lore.kernel.org/all/179209723095.434549.11206499945190748009@kernel.org/
+ fs/btrfs/volumes.c |  3 +++
+ fs/btrfs/zoned.c   | 51 +++++++++++++++++++++++++++++++++++++++++++++++----
+ fs/btrfs/zoned.h   | 11 ++++++++++-
+ 3 files changed, 60 insertions(+), 5 deletions(-)
 ---
- net/smc/smc_rx.c | 39 ++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 38 insertions(+), 1 deletion(-)
-
-diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
-index 197fddc6271f..63c178c10bf1 100644
---- a/net/smc/smc_rx.c
-+++ b/net/smc/smc_rx.c
-@@ -286,6 +286,27 @@ int smc_rx_wait(struct smc_sock *smc, long *timeo, size_t peeked,
- 	return rc;
- }
- 
-+/* Wait for the pipe to release the spliced data. Unlike smc_rx_wait()
-+ * it does not end on shutdown or sk_err, the data is already in the
-+ * RMB; smc_conn_kill() wakes it and the caller checks conn->killed.
-+ */
-+static void smc_rx_wait_splice(struct smc_sock *smc, long *timeo)
-+{
-+	DEFINE_WAIT_FUNC(wait, woken_wake_function);
-+	struct smc_connection *conn = &smc->conn;
-+	struct sock *sk = &smc->sk;
-+
-+	sk_set_bit(SOCKWQ_ASYNC_WAITDATA, sk);
-+	add_wait_queue(sk_sleep(sk), &wait);
-+	/* pairs with the smp_mb() in wq_has_sleeper(): the release drops
-+	 * splice_pending, then looks for a sleeper
-+	 */
-+	smp_mb();
-+	sk_wait_event(sk, timeo, !atomic_read(&conn->splice_pending), &wait);
-+	remove_wait_queue(sk_sleep(sk), &wait);
-+	sk_clear_bit(SOCKWQ_ASYNC_WAITDATA, sk);
-+}
-+
- static int smc_rx_recv_urg(struct smc_sock *smc, struct msghdr *msg, int len,
- 			   int flags)
- {
-@@ -443,7 +464,23 @@ int smc_rx_recvmsg(struct smc_sock *smc, struct msghdr *msg,
- 		/* could be just 1 byte, even after waiting on data above */
- 		readable = smc_rx_data_available(conn, peeked_bytes);
- 		splbytes = atomic_read(&conn->splice_pending);
--		if (!readable || (msg && splbytes)) {
-+		if (msg && splbytes) {
-+			/* a pipe holds bytes ahead of these; the copy path
-+			 * skips the timeout and signal checks
-+			 */
-+			if (!read_remaining)
-+				break;
-+			if (!timeo || signal_pending(current)) {
-+				if (!read_done)
-+					read_done = timeo ?
-+						    sock_intr_errno(timeo) :
-+						    -EAGAIN;
-+				break;
-+			}
-+			smc_rx_wait_splice(smc, &timeo);
-+			continue;
-+		}
-+		if (!readable) {
- 			if (splbytes)
- 				func = smc_rx_data_available_and_no_splice_pend;
- 			else
-
----
-base-commit: fcc00b15cb21a6de76826e5012b2c758505f5e65
-change-id: 20261029-b4-disp-da7f8e6a-17d150a54c95
+base-commit: 65ba8f34ec886ec72b2c07ddc8cf3d815c32869d
+change-id: 20261029-btrfs-zoned-active-zone-leak-bb34aa2d981c
 
 Best regards,
---  
-Bryam Vargas <hexlabsecurity@proton.me>
+-- 
+Mark Korenberg <socketpair@gmail.com>
 
