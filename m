@@ -1,100 +1,68 @@
-From: Mark Korenberg <socketpair@gmail.com>
-Date: Thu, 29 Oct 2026 13:16:45 +0500
-Subject: [PATCH 2/2] btrfs: zoned: don't treat a negative zone reservation
- as free zones
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/2] i2c: Add driver support Amlogic A9 I2C
+Date: Thu, 29 Oct 2026 08:33:30 +0000
+Message-Id: <20261029-a9-i2c-v3-0-7b30ccc00533@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-btrfs-zoned-active-zone-leak-v1-2-777dd01ff914@gmail.com>
-References: <20261029-btrfs-zoned-active-zone-leak-v1-0-777dd01ff914@gmail.com>
-In-Reply-To: <20261029-btrfs-zoned-active-zone-leak-v1-0-777dd01ff914@gmail.com>
-To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>, 
- Naohiro Aota <naohiro.aota@wdc.com>
-Cc: linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Mark Korenberg <socketpair@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANsE42oC/1WNwQ6DIBAFf8VwLq2sqNhT/6PpAXBRkooNGGNj/
+ PeCaU16fMsMs5KA3mIg12wlHmcb7OjiKE4Z0b10HVLbxk0ghypvGKOyoRY0Bc5rgQBYiYJEWMm
+ AVHnpdJ/wiFwS5nCZ0vPLo7HL3rk/4u5tmEb/3rMzS9dvAfivMDOaUyVk2yheGS7FTQ7PsbP6r
+ MeBpE9mOESWAxwiRJGXWGg0rC6V+Re3bfsA4HZeDPYAAAA=
+X-Change-ID: 20260911-a9-i2c-24478e22e683
+To: Junyi Zhao <junyi.zhao@amlogic.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Xianwei Zhao <xianwei.zhaol@amlogic.com>
+Cc: Junyi Zhao <junyi.zhaol@amlogic.com>, linux-i2c@vger.kernel.org, 
+ linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793261811; l=2969;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=/DV6VhuvZpqJeMSGpyJDetY348SVMJHO3LESTAMCiLA=;
- b=n0FwG6ZfMT+z5PqxaMtHNErkqGVg6tTpK2oqI0vXqG31LdBPqOVSRbJrYhblRrfNpT8EOyMA0
- LrEDY492yyLBZK3TfLzTCc+QN51vpOFdbqMMWleVFll5pW0VKmiAgcn
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793262816; l=1553;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=kkji73amQnq/o1U1e1LnkN9YbZJt+h7urd8kw2klnlM=;
+ b=sdgJZWmkoNDUdFU37ska6hHqgSroWpJqdJP7CwvquZDnoSuEOtJ+JHnvI8tt18KjrxbGC4riL
+ zy3S4uoc8XiClZwNiCggHZj7xmNILDpBED5zvCcWhyrl72+ZmMGNIG4
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-reserved_active_zones goes negative when more metadata and system block
-groups are active than were reserved. btrfs_can_activate_zone() then
-reports a free active zone for data even when none is left, so the
-allocator neither finishes a zone nor waits for one. find_free_extent()
-fails with -ENOSPC on a device with plenty of space and cow_file_range()
-drops the dirty range; only the next fsync() or syncfs() reports it.
+Add a Device Tree binding and driver for the I2C controller found on the
+Amlogic A9 SoC.
 
-A negative reservation holds nothing back. Treat it as zero for data
-block groups.
-
-Fixes: a7e1ac7bdc5a ("btrfs: zoned: reserve zones for an active metadata/system block group")
-Cc: stable@vger.kernel.org
-Signed-off-by: Mark Korenberg <socketpair@gmail.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- fs/btrfs/zoned.c | 15 +++++++++++----
- fs/btrfs/zoned.h |  5 ++++-
- 2 files changed, 15 insertions(+), 5 deletions(-)
+Changes in v3:
+- Based on the questions raised by the robot, the data flow was reorganized.
+- Some processing was optimized according to Andi's and Markus's suggestions.
+- Link to v2: https://lore.kernel.org/r/20261022-a9-i2c-v2-0-45e3cef175bf@amlogic.com
 
-diff --git a/fs/btrfs/zoned.c b/fs/btrfs/zoned.c
-index ce8d96a48aa3..47aba2a63bb3 100644
---- a/fs/btrfs/zoned.c
-+++ b/fs/btrfs/zoned.c
-@@ -2444,12 +2444,13 @@ bool btrfs_zone_activate(struct btrfs_block_group *block_group)
- 		if (zinfo->max_active_zones == 0)
- 			continue;
- 
--		if (is_data)
--			reserved = zinfo->reserved_active_zones;
- 		/*
- 		 * For the data block group, leave active zones for one
--		 * metadata block group and one system block group.
-+		 * metadata block group and one system block group. A negative
-+		 * reservation holds nothing back, see btrfs_can_activate_zone().
- 		 */
-+		if (is_data)
-+			reserved = max(zinfo->reserved_active_zones, 0);
- 		if (atomic_read(&zinfo->active_zones_left) <= reserved) {
- 			ret = false;
- 			goto out_unlock;
-@@ -2712,8 +2713,14 @@ bool btrfs_can_activate_zone(struct btrfs_fs_devices *fs_devices, u64 flags)
- 			break;
- 		}
- 
-+		/*
-+		 * A negative reservation holds nothing back. Do not count it
-+		 * as free zones: the check below would pass with no active
-+		 * zone left, and the caller would allocate a chunk it cannot
-+		 * activate instead of finishing a zone, then fail with -ENOSPC.
-+		 */
- 		if (flags & BTRFS_BLOCK_GROUP_DATA)
--			reserved = zinfo->reserved_active_zones;
-+			reserved = max(zinfo->reserved_active_zones, 0);
- 
- 		switch (flags & BTRFS_BLOCK_GROUP_PROFILE_MASK) {
- 		case 0: /* single */
-diff --git a/fs/btrfs/zoned.h b/fs/btrfs/zoned.h
-index 700d6909ee3f..aa6fa3a0b9a3 100644
---- a/fs/btrfs/zoned.h
-+++ b/fs/btrfs/zoned.h
-@@ -38,7 +38,10 @@ struct btrfs_zoned_device_info {
- 	u32 nr_zones;
- 	unsigned int max_active_zones;
- 	/*
--	 * Reserved active zones for one metadata and one system block group.
-+	 * Reserved active zones for one metadata and one system block group:
-+	 * the reservation made at mount minus the metadata and system block
-+	 * groups active now. It is negative when more of them are active than
-+	 * were reserved, which does not mean that there are extra active zones.
- 	 * It can vary per-device depending on the allocation status.
- 	 */
- 	int reserved_active_zones;
+Changes in v2:
+- dtbinding: make some minor modifications, suggestted by Conor and robot.
+- driver: Make some adjustments, including macro definitions, format adjustments,
+          adding quirks, process optimization, and so on. According to Andi and robot's suggestion
+- Give up MAINTAINERS file the separate submission, make it together with the driver.
+- Link to v1: https://lore.kernel.org/r/20260924-a9-i2c-v1-0-b8ad9b46f4a8@amlogic.com
 
+---
+Junyi Zhao (1):
+      i2c: amlogic: Add Amlogic A9 I2C controller driver
+
+Xianwei Zhao (1):
+      dt-bindings: i2c: add Amlogic A9 I2C controller
+
+ .../devicetree/bindings/i2c/amlogic,a9-i2c.yaml    |  56 +++
+ MAINTAINERS                                        |   9 +
+ drivers/i2c/busses/Kconfig                         |   8 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-amlogic-a9.c                | 445 +++++++++++++++++++++
+ 5 files changed, 519 insertions(+)
+---
+base-commit: 4ec2365c08de306f52650d8736aef5862baedb8d
+change-id: 20260911-a9-i2c-24478e22e683
+
+Best regards,
 -- 
-2.56.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
