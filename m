@@ -1,10 +1,10 @@
 From: Manuel Huber <manuelh@nvidia.com>
-Date: Thu, 29 Oct 2026 00:30:39 +0000
-Subject: [PATCH v2 2/3] keys: add KEY_SPEC_IPE_KEYRING
+Date: Thu, 29 Oct 2026 00:30:40 +0000
+Subject: [PATCH v2 3/3] Documentation: ipe: document the IPE keyring
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-b4-ipe-keyring-rfc-v2-2-77727b205844@nvidia.com>
+Message-Id: <20261029-b4-ipe-keyring-rfc-v2-3-77727b205844@nvidia.com>
 References: <20261029-b4-ipe-keyring-rfc-v2-0-77727b205844@nvidia.com>
 In-Reply-To: <20261029-b4-ipe-keyring-rfc-v2-0-77727b205844@nvidia.com>
 To: Fan Wu <wufan@kernel.org>, David Howells <dhowells@redhat.com>, 
@@ -20,140 +20,159 @@ Cc: Christian Brauner <brauner@kernel.org>,
  linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  kexec@lists.infradead.org, Manuel Huber <manuelh@nvidia.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793233875; l=4547;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793233875; l=7376;
  i=manuelh@nvidia.com; s=20261019; h=from:subject:message-id;
- bh=/BFpBbq1FQa32YOzNX0aI7W2U2EGLrFUn65BbO8gg8g=;
- b=a8U5f4fDz3jnb/NdfevMsgRLh/Bpxd/5HEOmei1beg5hrND+EV39Tf8E8oS855+nuFE+ElntV
- n91Ec7ANsvBAm1CF9zhXRGxQp3PZor/EBkp5EHuKnB0+Vk+S+UDqvu0
+ bh=c6HprXLFky8e7ORPVl+bvRdWeZ7XXPIzbHqXHBte+VI=;
+ b=fqWIj+x7IAsvMeqhgtjjcM8LcyN96AZBIQzGOknWaN9odCkUskRFI0rpxcBDMxkJ0b88dLgP5
+ vsQIeWDAZkoCW1yAFKrgVijdj8mY3fD7Niv7PxYmgh6FslzyTGNtDH1
 X-Developer-Key: i=manuelh@nvidia.com; a=ed25519;
  pk=uKggxpZ/mM0qtFnudxvh5Dfz8I6VoehwoM3eYCe3tyU=
 X-Endpoint-Received: by B4 Relay for manuelh@nvidia.com/20261019 with auth_id=1244
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The BPF, dm-verity, and fs-verity keyrings have well-known IDs which
-allow userspace to directly address them. This commit follows the same
-pattern for the .ipe keyring.
-
-This provides a direct interface independent of resolving %:.ipe through
-process keyrings and /proc/keys.
+Document the .ipe policy-verification keyring with its additive use
+after the existing trust sources and the userspace's role in
+sustaining trust. Mention requirements for maintaining policy trust
+in kexec scenarios.
 
 Signed-off-by: Manuel Huber <manuelh@nvidia.com>
 ---
- Documentation/security/keys/core.rst | 12 ++++++++++++
- include/linux/key.h                  |  2 ++
- include/uapi/linux/keyctl.h          |  1 +
- security/ipe/keyring.c               |  2 ++
- security/keys/process_keys.c         | 23 +++++++++++++++++++++++
- 5 files changed, 40 insertions(+)
+ Documentation/admin-guide/LSM/ipe.rst | 77 ++++++++++++++++++++++++++++++++++-
+ Documentation/security/ipe.rst        | 19 ++++++---
+ 2 files changed, 90 insertions(+), 6 deletions(-)
 
-diff --git a/Documentation/security/keys/core.rst b/Documentation/security/keys/core.rst
-index 326b8a973828..64b37817a335 100644
---- a/Documentation/security/keys/core.rst
-+++ b/Documentation/security/keys/core.rst
-@@ -373,6 +373,18 @@ process making the call::
- 	KEY_SPEC_REQKEY_AUTH_KEY	-7	assumed request_key()
- 						  authorisation key
+diff --git a/Documentation/admin-guide/LSM/ipe.rst b/Documentation/admin-guide/LSM/ipe.rst
+index 9e82a2082b94..273f9c3d62e2 100644
+--- a/Documentation/admin-guide/LSM/ipe.rst
++++ b/Documentation/admin-guide/LSM/ipe.rst
+@@ -150,6 +150,39 @@ Additionally, IPE draws hard security boundary between userspace and
+ kernelspace. As a result, kernel-level exploits are considered outside
+ the scope of IPE and mitigation is left to other mechanisms.
  
-+There are also values that refer to a specific kernel keyring rather than to
-+anything belonging to the caller.  These well-known IDs allow userspace to
-+name kernel keyrings directly even when they are not linked into a process
-+keyring::
++Userspace-provisioned policy trust
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 +
-+	CONSTANT			VALUE	KEY REFERENCED
-+	==============================	======	===========================
-+	KEY_SPEC_IPE_KEYRING		-12	the ".ipe" keyring
++When ``CONFIG_SECURITY_IPE_KEYRING`` is enabled, IPE can authenticate policy
++signatures with certificates provisioned into the ``.ipe`` keyring. This
++differs from IPE's other policy trust sources, whose roots of trust originate
++in the kernel image or firmware: the userspace component that provisions the
++``.ipe`` keyring becomes part of the trusted computing base.
 +
-+The availability of a subsystem keyring depends on its kernel configuration.
-+Looking up an unavailable keyring returns ``ENOKEY``.
++That component must fulfill various requirements. The component must:
 +
- 
- The main syscalls are:
- 
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 81b8f05c6898..9c2ac0c70d56 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -440,6 +440,8 @@ extern key_ref_t keyring_search(key_ref_t keyring,
- extern int keyring_restrict(key_ref_t keyring, const char *type,
- 			    const char *restriction);
- 
-+extern void key_register_ipe_keyring(struct key *keyring);
++- run before any untrusted userspace component runs
++- be backed by code from a trusted location
++- obtain its policy inputs from trusted sources
++- complete provisioning without failures before allowing untrusted code to
++  run. This includes adding all intended certificates, applying the
++  reject-all keyring restriction, and removing the keyring permissions which
++  would allow later modification.
++- destroy the policy-signing private key after signing the policy, if it
++  generated one.
 +
- extern struct key *key_lookup(key_serial_t id);
- 
- static inline key_serial_t key_serial(const struct key *key)
-diff --git a/include/uapi/linux/keyctl.h b/include/uapi/linux/keyctl.h
-index 4c8884eea808..e42fca286b15 100644
---- a/include/uapi/linux/keyctl.h
-+++ b/include/uapi/linux/keyctl.h
-@@ -24,6 +24,7 @@
- #define KEY_SPEC_GROUP_KEYRING		-6	/* - key ID for GID-specific keyring */
- #define KEY_SPEC_REQKEY_AUTH_KEY	-7	/* - key ID for assumed request_key auth key */
- #define KEY_SPEC_REQUESTOR_KEYRING	-8	/* - key ID for request_key() dest keyring */
-+#define KEY_SPEC_IPE_KEYRING		-12	/* - key ID for the .ipe keyring */
- 
- /* request-key default keyrings */
- #define KEY_REQKEY_DEFL_NO_CHANGE		-1
-diff --git a/security/ipe/keyring.c b/security/ipe/keyring.c
-index 8502f825945d..14626df46e71 100644
---- a/security/ipe/keyring.c
-+++ b/security/ipe/keyring.c
-@@ -26,5 +26,7 @@ int __init ipe_keyring_init(void)
- 			      KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
- 	if (IS_ERR(ipe_keyring))
- 		panic("failed to allocate \".ipe\" keyring");
-+	key_register_ipe_keyring(ipe_keyring);
++The ``.ipe`` keyring authenticates policy signatures; it does not make the
++active policy immutable or otherwise change authorization for IPE's
++securityfs control interfaces.
 +
- 	return 0;
- }
-diff --git a/security/keys/process_keys.c b/security/keys/process_keys.c
-index a63c46bb2d14..20d6faefb75e 100644
---- a/security/keys/process_keys.c
-+++ b/security/keys/process_keys.c
-@@ -22,6 +22,9 @@
- /* Session keyring create vs join semaphore */
- static DEFINE_MUTEX(key_session_mutex);
- 
-+/* IPE keyring reachable through KEY_SPEC_IPE_KEYRING */
-+static struct key *ipe_keyring __ro_after_init;
++Note on Kexec: Kexec bypasses firmware and bootloader trust checks and does
++not preserve the ``.ipe`` keyring or active policy. Deployments must thus
++prevent unauthorized kexec or establish equivalent trust in the replacement
++environment, including any initramfs and command line. Controls that deny
++further kexec loading do not prevent execution of an already-loaded image,
++so any previously loaded image must satisfy the same trust requirements or
++be unloaded before those controls take effect.
 +
- /* The root user's tracking struct */
- struct key_user root_key_user = {
- 	.usage		= REFCOUNT_INIT(3),
-@@ -590,6 +593,18 @@ bool lookup_user_key_possessed(const struct key *key,
- 	return key == match_data->raw_data;
- }
+ Policy
+ ------
  
-+/**
-+ * key_register_ipe_keyring - Publish the IPE keyring
-+ * @keyring: The keyring to publish
-+ *
-+ * Make @keyring reachable by userspace through the KEY_SPEC_IPE_KEYRING
-+ * special key ID. Called once, from an initcall, and never undone.
-+ */
-+void key_register_ipe_keyring(struct key *keyring)
-+{
-+	ipe_keyring = keyring;
-+}
+@@ -238,7 +271,12 @@ unconstrained root, and deploying an "allow all" policy). These
+ policies must be signed by a certificate that chains to the
+ ``SYSTEM_TRUSTED_KEYRING``, or to the secondary and/or platform keyrings if
+ ``CONFIG_IPE_POLICY_SIG_SECONDARY_KEYRING`` and/or
+-``CONFIG_IPE_POLICY_SIG_PLATFORM_KEYRING`` are enabled, respectively.
++``CONFIG_IPE_POLICY_SIG_PLATFORM_KEYRING`` are enabled, respectively. When
++``CONFIG_SECURITY_IPE_KEYRING`` is enabled, IPE also provides a dedicated
++``.ipe`` keyring for policy-signing certificates that are provisioned by
++userspace, as described below. The ``.ipe`` keyring is an additive final
++fallback and does not replace the configured system trust sources.
 +
- /*
-  * Look up a key ID given us by userspace with a given permissions mask to get
-  * the key it refers to.
-@@ -741,6 +756,14 @@ key_ref_t lookup_user_key(key_serial_t id, unsigned long lflags,
- 		key_ref = make_key_ref(key, 1);
- 		break;
+ With openssl, the policy can be signed by::
  
-+	case KEY_SPEC_IPE_KEYRING:
-+		key = ipe_keyring;
-+		if (!key)
-+			goto error;
-+		__key_get(key);
-+		key_ref = make_key_ref(key, 0);
-+		break;
+    openssl smime -sign \
+@@ -251,6 +289,43 @@ With openssl, the policy can be signed by::
+       -outform der \
+       -out "$MY_POLICY.p7b"
+ 
++Provisioning the IPE policy keyring
++^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 +
- 	default:
- 		key_ref = ERR_PTR(-EINVAL);
- 		if (id < 1)
++The ``.ipe`` keyring allows a system to provision an IPE-specific policy
++signing certificate without embedding it in the kernel or firmware trust
++stores. It is not linked into any process keyring. Userspace addresses it
++directly with the ``KEY_SPEC_IPE_KEYRING`` special key ID (``-12``), which does
++not grant possession of the keyring.
++
++The keyring exists when ``CONFIG_SECURITY_IPE_KEYRING`` is enabled and starts
++empty and writable. If the option is disabled, using
++``KEY_SPEC_IPE_KEYRING`` fails with ``ENOKEY``. Userspace can add a DER-encoded
++X.509 certificate and then apply a reject-all restriction::
++
++   keyctl padd asymmetric "" -12 < policy-signing-key.der
++   keyctl restrict_keyring -12
++
++Both steps are required. IPE ignores the keyring until it is nonempty and its
++restriction is the reject-all restriction installed by the second command, so
++a partially provisioned, mutable keyring is not a trust source. The
++restriction cannot be removed. More than one certificate can be enrolled by
++repeating the ``keyctl padd`` command before restricting the keyring.
++
++Restriction prevents adding keys, but it does not prevent userspace from
++removing keys or otherwise disabling the keyring. To lock it against further
++userspace modification, drop its write and setattr permissions::
++
++   keyctl setperm -12 0x08030000
++
++This retains the permissions needed for verification and inspection.
++Provisioning, restriction, and permission hardening must be completed as
++described in `Userspace-provisioned policy trust`_ before relying on ``.ipe``
++as a trust source.
++
++Once nonempty and restricted, ``.ipe`` is searched after the configured system
++trust sources. An absent, empty, or unrestricted ``.ipe`` keyring is ignored.
++
+ Deploying the policies is done through securityfs, through the
+ ``new_policy`` node. To deploy a policy, simply cat the file into the
+ securityfs node::
+diff --git a/Documentation/security/ipe.rst b/Documentation/security/ipe.rst
+index 4490aed5918a..8afa8172c9ec 100644
+--- a/Documentation/security/ipe.rst
++++ b/Documentation/security/ipe.rst
+@@ -248,11 +248,20 @@ policy updates have to be done rebootlessly.
+ 
+ To allow an update from an external source, it could be potentially malicious,
+ so this policy needs to have a way to be identified as trusted. This is
+-done via a signature chained to a trust source in the kernel. Arbitrarily,
+-this is  the ``SYSTEM_TRUSTED_KEYRING``, a keyring that is initially
+-populated at kernel compile-time, as this matches the expectation that the
+-author of the compiled-in policy described above is the same entity that can
+-deploy policy updates.
++done via a signature chained to a trust source in the kernel. IPE can use the
++builtin trusted keyring and, when configured, the secondary and platform
++keyrings. This matches systems where the entity that establishes the kernel or
++firmware trust store is also authorized to deploy policy updates.
++
++When ``CONFIG_SECURITY_IPE_KEYRING`` is enabled, IPE also has a dedicated
++``.ipe`` keyring for deployments that establish an IPE-specific trust anchor
++from userspace. In this case, IPE uses it as a fallback after the configured
++system keyrings, but only when it is nonempty and has a reject-all
++restriction. This model makes the userspace component that provisions and
++restricts ``.ipe`` part of the trusted computing base, for instance a
++component running in early stages of the lifecycle of a system. The
++threat model and provisioning requirements are documented in
++:doc:`/admin-guide/LSM/ipe`.
+ 
+ Anti-Rollback / Anti-Replay
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -- 
 2.53.0
