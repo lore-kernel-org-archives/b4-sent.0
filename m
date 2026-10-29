@@ -1,16 +1,13 @@
 From: Mark Korenberg <socketpair@gmail.com>
-Subject: [PATCH bpf-next v2 0/2] bpftool: Make the LLVM disassembler an
- optional runtime dependency
-Date: Thu, 29 Oct 2026 17:43:17 +0500
-Message-Id: <20261029-bpftool-plugin-v2-0-1a47b2391b0b@gmail.com>
+Date: Thu, 29 Oct 2026 17:43:18 +0500
+Subject: [PATCH bpf-next v2 1/2] bpftool: Fix disposal of the LLVM
+ disassembler context
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ6DIBBEf8XsuduAWFJ76n80HpAuuImCAWtsj
- P9e4r3HyZt5s0OmxJThUe2QaOXMMZRQXyqwgwmekN8lQy1qLbRQ2M9uiXHEefx4DmjbtumtIqE
- bBWU0J3K8ncIXlC4G2hboChk4LzF9z6dVnvyfdJUoUd+tMLaV7mbU00+Gx6uNE3THcfwAHfHQh
- rYAAAA=
-X-Change-ID: 20260603-bpftool-plugin-c994bc3e0643
+Message-Id: <20261029-bpftool-plugin-v2-1-1a47b2391b0b@gmail.com>
+References: <20261029-bpftool-plugin-v2-0-1a47b2391b0b@gmail.com>
+In-Reply-To: <20261029-bpftool-plugin-v2-0-1a47b2391b0b@gmail.com>
 To: Quentin Monnet <qmo@kernel.org>, Alexei Starovoitov <ast@kernel.org>, 
  Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
  Martin KaFai Lau <martin.lau@linux.dev>, 
@@ -25,66 +22,41 @@ To: Quentin Monnet <qmo@kernel.org>, Alexei Starovoitov <ast@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, llvm@lists.linux.dev, 
  Mark Korenberg <socketpair@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793277817; l=2496;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793277817; l=924;
  i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=zLigtogb2hNT9/npTF66tViWfleGoRd//6M0rXeSiyM=;
- b=pV2kzMabYC80Jid/Kv+FKPzcvfWUjTKszoWxsw6TcbY2zNeEEe+k+fKas/26bnTxVO1omH3oZ
- 20xhndlSoCiBXgqCKEgHoEnv+Is9D9EeTCmTfxZle4RbYclcqy7nX7B
+ bh=X2MjSY5tQq8kOSRYHXZwlXNvTlqDdyCp9JF2r6O/Qbg=;
+ b=XSUs+HmZc7S3AnWxy6PF2YQn5Gmv8CW+4abMPsLsQaliMnixfJmpBuszp+CAc5xHnLaVZY2UH
+ DTPbFI/uuWxBp1q2gvXJZXFDMqLAMFjgjyo+3NOr3oYZVQ09S2cXPvf
 X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
  pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
 X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-libLLVM (~140 MiB on Fedora) is a hard dependency of bpftool, although it
-is only used by "bpftool prog dump jited". This series moves the LLVM
-disassembler to a plugin that bpftool loads on demand, so that
-distributions can make it optional. Patch 1 fixes a leak found on the way.
+destroy_context() frees the disassembler context with LLVMDisposeMessage(),
+which is a plain free() meant for strings returned by LLVM. The context is
+therefore never destroyed, leaking about 28 KiB per disassembled function.
+Use LLVMDisasmDispose() instead.
 
-Changes in v2:
-- Move the LLVMDisasmDispose() fix to a separate patch (Quentin)
-- Look for the plugin next to the bpftool binary when it is not installed,
-  so that bpftool works from its build directory (Quentin, Sashiko). Not in
-  the current directory: bpftool usually runs as root.
-- Export a single versioned structure of callbacks from the plugin (Quentin)
-- Only report "llvm" in "bpftool version" if the plugin loads (Quentin)
-- Handle dlerror() returning NULL (Quentin)
-- Rebuild jit_disasm.o if libdir changes between "make" and
-  "make install" (Quentin)
-- uninstall: use QUIET_UNINST, remove $(libdir)/bpftool (Quentin)
-- With a static libLLVM, which a static bpftool requires, link the
-  disassembler into bpftool as before (Sashiko). This drops
-  LLVM_LINK_STATIC: static LLVM archives are never linked into a shared
-  object.
-- Commit log and comment fixes (Quentin, Sashiko)
-- Rebase on bpf-next
-- Link to v1: https://lore.kernel.org/r/20260603-bpftool-plugin-v1-1-68c0ac91f5a3@gmail.com
-
-Tested on Fedora 44 x86_64, LLVM 22: plugin, built-in and SKIP_LLVM
-builds; plugin lookup (installed, build directory, missing, wrong ABI);
-install/uninstall; "prog dump jited" (plain and JSON) on live programs,
-and disassembly of aarch64 code through the plugin. Not tested: a fully
-static build (no static libraries available).
-
-The v2 changes were written with the help of an AI assistant (Claude),
-from the review comments; I reviewed and tested them.
-
+Fixes: eb9d1acf634b ("bpftool: Add LLVM as default library for disassembling JIT-ed programs")
+Signed-off-by: Mark Korenberg <socketpair@gmail.com>
 ---
-Mark Korenberg (2):
-      bpftool: Fix disposal of the LLVM disassembler context
-      bpftool: Make the LLVM disassembler an optional runtime dependency
+ tools/bpf/bpftool/jit_disasm.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- tools/bpf/bpftool/Makefile      |  38 +++++++++-
- tools/bpf/bpftool/jit_disasm.c  | 161 ++++++++++++++++++++++++++++------------
- tools/bpf/bpftool/llvm_disasm.c |  84 +++++++++++++++++++++
- tools/bpf/bpftool/llvm_disasm.h |  41 ++++++++++
- tools/bpf/bpftool/main.c        |   3 +-
- tools/bpf/bpftool/main.h        |   3 +
- 6 files changed, 279 insertions(+), 51 deletions(-)
----
-base-commit: d80373a8e70d3193151232c3062abbbe367ff5ad
-change-id: 20260603-bpftool-plugin-c994bc3e0643
+diff --git a/tools/bpf/bpftool/jit_disasm.c b/tools/bpf/bpftool/jit_disasm.c
+index 04541155e9cc..5ff144ce84a1 100644
+--- a/tools/bpf/bpftool/jit_disasm.c
++++ b/tools/bpf/bpftool/jit_disasm.c
+@@ -115,7 +115,7 @@ init_context(disasm_ctx_t *ctx, const char *arch,
+ 
+ static void destroy_context(disasm_ctx_t *ctx)
+ {
+-	LLVMDisposeMessage(*ctx);
++	LLVMDisasmDispose(*ctx);
+ }
+ 
+ static int
 
-Best regards,
 -- 
-Mark Korenberg <socketpair@gmail.com>
+2.56.0
 
