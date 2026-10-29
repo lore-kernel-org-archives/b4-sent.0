@@ -1,106 +1,104 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Thu, 29 Oct 2026 11:23:06 +0900
-Subject: [PATCH v5 9/9] xfs: make pNFS LAYOUTCOMMIT stable the way
- fdatasync does
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH net v2 0/2] net/iucv: two fixes in the HiperSockets receive
+ path
+Date: Wed, 28 Oct 2026 23:46:20 -0500
+Message-Id: <20261028-b4-disp-dd3e4ebb-v2-0-3747658d59bd@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-xfs-pnfs-batch-v5-9-ef8d2eafb7fa@samsung.com>
-References: <20261029-xfs-pnfs-batch-v5-0-ef8d2eafb7fa@samsung.com>
-In-Reply-To: <20261029-xfs-pnfs-batch-v5-0-ef8d2eafb7fa@samsung.com>
-To: Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, "Darrick J. Wong" <djwong@kernel.org>, 
- Dave Chinner <dgc@kernel.org>, Pankaj Raghav <p.raghav@samsung.com>, 
- Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Sergey Bashirov <sergeybashirov@gmail.com>, 
- Andrey Albershteyn <aalbersh@kernel.org>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793240577; l=2939;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=zMi4+NHyFoBXkEeHRNMf+DhfmCMGbT+Omkai4dVCPZE=;
- b=XQiXgVbPqOBEnmTpohI/2RUmK8qOZUVnuVG24MMLoXHI6r22vHlaz3Gpkpzv/usBuvQ485iA5
- X+PVx9AXZG7AIGZvl74JDNG/Hpv2LSFgDcA7yUn07lT9Qo5RyJeDuFp
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQrCMBAFf6Xs2YUkFmn9FfGQdF90PcSSbUUo/
+ XejHmdgZiNDVRidu40qXmr6LA3CoaPpHssNrNKYggsn78LAqWdRm1nkiB4pcYb3Qx7FjTFSy+a
+ KrO/f8kIFC13/0tb0wLR8Z7TvHyPtMV95AAAA
+X-Change-ID: 20261028-b4-disp-dd3e4ebb-fe118f9d09aa
+To: Thorsten Winkler <twinkler@linux.ibm.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Alexandra Winter <wintera@linux.ibm.com>, 
+ Eric Dumazet <edumazet@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: linux-s390@vger.kernel.org, Nagamani PV <nagamani@linux.ibm.com>, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Hidayath Khan <hidayath@linux.ibm.com>, Simon Horman <horms@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793249180; l=3861;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=9bkBzsEfH1ypgz3kHKz5eZsv445/cpLKteXX+59ppss=;
+ b=UCUr01jNTk+8uV+df1acsNPs1oHRikajSTatFtvl3XYxg0GGfQaPfD1UsrhD14Yj8d6t6rAca
+ 6tLBgClli4wAdTMsRdUzA6DFz9pA5i9al4wrZlobJK7EPXKDedkqZkF
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Every LAYOUTCOMMIT commits a synchronous transaction and forces the
-log. fdatasync after the same overwrite does not, because timestamps
-alone do not set ili_datasync_seq.
+Two bugs in the HiperSockets receive path that predate the socket-locking
+rework [1]; review and testing of that rework turned them up. Neither
+depends on it.
 
-Do what fdatasync does. Commit without XFS_TRANS_SYNC, force the log up
-to ili_datasync_seq, and flush the data device cache if that wrote no
-iclog. Conversions and size changes still force the log. As with
-fdatasync, a crash before the next log write can lose the new
-timestamps and the change attribute that nfsd derives from the ctime.
+1/2 clears hs_dev before the socket drops its reference on the device and
+marks the accesses that race with it: afiucv_hs_rcv() compares hs_dev
+under iucv_sk_list.lock while close() clears it under lock_sock().
+Hidayath Khan caught the racing pair with KCSAN under z/VM [2] and
+suggested the fix. The listener's child now takes its device from the
+frame instead of reading the listener's field in softirq. This is an
+ordering fix with no known crash.
 
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+2/2 stops counting the SHT's empty frame against the receive window (the
+peer does not count it) and drops the WARN_ON on the overrun path, which
+a peer reaches from the network by sending past its window. Only frames
+with data count now; a zero-length data frame, which already ends the
+stream for its reader, is no longer counted either. 2/2 applies on its
+own and goes to stable.
+
+Based on net at fcc00b15cb21, after the net-next merge (iucv_sock_close()
+is split into __iucv_sock_close() there). The same two patches apply on
+mainline. Tested on an s390x guest under QEMU TCG with KASAN and lockdep
+on, on net f4377bf85887 and net-next 8df0638138d3; the base moved to
+fcc00b15cb21 afterwards, same hunks. QEMU has no HiperSockets adapter:
+the one here is mine, under the real qeth and qdio drivers, on a QEMU
+with my own patches to the s390x machine (the adapter's interruptions
+through the FLIC, a z/VM CP model), and there is no IBM Z to compare
+against. With 2/2 an SHT read while frames wait in backlog_skb_q gives
+EOF instead of WARN plus -EFAULT. 1/2 does not change any result in the
+rework's test set; its race shows under KCSAN, not here. Logs on
+request.
+
+v2:
+- 2/2: an empty frame read after the close over the window reached
+  iucv_send_ctrl() with hs_dev already cleared (the AI review of v1
+  [3]); the window update now goes out only while the socket is
+  connected. Repro on the same machine (SO_MSGLIMIT 2, SO_RCVBUF 6144,
+  two sends, one frame injected over the window, the SHT, 16 more
+  behind it; the parameters are below 2/2), counting iucv_send_ctrl()
+  entries and the frames at the adapter: v1 attempts one update after
+  the close and nothing leaves; v2 attempts none. The reads are the same
+  on both (1, 1, -EFAULT, -ECONNRESET, 0, -EFAULT; the last is a data
+  frame behind the SHT closing again); net without the patch reads
+  -EFAULT at the SHT with its WARN.
+- 2/2: the commit message now says "a zero-length data frame that
+  reaches recvmsg()": a zero-length send with a piggybacked credit is a
+  window update and never reaches it [3].
+- 1/2: code unchanged. The review's point on it (the child's device
+  reference when a SYN races the listener's close) is the pre-existing
+  orphan the notes below 1/2 describe; the rework [1] closes that race.
+- Both commit messages say how the patch was tested.
+- Rebased on net after the net-next merge.
+
+v1: https://lore.kernel.org/netdev/20261022-b4-disp-b35a9153-v1-0-d74645876195@proton.me/
+
+[1] https://lore.kernel.org/netdev/20261022-b4-disp-1d26b87a-v2-0-7ee1264d812a@proton.me/
+[2] https://lore.kernel.org/netdev/b3fea2ca-25ff-42c0-812c-f8cc6bb6667e@linux.ibm.com/
+[3] https://lore.kernel.org/netdev/179306942509.3134.1109951482403010755@kernel.org/
+
 ---
-With the block layout on NVMe/TCP in QEMU, 64 KiB overwrites of a
-16 MiB file with fsync each took 473 ms instead of 800 ms. With 4
-writers, one file each, 1011 ms instead of 1083 ms (medians of 5 runs).
+Bryam Vargas (2):
+      net/iucv: clear hs_dev before dropping its reference
+      net/iucv: do not count the SHT frame against the receive window
+
+ net/iucv/af_iucv.c | 45 ++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 34 insertions(+), 11 deletions(-)
 ---
- fs/xfs/xfs_pnfs.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+base-commit: fcc00b15cb21a6de76826e5012b2c758505f5e65
+change-id: 20261028-b4-disp-dd3e4ebb-fe118f9d09aa
 
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index f4c4a02e5c..065875c8b7 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -295,10 +295,12 @@ xfs_pnfs_validate_isize(
-  * converting any unwritten extents, flushing the disk cache and updating the
-  * time stamps.
-  *
-- * Note that we rely on the caller to always send us a timestamp update so that
-- * we always commit a transaction here.  If that stops being true we will have
-- * to manually flush the cache here similar to what the fsync code path does
-- * for datasyncs on files that have no dirty metadata.
-+ * Like fdatasync, a commit that only updates the timestamps does not force the
-+ * log: they are logged as XFS_ILOG_TIMESTAMP and reach the disk with a later
-+ * log write. The log is forced up to the last change that a datasync needs,
-+ * such as the unwritten extent conversions or a new size, and the cache of the
-+ * device holding the file data is flushed if that log force did not write an
-+ * iclog itself.
-  */
- static int
- xfs_fs_commit_blocks(
-@@ -312,6 +314,7 @@ xfs_fs_commit_blocks(
- 	struct xfs_trans	*tp;
- 	struct timespec64	now;
- 	bool			update_isize = false;
-+	int			log_flushed = 0;
- 	int			error, i;
- 	loff_t			size;
- 
-@@ -368,7 +371,8 @@ xfs_fs_commit_blocks(
- 
- 	xfs_ilock(ip, XFS_ILOCK_EXCL);
- 	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
--	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
-+	xfs_trans_log_inode(tp, ip,
-+			update_isize ? XFS_ILOG_CORE : XFS_ILOG_TIMESTAMP);
- 
- 	now = inode_set_ctime_current(inode);
- 	inode_set_atime_to_ts(inode, now);
-@@ -379,8 +383,13 @@ xfs_fs_commit_blocks(
- 		ip->i_disk_size = new_size;
- 	}
- 
--	xfs_trans_set_sync(tp);
- 	error = xfs_trans_commit(tp);
-+	if (error)
-+		goto out_drop_iolock;
-+
-+	error = xfs_log_force_inode(ip, true, &log_flushed);
-+	if (!error && !log_flushed)
-+		error = blkdev_issue_flush(xfs_inode_buftarg(ip)->bt_bdev);
- 
- out_drop_iolock:
- 	xfs_iunlock(ip, XFS_IOLOCK_EXCL);
-
--- 
-2.43.0
+Best regards,
+--  
+bryamzxz <hexlabsecurity@proton.me>
 
