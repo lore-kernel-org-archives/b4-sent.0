@@ -1,10 +1,11 @@
 From: Remy Demangeot <remy@demangeot.net>
-Date: Thu, 29 Oct 2026 08:48:02 +0100
-Subject: [PATCH v2 1/2] ACPI: EC: allow drivers to create a polled EC
+Date: Thu, 29 Oct 2026 08:48:03 +0100
+Subject: [PATCH v2 2/2] hwmon: (asus-ec-sensors) add water temperatures for
+ MAXIMUS IX EXTREME
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-m9e-ec2-v2-1-e9c4e2ba8415@demangeot.net>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261029-m9e-ec2-v2-2-e9c4e2ba8415@demangeot.net>
 References: <20261029-m9e-ec2-v2-0-e9c4e2ba8415@demangeot.net>
 In-Reply-To: <20261029-m9e-ec2-v2-0-e9c4e2ba8415@demangeot.net>
 To: "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>, 
@@ -14,177 +15,275 @@ Cc: Armin Wolf <W_Armin@gmx.de>, linux-acpi@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-hwmon@vger.kernel.org, 
  Remy Demangeot <remy@demangeot.net>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793260087; l=5632;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793260087; l=10014;
  i=remy@demangeot.net; s=20261015; h=from:subject:message-id;
- bh=/cs87yafgZ1YRaT6jFA1fah9Em8PNXk59oRg4Wxln8U=;
- b=SJGYtPngqwrsMY4JTdkpDFBhIAECWlUUIsYKw5585DN4UsoU7Fx7Mt6Jv/SYCNPECjwUwVhtG
- gquoTchcIAhBHpIF/H8nWPTyU1qNGX4VmBFZIFINuLY0Cz6BTD7ifuf
+ bh=bUddSZOomQug0bdUPvkiczwVgRtc9pjFwg8Y2RnEwlc=;
+ b=6/E6I0xBfvQBa8TMBSI7k6fv/DBNQgk0reaYz2Di/ZGUZH5W4MpUvksdOlH559kKQm7GOOBTz
+ Ipl9J9oS2A4D1WhjwHnZZaJ8d3f4ZvR5YLAKUKmBKdM5sJGSFZru8cH
 X-Developer-Key: i=remy@demangeot.net; a=ed25519;
  pk=h/s5N2ZlgZ0m+8FpMhSaCNJt0jvb9whRBAdJwpC+VAo=
 X-Endpoint-Received: by B4 Relay for remy@demangeot.net/20261015 with auth_id=1194
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some boards have a second embedded controller that uses the standard EC
-protocol but is not described in the ACPI tables. For example, the ASUS
-ROG MAXIMUS IX EXTREME has one at I/O ports 0x68/0x6c that holds the
-water temperature sensors. Its DSDT has no EC device for it: only a WMI
-method writes to these ports directly.
+The MAXIMUS IX EXTREME has a second EC (firmware ID "RGE2-Z270-0109"),
+not described in the ACPI tables, at I/O ports 0x68 (data) and 0x6c
+(command/status). It uses the standard EC protocol and the same bank
+register (0xff). Its bank 1 holds the water temperatures: WATER_IN
+0x0d, WATER_OUT 0x0b, WATER_IN2 0x13 and WATER_OUT2 0x11, as signed
+degrees Celsius with -60 for an absent probe. Water_In and Water_Out
+are at the same offsets as on the AMD 400-series boards.
 
-Add acpi_ec_create_polled() and acpi_ec_destroy_polled() so that a
-driver can create a struct acpi_ec for such a controller, and
-acpi_ec_read_byte() and acpi_ec_write_byte() to access it. The EC is
-used in busy polling mode, like the boot EC before its GPE handler is
-installed: no GPE, no IRQ, no query events and no address space handler.
+Describe registers of the second EC by setting ASUS_EC2_BANK_FLAG in
+the sensor bank. Banks are sorted, so such registers are read last;
+the second EC bank is saved and restored like the first one, under the
+same hardware access mutex. The second EC is accessed through
+acpi_ec_create_polled(), only for boards using these sensors.
 
-An EC with neither a GPE nor an IRQ must not touch any interrupt when
-its events are masked or unmasked, so check ec->irq there too.
+Sort banks as unsigned values, otherwise a bank with
+ASUS_EC2_BANK_FLAG set would be sorted first.
+
+Add Water_In 2 and Water_Out 2 sensors and enable the four water
+temperatures for the board. Tested on that board: the readings match
+HWiNFO 8.54, a second EC transaction takes about 1.4 ms and a full
+update about 110 ms, mostly spent on the first EC.
 
 Signed-off-by: Remy Demangeot <remy@demangeot.net>
 ---
- drivers/acpi/ec.c    | 89 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- include/linux/acpi.h |  8 +++++
- 2 files changed, 95 insertions(+), 2 deletions(-)
+ drivers/hwmon/asus-ec-sensors.c | 108 ++++++++++++++++++++++++++++++++++------
+ 1 file changed, 94 insertions(+), 14 deletions(-)
 
-diff --git a/drivers/acpi/ec.c b/drivers/acpi/ec.c
-index a89f10256dbb85768b86a2a970c75a7d8e3814fa..48e83e84cfdb64c28adedcb77fce29affc956e4c 100644
---- a/drivers/acpi/ec.c
-+++ b/drivers/acpi/ec.c
-@@ -401,7 +401,7 @@ static void acpi_ec_mask_events(struct acpi_ec *ec)
- 	if (!test_bit(EC_FLAGS_EVENTS_MASKED, &ec->flags)) {
- 		if (ec->gpe >= 0)
- 			acpi_ec_disable_gpe(ec, false);
--		else
-+		else if (ec->irq >= 0)
- 			disable_irq_nosync(ec->irq);
+diff --git a/drivers/hwmon/asus-ec-sensors.c b/drivers/hwmon/asus-ec-sensors.c
+index 11dd7f587530d640b6ccc9b7952dc9da47e11c19..5e59117ee332bee87cda71260630bf34a22df736 100644
+--- a/drivers/hwmon/asus-ec-sensors.c
++++ b/drivers/hwmon/asus-ec-sensors.c
+@@ -45,6 +45,16 @@ static char *mutex_path_override;
+  * group of registers reports (e.g. one of the fans of the fan extension card).
+  */
+ #define ASUS_EC_SELECT_REGISTER	0x43
++
++/*
++ * Some boards have a second EC, not described in the ACPI tables, at these
++ * I/O ports. It uses the standard EC protocol and the same bank register.
++ * Its registers are described by sensors whose bank is ASUS_EC2_BANK(n).
++ */
++#define ASUS_EC2_DATA_PORT	0x68
++#define ASUS_EC2_CMD_PORT	0x6c
++#define ASUS_EC2_BANK_FLAG	0x80
++#define ASUS_EC2_BANK(bank)	(ASUS_EC2_BANK_FLAG | (bank))
+ #define SENSOR_LABEL_LEN	16
  
- 		ec_dbg_drv("Polling enabled");
-@@ -415,7 +415,7 @@ static void acpi_ec_unmask_events(struct acpi_ec *ec)
- 		clear_bit(EC_FLAGS_EVENTS_MASKED, &ec->flags);
- 		if (ec->gpe >= 0)
- 			acpi_ec_enable_gpe(ec, false);
--		else
-+		else if (ec->irq >= 0)
- 			enable_irq(ec->irq);
+ /*
+@@ -176,6 +186,10 @@ enum ec_sensors {
+ 	ec_sensor_fan_ext_1,
+ 	ec_sensor_fan_ext_2,
+ 	ec_sensor_fan_ext_3,
++	/* "Water_In 2" temperature sensor reading [℃] */
++	ec_sensor_temp_water_in_2,
++	/* "Water_Out 2" temperature sensor reading [℃] */
++	ec_sensor_temp_water_out_2,
+ };
  
- 		ec_dbg_drv("Polling disabled");
-@@ -934,6 +934,34 @@ int ec_write(u8 addr, u8 val)
+ #define SENSOR_TEMP_CHIPSET BIT(ec_sensor_temp_chipset)
+@@ -208,6 +222,8 @@ enum ec_sensors {
+ #define SENSOR_FAN_EXT_1 BIT(ec_sensor_fan_ext_1)
+ #define SENSOR_FAN_EXT_2 BIT(ec_sensor_fan_ext_2)
+ #define SENSOR_FAN_EXT_3 BIT(ec_sensor_fan_ext_3)
++#define SENSOR_TEMP_WATER_IN_2 BIT(ec_sensor_temp_water_in_2)
++#define SENSOR_TEMP_WATER_OUT_2 BIT(ec_sensor_temp_water_out_2)
+ 
+ /*
+  * The values for temperature sensor readings without physical sensors connected.
+@@ -221,7 +237,8 @@ static const s32 environment_temp_sensors =
+ 	SENSOR_TEMP_WATER_IN | SENSOR_TEMP_WATER_OUT |
+ 	SENSOR_TEMP_WATER_BLOCK_IN | SENSOR_TEMP_WATER_BLOCK_OUT |
+ 	SENSOR_TEMP_T_SENSOR_2 | SENSOR_TEMP_SENSOR_EXTRA_1 |
+-	SENSOR_TEMP_SENSOR_EXTRA_2 | SENSOR_TEMP_SENSOR_EXTRA_3;
++	SENSOR_TEMP_SENSOR_EXTRA_2 | SENSOR_TEMP_SENSOR_EXTRA_3 |
++	SENSOR_TEMP_WATER_IN_2 | SENSOR_TEMP_WATER_OUT_2;
+ 
+ enum board_family {
+ 	family_unknown,
+@@ -397,6 +414,14 @@ static const struct ec_sensor_info sensors_family_intel_200[] = {
+ 		EC_SENSOR_SELECT("EXT_FAN2", hwmon_fan, 2, 0x00, 0x57, 0x0b),
+ 	[ec_sensor_fan_ext_3] =
+ 		EC_SENSOR_SELECT("EXT_FAN3", hwmon_fan, 2, 0x00, 0x57, 0x0c),
++	[ec_sensor_temp_water_out] =
++		EC_SENSOR("Water_Out", hwmon_temp, 1, ASUS_EC2_BANK(0x01), 0x0b),
++	[ec_sensor_temp_water_in] =
++		EC_SENSOR("Water_In", hwmon_temp, 1, ASUS_EC2_BANK(0x01), 0x0d),
++	[ec_sensor_temp_water_out_2] =
++		EC_SENSOR("Water_Out 2", hwmon_temp, 1, ASUS_EC2_BANK(0x01), 0x11),
++	[ec_sensor_temp_water_in_2] =
++		EC_SENSOR("Water_In 2", hwmon_temp, 1, ASUS_EC2_BANK(0x01), 0x13),
+ };
+ 
+ static const struct ec_sensor_info sensors_family_intel_300[] = {
+@@ -561,7 +586,9 @@ static const struct ec_board_info board_info_maximus_ix_extreme = {
+ 	.sensors = SENSOR_TEMP_CHIPSET | SENSOR_TEMP_T_SENSOR |
+ 		SENSOR_TEMP_VRM | SENSOR_TEMP_SENSOR_EXTRA_1 |
+ 		SENSOR_TEMP_SENSOR_EXTRA_2 | SENSOR_TEMP_SENSOR_EXTRA_3 |
+-		SENSOR_FAN_EXT_1 | SENSOR_FAN_EXT_2 | SENSOR_FAN_EXT_3,
++		SENSOR_FAN_EXT_1 | SENSOR_FAN_EXT_2 | SENSOR_FAN_EXT_3 |
++		SENSOR_SET_TEMP_WATER | SENSOR_TEMP_WATER_IN_2 |
++		SENSOR_TEMP_WATER_OUT_2,
+ 	.mutex_path = ASUS_HW_ACCESS_MUTEX_SB_PCI0_LPCB_SIO1_MUT0,
+ 	.family = family_intel_200_series,
+ };
+@@ -1116,6 +1143,8 @@ struct ec_sensors_data {
+ 	/* in jiffies */
+ 	u64 next_update;
+ 	struct lock_data lock_data;
++	/* second EC, if the board has sensors there */
++	struct acpi_ec *ec2;
+ 	/* number of board EC sensors */
+ 	u8 nr_sensors;
+ 	/*
+@@ -1180,7 +1209,7 @@ static int find_ec_sensor_index(const struct ec_sensors_data *ec,
+ 
+ static int bank_compare(const void *a, const void *b)
+ {
+-	return *((const s8 *)a) - *((const s8 *)b);
++	return *((const u8 *)a) - *((const u8 *)b);
  }
- EXPORT_SYMBOL(ec_write);
  
-+/**
-+ * acpi_ec_read_byte - read a register of a given EC
-+ * @ec: the EC, e.g. from acpi_ec_create_polled()
-+ * @addr: register address
-+ * @val: where to store the value
-+ *
-+ * Return: 0 on success, a negative error code otherwise.
-+ */
-+int acpi_ec_read_byte(struct acpi_ec *ec, u8 addr, u8 *val)
-+{
-+	return acpi_ec_read(ec, addr, val);
-+}
-+EXPORT_SYMBOL_GPL(acpi_ec_read_byte);
-+
-+/**
-+ * acpi_ec_write_byte - write a register of a given EC
-+ * @ec: the EC, e.g. from acpi_ec_create_polled()
-+ * @addr: register address
-+ * @val: value to write
-+ *
-+ * Return: 0 on success, a negative error code otherwise.
-+ */
-+int acpi_ec_write_byte(struct acpi_ec *ec, u8 addr, u8 val)
-+{
-+	return acpi_ec_write(ec, addr, val);
-+}
-+EXPORT_SYMBOL_GPL(acpi_ec_write_byte);
-+
- int ec_transaction(u8 command,
- 		   const u8 *wdata, unsigned wdata_len,
- 		   u8 *rdata, unsigned rdata_len)
-@@ -1436,6 +1464,63 @@ static struct acpi_ec *acpi_ec_alloc(void)
- 	return ec;
+ static void setup_sensor_data(struct ec_sensors_data *ec)
+@@ -1263,27 +1292,47 @@ static int setup_lock_data(struct device *dev)
+ 	return 0;
  }
  
-+/**
-+ * acpi_ec_create_polled - create an EC that is not described by ACPI
-+ * @command_addr: I/O port of the command/status register
-+ * @data_addr: I/O port of the data register
-+ * @name: name used to request the I/O ports
-+ *
-+ * Some boards have additional embedded controllers that use the standard
-+ * EC protocol but are not described in the ACPI tables. This creates a
-+ * struct acpi_ec for such a controller, to be used with acpi_ec_read_byte()
-+ * and acpi_ec_write_byte(). It only works in busy polling mode: no GPE, no
-+ * IRQ, no query events and no address space handler.
-+ *
-+ * Return: the new EC, or an ERR_PTR() on failure.
-+ */
-+struct acpi_ec *acpi_ec_create_polled(unsigned long command_addr,
-+				      unsigned long data_addr,
-+				      const char *name)
+-static int asus_ec_bank_switch(u8 bank, u8 *old)
++/* @bank may carry ASUS_EC2_BANK_FLAG to address the second EC */
++static int asus_ec_read_byte(struct ec_sensors_data *ec, u8 bank, u8 index,
++			     u8 *val)
 +{
-+	struct acpi_ec *ec;
-+
-+	if (!request_region(data_addr, 1, name))
-+		return ERR_PTR(-EBUSY);
-+	if (!request_region(command_addr, 1, name)) {
-+		release_region(data_addr, 1);
-+		return ERR_PTR(-EBUSY);
-+	}
-+
-+	ec = acpi_ec_alloc();
-+	if (!ec) {
-+		release_region(command_addr, 1);
-+		release_region(data_addr, 1);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	ec->command_addr = command_addr;
-+	ec->data_addr = data_addr;
-+	acpi_ec_start(ec, false);
-+
-+	return ec;
++	if (bank & ASUS_EC2_BANK_FLAG)
++		return acpi_ec_read_byte(ec->ec2, index, val);
++	return ec_read(index, val);
 +}
-+EXPORT_SYMBOL_GPL(acpi_ec_create_polled);
 +
-+/**
-+ * acpi_ec_destroy_polled - destroy an EC created by acpi_ec_create_polled()
-+ * @ec: the EC to destroy, may be NULL or an ERR_PTR()
-+ */
-+void acpi_ec_destroy_polled(struct acpi_ec *ec)
++static int asus_ec_write_byte(struct ec_sensors_data *ec, u8 bank, u8 index,
++			      u8 val)
 +{
-+	if (IS_ERR_OR_NULL(ec))
-+		return;
-+
-+	acpi_ec_stop(ec, false);
-+	release_region(ec->command_addr, 1);
-+	release_region(ec->data_addr, 1);
-+	kfree(ec);
++	if (bank & ASUS_EC2_BANK_FLAG)
++		return acpi_ec_write_byte(ec->ec2, index, val);
++	return ec_write(index, val);
 +}
-+EXPORT_SYMBOL_GPL(acpi_ec_destroy_polled);
 +
- static acpi_status
- acpi_ec_register_query_methods(acpi_handle handle, u32 level,
- 			       void *context, void **return_value)
-diff --git a/include/linux/acpi.h b/include/linux/acpi.h
-index ddacac81209473cfc5fc83047a0de91c07ceb7b5..d657a94aed5dd90c2ba0c8c2784c7a0cb0fb3bc2 100644
---- a/include/linux/acpi.h
-+++ b/include/linux/acpi.h
-@@ -432,6 +432,14 @@ extern int ec_transaction(u8 command,
-                           u8 *rdata, unsigned rdata_len);
- extern acpi_handle ec_get_handle(void);
++static int asus_ec_bank_switch(struct ec_sensors_data *ec, u8 bank, u8 *old)
+ {
+ 	int status = 0;
  
-+struct acpi_ec;
-+struct acpi_ec *acpi_ec_create_polled(unsigned long command_addr,
-+				      unsigned long data_addr,
-+				      const char *name);
-+void acpi_ec_destroy_polled(struct acpi_ec *ec);
-+int acpi_ec_read_byte(struct acpi_ec *ec, u8 addr, u8 *val);
-+int acpi_ec_write_byte(struct acpi_ec *ec, u8 addr, u8 val);
+ 	if (old) {
+-		status = ec_read(ASUS_EC_BANK_REGISTER, old);
++		status = asus_ec_read_byte(ec, bank, ASUS_EC_BANK_REGISTER, old);
++		if (!status)
++			*old |= bank & ASUS_EC2_BANK_FLAG;
+ 	}
+ 	if (status || (old && (*old == bank)))
+ 		return status;
+-	return ec_write(ASUS_EC_BANK_REGISTER, bank);
++	return asus_ec_write_byte(ec, bank, ASUS_EC_BANK_REGISTER,
++				  bank & ~ASUS_EC2_BANK_FLAG);
+ }
+ 
+ static int asus_ec_block_read(const struct device *dev,
+ 			      struct ec_sensors_data *ec)
+ {
+ 	int ireg, ibank, status;
+-	u8 bank, reg_bank, prev_bank, select, prev_select;
+-	bool select_saved;
++	u8 bank, reg_bank, prev_bank, prev_bank2, select, prev_select;
++	bool select_saved, ec2_used = false;
+ 
+ 	bank = 0;
+-	status = asus_ec_bank_switch(bank, &prev_bank);
++	status = asus_ec_bank_switch(ec, bank, &prev_bank);
+ 	if (status) {
+ 		dev_warn(dev, "EC bank switch failed");
+ 		return status;
+@@ -1299,7 +1348,14 @@ static int asus_ec_block_read(const struct device *dev,
+ 	for (ibank = 0; ibank < ec->nr_banks; ibank++) {
+ 		if (bank != ec->banks[ibank]) {
+ 			bank = ec->banks[ibank];
+-			if (asus_ec_bank_switch(bank, NULL)) {
++			/* first bank of the second EC: save its bank too */
++			if ((bank & ASUS_EC2_BANK_FLAG) && !ec2_used) {
++				if (asus_ec_bank_switch(ec, bank, &prev_bank2)) {
++					dev_warn(dev, "second EC bank switch failed");
++					break;
++				}
++				ec2_used = true;
++			} else if (asus_ec_bank_switch(ec, bank, NULL)) {
+ 				dev_warn(dev, "EC bank switch to %d failed",
+ 					 bank);
+ 				break;
+@@ -1312,7 +1368,7 @@ static int asus_ec_block_read(const struct device *dev,
+ 				continue;
+ 			}
+ 			select = register_select(ec->registers[ireg]);
+-			if (select) {
++			if (select && !(bank & ASUS_EC2_BANK_FLAG)) {
+ 				if (!select_saved) {
+ 					if (ec_read(ASUS_EC_SELECT_REGISTER,
+ 						    &prev_select))
+@@ -1322,8 +1378,9 @@ static int asus_ec_block_read(const struct device *dev,
+ 				if (ec_write(ASUS_EC_SELECT_REGISTER, select))
+ 					continue;
+ 			}
+-			ec_read(register_index(ec->registers[ireg]),
+-				ec->read_buffer + ireg);
++			asus_ec_read_byte(ec, bank,
++					  register_index(ec->registers[ireg]),
++					  ec->read_buffer + ireg);
+ 		}
+ 		/* restore the selector while still in its bank */
+ 		if (select_saved &&
+@@ -1331,7 +1388,10 @@ static int asus_ec_block_read(const struct device *dev,
+ 			dev_warn(dev, "EC selector restore failed");
+ 	}
+ 
+-	status = asus_ec_bank_switch(prev_bank, NULL);
++	if (ec2_used && asus_ec_bank_switch(ec, prev_bank2, NULL))
++		dev_warn(dev, "second EC bank restore failed");
 +
- extern bool acpi_is_pnp_device(struct acpi_device *);
++	status = asus_ec_bank_switch(ec, prev_bank, NULL);
+ 	return status;
+ }
  
- #if defined(CONFIG_ACPI_WMI) || defined(CONFIG_ACPI_WMI_MODULE)
+@@ -1531,6 +1591,11 @@ static const struct ec_board_info *get_board_info(void)
+ 	return dmi_entry ? dmi_entry->driver_data : NULL;
+ }
+ 
++static void asus_ec2_destroy(void *ec2)
++{
++	acpi_ec_destroy_polled(ec2);
++}
++
+ static int asus_ec_probe(struct platform_device *pdev)
+ {
+ 	const struct hwmon_channel_info **ptr_asus_ec_ci;
+@@ -1612,6 +1677,21 @@ static int asus_ec_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	setup_sensor_data(ec_data);
++
++	/* banks are sorted: the second EC, if used, comes last */
++	if (ec_data->nr_banks &&
++	    (ec_data->banks[ec_data->nr_banks - 1] & ASUS_EC2_BANK_FLAG)) {
++		ec_data->ec2 = acpi_ec_create_polled(ASUS_EC2_CMD_PORT,
++						     ASUS_EC2_DATA_PORT,
++						     dev_name(dev));
++		if (IS_ERR(ec_data->ec2))
++			return dev_err_probe(dev, PTR_ERR(ec_data->ec2),
++					     "Failed to set up the second EC");
++		status = devm_add_action_or_reset(dev, asus_ec2_destroy,
++						  ec_data->ec2);
++		if (status)
++			return status;
++	}
+ 	ec_data->registers = devm_kcalloc(dev, ec_data->nr_registers,
+ 					  sizeof(*ec_data->registers), GFP_KERNEL);
+ 	ec_data->read_buffer = devm_kcalloc(dev, ec_data->nr_registers,
 
 -- 
 2.47.3
