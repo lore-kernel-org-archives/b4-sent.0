@@ -1,115 +1,220 @@
-From: Patrick Fischer <admin@tsv-stahl-riesa.de>
-Date: Thu, 29 Oct 2026 10:33:01 +0100
-Subject: [PATCH 3/3] clk: tegra: dfll: Get the voltage step of range-based
- regulators
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v5 0/2] Add ITE IT6162 MIPI DSI to HDMI bridge driver
+Date: Thu, 29 Oct 2026 18:12:29 +0800
+Message-Id: <20261029-upstream-6162-v5-0-8369f9e5afe6@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-upstream-speedo-t114-v1-3-81457cc9d94c@tsv-stahl-riesa.de>
-References: <20261029-upstream-speedo-t114-v1-0-81457cc9d94c@tsv-stahl-riesa.de>
-In-Reply-To: <20261029-upstream-speedo-t114-v1-0-81457cc9d94c@tsv-stahl-riesa.de>
-To: Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: Mikko Perttunen <mperttunen@nvidia.com>, 
- Svyatoslav Ryhel <clamor95@gmail.com>, 
- Prashant Gaikwad <pgaikwad@nvidia.com>, Stephen Boyd <sboyd@kernel.org>, 
- Brian Masney <bmasney+clk@redhat.com>, 
- Jerome Brunet <jbrunet+clk@baylibre.com>, linux-clk@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793266385; l=3247;
- i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
- bh=gDuzbARfWGkxqaRftjXwXdKDlFHjKq5qyD4dHr0p9zA=;
- b=UCEkvo1iL+WYXKVi+OSl1d7CVjMUf8WfbDywb4ejuLsyVFLuyGV4tLMHXRHQfNkaschpr9pgm
- pK4anvbJKLdDoDHmbZjnADxSRDPI5Bd1BMeWQYy+ACSr59oV2cGEbOn
-X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
- pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
-X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
+X-B4-Tracking: v=1; b=H4sIAA0c42oC/3XNyw7CIBAF0F9pWIvhJaAr/8O4KMNgWWgbwKox/
+ XfRjY/G5Z3MufdOMqaImWyaO0k4xhz7Uw2rRUOga08HpNHXTAQTmgkh6XnIJWF7pJprQaVZcTT
+ WB2g9qWZIGOL11bfb19zFXPp0e9WP/Hn91zRyyig6AK0BHA+4jQWX0B+X5UKeVaN4c8nWv1xU7
+ tF5p8Ha+jDj8oPz2bqs3Kq1Cc6AUkzPuPrks3VVuRHaKisxMOm/+DRNDyZnrXxoAQAA
+X-Change-ID: 20260223-upstream-6162-3751e78dfcad
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Luca Ceresoli <luca.ceresoli@bootlin.com>
+Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, 
+ Hermes Wu <Hermes.Wu@ite.com.tw>, dri-devel@lists.freedesktop.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793268764; l=9031;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=yJH7FtZvNZDml9iZjLPMB66iKpCXjr37vKQnfvmPxm0=;
+ b=cEFrgiTBsiD4urhm7tMVF2pJWZY/84/LmAsL+GrmMUQiea9wZoU3LXFqMPj+HLiffxkMuG1kD
+ 4EqewlACKUMDaixfZj2Qx9FgveHaKw6eMnqXhObybtff8RSnjSrP/GA
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-get_alignment_from_regulator() takes the voltage step from
-regulator_get_linear_step(), which returns desc->uV_step. Regulators
-described by linear ranges, such as the SMPS of the TI Palmas PMIC,
-leave uV_step at 0.
+This patch series adds support for the ITE IT6162 MIPI DSI to HDMI
+bridge chip. The IT6162 is an I2C-controlled bridge that receives MIPI
+DSI input and outputs HDMI signals.
 
-With a step of 0, round_cvb_voltage() returns 0 for every OPP, which is
-then clamped to min_millivolts, so all CPU OPPs get the same voltage.
-The I2C LUT is broken as well: find_vdd_map_entry_exact() and
-find_vdd_map_entry_min() divide by the step, and on ARMv7 with hardware
-division the result is 0, so selector 0 matches every voltage. The LUT
-ends up with a single entry and the DFLL never changes vdd_cpu.
+The device supports the following configurations:
+  - Single MIPI DSI input: up to 4K @ 30Hz
+  - Dual MIPI DSI input (combined): up to 4K @ 60Hz
 
-This affects boards that run the DFLL in I2C mode with a Palmas SMPS as
-vdd_cpu. In mainline these are the Xiaomi Mi Pad (Tegra124, since v6.19)
-and the Asus Transformer Pad TF701T (Tegra114, DFLL enabled for v7.4).
-The AS3722 and MAX77621 used by the other DFLL boards report a linear
-step, and the PWM mode does not use the regulator.
+This series introduces:
+  - dt-bindings: Add YAML binding document for ITE IT6162
+  - drm/bridge: Add ITE IT6162 MIPI DSI to HDMI bridge driver
 
-On a Tegra Note 7 (Tegra114, TPS65913) all 16 CPU OPPs are at 1000 mV
-and vdd_cpu stays at the 1.10 V left by the bootloader. The CPU runs at
-about 1.34 GHz whatever cpufreq requests. With this patch the OPPs range
-from 1000 mV to 1270 mV, the LUT holds the 1000 mV to 1270 mV selectors
-and the DFLL follows cpufreq up to 1708.5 MHz.
-
-If the regulator reports no linear step, use the smallest step between
-the voltages that are usable on the board. Fail the probe if there is
-none instead of running with a step of 0.
-
-Fixes: b3cf8d069505 ("clk: tegra: dfll: CVB calculation alignment with the regulator")
-Cc: stable@vger.kernel.org
-Signed-off-by: Patrick Fischer <admin@tsv-stahl-riesa.de>
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/clk/tegra/clk-tegra124-dfll-fcpu.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+Changes in v5:
+- Move per-patch changelogs into the cover letter
 
-diff --git a/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c b/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c
-index 457a77c5bb62..5bdea4775076 100644
---- a/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c
-+++ b/drivers/clk/tegra/clk-tegra124-dfll-fcpu.c
-@@ -642,6 +642,7 @@ static int get_alignment_from_regulator(struct device *dev,
- 					 struct rail_alignment *align)
- {
- 	struct regulator *reg = regulator_get(dev, "vdd-cpu");
-+	int i, n_voltages, uv, prev_uv = 0;
- 
- 	if (IS_ERR(reg))
- 		return PTR_ERR(reg);
-@@ -649,8 +650,33 @@ static int get_alignment_from_regulator(struct device *dev,
- 	align->offset_uv = regulator_list_voltage(reg, 0);
- 	align->step_uv = regulator_get_linear_step(reg);
- 
-+	/*
-+	 * Regulators described by linear ranges (e.g. the Palmas SMPS) don't
-+	 * report a linear step. Use the smallest step between the voltages
-+	 * that are usable on this board instead.
-+	 */
-+	if (!align->step_uv) {
-+		n_voltages = regulator_count_voltages(reg);
-+		for (i = 0; i < n_voltages; i++) {
-+			uv = regulator_list_voltage(reg, i);
-+			if (uv <= 0)
-+				continue;
-+
-+			if (prev_uv && uv > prev_uv &&
-+			    (!align->step_uv || uv - prev_uv < align->step_uv))
-+				align->step_uv = uv - prev_uv;
-+
-+			prev_uv = uv;
-+		}
-+	}
-+
- 	regulator_put(reg);
- 
-+	if (!align->step_uv) {
-+		dev_err(dev, "failed to get vdd-cpu voltage step\n");
-+		return -EINVAL;
-+	}
-+
- 	return 0;
- }
- 
+- Documentation/devicetree/bindings/display/bridge/ite,it6162.yaml:
+  * Use 1-based data-lanes numbering as lane 0 is the D-PHY clock lane,
+    revert example to <1 2 3 4>
+  * Constrain data-lanes to in-order lanes or full reversal <4 3 2 1>
+  * Document port@1 as the preferred port for a single MIPI DSI input
+  * Keep port@0 and port@3 optional: a single MIPI DSI input uses port@1,
+    and the HDMI connector is created for the bridge without a port@3
+    link
+  * Keep a single endpoint node per MIPI DSI port, as other bridge
+    bindings based on port-base do
+  * Drop Reviewed-by tag due to above changes
 
+- drivers/gpu/drm/bridge/ite-it6162.c:
+  * Detect lane reversal from 1-based data-lanes (data_lanes[0] == 4)
+  * Rebase on drm-misc-next: use struct drm_atomic_commit in
+    atomic_enable/atomic_disable, replace .atomic_reset with
+    .atomic_create_state, pass DRM_OUTPUT_COLOR_FORMAT_RGB444 to
+    drm_hdmi_compute_mode_clock()
+  * Take the colorspace sent to firmware from the AVI infoframe instead of
+    conn_state->hdmi.output_format, which is no longer enum hdmi_colorspace
+  * Enable the supplies once, while detecting the chip, and disable them
+    through devres on removal and on every probe failure; unwind a
+    partially failed enable in the power-down order; propagate
+    it6162_poweron() errors and drop the unused it6162_poweroff()
+  * Power up ivdd, wait at least 1 ms, then ovdd1833 and ovdd, and power
+    down in the reverse order with the same wait before ivdd
+  * Rename it6162_poweron() to it6162_hw_start() and the power_on flag to
+    hw_ready, as the function no longer enables the supplies: it resets
+    and configures the chip, then enables the interrupt and connector
+    status reporting
+  * Order teardown with devres: initialise the (devm managed) mutex, wait
+    queue and HDCP work first, and register the bridge before the HDCP
+    work cancel action and the IRQ, so the IRQ is freed and the work
+    cancelled before the bridge is removed; drop .remove()
+  * Hold it6162->lock while writing or clearing an infoframe through the
+    data buffer
+  * Update the HDCP content protection property from a dedicated work
+    holding connection_mutex, and drop updates for an HDCP session that
+    has already ended
+  * Zero-initialise the video settings and set the HSync/VSync polarity
+    and scan mode bits as the programming guide defines them, which also
+    fixes the inverted VSync polarity
+  * Check regmap read results before using the data read
+  * Name the chip ID and version register offsets as in the programming
+    guide (register 0x00 is the most significant ID byte); the ID check
+    is unchanged
+  * Document that the firmware is given the HDMI output timing from the
+    requested mode, not the MIPI input timing in adjusted_mode
+  * Drop the endpoint node reference on the data-lanes error path
+  * Get the chip info with i2c_get_match_data(), add it to the I2C ID
+    table and fail probe if it is missing
+  * Honour the requested length when reading an EDID block
+  * Leave the cached HPD state to the IRQ thread instead of updating it
+    from detect
+  * Drop Reviewed-by tag due to above changes
+
+- Link to v4: https://lore.kernel.org/r/20260319-upstream-6162-v4-0-7268483ef03d@ite.com.tw
+
+Changes in v4:
+- Documentation/devicetree/bindings/display/bridge/ite,it6162.yaml:
+  * Drop ite,support-hdcp
+  * Drop endpoint properties already in video-interfaces.yaml
+  * Fix data-lanes in example with <0 1 2 3>
+  * Add blanking line in example before endpoint subnode starts
+  * Add reset-gpio and power controls to required
+
+- drivers/gpu/drm/bridge/ite-it6162.c:
+  * Drop struc it6162_audio
+  * Add HDCP_AUTO in enum hdcp_ver{}, FW enable HDCP by sink capability.
+  * Call drm_atomic_helper_connector_hdmi_clear_audio_infoframe()
+    in it6162_bridge_hdmi_audio_shutdown()
+  * Drop it6162_bridge_hdmi_audio_startup()
+  * Add hdmi_clear_hdmi_infoframe and hdmi_write_hdmi_infoframe
+  * Drop it6162_parse_dt() due to "ite,support-hdcp" is removed from DT.
+  * add DRM_BRIDGE_OP_HDMI to it6162->bridge.ops
+
+- Link to v3: https://lore.kernel.org/r/20260313-upstream-6162-v3-0-8497fb7c4406@ite.com.tw
+
+Changes in v3:
+- Documentation/devicetree/bindings/display/bridge/ite,it6162.yaml:
+  * Fix lane-polarities: remove $ref redefinition, allow via video-interfaces.yaml
+  * Improve ite,support-hdcp description to clarify FW-based HDCP behavior
+  * Remove descriptions repeating schema constraints
+  * Remove stray comment in ports required section
+  * Fix data-lanes spacing in example: <1 2 3 4>
+  * Add missing newline at end of file
+  * Add missing change log  that Reviewed-by tag was removed when V1->V2
+
+- drivers/gpu/drm/bridge/ite-it6162.c:
+  * Fix OFFSET_VERSION_H register offset from 0x03 to 0x05
+  * Add MIPI_PORT_EN_MASK macro combining MIPI_PORT1_EN_MASK and MIPI_PORT0_EN_MASK
+  * Rename HDCP enums: NO_HDCP -> HDCP_DISABLE, NO_HDCP_STATE -> HDCP_STATE_IDLE,
+    AUTH_DONE -> HDCP_STATE_AUTH_DONE, AUTH_FAIL -> HDCP_STATE_AUTH_FAIL
+  * Rename it6162_infoblock_complete() to it6162_wait_command_complete()
+  * Rename it6162_infoblock_host_set() to it6162_infoblock_trigger()
+  * Remove it6162_infoblock_mipi_config() and it6162_infoblock_write_msg()
+    wrappers, inline into it6162_reset_init() and
+    it6162_mipi_set_video_timing() respectively
+  * Remove it6162_set_default_config() wrapper, inline into
+    it6162_reset_init()
+  * Fix typo: hdcp_encyption -> hdcp_encryption
+  * Fix typo: it6162_hdcp_read_infomation -> it6162_hdcp_read_information
+  * Remove dev_err_probe() usage outside of probe path
+  * Remove verbose success-path dev_info/dev_dbg logging throughout
+  * Replace __func__ usage in error messages with descriptive strings
+  * Fix double error printing in probe for it6162_init_pdata failure path
+  * Fix uninitialized variable warning: initialize cp_status to
+    DRM_MODE_CONTENT_PROTECTION_DESIRED at declaration; move
+    drm_hdcp_update_content_protection() inside the state-change block
+  * Fix audio sample width mapping: case 20 now maps to WORD_LENGTH_20BIT,
+    case 24 to WORD_LENGTH_24BIT
+  * Remove stray drm_dbg("it6162_bridge_atomic_disable") call
+  * Remove drm_dbg() calls from it6162_display_mode_to_settings()
+  * Drop unused struct it6162 * parameter from it6162_avi_to_video_setting()
+    and it6162_display_mode_to_settings()
+  * Fold it6162_set_default_config() body directly into it6162_reset_init(),
+    removing the wrapper
+  * it6162_infoblock_request_data(): split command complete polling and
+    buffer status check into two steps; use wait_event_timeout() for
+    data_buf_sts since it is updated asynchronously by the interrupt
+    handler; add wait_queue_head_t data_buf_wait to struct it6162 and
+    wake_up() in interrupt handler
+
+- Link to v2: https://lore.kernel.org/r/20260309-upstream-6162-v2-0-debdb6c88030@ite.com.tw
+
+Changes in v2:
+- dt-bindings:
+  * Drop Reviewed-by tag due to below changes
+  * Add property "ite,spport-hdcp" to enable HDCP
+  * Add property "lane-polarities" and "clock-noncontinuous" for DSI
+    setting
+
+- drm/bridge:
+  * Drop unused element in struct it6162
+  * Remove regmap wrappers
+  * Use FIELD_PREP for bitfield operations
+  * Update HDCP status with drm_hdcp_update_content_protection()
+  * Add AVI, AUDIO, and SPD infoframe control
+  * Remove conversion from drm_display_mode to videomode
+  * Fix regulator/gpio error handling in it6162_init_pdata() to return proper error codes
+
+- MAINTAINERS
+  * squash to driver patch
+
+- Link to v1: https://lore.kernel.org/r/20260223-upstream-6162-v1-0-ebcc66ccb1fe@ite.com.tw
+
+---
+Hermes Wu (2):
+      dt-bindings: display: bridge: Add ITE IT6162 MIPI DSI to HDMI bridge
+      drm/bridge: Add ITE IT6162 MIPI DSI to HDMI bridge driver
+
+ .../bindings/display/bridge/ite,it6162.yaml        |  205 +++
+ MAINTAINERS                                        |    7 +
+ drivers/gpu/drm/bridge/Kconfig                     |   17 +
+ drivers/gpu/drm/bridge/Makefile                    |    1 +
+ drivers/gpu/drm/bridge/ite-it6162.c                | 1764 ++++++++++++++++++++
+ 5 files changed, 1994 insertions(+)
+---
+base-commit: 33ed26235db93162935d1719bc6f538c384a2fd8
+change-id: 20260223-upstream-6162-3751e78dfcad
+
+Best regards,
 -- 
-2.56.0
+Hermes Wu <Hermes.wu@ite.com.tw>
 
