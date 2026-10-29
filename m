@@ -1,539 +1,358 @@
-From: Mark Korenberg <socketpair@gmail.com>
-Date: Thu, 29 Oct 2026 18:05:38 +0500
-Subject: [PATCH bpf-next v3 2/2] bpftool: Make the LLVM disassembler an
- optional runtime dependency
+From: Francesco Boccola <francesco.boccola@unina.it>
+Date: Thu, 29 Oct 2026 16:30:46 +0100
+Subject: [PATCH RFC] KVM: arm64: nVHE: Flush all TLBs when freeing a VM's
+ stage-2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-bpftool-plugin-v3-2-87af799da40a@gmail.com>
-References: <20261029-bpftool-plugin-v3-0-87af799da40a@gmail.com>
-In-Reply-To: <20261029-bpftool-plugin-v3-0-87af799da40a@gmail.com>
-To: Quentin Monnet <qmo@kernel.org>, Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Martin KaFai Lau <martin.lau@linux.dev>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Nathan Chancellor <nathan@kernel.org>, Bill Wendling <morbo@google.com>, 
- Justin Stitt <justinstitt@google.com>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, 
- Nick Desaulniers <ndesaulniers@google.com>
-Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, llvm@lists.linux.dev, 
- Mark Korenberg <socketpair@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793279142; l=16248;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=LUGgdps2BOs4VV9ZqTQeBnoe8pqiOVO6dc+E19l5Yx4=;
- b=41AJvdNbzdbo7UJwo3dcI4c6XCbxq9tsO7q6Y4G5cWgYGP2r549Jth6HAXKxrzaKaEqKFL7g+
- dezzkF5sRPnD0aIp3nwP1/GmlFB+9ldwxsD/bllWNnreHj1FDZ7lAf+
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+Message-Id: <20261029-nvhe-stage2-flush-v1-1-a87c7aaa91e1@unina.it>
+X-B4-Tracking: v=1; b=H4sIAKVm42oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDAyNL3byyjFTd4pLE9FQj3bSc0uIMXcPUVItE4xSTVGNjQyWgvoKi1LT
+ MCrCZ0UpBbs5KsRDB4tKkrNTkEpBpSrW1AEhTPUV6AAAA
+X-Change-ID: 20261029-nvhe-stage2-flush-1ee8a3d4e331
+To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oupton@kernel.org>, 
+ Fuad Tabba <fuad.tabba@linux.dev>, Joey Gouly <joey.gouly@arm.com>, 
+ Steffen Eiden <seiden@linux.ibm.com>, 
+ Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Mark Rutland <mark.rutland@arm.com>
+Cc: linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, 
+ Francesco Boccola <francesco.boccola@unina.it>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793287846; l=12631;
+ i=francesco.boccola@unina.it; s=20261029; h=from:subject:message-id;
+ bh=UtI/YN5wADN8DnQ5jfEuOThcGftUiTaFauT7BPsh/+c=;
+ b=xD7lyU3fZXM7phDidQjIcuDpjTj0ug9pOGdesW5XxmQsjm6gA4EZp5Tg4qPvz6Zw5Oh677DFk
+ +NkzmlBsQEqAcePLdpBEeJyLW13tKrB0WeZkC91UHbl4TXk2ZxcbjBH
+X-Developer-Key: i=francesco.boccola@unina.it; a=ed25519;
+ pk=82q3OTrtEAajk43b58WBO5I1Hj8Gg8DU6k0GngJr9rA=
+X-Endpoint-Received: by B4 Relay for francesco.boccola@unina.it/20261029 with auth_id=1353
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-libLLVM is only needed for "bpftool prog dump jited", yet it is a hard
-dependency of bpftool: on Fedora 43, installing the ~730 KiB bpftool pulls
-in ~140 MiB of llvm20-libs.
+kvm_free_stage2_pgd() frees a VM's stage-2 page tables without invalidating
+the TLBs. That is correct: the VM's VMID is not reused before the next VMID
+rollover, and flush_context() then invalidates the entries of all VMIDs on
+all CPUs (TLBI ALLE1IS).
 
-Move the LLVM disassembler to a plugin, $(libdir)/bpftool/bpftool-llvm.so,
-that bpftool loads with dlopen() only when disassembling JITed programs.
-Distributions can then ship it as an optional package.
+In nVHE mode, however, a CPU that ran a guest makes the host's broadcast
+TLB invalidations more expensive for the whole system until then, which
+with 16-bit VMIDs usually means until the host reboots. With stress-ng
+--tlb-shootdown on three CPUs of a cluster, the cyclictest maximum on a
+fourth, isolated CPU goes, before and after one guest:
+- Cortex-A53 (Zynq UltraScale+ KV260, no VHE, 6.1.70-rt): 53-72 us ->
+  83-164 us;
+- Cortex-A55 (RK3588, kvm-arm.mode=nvhe, kvmarm/next): 18-23 -> 78-97 us;
+- Cortex-A76 (RK3588, kvm-arm.mode=nvhe, kvmarm/next): 16-30 -> 74-80 us.
+It crosses clusters: after a guest on an A55, an isolated A76 goes from
+14-18 us to 129-154 us. The same happens on kernel 6.12.113 (20-24 -> 44-49
+us on the A55) and on 7.1.9 with and without PREEMPT_RT.
 
-The plugin exports a single structure of callbacks, with an ABI version
-checked by bpftool. bpftool looks for the plugin next to its own binary,
-then in its install directory, but not in the current directory since it
-usually runs as root. "bpftool version" reports "llvm" only if the plugin
-can be loaded.
+One guest that turns its stage-1 MMU on, even for a few microseconds, is
+enough; a guest that keeps its MMU off is not. With VHE nothing changes.
 
-If libLLVM is static, as required for a static bpftool, the disassembler is
-linked into bpftool as before.
+The state is in the CPU that ran the guest: a local TLBI ALLE1 on that CPU
+at teardown removes the effect on every CPU, the same on all the other CPUs
+does not. Invalidating the dead VM's VMID (TLBI VMALLS12E1IS, as pKVM does
+at teardown) does not remove it either, whether stage 2 is disabled while
+it is issued (as __kvm_tlb_flush_vmid() does from the host's context) or
+enabled; nor does invalidating VMID 0 or the host's stage 1 (A53).
 
-Link: https://github.com/libbpf/bpftool/issues/262
-Signed-off-by: Mark Korenberg <socketpair@gmail.com>
+So do the rollover's invalidation when the stage 2 of a VM that has run is
+freed, in nVHE mode. That costs one TLB refill on every CPU per VM
+teardown; 500 VMs created, run and torn down one after the other take 32.1
+ms each with it and 33.4 ms without, and an isolated CPU meanwhile sees no
+change in latency (15 us against 13 us).
+
+Signed-off-by: Francesco Boccola <francesco.boccola@unina.it>
 ---
- tools/bpf/bpftool/Makefile      |  38 +++++++++-
- tools/bpf/bpftool/jit_disasm.c  | 158 ++++++++++++++++++++++++++++------------
- tools/bpf/bpftool/llvm_disasm.c |  84 +++++++++++++++++++++
- tools/bpf/bpftool/llvm_disasm.h |  41 +++++++++++
- tools/bpf/bpftool/main.c        |   3 +-
- tools/bpf/bpftool/main.h        |   3 +
- 6 files changed, 276 insertions(+), 51 deletions(-)
+On Cortex-A53, A55 and A76 hosts in nVHE mode, a CPU that has run a guest
+with its stage-1 MMU on makes the host's broadcast TLB invalidations more
+expensive for the whole system until the next VMID rollover, which usually
+means until the host reboots. The patch does the rollover's invalidation
+(TLBI ALLE1IS) when the stage 2 of a VM that has run is freed; its commit
+message has the measurements.
 
-diff --git a/tools/bpf/bpftool/Makefile b/tools/bpf/bpftool/Makefile
-index b0f7168e7943..dc8e4be86296 100644
---- a/tools/bpf/bpftool/Makefile
-+++ b/tools/bpf/bpftool/Makefile
-@@ -63,6 +63,7 @@ $(LIBBPF_BOOTSTRAP)-clean: FORCE | $(LIBBPF_BOOTSTRAP_OUTPUT)
- 	$(Q)$(MAKE) -C $(BPF_DIR) OUTPUT=$(LIBBPF_BOOTSTRAP_OUTPUT) clean >/dev/null
- 
- prefix ?= /usr/local
-+libdir ?= $(prefix)/lib
- bash_compdir ?= /usr/share/bash-completion/completions
- 
- CFLAGS += -O2
-@@ -170,7 +171,7 @@ include $(wildcard $(OUTPUT)*.d)
- 
- all: $(OUTPUT)bpftool
- 
--SRCS := $(wildcard *.c)
-+SRCS := $(filter-out llvm_disasm.c,$(wildcard *.c))
- 
- ifeq ($(feature-llvm),1)
- ifneq ($(SKIP_LLVM),1)
-@@ -186,10 +187,19 @@ ifeq ($(HAS_LLVM),1)
-   # Makefile includes lib.mk which sets -D_GNU_SOURCE) which would cause
-   # compilation error due to redefinition. Let's filter it out here.
-   CFLAGS  += $(filter-out -D_GNU_SOURCE,$(shell $(LLVM_CONFIG) --cflags))
--  LIBS    += $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-+  LLVM_LIBS := $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-   ifeq ($(shell $(LLVM_CONFIG) --shared-mode),static)
-+    # No libLLVM.so dependency to avoid, link the disassembler into bpftool
-+    SRCS += llvm_disasm.c
-+    LIBS += $(LLVM_LIBS)
-     LIBS += $(shell $(LLVM_CONFIG) --system-libs $(LLVM_CONFIG_LIB_COMPONENTS))
-     LIBS += -lstdc++
-+  else
-+    # Build the disassembler as a plugin, the only object linked against
-+    # libLLVM, that bpftool loads only to disassemble JITed programs
-+    LLVM_PLUGIN := $(OUTPUT)bpftool-llvm.so
-+    CFLAGS += -DLLVM_PLUGIN_DIR='"$(libdir)/bpftool"'
-+    LIBS += -ldl
-   endif
-   LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
- else
-@@ -290,6 +300,21 @@ $(BPFTOOL_BOOTSTRAP): $(BOOTSTRAP_OBJS) $(LIBBPF_BOOTSTRAP)
- $(OUTPUT)bpftool: $(OBJS) $(LIBBPF)
- 	$(QUIET_LINK)$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
- 
-+ifneq ($(LLVM_PLUGIN),)
-+all: $(LLVM_PLUGIN)
-+
-+$(LLVM_PLUGIN): CFLAGS += -fPIC
-+$(LLVM_PLUGIN): $(OUTPUT)llvm_disasm.o
-+	$(QUIET_LINK)$(CC) $(CFLAGS) $(LDFLAGS) -shared $< $(LLVM_LIBS) -o $@
-+
-+# The plugin directory, $(libdir)/bpftool, is compiled into jit_disasm.o.
-+# Recompile it if libdir changes, e.g. on "make" then "make install libdir=...".
-+$(OUTPUT)llvm-plugin-dir: FORCE
-+	$(Q)echo '$(libdir)/bpftool' | cmp -s - $@ || echo '$(libdir)/bpftool' > $@
-+
-+$(OUTPUT)jit_disasm.o: $(OUTPUT)llvm-plugin-dir
-+endif
-+
- $(BOOTSTRAP_OUTPUT)%.o: %.c $(LIBBPF_BOOTSTRAP_INTERNAL_HDRS) | $(BOOTSTRAP_OUTPUT)
- 	$(QUIET_CC)$(HOSTCC) $(HOST_CFLAGS) -c -MMD $< -o $@
- 
-@@ -303,16 +328,21 @@ feature-detect-clean:
- clean: $(LIBBPF)-clean $(LIBBPF_BOOTSTRAP)-clean feature-detect-clean
- 	$(call QUIET_CLEAN, bpftool)
- 	$(Q)$(RM) -- $(OUTPUT)bpftool $(OUTPUT)*.o $(OUTPUT)*.d
-+	$(Q)$(RM) -- $(OUTPUT)bpftool-llvm.so $(OUTPUT)llvm-plugin-dir
- 	$(Q)$(RM) -- $(OUTPUT)*.skel.h $(OUTPUT)vmlinux.h
- 	$(Q)$(RM) -r -- $(LIBBPF_OUTPUT) $(BOOTSTRAP_OUTPUT)
- 	$(call QUIET_CLEAN, core-gen)
- 	$(Q)$(RM) -- $(OUTPUT)FEATURE-DUMP.bpftool
- 	$(Q)$(RM) -r -- $(OUTPUT)feature/
- 
--install-bin: $(OUTPUT)bpftool
-+install-bin: $(OUTPUT)bpftool $(LLVM_PLUGIN)
- 	$(call QUIET_INSTALL, bpftool)
- 	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(prefix)/sbin
- 	$(Q)$(INSTALL) $(OUTPUT)bpftool $(DESTDIR)$(prefix)/sbin/bpftool
-+ifneq ($(LLVM_PLUGIN),)
-+	$(call QUIET_INSTALL, bpftool-llvm.so)
-+	$(Q)$(INSTALL) -m 0755 -D -t $(DESTDIR)$(libdir)/bpftool $(LLVM_PLUGIN)
-+endif
- 
- install: install-bin
- 	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(bash_compdir)
-@@ -321,6 +351,8 @@ install: install-bin
- uninstall:
- 	$(call QUIET_UNINST, bpftool)
- 	$(Q)$(RM) -- $(DESTDIR)$(prefix)/sbin/bpftool
-+	$(call QUIET_UNINST, bpftool-llvm.so)
-+	$(Q)$(RM) -r -- $(DESTDIR)$(libdir)/bpftool
- 	$(Q)$(RM) -- $(DESTDIR)$(bash_compdir)/bpftool
- 
- doc:
-diff --git a/tools/bpf/bpftool/jit_disasm.c b/tools/bpf/bpftool/jit_disasm.c
-index 5ff144ce84a1..c95808a96914 100644
---- a/tools/bpf/bpftool/jit_disasm.c
-+++ b/tools/bpf/bpftool/jit_disasm.c
-@@ -25,10 +25,10 @@
- #include <bpf/libbpf.h>
- 
- #ifdef HAVE_LLVM_SUPPORT
--#include <llvm-c/Core.h>
--#include <llvm-c/Disassembler.h>
--#include <llvm-c/Target.h>
--#include <llvm-c/TargetMachine.h>
-+#ifdef LLVM_PLUGIN_DIR
-+#include <dlfcn.h>
-+#endif
-+#include "llvm_disasm.h"
- #endif
- 
- #ifdef HAVE_LIBBFD_SUPPORT
-@@ -45,7 +45,102 @@ static int oper_count;
- #ifdef HAVE_LLVM_SUPPORT
- #define DISASM_SPACER
- 
--typedef LLVMDisasmContextRef disasm_ctx_t;
-+typedef void *disasm_ctx_t;
-+
-+static const struct bpftool_llvm_ops *llvm_ops;
-+
-+#ifdef LLVM_PLUGIN_DIR
-+#define LLVM_PLUGIN_NAME "bpftool-llvm.so"
-+
-+static const char *dl_error(void)
-+{
-+	const char *err = dlerror();
-+
-+	/* The error may already be consumed, e.g. by an LD_PRELOAD-ed library */
-+	return err ? err : "unknown error";
-+}
-+
-+/*
-+ * Look for the plugin next to the bpftool binary, so that bpftool run from
-+ * its build directory uses its own plugin, then in its install directory.
-+ * Do not look in the current directory: bpftool usually runs as root, and
-+ * would then load any library planted in the directory it is run from.
-+ */
-+static int llvm_plugin_find(char *path, size_t size)
-+{
-+	char exe[PATH_MAX];
-+	ssize_t len;
-+	char *dir;
-+	int n;
-+
-+	len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-+	if (len > 0) {
-+		exe[len] = '\0';
-+		dir = strrchr(exe, '/');
-+		if (dir) {
-+			*dir = '\0';
-+			n = snprintf(path, size, "%s/%s", exe, LLVM_PLUGIN_NAME);
-+			if (n > 0 && (size_t)n < size && !access(path, F_OK))
-+				return 0;
-+		}
-+	}
-+
-+	snprintf(path, size, "%s/%s", LLVM_PLUGIN_DIR, LLVM_PLUGIN_NAME);
-+	return access(path, F_OK);
-+}
-+
-+static int llvm_load(bool verbose)
-+{
-+	const struct bpftool_llvm_ops *ops;
-+	char path[PATH_MAX];
-+	void *handle;
-+
-+	if (llvm_ops)
-+		return 0;
-+
-+	if (llvm_plugin_find(path, sizeof(path))) {
-+		if (verbose)
-+			p_err("%s not found next to bpftool or in %s, it is required to disassemble JITed programs",
-+			      LLVM_PLUGIN_NAME, LLVM_PLUGIN_DIR);
-+		return -1;
-+	}
-+
-+	handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
-+	if (!handle) {
-+		if (verbose)
-+			p_err("failed to load LLVM disassembler plugin: %s",
-+			      dl_error());
-+		return -1;
-+	}
-+
-+	ops = dlsym(handle, BPFTOOL_LLVM_OPS_SYM);
-+	if (!ops) {
-+		if (verbose)
-+			p_err("invalid LLVM disassembler plugin: %s", dl_error());
-+		goto err_close;
-+	}
-+	if (ops->abi_version != BPFTOOL_LLVM_ABI_VERSION) {
-+		if (verbose)
-+			p_err("%s has ABI version %u, expected %u",
-+			      path, ops->abi_version, BPFTOOL_LLVM_ABI_VERSION);
-+		goto err_close;
-+	}
-+
-+	/* Keep the plugin loaded until bpftool exits */
-+	llvm_ops = ops;
-+	return 0;
-+
-+err_close:
-+	dlclose(handle);
-+	return -1;
-+}
-+#else
-+static int llvm_load(__maybe_unused bool verbose)
-+{
-+	llvm_ops = &bpftool_llvm_ops;
-+	return 0;
-+}
-+#endif /* LLVM_PLUGIN_DIR */
- 
- static int printf_json(char *s)
- {
-@@ -63,48 +158,13 @@ static int printf_json(char *s)
- 	return 0;
- }
- 
--/* This callback to set the ref_type is necessary to have the LLVM disassembler
-- * print PC-relative addresses instead of byte offsets for branch instruction
-- * targets.
-- */
--static const char *
--symbol_lookup_callback(__maybe_unused void *disasm_info,
--		       __maybe_unused uint64_t ref_value,
--		       uint64_t *ref_type, __maybe_unused uint64_t ref_PC,
--		       __maybe_unused const char **ref_name)
--{
--	*ref_type = LLVMDisassembler_ReferenceType_InOut_None;
--	return NULL;
--}
--
- static int
- init_context(disasm_ctx_t *ctx, const char *arch,
- 	     __maybe_unused const char *disassembler_options,
- 	     __maybe_unused unsigned char *image, __maybe_unused ssize_t len,
- 	     __maybe_unused __u64 func_ksym)
- {
--	char *triple;
--
--	if (arch)
--		triple = LLVMNormalizeTargetTriple(arch);
--	else
--		triple = LLVMGetDefaultTargetTriple();
--	if (!triple) {
--		p_err("Failed to retrieve triple");
--		return -1;
--	}
--
--	/*
--	 * Enable all aarch64 ISA extensions so the disassembler can handle any
--	 * instruction the kernel JIT might emit (e.g. ARM64 LSE atomics).
--	 */
--	if (!strncmp(triple, "aarch64", 7))
--		*ctx = LLVMCreateDisasmCPUFeatures(triple, "", "+all", NULL, 0, NULL,
--						   symbol_lookup_callback);
--	else
--		*ctx = LLVMCreateDisasm(triple, NULL, 0, NULL, symbol_lookup_callback);
--	LLVMDisposeMessage(triple);
--
-+	*ctx = llvm_ops->create_context(arch);
- 	if (!*ctx) {
- 		p_err("Failed to create disassembler");
- 		return -1;
-@@ -115,7 +175,7 @@ init_context(disasm_ctx_t *ctx, const char *arch,
- 
- static void destroy_context(disasm_ctx_t *ctx)
- {
--	LLVMDisasmDispose(*ctx);
-+	llvm_ops->destroy_context(*ctx);
- }
- 
- static int
-@@ -125,7 +185,7 @@ disassemble_insn(disasm_ctx_t *ctx, unsigned char *image, ssize_t len, int pc,
- 	char buf[256];
- 	int count;
- 
--	count = LLVMDisasmInstruction(*ctx, image + pc, len - pc, func_ksym + pc,
-+	count = llvm_ops->disassemble(*ctx, image + pc, len - pc, func_ksym + pc,
- 				      buf, sizeof(buf));
- 	if (json_output)
- 		printf_json(buf);
-@@ -135,12 +195,16 @@ disassemble_insn(disasm_ctx_t *ctx, unsigned char *image, ssize_t len, int pc,
- 	return count;
- }
- 
-+bool disasm_llvm_available(void)
-+{
-+	return !llvm_load(false);
-+}
-+
- int disasm_init(void)
- {
--	LLVMInitializeAllTargetInfos();
--	LLVMInitializeAllTargetMCs();
--	LLVMInitializeAllDisassemblers();
--	return 0;
-+	if (llvm_load(true))
-+		return -1;
-+	return llvm_ops->init();
- }
- #endif /* HAVE_LLVM_SUPPORT */
- 
-diff --git a/tools/bpf/bpftool/llvm_disasm.c b/tools/bpf/bpftool/llvm_disasm.c
-new file mode 100644
-index 000000000000..b92df1e8966f
---- /dev/null
-+++ b/tools/bpf/bpftool/llvm_disasm.c
-@@ -0,0 +1,84 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+/*
-+ * libLLVM-based disassembler for JITed programs.
-+ *
-+ * This file is usually built as bpftool-llvm.so, the only bpftool component
-+ * linked against libLLVM, which bpftool loads only when it needs to
-+ * disassemble JITed programs (see jit_disasm.c). It is linked into bpftool
-+ * directly when libLLVM is a static library.
-+ */
-+#include <string.h>
-+
-+#include <llvm-c/Core.h>
-+#include <llvm-c/Disassembler.h>
-+#include <llvm-c/Target.h>
-+#include <llvm-c/TargetMachine.h>
-+
-+#include "llvm_disasm.h"
-+
-+/*
-+ * This callback to set the ref_type is necessary to have the LLVM disassembler
-+ * print PC-relative addresses instead of byte offsets for branch instruction
-+ * targets.
-+ */
-+static const char *
-+symbol_lookup_callback(void *disasm_info, uint64_t ref_value,
-+		       uint64_t *ref_type, uint64_t ref_PC,
-+		       const char **ref_name)
-+{
-+	*ref_type = LLVMDisassembler_ReferenceType_InOut_None;
-+	return NULL;
-+}
-+
-+static int llvm_init(void)
-+{
-+	LLVMInitializeAllTargetInfos();
-+	LLVMInitializeAllTargetMCs();
-+	LLVMInitializeAllDisassemblers();
-+	return 0;
-+}
-+
-+static void *llvm_create_context(const char *arch)
-+{
-+	LLVMDisasmContextRef ctx;
-+	char *triple;
-+
-+	if (arch)
-+		triple = LLVMNormalizeTargetTriple(arch);
-+	else
-+		triple = LLVMGetDefaultTargetTriple();
-+	if (!triple)
-+		return NULL;
-+
-+	/*
-+	 * Enable all aarch64 ISA extensions so the disassembler can handle any
-+	 * instruction the kernel JIT might emit (e.g. ARM64 LSE atomics).
-+	 */
-+	if (!strncmp(triple, "aarch64", 7))
-+		ctx = LLVMCreateDisasmCPUFeatures(triple, "", "+all", NULL, 0, NULL,
-+						  symbol_lookup_callback);
-+	else
-+		ctx = LLVMCreateDisasm(triple, NULL, 0, NULL, symbol_lookup_callback);
-+	LLVMDisposeMessage(triple);
-+
-+	return ctx;
-+}
-+
-+static void llvm_destroy_context(void *ctx)
-+{
-+	LLVMDisasmDispose(ctx);
-+}
-+
-+static size_t llvm_disassemble(void *ctx, uint8_t *bytes, uint64_t size,
-+			       uint64_t pc, char *buf, size_t buf_size)
-+{
-+	return LLVMDisasmInstruction(ctx, bytes, size, pc, buf, buf_size);
-+}
-+
-+const struct bpftool_llvm_ops bpftool_llvm_ops = {
-+	.abi_version		= BPFTOOL_LLVM_ABI_VERSION,
-+	.init			= llvm_init,
-+	.create_context		= llvm_create_context,
-+	.destroy_context	= llvm_destroy_context,
-+	.disassemble		= llvm_disassemble,
-+};
-diff --git a/tools/bpf/bpftool/llvm_disasm.h b/tools/bpf/bpftool/llvm_disasm.h
-new file mode 100644
-index 000000000000..34123a80df02
---- /dev/null
-+++ b/tools/bpf/bpftool/llvm_disasm.h
-@@ -0,0 +1,41 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+#ifndef __BPFTOOL_LLVM_DISASM_H
-+#define __BPFTOOL_LLVM_DISASM_H
-+
-+#include <stddef.h>
-+#include <stdint.h>
-+
-+/*
-+ * Interface between bpftool and its libLLVM-based JIT disassembler.
-+ *
-+ * The disassembler is usually built as a plugin, bpftool-llvm.so, that
-+ * bpftool loads with dlopen(); bpftool then looks up the
-+ * BPFTOOL_LLVM_OPS_SYM symbol in it. The plugin can come from a different
-+ * build than the bpftool binary, so bump BPFTOOL_LLVM_ABI_VERSION on any
-+ * incompatible change to struct bpftool_llvm_ops, and always keep
-+ * abi_version as its first member.
-+ */
-+#define BPFTOOL_LLVM_ABI_VERSION	1U
-+#define BPFTOOL_LLVM_OPS_SYM		"bpftool_llvm_ops"
-+
-+struct bpftool_llvm_ops {
-+	unsigned int abi_version;
-+	/* Initialize libLLVM targets and disassemblers. Returns 0 on success. */
-+	int (*init)(void);
-+	/*
-+	 * Create a disassembler context for @arch, or for the host if @arch
-+	 * is NULL. Returns NULL on failure.
-+	 */
-+	void *(*create_context)(const char *arch);
-+	void (*destroy_context)(void *ctx);
-+	/*
-+	 * Disassemble the instruction at @bytes, located at address @pc, into
-+	 * @buf. Returns the size of the instruction, or 0 if it is invalid.
-+	 */
-+	size_t (*disassemble)(void *ctx, uint8_t *bytes, uint64_t size,
-+			      uint64_t pc, char *buf, size_t buf_size);
-+};
-+
-+extern const struct bpftool_llvm_ops bpftool_llvm_ops;
-+
-+#endif /* __BPFTOOL_LLVM_DISASM_H */
-diff --git a/tools/bpf/bpftool/main.c b/tools/bpf/bpftool/main.c
-index d15fec71b64e..321e928d651c 100644
---- a/tools/bpf/bpftool/main.c
-+++ b/tools/bpf/bpftool/main.c
-@@ -124,7 +124,8 @@ static int do_version(int argc, char **argv)
- 	const bool has_libbfd = false;
- #endif
- #ifdef HAVE_LLVM_SUPPORT
--	const bool has_llvm = true;
-+	/* The LLVM disassembler may be a plugin that is not installed */
-+	const bool has_llvm = disasm_llvm_available();
- #else
- 	const bool has_llvm = false;
- #endif
-diff --git a/tools/bpf/bpftool/main.h b/tools/bpf/bpftool/main.h
-index b1eb4b5d991b..96d7b147aa9d 100644
---- a/tools/bpf/bpftool/main.h
-+++ b/tools/bpf/bpftool/main.h
-@@ -214,6 +214,9 @@ static inline int disasm_init(void)
- 	return -1;
- }
- #endif
-+#ifdef HAVE_LLVM_SUPPORT
-+bool disasm_llvm_available(void);
-+#endif
- void print_data_json(uint8_t *data, size_t len);
- void print_hex_data_json(uint8_t *data, size_t len);
- 
+RFC because we can only describe what these cores do, not explain it. Which
+per-CPU state survives the invalidation of the VM's VMID, and why it slows
+the broadcast invalidations of other CPUs, is microarchitectural; an
+explanation from someone who knows these TLBs would be welcome.
+Questions:
+- Is this known behaviour of these cores in nVHE mode (A53, A55 and A76
+  here)?
+- ALLE1IS also drops the host's own EL1&0 entries on every CPU. A local
+  TLBI ALLE1 on the CPUs the VM ran on (mmu->last_vcpu_ran) is enough in
+  our tests, but needs IPIs; would you prefer that?
+- In protected mode, the host itself runs with stage 2, and the same test
+  gives 112-153 us from boot, guest or not (18-23 us in nVHE mode before
+  any guest). Is that expected?
+- Should VHE hosts also invalidate (we see no effect there)?
 
--- 
-2.56.0
+Reproducer (below): tinyvm.c, a ~110-line KVM VMM running a guest (guest.S)
+that turns its MMU on and powers off, and run.sh: stress-ng --tlb-shootdown
+and cyclictest (SCHED_FIFO 99) on a freshly booted host, 3 x 20 s before
+and after one such guest. Controls: a guest that keeps its MMU off (no
+change), the same kernel in VHE mode (no change), this patch on kvmarm/next
+(A55 19-22 -> 20-32 us, A76 14-24 -> 13-15 us).
+
+To run it: make (or make CROSS_COMPILE=aarch64-linux-gnu- LDFLAGS=-static),
+then, as root on a freshly booted host with stress-ng and cyclictest,
+./run.sh -v <cyclictest CPU> -c <three other CPUs of its cluster> -g <guest
+CPU>. The defaults (-v 3 -c 0-2 -g 2) fit a 4-CPU cluster; -m 0 runs the
+control guest (MMU off). In our tests the cyclictest CPU was isolated
+(isolcpus, nohz_full, rcu_nocbs).
+
+Found while measuring containers run as KVM guests against plain containers
+on these boards.
+
+==> Makefile <==
+
+CC = $(CROSS_COMPILE)gcc
+OBJCOPY = $(CROSS_COMPILE)objcopy
+CFLAGS = -O2 -Wall
+
+SPIN = 0
+all: tinyvm guest-mmu0.bin guest-mmu1.bin
+
+tinyvm: %: %.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+
+guest-mmu%.bin: guest.S
+	$(CC) -nostdlib -static -Wl,-Ttext=0x40000000 -Wl,--build-id=none -DMMU=$* -DSPIN=$(SPIN) -o guest-mmu$*.elf $<
+	$(OBJCOPY) -O binary guest-mmu$*.elf $@
+
+clean:
+	rm -f tinyvm guest-mmu*.elf guest-mmu*.bin
+
+==> guest.S <==
+/*
+ * guest.S - the guest of tinyvm: with MMU=1 it turns its stage-1 MMU and
+ * caches on (identity map of its RAM), writes a marker through the MMU, spins
+ * for SPIN seconds (virtual counter) and powers the VM off (PSCI SYSTEM_OFF);
+ * with MMU=0 it does the same with the MMU off.
+ * Linked at the start of the guest RAM (0x40000000):
+ *   gcc -nostdlib -static -Wl,-Ttext=0x40000000 -Wl,--build-id=none -DMMU=1 \
+ *       -o guest-mmu.elf guest.S && objcopy -O binary guest-mmu.elf guest-mmu.bin
+ */
+
+	.text
+	.globl	_start
+_start:
+
+	movz	x0, #0xff00		/* MAIR: attr0 Device-nGnRnE, attr1 Normal WB */
+	msr	mair_el1, x0
+	movz	x0, #0x3519		/* TCR: T0SZ 25, WBWA inner shareable walks, */
+	movk	x0, #0x0080, lsl #16	/* 4 KB granule, no TTBR1 walks, */
+	movk	x0, #0x0002, lsl #32	/* 40-bit PA */
+	msr	tcr_el1, x0
+	adr	x0, pgtable
+	msr	ttbr0_el1, x0
+	isb
+	tlbi	vmalle1
+	dsb	ish
+	isb
+	mrs	x0, sctlr_el1
+	movz	x1, #0x1005		/* I, C, M */
+	orr	x0, x0, x1
+	msr	sctlr_el1, x0
+	isb
+
+	movz	x1, #(MARKER_ADDR >> 16), lsl #16
+	movz	w2, #0x4d4d		/* "MM" */
+	movk	w2, #(0x55 + MMU), lsl #16
+	str	w2, [x1]
+	dsb	sy
+
+	mrs	x3, cntfrq_el0		/* spin SPIN seconds */
+	mov	x4, #SPIN
+	mul	x3, x3, x4
+	mrs	x4, cntvct_el0
+	add	x3, x3, x4
+2:	mrs	x4, cntvct_el0
+	cmp	x4, x3
+	b.lo	2b
+
+	movz	w0, #0x0008
+	movk	w0, #0x8400, lsl #16	/* PSCI SYSTEM_OFF */
+	hvc	#0
+1:	wfi
+	b	1b
+
+	.balign	4096
+pgtable:	/* level 1, 1 GB blocks: 0-1 GB Device, 1-2 GB Normal WB (the RAM) */
+	.quad	0x0060000000000401
+	.quad	0x0000000040000705
+	.fill	510, 8, 0
+
+==> tinyvm.c <==
+/*
+ * tinyvm <guest.bin> [cpu] - the smallest KVM VMM: one vCPU, 16 MB of RAM at
+ * 0x40000000, no interrupt controller and no devices. It loads <guest.bin> at
+ * the start of the RAM, runs the vCPU (pinned to [cpu]) until the guest powers
+ * the VM off through PSCI, checks the marker the guest wrote and exits 0.
+ * Build: gcc -O2 -o tinyvm tinyvm.c
+ */
+
+		     (offsetof(struct kvm_regs, x) / sizeof(uint32_t)))
+
+static void die(const char *what)
+{
+	perror(what);
+	exit(2);
+}
+
+int main(int argc, char **argv)
+{
+	struct kvm_userspace_memory_region region;
+	struct kvm_vcpu_init init;
+	struct kvm_one_reg reg;
+	struct kvm_run *run;
+	uint64_t pc = RAM_BASE;
+	int kvm, vm, vcpu, fd, size;
+	uint8_t *ram;
+	struct stat st;
+	uint32_t marker;
+
+	if (argc < 2) {
+		fprintf(stderr, "usage: %s <guest.bin> [cpu]\n", argv[0]);
+		return 2;
+	}
+	alarm(120);	/* a guest that faults spins forever: give up */
+	if (argc > 2) {
+		cpu_set_t set;
+
+		CPU_ZERO(&set);
+		CPU_SET(atoi(argv[2]), &set);
+		if (sched_setaffinity(0, sizeof(set), &set))
+			die("sched_setaffinity");
+	}
+	kvm = open("/dev/kvm", O_RDWR | O_CLOEXEC);
+	if (kvm < 0)
+		die("/dev/kvm");
+	vm = ioctl(kvm, KVM_CREATE_VM, 0);
+	if (vm < 0)
+		die("KVM_CREATE_VM");
+	ram = mmap(NULL, RAM_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (ram == MAP_FAILED)
+		die("mmap");
+	fd = open(argv[1], O_RDONLY);
+	if (fd < 0 || fstat(fd, &st) || st.st_size > (off_t)MARKER_OFF ||
+	    read(fd, ram, st.st_size) != st.st_size)
+		die(argv[1]);
+	close(fd);
+	region = (struct kvm_userspace_memory_region){
+		.slot = 0, .guest_phys_addr = RAM_BASE, .memory_size = RAM_SIZE,
+		.userspace_addr = (uintptr_t)ram,
+	};
+	if (ioctl(vm, KVM_SET_USER_MEMORY_REGION, &region))
+		die("KVM_SET_USER_MEMORY_REGION");
+	vcpu = ioctl(vm, KVM_CREATE_VCPU, 0);
+	if (vcpu < 0)
+		die("KVM_CREATE_VCPU");
+	if (ioctl(vm, KVM_ARM_PREFERRED_TARGET, &init))
+		die("KVM_ARM_PREFERRED_TARGET");
+	init.features[0] |= 1 << KVM_ARM_VCPU_PSCI_0_2;
+	if (ioctl(vcpu, KVM_ARM_VCPU_INIT, &init))
+		die("KVM_ARM_VCPU_INIT");
+	reg = (struct kvm_one_reg){ .id = CORE_REG(regs.pc), .addr = (uintptr_t)&pc };
+	if (ioctl(vcpu, KVM_SET_ONE_REG, &reg))
+		die("KVM_SET_ONE_REG pc");
+	size = ioctl(kvm, KVM_GET_VCPU_MMAP_SIZE, 0);
+	run = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, vcpu, 0);
+	if (run == MAP_FAILED)
+		die("mmap kvm_run");
+	for (;;) {
+		if (ioctl(vcpu, KVM_RUN, 0) && errno != EINTR)
+			die("KVM_RUN");
+		if (run->exit_reason == KVM_EXIT_SYSTEM_EVENT)
+			break;
+		fprintf(stderr, "unexpected exit %u\n", run->exit_reason);
+		return 2;
+	}
+	memcpy(&marker, ram + MARKER_OFF, sizeof(marker));
+	printf("guest done: system event %u, marker %#x (%s)\n", run->system_event.type, marker,
+	       marker == 0x564d4d ? "MMU on" : marker == 0x554d4d ? "MMU off" : "BAD");
+	close(vcpu);
+	close(vm);
+	close(kvm);
+	return marker == 0x564d4d || marker == 0x554d4d ? 0 : 1;
+}
+
+==> run.sh <==
+
+set -e
+V=3 C=0-2 G=2 T=20 N=3 M=1
+while getopts v:c:g:t:r:m: o; do
+	case $o in
+	v) V=$OPTARG ;; c) C=$OPTARG ;; g) G=$OPTARG ;; t) T=$OPTARG ;; r) N=$OPTARG ;;
+	m) M=$OPTARG ;; *) exit 2 ;;
+	esac
+done
+SNG=${STRESS_NG:-stress-ng}
+CT=${CYCLICTEST:-cyclictest}
+W=$(echo "$C" | awk -F, '{n = 0; for (i = 1; i <= NF; i++) { split($i, r, "-"); n += (r[2] == "" ? 1 : r[2] - r[1] + 1) } print n}')
+part() { awk -v c="$1" '/^processor/ {p = $3} /^CPU part/ && p == c {print $4; exit}' /proc/cpuinfo; }
+mode=$(dmesg 2>/dev/null | grep -o "kvm \[1\]: [A-Za-z ]*mode initialized" | sed 's/kvm \[1\]: //' | head -1)
+echo "kernel $(uname -r) $(uname -v | grep -o PREEMPT_RT), ${mode:-KVM mode unknown (dmesg)}, up $(cut -d. -f1 /proc/uptime) s"
+echo "cyclictest on CPU $V (part $(part $V)), stress-ng tlb-shootdown x$W on CPUs $C, guest on CPU $G (part $(part $G)), MMU=$M"
+[ -r /sys/module/kvm/parameters/stage2_free_flush ] &&
+	echo "stage2_free_flush $(cat /sys/module/kvm/parameters/stage2_free_flush)"
+
+measure() { # <phase> <run>
+	$SNG --tlb-shootdown "$W" --taskset "$C" -t $((T + 3)) --metrics-brief > sng.out 2>&1 &
+	sp=$!
+	sleep 1
+	set -- "$1" "$2" $($CT -m -a "$V" -p 99 -i 1000 -l $((T * 1000)) -q 2>/dev/null |
+		awk '/Avg:/ { for (i = 1; i < NF; i++) { if ($i == "Avg:") a = $(i + 1); if ($i == "Max:") m = $(i + 1) } } END { print a, m }')
+	wait $sp
+	ops=$(awk '/tlb-shootdown +[0-9]/ { print $(NF - 1) }' sng.out | tail -1)
+	printf '%-6s %d  cyclictest avg %4s us  max %5s us   stress-ng %8s bogo-ops/s\n' "$1" "$2" "$3" "$4" "$ops"
+	echo "$1 $3 $4 $ops" >> results.txt
+}
+
+rm -f results.txt
+i=1; while [ $i -le $N ]; do measure before $i; i=$((i + 1)); done
+./tinyvm guest-mmu$M.bin "$G"
+i=1; while [ $i -le $N ]; do measure after $i; i=$((i + 1)); done
+awk '{ a[$1] += $2; m[$1] += $3; o[$1] += $4; n[$1]++ }
+END { printf "after/before (means): cyclictest avg x%.2f, max x%.2f; stress-ng throughput x%.2f\n",
+	(a["after"] / n["after"]) / (a["before"] / n["before"]),
+	(m["after"] / n["after"]) / (m["before"] / n["before"]),
+	(o["after"] / n["after"]) / (o["before"] / n["before"]) }' results.txt
+rm -f sng.out results.txt
+---
+ arch/arm64/kvm/mmu.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/arch/arm64/kvm/mmu.c b/arch/arm64/kvm/mmu.c
+index a48f3f531..baeea69e7 100644
+--- a/arch/arm64/kvm/mmu.c
++++ b/arch/arm64/kvm/mmu.c
+@@ -1216,6 +1216,17 @@ void kvm_free_stage2_pgd(struct kvm_s2_mmu *mmu)
+ 	write_lock(&kvm->mmu_lock);
+ 	pgt = mmu->pgt;
+ 	if (pgt) {
++		/*
++		 * The VM's VMID is not reused before the next rollover, which
++		 * invalidates all VMIDs, so its TLB entries can stay until then.
++		 * In nVHE mode, however, a CPU that ran a guest with its stage-1
++		 * MMU on makes the host's broadcast TLB invalidations more
++		 * expensive for all CPUs, and invalidating the VM's VMID does not
++		 * stop it: do the rollover's invalidation now. A VM that never
++		 * ran has no VMID (0).
++		 */
++		if (!has_vhe() && atomic64_read(&mmu->vmid.id))
++			kvm_call_hyp(__kvm_flush_vm_context);
+ 		mmu->pgd_phys = 0;
+ 		mmu->pgt = NULL;
+ 		free_percpu(mmu->last_vcpu_ran);
+
+---
+base-commit: dd0bc00e3e9201fd49b62ff9cc07890c89003afe
+change-id: 20261029-nvhe-stage2-flush-1ee8a3d4e331
+
+Best regards,
+--  
+Francesco Boccola <francesco.boccola@unina.it>
 
