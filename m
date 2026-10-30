@@ -1,79 +1,139 @@
-From: Carlos Baiget Orts <asinfreedom@gmail.com>
-Date: Fri, 30 Oct 2026 00:24:33 +0100
-Subject: [PATCH] platform/x86/amd/pmc: Add LG Ultra PC 16U70Q to quirks
- list
+From: Kamil Chojnowski <contact@diath.net>
+Subject: [PATCH 0/6] fs/ntfs3: fix a deadlock and data loss in resident and
+ sparse files
+Date: Fri, 30 Oct 2026 01:08:09 +0100
+Message-Id: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-lg-16u70q-quirk-v1-1-946f25fea731@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzNDAyNL3Zx0XUOzUnODQt3C0syibN20xFQLM5OUJBMDUxMloK6CotS0zAq
- widGxtbUAe9FBKGEAAAA=
-X-Change-ID: 20261029-lg-16u70q-quirk-fae864db4054
-To: Shyam Sundar S K <Shyam-sundar.S-k@amd.com>, 
- Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>
-Cc: platform-driver-x86@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mario Limonciello <mario.limonciello@amd.com>, 
- Carlos Baiget Orts <asinfreedom@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793316277; l=1794;
- i=asinfreedom@gmail.com; s=20261029; h=from:subject:message-id;
- bh=2scvI5X0yKGdqQL9IjH/N2UwRjmOVAOBN1ZYC7tkAKQ=;
- b=3OXXkpx5QIs0LOCthtkmrsEfTnOQv1xwWaAlTW+w0xglQw1x5LgxRtli1vgJa5FesMFhDd70W
- ngTCrZuBp1ND6QIBtNuqwJhFjT+BOc4so4i7/3eKuDbrGEA1J0nSP4W
-X-Developer-Key: i=asinfreedom@gmail.com; a=ed25519;
- pk=aOfyH/lp+7onSrl00TdpSmziKWxCLG6uwG7m69lGXHI=
-X-Endpoint-Received: by B4 Relay for asinfreedom@gmail.com/20261029 with auth_id=1359
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqDMBCF4VeRWTuQixbpqxQXTTza6SItmbQUx
+ Hc31uXH4T8rKbJA6dqslPEVlVeqsG1D8XFPC1imanLGXazxhlOZ1XOGyoRUeJYflGPoO2sc3DA
+ Equk74z/U8jae1k94Ipbji7ZtB5C/+4t4AAAA
+X-Change-ID: 20261030-ntfs3-resident-fixes-cb54102e288b
+To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
+Cc: Christoph Hellwig <hch@lst.de>, ntfs3@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Kamil Chojnowski <contact@diath.net>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=5846;
+ i=contact@diath.net; s=20261029; h=from:subject:message-id;
+ bh=IMDHc6D5LBYf9bTtoSfC5z3DtdZSwElxUKK8DMto4jA=;
+ b=VAaw+exSqLGQbsxPkopLvXOvx8VzGT/RxobnSb1F1CWf1lRktAEnmswqI11SHBnAq/Q+JB71C
+ c0ugb/H0nLUDnYg9d+VDk54Z5KBa4cCVDymDNBKvUOR3H9kcuvcbngm
+X-Developer-Key: i=contact@diath.net; a=ed25519;
+ pk=G15RQXroUn6f8ud+bOEqlqpPdpLoCB3L3G9XVUf+YaA=
+X-Endpoint-Received: by B4 Relay for contact@diath.net/20261029 with auth_id=1360
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The LG Ultra PC 16U70Q (Ryzen 7 5825U) spends ~5 seconds in the noirq
-resume phase on every s2idle resume. This is the same NVMe SMI handler
-issue seen on other Cezanne systems. Skipping it with s2idle_bug_mmio
-brings it down to ~32 ms.
+Hi Konstantin,
 
-As on the other Cezanne systems, the entry must also keep the spurious
-IRQ1 (8042) wakeup workaround. Otherwise the system wakes up immediately
-from s2idle, so use quirk_s2idle_spurious_8042.
+I have been trying to move my workstation from ntfs-3g to ntfs3 for a
+while.  Every attempt ended with the system wedged: several coding
+agents and git worktrees working on one ntfs3 volume left tasks stuck in
+D state until a reboot, so I kept going back to ntfs-3g.
 
-Link: https://gitlab.freedesktop.org/drm/amd/-/issues/6021
-Cc: Mario Limonciello <mario.limonciello@amd.com>
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Carlos Baiget Orts <asinfreedom@gmail.com>
+The hang is an ABBA deadlock between folio 0 and ni_lock/run_lock when a
+resident file grows past the MFT record.  attr_make_nonresident() runs
+with ni_lock and run_lock held and locks folio 0 to copy the resident
+data into the page cache, while ntfs_read_folio() (iomap ->
+ntfs_iomap_begin() -> attr_data_get_block()) and the resident path of
+ntfs_writepages() hold folio 0 and then take run_lock/ni_lock.  A writer
+appending to a small file while another task reads it cold hangs within
+a minute on ntfs3 master, 7.3, 7.2.11 and 6.18.59.  The same inversion
+was already in the pre-iomap code, so all stable kernels are affected.
+
+  1/6 the deadlock: lock folio 0 before ni_lock in every path that can
+      convert $DATA
+  2/6 mmap writes to a small file are lost when it grows: keep an
+      uptodate folio 0 instead of overwriting it from the resident copy
+  3/6 extending a resident file with ftruncate(2) races with readers and
+      gives -EIO plus a WARNING in iomap_read_inline_data(): resize the
+      attribute before i_size
+  4/6 writeback that races with the conversion drops the folio; since
+      2727ac2ba87a it reports -EIO instead of warning, but the data is
+      still lost: redirty it and write it through iomap
+  5/6 ni_write_parents() walks the record without ni_lock, and a
+      concurrent change makes fsync mark a healthy inode bad and the
+      volume dirty
+  6/6 writing into a hole of a sparse file that ntfs-3g created can
+      zero up to 15 clusters of data next to the hole, leak the old
+      clusters and push total_size past alloc_size, after which
+      mi_enum_attr() rejects the file and the volume is marked dirty.
+      ntfs-3g allocates sparse files cluster by cluster with c_unit 4,
+      so every file it wrote with holes (linker output, for instance)
+      can hit this once the volume is mounted with ntfs3.
+
+Patch 2 depends on patch 1; the others apply on their own.  The readdir
+lockdep splat I also hit is fixed in ntfs3_for_7.4 by commit
+7a5aa6c45072 ("ntfs3: release ni_lock before dir_emit in ntfs_readdir to
+fix deadlocks") together with Christian's pending "fs/ntfs3: fix double
+ni_unlock() in ntfs_readdir()", which I tested separately.
+
+Testing: the stress tests run for 120 s (the git workloads for 150 s
+and 8 minutes) in a QEMU/KVM guest with lockdep and a 20 s hung-task
+timeout, on a fresh mkntfs image, or one written by ntfs-3g for the
+sparse file tests.  The guest kernel is 7.3 with fs/ntfs3 from ntfs3
+master; the "this series" column also has Christian's readdir fix
+applied.
+
+                                    ntfs3 master      this series
+  append to 4 KiB vs. cold reader   hung after 46 s   pass, 491k files
+  the same, grown with ftruncate    hung after 46 s,  pass, 589k files
+                                    EIO + WARNING
+  the same, grown with fallocate    hung after 46 s   pass, 714k files
+  mmap store, grow, fsync, while    hung after 45 s,  pass, 192k files
+    another thread fdatasyncs       10 bad files
+  pwrite into a mid-frame hole of   14 clusters       pass
+    an ntfs-3g sparse file          zeroed
+  rewrite that sparse file          rejected, volume  pass
+                                    marked dirty
+  12 threads: create, unlink,       pass              pass, 5.1M ops
+    rename, readdir, mmap, fsync...
+  8 git worktrees of one repo,      -                 pass, 4486 commits
+    3 grep/find watchers
+  16 worktrees, 6 watchers, 8 min   -                 pass, 30815 commits
+
+The append and mmap tests also hang on 6.18.59, after 45 s each.
+
+Patch 1 is larger than the stable size limit and does not apply before
+the iomap conversion; older kernels will need a backport.
+
+Not done: sparse was not run, the code was built only as =y on x86_64,
+and no fault injection was used.
+
+Tool use: the investigation, the reproducers, the patches and their
+changelogs were produced with Claude (Anthropic's Claude Opus 5.5 model
+in Claude Code).  I asked it to set up a test VM with the newest kernel
+and an NTFS volume, reproduce the freezes I saw, find the cause and fix
+it; later I asked it to rebase the fixes onto ntfs3 master and to look
+into the ntfs-3g sparse files that ntfs3 rejected on my volume.  It
+wrote the QEMU harness and reproducers, traced the lock chains from
+lockdep and sysrq-w output, and wrote all six patches.  I reviewed them
+and ran the tests above.  Each patch carries an Assisted-by tag.  The
+reproducers and harness are at
+https://github.com/diath/ntfs3-deadlock-lab
+
+Thanks,
+Kamil
+
 ---
-Tested on the 16U70Q (BIOS L2UG0160) with a locally built amd_pmc
-carrying this entry: noirq resume drops from ~5.2 s to ~32 ms, and
-s2idle no longer wakes up immediately from spurious IRQ1 events.
+Kamil Chojnowski (6):
+      fs/ntfs3: lock folio 0 before ni_lock when converting resident $DATA
+      fs/ntfs3: keep page cache data when converting resident $DATA
+      fs/ntfs3: grow $DATA before publishing i_size in setattr
+      fs/ntfs3: write back folios that raced with $DATA conversion
+      fs/ntfs3: walk $FILE_NAME under ni_lock in ni_write_parents()
+      fs/ntfs3: do not reallocate clusters of a partly allocated sparse frame
+
+ fs/ntfs3/attrib.c   | 101 +++++++++++++++++++++++++++++++++++++++-------------
+ fs/ntfs3/attrlist.c |   4 +--
+ fs/ntfs3/file.c     |  33 ++++++++++++++---
+ fs/ntfs3/frecord.c  |  46 +++++++++++++++++++-----
+ fs/ntfs3/fsntfs.c   |   2 +-
+ fs/ntfs3/inode.c    |  63 +++++++++++++++++++++++++++++---
+ fs/ntfs3/ntfs_fs.h  |  13 ++++---
+ 7 files changed, 213 insertions(+), 49 deletions(-)
 ---
- drivers/platform/x86/amd/pmc/pmc-quirks.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
-
-diff --git a/drivers/platform/x86/amd/pmc/pmc-quirks.c b/drivers/platform/x86/amd/pmc/pmc-quirks.c
-index fed6c51879..ca188d815c 100644
---- a/drivers/platform/x86/amd/pmc/pmc-quirks.c
-+++ b/drivers/platform/x86/amd/pmc/pmc-quirks.c
-@@ -386,6 +386,15 @@ static const struct dmi_system_id fwbug_list[] = {
- 			DMI_MATCH(DMI_BOARD_NAME, "WUJIE Series-X5SP4NAG"),
- 		}
- 	},
-+	/* https://gitlab.freedesktop.org/drm/amd/-/issues/6021 */
-+	{
-+		.ident = "LG Ultra PC 16U70Q",
-+		.driver_data = &quirk_s2idle_spurious_8042,
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "LG Electronics"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "16U70Q"),
-+		}
-+	},
- 	{}
- };
- 
-
----
-base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261029-lg-16u70q-quirk-fae864db4054
-
-Best regards,
--- 
-Carlos Baiget Orts <asinfreedom@gmail.com>
+base-commit: ee1cb3443cff5a800948b662756f75b17ca63fe2
+change-id: 20261030-ntfs3-resident-fixes-cb54102e288b
 
