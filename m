@@ -1,115 +1,108 @@
-From: Jonah Dybas <jonah.w.dybas@protonmail.com>
-Date: Fri, 30 Oct 2026 11:20:49 -0400
-Subject: [PATCH] HID: asus: add support for the GL553VW keyboard
+From: Igor Velkov <iav@iav.lv>
+Date: Fri, 30 Oct 2026 18:02:04 +0000
+Subject: [PATCH v2] media: rkvdec: Do not keep the clocks enabled from
+ probe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-gl553vw-kbd-v1-1-cbbd88493511@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIANC15GoC/yXMTQ5AMBBA4avIrDVpSwlXEQutwSBI6y8Rd1csv
- 8V7Fzi0hA7y4AKLOzmaJw8RBmC6amqRUe0NkstE8IizdlQq2g826JplcaVSZaQUOgVfLBYbOr9
- bUf52m+7RrO8C7vsBeLuSt28AAAA=
-X-Change-ID: 20261030-gl553vw-kbd-94a575c221b7
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonah Dybas <jonah.w.dybas@protonmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793373648; l=3905;
- i=jonah.w.dybas@protonmail.com; s=20261030; h=from:subject:message-id;
- bh=MLUYdGu6qDugl1acxLXpGGQXtKgpDGo2n+A1gQJjwFM=;
- b=ftLtJr/eej3b1KrFKugwpb2CftenPPYelJ4Db2+1A8KPOTC65Bu06xiLORpx579mIIHqR6SIE
- ruSIK/eN2Y3BmmRVmy3QmEDom0LBgAneHpWJIi5B7lb77YzPBnqm2zC
-X-Developer-Key: i=jonah.w.dybas@protonmail.com; a=ed25519;
- pk=xj+D5YSRYYNylSntmoQSj9kbGTB3QprYsXr53ZDSP0c=
-X-Endpoint-Received: by B4 Relay for jonah.w.dybas@protonmail.com/20261030 with auth_id=1363
+Message-Id: <20261030-rkvdec-runtime-pm-clocks-v2-1-8ff510a231de@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAJvb5GoC/42NTQ6CMBBGr0Jm7ZhORQiuvIdhAWUqE37TYqMhv
+ buVE7h8L/net4NnJ+zhlu3gOIiXZU6gTxmYvpmfjNIlBq10Qeqi0A2hY4PuNW8yMa4TmnExg8e
+ cms5YykmXBGm+OrbyPtKPOnEvflvc53gK9LN/RAMhoW21ubaFrris7tKE8xigjjF+AZc1RKO9A
+ AAA
+To: Detlev Casanova <detlev.casanova@collabora.com>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>
+Cc: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Hans Verkuil <hverkuil+cisco@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Diederik de Haas <diederik@cknow-tech.com>, Jonas Karlman <jonas@kwiboo.se>, 
+ Francesco Saverio Pavone <pavone.lawyer@gmail.com>, 
+ linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3311; i=iav@iav.lv;
+ h=from:subject:message-id; bh=zsa4RX1c/nbvAozgmcN/IU1qGvXJqkjP4BnsN43BGmQ=;
+ b=kA0DAAoWMpeVi+pfeQMByyZiAGrk252g3CU8c3IdDSZpGQ0cK1tTF0u77/pNmEQE36uaSbo3c
+ 4h1BAAWCgAdFiEEkMIo2mik1f1PSDfgMpeVi+pfeQMFAmrk250ACgkQMpeVi+pfeQOANwEAoGgF
+ h9OSXorU/sv8C1ifnWk32p5bhPxWTAmx/o+j6ZoA/3SCrX77lyVxa9AxhduIM5mMv6+txRaDQFe
+ LTFYIq3EN
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The built-in keyboard of the ASUS GL553VW (ITE Device(8910),
-USB 0b05:8176) is handled by hid-generic, so its backlight cannot be
-controlled and the Fn+F3 and Fn+F4 backlight keys arrive as plain F3
-and F4.
+Since commit 6a846f7d72c7 ("media: rkvdec: Enable all clocks without
+naming them") the clocks are fetched with devm_clk_bulk_get_all_enabled(),
+which keeps them enabled from probe until unbind. rkvdec_runtime_suspend()
+disables them on top of that, so their enable count never drops to zero
+and the clock gates stay open while the decoder is idle.
 
-The laptop's BIOS (306) offers no working WMI path either. DSTS for
-ASUS_WMI_DEVID_KBD_BACKLIGHT always returns 0x8000 and the related
-DEVS handler is an empty stub, so asus-wmi never registers
-asus::kbd_backlight on its own.
+On RK3399 this also breaks restore from hibernation when the boot kernel
+has not enabled these clocks, for example with rkvdec built as a module:
+the gates are closed when the restored kernel takes over, while it still
+counts the clocks as enabled. Powering on the vdu power domain then finds
+the count at 1 and leaves the gates closed, and the first QoS register
+write of the domain never returns.
 
-The keyboard does implement the vendor interface used by other ROG
-keyboards (usage page 0xff31, report 0x5a). After the "ASUS Tech.Inc."
-handshake it reports backlight support in the functions query and
-accepts "5a ba c5 c4 <level>" to set the brightness (0-3). The
-backlight keys are reported on the same report:
+Get the clocks without enabling them and let runtime PM enable them while
+the decoder is in use, as before that commit. Without CONFIG_PM the
+runtime PM callbacks are not registered, so keep the clocks enabled from
+probe in that case, as etnaviv and v3d do.
 
-  5a c5 -> Fn+F3 (backlight down)
-  5a c4 -> Fn+F4 (backlight up)
-
-Add the device ID with QUIRK_USE_KBD_BACKLIGHT |
-QUIRK_ROG_NKEY_KEYBOARD.
-
-Tested on a GL553VW (BIOS 306) by binding the keyboard to hid-asus
-with these quirks through new_id on a 7.0-based kernel. The keyboard
-backlight (asus::kbd_backlight) is registered through the asus-wmi
-listener and can be changed from sysfs and the desktop. Fn+F3/Fn+F4
-adjust it, and the level is restored after suspend/resume.
-
-The investigation, this change and a first draft of this changelog
-were produced with the help of Claude Code (Claude Opus 5.5), then
-reviewed and tested on the hardware above.
-
-Signed-off-by: Jonah Dybas <jonah.w.dybas@protonmail.com>
+Fixes: 6a846f7d72c7 ("media: rkvdec: Enable all clocks without naming them")
+Cc: stable@vger.kernel.org # v7.0+
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
-- The handshake readback does not match the request, so probe logs
-  "Asus handshake 5a returned invalid response". It is only a warning.
-  The keyboard answers the handshake read with
-  "5a 05 20 31 00 08 01 00 ...", which looks like the reply to the
-  functions query, so it does not seem to echo the handshake at all.
-  The functions query that follows works and reports backlight support
-  (byte 6 = 0x01). Worth keeping in mind if the handshake check is ever
-  made strict.
-- Compile-tested against hid/for-next. I could not boot-test the
-  for-next build because Secure Boot on this machine rejects unsigned
-  modules. The hardware testing above used the distro 7.0 hid-asus with
-  the same quirks via new_id.
-- The investigation (ACPI table analysis, HID descriptor decoding,
-  hidraw experiments), this patch and a first draft of the changelog
-  were produced with the help of Claude Code. I reviewed the result
-  and ran the tests on my hardware.
----
- drivers/hid/hid-asus.c | 3 +++
- drivers/hid/hid-ids.h  | 1 +
- 2 files changed, 4 insertions(+)
+Tested on ROCK Pi 4A (RK3399) with v7.3, rkvdec and panfrost built as
+modules, panfrost not loaded:
+- idle decoder: the vdu clocks have enable_count 0 (1 without the patch);
+- hibernate, power cycle, restore: 3 of 3 (0 of 3 without the patch, the
+  restored kernel stops after bringing the secondary CPUs up);
+- H.264 decode with GStreamer v4l2slh264dec, 300 frames of 720p High
+  profile: output identical to avdec_h264 (md5 of all frames).
+The QoS hang was traced with debug prints in rockchip_pd_power() on a
+7.3-based kernel.
 
-diff --git a/drivers/hid/hid-asus.c b/drivers/hid/hid-asus.c
-index f6aa1be09..97b601f20 100644
---- a/drivers/hid/hid-asus.c
-+++ b/drivers/hid/hid-asus.c
-@@ -1814,6 +1814,9 @@ static const struct hid_device_id asus_devices[] = {
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
- 		USB_DEVICE_ID_ASUSTEK_FX503VD_KEYBOARD),
- 	  QUIRK_USE_KBD_BACKLIGHT },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
-+		USB_DEVICE_ID_ASUSTEK_GL553VW_KEYBOARD),
-+	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
- 	    USB_DEVICE_ID_ASUSTEK_ROG_NKEY_KEYBOARD),
- 	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD },
-diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
-index 91319aa65..edf7bdd37 100644
---- a/drivers/hid/hid-ids.h
-+++ b/drivers/hid/hid-ids.h
-@@ -234,6 +234,7 @@
- #define USB_DEVICE_ID_ASUSTEK_ROG_NKEY_ALLY_X		0x1b4c
- #define USB_DEVICE_ID_ASUSTEK_ROG_CLAYMORE_II_KEYBOARD	0x196b
- #define USB_DEVICE_ID_ASUSTEK_FX503VD_KEYBOARD	0x1869
-+#define USB_DEVICE_ID_ASUSTEK_GL553VW_KEYBOARD	0x8176
- #define USB_DEVICE_ID_ASUSTEK_XGM_2022	0x1970
- #define USB_DEVICE_ID_ASUSTEK_XGM_2023	0x1a9a
+This is separate from the unbind leak in Jonas's patch that Francesco
+posted [1]: here the extra enable comes from probe.
+
+[1] https://lore.kernel.org/all/20260717154505.83935-1-pavone.lawyer@gmail.com/
+---
+Changes in v2:
+- Keep the clocks enabled from probe when CONFIG_PM is disabled: the
+  runtime PM callbacks are not registered then (Nicolas).
+- Retested on the same setup: idle enable_count 0, hibernate 3 of 3,
+  H.264 output identical to avdec_h264. Builds without warnings with
+  CONFIG_PM=n (arm64 allnoconfig + COMPILE_TEST, W=1).
+- Link to v1: https://lore.kernel.org/r/20261030-rkvdec-runtime-pm-clocks-v1-1-fb2c5b629e79@iav.lv
+---
+ drivers/media/platform/rockchip/rkvdec/rkvdec.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.c b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
+index 061281f903f3..81cf3c1ba7fb 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec.c
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
+@@ -1788,7 +1788,10 @@ static int rkvdec_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = devm_clk_bulk_get_all_enabled(&pdev->dev, &rkvdec->clocks);
++	if (IS_ENABLED(CONFIG_PM))
++		ret = devm_clk_bulk_get_all(&pdev->dev, &rkvdec->clocks);
++	else
++		ret = devm_clk_bulk_get_all_enabled(&pdev->dev, &rkvdec->clocks);
+ 	if (ret < 0)
+ 		return ret;
  
 
 ---
-base-commit: 720806515cb6921ab05caaa6f470f7054b56385e
-change-id: 20261030-gl553vw-kbd-94a575c221b7
+base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
+change-id: 20261030-rkvdec-runtime-pm-clocks-41adcf141271
 
 Best regards,
---  
-Jonah Dybas <jonah.w.dybas@protonmail.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
