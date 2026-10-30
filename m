@@ -1,73 +1,75 @@
-From: Daejun Park <daejun7.park@samsung.com>
-Date: Fri, 30 Oct 2026 13:06:19 +0900
-Subject: [PATCH pynfs] BLOCK3: send an empty extent list in the second
- LAYOUTCOMMIT
+From: Igor Velkov <iav@iav.lv>
+Date: Fri, 30 Oct 2026 06:43:21 +0200
+Subject: [PATCH] drm/panfrost: Gate the RK3399 GPU clock in runtime suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-pynfs-block-empty-commit-v1-1-a1dcc3473ac1@samsung.com>
-X-B4-Tracking: v=1; b=H4sIALoX5GoC/x3MSQqEMBBA0atIrbtASxyv0rjQWGrRnYFExCDe3
- eDyL96/ILAXDtBnF3g+JIg1KYpPBmobzcooc2qgnOoipw5dNEvA6W/VD1m7PaKyWsuOzdy0JU3
- VSFRB4s7zIue7/sKrYLjvB9yJxclxAAAA
-To: Calum Mackay <calum.mackay@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
- Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@lst.de>, 
- Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261030-panfrost-rk3399-pm-rt-v1-1-e94437159a9d@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAGgg5GoC/x3MQQqAIBBA0avErBvQhMKuEi1ExxoikzEiiO6et
+ HyL/x8oJEwFxuYBoYsLH6lCtw341aWFkEM1dKrrtTIKs0tRjnKibMZYi3lHOdGTM9HrwapgobZ
+ ZKPL9f6f5fT9c1dbTZwAAAA==
+To: Boris Brezillon <boris.brezillon@collabora.com>, 
+ Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
+ =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Heiko Stuebner <heiko@sntech.de>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ Igor Velkov <iav@iav.lv>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793333178; l=1862;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=HzkblooUr65z9Ok3LlhdDkT+TzEVEd2JnZC43XXWaos=;
- b=7alkc8rE+OY9hqxCuyFtqq8z9HIYa6If7Vedb3OK1vsdfY2wGAq1ET5Id+Hk68fpgyYTGKm0J
- lzPsfxhOQgHBiodrADuN9I7lTnmgpQpnBODZhYND/df3NgIpijrC/Xt
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1888; i=iav@iav.lv;
+ h=from:subject:message-id; bh=aee4514usbOrnKBJFpIWBVeVFNuEk+tVTdQcWikAb04=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFlPFLLOSB8ueTB1946dbsLytj3Moo8S1xtIW4sndIR+v
+ 7bd2nJWRykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZjIhVkM//Q7npVszd0963Zd
+ 2oV1yvyt9yTsRLr/X5zN+ntr6snTzcmMDF9lnhourWM5pFXj6FZrvLLt5sZfk0p7bSNiTbL/x2a
+ YMwIA
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Under Python 3, BLOCK3 fails on every server with a TypeError: its
-second LAYOUTCOMMIT passes the str "" as the layout body. Send an
-empty pnfs_block_layoutupdate4 (RFC 5663, section 2.3.2) instead.
-It holds an extent count of zero.
+The RK3399 Mali-T860 matches arm,mali-t860 and gets default_data, so
+panfrost enables aclk_gpu at probe and keeps it enabled until unbind;
+runtime suspend powers the GPU off but leaves the clock on.
 
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
-With b"" (the zero-length body BLOCK3 was written to send), nfsd
-answers NFS4ERR_BADXDR. With this patch, BLOCK3 passes on Linux
-nfsd over XFS (mainline 65ba8f34ec88).
----
- nfs4.1/server41tests/st_block.py | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+On ROCK Pi 4A restore from hibernation hangs in genpd_restore_noirq()
+of the GPU while panfrost is bound. With the clock gated in runtime
+suspend, as on the Allwinner H616 and the Renesas parts, it restores.
 
-diff --git a/nfs4.1/server41tests/st_block.py b/nfs4.1/server41tests/st_block.py
-index 3cfc1c6..d43b7d5 100644
---- a/nfs4.1/server41tests/st_block.py
-+++ b/nfs4.1/server41tests/st_block.py
-@@ -158,7 +158,9 @@ def testEmptyCommit(t, env):
-                            layoutupdate4(LAYOUT4_BLOCK_VOLUME, p.get_buffer()))]
-     res = sess.compound(ops)
-     check(res)
--    # Send another LAYOUTCOMMIT, with an empty opaque
-+    # Send another LAYOUTCOMMIT, with an empty extent list
-+    p = BlockPacker()
-+    p.pack_pnfs_block_layoutupdate4(pnfs_block_layoutupdate4([]))
-     time = newtime4(True, get_nfstime())
-     ops = [op.putfh(fh),
-            op.layoutcommit(extent.bex_file_offset,
-@@ -166,7 +168,7 @@ def testEmptyCommit(t, env):
-                            False, lo_stateid2,
-                            newoffset4(True, 2 * 8192 - 1),
-                            time,
--                           layoutupdate4(LAYOUT4_BLOCK_VOLUME, ""))]
-+                           layoutupdate4(LAYOUT4_BLOCK_VOLUME, p.get_buffer()))]
-     res = sess.compound(ops)
-     check(res)
- 
+Match rockchip,rk3399-mali to default_pm_rt_data.
+
+Signed-off-by: Igor Velkov <iav@iav.lv>
+---
+Tested on ROCK Pi 4A, drm-misc-next 33ed26235db9 with the rkvdec fix [1]
+applied: hibernation with HDMI active restores 6 of 6 with this patch
+(once right after glmark2-es2-drm), and hangs 2 of 2 without it.
+[1] fixes the same kind of hang in rkvdec, which otherwise hits first.
+
+[1] https://lore.kernel.org/r/20261030-rkvdec-runtime-pm-clocks-v1-1-fb2c5b629e79@iav.lv
+---
+ drivers/gpu/drm/panfrost/panfrost_drv.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/gpu/drm/panfrost/panfrost_drv.c b/drivers/gpu/drm/panfrost/panfrost_drv.c
+index 7c348a0bf1ee..21a9a12abefc 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_drv.c
++++ b/drivers/gpu/drm/panfrost/panfrost_drv.c
+@@ -983,6 +983,7 @@ static const struct of_device_id dt_match[] = {
+ 	  .data = &amlogic_data, },
+ 	{ .compatible = "renesas,r9a08g046-mali", .data = &default_pm_rt_data },
+ 	{ .compatible = "renesas,r9a09g047-mali", .data = &default_pm_rt_data },
++	{ .compatible = "rockchip,rk3399-mali", .data = &default_pm_rt_data },
+ 	{ .compatible = "arm,mali-t604", .data = &default_data, },
+ 	{ .compatible = "arm,mali-t624", .data = &default_data, },
+ 	{ .compatible = "arm,mali-t628", .data = &default_data, },
 
 ---
-base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
-change-id: 20261029-pynfs-block-empty-commit-7d7832b5a225
+base-commit: 33ed26235db93162935d1719bc6f538c384a2fd8
+change-id: 20261030-panfrost-rk3399-pm-rt-cea3fc1790d9
 
 Best regards,
 -- 
-Daejun Park <daejun7.park@samsung.com>
+Igor Velkov <iav@iav.lv>
 
