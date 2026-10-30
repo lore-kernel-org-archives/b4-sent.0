@@ -1,93 +1,100 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 30 Oct 2026 03:33:00 +0200
-Subject: [PATCH] media: rkvdec: Do not keep the clocks enabled from probe
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Fri, 30 Oct 2026 12:52:44 +0900
+Subject: [PATCH] erofs: apply the stacked fs check to extra file-backed
+ devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-rkvdec-runtime-pm-clocks-v1-1-fb2c5b629e79@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAMvz42oC/x3MQQqEMAxA0atI1gaaKgpzFXEhaZwJjlVSFUG8u
- 8XlW/x/QRJTSfApLjA5NOkSM6gsgH9D/ApqyAbvfEOucmjTEYTR9rjpLLjOyP+Fp4Q1DYFHqsm
- 3BDlfTUY933XX3/cDQbjLdmoAAAA=
-To: Detlev Casanova <detlev.casanova@collabora.com>, 
- Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>
-Cc: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Hans Verkuil <hverkuil+cisco@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, 
- Diederik de Haas <diederik@cknow-tech.com>, Jonas Karlman <jonas@kwiboo.se>, 
- Francesco Saverio Pavone <pavone.lawyer@gmail.com>, 
- linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Igor Velkov <iav@iav.lv>
+Message-Id: <20261030-erofs-stacked-extra-devices-v1-1-39f7df7ac01b@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAIsU5GoC/x3MQQqDQAxA0atI1g1MRrGlV5EuwiTaUNCSiAji3
+ R1cvsX/B4S6acC7OcB1s7BlrqBHA+XL86RoUg055Z5SfqH6MgbGyuWngrqvzig1LBooT6aOhBO
+ 1LdTD33W0/b4Pn/O8AHOgu11tAAAA
+To: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>
+Cc: Yue Hu <zbestahu@gmail.com>, Jingbo Xu <jefflexu@163.com>, 
+ Sandeep Dhavale <dhavale@google.com>, Hongbo Li <hongbohbli@tencent.com>, 
+ Chunhai Guo <guochunhai@vivo.com>, linux-erofs@lists.ozlabs.org, 
+ linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2611; i=iav@iav.lv;
- h=from:subject:message-id; bh=DV65nOamq4qFrrJK3VgervQr4mJ0twxpufgrJGR55R4=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmPP595z7Fsxraet1UnT9VN2CkpP+/ejXN1c/lOOGS6e
- 1oszNFn6yhlYRDjYpAVU2SZcEjjVsaSq3/9PcwfwMxhZQIZwsDFKQAT+fqN4X+FvN+VuAaNQ3de
- TlwXYhIUHaP5PFys8zOXXHmeGqfe69uMDC//vf3eVbf27uke7xN1N7ScLuo/aNBf2lA3w8Xmh/l
- FWz4A
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793332363; l=2715;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=ewjS8koWFn8Z4rafq/egOLIaNXTnJqYTfaJQKrbMB9s=;
+ b=Bxud52oBS6RR96umz1PtXO37YvER3b+2EfdcZL8t9uPHVWsq+/Uz3ePCKWAOKbZTXGR7NGnva
+ nFn3KIa7gzFAP/HdYKb9DQZFWkBJqKLaV5LyPa3JI2b8LA9yVJcSgKT
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit 6a846f7d72c7 ("media: rkvdec: Enable all clocks without
-naming them") the clocks are fetched with devm_clk_bulk_get_all_enabled(),
-which keeps them enabled from probe until unbind. rkvdec_runtime_suspend()
-disables them on top of that, so their enable count never drops to zero
-and the clock gates stay open while the decoder is idle.
+erofs_fc_fill_super() rejects a file-backed mount whose image is on a
+file-backed EROFS or on a filesystem with s_stack_depth set. This
+bounds the nesting of reads. Extra devices given by device= are not
+checked. File-backed mounts can still nest through them without limit.
 
-On RK3399 this also breaks restore from hibernation when the boot kernel
-has not enabled these clocks, for example with rkvdec built as a module:
-the gates are closed when the restored kernel takes over, while it still
-counts the clocks as enabled. Powering on the vdu power domain then finds
-the count at 1 and leaves the gates closed, and the first QoS register
-write of the domain never returns.
+Apply the same check to extra devices.
 
-Get the clocks without enabling them and let runtime PM enable them while
-the decoder is in use, as before that commit.
-
-Fixes: 6a846f7d72c7 ("media: rkvdec: Enable all clocks without naming them")
-Cc: stable@vger.kernel.org # v7.0+
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Fixes: fb176750266a ("erofs: add file-backed mount support")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Tested on ROCK Pi 4A (RK3399) with v7.3, rkvdec and panfrost built as
-modules, panfrost not loaded:
-- idle decoder: the vdu clocks have enable_count 0 (1 without the patch);
-- hibernate, power cycle, restore: 3 of 3 (0 of 3 without the patch, the
-  restored kernel stops after bringing the secondary CPUs up);
-- H.264 decode with GStreamer v4l2slh264dec, 300 frames of 720p High
-  profile: output identical to avdec_h264 (md5 of all frames).
-The QoS hang was traced with debug prints in rockchip_pd_power() on a
-7.3-based kernel.
+Tested on erofs dev in a QEMU guest with KASAN and lockdep:
 
-This is separate from the unbind leak in Jonas's patch that Francesco
-posted [1]: here the extra enable comes from probe.
+- Blobs on a file-backed EROFS or overlayfs now get -EINVAL.
 
-[1] https://lore.kernel.org/all/20260717154505.83935-1-pavone.lawyer@gmail.com/
+- Blobs on XFS or a loop-mounted EROFS still mount and read back.
+
+- Lockdep warns about devs->rwsem vs i_rwsem for a device= path inside
+  an EROFS mount, with or without this patch.
 ---
- drivers/media/platform/rockchip/rkvdec/rkvdec.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/erofs/super.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.c b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
-index 061281f903f3..45c541ae3029 100644
---- a/drivers/media/platform/rockchip/rkvdec/rkvdec.c
-+++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
-@@ -1788,7 +1788,7 @@ static int rkvdec_probe(struct platform_device *pdev)
- 	if (ret)
- 		return ret;
+diff --git a/fs/erofs/super.c b/fs/erofs/super.c
+index ce05557bd9..ee01a5ef85 100644
+--- a/fs/erofs/super.c
++++ b/fs/erofs/super.c
+@@ -122,6 +122,14 @@ void *erofs_read_metadata(struct super_block *sb, struct erofs_buf *buf,
+ 	return buffer;
+ }
  
--	ret = devm_clk_bulk_get_all_enabled(&pdev->dev, &rkvdec->clocks);
-+	ret = devm_clk_bulk_get_all(&pdev->dev, &rkvdec->clocks);
- 	if (ret < 0)
- 		return ret;
- 
++/* see the comment in erofs_fc_fill_super() */
++static bool erofs_is_stacked_file(struct file *file)
++{
++	struct super_block *sb = file_inode(file)->i_sb;
++
++	return (sb->s_op == &erofs_sops && !sb->s_bdev) || sb->s_stack_depth;
++}
++
+ static int erofs_init_device(struct erofs_buf *buf, struct super_block *sb,
+ 			     struct erofs_device_info *dif, erofs_off_t *pos)
+ {
+@@ -161,6 +169,11 @@ static int erofs_init_device(struct erofs_buf *buf, struct super_block *sb,
+ 		} else if (!S_ISREG(file_inode(file)->i_mode)) {
+ 			fput(file);
+ 			return -EINVAL;
++		} else if (erofs_is_stacked_file(file)) {
++			erofs_err(sb, "%s: file-backed devices cannot be on stacked fses",
++				  dif->path);
++			fput(file);
++			return -EINVAL;
+ 		}
+ 		if (!dif->dax_dev && test_opt(&sbi->opt, DAX_ALWAYS)) {
+ 			erofs_info(sb, "DAX unsupported by %s. Turning off DAX.",
+@@ -701,9 +714,7 @@ static int erofs_fc_fill_super(struct super_block *sb, struct fs_context *fc)
+ 		 * It MUST change if another fs plans to support them, which
+ 		 * may also require adjusting FILESYSTEM_MAX_STACK_DEPTH.
+ 		 */
+-		inode = file_inode(sbi->dif0.file);
+-		if ((inode->i_sb->s_op == &erofs_sops &&
+-		     !inode->i_sb->s_bdev) || inode->i_sb->s_stack_depth) {
++		if (erofs_is_stacked_file(sbi->dif0.file)) {
+ 			erofs_err(sb, "file-backed mounts cannot be applied to stacked fses");
+ 			return -ENOTBLK;
+ 		}
 
 ---
-base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
-change-id: 20261030-rkvdec-runtime-pm-clocks-41adcf141271
+base-commit: 209108a5456171ab430e25b54b2dfe083455bfb6
+change-id: 20261028-erofs-stacked-extra-devices-d7a141da0133
 
 Best regards,
 -- 
-Igor Velkov <iav@iav.lv>
+Daejun Park <daejun7.park@samsung.com>
 
