@@ -1,17 +1,13 @@
 From: Ramses de Norre <ramses@well-founded.dev>
-Subject: [PATCH net v5 0/2] bonding: fix the initial last_rx seed for the
- ARP monitor
-Date: Fri, 30 Oct 2026 15:51:14 +0100
-Message-Id: <20261030-bonding-last-rx-v5-0-0b9b653f2f94@well-founded.dev>
+Date: Fri, 30 Oct 2026 15:51:15 +0100
+Subject: [PATCH net v5 1/2] bonding: fix initial last_rx vs ARP-monitor
+ slack window
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOTWrDMBAF4KsErTtBf7HkrnKP0IWtGSUqRi6So
- 6YE372KAyVQeznDm+/NnWVKgTJ7391ZohJyGGMdDm875i5dPBMErDOTXDbcCgP9GDHEMwxdniD
- dgCuufMe19S2yevWVyIfbIp5YpIl9PJf52n+Smx7WI3YJeRrTz9JbxBLerCgCBLTYNd549FbI4
- zcNA/jxGpFwj1SWkiJfGLnCyMoYp6xSVkon1Qaj/hjB1xhVmYNuufHC91xvfaNfGfuf0cBBoyX
- tUBvdmBVmnudfjBRj6aEBAAA=
-X-Change-ID: 20260817-bonding-last-rx-0303fa048f9d
+Message-Id: <20261030-bonding-last-rx-v5-1-0b9b653f2f94@well-founded.dev>
+References: <20261030-bonding-last-rx-v5-0-0b9b653f2f94@well-founded.dev>
+In-Reply-To: <20261030-bonding-last-rx-v5-0-0b9b653f2f94@well-founded.dev>
 To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
  Paolo Abeni <pabeni@redhat.com>, Jiri Bohac <jbohac@suse.cz>, 
@@ -22,86 +18,106 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Ramses de Norre <ramses@well-founded.dev>, 
  Hangbin Liu <liuhangbin@kylinos.cn>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793371876; l=3283;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793371876; l=4064;
  i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
- bh=HIYn8VwTx+6igHuhnbuF729ujWFvIM7B9ubzvtMtSVU=;
- b=dKgrrTRXVX1LGHd/1hXgQbbC6jlNaF6io2ZkQA5Ul1o2bp9ql2X86sRUwplQbl8lsCyUKgz4s
- 5rzT2ZrMllwBmYltcG6737wS3gXdiGUIIINevh+NdQ9I3aitYrj81PA
+ bh=9c6Pugc3oHAUY5z5+KeFXjevrZwDeEo26HSsv07oE+o=;
+ b=fX9IIktJKWRmAE5dl9+jG4WB/pqWL8pQi14+evrodqwCjGehZdYU5IixUuGD/g6AFo6ilRo/B
+ tUzrxsjA/PAAQLgxP5BGg017OzZ3no88Guws0fjBh4y9P/NEINtcNZu
 X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
  pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
 X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bond_enslave() seeds a new slave's last_rx before it has received
-anything. The ARP monitor checks that seed with an up test for a slave
-that starts DOWN, and with a down test for a slave that starts UP. The
-seed is wrong for both.
+bond_enslave() seeds a new slave's last_rx so that the ARP monitor does
+not report it UP before it receives traffic, see commit f31c7937c254
+("bonding: start slaves with link down for ARP monitor").
 
-Patch 1 fixes a slave that starts DOWN. Since the up test gained
-arp_interval/2 of slack, the seed falls inside the up window, so the
-slave is reported UP for half an interval without having received
-anything.
+The seed is one arp_interval (plus a tick) in the past. That was old
+enough when the up test was "jiffies <= last_rx + arp_interval". Commit
+da210f559019 ("bonding: add some slack to arp monitoring time limits")
+added arp_interval/2 of slack to that test without moving the seed, so
+the seed now falls inside the up window. For the first half interval
+after enslavement, bond_ab_arp_inspect() proposes a slave that starts
+DOWN as UP although it has received nothing. The up test always uses a
+single interval, so this does not depend on primary_reselect or
+arp_missed_max.
 
-Patch 2 fixes a slave that starts UP. The seed brings its down deadline
-forward by one interval compared to what arp_missed_max implies. In
-load-balance mode, which has no grace period after enslavement, a
-healthy slave can flap DOWN with arp_missed_max=1.
+If that slave is the configured primary, force_primary makes it the
+active slave. ARP validation fails it shortly after (on SFP+ ports the
+PHY is often still negotiating) and the bond falls back to the backup.
+With primary_reselect=always the bond recovers once the port really
+comes up, but drops traffic until then. With primary_reselect=failure,
+force_primary is spent and the bond stays on the backup.
 
-Both patches only cover a slave enslaved while the ARP monitor is
-running. The seed is not refreshed when the monitor starts later, from
-bond_open() or when arp_interval is set at runtime. That predates this
-series, I will address it in a separate follow-up.
+Reproducer:
 
+  ip link add bond0 type bond mode active-backup arp_interval 1000 \
+      arp_validate all arp_ip_target 192.0.2.1 \
+      primary eth0 primary_reselect failure
+  # eth0: SFP+ (slow link-up), eth1: RJ45 (fast link-up)
+  ip link set eth0 master bond0
+  ip link set eth1 master bond0
+  ip link set bond0 up
+  # bond0 lands on eth0 via force_primary, ARP-fails it before the
+  # SFP+ has carrier, falls to eth1, and stays there.
+
+Move the seed below the initial link state and seed a slave that starts
+DOWN two intervals in the past, outside the up window. A slave that
+starts UP keeps its current seed: the up test does not apply to it, and
+an older seed would only bring its down deadline forward by one
+interval. The initial link state is unchanged.
+
+Fixes: da210f559019 ("bonding: add some slack to arp monitoring time limits")
+Reviewed-by: Hangbin Liu <liuhangbin@kylinos.cn>
 Signed-off-by: Ramses de Norre <ramses@well-founded.dev>
 ---
-Changes in v5:
-- Patch 1: set last_link_up in the UP branch of the seed (Hangbin).
-- Patch 1: say "until it receives traffic" instead of "until a real
-  reply arrives", any frame updates last_rx with arp_validate=none
-  (Sashiko).
-- Patch 2: say that it only covers a slave enslaved while the ARP
-  monitor is running (Sashiko).
-- Pick up Hangbin's Reviewed-by on patch 1.
-- Link to v4: https://patch.msgid.link/20261028-bonding-last-rx-v4-0-4d8e4cd47467@well-founded.dev
+ drivers/net/bonding/bond_main.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
 
-Changes in v4:
-- Patch 1: only use the older seed for a slave that starts DOWN. v3
-  also applied it to a slave that starts UP, which brought its down
-  deadline forward by one interval (Jay).
-- New patch 2: seed a slave that starts UP with last_link_up, giving it
-  a full arp_missed_max window. Fixes an existing flap in load-balance
-  mode with arp_missed_max=1.
-- Drop Hangbin's Reviewed-by, patch 1 changed.
-- Link to v3: https://patch.msgid.link/20261027-bonding-last-rx-v3-1-54907f1fb042@well-founded.dev
+diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
+index 7019e5d8fdc8e..2f5638f4d3a78 100644
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -2122,13 +2122,6 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
+ 	if (res && bond_needs_speed_duplex(bond))
+ 		new_slave->link = BOND_LINK_DOWN;
+ 
+-	new_slave->last_rx = jiffies -
+-		(msecs_to_jiffies(bond->params.arp_interval) + 1);
+-	for (i = 0; i < BOND_MAX_ARP_TARGETS; i++)
+-		new_slave->target_last_arp_rx[i] = new_slave->last_rx;
+-
+-	new_slave->last_tx = new_slave->last_rx;
+-
+ 	/* check for initial state */
+ 	new_slave->link = BOND_LINK_NOCHANGE;
+ 	if (bond->params.miimon) {
+@@ -2157,8 +2150,23 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
+ 					  BOND_SLAVE_NOTIFY_NOW);
+ 	}
+ 
+-	if (new_slave->link != BOND_LINK_DOWN)
++	/* The ARP monitor's up test includes arp_interval/2 of slack, see
++	 * bond_time_in_interval(). Seed a slave that starts DOWN outside
++	 * that window, so it stays DOWN until it receives traffic.
++	 */
++	if (new_slave->link == BOND_LINK_DOWN) {
++		new_slave->last_rx = jiffies -
++			(2 * msecs_to_jiffies(bond->params.arp_interval) + 1);
++	} else {
+ 		new_slave->last_link_up = jiffies;
++		new_slave->last_rx = jiffies -
++			(msecs_to_jiffies(bond->params.arp_interval) + 1);
++	}
++	for (i = 0; i < BOND_MAX_ARP_TARGETS; i++)
++		new_slave->target_last_arp_rx[i] = new_slave->last_rx;
++
++	new_slave->last_tx = new_slave->last_rx;
++
+ 	slave_dbg(bond_dev, slave_dev, "Initial state of slave is BOND_LINK_%s\n",
+ 		  new_slave->link == BOND_LINK_DOWN ? "DOWN" :
+ 		  (new_slave->link == BOND_LINK_UP ? "UP" : "BACK"));
 
-Changes in v3:
-- No code changes. Rebase on current net.
-- Reword the commit message along the lines of the v2 discussion: lead
-  with what the last_rx seed is for, state that the false UP happens
-  independent of primary_reselect, and that the initial link state is
-  unchanged.
-- Pick up Reviewed-by from Hangbin.
-- Cc Nikolay. Hangbin asked for a second review, Jay or Nikolay, would
-  you have a look?
-- Link to v2: https://patch.msgid.link/20260827-bonding-last-rx-v2-1-7c3833822c23@well-founded.dev
-
-Changes in v2:
-- No code changes. Resend with my personal name in the From and
-  Signed-off-by lines instead of my handle, as requested for the DCO.
-- Link to v1: https://patch.msgid.link/20260817-bonding-last-rx-v1-1-9da6f7fdf812@well-founded.dev
-
----
-Ramses de Norre (2):
-      bonding: fix initial last_rx vs ARP-monitor slack window
-      bonding: give a slave that starts UP a full arp_missed_max window
-
- drivers/net/bonding/bond_main.c | 28 ++++++++++++++++++++--------
- 1 file changed, 20 insertions(+), 8 deletions(-)
----
-base-commit: f75062536e2d45ee182828f0e47e0124be2fdc8d
-change-id: 20260817-bonding-last-rx-0303fa048f9d
-
-Best regards,
---  
-Ramses de Norre <ramses@well-founded.dev>
+-- 
+2.56.0
 
