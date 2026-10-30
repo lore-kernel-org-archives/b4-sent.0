@@ -1,11 +1,11 @@
 From: Kamil Chojnowski <contact@diath.net>
-Date: Fri, 30 Oct 2026 01:08:11 +0100
-Subject: [PATCH 2/6] fs/ntfs3: keep page cache data when converting
- resident $DATA
+Date: Fri, 30 Oct 2026 01:08:12 +0100
+Subject: [PATCH 3/6] fs/ntfs3: grow $DATA before publishing i_size in
+ setattr
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-ntfs3-resident-fixes-v1-2-7b6c857d4330@diath.net>
+Message-Id: <20261030-ntfs3-resident-fixes-v1-3-7b6c857d4330@diath.net>
 References: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 In-Reply-To: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
@@ -13,100 +13,72 @@ Cc: Christoph Hellwig <hch@lst.de>, ntfs3@lists.linux.dev,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Kamil Chojnowski <contact@diath.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=2745;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=2070;
  i=contact@diath.net; s=20261029; h=from:subject:message-id;
- bh=4pzU7weQvqE5tgYsOch3aacSWcR74oJYDAyNsY4srgw=;
- b=YfPvOlfp6O/mjMuJkSzHVR4f/Vp5bFcv50PpzY0xypwtgYXE0VzXliofHrCXu+oPmzwPty1Kl
- Cg1nn6xQYKaALCiv9bNy7qYe65dJPkVXxrOdXUNOF5zL6ZqZn8228Pw
+ bh=7HOdxVxQld0b8asqtryZkiGhGYBL8zKR9nHtG8ic/Wc=;
+ b=fIuBcBrlV1myWWZUvrtOfk9qvVJK5hYoH2Gev9y2W/Q1YjRYTtg1Sr2QCUHCdODwdm5QbFbpY
+ 6Sm7yDTuvKbANYh5eFOplz0fS1qXfbqDQkl8qkE3tC/RWUESNWxp0kl
 X-Developer-Key: i=contact@diath.net; a=ed25519;
  pk=G15RQXroUn6f8ud+bOEqlqpPdpLoCB3L3G9XVUf+YaA=
 X-Endpoint-Received: by B4 Relay for contact@diath.net/20261029 with auth_id=1360
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-attr_make_nonresident() fills folio 0 from the resident copy of $DATA
-and marks it dirty.  If the folio is uptodate, it holds the newest data:
-stores through a shared mmap dirty the folio and reach the resident copy
-only at writeback.  Overwriting the folio loses them:
+ntfs_setattr() calls truncate_setsize() and then ntfs_set_size().  When
+a resident file grows, i_size is updated before the resident attribute,
+so a concurrent read gets an inline mapping shorter than i_size:
+iomap_read_inline_data() warns and the read fails with -EIO.
 
-  pwrite 300 x 'A'; mmap and overwrite with 'B'; pwrite 2000 x 'C'
-  -> the file reads back 'A' x 300 + 'C' x 2000
+  WARNING: fs/iomap/buffered-io.c:431 at iomap_read_inline_data
+   iomap_read_folio_iter
+   iomap_read_folio
+   ntfs_read_folio
+   filemap_read_folio
 
-Fill the folio from the resident copy only when it is not uptodate;
-otherwise keep it and zero it past the old size.
+attr_set_size_ex() updates i_size itself once the attribute is resized.
+Call truncate_setsize() first only when shrinking; when growing, resize
+the attribute first and then call pagecache_isize_extended().
 
-This depends on the previous patch, which passes the locked folio 0 to
-attr_make_nonresident().
+Reproducer: extend a small file with ftruncate(2) in 64-byte steps while
+another thread reads it; it fails within seconds.
 
-Fixes: be71b5cba2e6 ("fs/ntfs3: Add attrib operations")
+Fixes: ecbb433f9a8e ("fs/ntfs3: fold file size handling into ntfs_set_size()")
 Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Kamil Chojnowski <contact@diath.net>
 ---
- fs/ntfs3/attrib.c | 47 ++++++++++++++++++++++++++++++-----------------
- 1 file changed, 30 insertions(+), 17 deletions(-)
+ fs/ntfs3/file.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ntfs3/attrib.c b/fs/ntfs3/attrib.c
-index 080edebe529e..b21c913050f7 100644
---- a/fs/ntfs3/attrib.c
-+++ b/fs/ntfs3/attrib.c
-@@ -329,27 +329,40 @@ int attr_make_nonresident(struct ntfs_inode *ni, struct ATTRIB *attr,
- 			err = ntfs_sb_write_run(sbi, run, 0, data, rsize, 0);
- 			if (err)
- 				goto out2;
--		} else if (folio) {
--			folio_fill_tail(folio, 0, data, rsize);
--			folio_mark_uptodate(folio);
--			folio_mark_dirty(folio);
- 		} else if (!page) {
- 			struct address_space *mapping = ni->vfs_inode.i_mapping;
-+			struct folio *f = folio;
-+
-+			if (!f) {
-+				WARN_ONCE(1, "ntfs3: r=%llx: folio 0 locked under ni_lock",
-+					  (u64)ni->mi.rno);
-+				f = __filemap_get_folio(
-+					mapping, 0,
-+					FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
-+					mapping_gfp_mask(mapping));
-+				if (IS_ERR(f)) {
-+					err = PTR_ERR(f);
-+					goto out2;
-+				}
-+			}
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 384e61a33a84..3b91586c4630 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -755,7 +755,14 @@ int ntfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 		newsize = attr->ia_size;
  
--			WARN_ONCE(1, "ntfs3: r=%llx: folio 0 locked under ni_lock",
--				  (u64)ni->mi.rno);
--			folio = __filemap_get_folio(
--				mapping, 0, FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
--				mapping_gfp_mask(mapping));
--			if (IS_ERR(folio)) {
--				err = PTR_ERR(folio);
--				goto out2;
-+			if (folio_test_uptodate(f)) {
-+				/*
-+				 * The page cache copy is the newest one: it may
-+				 * be dirty through mmap and not yet written back
-+				 * to the resident attribute.  Keep it.
-+				 */
-+				folio_zero_segment(f, rsize, folio_size(f));
-+			} else {
-+				folio_fill_tail(f, 0, data, rsize);
-+				folio_mark_uptodate(f);
-+			}
-+			folio_mark_dirty(f);
-+
-+			if (!folio) {
-+				folio_unlock(f);
-+				folio_put(f);
+ 		if (newsize != oldsize) {
+-			truncate_setsize(inode, newsize);
++			/*
++			 * Grow the attribute before i_size: read_folio maps
++			 * resident data by the attribute size and fails with
++			 * -EIO if i_size is already beyond it.  ntfs_set_size()
++			 * updates i_size.
++			 */
++			if (newsize < oldsize)
++				truncate_setsize(inode, newsize);
+ 
+ 			err = ntfs_set_size(inode, newsize);
+ 			if (err) {
+@@ -763,6 +770,9 @@ int ntfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 				goto out;
  			}
--			folio_fill_tail(folio, 0, data, rsize);
--			folio_mark_uptodate(folio);
--			folio_mark_dirty(folio);
--			folio_unlock(folio);
--			folio_put(folio);
- 		}
- 	}
  
++			if (newsize > oldsize)
++				pagecache_isize_extended(inode, oldsize, newsize);
++
+ 			ni->std_fa |= FILE_ATTRIBUTE_ARCHIVE;
+ 			ni->ni_flags |= NI_FLAG_UPDATE_PARENT;
+ 			inode_set_mtime_to_ts(inode,
 
 -- 
 2.56.0
