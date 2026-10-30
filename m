@@ -1,116 +1,132 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Fri, 30 Oct 2026 15:11:56 -0400
-Subject: [PATCH] mm/swapfile: drop a large unmapped swap-in folio in
- unuse_pte()
+From: Aiden Isik <aidenisik@member.fsf.org>
+Subject: [PATCH v3 0/5] arm64: dts: exynos: add initial support for Samsung
+ Galaxy Watch FE
+Date: Fri, 30 Oct 2026 20:33:55 +0000
+Message-Id: <20261030-for-next-lucky7-v3-0-81e02272ce69@member.fsf.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-swapin-large-unmapped-v1-1-41e4ae378e6c@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrBtItAzqVaSLGEcd0RgytQri3
- ZvW5cfj/ScIRSaBOjsh0oeFV59gHhm40fqBFHfJkOscjS60kt0G9mq2MW2bX2wI1Cl0ZY+ElSn
- xCekbIvV8/LvN67Zs7UTu/YvBdX0BHaXeEXkAAAA=
-X-Change-ID: 20261030-swapin-large-unmapped-6c8f6e691864
-To: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
- Kairui Song <kasong@tencent.com>
-Cc: Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
- Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
- Youngjun Park <youngjun.park@lge.com>, David Hildenbrand <david@kernel.org>, 
- linux-mm@kvack.org, linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
- stable@vger.kernel.org, Mani Tofigh <mt4022@columbia.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793387515; l=3373;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=M5/KO6o7bnSBNa94hHZzVGfNGuYH0esspd9WRLUeAHc=;
- b=cIsKIDl0qQSY2um96QQTOYkamZ7uRYzZl1nlZY3LrPTIav2GwYO+9fh0WEiVTcunORwAhWyfD
- iZdb7qZTFvbAZ5oIS0wj85ZlQtwX4r1SVsUX3AYTao1ICRnufLRulAA
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+X-B4-Tracking: v=1; b=H4sIADP/5GoC/2XNQQ6CMBQE0KuYri1pSxFx5T2MC375hapQ00IDI
+ dzdgtENy0lm3szEozPoyeUwE4fBeGO7GNLjgaim7GqkpoqZCCZO7Mwzqq2jHY49fQ3qOeUUM9B
+ pkTGoAElcvR1qM27i7f7NfoAHqn5l1kZjfG/dtF0GvvZ+er7TA6eMSqE1CMg5lOLaYgvoEu11Y
+ l1N1osg/ghnvNgjIiJKoipBAldS7ZBlWT5Slfx2CgEAAA==
+X-Change-ID: 20260815-for-next-lucky7-e5bf3950bdbe
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aiden Isik <aidenisik@member.fsf.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3662;
+ i=aidenisik@member.fsf.org; h=from:subject:message-id;
+ bh=ShZllIGN42iGEx7W+Ypwb4WSw6LjsTQdyvwIRirngDE=;
+ b=owEBiQJ2/ZANAwAIAUknAbLEetfrAcsmYgBq5P880mkB/Tc1KaQVPmBl8Rnywzg0CQcgUXZhX
+ J+Uzlwnj2aJAk8EAAEIADkWIQSDy8UkXGpc3JNbEaVJJwGyxHrX6wUCauT/PBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQSScBssR61+ufLg/9EPFDmSJq2MS0IynMfsABflaLewcHokp
+ i0cBVpvY5cR8Tm+8u8a2HtZXoHEX4rEDqmYELCyBrkv6aZ6JBw/IGx7uGk3L3ndlWkZ8G1O+9XV
+ iOS2iarSnC1Y5/8hPfs7PkYkNJ9FwRVEQ6f/ldon+Tc4TDYFHAlNxMRVJT8ZWdI75zJF/s+6PdN
+ gaeg/5WQ4dKKCirTAGWl91rHElvZ4vB8+ivJ/fCLn5QjTxDgU4wtMAzUjiwof10WBy8oJkjYvu0
+ 3BqNGntJUufgZ7zet+aYwddbaTycwiJQdBgM1A2EjVM20UpJJxxWyQ4ho90+lxw8e4x7/9BLqtX
+ waby6tQ9mJpahlSjem0uCY+IN5x2PKHKCdquW/DscqEwglwUZ+4S4r9+I0XSSxd+58dCviCkve9
+ tgsqVSOiI7FCsLAtWAo8Dk8SVMCpEgQ6hU+kA84jQQCeKBt7Wi8xMGa4TvlXkCxEseuYEXWiJpb
+ 1RvBQc72uAe4rsj86Q3wRZR6ZIKkffBjVgbl9LL1I8zc4x02QeKyY9mA+iLyPKxxOhyg7no95TJ
+ R24TvDkdLaC8z64OiRvKAPA2CiqrTWtTuAgto5bATlRad/ZQHGpw2OHWFZJQ5ZU7zrVEz0RJEjb
+ wTEwPBZBdHER1GBkKfAJya4bD/2nXjbcQSny9OJI25sDVm3kLbEA=
+X-Developer-Key: i=aidenisik@member.fsf.org; a=openpgp;
+ fpr=83CBC5245C6A5CDC935B11A5492701B2C47AD7EB
+X-Endpoint-Received: by B4 Relay for aidenisik@member.fsf.org/default with auth_id=956
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since commit f1879e8a0c60 ("mm, swap: never bypass the swap cache even
-for SWP_SYNCHRONOUS_IO"), a fault can read a swapped-out mTHP range into
-one large folio in the swap cache.  The folio only becomes anon once
-do_swap_page() maps all of it, so if the faulting PTE changes in the
-meantime the folio stays in the swap cache while not being mapped or
-anon:
+Hi there,
 
-  Task A (fault)                       Task B
-  do_swap_page()
-    /* swaps in large folio F */
-                                       madvise(MADV_DONTNEED)
-                                         /* zaps the faulting PTE */
-    /* PTE changed (F not mapped) */
+This patchset adds initial support for the Exynos5515 SoC, along with
+support for the Samsung Galaxy Watch FE (codenamed lucky7), which uses
+this SoC.
 
-swapoff then maps it, which marks all of its pages as mapped and
-exclusive, and the next fault on one of the other PTEs crashes in
-do_swap_page():
+Support for the following is added:
+- Bootloader framebuffer
+- Both CPU cores
+- Memory
+- Generic timer
+- CMU_TOP, CMU_FSYS, CMU_PERI clock management units
+- ChipID
 
-  [    6.424485] kernel BUG at mm/memory.c:5195!
-  [    6.424503] Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
-  [    6.427654] CPU: 0 UID: 0 PID: 67 Comm: swapmthp Tainted: G        W            7.3.0-17087-gd865f2677c44 #1 PREEMPT
-  [    6.432665] RIP: 0010:do_swap_page+0x24eb/0x2fa0
-  [    6.451035] Call Trace:
-  [    6.451567]  <TASK>
-  [    6.453841]  __handle_mm_fault+0x13b5/0x3b40
-  [    6.458525]  handle_mm_fault+0x16f/0x480
-  [    6.461143]  do_user_addr_fault+0x312/0xa30
-  [    6.462044]  exc_page_fault+0x66/0xc0
-  [    6.462846]  asm_exc_page_fault+0x26/0x30
-  [    6.476708]  </TASK>
+Currently, these device trees support booting the device to an initramfs.
 
-do_swap_page() already drops such a folio from the swap cache when it
-can't map all of it.  Do the same in unuse_pte() so that swapoff swaps
-the entries in again.  With the fix, nothing is reported.
+There are quite a few regions of reserved memory, where usage of them
+can crash the system and/or cause unexpected behaviour. Currently, most
+of them are named "misc-rmem@addr". They will be given names as their
+accompanying device drivers are added and their purpose becomes apparent.
+If you would like them named differently, feel free to let me know.
 
-This bug was identified and confirmed with the help of a deterministic
-hypervisor currently under development.  The C reproducer below however
-hits it within a second.
+The VGIC maintenance interrupt seems to be unavailable on this SoC.
+I cannot find any reference to it, nor usage of it, anywhere.
+It *could* very well still exist, but it is a mystery for now (and also
+not a *huge* deal on a low-power SoC designed for smartwatches).
 
-Fixes: f1879e8a0c60 ("mm, swap: never bypass the swap cache even for SWP_SYNCHRONOUS_IO")
-Cc: stable@vger.kernel.org
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+I am getting checkpatch warnings on this patchset advising to check
+MAINTAINERS as new files were added, but I am ignoring them as the
+entirety of arch/arm64/boot/dts/exynos is covered already.
+
+Kind regards,
+- Aiden Isik
+
+Signed-off-by: Aiden Isik <aidenisik@member.fsf.org>
 ---
-This conflicts in context with patch 41/47 of David's v2 series [1],
-which changes the line right below in unuse_pte() for KSM folios.  I
-can rebase on top of it once it's applied if needed.
+Changes in v3:
+- Remove watchdog node
+- Add required clock properties to sysreg_peri and sysreg_fsys
+- Use arm,cortex-a55-pmu compatible instead of arm,armv8-pmuv3 for pmu node
+- Fix missing Makefile entry
+- Link to v2: https://patch.msgid.link/20261019-for-next-lucky7-v2-0-c4ecab4b1c4c@member.fsf.org
 
-[1] https://lore.kernel.org/all/20261029-fixes_core-v2-41-a64ce7f83abb@kernel.org/
+Changes in v2:
+- Fix patchset title
+- Fix DCO email
+- Fix style issues reported by dt-check-style in strict mode
+- Added patches which were accidentally dropped in v1
+- Fix reserved memory and make all memory accessible in the memory node
+- Remove redundant PSCI 1.0 cpu_* function IDs
+- Extend GIC registers to correct size
+- Correct GIC unit address
+- Correct CPU unit address
+- Document unavailable VGIC maintenance interrupt
+- Remove references to dependencies which have since been merged to this tree
+- Link to v1: https://patch.msgid.link/20260817-for-next-lucky7-v1-0-42ffb2b71ba2@member.fsf.org
 
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/swapmthp.c
----
- mm/swapfile.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
-
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 189f04d8838f..b0b75ff16835 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -2518,6 +2518,18 @@ static int unuse_pte(struct vm_area_struct *vma, pmd_t *pmd,
- 	if (!folio_matches_swap_entry(folio, entry))
- 		return 0;
- 
-+	/*
-+	 * A large folio that is not anon yet was swapped in by a page fault
-+	 * that did not map it (yet). It can only be mapped as a whole, by
-+	 * do_swap_page(). Drop it from the swap cache and swap in small
-+	 * folios instead.
-+	 */
-+	if (unlikely(folio_test_large(folio) && !folio_test_anon(folio))) {
-+		if (!WARN_ON_ONCE(folio_test_dirty(folio)))
-+			swap_cache_del_folio(folio);
-+		return 0;
-+	}
-+
- 	swapcache = folio;
- 	folio = ksm_might_need_to_copy(folio, vma, addr);
- 	if (unlikely(!folio))
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Peter Griffin <peter.griffin@linaro.org>
+To: Alim Akhtar <alim.akhtar@samsung.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-samsung-soc@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 5e6c45aaaf93343c7f8a1cde9797080238af5c1b
-change-id: 20261030-swapin-large-unmapped-6c8f6e691864
+Aiden Isik (5):
+      dt-bindings: soc: samsung: exynos-sysreg: Add compatibles for Exynos5515
+      dt-bindings: soc: samsung: exynos-pmu: Add Exynos5515 compatible
+      dt-bindings: arm: samsung: Add lucky7 board binding
+      arm64: dts: exynos: Add initial support for Exynos5515 SoC
+      arm64: dts: exynos: Add initial support for Samsung Galaxy Watch FE
+
+ .../bindings/arm/samsung/samsung-boards.yaml       |   6 +
+ .../bindings/soc/samsung/exynos-pmu.yaml           |   1 +
+ .../soc/samsung/samsung,exynos-sysreg.yaml         |   5 +
+ arch/arm64/boot/dts/exynos/Makefile                |   1 +
+ arch/arm64/boot/dts/exynos/exynos5515-lucky7.dts   | 215 +++++++++++++++++++++
+ arch/arm64/boot/dts/exynos/exynos5515.dtsi         | 178 +++++++++++++++++
+ 6 files changed, 406 insertions(+)
+---
+base-commit: 993e1bec85faedf90c5d27480793084e54357c09
+change-id: 20260815-for-next-lucky7-e5bf3950bdbe
 
 Best regards,
 --  
-Mani Tofigh <mt4022@columbia.edu>
+Aiden Isik <aidenisik@member.fsf.org>
 
