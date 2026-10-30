@@ -1,139 +1,451 @@
 From: Kamil Chojnowski <contact@diath.net>
-Subject: [PATCH 0/6] fs/ntfs3: fix a deadlock and data loss in resident and
- sparse files
-Date: Fri, 30 Oct 2026 01:08:09 +0100
-Message-Id: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
+Date: Fri, 30 Oct 2026 01:08:10 +0100
+Subject: [PATCH 1/6] fs/ntfs3: lock folio 0 before ni_lock when converting
+ resident $DATA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqDMBCF4VeRWTuQixbpqxQXTTza6SItmbQUx
- Hc31uXH4T8rKbJA6dqslPEVlVeqsG1D8XFPC1imanLGXazxhlOZ1XOGyoRUeJYflGPoO2sc3DA
- Equk74z/U8jae1k94Ipbji7ZtB5C/+4t4AAAA
-X-Change-ID: 20261030-ntfs3-resident-fixes-cb54102e288b
+Message-Id: <20261030-ntfs3-resident-fixes-v1-1-7b6c857d4330@diath.net>
+References: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
+In-Reply-To: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
 Cc: Christoph Hellwig <hch@lst.de>, ntfs3@lists.linux.dev, 
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Kamil Chojnowski <contact@diath.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=5846;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=16256;
  i=contact@diath.net; s=20261029; h=from:subject:message-id;
- bh=IMDHc6D5LBYf9bTtoSfC5z3DtdZSwElxUKK8DMto4jA=;
- b=VAaw+exSqLGQbsxPkopLvXOvx8VzGT/RxobnSb1F1CWf1lRktAEnmswqI11SHBnAq/Q+JB71C
- c0ugb/H0nLUDnYg9d+VDk54Z5KBa4cCVDymDNBKvUOR3H9kcuvcbngm
+ bh=wLBEy7zyX8A/x6EMYC7KUugm5wJJIwG+bccfT580pGk=;
+ b=vC1q/rU+HedJijwLZth5Jgns5v8xycaPeB4AeK9wkn03/z2FX5gvFVmkXYw0402NdFCsvwQsO
+ X6/QeazynwMAUymJhV1QAHXiBADjODX0KDOCbW0vio83V4h+dcsoeDi
 X-Developer-Key: i=contact@diath.net; a=ed25519;
  pk=G15RQXroUn6f8ud+bOEqlqpPdpLoCB3L3G9XVUf+YaA=
 X-Endpoint-Received: by B4 Relay for contact@diath.net/20261029 with auth_id=1360
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi Konstantin,
+attr_make_nonresident() copies resident $DATA into folio 0 and locks
+that folio while its callers hold ni_lock and run_lock:
 
-I have been trying to move my workstation from ntfs-3g to ntfs3 for a
-while.  Every attempt ended with the system wedged: several coding
-agents and git worktrees working on one ntfs3 volume left tasks stuck in
-D state until a reboot, so I kept going back to ntfs-3g.
+  write(2) / ftruncate(2) / fallocate(2)
+    ntfs_set_size() / attr_force_nonresident()   ni_lock, run_lock (W)
+      attr_set_size_ex()
+        attr_make_nonresident()
+          __filemap_get_folio(0, FGP_LOCK)       <- waits for folio 0
 
-The hang is an ABBA deadlock between folio 0 and ni_lock/run_lock when a
-resident file grows past the MFT record.  attr_make_nonresident() runs
-with ni_lock and run_lock held and locks folio 0 to copy the resident
-data into the page cache, while ntfs_read_folio() (iomap ->
-ntfs_iomap_begin() -> attr_data_get_block()) and the resident path of
-ntfs_writepages() hold folio 0 and then take run_lock/ni_lock.  A writer
-appending to a small file while another task reads it cold hangs within
-a minute on ntfs3 master, 7.3, 7.2.11 and 6.18.59.  The same inversion
-was already in the pre-iomap code, so all stable kernels are affected.
+read_folio and writeback take the same locks in the opposite order:
 
-  1/6 the deadlock: lock folio 0 before ni_lock in every path that can
-      convert $DATA
-  2/6 mmap writes to a small file are lost when it grows: keep an
-      uptodate folio 0 instead of overwriting it from the resident copy
-  3/6 extending a resident file with ftruncate(2) races with readers and
-      gives -EIO plus a WARNING in iomap_read_inline_data(): resize the
-      attribute before i_size
-  4/6 writeback that races with the conversion drops the folio; since
-      2727ac2ba87a it reports -EIO instead of warning, but the data is
-      still lost: redirty it and write it through iomap
-  5/6 ni_write_parents() walks the record without ni_lock, and a
-      concurrent change makes fsync mark a healthy inode bad and the
-      volume dirty
-  6/6 writing into a hole of a sparse file that ntfs-3g created can
-      zero up to 15 clusters of data next to the hole, leak the old
-      clusters and push total_size past alloc_size, after which
-      mi_enum_attr() rejects the file and the volume is marked dirty.
-      ntfs-3g allocates sparse files cluster by cluster with c_unit 4,
-      so every file it wrote with holes (linker output, for instance)
-      can hit this once the volume is mounted with ntfs3.
+  filemap_read_folio()                           folio 0 locked
+    iomap_read_folio()
+      ntfs_iomap_begin()
+        attr_data_get_block()                    run_lock, ni_lock
 
-Patch 2 depends on patch 1; the others apply on their own.  The readdir
-lockdep splat I also hit is fixed in ntfs3_for_7.4 by commit
-7a5aa6c45072 ("ntfs3: release ni_lock before dir_emit in ntfs_readdir to
-fix deadlocks") together with Christian's pending "fs/ntfs3: fix double
-ni_unlock() in ntfs_readdir()", which I tested separately.
+  ntfs_writepages()                              folio 0 locked
+    ni_lock()                                    (resident file)
 
-Testing: the stress tests run for 120 s (the git workloads for 150 s
-and 8 minutes) in a QEMU/KVM guest with lockdep and a 20 s hung-task
-timeout, on a fresh mkntfs image, or one written by ntfs-3g for the
-sparse file tests.  The guest kernel is 7.3 with fs/ntfs3 from ntfs3
-master; the "this series" column also has Christian's readdir fix
-applied.
+So a small file that grows past what fits in its MFT record (about 700
+bytes) deadlocks against a task reading it from a cold page cache, or
+against writeback of an mmap-dirtied folio.  Both tasks sit in D state;
+the writer holds i_rwsem and ni_lock, so everything that touches the
+file next (rename and unlink in its directory, sync, the bdi flusher)
+piles up behind them.  Folio locks are not tracked by lockdep, so it
+never reported this.
 
-                                    ntfs3 master      this series
-  append to 4 KiB vs. cold reader   hung after 46 s   pass, 491k files
-  the same, grown with ftruncate    hung after 46 s,  pass, 589k files
-                                    EIO + WARNING
-  the same, grown with fallocate    hung after 46 s   pass, 714k files
-  mmap store, grow, fsync, while    hung after 45 s,  pass, 192k files
-    another thread fdatasyncs       10 bad files
-  pwrite into a mid-frame hole of   14 clusters       pass
-    an ntfs-3g sparse file          zeroed
-  rewrite that sparse file          rejected, volume  pass
-                                    marked dirty
-  12 threads: create, unlink,       pass              pass, 5.1M ops
-    rename, readdir, mmap, fsync...
-  8 git worktrees of one repo,      -                 pass, 4486 commits
-    3 grep/find watchers
-  16 worktrees, 6 watchers, 8 min   -                 pass, 30815 commits
+The inversion is as old as the driver: before the iomap conversion,
+ntfs_readpage() also took ni_lock with the page locked to read resident
+data, and attr_make_nonresident() locked page 0 under ni_lock.
 
-The append and mmap tests also hang on 6.18.59, after 45 s each.
+Lock folio 0 before ni_lock in every path that can convert $DATA
+(ntfs_set_size(), fallocate's attr_force_nonresident() and
+attr_insert_range()) and hand it to attr_make_nonresident().  Callers
+hold i_rwsem, so is_resident() cannot change between the check and the
+conversion.  ext4 converts inline data in the same order.
 
-Patch 1 is larger than the stable size limit and does not apply before
-the iomap conversion; older kernels will need a backport.
+Reproducer: create a file and grow it to 4 KiB in 64-byte steps
+(append, ftruncate or fallocate) while another thread does
+fadvise(DONTNEED) + pread on it, four such pairs at a time.  On ntfs3
+master this hangs within a minute; with this patch it runs to the end.
 
-Not done: sparse was not run, the code was built only as =y on x86_64,
-and no fault injection was used.
-
-Tool use: the investigation, the reproducers, the patches and their
-changelogs were produced with Claude (Anthropic's Claude Opus 5.5 model
-in Claude Code).  I asked it to set up a test VM with the newest kernel
-and an NTFS volume, reproduce the freezes I saw, find the cause and fix
-it; later I asked it to rebase the fixes onto ntfs3 master and to look
-into the ntfs-3g sparse files that ntfs3 rejected on my volume.  It
-wrote the QEMU harness and reproducers, traced the lock chains from
-lockdep and sysrq-w output, and wrote all six patches.  I reviewed them
-and ran the tests above.  Each patch carries an Assisted-by tag.  The
-reproducers and harness are at
-https://github.com/diath/ntfs3-deadlock-lab
-
-Thanks,
-Kamil
-
+Fixes: 4342306f0f0d ("fs/ntfs3: Add file operations and implementation")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Kamil Chojnowski <contact@diath.net>
 ---
-Kamil Chojnowski (6):
-      fs/ntfs3: lock folio 0 before ni_lock when converting resident $DATA
-      fs/ntfs3: keep page cache data when converting resident $DATA
-      fs/ntfs3: grow $DATA before publishing i_size in setattr
-      fs/ntfs3: write back folios that raced with $DATA conversion
-      fs/ntfs3: walk $FILE_NAME under ni_lock in ni_write_parents()
-      fs/ntfs3: do not reallocate clusters of a partly allocated sparse frame
+ fs/ntfs3/attrib.c   | 38 +++++++++++++++++++++++++-------------
+ fs/ntfs3/attrlist.c |  4 ++--
+ fs/ntfs3/file.c     | 21 ++++++++++++++++++---
+ fs/ntfs3/frecord.c  |  4 ++--
+ fs/ntfs3/fsntfs.c   |  2 +-
+ fs/ntfs3/inode.c    | 47 ++++++++++++++++++++++++++++++++++++++++++++---
+ fs/ntfs3/ntfs_fs.h  | 13 ++++++++-----
+ 7 files changed, 100 insertions(+), 29 deletions(-)
 
- fs/ntfs3/attrib.c   | 101 +++++++++++++++++++++++++++++++++++++++-------------
- fs/ntfs3/attrlist.c |   4 +--
- fs/ntfs3/file.c     |  33 ++++++++++++++---
- fs/ntfs3/frecord.c  |  46 +++++++++++++++++++-----
- fs/ntfs3/fsntfs.c   |   2 +-
- fs/ntfs3/inode.c    |  63 +++++++++++++++++++++++++++++---
- fs/ntfs3/ntfs_fs.h  |  13 ++++---
- 7 files changed, 213 insertions(+), 49 deletions(-)
----
-base-commit: ee1cb3443cff5a800948b662756f75b17ca63fe2
-change-id: 20261030-ntfs3-resident-fixes-cb54102e288b
+diff --git a/fs/ntfs3/attrib.c b/fs/ntfs3/attrib.c
+index 805acc3ed869..080edebe529e 100644
+--- a/fs/ntfs3/attrib.c
++++ b/fs/ntfs3/attrib.c
+@@ -258,11 +258,17 @@ out:
+  *
+  * If page is not NULL - it is already contains resident data
+  * and locked (called from ni_write_frame()).
++ *
++ * If folio is not NULL - it is folio 0 of $DATA, locked by the caller
++ * before ni_lock (see ntfs_lock_folio0()).  The resident data is copied
++ * into it.  Without it, folio 0 is locked here, under ni_lock and run_lock,
++ * which deadlocks against read_folio/writeback: they hold the folio lock
++ * and then take run_lock/ni_lock in ntfs_iomap_begin.
+  */
+ int attr_make_nonresident(struct ntfs_inode *ni, struct ATTRIB *attr,
+ 			  struct ATTR_LIST_ENTRY *le, struct mft_inode *mi,
+ 			  struct runs_tree *run, struct ATTRIB **ins_attr,
+-			  struct page *page)
++			  struct page *page, struct folio *folio)
+ {
+ 	struct ntfs_sb_info *sbi;
+ 	struct ATTRIB *attr_s;
+@@ -323,10 +329,15 @@ int attr_make_nonresident(struct ntfs_inode *ni, struct ATTRIB *attr,
+ 			err = ntfs_sb_write_run(sbi, run, 0, data, rsize, 0);
+ 			if (err)
+ 				goto out2;
++		} else if (folio) {
++			folio_fill_tail(folio, 0, data, rsize);
++			folio_mark_uptodate(folio);
++			folio_mark_dirty(folio);
+ 		} else if (!page) {
+ 			struct address_space *mapping = ni->vfs_inode.i_mapping;
+-			struct folio *folio;
+ 
++			WARN_ONCE(1, "ntfs3: r=%llx: folio 0 locked under ni_lock",
++				  (u64)ni->mi.rno);
+ 			folio = __filemap_get_folio(
+ 				mapping, 0, FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
+ 				mapping_gfp_mask(mapping));
+@@ -390,7 +401,7 @@ out:
+ static int attr_set_size_res(struct ntfs_inode *ni, struct ATTRIB *attr,
+ 			     struct ATTR_LIST_ENTRY *le, struct mft_inode *mi,
+ 			     u64 new_size, struct runs_tree *run,
+-			     struct ATTRIB **ins_attr)
++			     struct ATTRIB **ins_attr, struct folio *folio)
+ {
+ 	struct ntfs_sb_info *sbi = mi->sbi;
+ 	struct MFT_REC *rec = mi->mrec;
+@@ -405,7 +416,7 @@ static int attr_set_size_res(struct ntfs_inode *ni, struct ATTRIB *attr,
+ 	if (new_size > sbi->record_size ||
+ 	    (dsize > 0 && used + dsize > sbi->max_bytes_per_attr)) {
+ 		return attr_make_nonresident(ni, attr, le, mi, run, ins_attr,
+-					     NULL);
++					     NULL, folio);
+ 	}
+ 
+ 	if (dsize < 0) {
+@@ -440,7 +451,7 @@ static int attr_set_size_res(struct ntfs_inode *ni, struct ATTRIB *attr,
+ int attr_set_size_ex(struct ntfs_inode *ni, enum ATTR_TYPE type,
+ 		     const __le16 *name, u8 name_len, struct runs_tree *run,
+ 		     u64 new_size, const u64 *new_valid, bool keep_prealloc,
+-		     struct ATTRIB **ret, bool no_da)
++		     struct ATTRIB **ret, bool no_da, struct folio *folio)
+ {
+ 	int err = 0;
+ 	struct ntfs_inode *nb = ni->base;
+@@ -481,7 +492,7 @@ again:
+ 
+ 	if (!attr_b->non_res) {
+ 		err = attr_set_size_res(ni, attr_b, le_b, mi_b, new_size, run,
+-					&attr_b);
++					&attr_b, folio);
+ 		if (err)
+ 			return err;
+ 
+@@ -2134,7 +2145,7 @@ int attr_collapse_range(struct ntfs_inode *ni, u64 vbo, u64 bytes)
+ 			err = attr_set_size_ex(ni, ATTR_DATA, ni->file.ads.name,
+ 					       ni->file.ads.len, run,
+ 					       i_size - bytes, NULL, false,
+-					       NULL, true);
++					       NULL, true, NULL);
+ 			goto out;
+ 		}
+ 
+@@ -2580,7 +2591,8 @@ undo_punch:
+  * attr_insert_range - Insert range (hole) in file.
+  * Not for normal files.
+  */
+-int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes)
++int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes,
++		      struct folio *folio)
+ {
+ 	int err = 0;
+ 	struct runs_tree *run = &ni->file.run;
+@@ -2645,9 +2657,9 @@ int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes)
+ 	down_write(&ni->file.run_lock);
+ 
+ 	if (!attr_b->non_res) {
+-		err = attr_set_size(ni, ATTR_DATA, ni->file.ads.name,
+-				    ni->file.ads.len, run, data_size + bytes,
+-				    NULL, false);
++		err = attr_set_size_ex(ni, ATTR_DATA, ni->file.ads.name,
++				       ni->file.ads.len, run, data_size + bytes,
++				       NULL, false, NULL, false, folio);
+ 
+ 		le_b = NULL;
+ 		attr_b = ni_find_attr(ni, NULL, &le_b, ATTR_DATA,
+@@ -2839,7 +2851,7 @@ undo_insert_range:
+  *
+  * Convert default data attribute into non resident form.
+  */
+-int attr_force_nonresident(struct ntfs_inode *ni)
++int attr_force_nonresident(struct ntfs_inode *ni, struct folio *folio)
+ {
+ 	int err;
+ 	struct ATTRIB *attr;
+@@ -2860,7 +2872,7 @@ int attr_force_nonresident(struct ntfs_inode *ni)
+ 
+ 	down_write(&ni->file.run_lock);
+ 	err = attr_make_nonresident(ni, attr, le, mi, &ni->file.run, &attr,
+-				    NULL);
++				    NULL, folio);
+ 	up_write(&ni->file.run_lock);
+ 
+ 	return err;
+diff --git a/fs/ntfs3/attrlist.c b/fs/ntfs3/attrlist.c
+index 8710560cf294..38be7af82420 100644
+--- a/fs/ntfs3/attrlist.c
++++ b/fs/ntfs3/attrlist.c
+@@ -352,7 +352,7 @@ int al_add_le(struct ntfs_inode *ni, enum ATTR_TYPE type, const __le16 *name,
+ 	memcpy(le->name, name, sizeof(short) * name_len);
+ 
+ 	err = attr_set_size_ex(ni, ATTR_LIST, NULL, 0, &al->run, new_size,
+-			       &new_size, true, &attr, false);
++			       &new_size, true, &attr, false, NULL);
+ 	if (err) {
+ 		/* Undo memmove above. */
+ 		memmove(le, Add2Ptr(le, sz), old_size - off);
+@@ -416,7 +416,7 @@ int al_update(struct ntfs_inode *ni, int sync)
+ 	 * Attribute list decreased here.
+ 	 */
+ 	err = attr_set_size_ex(ni, ATTR_LIST, NULL, 0, &al->run, al->size, NULL,
+-			       false, &attr, false);
++			       false, &attr, false, NULL);
+ 	if (err)
+ 		goto out;
+ 
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index c11da747270f..384e61a33a84 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -606,6 +606,8 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
+ 		if (err)
+ 			goto out;
+ 	} else if (mode & FALLOC_FL_INSERT_RANGE) {
++		struct folio *folio;
++
+ 		/* Check new size. */
+ 		err = inode_newsize_ok(inode, new_size);
+ 		if (err)
+@@ -618,9 +620,15 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
+ 			goto out;
+ 		truncate_pagecache(inode, vbo_down);
+ 
++		folio = ntfs_lock_folio0(inode);
++		if (IS_ERR(folio)) {
++			err = PTR_ERR(folio);
++			goto out;
++		}
+ 		ni_lock(ni);
+-		err = attr_insert_range(ni, vbo, len);
++		err = attr_insert_range(ni, vbo, len, folio);
+ 		ni_unlock(ni);
++		ntfs_unlock_folio0(folio);
+ 		if (err)
+ 			goto out;
+ 	} else {
+@@ -629,9 +637,16 @@ static long ntfs_fallocate(struct file *file, int mode, loff_t vbo, loff_t len)
+ 
+ 		/* Be sure file is non resident. */
+ 		if (is_resident(ni)) {
++			struct folio *folio = ntfs_lock_folio0(inode);
++
++			if (IS_ERR(folio)) {
++				err = PTR_ERR(folio);
++				goto out;
++			}
+ 			ni_lock(ni);
+-			err = attr_force_nonresident(ni);
++			err = attr_force_nonresident(ni, folio);
+ 			ni_unlock(ni);
++			ntfs_unlock_folio0(folio);
+ 			if (err)
+ 				goto out;
+ 		}
+@@ -1450,7 +1465,7 @@ static int ntfs_file_release(struct inode *inode, struct file *file)
+ 		err = attr_set_size_ex(ni, ATTR_DATA, ni->file.ads.name,
+ 				       ni->file.ads.len, &ni->file.run,
+ 				       inode->i_size, &ni->i_valid, false, NULL,
+-				       true);
++				       true, NULL);
+ 
+ 		up_write(&ni->file.run_lock);
+ 		ni_unlock(ni);
+diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c
+index 16ac847de48d..3d10b1519c86 100644
+--- a/fs/ntfs3/frecord.c
++++ b/fs/ntfs3/frecord.c
+@@ -2573,7 +2573,7 @@ int ni_write_frame(struct ntfs_inode *ni, struct page **pages,
+ 	if (!attr->non_res) {
+ 		down_write(&ni->file.run_lock);
+ 		err = attr_make_nonresident(ni, attr, le, mi, &ni->file.run,
+-					    &attr, pages[0]);
++					    &attr, pages[0], NULL);
+ 		up_write(&ni->file.run_lock);
+ 		if (err)
+ 			goto out;
+@@ -3373,7 +3373,7 @@ int ni_allocate_da_blocks_locked(struct ntfs_inode *ni)
+ 		err = attr_set_size_ex(ni, ATTR_DATA, ni->file.ads.name,
+ 				       ni->file.ads.len, &ni->file.run,
+ 				       ni->vfs_inode.i_size, &ni->i_valid,
+-				       false, NULL, true);
++				       false, NULL, true, NULL);
+ 	}
+ 
+ 	return err;
+diff --git a/fs/ntfs3/fsntfs.c b/fs/ntfs3/fsntfs.c
+index b55311ccd229..6d8cddb148cc 100644
+--- a/fs/ntfs3/fsntfs.c
++++ b/fs/ntfs3/fsntfs.c
+@@ -539,7 +539,7 @@ static int ntfs_extend_mft(struct ntfs_sb_info *sbi)
+ 	/* Step 1: Resize $MFT::DATA. */
+ 	down_write(&ni->file.run_lock);
+ 	err = attr_set_size_ex(ni, ATTR_DATA, NULL, 0, &ni->file.run,
+-			       new_mft_bytes, NULL, false, &attr, false);
++			       new_mft_bytes, NULL, false, &attr, false, NULL);
+ 
+ 	if (err) {
+ 		up_write(&ni->file.run_lock);
+diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
+index 8adbdf1a7d11..913ebd2a2196 100644
+--- a/fs/ntfs3/inode.c
++++ b/fs/ntfs3/inode.c
+@@ -887,11 +887,43 @@ static void ntfs_readahead(struct readahead_control *rac)
+ 	iomap_readahead(&ntfs_iomap_ops, &ctx, NULL);
+ }
+ 
++/*
++ * ntfs_lock_folio0 - Lock folio 0 before converting resident $DATA.
++ *
++ * Moving resident $DATA out of the MFT record copies it into folio 0.
++ * read_folio and writeback hold the folio lock when they enter
++ * ntfs_iomap_begin and take run_lock/ni_lock, so the folio must be locked
++ * before ni_lock, never under it.  Callers hold i_rwsem, which keeps the
++ * file from being converted under them, so is_resident() is stable here.
++ *
++ * Returns NULL if the file is not resident.
++ */
++struct folio *ntfs_lock_folio0(struct inode *inode)
++{
++	struct address_space *mapping = inode->i_mapping;
++
++	if (!is_resident(ntfs_i(inode)))
++		return NULL;
++
++	return __filemap_get_folio(mapping, 0,
++				   FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
++				   mapping_gfp_mask(mapping));
++}
++
++void ntfs_unlock_folio0(struct folio *folio)
++{
++	if (folio) {
++		folio_unlock(folio);
++		folio_put(folio);
++	}
++}
++
+ int ntfs_set_size(struct inode *inode, u64 new_size)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	struct ntfs_sb_info *sbi = sb->s_fs_info;
+ 	struct ntfs_inode *ni = ntfs_i(inode);
++	struct folio *folio = NULL;
+ 	int err;
+ 
+ 	/* Check for maximum file size. */
+@@ -906,17 +938,26 @@ int ntfs_set_size(struct inode *inode, u64 new_size)
+ 	/* Mark rw ntfs as dirty. It will be cleared at umount. */
+ 	ntfs_set_state(sbi, NTFS_DIRTY_DIRTY);
+ 
++	/* Only growing can push resident $DATA out of the record. */
++	if (new_size) {
++		folio = ntfs_lock_folio0(inode);
++		if (IS_ERR(folio))
++			return PTR_ERR(folio);
++	}
++
+ 	ni_lock(ni);
+ 	down_write(&ni->file.run_lock);
+ 	if (new_size < ni->i_valid)
+ 		ni->i_valid = new_size;
+ 
+-	/* last 'true' means keep preallocated. */
+-	err = attr_set_size(ni, ATTR_DATA, ni->file.ads.name, ni->file.ads.len,
+-			    &ni->file.run, new_size, &ni->i_valid, true);
++	/* 'true' means keep preallocated. */
++	err = attr_set_size_ex(ni, ATTR_DATA, ni->file.ads.name,
++			       ni->file.ads.len, &ni->file.run, new_size,
++			       &ni->i_valid, true, NULL, false, folio);
+ 
+ 	up_write(&ni->file.run_lock);
+ 	ni_unlock(ni);
++	ntfs_unlock_folio0(folio);
+ 
+ 	return err;
+ }
+diff --git a/fs/ntfs3/ntfs_fs.h b/fs/ntfs3/ntfs_fs.h
+index 90ccfde951dc..6846c9b9ef46 100644
+--- a/fs/ntfs3/ntfs_fs.h
++++ b/fs/ntfs3/ntfs_fs.h
+@@ -466,18 +466,18 @@ int attr_allocate_clusters(struct ntfs_sb_info *sbi, struct runs_tree *run,
+ int attr_make_nonresident(struct ntfs_inode *ni, struct ATTRIB *attr,
+ 			  struct ATTR_LIST_ENTRY *le, struct mft_inode *mi,
+ 			  struct runs_tree *run, struct ATTRIB **ins_attr,
+-			  struct page *page);
++			  struct page *page, struct folio *folio);
+ int attr_set_size_ex(struct ntfs_inode *ni, enum ATTR_TYPE type,
+ 		     const __le16 *name, u8 name_len, struct runs_tree *run,
+ 		     u64 new_size, const u64 *new_valid, bool keep_prealloc,
+-		     struct ATTRIB **ret, bool no_da);
++		     struct ATTRIB **ret, bool no_da, struct folio *folio);
+ static inline int attr_set_size(struct ntfs_inode *ni, enum ATTR_TYPE type,
+ 				const __le16 *name, u8 name_len,
+ 				struct runs_tree *run, u64 new_size,
+ 				const u64 *new_valid, bool keep_prealloc)
+ {
+ 	return attr_set_size_ex(ni, type, name, name_len, run, new_size,
+-				new_valid, keep_prealloc, NULL, false);
++				new_valid, keep_prealloc, NULL, false, NULL);
+ }
+ int attr_data_get_block(struct ntfs_inode *ni, CLST vcn, CLST clen, CLST *lcn,
+ 			CLST *len, bool *new, bool zero, void **res,
+@@ -501,9 +501,10 @@ int attr_is_frame_compressed(struct ntfs_inode *ni, struct ATTRIB *attr,
+ int attr_allocate_frame(struct ntfs_inode *ni, CLST frame, size_t compr_size,
+ 			u64 new_valid);
+ int attr_collapse_range(struct ntfs_inode *ni, u64 vbo, u64 bytes);
+-int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes);
++int attr_insert_range(struct ntfs_inode *ni, u64 vbo, u64 bytes,
++		      struct folio *folio);
+ int attr_punch_hole(struct ntfs_inode *ni, u64 vbo, u64 bytes, u32 *frame_size);
+-int attr_force_nonresident(struct ntfs_inode *ni);
++int attr_force_nonresident(struct ntfs_inode *ni, struct folio *folio);
+ 
+ /* Functions from attrlist.c */
+ void al_destroy(struct ntfs_inode *ni);
+@@ -801,6 +802,8 @@ static inline struct inode *ntfs_iget5(struct super_block *sb,
+ 	return ntfs_iget5_flags(sb, ref, name, 0);
+ }
+ int ntfs_set_size(struct inode *inode, u64 new_size);
++struct folio *ntfs_lock_folio0(struct inode *inode);
++void ntfs_unlock_folio0(struct folio *folio);
+ int ntfs3_write_inode(struct inode *inode, struct writeback_control *wbc);
+ int ntfs_sync_inode(struct inode *inode);
+ int inode_read_data(struct inode *inode, void *data, size_t bytes);
+
+-- 
+2.56.0
 
