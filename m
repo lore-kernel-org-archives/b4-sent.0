@@ -1,177 +1,107 @@
-From: Nikolay Plastinin <plaztininikolai@gmail.com>
-Date: Fri, 30 Oct 2026 21:51:32 +0800
-Subject: [PATCH v4 2/2] leds: trigger: input-events: Restore previous
- brightness on input
+From: Ramses de Norre <ramses@well-founded.dev>
+Subject: [PATCH net v5 0/2] bonding: fix the initial last_rx seed for the
+ ARP monitor
+Date: Fri, 30 Oct 2026 15:51:14 +0100
+Message-Id: <20261030-bonding-last-rx-v5-0-0b9b653f2f94@well-founded.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-leds-input-events-brightness-v4-2-5ea0ead7480c@gmail.com>
-References: <20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com>
-In-Reply-To: <20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com>
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
-Cc: Hans de Goede <hansg@kernel.org>, linux-leds@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Nikolay Plastinin <plaztininikolai@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793368292; l=5347;
- i=plaztininikolai@gmail.com; s=20260924; h=from:subject:message-id;
- bh=0gQ+lQNtTSZ2rrSnglNS4oz/wIOSXLqSOeeFoSbjpMk=;
- b=xjgDMIhTZtF1JxtlsDoOtf9G2y5hQuqPvty+3ic+FOGw4chfj/eCkswdtA5K7dnq2X2A1oPy2
- Fl+vKlISXuIAq4H/Ij/6ytqkq4Ub8UZU2rJSH0MmJjUFv4Un5h6YeiD
-X-Developer-Key: i=plaztininikolai@gmail.com; a=ed25519;
- pk=bmHrETa14IbiLNkJSoiLqUMni+IeSFwhOSDM4vVFN4s=
-X-Endpoint-Received: by B4 Relay for plaztininikolai@gmail.com/20260924 with auth_id=1052
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOTWrDMBAF4KsErTtBf7HkrnKP0IWtGSUqRi6So
+ 6YE372KAyVQeznDm+/NnWVKgTJ7391ZohJyGGMdDm875i5dPBMErDOTXDbcCgP9GDHEMwxdniD
+ dgCuufMe19S2yevWVyIfbIp5YpIl9PJf52n+Smx7WI3YJeRrTz9JbxBLerCgCBLTYNd549FbI4
+ zcNA/jxGpFwj1SWkiJfGLnCyMoYp6xSVkon1Qaj/hjB1xhVmYNuufHC91xvfaNfGfuf0cBBoyX
+ tUBvdmBVmnudfjBRj6aEBAAA=
+X-Change-ID: 20260817-bonding-last-rx-0303fa048f9d
+To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Jiri Bohac <jbohac@suse.cz>, 
+ Eric Dumazet <edumazet@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nikolay Aleksandrov <razor@blackwall.org>, 
+ Hangbin Liu <hangbin.liu@linux.dev>, 
+ Ramses de Norre <ramses@well-founded.dev>, 
+ Hangbin Liu <liuhangbin@kylinos.cn>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793371876; l=3283;
+ i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
+ bh=HIYn8VwTx+6igHuhnbuF729ujWFvIM7B9ubzvtMtSVU=;
+ b=dKgrrTRXVX1LGHd/1hXgQbbC6jlNaF6io2ZkQA5Ul1o2bp9ql2X86sRUwplQbl8lsCyUKgz4s
+ 5rzT2ZrMllwBmYltcG6737wS3gXdiGUIIINevh+NdQ9I3aitYrj81PA
+X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
+ pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
+X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The trigger turns the LEDs back on with LED_FULL, which the LED core
-clamps to max_brightness. For keyboard backlights with several levels,
-such as asus::kbd_backlight, this means the backlight always comes back
-at maximum after being idle instead of at the level the user picked.
+bond_enslave() seeds a new slave's last_rx before it has received
+anything. The ARP monitor checks that seed with an up test for a slave
+that starts DOWN, and with a down test for a slave that starts UP. The
+seed is wrong for both.
 
-Remember the brightness per LED before turning it off and restore it on
-the next input event. Keep the level in a per-LED state struct allocated
-in activate() and freed in deactivate(), converting the simple trigger
-to a regular trigger. Pick up brightness changes made while the LED is
-on before saving the level again.
+Patch 1 fixes a slave that starts DOWN. Since the up test gained
+arp_interval/2 of slack, the seed falls inside the up window, so the
+slave is reported UP for half an interval without having received
+anything.
 
-Use led_trigger_for_each_led() under guard(rcu)() for both the on and
-off paths. Skip LEDs whose activate() callback has not set up their
-state yet.
+Patch 2 fixes a slave that starts UP. The seed brings its down deadline
+forward by one interval compared to what arp_missed_max implies. In
+load-balance mode, which has no grace period after enslavement, a
+healthy slave can flap DOWN with arp_missed_max=1.
 
-Clear trigger_data under the same lock used by the LED walker before
-freeing the per-LED state. Although normal trigger removal waits for an
-RCU grace period, the device_add_groups() error path calls deactivate()
-while the LED is still linked, so a walker must see NULL after teardown.
+Both patches only cover a slave enslaved while the ARP monitor is
+running. The seed is not refreshed when the monitor starts later, from
+bond_open() or when arp_interval is set at runtime. That predates this
+series, I will address it in a separate follow-up.
 
-The previous revision was tested on an ASUS ROG Flow X13 GV302XV:
-keyboard backlight levels 1 and 2 were restored after idle timeout and
-keyboard input, and 20 trigger activate/deactivate cycles completed
-successfully.
-
-Assisted-by: LLM
-Signed-off-by: Nikolay Plastinin <plaztininikolai@gmail.com>
+Signed-off-by: Ramses de Norre <ramses@well-founded.dev>
 ---
- drivers/leds/trigger/ledtrig-input-events.c | 76 ++++++++++++++++++++++++++---
- 1 file changed, 70 insertions(+), 6 deletions(-)
+Changes in v5:
+- Patch 1: set last_link_up in the UP branch of the seed (Hangbin).
+- Patch 1: say "until it receives traffic" instead of "until a real
+  reply arrives", any frame updates last_rx with arp_validate=none
+  (Sashiko).
+- Patch 2: say that it only covers a slave enslaved while the ARP
+  monitor is running (Sashiko).
+- Pick up Hangbin's Reviewed-by on patch 1.
+- Link to v4: https://patch.msgid.link/20261028-bonding-last-rx-v4-0-4d8e4cd47467@well-founded.dev
 
-diff --git a/drivers/leds/trigger/ledtrig-input-events.c b/drivers/leds/trigger/ledtrig-input-events.c
-index d057b2a23..6b0bfd343 100644
---- a/drivers/leds/trigger/ledtrig-input-events.c
-+++ b/drivers/leds/trigger/ledtrig-input-events.c
-@@ -28,7 +28,69 @@ static struct input_events_data {
- 	unsigned long led_off_time;
- } input_events_data;
- 
--static struct led_trigger *input_events_led_trigger;
-+struct input_events_led {
-+	/* Brightness to restore on the next input event */
-+	int brightness;
-+};
-+
-+static int input_events_activate(struct led_classdev *led_cdev)
-+{
-+	struct input_events_data *data = &input_events_data;
-+	struct input_events_led *led;
-+	unsigned long flags;
-+
-+	led = kzalloc_obj(*led);
-+	if (!led)
-+		return -ENOMEM;
-+
-+	/* Start with the current brightness, or full if the LED is off */
-+	led->brightness = led_cdev->brightness ?: led_cdev->max_brightness;
-+
-+	spin_lock_irqsave(&data->lock, flags);
-+	led_set_trigger_data(led_cdev, led);
-+	led_set_brightness(led_cdev, data->led_on ? led->brightness : LED_OFF);
-+	spin_unlock_irqrestore(&data->lock, flags);
-+
-+	return 0;
-+}
-+
-+static void input_events_deactivate(struct led_classdev *led_cdev)
-+{
-+	struct input_events_led *led;
-+
-+	scoped_guard(spinlock_irqsave, &input_events_data.lock) {
-+		led = led_get_trigger_data(led_cdev);
-+		led_set_trigger_data(led_cdev, NULL);
-+	}
-+	kfree(led);
-+}
-+
-+static struct led_trigger input_events_led_trigger = {
-+	.name = "input-events",
-+	.activate = input_events_activate,
-+	.deactivate = input_events_deactivate,
-+};
-+
-+/* Must be called with input_events_data.lock held */
-+static void input_events_set_leds(bool on)
-+{
-+	struct led_classdev *led_cdev;
-+
-+	guard(rcu)();
-+	led_trigger_for_each_led(led_cdev, &input_events_led_trigger) {
-+		struct input_events_led *led = led_get_trigger_data(led_cdev);
-+
-+		/* Not yet activated, or already deactivated during error unwind */
-+		if (!led)
-+			continue;
-+
-+		/* Preserve brightness changes made while the LED was on. */
-+		if (led_cdev->brightness)
-+			led->brightness = led_cdev->brightness;
-+
-+		led_set_brightness(led_cdev, on ? led->brightness : LED_OFF);
-+	}
-+}
- 
- static void led_input_events_work(struct work_struct *work)
- {
-@@ -42,7 +104,7 @@ static void led_input_events_work(struct work_struct *work)
- 	 * running before a new event pushed led_off_time back.
- 	 */
- 	if (time_after_eq(jiffies, data->led_off_time)) {
--		led_trigger_event(input_events_led_trigger, LED_OFF);
-+		input_events_set_leds(false);
- 		data->led_on = false;
- 	}
- 
-@@ -59,7 +121,7 @@ static void input_events_event(struct input_handle *handle, unsigned int type,
- 	spin_lock_irqsave(&data->lock, flags);
- 
- 	if (!data->led_on) {
--		led_trigger_event(input_events_led_trigger, LED_FULL);
-+		input_events_set_leds(true);
- 		data->led_on = true;
- 	}
- 	data->led_off_time = jiffies + led_off_delay;
-@@ -138,11 +200,13 @@ static int __init input_events_init(void)
- 	INIT_DELAYED_WORK(&input_events_data.work, led_input_events_work);
- 	spin_lock_init(&input_events_data.lock);
- 
--	led_trigger_register_simple("input-events", &input_events_led_trigger);
-+	ret = led_trigger_register(&input_events_led_trigger);
-+	if (ret)
-+		return ret;
- 
- 	ret = input_register_handler(&input_events_handler);
- 	if (ret) {
--		led_trigger_unregister_simple(input_events_led_trigger);
-+		led_trigger_unregister(&input_events_led_trigger);
- 		return ret;
- 	}
- 
-@@ -153,7 +217,7 @@ static void __exit input_events_exit(void)
- {
- 	input_unregister_handler(&input_events_handler);
- 	cancel_delayed_work_sync(&input_events_data.work);
--	led_trigger_unregister_simple(input_events_led_trigger);
-+	led_trigger_unregister(&input_events_led_trigger);
- }
- 
- module_init(input_events_init);
+Changes in v4:
+- Patch 1: only use the older seed for a slave that starts DOWN. v3
+  also applied it to a slave that starts UP, which brought its down
+  deadline forward by one interval (Jay).
+- New patch 2: seed a slave that starts UP with last_link_up, giving it
+  a full arp_missed_max window. Fixes an existing flap in load-balance
+  mode with arp_missed_max=1.
+- Drop Hangbin's Reviewed-by, patch 1 changed.
+- Link to v3: https://patch.msgid.link/20261027-bonding-last-rx-v3-1-54907f1fb042@well-founded.dev
 
--- 
-2.56.0
+Changes in v3:
+- No code changes. Rebase on current net.
+- Reword the commit message along the lines of the v2 discussion: lead
+  with what the last_rx seed is for, state that the false UP happens
+  independent of primary_reselect, and that the initial link state is
+  unchanged.
+- Pick up Reviewed-by from Hangbin.
+- Cc Nikolay. Hangbin asked for a second review, Jay or Nikolay, would
+  you have a look?
+- Link to v2: https://patch.msgid.link/20260827-bonding-last-rx-v2-1-7c3833822c23@well-founded.dev
+
+Changes in v2:
+- No code changes. Resend with my personal name in the From and
+  Signed-off-by lines instead of my handle, as requested for the DCO.
+- Link to v1: https://patch.msgid.link/20260817-bonding-last-rx-v1-1-9da6f7fdf812@well-founded.dev
+
+---
+Ramses de Norre (2):
+      bonding: fix initial last_rx vs ARP-monitor slack window
+      bonding: give a slave that starts UP a full arp_missed_max window
+
+ drivers/net/bonding/bond_main.c | 28 ++++++++++++++++++++--------
+ 1 file changed, 20 insertions(+), 8 deletions(-)
+---
+base-commit: f75062536e2d45ee182828f0e47e0124be2fdc8d
+change-id: 20260817-bonding-last-rx-0303fa048f9d
+
+Best regards,
+--  
+Ramses de Norre <ramses@well-founded.dev>
 
