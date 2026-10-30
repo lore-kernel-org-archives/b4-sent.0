@@ -1,11 +1,11 @@
 From: Kamil Chojnowski <contact@diath.net>
-Date: Fri, 30 Oct 2026 01:08:13 +0100
-Subject: [PATCH 4/6] fs/ntfs3: write back folios that raced with $DATA
- conversion
+Date: Fri, 30 Oct 2026 01:08:14 +0100
+Subject: [PATCH 5/6] fs/ntfs3: walk $FILE_NAME under ni_lock in
+ ni_write_parents()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-ntfs3-resident-fixes-v1-4-7b6c857d4330@diath.net>
+Message-Id: <20261030-ntfs3-resident-fixes-v1-5-7b6c857d4330@diath.net>
 References: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 In-Reply-To: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
@@ -13,86 +13,126 @@ Cc: Christoph Hellwig <hch@lst.de>, ntfs3@lists.linux.dev,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Kamil Chojnowski <contact@diath.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=2603;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=3518;
  i=contact@diath.net; s=20261029; h=from:subject:message-id;
- bh=W79ey7LkLwclwvNyOK0icIx8SUUOsitBLSIs+VaaqG8=;
- b=aKVF+mCyioHX2ewIERO3mKOPALX8atEHrAl3qyFI4dNGgjCFgPGm/yDvhvO85aeKeUcRHb6+U
- 6FFRCKHC3AtBKkdNVutto55fdL5c4BxwxRJCD00ua0neI2w0ZKqdbxv
+ bh=lildrmFmBPH9lTof/r12lMuwCz1/p9WenioNxFMoXLI=;
+ b=ISLiw7n9wBInWM79VBnl/LyNwJ7gzQ/do53aWq2C06u3osegHCvFkK1t08cPnVK/q31FUIWfT
+ 1QiExGkdfS4DoBKgASgOIdFl4OA7G8DE98r8mBOGejyZWMVfj7LiczK
 X-Developer-Key: i=contact@diath.net; a=ed25519;
  pk=G15RQXroUn6f8ud+bOEqlqpPdpLoCB3L3G9XVUf+YaA=
 X-Endpoint-Received: by B4 Relay for contact@diath.net/20261029 with auth_id=1360
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ntfs_writepages() takes the resident path when is_resident() is true on
-entry, then calls attr_data_write_resident() for each dirty folio.  If
-$DATA was moved out of the MFT record in between, it returns the
-internal code E_NTFS_NONRESIDENT.  writeback_iter() has already cleared
-the folio's dirty bit, so its data is never written.
+ni_write_parents() (fsync) walks the inode's attributes without ni_lock.
+When the record is rearranged at the same time - a name removed by
+unlink, $DATA moved out of the record by a write through another file
+descriptor - it can read a half-moved attribute.  It then either follows
+a garbage parent reference:
 
-Commit 2727ac2ba87a ("fs/ntfs3: prevent positive E_NTFS_NONRESIDENT from
-reaching writeback error handling") turned the code into -EIO, which
-stops the errseq and writeback warnings, but the folio is still dropped
-and the writeback reports an I/O error for data that could be written.
+  ntfs3(vda): MFT: r=0, expect seq=0 instead of 1!
+  ntfs3(vda): ino=1e6, failed to open parent directory r=0 to write
 
-Redirty the folio and finish through iomap_writepages(), which writes
-it to the clusters the attribute now has.  ntfs_writepage() handled the
-same race by falling back to block_write_full_page() until commit
-d4428bad14dd ("ntfs3: stop using generic_writepages").
+or mi_enum_attr() sees an inconsistent record and marks a healthy inode
+bad and the volume dirty, after which every operation on the file fails
+with -EINVAL:
 
-Reproducer: grow small files with fallocate(2) while another thread
-reads them, with the first patch of this series applied so that the
-deadlock does not hide the race.  Without the -EIO conversion this
-warned in lib/errseq.c and mm/page-writeback.c within seconds.
+  ntfs3(vda): ino=100, "res2" mi_enum_attr
 
-Fixes: d4428bad14dd ("ntfs3: stop using generic_writepages")
+Collect the parent references under ni_lock and open and write the
+parents after dropping it.
+
+Reproducer: overwrite a small file through a shared mmap, grow it past
+the MFT record with pwrite(2) and fsync(2) it, while another thread
+calls fdatasync(2) on it in a loop.
+
+Fixes: dcd9d6a47199 ("fs/ntfs3: fsync files by syncing parent inodes")
 Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Kamil Chojnowski <contact@diath.net>
 ---
- fs/ntfs3/inode.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ fs/ntfs3/frecord.c | 42 +++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 35 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
-index 913ebd2a2196..8651b9e4ba06 100644
---- a/fs/ntfs3/inode.c
-+++ b/fs/ntfs3/inode.c
-@@ -1267,6 +1267,7 @@ static int ntfs_writepages(struct address_space *mapping,
+diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c
+index 3d10b1519c86..a121ca4db0c0 100644
+--- a/fs/ntfs3/frecord.c
++++ b/fs/ntfs3/frecord.c
+@@ -2997,13 +2997,33 @@ int ni_write_parents(struct ntfs_inode *ni, int sync)
+ 	struct ATTR_LIST_ENTRY *le = NULL;
+ 	struct ntfs_sb_info *sbi = ni->mi.sbi;
+ 	struct super_block *sb = sbi->sb;
++	struct MFT_REF *homes;
++	u32 i, n = 0, cnt = 0;
  
- 	if (is_resident(ni)) {
- 		struct folio *folio = NULL;
-+		bool converted = false;
- 		err = 0;
+ 	if (!is_ni_base(ni))
+ 		return 0;
  
- 		while ((folio = writeback_iter(mapping, wbc, folio, &err))) {
-@@ -1276,6 +1277,18 @@ static int ntfs_writepages(struct address_space *mapping,
- 			err2 = attr_data_write_resident(ni, folio);
- 			ni_unlock(ni);
- 
-+			if (err2 == E_NTFS_NONRESIDENT) {
-+				/*
-+				 * $DATA was moved out of the MFT record after
-+				 * the is_resident() check above.  The folio is
-+				 * no longer dirty: redirty it and write it
-+				 * through iomap below.
-+				 */
-+				folio_redirty_for_writepage(wbc, folio);
-+				converted = true;
-+				err2 = 0;
-+			}
++	/*
++	 * Collect the parent references under ni_lock: the record may be
++	 * rearranged at the same time (a name removed, $DATA moved out of the
++	 * record), and mi_enum_attr() marks the inode bad if it walks a
++	 * half-moved attribute.  Open and write the parents without ni_lock.
++	 */
++	ni_lock(ni);
+ 	while ((attr = ni_find_attr(ni, attr, &le, ATTR_NAME, NULL, 0, NULL,
+-				    NULL))) {
+-		struct inode *dir;
++				    NULL)))
++		cnt++;
 +
- 			folio_unlock(folio);
- 			if (err2) {
- 				/*
-@@ -1293,7 +1306,8 @@ static int ntfs_writepages(struct address_space *mapping,
- 			}
++	homes = kmalloc_objs(*homes, cnt, GFP_NOFS);
++	if (cnt && !homes) {
++		ni_unlock(ni);
++		return -ENOMEM;
++	}
++
++	attr = NULL;
++	le = NULL;
++	while (n < cnt && (attr = ni_find_attr(ni, attr, &le, ATTR_NAME, NULL,
++					       0, NULL, NULL))) {
+ 		struct ATTR_FILE_NAME *fname;
+ 
+ 		fname = resident_data_ex(attr, SIZEOF_ATTRIBUTE_FILENAME);
+@@ -3012,19 +3032,26 @@ int ni_write_parents(struct ntfs_inode *ni, int sync)
+ 
+ 		/* Check simple case when parent inode equals current inode. */
+ 		if (ino_get(&fname->home) == ni->vfs_inode.i_ino) {
+-			if (MFT_REC_ROOT != ni->vfs_inode.i_ino) {
+-				ntfs_set_state(sbi, NTFS_DIRTY_ERROR);
++			if (ni->vfs_inode.i_ino != MFT_REC_ROOT)
+ 				err = -EINVAL;
+-			}
+ 			continue;
  		}
  
--		return err;
-+		if (!converted || err)
-+			return err;
- 	}
+-		dir = ntfs_iget5(sb, &fname->home, NULL);
++		homes[n++] = fname->home;
++	}
++	ni_unlock(ni);
++
++	if (err)
++		ntfs_set_state(sbi, NTFS_DIRTY_ERROR);
++
++	for (i = 0; i < n; i++) {
++		struct inode *dir = ntfs_iget5(sb, &homes[i], NULL);
++
+ 		if (IS_ERR(dir)) {
+ 			ntfs_inode_warn(
+ 				&ni->vfs_inode,
+ 				"failed to open parent directory r=%llx to write",
+-				(u64)ino_get(&fname->home));
++				(u64)ino_get(&homes[i]));
+ 			continue;
+ 		}
  
- 	return iomap_writepages(&wpc);
+@@ -3035,6 +3062,7 @@ int ni_write_parents(struct ntfs_inode *ni, int sync)
+ 		}
+ 		iput(dir);
+ 	}
++	kfree(homes);
+ 
+ 	return err;
+ }
 
 -- 
 2.56.0
