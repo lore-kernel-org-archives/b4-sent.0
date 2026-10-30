@@ -1,98 +1,96 @@
 From: Daejun Park <daejun7.park@samsung.com>
-Date: Fri, 30 Oct 2026 12:52:44 +0900
-Subject: [PATCH] erofs: apply the stacked fs check to extra file-backed
- devices
+Date: Fri, 30 Oct 2026 12:52:57 +0900
+Subject: [PATCH] mm/readahead: keep at least half of the async window when
+ aligning it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-erofs-stacked-extra-devices-v1-1-39f7df7ac01b@samsung.com>
-X-B4-Tracking: v=1; b=H4sIAIsU5GoC/x3MQQqDQAxA0atI1g1MRrGlV5EuwiTaUNCSiAji3
- R1cvsX/B4S6acC7OcB1s7BlrqBHA+XL86RoUg055Z5SfqH6MgbGyuWngrqvzig1LBooT6aOhBO
- 1LdTD33W0/b4Pn/O8AHOgu11tAAAA
-To: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>
-Cc: Yue Hu <zbestahu@gmail.com>, Jingbo Xu <jefflexu@163.com>, 
- Sandeep Dhavale <dhavale@google.com>, Hongbo Li <hongbohbli@tencent.com>, 
- Chunhai Guo <guochunhai@vivo.com>, linux-erofs@lists.ozlabs.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+Message-Id: <20261030-mm-readahead-async-align-v1-1-109dea6851fc@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAJgU5GoC/x2MQQqAIBAAvxJ7biEthPpKdNh0q4WyUIhC/HvSZ
+ WAOMwkiB+EIQ5Ug8C1RTl9E1RXYjfzKKK446EYb1egejwMDk6OtACm+3iLtsnrkrldz66wyZKD
+ kV+BFnn89Tjl/F5UzkmoAAAA=
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>, Jan Kara <jack@suse.cz>
+Cc: Ryan Roberts <ryan.roberts@arm.com>, linux-fsdevel@vger.kernel.org, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Daejun Park <daejun7.park@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793332363; l=2715;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793332376; l=2790;
  i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=ewjS8koWFn8Z4rafq/egOLIaNXTnJqYTfaJQKrbMB9s=;
- b=Bxud52oBS6RR96umz1PtXO37YvER3b+2EfdcZL8t9uPHVWsq+/Uz3ePCKWAOKbZTXGR7NGnva
- nFn3KIa7gzFAP/HdYKb9DQZFWkBJqKLaV5LyPa3JI2b8LA9yVJcSgKT
+ bh=KlGeHCvXeiq1+GF1wuBXkFRE3vYfwUDNHyzWlyHiR68=;
+ b=6sgU0Xgwqz6XOoOauwEV72LBz9kw9m5WlIYb+cqZUpHR8kgYzsAyqdlAug65ocGla5qbp/Hrj
+ bPKuxR/UQasC8l7t1DapqPOFgn9m5GwmI0sdNdV2RMIBMd8du/pBJp+
 X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
  pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
 X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-erofs_fc_fill_super() rejects a file-backed mount whose image is on a
-file-backed EROFS or on a filesystem with s_stack_depth set. This
-bounds the nesting of reads. Extra devices given by device= are not
-checked. File-backed mounts can still nest through them without limit.
+page_cache_async_ra() trims the end of each new window to a multiple of
+1 << ra->order pages. A window that starts just below such a boundary
+keeps only a few pages. With read_ahead_kb=128 and max_sectors_kb=512,
+1 MiB reads after a 4 KiB read at offset 0 hit this on about one window
+in three. They issue three times as many device reads.
 
-Apply the same check to extra devices.
+Halve the alignment until the trim keeps at least half of the window.
 
-Fixes: fb176750266a ("erofs: add file-backed mount support")
+Fixes: 18ebe55a9236 ("mm/readahead: terminate async readahead on natural boundary")
 Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Tested on erofs dev in a QEMU guest with KASAN and lockdep:
+Tested on mm-new in a QEMU guest with XFS on an emulated NVMe,
+read_ahead_kb 128 and a cold cache.
 
-- Blobs on a file-backed EROFS or overlayfs now get -EINVAL.
+- max_sectors_kb 512, median of 5 runs: reading a 512 MiB file this
+  way takes 0.247 s before and 0.180 s after. The device sees 3329 and
+  1032 reads.
 
-- Blobs on XFS or a loop-mounted EROFS still mount and read back.
+- Other reads with max_sectors_kb 512: without the 4 KiB read, and with
+  64 KiB reads, the times do not change. Random 4 KiB and 64 KiB reads,
+  two interleaved streams on one file, and 2 MiB reads at random
+  offsets also take the same time. They read the same amount from the
+  device, within 0.3%.
 
-- Lockdep warns about devs->rwsem vs i_rwsem for a device= path inside
-  an EROFS mount, with or without this patch.
+With the device's transfer limit at 2 MiB:
+
+- max_sectors_kb 256: 512 KiB reads after the 4 KiB read take 0.626 s
+  before and 0.322 s after. The device sees 6147 and 2056 reads.
+
+- max_sectors_kb 1024 or 2048: 1 MiB reads are not trimmed.
+
+- max_sectors_kb 2048, 3 MiB reads: the device sees 343 instead of 271
+  reads. The time is 0.120 s instead of 0.118 s, the median of 40 runs.
+  The interquartile range is about 0.10 to 0.13 s for both. The window
+  stays at 3/4 of the maximum, off the 2 MiB boundary. mm-new reaches
+  that boundary by trimming deeply.
 ---
- fs/erofs/super.c | 17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+ mm/readahead.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/erofs/super.c b/fs/erofs/super.c
-index ce05557bd9..ee01a5ef85 100644
---- a/fs/erofs/super.c
-+++ b/fs/erofs/super.c
-@@ -122,6 +122,14 @@ void *erofs_read_metadata(struct super_block *sb, struct erofs_buf *buf,
- 	return buffer;
- }
- 
-+/* see the comment in erofs_fc_fill_super() */
-+static bool erofs_is_stacked_file(struct file *file)
-+{
-+	struct super_block *sb = file_inode(file)->i_sb;
-+
-+	return (sb->s_op == &erofs_sops && !sb->s_bdev) || sb->s_stack_depth;
-+}
-+
- static int erofs_init_device(struct erofs_buf *buf, struct super_block *sb,
- 			     struct erofs_device_info *dif, erofs_off_t *pos)
- {
-@@ -161,6 +169,11 @@ static int erofs_init_device(struct erofs_buf *buf, struct super_block *sb,
- 		} else if (!S_ISREG(file_inode(file)->i_mode)) {
- 			fput(file);
- 			return -EINVAL;
-+		} else if (erofs_is_stacked_file(file)) {
-+			erofs_err(sb, "%s: file-backed devices cannot be on stacked fses",
-+				  dif->path);
-+			fput(file);
-+			return -EINVAL;
- 		}
- 		if (!dif->dax_dev && test_opt(&sbi->opt, DAX_ALWAYS)) {
- 			erofs_info(sb, "DAX unsupported by %s. Turning off DAX.",
-@@ -701,9 +714,7 @@ static int erofs_fc_fill_super(struct super_block *sb, struct fs_context *fc)
- 		 * It MUST change if another fs plans to support them, which
- 		 * may also require adjusting FILESYSTEM_MAX_STACK_DEPTH.
- 		 */
--		inode = file_inode(sbi->dif0.file);
--		if ((inode->i_sb->s_op == &erofs_sops &&
--		     !inode->i_sb->s_bdev) || inode->i_sb->s_stack_depth) {
-+		if (erofs_is_stacked_file(sbi->dif0.file)) {
- 			erofs_err(sb, "file-backed mounts cannot be applied to stacked fses");
- 			return -ENOTBLK;
- 		}
+diff --git a/mm/readahead.c b/mm/readahead.c
+index 6e55632902..f4da9b4606 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -713,6 +713,17 @@ void page_cache_async_ra(struct readahead_control *ractl,
+ 	align = 1UL << min(ra->order, ffs(max_pages) - 1);
+ 	end = ra->start + ra->size;
+ 	aligned_end = round_down(end, align);
++	/*
++	 * Keep at least half of the window when aligning its end. A
++	 * window that starts just below a large boundary would otherwise
++	 * shrink to a few pages and cap the folio order. Use a smaller
++	 * alignment instead.
++	 */
++	while (aligned_end > ra->start &&
++	       2 * (aligned_end - ra->start) < ra->size) {
++		align >>= 1;
++		aligned_end = round_down(end, align);
++	}
+ 	if (aligned_end > ra->start)
+ 		ra->size -= end - aligned_end;
+ 	ra->async_size = ra->size;
 
 ---
-base-commit: 209108a5456171ab430e25b54b2dfe083455bfb6
-change-id: 20261028-erofs-stacked-extra-devices-d7a141da0133
+base-commit: 9c449f885765cf8d80b2c60b1971e774bba51a3f
+change-id: 20261029-mm-readahead-async-align-e491b3dc16a6
 
 Best regards,
 -- 
