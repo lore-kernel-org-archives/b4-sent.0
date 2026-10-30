@@ -1,11 +1,11 @@
 From: Kamil Chojnowski <contact@diath.net>
-Date: Fri, 30 Oct 2026 01:08:12 +0100
-Subject: [PATCH 3/6] fs/ntfs3: grow $DATA before publishing i_size in
- setattr
+Date: Fri, 30 Oct 2026 01:08:13 +0100
+Subject: [PATCH 4/6] fs/ntfs3: write back folios that raced with $DATA
+ conversion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-ntfs3-resident-fixes-v1-3-7b6c857d4330@diath.net>
+Message-Id: <20261030-ntfs3-resident-fixes-v1-4-7b6c857d4330@diath.net>
 References: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 In-Reply-To: <20261030-ntfs3-resident-fixes-v1-0-7b6c857d4330@diath.net>
 To: Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
@@ -13,72 +13,86 @@ Cc: Christoph Hellwig <hch@lst.de>, ntfs3@lists.linux.dev,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Kamil Chojnowski <contact@diath.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=2070;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793318890; l=2603;
  i=contact@diath.net; s=20261029; h=from:subject:message-id;
- bh=7HOdxVxQld0b8asqtryZkiGhGYBL8zKR9nHtG8ic/Wc=;
- b=fIuBcBrlV1myWWZUvrtOfk9qvVJK5hYoH2Gev9y2W/Q1YjRYTtg1Sr2QCUHCdODwdm5QbFbpY
- 6Sm7yDTuvKbANYh5eFOplz0fS1qXfbqDQkl8qkE3tC/RWUESNWxp0kl
+ bh=W79ey7LkLwclwvNyOK0icIx8SUUOsitBLSIs+VaaqG8=;
+ b=aKVF+mCyioHX2ewIERO3mKOPALX8atEHrAl3qyFI4dNGgjCFgPGm/yDvhvO85aeKeUcRHb6+U
+ 6FFRCKHC3AtBKkdNVutto55fdL5c4BxwxRJCD00ua0neI2w0ZKqdbxv
 X-Developer-Key: i=contact@diath.net; a=ed25519;
  pk=G15RQXroUn6f8ud+bOEqlqpPdpLoCB3L3G9XVUf+YaA=
 X-Endpoint-Received: by B4 Relay for contact@diath.net/20261029 with auth_id=1360
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ntfs_setattr() calls truncate_setsize() and then ntfs_set_size().  When
-a resident file grows, i_size is updated before the resident attribute,
-so a concurrent read gets an inline mapping shorter than i_size:
-iomap_read_inline_data() warns and the read fails with -EIO.
+ntfs_writepages() takes the resident path when is_resident() is true on
+entry, then calls attr_data_write_resident() for each dirty folio.  If
+$DATA was moved out of the MFT record in between, it returns the
+internal code E_NTFS_NONRESIDENT.  writeback_iter() has already cleared
+the folio's dirty bit, so its data is never written.
 
-  WARNING: fs/iomap/buffered-io.c:431 at iomap_read_inline_data
-   iomap_read_folio_iter
-   iomap_read_folio
-   ntfs_read_folio
-   filemap_read_folio
+Commit 2727ac2ba87a ("fs/ntfs3: prevent positive E_NTFS_NONRESIDENT from
+reaching writeback error handling") turned the code into -EIO, which
+stops the errseq and writeback warnings, but the folio is still dropped
+and the writeback reports an I/O error for data that could be written.
 
-attr_set_size_ex() updates i_size itself once the attribute is resized.
-Call truncate_setsize() first only when shrinking; when growing, resize
-the attribute first and then call pagecache_isize_extended().
+Redirty the folio and finish through iomap_writepages(), which writes
+it to the clusters the attribute now has.  ntfs_writepage() handled the
+same race by falling back to block_write_full_page() until commit
+d4428bad14dd ("ntfs3: stop using generic_writepages").
 
-Reproducer: extend a small file with ftruncate(2) in 64-byte steps while
-another thread reads it; it fails within seconds.
+Reproducer: grow small files with fallocate(2) while another thread
+reads them, with the first patch of this series applied so that the
+deadlock does not hide the race.  Without the -EIO conversion this
+warned in lib/errseq.c and mm/page-writeback.c within seconds.
 
-Fixes: ecbb433f9a8e ("fs/ntfs3: fold file size handling into ntfs_set_size()")
+Fixes: d4428bad14dd ("ntfs3: stop using generic_writepages")
 Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Kamil Chojnowski <contact@diath.net>
 ---
- fs/ntfs3/file.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ fs/ntfs3/inode.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
-index 384e61a33a84..3b91586c4630 100644
---- a/fs/ntfs3/file.c
-+++ b/fs/ntfs3/file.c
-@@ -755,7 +755,14 @@ int ntfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 		newsize = attr->ia_size;
+diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
+index 913ebd2a2196..8651b9e4ba06 100644
+--- a/fs/ntfs3/inode.c
++++ b/fs/ntfs3/inode.c
+@@ -1267,6 +1267,7 @@ static int ntfs_writepages(struct address_space *mapping,
  
- 		if (newsize != oldsize) {
--			truncate_setsize(inode, newsize);
-+			/*
-+			 * Grow the attribute before i_size: read_folio maps
-+			 * resident data by the attribute size and fails with
-+			 * -EIO if i_size is already beyond it.  ntfs_set_size()
-+			 * updates i_size.
-+			 */
-+			if (newsize < oldsize)
-+				truncate_setsize(inode, newsize);
+ 	if (is_resident(ni)) {
+ 		struct folio *folio = NULL;
++		bool converted = false;
+ 		err = 0;
  
- 			err = ntfs_set_size(inode, newsize);
- 			if (err) {
-@@ -763,6 +770,9 @@ int ntfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 				goto out;
- 			}
+ 		while ((folio = writeback_iter(mapping, wbc, folio, &err))) {
+@@ -1276,6 +1277,18 @@ static int ntfs_writepages(struct address_space *mapping,
+ 			err2 = attr_data_write_resident(ni, folio);
+ 			ni_unlock(ni);
  
-+			if (newsize > oldsize)
-+				pagecache_isize_extended(inode, oldsize, newsize);
++			if (err2 == E_NTFS_NONRESIDENT) {
++				/*
++				 * $DATA was moved out of the MFT record after
++				 * the is_resident() check above.  The folio is
++				 * no longer dirty: redirty it and write it
++				 * through iomap below.
++				 */
++				folio_redirty_for_writepage(wbc, folio);
++				converted = true;
++				err2 = 0;
++			}
 +
- 			ni->std_fa |= FILE_ATTRIBUTE_ARCHIVE;
- 			ni->ni_flags |= NI_FLAG_UPDATE_PARENT;
- 			inode_set_mtime_to_ts(inode,
+ 			folio_unlock(folio);
+ 			if (err2) {
+ 				/*
+@@ -1293,7 +1306,8 @@ static int ntfs_writepages(struct address_space *mapping,
+ 			}
+ 		}
+ 
+-		return err;
++		if (!converted || err)
++			return err;
+ 	}
+ 
+ 	return iomap_writepages(&wpc);
 
 -- 
 2.56.0
