@@ -1,97 +1,93 @@
-From: Zac Parker <zac.parker@parcosta.com>
-Date: Thu, 29 Oct 2026 20:12:21 -0500
-Subject: [PATCH iwl-net] ixgbe: fix swapped addr and devad in
- ixgbe_mii_bus_read_c45()
+From: Igor Velkov <iav@iav.lv>
+Date: Fri, 30 Oct 2026 03:33:00 +0200
+Subject: [PATCH] media: rkvdec: Do not keep the clocks enabled from probe
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261029-ixgbe-c45-fix-v1-1-7eb38075a3d1@parcosta.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBREr1Jm7QfTpkW9inTRxLF+kShJ1ULp3
- f3qYhZvhnkLCrOy4FAtyHxp0XsycJsK8TKkkaInY9TbunMW0XkMlOhbOess3d4xcOdD23jY55F
- p9c93hL5vkjih/w/lGa6M09eGdf0A90QNOnoAAAA=
-X-Change-ID: 20261026-ixgbe-c45-fix-691ebe84b534
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Zac Parker <zac.parker@parcosta.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793322743; l=3232;
- i=zac.parker@parcosta.com; s=20261027; h=from:subject:message-id;
- bh=z0czBdN6SjMUZi5kUnXLmCozGwOhDcYhnx5BsNw9Jn4=;
- b=EkO7qzS2S3n8cCJx6iYzkYCq/lJ5zCgns+YJ+8yxWt/0k1fSpUkEXkCP0PAOFiDuQ5jI/GzA7
- Ku2KhlLJzKVANx1qOaM/6wXMF6PWzT/SwssYmpJwxi4TU54rwuumeeJ
-X-Developer-Key: i=zac.parker@parcosta.com; a=ed25519;
- pk=G+DgShRR2xDJFWGYQ0W+5eRamZbUryODJ6T6/eQZeEc=
-X-Endpoint-Received: by B4 Relay for zac.parker@parcosta.com/20261027 with auth_id=1361
+Message-Id: <20261030-rkvdec-runtime-pm-clocks-v1-1-fb2c5b629e79@iav.lv>
+X-B4-Tracking: v=1; b=H4sIAMvz42oC/x3MQQqEMAxA0atI1gaaKgpzFXEhaZwJjlVSFUG8u
+ 8XlW/x/QRJTSfApLjA5NOkSM6gsgH9D/ApqyAbvfEOucmjTEYTR9rjpLLjOyP+Fp4Q1DYFHqsm
+ 3BDlfTUY933XX3/cDQbjLdmoAAAA=
+To: Detlev Casanova <detlev.casanova@collabora.com>, 
+ Ezequiel Garcia <ezequiel@vanguardiasur.com.ar>
+Cc: Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Hans Verkuil <hverkuil+cisco@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Diederik de Haas <diederik@cknow-tech.com>, Jonas Karlman <jonas@kwiboo.se>, 
+ Francesco Saverio Pavone <pavone.lawyer@gmail.com>, 
+ linux-media@vger.kernel.org, linux-rockchip@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Igor Velkov <iav@iav.lv>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2611; i=iav@iav.lv;
+ h=from:subject:message-id; bh=DV65nOamq4qFrrJK3VgervQr4mJ0twxpufgrJGR55R4=;
+ b=owGbwMvMwCVmNH1q96v4SmbG02pJDFmPP595z7Fsxraet1UnT9VN2CkpP+/ejXN1c/lOOGS6e
+ 1oszNFn6yhlYRDjYpAVU2SZcEjjVsaSq3/9PcwfwMxhZQIZwsDFKQAT+fqN4X+FvN+VuAaNQ3de
+ TlwXYhIUHaP5PFys8zOXXHmeGqfe69uMDC//vf3eVbf27uke7xN1N7ScLuo/aNBf2lA3w8Xmh/l
+ FWz4A
+X-Developer-Key: i=iav@iav.lv; a=openpgp;
+ fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
+X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MDIO core calls the read_c45 op of a struct mii_bus as
-(bus, addr, devnum, regnum), but ixgbe_mii_bus_read_c45() declares its
-parameters as (bus, devad, addr, regnum). The PHY address and the MMD
-are therefore swapped on every clause 45 read through the ixgbe MDIO
-bus. For example, a clause 45 SIOCGMIIREG read of register 1E.C820 on
-PHY 0 (Global Thermal Status 1, the X550 junction temperature) is
-issued to PHY 30, MMD 0 and returns 0. ixgbe_mii_bus_write_c45() and
-the X550EM_a variants already use the order the core expects.
+Since commit 6a846f7d72c7 ("media: rkvdec: Enable all clocks without
+naming them") the clocks are fetched with devm_clk_bulk_get_all_enabled(),
+which keeps them enabled from probe until unbind. rkvdec_runtime_suspend()
+disables them on top of that, so their enable count never drops to zero
+and the clock gates stay open while the decoder is idle.
 
-The generic ops are registered for every ixgbe device except X550EM_a,
-so clause 45 SIOCGMIIREG requests on 82599, X540 and X550 devices are
-affected. The driver's own PHY accesses go through hw->phy.ops.read_reg
-rather than the MDIO bus, which is likely why this went unnoticed.
+On RK3399 this also breaks restore from hibernation when the boot kernel
+has not enabled these clocks, for example with rkvdec built as a module:
+the gates are closed when the restored kernel takes over, while it still
+counts the clocks as enabled. Powering on the vdu power domain then finds
+the count at 1 and leaves the gates closed, and the first QoS register
+write of the domain never returns.
 
-Fix the parameter order to match the mii_bus read_c45 prototype.
+Get the clocks without enabling them and let runtime PM enable them while
+the decoder is in use, as before that commit.
 
-The bug was found by an AI coding assistant (Claude Opus 5.5) while
-reading the junction temperature of an Intel X550-T2 (8086:1563, NVM
-19.5.12) from user space on a Proxmox 7.0.14-based kernel. A clause 45
-SIOCGMIIREG read of register 1.2 on PHY 0 returns 0, while the same
-request with the PHY address and the MMD deliberately exchanged returns
-the expected PHY identifier 0x0154, and register 1E.C820 then returns a
-plausible temperature (about 45 C). Reproducing it needs no kernel
-changes, only that user-space read.
-
-The fix was build-tested on top of net-queue with allmodconfig and
-allyesconfig at W=1, with no new warnings. It was also run-time tested
-on the X550-T2 above, applied to the ixgbe driver of the Proxmox 7.0.14
-kernel. With the fix, a clause 45 read of 1.2 on PHY 0 returns 0x0154
-and 1E.C820 returns the temperature on both ports, while the exchanged
-request now returns 0. The host then carried its normal traffic on the
-patched driver for two hours at 2.5 Gbps, with no link drops, no driver
-messages and no change in the receive drop rate.
-
-Fixes: 308c8ffd5a7d ("ixgbe: Separate C22 and C45 transactions")
-Signed-off-by: Zac Parker <zac.parker@parcosta.com>
+Fixes: 6a846f7d72c7 ("media: rkvdec: Enable all clocks without naming them")
+Cc: stable@vger.kernel.org # v7.0+
+Signed-off-by: Igor Velkov <iav@iav.lv>
 ---
- drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Tested on ROCK Pi 4A (RK3399) with v7.3, rkvdec and panfrost built as
+modules, panfrost not loaded:
+- idle decoder: the vdu clocks have enable_count 0 (1 without the patch);
+- hibernate, power cycle, restore: 3 of 3 (0 of 3 without the patch, the
+  restored kernel stops after bringing the secondary CPUs up);
+- H.264 decode with GStreamer v4l2slh264dec, 300 frames of 720p High
+  profile: output identical to avdec_h264 (md5 of all frames).
+The QoS hang was traced with debug prints in rockchip_pd_power() on a
+7.3-based kernel.
 
-diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c
-index 1e52f6221..516856b3a 100644
---- a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c
-+++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c
-@@ -832,11 +832,11 @@ static int ixgbe_mii_bus_read_c22(struct mii_bus *bus, int addr, int regnum)
- /**
-  *  ixgbe_mii_bus_read_c45 - Read a clause 45 register
-  *  @bus: pointer to mii_bus structure which points to our driver private
-- *  @devad: device address to read
-  *  @addr: address
-+ *  @devad: device address to read
-  *  @regnum: register number
-  **/
--static int ixgbe_mii_bus_read_c45(struct mii_bus *bus, int devad, int addr,
-+static int ixgbe_mii_bus_read_c45(struct mii_bus *bus, int addr, int devad,
- 				  int regnum)
- {
- 	struct ixgbe_adapter *adapter = bus->priv;
+This is separate from the unbind leak in Jonas's patch that Francesco
+posted [1]: here the extra enable comes from probe.
+
+[1] https://lore.kernel.org/all/20260717154505.83935-1-pavone.lawyer@gmail.com/
+---
+ drivers/media/platform/rockchip/rkvdec/rkvdec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/media/platform/rockchip/rkvdec/rkvdec.c b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
+index 061281f903f3..45c541ae3029 100644
+--- a/drivers/media/platform/rockchip/rkvdec/rkvdec.c
++++ b/drivers/media/platform/rockchip/rkvdec/rkvdec.c
+@@ -1788,7 +1788,7 @@ static int rkvdec_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = devm_clk_bulk_get_all_enabled(&pdev->dev, &rkvdec->clocks);
++	ret = devm_clk_bulk_get_all(&pdev->dev, &rkvdec->clocks);
+ 	if (ret < 0)
+ 		return ret;
+ 
 
 ---
-base-commit: b7e46a73815485bc5deb94945e50594a8bf6b499
-change-id: 20261026-ixgbe-c45-fix-691ebe84b534
+base-commit: c03c1a14507dfaf8b856c2608f9ac216021fc222
+change-id: 20261030-rkvdec-runtime-pm-clocks-41adcf141271
 
 Best regards,
---  
-Zac Parker <zac.parker@parcosta.com>
+-- 
+Igor Velkov <iav@iav.lv>
 
