@@ -1,75 +1,61 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Fri, 30 Oct 2026 06:43:21 +0200
-Subject: [PATCH] drm/panfrost: Gate the RK3399 GPU clock in runtime suspend
+From: Martin Oberleiter <martin.oberleiter@netixx.it>
+Subject: [PATCH 0/2] HID: steelseries: Add Rival 3 Wireless battery
+ reporting
+Date: Fri, 30 Oct 2026 07:37:23 +0100
+Message-Id: <20261030-rival3-battery-v1-0-6b1feeaf1f52@netixx.it>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-panfrost-rk3399-pm-rt-v1-1-e94437159a9d@iav.lv>
-X-B4-Tracking: v=1; b=H4sIAGgg5GoC/x3MQQqAIBBA0avErBvQhMKuEi1ExxoikzEiiO6et
- HyL/x8oJEwFxuYBoYsLH6lCtw341aWFkEM1dKrrtTIKs0tRjnKibMZYi3lHOdGTM9HrwapgobZ
- ZKPL9f6f5fT9c1dbTZwAAAA==
-To: Boris Brezillon <boris.brezillon@collabora.com>, 
- Rob Herring <robh@kernel.org>, Steven Price <steven.price@arm.com>, 
- =?utf-8?q?Adri=C3=A1n_Larumbe?= <adrian.larumbe@collabora.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Heiko Stuebner <heiko@sntech.de>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1888; i=iav@iav.lv;
- h=from:subject:message-id; bh=aee4514usbOrnKBJFpIWBVeVFNuEk+tVTdQcWikAb04=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFlPFLLOSB8ueTB1946dbsLytj3Moo8S1xtIW4sndIR+v
- 7bd2nJWRykLgxgXg6yYIsuEQxq3MpZc/evvYf4AZg4rE8gQBi5OAZjIhVkM//Q7npVszd0963Zd
- 2oV1yvyt9yTsRLr/X5zN+ntr6snTzcmMDF9lnhourWM5pFXj6FZrvLLt5sZfk0p7bSNiTbL/x2a
- YMwIA
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBA0auUWRvIJNBaryIu0mSqI6XKTAxKy
+ d1NdfkW/2+gJEwKp24DocLKj7UBDx3EW1ivZDg1g7OuR+utES5h8WYKOZN8TEg4xIQjoTtCi55
+ CM79/w/Plb31Nd4p5v0CtX8z5dMRyAAAA
+X-Change-ID: 20261030-rival3-battery-ad17cd19e128
+To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Martin Oberleiter <martin.oberleiter@netixx.it>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793342246; l=1381;
+ i=martin.oberleiter@netixx.it; s=20261029; h=from:subject:message-id;
+ bh=w2YXVZYcFQtYvcPZlkSrEitR77JlEJPlKV28pnvKM1w=;
+ b=r9SKXG0CoTMTJNm2t90BHjbWdY9eaJvXd7sy9opMAHC8ojVWVEuBYTGFyjBtDbjN5GLn9PrmU
+ TmNPZa+jKb/AFLQcg4OLDEC5+J5InHrxjCth8frB9mF7woPUA/53odh
+X-Developer-Key: i=martin.oberleiter@netixx.it; a=ed25519;
+ pk=yZvkAuAsIiJ76LEGGTR3TI7+Xjw7lGN1dK6jcv72XZo=
+X-Endpoint-Received: by B4 Relay for martin.oberleiter@netixx.it/20261029 with auth_id=1358
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3399 Mali-T860 matches arm,mali-t860 and gets default_data, so
-panfrost enables aclk_gpu at probe and keeps it enabled until unbind;
-runtime suspend powers the GPU off but leaves the clock on.
+The SteelSeries Rival 3 Wireless mouse reports its battery level on
+request through its 2.4 GHz receiver, using the protocol rivalcfg
+implements. This series exposes it as a power supply.
 
-On ROCK Pi 4A restore from hibernation hangs in genpd_restore_noirq()
-of the GPU while panfrost is bound. With the clock gated in runtime
-suspend, as on the Allwinner H616 and the Renesas parts, it restores.
+Patch 1 makes HID_STEELSERIES select POWER_SUPPLY, which the Arctis
+headset support already needs and which patch 2 relies on as well.
 
-Match rockchip,rk3399-mali to default_pm_rt_data.
+Patch 2 adds the battery reporting. Desktops currently show the mouse's
+battery with a keyboard icon: upower picks the kind from the sibling
+input devices and prefers the mouse's auxiliary keyboard interface. That
+is a upower heuristic and will be reported there separately.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
----
-Tested on ROCK Pi 4A, drm-misc-next 33ed26235db9 with the rkvdec fix [1]
-applied: hibernation with HDMI active restores 6 of 6 with this patch
-(once right after glmark2-es2-drm), and hangs 2 of 2 without it.
-[1] fixes the same kind of hang in rkvdec, which otherwise hits first.
+Tested on a Rival 3 Wireless (receiver 1038:1830) over a night with the
+mouse switched off and on again.
 
-[1] https://lore.kernel.org/r/20261030-rkvdec-runtime-pm-clocks-v1-1-fb2c5b629e79@iav.lv
----
- drivers/gpu/drm/panfrost/panfrost_drv.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/gpu/drm/panfrost/panfrost_drv.c b/drivers/gpu/drm/panfrost/panfrost_drv.c
-index 7c348a0bf1ee..21a9a12abefc 100644
---- a/drivers/gpu/drm/panfrost/panfrost_drv.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_drv.c
-@@ -983,6 +983,7 @@ static const struct of_device_id dt_match[] = {
- 	  .data = &amlogic_data, },
- 	{ .compatible = "renesas,r9a08g046-mali", .data = &default_pm_rt_data },
- 	{ .compatible = "renesas,r9a09g047-mali", .data = &default_pm_rt_data },
-+	{ .compatible = "rockchip,rk3399-mali", .data = &default_pm_rt_data },
- 	{ .compatible = "arm,mali-t604", .data = &default_data, },
- 	{ .compatible = "arm,mali-t624", .data = &default_data, },
- 	{ .compatible = "arm,mali-t628", .data = &default_data, },
+The series was written with the help of an AI coding assistant (Claude
+Code); details are in the changelog of patch 2.
 
 ---
-base-commit: 33ed26235db93162935d1719bc6f538c384a2fd8
-change-id: 20261030-panfrost-rk3399-pm-rt-cea3fc1790d9
+Martin Oberleiter (2):
+      HID: steelseries: Select POWER_SUPPLY
+      HID: steelseries: Add Rival 3 Wireless battery reporting
+
+ drivers/hid/Kconfig           |   5 +-
+ drivers/hid/hid-ids.h         |   1 +
+ drivers/hid/hid-steelseries.c | 277 +++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 277 insertions(+), 6 deletions(-)
+---
+base-commit: 720806515cb6921ab05caaa6f470f7054b56385e
+change-id: 20261030-rival3-battery-ad17cd19e128
 
 Best regards,
--- 
-Igor Velkov <iav@iav.lv>
+--  
+Martin Oberleiter <martin.oberleiter@netixx.it>
 
