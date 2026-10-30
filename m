@@ -1,100 +1,72 @@
 From: Nikolay Plastinin <plaztininikolai@gmail.com>
-Subject: [PATCH v4 0/2] leds: trigger: input-events: Restore previous
- brightness on input
-Date: Fri, 30 Oct 2026 21:51:30 +0800
-Message-Id: <20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com>
+Date: Fri, 30 Oct 2026 21:51:31 +0800
+Subject: [PATCH v4 1/2] leds: triggers: Add led_trigger_for_each_led()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Nu47CMBCF4VdBrhlkj00uVLzHagvHniQjgRPZW
- WsRyrtjKBASBZT/Kb5zFYkiUxKHzVVEypx4CiXMdiPcaMNAwL60QImVbNHAiXwCDvPfApQpLAm
- 6yMO4BEoJbF1Zam1dd81eFGKO1PP/g//5LT1yWqZ4ebxldV+/hLMCBZ101Pfaojb6OJwtn3ZuO
- os7nPEF0/IDhiBBt6bx2nnvmzdMPzElVfUB0wVDZyp0tieJ8hVb1/UGcwEvD2IBAAA=
-X-Change-ID: 20260924-leds-input-events-brightness-a76ae9a77b85
+Message-Id: <20261030-leds-input-events-brightness-v4-1-5ea0ead7480c@gmail.com>
+References: <20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com>
+In-Reply-To: <20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
 Cc: Hans de Goede <hansg@kernel.org>, linux-leds@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Nikolay Plastinin <plaztininikolai@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793368292; l=3666;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793368292; l=1697;
  i=plaztininikolai@gmail.com; s=20260924; h=from:subject:message-id;
- bh=TqfNC0LMUz3nz/opoj1+J7OcrmSpnFYU8zd02dPuZfo=;
- b=L3LbvudhFfLquOXHsn845Su6kFcFrxuQCzBgVsheOXwjGRXtmYd/SRGpeX/inSfaRveFKZyG5
- 8ts/vXyEKtvDyR9TV/Kptezr5pTv4qxa44UFRoVfowNtqrHDc7ZtXjh
+ bh=XB1M/17vbfVXqMrEZDyY+zPssA2UXsnOCNxpwiGlg0U=;
+ b=FR34tIg3//iHwMs2rey0Ta4U8G7CGbCRx2PqsqZ++LBMVS81BF8v31+B9S8Z6yiuUYeejSgxm
+ C2XRvwdiyFnDGwMa5YJKvI2b6FcwYFTbnwxqM4R2zpYJTfU9oa6WQ/w
 X-Developer-Key: i=plaztininikolai@gmail.com; a=ed25519;
  pk=bmHrETa14IbiLNkJSoiLqUMni+IeSFwhOSDM4vVFN4s=
 X-Endpoint-Received: by B4 Relay for plaztininikolai@gmail.com/20260924 with auth_id=1052
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The input-events trigger turns LEDs back on with LED_FULL, so a keyboard
-backlight with several levels always comes back at maximum after being
-idle. This series restores the level the user picked instead.
+led_trigger_event() sets one brightness for all LEDs using a trigger.
+A trigger which restores a different brightness per LED needs to iterate
+over the attached LEDs instead.
 
-Patch 1 adds led_trigger_for_each_led(), an RCU list iterator in leds.h.
-Patch 2 uses it to save and restore each LED's brightness in one loop,
-with per-LED state allocated in activate() and freed in deactivate().
-There is no new exported function or callback API.
+Add led_trigger_for_each_led(), a wrapper around list_for_each_entry_rcu(),
+so triggers can perform this iteration without spelling out the list
+members. Document that callers must hold the RCU read lock throughout
+the iteration and must not sleep while accessing the LEDs.
 
-This came up while looking at a keyboard backlight idle timeout for ASUS
-laptops in asusctl:
-https://github.com/OpenGamingCollective/asusctl/issues/98
-
-Validation for v4: the module builds out of tree with W=1 against Fedora
-7.2.12-200.fc44.x86_64 using the patched leds.h. A user-space harness using
-the driver functions reproduces a heap-use-after-free with v3 when the
-LED remains in the iteration after deactivate(), modelling the
-attribute-creation error path. With v4, the same test, brightness restore,
-and 10,000 concurrent deactivate/reinitialise cycles pass ASan/UBSan.
-The harness substitutes mutexes and a one-element list for kernel
-primitives; it is not kernel fault injection or an RCU implementation test.
-
-V4 was tested on an ASUS ROG Flow X13 GV302XV with kernel
-7.2.12-200.fc44.x86_64 and no external monitor: brightness levels 1 and 2
-were restored after idle timeout and keyboard input, and 20 trigger
-activate/deactivate cycles passed. No kernel messages appeared during
-the test. The original brightness and trigger were restored afterwards.
-No full kernel build has been performed.
-
-LLM assistance was used for the implementation, tests and message drafts.
-
+Assisted-by: LLM
+Signed-off-by: Nikolay Plastinin <plaztininikolai@gmail.com>
 ---
-Changes in v4:
-- Clear trigger_data under input_events_data.lock before freeing per-LED
-  state in deactivate(), as suggested by Lee Jones. This also covers the
-  device_add_groups() error path, which deactivates before list removal.
-- Update the NULL-state comment to cover activation error unwind.
-- Patch 1 is unchanged.
-- Link to v3: https://lore.kernel.org/r/20261016-leds-input-events-brightness-v3-0-2c462cafe020@gmail.com
+ include/linux/leds.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-Changes in v3:
-- Replace led_trigger_walk_leds() with led_trigger_for_each_led(), an
-  RCU list iterator in include/linux/leds.h, as suggested by Lee Jones.
-- Remove the exported helper, callback typedef, and void-pointer argument.
-- Keep saving and restoring brightness in input_events_set_leds(), using
-  guard(rcu)() and a single loop for both the on and off paths.
-- Link to v2: https://lore.kernel.org/r/20260930-leds-input-events-brightness-v2-0-3948d3cddd83@gmail.com
+diff --git a/include/linux/leds.h b/include/linux/leds.h
+index a515f075c..675c58661 100644
+--- a/include/linux/leds.h
++++ b/include/linux/leds.h
+@@ -11,6 +11,7 @@
+ #include <dt-bindings/leds/common.h>
+ #include <linux/device.h>
+ #include <linux/mutex.h>
++#include <linux/rculist.h>
+ #include <linux/rwsem.h>
+ #include <linux/spinlock.h>
+ #include <linux/timer.h>
+@@ -502,6 +503,17 @@ struct led_trigger {
+ 	const struct attribute_group **groups;
+ };
+ 
++/**
++ * led_trigger_for_each_led - iterate over the LEDs attached to a trigger
++ * @pos: struct led_classdev pointer used as the loop cursor
++ * @trig: trigger whose LEDs are iterated
++ *
++ * The caller must hold the RCU read lock throughout the iteration and must
++ * not sleep while accessing the LEDs.
++ */
++#define led_trigger_for_each_led(pos, trig) \
++	list_for_each_entry_rcu(pos, &(trig)->led_cdevs, trig_list)
++
+ /*
+  * Currently the attributes in struct led_trigger::groups are added directly to
+  * the LED device. As this might change in the future, the following
 
-Changes in v2:
-- Keep the saved brightness in a per-LED struct allocated in activate()
-  and freed in deactivate(), stored in led_cdev->trigger_data, instead of
-  overloading blink_brightness (Lee Jones).
-- Add led_trigger_walk_leds() to led-triggers.c and use it instead of
-  walking led_cdevs/trig_list from the trigger (Lee Jones).
-- Use the Assisted-by tag format from coding-assistants.rst.
-- Link to v1: https://lore.kernel.org/r/20260924-leds-input-events-brightness-v1-1-b0ceff3a2343@gmail.com
-
----
-Nikolay Plastinin (2):
-      leds: triggers: Add led_trigger_for_each_led()
-      leds: trigger: input-events: Restore previous brightness on input
-
- drivers/leds/trigger/ledtrig-input-events.c | 76 ++++++++++++++++++++++++++---
- include/linux/leds.h                        | 12 +++++
- 2 files changed, 82 insertions(+), 6 deletions(-)
----
-base-commit: f475845eaf3d749114a63270bf2efea459e14dd2
-change-id: 20260924-leds-input-events-brightness-a76ae9a77b85
-
-Best regards,
 -- 
-Nikolay Plastinin <plaztininikolai@gmail.com>
+2.56.0
 
