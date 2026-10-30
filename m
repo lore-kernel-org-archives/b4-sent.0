@@ -1,84 +1,115 @@
-From: Ramses de Norre <ramses@well-founded.dev>
-Date: Fri, 30 Oct 2026 15:51:16 +0100
-Subject: [PATCH net v5 2/2] bonding: give a slave that starts UP a full
- arp_missed_max window
+From: Jonah Dybas <jonah.w.dybas@protonmail.com>
+Date: Fri, 30 Oct 2026 11:20:49 -0400
+Subject: [PATCH] HID: asus: add support for the GL553VW keyboard
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-bonding-last-rx-v5-2-0b9b653f2f94@well-founded.dev>
-References: <20261030-bonding-last-rx-v5-0-0b9b653f2f94@well-founded.dev>
-In-Reply-To: <20261030-bonding-last-rx-v5-0-0b9b653f2f94@well-founded.dev>
-To: Jay Vosburgh <jv@jvosburgh.net>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Jiri Bohac <jbohac@suse.cz>, 
- Eric Dumazet <edumazet@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Nikolay Aleksandrov <razor@blackwall.org>, 
- Hangbin Liu <hangbin.liu@linux.dev>, 
- Ramses de Norre <ramses@well-founded.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793371876; l=2527;
- i=ramses@well-founded.dev; s=20260817; h=from:subject:message-id;
- bh=Jz6XOf8wK/vTGG6FZBTatFH3vzBsN5U/CtOmPMLqDGk=;
- b=ud5UqZ2PLRoXHmclyAZZgFGIviPMEZlhFDBxo3uAxdNCzS98Svhl/pTlmP6yrpxt29Y9qiksT
- dbIMi1U6s/fAHsNXkverOD/afPHF/CnkXgtyU04JK6SzZpMnAoyhgKi
-X-Developer-Key: i=ramses@well-founded.dev; a=ed25519;
- pk=1vBXHBVeJBMaC+2Zuonl0QQhEgGIQHERyF5RZNnrCmw=
-X-Endpoint-Received: by B4 Relay for ramses@well-founded.dev/20260817 with auth_id=957
+Message-Id: <20261030-gl553vw-kbd-v1-1-cbbd88493511@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIANC15GoC/yXMTQ5AMBBA4avIrDVpSwlXEQutwSBI6y8Rd1csv
+ 8V7Fzi0hA7y4AKLOzmaJw8RBmC6amqRUe0NkstE8IizdlQq2g826JplcaVSZaQUOgVfLBYbOr9
+ bUf52m+7RrO8C7vsBeLuSt28AAAA=
+X-Change-ID: 20261030-gl553vw-kbd-94a575c221b7
+To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonah Dybas <jonah.w.dybas@protonmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793373648; l=3905;
+ i=jonah.w.dybas@protonmail.com; s=20261030; h=from:subject:message-id;
+ bh=MLUYdGu6qDugl1acxLXpGGQXtKgpDGo2n+A1gQJjwFM=;
+ b=ftLtJr/eej3b1KrFKugwpb2CftenPPYelJ4Db2+1A8KPOTC65Bu06xiLORpx579mIIHqR6SIE
+ ruSIK/eN2Y3BmmRVmy3QmEDom0LBgAneHpWJIi5B7lb77YzPBnqm2zC
+X-Developer-Key: i=jonah.w.dybas@protonmail.com; a=ed25519;
+ pk=xj+D5YSRYYNylSntmoQSj9kbGTB3QprYsXr53ZDSP0c=
+X-Endpoint-Received: by B4 Relay for jonah.w.dybas@protonmail.com/20261030 with auth_id=1363
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ARP monitor marks an UP slave DOWN once jiffies passes
-last_rx + arp_missed_max * arp_interval + arp_interval/2. bond_enslave()
-seeds last_rx one arp_interval (plus a tick) in the past, which brings
-the down deadline of a slave that starts UP forward by one interval
-compared to what arp_missed_max promises.
+The built-in keyboard of the ASUS GL553VW (ITE Device(8910),
+USB 0b05:8176) is handled by hid-generic, so its backlight cannot be
+controlled and the Fn+F3 and Fn+F4 backlight keys arrive as plain F3
+and F4.
 
-Active-backup mode hides this with a grace period after enslavement in
-bond_ab_arp_inspect(). Load-balance mode has no grace period after
-enslavement. With arp_missed_max=1 the deadline is half an interval
-after enslavement, and the first monitor run checks the slave before it
-sends the first probe. If that run lands in the second half of the
-interval, a healthy slave is reported "interface is now down" and comes
-back UP on the next run.
+The laptop's BIOS (306) offers no working WMI path either. DSTS for
+ASUS_WMI_DEVID_KBD_BACKLIGHT always returns 0x8000 and the related
+DEVS handler is an empty stub, so asus-wmi never registers
+asus::kbd_backlight on its own.
 
-Seed a slave that starts UP with last_link_up instead, so it gets a full
-arp_missed_max window for its first reply. bond_arp_rcv() and
-bond_na_rcv() only trust ARPs seen on backup slaves once the active
-slave's last_rx is after its last_link_up. A seed equal to last_link_up
-keeps that check false until a real reply arrives, as it is today.
+The keyboard does implement the vendor interface used by other ROG
+keyboards (usage page 0xff31, report 0x5a). After the "ASUS Tech.Inc."
+handshake it reports backlight support in the functions query and
+accepts "5a ba c5 c4 <level>" to set the brightness (0-3). The
+backlight keys are reported on the same report:
 
-This only covers a slave enslaved while the ARP monitor is running.
-When the monitor starts later, from bond_open() or when arp_interval is
-set at runtime, the seed is still as old as the time since enslavement,
-as it was before this patch.
+  5a c5 -> Fn+F3 (backlight down)
+  5a c4 -> Fn+F4 (backlight up)
 
-Fixes: 5944b5abd864 ("Bonding: add arp_missed_max option")
-Signed-off-by: Ramses de Norre <ramses@well-founded.dev>
+Add the device ID with QUIRK_USE_KBD_BACKLIGHT |
+QUIRK_ROG_NKEY_KEYBOARD.
+
+Tested on a GL553VW (BIOS 306) by binding the keyboard to hid-asus
+with these quirks through new_id on a 7.0-based kernel. The keyboard
+backlight (asus::kbd_backlight) is registered through the asus-wmi
+listener and can be changed from sysfs and the desktop. Fn+F3/Fn+F4
+adjust it, and the level is restored after suspend/resume.
+
+The investigation, this change and a first draft of this changelog
+were produced with the help of Claude Code (Claude Opus 5.5), then
+reviewed and tested on the hardware above.
+
+Signed-off-by: Jonah Dybas <jonah.w.dybas@protonmail.com>
 ---
- drivers/net/bonding/bond_main.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+- The handshake readback does not match the request, so probe logs
+  "Asus handshake 5a returned invalid response". It is only a warning.
+  The keyboard answers the handshake read with
+  "5a 05 20 31 00 08 01 00 ...", which looks like the reply to the
+  functions query, so it does not seem to echo the handshake at all.
+  The functions query that follows works and reports backlight support
+  (byte 6 = 0x01). Worth keeping in mind if the handshake check is ever
+  made strict.
+- Compile-tested against hid/for-next. I could not boot-test the
+  for-next build because Secure Boot on this machine rejects unsigned
+  modules. The hardware testing above used the distro 7.0 hid-asus with
+  the same quirks via new_id.
+- The investigation (ACPI table analysis, HID descriptor decoding,
+  hidraw experiments), this patch and a first draft of the changelog
+  were produced with the help of Claude Code. I reviewed the result
+  and ran the tests on my hardware.
+---
+ drivers/hid/hid-asus.c | 3 +++
+ drivers/hid/hid-ids.h  | 1 +
+ 2 files changed, 4 insertions(+)
 
-diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
-index 2f5638f4d3a78..84eafb607c370 100644
---- a/drivers/net/bonding/bond_main.c
-+++ b/drivers/net/bonding/bond_main.c
-@@ -2158,9 +2158,13 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
- 		new_slave->last_rx = jiffies -
- 			(2 * msecs_to_jiffies(bond->params.arp_interval) + 1);
- 	} else {
-+		/* Give a slave that starts UP a full arp_missed_max window.
-+		 * Not seeding it later than last_link_up keeps bond_arp_rcv()
-+		 * from trusting ARPs on backup slaves before the active one
-+		 * got a reply.
-+		 */
- 		new_slave->last_link_up = jiffies;
--		new_slave->last_rx = jiffies -
--			(msecs_to_jiffies(bond->params.arp_interval) + 1);
-+		new_slave->last_rx = new_slave->last_link_up;
- 	}
- 	for (i = 0; i < BOND_MAX_ARP_TARGETS; i++)
- 		new_slave->target_last_arp_rx[i] = new_slave->last_rx;
+diff --git a/drivers/hid/hid-asus.c b/drivers/hid/hid-asus.c
+index f6aa1be09..97b601f20 100644
+--- a/drivers/hid/hid-asus.c
++++ b/drivers/hid/hid-asus.c
+@@ -1814,6 +1814,9 @@ static const struct hid_device_id asus_devices[] = {
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
+ 		USB_DEVICE_ID_ASUSTEK_FX503VD_KEYBOARD),
+ 	  QUIRK_USE_KBD_BACKLIGHT },
++	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
++		USB_DEVICE_ID_ASUSTEK_GL553VW_KEYBOARD),
++	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD },
+ 	{ HID_USB_DEVICE(USB_VENDOR_ID_ASUSTEK,
+ 	    USB_DEVICE_ID_ASUSTEK_ROG_NKEY_KEYBOARD),
+ 	  QUIRK_USE_KBD_BACKLIGHT | QUIRK_ROG_NKEY_KEYBOARD },
+diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
+index 91319aa65..edf7bdd37 100644
+--- a/drivers/hid/hid-ids.h
++++ b/drivers/hid/hid-ids.h
+@@ -234,6 +234,7 @@
+ #define USB_DEVICE_ID_ASUSTEK_ROG_NKEY_ALLY_X		0x1b4c
+ #define USB_DEVICE_ID_ASUSTEK_ROG_CLAYMORE_II_KEYBOARD	0x196b
+ #define USB_DEVICE_ID_ASUSTEK_FX503VD_KEYBOARD	0x1869
++#define USB_DEVICE_ID_ASUSTEK_GL553VW_KEYBOARD	0x8176
+ #define USB_DEVICE_ID_ASUSTEK_XGM_2022	0x1970
+ #define USB_DEVICE_ID_ASUSTEK_XGM_2023	0x1a9a
+ 
 
--- 
-2.56.0
+---
+base-commit: 720806515cb6921ab05caaa6f470f7054b56385e
+change-id: 20261030-gl553vw-kbd-94a575c221b7
+
+Best regards,
+--  
+Jonah Dybas <jonah.w.dybas@protonmail.com>
 
