@@ -1,142 +1,100 @@
-From: "Jesper L. Nielsen" <jln@pascal-audio.com>
-Date: Fri, 30 Oct 2026 14:19:27 +0100
-Subject: [PATCH net] net: ethernet: ti: am65-cpts: keep port and direction
- when matching PTPv1 TX timestamps
+From: Nikolay Plastinin <plaztininikolai@gmail.com>
+Subject: [PATCH v4 0/2] leds: trigger: input-events: Restore previous
+ brightness on input
+Date: Fri, 30 Oct 2026 21:51:30 +0800
+Message-Id: <20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-am65-cpts-ptpv1-v1-1-0bb4c370d970@pascal-audio.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAA/x3MQQqAIBBA0avErBtQS4OuEi1immoWmahEEN49a
- fkW/7+QOAonGJsXIt+S5PIVum2AjsXvjLJWg1HGadUpXE5nkUJOGHK4NfaWqKPBDG41UKsQeZP
- nP07gOcNcygdL26HJZgAAAA==
-X-Change-ID: 20261030-am65-cpts-ptpv1-45cc3c7276d2
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- Martin Kaistra <martin.kaistra@linutronix.de>, 
- Andrew Lunn <andrew+netdev@lunn.ch>
-Cc: Siddharth Vadapalli <s-vadapalli@ti.com>, 
- Roger Quadros <rogerq@kernel.org>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, "Jesper L. Nielsen" <jln@pascal-audio.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793366377; l=4797;
- i=jln@pascal-audio.com; s=20261030; h=from:subject:message-id;
- bh=g6Pxn3bL6YJURZnn2XnFYFyzwaZXA1q8XNApH4S0gc0=;
- b=xQAFVSNuNnPJi5w8tieHSuPlpBwr23QvEXWNtHDkYUmj8l7yDrjbop23tn0mEy2zxa4A/2wfA
- JP8iYtxXW+qAt4mIdWzf9Wp76g8Z+NF7rbDdLIsYVQbHQ6nhJBOGap0
-X-Developer-Key: i=jln@pascal-audio.com; a=ed25519;
- pk=HN4GIuN0bzT/+cWaO2W1D3+3WUOlizjI/JLKLramukQ=
-X-Endpoint-Received: by B4 Relay for jln@pascal-audio.com/20261030 with auth_id=1362
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Nu47CMBCF4VdBrhlkj00uVLzHagvHniQjgRPZW
+ WsRyrtjKBASBZT/Kb5zFYkiUxKHzVVEypx4CiXMdiPcaMNAwL60QImVbNHAiXwCDvPfApQpLAm
+ 6yMO4BEoJbF1Zam1dd81eFGKO1PP/g//5LT1yWqZ4ebxldV+/hLMCBZ101Pfaojb6OJwtn3ZuO
+ os7nPEF0/IDhiBBt6bx2nnvmzdMPzElVfUB0wVDZyp0tieJ8hVb1/UGcwEvD2IBAAA=
+X-Change-ID: 20260924-leds-input-events-brightness-a76ae9a77b85
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
+Cc: Hans de Goede <hansg@kernel.org>, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nikolay Plastinin <plaztininikolai@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793368292; l=3666;
+ i=plaztininikolai@gmail.com; s=20260924; h=from:subject:message-id;
+ bh=TqfNC0LMUz3nz/opoj1+J7OcrmSpnFYU8zd02dPuZfo=;
+ b=L3LbvudhFfLquOXHsn845Su6kFcFrxuQCzBgVsheOXwjGRXtmYd/SRGpeX/inSfaRveFKZyG5
+ 8ts/vXyEKtvDyR9TV/Kptezr5pTv4qxa44UFRoVfowNtqrHDc7ZtXjh
+X-Developer-Key: i=plaztininikolai@gmail.com; a=ed25519;
+ pk=bmHrETa14IbiLNkJSoiLqUMni+IeSFwhOSDM4vVFN4s=
+X-Endpoint-Received: by B4 Relay for plaztininikolai@gmail.com/20260924 with auth_id=1052
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The CPTS reports the message type of a timestamp event using the PTPv2
-header layout, i.e. the low nibble of the first header byte. In a PTPv1
-header that byte is the upper byte of versionPTP and always 0, so every
-PTPv1 event is reported as message type 0, while
-am65_skb_get_mtype_seqid() reads the PTPv1 message type from the control
-field. To make PTPv1 match at all, commit 1b9e743e923b ("net: ethernet:
-ti: am65-cpts: Fix PTPv1 message type on TX packets") overwrites the
-whole value compared against the skb with the skb's own value once the
-sequence ids are equal. That throws away the event type and the port
-number of the event as well, so a PTPv1 skb matches any TX event with
-the same sequence id on either port. For PTPv1 this defeats
-commit a23c657e332f ("net: ethernet: ti: am65-cpsw: Use also port number to identify timestamps").
-The overwritten value also sticks for the rest of the TX queue walk.
+The input-events trigger turns LEDs back on with LED_FULL, so a keyboard
+backlight with several levels always comes back at maximum after being
+idle. This series restores the level the user picked instead.
 
-Since every PTPv1 frame reads as message type 0, the hardware timestamps
-all PTPv1 frames to UDP ports 319 and 320, including Follow_Up and
-Delay_Resp, for which no skb waits. With a PTPv1 master on both ports
-whose sequence ids run in step (e.g. a Dante device with primary and
-secondary network started at the same time), the unclaimed TX event of
-Follow_Up N on one port is still on the event list when the other port
-queues Sync N, and am65_cpts_find_tx_ts() tries to match before it
-checks for expiry. Sync N then gets the transmit time of the other
-port's Follow_Up N, and the master announces a preciseOriginTimestamp up
-to one Sync interval early to every slave on that network.
+Patch 1 adds led_trigger_for_each_led(), an RCU list iterator in leds.h.
+Patch 2 uses it to save and restore each LED's brightness in one loop,
+with per-LED state allocated in activate() and freed in deactivate().
+There is no new exported function or callback API.
 
-For PTPv1 replace only the message type of the event with the skb's and
-keep its event type, port number and sequence id, and compute the value
-per skb.
+This came up while looking at a keyboard backlight idle timeout for ASUS
+laptops in asusctl:
+https://github.com/OpenGamingCollective/asusctl/issues/98
 
-Tested on AM62x with ti-linux-6.12.y and the port number commit backported:
-without this patch every boot in which both ports started PTP together
-(10 of 10) sent wrong Sync timestamps, with it none did (0 of 29).
+Validation for v4: the module builds out of tree with W=1 against Fedora
+7.2.12-200.fc44.x86_64 using the patched leds.h. A user-space harness using
+the driver functions reproduces a heap-use-after-free with v3 when the
+LED remains in the iteration after deactivate(), modelling the
+attribute-creation error path. With v4, the same test, brightness restore,
+and 10,000 concurrent deactivate/reinitialise cycles pass ASan/UBSan.
+The harness substitutes mutexes and a one-element list for kernel
+primitives; it is not kernel fault injection or an RCU implementation test.
 
-The bug was tracked down, and this fix and changelog drafted, with the
-help of an AI coding assistant (Claude). I reviewed and tested it on
-hardware as described above.
+V4 was tested on an ASUS ROG Flow X13 GV302XV with kernel
+7.2.12-200.fc44.x86_64 and no external monitor: brightness levels 1 and 2
+were restored after idle timeout and keyboard input, and 20 trigger
+activate/deactivate cycles passed. No kernel messages appeared during
+the test. The original brightness and trigger were restored afterwards.
+No full kernel build has been performed.
 
-Fixes: a23c657e332f ("net: ethernet: ti: am65-cpsw: Use also port number to identify timestamps")
-Signed-off-by: Jesper L. Nielsen <jln@pascal-audio.com>
----
- drivers/net/ethernet/ti/am65-cpts.c | 32 ++++++++++++++++++++++++++------
- 1 file changed, 26 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/net/ethernet/ti/am65-cpts.c b/drivers/net/ethernet/ti/am65-cpts.c
-index df5659ead7..e30fae0bcd 100644
---- a/drivers/net/ethernet/ti/am65-cpts.c
-+++ b/drivers/net/ethernet/ti/am65-cpts.c
-@@ -788,6 +788,29 @@ static struct ptp_clock_info am65_ptp_info = {
- 	.do_aux_work	= am65_cpts_ts_work,
- };
- 
-+/*
-+ * The CPTS decodes the message type of an event using the PTPv2 header
-+ * layout. For PTPv1 that nibble is part of versionPTP and always reads 0,
-+ * while am65_skb_get_mtype_seqid() takes the message type from the PTPv1
-+ * control field. For PTPv1 take the message type from the skb, but keep
-+ * the event type, port number and sequence id of the event so that an
-+ * event only matches a packet of the same direction on the same port.
-+ */
-+static u32 am65_cpts_event_mtype_seqid(struct am65_cpts_event *event,
-+				       u32 skb_mtype_seqid,
-+				       unsigned int ptp_class)
-+{
-+	u32 mtype_seqid = event->event1;
-+
-+	if (ptp_class & PTP_CLASS_V1) {
-+		mtype_seqid &= ~AM65_CPTS_EVENT_1_MESSAGE_TYPE_MASK;
-+		mtype_seqid |= skb_mtype_seqid &
-+			       AM65_CPTS_EVENT_1_MESSAGE_TYPE_MASK;
-+	}
-+
-+	return mtype_seqid;
-+}
-+
- static bool am65_cpts_match_tx_ts(struct am65_cpts *cpts,
- 				  struct am65_cpts_event *event)
- {
-@@ -797,7 +820,6 @@ static bool am65_cpts_match_tx_ts(struct am65_cpts *cpts,
- 	bool found = false;
- 	u32 mtype_seqid;
- 
--	mtype_seqid = event->event1;
- 	__skb_queue_head_init(&txq_list);
- 
- 	spin_lock_irqsave(&cpts->txq.lock, flags);
-@@ -810,11 +832,9 @@ static bool am65_cpts_match_tx_ts(struct am65_cpts *cpts,
- 		struct am65_cpts_skb_cb_data *skb_cb =
- 					(struct am65_cpts_skb_cb_data *)skb->cb;
- 
--		if ((ptp_classify_raw(skb) & PTP_CLASS_V1) &&
--		    ((mtype_seqid & AM65_CPTS_EVENT_1_SEQUENCE_ID_MASK) ==
--		     (skb_cb->skb_mtype_seqid & AM65_CPTS_EVENT_1_SEQUENCE_ID_MASK)))
--			mtype_seqid = skb_cb->skb_mtype_seqid;
--
-+		mtype_seqid = am65_cpts_event_mtype_seqid(event,
-+							  skb_cb->skb_mtype_seqid,
-+							  ptp_classify_raw(skb));
- 		if (mtype_seqid == skb_cb->skb_mtype_seqid) {
- 			u64 ns = event->timestamp;
- 
+LLM assistance was used for the implementation, tests and message drafts.
 
 ---
-base-commit: 5838f10563d58afca6711edb5e4eda968ca181d9
-change-id: 20261030-am65-cpts-ptpv1-45cc3c7276d2
+Changes in v4:
+- Clear trigger_data under input_events_data.lock before freeing per-LED
+  state in deactivate(), as suggested by Lee Jones. This also covers the
+  device_add_groups() error path, which deactivates before list removal.
+- Update the NULL-state comment to cover activation error unwind.
+- Patch 1 is unchanged.
+- Link to v3: https://lore.kernel.org/r/20261016-leds-input-events-brightness-v3-0-2c462cafe020@gmail.com
+
+Changes in v3:
+- Replace led_trigger_walk_leds() with led_trigger_for_each_led(), an
+  RCU list iterator in include/linux/leds.h, as suggested by Lee Jones.
+- Remove the exported helper, callback typedef, and void-pointer argument.
+- Keep saving and restoring brightness in input_events_set_leds(), using
+  guard(rcu)() and a single loop for both the on and off paths.
+- Link to v2: https://lore.kernel.org/r/20260930-leds-input-events-brightness-v2-0-3948d3cddd83@gmail.com
+
+Changes in v2:
+- Keep the saved brightness in a per-LED struct allocated in activate()
+  and freed in deactivate(), stored in led_cdev->trigger_data, instead of
+  overloading blink_brightness (Lee Jones).
+- Add led_trigger_walk_leds() to led-triggers.c and use it instead of
+  walking led_cdevs/trig_list from the trigger (Lee Jones).
+- Use the Assisted-by tag format from coding-assistants.rst.
+- Link to v1: https://lore.kernel.org/r/20260924-leds-input-events-brightness-v1-1-b0ceff3a2343@gmail.com
+
+---
+Nikolay Plastinin (2):
+      leds: triggers: Add led_trigger_for_each_led()
+      leds: trigger: input-events: Restore previous brightness on input
+
+ drivers/leds/trigger/ledtrig-input-events.c | 76 ++++++++++++++++++++++++++---
+ include/linux/leds.h                        | 12 +++++
+ 2 files changed, 82 insertions(+), 6 deletions(-)
+---
+base-commit: f475845eaf3d749114a63270bf2efea459e14dd2
+change-id: 20260924-leds-input-events-brightness-a76ae9a77b85
 
 Best regards,
---  
-Jesper L. Nielsen <jln@pascal-audio.com>
+-- 
+Nikolay Plastinin <plaztininikolai@gmail.com>
 
