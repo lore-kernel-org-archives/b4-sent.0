@@ -1,99 +1,75 @@
 From: Jason Lee <jay@ruby.im>
-Date: Fri, 30 Oct 2026 20:12:49 -0400
-Subject: [PATCH] HID: logitech-dj: Silently drop the G602 vendor report
+Date: Fri, 30 Oct 2026 20:13:01 -0400
+Subject: [PATCH] wifi: ath11k: Warn when loading regdb fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261030-hid-logitech-dj-report-log-v1-1-11e33ba05106@ruby.im>
-X-B4-Tracking: v=1; b=H4sIAIAy5WoC/yXMQQqDMBBA0avIrDsQUwy2Vyld6GQ0I8XIJIog3
- r2xXb6/+AckVuEEz+oA5U2SxLmgvlVAoZtHRvHFYI11tbkbDOLxE0fJTAH9hMpL1HwlbMhR1zx
- 672wLZbAoD7L/5q/332ntJ6Z8HeE8v6QZ1QF+AAAA
-X-Change-ID: 20261030-hid-logitech-dj-report-log-5c6ca59bd628
-To: =?utf-8?q?Filipe_La=C3=ADns?= <lains@riseup.net>, 
- Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Hans de Goede <hansg@kernel.org>, Jason Lee <jay@ruby.im>
+Message-Id: <20261030-ath11k-regdb-warn-v1-1-17738169bcc5@ruby.im>
+X-B4-Tracking: v=1; b=H4sIAIwy5WoC/yXMTQqEMAxA4atI1hNoHEbUq8gsqo0ahSqpPwPi3
+ afq8lu8d0BgFQ5QJgcobxJk8hH0SqDpre8YxUVDatKMzNugXXqiEZU7V+Nu1aP5FK5oyVGeE8R
+ uVm7ldz+r7+Ow1gM3yzWC8/wDKqzbJ3UAAAA=
+X-Change-ID: 20261030-ath11k-regdb-warn-059d9f1d1881
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Jason Lee <jay@ruby.im>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793405579; l=2837;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793405586; l=1920;
  i=jay@ruby.im; s=20261030; h=from:subject:message-id;
- bh=I1de0OPh3QAdhK16Qx/LZrN+CVkA1e95vFNyssyrv9w=;
- b=5LhGD3dZwizDh75sDmST6C8U34zl9TzgSCgfgxcxF2komIOZsiw/PMmDys2mSG11ujDCAnVzT
- IMCaJfGrUcRAhoMoFGbQLqGt546sHRuyiWWQ1ItHJby2PpPbmq9EQZJ
+ bh=JfWZf+GvrJDa+0KJN3EFYz0wha5Nl7sP4WnES3xHdHM=;
+ b=Y0+BzrE+FuAYMu7499B6t/YD5DPOiDS+dkw7KR70KC0Ww1aeLrvB3cBd/GJVmdK0b4WTuW42q
+ rMdPqzZmLN8D2uwmKbCgu04Jn9XERqikmJaiyuRhpeNnvKshE/EW+sQ
 X-Developer-Key: i=jay@ruby.im; a=ed25519;
  pk=nwVVsNgYUApfCPxmvZyTv0afv7bOSDky/hRrOjJKzys=
 X-Endpoint-Received: by B4 Relay for jay@ruby.im/20261030 with auth_id=1367
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since the G602 receiver (046d:c537) was added, every mouse click logs
-(as logitech-djreceiver 0003:046D:C537.000A):
+ath11k_qmi_event_load_bdf() loads the regulatory database before the
+board data file on hardware that supports it, but ignores the return
+value of ath11k_qmi_load_bdf_qmi(ab, true). When the regdb is present
+and cannot be loaded, the driver carries on silently and nothing in the
+log says why the external regdb.bin is not being used.
 
-  Unexpected input report number 128
+regdb.bin is optional, so a missing file (-ENOENT) stays quiet, as it
+is today (ath11k_core_fetch_regdb() already reports it at debug level).
+Any other error is now reported with a warning. Loading still continues
+either way, so behaviour does not change.
 
-One user counted 2353 of these lines in a single boot, and the bug has
-been reported against kernels from 5.10 to 6.16. Some users blacklist
-hid_logitech_dj just to get rid of them.
+Compile tested only.
 
-Report 0x80 is a vendor report in the receiver's report descriptor.
-logi_dj_recv_forward_input_report() can only forward reports up to
-REPORT_TYPE_RFREPORT_LAST, because it uses the report number as a bit
-in reports_supported. Nothing in the driver needs this report, and
-logi_dj_raw_event() returns false afterwards, so HID core still
-handles it on the receiver.
-
-Hans de Goede suggested in 2021 that the driver should recognise this
-report and silently discard it. Do that, and keep the error for any
-other unexpected report number.
-
-Fixes: e400071a805d ("HID: logitech-dj: add the G602 receiver")
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=215796
-Link: https://lore.kernel.org/lkml/cb14d9fb-9928-4c62-a087-b1a54202d65a@redhat.com/
-Suggested-by: Hans de Goede <hansg@kernel.org>
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=216664
 Signed-off-by: Jason Lee <jay@ruby.im>
 ---
-An earlier patch for this ("HID: logitech-dj: stop G602 mouse dmesg
-flooding", 2025-02-25) checked the receiver's product ID and got no
-replies; this version follows Hans de Goede's 2021 suggestion instead.
-
-Compile tested only; I don't have a G602 to test with.
+Compile tested only (x86_64 defconfig + ATH11K/ATH11K_PCI=m, W=1, no new
+warnings); I don't have ath11k hardware to test on.
 
 An AI assistant helped find this bug report and draft the change.
 ---
- drivers/hid/hid-logitech-dj.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+ drivers/net/wireless/ath/ath11k/qmi.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/hid/hid-logitech-dj.c b/drivers/hid/hid-logitech-dj.c
-index 6e8db01d27..a433e2ac76 100644
---- a/drivers/hid/hid-logitech-dj.c
-+++ b/drivers/hid/hid-logitech-dj.c
-@@ -40,6 +40,9 @@
- #define REPORT_TYPE_RFREPORT_FIRST		0x01
- #define REPORT_TYPE_RFREPORT_LAST		0x1F
- 
-+/* Vendor report sent by the G602 receiver (0xc537) on every click */
-+#define REPORT_ID_G602_VENDOR			0x80
-+
- /* Command Switch to DJ mode */
- #define REPORT_TYPE_CMD_SWITCH			0x80
- #define CMD_SWITCH_PARAM_DEVBITFIELD		0x00
-@@ -1245,7 +1248,13 @@ static void logi_dj_recv_forward_input_report(struct hid_device *hdev,
- 	int i;
- 
- 	if (report > REPORT_TYPE_RFREPORT_LAST) {
--		hid_err(hdev, "Unexpected input report number %d\n", report);
-+		/*
-+		 * No paired device consumes the G602 vendor report, and HID
-+		 * core still handles it on the receiver, so drop it quietly.
-+		 */
-+		if (report != REPORT_ID_G602_VENDOR)
-+			hid_err(hdev, "Unexpected input report number %d\n",
-+				report);
- 		return;
+diff --git a/drivers/net/wireless/ath/ath11k/qmi.c b/drivers/net/wireless/ath/ath11k/qmi.c
+index 7dc07339b9..e8096aca96 100644
+--- a/drivers/net/wireless/ath/ath11k/qmi.c
++++ b/drivers/net/wireless/ath/ath11k/qmi.c
+@@ -2976,8 +2976,12 @@ static int ath11k_qmi_event_load_bdf(struct ath11k_qmi *qmi)
+ 		return ret;
  	}
  
+-	if (ab->hw_params.supports_regdb)
+-		ath11k_qmi_load_bdf_qmi(ab, true);
++	if (ab->hw_params.supports_regdb) {
++		/* regdb is optional, so a missing file is not an error */
++		ret = ath11k_qmi_load_bdf_qmi(ab, true);
++		if (ret < 0 && ret != -ENOENT)
++			ath11k_warn(ab, "failed to load regdb file: %d\n", ret);
++	}
+ 
+ 	ret = ath11k_qmi_load_bdf_qmi(ab, false);
+ 	if (ret < 0) {
 
 ---
 base-commit: a9547379cb381e2a036e3261a6becc17973ac470
-change-id: 20261030-hid-logitech-dj-report-log-5c6ca59bd628
+change-id: 20261030-ath11k-regdb-warn-059d9f1d1881
 
 Best regards,
 --  
