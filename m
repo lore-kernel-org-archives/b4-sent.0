@@ -1,167 +1,117 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Sat, 31 Oct 2026 15:54:05 +0000
-Subject: [PATCH nf] netfilter: nft_set_rbtree: do not pair an expired start
- with another interval's end
+Date: Sat, 31 Oct 2026 16:06:02 +0000
+Subject: [PATCH] hugetlbfs: emit hugetlbfs_free_inode from
+ ->destroy_inode()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261031-b4-nft-rbtree-gc-v1-1-51d087c187a6@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABwP5moC/x3MPQqAMAxA4atIZgNtFUWvIg79SWuWKqmIIN7d4
- vgN7z1QSJgKzM0DQhcX3nOFbhvwm82JkEM1GGUGrTqNrsccTxR3ChEmjzpMfjTBWeMC1OwQinz
- /ywVyhPV9P2GHHG1mAAAA
-To: Pablo Neira Ayuso <pablo@netfilter.org>, 
- Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joas Antonio dos Santos <joasantonio108@gmail.com>
+Message-Id: <20261031-b4-hugetlbfs-trace-v1-1-4ec8d02a30cc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOkR5moC/x3MSwqAMAwA0atI1gasrR+8irhoNGpAVNoqQvHuF
+ pdvMRPBsxP20GURHN/i5dgTVJ7BuNp9YZQpGcqirFWhFZLB9Vo4bDR7DM6OjNoo0rq1VDUEKTw
+ dz/L803543w8rE6aMZAAAAA==
+To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
+ David Hildenbrand <david@kernel.org>
+Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>, 
+ Hongbo Li <lihongbo22@huawei.com>, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ syzbot+91e1fc35f51774c479b2@syzkaller.appspotmail.com, 
+ stable@vger.kernel.org, Joas Antonio dos Santos <joasantonio108@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793462044; l=6188;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793462761; l=3980;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=TXKOw0AxzyY7cMw4G7eFALzoeAvz3Y6zIv9RayVZTE4=;
- b=/rn2K5I4dav/QPkX0MaECT7axMWE8jro/pg2Q2KvcLdtZwbnQSGzDkOufsj8iPvvWTppNgxGE
- dk97FoPqZCiC6VN2jy53gJEmH+KX3tZjDswEu4TfzD/oZHO8eBxe3Yt
+ bh=CimqNwtPRA6nxILdhyc+0Xn4gqEkC2G7lMQ2JLmnouo=;
+ b=yjuS2uTzQ9DedPHbuDm6WP0AuJe1WwYvU3AL0T/UCB287QqTTK/wXTcArMWRSVnwIEyUeH8rb
+ qV6kSiKFMPyCX4BeVFMi8oIBqxxY16vKLP3MQWAKCoduXNPhXggr+3X
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Garbage collection of an expired interval start element also removes its
-end element. Both the insertion path, nft_rbtree_gc_elem(), and the
-commit path, nft_rbtree_gc_scan(), find that end element by its position
-in the tree, and both can pick the end element of a different, live
-interval:
+hugetlbfs_free_inode() calls trace_hugetlbfs_free_inode(), and the
+hugetlbfs__inode event class records inode->i_sb->s_dev.  ->free_inode()
+runs from an RCU callback (destroy_inode() queues i_callback() with
+call_rcu()), and Documentation/filesystems/porting.rst says that this
+callback "is *NOT* ordered wrt superblock destruction; as the matter of
+fact, the superblock and all associated structures might be already
+gone".  put_super() frees the superblock with call_rcu() followed by a
+workqueue item (destroy_super_rcu() -> destroy_super_work()).  syzbot
+hit this with the event enabled:
 
-- nft_rbtree_gc_elem() walks towards higher keys and skips end elements
-  that are not active in both generations. If the end element of the
-  expired interval is being deleted in the same transaction, the walk
-  skips it, passes the start element of the next interval and takes that
-  interval's end element instead.
+  BUG: KASAN: slab-use-after-free in trace_event_raw_event_hugetlbfs__inode+0x45b/0x4c0 include/trace/events/hugetlbfs.h:36
+  Read of size 4 at addr ffff888038850010 by task syz-executor952/6134
+   hugetlbfs_free_inode+0x15e/0x1f0 fs/hugetlbfs/inode.c:1182
+   i_callback+0x46/0x80 fs/inode.c:317
+   rcu_do_batch kernel/rcu/tree.c:2650 [inline]
+   rcu_core+0x5f0/0x1220 kernel/rcu/tree.c:2919
+  Allocated by task 6134:
+   alloc_super fs/super.c:326 [inline]
+   sget_fc+0x1ba/0x1f60 fs/super.c:874
+   hugetlbfs_get_tree+0x1e7/0x2b0 fs/hugetlbfs/inode.c:1431
+  Freed by task 855:
+   kfree+0x22b/0x6d0 mm/slub.c:6923
+   process_one_work+0xac7/0x1b10 kernel/workqueue.c:3495
 
-- nft_rbtree_gc_scan() remembers the last end element it visited in
-  rbe_end, but does not clear it when it visits a live start element. An
-  expired start element without an end element (a start-only element, or
-  an interval whose end element was already removed) then takes the end
-  element of the live interval above it.
+Emit the event from hugetlbfs_destroy_inode() instead.  destroy_inode()
+calls ->destroy_inode() synchronously, before it queues the RCU
+callback, while the superblock is still alive; hugetlbfs_destroy_inode()
+already dereferences inode->i_sb there.  ->free_inode() is left with
+only the kmem_cache_free().
 
-In both cases the live interval [S, E) loses E: the set no longer holds
-the interval that userspace added, and deleting [S, E) later fails with
-ENOENT.
-
-In the insertion path, stop the walk at the first element that is active
-in the current generation. Elements added by this transaction are still
-skipped, as intended by commit 60c0c230c6f0 ("netfilter: nft_set_rbtree:
-skip end interval element from gc"). If that element is a start element,
-the expired interval has no end element. If it is an end element that
-this transaction is removing, leave it to the transaction. In the commit
-path, clear rbe_end when a live start element is visited.
-
-Reproduced on current mainline under QEMU (arm64, KASAN), from an
-unprivileged user in a new user and network namespace:
-
-- insertion path: add [10,20) with a 50ms timeout and [30,40), wait,
-  then in one batch delete the end element 20 and add [12,13).
-  Before: a GET for 45 finds an element, the end element 40 is gone and
-  deleting [30,40) fails with ENOENT. After: 45 is not found, 40 is
-  present and the delete succeeds.
-
-- commit path: add [30,40) and a start-only element 10 with a 50ms
-  timeout to a set with a 100ms gc interval, wait, then add [200,201),
-  whose insertion walk stops at the highest element, so only the
-  commit-time scan reaches 10. Before: the end element 40 is gone and
-  deleting [30,40) fails with ENOENT. After: both work.
-
-Normal expiry, and a new interval whose end element shares the key of an
-expired start element (the case handled by 60c0c230c6f0), behave the same
-before and after. About 39000 random batches on interval sets with
-timeouts, with and without slab/page allocation fault injection, showed
-no KASAN, lockdep or WARN reports with the patch applied.
-
-The insertion path issue was found with a small nfnetlink fuzzer. Both
-paths had been pointed out earlier by the netdev AI review of commit
-86b6471e690c ("netfilter: nft_set_rbtree: skip transaction elements
-during GC"), see the Link below.
-
-Fixes: f718863aca46 ("netfilter: nft_set_rbtree: fix overlap expiration walk")
-Fixes: 8d8540c4f5e0 ("netfilter: nft_set_rbtree: add timeout support")
-Link: https://lore.kernel.org/all/179063970372.3145.17414936987144600093@kernel.org/
+Fixes: 014ad7c42a69 ("hugetlbfs: use tracepoints in hugetlbfs functions.")
+Reported-by: syzbot+91e1fc35f51774c479b2@syzkaller.appspotmail.com
+Closes: https://lore.kernel.org/all/6ae27525.5451848c.f7707.0001.GAE@google.com/
+Cc: stable@vger.kernel.org
 Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
-Tool-use note: the fuzzer, the directed tests and the analysis were
-prepared with help from an LLM-based assistant; I reviewed the change
-and built and ran all tests myself. Test harness available on request.
+Resend: my mail provider blocked the original submission to the lists
+on 2026-10-29, so only the direct recipients got it. No change to the
+patch, except dropping a deprecated Assisted-by trailer.
 
-This is a resend through the kernel.org web endpoint: my earlier
-submission of this patch was blocked by my mail provider and never
-reached the lists.
+David asked whether the tracepoint should be renamed now that it no
+longer fires from ->free_inode(). I'd keep this patch as is, since it
+is tagged for stable and the event name is visible in tracefs
+(events/hugetlbfs/hugetlbfs_free_inode); renaming it in stable kernels
+would break existing tracing setups just to fix the use-after-free. I
+can send a follow-up for mm-unstable that renames it to
+hugetlbfs_destroy_inode, next to hugetlbfs_evict_inode, or fold the
+rename into a v2 if preferred.
+
+Tested with the syzbot C reproducer on a KASAN kernel with the event
+enabled: the use-after-free reproduced in 3 of 3 boots without the
+patch and in none of 12 runs with it, and the event is still emitted.
+
+Tool-use note: the analysis and testing were done with help from an
+LLM-based assistant; I reviewed the change and ran the tests myself.
 ---
- net/netfilter/nft_set_rbtree.c | 23 +++++++++++++++++++----
- 1 file changed, 19 insertions(+), 4 deletions(-)
+ fs/hugetlbfs/inode.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/net/netfilter/nft_set_rbtree.c b/net/netfilter/nft_set_rbtree.c
-index fbe1750f1..086823067 100644
---- a/net/netfilter/nft_set_rbtree.c
-+++ b/net/netfilter/nft_set_rbtree.c
-@@ -215,17 +215,25 @@ nft_rbtree_gc_elem(const struct nft_set *__set, struct nft_rbtree *priv,
- 	struct nft_set *set = (struct nft_set *)__set;
- 	struct rb_node *prev = rb_prev(&rbe->node);
- 	struct net *net = read_pnet(&set->net);
-+	u8 cur_genmask = nft_genmask_cur(net);
- 	struct nft_rbtree_elem *rbe_prev;
+diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
+index 01c4d6f44..5bd348288 100644
+--- a/fs/hugetlbfs/inode.c
++++ b/fs/hugetlbfs/inode.c
+@@ -1179,12 +1179,16 @@ static struct inode *hugetlbfs_alloc_inode(struct super_block *sb)
  
- 	/* search for end interval coming before this element.
- 	 * end intervals don't carry a timeout extension, they
- 	 * are coupled with the interval start element.
-+	 *
-+	 * Skip elements added in this transaction. The first element
-+	 * that is active in the current generation is either the end
-+	 * element of this interval or the start element of another
-+	 * interval, in which case this interval has no end element.
- 	 */
- 	while (prev) {
- 		rbe_prev = rb_entry(prev, struct nft_rbtree_elem, node);
--		if (nft_rbtree_interval_end(rbe_prev) &&
--		    nft_set_elem_active(&rbe_prev->ext, NFT_GENMASK_ANY))
-+		if (nft_set_elem_active(&rbe_prev->ext, cur_genmask)) {
-+			if (!nft_rbtree_interval_end(rbe_prev))
-+				prev = NULL;
- 			break;
-+		}
+ static void hugetlbfs_free_inode(struct inode *inode)
+ {
+-	trace_hugetlbfs_free_inode(inode);
+ 	kmem_cache_free(hugetlbfs_inode_cachep, HUGETLBFS_I(inode));
+ }
  
- 		prev = rb_prev(prev);
- 	}
-@@ -233,7 +241,11 @@ nft_rbtree_gc_elem(const struct nft_set *__set, struct nft_rbtree *priv,
- 	rbe_prev = NULL;
- 	if (prev) {
- 		rbe_prev = rb_entry(prev, struct nft_rbtree_elem, node);
--		nft_rbtree_gc_elem_move(net, set, priv, rbe_prev);
-+		/* end element is being removed by this transaction */
-+		if (nft_set_elem_active(&rbe_prev->ext, NFT_GENMASK_ANY))
-+			nft_rbtree_gc_elem_move(net, set, priv, rbe_prev);
-+		else
-+			rbe_prev = NULL;
- 	}
+ static void hugetlbfs_destroy_inode(struct inode *inode)
+ {
++	/*
++	 * Not in ->free_inode(): that runs from an RCU callback, when the
++	 * superblock the event reads may already be freed.
++	 */
++	trace_hugetlbfs_free_inode(inode);
+ 	hugetlbfs_inc_free_inodes(HUGETLBFS_SB(inode->i_sb));
+ }
  
- 	nft_rbtree_gc_elem_move(net, set, priv, rbe);
-@@ -911,8 +923,11 @@ static void nft_rbtree_gc_scan(struct nft_set *set)
- 			rbe_end = rbe;
- 			continue;
- 		}
--		if (!__nft_set_elem_expired(&rbe->ext, tstamp))
-+		if (!__nft_set_elem_expired(&rbe->ext, tstamp)) {
-+			/* rbe_end belongs to this live interval */
-+			rbe_end = NULL;
- 			continue;
-+		}
- 
- 		/* end element needs to be removed first, it has
- 		 * no timeout extension.
 
 ---
 base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261031-b4-nft-rbtree-gc-1d9c72dba2bd
+change-id: 20261031-b4-hugetlbfs-trace-341b338ab57b
 
 Best regards,
 -- 
