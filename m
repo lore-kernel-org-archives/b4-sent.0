@@ -1,94 +1,106 @@
 From: Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
-Subject: [PATCH 0/3] Bluetooth: Fix LE on Barrot 33fa:0010 controllers
-Date: Sat, 31 Oct 2026 13:16:14 +0100
-Message-Id: <20261031-barrot-le-fixes-v1-v1-0-30e2089882bf@tambosi.tn.it>
+Date: Sat, 31 Oct 2026 13:16:15 +0100
+Subject: [PATCH 1/3] Bluetooth: hci_core: Don't use extended advertising
+ with broken ext scan
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMwQ6CMBBEf4Xs2Y20IIn+ivHQli2s0WJ2KzEh/
- LutHt/MvNlASZgULs0GQisrL6mAOTQQZpcmQh4Lg23tYNrOoHciS8YHYeQPKa4Gz6fB9jGOres
- 7KOJL6NcV73r7s779nUKuT3XhnRJ6cSnMNVqEJ07Hp9NMAvv+BZfbsLuWAAAA
-X-Change-ID: 20261031-barrot-le-fixes-v1-95624ffd0a43
+Message-Id: <20261031-barrot-le-fixes-v1-v1-1-30e2089882bf@tambosi.tn.it>
+References: <20261031-barrot-le-fixes-v1-v1-0-30e2089882bf@tambosi.tn.it>
+In-Reply-To: <20261031-barrot-le-fixes-v1-v1-0-30e2089882bf@tambosi.tn.it>
 To: Marcel Holtmann <marcel@holtmann.org>, 
  Luiz Augusto von Dentz <luiz.dentz@gmail.com>
 Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793448994; l=3307;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793448994; l=3587;
  i=ernesto.salvetti@tambosi.tn.it; s=20261031; h=from:subject:message-id;
- bh=NkLdEkh7bgUMhoEF7i6a2/grihrcRLLsAyrSVjURO74=;
- b=wK3wUlz5FRjKma6NmX35el7rDepELpXhStFn1qiVneFSiKgL6kqYf5U7KioRaw0F5Ek6AqFNN
- KpV62SJyZhICUFPIA7EnpJxUFUMiq9LOfZ01Oc3xSIY9RphQlLZlmqY
+ bh=S7EzWsPZZdSgugiaMBXQ3KzQZLGqMEw7XwNS27NrlD4=;
+ b=al2oVKRlVrqvqfhDXOnL7HuOnmehyNkRhbKOm5rwBPFElOx9z5fp0hrlwCaXL1gva2cjAvvyR
+ AbR64GHNe3VB8JnEV8/lDJzhBn3orJfcrImxRcaFc+r778m5dLpg1TJ
 X-Developer-Key: i=ernesto.salvetti@tambosi.tn.it; a=ed25519;
  pk=OLNiuyRbYD4dcNYoAvM99nt/1KZTKeM316r91BCQDUs=
 X-Endpoint-Received: by B4 Relay for ernesto.salvetti@tambosi.tn.it/20261031 with auth_id=1370
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The UGREEN Bluetooth 5.4 USB dongle (33fa:0010, Barrot chip, bound to
-btusb via BTUSB_BARROT) works for BR/EDR, but LE is unusable: as soon as
-a scan is started the controller hangs on LE Set Extended Scan
-Parameters and btusb resets it in a loop. Once that is avoided, two more
-problems show up before an LE device can be used. This series fixes
-them one at a time:
+When HCI_QUIRK_BROKEN_EXT_SCAN is set the stack falls back to the legacy
+LE Set Scan Parameters/Enable commands, but it keeps using extended
+advertising if the controller reports the LE Extended Advertising
+feature. Already during init it then sends LE Read Number of Supported
+Advertising Sets, which is an extended advertising command.
 
-1/3 Setting HCI_QUIRK_BROKEN_EXT_SCAN alone is not enough on a
-    controller that enforces the spec rule that legacy and extended
-    LE commands must not be mixed: the stack still uses extended
-    advertising (LE Read Number of Supported Advertising Sets is sent
-    during init), after which the legacy scan commands are rejected
-    with Command Disallowed. Don't use extended advertising when
-    extended scanning is marked broken. This also affects the other
-    users of the quirk (hci_bcm4377, Actions ATS2851 and Realtek
-    0bda:a728 in btusb), which will fall back to legacy advertising;
-    I could not test those.
+Core Spec 5.3, Vol 4, Part E, 3.1.1 does not allow mixing the two
+command sets: once the Host has issued an extended advertising command,
+the Controller shall reject the legacy advertising, scanning and
+initiating commands with Command Disallowed until the next reset.
 
-2/3 The controller answers LE Read Remote Used Features with
-    Controller Busy right after connecting, and the stack drops the
-    link. Continue without the remote features instead.
+A controller that enforces this, such as the Barrot one in the UGREEN
+Bluetooth 5.4 dongle (33fa:0010), then can't scan at all once the quirk
+is set:
 
-3/3 Set HCI_QUIRK_BROKEN_EXT_SCAN and HCI_QUIRK_BROKEN_EXT_CREATE_CONN
-    for BTUSB_BARROT devices.
+  < HCI Command: LE Read Number of Su.. (0x08|0x003b) plen 0
+  > HCI Event: Command Complete (0x0e) plen 5
+        LE Read Number of Supported Advertising Sets (0x08|0x003b) ncmd 1
+          Status: Success (0x00)
+          Num supported adv sets: 4
+  ...
+  < HCI Command: LE Set Scan Parameters (0x08|0x000b) plen 7
+  > HCI Event: Command Complete (0x0e) plen 4
+        LE Set Scan Parameters (0x08|0x000b) ncmd 1
+          Status: Command Disallowed (0x0c)
 
-Testing: on bluetooth-next each patch builds (clang, W=1) without new
-warnings. The runtime tests were done on v7.2.11 (PikaOS kernel) with
-the series backported; patch 2 needed a context adjustment there, since
-hci_cs_le_read_remote_features() in v7.2.11 lacks the
-HCI_ERROR_UNSUPPORTED_REMOTE_FEATURE handling. With a 33fa:0010
-(bcdDevice 88.91) and an Xbox Wireless Controller, checked with btmon:
+  Bluetooth: hci0: Opcode 0x200b failed: -16
 
- - without patch 1: Command Disallowed on every LE Set Scan Parameters
- - with the full series: scanning works, LE Secure Connections pairing
-   from scratch succeeds, reconnecting with the stored LTK works, and
-   the controller shows up as HID gamepad (hid-microsoft).
+Treat the controller as not capable of extended advertising whenever
+extended scanning is marked broken, so that only legacy commands are
+used.
 
-Before that I used an earlier btusb-only workaround with the same
-effect for an afternoon of gaming without problems.
-
-33fa:0012 shares the BTUSB_BARROT flag but I don't have one to test.
-
-Tool use: the investigation and the patches were done with the help of
-an AI coding assistant (Claude, Anthropic) in an interactive session.
-It analysed the btmon/dmesg logs, read the relevant core code, proposed
-and wrote the changes and the changelogs, and ran checkpatch. I ran all
-hardware tests, reviewed the changes and take responsibility for them.
-The patches carry an Assisted-by tag accordingly.
-
+Fixes: 392fca352c7a ("Bluetooth: Add quirk to disable extended scanning")
+Assisted-by: LLM
+Signed-off-by: Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
 ---
-Ernesto Salvetti (3):
-      Bluetooth: hci_core: Don't use extended advertising with broken ext scan
-      Bluetooth: hci_event: Don't drop LE link on busy remote features read
-      Bluetooth: btusb: Disable broken LE extended scan on Barrot controllers
-
- drivers/bluetooth/btusb_main.c   |  6 ++++++
- include/net/bluetooth/hci.h      |  5 ++++-
+ include/net/bluetooth/hci.h      |  4 +++-
  include/net/bluetooth/hci_core.h | 11 +++++++++--
- net/bluetooth/hci_event.c        | 11 +++++++++++
- 4 files changed, 30 insertions(+), 3 deletions(-)
----
-base-commit: 42b8c2d729268a65a2d98064e8dc59ff53646b14
-change-id: 20261031-barrot-le-fixes-v1-95624ffd0a43
+ 2 files changed, 12 insertions(+), 3 deletions(-)
 
-Best regards,
---  
-Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
+diff --git a/include/net/bluetooth/hci.h b/include/net/bluetooth/hci.h
+index 1c992e87534d..74b96941ad11 100644
+--- a/include/net/bluetooth/hci.h
++++ b/include/net/bluetooth/hci.h
+@@ -274,7 +274,9 @@ enum {
+ 	/*
+ 	 * When this quirk is set, the HCI_OP_LE_SET_EXT_SCAN_ENABLE command is
+ 	 * disabled. This is required for some Broadcom controllers which
+-	 * erroneously claim to support extended scanning.
++	 * erroneously claim to support extended scanning. Extended
++	 * advertising is disabled as well, since legacy and extended
++	 * commands can't be mixed.
+ 	 *
+ 	 * This quirk can be set before hci_register_dev is called or
+ 	 * during the hdev->setup vendor callback.
+diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
+index 9d5d3ab4a075..d622cab32ca9 100644
+--- a/include/net/bluetooth/hci_core.h
++++ b/include/net/bluetooth/hci_core.h
+@@ -2095,8 +2095,15 @@ void hci_conn_del_sysfs(struct hci_conn *conn);
+ /* Use ext create connection if command is supported */
+ #define use_ext_conn(dev) (((dev)->commands[37] & 0x80) && \
+ 	!hci_test_quirk((dev), HCI_QUIRK_BROKEN_EXT_CREATE_CONN))
+-/* Extended advertising support */
+-#define ext_adv_capable(dev) (((dev)->le_features[1] & HCI_LE_EXT_ADV))
++/* Extended advertising support
++ *
++ * Controllers shall reject legacy advertising, scanning and initiating
++ * commands with Command Disallowed once an extended advertising command
++ * has been issued (Core Spec 5.3, Vol 4, Part E, 3.1.1), so extended
++ * advertising can't be used when extended scanning is broken.
++ */
++#define ext_adv_capable(dev) (((dev)->le_features[1] & HCI_LE_EXT_ADV) && \
++			      !hci_test_quirk((dev), HCI_QUIRK_BROKEN_EXT_SCAN))
+ 
+ /* Maximum advertising length */
+ #define max_adv_len(dev) \
+
+-- 
+2.53.0.697.g625c4fb2daa
 
