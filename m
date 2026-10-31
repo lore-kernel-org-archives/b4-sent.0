@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 31 Oct 2026 16:05:04 +0100
-Subject: [PATCH 07/11] arm64: dts: qcom: sdm845-oneplus: Enable vbus
+Date: Sat, 31 Oct 2026 16:05:05 +0100
+Subject: [PATCH 08/11] arm64: dts: qcom: sdm845-shift-axolotl: Enable vbus
  support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261031-pmi8998-vbus-v1-7-4d805e5a0f27@ixit.cz>
+Message-Id: <20261031-pmi8998-vbus-v1-8-4d805e5a0f27@ixit.cz>
 References: <20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz>
 In-Reply-To: <20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -23,20 +23,20 @@ Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org,
  linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1021; i=david@ixit.cz;
- h=from:subject:message-id; bh=qtK8U0DG1cRkdsACHAr+c1jMalJb+5fDCyLN85kWDvA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq5gOvumnNkjX9xEkWmSZ03N2FQLW1h7MKYlPAb
- XF0klZkU26JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCauYDrwAKCRBgAj/E00kg
- crq+EACg6Q0/DvGX7+HThl0wRuAbMDl1EQfhjxmcDDlxUq/vORmUwxVfpyUFldpcSFZlBTYlzzW
- GM8+XbKePDKCY5XXcUZ0JEmUB9b0o6UnnAkvlEzXveYSwwWo2y8FWRDC+GJXBVOVgKTfDNFD4Q1
- T6ovUgq9h97lesdOLVaQYjHVawqI17yPArry2BNA/nvrlwzTgD+YjnMwFnNQ5draqjOMvwRDvpm
- jwgD1vFDYv+yvn+4jcQVDR1XdBsNjfvDv5vfyaE55nuXbLiHJZLKNIThMg77B0+WANso1U12UEV
- 54nTjMg2+m54LvdkDPQ5rWrZ5GG2qo/3K/B+hfGzTza5gL15kDBG3bzm6CJgsdCVcnjA2+clIZf
- 9XC0mFbJgcUsEFCrWmZyVsqq6NmfB8d+gs7VNY20UmPbg33M0QiVre86+6deTp2K9UjjXFHXNr9
- e7FzDtNolJ9mhRnrEpJsHb7LYjXKkH6OUKdhguH8FyFaSJNnNx7FJtjFc1p2Lguh38mKpy69U6R
- mzLn7z0VcR0znXZF+fvx5Yxt7Lt1zGTOOvBNYukCPZKpJ2YLgQzZO43cxadT1NMBHNarRtKxS81
- DdTWKqYTmB7/MQ1j9E1MnDZm2Qj0Brl5Em0pHY04D8vKyUcWOmklsyVgoerkPntQ+iVdIcnJh3j
- Vo0GQGrfLh3Kjxw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1003; i=david@ixit.cz;
+ h=from:subject:message-id; bh=VGlvhzohfkCXo1xrxHnzPQfZCT11uvlRraEHS3HXGX8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq5gOw+Qmkgmz0PHHPS9JPGISet/lf4b1azhgkm
+ QrX0PCfidqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCauYDsAAKCRBgAj/E00kg
+ cpwED/9nRiTgNmILcJASqhq+aaUj6Vfii4ZSQ0MJlW1/fTweMIee6vNAV51NrpYcrfHRkmpK46B
+ smg0rtNPpOb86pkthZ+A3MPCXQAdlr6j3HhhKtQe7BxMzInp53qDpWBhwHPqpaZMo0jQM1zUtuI
+ PYWjfU8KOI+/UKTef+Yq7A8cmNqBdWEDWfqoTxHDYu594rt69n6XRF+Ls+qVCW8GNvHOIDE19eI
+ 0dQRDsM5eUbs+F2UbKOLpPUi1dLb/h46fip7SID/2JmurfbO9woKrT8LMyour+W8k1/neup6qDm
+ HmiNa+pKnM9dw3N+OrZekID7WjCW7Yi/kQyEXwywccCwx9Ow1m0FtXKrwrUIZjA6X8Aiw4z6/f+
+ KxqM6s06RtAu9WgxV59C/mcFloiKJJYz/DwsGRm8Fj9naGA4ndazsM0dT9mEBEaW2u9+6lrxDIU
+ k1agmTFJMhftbj1JCTvKSRrTvBFtdOcgXrt0rdt+ypDWhJ+9XdSpjuY34G437M/Q2DChp1PGx64
+ gmdlPslCtA13tgmK/Os5l7on2MWt6bos61p7OiT1YwFomsdZL6aWTZfse2LGaVi7icoutK8vhQB
+ J+CuvJ/QiKkPu6IR/kCOqcdWHtaMLgeSazaRXyl0x6OspQ9uKBNj4zNoYeqeQLoqfhCs+xyVHAY
+ EdQuJxWBBabhKxg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -47,18 +47,18 @@ Enable proper driver.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 7 +++++++
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 7 +++++++
  1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 1df09da3c4d71..4996ce24fee36 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -660,16 +660,23 @@ led-1 {
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index 1b0eaeafbd517..124717214edd6 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+@@ -654,16 +654,23 @@ led-1 {
  		color = <LED_COLOR_ID_YELLOW>;
  		led-sources = <2>;
- 		led-max-microamp = <500000>;
- 		flash-max-microamp = <1500000>;
+ 		led-max-microamp = <100000>;
+ 		flash-max-microamp = <1100000>;
  		flash-max-timeout-us = <1280000>;
  	};
  };
@@ -70,14 +70,14 @@ index 1df09da3c4d71..4996ce24fee36 100644
 +	status = "okay";
 +};
 +
- &q6afedai {
- 	dai@22 {
- 		reg = <QUATERNARY_MI2S_RX>;
- 		qcom,sd-lines = <1>;
- 	};
+ &qup_uart9_rx {
+ 	drive-strength = <2>;
+ 	bias-pull-up;
+ };
  
- 	dai@23 {
- 		reg = <QUATERNARY_MI2S_TX>;
+ &qup_uart9_tx {
+ 	drive-strength = <2>;
+ 	bias-disable;
 
 -- 
 2.55.0
