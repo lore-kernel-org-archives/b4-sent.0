@@ -1,83 +1,89 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 31 Oct 2026 16:05:08 +0100
-Subject: [PATCH 11/11] arm64: dts: qcom: sdm670-google: Enable vbus support
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Sat, 31 Oct 2026 10:30:22 -0500
+Subject: [PATCH ath-next] wifi: ath11k: don't warn when a country leaves a
+ pdev without channels
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261031-pmi8998-vbus-v1-11-4d805e5a0f27@ixit.cz>
-References: <20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz>
-In-Reply-To: <20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz>
-To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
- Robin Snyders <robin@snyders.xyz>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Wesley Cheng <quic_wcheng@quicinc.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20261031-b107-reg-no-channels-v1-1-896bd89a155f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAI0J5moC/yWMywrCQAxFf6VkbSAZcXz8irjotLGNSCqTUQql/
+ +5Ul4d7z1nAJas4XJoFsnzUdbIKvGugG1sbBLWvDIFCZNozJqYjZhnQJtweJk/HGBMfTkz9ORB
+ U9ZXlrvMve4W2jGgyF7j9F3+nh3Rlq8K6fgHgOQerggAAAA==
+X-Change-ID: 20261031-b107-reg-no-channels-66b15810d920
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=985; i=david@ixit.cz;
- h=from:subject:message-id; bh=pBRLO5rZ3Rm5tJrcNsGBLN6OjgyMlOuDvEjF7+il+L0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq5gOwhLDb/48orJirTu7/94yDF3J9cj4MK58qB
- gzwA9lAJPaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCauYDsAAKCRBgAj/E00kg
- cjElEADLWvkkUZnThiqp7xjD5OiyhyBOHmbh4/dUJl97peX0+9x3PZ+tdgXmxqRz2t/1SsOj577
- 2KsQdL9+OfMrXvnjZN618mRGROr6yM3k6pGxunLNACnlMiob7pWRjL+uHdS8I+Au8Yq+KJkD4c4
- RvmnaJ39XXDj2NTUfH4fiZnIbfO3vYORGIH8Dd6eTxZr8nr2A99V7RhfZGz0e5lUcnHhhKuEyA9
- yajcezPXRZMYzlDQo3xZ8A30TzJQ6UZAJiY2puGPr7jE9p0BQJwsHgwloI38gRSm8xCmi4WWSLz
- RynkeFrypRgD5c/ssJ5o+ZqlVE1uFkJoFaQF+y/Ou2iatbB6pTJ94je36x7gXs803yN6Gh4r/yk
- aiBoUjNkcYdn+CNN60kKzntlTrs0knq4Dd2djgoEulANMBMSz85n1EkOT+IhMcD9JfmDhacg+/E
- Mo96L42wOCPEMGjg/GsKNEY+COBzTJ1z67mR51jgVawqTqWJ2B8QqhC0OhcKgspuUV3OxkRzTFj
- jRix8tJT5RHtmugWGCQT/5Mx2AUGmQ40+bbBfFy+Z8Sb4l92X5O8P+yGMD2fc5185gAkEaqlKAD
- +HYvX2c9Xxcob3nWMPKFQb4tk9J3fAMyN+LfnRmZKDF422igi6jD72zcL3BFWXBg4RRcpIfHfM4
- I4Gk/3hVrj2jkdg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793460621; l=2502;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=V7tNvA1MU393lNVR72C3Nhj4MRed2O220sx8YBWuIt0=;
+ b=rhSgNEuN7hOdyzIQK5Uv75XU2JeLj0Ext5ZfY96nK2I0TvVhCLNJ+DXDwBMnFgF2tw+YdgOwh
+ mTvlLvJizFXAVVk3m1iwIrWio5ZTeE0YUaDjz/iwiyP4cFMvJQiOaN2
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On this device, vbus was setup and switched off by the charger driver.
-Enable proper driver.
+ath11k_reg_update_chan_list() hits a WARN_ON() and returns -EINVAL when
+none of the pdev's channels is enabled. Userspace can reach that by
+setting a country. On an Arista C-360, whose QCN9074 is a 6 GHz-only
+pdev, "iw reg set CA" left that wiphy with no enabled channel, and the
+driver-initiated regulatory notifier then warned:
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+  WARNING: ... at drivers/net/wireless/ath/ath11k/reg.c:146 ath11k_reg_update_chan_list+0x368/0x3c0
+  ath11k_pci 0000:01:00.0: failed to update channel list: -22
+
+A domain with no channel for a pdev is not a driver fault. There is no
+list to send (ath11k_wmi_send_scan_chan_list_cmd() sends nothing for
+zero channels anyway), no vdev can start on the pdev meanwhile, and the
+next domain that enables a channel sends the whole list again. ath12k
+already treats this case as a debug message.
+
+Log it at debug level and return 0. That also covers
+ath11k_mac_op_start(), which ignores the return value but hits the same
+WARN_ON() when the radio is started in such a domain.
+
+Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
+Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
+
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi | 7 +++++++
- 1 file changed, 7 insertions(+)
+Seen on an Arista C-360, whose QCN9074 is a 6 GHz-only pdev.
+---
+ drivers/net/wireless/ath/ath11k/reg.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
-index 4ce9b62abe53f..94590cccc590f 100644
---- a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
-@@ -602,16 +602,23 @@ cam_vio_pin: cam-vio-state {
- 		power-source = <0>;
- 	};
- };
+diff --git a/drivers/net/wireless/ath/ath11k/reg.c b/drivers/net/wireless/ath/ath11k/reg.c
+index 1030e119fd903..d6457ff3f591a 100644
+--- a/drivers/net/wireless/ath/ath11k/reg.c
++++ b/drivers/net/wireless/ath/ath11k/reg.c
+@@ -145,8 +145,16 @@ int ath11k_reg_update_chan_list(struct ath11k *ar, bool wait)
+ 		}
+ 	}
  
- &pm660_rradc {
- 	status = "okay";
- };
+-	if (WARN_ON(!num_channels))
+-		return -EINVAL;
++	/* A regulatory domain can leave a pdev with no usable channel, as
++	 * one without 6 GHz rules leaves a 6 GHz-only radio. There is no
++	 * list to send then; the domain that enables a channel again sends it.
++	 */
++	if (!num_channels) {
++		ath11k_dbg(ar->ab, ATH11K_DBG_REG,
++			   "no enabled channel on pdev %u, channel list not sent\n",
++			   ar->pdev->pdev_id);
++		return 0;
++	}
  
-+&pm660_vbus {
-+	regulator-min-microamp = <500000>;
-+	regulator-max-microamp = <1500000>;
-+
-+	status = "okay";
-+};
-+
- &pm660l_flash {
- 	status = "okay";
- 
- 	led-0 {
- 		function = LED_FUNCTION_FLASH;
- 		color = <LED_COLOR_ID_WHITE>;
- 		led-sources = <1>, <2>;
- 		led-max-microamp = <500000>;
+ 	params = kzalloc_flex(*params, ch_param, num_channels);
+ 	if (!params)
 
--- 
-2.55.0
+---
+base-commit: a3ddbb45768717b5c9f923489387cf55c838d1ad
+change-id: 20261031-b107-reg-no-channels-66b15810d920
+
+Best regards,
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
