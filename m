@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 31 Oct 2026 16:05:02 +0100
-Subject: [PATCH 05/11] arm64: dts: qcom: pm660: Add node for PMIC VBUS
- booster
+Date: Sat, 31 Oct 2026 16:05:03 +0100
+Subject: [PATCH 06/11] arm64: dts: qcom: sdm845-google: Enable vbus support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261031-pmi8998-vbus-v1-5-4d805e5a0f27@ixit.cz>
+Message-Id: <20261031-pmi8998-vbus-v1-6-4d805e5a0f27@ixit.cz>
 References: <20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz>
 In-Reply-To: <20261031-pmi8998-vbus-v1-0-4d805e5a0f27@ixit.cz>
 To: Alexey Minnekhanov <alexeymin@minlexx.ru>, 
@@ -23,62 +22,61 @@ Cc: Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org,
  linux-pm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1176; i=david@ixit.cz;
- h=from:subject:message-id; bh=p63Dg9i1oE6P2ODBJ4VzZiAmk+f8FnNEbY1449D7Tf4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq5gOveGztyizkzMKlhhMHa6tPLFDLf6x7vnkdn
- IKLLQdF3R2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCauYDrwAKCRBgAj/E00kg
- ck2pEACiYMmrBoBCQJrpMIg53wd8Q3hcKdPXITGKL9loBR8pjG79vwHd2ofjQCiCMi188so6Uhz
- YLe9KjgC0NOipwW0ip1eR1J4okOE7lo4QQh5wkk6Rv5MYp0vDnaqcSlxWQkhSaiB0xxOcLqRx/S
- TLiofbrNuaInNv6r6uKg05U9moaSi23jrkjFZ0EJru15WMNp+JsuyM5y5Lo0QDn5jNnm7TbqI2H
- olwLupTVZXqwmfOKGSoy2xEt8ecZAH5RsUAdacLm41fYpGWuh5MZKxj8QCfXzS9juM+m6hYFrN9
- BDfCasROXhdMOpcq1W+LwZEb+QGX0mYLGaelr5VWaBPkBTBX8Z/7QoEBXN4eK8NEMDfCde8Dx/i
- IRzVK7gV5RoV8fCdz/S/OwHVE+nzHDtLsIUNEr0FCOv98htYCW63y2uFfBLCmNrxR/xet22rZHw
- BxEsluh1hjm70wDdxbYiodbMje+oBCJXXLMAzK8fdnYPRdOBeHha9R6QtIy/5bak4FlHiN9TLNw
- 1UTVQSHpNWQehjTjC0s77C7AWn7jH0PUmguHnEE+gcZtWg+O2V5HB83kJ20vMzpLqZ3xCMo6DsJ
- jYgkX0G+bxP5efObUzBsoWVpupJWJbKN8iuJ8ihSzEbxvN6fTWteKc0w4EDtu99svhTEPq6eyMj
- Pdjz4JoMgmDhRfA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=892; i=david@ixit.cz;
+ h=from:subject:message-id; bh=7CBgv18ArIrBQNH4lCvE3E/2X60T84ZTgUfqUmKu+ko=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBq5gOvv5xQ1k7s4cFeL5ZqPIxziSgGitRTmeU24
+ 5sg/WzYggKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCauYDrwAKCRBgAj/E00kg
+ chb0EACUTL7lE5X5Q7FTtXZFrl+epB3s3olPUiP/HWtks0Vblmg6JoQFCCtnneEeqBLOf52z/TR
+ aC+em7aBcpWRM0Np4h2HPJiqdG8NiLibkGhJ6ldEFRSFJcit/eCi66iguTn1pUgU/itbEKpv7em
+ LKSXLktslC23r6txip2w6WgIVxqyeirFnt2I0iTQ5myuRZmI8RgK3c+d6jW9Clfuti9KLlhQyRs
+ zS8WRKqfXoL3cFfUfK9lXFlDX/Sy/m2VtypSr4ug8vpgS0LdeXBUhyfqyPIFeMpj0AoImUAMZSj
+ dHn3+SuU4wZ83kBacXf5a0sQftZdfD83LtyNDQfAxRWsra4C0UuIz+NTnRR0D/OKdY2dBMSsiFQ
+ cc3Pi3Mm7RoUnkqZy8GXNyF8L37WrhznOf24q28IrVcsyFujJufmFF7+nEuCp7DxcW2tHK/YkZu
+ SZ5s9NvKidYhE0gZZlKoaRrOs+vdnQNgXblXFsFQjU/07FciKH04D63QF1ORVSUWXGAklFmlVcd
+ NvVj19MYaidU3J64Jl9m2EvpQJAsasPrqNOweGxp0x1NMLjeuVFCqBEnCnDsO4RJ7MLUsZX0mhu
+ AR9ChUa9lSM1IOBNShuZHij4+dh+cq9wMaUARcPrw6CeK8370KwAovHggTLRqSF7o5Y7L35fKw4
+ 2o6eVEFG83vQnnQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the required DTS node for the USB VBUS output regulator, which is
-available on PM660. This will provide the VBUS source to connected
-peripherals.
+On this device, vbus was setup and switched off by the charger driver.
+Enable proper driver.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/pm660.dtsi | 7 +++++++
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 7 +++++++
  1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/pm660.dtsi b/arch/arm64/boot/dts/qcom/pm660.dtsi
-index 156b2ddff0dcb..86e9223ed88f4 100644
---- a/arch/arm64/boot/dts/qcom/pm660.dtsi
-+++ b/arch/arm64/boot/dts/qcom/pm660.dtsi
-@@ -85,16 +85,23 @@ pm660_charger: charger@1000 {
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+index f1379857e2742..1cffe3c7cf76a 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
+@@ -451,16 +451,23 @@ &pm8998_resin {
+ };
  
- 			io-channels = <&pm660_rradc 3>,
- 				      <&pm660_rradc 4>;
- 			io-channel-names = "usbin_i", "usbin_v";
+ &pmi8998_charger {
+ 	monitored-battery = <&battery>;
  
- 			status = "disabled";
- 		};
+ 	status = "okay";
+ };
  
-+		pm660_vbus: usb-vbus-regulator@1100 {
-+			compatible = "qcom,pm660-vbus-reg", "qcom,pm8150b-vbus-reg";
-+			reg = <0x1100>;
++&pmi8998_vbus {
++	regulator-min-microamp = <500000>;
++	regulator-max-microamp = <1500000>;
 +
-+			status = "disabled";
-+		};
++	status = "okay";
++};
 +
- 		pm660_temp: temp-alarm@2400 {
- 			compatible = "qcom,spmi-temp-alarm";
- 			reg = <0x2400>;
- 			interrupts = <0x0 0x24 0x0 IRQ_TYPE_EDGE_RISING>;
- 			io-channels = <&pm660_adc ADC5_DIE_TEMP>;
- 			io-channel-names = "thermal";
- 			#thermal-sensor-cells = <0>;
- 		};
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
+ 
+ &qupv3_id_1 {
+ 	status = "okay";
+ };
+ 
 
 -- 
 2.55.0
