@@ -1,11 +1,11 @@
 From: Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
-Date: Sat, 31 Oct 2026 13:16:15 +0100
-Subject: [PATCH 1/3] Bluetooth: hci_core: Don't use extended advertising
- with broken ext scan
+Date: Sat, 31 Oct 2026 13:16:16 +0100
+Subject: [PATCH 2/3] Bluetooth: hci_event: Don't drop LE link on busy
+ remote features read
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261031-barrot-le-fixes-v1-v1-1-30e2089882bf@tambosi.tn.it>
+Message-Id: <20261031-barrot-le-fixes-v1-v1-2-30e2089882bf@tambosi.tn.it>
 References: <20261031-barrot-le-fixes-v1-v1-0-30e2089882bf@tambosi.tn.it>
 In-Reply-To: <20261031-barrot-le-fixes-v1-v1-0-30e2089882bf@tambosi.tn.it>
 To: Marcel Holtmann <marcel@holtmann.org>, 
@@ -13,93 +13,90 @@ To: Marcel Holtmann <marcel@holtmann.org>,
 Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793448994; l=3587;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793448994; l=2905;
  i=ernesto.salvetti@tambosi.tn.it; s=20261031; h=from:subject:message-id;
- bh=S7EzWsPZZdSgugiaMBXQ3KzQZLGqMEw7XwNS27NrlD4=;
- b=al2oVKRlVrqvqfhDXOnL7HuOnmehyNkRhbKOm5rwBPFElOx9z5fp0hrlwCaXL1gva2cjAvvyR
- AbR64GHNe3VB8JnEV8/lDJzhBn3orJfcrImxRcaFc+r778m5dLpg1TJ
+ bh=6FdY8h7nVU+wFr+FiHP6cSyVDh7scpK0ylbnj6iZsko=;
+ b=tUJGdwui4lzAnNP7rki57kfX9oOJP+yIJAevYn7KjYyzMYMJDQdduIdo6Kp6evFa3q13RXsqa
+ sHxzsBFuYU7Ds/MvGo1PJukA93IVvNObJJDDMQD6z5x9rsR5nbQQrPV
 X-Developer-Key: i=ernesto.salvetti@tambosi.tn.it; a=ed25519;
  pk=OLNiuyRbYD4dcNYoAvM99nt/1KZTKeM316r91BCQDUs=
 X-Endpoint-Received: by B4 Relay for ernesto.salvetti@tambosi.tn.it/20261031 with auth_id=1370
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When HCI_QUIRK_BROKEN_EXT_SCAN is set the stack falls back to the legacy
-LE Set Scan Parameters/Enable commands, but it keeps using extended
-advertising if the controller reports the LE Extended Advertising
-feature. Already during init it then sends LE Read Number of Supported
-Advertising Sets, which is an extended advertising command.
+Right after an outgoing LE connection is established, the Barrot
+controller in the UGREEN Bluetooth 5.4 dongle (33fa:0010) rejects
+LE Read Remote Used Features with Controller Busy. The error is passed
+to hci_connect_cfm(), the pairing attempt fails and the link is torn
+down right away, so no LE device can be paired or connected:
 
-Core Spec 5.3, Vol 4, Part E, 3.1.1 does not allow mixing the two
-command sets: once the Host has issued an extended advertising command,
-the Controller shall reject the legacy advertising, scanning and
-initiating commands with Command Disallowed until the next reset.
-
-A controller that enforces this, such as the Barrot one in the UGREEN
-Bluetooth 5.4 dongle (33fa:0010), then can't scan at all once the quirk
-is set:
-
-  < HCI Command: LE Read Number of Su.. (0x08|0x003b) plen 0
-  > HCI Event: Command Complete (0x0e) plen 5
-        LE Read Number of Supported Advertising Sets (0x08|0x003b) ncmd 1
+  > HCI Event: LE Meta Event (0x3e) plen 19
+        LE Connection Complete (0x01)
           Status: Success (0x00)
-          Num supported adv sets: 4
-  ...
-  < HCI Command: LE Set Scan Parameters (0x08|0x000b) plen 7
-  > HCI Event: Command Complete (0x0e) plen 4
-        LE Set Scan Parameters (0x08|0x000b) ncmd 1
-          Status: Command Disallowed (0x0c)
+          Handle: 65
+          Role: Central (0x00)
+  < HCI Command: LE Read Remote Used Features (0x08|0x0016) plen 2
+          Handle: 65
+  > HCI Event: Command Status (0x0f) plen 4
+        LE Read Remote Used Features (0x08|0x0016) ncmd 1
+          Status: Controller Busy (0x3a)
+  @ MGMT Event: Command Complete (0x0001) plen 10
+        Pair Device (0x0019) plen 7
+          Status: Busy (0x0a)
+  < HCI Command: Disconnect (0x01|0x0006) plen 3
+          Reason: Remote User Terminated Connection (0x13)
 
-  Bluetooth: hci0: Opcode 0x200b failed: -16
+The controller does not send an LE Read Remote Features Complete event
+later on either.
 
-Treat the controller as not capable of extended advertising whenever
-extended scanning is marked broken, so that only legacy commands are
-used.
+The remote features are not needed to use the connection; the stack
+already continues without them when a peripheral gets Unsupported
+Remote Feature. Do the same for Controller Busy and move the connection
+to the connected state.
 
-Fixes: 392fca352c7a ("Bluetooth: Add quirk to disable extended scanning")
+With this an Xbox Wireless Controller pairs over LE Secure Connections
+and works as HID device.
+
 Assisted-by: LLM
 Signed-off-by: Ernesto Salvetti <ernesto.salvetti@tambosi.tn.it>
 ---
- include/net/bluetooth/hci.h      |  4 +++-
- include/net/bluetooth/hci_core.h | 11 +++++++++--
- 2 files changed, 12 insertions(+), 3 deletions(-)
+ include/net/bluetooth/hci.h |  1 +
+ net/bluetooth/hci_event.c   | 11 +++++++++++
+ 2 files changed, 12 insertions(+)
 
 diff --git a/include/net/bluetooth/hci.h b/include/net/bluetooth/hci.h
-index 1c992e87534d..74b96941ad11 100644
+index 74b96941ad11..7da40b84c198 100644
 --- a/include/net/bluetooth/hci.h
 +++ b/include/net/bluetooth/hci.h
-@@ -274,7 +274,9 @@ enum {
- 	/*
- 	 * When this quirk is set, the HCI_OP_LE_SET_EXT_SCAN_ENABLE command is
- 	 * disabled. This is required for some Broadcom controllers which
--	 * erroneously claim to support extended scanning.
-+	 * erroneously claim to support extended scanning. Extended
-+	 * advertising is disabled as well, since legacy and extended
-+	 * commands can't be mixed.
- 	 *
- 	 * This quirk can be set before hci_register_dev is called or
- 	 * during the hdev->setup vendor callback.
-diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
-index 9d5d3ab4a075..d622cab32ca9 100644
---- a/include/net/bluetooth/hci_core.h
-+++ b/include/net/bluetooth/hci_core.h
-@@ -2095,8 +2095,15 @@ void hci_conn_del_sysfs(struct hci_conn *conn);
- /* Use ext create connection if command is supported */
- #define use_ext_conn(dev) (((dev)->commands[37] & 0x80) && \
- 	!hci_test_quirk((dev), HCI_QUIRK_BROKEN_EXT_CREATE_CONN))
--/* Extended advertising support */
--#define ext_adv_capable(dev) (((dev)->le_features[1] & HCI_LE_EXT_ADV))
-+/* Extended advertising support
-+ *
-+ * Controllers shall reject legacy advertising, scanning and initiating
-+ * commands with Command Disallowed once an extended advertising command
-+ * has been issued (Core Spec 5.3, Vol 4, Part E, 3.1.1), so extended
-+ * advertising can't be used when extended scanning is broken.
-+ */
-+#define ext_adv_capable(dev) (((dev)->le_features[1] & HCI_LE_EXT_ADV) && \
-+			      !hci_test_quirk((dev), HCI_QUIRK_BROKEN_EXT_SCAN))
+@@ -726,6 +726,7 @@ enum {
+ #define HCI_ERROR_UNSUPPORTED_REMOTE_FEATURE	0x1a
+ #define HCI_ERROR_INVALID_LL_PARAMS	0x1e
+ #define HCI_ERROR_UNSPECIFIED		0x1f
++#define HCI_ERROR_CONTROLLER_BUSY	0x3a
+ #define HCI_ERROR_ADVERTISING_TIMEOUT	0x3c
+ #define HCI_ERROR_CANCELLED_BY_HOST	0x44
  
- /* Maximum advertising length */
- #define max_adv_len(dev) \
+diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
+index d05934fef4d9..fcbd1807e2f3 100644
+--- a/net/bluetooth/hci_event.c
++++ b/net/bluetooth/hci_event.c
+@@ -3026,6 +3026,17 @@ static void hci_cs_le_read_remote_features(struct hci_dev *hdev, u8 status)
+ 			status = 0x00;
+ 		}
+ 
++		/* Some controllers reject the command with Controller Busy
++		 * right after the connection has been established. The
++		 * remote features are not required to use the connection,
++		 * so continue without them instead of dropping it.
++		 */
++		if (status == HCI_ERROR_CONTROLLER_BUSY) {
++			bt_dev_warn(hdev, "Remote features busy, continuing without them");
++			conn->state = BT_CONNECTED;
++			status = 0x00;
++		}
++
+ 		hci_connect_cfm(conn, status);
+ 	}
+ 
 
 -- 
 2.53.0.697.g625c4fb2daa
