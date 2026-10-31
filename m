@@ -1,122 +1,151 @@
-From: =?utf-8?q?Stanis=C5=82aw_Titenko?= <kernel@resetko.pl>
-Date: Sat, 31 Oct 2026 22:40:15 +0100
-Subject: [PATCH] usb: typec: ucsi: acpi: Assume UCSI 1.0 on Lenovo ThinkPad
- T14 Gen 2a
+From: Roman Maidanovych <devuarpd@gmail.com>
+Date: Sun, 01 Nov 2026 01:13:33 +0200
+Subject: [PATCH RFC] ALSA: hda/tas2781: Reload DSP program if the
+ amplifiers lost it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20261031-ucsi-lenovo-t14g2a-v1-1-183751e63c02@resetko.pl>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDtgomjtVYqLNJnoFElKRkUQ7
- 96oy7f4fwehxCTwKnZItLJwDBnqUYAdTRgI2WWDLnWjykrhYoVxohDXiLOqB23QOEOt86313RN
- y+Evkebum7/62LJ8v2fk8wXH8AVRi7SV2AAAA
-X-Change-ID: 20261031-ucsi-lenovo-t14g2a-adae7df7cf98
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mark Pearson <mpearson-lenovo@squebb.ca>, Daniel Dev <daniel.dev@noex.uk>, 
- stable@vger.kernel.org, 
- =?utf-8?q?Stanis=C5=82aw_Titenko?= <kernel@resetko.pl>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793482825; l=3304;
- i=kernel@resetko.pl; s=20261031; h=from:subject:message-id;
- bh=p95Jlz0L7Maeo6S23F9A5uV32hXuG2XEilhjG+4iteE=;
- b=CJVzqOB2QyLwtfq1dMaLkgblbKND58j8M5qXBZC2kN1CjY990raZUSbjvlijsEqgUuCOnCkak
- lRFLLh29W+JBI+/OT6O76jtSQQVnqYmwV39EtBUqnCLNxt1CBq1zxQq
-X-Developer-Key: i=kernel@resetko.pl; a=ed25519;
- pk=xMhqzbyPNWfeOgdmzSHsSlr5qjH779F5SD6BBHXixlY=
-X-Endpoint-Received: by B4 Relay for kernel@resetko.pl/20261031 with auth_id=1372
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261101-tas2781-reload-if-lost-v1-1-9d336120f1ba@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQqDMBAAvyJ77kI2BZVeC31Ar6WHmKx2i5iST
+ UUQ/95UjzMws4JyEla4VCsknkUlTgXoVIF/uWlglFAYrLE1kSHMTm3TEiYeowsoPY5RM9bGc9d
+ QCGdvoMSfxL0s+/gB99sVnofUb/dmn/9L2LYffAMkxX8AAAA=
+X-Change-ID: 20261101-tas2781-reload-if-lost-60ceb71dd3c0
+To: Shenghao Ding <shenghao-ding@ti.com>, Kevin Lu <kevin-lu@ti.com>, 
+ Baojun Xu <baojun.xu@ti.com>, Sen Wang <sen@ti.com>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Zhang Heng <zhangheng@kylinos.cn>, Roman Maidanovych <devuarpd@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793488422; l=5046;
+ i=devuarpd@gmail.com; s=20261031; h=from:subject:message-id;
+ bh=U3eUKsJ3k1zByfnW/ZQjAhCzAj8imME5Fgee+NKYgZQ=;
+ b=iDFI1fjmT19xAOUDEALyRrlGXLPfty/bsYfGSS7Fbt6bluVcIo6zgi51kF34GPfVc7fYHt4Hs
+ VvAEYS92AXEBoNvNKyqJqUQNCrIjO5vYtA1R8nGJGJCd8kGQpJbc9yh
+X-Developer-Key: i=devuarpd@gmail.com; a=ed25519;
+ pk=ZsD8owwKOCmpH4BZHKpMCGYO8OMSkY2CfHovVnNWJYc=
+X-Endpoint-Received: by B4 Relay for devuarpd@gmail.com/20261031 with auth_id=1373
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Lenovo ThinkPad T14 Gen 2a exposes a functional UCSI ACPI PPM but
-the firmware leaves the VERSION field of the UCSI mailbox at zero.
+On Lenovo Legion Pro 7 16ARX8H (ALC287 + two TAS2781 on I2C, codec SSID
+17aa:38a7) the speakers go silent once the HDA codec has been runtime
+suspended (power_save=1, e.g. after pausing playback for a few seconds).
+Headphones are not affected. power_save=0 avoids it; a system
+suspend/resume cycle or rebinding the driver recovers it.
 
-ucsi_register() rejects a zero version with -ENODEV, leaving the
-system without registered USB Type-C connectors. Without an OPM, the
-embedded controller does not complete DisplayPort Alternate Mode setup
-when a USB-C dock or monitor that supplies power is connected after
-boot, so the display stays dark while USB and charging work.
+The amplifiers lose their DSP program while the codec is runtime
+suspended, but they are not reset: book 0 page 0 keeps its values (e.g.
+CLK_CONFIG reads 0xd9, not the reset value 0x19 that tas2781_hda_spi.c
+checks for). The driver still holds the cached cur_prog/cur_conf, so on
+the next playback tasdevice_tuning_switch() reports "Unneeded loading dsp
+conf 0" and skips the download. Forcing it with the "Speaker Force
+Firmware Load" control restores the sound until the next codec suspend.
 
-The mailbox uses the 48-byte UCSI 1.x layout, and the PPM works
-correctly when UCSI 1.0 is assumed.
+Invalidating only cur_book/cur_conf on runtime suspend, as
+tas2781_hda_spi.c does, is not enough here: the program itself has to be
+downloaded again. Doing that unconditionally on every runtime resume
+works, but adds about 1.1 s of I2C firmware download before each
+playback.
 
-Add a DMI-specific UCSI operation for the ThinkPad T14 Gen 2a that
-substitutes UCSI 1.0 only when firmware reports a zero version.
-Preserve any valid non-zero firmware version.
+Bit 7 of register 0x44 in book 0 page 0 is set on both amplifiers exactly
+when the DSP program has been lost, and clear when it is intact. Check it
+when a PCM is opened and, if it is set, invalidate the cache and download
+the program again; tasdevice_tuning_switch() then reloads the
+configuration and calibration data as usual.
 
-Tested on a ThinkPad T14 Gen 2a with BIOS 1.33 (R1MET63W): both
-Type-C connectors register, and plugging and replugging a USB-C
-monitor with an integrated hub and power delivery brings up
-DisplayPort Alternate Mode each time.
+Tested on 7.3.1 with power_save=1: the speakers keep working across
+repeated pauses and headphone plug/unplug cycles, and the program is
+only downloaded when the bit is set.
 
-Reported-by: Daniel Dev <daniel.dev@noex.uk>
-Closes: https://lore.kernel.org/linux-usb/b1Wn_eFvTFShGbd970WWl4CWhge_6P2x7Wb6rab3QHNlE4OJ4p__O-QN3B6I-308ftr5oV5Zr7vywA0vdvmtNw6E0YJnVM2ek_5DcFnkXB0=@noex.uk/
-Fixes: c1b0bc2dabfa ("usb: typec: Add support for UCSI interface")
-Cc: stable@vger.kernel.org
-Assisted-by: pi:claude-opus-5-5
-Signed-off-by: Stanisław Titenko <kernel@resetko.pl>
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=221735
+Signed-off-by: Roman Maidanovych <devuarpd@gmail.com>
 ---
- drivers/usb/typec/ucsi/ucsi_acpi.c | 34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
+RFC because the meaning of B0_P0_R0x44 bit 7 is not documented in the
+kernel; it was found by comparing register dumps of working and silent
+cycles. Questions for TI:
 
-diff --git a/drivers/usb/typec/ucsi/ucsi_acpi.c b/drivers/usb/typec/ucsi/ucsi_acpi.c
-index 5697ccc24ec3..33747e24353f 100644
---- a/drivers/usb/typec/ucsi/ucsi_acpi.c
-+++ b/drivers/usb/typec/ucsi/ucsi_acpi.c
-@@ -148,6 +148,33 @@ static const struct ucsi_operations ucsi_acer_ops = {
- 	.async_control = ucsi_acpi_async_control
- };
+1. What does bit 7 of B0_P0_R0x44 indicate, and is it a reliable way to
+   detect that the DSP program needs to be downloaded again? Is there a
+   better (documented) status register for this?
+2. Why do the amplifiers lose the DSP program without being reset while
+   the HDA codec is runtime suspended? On 6.18.x this only started after
+   headphones had been plugged in once since boot; on 7.3.1 it happens
+   from the first codec suspend.
+3. If a status check is not wanted, would you prefer to clear cur_prog
+   as well on runtime suspend (full download on every resume)?
+
+Register dumps (book 0 page 0 of both amplifiers for working and silent
+cycles) and dynamic-debug logs can be provided on request.
+---
+ sound/hda/codecs/side-codecs/tas2781_hda_i2c.c | 36 ++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
+
+diff --git a/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c b/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
+index 44855f593..177a2194a 100644
+--- a/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
++++ b/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
+@@ -46,6 +46,9 @@
+ #define TAS2563_CAL_TLIM		TASDEVICE_REG(0, 0x10, 0x14)
+ #define TAS2563_CAL_R0			TASDEVICE_REG(0, 0x0f, 0x34)
  
-+static int ucsi_lenovo_read_version(struct ucsi *ucsi, u16 *version)
++#define TAS2781_REG_DSP_LOST		TASDEVICE_REG(0x0, 0x0, 0x44)
++#define TAS2781_DSP_LOST		BIT(7)
++
+ enum device_chip_id {
+ 	HDA_TAS2563,
+ 	HDA_TAS2770,
+@@ -162,6 +165,38 @@ err:
+ 	return ret;
+ }
+ 
++/*
++ * The amplifiers can lose their DSP program while the HDA codec is runtime
++ * suspended, without the chip being reset. The cached program/configuration
++ * then makes tasdevice_tuning_switch() skip the download and the speakers
++ * stay silent. Bit 7 of B0_P0_R0x44 is set in that state: invalidate the
++ * cache and download the program again.
++ */
++static void tas2781_hda_reload_if_lost(struct tasdevice_priv *tas_priv)
 +{
-+	struct ucsi_acpi *ua = ucsi_get_drvdata(ucsi);
-+	int ret;
++	bool lost = false;
++	int i, ret, val;
 +
-+	ret = ucsi_acpi_read_version(ucsi, version);
-+	if (ret)
-+		return ret;
++	if (tas_priv->chip_id != TAS2781)
++		return;
 +
-+	if (!*version) {
-+		dev_warn(ua->dev, "UCSI version is zero, assuming 1.0\n");
-+		*version = UCSI_VERSION_1_0;
++	for (i = 0; i < tas_priv->ndev; i++) {
++		ret = tasdevice_dev_read(tas_priv, i, TAS2781_REG_DSP_LOST, &val);
++		if (ret || !(val & TAS2781_DSP_LOST))
++			continue;
++
++		tas_priv->tasdevice[i].cur_book = -1;
++		tas_priv->tasdevice[i].cur_prog = -1;
++		tas_priv->tasdevice[i].cur_conf = -1;
++		lost = true;
 +	}
 +
-+	return 0;
++	if (lost) {
++		dev_dbg(tas_priv->dev, "DSP program lost, reloading\n");
++		tasdevice_prmg_load(tas_priv, tas_priv->cur_prog);
++	}
 +}
 +
-+static const struct ucsi_operations ucsi_lenovo_ops = {
-+	.read_version = ucsi_lenovo_read_version,
-+	.read_cci = ucsi_acpi_read_cci,
-+	.poll_cci = ucsi_acpi_poll_cci,
-+	.read_message_in = ucsi_acpi_read_message_in,
-+	.write_message_out = ucsi_acpi_write_message_out,
-+	.sync_control = ucsi_sync_control_common,
-+	.async_control = ucsi_acpi_async_control
-+};
-+
- static int ucsi_gram_sync_control(struct ucsi *ucsi, u64 command, u32 *cci,
- 				  void *val, size_t len, void *msg_out,
- 				  size_t msg_out_size)
-@@ -196,6 +223,13 @@ static const struct dmi_system_id ucsi_acpi_quirks[] = {
- 		},
- 		.driver_data = (void *)&ucsi_acer_ops,
- 	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "LENOVO"),
-+			DMI_MATCH(DMI_PRODUCT_VERSION, "ThinkPad T14 Gen 2a"),
-+		},
-+		.driver_data = (void *)&ucsi_lenovo_ops,
-+	},
- 	{
- 		.matches = {
- 			DMI_MATCH(DMI_SYS_VENDOR, "LG Electronics"),
+ static void tas2781_hda_playback_hook(struct device *dev, int action)
+ {
+ 	struct tas2781_hda *tas_hda = dev_get_drvdata(dev);
+@@ -171,6 +206,7 @@ static void tas2781_hda_playback_hook(struct device *dev, int action)
+ 	case HDA_GEN_PCM_ACT_OPEN:
+ 		pm_runtime_get_sync(dev);
+ 		scoped_guard(mutex, &tas_hda->priv->codec_lock) {
++			tas2781_hda_reload_if_lost(tas_hda->priv);
+ 			tasdevice_tuning_switch(tas_hda->priv, 0, false);
+ 			tas_hda->priv->playback_started = true;
+ 		}
 
 ---
-base-commit: e9954f3fbddd25e1a01b7e5a0b72fb8b564204e0
-change-id: 20261031-ucsi-lenovo-t14g2a-adae7df7cf98
+base-commit: 231efd8f68c950ad3b774ff51c6d15fdd0443a5b
+change-id: 20261101-tas2781-reload-if-lost-60ceb71dd3c0
 
 Best regards,
 --  
-Stanisław Titenko <kernel@resetko.pl>
+Roman Maidanovych <devuarpd@gmail.com>
 
