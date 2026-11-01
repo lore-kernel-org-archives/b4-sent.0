@@ -1,162 +1,126 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Date: Sun, 01 Nov 2026 14:40:56 -0500
-Subject: [PATCH] mm/memory_hotplug: don't offline a hwpoisoned page still
- in the page cache
+Date: Sun, 01 Nov 2026 14:56:15 -0500
+Subject: [PATCH] cgroup: arm the notify timer only while the file exists
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-memhp-hwpoison-pagecache-v1-1-ed8785ca44eb@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw6CMBBG4Vchs3aSUhSjr2JcjOWXjglt0+IlI
- by7FZff4pyFCrKi0LlZKOOlRWOoaHcNOS9hBOtQTdbYvjX2xBMmn9i/U9QSAycZ4cR5sPTo5GD
- 30h0N1Txl3PWzrS/Xv8vz9oCbfz9a1y+oKOfyfAAAAA==
-X-Change-ID: 20261029-memhp-hwpoison-pagecache-a6e3a524a370
-To: David Hildenbrand <david@kernel.org>, 
- Oscar Salvador <osalvador@suse.de>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: Miaohe Lin <linmiaohe@huawei.com>, 
- Naoya Horiguchi <nao.horiguchi@gmail.com>, 
- Vlastimil Babka <vbabka@kernel.org>, Gregory Price <gourry@gourry.net>, 
- linux-mm@kvack.org, linux-cxl@vger.kernel.org, linux-kernel@vger.kernel.org, 
- tz2294@columbia.edu, stable@vger.kernel.org, 
+Message-Id: <20261101-cgroup-notify-timer-v1-1-060c07b81aeb@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBA0auUWTuQidSgVxEXNp3EEUzKJJVK6
+ d0bdfkW/69QWIULXLoVlN9SJKcGOnTgH/cUGWVsBmvsicgQ+qh5njDlKuGDVV6saMi587H3HOw
+ IrZyUgyy/6/X2d5mHJ/v6XcG27bcM03d3AAAA
+X-Change-ID: 20261101-cgroup-notify-timer-0177935cef2d
+To: Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
+ =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>
+Cc: Shakeel Butt <shakeel.butt@linux.dev>, cgroups@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, tz2294@columbia.edu, stable@vger.kernel.org, 
  Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793562056; l=5557;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793562974; l=3928;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=4LOLUja2zhU2UmZEiAhPn4FmO7n0a/B92rAAWeju898=;
- b=id4ER9EJOI/KEW5CRMKHacr3GbM19oDkiK8h+mizdyCCmDEw/R1+cUw4WSv8ve40O0ZIjZKFC
- wBbU5QsS08nBzG1vzh9tN0wgXi5yoVweIBBzOmid+9oGZFmLC906wZe
+ bh=60CvO+jfXOPrHcfReXmW+4kGYjYut7KkK2ugXS8x2o8=;
+ b=ccope1IVV72NxQTvKWk4fob2aYpuP+89xl0/LH5ma9uin0a9lufbzf1Q+PjrigtqxOsrNZgqM
+ b+PqUMuc6CTATGB286ZcljzcPq4UVSWpls/f02dcNU+BOykeI0fi/Og
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Memory offline skips hwpoisoned pages, assuming nobody uses them
-anymore.  memory_failure() however sets PG_hwpoison before it takes the
-page, and taking it waits on pcp_batch_high_lock, which offline_pages()
-holds for the whole offline.  A memory error during the offline thus
-marks the page and then waits while the offline skips it:
+cgroup_rm_file() clears cfile->kn under cfile->lock and then deletes the
+notify timer.  Since commit 4616120fca7f ("cgroup: add lockless
+fast-path checks to cgroup_file_notify()"), cgroup_file_notify() checks
+kn and arms the timer without that lock and can arm it right after it
+was deleted:
 
-  Task A (offline_pages)               Task B (memory_failure)
-  zone_pcp_disable()
-                                       TestSetPageHWPoison(P)
-                                       get_hwpoison_page()
-                                         /* waits for Task A */
-  do_migrate_range()
-    /* P is poisoned (not migrated) */
-  test_pages_isolated()
-    /* P is poisoned (accepted) */
-  zone_pcp_enable()
-                                       /* P is off the LRU (Ignored) */
+  Task A (memcg charge)                  Task B (subtree_control write)
+  cgroup_file_notify()
+    READ_ONCE(cfile->kn) != NULL
+                                         cgroup_rm_file()
+                                           cfile->kn = NULL
+                                           timer_delete_sync()
+    timer_reduce(&cfile->notify_timer)
+      /* timer queued again */
 
-The block goes offline while the file still points to P, and the next
-walk of the file's pages (here drop_caches on ext4) crashes on a struct
-page of offlined memory:
+If the css is only hidden, showing it again runs timer_setup() on the
+still queued timer and corrupts the timer wheel:
 
-  [   11.710348] Memory failure: 0x24224: unhandlable page.
-  [   11.710372] Memory failure: 0x24224: recovery action for get hwpoison page: Ignored
-  [   11.765371] page:000000008c304eee is uninitialized and poisoned
-  [   11.765389] page dumped because: VM_BUG_ON_PAGE(page_ref_count(page) == 0)
-  [   11.765440] kernel BUG at include/linux/mm.h:1990!
-  [   11.765458] Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
-  [   11.772284] CPU: 3 UID: 0 PID: 85 Comm: mfoffline Tainted: G        W            7.3.0-17087-gd865f2677c44 #1 PREEMPT
-  [   11.777970] RIP: 0010:find_lock_entries+0x8ee/0xad0
-  [   11.798761] Call Trace:
-  [   11.799297]  <TASK>
-  [   11.803284]  mapping_try_invalidate+0xfd/0x2c0
-  [   11.810571]  drop_pagecache_sb+0x111/0x330
-  [   11.811572]  __iterate_supers+0x2e2/0x370
-  [   11.815863]  drop_caches_sysctl_handler+0x74/0xb0
-  [   11.816994]  proc_sys_call_handler+0x2ec/0x440
-  [   11.821360]  vfs_write+0x545/0x1250
-  [   11.825220]  ksys_write+0xfa/0x200
-  [   11.830202]  do_syscall_64+0xfb/0x590
-  [   11.832084]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
-  [   11.848423]  </TASK>
+  [   14.324093] ODEBUG: init active (active state 0) object: 0000000009e526fd object type: timer_list hint: cgroup_file_notify_timer+0x0/0x10
+  [   14.324123] WARNING: lib/debugobjects.c:629 at debug_print_object+0x1a4/0x3b0, CPU#1: cgnotify/64
+  [   14.329806] CPU: 1 UID: 0 PID: 64 Comm: cgnotify Tainted: G        W            7.3.0-17087-gd865f2677c44 #1 PREEMPT
+  [   14.335109] RIP: 0010:debug_print_object+0x1ae/0x3b0
+  [   14.354351] Call Trace:
+  [   14.354927]  <TASK>
+  [   14.356650]  __debug_object_init+0x203/0x3c0
+  [   14.361799]  timer_init_key+0x2c/0x240
+  [   14.362682]  cgroup_addrm_files+0x754/0xc40
+  [   14.366744]  css_populate_dir+0x12e/0x440
+  [   14.368636]  cgroup_apply_control_enable+0x2f3/0xb60
+  [   14.371769]  cgroup_subtree_control_write+0x740/0xc10
+  [   14.376924]  cgroup_file_write+0x19e/0x700
+  [   14.381809]  kernfs_fop_write_iter+0x337/0x510
+  [   14.382818]  vfs_write+0x545/0x1250
+  [   14.386491]  ksys_write+0xfa/0x200
+  [   14.390144]  do_syscall_64+0xfb/0x590
+  [   14.390994]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
 
-Once the memory is also removed it's a use-after-free of the memory map.
-tmpfs and the swap cache can end up the same way without the race.
-Since commit a76054266661 ("mm: shmem: don't truncate page if memory
-failure happens"), memory_failure() leaves a poisoned tmpfs folio in the
-page cache on purpose, and it does the same for a dirty folio in the
-swap cache.
+If the css is freed instead, the timer can fire on freed memory.
 
-Treat a hwpoisoned page whose folio is still in a page cache or swap
-cache as busy in scan_movable_pages() and
-__test_page_isolated_in_pageblock() so that the offline fails and a
-waiting memory_failure() can go on.  A later offline succeeds once the
-page is out of the cache.  With the fix, the offline fails with -EBUSY
-and the file doesn't point to offlined memory anymore.
+Arm the timer under cfile->lock after checking kn again and keep only
+the kn and timer_pending() checks outside the lock.  With the fix, the
+timer stays idle once the file is removed.
 
 This bug was identified and confirmed with the help of a deterministic
 hypervisor currently under development.  The C reproducer below however
-hits it within about 10s.
+hits it within a minute.
 
-Fixes: b023f46813cd ("memory-hotplug: skip HWPoisoned page when offlining pages")
+Fixes: 4616120fca7f ("cgroup: add lockless fast-path checks to cgroup_file_notify()")
 Cc: stable@vger.kernel.org
 Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Taking get_online_mems() in memory_failure(), as in Gregory's series
-[1], would close only the race and not the tmpfs or swap cache case.
-
-[1] https://lore.kernel.org/all/20261027042204.3741307-4-gourry@gourry.net/
-
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/mfoffline.c
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/cgnotify.c
 ---
- mm/internal.h       | 9 +++++++++
- mm/memory_hotplug.c | 2 ++
- mm/page_isolation.c | 2 +-
- 3 files changed, 12 insertions(+), 1 deletion(-)
+ kernel/cgroup/cgroup.c | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/mm/internal.h b/mm/internal.h
-index aeebb3e49ed1..ba7b1650a5ca 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -1195,6 +1195,15 @@ static inline int unmap_poisoned_folio(struct folio *folio, unsigned long pfn, b
- }
- #endif
+diff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c
+index a284225f8dc9..b3657e72db99 100644
+--- a/kernel/cgroup/cgroup.c
++++ b/kernel/cgroup/cgroup.c
+@@ -4806,19 +4806,21 @@ void cgroup_file_notify(struct cgroup_file *cfile)
+ 	if (!READ_ONCE(cfile->kn))
+ 		return;
  
-+/*
-+ * A hwpoisoned page can be skipped by memory offline only once no page
-+ * cache or swap cache can find it anymore.
-+ */
-+static inline bool hwpoison_page_offlineable(const struct page *page)
-+{
-+	return !folio_mapping(page_folio(page));
-+}
+-	last = READ_ONCE(cfile->notified_at);
+-	next = last + CGROUP_FILE_NOTIFY_MIN_INTV;
+-	if (time_in_range(jiffies, last, next)) {
+-		timer_reduce(&cfile->notify_timer, next);
+-		if (timer_pending(&cfile->notify_timer))
+-			return;
+-	}
++	if (timer_pending(&cfile->notify_timer))
++		return;
+ 
+ 	spin_lock_irqsave(&cfile->lock, flags);
+ 	if (cfile->kn) {
+-		kn = cfile->kn;
+-		kernfs_get(kn);
+-		WRITE_ONCE(cfile->notified_at, jiffies);
++		last = cfile->notified_at;
++		next = last + CGROUP_FILE_NOTIFY_MIN_INTV;
 +
- extern unsigned long  __must_check vm_mmap_pgoff(struct file *, unsigned long,
-         unsigned long, unsigned long,
-         unsigned long, unsigned long);
-diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
-index c9cc42e54f05..3d36f7f2e04b 100644
---- a/mm/memory_hotplug.c
-+++ b/mm/memory_hotplug.c
-@@ -1820,6 +1820,8 @@ static int scan_movable_pages(unsigned long start, unsigned long end,
- 		struct folio *folio;
++		if (time_in_range(jiffies, last, next)) {
++			timer_reduce(&cfile->notify_timer, next);
++		} else {
++			kn = cfile->kn;
++			kernfs_get(kn);
++			cfile->notified_at = jiffies;
++		}
+ 	}
+ 	spin_unlock_irqrestore(&cfile->lock, flags);
  
- 		page = pfn_to_page(pfn);
-+		if (PageHWPoison(page) && !hwpoison_page_offlineable(page))
-+			return -EBUSY;
- 		if (PageLRU(page) || page_has_movable_ops(page))
- 			goto found;
- 
-diff --git a/mm/page_isolation.c b/mm/page_isolation.c
-index 5aaad037384e..beb09ef345ee 100644
---- a/mm/page_isolation.c
-+++ b/mm/page_isolation.c
-@@ -593,7 +593,7 @@ __test_page_isolated_in_pageblock(unsigned long pfn, unsigned long end_pfn,
- 			 */
- 			pfn += 1 << buddy_order(page);
- 		else if ((mode == PB_ISOLATE_MODE_MEM_OFFLINE) &&
--			 PageHWPoison(page))
-+			 PageHWPoison(page) && hwpoison_page_offlineable(page))
- 			/* A HWPoisoned page cannot be also PageBuddy */
- 			pfn++;
- 		else if ((mode == PB_ISOLATE_MODE_MEM_OFFLINE) &&
 
 ---
-base-commit: 243e8cdab64129d6207c398f8cf5fbb1962ff7e1
-change-id: 20261029-memhp-hwpoison-pagecache-a6e3a524a370
+base-commit: cbbddb6b08cc9900a87cccaa9b22bbe06aa4f50a
+change-id: 20261101-cgroup-notify-timer-0177935cef2d
 
 Best regards,
 --  
