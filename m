@@ -1,141 +1,136 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Sun, 01 Nov 2026 13:48:55 +0000
-Subject: [PATCH v3] hugetlbfs: move hugetlbfs_free_inode tracepoint to
- ->destroy_inode()
+From: Cunhao Lu <1579567540@qq.com>
+Date: Sun, 01 Nov 2026 22:18:51 +0800
+Subject: [PATCH] pmdomain: rockchip: Roll back power-on when leaving idle
+ fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-b4-hugetlbfs-trace-v3-1-051b716f490f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEZD52oC/32NQQ6CMBBFr0Jm7ZiWViWuvIdh0ZahnQQoaZFoC
- He3cgCX7yX//Q0yJaYM92qDRCtnjlMBdarABTN5Qu4KQy3qqxRKotUYXp6WwfYZl2QcodLSKtU
- Ye7lZKMM5Uc/vI/psCwfOS0yf42OVP/s3t0qUqMk1naiNEs49/Gh4OLs4Qrvv+xflPZQgtAAAA
- A==
-To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
- David Hildenbrand <david@kernel.org>
-Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>, 
- Hongbo Li <lihongbo22@huawei.com>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- syzbot+91e1fc35f51774c479b2@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, Joas Antonio dos Santos <joasantonio108@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793540934; l=4610;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=hsjYpEEpLfY06mwC5K6ZIdgYdPIvwZSlg1C/xa03vNE=;
- b=BmXuNSntQmCrvn/OtUUWVl3EBh3PNxguI3icnBQ5TGmrSpMuwaATN0T3mCF81AKlpCxVZw1sq
- LQgetf/RxWvDBb/SVzvpMm/Au532FAPkGM0YXtOvySgToUd5LBN8AyV
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+Message-Id: <20261101-fix-rockchip-pmdomain-power-on-rollback-v1-1-59a45783e33e@qq.com>
+X-B4-Tracking: v=1; b=H4sIAEpK52oC/yWNwQ6CQAxEf4X0bBNKDAd/xXhYSpEK7G66oiaEf
+ 7fo8WVm3mxQxFQKXKoNTF5aNEUHOlXAY4h3Qe2doamblqgmHPSDlnjiUTPmpU9L0Ig5vcUwRY/
+ muQs8IROJ988yEIHbsolPf0/X25/L2j2En4ce9v0LSn4eh4sAAAA=
+X-Change-ID: 20261101-fix-rockchip-pmdomain-power-on-rollback-c11e1014ef11
+To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Peter Geis <pgwipeout@gmail.com>
+Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Cunhao Lu <1579567540@qq.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793542731; l=3895;
+ i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
+ bh=n1GcdQjuTTwBnd/fyanWdo3GZ489PQSz5kGsPzwhT6c=;
+ b=WxN7YfRzAeNe1ZbUpfFSZuvt9IaBjnFYOkoxDM/kiTSJpQsS8rYk6w2T9ZihIRiBvYWzq/PIR
+ G6G1ODclGVOCL94vn9bNZUbkOUdldTj8Ov1ct0Cd54Y0Hq6VYpix9zm
+X-Developer-Key: i=1579567540@qq.com; a=ed25519;
+ pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
+X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hugetlbfs_free_inode() calls trace_hugetlbfs_free_inode(), and the
-hugetlbfs__inode event class records inode->i_sb->s_dev.  ->free_inode()
-runs from an RCU callback (destroy_inode() queues i_callback() with
-call_rcu()), and Documentation/filesystems/porting.rst says that this
-callback "is *NOT* ordered wrt superblock destruction; as the matter of
-fact, the superblock and all associated structures might be already
-gone".  put_super() frees the superblock with call_rcu() followed by a
-workqueue item (destroy_super_rcu() -> destroy_super_work()).  syzbot
-hit this with the event enabled:
+When NIU idle exit fails after PMU power-on, clocks and the regulator
+reference are released while the domain remains powered. genpd treats
+it as off and may power off its parents.
 
-  BUG: KASAN: slab-use-after-free in trace_event_raw_event_hugetlbfs__inode+0x45b/0x4c0 include/trace/events/hugetlbfs.h:36
-  Read of size 4 at addr ffff888038850010 by task syz-executor952/6134
-   hugetlbfs_free_inode+0x15e/0x1f0 fs/hugetlbfs/inode.c:1182
-   i_callback+0x46/0x80 fs/inode.c:317
-   rcu_do_batch kernel/rcu/tree.c:2650 [inline]
-   rcu_core+0x5f0/0x1220 kernel/rcu/tree.c:2919
-  Allocated by task 6134:
-   alloc_super fs/super.c:326 [inline]
-   sget_fc+0x1ba/0x1f60 fs/super.c:874
-   hugetlbfs_get_tree+0x1e7/0x2b0 fs/hugetlbfs/inode.c:1431
-  Freed by task 855:
-   kfree+0x22b/0x6d0 mm/slub.c:6923
-   process_one_work+0xac7/0x1b10 kernel/workqueue.c:3495
+Request idle again and, if successful, use the low-level power-off path
+before releasing resources. This preserves saved QoS and notifies
+firmware while retaining the original error.
 
-Emit the event from hugetlbfs_destroy_inode() instead.  destroy_inode()
-calls ->destroy_inode() synchronously, before it queues the RCU
-callback, while the superblock is still alive; hugetlbfs_destroy_inode()
-already dereferences inode->i_sb there.  ->free_inode() is left with
-only the kmem_cache_free().
+If rollback fails, resources are still released and genpd may power off
+the parents.
 
-Since the event no longer fires from ->free_inode(), rename it to
-hugetlbfs_destroy_inode so that its name matches where it is emitted,
-as suggested by David and Muchun.
-
-Found by syzbot; analysed and tested with the syzbot C reproducer on an
-arm64 KASAN kernel.
-
-Fixes: 014ad7c42a69 ("hugetlbfs: use tracepoints in hugetlbfs functions.")
-Reported-by: syzbot+91e1fc35f51774c479b2@syzkaller.appspotmail.com
-Closes: https://lore.kernel.org/all/6ae27525.5451848c.f7707.0001.GAE@google.com/
-Suggested-by: David Hildenbrand <david@kernel.org>
-Suggested-by: Muchun Song <muchun.song@linux.dev>
-Cc: stable@vger.kernel.org
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Fixes: 6b2690df3f03 ("pmdomain: rockchip: fix rockchip_pd_power error handling")
+Signed-off-by: Cunhao Lu <1579567540@qq.com>
 ---
-Andrew, this replaces
-hugetlbfs-emit-hugetlbfs_free_inode-from-destroy_inode.patch in
-mm-hotfixes-unstable.
+This pre-existing idle-exit failure case was reported by Sashiko AI
+during the RK3572 mainlining work:
+https://sashiko.dev/#/patchset/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com?part=10
 
-Tested with the syzbot C reproducer (adjusted for the new event name)
-on an arm64 KASAN kernel: no splat in 3 of 3 boots, and
-hugetlbfs_destroy_inode events are recorded.
+If leaving NIU idle fails after PMU power-on, the domain remains powered
+while genpd treats it as off. The error path releases the clocks and
+regulator reference, and genpd may power off the parent domains.
 
-Tool-use note: the analysis and testing were done with help from an
-LLM-based assistant; I reviewed the change and ran the tests myself.
+This patch requests idle again and, if successful, powers the domain
+off before releasing those resources. It preserves the saved QoS state
+and original error, and uses the low-level path to notify firmware.
+
+Validation:
+
+- All 48 host simulations passed, covering power cycles, idle-exit and
+  rollback failures, QoS preservation and error propagation. No sanitizer
+  findings.
+
+- Hardware testing on OK3572-C: 20 patched and 50 unpatched NVM1 power
+  cycles passed. Request-write injection caused native idle-exit polling
+  timeouts. The fix powered the domain off in 3/3 cases; the original
+  driver left it ON. QoS and the original error were preserved, and
+  retries succeeded after removing the injection.
+
+Persistent rollback idle and power-off timeouts were also tested:
+resources were still released with the domain ON and genpd OFF. These
+failure paths remain unresolved, and genpd may still power off the parents.
+
+AI assistance:
+
+- Codex / DeepSeek V4.1 Flash were used for:
+  - Reviewing and adjusting code style to follow community conventions
+  - Automating tests
+  - Collecting data
 ---
-Changes in v3:
-- Rename the tracepoint to hugetlbfs_destroy_inode in the same patch,
-  so its name matches where it now fires (David, Muchun).
-- v2 was the resend with the Assisted-by trailer dropped; it should
-  have been marked v2 in the subject, sorry about that.
-- Link to v2: https://lore.kernel.org/r/20261031-b4-hugetlbfs-trace-v1-1-4ec8d02a30cc@gmail.com
----
- fs/hugetlbfs/inode.c             | 6 +++++-
- include/trace/events/hugetlbfs.h | 2 +-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ drivers/pmdomain/rockchip/pm-domains.c | 27 ++++++++++++++++++++++++++-
+ 1 file changed, 26 insertions(+), 1 deletion(-)
 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 01c4d6f44e..095b7fceee 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -1179,12 +1179,16 @@ static struct inode *hugetlbfs_alloc_inode(struct super_block *sb)
- 
- static void hugetlbfs_free_inode(struct inode *inode)
- {
--	trace_hugetlbfs_free_inode(inode);
- 	kmem_cache_free(hugetlbfs_inode_cachep, HUGETLBFS_I(inode));
+diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
+index db3879846db6..170f140601d0 100644
+--- a/drivers/pmdomain/rockchip/pm-domains.c
++++ b/drivers/pmdomain/rockchip/pm-domains.c
+@@ -644,6 +644,29 @@ static int rockchip_do_pmu_set_power_domain(struct rockchip_pm_domain *pd,
+ 	return 0;
  }
  
- static void hugetlbfs_destroy_inode(struct inode *inode)
++/*
++ * The caller holds the PMU lock and transition resources. Use the low-level
++ * power-off path to avoid overwriting the saved QoS state.
++ */
++static void rockchip_pd_power_on_rollback(struct rockchip_pm_domain *pd)
++{
++	int ret;
++
++	ret = rockchip_pmu_set_idle_request(pd, true);
++	if (ret < 0) {
++		dev_err(pd->pmu->dev,
++			"failed to idle domain '%s' on rollback: %d\n",
++			pd->genpd.name, ret);
++		return;
++	}
++
++	ret = rockchip_do_pmu_set_power_domain(pd, false);
++	if (ret < 0)
++		dev_err(pd->pmu->dev,
++			"failed to power off domain '%s' on rollback: %d\n",
++			pd->genpd.name, ret);
++}
++
+ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
  {
-+	/*
-+	 * Not in ->free_inode(): that runs from an RCU callback, when the
-+	 * superblock the event reads may already be freed.
-+	 */
-+	trace_hugetlbfs_destroy_inode(inode);
- 	hugetlbfs_inc_free_inodes(HUGETLBFS_SB(inode->i_sb));
- }
+ 	struct rockchip_pmu *pmu = pd->pmu;
+@@ -678,8 +701,10 @@ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
+ 	if (power_on) {
+ 		/* if powering up, leave idle mode */
+ 		ret = rockchip_pmu_set_idle_request(pd, false);
+-		if (ret < 0)
++		if (ret < 0) {
++			rockchip_pd_power_on_rollback(pd);
+ 			goto out;
++		}
  
-diff --git a/include/trace/events/hugetlbfs.h b/include/trace/events/hugetlbfs.h
-index 8ba72c1d4f..a7932e0db0 100644
---- a/include/trace/events/hugetlbfs.h
-+++ b/include/trace/events/hugetlbfs.h
-@@ -72,7 +72,7 @@ DEFINE_EVENT(hugetlbfs__inode, hugetlbfs_evict_inode,
- 	TP_ARGS(inode)
- );
- 
--DEFINE_EVENT(hugetlbfs__inode, hugetlbfs_free_inode,
-+DEFINE_EVENT(hugetlbfs__inode, hugetlbfs_destroy_inode,
- 
- 	TP_PROTO(struct inode *inode),
- 
+ 		rockchip_pmu_restore_qos(pd);
+ 	}
 
 ---
-base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261031-b4-hugetlbfs-trace-341b338ab57b
+base-commit: d89e1d186ec9271bf78e62771779e9fc03bf0fc3
+change-id: 20261101-fix-rockchip-pmdomain-power-on-rollback-c11e1014ef11
 
 Best regards,
--- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+--  
+Cunhao Lu <1579567540@qq.com>
 
