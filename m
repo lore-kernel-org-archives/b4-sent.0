@@ -1,15 +1,14 @@
 From: Fabricio Akio <fabricioakio@gmail.com>
-Date: Sat, 31 Oct 2026 23:30:55 -0300
-Subject: [PATCH] drm/msm/a5xx: Write CP_RB_WPTR under the ring's
- preempt_lock
+Subject: [PATCH 0/2] drm/msm: Per-submission GPU time on A5xx
+Date: Sat, 31 Oct 2026 23:32:49 -0300
+Message-Id: <20261031-a5xx-submit-stats-v1-0-16a67ac96edd@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261031-a5xx-wptr-lock-v1-1-fa7d7b9a7fbe@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ5EMBCA4VeROZvEtKmDV9k4UFMGQVq7moh31
- +X4Hf7/hMBeOECVneD5J0HWJYHyDOzQLD2jdMmgClVSoQkbEyMe2+5xXu2ExrRkSGvlrIMUbZ6
- dxGf4qV+Hbzuy3f8XuK4bHMQP9nIAAAA=
-X-Change-ID: 20261031-a5xx-wptr-lock-55b151332fcf
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBCF4auEWTuQxBqqV5Eu0nSiIxglk0qg5
+ O6NuvzgvX8DocwkcFEbZPqw8Ct1mIOCcPfpRshLN1htndFHg/5UK8o6P7mgFF8EYzB6dONwttZ
+ D/70zRa6/5nX6u+8fFMo3BK3tgJl58XUAAAA=
+X-Change-ID: 20261031-a5xx-submit-stats-fc108684922a
 To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
  Konrad Dybcio <konradybcio@kernel.org>, 
  Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
@@ -23,99 +22,44 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
  Fabricio Akio <fabricioakio@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793500256; l=3913;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793500370; l=1367;
  i=fabricioakio@gmail.com; s=20260928; h=from:subject:message-id;
- bh=SUNATcfAyOfKteGeuYntWXBBaaQFnfxYwXjBjp6a+vU=;
- b=ZMKnqzhG6IvyxdK/sCwhtNHfQiyo+Tuzwg7/AsYhB8BROSd9CZjCN4WCviZhiZo7TMnoFkvci
- T5kHFg5BUdxDhvD0Tc0/R4AjvSBNoSiRgbkW89xgsE+Now3SbyqgGRt
+ bh=FIfxXWiFD0YIv3SO2+3QXWoICX9owaYVS7SChP2aNT4=;
+ b=IIm+EseArzjRGMLKA2hIomTqh4OxcVfh7EFqozoGolMBZe01X5fdBfXHooOUDOdtFcAOEsJDw
+ D7wHTb4letUBmAaPSU7xu/4cNPG5gMF0kzn6I0z31hgwSk9nrX2qmiP
 X-Developer-Key: i=fabricioakio@gmail.com; a=ed25519;
  pk=TlMUT8bPI/ZQzp2q24BIQTb2qSx/jdUTBlGEXIRCm54=
 X-Endpoint-Received: by B4 Relay for fabricioakio@gmail.com/20260928 with auth_id=1076
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CP_RB_WPTR tells the CP how far the ring has been filled. Two functions
-write it: a5xx_flush(), after a submit is added to the ring, and
-update_wptr(), which a5xx_preempt_trigger() calls from the IRQ handler
-each time a submit completes, whenever there is more than one ring,
-even when no ring switch follows. Both read the ring's wptr holding
-ring->preempt_lock, but write the register after releasing it, so the
-two writes can land in the wrong order:
+The GPU time and cycles msm records for each submission, reported in
+the msm_gpu_submit_retired trace event and added to fdinfo, read zero
+on A5xx, whose submit path never copies the counters they come from.
+The second patch adds those copies, as a6xx has them.
 
-  CPU A, IRQ:   update_wptr() reads wptr N
-  CPU B, flush: a5xx_flush() reads wptr N+1, writes N+1
-  CPU A, IRQ:   update_wptr() writes N
+The first fixes what is recorded for a submit killed by hangcheck, on
+every generation that has these counters: its end stamps may never
+have been written, and about three years of GPU time is then added to
+the process's fdinfo. With the second patch alone, A5xx would start
+reporting that.
 
-CP_RB_WPTR then points behind the last submit. If the CP has already
-read past N, it treats the ring as nearly full and executes the
-commands left over from its previous pass through the ring. This shows
-up as CP opcode errors, and the old submits write old fences, so the
-fence in memptrs goes backwards. Recovery then finds no submit to
-blame and does not reset the GPU, which stays hung until reboot.
+Tested on a Motorola Moto X4 (SDM630, A508), whose board file is not
+in mainline yet, on sdm660-mainline's 7.2 kernel with commit
+b303e1d52811 ("drm/msm: Recover HW before retire hung submit"), which
+the first patch needs. Its code is shared with a6xx and later, not
+tested there.
 
-Write the register before releasing the lock in both places, so the
-last value written is always the newest, as a6xx_flush() does.
-
-Fixes: b1fc2839d2f9 ("drm/msm: Implement preemption for A5XX targets")
-Signed-off-by: Fabricio Akio <fabricioakio@gmail.com>
 ---
-Tested on A508 (SDM630), with piglit's texelfetch tests run in
-parallel: CP opcode errors in each of seven one-minute runs, the
-seventh ending in a hang that never recovers; with this, none in 25.
+Fabricio Akio (2):
+      drm/msm: Report no GPU time for a submit killed by hangcheck
+      drm/msm/a5xx: Record per-submission GPU time and cycles
 
-The downstream driver writes the register holding the ring's
-preempt_lock in both of its places:
-https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/drivers/gpu/msm/adreno_ringbuffer.c#L104
-https://github.com/LineageOS/android_kernel_motorola_msm8998/blob/ce9ea8f125c7302ae9b2fec84f23a69271e957c3/drivers/gpu/msm/adreno_a5xx_preempt.c#L25
----
- drivers/gpu/drm/msm/adreno/a5xx_gpu.c     | 10 +++++++---
- drivers/gpu/drm/msm/adreno/a5xx_preempt.c |  3 +--
- 2 files changed, 8 insertions(+), 5 deletions(-)
-
-diff --git a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
-index 16c7335c4b1f..63b313328979 100644
---- a/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
-+++ b/drivers/gpu/drm/msm/adreno/a5xx_gpu.c
-@@ -53,14 +53,18 @@ void a5xx_flush(struct msm_gpu *gpu, struct msm_ringbuffer *ring,
- 	/* Make sure to wrap wptr if we need to */
- 	wptr = get_wptr(ring);
- 
--	spin_unlock_irqrestore(&ring->preempt_lock, flags);
--
- 	/* Make sure everything is posted before making a decision */
- 	mb();
- 
--	/* Update HW if this is the current ring and we are not in preempt */
-+	/*
-+	 * Update HW if this is the current ring and we are not in preempt.
-+	 * Under the lock, so that update_wptr() cannot write an older wptr
-+	 * after this one.
-+	 */
- 	if (a5xx_gpu->cur_ring == ring && !a5xx_in_preempt(a5xx_gpu))
- 		gpu_write(gpu, REG_A5XX_CP_RB_WPTR, wptr);
-+
-+	spin_unlock_irqrestore(&ring->preempt_lock, flags);
- }
- 
- static void a5xx_submit_in_rb(struct msm_gpu *gpu, struct msm_gem_submit *submit)
-diff --git a/drivers/gpu/drm/msm/adreno/a5xx_preempt.c b/drivers/gpu/drm/msm/adreno/a5xx_preempt.c
-index e4924b5e1c48..0deac58bc22e 100644
---- a/drivers/gpu/drm/msm/adreno/a5xx_preempt.c
-+++ b/drivers/gpu/drm/msm/adreno/a5xx_preempt.c
-@@ -47,9 +47,8 @@ static inline void update_wptr(struct msm_gpu *gpu, struct msm_ringbuffer *ring)
- 
- 	spin_lock_irqsave(&ring->preempt_lock, flags);
- 	wptr = get_wptr(ring);
--	spin_unlock_irqrestore(&ring->preempt_lock, flags);
--
- 	gpu_write(gpu, REG_A5XX_CP_RB_WPTR, wptr);
-+	spin_unlock_irqrestore(&ring->preempt_lock, flags);
- }
- 
- /* Return the highest priority ringbuffer with something in it */
-
+ drivers/gpu/drm/msm/adreno/a5xx_gpu.c | 22 ++++++++++++++++++++++
+ drivers/gpu/drm/msm/msm_gpu.c         | 15 ++++++++++++++-
+ 2 files changed, 36 insertions(+), 1 deletion(-)
 ---
 base-commit: a39c950806213f6861d00f90729acaaa21f2d95a
-change-id: 20261031-a5xx-wptr-lock-55b151332fcf
+change-id: 20261031-a5xx-submit-stats-fc108684922a
 
 Best regards,
 --  
