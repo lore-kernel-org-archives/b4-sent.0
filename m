@@ -1,102 +1,69 @@
-From: Viorel Cernateanu <vrilutza@gmail.com>
-Date: Sun, 01 Nov 2026 19:04:39 +0200
-Subject: [PATCH v2 4/4] x86/kmsan: Don't call instrumented code from
- kmsan_virt_addr_valid()
+From: Yuvan Shen <yuvanshen09@gmail.com>
+Date: Sun, 01 Nov 2026 11:51:58 -0600
+Subject: [PATCH] mfd: macsmc: Hold the lock while reading key info
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-kmsan-serie-v2-4-f97f66dc57ef@gmail.com>
-References: <20261101-kmsan-serie-v2-0-f97f66dc57ef@gmail.com>
-In-Reply-To: <20261101-kmsan-serie-v2-0-f97f66dc57ef@gmail.com>
-To: Dave Hansen <dave.hansen@linux.intel.com>, 
- Andy Lutomirski <luto@kernel.org>, Peter Zijlstra <peterz@infradead.org>, 
- Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
- Borislav Petkov <bp@alien8.de>, x86@kernel.org, 
- "H. Peter Anvin" <hpa@zytor.com>, Alexander Potapenko <glider@google.com>, 
- Marco Elver <elver@google.com>, Dmitry Vyukov <dvyukov@google.com>, 
- Andrew Morton <akpm@linux-foundation.org>, Kairui Song <kasong@tencent.com>, 
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
- Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, 
- Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, 
- Baoquan He <baoquan.he@linux.dev>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, Kees Cook <kees@kernel.org>
-Cc: Borislav Petkov <bp@suse.de>, linux-kernel@vger.kernel.org, 
- kasan-dev@googlegroups.com, linux-mm@kvack.org, 
- Ilya Leoshkevich <iii@linux.ibm.com>, 
- Viorel Cernateanu <vrilutza@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793552692; l=2610;
- i=vrilutza@gmail.com; s=lenovo-20261005; h=from:subject:message-id;
- bh=4lXdVBpJSiUWkUV4FYeTn6HuAjrb93rQ9oQKVwzlb6A=;
- b=o1OjIlZvUzgJ+zlmu7Rc0edi0aBd0UOWa/X09z9NOQ1Xbdz5UwRFALG2LG7nc3rQ/JH/tX7Ot
- u/YA3JxtV/ZB3DyUgm46sTQ12cCCQq2/9XlO0o6B9q31clwrM1b0+oi
-X-Developer-Key: i=vrilutza@gmail.com; a=ed25519;
- pk=HttZd2ffphVYTK/pvlflateaij8E4SdPd6Y+xDQMqDU=
-X-Endpoint-Received: by B4 Relay for vrilutza@gmail.com/lenovo-20261005 with auth_id=1115
+Message-Id: <20261101-upstream-macsmc-key-info-v1-1-fa9ff863d199@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAD1852oC/yWMQQ6CQAxFr0K6tpEZBROvYliUsUjVGUg7GA3h7
+ oIu389/bwZjFTY4FzMov8RkSCu4XQGhp3RjlOvK4EtfO1c6nEbLyhQxUrAY8MEflNQNeHLH4Cr
+ qDnXlYdVH5U7ev/Sl+bNN7Z1D3nrboyVjbJVS6LcpkqSnJN5HsswKy/IF2U9hJp4AAAA=
+X-Change-ID: 20261101-upstream-macsmc-key-info-714c15af3652
+To: Lee Jones <lee@kernel.org>, Sven Peter <sven@kernel.org>, 
+ Janne Grunau <j@jannau.net>
+Cc: Neal Gompa <neal@gompa.dev>, Hector Martin <marcan@marcan.st>, 
+ asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ mfd@lists.linux.dev, linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Yuvan Shen <yuvanshen09@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793555518; l=1529;
+ i=yuvanshen09@gmail.com; s=20261101; h=from:subject:message-id;
+ bh=z1N8QvE7NPiEd4ppeCID6vYGqTPd3Hl1S5pezXvfG2o=;
+ b=BQVABoR5+DuuysFyDMIucZZjqkKYPOqazylEB0iamxcetVukCPamNuwomHGvn6It7Fr/X+0ig
+ lQwLiEsF6vTB5VoiKka3aujTpTF6rN+mtKM0BJDJACUgCOFDMqRiqzt
+X-Developer-Key: i=yuvanshen09@gmail.com; a=ed25519;
+ pk=jK3+w+YlV0oJPk7h5w6yT7jKMg0+4IkP9H/eGB+ImJA=
+X-Endpoint-Received: by B4 Relay for yuvanshen09@gmail.com/20261101 with auth_id=1380
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With CONFIG_DEBUG_PREEMPT enabled, a KMSAN kernel hangs during boot
-immediately after KMSAN is enabled.
+apple_smc_get_key_info() releases the SMC mutex when apple_smc_cmd()
+returns, and only then copies the reply out of the shared memory buffer.
+A command issued by another thread in between can overwrite the buffer,
+so the key's size, type and flags can come from a different reply. The
+hwmon and power sub-devices call it from their probe functions, while
+the other sub-devices may already be issuing commands.
 
-kmsan_virt_addr_valid() calls preempt_disable() and pfn_valid(), which
-in turn calls rcu_read_lock_sched(). With CONFIG_DEBUG_PREEMPT, these
-paths call the instrumented preempt_count_add(). Its instrumentation
-requests metadata and re-enters kmsan_virt_addr_valid(), causing
-recursion.
+Hold the mutex until the reply has been copied, as apple_smc_read() and
+apple_smc_write() do.
 
-Use preempt_disable_notrace() and __pfn_valid() to validate the PFN
-without entering those instrumented helpers. Disabling preemption
-provides the RCU-sched read-side protection required by __pfn_valid().
-
-Use preempt_enable_no_resched_notrace() on exit to avoid both
-instrumentation and a reschedule from the metadata lookup.
-
-Fixes: f6564fce256a ("mm, kmsan: fix infinite recursion due to RCU critical section")
-Link: https://lore.kernel.org/20240308043448.masllzeqwht45d4j@M910t
-Suggested-by: Alexander Potapenko <glider@google.com>
-Signed-off-by: Viorel Cernateanu <vrilutza@gmail.com>
+Fixes: e038d985c982 ("mfd: Add Apple Silicon System Management Controller")
+Cc: stable@vger.kernel.org
+Signed-off-by: Yuvan Shen <yuvanshen09@gmail.com>
 ---
- arch/x86/include/asm/kmsan.h | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+ drivers/mfd/macsmc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/arch/x86/include/asm/kmsan.h b/arch/x86/include/asm/kmsan.h
-index c6715b2db0dc..e36df95439df 100644
---- a/arch/x86/include/asm/kmsan.h
-+++ b/arch/x86/include/asm/kmsan.h
-@@ -85,18 +85,21 @@ static inline bool kmsan_virt_addr_valid(void *addr)
- 	}
+diff --git a/drivers/mfd/macsmc.c b/drivers/mfd/macsmc.c
+index 514cba7dc897..4dbaacc7eb3d 100644
+--- a/drivers/mfd/macsmc.c
++++ b/drivers/mfd/macsmc.c
+@@ -210,7 +210,9 @@ int apple_smc_get_key_info(struct apple_smc *smc, smc_key key, struct apple_smc_
+ 	u8 key_info[6];
+ 	int ret;
  
- 	/*
--	 * pfn_valid() relies on RCU, and may call into the scheduler on exiting
--	 * the critical section. However, this would result in recursion with
--	 * KMSAN. Therefore, disable preemption here, and re-enable preemption
--	 * below while suppressing reschedules to avoid recursion.
-+	 * pfn_valid() takes rcu_read_lock_sched(), which can call instrumented
-+	 * code (preempt_count_add() with CONFIG_DEBUG_PREEMPT, lock_acquire()
-+	 * with CONFIG_DEBUG_LOCK_ALLOC). That code looks up metadata itself and
-+	 * would recurse here. Disable preemption with the notrace helpers
-+	 * instead, which keeps this an RCU-sched read-side critical section,
-+	 * and re-enable it without a reschedule to avoid entering the scheduler
-+	 * from the metadata lookup.
- 	 *
- 	 * Note, this sacrifices occasionally breaking scheduling guarantees.
- 	 * Although, a kernel compiled with KMSAN has already given up on any
- 	 * performance guarantees due to being heavily instrumented.
- 	 */
--	preempt_disable();
--	ret = pfn_valid(x >> PAGE_SHIFT);
--	preempt_enable_no_resched();
-+	preempt_disable_notrace();
-+	ret = __pfn_valid(x >> PAGE_SHIFT);
-+	preempt_enable_no_resched_notrace();
- 
- 	return ret;
- }
+-	ret = apple_smc_cmd(smc, SMC_MSG_GET_KEY_INFO, key, 0, 0, NULL);
++	guard(mutex)(&smc->mutex);
++
++	ret = apple_smc_cmd_locked(smc, SMC_MSG_GET_KEY_INFO, key, 0, 0, NULL);
+ 	if (ret >= 0 && info) {
+ 		memcpy_fromio(key_info, smc->shmem.iomem, sizeof(key_info));
+ 		info->size = key_info[0];
 
--- 
-2.53.0
+---
+base-commit: d89e1d186ec9271bf78e62771779e9fc03bf0fc3
+change-id: 20261101-upstream-macsmc-key-info-714c15af3652
+
+Best regards,
+--  
+Yuvan Shen <yuvanshen09@gmail.com>
 
