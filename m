@@ -1,136 +1,86 @@
-From: Cunhao Lu <1579567540@qq.com>
-Date: Sun, 01 Nov 2026 22:18:51 +0800
-Subject: [PATCH] pmdomain: rockchip: Roll back power-on when leaving idle
- fails
+From: Patrick Fischer <admin@tsv-stahl-riesa.de>
+Subject: [PATCH 0/2] iio: light: Add Capella CM3217 ambient light sensor
+Date: Sun, 01 Nov 2026 15:46:05 +0100
+Message-Id: <20261101-upstream-iio-cm3217-v1-0-5e1724cae7b7@tsv-stahl-riesa.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-fix-rockchip-pmdomain-power-on-rollback-v1-1-59a45783e33e@qq.com>
-X-B4-Tracking: v=1; b=H4sIAEpK52oC/yWNwQ6CQAxEf4X0bBNKDAd/xXhYSpEK7G66oiaEf
- 7fo8WVm3mxQxFQKXKoNTF5aNEUHOlXAY4h3Qe2doamblqgmHPSDlnjiUTPmpU9L0Ig5vcUwRY/
- muQs8IROJ988yEIHbsolPf0/X25/L2j2En4ce9v0LSn4eh4sAAAA=
-X-Change-ID: 20261101-fix-rockchip-pmdomain-power-on-rollback-c11e1014ef11
-To: Ulf Hansson <ulfh@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Peter Geis <pgwipeout@gmail.com>
-Cc: linux-pm@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Cunhao Lu <1579567540@qq.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMSwqDQBBF0a1IjVPQ1RqFbCVkoO1TK+CHLg0Bc
+ e92zPAM7t3JEBVGj2yniI+azlOC3DIKQz31YG2TyTtfijjhbbE1oh5ZdeYw5l4qRt5JEYqqdLh
+ TKpeITr/X9fn627bmjbD+VnQcJzWhECt3AAAA
+X-Change-ID: 20261101-upstream-iio-cm3217-e3f14c4760e5
+To: Jonathan Cameron <jic23@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Kevin Tsai <ktsai@capellamicro.com>, 
+ Svyatoslav Ryhel <clamor95@gmail.com>, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Patrick Fischer <admin@tsv-stahl-riesa.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793542731; l=3895;
- i=1579567540@qq.com; s=20261015; h=from:subject:message-id;
- bh=n1GcdQjuTTwBnd/fyanWdo3GZ489PQSz5kGsPzwhT6c=;
- b=WxN7YfRzAeNe1ZbUpfFSZuvt9IaBjnFYOkoxDM/kiTSJpQsS8rYk6w2T9ZihIRiBvYWzq/PIR
- G6G1ODclGVOCL94vn9bNZUbkOUdldTj8Ov1ct0Cd54Y0Hq6VYpix9zm
-X-Developer-Key: i=1579567540@qq.com; a=ed25519;
- pk=sUTWrzlIwT4C7ctjNfVZAzzg0G7QUn2XxRGpYsw4RtM=
-X-Endpoint-Received: by B4 Relay for 1579567540@qq.com/20261015 with auth_id=1177
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793544375; l=2609;
+ i=admin@tsv-stahl-riesa.de; s=20261020; h=from:subject:message-id;
+ bh=Mo11z19nSNgy7ItXum4iHRm9VY1mxiDs5BKUIlg3N3U=;
+ b=In/ftypgqPOxyWxJtKXzOYdb9VGTNhF6O8/9pTpkdSVPeWMohPHjNQKkRYp4JGpvcpMFDVtsN
+ cL2ad1JrZrZBZDnsH1YWBNUGaGwUEE6oOLlLvvA/xrRUWOUJ3wJssc4
+X-Developer-Key: i=admin@tsv-stahl-riesa.de; a=ed25519;
+ pk=D+v6EloYcEY9PIUHFyTM5sqcGIU/fIXzLUdkR8vjAtk=
+X-Endpoint-Received: by B4 Relay for admin@tsv-stahl-riesa.de/20261020 with auth_id=1251
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When NIU idle exit fails after PMU power-on, clocks and the regulator
-reference are released while the domain remains powered. genpd treats
-it as off and may power off its parents.
+The Capella CM3217 is a small ambient light sensor without registers.
+NVIDIA used it in the Tegra Note 7 and the Shield Tablet. Mainline has
+no driver for it: cm32181 and cm3232 expect registers and an ID, the
+CM3217 has neither.
 
-Request idle again and, if successful, use the low-level power-off path
-before releasing resources. This preserves saved QoS and notifies
-firmware while retaining the original error.
+Patch 1 adds the binding, patch 2 the driver with raw value, scale and
+integration time. The datasheet is not public, so the bit fields come
+from NVIDIA's downstream drivers and the scale from Capella's published
+detection range. Patch 2 explains both.
 
-If rollback fails, resources are still released and genpd may power off
-the parents.
+Tested on a Tegra Note 7 (P1640) with v7.3 and the driver built as a
+module, the device created through new_device. In room light all 32
+combinations of integration time and scale gave the same illuminance
+within the count resolution (6.0 to 7.3 lux), and the first read after
+each change matched the second one. The raw counts scale linearly with
+both fields. Svyatoslav Ryhel also tried it on the P1988 variant of the
+Tegra Note 7.
 
-Fixes: 6b2690df3f03 ("pmdomain: rockchip: fix rockchip_pd_power error handling")
-Signed-off-by: Cunhao Lu <1579567540@qq.com>
----
-This pre-existing idle-exit failure case was reported by Sashiko AI
-during the RK3572 mainlining work:
-https://sashiko.dev/#/patchset/20261022-add-board-ok3572-c-v1-0-0b0fd85a31ee@qq.com?part=10
+Probing through the device tree works with the real supply (vdd_dev,
+Palmas LDO6), and unloading and reloading the module twice brought the
+device back each time. Next to a phone light sensor the readings were
+about 7 to 20 times lower. NVIDIA's Android HAL for this tablet
+multiplies the count by 2.1505 at the same 2 T/100 ms setting, which is
+7.2 times the scale here, so most of that is the dark cover window. With
+that factor the tablet was within 15 % of the phone in bright light but
+a factor of three lower in dim room light; I could not tell whether that
+was my setup.
 
-If leaving NIU idle fails after PMU power-on, the domain remains powered
-while genpd treats it as off. The error path releases the clocks and
-regulator reference, and genpd may power off the parent domains.
+The device tree node for the Tegra Note 7 will follow with Svyatoslav's
+tegratab series.
 
-This patch requests idle again and, if successful, powers the domain
-off before releasing those resources. It preserves the saved QoS state
-and original error, and uses the low-level path to notify firmware.
-
-Validation:
-
-- All 48 host simulations passed, covering power cycles, idle-exit and
-  rollback failures, QoS preservation and error propagation. No sanitizer
-  findings.
-
-- Hardware testing on OK3572-C: 20 patched and 50 unpatched NVM1 power
-  cycles passed. Request-write injection caused native idle-exit polling
-  timeouts. The fix powered the domain off in 3/3 cases; the original
-  driver left it ON. QoS and the original error were preserved, and
-  retries succeeded after removing the injection.
-
-Persistent rollback idle and power-off timeouts were also tested:
-resources were still released with the domain ON and genpd OFF. These
-failure paths remain unresolved, and genpd may still power off the parents.
-
-AI assistance:
-
-- Codex / DeepSeek V4.1 Flash were used for:
-  - Reviewing and adjusting code style to follow community conventions
-  - Automating tests
-  - Collecting data
----
- drivers/pmdomain/rockchip/pm-domains.c | 27 ++++++++++++++++++++++++++-
- 1 file changed, 26 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/pmdomain/rockchip/pm-domains.c b/drivers/pmdomain/rockchip/pm-domains.c
-index db3879846db6..170f140601d0 100644
---- a/drivers/pmdomain/rockchip/pm-domains.c
-+++ b/drivers/pmdomain/rockchip/pm-domains.c
-@@ -644,6 +644,29 @@ static int rockchip_do_pmu_set_power_domain(struct rockchip_pm_domain *pd,
- 	return 0;
- }
- 
-+/*
-+ * The caller holds the PMU lock and transition resources. Use the low-level
-+ * power-off path to avoid overwriting the saved QoS state.
-+ */
-+static void rockchip_pd_power_on_rollback(struct rockchip_pm_domain *pd)
-+{
-+	int ret;
-+
-+	ret = rockchip_pmu_set_idle_request(pd, true);
-+	if (ret < 0) {
-+		dev_err(pd->pmu->dev,
-+			"failed to idle domain '%s' on rollback: %d\n",
-+			pd->genpd.name, ret);
-+		return;
-+	}
-+
-+	ret = rockchip_do_pmu_set_power_domain(pd, false);
-+	if (ret < 0)
-+		dev_err(pd->pmu->dev,
-+			"failed to power off domain '%s' on rollback: %d\n",
-+			pd->genpd.name, ret);
-+}
-+
- static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
- {
- 	struct rockchip_pmu *pmu = pd->pmu;
-@@ -678,8 +701,10 @@ static int rockchip_pd_power(struct rockchip_pm_domain *pd, bool power_on)
- 	if (power_on) {
- 		/* if powering up, leave idle mode */
- 		ret = rockchip_pmu_set_idle_request(pd, false);
--		if (ret < 0)
-+		if (ret < 0) {
-+			rockchip_pd_power_on_rollback(pd);
- 			goto out;
-+		}
- 
- 		rockchip_pmu_restore_qos(pd);
- 	}
+Tool use (see Documentation/process/generated-content.rst): this series
+was prepared with an LLM coding assistant (Claude Code). It read the
+NVIDIA downstream drivers and Capella's product data, wrote the driver,
+the binding and the texts from my instructions, and ran the build and
+binding checks. I reviewed the code and ran the tests on the device.
 
 ---
-base-commit: d89e1d186ec9271bf78e62771779e9fc03bf0fc3
-change-id: 20261101-fix-rockchip-pmdomain-power-on-rollback-c11e1014ef11
+Patrick Fischer (2):
+      dt-bindings: iio: light: Add Capella CM3217
+      iio: light: Add Capella CM3217 ambient light sensor driver
+
+ .../bindings/iio/light/capella,cm3217.yaml         |  45 +++
+ drivers/iio/light/Kconfig                          |  10 +
+ drivers/iio/light/Makefile                         |   1 +
+ drivers/iio/light/cm3217.c                         | 383 +++++++++++++++++++++
+ 4 files changed, 439 insertions(+)
+---
+base-commit: 137ca6e5de3bd4e1056877d0b82214e82143efa7
+change-id: 20261101-upstream-iio-cm3217-e3f14c4760e5
 
 Best regards,
 --  
-Cunhao Lu <1579567540@qq.com>
+Patrick Fischer <admin@tsv-stahl-riesa.de>
 
