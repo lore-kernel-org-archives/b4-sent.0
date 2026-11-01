@@ -1,128 +1,81 @@
-From: Mani Tofigh <mt4022@columbia.edu>
-Date: Sun, 01 Nov 2026 14:56:15 -0500
-Subject: [PATCH] cgroup: arm the notify timer only while the file exists
+From: Joachim Eastwood <joachim.eastwood@gmail.com>
+Subject: [PATCH v2 0/9] arm64: dts: rockchip: NanoPi 6 series fixes and
+ improvements
+Date: Sun, 01 Nov 2026 22:55:18 +0100
+Message-Id: <20261101-nanopi-m6-improvements-v2-0-a24769efda23@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-cgroup-notify-timer-v1-1-060c07b81aeb@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBA0auUWTuQidSgVxEXNp3EEUzKJJVK6
- d0bdfkW/69QWIULXLoVlN9SJKcGOnTgH/cUGWVsBmvsicgQ+qh5njDlKuGDVV6saMi587H3HOw
- IrZyUgyy/6/X2d5mHJ/v6XcG27bcM03d3AAAA
-X-Change-ID: 20261101-cgroup-notify-timer-0177935cef2d
-To: Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
- =?utf-8?q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>
-Cc: Shakeel Butt <shakeel.butt@linux.dev>, cgroups@vger.kernel.org, 
- linux-kernel@vger.kernel.org, tz2294@columbia.edu, stable@vger.kernel.org, 
- Mani Tofigh <mt4022@columbia.edu>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793562974; l=3928;
- i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=60CvO+jfXOPrHcfReXmW+4kGYjYut7KkK2ugXS8x2o8=;
- b=ccope1IVV72NxQTvKWk4fob2aYpuP+89xl0/LH5ma9uin0a9lufbzf1Q+PjrigtqxOsrNZgqM
- b+PqUMuc6CTATGB286ZcljzcPq4UVSWpls/f02dcNU+BOykeI0fi/Og
-X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
- pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
-X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBBFf4V0bU2nPIqu/A/DAsoAY+wjLTYaw
+ r8LuHZ5knvPWVjEQBjZNVtYwESRnN1AnjKmp9aOyKnfmEkhK6HkhdvWOk/cVJyMDy6hQTtHXta
+ F1qoTtYaSbWcfcKD3Ib43P46v7oF63m37YqI4u/A5ygn23REBAcW/SAIuOCrIBwXYFX1+G01Lz
+ 7N2hjXrun4BvvIHD84AAAA=
+X-Change-ID: 20260729-nanopi-m6-improvements-584cc7b08c15
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Shawn Lin <Shawn.lin@rock-chips.com>, 
+ Diederik de Haas <diederik@cknow-tech.com>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ Joachim Eastwood <joachim.eastwood@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793570136; l=2308;
+ i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
+ bh=Z+SfRe4fp/DxdMUhi/Z0MvVrWIpYybLtZkdy3R3z0kk=;
+ b=+sE670vEICeBu231TaMLM2TkQ1lJHsPZXbXjkd/oJc9VPF5gyNUwU3QhQtpT94MK21T0UrGqX
+ 5N7giBeUMinBhFcvkeDb7lfCn1kKs9SNtZ4bLnLU9o+17qkhC7u4ch9
+X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
+ pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
+X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cgroup_rm_file() clears cfile->kn under cfile->lock and then deletes the
-notify timer.  Since commit 4616120fca7f ("cgroup: add lockless
-fast-path checks to cgroup_file_notify()"), cgroup_file_notify() checks
-kn and arms the timer without that lock and can arm it right after it
-was deleted:
+This patch series contains a few fixes and miscellaneous improvements
+for the NanoPi 6 series of boards.
 
-  Task A (memcg charge)                  Task B (subtree_control write)
-  cgroup_file_notify()
-    READ_ONCE(cfile->kn) != NULL
-                                         cgroup_rm_file()
-                                           cfile->kn = NULL
-                                           timer_delete_sync()
-    timer_reduce(&cfile->notify_timer)
-      /* timer queued again */
+Patch 1 fixes the voltage range on the SDMMC regulator.
+Patch 2 enables HS400 mode on eMMC. Tested on my M6 board.
+Patch 3 adds an IIO HWMON device to monitor the input voltage.
+Patch 4 moves a regulator that only exist R6 boards to the correct dtsi.
+Patch 5-9 renames DT names to match the schematics signals/nets.
 
-If the css is only hidden, showing it again runs timer_setup() on the
-still queued timer and corrupts the timer wheel:
+If patch 5-9 is just considered churn I'll drop them. These are more
+nice to have and just makes it easier to cross-reference DT and
+schematics.
 
-  [   14.324093] ODEBUG: init active (active state 0) object: 0000000009e526fd object type: timer_list hint: cgroup_file_notify_timer+0x0/0x10
-  [   14.324123] WARNING: lib/debugobjects.c:629 at debug_print_object+0x1a4/0x3b0, CPU#1: cgnotify/64
-  [   14.329806] CPU: 1 UID: 0 PID: 64 Comm: cgnotify Tainted: G        W            7.3.0-17087-gd865f2677c44 #1 PREEMPT
-  [   14.335109] RIP: 0010:debug_print_object+0x1ae/0x3b0
-  [   14.354351] Call Trace:
-  [   14.354927]  <TASK>
-  [   14.356650]  __debug_object_init+0x203/0x3c0
-  [   14.361799]  timer_init_key+0x2c/0x240
-  [   14.362682]  cgroup_addrm_files+0x754/0xc40
-  [   14.366744]  css_populate_dir+0x12e/0x440
-  [   14.368636]  cgroup_apply_control_enable+0x2f3/0xb60
-  [   14.371769]  cgroup_subtree_control_write+0x740/0xc10
-  [   14.376924]  cgroup_file_write+0x19e/0x700
-  [   14.381809]  kernfs_fop_write_iter+0x337/0x510
-  [   14.382818]  vfs_write+0x545/0x1250
-  [   14.386491]  ksys_write+0xfa/0x200
-  [   14.390144]  do_syscall_64+0xfb/0x590
-  [   14.390994]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+Schematics for the boards can be found here:
+M6: https://wiki.friendlyelec.com/wiki/images/8/85/NanoPi_M6_2405_SCH.PDF
+R6C: https://wiki.friendlyelec.com/wiki/images/f/f7/NanoPi_R6C_2302_SCH.PDF
+R6S: https://wiki.friendlyelec.com/wiki/images/2/2f/NanoPi_R6S_2208_SCH.PDF
 
-If the css is freed instead, the timer can fire on freed memory.
-
-Arm the timer under cfile->lock after checking kn again and keep only
-the kn and timer_pending() checks outside the lock.  With the fix, the
-timer stays idle once the file is removed.
-
-This bug was identified and confirmed with the help of a deterministic
-hypervisor currently under development.  The C reproducer below however
-hits it within a minute.
-
-Fixes: 4616120fca7f ("cgroup: add lockless fast-path checks to cgroup_file_notify()")
-Cc: stable@vger.kernel.org
-Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
+Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/cgnotify.c
----
- kernel/cgroup/cgroup.c | 22 ++++++++++++----------
- 1 file changed, 12 insertions(+), 10 deletions(-)
-
-diff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c
-index a284225f8dc9..b3657e72db99 100644
---- a/kernel/cgroup/cgroup.c
-+++ b/kernel/cgroup/cgroup.c
-@@ -4806,19 +4806,21 @@ void cgroup_file_notify(struct cgroup_file *cfile)
- 	if (!READ_ONCE(cfile->kn))
- 		return;
- 
--	last = READ_ONCE(cfile->notified_at);
--	next = last + CGROUP_FILE_NOTIFY_MIN_INTV;
--	if (time_in_range(jiffies, last, next)) {
--		timer_reduce(&cfile->notify_timer, next);
--		if (timer_pending(&cfile->notify_timer))
--			return;
--	}
-+	if (timer_pending(&cfile->notify_timer))
-+		return;
- 
- 	spin_lock_irqsave(&cfile->lock, flags);
- 	if (cfile->kn) {
--		kn = cfile->kn;
--		kernfs_get(kn);
--		WRITE_ONCE(cfile->notified_at, jiffies);
-+		last = cfile->notified_at;
-+		next = last + CGROUP_FILE_NOTIFY_MIN_INTV;
-+
-+		if (time_in_range(jiffies, last, next)) {
-+			timer_reduce(&cfile->notify_timer, next);
-+		} else {
-+			kn = cfile->kn;
-+			kernfs_get(kn);
-+			cfile->notified_at = jiffies;
-+		}
- 	}
- 	spin_unlock_irqrestore(&cfile->lock, flags);
- 
+Changes in v2:
+- Add schematic links to cover letter to ease review
+- Renamed rtl8211f node to gmac
+- Add R-b tags from Shawn Lin
+- Rebased on v7.4-rc1
+- Link to v1: https://patch.msgid.link/20261014-nanopi-m6-improvements-v1-0-e713f71eb4d3@gmail.com
 
 ---
-base-commit: cbbddb6b08cc9900a87cccaa9b22bbe06aa4f50a
-change-id: 20261101-cgroup-notify-timer-0177935cef2d
+Joachim Eastwood (9):
+      arm64: dts: rockchip: rk3588s-nanopi: fix sd min/max voltage
+      arm64: dts: rockchip: rk3588s-nanopi: enable mmc-hs400 and add supplies
+      arm64: dts: rockchip: rk3588s-nanopi: add voltage iio-hwmon device
+      arm64: dts: rockchip: rk3588s-nanopi: move vcc_3v3_s0 to nanopi-r6
+      arm64: dts: rockchip: rk3588s-nanopi: rename sd power pin
+      arm64: dts: rockchip: rk3588s-nanopi: rename usb host power pin
+      arm64: dts: rockchip: rk3588s-nanopi: rename gmac1 reset pin
+      arm64: dts: rockchip: rk3588s-nanopi-m6: rename pcie2 power pin
+      arm64: dts: rockchip: rk3588s-nanopi-m6: rename pcie2 power rail
+
+ .../arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi | 14 ++++--
+ .../arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi | 14 ++++++
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi   | 55 ++++++++++++----------
+ 3 files changed, 53 insertions(+), 30 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20260729-nanopi-m6-improvements-584cc7b08c15
 
 Best regards,
 --  
-Mani Tofigh <mt4022@columbia.edu>
+Joachim Eastwood <joachim.eastwood@gmail.com>
 
