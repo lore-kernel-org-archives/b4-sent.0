@@ -1,91 +1,100 @@
-From: Younes Akhouayri <git@younes.io>
-Date: Sun, 01 Nov 2026 16:47:26 +0100
-Subject: [PATCH v2 2/2] rust: str: parse_int: accept a trailing newline
- like kstrtol()
+From: Vincent Jardin <vjardin@free.fr>
+Date: Sun, 01 Nov 2026 16:59:41 +0100
+Subject: [PATCH] arm64: dts: freescale: lx2160a-nbxv3: fix 1588 and id line
+ names
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-b4-parse-int-sign-v2-2-0fd827f52070@younes.io>
-References: <20261101-b4-parse-int-sign-v2-0-0fd827f52070@younes.io>
-In-Reply-To: <20261101-b4-parse-int-sign-v2-0-0fd827f52070@younes.io>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Daniel Gomez <da.gomez@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Younes Akhouayri <git@younes.io>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793548044; l=2520;
- i=git@younes.io; s=20261027; h=from:subject:message-id;
- bh=2XAMHgQke384/ZeGsO0Ek8ydrF0x8h0HbMzNATiMv70=;
- b=/JzwAtCUZYRO37zUxBiYebEVCS7f7iTMMUXgrDVwVyKuPYZ1d1BdokO8avHBEk+bmKTgpK1Kx
- KxUPayNyhSnB02Svvm5n85yMpf7TXY0eKTr1jpT1YJ/hZ8xwJHxz55K
-X-Developer-Key: i=git@younes.io; a=ed25519;
- pk=TavwxGPDBjl4XGNQyFLKEW7PKSY4qOWusc7yf6hjV0c=
-X-Endpoint-Received: by B4 Relay for git@younes.io/20261027 with auth_id=1332
+Message-Id: <20261101-for-upstream-nbxv3-dts-line-names-v1-1-7c8eecb2da9f@free.fr>
+X-B4-Tracking: v=1; b=H4sIAOxh52oC/x3NQQqDQAxA0atI1g1MRivYq5QuZmqsAY2SWBHEu
+ 3fo8m3+P8HZhB0e1QnGu7gsWkC3Ct5j0g+j9MUQQ2yJAuGwGH5X34zTjJqPvcZ+c5xEGTXN7Nj
+ VmSKle26aAKWzGg9y/B/P13X9AHbiLQZzAAAA
+To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Vincent Jardin <vjardin@free.fr>
+Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793548796; l=2193;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=ISKcvjfV02vWOp4oL9uUzMIK04tsXq8YeCeMJLgxIRQ=;
+ b=ZpoRWP4cOckBlkls/HAiGexv6R8q/Ujap61DCpqzW7toDGxkec9a0p0haztMsR1/0Wrm0qOy1
+ TMyw/wzpTv/Ds+8XHmoHyhh6EriJoQdy8mNOryfZrfYMnO+gR86BtjP
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The documentation of `ParseInt` says that any string parsed by
-`kstrtol()` or `kstrtoul()` is also parsed by `from_str()`. However,
-those functions accept a single trailing newline, and `from_str()` does
-not:
+Let's properly support 1588 on this board and fix the names.
 
-    kstrtol("5\n", 0, &v)   == 0, v == 5
-    i32::from_str("5\n")    == Err(EINVAL)
-
-A trailing newline is common when the string comes from user space, for
-example when a value is written to a sysfs file with `echo`.
-
-Fix it by removing a single trailing newline before parsing, and add
-doctests for it.
-
-Fixes: 51d9ee90ea90 ("rust: str: add radix prefixed integer parsing functions")
-Signed-off-by: Younes Akhouayri <git@younes.io>
+Fixes: 565b6713a460 ("arm64: dts: freescale: add Nodebox v3 CPU Module")
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- rust/kernel/str/parse_int.rs | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ .../boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi      | 22 ++++++++++------------
+ 1 file changed, 10 insertions(+), 12 deletions(-)
 
-diff --git a/rust/kernel/str/parse_int.rs b/rust/kernel/str/parse_int.rs
-index 66f590251ffc..5b13925c328e 100644
---- a/rust/kernel/str/parse_int.rs
-+++ b/rust/kernel/str/parse_int.rs
-@@ -56,8 +56,8 @@ fn strip_radix(src: &BStr) -> Result<(u32, &BStr)> {
- /// Strings beginning with `0x`, `0o`, or `0b` are parsed as hex, octal, or
- /// binary respectively. Strings beginning with `0` otherwise are parsed as
- /// octal. Anything else is parsed as decimal. A leading `+` or `-` is also
--/// permitted. Any string parsed by [`kstrtol()`] or [`kstrtoul()`] will be
--/// successfully parsed.
-+/// permitted, as is a single trailing newline. Any string parsed by
-+/// [`kstrtol()`] or [`kstrtoul()`] will be successfully parsed.
- ///
- /// [`kstrtol()`]: https://docs.kernel.org/core-api/kernel-api.html#c.kstrtol
- /// [`kstrtoul()`]: https://docs.kernel.org/core-api/kernel-api.html#c.kstrtoul
-@@ -91,11 +91,15 @@ fn strip_radix(src: &BStr) -> Result<(u32, &BStr)> {
- /// assert!(i32::from_str(b_str!("0x+5")).is_err());
- /// assert!(i32::from_str(b_str!("-+5")).is_err());
- /// assert!(i32::from_str(b_str!("-0x+5")).is_err());
-+///
-+/// assert_eq!(Ok(5u8), u8::from_str(b_str!("5\n")));
-+/// assert!(u8::from_str(b_str!("5\n\n")).is_err());
- /// ```
- pub trait ParseInt: private::FromStrRadix + TryFrom<u64> {
-     /// Parse a string according to the description in [`Self`].
-     fn from_str(src: &BStr) -> Result<Self> {
--        match src.deref() {
-+        let src = src.strip_suffix(b"\n").unwrap_or(src);
-+        match src {
-             [b'-', rest @ ..] => {
-                 let (radix, digits) = strip_radix(rest.as_ref())?;
-                 // 2's complement values range from -2^(b-1) to 2^(b-1)-1.
+diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
+index 9c5588a75cdd..5591ae262707 100644
+--- a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
++++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
+@@ -169,7 +169,6 @@ &gpio1 {
+ 
+ 	status = "okay";
+ 
+-	/* Platform reset, no consumer node: released at boot */
+ 	pltrst-hog {
+ 		gpio-hog;
+ 		gpios = <29 GPIO_ACTIVE_LOW>;
+@@ -206,9 +205,9 @@ &gpio3 {
+ 		"altfn:ec1-rxd1", "altfn:ec1-rxd0",
+ 		"altfn:ec1-rx-clk", "altfn:ec1-rx-dv",
+ 		"", "",
+-		"ptp-refclk-in",
++		"altfn:tsec1588-clk-out",
+ 		"", "", "", "", "", "", "", "",
+-		"u1700-zl30733-pps-out",
++		"altfn:tsec1588-trig-in1",
+ 		"",
+ 		"ethsw-mdio-en",
+ 		"usb1-oc#",	/* USB1_PWRFAULT and USB2_PWRFAULT pads: one wired-OR net */
+@@ -247,21 +246,20 @@ eeprom@52 {
+ 		pagesize = <32>;
+ 	};
+ 
+-	/* Board ID straps */
+ 	gpio@74 {
+ 		compatible = "ti,tca9539";
+ 		reg = <0x74>;
+ 		#gpio-cells = <2>;
+ 		gpio-controller;
+ 		gpio-line-names =
+-			"boardid-0x0001", "boardid-0x0002",
+-			"boardid-0x0004", "boardid-0x0008",
+-			"boardid-0x0010", "boardid-0x0020",
+-			"boardid-0x0040", "boardid-0x0080",
+-			"boardid-0x0100", "boardid-0x0200",
+-			"boardid-0x0400", "boardid-0x0800",
+-			"boardid-0x1000", "boardid-0x2000",
+-			"boardid-0x4000", "boardid-0x8000";
++			"boardid-0x01", "boardid-0x02",
++			"boardid-0x04", "boardid-0x08",
++			"boardid-0x10", "boardid-0x20",
++			"boardid-0x40", "boardid-0x80",
++			"test-mode-tp1500",
++			"gnd-p11", "gnd-p12", "gnd-p13",
++			"gnd-p14", "gnd-p15", "gnd-p16",
++			"gnd-p17";
+ 	};
+ 
+ 	u800: gpio@75 {
 
+---
+base-commit: cbbddb6b08cc9900a87cccaa9b22bbe06aa4f50a
+change-id: 20261101-for-upstream-nbxv3-dts-line-names-93b121a5b440
+
+Best regards,
 -- 
-2.56.0
+Vincent Jardin <vjardin@free.fr>
 
