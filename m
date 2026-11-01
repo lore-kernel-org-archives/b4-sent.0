@@ -1,100 +1,87 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Sun, 01 Nov 2026 16:59:41 +0100
-Subject: [PATCH] arm64: dts: freescale: lx2160a-nbxv3: fix 1588 and id line
- names
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Sun, 01 Nov 2026 10:06:23 -0600
+Subject: [PATCH ath-next] wifi: ath11k: look for firmware-N.bin without the
+ user-space fallback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-for-upstream-nbxv3-dts-line-names-v1-1-7c8eecb2da9f@free.fr>
-X-B4-Tracking: v=1; b=H4sIAOxh52oC/x3NQQqDQAxA0atI1g1MRivYq5QuZmqsAY2SWBHEu
- 3fo8m3+P8HZhB0e1QnGu7gsWkC3Ct5j0g+j9MUQQ2yJAuGwGH5X34zTjJqPvcZ+c5xEGTXN7Nj
- VmSKle26aAKWzGg9y/B/P13X9AHbiLQZzAAAA
-To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Vincent Jardin <vjardin@free.fr>
-Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793548796; l=2193;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=ISKcvjfV02vWOp4oL9uUzMIK04tsXq8YeCeMJLgxIRQ=;
- b=ZpoRWP4cOckBlkls/HAiGexv6R8q/Ujap61DCpqzW7toDGxkec9a0p0haztMsR1/0Wrm0qOy1
- TMyw/wzpTv/Ds+8XHmoHyhh6EriJoQdy8mNOryfZrfYMnO+gR86BtjP
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Message-Id: <20261101-b123-fw-api-n-direct-v1-1-a9b734520abc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAH5j52oC/yWMwQrCMBAFf6W8swvZBBX9FfGQpBu7HmJJohZK/
+ 92ox2GYWVGlqFSchxVFXlr1kTvwbkCcfL4J6dgZ1tgDs2EKbB2lN/lZKdOoRWKjozuZkPZJYnD
+ o6Vwk6fLbXuDbRFmWhuvf1Ge49+h7xbZ9APsX/sCCAAAA
+X-Change-ID: 20261101-b123-fw-api-n-direct-7390bf5fecb3
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Christopher Griffin <christophergriffin05@gmail.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793549182; l=2493;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=7FihErGI/rxuO2qBCwtRnH7nsLSwQjP+NG+2mzhjaCw=;
+ b=h5I/GzmP40OJbuvR6vdmnMCQvlkWlbMBtyvvZuVKywePUAm6injCk7McFvQia3eyFTa035Mz2
+ +DeBUl+boJqDIyAJvZC0EQ9KE88czoNVyp3pgM0+Oi68FG+UZlGNV89
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Let's properly support 1588 on this board and fix the names.
+ath11k_fw_pre_init() asks for firmware-2.bin through
+ath11k_core_firmware_request(), that is firmware_request_nowarn(), and
+falls back to API 1 when the file is not there. The file is optional,
+and many installations have none: on an Arista C-360 the QCN9074 runs
+from amss.bin alone. With CONFIG_FW_LOADER_USER_HELPER_FALLBACK, which
+OpenWrt sets, firmware_request_nowarn() still hands a missing file to
+the user-space loader, so every probe of such a device waits on a
+uevent and its answer, and the loader logs the miss; when the device
+goes away before the answer, as when it is unbound right after probing,
+the loader then fails to write its answer:
 
-Fixes: 565b6713a460 ("arm64: dts: freescale: add Nodebox v3 CPU Module")
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+  procd: Failed to write to .../firmware/ath11k!QCN9074!hw1.0!firmware-2.bin/loading: Bad file descriptor
+
+Request it with request_firmware_direct() instead, which looks on the
+filesystem only, as ath11k already does for the optional calibration
+file in ath11k_qmi_load_bdf_qmi().
+
+Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
+
+Assisted-by: Claude:claude-opus-5-5
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- .../boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi      | 22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
+Seen on an Arista C-360 with OpenWrt: its QCN9074 has no firmware-2.bin,
+and its scan radio is unbound right after probing.
+---
+ drivers/net/wireless/ath/ath11k/fw.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-index 9c5588a75cdd..5591ae262707 100644
---- a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-+++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
-@@ -169,7 +169,6 @@ &gpio1 {
- 
- 	status = "okay";
- 
--	/* Platform reset, no consumer node: released at boot */
- 	pltrst-hog {
- 		gpio-hog;
- 		gpios = <29 GPIO_ACTIVE_LOW>;
-@@ -206,9 +205,9 @@ &gpio3 {
- 		"altfn:ec1-rxd1", "altfn:ec1-rxd0",
- 		"altfn:ec1-rx-clk", "altfn:ec1-rx-dv",
- 		"", "",
--		"ptp-refclk-in",
-+		"altfn:tsec1588-clk-out",
- 		"", "", "", "", "", "", "", "",
--		"u1700-zl30733-pps-out",
-+		"altfn:tsec1588-trig-in1",
- 		"",
- 		"ethsw-mdio-en",
- 		"usb1-oc#",	/* USB1_PWRFAULT and USB2_PWRFAULT pads: one wired-OR net */
-@@ -247,21 +246,20 @@ eeprom@52 {
- 		pagesize = <32>;
- 	};
- 
--	/* Board ID straps */
- 	gpio@74 {
- 		compatible = "ti,tca9539";
- 		reg = <0x74>;
- 		#gpio-cells = <2>;
- 		gpio-controller;
- 		gpio-line-names =
--			"boardid-0x0001", "boardid-0x0002",
--			"boardid-0x0004", "boardid-0x0008",
--			"boardid-0x0010", "boardid-0x0020",
--			"boardid-0x0040", "boardid-0x0080",
--			"boardid-0x0100", "boardid-0x0200",
--			"boardid-0x0400", "boardid-0x0800",
--			"boardid-0x1000", "boardid-0x2000",
--			"boardid-0x4000", "boardid-0x8000";
-+			"boardid-0x01", "boardid-0x02",
-+			"boardid-0x04", "boardid-0x08",
-+			"boardid-0x10", "boardid-0x20",
-+			"boardid-0x40", "boardid-0x80",
-+			"test-mode-tp1500",
-+			"gnd-p11", "gnd-p12", "gnd-p13",
-+			"gnd-p14", "gnd-p15", "gnd-p16",
-+			"gnd-p17";
- 	};
- 
- 	u800: gpio@75 {
+diff --git a/drivers/net/wireless/ath/ath11k/fw.c b/drivers/net/wireless/ath/ath11k/fw.c
+index ef1b4c81843a3..3628e33e57f6e 100644
+--- a/drivers/net/wireless/ath/ath11k/fw.c
++++ b/drivers/net/wireless/ath/ath11k/fw.c
+@@ -16,10 +16,14 @@ static int ath11k_fw_request_firmware_api_n(struct ath11k_base *ab,
+ 	struct ath11k_fw_ie *hdr;
+ 	const u8 *data;
+ 	__le32 *timestamp;
+-
+-	ab->fw.fw = ath11k_core_firmware_request(ab, name);
+-	if (IS_ERR(ab->fw.fw)) {
+-		ret = PTR_ERR(ab->fw.fw);
++	char path[100];
++
++	/* The file is optional: look for it on the filesystem only, so a
++	 * missing one does not go through the user-space fallback loader.
++	 */
++	ath11k_core_create_firmware_path(ab, name, path, sizeof(path));
++	ret = request_firmware_direct(&ab->fw.fw, path, ab->dev);
++	if (ret) {
+ 		ath11k_dbg(ab, ATH11K_DBG_BOOT, "failed to load %s: %d\n", name, ret);
+ 		ab->fw.fw = NULL;
+ 		return ret;
 
 ---
-base-commit: cbbddb6b08cc9900a87cccaa9b22bbe06aa4f50a
-change-id: 20261101-for-upstream-nbxv3-dts-line-names-93b121a5b440
+base-commit: a3ddbb45768717b5c9f923489387cf55c838d1ad
+change-id: 20261101-b123-fw-api-n-direct-7390bf5fecb3
 
 Best regards,
--- 
-Vincent Jardin <vjardin@free.fr>
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
