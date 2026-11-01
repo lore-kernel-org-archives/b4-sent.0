@@ -1,14 +1,14 @@
 From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Sun, 01 Nov 2026 15:27:30 +0000
-Subject: [PATCH 6.12.y] netfilter: nf_conntrack_expect: add and use
+Date: Sun, 01 Nov 2026 15:27:31 +0000
+Subject: [PATCH 6.1.y] netfilter: nf_conntrack_expect: add and use
  nf_ct_expect_related_pair()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-nfexp-pair-6-12-y-v1-1-56cef5744745@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGFa52oC/x3MMQqAMAxA0atIZiMmagevIg5VU81SSwuiFO9uc
- XzD/xmSRJUEY5UhyqVJT19AdQXrYf0uqFsxcMuGqCX0Tu6AwWpEg8T4oOV1oaFns3UOSheiOL3
- /5wSmIW4emN/3A9wrPilrAAAA
+Message-Id: <20261101-nfexp-pair-6-1-y-v1-1-5aa95ee76098@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGJa52oC/x3MPQqAMAxA4auUzEYakVa8ijj4EzVLLSlIRby7x
+ fEb3nsgsQon6M0DypckOUMBVQaWYwo7o6zF0NjGEVnCsHGOGCdRdEh4Yzuzt65j31oPJYvKm+R
+ /OYCrqb5hfN8PZ09Ea2kAAAA=
 To: stable@vger.kernel.org
 Cc: Pablo Neira Ayuso <pablo@netfilter.org>, 
  Florian Westphal <fw@strlen.de>, netfilter-devel@vger.kernel.org, 
@@ -17,11 +17,11 @@ Cc: Pablo Neira Ayuso <pablo@netfilter.org>,
  Jaeyeong Lee <iostreampy@proton.me>, 
  Joas Antonio dos Santos <joasantonio108@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793546849; l=8784;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793546850; l=8782;
  i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=EqbEn189WmeevYWc7bg9S1G6ESHTGh6V3LrxMu8nVsQ=;
- b=rD1va6wGfLy2OZ4f9SS+mPgSziTtlnXpjQbcMVxVHaXy6JUS/hUMRjIDgOv3w57K9uRtam7tv
- wSZQR7yAMvWAKMSGiGSa86vOBz24axNayhy6z8By8rZPkgIoezc9GEA
+ bh=n2l6hhC0bG+nOk0YkOz4F3IR1FdeB1tT1vc20LyRtVg=;
+ b=GX9qOqErelNp7byCPfa0ukiqHrLnlMaVYKIjxtJGjx0StTiqcHA+iDHBBg59HbREoeDD0zdoe
+ Y9gliQFLKUeAxXSesve0nQ3jG6L/BqK8b/6RXUNigdZCbnSckxgVnlZ
 X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
  pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
 X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
@@ -68,9 +68,9 @@ and the expect hash.  It is reachable from an unprivileged user and
 network namespace (sip helper + NAT, plus one ctnetlink expectation
 occupying the RTCP port).
 
-The affected code is the same in v6.12.115.  Runtime-tested on v6.6.161
+The affected code is the same in v6.1.191.  Runtime-tested on v6.6.161
 arm64 with KASAN and DEBUG_LIST, as uid 1000 in a new user+net
-namespace; on v6.12.115 the patch is build-tested.  On v6.6.161 without it:
+namespace; on v6.1.191 the patch is build-tested.  On v6.6.161 without it:
 
   KASAN: maybe wild-memory-access in range [0xdead000000000120-0xdead000000000127]
   pc : nf_ct_unlink_expect_report+0xfc/0x418
@@ -83,7 +83,7 @@ namespace; on v6.12.115 the patch is build-tested.  On v6.6.161 without it:
   Kernel panic - not syncing: Oops: Fatal exception in interrupt
 
 With it, the same reproducer runs clean.  The same backport applies to
-6.6.y and 6.1.y (sent separately); I can share the reproducer
+6.6.y and 6.12.y (sent separately); I can share the reproducer
 privately if useful.
 
 Tool-use note: the analysis, backport and testing were done with help
@@ -152,7 +152,7 @@ index 10e1b0837731..d55994fccf5d 100644
  			break;
  		}
 diff --git a/net/netfilter/nf_conntrack_expect.c b/net/netfilter/nf_conntrack_expect.c
-index f9352dada84e..1e1e3a4a0d1c 100644
+index a0b9cb8b00a9..c48ba311ebab 100644
 --- a/net/netfilter/nf_conntrack_expect.c
 +++ b/net/netfilter/nf_conntrack_expect.c
 @@ -425,7 +425,6 @@ static void nf_ct_expect_insert(struct nf_conntrack_expect *exp)
@@ -255,8 +255,8 @@ index 6b00c81084fe..115d955bfaef 100644
  		}
 
 ---
-base-commit: 03bae623ec326c2738198739625832aab0eb120a
-change-id: 20261101-nfexp-pair-6-12-y-a2cb15426d3f
+base-commit: 08889840163ebcdb7e24bf7ec311bc2e6fc3aaea
+change-id: 20261101-nfexp-pair-6-1-y-4be7068e7407
 
 Best regards,
 -- 
