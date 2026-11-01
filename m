@@ -1,349 +1,263 @@
-From: Igor Velkov <iav@iav.lv>
-Date: Sun, 01 Nov 2026 07:53:26 +0200
-Subject: [PATCH 4/4] cmd: lwip: wget: write the download to a block device
+From: Nikolay Plastinin <plaztininikolai@gmail.com>
+Date: Sun, 01 Nov 2026 15:19:18 +0800
+Subject: [PATCH v5] leds: trigger: input-events: Restore previous
+ brightness on input
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-b4-wget-blk-r4-v1-4-e27a009e4043@iav.lv>
-References: <20261101-b4-wget-blk-r4-v1-0-e27a009e4043@iav.lv>
-In-Reply-To: <20261101-b4-wget-blk-r4-v1-0-e27a009e4043@iav.lv>
-To: Jerome Forissier <jerome.forissier@arm.com>, 
- Tom Rini <trini@konsulko.com>
-Cc: Simon Glass <sjg@chromium.org>, 
- Heinrich Schuchardt <xypron.glpk@gmx.de>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Adriano Cordova <adrianox@gmail.com>, u-boot@lists.u-boot-project.org, 
- Igor Velkov <iav@iav.lv>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11085; i=iav@iav.lv;
- h=from:subject:message-id; bh=Pl2PkZfpjiggCYo1gZsZB0C6tdYAeTz2R8M/dKgGyKo=;
- b=owGbwMvMwCVmNH1q96v4SmbG02pJDFnPLl/lsWiNscubznVaMSJIrGrxxjAPt/gTU19e9dl85
- /bzuNScjlIWBjEuBlkxRZYJhzRuZSy5+tffw/wBzBxWJpAhDFycAjCReTcZGeZk67xtbddlyX8t
- ckz+43YthvXcmSt0zL4f+9dy4r3zJ0NGhrnMv2zVSqfzSXwO69bv2c5fInPN2vrslmu2jKZp4gV
- RbAA=
-X-Developer-Key: i=iav@iav.lv; a=openpgp;
- fpr=90C228DA68A4D5FD4F4837E03297958BEA5F7903
-X-Endpoint-Received: by B4 Relay for iav@iav.lv/default with auth_id=1060
+Message-Id: <20261101-leds-input-events-brightness-v5-1-d5296b1957dc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43Ou27DMAyF4VcJNIcBdfGtU9+j6EBLtC0gkQPJF
+ VoEfvcqGQKjHZzx5/Ad3kTi6DmJt8NNRM4++TmUqI4HYScKI4N3pYVCVWOnDJzZJfDh+rUAZw5
+ Lgj76cVoCpwTU1MQdNU3fVqIQ18iD/37wH5+lJ5+WOf481rK8X1+EswQJPVoeBk1KG/0+XsifT
+ 3a+iDuc1QbTuIMpQNCdaZ22zrn2H6afmERZ72C6YMqaWlkaGBX+xcwG2/3MFKxiQibXmBbtFlv
+ X9ReN3mklrwEAAA==
+X-Change-ID: 20260924-leds-input-events-brightness-a76ae9a77b85
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Hans de Goede <hansg@kernel.org>, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Nikolay Plastinin <plaztininikolai@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793517559; l=9582;
+ i=plaztininikolai@gmail.com; s=20260924; h=from:subject:message-id;
+ bh=P24GCfkFyv+z/dAtuHD8odXbRDrCuDyfPXRHi96zv1c=;
+ b=8q+a2MSLo3uhp52HdVP468XeLNAzvPCEiIcIfd2OEovlm/ohhaxGxvS6Ct7xZsxw5yYaWRU9I
+ cxLLkdw9tPBDqf8BggrwyxK1ccPS+/Ma/zh3zvE0SLY2abYU4aCGOIm
+X-Developer-Key: i=plaztininikolai@gmail.com; a=ed25519;
+ pk=bmHrETa14IbiLNkJSoiLqUMni+IeSFwhOSDM4vVFN4s=
+X-Endpoint-Received: by B4 Relay for plaztininikolai@gmail.com/20260924 with auth_id=1052
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wget loads a file into memory, so a disk image can be written only when
-it fits in RAM, and only after the whole download.
+The trigger turns the LEDs back on with LED_FULL, which the LED core
+clamps to max_brightness. For keyboard backlights with several levels,
+such as asus::kbd_backlight, this means the backlight always comes back
+at maximum after being idle instead of at the level the user picked.
 
-Add options to the lwIP wget command that write the download to a block
-device while it arrives:
+Remember the brightness per LED before turning it off and restore it on
+the next input event. Keep the level in a per-LED state struct allocated
+in activate() and freed in deactivate(), converting the simple trigger
+to a regular trigger. Pick up brightness changes made while the LED is
+on before saving the level again.
 
-  -o <if> <dev>[.<hwpart>][:<part>|#<name>]   the target
-  -s <offs>                                   byte offset into it
-  -b <wbuf>                                   write buffer size
+Iterate directly with list_for_each_entry_rcu() under guard(rcu)() for
+both the on and off paths. Skip LEDs whose activate() callback has not
+set up their state yet.
 
-Without a partition the target is the whole device, also on a
-partitioned one. The target size goes to wget as the buffer size, so a
-file whose Content-Length exceeds it is refused before anything is
-written, and wget says when a download does not fit. A reply other
-than 200 writes nothing, and a download that fails halfway drops the
-buffered tail. WGET_STREAM enables the options; sandbox64_lwip builds
-them.
+Clear trigger_data under the same lock used by the LED walker before
+freeing the per-LED state. Although normal trigger removal waits for an
+RCU grace period, the device_add_groups() error path calls deactivate()
+while the LED is still linked, so a walker must see NULL after teardown.
 
-A ROCK Pi 4A writes a 1.86 GB image to its SD card this way in 3 min
-16 s to 3 min 35 s with a 4 MiB buffer.
+The previous revision was tested on an ASUS ROG Flow X13 GV302XV:
+keyboard backlight levels 1 and 2 were restored after idle timeout and
+keyboard input, and 20 trigger activate/deactivate cycles completed
+successfully.
 
-Signed-off-by: Igor Velkov <iav@iav.lv>
+Assisted-by: LLM
+Signed-off-by: Nikolay Plastinin <plaztininikolai@gmail.com>
 ---
- cmd/Kconfig                      |   9 ++++
- cmd/lwip/wget.c                  | 107 ++++++++++++++++++++++++++++++++++++++-
- configs/sandbox64_lwip_defconfig |   1 +
- doc/usage/cmd/wget.rst           |  43 +++++++++++++++-
- net/lwip/wget.c                  |  12 ++++-
- 5 files changed, 168 insertions(+), 4 deletions(-)
+The input-events trigger turns LEDs back on with LED_FULL, so a keyboard
+backlight with several levels always comes back at maximum after being
+idle. This series restores the level the user picked instead.
 
-diff --git a/cmd/Kconfig b/cmd/Kconfig
-index 6cdfcbba32c..0f2ff32f961 100644
---- a/cmd/Kconfig
-+++ b/cmd/Kconfig
-@@ -2351,6 +2351,15 @@ config WGET_HTTPS
- 	help
- 	  Enable TLS over http for wget.
+V5 is a single patch. Iterate directly over the trigger's LEDs using
+list_for_each_entry_rcu() under guard(rcu)(), as requested by Greg KH.
+The per-LED state and locked teardown from v4 are unchanged. No changes
+to include/linux/leds.h or the LED core are needed.
+
+This came up while looking at a keyboard backlight idle timeout for ASUS
+laptops in asusctl:
+https://github.com/OpenGamingCollective/asusctl/issues/98
+
+Validation for v5: the module builds out of tree with W=1 against Fedora
+7.2.12-200.fc44.x86_64 using the installed kernel headers. The user-space
+harness using the driver functions passes ASan/UBSan for the error-unwind
+ordering, brightness restoration, and 10,000 concurrent teardown cycles.
+The harness uses a mutex and a one-element list instead of kernel
+primitives; it is not kernel fault injection or an RCU implementation test.
+V5 hardware testing passed on the GV302XV with kernel 7.2.12: levels 1
+and 2 were restored after idle and input, and 20 activate/deactivate
+cycles completed. The original brightness 2 and trigger none were
+restored, and the test module was unloaded. A separate journalctl check
+of the test interval showed no kernel entries; the script's dmesg output
+included messages from earlier suspend/resume cycles.
+
+V4 was tested on an ASUS ROG Flow X13 GV302XV with kernel
+7.2.12-200.fc44.x86_64 and no external monitor: brightness levels 1 and 2
+were restored after idle timeout and keyboard input, and 20 trigger
+activate/deactivate cycles passed. No kernel messages appeared during
+the test. The original brightness and trigger were restored afterwards.
+No full kernel build has been performed.
+
+LLM assistance was used for the implementation, tests and message drafts.
+---
+Changes in v5:
+- Drop the common led_trigger_for_each_led() macro and its patch.
+- Open-code list_for_each_entry_rcu() next to guard(rcu)() in the trigger,
+  as requested by Greg KH; include linux/rculist.h directly.
+- Keep the locked trigger_data teardown from v4 unchanged.
+- Link to v4: https://lore.kernel.org/r/20261030-leds-input-events-brightness-v4-0-5ea0ead7480c@gmail.com
+
+Changes in v4:
+- Clear trigger_data under input_events_data.lock before freeing per-LED
+  state in deactivate(), as suggested by Lee Jones. This also covers the
+  device_add_groups() error path, which deactivates before list removal.
+- Update the NULL-state comment to cover activation error unwind.
+- Patch 1 is unchanged.
+- Link to v3: https://lore.kernel.org/r/20261016-leds-input-events-brightness-v3-0-2c462cafe020@gmail.com
+
+Changes in v3:
+- Replace led_trigger_walk_leds() with led_trigger_for_each_led(), an
+  RCU list iterator in include/linux/leds.h, as suggested by Lee Jones.
+- Remove the exported helper, callback typedef, and void-pointer argument.
+- Keep saving and restoring brightness in input_events_set_leds(), using
+  guard(rcu)() and a single loop for both the on and off paths.
+- Link to v2: https://lore.kernel.org/r/20260930-leds-input-events-brightness-v2-0-3948d3cddd83@gmail.com
+
+Changes in v2:
+- Keep the saved brightness in a per-LED struct allocated in activate()
+  and freed in deactivate(), stored in led_cdev->trigger_data, instead of
+  overloading blink_brightness (Lee Jones).
+- Add led_trigger_walk_leds() to led-triggers.c and use it instead of
+  walking led_cdevs/trig_list from the trigger (Lee Jones).
+- Use the Assisted-by tag format from coding-assistants.rst.
+- Link to v1: https://lore.kernel.org/r/20260924-leds-input-events-brightness-v1-1-b0ceff3a2343@gmail.com
+---
+ drivers/leds/trigger/ledtrig-input-events.c | 78 ++++++++++++++++++++++++++---
+ 1 file changed, 72 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/leds/trigger/ledtrig-input-events.c b/drivers/leds/trigger/ledtrig-input-events.c
+index d057b2a23..5fbd3e853 100644
+--- a/drivers/leds/trigger/ledtrig-input-events.c
++++ b/drivers/leds/trigger/ledtrig-input-events.c
+@@ -10,6 +10,7 @@
+ #include <linux/leds.h>
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
++#include <linux/rculist.h>
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
+ #include <linux/workqueue.h>
+@@ -28,7 +29,70 @@ static struct input_events_data {
+ 	unsigned long led_off_time;
+ } input_events_data;
  
-+config WGET_STREAM
-+	bool "wget -o: write the download to a block device"
-+	depends on CMD_WGET && NET_LWIP && BLK
-+	select STREAM_SINK
-+	help
-+	  Add wget options that write the download to a block device, or
-+	  a partition of it, while it arrives, so a disk image never has
-+	  to fit in RAM.
+-static struct led_trigger *input_events_led_trigger;
++struct input_events_led {
++	/* Brightness to restore on the next input event */
++	int brightness;
++};
 +
- config WGET_CACERT
- 	bool "wget cacert"
- 	depends on CMD_WGET
-diff --git a/cmd/lwip/wget.c b/cmd/lwip/wget.c
-index 531e886e986..d43b3becf30 100644
---- a/cmd/lwip/wget.c
-+++ b/cmd/lwip/wget.c
-@@ -4,10 +4,13 @@
- #include <command.h>
- #include <env.h>
- #include <image.h>
-+#include <limits.h>
- #include <net.h>
-+#include <stream_sink.h>
- #include <lwip/altcp_tls.h>
-+#include <linux/sizes.h>
++static int input_events_activate(struct led_classdev *led_cdev)
++{
++	struct input_events_data *data = &input_events_data;
++	struct input_events_led *led;
++	unsigned long flags;
++
++	led = kzalloc_obj(*led);
++	if (!led)
++		return -ENOMEM;
++
++	/* Start with the current brightness, or full if the LED is off */
++	led->brightness = led_cdev->brightness ?: led_cdev->max_brightness;
++
++	spin_lock_irqsave(&data->lock, flags);
++	led_set_trigger_data(led_cdev, led);
++	led_set_brightness(led_cdev, data->led_on ? led->brightness : LED_OFF);
++	spin_unlock_irqrestore(&data->lock, flags);
++
++	return 0;
++}
++
++static void input_events_deactivate(struct led_classdev *led_cdev)
++{
++	struct input_events_led *led;
++
++	scoped_guard(spinlock_irqsave, &input_events_data.lock) {
++		led = led_get_trigger_data(led_cdev);
++		led_set_trigger_data(led_cdev, NULL);
++	}
++	kfree(led);
++}
++
++static struct led_trigger input_events_led_trigger = {
++	.name = "input-events",
++	.activate = input_events_activate,
++	.deactivate = input_events_deactivate,
++};
++
++/* Must be called with input_events_data.lock held */
++static void input_events_set_leds(bool on)
++{
++	struct led_classdev *led_cdev;
++
++	guard(rcu)();
++	list_for_each_entry_rcu(led_cdev, &input_events_led_trigger.led_cdevs,
++				trig_list) {
++		struct input_events_led *led = led_get_trigger_data(led_cdev);
++
++		/* Not yet activated, or already deactivated during error unwind */
++		if (!led)
++			continue;
++
++		/* Preserve brightness changes made while the LED was on. */
++		if (led_cdev->brightness)
++			led->brightness = led_cdev->brightness;
++
++		led_set_brightness(led_cdev, on ? led->brightness : LED_OFF);
++	}
++}
  
--U_BOOT_CMD(wget, 4, 1, do_wget,
-+U_BOOT_CMD(wget, 10, 1, do_wget,
- 	   "boot image via network using HTTP/HTTPS protocol"
- #if defined(CONFIG_WGET_CACERT)
- 	   "\nwget cacert - configure wget root certificates"
-@@ -16,6 +19,14 @@ U_BOOT_CMD(wget, 4, 1, do_wget,
- 	   "[loadAddress] url\n"
- 	   "wget [loadAddress] [host:]path\n"
- 	   "    - load file"
-+#if defined(CONFIG_WGET_STREAM)
-+	   "\nwget -o <interface> <dev>[.<hwpart>][:<part>|#<name>]\n"
-+	   "     [-s offs] [-b wbuf] url\n"
-+	   "    - write the file to a block device while it arrives;\n"
-+	   "      without a partition to the whole device; offs is a byte\n"
-+	   "      offset (hex) into the device or partition; wbuf is the\n"
-+	   "      write buffer size (hex, default 100000)"
-+#endif
- #if defined(CONFIG_WGET_CACERT)
- 	   "\nwget cacert <address> <length>\n"
- 	   "    - provide CA certificates (0 0 to remove current)"
-@@ -176,15 +187,106 @@ static int parse_legacy_arg(char *arg, char *nurl, size_t rem)
- 	return 0;
+ static void led_input_events_work(struct work_struct *work)
+ {
+@@ -42,7 +106,7 @@ static void led_input_events_work(struct work_struct *work)
+ 	 * running before a new event pushed led_off_time back.
+ 	 */
+ 	if (time_after_eq(jiffies, data->led_off_time)) {
+-		led_trigger_event(input_events_led_trigger, LED_OFF);
++		input_events_set_leds(false);
+ 		data->led_on = false;
+ 	}
+ 
+@@ -59,7 +123,7 @@ static void input_events_event(struct input_handle *handle, unsigned int type,
+ 	spin_lock_irqsave(&data->lock, flags);
+ 
+ 	if (!data->led_on) {
+-		led_trigger_event(input_events_led_trigger, LED_FULL);
++		input_events_set_leds(true);
+ 		data->led_on = true;
+ 	}
+ 	data->led_off_time = jiffies + led_off_delay;
+@@ -138,11 +202,13 @@ static int __init input_events_init(void)
+ 	INIT_DELAYED_WORK(&input_events_data.work, led_input_events_work);
+ 	spin_lock_init(&input_events_data.lock);
+ 
+-	led_trigger_register_simple("input-events", &input_events_led_trigger);
++	ret = led_trigger_register(&input_events_led_trigger);
++	if (ret)
++		return ret;
+ 
+ 	ret = input_register_handler(&input_events_handler);
+ 	if (ret) {
+-		led_trigger_unregister_simple(input_events_led_trigger);
++		led_trigger_unregister(&input_events_led_trigger);
+ 		return ret;
+ 	}
+ 
+@@ -153,7 +219,7 @@ static void __exit input_events_exit(void)
+ {
+ 	input_unregister_handler(&input_events_handler);
+ 	cancel_delayed_work_sync(&input_events_data.work);
+-	led_trigger_unregister_simple(input_events_led_trigger);
++	led_trigger_unregister(&input_events_led_trigger);
  }
  
-+static int wget_stream_sink(void *priv, const void *buf, size_t len)
-+{
-+	return sink_write(priv, buf, len);
-+}
-+
-+/* Parse a hex number of at most 16 digits; 0 on success. */
-+static int parse_hex_u64(const char *str, u64 *val)
-+{
-+	char *end;
-+
-+	if (!*str || strlen(str) > 16)
-+		return -EINVAL;
-+	*val = simple_strtoull(str, &end, 16);
-+
-+	return *end ? -EINVAL : 0;
-+}
-+
-+/* Download @url and write it to a block device while it arrives. */
-+static int wget_stream(const char *ifname, const char *dev_part, u64 offs,
-+		       ulong wbuf, char *url)
-+{
-+	struct wget_http_info info = {
-+		.method = WGET_HTTP_METHOD_GET,
-+		.sink = wget_stream_sink,
-+	};
-+	struct stream_sink *s;
-+	struct blk_desc *dev;
-+	lbaint_t start, count;
-+	u64 outlen;
-+	int ret;
-+
-+	if (sink_blk_area(ifname, dev_part, offs, &dev, &start, &count))
-+		return CMD_RET_FAILURE;
-+	s = sink_to_blk(dev, start, count, wbuf);
-+	if (!s)
-+		return CMD_RET_FAILURE;
-+
-+	/* refuse a file that cannot fit before any of it is written */
-+	info.buffer_size = min_t(u64, (u64)count * dev->blksz, ULONG_MAX);
-+	info.check_buffer_size = true;
-+	info.sink_priv = s;
-+	ret = wget_request(0, url, &info);
-+	wget_info = &default_wget_info;
-+
-+	/* a failed download leaves its buffered tail unwritten */
-+	if (ret) {
-+		sink_abort(s);
-+		return CMD_RET_FAILURE;
-+	}
-+	if (sink_finish(s, &outlen))
-+		return CMD_RET_FAILURE;
-+
-+	printf("%llu bytes written\n", outlen);
-+
-+	return CMD_RET_SUCCESS;
-+}
-+
- int do_wget(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
- {
- 	char *end;
- 	char *url;
- 	ulong dst_addr;
- 	char nurl[1024];
-+	const char *ifname = NULL, *dev_part = NULL;
-+	u64 offs = 0, val;
-+	ulong wbuf = SZ_1M;
-+	bool has_offs = false, has_wbuf = false;
- 
- 	wget_info = &default_wget_info;
- 
-+	while (CONFIG_IS_ENABLED(WGET_STREAM) && argc > 1 &&
-+	       argv[1][0] == '-') {
-+		if (!strcmp(argv[1], "-o") && argc > 3) {
-+			ifname = argv[2];
-+			dev_part = argv[3];
-+			argc -= 3;
-+			argv += 3;
-+		} else if (!strcmp(argv[1], "-s") && argc > 2) {
-+			if (parse_hex_u64(argv[2], &offs))
-+				return CMD_RET_USAGE;
-+			has_offs = true;
-+			argc -= 2;
-+			argv += 2;
-+		} else if (!strcmp(argv[1], "-b") && argc > 2) {
-+			if (parse_hex_u64(argv[2], &val) || val > ULONG_MAX)
-+				return CMD_RET_USAGE;
-+			wbuf = val;
-+			has_wbuf = true;
-+			argc -= 2;
-+			argv += 2;
-+		} else {
-+			return CMD_RET_USAGE;
-+		}
-+	}
-+	/* -s and -b need -o, and -o takes nothing but a URL */
-+	if ((has_offs || has_wbuf) && !ifname)
-+		return CMD_RET_USAGE;
-+	if (ifname && argc != 2)
-+		return CMD_RET_USAGE;
-+
- #if CONFIG_IS_ENABLED(WGET_CACERT)
- 	if (argc == 4 && !strncmp(argv[1], "cacert", strlen("cacert")))
- 		return set_cacert(argv[2], argv[3]);
-@@ -219,6 +321,9 @@ int do_wget(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
- 	if (parse_legacy_arg(url, nurl, sizeof(nurl)))
- 		return CMD_RET_FAILURE;
- 
-+	if (CONFIG_IS_ENABLED(WGET_STREAM) && ifname)
-+		return wget_stream(ifname, dev_part, offs, wbuf, nurl);
-+
- 	if (wget_do_request(dst_addr, nurl))
- 		return CMD_RET_FAILURE;
- 
-diff --git a/configs/sandbox64_lwip_defconfig b/configs/sandbox64_lwip_defconfig
-index 0e92728533f..ce5c503583e 100644
---- a/configs/sandbox64_lwip_defconfig
-+++ b/configs/sandbox64_lwip_defconfig
-@@ -3,3 +3,4 @@
- CONFIG_SANDBOX=y
- 
- CONFIG_NET_LWIP=y
-+CONFIG_WGET_STREAM=y
-diff --git a/doc/usage/cmd/wget.rst b/doc/usage/cmd/wget.rst
-index e6c33b87431..3dc623313fd 100644
---- a/doc/usage/cmd/wget.rst
-+++ b/doc/usage/cmd/wget.rst
-@@ -15,6 +15,8 @@ Synopsis
-     wget [address] url                  # lwIP only
-     wget cacert none|optional|required  # lwIP only
-     wget cacert <address> <size>        # lwIP only
-+    wget -o <interface> <dev>[.<hwpart>][:<part>|#<name>] [-s offs] [-b wbuf] url
-+                                        # lwIP only
- 
- 
- Description
-@@ -81,6 +83,32 @@ required
-     certificate verification is mandatory. If no root certificates have been
-     configured, HTTPS transfers will fail.
- 
-+Writing to a block device (lwIP only)
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-+
-+With -o, wget writes the file to a block device while it arrives instead of
-+loading it into memory, so a disk image larger than RAM can be written. wget
-+pads the last partial block with zeroes. A file whose Content-Length exceeds
-+the target area is refused before anything is written. lwIP reads that length
-+correctly only below 2 GiB, so a larger file, or one sent without a length,
-+fails only when it reaches the end of the area, if it does not fit. When the
-+server answers with a status other than 200, wget writes nothing. A transfer
-+that fails halfway leaves on the device what arrived before the write buffer
-+last filled.
-+
-+-o <interface> <dev>[.<hwpart>][:<part>|#<name>]
-+    the target. Without a partition the target is the whole device (or the
-+    hardware partition), also when the device has a partition table. With a
-+    partition number or name the target is that partition.
-+
-+-s offs
-+    byte offset (hex) into the target, a multiple of the block size; 0 by
-+    default.
-+
-+-b wbuf
-+    size (hex) of the write buffer, a multiple of the block size; 100000
-+    (1 MiB) by default. A larger buffer gives fewer, longer writes.
-+
- 
- Examples
- --------
-@@ -172,6 +200,18 @@ https://cacerts.digicert.com/DigiCertTLSRSA4096RootG5.crt.
-    # The builtin certificates can be restored at any time
-    => wget cacert builtin
- 
-+Writing a disk image to the SD card of a ROCK Pi 4A with a 4 MiB write
-+buffer:
-+
-+::
-+
-+   => dhcp
-+   => wget -o mmc 1 -b 400000 http://192.168.1.65/ub-test/armbian.img
-+   ##################################################
-+   1862270976 bytes transferred in 197525 ms (9 MiB/s)
-+   Bytes transferred = 1862270976 (6f000000 hex)
-+   1862270976 bytes written
-+
- Configuration
- -------------
- 
-@@ -179,7 +219,8 @@ The command is only available if CONFIG_CMD_WGET=y.
- To enable lwIP support set CONFIG_NET_LWIP=y. In this case, root certificates
- support can be enabled via CONFIG_WGET_BUILTIN_CACERT=y
- CONFIG_WGET_BUILTIN_CACERT_PATH=<some path> (for built-in certificates) and/or
--CONFIG_WGET_CACERT=y (for the wget cacert command).
-+CONFIG_WGET_CACERT=y (for the wget cacert command). CONFIG_WGET_STREAM=y adds
-+the -o, -s and -b options.
- 
- TCP Selective Acknowledgments in the legacy network stack can be enabled via
- CONFIG_PROT_TCP_SACK=y. This will improve the download speed. Selective
-diff --git a/net/lwip/wget.c b/net/lwip/wget.c
-index 5d275d28a81..ce90990163c 100644
---- a/net/lwip/wget.c
-+++ b/net/lwip/wget.c
-@@ -191,8 +191,12 @@ static int store_block(struct wget_ctx *ctx, void *src, u16_t len)
- 	int ret;
- 
- 	/* Avoid overflow */
--	if (wget_info->buffer_size && wget_info->buffer_size < ctx->size + len)
-+	if (wget_info->buffer_size && wget_info->buffer_size < ctx->size + len) {
-+		if (!wget_info->silent)
-+			log_err("\nwget: the file does not fit in %lu bytes\n",
-+				wget_info->buffer_size);
- 		return -1;
-+	}
- 
- 	if (wget_info->sink)
- 		ret = wget_info->sink(wget_info->sink_priv, src, len);
-@@ -341,8 +345,12 @@ static err_t httpc_headers_done_cb(httpc_state_t *connection, void *arg, struct
- 
- 	/* lwIP passes U32_MAX when the reply has no usable Content-Length */
- 	if (wget_info->check_buffer_size && content_len != U32_MAX &&
--	    (ulong)content_len > wget_info->buffer_size)
-+	    (ulong)content_len > wget_info->buffer_size) {
-+		if (!wget_info->silent)
-+			log_err("wget: %u bytes do not fit in %lu bytes\n",
-+				content_len, wget_info->buffer_size);
- 		return ERR_BUF;
-+	}
- 
- 	ctx->content_len = content_len;
- 
+ module_init(input_events_init);
 
+---
+base-commit: f475845eaf3d749114a63270bf2efea459e14dd2
+change-id: 20260924-leds-input-events-brightness-a76ae9a77b85
+
+Best regards,
 -- 
-2.43.0
+Nikolay Plastinin <plaztininikolai@gmail.com>
 
