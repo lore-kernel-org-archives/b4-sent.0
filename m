@@ -1,196 +1,263 @@
-From: Rafael Gago <rafael.gago@gmail.com>
-Date: Sun, 01 Nov 2026 16:18:50 +0100
-Subject: [PATCH] ALSA: hdsp: allow sample rate changes from hw_params
+From: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Date: Sun, 01 Nov 2026 15:27:28 +0000
+Subject: [PATCH 6.6.y] netfilter: nf_conntrack_expect: add and use
+ nf_ct_expect_related_pair()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-hdsp-sound-v1-1-f39f185400b5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFlY52oC/yXMQQ5AMBBA0avIrDXpICKuIhalU8aipINIGndXL
- N/i/whCgUmgzSIEOll49QmYZzDOxk+k2CZDoYsaUaOarWxK1sNbhc6Q0aZyTekgBVsgx9c36/r
- fcgwLjft7gPt+ABu6DQBuAAAA
-X-Change-ID: 20261101-hdsp-sound-1faea0a4f83f
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Rafael Gago <rafael.gago@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793546329; l=7305;
- i=rafael.gago@gmail.com; s=20261101; h=from:subject:message-id;
- bh=G/nMqGaeWG79tPJr2UrkTAWND7s/AaPpxLBD8TaNCHQ=;
- b=OCp2vaTj6ZmchbOCFzsq0sOsZkpSf2rQH+eku4UPw3T4py43OVsKEv/q5wwDXEArD+1EYyKPd
- Q3KpwCEG/DkDoLfkUvbJOEt3ofzy71bQVh0ThbcbsHLXcqxsL4Gwty8
-X-Developer-Key: i=rafael.gago@gmail.com; a=ed25519;
- pk=1shUAtvt9i3ykuhyO1aVre9o4Lqma7slUO2FA0HsOmE=
-X-Endpoint-Received: by B4 Relay for rafael.gago@gmail.com/20261101 with auth_id=1375
+Message-Id: <20261101-nfexp-pair-6-6-y-v1-1-049943e85067@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAF9a52oC/x2MQQqAIBAAvxJ7bkPNDPpKdNhqrb2YKEQR/T2JO
+ c1h5oHMSTjDUD2Q+JQsRyii6wqWncLGKGtxMMo4rZXG4PmKGEkSusKNvVEzUdtZOxOULCb2cv3
+ LEVzjmhum9/0AWvckNWkAAAA=
+To: stable@vger.kernel.org
+Cc: Pablo Neira Ayuso <pablo@netfilter.org>, 
+ Florian Westphal <fw@strlen.de>, netfilter-devel@vger.kernel.org, 
+ Sasha Levin <sashal@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jaeyeong Lee <iostreampy@proton.me>, 
+ Joas Antonio dos Santos <joasantonio108@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793546847; l=8686;
+ i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
+ bh=DjhRAkQSNrM96ywt6HuSfqLCSsMNwaYVKFId13iqzyo=;
+ b=120TeDZWDWkTiHVeengpma9tElgv6gHbZ22aKx60F1E6/cwxJd84AsTyY2VaXkNp2g3Ftye6g
+ QaBxUPY8rqMCaa9SlH0dNBegBIBsFk/jTUms7xQTfgz4FxbCsYBa5D3
+X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
+ pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
+X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hdsp_set_rate() refuses to switch between single, double and quad
-speed whenever capture_pid or playback_pid is set. Both are set in the
-PCM open callbacks, so the substream that asks for the new rate in
-hw_params always blocks itself:
+From: Pablo Neira Ayuso <pablo@netfilter.org>
 
-  cannot change speed mode (capture PID = -1, playback PID = 4242)
+commit 4aa63842fc92de1bce59d4709a0d32e718890bb2 upstream.
 
-As a result no application can move an HDSP from 48 kHz to 96 kHz (or
-to 192 kHz on the H9632) through the normal ALSA API. Rate changes
-within one speed mode work, and a speed mode change only works through
-the "Sample Clock Source" control while no PCM is open, which is what
-users have to script around today.
+Add a new function to insert a pair of expectations, this is required by
+the SIP and H323 NAT helpers. The spinlock is held to check if there is
+a slot for both expectations, in such case, insert them.
 
-The restriction exists because a speed mode change moves the channels
-to other DMA buffer slots (hdsp->channel_map) and changes the channel
-count, which must not happen under a substream that was already set up
-with the old layout. The substream calling hw_params is about to be set
-up anyway, so it is not such a substream.
+This removes the need for nf_ct_unexpect_related() inside the loop to
+find a pair of consecutive ports, otherwise inserting expectations whose
+dead flag is already set on can happen.
 
-Pass the requesting substream to hdsp_set_rate() in place of the
-called_internally flag, and from hw_params only refuse the speed mode
-change if the other direction is open and past the OPEN state, that is,
-it has hw_params of its own. A substream of another process is still
-turned away by the existing check in snd_hdsp_hw_params(), and requests
-from the controls and from card initialization (substream == NULL) keep
-the old rule of no open substreams at all.
+Bump master_help->expecting for the expectation class after checking if
+the expectation fits in the master expectation list, which is needed for
+this new _pair() function variant to run the eviction routine including
+the preallocated slot for the first expectation in the pair.
 
-A duplex client therefore opens both directions, sets hw_params on the
-first one (which may change the speed mode) and then on the second one
-at the same rate. To change the speed mode later it has to hw_free or
-close the other direction first.
+[ Joas: nf_ct_expect_insert() and __nf_ct_expect_check() do not take
+  a master_help argument in this tree, so keep their existing
+  signatures; nf_ct_expect_related_report() gets master_help from
+  nfct_help(expect->master) for the moved expecting[] increment. ]
 
-Tested on an HDSP 9632 (v7.0 based kernel, same hdsp.c as v7.0) with
-aplay/arecord -M on hw:DSP: one stream moves the clock between 44.1k,
-48k, 88.2k, 96k and 192k in both directions; alsaloop runs duplex in one
-process at 48k/12ch, 96k/8ch and 192k/4ch; while another process plays
-at 96k, a capture at 96k works and one at 48k or 192k is still refused;
-the "Sample Clock Source" control is still refused while a stream is
-open. REAPER on raw ALSA now changes the project rate between speed
-modes without presetting the clock first. Also built with W=1 on
-current mainline without warnings.
-
-Only the HDSP 9632 was available for testing; the Digiface, Multiface,
-RPM and 9652 were not. The change is not model specific: the speed
-mode switch itself is the same code the "Sample Clock Source" control
-already runs on every model, and it still only happens while no stream
-is transferring data. The per-model channel counts and channel maps
-come from the driver's existing tables.
-
-A Claude AI coding assistant (Claude Code) read the driver, wrote this
-change, the changelog and the tests at the request of the submitter,
-who reviewed them.
-
-Signed-off-by: Rafael Gago <rafael.gago@gmail.com>
+Fixes: b8b09dc2bf35 ("netfilter: nf_conntrack_expect: use conntrack GC to reap expectations")
+Reported-by: Jaeyeong Lee <iostreampy@proton.me>
+Link: https://patch.msgid.link/178377968720.33756.12204817361601593230@proton.me/
+Signed-off-by: Pablo Neira Ayuso <pablo@netfilter.org>
+Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
- sound/pci/rme9652/hdsp.c | 44 ++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 36 insertions(+), 8 deletions(-)
+b8b09dc2bf35 ("netfilter: nf_conntrack_expect: use conntrack GC to reap
+expectations") is in 6.6.160+, 6.12.114+ and 6.1.191, but its follow-up
+4aa63842fc92 is not, and it is not in the stable queue either.  Sasha
+noted the missing dependency on 2026-09-20.
 
-diff --git a/sound/pci/rme9652/hdsp.c b/sound/pci/rme9652/hdsp.c
-index 7dce548b9..a3dfa937d 100644
---- a/sound/pci/rme9652/hdsp.c
-+++ b/sound/pci/rme9652/hdsp.c
-@@ -1095,7 +1095,35 @@ static void hdsp_set_dds_value(struct hdsp *hdsp, int rate)
- 	hdsp_write(hdsp, HDSP_freqReg, hdsp->dds_value);
+Without it, nf_ct_unexpect_related() only sets NF_CT_EXPECT_DEAD and
+leaves the expectation linked, while the SIP and H.323 NAT port loops
+still call nf_ct_unexpect_related(rtp_exp) on -EBUSY and re-insert the
+same, still-linked rtp_exp.  That corrupts the master expectation list
+and the expect hash.  It is reachable from an unprivileged user and
+network namespace (sip helper + NAT, plus one ctnetlink expectation
+occupying the RTCP port).
+
+Tested on v6.6.161 arm64 with KASAN and DEBUG_LIST, as uid 1000 in a
+new user+net namespace.  Without this patch:
+
+  KASAN: maybe wild-memory-access in range [0xdead000000000120-0xdead000000000127]
+  pc : nf_ct_unlink_expect_report+0xfc/0x418
+   nf_ct_unlink_expect_report
+   flush_expectations
+   process_invite_request
+   process_sip_msg
+   sip_help_udp
+   nf_confirm
+  Kernel panic - not syncing: Oops: Fatal exception in interrupt
+
+With it, the same reproducer runs clean.  The same backport applies to
+6.12.y and 6.1.y (sent separately); I can share the reproducer
+privately if useful.
+
+Tool-use note: the analysis, backport and testing were done with help
+from an LLM-based assistant; I reviewed the change and ran the tests
+myself.
+---
+ include/net/netfilter/nf_conntrack_expect.h |  3 +++
+ net/ipv4/netfilter/nf_nat_h323.c            | 22 ++++++------------
+ net/netfilter/nf_conntrack_expect.c         | 35 ++++++++++++++++++++++++++++-
+ net/netfilter/nf_nat_sip.c                  | 20 +++++------------
+ 4 files changed, 50 insertions(+), 30 deletions(-)
+
+diff --git a/include/net/netfilter/nf_conntrack_expect.h b/include/net/netfilter/nf_conntrack_expect.h
+index be4a120d549e..8efc1ed0925a 100644
+--- a/include/net/netfilter/nf_conntrack_expect.h
++++ b/include/net/netfilter/nf_conntrack_expect.h
+@@ -160,6 +160,9 @@ static inline int nf_ct_expect_related(struct nf_conntrack_expect *expect,
+ 	return nf_ct_expect_related_report(expect, 0, 0, flags);
  }
  
--static int hdsp_set_rate(struct hdsp *hdsp, int rate, int called_internally)
-+/*
-+ * A speed mode change moves the channels to different DMA buffer slots
-+ * (hdsp->channel_map) and changes the channel count. It is only safe if
-+ * no substream other than the one asking for it (if any) was set up with
-+ * the old layout. A substream of another process is already turned away
-+ * by snd_hdsp_hw_params().
-+ */
-+static bool hdsp_speed_change_blocked(struct hdsp *hdsp,
-+				      struct snd_pcm_substream *substream)
-+{
-+	struct snd_pcm_substream *other;
++int nf_ct_expect_related_pair(struct nf_conntrack_expect *expect[],
++			      unsigned int flag);
 +
-+	if (!substream)
-+		return hdsp->capture_pid >= 0 || hdsp->playback_pid >= 0;
-+
-+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-+		other = hdsp->capture_substream;
-+	else
-+		other = hdsp->playback_substream;
-+
-+	return other && other->runtime->state != SNDRV_PCM_STATE_OPEN;
-+}
-+
-+/*
-+ * substream is the stream asking for the rate in hw_params, or NULL for a
-+ * request from a control or from card initialization.
-+ */
-+static int hdsp_set_rate(struct hdsp *hdsp, int rate,
-+			 struct snd_pcm_substream *substream)
+ struct nf_conn_help;
+ void nf_ct_expectation_gc(struct nf_conn_help *master_help);
+ 
+diff --git a/net/ipv4/netfilter/nf_nat_h323.c b/net/ipv4/netfilter/nf_nat_h323.c
+index 10e1b0837731..d55994fccf5d 100644
+--- a/net/ipv4/netfilter/nf_nat_h323.c
++++ b/net/ipv4/netfilter/nf_nat_h323.c
+@@ -179,6 +179,7 @@ static int nat_rtp_rtcp(struct sk_buff *skb, struct nf_conn *ct,
+ 			struct nf_conntrack_expect *rtp_exp,
+ 			struct nf_conntrack_expect *rtcp_exp)
  {
- 	int reject_if_open = 0;
- 	int current_rate;
-@@ -1107,7 +1135,7 @@ static int hdsp_set_rate(struct hdsp *hdsp, int rate, int called_internally)
- 	*/
++	struct nf_conntrack_expect *rtp_pair[2] = { rtp_exp, rtcp_exp };
+ 	struct nf_ct_h323_master *info = nfct_help_data(ct);
+ 	int dir = CTINFO2DIR(ctinfo);
+ 	int i;
+@@ -221,22 +222,13 @@ static int nat_rtp_rtcp(struct sk_buff *skb, struct nf_conn *ct,
+ 		int ret;
  
- 	if (!(hdsp->control_register & HDSP_ClockModeMaster)) {
--		if (called_internally) {
-+		if (!substream) {
- 			/* request from ctl or card initialization */
- 			dev_err(hdsp->card->dev,
- 				"device is not running as a clock master: cannot set sample rate.\n");
-@@ -1134,7 +1162,7 @@ static int hdsp_set_rate(struct hdsp *hdsp, int rate, int called_internally)
- 	current_rate = hdsp->system_sample_rate;
+ 		rtp_exp->tuple.dst.u.udp.port = htons(nated_port);
+-		ret = nf_ct_expect_related(rtp_exp, 0);
++		rtcp_exp->tuple.dst.u.udp.port = htons(nated_port + 1);
++		ret = nf_ct_expect_related_pair(rtp_pair, 0);
+ 		if (ret == 0) {
+-			rtcp_exp->tuple.dst.u.udp.port =
+-			    htons(nated_port + 1);
+-			ret = nf_ct_expect_related(rtcp_exp, 0);
+-			if (ret == 0)
+-				break;
+-			else if (ret == -EBUSY) {
+-				nf_ct_unexpect_related(rtp_exp);
+-				continue;
+-			} else if (ret < 0) {
+-				nf_ct_unexpect_related(rtp_exp);
+-				nated_port = 0;
+-				break;
+-			}
+-		} else if (ret != -EBUSY) {
++			break;
++		} else if (ret == -EBUSY) {
++			continue;
++		} else if (ret < 0) {
+ 			nated_port = 0;
+ 			break;
+ 		}
+diff --git a/net/netfilter/nf_conntrack_expect.c b/net/netfilter/nf_conntrack_expect.c
+index f908e64eb814..e153103e04ff 100644
+--- a/net/netfilter/nf_conntrack_expect.c
++++ b/net/netfilter/nf_conntrack_expect.c
+@@ -425,7 +425,6 @@ static void nf_ct_expect_insert(struct nf_conntrack_expect *exp)
+ 		exp->timeout += helper->expect_policy[exp->class].timeout * HZ;
  
- 	/* Changing from a "single speed" to a "double speed" rate is
--	   not allowed if any substreams are open. This is because
-+	   not allowed while another substream is set up. This is because
- 	   such a change causes a shift in the location of
- 	   the DMA buffers and a reduction in the number of available
- 	   buffers.
-@@ -1196,7 +1224,7 @@ static int hdsp_set_rate(struct hdsp *hdsp, int rate, int called_internally)
- 		return -EINVAL;
- 	}
+ 	hlist_add_head_rcu(&exp->lnode, &master_help->expectations);
+-	master_help->expecting[exp->class]++;
  
--	if (reject_if_open && (hdsp->capture_pid >= 0 || hdsp->playback_pid >= 0)) {
-+	if (reject_if_open && hdsp_speed_change_blocked(hdsp, substream)) {
- 		dev_warn(hdsp->card->dev,
- 			 "cannot change speed mode (capture PID = %d, playback PID = %d)\n",
- 			    hdsp->capture_pid,
-@@ -1939,7 +1967,7 @@ static int hdsp_set_clock_source(struct hdsp *hdsp, int mode)
- 	switch (mode) {
- 	case HDSP_CLOCK_SOURCE_AUTOSYNC:
- 		if (hdsp_external_sample_rate(hdsp) != 0) {
--		    if (!hdsp_set_rate(hdsp, hdsp_external_sample_rate(hdsp), 1)) {
-+		    if (!hdsp_set_rate(hdsp, hdsp_external_sample_rate(hdsp), NULL)) {
- 			hdsp->control_register &= ~HDSP_ClockModeMaster;
- 			hdsp_write(hdsp, HDSP_controlRegister, hdsp->control_register);
- 			return 0;
-@@ -1978,7 +2006,7 @@ static int hdsp_set_clock_source(struct hdsp *hdsp, int mode)
- 	}
- 	hdsp->control_register |= HDSP_ClockModeMaster;
- 	hdsp_write(hdsp, HDSP_controlRegister, hdsp->control_register);
--	hdsp_set_rate(hdsp, rate, 1);
-+	hdsp_set_rate(hdsp, rate, NULL);
- 	return 0;
+ 	hlist_add_head_rcu(&exp->hnode, &nf_ct_expect_hash[h]);
+ 	cnet = nf_ct_pernet(net);
+@@ -525,6 +524,7 @@ int nf_ct_expect_related_report(struct nf_conntrack_expect *expect,
+ 	if (ret < 0)
+ 		goto out;
+ 
++	nfct_help(expect->master)->expecting[expect->class]++;
+ 	nf_ct_expect_insert(expect);
+ 
+ 	nf_ct_expect_event_report(IPEXP_NEW, expect, portid, report);
+@@ -537,6 +537,39 @@ int nf_ct_expect_related_report(struct nf_conntrack_expect *expect,
  }
+ EXPORT_SYMBOL_GPL(nf_ct_expect_related_report);
  
-@@ -3815,7 +3843,7 @@ static int snd_hdsp_set_defaults(struct hdsp *hdsp)
- 	/* set a default rate so that the channel map is set up.
- 	 */
++int nf_ct_expect_related_pair(struct nf_conntrack_expect *expect[],
++			      unsigned int flags)
++{
++	struct nf_conn_help *master_help;
++	int i, ret;
++
++	spin_lock_bh(&nf_conntrack_expect_lock);
++	master_help = nfct_help(expect[0]->master);
++	if (!master_help || master_help != nfct_help(expect[1]->master)) {
++		ret = -EINVAL;
++		goto out;
++	}
++
++	for (i = 0; i < 2; i++) {
++		ret = __nf_ct_expect_check(expect[i], flags);
++		if (ret < 0) {
++			if (i == 1)
++				master_help->expecting[expect[0]->class]--;
++			goto out;
++		}
++		master_help->expecting[expect[i]->class]++;
++	}
++
++	for (i = 0; i < 2; i++) {
++		nf_ct_expect_insert(expect[i]);
++		nf_ct_expect_event_report(IPEXP_NEW, expect[i], 0, 0);
++	}
++out:
++	spin_unlock_bh(&nf_conntrack_expect_lock);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(nf_ct_expect_related_pair);
++
+ void nf_ct_expect_iterate_destroy(bool (*iter)(struct nf_conntrack_expect *e, void *data),
+ 				  void *data)
+ {
+diff --git a/net/netfilter/nf_nat_sip.c b/net/netfilter/nf_nat_sip.c
+index 6b00c81084fe..115d955bfaef 100644
+--- a/net/netfilter/nf_nat_sip.c
++++ b/net/netfilter/nf_nat_sip.c
+@@ -585,6 +585,7 @@ static unsigned int nf_nat_sdp_media(struct sk_buff *skb, unsigned int protoff,
+ 				     unsigned int medialen,
+ 				     union nf_inet_addr *rtp_addr)
+ {
++	struct nf_conntrack_expect *rtp_pair[2] = { rtp_exp, rtcp_exp };
+ 	enum ip_conntrack_info ctinfo;
+ 	struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+ 	enum ip_conntrack_dir dir = CTINFO2DIR(ctinfo);
+@@ -615,24 +616,15 @@ static unsigned int nf_nat_sdp_media(struct sk_buff *skb, unsigned int protoff,
+ 		int ret;
  
--	hdsp_set_rate(hdsp, 48000, 1);
-+	hdsp_set_rate(hdsp, 48000, NULL);
- 
- 	return 0;
- }
-@@ -4048,7 +4076,7 @@ static int snd_hdsp_hw_params(struct snd_pcm_substream *substream,
- 	 */
- 
- 	if (! hdsp->clock_source_locked) {
--		err = hdsp_set_rate(hdsp, params_rate(params), 0);
-+		err = hdsp_set_rate(hdsp, params_rate(params), substream);
- 		if (err < 0) {
- 			_snd_pcm_hw_param_setempty(params, SNDRV_PCM_HW_PARAM_RATE);
- 			return err;
+ 		rtp_exp->tuple.dst.u.udp.port = htons(port);
+-		ret = nf_ct_expect_related(rtp_exp,
+-					   NF_CT_EXP_F_SKIP_MASTER);
+-		if (ret == -EBUSY)
+-			continue;
+-		else if (ret < 0) {
+-			port = 0;
+-			break;
+-		}
+ 		rtcp_exp->tuple.dst.u.udp.port = htons(port + 1);
+-		ret = nf_ct_expect_related(rtcp_exp,
+-					   NF_CT_EXP_F_SKIP_MASTER);
++
++		ret = nf_ct_expect_related_pair(rtp_pair,
++						NF_CT_EXP_F_SKIP_MASTER);
+ 		if (ret == 0)
+ 			break;
+-		else if (ret == -EBUSY) {
+-			nf_ct_unexpect_related(rtp_exp);
++		else if (ret == -EBUSY)
+ 			continue;
+-		} else if (ret < 0) {
+-			nf_ct_unexpect_related(rtp_exp);
++		else if (ret < 0) {
+ 			port = 0;
+ 			break;
+ 		}
 
 ---
-base-commit: 231efd8f68c950ad3b774ff51c6d15fdd0443a5b
-change-id: 20261101-hdsp-sound-1faea0a4f83f
+base-commit: b5a1dc3ad4822c6edfb53429e9a3759c9b0ac2be
+change-id: 20261101-nfexp-pair-6-6-y-720baa3544ba
 
 Best regards,
---  
-Rafael Gago <rafael.gago@gmail.com>
+-- 
+Joas Antonio dos Santos <joasantonio108@gmail.com>
 
