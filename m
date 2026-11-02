@@ -1,143 +1,109 @@
-From: Joas Antonio dos Santos <joasantonio108@gmail.com>
-Date: Mon, 02 Nov 2026 13:03:56 +0000
-Subject: [PATCH v4] hugetlbfs: move hugetlbfs_free_inode tracepoint to
- ->destroy_inode()
+From: Vincent Jardin <vjardin@free.fr>
+Date: Mon, 02 Nov 2026 15:12:47 +0100
+Subject: [PATCH v2] arm64: dts: freescale: lx2160a-nbxv3: fix the TCA9539
+ and 1588 line names
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-b4-hugetlbfs-trace-v4-1-72371825bb5e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADuK6GoC/33Nyw7CIBCF4VdpWIuZKfSiK9/DuAA6tCS9GKhE0
- /Tdpd3owrj8TzLfLCyQdxTYOVuYp+iCm8YU8pAx06mxJe6a1CyHvEQQyLXk3aOludc28NkrQ1x
- I1ELUSheVZunw7sm6545eb6k7F+bJv/YfEbf1LxeRI5dk6gZyJcCYSzso1x/NNLCNi+JDIPwmR
- CKgQF1haeUJ7Dexrusbr4LkXfcAAAA=
-To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
- David Hildenbrand <david@kernel.org>
-Cc: linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>, 
- Hongbo Li <lihongbo22@huawei.com>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- syzbot+91e1fc35f51774c479b2@syzkaller.appspotmail.com, 
- stable@vger.kernel.org, Joas Antonio dos Santos <joasantonio108@gmail.com>
+Message-Id: <20261102-for-upstream-nbxv3-dts-line-names-v2-1-58f234e478fb@free.fr>
+X-B4-Tracking: v=1; b=H4sIAF6a6GoC/5WNSw6CMBBAr0K6dgxT8IMr72FYtDCVJtKSGWwwh
+ LtbuYHL9xbvrUqIPYm6FatiSl58DBn0oVDdYMKTwPeZlS71GbFEcJHhPcnMZEYIdkkV9LPAywe
+ CYEYSaCqLGs3J1nWpcmdicn7ZH4828+BljvzZlwl/9p96QkC4dFeizureNO7umOjoWLXbtn0Bv
+ fftTdAAAAA=
+To: Frank Li <Frank.Li@nxp.com>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Vincent Jardin <vjardin@free.fr>
+Cc: imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793624635; l=4611;
- i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
- bh=KamqvAmHDg6o0N+fTVEMDXuwIqsclHfnbjLf5BnFAeI=;
- b=6KI19Vg+bAxiED0JqPw6cBQwYlbwj43osrwBDrFjsM/YfY07REwyxhqBR4n5b2oqe015nw9Cy
- T6PsmCPy7HUCpwFtBSgbCWDiiT3HPmtT6UUve/QpoSglPtcB7gNcinv
-X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
- pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
-X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793628769; l=2803;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=hHUsd9bJRSMGNR0btcyRpbeMGj6quxgOVoYnLHWHvS8=;
+ b=XVxrGbzLj2cVry+PSQYRRhZG1x8x3UrZVxwbTaBtdBhzXNMFdnb2kVkOfErzEd2FTDTgnz4HE
+ yIovGfitqAKBx9UEb24BZjbAVkxYLcdVO+RCqW6EsWheUXFhTFYmLR2
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-hugetlbfs_free_inode() calls trace_hugetlbfs_free_inode(), and the
-hugetlbfs__inode event class records inode->i_sb->s_dev.  ->free_inode()
-runs from an RCU callback (destroy_inode() queues i_callback() with
-call_rcu()), and Documentation/filesystems/porting.rst says that this
-callback "is *NOT* ordered wrt superblock destruction; as the matter of
-fact, the superblock and all associated structures might be already
-gone".  put_super() frees the superblock with call_rcu() followed by a
-workqueue item (destroy_super_rcu() -> destroy_super_work()).  syzbot
-hit this with the event enabled:
+Some gpio-line-names do not properly describe the board.
 
-  BUG: KASAN: slab-use-after-free in trace_event_raw_event_hugetlbfs__inode+0x45b/0x4c0 include/trace/events/hugetlbfs.h:36
-  Read of size 4 at addr ffff888038850010 by task syz-executor952/6134
-   hugetlbfs_free_inode+0x15e/0x1f0 fs/hugetlbfs/inode.c:1182
-   i_callback+0x46/0x80 fs/inode.c:317
-   rcu_do_batch kernel/rcu/tree.c:2650 [inline]
-   rcu_core+0x5f0/0x1220 kernel/rcu/tree.c:2919
-  Allocated by task 6134:
-   alloc_super fs/super.c:326 [inline]
-   sget_fc+0x1ba/0x1f60 fs/super.c:874
-   hugetlbfs_get_tree+0x1e7/0x2b0 fs/hugetlbfs/inode.c:1431
-  Freed by task 855:
-   kfree+0x22b/0x6d0 mm/slub.c:6923
-   process_one_work+0xac7/0x1b10 kernel/workqueue.c:3495
+The board CPU's RCW sets EC2_PMUX = 2, which gives two GPIO4 pads to
+the 1588 timer, so they are not GPIOs anymore. Name them using
+lx2160 function with the altfn: prefix this file uses for every pad
+muxed to another function:
 
-Emit the event from hugetlbfs_destroy_inode() instead.  destroy_inode()
-calls ->destroy_inode() synchronously, before it queues the RCU
-callback, while the superblock is still alive; hugetlbfs_destroy_inode()
-already dereferences inode->i_sb there.  ->free_inode() is left with
-only the kmem_cache_free().
+- GPIO4[14] (ball M3, EC2_TXD1) is TSEC_1588_CLK_OUT, the CPU's 1588
+  clock output to the DPLL's reference input.
+- GPIO4[23] (ball P1, EC2_RX_DV) is TSEC_1588_TRIG_IN1, the CPU's 1588
+  trigger input, driven by the DPLL's 1PPS.
 
-Since the event no longer fires from ->free_inode(), rename it to
-hugetlbfs_destroy_inode so that its name matches where it is emitted,
-as suggested by David and Muchun.
+The board-ID TCA9539 is a read-only 8 bit register:
+ - P00..P07
+ - a test point
+ - P11..P17 are wired to GND
+There is no 16-bit board ID.
 
-Found by syzbot; analysed and tested with the syzbot C reproducer on an
-arm64 KASAN kernel.
+Only the names are updated: the 1588 timer is already described by
+the CPU's dtsi then the CPU's RCW muxes those at CPU reset.
 
-Fixes: 014ad7c42a69 ("hugetlbfs: use tracepoints in hugetlbfs functions.")
-Reported-by: syzbot+91e1fc35f51774c479b2@syzkaller.appspotmail.com
-Closes: https://lore.kernel.org/all/6ae27525.5451848c.f7707.0001.GAE@google.com/
-Suggested-by: David Hildenbrand <david@kernel.org>
-Suggested-by: Muchun Song <muchun.song@linux.dev>
-Cc: stable@vger.kernel.org
-Reviewed-by: Muchun Song <muchun.song@linux.dev>
-Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Fixes: 565b6713a460 ("arm64: dts: freescale: add Nodebox v3 CPU Module")
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
-Changes in v4:
-- Drop the comment in hugetlbfs_destroy_inode(), the new event name
-  makes it clear where it fires (Muchun).
-- Add Muchun's Reviewed-by.
-
-Andrew, this replaces
-hugetlbfs-move-hugetlbfs_free_inode-tracepoint-to-destroy_inode.patch in
-mm-hotfixes-unstable; the only code change from v3 is the removed
-comment.
-
-Changes in v3:
-- Rename the tracepoint to hugetlbfs_destroy_inode in the same patch, so
-  its name matches where it now fires (David, Muchun).
-
-Tested with the syzbot C reproducer on an arm64 KASAN kernel with the
-renamed event enabled: no splat in 3 of 3 boots, and
-hugetlbfs_destroy_inode events are recorded.
-
-Tool-use note: the analysis and testing were done with help from an
-LLM-based assistant; I reviewed the change and ran the tests myself.
-
-v3: https://lore.kernel.org/all/20261101-b4-hugetlbfs-trace-v3-1-051b716f490f@gmail.com/
+Changes in v2:
+- Better explain changes (Sashiko).
+- Link to v1: https://lore.kernel.org/r/20261101-for-upstream-nbxv3-dts-line-names-v1-1-7c8eecb2da9f@free.fr
 ---
- fs/hugetlbfs/inode.c             | 2 +-
- include/trace/events/hugetlbfs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 01c4d6f44ebe..f0be8edb3517 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -1179,12 +1179,12 @@ static struct inode *hugetlbfs_alloc_inode(struct super_block *sb)
+diff --git a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
+index 9c5588a75cdd..34e02102c214 100644
+--- a/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
++++ b/arch/arm64/boot/dts/freescale/fsl-lx2160a-nbxv3.dtsi
+@@ -206,9 +206,9 @@ &gpio3 {
+ 		"altfn:ec1-rxd1", "altfn:ec1-rxd0",
+ 		"altfn:ec1-rx-clk", "altfn:ec1-rx-dv",
+ 		"", "",
+-		"ptp-refclk-in",
++		"altfn:tsec1588-clk-out",
+ 		"", "", "", "", "", "", "", "",
+-		"u1700-zl30733-pps-out",
++		"altfn:tsec1588-trig-in1",
+ 		"",
+ 		"ethsw-mdio-en",
+ 		"usb1-oc#",	/* USB1_PWRFAULT and USB2_PWRFAULT pads: one wired-OR net */
+@@ -254,14 +254,14 @@ gpio@74 {
+ 		#gpio-cells = <2>;
+ 		gpio-controller;
+ 		gpio-line-names =
+-			"boardid-0x0001", "boardid-0x0002",
+-			"boardid-0x0004", "boardid-0x0008",
+-			"boardid-0x0010", "boardid-0x0020",
+-			"boardid-0x0040", "boardid-0x0080",
+-			"boardid-0x0100", "boardid-0x0200",
+-			"boardid-0x0400", "boardid-0x0800",
+-			"boardid-0x1000", "boardid-0x2000",
+-			"boardid-0x4000", "boardid-0x8000";
++			"boardid-0x01", "boardid-0x02",
++			"boardid-0x04", "boardid-0x08",
++			"boardid-0x10", "boardid-0x20",
++			"boardid-0x40", "boardid-0x80",
++			"test-mode-tp1500",
++			"gnd-p11", "gnd-p12", "gnd-p13",
++			"gnd-p14", "gnd-p15", "gnd-p16",
++			"gnd-p17";
+ 	};
  
- static void hugetlbfs_free_inode(struct inode *inode)
- {
--	trace_hugetlbfs_free_inode(inode);
- 	kmem_cache_free(hugetlbfs_inode_cachep, HUGETLBFS_I(inode));
- }
- 
- static void hugetlbfs_destroy_inode(struct inode *inode)
- {
-+	trace_hugetlbfs_destroy_inode(inode);
- 	hugetlbfs_inc_free_inodes(HUGETLBFS_SB(inode->i_sb));
- }
- 
-diff --git a/include/trace/events/hugetlbfs.h b/include/trace/events/hugetlbfs.h
-index 8ba72c1d4f4d..a7932e0db0f8 100644
---- a/include/trace/events/hugetlbfs.h
-+++ b/include/trace/events/hugetlbfs.h
-@@ -72,7 +72,7 @@ DEFINE_EVENT(hugetlbfs__inode, hugetlbfs_evict_inode,
- 	TP_ARGS(inode)
- );
- 
--DEFINE_EVENT(hugetlbfs__inode, hugetlbfs_free_inode,
-+DEFINE_EVENT(hugetlbfs__inode, hugetlbfs_destroy_inode,
- 
- 	TP_PROTO(struct inode *inode),
- 
+ 	u800: gpio@75 {
 
 ---
-base-commit: c339f4010dea8b0d754f84ace70cd1b089878ef8
-change-id: 20261031-b4-hugetlbfs-trace-341b338ab57b
+base-commit: cbbddb6b08cc9900a87cccaa9b22bbe06aa4f50a
+change-id: 20261101-for-upstream-nbxv3-dts-line-names-93b121a5b440
 
 Best regards,
 -- 
-Joas Antonio dos Santos <joasantonio108@gmail.com>
+Vincent Jardin <vjardin@free.fr>
 
