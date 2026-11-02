@@ -1,356 +1,92 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Mon, 02 Nov 2026 21:58:49 +0200
-Subject: [PATCH 2/2] backlight: add ktd3137 support
+From: Jacob Lefkowitz <jlefkowi@akamai.com>
+Subject: [PATCH v2 0/2] perf jevents: Add IOMMU PTW & device entry metrics
+Date: Mon, 02 Nov 2026 21:14:15 +0000
+Message-Id: <20261102-perf-tools-next-v2-0-4d237f886710@akamai.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-6768-ktd3137-v1-2-b5b4f903c56e@protonmail.com>
-References: <20261102-6768-ktd3137-v1-0-b5b4f903c56e@protonmail.com>
-In-Reply-To: <20261102-6768-ktd3137-v1-0-b5b4f903c56e@protonmail.com>
-To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
- Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>
-Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fbdev@vger.kernel.org, Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793649528; l=10271;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=bd49c6i0vG9Qo3Fa7Sy1aX36q0KV2KecDmkckt4D0Yo=;
- b=EfGo5r+00OE9bn4Q8FtA7p4MMvHcZ6V5GaH56T795djzPhl7RGGov7yapqAoflAQUPmD8de2P
- vf0gYzdGRpeBc9p/eDhk1PjLqSZ0duAl0coWGNyh7JP08fs/ts6KtCK
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNyw6CMBBFf4XM2jG0PERX/odhMcIgE6UlbdNgC
+ P9uJXHl8pzknruCZyfs4ZKt4DiKF2sS6EMG3UjmwSh9YtC5rlWuG5zZDRisfXk0vARshl71ZVE
+ UqiZIq9nxIMtevLWJR/HBuvd+ENXX/lrnv1ZUmCOdKtL3uiRV8ZWeNJEcOztBu23bB+KDHySvA
+ AAA
+X-Change-ID: 20261028-perf-tools-next-8fd1d433316a
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>
+Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ben Chaney <bchaney@akamai.com>, Matt Pelland <mpelland@akamai.com>, 
+ Jacob Lefkowitz <jlefkowi@akamai.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1932; i=jlefkowi@akamai.com;
+ h=from:subject:message-id; bh=d66B5JAoBXgjBVfpcoxVXE9rM8vAjKvyKdmOxdyzjJs=;
+ b=owEBbQKS/ZANAwAKAdLKfgzjwTS1AcsmYgBq6P0rROw5wdqaVhUI1FzlhV0u8sWTxMPI3V5w4
+ 73IVmoN9leJAjMEAAEKAB0WIQQKFmVpIhg7hFI7scTSyn4M48E0tQUCauj9KwAKCRDSyn4M48E0
+ tTv8D/46cbO7uCat3xnsVx99k3cPiDz4YBgdQxmUZORhslhy04HrNpTqLj8Rv1UWowXhmW2bIBh
+ KQvqwJYspXh/7idcZtxE6udAYhVAWFVUmNjY+6o8yFztleoME63wtUHVsYix+6PDVXDvnyVS1xz
+ uM6+PiMiyXg2HF04A8yavRLbPNu4ZeF6oiL0FZ5qc2NKEBlTT11qqW2UI4S9Yxxn/vYIGmkRzxu
+ ApErMtCnesZdk8gatxg0DJ0g5VL5CMlVndVDWRfIy19B+GJfrtuIFZDPSSe9ELogvWZtay/JCAe
+ C+Au+N5IDz7Pk0C7AiaIACz23POrYYoTXukRSEvDmWP6zRB/0FlOjDZlA3ZCSlJPCnm2RLeCn/h
+ xL6hooCg4XweLs7qdfg8WwIYgxiMD+v15tCWtDaiJxOzVONBU8zt3zYZw9UhQwQmmFTnMDAQQv5
+ NXloMm9AQhTnQhOfHJIAelDy4LlMyMHidksVmY1Z7xADHzOuke26+m5lrNge8RDQPDmFILl5a1k
+ Pzu/YuXzvki7mdGzA3kx4i8uV+deZiRIhHUc+MrzP4Xp5SbO4kQzLPaI/IOhh75xHlZz7pnI9Ls
+ nuSSQBsxYWU/MBHgV3VFFf8VM/dj4z1f4Dr5HxGhuJzD9LwZTGfRHFOqfXlCmmwraQ6DHjlSWrJ
+ +lx8orRLVDZTaMw==
+X-Developer-Key: i=jlefkowi@akamai.com; a=openpgp;
+ fpr=0A16656922183B84523BB1C4D2CA7E0CE3C134B5
+X-Endpoint-Received: by B4 Relay for jlefkowi@akamai.com/default with auth_id=1357
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the KTD3137 display backlight IC. It's used in various
-Xiaomi phones, such as Xiaomi Redmi Note 9.
+Adds AMD specific metrics for the IOMMU with respect to page table
+walks and device table entires. The metrics cover ratios, rates, and
+percentages with respect to any event which might be triggered during
+a page table walk or device table entry lookup.
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+The metrics target Zen 2+ processors and use the standard amd_iommu
+PMU events. All metrics are tested with 'sleep 10' and behave as
+expected. An example output of sleep 10 is provided within each
+individual change. 
+
+The changes are split into two patches:
+1. perf jevents: add iommu page table walk metrics
+2. perf jevents: add amd specific device table entry metrics
+
+The specific metris added are:
+- lpm_iommu_dte_miss_rate
+- lpm_iommu_dte_lookups
+- lpm_iommu_ptw_reads_per_tlb_miss
+- lpm_iommu_ptw_nested_read_ratio
+- lpm_iommu_ptw_guest_read_ratio
+- lpm_iommu_trans_per_sec
+
+Signed-off-by: Jacob Lefkowitz <jlefkowi@akamai.com>
 ---
- MAINTAINERS                       |   1 +
- drivers/video/backlight/Kconfig   |  11 ++
- drivers/video/backlight/Makefile  |   1 +
- drivers/video/backlight/ktd3137.c | 262 ++++++++++++++++++++++++++++++++++++++
- 4 files changed, 275 insertions(+)
+Changes in v2:
+- Drop min() wrappers d_ratio() for the IOMMU ratio metrics: min(NaN, 1)
+  evaluated to 1, reporting a false 100% on sockets with no amd_counts
+- Did not test with previously mentioned custom workload and did not add
+  to the workloads collection. The workload stressed the CPU TLB,
+  but the IOMMU only translates device DMA, so the load never reaches
+  the IOMMU.
+- Remove unused min import
+- Remove global declaration of '_zen_model' within each function
+- Link to v1: https://lore.kernel.org/r/20261029-perf-tools-next-v1-0-a75a2b64a15e@akamai.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 24dd5b43f167..23114fd09445 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -14622,6 +14622,7 @@ KTD3137 BACKLIGHT DRIVER
- M:	Roman Vivchar <rva333@protonmail.com>
- S:	Maintained
- F:	Documentation/devicetree/bindings/leds/backlight/kinetic,ktd3137.yaml
-+F:	drivers/video/backlight/ktd3137.c
- 
- KTEST
- M:	Steven Rostedt <rostedt@goodmis.org>
-diff --git a/drivers/video/backlight/Kconfig b/drivers/video/backlight/Kconfig
-index 7c66b8840d88..0196b8597367 100644
---- a/drivers/video/backlight/Kconfig
-+++ b/drivers/video/backlight/Kconfig
-@@ -199,6 +199,17 @@ config BACKLIGHT_KTD2801
- 	  Say Y to enable the backlight driver for the Kinetic KTD2801 1-wire
- 	  GPIO-controlled backlight found in Samsung Galaxy Core Prime VE LTE.
- 
-+config BACKLIGHT_KTD3137
-+	tristate "Backlight Driver for Kinetic KTD3137"
-+	depends on I2C
-+	select REGMAP_I2C
-+	help
-+	  Say Y to enable the backlight driver for the Kinetic KTD3137
-+	  found in various Xiaomi smartphones.
-+
-+	  To compile this driver as a module, choose M here: the module
-+	  will be called ktd3137.
-+
- config BACKLIGHT_KTZ8866
- 	tristate "Backlight Driver for Kinetic KTZ8866"
- 	depends on I2C
-diff --git a/drivers/video/backlight/Makefile b/drivers/video/backlight/Makefile
-index 34469711c6cd..b2d3b69e9e32 100644
---- a/drivers/video/backlight/Makefile
-+++ b/drivers/video/backlight/Makefile
-@@ -38,6 +38,7 @@ obj-$(CONFIG_BACKLIGHT_HP700)		+= jornada720_bl.o
- obj-$(CONFIG_BACKLIGHT_IPAQ_MICRO)	+= ipaq_micro_bl.o
- obj-$(CONFIG_BACKLIGHT_KTD253)		+= ktd253-backlight.o
- obj-$(CONFIG_BACKLIGHT_KTD2801)		+= ktd2801-backlight.o
-+obj-$(CONFIG_BACKLIGHT_KTD3137)		+= ktd3137.o
- obj-$(CONFIG_BACKLIGHT_KTZ8866)		+= ktz8866.o
- obj-$(CONFIG_BACKLIGHT_LM3509)		+= lm3509_bl.o
- obj-$(CONFIG_BACKLIGHT_LM3533)		+= lm3533_bl.o
-diff --git a/drivers/video/backlight/ktd3137.c b/drivers/video/backlight/ktd3137.c
-new file mode 100644
-index 000000000000..a3ff334b8d46
---- /dev/null
-+++ b/drivers/video/backlight/ktd3137.c
-@@ -0,0 +1,262 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Copyright (c) 2025-2026 Roman Vivchar <rva333@protonmail.com>
-+ *
-+ * Backlight driver for the Kinetic KTD3137
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/bitfield.h>
-+#include <linux/delay.h>
-+#include <linux/err.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/property.h>
-+#include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
-+
-+#define KTD3137_REG_DEV_ID		0x00
-+#define KTD3137_REG_SW_RESET		0x01
-+#define KTD3137_REG_MODE		0x02
-+#define KTD3137_REG_CONTROL		0x03
-+#define KTD3137_REG_RATIO_LSB		0x04
-+#define KTD3137_REG_RATIO_MSB		0x05
-+#define KTD3137_REG_PWM			0x06
-+#define KTD3137_REG_RAMP_ON		0x07
-+#define KTD3137_REG_TRANS_RAMP		0x08
-+#define KTD3137_REG_FLASH_SETTING	0x09
-+#define KTD3137_REG_STATUS		0x0a
-+#define KTD3137_REG_MAX			0x0a
-+
-+/* KTD3137_REG_DEV_ID */
-+#define KTD3137_DEV_ID_A		0x12
-+#define KTD3137_DEV_ID_B		0x18
-+
-+/* KTD3137_REG_MODE */
-+#define KTD3137_MODE_BL_EN		BIT(0)
-+#define KTD3137_MODE_CURRENT_MASK	GENMASK(7, 3)
-+
-+/* KTD3137_REG_CONTROL */
-+#define KTD3137_CONTROL_LINEAR		(BIT(1) | BIT(2))
-+#define KTD3137_CONTROL_IND_2P6A	BIT(3)
-+#define KTD3137_CONTROL_OVP_32V		BIT(5)
-+#define KTD3137_CONTROL_FREQ_1000KHZ	BIT(6)
-+#define KTD3137_CONTROL_DEFAULT		(KTD3137_CONTROL_IND_2P6A | \
-+					 KTD3137_CONTROL_OVP_32V | \
-+					 KTD3137_CONTROL_FREQ_1000KHZ)
-+
-+/* KTD3137_REG_RATIO_LSB */
-+#define KTD3137_RATIO_LSB_MASK		GENMASK(2, 0)
-+
-+/* KTD3137_REG_PWM */
-+#define KTD3137_PWM_CH1_EN		BIT(0)
-+#define KTD3137_PWM_CH2_EN		BIT(1)
-+#define KTD3137_PWM_FILTER_6LSB		(BIT(3) | BIT(4))
-+#define KTD3137_PWM_DISABLE		BIT(7)
-+#define KTD3137_PWM_DEFAULT		(KTD3137_PWM_CH1_EN | \
-+					 KTD3137_PWM_CH2_EN | \
-+					 KTD3137_PWM_FILTER_6LSB | \
-+					 KTD3137_PWM_DISABLE)
-+
-+/* KTD3137_REG_RAMP_ON */
-+#define KTD3137_RAMP_ON_MASK		GENMASK(7, 4)
-+#define KTD3137_RAMP_OFF_MASK		GENMASK(3, 0)
-+/* Ramp ON: 2ms, OFF: 8ms */
-+#define KTD3137_RAMP_DEFAULT		(FIELD_PREP(KTD3137_RAMP_ON_MASK, 4) | \
-+					 FIELD_PREP(KTD3137_RAMP_OFF_MASK, 4))
-+
-+#define KTD3137_DEFAULT_BRIGHTNESS	2047
-+#define KTD3137_MAX_BRIGHTNESS		2047
-+
-+#define KTD3137_I_MIN_UA		5000
-+#define KTD3137_I_MAX_UA		29800
-+#define KTD3137_I_STEP_UA		800
-+#define KTD3137_I_DEFAULT_UA		20200
-+
-+struct ktd3137 {
-+	struct device *dev;
-+	struct regmap *regmap;
-+	struct gpio_desc *enable_gpio;
-+	u32 led_current;
-+};
-+
-+static const struct regmap_config ktd3137_regmap_config = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = KTD3137_REG_MAX,
-+};
-+
-+static int ktd3137_init(struct ktd3137 *ktd)
-+{
-+	u32 val = KTD3137_CONTROL_DEFAULT | KTD3137_CONTROL_LINEAR;
-+	int ret;
-+
-+	ret = regmap_write(ktd->regmap, KTD3137_REG_CONTROL, val);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(ktd->regmap, KTD3137_REG_PWM, KTD3137_PWM_DEFAULT);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(ktd->regmap, KTD3137_REG_RAMP_ON, KTD3137_RAMP_DEFAULT);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(ktd->regmap, KTD3137_REG_TRANS_RAMP, 0x00);
-+	if (ret)
-+		return ret;
-+
-+	return regmap_update_bits(ktd->regmap, KTD3137_REG_MODE,
-+				  KTD3137_MODE_CURRENT_MASK, ktd->led_current);
-+}
-+
-+static int ktd3137_backlight_update_status(struct backlight_device *backlight_dev)
-+{
-+	struct ktd3137 *ktd = bl_get_data(backlight_dev);
-+	unsigned int brightness = backlight_get_brightness(backlight_dev);
-+	int ret;
-+
-+	if (brightness > 0) {
-+		ret = regmap_write(ktd->regmap, KTD3137_REG_RATIO_LSB,
-+				   brightness & KTD3137_RATIO_LSB_MASK);
-+		if (ret)
-+			return ret;
-+
-+		ret = regmap_write(ktd->regmap, KTD3137_REG_RATIO_MSB,
-+				   brightness >> 3);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return regmap_update_bits(ktd->regmap, KTD3137_REG_MODE,
-+				  KTD3137_MODE_BL_EN,
-+				  brightness ? KTD3137_MODE_BL_EN : 0);
-+}
-+
-+static const struct backlight_ops ktd3137_backlight_ops = {
-+	.options = BL_CORE_SUSPENDRESUME,
-+	.update_status = ktd3137_backlight_update_status,
-+};
-+
-+static int ktd3137_parse_dt(struct ktd3137 *ktd)
-+{
-+	u32 max_ua = KTD3137_I_DEFAULT_UA;
-+	u32 val;
-+
-+	device_property_read_u32(ktd->dev, "led-max-microamp", &max_ua);
-+
-+	if (max_ua < KTD3137_I_MIN_UA || max_ua > KTD3137_I_MAX_UA)
-+		return dev_err_probe(ktd->dev, -EINVAL,
-+				     "led-max-microamp (%u) out of range\n", max_ua);
-+
-+	val = (max_ua - KTD3137_I_MIN_UA) / KTD3137_I_STEP_UA;
-+	ktd->led_current = FIELD_PREP(KTD3137_MODE_CURRENT_MASK, val);
-+
-+	return 0;
-+}
-+
-+static int ktd3137_probe(struct i2c_client *client)
-+{
-+	struct backlight_device *backlight_dev;
-+	struct backlight_properties props = { };
-+	struct ktd3137 *ktd;
-+	u32 val;
-+	int ret;
-+
-+	ktd = devm_kzalloc(&client->dev, sizeof(*ktd), GFP_KERNEL);
-+	if (!ktd)
-+		return -ENOMEM;
-+
-+	ktd->dev = &client->dev;
-+
-+	ret = devm_regulator_get_enable(ktd->dev, "vin");
-+	if (ret)
-+		return dev_err_probe(ktd->dev, ret, "failed to power up\n");
-+
-+	ktd->enable_gpio = devm_gpiod_get_optional(ktd->dev, "enable",
-+						   GPIOD_OUT_HIGH);
-+	if (IS_ERR(ktd->enable_gpio))
-+		return dev_err_probe(ktd->dev, PTR_ERR(ktd->enable_gpio),
-+				     "failed to get enable gpio\n");
-+
-+	/* HWEN should stay HIGH for at least 150us before I2C can be used */
-+	fsleep(150);
-+
-+	ktd->regmap = devm_regmap_init_i2c(client, &ktd3137_regmap_config);
-+	if (IS_ERR(ktd->regmap))
-+		return dev_err_probe(ktd->dev, PTR_ERR(ktd->regmap),
-+				     "failed to init regmap\n");
-+
-+	ret = regmap_read(ktd->regmap, KTD3137_REG_DEV_ID, &val);
-+	if (ret)
-+		return dev_err_probe(ktd->dev, ret, "failed to read chip id\n");
-+
-+	if (val != KTD3137_DEV_ID_A && val != KTD3137_DEV_ID_B)
-+		return dev_err_probe(ktd->dev, -ENODEV,
-+				     "unsupported chip id: 0x%02x\n", val);
-+
-+	ret = ktd3137_parse_dt(ktd);
-+	if (ret)
-+		return ret;
-+
-+	ret = ktd3137_init(ktd);
-+	if (ret)
-+		return dev_err_probe(ktd->dev, ret, "failed to init chip\n");
-+
-+	props.type = BACKLIGHT_RAW;
-+	props.max_brightness = KTD3137_MAX_BRIGHTNESS;
-+	props.brightness = KTD3137_DEFAULT_BRIGHTNESS;
-+	props.scale = BACKLIGHT_SCALE_LINEAR;
-+	device_property_read_u32(ktd->dev, "default-brightness", &props.brightness);
-+
-+	backlight_dev = devm_backlight_device_register(ktd->dev,
-+						       "ktd3137-backlight",
-+						       ktd->dev, ktd,
-+						       &ktd3137_backlight_ops,
-+						       &props);
-+	if (IS_ERR(backlight_dev))
-+		return dev_err_probe(ktd->dev, PTR_ERR(backlight_dev),
-+				     "failed to register backlight device\n");
-+
-+	i2c_set_clientdata(client, backlight_dev);
-+	return backlight_update_status(backlight_dev);
-+}
-+
-+static void ktd3137_remove(struct i2c_client *client)
-+{
-+	struct backlight_device *backlight_dev = i2c_get_clientdata(client);
-+	struct ktd3137 *ktd = bl_get_data(backlight_dev);
-+
-+	backlight_dev->props.brightness = 0;
-+	backlight_update_status(backlight_dev);
-+
-+	gpiod_set_value_cansleep(ktd->enable_gpio, 0);
-+}
-+
-+static const struct i2c_device_id ktd3137_ids[] = {
-+	{ "ktd3137" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(i2c, ktd3137_ids);
-+
-+static const struct of_device_id ktd3137_match_table[] = {
-+	{ .compatible = "kinetic,ktd3137" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, ktd3137_match_table);
-+
-+static struct i2c_driver ktd3137_driver = {
-+	.driver = {
-+		.name = "ktd3137",
-+		.of_match_table = ktd3137_match_table,
-+	},
-+	.probe = ktd3137_probe,
-+	.remove = ktd3137_remove,
-+	.id_table = ktd3137_ids,
-+};
-+module_i2c_driver(ktd3137_driver);
-+
-+MODULE_DESCRIPTION("Kinetic KTD3137 Backlight Driver");
-+MODULE_LICENSE("GPL");
+---
+Jacob Lefkowitz (2):
+      perf jevents: add iommu page table walk metrics
+      perf jevents: add amd specific device table entry metrics
 
+ tools/perf/pmu-events/amd_metrics.py | 75 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 75 insertions(+)
+---
+base-commit: 1c90f0a3c8a1c4e38f9edd97af9e20848805a7fb
+change-id: 20261028-perf-tools-next-8fd1d433316a
+
+Best regards,
 -- 
-2.56.0
+Jacob Lefkowitz <jlefkowi@akamai.com>
 
