@@ -1,201 +1,107 @@
-From: Mark Korenberg <socketpair@gmail.com>
-Date: Mon, 02 Nov 2026 17:44:12 +0500
-Subject: [PATCH bpf-next v4 2/2] bpftool: Make the LLVM disassembler an
- optional runtime dependency
+From: Joas Antonio dos Santos <joasantonio108@gmail.com>
+Date: Mon, 02 Nov 2026 12:56:25 +0000
+Subject: [PATCH] fuse: ignore FUSE_ATTR_DAX unless a dax backing is
+ possible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-bpftool-plugin-v4-2-5a853e973db9@gmail.com>
-References: <20261102-bpftool-plugin-v4-0-5a853e973db9@gmail.com>
-In-Reply-To: <20261102-bpftool-plugin-v4-0-5a853e973db9@gmail.com>
-To: Quentin Monnet <qmo@kernel.org>, Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Martin KaFai Lau <martin.lau@linux.dev>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Nathan Chancellor <nathan@kernel.org>, Bill Wendling <morbo@google.com>, 
- Justin Stitt <justinstitt@google.com>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, 
- Nick Desaulniers <ndesaulniers@google.com>
-Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, llvm@lists.linux.dev, 
- Mark Korenberg <socketpair@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793623450; l=5400;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=qS1vKaFei4x8R94EkIEUARWR3+po+AM+0LwZ2fhdRwI=;
- b=DNm+NtiRFKG+RSciLvDX559sC0GrIYDdYnL2qPt+IKL5zKx+0iMyqn0CBZAVELjXXTAkdhIu1
- 8sxvHbnAnGlBEziRcM7aURaLhfVE0dh0psKHGRwu8ty6NrxUeylN0oB
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+Message-Id: <20261102-fuse-attr-dax-v1-1-36f7b859b034@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHiI6GoC/x3MTQqAIBBA4avErBvwD4OuEi1Ex5qNhVYE4t2Tl
+ t/ivQqFMlOBeaiQ6eHCR+qQ4wB+d2kj5NANSigrpVAY70LoritjcC96qe0UrNcmGujNmSny+/+
+ WtbUPrInlzF8AAAA=
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Miklos Szeredi <mszeredi@redhat.com>, fuse-devel@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, 
+ Joas Antonio dos Santos <joasantonio108@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793624184; l=3369;
+ i=joasantonio108@gmail.com; s=20261031; h=from:subject:message-id;
+ bh=m4kc2zrIGru9miJ8HcufOYYEsonQia+fldC1h5teqrA=;
+ b=FUjn2InbGAOhJkic3l8cIBqSwFOfOIPtATzqgu8Nf6MdMv9gjJW02YiPtIvwEBnXee7S0p3l3
+ Sei5/UYz88zCfquXH7GRgA++ev+vPoczULuaOIg/0P2hPf7AAmJ0Jo9
+X-Developer-Key: i=joasantonio108@gmail.com; a=ed25519;
+ pk=ZxAznJT/FcPPdzLrDDFJQm4LLjjHVGBBqDSG3TXS23w=
+X-Endpoint-Received: by B4 Relay for joasantonio108@gmail.com/20261031 with auth_id=1371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-libLLVM is only needed for "bpftool prog dump jited", yet it is a hard
-dependency of bpftool: on Fedora 43, installing the ~730 KiB bpftool pulls
-in ~140 MiB of llvm20-libs.
+fuse_init_inode() trusts FUSE_ATTR_DAX from any server: it sets S_DAX and
+switches the mapping to fuse_dax_aops, which has no ->read_folio and no
+->readahead.  The open path only refuses such an inode without
+FOPEN_PASSTHROUGH through an IS_DAX() check in fuse_file_io_open().
 
-When libLLVM is a shared library, don't link bpftool with it. Instead,
-disasm_init() loads it with dlopen(), under the name llvm-config reports
-at build time, and resolves the few llvm-c functions bpftool uses with
-dlsym(), like perf does for libcapstone. Distributions can then make LLVM
-an optional dependency of bpftool.
+With CONFIG_FS_DAX=n, S_DAX is 0, so IS_DAX() is always false and that
+check compiles away.  The file is opened for normal cached I/O on a
+mapping without ->read_folio, and the first read() calls a NULL
+function pointer from read_pages():
 
-"bpftool version" still reports "llvm" as a build time feature. Static
-LLVM, and LLVM built with one library per component, are linked as before.
+  Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
+  pc : 0x0
+  lr : read_pages+0x5b4/0x830
+   page_cache_ra_order
+   page_cache_sync_ra
+   filemap_get_pages
+   filemap_read
+   generic_file_read_iter
+   fuse_file_read_iter
 
-Link: https://github.com/libbpf/bpftool/issues/262
-Suggested-by: Alexei Starovoitov <ast@kernel.org>
-Signed-off-by: Mark Korenberg <socketpair@gmail.com>
+Any server can do this, including an unprivileged one mounted through
+fusermount3 or in a user namespace: answer LOOKUP of a regular file with
+FUSE_ATTR_DAX set and a normal OPEN.  mmap() of the file reaches the same
+NULL ->read_folio through filemap_fault().
+
+As the commit adding it says, FUSE_ATTR_DAX is only meant to be used
+with FUSE_PASSTHROUGH_V2 and a dax device backing, which needs FS_DAX.
+Only honour it in that case.
+
+Fixes: 2fbe4586cff3 ("fuse: add support for opening dax device as backing")
+Signed-off-by: Joas Antonio dos Santos <joasantonio108@gmail.com>
 ---
- tools/bpf/bpftool/Makefile     | 10 ++++-
- tools/bpf/bpftool/jit_disasm.c | 86 ++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 95 insertions(+), 1 deletion(-)
+Found by reviewing the v7.4-rc1 fs/fuse changes with an LLM-based
+assistant, following up on the Sashiko review of the dax backing series
+that pointed out the missing ->read_folio; the IS_DAX() check added for
+it does not cover CONFIG_FS_DAX=n.
 
-diff --git a/tools/bpf/bpftool/Makefile b/tools/bpf/bpftool/Makefile
-index b0f7168e7943..876bf3cf93e3 100644
---- a/tools/bpf/bpftool/Makefile
-+++ b/tools/bpf/bpftool/Makefile
-@@ -186,10 +186,18 @@ ifeq ($(HAS_LLVM),1)
-   # Makefile includes lib.mk which sets -D_GNU_SOURCE) which would cause
-   # compilation error due to redefinition. Let's filter it out here.
-   CFLAGS  += $(filter-out -D_GNU_SOURCE,$(shell $(LLVM_CONFIG) --cflags))
--  LIBS    += $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-+  LIBLLVM_SO := $(shell $(LLVM_CONFIG) --libfiles $(LLVM_CONFIG_LIB_COMPONENTS))
-   ifeq ($(shell $(LLVM_CONFIG) --shared-mode),static)
-+    LIBS += $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-     LIBS += $(shell $(LLVM_CONFIG) --system-libs $(LLVM_CONFIG_LIB_COMPONENTS))
-     LIBS += -lstdc++
-+  else ifeq ($(words $(LIBLLVM_SO)),1)
-+    # Don't link with libLLVM.so. "prog dump jited" loads it with dlopen().
-+    CFLAGS += -DLIBLLVM_SO='"$(notdir $(realpath $(LIBLLVM_SO)))"'
-+    LIBS += -ldl
-+  else
-+    # LLVM built with BUILD_SHARED_LIBS=ON, one library per component
-+    LIBS += $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-   endif
-   LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
- else
-diff --git a/tools/bpf/bpftool/jit_disasm.c b/tools/bpf/bpftool/jit_disasm.c
-index 5ff144ce84a1..2c646626e256 100644
---- a/tools/bpf/bpftool/jit_disasm.c
-+++ b/tools/bpf/bpftool/jit_disasm.c
-@@ -25,6 +25,7 @@
- #include <bpf/libbpf.h>
- 
- #ifdef HAVE_LLVM_SUPPORT
-+#include <dlfcn.h>
- #include <llvm-c/Core.h>
- #include <llvm-c/Disassembler.h>
- #include <llvm-c/Target.h>
-@@ -47,6 +48,89 @@ static int oper_count;
- 
- typedef LLVMDisasmContextRef disasm_ctx_t;
- 
-+#ifdef LIBLLVM_SO
-+/*
-+ * libLLVM.so is big and only "prog dump jited" needs it. bpftool is not linked
-+ * with it. disasm_init() loads it.
-+ */
-+#define LLVM_FUNCS(F)			\
-+	F(LLVMCreateDisasm)		\
-+	F(LLVMCreateDisasmCPUFeatures)	\
-+	F(LLVMDisasmDispose)		\
-+	F(LLVMDisasmInstruction)	\
-+	F(LLVMDisposeMessage)		\
-+	F(LLVMGetDefaultTargetTriple)	\
-+	F(LLVMNormalizeTargetTriple)
-+
-+#define F(fn) static __typeof__(&fn) p_##fn;
-+LLVM_FUNCS(F)
-+#undef F
-+
-+static const struct {
-+	const char *name;
-+	void *ptr;
-+} llvm_funcs[] = {
-+#define F(fn) { #fn, &p_##fn },
-+	LLVM_FUNCS(F)
-+#undef F
-+};
-+
-+/* The functions that LLVMInitializeAll*() in llvm-c/Target.h call */
-+static const char * const llvm_init_funcs[] = {
-+#define LLVM_TARGET(t)	"LLVMInitialize" #t "TargetInfo",	\
-+			"LLVMInitialize" #t "TargetMC",
-+#include <llvm/Config/Targets.def>
-+#define LLVM_DISASSEMBLER(t) "LLVMInitialize" #t "Disassembler",
-+#include <llvm/Config/Disassemblers.def>
-+};
-+
-+#define LLVMCreateDisasm		p_LLVMCreateDisasm
-+#define LLVMCreateDisasmCPUFeatures	p_LLVMCreateDisasmCPUFeatures
-+#define LLVMDisasmDispose		p_LLVMDisasmDispose
-+#define LLVMDisasmInstruction		p_LLVMDisasmInstruction
-+#define LLVMDisposeMessage		p_LLVMDisposeMessage
-+#define LLVMGetDefaultTargetTriple	p_LLVMGetDefaultTargetTriple
-+#define LLVMNormalizeTargetTriple	p_LLVMNormalizeTargetTriple
-+
-+static void *llvm_sym(void *lib, const char *name)
-+{
-+	void *sym = dlsym(lib, name);
-+
-+	if (!sym)
-+		p_err("%s is not in %s", name, LIBLLVM_SO);
-+	return sym;
-+}
-+
-+int disasm_init(void)
-+{
-+	void (*init)(void);
-+	void *lib, *sym;
-+	size_t i;
-+
-+	lib = dlopen(LIBLLVM_SO, RTLD_NOW);
-+	if (!lib) {
-+		p_err("failed to load %s: %s", LIBLLVM_SO,
-+		      dlerror() ?: "unknown error");
-+		return -1;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(llvm_funcs); i++) {
-+		sym = llvm_sym(lib, llvm_funcs[i].name);
-+		if (!sym)
-+			return -1;
-+		*(void **)llvm_funcs[i].ptr = sym;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(llvm_init_funcs); i++) {
-+		init = llvm_sym(lib, llvm_init_funcs[i]);
-+		if (!init)
-+			return -1;
-+		init();
-+	}
-+	return 0;
-+}
-+#endif /* LIBLLVM_SO */
-+
- static int printf_json(char *s)
- {
- 	s = strtok(s, " \t");
-@@ -135,6 +219,7 @@ disassemble_insn(disasm_ctx_t *ctx, unsigned char *image, ssize_t len, int pc,
- 	return count;
- }
- 
-+#ifndef LIBLLVM_SO
- int disasm_init(void)
- {
- 	LLVMInitializeAllTargetInfos();
-@@ -142,6 +227,7 @@ int disasm_init(void)
- 	LLVMInitializeAllDisassemblers();
- 	return 0;
- }
-+#endif
- #endif /* HAVE_LLVM_SUPPORT */
- 
- #ifdef HAVE_LIBBFD_SUPPORT
+Tested on arm64 QEMU, v7.4-rc1 with CONFIG_FS_DAX=n and KASAN, with a
+FUSE server running as uid 65534 in a user namespace that replies
+INIT with no flags, LOOKUP with FUSE_ATTR_DAX and a plain OPEN:
+before, read() oopses as above; after, the read returns the file data
+and unmount is clean.  The FUSE_ATTR_DAX=0 control is unchanged.
 
+This also keeps an unprivileged server from getting S_DAX on
+CONFIG_FS_DAX=y kernels without FUSE_PASSTHROUGH_V2, which is where
+"fuse: refuse FUSE_NOTIFY_STORE for DAX inodes" (sent 2026-10-31)
+applies; that patch is still useful for servers that do negotiate
+FUSE_PASSTHROUGH_V2.
+---
+ fs/fuse/inode.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
+index 1341b681d0ed..7195e4d0852c 100644
+--- a/fs/fuse/inode.c
++++ b/fs/fuse/inode.c
+@@ -418,7 +418,14 @@ static void fuse_init_inode(struct inode *inode, struct fuse_attr *attr,
+ 		fuse_init_common(inode);
+ 		fuse_init_file_inode(inode, attr->flags);
+ 
+-		if ((attr->flags & FUSE_ATTR_DAX) && !fuse_inode_vdax(inode)) {
++		/*
++		 * FUSE_ATTR_DAX is only meaningful for a dax device backing,
++		 * which needs FS_DAX and FUSE_PASSTHROUGH_V2.  Without FS_DAX
++		 * S_DAX is 0 and the inode would be left with fuse_dax_aops
++		 * on the page cache I/O paths.
++		 */
++		if (IS_ENABLED(CONFIG_FS_DAX) && fc->backing_id_64 &&
++		    (attr->flags & FUSE_ATTR_DAX) && !fuse_inode_vdax(inode)) {
+ 			inode->i_flags |= S_DAX;
+ 			inode->i_data.a_ops = &fuse_dax_aops;
+ 		}
+
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261102-fuse-attr-dax-c1367d6c34f4
+
+Best regards,
 -- 
-2.56.0
+Joas Antonio dos Santos <joasantonio108@gmail.com>
 
