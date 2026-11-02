@@ -1,11 +1,11 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Sun, 01 Nov 2026 23:14:09 -0600
-Subject: [PATCH ath-next 1/3] wifi: ath11k: size monitor MPDUs by the
- chip's rx descriptor
+Date: Sun, 01 Nov 2026 23:14:10 -0600
+Subject: [PATCH ath-next 2/3] wifi: ath11k: hold back FCS-failed monitor
+ frames unless asked for
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-b8-monitor-frames-v1-1-f0a43d9630e5@gmail.com>
+Message-Id: <20261101-b8-monitor-frames-v1-2-f0a43d9630e5@gmail.com>
 References: <20261101-b8-monitor-frames-v1-0-f0a43d9630e5@gmail.com>
 In-Reply-To: <20261101-b8-monitor-frames-v1-0-f0a43d9630e5@gmail.com>
 To: Jeff Johnson <jjohnson@kernel.org>, 
@@ -24,127 +24,96 @@ Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org,
  Rajkumar Manoharan <rmanohar@codeaurora.org>, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793596448; l=4542;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793596448; l=3200;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=A4A9iBgn+H+lp5REIyv/F4O/tf6R5XCCM4Z11kdHy5w=;
- b=AavwHSr+3kshmLM+ZxJ3/rk3ost96GccyiyjZevVa+7h4ZAXMRVU4XiKgJYwiN4tT4O2bP3qT
- lEwPl9Jdrt5DGPCMGUeGzlyNEAF1VvTZ8f2WJiwDLnqJvD2Zve3Ss8U
+ bh=gW5/j2hiiWOOFjn6ouakRd7VONDoZcdzfhX/IthW4Vo=;
+ b=Unx/VLGUd03Y0E20Qd3syMAamP4RBCNzYP78JySeJPZc2vyvfug+SX7i6SocFG0/VJvLBY9kS
+ TL7D2W2rPNeA+rc3+SuG5IF1Qd6PIFCKu7Phky9JXOCVwHbAaNRY9Il
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The monitor destination ring path sets each buffer's length from
-sizeof(struct hal_rx_desc), but pulls the chip's own descriptor,
-hw_params.hal_desc_sz, off its front. struct hal_rx_desc is the union
-of the descriptors of all supported chips; it is 392 bytes, WCN6855's
-size. IPQ8074, IPQ6018 and QCN9074 use a 384-byte descriptor, so on
-them every MPDU a monitor interface gets ends with 8 bytes the hardware
-did not write. After the RAW path trims the FCS, a frame still carries
-its FCS plus 4 stale bytes, and the radiotap header flags neither.
-Wireshark shows such management frames as malformed.
+ath11k accepts FIF_FCSFAIL in configure_filter() but never looks at
+the filter: its monitor path hands every MPDU whose FCS failed to
+mac80211, flagged RX_FLAG_FAILED_FCS_CRC. mac80211 passes such a frame
+to every monitor interface, whatever that interface's flags. It leaves
+holding these frames back to the driver unless a monitor asked for them
+with the "fcsfail" flag, which turns on FIF_FCSFAIL. So a monitor made
+without that flag gets them anyway. On an Arista C-360 the QCN9072 scan
+radio's monitor saw a bad FCS on 6 to 10 % of the beacons it heard.
 
-ath11k_dp_mon_set_frag_len() uses the same size for the payload of a
-continuation buffer, so the last buffer of a long MPDU is another
-8 bytes too long for each buffer before it.
+Drop an FCS-failed MPDU in the monitor path unless FIF_FCSFAIL is set,
+as ath10k does in ath10k_process_rx(). filter_flags is now read outside
+conf_mutex, so write it with WRITE_ONCE().
 
-Use hal_desc_sz in both places, as the rest of the rx path does.
-
-Seen on an Arista C-360 (IPQ8074 plus QCN9074): a monitor capture of a
-management frame had the FCS and 4 more bytes after the body.
-
-Fixes: e4073430ee1d ("ath11k: add dp support for WCN6855")
+Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
 Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/net/wireless/ath/ath11k/dp_rx.c | 26 ++++++++++++++++----------
- 1 file changed, 16 insertions(+), 10 deletions(-)
+ drivers/net/wireless/ath/ath11k/dp_rx.c | 12 +++++++++++-
+ drivers/net/wireless/ath/ath11k/mac.c   |  3 ++-
+ 2 files changed, 13 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/net/wireless/ath/ath11k/dp_rx.c b/drivers/net/wireless/ath/ath11k/dp_rx.c
-index 31faeda461acf..4e0b717b6f06d 100644
+index 4e0b717b6f06d..7809c92baa325 100644
 --- a/drivers/net/wireless/ath/ath11k/dp_rx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_rx.c
-@@ -4524,10 +4524,13 @@ int ath11k_dp_rx_pdev_alloc(struct ath11k_base *ab, int mac_id)
- 	return 0;
- }
+@@ -5115,6 +5115,7 @@ static int ath11k_dp_rx_mon_deliver(struct ath11k *ar, u32 mac_id,
+ 	struct sk_buff *mon_skb, *skb_next, *header;
+ 	struct ieee80211_rx_status *rxs = &dp->rx_status;
+ 	bool fcs_err = false;
++	int ret = 0;
  
--static void ath11k_dp_mon_set_frag_len(u32 *total_len, u32 *frag_len)
-+static void ath11k_dp_mon_set_frag_len(struct ath11k_base *ab,
-+				       u32 *total_len, u32 *frag_len)
- {
--	if (*total_len >= (DP_RX_BUFFER_SIZE - sizeof(struct hal_rx_desc))) {
--		*frag_len = DP_RX_BUFFER_SIZE - sizeof(struct hal_rx_desc);
-+	u32 hal_rx_desc_sz = ab->hw_params.hal_desc_sz;
+ 	mon_skb = ath11k_dp_rx_mon_merg_msdus(ar, mac_id, head_msdu,
+ 					      tail_msdu, rxs, &fcs_err);
+@@ -5122,6 +5123,13 @@ static int ath11k_dp_rx_mon_deliver(struct ath11k *ar, u32 mac_id,
+ 	if (!mon_skb)
+ 		goto mon_deliver_fail;
+ 
++	/* mac80211 passes a frame whose FCS failed to every monitor
++	 * interface. Holding such frames back unless a monitor asked for
++	 * them (FIF_FCSFAIL) is left to the driver.
++	 */
++	if (fcs_err && !(READ_ONCE(ar->filter_flags) & FIF_FCSFAIL))
++		goto mon_drop;
 +
-+	if (*total_len >= (DP_RX_BUFFER_SIZE - hal_rx_desc_sz)) {
-+		*frag_len = DP_RX_BUFFER_SIZE - hal_rx_desc_sz;
- 		*total_len -= *frag_len;
- 	} else {
- 		*frag_len = *total_len;
-@@ -4675,7 +4678,8 @@ static bool ath11k_dp_rx_mon_comp_ppduid(u32 msdu_ppdu_id, u32 *ppdu_id,
- 	return false;
+ 	header = mon_skb;
+ 
+ 	rxs->flag = 0;
+@@ -5153,13 +5161,15 @@ static int ath11k_dp_rx_mon_deliver(struct ath11k *ar, u32 mac_id,
+ 	return 0;
+ 
+ mon_deliver_fail:
++	ret = -EINVAL;
++mon_drop:
+ 	mon_skb = head_msdu;
+ 	while (mon_skb) {
+ 		skb_next = mon_skb->next;
+ 		dev_kfree_skb_any(mon_skb);
+ 		mon_skb = skb_next;
+ 	}
+-	return -EINVAL;
++	return ret;
  }
  
--static void ath11k_dp_mon_get_buf_len(struct hal_rx_msdu_desc_info *info,
-+static void ath11k_dp_mon_get_buf_len(struct ath11k_base *ab,
-+				      struct hal_rx_msdu_desc_info *info,
- 				      bool *is_frag, u32 *total_len,
- 				      u32 *frag_len, u32 *msdu_cnt)
- {
-@@ -4684,11 +4688,11 @@ static void ath11k_dp_mon_get_buf_len(struct hal_rx_msdu_desc_info *info,
- 			*total_len = info->msdu_len;
- 			*is_frag = true;
- 		}
--		ath11k_dp_mon_set_frag_len(total_len,
-+		ath11k_dp_mon_set_frag_len(ab, total_len,
- 					   frag_len);
- 	} else {
- 		if (*is_frag) {
--			ath11k_dp_mon_set_frag_len(total_len,
-+			ath11k_dp_mon_set_frag_len(ab, total_len,
- 						   frag_len);
- 		} else {
- 			*frag_len = info->msdu_len;
-@@ -4826,7 +4830,7 @@ u32 ath11k_dp_rx_mon_mpdu_pop(struct ath11k *ar, int mac_id,
+ /* The destination ring processing is stuck if the destination is not
+diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
+index ada0f3a3c8565..0b7371ad808d5 100644
+--- a/drivers/net/wireless/ath/ath11k/mac.c
++++ b/drivers/net/wireless/ath/ath11k/mac.c
+@@ -7456,7 +7456,8 @@ static void ath11k_mac_op_configure_filter(struct ieee80211_hw *hw,
+ 	mutex_lock(&ar->conf_mutex);
  
- 			rx_desc = (struct hal_rx_desc *)msdu->data;
+ 	*total_flags &= SUPPORTED_FILTERS;
+-	ar->filter_flags = *total_flags;
++	/* read without the lock in the monitor rx path */
++	WRITE_ONCE(ar->filter_flags, *total_flags);
  
--			rx_pkt_offset = sizeof(struct hal_rx_desc);
-+			rx_pkt_offset = ar->ab->hw_params.hal_desc_sz;
- 			l2_hdr_offset = ath11k_dp_rx_h_msdu_end_l3pad(ar->ab, rx_desc);
- 
- 			if (is_first_msdu) {
-@@ -4855,7 +4859,8 @@ u32 ath11k_dp_rx_mon_mpdu_pop(struct ath11k *ar, int mac_id,
- 				pmon->mon_last_linkdesc_paddr = paddr;
- 				is_first_msdu = false;
- 			}
--			ath11k_dp_mon_get_buf_len(&msdu_list.msdu_info[i],
-+			ath11k_dp_mon_get_buf_len(ar->ab,
-+						  &msdu_list.msdu_info[i],
- 						  &is_frag, &total_len,
- 						  &frag_len, &msdu_cnt);
- 			rx_buf_size = rx_pkt_offset + l2_hdr_offset + frag_len;
-@@ -5458,7 +5463,7 @@ ath11k_dp_rx_full_mon_mpdu_pop(struct ath11k *ar,
- 
- 			rx_desc = (struct hal_rx_desc *)msdu->data;
- 
--			rx_pkt_offset = sizeof(struct hal_rx_desc);
-+			rx_pkt_offset = ar->ab->hw_params.hal_desc_sz;
- 			l2_hdr_offset = ath11k_dp_rx_h_msdu_end_l3pad(ar->ab, rx_desc);
- 
- 			if (is_first_msdu) {
-@@ -5471,7 +5476,8 @@ ath11k_dp_rx_full_mon_mpdu_pop(struct ath11k *ar,
- 				is_first_msdu = false;
- 			}
- 
--			ath11k_dp_mon_get_buf_len(&msdu_list.msdu_info[i],
-+			ath11k_dp_mon_get_buf_len(ar->ab,
-+						  &msdu_list.msdu_info[i],
- 						  &is_frag, &total_len,
- 						  &frag_len, &msdu_cnt);
- 
+ 	mutex_unlock(&ar->conf_mutex);
+ }
 
 -- 
 2.43.0
