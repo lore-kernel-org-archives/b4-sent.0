@@ -1,10 +1,11 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Mon, 02 Nov 2026 14:46:00 +0800
-Subject: [PATCH v13 07/13] gpio: pl061: keep the parent device in a local
+Date: Mon, 02 Nov 2026 14:46:01 +0800
+Subject: [PATCH v13 08/13] gpio: regmap: remove gpiochip before tearing
+ down irqchip
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-cv75-gpio-v13-7-4f93114ea204@ambarella.com>
+Message-Id: <20261102-cv75-gpio-v13-8-4f93114ea204@ambarella.com>
 References: <20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com>
 In-Reply-To: <20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
@@ -18,96 +19,64 @@ Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>,
  Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793602013; l=3279;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793602013; l=1791;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=3w3mdV9O1WfvTa1UQD42+BMAnP/3kNlEj5RJh0P3/78=;
- b=FtyH9TzklLUUi5PO0ibyYZOJku87CgTW0+bYoDM+3wYXlSry7t3eyOwFA7FdtaD7eccF7cXku
- hwOflrOz02TBrRlRSe0QgaAiSowCAwTCRNp8tOw4dCfKgbAReDUxoT4
+ bh=OaUzJvxSKHvAu1q9Z7cujbZIxtxmQOv3Dz1Q60lLuSg=;
+ b=/f7+d+2PUAkbck+adNb2ioj2juP3k0EZTnjzDEa6JLN9dXJtNl1WrCrBkZ7H5RNiz0qvaJKLM
+ QM7pidA8KgFAbIuR5bnERDt0UfU+g19Id6AWwHIWTq4uLqkC3O1xZtw
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IRQ logging uses gc->parent. Keep that device in a local so the
-gpio-regmap switch can change where it comes from without rewriting
-every log line.
+gpio_regmap_unregister() currently calls regmap_del_irq_chip() before
+gpiochip_remove(). That disposes the mapped virtual IRQs and frees the
+irq_domain while ACPI GPIO-signaled events may still be requested and
+while gpiod_free_irqs() still needs gc->irq.domain.
 
-Suggested-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Remove the gpio_chip first so ACPI teardown and USED_AS_IRQ cleanup run
+against a live domain, then delete the regmap irqchip. Use the same
+order on the registration error path, which previously leaked the
+irqchip when gpiochip_irqchip_add_domain() failed after
+regmap_add_irq_chip_fwnode().
+
+Cc: Michael Walle <mwalle@kernel.org>
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- drivers/gpio/gpio-pl061.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ drivers/gpio/gpio-regmap.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
-index a232b63fbc0b..27ed759486ca 100644
---- a/drivers/gpio/gpio-pl061.c
-+++ b/drivers/gpio/gpio-pl061.c
-@@ -156,6 +156,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
+diff --git a/drivers/gpio/gpio-regmap.c b/drivers/gpio/gpio-regmap.c
+index 0a44deae3d01..6b520bd80834 100644
+--- a/drivers/gpio/gpio-regmap.c
++++ b/drivers/gpio/gpio-regmap.c
+@@ -429,6 +429,11 @@ struct gpio_regmap *gpio_regmap_register(const struct gpio_regmap_config *config
+ 
+ err_remove_gpiochip:
+ 	gpiochip_remove(chip);
++
++#ifdef CONFIG_REGMAP_IRQ
++	if (gpio->irq_chip_data)
++		regmap_del_irq_chip(gpio->regmap_irq_line, gpio->irq_chip_data);
++#endif
+ err_free_bitmap_output:
+ 	bitmap_free(gpio->fixed_direction_output);
+ err_free_bitmap_dirmask:
+@@ -445,12 +450,13 @@ EXPORT_SYMBOL_GPL(gpio_regmap_register);
+  */
+ void gpio_regmap_unregister(struct gpio_regmap *gpio)
  {
- 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
- 	struct pl061 *pl061 = gpiochip_get_data(gc);
-+	struct device *parent = gc->parent;
- 	int offset = irqd_to_hwirq(d);
- 	unsigned int bit = BIT(offset);
- 	unsigned int gpioiev = 0;
-@@ -166,7 +167,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 		return -EINVAL;
++	gpiochip_remove(&gpio->gpio_chip);
++
+ #ifdef CONFIG_REGMAP_IRQ
+ 	if (gpio->irq_chip_data)
+ 		regmap_del_irq_chip(gpio->regmap_irq_line, gpio->irq_chip_data);
+ #endif
  
- 	if ((trigger & IRQ_TYPE_LEVEL_MASK) && (trigger & IRQ_TYPE_EDGE_BOTH)) {
--		dev_err(gc->parent,
-+		dev_err(parent,
- 			"trying to configure line %d for both level and edge "
- 			"detection, choose one!\n",
- 			offset);
-@@ -192,7 +193,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 		else
- 			gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_level_irq);
--		dev_dbg(gc->parent, "line %d: IRQ on %s level\n",
-+		dev_dbg(parent, "line %d: IRQ on %s level\n",
- 			offset,
- 			polarity ? "HIGH" : "LOW");
- 	} else if ((trigger & IRQ_TYPE_EDGE_BOTH) == IRQ_TYPE_EDGE_BOTH) {
-@@ -201,7 +202,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 		/* Select both edges, setting this makes GPIOEV be ignored */
- 		gpioibe |= bit;
- 		irq_set_handler_locked(d, handle_edge_irq);
--		dev_dbg(gc->parent, "line %d: IRQ on both edges\n", offset);
-+		dev_dbg(parent, "line %d: IRQ on both edges\n", offset);
- 	} else if ((trigger & IRQ_TYPE_EDGE_RISING) ||
- 		   (trigger & IRQ_TYPE_EDGE_FALLING)) {
- 		bool rising = trigger & IRQ_TYPE_EDGE_RISING;
-@@ -216,7 +217,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 		else
- 			gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_edge_irq);
--		dev_dbg(gc->parent, "line %d: IRQ on %s edge\n",
-+		dev_dbg(parent, "line %d: IRQ on %s edge\n",
- 			offset,
- 			rising ? "RISING" : "FALLING");
- 	} else {
-@@ -225,8 +226,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 		gpioibe &= ~bit;
- 		gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_bad_irq);
--		dev_warn(gc->parent, "no trigger selected for line %d\n",
--			 offset);
-+		dev_warn(parent, "no trigger selected for line %d\n", offset);
- 	}
- 
- 	regmap_write(pl061->regmap, GPIOIS, gpiois);
-@@ -307,8 +307,9 @@ static int pl061_irq_set_wake(struct irq_data *d, unsigned int state)
- static void pl061_irq_print_chip(struct irq_data *data, struct seq_file *p)
- {
- 	struct gpio_chip *gc = irq_data_get_irq_chip_data(data);
-+	struct device *parent = gc->parent;
- 
--	seq_puts(p, dev_name(gc->parent));
-+	seq_puts(p, dev_name(parent));
- }
- 
- static const struct irq_chip pl061_irq_chip = {
+-	gpiochip_remove(&gpio->gpio_chip);
+ 	bitmap_free(gpio->fixed_direction_output);
+ 	bitmap_free(gpio->fixed_direction_mask);
+ 	kfree(gpio);
 
 -- 
 2.34.1
