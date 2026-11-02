@@ -1,122 +1,82 @@
-From: Tjerk Kusters <tkusters@aweta.nl>
-Date: Mon, 02 Nov 2026 10:58:14 +0100
-Subject: [PATCH net v4 2/2] igb: only strip Rx timestamp header on the
- first buffer of a frame
+From: Junyi Zhao <junyi.zhao@amlogic.com>
+Subject: [PATCH v2 0/2] Add Amlogic A9 I3C support
+Date: Mon, 02 Nov 2026 19:05:38 +0800
+Message-Id: <20261102-a9_i3c-v2-0-0c474bfccffa@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-igb-rx-ts-fix-v4-2-8785124c5d23@aweta.nl>
-References: <20261102-igb-rx-ts-fix-v4-0-8785124c5d23@aweta.nl>
-In-Reply-To: <20261102-igb-rx-ts-fix-v4-0-8785124c5d23@aweta.nl>
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>, 
- Stanislav Fomichev <sdf@fomichev.me>, 
- Sven Auhagen <sven.auhagen@voleatech.de>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Kurt Kanzenbach <kurt@linutronix.de>
-Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, bpf@vger.kernel.org, 
- Maciej Fijalkowski <maciej.fijalkowski@intel.com>, Paul Moses <p@1g4.org>, 
- stable@vger.kernel.org, Piotr Kwapulinski <piotr.kwapulinski@intel.com>, 
- Aleksandr Loktionov <aleksandr.loktionov@intel.com>, 
- Alexander Nowlin <alexander.nowlin@intel.com>, 
- Tjerk Kusters <tkusters@aweta.nl>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793616473; l=3972;
- i=tkusters@aweta.nl; s=20260619; h=from:subject:message-id;
- bh=0UiloOh6U/B/tS429upH2HnGmu+A3rF/YZDhNcwUk1s=;
- b=8QWdz2XSCtqtw7EyzLikUTpweynlVp8P122E3NuY6pSby5O4QQwGb2eRS6ULk6G6k4ddNGW/9
- l/o2v/0bcVzBkRGmHkkvL5sIl5L1P80vvuhk7OZOiXNB9VT1hsY7gbA
-X-Developer-Key: i=tkusters@aweta.nl; a=ed25519;
- pk=JYRpYQ3+LrphEabgnxcbiOUpwvNP8WDDMcLzz+cwKsk=
-X-Endpoint-Received: by B4 Relay for tkusters@aweta.nl/20260619 with auth_id=831
+X-B4-Tracking: v=1; b=H4sIAIJu6GoC/zWNyw6DIBQFf8XcdWkAH5Gu/I/GNBRQb1OlAUvaG
+ P69YONykjlzNvDGofFwKTZwJqBHuyTgpwLUJJfRENSJgVPeMMookeKGpSJC17yqNRWVaiHJL2c
+ G/Oyha/9n/74/jFrzOhsT+tW67/4UWPaOqDiigRFKSi50y4RuOBs6OT/tiOqs7Ax9jPEHtvKD/
+ rAAAAA=
+X-Change-ID: 20261010-a9_i3c-9d5245d094c8
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Frank Li <Frank.Li@nxp.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc: linux-i3c@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, imx@lists.linux.dev, 
+ linux-hardening@vger.kernel.org, xianwei.zhao@amlogic.com, 
+ Kelvin.Zhang@amlogic.com, Junyi Zhao <junyi.zhao@amlogic.com>
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793617545; l=1695;
+ i=junyi.zhao@amlogic.com; s=20260924; h=from:subject:message-id;
+ bh=UJx6v15t+vGPfwRUpHt2I4ZrP80lRsdJGExEg/joTkI=;
+ b=18IKIcD3tbqV1AO5x5M/aDMWsCEGnolOANX6OlHDU5VZtiKG9Yc8hSPlxSfaAGD1RSWjtCX/g
+ RqH0pwQyVEiC/nAKTPWnya0TuURq6v+ASS1FxJPezuDRnUqKoehW52b
+X-Developer-Key: i=junyi.zhao@amlogic.com; a=ed25519;
+ pk=hiL5PjGIksGFiWvEx9J3MhQqU/ro6vNbj72NIw4bbvA=
+X-Endpoint-Received: by B4 Relay for junyi.zhao@amlogic.com/20260924 with auth_id=1054
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When Rx hardware timestamping is enabled (e.g. ptp4l, which configures
-HWTSTAMP_FILTER_ALL), the NIC prepends a 16-byte timestamp header to the
-first Rx buffer of every received frame. igb_clean_rx_irq() strips this
-header inside its per-buffer loop:
+Amlogic A9 SoCs integrate the Silvaco I3C IP, but their peripheral
+clock setup differs from the original implementation: the EE-domain
+controller (amlogic,a9-i3c) takes two clocks, "pclk" and "fast_clk",
+while the AO-domain controller (amlogic,a9-ao-i3c) exposes only
+"pclk" and derives its bus clock from an internal divider inside the
+controller's own register region.
 
-	if (igb_test_staterr(rx_desc, E1000_RXDADV_STAT_TSIP)) {
-		ts_hdr_len = igb_ptp_rx_pktstamp(rx_ring->q_vector,
-						 pktbuf, &timestamp);
-		pkt_offset += ts_hdr_len;
-		size -= ts_hdr_len;
-	}
+This series consists of:
 
-For a frame that spans more than one Rx buffer (e.g. a jumbo frame), this
-block runs once per buffer. The timestamp header only exists at the start
-of the first buffer, but igb_ptp_rx_pktstamp() is called for every buffer.
+  - Add a vendor_init callback for the clock setup and a
+    vendor_quirks field for AO-specific behaviour to the Silvaco I3C
+    master driver, and enable the existing Silvaco workaround quirks
+    for both Amlogic variants.
+  - Add the Amlogic compatibles and per-variant clock
+    constraints to the silvaco,i3c-master binding schema.
 
-On a continuation buffer the data is packet payload, not a timestamp
-header. igb_ptp_rx_pktstamp() already has two guards against acting on a
-non-header buffer: it returns 0 if PTP is disabled, and returns 0 if the
-reserved dwords (the first 8 bytes) are non-zero. Neither is sufficient
-here: PTP is enabled, and a continuation buffer whose payload happens to
-begin with 8 zero bytes passes the reserved-dword check. In that case the
-payload is mistaken for a valid timestamp header and igb_ptp_rx_pktstamp()
-returns IGB_TS_HDR_LEN, so the caller strips 16 bytes of real data from
-that buffer. A frame spanning N buffers whose continuation buffers start
-with zero bytes therefore loses 16 * (N - 1) bytes from its tail.
+Verified on Amlogic A9 (BY401) with both EE and AO controller
+instances.  dt_binding_check and dtbs_check pass with this series.
 
-This is easily triggered by a GigE Vision camera streaming dark frames
-(mostly 0x00 pixel data) over jumbo UDP with PTP active on the receiver:
-the all-zero frames arrive truncated while frames with non-zero content
-are fine. There is no error indication.
-
-No content-based check can reliably tell a continuation buffer that begins
-with zero bytes from a real timestamp header, because both are all zero.
-Fix it structurally instead: only attempt the strip on the first buffer of
-a frame, which is the only buffer that can contain a timestamp header. In
-igb_clean_rx_irq() skb is NULL until the first buffer has been processed,
-so guarding the strip with !skb restricts it to the first buffer
-regardless of payload content.
-
-This relies on the previous patch. Without it, an XDP program that does
-not return XDP_PASS for the first buffer of a multi-buffer frame leaves
-skb NULL for the rest of that frame. With the receive length limited
-while XDP is attached, such frames no longer reach the XDP path.
-
-igc has the same bug and is fixed the same way.
-
-Link: https://lore.kernel.org/all/20261028083344.3047350-2-p@1g4.org/
-Fixes: 5379260852b0 ("igb: Fix XDP with PTP enabled")
-Cc: stable@vger.kernel.org
-Reviewed-by: Piotr Kwapulinski <piotr.kwapulinski@intel.com>
-Reviewed-by: Aleksandr Loktionov <aleksandr.loktionov@intel.com>
-Reviewed-by: Kurt Kanzenbach <kurt@linutronix.de>
-Tested-by: Alexander Nowlin <alexander.nowlin@intel.com>
-Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Tjerk Kusters <tkusters@aweta.nl>
+Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
 ---
- drivers/net/ethernet/intel/igb/igb_main.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Changes in v2:
 
-diff --git a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
-index 5bf489cd7b06..c4eb9f589fbe 100644
---- a/drivers/net/ethernet/intel/igb/igb_main.c
-+++ b/drivers/net/ethernet/intel/igb/igb_main.c
-@@ -9072,8 +9072,11 @@ static int igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
- 		rx_buffer = igb_get_rx_buffer(rx_ring, size, &rx_buf_pgcnt);
- 		pktbuf = page_address(rx_buffer->page) + rx_buffer->page_offset;
- 
--		/* pull rx packet timestamp if available and valid */
--		if (igb_test_staterr(rx_desc, E1000_RXDADV_STAT_TSIP)) {
-+		/* pull rx packet timestamp if available and valid; it is only
-+		 * present on the first buffer of a frame
-+		 */
-+		if (!skb &&
-+		    igb_test_staterr(rx_desc, E1000_RXDADV_STAT_TSIP)) {
- 			int ts_hdr_len;
- 
- 			ts_hdr_len = igb_ptp_rx_pktstamp(rx_ring->q_vector,
+  - No need rework the Silvaco I3C driver. 
+  - Based on vanilla driver, adapt A9 SoCS through callback 
+    and quirks to handle the variant.
 
--- 
-2.27.0
+- Link to v1: https://patch.msgid.link/20261019-a9_i3c-v1-0-329d819d621f@amlogic.com
+
+---
+Junyi Zhao (2):
+      i3c: master: svc: Add amlogic a9 support
+      dt-bindings: i3c: silvaco,i3c-master: Add Amlogic A9 support
+
+ .../bindings/i3c/silvaco,i3c-master.yaml           |  24 ++-
+ drivers/i3c/master/svc-i3c-master.c                | 214 ++++++++++++++++++++-
+ 2 files changed, 231 insertions(+), 7 deletions(-)
+---
+base-commit: aac26bee2287c88af5be5a5ff96d783b19a28790
+change-id: 20261010-a9_i3c-9d5245d094c8
+
+Best regards,
+--  
+Junyi Zhao <junyi.zhao@amlogic.com>
 
