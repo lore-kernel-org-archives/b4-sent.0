@@ -1,82 +1,92 @@
-From: Nayeon Kim <nayeoni.kim@samsung.com>
-Date: Mon, 02 Nov 2026 11:43:40 +0900
-Subject: [PATCH nfstest] NFSUtil: find OPEN when a later operation fails
+From: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Date: Mon, 02 Nov 2026 11:15:15 +0700
+Subject: [PATCH bpf-next] selftests/bpf: Use memfd_create instead of
+ mkstemp in d_path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-b4-fs19-open-partial-success-v1-1-5e0f55385d27@samsung.com>
-X-B4-Tracking: v=1; b=H4sIANv452oC/yWM3Q6CMAxGX8X02kZGFhJ8FeNFV4rMyFjaYUwI7
- +7Qy/P9nA1MNIrB9bSByjtaXFIFdz4BT5QegnGoDG3Tds41LQaPo7kelywJM2mJ9EJbmcUM2Te
- Dd71n6RxURVYZ4+env0EarYgVuP8LW8NTuBzyYxrIBINS4umI1mxFhebLTPWlsO9fkuoV5asAA
- AA=
-X-Change-ID: 20261102-b4-fs19-open-partial-success-c40d4194ce61
-To: Jorge.Mora@netapp.com
-Cc: linux-nfs@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793587419; l=2619;
- i=nayeoni.kim@samsung.com; s=20261102; h=from:subject:message-id;
- bh=kM+8j/vfKTA/FNbh1boUK6kqOiP9hAPClcoKGunMq5Q=;
- b=i4/GZfSnlp4aIqrZl96mMEntMk+JYSePdSBReFgdPJZJY9dvKiNGKS7kZtQ8KiwEzJkWVU/sV
- wvL6DP/w92UCkbOHfME0DGxXthUk+6YXeFxET6k2AC6vvGxEQg6jJvW
-X-Developer-Key: i=nayeoni.kim@samsung.com; a=ed25519;
- pk=6rdU/EioX/vzm132vDyAq+TUk6SqpWqob+mz30+/n5E=
-X-Endpoint-Received: by B4 Relay for nayeoni.kim@samsung.com/20261102 with auth_id=1381
+Message-Id: <20261102-d-path-memfd-v1-1-692a5664b36d@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBtIg6yuEi3KGWsWmWhEEN49a
+ fkW/7+QOAonGKsXIt+S5PQFqq7A7ovfGIWKQTe6U6rRSBiWa8eDD0c49Ko3w2qpJQMlCZGdPP9
+ ugjU49PxcMOf8AVqhSIFoAAAA
+X-Change-ID: 20261102-d-path-memfd-981879bcd3d7
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Eduard Zingerman <eddyz87@gmail.com>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Ihor Solodrai <ihor.solodrai@linux.dev>, Shuah Khan <shuah@kernel.org>
+Cc: bpf@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Shuran Liu <electronlsr@gmail.com>, 
+ Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793592917; l=1984;
+ i=thamrinjonathan@gmail.com; s=20261005; h=from:subject:message-id;
+ bh=TeJTaf4tRSKGbLwDa/44eFD6DQOyzppP99cx6sinrxM=;
+ b=tCepcmKWaKlDygccQxSfS6IBJUclXSj5Eujzq3IucunRtsSHY72EraktC+4Qp4ocgMRskLro9
+ 8AvEPe3dLaVBfmEhdMInkWogaim0kdC4rK8pIDSb/DnFGXGV2xZrNI/
+X-Developer-Key: i=thamrinjonathan@gmail.com; a=ed25519;
+ pk=QU907bIMYty/tEI/iJF2SrD1lqOf/+2B1MI1zwJ5cBw=
+X-Endpoint-Received: by B4 Relay for thamrinjonathan@gmail.com/20261005 with auth_id=1114
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the client sends LAYOUTGET in the OPEN compound and only the
-LAYOUTGET fails, e.g., with NFS4ERR_BAD_STATEID, the OPEN and GETFH
-still succeed but the compound status is the LAYOUTGET error.
-find_open() looks for the OPEN reply with "NFS.status == 0", which is
-the compound status, so it misses this OPEN and either returns
-(None, None, None) or picks a later OPEN of the same file.
+check_mem_access currently creates a temp file in /dev/shm, which
+isn't mounted under vmtest.sh in local runs. This causes mkstemp
+to fail with ENOENT. The fix is similar to
+commit 47687a29b2c3 ("selftests/bpf: Use memfd_create instead of
+shm_open in cgroup_iter_memcg") where memfd_create gives a
+shmem-backed file with no mount needed while still reaching
+vfs_fallocate.
 
-Fix this by matching on the status of the OPEN operation instead.
-
-After this change, the matched OPEN reply may contain a failed
-LAYOUTGET, and find_layoutget() then looks at the same OPEN compound
-repeatedly until it hits the recursion limit. In that case, ignore the
-failed LAYOUTGET and look for the retried one.
-
-Signed-off-by: Nayeon Kim <nayeoni.kim@samsung.com>
+Signed-off-by: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 ---
-This conflicts with the pending "nfstest: DELEG: accept the attribute
-delegation" patch, which changes the line right after the open_str
-line in find_open(). I can rebase on top of it if that goes in first.
+ tools/testing/selftests/bpf/prog_tests/d_path.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-Tested by replaying packet traces with the failed LAYOUTGET through
-find_open() and find_layoutget().
----
- nfstest/nfs_util.py | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/nfstest/nfs_util.py b/nfstest/nfs_util.py
-index cf8d6aecc6ae..e6a2dd21ae1a 100644
---- a/nfstest/nfs_util.py
-+++ b/nfstest/nfs_util.py
-@@ -566,7 +566,7 @@ class NFSUtil(Host):
-                 return (None, None, None)
-             save_pktcall = pktcall
-             xid = pktcall.rpc.xid
--            open_str = "RPC.xid == %d and NFS.status == 0 and NFS.resop == %d" % (xid, OP_OPEN)
-+            open_str = "RPC.xid == %d and NFS.opopen.status == 0 and NFS.resop == %d" % (xid, OP_OPEN)
-             if deleg_type is not None:
-                 open_str += " and NFS.delegation.deleg_type == %d" % deleg_type
+diff --git a/tools/testing/selftests/bpf/prog_tests/d_path.c b/tools/testing/selftests/bpf/prog_tests/d_path.c
+index 1a2a2f1abf03..0f0150d73262 100644
+--- a/tools/testing/selftests/bpf/prog_tests/d_path.c
++++ b/tools/testing/selftests/bpf/prog_tests/d_path.c
+@@ -4,6 +4,7 @@
+ #include <sys/stat.h>
+ #include <linux/sched.h>
+ #include <sys/syscall.h>
++#include <sys/mman.h>
  
-@@ -625,6 +625,12 @@ class NFSUtil(Host):
-                 self.layoutget_on_open = True
-                 if self.openreply:
-                     layoutget_res = self.getop(self.openreply, OP_LAYOUTGET)
-+                    if layoutget_res is not None and status != layoutget_res.status:
-+                        # The LAYOUTGET in the OPEN compound did not return
-+                        # the expected status, look for another LAYOUTGET
-+                        layoutget = None
-+                        layoutget_res = None
-+                        self.layoutget_on_open = False
+ #define MAX_PATH_LEN		128
+ #define MAX_FILES		7
+@@ -220,7 +221,6 @@ static void test_d_path_check_types(void)
+ static void test_d_path_mem_access(void)
+ {
+ 	int localfd = -1;
+-	char path_template[] = "/dev/shm/d_path_loadgen.XXXXXX";
+ 	struct test_d_path__bss *bss;
+ 	struct test_d_path *skel;
  
-         if layoutget is None:
-             # Find LAYOUTGET request
+@@ -230,13 +230,12 @@ static void test_d_path_mem_access(void)
+ 
+ 	bss = skel->bss;
+ 
+-	localfd = mkstemp(path_template);
+-	if (CHECK(localfd < 0, "trigger", "mkstemp failed\n"))
++	localfd = memfd_create("d_path_loadgen", 0);
++	if (CHECK(localfd < 0, "trigger", "memfd_create failed\n"))
+ 		goto cleanup;
+ 
+ 	if (CHECK(fallocate(localfd, 0, 0, 1024) < 0, "trigger", "fallocate failed\n"))
+ 		goto cleanup;
+-	remove(path_template);
+ 
+ 	if (CHECK(!bss->path_match_fallocate, "check",
+ 		  "failed to read fallocate path"))
 
 ---
-base-commit: 94089545caa18bbe4be1b055125d0721fe8dee80
-change-id: 20261102-b4-fs19-open-partial-success-c40d4194ce61
+base-commit: a30c772627b2ef4bc715332b1b04938a914556cd
+change-id: 20261102-d-path-memfd-981879bcd3d7
+
+Best regards,
+-- 
+Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
 
