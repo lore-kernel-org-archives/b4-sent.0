@@ -1,10 +1,11 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 03 Nov 2026 03:45:13 +0800
-Subject: [PATCH RFC v3 10/17] dt-bindings: timer: add Zhihe A210 CLINT
+Date: Tue, 03 Nov 2026 03:45:14 +0800
+Subject: [PATCH RFC v3 11/17] dt-bindings: serial: snps-dw-apb-uart: add
+ Zhihe A210 UART
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-a210-scmi-v3-10-ee6b31580808@iscas.ac.cn>
+Message-Id: <20261103-a210-scmi-v3-11-ee6b31580808@iscas.ac.cn>
 References: <20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn>
 In-Reply-To: <20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -35,36 +36,57 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-serial@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
  Han Gao <gaohan@iscas.ac.cn>, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793648705; l=860;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793648705; l=1465;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=xDW3mj4crTCYIjLMrm7hiotLvXuQDaJfNmGBDmcpw/Y=;
- b=jPnhhqjJYSQguFvLE9NtnRdhJ2pnOIJBkGdeFMOGQktm4CG6PWJlPA6aa0aC7ETMCM8DQqjwJ
- BARoYkifsKZBP3NCtPK4kUUcLiUf/xOXjljT0FkuSVWrt1HIZCy3wuW
+ bh=QLjwbL73GqPkQVnItJ73UGwGElc2NGvSKMH+o+6GPQk=;
+ b=GwTMVWufbQ3apHJbtkCx8hlRQnr+EZ3B6ni/R6Ct6tj8GjQaIdyxcUFNA6jzCIbaIHbScNRAo
+ NxteGYBNi8CCG2wb3dxhMiBYvRAuuXZM8hNZ8O6SDJT8ZST/KoSAtkO
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the A210 CLINT compatible with the thead,c900-clint fallback.
+The Zhihe A210 UARTs have separate APB and serial clock domain resets.
+Add an SoC-specific compatible that, like the StarFive JH7110 one,
+allows both resets.
 
 Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- Documentation/devicetree/bindings/timer/sifive,clint.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/timer/sifive,clint.yaml b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-index d53f52e80d88..6480c8dacf6b 100644
---- a/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-+++ b/Documentation/devicetree/bindings/timer/sifive,clint.yaml
-@@ -55,6 +55,7 @@ properties:
-               - sophgo,sg2000-clint
-               - sophgo,sg2002-clint
-               - thead,th1520-clint
-+              - zhihe,a210-clint
-           - const: thead,c900-clint
-       - items:
-           - const: sifive,clint0
+diff --git a/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml b/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
+index e2ca126d58ba..a46a87e100bf 100644
+--- a/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
++++ b/Documentation/devicetree/bindings/serial/snps-dw-apb-uart.yaml
+@@ -29,7 +29,9 @@ allOf:
+       properties:
+         compatible:
+           contains:
+-            const: starfive,jh7110-uart
++            enum:
++              - starfive,jh7110-uart
++              - zhihe,a210-uart
+     then:
+       properties:
+         resets:
+@@ -43,6 +45,7 @@ allOf:
+               enum:
+                 - starfive,jh7110-uart
+                 - syna,sl2610-uart
++                - zhihe,a210-uart
+     then:
+       properties:
+         resets:
+@@ -92,6 +95,7 @@ properties:
+               - syna,sl2610-uart
+               - ti,tda54-uart
+               - ultrarisc,dp1000-uart
++              - zhihe,a210-uart
+           - const: snps,dw-apb-uart
+       - const: snps,dw-apb-uart
+ 
 
 -- 
 2.55.0
