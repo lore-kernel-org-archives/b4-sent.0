@@ -1,16 +1,13 @@
 From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Subject: [PATCH v2 0/2] iio: test: iio-test-format: char format test and
- overrun checks
-Date: Mon, 02 Nov 2026 08:33:54 +0000
-Message-Id: <20261102-iio-test-format-char-v2-0-926100689e62@gmail.com>
+Date: Mon, 02 Nov 2026 08:33:55 +0000
+Subject: [PATCH v2 1/2] iio: test: iio-test-format: check that nothing is
+ written past the string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNQQ6CMBBFr0Jm7Zh2EgVceQ/DotQpjBFK2ko0h
- Ltb8AAuX/L++wtEDsIRLsUCgWeJ4scMdCjA9mbsGOWeGUjRWSs6oYjHxDGh82EwCbMVsDK6dK2
- rDSkNeToFdvLes7fmx/HVPtimrbUZvcTkw2f/nfXm/bmYNWpksqQqVyuuyms3GHkerR+gWdf1C
- wRXamPKAAAA
-X-Change-ID: 20261025-iio-test-format-char-8a17fbf9a201
+Message-Id: <20261102-iio-test-format-char-v2-1-926100689e62@gmail.com>
+References: <20261102-iio-test-format-char-v2-0-926100689e62@gmail.com>
+In-Reply-To: <20261102-iio-test-format-char-v2-0-926100689e62@gmail.com>
 To: Rodrigo Alencar <rodrigo.alencar@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -19,51 +16,144 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>, 
  Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793608466; l=1508;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793608466; l=4542;
  i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=zOtnsvVKuqmWXFDwxhbutV/jvXsZEvAJ8P6C/sc77Tw=;
- b=bADJ50upmNxu7XNqALoxeIB0ZhnI0hWiY4moXOuXg/CZVKTgTi5tUJ9llY9HaVTY5nnIbKfTX
- JzQbMk7+ajiB4o3nKTN9cpShlW00RXpJL2dEHYV/Jd+T4urw0CbPsif
+ bh=mjGIohs+VaxRspg/JVuGZhyysVoHzY7PwFWoazBDiao=;
+ b=DrTAHWoJIjQ+wh1ssogPCRVkdw1Bbyuy081yyAvJWDELLz95kHWclXNAGif7zElEYfZxW+KtC
+ TjqyUyOLGLOBiWgzyfpkce/FNXwOB13qegAR50hoa991LyOS8AMwzCI
 X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
  pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
 X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a KUnit test for IIO_VAL_CHAR formatting and, as suggested by
-Andy, make IIO_TEST_FORMAT_EXPECT_EQ() check that iio_format_value()
-does not write past the formatted string.
+IIO_TEST_FORMAT_EXPECT_EQ() compares the buffer only up to the first NUL
+character. It does not notice if iio_format_value() writes past the end
+of the formatted string, and it cannot check output that contains a NUL.
 
-A NUL character is currently emitted as is, so the attribute reads
-back as "\0\n". The test documents this behaviour; please let me
-know if it should rather be rejected or handled differently.
+Poison the buffer before each call. Check the expected bytes, including
+the NUL terminator, with KUNIT_EXPECT_MEMEQ(), and check that the rest of
+the page still holds the poison value. Take the expected length from the
+string literal instead of calling strlen() on the buffer.
 
-These patches were written with the help of an LLM-based coding
-assistant, which I used to draft the code and commit messages. I
-reviewed and tested all changes myself.
-
-Tested with KUnit on arm64 QEMU.
-
+Suggested-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
 ---
-Changes in v2:
-- Drop the Assisted-by tag and describe the tool use here (Andy)
-- New patch 1: poison the buffer and check that nothing is written
-  past the string (Andy)
-- Add special, non-printable, NUL and out-of-range cases (Andy)
-- Link to v1: https://patch.msgid.link/20261025-iio-test-format-char-v1-1-e2c208f90e87@gmail.com
+ drivers/iio/test/iio-test-format.c | 50 +++++++++++++++++++++++++-------------
+ 1 file changed, 33 insertions(+), 17 deletions(-)
 
----
-Raffaele Tranfaglia (2):
-      iio: test: iio-test-format: check that nothing is written past the string
-      iio: test: iio-test-format: add test case for char format
+diff --git a/drivers/iio/test/iio-test-format.c b/drivers/iio/test/iio-test-format.c
+index e5d0a2ac4670..35b30420d995 100644
+--- a/drivers/iio/test/iio-test-format.c
++++ b/drivers/iio/test/iio-test-format.c
+@@ -6,20 +6,42 @@
+ 
+ #include <kunit/test.h>
+ #include <linux/iio/iio.h>
++#include <linux/string.h>
+ 
+-#define IIO_TEST_FORMAT_EXPECT_EQ(_test, _buf, _ret, _val) do { \
+-		KUNIT_EXPECT_EQ(_test, strlen(_buf), _ret); \
+-		KUNIT_EXPECT_STREQ(_test, (_buf), (_val)); \
++#define IIO_TEST_FORMAT_POISON	0x5a
++
++/*
++ * Check the formatted string including its NUL terminator, and that nothing
++ * beyond it was written. _val must be a string literal. The buffer is poisoned
++ * again afterwards for the next check.
++ */
++#define IIO_TEST_FORMAT_EXPECT_EQ(_test, _buf, _ret, _val) do {		\
++		KUNIT_EXPECT_EQ(_test, _ret, (ssize_t)sizeof(_val) - 1);	\
++		KUNIT_EXPECT_MEMEQ(_test, _buf, _val, sizeof(_val));		\
++		KUNIT_EXPECT_NULL(_test, memchr_inv((_buf) + sizeof(_val),	\
++						    IIO_TEST_FORMAT_POISON,	\
++						    PAGE_SIZE - sizeof(_val)));	\
++		memset(_buf, IIO_TEST_FORMAT_POISON, PAGE_SIZE);		\
+ 	} while (0)
+ 
++static char *iio_test_format_alloc_buf(struct kunit *test)
++{
++	char *buf;
++
++	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	memset(buf, IIO_TEST_FORMAT_POISON, PAGE_SIZE);
++
++	return buf;
++}
++
+ static void iio_test_iio_format_value_integer(struct kunit *test)
+ {
+ 	char *buf;
+ 	int val;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	val = 42;
+ 	ret = iio_format_value(buf, IIO_VAL_INT, 1, &val);
+@@ -48,8 +70,7 @@ static void iio_test_iio_format_value_fixedpoint(struct kunit *test)
+ 	char *buf;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	/* positive >= 1 */
+ 	values[0] = 1;
+@@ -109,8 +130,7 @@ static void iio_test_iio_format_value_fractional(struct kunit *test)
+ 	char *buf;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	/* positive < 1 */
+ 	values[0] = 1;
+@@ -149,8 +169,7 @@ static void iio_test_iio_format_value_fractional_log2(struct kunit *test)
+ 	char *buf;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	/* positive < 1 */
+ 	values[0] = 123;
+@@ -189,8 +208,7 @@ static void iio_test_iio_format_value_multiple(struct kunit *test)
+ 	char *buf;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	ret = iio_format_value(buf, IIO_VAL_INT_MULTIPLE,
+ 			       ARRAY_SIZE(values), values);
+@@ -203,8 +221,7 @@ static void iio_test_iio_format_value_integer_64(struct kunit *test)
+ 	char *buf;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	iio_val_s64_decompose(24, &values[0], &values[1]);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+@@ -241,8 +258,7 @@ static void iio_test_iio_format_value_decimal_64(struct kunit *test)
+ 	char *buf;
+ 	int ret;
+ 
+-	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+-	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	buf = iio_test_format_alloc_buf(test);
+ 
+ 	/* DECIMAL64_MILLI: positive >= 1, value 1.234 */
+ 	iio_val_s64_decompose(1234, &values[0], &values[1]);
 
- drivers/iio/test/iio-test-format.c | 117 +++++++++++++++++++++++++++++++------
- 1 file changed, 100 insertions(+), 17 deletions(-)
----
-base-commit: d1425b382b9cc5bd19223fad8ba4a8af3dbe1305
-change-id: 20261025-iio-test-format-char-8a17fbf9a201
-
-Best regards,
---  
-Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+-- 
+2.56.0
 
