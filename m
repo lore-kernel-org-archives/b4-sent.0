@@ -1,412 +1,105 @@
-From: Joseph Telaak <joseph@telaak.dev>
-Date: Sun, 01 Nov 2026 21:12:34 -0500
-Subject: [PATCH 10/10] leds: rgb: ktd202x: Don't let a blinking LED retime
- another one
+From: Christopher Griffin <christophergriffin05@gmail.com>
+Date: Sun, 01 Nov 2026 20:22:08 -0600
+Subject: [PATCH] FT: Set RSNXE Used in Reassociation Response only with an
+ RSNXE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-ktd202x-et6326-v1-10-eb51eddad08c@telaak.dev>
-References: <20261101-ktd202x-et6326-v1-0-eb51eddad08c@telaak.dev>
-In-Reply-To: <20261101-ktd202x-et6326-v1-0-eb51eddad08c@telaak.dev>
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Griffin Kroah-Hartman <griffin@kroah.com>, Kees Cook <kees@kernel.org>, 
- "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Randy Dunlap <rdunlap@infradead.org>
-Cc: linux-leds@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hardening@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-doc@vger.kernel.org, Joseph Telaak <joseph@telaak.dev>
+Message-Id: <20261101-b128-ft-rsnxe-used-v1-1-080f12ecf18a@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAM/z52oC/yXMSQ6DMAxA0asgr7EUhzKUq1QsGBwwi1DFUCEh7
+ t4Ay7f4/wDlIKxQJwcE/onK4iMoTaCfWj8yyhAN1tiCyBB2ZCt0Kwb1O+OmPGBJ7t26V1ZZk0M
+ Mv4Gd7Pf00zzWrZu5X68TnOcfjedfanYAAAA=
+X-Change-ID: 20261101-b128-ft-rsnxe-used-71f9af438205
+To: hostap@lists.infradead.org
+Cc: Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793585580; l=12784;
- i=joseph@telaak.dev; s=20261102; h=from:subject:message-id;
- bh=HivMUDrX79tqovMmLBbCBnjJ/uvbgMOr5RCG/wopo0M=;
- b=BKN72mi5JF0OpC3W4IT7jK2HSktvDBJ2FrbDs9tldmEJx6aETxqXgtLLdos2ruyJy8c1Ic9mN
- LCd7SgcOuoNABWcApHSYY8Nv6yEf+kXgBzCAy9RSWhfI2KPoHI/hC19
-X-Developer-Key: i=joseph@telaak.dev; a=ed25519;
- pk=OmwSusdK4grZpiuZVfCZAvYyqz9FBkNemsV1EnHyVr4=
-X-Endpoint-Received: by B4 Relay for joseph@telaak.dev/20261102 with auth_id=1382
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793586127; l=2984;
+ i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
+ bh=dACoVHh7sMJcaMGq2qOtnUhNC1wqfffbKyBYA6nPNDo=;
+ b=uSsFGZPlVoilThohw/UmCVWjAHgrwrharxxYK0BRXEavU4geqcoy27nRW8QFDI/K8LouNl3PC
+ wcPqBZBByoTCJfE1YYXXH+8UxOqzvvJFlx5O8B+imKrfd1K0xns685P
+X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
+ pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
+X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Every LED blinks with the PWM1 flash timer. So when a second LED blinks,
-its period and on time silently replace those of the first one, while
-the sysfs of the first one still shows its old delays. The same happens
-between a blink and a hardware pattern, and the ramps a pattern sets
-leak into a later blink.
+The AP set RSNXE Used in the FTE of an FT protocol Reassociation
+Response frame whenever sae_pwe was 1 or 2, for any AKM, while the MIC
+covers an RSNXE only when one is written. A BSS with FT-EAP or FT-PSK
+and no SAE AKM has no RSNXE, so with sae_pwe set (OpenWrt 25.12 sets it
+on such a BSS) the frame claimed an RSNXE that the AP does not
+advertise. wpa_supplicant rejects that ("FT: FTE indicated that AP uses
+RSNXE, but RSNXE was not included in Beacon/Probe Response frames") and
+deauthenticates with reason 13 (invalid element), so every FT roam to
+such a BSS failed.
 
-The PWM2 timer can't take the second LED: in timer slot 1, which the
-driver uses, it repeats PWM1 (Reg3 has no effect, measured on an
-ET6326), and in the other slots it only runs after PWM1 within the same
-period.
-
-Track which LEDs are on the timer instead of reading the channel state
-back. A LED may join the timer while no other LED uses it, or when it
-asks for the very same period, on time and ramps. Otherwise it stays on
-and gets -EBUSY, which makes the LED core blink it in software. Only
-write the timer registers when they change, so that a LED joining the
-timer does not restart the blink of the others.
-
-The match is on the programmed values. The timer trigger writes delay_on
-and delay_off one at a time, and each write is rounded against the other's
-rounded value, so two LEDs set to the same delays can get on times a few
-steps apart. The second one then blinks in software, at the timing it
-asked for. The documentation says how to make them share.
+Write the RSNXE before the FTE and set RSNXE Used only when the
+response includes one, which is what the MIC covers. Responses that
+include an RSNXE, as with SAE H2E, are unchanged.
 
 Assisted-by: Claude:claude-opus-5-5
-Signed-off-by: Joseph Telaak <joseph@telaak.dev>
+Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- Documentation/leds/leds-ktd202x.rst |  13 ++-
- drivers/leds/rgb/leds-ktd202x.c     | 213 ++++++++++++++++++++++--------------
- 2 files changed, 143 insertions(+), 83 deletions(-)
+Seen with OpenWrt 25.12.2 APs (mt76) whose FT-EAP BSS has sae_pwe=2:
+every FT roam to them failed with reason 13. Reproduced with FT-PSK and
+sae_pwe=2 on an Arista W-118 (ath10k), wpa_supplicant as the station:
+0 of 6 FT roams completed without this patch, each deauthenticated with
+reason 13 right after the Reassociation Response; 6 of 6 with it.
+---
+ src/ap/wpa_auth_ft.c | 27 +++++++++++++++------------
+ 1 file changed, 15 insertions(+), 12 deletions(-)
 
-diff --git a/Documentation/leds/leds-ktd202x.rst b/Documentation/leds/leds-ktd202x.rst
-index 2ee537f57..32ea9d6f6 100644
---- a/Documentation/leds/leds-ktd202x.rst
-+++ b/Documentation/leds/leds-ktd202x.rst
-@@ -31,9 +31,16 @@ equal and not 0. ``repeat`` must be -1, its default.
- The sum of the four times is the flash period. The driver rounds it up to the
- next step of 128 ms, between 256 ms (128 ms on the ET6326) and 16384 ms.
- 
--The flash period, the on time and the ramp times are shared by all LEDs of a
--chip. When several LEDs blink or breathe at once, they all follow the timing
--that was set last.
-+All LEDs of a chip blink and breathe with one flash timer. Several LEDs can
-+use it at once only with the same period, on time and ramps. A LED that asks
-+for different ones while another LED is on the timer gets -EBUSY: blinking
-+then falls back to the software timer, and ``hw_pattern`` returns the error.
-+
-+The match is on the values programmed into the chip. The timer trigger sets
-+``delay_on`` and ``delay_off`` one at a time and the driver rounds each pair,
-+so two LEDs given the same delays can end up with slightly different on times,
-+and then the second one blinks in software. To share the timer, give the
-+second LED the delays that the first one reads back.
- 
- For example, to breathe with a period of 4 seconds::
- 
-diff --git a/drivers/leds/rgb/leds-ktd202x.c b/drivers/leds/rgb/leds-ktd202x.c
-index 5f51df993..f4544ba33 100644
---- a/drivers/leds/rgb/leds-ktd202x.c
-+++ b/drivers/leds/rgb/leds-ktd202x.c
-@@ -128,6 +128,8 @@ struct ktd202x_led {
- 		struct led_classdev_mc mcdev;
- 	};
- 	u32 index;
-+	/* Blinking or breathing with the flash timer */
-+	bool on_timer;
- };
- 
- struct ktd202x {
-@@ -137,6 +139,10 @@ struct ktd202x {
- 	struct regmap *regmap;
- 	const struct ktd202x_info *info;
- 	bool enabled;
-+	/* Settings of the flash timer, valid while a LED is on it */
-+	u8 flash_period;
-+	u8 flash_on;
-+	u8 ramp_times;
- 	unsigned long num_leds;
- 	struct ktd202x_led leds[] __counted_by(num_leds);
- };
-@@ -196,13 +202,20 @@ static bool ktd202x_chip_in_use(struct ktd202x *chip)
- 	return false;
- }
- 
-+/* The channel mode of a lit LED: on, or blinking with the flash timer */
-+static unsigned int ktd202x_channel_mode(struct ktd202x_led *led, int channel)
-+{
-+	if (led->on_timer)
-+		return KTD202X_CHANNEL_CTRL_PWM1(channel);
-+
-+	return KTD202X_CHANNEL_CTRL_ON(channel);
-+}
-+
- static int ktd202x_brightness_set(struct ktd202x_led *led,
- 				  struct mc_subled *subleds,
- 				  unsigned int num_channels)
- {
--	bool mode_blink = false;
- 	int channel;
--	int state;
- 	int ret;
- 	int i;
- 
-@@ -212,24 +225,9 @@ static int ktd202x_brightness_set(struct ktd202x_led *led,
- 			return ret;
+diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
+index e12f2ad..02e9402 100644
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2714,7 +2714,21 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
+ 		anonce = NULL;
+ 		snonce = NULL;
  	}
- 
--	ret = regmap_read(led->chip->regmap, KTD202X_REG_CHANNEL_CTRL, &state);
--	if (ret)
--		return ret;
--
--	/*
--	 * In multicolor case, assume blink mode if PWM is set for at least one
--	 * channel because another channel cannot be in state ON at the same time
--	 */
--	for (i = 0; i < num_channels; i++) {
--		int channel_state;
--
--		channel = subleds[i].channel;
--		channel_state = (state >> 2 * channel) & KTD202X_CHANNEL_CTRL_MASK(0);
--		if (channel_state == KTD202X_CHANNEL_CTRL_OFF)
--			continue;
--		mode_blink = channel_state == KTD202X_CHANNEL_CTRL_PWM1(0);
--		break;
--	}
-+	/* A LED that is turned off stops blinking and leaves the timer */
-+	if (!led->cdev.brightness)
-+		led->on_timer = false;
- 
- 	for (i = 0; i < num_channels; i++) {
- 		enum led_brightness brightness;
-@@ -245,10 +243,7 @@ static int ktd202x_brightness_set(struct ktd202x_led *led,
- 			if (ret)
- 				return ret;
- 
--			if (mode_blink)
--				mode = KTD202X_CHANNEL_CTRL_PWM1(channel);
--			else
--				mode = KTD202X_CHANNEL_CTRL_ON(channel);
-+			mode = ktd202x_channel_mode(led, channel);
- 		} else {
- 			mode = KTD202X_CHANNEL_CTRL_OFF;
- 		}
-@@ -320,6 +315,89 @@ static unsigned long ktd202x_flash_period_ms(const struct ktd202x_info *info,
- 	return num_steps * KTD202X_FLASH_PERIOD_STEP_MS + info->flash_period_min_ms;
- }
- 
-+/*
-+ * All LEDs blink with the PWM1 flash timer. PWM2 is no help: in timer slot 1
-+ * it repeats PWM1, and in the other slots it only runs after PWM1 within the
-+ * same period. So a LED may only join the timer while it is unused, or used
-+ * with the very same period, on time and ramps, so that it never retimes
-+ * another LED behind its back.
-+ */
-+static bool ktd202x_timer_busy(struct ktd202x_led *led, u8 flash_period,
-+			       u8 flash_on, u8 ramp_times)
-+{
-+	struct ktd202x *chip = led->chip;
-+	int i;
-+
-+	for (i = 0; i < chip->num_leds; i++) {
-+		struct ktd202x_led *other = &chip->leds[i];
-+
-+		if (other == led || !other->on_timer)
-+			continue;
-+
-+		if (flash_period != chip->flash_period ||
-+		    flash_on != chip->flash_on || ramp_times != chip->ramp_times)
-+			return true;
-+	}
-+
-+	return false;
-+}
-+
-+/* Called with the chip mutex held */
-+static int ktd202x_timer_set(struct ktd202x_led *led, struct mc_subled *subleds,
-+			     unsigned int num_channels, u8 flash_period, u8 flash_on,
-+			     u8 ramp_times)
-+{
-+	struct ktd202x *chip = led->chip;
-+	u8 ctrl_mask = 0;
-+	u8 ctrl_mode = 0;
-+	bool busy;
-+	int ret;
-+	int i;
-+
-+	busy = ktd202x_timer_busy(led, flash_period, flash_on, ramp_times);
-+	led->on_timer = !busy;
-+
-+	for (i = 0; i < num_channels; i++) {
-+		int channel = subleds[i].channel;
-+
-+		ctrl_mask |= KTD202X_CHANNEL_CTRL_MASK(channel);
-+		ctrl_mode |= ktd202x_channel_mode(led, channel);
-+	}
-+
-+	/* Without the timer, leave the LED steadily on */
-+	if (busy) {
-+		ret = regmap_update_bits(chip->regmap, KTD202X_REG_CHANNEL_CTRL,
-+					 ctrl_mask, ctrl_mode);
-+		return ret ? ret : -EBUSY;
-+	}
-+
-+	chip->flash_period = flash_period;
-+	chip->flash_on = flash_on;
-+	chip->ramp_times = ramp_times;
-+
-+	/*
-+	 * Update the timer registers only when they change, so that the
-+	 * blink of another LED on the timer is not restarted.
-+	 */
-+	ret = regmap_update_bits(chip->regmap, KTD202X_REG_FLASH_PERIOD, 0xff,
-+				 flash_period);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(chip->regmap, KTD202X_REG_PWM1_TIMER, 0xff,
-+				 flash_on);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_update_bits(chip->regmap, KTD202X_REG_TRISE_FALL, 0xff,
-+				 ramp_times);
-+	if (ret)
-+		return ret;
-+
-+	return regmap_update_bits(chip->regmap, KTD202X_REG_CHANNEL_CTRL,
-+				  ctrl_mask, ctrl_mode);
-+}
-+
- static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 			     unsigned long *delay_off, struct mc_subled *subleds,
- 			     unsigned int num_channels)
-@@ -328,22 +406,21 @@ static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 	unsigned long delay_total_ms;
- 	int ret, num_steps, on;
- 	u8 ctrl_mask = 0;
--	u8 ctrl_pwm1 = 0;
- 	u8 ctrl_on = 0;
- 	int i;
- 
- 	mutex_lock(&led->chip->mutex);
- 
--	for (i = 0; i < num_channels; i++) {
--		int channel = subleds[i].channel;
--
--		ctrl_mask |= KTD202X_CHANNEL_CTRL_MASK(channel);
--		ctrl_on |= KTD202X_CHANNEL_CTRL_ON(channel);
--		ctrl_pwm1 |= KTD202X_CHANNEL_CTRL_PWM1(channel);
--	}
--
- 	/* Never off - brightness is already set, disable blinking */
- 	if (!*delay_off) {
-+		for (i = 0; i < num_channels; i++) {
-+			int channel = subleds[i].channel;
-+
-+			ctrl_mask |= KTD202X_CHANNEL_CTRL_MASK(channel);
-+			ctrl_on |= KTD202X_CHANNEL_CTRL_ON(channel);
+-	rsnxe_used = (auth_alg == WLAN_AUTH_FT) &&
++	if (omit_rsnxe) {
++		rsnxe_len = 0;
++	} else {
++		res = wpa_write_rsnxe(&sm->wpa_auth->conf, rsnxe,
++				      sizeof(rsnxe_buf));
++		if (res < 0) {
++			os_free(subelem);
++			return NULL;
 +		}
-+
-+		led->on_timer = false;
- 		ret = regmap_update_bits(led->chip->regmap, KTD202X_REG_CHANNEL_CTRL,
- 					 ctrl_mask, ctrl_on);
- 		goto out;
-@@ -363,28 +440,19 @@ static int ktd202x_blink_set(struct ktd202x_led *led, unsigned long *delay_on,
- 	on = mul_u64_u64_div_u64(*delay_on, KTD202X_FLASH_ON_MAX, delay_total_ms);
- 	on = clamp(on, 1, KTD202X_FLASH_ON_MAX - 1);
++		rsnxe_len = res;
++	}
++	/* RSNXE Used tells the STA that the MIC covers an RSNXE. Without one
++	 * (e.g., FT-EAP or FT-PSK with sae_pwe set, but no SAE), the STA would
++	 * reject the response for an RSNXE the AP does not advertise. */
++	rsnxe_used = (auth_alg == WLAN_AUTH_FT) && rsnxe_len &&
+ 		(conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
+ 		 conf->sae_pwe == SAE_PWE_BOTH);
+ #ifdef CONFIG_TESTING_OPTIONS
+@@ -2782,17 +2796,6 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
+ 	if (ric_start == pos)
+ 		ric_start = NULL;
  
-+	/*
-+	 * Without the ramps a hardware pattern may have set. On -EBUSY the
-+	 * LED core falls back to software blinking.
-+	 */
-+	ret = ktd202x_timer_set(led, subleds, num_channels, num_steps, on,
-+				KTD202X_RAMP_TIMES_2_MS);
-+	if (ret)
-+		goto out;
-+
- 	/* Actually used delay_{on,off} values */
- 	delay_total_ms = ktd202x_flash_period_ms(info, num_steps);
- 	*delay_on = (delay_total_ms * on) / KTD202X_FLASH_ON_MAX;
- 	*delay_off = delay_total_ms - *delay_on;
--
--	/* Set timings */
--	ret = regmap_write(led->chip->regmap, KTD202X_REG_FLASH_PERIOD, num_steps);
--	if (ret)
--		goto out;
--
--	ret = regmap_write(led->chip->regmap, KTD202X_REG_PWM1_TIMER, on);
--	if (ret)
--		goto out;
--
--	/* Drop the ramps a hardware pattern may have left behind */
--	ret = regmap_write(led->chip->regmap, KTD202X_REG_TRISE_FALL,
--			   KTD202X_RAMP_TIMES_2_MS);
--	if (ret)
--		goto out;
--
--	ret = regmap_update_bits(led->chip->regmap, KTD202X_REG_CHANNEL_CTRL,
--				 ctrl_mask, ctrl_pwm1);
- out:
- 	mutex_unlock(&led->chip->mutex);
- 	return ret;
-@@ -484,18 +552,9 @@ static int ktd202x_pattern_program(struct ktd202x_led *led,
- 	unsigned int t[KTD202X_PATTERN_LEN];
- 	unsigned int rise, fall, num_steps, on;
- 	unsigned long period_ms, ton_ms;
--	u8 ctrl_mask = 0;
--	u8 ctrl_pwm1 = 0;
- 	int ret;
- 	int i;
- 
--	for (i = 0; i < num_channels; i++) {
--		int channel = subleds[i].channel;
--
--		ctrl_mask |= KTD202X_CHANNEL_CTRL_MASK(channel);
--		ctrl_pwm1 |= KTD202X_CHANNEL_CTRL_PWM1(channel);
+-	if (omit_rsnxe) {
+-		rsnxe_len = 0;
+-	} else {
+-		res = wpa_write_rsnxe(&sm->wpa_auth->conf, rsnxe,
+-				      sizeof(rsnxe_buf));
+-		if (res < 0) {
+-			pos = NULL;
+-			goto fail;
+-		}
+-		rsnxe_len = res;
 -	}
--
- 	for (i = 0; i < KTD202X_PATTERN_LEN; i++)
- 		t[i] = min_t(u32, pattern[i].delta_t, KTD202X_PATTERN_MAX_MS);
- 
-@@ -517,24 +576,10 @@ static int ktd202x_pattern_program(struct ktd202x_led *led,
- 		     1, KTD202X_FLASH_ON_MAX - 1);
- 
- 	mutex_lock(&led->chip->mutex);
--
--	ret = regmap_write(led->chip->regmap, KTD202X_REG_FLASH_PERIOD, num_steps);
--	if (ret)
--		goto out;
--
--	ret = regmap_write(led->chip->regmap, KTD202X_REG_PWM1_TIMER, on);
--	if (ret)
--		goto out;
--
--	ret = regmap_write(led->chip->regmap, KTD202X_REG_TRISE_FALL,
--			   KTD202X_RAMP_TFALL(fall) | KTD202X_RAMP_TRISE(rise));
--	if (ret)
--		goto out;
--
--	ret = regmap_update_bits(led->chip->regmap, KTD202X_REG_CHANNEL_CTRL,
--				 ctrl_mask, ctrl_pwm1);
--out:
-+	ret = ktd202x_timer_set(led, subleds, num_channels, num_steps, on,
-+				KTD202X_RAMP_TFALL(fall) | KTD202X_RAMP_TRISE(rise));
- 	mutex_unlock(&led->chip->mutex);
-+
- 	return ret;
- }
- 
-@@ -556,7 +601,11 @@ static int ktd202x_pattern_single_set(struct led_classdev *cdev,
- 
- 	info.channel = led->index;
- 
--	return ktd202x_pattern_program(led, pattern, &info, 1);
-+	ret = ktd202x_pattern_program(led, pattern, &info, 1);
-+	if (ret)
-+		ktd202x_brightness_single_set(cdev, LED_OFF);
-+
-+	return ret;
- }
- 
- static int ktd202x_pattern_single_clear(struct led_classdev *cdev)
-@@ -580,8 +629,12 @@ static int ktd202x_pattern_mc_set(struct led_classdev *cdev,
- 	if (ret)
- 		return ret;
- 
--	return ktd202x_pattern_program(led, pattern, mc->subled_info,
--				       mc->num_colors);
-+	ret = ktd202x_pattern_program(led, pattern, mc->subled_info,
-+				      mc->num_colors);
-+	if (ret)
-+		ktd202x_brightness_mc_set(cdev, LED_OFF);
-+
-+	return ret;
- }
- 
- static int ktd202x_pattern_mc_clear(struct led_classdev *cdev)
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	if (auth_alg == WLAN_AUTH_FT &&
+ 	    sm->wpa_auth->conf.rsnxe_override_ft_set) {
 
--- 
-Git-155)
+---
+base-commit: 1f2231a88a742befbea44bc19ffee94bed616505
+change-id: 20261101-b128-ft-rsnxe-used-71f9af438205
+
+Best regards,
+--  
+Christopher Griffin <christophergriffin05@gmail.com>
 
