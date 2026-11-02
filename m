@@ -1,95 +1,75 @@
-From: Long Zhao <longzhao@ambarella.com>
-Date: Mon, 02 Nov 2026 14:46:06 +0800
-Subject: [PATCH v13 13/13] gpio: pl061: use string_choices helpers for IRQ
- trigger logging
+From: Dave Airlie <airlied@redhat.com>
+Subject: [PATCH 0/2] nova-core: add initial support for gpu timer (v2)
+Date: Mon, 02 Nov 2026 17:17:39 +1000
+Message-Id: <20261102-nova-timer-v1-0-b347ead64469@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-cv75-gpio-v13-13-4f93114ea204@ambarella.com>
-References: <20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com>
-In-Reply-To: <20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com>
-To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
-Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Conor Dooley <conor+dt@kernel.org>, Mika Westerberg <westeri@kernel.org>, 
- linux-acpi@vger.kernel.org, devicetree@vger.kernel.org, 
- Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793602013; l=2144;
- i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=fw1GrW1qb2pgL5KMumdZfjy+hm5H2+O4WJ9KZtKEf7g=;
- b=frD4NqpHtQZS0jwPoCEmr+b9K0OEZGWwSl3VTced8gZdFEqXV5fKEXDa86cHB0E0lrlPaff60
- Cr97vMzZg3PBBE9QdSVH2UY4Je5FJoHSg1kWGhe37BjZOp9qF2nA718
-X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
- pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
-X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwMj3bz8skTdkszc1CLdNJMky5RUYyNzk0RDJaCGgqLUtMwKsGHRsbW
+ 1AP5WcfNcAAAA
+X-Change-ID: 20261102-nova-timer-f4b9de3274a1
+To: Andreas Hindborg <a.hindborg@kernel.org>, 
+ FUJITA Tomonori <fujita.tomonori@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Alexandre Courbot <acourbot@nvidia.com>
+Cc: nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+ Dave Airlie <airlied@redhat.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1359; i=airlied@redhat.com;
+ h=from:subject:message-id; bh=RYbXHTs81IbH7HvDGHxYUlQGzPjtXhkoehwsBfu0Hto=;
+ b=owEBbQKS/ZANAwAKAQx081l5xIa+AcsmYgBq6DkYDL0yKfyHai+FiOWnD9w9gdYcDqpe6Q8vi
+ jeiHuKBDdGJAjMEAAEKAB0WIQQQptkdobBb0p9t66wMdPNZecSGvgUCaug5GAAKCRAMdPNZecSG
+ vnHxEACos1WTmVvpCG78TQF4ByhizPj2/NukKawmojSNAa7FcBoTT47lssoanIRwFuqEE30Zs7d
+ 5xXGQL9D5L3wM6QX2qsTKYeStri4oMJyz5WyMbs1BggJm4NP9dYHtSfEiv1VmRj6vxR+O5LL4D3
+ XK0GsMrr10Epl93z/OGjjaMb4uUPjiiJzdIW3Wi7suGVEcEa6Q2kZkVDACrUrcptTIh0h1JmMkh
+ vlHt/FQuIVx3m6ANmxjZrzgubOrrs9mUXoQyBHhmapmrChVX/VZmXilQSvt/Y2p+HAqzjHvZmb8
+ PWxPmBi5J8dijwgg2YBJhwcmb5hYXUX5aTajlKiJmaJSzhhiFqX3HcYqG8ASL4Wctgx58opS/Sw
+ iG3GqMMjb3AUCHg7vRSUBf98d1N2bEutLJGDeAIHtvCM0RM7pFk7rhc+qJqlB3egs+/4RyPjEw4
+ 3XweKOvrveAQ/IReinl/dJ9sKQ3iBBwa+5Dh9UAy5gOWGSQfGKOZta8oXtIUnWTB/jI+nHvreAM
+ gdLcjjxur2M8G/TQaKLSAmjWjH/Uj6a12sbQZJDkQrFZnFqYgcWpO17oOHCcbzFtadDnIC3kms7
+ jy9FOxopeYWvx+N0dRvfP1MirO/k9ave+r6bKmOZCjFU0vjBtdtzzMfGCSSuuiIXG+rKjt1rIyy
+ vTsgsZCeV1IVY+A==
+X-Developer-Key: i=airlied@redhat.com; a=openpgp;
+ fpr=10A6D91DA1B05BD29F6DEBAC0C74F35979C486BE
+X-Endpoint-Received: by B4 Relay for airlied@redhat.com/default with auth_id=1321
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add str_rising_falling() next to the other str_* helpers and use
-str_high_low() / str_rising_falling() for the level and edge debug
-lines.
+The GPU has a timer, one of the pieces of information
+we need to pass into GSP init later is the timer offset.
+    
+This series just adds support for setting up the timer
+on Turing+, with hals for Turing and Hopper.
+    
+Right now it calculates the value to send to GSP but
+the code to send it will be added later.
+    
+For some hardware variants sending a proper value
+is required for GSP init to succeed.
 
-Suggested-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Signed-off-by: Long Zhao <longzhao@ambarella.com>
+v2 changes on second patch.
+
+Signed-off-by: Dave Airlie <airlied@redhat.com>
 ---
- drivers/gpio/gpio-pl061.c      | 7 +++----
- include/linux/string_choices.h | 6 ++++++
- 2 files changed, 9 insertions(+), 4 deletions(-)
+Dave Airlie (2):
+      rust: time: expose as_nanos for clock sources.
+      gpu: nova-core: add support for GPU timer block. (v2)
 
-diff --git a/drivers/gpio/gpio-pl061.c b/drivers/gpio/gpio-pl061.c
-index 63ec5363dd5f..86c22378e759 100644
---- a/drivers/gpio/gpio-pl061.c
-+++ b/drivers/gpio/gpio-pl061.c
-@@ -26,6 +26,7 @@
- #include <linux/regmap.h>
- #include <linux/seq_file.h>
- #include <linux/spinlock.h>
-+#include <linux/string_choices.h>
- 
- #define GPIODIR 0x400
- #define GPIOIS  0x404
-@@ -195,8 +196,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 			gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_level_irq);
- 		dev_dbg(parent, "line %d: IRQ on %s level\n",
--			offset,
--			polarity ? "HIGH" : "LOW");
-+			offset, str_high_low(polarity));
- 	} else if ((trigger & IRQ_TYPE_EDGE_BOTH) == IRQ_TYPE_EDGE_BOTH) {
- 		/* Disable level detection */
- 		gpiois &= ~bit;
-@@ -219,8 +219,7 @@ static int pl061_irq_type(struct irq_data *d, unsigned trigger)
- 			gpioiev &= ~bit;
- 		irq_set_handler_locked(d, handle_edge_irq);
- 		dev_dbg(parent, "line %d: IRQ on %s edge\n",
--			offset,
--			rising ? "RISING" : "FALLING");
-+			offset, str_rising_falling(rising));
- 	} else {
- 		/* No trigger: disable everything */
- 		gpiois &= ~bit;
-diff --git a/include/linux/string_choices.h b/include/linux/string_choices.h
-index ee84087d4b26..c3a0360334d6 100644
---- a/include/linux/string_choices.h
-+++ b/include/linux/string_choices.h
-@@ -65,6 +65,12 @@ static inline const char *str_read_write(bool v)
- }
- #define str_write_read(v)		str_read_write(!(v))
- 
-+static inline const char *str_rising_falling(bool v)
-+{
-+	return v ? "rising" : "falling";
-+}
-+#define str_falling_rising(v)		str_rising_falling(!(v))
-+
- static inline const char *str_true_false(bool v)
- {
- 	return v ? "true" : "false";
+ drivers/gpu/nova-core/gpu.rs             |  5 +++
+ drivers/gpu/nova-core/nova_core.rs       |  1 +
+ drivers/gpu/nova-core/timer.rs           | 33 ++++++++++++++
+ drivers/gpu/nova-core/timer/hal.rs       | 28 ++++++++++++
+ drivers/gpu/nova-core/timer/hal/gh100.rs | 76 ++++++++++++++++++++++++++++++++
+ drivers/gpu/nova-core/timer/hal/tu102.rs | 56 +++++++++++++++++++++++
+ drivers/gpu/nova-core/timer/regs.rs      | 64 +++++++++++++++++++++++++++
+ rust/kernel/time.rs                      |  3 +-
+ 8 files changed, 265 insertions(+), 1 deletion(-)
+---
+base-commit: 3497a403264b094ebd61b8b755165d56e7d9dc37
+change-id: 20261102-nova-timer-f4b9de3274a1
 
+Best regards,
 -- 
-2.34.1
+Dave Airlie <airlied@redhat.com>
 
