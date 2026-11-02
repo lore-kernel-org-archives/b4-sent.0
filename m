@@ -1,11 +1,11 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 03 Nov 2026 03:45:07 +0800
-Subject: [PATCH RFC v3 04/17] dt-bindings: mailbox: add Zhihe A210 AP to
- E902 mailbox
+Date: Tue, 03 Nov 2026 03:45:08 +0800
+Subject: [PATCH RFC v3 05/17] mailbox: add Zhihe A210 AP to E902 mailbox
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-a210-scmi-v3-4-ee6b31580808@iscas.ac.cn>
+Message-Id: <20261103-a210-scmi-v3-5-ee6b31580808@iscas.ac.cn>
 References: <20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn>
 In-Reply-To: <20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -36,104 +36,244 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-serial@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
  Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793648705; l=3069;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793648705; l=7374;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=1bSlRTbJH+ic/kKX/KZWwqkpU0t/w8ZHzrQrtqPAxps=;
- b=Mbtcx9ULN3M5M1BOVXKIfPa7Ysmpnzr8bxJu9gjIiuQ1do9EqmOCy8wBUewlfmylGO/UUQaq/
- l54pph/+wc9CjpX/G9HOZ8YL/V3ckKuglIBcUS/6Ezcani0vj4mFo1y
+ bh=Z7rtD2lVv6OIg4Vqe4Ikd4EKS6jFLkfoX9GIDAAsyp4=;
+ b=VrOF7udLcDMVqx667ugeUMpkqXHz40e/x5dOG22NIXupxPiSI/4m12WowhII4y0a+jNIua+MQ
+ VjdvRvtrVyxBOac3UusDx0riIWfcXEcwv2P1AymO4vKOpG25rZoaynf
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Zhihe A210 has an E902 management core next to its application
-processors. Each side owns a mailbox block and rings the other side by
-writing to its slice of the other side's mailbox.
+Add a mailbox controller for the doorbells between the A210 application
+processors and the E902 management core. It serves as the SCMI
+transport to the E902 firmware.
 
-The application processors ring E902 through their slice of the E902
-mailbox. E902 rings back through the application processor mailbox and
-writes INFO0 or INFO1 there to say which of its two doorbells it rang.
-The doorbells carry no data, and clients such as SCMI keep their
-messages in shared memory.
+Channel 0 rings E902 and receives its completions. Channel 1 is receive
+only and carries E902 notifications. Both share one interrupt, and E902
+writes INFO0 or INFO1 to tell them apart.
+
+The E902 firmware keeps both mailboxes clocked and out of reset, so the
+driver does not manage clocks or resets.
 
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- .../bindings/mailbox/zhihe,a210-ap-mailbox.yaml    | 67 ++++++++++++++++++++++
- 1 file changed, 67 insertions(+)
+ drivers/mailbox/Kconfig        |   9 +++
+ drivers/mailbox/Makefile       |   2 +
+ drivers/mailbox/mailbox-a210.c | 176 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 187 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/mailbox/zhihe,a210-ap-mailbox.yaml b/Documentation/devicetree/bindings/mailbox/zhihe,a210-ap-mailbox.yaml
+diff --git a/drivers/mailbox/Kconfig b/drivers/mailbox/Kconfig
+index ab869769e278..6d620b0dde6f 100644
+--- a/drivers/mailbox/Kconfig
++++ b/drivers/mailbox/Kconfig
+@@ -409,4 +409,13 @@ config AXIADO_MAILBOX
+ 	  Axiado SoCs.
+ 	  If unsure, say N.
+ 
++config ZHIHE_A210_MBOX
++	bool "Zhihe A210 AP to E902 mailbox"
++	depends on OF && (ARCH_ZHIHE || COMPILE_TEST)
++	help
++	  Mailbox driver for the doorbells between the application
++	  processors and the E902 management core of the Zhihe A210. The
++	  doorbells carry no data, so clients pass their messages through
++	  shared memory. Say Y to use the SCMI firmware on the E902.
++
+ endif
+diff --git a/drivers/mailbox/Makefile b/drivers/mailbox/Makefile
+index 45dc59bb3e7f..f537ebb8aaff 100644
+--- a/drivers/mailbox/Makefile
++++ b/drivers/mailbox/Makefile
+@@ -86,3 +86,5 @@ obj-$(CONFIG_BCM74110_MAILBOX)	+= bcm74110-mailbox.o
+ obj-$(CONFIG_RISCV_SBI_MPXY_MBOX)	+= riscv-sbi-mpxy-mbox.o
+ 
+ obj-$(CONFIG_AXIADO_MAILBOX)	+= axiado-mailbox.o
++
++obj-$(CONFIG_ZHIHE_A210_MBOX) += mailbox-a210.o
+diff --git a/drivers/mailbox/mailbox-a210.c b/drivers/mailbox/mailbox-a210.c
 new file mode 100644
-index 000000000000..7d7ab1c550a0
+index 000000000000..0b66fded6b09
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/mailbox/zhihe,a210-ap-mailbox.yaml
-@@ -0,0 +1,67 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/mailbox/zhihe,a210-ap-mailbox.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
++++ b/drivers/mailbox/mailbox-a210.c
+@@ -0,0 +1,176 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Zhihe A210 application processor to E902 mailbox */
++#include <linux/interrupt.h>
++#include <linux/io.h>
++#include <linux/mailbox_controller.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/spinlock.h>
 +
-+title: Zhihe A210 application processor to E902 mailbox
++/* The local mailbox holds the INFO bank and, one page up, the AP interrupt. */
++#define A210_MBOX_STATUS		0x1000
++#define A210_MBOX_CLEAR		0x1004
++#define A210_MBOX_MASK		0x100c
++#define A210_MBOX_GENERATE	0x10
++#define A210_MBOX_INFO(n)	(0x14 + 4 * (n))
++#define A210_MBOX_E902_PENDING	BIT(0)
++#define A210_MBOX_NOTIFY		BIT(6)
 +
-+maintainers:
-+  - Han Gao <gaohan@iscas.ac.cn>
++/* Channel 0 carries AP requests and completions, channel 1 E902 notifications. */
++#define A210_MBOX_CHANS		2
 +
-+description: |
-+  The A210 application processors and the E902 always-on core each own a
-+  mailbox. A core raises an interrupt on the other side by writing the
-+  generate register of the other core's mailbox, and can leave a value in one
-+  of the INFO registers there to identify the request. The application
-+  processor side therefore needs its own mailbox, which holds the INFO
-+  registers written by E902 and the interrupt status, clear and mask
-+  registers, and the slice of the E902 mailbox assigned to it.
++struct a210_mbox {
++	struct mbox_controller controller;
++	struct mbox_chan channels[A210_MBOX_CHANS];
++	void __iomem *local;
++	void __iomem *remote;
++	/* Protects the shared interrupt mask and the set of started channels. */
++	spinlock_t lock;
++	unsigned long started;
++	int irq;
++};
 +
-+  The E902 firmware keeps both mailboxes clocked and out of reset. Their
-+  clocks and resets are not controlled from the application processors.
++static void a210_mbox_mask(struct a210_mbox *mbox, unsigned int index, bool enable)
++{
++	unsigned long flags;
++	u32 value;
 +
-+properties:
-+  compatible:
-+    const: zhihe,a210-ap-mailbox
++	spin_lock_irqsave(&mbox->lock, flags);
++	if (enable)
++		__set_bit(index, &mbox->started);
++	else
++		__clear_bit(index, &mbox->started);
++	value = readl(mbox->local + A210_MBOX_MASK);
++	if (mbox->started)
++		value |= A210_MBOX_E902_PENDING;
++	else
++		value &= ~A210_MBOX_E902_PENDING;
++	writel(value, mbox->local + A210_MBOX_MASK);
++	spin_unlock_irqrestore(&mbox->lock, flags);
++}
 +
-+  reg:
-+    items:
-+      - description: Application processor mailbox
-+      - description: Application processor slice of the E902 mailbox
++static irqreturn_t a210_mbox_irq(int irq, void *data)
++{
++	struct a210_mbox *mbox = data;
 +
-+  reg-names:
-+    items:
-+      - const: local
-+      - const: remote
++	if (!(readl(mbox->local + A210_MBOX_MASK) & A210_MBOX_E902_PENDING))
++		return IRQ_NONE;
++	if (!(readl(mbox->local + A210_MBOX_STATUS) & A210_MBOX_E902_PENDING))
++		return IRQ_NONE;
 +
-+  interrupts:
-+    maxItems: 1
++	writel(A210_MBOX_E902_PENDING, mbox->local + A210_MBOX_CLEAR);
 +
-+  '#mbox-cells':
-+    const: 1
-+    description:
-+      Doorbell index, 0 or 1. E902 writes INFO0 or INFO1 of the application
-+      processor mailbox to tell which doorbell it rings. Only doorbell 0 can
-+      also be rung by the application processor.
++	/* E902 sets INFO<n> before ringing the shared doorbell for channel n. */
++	for (unsigned int i = 0; i < A210_MBOX_CHANS; i++) {
++		if (!readl(mbox->local + A210_MBOX_INFO(i)))
++			continue;
++		writel(0, mbox->local + A210_MBOX_INFO(i));
++		if (test_bit(i, &mbox->started))
++			mbox_chan_received_data(&mbox->channels[i], NULL);
++	}
++	return IRQ_HANDLED;
++}
 +
-+required:
-+  - compatible
-+  - reg
-+  - reg-names
-+  - interrupts
-+  - '#mbox-cells'
++static unsigned int a210_mbox_index(struct a210_mbox *mbox, struct mbox_chan *channel)
++{
++	return channel - mbox->channels;
++}
 +
-+additionalProperties: false
++static int a210_mbox_send(struct mbox_chan *channel, void *data)
++{
++	struct a210_mbox *mbox = channel->con_priv;
 +
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
++	/* E902 notifications are receive-only. */
++	if (a210_mbox_index(mbox, channel))
++		return -EINVAL;
 +
-+    mailbox@320000 {
-+        compatible = "zhihe,a210-ap-mailbox";
-+        reg = <0x320000 0x2000>, <0x311000 0x1000>;
-+        reg-names = "local", "remote";
-+        interrupts = <336 IRQ_TYPE_LEVEL_HIGH>;
-+        #mbox-cells = <1>;
-+    };
++	/* Payload and completion ownership belong to the shared-memory client. */
++	writel(A210_MBOX_NOTIFY, mbox->remote + A210_MBOX_GENERATE);
++	return 0;
++}
++
++static int a210_mbox_startup(struct mbox_chan *channel)
++{
++	struct a210_mbox *mbox = channel->con_priv;
++	unsigned int index = a210_mbox_index(mbox, channel);
++
++	writel(0, mbox->local + A210_MBOX_INFO(index));
++	a210_mbox_mask(mbox, index, true);
++	return 0;
++}
++
++static void a210_mbox_shutdown(struct mbox_chan *channel)
++{
++	struct a210_mbox *mbox = channel->con_priv;
++
++	a210_mbox_mask(mbox, a210_mbox_index(mbox, channel), false);
++	synchronize_irq(mbox->irq);
++}
++
++static const struct mbox_chan_ops a210_mbox_ops = {
++	.send_data = a210_mbox_send,
++	.startup = a210_mbox_startup,
++	.shutdown = a210_mbox_shutdown,
++};
++
++static int a210_mbox_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct a210_mbox *mbox;
++	int ret;
++
++	mbox = devm_kzalloc(dev, sizeof(*mbox), GFP_KERNEL);
++	if (!mbox)
++		return -ENOMEM;
++
++	mbox->local = devm_platform_ioremap_resource_byname(pdev, "local");
++	if (IS_ERR(mbox->local))
++		return PTR_ERR(mbox->local);
++	mbox->remote = devm_platform_ioremap_resource_byname(pdev, "remote");
++	if (IS_ERR(mbox->remote))
++		return PTR_ERR(mbox->remote);
++	mbox->irq = platform_get_irq(pdev, 0);
++	if (mbox->irq < 0)
++		return mbox->irq;
++
++	spin_lock_init(&mbox->lock);
++	a210_mbox_mask(mbox, 0, false);
++	for (unsigned int i = 0; i < A210_MBOX_CHANS; i++)
++		mbox->channels[i].con_priv = mbox;
++	/*
++	 * Neither txdone_irq nor txdone_poll is set: the client acknowledges
++	 * completion after consuming shared memory.
++	 */
++	mbox->controller.dev = dev;
++	mbox->controller.chans = mbox->channels;
++	mbox->controller.num_chans = A210_MBOX_CHANS;
++	mbox->controller.ops = &a210_mbox_ops;
++
++	ret = devm_request_irq(dev, mbox->irq, a210_mbox_irq, 0, dev_name(dev),
++			       mbox);
++	if (ret)
++		return ret;
++
++	return devm_mbox_controller_register(dev, &mbox->controller);
++}
++
++static const struct of_device_id a210_mbox_match[] = {
++	{ .compatible = "zhihe,a210-ap-mailbox" },
++	{}
++};
++MODULE_DEVICE_TABLE(of, a210_mbox_match);
++
++static struct platform_driver a210_mbox_driver = {
++	.probe = a210_mbox_probe,
++	.driver = {
++		.name = "a210-mailbox",
++		.of_match_table = a210_mbox_match,
++		/* Running E902 firmware continuously accesses the remote bank. */
++		.suppress_bind_attrs = true,
++	},
++};
++module_platform_driver(a210_mbox_driver);
++
++MODULE_AUTHOR("Han Gao <gaohan@iscas.ac.cn>");
++MODULE_DESCRIPTION("Zhihe A210 AP to E902 mailbox");
++MODULE_LICENSE("GPL");
 
 -- 
 2.55.0
