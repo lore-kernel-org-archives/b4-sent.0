@@ -1,11 +1,11 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Sun, 01 Nov 2026 23:14:10 -0600
-Subject: [PATCH ath-next 2/3] wifi: ath11k: hold back FCS-failed monitor
- frames unless asked for
+Date: Sun, 01 Nov 2026 23:14:11 -0600
+Subject: [PATCH ath-next 3/3] wifi: ath11k: report a monitor frame's MCS
+ and NSS only from the PPDU's SIG
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-b8-monitor-frames-v1-2-f0a43d9630e5@gmail.com>
+Message-Id: <20261101-b8-monitor-frames-v1-3-f0a43d9630e5@gmail.com>
 References: <20261101-b8-monitor-frames-v1-0-f0a43d9630e5@gmail.com>
 In-Reply-To: <20261101-b8-monitor-frames-v1-0-f0a43d9630e5@gmail.com>
 To: Jeff Johnson <jjohnson@kernel.org>, 
@@ -24,96 +24,126 @@ Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org,
  Rajkumar Manoharan <rmanohar@codeaurora.org>, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793596448; l=3200;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793596448; l=4679;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=gW5/j2hiiWOOFjn6ouakRd7VONDoZcdzfhX/IthW4Vo=;
- b=Unx/VLGUd03Y0E20Qd3syMAamP4RBCNzYP78JySeJPZc2vyvfug+SX7i6SocFG0/VJvLBY9kS
- TL7D2W2rPNeA+rc3+SuG5IF1Qd6PIFCKu7Phky9JXOCVwHbAaNRY9Il
+ bh=J4jRf5l59+FWEVGn47cCD/3aF3TptpB1fGEP1KJUXLA=;
+ b=bmG75PeLmhL3oUTVAm+ZrW60a0gibEUkuhKP79wvs56n1yY43XiE9zmwYPAl4VwJ4b5VqU79V
+ 6hPVtoKyQnUBCed6G7Zy0QidhWv6iD3jnpQ+hKWbuBg3JvKL23gUjT6
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ath11k accepts FIF_FCSFAIL in configure_filter() but never looks at
-the filter: its monitor path hands every MPDU whose FCS failed to
-mac80211, flagged RX_FLAG_FAILED_FCS_CRC. mac80211 passes such a frame
-to every monitor interface, whatever that interface's flags. It leaves
-holding these frames back to the driver unless a monitor asked for them
-with the "fcsfail" flag, which turns on FIF_FCSFAIL. So a monitor made
-without that flag gets them anyway. On an Arista C-360 the QCN9072 scan
-radio's monitor saw a bad FCS on 6 to 10 % of the beacons it heard.
+ath11k_update_radiotap() sets an HT, VHT or HE monitor frame's
+rate_idx from ppduinfo->rate. That is the L-SIG rate code, not the MCS
+that the SIG TLV gave (ppduinfo->mcs). ath12k had the same bug, fixed
+by commit 10085a654a4c ("wifi: ath12k: fix incorrect HT/VHT/HE/EHT MCS
+reporting in monitor mode").
 
-Drop an FCS-failed MPDU in the monitor path unless FIF_FCSFAIL is set,
-as ath10k does in ath10k_process_rx(). filter_flags is now read outside
-conf_mutex, so write it with WRITE_ONCE().
+The function also takes the preamble from the PPDU's user stats, which
+can arrive without the SIG TLV. The status of one PPDU can span more
+than one buffer, and since commit 01d2f285e3e5 ("ath11k: decode HE
+status tlv") ppdu_info holds only what the last buffer had. The frame
+then goes up as VHT or HE with MCS 0 and no spatial stream, and
+mac80211 drops it, warning once:
 
-Fixes: d5c65159f289 ("ath11k: driver for Qualcomm IEEE 802.11ax devices")
+  Rate marked as a VHT rate but data is invalid: MCS: 0, NSS: 0
+
+An Arista C-360 with monitor interfaces up logs this, and the HE
+equivalent, once per boot. Because the warning is WARN_ONCE(), every
+later such frame is dropped without a message.
+
+Take the MCS from ppduinfo->mcs, adding the stream offset for HT.
+Use the PPDU's HT, VHT or HE rate only when its SIG TLV was seen with a
+valid NSS and MCS. Otherwise keep the rate from the MPDU's rx
+descriptor, and if that names VHT or HE with no stream, report one
+rather than lose the frame.
+
+ath11k_dp_rx_deliver_msdu() sets RX_FLAG_RADIOTAP_HE on the rx_status
+that all skbs of an MPDU share. Clear the HE radiotap flags for each
+skb, so that each skb's flags match the radiotap data pushed onto it.
+
+Fixes: ab0a9ef605cf ("ath11k: translate HE status to radiotap format")
 Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
- drivers/net/wireless/ath/ath11k/dp_rx.c | 12 +++++++++++-
- drivers/net/wireless/ath/ath11k/mac.c   |  3 ++-
- 2 files changed, 13 insertions(+), 2 deletions(-)
+ drivers/net/wireless/ath/ath11k/dp_rx.c | 37 ++++++++++++++++++++++++++++++---
+ 1 file changed, 34 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/net/wireless/ath/ath11k/dp_rx.c b/drivers/net/wireless/ath/ath11k/dp_rx.c
-index 4e0b717b6f06d..7809c92baa325 100644
+index 7809c92baa325..53d7b19d8807c 100644
 --- a/drivers/net/wireless/ath/ath11k/dp_rx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_rx.c
-@@ -5115,6 +5115,7 @@ static int ath11k_dp_rx_mon_deliver(struct ath11k *ar, u32 mac_id,
- 	struct sk_buff *mon_skb, *skb_next, *header;
- 	struct ieee80211_rx_status *rxs = &dp->rx_status;
- 	bool fcs_err = false;
-+	int ret = 0;
+@@ -5075,26 +5075,49 @@ static void ath11k_update_radiotap(struct ath11k *ar,
+ 	rxs->flag |= RX_FLAG_MACTIME_START;
+ 	rxs->signal = ppduinfo->rssi_comb + ath11k_noise_floor(ar, rxs->freq);
  
- 	mon_skb = ath11k_dp_rx_mon_merg_msdus(ar, mac_id, head_msdu,
- 					      tail_msdu, rxs, &fcs_err);
-@@ -5122,6 +5123,13 @@ static int ath11k_dp_rx_mon_deliver(struct ath11k *ar, u32 mac_id,
- 	if (!mon_skb)
- 		goto mon_deliver_fail;
- 
-+	/* mac80211 passes a frame whose FCS failed to every monitor
-+	 * interface. Holding such frames back unless a monitor asked for
-+	 * them (FIF_FCSFAIL) is left to the driver.
++	/* Each skb of the MPDU carries its own HE radiotap data, if any:
++	 * drop the flags the last one left, ath11k_dp_rx_deliver_msdu()
++	 * included.
 +	 */
-+	if (fcs_err && !(READ_ONCE(ar->filter_flags) & FIF_FCSFAIL))
-+		goto mon_drop;
++	rxs->flag &= ~(RX_FLAG_RADIOTAP_HE | RX_FLAG_RADIOTAP_HE_MU);
 +
- 	header = mon_skb;
++	/* An HT, VHT or HE PPDU's MCS and NSS come from its SIG TLV, its
++	 * preamble type (the *_flags) from its user stats. The status can
++	 * hold the latter without the former, as when it spans more than
++	 * one buffer. Keep the rate the MPDU's rx descriptor gave
++	 * (ath11k_dp_rx_h_ppdu()) then: reporting the preamble with no
++	 * spatial stream gets the frame dropped by mac80211.
++	 */
++	if ((ppduinfo->he_mu_flags || ppduinfo->he_flags ||
++	     ppduinfo->vht_flags || ppduinfo->ht_flags) &&
++	    (!ppduinfo->nss || ppduinfo->nss > HAL_RX_MAX_NSS ||
++	     ppduinfo->mcs > ATH11K_HE_MCS_MAX))
++		goto out;
++
+ 	if (ppduinfo->nss)
+ 		rxs->nss = ppduinfo->nss;
  
- 	rxs->flag = 0;
-@@ -5153,13 +5161,15 @@ static int ath11k_dp_rx_mon_deliver(struct ath11k *ar, u32 mac_id,
- 	return 0;
- 
- mon_deliver_fail:
-+	ret = -EINVAL;
-+mon_drop:
- 	mon_skb = head_msdu;
- 	while (mon_skb) {
- 		skb_next = mon_skb->next;
- 		dev_kfree_skb_any(mon_skb);
- 		mon_skb = skb_next;
++	/* ppduinfo->rate is the L-SIG rate; an HT, VHT or HE PPDU's MCS is
++	 * ppduinfo->mcs, as the SIG TLV gives it.
++	 */
+ 	if (ppduinfo->he_mu_flags) {
+ 		rxs->flag |= RX_FLAG_RADIOTAP_HE_MU;
+ 		rxs->encoding = RX_ENC_HE;
+ 		ptr = skb_push(mon_skb, sizeof(struct ieee80211_radiotap_he_mu));
+ 		ath11k_dp_rx_update_radiotap_he_mu(ppduinfo, ptr);
++		rxs->rate_idx = ppduinfo->mcs;
+ 	} else if (ppduinfo->he_flags) {
+ 		rxs->flag |= RX_FLAG_RADIOTAP_HE;
+ 		rxs->encoding = RX_ENC_HE;
+ 		ptr = skb_push(mon_skb, sizeof(struct ieee80211_radiotap_he));
+ 		ath11k_dp_rx_update_radiotap_he(ppduinfo, ptr);
+-		rxs->rate_idx = ppduinfo->rate;
++		rxs->rate_idx = ppduinfo->mcs;
+ 	} else if (ppduinfo->vht_flags) {
+ 		rxs->encoding = RX_ENC_VHT;
+-		rxs->rate_idx = ppduinfo->rate;
++		rxs->rate_idx = ppduinfo->mcs;
+ 	} else if (ppduinfo->ht_flags) {
+ 		rxs->encoding = RX_ENC_HT;
+-		rxs->rate_idx = ppduinfo->rate;
++		rxs->rate_idx = ppduinfo->mcs + 8 * (ppduinfo->nss - 1);
+ 	} else {
+ 		rxs->encoding = RX_ENC_LEGACY;
+ 		sband = &ar->mac.sbands[rxs->band];
+@@ -5102,6 +5125,14 @@ static void ath11k_update_radiotap(struct ath11k *ar,
+ 							  ppduinfo->cck_flag);
  	}
--	return -EINVAL;
-+	return ret;
+ 
++out:
++	/* The descriptor can name VHT or HE with no spatial stream too.
++	 * Report one rather than lose the frame.
++	 */
++	if ((rxs->encoding == RX_ENC_VHT || rxs->encoding == RX_ENC_HE) &&
++	    !rxs->nss)
++		rxs->nss = 1;
++
+ 	rxs->mactime = ppduinfo->tsft;
  }
  
- /* The destination ring processing is stuck if the destination is not
-diff --git a/drivers/net/wireless/ath/ath11k/mac.c b/drivers/net/wireless/ath/ath11k/mac.c
-index ada0f3a3c8565..0b7371ad808d5 100644
---- a/drivers/net/wireless/ath/ath11k/mac.c
-+++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -7456,7 +7456,8 @@ static void ath11k_mac_op_configure_filter(struct ieee80211_hw *hw,
- 	mutex_lock(&ar->conf_mutex);
- 
- 	*total_flags &= SUPPORTED_FILTERS;
--	ar->filter_flags = *total_flags;
-+	/* read without the lock in the monitor rx path */
-+	WRITE_ONCE(ar->filter_flags, *total_flags);
- 
- 	mutex_unlock(&ar->conf_mutex);
- }
 
 -- 
 2.43.0
