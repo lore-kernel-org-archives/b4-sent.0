@@ -1,15 +1,12 @@
 From: Jacob Lefkowitz <jlefkowi@akamai.com>
-Subject: [PATCH v2 0/2] perf jevents: Add IOMMU PTW & device entry metrics
-Date: Mon, 02 Nov 2026 21:14:15 +0000
-Message-Id: <20261102-perf-tools-next-v2-0-4d237f886710@akamai.com>
+Date: Mon, 02 Nov 2026 21:14:16 +0000
+Subject: [PATCH v2 1/2] perf jevents: add iommu page table walk metrics
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNyw6CMBBFf4XM2jG0PERX/odhMcIgE6UlbdNgC
- P9uJXHl8pzknruCZyfs4ZKt4DiKF2sS6EMG3UjmwSh9YtC5rlWuG5zZDRisfXk0vARshl71ZVE
- UqiZIq9nxIMtevLWJR/HBuvd+ENXX/lrnv1ZUmCOdKtL3uiRV8ZWeNJEcOztBu23bB+KDHySvA
- AAA
-X-Change-ID: 20261028-perf-tools-next-8fd1d433316a
+Message-Id: <20261102-perf-tools-next-v2-1-4d237f886710@akamai.com>
+References: <20261102-perf-tools-next-v2-0-4d237f886710@akamai.com>
+In-Reply-To: <20261102-perf-tools-next-v2-0-4d237f886710@akamai.com>
 To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
  Arnaldo Carvalho de Melo <acme@kernel.org>, 
  Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
@@ -21,72 +18,119 @@ Cc: linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org,
  Ben Chaney <bchaney@akamai.com>, Matt Pelland <mpelland@akamai.com>, 
  Jacob Lefkowitz <jlefkowi@akamai.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1932; i=jlefkowi@akamai.com;
- h=from:subject:message-id; bh=d66B5JAoBXgjBVfpcoxVXE9rM8vAjKvyKdmOxdyzjJs=;
- b=owEBbQKS/ZANAwAKAdLKfgzjwTS1AcsmYgBq6P0rROw5wdqaVhUI1FzlhV0u8sWTxMPI3V5w4
- 73IVmoN9leJAjMEAAEKAB0WIQQKFmVpIhg7hFI7scTSyn4M48E0tQUCauj9KwAKCRDSyn4M48E0
- tTv8D/46cbO7uCat3xnsVx99k3cPiDz4YBgdQxmUZORhslhy04HrNpTqLj8Rv1UWowXhmW2bIBh
- KQvqwJYspXh/7idcZtxE6udAYhVAWFVUmNjY+6o8yFztleoME63wtUHVsYix+6PDVXDvnyVS1xz
- uM6+PiMiyXg2HF04A8yavRLbPNu4ZeF6oiL0FZ5qc2NKEBlTT11qqW2UI4S9Yxxn/vYIGmkRzxu
- ApErMtCnesZdk8gatxg0DJ0g5VL5CMlVndVDWRfIy19B+GJfrtuIFZDPSSe9ELogvWZtay/JCAe
- C+Au+N5IDz7Pk0C7AiaIACz23POrYYoTXukRSEvDmWP6zRB/0FlOjDZlA3ZCSlJPCnm2RLeCn/h
- xL6hooCg4XweLs7qdfg8WwIYgxiMD+v15tCWtDaiJxOzVONBU8zt3zYZw9UhQwQmmFTnMDAQQv5
- NXloMm9AQhTnQhOfHJIAelDy4LlMyMHidksVmY1Z7xADHzOuke26+m5lrNge8RDQPDmFILl5a1k
- Pzu/YuXzvki7mdGzA3kx4i8uV+deZiRIhHUc+MrzP4Xp5SbO4kQzLPaI/IOhh75xHlZz7pnI9Ls
- nuSSQBsxYWU/MBHgV3VFFf8VM/dj4z1f4Dr5HxGhuJzD9LwZTGfRHFOqfXlCmmwraQ6DHjlSWrJ
- +lx8orRLVDZTaMw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3362; i=jlefkowi@akamai.com;
+ h=from:subject:message-id; bh=o+fTHAReSL+rEvSd6OyDxXB8zlYMgzMiuuHLzYKbvtA=;
+ b=owEBbQKS/ZANAwAKAdLKfgzjwTS1AcsmYgBq6P0yeccUtD2GLhej/d2Lavjp2eNUncZ012Hbe
+ GNY/SMVB1eJAjMEAAEKAB0WIQQKFmVpIhg7hFI7scTSyn4M48E0tQUCauj9MgAKCRDSyn4M48E0
+ tRJED/0Sba2qk0SsG8L3HcbaWylkq/NbfhGCI8nOYlremFZXTbIuAg3+CLg8cM0hChvAqfhkNll
+ K87NzMDOwGdEgkRPngmFdHlBClMRXU8bGGMeMOFiqYX/uCnOkgZBJdCxwBrM4kDMweXZeU1pNMc
+ rapnrsIvkNOamrOUAHFV62r9G+RI0oTu58JGSwSlDC14YsNBULXG2LDwuwT+Yz9hCicFjdLQFxg
+ ACeFHxf6vRGZ3CdKFVTnU+91EP1sWfVZ72vccn+a8yaR/iTGjlVLU9vFPIMuvfC+v4k0T3qdjqr
+ t0JPvpaDIEDPNzWN4mkWngP9eDdaBtKl6nBUeANXkziGwqscrU4ubuzP4bKJ8BzL9FABJYcDIx0
+ IC8BdXAp+ZcTmJMCnSHUHAB4RiUAFs2rDaPudGfhySZZer6ucR96kLhyipGHIVKBI94bRhbthIF
+ Wsg4lRbbSdwR+XBNLPe80Exz3p8fvWnkEWqPCps0+JNKE4RMkd8v8zj7eWEgyDyfWnt/QfmoCmj
+ aUBLVQvrdxKCyOMwFons6T8jsemhJH2p/k8nerKf3ZXNgTlFCT23ROoqtby0lNosw9vq36znJvo
+ 7MT+4ZPqON5YozilW+iUwgcEIxtHUw0mfly8Bp+GhBe77QtZGYtMh6M2k1yMD68PfrzM6eF1Q80
+ 9NfTGqngAr2hiVw==
 X-Developer-Key: i=jlefkowi@akamai.com; a=openpgp;
  fpr=0A16656922183B84523BB1C4D2CA7E0CE3C134B5
 X-Endpoint-Received: by B4 Relay for jlefkowi@akamai.com/default with auth_id=1357
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds AMD specific metrics for the IOMMU with respect to page table
-walks and device table entires. The metrics cover ratios, rates, and
-percentages with respect to any event which might be triggered during
-a page table walk or device table entry lookup.
+Adds page table walk metrics specfically to perf jevents for AMD
+platforms to enhance observability into IOMMU overhead. The metrics
+are supported on Zen 2 and neweer processors. They are implemented
+using the amd_iommu PMU events.
 
-The metrics target Zen 2+ processors and use the standard amd_iommu
-PMU events. All metrics are tested with 'sleep 10' and behave as
-expected. An example output of sleep 10 is provided within each
-individual change. 
-
-The changes are split into two patches:
-1. perf jevents: add iommu page table walk metrics
-2. perf jevents: add amd specific device table entry metrics
-
-The specific metris added are:
-- lpm_iommu_dte_miss_rate
-- lpm_iommu_dte_lookups
+The list of metrics added here are:
 - lpm_iommu_ptw_reads_per_tlb_miss
 - lpm_iommu_ptw_nested_read_ratio
 - lpm_iommu_ptw_guest_read_ratio
 - lpm_iommu_trans_per_sec
 
+The changes here have been tested with 'sleep 10' as the workload:
+
+perf stat -M iommuptw --per-socket --metric-only -j -a -- sleep 10
+{"socket" : "S0", "counters" : 8,
+"reads/tlb_miss lpm_iommu_ptw_reads_per_tlb_miss" : "0.5",
+"%  lpm_iommu_ptw_nested_read_ratio" : "none",
+"%  lpm_iommu_ptw_guest_read_ratio" : "0.0",
+"trans/s  lpm_iommu_trans_per_sec" : "971.5"}
+{"socket" : "S1", "counters" : 0,
+"reads/tlb_miss  lpm_iommu_ptw_reads_per_tlb_miss" : "none",
+"%  lpm_iommu_ptw_nested_read_ratio" : "none",
+"%  lpm_iommu_ptw_guest_read_ratio" : "none,
+"trans/s  lpm_iommu_trans_per_sec" : "none"}
+
 Signed-off-by: Jacob Lefkowitz <jlefkowi@akamai.com>
 ---
-Changes in v2:
-- Drop min() wrappers d_ratio() for the IOMMU ratio metrics: min(NaN, 1)
-  evaluated to 1, reporting a false 100% on sockets with no amd_counts
-- Did not test with previously mentioned custom workload and did not add
-  to the workloads collection. The workload stressed the CPU TLB,
-  but the IOMMU only translates device DMA, so the load never reaches
-  the IOMMU.
-- Remove unused min import
-- Remove global declaration of '_zen_model' within each function
-- Link to v1: https://lore.kernel.org/r/20261029-perf-tools-next-v1-0-a75a2b64a15e@akamai.com
+ tools/perf/pmu-events/amd_metrics.py | 45 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
----
-Jacob Lefkowitz (2):
-      perf jevents: add iommu page table walk metrics
-      perf jevents: add amd specific device table entry metrics
+diff --git a/tools/perf/pmu-events/amd_metrics.py b/tools/perf/pmu-events/amd_metrics.py
+index 42569b9153f4..452b88033492 100755
+--- a/tools/perf/pmu-events/amd_metrics.py
++++ b/tools/perf/pmu-events/amd_metrics.py
+@@ -318,6 +318,50 @@ def AmdIotlb() -> Optional[MetricGroup]:
+     )
+ 
+ 
++def AmdIommuptw() -> Optional[MetricGroup]:
++    if _zen_model < 2:
++        return None
++
++    walks = Event("amd_iommu/mem_iommu_tlb_pte_mis/") + Event(
++        "amd_iommu/mem_iommu_tlb_pde_mis/"
++    )
++    pt_rd = Event("amd_iommu/page_tbl_read_tot/")
++    pt_rd_nst = Event("amd_iommu/page_tbl_read_nst/")
++    pt_rd_gst = Event("amd_iommu/page_tbl_read_gst/")
++    trans = Event("amd_iommu/mem_trans_total/")
++
++    return MetricGroup(
++        "iommuptw",
++        [
++            Metric(
++                "lpm_iommu_ptw_reads_per_tlb_miss",
++                "Average IOMMU page table reads per IOTLB miss",
++                d_ratio(pt_rd, walks),
++                "reads/tlb_miss"
++            ),
++            Metric(
++                "lpm_iommu_ptw_nested_read_ratio",
++                "Share of IOMMU page table reads from nested (host) tables",
++                d_ratio(pt_rd_nst, pt_rd),
++                "100%"
++            ),
++            Metric(
++                "lpm_iommu_ptw_guest_read_ratio",
++                "Share of IOMMU page table reads from guest tables",
++                d_ratio(pt_rd_gst, pt_rd),
++                "100%"
++            ),
++            Metric(
++                "lpm_iommu_trans_per_sec",
++                "IOMMU translation requests per second",
++                d_ratio(trans, interval_sec),
++                "trans/s"
++            )
++        ],
++        description="IOMMU page table walk metrics"
++    )
++
++
+ def AmdItlb():
+     l2h = Event("bp_l1_tlb_miss_l2_tlb_hit", "bp_l1_tlb_miss_l2_hit")
+     l2m = Event("bp_l1_tlb_miss_l2_tlb_miss.all", "l2_itlb_misses",)
+@@ -526,6 +570,7 @@ def main() -> None:
+         AmdCtxSw(),
+         AmdDtlb(),
+         AmdIotlb(),
++        AmdIommuptw(),
+         AmdItlb(),
+         AmdLdSt(),
+         AmdUpc(),
 
- tools/perf/pmu-events/amd_metrics.py | 75 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 75 insertions(+)
----
-base-commit: 1c90f0a3c8a1c4e38f9edd97af9e20848805a7fb
-change-id: 20261028-perf-tools-next-8fd1d433316a
-
-Best regards,
 -- 
-Jacob Lefkowitz <jlefkowi@akamai.com>
+2.53.0
 
