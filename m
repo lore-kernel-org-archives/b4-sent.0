@@ -1,150 +1,115 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Date: Mon, 02 Nov 2026 16:45:35 -0500
-Subject: [PATCH] clocksource: Use the clocksource under test for the skew
- check timeout
+Date: Mon, 02 Nov 2026 16:51:24 -0500
+Subject: [PATCH] smpboot: Run the thread function only once before parking
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-clocksource-skew-timeout-v1-1-4ff412918591@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBBG4auUWTvQRKroVcRFO/7RsdpIJlGh9
- O5GXX6L92YyJIXRvpkp4ammcapwq4bk0k9nsJ6qybd+41zrWW5RRoslCdhGvDjrHbFkDr7foQv
- DOmw7qvkjIej7tz4c/7YyXCH5+6Nl+QBA6AVcfAAAAA==
-X-Change-ID: 20261102-clocksource-skew-timeout-f2a9e5fb3f75
-To: Thomas Gleixner <tglx@kernel.org>, John Stultz <jstultz@google.com>
-Cc: Stephen Boyd <sboyd@kernel.org>, Miroslav Lichvar <mlichvar@redhat.com>, 
- Srikanth Aithal <Srikanth.Aithal@amd.com>, Borislav Petkov <bp@alien8.de>, 
- K Prateek Nayak <kprateek.nayak@amd.com>, linux-kernel@vger.kernel.org, 
- tz2294@columbia.edu, stable@vger.kernel.org, 
+Message-Id: <20261102-smpboot-park-once-v1-1-920282635d20@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQpGBsr1K60DjqVExCRosg3
+ t2oy7f4fwOhxCTwLjZI9Gfh4DP0owA31L4n5DYbjDKl1sqgTLEJYcZYpxGDd4SvUtmuImvVs4X
+ cxUQdr9fz870tS/MjN58j2PcDzX9SmnUAAAA=
+X-Change-ID: 20261102-smpboot-park-once-9607f8e7703d
+To: Thomas Gleixner <tglx@kernel.org>, 
+ Peter Zijlstra <peterz@infradead.org>
+Cc: Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
+ linux-kernel@vger.kernel.org, tz2294@columbia.edu, 
  Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793655935; l=5072;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793656284; l=3810;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=BwOAXMTSmN3S5CdQQNe0kwBbbM0riuH0AkP9PTw3cow=;
- b=X4hBPBJpPywiDSpkFxm5qV4E84jNKzIKZezeqM1NLCPq+buPyTkeybhiCSVmSBIjVpkq3+QEZ
- H63xSgmVSFxASydIlKIHue6PbkZC5vf8sKSYhCeW6fgGeRE1a2zBOt+
+ bh=7+gwrJFIT86+cmc25bfaTu75k8C3HHor3PiorlzLhzY=;
+ b=797VxbCot/vvg5lW0l6AUFp8w7P83tGOkuo07iOCrKtsbPXjdDYmdJNN8q5bTUif8ysS+II2L
+ FlK4JYfbJXdD1niboSovpoypZkM+pKbn4hcyXSGBpNA7MRvhGJHrQzb
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-watchdog_check_skew() waits for the remote CPU with interrupts disabled
-and gives up after a timeout measured with ktime_get_raw_fast_ns().
-While the clocksource is still jiffies during boot (or with
-clocksource=jiffies) that timeout can't expire, because only the boot
-CPU's tick advances jiffies and that's the CPU spinning with interrupts
-disabled.
+Since commit 4a3b51aab6e2 ("smpboot: Don't park the thread if work is
+pending"), smpboot_thread_fn() parks only once thread_should_run() is
+false.  CPU offline waits for that with no timeout and with
+cpu_hotplug_lock held for write.
 
-The boot then hangs when the remote CPU can't answer, eg in the
-stop_machine() of the switch away from jiffies:
+When the outgoing CPU keeps receiving more packets than it can process,
+ksoftirqd always has NET_RX pending and never parks.  The offline then
+waits for as long as the packets keep coming and everything that takes
+cpus_read_lock() waits with it:
 
-  CPU0                                  CPU1
-  multi_cpu_stop()                      multi_cpu_stop()
-                                          local_irq_disable()
-                                          /* waits for CPU0 */
-    <timer interrupt>
-      clocksource_watchdog()
-        /* sends CSD to CPU1 */
-        watchdog_check_skew()
-          /* waits for CPU1 forever */
+  [   41.469979] INFO: task kworker/0:1:10 blocked for more than 20 seconds.
+  [   41.470020] task:kworker/0:1     state:D stack:28392 pid:10    tgid:10    ppid:2      task_flags:0x4208060 flags:0x00080000
+  [   41.470055] Workqueue: events vmstat_shepherd
+  [   41.470077] Call Trace:
+  [   41.470082]  <TASK>
+  [   41.470091]  __schedule+0x10f1/0x4760
+  [   41.470175]  schedule+0xd7/0x2c0
+  [   41.470189]  percpu_rwsem_wait+0x1f8/0x4e0
+  [   41.470269]  __percpu_down_read+0x11f/0x3e0
+  [   41.470287]  cpus_read_lock+0xc1/0xd0
+  [   41.470301]  vmstat_shepherd+0x22/0x2a0
+  [   41.470315]  process_one_work+0x92b/0x16d0
+  [   41.470393]  worker_thread+0x4e6/0xd60
+  [   41.470507]  kthread+0x300/0x3e0
+  [   41.470542]  ret_from_fork+0x4f0/0x6f0
+  [   41.470597]  ret_from_fork_asm+0x1a/0x30
+  [   41.470623]  </TASK>
+  [   41.470635] INFO: task cpuhp/3:33 blocked for more than 20 seconds.
+  [   41.470653] task:cpuhp/3         state:D stack:27976 pid:33    tgid:33    ppid:2      task_flags:0x4208040 flags:0x00080000
+  [   41.470678] Call Trace:
+  [   41.470682]  <TASK>
+  [   41.470690]  __schedule+0x10f1/0x4760
+  [   41.470753]  schedule+0xd7/0x2c0
+  [   41.470766]  schedule_timeout+0x176/0x250
+  [   41.470849]  wait_for_completion+0x169/0x3b0
+  [   41.470918]  kthread_park+0xff/0x180
+  [   41.470934]  smpboot_park_threads+0xd5/0x160
+  [   41.470959]  cpuhp_invoke_callback+0x2b0/0x1190
+  [   41.470995]  cpuhp_thread_fun+0x2f8/0x6d0
+  [   41.471027]  smpboot_thread_fn+0x2fb/0x8a0
+  [   41.471051]  kthread+0x300/0x3e0
+  [   41.471083]  ret_from_fork+0x4f0/0x6f0
+  [   41.471132]  ret_from_fork_asm+0x1a/0x30
+  [   41.471154]  </TASK>
 
-Nothing gets printed.  With the hard lockup detector on in a KVM guest:
-
-  [    1.554193] watchdog: CPU0: Watchdog detected hard LOCKUP on cpu 0
-  [    1.554193] CPU: 0 UID: 0 PID: 18 Comm: migration/0 Not tainted 7.3.0-17087-gd865f2677c44 #1 PREEMPT
-  [    1.554193] Stopper: multi_cpu_stop+0x0/0x310 <- __stop_cpus.constprop.0+0xdd/0x150
-  [    1.554193] RIP: 0010:watchdog_check_skew+0x12d/0x5a0
-  [    1.554193] Call Trace:
-  [    1.554193]  <IRQ>
-  [    1.554193]  clocksource_watchdog+0x761/0xc90
-  [    1.554193]  call_timer_fn+0x154/0x470
-  [    1.554193]  __run_timer_base.part.0+0x5d0/0x910
-  [    1.554193]  run_timer_softirq+0xc2/0x280
-  [    1.554193]  handle_softirqs+0x1f9/0x840
-  [    1.554193]  __irq_exit_rcu+0x157/0x210
-  [    1.554193]  irq_exit_rcu+0x9/0x20
-  [    1.554193]  sysvec_apic_timer_interrupt+0x6b/0x80
-  [    1.554193]  </IRQ>
-  [    1.554193]  <TASK>
-  [    1.554193]  asm_sysvec_apic_timer_interrupt+0x1a/0x20
-  [    1.554193] RIP: 0010:multi_cpu_stop+0xf7/0x310
-  ...
-  [    1.554193]  cpu_stopper_thread+0x1fa/0x3f0
-  [    1.554193]  smpboot_thread_fn+0x2fb/0x8a0
-  [    1.554193]  kthread+0x300/0x3e0
-  [    1.554193]  ret_from_fork+0x4f0/0x6f0
-  [    1.554193]  ret_from_fork_asm+0x1a/0x30
-  [    1.554193]  </TASK>
-
-Measure the timeout with the clocksource under test instead, which
-keeps counting with interrupts disabled.  With the fix, the watchdog
-gives up after the timeout and the boot goes on.  A 2-vCPU guest on one
-host core hung in 4 of 150 boots without it, and it didn't hang at all
-in 400 tests with the fix applied.
+That commit only needs the work queued before the park request to run
+once on its own CPU.  Softirqs left pending are taken over by the
+dead-CPU callbacks as before.  So on a park request, run the thread
+function once if there is work and then park.  With the fix, the
+offline finishes under the same load.
 
 This bug was identified and confirmed with the help of a deterministic
 hypervisor currently under development.  The C reproducer below however
-hits it within about 80s on a kernel booted with clocksource=jiffies.
+hits it within about 25s.
 
-Fixes: 763aacf86f1b ("clocksource: Rewrite watchdog code completely")
-Cc: stable@vger.kernel.org
+Fixes: 4a3b51aab6e2 ("smpboot: Don't park the thread if work is pending")
 Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
-Srikanth reported silent early boot hangs of large KVM guests that he
-bisected to the same commit [1].  I think it's the same bug but it was
-never confirmed.  Srikanth, would you mind giving this a try on your
-setup?
-
-[1] https://lore.kernel.org/all/e4a41d43-4d60-4132-aa2d-70e038a3e9dd@amd.com/
-
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/wdboot.c
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/ksoftpark.c
 ---
- kernel/time/clocksource.c | 16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+ kernel/smpboot.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/time/clocksource.c b/kernel/time/clocksource.c
-index 58c0ca11cdc5..fdce67f7c3d1 100644
---- a/kernel/time/clocksource.c
-+++ b/kernel/time/clocksource.c
-@@ -305,11 +305,16 @@ static bool watchdog_wait_seq(struct watchdog_cpu_data *wd, u64 start, int seq)
- 		if (READ_ONCE(wd->result) != WD_SUCCESS)
- 			return false;
+diff --git a/kernel/smpboot.c b/kernel/smpboot.c
+index 3f60e8c6dd30..a2ddd10a8577 100644
+--- a/kernel/smpboot.c
++++ b/kernel/smpboot.c
+@@ -119,9 +119,12 @@ static int smpboot_thread_fn(void *data)
+ 		}
  
--		/* Prevent endless loops if the other CPU does not react. */
-+		/*
-+		 * Prevent endless loops if the other CPU does not react.  The
-+		 * timeout uses the clocksource under test because the timekeeping
-+		 * clocksource can be jiffies, which doesn't advance while this CPU
-+		 * waits with interrupts disabled.
-+		 */
- 		if (cnt == 5000) {
--			u64 nsecs = ktime_get_raw_fast_ns();
-+			struct clocksource *cs = wd->cs;
- 
--			if (nsecs - start >=wd->timeout_ns) {
-+			if (cycles_to_nsec_safe(cs, start, cs->read(cs)) >= wd->timeout_ns) {
- 				watchdog_set_result(wd, WD_CPU_TIMEOUT);
- 				return false;
- 			}
-@@ -322,12 +327,13 @@ static bool watchdog_wait_seq(struct watchdog_cpu_data *wd, u64 start, int seq)
- 
- static void watchdog_check_skew(struct watchdog_cpu_data *wd, int index)
- {
--	u64 prev, now, delta, start = ktime_get_raw_fast_ns();
-+	u64 prev, now, delta, start;
- 	int local = index, remote = (index + 1) & 0x1;
- 	struct clocksource *cs = wd->cs;
- 
- 	/* Set the local timestamp so that the first iteration works correctly */
--	wd->cpu_ts[local] = cs->read(cs);
-+	start = cs->read(cs);
-+	wd->cpu_ts[local] = start;
- 
- 	/* Signal arrival */
- 	atomic_inc(&wd->seq);
+ 		should_run = td->status == HP_THREAD_ACTIVE && ht->thread_should_run(td->cpu);
+-		if (kthread_should_park() && !should_run) {
++		if (kthread_should_park()) {
+ 			__set_current_state(TASK_RUNNING);
+ 			preempt_enable();
++			/* Run pending work once, new work may keep coming */
++			if (should_run)
++				ht->thread_fn(td->cpu);
+ 			if (ht->park && td->status == HP_THREAD_ACTIVE) {
+ 				BUG_ON(td->cpu != smp_processor_id());
+ 				ht->park(td->cpu);
 
 ---
-base-commit: f322d7f7ae56bce728ba03a387e35380bc4ad939
-change-id: 20261102-clocksource-skew-timeout-f2a9e5fb3f75
+base-commit: b327e63683a2b894b500027375342c25222b58ef
+change-id: 20261102-smpboot-park-once-9607f8e7703d
 
 Best regards,
 --  
