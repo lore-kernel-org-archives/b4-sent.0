@@ -1,96 +1,102 @@
 From: Christopher Griffin <christophergriffin05@gmail.com>
-Date: Sun, 01 Nov 2026 22:29:14 -0600
-Subject: [PATCH v2] FT: Set RSNXE Used only when the AP advertises an RSNXE
+Date: Sun, 01 Nov 2026 23:10:10 -0600
+Subject: [PATCH ath-next] wifi: ath11k: don't report a QCN9074's chan-info
+ noise floor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261101-b128-ft-rsnxe-used-v2-1-871e5a75a9f8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJkR6GoC/32Nyw6CMBBFf4V07ZhOfVVX/odhUcoUxkgxHSAYw
- r8LuHd5knPPnZRQYhJ1yyaVaGDhNi5gdpnytYsVAZcLK6PNGVEjFGgshA6SxJGgFyrhguHqwvF
- gjT6pZfhOFHjcoo/8x9IXT/LdWlqNmqVr02d7HXD1/h4MCAja6oCGfEDr7lXj+LX3baPyeZ6/T
- 0vD08YAAAA=
-X-Change-ID: 20261101-b128-ft-rsnxe-used-71f9af438205
-To: hostap@lists.infradead.org
-Cc: Koral Ilgun <koral.ilgun@adtran.com>, 
+Message-Id: <20261101-b90-qcn9074-chan-info-nf-v1-1-aa0a99ba7ba6@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADEb6GoC/yWMQQ6CMBBFr0Jm7STTKgJexbhoy1TGxaBtNSSEu
+ 1t0+fL/eytkTsIZLs0KiT+SZdYK5tBAmJzeGWWsDJbs2Rgy6AfCV9CBuhPuDxSNM2rEsSd3bPu
+ 2885C1Z+Joyy/9BVcmVB5KXD7L/ntHxzKXoZt+wKQB4RahgAAAA==
+X-Change-ID: 20261101-b90-qcn9074-chan-info-nf-d80a35857ba2
+To: Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
  Christopher Griffin <christophergriffin05@gmail.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793593753; l=3268;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793596209; l=3286;
  i=christophergriffin05@gmail.com; s=20261024; h=from:subject:message-id;
- bh=X83aISLoyMBXJReMWnvZprdiNlJo5Kb7R5lfjtGxaeI=;
- b=t8FfNRftV0wbY910Xeue1s0B5Gq7VAM5XvViDcsBJtKOjnFerWgQAGitVa+vpK9+jKh9SATZg
- ezSo4kGBhvcA3h39WLxyP3NmYxVXXJ5XRrTlveE3NrSh51QpDG8WolT
+ bh=te6WMy5xu/GQ3oR7I7RbrttS24vmR5JQGlg47fN/BYU=;
+ b=5VJ/Pz90aEwcbk5GCIHHTA0lTd2rLG+H8/yyaGQjxH8jG3s125XWb5/pdt+Ikr9i5hnZ/FG5I
+ E/fKuVMW4VUBcgkRscdQOdhy2YU0Ctv4CrNFxp0S2iexnDp8zxdOw5v
 X-Developer-Key: i=christophergriffin05@gmail.com; a=ed25519;
  pk=oa9tkTNpiGoFWdGvpDHXLSobApmsh9BfrJRJrRJAvWA=
 X-Endpoint-Received: by B4 Relay for christophergriffin05@gmail.com/20261024 with auth_id=1309
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-RSNXE Used in the FTE of an FT Reassociation Response indicates that the
-AP uses the RSNXE in other frames (commit 51d1924bd), and wpa_supplicant
-checks it against the RSNXE of the Beacon and Probe Response frames. The
-AP set it whenever sae_pwe was 1 or 2. A BSS without an SAE AKM, for
-example FT-EAP or FT-PSK, usually has no extended RSN capability to
-advertise and thus no RSNXE, but with sae_pwe set its responses still
-announced one. wpa_supplicant then rejected every FT Reassociation
-Response ("FT: FTE indicated that AP uses RSNXE, but RSNXE was not
-included in Beacon/Probe Response frames") and deauthenticated with
-reason 13 (invalid element). OpenWrt 25.12.2 sets sae_pwe=2 on WPA3 and
-WPA2/WPA3 Enterprise BSSs, so FT-EAP roams to such APs failed.
+On a QCN9074 (and the QCN9072, which uses its hw_params) the noise floor
+in WMI_CHAN_INFO_EVENTID's START_RESP is a fixed value, not a
+measurement. On an Arista C-360 the QCN9072 scan radio read -107 dBm
++-1 on every 2.4, 5 and 6 GHz channel it visited (150 ms dwells), busy or
+quiet: 5540 at 52 % busy read -110, its lowest. The IPQ8074's own radios,
+on the same channels at the same time, read -95 to -98 and followed the
+channel (-96, -97, -96 on 5200/5220/5240; -95 on 5785, -98 on 5885),
+where the QCN9072 read -108, -107, -107, -107 and -106. -107 is also
+below the ~-101 dBm thermal noise of 20 MHz.
 
-Set RSNXE Used only when the Beacon and Probe Response frames carry an
-RSNXE: it is not omitted with rsn_override_omit_rsnxe, and the AP has an
-extended RSN capability to advertise. The response to a STA that sent no
-RSNXE is unchanged.
+Leave the noise out of a QCN9074's off-channel survey entries, so that
+nothing takes the placeholder for a noise floor; their time and busy
+counts are unchanged, as is every other chip.
+
+Tested-on: QCN9074 hw1.0 PCI WLAN.HK.2.5.r4-00683-QCAHKSWPL_SILICONZ-1
 
 Assisted-by: Claude:claude-opus-5-5
 Signed-off-by: Christopher Griffin <christophergriffin05@gmail.com>
 ---
-Seen with OpenWrt 25.12.2 APs (mt76) whose FT-EAP BSS has sae_pwe=2:
-every FT roam to them failed with reason 13.
+ drivers/net/wireless/ath/ath11k/core.c | 1 +
+ drivers/net/wireless/ath/ath11k/hw.h   | 2 ++
+ drivers/net/wireless/ath/ath11k/wmi.c  | 8 +++++---
+ 3 files changed, 8 insertions(+), 3 deletions(-)
 
-Changes in v2:
-- v1 cleared RSNXE Used whenever the response itself carried no RSNXE.
-  Per 51d1924bd the subfield reflects the RSNXE of the Beacon and Probe
-  Response frames, as Koral Ilgun's series "FT: RSNXE Used without the
-  RSNXE" points out, so a response to a STA that sent no RSNXE keeps it.
-  v2 clears the subfield only when the AP advertises no RSNXE. That also
-  covers the rsn_override_omit_rsnxe case of patch 1 of that series.
-- v1: "[PATCH] FT: Set RSNXE Used in Reassociation Response only with an
-  RSNXE", 2026-11-01.
-
-Tested on an Arista W-118 (ath10k, OpenWrt main), wpa_supplicant as the
-STA, six FT roams between two BSSes each:
-- FT-PSK, AP sae_pwe=2 (no SAE AKM): 6 of 6 roams completed; 0 of 6
-  without this patch, each deauthenticated with reason 13.
-- FT-SAE, AP sae_pwe=2, STA sae_pwe=0 (no RSNXE in its request): 5 of
-  6; the first ROAM came before the target was in the scan results and
-  was not attempted.
-- FT-SAE, AP sae_pwe=2, STA sae_pwe=2: 6 of 6.
-The hwsim tests were not run.
----
- src/ap/wpa_auth_ft.c | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
-index e12f2ad..7046e34 100644
---- a/src/ap/wpa_auth_ft.c
-+++ b/src/ap/wpa_auth_ft.c
-@@ -2714,7 +2714,12 @@ u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
- 		anonce = NULL;
- 		snonce = NULL;
+diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
+index 766ae27306f43..d6848789dcff4 100644
+--- a/drivers/net/wireless/ath/ath11k/core.c
++++ b/drivers/net/wireless/ath/ath11k/core.c
+@@ -392,6 +392,7 @@ static const struct ath11k_hw_params ath11k_hw_params[] = {
+ 		.cfr_support = false,
+ 		.cfr_num_stream_bufs = 0,
+ 		.cfr_stream_buf_size = 0,
++		.chan_info_nf_invalid = true,
+ 	},
+ 	{
+ 		.name = "wcn6855 hw2.0",
+diff --git a/drivers/net/wireless/ath/ath11k/hw.h b/drivers/net/wireless/ath/ath11k/hw.h
+index 4996536fbd14f..202430fa5b0da 100644
+--- a/drivers/net/wireless/ath/ath11k/hw.h
++++ b/drivers/net/wireless/ath/ath11k/hw.h
+@@ -231,6 +231,8 @@ struct ath11k_hw_params {
+ 	bool cfr_support;
+ 	u32 cfr_num_stream_bufs;
+ 	u32 cfr_stream_buf_size;
++	/* chan-info's noise floor is a fixed value, not a measurement */
++	bool chan_info_nf_invalid;
+ };
+ 
+ struct ath11k_hw_ops {
+diff --git a/drivers/net/wireless/ath/ath11k/wmi.c b/drivers/net/wireless/ath/ath11k/wmi.c
+index 08fd6795ed9e7..7c8b605b622cd 100644
+--- a/drivers/net/wireless/ath/ath11k/wmi.c
++++ b/drivers/net/wireless/ath/ath11k/wmi.c
+@@ -8031,9 +8031,11 @@ static void ath11k_chan_info_event(struct ath11k_base *ab, struct sk_buff *skb)
+ 	if (ch_info_ev.cmd_flags == WMI_CHAN_INFO_START_RESP) {
+ 		survey = &ar->survey[idx];
+ 		memset(survey, 0, sizeof(*survey));
+-		survey->noise = ch_info_ev.noise_floor;
+-		survey->filled = SURVEY_INFO_NOISE_DBM | SURVEY_INFO_TIME |
+-				 SURVEY_INFO_TIME_BUSY;
++		survey->filled = SURVEY_INFO_TIME | SURVEY_INFO_TIME_BUSY;
++		if (!ab->hw_params.chan_info_nf_invalid) {
++			survey->noise = ch_info_ev.noise_floor;
++			survey->filled |= SURVEY_INFO_NOISE_DBM;
++		}
+ 		survey->time = div_u64(ch_info_ev.cycle_count, cc_freq_hz);
+ 		survey->time_busy = div_u64(ch_info_ev.rx_clear_count, cc_freq_hz);
  	}
-+	/* RSNXE Used indicates that the AP uses the RSNXE in other frames, so
-+	 * only an AP whose Beacon and Probe Response frames carry an RSNXE
-+	 * may set it. */
- 	rsnxe_used = (auth_alg == WLAN_AUTH_FT) &&
-+		!conf->rsn_override_omit_rsnxe &&
-+		wpa_write_rsnxe(conf, rsnxe_buf, sizeof(rsnxe_buf)) > 0 &&
- 		(conf->sae_pwe == SAE_PWE_HASH_TO_ELEMENT ||
- 		 conf->sae_pwe == SAE_PWE_BOTH);
- #ifdef CONFIG_TESTING_OPTIONS
 
 ---
-base-commit: 1f2231a88a742befbea44bc19ffee94bed616505
-change-id: 20261101-b128-ft-rsnxe-used-71f9af438205
+base-commit: a3ddbb45768717b5c9f923489387cf55c838d1ad
+change-id: 20261101-b90-qcn9074-chan-info-nf-d80a35857ba2
 
 Best regards,
 --  
