@@ -1,11 +1,11 @@
 From: Han Gao <gaohan@iscas.ac.cn>
-Date: Tue, 03 Nov 2026 03:45:08 +0800
-Subject: [PATCH RFC v3 05/17] mailbox: add Zhihe A210 AP to E902 mailbox
- driver
+Date: Tue, 03 Nov 2026 03:45:09 +0800
+Subject: [PATCH RFC v3 06/17] dt-bindings: pinctrl: add Zhihe A210 pin
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-a210-scmi-v3-5-ee6b31580808@iscas.ac.cn>
+Message-Id: <20261103-a210-scmi-v3-6-ee6b31580808@iscas.ac.cn>
 References: <20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn>
 In-Reply-To: <20261103-a210-scmi-v3-0-ee6b31580808@iscas.ac.cn>
 To: Sudeep Holla <sudeep.holla@kernel.org>, 
@@ -36,244 +36,181 @@ Cc: arm-scmi@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-serial@vger.kernel.org, Han Gao <rabenda.cn@gmail.com>, 
  Han Gao <gaohan@iscas.ac.cn>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793648705; l=7374;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793648705; l=5149;
  i=gaohan@iscas.ac.cn; s=20261021; h=from:subject:message-id;
- bh=Z7rtD2lVv6OIg4Vqe4Ikd4EKS6jFLkfoX9GIDAAsyp4=;
- b=VrOF7udLcDMVqx667ugeUMpkqXHz40e/x5dOG22NIXupxPiSI/4m12WowhII4y0a+jNIua+MQ
- VjdvRvtrVyxBOac3UusDx0riIWfcXEcwv2P1AymO4vKOpG25rZoaynf
+ bh=ViPTWWQQeexsnyAa+LU8olyP5is0pfShY5chI2/PszU=;
+ b=BUGfjsDUMGXJ2Xsl51TLYgelij2NnYdnV7+1jqBYXjvnS9TJfLhs32lM54YtvZYZw9lZI3FfS
+ kRmBjNho0QBARTjyq1+DvWmWrg62TTXpZJKnuFH9TXcD2UGfrsUCdNY
 X-Developer-Key: i=gaohan@iscas.ac.cn; a=ed25519;
  pk=J8WHEK3filS86QaCaIHDGafqhxKyQ4K7+vFgRirTIiY=
 X-Endpoint-Received: by B4 Relay for gaohan@iscas.ac.cn/20261021 with auth_id=1262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a mailbox controller for the doorbells between the A210 application
-processors and the E902 management core. It serves as the SCMI
-transport to the E902 firmware.
+From: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 
-Channel 0 rings E902 and receives its completions. Channel 1 is receive
-only and carries E902 notifications. Both share one interrupt, and E902
-writes INFO0 or INFO1 to tell them apart.
+Add a binding for the AON, PERI1 and PERI2 pad controllers of the Zhihe
+A210. Every pad is muxed and configured on its own. Functions of the same
+kind share one name unless a pad can select more than one instance of
+them, as with the UARTs.
 
-The E902 firmware keeps both mailboxes clocked and out of reset, so the
-driver does not manage clocks or resets.
-
+Signed-off-by: Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 Signed-off-by: Han Gao <gaohan@iscas.ac.cn>
 ---
- drivers/mailbox/Kconfig        |   9 +++
- drivers/mailbox/Makefile       |   2 +
- drivers/mailbox/mailbox-a210.c | 176 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 187 insertions(+)
+ .../bindings/pinctrl/zhihe,a210-pinctrl.yaml       | 146 +++++++++++++++++++++
+ 1 file changed, 146 insertions(+)
 
-diff --git a/drivers/mailbox/Kconfig b/drivers/mailbox/Kconfig
-index ab869769e278..6d620b0dde6f 100644
---- a/drivers/mailbox/Kconfig
-+++ b/drivers/mailbox/Kconfig
-@@ -409,4 +409,13 @@ config AXIADO_MAILBOX
- 	  Axiado SoCs.
- 	  If unsure, say N.
- 
-+config ZHIHE_A210_MBOX
-+	bool "Zhihe A210 AP to E902 mailbox"
-+	depends on OF && (ARCH_ZHIHE || COMPILE_TEST)
-+	help
-+	  Mailbox driver for the doorbells between the application
-+	  processors and the E902 management core of the Zhihe A210. The
-+	  doorbells carry no data, so clients pass their messages through
-+	  shared memory. Say Y to use the SCMI firmware on the E902.
-+
- endif
-diff --git a/drivers/mailbox/Makefile b/drivers/mailbox/Makefile
-index 45dc59bb3e7f..f537ebb8aaff 100644
---- a/drivers/mailbox/Makefile
-+++ b/drivers/mailbox/Makefile
-@@ -86,3 +86,5 @@ obj-$(CONFIG_BCM74110_MAILBOX)	+= bcm74110-mailbox.o
- obj-$(CONFIG_RISCV_SBI_MPXY_MBOX)	+= riscv-sbi-mpxy-mbox.o
- 
- obj-$(CONFIG_AXIADO_MAILBOX)	+= axiado-mailbox.o
-+
-+obj-$(CONFIG_ZHIHE_A210_MBOX) += mailbox-a210.o
-diff --git a/drivers/mailbox/mailbox-a210.c b/drivers/mailbox/mailbox-a210.c
+diff --git a/Documentation/devicetree/bindings/pinctrl/zhihe,a210-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/zhihe,a210-pinctrl.yaml
 new file mode 100644
-index 000000000000..0b66fded6b09
+index 000000000000..96c46b59d147
 --- /dev/null
-+++ b/drivers/mailbox/mailbox-a210.c
-@@ -0,0 +1,176 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* Zhihe A210 application processor to E902 mailbox */
-+#include <linux/interrupt.h>
-+#include <linux/io.h>
-+#include <linux/mailbox_controller.h>
-+#include <linux/module.h>
-+#include <linux/platform_device.h>
-+#include <linux/spinlock.h>
++++ b/Documentation/devicetree/bindings/pinctrl/zhihe,a210-pinctrl.yaml
+@@ -0,0 +1,146 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/pinctrl/zhihe,a210-pinctrl.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+/* The local mailbox holds the INFO bank and, one page up, the AP interrupt. */
-+#define A210_MBOX_STATUS		0x1000
-+#define A210_MBOX_CLEAR		0x1004
-+#define A210_MBOX_MASK		0x100c
-+#define A210_MBOX_GENERATE	0x10
-+#define A210_MBOX_INFO(n)	(0x14 + 4 * (n))
-+#define A210_MBOX_E902_PENDING	BIT(0)
-+#define A210_MBOX_NOTIFY		BIT(6)
++title: Zhihe A210 pin controller
 +
-+/* Channel 0 carries AP requests and completions, channel 1 E902 notifications. */
-+#define A210_MBOX_CHANS		2
++maintainers:
++  - Zhiguo Zhu <zhiguo.zhu@linux.alibaba.com>
 +
-+struct a210_mbox {
-+	struct mbox_controller controller;
-+	struct mbox_chan channels[A210_MBOX_CHANS];
-+	void __iomem *local;
-+	void __iomem *remote;
-+	/* Protects the shared interrupt mask and the set of started channels. */
-+	spinlock_t lock;
-+	unsigned long started;
-+	int irq;
-+};
++description: |
++  Pinmux and pinconf controller of the Zhihe A210 RISC-V SoC.
 +
-+static void a210_mbox_mask(struct a210_mbox *mbox, unsigned int index, bool enable)
-+{
-+	unsigned long flags;
-+	u32 value;
++  Most pads of the A210 are split into three groups, each managed by its
++  own pad controller with a separate register range:
 +
-+	spin_lock_irqsave(&mbox->lock, flags);
-+	if (enable)
-+		__set_bit(index, &mbox->started);
-+	else
-+		__clear_bit(index, &mbox->started);
-+	value = readl(mbox->local + A210_MBOX_MASK);
-+	if (mbox->started)
-+		value |= A210_MBOX_E902_PENDING;
-+	else
-+		value &= ~A210_MBOX_E902_PENDING;
-+	writel(value, mbox->local + A210_MBOX_MASK);
-+	spin_unlock_irqrestore(&mbox->lock, flags);
-+}
++    AON pad controller   -> zhihe,a210-aon-pinctrl
++    Peripheral 1 pads    -> zhihe,a210-peri1-pinctrl
++    Peripheral 2 pads    -> zhihe,a210-peri2-pinctrl
 +
-+static irqreturn_t a210_mbox_irq(int irq, void *data)
-+{
-+	struct a210_mbox *mbox = data;
++  Each pad can be muxed individually to up to 8 different functions,
++  though for most pads only a few of those settings are valid. A few pads
++  in the AON group do not support muxing or configuration at all.
 +
-+	if (!(readl(mbox->local + A210_MBOX_MASK) & A210_MBOX_E902_PENDING))
-+		return IRQ_NONE;
-+	if (!(readl(mbox->local + A210_MBOX_STATUS) & A210_MBOX_E902_PENDING))
-+		return IRQ_NONE;
++  The pads support configurable drive strength, bias, input enable,
++  Schmitt trigger and slew rate.
 +
-+	writel(A210_MBOX_E902_PENDING, mbox->local + A210_MBOX_CLEAR);
++properties:
++  compatible:
++    enum:
++      - zhihe,a210-aon-pinctrl
++      - zhihe,a210-peri1-pinctrl
++      - zhihe,a210-peri2-pinctrl
 +
-+	/* E902 sets INFO<n> before ringing the shared doorbell for channel n. */
-+	for (unsigned int i = 0; i < A210_MBOX_CHANS; i++) {
-+		if (!readl(mbox->local + A210_MBOX_INFO(i)))
-+			continue;
-+		writel(0, mbox->local + A210_MBOX_INFO(i));
-+		if (test_bit(i, &mbox->started))
-+			mbox_chan_received_data(&mbox->channels[i], NULL);
-+	}
-+	return IRQ_HANDLED;
-+}
++  reg:
++    maxItems: 1
 +
-+static unsigned int a210_mbox_index(struct a210_mbox *mbox, struct mbox_chan *channel)
-+{
-+	return channel - mbox->channels;
-+}
++  clocks:
++    maxItems: 1
 +
-+static int a210_mbox_send(struct mbox_chan *channel, void *data)
-+{
-+	struct a210_mbox *mbox = channel->con_priv;
++  clock-names:
++    const: pclk
 +
-+	/* E902 notifications are receive-only. */
-+	if (a210_mbox_index(mbox, channel))
-+		return -EINVAL;
++  resets:
++    maxItems: 1
 +
-+	/* Payload and completion ownership belong to the shared-memory client. */
-+	writel(A210_MBOX_NOTIFY, mbox->remote + A210_MBOX_GENERATE);
-+	return 0;
-+}
++patternProperties:
++  '-[0-9]+$':
++    type: object
 +
-+static int a210_mbox_startup(struct mbox_chan *channel)
-+{
-+	struct a210_mbox *mbox = channel->con_priv;
-+	unsigned int index = a210_mbox_index(mbox, channel);
++    description:
++      A pinmux group referenced by a consumer's pinctrl phandle. It
++      contains one subnode per set of pads sharing the same pinmux and
++      pinconf settings.
 +
-+	writel(0, mbox->local + A210_MBOX_INFO(index));
-+	a210_mbox_mask(mbox, index, true);
-+	return 0;
-+}
++    additionalProperties: false
 +
-+static void a210_mbox_shutdown(struct mbox_chan *channel)
-+{
-+	struct a210_mbox *mbox = channel->con_priv;
++    patternProperties:
++      '-pins$':
++        type: object
++        $ref: /schemas/pinctrl/pincfg-node.yaml#
 +
-+	a210_mbox_mask(mbox, a210_mbox_index(mbox, channel), false);
-+	synchronize_irq(mbox->irq);
-+}
++        description:
++          A pinctrl node describing the pinmux and pinconf settings of
++          one or more pads.
 +
-+static const struct mbox_chan_ops a210_mbox_ops = {
-+	.send_data = a210_mbox_send,
-+	.startup = a210_mbox_startup,
-+	.shutdown = a210_mbox_shutdown,
-+};
++        properties:
++          pins:
++            $ref: /schemas/pinctrl/pinmux-node.yaml#/properties/pins
++            description: List of pads that properties in the node apply to.
 +
-+static int a210_mbox_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct a210_mbox *mbox;
-+	int ret;
++          function:
++            $ref: /schemas/pinctrl/pinmux-node.yaml#/properties/function
++            enum: [ aouart, aouart_ir, aogpio, aoi2c, aospi, jtag, reset,
++                    por, pmic, dvs, uart0, uart1, uart2, uart3, uart4,
++                    uart5, uart6, uart7, uart8, uart9, uart_ir, gpio,
++                    gmac0, gmac1, spi, qspi, pwm, can, i2s0, i2s1, i2s2,
++                    i2s3, i2c0, i2c1, i2c2, i2c3, i2c4, i2c5, i2c6, i2c7,
++                    i2c7_smb, sdio, isp0, dptx, usb31, sata, hdmi, zmac,
++                    bsel, dbgm, cdbg, pdm, tdm, pcie, sen_vclk ]
++            description: |
++              The mux function to select for the given pins. Functions of
++              the same kind share one name, such as spi or pwm, unless a
++              pad can select more than one instance. For example GPIO0_16
++              selects UART0 or UART1, so the UARTs are named uart0 to
++              uart9.
 +
-+	mbox = devm_kzalloc(dev, sizeof(*mbox), GFP_KERNEL);
-+	if (!mbox)
-+		return -ENOMEM;
++          bias-disable: true
 +
-+	mbox->local = devm_platform_ioremap_resource_byname(pdev, "local");
-+	if (IS_ERR(mbox->local))
-+		return PTR_ERR(mbox->local);
-+	mbox->remote = devm_platform_ioremap_resource_byname(pdev, "remote");
-+	if (IS_ERR(mbox->remote))
-+		return PTR_ERR(mbox->remote);
-+	mbox->irq = platform_get_irq(pdev, 0);
-+	if (mbox->irq < 0)
-+		return mbox->irq;
++          bias-pull-up: true
 +
-+	spin_lock_init(&mbox->lock);
-+	a210_mbox_mask(mbox, 0, false);
-+	for (unsigned int i = 0; i < A210_MBOX_CHANS; i++)
-+		mbox->channels[i].con_priv = mbox;
-+	/*
-+	 * Neither txdone_irq nor txdone_poll is set: the client acknowledges
-+	 * completion after consuming shared memory.
-+	 */
-+	mbox->controller.dev = dev;
-+	mbox->controller.chans = mbox->channels;
-+	mbox->controller.num_chans = A210_MBOX_CHANS;
-+	mbox->controller.ops = &a210_mbox_ops;
++          bias-pull-down: true
 +
-+	ret = devm_request_irq(dev, mbox->irq, a210_mbox_irq, 0, dev_name(dev),
-+			       mbox);
-+	if (ret)
-+		return ret;
++          drive-strength:
++            minimum: 1
++            maximum: 25
++            description:
++              Drive strength in mA. The pads support 1, 2, 3, 5, 7, 8, 10,
++              12, 13, 15, 16, 18, 20, 21, 23 and 25 mA. Other values select
++              the next higher strength.
 +
-+	return devm_mbox_controller_register(dev, &mbox->controller);
-+}
++          input-enable: true
 +
-+static const struct of_device_id a210_mbox_match[] = {
-+	{ .compatible = "zhihe,a210-ap-mailbox" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, a210_mbox_match);
++          input-disable: true
 +
-+static struct platform_driver a210_mbox_driver = {
-+	.probe = a210_mbox_probe,
-+	.driver = {
-+		.name = "a210-mailbox",
-+		.of_match_table = a210_mbox_match,
-+		/* Running E902 firmware continuously accesses the remote bank. */
-+		.suppress_bind_attrs = true,
-+	},
-+};
-+module_platform_driver(a210_mbox_driver);
++          input-schmitt-enable: true
 +
-+MODULE_AUTHOR("Han Gao <gaohan@iscas.ac.cn>");
-+MODULE_DESCRIPTION("Zhihe A210 AP to E902 mailbox");
-+MODULE_LICENSE("GPL");
++          input-schmitt-disable: true
++
++          slew-rate:
++            maximum: 1
++
++        required:
++          - pins
++
++        additionalProperties: false
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - clock-names
++
++additionalProperties: false
++
++examples:
++  - |
++    pinctrl@2026000 {
++        compatible = "zhihe,a210-peri1-pinctrl";
++        reg = <0x2026000 0x1000>;
++        clocks = <&clk 0>;
++        clock-names = "pclk";
++
++        gmac0-0 {
++            gmac0-pins {
++                pins = "GPIO0_0", "GPIO0_12";
++                function = "gmac0";
++                bias-disable;
++                drive-strength = <13>;
++                input-disable;
++                input-schmitt-disable;
++                slew-rate = <0>;
++            };
++        };
++    };
 
 -- 
 2.55.0
