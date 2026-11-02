@@ -1,117 +1,82 @@
-From: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
-Date: Mon, 02 Nov 2026 09:36:01 +0700
-Subject: [PATCH bpf-next v2] selftests/bpf: Wait for wq callback before
- checking ok_sleepable
+From: Nayeon Kim <nayeoni.kim@samsung.com>
+Date: Mon, 02 Nov 2026 11:43:40 +0900
+Subject: [PATCH nfstest] NFSUtil: find OPEN when a later operation fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-wq-poll-fix-v2-1-48b7d12815b8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NwQ6DIBBEf8XsuduARRt76n80HgAX3UTFgrE2x
- n8v4dzjzMu8OSBSYIrwKA4ItHFkP6dQXgqwg557Qu5ShlKUtRSiws8bFz+O6HhHp2qr7p3RTtw
- gLZZAqc62F5jF4Uz7Cm0iA8fVh2++2WTmf42bRIlNY0kZbavGqWc/aR6v1k/Qnuf5A9N5ZsawA
- AAA
-X-Change-ID: 20261005-wq-poll-fix-f46c47dbaf03
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
- Martin KaFai Lau <martin.lau@linux.dev>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Emil Tsalapatis <emil@etsalapatis.com>, 
- Ihor Solodrai <ihor.solodrai@linux.dev>, Shuah Khan <shuah@kernel.org>
-Cc: bpf@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Mykyta Yatsenko <yatsenko@meta.com>, 
- qikeyu2017@gmail.com, Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793587005; l=2820;
- i=thamrinjonathan@gmail.com; s=20261005; h=from:subject:message-id;
- bh=hj1bolorYbBPrCihpIUsWO5AkHVCWxDBPFRwoFbNmSE=;
- b=2qboYx7ki1e6LqE0lhjhrM98EDBq+eZMEpyS8XxWBLu9Cy712OkJLs6X2eAh+pHcSfsen8tu9
- hnzvV2sXU3eBpNnqYwlHmZ9beozVU9HkH1aam4rdDat+z8buLX+3kiO
-X-Developer-Key: i=thamrinjonathan@gmail.com; a=ed25519;
- pk=QU907bIMYty/tEI/iJF2SrD1lqOf/+2B1MI1zwJ5cBw=
-X-Endpoint-Received: by B4 Relay for thamrinjonathan@gmail.com/20261005 with auth_id=1114
+Message-Id: <20261102-b4-fs19-open-partial-success-v1-1-5e0f55385d27@samsung.com>
+X-B4-Tracking: v=1; b=H4sIANv452oC/yWM3Q6CMAxGX8X02kZGFhJ8FeNFV4rMyFjaYUwI7
+ +7Qy/P9nA1MNIrB9bSByjtaXFIFdz4BT5QegnGoDG3Tds41LQaPo7kelywJM2mJ9EJbmcUM2Te
+ Dd71n6RxURVYZ4+env0EarYgVuP8LW8NTuBzyYxrIBINS4umI1mxFhebLTPWlsO9fkuoV5asAA
+ AA=
+X-Change-ID: 20261102-b4-fs19-open-partial-success-c40d4194ce61
+To: Jorge.Mora@netapp.com
+Cc: linux-nfs@vger.kernel.org
+X-Mailer: b4 0.16.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793587419; l=2619;
+ i=nayeoni.kim@samsung.com; s=20261102; h=from:subject:message-id;
+ bh=kM+8j/vfKTA/FNbh1boUK6kqOiP9hAPClcoKGunMq5Q=;
+ b=i4/GZfSnlp4aIqrZl96mMEntMk+JYSePdSBReFgdPJZJY9dvKiNGKS7kZtQ8KiwEzJkWVU/sV
+ wvL6DP/w92UCkbOHfME0DGxXthUk+6YXeFxET6k2AC6vvGxEQg6jJvW
+X-Developer-Key: i=nayeoni.kim@samsung.com; a=ed25519;
+ pk=6rdU/EioX/vzm132vDyAq+TUk6SqpWqob+mz30+/n5E=
+X-Endpoint-Received: by B4 Relay for nayeoni.kim@samsung.com/20261102 with auth_id=1381
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wq test fails with ok_sleepable reading 0 instead of 2 as workqueue
-callback hasn't executed before check.
+When the client sends LAYOUTGET in the OPEN compound and only the
+LAYOUTGET fails, e.g., with NFS4ERR_BAD_STATEID, the OPEN and GETFH
+still succeed but the compound status is the LAYOUTGET error.
+find_open() looks for the OPEN reply with "NFS.status == 0", which is
+the compound status, so it misses this OPEN and either returns
+(None, None, None) or picks a later OPEN of the same file.
 
-This happens as callback runs later on a kworker and 50us isn't always
-enough.
+Fix this by matching on the status of the OPEN operation instead.
 
-Change from 50us sleep to waiting for callback by checking wq_cb_run.
-wq_cb_sleepable() now increments wq_cb_run after setting ok_sleepable
-and test loops with sched_yield() until wq_cb_run is set before
-checking.
+After this change, the matched OPEN reply may contain a failed
+LAYOUTGET, and find_layoutget() then looks at the same OPEN compound
+repeatedly until it hits the recursion limit. In that case, ignore the
+failed LAYOUTGET and look for the retried one.
 
-Before (usleep(50)): 3 fails out of 5000 runs
-Diagnosing issue (usleep(0)): 23 out of 100 runs
-After: 0 out of 2000 runs
-Tested using vmtest on x86_64, test pinned to one CPU with `yes` load
-
-Link: https://github.com/kernel-patches/vmtest/issues/455
-Signed-off-by: Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+Signed-off-by: Nayeon Kim <nayeoni.kim@samsung.com>
 ---
-Changes in v2:
-- Wait for callback via a wq_cb_run flag instead of polling with a
-  timeout, similar to test_struct_ops_assoc.c (Kumar)
-- Link to v1: https://lore.kernel.org/r/20261005-wq-poll-fix-v1-1-99ce4bac59f4@gmail.com
----
- tools/testing/selftests/bpf/prog_tests/wq.c |  5 +++--
- tools/testing/selftests/bpf/progs/wq.c      | 10 ++++++----
- 2 files changed, 9 insertions(+), 6 deletions(-)
+This conflicts with the pending "nfstest: DELEG: accept the attribute
+delegation" patch, which changes the line right after the open_str
+line in find_open(). I can rebase on top of it if that goes in first.
 
-diff --git a/tools/testing/selftests/bpf/prog_tests/wq.c b/tools/testing/selftests/bpf/prog_tests/wq.c
-index 97926e35aaf2..95ed4b69c0f5 100644
---- a/tools/testing/selftests/bpf/prog_tests/wq.c
-+++ b/tools/testing/selftests/bpf/prog_tests/wq.c
-@@ -28,8 +28,9 @@ void serial_test_wq(void)
- 	ASSERT_OK(err, "test_run");
- 	ASSERT_EQ(topts.retval, 0, "test_run");
+Tested by replaying packet traces with the failed LAYOUTGET through
+find_open() and find_layoutget().
+---
+ nfstest/nfs_util.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/nfstest/nfs_util.py b/nfstest/nfs_util.py
+index cf8d6aecc6ae..e6a2dd21ae1a 100644
+--- a/nfstest/nfs_util.py
++++ b/nfstest/nfs_util.py
+@@ -566,7 +566,7 @@ class NFSUtil(Host):
+                 return (None, None, None)
+             save_pktcall = pktcall
+             xid = pktcall.rpc.xid
+-            open_str = "RPC.xid == %d and NFS.status == 0 and NFS.resop == %d" % (xid, OP_OPEN)
++            open_str = "RPC.xid == %d and NFS.opopen.status == 0 and NFS.resop == %d" % (xid, OP_OPEN)
+             if deleg_type is not None:
+                 open_str += " and NFS.delegation.deleg_type == %d" % deleg_type
  
--	usleep(50); /* 10 usecs should be enough, but give it extra */
--
-+	/* wait for wq callback to finish */
-+	while (!READ_ONCE(wq_skel->bss->wq_cb_run))
-+		sched_yield();
- 	ASSERT_EQ(wq_skel->bss->ok_sleepable, (1 << 1), "ok_sleepable");
- clean_up:
- 	wq__destroy(wq_skel);
-diff --git a/tools/testing/selftests/bpf/progs/wq.c b/tools/testing/selftests/bpf/progs/wq.c
-index 25be2cd9d42c..8148db35effe 100644
---- a/tools/testing/selftests/bpf/progs/wq.c
-+++ b/tools/testing/selftests/bpf/progs/wq.c
-@@ -52,6 +52,7 @@ struct {
+@@ -625,6 +625,12 @@ class NFSUtil(Host):
+                 self.layoutget_on_open = True
+                 if self.openreply:
+                     layoutget_res = self.getop(self.openreply, OP_LAYOUTGET)
++                    if layoutget_res is not None and status != layoutget_res.status:
++                        # The LAYOUTGET in the OPEN compound did not return
++                        # the expected status, look for another LAYOUTGET
++                        layoutget = None
++                        layoutget_res = None
++                        self.layoutget_on_open = False
  
- __u32 ok;
- __u32 ok_sleepable;
-+__u32 wq_cb_run;
- 
- static int test_elem_callback(void *map, int *key,
- 		int (callback_fn)(void *map, int *key, void *value))
-@@ -130,11 +131,12 @@ static int wq_cb_sleepable(void *map, int *key, void *value)
- 	struct elem *data = (struct elem *)value;
- 	int offset = data->ok_offset;
- 
--	if (*key != offset)
--		return 0;
-+	if (*key == offset) {
-+		bpf_kfunc_call_test_sleepable();
-+		ok_sleepable |= (1 << offset);
-+	}
- 
--	bpf_kfunc_call_test_sleepable();
--	ok_sleepable |= (1 << offset);
-+	wq_cb_run++;
- 	return 0;
- }
- 
+         if layoutget is None:
+             # Find LAYOUTGET request
 
 ---
-base-commit: a30c772627b2ef4bc715332b1b04938a914556cd
-change-id: 20261005-wq-poll-fix-f46c47dbaf03
-
-Best regards,
--- 
-Jonathan Bastari Thamrin <thamrinjonathan@gmail.com>
+base-commit: 94089545caa18bbe4be1b055125d0721fe8dee80
+change-id: 20261102-b4-fs19-open-partial-success-c40d4194ce61
 
