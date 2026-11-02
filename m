@@ -1,11 +1,11 @@
 From: Long Zhao <longzhao@ambarella.com>
-Date: Mon, 02 Nov 2026 14:46:01 +0800
-Subject: [PATCH v13 08/13] gpio: regmap: remove gpiochip before tearing
- down irqchip
+Date: Mon, 02 Nov 2026 14:46:02 +0800
+Subject: [PATCH v13 09/13] gpiolib: request ACPI GPIO events for external
+ IRQ domains
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261102-cv75-gpio-v13-8-4f93114ea204@ambarella.com>
+Message-Id: <20261102-cv75-gpio-v13-9-4f93114ea204@ambarella.com>
 References: <20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com>
 In-Reply-To: <20261102-cv75-gpio-v13-0-4f93114ea204@ambarella.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, linux-gpio@vger.kernel.org
@@ -19,64 +19,53 @@ Cc: Linus Walleij <linusw@kernel.org>, Michael Walle <mwalle@kernel.org>,
  Long Zhao <longzhao@ambarella.com>, Long Zhao <zl020895@163.com>, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793602013; l=1791;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793602013; l=1299;
  i=longzhao@ambarella.com; s=20260730; h=from:subject:message-id;
- bh=OaUzJvxSKHvAu1q9Z7cujbZIxtxmQOv3Dz1Q60lLuSg=;
- b=/f7+d+2PUAkbck+adNb2ioj2juP3k0EZTnjzDEa6JLN9dXJtNl1WrCrBkZ7H5RNiz0qvaJKLM
- QM7pidA8KgFAbIuR5bnERDt0UfU+g19Id6AWwHIWTq4uLqkC3O1xZtw
+ bh=iX8Xb0+PinHVdTfUGv4kYZvwdiGV19SDmTbEVrsx8Kw=;
+ b=SgVZg3oLNdgX7Cwul3GCiom5Nd2FLLWQUZtdfemMVC86x/tqx2ettJYHDNfcEDD5HvA67QgRE
+ NOdjEnKtKmUAGj3TzRH0sYekOeMxcp7QKp1DYw/WwFn5ccbebJSkOTW
 X-Developer-Key: i=longzhao@ambarella.com; a=ed25519;
  pk=/xGhPTOX0/eYsyTWzyjjgAIW1Z/YD+IlnOnvcdRozow=
 X-Endpoint-Received: by B4 Relay for longzhao@ambarella.com/20260730 with auth_id=903
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gpio_regmap_unregister() currently calls regmap_del_irq_chip() before
-gpiochip_remove(). That disposes the mapped virtual IRQs and frees the
-irq_domain while ACPI GPIO-signaled events may still be requested and
-while gpiod_free_irqs() still needs gc->irq.domain.
+gpiochip_add_irqchip() requests GPIO-signaled ACPI events after
+installing the irqchip. A gpiochip that gets its IRQ domain through
+gpiochip_irqchip_add_domain() never goes through that path, so _AEI
+events, such as the power button on ARM64 ACPI platforms, are not
+requested.
 
-Remove the gpio_chip first so ACPI teardown and USED_AS_IRQ cleanup run
-against a live domain, then delete the regmap irqchip. Use the same
-order on the registration error path, which previously leaked the
-irqchip when gpiochip_irqchip_add_domain() failed after
-regmap_add_irq_chip_fwnode().
+Request them here as well. gpiochip_remove() already calls
+acpi_gpiochip_free_interrupts().
 
-Cc: Michael Walle <mwalle@kernel.org>
+Cc: Mika Westerberg <westeri@kernel.org>
+Cc: linux-acpi@vger.kernel.org
+Acked-by: Mika Westerberg (Intel) <westeri@kernel.org>
 Signed-off-by: Long Zhao <longzhao@ambarella.com>
 ---
- drivers/gpio/gpio-regmap.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ drivers/gpio/gpiolib.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/gpio/gpio-regmap.c b/drivers/gpio/gpio-regmap.c
-index 0a44deae3d01..6b520bd80834 100644
---- a/drivers/gpio/gpio-regmap.c
-+++ b/drivers/gpio/gpio-regmap.c
-@@ -429,6 +429,11 @@ struct gpio_regmap *gpio_regmap_register(const struct gpio_regmap_config *config
- 
- err_remove_gpiochip:
- 	gpiochip_remove(chip);
-+
-+#ifdef CONFIG_REGMAP_IRQ
-+	if (gpio->irq_chip_data)
-+		regmap_del_irq_chip(gpio->regmap_irq_line, gpio->irq_chip_data);
-+#endif
- err_free_bitmap_output:
- 	bitmap_free(gpio->fixed_direction_output);
- err_free_bitmap_dirmask:
-@@ -445,12 +450,13 @@ EXPORT_SYMBOL_GPL(gpio_regmap_register);
-  */
- void gpio_regmap_unregister(struct gpio_regmap *gpio)
+diff --git a/drivers/gpio/gpiolib.c b/drivers/gpio/gpiolib.c
+index e5fb60111151..c708d81ef243 100644
+--- a/drivers/gpio/gpiolib.c
++++ b/drivers/gpio/gpiolib.c
+@@ -2353,7 +2353,14 @@ static void gpiochip_irqchip_remove(struct gpio_chip *gc)
+ int gpiochip_irqchip_add_domain(struct gpio_chip *gc,
+ 				struct irq_domain *domain)
  {
-+	gpiochip_remove(&gpio->gpio_chip);
+-	return gpiochip_irqchip_add_allocated_domain(gc, domain, true);
++	int ret;
 +
- #ifdef CONFIG_REGMAP_IRQ
- 	if (gpio->irq_chip_data)
- 		regmap_del_irq_chip(gpio->regmap_irq_line, gpio->irq_chip_data);
- #endif
++	ret = gpiochip_irqchip_add_allocated_domain(gc, domain, true);
++	if (ret)
++		return ret;
++
++	acpi_gpiochip_request_interrupts(gc);
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(gpiochip_irqchip_add_domain);
  
--	gpiochip_remove(&gpio->gpio_chip);
- 	bitmap_free(gpio->fixed_direction_output);
- 	bitmap_free(gpio->fixed_direction_mask);
- 	kfree(gpio);
 
 -- 
 2.34.1
