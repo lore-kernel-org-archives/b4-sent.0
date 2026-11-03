@@ -1,109 +1,189 @@
 From: Mani Tofigh <mt4022@columbia.edu>
-Date: Tue, 03 Nov 2026 15:03:21 -0500
-Subject: [PATCH v2] btrfs: fix bio counter and bioc leak when async
- checksumming fails
+Date: Tue, 03 Nov 2026 15:12:18 -0500
+Subject: [PATCH v2] mm/swapfile: drop a large unmapped swap-in folio in
+ unuse_pte()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-btrfs-async-csum-leak-v2-1-30872bec9613@columbia.edu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw6CMBBFf4XM2jGdEiG68j8Mi1KmUuVhOpRIC
- P8uj7XLk9x7zgzCwbPALZkh8OjF990K+pSArU33ZPTVyqCVzkilCsshOEEjU2fRSmyxYfNGynN
- duYtTNtWwfj+Bnf/u3kdxsMTyxXbYZNui9jL0YdrDI227o0GK/jRGQkLHxnFuOCO+3m3fxLb05
- sxVhGJZlh+5AekZzwAAAA==
-X-Change-ID: 20261030-btrfs-async-csum-leak-1772df5f0c32
-To: David Sterba <dsterba@suse.com>, Chris Mason <mason@kernel.org>
-Cc: Qu Wenruo <wqu@suse.com>, Christoph Hellwig <hch@lst.de>, 
- Josef Bacik <josef@toxicpanda.com>, 
- Johannes Thumshirn <johannes.thumshirn@wdc.com>, 
- John Garry <john.garry@linux.dev>, linux-btrfs@vger.kernel.org, 
+Message-Id: <20261103-swapin-large-unmapped-v2-1-87c70e597250@columbia.edu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNTQ6CMBBGr0JmbQ0FUtEV9zAsSjvIGChNS1FDu
+ LstHsDly/fzNvDoCD3csg0cruRpNhGKUwZqkOaBjHRkKPJC8LzMmX9JS4aN0sUsmElai5oJVfc
+ CxZXXooK4tQ57eh+/9/bHPnRPVEs6S42B/DK7zyFeeer9c6yccVZxrCSWlxqFatQ8hqkjeUYdo
+ N33/QvGuIcCzwAAAA==
+X-Change-ID: 20261030-swapin-large-unmapped-6c8f6e691864
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Chris Li <chrisl@kernel.org>, 
+ Kairui Song <kasong@tencent.com>
+Cc: Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
+ Youngjun Park <youngjun.park@lge.com>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, tz2294@columbia.edu, stable@vger.kernel.org, 
  Mani Tofigh <mt4022@columbia.edu>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793736201; l=3251;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793736738; l=6340;
  i=mt4022@columbia.edu; s=20261026; h=from:subject:message-id;
- bh=sZ15wckZNBlDyiOLVC9bEfAohvO3ectUWRrLDyA5+Jo=;
- b=SvIUTYUzswOF461t+ia+Mvr4QdkS5dDCzWFzYtYqa6vm3Ju6Yv/w1en7R2C3eCAZtWSAW9u2L
- ifiK38ND2fWA1pfSmFN8mySC2RaANi85jqbizdLWXKaJspdrg/xVBZx
+ bh=Lm38oXbEJUXl/i24q7z5muDUs9iAOX8Ua2b7rdxhOzg=;
+ b=ko0BNXLXteVoQIhJcyCVhxe1a2+lBg/WU4R0hGskkUGY6phfCi+7xVH4iJejuhqQr+YMn3mJf
+ 4Zi9sXrKEgzC37xSgQL2HITElxMBpjxiDPYRWPQ11naL9T4dPOqIP5V
 X-Developer-Key: i=mt4022@columbia.edu; a=ed25519;
  pk=gljCMQDuxyKPmd5y37CRpEJGSPXDV1MyAnHBhCgXl0I=
 X-Endpoint-Received: by B4 Relay for mt4022@columbia.edu/20261026 with auth_id=1322
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A single failed checksum allocation can make a later device replace
-hang forever.  btrfs_submit_chunk() takes a dev-replace bio counter
-reference and a bioc before it hands a write to the checksum worker.
-If the checksum fails there (e.g., its allocation fails),
-run_one_async_done() ends the bio but drops neither.  The counter then
-never gets back to zero and the next replace waits for it:
+Since commit f1879e8a0c60 ("mm, swap: never bypass the swap cache even
+for SWP_SYNCHRONOUS_IO"), a fault can read a swapped-out mTHP range into
+one large folio in the swap cache.  The folio only becomes anon once
+do_swap_page() maps all of it, so if the faulting PTE changes in the
+meantime the folio stays in the swap cache while not being mapped or
+anon:
 
-  [    8.369171] BTRFS info (device ram0): dev_replace from /dev/ram0 (devid 1) to /dev/ram1 finished
-  [   41.534247] INFO: task btrfscsum:80 blocked for more than 20 seconds.
-  [   41.534391]  btrfs_rm_dev_replace_blocked+0x135/0x180
-  [   41.534463]  btrfs_dev_replace_finishing+0xefe/0x13b0
+  Task A (fault)                       Task B
+  do_swap_page()
+    /* swaps in large folio F */
+                                       madvise(MADV_DONTNEED)
+                                         /* zaps the faulting PTE */
+    /* PTE changed (F not mapped) */
 
-The worker is only used when CONFIG_BTRFS_EXPERIMENTAL is off and the
-checksum isn't a fast one, e.g., sha256.  We hit it on a sha256
-filesystem.
+swapoff then maps it, which marks all of its pages as mapped and
+exclusive, and the next fault on one of the other PTEs crashes in
+do_swap_page():
 
-We put the bioc and drop the counter in that error branch.  We also
-put the bioc on the synchronous error path and on the btrfs_split_bio()
-error path, which both only drop the counter.  With the fix, the
-replace doesn't hang anymore.
+  [    6.424485] kernel BUG at mm/memory.c:5195!
+  [    6.424503] Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
+  [    6.427654] CPU: 0 UID: 0 PID: 67 Comm: swapmthp Tainted: G        W            7.3.0-17087-gd865f2677c44 #1 PREEMPT
+  [    6.432665] RIP: 0010:do_swap_page+0x24eb/0x2fa0
+  [    6.451035] Call Trace:
+  [    6.451567]  <TASK>
+  [    6.453841]  __handle_mm_fault+0x13b5/0x3b40
+  [    6.458525]  handle_mm_fault+0x16f/0x480
+  [    6.461143]  do_user_addr_fault+0x312/0xa30
+  [    6.462044]  exc_page_fault+0x66/0xc0
+  [    6.462846]  asm_exc_page_fault+0x26/0x30
+  [    6.476708]  </TASK>
 
-This bug was identified and confirmed with the help of fault-injection
-testing on a deterministic hypervisor currently under development.  The
-C reproducer below however hits it within about 35s.
+do_swap_page() already drops such a folio from the swap cache when it
+can't map all of it.  We move that check into a helper and use it in
+unuse_pte() too, so swapoff drops the folio and swaps the entries in
+again as small folios.
 
-Fixes: f8a53bb58ec7 ("btrfs: handle checksum generation in the storage layer")
-Fixes: c7c97ceff98c ("btrfs: handle bio_split() errors")
-Cc: stable@vger.kernel.org # 6.6+
-Reviewed-by: Qu Wenruo <wqu@suse.com>
+Such a folio was never mapped, so it shouldn't be dirty.  If it is, the
+helper warns and the folio stays in the swap cache.  unuse_pte() then
+returns -EBUSY so swapoff fails instead of retrying forever.  With the
+fix, the next fault doesn't crash anymore.
+
+This bug was identified and confirmed with the help of a deterministic
+hypervisor currently under development.  The C reproducer below however
+hits it within about 1s.
+
+Fixes: f1879e8a0c60 ("mm, swap: never bypass the swap cache even for SWP_SYNCHRONOUS_IO")
+Cc: stable@vger.kernel.org
 Signed-off-by: Mani Tofigh <mt4022@columbia.edu>
 ---
 Changes in v2:
-- Also put the bioc on the btrfs_split_bio() error path (Qu)
-- Mention the sha256 / non-EXPERIMENTAL setup in the commit message (Qu)
-- Add Reviewed-by from Qu
-- Link to v1: https://patch.msgid.link/20261101-btrfs-async-csum-leak-v1-1-feafe7ae61e9@columbia.edu
+- Move the check in do_swap_page() into a helper and use it in
+  unuse_pte() too (David)
+- Use VM_WARN_ON_ONCE() for a dirty folio (David, Kairui)
+- Keep a dirty folio and return -EBUSY from unuse_pte() instead of
+  dropping it, since dropping it would lose data (Kairui)
+- Rebase on mm/core.git for-next-fixes
+- Link to v1: https://lore.kernel.org/r/20261030-swapin-large-unmapped-v1-1-41e4ae378e6c@columbia.edu
 
-Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/btrfscsum.c
+Reproducer: https://github.com/manitofigh/files/blob/main/linux-repros/swapmthp.c
 ---
- fs/btrfs/bio.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ mm/memory.c   | 17 ++---------------
+ mm/swap.h     | 21 +++++++++++++++++++++
+ mm/swapfile.c | 11 +++++++++++
+ 3 files changed, 34 insertions(+), 15 deletions(-)
 
-diff --git a/fs/btrfs/bio.c b/fs/btrfs/bio.c
-index 2c6234f6182f..2e12a6d7e16f 100644
---- a/fs/btrfs/bio.c
-+++ b/fs/btrfs/bio.c
-@@ -624,6 +624,8 @@ static void run_one_async_done(struct btrfs_work *work, bool do_free)
+diff --git a/mm/memory.c b/mm/memory.c
+index 91836d217d25..2e0dadbee382 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -5166,21 +5166,8 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
+ 	BUG_ON(!folio_test_anon(folio) && folio_test_mappedtodisk(folio));
+ 	BUG_ON(folio_test_anon(folio) && PageAnonExclusive(page));
  
- 	/* If an error occurred we just want to clean up the bio and move on. */
- 	if (bio->bi_status) {
-+		btrfs_put_bioc(async->bioc);
-+		btrfs_bio_counter_dec(async->bbio->inode->root->fs_info);
- 		btrfs_bio_end_io(async->bbio, bio->bi_status);
- 		return;
+-	/*
+-	 * If a large folio already belongs to anon mapping, then we
+-	 * can just go on and map it partially.
+-	 * If not, with the large swapin check above failing, the page table
+-	 * have changed, so sub pages might got charged to the wrong cgroup,
+-	 * or even should be shmem. So we have to free it and fallback.
+-	 * Nothing should have touched it, both anon and shmem checks if a
+-	 * large folio is fully applicable before use.
+-	 *
+-	 * This will be removed once we unify folio allocation in the swap cache
+-	 * layer, where allocation of a folio stabilizes the swap entries.
+-	 */
+-	if (!folio_test_anon(folio) && folio_test_large(folio) &&
+-	    nr_pages != folio_nr_pages(folio)) {
+-		if (!WARN_ON_ONCE(folio_test_dirty(folio)))
++	if (!swap_cache_folio_mappable(folio, nr_pages)) {
++		if (!folio_test_dirty(folio))
+ 			swap_cache_del_folio(folio);
+ 		goto out_nomap;
  	}
-@@ -762,6 +764,7 @@ static bool btrfs_submit_chunk(struct btrfs_bio *bbio, int mirror_num)
- 		split = btrfs_split_bio(fs_info, bbio, map_length);
- 		if (IS_ERR(split)) {
- 			status = errno_to_blk_status(PTR_ERR(split));
-+			btrfs_put_bioc(bioc);
- 			btrfs_bio_counter_dec(fs_info);
- 			goto end_bbio;
- 		}
-@@ -822,6 +825,7 @@ static bool btrfs_submit_chunk(struct btrfs_bio *bbio, int mirror_num)
- 	return map_length == length;
+diff --git a/mm/swap.h b/mm/swap.h
+index d5bf21f517dc..f045a384fe79 100644
+--- a/mm/swap.h
++++ b/mm/swap.h
+@@ -464,6 +464,27 @@ static inline void __swap_cache_replace_folio(struct swap_cluster_info *ci,
+ }
+ #endif /* CONFIG_SWAP */
  
- fail:
-+	btrfs_put_bioc(bioc);
- 	btrfs_bio_counter_dec(fs_info);
- 	/*
- 	 * We have split the original bbio, now we have to end both the current
++/*
++ * If a large folio from the swap cache already belongs to anon mapping, then
++ * we can just go on and map it partially. If not, and we can't map all of
++ * it, the page table have changed, so sub pages might got charged to the
++ * wrong cgroup, or even should be shmem. So the caller has to free it and
++ * fallback. Nothing should have touched it, both anon and shmem checks if a
++ * large folio is fully applicable before use.
++ *
++ * This will be removed once we unify folio allocation in the swap cache
++ * layer, where allocation of a folio stabilizes the swap entries.
++ */
++static inline bool swap_cache_folio_mappable(struct folio *folio,
++					     unsigned int nr_pages)
++{
++	if (folio_test_anon(folio) || !folio_test_large(folio) ||
++	    nr_pages == folio_nr_pages(folio))
++		return true;
++	VM_WARN_ON_ONCE_FOLIO(folio_test_dirty(folio), folio);
++	return false;
++}
++
+ extern const struct swap_ops swap_bdev_ops;
+ 
+ int shmem_writeout(struct swap_io_ctx *ctx, struct folio *folio,
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 71ef9e2efb3a..fe2a00190806 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -2513,6 +2513,17 @@ static int unuse_pte(struct vm_area_struct *vma, pmd_t *pmd,
+ 	if (!folio_matches_swap_entry(folio, entry))
+ 		return 0;
+ 
++	/*
++	 * A large folio that a fault didn't map can't be mapped one PTE at a
++	 * time here, so drop it and swap in small folios instead.
++	 */
++	if (unlikely(!swap_cache_folio_mappable(folio, 1))) {
++		if (folio_test_dirty(folio))
++			return -EBUSY;
++		swap_cache_del_folio(folio);
++		return 0;
++	}
++
+ 	swapcache = folio;
+ 	folio = ksm_might_need_to_copy(folio,
+ 				       folio_file_page(folio, swp_offset(entry)), vma, addr);
 
 ---
-base-commit: 6255426d70f2755968bb5436ae7b43dae742ac38
-change-id: 20261030-btrfs-async-csum-leak-1772df5f0c32
+base-commit: 71555ae8c7572fd99158013ca2e29187c5d2508d
+change-id: 20261030-swapin-large-unmapped-6c8f6e691864
 
 Best regards,
 --  
