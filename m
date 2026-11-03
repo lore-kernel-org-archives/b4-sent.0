@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 04 Nov 2026 00:18:15 +0800
-Subject: [PATCH v2 2/4] mm, swap: fix large swap-in across swap file
- extents
+Date: Wed, 04 Nov 2026 00:18:16 +0800
+Subject: [PATCH v2 3/4] mm/swap: account synchronous swap reads as memory
+ stall
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-swap-fixes-v2-2-204be064be5b@tencent.com>
+Message-Id: <20261104-swap-fixes-v2-3-204be064be5b@tencent.com>
 References: <20261104-swap-fixes-v2-0-204be064be5b@tencent.com>
 In-Reply-To: <20261104-swap-fixes-v2-0-204be064be5b@tencent.com>
 To: linux-mm@kvack.org
@@ -21,121 +21,70 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>,
  Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
  Chuanhua Han <hanchuanhua@oppo.com>, Mani Tofigh <mt4022@columbia.edu>, 
  NeilBrown <neil@brown.name>, Christoph Hellwig <hch@lst.de>, 
- linux-kernel@vger.kernel.org, Chris Mason <mason@kernel.org>, 
- stable@vger.kernel.org
+ linux-kernel@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793722701; l=4359;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793722701; l=2186;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=GjI89eGPjvzC9qvQaI4jjtxoYQv3OiREh4hio0wcSS0=;
- b=pXMFrpHnqc8Y7bcU7BrglXc0aXr6LGVBrXIlirVMe0LoXG5Xvq83pvj4Gryb44+ssrMYimEuw
- 2ZjnLz71vp5CAsZXIzCj4CF+hwVkkwagCFtNgAhzHznxu6VlSGuavgk
+ bh=EXepoBL+1i8g0ScofxnsUXgOf1Zeyb2RF1ZMuEP4wQQ=;
+ b=II4HH3rBWCxgpZOng9GIJ+6uCPttS6S4t02mNweB0XFK5UOl5u1wHuIEznK3U23AF84mthrvq
+ X9BtcDxwI0TDydFmucET7Q1DfJg4CsVZ6F7uwkwvGmEHFmGZWwKX9BB
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Chris Mason <mason@kernel.org>
+From: Josef Bacik <josef@toxicpanda.com>
 
-A page fault can give an unprivileged process blocks of other users'
-files instead of its own swapped-out data. This affects systems with a
-swap file on a synchronous block device, such as brd or zram. For an
-anonymous mapping it also takes a huge page size below the PMD size
-(mTHP), such as 64 KiB, that is enabled for anonymous memory.
+Swap-ins from SWP_SYNCHRONOUS_IO devices such as zram are no longer
+counted in PSI memory pressure or in the swapin and thrashing delays of
+delay accounting.  Refaults of the workingset from zram, the main input
+to userspace OOM handlers like lmkd and systemd-oomd on zram systems,
+become invisible in /proc/pressure/memory.
 
-A swap area is divided into slots of one page each. A swap file is a
-regular file, so adjacent swap slots can lie in two extents, far apart
-on disk. A folio is read from swap with a single bio that starts at the
-sector of the folio's first slot. So all slots of a large folio must be
-contiguous on disk.
+swap_read_folio() opens the accounting window with
+psi_memstall_enter() and delayacct_swapin_start() and, per its comment,
+means to count the submission time.  For synchronous devices the
+submission is the entire read: swap_bdev_submit_read() does
+submit_bio_wait() and completes the folio.  Since reads are batched in
+a swap_iocb, swap_read_folio() only queues the folio with
+swap_add_folio(), and the bio is submitted later by swap_read_submit()
+in the caller, e.g. swapin_sync(), after the window has been closed.
+By then the folio is uptodate and unlocked, so the fault does not wait
+on the folio lock either and the read time is not counted anywhere.
 
-The swap allocator knows this: it only hands out a run of slots for a
-large folio if the swap area is a block device (SWP_BLKDEV).
+Fix by submitting synchronous reads from within swap_read_folio(), as
+was done before the batching, rather than from the caller.  This gives
+up batching of readahead for synchronous devices, which do their I/O
+inline anyway, in exchange for keeping the accounting simple and in one
+place.
 
-The swap-in path does not. On a synchronous device (SWP_SYNCHRONOUS_IO),
-one that always completes I/O in the submitter's context, do_swap_page()
-can read several swapped-out pages as one large folio (a large swap-in).
-thp_swapin_suitable_orders() makes that decision, and looks only at the
-swap offsets (the slot numbers) in the page table.
-
-Pages that were swapped out one at a time can end up in consecutive,
-aligned slots, and are then read as one large folio. If the extent of
-the first slot ends inside that folio, the rest of the folio is filled
-from the blocks that follow the extent on disk. These blocks can belong
-to other files.
-
-Reproduced with a fragmented swap file on brd and 64 KiB folios enabled.
-After single pages were swapped out, a fault returned blocks of a
-root-owned file with mode 0600.
-
-Fix this by allowing a large swap-in only when SWP_BLKDEV is set.
-
-Known gaps:
-- A swap file on zram, brd, pmem or btt is now read one page at a time,
-  even where its slots lie in one extent. Its swpin counters in
-  /sys/kernel/mm/transparent_hugepage/hugepages-*/stats stay at 0.
-- There could be devices with SWP_SYNCHRONOUS_IO but not
-  SWP_BLKDEV, so the new check would have to let that device pass.
-
-Fixes: 242d12c98174 ("mm: support large folios swap-in for sync io devices")
-Cc: stable@vger.kernel.org
+Fixes: dda8fb68b590 ("mm/swap: also use struct swap_iocb for block I/O")
 Assisted-by: LLM
-Signed-off-by: Chris Mason <mason@kernel.org>
+Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 Signed-off-by: David Hildenbrand (Arm) <david@kernel.org>
-[kasong@tencent.com: simplify the note about the unmerged xswap patch]
-Reviewed-by: Nhat Pham <nphamcs@gmail.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/memory.c | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+ mm/page_io.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/mm/memory.c b/mm/memory.c
-index b65b56fe9714..944f57153c89 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -4863,7 +4863,8 @@ static inline unsigned long thp_swap_suitable_orders(pgoff_t swp_offset,
- 	return orders;
- }
- 
--static unsigned long thp_swapin_suitable_orders(struct vm_fault *vmf)
-+static unsigned long thp_swapin_suitable_orders(struct swap_info_struct *si,
-+						struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
- 	unsigned long orders;
-@@ -4888,6 +4889,14 @@ static unsigned long thp_swapin_suitable_orders(struct vm_fault *vmf)
- 	if (!zswap_never_enabled())
- 		return 0;
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 65681eed9c80..83ed0246ebfc 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -500,6 +500,13 @@ void swap_read_folio(struct swap_io_ctx *ctx, struct folio *folio)
+ 	zswap_folio_swapin(folio);
+ 	swap_add_folio(ctx, folio, READ);
  
 +	/*
-+	 * Neighbouring slots of a swap file can lie in two extents, and a folio
-+	 * is read with one bio. The flag is set in swapon() and stays, so the
-+	 * race is benign.
++	 * Synchronous devices do the whole read at submission time, submit
++	 * it here so that it is accounted as memory stall and delay.
 +	 */
-+	if (!data_race(si->flags & SWP_BLKDEV))
-+		return 0;
++	if (synchronous)
++		swap_read_submit(ctx);
 +
- 	entry = softleaf_from_pte(vmf->orig_pte);
- 	/*
- 	 * Get a list of all the (large) orders below PMD_ORDER that are enabled
-@@ -4924,7 +4933,8 @@ static unsigned long thp_swapin_suitable_orders(struct vm_fault *vmf)
- 	return orders;
- }
- #else /* !CONFIG_TRANSPARENT_HUGEPAGE */
--static unsigned long thp_swapin_suitable_orders(struct vm_fault *vmf)
-+static unsigned long thp_swapin_suitable_orders(struct swap_info_struct *si,
-+						struct vm_fault *vmf)
- {
- 	return 0;
- }
-@@ -5070,7 +5080,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
- 		/* Swapin bypasses readahead for SWP_SYNCHRONOUS_IO devices */
- 		if (data_race(si->flags & SWP_SYNCHRONOUS_IO))
- 			folio = swapin_sync(entry, GFP_HIGHUSER_MOVABLE,
--					    thp_swapin_suitable_orders(vmf) | BIT(0),
-+					    thp_swapin_suitable_orders(si, vmf) | BIT(0),
- 					    vmf, NULL, 0);
- 		else
- 			folio = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE, vmf);
+ finish:
+ 	if (workingset) {
+ 		delayacct_thrashing_end(&in_thrashing);
 
 -- 
 2.56.0
