@@ -1,70 +1,58 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Wed, 04 Nov 2026 00:25:47 +0800
-Subject: [PATCH v4 3/3] mm, swap: drop the swap cache guard and reclaim in
- swap_free_hibernation_slot()
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH 0/3] iio: adc: mt6359-auxadc: various fixes
+Date: Tue, 03 Nov 2026 18:32:06 +0200
+Message-Id: <20261103-6768-6358-fixes-v1-0-2a868a33152b@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261104-swap-hibernation-slots-v4-3-0ba9393609e1@tencent.com>
-References: <20261104-swap-hibernation-slots-v4-0-0ba9393609e1@tencent.com>
-In-Reply-To: <20261104-swap-hibernation-slots-v4-0-0ba9393609e1@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
- Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
- Jianyue Wu <wujianyue000@gmail.com>, Youngjun Park <youngjun.park@lge.com>, 
- "David Hildenbrand (Arm)" <david@kernel.org>, 
- Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793723146; l=1453;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=HPBYUP9MF3eSuiR7PGXZbC8XEUoasVA5Ed/MrXu8OwY=;
- b=4uNVtu2qFnk2q3Ro3dEgv6Ysy2ZgK5QDFSXGgJ3BR5URLa/fqYZSm2gIUkczc6q/+EjLyM7Pp
- boIUOm6t6rxBLDX/bw1typJvrJs67/sZAvugRsZ71of0Po6iNzyXGyc
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQwNjXTNzMwtdM2NTC920zIrUYt205JRkc8vEtMRUQ0MloK6ColSwBFB
+ TdCyEX1yalJWaXAIyRqm2FgDBa7lWcwAAAA==
+X-Change-ID: 20261103-6768-6358-fixes-fcdc79afae11
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ =?utf-8?q?N=C3=ADcolas_F=2E_R=2E_A=2E_Prado?= <nfraprado@collabora.com>
+Cc: Chen-Yu Tsai <wenst@chromium.org>, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793723743; l=950;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=doV4JykRzr4qLWTGO3/PJI6VtFZkP4IiQqJpVVNcdxM=;
+ b=i2ltcp1uL6i2XvvgCUd1gj6cSYYIA2wrRRRsy5ngfrRObEo6GyY66rDAMj/UvULuGnKd2ynJt
+ k+j7WbSQMzCCtusU1GCX49q9HS+//kVCDde493ZyOXlNeUh1BetuHwo
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Youngjun Park <youngjun.park@lge.com>
+This patch series fixes various bugs in the mt6359 auxadc driver. For
+some reason, the driver had channel types for temperature or resistance,
+while the ADC can report only voltage. There were also issues with
+battery channel ready bit masking and scale calculation.
 
-Both are there for a folio that readahead might have put on the slot.  A
-hibernation entry is not a shadow and has no swap count, so the swap cache
-turns it away and no such folio can exist.
+Changes were verified on the mt6358 (mt6768 platform). Compile-tested
+only for others.
 
-Signed-off-by: Youngjun Park <youngjun.park@lge.com>
-Acked-by: Kairui Song <kasong@tencent.com>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- mm/swapfile.c | 12 +-----------
- 1 file changed, 1 insertion(+), 11 deletions(-)
+Roman Vivchar (3):
+      iio: adc: mt6359-auxadc: correct channel types to IIO_VOLTAGE
+      iio: adc: mt6359-auxadc: mask conversion ready bit in mt6358_read_imp
+      iio: adc: mt6359-auxadc: fix scale calculation
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index c26243140bf2..8dd2ba825413 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -2227,18 +2227,8 @@ void swap_free_hibernation_slot(swp_entry_t entry)
- 	pgoff_t offset = swp_offset(entry);
- 
- 	ci = swap_cluster_lock(si, offset);
--	/*
--	 * A slot with a folio in the swap cache is freed when the folio
--	 * leaves the cache, the same rule swap_put_entries_cluster() follows.
--	 * Readahead can put a folio here, and freeing the slot now would
--	 * leave that folio with no entry behind it.
--	 */
--	if (!swp_tb_is_folio(__swap_table_get(ci, offset % SWAPFILE_CLUSTER)))
--		__swap_cluster_free_entries(si, ci, offset % SWAPFILE_CLUSTER, 1);
-+	__swap_cluster_free_entries(si, ci, offset % SWAPFILE_CLUSTER, 1);
- 	swap_cluster_unlock(ci);
--
--	/* In theory readahead might add it to the swap cache by accident */
--	__try_to_reclaim_swap(si, offset, TTRS_ANYWAY);
- }
- 
- static int __find_hibernation_swap_type(dev_t device, sector_t offset)
+ drivers/iio/adc/mt6359-auxadc.c | 88 ++++++++++++++++++++---------------------
+ 1 file changed, 42 insertions(+), 46 deletions(-)
+---
+base-commit: 7649ba73f9e7e1e04d0b46213e39c79ae09dd55c
+change-id: 20261103-6768-6358-fixes-fcdc79afae11
 
--- 
-2.56.0
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
