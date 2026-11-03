@@ -1,67 +1,110 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Tue, 03 Nov 2026 18:32:09 +0200
-Subject: [PATCH 3/3] iio: adc: mt6359-auxadc: fix scale calculation
+From: Dmitry Safonov <dima@arista.com>
+Date: Tue, 03 Nov 2026 16:55:21 +0000
+Subject: [PATCH] perf build: Override OUTPUT when building internal
+ libraries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-6768-6358-fixes-v1-3-2a868a33152b@protonmail.com>
-References: <20261103-6768-6358-fixes-v1-0-2a868a33152b@protonmail.com>
-In-Reply-To: <20261103-6768-6358-fixes-v1-0-2a868a33152b@protonmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- =?utf-8?q?N=C3=ADcolas_F=2E_R=2E_A=2E_Prado?= <nfraprado@collabora.com>
-Cc: Chen-Yu Tsai <wenst@chromium.org>, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, Roman Vivchar <rva333@protonmail.com>, 
- Jonathan Cameron <jic23@kernel.org>
+Message-Id: <20261103-perf-output-v1-1-df33a0368cf2@arista.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBBFf6XM2oEm0vj4FXGRx9RGMA0ziQil/
+ 26iy3O552wgxJEErsMGTO8ocU0N1GEAv9j0IIyhMehRG6XGI2biGddaci04nYO5mCnokzbQjMw
+ 0x8+vdrv/Wap7ki890R/OCqFjm/zSp5eVQgz7/gX7J+4KiAAAAA==
+X-Change-ID: 20261103-perf-output-58d6965d2726
+To: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
+ Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ James Clark <james.clark@linaro.org>
+Cc: Arnaldo Carvalho de Melo <acme@redhat.com>, 
+ linux-perf-users@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793723743; l=1136;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=R/Vgi/Hmv+iUny8kYvdB+lQ+e0rpx+YnD5NeeGn0NQU=;
- b=Ezy6TSOcsGzfCu0rU7JGw9B0yFsyUBQrW5l7OFzfA2ilmV3BjvHHzojotw8pFI/KqAKTiz55m
- i9/lIENPNMJDO6inOzG1kNoU/VraL7W4N9bCNfNqMKxXsgfsqzYDIDU
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793724934; l=2896;
+ i=dima@arista.com; s=20250521; h=from:subject:message-id;
+ bh=l8SCNpqTNyh3+owYKih6JxRjJiWS4WDYwh5MD7aaoHE=;
+ b=IXevTkU5SJ4FxscC8KtUUltaxTyySoo3Kc97o5EFCSGat23lGvJqtzK/0hiUbmodEAgN3oPbN
+ ch/1qQDcdyaDqlwAZspbMw5slSBH+Vur9UuhUqTyE86e6uEK5rpUcHG
+X-Developer-Key: i=dima@arista.com; a=ed25519;
+ pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
+X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-IIO_CHAN_INFO_SCALE currently returns value without dividing by
-2^realbits, overflowing the integer to an invalid value.
+After commit 1572ba36fbca ("perf tests: Improvements to build-test
+performance"), building perf with OUTPUT on the command line fails:
+  make -C tools/perf OUTPUT=/tmp/linux/bld/perf/ ARCH=x86_64 LC_ALL=C CC=gcc HOSTCC=gcc LD=ld
+  ...
+  make[3]: *** No rule to make target '/tmp/linux/perf/libsubcmd/libsubcmd.a'.  Stop.
 
-Fix this by using IIO_VAL_FRACTIONAL and setting val2 to the ADC
-resolution.
+MAKEFLAGS propagates the command-line OUTPUT assignment to recursive makes.
+The library builds pass their output directories through $O, but the assignment
+to $OUTPUT in tools/scripts/Makefile.include cannot replace a command-line
+argument. This affects libapi, libperf, libsubcmd and libsymbol.
 
-Fixes: 3587914bf61d ("iio: adc: Add support for MediaTek MT6357/8/9 Auxiliary ADC")
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+With "unexport MAKEFLAGS" returned and added $(info) debug in libsubcmd
+Makefile produces:
+  OUTPUT = /tmp/linux/perf/libsubcmd/
+Without it, on current master it prints:
+  OUTPUT = /tmp/linux/perf/
+
+Pass OUTPUT explicitly to each library build, including the trailing slash
+required when constructing file names. This follows the existing libbpf
+build rule and preserves MAKEFLAGS and jobserver propagation.
+
+Fixes: 1572ba36fbca ("perf tests: Improvements to build-test performance")
+Signed-off-by: Dmitry Safonov <dima@arista.com>
 ---
- drivers/iio/adc/mt6359-auxadc.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ tools/perf/Makefile.perf | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/iio/adc/mt6359-auxadc.c b/drivers/iio/adc/mt6359-auxadc.c
-index 09432d0974cf..3a969c30f633 100644
---- a/drivers/iio/adc/mt6359-auxadc.c
-+++ b/drivers/iio/adc/mt6359-auxadc.c
-@@ -770,13 +770,9 @@ static int mt6359_auxadc_read_raw(struct iio_dev *indio_dev,
+diff --git a/tools/perf/Makefile.perf b/tools/perf/Makefile.perf
+index b74b534e1153..4cc5bb3011da 100644
+--- a/tools/perf/Makefile.perf
++++ b/tools/perf/Makefile.perf
+@@ -798,7 +798,7 @@ $(patsubst perf-%,%.o,$(PROGRAMS)): $(wildcard */*.h)
  
- 	if (mask == IIO_CHAN_INFO_SCALE) {
- 		*val = desc->r_ratio.numerator * cinfo->vref_mV;
-+		*val2 = desc->r_ratio.denominator << chan->scan_type.realbits;
+ $(LIBAPI): FORCE | $(LIBAPI_OUTPUT)
+ 	$(Q)$(MAKE) -C $(LIBAPI_DIR) O=$(LIBAPI_OUTPUT) \
+-		DESTDIR=$(LIBAPI_DESTDIR) prefix= subdir= \
++		OUTPUT=$(LIBAPI_OUTPUT)/ DESTDIR=$(LIBAPI_DESTDIR) prefix= subdir= \
+ 		$@ install_headers
  
--		if (desc->r_ratio.denominator > 1) {
--			*val2 = desc->r_ratio.denominator;
--			return IIO_VAL_FRACTIONAL;
--		}
--
--		return IIO_VAL_INT;
-+		return IIO_VAL_FRACTIONAL;
- 	}
+ $(LIBAPI)-clean:
+@@ -816,7 +816,7 @@ $(LIBBPF)-clean:
  
- 	scoped_guard(mutex, &adc_dev->lock) {
+ $(LIBPERF): FORCE | $(LIBPERF_OUTPUT)
+ 	$(Q)$(MAKE) -C $(LIBPERF_DIR) O=$(LIBPERF_OUTPUT) \
+-		DESTDIR=$(LIBPERF_DESTDIR) prefix= subdir= \
++		OUTPUT=$(LIBPERF_OUTPUT)/ DESTDIR=$(LIBPERF_DESTDIR) prefix= subdir= \
+ 		$@ install_headers
+ 
+ $(LIBPERF)-clean:
+@@ -825,7 +825,7 @@ $(LIBPERF)-clean:
+ 
+ $(LIBSUBCMD): FORCE | $(LIBSUBCMD_OUTPUT)
+ 	$(Q)$(MAKE) -C $(LIBSUBCMD_DIR) O=$(LIBSUBCMD_OUTPUT) \
+-		DESTDIR=$(LIBSUBCMD_DESTDIR) prefix= subdir= \
++		OUTPUT=$(LIBSUBCMD_OUTPUT)/ DESTDIR=$(LIBSUBCMD_DESTDIR) prefix= subdir= \
+ 		$@ install_headers
+ 
+ $(LIBSUBCMD)-clean:
+@@ -834,7 +834,7 @@ $(LIBSUBCMD)-clean:
+ 
+ $(LIBSYMBOL): FORCE | $(LIBSYMBOL_OUTPUT)
+ 	$(Q)$(MAKE) -C $(LIBSYMBOL_DIR) O=$(LIBSYMBOL_OUTPUT) \
+-		DESTDIR=$(LIBSYMBOL_DESTDIR) prefix= subdir= \
++		OUTPUT=$(LIBSYMBOL_OUTPUT)/ DESTDIR=$(LIBSYMBOL_DESTDIR) prefix= subdir= \
+ 		$@ install_headers
+ 
+ $(LIBSYMBOL)-clean:
 
--- 
-2.56.0
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261103-perf-output-58d6965d2726
+
+Best regards,
+--  
+Dmitry Safonov <dima@arista.com>
 
