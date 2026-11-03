@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 03 Nov 2026 11:53:00 -0300
-Subject: [PATCH v3 04/10] dt-bindings: iio: frequency: ad9910: add
- io-backends property
+Date: Tue, 03 Nov 2026 11:53:01 -0300
+Subject: [PATCH v3 05/10] iio: frequency: ad9910: move channel indexes into
+ a shared header
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-ad9910-backend-support-v3-4-0e9224ddf7b7@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20261103-ad9910-backend-support-v3-5-0e9224ddf7b7@analog.com>
 References: <20261103-ad9910-backend-support-v3-0-0e9224ddf7b7@analog.com>
 In-Reply-To: <20261103-ad9910-backend-support-v3-0-0e9224ddf7b7@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -21,88 +21,156 @@ Cc: Olivier Moysan <olivier.moysan@foss.st.com>,
  =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
  Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
  Randy Dunlap <rdunlap@infradead.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793717581; l=2580;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793717581; l=4373;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=j5dklZUTaCzTsmtRwls0MFDoIhZtjambNyK1FFjRxqs=;
- b=83s9FQMqeNHy0WxOBbsjsm8HPLiB1Z6YrnbIYW+Z2qOev1A3lPAar49HcVoJjeJWZCRd5ewmj
- NjPiOsMf3iXARgg/QCMCpoL/Ix0iPVcxHR3wvRrAx5FIYdpVs+MwY1J
+ bh=x6NMO+HwBMwaNr1Y6ukLdwzGO76H8amSFklxVgJRt5o=;
+ b=6GQANRHDSKSzRVRY5K9fM4xK3ktmpmUSy4CUtWNCgAgI+YBCd2CQ6cFc/7li9GDOiNgt8h0KJ
+ fqsB1vQ55I/CgsVaqpFuI1kfvqO2Ij93Xf/I1HxmJtmt3QndcNlhaT3
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The AD9910 parallel data port allows high-speed modulation of the DDS
-core parameters, which requires a data source such as an FPGA IP core
-connected to the F[1:0] and D[15:0] pins. Add the io-backends property,
-so that an IIO backend providing such interface can be referenced.
+The channel indexes are used as channel identifiers in IIO backend
+operations, such as enabling a parallel data port destination or
+selecting a profile. Move them, along with the data destination
+definitions, into a shared header, so that the frontend and backend
+drivers agree on those identifiers.
 
-The property is optional as the parallel port is. The device remains
-functional through the SPI control interface only, as other modes can
-be used to drive the DDS core.
+No functional change.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Reviewed-by: Nuno Sá <nuno.sa@analog.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- .../bindings/iio/frequency/adi,ad9910.yaml         | 38 ++++++++++++++++++++++
- 1 file changed, 38 insertions(+)
+ MAINTAINERS                    |  1 +
+ drivers/iio/frequency/ad9910.c | 35 ++-------------------------------
+ drivers/iio/frequency/ad9910.h | 44 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 47 insertions(+), 33 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
-index 4eebbd388b27..02fd49db93ff 100644
---- a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
-+++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
-@@ -120,6 +120,13 @@ properties:
-     items:
-       - const: drctl
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 351ec0bca477..64aa7b539ca3 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1735,6 +1735,7 @@ F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910-axi-backend.yaml
+ F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+ F:	Documentation/iio/ad9910.rst
+ F:	drivers/iio/frequency/ad9910.c
++F:	drivers/iio/frequency/ad9910.h
  
-+  io-backends:
-+    maxItems: 1
-+    description:
-+      IIO backend that interfaces with the parallel data port, enabling data
-+      streaming into the device. The backend may also drive the PROFILE[2:0]
-+      and DRCTL pins, the latter being exposed as a PWM provider.
+ ANALOG DEVICES INC MAX22007 DRIVER
+ M:	Janani Sunil <janani.sunil@analog.com>
+diff --git a/drivers/iio/frequency/ad9910.c b/drivers/iio/frequency/ad9910.c
+index 8bc24d0b7442..dc13986dff3d 100644
+--- a/drivers/iio/frequency/ad9910.c
++++ b/drivers/iio/frequency/ad9910.c
+@@ -33,6 +33,8 @@
+ #include <linux/iio/iio.h>
+ #include <linux/iio/sysfs.h>
+ 
++#include "ad9910.h"
 +
-   adi,pll-enable:
-     type: boolean
-     description:
-@@ -206,4 +213,35 @@ examples:
-             adi,refclk-out-drive-strength = "disabled";
-         };
-     };
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+    spi {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+        dds@0 {
-+            compatible = "adi,ad9910";
-+            reg = <0>;
-+            spi-max-frequency = <1000000>;
+ /* Register addresses */
+ #define AD9910_REG_CFR1			0x00
+ #define AD9910_REG_CFR2			0x01
+@@ -194,11 +196,6 @@
+ #define AD9910_RAM_ENABLED(st)		\
+ 	FIELD_GET(AD9910_CFR1_RAM_ENABLE_MSK, (st)->reg[AD9910_REG_CFR1].val32)
+ 
+-#define AD9910_DEST_FREQUENCY		0
+-#define AD9910_DEST_PHASE		1
+-#define AD9910_DEST_AMPLITUDE		2
+-#define AD9910_DEST_POLAR		3
+-
+ /* PLL constants */
+ #define AD9910_PLL_MIN_N		12
+ #define AD9910_PLL_MAX_N		127
+@@ -302,34 +299,6 @@ struct ad9910_ram_fw {
+ 	__be32 words[] __counted_by_be(wcount);
+ } __packed;
+ 
+-enum {
+-	AD9910_CHAN_IDX_PHY,
+-	AD9910_CHAN_IDX_PROFILE_0,
+-	AD9910_CHAN_IDX_PROFILE_1,
+-	AD9910_CHAN_IDX_PROFILE_2,
+-	AD9910_CHAN_IDX_PROFILE_3,
+-	AD9910_CHAN_IDX_PROFILE_4,
+-	AD9910_CHAN_IDX_PROFILE_5,
+-	AD9910_CHAN_IDX_PROFILE_6,
+-	AD9910_CHAN_IDX_PROFILE_7,
+-	AD9910_CHAN_IDX_PARALLEL_AMP,
+-	AD9910_CHAN_IDX_PARALLEL_PHASE,
+-	AD9910_CHAN_IDX_PARALLEL_FREQ,
+-	AD9910_CHAN_IDX_PARALLEL_POLAR_AMP,
+-	AD9910_CHAN_IDX_PARALLEL_POLAR_PHASE,
+-	AD9910_CHAN_IDX_DRG_FREQ,
+-	AD9910_CHAN_IDX_DRG_PHASE,
+-	AD9910_CHAN_IDX_DRG_AMP,
+-	AD9910_CHAN_IDX_DRG_FREQ_RAMP_UP,
+-	AD9910_CHAN_IDX_DRG_FREQ_RAMP_DOWN,
+-	AD9910_CHAN_IDX_DRG_PHASE_RAMP_UP,
+-	AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN,
+-	AD9910_CHAN_IDX_DRG_AMP_RAMP_UP,
+-	AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN,
+-	AD9910_CHAN_IDX_RAM,
+-	AD9910_CHAN_IDX_OSK,
+-};
+-
+ enum {
+ 	AD9910_POWERDOWN,
+ 	AD9910_DWELL_EN,
+diff --git a/drivers/iio/frequency/ad9910.h b/drivers/iio/frequency/ad9910.h
+new file mode 100644
+index 000000000000..6452a8678ed9
+--- /dev/null
++++ b/drivers/iio/frequency/ad9910.h
+@@ -0,0 +1,44 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * AD9910 SPI DDS (Direct Digital Synthesizer) driver
++ *
++ * Copyright 2026 Analog Devices Inc.
++ */
 +
-+            #clock-cells = <1>;
-+            clock-output-names = "sync_clk", "pdclk", "sync_out";
++#ifndef IIO_FREQUENCY_AD9910_H_
++#define IIO_FREQUENCY_AD9910_H_
 +
-+            clocks = <&ad9910_refclk>;
-+            clock-names = "ref_clk";
++#define AD9910_DEST_FREQUENCY		0
++#define AD9910_DEST_PHASE		1
++#define AD9910_DEST_AMPLITUDE		2
++#define AD9910_DEST_POLAR		3
 +
-+            dvdd-io33-supply = <&vdd_io33>;
-+            avdd33-supply = <&vdd_a33>;
-+            dvdd18-supply = <&vdd_d18>;
-+            avdd18-supply = <&vdd_a18>;
++enum ad9910_channel_idx {
++	AD9910_CHAN_IDX_PHY,
++	AD9910_CHAN_IDX_PROFILE_0,
++	AD9910_CHAN_IDX_PROFILE_1,
++	AD9910_CHAN_IDX_PROFILE_2,
++	AD9910_CHAN_IDX_PROFILE_3,
++	AD9910_CHAN_IDX_PROFILE_4,
++	AD9910_CHAN_IDX_PROFILE_5,
++	AD9910_CHAN_IDX_PROFILE_6,
++	AD9910_CHAN_IDX_PROFILE_7,
++	AD9910_CHAN_IDX_PARALLEL_AMP,
++	AD9910_CHAN_IDX_PARALLEL_PHASE,
++	AD9910_CHAN_IDX_PARALLEL_FREQ,
++	AD9910_CHAN_IDX_PARALLEL_POLAR_AMP,
++	AD9910_CHAN_IDX_PARALLEL_POLAR_PHASE,
++	AD9910_CHAN_IDX_DRG_FREQ,
++	AD9910_CHAN_IDX_DRG_PHASE,
++	AD9910_CHAN_IDX_DRG_AMP,
++	AD9910_CHAN_IDX_DRG_FREQ_RAMP_UP,
++	AD9910_CHAN_IDX_DRG_FREQ_RAMP_DOWN,
++	AD9910_CHAN_IDX_DRG_PHASE_RAMP_UP,
++	AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN,
++	AD9910_CHAN_IDX_DRG_AMP_RAMP_UP,
++	AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN,
++	AD9910_CHAN_IDX_RAM,
++	AD9910_CHAN_IDX_OSK,
++};
 +
-+            reset-gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
-+            io-reset-gpios = <&gpio 1 GPIO_ACTIVE_HIGH>;
-+            powerdown-gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
-+            update-gpios = <&gpio 3 GPIO_ACTIVE_HIGH>;
-+
-+            io-backends = <&ad9910_backend>;
-+            pwms = <&ad9910_backend 0 1000000 0>;
-+            pwm-names = "drctl";
-+        };
-+    };
- ...
++#endif /* IIO_FREQUENCY_AD9910_H_ */
 
 -- 
 2.43.0
