@@ -1,11 +1,11 @@
 From: =?utf-8?q?St=C3=A9phane_Grosjean?= <s.grosjean@peak-system.fr>
-Date: Tue, 03 Nov 2026 13:30:29 +0100
-Subject: [PATCH v8 13/14] can: peak_usb: don't send uninitialized stack
- bytes to PCAN-USB devices
+Date: Tue, 03 Nov 2026 13:30:30 +0100
+Subject: [PATCH v8 14/14] can: peak_usb: don't send uninitialized heap
+ bytes in restart commands
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20261103-canfd_check_channel_idx-v8-13-4e8b2c0a8806@peak-system.fr>
+Message-Id: <20261103-canfd_check_channel_idx-v8-14-4e8b2c0a8806@peak-system.fr>
 References: <20261103-canfd_check_channel_idx-v8-0-4e8b2c0a8806@peak-system.fr>
 In-Reply-To: <20261103-canfd_check_channel_idx-v8-0-4e8b2c0a8806@peak-system.fr>
 To: Marc Kleine-Budde <mkl@pengutronix.de>, 
@@ -16,60 +16,59 @@ To: Marc Kleine-Budde <mkl@pengutronix.de>,
 Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Tristan Madani <tristmd@gmail.com>, stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793709024; l=1939;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793709024; l=1851;
  i=s.grosjean@peak-system.fr; s=20261020; h=from:subject:message-id;
- bh=F/qIBCSUbQKHAsdEyP2lkTE3sJagZw87jKmvA+lanFw=;
- b=DHWRmPaS3UQfJeuINhwExbK7iwB9i424Wwmg8OYQ6j/axgxM9npbr7EU3i4kcy5ONVSTYcbU2
- Uw+zbP8Q48rB/n5qt1MyTA8tzcjYOY2lkSUNpr4WvQlw5yOXSxi1toj
+ bh=BmOW8lChZGURgW2vetFo/+vllV7479yRxKErjv3sv+I=;
+ b=eeludRq+npkmP51bhyvxC1ZW2Yx+qhLLi1Nl8a4ioUq8yG9gi4yKk2Y9p6jKHnJJvpKcFX87j
+ lIBR9nzV9d5Aty5Kbtzpv+VNDBrzjuGXvGwI2OO9Tu2otTE1GJ6K24Q
 X-Developer-Key: i=s.grosjean@peak-system.fr; a=ed25519;
  pk=bP7QV2zvvAKAfConZlUOGKGEcXL64SNUpVUm++Ai+/c=
 X-Endpoint-Received: by B4 Relay for s.grosjean@peak-system.fr/20261020 with auth_id=1250
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pcan_usb_send_cmd() copies the PCAN_USB_CMD_ARGS_LEN (14) bytes of the
-args[] array of its caller into the command buffer, and sends the whole
-command to the device.
+peak_usb_restart() allocates the buffer of the asynchronous restart
+command with kmalloc(), and lets the dev_restart_async() callback of
+the adapter build the command in it. None of these callbacks fills the
+whole part of the buffer that it sends to the device:
 
-pcan_usb_set_bittiming() only sets the first two bytes of its args[]
-array, and pcan_usb_set_can_channel_id() only the first one. The other
-12 or 13 bytes of these uninitialized stack arrays are thus sent to the
-device each time the bitrate or the CAN channel ID is set.
+- pcan_usb_restart_async() sets 3 of the PCAN_USB_CMD_LEN (16) bytes
+  that it sends;
+- pcan_usb_pro_restart_async() builds an 8-byte message, but sends the
+  whole PCAN_USB_MAX_CMD_LEN (32) bytes buffer;
+- pcan_usb_fd_build_restart_cmd() leaves the unused field of
+  struct pucan_wr_err_cnt and the args of the final struct
+  pucan_command unset.
 
-Zero-initialize both arrays, as the other setters of the driver do.
+Uninitialized heap bytes are thus sent to the device each time a
+channel is restarted after bus off.
 
-Found by Sashiko AI review.
+Allocate the buffer with kzalloc(), so that the unset bytes are zero,
+as for the other command buffers of the driver.
 
-Fixes: 46be265d3388 ("can: usb: PEAK-System Technik PCAN-USB specific part")
-Fixes: e7a7b3d22503 ("can: peak_usb: allow flashing of the CAN channel ID")
+Found while checking the other adapters for the uninitialized command
+bytes reported by Sashiko AI review.
+
+Fixes: bb4785551f64 ("can: usb: PEAK-System Technik USB adapters driver core")
 Cc: stable@vger.kernel.org
 Assisted-by: LLM
 Signed-off-by: Stéphane Grosjean <s.grosjean@peak-system.fr>
 ---
- drivers/net/can/usb/peak_usb/pcan_usb.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/net/can/usb/peak_usb/pcan_usb_core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/can/usb/peak_usb/pcan_usb.c b/drivers/net/can/usb/peak_usb/pcan_usb.c
-index 83cf6fe7d258..2838e4ea2b4e 100644
---- a/drivers/net/can/usb/peak_usb/pcan_usb.c
-+++ b/drivers/net/can/usb/peak_usb/pcan_usb.c
-@@ -274,7 +274,7 @@ static int pcan_usb_set_led(struct peak_usb_device *dev, u8 onoff)
- static int pcan_usb_set_bittiming(struct peak_usb_device *dev,
- 				  struct can_bittiming *bt)
- {
--	u8 args[PCAN_USB_CMD_ARGS_LEN];
-+	u8 args[PCAN_USB_CMD_ARGS_LEN] = {};
- 	u8 btr0, btr1;
+diff --git a/drivers/net/can/usb/peak_usb/pcan_usb_core.c b/drivers/net/can/usb/peak_usb/pcan_usb_core.c
+index 1d306160fa35..95c1454b4116 100644
+--- a/drivers/net/can/usb/peak_usb/pcan_usb_core.c
++++ b/drivers/net/can/usb/peak_usb/pcan_usb_core.c
+@@ -702,7 +702,7 @@ static int peak_usb_restart(struct peak_usb_device *dev)
+ 		return -ENOMEM;
  
- 	btr0 = ((bt->brp - 1) & 0x3f) | (((bt->sjw - 1) & 0x3) << 6);
-@@ -405,7 +405,7 @@ static int pcan_usb_get_can_channel_id(struct peak_usb_device *dev, u32 *can_ch_
- /* set a new CAN channel id in the flash memory of the device */
- static int pcan_usb_set_can_channel_id(struct peak_usb_device *dev, u32 can_ch_id)
- {
--	u8 args[PCAN_USB_CMD_ARGS_LEN];
-+	u8 args[PCAN_USB_CMD_ARGS_LEN] = {};
- 
- 	/* this kind of device supports 8-bit values only */
- 	if (can_ch_id > U8_MAX)
+ 	/* also allocate enough space for the commands to send */
+-	buf = kmalloc(PCAN_USB_MAX_CMD_LEN, GFP_ATOMIC);
++	buf = kzalloc(PCAN_USB_MAX_CMD_LEN, GFP_ATOMIC);
+ 	if (!buf) {
+ 		usb_free_urb(urb);
+ 		return -ENOMEM;
 
 -- 
 2.53.0
