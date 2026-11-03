@@ -1,78 +1,95 @@
-From: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-Date: Tue, 03 Nov 2026 08:42:48 +0000
-Subject: [PATCH] iio: light: al3010: fix out-of-bounds read of the scale
- table
+From: Daejun Park <daejun7.park@samsung.com>
+Date: Tue, 03 Nov 2026 18:04:11 +0900
+Subject: [PATCH] pnfs/blocklayout: commit the layout before reading through
+ the MDS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261103-al3010-scale-bounds-v1-1-6110c2ffe3b4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDQAxA0atI1g0kKtb2KsXFzJjWFBnLRKUg3
- r2jXb7F/xuYJBWDe7FBklVNp5jBlwLC4OJLUPtsKKlsmKlCN1bEhBbcKOinJfaGVPv2xiKuvja
- Qy0+Sp37P66P72xb/ljAfK9j3H2ZFq3B3AAAA
-X-Change-ID: 20261103-al3010-scale-bounds-04b891eea476
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Dmitry Osipenko <digetx@gmail.com>, 
- David Heidelberg <david@ixit.cz>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1793695374; l=1752;
- i=raffaele.tranfaglia@gmail.com; s=20261011; h=from:subject:message-id;
- bh=wBZCgtZERGB8XNugFlSt0efy2L/NU1X8KF6SrS/tjqs=;
- b=eOxXoHadO3NIfwDPw73bTr3xABL88fOLiUqxWGYFz/ReqKOrnjHjtblVW6gtg31s2IpM+nwcz
- i1LeJ+W1TRdC9gLAmx0fnlNmQXR3TYwujEkq6dsM0FmaZOsegLX14Mr
-X-Developer-Key: i=raffaele.tranfaglia@gmail.com; a=ed25519;
- pk=mweuSGNM6vguCTdqa+aiHwMXdgk70suj2wolzCp6XGM=
-X-Endpoint-Received: by B4 Relay for raffaele.tranfaglia@gmail.com/20261011 with auth_id=1160
+Message-Id: <20261103-nfs-bl-mdsread-v1-1-9b29915bbab7@samsung.com>
+X-B4-Tracking: v=1; b=H4sIAIqj6WoC/x3MQQqAIBBA0avErBvIFKGuEi1MxxooCwcikO6et
+ HyL/wsIZSaBsSmQ6WbhM1WotgG/ubQScqiGvuut6rTCFAWXHY8gmVxAbWyM3tDgvIEaXZkiP/9
+ wmt/3A3KBvq9gAAAA
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>, 
+ Benjamin Coddington <ben.coddington@hammerspace.com>, 
+ linux-nfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1793696650; l=2270;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=WBV4O1aChXYgb5EMs6LEz+MGYblqNH73Uzx1H9P7xWs=;
+ b=MfOWEb1eb+VnNW12yPE3M4dqZNyh7pwb45bt0Tbf86q39cKdg2S+NZ4FsUiHDlZ0zrjhbvIRm
+ JJF8zzlKF16ACuVyqEup9uFBlYAWL+E7gv125j6CewpSudPQzDX6EXv
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with auth_id=1122
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The gain field read from the CONFIG register is three bits wide, so it
-can hold values from 0 to 7, but al3010_scales[] only has four entries.
-If the register holds a gain value of 4 or more, reading the scale
-attribute indexes past the end of the table and returns garbage.
+bl_pg_init_read() sends some reads to the MDS, such as unaligned
+O_DIRECT reads. The MDS need not see layout writes before LAYOUTCOMMIT
+(RFC 8881, section 12.5.4). With Linux nfsd on XFS, such a read after
+an O_DIRECT write into a hole returns zeroes.
 
-Reject such values with -EINVAL instead of indexing past the end of
-the table.
+Send a synchronous LAYOUTCOMMIT first. An asynchronous one could be
+overtaken by the READ. If the LAYOUTCOMMIT returns an error, fail the
+read.
 
-Fixes: c36b5195ab70 ("iio: light: add Dyna-Image AL3010 driver")
-Signed-off-by: Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+Fixes: f742dc4a3258 ("pnfsblock: fix non-aligned DIO read")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
-Found with LLM-assisted static analysis of drivers/iio, looking for
-table lookups indexed by unchecked register fields; the fix was drafted
-with the same assistant and reviewed and tested by me.
+Tested with Linux nfsd on XFS, unaligned O_DIRECT reads only. The read
+after the write returned zeroes in 5 of 5 runs before and the data
+after. generic/013, 091 and 263 pass.
 
-Tested on arm64 QEMU with i2c-stub and CONFIG_UBSAN_BOUNDS=y. After
-writing a gain value of 4 to CONFIG (0x10), reading
-in_illuminance_scale:
-- before: two array-index-out-of-bounds reports (al3010.c:137 and
-  :138), and the attribute reads 0.000000
-- after: the read fails with -EINVAL and no report is printed
+A failed LAYOUTCOMMIT now fails the read instead of a later fsync.
+
+"pnfs/blocklayout: don't let a READ layout hide written extents" fixes
+the same zeroes for reads through a READ layout.
 ---
- drivers/iio/light/al3010.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/nfs/blocklayout/blocklayout.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/iio/light/al3010.c b/drivers/iio/light/al3010.c
-index 49f6d8336dbe..481dad5097b9 100644
---- a/drivers/iio/light/al3010.c
-+++ b/drivers/iio/light/al3010.c
-@@ -134,6 +134,9 @@ static int al3010_read_raw(struct iio_dev *indio_dev,
- 			return ret;
- 
- 		gain = FIELD_GET(AL3010_GAIN_MASK, gain);
-+		if (gain >= ARRAY_SIZE(al3010_scales))
-+			return -EINVAL;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index b7a3211c58..54825aaad3 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -839,12 +839,16 @@ is_aligned_req(struct nfs_pageio_descriptor *pgio,
+ static void
+ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
++	int err;
 +
- 		*val = al3010_scales[gain][0];
- 		*val2 = al3010_scales[gain][1];
+ 	if (!is_aligned_req(pgio, req, SECTOR_SIZE, false)) {
+ 		nfs_pageio_reset_read_mds(pgio);
+-		return;
++		goto out_commit;
+ 	}
  
+ 	pnfs_generic_pg_init_read(pgio, req);
++	if (pgio->pg_error < 0)
++		return;
+ 
+ 	if (pgio->pg_lseg &&
+ 		test_bit(NFS_LSEG_UNAVAILABLE, &pgio->pg_lseg->pls_flags)) {
+@@ -853,6 +857,13 @@ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 		pnfs_set_lo_fail(pgio->pg_lseg);
+ 		nfs_pageio_reset_read_mds(pgio);
+ 	}
++	if (pgio->pg_lseg)
++		return;
++out_commit:
++	/* The MDS may not see layout writes until LAYOUTCOMMIT. */
++	err = pnfs_layoutcommit_inode(pgio->pg_inode, true);
++	if (err < 0)
++		pgio->pg_error = err;
+ }
+ 
+ /*
 
 ---
-base-commit: d1425b382b9cc5bd19223fad8ba4a8af3dbe1305
-change-id: 20261103-al3010-scale-bounds-04b891eea476
+base-commit: eea3fef32a9cf36abcb5975a5a594e4135a6b026
+change-id: 20261031-nfs-bl-mdsread-346ffc4e9ac4
 
 Best regards,
---  
-Raffaele Tranfaglia <raffaele.tranfaglia@gmail.com>
+-- 
+Daejun Park <daejun7.park@samsung.com>
 
